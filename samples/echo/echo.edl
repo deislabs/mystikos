@@ -1,0 +1,14 @@
+enclave
+{
+    from "openenclave/edl/sgx/platform.edl" import *;
+
+    trusted
+    {
+        public int echo_ecall([string, in] char* msg);
+    };
+
+    untrusted
+    {
+        int echo_ocall([string, in] char* msg);
+    };
+};

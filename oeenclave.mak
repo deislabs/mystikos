@@ -59,6 +59,8 @@ LOCAL_OECORE += __stack_chk_fail
 
 GLOBAL_OECORE += $(call syms,$(LIBOECORE))
 
+WEAK_OECORE += oe_enclave_properties_sgx
+
 # Hide these symbols:
 LOCAL_OEENCLAVE =
 LOCAL_OEENCLAVE += rand
@@ -95,14 +97,16 @@ LDFLAGS += --no-whole-archive
 all: oecore oeenclave
 
 oeenclave:
-	mkdir -p $(LIBDIR)
-	ld -relocatable -o $(LIBDIR)/oeenclave.o $(LDFLAGS)
-	objcopy $(addprefix -L,$(LOCAL_OEENCLAVE)) $(LIBDIR)/oeenclave.o
-	objcopy $(addprefix -G,$(GLOBAL_OEENCLAVE)) $(LIBDIR)/oeenclave.o
-	rm -rf $(LIBDIR)/oecore.o
+	@ mkdir -p $(LIBDIR)
+	@ ld -relocatable -o $(LIBDIR)/oeenclave.o $(LDFLAGS)
+	@ objcopy $(addprefix -L,$(LOCAL_OEENCLAVE)) $(LIBDIR)/oeenclave.o
+	@ objcopy $(addprefix -G,$(GLOBAL_OEENCLAVE)) $(LIBDIR)/oeenclave.o
+	@ rm -rf $(LIBDIR)/oecore.o
+	@ echo "Created $(LIBDIR)/oecore.o"
 
 oecore:
-	mkdir -p $(LIBDIR)
-	ld -relocatable -o $(LIBDIR)/oecore.o --whole-archive $(LIBOECORE)
-	objcopy $(addprefix -L,$(LOCAL_OECORE)) $(LIBDIR)/oecore.o
-	objcopy $(addprefix -G,$(GLOBAL_OECORE)) $(LIBDIR)/oecore.o
+	@ mkdir -p $(LIBDIR)
+	@ ld -relocatable -o $(LIBDIR)/oecore.o --whole-archive $(LIBOECORE)
+	@ objcopy $(addprefix -L,$(LOCAL_OECORE)) $(LIBDIR)/oecore.o
+	@ objcopy $(addprefix -G,$(GLOBAL_OECORE)) $(LIBDIR)/oecore.o
+	@ objcopy $(addprefix -W,$(WEAK_OECORE)) $(LIBDIR)/oecore.o

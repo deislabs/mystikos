@@ -19,17 +19,20 @@ submodules:
 ##
 ##==============================================================================
 
-OPENENCLAVE_INSTALL_PREFIX=$(BUILD_DIR)/openenclave
+OPENENCLAVE_INSTALL_PREFIX=$(BUILD_DIR)
 
-openenclave: openenclave/build/Makefile $(OPENENCLAVE_INSTALL_PREFIX)
+openenclave: configure_oe build_oe
 
-$(OPENENCLAVE_INSTALL_PREFIX):
-	$(MAKE) -C openenclave/build
-	$(MAKE) -C openenclave/build install
+configure_oe: openenclave/build/Makefile
 
 openenclave/build/Makefile:
+	rm -rf openenclave/build
 	mkdir -p openenclave/build
 	( cd openenclave/build; cmake -DUSE_DEBUG_MALLOC=1 -DHAS_QUOTE_PROVIDER=OFF -DCMAKE_INSTALL_PREFIX=$(OPENENCLAVE_INSTALL_PREFIX) .. )
+
+build_oe:
+	$(MAKE) -C openenclave/build install
+	$(MAKE) -f oeenclave.mak
 
 CLEAN += openenclave/build
 
