@@ -1,6 +1,6 @@
 .PHONY: openenclave
 
-BUILD_DIR=$(CURDIR)/build
+BUILD_DIR=${CURDIR}/build
 
 all: submodules openenclave
 
@@ -21,11 +21,14 @@ submodules:
 
 OPENENCLAVE_INSTALL_PREFIX=$(BUILD_DIR)/openenclave
 
-openenclave: openenclave/build/Makefile
+openenclave: openenclave/build/Makefile $(OPENENCLAVE_INSTALL_PREFIX)
+
+$(OPENENCLAVE_INSTALL_PREFIX):
 	$(MAKE) -C openenclave/build
+	$(MAKE) -C openenclave/build install
 
 openenclave/build/Makefile:
-	mkdir openenclave/build
+	mkdir -p openenclave/build
 	( cd openenclave/build; cmake -DUSE_DEBUG_MALLOC=1 -DHAS_QUOTE_PROVIDER=OFF -DCMAKE_INSTALL_PREFIX=$(OPENENCLAVE_INSTALL_PREFIX) .. )
 
 CLEAN += openenclave/build
