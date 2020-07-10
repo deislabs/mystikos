@@ -1,3 +1,5 @@
 [submodule "openenclave"]
 	path = openenclave
-	url = https://github.com/openenclave/openenclave
+	#url = https://github.com/openenclave/openenclave
+	url = https://github.com/mikbras/openenclave
+        branch = oe-libos
