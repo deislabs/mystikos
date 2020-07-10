@@ -2,7 +2,7 @@
 
 BUILD_DIR=${CURDIR}/build
 
-all: submodules openenclave
+all: submodules openenclave samples
 
 ##==============================================================================
 ##

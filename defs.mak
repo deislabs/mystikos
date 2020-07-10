@@ -11,3 +11,7 @@ OEENCLAVE_LDFLAGS = -nostdlib -nodefaultlibs -nostartfiles -Wl,--no-undefined -W
 OEENCLAVE_CFLAGS = -nostdinc -m64 -fPIE -ftls-model=local-exec -fvisibility=hidden -fstack-protector-strong -fno-omit-frame-pointer -ffunction-sections -fdata-sections
 
 OEHOST_LDFLAGS = -L$(LIBDIR)/openenclave/host -Wl,-z,noexecstack -loehost -ldl -lpthread -lsgx_enclave_common -lsgx_dcap_ql -lssl -lcrypto
+
+define NL
+
+endef
