@@ -4,7 +4,7 @@ include $(TOP)/defs.mak
 DIRS = echo
 
 all:
-	$(foreach i, $(DIRS), $(MAKE) -C $(i) tests $(NL) )
+	$(foreach i, $(DIRS), $(MAKE) -C $(i) $(NL) )
 
 tests:
 	$(foreach i, $(DIRS), $(MAKE) -C $(i) tests $(NL) )
