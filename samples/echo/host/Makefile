@@ -1,6 +1,8 @@
 TOP=$(abspath ../../..)
 include $(TOP)/defs.mak
 
+DIRECTORY = samples/echo/host
+
 PROGRAM = host
 
 SOURCES = calls_u.c host.c

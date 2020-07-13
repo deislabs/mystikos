@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 #include <openenclave/enclave.h>
-#include "echo_t.h"
+#include "calls_t.h"
 
 int echo_ecall(char* msg)
 {

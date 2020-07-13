@@ -2,6 +2,8 @@ LIBDIR=$(TOP)/build/lib
 
 BINDIR=$(TOP)/build/bin
 
+OBJDIR=$(TOP)/build/obj
+
 INCDIR=$(TOP)/build/include
 
 EDGER8R=$(BINDIR)/oeedger8r

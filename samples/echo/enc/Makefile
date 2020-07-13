@@ -1,7 +1,9 @@
 TOP=$(abspath ../../..)
 include $(TOP)/defs.mak
 
-PROGRAM=enc
+DIRECTORY = samples/echo/enc
+
+PROGRAM = enc
 
 SOURCES = calls_t.c crt.c enc.c
 
