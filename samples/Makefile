@@ -3,11 +3,8 @@ include $(TOP)/defs.mak
 
 DIRS = echo
 
-all:
-	$(foreach i, $(DIRS), $(MAKE) -C $(i) $(NL) )
+include $(TOP)/rules.mak
 
 tests:
 	$(foreach i, $(DIRS), $(MAKE) -C $(i) tests $(NL) )
 
-clean:
-	$(foreach i, $(DIRS), $(MAKE) -C $(i) clean $(NL) )

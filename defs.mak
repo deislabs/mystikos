@@ -12,6 +12,8 @@ OEENCLAVE_CFLAGS = -nostdinc -m64 -fPIE -ftls-model=local-exec -fvisibility=hidd
 
 OEHOST_LDFLAGS = -L$(LIBDIR)/openenclave/host -Wl,-z,noexecstack -loehost -ldl -lpthread -lsgx_enclave_common -lsgx_dcap_ql -lssl -lcrypto
 
+OEHOST_CFLAGS = -Wall -Werror
+
 define NL
 
 endef
