@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "echo_u.h"
+#include "calls_u.h"
 
 static char _message[1024];
 
@@ -29,7 +29,7 @@ int main(int argc, const char* argv[])
         return 1;
     }
 
-    r = oe_create_echo_enclave(argv[1], type, flags, NULL, 0, &enclave);
+    r = oe_create_calls_enclave(argv[1], type, flags, NULL, 0, &enclave);
     if (r != OE_OK)
     {
         fprintf(stderr, "%s: oe_create_echo_enclave(): %u\n", argv[0], r);

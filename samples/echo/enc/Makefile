@@ -1,9 +1,9 @@
 TOP=$(abspath ../../..)
 include $(TOP)/defs.mak
 
-PROGRAM=echo_enc
+PROGRAM=enc
 
-SOURCES = echo_t.c crt.c enc.c
+SOURCES = calls_t.c crt.c enc.c
 
 INCLUDES = -I$(INCDIR)
 
@@ -11,9 +11,9 @@ CFLAGS = $(OEENCLAVE_CFLAGS)
 
 LDFLAGS = $(OEENCLAVE_LDFLAGS)
 
-CLEAN = echo_t.h echo_t.c echo_args.h
+CLEAN = calls_t.h calls_t.c calls_args.h
 
 include $(TOP)/rules.mak
 
-echo_t.c:
-	$(EDGER8R) --trusted --search-path $(INCDIR) ../echo.edl
+calls_t.c:
+	$(EDGER8R) --trusted --search-path $(INCDIR) ../calls.edl
