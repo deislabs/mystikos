@@ -1,8 +1,15 @@
+ifndef SUBDIR
+$(error "please define SUBDIR variable")
+endif
+
 LIBDIR=$(TOP)/build/lib
+SUBLIBDIR=$(LIBDIR)/$(SUBDIR)
 
 BINDIR=$(TOP)/build/bin
+SUBBINDIR=$(BINDIR)/$(SUBDIR)
 
 OBJDIR=$(TOP)/build/obj
+SUBOBJDIR=$(OBJDIR)/$(SUBDIR)
 
 INCDIR=$(TOP)/build/include
 

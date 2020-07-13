@@ -1,7 +1,6 @@
+SUBDIR = samples/echo/enc
 TOP=$(abspath ../../..)
 include $(TOP)/defs.mak
-
-DIRECTORY = samples/echo/enc
 
 PROGRAM = enc
 

@@ -1,7 +1,6 @@
+SUBDIR = samples
 TOP=$(abspath ..)
 include $(TOP)/defs.mak
-
-DIRECTORY = samples
 
 DIRS = echo
 

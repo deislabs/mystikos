@@ -1,9 +1,8 @@
-ifndef DIRECTORY
-$(error "please define DIRECTORY variable")
+ifndef SUBDIR
+$(error "please define SUBDIR variable")
 endif
 
 OBJECTS = $(SOURCES:.c=.o)
-SUBOBJDIR=$(OBJDIR)/$(DIRECTORY)
 __OBJECTS = $(addprefix $(SUBOBJDIR)/,$(OBJECTS))
 
 define NL
@@ -12,21 +11,23 @@ define NL
 endef
 
 ifdef PROGRAM
-__PROGRAM = $(BINDIR)/$(DIRECTORY)/$(PROGRAM)
+__PROGRAM = $(SUBBINDIR)/$(PROGRAM)
 $(__PROGRAM): dirs $(__OBJECTS)
-	mkdir -p $(BINDIR)/$(DIRECTORY)
+	mkdir -p $(SUBBINDIR)
 	gcc -o $(__PROGRAM) $(CFLAGS) $(__OBJECTS) $(LDFLAGS)
 endif
 
 ifdef ARCHIVE
-__ARCHIVE = $(BINDIR)/$(DIRECTORY)/$(ARCHIVE)
+__ARCHIVE = $(SUBLIBDIR)/$(ARCHIVE)
 $(__ARCHIVE): dirs $(__OBJECTS)
 $(__ARCHIVE): $(__OBJECTS)
+	mkdir -p $(SUBLIBDIR)
 	ar rv $(__ARCHIVE) $(__OBJECTS)
 endif
 
 $(SUBOBJDIR)/%.o: %.c
 	mkdir -p $(SUBOBJDIR)
+	$(shell mkdir -p $(shell dirname $@))
 	$(CC) -c $(CFLAGS) $(DEFINES) $(INCLUDES) -o $@ $<
 
 dirs:
