@@ -2,7 +2,7 @@ SUBDIR = samples
 TOP=$(abspath ..)
 include $(TOP)/defs.mak
 
-DIRS = echo lthread
+DIRS = run echo lthread wake
 
 include $(TOP)/rules.mak
 

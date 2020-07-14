@@ -3,13 +3,13 @@
 
 #include <openenclave/enclave.h>
 #include <lthread.h>
-#include "calls_t.h"
+#include "run_t.h"
 
 #define TIMEOUT_MSEC 1
 
-#define NUM_THREADS 1000
+#define NUM_THREADS 100
 
-#define NUM_ITERATIONS 1000
+#define NUM_ITERATIONS 10
 
 int oe_host_printf(const char* fmt, ...);
 int oe_snprintf(char* str, size_t size, const char* format, ...);
@@ -68,7 +68,7 @@ static void _run(bool detached)
     oe_host_printf("=== %s(): leave\n\n", __FUNCTION__);
 }
 
-int lthread_ecall(void)
+int run_ecall(void)
 {
     _run(true);
     _run(false);
@@ -79,6 +79,6 @@ OE_SET_ENCLAVE_SGX(
     1,    /* ProductID */
     1,    /* SecurityVersion */
     true, /* Debug */
-    16*4096, /* NumHeapPages */
-    4096, /* NumStackPages */
+    4096, /* NumHeapPages */
+    1024, /* NumStackPages */
     2);   /* NumTCS */
