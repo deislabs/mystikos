@@ -3,13 +3,19 @@ $(error "please define SUBDIR variable")
 endif
 
 LIBDIR=$(TOP)/build/lib
+ifndef SUBLIBDIR
 SUBLIBDIR=$(LIBDIR)/$(SUBDIR)
+endif
 
 BINDIR=$(TOP)/build/bin
+ifndef SUBBINDIR
 SUBBINDIR=$(BINDIR)/$(SUBDIR)
+endif
 
 OBJDIR=$(TOP)/build/obj
+ifndef SUBOBJDIR
 SUBOBJDIR=$(OBJDIR)/$(SUBDIR)
+endif
 
 INCDIR=$(TOP)/build/include
 

@@ -5,9 +5,11 @@
 #include <lthread.h>
 #include "calls_t.h"
 
-#define TIMEOUT_MSEC 10
+#define TIMEOUT_MSEC 1
 
 #define NUM_THREADS 1000
+
+#define NUM_ITERATIONS 1000
 
 int oe_host_printf(const char* fmt, ...);
 int oe_snprintf(char* str, size_t size, const char* format, ...);
@@ -22,7 +24,7 @@ static void _child_thread(void* arg)
     if (detached)
         lthread_detach();
 
-    for (size_t i = 0; i < 10; i++)
+    for (size_t i = 0; i < NUM_ITERATIONS; i++)
     {
         uint64_t ltid = lthread_id();
         oe_host_printf("=== thread: %lu\n", ltid);

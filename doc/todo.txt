@@ -1,0 +1,3 @@
+
+    (A) lthread should use RDTSC instruction rather than gettimeofday()
+
