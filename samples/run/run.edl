@@ -1,0 +1,12 @@
+enclave
+{
+    from "openenclave/edl/sgx/platform.edl" import *;
+    from "openenclave/edl/syscall.edl" import *;
+    from "openenclave/edl/logging.edl" import oe_write_ocall;
+    from "openenclave/edl/fcntl.edl" import *;
+
+    trusted
+    {
+        public int run_ecall();
+    };
+};
