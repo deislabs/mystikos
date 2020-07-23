@@ -2,9 +2,6 @@ SUBDIR = samples
 TOP=$(abspath ..)
 include $(TOP)/defs.mak
 
-DIRS = run echo lthread wake
+DIRS = run echo lthread wake mman
 
 include $(TOP)/rules.mak
-
-tests:
-	$(foreach i, $(DIRS), $(MAKE) -C $(i) tests $(NL) )
