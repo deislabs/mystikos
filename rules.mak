@@ -12,14 +12,15 @@ endef
 
 ifdef PROGRAM
 __PROGRAM = $(SUBBINDIR)/$(PROGRAM)
-$(__PROGRAM): dirs $(__OBJECTS)
+program: dirs $(__PROGRAM)
+$(__PROGRAM): $(__OBJECTS)
 	mkdir -p $(SUBBINDIR)
 	gcc -o $(__PROGRAM) $(CFLAGS) $(__OBJECTS) $(LDFLAGS)
 endif
 
 ifdef ARCHIVE
 __ARCHIVE = $(SUBLIBDIR)/$(ARCHIVE)
-$(__ARCHIVE): dirs $(__OBJECTS)
+archive: dirs $(__ARCHIVE)
 $(__ARCHIVE): $(__OBJECTS)
 	mkdir -p $(SUBLIBDIR)
 	ar rv $(__ARCHIVE) $(__OBJECTS)
