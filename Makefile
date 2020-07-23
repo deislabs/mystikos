@@ -1,32 +1,8 @@
-.PHONY: openenclave
 .PHONY: tests
-.PHONY: lthread
+SUBDIR = third_party
+TOP = $(abspath $(CURDIR))
+include $(TOP)/defs.mak
 
-BUILD_DIR=${CURDIR}/build
+DIRS = third_party enclave tests
 
-all: submodules openenclave lthread tests enclave
-
-submodules:
-	@ git submodule update --recursive --init --progress
-
-openenclave:
-	$(MAKE) -C third_party/openenclave
-
-lthread: $(BUILD_DIR)/include/lthread.h
-
-$(BUILD_DIR)/include/lthread.h:
-	$(MAKE) -C third_party/lthread
-	$(MAKE) -C third_party/lthread install
-
-tests:
-	$(MAKE) -C tests
-
-enclave:
-	$(MAKE) -C enclave
-
-clean:
-	rm -rf $(BUILD_DIR)
-	$(MAKE) -C third_party/openenclave clean
-	$(MAKE) -C third_party/lthread clean
-	$(MAKE) -C tests clean
-	$(MAKE) -C enclave clean
+include $(TOP)/rules.mak

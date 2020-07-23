@@ -1,0 +1,4 @@
+[submodule "third_party/openenclave/openenclave"]
+	path = third_party/openenclave/openenclave
+	url = https://github.com/openenclave/openenclave.git
+	branch = mikbras.split

@@ -41,3 +41,8 @@ clean:
 ifdef DIRS
 	$(foreach i, $(DIRS), $(MAKE) -C $(i) clean $(NL) )
 endif
+
+tests:
+ifdef DIRS
+	$(foreach i, $(DIRS), $(MAKE) -C $(i) tests $(NL) )
+endif
