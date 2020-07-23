@@ -119,9 +119,14 @@
 #include "strings.h"
 
 OE_PRINTF_FORMAT(3, 4)
-int oel_snprintf(char* str, size_t size, const char* format, ...);
+int oe_snprintf(char* str, size_t size, const char* format, ...);
 
-#define SNPRINTF oel_snprintf
+OE_PRINTF_FORMAT(1, 2)
+int oe_host_printf(const char* fmt, ...);
+
+#define SNPRINTF oe_snprintf
+
+#define PRINTF oe_host_printf
 
 /*
 **==============================================================================
