@@ -4,7 +4,7 @@ include $(TOP)/defs.mak
 
 PROGRAM = enc
 
-SOURCES = $(SUBOBJDIR)/run_t.c crt.c enc.c
+SOURCES = $(SUBOBJDIR)/run_t.c enc.c
 
 INCLUDES = -I$(INCDIR) -I$(SUBOBJDIR)
 
