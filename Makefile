@@ -1,10 +1,10 @@
 .PHONY: openenclave
-.PHONY: tests
+.PHONY: samples
 .PHONY: lthread
 
 BUILD_DIR=${CURDIR}/build
 
-all: submodules openenclave lthread tests enclave
+all: submodules openenclave lthread samples enclave
 
 submodules:
 	@ git submodule update --recursive --init --progress
@@ -20,8 +20,8 @@ $(BUILD_DIR)/include/lthread.h:
 	$(MAKE) -C third_party/lthread
 	$(MAKE) -C third_party/lthread install
 
-tests:
-	$(MAKE) -C tests
+samples:
+	$(MAKE) -C samples
 
 tests:
 	$(MAKE) -C tests tests
@@ -35,5 +35,5 @@ clean:
 	rm -rf $(BUILD_DIR)
 	$(MAKE) -C third_party/openenclave clean
 	$(MAKE) -C third_party/lthread clean
-	$(MAKE) -C tests clean
+	$(MAKE) -C samples clean
 	$(MAKE) -C enclave clean
