@@ -28,11 +28,15 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 #include <sys/syscall.h>
+#include <sys/mount.h>
 #include "run_t.h"
 #include "elfutils.h"
 
 typedef long (*syscall_callback_t)(long n, long params[6]);
+
+#define ARGV0 "/root/sgx-lkl/samples/basic/helloworld/app/helloworld"
 
 static void* _make_stack(
     size_t stack_size,
@@ -49,7 +53,7 @@ static void* _make_stack(
     if (!(stack = memalign(16, stack_size)))
         goto done;
 
-    const char* argv[] = { "arg0", "arg1", "arg2", NULL };
+    const char* argv[] = { ARGV0, ARGV0, "arg2", NULL };
     int argc = sizeof(argv) / sizeof(argv[0]) - 1;
     const char* envp[] = { "ENV0=zero", "ENV1=one", "ENV2=two", NULL };
     size_t envc = sizeof(envp) / sizeof(envp[0]) - 1;
@@ -107,8 +111,11 @@ done:
     return ret;
 }
 
-long _syscall(long n, long params[6])
+static long _syscall(long n, long params[6])
 {
+    extern long oe_syscall(long n, long x1, long x2, long x3, long x4,
+        long x5, long x6);
+
     if (n == 1000)
     {
         printf("trace: %s\n", (const char*)params[0]);
@@ -127,9 +134,50 @@ long _syscall(long n, long params[6])
     {
         return 0;
     }
+    else if (n == SYS_open)
+    {
+        // printf("SYS_open: path[%s]\n", (char*)params[0]);
+
+        long ret = oe_syscall(
+            n,
+            params[0],
+            params[1],
+            params[2],
+            params[3],
+            params[4],
+            params[5]);
+
+        // printf("ret=%ld\n", ret);
+
+        return ret;
+    }
     else
     {
         printf("********** uknown syscall: n=%ld\n", n);
+
+        return oe_syscall(
+            n,
+            params[0],
+            params[1],
+            params[2],
+            params[3],
+            params[4],
+            params[5]);
+    }
+}
+
+static void _setup_hostfs(void)
+{
+    if (oe_load_module_host_file_system() != OE_OK)
+    {
+        fprintf(stderr, "oe_load_module_host_file_system() failed\n");
+        assert(false);
+    }
+
+    if (mount("/", "/", OE_HOST_FILE_SYSTEM, 0, NULL) != 0)
+    {
+        fprintf(stderr, "mount() failed\n");
+        assert(false);
     }
 }
 
@@ -141,7 +189,9 @@ static void _enter_crt(void)
         void* stack, void* dynv, syscall_callback_t callback);
 
     enter_t enter = __oe_get_isolated_image_entry_point();
-    oe_assert(enter);
+    assert(enter);
+
+    _setup_hostfs();
 
     const void* base = __oe_get_isolated_image_base();
     const Elf64_Ehdr* ehdr = base;
@@ -157,7 +207,7 @@ static void _enter_crt(void)
         enter)))
     {
         printf("_make_stack() failed\n");
-        oe_assert(false);
+        assert(false);
     }
 
     elf_dump_stack(stack);
@@ -181,19 +231,10 @@ static void _enter_crt(void)
         }
     }
 
-    const size_t DYN_CNT = 32;
-
-printf("dynv=%p\n", dynv);
-for (size_t i = 0; dynv[i]; i += 2)
-{
-    if (dynv[i] < DYN_CNT)
-        printf("dynv[%lu]=%lx\n", dynv[i], dynv[i+1]);
-}
-
     if (!dynv)
     {
         printf("dynv not found\n");
-        oe_assert(false);
+        assert(false);
     }
 
     (*enter)(stack, dynv, _syscall);

@@ -10,7 +10,7 @@ INCLUDES = -I$(INCDIR) -I$(SUBOBJDIR) -I$(INCDIR)/openenclave/3rdparty/libc
 
 CFLAGS = -Werror $(OEENCLAVE_CFLAGS)
 
-LDFLAGS = $(OEENCLAVE_LDFLAGS) -L$(LIBDIR) -llthread
+LDFLAGS = $(OEENCLAVE_LDFLAGS) -L$(LIBDIR) -loehostfs -llthread
 
 #LDFLAGS += -Wl,--export-dynamic
 #LDFLAGS += -Wl,--hash-style=both
