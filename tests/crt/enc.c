@@ -29,7 +29,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-#include <sys/syscall.h>
+#include "syscallutils.h"
 #include <sys/mount.h>
 #include "run_t.h"
 #include "elfutils.h"
@@ -111,10 +111,23 @@ done:
     return ret;
 }
 
-static long _syscall(long n, long params[6])
+static long _forward_syscall(long n, long params[6])
 {
     extern long oe_syscall(long n, long x1, long x2, long x3, long x4,
         long x5, long x6);
+    long x1 = params[0];
+    long x2 = params[1];
+    long x3 = params[2];
+    long x4 = params[3];
+    long x5 = params[4];
+    long x6 = params[5];
+    long ret;
+
+    return oe_syscall(n, x1, x2, x3, x4, x5, x6);
+}
+
+static long _syscall(long n, long params[6])
+{
     long x1 = params[0];
     long x2 = params[1];
     long x3 = params[2];
@@ -145,7 +158,7 @@ static long _syscall(long n, long params[6])
     {
         printf("open(%s)\n", (char*)x1);
 
-        long ret = oe_syscall(n, x1, x2, x3, x4, x5, x6);
+        long ret = _forward_syscall(n, params);
 
         printf("open.ret=%ld\n", ret);
 
@@ -155,17 +168,27 @@ static long _syscall(long n, long params[6])
     {
         printf("read(fd=%ld, buf=%p, count=%ld)\n", x1, (void*)x2, x3);
 
-        long ret = oe_syscall(n, x1, x2, x3, x4, x5, x6);
+        long ret = _forward_syscall(n, params);
 
-        printf("read.ret=%ld\n", ret);
+        printf("ret=%ld\n", ret);
+
+        return ret;
+    }
+    else if (n == SYS_close)
+    {
+        printf("close(%ld)\n", x1);
+
+        long ret = _forward_syscall(n, params);
+
+        printf("ret=%ld\n", ret);
 
         return ret;
     }
     else
     {
-        printf("********** uknown syscall: n=%ld\n", n);
+        printf("********** uknown syscall: %s\n", syscall_str(n));
 
-        long ret = oe_syscall(n, x1, x2, x3, x4, x5, x6);
+        long ret = _forward_syscall(n, params);
 
         printf("********** ret=%ld\n", ret);
 

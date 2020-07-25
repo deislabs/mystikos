@@ -4,7 +4,7 @@ include $(TOP)/defs.mak
 
 PROGRAM = enc
 
-SOURCES = $(SUBOBJDIR)/run_t.c enc.c elfutils.c
+SOURCES = $(SUBOBJDIR)/run_t.c $(wildcard *.c)
 
 INCLUDES = -I$(INCDIR) -I$(SUBOBJDIR) -I$(INCDIR)/openenclave/3rdparty/libc
 
