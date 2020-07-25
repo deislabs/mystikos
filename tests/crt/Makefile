@@ -4,11 +4,11 @@ include $(TOP)/defs.mak
 
 PROGRAM = enc
 
-SOURCES = $(SUBOBJDIR)/run_t.c enc.c elf.c
+SOURCES = $(SUBOBJDIR)/run_t.c enc.c elfutils.c
 
-INCLUDES = -I$(INCDIR) -I$(SUBOBJDIR)
+INCLUDES = -I$(INCDIR) -I$(SUBOBJDIR) -I$(INCDIR)/openenclave/3rdparty/libc
 
-CFLAGS = $(OEENCLAVE_CFLAGS)
+CFLAGS = -Werror $(OEENCLAVE_CFLAGS)
 
 LDFLAGS = $(OEENCLAVE_LDFLAGS) -L$(LIBDIR) -llthread
 
