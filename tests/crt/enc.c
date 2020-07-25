@@ -2,33 +2,25 @@
 // Licensed under the MIT License.
 
 /*
-  position            content                     size (bytes) + comment
-  ------------------------------------------------------------------------
-  stack pointer ->  [ argc = number of args ]     4
-                    [ argv[0] (pointer) ]         4   (program name)
-                    [ argv[1] (pointer) ]         4
-                    [ argv[..] (pointer) ]        4 * x
-                    [ argv[n - 1] (pointer) ]     4
-                    [ argv[n] (pointer) ]         4   (= NULL)
-
-                    [ envp[0] (pointer) ]         4
-                    [ envp[1] (pointer) ]         4
-                    [ envp[..] (pointer) ]        4
-                    [ envp[term] (pointer) ]      4   (= NULL)
-
-                    [ auxv[0] (Elf32_auxv_t) ]    8
-                    [ auxv[1] (Elf32_auxv_t) ]    8
-                    [ auxv[..] (Elf32_auxv_t) ]   8
-                    [ auxv[term] (Elf32_auxv_t) ] 8   (= AT_NULL vector)
-
-                    [ padding ]                   0 - 16
-
-                    [ argument ASCIIZ strings ]   >= 0
-                    [ environment ASCIIZ str. ]   >= 0
-
-  (0xbffffffc)      [ end marker ]                4   (= NULL)
-
-  (0xc0000000)      < bottom of stack >           0   (virtual)
+    AT_SYSINFO_EHDR=7ffebe5c8000
+    AT_HWCAP=bfebfbff
+    AT_PAGESZ=1000
+    AT_CLKTCK=64
+    AT_PHDR=560102ecb040
+    AT_PHENT=38
+    AT_PHNUM=9
+    AT_BASE=7fd6d9d47000
+    AT_FLAGS=0
+    AT_ENTRY=560102ecb930
+    AT_UID=0
+    AT_EUID=0
+    AT_GID=0
+    AT_EGID=0
+    AT_SECURE=0
+    AT_RANDOM=7ffebe5aa159
+    AT_HWCAP2=0
+    AT_EXECFN=7ffebe5abff1
+    AT_PLATFORM=7ffebe5aa169
 */
 
 #include <openenclave/enclave.h>
@@ -36,6 +28,12 @@
 #include "elf.h"
 
 #define printf oe_host_printf
+
+#define oe_va_list __builtin_va_list
+#define oe_va_start __builtin_va_start
+#define oe_va_arg __builtin_va_arg
+#define oe_va_end __builtin_va_end
+#define oe_va_copy __builtin_va_copy
 
 typedef long (*syscall_callback_t)(long n, long params[6]);
 
@@ -255,15 +253,21 @@ void dump_stack(void* stack)
     for (int i = 0; auxv[i].a_type; i++)
     {
         const auxv_t a = auxv[i];
-        printf("%s=%lu\n", elf64_at_string(a.a_type), a.a_un.a_val);
+        printf("%s=%lx\n", elf64_at_string(a.a_type), a.a_un.a_val);
     }
 }
 
-static int _make_stack()
+static void* _make_stack(
+    size_t stack_size,
+    const void* base,
+    const void* ehdr,
+    const void* phdr,
+    size_t phnum,
+    size_t phentsize,
+    const void* entry)
 {
-    int ret = -1;
+    void* ret = NULL;
     void* stack = NULL;
-    size_t stack_size = 64 * 1024;
 
     if (!(stack = oe_memalign(16, stack_size)))
         goto done;
@@ -275,22 +279,45 @@ static int _make_stack()
     const auxv_t auxv[] =
     {
         {
+            .a_type = AT_BASE,
+            .a_un.a_val = (uint64_t)base,
+        },
+        {
+            .a_type = AT_SYSINFO_EHDR,
+            .a_un.a_val = (uint64_t)ehdr,
+        },
+        {
+            .a_type = AT_PHDR,
+            .a_un.a_val = (uint64_t)phdr,
+        },
+        {
+            .a_type = AT_PHNUM,
+            .a_un.a_val = (uint64_t)phnum,
+        },
+        {
+            .a_type = AT_PHENT,
+            .a_un.a_val = (uint64_t)phentsize,
+        },
+        {
+            .a_type = AT_ENTRY,
+            .a_un.a_val = (uint64_t)entry,
+        },
+        {
             .a_type = AT_PAGESZ,
             .a_un.a_val = 4096,
         },
         {
             .a_type = AT_NULL,
             .a_un.a_val = 0,
-        }
+        },
     };
     size_t auxc = sizeof(auxv) / sizeof(auxv[0]) - 1;
 
     if (init_stack(argc, argv, envc, envp, auxc, auxv, stack, stack_size) != 0)
         goto done;
 
-    dump_stack(stack);
-
-    ret = 0;
+    ret = stack;
+    stack = NULL;
 
 done:
 
@@ -302,10 +329,6 @@ done:
 
 long _syscall(long n, long params[6])
 {
-#if 0
-    printf("syscall: n=%ld\n", n);
-#endif
-
     if (n == 1000)
     {
         printf("trace: %s\n", (const char*)params[0]);
@@ -314,29 +337,109 @@ long _syscall(long n, long params[6])
     {
         printf("trace: %s=%p\n", (const char*)params[0], (void*)params[1]);
     }
+    else if (n == 205) /* SYS_set_thread_area */
+    {
+        void* p = (void*)params[0];
+        __asm__ volatile("wrfsbase %0" ::"r"(p));
+        return 0;
+    }
+    else if (n == 218) /* OE_SYS_set_tid_address */
+    {
+        return 0;
+    }
+    else
+    {
+        printf("********** uknown syscall: n=%ld\n", n);
+    }
 }
+
+#if 0
+long musl_syscall_variadic(long n, ...)
+{
+    oe_va_list ap;
+    long params[6];
+
+oel_trace("************ musl_syscall_variadic()");
+
+    oe_va_start(ap, n);
+    params[0] = oe_va_arg(ap, long);
+    params[1] = oe_va_arg(ap, long);
+    params[2] = oe_va_arg(ap, long);
+    params[3] = oe_va_arg(ap, long);
+    params[4] = oe_va_arg(ap, long);
+    params[5] = oe_va_arg(ap, long);
+    oe_va_end(ap);
+
+    return musl_syscall(n, params);
+}
+#endif
 
 static void _enter_crt(void)
 {
     extern void* __oe_get_isolated_image_entry_point(void);
     extern const void* __oe_get_isolated_image_base();
     typedef void (*enter_t)(
-        void* stack,
-        const void* elf64_phdr,
-        syscall_callback_t callback);
+        void* stack, void* dynv, syscall_callback_t callback);
 
     enter_t enter = __oe_get_isolated_image_entry_point();
     oe_assert(enter);
 
-    const void* elf64_phdr = __oe_get_isolated_image_base();
+    const void* base = __oe_get_isolated_image_base();
+    const elf64_ehdr_t* ehdr = base;
+    void* stack;
+    const size_t stack_size = 256 * 1024;
 
-    if (_make_stack() != 0)
+    /* Extract program-header related info */
+    const uint8_t* phdr = (const uint8_t*)base + ehdr->e_phoff;
+    size_t phnum = ehdr->e_phnum;
+    size_t phentsize = ehdr->e_phentsize;
+
+    if (!(stack = _make_stack(stack_size, base, ehdr, phdr, phnum, phentsize,
+        enter)))
     {
         printf("_make_stack() failed\n");
         oe_assert(false);
     }
 
-    (*enter)(NULL, elf64_phdr, _syscall);
+    dump_stack(stack);
+
+    /* Find the dynamic vector */
+    uint64_t* dynv = NULL;
+    {
+        const uint8_t* p = phdr;
+
+        for (int i = 0; i < phnum; i++)
+        {
+            const elf64_phdr_t* ph = (const elf64_phdr_t*)p;
+
+            if (ph->p_type == PT_DYNAMIC)
+            {
+                dynv = (uint64_t*)((uint8_t*)base + ph->p_vaddr);
+                break;
+            }
+
+            p += phentsize;
+        }
+    }
+
+    const size_t DYN_CNT = 32;
+
+printf("dynv=%p\n", dynv);
+for (size_t i = 0; dynv[i]; i += 2)
+{
+    if (dynv[i] < DYN_CNT)
+        printf("dynv[%lu]=%lx\n", dynv[i], dynv[i+1]);
+}
+
+    if (!dynv)
+    {
+        printf("dynv not found\n");
+        oe_assert(false);
+    }
+
+    (*enter)(stack, dynv, _syscall);
+
+    oe_free(stack);
 }
 
 int run_ecall(void)

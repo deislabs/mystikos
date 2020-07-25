@@ -12,6 +12,10 @@ CFLAGS = $(OEENCLAVE_CFLAGS)
 
 LDFLAGS = $(OEENCLAVE_LDFLAGS) -L$(LIBDIR) -llthread
 
+LDFLAGS += -Wl,--export-dynamic
+LDFLAGS += -Wl,--hash-style=both
+LDFLAGS += -Wl,--dynamic-list=./dynamic.list
+
 CLEAN = $(SUBOBJDIR)/run_t.h $(SUBOBJDIR)/run_t.c $(SUBOBJDIR)/run_args.h
 
 include $(TOP)/rules.mak
@@ -27,3 +31,6 @@ LIBOELCRT=$(TOP)/build/musl/lib/liboelcrt.so
 
 tests:
 	$(BINDIR)/run $(SUBBINDIR)/enc:$(LIBOELCRT)
+
+dump:
+	readelf -S $(SUBBINDIR)/enc

@@ -2,12 +2,12 @@
 
 typedef struct _pair
 {
-    uint8_t at;
+    uint64_t num;
     const char* str;
 }
 pair_t;
 
-static pair_t _pairs[] =
+static pair_t _at_pairs[] =
 {
     { AT_NULL, "AT_NULL" },
     { AT_IGNORE, "AT_IGNORE" },
@@ -54,15 +54,54 @@ static pair_t _pairs[] =
     { AT_MINSIGSTKSZ, "AT_MINSIGSTKSZ" },
 };
 
-static size_t _npairs = sizeof(_pairs) / sizeof(_pairs[0]);
+static size_t _n_at_pairs = sizeof(_at_pairs) / sizeof(_at_pairs[0]);
 
-const char* elf64_at_string(uint64_t at_value)
+const char* elf64_at_string(uint64_t value)
 {
-    for (size_t i = 0; i < _npairs; i++)
+    for (size_t i = 0; i < _n_at_pairs; i++)
     {
-        if (at_value == _pairs[i].at)
-            return _pairs[i].str;
+        if (value == _at_pairs[i].num)
+            return _at_pairs[i].str;
     }
 
+    return NULL;
+}
+
+static pair_t _pt_pairs[] =
+{
+    { PT_NULL, "PT_NULL" },
+    { PT_LOAD, "PT_LOAD" },
+    { PT_DYNAMIC, "PT_DYNAMIC" },
+    { PT_INTERP, "PT_INTERP" },
+    { PT_NOTE, "PT_NOTE" },
+    { PT_SHLIB, "PT_SHLIB" },
+    { PT_PHDR, "PT_PHDR" },
+    { PT_TLS, "PT_TLS" },
+    { PT_NUM, "PT_NUM" },
+    { PT_LOOS, "PT_LOOS" },
+    { PT_GNU_EH_FRAME, "PT_GNU_EH_FRAME" },
+    { PT_GNU_STACK, "PT_GNU_STACK" },
+    { PT_GNU_RELRO, "PT_GNU_RELRO" },
+    { PT_LOSUNW, "PT_LOSUNW" },
+    { PT_SUNWBSS, "PT_SUNWBSS" },
+    { PT_SUNWSTACK, "PT_SUNWSTACK" },
+    { PT_HISUNW, "PT_HISUNW" },
+    { PT_HIOS, "PT_HIOS" },
+    { PT_LOPROC, "PT_LOPROC" },
+    { PT_HIPROC, "PT_HIPROC" },
+};
+
+static size_t _n_pt_pairs = sizeof(_pt_pairs) / sizeof(_pt_pairs[0]);
+
+const char* elf64_pt_string(uint64_t value)
+{
+    for (size_t i = 0; i < _n_pt_pairs; i++)
+    {
+        if (value == _pt_pairs[i].num)
+            return _pt_pairs[i].str;
+    }
+
+int oe_host_printf(const char* fmt, ...);
+oe_host_printf("unknown=%d\n", value);
     return NULL;
 }
