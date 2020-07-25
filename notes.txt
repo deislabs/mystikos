@@ -1,0 +1,4 @@
+
+
+    Crashed calling musl_syscall_variadic() from
+        ./musl/src/thread/x86_64/syscall_cp.s
