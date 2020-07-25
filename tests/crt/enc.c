@@ -115,6 +115,12 @@ static long _syscall(long n, long params[6])
 {
     extern long oe_syscall(long n, long x1, long x2, long x3, long x4,
         long x5, long x6);
+    long x1 = params[0];
+    long x2 = params[1];
+    long x3 = params[2];
+    long x4 = params[3];
+    long x5 = params[4];
+    long x6 = params[5];
 
     if (n == 1000)
     {
@@ -122,7 +128,8 @@ static long _syscall(long n, long params[6])
     }
     else if (n == 1001)
     {
-        printf("trace: %s=%p\n", (const char*)params[0], (void*)params[1]);
+        printf("trace: %s: %p %ld\n",
+            (const char*)params[0], (void*)params[1], params[1]);
     }
     else if (n == SYS_set_thread_area)
     {
@@ -136,18 +143,21 @@ static long _syscall(long n, long params[6])
     }
     else if (n == SYS_open)
     {
-        // printf("SYS_open: path[%s]\n", (char*)params[0]);
+        printf("open(%s)\n", (char*)x1);
 
-        long ret = oe_syscall(
-            n,
-            params[0],
-            params[1],
-            params[2],
-            params[3],
-            params[4],
-            params[5]);
+        long ret = oe_syscall(n, x1, x2, x3, x4, x5, x6);
 
-        // printf("ret=%ld\n", ret);
+        printf("open.ret=%ld\n", ret);
+
+        return ret;
+    }
+    else if (n == SYS_read)
+    {
+        printf("read(fd=%ld, buf=%p, count=%ld)\n", x1, (void*)x2, x3);
+
+        long ret = oe_syscall(n, x1, x2, x3, x4, x5, x6);
+
+        printf("read.ret=%ld\n", ret);
 
         return ret;
     }
@@ -155,14 +165,11 @@ static long _syscall(long n, long params[6])
     {
         printf("********** uknown syscall: n=%ld\n", n);
 
-        return oe_syscall(
-            n,
-            params[0],
-            params[1],
-            params[2],
-            params[3],
-            params[4],
-            params[5]);
+        long ret = oe_syscall(n, x1, x2, x3, x4, x5, x6);
+
+        printf("********** ret=%ld\n", ret);
+
+        return ret;
     }
 }
 
