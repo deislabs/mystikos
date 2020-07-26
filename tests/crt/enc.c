@@ -554,10 +554,15 @@ static int _setup_mman(oel_mman_t* mman, size_t size)
 {
     int ret = -1;
     void* base;
+    void* ptr;
 
     /* Allocate aligned pages */
-    if (!(base = memalign(OE_PAGE_SIZE, size)))
+    if (!(ptr = memalign(OE_PAGE_SIZE, PAGE_SIZE + size + PAGE_SIZE)))
         goto done;
+
+    memset(ptr, 0x6E, PAGE_SIZE);
+
+    base = ptr + PAGE_SIZE;
 
     _mman_start = base;
     _mman_end = base + size;
@@ -579,7 +584,11 @@ static int _teardown_mman(oel_mman_t* mman)
 {
     assert(oel_mman_is_sane(&_mman));
 
-    free((void*)mman->base);
+#if 0
+    _dump((void*)mman->base - PAGE_SIZE, PAGE_SIZE);
+#endif
+
+    free((void*)mman->base - PAGE_SIZE);
 }
 
 int run_ecall(void)
@@ -594,9 +603,7 @@ int run_ecall(void)
 
     int ret = _enter_crt();
 
-#if 0
     _teardown_hostfs();
-#endif
     _teardown_mman(&_mman);
 
     printf("ret=%d\n", ret);
