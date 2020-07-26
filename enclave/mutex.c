@@ -1,4 +1,4 @@
-#include "mutex.h"
+#include <oel/mutex.h>
 #include <openenclave/bits/result.h>
 
 typedef struct oe_mutex oe_mutex_t;

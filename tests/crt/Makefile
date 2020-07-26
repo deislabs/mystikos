@@ -6,11 +6,14 @@ PROGRAM = enc
 
 SOURCES = $(SUBOBJDIR)/run_t.c $(wildcard *.c)
 
-INCLUDES = -I$(INCDIR) -I$(SUBOBJDIR) -I$(INCDIR)/openenclave/3rdparty/libc
+INCLUDES += -I$(INCDIR)
+INCLUDES += -I$(SUBOBJDIR)
+INCLUDES += -I$(TOP)/include
+INCLUDES += -I$(INCDIR)/openenclave/3rdparty/libc
 
 CFLAGS = -Werror $(OEENCLAVE_CFLAGS)
 
-LDFLAGS = $(OEENCLAVE_LDFLAGS) -L$(LIBDIR) -loehostfs -llthread
+LDFLAGS = $(OEENCLAVE_LDFLAGS) -L$(LIBDIR) -loehostfs -loel -llthread
 
 #LDFLAGS += -Wl,--export-dynamic
 #LDFLAGS += -Wl,--hash-style=both
@@ -31,5 +34,6 @@ LIBOELCRT=$(TOP)/build/musl/lib/liboelcrt.so
 tests:
 	$(BINDIR)/run $(SUBBINDIR)/enc:$(LIBOELCRT)
 
-dump:
-	readelf -S $(SUBBINDIR)/enc
+gdb:
+	echo $(SUBBINDIR)/enc:$(LIBOELCRT)
+	$(BINDIR)/oegdb $(BINDIR)/run #--args $(SUBBINDIR)/enc:$(LIBOELCRT)

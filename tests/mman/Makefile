@@ -6,7 +6,7 @@ PROGRAM = enc
 
 SOURCES = $(SUBOBJDIR)/run_t.c enc.c
 
-INCLUDES = -I$(INCDIR) -I$(SUBOBJDIR) -I$(TOP)/enclave
+INCLUDES = -I$(INCDIR) -I$(TOP)/include -I$(SUBOBJDIR) -I$(TOP)/enclave
 
 CFLAGS = $(OEENCLAVE_CFLAGS)
 

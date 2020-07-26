@@ -1,5 +1,5 @@
 #include <openenclave/enclave.h>
-#include "mman.h"
+#include <oel/mman.h>
 #include "run_t.h"
 
 #define D(X)

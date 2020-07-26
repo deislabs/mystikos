@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-#include "strings.h"
+#include <oel/strings.h>
 
 size_t oel_strlen(const char* s)
 {

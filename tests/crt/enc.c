@@ -33,8 +33,16 @@
 #include <sys/mount.h>
 #include "run_t.h"
 #include "elfutils.h"
+#include <oel/mman.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+#define MMAN_SIZE (16 * 1024 * 1024)
 
 typedef long (*syscall_callback_t)(long n, long params[6]);
+
+static oel_mman_t _mman;
 
 #define ARGV0 "/root/sgx-lkl/samples/basic/helloworld/app/helloworld"
 
@@ -53,7 +61,7 @@ static void* _make_stack(
     if (!(stack = memalign(16, stack_size)))
         goto done;
 
-    const char* argv[] = { ARGV0, ARGV0, "arg2", NULL };
+    const char* argv[] = { "arg0", ARGV0, "arg2", NULL };
     int argc = sizeof(argv) / sizeof(argv[0]) - 1;
     const char* envp[] = { "ENV0=zero", "ENV1=one", "ENV2=two", NULL };
     size_t envc = sizeof(envp) / sizeof(envp[0]) - 1;
@@ -156,33 +164,106 @@ static long _syscall(long n, long params[6])
     }
     else if (n == SYS_open)
     {
-        printf("open(%s)\n", (char*)x1);
-
+        //printf("open(%s)\n", (char*)x1);
         long ret = _forward_syscall(n, params);
-
-        printf("open.ret=%ld\n", ret);
+        //printf("open.ret=%ld\n", ret);
 
         return ret;
     }
     else if (n == SYS_read)
     {
-        printf("read(fd=%ld, buf=%p, count=%ld)\n", x1, (void*)x2, x3);
-
+        // printf("read(fd=%ld, buf=%p, count=%ld)\n", x1, (void*)x2, x3);
         long ret = _forward_syscall(n, params);
-
-        printf("ret=%ld\n", ret);
+        // printf("ret=%ld\n", ret);
 
         return ret;
     }
+    else if (n == SYS_writev)
+    {
+        return _forward_syscall(n, params);
+    }
     else if (n == SYS_close)
     {
-        printf("close(%ld)\n", x1);
-
+        // printf("close(%ld)\n", x1);
         long ret = _forward_syscall(n, params);
-
-        printf("ret=%ld\n", ret);
+        // printf("ret=%ld\n", ret);
 
         return ret;
+    }
+    else if (n == SYS_mmap)
+    {
+        void* addr = (void*)x1;
+        size_t length = (size_t)x2;
+        int prot = (int)x3;
+        int flags = (int)x4;
+        int fd = (int)x5;
+        off_t offset = (off_t)x6;
+        void* ptr = (void*)-1;
+
+        printf("=== SYS_mmap:\n");
+        printf("addr=%p\n", addr);
+        printf("length=%lu\n", length);
+        printf("prot=%d\n", prot);
+        printf("flags=%d\n", flags);
+        printf("fd=%d\n", fd);
+        printf("offset=%lu\n", offset);
+
+#if 0
+        if (fd != -1 || offset != 0)
+        {
+printf("ffffffffffffffffffffffffffffffff\n");
+            return (long)(void*)-1;
+        }
+#endif
+
+        int tflags = OEL_MAP_ANONYMOUS | OEL_MAP_PRIVATE;
+
+        if (addr)
+            addr = NULL;
+
+        if (oel_mman_map(&_mman, addr, length, prot, tflags, &ptr) != 0)
+        {
+printf("oel_mman_map: error: %s\n", _mman.err);
+            return (long)(void*)-1;
+        }
+
+        /* map file onto memory */
+        if (ptr != (void*)-1 && fd >= 0)
+        {
+            off_t old = lseek(fd, 0, SEEK_CUR);
+            lseek(fd, 0, SEEK_SET);
+            char buf[4096];
+            ssize_t n;
+            uint8_t* p = ptr;
+            size_t total = 0;
+
+            while ((n = read(fd, buf, sizeof buf)) > 0)
+            {
+                memcpy(p, buf, n);
+                p += n;
+                total += n;
+            }
+
+printf("*** read: %lu/%lu\n", (p - (uint8_t*)ptr), total);
+
+            lseek(fd, old, SEEK_SET);
+        }
+
+printf("ptr=%p\n", ptr);
+printf("end=%p\n", (uint8_t*)ptr + length);
+        return (long)ptr;
+    }
+    else if (n == SYS_mprotect)
+    {
+        void* addr = (void*)x1;
+        size_t length = (size_t)x2;
+        int prot = (int)x3;
+
+        printf("=== SYS_mprotect:\n");
+        printf("addr=%p\n", addr);
+        printf("length=%lu\n", length);
+        printf("prot=%d\n", prot);
+        return 0;
     }
     else
     {
@@ -221,8 +302,6 @@ static void _enter_crt(void)
     enter_t enter = __oe_get_isolated_image_entry_point();
     assert(enter);
 
-    _setup_hostfs();
-
     const void* base = __oe_get_isolated_image_base();
     const Elf64_Ehdr* ehdr = base;
     void* stack;
@@ -240,7 +319,9 @@ static void _enter_crt(void)
         assert(false);
     }
 
+#if 1
     elf_dump_stack(stack);
+#endif
 
     /* Find the dynamic vector */
     uint64_t* dynv = NULL;
@@ -272,8 +353,37 @@ static void _enter_crt(void)
     free(stack);
 }
 
+static int _setup_mman(oel_mman_t* mman, size_t size)
+{
+    int ret = -1;
+    void* base;
+
+    /* Allocate aligned pages */
+    if (!(base = memalign(OE_PAGE_SIZE, size)))
+        goto done;
+
+    if (oel_mman_init(mman, (uintptr_t)base, size) != OE_OK)
+        goto done;
+
+    mman->scrub = true;
+
+    oel_mman_set_sanity(mman, true);
+
+    ret = 0;
+
+done:
+    return ret;
+}
+
 int run_ecall(void)
 {
+    if (_setup_mman(&_mman, MMAN_SIZE) != 0)
+    {
+        fprintf(stderr, "_setup_mman() failed\n");
+        assert(false);
+    }
+
+    _setup_hostfs();
     _enter_crt();
     return 0;
 }

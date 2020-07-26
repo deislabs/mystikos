@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-#include "spinlock.h"
+#include <oel/spinlock.h>
 
 /* Set the spinlock value to 1 and return the old value */
 static unsigned int _spin_set_locked(oel_spinlock_t* spinlock)

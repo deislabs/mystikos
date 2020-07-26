@@ -112,11 +112,11 @@
 */
 
 #include <openenclave/bits/defs.h>
-#include "defs.h"
-#include "error.h"
-#include "mman.h"
-#include "mutex.h"
-#include "strings.h"
+#include <oel/defs.h>
+#include <oel/error.h>
+#include <oel/mman.h>
+#include <oel/mutex.h>
+#include <oel/strings.h>
 
 OE_PRINTF_FORMAT(3, 4)
 int oe_snprintf(char* str, size_t size, const char* format, ...);
@@ -760,7 +760,8 @@ int oel_mman_map(
         goto done;
     }
 
-    /* PROT must be (OEL_PROT_READ | OEL_PROT_WRITE) */
+    /* Ignore protection for SGX-1 */
+#if 0
     {
         if (!(prot & OEL_PROT_READ))
         {
@@ -783,6 +784,7 @@ int oel_mman_map(
             goto done;
         }
     }
+#endif
 
     /* FLAGS must be (OEL_MAP_ANONYMOUS | OEL_MAP_PRIVATE) */
     {
