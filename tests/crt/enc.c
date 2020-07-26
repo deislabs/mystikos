@@ -48,6 +48,9 @@ typedef long (*syscall_callback_t)(long n, long params[6]);
 
 static oel_mman_t _mman;
 
+static void* _mman_start;
+static void* _mman_end;
+
 //#define ARGV0 "/root/sgx-lkl/samples/basic/helloworld/app/helloworld"
 #define ARGV0 "/root/oe-libos/build/bin/samples/split/main"
 
@@ -65,7 +68,7 @@ static void* _get_fs_base(void)
 
 static const void* _original_fs_base;
 
-void _dump(uint8_t* p, size_t n)
+static void _dump(uint8_t* p, size_t n)
 {
     while (n--)
         printf("%02X", *p++);
@@ -343,6 +346,10 @@ static long _syscall(long n, long params[6])
             if ((n = _map_file_onto_memory(fd, addr, length)) < 0)
                 return -1L;
 
+            void* end = addr + length;
+            assert(addr >= _mman_start && addr <= _mman_end);
+            assert(end >= _mman_start && end <= _mman_end);
+
             return (long)addr;
         }
 
@@ -364,6 +371,9 @@ static long _syscall(long n, long params[6])
             }
         }
 
+        void* end = ptr + length;
+        assert(ptr >= _mman_start && ptr <= _mman_end);
+        assert(end >= _mman_start && end <= _mman_end);
         return (long)ptr;
     }
     else if (n == SYS_mprotect)
@@ -534,8 +544,6 @@ static int _enter_crt(void)
 #endif
     }
 
-elf_dump_stack(sp);
-
     assert(elf_check_stack(stack, stack_size) == 0);
     free(stack);
 
@@ -550,6 +558,9 @@ static int _setup_mman(oel_mman_t* mman, size_t size)
     /* Allocate aligned pages */
     if (!(base = memalign(OE_PAGE_SIZE, size)))
         goto done;
+
+    _mman_start = base;
+    _mman_end = base + size;
 
     if (oel_mman_init(mman, (uintptr_t)base, size) != OE_OK)
         goto done;
@@ -566,6 +577,8 @@ done:
 
 static int _teardown_mman(oel_mman_t* mman)
 {
+    assert(oel_mman_is_sane(&_mman));
+
     free((void*)mman->base);
 }
 

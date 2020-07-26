@@ -854,6 +854,21 @@ done:
     return ret;
 }
 
+static void _dump(uint8_t* p, size_t n)
+{
+    while (n--)
+    {
+        uint8_t c = *p++;
+
+        if (c >= ' ' && c <= '~')
+            printf("%c", c);
+        else
+            printf("<%02x>", c);
+    }
+
+    printf("\n");
+}
+
 void elf_dump_stack(void* stack)
 {
     int argc = (int)(*(uint64_t*)stack);
