@@ -241,10 +241,13 @@ static ssize_t _map_file_onto_memory(int fd, void* data, size_t size)
 
         while ((n = read(fd, buf, sizeof buf)) > 0)
         {
-#if 0
+#if 1
             /* if copy would write past end of data */
             if (r < n)
-                goto done;
+            {
+                memcpy(p, buf, r);
+                break;
+            }
 #endif
 
             memcpy(p, buf, n);
@@ -387,6 +390,10 @@ static long _syscall(long n, long params[6])
         {
             ssize_t n;
 
+#if 0
+            printf("addr: [%016lX][%016lX]\n", (long)addr, length);
+#endif
+
             if ((n = _map_file_onto_memory(fd, addr, length)) < 0)
                 return -1L;
 
@@ -418,6 +425,10 @@ static long _syscall(long n, long params[6])
         void* end = ptr + length;
         assert(ptr >= _mman_start && ptr <= _mman_end);
         assert(end >= _mman_start && end <= _mman_end);
+
+#if 0
+        printf("mmap: [%016lX][%016lX]\n", (long)ptr, length);
+#endif
         return (long)ptr;
     }
     else if (n == SYS_mprotect)
