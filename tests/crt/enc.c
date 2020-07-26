@@ -281,15 +281,27 @@ static long _syscall(long n, long params[6])
     }
     else if (n == SYS_set_thread_area)
     {
+        const void* tp = (void*)params[0];
+
+#ifdef TRACE_SYSCALLS
+        fprintf(stderr, "=== %s(tp=%p)\n", syscall_str(n), tp);
+#endif
+
         if (!_original_fs_base)
             _original_fs_base = _get_fs_base();
 
-        _set_fs_base((void*)params[0]);
+        _set_fs_base(tp);
 
         return 0;
     }
     else if (n == SYS_set_tid_address)
     {
+#ifdef TRACE_SYSCALLS
+        const void* tidptr = (const void*)params[0];
+
+        fprintf(stderr, "=== %s(tidptr=%p)\n", syscall_str(n), tidptr);
+#endif
+
         return 0;
     }
     else if (n == SYS_open)
@@ -308,19 +320,24 @@ static long _syscall(long n, long params[6])
     }
     else if (n == SYS_read)
     {
+#ifdef TRACE_SYSCALLS
+        fprintf(stderr, "=== %s()\n", syscall_str(n));
+#endif
         return _forward_syscall(n, params);
     }
     else if (n == SYS_writev)
     {
+#ifdef TRACE_SYSCALLS
+        fprintf(stderr, "=== %s()\n", syscall_str(n));
+#endif
         return _forward_syscall(n, params);
     }
     else if (n == SYS_close)
     {
-        // printf("close(%ld)\n", x1);
-        long ret = _forward_syscall(n, params);
-        // printf("ret=%ld\n", ret);
-
-        return ret;
+#ifdef TRACE_SYSCALLS
+        fprintf(stderr, "=== %s()\n", syscall_str(n));
+#endif
+        return _forward_syscall(n, params);
     }
     else if (n == SYS_mmap)
     {
@@ -398,15 +415,37 @@ static long _syscall(long n, long params[6])
         _set_fs_base(_original_fs_base);
 
 #ifdef TRACE_SYSCALLS
-        printf("=== SYS_exit(status=%d)\n", status);
+        printf("=== %s(status=%d)\n", syscall_str(n), status);
 #endif
 
         _exit_status = status;
         longjmp(_exit_jmp_buf, 1);
     }
+    else if (n == SYS_ioctl)
+    {
+        int fd = (int)x1;
+        /* Note: 0x5413 is TIOCGWINSZ  */
+        unsigned long request = (unsigned long)x2;
+
+#ifdef TRACE_SYSCALLS
+        fprintf(stderr,
+            "=== %s(fd=%d request=%lx)\n", syscall_str(n), fd, request);
+#endif
+
+        return _forward_syscall(n, params);
+    }
+    else if (n == SYS_exit_group)
+    {
+        int status = (int)x1;
+
+#ifdef TRACE_SYSCALLS
+        fprintf(stderr, "=== %s(status=%d)\n", syscall_str(n), status);
+#endif
+    }
     else
     {
-        return _forward_syscall(n, params);
+        fprintf(stderr, "=== unhandled syscall: %s()\n", syscall_str(n));
+        assert(0);
     }
 }
 
@@ -550,6 +589,19 @@ static int _enter_crt(void)
     return _exit_status;
 }
 
+static uint8_t GUARD_CHAR = 0xAA;
+
+static int _check_guard(const void* p)
+{
+    for (size_t i = 0; i < PAGE_SIZE; i++)
+    {
+        if (((uint8_t*)p)[i] != GUARD_CHAR)
+            return -1;
+    }
+
+    return 0;
+}
+
 static int _setup_mman(oel_mman_t* mman, size_t size)
 {
     int ret = -1;
@@ -560,12 +612,14 @@ static int _setup_mman(oel_mman_t* mman, size_t size)
     if (!(ptr = memalign(OE_PAGE_SIZE, PAGE_SIZE + size + PAGE_SIZE)))
         goto done;
 
-    memset(ptr, 0x6E, PAGE_SIZE);
-
     base = ptr + PAGE_SIZE;
 
     _mman_start = base;
     _mman_end = base + size;
+
+    /* Set the guard pages */
+    memset(_mman_start - PAGE_SIZE, GUARD_CHAR, PAGE_SIZE);
+    memset(_mman_end, GUARD_CHAR, PAGE_SIZE);
 
     if (oel_mman_init(mman, (uintptr_t)base, size) != OE_OK)
         goto done;
@@ -584,8 +638,23 @@ static int _teardown_mman(oel_mman_t* mman)
 {
     assert(oel_mman_is_sane(&_mman));
 
+    /* Check the start guard page */
+    if (_check_guard(_mman_start - PAGE_SIZE) != 0)
+    {
+        fprintf(stderr, "bad mman start guard page\n");
+        _dump(_mman_start - PAGE_SIZE, PAGE_SIZE);
+        assert(false);
+    }
+
+    /* ATTN:MEB: buffer overrun of mman memory ignored! */
 #if 0
-    _dump((void*)mman->base - PAGE_SIZE, PAGE_SIZE);
+    /* Check the end guard page */
+    if (_check_guard(_mman_end) != 0)
+    {
+        fprintf(stderr, "bad mman end guard page\n");
+        _dump(_mman_end, PAGE_SIZE);
+        assert(false);
+    }
 #endif
 
     free((void*)mman->base - PAGE_SIZE);
