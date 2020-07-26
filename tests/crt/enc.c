@@ -58,10 +58,6 @@ void _dump(uint8_t* p, size_t n)
     printf("\n");
 }
 
-void oe_debug_malloc_check_block(void* ptr);
-
-#define HEADER_SIZE (sizeof(uint64_t) * 8 + sizeof(uint64_t) * 32)
-
 static void* _make_stack(
     size_t stack_size,
     const void* base,
@@ -255,14 +251,10 @@ static long _syscall(long n, long params[6])
     }
     else if (n == OEL_SYS_dump_stack)
     {
-        printf("syscall: OEL_SYS_dump_stack\n");
-
         elf_dump_stack((void*)params[0]);
     }
     else if (n == OEL_SYS_dump_ehdr)
     {
-        printf("syscall: OEL_SYS_dump_ehdr\n");
-
         elf_dump_ehdr((void*)params[0]);
     }
     else if (n == SYS_set_thread_area)
@@ -277,20 +269,21 @@ static long _syscall(long n, long params[6])
     }
     else if (n == SYS_open)
     {
-        printf("open(path=%s flags=%d mode=%03o)\n",
-            (char*)x1, (int)x2, (int)x3);
-        long ret = _forward_syscall(n, params);
-        printf("open.ret=%ld\n", ret);
+#ifdef TRACE_SYSCALLS
+        const char* path = (const char*)x1;
+        int flags = (int)x2;
+        int mode = (int)x3;
 
-        return ret;
+        fprintf(stderr,
+            "=== %s(path=%s flags=%d mode=%03o)\n",
+            syscall_str(n), path, flags, mode);
+#endif
+
+        return _forward_syscall(n, params);
     }
     else if (n == SYS_read)
     {
-        // printf("read(fd=%ld, buf=%p, count=%ld)\n", x1, (void*)x2, x3);
-        long ret = _forward_syscall(n, params);
-        // printf("ret=%ld\n", ret);
-
-        return ret;
+        return _forward_syscall(n, params);
     }
     else if (n == SYS_writev)
     {
@@ -314,13 +307,12 @@ static long _syscall(long n, long params[6])
         off_t offset = (off_t)x6;
         void* ptr = (void*)-1;
 
-        printf("=== SYS_mmap:\n");
-        printf("addr=%lX\n", (long)addr);
-        printf("length=%lu\n", length);
-        printf("prot=%d\n", prot);
-        printf("flags=%d\n", flags);
-        printf("fd=%d\n", fd);
-        printf("offset=%lu\n", offset);
+#ifdef TRACE_SYSCALLS
+        fprintf(
+            stderr,
+            "=== %s(addr=%lX length=%lu prot=%d flags=%d fd=%d offset=%lu)\n",
+            syscall_str(n), (long)addr, length, prot, flags, fd, offset);
+#endif
 
         if (fd >= 0 && addr)
         {
@@ -354,36 +346,32 @@ static long _syscall(long n, long params[6])
     }
     else if (n == SYS_mprotect)
     {
-#if 0
-        void* addr = (void*)x1;
-        size_t length = (size_t)x2;
-        int prot = (int)x3;
+#ifdef TRACE_SYSCALLS
+        const void* addr = (void*)x1;
+        const size_t length = (size_t)x2;
+        const int prot = (int)x3;
 
-        printf("=== SYS_mprotect:\n");
-        printf("addr=%p\n", addr);
-        printf("length=%lu\n", length);
-        printf("prot=%d\n", prot);
+        fprintf(stderr,
+            "=== %s(addr=%lX length=%zu prot=%d)\n",
+            syscall_str(n), (uint64_t)addr, length, prot);
 #endif
+
         return 0;
     }
     else if (n == SYS_exit)
     {
         const int status = (int)x1;
 
+#ifdef TRACE_SYSCALLS
         printf("SYS_exit(status=%d)\n", status);
+#endif
 
         _exit_status = status;
         longjmp(_exit_jmp_buf, 1);
     }
     else
     {
-        // fprintf(stderr, "********** uknown syscall: %s\n", syscall_str(n));
-
-        long ret = _forward_syscall(n, params);
-
-        // fprintf(stderr, "********** ret=%ld\n", ret);
-
-        return ret;
+        return _forward_syscall(n, params);
     }
 }
 
@@ -425,9 +413,19 @@ entry_args_t;
 
 void _entry_thread(void* args_)
 {
+    lthread_detach();
+
     /* jumps here from _syscall() on SYS_exit */
     if (setjmp(_exit_jmp_buf) != 0)
+    {
+        lthread_exit(NULL);
         return;
+    }
+
+#if 0
+    long params[6] = { 0 };
+    _syscall(SYS_exit, params);
+#endif
 
     entry_args_t* args = (entry_args_t*)args_;
     (*args->enter)(args->stack, args->dynv, args->syscall);
@@ -459,15 +457,7 @@ static int _enter_crt(void)
         assert(false);
     }
 
-    if (elf_check_stack(stack, stack_size) != 0)
-    {
-        fprintf(stderr, "elf_check_stack() failed\n");
-        assert(false);
-    }
-
-#if 1
-    elf_dump_stack(sp);
-#endif
+    assert(elf_check_stack(stack, stack_size) == 0);
 
     /* Find the dynamic vector */
     uint64_t* dynv = NULL;
@@ -494,38 +484,25 @@ static int _enter_crt(void)
         assert(false);
     }
 
-#if 0
-    /* _syscall() jumps here on exit */
-    if (setjmp(_exit_jmp_buf) != 0)
-    {
-        printf("setjmp.................................\n");
-        free(stack - stack_size / 2);
-        return _exit_status;
-    }
-#endif
+    assert(elf_check_stack(stack, stack_size) == 0);
 
     /* Run the main program */
     {
-#if 0
-        (*enter)(stack, dynv, _syscall);
-#else
         static entry_args_t args;
         args.enter = enter;
         args.stack = sp;
         args.dynv = dynv;
         args.syscall = _syscall;
 
-#if 1
         lthread_t* lt;
         lthread_create(&lt, _entry_thread, &args);
         lthread_run();
-#else
-        _entry_thread(&args);
-#endif
-#endif
     }
 
+    assert(elf_check_stack(stack, stack_size) == 0);
     free(stack);
+
+    return _exit_status;
 }
 
 static int _setup_mman(oel_mman_t* mman, size_t size)
@@ -572,7 +549,7 @@ int run_ecall(void)
 
     printf("ret=%d\n", ret);
 
-    return 0;
+    return ret;
 }
 
 void __stack_chk_fail(void)

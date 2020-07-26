@@ -632,12 +632,15 @@ static uint8_t _guard_page[PAGE_SIZE] =
 **==============================================================================
 ** elf_init_stack()
 **
-** Format:
+** Layout of stack:
 **
-**     [ guard page     ]
-**     .
-**     .
-**     .
+**     <------- stack size --------->
+**     [guard][stack][vectors][guard]
+**     ^             ^
+**     stack         sp
+**
+** Layout of vectors:
+**
 **     [ argc           ]         8 (stack pointer)
 **     [ argv[0]        ]         8
 **     [ ...            ]         8
@@ -653,7 +656,6 @@ static uint8_t _guard_page[PAGE_SIZE] =
 **     [ envp strings   ]         >= 0
 **     [ padding        ]         (padding to 8 byte boundary)
 **     [ end marker     ]         8
-**     [ guard page     ]
 **
 **==============================================================================
 */
