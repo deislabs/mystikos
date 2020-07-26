@@ -38,6 +38,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <lthread.h>
 
 #define MMAN_SIZE (16 * 1024 * 1024)
 
@@ -59,7 +60,7 @@ static void* _make_stack(
     void* ret = NULL;
     void* stack = NULL;
 
-    if (!(stack = memalign(16, stack_size)))
+    if (!(stack = memalign(4096, stack_size)))
         goto done;
 
     const char* argv[] = { "arg0", ARGV0, "arg2", NULL };
@@ -241,11 +242,8 @@ static long _syscall(long n, long params[6])
     }
     else if (n == SYS_set_thread_area)
     {
-/* ATTN:MEB */
-#if 1
         void* p = (void*)params[0];
         __asm__ volatile("wrfsbase %0" ::"r"(p));
-#endif
         return 0;
     }
     else if (n == SYS_set_tid_address)
@@ -304,10 +302,7 @@ static long _syscall(long n, long params[6])
             ssize_t n;
 
             if ((n = _map_file_onto_memory(fd, addr, length)) < 0)
-            {
-                printf("eeeeeeeeeeeeeeeeeeeeeeeeeee\n");
                 return -1L;
-            }
 
             return (long)addr;
         }
@@ -330,8 +325,6 @@ static long _syscall(long n, long params[6])
             }
         }
 
-printf("PTR=%lX\n", (long)ptr);
-printf("END=%lX\n", (long)ptr + length);
         return (long)ptr;
     }
     else if (n == SYS_mprotect)
@@ -375,12 +368,29 @@ static void _setup_hostfs(void)
     }
 }
 
+typedef void (*enter_t)(
+    void* stack, void* dynv, syscall_callback_t callback);
+
+typedef struct entry_args
+{
+    enter_t enter;
+    void* stack;
+    uint64_t* dynv;
+    long (*syscall)(long n, long params[6]);
+}
+entry_args_t;
+
+void _entry_thread(void* args_)
+{
+    entry_args_t* args = (entry_args_t*)args_;
+
+    (*args->enter)(args->stack, args->dynv, args->syscall);
+}
+
 static void _enter_crt(void)
 {
     extern void* __oe_get_isolated_image_entry_point(void);
     extern const void* __oe_get_isolated_image_base();
-    typedef void (*enter_t)(
-        void* stack, void* dynv, syscall_callback_t callback);
 
     enter_t enter = __oe_get_isolated_image_entry_point();
     assert(enter);
@@ -431,7 +441,19 @@ static void _enter_crt(void)
         assert(false);
     }
 
+    static entry_args_t args;
+    args.enter = enter;
+    args.stack = stack;
+    args.dynv = dynv;
+    args.syscall = _syscall;
+
+#if 1
     (*enter)(stack, dynv, _syscall);
+#else
+    lthread_t* lt;
+    lthread_create(&lt, _entry_thread, &args);
+    lthread_run();
+#endif
 
     free(stack);
 }
