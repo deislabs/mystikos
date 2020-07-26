@@ -31,9 +31,16 @@ $(SUBOBJDIR)/run_t.c:
 
 LIBOELCRT=$(TOP)/build/musl/lib/liboelcrt.so
 
-tests:
+tests: main
 	$(BINDIR)/run $(SUBBINDIR)/enc:$(LIBOELCRT)
 
 gdb:
 	echo $(SUBBINDIR)/enc:$(LIBOELCRT)
 	$(BINDIR)/oegdb -x gdb.conf --args $(BINDIR)/run $(SUBBINDIR)/enc:$(LIBOELCRT)
+
+MUSL_GCC=$(TOP)/build/musl/bin/musl-gcc
+MUSL_LIB=$(TOP)/build/musl/lib
+
+main:
+	mkdir -p $(SUBBINDIR)
+	$(MUSL_GCC) -fPIC -Wl,-rpath=$(MUSL_LIB) -o $(SUBBINDIR)/main main.c

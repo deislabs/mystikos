@@ -48,7 +48,22 @@ typedef long (*syscall_callback_t)(long n, long params[6]);
 
 static oel_mman_t _mman;
 
-#define ARGV0 "/root/sgx-lkl/samples/basic/helloworld/app/helloworld"
+//#define ARGV0 "/root/sgx-lkl/samples/basic/helloworld/app/helloworld"
+#define ARGV0 "/root/oe-libos/build/bin/samples/split/main"
+
+static void _set_fs_base(const void* p)
+{
+    __asm__ volatile("wrfsbase %0" ::"r"(p));
+}
+
+static void* _get_fs_base(void)
+{
+    void* p;
+    __asm__ volatile("mov %%fs:0, %0" : "=r"(p));
+    return p;
+}
+
+static const void* _original_fs_base;
 
 void _dump(uint8_t* p, size_t n)
 {
@@ -154,6 +169,7 @@ static long _forward_syscall(long n, long params[6])
     return oe_syscall(n, x1, x2, x3, x4, x5, x6);
 }
 
+#if 0
 static void _write_file(const char* path, const void* data, size_t size)
 {
     int fd;
@@ -181,6 +197,7 @@ static void _write_file(const char* path, const void* data, size_t size)
 
     close(fd);
 }
+#endif
 
 static ssize_t _map_file_onto_memory(int fd, void* data, size_t size)
 {
@@ -231,6 +248,8 @@ done:
 static jmp_buf _exit_jmp_buf;
 static int _exit_status;
 
+#define TRACE_SYSCALLS
+
 static long _syscall(long n, long params[6])
 {
     long x1 = params[0];
@@ -259,8 +278,11 @@ static long _syscall(long n, long params[6])
     }
     else if (n == SYS_set_thread_area)
     {
-        void* p = (void*)params[0];
-        __asm__ volatile("wrfsbase %0" ::"r"(p));
+        if (!_original_fs_base)
+            _original_fs_base = _get_fs_base();
+
+        _set_fs_base((void*)params[0]);
+
         return 0;
     }
     else if (n == SYS_set_tid_address)
@@ -362,8 +384,11 @@ static long _syscall(long n, long params[6])
     {
         const int status = (int)x1;
 
+        /* restore original fs base, else stack smashing will be detected */
+        _set_fs_base(_original_fs_base);
+
 #ifdef TRACE_SYSCALLS
-        printf("SYS_exit(status=%d)\n", status);
+        printf("=== SYS_exit(status=%d)\n", status);
 #endif
 
         _exit_status = status;
@@ -411,14 +436,20 @@ typedef struct entry_args
 }
 entry_args_t;
 
+#define USE_LTHREADS
+
 void _entry_thread(void* args_)
 {
+#ifdef USE_LTHREADS
     lthread_detach();
+#endif
 
     /* jumps here from _syscall() on SYS_exit */
     if (setjmp(_exit_jmp_buf) != 0)
     {
+#ifdef USE_LTHREADS
         lthread_exit(NULL);
+#endif
         return;
     }
 
@@ -494,10 +525,16 @@ static int _enter_crt(void)
         args.dynv = dynv;
         args.syscall = _syscall;
 
+#ifdef USE_LTHREADS
         lthread_t* lt;
         lthread_create(&lt, _entry_thread, &args);
         lthread_run();
+#else
+        _entry_thread(&args);
+#endif
     }
+
+elf_dump_stack(sp);
 
     assert(elf_check_stack(stack, stack_size) == 0);
     free(stack);
@@ -544,17 +581,14 @@ int run_ecall(void)
 
     int ret = _enter_crt();
 
+#if 0
     _teardown_hostfs();
+#endif
     _teardown_mman(&_mman);
 
     printf("ret=%d\n", ret);
 
-    return ret;
-}
-
-void __stack_chk_fail(void)
-{
-    //printf("********** crt: __stack_chk_fail()\n");
+    return 0;
 }
 
 OE_SET_ENCLAVE_SGX(
@@ -563,4 +597,4 @@ OE_SET_ENCLAVE_SGX(
     true, /* Debug */
     16*4096, /* NumHeapPages */
     4096, /* NumStackPages */
-    2);   /* NumTCS */
+    4);   /* NumTCS */
