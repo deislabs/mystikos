@@ -283,7 +283,7 @@ void elf_dump_stack(void* stack)
     int envc = 0;
     Elf64_auxv_t* auxv;
 
-    printf("=== dump_stack()\n");
+    printf("=== dump_stack(%lX)\n", (unsigned long)stack);
 
     printf("argc=%d\n", argc);
 
@@ -303,6 +303,180 @@ void elf_dump_stack(void* stack)
     for (int i = 0; auxv[i].a_type; i++)
     {
         const Elf64_auxv_t a = auxv[i];
-        printf("%s=%lx\n", elf64_at_string(a.a_type), a.a_un.a_val);
+        printf("%s=%lX\n", elf64_at_string(a.a_type), a.a_un.a_val);
     }
+}
+
+int _test_header(const Elf64_Ehdr* ehdr)
+{
+    if (!ehdr)
+        return -1;
+
+    if (ehdr->e_ident[EI_MAG0] != 0x7f)
+        return -1;
+
+    if (ehdr->e_ident[EI_MAG1] != 'E')
+        return -1;
+
+    if (ehdr->e_ident[EI_MAG2] != 'L')
+        return -1;
+
+    if (ehdr->e_ident[EI_MAG3] != 'F')
+        return -1;
+
+    if (ehdr->e_ident[EI_CLASS] != ELFCLASS64)
+        return -1;
+
+    if (ehdr->e_ident[EI_DATA] != ELFDATA2LSB)
+        return -1;
+
+    if (ehdr->e_machine != EM_X86_64)
+        return -1;
+
+    if (ehdr->e_ehsize != sizeof(Elf64_Ehdr))
+        return -1;
+
+    if (ehdr->e_phentsize != sizeof(Elf64_Phdr))
+        return -1;
+
+    if (ehdr->e_shentsize != sizeof(Elf64_Shdr))
+        return -1;
+
+    /* If there is no section header table, then the index should be 0. */
+    if (ehdr->e_shnum == 0 && ehdr->e_shstrndx != 0)
+        return -1;
+
+    /* If there is a section header table, then the index shouldn't overrun. */
+    if (ehdr->e_shnum > 0 && ehdr->e_shstrndx >= ehdr->e_shnum)
+        return -1;
+
+    return 0;
+}
+
+int elf_dump_ehdr(const void* ehdr)
+{
+    const Elf64_Ehdr* h = (const Elf64_Ehdr*)ehdr;
+
+    if (!h || _test_header(h) != 0)
+        return -1;
+
+    printf("=== elf64_ehdr_t(%lX)\n", (unsigned long)h);
+
+    /* Print e_ident[] */
+    printf("e_ident[EI_MAG0]=%02x\n", h->e_ident[EI_MAG0]);
+    printf("e_ident[EI_MAG1]=%c\n", h->e_ident[EI_MAG1]);
+    printf("e_ident[EI_MAG2]=%c\n", h->e_ident[EI_MAG2]);
+    printf("e_ident[EI_MAG3]=%c\n", h->e_ident[EI_MAG3]);
+
+    switch (h->e_ident[EI_CLASS])
+    {
+        case ELFCLASSNONE:
+            printf("e_ident[EI_CLASS]=ELFCLASSNONE\n");
+            break;
+        case ELFCLASS32:
+            printf("e_ident[EI_CLASS]=ELFCLASS32\n");
+            break;
+        case ELFCLASS64:
+            printf("e_ident[EI_CLASS]=ELFCLASS64\n");
+            break;
+        default:
+            printf("e_ident[EI_CLASS]=%02x\n", h->e_ident[EI_CLASS]);
+            break;
+    }
+
+    switch (h->e_ident[EI_DATA])
+    {
+        case ELFDATANONE:
+            printf("e_ident[EI_DATA]=ELFDATANONE\n");
+            break;
+        case ELFDATA2LSB:
+            printf("e_ident[EI_DATA]=ELFDATA2LSB\n");
+            break;
+        case ELFDATA2MSB:
+            printf("e_ident[EI_DATA]=ELFDATA2MSB\n");
+            break;
+        default:
+            printf("e_ident[EI_DATA]=%02x\n", h->e_ident[EI_DATA]);
+            break;
+    }
+
+    printf("e_ident[EI_VERSION]=%02x\n", h->e_ident[EI_VERSION]);
+    printf("e_ident[EI_PAD]=%02x\n", h->e_ident[EI_PAD]);
+
+    switch (h->e_type)
+    {
+        case ET_NONE:
+            printf("e_type=ET_NONE\n");
+            break;
+        case ET_REL:
+            printf("e_type=ET_REL\n");
+            break;
+        case ET_EXEC:
+            printf("e_type=ET_EXEC\n");
+            break;
+        case ET_DYN:
+            printf("e_type=ET_DYN\n");
+            break;
+        case ET_CORE:
+            printf("e_type=ET_CORE\n");
+            break;
+        case ET_LOPROC:
+            printf("e_type=ET_LOPROC\n");
+            break;
+        case ET_HIPROC:
+            printf("e_type=ET_HIPROC\n");
+            break;
+        default:
+            printf("e_type=%02x\n", h->e_type);
+            break;
+    }
+
+    switch (h->e_machine)
+    {
+        case EM_NONE:
+            printf("e_machine=EM_NONE\n");
+            break;
+        case EM_M32:
+            printf("e_machine=EM_M32\n");
+            break;
+        case EM_SPARC:
+            printf("e_machine=EM_SPARC\n");
+            break;
+        case EM_386:
+            printf("e_machine=EM_386\n");
+            break;
+        case EM_68K:
+            printf("e_machine=EM_68K\n");
+            break;
+        case EM_88K:
+            printf("e_machine=EM_88K\n");
+            break;
+        case EM_860:
+            printf("e_machine=EM_860\n");
+            break;
+        case EM_MIPS:
+            printf("e_machine=EM_MIPS\n");
+            break;
+        case EM_X86_64:
+            printf("e_machine=EM_X86_64\n");
+            break;
+        default:
+            printf("e_machine=%u\n", h->e_machine);
+            break;
+    }
+
+    printf("e_version=%u\n", h->e_version);
+    printf("e_entry=%lX\n", h->e_entry);
+    printf("e_phoff=%lu\n", h->e_phoff);
+    printf("e_shoff=%lu\n", h->e_shoff);
+    printf("e_flags=%u\n", h->e_flags);
+    printf("e_ehsize=%u\n", h->e_ehsize);
+    printf("e_phentsize=%u\n", h->e_phentsize);
+    printf("e_phnum=%u\n", h->e_phnum);
+    printf("e_shentsize=%u\n", h->e_shentsize);
+    printf("e_shnum=%u\n", h->e_shnum);
+    printf("e_shstrndx=%u\n", h->e_shstrndx);
+    printf("\n");
+
+    return 0;
 }

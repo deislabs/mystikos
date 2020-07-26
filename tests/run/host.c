@@ -21,14 +21,12 @@ int main(int argc, const char* argv[])
         return 1;
     }
 
-printf("BEFORE\n");
     r = oe_create_run_enclave(argv[1], type, flags, NULL, 0, &enclave);
     if (r != OE_OK)
     {
         fprintf(stderr, "%s: oe_create_echo_enclave(): %u\n", argv[0], r);
         exit(1);
     }
-printf("AFTER\n");
 
     r = run_ecall(enclave, &retval);
     if (r != OE_OK)

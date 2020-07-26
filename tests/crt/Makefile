@@ -36,4 +36,4 @@ tests:
 
 gdb:
 	echo $(SUBBINDIR)/enc:$(LIBOELCRT)
-	$(BINDIR)/oegdb $(BINDIR)/run #--args $(SUBBINDIR)/enc:$(LIBOELCRT)
+	$(BINDIR)/oegdb -x gdb.conf --args $(BINDIR)/run $(SUBBINDIR)/enc:$(LIBOELCRT)

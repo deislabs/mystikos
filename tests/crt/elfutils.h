@@ -19,4 +19,6 @@ int elf_init_stack(
     void* stack, /* 16-byte aligned data */
     size_t stack_size);
 
+int elf_dump_ehdr(const void* ehdr);
+
 #endif /* _OEL_ELFUTILS_H */
