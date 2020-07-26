@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <limits.h>
 #include "syscallutils.h"
 #include <sys/mount.h>
 #include "run_t.h"
@@ -39,6 +40,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <lthread.h>
+#include <setjmp.h>
 
 #define MMAN_SIZE (16 * 1024 * 1024)
 
@@ -48,6 +50,18 @@ static oel_mman_t _mman;
 
 #define ARGV0 "/root/sgx-lkl/samples/basic/helloworld/app/helloworld"
 
+void _dump(uint8_t* p, size_t n)
+{
+    while (n--)
+        printf("%02X", *p++);
+
+    printf("\n");
+}
+
+void oe_debug_malloc_check_block(void* ptr);
+
+#define HEADER_SIZE (sizeof(uint64_t) * 8 + sizeof(uint64_t) * 32)
+
 static void* _make_stack(
     size_t stack_size,
     const void* base,
@@ -55,12 +69,20 @@ static void* _make_stack(
     const void* phdr,
     size_t phnum,
     size_t phentsize,
-    const void* entry)
+    const void* entry,
+    void** sp)
 {
     void* ret = NULL;
     void* stack = NULL;
 
-    if (!(stack = memalign(4096, stack_size)))
+    if (sp)
+        *sp = NULL;
+
+    /* The stack must be a multiple of the page size */
+    if (stack_size % PAGE_SIZE)
+        goto done;
+
+    if (!(stack = memalign(PAGE_SIZE, stack_size)))
         goto done;
 
     const char* argv[] = { "arg0", ARGV0, "arg2", NULL };
@@ -95,7 +117,7 @@ static void* _make_stack(
         },
         {
             .a_type = AT_PAGESZ,
-            .a_un.a_val = 4096,
+            .a_un.a_val = PAGE_SIZE,
         },
         {
             .a_type = AT_NULL,
@@ -105,7 +127,7 @@ static void* _make_stack(
     size_t auxc = sizeof(auxv) / sizeof(auxv[0]) - 1;
 
     if (elf_init_stack(
-        argc, argv, envc, envp, auxc, auxv, stack, stack_size) != 0)
+        argc, argv, envc, envp, auxc, auxv, stack, stack_size, sp) != 0)
     {
         goto done;
     }
@@ -209,6 +231,9 @@ static ssize_t _map_file_onto_memory(int fd, void* data, size_t size)
 done:
     return ret;
 }
+
+static jmp_buf _exit_jmp_buf;
+static int _exit_status;
 
 static long _syscall(long n, long params[6])
 {
@@ -341,6 +366,15 @@ static long _syscall(long n, long params[6])
 #endif
         return 0;
     }
+    else if (n == SYS_exit)
+    {
+        const int status = (int)x1;
+
+        printf("SYS_exit(status=%d)\n", status);
+
+        _exit_status = status;
+        longjmp(_exit_jmp_buf, 1);
+    }
     else
     {
         // fprintf(stderr, "********** uknown syscall: %s\n", syscall_str(n));
@@ -368,6 +402,15 @@ static void _setup_hostfs(void)
     }
 }
 
+static void _teardown_hostfs(void)
+{
+    if (umount("/") != 0)
+    {
+        fprintf(stderr, "umount() failed\n");
+        assert(false);
+    }
+}
+
 typedef void (*enter_t)(
     void* stack, void* dynv, syscall_callback_t callback);
 
@@ -382,12 +425,15 @@ entry_args_t;
 
 void _entry_thread(void* args_)
 {
-    entry_args_t* args = (entry_args_t*)args_;
+    /* jumps here from _syscall() on SYS_exit */
+    if (setjmp(_exit_jmp_buf) != 0)
+        return;
 
+    entry_args_t* args = (entry_args_t*)args_;
     (*args->enter)(args->stack, args->dynv, args->syscall);
 }
 
-static void _enter_crt(void)
+static int _enter_crt(void)
 {
     extern void* __oe_get_isolated_image_entry_point(void);
     extern const void* __oe_get_isolated_image_base();
@@ -398,7 +444,8 @@ static void _enter_crt(void)
     const void* base = __oe_get_isolated_image_base();
     const Elf64_Ehdr* ehdr = base;
     void* stack;
-    const size_t stack_size = 256 * 1024;
+    void* sp = NULL;
+    const size_t stack_size = 64 * PAGE_SIZE;
 
     /* Extract program-header related info */
     const uint8_t* phdr = (const uint8_t*)base + ehdr->e_phoff;
@@ -406,14 +453,20 @@ static void _enter_crt(void)
     size_t phentsize = ehdr->e_phentsize;
 
     if (!(stack = _make_stack(stack_size, base, ehdr, phdr, phnum, phentsize,
-        enter)))
+        enter, &sp)))
     {
-        printf("_make_stack() failed\n");
+        fprintf(stderr, "_make_stack() failed\n");
+        assert(false);
+    }
+
+    if (elf_check_stack(stack, stack_size) != 0)
+    {
+        fprintf(stderr, "elf_check_stack() failed\n");
         assert(false);
     }
 
 #if 1
-    elf_dump_stack(stack);
+    elf_dump_stack(sp);
 #endif
 
     /* Find the dynamic vector */
@@ -441,19 +494,36 @@ static void _enter_crt(void)
         assert(false);
     }
 
-    static entry_args_t args;
-    args.enter = enter;
-    args.stack = stack;
-    args.dynv = dynv;
-    args.syscall = _syscall;
+#if 0
+    /* _syscall() jumps here on exit */
+    if (setjmp(_exit_jmp_buf) != 0)
+    {
+        printf("setjmp.................................\n");
+        free(stack - stack_size / 2);
+        return _exit_status;
+    }
+#endif
+
+    /* Run the main program */
+    {
+#if 0
+        (*enter)(stack, dynv, _syscall);
+#else
+        static entry_args_t args;
+        args.enter = enter;
+        args.stack = sp;
+        args.dynv = dynv;
+        args.syscall = _syscall;
 
 #if 1
-    (*enter)(stack, dynv, _syscall);
+        lthread_t* lt;
+        lthread_create(&lt, _entry_thread, &args);
+        lthread_run();
 #else
-    lthread_t* lt;
-    lthread_create(&lt, _entry_thread, &args);
-    lthread_run();
+        _entry_thread(&args);
 #endif
+#endif
+    }
 
     free(stack);
 }
@@ -480,6 +550,11 @@ done:
     return ret;
 }
 
+static int _teardown_mman(oel_mman_t* mman)
+{
+    free((void*)mman->base);
+}
+
 int run_ecall(void)
 {
     if (_setup_mman(&_mman, MMAN_SIZE) != 0)
@@ -489,8 +564,20 @@ int run_ecall(void)
     }
 
     _setup_hostfs();
-    _enter_crt();
+
+    int ret = _enter_crt();
+
+    _teardown_hostfs();
+    _teardown_mman(&_mman);
+
+    printf("ret=%d\n", ret);
+
     return 0;
+}
+
+void __stack_chk_fail(void)
+{
+    //printf("********** crt: __stack_chk_fail()\n");
 }
 
 OE_SET_ENCLAVE_SGX(

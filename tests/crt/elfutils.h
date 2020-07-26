@@ -17,7 +17,10 @@ int elf_init_stack(
     size_t auxc,
     const Elf64_auxv_t* auxv,
     void* stack, /* 16-byte aligned data */
-    size_t stack_size);
+    size_t stack_size,
+    void** sp_out);
+
+int elf_check_stack(const void* stack, size_t stack_size);
 
 int elf_dump_ehdr(const void* ehdr);
 
