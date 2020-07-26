@@ -54,6 +54,19 @@ static void* _mman_end;
 //#define ARGV0 "/root/sgx-lkl/samples/basic/helloworld/app/helloworld"
 #define ARGV0 "/root/oe-libos/build/bin/samples/split/main"
 
+static uint8_t GUARD_CHAR = 0xAA;
+
+static int _check_guard(const void* p)
+{
+    for (size_t i = 0; i < PAGE_SIZE; i++)
+    {
+        if (((uint8_t*)p)[i] != GUARD_CHAR)
+            return -1;
+    }
+
+    return 0;
+}
+
 static void _set_fs_base(const void* p)
 {
     __asm__ volatile("wrfsbase %0" ::"r"(p));
@@ -228,15 +241,21 @@ static ssize_t _map_file_onto_memory(int fd, void* data, size_t size)
 
         while ((n = read(fd, buf, sizeof buf)) > 0)
         {
+#if 0
             /* if copy would write past end of data */
             if (r < n)
                 goto done;
+#endif
 
             memcpy(p, buf, n);
             p += n;
+            r -= n;
             bytes_read += n;
         }
     }
+
+printf("bytes_read=%zu\n", bytes_read);
+printf("length=%zu\n", size);
 
     /* restore the file position */
     if (lseek(fd, save_pos, SEEK_SET) == (off_t)-1)
@@ -261,6 +280,14 @@ static long _syscall(long n, long params[6])
     long x4 = params[3];
     long x5 = params[4];
     long x6 = params[5];
+
+#if 0
+    if (_check_guard(_mman_end) != 0)
+    {
+        fprintf(stderr, "=== bad guard: %s()\n", syscall_str(n));
+        assert(0);
+    }
+#endif
 
     if (n == OEL_SYS_trace)
     {
@@ -587,19 +614,6 @@ static int _enter_crt(void)
     free(stack);
 
     return _exit_status;
-}
-
-static uint8_t GUARD_CHAR = 0xAA;
-
-static int _check_guard(const void* p)
-{
-    for (size_t i = 0; i < PAGE_SIZE; i++)
-    {
-        if (((uint8_t*)p)[i] != GUARD_CHAR)
-            return -1;
-    }
-
-    return 0;
 }
 
 static int _setup_mman(oel_mman_t* mman, size_t size)
