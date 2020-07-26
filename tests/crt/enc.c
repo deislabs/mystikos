@@ -284,7 +284,7 @@ static long _syscall(long n, long params[6])
     long x5 = params[4];
     long x6 = params[5];
 
-#if 0
+#if 1
     if (_check_guard(_mman_end) != 0)
     {
         fprintf(stderr, "=== bad guard: %s()\n", syscall_str(n));
@@ -671,8 +671,6 @@ static int _teardown_mman(oel_mman_t* mman)
         assert(false);
     }
 
-    /* ATTN:MEB: buffer overrun of mman memory ignored! */
-#if 0
     /* Check the end guard page */
     if (_check_guard(_mman_end) != 0)
     {
@@ -680,7 +678,6 @@ static int _teardown_mman(oel_mman_t* mman)
         _dump(_mman_end, PAGE_SIZE);
         assert(false);
     }
-#endif
 
     free((void*)mman->base - PAGE_SIZE);
 }
