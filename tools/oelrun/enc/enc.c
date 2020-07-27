@@ -92,6 +92,7 @@ static void _setup_sockets(void)
 }
 
 int oelrun_enter_ecall(
+    struct oel_options* options,
     const char* rootfs,
     const void* args,
     size_t args_size,
@@ -114,6 +115,9 @@ int oelrun_enter_ecall(
         goto done;
 
     argv[0] = "liboelenc.so";
+
+    if (options)
+        oel_trace_syscalls(options->trace_syscalls);
 
 #ifdef TRACE
     _dump_args(argv);
@@ -151,6 +155,6 @@ OE_SET_ENCLAVE_SGX(
     1,    /* ProductID */
     1,    /* SecurityVersion */
     true, /* Debug */
-    16*4096, /* NumHeapPages */
-    4096, /* NumStackPages */
-    8);   /* NumTCS */
+    4*4096, /* NumHeapPages */
+    1024, /* NumStackPages */
+    4);   /* NumTCS */

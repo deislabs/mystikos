@@ -8,6 +8,8 @@
 #define OEL_SYS_dump_stack 1002
 #define OEL_SYS_dump_ehdr 1003
 
+void oel_trace_syscalls(bool flag);
+
 long oel_syscall(long n, long params[6]);
 
 const char* syscall_str(long n);

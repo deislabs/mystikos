@@ -92,6 +92,140 @@ done:
     return ret;
 }
 
+static int _which(const char* program, char buf[PATH_MAX])
+{
+    int ret = -1;
+    char path[PATH_MAX];
+
+    if (buf)
+        *buf = '\0';
+
+    if (!program || !buf)
+        goto done;
+
+    /* If the program has slashes the use realpath */
+    if (strchr(program, '/'))
+    {
+        char current[PATH_MAX];
+
+        if (!realpath(program, current))
+            goto done;
+
+        if (access(current, X_OK) == 0)
+        {
+            strcpy(buf, current);
+            ret = 0;
+            goto done;
+        }
+
+        goto done;
+    }
+
+    /* Get the PATH environment variable */
+    {
+        const char* p;
+
+        if (!(p = getenv("PATH")) || strlen(p) >= PATH_MAX)
+            goto done;
+
+        strcpy(path, p);
+    }
+
+    /* Search the PATH for the program */
+    {
+        char* p;
+        char* save;
+
+        for (p = strtok_r(path, ":", &save); p; p = strtok_r(NULL, ":", &save))
+        {
+            char current[PATH_MAX];
+            int n;
+
+            n = snprintf(current, sizeof(current), "%s/%s", p, program);
+            if (n >= sizeof(current))
+                goto done;
+
+            if (access(current, X_OK) == 0)
+            {
+                strcpy(buf, current);
+                ret = 0;
+                goto done;
+            }
+        }
+    }
+
+    /* not found */
+
+done:
+    return ret;
+}
+
+static int _get_opt(
+    int* argc,
+    const char* argv[],
+    const char* opt,
+    const char** optarg)
+{
+    size_t olen = strlen(opt);
+
+    if (optarg)
+        *optarg = NULL;
+
+    if (!opt)
+        _err("unexpected");
+
+
+    for (int i = 0; i < *argc; )
+    {
+        if (strcmp(argv[i], opt) == 0)
+        {
+            if (optarg)
+            {
+                if (i + 1 == *argc)
+                    _err("%s: missing option argument", opt);
+
+                *optarg = argv[i+1];
+                memmove(&argv[i], &argv[i+2], (*argc - i - 1) * sizeof(char*));
+                (*argc) -= 2;
+                return 0;
+            }
+            else
+            {
+                memmove(&argv[i], &argv[i+1], (*argc - i) * sizeof(char*));
+                (*argc)--;
+                return 0;
+            }
+        }
+        else if (strncmp(argv[i], opt, olen) == 0 && argv[i][olen] == '=')
+        {
+            if (!optarg)
+                _err("%s: extraneous '='", opt);
+
+            *optarg = &argv[i][olen + 1];
+            memmove(&argv[i], &argv[i+1], (*argc - i) * sizeof(char*));
+            (*argc)--;
+            return 0;
+        }
+        else
+        {
+            i++;
+        }
+    }
+
+    /* Not found! */
+    return -1;
+}
+
+#define USAGE "\
+\n\
+Usage: %s [options] <rootfs> <program> <args...>\n\
+\n\
+Options:\n\
+	--help - print this help message\n\
+	--trace-syscalls - trace system calls\n\
+\n\
+"
+
 int main(int argc, const char* argv[])
 {
     oe_result_t r;
@@ -106,29 +240,38 @@ int main(int argc, const char* argv[])
     char path[PATH_MAX];
     void* args = NULL;
     size_t args_size;
+    struct oel_options options;
 
-    if (argc < 3)
+    /* Get the full path of argv[0] */
+    if (_which(argv[0], _arg0) != 0)
     {
-        fprintf(stderr, "Usage: %s <rootfs> <program> <program-arg>...\n",
-            argv[0]);
+        fprintf(stderr, "%s: failed to get full path of argv[0]\n", argv[0]);
         return 1;
     }
 
-    /* Get the full path of the rootfs directory */
-    if (!realpath(argv[1], rootfs))
-        _err("failed to resolve the full path rootfs");
+    /* Get options */
+    {
+        /* Get --trace-syscalls option */
+        if (_get_opt(&argc, argv, "--trace-syscalls", NULL) == 0)
+            options.trace_syscalls = true;
+    }
+
+    if (argc < 3)
+    {
+        fprintf(stderr, USAGE, argv[0]);
+        return 1;
+    }
 
     const char* program = argv[2];
+
+    if (!realpath(argv[1], rootfs) != 0)
+        _err("failed to resovle rootfs directory: %s", argv[1]);
 
     if (!_is_dir(rootfs))
         _err("rootfs dir not found: %s", rootfs);
 
     if (program[0] != '/')
         _err("program must be an absolute path: %s", rootfs);
-
-    /* Get the full path of argv[0] */
-    if (!realpath(argv[0], _arg0))
-        _err("failed to resolve the full path of argv[0]");
 
     /* Get the directory that contains argv[0] */
     strcpy(dir, _arg0);
@@ -175,7 +318,7 @@ int main(int argc, const char* argv[])
 
     /* Enter the enclave and run the program */
     r = oelrun_enter_ecall(
-        enclave, &retval, rootfs, args, args_size, env, sizeof(env));
+        enclave, &retval, &options, rootfs, args, args_size, env, sizeof(env));
     if (r != OE_OK)
         _err("failed to enter enclave: result=%s", oe_result_str(r));
 

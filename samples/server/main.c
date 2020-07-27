@@ -116,13 +116,7 @@ void run_server()
 int main(int argc, const char* argv[])
 {
     argv0 = argv[0];
-    size_t n;
 
-    /* Print the command line arguments. */
-    for (int i = 0; i < argc; i++)
-        printf("argv[%d]=%s\n", i, argv[i]);
-
-    /* Run the echo server. */
     run_server();
 
     return 0;

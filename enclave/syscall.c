@@ -14,6 +14,8 @@
 
 jmp_buf _exit_jmp_buf;
 
+static bool _trace;
+
 static char _rootfs[PATH_MAX];
 
 void oel_set_rootfs(const char* path)
@@ -394,10 +396,6 @@ const char* syscall_str(long n)
     return "unknown";
 }
 
-#if 1
-#define TRACE_SYSCALLS
-#endif
-
 static int _exit_status;
 
 int oel_get_exit_status(void)
@@ -464,9 +462,10 @@ long oel_syscall(long n, long params[6])
     {
         const void* tp = (void*)params[0];
 
-#ifdef TRACE_SYSCALLS
-        fprintf(stderr, "=== %s(tp=%p)\n", syscall_str(n), tp);
-#endif
+        if (_trace)
+        {
+            fprintf(stderr, "=== %s(tp=%p)\n", syscall_str(n), tp);
+        }
 
         if (!_original_fs_base)
             _original_fs_base = _get_fs_base();
@@ -477,25 +476,26 @@ long oel_syscall(long n, long params[6])
     }
     else if (n == SYS_set_tid_address)
     {
-#ifdef TRACE_SYSCALLS
         const void* tidptr = (const void*)params[0];
 
-        fprintf(stderr, "=== %s(tidptr=%p)\n", syscall_str(n), tidptr);
-#endif
+        if (_trace)
+        {
+            fprintf(stderr, "=== %s(tidptr=%p)\n", syscall_str(n), tidptr);
+        }
 
         return 0;
     }
     else if (n == SYS_open)
     {
         const char* path = (const char*)x1;
-#ifdef TRACE_SYSCALLS
         int flags = (int)x2;
         int mode = (int)x3;
 
-        fprintf(stderr,
-            "=== %s(path=%s flags=%d mode=%03o)\n",
-            syscall_str(n), path, flags, mode);
-#endif
+        if (_trace)
+        {
+            fprintf(stderr, "=== %s(path=%s flags=%d mode=%03o)\n",
+                syscall_str(n), path, flags, mode);
+        }
 
         char full_path[PATH_MAX];
         snprintf(full_path, sizeof(full_path), "%s/%s", _rootfs, path);
@@ -506,23 +506,29 @@ long oel_syscall(long n, long params[6])
     }
     else if (n == SYS_read)
     {
-#ifdef TRACE_SYSCALLS
-        fprintf(stderr, "=== %s()\n", syscall_str(n));
-#endif
+        if (_trace)
+        {
+            fprintf(stderr, "=== %s()\n", syscall_str(n));
+        }
+
         return _forward_syscall(n, params);
     }
     else if (n == SYS_writev)
     {
-#ifdef TRACE_SYSCALLS
-        fprintf(stderr, "=== %s()\n", syscall_str(n));
-#endif
+        if (_trace)
+        {
+            fprintf(stderr, "=== %s()\n", syscall_str(n));
+        }
+
         return _forward_syscall(n, params);
     }
     else if (n == SYS_close)
     {
-#ifdef TRACE_SYSCALLS
-        fprintf(stderr, "=== %s()\n", syscall_str(n));
-#endif
+        if (_trace)
+        {
+            fprintf(stderr, "=== %s()\n", syscall_str(n));
+        }
+
         return _forward_syscall(n, params);
     }
     else if (n == SYS_mmap)
@@ -535,25 +541,26 @@ long oel_syscall(long n, long params[6])
         off_t offset = (off_t)x6;
         void* ptr = (void*)-1;
 
-#ifdef TRACE_SYSCALLS
-        fprintf(
-            stderr,
-            "=== %s(addr=%lX length=%lu prot=%d flags=%d fd=%d offset=%lu)\n",
-            syscall_str(n), (long)addr, length, prot, flags, fd, offset);
-#endif
+        if (_trace)
+        {
+            fprintf(stderr, "=== %s"
+                "(addr=%lX length=%lu prot=%d flags=%d fd=%d offset=%lu)\n",
+                syscall_str(n), (long)addr, length, prot, flags, fd, offset);
+        }
+
         return (long)oel_mmap(addr, length, prot, flags, fd, offset);
     }
     else if (n == SYS_mprotect)
     {
-#ifdef TRACE_SYSCALLS
         const void* addr = (void*)x1;
         const size_t length = (size_t)x2;
         const int prot = (int)x3;
 
-        fprintf(stderr,
-            "=== %s(addr=%lX length=%zu prot=%d)\n",
-            syscall_str(n), (uint64_t)addr, length, prot);
-#endif
+        if (_trace)
+        {
+            fprintf(stderr, "=== %s(addr=%lX length=%zu prot=%d)\n",
+                syscall_str(n), (uint64_t)addr, length, prot);
+        }
 
         return 0;
     }
@@ -564,9 +571,10 @@ long oel_syscall(long n, long params[6])
         /* restore original fs base, else stack smashing will be detected */
         _set_fs_base(_original_fs_base);
 
-#ifdef TRACE_SYSCALLS
-        printf("=== %s(status=%d)\n", syscall_str(n), status);
-#endif
+        if (_trace)
+        {
+            printf("=== %s(status=%d)\n", syscall_str(n), status);
+        }
 
         _exit_status = status;
         longjmp(_exit_jmp_buf, 1);
@@ -577,10 +585,11 @@ long oel_syscall(long n, long params[6])
         /* Note: 0x5413 is TIOCGWINSZ  */
         unsigned long request = (unsigned long)x2;
 
-#ifdef TRACE_SYSCALLS
-        fprintf(stderr,
-            "=== %s(fd=%d request=%lx)\n", syscall_str(n), fd, request);
-#endif
+        if (_trace)
+        {
+            fprintf(stderr, "=== %s(fd=%d request=%lx)\n",
+                syscall_str(n), fd, request);
+        }
 
         return _forward_syscall(n, params);
     }
@@ -588,13 +597,18 @@ long oel_syscall(long n, long params[6])
     {
         int status = (int)x1;
 
-#ifdef TRACE_SYSCALLS
-        fprintf(stderr, "=== %s(status=%d)\n", syscall_str(n), status);
-#endif
+        if (_trace)
+        {
+            fprintf(stderr, "=== %s(status=%d)\n", syscall_str(n), status);
+        }
     }
     else
     {
-        fprintf(stderr, "=== forwarded syscall: %s()\n", syscall_str(n));
+        if (_trace)
+        {
+            fprintf(stderr, "=== forwarded syscall: %s()\n", syscall_str(n));
+        }
+
         return _forward_syscall(n, params);
     }
 }
@@ -602,4 +616,9 @@ long oel_syscall(long n, long params[6])
 int oel_set_exit_jump(void)
 {
     return setjmp(_exit_jmp_buf);
+}
+
+void oel_trace_syscalls(bool flag)
+{
+    _trace = flag;
 }
