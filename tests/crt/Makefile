@@ -15,9 +15,6 @@ CFLAGS = -Werror $(OEENCLAVE_CFLAGS)
 
 LDFLAGS = -L$(LIBDIR) -loehostfs -loel -llthread $(OEENCLAVE_LDFLAGS)
 
-#LDFLAGS += -Wl,--export-dynamic
-#LDFLAGS += -Wl,--hash-style=both
-
 CLEAN = $(SUBOBJDIR)/run_t.h $(SUBOBJDIR)/run_t.c $(SUBOBJDIR)/run_args.h
 
 include $(TOP)/rules.mak
