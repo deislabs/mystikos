@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <limits.h>
+#include <stdlib.h>
 
 typedef struct _pair
 {
@@ -1100,5 +1101,86 @@ int elf_check_stack(const void* stack, size_t stack_size)
     ret = 0;
 
 done:
+    return ret;
+}
+
+void* elf_make_stack(
+    int argc,
+    const char* argv[],
+    int envc,
+    const char* envp[],
+    size_t stack_size,
+    const void* base,
+    const void* ehdr,
+    const void* phdr,
+    size_t phnum,
+    size_t phentsize,
+    const void* entry,
+    void** sp)
+{
+    void* ret = NULL;
+    void* stack = NULL;
+
+    if (sp)
+        *sp = NULL;
+
+    /* The stack must be a multiple of the page size */
+    if (stack_size % PAGE_SIZE)
+        goto done;
+
+    if (!(stack = memalign(PAGE_SIZE, stack_size)))
+        goto done;
+
+    const Elf64_auxv_t auxv[] =
+    {
+        {
+            .a_type = AT_BASE,
+            .a_un.a_val = (uint64_t)base,
+        },
+        {
+            .a_type = AT_SYSINFO_EHDR,
+            .a_un.a_val = (uint64_t)ehdr,
+        },
+        {
+            .a_type = AT_PHDR,
+            .a_un.a_val = (uint64_t)phdr,
+        },
+        {
+            .a_type = AT_PHNUM,
+            .a_un.a_val = (uint64_t)phnum,
+        },
+        {
+            .a_type = AT_PHENT,
+            .a_un.a_val = (uint64_t)phentsize,
+        },
+        {
+            .a_type = AT_ENTRY,
+            .a_un.a_val = (uint64_t)entry,
+        },
+        {
+            .a_type = AT_PAGESZ,
+            .a_un.a_val = PAGE_SIZE,
+        },
+        {
+            .a_type = AT_NULL,
+            .a_un.a_val = 0,
+        },
+    };
+    size_t auxc = sizeof(auxv) / sizeof(auxv[0]) - 1;
+
+    if (elf_init_stack(
+        argc, argv, envc, envp, auxc, auxv, stack, stack_size, sp) != 0)
+    {
+        goto done;
+    }
+
+    ret = stack;
+    stack = NULL;
+
+done:
+
+    if (stack)
+        free(stack);
+
     return ret;
 }

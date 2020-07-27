@@ -24,4 +24,18 @@ int elf_check_stack(const void* stack, size_t stack_size);
 
 int elf_dump_ehdr(const void* ehdr);
 
+void* elf_make_stack(
+    int argc,
+    const char* argv[],
+    int envc,
+    const char* envp[],
+    size_t stack_size,
+    const void* base,
+    const void* ehdr,
+    const void* phdr,
+    size_t phnum,
+    size_t phentsize,
+    const void* entry,
+    void** sp);
+
 #endif /* _OEL_ELFUTILS_H */

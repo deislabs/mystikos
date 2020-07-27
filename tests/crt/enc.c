@@ -30,7 +30,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <limits.h>
-#include "syscallutils.h"
+#include "./syscall.h"
 #include <sys/mount.h>
 #include "run_t.h"
 #include "elfutils.h"
@@ -46,10 +46,10 @@
 
 typedef long (*syscall_callback_t)(long n, long params[6]);
 
-static oel_mman_t _mman;
+extern oel_mman_t _mman;
 
-static void* _mman_start;
-static void* _mman_end;
+extern void* _mman_start;
+extern void* _mman_end;
 
 //#define ARGV0 "/root/sgx-lkl/samples/basic/helloworld/app/helloworld"
 #define ARGV0 "/root/oe-libos/build/bin/samples/split/main"
@@ -67,6 +67,7 @@ static int _check_guard(const void* p)
     return 0;
 }
 
+#if 0
 static void _set_fs_base(const void* p)
 {
     __asm__ volatile("wrfsbase %0" ::"r"(p));
@@ -78,8 +79,7 @@ static void* _get_fs_base(void)
     __asm__ volatile("mov %%fs:0, %0" : "=r"(p));
     return p;
 }
-
-static const void* _original_fs_base;
+#endif
 
 static void _dump(uint8_t* p, size_t n)
 {
@@ -87,102 +87,6 @@ static void _dump(uint8_t* p, size_t n)
         printf("%02X", *p++);
 
     printf("\n");
-}
-
-static void* _make_stack(
-    size_t stack_size,
-    const void* base,
-    const void* ehdr,
-    const void* phdr,
-    size_t phnum,
-    size_t phentsize,
-    const void* entry,
-    void** sp)
-{
-    void* ret = NULL;
-    void* stack = NULL;
-
-    if (sp)
-        *sp = NULL;
-
-    /* The stack must be a multiple of the page size */
-    if (stack_size % PAGE_SIZE)
-        goto done;
-
-    if (!(stack = memalign(PAGE_SIZE, stack_size)))
-        goto done;
-
-    const char* argv[] = { "arg0", ARGV0, "arg2", NULL };
-    int argc = sizeof(argv) / sizeof(argv[0]) - 1;
-    const char* envp[] = { "ENV0=zero", "ENV1=one", "ENV2=two", NULL };
-    size_t envc = sizeof(envp) / sizeof(envp[0]) - 1;
-    const Elf64_auxv_t auxv[] =
-    {
-        {
-            .a_type = AT_BASE,
-            .a_un.a_val = (uint64_t)base,
-        },
-        {
-            .a_type = AT_SYSINFO_EHDR,
-            .a_un.a_val = (uint64_t)ehdr,
-        },
-        {
-            .a_type = AT_PHDR,
-            .a_un.a_val = (uint64_t)phdr,
-        },
-        {
-            .a_type = AT_PHNUM,
-            .a_un.a_val = (uint64_t)phnum,
-        },
-        {
-            .a_type = AT_PHENT,
-            .a_un.a_val = (uint64_t)phentsize,
-        },
-        {
-            .a_type = AT_ENTRY,
-            .a_un.a_val = (uint64_t)entry,
-        },
-        {
-            .a_type = AT_PAGESZ,
-            .a_un.a_val = PAGE_SIZE,
-        },
-        {
-            .a_type = AT_NULL,
-            .a_un.a_val = 0,
-        },
-    };
-    size_t auxc = sizeof(auxv) / sizeof(auxv[0]) - 1;
-
-    if (elf_init_stack(
-        argc, argv, envc, envp, auxc, auxv, stack, stack_size, sp) != 0)
-    {
-        goto done;
-    }
-
-    ret = stack;
-    stack = NULL;
-
-done:
-
-    if (stack)
-        free(stack);
-
-    return ret;
-}
-
-static long _forward_syscall(long n, long params[6])
-{
-    extern long oe_syscall(long n, long x1, long x2, long x3, long x4,
-        long x5, long x6);
-    long x1 = params[0];
-    long x2 = params[1];
-    long x3 = params[2];
-    long x4 = params[3];
-    long x5 = params[4];
-    long x6 = params[5];
-    long ret;
-
-    return oe_syscall(n, x1, x2, x3, x4, x5, x6);
 }
 
 #if 0
@@ -215,277 +119,8 @@ static void _write_file(const char* path, const void* data, size_t size)
 }
 #endif
 
-static ssize_t _map_file_onto_memory(int fd, void* data, size_t size)
-{
-    ssize_t ret = -1;
-    ssize_t bytes_read = 0;
-    off_t save_pos;
-
-    if (fd < 0 || !data || !size)
-        goto done;
-
-    /* save the current file position */
-    if ((save_pos = lseek(fd, 0, SEEK_CUR)) == (off_t)-1)
-        goto done;
-
-    /* seek start of file */
-    if (lseek(fd, 0, SEEK_SET) == (off_t)-1)
-        goto done;
-
-    /* read file onto memory */
-    {
-        char buf[BUFSIZ];
-        ssize_t n;
-        uint8_t* p = data;
-        size_t r = size;
-
-        while ((n = read(fd, buf, sizeof buf)) > 0)
-        {
-#if 1
-            /* if copy would write past end of data */
-            if (r < n)
-            {
-                memcpy(p, buf, r);
-                break;
-            }
-#endif
-
-            memcpy(p, buf, n);
-            p += n;
-            r -= n;
-            bytes_read += n;
-        }
-    }
-
-printf("bytes_read=%zu\n", bytes_read);
-printf("length=%zu\n", size);
-
-    /* restore the file position */
-    if (lseek(fd, save_pos, SEEK_SET) == (off_t)-1)
-        goto done;
-
-    ret = bytes_read;
-
-done:
-    return ret;
-}
-
-static jmp_buf _exit_jmp_buf;
-static int _exit_status;
-
-#define TRACE_SYSCALLS
-
-static long _syscall(long n, long params[6])
-{
-    long x1 = params[0];
-    long x2 = params[1];
-    long x3 = params[2];
-    long x4 = params[3];
-    long x5 = params[4];
-    long x6 = params[5];
-
-#if 1
-    if (_check_guard(_mman_end) != 0)
-    {
-        fprintf(stderr, "=== bad guard: %s()\n", syscall_str(n));
-        assert(0);
-    }
-#endif
-
-    if (n == OEL_SYS_trace)
-    {
-        printf("trace: %s\n", (const char*)params[0]);
-    }
-    else if (n == OEL_SYS_trace_ptr)
-    {
-        printf("trace: %s: %lX %ld\n",
-            (const char*)params[0], params[1], params[1]);
-    }
-    else if (n == OEL_SYS_dump_stack)
-    {
-        elf_dump_stack((void*)params[0]);
-    }
-    else if (n == OEL_SYS_dump_ehdr)
-    {
-        elf_dump_ehdr((void*)params[0]);
-    }
-    else if (n == SYS_set_thread_area)
-    {
-        const void* tp = (void*)params[0];
-
-#ifdef TRACE_SYSCALLS
-        fprintf(stderr, "=== %s(tp=%p)\n", syscall_str(n), tp);
-#endif
-
-        if (!_original_fs_base)
-            _original_fs_base = _get_fs_base();
-
-        _set_fs_base(tp);
-
-        return 0;
-    }
-    else if (n == SYS_set_tid_address)
-    {
-#ifdef TRACE_SYSCALLS
-        const void* tidptr = (const void*)params[0];
-
-        fprintf(stderr, "=== %s(tidptr=%p)\n", syscall_str(n), tidptr);
-#endif
-
-        return 0;
-    }
-    else if (n == SYS_open)
-    {
-#ifdef TRACE_SYSCALLS
-        const char* path = (const char*)x1;
-        int flags = (int)x2;
-        int mode = (int)x3;
-
-        fprintf(stderr,
-            "=== %s(path=%s flags=%d mode=%03o)\n",
-            syscall_str(n), path, flags, mode);
-#endif
-
-        return _forward_syscall(n, params);
-    }
-    else if (n == SYS_read)
-    {
-#ifdef TRACE_SYSCALLS
-        fprintf(stderr, "=== %s()\n", syscall_str(n));
-#endif
-        return _forward_syscall(n, params);
-    }
-    else if (n == SYS_writev)
-    {
-#ifdef TRACE_SYSCALLS
-        fprintf(stderr, "=== %s()\n", syscall_str(n));
-#endif
-        return _forward_syscall(n, params);
-    }
-    else if (n == SYS_close)
-    {
-#ifdef TRACE_SYSCALLS
-        fprintf(stderr, "=== %s()\n", syscall_str(n));
-#endif
-        return _forward_syscall(n, params);
-    }
-    else if (n == SYS_mmap)
-    {
-        void* addr = (void*)x1;
-        size_t length = (size_t)x2;
-        int prot = (int)x3;
-        int flags = (int)x4;
-        int fd = (int)x5;
-        off_t offset = (off_t)x6;
-        void* ptr = (void*)-1;
-
-#ifdef TRACE_SYSCALLS
-        fprintf(
-            stderr,
-            "=== %s(addr=%lX length=%lu prot=%d flags=%d fd=%d offset=%lu)\n",
-            syscall_str(n), (long)addr, length, prot, flags, fd, offset);
-#endif
-
-        if (fd >= 0 && addr)
-        {
-            ssize_t n;
-
-#if 0
-            printf("addr: [%016lX][%016lX]\n", (long)addr, length);
-#endif
-
-            if ((n = _map_file_onto_memory(fd, addr, length)) < 0)
-                return -1L;
-
-            void* end = addr + length;
-            assert(addr >= _mman_start && addr <= _mman_end);
-            assert(end >= _mman_start && end <= _mman_end);
-
-            return (long)addr;
-        }
-
-        int tflags = OEL_MAP_ANONYMOUS | OEL_MAP_PRIVATE;
-
-        if (oel_mman_map(&_mman, addr, length, prot, tflags, &ptr) != 0)
-        {
-            printf("oel_mman_map: error: %s\n", _mman.err);
-            return -1L;
-        }
-
-        if (fd >= 0 && !addr)
-        {
-            ssize_t n;
-
-            if ((n = _map_file_onto_memory(fd, ptr, length)) < 0)
-            {
-                return -1L;
-            }
-        }
-
-        void* end = ptr + length;
-        assert(ptr >= _mman_start && ptr <= _mman_end);
-        assert(end >= _mman_start && end <= _mman_end);
-
-#if 0
-        printf("mmap: [%016lX][%016lX]\n", (long)ptr, length);
-#endif
-        return (long)ptr;
-    }
-    else if (n == SYS_mprotect)
-    {
-#ifdef TRACE_SYSCALLS
-        const void* addr = (void*)x1;
-        const size_t length = (size_t)x2;
-        const int prot = (int)x3;
-
-        fprintf(stderr,
-            "=== %s(addr=%lX length=%zu prot=%d)\n",
-            syscall_str(n), (uint64_t)addr, length, prot);
-#endif
-
-        return 0;
-    }
-    else if (n == SYS_exit)
-    {
-        const int status = (int)x1;
-
-        /* restore original fs base, else stack smashing will be detected */
-        _set_fs_base(_original_fs_base);
-
-#ifdef TRACE_SYSCALLS
-        printf("=== %s(status=%d)\n", syscall_str(n), status);
-#endif
-
-        _exit_status = status;
-        longjmp(_exit_jmp_buf, 1);
-    }
-    else if (n == SYS_ioctl)
-    {
-        int fd = (int)x1;
-        /* Note: 0x5413 is TIOCGWINSZ  */
-        unsigned long request = (unsigned long)x2;
-
-#ifdef TRACE_SYSCALLS
-        fprintf(stderr,
-            "=== %s(fd=%d request=%lx)\n", syscall_str(n), fd, request);
-#endif
-
-        return _forward_syscall(n, params);
-    }
-    else if (n == SYS_exit_group)
-    {
-        int status = (int)x1;
-
-#ifdef TRACE_SYSCALLS
-        fprintf(stderr, "=== %s(status=%d)\n", syscall_str(n), status);
-#endif
-    }
-    else
-    {
-        fprintf(stderr, "=== unhandled syscall: %s()\n", syscall_str(n));
-        assert(0);
-    }
-}
+extern jmp_buf _exit_jmp_buf;
+extern int _exit_status;
 
 static void _setup_hostfs(void)
 {
@@ -568,7 +203,13 @@ static int _enter_crt(void)
     size_t phnum = ehdr->e_phnum;
     size_t phentsize = ehdr->e_phentsize;
 
-    if (!(stack = _make_stack(stack_size, base, ehdr, phdr, phnum, phentsize,
+    const char* argv[] = { "arg0", ARGV0, "arg2", NULL };
+    int argc = sizeof(argv) / sizeof(argv[0]) - 1;
+    const char* envp[] = { "ENV0=zero", "ENV1=one", "ENV2=two", NULL };
+    size_t envc = sizeof(envp) / sizeof(envp[0]) - 1;
+
+    if (!(stack = elf_make_stack(argc, argv, envc, envp,
+        stack_size, base, ehdr, phdr, phnum, phentsize,
         enter, &sp)))
     {
         fprintf(stderr, "_make_stack() failed\n");
@@ -610,7 +251,7 @@ static int _enter_crt(void)
         args.enter = enter;
         args.stack = sp;
         args.dynv = dynv;
-        args.syscall = _syscall;
+        args.syscall = oel_syscall;
 
 #ifdef USE_LTHREADS
         lthread_t* lt;

@@ -1,4 +1,14 @@
-#include "syscallutils.h"
+#include <stdio.h>
+#include <oel/mman.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <string.h>
+#include <assert.h>
+#include <setjmp.h>
+#include "./syscall.h"
+#include "elfutils.h"
 
 typedef struct _pair
 {
@@ -371,4 +381,303 @@ const char* syscall_str(long n)
     }
 
     return "unknown";
+}
+
+#define TRACE_SYSCALLS
+
+static const void* _original_fs_base;
+
+static void _set_fs_base(const void* p)
+{
+    __asm__ volatile("wrfsbase %0" ::"r"(p));
+}
+
+static void* _get_fs_base(void)
+{
+    void* p;
+    __asm__ volatile("mov %%fs:0, %0" : "=r"(p));
+    return p;
+}
+
+static long _forward_syscall(long n, long params[6])
+{
+    extern long oe_syscall(long n, long x1, long x2, long x3, long x4,
+        long x5, long x6);
+    long x1 = params[0];
+    long x2 = params[1];
+    long x3 = params[2];
+    long x4 = params[3];
+    long x5 = params[4];
+    long x6 = params[5];
+    long ret;
+
+    return oe_syscall(n, x1, x2, x3, x4, x5, x6);
+}
+
+static ssize_t _map_file_onto_memory(int fd, void* data, size_t size)
+{
+    ssize_t ret = -1;
+    ssize_t bytes_read = 0;
+    off_t save_pos;
+
+    if (fd < 0 || !data || !size)
+        goto done;
+
+    /* save the current file position */
+    if ((save_pos = lseek(fd, 0, SEEK_CUR)) == (off_t)-1)
+        goto done;
+
+    /* seek start of file */
+    if (lseek(fd, 0, SEEK_SET) == (off_t)-1)
+        goto done;
+
+    /* read file onto memory */
+    {
+        char buf[BUFSIZ];
+        ssize_t n;
+        uint8_t* p = data;
+        size_t r = size;
+
+        while ((n = read(fd, buf, sizeof buf)) > 0)
+        {
+#if 1
+            /* if copy would write past end of data */
+            if (r < n)
+            {
+                memcpy(p, buf, r);
+                break;
+            }
+#endif
+
+            memcpy(p, buf, n);
+            p += n;
+            r -= n;
+            bytes_read += n;
+        }
+    }
+
+printf("bytes_read=%zu\n", bytes_read);
+printf("length=%zu\n", size);
+
+    /* restore the file position */
+    if (lseek(fd, save_pos, SEEK_SET) == (off_t)-1)
+        goto done;
+
+    ret = bytes_read;
+
+done:
+    return ret;
+}
+
+oel_mman_t _mman;
+void* _mman_start;
+void* _mman_end;
+jmp_buf _exit_jmp_buf;
+int _exit_status;
+
+long oel_syscall(long n, long params[6])
+{
+    long x1 = params[0];
+    long x2 = params[1];
+    long x3 = params[2];
+    long x4 = params[3];
+    long x5 = params[4];
+    long x6 = params[5];
+
+    if (n == OEL_SYS_trace)
+    {
+        printf("trace: %s\n", (const char*)params[0]);
+    }
+    else if (n == OEL_SYS_trace_ptr)
+    {
+        printf("trace: %s: %lX %ld\n",
+            (const char*)params[0], params[1], params[1]);
+    }
+    else if (n == OEL_SYS_dump_stack)
+    {
+        elf_dump_stack((void*)params[0]);
+    }
+    else if (n == OEL_SYS_dump_ehdr)
+    {
+        elf_dump_ehdr((void*)params[0]);
+    }
+    else if (n == SYS_set_thread_area)
+    {
+        const void* tp = (void*)params[0];
+
+#ifdef TRACE_SYSCALLS
+        fprintf(stderr, "=== %s(tp=%p)\n", syscall_str(n), tp);
+#endif
+
+        if (!_original_fs_base)
+            _original_fs_base = _get_fs_base();
+
+        _set_fs_base(tp);
+
+        return 0;
+    }
+    else if (n == SYS_set_tid_address)
+    {
+#ifdef TRACE_SYSCALLS
+        const void* tidptr = (const void*)params[0];
+
+        fprintf(stderr, "=== %s(tidptr=%p)\n", syscall_str(n), tidptr);
+#endif
+
+        return 0;
+    }
+    else if (n == SYS_open)
+    {
+#ifdef TRACE_SYSCALLS
+        const char* path = (const char*)x1;
+        int flags = (int)x2;
+        int mode = (int)x3;
+
+        fprintf(stderr,
+            "=== %s(path=%s flags=%d mode=%03o)\n",
+            syscall_str(n), path, flags, mode);
+#endif
+
+        return _forward_syscall(n, params);
+    }
+    else if (n == SYS_read)
+    {
+#ifdef TRACE_SYSCALLS
+        fprintf(stderr, "=== %s()\n", syscall_str(n));
+#endif
+        return _forward_syscall(n, params);
+    }
+    else if (n == SYS_writev)
+    {
+#ifdef TRACE_SYSCALLS
+        fprintf(stderr, "=== %s()\n", syscall_str(n));
+#endif
+        return _forward_syscall(n, params);
+    }
+    else if (n == SYS_close)
+    {
+#ifdef TRACE_SYSCALLS
+        fprintf(stderr, "=== %s()\n", syscall_str(n));
+#endif
+        return _forward_syscall(n, params);
+    }
+    else if (n == SYS_mmap)
+    {
+        void* addr = (void*)x1;
+        size_t length = (size_t)x2;
+        int prot = (int)x3;
+        int flags = (int)x4;
+        int fd = (int)x5;
+        off_t offset = (off_t)x6;
+        void* ptr = (void*)-1;
+
+#ifdef TRACE_SYSCALLS
+        fprintf(
+            stderr,
+            "=== %s(addr=%lX length=%lu prot=%d flags=%d fd=%d offset=%lu)\n",
+            syscall_str(n), (long)addr, length, prot, flags, fd, offset);
+#endif
+
+        if (fd >= 0 && addr)
+        {
+            ssize_t n;
+
+#if 0
+            printf("addr: [%016lX][%016lX]\n", (long)addr, length);
+#endif
+
+            if ((n = _map_file_onto_memory(fd, addr, length)) < 0)
+                return -1L;
+
+            void* end = addr + length;
+            assert(addr >= _mman_start && addr <= _mman_end);
+            assert(end >= _mman_start && end <= _mman_end);
+
+            // ISSUE: call mmap or mremap here so that this range refers to
+            // a mapped region.
+
+            return (long)addr;
+        }
+
+        int tflags = OEL_MAP_ANONYMOUS | OEL_MAP_PRIVATE;
+
+        if (oel_mman_map(&_mman, addr, length, prot, tflags, &ptr) != 0)
+        {
+            printf("oel_mman_map: error: %s\n", _mman.err);
+            return -1L;
+        }
+
+        if (fd >= 0 && !addr)
+        {
+            ssize_t n;
+
+            if ((n = _map_file_onto_memory(fd, ptr, length)) < 0)
+            {
+                return -1L;
+            }
+        }
+
+        void* end = ptr + length;
+        assert(ptr >= _mman_start && ptr <= _mman_end);
+        assert(end >= _mman_start && end <= _mman_end);
+
+#if 0
+        printf("mmap: [%016lX][%016lX]\n", (long)ptr, length);
+#endif
+        return (long)ptr;
+    }
+    else if (n == SYS_mprotect)
+    {
+#ifdef TRACE_SYSCALLS
+        const void* addr = (void*)x1;
+        const size_t length = (size_t)x2;
+        const int prot = (int)x3;
+
+        fprintf(stderr,
+            "=== %s(addr=%lX length=%zu prot=%d)\n",
+            syscall_str(n), (uint64_t)addr, length, prot);
+#endif
+
+        return 0;
+    }
+    else if (n == SYS_exit)
+    {
+        const int status = (int)x1;
+
+        /* restore original fs base, else stack smashing will be detected */
+        _set_fs_base(_original_fs_base);
+
+#ifdef TRACE_SYSCALLS
+        printf("=== %s(status=%d)\n", syscall_str(n), status);
+#endif
+
+        _exit_status = status;
+        longjmp(_exit_jmp_buf, 1);
+    }
+    else if (n == SYS_ioctl)
+    {
+        int fd = (int)x1;
+        /* Note: 0x5413 is TIOCGWINSZ  */
+        unsigned long request = (unsigned long)x2;
+
+#ifdef TRACE_SYSCALLS
+        fprintf(stderr,
+            "=== %s(fd=%d request=%lx)\n", syscall_str(n), fd, request);
+#endif
+
+        return _forward_syscall(n, params);
+    }
+    else if (n == SYS_exit_group)
+    {
+        int status = (int)x1;
+
+#ifdef TRACE_SYSCALLS
+        fprintf(stderr, "=== %s(status=%d)\n", syscall_str(n), status);
+#endif
+    }
+    else
+    {
+        fprintf(stderr, "=== unhandled syscall: %s()\n", syscall_str(n));
+        assert(0);
+    }
 }

@@ -4,6 +4,7 @@
 #ifndef _OEL_INTERNAL_MMAN_H
 #define _OEL_INTERNAL_MMAN_H
 
+#include <openenclave/bits/defs.h>
 #include "types.h"
 
 #define OEL_PROT_NONE 0
