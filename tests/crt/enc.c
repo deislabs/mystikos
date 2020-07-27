@@ -21,8 +21,6 @@
 #include <lthread.h>
 #include <setjmp.h>
 
-extern jmp_buf _exit_jmp_buf;
-
 typedef long (*syscall_callback_t)(long n, long params[6]);
 
 #define ARGV0 "/root/oe-libos/build/bin/samples/split/main"
@@ -72,7 +70,7 @@ void _entry_thread(void* args_)
 #endif
 
     /* jumps here from _syscall() on SYS_exit */
-    if (setjmp(_exit_jmp_buf) != 0)
+    if (oel_set_exit_jump() != 0)
     {
 #ifdef USE_LTHREADS
         lthread_exit(NULL);

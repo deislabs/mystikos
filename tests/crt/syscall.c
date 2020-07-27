@@ -583,3 +583,8 @@ long oel_syscall(long n, long params[6])
         assert(0);
     }
 }
+
+int oel_set_exit_jump(void)
+{
+    return setjmp(_exit_jmp_buf);
+}

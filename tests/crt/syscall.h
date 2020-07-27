@@ -14,4 +14,6 @@ const char* syscall_str(long n);
 
 int oel_get_exit_status(void);
 
+int oel_set_exit_jump(void);
+
 #endif /* _OEL_SYSCALL_H */
