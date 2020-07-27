@@ -12,7 +12,6 @@
 #include "./mmanutils.h"
 
 /* globals */
-oel_mman_t g_oel_mman;
 jmp_buf _exit_jmp_buf;
 int _exit_status;
 

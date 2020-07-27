@@ -4,11 +4,9 @@
 #include <oel/mman.h>
 #include <sys/types.h>
 
-extern oel_mman_t g_oel_mman;
+int oel_setup_mman(size_t size);
 
-int oel_setup_mman(oel_mman_t* mman, size_t size);
-
-int oel_teardown_mman(oel_mman_t* mman);
+int oel_teardown_mman(void);
 
 void* oel_mmap(
     void *addr,

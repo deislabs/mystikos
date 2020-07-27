@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
+static oel_mman_t _mman;
 void* _mman_start;
 void* _mman_end;
 
@@ -30,7 +31,7 @@ static void _dump(uint8_t* p, size_t n)
     printf("\n");
 }
 
-int oel_setup_mman(oel_mman_t* mman, size_t size)
+int oel_setup_mman(size_t size)
 {
     int ret = -1;
     void* base;
@@ -49,12 +50,12 @@ int oel_setup_mman(oel_mman_t* mman, size_t size)
     memset(_mman_start - PAGE_SIZE, GUARD_CHAR, PAGE_SIZE);
     memset(_mman_end, GUARD_CHAR, PAGE_SIZE);
 
-    if (oel_mman_init(mman, (uintptr_t)base, size) != 0)
+    if (oel_mman_init(&_mman, (uintptr_t)base, size) != 0)
         goto done;
 
-    mman->scrub = true;
+    _mman.scrub = true;
 
-    oel_mman_set_sanity(mman, true);
+    oel_mman_set_sanity(&_mman, true);
 
     ret = 0;
 
@@ -62,9 +63,9 @@ done:
     return ret;
 }
 
-int oel_teardown_mman(oel_mman_t* mman)
+int oel_teardown_mman(void)
 {
-    assert(oel_mman_is_sane(&g_oel_mman));
+    assert(oel_mman_is_sane(&_mman));
 
     /* Check the start guard page */
     if (_check_guard(_mman_start - PAGE_SIZE) != 0)
@@ -82,7 +83,7 @@ int oel_teardown_mman(oel_mman_t* mman)
         assert(false);
     }
 
-    free((void*)mman->base - PAGE_SIZE);
+    free((void*)_mman.base - PAGE_SIZE);
 }
 
 static ssize_t _map_file_onto_memory(int fd, void* data, size_t size)
@@ -173,9 +174,9 @@ void* oel_mmap(
 
     int tflags = OEL_MAP_ANONYMOUS | OEL_MAP_PRIVATE;
 
-    if (oel_mman_map(&g_oel_mman, addr, length, prot, tflags, &ptr) != 0)
+    if (oel_mman_map(&_mman, addr, length, prot, tflags, &ptr) != 0)
     {
-        printf("oel_mman_map: error: %s\n", g_oel_mman.err);
+        printf("oel_mman_map: error: %s\n", _mman.err);
         return (void*)-1;
     }
 

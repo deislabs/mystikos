@@ -242,7 +242,7 @@ static int _enter_crt(void)
 
 int run_ecall(void)
 {
-    if (oel_setup_mman(&g_oel_mman, MMAN_SIZE) != 0)
+    if (oel_setup_mman(MMAN_SIZE) != 0)
     {
         fprintf(stderr, "_setup_mman() failed\n");
         assert(false);
@@ -253,7 +253,7 @@ int run_ecall(void)
     int ret = _enter_crt();
 
     _teardown_hostfs();
-    oel_teardown_mman(&g_oel_mman);
+    oel_teardown_mman();
 
     printf("ret=%d\n", ret);
 
