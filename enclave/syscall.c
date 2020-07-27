@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
+#include <limits.h>
 #include <assert.h>
 #include <setjmp.h>
 #include <oel/syscall.h>
@@ -12,6 +13,13 @@
 #include <oel/mmanutils.h>
 
 jmp_buf _exit_jmp_buf;
+
+static char _rootfs[PATH_MAX];
+
+void oel_set_rootfs(const char* path)
+{
+    snprintf(_rootfs, sizeof(_rootfs), "%s", path);
+}
 
 typedef struct _pair
 {
@@ -386,7 +394,9 @@ const char* syscall_str(long n)
     return "unknown";
 }
 
+#if 0
 #define TRACE_SYSCALLS
+#endif
 
 static int _exit_status;
 
@@ -477,8 +487,8 @@ long oel_syscall(long n, long params[6])
     }
     else if (n == SYS_open)
     {
-#ifdef TRACE_SYSCALLS
         const char* path = (const char*)x1;
+#ifdef TRACE_SYSCALLS
         int flags = (int)x2;
         int mode = (int)x3;
 
@@ -486,6 +496,11 @@ long oel_syscall(long n, long params[6])
             "=== %s(path=%s flags=%d mode=%03o)\n",
             syscall_str(n), path, flags, mode);
 #endif
+
+        char full_path[PATH_MAX];
+        snprintf(full_path, sizeof(full_path), "%s/%s", _rootfs, path);
+
+        params[0] = (long)full_path;
 
         return _forward_syscall(n, params);
     }

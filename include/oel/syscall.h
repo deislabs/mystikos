@@ -16,4 +16,6 @@ int oel_get_exit_status(void);
 
 int oel_set_exit_jump(void);
 
+void oel_set_rootfs(const char* path);
+
 #endif /* _OEL_SYSCALL_H */

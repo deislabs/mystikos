@@ -100,6 +100,7 @@ int main(int argc, const char* argv[])
     const uint32_t flags = OE_ENCLAVE_FLAG_DEBUG;
     int retval;
     char dir[PATH_MAX];
+    char rootfs[PATH_MAX];
     char liboelenc[PATH_MAX];
     char liboelcrt[PATH_MAX];
     char path[PATH_MAX];
@@ -113,7 +114,10 @@ int main(int argc, const char* argv[])
         return 1;
     }
 
-    const char* rootfs = argv[1];
+    /* Get the full path of the rootfs directory */
+    if (!realpath(argv[1], rootfs))
+        _err("failed to resolve the full path rootfs");
+
     const char* program = argv[2];
 
     if (!_is_dir(rootfs))
@@ -179,8 +183,6 @@ int main(int argc, const char* argv[])
     r = oe_terminate_enclave(enclave);
     if (r != OE_OK)
         _err("failed to terminate enclave: reuslt=%s", oe_result_str(r));
-
-    printf("success\n");
 
     free(args);
 

@@ -158,9 +158,6 @@ static ssize_t _map_file_onto_memory(int fd, void* data, size_t size)
         }
     }
 
-printf("bytes_read=%zu\n", bytes_read);
-printf("length=%zu\n", size);
-
     /* restore the file position */
     if (lseek(fd, save_pos, SEEK_SET) == (off_t)-1)
         goto done;

@@ -2,9 +2,16 @@
 // Licensed under the MIT License.
 
 #include <openenclave/enclave.h>
-#include "oelrun_t.h"
 #include <stdio.h>
 #include <string.h>
+#include <assert.h>
+#include <sys/mount.h>
+#include <oel/syscall.h>
+#include <oel/mmanutils.h>
+#include <oel/elfutils.h>
+#include "oelrun_t.h"
+
+static const size_t MMAN_SIZE = 16 * 1024 * 1024;
 
 extern int oe_host_printf(const char* fmt, ...);
 
@@ -35,10 +42,44 @@ done:
     return ret;
 }
 
-static void _dump_argv(const char* argv[])
+static int _count_args(const char* args[])
 {
-    for (int i = 0; argv[i]; i++)
-        printf("argv[%d]=%s\n", i, argv[i]);
+    size_t n = 0;
+
+    for (size_t i = 0; args[i]; i++)
+        n++;
+
+    return n;
+}
+
+static void _dump_args(const char* args[])
+{
+    for (int i = 0; args[i]; i++)
+        printf("args[%d]=%s\n", i, args[i]);
+}
+
+static void _setup_hostfs(void)
+{
+    if (oe_load_module_host_file_system() != OE_OK)
+    {
+        fprintf(stderr, "oe_load_module_host_file_system() failed\n");
+        assert(0);
+    }
+
+    if (mount("/", "/", OE_HOST_FILE_SYSTEM, 0, NULL) != 0)
+    {
+        fprintf(stderr, "mount() failed\n");
+        assert(0);
+    }
+}
+
+static void _teardown_hostfs(void)
+{
+    if (umount("/") != 0)
+    {
+        fprintf(stderr, "umount() failed\n");
+        assert(0);
+    }
 }
 
 int oelrun_enter_ecall(
@@ -51,21 +92,45 @@ int oelrun_enter_ecall(
     int ret = -1;
     const char* argv[64];
     size_t argv_size = sizeof(argv) / sizeof(argv[0]);
+    const char* envp[64];
+    size_t envp_size = sizeof(envp) / sizeof(envp[0]);
 
-    if (!rootfs || !args || !args_size)
+    if (!rootfs || !args || !args_size || !env || !env_size)
         goto done;
 
-    if (!env || !env_size)
+    if (_deserialize_args(args, args_size, argv + 1, argv_size - 1) != 0)
         goto done;
 
-    if (_deserialize_args(args, args_size, argv, argv_size) != 0)
+    if (_deserialize_args(env, env_size, envp, envp_size) != 0)
         goto done;
 
-    _dump_argv(argv);
+    argv[0] = "liboelenc.so";
 
-    oe_host_printf("********* oelrun_ecall()\n");
+#ifdef TRACE
+    _dump_args(argv);
+    _dump_args(envp);
+#endif
 
-    ret = 0;
+    if (oel_setup_mman(MMAN_SIZE) != 0)
+    {
+        fprintf(stderr, "_setup_mman() failed\n");
+        assert(0);
+    }
+
+#ifdef TRACE
+    printf("rootfs=%s\n", rootfs);
+#endif
+
+    _setup_hostfs();
+
+    oel_set_rootfs(rootfs);
+
+    const int argc = _count_args(argv);
+    const int envc = _count_args(envp);
+    ret = elf_enter_crt(argc, argv, envc, envp);
+
+    _teardown_hostfs();
+    oel_teardown_mman();
 
 done:
     return ret;
@@ -75,6 +140,6 @@ OE_SET_ENCLAVE_SGX(
     1,    /* ProductID */
     1,    /* SecurityVersion */
     true, /* Debug */
-    1024, /* NumHeapPages */
-    1024, /* NumStackPages */
-    2);   /* NumTCS */
+    16*4096, /* NumHeapPages */
+    4096, /* NumStackPages */
+    8);   /* NumTCS */
