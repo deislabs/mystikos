@@ -23,6 +23,20 @@ void oel_set_rootfs(const char* path)
     snprintf(_rootfs, sizeof(_rootfs), "%s", path);
 }
 
+static const char* _fullpath(char buf[PATH_MAX], const char* path)
+{
+    if (strlcpy(buf, _rootfs, PATH_MAX) >= PATH_MAX)
+        return NULL;
+
+    if (strlcat(buf, "/", PATH_MAX) >= PATH_MAX)
+        return NULL;
+
+    if (strlcat(buf, path, PATH_MAX) >= PATH_MAX)
+        return NULL;
+
+    return buf;
+}
+
 typedef struct _pair
 {
     long num;
@@ -432,6 +446,27 @@ static long _forward_syscall(long n, long params[6])
     return oe_syscall(n, x1, x2, x3, x4, x5, x6);
 }
 
+typedef struct fd_entry
+{
+    int fd;
+    char path[PATH_MAX];
+}
+fd_entry_t;
+
+/* ATTN:MEB: replace this later */
+static fd_entry_t _fd_entries[1024];
+static size_t _fd_entries_size = sizeof(_fd_entries) / sizeof(_fd_entries[0]);
+
+static long _return(long n, long ret)
+{
+    if (_trace)
+    {
+        fprintf(stderr, "    %s(): return=%ld\n", syscall_str(n), ret);
+    }
+
+    return ret;
+}
+
 long oel_syscall(long n, long params[6])
 {
     long x1 = params[0];
@@ -444,19 +479,23 @@ long oel_syscall(long n, long params[6])
     if (n == OEL_SYS_trace)
     {
         printf("trace: %s\n", (const char*)params[0]);
+        _return(n, 0);
     }
     else if (n == OEL_SYS_trace_ptr)
     {
         printf("trace: %s: %lX %ld\n",
             (const char*)params[0], params[1], params[1]);
+        _return(n, 0);
     }
     else if (n == OEL_SYS_dump_stack)
     {
         elf_dump_stack((void*)params[0]);
+        _return(n, 0);
     }
     else if (n == OEL_SYS_dump_ehdr)
     {
         elf_dump_ehdr((void*)params[0]);
+        _return(n, 0);
     }
     else if (n == SYS_set_thread_area)
     {
@@ -472,7 +511,7 @@ long oel_syscall(long n, long params[6])
 
         _set_fs_base(tp);
 
-        return 0;
+        _return(n, 0);
     }
     else if (n == SYS_set_tid_address)
     {
@@ -483,13 +522,15 @@ long oel_syscall(long n, long params[6])
             fprintf(stderr, "=== %s(tidptr=%p)\n", syscall_str(n), tidptr);
         }
 
-        return 0;
+        _return(n, 0);
     }
     else if (n == SYS_open)
     {
         const char* path = (const char*)x1;
         int flags = (int)x2;
         int mode = (int)x3;
+        char buf[PATH_MAX];
+        long ret;
 
         if (_trace)
         {
@@ -497,12 +538,14 @@ long oel_syscall(long n, long params[6])
                 syscall_str(n), path, flags, mode);
         }
 
-        char full_path[PATH_MAX];
-        snprintf(full_path, sizeof(full_path), "%s/%s", _rootfs, path);
+        params[0] = (long)_fullpath(buf, path);
 
-        params[0] = (long)full_path;
+        ret = _forward_syscall(n, params);
 
-        return _forward_syscall(n, params);
+        if (ret >= 0 && ret < _fd_entries_size)
+            strlcpy(_fd_entries[ret].path, path, PATH_MAX);
+
+        _return(n, ret);
     }
     else if (n == SYS_read)
     {
@@ -511,7 +554,7 @@ long oel_syscall(long n, long params[6])
             fprintf(stderr, "=== %s()\n", syscall_str(n));
         }
 
-        return _forward_syscall(n, params);
+        _return(n, _forward_syscall(n, params));
     }
     else if (n == SYS_writev)
     {
@@ -520,16 +563,23 @@ long oel_syscall(long n, long params[6])
             fprintf(stderr, "=== %s()\n", syscall_str(n));
         }
 
-        return _forward_syscall(n, params);
+        _return(n, _forward_syscall(n, params));
     }
     else if (n == SYS_close)
     {
+        int fd = (int)x1;
+
         if (_trace)
         {
             fprintf(stderr, "=== %s()\n", syscall_str(n));
         }
 
-        return _forward_syscall(n, params);
+        if (fd >= 0 && fd < _fd_entries_size)
+        {
+            _fd_entries[fd].path[0] = '\0';
+        }
+
+        _return(n, _forward_syscall(n, params));
     }
     else if (n == SYS_mmap)
     {
@@ -548,7 +598,9 @@ long oel_syscall(long n, long params[6])
                 syscall_str(n), (long)addr, length, prot, flags, fd, offset);
         }
 
-        return (long)oel_mmap(addr, length, prot, flags, fd, offset);
+        long ret = (long)oel_mmap(addr, length, prot, flags, fd, offset);
+
+        _return(n, ret);
     }
     else if (n == SYS_mprotect)
     {
@@ -562,7 +614,7 @@ long oel_syscall(long n, long params[6])
                 syscall_str(n), (uint64_t)addr, length, prot);
         }
 
-        return 0;
+        _return(n, 0);
     }
     else if (n == SYS_exit)
     {
@@ -578,6 +630,8 @@ long oel_syscall(long n, long params[6])
 
         _exit_status = status;
         longjmp(_exit_jmp_buf, 1);
+
+        /* Unreachable! */
     }
     else if (n == SYS_ioctl)
     {
@@ -591,7 +645,7 @@ long oel_syscall(long n, long params[6])
                 syscall_str(n), fd, request);
         }
 
-        return _forward_syscall(n, params);
+        _return(n, _forward_syscall(n, params));
     }
     else if (n == SYS_exit_group)
     {
@@ -602,14 +656,32 @@ long oel_syscall(long n, long params[6])
             fprintf(stderr, "=== %s(status=%d)\n", syscall_str(n), status);
         }
     }
+    else if (n == SYS_fstat)
+    {
+        int fd = (int)x1;
+        void* statbuf = (void*)x2;
+        char buf[PATH_MAX];
+
+        if (_trace)
+        {
+            fprintf(stderr, "=== syscall: %s(fd=%d statbuf=%p)\n",
+                syscall_str(n), fd, statbuf);
+        }
+
+        long new_params[6] = { 0 };
+        new_params[0] = (long)_fullpath(buf, _fd_entries[fd].path);
+        new_params[1] = params[1];
+
+        _return(n, _forward_syscall(SYS_stat, new_params));
+    }
     else
     {
         if (_trace)
         {
-            fprintf(stderr, "=== forwarded syscall: %s()\n", syscall_str(n));
+            fprintf(stderr, "=== syscall: %s()\n", syscall_str(n));
         }
 
-        return _forward_syscall(n, params);
+        _return(n, _forward_syscall(n, params));
     }
 }
 

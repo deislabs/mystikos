@@ -12,7 +12,7 @@ all:
 	$(MUSL_GCC) -fPIC -Wl,-rpath=$(MUSL_LIB) -o $(ROOTFS)/bin/main main.c
 
 run:
-	$(BINDIR)/oelrun $(ROOTFS) /bin/main
+	$(BINDIR)/oelrun --trace-syscalls $(ROOTFS) /bin/main
 
 clean:
 	rm -rf $(ROOTFS)
