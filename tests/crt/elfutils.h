@@ -38,4 +38,10 @@ void* elf_make_stack(
     const void* entry,
     void** sp);
 
+int elf_enter_crt(
+    int argc,
+    const char* argv[],
+    int envc,
+    const char* envp[]);
+
 #endif /* _OEL_ELFUTILS_H */

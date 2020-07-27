@@ -1,8 +1,11 @@
 #include "elfutils.h"
+#include "syscall.h"
 #include <string.h>
+#include <lthread.h>
 #include <stdio.h>
 #include <limits.h>
 #include <stdlib.h>
+#include <assert.h>
 
 typedef struct _pair
 {
@@ -1204,4 +1207,127 @@ done:
         free(stack);
 
     return ret;
+}
+
+typedef long (*syscall_callback_t)(long n, long params[6]);
+
+typedef void (*enter_t)(
+    void* stack, void* dynv, syscall_callback_t callback);
+
+typedef struct entry_args
+{
+    enter_t enter;
+    void* stack;
+    uint64_t* dynv;
+    long (*syscall)(long n, long params[6]);
+}
+entry_args_t;
+
+#define USE_LTHREADS
+
+void _entry_thread(void* args_)
+{
+#ifdef USE_LTHREADS
+    lthread_detach();
+#endif
+
+    /* jumps here from _syscall() on SYS_exit */
+    if (oel_set_exit_jump() != 0)
+    {
+#ifdef USE_LTHREADS
+        lthread_exit(NULL);
+#endif
+        return;
+    }
+
+#if 0
+    long params[6] = { 0 };
+    _syscall(SYS_exit, params);
+#endif
+
+    entry_args_t* args = (entry_args_t*)args_;
+    (*args->enter)(args->stack, args->dynv, args->syscall);
+}
+
+int elf_enter_crt(
+    int argc,
+    const char* argv[],
+    int envc,
+    const char* envp[])
+{
+    extern void* __oe_get_isolated_image_entry_point(void);
+    extern const void* __oe_get_isolated_image_base();
+
+    enter_t enter = __oe_get_isolated_image_entry_point();
+    assert(enter);
+
+    const void* base = __oe_get_isolated_image_base();
+    const Elf64_Ehdr* ehdr = base;
+    void* stack;
+    void* sp = NULL;
+    const size_t stack_size = 64 * PAGE_SIZE;
+
+    /* Extract program-header related info */
+    const uint8_t* phdr = (const uint8_t*)base + ehdr->e_phoff;
+    size_t phnum = ehdr->e_phnum;
+    size_t phentsize = ehdr->e_phentsize;
+
+    if (!(stack = elf_make_stack(argc, argv, envc, envp,
+        stack_size, base, ehdr, phdr, phnum, phentsize,
+        enter, &sp)))
+    {
+        fprintf(stderr, "_make_stack() failed\n");
+        assert(0);
+    }
+
+    assert(elf_check_stack(stack, stack_size) == 0);
+
+    /* Find the dynamic vector */
+    uint64_t* dynv = NULL;
+    {
+        const uint8_t* p = phdr;
+
+        for (int i = 0; i < phnum; i++)
+        {
+            const Elf64_Phdr* ph = (const Elf64_Phdr*)p;
+
+            if (ph->p_type == PT_DYNAMIC)
+            {
+                dynv = (uint64_t*)((uint8_t*)base + ph->p_vaddr);
+                break;
+            }
+
+            p += phentsize;
+        }
+    }
+
+    if (!dynv)
+    {
+        printf("dynv not found\n");
+        assert(0);
+    }
+
+    assert(elf_check_stack(stack, stack_size) == 0);
+
+    /* Run the main program */
+    {
+        static entry_args_t args;
+        args.enter = enter;
+        args.stack = sp;
+        args.dynv = dynv;
+        args.syscall = oel_syscall;
+
+#ifdef USE_LTHREADS
+        lthread_t* lt;
+        lthread_create(&lt, _entry_thread, &args);
+        lthread_run();
+#else
+        _entry_thread(&args);
+#endif
+    }
+
+    assert(elf_check_stack(stack, stack_size) == 0);
+    free(stack);
+
+    return oel_get_exit_status();
 }
