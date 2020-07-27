@@ -31,6 +31,7 @@
 #include <assert.h>
 #include <limits.h>
 #include "./syscall.h"
+#include "./mmanutils.h"
 #include <sys/mount.h>
 #include "run_t.h"
 #include "elfutils.h"
@@ -46,26 +47,11 @@
 
 typedef long (*syscall_callback_t)(long n, long params[6]);
 
-extern oel_mman_t g_oel_mman;
-
 extern void* _mman_start;
 extern void* _mman_end;
 
 //#define ARGV0 "/root/sgx-lkl/samples/basic/helloworld/app/helloworld"
 #define ARGV0 "/root/oe-libos/build/bin/samples/split/main"
-
-static uint8_t GUARD_CHAR = 0xAA;
-
-static int _check_guard(const void* p)
-{
-    for (size_t i = 0; i < PAGE_SIZE; i++)
-    {
-        if (((uint8_t*)p)[i] != GUARD_CHAR)
-            return -1;
-    }
-
-    return 0;
-}
 
 static void _dump(uint8_t* p, size_t n)
 {
@@ -254,64 +240,9 @@ static int _enter_crt(void)
     return _exit_status;
 }
 
-static int _setup_mman(oel_mman_t* mman, size_t size)
-{
-    int ret = -1;
-    void* base;
-    void* ptr;
-
-    /* Allocate aligned pages */
-    if (!(ptr = memalign(OE_PAGE_SIZE, PAGE_SIZE + size + PAGE_SIZE)))
-        goto done;
-
-    base = ptr + PAGE_SIZE;
-
-    _mman_start = base;
-    _mman_end = base + size;
-
-    /* Set the guard pages */
-    memset(_mman_start - PAGE_SIZE, GUARD_CHAR, PAGE_SIZE);
-    memset(_mman_end, GUARD_CHAR, PAGE_SIZE);
-
-    if (oel_mman_init(mman, (uintptr_t)base, size) != OE_OK)
-        goto done;
-
-    mman->scrub = true;
-
-    oel_mman_set_sanity(mman, true);
-
-    ret = 0;
-
-done:
-    return ret;
-}
-
-static int _teardown_mman(oel_mman_t* mman)
-{
-    assert(oel_mman_is_sane(&g_oel_mman));
-
-    /* Check the start guard page */
-    if (_check_guard(_mman_start - PAGE_SIZE) != 0)
-    {
-        fprintf(stderr, "bad mman start guard page\n");
-        _dump(_mman_start - PAGE_SIZE, PAGE_SIZE);
-        assert(false);
-    }
-
-    /* Check the end guard page */
-    if (_check_guard(_mman_end) != 0)
-    {
-        fprintf(stderr, "bad mman end guard page\n");
-        _dump(_mman_end, PAGE_SIZE);
-        assert(false);
-    }
-
-    free((void*)mman->base - PAGE_SIZE);
-}
-
 int run_ecall(void)
 {
-    if (_setup_mman(&g_oel_mman, MMAN_SIZE) != 0)
+    if (oel_setup_mman(&g_oel_mman, MMAN_SIZE) != 0)
     {
         fprintf(stderr, "_setup_mman() failed\n");
         assert(false);
@@ -322,7 +253,7 @@ int run_ecall(void)
     int ret = _enter_crt();
 
     _teardown_hostfs();
-    _teardown_mman(&g_oel_mman);
+    oel_teardown_mman(&g_oel_mman);
 
     printf("ret=%d\n", ret);
 

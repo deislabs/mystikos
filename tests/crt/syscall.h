@@ -1,5 +1,5 @@
-#ifndef _OEL_SYSCALLUTILS_H
-#define _OEL_SYSCALLUTILS_H
+#ifndef _OEL_SYSCALL_H
+#define _OEL_SYSCALL_H
 
 #include <sys/syscall.h>
 
@@ -12,4 +12,4 @@ long oel_syscall(long n, long params[6]);
 
 const char* syscall_str(long n);
 
-#endif /* _OEL_SYSCALLUTILS_H */
+#endif /* _OEL_SYSCALL_H */
