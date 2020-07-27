@@ -116,7 +116,11 @@ static void _write_file(const char* path, const void* data, size_t size)
 }
 #endif
 
-static ssize_t _map_file_onto_memory(int fd, void* data, size_t size)
+static ssize_t _map_file_onto_memory(
+    int fd,
+    off_t offset,
+    void* data,
+    size_t size)
 {
     ssize_t ret = -1;
     ssize_t bytes_read = 0;
@@ -130,7 +134,7 @@ static ssize_t _map_file_onto_memory(int fd, void* data, size_t size)
         goto done;
 
     /* seek start of file */
-    if (lseek(fd, 0, SEEK_SET) == (off_t)-1)
+    if (lseek(fd, offset, SEEK_SET) == (off_t)-1)
         goto done;
 
     /* read file onto memory */
@@ -186,7 +190,7 @@ void* oel_mmap(
         printf("addr: [%016lX][%016lX]\n", (long)addr, length);
 #endif
 
-        if ((n = _map_file_onto_memory(fd, addr, length)) < 0)
+        if ((n = _map_file_onto_memory(fd, offset, addr, length)) < 0)
             return (void*)-1;
 
         void* end = addr + length;
@@ -211,7 +215,7 @@ void* oel_mmap(
     {
         ssize_t n;
 
-        if ((n = _map_file_onto_memory(fd, ptr, length)) < 0)
+        if ((n = _map_file_onto_memory(fd, offset, ptr, length)) < 0)
         {
             return (void*)-1;
         }

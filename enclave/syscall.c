@@ -394,7 +394,7 @@ const char* syscall_str(long n)
     return "unknown";
 }
 
-#if 0
+#if 1
 #define TRACE_SYSCALLS
 #endif
 
@@ -594,8 +594,8 @@ long oel_syscall(long n, long params[6])
     }
     else
     {
-        fprintf(stderr, "=== unhandled syscall: %s()\n", syscall_str(n));
-        assert(0);
+        fprintf(stderr, "=== forwarded syscall: %s()\n", syscall_str(n));
+        return _forward_syscall(n, params);
     }
 }
 

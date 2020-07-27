@@ -14,7 +14,12 @@ INCLUDES += -I$(INCDIR)/openenclave/3rdparty/libc
 
 CFLAGS = $(OEENCLAVE_CFLAGS)
 
-LDFLAGS = -L$(LIBDIR) -loehostfs -loel -llthread $(OEENCLAVE_LDFLAGS)
+LDFLAGS += -L$(LIBDIR)
+LDFLAGS += -loehostfs
+LDFLAGS += -loehostsock
+LDFLAGS += -loel
+LDFLAGS += -llthread
+LDFLAGS += $(OEENCLAVE_LDFLAGS)
 
 CLEAN = $(SUBOBJDIR)/oelrun_t.h $(SUBOBJDIR)/oelrun_t.c $(SUBOBJDIR)/oelrun_args.h
 

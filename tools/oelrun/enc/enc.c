@@ -82,6 +82,15 @@ static void _teardown_hostfs(void)
     }
 }
 
+static void _setup_sockets(void)
+{
+    if (oe_load_module_host_socket_interface() != OE_OK)
+    {
+        fprintf(stderr, "oe_load_module_host_socket_interface() failed\n");
+        assert(0);
+    }
+}
+
 int oelrun_enter_ecall(
     const char* rootfs,
     const void* args,
@@ -122,6 +131,8 @@ int oelrun_enter_ecall(
 #endif
 
     _setup_hostfs();
+
+    _setup_sockets();
 
     oel_set_rootfs(rootfs);
 
