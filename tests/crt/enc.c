@@ -1,28 +1,6 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
-/*
-    AT_SYSINFO_EHDR=7ffebe5c8000
-    AT_HWCAP=bfebfbff
-    AT_PAGESZ=1000
-    AT_CLKTCK=64
-    AT_PHDR=560102ecb040
-    AT_PHENT=38
-    AT_PHNUM=9
-    AT_BASE=7fd6d9d47000
-    AT_FLAGS=0
-    AT_ENTRY=560102ecb930
-    AT_UID=0
-    AT_EUID=0
-    AT_GID=0
-    AT_EGID=0
-    AT_SECURE=0
-    AT_RANDOM=7ffebe5aa159
-    AT_HWCAP2=0
-    AT_EXECFN=7ffebe5abff1
-    AT_PLATFORM=7ffebe5aa169
-*/
-
 #include <openenclave/enclave.h>
 #include <string.h>
 #include <stdarg.h>
@@ -43,56 +21,11 @@
 #include <lthread.h>
 #include <setjmp.h>
 
-#define MMAN_SIZE (16 * 1024 * 1024)
+extern jmp_buf _exit_jmp_buf;
 
 typedef long (*syscall_callback_t)(long n, long params[6]);
 
-extern void* _mman_start;
-extern void* _mman_end;
-
-//#define ARGV0 "/root/sgx-lkl/samples/basic/helloworld/app/helloworld"
 #define ARGV0 "/root/oe-libos/build/bin/samples/split/main"
-
-static void _dump(uint8_t* p, size_t n)
-{
-    while (n--)
-        printf("%02X", *p++);
-
-    printf("\n");
-}
-
-#if 0
-static void _write_file(const char* path, const void* data, size_t size)
-{
-    int fd;
-    const uint8_t* p = (const uint8_t*)data;
-    size_t r = size;
-    ssize_t n;
-
-    if ((fd = open(path, O_CREAT|O_WRONLY|O_TRUNC, 0666)) < 0)
-    {
-        fprintf(stderr, "open failed: %s\n", path);
-        exit(1);
-    }
-
-    while ((n = write(fd, p, r)) > 0)
-    {
-        p += n;
-        r -= n;
-    }
-
-    if (r != 0)
-    {
-        fprintf(stderr, "write failed: %s\n", path);
-        exit(1);
-    }
-
-    close(fd);
-}
-#endif
-
-extern jmp_buf _exit_jmp_buf;
-extern int _exit_status;
 
 static void _setup_hostfs(void)
 {
@@ -237,11 +170,13 @@ static int _enter_crt(void)
     assert(elf_check_stack(stack, stack_size) == 0);
     free(stack);
 
-    return _exit_status;
+    return oel_get_exit_status();
 }
 
 int run_ecall(void)
 {
+    const size_t MMAN_SIZE = 16 * 1024 * 1024;
+
     if (oel_setup_mman(MMAN_SIZE) != 0)
     {
         fprintf(stderr, "_setup_mman() failed\n");

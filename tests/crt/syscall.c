@@ -11,9 +11,7 @@
 #include "elfutils.h"
 #include "./mmanutils.h"
 
-/* globals */
 jmp_buf _exit_jmp_buf;
-int _exit_status;
 
 typedef struct _pair
 {
@@ -389,6 +387,13 @@ const char* syscall_str(long n)
 }
 
 #define TRACE_SYSCALLS
+
+static int _exit_status;
+
+int oel_get_exit_status(void)
+{
+    return _exit_status;
+}
 
 static const void* _original_fs_base;
 

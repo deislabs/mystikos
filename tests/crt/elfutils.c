@@ -1131,6 +1131,27 @@ void* elf_make_stack(
     if (!(stack = memalign(PAGE_SIZE, stack_size)))
         goto done;
 
+    /*  Example:
+        AT_SYSINFO_EHDR=7ffebe5c8000
+        AT_HWCAP=bfebfbff
+        AT_PAGESZ=1000
+        AT_CLKTCK=64
+        AT_PHDR=560102ecb040
+        AT_PHENT=38
+        AT_PHNUM=9
+        AT_BASE=7fd6d9d47000
+        AT_FLAGS=0
+        AT_ENTRY=560102ecb930
+        AT_UID=0
+        AT_EUID=0
+        AT_GID=0
+        AT_EGID=0
+        AT_SECURE=0
+        AT_RANDOM=7ffebe5aa159
+        AT_HWCAP2=0
+        AT_EXECFN=7ffebe5abff1
+        AT_PLATFORM=7ffebe5aa169
+    */
     const Elf64_auxv_t auxv[] =
     {
         {
