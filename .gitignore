@@ -4,3 +4,4 @@ build
 *.so
 third_party/musl/musl/lib
 samples/hello/rootfs
+samples/server/rootfs
