@@ -1,0 +1,21 @@
+enclave
+{
+    from "openenclave/edl/sgx/platform.edl" import *;
+    from "openenclave/edl/syscall.edl" import *;
+    from "openenclave/edl/logging.edl" import oe_write_ocall;
+    from "openenclave/edl/fcntl.edl" import *;
+
+    trusted
+    {
+        public int oelrun_enter_ecall(
+            [in, string] const char* rootfs,
+            [in, size=args_size] const void* args,
+            size_t args_size,
+            [in, size=env_size] const void* env,
+            size_t env_size);
+    };
+
+    untrusted
+    {
+    };
+};
