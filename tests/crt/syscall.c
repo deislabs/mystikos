@@ -10,6 +10,13 @@
 #include "./syscall.h"
 #include "elfutils.h"
 
+/* globals */
+oel_mman_t g_oel_mman;
+void* _mman_start;
+void* _mman_end;
+jmp_buf _exit_jmp_buf;
+int _exit_status;
+
 typedef struct _pair
 {
     long num;
@@ -469,12 +476,6 @@ done:
     return ret;
 }
 
-oel_mman_t _mman;
-void* _mman_start;
-void* _mman_end;
-jmp_buf _exit_jmp_buf;
-int _exit_status;
-
 long oel_syscall(long n, long params[6])
 {
     long x1 = params[0];
@@ -601,9 +602,9 @@ long oel_syscall(long n, long params[6])
 
         int tflags = OEL_MAP_ANONYMOUS | OEL_MAP_PRIVATE;
 
-        if (oel_mman_map(&_mman, addr, length, prot, tflags, &ptr) != 0)
+        if (oel_mman_map(&g_oel_mman, addr, length, prot, tflags, &ptr) != 0)
         {
-            printf("oel_mman_map: error: %s\n", _mman.err);
+            printf("oel_mman_map: error: %s\n", g_oel_mman.err);
             return -1L;
         }
 

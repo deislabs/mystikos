@@ -46,7 +46,7 @@
 
 typedef long (*syscall_callback_t)(long n, long params[6]);
 
-extern oel_mman_t _mman;
+extern oel_mman_t g_oel_mman;
 
 extern void* _mman_start;
 extern void* _mman_end;
@@ -66,20 +66,6 @@ static int _check_guard(const void* p)
 
     return 0;
 }
-
-#if 0
-static void _set_fs_base(const void* p)
-{
-    __asm__ volatile("wrfsbase %0" ::"r"(p));
-}
-
-static void* _get_fs_base(void)
-{
-    void* p;
-    __asm__ volatile("mov %%fs:0, %0" : "=r"(p));
-    return p;
-}
-#endif
 
 static void _dump(uint8_t* p, size_t n)
 {
@@ -302,7 +288,7 @@ done:
 
 static int _teardown_mman(oel_mman_t* mman)
 {
-    assert(oel_mman_is_sane(&_mman));
+    assert(oel_mman_is_sane(&g_oel_mman));
 
     /* Check the start guard page */
     if (_check_guard(_mman_start - PAGE_SIZE) != 0)
@@ -325,7 +311,7 @@ static int _teardown_mman(oel_mman_t* mman)
 
 int run_ecall(void)
 {
-    if (_setup_mman(&_mman, MMAN_SIZE) != 0)
+    if (_setup_mman(&g_oel_mman, MMAN_SIZE) != 0)
     {
         fprintf(stderr, "_setup_mman() failed\n");
         assert(false);
@@ -336,7 +322,7 @@ int run_ecall(void)
     int ret = _enter_crt();
 
     _teardown_hostfs();
-    _teardown_mman(&_mman);
+    _teardown_mman(&g_oel_mman);
 
     printf("ret=%d\n", ret);
 
