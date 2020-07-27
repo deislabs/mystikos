@@ -7,9 +7,9 @@
 #include <string.h>
 #include <assert.h>
 #include <setjmp.h>
-#include "./syscall.h"
-#include "elfutils.h"
-#include "./mmanutils.h"
+#include <oel/syscall.h>
+#include <oel/elfutils.h>
+#include <oel/mmanutils.h>
 
 jmp_buf _exit_jmp_buf;
 

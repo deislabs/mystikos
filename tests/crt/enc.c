@@ -2,26 +2,13 @@
 // Licensed under the MIT License.
 
 #include <openenclave/enclave.h>
-#include <string.h>
-#include <stdarg.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <assert.h>
-#include <limits.h>
-#include "./syscall.h"
-#include "./mmanutils.h"
 #include <sys/mount.h>
+#include <oel/syscall.h>
+#include <oel/mmanutils.h>
+#include <oel/elfutils.h>
 #include "run_t.h"
-#include "elfutils.h"
-#include <oel/mman.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <lthread.h>
-#include <setjmp.h>
-
-typedef long (*syscall_callback_t)(long n, long params[6]);
 
 #define ARGV0 "/root/oe-libos/build/bin/samples/split/main"
 
@@ -30,13 +17,13 @@ static void _setup_hostfs(void)
     if (oe_load_module_host_file_system() != OE_OK)
     {
         fprintf(stderr, "oe_load_module_host_file_system() failed\n");
-        assert(false);
+        assert(0);
     }
 
     if (mount("/", "/", OE_HOST_FILE_SYSTEM, 0, NULL) != 0)
     {
         fprintf(stderr, "mount() failed\n");
-        assert(false);
+        assert(0);
     }
 }
 
@@ -45,7 +32,7 @@ static void _teardown_hostfs(void)
     if (umount("/") != 0)
     {
         fprintf(stderr, "umount() failed\n");
-        assert(false);
+        assert(0);
     }
 }
 
@@ -66,7 +53,7 @@ int run_ecall(void)
     if (oel_setup_mman(MMAN_SIZE) != 0)
     {
         fprintf(stderr, "_setup_mman() failed\n");
-        assert(false);
+        assert(0);
     }
 
     _setup_hostfs();

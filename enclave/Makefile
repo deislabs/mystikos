@@ -6,9 +6,11 @@ SUBLIBDIR=$(LIBDIR)
 
 ARCHIVE = liboel.a
 
-SOURCES = strings.c mutex.c spinlock.c mman.c
+SOURCES = $(wildcard *.c)
 
-INCLUDES = -I$(INCDIR) -I$(TOP)/include
+INCLUDES += -I$(INCDIR)
+INCLUDES += -I$(TOP)/include
+INCLUDES += -I$(INCDIR)/openenclave/3rdparty/libc
 
 CFLAGS = $(OEENCLAVE_CFLAGS)
 

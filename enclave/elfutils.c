@@ -1,5 +1,5 @@
-#include "elfutils.h"
-#include "syscall.h"
+#include <oel/elfutils.h>
+#include <oel/syscall.h>
 #include <string.h>
 #include <lthread.h>
 #include <stdio.h>
