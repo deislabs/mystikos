@@ -3,5 +3,7 @@ build
 *.a
 *.so
 third_party/musl/musl/lib
+third_party/enclave-musl/musl/lib/
 samples/hello/rootfs
 samples/server/rootfs
+samples/shlib/rootfs/
