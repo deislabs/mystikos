@@ -1240,11 +1240,6 @@ void _entry_thread(void* args_)
         return;
     }
 
-#if 0
-    long params[6] = { 0 };
-    _syscall(SYS_exit, params);
-#endif
-
     entry_args_t* args = (entry_args_t*)args_;
     (*args->enter)(args->stack, args->dynv, args->syscall);
 }

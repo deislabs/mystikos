@@ -7,3 +7,8 @@ int main()
     foo();
     return 0;
 }
+
+void goo()
+{
+    printf("goo()\n");
+}

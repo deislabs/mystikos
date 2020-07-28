@@ -8,6 +8,7 @@
 #include <limits.h>
 #include <assert.h>
 #include <setjmp.h>
+#include <sys/uio.h>
 #include <oel/syscall.h>
 #include <oel/elfutils.h>
 #include <oel/mmanutils.h>

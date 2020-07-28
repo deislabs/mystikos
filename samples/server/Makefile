@@ -8,7 +8,7 @@ all:
 	mkdir -p $(ROOTFS)/bin
 	$(MUSL_GCC) -fPIC -Wl,-rpath=$(MUSL_LIB) -o $(ROOTFS)/bin/main main.c
 
-#TRACE= --trace-syscalls
+TRACE= --trace-syscalls
 
 run:
 	$(BINDIR)/oelrun $(TRACE) $(ROOTFS) /bin/main
