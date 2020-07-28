@@ -10,7 +10,7 @@ const char* elf64_pt_string(uint64_t value);
 void elf_dump_stack(void* stack);
 
 int elf_init_stack(
-    int argc,
+    size_t argc,
     const char* argv[],
     size_t envc,
     const char* envp[],
@@ -25,9 +25,9 @@ int elf_check_stack(const void* stack, size_t stack_size);
 int elf_dump_ehdr(const void* ehdr);
 
 void* elf_make_stack(
-    int argc,
+    size_t argc,
     const char* argv[],
-    int envc,
+    size_t envc,
     const char* envp[],
     size_t stack_size,
     const void* base,
@@ -39,9 +39,9 @@ void* elf_make_stack(
     void** sp);
 
 int elf_enter_crt(
-    int argc,
+    size_t argc,
     const char* argv[],
-    int envc,
+    size_t envc,
     const char* envp[]);
 
 #endif /* _OEL_ELFUTILS_H */

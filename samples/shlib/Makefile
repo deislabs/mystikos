@@ -12,7 +12,7 @@ all:
 	@$(MUSL_GCC) -fPIC -shared -o $(ROOTFS)/lib/libfoo.so foo.c
 	@$(MUSL_GCC) -fPIC -o $(ROOTFS)/bin/main main.c -Wl,-rpath=/lib -L$(ROOTFS)/lib -lfoo
 
-TRACE_SYSCALLS=--trace-syscalls
+#TRACE_SYSCALLS=--trace-syscalls
 
 run: all
 	oelrun $(TRACE_SYSCALLS) rootfs /bin/main

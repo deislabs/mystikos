@@ -41,14 +41,14 @@ int oel_setup_mman(size_t size)
     if (!(ptr = memalign(OE_PAGE_SIZE, PAGE_SIZE + size + PAGE_SIZE)))
         goto done;
 
-    base = ptr + PAGE_SIZE;
+    base = (uint8_t*)ptr + PAGE_SIZE;
 
     _mman_start = base;
-    _mman_end = base + size;
+    _mman_end = (uint8_t*)base + size;
 
     /* Set the guard pages */
-    memset(_mman_start - PAGE_SIZE, GUARD_CHAR, PAGE_SIZE);
-    memset(_mman_end, GUARD_CHAR, PAGE_SIZE);
+    memset((uint8_t*)_mman_start - PAGE_SIZE, GUARD_CHAR, PAGE_SIZE);
+    memset((uint8_t*)_mman_end, GUARD_CHAR, PAGE_SIZE);
 
     if (oel_mman_init(&_mman, (uintptr_t)base, size) != 0)
         goto done;
@@ -68,10 +68,10 @@ int oel_teardown_mman(void)
     assert(oel_mman_is_sane(&_mman));
 
     /* Check the start guard page */
-    if (_check_guard(_mman_start - PAGE_SIZE) != 0)
+    if (_check_guard((uint8_t*)_mman_start - PAGE_SIZE) != 0)
     {
         fprintf(stderr, "bad mman start guard page\n");
-        _dump(_mman_start - PAGE_SIZE, PAGE_SIZE);
+        _dump((uint8_t*)_mman_start - PAGE_SIZE, PAGE_SIZE);
         assert(false);
     }
 
@@ -83,7 +83,7 @@ int oel_teardown_mman(void)
         assert(false);
     }
 
-    free((void*)_mman.base - PAGE_SIZE);
+    free((uint8_t*)_mman.base - PAGE_SIZE);
     return 0;
 }
 
@@ -158,7 +158,7 @@ static ssize_t _map_file_onto_memory(
 
             memcpy(p, buf, (size_t)n);
             p += n;
-            r -= n;
+            r -= (size_t)n;
             bytes_read += n;
         }
     }
@@ -196,7 +196,7 @@ void* oel_mmap(
         if ((n = _map_file_onto_memory(fd, offset, addr, length)) < 0)
             return (void*)-1;
 
-        void* end = addr + length;
+        void* end = (uint8_t*)addr + length;
         assert(addr >= _mman_start && addr <= _mman_end);
         assert(end >= _mman_start && end <= _mman_end);
 
@@ -224,7 +224,7 @@ void* oel_mmap(
         }
     }
 
-    void* end = ptr + length;
+    void* end = (uint8_t*)ptr + length;
     assert(ptr >= _mman_start && ptr <= _mman_end);
     assert(end >= _mman_start && end <= _mman_end);
 

@@ -664,7 +664,7 @@ static uint8_t _guard_page[PAGE_SIZE] =
 **==============================================================================
 */
 int elf_init_stack(
-    int argc,
+    size_t argc,
     const char* argv[],
     size_t envc,
     const char* envp[],
@@ -739,7 +739,7 @@ int elf_init_stack(
     {
         envp_strings_offset = argv_strings_offset;
 
-        for (int i = 0; i < argc; i++)
+        for (size_t i = 0; i < argc; i++)
             envp_strings_offset += strlen(argv[i]) + 1;
     }
 
@@ -790,7 +790,7 @@ int elf_init_stack(
         sp_offset -= end;
 
         /* Round down to a multiple of the page size */
-        sp_offset = sp_offset & ~(PAGE_SIZE - 1);
+        sp_offset = sp_offset & ~((size_t)PAGE_SIZE - 1);
 
         sp = (uint8_t*)stack + sp_offset;
     }
@@ -805,7 +805,7 @@ int elf_init_stack(
         char** argv_out = (char**)(base + argv_offset);
         char* p = (char*)(base + argv_strings_offset);
 
-        for (int i = 0; i < argc; i++)
+        for (size_t i = 0; i < argc; i++)
         {
             size_t n = strlen(argv[i]) + 1;
             memcpy(p, argv[i], n);
@@ -847,7 +847,7 @@ int elf_init_stack(
     memcpy(stack, _guard_page, PAGE_SIZE);
 
     /* Write the second guard page pattern */
-    memcpy(stack + stack_size - PAGE_SIZE, _guard_page, PAGE_SIZE);
+    memcpy((uint8_t*)stack + stack_size - PAGE_SIZE, _guard_page, PAGE_SIZE);
 
     *sp_out = sp;
 
@@ -1100,8 +1100,11 @@ int elf_check_stack(const void* stack, size_t stack_size)
     if (memcmp(stack, _guard_page, PAGE_SIZE) != 0)
         goto done;
 
-    if (memcmp(stack + stack_size - PAGE_SIZE, _guard_page, PAGE_SIZE) != 0)
+    if (memcmp((uint8_t*)stack + stack_size - PAGE_SIZE, _guard_page,
+        PAGE_SIZE) != 0)
+    {
         goto done;
+    }
 
     ret = 0;
 
@@ -1110,9 +1113,9 @@ done:
 }
 
 void* elf_make_stack(
-    int argc,
+    size_t argc,
     const char* argv[],
-    int envc,
+    size_t envc,
     const char* envp[],
     size_t stack_size,
     const void* base,
@@ -1247,9 +1250,9 @@ void _entry_thread(void* args_)
 }
 
 int elf_enter_crt(
-    int argc,
+    size_t argc,
     const char* argv[],
-    int envc,
+    size_t envc,
     const char* envp[])
 {
     extern void* __oe_get_isolated_image_entry_point(void);

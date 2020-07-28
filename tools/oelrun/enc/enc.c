@@ -42,14 +42,14 @@ done:
     return ret;
 }
 
-static int _count_args(const char* args[])
+static size_t _count_args(const char* args[])
 {
     size_t n = 0;
 
     for (size_t i = 0; args[i]; i++)
         n++;
 
-    return (int)n;
+    return n;
 }
 
 #if 0
@@ -142,8 +142,8 @@ int oelrun_enter_ecall(
 
     oel_set_rootfs(rootfs);
 
-    const int argc = _count_args(argv);
-    const int envc = _count_args(envp);
+    const size_t argc = _count_args(argv);
+    const size_t envc = _count_args(envp);
     ret = elf_enter_crt(argc, argv, envc, envp);
 
     _teardown_hostfs();

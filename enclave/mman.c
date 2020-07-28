@@ -844,7 +844,7 @@ int oel_mman_map(
         {
             /* Coalesce with LEFT neighbor */
 
-            left->size += length;
+            left->size += (uint32_t)length;
 
             /* Coalesce with RIGHT neighbor (and release right neighbor) */
             if (right && (start + length == right->addr))
@@ -861,7 +861,7 @@ int oel_mman_map(
             /* Coalesce with RIGHT neighbor */
 
             right->addr = start;
-            right->size += length;
+            right->size += (uint32_t)length;
             _mman_sync_top(mman);
 
             mman->coverage[OEL_MMAN_COVERAGE_1] = true;
@@ -1010,7 +1010,7 @@ int oel_mman_munmap(oel_mman_t* mman, void* addr, size_t length)
         /* Case2: [uuuu............] */
 
         vad->addr += length;
-        vad->size -= length;
+        vad->size -= (uint32_t)length;
         _mman_sync_top(mman);
         mman->coverage[OEL_MMAN_COVERAGE_4] = true;
     }
@@ -1018,7 +1018,7 @@ int oel_mman_munmap(oel_mman_t* mman, void* addr, size_t length)
     {
         /* Case3: [............uuuu] */
 
-        vad->size -= length;
+        vad->size -= (uint32_t)length;
         mman->coverage[OEL_MMAN_COVERAGE_5] = true;
     }
     else
@@ -1222,7 +1222,7 @@ int oel_mman_mremap(
         /* If there is room for this area to grow without moving it */
         if (_end(vad) == old_end && _get_right_gap(mman, vad) >= delta)
         {
-            vad->size += delta;
+            vad->size += (uint32_t)delta;
             oel_memset((void*)(start + old_size), 0, delta);
             new_addr = addr;
             mman->coverage[OEL_MMAN_COVERAGE_9] = true;
