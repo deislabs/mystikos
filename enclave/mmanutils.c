@@ -84,6 +84,7 @@ int oel_teardown_mman(void)
     }
 
     free((void*)_mman.base - PAGE_SIZE);
+    return 0;
 }
 
 #if 0
@@ -148,14 +149,14 @@ static ssize_t _map_file_onto_memory(
         {
 #if 1
             /* if copy would write past end of data */
-            if (r < n)
+            if (r < (size_t)n)
             {
                 memcpy(p, buf, r);
                 break;
             }
 #endif
 
-            memcpy(p, buf, n);
+            memcpy(p, buf, (size_t)n);
             p += n;
             r -= n;
             bytes_read += n;
@@ -181,6 +182,8 @@ void* oel_mmap(
     off_t offset)
 {
     void* ptr = (void*)-1;
+
+    (void)flags;
 
     if (fd >= 0 && addr)
     {

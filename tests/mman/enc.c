@@ -785,7 +785,7 @@ static void _set_mem(elem_t* elem)
 
     for (size_t i = 0; i < n; i++)
     {
-        p[i] = n % 251;
+        p[i] = (uint8_t)(n % 251);
     }
 }
 
@@ -847,7 +847,7 @@ void test_mman_randomly()
                 size_t old_size = elem[r].size;
                 oe_assert(old_size > 0);
 
-                size_t new_size = (_rand() % 16 + 1) * PGSZ;
+                size_t new_size = (size_t)(_rand() % 16 + 1) * PGSZ;
                 oe_assert(new_size > 0);
 
                 D(PRINTF(
@@ -866,7 +866,7 @@ void test_mman_randomly()
         }
         else
         {
-            size_t size = (_rand() % 16 + 1) * PGSZ;
+            size_t size = (size_t)(_rand() % 16 + 1) * PGSZ;
             oe_assert(size > 0);
 
             void* addr = _mman_mmap(&h, NULL, size);

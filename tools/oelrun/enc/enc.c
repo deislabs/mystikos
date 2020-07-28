@@ -49,14 +49,16 @@ static int _count_args(const char* args[])
     for (size_t i = 0; args[i]; i++)
         n++;
 
-    return n;
+    return (int)n;
 }
 
+#if 0
 static void _dump_args(const char* args[])
 {
     for (int i = 0; args[i]; i++)
         printf("args[%d]=%s\n", i, args[i]);
 }
+#endif
 
 static void _setup_hostfs(void)
 {

@@ -10,7 +10,7 @@ all:
 
 #TRACE= --trace-syscalls
 
-run:
+run: all
 	$(BINDIR)/oelrun $(TRACE) $(ROOTFS) /bin/hello red green blue yellow
 
 clean:

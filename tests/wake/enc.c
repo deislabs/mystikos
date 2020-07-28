@@ -17,6 +17,8 @@ static void _wait_thread(void* arg)
 {
     lthread_detach();
 
+    (void)arg;
+
     for (size_t i = 0; i < NUM_ITERATIONS; i++)
     {
         PRINTF("wait...\n");

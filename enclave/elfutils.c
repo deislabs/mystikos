@@ -858,6 +858,7 @@ done:
     return ret;
 }
 
+#if 0
 static void _dump(uint8_t* p, size_t n)
 {
     while (n--)
@@ -872,6 +873,7 @@ static void _dump(uint8_t* p, size_t n)
 
     printf("\n");
 }
+#endif
 
 void elf_dump_stack(void* stack)
 {
@@ -1282,7 +1284,7 @@ int elf_enter_crt(
     {
         const uint8_t* p = phdr;
 
-        for (int i = 0; i < phnum; i++)
+        for (size_t i = 0; i < phnum; i++)
         {
             const Elf64_Phdr* ph = (const Elf64_Phdr*)p;
 
