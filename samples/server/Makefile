@@ -1,4 +1,4 @@
-SUBDIR = tools/oelrun
+SUBDIR = samples/server
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
