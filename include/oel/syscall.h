@@ -2,6 +2,7 @@
 #define _OEL_SYSCALL_H
 
 #include <sys/syscall.h>
+#include <stdbool.h>
 
 #define OEL_SYS_trace 1000
 #define OEL_SYS_trace_ptr 1001
