@@ -26,7 +26,7 @@ $(__ARCHIVE): $(__OBJECTS)
 	ar rv $(__ARCHIVE) $(__OBJECTS)
 endif
 
-$(SUBOBJDIR)/%.o: %.c
+$(SUBOBJDIR)/%.o: %.c $(DEPENDS)
 	mkdir -p $(SUBOBJDIR)
 	$(shell mkdir -p $(shell dirname $@))
 	$(CC) -c $(CFLAGS) $(DEFINES) $(INCLUDES) -o $@ $<
