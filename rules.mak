@@ -13,9 +13,9 @@ endef
 ifdef PROGRAM
 __PROGRAM = $(SUBBINDIR)/$(PROGRAM)
 program: dirs $(__PROGRAM)
-$(__PROGRAM): $(__OBJECTS)
+$(__PROGRAM): $(LIBS) $(__OBJECTS)
 	mkdir -p $(SUBBINDIR)
-	gcc -o $(__PROGRAM) $(CFLAGS) $(__OBJECTS) $(LDFLAGS)
+	gcc -o $(__PROGRAM) $(CFLAGS) $(__OBJECTS) $(LIBS) $(LDFLAGS)
 endif
 
 ifdef ARCHIVE

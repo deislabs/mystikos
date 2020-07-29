@@ -14,11 +14,11 @@ INCLUDES += -I$(INCDIR)/openenclave/3rdparty/libc
 
 CFLAGS = $(OEENCLAVE_CFLAGS)
 
-LDFLAGS += -L$(LIBDIR)
-LDFLAGS += -loehostfs
-LDFLAGS += -loehostsock
-LDFLAGS += -loel
-LDFLAGS += -llthread
+LIBS += $(LIBDIR)/liboel.a
+LIBS += $(LIBDIR)/liblthread.a
+LIBS += $(LIBDIR)/openenclave/enclave/liboehostfs.a
+LIBS += $(LIBDIR)/openenclave/enclave/liboehostsock.a
+
 LDFLAGS += $(OEENCLAVE_LDFLAGS)
 
 CLEAN = $(SUBOBJDIR)/oelrun_t.h $(SUBOBJDIR)/oelrun_t.c $(SUBOBJDIR)/oelrun_args.h
@@ -31,10 +31,3 @@ EDGER8R_OPTS += --trusted-dir $(SUBOBJDIR)
 
 $(SUBOBJDIR)/oelrun_t.c:
 	$(EDGER8R) $(EDGER8R_OPTS) ../oelrun.edl
-
-vars:
-	@echo "SUBDIR=$(SUBDIR)"
-	@echo "SUBLIBDIR=$(SUBLIBDIR)"
-	@echo "SUBBINDIR=$(SUBBINDIR)"
-	@echo "SUBOBJDIR=$(SUBOBJDIR)"
-	@echo "OBJDIR=$(OBJDIR)"

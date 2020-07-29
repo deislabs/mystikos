@@ -116,7 +116,7 @@
 #include <oel/error.h>
 #include <oel/mman.h>
 #include <oel/mutex.h>
-#include <oel/strings.h>
+#include <string.h>
 
 OE_PRINTF_FORMAT(3, 4)
 int oe_snprintf(char* str, size_t size, const char* format, ...);
@@ -503,7 +503,7 @@ int oel_mman_init(oel_mman_t* mman, uintptr_t base, size_t size)
     }
 
     /* Clear the heap object */
-    oel_memset(mman, 0, sizeof(oel_mman_t));
+    memset(mman, 0, sizeof(oel_mman_t));
 
     /* Calculate the total number of pages */
     size_t num_pages = size / OEL_PAGE_SIZE;
@@ -887,7 +887,7 @@ int oel_mman_map(
     }
 
     /* Zero-fill mapped memory */
-    oel_memset((void*)start, 0, length);
+    memset((void*)start, 0, length);
 
     if (!_mman_is_sane(mman))
         goto done;
@@ -1048,7 +1048,7 @@ int oel_mman_munmap(oel_mman_t* mman, void* addr, size_t length)
 
     /* If scrubbing is enabled, then scrub the unmapped memory */
     if (mman->scrub)
-        oel_memset(addr, 0xDD, length);
+        memset(addr, 0xDD, length);
 
     if (!_mman_is_sane(mman))
     {
@@ -1212,7 +1212,7 @@ int oel_mman_mremap(
 
         /* If scrubbing is enabled, scrub the unmapped portion */
         if (mman->scrub)
-            oel_memset((void*)new_end, 0xDD, old_size - new_size);
+            memset((void*)new_end, 0xDD, old_size - new_size);
     }
     else if (new_size > old_size)
     {
@@ -1223,7 +1223,7 @@ int oel_mman_mremap(
         if (_end(vad) == old_end && _get_right_gap(mman, vad) >= delta)
         {
             vad->size += (uint32_t)delta;
-            oel_memset((void*)(start + old_size), 0, delta);
+            memset((void*)(start + old_size), 0, delta);
             new_addr = addr;
             mman->coverage[OEL_MMAN_COVERAGE_9] = true;
 
@@ -1248,7 +1248,7 @@ int oel_mman_mremap(
             }
 
             /* Copy over data from old area */
-            oel_memcpy(addr, (void*)start, old_size);
+            memcpy(addr, (void*)start, old_size);
 
             /* Ummap the old area */
             if (oel_mman_munmap(mman, (void*)start, old_size) != 0)

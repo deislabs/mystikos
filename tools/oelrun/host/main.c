@@ -229,8 +229,8 @@ Options:\n\
 int main(int argc, const char* argv[])
 {
     oe_result_t r;
-    oe_enclave_t* enclave = NULL;
     const oe_enclave_type_t type = OE_ENCLAVE_TYPE_SGX;
+    oe_enclave_t* enclave;
     const uint32_t flags = OE_ENCLAVE_FLAG_DEBUG;
     int retval;
     char dir[PATH_MAX];

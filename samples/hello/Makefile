@@ -13,5 +13,8 @@ all:
 run: all
 	$(BINDIR)/oelrun $(TRACE_SYSCALLS) $(ROOTFS) /bin/hello red green blue yellow
 
+gdb: all
+	$(OEGDB) --args $(BINDIR)/oelrun $(TRACE_SYSCALLS) $(ROOTFS) /bin/hello red green blue yellow
+
 clean:
 	rm -rf $(ROOTFS)

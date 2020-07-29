@@ -39,3 +39,4 @@ endef
 
 MUSL_GCC=$(TOP)/build/host-musl/bin/musl-gcc
 MUSL_LIB=$(TOP)/build/host-musl/lib
+OEGDB=$(TOP)/build/bin/oegdb
