@@ -5,6 +5,7 @@
 #include <oel/fs.h>
 #include <oel/ramfs.h>
 #include "eraise.h"
+#include "strings.h"
 
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 
@@ -157,7 +158,7 @@ static int _new_inode(
     if (!(inode = calloc(1, sizeof(oel_inode_t))))
         ERAISE(-ENOMEM);
 
-    if (strlcpy(inode->name, name, sizeof(inode->name)) >= sizeof(inode->name))
+    if (STRLCPY(inode->name, name) >= sizeof(inode->name))
         ERAISE(-ENAMETOOLONG);
 
     inode->mode = rdonly ? MODE_RD : (MODE_RD|MODE_WR);
