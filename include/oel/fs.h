@@ -27,7 +27,11 @@ struct oel_fs
 
     off_t (*fs_lseek)(oel_fs_t* fs, int fd, off_t offset, int whence);
 
-    ssize_t (*fs_read)(oel_fs_t* fs, int fd, void* buf, size_t count);
+    ssize_t (*fs_read)(
+        oel_fs_t* fs,
+        oel_inode_t* inode,
+        void* buf,
+        size_t count);
 
     ssize_t (*fs_write)(oel_fs_t* fs, int fd, const void* buf, size_t count);
 
