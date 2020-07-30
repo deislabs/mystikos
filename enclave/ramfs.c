@@ -5,21 +5,29 @@
 #include <assert.h>
 #include <oel/fs.h>
 #include <oel/ramfs.h>
+#include <dirent.h>
 #include "eraise.h"
 #include "strings.h"
 #include "bufu64.h"
+#include "buf.h"
 
-#define MODE_RD   (S_IRUSR | S_IRGRP | S_IROTH)
-#define MODE_WR   (S_IWUSR | S_IWGRP | S_IWOTH)
-#define MODE_RDWR (MODE_RD | MODE_WR)
+#define MODE_R   (S_IRUSR | S_IRGRP | S_IROTH)
+#define MODE_W   (S_IWUSR | S_IWGRP | S_IWOTH)
+#define MODE_X   (S_IXUSR | S_IXGRP | S_IXOTH)
+#define MODE_RWX (MODE_R | MODE_W | MODE_X)
 
 #define MAGIC 0x28F21778D1E711EA
+
+/* Assume that d_ino is 8 bytes (big enough to hold a pointer) */
+_Static_assert(sizeof(((struct dirent*)0)->d_ino) == 8, "d_ino");
+
+/* Assume struct dirent is eight-byte aligned */
+_Static_assert(sizeof(struct dirent) % 8 == 0, "dirent");
 
 typedef struct ramfs
 {
     uint64_t magic;
     oel_fs_t base;
-    bool rdonly;
     oel_inode_t* root;
 }
 ramfs_t;
@@ -28,14 +36,14 @@ struct oel_inode
 {
     uint64_t magic;
     char name[PATH_MAX]; /* name of file or directory */
-    uint32_t mode; /* MODE_RD or (MODE_RD|MODE_WR) */
-    uint8_t type; /* DT_DIR or DT_REG */
+    uint32_t mode; /* Type and mode */
     size_t links; /* number of hard links */
-    uint8_t* data; /* blocks (files) */
-    size_t size; /* the size (files) or 0 (directories) */
-    size_t offset; /* the current file offset (files) */
+    oel_buf_t data; /* file or directory data */
     oel_bufu64_t children; /* children (directories) */
-    uint32_t access;
+
+    /* dynamic state data */
+    size_t offset; /* the current file offset (files) */
+    uint32_t open_access; /* (O_RDONLY | O_RDWR | O_WRONLY) */
 };
 
 static bool _valid_inode(const oel_inode_t* inode)
@@ -49,8 +57,8 @@ static bool _valid_ramfs(const ramfs_t* ramfs)
 }
 
 static int _new_inode(
+    oel_inode_t* parent,
     const char* name,
-    uint8_t type, /* DT_DIR or DT_REG */
     uint32_t mode,
     oel_inode_t** inode_out)
 {
@@ -65,8 +73,67 @@ static int _new_inode(
 
     inode->magic = MAGIC;
     inode->mode = mode;
-    inode->type = type;
     inode->links = 1;
+
+    /* The root directory is its own parent */
+    if (!parent)
+        parent = inode;
+
+    /* If new inode is a directory, add the "." and ".." elements */
+    if (S_ISDIR(mode))
+    {
+        /* Add the "." entry */
+        {
+            struct dirent ent =
+            {
+                .d_ino = (ino_t)inode,
+                .d_off = (off_t)inode->data.size,
+                .d_reclen = sizeof(struct dirent),
+                .d_type = DT_DIR,
+            };
+
+            if (STRLCPY(ent.d_name, ".") >= sizeof(ent.d_name))
+                ERAISE(-ENAMETOOLONG);
+
+            if (oel_buf_append(&inode->data, &ent, sizeof(ent)) != 0)
+                ERAISE(-ENOMEM);
+        }
+
+        /* Add the ".." entry */
+        {
+            struct dirent ent =
+            {
+                .d_ino = (ino_t)parent,
+                .d_off = (off_t)inode->data.size,
+                .d_reclen = sizeof(struct dirent),
+                .d_type = DT_DIR,
+            };
+
+            if (STRLCPY(ent.d_name, "..") >= sizeof(ent.d_name))
+                ERAISE(-ENAMETOOLONG);
+
+            if (oel_buf_append(&inode->data, &ent, sizeof(ent)) != 0)
+                ERAISE(-ENOMEM);
+        }
+    }
+
+    /* Add this inode to the parent inode's directory table */
+    if (parent != inode)
+    {
+        struct dirent ent =
+        {
+            .d_ino = (ino_t)parent,
+            .d_off = (off_t)parent->data.size,
+            .d_reclen = sizeof(struct dirent),
+            .d_type = S_ISDIR(mode) ? DT_DIR : DT_REG,
+        };
+
+        if (STRLCPY(ent.d_name, name) >= sizeof(ent.d_name))
+            ERAISE(-ENAMETOOLONG);
+
+        if (oel_buf_append(&parent->data, &ent, sizeof(ent)) != 0)
+            ERAISE(-ENOMEM);
+    }
 
     *inode_out = inode;
     inode = NULL;
@@ -78,16 +145,6 @@ done:
 
     return ret;
 }
-
-#if 0
-static oel_inode_t* _get_child(const oel_inode_t* inode, size_t i)
-{
-    if (i >= inode->children.size)
-        return NULL;
-
-    return ((oel_inode_t**)inode->children.data)[i];
-}
-#endif
 
 static oel_inode_t* _find_child(const oel_inode_t* inode, const char* name)
 {
@@ -170,20 +227,6 @@ done:
     return ret;
 }
 
-static int _fs_release(oel_fs_t* fs)
-{
-    (void)fs;
-    return -EINVAL;
-}
-
-static int _fs_creat(oel_fs_t* fs, const char* pathname, mode_t mode)
-{
-    (void)fs;
-    (void)pathname;
-    (void)mode;
-    return -EINVAL;
-}
-
 static int _path_to_inode(
     ramfs_t* ramfs,
     const char* path,
@@ -257,6 +300,28 @@ done:
     return ret;
 }
 
+/*
+**==============================================================================
+**
+** interface:
+**
+**==============================================================================
+*/
+
+static int _fs_release(oel_fs_t* fs)
+{
+    (void)fs;
+    return -EINVAL;
+}
+
+static int _fs_creat(oel_fs_t* fs, const char* pathname, mode_t mode)
+{
+    (void)fs;
+    (void)pathname;
+    (void)mode;
+    return -EINVAL;
+}
+
 static int _fs_open(
     oel_fs_t* fs,
     const char* pathname,
@@ -276,9 +341,6 @@ static int _fs_open(
     if (!_valid_ramfs(ramfs) || !pathname || !inode)
         ERAISE(-EINVAL);
 
-    if (ramfs->rdonly && (flags & (O_RDWR | O_WRONLY)))
-        ERAISE(-EACCES);
-
     errnum = _path_to_inode(ramfs, pathname, &inode);
 
     /* If the file already exists */
@@ -287,14 +349,14 @@ static int _fs_open(
         if ((flags & O_CREAT) && (flags & O_EXCL))
             ERAISE(-EEXIST);
 
-        if ((flags & O_DIRECTORY) && (inode->type != DT_DIR))
+        if ((flags & O_DIRECTORY) && !S_ISDIR(inode->mode))
             ERAISE(-ENOTDIR);
 
         if ((flags & O_TRUNC))
-            inode->size = 0;
+            oel_buf_clear(&inode->data);
 
         if ((flags & O_APPEND))
-            inode->offset = inode->size;
+            inode->offset = inode->data.size;
     }
     else if (errnum == -ENOENT)
     {
@@ -314,7 +376,7 @@ static int _fs_open(
         ECHECK(_path_to_inode(ramfs, dirname, &parent));
 
         /* Create the new file inode */
-        ECHECK(_new_inode(basename, DT_REG, mode, &inode));
+        ECHECK(_new_inode(parent, basename, (S_IFREG | mode), &inode));
 
         /* Add new file inode to the parent */
         ECHECK(_add_child(parent, inode));
@@ -325,7 +387,7 @@ static int _fs_open(
     }
 
     /* Save the file access flags */
-    inode->access = (flags & (O_RDONLY | O_RDWR | O_WRONLY));
+    inode->open_access = (flags & (O_RDONLY | O_RDWR | O_WRONLY));
 
     *inode_out = inode;
     inode = NULL;
@@ -448,7 +510,7 @@ static int _fs_closedir(oel_fs_t* fs, DIR* dirp)
     return -EINVAL;
 }
 
-int oel_init_ramfs(bool rdonly, oel_fs_t** fs_out)
+int oel_init_ramfs(oel_fs_t** fs_out)
 {
     int ret = 0;
     ramfs_t* ramfs = NULL;
@@ -476,7 +538,6 @@ int oel_init_ramfs(bool rdonly, oel_fs_t** fs_out)
         _fs_closedir,
     };
     oel_inode_t* root_inode = NULL;
-    uint32_t mode;
 
     if (fs_out)
         *fs_out = NULL;
@@ -487,13 +548,10 @@ int oel_init_ramfs(bool rdonly, oel_fs_t** fs_out)
     if (!(ramfs = calloc(1, sizeof(ramfs_t))))
         ERAISE(-ENOMEM);
 
-    mode = rdonly ?  MODE_RD : MODE_RDWR;
-
-    ECHECK(_new_inode("/", DT_DIR, mode, &root_inode));
+    ECHECK(_new_inode(NULL, "/", (S_IFDIR | MODE_RWX), &root_inode));
 
     ramfs->magic = MAGIC;
     ramfs->base = _base;
-    ramfs->rdonly = rdonly;
     ramfs->root = root_inode;
     root_inode = NULL;
 
