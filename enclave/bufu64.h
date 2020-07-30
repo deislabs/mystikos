@@ -24,4 +24,6 @@ int oel_bufu64_resize(oel_bufu64_t* buf, size_t new_size);
 
 int oel_bufu64_append(oel_bufu64_t* buf, const uint64_t* data, size_t size);
 
+int oel_bufu64_append1(oel_bufu64_t* buf, uint64_t data);
+
 #endif /* _OEL_BUF64_h */

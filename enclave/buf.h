@@ -14,7 +14,7 @@
 
 typedef struct _oel_buf
 {
-    void* data;
+    uint8_t* data;
     size_t size;
     size_t cap;
 } oel_buf_t;
@@ -28,5 +28,7 @@ int oel_buf_reserve(oel_buf_t* buf, size_t cap);
 int oel_buf_resize(oel_buf_t* buf, size_t new_size);
 
 int oel_buf_append(oel_buf_t* buf, const void* data, size_t size);
+
+int oel_buf_remove(oel_buf_t* buf, size_t pos, size_t size);
 
 #endif /* _OEL_BUF_H */

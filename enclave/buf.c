@@ -113,8 +113,25 @@ int oel_buf_append(oel_buf_t* buf, const void* data, size_t size)
     }
 
     /* Copy the data */
-    memcpy((unsigned char*)buf->data + buf->size, data, size);
+    memcpy(buf->data + buf->size, data, size);
     buf->size = new_size;
+
+    return 0;
+}
+
+int oel_buf_remove(oel_buf_t* buf, size_t pos, size_t size)
+{
+    size_t rem;
+
+    if (!buf || pos > size || pos + size > size)
+        return -1;
+
+    rem = buf->size - pos;
+
+    if (rem)
+        memmove(buf->data + pos, buf->data + pos + size, rem);
+
+    buf->size -= size;
 
     return 0;
 }
