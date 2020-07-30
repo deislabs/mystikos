@@ -268,7 +268,7 @@ static int _fs_open(
     oel_inode_t* inode = NULL;
     int ret = 0;
     int errnum;
-    bool new_file = false;
+    bool is_new_inode = false;
 
     if (inode_out)
         *inode_out = NULL;
@@ -302,7 +302,7 @@ static int _fs_open(
         char basename[PATH_MAX];
         oel_inode_t* parent;
 
-        new_file = true;
+        is_new_inode = true;
 
         if (!(flags & O_CREAT))
             ERAISE(-ENOENT);
@@ -332,7 +332,7 @@ static int _fs_open(
 
 done:
 
-    if (inode && new_file)
+    if (inode && is_new_inode)
         free(inode);
 
     return ret;
