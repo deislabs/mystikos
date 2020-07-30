@@ -10,7 +10,7 @@
 
 typedef struct oel_fs oel_fs_t;
 
-typedef struct oel_inode oel_inode_t;
+typedef struct oel_file oel_file_t;
 
 struct oel_fs
 {
@@ -23,13 +23,13 @@ struct oel_fs
         const char* pathname,
         int flags,
         mode_t mode,
-        oel_inode_t** inode);
+        oel_file_t** file);
 
     off_t (*fs_lseek)(oel_fs_t* fs, int fd, off_t offset, int whence);
 
     ssize_t (*fs_read)(
         oel_fs_t* fs,
-        oel_inode_t* inode,
+        oel_file_t* file,
         void* buf,
         size_t count);
 
