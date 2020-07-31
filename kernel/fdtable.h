@@ -14,8 +14,15 @@ typedef enum libos_fdtable_type
 libos_fdtable_type_t;
 
 /* return a file descriptor */
-int libos_fdtable_add(libos_fdtable_type_t type, void* object);
+int libos_fdtable_add(
+    libos_fdtable_type_t type,
+    void* device,
+    void* object);
 
-int libos_fdtable_find(int fd, libos_fdtable_type_t type, void** object);
+int libos_fdtable_find(
+    int fd,
+    libos_fdtable_type_t type,
+    void** device,
+    void** object);
 
 #endif /* _LIBOS_FDTABLE_H */

@@ -1,0 +1,22 @@
+#include <libos/file.h>
+#include <libos/syscall.h>
+
+int libos_open(const char* pathname, int flags, mode_t mode)
+{
+    return (int)libos_syscall_ret(libos_syscall_open(pathname, flags, mode));
+}
+
+int libos_close(int fd)
+{
+    return (int)libos_syscall_ret(libos_syscall_close(fd));
+}
+
+ssize_t libos_read(int fd, void* buf, size_t count)
+{
+    return (ssize_t)libos_syscall_ret(libos_syscall_read(fd, buf, count));
+}
+
+ssize_t libos_write(int fd, const void* buf, size_t count)
+{
+    return (ssize_t)libos_syscall_ret(libos_syscall_write(fd, buf, count));
+}

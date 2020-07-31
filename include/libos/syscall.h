@@ -2,6 +2,7 @@
 #define _LIBOS_SYSCALL_H
 
 #include <sys/syscall.h>
+#include <fcntl.h>
 #include <stdbool.h>
 
 #define LIBOS_SYS_trace 1000
@@ -23,6 +24,16 @@ int libos_set_exit_jump(void);
 
 void libos_set_rootfs(const char* path);
 
+long libos_syscall_ret(long r);
+
 long libos_syscall(long n, long params[6]);
+
+long libos_syscall_open(const char* pathname, int flags, mode_t mode);
+
+long libos_syscall_close(int fd);
+
+long libos_syscall_read(int fd, void* buf, size_t count);
+
+long libos_syscall_write(int fd, const void* buf, size_t count);
 
 #endif /* _LIBOS_SYSCALL_H */

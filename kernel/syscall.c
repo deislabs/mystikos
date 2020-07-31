@@ -459,7 +459,7 @@ static long _return(long n, long ret)
 
 long libos_syscall_open(const char* pathname, int flags, mode_t mode)
 {
-    int ret = 0;
+    long ret = 0;
     int fd;
     char suffix[PATH_MAX];
     libos_fs_t* fs;
@@ -469,15 +469,72 @@ long libos_syscall_open(const char* pathname, int flags, mode_t mode)
 
     ECHECK((*fs->fs_open)(fs, suffix, flags, mode, &file));
 
-    if ((fd = libos_fdtable_add(LIBOS_FDTABLE_TYPE_FILE, file)))
+    if ((fd = libos_fdtable_add(LIBOS_FDTABLE_TYPE_FILE, fs, file)))
     {
         fprintf(stderr, "libos_fdtable_add() failed: %d\n", fd);
+        ret = fd;
         goto done;
     }
 
     ret = fd;
 
 done:
+
+    return ret;
+}
+
+long libos_syscall_close(int fd)
+{
+    long ret = 0;
+    libos_fs_t* fs;
+    libos_file_t* file;
+    const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_FILE;
+
+    ECHECK(libos_fdtable_find(fd, type, (void**)&fs, (void**)&file));
+
+    ECHECK((*fs->fs_close)(fs, file));
+
+done:
+    return ret;
+}
+
+long libos_syscall_read(int fd, void* buf, size_t count)
+{
+    long ret = 0;
+    libos_fs_t* fs;
+    libos_file_t* file;
+    const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_FILE;
+
+    ECHECK(libos_fdtable_find(fd, type, (void**)&fs, (void**)&file));
+
+    ret = (*fs->fs_read)(fs, file, buf, count);
+
+done:
+    return ret;
+}
+
+long libos_syscall_write(int fd, const void* buf, size_t count)
+{
+    long ret = 0;
+    libos_fs_t* fs;
+    libos_file_t* file;
+    const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_FILE;
+
+    ECHECK(libos_fdtable_find(fd, type, (void**)&fs, (void**)&file));
+
+    ret = (*fs->fs_write)(fs, file, buf, count);
+
+done:
+    return ret;
+}
+
+long libos_syscall_ret(long ret)
+{
+    if ((unsigned long)ret > -4096UL)
+    {
+        errno = (int)-ret;
+        return -1;
+    }
 
     return ret;
 }
