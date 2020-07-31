@@ -28,6 +28,25 @@
     }                                                               \
     while (0)
 
+#define ECHECK_QUIET(ERRNUM) \
+    do                       \
+    {                        \
+        int _r_ = ERRNUM;    \
+        if (_r_ != 0)        \
+        {                    \
+            goto done;       \
+        }                    \
+    }                        \
+    while (0)
+
+#define ERAISE_QUIET(ERRNUM) \
+    do                       \
+    {                        \
+        ret = ERRNUM;        \
+        goto done;           \
+    }                        \
+    while (0)
+
 void oel_eraise(
     const char* file,
     uint32_t line,

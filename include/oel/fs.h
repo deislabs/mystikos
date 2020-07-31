@@ -33,7 +33,11 @@ struct oel_fs
         void* buf,
         size_t count);
 
-    ssize_t (*fs_write)(oel_fs_t* fs, int fd, const void* buf, size_t count);
+    ssize_t (*fs_write)(
+        oel_fs_t* fs,
+        oel_file_t* file,
+        const void* buf,
+        size_t count);
 
     ssize_t (*fs_readv)(
         oel_fs_t* fs,
@@ -47,7 +51,7 @@ struct oel_fs
         const struct iovec* iov,
         int iovcnt);
 
-    int (*fs_close)(oel_fs_t* fs, int fd);
+    int (*fs_close)(oel_fs_t* fs, oel_file_t* file);
 
     int (*fs_stat)(oel_fs_t* fs, const char* pathname, struct stat* statbuf);
 

@@ -33,6 +33,11 @@ OEHOST_LDFLAGS = -L$(LIBDIR)/openenclave/host -Wl,-z,noexecstack -loehost -ldl -
 
 OEHOST_CFLAGS = -g -Wall -Werror
 
+OEENCLAVE_INCLUDES =
+OEENCLAVE_INCLUDES += -I$(INCDIR)
+OEENCLAVE_INCLUDES += -I$(TOP)/include
+OEENCLAVE_INCLUDES += -I$(INCDIR)/openenclave/3rdparty/libc
+
 define NL
 
 endef

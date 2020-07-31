@@ -25,13 +25,13 @@ typedef struct oel_inode oel_inode_t;
 
 typedef struct ramfs
 {
-    uint64_t magic;
     oel_fs_t base;
+    uint64_t magic;
     oel_inode_t* root;
 }
 ramfs_t;
 
-static bool _valid_ramfs(const ramfs_t* ramfs)
+static bool _ramfs_valid(const ramfs_t* ramfs)
 {
     return ramfs && ramfs->magic == RAMFS_MAGIC;
 }
@@ -54,6 +54,11 @@ struct oel_inode
     size_t nopens; /* number of times file is currently opened */
     oel_buf_t buf; /* file or directory data */
 };
+
+static bool _inode_valid(const oel_inode_t* inode)
+{
+    return inode && inode->magic == INODE_MAGIC;
+}
 
 static void _inode_free(oel_inode_t* inode)
 {
@@ -131,7 +136,7 @@ static int _inode_new(
     {
         struct dirent ent =
         {
-            .d_ino = (ino_t)parent,
+            .d_ino = (ino_t)inode,
             .d_off = (off_t)parent->buf.size,
             .d_reclen = sizeof(struct dirent),
             .d_type = S_ISDIR(mode) ? DT_DIR : DT_REG,
@@ -157,7 +162,9 @@ done:
     return ret;
 }
 
-static oel_inode_t* _inode_find_child(const oel_inode_t* inode, const char* name)
+static oel_inode_t* _inode_find_child(
+    const oel_inode_t* inode,
+    const char* name)
 {
     struct dirent* ents = (struct dirent*)inode->buf.data;
     size_t nents = inode->buf.size / sizeof(struct dirent);
@@ -170,6 +177,36 @@ static oel_inode_t* _inode_find_child(const oel_inode_t* inode, const char* name
 
     /* Not found */
     return NULL;
+}
+
+/* release this inode and all of its children */
+static void _inode_release(oel_inode_t* inode, uint8_t d_type)
+{
+    struct dirent* ents = (struct dirent*)inode->buf.data;
+    size_t nents = inode->buf.size / sizeof(struct dirent);
+
+    /* Free the children first */
+    if (d_type == DT_DIR)
+    {
+        for (size_t i = 0; i < nents; i++)
+        {
+            const struct dirent* ent = &ents[i];
+            oel_inode_t* child;
+
+            if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
+                continue;
+
+            child = (oel_inode_t*)ent->d_ino;
+            assert(child);
+            assert(_inode_valid(child));
+
+            if (child != inode)
+                _inode_release(child, ent->d_type);
+        }
+    }
+
+    /* Free self */
+    _inode_free(inode);
 }
 
 /*
@@ -228,13 +265,6 @@ _Static_assert(sizeof(((struct dirent*)0)->d_ino) == 8, "d_ino");
 
 /* Assume struct dirent is eight-byte aligned */
 _Static_assert(sizeof(struct dirent) % 8 == 0, "dirent");
-
-#if 0
-static bool _valid_inode(const oel_inode_t* inode)
-{
-    return inode && inode->magic == INODE_MAGIC;
-}
-#endif
 
 static int _split_path(
     const char* path,
@@ -302,20 +332,24 @@ static int _path_to_inode(
     const size_t MAX_ELEMENTS = sizeof(elements) / sizeof(elements[0]);
     size_t nelements = 0;
     char buf[PATH_MAX];
+    oel_inode_t* inode = NULL;
 
     if (inode_out)
         *inode_out = NULL;
 
     if (!path || !inode_out)
-        ERAISE(-EINVAL);
+        ERAISE_QUIET(-EINVAL);
 
     /* Fail if path does not begin with '/' */
     if (path[0] != '/')
-        ERAISE(-EINVAL);
+        ERAISE_QUIET(-EINVAL);
 
     /* Copy the path */
     if (STRLCPY(buf, path) >= sizeof(buf))
-        ERAISE(-ENAMETOOLONG);
+        ERAISE_QUIET(-ENAMETOOLONG);
+
+    /* The first element is the root directory */
+    elements[nelements++] = "/";
 
     /* Split the path into components */
     {
@@ -329,13 +363,19 @@ static int _path_to_inode(
         }
     }
 
+#if 0
+    printf("===elements\n");
+    for (size_t i = 0; i < nelements; i++)
+    {
+        printf("elements[%zu]=\"%s\"\n", i, elements[i]);
+    }
+#endif
+
     /* First element should be "/" */
     assert(strcmp(elements[0], "/") == 0);
 
     /* search for the inode */
     {
-        oel_inode_t* inode = NULL;
-
         if (nelements == 1)
         {
             inode = ramfs->root;
@@ -347,9 +387,9 @@ static int _path_to_inode(
             for (size_t i = 1; i < nelements; i++)
             {
                 if (!(current = _inode_find_child(current, elements[i])))
-                    ERAISE(-ENOENT);
+                    ERAISE_QUIET(-ENOENT);
 
-                if (i == nelements)
+                if (i + 1 == nelements)
                 {
                     inode = current;
                     break;
@@ -358,8 +398,10 @@ static int _path_to_inode(
         }
 
         if (!inode)
-            ERAISE(-ENOENT);
+            ERAISE_QUIET(-ENOENT);
     }
+
+    *inode_out = inode;
 
 done:
     return ret;
@@ -375,8 +417,18 @@ done:
 
 static int _fs_release(oel_fs_t* fs)
 {
-    (void)fs;
-    return -EINVAL;
+    int ret = 0;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+
+    if (!_ramfs_valid(ramfs))
+        ERAISE(-EINVAL);
+
+    _inode_release(ramfs->root, DT_DIR);
+
+    free(ramfs);
+
+done:
+    return ret;
 }
 
 static int _fs_creat(oel_fs_t* fs, const char* pathname, mode_t mode)
@@ -404,7 +456,13 @@ static int _fs_open(
     if (file_out)
         *file_out = NULL;
 
-    if (!_valid_ramfs(ramfs) || !pathname || !file_out)
+    if (!_ramfs_valid(ramfs))
+        ERAISE(-EINVAL);
+
+    if (!pathname)
+        ERAISE(-EINVAL);
+
+    if (!file_out)
         ERAISE(-EINVAL);
 
     /* Create the file object */
@@ -454,9 +512,12 @@ static int _fs_open(
     }
 
     /* Initialize the file */
+    file->magic = FILE_MAGIC;
     file->inode = inode;
     file->access = (flags & (O_RDONLY | O_RDWR | O_WRONLY));
     inode->nopens++;
+
+    assert(_file_valid(file));
 
     *file_out = file;
     file = NULL;
@@ -490,7 +551,13 @@ static ssize_t _fs_read(
     ssize_t ret = 0;
     size_t n;
 
-    if (!_valid_ramfs(ramfs) || !_file_valid(file) || (!buf && count))
+    if (!_ramfs_valid(ramfs))
+        ERAISE(-EINVAL);
+
+    if (!_file_valid(file))
+        ERAISE(-EINVAL);
+
+    if (!buf && count)
         ERAISE(-EINVAL);
 
     /* reading zero bytes is okay */
@@ -512,8 +579,8 @@ static ssize_t _fs_read(
         }
 
         n = (count < remaining) ? count : remaining;
-
         memcpy(buf, _file_current(file), n);
+        file->offset += n;
     }
 
     ret = (ssize_t)n;
@@ -522,9 +589,50 @@ done:
     return ret;
 }
 
-static ssize_t _fs_write(oel_fs_t* fs, int fd, const void* buf, size_t count)
+static ssize_t _fs_write(
+    oel_fs_t* fs,
+    oel_file_t* file,
+    const void* buf,
+    size_t count)
 {
-    return -EINVAL;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+    ssize_t ret = 0;
+
+    if (!_ramfs_valid(ramfs))
+        ERAISE(-EINVAL);
+
+    if (!_file_valid(file))
+        ERAISE(-EINVAL);
+
+    if (!buf && count)
+        ERAISE(-EINVAL);
+
+    /* reading zero bytes is okay */
+    if (!count)
+        goto done;
+
+    /* Verify that the offset is in bounds */
+    if (file->offset > _file_size(file))
+        ERAISE(-EINVAL);
+
+    /* Write count bytes to the file or directory */
+    {
+        size_t new_offset = file->offset + count;
+
+        if (new_offset > _file_size(file))
+        {
+            if (oel_buf_resize(&file->inode->buf, new_offset) != 0)
+                ERAISE(-ENOMEM);
+        }
+
+        memcpy(_file_current(file), buf, count);
+        file->offset = new_offset;
+    }
+
+    ret = (ssize_t)count;
+
+done:
+    return ret;
 }
 
 static ssize_t _fs_readv(
@@ -545,9 +653,24 @@ static ssize_t _fs_writev(
     return -EINVAL;
 }
 
-static int _fs_close(oel_fs_t* fs, int fd)
+static int _fs_close(oel_fs_t* fs, oel_file_t* file)
 {
-    return -EINVAL;
+    int ret = 0;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+
+    if (!_ramfs_valid(ramfs) || !_file_valid(file))
+        ERAISE(-EINVAL);
+
+    assert(file->inode);
+    assert(_inode_valid(file->inode));
+    assert(file->inode->nopens > 0);
+    file->inode->nopens--;
+
+    memset(file, 0xdd, sizeof(oel_file_t));
+    free(file);
+
+done:
+    return ret;
 }
 
 static int _fs_stat(oel_fs_t* fs, const char* pathname, struct stat* statbuf)
