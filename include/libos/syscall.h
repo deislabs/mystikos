@@ -21,4 +21,6 @@ int libos_set_exit_jump(void);
 
 void libos_set_rootfs(const char* path);
 
+long libos_syscall(long n, long params[6]);
+
 #endif /* _LIBOS_SYSCALL_H */

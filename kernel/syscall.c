@@ -382,20 +382,6 @@ static pair_t _pairs[] =
     { SYS_statx, "SYS_statx" },
     { SYS_io_pgetevents, "SYS_io_pgetevents" },
     { SYS_rseq, "SYS_rseq" },
-#if 0
-    { SYS_pidfd_send_signal, "SYS_pidfd_send_signal" },
-    { SYS_io_uring_setup, "SYS_io_uring_setup" },
-    { SYS_io_uring_enter, "SYS_io_uring_enter" },
-    { SYS_io_uring_register, "SYS_io_uring_register" },
-    { SYS_open_tree, "SYS_open_tree" },
-    { SYS_move_mount, "SYS_move_mount" },
-    { SYS_fsopen, "SYS_fsopen" },
-    { SYS_fsconfig, "SYS_fsconfig" },
-    { SYS_fsmount, "SYS_fsmount" },
-    { SYS_fspick, "SYS_fspick" },
-    { SYS_pidfd_open, "SYS_pidfd_open" },
-    { SYS_clone3, "SYS_clone3" },
-#endif
 };
 
 static size_t _n_pairs = sizeof(_pairs) / sizeof(_pairs[0]);
