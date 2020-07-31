@@ -17,7 +17,7 @@ typedef struct mount_table_entry
 } mount_table_entry_t;
 
 static mount_table_entry_t _mount_table[MOUNT_TABLE_SIZE];
-size_t _mount_table_size = 0;
+static size_t _mount_table_size = 0;
 static libos_spinlock_t _lock = LIBOS_SPINLOCK_INITIALIZER;
 
 static bool _installed_free_mount_table = false;
@@ -113,9 +113,7 @@ int libos_mount(libos_fs_t* fs, const char* target)
 
     /* Normalize the target path */
     {
-        if (!libos_realpath(target, &target_buf))
-            ERAISE(EINVAL);
-
+        ECHECK(libos_realpath(target, &target_buf));
         target = target_buf.buf;
     }
 
