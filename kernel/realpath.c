@@ -1,10 +1,10 @@
 #include <string.h>
 #include <stdlib.h>
-#include "path.h"
+#include <libos/types.h>
 #include "eraise.h"
-#include "getcwd.h"
-#include "realpath.h"
-#include "getcwd.h"
+#include <libos/cwd.h>
+#include <libos/realpath.h>
+#include <libos/cwd.h>
 
 int libos_realpath(const char* path, libos_path_t* resolved_path)
 {
@@ -14,11 +14,13 @@ int libos_realpath(const char* path, libos_path_t* resolved_path)
         char buf[PATH_MAX];
         const char* in[PATH_MAX];
         const char* out[PATH_MAX];
-        char resolved[PATH_MAX];
     } variables_t;
     variables_t* v = NULL;
     size_t nin = 0;
     size_t nout = 0;
+
+    if (resolved_path)
+        *resolved_path->buf = '\0';
 
     if (!path || !resolved_path)
         ERAISE(EINVAL);
@@ -82,16 +84,17 @@ int libos_realpath(const char* path, libos_path_t* resolved_path)
 
     /* Build the resolved path. */
     {
-        *v->resolved = '\0';
+        const size_t n = sizeof(libos_path_t);
+        *resolved_path->buf = '\0';
 
         for (size_t i = 0; i < nout; i++)
         {
-            if (strlcat(v->resolved, v->out[i], PATH_MAX) >= PATH_MAX)
+            if (strlcat(resolved_path->buf, v->out[i], n) >= n)
                 ERAISE(ENAMETOOLONG);
 
             if (i != 0 && i + 1 != nout)
             {
-                if (strlcat(v->resolved, "/", PATH_MAX) >= PATH_MAX)
+                if (strlcat(resolved_path->buf, "/", n) >= n)
                     ERAISE(ENAMETOOLONG);
             }
         }

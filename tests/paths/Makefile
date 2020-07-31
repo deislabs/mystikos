@@ -1,4 +1,4 @@
-SUBDIR = samples/empty
+SUBDIR = samples/paths
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
@@ -10,7 +10,7 @@ INCLUDES = -I$(SUBOBJDIR) $(OEENCLAVE_INCLUDES)
 
 CFLAGS = $(OEENCLAVE_CFLAGS)
 
-LDFLAGS = $(OEENCLAVE_LDFLAGS)
+LDFLAGS = $(OEENCLAVE_LDFLAGS) -L$(LIBDIR) -llthread
 
 LIBS = $(LIBDIR)/liboskernel.a
 
