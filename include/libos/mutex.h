@@ -1,7 +1,7 @@
 #ifndef _LIBOS_MUTEX_H
 #define _LIBOS_MUTEX_H
 
-#include "types.h"
+#include <libos/types.h>
 
 #define LIBOS_MUTEX_INITIALIZER 0
 

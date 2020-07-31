@@ -1,6 +1,9 @@
 #ifndef _LIBOS_TYPES_H
 #define _LIBOS_TYPES_H
 
+#include <limits.h>
+#include <stdint.h>
+
 typedef long ssize_t;
 typedef unsigned long size_t;
 typedef signed char int8_t;
@@ -22,5 +25,10 @@ typedef long suseconds_t;
 #define false 0
 #define bool _Bool
 #endif
+
+typedef struct _libos_path
+{
+    char buf[PATH_MAX];
+} libos_path_t;
 
 #endif /* _LIBOS_TYPES_H */

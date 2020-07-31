@@ -1,7 +1,7 @@
 #ifndef _LIBOS_SPINLOCK_H
 #define _LIBOS_SPINLOCK_H
 
-#include "types.h"
+#include <libos/types.h>
 
 #define LIBOS_SPINLOCK_INITIALIZER 0
 

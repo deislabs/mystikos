@@ -5,7 +5,7 @@
 #define _LIBOS_INTERNAL_MMAN_H
 
 #include <openenclave/bits/defs.h>
-#include "types.h"
+#include <libos/types.h>
 
 #define LIBOS_PROT_NONE 0
 #define LIBOS_PROT_READ 1
