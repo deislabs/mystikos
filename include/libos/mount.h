@@ -8,7 +8,7 @@
 #include <limits.h>
 
 /* Mount a file system onto a target path */
-int libos_mount(libos_fs_t* fs, const char* source, const char* target);
+int libos_mount(libos_fs_t* fs, const char* target);
 
 /* Use mounter to resolve this path to a target path */
 int libos_mount_resolve(
