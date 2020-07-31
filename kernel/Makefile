@@ -4,7 +4,7 @@ include $(TOP)/defs.mak
 
 SUBLIBDIR=$(LIBDIR)
 
-ARCHIVE = libos.a
+ARCHIVE = liboskernel.a
 
 SOURCES = $(wildcard *.c)
 
