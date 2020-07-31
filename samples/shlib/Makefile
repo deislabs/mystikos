@@ -15,7 +15,7 @@ all:
 #TRACE_SYSCALLS=--trace-syscalls
 
 run: all
-	oelrun $(TRACE_SYSCALLS) rootfs /bin/main
+	libos $(TRACE_SYSCALLS) rootfs /bin/main
 
 clean:
 	rm -rf rootfs

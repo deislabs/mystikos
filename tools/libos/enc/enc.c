@@ -6,10 +6,10 @@
 #include <string.h>
 #include <assert.h>
 #include <sys/mount.h>
-#include <oel/syscall.h>
-#include <oel/mmanutils.h>
-#include <oel/elfutils.h>
-#include "oelrun_t.h"
+#include <libos/syscall.h>
+#include <libos/mmanutils.h>
+#include <libos/elfutils.h>
+#include "libos_t.h"
 
 static const size_t MMAN_SIZE = 16 * 1024 * 1024;
 
@@ -93,8 +93,8 @@ static void _setup_sockets(void)
     }
 }
 
-int oelrun_enter_ecall(
-    struct oel_options* options,
+int libos_enter_ecall(
+    struct libos_options* options,
     const char* rootfs,
     const void* args,
     size_t args_size,
@@ -116,17 +116,17 @@ int oelrun_enter_ecall(
     if (_deserialize_args(env, env_size, envp, envp_size) != 0)
         goto done;
 
-    argv[0] = "liboelenc.so";
+    argv[0] = "libosenc.so";
 
     if (options)
-        oel_trace_syscalls(options->trace_syscalls);
+        libos_trace_syscalls(options->trace_syscalls);
 
 #ifdef TRACE
     _dump_args(argv);
     _dump_args(envp);
 #endif
 
-    if (oel_setup_mman(MMAN_SIZE) != 0)
+    if (libos_setup_mman(MMAN_SIZE) != 0)
     {
         fprintf(stderr, "_setup_mman() failed\n");
         assert(0);
@@ -140,14 +140,14 @@ int oelrun_enter_ecall(
 
     _setup_sockets();
 
-    oel_set_rootfs(rootfs);
+    libos_set_rootfs(rootfs);
 
     const size_t argc = _count_args(argv);
     const size_t envc = _count_args(envp);
     ret = elf_enter_crt(argc, argv, envc, envp);
 
     _teardown_hostfs();
-    oel_teardown_mman();
+    libos_teardown_mman();
 
 done:
     return ret;

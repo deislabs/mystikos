@@ -5,15 +5,15 @@ enclave
     from "openenclave/edl/logging.edl" import oe_write_ocall;
     from "openenclave/edl/fcntl.edl" import *;
 
-    struct oel_options
+    struct libos_options
     {
         bool trace_syscalls;
     };
 
     trusted
     {
-        public int oelrun_enter_ecall(
-            [in] struct oel_options* options,
+        public int libos_enter_ecall(
+            [in] struct libos_options* options,
             [in, string] const char* rootfs,
             [in, size=args_size] const void* args,
             size_t args_size,

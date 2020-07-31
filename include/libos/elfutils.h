@@ -1,5 +1,5 @@
-#ifndef _OEL_ELFUTILS_H
-#define _OEL_ELFUTILS_H
+#ifndef _LIBOS_ELFUTILS_H
+#define _LIBOS_ELFUTILS_H
 
 #include <elf.h>
 
@@ -44,4 +44,4 @@ int elf_enter_crt(
     size_t envc,
     const char* envp[]);
 
-#endif /* _OEL_ELFUTILS_H */
+#endif /* _LIBOS_ELFUTILS_H */

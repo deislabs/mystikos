@@ -10,7 +10,9 @@ INCLUDES = -I$(INCDIR) -I$(TOP)/include -I$(SUBOBJDIR) -I$(TOP)/enclave
 
 CFLAGS = $(OEENCLAVE_CFLAGS)
 
-LDFLAGS = $(OEENCLAVE_LDFLAGS) -L$(LIBDIR) -loel
+LDFLAGS = $(OEENCLAVE_LDFLAGS) -L$(LIBDIR)
+
+LIBS = $(LIBDIR)/libos.a
 
 CLEAN = $(SUBOBJDIR)/run_t.h $(SUBOBJDIR)/run_t.c $(SUBOBJDIR)/run_args.h
 

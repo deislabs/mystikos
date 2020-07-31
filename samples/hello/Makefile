@@ -11,10 +11,10 @@ all:
 #TRACE_SYSCALLS = --trace-syscalls
 
 run: all
-	$(BINDIR)/oelrun $(TRACE_SYSCALLS) $(ROOTFS) /bin/hello red green blue yellow
+	$(BINDIR)/libos $(TRACE_SYSCALLS) $(ROOTFS) /bin/hello red green blue yellow
 
 gdb: all
-	$(OEGDB) --args $(BINDIR)/oelrun $(TRACE_SYSCALLS) $(ROOTFS) /bin/hello red green blue yellow
+	$(OEGDB) --args $(BINDIR)/libos $(TRACE_SYSCALLS) $(ROOTFS) /bin/hello red green blue yellow
 
 clean:
 	rm -rf $(ROOTFS)

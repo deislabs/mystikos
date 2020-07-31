@@ -4,7 +4,7 @@ include $(TOP)/defs.mak
 
 SUBLIBDIR=$(LIBDIR)
 
-ARCHIVE = liboel.a
+ARCHIVE = libos.a
 
 SOURCES = $(wildcard *.c)
 
@@ -14,7 +14,7 @@ INCLUDES += -I$(INCDIR)/openenclave/3rdparty/libc
 
 CFLAGS = $(OEENCLAVE_CFLAGS)
 
-DEPENDS += $(TOP)/include/oel/fs.h
-DEPENDS += $(TOP)/include/oel/ramfs.h
+DEPENDS += $(TOP)/include/libos/fs.h
+DEPENDS += $(TOP)/include/libos/ramfs.h
 
 include $(TOP)/rules.mak

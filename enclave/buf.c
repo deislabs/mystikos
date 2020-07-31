@@ -6,9 +6,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define OEL_BUF_CHUNK_SIZE 1024
+#define LIBOS_BUF_CHUNK_SIZE 1024
 
-void oel_buf_release(oel_buf_t* buf)
+void libos_buf_release(libos_buf_t* buf)
 {
     if (buf && buf->data)
     {
@@ -16,10 +16,10 @@ void oel_buf_release(oel_buf_t* buf)
         free(buf->data);
     }
 
-    memset(buf, 0x00, sizeof(oel_buf_t));
+    memset(buf, 0x00, sizeof(libos_buf_t));
 }
 
-int oel_buf_clear(oel_buf_t* buf)
+int libos_buf_clear(libos_buf_t* buf)
 {
     if (!buf)
         return -1;
@@ -29,7 +29,7 @@ int oel_buf_clear(oel_buf_t* buf)
     return 0;
 }
 
-int oel_buf_reserve(oel_buf_t* buf, size_t cap)
+int libos_buf_reserve(libos_buf_t* buf, size_t cap)
 {
     if (!buf)
         return -1;
@@ -46,7 +46,7 @@ int oel_buf_reserve(oel_buf_t* buf, size_t cap)
         /* If capacity still insufficent, round to multiple of chunk size */
         if (cap > new_cap)
         {
-            const size_t N = OEL_BUF_CHUNK_SIZE;
+            const size_t N = LIBOS_BUF_CHUNK_SIZE;
             new_cap = (cap + N - 1) / N * N;
         }
 
@@ -61,7 +61,7 @@ int oel_buf_reserve(oel_buf_t* buf, size_t cap)
     return 0;
 }
 
-int oel_buf_resize(oel_buf_t* buf, size_t new_size)
+int libos_buf_resize(libos_buf_t* buf, size_t new_size)
 {
     uint8_t* data;
 
@@ -70,8 +70,8 @@ int oel_buf_resize(oel_buf_t* buf, size_t new_size)
 
     if (new_size == 0)
     {
-        oel_buf_release(buf);
-        memset(buf, 0, sizeof(oel_buf_t));
+        libos_buf_release(buf);
+        memset(buf, 0, sizeof(libos_buf_t));
         return 0;
     }
 
@@ -88,7 +88,7 @@ int oel_buf_resize(oel_buf_t* buf, size_t new_size)
     return 0;
 }
 
-int oel_buf_append(oel_buf_t* buf, const void* data, size_t size)
+int libos_buf_append(libos_buf_t* buf, const void* data, size_t size)
 {
     size_t new_size;
 
@@ -108,7 +108,7 @@ int oel_buf_append(oel_buf_t* buf, const void* data, size_t size)
     {
         int err;
 
-        if ((err = oel_buf_reserve(buf, new_size)) != 0)
+        if ((err = libos_buf_reserve(buf, new_size)) != 0)
             return err;
     }
 
@@ -119,7 +119,7 @@ int oel_buf_append(oel_buf_t* buf, const void* data, size_t size)
     return 0;
 }
 
-int oel_buf_remove(oel_buf_t* buf, size_t pos, size_t size)
+int libos_buf_remove(libos_buf_t* buf, size_t pos, size_t size)
 {
     size_t rem;
 

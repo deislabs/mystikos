@@ -1,10 +1,10 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-#include <oel/spinlock.h>
+#include <libos/spinlock.h>
 
 /* Set the spinlock value to 1 and return the old value */
-static unsigned int _spin_set_locked(oel_spinlock_t* spinlock)
+static unsigned int _spin_set_locked(libos_spinlock_t* spinlock)
 {
     unsigned int value = 1;
 
@@ -17,17 +17,17 @@ static unsigned int _spin_set_locked(oel_spinlock_t* spinlock)
     return value;
 }
 
-int oel_spin_init(oel_spinlock_t* spinlock)
+int libos_spin_init(libos_spinlock_t* spinlock)
 {
     if (!spinlock)
         return -1;
 
-    *spinlock = OEL_SPINLOCK_INITIALIZER;
+    *spinlock = LIBOS_SPINLOCK_INITIALIZER;
 
     return 0;
 }
 
-int oel_spin_lock(oel_spinlock_t* spinlock)
+int libos_spin_lock(libos_spinlock_t* spinlock)
 {
     if (!spinlock)
         return -1;
@@ -45,20 +45,20 @@ int oel_spin_lock(oel_spinlock_t* spinlock)
     return 0;
 }
 
-int oel_spin_unlock(oel_spinlock_t* spinlock)
+int libos_spin_unlock(libos_spinlock_t* spinlock)
 {
     if (!spinlock)
         return -1;
 
     asm volatile("movl %0, %1;"
                  :
-                 : "r"(OEL_SPINLOCK_INITIALIZER), "m"(*spinlock) /* %1 */
+                 : "r"(LIBOS_SPINLOCK_INITIALIZER), "m"(*spinlock) /* %1 */
                  : "memory");
 
     return 0;
 }
 
-int oel_spin_destroy(oel_spinlock_t* spinlock)
+int libos_spin_destroy(libos_spinlock_t* spinlock)
 {
     if (!spinlock)
         return -1;

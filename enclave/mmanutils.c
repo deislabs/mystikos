@@ -1,4 +1,4 @@
-#include <oel/mmanutils.h>
+#include <libos/mmanutils.h>
 #include <stdlib.h>
 #include <limits.h>
 #include <assert.h>
@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
-static oel_mman_t _mman;
+static libos_mman_t _mman;
 static void* _mman_start;
 static void* _mman_end;
 
@@ -31,7 +31,7 @@ static void _dump(uint8_t* p, size_t n)
     printf("\n");
 }
 
-int oel_setup_mman(size_t size)
+int libos_setup_mman(size_t size)
 {
     int ret = -1;
     void* base;
@@ -50,12 +50,12 @@ int oel_setup_mman(size_t size)
     memset((uint8_t*)_mman_start - PAGE_SIZE, GUARD_CHAR, PAGE_SIZE);
     memset((uint8_t*)_mman_end, GUARD_CHAR, PAGE_SIZE);
 
-    if (oel_mman_init(&_mman, (uintptr_t)base, size) != 0)
+    if (libos_mman_init(&_mman, (uintptr_t)base, size) != 0)
         goto done;
 
     _mman.scrub = true;
 
-    oel_mman_set_sanity(&_mman, true);
+    libos_mman_set_sanity(&_mman, true);
 
     ret = 0;
 
@@ -63,9 +63,9 @@ done:
     return ret;
 }
 
-int oel_teardown_mman(void)
+int libos_teardown_mman(void)
 {
-    assert(oel_mman_is_sane(&_mman));
+    assert(libos_mman_is_sane(&_mman));
 
     /* Check the start guard page */
     if (_check_guard((uint8_t*)_mman_start - PAGE_SIZE) != 0)
@@ -173,7 +173,7 @@ done:
     return ret;
 }
 
-void* oel_mmap(
+void* libos_mmap(
     void *addr,
     size_t length,
     int prot,
@@ -206,11 +206,11 @@ void* oel_mmap(
         return addr;
     }
 
-    int tflags = OEL_MAP_ANONYMOUS | OEL_MAP_PRIVATE;
+    int tflags = LIBOS_MAP_ANONYMOUS | LIBOS_MAP_PRIVATE;
 
-    if (oel_mman_map(&_mman, addr, length, prot, tflags, &ptr) != 0)
+    if (libos_mman_map(&_mman, addr, length, prot, tflags, &ptr) != 0)
     {
-        printf("oel_mman_map: error: %s\n", _mman.err);
+        printf("libos_mman_map: error: %s\n", _mman.err);
         return (void*)-1;
     }
 

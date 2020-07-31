@@ -1,5 +1,5 @@
 #include <openenclave/enclave.h>
-#include <oel/mman.h>
+#include <libos/mman.h>
 #include "run_t.h"
 
 #define D(X)
@@ -12,7 +12,7 @@ size_t __oe_get_heap_size();
 
 static size_t PGSZ = OE_PAGE_SIZE;
 
-static bool _coverage[OEL_MMAN_COVERAGE_N];
+static bool _coverage[LIBOS_MMAN_COVERAGE_N];
 
 int oe_host_printf(const char* fmt, ...);
 void* oe_memalign(size_t alignment, size_t size);
@@ -32,9 +32,9 @@ static int _rand(void)
 }
 
 /* Merge heap implementation coverage branches into _coverage[] variable */
-static void _merge_coverage(const oel_mman_t* heap)
+static void _merge_coverage(const libos_mman_t* heap)
 {
-    for (size_t i = 0; i < OEL_MMAN_COVERAGE_N; i++)
+    for (size_t i = 0; i < LIBOS_MMAN_COVERAGE_N; i++)
     {
         if (heap->coverage[i])
         {
@@ -46,24 +46,24 @@ static void _merge_coverage(const oel_mman_t* heap)
 /* Check that all branches were reached in the heap implementation */
 static void _check_coverage()
 {
-    for (size_t i = 0; i < OEL_MMAN_COVERAGE_N; i++)
+    for (size_t i = 0; i < LIBOS_MMAN_COVERAGE_N; i++)
     {
         if (!_coverage[i])
         {
-            PRINTF("*** uncovered: OEL_MMAN_COVERAGE_%zu\n", i);
+            PRINTF("*** uncovered: LIBOS_MMAN_COVERAGE_%zu\n", i);
             oe_assert(0);
         }
         else
         {
-            PRINTF("=== passed OEL_MMAN_COVERAGE_%zu\n", i);
+            PRINTF("=== passed LIBOS_MMAN_COVERAGE_%zu\n", i);
         }
     }
 }
 
 /* Cound the VADs in the VAD list */
-size_t _count_vads(const oel_vad_t* list)
+size_t _count_vads(const libos_vad_t* list)
 {
-    const oel_vad_t* p;
+    const libos_vad_t* p;
     size_t count = 0;
 
     for (p = list; p; p = p->next)
@@ -73,7 +73,7 @@ size_t _count_vads(const oel_vad_t* list)
 }
 
 /* Initialize the heap object */
-static int _init_mman(oel_mman_t* heap, size_t size)
+static int _init_mman(libos_mman_t* heap, size_t size)
 {
     void* base;
 
@@ -84,30 +84,30 @@ static int _init_mman(oel_mman_t* heap, size_t size)
         return -1;
     }
 
-    if (oel_mman_init(heap, (uintptr_t)base, size) != OE_OK)
+    if (libos_mman_init(heap, (uintptr_t)base, size) != OE_OK)
     {
-        PRINTF("ERROR: oel_mman_init(): %s\n", heap->err);
+        PRINTF("ERROR: libos_mman_init(): %s\n", heap->err);
         return -1;
     }
 
     heap->scrub = true;
 
-    oel_mman_set_sanity(heap, true);
+    libos_mman_set_sanity(heap, true);
 
     return 0;
 }
 
 /* Free the base of the heap */
-static void _free_mman(oel_mman_t* heap)
+static void _free_mman(libos_mman_t* heap)
 {
     oe_free((void*)heap->base);
 }
 
 /* Check that the VAD list is sorted by starting address */
-static bool _is_sorted(const oel_vad_t* list)
+static bool _is_sorted(const libos_vad_t* list)
 {
-    const oel_vad_t* p;
-    const oel_vad_t* prev = NULL;
+    const libos_vad_t* p;
+    const libos_vad_t* prev = NULL;
 
     for (p = list; p; prev = p, p = p->next)
     {
@@ -119,10 +119,10 @@ static bool _is_sorted(const oel_vad_t* list)
 }
 
 /* Check that there are no gaps between the VADs in the list */
-static bool _is_flush(const oel_mman_t* heap, const oel_vad_t* list)
+static bool _is_flush(const libos_mman_t* heap, const libos_vad_t* list)
 {
-    const oel_vad_t* p;
-    const oel_vad_t* prev = NULL;
+    const libos_vad_t* p;
+    const libos_vad_t* prev = NULL;
 
     if (!list)
         return true;
@@ -145,64 +145,64 @@ static bool _is_flush(const oel_mman_t* heap, const oel_vad_t* list)
     return true;
 }
 
-/* Helper for calling oel_mman_map() */
-static void* _mman_mmap(oel_mman_t* heap, void* addr, size_t length)
+/* Helper for calling libos_mman_map() */
+static void* _mman_mmap(libos_mman_t* heap, void* addr, size_t length)
 {
-    int prot = OEL_PROT_READ | OEL_PROT_WRITE;
-    int flags = OEL_MAP_ANONYMOUS | OEL_MAP_PRIVATE;
+    int prot = LIBOS_PROT_READ | LIBOS_PROT_WRITE;
+    int flags = LIBOS_MAP_ANONYMOUS | LIBOS_MAP_PRIVATE;
 
     void* result;
 
-    if (oel_mman_map(heap, addr, length, prot, flags, &result) != 0)
+    if (libos_mman_map(heap, addr, length, prot, flags, &result) != 0)
     {
-        PRINTF("ERROR: oel_mman_map(): %s\n", heap->err);
-        oe_assert("oel_mman_map(): failed" == NULL);
+        PRINTF("ERROR: libos_mman_map(): %s\n", heap->err);
+        oe_assert("libos_mman_map(): failed" == NULL);
     }
 
     return result;
 }
 
-/* Helper for calling oel_mman_map() without printing an error */
-static void* _mman_mmap_no_err(oel_mman_t* heap, void* addr, size_t length)
+/* Helper for calling libos_mman_map() without printing an error */
+static void* _mman_mmap_no_err(libos_mman_t* heap, void* addr, size_t length)
 {
-    int prot = OEL_PROT_READ | OEL_PROT_WRITE;
-    int flags = OEL_MAP_ANONYMOUS | OEL_MAP_PRIVATE;
+    int prot = LIBOS_PROT_READ | LIBOS_PROT_WRITE;
+    int flags = LIBOS_MAP_ANONYMOUS | LIBOS_MAP_PRIVATE;
 
     void* result = NULL;
 
-    if (oel_mman_map(heap, addr, length, prot, flags, &result) != 0)
+    if (libos_mman_map(heap, addr, length, prot, flags, &result) != 0)
         return NULL;
 
     return result;
 }
 
-/* Helper for calling oel_mman_mremap() */
+/* Helper for calling libos_mman_mremap() */
 static void* _mman_remap(
-    oel_mman_t* heap,
+    libos_mman_t* heap,
     void* addr,
     size_t old_size,
     size_t new_size)
 {
-    int flags = OEL_MREMAP_MAYMOVE;
+    int flags = LIBOS_MREMAP_MAYMOVE;
 
     void* result = NULL;
 
-    if (oel_mman_mremap(heap, addr, old_size, new_size, flags, &result) != 0)
+    if (libos_mman_mremap(heap, addr, old_size, new_size, flags, &result) != 0)
     {
-        PRINTF("ERROR: oel_mman_mremap(): %s\n", heap->err);
+        PRINTF("ERROR: libos_mman_mremap(): %s\n", heap->err);
         oe_assert(false);
     }
 
     return result;
 }
 
-/* Helper for calling oel_mman_munmap() */
-static int _mman_unmap(oel_mman_t* heap, void* address, size_t size)
+/* Helper for calling libos_mman_munmap() */
+static int _mman_unmap(libos_mman_t* heap, void* address, size_t size)
 {
-    int rc = (int)oel_mman_munmap(heap, address, size);
+    int rc = (int)libos_mman_munmap(heap, address, size);
 
     if (rc != 0)
-        PRINTF("ERROR: oel_mman_munmap(): %s\n", heap->err);
+        PRINTF("ERROR: libos_mman_munmap(): %s\n", heap->err);
 
     return rc;
 }
@@ -210,7 +210,7 @@ static int _mman_unmap(oel_mman_t* heap, void* address, size_t size)
 /*
 ** test_mman_1()
 **
-**     Test oel_mman_map() and oel_mman_munmap() and check expected state between
+**     Test libos_mman_map() and libos_mman_munmap() and check expected state between
 **     operations. Unmap leaves gaps and then map checks to see if those gaps
 **     are filled.
 */
@@ -218,7 +218,7 @@ void test_mman_1()
 {
     // char buf1[4096];
     //(void)buf1;
-    oel_mman_t h;
+    libos_mman_t h;
     // char buf2[4096];
     //(void)buf2;
 
@@ -325,14 +325,14 @@ void test_mman_1()
 /*
 ** test_mman_2()
 **
-**     Test oel_mman_map() and oel_mman_munmap() and check expected state between
+**     Test libos_mman_map() and libos_mman_munmap() and check expected state between
 **     operations. Map several regions and then unmap regions leaving gaps.
 **     Map again and see if the new regions were allocated within the expected
 **     gaps.
 */
 void test_mman_2()
 {
-    oel_mman_t h;
+    libos_mman_t h;
 
     const size_t npages = 1024;
     const size_t size = npages * OE_PAGE_SIZE;
@@ -412,7 +412,7 @@ void test_mman_2()
 */
 void test_mman_3()
 {
-    oel_mman_t h;
+    libos_mman_t h;
 
     const size_t npages = 1024;
     const size_t size = npages * OE_PAGE_SIZE;
@@ -446,7 +446,7 @@ void test_mman_3()
     oe_assert(_is_sorted(h.vad_list));
 
     /* This should be illegal since it overruns the end */
-    oe_assert(oel_mman_munmap(&h, ptrs[0], 2 * PGSZ) != 0);
+    oe_assert(libos_mman_munmap(&h, ptrs[0], 2 * PGSZ) != 0);
     oe_assert(_is_sorted(h.vad_list));
     oe_assert(_is_flush(&h, h.vad_list));
 
@@ -490,7 +490,7 @@ void test_mman_3()
 */
 void test_mman_4()
 {
-    oel_mman_t h;
+    libos_mman_t h;
 
     const size_t npages = 1024;
     const size_t size = npages * OE_PAGE_SIZE;
@@ -515,7 +515,7 @@ void test_mman_4()
     oe_assert(_is_sorted(h.vad_list));
 
     /* This should fail */
-    oe_assert(oel_mman_munmap(&h, ptrs[7], 1024 * PGSZ) != 0);
+    oe_assert(libos_mman_munmap(&h, ptrs[7], 1024 * PGSZ) != 0);
 
     /* Unmap everything */
     oe_assert(_mman_unmap(&h, ptrs[7], m) == 0);
@@ -534,7 +534,7 @@ void test_mman_4()
 */
 void test_mman_5()
 {
-    oel_mman_t h;
+    libos_mman_t h;
 
     const size_t npages = 1024;
     const size_t size = npages * OE_PAGE_SIZE;
@@ -558,7 +558,7 @@ void test_mman_5()
     oe_assert(_mman_unmap(&h, ptrs[4], 5 * PGSZ) == 0);
 
     /* Unmap everything */
-    oe_assert(oel_mman_munmap(&h, ptrs[7], m) != 0);
+    oe_assert(libos_mman_munmap(&h, ptrs[7], m) != 0);
 
     _merge_coverage(&h);
     _free_mman(&h);
@@ -574,7 +574,7 @@ void test_mman_5()
 */
 void test_mman_6()
 {
-    oel_mman_t h;
+    libos_mman_t h;
     size_t i;
     const size_t n = 8;
     const size_t npages = 1024;
@@ -609,7 +609,7 @@ void test_mman_6()
 */
 void test_remap_1()
 {
-    oel_mman_t h;
+    libos_mman_t h;
     const size_t npages = 1024;
     const size_t size = npages * OE_PAGE_SIZE;
     size_t old_size;
@@ -660,7 +660,7 @@ void test_remap_1()
 */
 void test_remap_2()
 {
-    oel_mman_t h;
+    libos_mman_t h;
     const size_t npages = 1024;
     const size_t size = npages * OE_PAGE_SIZE;
     size_t old_size;
@@ -699,7 +699,7 @@ void test_remap_2()
 */
 void test_remap_3()
 {
-    oel_mman_t h;
+    libos_mman_t h;
     const size_t npages = 1024;
     const size_t size = npages * OE_PAGE_SIZE;
 
@@ -739,7 +739,7 @@ void test_remap_3()
 */
 void test_remap_4()
 {
-    oel_mman_t h;
+    libos_mman_t h;
     const size_t npages = 1024;
     const size_t size = npages * OE_PAGE_SIZE;
 
@@ -812,7 +812,7 @@ static bool _check_mem(elem_t* elem)
 */
 void test_mman_randomly()
 {
-    oel_mman_t h;
+    libos_mman_t h;
     const size_t heap_size = 64 * 1024 * 1024;
 
     oe_assert(_init_mman(&h, heap_size) == 0);
@@ -894,7 +894,7 @@ void test_mman_randomly()
     /* Everything should be unmapped */
     oe_assert(h.vad_list == NULL);
 
-    oe_assert(oel_mman_is_sane(&h));
+    oe_assert(libos_mman_is_sane(&h));
 
     _merge_coverage(&h);
     _free_mman(&h);
@@ -909,7 +909,7 @@ void test_mman_randomly()
 */
 void test_out_of_memory()
 {
-    oel_mman_t h;
+    libos_mman_t h;
     const size_t heap_size = 64 * 1024 * 1024;
 
     oe_assert(_init_mman(&h, heap_size) == 0);
@@ -918,7 +918,7 @@ void test_out_of_memory()
     while (_mman_mmap_no_err(&h, NULL, 64 * PGSZ))
         ;
 
-    oe_assert(oel_mman_is_sane(&h));
+    oe_assert(libos_mman_is_sane(&h));
 
     _merge_coverage(&h);
     _free_mman(&h);

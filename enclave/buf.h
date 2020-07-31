@@ -1,34 +1,34 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-#ifndef _OEL_BUF_H
-#define _OEL_BUF_H
+#ifndef _LIBOS_BUF_H
+#define _LIBOS_BUF_H
 
 #include <stddef.h>
 #include <stdint.h>
 
-#define OEL_BUF_INITIALIZER \
+#define LIBOS_BUF_INITIALIZER \
     {                   \
         NULL, 0, 0      \
     }
 
-typedef struct _oel_buf
+typedef struct libos_buf
 {
     uint8_t* data;
     size_t size;
     size_t cap;
-} oel_buf_t;
+} libos_buf_t;
 
-void oel_buf_release(oel_buf_t* buf);
+void libos_buf_release(libos_buf_t* buf);
 
-int oel_buf_clear(oel_buf_t* buf);
+int libos_buf_clear(libos_buf_t* buf);
 
-int oel_buf_reserve(oel_buf_t* buf, size_t cap);
+int libos_buf_reserve(libos_buf_t* buf, size_t cap);
 
-int oel_buf_resize(oel_buf_t* buf, size_t new_size);
+int libos_buf_resize(libos_buf_t* buf, size_t new_size);
 
-int oel_buf_append(oel_buf_t* buf, const void* data, size_t size);
+int libos_buf_append(libos_buf_t* buf, const void* data, size_t size);
 
-int oel_buf_remove(oel_buf_t* buf, size_t pos, size_t size);
+int libos_buf_remove(libos_buf_t* buf, size_t pos, size_t size);
 
-#endif /* _OEL_BUF_H */
+#endif /* _LIBOS_BUF_H */

@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <oel/mman.h>
+#include <libos/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -9,9 +9,9 @@
 #include <assert.h>
 #include <setjmp.h>
 #include <sys/uio.h>
-#include <oel/syscall.h>
-#include <oel/elfutils.h>
-#include <oel/mmanutils.h>
+#include <libos/syscall.h>
+#include <libos/elfutils.h>
+#include <libos/mmanutils.h>
 
 jmp_buf _exit_jmp_buf;
 
@@ -19,7 +19,7 @@ static bool _trace;
 
 static char _rootfs[PATH_MAX];
 
-void oel_set_rootfs(const char* path)
+void libos_set_rootfs(const char* path)
 {
     snprintf(_rootfs, sizeof(_rootfs), "%s", path);
 }
@@ -413,7 +413,7 @@ const char* syscall_str(long n)
 
 static int _exit_status;
 
-int oel_get_exit_status(void)
+int libos_get_exit_status(void)
 {
     return _exit_status;
 }
@@ -467,7 +467,7 @@ static long _return(long n, long ret)
     return ret;
 }
 
-long oel_syscall(long n, long params[6])
+long libos_syscall(long n, long params[6])
 {
     long x1 = params[0];
     long x2 = params[1];
@@ -476,23 +476,23 @@ long oel_syscall(long n, long params[6])
     long x5 = params[4];
     long x6 = params[5];
 
-    if (n == OEL_SYS_trace)
+    if (n == LIBOS_SYS_trace)
     {
         printf("trace: %s\n", (const char*)params[0]);
         return _return(n, 0);
     }
-    else if (n == OEL_SYS_trace_ptr)
+    else if (n == LIBOS_SYS_trace_ptr)
     {
         printf("trace: %s: %lX %ld\n",
             (const char*)params[0], params[1], params[1]);
         return _return(n, 0);
     }
-    else if (n == OEL_SYS_dump_stack)
+    else if (n == LIBOS_SYS_dump_stack)
     {
         elf_dump_stack((void*)params[0]);
         return _return(n, 0);
     }
-    else if (n == OEL_SYS_dump_ehdr)
+    else if (n == LIBOS_SYS_dump_ehdr)
     {
         elf_dump_ehdr((void*)params[0]);
         return _return(n, 0);
@@ -597,7 +597,7 @@ long oel_syscall(long n, long params[6])
                 syscall_str(n), (long)addr, length, prot, flags, fd, offset);
         }
 
-        long ret = (long)oel_mmap(addr, length, prot, flags, fd, offset);
+        long ret = (long)libos_mmap(addr, length, prot, flags, fd, offset);
 
         return _return(n, ret);
     }
@@ -690,12 +690,12 @@ long oel_syscall(long n, long params[6])
     return 0;
 }
 
-int oel_set_exit_jump(void)
+int libos_set_exit_jump(void)
 {
     return setjmp(_exit_jmp_buf);
 }
 
-void oel_trace_syscalls(bool flag)
+void libos_trace_syscalls(bool flag)
 {
     _trace = flag;
 }

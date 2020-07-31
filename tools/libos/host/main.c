@@ -11,7 +11,7 @@
 #include <stdarg.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include "oelrun_u.h"
+#include "libos_u.h"
 
 static char _arg0[PATH_MAX];
 
@@ -235,12 +235,12 @@ int main(int argc, const char* argv[])
     int retval;
     char dir[PATH_MAX];
     char rootfs[PATH_MAX];
-    char liboelenc[PATH_MAX];
-    char liboelcrt[PATH_MAX];
+    char libosenc[PATH_MAX];
+    char liboscrt[PATH_MAX];
     char path[PATH_MAX];
     void* args = NULL;
     size_t args_size;
-    struct oel_options options;
+    struct libos_options options;
 
     /* Get the full path of argv[0] */
     if (_which(argv[0], _arg0) != 0)
@@ -277,36 +277,36 @@ int main(int argc, const char* argv[])
     strcpy(dir, _arg0);
     dirname(dir);
 
-    /* Find liboelenc.so and liboelcrt.so */
+    /* Find libosenc.so and liboscrt.so */
     {
         int n;
 
-        n = snprintf(liboelenc, sizeof(liboelenc), "%s/enc/liboelenc.so", dir);
-        if (n >= sizeof liboelenc)
-            _err("buffer overflow when forming liboelenc.so path");
+        n = snprintf(libosenc, sizeof(libosenc), "%s/enc/libosenc.so", dir);
+        if (n >= sizeof libosenc)
+            _err("buffer overflow when forming libosenc.so path");
 
-        n = snprintf(liboelcrt, sizeof(liboelcrt), "%s/enc/liboelcrt.so", dir);
-        if (n >= sizeof liboelcrt)
-            _err("buffer overflow when forming liboelcrt.so path");
+        n = snprintf(liboscrt, sizeof(liboscrt), "%s/enc/liboscrt.so", dir);
+        if (n >= sizeof liboscrt)
+            _err("buffer overflow when forming liboscrt.so path");
 
-        if (access(liboelenc, R_OK) != 0)
-            _err("cannot find: %s", liboelenc);
+        if (access(libosenc, R_OK) != 0)
+            _err("cannot find: %s", libosenc);
 
-        if (access(liboelcrt, R_OK) != 0)
-            _err("cannot find: %s", liboelcrt);
+        if (access(liboscrt, R_OK) != 0)
+            _err("cannot find: %s", liboscrt);
     }
 
     /* Format path to pass to oe_create_enclave() */
     {
         int n;
 
-        n = snprintf(path, sizeof(path), "%s:%s", liboelenc, liboelcrt);
+        n = snprintf(path, sizeof(path), "%s:%s", libosenc, liboscrt);
         if (n >= sizeof path)
             _err("buffer overflow when forming enclave path");
     }
 
-    /* Load the enclave (including liboelenc.so and liboelcrt.so) */
-    r = oe_create_oelrun_enclave(path, type, flags, NULL, 0, &enclave);
+    /* Load the enclave (including libosenc.so and liboscrt.so) */
+    r = oe_create_libos_enclave(path, type, flags, NULL, 0, &enclave);
     if (r != OE_OK)
         _err("failed to load enclave: result=%s", oe_result_str(r));
 
@@ -317,7 +317,7 @@ int main(int argc, const char* argv[])
     const char env[] = "PATH=/bin\0HOME=/root";
 
     /* Enter the enclave and run the program */
-    r = oelrun_enter_ecall(
+    r = libos_enter_ecall(
         enclave, &retval, &options, rootfs, args, args_size, env, sizeof(env));
     if (r != OE_OK)
         _err("failed to enter enclave: result=%s", oe_result_str(r));

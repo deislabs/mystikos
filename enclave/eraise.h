@@ -1,5 +1,5 @@
-#ifndef _OEL_ERAISE_H
-#define _OEL_ERAISE_H
+#ifndef _LIBOS_ERAISE_H
+#define _LIBOS_ERAISE_H
 
 #include <stdint.h>
 #include <errno.h>
@@ -9,7 +9,7 @@
     do                                                          \
     {                                                           \
         ret = ERRNUM;                                           \
-        oel_eraise(__FILE__, __LINE__, __FUNCTION__, (int)ret); \
+        libos_eraise(__FILE__, __LINE__, __FUNCTION__, (int)ret); \
         fflush(stdout);                                         \
         goto done;                                              \
     }                                                           \
@@ -22,7 +22,7 @@
         if (_r_ != 0)                                               \
         {                                                           \
             ret = _r_;                                              \
-            oel_eraise(__FILE__, __LINE__, __FUNCTION__, (int)ret); \
+            libos_eraise(__FILE__, __LINE__, __FUNCTION__, (int)ret); \
             goto done;                                              \
         }                                                           \
     }                                                               \
@@ -47,10 +47,10 @@
     }                        \
     while (0)
 
-void oel_eraise(
+void libos_eraise(
     const char* file,
     uint32_t line,
     const char* func,
     int errnum);
 
-#endif /* _OEL_ERAISE_H */
+#endif /* _LIBOS_ERAISE_H */

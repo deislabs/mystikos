@@ -1,5 +1,5 @@
-#ifndef _OEL_TYPES_H
-#define _OEL_TYPES_H
+#ifndef _LIBOS_TYPES_H
+#define _LIBOS_TYPES_H
 
 typedef long ssize_t;
 typedef unsigned long size_t;
@@ -23,4 +23,4 @@ typedef long suseconds_t;
 #define bool _Bool
 #endif
 
-#endif /* _OEL_TYPES_H */
+#endif /* _LIBOS_TYPES_H */

@@ -1,4 +1,4 @@
-SUBDIR = tools/oelrun
+SUBDIR = tools/libos
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
@@ -7,4 +7,4 @@ DIRS = enc host
 include $(TOP)/rules.mak
 
 run: main
-	$(BINDIR)/oelrun rootfs /bin/main one two three
+	$(BINDIR)/libos rootfs /bin/main one two three

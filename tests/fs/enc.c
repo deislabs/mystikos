@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 #include <openenclave/enclave.h>
-#include <oel/ramfs.h>
+#include <libos/ramfs.h>
 #include <stdlib.h>
 #include <dirent.h>
 #include <stdio.h>
@@ -12,14 +12,14 @@
 
 int run_ecall(void)
 {
-    oel_fs_t* fs;
-    oel_file_t* file = NULL;
+    libos_fs_t* fs;
+    libos_file_t* file = NULL;
     const char alpha[] = "abcdefghijklmnopqrstuvwxyz";
     const char ALPHA[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-    if (oel_init_ramfs(&fs) != 0)
+    if (libos_init_ramfs(&fs) != 0)
     {
-        fprintf(stderr, "oel_init_ramfs() failed\n");
+        fprintf(stderr, "libos_init_ramfs() failed\n");
         abort();
     }
 

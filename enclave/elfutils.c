@@ -1,5 +1,5 @@
-#include <oel/elfutils.h>
-#include <oel/syscall.h>
+#include <libos/elfutils.h>
+#include <libos/syscall.h>
 #include <string.h>
 #include <lthread.h>
 #include <stdio.h>
@@ -1237,7 +1237,7 @@ void _entry_thread(void* args_)
 #endif
 
     /* jumps here from _syscall() on SYS_exit */
-    if (oel_set_exit_jump() != 0)
+    if (libos_set_exit_jump() != 0)
     {
 #ifdef USE_LTHREADS
         lthread_exit(NULL);
@@ -1315,7 +1315,7 @@ int elf_enter_crt(
         args.enter = enter;
         args.stack = sp;
         args.dynv = dynv;
-        args.syscall = oel_syscall;
+        args.syscall = libos_syscall;
 
 #ifdef USE_LTHREADS
         lthread_t* lt;
@@ -1329,5 +1329,5 @@ int elf_enter_crt(
     assert(elf_check_stack(stack, stack_size) == 0);
     free(stack);
 
-    return oel_get_exit_status();
+    return libos_get_exit_status();
 }

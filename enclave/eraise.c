@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 
-void oel_eraise(
+void libos_eraise(
     const char* file,
     uint32_t line,
     const char* func,
