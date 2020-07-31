@@ -3,6 +3,9 @@
 
 #include <openenclave/enclave.h>
 #include <libos/ramfs.h>
+#include <libos/mount.h>
+#include <libos/file.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <dirent.h>
 #include <stdio.h>
@@ -10,12 +13,13 @@
 #include <assert.h>
 #include "run_t.h"
 
-int run_ecall(void)
+const char alpha[] = "abcdefghijklmnopqrstuvwxyz";
+const char ALPHA[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+void test1()
 {
     libos_fs_t* fs;
     libos_file_t* file = NULL;
-    const char alpha[] = "abcdefghijklmnopqrstuvwxyz";
-    const char ALPHA[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
     if (libos_init_ramfs(&fs) != 0)
     {
@@ -158,7 +162,34 @@ int run_ecall(void)
         fprintf(stderr, "fs_close() failed\n");
         abort();
     }
+}
 
+void test2(void)
+{
+    libos_fs_t* fs;
+    int fd;
+    char buf[sizeof(ALPHA)];
+
+    assert(libos_init_ramfs(&fs) == 0);
+
+    assert(libos_mount(fs, "/") == 0);
+
+    assert((fd = libos_open("/file", O_CREAT | O_WRONLY, 0)) >= 0);
+    assert(libos_write(fd, ALPHA, sizeof(ALPHA)) == sizeof(ALPHA));
+    assert(libos_close(fd) == 0);
+
+    assert((fd = libos_open("/file", O_RDONLY, 0)) >= 0);
+    assert(libos_read(fd, buf, sizeof(buf)) == sizeof(buf));
+    assert(libos_close(fd) == 0);
+    assert(strcmp(buf, ALPHA) == 0);
+
+    assert((*fs->fs_release)(fs) == 0);
+}
+
+int run_ecall(void)
+{
+    test1();
+    test2();
     return 0;
 }
 

@@ -5,12 +5,18 @@
 #include <fcntl.h>
 #include <stdbool.h>
 
-#define LIBOS_SYS_trace 1000
-#define LIBOS_SYS_trace_ptr 1001
-#define LIBOS_SYS_dump_stack 1002
-#define LIBOS_SYS_dump_ehdr 1003
-
-#define SYS_libos_open 1008
+enum
+{
+    LIBOS_SYS_base = 1024,
+    LIBOS_SYS_trace,
+    LIBOS_SYS_trace_ptr,
+    LIBOS_SYS_dump_stack,
+    LIBOS_SYS_dump_ehdr,
+    LIBOS_SYS_open,
+    LIBOS_SYS_read,
+    LIBOS_SYS_write,
+    LIBOS_SYS_close,
+};
 
 void libos_trace_syscalls(bool flag);
 
