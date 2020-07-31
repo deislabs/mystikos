@@ -12,6 +12,9 @@
 #include <libos/syscall.h>
 #include <libos/elfutils.h>
 #include <libos/mmanutils.h>
+#include <libos/mount.h>
+#include "fdtable.h"
+#include "eraise.h"
 
 jmp_buf _exit_jmp_buf;
 
@@ -382,6 +385,7 @@ static pair_t _pairs[] =
     { SYS_statx, "SYS_statx" },
     { SYS_io_pgetevents, "SYS_io_pgetevents" },
     { SYS_rseq, "SYS_rseq" },
+    { SYS_libos_open, "SYS_libos_open" },
 };
 
 static size_t _n_pairs = sizeof(_pairs) / sizeof(_pairs[0]);
@@ -449,6 +453,31 @@ static long _return(long n, long ret)
     {
         fprintf(stderr, "    %s(): return=%ld\n", syscall_str(n), ret);
     }
+
+    return ret;
+}
+
+long libos_syscall_open(const char* pathname, int flags, mode_t mode)
+{
+    int ret = 0;
+    int fd;
+    char suffix[PATH_MAX];
+    libos_fs_t* fs;
+    libos_file_t* file;
+
+    ECHECK(libos_mount_resolve(pathname, suffix, &fs));
+
+    ECHECK((*fs->fs_open)(fs, suffix, flags, mode, &file));
+
+    if ((fd = libos_fdtable_add(LIBOS_FDTABLE_TYPE_FILE, file)))
+    {
+        fprintf(stderr, "libos_fdtable_add() failed: %d\n", fd);
+        goto done;
+    }
+
+    ret = fd;
+
+done:
 
     return ret;
 }
@@ -533,6 +562,29 @@ long libos_syscall(long n, long params[6])
 
         return _return(n, ret);
     }
+    else if (n == SYS_libos_open)
+    {
+        const char* pathname = (const char*)x1;
+        int flags = (int)x2;
+        mode_t mode = (mode_t)x3;
+        char buf[PATH_MAX];
+        long ret;
+
+        if (_trace)
+        {
+            fprintf(stderr, "=== %s(pathname=%s flags=%d mode=%03o)\n",
+                syscall_str(n), pathname, flags, mode);
+        }
+
+        params[0] = (long)_fullpath(buf, pathname);
+
+        ret = libos_syscall_open(pathname, flags, mode);
+
+        if (ret >= 0 && ret < (long)_fd_entries_size)
+            strlcpy(_fd_entries[ret].path, pathname, PATH_MAX);
+
+        return _return(n, ret);
+    }
     else if (n == SYS_read)
     {
         if (_trace)
@@ -556,14 +608,10 @@ long libos_syscall(long n, long params[6])
         int fd = (int)x1;
 
         if (_trace)
-        {
             fprintf(stderr, "=== %s()\n", syscall_str(n));
-        }
 
         if (fd >= 0 && fd < (long)_fd_entries_size)
-        {
             _fd_entries[fd].path[0] = '\0';
-        }
 
         return _return(n, _forward_syscall(n, params));
     }

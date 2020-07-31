@@ -9,6 +9,8 @@
 #define LIBOS_SYS_dump_stack 1002
 #define LIBOS_SYS_dump_ehdr 1003
 
+#define SYS_libos_open 1008
+
 void libos_trace_syscalls(bool flag);
 
 long libos_syscall(long n, long params[6]);
