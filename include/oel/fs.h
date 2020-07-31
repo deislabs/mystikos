@@ -55,7 +55,7 @@ struct oel_fs
 
     int (*fs_stat)(oel_fs_t* fs, const char* pathname, struct stat* statbuf);
 
-    int (*fs_fstat)(oel_fs_t* fs, int fd, struct stat* statbuf);
+    int (*fs_fstat)(oel_fs_t* fs, oel_file_t* file, struct stat* statbuf);
 
     int (*fs_link)(oel_fs_t* fs, const char* oldpath, const char* newpath);
 

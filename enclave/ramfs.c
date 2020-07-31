@@ -10,6 +10,9 @@
 #include "strings.h"
 #include "bufu64.h"
 #include "buf.h"
+#include "round.h"
+
+#define BLKSIZE 512
 
 /*
 **==============================================================================
@@ -678,9 +681,37 @@ static int _fs_stat(oel_fs_t* fs, const char* pathname, struct stat* statbuf)
     return -EINVAL;
 }
 
-static int _fs_fstat(oel_fs_t* fs, int fd, struct stat* statbuf)
+static int _fs_fstat(oel_fs_t* fs, oel_file_t* file, struct stat* statbuf)
 {
-    return -EINVAL;
+    int ret = 0;
+    struct stat buf;
+
+    ramfs_t* ramfs = (ramfs_t*)fs;
+
+    if (!_ramfs_valid(ramfs) || !_file_valid(file) || !statbuf)
+        ERAISE(-EINVAL);
+
+    assert(_inode_valid(file->inode));
+
+    memset(&buf, 0, sizeof(buf));
+    buf.st_dev = 0;
+    buf.st_ino = (ino_t)file->inode;
+    buf.st_mode = file->inode->mode;
+    buf.st_nlink = file->inode->nlink;
+    buf.st_uid = 0; /* ATTN: assumes root uid */
+    buf.st_gid = 0; /* ATTN: assumes root gid */
+    buf.st_rdev = 0;
+    buf.st_size = (off_t)_file_size(file);
+    buf.st_blksize = BLKSIZE;
+    buf.st_blocks = oel_round_up_off(buf.st_size, BLKSIZE) / BLKSIZE;
+    memset(&buf.st_atim, 0, sizeof(buf.st_atim)); /* ATTN: unsupported */
+    memset(&buf.st_mtim, 0, sizeof(buf.st_mtim)); /* ATTN: unsupported */
+    memset(&buf.st_ctim, 0, sizeof(buf.st_ctim)); /* ATTN: unsupported */
+
+    *statbuf = buf;
+
+done:
+    return ret;
 }
 
 static int _fs_link(oel_fs_t* fs, const char* oldpath, const char* newpath)

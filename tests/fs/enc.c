@@ -131,6 +131,21 @@ int run_ecall(void)
         assert(strcmp(buf, ALPHA) == 0);
     }
 
+    /* test stat() */
+    {
+        struct stat buf;
+
+        if ((*fs->fs_fstat)(fs, file, &buf) != 0)
+        {
+            fprintf(stderr, "fs_stat() failed\n");
+            abort();
+        }
+
+        assert(buf.st_size = sizeof(alpha) + sizeof(ALPHA));
+        assert(buf.st_blksize == 512);
+        assert(buf.st_blocks == 1);
+    }
+
     if ((*fs->fs_close)(fs, file) != 0)
     {
         fprintf(stderr, "fs_close() failed\n");
