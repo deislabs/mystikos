@@ -32,6 +32,8 @@ int libos_fstat(int fd, struct stat* statbuf);
 
 int libos_mkdir(const char *pathname, mode_t mode);
 
+int libos_rmdir(const char* pathname);
+
 int libos_getdents64(int fd, struct dirent* dirp, size_t count);
 
 DIR* libos_opendir(const char *name);

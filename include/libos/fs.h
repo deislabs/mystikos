@@ -67,6 +67,8 @@ struct libos_fs
 
     int (*fs_link)(libos_fs_t* fs, const char* oldpath, const char* newpath);
 
+    int (*fs_unlink)(libos_fs_t* fs, const char* pathname);
+
     int (*fs_rename)(libos_fs_t* fs, const char* oldpath, const char* newpath);
 
     int (*fs_truncate)(libos_fs_t* fs, const char* path, off_t length);

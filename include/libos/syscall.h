@@ -53,8 +53,10 @@ long libos_syscall_stat(const char* pathname, struct stat* statbuf);
 
 long libos_syscall_fstat(int fd, struct stat* statbuf);
 
-long libos_syscall_mkdir(const char *pathname, mode_t mode);
+long libos_syscall_mkdir(const char* pathname, mode_t mode);
 
 long libos_syscall_getdents64(int fd, struct dirent* dirp, size_t count);
+
+long libos_syscall_rmdir(const char* pathname);
 
 #endif /* _LIBOS_SYSCALL_H */

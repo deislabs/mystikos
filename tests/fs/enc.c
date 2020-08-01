@@ -277,6 +277,17 @@ void test_mkdir()
     }
 }
 
+void test_rmdir()
+{
+printf("ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ\n");
+return;
+    assert(libos_mkdir("/rmdir", 0777) == 0);
+    assert(libos_mkdir("/rmdir/rmdir", 0777) == 0);
+    assert(libos_mkdir("/rmdir/rmdir/rmdir", 0777) == 0);
+
+    assert(libos_rmdir("/rmdir/rmdir/rmdir") == 0);
+}
+
 void test_readdir()
 {
     int fd;
@@ -338,6 +349,7 @@ int run_ecall(void)
     test_writev();
     test_stat();
     test_mkdir();
+    test_rmdir();
     test_readdir();
 
     assert((*fs->fs_release)(fs) == 0);

@@ -637,6 +637,19 @@ done:
     return ret;
 }
 
+long libos_syscall_rmdir(const char* pathname)
+{
+    long ret = 0;
+    char suffix[PATH_MAX];
+    libos_fs_t* fs;
+
+    ECHECK(libos_mount_resolve(pathname, suffix, &fs));
+    ECHECK((*fs->fs_rmdir)(fs, suffix));
+
+done:
+    return ret;
+}
+
 long libos_syscall_getdents64(int fd, struct dirent* dirp, size_t count)
 {
     long ret = 0;
