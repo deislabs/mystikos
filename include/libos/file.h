@@ -34,4 +34,10 @@ int libos_mkdir(const char *pathname, mode_t mode);
 
 int libos_getdents64(int fd, struct dirent* dirp, size_t count);
 
+DIR* libos_opendir(const char *name);
+
+struct dirent* libos_readdir(DIR *dir);
+
+int libos_closedir(DIR* dir);
+
 #endif /* _LIBOS_FILE_H */

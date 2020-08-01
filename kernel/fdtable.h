@@ -19,6 +19,8 @@ int libos_fdtable_add(
     void* device,
     void* object);
 
+int libos_fdtable_remove(int fd);
+
 int libos_fdtable_find(
     int fd,
     libos_fdtable_type_t type,

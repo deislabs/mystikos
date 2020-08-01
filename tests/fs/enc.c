@@ -277,6 +277,54 @@ void test_mkdir()
     }
 }
 
+void test_readdir()
+{
+    int fd;
+    DIR* dir;
+    struct dirent* ent;
+    const struct
+    {
+        const char* name;
+        unsigned char type;
+    }
+    entries[] =
+    {
+        { ".", DT_DIR },
+        { "..", DT_DIR },
+        { "dir1", DT_DIR },
+        { "dir2", DT_DIR },
+        { "file1", DT_REG },
+        { "file2", DT_REG },
+    };
+    const size_t nentries = sizeof(entries) / sizeof(entries[0]);
+    size_t i = 0;
+    off_t off = 0;
+
+    assert(libos_mkdir("/readdir", 0777) == 0);
+    assert(libos_mkdir("/readdir/dir1", 0777) == 0);
+    assert(libos_mkdir("/readdir/dir2", 0777) == 0);
+    assert((fd = libos_creat("/readdir/file1", 0666)) >= 0);
+    assert(libos_close(fd) == 0);
+    assert((fd = libos_creat("/readdir/file2", 0666)) >= 0);
+    assert(libos_close(fd) == 0);
+
+    assert(dir = libos_opendir("/readdir"));
+
+    while ((ent = libos_readdir(dir)))
+    {
+        assert(ent->d_ino != 0);
+        assert(strcmp(ent->d_name, entries[i].name) == 0);
+        assert(ent->d_type == entries[i].type);
+        assert(ent->d_off == off);
+        assert(ent->d_reclen == sizeof(struct dirent));
+        i++;
+        off += (off_t)sizeof(struct dirent);
+    }
+
+    assert(i == nentries);
+    assert(libos_closedir(dir) == 0);
+}
+
 int run_ecall(void)
 {
     libos_fs_t* fs;
@@ -290,6 +338,7 @@ int run_ecall(void)
     test_writev();
     test_stat();
     test_mkdir();
+    test_readdir();
 
     assert((*fs->fs_release)(fs) == 0);
 

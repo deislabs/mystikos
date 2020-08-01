@@ -530,6 +530,8 @@ long libos_syscall_close(int fd)
 
     ECHECK((*fs->fs_close)(fs, file));
 
+    ECHECK(libos_fdtable_remove(fd));
+
 done:
     return ret;
 }

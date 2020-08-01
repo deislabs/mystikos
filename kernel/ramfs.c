@@ -929,6 +929,8 @@ static int _fs_getdents64(
         dirp++;
     }
 
+    ret = (int)bytes;
+
 done:
     return ret;
 }

@@ -1,13 +1,16 @@
 #include <stdbool.h>
+#include <string.h>
 #include "fdtable.h"
 #include "eraise.h"
+
+/* ATTN: add locking to this table */
 
 #define FDTABLE_SIZE 1024
 
 /* Offset file descriptors to avoid conflicts with host descriptors */
 #define FD_OFFSET 1024
 
-typedef struct libos_fdtable_entry
+typedef struct fdtable_entry
 {
     bool used;
     libos_fdtable_type_t type;
@@ -15,9 +18,9 @@ typedef struct libos_fdtable_entry
     void* device; /* example: libos_fs_t */
     void* object; /* example: libos_file_t */
 }
-libos_fdtable_entry_t;
+fdtable_entry_t;
 
-static libos_fdtable_entry_t _fdtable[FDTABLE_SIZE];
+static fdtable_entry_t _fdtable[FDTABLE_SIZE];
 
 int libos_fdtable_add(
     libos_fdtable_type_t type,
@@ -45,6 +48,30 @@ int libos_fdtable_add(
             goto done;
         }
     }
+
+done:
+    return ret;
+}
+
+int libos_fdtable_remove(int fd)
+{
+    int ret = 0;
+
+    if (fd < 0)
+        ERAISE(-EBADF);
+
+    /* Find and clear the entry */
+    for (int i = 0; i < FDTABLE_SIZE; i++)
+    {
+        if (_fdtable[i].fd == fd)
+        {
+            memset(&_fdtable[i], 0, sizeof(fdtable_entry_t));
+            goto done;
+        }
+    }
+
+    /* Not found */
+    ERAISE(-ENOENT);
 
 done:
     return ret;
