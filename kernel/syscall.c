@@ -385,7 +385,6 @@ static pair_t _pairs[] =
     { SYS_statx, "SYS_statx" },
     { SYS_io_pgetevents, "SYS_io_pgetevents" },
     { SYS_rseq, "SYS_rseq" },
-    { LIBOS_SYS_open, "LIBOS_SYS_open" },
 };
 
 static size_t _n_pairs = sizeof(_pairs) / sizeof(_pairs[0]);
@@ -457,6 +456,30 @@ static long _return(long n, long ret)
     return ret;
 }
 
+long libos_syscall_creat(const char* pathname, mode_t mode)
+{
+    long ret = 0;
+    int fd;
+    char suffix[PATH_MAX];
+    libos_fs_t* fs;
+    libos_file_t* file;
+
+    ECHECK(libos_mount_resolve(pathname, suffix, &fs));
+
+    ECHECK((*fs->fs_creat)(fs, suffix, mode, &file));
+
+    if ((fd = libos_fdtable_add(LIBOS_FDTABLE_TYPE_FILE, fs, file)) < 0)
+    {
+        fprintf(stderr, "libos_fdtable_add() failed: %d\n", fd);
+    }
+
+    ret = fd;
+
+done:
+
+    return ret;
+}
+
 long libos_syscall_open(const char* pathname, int flags, mode_t mode)
 {
     long ret = 0;
@@ -472,14 +495,27 @@ long libos_syscall_open(const char* pathname, int flags, mode_t mode)
     if ((fd = libos_fdtable_add(LIBOS_FDTABLE_TYPE_FILE, fs, file)) < 0)
     {
         fprintf(stderr, "libos_fdtable_add() failed: %d\n", fd);
-        ret = fd;
-        goto done;
     }
 
     ret = fd;
 
 done:
 
+    return ret;
+}
+
+long libos_syscall_lseek(int fd, off_t offset, int whence)
+{
+    long ret = 0;
+    libos_fs_t* fs;
+    libos_file_t* file;
+    const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_FILE;
+
+    ECHECK(libos_fdtable_find(fd, type, (void**)&fs, (void**)&file));
+
+    ret = ((*fs->fs_lseek)(fs, file, offset, whence));
+
+done:
     return ret;
 }
 
@@ -523,6 +559,64 @@ long libos_syscall_write(int fd, const void* buf, size_t count)
     ECHECK(libos_fdtable_find(fd, type, (void**)&fs, (void**)&file));
 
     ret = (*fs->fs_write)(fs, file, buf, count);
+
+done:
+    return ret;
+}
+
+long libos_syscall_readv(int fd, struct iovec* iov, int iovcnt)
+{
+    long ret = 0;
+    libos_fs_t* fs;
+    libos_file_t* file;
+    const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_FILE;
+
+    ECHECK(libos_fdtable_find(fd, type, (void**)&fs, (void**)&file));
+
+    ret = (*fs->fs_readv)(fs, file, iov, iovcnt);
+
+done:
+    return ret;
+}
+
+long libos_syscall_writev(int fd, const struct iovec* iov, int iovcnt)
+{
+    long ret = 0;
+    libos_fs_t* fs;
+    libos_file_t* file;
+    const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_FILE;
+
+    ECHECK(libos_fdtable_find(fd, type, (void**)&fs, (void**)&file));
+
+    ret = (*fs->fs_writev)(fs, file, iov, iovcnt);
+
+done:
+    return ret;
+}
+
+long libos_syscall_stat(const char* pathname, struct stat* statbuf)
+{
+    long ret = 0;
+    char suffix[PATH_MAX];
+    libos_fs_t* fs;
+
+    ECHECK(libos_mount_resolve(pathname, suffix, &fs));
+    ECHECK((*fs->fs_stat)(fs, suffix, statbuf));
+
+done:
+    return ret;
+}
+
+long libos_syscall_fstat(int fd, struct stat* statbuf)
+{
+    long ret = 0;
+    libos_fs_t* fs;
+    libos_file_t* file;
+    const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_FILE;
+
+    ECHECK(libos_fdtable_find(fd, type, (void**)&fs, (void**)&file));
+
+    ret = (*fs->fs_fstat)(fs, file, statbuf);
 
 done:
     return ret;
@@ -595,60 +689,6 @@ long libos_syscall(long n, long params[6])
         }
 
         return _return(n, 0);
-    }
-    else if (n == LIBOS_SYS_open)
-    {
-        const char* pathname = (const char*)x1;
-        int flags = (int)x2;
-        mode_t mode = (mode_t)x3;
-        char buf[PATH_MAX];
-        long ret;
-
-        if (_trace)
-        {
-            fprintf(stderr, "=== %s(pathname=%s flags=%d mode=%03o)\n",
-                syscall_str(n), pathname, flags, mode);
-        }
-
-        params[0] = (long)_fullpath(buf, pathname);
-
-        ret = libos_syscall_open(pathname, flags, mode);
-
-        if (ret >= 0 && ret < (long)_fd_entries_size)
-            strlcpy(_fd_entries[ret].path, pathname, PATH_MAX);
-
-        return _return(n, ret);
-    }
-    else if (n == LIBOS_SYS_read)
-    {
-        int fd = (int)x1;
-        void* buf = (void*)x2;
-        size_t count = (size_t)x3;
-
-        if (_trace)
-            fprintf(stderr, "=== %s()\n", syscall_str(n));
-
-        return _return(n, libos_syscall_read(fd, buf, count));
-    }
-    else if (n == LIBOS_SYS_write)
-    {
-        int fd = (int)x1;
-        const void* buf = (void*)x2;
-        size_t count = (size_t)x3;
-
-        if (_trace)
-            fprintf(stderr, "=== %s()\n", syscall_str(n));
-
-        return _return(n, libos_syscall_write(fd, buf, count));
-    }
-    else if (n == LIBOS_SYS_close)
-    {
-        int fd = (int)x1;
-
-        if (_trace)
-            fprintf(stderr, "=== %s()\n", syscall_str(n));
-
-        return _return(n, libos_syscall_close(fd));
     }
     else if (n == SYS_open)
     {

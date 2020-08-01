@@ -7,13 +7,26 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/uio.h>
+
+int libos_creat(const char* pathname, mode_t mode);
 
 int libos_open(const char* pathname, int flags, mode_t mode);
+
+off_t libos_lseek(int fd, off_t offset, int whence);
 
 int libos_close(int fd);
 
 ssize_t libos_read(int fd, void* buf, size_t count);
 
 ssize_t libos_write(int fd, const void* buf, size_t count);
+
+ssize_t libos_readv(int fd, struct iovec* iov, int iovcnt);
+
+ssize_t libos_writev(int fd, const struct iovec* iov, int iovcnt);
+
+int libos_stat(const char* pathname, struct stat* statbuf);
+
+int libos_fstat(int fd, struct stat* statbuf);
 
 #endif /* _LIBOS_FILE_H */

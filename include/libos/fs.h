@@ -16,7 +16,11 @@ struct libos_fs
 {
     int (*fs_release)(libos_fs_t* fs);
 
-    int (*fs_creat)(libos_fs_t* fs, const char* pathname, mode_t mode);
+    int (*fs_creat)(
+        libos_fs_t* fs,
+        const char* pathname,
+        mode_t mode,
+        libos_file_t** file);
 
     int (*fs_open)(
         libos_fs_t* fs,
@@ -25,7 +29,11 @@ struct libos_fs
         mode_t mode,
         libos_file_t** file);
 
-    off_t (*fs_lseek)(libos_fs_t* fs, int fd, off_t offset, int whence);
+    off_t (*fs_lseek)(
+        libos_fs_t* fs,
+        libos_file_t* file,
+        off_t offset,
+        int whence);
 
     ssize_t (*fs_read)(
         libos_fs_t* fs,
@@ -41,13 +49,13 @@ struct libos_fs
 
     ssize_t (*fs_readv)(
         libos_fs_t* fs,
-        int fd,
-        const struct iovec* iov,
+        libos_file_t* file,
+        struct iovec* iov,
         int iovcnt);
 
     ssize_t (*fs_writev)(
         libos_fs_t* fs,
-        int fd,
+        libos_file_t* file,
         const struct iovec* iov,
         int iovcnt);
 

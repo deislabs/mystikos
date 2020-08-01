@@ -15,17 +15,17 @@
     }                                                           \
     while (0)
 
-#define ECHECK(ERRNUM)                                              \
-    do                                                              \
-    {                                                               \
-        int _r_ = ERRNUM;                                           \
-        if (_r_ != 0)                                               \
-        {                                                           \
-            ret = _r_;                                              \
+#define ECHECK(ERRNUM)                                                \
+    do                                                                \
+    {                                                                 \
+        typeof(ERRNUM) _r_ = ERRNUM;                                  \
+        if (_r_ < 0)                                                  \
+        {                                                             \
+            ret = _r_;                                                \
             libos_eraise(__FILE__, __LINE__, __FUNCTION__, (int)ret); \
-            goto done;                                              \
-        }                                                           \
-    }                                                               \
+            goto done;                                                \
+        }                                                             \
+    }                                                                 \
     while (0)
 
 #define ECHECK_QUIET(ERRNUM) \

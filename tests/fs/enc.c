@@ -16,7 +16,7 @@
 const char alpha[] = "abcdefghijklmnopqrstuvwxyz";
 const char ALPHA[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-void test1()
+void test_misc()
 {
     libos_fs_t* fs;
     libos_file_t* file = NULL;
@@ -164,32 +164,107 @@ void test1()
     }
 }
 
-void test2(void)
+void test_readv(void)
 {
-    libos_fs_t* fs;
     int fd;
     char buf[sizeof(ALPHA)];
 
-    assert(libos_init_ramfs(&fs) == 0);
-
-    assert(libos_mount(fs, "/") == 0);
-
-    assert((fd = libos_open("/file", O_CREAT | O_WRONLY, 0)) >= 0);
+    assert((fd = libos_open("/test_readv", O_CREAT | O_WRONLY, 0)) >= 0);
+    assert(libos_write(fd, alpha, sizeof(alpha)) == sizeof(alpha));
+    assert(libos_lseek(fd, 0, SEEK_CUR) == sizeof(alpha));
     assert(libos_write(fd, ALPHA, sizeof(ALPHA)) == sizeof(ALPHA));
+    assert(libos_lseek(fd, 0, SEEK_CUR) == sizeof(alpha) + sizeof(ALPHA));
     assert(libos_close(fd) == 0);
 
-    assert((fd = libos_open("/file", O_RDONLY, 0)) >= 0);
+    assert((fd = libos_open("/test_readv", O_RDONLY, 0)) >= 0);
+    assert(libos_lseek(fd, 0, SEEK_CUR) == 0);
     assert(libos_read(fd, buf, sizeof(buf)) == sizeof(buf));
+    assert(libos_lseek(fd, 0, SEEK_CUR) == sizeof(alpha));
+    assert(strcmp(buf, alpha) == 0);
+
+    /* Test readv() */
+    {
+        struct iovec iov[2];
+        uint8_t buf1[20];
+        uint8_t buf2[7];
+        iov[0].iov_base = buf1;
+        iov[0].iov_len = sizeof(buf1);
+        iov[1].iov_base = buf2;
+        iov[1].iov_len = sizeof(buf2);
+        assert(libos_readv(fd, iov, 2) == sizeof(ALPHA));
+        assert(memcmp(buf1, ALPHA, sizeof(buf1)) == 0);
+        assert(memcmp(buf2, ALPHA + sizeof(buf1), sizeof(buf2)) == 0);
+    }
+
+    /* Test readv() */
+    {
+        struct iovec iov[2];
+        uint8_t buf1[20];
+        uint8_t buf2[7];
+        iov[0].iov_base = buf1;
+        iov[0].iov_len = sizeof(buf1);
+        iov[1].iov_base = buf2;
+        iov[1].iov_len = sizeof(buf2);
+        assert(libos_lseek(fd, 0, SEEK_SET) == 0);
+        assert(libos_readv(fd, iov, 2) == sizeof(alpha));
+        assert(memcmp(buf1, alpha, sizeof(buf1)) == 0);
+        assert(memcmp(buf2, alpha + sizeof(buf1), sizeof(buf2)) == 0);
+    }
+
+    assert(libos_lseek(fd, sizeof(alpha), SEEK_SET) == sizeof(alpha));
+    assert(libos_lseek(fd, 0, SEEK_CUR) == sizeof(alpha));
+
     assert(libos_close(fd) == 0);
+}
+
+void test_writev(void)
+{
+    int fd;
+    char buf[sizeof(ALPHA)];
+
+    assert((fd = libos_open("/test_writev", O_CREAT | O_WRONLY, 0)) >= 0);
+
+    struct iovec iov[2];
+    iov[0].iov_base = (void*)alpha;
+    iov[0].iov_len = sizeof(alpha);
+    iov[1].iov_base = (void*)ALPHA;
+    iov[1].iov_len = sizeof(ALPHA);
+
+    assert(libos_writev(fd, iov, 2) == sizeof(alpha) + sizeof(ALPHA));
+    assert(libos_close(fd) == 0);
+
+    assert((fd = libos_open("/test_writev", O_RDONLY, 0)) >= 0);
+    assert(libos_read(fd, buf, sizeof(buf)) == sizeof(buf));
+    assert(strcmp(buf, alpha) == 0);
+    assert(libos_read(fd, buf, sizeof(buf)) == sizeof(buf));
     assert(strcmp(buf, ALPHA) == 0);
 
-    assert((*fs->fs_release)(fs) == 0);
+    assert(libos_close(fd) == 0);
+}
+
+void test_stat()
+{
+    struct stat buf;
+
+    assert(libos_stat("/test_readv", &buf) == 0);
+    assert(buf.st_size == sizeof(alpha) + sizeof(ALPHA));
 }
 
 int run_ecall(void)
 {
-    test1();
-    test2();
+    libos_fs_t* fs;
+
+    test_misc();
+
+    assert(libos_init_ramfs(&fs) == 0);
+    assert(libos_mount(fs, "/") == 0);
+
+    test_readv();
+    test_writev();
+    test_stat();
+
+    assert((*fs->fs_release)(fs) == 0);
+
     return 0;
 }
 

@@ -16,13 +16,13 @@ int libos_setcwd(const char* cwd)
     bool locked = false;
 
     if (!cwd)
-        ERAISE(EINVAL);
+        ERAISE(-EINVAL);
 
     libos_spin_lock(&_lock);
     locked = true;
 
     if (STRLCPY(_cwd.buf, cwd) >= sizeof(_cwd.buf))
-        ERAISE(ERANGE);
+        ERAISE(-ERANGE);
 
 done:
 
@@ -41,13 +41,13 @@ int libos_getcwd(libos_path_t* cwd)
         *cwd->buf = '\0';
 
     if (!cwd)
-        ERAISE(EINVAL);
+        ERAISE(-EINVAL);
 
     libos_spin_lock(&_lock);
     locked = true;
 
     if (STRLCPY(cwd->buf, _cwd.buf) >= sizeof(cwd->buf))
-        ERAISE(ERANGE);
+        ERAISE(-ERANGE);
 
 done:
 

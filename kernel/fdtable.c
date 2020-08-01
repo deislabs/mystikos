@@ -28,7 +28,7 @@ int libos_fdtable_add(
     int fd;
 
     if (!device || !object)
-        ERAISE(EINVAL);
+        ERAISE(-EINVAL);
 
     /* Find an available entry */
     for (int i = 0; i < FDTABLE_SIZE; i++)
@@ -60,30 +60,30 @@ int libos_fdtable_find(
     size_t index;
 
     if (fd < FD_OFFSET || (fd >= (FDTABLE_SIZE + FD_OFFSET)))
-        ERAISE(EINVAL);
+        ERAISE(-EINVAL);
 
     if (!device || !object)
-        ERAISE(EINVAL);
+        ERAISE(-EINVAL);
 
     index = (size_t)(fd - FD_OFFSET);
 
     if (index >= FDTABLE_SIZE)
-        ERAISE(EINVAL);
+        ERAISE(-EINVAL);
 
     if (!_fdtable[index].used)
-        ERAISE(ENOENT);
+        ERAISE(-ENOENT);
 
     if (_fdtable[index].type != type)
-        ERAISE(ENOENT);
+        ERAISE(-ENOENT);
 
     if (_fdtable[index].fd != fd)
-        ERAISE(ENOENT);
+        ERAISE(-ENOENT);
 
     if (!_fdtable[index].device)
-        ERAISE(ENOENT);
+        ERAISE(-ENOENT);
 
     if (!_fdtable[index].object)
-        ERAISE(ENOENT);
+        ERAISE(-ENOENT);
 
     *device = _fdtable[index].device;
     *object = _fdtable[index].object;

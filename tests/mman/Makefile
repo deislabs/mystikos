@@ -6,7 +6,7 @@ PROGRAM = enc
 
 SOURCES = $(SUBOBJDIR)/run_t.c enc.c
 
-INCLUDES = -I$(INCDIR) -I$(TOP)/include -I$(SUBOBJDIR) -I$(TOP)/enclave
+INCLUDES = -I$(SUBOBJDIR) $(OEENCLAVE_INCLUDES)
 
 CFLAGS = $(OEENCLAVE_CFLAGS)
 
@@ -27,3 +27,6 @@ $(SUBOBJDIR)/run_t.c:
 
 tests:
 	$(BINDIR)/run $(SUBBINDIR)/enc
+
+xxx:
+	@ echo $(OEENCLAVE_INCLUDES)

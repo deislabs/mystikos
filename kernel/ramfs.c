@@ -366,14 +366,6 @@ static int _path_to_inode(
         }
     }
 
-#if 0
-    printf("===elements\n");
-    for (size_t i = 0; i < nelements; i++)
-    {
-        printf("elements[%zu]=\"%s\"\n", i, elements[i]);
-    }
-#endif
-
     /* First element should be "/" */
     assert(strcmp(elements[0], "/") == 0);
 
@@ -434,12 +426,22 @@ done:
     return ret;
 }
 
-static int _fs_creat(libos_fs_t* fs, const char* pathname, mode_t mode)
+static int _fs_creat(
+    libos_fs_t* fs,
+    const char* pathname,
+    mode_t mode,
+    libos_file_t** file)
 {
-    (void)fs;
-    (void)pathname;
-    (void)mode;
-    return -EINVAL;
+    int ret = 0;
+    const int flags = O_CREAT | O_WRONLY | O_TRUNC;
+
+    if (!fs)
+        ERAISE(-EINVAL);
+
+    ERAISE((*fs->fs_open)(fs, pathname, flags, mode, file));
+
+done:
+    return ret;
 }
 
 static int _fs_open(
@@ -537,11 +539,54 @@ done:
     return ret;
 }
 
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-
-static off_t _fs_lseek(libos_fs_t* fs, int fd, off_t offset, int whence)
+static off_t _fs_lseek(
+    libos_fs_t* fs,
+    libos_file_t* file,
+    off_t offset,
+    int whence)
 {
-    return -EINVAL;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+    off_t ret = 0;
+    off_t new_offset;
+
+    if (!_ramfs_valid(ramfs) || !_file_valid(file))
+        ERAISE(-EINVAL);
+
+    switch (whence)
+    {
+        case SEEK_SET:
+        {
+            new_offset = offset;
+            break;
+        }
+        case SEEK_CUR:
+        {
+            new_offset = (off_t)file->offset + offset;
+            break;
+        }
+        case SEEK_END:
+        {
+            new_offset = (off_t)_file_size(file) + offset;
+            break;
+        }
+        default:
+        {
+            ERAISE(-EINVAL);
+        }
+    }
+
+    /* ATTN: seeking beyond the end (to create a hole) is not supported */
+
+    /* Check whether new offset if out of range */
+    if (new_offset < 0 || new_offset > (off_t)file->offset)
+        ERAISE(-EINVAL);
+
+    file->offset = (size_t)new_offset;
+
+    ret = new_offset;
+
+done:
+    return ret;
 }
 
 static ssize_t _fs_read(
@@ -640,20 +685,68 @@ done:
 
 static ssize_t _fs_readv(
     libos_fs_t* fs,
-    int fd,
-    const struct iovec* iov,
+    libos_file_t* file,
+    struct iovec* iov,
     int iovcnt)
 {
-    return -EINVAL;
+    ssize_t ret = 0;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+    ssize_t total = 0;
+
+    if (!_ramfs_valid(ramfs) || !_file_valid(file))
+        ERAISE(-EINVAL);
+
+    for (int i = 0; i < iovcnt; i++)
+    {
+        ssize_t n;
+        void* buf = iov[i].iov_base;
+        size_t count = iov[i].iov_len;
+
+        ECHECK((n = (*fs->fs_read)(fs, file, buf, count)));
+
+        total += n;
+
+        if ((size_t)n < count)
+            break;
+    }
+
+    ret = total;
+
+done:
+    return ret;
 }
 
 static ssize_t _fs_writev(
     libos_fs_t* fs,
-    int fd,
+    libos_file_t* file,
     const struct iovec* iov,
     int iovcnt)
 {
-    return -EINVAL;
+    ssize_t ret = 0;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+    ssize_t total = 0;
+
+    if (!_ramfs_valid(ramfs) || !_file_valid(file))
+        ERAISE(-EINVAL);
+
+    for (int i = 0; i < iovcnt; i++)
+    {
+        ssize_t n;
+        const void* buf = iov[i].iov_base;
+        size_t count = iov[i].iov_len;
+
+        ECHECK((n = (*fs->fs_write)(fs, file, buf, count)));
+
+        total += n;
+
+        if ((size_t)n < count)
+            break;
+    }
+
+    ret = total;
+
+done:
+    return ret;
 }
 
 static int _fs_close(libos_fs_t* fs, libos_file_t* file)
@@ -676,32 +769,23 @@ done:
     return ret;
 }
 
-static int _fs_stat(libos_fs_t* fs, const char* pathname, struct stat* statbuf)
-{
-    return -EINVAL;
-}
-
-static int _fs_fstat(libos_fs_t* fs, libos_file_t* file, struct stat* statbuf)
+static int _stat(libos_inode_t* inode, struct stat* statbuf)
 {
     int ret = 0;
     struct stat buf;
 
-    ramfs_t* ramfs = (ramfs_t*)fs;
-
-    if (!_ramfs_valid(ramfs) || !_file_valid(file) || !statbuf)
+    if (!_inode_valid(inode) || !statbuf)
         ERAISE(-EINVAL);
-
-    assert(_inode_valid(file->inode));
 
     memset(&buf, 0, sizeof(buf));
     buf.st_dev = 0;
-    buf.st_ino = (ino_t)file->inode;
-    buf.st_mode = file->inode->mode;
-    buf.st_nlink = file->inode->nlink;
+    buf.st_ino = (ino_t)inode;
+    buf.st_mode = inode->mode;
+    buf.st_nlink = inode->nlink;
     buf.st_uid = 0; /* ATTN: assumes root uid */
     buf.st_gid = 0; /* ATTN: assumes root gid */
     buf.st_rdev = 0;
-    buf.st_size = (off_t)_file_size(file);
+    buf.st_size = (off_t)inode->buf.size;
     buf.st_blksize = BLKSIZE;
     buf.st_blocks = libos_round_up_off(buf.st_size, BLKSIZE) / BLKSIZE;
     memset(&buf.st_atim, 0, sizeof(buf.st_atim)); /* ATTN: unsupported */
@@ -713,6 +797,39 @@ static int _fs_fstat(libos_fs_t* fs, libos_file_t* file, struct stat* statbuf)
 done:
     return ret;
 }
+
+static int _fs_stat(libos_fs_t* fs, const char* pathname, struct stat* statbuf)
+{
+    int ret = 0;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+    libos_inode_t* inode;
+
+    if (!_ramfs_valid(ramfs) || !pathname || !statbuf)
+        ERAISE(-EINVAL);
+
+    ECHECK(_path_to_inode(ramfs, pathname, &inode));
+    ECHECK(_stat(inode, statbuf));
+
+done:
+    return ret;
+}
+
+static int _fs_fstat(libos_fs_t* fs, libos_file_t* file, struct stat* statbuf)
+{
+    int ret = 0;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+
+    if (!_ramfs_valid(ramfs) || !_file_valid(file) || !statbuf)
+        ERAISE(-EINVAL);
+
+    assert(_inode_valid(file->inode));
+    ECHECK(_stat(file->inode, statbuf));
+
+done:
+    return ret;
+}
+
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 
 static int _fs_link(libos_fs_t* fs, const char* oldpath, const char* newpath)
 {

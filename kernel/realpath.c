@@ -23,16 +23,16 @@ int libos_realpath(const char* path, libos_path_t* resolved_path)
         *resolved_path->buf = '\0';
 
     if (!path || !resolved_path)
-        ERAISE(EINVAL);
+        ERAISE(-EINVAL);
 
     /* Allocate variables on the heap since too big for the stack. */
     if (!(v = calloc(1, sizeof(variables_t))))
-        ERAISE(ENOMEM);
+        ERAISE(-ENOMEM);
 
     if (path[0] == '/')
     {
         if (strlcpy(v->buf, path, sizeof(v->buf)) >= sizeof(v->buf))
-            ERAISE(ENAMETOOLONG);
+            ERAISE(-ENAMETOOLONG);
     }
     else
     {
@@ -41,13 +41,13 @@ int libos_realpath(const char* path, libos_path_t* resolved_path)
         ECHECK(libos_getcwd(&cwd));
 
         if (strlcpy(v->buf, cwd.buf, sizeof(v->buf)) >= sizeof(v->buf))
-            ERAISE(ENAMETOOLONG);
+            ERAISE(-ENAMETOOLONG);
 
         if (strlcat(v->buf, "/", sizeof(v->buf)) >= sizeof(v->buf))
-            ERAISE(ENAMETOOLONG);
+            ERAISE(-ENAMETOOLONG);
 
         if (strlcat(v->buf, path, sizeof(v->buf)) >= sizeof(v->buf))
-            ERAISE(ENAMETOOLONG);
+            ERAISE(-ENAMETOOLONG);
     }
 
     /* Split the path into elements. */
@@ -90,12 +90,12 @@ int libos_realpath(const char* path, libos_path_t* resolved_path)
         for (size_t i = 0; i < nout; i++)
         {
             if (strlcat(resolved_path->buf, v->out[i], n) >= n)
-                ERAISE(ENAMETOOLONG);
+                ERAISE(-ENAMETOOLONG);
 
             if (i != 0 && i + 1 != nout)
             {
                 if (strlcat(resolved_path->buf, "/", n) >= n)
-                    ERAISE(ENAMETOOLONG);
+                    ERAISE(-ENAMETOOLONG);
             }
         }
     }
