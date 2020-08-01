@@ -24,13 +24,13 @@
 
 #define RAMFS_MAGIC 0x28F21778D1E711EA
 
-typedef struct libos_inode libos_inode_t;
+typedef struct inode inode_t;
 
 typedef struct ramfs
 {
     libos_fs_t base;
     uint64_t magic;
-    libos_inode_t* root;
+    inode_t* root;
 }
 ramfs_t;
 
@@ -42,14 +42,14 @@ static bool _ramfs_valid(const ramfs_t* ramfs)
 /*
 **==============================================================================
 **
-** libos_inode_t
+** inode_t
 **
 **==============================================================================
 */
 
 #define INODE_MAGIC 0xcdfbdd61258a4c9d
 
-struct libos_inode
+struct inode
 {
     uint64_t magic;
     uint32_t mode; /* Type and mode */
@@ -58,12 +58,12 @@ struct libos_inode
     libos_buf_t buf; /* file or directory data */
 };
 
-static bool _inode_valid(const libos_inode_t* inode)
+static bool _inode_valid(const inode_t* inode)
 {
     return inode && inode->magic == INODE_MAGIC;
 }
 
-static void _inode_free(libos_inode_t* inode)
+static void _inode_free(inode_t* inode)
 {
     if (inode)
     {
@@ -73,15 +73,21 @@ static void _inode_free(libos_inode_t* inode)
 }
 
 static int _inode_new(
-    libos_inode_t* parent,
+    inode_t* parent,
     const char* name,
     uint32_t mode,
-    libos_inode_t** inode_out)
+    inode_t** inode_out)
 {
     int ret = 0;
-    libos_inode_t* inode = NULL;
+    inode_t* inode = NULL;
 
-    if (!(inode = calloc(1, sizeof(libos_inode_t))))
+    if (inode_out)
+        *inode_out = NULL;
+
+    if (!name)
+        ERAISE(-EINVAL);
+
+    if (!(inode = calloc(1, sizeof(inode_t))))
         ERAISE(-ENOMEM);
 
     inode->magic = INODE_MAGIC;
@@ -154,7 +160,9 @@ static int _inode_new(
         parent->nlink++;
     }
 
-    *inode_out = inode;
+    if (inode_out)
+        *inode_out = inode;
+
     inode = NULL;
 
 done:
@@ -165,8 +173,8 @@ done:
     return ret;
 }
 
-static libos_inode_t* _inode_find_child(
-    const libos_inode_t* inode,
+static inode_t* _inode_find_child(
+    const inode_t* inode,
     const char* name)
 {
     struct dirent* ents = (struct dirent*)inode->buf.data;
@@ -175,7 +183,7 @@ static libos_inode_t* _inode_find_child(
     for (size_t i = 0; i < nents; i++)
     {
         if (strcmp(ents[i].d_name, name) == 0)
-            return (libos_inode_t*)ents[i].d_ino;
+            return (inode_t*)ents[i].d_ino;
     }
 
     /* Not found */
@@ -183,7 +191,7 @@ static libos_inode_t* _inode_find_child(
 }
 
 /* release this inode and all of its children */
-static void _inode_release(libos_inode_t* inode, uint8_t d_type)
+static void _inode_release(inode_t* inode, uint8_t d_type)
 {
     struct dirent* ents = (struct dirent*)inode->buf.data;
     size_t nents = inode->buf.size / sizeof(struct dirent);
@@ -194,12 +202,12 @@ static void _inode_release(libos_inode_t* inode, uint8_t d_type)
         for (size_t i = 0; i < nents; i++)
         {
             const struct dirent* ent = &ents[i];
-            libos_inode_t* child;
+            inode_t* child;
 
             if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
                 continue;
 
-            child = (libos_inode_t*)ent->d_ino;
+            child = (inode_t*)ent->d_ino;
             assert(child);
             assert(_inode_valid(child));
 
@@ -225,7 +233,7 @@ static void _inode_release(libos_inode_t* inode, uint8_t d_type)
 struct libos_file
 {
     uint64_t magic;
-    libos_inode_t* inode;
+    inode_t* inode;
     size_t offset; /* the current file offset (files) */
     uint32_t access; /* (O_RDONLY | O_RDWR | O_WRONLY) */
 };
@@ -328,14 +336,14 @@ done:
 static int _path_to_inode(
     ramfs_t* ramfs,
     const char* path,
-    libos_inode_t** inode_out)
+    inode_t** inode_out)
 {
     int ret = 0;
     const char* elements[PATH_MAX];
     const size_t MAX_ELEMENTS = sizeof(elements) / sizeof(elements[0]);
     size_t nelements = 0;
     char buf[PATH_MAX];
-    libos_inode_t* inode = NULL;
+    inode_t* inode = NULL;
 
     if (inode_out)
         *inode_out = NULL;
@@ -377,7 +385,7 @@ static int _path_to_inode(
         }
         else
         {
-            libos_inode_t* current = ramfs->root;
+            inode_t* current = ramfs->root;
 
             for (size_t i = 1; i < nelements; i++)
             {
@@ -438,7 +446,7 @@ static int _fs_creat(
     if (!fs)
         ERAISE(-EINVAL);
 
-    ERAISE((*fs->fs_open)(fs, pathname, flags, mode, file));
+    ECHECK((*fs->fs_open)(fs, pathname, flags, mode, file));
 
 done:
     return ret;
@@ -452,7 +460,7 @@ static int _fs_open(
     libos_file_t** file_out)
 {
     ramfs_t* ramfs = (ramfs_t*)fs;
-    libos_inode_t* inode = NULL;
+    inode_t* inode = NULL;
     libos_file_t* file = NULL;
     int ret = 0;
     int errnum;
@@ -495,7 +503,7 @@ static int _fs_open(
     {
         char dirname[PATH_MAX];
         char basename[PATH_MAX];
-        libos_inode_t* parent;
+        inode_t* parent;
 
         is_i_new = true;
 
@@ -769,7 +777,7 @@ done:
     return ret;
 }
 
-static int _stat(libos_inode_t* inode, struct stat* statbuf)
+static int _stat(inode_t* inode, struct stat* statbuf)
 {
     int ret = 0;
     struct stat buf;
@@ -802,7 +810,7 @@ static int _fs_stat(libos_fs_t* fs, const char* pathname, struct stat* statbuf)
 {
     int ret = 0;
     ramfs_t* ramfs = (ramfs_t*)fs;
-    libos_inode_t* inode;
+    inode_t* inode;
 
     if (!_ramfs_valid(ramfs) || !pathname || !statbuf)
         ERAISE(-EINVAL);
@@ -855,12 +863,74 @@ static int _fs_ftruncate(libos_fs_t* fs, int fd, off_t length)
 
 static int _fs_mkdir(libos_fs_t* fs, const char* pathname, mode_t mode)
 {
-    return -EINVAL;
+    int ret = 0;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+    char dirname[PATH_MAX];
+    char basename[PATH_MAX];
+    inode_t* parent_inode;
+
+    if (!_ramfs_valid(ramfs) || !pathname)
+        ERAISE(EINVAL);
+
+    ECHECK(_split_path(pathname, dirname, basename));
+    ECHECK(_path_to_inode(ramfs, dirname, &parent_inode));
+
+    /* Check whether the pathname already exists */
+    if (_inode_find_child(parent_inode, basename))
+        ERAISE(EEXIST);
+
+    /* create the directory */
+    ECHECK(_inode_new(parent_inode, basename, (S_IFDIR | mode), NULL));
+
+done:
+    return ret;
 }
 
 static int _fs_rmdir(libos_fs_t* fs, const char* pathname)
 {
     return -EINVAL;
+}
+
+static int _fs_getdents64(
+    libos_fs_t* fs,
+    libos_file_t* file,
+    struct dirent* dirp,
+    size_t count)
+{
+    int ret = 0;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+    size_t n = count / sizeof(struct dirent);
+    size_t bytes = 0;
+
+    if (!_ramfs_valid(ramfs) || !_file_valid(file) || !dirp)
+        ERAISE(-EINVAL);
+
+    if (count == 0)
+        goto done;
+
+    for (size_t i = 0; i < n; i++)
+    {
+        struct dirent ent;
+        ssize_t r;
+
+        /* Read next entry and break on end-of-file */
+        if ((r = _fs_read(fs, file, &ent, sizeof(ent))) == 0)
+            break;
+
+        /* Fail if exactly one entry was not read */
+        if (r != sizeof(ent))
+        {
+            assert("unexpected panic" == NULL);
+            ERAISE(-EINVAL);
+        }
+
+        *dirp = ent;
+        bytes += sizeof(struct dirent);
+        dirp++;
+    }
+
+done:
+    return ret;
 }
 
 int libos_init_ramfs(libos_fs_t** fs_out)
@@ -886,8 +956,9 @@ int libos_init_ramfs(libos_fs_t** fs_out)
         _fs_ftruncate,
         _fs_mkdir,
         _fs_rmdir,
+        _fs_getdents64,
     };
-    libos_inode_t* root_inode = NULL;
+    inode_t* root_inode = NULL;
 
     if (fs_out)
         *fs_out = NULL;

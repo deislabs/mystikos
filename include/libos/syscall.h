@@ -5,6 +5,7 @@
 #include <sys/uio.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <dirent.h>
 #include <stdbool.h>
 
 enum
@@ -51,5 +52,9 @@ long libos_syscall_writev(int fd, const struct iovec* iov, int iovcnt);
 long libos_syscall_stat(const char* pathname, struct stat* statbuf);
 
 long libos_syscall_fstat(int fd, struct stat* statbuf);
+
+long libos_syscall_mkdir(const char *pathname, mode_t mode);
+
+long libos_syscall_getdents64(int fd, struct dirent* dirp, size_t count);
 
 #endif /* _LIBOS_SYSCALL_H */

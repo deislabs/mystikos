@@ -76,6 +76,12 @@ struct libos_fs
     int (*fs_mkdir)(libos_fs_t* fs, const char* pathname, mode_t mode);
 
     int (*fs_rmdir)(libos_fs_t* fs, const char* pathname);
+
+    int (*fs_getdents64)(
+        libos_fs_t* fs,
+        libos_file_t* file,
+        struct dirent* dirp,
+        size_t count);
 };
 
 #endif /* _LIBOS_FS_H */

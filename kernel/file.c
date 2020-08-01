@@ -50,3 +50,13 @@ int libos_fstat(int fd, struct stat* statbuf)
 {
     return (int)libos_syscall_ret(libos_syscall_fstat(fd, statbuf));
 }
+
+int libos_mkdir(const char *pathname, mode_t mode)
+{
+    return (int)libos_syscall_ret(libos_syscall_mkdir(pathname, mode));
+}
+
+int libos_getdents64(int fd, struct dirent* dirp, size_t count)
+{
+    return (int)libos_syscall_ret(libos_syscall_getdents64(fd, dirp, count));
+}

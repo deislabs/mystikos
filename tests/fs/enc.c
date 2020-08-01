@@ -250,6 +250,33 @@ void test_stat()
     assert(buf.st_size == sizeof(alpha) + sizeof(ALPHA));
 }
 
+void test_mkdir()
+{
+    struct stat buf;
+    int fd;
+
+    assert(libos_mkdir("/a", 0777) == 0);
+    assert(libos_mkdir("/a/bb", 0777) == 0);
+    assert(libos_mkdir("/a/bb/ccc", 0777) == 0);
+
+    assert(libos_stat("/a", &buf) == 0);
+    assert(S_ISDIR(buf.st_mode));
+
+    assert(libos_stat("/a/bb", &buf) == 0);
+    assert(S_ISDIR(buf.st_mode));
+
+    assert(libos_stat("/a/bb/ccc", &buf) == 0);
+    assert(S_ISDIR(buf.st_mode));
+
+    for (size_t i = 0; i < 2; i++)
+    {
+        assert((fd = libos_creat("/a/bb/ccc/file", 0666)) >= 0);
+        assert(libos_stat("/a/bb/ccc/file", &buf) == 0);
+        assert(S_ISREG(buf.st_mode));
+        assert(libos_close(fd) == 0);
+    }
+}
+
 int run_ecall(void)
 {
     libos_fs_t* fs;
@@ -262,6 +289,7 @@ int run_ecall(void)
     test_readv();
     test_writev();
     test_stat();
+    test_mkdir();
 
     assert((*fs->fs_release)(fs) == 0);
 

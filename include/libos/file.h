@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/uio.h>
+#include <dirent.h>
 
 int libos_creat(const char* pathname, mode_t mode);
 
@@ -28,5 +29,9 @@ ssize_t libos_writev(int fd, const struct iovec* iov, int iovcnt);
 int libos_stat(const char* pathname, struct stat* statbuf);
 
 int libos_fstat(int fd, struct stat* statbuf);
+
+int libos_mkdir(const char *pathname, mode_t mode);
+
+int libos_getdents64(int fd, struct dirent* dirp, size_t count);
 
 #endif /* _LIBOS_FILE_H */
