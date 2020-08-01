@@ -136,7 +136,8 @@ static int _inode_new(
             if (libos_buf_append(&inode->buf, &ent, sizeof(ent)) != 0)
                 ERAISE(-ENOMEM);
 
-            parent->nlink++;
+            if (parent == inode)
+                parent->nlink++;
         }
     }
 
@@ -872,24 +873,24 @@ static int _fs_mkdir(libos_fs_t* fs, const char* pathname, mode_t mode)
     ramfs_t* ramfs = (ramfs_t*)fs;
     char dirname[PATH_MAX];
     char basename[PATH_MAX];
-    inode_t* parent_inode;
+    inode_t* parent;
 
     if (!_ramfs_valid(ramfs) || !pathname)
         ERAISE(EINVAL);
 
     ECHECK(_split_path(pathname, dirname, basename));
-    ECHECK(_path_to_inode(ramfs, dirname, &parent_inode));
+    ECHECK(_path_to_inode(ramfs, dirname, &parent));
 
     /* The parent must be a directory */
-    if (!S_ISDIR(parent_inode->mode))
+    if (!S_ISDIR(parent->mode))
         ERAISE(ENOTDIR);
 
     /* Check whether the pathname already exists */
-    if (_inode_find_child(parent_inode, basename) != NULL)
+    if (_inode_find_child(parent, basename) != NULL)
         ERAISE(EEXIST);
 
     /* create the directory */
-    ECHECK(_inode_new(parent_inode, basename, (S_IFDIR | mode), NULL));
+    ECHECK(_inode_new(parent, basename, (S_IFDIR | mode), NULL));
 
 done:
     return ret;
@@ -901,31 +902,31 @@ static int _fs_rmdir(libos_fs_t* fs, const char* pathname)
     ramfs_t* ramfs = (ramfs_t*)fs;
     char dirname[PATH_MAX];
     char basename[PATH_MAX];
-    inode_t* parent_inode;
-    inode_t* child_inode;
+    inode_t* parent;
+    inode_t* child;
 
     if (!_ramfs_valid(ramfs) || !pathname)
         ERAISE(EINVAL);
 
     /* Get the child inode */
-    ECHECK(_path_to_inode(ramfs, pathname, &child_inode));
+    ECHECK(_path_to_inode(ramfs, pathname, &child));
 
     /* The child must be a directory */
-    if (!S_ISDIR(child_inode->mode))
+    if (!S_ISDIR(child->mode))
         ERAISE(ENOTDIR);
 
     /* Make sure the directory has no children */
-    if (child_inode->buf.size > (2 * sizeof(struct dirent)))
+    if (child->buf.size > (2 * sizeof(struct dirent)))
         ERAISE(ENOTEMPTY);
 
     /* Get the parent inode */
     ECHECK(_split_path(pathname, dirname, basename));
-    ECHECK(_path_to_inode(ramfs, dirname, &parent_inode));
+    ECHECK(_path_to_inode(ramfs, dirname, &parent));
 
     /* Find and remove the directory entry */
     {
-        struct dirent* ents = (struct dirent*)parent_inode->buf.data;
-        size_t nents = parent_inode->buf.size / sizeof(struct dirent);
+        struct dirent* ents = (struct dirent*)parent->buf.data;
+        size_t nents = parent->buf.size / sizeof(struct dirent);
         bool found = false;
 
         for (size_t i = 0; i < nents; i++)
@@ -934,11 +935,14 @@ static int _fs_rmdir(libos_fs_t* fs, const char* pathname)
             {
                 const size_t pos = i * sizeof(struct dirent);
                 const size_t size = sizeof(struct dirent);
-                if (libos_buf_remove(&parent_inode->buf, pos, size) != 0)
+
+                if (libos_buf_remove(&parent->buf, pos, size) != 0)
                 {
                     assert(0);
                     ERAISE(ENOMEM);
                 }
+
+                parent->nlink--;
                 found = true;
                 break;
             }
@@ -951,11 +955,9 @@ static int _fs_rmdir(libos_fs_t* fs, const char* pathname)
         }
     }
 
-    printf("nnnnnnnnnnnnnnnnnnnnnnnnnnnnn=%zu\n", child_inode->nlink);
-
     /* If only link that remains is self-reference, then free inode */
-    if (child_inode->nlink-- == 1)
-        _inode_free(child_inode);
+    if (child->nlink-- == 1)
+        _inode_free(child);
 
 done:
     return ret;

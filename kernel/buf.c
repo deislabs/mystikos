@@ -123,7 +123,7 @@ int libos_buf_remove(libos_buf_t* buf, size_t pos, size_t size)
 {
     size_t rem;
 
-    if (!buf || pos > size || pos + size > size)
+    if (!buf || pos > buf->size || pos + size > buf->size)
         return -1;
 
     rem = buf->size - pos;

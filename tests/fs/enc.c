@@ -279,13 +279,16 @@ void test_mkdir()
 
 void test_rmdir()
 {
-printf("ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ\n");
-return;
+    struct stat buf;
+
     assert(libos_mkdir("/rmdir", 0777) == 0);
     assert(libos_mkdir("/rmdir/rmdir", 0777) == 0);
     assert(libos_mkdir("/rmdir/rmdir/rmdir", 0777) == 0);
 
     assert(libos_rmdir("/rmdir/rmdir/rmdir") == 0);
+    assert(libos_rmdir("/rmdir/rmdir") == 0);
+    assert(libos_rmdir("/rmdir") == 0);
+    assert(libos_stat("/", &buf) == 0);
 }
 
 void test_readdir()
