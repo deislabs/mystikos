@@ -829,6 +829,8 @@ done:
     return ret;
 }
 
+/*============================================================================*/
+
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 
 static int _fs_link(libos_fs_t* fs, const char* oldpath, const char* newpath)
@@ -861,21 +863,6 @@ static int _fs_rmdir(libos_fs_t* fs, const char* pathname)
     return -EINVAL;
 }
 
-static int _fs_opendir(libos_fs_t* fs, const char* name, DIR** dirp)
-{
-    return -EINVAL;
-}
-
-static int _fs_readdir(libos_fs_t* fs, DIR* dirp, struct dirent** direntp)
-{
-    return -EINVAL;
-}
-
-static int _fs_closedir(libos_fs_t* fs, DIR* dirp)
-{
-    return -EINVAL;
-}
-
 int libos_init_ramfs(libos_fs_t** fs_out)
 {
     int ret = 0;
@@ -899,9 +886,6 @@ int libos_init_ramfs(libos_fs_t** fs_out)
         _fs_ftruncate,
         _fs_mkdir,
         _fs_rmdir,
-        _fs_opendir,
-        _fs_readdir,
-        _fs_closedir,
     };
     libos_inode_t* root_inode = NULL;
 

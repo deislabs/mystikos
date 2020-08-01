@@ -76,12 +76,6 @@ struct libos_fs
     int (*fs_mkdir)(libos_fs_t* fs, const char* pathname, mode_t mode);
 
     int (*fs_rmdir)(libos_fs_t* fs, const char* pathname);
-
-    int (*fs_opendir)(libos_fs_t* fs, const char* name, DIR** dirp);
-
-    int (*fs_readdir)(libos_fs_t* fs, DIR* dirp, struct dirent** direntp);
-
-    int (*fs_closedir)(libos_fs_t* fs, DIR* dirp);
 };
 
 #endif /* _LIBOS_FS_H */
