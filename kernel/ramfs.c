@@ -221,6 +221,39 @@ static void _inode_release(inode_t* inode, uint8_t d_type)
     _inode_free(inode);
 }
 
+static int _inode_remove_dirent(inode_t* inode, const char* name)
+{
+    int ret = 0;
+    struct dirent* ents = (struct dirent*)inode->buf.data;
+    size_t nents = inode->buf.size / sizeof(struct dirent);
+    bool found = false;
+
+    if (!S_ISDIR(inode->mode))
+        ERAISE(ENOTDIR);
+
+    for (size_t i = 0; i < nents; i++)
+    {
+        if (strcmp(ents[i].d_name, name) == 0)
+        {
+            const size_t pos = i * sizeof(struct dirent);
+            const size_t size = sizeof(struct dirent);
+
+            if (libos_buf_remove(&inode->buf, pos, size) != 0)
+                ERAISE(ENOMEM);
+
+            inode->nlink--;
+            found = true;
+            break;
+        }
+    }
+
+    if (!found)
+        ERAISE(ENOENT);
+
+done:
+    return ret;
+}
+
 /*
 **==============================================================================
 **
@@ -923,39 +956,10 @@ static int _fs_rmdir(libos_fs_t* fs, const char* pathname)
     ECHECK(_split_path(pathname, dirname, basename));
     ECHECK(_path_to_inode(ramfs, dirname, &parent));
 
-    /* Find and remove the directory entry */
-    {
-        struct dirent* ents = (struct dirent*)parent->buf.data;
-        size_t nents = parent->buf.size / sizeof(struct dirent);
-        bool found = false;
+    /* Find and remove the parent's directory entry */
+    ECHECK(_inode_remove_dirent(parent, basename));
 
-        for (size_t i = 0; i < nents; i++)
-        {
-            if (strcmp(ents[i].d_name, basename) == 0)
-            {
-                const size_t pos = i * sizeof(struct dirent);
-                const size_t size = sizeof(struct dirent);
-
-                if (libos_buf_remove(&parent->buf, pos, size) != 0)
-                {
-                    assert(0);
-                    ERAISE(ENOMEM);
-                }
-
-                parent->nlink--;
-                found = true;
-                break;
-            }
-        }
-
-        if (!found)
-        {
-            assert("unexpected" == NULL);
-            ERAISE(ENOENT);
-        }
-    }
-
-    /* If only link that remains is self-reference, then free inode */
+    /* If only self-reference remains, then free the inode */
     if (child->nlink-- == 1)
         _inode_free(child);
 
