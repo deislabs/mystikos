@@ -373,6 +373,7 @@ done:
 static int _path_to_inode(
     ramfs_t* ramfs,
     const char* path,
+    inode_t** parent_out,
     inode_t** inode_out)
 {
     int ret = 0;
@@ -381,9 +382,13 @@ static int _path_to_inode(
     size_t nelements = 0;
     char buf[PATH_MAX];
     inode_t* inode = NULL;
+    inode_t* parent = NULL;
 
     if (inode_out)
         *inode_out = NULL;
+
+    if (parent_out)
+        *parent_out = NULL;
 
     if (!path || !inode_out)
         ERAISE_QUIET(-EINVAL);
@@ -423,6 +428,7 @@ static int _path_to_inode(
         else
         {
             inode_t* current = ramfs->root;
+            parent = current;
 
             for (size_t i = 1; i < nelements; i++)
             {
@@ -434,6 +440,8 @@ static int _path_to_inode(
                     inode = current;
                     break;
                 }
+
+                parent = current;
             }
         }
 
@@ -442,6 +450,9 @@ static int _path_to_inode(
     }
 
     *inode_out = inode;
+
+    if (parent_out)
+        *parent_out = parent;
 
 done:
     return ret;
@@ -519,7 +530,7 @@ static int _fs_open(
     if (!(file = calloc(1, sizeof(libos_file_t))))
         ERAISE(-ENOMEM);
 
-    errnum = _path_to_inode(ramfs, pathname, &inode);
+    errnum = _path_to_inode(ramfs, pathname, NULL, &inode);
 
     /* If the file already exists */
     if (errnum == 0)
@@ -551,7 +562,7 @@ static int _fs_open(
         ECHECK(_split_path(pathname, dirname, basename));
 
         /* Get the inode of the parent directory. */
-        ECHECK(_path_to_inode(ramfs, dirname, &parent));
+        ECHECK(_path_to_inode(ramfs, dirname, NULL, &parent));
 
         /* Create the new file inode */
         ECHECK(_inode_new(parent, basename, (S_IFREG | mode), &inode));
@@ -827,7 +838,7 @@ static int _fs_access(libos_fs_t* fs, const char* pathname, int mode)
         ERAISE(-EINVAL);
 
     /* Get the inode for pathname */
-    ECHECK(_path_to_inode(ramfs, pathname, &inode));
+    ECHECK(_path_to_inode(ramfs, pathname, NULL, &inode));
 
     if (mode == F_OK)
         goto done;
@@ -883,7 +894,7 @@ static int _fs_stat(libos_fs_t* fs, const char* pathname, struct stat* statbuf)
     if (!_ramfs_valid(ramfs) || !pathname || !statbuf)
         ERAISE(-EINVAL);
 
-    ECHECK(_path_to_inode(ramfs, pathname, &inode));
+    ECHECK(_path_to_inode(ramfs, pathname, NULL, &inode));
     ECHECK(_stat(inode, statbuf));
 
 done:
@@ -918,7 +929,7 @@ static int _fs_link(libos_fs_t* fs, const char* oldpath, const char* newpath)
         ERAISE(-EINVAL);
 
     /* Find the inode for oldpath */
-    ECHECK(_path_to_inode(ramfs, oldpath, &old_inode));
+    ECHECK(_path_to_inode(ramfs, oldpath, NULL, &old_inode));
 
     /* oldpath must not be a directory */
     if (S_ISDIR(old_inode->mode))
@@ -926,7 +937,7 @@ static int _fs_link(libos_fs_t* fs, const char* oldpath, const char* newpath)
 
     /* Find the parent inode of newpath */
     ECHECK(_split_path(newpath, new_dirname, new_basename));
-    ECHECK(_path_to_inode(ramfs, new_dirname, &new_parent));
+    ECHECK(_path_to_inode(ramfs, new_dirname, NULL, &new_parent));
 
     /* Fail if newpath already exists */
     if (_inode_find_child(new_parent, new_basename) != NULL)
@@ -958,7 +969,7 @@ static int _fs_unlink(libos_fs_t* fs, const char* pathname)
         ERAISE(-EINVAL);
 
     /* Get the inode for pathname */
-    ECHECK(_path_to_inode(ramfs, pathname, &inode));
+    ECHECK(_path_to_inode(ramfs, pathname, NULL, &inode));
 
     /* pathname must not be a directory */
     if (S_ISDIR(inode->mode))
@@ -966,7 +977,7 @@ static int _fs_unlink(libos_fs_t* fs, const char* pathname)
 
     /* Get the parent inode */
     ECHECK(_split_path(pathname, dirname, basename));
-    ECHECK(_path_to_inode(ramfs, dirname, &parent));
+    ECHECK(_path_to_inode(ramfs, dirname, NULL, &parent));
 
     /* Find and remove the parent's directory entry */
     ECHECK(_inode_remove_dirent(parent, basename));
@@ -1019,7 +1030,7 @@ static int _fs_mkdir(libos_fs_t* fs, const char* pathname, mode_t mode)
         ERAISE(-EINVAL);
 
     ECHECK(_split_path(pathname, dirname, basename));
-    ECHECK(_path_to_inode(ramfs, dirname, &parent));
+    ECHECK(_path_to_inode(ramfs, dirname, NULL, &parent));
 
     /* The parent must be a directory */
     if (!S_ISDIR(parent->mode))
@@ -1049,7 +1060,7 @@ static int _fs_rmdir(libos_fs_t* fs, const char* pathname)
         ERAISE(-EINVAL);
 
     /* Get the child inode */
-    ECHECK(_path_to_inode(ramfs, pathname, &child));
+    ECHECK(_path_to_inode(ramfs, pathname, NULL, &child));
 
     /* The child must be a directory */
     if (!S_ISDIR(child->mode))
@@ -1061,7 +1072,7 @@ static int _fs_rmdir(libos_fs_t* fs, const char* pathname)
 
     /* Get the parent inode */
     ECHECK(_split_path(pathname, dirname, basename));
-    ECHECK(_path_to_inode(ramfs, dirname, &parent));
+    ECHECK(_path_to_inode(ramfs, dirname, NULL, &parent));
 
     /* Find and remove the parent's directory entry */
     ECHECK(_inode_remove_dirent(parent, basename));
