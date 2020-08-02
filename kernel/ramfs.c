@@ -905,10 +905,6 @@ done:
     return ret;
 }
 
-/*============================================================================*/
-
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-
 static int _fs_link(libos_fs_t* fs, const char* oldpath, const char* newpath)
 {
     int ret = 0;
@@ -986,16 +982,28 @@ done:
 
 static int _fs_rename(libos_fs_t* fs, const char* oldpath, const char* newpath)
 {
+    /* TODO: */
+    (void)fs;
+    (void)oldpath;
+    (void)newpath;
     return -EINVAL;
 }
 
 static int _fs_truncate(libos_fs_t* fs, const char* path, off_t length)
 {
+    /* TODO: */
+    (void)fs;
+    (void)path;
+    (void)length;
     return -EINVAL;
 }
 
-static int _fs_ftruncate(libos_fs_t* fs, int fd, off_t length)
+static int _fs_ftruncate(libos_fs_t* fs, libos_file_t* file, off_t length)
 {
+    /* TODO: */
+    (void)fs;
+    (void)file;
+    (void)length;
     return -EINVAL;
 }
 

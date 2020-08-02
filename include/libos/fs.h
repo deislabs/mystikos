@@ -75,7 +75,7 @@ struct libos_fs
 
     int (*fs_truncate)(libos_fs_t* fs, const char* path, off_t length);
 
-    int (*fs_ftruncate)(libos_fs_t* fs, int fd, off_t length);
+    int (*fs_ftruncate)(libos_fs_t* fs, libos_file_t* file, off_t length);
 
     int (*fs_mkdir)(libos_fs_t* fs, const char* pathname, mode_t mode);
 
