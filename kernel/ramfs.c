@@ -72,6 +72,42 @@ static void _inode_free(inode_t* inode)
     }
 }
 
+/* Note: does not update nlink */
+static int _inode_add_dirent(
+    inode_t* dir,
+    inode_t* inode,
+    uint8_t type, /* DT_REG or DT_DIR */
+    const char* name)
+{
+    int ret = 0;
+
+    if (!_inode_valid(dir) || !_inode_valid(inode) || !name)
+        ERAISE(-EINVAL);
+
+    if (type != DT_REG && type != DT_DIR)
+        ERAISE(-EINVAL);
+
+    /* Append the new directory entry */
+    {
+        struct dirent ent =
+        {
+            .d_ino = (ino_t)inode,
+            .d_off = (off_t)dir->buf.size,
+            .d_reclen = sizeof(struct dirent),
+            .d_type = type,
+        };
+
+        if (STRLCPY(ent.d_name, name) >= sizeof(ent.d_name))
+            ERAISE(-ENAMETOOLONG);
+
+        if (libos_buf_append(&dir->buf, &ent, sizeof(ent)) != 0)
+            ERAISE(-ENOMEM);
+    }
+
+done:
+    return ret;
+}
+
 static int _inode_new(
     inode_t* parent,
     const char* name,
@@ -102,57 +138,17 @@ static int _inode_new(
     if (S_ISDIR(mode))
     {
         /* Add the "." entry */
-        {
-            struct dirent ent =
-            {
-                .d_ino = (ino_t)inode,
-                .d_off = (off_t)inode->buf.size,
-                .d_reclen = sizeof(struct dirent),
-                .d_type = DT_DIR,
-            };
-
-            if (STRLCPY(ent.d_name, ".") >= sizeof(ent.d_name))
-                ERAISE(-ENAMETOOLONG);
-
-            if (libos_buf_append(&inode->buf, &ent, sizeof(ent)) != 0)
-                ERAISE(-ENOMEM);
-        }
+        ECHECK(_inode_add_dirent(inode, inode, DT_DIR, "."));
 
         /* Add the ".." entry */
-        {
-            struct dirent ent =
-            {
-                .d_ino = (ino_t)parent,
-                .d_off = (off_t)inode->buf.size,
-                .d_reclen = sizeof(struct dirent),
-                .d_type = DT_DIR,
-            };
-
-            if (STRLCPY(ent.d_name, "..") >= sizeof(ent.d_name))
-                ERAISE(-ENAMETOOLONG);
-
-            if (libos_buf_append(&inode->buf, &ent, sizeof(ent)) != 0)
-                ERAISE(-ENOMEM);
-        }
+        ECHECK(_inode_add_dirent(inode, parent, DT_DIR, ".."));
     }
 
     /* Add this inode to the parent's directory table (if not root) */
     if (parent != inode)
     {
-        struct dirent ent =
-        {
-            .d_ino = (ino_t)inode,
-            .d_off = (off_t)parent->buf.size,
-            .d_reclen = sizeof(struct dirent),
-            .d_type = S_ISDIR(mode) ? DT_DIR : DT_REG,
-        };
-
-        if (STRLCPY(ent.d_name, name) >= sizeof(ent.d_name))
-            ERAISE(-ENAMETOOLONG);
-
-        if (libos_buf_append(&parent->buf, &ent, sizeof(ent)) != 0)
-            ERAISE(-ENOMEM);
-
+        uint8_t type = S_ISDIR(mode) ? DT_DIR : DT_REG;
+        ECHECK(_inode_add_dirent(parent, inode, type, name));
         parent->nlink++;
     }
 
@@ -228,7 +224,7 @@ static int _inode_remove_dirent(inode_t* inode, const char* name)
     int ret = 0;
     struct dirent* ents = (struct dirent*)inode->buf.data;
     size_t nents = inode->buf.size / sizeof(struct dirent);
-    bool found = false;
+    size_t index = (size_t)-1;
 
     if (!S_ISDIR(inode->mode))
         ERAISE(ENOTDIR);
@@ -243,13 +239,19 @@ static int _inode_remove_dirent(inode_t* inode, const char* name)
             if (libos_buf_remove(&inode->buf, pos, size) != 0)
                 ERAISE(ENOMEM);
 
-            found = true;
+            index = i;
             break;
         }
     }
 
-    if (!found)
+    if (index == (size_t)-1)
         ERAISE(ENOENT);
+
+    /* Adjust d_off for entries following the deleted entry */
+    for (size_t i = index + 1; i < nents; i++)
+    {
+        ents[i].d_off -= (off_t)sizeof(struct dirent);
+    }
 
 done:
     return ret;
@@ -878,7 +880,41 @@ done:
 
 static int _fs_link(libos_fs_t* fs, const char* oldpath, const char* newpath)
 {
-    return -EINVAL;
+    int ret = 0;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+    inode_t* old_inode;
+    inode_t* new_parent;
+
+    if (!_ramfs_valid(ramfs) || !oldpath || !newpath)
+        ERAISE(EINVAL);
+
+    /* Find the inode for oldpath */
+    ECHECK(_path_to_inode(ramfs, oldpath, &old_inode));
+
+    /* oldpath must not be a directory */
+    if (S_ISDIR(old_inode->mode))
+        ERAISE(EPERM);
+
+    /* Find the parent inode of newpath */
+    {
+        char dirname[PATH_MAX];
+        char basename[PATH_MAX];
+
+        ECHECK(_split_path(newpath, dirname, basename));
+        ECHECK(_path_to_inode(ramfs, dirname, &new_parent));
+
+        /* Check whether newpath already exists */
+        if (_inode_find_child(new_parent, basename) != NULL)
+            ERAISE(EEXIST);
+    }
+
+#if 0
+    /* create the directory */
+    ECHECK(_inode_new(parent, basename, (S_IFDIR | mode), NULL));
+#endif
+
+done:
+    return ret;
 }
 
 static int _fs_unlink(libos_fs_t* fs, const char* pathname)

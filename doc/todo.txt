@@ -1,3 +1,5 @@
 
     (A) lthread should use RDTSC instruction rather than gettimeofday()
 
+    (A) update d_off after deleting directory entries.
+

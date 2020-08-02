@@ -59,4 +59,6 @@ long libos_syscall_getdents64(int fd, struct dirent* dirp, size_t count);
 
 long libos_syscall_rmdir(const char* pathname);
 
+long libos_syscall_link(const char* oldpath, const char* newpath);
+
 #endif /* _LIBOS_SYSCALL_H */

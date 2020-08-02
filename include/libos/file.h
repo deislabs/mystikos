@@ -42,4 +42,6 @@ struct dirent* libos_readdir(DIR *dir);
 
 int libos_closedir(DIR* dir);
 
+int libos_link(const char* oldpath, const char* newpath);
+
 #endif /* _LIBOS_FILE_H */
