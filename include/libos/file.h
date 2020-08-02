@@ -30,20 +30,22 @@ int libos_stat(const char* pathname, struct stat* statbuf);
 
 int libos_fstat(int fd, struct stat* statbuf);
 
-int libos_mkdir(const char *pathname, mode_t mode);
+int libos_mkdir(const char* pathname, mode_t mode);
 
 int libos_rmdir(const char* pathname);
 
 int libos_getdents64(int fd, struct dirent* dirp, size_t count);
 
-DIR* libos_opendir(const char *name);
+DIR* libos_opendir(const char* name);
 
-struct dirent* libos_readdir(DIR *dir);
+struct dirent* libos_readdir(DIR* dir);
 
 int libos_closedir(DIR* dir);
 
 int libos_link(const char* oldpath, const char* newpath);
 
 int libos_unlink(const char* pathname);
+
+int libos_access(const char* pathname, int mode);
 
 #endif /* _LIBOS_FILE_H */

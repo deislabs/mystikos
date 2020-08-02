@@ -1,5 +1,6 @@
 #include <libos/file.h>
 #include <libos/syscall.h>
+#include <stdio.h>
 
 int libos_creat(const char* pathname, mode_t mode)
 {
@@ -74,4 +75,9 @@ int libos_link(const char* oldpath, const char* newpath)
 int libos_unlink(const char* pathname)
 {
     return (int)libos_syscall_ret(libos_syscall_unlink(pathname));
+}
+
+int libos_access(const char* pathname, int mode)
+{
+    return (int)libos_syscall_ret(libos_syscall_access(pathname, mode));
 }

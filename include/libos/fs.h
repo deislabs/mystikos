@@ -61,6 +61,8 @@ struct libos_fs
 
     int (*fs_close)(libos_fs_t* fs, libos_file_t* file);
 
+    int (*fs_access)(libos_fs_t* fs, const char* pathname, int mode);
+
     int (*fs_stat)(libos_fs_t* fs, const char* pathname, struct stat* statbuf);
 
     int (*fs_fstat)(libos_fs_t* fs, libos_file_t* file, struct stat* statbuf);

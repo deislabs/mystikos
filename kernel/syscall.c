@@ -679,7 +679,7 @@ long libos_syscall_link(const char* oldpath, const char* newpath)
     if (old_fs != new_fs)
     {
         /* oldpath and newpath are not on the same mounted file system */
-        ERAISE(EXDEV);
+        ERAISE(-EXDEV);
     }
 
     ECHECK((*old_fs->fs_link)(old_fs, old_suffix, new_suffix));
@@ -696,6 +696,19 @@ long libos_syscall_unlink(const char* pathname)
 
     ECHECK(libos_mount_resolve(pathname, suffix, &fs));
     ECHECK((*fs->fs_unlink)(fs, suffix));
+
+done:
+    return ret;
+}
+
+long libos_syscall_access(const char* pathname, int mode)
+{
+    long ret = 0;
+    char suffix[PATH_MAX];
+    libos_fs_t* fs;
+
+    ECHECK(libos_mount_resolve(pathname, suffix, &fs));
+    ECHECK((*fs->fs_access)(fs, suffix, mode));
 
 done:
     return ret;

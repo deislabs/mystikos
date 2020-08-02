@@ -5,6 +5,7 @@
 #include <libos/ramfs.h>
 #include <libos/mount.h>
 #include <libos/file.h>
+#include <libos/trace.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <dirent.h>
@@ -391,17 +392,46 @@ void test_link()
     assert(_nlink("/link/file2") == 3);
     assert(_nlink("/link/dir/file3") == 3);
 
-    dump_dirents("/link");
-    dump_dirents("/link/dir");
-
     assert(libos_unlink("/link/file1") == 0);
     assert(_nlink("/link/dir/file3") == 2);
     assert(libos_unlink("/link/file2") == 0);
     assert(_nlink("/link/dir/file3") == 1);
     assert(libos_unlink("/link/dir/file3") == 0);
+}
 
-    dump_dirents("/link");
-    dump_dirents("/link/dir");
+static int _touch(const char* pathname, mode_t mode)
+{
+    int fd;
+
+    if ((fd = libos_creat(pathname, mode)) < 0)
+        return -1;
+
+    if (libos_close(fd) != 0)
+        return -1;
+
+    return 0;
+}
+
+void test_access()
+{
+    assert(libos_mkdir("/access", 777) == 0);
+    assert(_touch("/access/r", S_IRUSR) == 0);
+    assert(_touch("/access/w", S_IWUSR) == 0);
+    assert(_touch("/access/x", S_IXUSR) == 0);
+
+    assert(libos_access("/access/r", F_OK) == 0);
+    assert(libos_access("/access/w", F_OK) == 0);
+    assert(libos_access("/access/x", F_OK) == 0);
+
+    assert(libos_access("/access/r", R_OK) == 0);
+    assert(libos_access("/access/w", W_OK) == 0);
+    assert(libos_access("/access/x", X_OK) == 0);
+
+    libos_set_trace(false);
+    assert(libos_access("/access/r", X_OK) != 0);
+    assert(libos_access("/access/w", R_OK) != 0);
+    assert(libos_access("/access/x", W_OK) != 0);
+    libos_set_trace(true);
 }
 
 int run_ecall(void)
@@ -422,6 +452,7 @@ int run_ecall(void)
     test_rmdir();
     test_readdir();
     test_link();
+    test_access();
 
     assert((*fs->fs_release)(fs) == 0);
 
