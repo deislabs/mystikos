@@ -250,12 +250,22 @@ void test_stat()
     assert(buf.st_size == sizeof(alpha) + sizeof(ALPHA));
 }
 
+static uint64_t _nlink(const char* path)
+{
+    struct stat buf;
+    assert(libos_stat(path, &buf) == 0);
+    return buf.st_nlink;
+}
+
 void test_mkdir()
 {
     struct stat buf;
     int fd;
 
     assert(libos_mkdir("/a", 0777) == 0);
+    assert(libos_stat("/a", &buf) == 0);
+    assert(S_ISDIR(buf.st_mode));
+
     assert(libos_mkdir("/a/bb", 0777) == 0);
     assert(libos_mkdir("/a/bb/ccc", 0777) == 0);
 
@@ -275,6 +285,11 @@ void test_mkdir()
         assert(S_ISREG(buf.st_mode));
         assert(libos_close(fd) == 0);
     }
+
+    assert(_nlink("/a") == 2);
+    assert(_nlink("/a/bb") == 2);
+    assert(_nlink("/a/bb/ccc") == 2);
+    assert(_nlink("/a/bb/ccc/file") == 1);
 }
 
 void test_rmdir()
@@ -347,6 +362,8 @@ int run_ecall(void)
 
     assert(libos_init_ramfs(&fs) == 0);
     assert(libos_mount(fs, "/") == 0);
+
+    assert(_nlink("/") == 1);
 
     test_readv();
     test_writev();

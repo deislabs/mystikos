@@ -53,7 +53,7 @@ struct inode
 {
     uint64_t magic;
     uint32_t mode; /* Type and mode */
-    size_t nlink; /* number of hard links to this inode */
+    size_t nlink; /* number of hard links to this inode (excludes ".") */
     size_t nopens; /* number of times file is currently opened */
     libos_buf_t buf; /* file or directory data */
 };
@@ -92,7 +92,7 @@ static int _inode_new(
 
     inode->magic = INODE_MAGIC;
     inode->mode = mode;
-    inode->nlink = 0;
+    inode->nlink = 1;
 
     /* The root directory is its own parent */
     if (!parent)
@@ -116,8 +116,6 @@ static int _inode_new(
 
             if (libos_buf_append(&inode->buf, &ent, sizeof(ent)) != 0)
                 ERAISE(-ENOMEM);
-
-            inode->nlink++;
         }
 
         /* Add the ".." entry */
@@ -135,13 +133,10 @@ static int _inode_new(
 
             if (libos_buf_append(&inode->buf, &ent, sizeof(ent)) != 0)
                 ERAISE(-ENOMEM);
-
-            if (parent == inode)
-                parent->nlink++;
         }
     }
 
-    /* Add this inode to the parent inode's directory table */
+    /* Add this inode to the parent's directory table (if not root) */
     if (parent != inode)
     {
         struct dirent ent =
@@ -191,8 +186,11 @@ static inode_t* _inode_find_child(
     return NULL;
 }
 
-/* release this inode and all of its children */
-static void _inode_release(inode_t* inode, uint8_t d_type)
+/* Perform a depth-first release of all inodes */
+static void _inode_release_all(
+    inode_t* parent,
+    inode_t* inode,
+    uint8_t d_type)
 {
     struct dirent* ents = (struct dirent*)inode->buf.data;
     size_t nents = inode->buf.size / sizeof(struct dirent);
@@ -213,12 +211,16 @@ static void _inode_release(inode_t* inode, uint8_t d_type)
             assert(_inode_valid(child));
 
             if (child != inode)
-                _inode_release(child, ent->d_type);
+                _inode_release_all(inode, child, ent->d_type);
         }
     }
 
-    /* Free self */
-    _inode_free(inode);
+    /* If not the root inode */
+    if (parent)
+        parent->nlink--;
+
+    if (--inode->nlink == 0)
+        _inode_free(inode);
 }
 
 static int _inode_remove_dirent(inode_t* inode, const char* name)
@@ -241,7 +243,6 @@ static int _inode_remove_dirent(inode_t* inode, const char* name)
             if (libos_buf_remove(&inode->buf, pos, size) != 0)
                 ERAISE(ENOMEM);
 
-            inode->nlink--;
             found = true;
             break;
         }
@@ -460,7 +461,7 @@ static int _fs_release(libos_fs_t* fs)
     if (!_ramfs_valid(ramfs))
         ERAISE(-EINVAL);
 
-    _inode_release(ramfs->root, DT_DIR);
+    _inode_release_all(NULL, ramfs->root, DT_DIR);
 
     free(ramfs);
 
@@ -958,9 +959,13 @@ static int _fs_rmdir(libos_fs_t* fs, const char* pathname)
 
     /* Find and remove the parent's directory entry */
     ECHECK(_inode_remove_dirent(parent, basename));
+    parent->nlink--;
 
-    /* If only self-reference remains, then free the inode */
-    if (child->nlink-- == 1)
+    /* Decrement the number of links */
+    child->nlink--;
+
+    /* If no more links to this inode, then free it */
+    if (child->nlink == 0)
         _inode_free(child);
 
 done:
