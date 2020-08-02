@@ -354,6 +354,56 @@ void test_readdir()
     assert(libos_closedir(dir) == 0);
 }
 
+void dump_dirents(const char* path)
+{
+    DIR* dir;
+    struct dirent* ent;
+
+    assert((dir = libos_opendir(path)));
+
+    printf("=== dump_dirents(%s)\n", path);
+
+    while ((ent = libos_readdir(dir)))
+    {
+        printf("name=\"%s\": ino=%lx type=%u off=%ld reclen=%ld\n",
+            ent->d_name, ent->d_ino, ent->d_type, ent->d_off, ent->d_off);
+    }
+
+    libos_closedir(dir);
+}
+
+void test_link()
+{
+    int fd;
+
+    assert(libos_mkdir("/link", 0777) == 0);
+    assert(libos_mkdir("/link/dir", 0777) == 0);
+
+    assert((fd = libos_creat("/link/file1", 0666)) >= 0);
+    assert(libos_close(fd) == 0);
+
+    assert(_nlink("/link/file1") == 1);
+    assert(libos_link("/link/file1", "/link/file2") == 0);
+    assert(_nlink("/link/file1") == 2);
+    assert(_nlink("/link/file2") == 2);
+    assert(libos_link("/link/file2", "/link/dir/file3") == 0);
+    assert(_nlink("/link/file1") == 3);
+    assert(_nlink("/link/file2") == 3);
+    assert(_nlink("/link/dir/file3") == 3);
+
+    dump_dirents("/link");
+    dump_dirents("/link/dir");
+
+    assert(libos_unlink("/link/file1") == 0);
+    assert(_nlink("/link/dir/file3") == 2);
+    assert(libos_unlink("/link/file2") == 0);
+    assert(_nlink("/link/dir/file3") == 1);
+    assert(libos_unlink("/link/dir/file3") == 0);
+
+    dump_dirents("/link");
+    dump_dirents("/link/dir");
+}
+
 int run_ecall(void)
 {
     libos_fs_t* fs;
@@ -371,6 +421,7 @@ int run_ecall(void)
     test_mkdir();
     test_rmdir();
     test_readdir();
+    test_link();
 
     assert((*fs->fs_release)(fs) == 0);
 

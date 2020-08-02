@@ -61,4 +61,6 @@ long libos_syscall_rmdir(const char* pathname);
 
 long libos_syscall_link(const char* oldpath, const char* newpath);
 
+long libos_syscall_unlink(const char* pathname);
+
 #endif /* _LIBOS_SYSCALL_H */

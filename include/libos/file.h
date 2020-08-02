@@ -44,4 +44,6 @@ int libos_closedir(DIR* dir);
 
 int libos_link(const char* oldpath, const char* newpath);
 
+int libos_unlink(const char* pathname);
+
 #endif /* _LIBOS_FILE_H */

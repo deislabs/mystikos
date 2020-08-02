@@ -66,3 +66,12 @@ int libos_getdents64(int fd, struct dirent* dirp, size_t count)
     return (int)libos_syscall_ret(libos_syscall_getdents64(fd, dirp, count));
 }
 
+int libos_link(const char* oldpath, const char* newpath)
+{
+    return (int)libos_syscall_ret(libos_syscall_link(oldpath, newpath));
+}
+
+int libos_unlink(const char* pathname)
+{
+    return (int)libos_syscall_ret(libos_syscall_unlink(pathname));
+}

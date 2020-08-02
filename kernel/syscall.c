@@ -674,7 +674,7 @@ long libos_syscall_link(const char* oldpath, const char* newpath)
     libos_fs_t* new_fs;
 
     ECHECK(libos_mount_resolve(oldpath, old_suffix, &old_fs));
-    ECHECK(libos_mount_resolve(newpath, old_suffix, &new_fs));
+    ECHECK(libos_mount_resolve(newpath, new_suffix, &new_fs));
 
     if (old_fs != new_fs)
     {
@@ -683,6 +683,19 @@ long libos_syscall_link(const char* oldpath, const char* newpath)
     }
 
     ECHECK((*old_fs->fs_link)(old_fs, old_suffix, new_suffix));
+
+done:
+    return ret;
+}
+
+long libos_syscall_unlink(const char* pathname)
+{
+    long ret = 0;
+    char suffix[PATH_MAX];
+    libos_fs_t* fs;
+
+    ECHECK(libos_mount_resolve(pathname, suffix, &fs));
+    ECHECK((*fs->fs_unlink)(fs, suffix));
 
 done:
     return ret;

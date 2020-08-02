@@ -884,6 +884,8 @@ static int _fs_link(libos_fs_t* fs, const char* oldpath, const char* newpath)
     ramfs_t* ramfs = (ramfs_t*)fs;
     inode_t* old_inode;
     inode_t* new_parent;
+    char new_dirname[PATH_MAX];
+    char new_basename[PATH_MAX];
 
     if (!_ramfs_valid(ramfs) || !oldpath || !newpath)
         ERAISE(EINVAL);
@@ -896,22 +898,21 @@ static int _fs_link(libos_fs_t* fs, const char* oldpath, const char* newpath)
         ERAISE(EPERM);
 
     /* Find the parent inode of newpath */
-    {
-        char dirname[PATH_MAX];
-        char basename[PATH_MAX];
+    ECHECK(_split_path(newpath, new_dirname, new_basename));
+    ECHECK(_path_to_inode(ramfs, new_dirname, &new_parent));
 
-        ECHECK(_split_path(newpath, dirname, basename));
-        ECHECK(_path_to_inode(ramfs, dirname, &new_parent));
+    /* Fail if newpath already exists */
+    if (_inode_find_child(new_parent, new_basename) != NULL)
+        ERAISE(EEXIST);
 
-        /* Check whether newpath already exists */
-        if (_inode_find_child(new_parent, basename) != NULL)
-            ERAISE(EEXIST);
-    }
+    /* Add the directory entry for the newpath */
+    _inode_add_dirent(new_parent, old_inode, DT_REG, new_basename);
 
-#if 0
-    /* create the directory */
-    ECHECK(_inode_new(parent, basename, (S_IFDIR | mode), NULL));
-#endif
+    /* Increment the new parent's link count */
+    new_parent->nlink++;
+
+    /* Increment the file's link count */
+    old_inode->nlink++;
 
 done:
     return ret;
@@ -919,7 +920,37 @@ done:
 
 static int _fs_unlink(libos_fs_t* fs, const char* pathname)
 {
-    return -EINVAL;
+    int ret = 0;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+    char dirname[PATH_MAX];
+    char basename[PATH_MAX];
+    inode_t* parent;
+    inode_t* inode;
+
+    if (!_ramfs_valid(ramfs) || !pathname)
+        ERAISE(EINVAL);
+
+    /* Get the inode for pathname */
+    ECHECK(_path_to_inode(ramfs, pathname, &inode));
+
+    /* pathname must not be a directory */
+    if (S_ISDIR(inode->mode))
+        ERAISE(EPERM);
+
+    /* Get the parent inode */
+    ECHECK(_split_path(pathname, dirname, basename));
+    ECHECK(_path_to_inode(ramfs, dirname, &parent));
+
+    /* Find and remove the parent's directory entry */
+    ECHECK(_inode_remove_dirent(parent, basename));
+    parent->nlink--;
+
+    /* Decrement the number of links and free if final link */
+    if (--inode->nlink == 0)
+        _inode_free(inode);
+
+done:
+    return ret;
 }
 
 static int _fs_rename(libos_fs_t* fs, const char* oldpath, const char* newpath)
