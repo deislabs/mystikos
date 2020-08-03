@@ -17,6 +17,26 @@
 const char alpha[] = "abcdefghijklmnopqrstuvwxyz";
 const char ALPHA[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
+static size_t _fsize(const char* path)
+{
+    struct stat buf;
+
+    if (libos_stat(path, &buf) != 0)
+        return (size_t)-1;
+
+    return (size_t)buf.st_size;
+}
+
+static size_t _fdsize(int fd)
+{
+    struct stat buf;
+
+    if (libos_fstat(fd, &buf) != 0)
+        return (size_t)-1;
+
+    return (size_t)buf.st_size;
+}
+
 void test_misc()
 {
     libos_fs_t* fs;
@@ -443,8 +463,40 @@ void test_rename(void)
     assert(libos_access("/rename/file1", R_OK) != 0);
     libos_set_trace(true);
     assert(libos_access("/rename/file2", R_OK) == 0);
+}
 
-    dump_dirents("/rename");
+void test_truncate(void)
+{
+    int fd;
+
+    assert(libos_mkdir("/truncate", 777) == 0);
+
+    assert((fd = libos_open("/truncate/alpha", O_CREAT | O_WRONLY, 0)) >= 0);
+    assert(libos_write(fd, alpha, sizeof(alpha)) == sizeof(alpha));
+    assert(libos_close(fd) == 0);
+
+    {
+        const off_t new_size = sizeof(alpha) * 2;
+        assert(_fsize("/truncate/alpha") == sizeof(alpha));
+        assert(libos_truncate("/truncate/alpha", new_size) == 0);
+        assert(_fsize("/truncate/alpha") == (size_t)new_size);
+        assert(libos_truncate("/truncate/alpha", sizeof(alpha)) == 0);
+        assert(_fsize("/truncate/alpha") == sizeof(alpha));
+        assert(libos_truncate("/truncate/alpha", 0) == 0);
+        assert(_fsize("/truncate/alpha") == 0);
+    }
+
+    {
+        assert((fd = libos_open("/truncate/alpha", O_RDWR, 0)) >= 0);
+        assert(_fdsize(fd) == 0);
+        assert(libos_ftruncate(fd, sizeof(alpha)) == 0);
+        assert(_fdsize(fd) == sizeof(alpha));
+        assert(libos_ftruncate(fd, 2*sizeof(alpha)) == 0);
+        assert(_fdsize(fd) == 2*sizeof(alpha));
+        assert(libos_ftruncate(fd, 0) == 0);
+        assert(_fdsize(fd) == 0);
+        assert(libos_close(fd) == 0);
+    }
 }
 
 int run_ecall(void)
@@ -467,6 +519,7 @@ int run_ecall(void)
     test_link();
     test_access();
     test_rename();
+    test_truncate();
 
     assert((*fs->fs_release)(fs) == 0);
 

@@ -14,6 +14,9 @@
 
 #define BLKSIZE 512
 
+/* ATTN: check access for all read operations */
+/* ATTN: add whole-file-system locking */
+
 /*
 **==============================================================================
 **
@@ -1063,20 +1066,41 @@ done:
 
 static int _fs_truncate(libos_fs_t* fs, const char* path, off_t length)
 {
-    /* TODO: */
-    (void)fs;
-    (void)path;
-    (void)length;
-    return -EINVAL;
+    int ret = 0;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+    inode_t* inode;
+
+    if (!_ramfs_valid(ramfs) || !path || length < 0)
+        ERAISE(-EINVAL);
+
+    ECHECK(_path_to_inode(ramfs, path, NULL, &inode));
+
+    if (S_ISDIR(inode->mode))
+        ERAISE(-EISDIR);
+
+    if (libos_buf_resize(&inode->buf, (size_t)length) != 0)
+        ERAISE(-ENOMEM);
+
+done:
+    return ret;
 }
 
 static int _fs_ftruncate(libos_fs_t* fs, libos_file_t* file, off_t length)
 {
-    /* TODO: */
-    (void)fs;
-    (void)file;
-    (void)length;
-    return -EINVAL;
+    int ret = 0;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+
+    if (!_ramfs_valid(ramfs) || !_file_valid(file) || length < 0)
+        ERAISE(-EINVAL);
+
+    if (S_ISDIR(file->inode->mode))
+        ERAISE(-EISDIR);
+
+    if (libos_buf_resize(&file->inode->buf, (size_t)length) != 0)
+        ERAISE(-ENOMEM);
+
+done:
+    return ret;
 }
 
 static int _fs_mkdir(libos_fs_t* fs, const char* pathname, mode_t mode)

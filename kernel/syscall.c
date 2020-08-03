@@ -737,6 +737,33 @@ done:
     return ret;
 }
 
+long libos_syscall_truncate(const char* path, off_t length)
+{
+    long ret = 0;
+    char suffix[PATH_MAX];
+    libos_fs_t* fs;
+
+    ECHECK(libos_mount_resolve(path, suffix, &fs));
+    ECHECK((*fs->fs_truncate)(fs, suffix, length));
+
+done:
+    return ret;
+}
+
+long libos_syscall_ftruncate(int fd, off_t length)
+{
+    long ret = 0;
+    libos_fs_t* fs;
+    libos_file_t* file;
+    const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_FILE;
+
+    ECHECK(libos_fdtable_find(fd, type, (void**)&fs, (void**)&file));
+    ret = (*fs->fs_ftruncate)(fs, file, length);
+
+done:
+    return ret;
+}
+
 long libos_syscall_ret(long ret)
 {
     if ((unsigned long)ret > -4096UL)

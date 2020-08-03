@@ -86,3 +86,13 @@ int libos_rename(const char* oldpath, const char* newpath)
 {
     return (int)libos_syscall_ret(libos_syscall_rename(oldpath, newpath));
 }
+
+int libos_truncate(const char* path, off_t length)
+{
+    return (int)libos_syscall_ret(libos_syscall_truncate(path, length));
+}
+
+int libos_ftruncate(int fd, off_t length)
+{
+    return (int)libos_syscall_ret(libos_syscall_ftruncate(fd, length));
+}

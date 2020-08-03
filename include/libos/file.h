@@ -50,4 +50,8 @@ int libos_access(const char* pathname, int mode);
 
 int libos_rename(const char* oldpath, const char* newpath);
 
+int libos_truncate(const char* path, off_t length);
+
+int libos_ftruncate(int fd, off_t length);
+
 #endif /* _LIBOS_FILE_H */
