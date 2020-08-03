@@ -7,15 +7,18 @@
 
 #include <string.h>
 #include <assert.h>
+#include <stdio.h>
 #include <libos/file.h>
-#include "cpio.h"
-#include "strarr.h"
+#include <libos/cpio.h>
+#include <libos/strarr.h>
 #include "round.h"
 
 void* calloc(size_t nmemb, size_t size);
 void free(void* ptr);
 
 #define CPIO_BLOCK_SIZE 512
+
+#define TRACE
 
 // clang-format off
 #if defined(TRACE)
@@ -232,7 +235,7 @@ static int _skip_padding(int fd)
 
     new_pos = libos_round_up_i64(pos, 4);
 
-    if (new_pos != pos && libos_lseek(fd, new_pos, SEEK_SET) != new_pos)
+    if (new_pos != pos && libos_lseek(fd, new_pos, SEEK_SET) < 0)
         GOTO(done);
 
     ret = 0;
@@ -365,7 +368,7 @@ int libos_cpio_read_entry(libos_cpio_t* cpio, libos_cpio_entry_t* entry_out)
         GOTO(done);
 
     /* Set the position to the next entry. */
-    if (libos_lseek(cpio->fd, cpio->offset, SEEK_SET) != cpio->offset)
+    if (libos_lseek(cpio->fd, cpio->offset, SEEK_SET) < 0)
         GOTO(done);
 
     if (libos_read(cpio->fd, &hdr, sizeof(hdr)) != (ssize_t)sizeof(hdr))
@@ -410,7 +413,7 @@ int libos_cpio_read_entry(libos_cpio_t* cpio, libos_cpio_entry_t* entry_out)
     file_offset = libos_lseek(cpio->fd, 0, SEEK_CUR);
 
     /* Skip over the file data. */
-    if (libos_lseek(cpio->fd, (off_t)entry.size, SEEK_CUR) != (off_t)entry.size)
+    if (libos_lseek(cpio->fd, (off_t)entry.size, SEEK_CUR) < 0)
         GOTO(done);
 
     /* Save the file offset. */
@@ -424,7 +427,7 @@ int libos_cpio_read_entry(libos_cpio_t* cpio, libos_cpio_entry_t* entry_out)
     cpio->offset = libos_lseek(cpio->fd, 0, SEEK_CUR);
 
     /* Rewind to the file offset. */
-    if (libos_lseek(cpio->fd, file_offset, SEEK_SET) != file_offset)
+    if (libos_lseek(cpio->fd, file_offset, SEEK_SET) < 0)
         GOTO(done);
 
     /* Check for end-of-file. */
@@ -582,7 +585,11 @@ int libos_cpio_unpack(const char* source, const char* target)
 
         if (S_ISDIR(entry.mode))
         {
-            if (libos_access(path, R_OK) && mkdir(path, entry.mode) != 0)
+            /* Fail if file already exists */
+            if (libos_access(path, R_OK) == 0)
+                GOTO(done);
+
+            if (libos_mkdir(path, entry.mode) != 0)
                 GOTO(done);
         }
         else
@@ -590,7 +597,7 @@ int libos_cpio_unpack(const char* source, const char* target)
             char data[512];
             ssize_t n;
 
-            if ((fd = libos_open(path, O_WRONLY, 666)) < 0)
+            if ((fd = libos_open(path, O_WRONLY | O_CREAT, 666)) < 0)
                 GOTO(done);
 
             while ((n = libos_cpio_read_data(cpio, data, sizeof(data))) > 0)

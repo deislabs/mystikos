@@ -43,6 +43,8 @@ ifdef DIRS
 endif
 
 tests:
+ifndef REDEFINE_TESTS
 ifdef DIRS
 	$(foreach i, $(DIRS), $(MAKE) -C $(i) tests $(NL) )
+endif
 endif

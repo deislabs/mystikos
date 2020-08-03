@@ -12,6 +12,7 @@
 #include <libos/syscall.h>
 #include <libos/elfutils.h>
 #include <libos/mmanutils.h>
+#include <libos/trace.h>
 #include <libos/mount.h>
 #include "fdtable.h"
 #include "eraise.h"
@@ -706,9 +707,12 @@ long libos_syscall_access(const char* pathname, int mode)
     long ret = 0;
     char suffix[PATH_MAX];
     libos_fs_t* fs;
+    bool trace = libos_get_trace();
 
     ECHECK(libos_mount_resolve(pathname, suffix, &fs));
+    libos_set_trace(false);
     ECHECK((*fs->fs_access)(fs, suffix, mode));
+    libos_set_trace(trace);
 
 done:
     return ret;

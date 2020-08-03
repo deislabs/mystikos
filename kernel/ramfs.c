@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <libos/fs.h>
 #include <libos/ramfs.h>
+#include <libos/trace.h>
 #include <dirent.h>
 #include "eraise.h"
 #include "strings.h"
@@ -641,10 +642,10 @@ static off_t _fs_lseek(
         }
     }
 
-    /* ATTN: seeking beyond the end (to create a hole) is not supported */
+    /* ATTN: support seeking beyond the end of file */
 
     /* Check whether new offset if out of range */
-    if (new_offset < 0 || new_offset > (off_t)file->offset)
+    if (new_offset < 0 || new_offset > (off_t)_file_size(file))
         ERAISE(-EINVAL);
 
     file->offset = (size_t)new_offset;
@@ -863,6 +864,7 @@ static int _fs_access(libos_fs_t* fs, const char* pathname, int mode)
         ERAISE(-EACCES);
 
 done:
+
     return ret;
 }
 
