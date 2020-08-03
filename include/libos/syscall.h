@@ -65,4 +65,6 @@ long libos_syscall_unlink(const char* pathname);
 
 long libos_syscall_access(const char* pathname, int mode);
 
+long libos_syscall_rename(const char* oldpath, const char* newpath);
+
 #endif /* _LIBOS_SYSCALL_H */

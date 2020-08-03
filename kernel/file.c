@@ -81,3 +81,8 @@ int libos_access(const char* pathname, int mode)
 {
     return (int)libos_syscall_ret(libos_syscall_access(pathname, mode));
 }
+
+int libos_rename(const char* oldpath, const char* newpath)
+{
+    return (int)libos_syscall_ret(libos_syscall_rename(oldpath, newpath));
+}

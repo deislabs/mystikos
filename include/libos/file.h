@@ -48,4 +48,6 @@ int libos_unlink(const char* pathname);
 
 int libos_access(const char* pathname, int mode);
 
+int libos_rename(const char* oldpath, const char* newpath);
+
 #endif /* _LIBOS_FILE_H */

@@ -108,6 +108,13 @@ done:
     return ret;
 }
 
+static bool _inode_is_empty_dir(const inode_t* inode)
+{
+    /* empty directories have two entries: "." and ".." */
+    const size_t empty_size = (2 * sizeof(struct dirent));
+    return inode && S_ISDIR(inode->mode) && inode->buf.size == empty_size;
+}
+
 static int _inode_new(
     inode_t* parent,
     const char* name,
@@ -993,11 +1000,65 @@ done:
 
 static int _fs_rename(libos_fs_t* fs, const char* oldpath, const char* newpath)
 {
-    /* TODO: */
-    (void)fs;
-    (void)oldpath;
-    (void)newpath;
-    return -EINVAL;
+    int ret = 0;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+    char old_dirname[PATH_MAX];
+    char old_basename[PATH_MAX];
+    char new_dirname[PATH_MAX];
+    char new_basename[PATH_MAX];
+    inode_t* old_parent = NULL;
+    inode_t* old_inode = NULL;
+    inode_t* new_parent = NULL;
+    inode_t* new_inode = NULL;
+
+    /* ATTN: check attempt to make subdirectory a directory of itself */
+    /* ATTN: check where newpath contains a prefix of oldpath */
+
+    if (!_ramfs_valid(ramfs) || !oldpath || !newpath)
+        ERAISE(-EINVAL);
+
+    /* Split oldpath and newpath */
+    ECHECK(_split_path(newpath, new_dirname, new_basename));
+    ECHECK(_split_path(oldpath, old_dirname, old_basename));
+
+    /* Find the oldpath inode */
+    ECHECK(_path_to_inode(ramfs, oldpath, &old_parent, &old_inode));
+
+    /* Get the parent of newpath */
+    ECHECK(_path_to_inode(ramfs, new_dirname, NULL, &new_parent));
+
+    /* Get the newpath inode (if any) */
+    new_inode = _inode_find_child(new_parent, new_basename);
+
+    /* Succeed if oldpath and newpath refer to the same inode */
+    if (new_inode == old_inode)
+        goto done;
+
+    /* If oldpath is a directory and newpath exists */
+    if (S_ISDIR(old_inode->mode) && new_inode)
+    {
+        if (_inode_is_empty_dir(new_inode))
+            ERAISE(-ENOTEMPTY);
+    }
+
+    /* Fail if newpath is a directory but oldpath is not */
+    if (new_inode && S_ISDIR(new_inode->mode) && !S_ISDIR(old_inode->mode))
+        ERAISE(-ENOTDIR);
+
+    /* Remove the oldpath directory entry */
+    ECHECK(_inode_remove_dirent(old_parent, old_basename));
+    old_parent->nlink--;
+
+    /* Add the newpath directory entry */
+    _inode_add_dirent(new_parent, old_inode, DT_REG, new_basename);
+    new_parent->nlink++;
+
+    /* Dereference the new inode (if any) */
+    if (new_inode && --new_inode->nlink == 0)
+        _inode_free(new_inode);
+
+done:
+    return ret;
 }
 
 static int _fs_truncate(libos_fs_t* fs, const char* path, off_t length)

@@ -434,6 +434,19 @@ void test_access()
     libos_set_trace(true);
 }
 
+void test_rename(void)
+{
+    assert(libos_mkdir("/rename", 0777) == 0);
+    assert(_touch("/rename/file1", 0400) == 0);
+    assert(libos_rename("/rename/file1", "/rename/file2") == 0);
+    libos_set_trace(false);
+    assert(libos_access("/rename/file1", R_OK) != 0);
+    libos_set_trace(true);
+    assert(libos_access("/rename/file2", R_OK) == 0);
+
+    dump_dirents("/rename");
+}
+
 int run_ecall(void)
 {
     libos_fs_t* fs;
@@ -453,6 +466,7 @@ int run_ecall(void)
     test_readdir();
     test_link();
     test_access();
+    test_rename();
 
     assert((*fs->fs_release)(fs) == 0);
 

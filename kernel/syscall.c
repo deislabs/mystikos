@@ -714,6 +714,29 @@ done:
     return ret;
 }
 
+long libos_syscall_rename(const char* oldpath, const char* newpath)
+{
+    long ret = 0;
+    char old_suffix[PATH_MAX];
+    char new_suffix[PATH_MAX];
+    libos_fs_t* old_fs;
+    libos_fs_t* new_fs;
+
+    ECHECK(libos_mount_resolve(oldpath, old_suffix, &old_fs));
+    ECHECK(libos_mount_resolve(newpath, new_suffix, &new_fs));
+
+    if (old_fs != new_fs)
+    {
+        /* oldpath and newpath are not on the same mounted file system */
+        ERAISE(-EXDEV);
+    }
+
+    ECHECK((*old_fs->fs_rename)(old_fs, old_suffix, new_suffix));
+
+done:
+    return ret;
+}
+
 long libos_syscall_ret(long ret)
 {
     if ((unsigned long)ret > -4096UL)
