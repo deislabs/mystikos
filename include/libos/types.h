@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 typedef long ssize_t;
+typedef long off_t;
 typedef unsigned long size_t;
 typedef signed char int8_t;
 typedef unsigned char uint8_t;
