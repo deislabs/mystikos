@@ -2,23 +2,23 @@ SUBDIR = samples/hello
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
-APPDIR=$(CURDIR)/appdir
+APPDIR = appdir
+LIBOS = $(BINDIR)/libos
+CFLAGS = -fPIC
+LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 
 all: libos
 	mkdir -p $(APPDIR)/bin
-	$(MUSL_GCC) -fPIC -Wl,-rpath=$(MUSL_LIB) -o $(APPDIR)/bin/hello hello.c
-	(cd appdir; find . | cpio --create --format='newc' > ../rootfs)
+	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/hello hello.c $(LDFLAGS)
+	$(LIBOS) mkcpio $(APPDIR) rootfs
 
 #OPTS = --trace-syscalls
 
 run: all
-	$(BINDIR)/libos exec rootfs /bin/hello red green blue yellow $(OPTS)
-
-gdb: all
-	$(OEGDB) --args $(BINDIR)/libos $(OPTS) $(APPDIR) /bin/hello red green blue yellow
-
-clean:
-	rm -rf $(APPDIR)
+	$(LIBOS) exec rootfs /bin/hello red green blue yellow $(OPTS)
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos
+
+clean:
+	rm -rf $(APPDIR) rootfs

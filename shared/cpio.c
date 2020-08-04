@@ -284,7 +284,7 @@ libos_cpio_t* libos_cpio_open(const char* path, uint32_t flags)
 
     if ((flags & LIBOS_CPIO_FLAG_CREATE))
     {
-        if ((fd = libos_open(path, O_WRONLY, 666)) < 0)
+        if ((fd = libos_open(path, O_WRONLY | O_CREAT | O_TRUNC, 0666)) < 0)
             GOTO(done);
 
         if (libos_write(fd, &_dot, _dot.size) != (ssize_t)_dot.size)
@@ -296,7 +296,7 @@ libos_cpio_t* libos_cpio_open(const char* path, uint32_t flags)
     }
     else
     {
-        if ((fd = libos_open(path, O_RDONLY, 666)) < 0)
+        if ((fd = libos_open(path, O_RDONLY, 0666)) < 0)
             GOTO(done);
 
         cpio->fd = fd;
@@ -598,7 +598,7 @@ int libos_cpio_unpack(const char* source, const char* target)
             char data[512];
             ssize_t n;
 
-            if ((fd = libos_open(path, O_WRONLY | O_CREAT, 666)) < 0)
+            if ((fd = libos_open(path, O_WRONLY | O_CREAT, 0666)) < 0)
                 GOTO(done);
 
             while ((n = libos_cpio_read_data(cpio, data, sizeof(data))) > 0)
