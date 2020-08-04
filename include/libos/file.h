@@ -22,7 +22,7 @@ ssize_t libos_read(int fd, void* buf, size_t count);
 
 ssize_t libos_write(int fd, const void* buf, size_t count);
 
-ssize_t libos_readv(int fd, struct iovec* iov, int iovcnt);
+ssize_t libos_readv(int fd, const struct iovec* iov, int iovcnt);
 
 ssize_t libos_writev(int fd, const struct iovec* iov, int iovcnt);
 

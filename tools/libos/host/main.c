@@ -29,16 +29,6 @@ static void _err(const char* fmt, ...)
     exit(1);
 }
 
-static bool _is_dir(const char* path)
-{
-    struct stat buf;
-
-    if (stat(path, &buf) != 0)
-        return false;
-
-    return S_ISDIR(buf.st_mode);
-}
-
 static int _serialize_args(
     const char* argv[],
     void** args_out,
@@ -160,6 +150,61 @@ done:
     return ret;
 }
 
+static int _load_file(const char* path, void** data_out, size_t* size_out)
+{
+    int ret = -1;
+    FILE* is = NULL;
+    void* data = NULL;
+    size_t size;
+
+    if (data_out)
+        *data_out = NULL;
+
+    if (size_out)
+        *size_out = 0;
+
+    /* Check parameters */
+    if (!path || !data_out || !size_out)
+        goto done;
+
+    /* Get size of this file */
+    {
+        struct stat buf;
+
+        if (stat(path, &buf) != 0)
+            goto done;
+
+        size = buf.st_size;
+    }
+
+    /* Allocate memory */
+    if (!(data = malloc(size)))
+        goto done;
+
+    /* Open the file */
+    if (!(is = fopen(path, "rb")))
+        goto done;
+
+    /* Read file into memory */
+    if (fread(data, 1, size, is) != size)
+        goto done;
+
+    *size_out = size;
+    *data_out = data;
+    data = NULL;
+    ret = 0;
+
+done:
+
+    if (data)
+        free(data);
+
+    if (is)
+        fclose(is);
+
+    return ret;
+}
+
 static int _get_opt(
     int* argc,
     const char* argv[],
@@ -234,13 +279,14 @@ int main(int argc, const char* argv[])
     const uint32_t flags = OE_ENCLAVE_FLAG_DEBUG;
     int retval;
     char dir[PATH_MAX];
-    char rootfs[PATH_MAX];
     char libosenc[PATH_MAX];
     char liboscrt[PATH_MAX];
     char path[PATH_MAX];
     void* args = NULL;
     size_t args_size;
     struct libos_options options;
+    void* rootfs_data = NULL;
+    size_t rootfs_size;
 
     /* Get the full path of argv[0] */
     if (_which(argv[0], _arg0) != 0)
@@ -262,16 +308,14 @@ int main(int argc, const char* argv[])
         return 1;
     }
 
+    const char* rootfs = argv[1];
     const char* program = argv[2];
 
-    if (!realpath(argv[1], rootfs) != 0)
-        _err("failed to resovle rootfs directory: %s", argv[1]);
-
-    if (!_is_dir(rootfs))
-        _err("rootfs dir not found: %s", rootfs);
+    if (_load_file(rootfs, &rootfs_data, &rootfs_size) != 0)
+        _err("failed to load load rootfs: %s", rootfs);
 
     if (program[0] != '/')
-        _err("program must be an absolute path: %s", rootfs);
+        _err("program must be an absolute path: %s", program);
 
     /* Get the directory that contains argv[0] */
     strcpy(dir, _arg0);
@@ -318,7 +362,15 @@ int main(int argc, const char* argv[])
 
     /* Enter the enclave and run the program */
     r = libos_enter_ecall(
-        enclave, &retval, &options, rootfs, args, args_size, env, sizeof(env));
+        enclave,
+        &retval,
+        &options,
+        rootfs_data,
+        rootfs_size,
+        args,
+        args_size,
+        env,
+        sizeof(env));
     if (r != OE_OK)
         _err("failed to enter enclave: result=%s", oe_result_str(r));
 
@@ -328,6 +380,7 @@ int main(int argc, const char* argv[])
         _err("failed to terminate enclave: reuslt=%s", oe_result_str(r));
 
     free(args);
+    free(rootfs_data);
 
     return retval;
 }

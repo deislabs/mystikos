@@ -14,7 +14,8 @@ enclave
     {
         public int libos_enter_ecall(
             [in] struct libos_options* options,
-            [in, string] const char* rootfs,
+            [in, size=rootfs_size] const void* rootfs_data,
+            size_t rootfs_size,
             [in, size=args_size] const void* args,
             size_t args_size,
             [in, size=env_size] const void* env,

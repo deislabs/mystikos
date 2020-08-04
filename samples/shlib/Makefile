@@ -2,20 +2,24 @@ SUBDIR = samples/shlib
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
-ROOTFS=$(CURDIR)/rootfs
+APPDIR=$(CURDIR)/appdir
 
-export LD_LIBRARY_PATH=$(ROOTFS)/lib
+export LD_LIBRARY_PATH=$(APPDIR)/lib
 
-all:
-	@mkdir -p $(ROOTFS)/bin
-	@mkdir -p $(ROOTFS)/lib
-	@$(MUSL_GCC) -fPIC -shared -o $(ROOTFS)/lib/libfoo.so foo.c
-	@$(MUSL_GCC) -fPIC -o $(ROOTFS)/bin/main main.c -Wl,-rpath=/lib -L$(ROOTFS)/lib -lfoo
+all: libos
+	mkdir -p $(APPDIR)/bin
+	mkdir -p $(APPDIR)/lib
+	$(MUSL_GCC) -fPIC -shared -o $(APPDIR)/lib/libfoo.so foo.c
+	$(MUSL_GCC) -fPIC -o $(APPDIR)/bin/main main.c -Wl,-rpath=/lib -L$(APPDIR)/lib -lfoo
+	(cd appdir; find . | cpio --create --format='newc' > ../rootfs)
 
-#TRACE_SYSCALLS=--trace-syscalls
+#OPTS = --trace-syscalls
 
 run: all
-	libos $(TRACE_SYSCALLS) rootfs /bin/main
+	libos rootfs /bin/main $(OPTS)
 
 clean:
-	rm -rf rootfs
+	rm -rf $(APPDIR) rootfs
+
+libos:
+	$(MAKE) -C $(TOP)/tools/libos

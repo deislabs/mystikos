@@ -6,41 +6,23 @@
 #include <fcntl.h>
 #include <string.h>
 #include <limits.h>
+#include <stdarg.h>
 #include <assert.h>
+#include <stdlib.h>
 #include <setjmp.h>
 #include <sys/uio.h>
 #include <libos/syscall.h>
 #include <libos/elfutils.h>
 #include <libos/mmanutils.h>
 #include <libos/trace.h>
+#include <libos/cwd.h>
 #include <libos/mount.h>
 #include "fdtable.h"
 #include "eraise.h"
 
 jmp_buf _exit_jmp_buf;
 
-static bool _trace;
-
-static char _rootfs[PATH_MAX];
-
-void libos_set_rootfs(const char* path)
-{
-    snprintf(_rootfs, sizeof(_rootfs), "%s", path);
-}
-
-static const char* _fullpath(char buf[PATH_MAX], const char* path)
-{
-    if (strlcpy(buf, _rootfs, PATH_MAX) >= PATH_MAX)
-        return NULL;
-
-    if (strlcat(buf, "/", PATH_MAX) >= PATH_MAX)
-        return NULL;
-
-    if (strlcat(buf, path, PATH_MAX) >= PATH_MAX)
-        return NULL;
-
-    return buf;
-}
+static bool _trace_syscalls;
 
 typedef struct _pair
 {
@@ -401,6 +383,25 @@ const char* syscall_str(long n)
     return "unknown";
 }
 
+__attribute__((format(printf, 2, 3)))
+static void _strace(long n, const char* fmt, ...)
+{
+    if (_trace_syscalls)
+    {
+        fprintf(stderr, "=== %s(", syscall_str(n));
+
+        if (fmt)
+        {
+            va_list ap;
+            va_start(ap, fmt);
+            vfprintf(stderr, fmt, ap);
+            va_end(ap);
+        }
+
+        fprintf(stderr, ")\n");
+    }
+}
+
 static int _exit_status;
 
 int libos_get_exit_status(void)
@@ -443,13 +444,9 @@ typedef struct fd_entry
 }
 fd_entry_t;
 
-/* ATTN:MEB: replace this later */
-static fd_entry_t _fd_entries[1024];
-static size_t _fd_entries_size = sizeof(_fd_entries) / sizeof(_fd_entries[0]);
-
 static long _return(long n, long ret)
 {
-    if (_trace)
+    if (_trace_syscalls)
     {
         fprintf(stderr, "    %s(): return=%ld\n", syscall_str(n), ret);
     }
@@ -567,7 +564,7 @@ done:
     return ret;
 }
 
-long libos_syscall_readv(int fd, struct iovec* iov, int iovcnt)
+long libos_syscall_readv(int fd, const struct iovec* iov, int iovcnt)
 {
     long ret = 0;
     libos_fs_t* fs;
@@ -779,6 +776,45 @@ long libos_syscall_ret(long ret)
     return ret;
 }
 
+static const char* _fcntl_cmdstr(int cmd)
+{
+    switch (cmd)
+    {
+        case F_DUPFD:
+            return "F_DUPFD";
+        case F_SETFD:
+            return "F_SETFD";
+        case F_GETFD:
+            return "F_GETFD";
+        case F_SETFL:
+            return "F_SETFL";
+        case F_GETFL:
+            return "F_GETFL";
+        case F_SETOWN:
+            return "F_SETOWN";
+        case F_GETOWN:
+            return "F_GETOWN";
+        case F_SETSIG:
+            return "F_SETSIG";
+        case F_GETSIG:
+            return "F_GETSIG";
+        case F_SETLK:
+            return "F_SETLK";
+        case F_GETLK:
+            return "F_GETLK";
+        case F_SETLKW:
+            return "F_SETLKW";
+        case F_SETOWN_EX:
+            return "F_SETOWN_EX";
+        case F_GETOWN_EX:
+            return "F_GETOWN_EX";
+        case F_GETOWNER_UIDS:
+            return "F_GETOWNER_UIDS";
+        default:
+            return "unknown";
+    }
+}
+
 long libos_syscall(long n, long params[6])
 {
     long x1 = params[0];
@@ -788,213 +824,927 @@ long libos_syscall(long n, long params[6])
     long x5 = params[4];
     long x6 = params[5];
 
-    if (n == LIBOS_SYS_trace)
+    switch (n)
     {
-        printf("trace: %s\n", (const char*)params[0]);
-        return _return(n, 0);
-    }
-    else if (n == LIBOS_SYS_trace_ptr)
-    {
-        printf("trace: %s: %lX %ld\n",
-            (const char*)params[0], params[1], params[1]);
-        return _return(n, 0);
-    }
-    else if (n == LIBOS_SYS_dump_stack)
-    {
-        elf_dump_stack((void*)params[0]);
-        return _return(n, 0);
-    }
-    else if (n == LIBOS_SYS_dump_ehdr)
-    {
-        elf_dump_ehdr((void*)params[0]);
-        return _return(n, 0);
-    }
-    else if (n == SYS_set_thread_area)
-    {
-        const void* tp = (void*)params[0];
-
-        if (_trace)
+        case LIBOS_SYS_trace:
         {
-            fprintf(stderr, "=== %s(tp=%p)\n", syscall_str(n), tp);
+            printf("trace: %s\n", (const char*)params[0]);
+            return _return(n, 0);
         }
-
-        if (!_original_fs_base)
-            _original_fs_base = _get_fs_base();
-
-        _set_fs_base(tp);
-
-        return _return(n, 0);
-    }
-    else if (n == SYS_set_tid_address)
-    {
-        const void* tidptr = (const void*)params[0];
-
-        if (_trace)
+        case LIBOS_SYS_trace_ptr:
         {
-            fprintf(stderr, "=== %s(tidptr=%p)\n", syscall_str(n), tidptr);
+            printf("trace: %s: %lX %ld\n",
+                (const char*)params[0], params[1], params[1]);
+            return _return(n, 0);
         }
-
-        return _return(n, 0);
-    }
-    else if (n == SYS_open)
-    {
-        const char* path = (const char*)x1;
-        int flags = (int)x2;
-        int mode = (int)x3;
-        char buf[PATH_MAX];
-        long ret;
-
-        if (_trace)
+        case LIBOS_SYS_dump_stack:
         {
-            fprintf(stderr, "=== %s(path=%s flags=%d mode=%03o)\n",
-                syscall_str(n), path, flags, mode);
+            elf_dump_stack((void*)params[0]);
+            return _return(n, 0);
         }
-
-        params[0] = (long)_fullpath(buf, path);
-
-        ret = _forward_syscall(n, params);
-
-        if (ret >= 0 && ret < (long)_fd_entries_size)
-            strlcpy(_fd_entries[ret].path, path, PATH_MAX);
-
-        return _return(n, ret);
-    }
-    else if (n == SYS_read)
-    {
-        if (_trace)
+        case LIBOS_SYS_dump_ehdr:
         {
-            fprintf(stderr, "=== %s()\n", syscall_str(n));
+            elf_dump_ehdr((void*)params[0]);
+            return _return(n, 0);
         }
-
-        return _return(n, _forward_syscall(n, params));
-    }
-    else if (n == SYS_writev)
-    {
-        if (_trace)
+        case SYS_read:
         {
-            fprintf(stderr, "=== %s()\n", syscall_str(n));
+            int fd = (int)x1;
+            void* buf = (void*)x2;
+            size_t count = (size_t)x3;
+
+            _strace(n, "fd=%d buf=%p count=%zu", fd, buf, count);
+
+            if (!libos_is_libos_fd(fd))
+                return _return(n, _forward_syscall(n, params));
+
+            return _return(n, libos_syscall_read(fd, buf, count));
         }
-
-        return _return(n, _forward_syscall(n, params));
-    }
-    else if (n == SYS_close)
-    {
-        int fd = (int)x1;
-
-        if (_trace)
-            fprintf(stderr, "=== %s()\n", syscall_str(n));
-
-        if (fd >= 0 && fd < (long)_fd_entries_size)
-            _fd_entries[fd].path[0] = '\0';
-
-        return _return(n, _forward_syscall(n, params));
-    }
-    else if (n == SYS_mmap)
-    {
-        void* addr = (void*)x1;
-        size_t length = (size_t)x2;
-        int prot = (int)x3;
-        int flags = (int)x4;
-        int fd = (int)x5;
-        off_t offset = (off_t)x6;
-
-        if (_trace)
+        case SYS_write:
         {
-            fprintf(stderr, "=== %s"
-                "(addr=%lX length=%lu prot=%d flags=%d fd=%d offset=%lu)\n",
-                syscall_str(n), (long)addr, length, prot, flags, fd, offset);
+            int fd = (int)x1;
+            const void* buf = (const void*)x2;
+            size_t count = (size_t)x3;
+
+            _strace(n, "fd=%d buf=%p count=%zu", fd, buf, count);
+
+            if (!libos_is_libos_fd(fd))
+                return _return(n, _forward_syscall(n, params));
+
+            return _return(n, libos_syscall_write(fd, buf, count));
         }
-
-        long ret = (long)libos_mmap(addr, length, prot, flags, fd, offset);
-
-        return _return(n, ret);
-    }
-    else if (n == SYS_mprotect)
-    {
-        const void* addr = (void*)x1;
-        const size_t length = (size_t)x2;
-        const int prot = (int)x3;
-
-        if (_trace)
+        case SYS_open:
         {
-            fprintf(stderr, "=== %s(addr=%lX length=%zu prot=%d)\n",
-                syscall_str(n), (uint64_t)addr, length, prot);
+            const char* path = (const char*)x1;
+            int flags = (int)x2;
+            mode_t mode = (mode_t)x3;
+
+            _strace(n, "path=%s flags=%d mode=0%o", path, flags, mode);
+
+            return _return(n, libos_syscall_open(path, flags, mode));
         }
-
-        return _return(n, 0);
-    }
-    else if (n == SYS_exit)
-    {
-        const int status = (int)x1;
-
-        /* restore original fs base, else stack smashing will be detected */
-        _set_fs_base(_original_fs_base);
-
-        if (_trace)
+        case SYS_close:
         {
-            printf("=== %s(status=%d)\n", syscall_str(n), status);
+            int fd = (int)x1;
+
+            _strace(n, "fd=%d", fd);
+
+            if (!libos_is_libos_fd(fd))
+                return _return(n, _forward_syscall(n, params));
+
+            return _return(n, libos_syscall_close(fd));
         }
-
-        _exit_status = status;
-        longjmp(_exit_jmp_buf, 1);
-
-        /* Unreachable! */
-        assert("unreachable" == NULL);
-    }
-    else if (n == SYS_ioctl)
-    {
-        int fd = (int)x1;
-        /* Note: 0x5413 is TIOCGWINSZ  */
-        unsigned long request = (unsigned long)x2;
-
-        if (_trace)
+        case SYS_stat:
         {
-            fprintf(stderr, "=== %s(fd=%d request=%lx)\n",
-                syscall_str(n), fd, request);
+            const char* pathname = (const char*)x1;
+            struct stat* statbuf = (struct stat*)x2;
+
+            _strace(n, "pathname=%s statbuf=%p", pathname, statbuf);
+
+            return _return(n, libos_syscall_stat(pathname, statbuf));
         }
-
-        return _return(n, _forward_syscall(n, params));
-    }
-    else if (n == SYS_exit_group)
-    {
-        int status = (int)x1;
-
-        if (_trace)
+        case SYS_fstat:
         {
-            fprintf(stderr, "=== %s(status=%d)\n", syscall_str(n), status);
+            int fd = (int)x1;
+            void* statbuf = (void*)x2;
+
+            _strace(n, "fd=%d statbuf=%p", fd, statbuf);
+
+            return _return(n, libos_syscall_fstat(fd, statbuf));
         }
-
-        return 0;
-    }
-    else if (n == SYS_fstat)
-    {
-        int fd = (int)x1;
-        void* statbuf = (void*)x2;
-        char buf[PATH_MAX];
-
-        if (_trace)
+        case SYS_lstat:
+            break;
+        case SYS_poll:
+            break;
+        case SYS_lseek:
         {
-            fprintf(stderr, "=== syscall: %s(fd=%d statbuf=%p)\n",
-                syscall_str(n), fd, statbuf);
+            int fd = (int)x1;
+            off_t offset = (off_t)x2;
+            int whence = (int)x3;
+
+            _strace(n, "fd=%d offset=%ld whence=%d", fd, offset, whence);
+
+            return _return(n, libos_syscall_lseek(fd, offset, whence));
         }
-
-        long new_params[6] = { 0 };
-        new_params[0] = (long)_fullpath(buf, _fd_entries[fd].path);
-        new_params[1] = params[1];
-
-        return _return(n, _forward_syscall(SYS_stat, new_params));
-    }
-    else
-    {
-        if (_trace)
+        case SYS_mmap:
         {
-            fprintf(stderr, "=== syscall: %s()\n", syscall_str(n));
-        }
+            void* addr = (void*)x1;
+            size_t length = (size_t)x2;
+            int prot = (int)x3;
+            int flags = (int)x4;
+            int fd = (int)x5;
+            off_t offset = (off_t)x6;
 
-        return _return(n, _forward_syscall(n, params));
+            _strace(n, "addr=%p length=%lu prot=%d flags=%d fd=%d offset=%lu",
+                addr, length, prot, flags, fd, offset);
+
+            return _return(n, (long)libos_mmap(
+                addr, length, prot, flags, fd, offset));
+        }
+        case SYS_mprotect:
+        {
+            const void* addr = (void*)x1;
+            const size_t length = (size_t)x2;
+            const int prot = (int)x3;
+
+            _strace(n, "addr=%p length=%zu prot=%d", addr, length, prot);
+
+            return _return(n, 0);
+        }
+        case SYS_munmap:
+            break;
+        case SYS_brk:
+            break;
+        case SYS_rt_sigaction:
+            break;
+        case SYS_rt_sigprocmask:
+            break;
+        case SYS_rt_sigreturn:
+            break;
+        case SYS_ioctl:
+        {
+            int fd = (int)x1;
+            /* Note: 0x5413 is TIOCGWINSZ  */
+            unsigned long request = (unsigned long)x2;
+
+            _strace(n, "fd=%d request=%lx", fd, request);
+
+            return _return(n, _forward_syscall(n, params));
+        }
+        case SYS_pread64:
+            break;
+        case SYS_pwrite64:
+            break;
+        case SYS_readv:
+        {
+            int fd = (int)x1;
+            const struct iovec* iov = (const struct iovec*)x2;
+            int iovcnt = (int)x3;
+
+            _strace(n, "fd=%d iov=%p iovcnt=%d", fd, iov, iovcnt);
+
+            if (!libos_is_libos_fd(fd))
+                return _return(n, _forward_syscall(n, params));
+
+            return _return(n, libos_syscall_readv(fd, iov, iovcnt));
+        }
+        case SYS_writev:
+        {
+            int fd = (int)x1;
+            const struct iovec* iov = (const struct iovec*)x2;
+            int iovcnt = (int)x3;
+
+            _strace(n, "fd=%d iov=%p iovcnt=%d", fd, iov, iovcnt);
+
+            if (!libos_is_libos_fd(fd))
+                return _return(n, _forward_syscall(n, params));
+
+            return _return(n, libos_syscall_writev(fd, iov, iovcnt));
+        }
+        case SYS_access:
+        {
+            const char* pathname = (const char*)x1;
+            int mode = (int)x2;
+
+            _strace(n, "pathname=%s mode=%d", pathname, mode);
+
+            return _return(n, libos_syscall_access(pathname, mode));
+        }
+        case SYS_pipe:
+            break;
+        case SYS_select:
+        {
+            int nfds = (int)x1;
+            fd_set* rfds = (fd_set*)x2;
+            fd_set* wfds = (fd_set*)x3;
+            fd_set* efds = (fd_set*)x4;
+            struct timeval* timeout = (struct timeval*)x5;
+
+            _strace(n, "nfds=%d rfds=%p wfds=%p xfds=%p timeout=%p",
+                nfds, rfds, wfds, efds, timeout);
+
+            return _return(n, _forward_syscall(n, params));
+        }
+        case SYS_sched_yield:
+            break;
+        case SYS_mremap:
+            break;
+        case SYS_msync:
+            break;
+        case SYS_mincore:
+            break;
+        case SYS_madvise:
+            break;
+        case SYS_shmget:
+            break;
+        case SYS_shmat:
+            break;
+        case SYS_shmctl:
+            break;
+        case SYS_dup:
+            break;
+        case SYS_dup2:
+            break;
+        case SYS_pause:
+            break;
+        case SYS_nanosleep:
+        {
+            const struct timespec* req = (const struct timespec*)x1;
+            struct timespec* rem = (struct timespec*)x2;
+
+            _strace(n, "req=%p rem=%p", req, rem);
+
+            return _return(n, _forward_syscall(n, params));
+        }
+        case SYS_getitimer:
+            break;
+        case SYS_alarm:
+            break;
+        case SYS_setitimer:
+            break;
+        case SYS_getpid:
+            break;
+        case SYS_clone:
+            break;
+        case SYS_fork:
+            break;
+        case SYS_vfork:
+            break;
+        case SYS_execve:
+            break;
+        case SYS_exit:
+        {
+            const int status = (int)x1;
+
+            /* restore original fs base, else stack smashing will be detected */
+            _set_fs_base(_original_fs_base);
+
+            _strace(n, "status=%d", status);
+
+            _exit_status = status;
+            longjmp(_exit_jmp_buf, 1);
+
+            /* Unreachable! */
+            assert("unreachable" == NULL);
+            break;
+        }
+        case SYS_wait4:
+            break;
+        case SYS_kill:
+            break;
+        case SYS_uname:
+            break;
+        case SYS_semget:
+            break;
+        case SYS_semop:
+            break;
+        case SYS_semctl:
+            break;
+        case SYS_shmdt:
+            break;
+        case SYS_msgget:
+            break;
+        case SYS_msgsnd:
+            break;
+        case SYS_msgrcv:
+            break;
+        case SYS_msgctl:
+            break;
+        case SYS_fcntl:
+        {
+            int fd = (int)x1;
+            int cmd = (int)x2;
+            long arg = (long)x3;
+
+            const char* cmdstr = _fcntl_cmdstr(cmd);
+            _strace(n, "fd=%d cmd=%d(%s) arg=%ld", fd, cmd, cmdstr, arg);
+
+            if (cmd == F_SETFD && arg == FD_CLOEXEC)
+            {
+                /* Ignore FD_CLOEXEC since fork/exec not supported */
+                return 0;
+            }
+
+            /* unhandled */
+            break;
+        }
+        case SYS_flock:
+            break;
+        case SYS_fsync:
+            break;
+        case SYS_fdatasync:
+            break;
+        case SYS_truncate:
+        {
+            const char* path = (const char*)x1;
+            off_t length = (off_t)x2;
+
+            _strace(n, "path=%s length=%ld", path, length);
+
+            return _return(n, libos_syscall_truncate(path, length));
+        }
+        case SYS_ftruncate:
+        {
+            int fd = (int)x1;
+            off_t length = (off_t)x2;
+
+            _strace(n, "fd=%d length=%ld", fd, length);
+
+            return _return(n, libos_syscall_ftruncate(fd, length));
+        }
+        case SYS_getdents:
+            break;
+        case SYS_getcwd:
+        {
+            long ret = -1;
+            char* buf = (char*)x1;
+            size_t size = (size_t)x2;
+            libos_path_t cwd;
+
+            _strace(n, "buf=%p length=%zu", buf, size);
+
+            if (buf && libos_getcwd(&cwd) == 0)
+            {
+                strlcpy(buf, cwd.buf, size);
+                ret = 0;
+            }
+
+            return _return(n, ret);
+        }
+        case SYS_chdir:
+            /* ATTN: soon */
+            break;
+        case SYS_fchdir:
+            break;
+        case SYS_rename:
+            /* BOOKMARK */
+            break;
+        case SYS_mkdir:
+            break;
+        case SYS_rmdir:
+            break;
+        case SYS_creat:
+            break;
+        case SYS_link:
+            break;
+        case SYS_unlink:
+            break;
+        case SYS_symlink:
+            break;
+        case SYS_readlink:
+            break;
+        case SYS_chmod:
+            break;
+        case SYS_fchmod:
+            break;
+        case SYS_chown:
+            break;
+        case SYS_fchown:
+            break;
+        case SYS_lchown:
+            break;
+        case SYS_umask:
+            break;
+        case SYS_gettimeofday:
+            break;
+        case SYS_getrlimit:
+            break;
+        case SYS_getrusage:
+            break;
+        case SYS_sysinfo:
+            break;
+        case SYS_times:
+            break;
+        case SYS_ptrace:
+            break;
+        case SYS_getuid:
+            break;
+        case SYS_syslog:
+            break;
+        case SYS_getgid:
+            break;
+        case SYS_setuid:
+            break;
+        case SYS_setgid:
+            break;
+        case SYS_geteuid:
+            break;
+        case SYS_getegid:
+            break;
+        case SYS_setpgid:
+            break;
+        case SYS_getppid:
+            break;
+        case SYS_getpgrp:
+            break;
+        case SYS_setsid:
+            break;
+        case SYS_setreuid:
+            break;
+        case SYS_setregid:
+            break;
+        case SYS_getgroups:
+            break;
+        case SYS_setgroups:
+            break;
+        case SYS_setresuid:
+            break;
+        case SYS_getresuid:
+            break;
+        case SYS_setresgid:
+            break;
+        case SYS_getresgid:
+            break;
+        case SYS_getpgid:
+            break;
+        case SYS_setfsuid:
+            break;
+        case SYS_setfsgid:
+            break;
+        case SYS_getsid:
+            break;
+        case SYS_capget:
+            break;
+        case SYS_capset:
+            break;
+        case SYS_rt_sigpending:
+            break;
+        case SYS_rt_sigtimedwait:
+            break;
+        case SYS_rt_sigqueueinfo:
+            break;
+        case SYS_rt_sigsuspend:
+            break;
+        case SYS_sigaltstack:
+            break;
+        case SYS_utime:
+            break;
+        case SYS_mknod:
+            break;
+        case SYS_uselib:
+            break;
+        case SYS_personality:
+            break;
+        case SYS_ustat:
+            break;
+        case SYS_statfs:
+            break;
+        case SYS_fstatfs:
+            break;
+        case SYS_sysfs:
+            break;
+        case SYS_getpriority:
+            break;
+        case SYS_setpriority:
+            break;
+        case SYS_sched_setparam:
+            break;
+        case SYS_sched_getparam:
+            break;
+        case SYS_sched_setscheduler:
+            break;
+        case SYS_sched_getscheduler:
+            break;
+        case SYS_sched_get_priority_max:
+            break;
+        case SYS_sched_get_priority_min:
+            break;
+        case SYS_sched_rr_get_interval:
+            break;
+        case SYS_mlock:
+            break;
+        case SYS_munlock:
+            break;
+        case SYS_mlockall:
+            break;
+        case SYS_munlockall:
+            break;
+        case SYS_vhangup:
+            break;
+        case SYS_modify_ldt:
+            break;
+        case SYS_pivot_root:
+            break;
+        case SYS__sysctl:
+            break;
+        case SYS_prctl:
+            break;
+        case SYS_arch_prctl:
+            break;
+        case SYS_adjtimex:
+            break;
+        case SYS_setrlimit:
+            break;
+        case SYS_chroot:
+            break;
+        case SYS_sync:
+            break;
+        case SYS_acct:
+            break;
+        case SYS_settimeofday:
+            break;
+        case SYS_mount:
+            break;
+        case SYS_umount2:
+            break;
+        case SYS_swapon:
+            break;
+        case SYS_swapoff:
+            break;
+        case SYS_reboot:
+            break;
+        case SYS_sethostname:
+            break;
+        case SYS_setdomainname:
+            break;
+        case SYS_iopl:
+            break;
+        case SYS_ioperm:
+            break;
+        case SYS_create_module:
+            break;
+        case SYS_init_module:
+            break;
+        case SYS_delete_module:
+            break;
+        case SYS_get_kernel_syms:
+            break;
+        case SYS_query_module:
+            break;
+        case SYS_quotactl:
+            break;
+        case SYS_nfsservctl:
+            break;
+        case SYS_getpmsg:
+            break;
+        case SYS_putpmsg:
+            break;
+        case SYS_afs_syscall:
+            break;
+        case SYS_tuxcall:
+            break;
+        case SYS_security:
+            break;
+        case SYS_gettid:
+            break;
+        case SYS_readahead:
+            break;
+        case SYS_setxattr:
+            break;
+        case SYS_lsetxattr:
+            break;
+        case SYS_fsetxattr:
+            break;
+        case SYS_getxattr:
+            break;
+        case SYS_lgetxattr:
+            break;
+        case SYS_fgetxattr:
+            break;
+        case SYS_listxattr:
+            break;
+        case SYS_llistxattr:
+            break;
+        case SYS_flistxattr:
+            break;
+        case SYS_removexattr:
+            break;
+        case SYS_lremovexattr:
+            break;
+        case SYS_fremovexattr:
+            break;
+        case SYS_tkill:
+            break;
+        case SYS_time:
+            break;
+        case SYS_futex:
+            break;
+        case SYS_sched_setaffinity:
+            break;
+        case SYS_sched_getaffinity:
+            break;
+        case SYS_set_thread_area:
+        {
+            const void* tp = (void*)params[0];
+
+            _strace(n, "tp=%p", tp);
+
+            if (!_original_fs_base)
+                _original_fs_base = _get_fs_base();
+
+            _set_fs_base(tp);
+
+            return _return(n, 0);
+        }
+        case SYS_io_setup:
+            break;
+        case SYS_io_destroy:
+            break;
+        case SYS_io_getevents:
+            break;
+        case SYS_io_submit:
+            break;
+        case SYS_io_cancel:
+            break;
+        case SYS_get_thread_area:
+            break;
+        case SYS_lookup_dcookie:
+            break;
+        case SYS_epoll_create:
+            break;
+        case SYS_epoll_ctl_old:
+            break;
+        case SYS_epoll_wait_old:
+            break;
+        case SYS_remap_file_pages:
+            break;
+        case SYS_getdents64:
+        {
+            unsigned int fd = (unsigned int)x1;
+            struct dirent* dirp = (struct dirent*)x2;
+            unsigned int count = (unsigned int)x3;
+
+            _strace(n, "fd=%d dirp=%p count=%u", fd, dirp, count);
+
+            return _return(n, libos_syscall_getdents64((int)fd, dirp, count));
+        }
+        case SYS_set_tid_address:
+        {
+            const void* tidptr = (const void*)params[0];
+
+            _strace(n, "tidptr=%p", tidptr);
+
+            return _return(n, 0);
+        }
+        case SYS_restart_syscall:
+            break;
+        case SYS_semtimedop:
+            break;
+        case SYS_fadvise64:
+            break;
+        case SYS_timer_create:
+            break;
+        case SYS_timer_settime:
+            break;
+        case SYS_timer_gettime:
+            break;
+        case SYS_timer_getoverrun:
+            break;
+        case SYS_timer_delete:
+            break;
+        case SYS_clock_settime:
+            break;
+        case SYS_clock_gettime:
+            break;
+        case SYS_clock_getres:
+            break;
+        case SYS_clock_nanosleep:
+            break;
+        case SYS_exit_group:
+        {
+            int status = (int)x1;
+
+            _strace(n, "status=%d", status);
+
+            return 0;
+        }
+        case SYS_epoll_wait:
+            break;
+        case SYS_epoll_ctl:
+            break;
+        case SYS_tgkill:
+            break;
+        case SYS_utimes:
+            break;
+        case SYS_vserver:
+            break;
+        case SYS_mbind:
+            break;
+        case SYS_set_mempolicy:
+            break;
+        case SYS_get_mempolicy:
+            break;
+        case SYS_mq_open:
+            break;
+        case SYS_mq_unlink:
+            break;
+        case SYS_mq_timedsend:
+            break;
+        case SYS_mq_timedreceive:
+            break;
+        case SYS_mq_notify:
+            break;
+        case SYS_mq_getsetattr:
+            break;
+        case SYS_kexec_load:
+            break;
+        case SYS_waitid:
+            break;
+        case SYS_add_key:
+            break;
+        case SYS_request_key:
+            break;
+        case SYS_keyctl:
+            break;
+        case SYS_ioprio_set:
+            break;
+        case SYS_ioprio_get:
+            break;
+        case SYS_inotify_init:
+            break;
+        case SYS_inotify_add_watch:
+            break;
+        case SYS_inotify_rm_watch:
+            break;
+        case SYS_migrate_pages:
+            break;
+        case SYS_openat:
+            break;
+        case SYS_mkdirat:
+            break;
+        case SYS_mknodat:
+            break;
+        case SYS_fchownat:
+            break;
+        case SYS_futimesat:
+            break;
+        case SYS_newfstatat:
+            break;
+        case SYS_unlinkat:
+            break;
+        case SYS_renameat:
+            break;
+        case SYS_linkat:
+            break;
+        case SYS_symlinkat:
+            break;
+        case SYS_readlinkat:
+            break;
+        case SYS_fchmodat:
+            break;
+        case SYS_faccessat:
+            break;
+        case SYS_pselect6:
+            break;
+        case SYS_ppoll:
+            break;
+        case SYS_unshare:
+            break;
+        case SYS_set_robust_list:
+            break;
+        case SYS_get_robust_list:
+            break;
+        case SYS_splice:
+            break;
+        case SYS_tee:
+            break;
+        case SYS_sync_file_range:
+            break;
+        case SYS_vmsplice:
+            break;
+        case SYS_move_pages:
+            break;
+        case SYS_utimensat:
+            break;
+        case SYS_epoll_pwait:
+            break;
+        case SYS_signalfd:
+            break;
+        case SYS_timerfd_create:
+            break;
+        case SYS_eventfd:
+            break;
+        case SYS_fallocate:
+            break;
+        case SYS_timerfd_settime:
+            break;
+        case SYS_timerfd_gettime:
+            break;
+        case SYS_accept4:
+            break;
+        case SYS_signalfd4:
+            break;
+        case SYS_eventfd2:
+            break;
+        case SYS_epoll_create1:
+            break;
+        case SYS_dup3:
+            break;
+        case SYS_pipe2:
+            break;
+        case SYS_inotify_init1:
+            break;
+        case SYS_preadv:
+            break;
+        case SYS_pwritev:
+            break;
+        case SYS_rt_tgsigqueueinfo:
+            break;
+        case SYS_perf_event_open:
+            break;
+        case SYS_recvmmsg:
+            break;
+        case SYS_fanotify_init:
+            break;
+        case SYS_fanotify_mark:
+            break;
+        case SYS_prlimit64:
+            break;
+        case SYS_name_to_handle_at:
+            break;
+        case SYS_open_by_handle_at:
+            break;
+        case SYS_clock_adjtime:
+            break;
+        case SYS_syncfs:
+            break;
+        case SYS_sendmmsg:
+            break;
+        case SYS_setns:
+            break;
+        case SYS_getcpu:
+            break;
+        case SYS_process_vm_readv:
+            break;
+        case SYS_process_vm_writev:
+            break;
+        case SYS_kcmp:
+            break;
+        case SYS_finit_module:
+            break;
+        case SYS_sched_setattr:
+            break;
+        case SYS_sched_getattr:
+            break;
+        case SYS_renameat2:
+            break;
+        case SYS_seccomp:
+            break;
+        case SYS_getrandom:
+            break;
+        case SYS_memfd_create:
+            break;
+        case SYS_kexec_file_load:
+            break;
+        case SYS_bpf:
+            break;
+        case SYS_execveat:
+            break;
+        case SYS_userfaultfd:
+            break;
+        case SYS_membarrier:
+            break;
+        case SYS_mlock2:
+            break;
+        case SYS_copy_file_range:
+            break;
+        case SYS_preadv2:
+            break;
+        case SYS_pwritev2:
+            break;
+        case SYS_pkey_mprotect:
+            break;
+        case SYS_pkey_alloc:
+            break;
+        case SYS_pkey_free:
+            break;
+        case SYS_statx:
+            break;
+        case SYS_io_pgetevents:
+            break;
+        case SYS_rseq:
+            break;
+        /* forward network syscdalls to OE */
+        case SYS_sendfile:
+        case SYS_socket:
+        case SYS_connect:
+        case SYS_accept:
+        case SYS_sendto:
+        case SYS_recvfrom:
+        case SYS_sendmsg:
+        case SYS_recvmsg:
+        case SYS_shutdown:
+        case SYS_bind:
+        case SYS_listen:
+        case SYS_getsockname:
+        case SYS_getpeername:
+        case SYS_socketpair:
+        case SYS_setsockopt:
+        case SYS_getsockopt:
+        {
+            _strace(n, "forwarded");
+            return _return(n, _forward_syscall(n, params));
+        }
+        default:
+        {
+            fprintf(stderr, "********** unknown: %s()\n", syscall_str(n));
+            abort();
+        }
     }
 
-    assert("panic" == NULL);
+    fprintf(stderr, "********** unhandled: %s()\n", syscall_str(n));
+    abort();
+
     return 0;
 }
 
@@ -1005,5 +1755,5 @@ int libos_set_exit_jump(void)
 
 void libos_trace_syscalls(bool flag)
 {
-    _trace = flag;
+    _trace_syscalls = flag;
 }

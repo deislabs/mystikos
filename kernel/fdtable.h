@@ -13,6 +13,8 @@ typedef enum libos_fdtable_type
 }
 libos_fdtable_type_t;
 
+bool libos_is_libos_fd(int fd);
+
 /* return a file descriptor */
 int libos_fdtable_add(
     libos_fdtable_type_t type,

@@ -1,4 +1,5 @@
 #include <libos/mmanutils.h>
+#include <libos/file.h>
 #include <stdlib.h>
 #include <limits.h>
 #include <assert.h>
@@ -131,11 +132,11 @@ static ssize_t _map_file_onto_memory(
         goto done;
 
     /* save the current file position */
-    if ((save_pos = lseek(fd, 0, SEEK_CUR)) == (off_t)-1)
+    if ((save_pos = libos_lseek(fd, 0, SEEK_CUR)) == (off_t)-1)
         goto done;
 
     /* seek start of file */
-    if (lseek(fd, offset, SEEK_SET) == (off_t)-1)
+    if (libos_lseek(fd, offset, SEEK_SET) == (off_t)-1)
         goto done;
 
     /* read file onto memory */
@@ -145,16 +146,14 @@ static ssize_t _map_file_onto_memory(
         uint8_t* p = data;
         size_t r = size;
 
-        while ((n = read(fd, buf, sizeof buf)) > 0)
+        while ((n = libos_read(fd, buf, sizeof buf)) > 0)
         {
-#if 1
             /* if copy would write past end of data */
             if (r < (size_t)n)
             {
                 memcpy(p, buf, r);
                 break;
             }
-#endif
 
             memcpy(p, buf, (size_t)n);
             p += n;
@@ -164,7 +163,7 @@ static ssize_t _map_file_onto_memory(
     }
 
     /* restore the file position */
-    if (lseek(fd, save_pos, SEEK_SET) == (off_t)-1)
+    if (libos_lseek(fd, save_pos, SEEK_SET) == (off_t)-1)
         goto done;
 
     ret = bytes_read;
@@ -219,9 +218,7 @@ void* libos_mmap(
         ssize_t n;
 
         if ((n = _map_file_onto_memory(fd, offset, ptr, length)) < 0)
-        {
             return (void*)-1;
-        }
     }
 
     void* end = (uint8_t*)ptr + length;

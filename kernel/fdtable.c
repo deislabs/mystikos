@@ -22,6 +22,11 @@ fdtable_entry_t;
 
 static fdtable_entry_t _fdtable[FDTABLE_SIZE];
 
+bool libos_is_libos_fd(int fd)
+{
+    return fd >= FD_OFFSET && fd <= (FD_OFFSET + FDTABLE_SIZE);
+}
+
 int libos_fdtable_add(
     libos_fdtable_type_t type,
     void* device,

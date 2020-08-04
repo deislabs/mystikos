@@ -45,7 +45,7 @@ long libos_syscall_read(int fd, void* buf, size_t count);
 
 long libos_syscall_write(int fd, const void* buf, size_t count);
 
-long libos_syscall_readv(int fd, struct iovec* iov, int iovcnt);
+long libos_syscall_readv(int fd, const struct iovec* iov, int iovcnt);
 
 long libos_syscall_writev(int fd, const struct iovec* iov, int iovcnt);
 

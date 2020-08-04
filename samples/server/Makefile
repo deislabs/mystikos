@@ -1,17 +1,24 @@
-SUBDIR = samples/server
+SUBDIR = samples/main
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
-ROOTFS=$(CURDIR)/rootfs
+APPDIR=$(CURDIR)/appdir
 
-all:
-	mkdir -p $(ROOTFS)/bin
-	$(MUSL_GCC) -fPIC -Wl,-rpath=$(MUSL_LIB) -o $(ROOTFS)/bin/main main.c
+all: libos
+	mkdir -p $(APPDIR)/bin
+	$(MUSL_GCC) -fPIC -Wl,-rpath=$(MUSL_LIB) -o $(APPDIR)/bin/main main.c
+	(cd appdir; find . | cpio --create --format='newc' > ../rootfs)
 
-#TRACE_SYSCALLS = --trace-syscalls
+#OPTS = --trace-syscalls
 
-run:
-	$(BINDIR)/libos $(TRACE_SYSCALLS) $(ROOTFS) /bin/main
+run: all
+	$(BINDIR)/libos rootfs /bin/main red green blue yellow $(OPTS)
+
+gdb: all
+	$(OEGDB) --args $(BINDIR)/libos $(OPTS) $(APPDIR) /bin/main red green blue yellow
 
 clean:
-	rm -rf $(ROOTFS)
+	rm -rf $(APPDIR)
+
+libos:
+	$(MAKE) -C $(TOP)/tools/libos

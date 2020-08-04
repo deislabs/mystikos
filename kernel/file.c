@@ -32,7 +32,7 @@ ssize_t libos_write(int fd, const void* buf, size_t count)
     return (ssize_t)libos_syscall_ret(libos_syscall_write(fd, buf, count));
 }
 
-ssize_t libos_readv(int fd, struct iovec* iov, int iovcnt)
+ssize_t libos_readv(int fd, const struct iovec* iov, int iovcnt)
 {
     return (ssize_t)libos_syscall_ret(libos_syscall_readv(fd, iov, iovcnt));
 }

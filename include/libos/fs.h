@@ -50,7 +50,7 @@ struct libos_fs
     ssize_t (*fs_readv)(
         libos_fs_t* fs,
         libos_file_t* file,
-        struct iovec* iov,
+        const struct iovec* iov,
         int iovcnt);
 
     ssize_t (*fs_writev)(

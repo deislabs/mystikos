@@ -1,7 +1,7 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
-#include "strarr.h"
+#include <libos/strarr.h>
 #include <stdlib.h>
 #include <string.h>
 
