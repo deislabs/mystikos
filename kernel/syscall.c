@@ -1188,12 +1188,12 @@ long libos_syscall(long n, long params[6])
             size_t size = (size_t)x2;
             libos_path_t cwd;
 
-            _strace(n, "buf=%p length=%zu", buf, size);
+            _strace(n, "buf=%p size=%zu", buf, size);
 
             if (buf && libos_getcwd(&cwd) == 0)
             {
                 strlcpy(buf, cwd.buf, size);
-                ret = 0;
+                ret = (long)buf;
             }
 
             return _return(n, ret);

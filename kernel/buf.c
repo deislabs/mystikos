@@ -63,8 +63,6 @@ int libos_buf_reserve(libos_buf_t* buf, size_t cap)
 
 int libos_buf_resize(libos_buf_t* buf, size_t new_size)
 {
-    uint8_t* data;
-
     if (!buf)
         return -1;
 
@@ -75,15 +73,13 @@ int libos_buf_resize(libos_buf_t* buf, size_t new_size)
         return 0;
     }
 
-    if (!(data = realloc(buf->data, new_size)))
+    if (libos_buf_reserve(buf, new_size) != 0)
         return -1;
 
     if (new_size > buf->size)
-        memset(data + buf->size, 0, new_size - buf->size);
+        memset(buf->data + buf->size, 0, new_size - buf->size);
 
-    buf->data = data;
     buf->size = new_size;
-    buf->cap = new_size;
 
     return 0;
 }

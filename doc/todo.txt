@@ -9,6 +9,8 @@
 
     * cleanup mman module
 
+    * handle symbolic links in cpio and ramfs
+
     BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
 
     * partition kernel in 'target' and 'kernel'
