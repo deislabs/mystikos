@@ -6,7 +6,7 @@ SUBLIBDIR=$(LIBDIR)
 
 ARCHIVE = liboskernel.a
 
-SOURCES = $(wildcard *.c)
+SOURCES = $(wildcard *.c) $(wildcard ../shared/*.c)
 
 INCLUDES += -I$(INCDIR)
 INCLUDES += -I$(TOP)/include

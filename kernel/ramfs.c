@@ -1,3 +1,4 @@
+#include <dirent.h>
 #include <stdlib.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -6,12 +7,11 @@
 #include <libos/fs.h>
 #include <libos/ramfs.h>
 #include <libos/trace.h>
-#include <dirent.h>
+#include <libos/round.h>
+#include <libos/strings.h>
 #include "eraise.h"
-#include "strings.h"
 #include "bufu64.h"
 #include "buf.h"
-#include "round.h"
 
 #define BLKSIZE 512
 
@@ -101,7 +101,7 @@ static int _inode_add_dirent(
             .d_type = type,
         };
 
-        if (STRLCPY(ent.d_name, name) >= sizeof(ent.d_name))
+        if (LIBOS_STRLCPY(ent.d_name, name) >= sizeof(ent.d_name))
             ERAISE(-ENAMETOOLONG);
 
         if (libos_buf_append(&dir->buf, &ent, sizeof(ent)) != 0)
@@ -409,7 +409,7 @@ static int _path_to_inode(
         ERAISE_QUIET(-EINVAL);
 
     /* Copy the path */
-    if (STRLCPY(buf, path) >= sizeof(buf))
+    if (LIBOS_STRLCPY(buf, path) >= sizeof(buf))
         ERAISE_QUIET(-ENAMETOOLONG);
 
     /* The first element is the root directory */

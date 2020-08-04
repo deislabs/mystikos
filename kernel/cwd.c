@@ -4,8 +4,8 @@
 #include <limits.h>
 #include <libos/spinlock.h>
 #include <libos/cwd.h>
+#include <libos/strings.h>
 #include "eraise.h"
-#include "strings.h"
 
 static libos_path_t _cwd = { .buf = "/" };
 static libos_spinlock_t _lock = LIBOS_SPINLOCK_INITIALIZER;
@@ -21,7 +21,7 @@ int libos_setcwd(const char* cwd)
     libos_spin_lock(&_lock);
     locked = true;
 
-    if (STRLCPY(_cwd.buf, cwd) >= sizeof(_cwd.buf))
+    if (LIBOS_STRLCPY(_cwd.buf, cwd) >= sizeof(_cwd.buf))
         ERAISE(-ERANGE);
 
 done:
@@ -46,7 +46,7 @@ int libos_getcwd(libos_path_t* cwd)
     libos_spin_lock(&_lock);
     locked = true;
 
-    if (STRLCPY(cwd->buf, _cwd.buf) >= sizeof(cwd->buf))
+    if (LIBOS_STRLCPY(cwd->buf, _cwd.buf) >= sizeof(cwd->buf))
         ERAISE(-ERANGE);
 
 done:

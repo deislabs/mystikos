@@ -11,7 +11,8 @@
 #include <libos/file.h>
 #include <libos/cpio.h>
 #include <libos/strarr.h>
-#include "round.h"
+#include <libos/round.h>
+#include <libos/strings.h>
 
 void* calloc(size_t nmemb, size_t size);
 void free(void* ptr);
@@ -579,9 +580,9 @@ int libos_cpio_unpack(const char* source, const char* target)
         if (strcmp(entry.name, ".") == 0)
             continue;
 
-        strlcpy(path, target, sizeof(path));
-        strlcat(path, "/", sizeof(path));
-        strlcat(path, entry.name, sizeof(path));
+        LIBOS_STRLCPY(path, target);
+        LIBOS_STRLCAT(path, "/");
+        LIBOS_STRLCAT(path, entry.name);
 
         if (S_ISDIR(entry.mode))
         {
@@ -651,7 +652,7 @@ static int _append_file(libos_cpio_t* cpio, const char* path, const char* name)
 
         ent.mode = st.st_mode;
 
-        if (strlcpy(ent.name, name, sizeof(ent.name)) >= sizeof(ent.name))
+        if (LIBOS_STRLCPY(ent.name, name) >= sizeof(ent.name))
             GOTO(done);
 
         if (libos_cpio_write_entry(cpio, &ent) != 0)
@@ -726,11 +727,11 @@ static int _pack(libos_cpio_t* cpio, const char* dirname, const char* root)
 
         if (strcmp(root, ".") != 0)
         {
-            strlcat(path, root, sizeof(path));
-            strlcat(path, "/", sizeof(path));
+            LIBOS_STRLCAT(path, root);
+            LIBOS_STRLCAT(path, "/");
         }
 
-        strlcat(path, ent->d_name, sizeof(path));
+        LIBOS_STRLCAT(path, ent->d_name);
 
         /* Append to dirs[] array */
         if (ent->d_type & DT_DIR)

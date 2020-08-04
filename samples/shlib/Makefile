@@ -16,7 +16,7 @@ all: libos
 #OPTS = --trace-syscalls
 
 run: all
-	libos rootfs /bin/main $(OPTS)
+	libos exec rootfs /bin/main $(OPTS)
 
 clean:
 	rm -rf $(APPDIR) rootfs

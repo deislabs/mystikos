@@ -5,9 +5,13 @@ include $(TOP)/defs.mak
 
 PROGRAM = libos
 
-SOURCES = $(SUBOBJDIR)/libos_u.c $(wildcard *.c)
+SOURCES = $(SUBOBJDIR)/libos_u.c
+SOURCES += $(wildcard *.c)
+SOURCES += $(wildcard $(TOP)/shared/*.c)
+SOURCES += $(TOP)/compat/file.c
+SOURCES += $(TOP)/compat/dirent.c
 
-INCLUDES = -I$(INCDIR) -I$(SUBOBJDIR)
+INCLUDES = -I$(INCDIR) -I$(SUBOBJDIR) -I$(TOP)/include
 
 CFLAGS = $(OEHOST_CFLAGS)
 

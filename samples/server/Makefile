@@ -12,7 +12,7 @@ all: libos
 #OPTS = --trace-syscalls
 
 run: all
-	$(BINDIR)/libos rootfs /bin/main red green blue yellow $(OPTS)
+	$(BINDIR)/libos exec rootfs /bin/main red green blue yellow $(OPTS)
 
 gdb: all
 	$(OEGDB) --args $(BINDIR)/libos $(OPTS) $(APPDIR) /bin/main red green blue yellow

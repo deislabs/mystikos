@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <assert.h>
 #include <limits.h>
 #include <stdarg.h>
 #include <sys/stat.h>
@@ -261,17 +262,7 @@ static int _get_opt(
     return -1;
 }
 
-#define USAGE "\
-\n\
-Usage: %s [options] <rootfs> <program> <args...>\n\
-\n\
-Options:\n\
-	--help - print this help message\n\
-	--trace-syscalls - trace system calls\n\
-\n\
-"
-
-int main(int argc, const char* argv[])
+static int _exec(int argc, const char* argv[])
 {
     oe_result_t r;
     const oe_enclave_type_t type = OE_ENCLAVE_TYPE_SGX;
@@ -288,6 +279,8 @@ int main(int argc, const char* argv[])
     void* rootfs_data = NULL;
     size_t rootfs_size;
 
+    assert(strcmp(argv[1], "exec") == 0);
+
     /* Get the full path of argv[0] */
     if (_which(argv[0], _arg0) != 0)
     {
@@ -302,14 +295,15 @@ int main(int argc, const char* argv[])
             options.trace_syscalls = true;
     }
 
-    if (argc < 3)
+    if (argc < 4)
     {
-        fprintf(stderr, USAGE, argv[0]);
+        fprintf(stderr, "Usage: %s %s <rootfs> program> <args...>\n",
+            argv[0], argv[1]);
         return 1;
     }
 
-    const char* rootfs = argv[1];
-    const char* program = argv[2];
+    const char* rootfs = argv[2];
+    const char* program = argv[3];
 
     if (_load_file(rootfs, &rootfs_data, &rootfs_size) != 0)
         _err("failed to load load rootfs: %s", rootfs);
@@ -355,7 +349,7 @@ int main(int argc, const char* argv[])
         _err("failed to load enclave: result=%s", oe_result_str(r));
 
     /* Serialize the argv[] strings */
-    if (_serialize_args(argv + 2, &args, &args_size) != 0)
+    if (_serialize_args(argv + 3, &args, &args_size) != 0)
         _err("failed to serialize argv srings");
 
     const char env[] = "PATH=/bin\0HOME=/root";
@@ -383,4 +377,33 @@ int main(int argc, const char* argv[])
     free(rootfs_data);
 
     return retval;
+}
+
+#define USAGE "\
+\n\
+Usage: %s [options] <rootfs> <program> <args...>\n\
+\n\
+Options:\n\
+	--help - print this help message\n\
+	--trace-syscalls - trace system calls\n\
+\n\
+"
+
+int main(int argc, const char* argv[])
+{
+    if (argc <  2)
+    {
+        fprintf(stderr, USAGE, argv[0]);
+        return 1;
+    }
+
+    if (strcmp(argv[1], "exec") == 0)
+    {
+        return _exec(argc, argv);
+    }
+    else
+    {
+        _err("unknown action: %s", argv[1]);
+        return 1;
+    }
 }
