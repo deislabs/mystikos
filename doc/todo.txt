@@ -1,5 +1,37 @@
 
-    (A) lthread should use RDTSC instruction rather than gettimeofday()
+    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 
-    (A) update d_off after deleting directory entries.
+    * debugger symbols
+
+    * attested channel sample
+
+    * implement extensible enclave loading
+
+    * cleanup mman module
+
+    BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+
+    * partition kernel in 'target' and 'kernel'
+
+    * implement libos sign action
+
+    * implement clone, futex, and TLS
+
+    * fix crash on hash of load symbols
+
+    * Use RDTSC instead of gettimeofday (lthread)
+
+    * fix cp_syscall() workaround
+
+    CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
+
+    * reimplement host networking
+
+    * implement signals
+
+    * glibc support
+
+    * crypto disk support
+
+    * EXT2 file systems
 
