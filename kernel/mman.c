@@ -111,9 +111,9 @@
 **==============================================================================
 */
 
+#include <errno.h>
 #include <openenclave/bits/defs.h>
 #include <libos/defs.h>
-#include <libos/error.h>
 #include <libos/mman.h>
 #include <libos/mutex.h>
 #include <string.h>
@@ -482,7 +482,7 @@ int libos_mman_init(libos_mman_t* mman, uintptr_t base, size_t size)
     if (!mman || !base || !size)
     {
         _mman_set_err(mman, "bad parameter");
-        ret = LIBOS_EINVAL;
+        ret = EINVAL;
         goto done;
     }
 
@@ -490,7 +490,7 @@ int libos_mman_init(libos_mman_t* mman, uintptr_t base, size_t size)
     if (base % LIBOS_PAGE_SIZE)
     {
         _mman_set_err(mman, "bad base parameter");
-        ret = LIBOS_EINVAL;
+        ret = EINVAL;
         goto done;
     }
 
@@ -498,7 +498,7 @@ int libos_mman_init(libos_mman_t* mman, uintptr_t base, size_t size)
     if (size % LIBOS_PAGE_SIZE)
     {
         _mman_set_err(mman, "bad size parameter");
-        ret = LIBOS_EINVAL;
+        ret = EINVAL;
         goto done;
     }
 
@@ -556,7 +556,7 @@ int libos_mman_init(libos_mman_t* mman, uintptr_t base, size_t size)
     /* Check sanity of mman */
     if (!_mman_is_sane(mman))
     {
-        ret = LIBOS_EINVAL;
+        ret = EINVAL;
         goto done;
     }
 
@@ -602,7 +602,7 @@ int libos_mman_sbrk(libos_mman_t* mman, ptrdiff_t increment, void** ptr_out)
 
     if (!_mman_is_sane(mman) || !ptr_out)
     {
-        ret = LIBOS_EINVAL;
+        ret = EINVAL;
         goto done;
     }
 
@@ -620,7 +620,7 @@ int libos_mman_sbrk(libos_mman_t* mman, ptrdiff_t increment, void** ptr_out)
     else
     {
         _mman_set_err(mman, "out of memory");
-        ret = LIBOS_ENOMEM;
+        ret = ENOMEM;
         goto done;
     }
 
@@ -667,7 +667,7 @@ int libos_mman_brk(libos_mman_t* mman, void* addr)
     if ((uintptr_t)addr < mman->start || (uintptr_t)addr >= mman->map)
     {
         _mman_set_err(mman, "address is out of range");
-        ret = LIBOS_ENOMEM;
+        ret = ENOMEM;
         goto done;
     }
 
@@ -677,7 +677,7 @@ int libos_mman_brk(libos_mman_t* mman, void* addr)
     if (!_mman_is_sane(mman))
     {
         _mman_set_err(mman, "bad mman parameter");
-        ret = LIBOS_ENOMEM;
+        ret = ENOMEM;
         goto done;
     }
 
@@ -737,7 +737,7 @@ int libos_mman_map(
     if (!mman || mman->magic != LIBOS_MMAN_MAGIC || !ptr_out)
     {
         _mman_set_err(mman, "bad mman parameter");
-        ret = LIBOS_EINVAL;
+        ret = EINVAL;
         goto done;
     }
 
@@ -748,7 +748,7 @@ int libos_mman_map(
     if (addr && (uintptr_t)addr % LIBOS_PAGE_SIZE)
     {
         _mman_set_err(mman, "bad addr parameter");
-        ret = LIBOS_EINVAL;
+        ret = EINVAL;
         goto done;
     }
 
@@ -756,7 +756,7 @@ int libos_mman_map(
     if (length == 0)
     {
         _mman_set_err(mman, "bad length parameter");
-        ret = LIBOS_EINVAL;
+        ret = EINVAL;
         goto done;
     }
 
@@ -766,21 +766,21 @@ int libos_mman_map(
         if (!(prot & LIBOS_PROT_READ))
         {
             _mman_set_err(mman, "bad prot parameter: need LIBOS_PROT_READ");
-            ret = LIBOS_EINVAL;
+            ret = EINVAL;
             goto done;
         }
 
         if (!(prot & LIBOS_PROT_WRITE))
         {
             _mman_set_err(mman, "bad prot parameter: need LIBOS_PROT_WRITE");
-            ret = LIBOS_EINVAL;
+            ret = EINVAL;
             goto done;
         }
 
         if (prot & LIBOS_PROT_EXEC)
         {
             _mman_set_err(mman, "bad prot parameter: remove LIBOS_PROT_EXEC");
-            ret = LIBOS_EINVAL;
+            ret = EINVAL;
             goto done;
         }
     }
@@ -791,28 +791,28 @@ int libos_mman_map(
         if (!(flags & LIBOS_MAP_ANONYMOUS))
         {
             _mman_set_err(mman, "bad flags parameter: need LIBOS_MAP_ANONYMOUS");
-            ret = LIBOS_EINVAL;
+            ret = EINVAL;
             goto done;
         }
 
         if (!(flags & LIBOS_MAP_PRIVATE))
         {
             _mman_set_err(mman, "bad flags parameter: need LIBOS_MAP_PRIVATE");
-            ret = LIBOS_EINVAL;
+            ret = EINVAL;
             goto done;
         }
 
         if (flags & LIBOS_MAP_SHARED)
         {
             _mman_set_err(mman, "bad flags parameter: remove LIBOS_MAP_SHARED");
-            ret = LIBOS_EINVAL;
+            ret = EINVAL;
             goto done;
         }
 
         if (flags & LIBOS_MAP_FIXED)
         {
             _mman_set_err(mman, "bad flags parameter: remove LIBOS_MAP_FIXED");
-            ret = LIBOS_EINVAL;
+            ret = EINVAL;
             goto done;
         }
     }
@@ -824,7 +824,7 @@ int libos_mman_map(
     {
         /* TODO: implement to support mapping non-zero addresses */
         _mman_set_err(mman, "bad addr parameter: must be null");
-        ret = LIBOS_EINVAL;
+        ret = EINVAL;
         goto done;
     }
     else
@@ -836,7 +836,7 @@ int libos_mman_map(
         if (!(start = _mman_find_gap(mman, length, &left, &right)))
         {
             _mman_set_err(mman, "out of memory");
-            ret = LIBOS_ENOMEM;
+            ret = ENOMEM;
             goto done;
         }
 
@@ -875,7 +875,7 @@ int libos_mman_map(
             if (!(vad = _mman_new_vad(mman, start, length, prot, flags)))
             {
                 _mman_set_err(mman, "unexpected: list insert failed");
-                ret = LIBOS_EINVAL;
+                ret = EINVAL;
                 goto done;
             }
 
@@ -940,14 +940,14 @@ int libos_mman_munmap(libos_mman_t* mman, void* addr, size_t length)
     if (!mman || mman->magic != LIBOS_MMAN_MAGIC || !addr || !length)
     {
         _mman_set_err(mman, "bad parameter");
-        ret = LIBOS_EINVAL;
+        ret = EINVAL;
         goto done;
     }
 
     if (!_mman_is_sane(mman))
     {
         _mman_set_err(mman, "bad mman parameter");
-        ret = LIBOS_EINVAL;
+        ret = EINVAL;
         goto done;
     }
 
@@ -955,7 +955,7 @@ int libos_mman_munmap(libos_mman_t* mman, void* addr, size_t length)
     if ((uintptr_t)addr % LIBOS_PAGE_SIZE)
     {
         _mman_set_err(mman, "bad addr parameter");
-        ret = LIBOS_EINVAL;
+        ret = EINVAL;
         goto done;
     }
 
@@ -963,7 +963,7 @@ int libos_mman_munmap(libos_mman_t* mman, void* addr, size_t length)
     if (length % LIBOS_PAGE_SIZE)
     {
         _mman_set_err(mman, "bad length parameter");
-        ret = LIBOS_EINVAL;
+        ret = EINVAL;
         goto done;
     }
 
@@ -975,7 +975,7 @@ int libos_mman_munmap(libos_mman_t* mman, void* addr, size_t length)
     if (!(vad = _list_find(mman, start)))
     {
         _mman_set_err(mman, "address not found");
-        ret = LIBOS_EINVAL;
+        ret = EINVAL;
         goto done;
     }
 
@@ -983,7 +983,7 @@ int libos_mman_munmap(libos_mman_t* mman, void* addr, size_t length)
     if (end > _end(vad))
     {
         _mman_set_err(mman, "illegal range");
-        ret = LIBOS_EINVAL;
+        ret = EINVAL;
         goto done;
     }
 
@@ -1037,7 +1037,7 @@ int libos_mman_munmap(libos_mman_t* mman, void* addr, size_t length)
                   mman, end, vad_end - end, vad->prot, vad->flags)))
         {
             _mman_set_err(mman, "out of VADs");
-            ret = LIBOS_EINVAL;
+            ret = EINVAL;
             goto done;
         }
 
@@ -1052,7 +1052,7 @@ int libos_mman_munmap(libos_mman_t* mman, void* addr, size_t length)
 
     if (!_mman_is_sane(mman))
     {
-        ret = LIBOS_EINVAL;
+        ret = EINVAL;
         goto done;
     }
 
@@ -1111,7 +1111,7 @@ int libos_mman_mremap(
     if (!mman || mman->magic != LIBOS_MMAN_MAGIC || !addr || !ptr_out)
     {
         _mman_set_err(mman, "invalid parameter");
-        ret = LIBOS_EINVAL;
+        ret = EINVAL;
         goto done;
     }
 
@@ -1123,7 +1123,7 @@ int libos_mman_mremap(
     {
         _mman_set_err(
             mman, "bad addr parameter: must be multiple of page size");
-        ret = LIBOS_EINVAL;
+        ret = EINVAL;
         goto done;
     }
 
@@ -1131,7 +1131,7 @@ int libos_mman_mremap(
     if (old_size == 0)
     {
         _mman_set_err(mman, "invalid old_size parameter: must be non-zero");
-        ret = LIBOS_EINVAL;
+        ret = EINVAL;
         goto done;
     }
 
@@ -1139,7 +1139,7 @@ int libos_mman_mremap(
     if (new_size == 0)
     {
         _mman_set_err(mman, "invalid old_size parameter: must be non-zero");
-        ret = LIBOS_EINVAL;
+        ret = EINVAL;
         goto done;
     }
 
@@ -1148,7 +1148,7 @@ int libos_mman_mremap(
     {
         _mman_set_err(
             mman, "invalid flags parameter: must be LIBOS_MREMAP_MAYMOVE");
-        ret = LIBOS_EINVAL;
+        ret = EINVAL;
         goto done;
     }
 
@@ -1167,7 +1167,7 @@ int libos_mman_mremap(
     if (!(vad = _list_find(mman, start)))
     {
         _mman_set_err(mman, "invalid addr parameter: mapping not found");
-        ret = LIBOS_ENOMEM;
+        ret = ENOMEM;
         goto done;
     }
 
@@ -1175,7 +1175,7 @@ int libos_mman_mremap(
     if (old_end > _end(vad))
     {
         _mman_set_err(mman, "invalid range");
-        ret = LIBOS_ENOMEM;
+        ret = ENOMEM;
         goto done;
     }
 
@@ -1196,7 +1196,7 @@ int libos_mman_mremap(
                       vad->flags)))
             {
                 _mman_set_err(mman, "out of VADs");
-                ret = LIBOS_ENOMEM;
+                ret = ENOMEM;
                 goto done;
             }
 
@@ -1244,7 +1244,7 @@ int libos_mman_mremap(
                 mman, NULL, new_size, vad->prot, vad->flags, &addr) != 0)
             {
                 _mman_set_err(mman, "mapping failed");
-                ret = LIBOS_ENOMEM;
+                ret = ENOMEM;
             }
 
             /* Copy over data from old area */
@@ -1254,7 +1254,7 @@ int libos_mman_mremap(
             if (libos_mman_munmap(mman, (void*)start, old_size) != 0)
             {
                 _mman_set_err(mman, "unmapping failed");
-                ret = LIBOS_ENOMEM;
+                ret = ENOMEM;
                 goto done;
             }
 

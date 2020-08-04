@@ -16,4 +16,6 @@ void* libos_mmap(
     int fd,
     off_t offset);
 
+int libos_munmap(void* addr, size_t length);
+
 #endif /* _LIBOS_MMANUTILS_H */

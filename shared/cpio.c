@@ -588,7 +588,9 @@ int libos_cpio_unpack(const char* source, const char* target)
         {
             /* Fail if file already exists */
             if (libos_access(path, R_OK) == 0)
+            {
                 GOTO(done);
+            }
 
             if (libos_mkdir(path, entry.mode) != 0)
                 GOTO(done);

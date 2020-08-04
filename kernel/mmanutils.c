@@ -227,3 +227,8 @@ void* libos_mmap(
 
     return ptr;
 }
+
+int libos_munmap(void* addr, size_t length)
+{
+    return libos_mman_munmap(&_mman, addr, length);
+}

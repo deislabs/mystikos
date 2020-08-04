@@ -913,9 +913,20 @@ long libos_syscall(long n, long params[6])
             return _return(n, libos_syscall_fstat(fd, statbuf));
         }
         case SYS_lstat:
-            break;
+        {
+            /* ATTN: remove this! */
+            const char* pathname = (const char*)x1;
+            struct stat* statbuf = (struct stat*)x2;
+
+            _strace(n, "pathname=%s statbuf=%p", pathname, statbuf);
+
+            return _return(n, libos_syscall_stat(pathname, statbuf));
+        }
         case SYS_poll:
-            break;
+        {
+            _strace(n, NULL);
+            return _return(n, _forward_syscall(n, params));
+        }
         case SYS_lseek:
         {
             int fd = (int)x1;
@@ -952,9 +963,19 @@ long libos_syscall(long n, long params[6])
             return _return(n, 0);
         }
         case SYS_munmap:
-            break;
+        {
+            void* addr = (void*)x1;
+            size_t length = (size_t)x2;
+
+            _strace(n, "addr=%p length=%zu", addr, length);
+
+            return _return(n, (long)libos_munmap(addr, length));
+        }
         case SYS_brk:
-            break;
+        {
+            _strace(n, NULL);
+            return _return(n, _forward_syscall(n, params));
+        }
         case SYS_rt_sigaction:
             break;
         case SYS_rt_sigprocmask:
@@ -1063,7 +1084,13 @@ long libos_syscall(long n, long params[6])
         case SYS_setitimer:
             break;
         case SYS_getpid:
-            break;
+        {
+            const pid_t pid = 1;
+
+            _strace(n, NULL);
+
+            return pid;
+        }
         case SYS_clone:
             break;
         case SYS_fork:
@@ -1218,7 +1245,13 @@ long libos_syscall(long n, long params[6])
         case SYS_ptrace:
             break;
         case SYS_getuid:
-            break;
+        {
+            const uid_t gid = 0;
+
+            _strace(n, NULL);
+
+            return _return(n, gid);
+        }
         case SYS_syslog:
             break;
         case SYS_getgid:
@@ -1495,7 +1528,10 @@ long libos_syscall(long n, long params[6])
         case SYS_clock_settime:
             break;
         case SYS_clock_gettime:
-            break;
+        {
+            _strace(n, NULL);
+            return _return(n, _forward_syscall(n, params));
+        }
         case SYS_clock_getres:
             break;
         case SYS_clock_nanosleep:
