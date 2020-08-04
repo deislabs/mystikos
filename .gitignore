@@ -6,4 +6,7 @@ third_party/musl/musl/lib
 third_party/enclave-musl/musl/lib/
 samples/hello/rootfs
 samples/server/rootfs
-samples/shlib/rootfs/
+samples/shlib/rootfs
+samples/hello/appdir
+samples/server/appdir
+samples/shlib/appdir
