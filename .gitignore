@@ -10,3 +10,6 @@ samples/shlib/rootfs
 samples/hello/appdir
 samples/server/appdir
 samples/shlib/appdir
+samples/alpine/appdir
+samples/alpine/minirootfs
+samples/alpine/rootfs
