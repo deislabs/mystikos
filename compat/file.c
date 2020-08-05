@@ -48,6 +48,11 @@ int libos_stat(const char* pathname, struct stat* statbuf)
     return stat(pathname, statbuf);
 }
 
+int libos_lstat(const char* pathname, struct stat* statbuf)
+{
+    return lstat(pathname, statbuf);
+}
+
 int libos_fstat(int fd, struct stat* statbuf)
 {
     return fstat(fd, statbuf);
@@ -106,4 +111,9 @@ int libos_truncate(const char* path, off_t length)
 int libos_ftruncate(int fd, off_t length)
 {
     return ftruncate(fd, length);
+}
+
+ssize_t libos_readlink(const char* pathname, char* buf, size_t bufsiz)
+{
+    return readlink(pathname, buf, bufsiz);
 }

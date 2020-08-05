@@ -65,6 +65,8 @@ struct libos_fs
 
     int (*fs_stat)(libos_fs_t* fs, const char* pathname, struct stat* statbuf);
 
+    int (*fs_lstat)(libos_fs_t* fs, const char* pathname, struct stat* statbuf);
+
     int (*fs_fstat)(libos_fs_t* fs, libos_file_t* file, struct stat* statbuf);
 
     int (*fs_link)(libos_fs_t* fs, const char* oldpath, const char* newpath);
@@ -86,6 +88,8 @@ struct libos_fs
         libos_file_t* file,
         struct dirent* dirp,
         size_t count);
+
+    ssize_t (*fs_readlink)(const char* pathname, char* buf, size_t bufsiz);
 };
 
 #endif /* _LIBOS_FS_H */

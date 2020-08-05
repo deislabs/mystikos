@@ -47,6 +47,11 @@ int libos_stat(const char* pathname, struct stat* statbuf)
     return (int)libos_syscall_ret(libos_syscall_stat(pathname, statbuf));
 }
 
+int libos_lstat(const char* pathname, struct stat* statbuf)
+{
+    return (int)libos_syscall_ret(libos_syscall_lstat(pathname, statbuf));
+}
+
 int libos_fstat(int fd, struct stat* statbuf)
 {
     return (int)libos_syscall_ret(libos_syscall_fstat(fd, statbuf));

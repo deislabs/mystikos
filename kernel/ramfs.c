@@ -913,6 +913,24 @@ done:
     return ret;
 }
 
+static int _fs_lstat(libos_fs_t* fs, const char* pathname, struct stat* statbuf)
+{
+    int ret = 0;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+    inode_t* inode;
+
+    /* ATTN: implement this */
+
+    if (!_ramfs_valid(ramfs) || !pathname || !statbuf)
+        ERAISE(-EINVAL);
+
+    ECHECK(_path_to_inode(ramfs, pathname, NULL, &inode));
+    ECHECK(_stat(inode, statbuf));
+
+done:
+    return ret;
+}
+
 static int _fs_fstat(libos_fs_t* fs, libos_file_t* file, struct stat* statbuf)
 {
     int ret = 0;
@@ -1220,6 +1238,14 @@ done:
     return ret;
 }
 
+ssize_t _fs_readlink(const char *pathname, char *buf, size_t bufsiz)
+{
+    (void)pathname;
+    (void)buf;
+    (void)bufsiz;
+    return -EINVAL;
+}
+
 int libos_init_ramfs(libos_fs_t** fs_out)
 {
     int ret = 0;
@@ -1237,6 +1263,7 @@ int libos_init_ramfs(libos_fs_t** fs_out)
         _fs_close,
         _fs_access,
         _fs_stat,
+        _fs_lstat,
         _fs_fstat,
         _fs_link,
         _fs_unlink,
@@ -1246,6 +1273,7 @@ int libos_init_ramfs(libos_fs_t** fs_out)
         _fs_mkdir,
         _fs_rmdir,
         _fs_getdents64,
+        _fs_readlink,
     };
     inode_t* root_inode = NULL;
 

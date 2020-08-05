@@ -485,10 +485,17 @@ int libos_cpio_write_entry(libos_cpio_t* cpio, const libos_cpio_entry_t* entry)
     if (!cpio || cpio->fd < 0 || !entry)
         GOTO(done);
 
-    /* Check file type. */
-    if (!(entry->mode & LIBOS_CPIO_MODE_IFREG) &&
-        !(entry->mode & LIBOS_CPIO_MODE_IFDIR))
+    /* ATTN: Skip character files */
+    if (S_ISCHR(entry->mode))
     {
+        ret = 0;
+        goto done;
+    }
+
+    /* Check file type. */
+    if (!S_ISREG(entry->mode) && !S_ISDIR(entry->mode) && !S_ISLNK(entry->mode))
+    {
+        printf("entry=%s mode=%o\n", entry->name, entry->mode);
         GOTO(done);
     }
 
@@ -637,7 +644,7 @@ static int _append_file(libos_cpio_t* cpio, const char* path, const char* name)
         GOTO(done);
 
     /* Stat the file to get the size and mode. */
-    if (libos_stat(path, &st) != 0)
+    if (libos_lstat(path, &st) != 0)
         GOTO(done);
 
     /* Write the CPIO header. */
@@ -663,7 +670,7 @@ static int _append_file(libos_cpio_t* cpio, const char* path, const char* name)
     }
 
     /* Write the CPIO data. */
-    if (!S_ISDIR(st.st_mode))
+    if (S_ISREG(st.st_mode))
     {
         char buf[4096];
 
@@ -678,6 +685,21 @@ static int _append_file(libos_cpio_t* cpio, const char* path, const char* name)
 
         if (n < 0)
             GOTO(done);
+    }
+    else if (S_ISLNK(st.st_mode))
+    {
+        char buf[PATH_MAX];
+        ssize_t n;
+
+        n = libos_readlink(path, buf, sizeof(buf));
+
+        if (n <= 0 || n >= (ssize_t)sizeof(buf))
+            GOTO(done);
+
+        if (libos_cpio_write_data(cpio, buf, (size_t)n) != 0)
+            GOTO(done);
+
+        /* ATTN:MEB */
     }
 
     if (libos_cpio_write_data(cpio, NULL, 0) != 0)

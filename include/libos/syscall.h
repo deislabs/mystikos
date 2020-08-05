@@ -51,6 +51,8 @@ long libos_syscall_writev(int fd, const struct iovec* iov, int iovcnt);
 
 long libos_syscall_stat(const char* pathname, struct stat* statbuf);
 
+long libos_syscall_lstat(const char* pathname, struct stat* statbuf);
+
 long libos_syscall_fstat(int fd, struct stat* statbuf);
 
 long libos_syscall_mkdir(const char* pathname, mode_t mode);
@@ -70,5 +72,7 @@ long libos_syscall_rename(const char* oldpath, const char* newpath);
 long libos_syscall_truncate(const char* path, off_t length);
 
 long libos_syscall_ftruncate(int fd, off_t length);
+
+long libos_syscall_readlink(const char* pathname, char* buf, size_t bufsiz);
 
 #endif /* _LIBOS_SYSCALL_H */
