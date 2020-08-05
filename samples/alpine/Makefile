@@ -23,7 +23,7 @@ rootfs:
 
 #OPTS = --trace-syscalls
 
-run: libos rootfs
+run: all
 	time libos exec $(OPTS) rootfs /bin/ls /sbin
 
 clean:
