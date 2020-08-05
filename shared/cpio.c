@@ -625,7 +625,7 @@ int libos_cpio_unpack(const char* source, const char* target)
 
             /* read the target from CPIO archive */
             n = libos_cpio_read_data(cpio, target, sizeof(target));
-            if (n < 1 || n >= sizeof(target))
+            if (n < 1 || n >= (ssize_t)sizeof(target))
                 GOTO(done);
 
             target[n] = '\0';
