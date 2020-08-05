@@ -14,7 +14,9 @@
 #include <libos/syscall.h>
 #include <libos/elfutils.h>
 #include <libos/mmanutils.h>
+#include <libos/spinlock.h>
 #include <libos/trace.h>
+#include <libos/strings.h>
 #include <libos/cwd.h>
 #include <libos/mount.h>
 #include "fdtable.h"
@@ -765,6 +767,81 @@ done:
     return ret;
 }
 
+long libos_syscall_readlink(const char* pathname, char* buf, size_t bufsiz)
+{
+    long ret = 0;
+    char suffix[PATH_MAX];
+    libos_fs_t* fs;
+
+    ECHECK(libos_mount_resolve(pathname, suffix, &fs));
+    ECHECK((*fs->fs_readlink)(fs, pathname, buf, bufsiz));
+
+done:
+    return ret;
+}
+
+long libos_syscall_symlink(const char* target, const char* linkpath)
+{
+    long ret = 0;
+    char suffix[PATH_MAX];
+    libos_fs_t* fs;
+
+    ECHECK(libos_mount_resolve(linkpath, suffix, &fs));
+    ECHECK((*fs->fs_symlink)(fs, target, suffix));
+
+done:
+    return ret;
+}
+
+static char _cwd[PATH_MAX] = "/";
+static libos_spinlock_t _cwd_lock = LIBOS_SPINLOCK_INITIALIZER;
+
+long libos_syscall_chdir(const char* path)
+{
+    long ret = 0;
+    bool locked = false;
+
+    if (!path)
+        ERAISE(-EINVAL);
+
+    libos_spin_lock(&_cwd_lock);
+    locked = true;
+
+    if (LIBOS_STRLCPY(_cwd, path) >= sizeof(_cwd))
+        ERAISE(-ERANGE);
+
+done:
+
+    if (locked)
+        libos_spin_unlock(&_cwd_lock);
+
+    return ret;
+}
+
+long libos_syscall_getcwd(char* buf, size_t size)
+{
+    long ret = 0;
+    bool locked = false;
+
+    if (!buf)
+        ERAISE(-EINVAL);
+
+    libos_spin_lock(&_cwd_lock);
+    locked = true;
+
+    if (libos_strlcpy(buf, _cwd, size) >= size)
+        ERAISE(-ERANGE);
+
+    ret = (long)buf;
+
+done:
+
+    if (locked)
+        libos_spin_unlock(&_cwd_lock);
+
+    return ret;
+}
+
 long libos_syscall_ret(long ret)
 {
     if ((unsigned long)ret > -4096UL)
@@ -1183,24 +1260,21 @@ long libos_syscall(long n, long params[6])
             break;
         case SYS_getcwd:
         {
-            long ret = -1;
             char* buf = (char*)x1;
             size_t size = (size_t)x2;
-            libos_path_t cwd;
 
             _strace(n, "buf=%p size=%zu", buf, size);
 
-            if (buf && libos_getcwd(&cwd) == 0)
-            {
-                strlcpy(buf, cwd.buf, size);
-                ret = (long)buf;
-            }
-
-            return _return(n, ret);
+            return _return(n, libos_syscall_getcwd(buf, size));
         }
         case SYS_chdir:
-            /* ATTN: soon */
-            break;
+        {
+            const char* path = (const char*)x1;
+
+            _strace(n, "path=%s", path);
+
+            return _return(n, libos_syscall_chdir(path));
+        }
         case SYS_fchdir:
             break;
         case SYS_rename:
@@ -1217,9 +1291,24 @@ long libos_syscall(long n, long params[6])
         case SYS_unlink:
             break;
         case SYS_symlink:
-            break;
+        {
+            const char* target = (const char*)x1;
+            const char* linkpath = (const char*)x2;
+
+            _strace(n, "target=%s linkpath=%s", target, linkpath);
+
+            return _return(n, libos_syscall_symlink(target, linkpath));
+        }
         case SYS_readlink:
-            break;
+        {
+            const char* pathname = (const char*)x1;
+            char* buf = (char*)x2;
+            size_t bufsiz = (size_t)x3;
+
+            _strace(n, "pathname=%s buf=%p bufsiz=%zu", pathname, buf, bufsiz);
+
+            return _return(n, libos_syscall_readlink(pathname, buf, bufsiz));
+        }
         case SYS_chmod:
             break;
         case SYS_fchmod:

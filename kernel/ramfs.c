@@ -158,7 +158,19 @@ static int _inode_new(
     /* Add this inode to the parent's directory table (if not root) */
     if (parent != inode)
     {
-        uint8_t type = S_ISDIR(mode) ? DT_DIR : DT_REG;
+        uint8_t type;
+
+        if (S_ISDIR(mode))
+            type = DT_DIR;
+        else if (S_ISREG(mode))
+            type = DT_REG;
+        else if (S_ISLNK(mode))
+            type = DT_LNK;
+        else
+        {
+            ERAISE(-EINVAL);
+        }
+
         ECHECK(_inode_add_dirent(parent, inode, type, name));
         parent->nlink++;
     }
@@ -1238,12 +1250,69 @@ done:
     return ret;
 }
 
-ssize_t _fs_readlink(const char *pathname, char *buf, size_t bufsiz)
+ssize_t _fs_readlink(
+    libos_fs_t* fs,
+    const char* pathname,
+    char* buf,
+    size_t bufsiz)
 {
-    (void)pathname;
-    (void)buf;
-    (void)bufsiz;
-    return -EINVAL;
+    ssize_t ret = 0;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+    inode_t* inode;
+
+    if (!_ramfs_valid(ramfs) || !pathname || !buf || !bufsiz)
+        ERAISE(-EINVAL);
+
+    /* Get the inode for pathname */
+    ECHECK(_path_to_inode(ramfs, pathname, NULL, &inode));
+
+    if (!S_ISLNK(inode->mode))
+        ERAISE(-EINVAL);
+
+    assert(inode->buf.data);
+    assert(inode->buf.size);
+
+    if (!inode->buf.data || !inode->buf.size)
+        ERAISE(-EINVAL);
+
+    ret = (ssize_t)libos_strlcpy(buf, (char*)inode->buf.data, bufsiz);
+
+done:
+
+    return ret;
+}
+
+static int _fs_symlink(libos_fs_t* fs, const char* target, const char* linkpath)
+{
+    int ret = 0;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+    inode_t* inode = NULL;
+    inode_t* parent = NULL;
+    char dirname[PATH_MAX];
+    char basename[PATH_MAX];
+
+    if (!_ramfs_valid(ramfs))
+        ERAISE(-EINVAL);
+
+    if (!target || !linkpath)
+        ERAISE(-EINVAL);
+
+    /* Split linkpath into directory and filename */
+    ECHECK(_split_path(linkpath, dirname, basename));
+
+    /* Get the inode of the parent directory */
+    ECHECK(_path_to_inode(ramfs, dirname, NULL, &parent));
+
+    /* Create the new link inode */
+    ECHECK(_inode_new(parent, basename, (S_IFLNK | 0666), &inode));
+
+    /* Write the target name into the link inode */
+    if (libos_buf_append(&inode->buf, target, strlen(target) + 1) != 0)
+        ERAISE(-ENOMEM);
+
+done:
+
+    return ret;
 }
 
 int libos_init_ramfs(libos_fs_t** fs_out)
@@ -1274,6 +1343,7 @@ int libos_init_ramfs(libos_fs_t** fs_out)
         _fs_rmdir,
         _fs_getdents64,
         _fs_readlink,
+        _fs_symlink,
     };
     inode_t* root_inode = NULL;
 

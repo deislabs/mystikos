@@ -58,4 +58,6 @@ int libos_ftruncate(int fd, off_t length);
 
 ssize_t libos_readlink(const char* pathname, char* buf, size_t bufsiz);
 
+int libos_symlink(const char* target, const char* linkpath);
+
 #endif /* _LIBOS_FILE_H */

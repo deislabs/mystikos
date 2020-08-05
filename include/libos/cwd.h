@@ -6,8 +6,8 @@
 
 #include <libos/types.h>
 
-int libos_setcwd(const char* cwd);
+int libos_chdir(const char* path);
 
-int libos_getcwd(libos_path_t* cwd);
+char* libos_getcwd(char* buf, size_t size);
 
 #endif /* _LIBOS_CWD_H */

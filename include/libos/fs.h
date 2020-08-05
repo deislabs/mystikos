@@ -89,7 +89,13 @@ struct libos_fs
         struct dirent* dirp,
         size_t count);
 
-    ssize_t (*fs_readlink)(const char* pathname, char* buf, size_t bufsiz);
+    ssize_t (*fs_readlink)(
+        libos_fs_t* fs,
+        const char* pathname,
+        char* buf,
+        size_t bufsiz);
+
+    int (*fs_symlink)(libos_fs_t* fs, const char* target, const char* linkpath);
 };
 
 #endif /* _LIBOS_FS_H */

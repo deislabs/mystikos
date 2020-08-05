@@ -14,11 +14,11 @@ int run_ecall(void)
     /* Test libos_setcwd/libos_getcwd */
     {
         const char path[] = "/a/bb/ccc/dddd";
-        libos_path_t cwd;
+        char cwd[PATH_MAX];
 
-        assert(libos_setcwd(path) == 0);
-        assert(libos_getcwd(&cwd) == 0);
-        assert(strcmp(cwd.buf, path) == 0);
+        assert(libos_chdir(path) == 0);
+        assert(libos_getcwd(cwd, sizeof(cwd)) != NULL);
+        assert(strcmp(cwd, path) == 0);
     }
 
     /* Test libos_realpath */

@@ -5,6 +5,7 @@
 #include <libos/cwd.h>
 #include <libos/realpath.h>
 #include <libos/cwd.h>
+#include <libos/syscall.h>
 
 int libos_realpath(const char* path, libos_path_t* resolved_path)
 {
@@ -36,11 +37,13 @@ int libos_realpath(const char* path, libos_path_t* resolved_path)
     }
     else
     {
-        libos_path_t cwd;
+        char cwd[PATH_MAX];
+        long r;
 
-        ECHECK(libos_getcwd(&cwd));
+        if ((r = libos_syscall_getcwd(cwd, sizeof(cwd))) < 0)
+            ERAISE((int)r);
 
-        if (strlcpy(v->buf, cwd.buf, sizeof(v->buf)) >= sizeof(v->buf))
+        if (strlcpy(v->buf, cwd, sizeof(v->buf)) >= sizeof(v->buf))
             ERAISE(-ENAMETOOLONG);
 
         if (strlcat(v->buf, "/", sizeof(v->buf)) >= sizeof(v->buf))

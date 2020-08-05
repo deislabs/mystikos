@@ -101,3 +101,13 @@ int libos_ftruncate(int fd, off_t length)
 {
     return (int)libos_syscall_ret(libos_syscall_ftruncate(fd, length));
 }
+
+ssize_t libos_readlink(const char* pathname, char* buf, size_t bufsiz)
+{
+    return (int)libos_syscall_ret(libos_syscall_readlink(pathname, buf, bufsiz));
+}
+
+int libos_symlink(const char* target, const char* linkpath)
+{
+    return (int)libos_syscall_ret(libos_syscall_symlink(target, linkpath));
+}

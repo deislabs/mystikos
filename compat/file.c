@@ -117,3 +117,8 @@ ssize_t libos_readlink(const char* pathname, char* buf, size_t bufsiz)
 {
     return readlink(pathname, buf, bufsiz);
 }
+
+int libos_symlink(const char* target, const char* linkpath)
+{
+    return symlink(target, linkpath);
+}

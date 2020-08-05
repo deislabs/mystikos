@@ -75,4 +75,10 @@ long libos_syscall_ftruncate(int fd, off_t length);
 
 long libos_syscall_readlink(const char* pathname, char* buf, size_t bufsiz);
 
+long libos_syscall_symlink(const char* target, const char* linkpath);
+
+long libos_syscall_chdir(const char* path);
+
+long libos_syscall_getcwd(char* buf, size_t size);
+
 #endif /* _LIBOS_SYSCALL_H */
