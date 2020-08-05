@@ -22,6 +22,10 @@
 #include "fdtable.h"
 #include "eraise.h"
 
+#define DEFAULT_PID (pid_t)1
+#define DEFAULT_UID (uid_t)0
+#define DEFAULT_GID (gid_t)0
+
 jmp_buf _exit_jmp_buf;
 
 static bool _trace_syscalls;
@@ -799,21 +803,18 @@ static libos_spinlock_t _cwd_lock = LIBOS_SPINLOCK_INITIALIZER;
 long libos_syscall_chdir(const char* path)
 {
     long ret = 0;
-    bool locked = false;
+
+    libos_spin_lock(&_cwd_lock);
 
     if (!path)
         ERAISE(-EINVAL);
-
-    libos_spin_lock(&_cwd_lock);
-    locked = true;
 
     if (LIBOS_STRLCPY(_cwd, path) >= sizeof(_cwd))
         ERAISE(-ERANGE);
 
 done:
 
-    if (locked)
-        libos_spin_unlock(&_cwd_lock);
+    libos_spin_unlock(&_cwd_lock);
 
     return ret;
 }
@@ -821,13 +822,11 @@ done:
 long libos_syscall_getcwd(char* buf, size_t size)
 {
     long ret = 0;
-    bool locked = false;
+
+    libos_spin_lock(&_cwd_lock);
 
     if (!buf)
         ERAISE(-EINVAL);
-
-    libos_spin_lock(&_cwd_lock);
-    locked = true;
 
     if (libos_strlcpy(buf, _cwd, size) >= size)
         ERAISE(-ERANGE);
@@ -836,8 +835,7 @@ long libos_syscall_getcwd(char* buf, size_t size)
 
 done:
 
-    if (locked)
-        libos_spin_unlock(&_cwd_lock);
+    libos_spin_unlock(&_cwd_lock);
 
     return ret;
 }
@@ -1056,7 +1054,10 @@ long libos_syscall(long n, long params[6])
         case SYS_rt_sigaction:
             break;
         case SYS_rt_sigprocmask:
-            break;
+        {
+            /* ATTN: ignored for now */
+            return _return(n, 0);
+        }
         case SYS_rt_sigreturn:
             break;
         case SYS_ioctl:
@@ -1126,12 +1127,16 @@ long libos_syscall(long n, long params[6])
         case SYS_sched_yield:
             break;
         case SYS_mremap:
+            /* ATTN: hook up implementation */
             break;
         case SYS_msync:
+            /* ATTN: hook up implementation */
             break;
         case SYS_mincore:
+            /* ATTN: hook up implementation */
             break;
         case SYS_madvise:
+            /* ATTN: hook up implementation */
             break;
         case SYS_shmget:
             break;
@@ -1162,11 +1167,8 @@ long libos_syscall(long n, long params[6])
             break;
         case SYS_getpid:
         {
-            const pid_t pid = 1;
-
             _strace(n, NULL);
-
-            return pid;
+            return _return(n, DEFAULT_PID);
         }
         case SYS_clone:
             break;
@@ -1278,18 +1280,57 @@ long libos_syscall(long n, long params[6])
         case SYS_fchdir:
             break;
         case SYS_rename:
-            /* BOOKMARK */
-            break;
+        {
+            const char* oldpath = (const char*)x1;
+            const char* newpath = (const char*)x2;
+
+            _strace(n, "oldpath=%s newpath=%s", oldpath, newpath);
+
+            return _return(n, libos_syscall_rename(oldpath, newpath));
+        }
         case SYS_mkdir:
-            break;
+        {
+            const char* pathname = (const char*)x1;
+            mode_t mode = (mode_t)x1;
+
+            _strace(n, "pathname=%s mode=%u", pathname, mode);
+
+            return _return(n, libos_syscall_mkdir(pathname, mode));
+        }
         case SYS_rmdir:
-            break;
+        {
+            const char* pathname = (const char*)x1;
+
+            _strace(n, "pathname=%s", pathname);
+
+            return _return(n, libos_syscall_rmdir(pathname));
+        }
         case SYS_creat:
-            break;
+        {
+            const char* pathname = (const char*)x1;
+            mode_t mode = (mode_t)x2;
+
+            _strace(n, "pathname=%s mode=%x", pathname, mode);
+
+            return _return(n, libos_syscall_creat(pathname, mode));
+        }
         case SYS_link:
-            break;
+        {
+            const char* oldpath = (const char*)x1;
+            const char* newpath = (const char*)x2;
+
+            _strace(n, "oldpath=%s newpath=%s", oldpath, newpath);
+
+            return _return(n, libos_syscall_link(oldpath, newpath));
+        }
         case SYS_unlink:
-            break;
+        {
+            const char* pathname = (const char*)x1;
+
+            _strace(n, "pathname=%s", pathname);
+
+            return _return(n, libos_syscall_unlink(pathname));
+        }
         case SYS_symlink:
         {
             const char* target = (const char*)x1;
@@ -1322,7 +1363,14 @@ long libos_syscall(long n, long params[6])
         case SYS_umask:
             break;
         case SYS_gettimeofday:
-            break;
+        {
+            struct timeval* tv = (struct timeval*)x1;
+            struct timezone* tz = (void*)x2;
+
+            _strace(n, "tv=%p tz=%p", tv, tz);
+
+            return _return(n, _forward_syscall(n, params));
+        }
         case SYS_getrlimit:
             break;
         case SYS_getrusage:
@@ -1335,16 +1383,19 @@ long libos_syscall(long n, long params[6])
             break;
         case SYS_getuid:
         {
-            const uid_t gid = 0;
-
             _strace(n, NULL);
-
-            return _return(n, gid);
+            return _return(n, DEFAULT_UID);
         }
         case SYS_syslog:
-            break;
+        {
+            /* Ignore syslog for now */
+            return _return(n, 0);
+        }
         case SYS_getgid:
-            break;
+        {
+            _strace(n, NULL);
+            return _return(n, DEFAULT_GID);
+        }
         case SYS_setuid:
             break;
         case SYS_setgid:
@@ -1593,6 +1644,8 @@ long libos_syscall(long n, long params[6])
         case SYS_set_tid_address:
         {
             const void* tidptr = (const void*)params[0];
+
+            /* ATTN: unused */
 
             _strace(n, "tidptr=%p", tidptr);
 

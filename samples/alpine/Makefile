@@ -24,7 +24,7 @@ rootfs:
 #OPTS = --trace-syscalls
 
 run: all
-	time libos exec $(OPTS) rootfs /bin/ls /sbin
+	time libos exec $(OPTS) rootfs /bin/ls -R /
 
 clean:
 	rm -rf alpine-minirootfs.tar.gz minirootfs rootfs appdir
