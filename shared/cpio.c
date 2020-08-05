@@ -601,7 +601,7 @@ int libos_cpio_unpack(const char* source, const char* target)
             if (libos_mkdir(path, entry.mode) != 0)
                 GOTO(done);
         }
-        else
+        else if (S_ISREG(entry.mode))
         {
             char data[512];
             ssize_t n;
@@ -617,6 +617,26 @@ int libos_cpio_unpack(const char* source, const char* target)
 
             libos_close(fd);
             fd = -1;
+        }
+        else if (S_ISLNK(entry.mode))
+        {
+            char target[PATH_MAX];
+            ssize_t n;
+
+            /* read the target from CPIO archive */
+            n = libos_cpio_read_data(cpio, target, sizeof(target));
+            if (n < 1 || n >= sizeof(target))
+                GOTO(done);
+
+            target[n] = '\0';
+
+            /* create the symlink */
+            if (libos_symlink(target, path) != 0)
+                GOTO(done);
+        }
+        else
+        {
+            GOTO(done);
         }
     }
 
@@ -698,8 +718,6 @@ static int _append_file(libos_cpio_t* cpio, const char* path, const char* name)
 
         if (libos_cpio_write_data(cpio, buf, (size_t)n) != 0)
             GOTO(done);
-
-        /* ATTN:MEB */
     }
 
     if (libos_cpio_write_data(cpio, NULL, 0) != 0)

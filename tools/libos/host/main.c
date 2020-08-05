@@ -282,13 +282,6 @@ static int _exec(int argc, const char* argv[])
 
     assert(strcmp(argv[1], "exec") == 0);
 
-    /* Get the full path of argv[0] */
-    if (_which(argv[0], _arg0) != 0)
-    {
-        fprintf(stderr, "%s: failed to get full path of argv[0]\n", argv[0]);
-        return 1;
-    }
-
     /* Get options */
     {
         /* Get --trace-syscalls option */
@@ -384,28 +377,42 @@ static int _mkcpio(int argc, const char* argv[])
 {
     assert(strcmp(argv[1], "mkcpio") == 0);
 
-    /* Get the full path of argv[0] */
-    if (_which(argv[0], _arg0) != 0)
-    {
-        fprintf(stderr, "%s: failed to get full path of argv[0]\n", argv[0]);
-        return 1;
-    }
-
     if (argc != 4)
     {
-        fprintf(stderr, "Usage: %s %s <directory> <cpiofile>\n",
+        fprintf(stderr, "Usage: %s %s <directory> <cpioarchive>\n",
             argv[0], argv[1]);
         return 1;
     }
 
     const char* directory = argv[2];
-    const char* cpiofile = argv[3];
+    const char* cpioarchive = argv[3];
 
-    if (libos_cpio_pack(directory, cpiofile) != 0)
+    if (libos_cpio_pack(directory, cpioarchive) != 0)
     {
-        _err("failed to create CPIO archive from %s: %s", directory, cpiofile);
-        fprintf(stderr, "Usage: %s %s: <directory> <cpiofile>\n",
+        _err("failed to create CPIO archive from %s: %s", directory, cpioarchive);
+        return 1;
+    }
+
+    return 0;
+}
+
+static int _excpio(int argc, const char* argv[])
+{
+    assert(strcmp(argv[1], "excpio") == 0);
+
+    if (argc != 4)
+    {
+        fprintf(stderr, "Usage: %s %s <cpioarchive> <directory>\n",
             argv[0], argv[1]);
+        return 1;
+    }
+
+    const char* cpioarchive = argv[2];
+    const char* directory = argv[3];
+
+    if (libos_cpio_unpack(cpioarchive, directory) != 0)
+    {
+        _err("failed to extract CPIO archive to %s: %s", directory, cpioarchive);
         return 1;
     }
 
@@ -419,6 +426,7 @@ Usage: %s <action> [options] ...\n\
 Where <action> is one of:\n\
     exec   -- execute an application within the libos\n\
     mkcpio -- create a CPIO archive from a directory\n\
+    excpio -- extract the CPIO archive into a directory\n\
 \n\
 "
 
@@ -430,6 +438,13 @@ int main(int argc, const char* argv[])
         return 1;
     }
 
+    /* Get the full path of argv[0] */
+    if (_which(argv[0], _arg0) != 0)
+    {
+        fprintf(stderr, "%s: failed to get full path of argv[0]\n", argv[0]);
+        return 1;
+    }
+
     if (strcmp(argv[1], "exec") == 0)
     {
         return _exec(argc, argv);
@@ -437,6 +452,10 @@ int main(int argc, const char* argv[])
     else if (strcmp(argv[1], "mkcpio") == 0)
     {
         return _mkcpio(argc, argv);
+    }
+    else if (strcmp(argv[1], "excpio") == 0)
+    {
+        return _excpio(argc, argv);
     }
     else
     {
