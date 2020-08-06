@@ -88,7 +88,7 @@ static int _inode_add_dirent(
     if (!_inode_valid(dir) || !_inode_valid(inode) || !name)
         ERAISE(-EINVAL);
 
-    if (type != DT_REG && type != DT_DIR)
+    if (type != DT_REG && type != DT_DIR && type != DT_LNK)
         ERAISE(-EINVAL);
 
     /* Append the new directory entry */
@@ -393,9 +393,10 @@ done:
     return ret;
 }
 
-static int _path_to_inode(
+static int _path_to_inode_ex(
     ramfs_t* ramfs,
     const char* path,
+    bool follow_links,
     inode_t** parent_out,
     inode_t** inode_out)
 {
@@ -472,6 +473,44 @@ static int _path_to_inode(
             ERAISE_QUIET(-ENOENT);
     }
 
+    if (follow_links && S_ISLNK(inode->mode))
+    {
+        char target[PATH_MAX];
+
+        /* ATTN-A: handle removing or mount point */
+
+        if (LIBOS_STRLCPY(target, (char*)inode->buf.data) >= sizeof(target))
+            ERAISE(-ENAMETOOLONG);
+
+        if (target[0] != '/')
+        {
+            char dirname[PATH_MAX];
+            char basename[PATH_MAX];
+            char new_target[PATH_MAX];
+
+            /* replace the basename of the path with the target and normalize */
+            ECHECK(_split_path(path, dirname, basename));
+
+            if (LIBOS_STRLCPY(new_target, dirname) >= sizeof(new_target))
+                ERAISE(-ENAMETOOLONG);
+
+            if (LIBOS_STRLCAT(new_target, "/") >= sizeof(new_target))
+                ERAISE(-ENAMETOOLONG);
+
+            if (LIBOS_STRLCAT(new_target, target) >= sizeof(new_target))
+                ERAISE(-ENAMETOOLONG);
+
+#if 0
+            printf("Not supported: path=%s target=%s\n", path, target);
+            assert("relative symbolic links not supported" == NULL);
+            ERAISE(-ENOTSUP);
+#endif
+        }
+
+        ECHECK(_path_to_inode_ex(ramfs, target, true, parent_out, inode_out));
+        goto done;
+    }
+
     *inode_out = inode;
 
     if (parent_out)
@@ -479,6 +518,17 @@ static int _path_to_inode(
 
 done:
     return ret;
+}
+
+static int _path_to_inode(
+    ramfs_t* ramfs,
+    const char* path,
+    inode_t** parent_out,
+    inode_t** inode_out)
+{
+    /* follow symbolic links */
+    const bool follow_links = true;
+    return _path_to_inode_ex(ramfs, path, follow_links, parent_out, inode_out);
 }
 
 /*
@@ -1264,7 +1314,8 @@ ssize_t _fs_readlink(
         ERAISE(-EINVAL);
 
     /* Get the inode for pathname */
-    ECHECK(_path_to_inode(ramfs, pathname, NULL, &inode));
+    const bool follow_links = false;
+    ECHECK(_path_to_inode_ex(ramfs, pathname, follow_links, NULL, &inode));
 
     if (!S_ISLNK(inode->mode))
         ERAISE(-EINVAL);

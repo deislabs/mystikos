@@ -499,6 +499,17 @@ void test_truncate(void)
     }
 }
 
+void test_symlink(void)
+{
+    char target[PATH_MAX];
+
+    assert(libos_mkdir("/symlink", 777) == 0);
+    assert(_touch("/symlink/file", 0400) == 0);
+    assert(libos_symlink("/symlink/file", "/symlink/link") == 0);
+    assert(libos_readlink("/symlink/link", target, sizeof(target)) == 0);
+    assert(strcmp(target, "/symlink/file") == 0);
+}
+
 int run_ecall(void)
 {
     libos_fs_t* fs;
@@ -520,6 +531,7 @@ int run_ecall(void)
     test_access();
     test_rename();
     test_truncate();
+    test_symlink();
 
     assert((*fs->fs_release)(fs) == 0);
 
