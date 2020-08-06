@@ -3,18 +3,18 @@
 IMAGE_NAME="$1"
 RESULT_NAME="$2"
 
-set -e 
-set -x 
+set -e
+set -x
 
 # Download the docker image from github
 fetch_image()
 {
 	groups | grep docker >/dev/null
-	if [ "$?" -ne "0" ]; then 
+	if [ "$?" -ne "0" ]; then
 		echo "Must be a member of the 'docker' group"
 		exit 1
 	fi
-	
+
 	docker pull $IMAGE_NAME
 }
 

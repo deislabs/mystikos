@@ -11,7 +11,7 @@ nginx:
 	bash ./extractor.sh nginx:alpine nginx.fs
 
 memcached:
-	bash ./extractor.sh memcached:alpine  memcached.fs 
+	bash ./extractor.sh memcached:alpine memcached.fs
 
 clean:
 	rm *.fs
