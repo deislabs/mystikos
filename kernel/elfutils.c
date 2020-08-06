@@ -1139,6 +1139,8 @@ void* elf_make_stack(
     if (!(stack = memalign(PAGE_SIZE, stack_size)))
         goto done;
 
+    memset(stack, 0, stack_size);
+
     /*  Example:
         AT_SYSINFO_EHDR=7ffebe5c8000
         AT_HWCAP=bfebfbff
