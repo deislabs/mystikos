@@ -12,7 +12,6 @@ appdir:
 	rm -rf appdir
 	mkdir -p appdir
 	( cd appdir; sudo tar zxf ../alpine-minirootfs.tar.gz ; sudo chown -R `whoami` ./ )
-	sudo rm -rf appdir/tmp
 	rm -f alpine-appdir.tar.gz
 
 rootfs:
@@ -24,4 +23,4 @@ run: all
 	libos exec $(OPTS) rootfs /bin/ls /sbin
 
 clean:
-	sudo rm -rf alpine-appdir.tar.gz appdir rootfs appdir
+	sudo rm -rf alpine-minirootfs.tar.gz appdir rootfs appdir
