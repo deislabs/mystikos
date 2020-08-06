@@ -13,6 +13,11 @@ static inline off_t libos_round_up_off(off_t x, off_t m)
     return (x + m - 1) / m * m;
 }
 
+static inline const void* libos_round_up_ptr(const void* x, uint64_t m)
+{
+    return (void*)(((uint64_t)x + m - 1) / m * m);
+}
+
 static inline int64_t libos_round_up_i64(int64_t x, int64_t m)
 {
     return (x + m - 1) / m * m;

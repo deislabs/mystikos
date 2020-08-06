@@ -60,6 +60,7 @@ static size_t _count_args(const char* args[])
 #if 0
 static void _dump_args(const char* args[])
 {
+    printf("args=%p\n", args);
     for (int i = 0; args[i]; i++)
         printf("args[%d]=%s\n", i, args[i]);
 }

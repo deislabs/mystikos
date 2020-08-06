@@ -375,6 +375,11 @@ static pair_t _pairs[] =
     { SYS_statx, "SYS_statx" },
     { SYS_io_pgetevents, "SYS_io_pgetevents" },
     { SYS_rseq, "SYS_rseq" },
+    { SYS_libos_trace, "SYS_libos_trace" },
+    { SYS_libos_trace_ptr, "SYS_libos_trace_ptr" },
+    { SYS_libos_dump_ehdr, "SYS_libos_dump_ehdr" },
+    { SYS_libos_dump_argv, "SYS_libos_dump_argv" },
+    { SYS_libos_dump_stack, "SYS_libos_dump_stack" },
 };
 
 static size_t _n_pairs = sizeof(_pairs) / sizeof(_pairs[0]);
@@ -915,12 +920,35 @@ long libos_syscall(long n, long params[6])
         }
         case SYS_libos_dump_stack:
         {
-            elf_dump_stack((void*)params[0]);
+            const void* stack = (void*)x1;
+
+            _strace(n, NULL);
+
+            elf_dump_stack((void*)stack);
             return _return(n, 0);
         }
         case SYS_libos_dump_ehdr:
         {
             elf_dump_ehdr((void*)params[0]);
+            return _return(n, 0);
+        }
+        case SYS_libos_dump_argv:
+        {
+            int argc = (int)x1;
+            const char** argv = (const char**)x2;
+
+            printf("=== SYS_libos_dump_argv\n");
+
+            printf("argc=%d\n", argc);
+            printf("argv=%p\n", argv);
+
+            for (int i = 0; i < argc; i++)
+            {
+                printf("argv[%d]=%s\n", i, argv[i]);
+            }
+
+            printf("argv[argc]=%p\n", argv[argc]);
+
             return _return(n, 0);
         }
         case SYS_read:

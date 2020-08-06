@@ -7,8 +7,10 @@ all: libos appdir rootfs
 libos:
 	$(MAKE) -C $(TOP)/tools/libos
 
+# http://dl-cdn.alpinelinux.org/alpine/v3.12/releases/x86_64/alpine-minirootfs-3.12.0-x86_64.tar.gz
+
 appdir:
-	curl -L -o alpine-minirootfs.tar.gz https://nl.alpinelinux.org/alpine/v3.8/releases/x86_64/alpine-minirootfs-3.8.0-x86_64.tar.gz
+	curl -L -o alpine-minirootfs.tar.gz https://nl.alpinelinux.org/alpine/v3.12/releases/x86_64/alpine-minirootfs-3.12.0-x86_64.tar.gz
 	rm -rf appdir
 	mkdir -p appdir
 	( cd appdir; sudo tar zxf ../alpine-minirootfs.tar.gz ; sudo chown -R `whoami` ./ )

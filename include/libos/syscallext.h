@@ -12,5 +12,6 @@
 #define SYS_libos_trace_ptr 1002
 #define SYS_libos_dump_stack 1003
 #define SYS_libos_dump_ehdr 1004
+#define SYS_libos_dump_argv 1005
 
 #endif /* _LIBOS_SYSCALLEXT_H */

@@ -1,5 +1,6 @@
 #include <libos/elfutils.h>
 #include <libos/syscall.h>
+#include <libos/round.h>
 #include <string.h>
 #include <lthread.h>
 #include <stdio.h>
@@ -858,9 +859,9 @@ done:
     return ret;
 }
 
-#if 0
-static void _dump(uint8_t* p, size_t n)
+static void _dump_bytes(const void * p_, size_t n)
 {
+    const uint8_t* p = (const uint8_t*)p_;
     while (n--)
     {
         uint8_t c = *p++;
@@ -873,7 +874,6 @@ static void _dump(uint8_t* p, size_t n)
 
     printf("\n");
 }
-#endif
 
 void elf_dump_stack(void* stack)
 {
@@ -882,21 +882,30 @@ void elf_dump_stack(void* stack)
     char** envp;
     int envc = 0;
     Elf64_auxv_t* auxv;
+    const Elf64_auxv_t* auxv_end = NULL;
 
     printf("=== dump_stack(%lX)\n", (unsigned long)stack);
+
+    printf("stack=%lx\n", (uint64_t)stack);
+
+#if 0
+    printf("prev=%lx\n", *((uint64_t*)stack - 1));
+#endif
 
     printf("argc=%d\n", argc);
 
     for (int i = 0; i < argc; i++)
-        printf("argv[%d]=%s\n", i, argv[i]);
+        printf("argv[%d]=%s [%lX]\n", i, argv[i], (uint64_t)argv[i]);
 
     envp = (argv + argc + 1);
 
     for (int i = 0; envp[i]; i++)
     {
-        printf("envp[%d]=%s\n", i, envp[i]);
+        printf("envp[%d]=%s [%lX]\n", i, envp[i], (uint64_t)envp[i]);
         envc++;
     }
+
+    /* Dump the argv strings */
 
     auxv = (Elf64_auxv_t*)(envp + envc + 1);
 
@@ -904,7 +913,12 @@ void elf_dump_stack(void* stack)
     {
         const Elf64_auxv_t a = auxv[i];
         printf("%s=%lX\n", elf64_at_string(a.a_type), a.a_un.a_val);
+        auxv_end = &auxv[i];
     }
+
+    auxv_end++;
+
+    _dump_bytes(auxv_end, 80);
 }
 
 int _test_header(const Elf64_Ehdr* ehdr)
