@@ -8,10 +8,10 @@ libos:
 	$(MAKE) -C $(TOP)/tools/libos
 
 appdir:
-	curl -L -o alpine-appdir.tar.gz https://nl.alpinelinux.org/alpine/v3.8/releases/x86_64/alpine-appdir-3.8.0-x86_64.tar.gz
+	curl -L -o alpine-minirootfs.tar.gz https://nl.alpinelinux.org/alpine/v3.8/releases/x86_64/alpine-minirootfs-3.8.0-x86_64.tar.gz
 	rm -rf appdir
 	mkdir -p appdir
-	( cd appdir; sudo tar zxf ../alpine-appdir.tar.gz )
+	( cd appdir; sudo tar zxf ../alpine-minirootfs.tar.gz )
 	rm -rf appdir/tmp
 	rm -f alpine-appdir.tar.gz
 
