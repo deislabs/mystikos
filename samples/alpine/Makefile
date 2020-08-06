@@ -11,7 +11,7 @@ appdir:
 	curl -L -o alpine-minirootfs.tar.gz https://nl.alpinelinux.org/alpine/v3.8/releases/x86_64/alpine-minirootfs-3.8.0-x86_64.tar.gz
 	rm -rf appdir
 	mkdir -p appdir
-	( cd appdir; sudo tar zxf ../alpine-minirootfs.tar.gz )
+	( cd appdir; sudo tar zxf ../alpine-minirootfs.tar.gz ; sudo chown -R `whoami` ./ )
 	sudo rm -rf appdir/tmp
 	rm -f alpine-appdir.tar.gz
 
