@@ -1244,7 +1244,10 @@ typedef struct entry_args
 }
 entry_args_t;
 
+/* ATTN: enabling this causes a crash when running /bin/pwd */
+#if 0
 #define USE_LTHREADS
+#endif
 
 void _entry_thread(void* args_)
 {
