@@ -902,23 +902,23 @@ long libos_syscall(long n, long params[6])
 
     switch (n)
     {
-        case LIBOS_SYS_trace:
+        case SYS_libos_trace:
         {
             printf("trace: %s\n", (const char*)params[0]);
             return _return(n, 0);
         }
-        case LIBOS_SYS_trace_ptr:
+        case SYS_libos_trace_ptr:
         {
             printf("trace: %s: %lX %ld\n",
                 (const char*)params[0], params[1], params[1]);
             return _return(n, 0);
         }
-        case LIBOS_SYS_dump_stack:
+        case SYS_libos_dump_stack:
         {
             elf_dump_stack((void*)params[0]);
             return _return(n, 0);
         }
-        case LIBOS_SYS_dump_ehdr:
+        case SYS_libos_dump_ehdr:
         {
             elf_dump_ehdr((void*)params[0]);
             return _return(n, 0);

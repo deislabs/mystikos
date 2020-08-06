@@ -7,15 +7,7 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <stdbool.h>
-
-enum
-{
-    LIBOS_SYS_base = 1000,
-    LIBOS_SYS_trace = 1001,
-    LIBOS_SYS_trace_ptr = 1002,
-    LIBOS_SYS_dump_stack = 1003,
-    LIBOS_SYS_dump_ehdr = 1004,
-};
+#include <libos/syscallext.h>
 
 void libos_trace_syscalls(bool flag);
 
