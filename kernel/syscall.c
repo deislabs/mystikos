@@ -619,6 +619,19 @@ done:
     return ret;
 }
 
+long libos_syscall_lstat(const char* pathname, struct stat* statbuf)
+{
+    long ret = 0;
+    char suffix[PATH_MAX];
+    libos_fs_t* fs;
+
+    ECHECK(libos_mount_resolve(pathname, suffix, &fs));
+    ECHECK((*fs->fs_lstat)(fs, suffix, statbuf));
+
+done:
+    return ret;
+}
+
 long libos_syscall_fstat(int fd, struct stat* statbuf)
 {
     long ret = 0;
@@ -757,7 +770,7 @@ long libos_syscall_truncate(const char* path, off_t length)
     libos_fs_t* fs;
 
     ECHECK(libos_mount_resolve(path, suffix, &fs));
-    ECHECK((*fs->fs_truncate)(fs, suffix, length));
+    ERAISE((*fs->fs_truncate)(fs, suffix, length));
 
 done:
     return ret;
@@ -771,7 +784,7 @@ long libos_syscall_ftruncate(int fd, off_t length)
     const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_FILE;
 
     ECHECK(libos_fdtable_find(fd, type, (void**)&fs, (void**)&file));
-    ret = (*fs->fs_ftruncate)(fs, file, length);
+    ERAISE((*fs->fs_ftruncate)(fs, file, length));
 
 done:
     return ret;
@@ -784,7 +797,7 @@ long libos_syscall_readlink(const char* pathname, char* buf, size_t bufsiz)
     libos_fs_t* fs;
 
     ECHECK(libos_mount_resolve(pathname, suffix, &fs));
-    ECHECK((*fs->fs_readlink)(fs, pathname, buf, bufsiz));
+    ERAISE((*fs->fs_readlink)(fs, pathname, buf, bufsiz));
 
 done:
     return ret;
@@ -797,7 +810,7 @@ long libos_syscall_symlink(const char* target, const char* linkpath)
     libos_fs_t* fs;
 
     ECHECK(libos_mount_resolve(linkpath, suffix, &fs));
-    ECHECK((*fs->fs_symlink)(fs, target, suffix));
+    ERAISE((*fs->fs_symlink)(fs, target, suffix));
 
 done:
     return ret;
@@ -1024,7 +1037,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "pathname=%s statbuf=%p", pathname, statbuf);
 
-            return _return(n, libos_syscall_stat(pathname, statbuf));
+            return _return(n, libos_syscall_lstat(pathname, statbuf));
         }
         case SYS_poll:
         {

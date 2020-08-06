@@ -506,7 +506,7 @@ void test_symlink(void)
     assert(libos_mkdir("/symlink", 777) == 0);
     assert(_touch("/symlink/file", 0400) == 0);
     assert(libos_symlink("/symlink/file", "/symlink/link") == 0);
-    assert(libos_readlink("/symlink/link", target, sizeof(target)) == 0);
+    assert(libos_readlink("/symlink/link", target, sizeof(target)) == 13);
     assert(strcmp(target, "/symlink/file") == 0);
 }
 

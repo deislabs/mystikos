@@ -5,7 +5,7 @@
 #include <lthread.h>
 #include "run_t.h"
 
-#define TIMEOUT_MSEC 1000
+#define TIMEOUT_MSEC 100
 
 #define NUM_ITERATIONS 10
 

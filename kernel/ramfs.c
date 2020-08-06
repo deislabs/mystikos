@@ -565,7 +565,7 @@ static int _fs_creat(
     if (!fs)
         ERAISE(-EINVAL);
 
-    ECHECK((*fs->fs_open)(fs, pathname, flags, mode, file));
+    ERAISE((*fs->fs_open)(fs, pathname, flags, mode, file));
 
 done:
     return ret;
@@ -967,7 +967,7 @@ static int _fs_stat(libos_fs_t* fs, const char* pathname, struct stat* statbuf)
         ERAISE(-EINVAL);
 
     ECHECK(_path_to_inode(ramfs, pathname, NULL, &inode));
-    ECHECK(_stat(inode, statbuf));
+    ERAISE(_stat(inode, statbuf));
 
 done:
     return ret;
@@ -984,8 +984,8 @@ static int _fs_lstat(libos_fs_t* fs, const char* pathname, struct stat* statbuf)
     if (!_ramfs_valid(ramfs) || !pathname || !statbuf)
         ERAISE(-EINVAL);
 
-    ECHECK(_path_to_inode(ramfs, pathname, NULL, &inode));
-    ECHECK(_stat(inode, statbuf));
+    ECHECK(_path_to_inode_ex(ramfs, pathname, false, NULL, &inode));
+    ERAISE(_stat(inode, statbuf));
 
 done:
     return ret;
@@ -1000,7 +1000,7 @@ static int _fs_fstat(libos_fs_t* fs, libos_file_t* file, struct stat* statbuf)
         ERAISE(-EINVAL);
 
     assert(_inode_valid(file->inode));
-    ECHECK(_stat(file->inode, statbuf));
+    ERAISE(_stat(file->inode, statbuf));
 
 done:
     return ret;
@@ -1206,7 +1206,7 @@ static int _fs_mkdir(libos_fs_t* fs, const char* pathname, mode_t mode)
         ERAISE(-EEXIST);
 
     /* create the directory */
-    ECHECK(_inode_new(parent, basename, (S_IFDIR | mode), NULL));
+    ERAISE(_inode_new(parent, basename, (S_IFDIR | mode), NULL));
 
 done:
     return ret;
@@ -1353,7 +1353,7 @@ static int _fs_symlink(libos_fs_t* fs, const char* target, const char* linkpath)
     ECHECK(_path_to_inode(ramfs, dirname, NULL, &parent));
 
     /* Create the new link inode */
-    ECHECK(_inode_new(parent, basename, (S_IFLNK | 0666), &inode));
+    ECHECK(_inode_new(parent, basename, (S_IFLNK | 0777), &inode));
 
     /* Write the target name into the link inode */
     if (libos_buf_append(&inode->buf, target, strlen(target) + 1) != 0)

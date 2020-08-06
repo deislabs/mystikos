@@ -7,7 +7,7 @@
 
 #define TIMEOUT_MSEC 1
 
-#define NUM_THREADS 100
+#define NUM_THREADS 10
 
 #define NUM_ITERATIONS 10
 

@@ -5,14 +5,17 @@
 #include <errno.h>
 #include <stdio.h>
 
-#define ERAISE(ERRNUM)                                          \
-    do                                                          \
-    {                                                           \
-        ret = ERRNUM;                                           \
-        libos_eraise(__FILE__, __LINE__, __FUNCTION__, (int)ret); \
-        fflush(stdout);                                         \
-        goto done;                                              \
-    }                                                           \
+#define ERAISE(ERRNUM)                                                \
+    do                                                                \
+    {                                                                 \
+        ret = ERRNUM;                                                 \
+        if (ret < 0)                                                  \
+        {                                                             \
+            libos_eraise(__FILE__, __LINE__, __FUNCTION__, (int)ret); \
+            fflush(stdout);                                           \
+            goto done;                                                \
+        }                                                             \
+    }                                                                 \
     while (0)
 
 #define ECHECK(ERRNUM)                                                \
