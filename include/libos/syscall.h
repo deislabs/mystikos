@@ -10,11 +10,11 @@
 
 enum
 {
-    LIBOS_SYS_base = 1024,
-    LIBOS_SYS_trace,
-    LIBOS_SYS_trace_ptr,
-    LIBOS_SYS_dump_stack,
-    LIBOS_SYS_dump_ehdr,
+    LIBOS_SYS_base = 1000,
+    LIBOS_SYS_trace = 1001,
+    LIBOS_SYS_trace_ptr = 1002,
+    LIBOS_SYS_dump_stack = 1003,
+    LIBOS_SYS_dump_ehdr = 1004,
 };
 
 void libos_trace_syscalls(bool flag);

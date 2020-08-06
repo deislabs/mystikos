@@ -1934,7 +1934,7 @@ long libos_syscall(long n, long params[6])
         }
         default:
         {
-            fprintf(stderr, "********** unknown: %s()\n", syscall_str(n));
+            fprintf(stderr, "********** %s(): %ld\n", syscall_str(n), n);
             abort();
         }
     }
