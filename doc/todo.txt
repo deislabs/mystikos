@@ -9,7 +9,7 @@
 
     * cleanup mman module
 
-    * handle symbolic links in cpio and ramfs
+    * handle symlink lookup (directories can be links)
 
     BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
 
@@ -37,3 +37,6 @@
 
     * EXT2 file systems
 
+    XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+    X handle symbolic links in cpio and ramfs

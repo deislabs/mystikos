@@ -2,29 +2,26 @@ SUBDIR = samples/alpine
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
-all: libos minirootfs rootfs
+all: libos appdir rootfs
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos
 
-minirootfs:
-	curl -L -o alpine-minirootfs.tar.gz https://nl.alpinelinux.org/alpine/v3.8/releases/x86_64/alpine-minirootfs-3.8.0-x86_64.tar.gz
-	rm -rf minirootfs
-	mkdir -p minirootfs
-	( cd minirootfs; sudo tar zxf ../alpine-minirootfs.tar.gz )
-	rm -f alpine-minirootfs.tar.gz
+appdir:
+	curl -L -o alpine-appdir.tar.gz https://nl.alpinelinux.org/alpine/v3.8/releases/x86_64/alpine-appdir-3.8.0-x86_64.tar.gz
+	rm -rf appdir
+	mkdir -p appdir
+	( cd appdir; sudo tar zxf ../alpine-appdir.tar.gz )
+	rm -rf appdir/tmp
+	rm -f alpine-appdir.tar.gz
 
 rootfs:
-	rm -rf appdir
-	mkdir -p appdir/bin
-	cp minirootfs/bin/busybox appdir/bin/ls
-	cp -r minirootfs/sbin appdir/sbin
-	( cd appdir; find . | cpio --create --format='newc' > ../rootfs )
+	libos mkcpio appdir rootfs
 
 #OPTS = --trace-syscalls
 
 run: all
-	time libos exec $(OPTS) rootfs /bin/ls -R /
+	libos exec $(OPTS) rootfs /bin/ls /sbin
 
 clean:
-	rm -rf alpine-minirootfs.tar.gz minirootfs rootfs appdir
+	rm -rf alpine-appdir.tar.gz appdir rootfs appdir

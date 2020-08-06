@@ -9,6 +9,7 @@
 #include <libos/trace.h>
 #include <libos/round.h>
 #include <libos/strings.h>
+#include <libos/realpath.h>
 #include "eraise.h"
 #include "bufu64.h"
 #include "buf.h"
@@ -486,25 +487,22 @@ static int _path_to_inode_ex(
         {
             char dirname[PATH_MAX];
             char basename[PATH_MAX];
-            char new_target[PATH_MAX];
+            char tmp[PATH_MAX];
 
-            /* replace the basename of the path with the target and normalize */
+            /* replace the path basename with the target and normalize */
             ECHECK(_split_path(path, dirname, basename));
 
-            if (LIBOS_STRLCPY(new_target, dirname) >= sizeof(new_target))
+            if (LIBOS_STRLCPY(tmp, dirname) >= sizeof(tmp))
                 ERAISE(-ENAMETOOLONG);
 
-            if (LIBOS_STRLCAT(new_target, "/") >= sizeof(new_target))
+            if (LIBOS_STRLCAT(tmp, "/") >= sizeof(tmp))
                 ERAISE(-ENAMETOOLONG);
 
-            if (LIBOS_STRLCAT(new_target, target) >= sizeof(new_target))
+            if (LIBOS_STRLCAT(tmp, target) >= sizeof(tmp))
                 ERAISE(-ENAMETOOLONG);
 
-#if 0
-            printf("Not supported: path=%s target=%s\n", path, target);
-            assert("relative symbolic links not supported" == NULL);
-            ERAISE(-ENOTSUP);
-#endif
+            if (libos_realpath(tmp, (libos_path_t*)target) != 0)
+                ERAISE(-ENAMETOOLONG);
         }
 
         ECHECK(_path_to_inode_ex(ramfs, target, true, parent_out, inode_out));
