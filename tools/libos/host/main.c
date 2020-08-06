@@ -287,6 +287,10 @@ static int _exec(int argc, const char* argv[])
         /* Get --trace-syscalls option */
         if (_get_opt(&argc, argv, "--trace-syscalls", NULL) == 0)
             options.trace_syscalls = true;
+
+        /* Get --strace option */
+        if (_get_opt(&argc, argv, "--strace", NULL) == 0)
+            options.trace_syscalls = true;
     }
 
     if (argc < 4)
