@@ -18,6 +18,7 @@
 #include <libos/trace.h>
 #include <libos/strings.h>
 #include <libos/cwd.h>
+#include <sys/utsname.h>
 #include <libos/mount.h>
 #include "fdtable.h"
 #include "eraise.h"
@@ -1199,7 +1200,17 @@ long libos_syscall(long n, long params[6])
         case SYS_kill:
             break;
         case SYS_uname:
-            break;
+        {
+            struct utsname* buf = (struct utsname*)x1;
+
+            LIBOS_STRLCPY(buf->sysname, "OpenLibos");
+            LIBOS_STRLCPY(buf->nodename, "libos");
+            LIBOS_STRLCPY(buf->release, "1.0.0");
+            LIBOS_STRLCPY(buf->version, "Libos 1.0.0");
+            LIBOS_STRLCPY(buf->machine, "x86_64");
+
+            return _return(n, 0);
+        }
         case SYS_semget:
             break;
         case SYS_semop:
@@ -1527,7 +1538,15 @@ long libos_syscall(long n, long params[6])
         case SYS_reboot:
             break;
         case SYS_sethostname:
-            break;
+        {
+            const char* name= (const char*)x1;
+            size_t len = (size_t)x2;
+
+            _strace(n, "name=%s len=%zu", name, len);
+
+            return 0;
+            return _return(n, _forward_syscall(n, params));
+        }
         case SYS_setdomainname:
             break;
         case SYS_iopl:
