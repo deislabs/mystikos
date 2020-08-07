@@ -4,10 +4,45 @@
 #include <openenclave/enclave.h>
 #include <libos/realpath.h>
 #include <libos/cwd.h>
+#include <libos/paths.h>
+#include <libos/strings.h>
 #include <stdio.h>
 #include <assert.h>
+#include <stdlib.h>
 #include <string.h>
 #include "run_t.h"
+
+int test_normalize(const char* toks[], const char* path)
+{
+    int ret = -1;
+    char* s = NULL;
+
+#if 1
+    libos_toks_dump(toks);
+#endif
+
+    if (libos_path_normalize(toks) != 0)
+        goto done;
+
+#if 1
+    libos_toks_dump(toks);
+#endif
+
+    if (libos_strjoin(toks, libos_tokslen(toks), NULL, "/", NULL, &s) != 0)
+        goto done;
+
+    if (strcmp(s, path) != 0)
+        goto done;
+
+    ret = 0;
+
+done:
+
+    if (s)
+        free(s);
+
+    return ret;
+}
 
 int run_ecall(void)
 {
@@ -46,6 +81,36 @@ int run_ecall(void)
         assert(libos_realpath("../../ddd", &path) == 0);
         assert(strcmp(path.buf, "/a/bb/ddd") == 0);
     }
+
+    /* Test normalize */
+    {
+        {
+            const char* toks[] = { "red", "green", "blue", NULL };
+            assert(test_normalize(toks, "red/green/blue") == 0);
+        }
+        {
+            const char* toks[] = { "red", "..", "blue", NULL };
+            assert(test_normalize(toks, "blue") == 0);
+        }
+        {
+            const char* toks[] = { "..", "blue", NULL };
+            assert(test_normalize(toks, "blue") == 0);
+        }
+        {
+            const char* toks[] = { "red", "green", "..", NULL };
+            assert(test_normalize(toks, "red") == 0);
+        }
+        {
+            const char* toks[] = { "..", NULL };
+            assert(test_normalize(toks, "") == 0);
+        }
+        {
+            const char* toks[] = { ".", "red", ".", "blue", ".", NULL };
+            assert(test_normalize(toks, "red/blue") == 0);
+        }
+    }
+
+    /* Test */
 
     return 0;
 }

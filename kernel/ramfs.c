@@ -441,9 +441,6 @@ static int _path_to_inode_ex(
         }
     }
 
-    /* First element should be "/" */
-    assert(strcmp(elements[0], "/") == 0);
-
     /* search for the inode */
     {
         if (nelements == 1)

@@ -24,7 +24,7 @@
         typeof(ERRNUM) _r_ = ERRNUM;                                  \
         if (_r_ < 0)                                                  \
         {                                                             \
-            ret = _r_;                                                \
+            ret = (typeof(ret))_r_;                                   \
             libos_eraise(__FILE__, __LINE__, __FUNCTION__, (int)ret); \
             goto done;                                                \
         }                                                             \

@@ -13,6 +13,8 @@
 
     BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
 
+    * system-call-tracer
+
     * partition kernel in 'target' and 'kernel'
 
     * implement libos sign action
@@ -24,6 +26,8 @@
     * Use RDTSC instead of gettimeofday (lthread)
 
     * fix cp_syscall() workaround
+
+    * Implement /proc/self/fd/<fdnumber>
 
     CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 
