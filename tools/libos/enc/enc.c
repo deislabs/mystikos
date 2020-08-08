@@ -14,6 +14,7 @@
 #include <libos/mount.h>
 #include <libos/file.h>
 #include <libos/cpio.h>
+#include <libos/trace.h>
 #include "libos_t.h"
 
 static const size_t MMAN_SIZE = 16 * 1024 * 1024;
@@ -92,28 +93,6 @@ static void _setup_ramfs(void)
     {
         fprintf(stderr, "failed create the /libos/tmp directory\n");
         abort();
-    }
-
-    /* Create /proc/self/fd directory */
-    /* TODO: implement libos_mkdir_recursive() */
-    {
-        if (libos_mkdir("/proc", 777) != 0)
-        {
-            fprintf(stderr, "failed create the /proc directory\n");
-            abort();
-        }
-
-        if (libos_mkdir("/proc/self", 777) != 0)
-        {
-            fprintf(stderr, "failed create the /proc/self directory\n");
-            abort();
-        }
-
-        if (libos_mkdir("/proc/self/fd", 777) != 0)
-        {
-            fprintf(stderr, "failed create the /proc/self/fd directory\n");
-            abort();
-        }
     }
 }
 
@@ -243,6 +222,16 @@ int libos_enter_ecall(
     {
         fprintf(stderr, "failed to unpack: %s\n", rootfs_path);
         assert(0);
+    }
+
+    /* Set up the standard directories (some may already exist) */
+    {
+        libos_set_trace(false);
+        libos_mkdir("/tmp", 777);
+        libos_mkdir("/proc", 777);
+        libos_mkdir("/proc/self", 777);
+        libos_mkdir("/proc/self/fd", 777);
+        libos_set_trace(true);
     }
 
     _setup_sockets();
