@@ -93,6 +93,28 @@ static void _setup_ramfs(void)
         fprintf(stderr, "failed create the /libos/tmp directory\n");
         abort();
     }
+
+    /* Create /proc/self/fd directory */
+    /* TODO: implement libos_mkdir_recursive() */
+    {
+        if (libos_mkdir("/proc", 777) != 0)
+        {
+            fprintf(stderr, "failed create the /proc directory\n");
+            abort();
+        }
+
+        if (libos_mkdir("/proc/self", 777) != 0)
+        {
+            fprintf(stderr, "failed create the /proc/self directory\n");
+            abort();
+        }
+
+        if (libos_mkdir("/proc/self/fd", 777) != 0)
+        {
+            fprintf(stderr, "failed create the /proc/self/fd directory\n");
+            abort();
+        }
+    }
 }
 
 static void _teardown_ramfs(void)

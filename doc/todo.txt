@@ -27,7 +27,7 @@
 
     * fix cp_syscall() workaround
 
-    * Implement /proc/self/fd/<fdnumber>
+    * Implement /proc/self/fd/<fdnumber> to /usr/bin/realpath will work.
 
     CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 

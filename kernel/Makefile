@@ -1,4 +1,4 @@
-SUBDIR = enclave
+SUBDIR = kernel
 TOP=$(abspath ..)
 include $(TOP)/defs.mak
 

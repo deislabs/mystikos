@@ -8,10 +8,18 @@
 
 #define LIBOS_PATHS_MAX_COMPONENTS 64
 
+int libos_path_absolute_cwd(
+    const char* cwd,
+    const char* path,
+    char* buf,
+    size_t size);
+
 /* find the absolute path relative to the current working directory */
 int libos_path_absolute(const char* path, char* buf, size_t size);
 
 /* Normalize the path (removing "." and ".." elements) */
-int libos_path_normalize(const char* toks[]);
+int libos_tok_normalize(const char* toks[]);
+
+int libos_normalize(const char* path, char* buf, size_t size);
 
 #endif /* _LIBOS_PATHS_H */

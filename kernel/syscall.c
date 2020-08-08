@@ -13,6 +13,7 @@
 #include <sys/uio.h>
 #include <libos/syscall.h>
 #include <libos/elfutils.h>
+#include <libos/paths.h>
 #include <libos/mmanutils.h>
 #include <libos/spinlock.h>
 #include <libos/trace.h>
@@ -822,13 +823,18 @@ static libos_spinlock_t _cwd_lock = LIBOS_SPINLOCK_INITIALIZER;
 long libos_syscall_chdir(const char* path)
 {
     long ret = 0;
+    char buf[PATH_MAX];
+    char buf2[PATH_MAX];
 
     libos_spin_lock(&_cwd_lock);
 
     if (!path)
         ERAISE(-EINVAL);
 
-    if (LIBOS_STRLCPY(_cwd, path) >= sizeof(_cwd))
+    ECHECK(libos_path_absolute_cwd(_cwd, path, buf, sizeof(buf)));
+    ECHECK(libos_normalize(buf, buf2, sizeof(buf2)));
+
+    if (LIBOS_STRLCPY(_cwd, buf2) >= sizeof(_cwd))
         ERAISE(-ERANGE);
 
 done:
