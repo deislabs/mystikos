@@ -82,52 +82,6 @@ done:
     return ret;
 }
 
-#if 0
-int libos_path_absolute(const char* path, char* buf, size_t size)
-{
-    int ret = 0;
-
-    if (buf)
-        *buf = '\0';
-
-    if (!path || !buf || !size)
-        ERAISE(-EINVAL);
-
-    if (path[0] == '/')
-    {
-        if (strlcpy(buf, path, size) >= size)
-            ERAISE(-ENAMETOOLONG);
-    }
-    else
-    {
-        char cwd[PATH_MAX];
-        size_t cwd_len;
-        long r;
-
-        if ((r = libos_syscall_getcwd(cwd, sizeof(cwd))) < 0)
-            ERAISE((int)r);
-
-        if (strlcpy(buf, cwd, size) >= size)
-            ERAISE(-ENAMETOOLONG);
-
-        if ((cwd_len = strlen(cwd)) == 0)
-            ERAISE(-EINVAL);
-
-        if (cwd[cwd_len-1] != '/')
-        {
-            if (strlcat(buf, "/", size) >= size)
-                ERAISE(-ENAMETOOLONG);
-        }
-
-        if (strlcat(buf, path, size) >= size)
-            ERAISE(-ENAMETOOLONG);
-    }
-
-done:
-    return ret;
-}
-#endif
-
 int libos_tok_normalize(const char* toks[])
 {
     int ret = 0;
@@ -228,66 +182,79 @@ done:
     return ret;
 }
 
-#if 0
-
-int libos_path_expand(
-    const libos_components_t* in,
-    libos_components_t* out)
+/* TODO: test this next */
+int libos_path_expand(const char* toks[], const char* buf[], size_t size)
 {
     int ret = 0;
-    char path[PATH_MAX];
-    char target[PATH_MAX];
-    struct stat buf;
-    libos_components_t split;
+    size_t n = 0;
+    char* path = NULL;
+    struct stat st;
+    char** split = NULL;
 
-    if (!in || !out)
+    if (!toks || !buf || !size)
         ERAISE(-EINVAL);
 
-    for (size_t i = 0; i < in->size; i++)
+    for (size_t i = 0; toks[i]; i++)
     {
-        if (i == 0 && strcmp(in->data[i], "/") == 0)
+        if (i == 0 && strcmp(toks[i], "/") == 0)
         {
-            out->data[out->size++] = in->data[i];
+            buf[n++] = toks[i];
             continue;
         }
 
         /* Add the next component */
         {
-            if (out->size == LIBOS_PATH_MAX_COMPONENTS)
+            if (n == size)
                 ERAISE(-ENAMETOOLONG);
 
-            out->data[out->size++] = in->data[i];
+            buf[n++] = toks[i];
         }
 
         /* Build a path out of what we have so far */
-        ECHECK(libos_path_join(out, path, sizeof(path)));
+        ECHECK(libos_strjoin(buf, n, "/", "/", NULL, &path));
 
         /* Stat the path */
-        ECHECK((int)libos_syscall_lstat(path, &buf));
+        ECHECK(libos_syscall_lstat(path, &st));
 
         /* If it's a link, then inject all elements of the target */
-        if (S_ISLNK(buf.st_mode))
+        if (S_ISLNK(st.st_mode))
         {
-            ECHECK((int)libos_syscall_readlink(path, target, sizeof(target)));
+            char target[PATH_MAX];
+            size_t nsplit;
 
-            ECHECK(libos_path_split(target, &split));
+            ECHECK(libos_syscall_readlink(path, target, sizeof(target)));
+
+            ECHECK(libos_strsplit(target, "/", &split, &nsplit));
 
             /* remove the link name */
-            out->size--;
+            n--;
 
             /* append the target elements */
-            for (size_t j = 0; j < split.size; j++)
+            for (size_t j = 0; j < nsplit; j++)
             {
-                if (out->size == LIBOS_PATH_MAX_COMPONENTS)
+                if (n == size)
                     ERAISE(-ENAMETOOLONG);
 
-                out->data[out->size++] = split.data[j];
+                buf[n++] = split[j];
             }
+
+            free(split);
+            split = NULL;
         }
+
+        free(path);
+        path = NULL;
     }
 
+    buf[n] = NULL;
+
 done:
+
+    if (path)
+        free(path);
+
+    if (split)
+        free(split);
+
     return ret;
 }
-
-#endif
