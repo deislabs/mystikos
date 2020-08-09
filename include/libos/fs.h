@@ -96,6 +96,12 @@ struct libos_fs
         size_t bufsiz);
 
     int (*fs_symlink)(libos_fs_t* fs, const char* target, const char* linkpath);
+
+    int (*fs_realpath)(
+        libos_fs_t* fs,
+        libos_file_t* file,
+        char* buf,
+        size_t size);
 };
 
 #endif /* _LIBOS_FS_H */

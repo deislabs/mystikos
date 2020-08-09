@@ -1385,6 +1385,25 @@ done:
     return ret;
 }
 
+static int _fs_realpath(
+    libos_fs_t* fs,
+    libos_file_t* file,
+    char* buf,
+    size_t size)
+{
+    int ret = 0;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+
+    if (!_ramfs_valid(ramfs) || !_file_valid(file) || !buf || !size)
+        ERAISE(-EINVAL);
+
+    if (strlcpy(buf, file->realpath, size) >= size)
+        ERAISE(-ENAMETOOLONG);
+
+done:
+    return ret;
+}
+
 int libos_init_ramfs(libos_fs_t** fs_out)
 {
     int ret = 0;
@@ -1414,6 +1433,7 @@ int libos_init_ramfs(libos_fs_t** fs_out)
         _fs_getdents64,
         _fs_readlink,
         _fs_symlink,
+        _fs_realpath,
     };
     inode_t* root_inode = NULL;
 
