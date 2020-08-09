@@ -447,22 +447,23 @@ static int _path_to_inode_recursive(
             if (!(p = _inode_find_child(parent, toks[i])))
                 ERAISE_QUIET(-ENOENT);
 
-            /* If last token */
+            if (S_ISLNK(p->mode) && (follow || i + 1 != ntoks))
+            {
+                const char* target = _inode_target(p);
+
+                /* ATTN: Handle case where ramfs not mounted on "/" */
+                if (*target == '/')
+                    parent = ramfs->root;
+
+                ECHECK(_path_to_inode_recursive(
+                    ramfs, target, parent, true, &parent, &p));
+
+                assert(target != NULL);
+            }
+
+            /* If final token */
             if (i + 1 == ntoks)
             {
-                if (follow && S_ISLNK(p->mode))
-                {
-                    const char* target = _inode_target(p);
-
-                    if (*target == '/')
-                        parent = ramfs->root;
-
-                    ECHECK(_path_to_inode_recursive(
-                        ramfs, target, parent, true, &parent, &p));
-
-                    assert(target != NULL);
-                }
-
                 inode = p;
                 break;
             }

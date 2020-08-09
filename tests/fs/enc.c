@@ -502,12 +502,32 @@ void test_truncate(void)
 void test_symlink(void)
 {
     char target[PATH_MAX];
+    struct stat st1;
+    struct stat st2;
 
     assert(libos_mkdir("/symlink", 777) == 0);
     assert(_touch("/symlink/file", 0400) == 0);
     assert(libos_symlink("/symlink/file", "/symlink/link") == 0);
     assert(libos_readlink("/symlink/link", target, sizeof(target)) == 13);
     assert(strcmp(target, "/symlink/file") == 0);
+
+    assert(libos_mkdir("/symlink/aaa", 777) == 0);
+    assert(libos_symlink("/symlink/ccc", "/symlink/aaa/bbb") == 0);
+    assert(libos_mkdir("/symlink/ccc", 777) == 0);
+    assert(libos_mkdir("/symlink/ccc/ddd", 777) == 0);
+    assert(libos_stat("/symlink/aaa/bbb/ddd", &st1) == 0);
+    assert(libos_stat("/symlink/ccc/ddd", &st2) == 0);
+    assert(st1.st_ino == st2.st_ino);
+    assert(libos_lstat("/symlink/aaa/bbb/ddd", &st1) == 0);
+
+    assert(libos_mkdir("/symlink/www", 777) == 0);
+    assert(libos_symlink("../yyy", "/symlink/www/xxx") == 0);
+    assert(libos_mkdir("/symlink/yyy", 777) == 0);
+    assert(libos_mkdir("/symlink/yyy/ddd", 777) == 0);
+    assert(libos_stat("/symlink/www/xxx/ddd", &st1) == 0);
+    assert(libos_stat("/symlink/yyy/ddd", &st2) == 0);
+    assert(st1.st_ino == st2.st_ino);
+    assert(libos_lstat("/symlink/www/xxx/ddd", &st1) == 0);
 }
 
 int run_ecall(void)
