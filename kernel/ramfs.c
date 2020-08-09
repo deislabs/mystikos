@@ -9,6 +9,7 @@
 #include <libos/trace.h>
 #include <libos/round.h>
 #include <libos/strings.h>
+#include <libos/paths.h>
 #include <libos/realpath.h>
 #include "eraise.h"
 #include "bufu64.h"
@@ -302,6 +303,7 @@ struct libos_file
     inode_t* inode;
     size_t offset; /* the current file offset (files) */
     uint32_t access; /* (O_RDONLY | O_RDWR | O_WRONLY) */
+    char realpath[PATH_MAX];
 };
 
 static bool _file_valid(const libos_file_t* file)
@@ -405,7 +407,8 @@ static int _path_to_inode_recursive(
     inode_t* parent,
     bool follow,
     inode_t** parent_out,
-    inode_t** inode_out)
+    inode_t** inode_out,
+    char realpath[PATH_MAX])
 {
     int ret = 0;
     char** toks = NULL;
@@ -429,6 +432,9 @@ static int _path_to_inode_recursive(
         if (parent_out)
             *parent_out = parent;
 
+        if (realpath)
+            strlcpy(realpath, "/", PATH_MAX);
+
         *inode_out = inode;
 
         ret = 0;
@@ -447,16 +453,33 @@ static int _path_to_inode_recursive(
             if (!(p = _inode_find_child(parent, toks[i])))
                 ERAISE_QUIET(-ENOENT);
 
+            if (!S_ISLNK(p->mode))
+            {
+                if (realpath)
+                {
+                    if (strlcat(realpath, "/", PATH_MAX) >= PATH_MAX)
+                        ERAISE_QUIET(-ENAMETOOLONG);
+
+                    if (strlcat(realpath, toks[i], PATH_MAX) >= PATH_MAX)
+                        ERAISE_QUIET(-ENAMETOOLONG);
+                }
+            }
+
             if (S_ISLNK(p->mode) && (follow || i + 1 != ntoks))
             {
                 const char* target = _inode_target(p);
 
                 /* ATTN: Handle case where ramfs not mounted on "/" */
                 if (*target == '/')
+                {
+                    if (realpath)
+                        *realpath = '\0';
+
                     parent = ramfs->root;
+                }
 
                 ECHECK(_path_to_inode_recursive(
-                    ramfs, target, parent, true, &parent, &p));
+                    ramfs, target, parent, true, &parent, &p, realpath));
 
                 assert(target != NULL);
             }
@@ -488,6 +511,31 @@ done:
     return ret;
 }
 
+static int _path_to_inode_realpath(
+    ramfs_t* ramfs,
+    const char* path,
+    bool follow,
+    inode_t** parent_out,
+    inode_t** inode_out,
+    char realpath_out[PATH_MAX])
+{
+    int ret = 0;
+    bool trace = libos_get_trace();
+    char realpath[PATH_MAX] = { '\0' };
+
+    libos_set_trace(false);
+
+    ECHECK(_path_to_inode_recursive(ramfs, path, ramfs->root, follow,
+        parent_out, inode_out, realpath_out ? realpath : NULL));
+
+    if (realpath_out)
+        ECHECK(libos_normalize(realpath, realpath_out, PATH_MAX));
+
+done:
+    libos_set_trace(trace);
+    return ret;
+}
+
 static int _path_to_inode(
     ramfs_t* ramfs,
     const char* path,
@@ -495,17 +543,8 @@ static int _path_to_inode(
     inode_t** parent_out,
     inode_t** inode_out)
 {
-    int ret;
-    bool trace = libos_get_trace();
-
-    libos_set_trace(false);
-
-    ret = _path_to_inode_recursive(
-        ramfs, path, ramfs->root, follow, parent_out, inode_out);
-
-    libos_set_trace(trace);
-
-    return ret;
+    return _path_to_inode_realpath(
+        ramfs, path, follow, parent_out, inode_out, NULL);
 }
 
 /*
@@ -627,6 +666,10 @@ static int _fs_open(
     file->inode = inode;
     file->access = (flags & (O_RDONLY | O_RDWR | O_WRONLY));
     inode->nopens++;
+
+    /* Get the realpath of this file */
+    ECHECK(_path_to_inode_realpath(
+        ramfs, pathname, true, NULL, &inode, file->realpath));
 
     assert(_file_valid(file));
 

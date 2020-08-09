@@ -504,10 +504,13 @@ void test_symlink(void)
     char target[PATH_MAX];
     struct stat st1;
     struct stat st2;
+    DIR* dir;
 
     assert(libos_mkdir("/symlink", 777) == 0);
     assert(_touch("/symlink/file", 0400) == 0);
+    assert(libos_access("/symlink/file", R_OK) == 0);
     assert(libos_symlink("/symlink/file", "/symlink/link") == 0);
+    assert(libos_access("/symlink/link", R_OK) == 0);
     assert(libos_readlink("/symlink/link", target, sizeof(target)) == 13);
     assert(strcmp(target, "/symlink/file") == 0);
 
@@ -528,6 +531,9 @@ void test_symlink(void)
     assert(libos_stat("/symlink/yyy/ddd", &st2) == 0);
     assert(st1.st_ino == st2.st_ino);
     assert(libos_lstat("/symlink/www/xxx/ddd", &st1) == 0);
+
+    assert((dir = libos_opendir("/symlink/www/xxx/ddd")));
+    assert(libos_closedir(dir) == 0);
 }
 
 int run_ecall(void)
