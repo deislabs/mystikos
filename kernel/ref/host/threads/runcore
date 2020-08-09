@@ -1,0 +1,2 @@
+#!/bin/bash
+oegdb /root/openenclave/build/tests/posix/threads/host/posix_host core

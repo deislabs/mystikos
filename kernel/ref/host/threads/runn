@@ -1,0 +1,19 @@
+#!/bin/bash
+
+i=0
+
+while [ $i -lt 1000 ];
+do
+    ./run
+
+    if [ "$?" != "0" ]; then
+        echo "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
+        echo "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
+        echo "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
+        echo "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
+        exit 1
+    fi
+
+    i=$(( $i + 1 ))
+
+done

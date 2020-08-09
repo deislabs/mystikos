@@ -1,0 +1,51 @@
+#!/bin/bash
+
+ROOT=../../../../../3rdparty/libc/libc-test/src
+
+DIRNAME=regression
+
+FILES=`ls ${ROOT}/${DIRNAME}/*.c`
+
+for i in ${FILES}
+do
+    SOURCE=`basename ${i}`
+    MAIN=`echo ${SOURCE} | sed 's/\.c//g' | sed 's/-/_/g'`_main
+cat > ${SOURCE} <<EOF
+#include "test.h"
+#include <unistd.h>
+#define main ${MAIN}
+#include "${ROOT}/${DIRNAME}/${SOURCE}"
+EOF
+done
+
+FILENAME=${DIRNAME}.c
+
+rm -f ${FILENAME}
+
+cat >> ${FILENAME} <<EOF
+#include "test.h"
+
+void test_${DIRNAME}(void)
+{
+    int argc = 1;
+    const char* argv[] = { "main", NULL, NULL };
+    const char** envp = argv + argc + 1;
+
+EOF
+
+for i in ${FILES}
+do
+    SOURCE=`basename ${i}`
+    MAIN=`echo ${SOURCE} | sed 's/\.c//g' | sed 's/-/_/g'`_main
+cat >> ${FILENAME} <<EOF
+    extern int ${MAIN}(int argc, const char* argv[], const char* envp[]);
+    t_status = 0;
+    printf("=== running ${MAIN}\n");
+    OE_TEST(${MAIN}(argc, argv, envp) == 0);
+
+EOF
+done
+
+cat >> ${FILENAME} <<EOF
+}
+EOF

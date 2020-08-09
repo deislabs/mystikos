@@ -1,0 +1,49 @@
+#!/bin/bash
+
+ROOT=../../../../../3rdparty/libc/libc-test/src
+
+FILES=`ls ${ROOT}/functional/*.c`
+
+for i in ${FILES}
+do
+    SOURCE=`basename ${i}`
+    MAIN=`echo ${SOURCE} | sed 's/\.c//g' | sed 's/-/_/g'`_main
+cat > ${SOURCE} <<EOF
+#include "test.h"
+#include <unistd.h>
+#define main ${MAIN}
+#include "${ROOT}/functional/${SOURCE}"
+EOF
+done
+
+FILENAME=functional.c
+
+rm -f ${FILENAME}
+
+cat >> ${FILENAME} <<EOF
+#include "test.h"
+
+void test_functional(void)
+{
+    int argc = 1;
+    const char* argv[] = { "main", NULL, NULL };
+    const char** envp = argv + argc + 1;
+
+EOF
+
+for i in ${FILES}
+do
+    SOURCE=`basename ${i}`
+    MAIN=`echo ${SOURCE} | sed 's/\.c//g' | sed 's/-/_/g'`_main
+cat >> ${FILENAME} <<EOF
+    extern int ${MAIN}(int argc, const char* argv[], const char* envp[]);
+    t_status = 0;
+    printf("=== running ${MAIN}\n");
+    OE_TEST(${MAIN}(argc, argv, envp) == 0);
+
+EOF
+done
+
+cat >> ${FILENAME} <<EOF
+}
+EOF

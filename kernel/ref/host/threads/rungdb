@@ -1,0 +1,3 @@
+#!/bin/bash
+echo /root/openenclave/build/tests/posix/threads/enc/posix_enc
+/root/openenclave/build/output/bin/oegdb -arg /root/openenclave/build/tests/posix/threads/host/posix_host /root/openenclave/build/tests/posix/threads/enc/posix_enc

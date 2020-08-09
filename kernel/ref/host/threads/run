@@ -1,0 +1,2 @@
+rm -f core
+/root/openenclave/build/tests/posix/threads/host/posix_host /root/openenclave/build/tests/posix/threads/enc/posix_enc
