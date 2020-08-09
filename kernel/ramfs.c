@@ -281,6 +281,11 @@ done:
     return ret;
 }
 
+static const char* _inode_target(const inode_t* inode)
+{
+    return (const char*)inode->buf.data;
+}
+
 /*
 **==============================================================================
 **
@@ -394,10 +399,11 @@ done:
     return ret;
 }
 
-static int _path_to_inode(
+static int _path_to_inode_recursive(
     ramfs_t* ramfs,
     const char* path,
-    bool follow_links,
+    inode_t* parent,
+    bool follow,
     inode_t** parent_out,
     inode_t** inode_out)
 {
@@ -405,7 +411,6 @@ static int _path_to_inode(
     char** toks = NULL;
     size_t ntoks = 0;
     inode_t* inode = NULL;
-    inode_t* parent = NULL;
 
     if (inode_out)
         *inode_out = NULL;
@@ -414,74 +419,59 @@ static int _path_to_inode(
         *parent_out = NULL;
 
     if (!path || !inode_out)
-        ERAISE_QUIET(-EINVAL);
+        ERAISE(-EINVAL);
+
+    /* If root directory */
+    if (strcmp(path, "/") == 0)
+    {
+        inode = ramfs->root;
+
+        if (parent_out)
+            *parent_out = parent;
+
+        *inode_out = inode;
+
+        ret = 0;
+        goto done;
+    }
 
     /* Split the path into tokens */
     ECHECK(libos_strsplit(path, "/", &toks, &ntoks));
 
     /* search for the inode */
     {
-        if (ntoks == 0)
+        for (size_t i = 0; i < ntoks; i++)
         {
-            inode = ramfs->root;
-        }
-        else
-        {
-            inode_t* current = ramfs->root;
-            parent = current;
+            inode_t* p;
 
-            for (size_t i = 0; i < ntoks; i++)
+            if (!(p = _inode_find_child(parent, toks[i])))
+                ERAISE_QUIET(-ENOENT);
+
+            /* If last token */
+            if (i + 1 == ntoks)
             {
-                if (!(current = _inode_find_child(current, toks[i])))
-                    ERAISE_QUIET(-ENOENT);
-
-                if (i + 1 == ntoks)
+                if (follow && S_ISLNK(p->mode))
                 {
-                    inode = current;
-                    break;
+                    const char* target = _inode_target(p);
+
+                    if (*target == '/')
+                        parent = ramfs->root;
+
+                    ECHECK(_path_to_inode_recursive(
+                        ramfs, target, parent, true, &parent, &p));
+
+                    assert(target != NULL);
                 }
 
-                parent = current;
+                inode = p;
+                break;
             }
+
+            parent = p;
         }
 
         if (!inode)
             ERAISE_QUIET(-ENOENT);
-    }
-
-    if (follow_links && S_ISLNK(inode->mode))
-    {
-        char target[PATH_MAX];
-
-        /* ATTN-A: handle removing or mount point */
-
-        if (LIBOS_STRLCPY(target, (char*)inode->buf.data) >= sizeof(target))
-            ERAISE(-ENAMETOOLONG);
-
-        if (target[0] != '/')
-        {
-            char dirname[PATH_MAX];
-            char basename[PATH_MAX];
-            char tmp[PATH_MAX];
-
-            /* replace the path basename with the target and normalize */
-            ECHECK(_split_path(path, dirname, basename));
-
-            if (LIBOS_STRLCPY(tmp, dirname) >= sizeof(tmp))
-                ERAISE(-ENAMETOOLONG);
-
-            if (LIBOS_STRLCAT(tmp, "/") >= sizeof(tmp))
-                ERAISE(-ENAMETOOLONG);
-
-            if (LIBOS_STRLCAT(tmp, target) >= sizeof(tmp))
-                ERAISE(-ENAMETOOLONG);
-
-            if (libos_realpath(tmp, (libos_path_t*)target) != 0)
-                ERAISE(-ENAMETOOLONG);
-        }
-
-        ECHECK(_path_to_inode(ramfs, target, true, parent_out, inode_out));
-        goto done;
     }
 
     *inode_out = inode;
@@ -493,6 +483,26 @@ done:
 
     if (toks)
         free(toks);
+
+    return ret;
+}
+
+static int _path_to_inode(
+    ramfs_t* ramfs,
+    const char* path,
+    bool follow,
+    inode_t** parent_out,
+    inode_t** inode_out)
+{
+    int ret;
+    bool trace = libos_get_trace();
+
+    libos_set_trace(false);
+
+    ret = _path_to_inode_recursive(
+        ramfs, path, ramfs->root, follow, parent_out, inode_out);
+
+    libos_set_trace(trace);
 
     return ret;
 }
