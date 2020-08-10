@@ -83,15 +83,9 @@ static void _setup_ramfs(void)
         abort();
     }
 
-    if (libos_mkdir("/libos", 777) != 0)
+    if (libos_mkdir("/tmp", 777) != 0)
     {
-        fprintf(stderr, "failed create the /libos directory\n");
-        abort();
-    }
-
-    if (libos_mkdir("/libos/tmp", 777) != 0)
-    {
-        fprintf(stderr, "failed create the /libos/tmp directory\n");
+        fprintf(stderr, "failed create the /tmp directory\n");
         abort();
     }
 }
@@ -177,7 +171,7 @@ int libos_enter_ecall(
     size_t argv_size = sizeof(argv) / sizeof(argv[0]);
     const char* envp[64];
     size_t envp_size = sizeof(envp) / sizeof(envp[0]);
-    const char rootfs_path[] = "/libos/tmp/rootfs.cpio";
+    const char rootfs_path[] = "/tmp/rootfs.cpio";
 
     if (!rootfs_data || !rootfs_size)
         goto done;
