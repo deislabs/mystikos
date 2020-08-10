@@ -60,4 +60,6 @@ ssize_t libos_readlink(const char* pathname, char* buf, size_t bufsiz);
 
 int libos_symlink(const char* target, const char* linkpath);
 
+int libos_mkdirhier(const char* pathname, mode_t mode);
+
 #endif /* _LIBOS_FILE_H */

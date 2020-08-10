@@ -88,6 +88,12 @@ static void _setup_ramfs(void)
         fprintf(stderr, "failed create the /tmp directory\n");
         abort();
     }
+
+    if (libos_mkdirhier("/proc/self/fd", 777) != 0)
+    {
+        fprintf(stderr, "failed create the /proc/self/fd directory\n");
+        abort();
+    }
 }
 
 static void _teardown_ramfs(void)

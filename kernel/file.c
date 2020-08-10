@@ -1,6 +1,10 @@
 #include <libos/file.h>
 #include <libos/syscall.h>
+#include <libos/strings.h>
+#include <libos/trace.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include "eraise.h"
 
 int libos_creat(const char* pathname, mode_t mode)
 {
@@ -110,4 +114,52 @@ ssize_t libos_readlink(const char* pathname, char* buf, size_t bufsiz)
 int libos_symlink(const char* target, const char* linkpath)
 {
     return (int)libos_syscall_ret(libos_syscall_symlink(target, linkpath));
+}
+
+int libos_mkdirhier(const char* pathname, mode_t mode)
+{
+    int ret = 0;
+    char** toks = NULL;
+    size_t ntoks;
+    char path[PATH_MAX];
+    const bool trace = libos_get_trace();
+
+    libos_set_trace(false);
+
+    if (!pathname)
+        ERAISE(-EINVAL);
+
+    ECHECK(libos_strsplit(pathname, "/", &toks, &ntoks));
+
+    *path = '\0';
+
+    for (size_t i = 0; i < ntoks; i++)
+    {
+        struct stat buf;
+
+        if (LIBOS_STRLCAT(path, "/") >= PATH_MAX)
+            ERAISE(-ENAMETOOLONG);
+
+        if (LIBOS_STRLCAT(path, toks[i]) >= PATH_MAX)
+            ERAISE(-ENAMETOOLONG);
+
+        if (libos_stat(path, &buf) == 0)
+        {
+            if (!S_ISDIR(buf.st_mode))
+                ERAISE(-ENOTDIR);
+        }
+        else
+        {
+            ECHECK(libos_mkdir(path, mode));
+        }
+    }
+
+done:
+
+    if (toks)
+        free(toks);
+
+    libos_set_trace(trace);
+
+    return ret;
 }
