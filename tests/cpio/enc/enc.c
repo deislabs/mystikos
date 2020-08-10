@@ -10,8 +10,10 @@
 #include <libos/file.h>
 #include <libos/ramfs.h>
 #include <libos/mount.h>
+#include <libos/file.h>
 #include <libos/cpio.h>
 #include <libos/lsr.h>
+#include <libos/trace.h>
 
 extern int oe_host_printf(const char* fmt, ...);
 
@@ -145,6 +147,8 @@ int cpio_ecall(const void* cpio_data, size_t cpio_size)
     assert(libos_init_ramfs(&fs) == 0);
     assert(libos_mount(fs, "/") == 0);
 
+    assert(libos_mkdirhier("/proc/self/fd", 0777) == 0);
+
     /* create the /tmp directory */
     assert(libos_mkdir("/tmp", 0777) == 0);
     assert(libos_mkdir("/tmp/out", 0777) == 0);
@@ -155,7 +159,10 @@ int cpio_ecall(const void* cpio_data, size_t cpio_size)
     assert(_fsize("/tmp/cpio") == cpio_size);
 
     /* unpack the cpio archive */
+    const bool trace = libos_get_trace();
+    libos_set_trace(false);
     assert(libos_cpio_unpack("/tmp/cpio", "/tmp/out") == 0);
+    libos_set_trace(trace);
 
     libos_strarr_t paths = LIBOS_STRARR_INITIALIZER;
     assert(libos_lsr("/tmp/out", &paths) == 0);

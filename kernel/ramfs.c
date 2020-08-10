@@ -1081,7 +1081,7 @@ static int _fs_unlink(libos_fs_t* fs, const char* pathname)
         ERAISE(-EINVAL);
 
     /* Get the inode for pathname */
-    ECHECK(_path_to_inode(ramfs, pathname, true, NULL, &inode));
+    ECHECK(_path_to_inode(ramfs, pathname, false, NULL, &inode));
 
     /* pathname must not be a directory */
     if (S_ISDIR(inode->mode))

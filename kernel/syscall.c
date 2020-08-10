@@ -15,6 +15,7 @@
 #include <libos/elfutils.h>
 #include <libos/paths.h>
 #include <libos/mmanutils.h>
+#include <libos/file.h>
 #include <libos/spinlock.h>
 #include <libos/trace.h>
 #include <libos/strings.h>
@@ -467,6 +468,57 @@ static long _return(long n, long ret)
     return ret;
 }
 
+static int _add_fd_link(libos_fs_t* fs, libos_file_t* file, int fd)
+{
+    int ret = 0;
+    char realpath[PATH_MAX];
+    char linkpath[PATH_MAX];
+    const size_t n = sizeof(linkpath);
+
+    if (!fs || !file)
+        ERAISE(-EINVAL);
+
+    ECHECK((*fs->fs_realpath)(fs, file, realpath, sizeof(realpath)));
+
+    if (snprintf(linkpath, n, "/proc/self/fd/%d", fd) >= (int)n)
+        ERAISE(-ENAMETOOLONG);
+
+#if 0
+    printf("ADD{%s=>%s}\n", realpath, linkpath);
+#endif
+
+    ECHECK(libos_symlink(realpath, linkpath));
+
+done:
+    return ret;
+}
+
+static int _remove_fd_link(libos_fs_t* fs, libos_file_t* file, int fd)
+{
+    int ret = 0;
+    char linkpath[PATH_MAX];
+    const size_t n = sizeof(linkpath);
+    char realpath[PATH_MAX];
+
+    if (!fs || fd < 0)
+        ERAISE(-EINVAL);
+
+    ECHECK((*fs->fs_realpath)(fs, file, realpath, sizeof(realpath)));
+
+    if (snprintf(linkpath, n, "/proc/self/fd/%d", fd) >= (int)n)
+        ERAISE(-ENAMETOOLONG);
+
+#if 0
+    printf("REMOVE{%s=>%s}\n", realpath, linkpath);
+#endif
+
+    ECHECK((*fs->fs_unlink)(fs, linkpath));
+
+done:
+    return ret;
+}
+
+
 long libos_syscall_creat(const char* pathname, mode_t mode)
 {
     long ret = 0;
@@ -483,6 +535,8 @@ long libos_syscall_creat(const char* pathname, mode_t mode)
     {
         fprintf(stderr, "libos_fdtable_add() failed: %d\n", fd);
     }
+
+    ECHECK(_add_fd_link(fs, file, fd));
 
     ret = fd;
 
@@ -506,7 +560,10 @@ long libos_syscall_open(const char* pathname, int flags, mode_t mode)
     if ((fd = libos_fdtable_add(LIBOS_FDTABLE_TYPE_FILE, fs, file)) < 0)
     {
         fprintf(stderr, "libos_fdtable_add() failed: %d\n", fd);
+        assert(0);
     }
+
+    ECHECK(_add_fd_link(fs, file, fd));
 
     ret = fd;
 
@@ -538,6 +595,8 @@ long libos_syscall_close(int fd)
     const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_FILE;
 
     ECHECK(libos_fdtable_find(fd, type, (void**)&fs, (void**)&file));
+
+    ECHECK(_remove_fd_link(fs, file, fd));
 
     ECHECK((*fs->fs_close)(fs, file));
 

@@ -195,6 +195,17 @@ void test_readv(void)
     assert(libos_lseek(fd, 0, SEEK_CUR) == sizeof(alpha));
     assert(libos_write(fd, ALPHA, sizeof(ALPHA)) == sizeof(ALPHA));
     assert(libos_lseek(fd, 0, SEEK_CUR) == sizeof(alpha) + sizeof(ALPHA));
+
+    {
+        char fdlink[PATH_MAX];
+        char target[PATH_MAX];
+
+        snprintf(fdlink, sizeof(fdlink), "/proc/self/fd/%d", fd);
+        ssize_t n = libos_readlink(fdlink, target, sizeof(target));
+        assert(n > 0);
+        assert(strcmp(target, "/test_readv") == 0);
+    }
+
     assert(libos_close(fd) == 0);
 
     assert((fd = libos_open("/test_readv", O_RDONLY, 0)) >= 0);
@@ -546,6 +557,8 @@ int run_ecall(void)
     assert(libos_mount(fs, "/") == 0);
 
     assert(_nlink("/") == 1);
+    assert(libos_mkdir("/tmp", 0777) == 0);
+    assert(libos_mkdirhier("/proc/self/fd", 0777) == 0);
 
     test_readv();
     test_writev();
