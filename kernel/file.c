@@ -130,6 +130,10 @@ int libos_mkdirhier(const char* pathname, mode_t mode)
     if (!pathname)
         ERAISE(-EINVAL);
 
+    /* If the directory already exists, stop here */
+    if (libos_stat(pathname, &buf) == 0 && S_ISDIR(buf.st_mode))
+        goto done;
+
     ECHECK(libos_strsplit(pathname, "/", &toks, &ntoks));
 
     *path = '\0';
