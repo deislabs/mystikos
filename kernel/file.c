@@ -123,6 +123,7 @@ int libos_mkdirhier(const char* pathname, mode_t mode)
     size_t ntoks;
     char path[PATH_MAX];
     const bool trace = libos_get_trace();
+    struct stat buf;
 
     libos_set_trace(false);
 
@@ -135,8 +136,6 @@ int libos_mkdirhier(const char* pathname, mode_t mode)
 
     for (size_t i = 0; i < ntoks; i++)
     {
-        struct stat buf;
-
         if (LIBOS_STRLCAT(path, "/") >= PATH_MAX)
             ERAISE(-ENAMETOOLONG);
 
@@ -153,6 +152,9 @@ int libos_mkdirhier(const char* pathname, mode_t mode)
             ECHECK(libos_mkdir(path, mode));
         }
     }
+
+    if (libos_stat(pathname, &buf) != 0 || !S_ISDIR(buf.st_mode))
+        ERAISE(-EPERM);
 
 done:
 
