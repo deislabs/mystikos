@@ -912,7 +912,10 @@ long libos_syscall_getcwd(char* buf, size_t size)
     if (!buf)
         ERAISE(-EINVAL);
 
-    if (libos_strlcpy(buf, _cwd, size) >= size)
+    /* ATTN: removing the next line causes strlcpy to crash */
+    memset(buf, 0, size);
+
+    if (strlcpy(buf, _cwd, size) >= size)
         ERAISE(-ERANGE);
 
     ret = (long)buf;

@@ -1,4 +1,5 @@
 #include "strings.h"
+#include <string.h>
 
 size_t libos_strlcpy(char* dest, const char* src, size_t size)
 {
