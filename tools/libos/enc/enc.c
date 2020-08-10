@@ -218,10 +218,18 @@ int libos_enter_ecall(
     assert(libos_access(rootfs_path, R_OK) == 0);
 
     /* unpack the cpio archive */
-    if (libos_cpio_unpack(rootfs_path, "/") != 0)
     {
-        fprintf(stderr, "failed to unpack: %s\n", rootfs_path);
-        assert(0);
+        const bool trace = libos_get_trace();
+
+        libos_set_trace(false);
+
+        if (libos_cpio_unpack(rootfs_path, "/") != 0)
+        {
+            fprintf(stderr, "failed to unpack: %s\n", rootfs_path);
+            assert(0);
+        }
+
+        libos_set_trace(trace);
     }
 
     /* Set up the standard directories (some may already exist) */

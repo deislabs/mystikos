@@ -594,15 +594,20 @@ int libos_cpio_unpack(const char* source, const char* target)
 
         if (S_ISDIR(entry.mode))
         {
-            /* Fail if file already exists */
-            if (libos_access(path, R_OK) == 0)
+            struct stat st;
+
+            if (libos_stat(path, &st) == 0)
             {
-                fprintf(stderr, "*** cpio: file already exists: %s\n", path);
+                if (!S_ISDIR(st.st_mode))
+                {
+                    fprintf(stderr, "*** cpio: already exists: %s\n", path);
+                    GOTO(done);
+                }
+            }
+            else if (libos_mkdir(path, entry.mode) != 0)
+            {
                 GOTO(done);
             }
-
-            if (libos_mkdir(path, entry.mode) != 0)
-                GOTO(done);
         }
         else if (S_ISREG(entry.mode))
         {
