@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <signal.h>
 #include <libos/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -1169,7 +1170,16 @@ long libos_syscall(long n, long params[6])
             return _return(n, -ENOMEM);
         }
         case SYS_rt_sigaction:
-            break;
+        {
+            int signum = (int)x1;
+            const struct sigaction* act = (const struct sigaction*)x2;
+            struct sigaction* oldact = (struct sigaction*)x3;
+
+            /* ATTN: silently ignore since SYS_kill is not supported */
+            _strace(n, "signum=%d act=%p oldact=%p", signum, act, oldact);
+
+            return _return(n, 0);
+        }
         case SYS_rt_sigprocmask:
         {
             /* ATTN: ignored for now */
