@@ -462,7 +462,8 @@ static long _return(long n, long ret)
 {
     if (_trace_syscalls)
     {
-        fprintf(stderr, "    %s(): return=%ld\n", syscall_str(n), ret);
+        fprintf(stderr,
+            "    %s(): return=%ld (%lX)\n", syscall_str(n), ret, ret);
     }
 
     return ret;
@@ -1131,8 +1132,9 @@ long libos_syscall(long n, long params[6])
             int fd = (int)x5;
             off_t offset = (off_t)x6;
 
-            _strace(n, "addr=%p length=%lu prot=%d flags=%d fd=%d offset=%lu",
-                addr, length, prot, flags, fd, offset);
+            _strace(n,
+                "addr=%lX length=%zu(%lX) prot=%d flags=%d fd=%d offset=%lu",
+                (long)addr, length, length, prot, flags, fd, offset);
 
             return _return(n, (long)libos_mmap(
                 addr, length, prot, flags, fd, offset));
@@ -1143,7 +1145,8 @@ long libos_syscall(long n, long params[6])
             const size_t length = (size_t)x2;
             const int prot = (int)x3;
 
-            _strace(n, "addr=%p length=%zu prot=%d", addr, length, prot);
+            _strace(n, "addr=%lX length=%zu(%lX) prot=%d",
+                (long)addr, length, length, prot);
 
             return _return(n, 0);
         }
@@ -1152,14 +1155,18 @@ long libos_syscall(long n, long params[6])
             void* addr = (void*)x1;
             size_t length = (size_t)x2;
 
-            _strace(n, "addr=%p length=%zu", addr, length);
+            _strace(n, "addr=%lX length=%zu(%lX)", (long)addr, length, length);
 
             return _return(n, (long)libos_munmap(addr, length));
         }
         case SYS_brk:
         {
-            _strace(n, NULL);
-            return _return(n, _forward_syscall(n, params));
+            void* addr = (void*)x1;
+
+            _strace(n, "addr=%lX", (long)addr);
+
+            /* fail on SYS_brk, forcing MUSL to use SYS_mmap */
+            return _return(n, -ENOMEM);
         }
         case SYS_rt_sigaction:
             break;

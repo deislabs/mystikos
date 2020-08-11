@@ -12,7 +12,7 @@ all: libos
 	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/main main.c $(LDFLAGS)
 	$(LIBOS) mkcpio $(APPDIR) rootfs
 
-#OPTS = --trace-syscalls
+OPTS = --trace-syscalls
 
 run: all
 	$(LIBOS) exec rootfs /bin/main $(OPTS)

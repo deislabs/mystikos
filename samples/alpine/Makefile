@@ -26,3 +26,6 @@ run: all
 
 clean:
 	sudo rm -rf alpine-minirootfs.tar.gz appdir rootfs appdir
+
+crash:
+	libos exec --strace rootfs /bin/pwd
