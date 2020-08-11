@@ -822,9 +822,18 @@ int libos_mman_map(
 
     if (addr)
     {
-        /* TODO: implement to support mapping non-zero addresses */
-        _mman_set_err(mman, "bad addr parameter: must be null");
-        ret = -EINVAL;
+        libos_vad_t* vad;
+        uintptr_t start = (uintptr_t)addr;
+        uintptr_t end = (uintptr_t)addr + length;
+
+        /* Fail if [addr:length] is not already mapped */
+        if (!(vad = _list_find(mman, start)) || end > _end(vad))
+        {
+            _mman_set_err(mman, "bad addr parameter: "
+                "must be null or part of an existing mapping");
+        }
+
+        *ptr_out = addr;
         goto done;
     }
     else

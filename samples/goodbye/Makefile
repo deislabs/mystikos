@@ -9,7 +9,7 @@ all:
 	docker run --rm -v $(APPDIR):/appdir $(IMG) bash -c "make -C appdir"
 	$(BINDIR)/libos mkcpio appdir rootfs
 
-run:
+run: all
 	$(BINDIR)/libos exec rootfs /goodbye
 
 clean:
