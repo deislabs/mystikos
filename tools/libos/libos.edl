@@ -10,6 +10,12 @@ enclave
         bool trace_syscalls;
     };
 
+    struct libos_timespec
+    {
+       long tv_sec;
+       long tv_nsec;
+    };
+
     trusted
     {
         public int libos_enter_ecall(
@@ -24,5 +30,9 @@ enclave
 
     untrusted
     {
+        /* return errno */
+        int libos_clock_gettime_ocall(
+            int clk_id,
+            [out] struct libos_timespec* tp);
     };
 };

@@ -5,11 +5,6 @@
 
 /* ATTN: add locking to this table */
 
-#define FDTABLE_SIZE 1024
-
-/* Offset file descriptors to avoid conflicts with host descriptors */
-#define FD_OFFSET 1024
-
 typedef struct fdtable_entry
 {
     bool used;

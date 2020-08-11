@@ -4,10 +4,12 @@
 #include <openenclave/host.h>
 #include <stdio.h>
 #include <libgen.h>
+#include <time.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
 #include <assert.h>
+#include <errno.h>
 #include <limits.h>
 #include <stdarg.h>
 #include <sys/stat.h>
@@ -419,6 +421,16 @@ static int _excpio(int argc, const char* argv[])
         _err("failed to extract CPIO archive to %s: %s", directory, cpioarchive);
         return 1;
     }
+
+    return 0;
+}
+
+_Static_assert(sizeof(struct libos_timespec) == sizeof(struct timespec), "");
+
+int libos_clock_gettime_ocall(int clk_id, struct libos_timespec* tp)
+{
+    if (clock_gettime(clk_id, (struct timespec*)tp) != 0)
+        return -errno;
 
     return 0;
 }

@@ -23,12 +23,15 @@
 #include <libos/cwd.h>
 #include <sys/utsname.h>
 #include <libos/mount.h>
+#include <openenclave/bits/result.h>
 #include "fdtable.h"
 #include "eraise.h"
 
 #define DEFAULT_PID (pid_t)1
 #define DEFAULT_UID (uid_t)0
 #define DEFAULT_GID (gid_t)0
+
+#define DEV_URANDOM_FD (FD_OFFSET + FDTABLE_SIZE)
 
 jmp_buf _exit_jmp_buf;
 
@@ -555,6 +558,13 @@ long libos_syscall_open(const char* pathname, int flags, mode_t mode)
     libos_fs_t* fs;
     libos_file_t* file;
 
+    /* Handle /dev/urandom as a special case */
+    if (strcmp(pathname, "/dev/urandom") == 0)
+    {
+        /* ATTN: handle relative paths to /dev/urandom */
+        return DEV_URANDOM_FD;
+    }
+
     ECHECK(libos_mount_resolve(pathname, suffix, &fs));
 
     ECHECK((*fs->fs_open)(fs, suffix, flags, mode, &file));
@@ -581,6 +591,12 @@ long libos_syscall_lseek(int fd, off_t offset, int whence)
     libos_file_t* file;
     const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_FILE;
 
+    if (fd == DEV_URANDOM_FD)
+    {
+        /* ignore lseek() on /dev/urandom device */
+        goto done;
+    }
+
     ECHECK(libos_fdtable_find(fd, type, (void**)&fs, (void**)&file));
 
     ret = ((*fs->fs_lseek)(fs, file, offset, whence));
@@ -595,6 +611,9 @@ long libos_syscall_close(int fd)
     libos_fs_t* fs;
     libos_file_t* file;
     const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_FILE;
+
+    if (fd == DEV_URANDOM_FD)
+        goto done;
 
     ECHECK(libos_fdtable_find(fd, type, (void**)&fs, (void**)&file));
 
@@ -929,6 +948,17 @@ done:
     return ret;
 }
 
+/* This must be overriden by the library user */
+__attribute__((__weak__))
+long libos_syscall_clock_gettime(clockid_t clk_id, struct timespec *tp)
+{
+    (void)clk_id;
+    (void)tp;
+
+    assert("unimplemented: implement in enclave" == NULL);
+    return -ENOTSUP;
+}
+
 long libos_syscall_ret(long ret)
 {
     if ((unsigned long)ret > -4096UL)
@@ -977,6 +1007,33 @@ static const char* _fcntl_cmdstr(int cmd)
         default:
             return "unknown";
     }
+}
+
+static ssize_t _dev_urandom_readv(const struct iovec* iov, int iovcnt)
+{
+    ssize_t ret = 0;
+    size_t nread = 0;
+
+    if (!iov && iovcnt)
+        ERAISE(-EINVAL);
+
+    for (int i = 0; i < iovcnt; i++)
+    {
+        if (iov->iov_base && iov->iov_len)
+        {
+            extern oe_result_t oe_random(void* data, size_t size);
+
+            if (oe_random(iov->iov_base, iov->iov_len) != OE_OK)
+                ERAISE(-EINVAL);
+
+            nread += iov->iov_len;
+        }
+    }
+
+    ret = (ssize_t)nread;
+
+done:
+    return ret;
 }
 
 long libos_syscall(long n, long params[6])
@@ -1208,6 +1265,9 @@ long libos_syscall(long n, long params[6])
             int iovcnt = (int)x3;
 
             _strace(n, "fd=%d iov=%p iovcnt=%d", fd, iov, iovcnt);
+
+            if (fd == DEV_URANDOM_FD)
+                return _return(n, (long)_dev_urandom_readv(iov, iovcnt));
 
             if (!libos_is_libos_fd(fd))
                 return _return(n, _forward_syscall(n, params));
@@ -1816,8 +1876,12 @@ long libos_syscall(long n, long params[6])
             break;
         case SYS_clock_gettime:
         {
-            _strace(n, NULL);
-            return _return(n, _forward_syscall(n, params));
+            clockid_t clk_id = (clockid_t)x1;
+            struct timespec* tp = (struct timespec*)x2;
+
+            _strace(n, "clk_id=%u tp=%p", clk_id, tp);
+
+            return _return(n, libos_syscall_clock_gettime(clk_id, tp));
         }
         case SYS_clock_getres:
             break;

@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <errno.h>
 #include <sys/mount.h>
 #include <libos/syscall.h>
 #include <stdlib.h>
@@ -253,6 +254,21 @@ int libos_enter_ecall(
 
 done:
     return ret;
+}
+
+_Static_assert(sizeof(struct libos_timespec) == sizeof(struct timespec), "");
+
+/* ATTN: replace this with clock ticks implementation */
+/* This overrides the weak version in liboskernel.a */
+long libos_syscall_clock_gettime(clockid_t clk_id, struct timespec* tp_)
+{
+    int retval = -1;
+    struct libos_timespec* tp = (struct libos_timespec*)tp_;
+
+    if (libos_clock_gettime_ocall(&retval, clk_id, tp) != OE_OK)
+        return -EINVAL;
+
+    return (long)retval;
 }
 
 OE_SET_ENCLAVE_SGX(
