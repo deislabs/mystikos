@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 #include "bufu64.h"
-#include "buf.h"
+#include <libos/buf.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

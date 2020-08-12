@@ -11,9 +11,9 @@
 #include <libos/strings.h>
 #include <libos/paths.h>
 #include <libos/realpath.h>
+#include <libos/buf.h>
 #include "eraise.h"
 #include "bufu64.h"
-#include "buf.h"
 
 #define BLKSIZE 512
 

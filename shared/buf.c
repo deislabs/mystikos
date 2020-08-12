@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-#include "buf.h"
+#include <libos/buf.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -113,6 +113,37 @@ int libos_buf_append(libos_buf_t* buf, const void* data, size_t size)
     buf->size = new_size;
 
     return 0;
+}
+
+int libos_buf_insert(
+    libos_buf_t* buf,
+    size_t pos,
+    const void* data,
+    size_t size)
+{
+    int ret = -1;
+    size_t rem;
+
+    if (!buf || pos > buf->size)
+        goto done;
+
+    if (libos_buf_reserve(buf, buf->size + size) != 0)
+        return -1;
+
+    rem = buf->size - pos;
+
+    if (rem)
+        memmove(buf->data + pos + size, buf->data + pos, rem);
+
+    if (data)
+        memcpy(buf->data + pos, data, size);
+    else
+        memset(buf->data + pos, 0, size);
+
+    ret = 0;
+
+done:
+    return ret;
 }
 
 int libos_buf_remove(libos_buf_t* buf, size_t pos, size_t size)
