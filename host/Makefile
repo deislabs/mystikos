@@ -2,9 +2,13 @@ SUBDIR = elf
 TOP=$(abspath ..)
 include $(TOP)/defs.mak
 
-ARCHIVE = liboself
+SUBLIBDIR=$(LIBDIR)
+
+ARCHIVE = liboshost.a
 
 SOURCES = $(wildcard *.c)
+SOURCES += $(wildcard $(TOP)/shared/*.c)
+SOURCES += $(wildcard $(TOP)/compat/*.c)
 
 INCLUDES = -I$(TOP)/include
 

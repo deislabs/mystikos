@@ -1896,9 +1896,28 @@ int elf_load_relocations(
     /* Reject unsupported relocation types */
     for (; p != end; p++)
     {
-        uint64_t reloc_type = ELF64_R_TYPE(p->r_info);
-        if (reloc_type != R_X86_64_RELATIVE && reloc_type != R_X86_64_TPOFF64)
-            GOTO(done);
+        switch (ELF64_R_TYPE(p->r_info))
+        {
+            case R_X86_64_RELATIVE:
+            case R_X86_64_TPOFF64:
+            {
+                /* supported */
+                break;
+            }
+            case R_X86_64_DPTMOD64:
+            case R_X86_64_GLOB_DAT:
+            case R_X86_64_64:
+            case R_X86_64_COPY:
+            {
+                /* unsupported but ignored */
+                break;
+            }
+            default:
+            {
+                /* unsupported */
+                GOTO(done);
+            }
+        }
     }
 
     /* Make a copy of the relocation section (zero-padded to page size) */
@@ -2005,4 +2024,30 @@ const char* elf_get_function_name(const elf_t* elf, elf_addr_t addr)
 
 done:
     return ret;
+}
+
+void elf_image_dump(const elf_image_t* image)
+{
+    printf("=== %s()\n", __FUNCTION__);
+
+    if (!image)
+        return;
+
+    printf("image_data: %p\n", image->image_data);
+    printf("image_size: %zu\n", image->image_size);
+    printf("reloc_data: %p\n", image->reloc_data);
+    printf("reloc_size: %zu\n", image->reloc_size);
+    printf("num_segments: %zu\n", image->num_segments);
+    printf("segments: %p\n", image->segments);
+    printf("num_segments: %zu\n", image->num_segments);
+
+    for (size_t i = 0; i < image->num_segments; i++)
+    {
+        printf("segment[%zu].filedata=%p\n", i, image->segments[i].filedata);
+        printf("segment[%zu].filesz=%zu\n", i, image->segments[i].filesz);
+        printf("segment[%zu].memsz=%zu\n", i, image->segments[i].memsz);
+        printf("segment[%zu].offset=%lu\n", i, image->segments[i].offset);
+        printf("segment[%zu].vaddr=%lu\n", i, image->segments[i].vaddr);
+        printf("segment[%zu].flags=%x\n", i, image->segments[i].flags);
+    }
 }

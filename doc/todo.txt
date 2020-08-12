@@ -5,13 +5,17 @@
 
     * debugger symbols
 
+    * implement libos signer
+
+    * support attested certificate generation
+
+    * make installer
+
     BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
 
     * review and cleanup mman module
 
     * partition kernel into 'target' and 'kernel'
-
-    * implement libos signer
 
     * implement threading (clone, futex, and TLS)
 
@@ -20,10 +24,6 @@
     * fix cp_syscall() workaround
 
     * support symlink on non-root-mounted file systems (subtract mountpoint)
-
-    * support attested certificate generation
-
-    * make installer
 
     CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 

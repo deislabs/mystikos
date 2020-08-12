@@ -132,7 +132,11 @@
 #define STT_HIPROC 15
 
 /* elf_rel.r_info */
+#define R_X86_64_64 1
+#define R_X86_64_COPY 5
+#define R_X86_64_GLOB_DAT 6
 #define R_X86_64_RELATIVE 8
+#define R_X86_64_DPTMOD64 16
 
 /* Supported thread-local storage relocations */
 #define R_X86_64_TPOFF64 18 /* Offset in initial TLS block */
@@ -391,5 +395,7 @@ elf_image_t;
 int elf_image_load(const char* path, elf_image_t* image);
 
 void elf_image_free(elf_image_t* image);
+
+void elf_image_dump(const elf_image_t* image);
 
 #endif /* _LIBOS_ELF_H */
