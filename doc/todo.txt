@@ -1,35 +1,35 @@
 
     AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 
+    * implement extensible memory regions
+
     * debugger symbols
-
-    * attested channel sample
-
-    * implement extensible enclave loading
-
-    * cleanup mman module
-
-    * handle symlink lookup (directories can be links)
 
     BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
 
-    * system-call-tracer
+    * review and cleanup mman module
 
-    * partition kernel in 'target' and 'kernel'
+    * partition kernel into 'target' and 'kernel'
 
-    * implement libos sign action
+    * implement libos signer
 
-    * implement clone, futex, and TLS
+    * implement threading (clone, futex, and TLS)
 
     * fix crash on hash of load symbols
 
-    * Use RDTSC instead of gettimeofday (lthread)
-
     * fix cp_syscall() workaround
 
-    * Implement /proc/self/fd/<fdnumber> to /usr/bin/realpath will work.
+    * support symlink on non-root-mounted file systems (subtract mountpoint)
+
+    * support attested certificate generation
+
+    * make installer
 
     CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
+
+    * implement system-call-tracer
+
+    * implement symlink across file systems
 
     * reimplement host networking
 
@@ -39,8 +39,13 @@
 
     * crypto disk support
 
-    * EXT2 file systems
+    * Use RDTSC on SGX-2 systems
+
+    * ext2 file systems
 
     XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
     X handle symbolic links in cpio and ramfs
+
+    X Implement /proc/self/fd/<fdnumber> to /usr/bin/realpath will work.
+
