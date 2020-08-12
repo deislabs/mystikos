@@ -959,6 +959,23 @@ long libos_syscall_clock_gettime(clockid_t clk_id, struct timespec *tp)
     return -ENOTSUP;
 }
 
+long libos_syscall_getrandom(void *buf, size_t buflen, unsigned int flags)
+{
+    extern oe_result_t oe_random(void* data, size_t size);
+    long ret = 0;
+
+    if (!buf && buflen)
+        ERAISE(-EINVAL);
+
+    if (buf && buflen && oe_random(buf, buflen) != OE_OK)
+        ERAISE(-EINVAL);
+
+    (void)flags;
+
+done:
+    return ret;
+}
+
 long libos_syscall_ret(long ret)
 {
     if ((unsigned long)ret > -4096UL)
@@ -2068,7 +2085,15 @@ long libos_syscall(long n, long params[6])
         case SYS_seccomp:
             break;
         case SYS_getrandom:
-            break;
+        {
+            void* buf = (void*)x1;
+            size_t buflen = (size_t)x2;
+            unsigned int flags = (unsigned int)x3;
+
+            _strace(n, "buf=%p buflen=%zu flags=%d", buf, buflen, flags);
+
+            return _return(n, libos_syscall_getrandom(buf, buflen, flags));
+        }
         case SYS_memfd_create:
             break;
         case SYS_kexec_file_load:
