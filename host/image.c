@@ -309,14 +309,16 @@ void elf_image_free(elf_image_t* image)
 {
     if (image)
     {
-        if (image->elf.data)
-            free(image->elf.data);
+        elf_unload(&image->elf);
 
         if (image->segments)
             free(image->segments);
 
         if (image->image_data)
             free(image->image_data);
+
+        if (image->reloc_data)
+            free(image->reloc_data);
 
         memset(image, 0, sizeof(*image));
     }

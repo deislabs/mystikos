@@ -19,6 +19,5 @@ int main(int argc, const char* argv[])
     elf_image_dump(&image);
 
     elf_image_free(&image);
-
     return 0;
 }

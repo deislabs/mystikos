@@ -19,3 +19,6 @@ include $(TOP)/rules.mak
 
 tests:
 	$(SUBBINDIR)/main
+
+vg:
+	valgrind --tool=memcheck --leak-check=full $(SUBBINDIR)/main
