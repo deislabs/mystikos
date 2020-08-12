@@ -12,7 +12,7 @@
 #include <libos/paths.h>
 #include <libos/realpath.h>
 #include <libos/buf.h>
-#include "eraise.h"
+#include <libos/eraise.h>
 #include "bufu64.h"
 
 #define BLKSIZE 512

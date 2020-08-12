@@ -1,7 +1,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include "fdtable.h"
-#include "eraise.h"
+#include <libos/eraise.h>
 
 /* ATTN: add locking to this table */
 

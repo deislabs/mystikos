@@ -1,8 +1,8 @@
 #include <libos/strings.h>
+#include <libos/eraise.h>
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
-#include "eraise.h"
 
 int libos_strsplit(
     const char* str,

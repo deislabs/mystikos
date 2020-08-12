@@ -4,7 +4,7 @@
 #include <libos/trace.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "eraise.h"
+#include <libos/eraise.h>
 
 int libos_creat(const char* pathname, mode_t mode)
 {

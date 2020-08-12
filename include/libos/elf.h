@@ -8,6 +8,14 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+/*
+**==============================================================================
+**
+** ELF parser:
+**
+**==============================================================================
+*/
+
 /* elf_ehdr_t.e_ident */
 #define EI_MAG0 0    /* File identification */
 #define EI_MAG1 1    /* File identification */
@@ -337,5 +345,51 @@ elf_ehdr_t* elf_get_header(const elf_t* elf);
 const char* elf_get_function_name(
     const elf_t* elf,
     elf_addr_t addr);
+
+/*
+**==============================================================================
+**
+** elf_image_t:
+**
+**==============================================================================
+*/
+
+typedef struct elf_segment
+{
+    /* Pointer to segment from ELF file */
+    void* filedata;
+
+    /* Size of this segment in the ELF file */
+    size_t filesz;
+
+    /* Size of this segment in memory */
+    size_t memsz;
+
+    /* Offset of this segment within file */
+    uint64_t offset;
+
+    /* Virtual address of this segment */
+    uint64_t vaddr;
+
+    /* Memory protection flags: (PF_R | PF_W | PF_X) */
+    uint32_t flags;
+}
+elf_segment_t;
+
+typedef struct elf_image
+{
+    elf_t elf;
+    elf_segment_t* segments;
+    size_t num_segments;
+    void* image_data;
+    size_t image_size;
+    void* reloc_data;
+    size_t reloc_size;
+}
+elf_image_t;
+
+int elf_image_load(const char* path, elf_image_t* image);
+
+void elf_image_free(elf_image_t* image);
 
 #endif /* _LIBOS_ELF_H */

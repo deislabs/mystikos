@@ -23,9 +23,9 @@
 #include <libos/cwd.h>
 #include <sys/utsname.h>
 #include <libos/mount.h>
+#include <libos/eraise.h>
 #include <openenclave/bits/result.h>
 #include "fdtable.h"
-#include "eraise.h"
 
 #define DEFAULT_PID (pid_t)1
 #define DEFAULT_UID (uid_t)0

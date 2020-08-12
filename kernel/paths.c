@@ -6,7 +6,7 @@
 #include <libos/strings.h>
 #include <sys/stat.h>
 #include <libos/paths.h>
-#include "eraise.h"
+#include <libos/eraise.h>
 #include "trace.h"
 
 int libos_path_absolute_cwd(

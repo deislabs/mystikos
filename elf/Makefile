@@ -4,7 +4,7 @@ include $(TOP)/defs.mak
 
 ARCHIVE = liboself
 
-SOURCES = elf.c
+SOURCES = $(wildcard *.c)
 
 INCLUDES = -I$(TOP)/include
 

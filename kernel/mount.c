@@ -3,8 +3,7 @@
 #include <libos/spinlock.h>
 #include <string.h>
 #include <libos/mount.h>
-#include "eraise.h"
-#include "eraise.h"
+#include <libos/eraise.h>
 
 #define MOUNT_TABLE_SIZE 64
 

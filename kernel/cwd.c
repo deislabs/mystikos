@@ -1,5 +1,5 @@
 #include <libos/syscall.h>
-#include "eraise.h"
+#include <libos/eraise.h>
 
 int libos_chdir(const char* path)
 {
