@@ -6,3 +6,5 @@ all:
 	docker build --quiet -t libos-alpine .
 
 clean:
+
+tests:
