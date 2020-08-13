@@ -392,10 +392,28 @@ typedef struct elf_image
 }
 elf_image_t;
 
+typedef int (*elf_add_page_t)(
+    void* arg,
+    uint64_t base_addr,
+    uint64_t addr,
+    uint64_t src,
+    bool read,
+    bool write,
+    bool exec,
+    bool extend);
+
 int elf_image_load(const char* path, elf_image_t* image);
 
 void elf_image_free(elf_image_t* image);
 
 void elf_image_dump(const elf_image_t* image);
+
+int elf_image_load_pages(
+    elf_image_t* image,
+    uint64_t dest_base_addr,
+    uint64_t dest_size,
+    elf_add_page_t add_page,
+    void* add_page_arg,
+    uint64_t* vaddr);
 
 #endif /* _LIBOS_ELF_H */

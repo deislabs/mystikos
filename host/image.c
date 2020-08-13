@@ -323,3 +323,163 @@ void elf_image_free(elf_image_t* image)
         memset(image, 0, sizeof(*image));
     }
 }
+
+void elf_image_dump(const elf_image_t* image)
+{
+    printf("=== %s()\n", __FUNCTION__);
+
+    if (!image)
+        return;
+
+    printf("image_data: %p\n", image->image_data);
+    printf("image_size: %zu\n", image->image_size);
+    printf("reloc_data: %p\n", image->reloc_data);
+    printf("reloc_size: %zu\n", image->reloc_size);
+    printf("num_segments: %zu\n", image->num_segments);
+    printf("segments: %p\n", image->segments);
+    printf("num_segments: %zu\n", image->num_segments);
+
+    for (size_t i = 0; i < image->num_segments; i++)
+    {
+        printf("segment[%zu].filedata=%p\n", i, image->segments[i].filedata);
+        printf("segment[%zu].filesz=%zu\n", i, image->segments[i].filesz);
+        printf("segment[%zu].memsz=%zu\n", i, image->segments[i].memsz);
+        printf("segment[%zu].offset=%lu\n", i, image->segments[i].offset);
+        printf("segment[%zu].vaddr=%lu\n", i, image->segments[i].vaddr);
+        printf("segment[%zu].flags=%x\n", i, image->segments[i].flags);
+    }
+}
+
+static int _add_segment_pages(
+    uint64_t src_base_addr,
+    uint64_t dest_base_addr,
+    const elf_segment_t* segment,
+    elf_add_page_t add_page,
+    void* add_page_arg,
+    uint64_t* vaddr)
+{
+    int ret = 0;
+    uint64_t page_vaddr = _round_down_to_page_size(segment->vaddr);
+    uint64_t segment_end = segment->vaddr + segment->memsz;
+
+    for (; page_vaddr < segment_end; page_vaddr += PAGE_SIZE)
+    {
+        const uint64_t addr = dest_base_addr + page_vaddr + (*vaddr);
+        const uint64_t src = src_base_addr + page_vaddr;
+        const bool read = (segment->flags & PF_R);
+        const bool write = (segment->flags & PF_W);
+        const bool exec = (segment->flags & PF_X);
+        const bool extend = true;
+
+        if ((*add_page)(
+            add_page_arg,
+            dest_base_addr,
+            addr,
+            src,
+            read,
+            write,
+            exec,
+            extend) != 0)
+        {
+            ERAISE(-EINVAL);
+        }
+    }
+
+    ret = 0;
+
+done:
+    return ret;
+}
+
+static int _add_relocation_pages(
+    uint64_t dest_base_addr,
+    const void* reloc_data,
+    const size_t reloc_size,
+    elf_add_page_t add_page,
+    void* add_page_arg,
+    uint64_t* vaddr)
+{
+    int ret = 0;
+
+    if (reloc_data && reloc_size)
+    {
+        const uint8_t* p = (const uint8_t*)reloc_data;
+        size_t n = reloc_size / PAGE_SIZE;
+
+        for (size_t i = 0; i < n; i++)
+        {
+            const uint64_t addr = dest_base_addr + *vaddr;
+            const uint64_t src = (uint64_t)p;
+            const bool read = true;
+            const bool write = false;
+            const bool exec = false;
+            const bool extend = true;
+
+            if ((*add_page)(
+                add_page_arg,
+                dest_base_addr,
+                addr,
+                src,
+                read,
+                write,
+                exec,
+                extend) != 0)
+            {
+                ERAISE(-EINVAL);
+            }
+
+            p += PAGE_SIZE;
+            (*vaddr) += PAGE_SIZE;
+        }
+    }
+
+    ret = 0;
+
+done:
+    return ret;
+}
+
+int elf_image_load_pages(
+    elf_image_t* image,
+    uint64_t dest_base_addr,
+    uint64_t dest_size,
+    elf_add_page_t add_page,
+    void* add_page_arg,
+    uint64_t* vaddr)
+{
+    int ret = 0;
+
+    if (!image || !dest_base_addr || !dest_size || !add_page || !vaddr)
+        ERAISE(-EINVAL);
+
+    assert((image->image_size & (PAGE_SIZE - 1)) == 0);
+    assert(dest_size >= image->image_size);
+
+    /* Add the program segments first */
+    for (size_t i = 0; i < image->num_segments; i++)
+    {
+        ECHECK(_add_segment_pages(
+            (uint64_t)image->image_data,
+            dest_base_addr,
+            &image->segments[i],
+            add_page,
+            add_page_arg,
+            vaddr));
+    }
+
+    *vaddr += image->image_size;
+
+    /* Add the relocation pages (contains relocation entries) */
+    ECHECK(_add_relocation_pages(
+        dest_base_addr,
+        image->reloc_data,
+        image->reloc_size,
+        add_page,
+        add_page_arg,
+        vaddr));
+
+    ret = 0;
+
+done:
+    return ret;
+}
