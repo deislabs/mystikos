@@ -13,3 +13,6 @@ samples/shlib/appdir
 samples/alpine/appdir
 samples/alpine/minirootfs
 samples/alpine/rootfs
+samples/ssl/appdir/ssl_client1
+samples/ssl/appdir/ssl_server
+samples/ssl/rootfs
