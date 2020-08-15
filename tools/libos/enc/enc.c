@@ -18,6 +18,7 @@
 #include <libos/cpio.h>
 #include <libos/trace.h>
 #include "libos_t.h"
+#include "../shared.h"
 
 static const size_t MMAN_SIZE = 16 * 1024 * 1024;
 
@@ -167,8 +168,6 @@ done:
 
 int libos_enter_ecall(
     struct libos_options* options,
-    const void* rootfs_data,
-    size_t rootfs_size,
     const void* args,
     size_t args_size,
     const void* env,
@@ -181,9 +180,8 @@ int libos_enter_ecall(
     size_t envp_size = sizeof(envp) / sizeof(envp[0]);
     const char rootfs_path[] = "/tmp/rootfs.cpio";
     const void* crt_image_base;
-
-    if (!rootfs_data || !rootfs_size)
-        goto done;
+    const void* rootfs_data;
+    size_t rootfs_size;
 
     if (!args || !args_size || !env || !env_size)
         goto done;
@@ -211,6 +209,28 @@ int libos_enter_ecall(
     }
 
     _setup_ramfs();
+
+    /* Fetch the rootfs image */
+    {
+        extern const void* __oe_get_enclave_base(void);
+        oe_region_t region;
+        const uint8_t* enclave_base;
+
+        if (!(enclave_base = __oe_get_enclave_base()))
+        {
+            fprintf(stderr, "__oe_get_enclave_base() failed\n");
+            assert(0);
+        }
+
+        if (oe_region_get(ROOTFS_REGION_ID, &region) != OE_OK)
+        {
+            fprintf(stderr, "failed to get crt region\n");
+            assert(0);
+        }
+
+        rootfs_data = enclave_base + region.vaddr;
+        rootfs_size = region.size;
+    }
 
     if (_create_cpio_file(rootfs_path, rootfs_data, rootfs_size) != 0)
     {
@@ -250,7 +270,6 @@ int libos_enter_ecall(
     /* Find the base address of the C runtime ELF image */
     {
         extern const void* __oe_get_enclave_base(void);
-        const uint64_t id = 1;
         oe_region_t region;
         const uint8_t* enclave_base;
 
@@ -260,7 +279,7 @@ int libos_enter_ecall(
             assert(0);
         }
 
-        if (oe_region_get(id, &region) != OE_OK)
+        if (oe_region_get(CRT_REGION_ID, &region) != OE_OK)
         {
             fprintf(stderr, "failed to get crt region\n");
             assert(0);
