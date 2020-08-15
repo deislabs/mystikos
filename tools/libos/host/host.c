@@ -26,6 +26,10 @@
 
 static char _arg0[PATH_MAX];
 
+#define MEGABYTE (1024UL * 1024UL)
+
+static size_t _mman_size = (64 * MEGABYTE);
+
 __attribute__((format(printf, 1, 2)))
 static void _err(const char* fmt, ...)
 {
@@ -642,15 +646,12 @@ done:
     return ret;
 }
 
-#define MEGABYTE (1024UL * 1024UL)
-
-static size_t _num_mman_pages = (64 * MEGABYTE) / LIBOS_PAGE_SIZE;
-
 static int _add_mman_region(oe_region_context_t* context, uint64_t* vaddr)
 {
     int ret = 0;
     __attribute__((__aligned__(4096)))
     uint8_t page[LIBOS_PAGE_SIZE];
+    const size_t mman_pages = _mman_size / LIBOS_PAGE_SIZE;
 
     if (!context || !vaddr)
         ERAISE(-EINVAL);
@@ -660,7 +661,24 @@ static int _add_mman_region(oe_region_context_t* context, uint64_t* vaddr)
 
     memset(page, 0, sizeof(page));
 
-    for (size_t i = 0; i < _num_mman_pages; i++)
+    /* Add the leading guard page */
+    {
+        const bool extend = true;
+
+        if (oe_region_add_page(
+            context,
+            *vaddr,
+            page,
+            SGX_SECINFO_REG,
+            extend) != OE_OK)
+        {
+            ERAISE(-EINVAL);
+        }
+
+        *vaddr += sizeof(page);
+    }
+
+    for (size_t i = 0; i < mman_pages; i++)
     {
         const bool extend = false;
 
@@ -669,6 +687,23 @@ static int _add_mman_region(oe_region_context_t* context, uint64_t* vaddr)
             *vaddr,
             page,
             SGX_SECINFO_REG|SGX_SECINFO_R|SGX_SECINFO_W|SGX_SECINFO_X,
+            extend) != OE_OK)
+        {
+            ERAISE(-EINVAL);
+        }
+
+        *vaddr += sizeof(page);
+    }
+
+    /* Add the trailing guard page */
+    {
+        const bool extend = true;
+
+        if (oe_region_add_page(
+            context,
+            *vaddr,
+            page,
+            SGX_SECINFO_REG,
             extend) != OE_OK)
         {
             ERAISE(-EINVAL);

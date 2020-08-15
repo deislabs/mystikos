@@ -4,7 +4,7 @@
 #include <libos/mman.h>
 #include <sys/types.h>
 
-int libos_setup_mman(size_t size);
+int libos_setup_mman(void* data, size_t size);
 
 int libos_teardown_mman(void);
 

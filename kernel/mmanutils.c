@@ -9,49 +9,23 @@
 
 static libos_mman_t _mman;
 static void* _mman_start;
+static size_t _mman_size;
 static void* _mman_end;
 
-static uint8_t GUARD_CHAR = 0xAA;
-
-static int _check_guard(const void* p)
-{
-    for (size_t i = 0; i < PAGE_SIZE; i++)
-    {
-        if (((uint8_t*)p)[i] != GUARD_CHAR)
-            return -1;
-    }
-
-    return 0;
-}
-
-static void _dump(uint8_t* p, size_t n)
-{
-    while (n--)
-        printf("%02X", *p++);
-
-    printf("\n");
-}
-
-int libos_setup_mman(size_t size)
+int libos_setup_mman(void* data, size_t size)
 {
     int ret = -1;
-    void* base;
-    void* ptr;
 
-    /* Allocate aligned pages */
-    if (!(ptr = memalign(OE_PAGE_SIZE, PAGE_SIZE + size + PAGE_SIZE)))
+    /* Need room for at least one data page and two guard pages */
+    if (!data || (size < (3 * PAGE_SIZE)))
         goto done;
 
-    base = (uint8_t*)ptr + PAGE_SIZE;
+    /* Layout: <guard><pages...><guard> */
+    _mman_start = (uint8_t*)data + PAGE_SIZE;
+    _mman_end = (uint8_t*)data + size - PAGE_SIZE;
+    _mman_size = size - (2 * PAGE_SIZE);
 
-    _mman_start = base;
-    _mman_end = (uint8_t*)base + size;
-
-    /* Set the guard pages */
-    memset((uint8_t*)_mman_start - PAGE_SIZE, GUARD_CHAR, PAGE_SIZE);
-    memset((uint8_t*)_mman_end, GUARD_CHAR, PAGE_SIZE);
-
-    if (libos_mman_init(&_mman, (uintptr_t)base, size) != 0)
+    if (libos_mman_init(&_mman, (uintptr_t)_mman_start, _mman_size) != 0)
         goto done;
 
     _mman.scrub = true;
@@ -67,24 +41,6 @@ done:
 int libos_teardown_mman(void)
 {
     assert(libos_mman_is_sane(&_mman));
-
-    /* Check the start guard page */
-    if (_check_guard((uint8_t*)_mman_start - PAGE_SIZE) != 0)
-    {
-        fprintf(stderr, "bad mman start guard page\n");
-        _dump((uint8_t*)_mman_start - PAGE_SIZE, PAGE_SIZE);
-        assert(false);
-    }
-
-    /* Check the end guard page */
-    if (_check_guard(_mman_end) != 0)
-    {
-        fprintf(stderr, "bad mman end guard page\n");
-        _dump(_mman_end, PAGE_SIZE);
-        assert(false);
-    }
-
-    free((uint8_t*)_mman.base - PAGE_SIZE);
     return 0;
 }
 

@@ -20,8 +20,6 @@
 #include "libos_t.h"
 #include "../shared.h"
 
-static const size_t MMAN_SIZE = 16 * 1024 * 1024;
-
 extern int oe_host_printf(const char* fmt, ...);
 
 static int _deserialize_args(
@@ -202,10 +200,36 @@ int libos_enter_ecall(
     _dump_args(envp);
 #endif
 
-    if (libos_setup_mman(MMAN_SIZE) != 0)
+    /* Setup the memory manager */
     {
-        fprintf(stderr, "_setup_mman() failed\n");
-        assert(0);
+        void* mman_data;
+        size_t mman_size;
+        {
+            extern const void* __oe_get_enclave_base(void);
+            oe_region_t region;
+            const uint8_t* enclave_base;
+
+            if (!(enclave_base = __oe_get_enclave_base()))
+            {
+                fprintf(stderr, "__oe_get_enclave_base() failed\n");
+                assert(0);
+            }
+
+            if (oe_region_get(MMAN_REGION_ID, &region) != OE_OK)
+            {
+                fprintf(stderr, "failed to get crt region\n");
+                assert(0);
+            }
+
+            mman_data = (void*)(enclave_base + region.vaddr);
+            mman_size = region.size;
+        }
+
+        if (libos_setup_mman(mman_data, mman_size) != 0)
+        {
+            fprintf(stderr, "_setup_mman() failed\n");
+            assert(0);
+        }
     }
 
     _setup_ramfs();

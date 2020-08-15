@@ -9,7 +9,7 @@ all: libos
 	docker run --rm -v $(APPDIR):/appdir $(IMG) bash -c "make -C appdir"
 	$(BINDIR)/libos mkcpio appdir rootfs
 
-#OPTS = --strace
+OPTS = --strace
 
 run-server: libos
 	$(BINDIR)/libos exec $(OPTS) rootfs /ssl_server
