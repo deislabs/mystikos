@@ -17,6 +17,8 @@ CFLAGS = $(OEHOST_CFLAGS)
 
 LDFLAGS = $(OEHOST_LDFLAGS)
 
+LIBS = $(LIBDIR)/liboshost.a
+
 CLEAN = $(SUBOBJDIR)/libos_u.h $(SUBOBJDIR)/libos_u.c $(SUBOBJDIR)/libos_args.h
 
 include $(TOP)/rules.mak

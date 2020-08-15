@@ -2,6 +2,10 @@
 // Licensed under the MIT License.
 
 #include <openenclave/host.h>
+#include <openenclave/bits/sgx/region.h>
+#include <libos/elf.h>
+#include <libos/round.h>
+#include <libos/eraise.h>
 #include <stdio.h>
 #include <libgen.h>
 #include <time.h>
@@ -265,6 +269,8 @@ static int _get_opt(
     return -1;
 }
 
+static elf_image_t _crt_image;
+
 static int _exec(int argc, const char* argv[])
 {
     oe_result_t r;
@@ -275,7 +281,6 @@ static int _exec(int argc, const char* argv[])
     char dir[PATH_MAX];
     char libosenc[PATH_MAX];
     char liboscrt[PATH_MAX];
-    char path[PATH_MAX];
     void* args = NULL;
     size_t args_size;
     struct libos_options options;
@@ -334,17 +339,12 @@ static int _exec(int argc, const char* argv[])
             _err("cannot find: %s", liboscrt);
     }
 
-    /* Format path to pass to oe_create_enclave() */
-    {
-        int n;
+    /* Load the C runtime ELF image into memory */
+    if (elf_image_load(liboscrt, &_crt_image) != 0)
+        _err("failed to load C runtime image: %s", liboscrt);
 
-        n = snprintf(path, sizeof(path), "%s:%s", libosenc, liboscrt);
-        if (n >= sizeof path)
-            _err("buffer overflow when forming enclave path");
-    }
-
-    /* Load the enclave (including libosenc.so and liboscrt.so) */
-    r = oe_create_libos_enclave(path, type, flags, NULL, 0, &enclave);
+    /* Load the enclave: calls oe_region_add_regions() */
+    r = oe_create_libos_enclave(libosenc, type, flags, NULL, 0, &enclave);
     if (r != OE_OK)
         _err("failed to load enclave: result=%s", oe_result_str(r));
 
@@ -478,4 +478,110 @@ int main(int argc, const char* argv[])
         _err("unknown action: %s", argv[1]);
         return 1;
     }
+}
+
+/* ATTN: use common header */
+#define PAGE_SIZE 4096
+
+static int _add_segment_pages(
+    oe_region_context_t* context,
+    const elf_segment_t* segment,
+    const void* image_base,
+    uint64_t vaddr)
+{
+    int ret = 0;
+    uint64_t page_vaddr = libos_round_down_to_page_size(segment->vaddr);
+    uint64_t segment_end = segment->vaddr + segment->memsz;
+
+    for (; page_vaddr < segment_end; page_vaddr += PAGE_SIZE)
+    {
+        const uint64_t dest_vaddr = vaddr + page_vaddr;
+        const void* page = (uint8_t*)image_base + page_vaddr;
+        uint64_t flags = SGX_SECINFO_REG;
+        const bool extend = true;
+
+        if (segment->flags & PF_R)
+            flags |= SGX_SECINFO_R;
+
+        if (segment->flags & PF_W)
+            flags |= SGX_SECINFO_W;
+
+        if (segment->flags & PF_X)
+            flags |= SGX_SECINFO_X;
+
+        if (oe_region_add_page(
+            context,
+            dest_vaddr,
+            page,
+            flags,
+            extend) != OE_OK)
+        {
+            ERAISE(-EINVAL);
+        }
+    }
+
+    ret = 0;
+
+done:
+    return ret;
+}
+
+static int _load_crt_pages(
+    oe_region_context_t* context,
+    elf_image_t* image,
+    uint64_t vaddr)
+{
+    int ret = 0;
+
+    if (!context || !image)
+        ERAISE(-EINVAL);
+
+    assert((image->image_size & (PAGE_SIZE - 1)) == 0);
+
+    /* Add the program segments first */
+    for (size_t i = 0; i < image->num_segments; i++)
+    {
+        ECHECK(_add_segment_pages(
+            context,
+            &image->segments[i],
+            image->image_data,
+            vaddr));
+    }
+
+#if 0
+    /* Add the relocation pages (contains relocation entries) */
+    ECHECK(_add_relocation_pages(
+        dest_base_addr,
+        image->reloc_data,
+        image->reloc_size,
+        add_page,
+        add_page_arg,
+        vaddr));
+#endif
+
+    ret = 0;
+
+done:
+    return ret;
+}
+
+oe_result_t oe_region_add_regions(oe_region_context_t* context, uint64_t vaddr)
+{
+    const bool is_elf = true;
+
+    assert(_crt_image.image_data != NULL);
+    assert(_crt_image.image_size != 0);
+    assert(_crt_image.reloc_data != NULL);
+    assert(_crt_image.reloc_size != 0);
+
+    if (oe_region_start(context, 1, is_elf) != OE_OK)
+        _err("oe_region_start() failed");
+
+    if (_load_crt_pages(context, &_crt_image, vaddr) != 0)
+        _err("oe_region_add_regions() failed");
+
+    if (oe_region_end(context) != OE_OK)
+        _err("oe_region_end() failed");
+
+    return OE_OK;
 }

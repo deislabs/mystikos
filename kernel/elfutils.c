@@ -1269,32 +1269,32 @@ void _entry_thread(void* args_)
 }
 
 int elf_enter_crt(
+    const void* image_base,
     size_t argc,
     const char* argv[],
     size_t envc,
     const char* envp[])
 {
-    extern void* __oe_get_isolated_image_entry_point(void);
-    extern const void* __oe_get_isolated_image_base();
-
-    enter_t enter = __oe_get_isolated_image_entry_point();
-    assert(enter);
-
-    const void* base = __oe_get_isolated_image_base();
-    const Elf64_Ehdr* ehdr = base;
+    const Elf64_Ehdr* ehdr = image_base;
     void* stack;
     void* sp = NULL;
     const size_t stack_size = 64 * PAGE_SIZE;
+    enter_t enter;
+
+    assert(_test_header(ehdr) == 0);
+
+    enter = (enter_t)((uint8_t*)image_base + ehdr->e_entry);
 
     /* Extract program-header related info */
-    const uint8_t* phdr = (const uint8_t*)base + ehdr->e_phoff;
+    const uint8_t* phdr = (const uint8_t*)image_base + ehdr->e_phoff;
     size_t phnum = ehdr->e_phnum;
     size_t phentsize = ehdr->e_phentsize;
 
     if (!(stack = elf_make_stack(argc, argv, envc, envp,
-        stack_size, base, ehdr, phdr, phnum, phentsize,
+        stack_size, image_base, ehdr, phdr, phnum, phentsize,
         enter, &sp)))
     {
+        /* ATTN: use ERAISE */
         fprintf(stderr, "_make_stack() failed\n");
         assert(0);
     }
@@ -1312,7 +1312,7 @@ int elf_enter_crt(
 
             if (ph->p_type == PT_DYNAMIC)
             {
-                dynv = (uint64_t*)((uint8_t*)base + ph->p_vaddr);
+                dynv = (uint64_t*)((uint8_t*)image_base + ph->p_vaddr);
                 break;
             }
 
@@ -1322,6 +1322,7 @@ int elf_enter_crt(
 
     if (!dynv)
     {
+        /* ATTN: use ERAISE */
         printf("dynv not found\n");
         assert(0);
     }

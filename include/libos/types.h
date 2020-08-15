@@ -8,6 +8,8 @@
 #define NULL ((void*)0)
 #endif
 
+#define LIBOS_PAGE_SIZE 4096
+
 typedef long ssize_t;
 typedef long off_t;
 typedef unsigned long size_t;

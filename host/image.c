@@ -16,17 +16,6 @@ static int _compare_segments(const void* s1, const void* s2)
     return (int)(seg1->vaddr - seg2->vaddr);
 }
 
-static uint64_t _round_up_to_page_size(uint64_t x)
-{
-    uint64_t n = PAGE_SIZE;
-    return (x + n - 1) / n * n;
-}
-
-static uint64_t _round_down_to_page_size(uint64_t x)
-{
-    return x & ~((uint64_t)PAGE_SIZE - 1);
-}
-
 int elf_image_load(const char* path, elf_image_t* image)
 {
     int ret = -1;
@@ -168,7 +157,7 @@ int elf_image_load(const char* path, elf_image_t* image)
             ERAISE(-EINVAL);
 
         /* Calculate the full size of the image (rounded up to the page size) */
-        image_size = _round_up_to_page_size(hi - lo);
+        image_size = libos_round_up_to_page_size(hi - lo);
     }
 
     /* Allocate the image on a page boundary */
@@ -269,7 +258,7 @@ int elf_image_load(const char* path, elf_image_t* image)
     {
         const elf_segment_t* seg = &image->segments[i];
         const elf_segment_t* seg_next = &image->segments[i + 1];
-        size_t seg_next_size = _round_down_to_page_size(seg_next->vaddr);
+        size_t seg_next_size = libos_round_down_to_page_size(seg_next->vaddr);
 
         if ((seg->vaddr + seg->memsz) > seg_next_size)
             ERAISE(-ERANGE);
@@ -359,7 +348,7 @@ static int _add_segment_pages(
     uint64_t* vaddr)
 {
     int ret = 0;
-    uint64_t page_vaddr = _round_down_to_page_size(segment->vaddr);
+    uint64_t page_vaddr = libos_round_down_to_page_size(segment->vaddr);
     uint64_t segment_end = segment->vaddr + segment->memsz;
 
     for (; page_vaddr < segment_end; page_vaddr += PAGE_SIZE)

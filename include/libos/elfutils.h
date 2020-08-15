@@ -39,6 +39,7 @@ void* elf_make_stack(
     void** sp);
 
 int elf_enter_crt(
+    const void* image_base,
     size_t argc,
     const char* argv[],
     size_t envc,

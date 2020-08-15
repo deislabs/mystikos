@@ -38,7 +38,6 @@ int main(int argc, const char* argv[])
 {
     elf_image_t image;
     uint8_t* data = NULL;
-    size_t size;
 
     if (argc != 2)
     {
@@ -58,8 +57,7 @@ int main(int argc, const char* argv[])
 
     /* Load the pages into memory */
     {
-        size = image.image_size;
-        uint64_t vaddr = 0;
+        const size_t size = image.image_size;
 
         if (!(data = memalign(PAGE_SIZE, size)))
         {
@@ -75,20 +73,7 @@ int main(int argc, const char* argv[])
             exit(1);
         }
 
-        if (elf_image_load_pages(
-            &image,
-            (uint64_t)data,
-            size,
-            _add_page_callback,
-            NULL,
-            &vaddr) != 0)
-        {
-            fprintf(stderr, "%s: elf_image_load_pages() failed\n", argv[0]);
-            exit(1);
-        }
-
-        assert(image.image_size == size);
-        assert(memcmp(image.image_data, data, size) == 0);
+        memcpy(data, image.image_data, image.image_size);
     }
 
     /* Call into the newly loaded image */

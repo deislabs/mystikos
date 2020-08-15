@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 #include <openenclave/enclave.h>
+#include <openenclave/bits/sgx/region.h>
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
@@ -179,6 +180,7 @@ int libos_enter_ecall(
     const char* envp[64];
     size_t envp_size = sizeof(envp) / sizeof(envp[0]);
     const char rootfs_path[] = "/tmp/rootfs.cpio";
+    const void* crt_image_base;
 
     if (!rootfs_data || !rootfs_size)
         goto done;
@@ -245,9 +247,31 @@ int libos_enter_ecall(
 
     _setup_sockets();
 
+    /* Find the base address of the C runtime ELF image */
+    {
+        extern const void* __oe_get_enclave_base(void);
+        const uint64_t id = 1;
+        oe_region_t region;
+        const uint8_t* enclave_base;
+
+        if (!(enclave_base = __oe_get_enclave_base()))
+        {
+            fprintf(stderr, "__oe_get_enclave_base() failed\n");
+            assert(0);
+        }
+
+        if (oe_region_get(id, &region) != OE_OK)
+        {
+            fprintf(stderr, "failed to get crt region\n");
+            assert(0);
+        }
+
+        crt_image_base = enclave_base + region.vaddr;
+    }
+
     const size_t argc = _count_args(argv);
     const size_t envc = _count_args(envp);
-    ret = elf_enter_crt(argc, argv, envc, envp);
+    ret = elf_enter_crt(crt_image_base, argc, argv, envc, envp);
 
     _teardown_ramfs();
     libos_teardown_mman();

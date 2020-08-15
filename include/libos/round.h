@@ -23,4 +23,15 @@ static inline int64_t libos_round_up_i64(int64_t x, int64_t m)
     return (x + m - 1) / m * m;
 }
 
+static inline uint64_t libos_round_up_to_page_size(uint64_t x)
+{
+    uint64_t n = LIBOS_PAGE_SIZE;
+    return (x + n - 1) / n * n;
+}
+
+static inline uint64_t libos_round_down_to_page_size(uint64_t x)
+{
+    return x & ~((uint64_t)LIBOS_PAGE_SIZE - 1);
+}
+
 #endif /* _LIBOS_ROUND_H */
