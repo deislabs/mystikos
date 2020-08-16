@@ -401,6 +401,20 @@ const char* syscall_str(long n)
     return "unknown";
 }
 
+static const void* _original_fs_base;
+
+static void _set_fs_base(const void* p)
+{
+    __asm__ volatile("wrfsbase %0" ::"r"(p));
+}
+
+static void* _get_fs_base(void)
+{
+    void* p;
+    __asm__ volatile("mov %%fs:0, %0" : "=r"(p));
+    return p;
+}
+
 __attribute__((format(printf, 2, 3)))
 static void _strace(long n, const char* fmt, ...)
 {
@@ -416,7 +430,7 @@ static void _strace(long n, const char* fmt, ...)
             va_end(ap);
         }
 
-        fprintf(stderr, ")\n");
+        fprintf(stderr, "): tp=%p\n", _get_fs_base());
     }
 }
 
@@ -425,20 +439,6 @@ static int _exit_status;
 int libos_get_exit_status(void)
 {
     return _exit_status;
-}
-
-static const void* _original_fs_base;
-
-static void _set_fs_base(const void* p)
-{
-    __asm__ volatile("wrfsbase %0" ::"r"(p));
-}
-
-static void* _get_fs_base(void)
-{
-    void* p;
-    __asm__ volatile("mov %%fs:0, %0" : "=r"(p));
-    return p;
 }
 
 static long _forward_syscall(long n, long params[6])
@@ -1026,6 +1026,49 @@ static const char* _fcntl_cmdstr(int cmd)
     }
 }
 
+
+#define FUTEX_WAIT           0
+#define FUTEX_WAKE           1
+#define FUTEX_FD             2
+#define FUTEX_REQUEUE        3
+#define FUTEX_CMP_REQUEUE    4
+#define FUTEX_WAKE_OP        5
+#define FUTEX_LOCK_PI        6
+#define FUTEX_UNLOCK_PI      7
+#define FUTEX_TRYLOCK_PI     8
+#define FUTEX_WAIT_BITSET    9
+#define FUTEX_PRIVATE        128
+#define FUTEX_CLOCK_REALTIME 256
+
+static const char* _futex_op_str(int op)
+{
+    switch (op & ~FUTEX_PRIVATE)
+    {
+        case FUTEX_WAIT:
+            return "FUTEX_WAIT";
+        case FUTEX_WAKE:
+            return "FUTEX_WAKE";
+        case FUTEX_FD:
+            return "FUTEX_FD";
+        case FUTEX_REQUEUE:
+            return "FUTEX_REQUEUE";
+        case FUTEX_CMP_REQUEUE:
+            return "FUTEX_CMP_REQUEUE";
+        case FUTEX_WAKE_OP:
+            return "FUTEX_WAKE_OP";
+        case FUTEX_LOCK_PI:
+            return "FUTEX_LOCK_PI";
+        case FUTEX_UNLOCK_PI:
+            return "FUTEX_UNLOCK_PI";
+        case FUTEX_TRYLOCK_PI:
+            return "FUTEX_TRYLOCK_PI";
+        case FUTEX_WAIT_BITSET:
+            return "FUTEX_WAIT_BITSET";
+        default:
+            return "UNKNOWN";
+    }
+}
+
 static ssize_t _dev_urandom_readv(const struct iovec* iov, int iovcnt)
 {
     ssize_t ret = 0;
@@ -1066,7 +1109,10 @@ long libos_syscall(long n, long params[6])
     {
         case SYS_libos_trace:
         {
-            printf("trace: %s\n", (const char*)params[0]);
+            const char* msg = (const char*)x1;
+
+            _strace(n, "msg=%s", msg);
+
             return _return(n, 0);
         }
         case SYS_libos_trace_ptr:
@@ -1813,7 +1859,22 @@ long libos_syscall(long n, long params[6])
         case SYS_time:
             break;
         case SYS_futex:
-            break;
+        {
+            int* uaddr = (int*)x1;
+            int futex_op = (int)x2;
+            int val = (int)x3;
+
+            _strace(n, "uaddr=%lX(%x) futex_op=%u(%s) val=%d",
+                (long)uaddr,
+                (uaddr ? *uaddr : -1),
+                futex_op,
+                _futex_op_str(futex_op),
+                val);
+
+            *uaddr = 101;
+
+            return _return(n, 0);
+        }
         case SYS_sched_setaffinity:
             break;
         case SYS_sched_getaffinity:
