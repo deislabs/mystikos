@@ -73,4 +73,6 @@ long libos_syscall_chdir(const char* path);
 
 long libos_syscall_getcwd(char* buf, size_t size);
 
+long libos_syscall_fcntl(int fd, int cmd, long arg);
+
 #endif /* _LIBOS_SYSCALL_H */

@@ -102,6 +102,8 @@ struct libos_fs
         libos_file_t* file,
         char* buf,
         size_t size);
+
+    int (*fs_fcntl)(libos_fs_t* fs, libos_file_t* file, int cmd, long arg);
 };
 
 #endif /* _LIBOS_FS_H */

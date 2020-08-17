@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <setjmp.h>
 #include <sys/uio.h>
+#include <sys/ioctl.h>
 #include <libos/syscall.h>
 #include <libos/elfutils.h>
 #include <libos/paths.h>
@@ -976,6 +977,28 @@ done:
     return ret;
 }
 
+long libos_syscall_fcntl(int fd, int cmd, long arg)
+{
+    long ret = 0;
+    libos_fs_t* fs;
+    libos_file_t* file;
+    const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_FILE;
+
+    ECHECK(libos_fdtable_find(fd, type, (void**)&fs, (void**)&file));
+    ERAISE((*fs->fs_fcntl)(fs, file, cmd, arg));
+
+done:
+    return ret;
+}
+
+long libos_syscall_chmod(const char *pathname, mode_t mode)
+{
+    printf("pathname{%s} mode{%o}\n", pathname, mode);
+    (void)pathname;
+    (void)mode;
+    return 0;
+}
+
 long libos_syscall_ret(long ret)
 {
     if ((unsigned long)ret > -4096UL)
@@ -1310,10 +1333,22 @@ long libos_syscall(long n, long params[6])
         case SYS_ioctl:
         {
             int fd = (int)x1;
-            /* Note: 0x5413 is TIOCGWINSZ  */
             unsigned long request = (unsigned long)x2;
 
-            _strace(n, "fd=%d request=%lx", fd, request);
+            _strace(n, "fd=%d request=0x%lX", fd, request);
+
+            if (libos_is_libos_fd(fd))
+            {
+                if (request == TIOCGWINSZ)
+                {
+                    /* Fail because no libos fd can be a console device */
+                    return _return(n, -EINVAL);
+                }
+
+                fprintf(stderr, "********** unhandled: ioctl: 0x%lX()\n",
+                    request);
+                abort();
+            }
 
             return _return(n, _forward_syscall(n, params));
         }
@@ -1485,14 +1520,10 @@ long libos_syscall(long n, long params[6])
             const char* cmdstr = _fcntl_cmdstr(cmd);
             _strace(n, "fd=%d cmd=%d(%s) arg=%ld", fd, cmd, cmdstr, arg);
 
-            if (cmd == F_SETFD && arg == FD_CLOEXEC)
-            {
-                /* Ignore FD_CLOEXEC since fork/exec not supported */
-                return 0;
-            }
+            if (!libos_is_libos_fd(fd))
+                return _return(n, _forward_syscall(n, params));
 
-            /* unhandled */
-            break;
+            return _return(n, libos_syscall_fcntl(fd, cmd, arg));
         }
         case SYS_flock:
             break;
@@ -1611,7 +1642,14 @@ long libos_syscall(long n, long params[6])
             return _return(n, libos_syscall_readlink(pathname, buf, bufsiz));
         }
         case SYS_chmod:
-            break;
+        {
+            const char* pathname = (const char*)x1;
+            mode_t mode = (mode_t)x2;
+
+            _strace(n, "pathname=%s mode=%o", pathname, mode);
+
+            return _return(n, libos_syscall_chmod(pathname, mode));
+        }
         case SYS_fchmod:
             break;
         case SYS_chown:

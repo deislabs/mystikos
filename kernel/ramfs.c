@@ -303,6 +303,7 @@ struct libos_file
     inode_t* inode;
     size_t offset; /* the current file offset (files) */
     uint32_t access; /* (O_RDONLY | O_RDWR | O_WRONLY) */
+    uint32_t operating; /* (O_RDONLY | O_RDWR | O_WRONLY) */
     char realpath[PATH_MAX];
 };
 
@@ -665,6 +666,7 @@ static int _fs_open(
     file->magic = FILE_MAGIC;
     file->inode = inode;
     file->access = (flags & (O_RDONLY | O_RDWR | O_WRONLY));
+    file->operating = (flags & O_APPEND);
     inode->nopens++;
 
     /* Get the realpath of this file */
@@ -1404,6 +1406,37 @@ done:
     return ret;
 }
 
+static int _fs_fcntl(
+    libos_fs_t* fs,
+    libos_file_t* file,
+    int cmd,
+    long arg)
+{
+    int ret = 0;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+
+    if (!_ramfs_valid(ramfs) || !_file_valid(file))
+        ERAISE(-EINVAL);
+
+    if (cmd == F_SETFD && arg == FD_CLOEXEC)
+    {
+        /* FD_CLOEXEC can be safely ignored (fork/exec not supported) */
+        goto done;
+    }
+
+    /* Get the file-access-mode and the file-status-flags */
+    if (cmd == F_GETFL)
+    {
+        ret = (int)(file->access | file->operating);
+        goto done;
+    }
+
+    ERAISE(-ENOTSUP);
+
+done:
+    return ret;
+}
+
 int libos_init_ramfs(libos_fs_t** fs_out)
 {
     int ret = 0;
@@ -1434,6 +1467,7 @@ int libos_init_ramfs(libos_fs_t** fs_out)
         _fs_readlink,
         _fs_symlink,
         _fs_realpath,
+        _fs_fcntl,
     };
     inode_t* root_inode = NULL;
 
