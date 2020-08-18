@@ -16,7 +16,7 @@ all: libos
 	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/main main.c $(LDFLAGS)
 	$(LIBOS) mkcpio appdir rootfs
 
-#OPTS = --trace-syscalls
+OPTS = --strace
 
 run: all
 	$(LIBOS) exec rootfs /bin/main $(OPTS)

@@ -6,7 +6,7 @@ IMG=libos-alpine
 APPDIR=$(CURDIR)/appdir
 
 all: libos
-	docker run --rm -v $(APPDIR):/appdir $(IMG) bash -c "make -C appdir"
+	sudo docker run --rm -v $(APPDIR):/appdir $(IMG) bash -c "make -C appdir"
 	$(BINDIR)/libos mkcpio appdir rootfs
 
 #OPTS = --strace
@@ -22,10 +22,10 @@ clean:
 	$(MAKE) -C appdir clean
 
 ls:
-	docker image ls | grep libos
+	sudo docker image ls | grep libos
 
 extract:
-	docker save -o img.tar libos-alpine
+	sudo docker save -o img.tar libos-alpine
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos

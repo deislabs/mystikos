@@ -62,4 +62,8 @@ int libos_symlink(const char* target, const char* linkpath);
 
 int libos_mkdirhier(const char* pathname, mode_t mode);
 
+int libos_load_file(const char* path, void** data, size_t* size);
+
+int libos_write_file(int fd, const void* data, size_t size);
+
 #endif /* _LIBOS_FILE_H */

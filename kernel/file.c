@@ -2,6 +2,7 @@
 #include <libos/syscall.h>
 #include <libos/strings.h>
 #include <libos/trace.h>
+#include <libos/buf.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <libos/eraise.h>
@@ -167,5 +168,82 @@ done:
 
     libos_set_trace(trace);
 
+    return ret;
+}
+
+int libos_load_file(const char* path, void** data, size_t* size)
+{
+    int ret = 0;
+    ssize_t n;
+    struct stat st;
+    libos_buf_t buf = LIBOS_BUF_INITIALIZER;
+    char block[512];
+    int fd = -1;
+
+    if (data)
+        *data = NULL;
+
+    if (size)
+        *size = 0;
+
+    if (!path || !data || !size)
+        ERAISE(-EINVAL);
+
+    if ((fd = libos_open(path, O_RDONLY, 0)) < 0)
+        ERAISE(-ENOENT);
+
+    if (libos_fstat(fd, &st) != 0)
+        ERAISE(-EINVAL);
+
+    if (libos_buf_reserve(&buf, (size_t)st.st_size) != 0)
+        ERAISE(-ENOMEM);
+
+    while ((n = libos_read(fd, block, sizeof(block))) > 0)
+    {
+        if (libos_buf_append(&buf, block, (size_t)n) != 0)
+            ERAISE(-ENOMEM);
+    }
+
+    *data = buf.data;
+    buf.data = NULL;
+    *size = buf.size;
+
+done:
+
+    if (fd >= 0)
+        libos_close(fd);
+
+    if (buf.data)
+        free(buf.data);
+
+    return ret;
+}
+
+int libos_write_file(int fd, const void* data, size_t size)
+{
+    int ret = 0;
+    const uint8_t* p = (const uint8_t*)data;
+    size_t r = size;
+    ssize_t n;
+
+    if (fd < 0 || !data)
+        ERAISE(-EINVAL);
+
+    while (r > 0)
+    {
+        if ((n = libos_write(fd, p, r)) == 0)
+            break;
+
+        if (n < 0)
+            ERAISE(-errno);
+
+        p += n;
+        r -= (size_t)n;
+    }
+
+    if (r != 0)
+        ERAISE(-EIO);
+
+done:
     return ret;
 }

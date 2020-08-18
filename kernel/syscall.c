@@ -25,6 +25,7 @@
 #include <sys/utsname.h>
 #include <libos/mount.h>
 #include <libos/eraise.h>
+#include <libos/buf.h>
 #include <openenclave/bits/result.h>
 #include "fdtable.h"
 
@@ -387,6 +388,9 @@ static pair_t _pairs[] =
     { SYS_libos_dump_ehdr, "SYS_libos_dump_ehdr" },
     { SYS_libos_dump_argv, "SYS_libos_dump_argv" },
     { SYS_libos_dump_stack, "SYS_libos_dump_stack" },
+    { SYS_libos_add_symbol_file, "SYS_libos_add_symbol_file" },
+    { SYS_libos_load_symbols, "SYS_libos_load_symbols" },
+    { SYS_libos_unload_symbols, "SYS_libos_unload_symbols" },
 };
 
 static size_t _n_pairs = sizeof(_pairs) / sizeof(_pairs[0]);
@@ -999,6 +1003,36 @@ long libos_syscall_chmod(const char *pathname, mode_t mode)
     return 0;
 }
 
+/* This must be overriden by the library user */
+__attribute__((__weak__))
+long libos_syscall_add_symbol_file(
+    const char* path,
+    const void* text,
+    size_t text_size)
+{
+    (void)path;
+    (void)text;
+    (void)text_size;
+    assert("unimplemented: implement in enclave" == NULL);
+    return -ENOTSUP;
+}
+
+/* This must be overriden by the library user */
+__attribute__((__weak__))
+long libos_syscall_load_symbols(void)
+{
+    assert("unimplemented: implement in enclave" == NULL);
+    return -ENOTSUP;
+}
+
+/* This must be overriden by the library user */
+__attribute__((__weak__))
+long libos_syscall_unload_symbols(void)
+{
+    assert("unimplemented: implement in enclave" == NULL);
+    return -ENOTSUP;
+}
+
 long libos_syscall_ret(long ret)
 {
     if ((unsigned long)ret > -4096UL)
@@ -1119,6 +1153,10 @@ done:
     return ret;
 }
 
+void libos_futex_breakpoint(void)
+{
+}
+
 long libos_syscall(long n, long params[6])
 {
     long x1 = params[0];
@@ -1177,6 +1215,32 @@ long libos_syscall(long n, long params[6])
 
             return _return(n, 0);
         }
+        case SYS_libos_add_symbol_file:
+        {
+            const char* path = (const char*)x1;
+            const void* text = (const void*)x2;
+            size_t text_size = (size_t)x3;
+            long ret;
+
+            _strace(n, "path=\"%s\" text=%p text_size=%zu\n",
+                path, text, text_size);
+
+            ret = libos_syscall_add_symbol_file(path, text, text_size);
+
+            return _return(n, ret);
+        }
+        case SYS_libos_load_symbols:
+        {
+            _strace(n, NULL);
+
+            return _return(n, libos_syscall_load_symbols());
+        }
+        case SYS_libos_unload_symbols:
+        {
+            _strace(n, NULL);
+
+            return _return(n, libos_syscall_unload_symbols());
+        }
         case SYS_read:
         {
             int fd = (int)x1;
@@ -1208,10 +1272,13 @@ long libos_syscall(long n, long params[6])
             const char* path = (const char*)x1;
             int flags = (int)x2;
             mode_t mode = (mode_t)x3;
+            long ret;
 
-            _strace(n, "path=%s flags=%d mode=0%o", path, flags, mode);
+            _strace(n, "path=\"%s\" flags=0%o mode=0%o", path, flags, mode);
 
-            return _return(n, libos_syscall_open(path, flags, mode));
+            ret = libos_syscall_open(path, flags, mode);
+
+            return _return(n, ret);
         }
         case SYS_close:
         {
@@ -1229,7 +1296,7 @@ long libos_syscall(long n, long params[6])
             const char* pathname = (const char*)x1;
             struct stat* statbuf = (struct stat*)x2;
 
-            _strace(n, "pathname=%s statbuf=%p", pathname, statbuf);
+            _strace(n, "pathname=\"%s\" statbuf=%p", pathname, statbuf);
 
             return _return(n, libos_syscall_stat(pathname, statbuf));
         }
@@ -1248,7 +1315,7 @@ long libos_syscall(long n, long params[6])
             const char* pathname = (const char*)x1;
             struct stat* statbuf = (struct stat*)x2;
 
-            _strace(n, "pathname=%s statbuf=%p", pathname, statbuf);
+            _strace(n, "pathname=\"%s\" statbuf=%p", pathname, statbuf);
 
             return _return(n, libos_syscall_lstat(pathname, statbuf));
         }
@@ -1390,7 +1457,7 @@ long libos_syscall(long n, long params[6])
             const char* pathname = (const char*)x1;
             int mode = (int)x2;
 
-            _strace(n, "pathname=%s mode=%d", pathname, mode);
+            _strace(n, "pathname=\"%s\" mode=%d", pathname, mode);
 
             return _return(n, libos_syscall_access(pathname, mode));
         }
@@ -1467,10 +1534,13 @@ long libos_syscall(long n, long params[6])
         {
             const int status = (int)x1;
 
+            _strace(n, "status=%d", status);
+
             /* restore original fs base, else stack smashing will be detected */
             _set_fs_base(_original_fs_base);
 
-            _strace(n, "status=%d", status);
+            /* Unload the debugger symbols */
+            libos_syscall_unload_symbols();
 
             _exit_status = status;
             longjmp(_exit_jmp_buf, 1);
@@ -1536,7 +1606,7 @@ long libos_syscall(long n, long params[6])
             const char* path = (const char*)x1;
             off_t length = (off_t)x2;
 
-            _strace(n, "path=%s length=%ld", path, length);
+            _strace(n, "path=\"%s\" length=%ld", path, length);
 
             return _return(n, libos_syscall_truncate(path, length));
         }
@@ -1564,7 +1634,7 @@ long libos_syscall(long n, long params[6])
         {
             const char* path = (const char*)x1;
 
-            _strace(n, "path=%s", path);
+            _strace(n, "path=\"%s\"", path);
 
             return _return(n, libos_syscall_chdir(path));
         }
@@ -1575,7 +1645,7 @@ long libos_syscall(long n, long params[6])
             const char* oldpath = (const char*)x1;
             const char* newpath = (const char*)x2;
 
-            _strace(n, "oldpath=%s newpath=%s", oldpath, newpath);
+            _strace(n, "oldpath=\"%s\" newpath=\"%s\"", oldpath, newpath);
 
             return _return(n, libos_syscall_rename(oldpath, newpath));
         }
@@ -1584,7 +1654,7 @@ long libos_syscall(long n, long params[6])
             const char* pathname = (const char*)x1;
             mode_t mode = (mode_t)x1;
 
-            _strace(n, "pathname=%s mode=%u", pathname, mode);
+            _strace(n, "pathname=\"%s\" mode=%u", pathname, mode);
 
             return _return(n, libos_syscall_mkdir(pathname, mode));
         }
@@ -1592,7 +1662,7 @@ long libos_syscall(long n, long params[6])
         {
             const char* pathname = (const char*)x1;
 
-            _strace(n, "pathname=%s", pathname);
+            _strace(n, "pathname=\"%s\"", pathname);
 
             return _return(n, libos_syscall_rmdir(pathname));
         }
@@ -1601,7 +1671,7 @@ long libos_syscall(long n, long params[6])
             const char* pathname = (const char*)x1;
             mode_t mode = (mode_t)x2;
 
-            _strace(n, "pathname=%s mode=%x", pathname, mode);
+            _strace(n, "pathname=\"%s\" mode=%x", pathname, mode);
 
             return _return(n, libos_syscall_creat(pathname, mode));
         }
@@ -1610,7 +1680,7 @@ long libos_syscall(long n, long params[6])
             const char* oldpath = (const char*)x1;
             const char* newpath = (const char*)x2;
 
-            _strace(n, "oldpath=%s newpath=%s", oldpath, newpath);
+            _strace(n, "oldpath=\"%s\" newpath=\"%s\"", oldpath, newpath);
 
             return _return(n, libos_syscall_link(oldpath, newpath));
         }
@@ -1618,7 +1688,7 @@ long libos_syscall(long n, long params[6])
         {
             const char* pathname = (const char*)x1;
 
-            _strace(n, "pathname=%s", pathname);
+            _strace(n, "pathname=\"%s\"", pathname);
 
             return _return(n, libos_syscall_unlink(pathname));
         }
@@ -1627,7 +1697,7 @@ long libos_syscall(long n, long params[6])
             const char* target = (const char*)x1;
             const char* linkpath = (const char*)x2;
 
-            _strace(n, "target=%s linkpath=%s", target, linkpath);
+            _strace(n, "target=\"%s\" linkpath=\"%s\"", target, linkpath);
 
             return _return(n, libos_syscall_symlink(target, linkpath));
         }
@@ -1637,7 +1707,8 @@ long libos_syscall(long n, long params[6])
             char* buf = (char*)x2;
             size_t bufsiz = (size_t)x3;
 
-            _strace(n, "pathname=%s buf=%p bufsiz=%zu", pathname, buf, bufsiz);
+            _strace(n, "pathname=\"%s\" buf=%p bufsiz=%zu",
+                pathname, buf, bufsiz);
 
             return _return(n, libos_syscall_readlink(pathname, buf, bufsiz));
         }
@@ -1646,7 +1717,7 @@ long libos_syscall(long n, long params[6])
             const char* pathname = (const char*)x1;
             mode_t mode = (mode_t)x2;
 
-            _strace(n, "pathname=%s mode=%o", pathname, mode);
+            _strace(n, "pathname=\"%s\" mode=%o", pathname, mode);
 
             return _return(n, libos_syscall_chmod(pathname, mode));
         }
@@ -1829,7 +1900,7 @@ long libos_syscall(long n, long params[6])
             const char* name= (const char*)x1;
             size_t len = (size_t)x2;
 
-            _strace(n, "name=%s len=%zu", name, len);
+            _strace(n, "name=\"%s\" len=%zu", name, len);
 
             return 0;
             return _return(n, _forward_syscall(n, params));
@@ -1902,14 +1973,16 @@ long libos_syscall(long n, long params[6])
             int futex_op = (int)x2;
             int val = (int)x3;
 
-            _strace(n, "uaddr=%lX(%x) futex_op=%u(%s) val=%d",
+            _strace(n, "uaddr=0x%lX(0x%x) futex_op=%u(%s) val=%d",
                 (long)uaddr,
                 (uaddr ? *uaddr : -1),
                 futex_op,
                 _futex_op_str(futex_op),
                 val);
 
-            *uaddr = 101;
+            libos_futex_breakpoint();
+
+            *uaddr = val;
 
             return _return(n, 0);
         }

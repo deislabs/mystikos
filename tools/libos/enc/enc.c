@@ -11,6 +11,7 @@
 #include <libos/syscall.h>
 #include <stdlib.h>
 #include <libos/mmanutils.h>
+#include <libos/eraise.h>
 #include <libos/elfutils.h>
 #include <libos/ramfs.h>
 #include <libos/mount.h>
@@ -95,6 +96,12 @@ static void _setup_ramfs(void)
         fprintf(stderr, "failed create the /proc/self/fd directory\n");
         abort();
     }
+
+    if (libos_mkdirhier("/usr/local/etc", 777) != 0)
+    {
+        fprintf(stderr, "failed create the /usr/local/etc directory\n");
+        abort();
+    }
 }
 
 static void _teardown_ramfs(void)
@@ -164,6 +171,40 @@ done:
     return ret;
 }
 
+static void _apply_relocations(
+    const void* image_base,
+    size_t image_size,
+    const void* reloc_base,
+    size_t reloc_size)
+{
+    const Elf64_Rela* relocs = (const Elf64_Rela*)reloc_base;
+    size_t nrelocs = reloc_size / sizeof(Elf64_Rela);
+    const uint8_t* baseaddr = (const uint8_t*)image_base;
+
+    for (size_t i = 0; i < nrelocs; i++)
+    {
+        const Elf64_Rela* p = &relocs[i];
+
+        /* If zero-padded bytes reached */
+        if (p->r_offset == 0)
+            break;
+
+        assert(p->r_offset > 0);
+        assert(p->r_offset <= image_size);
+
+        /* Compute address of reference to be relocated */
+        uint64_t* dest = (uint64_t*)(baseaddr + p->r_offset);
+
+        uint64_t reloc_type = ELF64_R_TYPE(p->r_info);
+
+        /* Relocate the reference */
+        if (reloc_type == R_X86_64_RELATIVE)
+        {
+            *dest = (uint64_t)(baseaddr + p->r_addend);
+        }
+    }
+}
+
 int libos_enter_ecall(
     struct libos_options* options,
     const void* args,
@@ -178,6 +219,7 @@ int libos_enter_ecall(
     size_t envp_size = sizeof(envp) / sizeof(envp[0]);
     const char rootfs_path[] = "/tmp/rootfs.cpio";
     const void* crt_image_base;
+    size_t crt_image_size;
     const void* rootfs_data;
     size_t rootfs_size;
 
@@ -310,6 +352,32 @@ int libos_enter_ecall(
         }
 
         crt_image_base = enclave_base + region.vaddr;
+        crt_image_size = region.size;
+    }
+
+    /* Apply relocations to the crt image */
+    {
+        extern const void* __oe_get_enclave_base(void);
+        oe_region_t region;
+        const uint8_t* enclave_base;
+
+        if (!(enclave_base = __oe_get_enclave_base()))
+        {
+            fprintf(stderr, "__oe_get_enclave_base() failed\n");
+            assert(0);
+        }
+
+        if (oe_region_get(CRT_RELOC_REGION_ID, &region) != OE_OK)
+        {
+            fprintf(stderr, "failed to get crt region\n");
+            assert(0);
+        }
+
+        _apply_relocations(
+            crt_image_base,
+            crt_image_size,
+            enclave_base + region.vaddr,
+            region.size);
     }
 
     const size_t argc = _count_args(argv);
@@ -336,6 +404,62 @@ long libos_syscall_clock_gettime(clockid_t clk_id, struct timespec* tp_)
         return -EINVAL;
 
     return (long)retval;
+}
+
+/* This overrides the weak version in liboskernel.a */
+long libos_syscall_add_symbol_file(
+    const char* path,
+    const void* text,
+    size_t text_size)
+{
+    long ret = 0;
+    void* file_data = NULL;
+    size_t file_size;
+    int retval;
+
+    if (!path || !text || !text_size)
+        ERAISE(-EINVAL);
+
+    ECHECK(libos_load_file(path, &file_data, &file_size));
+
+    if (libos_add_symbol_file_ocall(&retval, file_data, file_size, text,
+        text_size) != OE_OK)
+    {
+        ERAISE(-EINVAL);
+    }
+
+done:
+
+    if (file_data)
+        free(file_data);
+
+    return ret;
+}
+
+/* This overrides the weak version in liboskernel.a */
+long libos_syscall_load_symbols(void)
+{
+    long ret = 0;
+    int retval;
+
+    if (libos_load_symbols_ocall(&retval) != OE_OK || retval != 0)
+        ERAISE(-EINVAL);
+
+done:
+    return ret;
+}
+
+/* This overrides the weak version in liboskernel.a */
+long libos_syscall_unload_symbols(void)
+{
+    long ret = 0;
+    int retval;
+
+    if (libos_unload_symbols_ocall(&retval) != OE_OK || retval != 0)
+        ERAISE(-EINVAL);
+
+done:
+    return ret;
 }
 
 OE_SET_ENCLAVE_SGX(

@@ -895,9 +895,6 @@ int libos_mman_map(
         }
     }
 
-    /* Zero-fill mapped memory */
-    memset((void*)start, 0, length);
-
     if (!_mman_is_sane(mman))
         goto done;
 
@@ -905,6 +902,11 @@ int libos_mman_map(
 
 done:
     _mman_unlock(mman, &locked);
+
+    /* Zero-fill mapped memory */
+    if (ptr_out && *ptr_out)
+        memset(*ptr_out, 0, length);
+
     return ret;
 }
 

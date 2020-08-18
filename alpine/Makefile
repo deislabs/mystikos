@@ -3,7 +3,7 @@ SUBDIR = alpine
 include $(TOP)/defs.mak
 
 all:
-	docker build --quiet -t libos-alpine .
+	sudo docker build --quiet -t libos-alpine .
 
 clean:
 

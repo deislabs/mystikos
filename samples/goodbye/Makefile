@@ -6,7 +6,7 @@ IMG=libos-alpine
 APPDIR=$(CURDIR)/appdir
 
 all:
-	docker run --rm -v $(APPDIR):/appdir $(IMG) bash -c "make -C appdir"
+	sudo docker run --rm -v $(APPDIR):/appdir $(IMG) bash -c "make -C appdir"
 	$(BINDIR)/libos mkcpio appdir rootfs
 
 run: all

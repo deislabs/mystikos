@@ -128,8 +128,22 @@ done:
     return ret;
 }
 
+#if 0
+static void _check_zeros(const uint8_t* p, size_t n)
+{
+    while (n--)
+    {
+        if (*p++)
+        {
+            fprintf(stderr, "_check_zeros() failed\n");
+            exit(1);
+        }
+    }
+}
+#endif
+
 void* libos_mmap(
-    void *addr,
+    void* addr,
     size_t length,
     int prot,
     int flags,

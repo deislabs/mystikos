@@ -75,4 +75,13 @@ long libos_syscall_getcwd(char* buf, size_t size);
 
 long libos_syscall_fcntl(int fd, int cmd, long arg);
 
+long libos_syscall_add_symbol_file(
+    const char* path,
+    const void* text,
+    size_t text_size);
+
+long libos_syscall_load_symbols(void);
+
+long libos_syscall_unload_symbols(void);
+
 #endif /* _LIBOS_SYSCALL_H */
