@@ -31,7 +31,6 @@ void* elf_make_stack(
     const char* envp[],
     size_t stack_size,
     const void* base,
-    const void* ehdr,
     const void* phdr,
     size_t phnum,
     size_t phentsize,

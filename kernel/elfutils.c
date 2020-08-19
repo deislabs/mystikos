@@ -1133,7 +1133,6 @@ void* elf_make_stack(
     const char* envp[],
     size_t stack_size,
     const void* base,
-    const void* ehdr,
     const void* phdr,
     size_t phnum,
     size_t phentsize,
@@ -1181,10 +1180,6 @@ void* elf_make_stack(
         {
             .a_type = AT_BASE,
             .a_un.a_val = (uint64_t)base,
-        },
-        {
-            .a_type = AT_SYSINFO_EHDR,
-            .a_un.a_val = (uint64_t)ehdr,
         },
         {
             .a_type = AT_PHDR,
@@ -1291,7 +1286,7 @@ int elf_enter_crt(
     size_t phentsize = ehdr->e_phentsize;
 
     if (!(stack = elf_make_stack(argc, argv, envc, envp,
-        stack_size, image_base, ehdr, phdr, phnum, phentsize,
+        stack_size, image_base, phdr, phnum, phentsize,
         enter, &sp)))
     {
         /* ATTN: use ERAISE */
