@@ -7,11 +7,11 @@
 
     * make installer
 
+    * partition kernel into 'target' and 'kernel'
+
     BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
 
     * review and cleanup mman module
-
-    * partition kernel into 'target' and 'kernel'
 
     * implement linux target without OE
 

@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <signal.h>
 #include <libos/mman.h>
@@ -27,6 +28,7 @@
 #include <libos/eraise.h>
 #include <libos/buf.h>
 #include <openenclave/bits/result.h>
+#include <sys/vfs.h>
 #include "fdtable.h"
 
 #define DEFAULT_PID (pid_t)1
@@ -1833,7 +1835,17 @@ long libos_syscall(long n, long params[6])
         case SYS_ustat:
             break;
         case SYS_statfs:
-            break;
+        {
+            const char* path = (const char*)x1;
+            struct statfs* buf = (struct statfs*)x2;
+
+            _strace(n, "path=%s buf=%p", path, buf);
+
+            if (buf)
+                memset(buf, 0, sizeof(*buf));
+
+            return _return(n, 0);
+        }
         case SYS_fstatfs:
             break;
         case SYS_sysfs:
