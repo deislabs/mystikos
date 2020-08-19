@@ -1770,7 +1770,10 @@ long libos_syscall(long n, long params[6])
         case SYS_setgid:
             break;
         case SYS_geteuid:
-            break;
+        {
+            _strace(n, NULL);
+            return _return(n, DEFAULT_UID);
+        }
         case SYS_getegid:
             break;
         case SYS_setpgid:
@@ -2277,7 +2280,14 @@ long libos_syscall(long n, long params[6])
         case SYS_userfaultfd:
             break;
         case SYS_membarrier:
-            break;
+        {
+            int cmd = (int)x1;
+            int flags = (int)x2;
+
+            _strace(n, "cmd=%d flags=%d", cmd, flags);
+
+            return _return(n, 0);
+        }
         case SYS_mlock2:
             break;
         case SYS_copy_file_range:

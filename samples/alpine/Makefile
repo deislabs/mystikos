@@ -19,7 +19,9 @@ appdir:
 rootfs:
 	libos mkcpio appdir rootfs
 
-#OPTS = --trace-syscalls
+ifdef STRACE
+OPTS = --trace-syscalls
+endif
 
 run: all
 	libos exec $(OPTS) rootfs /bin/ls /sbin

@@ -1,10 +1,6 @@
 
     AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 
-    * implement extensible memory regions
-
-    * debugger symbols
-
     * implement libos signer
 
     * support attested certificate generation
@@ -17,6 +13,10 @@
 
     * partition kernel into 'target' and 'kernel'
 
+    * implement linux target without OE
+
+    * implement system-call-tracer
+
     * implement threading (clone, futex, and TLS)
 
     * fix crash on hash of load symbols
@@ -25,15 +25,15 @@
 
     * support symlink on non-root-mounted file systems (subtract mountpoint)
 
-    CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
+    * implement SYS_memorybarrier properly
 
-    * implement system-call-tracer
+    CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 
     * implement symlink across file systems
 
     * reimplement host networking
 
-    * implement signals
+    * implement POSIX signals
 
     * glibc support
 
@@ -49,3 +49,6 @@
 
     X Implement /proc/self/fd/<fdnumber> to /usr/bin/realpath will work.
 
+    X implement extensible memory regions
+
+    X debugger symbols
