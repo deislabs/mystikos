@@ -971,13 +971,15 @@ long libos_syscall_getrandom(void *buf, size_t buflen, unsigned int flags)
     extern oe_result_t oe_random(void* data, size_t size);
     long ret = 0;
 
+    (void)flags;
+
     if (!buf && buflen)
         ERAISE(-EINVAL);
 
     if (buf && buflen && oe_random(buf, buflen) != OE_OK)
         ERAISE(-EINVAL);
 
-    (void)flags;
+    ret = (long)buflen;
 
 done:
     return ret;
@@ -1490,8 +1492,15 @@ long libos_syscall(long n, long params[6])
             /* ATTN: hook up implementation */
             break;
         case SYS_madvise:
-            /* ATTN: hook up implementation */
-            break;
+        {
+            void* addr = (void*)x1;
+            size_t length = (size_t)x2;
+            int advice = (int)x3;
+
+            _strace(n, "addr=%p length=%zu advice=%d", addr, length, advice);
+
+            return _return(n, 0);
+        }
         case SYS_shmget:
             break;
         case SYS_shmat:
@@ -1996,8 +2005,6 @@ long libos_syscall(long n, long params[6])
                 val);
 
             libos_futex_breakpoint();
-
-            *uaddr = val;
 
             return _return(n, 0);
         }

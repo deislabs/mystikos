@@ -9,18 +9,10 @@ all: libos
 	sudo docker run --rm -v $(APPDIR):/appdir $(IMG) bash -c "make -C appdir"
 	$(BINDIR)/libos mkcpio appdir rootfs
 
-glibc: libos
-	$(MAKE) -C appdir clean
-	$(MAKE) -C appdir
-	$(BINDIR)/libos mkcpio appdir rootfs
-
 OPTS = --strace
 
 run-server: libos
 	$(BINDIR)/libos exec $(OPTS) rootfs /ssl_server
-
-gdb: libos
-	$(BINDIR)/oegdb --args $(BINDIR)/libos exec $(OPTS) rootfs /ssl_server
 
 run-client: libos
 	$(BINDIR)/libos exec $(OPTS) rootfs /ssl_client1
