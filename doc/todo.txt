@@ -11,6 +11,10 @@
 
     BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
 
+    * libos mkappdir action (build appdir from executable name)
+
+    * distinguish rootfs from approotfs
+
     * review and cleanup mman module
 
     * implement linux target without OE
