@@ -37,6 +37,8 @@
 
 #define DEV_URANDOM_FD (FD_OFFSET + FDTABLE_SIZE)
 
+oe_result_t oe_random(void* data, size_t size);
+
 jmp_buf _exit_jmp_buf;
 
 static bool _trace_syscalls;
@@ -968,7 +970,6 @@ long libos_syscall_clock_gettime(clockid_t clk_id, struct timespec *tp)
 
 long libos_syscall_getrandom(void *buf, size_t buflen, unsigned int flags)
 {
-    extern oe_result_t oe_random(void* data, size_t size);
     long ret = 0;
 
     (void)flags;
@@ -1142,8 +1143,6 @@ static ssize_t _dev_urandom_readv(const struct iovec* iov, int iovcnt)
     {
         if (iov->iov_base && iov->iov_len)
         {
-            extern oe_result_t oe_random(void* data, size_t size);
-
             if (oe_random(iov->iov_base, iov->iov_len) != OE_OK)
                 ERAISE(-EINVAL);
 
@@ -1252,6 +1251,14 @@ long libos_syscall(long n, long params[6])
             size_t count = (size_t)x3;
 
             _strace(n, "fd=%d buf=%p count=%zu", fd, buf, count);
+
+            if (fd == DEV_URANDOM_FD)
+            {
+                if (oe_random(buf, count) != OE_OK)
+                    _return(n, -EIO);
+
+                return _return(n, (long)count);
+            }
 
             if (!libos_is_libos_fd(fd))
                 return _return(n, _forward_syscall(n, params));
