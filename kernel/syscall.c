@@ -11,6 +11,7 @@
 #include <stdarg.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <sys/socket.h>
 #include <setjmp.h>
 #include <sys/uio.h>
 #include <sys/ioctl.h>
@@ -1155,6 +1156,21 @@ done:
 void libos_futex_breakpoint(void)
 {
 }
+
+#if 0
+static void _dump(const void* p_, size_t n)
+{
+    const uint8_t* p = (const uint8_t*)p_;
+
+    while (n--)
+    {
+        //printf("<%02x>", *p++);
+        printf("<%03u>", *p++);
+    }
+
+    printf("\n");
+}
+#endif
 
 long libos_syscall(long n, long params[6])
 {
@@ -2339,6 +2355,25 @@ long libos_syscall(long n, long params[6])
             break;
         case SYS_rseq:
             break;
+        case SYS_bind:
+        {
+            int sockfd = (int)x1;
+            const struct sockaddr* addr = (const struct sockaddr*)x2;
+            socklen_t addrlen = (socklen_t)x3;
+            uint16_t family = addr->sa_family;
+            uint16_t port0 = (uint8_t)addr->sa_data[0];
+            uint16_t port1 = (uint8_t)addr->sa_data[1];
+            uint16_t port = (uint16_t)(port0 << 8) | port1;
+            uint8_t c1 = (uint8_t)addr->sa_data[5];
+            uint8_t c2 = (uint8_t)addr->sa_data[4];
+            uint8_t c3 = (uint8_t)addr->sa_data[3];
+            uint8_t c4 = (uint8_t)addr->sa_data[2];
+
+            _strace(n, "sockfd=%d addrlen=%u family=%u ip=%u.%u.%u.%u port=%u",
+                sockfd, addrlen, family, c1, c2, c3, c4, port);
+
+            return _return(n, _forward_syscall(n, params));
+        }
         /* forward network syscdalls to OE */
         case SYS_sendfile:
         case SYS_socket:
@@ -2349,7 +2384,6 @@ long libos_syscall(long n, long params[6])
         case SYS_sendmsg:
         case SYS_recvmsg:
         case SYS_shutdown:
-        case SYS_bind:
         case SYS_listen:
         case SYS_getsockname:
         case SYS_getpeername:

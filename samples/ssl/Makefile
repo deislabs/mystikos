@@ -14,6 +14,9 @@ OPTS = --strace
 run-server: libos
 	$(BINDIR)/libos exec $(OPTS) rootfs /ssl_server
 
+run-server-gdb: libos
+	$(BINDIR)/oegdb --args $(BINDIR)/libos exec $(OPTS) rootfs /ssl_server
+
 run-client: libos
 	$(BINDIR)/libos exec $(OPTS) rootfs /ssl_client1
 
