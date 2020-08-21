@@ -462,7 +462,12 @@ static long _forward_syscall(long n, long params[6])
     long x5 = params[4];
     long x6 = params[5];
 
-    return oe_syscall(n, x1, x2, x3, x4, x5, x6);
+    long ret = oe_syscall(n, x1, x2, x3, x4, x5, x6);
+
+    if (ret == -1)
+        ret = -errno;
+
+    return ret;
 }
 
 typedef struct fd_entry
