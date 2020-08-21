@@ -1029,6 +1029,11 @@ long libos_syscall_unload_symbols(void)
     return -ENOTSUP;
 }
 
+long libos_syscall_getpid(void)
+{
+    return DEFAULT_PID;
+}
+
 long libos_syscall_ret(long ret)
 {
     if ((unsigned long)ret > -4096UL)
@@ -1538,7 +1543,7 @@ long libos_syscall(long n, long params[6])
         case SYS_getpid:
         {
             _strace(n, NULL);
-            return _return(n, DEFAULT_PID);
+            return _return(n, libos_syscall_getpid());
         }
         case SYS_clone:
             break;

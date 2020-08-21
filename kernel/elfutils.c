@@ -1,6 +1,9 @@
 #include <libos/elfutils.h>
 #include <libos/syscall.h>
 #include <libos/round.h>
+#include <libos/paths.h>
+#include <libos/file.h>
+#include <libos/eraise.h>
 #include <string.h>
 #include <lthread.h>
 #include <stdio.h>
@@ -1263,6 +1266,28 @@ void _entry_thread(void* args_)
     (*args->enter)(args->stack, args->dynv, args->syscall);
 }
 
+/* Create the "/proc/<pid>/exe" link */
+static int _setup_exe_link(const char* path)
+{
+    int ret = 0;
+    char buf[PATH_MAX];
+    char target[PATH_MAX];
+    pid_t pid = (pid_t)libos_syscall_getpid();
+
+    if (libos_normalize(path, target, sizeof(target)) != 0)
+        ERAISE(-EINVAL);
+
+    snprintf(buf, sizeof(buf), "/proc/%u", pid);
+    ECHECK(libos_mkdirhier(buf, 0777));
+
+    snprintf(buf, sizeof(buf), "/proc/%u/exe", pid);
+    ECHECK(libos_syscall_symlink(target, buf));
+
+done:
+    return ret;
+}
+
+/* ATTN: convert asserts to errors */
 int elf_enter_crt(
     const void* image_base,
     size_t argc,
@@ -1323,6 +1348,12 @@ int elf_enter_crt(
     }
 
     assert(elf_check_stack(stack, stack_size) == 0);
+
+    if (_setup_exe_link(argv[1]) != 0)
+    {
+        assert("unexpected" == NULL);
+        abort();
+    }
 
     /* Run the main program */
     {

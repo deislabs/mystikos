@@ -84,4 +84,6 @@ long libos_syscall_load_symbols(void);
 
 long libos_syscall_unload_symbols(void);
 
+long libos_syscall_getpid(void);
+
 #endif /* _LIBOS_SYSCALL_H */
