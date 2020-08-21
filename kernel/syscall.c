@@ -2382,12 +2382,46 @@ long libos_syscall(long n, long params[6])
 
             return _return(n, _forward_syscall(n, params));
         }
+        case SYS_recvfrom:
+        {
+            int sockfd = (int)x1;
+            void* buf  = (void*)x2;
+            size_t len = (size_t)x3;
+            int flags = (int)x4;
+            struct sockaddr* src_addr = (struct sockaddr*)x5;
+            socklen_t* addrlen = (socklen_t*)x6;
+            long ret = 0;
+
+            _strace(n,
+                "sockfd=%d buf=%p len=%zu flags=%d src_addr=%p addrlen=%p",
+                sockfd, buf, len, flags, src_addr, addrlen);
+
+            for (size_t i = 0; i < 10; i++)
+            {
+                ret = _forward_syscall(n, params);
+
+                if (ret != EAGAIN)
+                    break;
+
+                {
+                    struct timespec req;
+                    req.tv_sec = 0;
+                    req.tv_nsec = 1000000000 / 10;
+                    long args[6];
+                    args[0] = (long)&req;
+                    args[1] = (long)NULL;
+                    _forward_syscall(SYS_nanosleep, args);
+                    continue;
+                }
+            }
+
+            return _return(n, ret);
+        }
         /* forward network syscdalls to OE */
         case SYS_sendfile:
         case SYS_socket:
         case SYS_accept:
         case SYS_sendto:
-        case SYS_recvfrom:
         case SYS_sendmsg:
         case SYS_recvmsg:
         case SYS_shutdown:
