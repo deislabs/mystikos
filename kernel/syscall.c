@@ -600,12 +600,6 @@ long libos_syscall_lseek(int fd, off_t offset, int whence)
     libos_file_t* file;
     const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_FILE;
 
-    if (fd == DEV_URANDOM_FD)
-    {
-        /* ignore lseek() on /dev/urandom device */
-        goto done;
-    }
-
     ECHECK(libos_fdtable_find(fd, type, (void**)&fs, (void**)&file));
 
     ret = ((*fs->fs_lseek)(fs, file, offset, whence));
@@ -620,9 +614,6 @@ long libos_syscall_close(int fd)
     libos_fs_t* fs;
     libos_file_t* file;
     const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_FILE;
-
-    if (fd == DEV_URANDOM_FD)
-        goto done;
 
     ECHECK(libos_fdtable_find(fd, type, (void**)&fs, (void**)&file));
 
@@ -1297,6 +1288,9 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "fd=%d", fd);
 
+            if (fd == DEV_URANDOM_FD)
+                return _return(n, 0);
+
             if (!libos_is_libos_fd(fd))
                 return _return(n, _forward_syscall(n, params));
 
@@ -1342,6 +1336,12 @@ long libos_syscall(long n, long params[6])
             int whence = (int)x3;
 
             _strace(n, "fd=%d offset=%ld whence=%d", fd, offset, whence);
+
+            if (fd == DEV_URANDOM_FD)
+            {
+                /* ATTN: ignored */
+                return _return(n, 0);
+            }
 
             return _return(n, libos_syscall_lseek(fd, offset, whence));
         }
