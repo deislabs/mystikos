@@ -205,6 +205,37 @@ static void _apply_relocations(
     }
 }
 
+/* Handle illegal SGX instructions */
+static uint64_t _vectored_handler(oe_exception_record_t* er)
+{
+    const uint16_t RDTSC_OPCODE = 0x310F;
+    const uint16_t opcode = *((uint16_t*)er->context->rip);
+
+    if (er->code == OE_EXCEPTION_ILLEGAL_INSTRUCTION && opcode == RDTSC_OPCODE)
+    {
+        uint32_t rax = 0;
+        uint32_t rdx = 0;
+
+        /* Ask host to execute RDTSC instruction */
+        if (libos_rdtsc_ocall(&rax, &rdx) != OE_OK)
+        {
+            fprintf(stderr, "libos_rdtsc_ocall() failed\n");
+            assert(false);
+            return OE_EXCEPTION_CONTINUE_SEARCH;
+        }
+
+        er->context->rax = rax;
+        er->context->rdx = rdx;
+
+        /* Skip over the illegal instruction. */
+        er->context->rip += 2;
+
+        return OE_EXCEPTION_CONTINUE_EXECUTION;
+    }
+
+    return OE_EXCEPTION_CONTINUE_SEARCH;
+}
+
 int libos_enter_ecall(
     struct libos_options* options,
     const void* args,
@@ -274,6 +305,14 @@ int libos_enter_ecall(
         }
     }
 
+    /* Setup the vectored exception handler */
+    if (oe_add_vectored_exception_handler(true, _vectored_handler) != OE_OK)
+    {
+        fprintf(stderr, "oe_add_vectored_exception_handler() failed\n");
+        assert(0);
+    }
+
+    /* Setup the RAM file system */
     _setup_ramfs();
 
     /* Fetch the rootfs image */

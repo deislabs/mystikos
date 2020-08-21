@@ -448,6 +448,17 @@ int libos_clock_gettime_ocall(int clk_id, struct libos_timespec* tp)
     return 0;
 }
 
+void libos_rdtsc_ocall(uint32_t* rax, uint32_t* rdx)
+{
+    uint32_t hi;
+    uint32_t lo;
+
+    __asm__ __volatile__("rdtsc" : "=a"(lo), "=d"(hi));
+
+    *rax = lo;
+    *rdx = hi;
+}
+
 static int _write_file(int fd, const void* data, size_t size)
 {
     int ret = 0;

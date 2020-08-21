@@ -33,6 +33,8 @@ enclave
             int clk_id,
             [out] struct libos_timespec* tp);
 
+        void libos_rdtsc_ocall([out] uint32_t* rax, [out] uint32_t* rdx);
+
         int libos_add_symbol_file_ocall(
             [in, size=file_size] const void* file_data,
             size_t file_size,
