@@ -2356,28 +2356,27 @@ long libos_syscall(long n, long params[6])
         case SYS_rseq:
             break;
         case SYS_bind:
+        case SYS_connect:
         {
+            /* connect() and bind() have the same parameters */
             int sockfd = (int)x1;
             const struct sockaddr* addr = (const struct sockaddr*)x2;
             socklen_t addrlen = (socklen_t)x3;
-            uint16_t family = addr->sa_family;
-            uint16_t port0 = (uint8_t)addr->sa_data[0];
-            uint16_t port1 = (uint8_t)addr->sa_data[1];
-            uint16_t port = (uint16_t)(port0 << 8) | port1;
-            uint8_t c1 = (uint8_t)addr->sa_data[5];
-            uint8_t c2 = (uint8_t)addr->sa_data[4];
-            uint8_t c3 = (uint8_t)addr->sa_data[3];
-            uint8_t c4 = (uint8_t)addr->sa_data[2];
+            const uint8_t* p = (uint8_t*)addr->sa_data;
+            uint16_t port = (uint16_t)((p[0] << 8) | p[1]);
+            const uint8_t ip1 = p[2];
+            const uint8_t ip2 = p[3];
+            const uint8_t ip3 = p[4];
+            const uint8_t ip4 = p[5];
 
             _strace(n, "sockfd=%d addrlen=%u family=%u ip=%u.%u.%u.%u port=%u",
-                sockfd, addrlen, family, c1, c2, c3, c4, port);
+                sockfd, addrlen, addr->sa_family, ip1, ip2, ip3, ip4, port);
 
             return _return(n, _forward_syscall(n, params));
         }
         /* forward network syscdalls to OE */
         case SYS_sendfile:
         case SYS_socket:
-        case SYS_connect:
         case SYS_accept:
         case SYS_sendto:
         case SYS_recvfrom:
