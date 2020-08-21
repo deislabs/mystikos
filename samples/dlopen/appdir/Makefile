@@ -1,9 +1,6 @@
-
 all:
-	mkdir -p bin
-	mkdir -p lib
-	gcc -Wall -o ./bin/main main.c -ldl
-	gcc -Wall -shared -o ./lib/libfoo.so foo.c -ldl
+	gcc -g -fPIC -Wall -o main main.c -ldl
+	gcc -g -fPIC -Wall -shared -o libfoo.so foo.c -ldl
 
 clean:
-	rm -rf bin lib
+	rm -rf libfoo.so main

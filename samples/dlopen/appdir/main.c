@@ -7,7 +7,7 @@ int main(int argc, const char* argv[])
     void* handle;
     typedef void (*func_t)();
     func_t func;
-    const char path[] = "/root/oe-libos/samples/dlopen/appdir/lib/libfoo.so";
+    const char path[] = "/libfoo.so";
 
     if (!(handle = dlopen(path, RTLD_NOW)))
     {
