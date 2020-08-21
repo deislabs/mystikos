@@ -1819,7 +1819,10 @@ long libos_syscall(long n, long params[6])
             return _return(n, DEFAULT_UID);
         }
         case SYS_getegid:
-            break;
+        {
+            _strace(n, NULL);
+            return _return(n, DEFAULT_GID);
+        }
         case SYS_setpgid:
             break;
         case SYS_getppid:
