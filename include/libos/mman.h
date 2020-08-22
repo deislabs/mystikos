@@ -154,7 +154,7 @@ void libos_mman_dump(const libos_mman_t* h, bool full);
 
 int libos_mman_sbrk(libos_mman_t* heap, ptrdiff_t increment, void** ptr);
 
-int libos_mman_brk(libos_mman_t* heap, void* addr);
+int libos_mman_brk(libos_mman_t* mman, void* addr, void** ptr);
 
 void libos_mman_set_sanity(libos_mman_t* heap, bool sanity);
 

@@ -202,3 +202,13 @@ int libos_munmap(void* addr, size_t length)
 {
     return libos_mman_munmap(&_mman, addr, length);
 }
+
+long libos_syscall_brk(void* addr)
+{
+    void* ptr = NULL;
+
+    /* Ignore return value (ptr is set to the current brk value on failure) */
+    libos_mman_brk(&_mman, addr, &ptr);
+
+    return (long)ptr;
+}

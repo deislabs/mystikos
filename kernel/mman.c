@@ -654,14 +654,26 @@ done:
 **     This function is similar to the POSIX brk() function.
 **
 */
-int libos_mman_brk(libos_mman_t* mman, void* addr)
+int libos_mman_brk(libos_mman_t* mman, void* addr, void** ptr)
 {
-    int ret = -1;
+    int ret = 0;
     bool locked = false;
+
+    if (*ptr)
+        *ptr = NULL;
+
+    _mman_clear_err(mman);
+
+    if (!mman || !ptr)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
 
     _mman_lock(mman, &locked);
 
-    _mman_clear_err(mman);
+    if (addr == NULL)
+        goto done;
 
     /* Fail if requested address is not within the break memory area */
     if ((uintptr_t)addr < mman->start || (uintptr_t)addr >= mman->map)
@@ -681,9 +693,12 @@ int libos_mman_brk(libos_mman_t* mman, void* addr)
         goto done;
     }
 
-    ret = 0;
-
 done:
+
+    /* Always return the break value (even on error) */
+    if (mman)
+        *ptr = (void*)mman->brk;
+
     _mman_unlock(mman, &locked);
     return ret;
 }

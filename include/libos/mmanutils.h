@@ -18,4 +18,6 @@ void* libos_mmap(
 
 int libos_munmap(void* addr, size_t length);
 
+long libos_syscall_brk(void* addr);
+
 #endif /* _LIBOS_MMANUTILS_H */

@@ -1413,8 +1413,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "addr=%lX", (long)addr);
 
-            /* fail on SYS_brk, forcing MUSL to use SYS_mmap */
-            return _return(n, -ENOMEM);
+            return _return(n, libos_syscall_brk(addr));
         }
         case SYS_rt_sigaction:
         {
