@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <dlfcn.h>
 
-int main(int argc, const char* argv[])
+void call_foo(const char* argv0)
 {
     void* handle;
     typedef void (*func_t)();
@@ -11,13 +11,13 @@ int main(int argc, const char* argv[])
 
     if (!(handle = dlopen(path, RTLD_NOW)))
     {
-        fprintf(stderr, "%s: dlopen() failed\n", argv[0]);
+        fprintf(stderr, "%s: dlopen() failed\n", argv0);
         exit(1);
     }
 
     if (!(func = dlsym(handle, "foo")))
     {
-        fprintf(stderr, "%s: dlsym() failed\n", argv[0]);
+        fprintf(stderr, "%s: dlsym() failed\n", argv0);
         exit(1);
     }
 
@@ -25,5 +25,10 @@ int main(int argc, const char* argv[])
 
     dlclose(handle);
 
+}
+
+int main(int argc, const char* argv[])
+{
+    call_foo(argv[0]);
     return 0;
 }

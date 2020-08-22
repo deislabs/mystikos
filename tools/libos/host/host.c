@@ -491,6 +491,7 @@ done:
 #define MAX_DEBUG_IMAGES 256
 
 static oe_debug_image_t _debug_images[MAX_DEBUG_IMAGES];
+static bool _debug_images_loaded[MAX_DEBUG_IMAGES];
 static size_t _num_debug_images;
 
 int libos_add_symbol_file_ocall(
@@ -576,8 +577,12 @@ int libos_load_symbols_ocall(void)
 
     for (size_t i = 0; i < _num_debug_images; i++)
     {
-        oe_debug_image_t* di = &_debug_images[i];
-        oe_debug_notify_library_loaded(di);
+        if (!_debug_images_loaded[i])
+        {
+            oe_debug_image_t* di = &_debug_images[i];
+            oe_debug_notify_library_loaded(di);
+            _debug_images_loaded[i] = true;
+        }
     }
 
     return ret;

@@ -9,7 +9,7 @@ all: libos
 	sudo docker run --rm -v $(APPDIR):/appdir $(IMG) bash -c "make -C appdir"
 	$(BINDIR)/libos mkcpio appdir rootfs
 
-#OPTS = --strace
+OPTS = --strace
 
 run:
 	$(BINDIR)/libos exec rootfs /main $(OPTS)
