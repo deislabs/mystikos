@@ -20,7 +20,7 @@ rootfs:
 	libos mkcpio appdir rootfs
 
 ifdef STRACE
-OPTS = --trace-syscalls
+OPTS += --trace-syscalls
 endif
 
 run: all

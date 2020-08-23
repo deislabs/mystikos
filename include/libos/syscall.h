@@ -11,6 +11,8 @@
 
 void libos_trace_syscalls(bool flag);
 
+void libos_real_syscalls(bool flag);
+
 long libos_syscall(long n, long params[6]);
 
 const char* syscall_str(long n);

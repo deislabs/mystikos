@@ -44,6 +44,8 @@ jmp_buf _exit_jmp_buf;
 
 static bool _trace_syscalls;
 
+static bool _real_syscalls;
+
 typedef struct _pair
 {
     long num;
@@ -411,11 +413,42 @@ const char* syscall_str(long n)
     return "unknown";
 }
 
+static __inline__ long _real_syscall(
+    long n,
+    long x1,
+    long x2,
+    long x3,
+    long x4,
+    long x5,
+    long x6)
+{
+    unsigned long ret;
+    register long r10 __asm__("r10") = x4;
+    register long r8 __asm__("r8") = x5;
+    register long r9 __asm__("r9") = x6;
+
+    __asm__ __volatile__(
+        "syscall"
+        : "=a"(ret)
+        : "a"(n), "D"(x1), "S"(x2), "d"(x3), "r"(r10), "r"(r8), "r"(r9)
+        : "rcx", "r11", "memory");
+
+    return (long)ret;
+}
+
 static const void* _original_fs_base;
 
 static void _set_fs_base(const void* p)
 {
-    __asm__ volatile("wrfsbase %0" ::"r"(p));
+    if (_real_syscalls)
+    {
+        const long ARCH_SET_FS = 0x1002;
+        _real_syscall(SYS_arch_prctl, ARCH_SET_FS, (long)p, 0, 0, 0, 0);
+    }
+    else
+    {
+        __asm__ volatile("wrfsbase %0" ::"r"(p));
+    }
 }
 
 static void* _get_fs_base(void)
@@ -453,21 +486,35 @@ int libos_get_exit_status(void)
 
 static long _forward_syscall(long n, long params[6])
 {
-    extern long oe_syscall(long n, long x1, long x2, long x3, long x4,
-        long x5, long x6);
-    long x1 = params[0];
-    long x2 = params[1];
-    long x3 = params[2];
-    long x4 = params[3];
-    long x5 = params[4];
-    long x6 = params[5];
+    const long x1 = params[0];
+    const long x2 = params[1];
+    const long x3 = params[2];
+    const long x4 = params[3];
+    const long x5 = params[4];
+    const long x6 = params[5];
 
-    long ret = oe_syscall(n, x1, x2, x3, x4, x5, x6);
+    if (_real_syscalls)
+    {
+        if (_trace_syscalls)
+            fprintf(stderr, "    [real syscall]\n");
 
-    if (ret == -1)
-        ret = -errno;
+        return _real_syscall(n, x1, x2, x3, x4, x5, x6);
+    }
+    else
+    {
+        extern long oe_syscall(long n, long x1, long x2, long x3, long x4,
+            long x5, long x6);
 
-    return ret;
+        if (_trace_syscalls)
+            fprintf(stderr, "    [forward syscall]\n");
+
+        long ret = oe_syscall(n, x1, x2, x3, x4, x5, x6);
+
+        if (ret == -1)
+            ret = -errno;
+
+        return ret;
+    }
 }
 
 typedef struct fd_entry
@@ -2455,4 +2502,9 @@ int libos_set_exit_jump(void)
 void libos_trace_syscalls(bool flag)
 {
     _trace_syscalls = flag;
+}
+
+void libos_real_syscalls(bool flag)
+{
+    _real_syscalls = flag;
 }

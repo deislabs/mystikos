@@ -27,5 +27,5 @@ EDGER8R_OPTS += --untrusted
 EDGER8R_OPTS += --search-path $(INCDIR)
 EDGER8R_OPTS += --untrusted-dir $(SUBOBJDIR)
 
-$(SUBOBJDIR)/libos_u.c:
+$(SUBOBJDIR)/libos_u.c: ../libos.edl
 	$(EDGER8R) $(EDGER8R_OPTS) ../libos.edl

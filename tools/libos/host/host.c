@@ -289,7 +289,7 @@ static int _exec(int argc, const char* argv[])
     oe_result_t r;
     const oe_enclave_type_t type = OE_ENCLAVE_TYPE_SGX;
     oe_enclave_t* enclave;
-    const uint32_t flags = OE_ENCLAVE_FLAG_DEBUG;
+    uint32_t flags = OE_ENCLAVE_FLAG_DEBUG;
     int retval;
     char dir[PATH_MAX];
     char libosenc[PATH_MAX];
@@ -303,12 +303,20 @@ static int _exec(int argc, const char* argv[])
     /* Get options */
     {
         /* Get --trace-syscalls option */
-        if (_get_opt(&argc, argv, "--trace-syscalls", NULL) == 0)
+        if (_get_opt(&argc, argv, "--trace-syscalls", NULL) == 0 ||
+            _get_opt(&argc, argv, "--strace", NULL) == 0)
+        {
             options.trace_syscalls = true;
+        }
 
-        /* Get --strace option */
-        if (_get_opt(&argc, argv, "--strace", NULL) == 0)
-            options.trace_syscalls = true;
+        /* Get --real-syscalls option */
+        if (_get_opt(&argc, argv, "--real-syscalls", NULL) == 0)
+            options.real_syscalls = true;
+    }
+
+    if (options.real_syscalls)
+    {
+        flags |= OE_ENCLAVE_FLAG_SIMULATE;
     }
 
     if (argc < 4)

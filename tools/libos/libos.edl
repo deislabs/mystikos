@@ -8,6 +8,7 @@ enclave
     struct libos_options
     {
         bool trace_syscalls;
+        bool real_syscalls;
     };
 
     struct libos_timespec

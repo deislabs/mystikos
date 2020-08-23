@@ -266,7 +266,10 @@ int libos_enter_ecall(
     argv[0] = "libosenc.so";
 
     if (options)
+    {
         libos_trace_syscalls(options->trace_syscalls);
+        libos_real_syscalls(options->real_syscalls);
+    }
 
 #ifdef TRACE
     _dump_args(argv);
