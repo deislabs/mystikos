@@ -45,5 +45,7 @@ enclave
         int libos_load_symbols_ocall();
 
         int libos_unload_symbols_ocall();
+
+        long libos_syscall_isatty_ocall(int fd);
     };
 };

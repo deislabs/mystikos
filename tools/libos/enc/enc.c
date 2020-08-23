@@ -504,6 +504,17 @@ done:
     return ret;
 }
 
+/* This overrides the weak version in liboskernel.a */
+long libos_syscall_isatty(int fd)
+{
+    long ret;
+
+    if (libos_syscall_isatty_ocall(&ret, fd) != OE_OK)
+        return -EINVAL;
+
+    return (long)ret;
+}
+
 OE_SET_ENCLAVE_SGX(
     1,    /* ProductID */
     1,    /* SecurityVersion */

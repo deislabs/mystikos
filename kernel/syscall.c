@@ -38,7 +38,13 @@
 
 #define DEV_URANDOM_FD (FD_OFFSET + FDTABLE_SIZE)
 
+#define COLOR_RED "\e[31m"
+#define COLOR_BLUE "\e[34m"
+#define COLOR_RESET "\e[0m"
+
 oe_result_t oe_random(void* data, size_t size);
+
+long libos_syscall_isatty(int fd);
 
 jmp_buf _exit_jmp_buf;
 
@@ -463,7 +469,11 @@ static void _strace(long n, const char* fmt, ...)
 {
     if (_trace_syscalls)
     {
-        fprintf(stderr, "=== %s(", syscall_str(n));
+        const bool isatty = libos_syscall_isatty(fileno(stderr)) == 1;
+        const char* blue = isatty ? COLOR_BLUE : "";
+        const char* reset = isatty ? COLOR_RESET : "";
+
+        fprintf(stderr, "=== %s%s%s(", blue, syscall_str(n), reset);
 
         if (fmt)
         {
@@ -528,8 +538,22 @@ static long _return(long n, long ret)
 {
     if (_trace_syscalls)
     {
-        fprintf(stderr,
-            "    %s(): return=%ld (%lX)\n", syscall_str(n), ret, ret);
+        const char* red = "";
+        const char* reset = "";
+
+        if (ret < 0)
+        {
+            const bool isatty = libos_syscall_isatty(fileno(stderr)) == 1;
+
+            if (isatty)
+            {
+                red = COLOR_RED;
+                reset = COLOR_RESET;
+            }
+        }
+
+        fprintf(stderr, "    %s%s(): return=%ld (%lX)%s\n",
+            red, syscall_str(n), ret, ret, reset);
     }
 
     return ret;
@@ -1007,6 +1031,15 @@ long libos_syscall_clock_gettime(clockid_t clk_id, struct timespec *tp)
 {
     (void)clk_id;
     (void)tp;
+
+    assert("unimplemented: implement in enclave" == NULL);
+    return -ENOTSUP;
+}
+
+__attribute__((__weak__))
+long libos_syscall_isatty(int fd)
+{
+    (void)fd;
 
     assert("unimplemented: implement in enclave" == NULL);
     return -ENOTSUP;

@@ -15,6 +15,7 @@ all: libos
 ifdef STRACE
 OPTS += --strace
 endif
+OPTS += --strace
 
 GDB = $(BINDIR)/oegdb
 

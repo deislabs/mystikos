@@ -456,6 +456,14 @@ int libos_clock_gettime_ocall(int clk_id, struct libos_timespec* tp)
     return 0;
 }
 
+long libos_syscall_isatty_ocall(int fd)
+{
+    if (isatty(fd) != 1)
+        return -errno;
+
+    return 1;
+}
+
 void libos_rdtsc_ocall(uint32_t* rax, uint32_t* rdx)
 {
     uint32_t hi;
