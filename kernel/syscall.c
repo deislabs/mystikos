@@ -2480,7 +2480,7 @@ long libos_syscall(long n, long params[6])
             {
                 ret = _forward_syscall(n, params);
 
-                if (ret != EAGAIN)
+                if (ret != -EAGAIN)
                     break;
 
                 {
