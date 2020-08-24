@@ -40,6 +40,7 @@
 
 #define COLOR_RED "\e[31m"
 #define COLOR_BLUE "\e[34m"
+#define COLOR_GREEN "\e[32m"
 #define COLOR_RESET "\e[0m"
 
 oe_result_t oe_random(void* data, size_t size);
@@ -470,7 +471,7 @@ static void _strace(long n, const char* fmt, ...)
     if (_trace_syscalls)
     {
         const bool isatty = libos_syscall_isatty(fileno(stderr)) == 1;
-        const char* blue = isatty ? COLOR_BLUE : "";
+        const char* blue = isatty ? COLOR_GREEN : "";
         const char* reset = isatty ? COLOR_RESET : "";
 
         fprintf(stderr, "=== %s%s%s(", blue, syscall_str(n), reset);
