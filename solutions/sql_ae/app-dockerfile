@@ -1,0 +1,10 @@
+# image for compile
+FROM alpine:3.10 AS base-image
+
+RUN apk add --no-cache unixodbc-dev curl build-base bash
+
+WORKDIR /app/msodbcinstall
+
+RUN curl -O https://download.microsoft.com/download/e/4/e/e4e67866-dffd-428c-aac7-8d28ddafb39b/msodbcsql17_17.6.1.1-1_amd64.apk && apk add --allow-untrusted $(ls)
+
+

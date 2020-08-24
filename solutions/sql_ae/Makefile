@@ -1,0 +1,45 @@
+.PHONY: all app cpio
+
+TOP=$(abspath ../..)
+include $(TOP)/defs.mak
+
+APPDIR = appdir
+CFLAGS = -fPIC
+LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
+
+DNSSERVER = $(shell systemd-resolve --status | grep "DNS Servers" | cut -f2 -d:)
+
+all: libos app
+	$(LIBOS) mkcpio $(APPDIR) rootfs
+
+#OPTS = --trace-syscalls
+
+run: cpio
+	$(LIBOS) exec rootfs /odbc_app msi default $(OPTS)
+
+libos:
+	$(MAKE) -C $(TOP)/tools/libos
+
+app:
+	rm -rf app/odbc_app $(APPDIR)
+	docker build -t alpine.build -f app-dockerfile .
+	docker run --rm -v $(CURDIR)/app:/app alpine.build bash -c "gcc -g -fshort-wchar -fPIC -o /app/cksp.so -shared /app/cksp.c -I/opt/microsoft/msodbcsql17/include; gcc -g -o /app/odbc_app -fshort-wchar /app/odbc_app.c /app/odbc_helper.c -lodbc -ldl -I/opt/microsoft/msodbcsql17/include"
+	sudo chown $(USER):$(GROUP) app/odbc_app
+	$(TOP)/scripts/appbuilder Dockerfile
+	echo "nameserver $(DNSSERVER)" >> $(APPDIR)/etc/resolv.conf
+	cp app/odbc_app $(APPDIR)/odbc_app
+	cp app/cksp.so $(APPDIR)/cksp.so
+	# make sure the app we are running is the one we just built.
+	ls -l $(APPDIR)/odbc_app $(APPDIR)/cksp.so; date
+
+cpio: app
+	$(LIBOS) mkcpio $(APPDIR) rootfs
+
+run-host:
+	gcc -g -fshort-wchar -fPIC -o cksp.so -shared app/cksp.c -I/opt/microsoft/msodbcsql17/include
+	gcc -g -o odbc_app -fshort-wchar app/odbc_app.c app/odbc_helper.c -lodbc -ldl -I/opt/microsoft/msodbcsql17/include
+	./odbc_app msi default
+
+clean:
+	rm -rf rootfs $(APPDIR)
+	rm -rf app/odbc_app app/cksp.so app/msodbcinstall odbc_app cksp.so

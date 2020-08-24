@@ -1,0 +1,6 @@
+# image for compile
+FROM alpine:3.10 AS base-image
+
+RUN apk add --no-cache curl build-base bash mbedtls-dev curl-dev
+
+WORKDIR /src
