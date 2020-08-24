@@ -31,6 +31,8 @@
 
     * implement SYS_memorybarrier properly
 
+    * minimize rootfs enclave memory usage (avoid second copy, share file mem)
+
     CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 
     * implement symlink across file systems
