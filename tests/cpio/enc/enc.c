@@ -14,6 +14,7 @@
 #include <libos/cpio.h>
 #include <libos/lsr.h>
 #include <libos/trace.h>
+#include <libos/atexit.h>
 
 extern int oe_host_printf(const char* fmt, ...);
 
@@ -175,6 +176,8 @@ int cpio_ecall(const void* cpio_data, size_t cpio_size)
     assert((*fs->fs_release)(fs) == 0);
 
     libos_strarr_release(&paths);
+
+    libos_call_atexit_functions();
 
     return 0;
 }

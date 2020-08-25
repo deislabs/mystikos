@@ -4,6 +4,7 @@
 #include <openenclave/enclave.h>
 #include <libos/ramfs.h>
 #include <libos/mount.h>
+#include <libos/atexit.h>
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
@@ -35,6 +36,8 @@ int run_ecall(void)
     /* release the file system */
     assert((*fs1->fs_release)(fs1) == 0);
     assert((*fs2->fs_release)(fs2) == 0);
+
+    libos_call_atexit_functions();
 
     return 0;
 }

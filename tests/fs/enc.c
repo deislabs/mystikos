@@ -4,6 +4,7 @@
 #include <openenclave/enclave.h>
 #include <libos/ramfs.h>
 #include <libos/mount.h>
+#include <libos/atexit.h>
 #include <libos/file.h>
 #include <libos/trace.h>
 #include <unistd.h>
@@ -573,6 +574,8 @@ int run_ecall(void)
     test_symlink();
 
     assert((*fs->fs_release)(fs) == 0);
+
+    libos_call_atexit_functions();
 
     return 0;
 }
