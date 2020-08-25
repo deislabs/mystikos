@@ -580,7 +580,7 @@ static int _add_fd_link(libos_fs_t* fs, libos_file_t* file, int fd)
 
     ECHECK((*fs->fs_realpath)(fs, file, realpath, sizeof(realpath)));
 
-    if (snprintf(linkpath, n, "/proc/self/fd/%d", fd) >= (int)n)
+    if (libos_snprintf(linkpath, n, "/proc/self/fd/%d", fd) >= (int)n)
         ERAISE(-ENAMETOOLONG);
 
 #if 0
@@ -605,7 +605,7 @@ static int _remove_fd_link(libos_fs_t* fs, libos_file_t* file, int fd)
 
     ECHECK((*fs->fs_realpath)(fs, file, realpath, sizeof(realpath)));
 
-    if (snprintf(linkpath, n, "/proc/self/fd/%d", fd) >= (int)n)
+    if (libos_snprintf(linkpath, n, "/proc/self/fd/%d", fd) >= (int)n)
         ERAISE(-ENAMETOOLONG);
 
 #if 0

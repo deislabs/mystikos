@@ -1,5 +1,6 @@
 #include <libos/elfutils.h>
 #include <libos/syscall.h>
+#include <libos/strings.h>
 #include <libos/round.h>
 #include <libos/paths.h>
 #include <libos/file.h>
@@ -1284,10 +1285,10 @@ static int _setup_exe_link(const char* path)
     if (libos_normalize(path, target, sizeof(target)) != 0)
         ERAISE(-EINVAL);
 
-    snprintf(buf, sizeof(buf), "/proc/%u", pid);
+    libos_snprintf(buf, sizeof(buf), "/proc/%u", pid);
     ECHECK(libos_mkdirhier(buf, 0777));
 
-    snprintf(buf, sizeof(buf), "/proc/%u/exe", pid);
+    libos_snprintf(buf, sizeof(buf), "/proc/%u/exe", pid);
     ECHECK(libos_syscall_symlink(target, buf));
 
 done:

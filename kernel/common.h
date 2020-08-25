@@ -5,6 +5,7 @@
 #define _LIBOS_COMMON_H
 
 #include <stddef.h>
+#include <stdarg.h>
 #include <libos/malloc.h>
 #include <libos/strings.h>
 
@@ -49,5 +50,11 @@ char* strchr(const char* s, int c);
 
 __attribute__((deprecated))
 char* strrchr(const char* s, int c);
+
+__attribute__((deprecated))
+int vsnprintf(char* str, size_t size, const char* format, va_list ap);
+
+__attribute__((deprecated))
+int snprintf(char* str, size_t size, const char* format, ...);
 
 #endif /* _LIBOS_COMMON_H */

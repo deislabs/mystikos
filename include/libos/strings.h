@@ -2,6 +2,7 @@
 #define _LIBOS_STRINGS_H
 
 #include <libos/types.h>
+#include <stdarg.h>
 
 #define LIBOS_STRLCPY(DEST, SRC) libos_strlcpy(DEST, SRC, sizeof(DEST))
 #define LIBOS_STRLCAT(DEST, SRC) libos_strlcat(DEST, SRC, sizeof(DEST))
@@ -48,5 +49,9 @@ int libos_strcmp(const char* s1, const char* s2);
 char* libos_strchr(const char* s, int c);
 
 char* libos_strrchr(const char* s, int c);
+
+int libos_vsnprintf(char* str, size_t size, const char* format, va_list ap);
+
+int libos_snprintf(char* str, size_t size, const char* format, ...);
 
 #endif /* _LIBOS_STRINGS_H */

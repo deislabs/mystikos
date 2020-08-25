@@ -1,5 +1,6 @@
 #include <libos/strings.h>
 #include <libos/eraise.h>
+#include <libos/tcall.h>
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -284,4 +285,21 @@ char* libos_strrchr(const char* s, int c)
     }
 
     return NULL;
+}
+
+int libos_vsnprintf(char* str, size_t size, const char* format, va_list ap)
+{
+    return (int)libos_tcall_vsnprintf(str, size, format, ap);
+}
+
+int libos_snprintf(char* str, size_t size, const char* format, ...)
+{
+    va_list ap;
+    int ret;
+
+    va_start(ap, format);
+    ret = libos_vsnprintf(str, size, format, ap);
+    va_end(ap);
+
+    return ret;
 }

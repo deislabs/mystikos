@@ -3,6 +3,7 @@
 #include <sys/syscall.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <openenclave/enclave.h>
 
 long oe_syscall(
@@ -107,6 +108,20 @@ static long _tcall_deallocate(void* ptr)
     return 0;
 }
 
+static long _tcall_vsnprintf(
+    char* str,
+    size_t size,
+    const char* format,
+    va_list ap)
+{
+    if (!str || !format)
+        return -EINVAL;
+
+    long ret = (long)vsnprintf(str, size, format, ap);
+
+    return ret;
+}
+
 long libos_tcall(long n, long params[6])
 {
     long ret = 0;
@@ -140,6 +155,14 @@ long libos_tcall(long n, long params[6])
         {
             void* ptr = (void*)x1;
             return _tcall_deallocate(ptr);
+        }
+        case LIBOS_TCALL_VSNPRINTF:
+        {
+            char* str = (char*)x1;
+            size_t size = (size_t)x2;
+            const char* format = (const char*)x3;
+            va_list* ap = (va_list*)x4;
+            return _tcall_vsnprintf(str, size, format, *ap);
         }
         case SYS_read:
         case SYS_write:
