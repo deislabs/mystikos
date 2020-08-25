@@ -46,7 +46,7 @@
 
 long libos_syscall_isatty(int fd);
 
-jmp_buf _exit_jmp_buf;
+jmp_buf __libos_exit_jmp_buf;
 
 static bool _trace_syscalls;
 
@@ -1674,7 +1674,7 @@ long libos_syscall(long n, long params[6])
             libos_syscall_unload_symbols();
 
             _exit_status = status;
-            longjmp(_exit_jmp_buf, 1);
+            longjmp(__libos_exit_jmp_buf, 1);
 
             /* Unreachable! */
             assert("unreachable" == NULL);
@@ -2533,11 +2533,6 @@ long libos_syscall(long n, long params[6])
     abort();
 
     return 0;
-}
-
-int libos_set_exit_jump(void)
-{
-    return setjmp(_exit_jmp_buf);
 }
 
 void libos_trace_syscalls(bool flag)

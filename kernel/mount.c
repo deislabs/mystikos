@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <libos/realpath.h>
+#include <libos/atexit.h>
 #include <libos/spinlock.h>
 #include <string.h>
 #include <libos/mount.h>
@@ -21,8 +22,10 @@ static libos_spinlock_t _lock = LIBOS_SPINLOCK_INITIALIZER;
 
 static bool _installed_free_mount_table = false;
 
-static void _free_mount_table(void)
+static void _free_mount_table(void* arg)
 {
+    (void)arg;
+
     for (size_t i = 0; i < _mount_table_size; i++)
         free(_mount_table[i].path);
 }
@@ -139,8 +142,7 @@ int libos_mount(libos_fs_t* fs, const char* target)
     /* Install _free_mount_table() if not already installed. */
     if (_installed_free_mount_table == false)
     {
-        extern int oe_atexit(void (*function)(void));
-        oe_atexit(_free_mount_table);
+        libos_atexit(_free_mount_table, NULL);
         _installed_free_mount_table = true;
     }
 

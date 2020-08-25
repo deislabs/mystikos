@@ -4,12 +4,16 @@
 #include <libos/paths.h>
 #include <libos/file.h>
 #include <libos/eraise.h>
+#include <libos/atexit.h>
 #include <string.h>
 #include <lthread.h>
 #include <stdio.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <setjmp.h>
+
+extern jmp_buf __libos_exit_jmp_buf;
 
 typedef struct _pair
 {
@@ -1247,15 +1251,16 @@ entry_args_t;
 #define USE_LTHREADS
 #endif
 
-void _entry_thread(void* args_)
+static void _entry_thread(void* args_)
 {
 #ifdef USE_LTHREADS
     lthread_detach();
 #endif
 
     /* jumps here from _syscall() on SYS_exit */
-    if (libos_set_exit_jump() != 0)
+    if (setjmp(__libos_exit_jmp_buf) != 0)
     {
+        libos_call_atexit_functions();
 #ifdef USE_LTHREADS
         lthread_exit(NULL);
 #endif

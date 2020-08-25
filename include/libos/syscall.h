@@ -19,8 +19,6 @@ const char* syscall_str(long n);
 
 int libos_get_exit_status(void);
 
-int libos_set_exit_jump(void);
-
 void libos_set_rootfs(const char* path);
 
 long libos_syscall_ret(long r);
