@@ -63,4 +63,10 @@ int strncmp(const char* s1, const char* s2, size_t n);
 __attribute__((deprecated))
 char* strdup(const char* s);
 
+__attribute__((deprecated))
+size_t strspn(const char* s, const char* accept);
+
+__attribute__((deprecated))
+size_t strcspn(const char* s, const char* reject);
+
 #endif /* _LIBOS_COMMON_H */

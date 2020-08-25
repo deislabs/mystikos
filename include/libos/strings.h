@@ -58,4 +58,8 @@ int libos_snprintf(char* str, size_t size, const char* format, ...);
 
 char* libos_strdup(const char* s);
 
+size_t libos_strspn(const char* s, const char* accept);
+
+size_t libos_strcspn(const char* s, const char* reject);
+
 #endif /* _LIBOS_STRINGS_H */

@@ -36,11 +36,11 @@ int libos_strsplit(
             size_t r;
 
             /* skip over the delimiter characters */
-            r = strspn(p, delim);
+            r = libos_strspn(p, delim);
             p += r;
 
             /* skip over the token */
-            if ((r = strcspn(p, delim)))
+            if ((r = libos_strcspn(p, delim)))
                 ntoks++;
 
             /* include the null byte in the character count */
@@ -69,11 +69,11 @@ int libos_strsplit(
             size_t r;
 
             /* skip over the delimiter characters */
-            r = strspn(in, delim);
+            r = libos_strspn(in, delim);
             in += r;
 
             /* skip over the token */
-            if ((r = strcspn(in, delim)))
+            if ((r = libos_strcspn(in, delim)))
             {
                 toks[index++] = out;
                 strncpy(out, in, r);
@@ -338,4 +338,32 @@ char* libos_strdup(const char* s)
     libos_memcpy(p, s, len + 1);
 
     return p;
+}
+
+size_t libos_strspn(const char* s, const char* accept)
+{
+    const char* p = s;
+
+    while (*p)
+    {
+        if (!libos_strchr(accept, *p))
+            break;
+        p++;
+    }
+
+    return (size_t)(p - s);
+}
+
+size_t libos_strcspn(const char* s, const char* reject)
+{
+    const char* p = s;
+
+    while (*p)
+    {
+        if (libos_strchr(reject, *p))
+            break;
+        p++;
+    }
+
+    return (size_t)(p - s);
 }
