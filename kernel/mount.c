@@ -160,7 +160,7 @@ int libos_mount(libos_fs_t* fs, const char* target)
 
     /* Assign and initialize new mount point. */
     {
-        if (!(mount_table_entry.path = strdup(target)))
+        if (!(mount_table_entry.path = libos_strdup(target)))
             ERAISE(-ENOMEM);
 
         mount_table_entry.path_size = libos_strlen(target) + 1;

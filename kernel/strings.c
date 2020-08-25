@@ -321,3 +321,21 @@ int libos_strncmp(const char* s1, const char* s2, size_t n)
     /* Return difference of mismatching characters */
     return *s1 - *s2;
 }
+
+char* libos_strdup(const char* s)
+{
+    char* p;
+    size_t len;
+
+    if (!s)
+        return NULL;
+
+    len = libos_strlen(s);
+
+    if (!(p = libos_malloc(len + 1)))
+        return NULL;
+
+    libos_memcpy(p, s, len + 1);
+
+    return p;
+}

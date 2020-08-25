@@ -60,4 +60,7 @@ int snprintf(char* str, size_t size, const char* format, ...);
 __attribute__((deprecated))
 int strncmp(const char* s1, const char* s2, size_t n);
 
+__attribute__((deprecated))
+char* strdup(const char* s);
+
 #endif /* _LIBOS_COMMON_H */

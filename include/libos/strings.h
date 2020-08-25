@@ -56,4 +56,6 @@ int libos_vsnprintf(char* str, size_t size, const char* format, va_list ap);
 
 int libos_snprintf(char* str, size_t size, const char* format, ...);
 
+char* libos_strdup(const char* s);
+
 #endif /* _LIBOS_STRINGS_H */
