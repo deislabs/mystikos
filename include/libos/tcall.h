@@ -12,6 +12,8 @@ typedef enum libos_tcall_number
 {
     LIBOS_TCALL_RANDOM = 2048,
     LIBOS_TCALL_THREAD_SELF,
+    LIBOS_TCALL_ALLOCATE,
+    LIBOS_TCALL_DEALLOCATE,
 }
 libos_tcall_number_t;
 

@@ -2,6 +2,7 @@
 #include <libos/eraise.h>
 #include <sys/syscall.h>
 #include <errno.h>
+#include <stdlib.h>
 #include <openenclave/enclave.h>
 
 long oe_syscall(
@@ -34,6 +35,78 @@ static long _tcall_thread_self(void)
     return (long)oe_thread_self();
 }
 
+static long _tcall_allocate(
+    void* ptr,
+    size_t alignment,
+    size_t size,
+    int clear,
+    void** new_ptr)
+{
+    int ret = 0;
+
+    if (!new_ptr)
+        ERAISE(-EINVAL);
+
+    if (ptr)
+    {
+        if (clear || alignment)
+            ERAISE(-EINVAL);
+
+        if (size == 0)
+        {
+            *new_ptr = NULL;
+            goto done;
+        }
+
+        if (!(*new_ptr = realloc(ptr, size)))
+            ERAISE(-ENOMEM);
+    }
+    else if (alignment)
+    {
+        if (clear)
+            ERAISE(-EINVAL);
+
+        if (size == 0)
+        {
+            *new_ptr = NULL;
+            goto done;
+        }
+
+        if (!(*new_ptr = memalign(alignment, size)))
+            ERAISE(-ENOMEM);
+    }
+    else
+    {
+        if (size == 0)
+        {
+            *new_ptr = NULL;
+            goto done;
+        }
+
+        if (clear)
+        {
+            if (!(*new_ptr = calloc(size, 1)))
+                ERAISE(-ENOMEM);
+        }
+        else
+        {
+            if (!(*new_ptr = malloc(size)))
+                ERAISE(-ENOMEM);
+        }
+    }
+
+done:
+    return ret;
+}
+
+static long _tcall_deallocate(void* ptr)
+{
+    if (ptr)
+        free(ptr);
+
+    return 0;
+}
+
 long libos_tcall(long n, long params[6])
 {
     long ret = 0;
@@ -53,6 +126,20 @@ long libos_tcall(long n, long params[6])
         case LIBOS_TCALL_THREAD_SELF:
         {
             return _tcall_thread_self();
+        }
+        case LIBOS_TCALL_ALLOCATE:
+        {
+            void* ptr = (void*)x1;
+            size_t alignment = (size_t)x2;
+            size_t size = (size_t)x3;
+            int clear = (int)x4;
+            void** new_ptr = (void**)x5;
+            return _tcall_allocate(ptr, alignment, size, clear, new_ptr);
+        }
+        case LIBOS_TCALL_DEALLOCATE:
+        {
+            void* ptr = (void*)x1;
+            return _tcall_deallocate(ptr);
         }
         case SYS_read:
         case SYS_write:
