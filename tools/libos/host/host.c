@@ -19,6 +19,7 @@
 #include <errno.h>
 #include <limits.h>
 #include <stdarg.h>
+#include <cpuid.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <libos/cpio.h>
@@ -473,6 +474,29 @@ void libos_rdtsc_ocall(uint32_t* rax, uint32_t* rdx)
 
     *rax = lo;
     *rdx = hi;
+}
+
+void libos_cpuid_ocall(
+    uint32_t leaf,
+    uint32_t subleaf,
+    uint32_t* rax,
+    uint32_t* rbx,
+    uint32_t* rcx,
+    uint32_t* rdx)
+{
+    if (rax)
+        *rax = 0;
+
+    if (rbx)
+        *rbx = 0;
+
+    if (rcx)
+        *rcx = 0;
+
+    if (rdx)
+        *rdx = 0;
+
+    __cpuid_count(leaf, subleaf, *rax, *rbx, *rcx, *rdx);
 }
 
 static int _write_file(int fd, const void* data, size_t size)

@@ -36,6 +36,14 @@ enclave
 
         void libos_rdtsc_ocall([out] uint32_t* rax, [out] uint32_t* rdx);
 
+        void libos_cpuid_ocall(
+            uint32_t leaf,
+            uint32_t subleaf,
+            [out] uint32_t* rax,
+            [out] uint32_t* rbx,
+            [out] uint32_t* rcx,
+            [out] uint32_t* rdx);
+
         int libos_add_symbol_file_ocall(
             [in, size=file_size] const void* file_data,
             size_t file_size,

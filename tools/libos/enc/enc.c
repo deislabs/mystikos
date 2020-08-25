@@ -209,6 +209,7 @@ static void _apply_relocations(
 static uint64_t _vectored_handler(oe_exception_record_t* er)
 {
     const uint16_t RDTSC_OPCODE = 0x310F;
+    const uint16_t CPUID_OPCODE = 0xA20F;
     const uint16_t opcode = *((uint16_t*)er->context->rip);
 
     if (er->code == OE_EXCEPTION_ILLEGAL_INSTRUCTION && opcode == RDTSC_OPCODE)
@@ -229,6 +230,32 @@ static uint64_t _vectored_handler(oe_exception_record_t* er)
 
         /* Skip over the illegal instruction. */
         er->context->rip += 2;
+
+        return OE_EXCEPTION_CONTINUE_EXECUTION;
+    }
+
+    if (er->code == OE_EXCEPTION_ILLEGAL_INSTRUCTION && opcode == CPUID_OPCODE)
+    {
+        uint32_t rax = 0xaa;
+        uint32_t rbx = 0xbb;
+        uint32_t rcx = 0xcc;
+        uint32_t rdx = 0xdd;
+
+        if (er->context->rax != 0xff)
+        {
+            libos_cpuid_ocall(
+                (uint32_t)er->context->rax, /* leaf */
+                (uint32_t)er->context->rcx, /* subleaf */
+                &rax,
+                &rbx,
+                &rcx,
+                &rdx);
+        }
+
+        er->context->rax = rax;
+        er->context->rbx = rbx;
+        er->context->rcx = rcx;
+        er->context->rdx = rdx;
 
         return OE_EXCEPTION_CONTINUE_EXECUTION;
     }
