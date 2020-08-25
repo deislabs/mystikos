@@ -62,4 +62,6 @@ size_t libos_strspn(const char* s, const char* accept);
 
 size_t libos_strcspn(const char* s, const char* reject);
 
+char* libos_strtok_r(char* str, const char* delim, char** saveptr);
+
 #endif /* _LIBOS_STRINGS_H */

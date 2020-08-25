@@ -69,4 +69,7 @@ size_t strspn(const char* s, const char* accept);
 __attribute__((deprecated))
 size_t strcspn(const char* s, const char* reject);
 
+__attribute__((deprecated))
+char* strtok_r(char* str, const char* delim, char** saveptr);
+
 #endif /* _LIBOS_COMMON_H */

@@ -61,8 +61,8 @@ int libos_realpath(const char* path, libos_path_t* resolved_path)
 
         v->in[nin++] = "/";
 
-        for (p = strtok_r(v->buf, "/", &save); p;
-             p = strtok_r(NULL, "/", &save))
+        for (p = libos_strtok_r(v->buf, "/", &save); p;
+             p = libos_strtok_r(NULL, "/", &save))
         {
             v->in[nin++] = p;
         }

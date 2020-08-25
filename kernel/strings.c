@@ -367,3 +367,37 @@ size_t libos_strcspn(const char* s, const char* reject)
 
     return (size_t)(p - s);
 }
+
+char* libos_strtok_r(char* str, const char* delim, char** saveptr)
+{
+    char* p = str;
+    char* end;
+
+    if (str)
+        p = str;
+    else if (*saveptr)
+        p = *saveptr;
+    else
+        return NULL;
+
+    /* Find start of next token */
+    while (*p && libos_strchr(delim, *p))
+        p++;
+
+    /* Find the end of the next token */
+    for (end = p; *end && !libos_strchr(delim, *end); end++)
+        ;
+
+    if (p == end)
+        return NULL;
+
+    if (*end)
+    {
+        *end++ = '\0';
+        *saveptr = end;
+    }
+    else
+        *saveptr = NULL;
+
+    return p;
+}
