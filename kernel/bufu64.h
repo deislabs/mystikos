@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-#ifndef _LIBOS_BUF64_h
-#define _LIBOS_BUF64_h
+#ifndef _LIBOS_BUF64_H
+#define _LIBOS_BUF64_H
 
 #include <stddef.h>
 #include <stdint.h>
@@ -26,4 +26,4 @@ int libos_bufu64_append(libos_bufu64_t* buf, const uint64_t* data, size_t size);
 
 int libos_bufu64_append1(libos_bufu64_t* buf, uint64_t data);
 
-#endif /* _LIBOS_BUF64_h */
+#endif /* _LIBOS_BUF64_H */

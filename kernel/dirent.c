@@ -1,3 +1,4 @@
+#include "common.h"
 #include <libos/file.h>
 #include <libos/syscall.h>
 #include <libos/eraise.h>
@@ -25,7 +26,7 @@ DIR* libos_opendir(const char *name)
     if ((fd = libos_open(name, O_RDONLY|O_DIRECTORY|O_CLOEXEC, 0)) < 0)
         goto done;
 
-    if (!(dir = calloc(1, sizeof(DIR))))
+    if (!(dir = libos_calloc(1, sizeof(DIR))))
     {
         errno = ENOMEM;
         goto done;
@@ -46,7 +47,7 @@ done:
     }
 
     if (dir)
-        free(dir);
+        libos_free(dir);
 
     return ret;
 }
@@ -64,7 +65,7 @@ int libos_closedir(DIR* dir)
     if (libos_close(dir->fd) != 0)
         goto done;
 
-    free(dir);
+    libos_free(dir);
     ret = 0;
 
 done:

@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <setjmp.h>
+#include "common.h"
 
 extern jmp_buf __libos_exit_jmp_buf;
 
@@ -1227,7 +1228,7 @@ void* elf_make_stack(
 done:
 
     if (stack)
-        free(stack);
+        libos_free(stack);
 
     return ret;
 }
@@ -1378,7 +1379,7 @@ int elf_enter_crt(
     }
 
     assert(elf_check_stack(stack, stack_size) == 0);
-    free(stack);
+    libos_free(stack);
 
     return libos_get_exit_status();
 }

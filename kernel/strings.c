@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
+#include "common.h"
 
 int libos_strsplit(
     const char* str,
@@ -52,7 +53,7 @@ int libos_strsplit(
         /* allocate an extra array entry for the null terminator */
         alloc_size = ((ntoks + 1)* sizeof(char*)) + nchars;
 
-        if (!(toks = malloc(alloc_size)))
+        if (!(toks = libos_malloc(alloc_size)))
             ERAISE(-ENOMEM);
     }
 
@@ -93,7 +94,7 @@ int libos_strsplit(
 done:
 
     if (toks)
-        free(toks);
+        libos_free(toks);
 
     return ret;
 }
@@ -139,7 +140,7 @@ int libos_strjoin(
     }
 
     /* Allocate space */
-    if (!(str = malloc(n)))
+    if (!(str = libos_malloc(n)))
         ERAISE(-ENOMEM);
 
     /* Copy the tokens and delimiters onto the string */
@@ -189,7 +190,7 @@ int libos_strjoin(
 done:
 
     if (str)
-        free(str);
+        libos_free(str);
 
     return ret;
 }

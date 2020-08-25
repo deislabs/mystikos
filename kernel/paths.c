@@ -8,6 +8,7 @@
 #include <libos/paths.h>
 #include <libos/eraise.h>
 #include "trace.h"
+#include "common.h"
 
 int libos_path_absolute_cwd(
     const char* cwd,
@@ -174,10 +175,10 @@ int libos_normalize(const char* path, char* buf, size_t size)
 done:
 
     if (toks)
-        free(toks);
+        libos_free(toks);
 
     if (str)
-        free(str);
+        libos_free(str);
 
     return ret;
 }
@@ -238,11 +239,11 @@ int libos_path_expand(const char* toks[], const char* buf[], size_t size)
                 buf[n++] = split[j];
             }
 
-            free(split);
+            libos_free(split);
             split = NULL;
         }
 
-        free(path);
+        libos_free(path);
         path = NULL;
     }
 
@@ -251,10 +252,10 @@ int libos_path_expand(const char* toks[], const char* buf[], size_t size)
 done:
 
     if (path)
-        free(path);
+        libos_free(path);
 
     if (split)
-        free(split);
+        libos_free(split);
 
     return ret;
 }

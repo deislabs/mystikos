@@ -32,6 +32,7 @@
 #include <libos/errno.h>
 #include <sys/vfs.h>
 #include "fdtable.h"
+#include "common.h"
 
 #define DEFAULT_PID (pid_t)1
 #define DEFAULT_UID (uid_t)0

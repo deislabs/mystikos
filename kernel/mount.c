@@ -5,6 +5,7 @@
 #include <string.h>
 #include <libos/mount.h>
 #include <libos/eraise.h>
+#include "common.h"
 
 #define MOUNT_TABLE_SIZE 64
 
@@ -27,7 +28,7 @@ static void _free_mount_table(void* arg)
     (void)arg;
 
     for (size_t i = 0; i < _mount_table_size; i++)
-        free(_mount_table[i].path);
+        libos_free(_mount_table[i].path);
 }
 
 int libos_mount_resolve(
@@ -174,7 +175,7 @@ int libos_mount(libos_fs_t* fs, const char* target)
 done:
 
     if (mount_table_entry.path)
-        free(mount_table_entry.path);
+        libos_free(mount_table_entry.path);
 
     if (locked)
         libos_spin_unlock(&_lock);

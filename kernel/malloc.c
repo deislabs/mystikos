@@ -1,6 +1,7 @@
 #include <libos/malloc.h>
 #include <libos/tcall.h>
 #include <libos/crash.h>
+#include "common.h"
 
 long libos_tcall_allocate(
     void* ptr,

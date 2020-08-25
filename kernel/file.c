@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <libos/eraise.h>
+#include "common.h"
 
 int libos_creat(const char* pathname, mode_t mode)
 {
@@ -164,7 +165,7 @@ int libos_mkdirhier(const char* pathname, mode_t mode)
 done:
 
     if (toks)
-        free(toks);
+        libos_free(toks);
 
     libos_set_trace(trace);
 
@@ -214,7 +215,7 @@ done:
         libos_close(fd);
 
     if (buf.data)
-        free(buf.data);
+        libos_free(buf.data);
 
     return ret;
 }

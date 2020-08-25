@@ -6,6 +6,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
+#include "common.h"
 
 static libos_mman_t _mman;
 static void* _mman_start;

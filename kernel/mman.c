@@ -117,6 +117,7 @@
 #include <libos/tcall.h>
 #include <libos/strings.h>
 #include <string.h>
+#include "common.h"
 
 /*
 **==============================================================================

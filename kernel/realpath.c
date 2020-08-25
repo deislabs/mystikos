@@ -6,6 +6,7 @@
 #include <libos/realpath.h>
 #include <libos/cwd.h>
 #include <libos/syscall.h>
+#include "common.h"
 
 int libos_realpath(const char* path, libos_path_t* resolved_path)
 {
@@ -27,7 +28,7 @@ int libos_realpath(const char* path, libos_path_t* resolved_path)
         ERAISE(-EINVAL);
 
     /* Allocate variables on the heap since too big for the stack. */
-    if (!(v = calloc(1, sizeof(variables_t))))
+    if (!(v = libos_calloc(1, sizeof(variables_t))))
         ERAISE(-ENOMEM);
 
     if (path[0] == '/')
@@ -106,7 +107,7 @@ int libos_realpath(const char* path, libos_path_t* resolved_path)
 done:
 
     if (v)
-        free(v);
+        libos_free(v);
 
     return ret;
 }

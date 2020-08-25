@@ -1,4 +1,5 @@
 #include <libos/trace.h>
+#include "common.h"
 
 static bool _trace = true;
 

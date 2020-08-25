@@ -2,6 +2,7 @@
 #include <string.h>
 #include "fdtable.h"
 #include <libos/eraise.h>
+#include "common.h"
 
 /* ATTN: add locking to this table */
 

@@ -3,6 +3,7 @@
 
 #include <libos/spinlock.h>
 #include <libos/crash.h>
+#include "common.h"
 
 /* Set the spinlock value to 1 and return the old value */
 static unsigned int _spin_set_locked(libos_spinlock_t* spinlock)

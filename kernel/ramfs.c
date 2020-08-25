@@ -14,6 +14,7 @@
 #include <libos/buf.h>
 #include <libos/eraise.h>
 #include "bufu64.h"
+#include "common.h"
 
 #define BLKSIZE 512
 
@@ -74,7 +75,7 @@ static void _inode_free(inode_t* inode)
     if (inode)
     {
         libos_buf_release(&inode->buf);
-        free(inode);
+        libos_free(inode);
     }
 }
 
@@ -136,7 +137,7 @@ static int _inode_new(
     if (!name)
         ERAISE(-EINVAL);
 
-    if (!(inode = calloc(1, sizeof(inode_t))))
+    if (!(inode = libos_calloc(1, sizeof(inode_t))))
         ERAISE(-ENOMEM);
 
     inode->magic = INODE_MAGIC;
@@ -507,7 +508,7 @@ static int _path_to_inode_recursive(
 done:
 
     if (toks)
-        free(toks);
+        libos_free(toks);
 
     return ret;
 }
@@ -566,7 +567,7 @@ static int _fs_release(libos_fs_t* fs)
 
     _inode_release_all(NULL, ramfs->root, DT_DIR);
 
-    free(ramfs);
+    libos_free(ramfs);
 
 done:
     return ret;
@@ -617,7 +618,7 @@ static int _fs_open(
         ERAISE(-EINVAL);
 
     /* Create the file object */
-    if (!(file = calloc(1, sizeof(libos_file_t))))
+    if (!(file = libos_calloc(1, sizeof(libos_file_t))))
         ERAISE(-ENOMEM);
 
     errnum = _path_to_inode(ramfs, pathname, true, NULL, &inode);
@@ -682,10 +683,10 @@ static int _fs_open(
 done:
 
     if (inode && is_i_new)
-        free(inode);
+        libos_free(inode);
 
     if (file)
-        free(file);
+        libos_free(file);
 
     return ret;
 }
@@ -914,7 +915,7 @@ static int _fs_close(libos_fs_t* fs, libos_file_t* file)
     file->inode->nopens--;
 
     memset(file, 0xdd, sizeof(libos_file_t));
-    free(file);
+    libos_free(file);
 
 done:
     return ret;
@@ -1477,7 +1478,7 @@ int libos_init_ramfs(libos_fs_t** fs_out)
     if (!fs_out)
         ERAISE(-EINVAL);
 
-    if (!(ramfs = calloc(1, sizeof(ramfs_t))))
+    if (!(ramfs = libos_calloc(1, sizeof(ramfs_t))))
         ERAISE(-ENOMEM);
 
     ECHECK(_inode_new(NULL, "/", (S_IFDIR | MODE_RWX), &root_inode));
@@ -1493,10 +1494,10 @@ int libos_init_ramfs(libos_fs_t** fs_out)
 done:
 
     if (ramfs)
-        free(ramfs);
+        libos_free(ramfs);
 
     if (root_inode)
-        free(root_inode);
+        libos_free(root_inode);
 
     return ret;
 }

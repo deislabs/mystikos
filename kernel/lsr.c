@@ -2,6 +2,7 @@
 #include <libos/lsr.h>
 #include <stddef.h>
 #include <string.h>
+#include "common.h"
 
 int libos_lsr(const char* root, libos_strarr_t* paths)
 {
