@@ -5,7 +5,9 @@
 #include <string.h>
 #include <libos/mount.h>
 #include <libos/eraise.h>
-#include "common.h"
+#include <libos/deprecated.h>
+#include <libos/malloc.h>
+#include <libos/strings.h>
 
 #define MOUNT_TABLE_SIZE 64
 

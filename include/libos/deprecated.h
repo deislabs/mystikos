@@ -1,13 +1,11 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-#ifndef _LIBOS_COMMON_H
-#define _LIBOS_COMMON_H
+#ifndef _LIBOS_DEPRECATED_H
+#define _LIBOS_DEPRECATED_H
 
 #include <stddef.h>
 #include <stdarg.h>
-#include <libos/malloc.h>
-#include <libos/strings.h>
 
 __attribute__((deprecated))
 void* malloc(size_t size);
@@ -72,4 +70,4 @@ size_t strcspn(const char* s, const char* reject);
 __attribute__((deprecated))
 char* strtok_r(char* str, const char* delim, char** saveptr);
 
-#endif /* _LIBOS_COMMON_H */
+#endif /* _LIBOS_DEPRECATED_H */

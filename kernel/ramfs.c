@@ -14,7 +14,8 @@
 #include <libos/buf.h>
 #include <libos/eraise.h>
 #include "bufu64.h"
-#include "common.h"
+#include <libos/deprecated.h>
+#include <libos/malloc.h>
 
 #define BLKSIZE 512
 

@@ -6,7 +6,9 @@
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
-#include "common.h"
+#include <libos/deprecated.h>
+#include <libos/malloc.h>
+#include <libos/strings.h>
 
 static libos_mman_t _mman;
 static void* _mman_start;

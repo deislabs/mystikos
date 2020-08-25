@@ -1,9 +1,13 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
-#include <libos/strarr.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include <libos/strarr.h>
+#include <libos/deprecated.h>
+#include <libos/strings.h>
+#include <libos/malloc.h>
 
 static size_t _CAPACITY = 32;
 
@@ -12,10 +16,10 @@ void libos_strarr_release(libos_strarr_t* self)
     size_t i;
 
     for (i = 0; i < self->size; i++)
-        free(self->data[i]);
+        libos_free(self->data[i]);
 
-    free(self->data);
-    memset(self, 0, sizeof(libos_strarr_t));
+    libos_free(self->data);
+    libos_memset(self, 0, sizeof(libos_strarr_t));
 }
 
 int libos_strarr_append(libos_strarr_t* self, const char* str)
@@ -31,7 +35,7 @@ int libos_strarr_append(libos_strarr_t* self, const char* str)
         else
             capacity = _CAPACITY;
 
-        if (!(data = realloc(self->data, sizeof(char*) * capacity)))
+        if (!(data = libos_realloc(self->data, sizeof(char*) * capacity)))
             return -1;
 
         self->data = data;
@@ -44,7 +48,7 @@ int libos_strarr_append(libos_strarr_t* self, const char* str)
 
         if (str)
         {
-            if (!(newStr = strdup(str)))
+            if (!(newStr = libos_strdup(str)))
                 return -1;
         }
         else
@@ -66,7 +70,7 @@ int libos_strarr_remove(libos_strarr_t* self, size_t index)
     if (index >= self->size)
         return -1;
 
-    free(self->data[index]);
+    libos_free(self->data[index]);
 
     /* Remove the element */
     for (i = index; i < self->size - 1; i++)
@@ -95,7 +99,7 @@ void libos_strarr_sort(libos_strarr_t* self)
 
         for (j = 0; j < n; j++)
         {
-            if (strcmp(self->data[j], self->data[j + 1]) > 0)
+            if (libos_strcmp(self->data[j], self->data[j + 1]) > 0)
             {
                 char* tmp = self->data[j];
                 self->data[j] = self->data[j + 1];

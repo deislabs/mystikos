@@ -8,7 +8,9 @@
 #include <libos/paths.h>
 #include <libos/eraise.h>
 #include "trace.h"
-#include "common.h"
+#include <libos/deprecated.h>
+#include <libos/strings.h>
+#include <libos/malloc.h>
 
 int libos_path_absolute_cwd(
     const char* cwd,

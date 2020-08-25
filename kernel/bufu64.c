@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "bufu64.h"
-#include "common.h"
+#include <libos/deprecated.h>
 
 void libos_bufu64_release(libos_bufu64_t* buf)
 {

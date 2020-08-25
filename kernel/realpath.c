@@ -6,7 +6,9 @@
 #include <libos/realpath.h>
 #include <libos/cwd.h>
 #include <libos/syscall.h>
-#include "common.h"
+#include <libos/deprecated.h>
+#include <libos/malloc.h>
+#include <libos/strings.h>
 
 int libos_realpath(const char* path, libos_path_t* resolved_path)
 {

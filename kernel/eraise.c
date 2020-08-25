@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <libos/trace.h>
-#include "common.h"
+#include <libos/deprecated.h>
 
 void libos_eraise(
     const char* file,

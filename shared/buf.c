@@ -1,10 +1,14 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-#include <libos/buf.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include <libos/buf.h>
+#include <libos/strings.h>
+#include <libos/deprecated.h>
+#include <libos/malloc.h>
 
 #define LIBOS_BUF_CHUNK_SIZE 1024
 
@@ -12,11 +16,11 @@ void libos_buf_release(libos_buf_t* buf)
 {
     if (buf && buf->data)
     {
-        memset(buf->data, 0xDD, buf->size);
-        free(buf->data);
+        libos_memset(buf->data, 0xDD, buf->size);
+        libos_free(buf->data);
     }
 
-    memset(buf, 0x00, sizeof(libos_buf_t));
+    libos_memset(buf, 0x00, sizeof(libos_buf_t));
 }
 
 int libos_buf_clear(libos_buf_t* buf)
@@ -51,7 +55,7 @@ int libos_buf_reserve(libos_buf_t* buf, size_t cap)
         }
 
         /* Expand allocation */
-        if (!(new_data = realloc(buf->data, new_cap)))
+        if (!(new_data = libos_realloc(buf->data, new_cap)))
             return -1;
 
         buf->data = new_data;
@@ -69,7 +73,7 @@ int libos_buf_resize(libos_buf_t* buf, size_t new_size)
     if (new_size == 0)
     {
         libos_buf_release(buf);
-        memset(buf, 0, sizeof(libos_buf_t));
+        libos_memset(buf, 0, sizeof(libos_buf_t));
         return 0;
     }
 
@@ -77,7 +81,7 @@ int libos_buf_resize(libos_buf_t* buf, size_t new_size)
         return -1;
 
     if (new_size > buf->size)
-        memset(buf->data + buf->size, 0, new_size - buf->size);
+        libos_memset(buf->data + buf->size, 0, new_size - buf->size);
 
     buf->size = new_size;
 
@@ -109,7 +113,7 @@ int libos_buf_append(libos_buf_t* buf, const void* data, size_t size)
     }
 
     /* Copy the data */
-    memcpy(buf->data + buf->size, data, size);
+    libos_memcpy(buf->data + buf->size, data, size);
     buf->size = new_size;
 
     return 0;
@@ -133,12 +137,12 @@ int libos_buf_insert(
     rem = buf->size - pos;
 
     if (rem)
-        memmove(buf->data + pos + size, buf->data + pos, rem);
+        libos_memmove(buf->data + pos + size, buf->data + pos, rem);
 
     if (data)
-        memcpy(buf->data + pos, data, size);
+        libos_memcpy(buf->data + pos, data, size);
     else
-        memset(buf->data + pos, 0, size);
+        libos_memset(buf->data + pos, 0, size);
 
     ret = 0;
 
@@ -156,7 +160,7 @@ int libos_buf_remove(libos_buf_t* buf, size_t pos, size_t size)
     rem = buf->size - pos;
 
     if (rem)
-        memmove(buf->data + pos, buf->data + pos + size, rem);
+        libos_memmove(buf->data + pos, buf->data + pos + size, rem);
 
     buf->size -= size;
 

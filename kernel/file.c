@@ -6,7 +6,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <libos/eraise.h>
-#include "common.h"
+#include <libos/deprecated.h>
+#include <libos/strings.h>
+#include <libos/malloc.h>
 
 int libos_creat(const char* pathname, mode_t mode)
 {

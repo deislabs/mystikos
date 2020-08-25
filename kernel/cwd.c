@@ -1,4 +1,4 @@
-#include "common.h"
+#include <libos/deprecated.h>
 #include <libos/syscall.h>
 #include <libos/eraise.h>
 

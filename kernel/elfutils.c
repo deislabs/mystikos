@@ -13,7 +13,8 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <setjmp.h>
-#include "common.h"
+#include <libos/deprecated.h>
+#include <libos/malloc.h>
 
 extern jmp_buf __libos_exit_jmp_buf;
 

@@ -1,7 +1,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <libos/errno.h>
-#include "common.h"
+#include <libos/deprecated.h>
 
 typedef struct pair
 {

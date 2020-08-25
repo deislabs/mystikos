@@ -1,10 +1,12 @@
-#include "common.h"
-#include <libos/file.h>
-#include <libos/syscall.h>
-#include <libos/eraise.h>
 #include <dirent.h>
 #include <stdlib.h>
 #include <assert.h>
+
+#include <libos/deprecated.h>
+#include <libos/file.h>
+#include <libos/syscall.h>
+#include <libos/eraise.h>
+#include <libos/malloc.h>
 
 #define DIRENT_BUF_SIZE 14
 

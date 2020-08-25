@@ -4,7 +4,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
-#include "common.h"
+#include <libos/deprecated.h>
+#include <libos/malloc.h>
 
 int libos_strsplit(
     const char* str,

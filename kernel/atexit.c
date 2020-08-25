@@ -3,7 +3,7 @@
 #include <libos/spinlock.h>
 #include <libos/malloc.h>
 #include <stdlib.h>
-#include "common.h"
+#include <libos/deprecated.h>
 
 typedef struct atexit_entry atexit_entry_t;
 

@@ -9,11 +9,14 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+
 #include <libos/file.h>
 #include <libos/cpio.h>
 #include <libos/strarr.h>
 #include <libos/round.h>
 #include <libos/strings.h>
+#include <libos/deprecated.h>
+#include <libos/malloc.h>
 
 void* calloc(size_t nmemb, size_t size);
 void free(void* ptr);
@@ -126,7 +129,7 @@ static void _dump(const uint8_t* data, size_t size)
 
 static bool _valid_header(const cpio_header_t* header)
 {
-    return memcmp(header->magic, "070701", 6) == 0;
+    return libos_memcmp(header->magic, "070701", 6) == 0;
 }
 
 static ssize_t _hex_to_ssize(const char* str, size_t len)
@@ -280,7 +283,7 @@ libos_cpio_t* libos_cpio_open(const char* path, uint32_t flags)
     if (!path)
         GOTO(done);
 
-    if (!(cpio = calloc(1, sizeof(libos_cpio_t))))
+    if (!(cpio = libos_calloc(1, sizeof(libos_cpio_t))))
         GOTO(done);
 
     if ((flags & LIBOS_CPIO_FLAG_CREATE))
@@ -313,7 +316,7 @@ done:
         libos_close(fd);
 
     if (cpio)
-        free(cpio);
+        libos_free(cpio);
 
     return ret;
 }
@@ -347,8 +350,8 @@ int libos_cpio_close(libos_cpio_t* cpio)
 done:
 
     libos_close(cpio->fd);
-    memset(cpio, 0, sizeof(libos_cpio_t));
-    free(cpio);
+    libos_memset(cpio, 0, sizeof(libos_cpio_t));
+    libos_free(cpio);
 
     return ret;
 }
@@ -364,7 +367,7 @@ int libos_cpio_read_entry(libos_cpio_t* cpio, libos_cpio_entry_t* entry_out)
     size_t namesize;
 
     if (entry_out)
-        memset(entry_out, 0, sizeof(libos_cpio_entry_t));
+        libos_memset(entry_out, 0, sizeof(libos_cpio_entry_t));
 
     if (!cpio || cpio->fd < 0)
         GOTO(done);
@@ -433,7 +436,7 @@ int libos_cpio_read_entry(libos_cpio_t* cpio, libos_cpio_entry_t* entry_out)
         GOTO(done);
 
     /* Check for end-of-file. */
-    if (strcmp(entry.name, "TRAILER!!!") == 0)
+    if (libos_strcmp(entry.name, "TRAILER!!!") == 0)
     {
         ret = 0;
         goto done;
@@ -500,13 +503,13 @@ int libos_cpio_write_entry(libos_cpio_t* cpio, const libos_cpio_entry_t* entry)
     }
 
     /* Calculate the size of the name */
-    if ((namesize = strlen(entry->name) + 1) > LIBOS_CPIO_PATH_MAX)
+    if ((namesize = libos_strlen(entry->name) + 1) > LIBOS_CPIO_PATH_MAX)
         GOTO(done);
 
     /* Write the CPIO header */
     {
-        memset(&h, 0, sizeof(h));
-        memcpy(h.magic, "070701", sizeof(h.magic));
+        libos_memset(&h, 0, sizeof(h));
+        libos_memcpy(h.magic, "070701", sizeof(h.magic));
         _uint_to_hex(h.ino, 0);
         _uint_to_hex(h.mode, entry->mode);
         _uint_to_hex(h.uid, 0);
@@ -585,7 +588,7 @@ int libos_cpio_unpack(const char* source, const char* target)
 
     while ((r = libos_cpio_read_entry(cpio, &entry)) > 0)
     {
-        if (strcmp(entry.name, ".") == 0)
+        if (libos_strcmp(entry.name, ".") == 0)
             continue;
 
         LIBOS_STRLCPY(path, target);
@@ -679,7 +682,7 @@ static int _append_file(libos_cpio_t* cpio, const char* path, const char* name)
     {
         libos_cpio_entry_t ent;
 
-        memset(&ent, 0, sizeof(ent));
+        libos_memset(&ent, 0, sizeof(ent));
 
         if (S_ISDIR(st.st_mode))
             st.st_size = 0;
@@ -753,9 +756,9 @@ static int _pack(libos_cpio_t* cpio, const char* dirname, const char* root)
         GOTO(done);
 
     /* Append this directory to the CPIO archive. */
-    if (strcmp(dirname, root) != 0)
+    if (libos_strcmp(dirname, root) != 0)
     {
-        const char* p = root + strlen(dirname);
+        const char* p = root + libos_strlen(dirname);
 
         assert(*p == '/');
 
@@ -769,12 +772,15 @@ static int _pack(libos_cpio_t* cpio, const char* dirname, const char* root)
     /* Find all children of this directory. */
     while ((ent = libos_readdir(dir)))
     {
-        if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
+        if (libos_strcmp(ent->d_name, ".") == 0 ||
+            libos_strcmp(ent->d_name, "..") == 0)
+        {
             continue;
+        }
 
         *path = '\0';
 
-        if (strcmp(root, ".") != 0)
+        if (libos_strcmp(root, ".") != 0)
         {
             LIBOS_STRLCAT(path, root);
             LIBOS_STRLCAT(path, "/");
@@ -792,7 +798,7 @@ static int _pack(libos_cpio_t* cpio, const char* dirname, const char* root)
         {
             /* Append this file to the CPIO archive (remove the dirname). */
 
-            const char* p = path + strlen(dirname);
+            const char* p = path + libos_strlen(dirname);
 
             assert(*p == '/');
 

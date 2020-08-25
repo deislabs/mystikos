@@ -2,7 +2,8 @@
 #include <string.h>
 #include "fdtable.h"
 #include <libos/eraise.h>
-#include "common.h"
+#include <libos/deprecated.h>
+#include <libos/strings.h>
 
 /* ATTN: add locking to this table */
 
