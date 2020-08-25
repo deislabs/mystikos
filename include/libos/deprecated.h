@@ -83,4 +83,7 @@ int vprintf(const char *format, va_list ap);
 __attribute__((deprecated))
 int vfprintf(FILE* stream, const char* format, va_list ap);
 
+__attribute__((deprecated))
+void* memalign(size_t alignment, size_t size);
+
 #endif /* _LIBOS_DEPRECATED_H */

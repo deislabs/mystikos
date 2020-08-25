@@ -1160,7 +1160,7 @@ void* elf_make_stack(
     if (stack_size % PAGE_SIZE)
         goto done;
 
-    if (!(stack = memalign(PAGE_SIZE, stack_size)))
+    if (!(stack = libos_memalign(PAGE_SIZE, stack_size)))
         goto done;
 
     libos_memset(stack, 0, stack_size);

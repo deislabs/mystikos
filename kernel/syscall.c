@@ -542,7 +542,7 @@ static long _return(long n, long ret)
 
         if (ret < 0)
         {
-            const bool isatty = libos_syscall_isatty(fileno(stderr)) == 1;
+            const bool isatty = libos_syscall_isatty(STDERR_FILENO) == 1;
 
             if (isatty)
             {
