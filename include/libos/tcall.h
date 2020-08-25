@@ -21,6 +21,8 @@ libos_tcall_number_t;
 
 long libos_tcall(long n, long params[6]);
 
+typedef long (*libos_tcall_t)(long n, long params[6]);
+
 LIBOS_INLINE long libos_tcall_random(void* data, size_t size)
 {
     long params[6] = { (long)data, (long)size };
