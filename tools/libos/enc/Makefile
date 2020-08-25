@@ -15,6 +15,7 @@ INCLUDES += -I$(INCDIR)/openenclave/3rdparty/libc
 CFLAGS = $(OEENCLAVE_CFLAGS)
 
 LIBS += $(LIBDIR)/liboskernel.a
+LIBS += $(LIBDIR)/libostargetsgx.a
 LIBS += $(LIBDIR)/liblthread.a
 LIBS += $(LIBDIR)/openenclave/enclave/liboehostfs.a
 LIBS += $(LIBDIR)/openenclave/enclave/liboehostsock.a

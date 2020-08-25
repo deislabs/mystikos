@@ -4,8 +4,10 @@
 #ifndef _LIBOS_INTERNAL_MMAN_H
 #define _LIBOS_INTERNAL_MMAN_H
 
-#include <openenclave/bits/defs.h>
-#include <libos/types.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <libos/spinlock.h>
 
 #define LIBOS_PROT_NONE 0
 #define LIBOS_PROT_READ 1
@@ -43,7 +45,7 @@ typedef struct libos_vad
     uint16_t flags;
 } libos_vad_t;
 
-OE_STATIC_ASSERT(sizeof(libos_vad_t) == 32);
+_Static_assert(sizeof(libos_vad_t) == 32, "");
 
 #define LIBOS_MMAN_MAGIC 0xcc8e1732ebd80b0b
 
@@ -120,7 +122,7 @@ typedef struct libos_mman
     bool scrub;
 
     /* Heap locking */
-    uint64_t lock[8];
+    libos_recursive_spinlock_t lock;
 
     /* Error string */
     char err[LIBOS_MMAN_ERROR_SIZE];

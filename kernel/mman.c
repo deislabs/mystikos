@@ -112,16 +112,15 @@
 */
 
 #include <errno.h>
-#include <openenclave/bits/defs.h>
 #include <libos/defs.h>
 #include <libos/mman.h>
-#include <libos/mutex.h>
+#include <libos/tcall.h>
 #include <string.h>
 
-OE_PRINTF_FORMAT(3, 4)
+LIBOS_PRINTF_FORMAT(3, 4)
 int oe_snprintf(char* str, size_t size, const char* format, ...);
 
-OE_PRINTF_FORMAT(1, 2)
+LIBOS_PRINTF_FORMAT(1, 2)
 int oe_host_printf(const char* fmt, ...);
 
 #define SNPRINTF oe_snprintf
@@ -139,12 +138,6 @@ int oe_host_printf(const char* fmt, ...);
 static uint64_t _round_up_to_multiple(uint64_t x, uint64_t m)
 {
     return (x + m - 1) / m * m;
-}
-
-static libos_mutex_t* _get_mutex(libos_mman_t* mman)
-{
-    OE_STATIC_ASSERT(sizeof(libos_mutex_t) <= sizeof(mman->lock));
-    return (libos_mutex_t*)mman->lock;
 }
 
 /* Get the end address of a VAD */
@@ -298,7 +291,7 @@ static libos_vad_t* _list_find(libos_mman_t* mman, uintptr_t addr)
 /* Lock the mman and set the 'locked' parameter to true */
 static void _mman_lock(libos_mman_t* mman, bool* locked)
 {
-    libos_mutex_lock(_get_mutex(mman));
+    libos_recursive_spin_lock(&mman->lock, libos_tcall_thread_self());
     *locked = true;
 }
 
@@ -307,7 +300,7 @@ static void _mman_unlock(libos_mman_t* mman, bool* locked)
 {
     if (*locked)
     {
-        libos_mutex_unlock(_get_mutex(mman));
+        libos_recursive_spin_unlock(&mman->lock, libos_tcall_thread_self());
         *locked = false;
     }
 }
@@ -546,9 +539,6 @@ int libos_mman_init(libos_mman_t* mman, uintptr_t base, size_t size)
 
     /* Set the magic number */
     mman->magic = LIBOS_MMAN_MAGIC;
-
-    /* Initialize the recursive mutex */
-    libos_mutex_init(_get_mutex(mman));
 
     /* Finally, set initialized to true */
     mman->initialized = 1;

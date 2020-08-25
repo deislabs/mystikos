@@ -12,7 +12,8 @@ CFLAGS = $(OEENCLAVE_CFLAGS)
 
 LDFLAGS = $(OEENCLAVE_LDFLAGS) -L$(LIBDIR)
 
-LIBS = $(LIBDIR)/liboskernel.a
+LIBS += $(LIBDIR)/liboskernel.a
+LIBS += $(LIBDIR)/libostargetsgx.a
 
 CLEAN = $(SUBOBJDIR)/run_t.h $(SUBOBJDIR)/run_t.c $(SUBOBJDIR)/run_args.h
 
@@ -28,5 +29,7 @@ $(SUBOBJDIR)/run_t.c:
 tests:
 	$(BINDIR)/run $(SUBBINDIR)/enc
 
-xxx:
-	@ echo $(OEENCLAVE_INCLUDES)
+GDB = $(BINDIR)/oegdb
+
+gdb:
+	$(GDB) --args $(BINDIR)/run $(SUBBINDIR)/enc
