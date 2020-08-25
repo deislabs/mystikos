@@ -46,6 +46,8 @@ size_t libos_strlen(const char* s);
 
 int libos_strcmp(const char* s1, const char* s2);
 
+int libos_strncmp(const char* s1, const char* s2, size_t n);
+
 char* libos_strchr(const char* s, int c);
 
 char* libos_strrchr(const char* s, int c);

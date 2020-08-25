@@ -69,7 +69,7 @@ int libos_mount_resolve(
                 fs = _mount_table[i].fs;
             }
         }
-        else if (strncmp(mpath, realpath.buf, len) == 0 &&
+        else if (libos_strncmp(mpath, realpath.buf, len) == 0 &&
             (realpath.buf[len] == '/' || realpath.buf[len] == '\0'))
         {
             if (len > match_len)

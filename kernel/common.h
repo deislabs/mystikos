@@ -57,4 +57,7 @@ int vsnprintf(char* str, size_t size, const char* format, va_list ap);
 __attribute__((deprecated))
 int snprintf(char* str, size_t size, const char* format, ...);
 
+__attribute__((deprecated))
+int strncmp(const char* s1, const char* s2, size_t n);
+
 #endif /* _LIBOS_COMMON_H */

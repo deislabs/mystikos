@@ -1,4 +1,5 @@
 #include <libos/eraise.h>
+#include <libos/errno.h>
 #include <stdio.h>
 #include <string.h>
 #include <libos/trace.h>
@@ -16,6 +17,6 @@ void libos_eraise(
             errnum = -errnum;
 
         fprintf(stderr, "ERAISE: %s(%u): %s: errno=%d: %s\n",
-            file, line, func, errnum, strerror(errnum));
+            file, line, func, errnum, libos_error_name(errnum));
     }
 }
