@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <unistd.h>
 #include <openenclave/enclave.h>
 
 long oe_syscall(
@@ -163,6 +164,25 @@ long libos_tcall(long n, long params[6])
             const char* format = (const char*)x3;
             va_list* ap = (va_list*)x4;
             return _tcall_vsnprintf(str, size, format, *ap);
+        }
+        case LIBOS_TCALL_WRITE_CONSOLE:
+        {
+            int fd = (int)x1;
+            const void* buf = (const void*)x2;
+            size_t count = (size_t)x3;
+            FILE* stream = NULL;
+
+            if (fd == STDOUT_FILENO)
+                stream  = stdout;
+            else if (fd == STDERR_FILENO)
+                stream  = stderr;
+            else
+                return -EINVAL;
+
+            if (fwrite(buf, 1, count, stream) != count)
+                return -EIO;
+
+            return (long)count;
         }
         case SYS_read:
         case SYS_write:

@@ -24,13 +24,15 @@ void free(void* ptr);
 #define CPIO_BLOCK_SIZE 512
 
 #define TRACE
+#define PRINTF libos_printf
+#define EPRINTF libos_eprintf
 
 // clang-format off
 #if defined(TRACE)
 # define GOTO(LABEL) \
     do \
     { \
-        printf("GOTO=%s(%u): %s()\n", __FILE__, __LINE__, __FUNCTION__); \
+        PRINTF("GOTO=%s(%u): %s()\n", __FILE__, __LINE__, __FUNCTION__); \
         goto LABEL; \
     } \
     while (0)
@@ -498,7 +500,7 @@ int libos_cpio_write_entry(libos_cpio_t* cpio, const libos_cpio_entry_t* entry)
     /* Check file type. */
     if (!S_ISREG(entry->mode) && !S_ISDIR(entry->mode) && !S_ISLNK(entry->mode))
     {
-        printf("entry=%s mode=%o\n", entry->name, entry->mode);
+        PRINTF("entry=%s mode=%o\n", entry->name, entry->mode);
         GOTO(done);
     }
 
@@ -603,7 +605,7 @@ int libos_cpio_unpack(const char* source, const char* target)
             {
                 if (!S_ISDIR(st.st_mode))
                 {
-                    fprintf(stderr, "*** cpio: already exists: %s\n", path);
+                    EPRINTF("*** cpio: already exists: %s\n", path);
                     GOTO(done);
                 }
             }

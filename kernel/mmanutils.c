@@ -162,7 +162,7 @@ void* libos_mmap(
         ssize_t n;
 
 #if 0
-        printf("addr: [%016lX][%016lX]\n", (long)addr, length);
+        libos_printf("addr: [%016lX][%016lX]\n", (long)addr, length);
 #endif
 
         if ((n = _map_file_onto_memory(fd, offset, addr, length)) < 0)
@@ -182,7 +182,7 @@ void* libos_mmap(
 
     if (libos_mman_map(&_mman, addr, length, prot, tflags, &ptr) != 0)
     {
-        printf("libos_mman_map: error: %s\n", _mman.err);
+        libos_printf("libos_mman_map: error: %s\n", _mman.err);
         return (void*)-1;
     }
 

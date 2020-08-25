@@ -4,6 +4,7 @@
 #include <string.h>
 #include <libos/trace.h>
 #include <libos/deprecated.h>
+#include <libos/strings.h>
 
 void libos_eraise(
     const char* file,
@@ -16,7 +17,7 @@ void libos_eraise(
         if (errnum < 0)
             errnum = -errnum;
 
-        fprintf(stderr, "ERAISE: %s(%u): %s: errno=%d: %s\n",
+        libos_eprintf("ERAISE: %s(%u): %s: errno=%d: %s\n",
             file, line, func, errnum, libos_error_name(errnum));
     }
 }

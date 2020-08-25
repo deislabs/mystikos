@@ -474,17 +474,17 @@ static void _strace(long n, const char* fmt, ...)
         const char* blue = isatty ? COLOR_GREEN : "";
         const char* reset = isatty ? COLOR_RESET : "";
 
-        fprintf(stderr, "=== %s%s%s(", blue, syscall_str(n), reset);
+        libos_eprintf("=== %s%s%s(", blue, syscall_str(n), reset);
 
         if (fmt)
         {
             va_list ap;
             va_start(ap, fmt);
-            vfprintf(stderr, fmt, ap);
+            libos_stderr_vprintf(fmt, ap);
             va_end(ap);
         }
 
-        fprintf(stderr, "): tp=%p\n", _get_fs_base());
+        libos_eprintf("): tp=%p\n", _get_fs_base());
     }
 }
 
@@ -507,14 +507,14 @@ static long _forward_syscall(long n, long params[6])
     if (_real_syscalls)
     {
         if (_trace_syscalls)
-            fprintf(stderr, "    [real syscall]\n");
+            libos_eprintf("    [real syscall]\n");
 
         return _real_syscall(n, x1, x2, x3, x4, x5, x6);
     }
     else
     {
         if (_trace_syscalls)
-            fprintf(stderr, "    [forward syscall]\n");
+            libos_eprintf("    [forward syscall]\n");
 
         long ret = libos_tcall(n, params);
 
@@ -555,12 +555,12 @@ static long _return(long n, long ret)
 
         if (error_name)
         {
-            fprintf(stderr, "    %s%s(): return=-%s(%ld)%s\n",
+            libos_eprintf("    %s%s(): return=-%s(%ld)%s\n",
                 red, syscall_str(n), error_name, ret, reset);
         }
         else
         {
-            fprintf(stderr, "    %s%s(): return=%ld(%lX)%s\n",
+            libos_eprintf("    %s%s(): return=%ld(%lX)%s\n",
                 red, syscall_str(n), ret, ret, reset);
         }
     }
@@ -584,7 +584,7 @@ static int _add_fd_link(libos_fs_t* fs, libos_file_t* file, int fd)
         ERAISE(-ENAMETOOLONG);
 
 #if 0
-    printf("ADD{%s=>%s}\n", realpath, linkpath);
+    libos_printf("ADD{%s=>%s}\n", realpath, linkpath);
 #endif
 
     ECHECK(libos_symlink(realpath, linkpath));
@@ -609,7 +609,7 @@ static int _remove_fd_link(libos_fs_t* fs, libos_file_t* file, int fd)
         ERAISE(-ENAMETOOLONG);
 
 #if 0
-    printf("REMOVE{%s=>%s}\n", realpath, linkpath);
+    libos_printf("REMOVE{%s=>%s}\n", realpath, linkpath);
 #endif
 
     ECHECK((*fs->fs_unlink)(fs, linkpath));
@@ -633,7 +633,7 @@ long libos_syscall_creat(const char* pathname, mode_t mode)
 
     if ((fd = libos_fdtable_add(LIBOS_FDTABLE_TYPE_FILE, fs, file)) < 0)
     {
-        fprintf(stderr, "libos_fdtable_add() failed: %d\n", fd);
+        libos_eprintf("libos_fdtable_add() failed: %d\n", fd);
     }
 
     ECHECK(_add_fd_link(fs, file, fd));
@@ -666,7 +666,7 @@ long libos_syscall_open(const char* pathname, int flags, mode_t mode)
 
     if ((fd = libos_fdtable_add(LIBOS_FDTABLE_TYPE_FILE, fs, file)) < 0)
     {
-        fprintf(stderr, "libos_fdtable_add() failed: %d\n", fd);
+        libos_eprintf("libos_fdtable_add() failed: %d\n", fd);
         assert(0);
     }
 
@@ -1088,7 +1088,7 @@ done:
 
 long libos_syscall_chmod(const char *pathname, mode_t mode)
 {
-    printf("pathname{%s} mode{%o}\n", pathname, mode);
+    libos_printf("pathname{%s} mode{%o}\n", pathname, mode);
     (void)pathname;
     (void)mode;
     return 0;
@@ -1258,11 +1258,11 @@ static void _dump(const void* p_, size_t n)
 
     while (n--)
     {
-        //printf("<%02x>", *p++);
-        printf("<%03u>", *p++);
+        //libos_printf("<%02x>", *p++);
+        libos_printf("<%03u>", *p++);
     }
 
-    printf("\n");
+    libos_printf("\n");
 }
 #endif
 
@@ -1287,7 +1287,7 @@ long libos_syscall(long n, long params[6])
         }
         case SYS_libos_trace_ptr:
         {
-            printf("trace: %s: %lX %ld\n",
+            libos_printf("trace: %s: %lX %ld\n",
                 (const char*)params[0], params[1], params[1]);
             return _return(n, 0);
         }
@@ -1310,17 +1310,17 @@ long libos_syscall(long n, long params[6])
             int argc = (int)x1;
             const char** argv = (const char**)x2;
 
-            printf("=== SYS_libos_dump_argv\n");
+            libos_printf("=== SYS_libos_dump_argv\n");
 
-            printf("argc=%d\n", argc);
-            printf("argv=%p\n", argv);
+            libos_printf("argc=%d\n", argc);
+            libos_printf("argv=%p\n", argv);
 
             for (int i = 0; i < argc; i++)
             {
-                printf("argv[%d]=%s\n", i, argv[i]);
+                libos_printf("argv[%d]=%s\n", i, argv[i]);
             }
 
-            printf("argv[argc]=%p\n", argv[argc]);
+            libos_printf("argv[argc]=%p\n", argv[argc]);
 
             return _return(n, 0);
         }
@@ -1537,7 +1537,7 @@ long libos_syscall(long n, long params[6])
                     return _return(n, -EINVAL);
                 }
 
-                fprintf(stderr, "********** unhandled: ioctl: 0x%lX()\n",
+                libos_eprintf("********** unhandled: ioctl: 0x%lX()\n",
                     request);
                 abort();
             }
@@ -2525,12 +2525,12 @@ long libos_syscall(long n, long params[6])
         }
         default:
         {
-            fprintf(stderr, "********** %s(): %ld\n", syscall_str(n), n);
+            libos_eprintf("********** %s(): %ld\n", syscall_str(n), n);
             abort();
         }
     }
 
-    fprintf(stderr, "********** unhandled: %s()\n", syscall_str(n));
+    libos_eprintf("********** unhandled: %s()\n", syscall_str(n));
     abort();
 
     return 0;

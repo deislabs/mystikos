@@ -2,7 +2,9 @@
 #define _LIBOS_STRINGS_H
 
 #include <libos/types.h>
+#include <libos/defs.h>
 #include <stdarg.h>
+#include <unistd.h>
 
 #define LIBOS_STRLCPY(DEST, SRC) libos_strlcpy(DEST, SRC, sizeof(DEST))
 #define LIBOS_STRLCAT(DEST, SRC) libos_strlcat(DEST, SRC, sizeof(DEST))
@@ -52,10 +54,6 @@ char* libos_strchr(const char* s, int c);
 
 char* libos_strrchr(const char* s, int c);
 
-int libos_vsnprintf(char* str, size_t size, const char* format, va_list ap);
-
-int libos_snprintf(char* str, size_t size, const char* format, ...);
-
 char* libos_strdup(const char* s);
 
 size_t libos_strspn(const char* s, const char* accept);
@@ -63,5 +61,31 @@ size_t libos_strspn(const char* s, const char* accept);
 size_t libos_strcspn(const char* s, const char* reject);
 
 char* libos_strtok_r(char* str, const char* delim, char** saveptr);
+
+int libos_vsnprintf(char* str, size_t size, const char* format, va_list ap);
+
+LIBOS_PRINTF_FORMAT(3, 4)
+int libos_snprintf(char* str, size_t size, const char* format, ...);
+
+LIBOS_PRINTF_FORMAT(2, 3)
+int libos_console_printf(int fd, const char* format, ...);
+
+int libos_console_vprintf(int fd, const char* format, va_list ap);
+
+LIBOS_INLINE int libos_stderr_vprintf(const char* format, va_list ap)
+{
+    return libos_console_vprintf(STDERR_FILENO, format, ap);
+}
+
+LIBOS_INLINE int libos_stdout_vprintf(const char* format, va_list ap)
+{
+    return libos_console_vprintf(STDOUT_FILENO, format, ap);
+}
+
+LIBOS_PRINTF_FORMAT(1, 2)
+int libos_eprintf(const char* format, ...);
+
+LIBOS_PRINTF_FORMAT(1, 2)
+int libos_printf(const char* format, ...);
 
 #endif /* _LIBOS_STRINGS_H */

@@ -16,6 +16,7 @@ typedef enum libos_tcall_number
     LIBOS_TCALL_ALLOCATE,
     LIBOS_TCALL_DEALLOCATE,
     LIBOS_TCALL_VSNPRINTF,
+    LIBOS_TCALL_WRITE_CONSOLE,
 }
 libos_tcall_number_t;
 
@@ -47,6 +48,18 @@ LIBOS_INLINE long libos_tcall_vsnprintf(
     params[2] = (long)format;
     params[3] = (long)ap;
     return libos_tcall(LIBOS_TCALL_VSNPRINTF, params);
+}
+
+LIBOS_INLINE long libos_tcall_write_console(
+    int fd,
+    const void* buf,
+    size_t count)
+{
+    long params[6] = { 0 };
+    params[0] = (long)fd;
+    params[1] = (long)buf;
+    params[2] = (long)count;
+    return libos_tcall(LIBOS_TCALL_WRITE_CONSOLE, params);
 }
 
 #endif /* _LIBOS_TCALL_H */

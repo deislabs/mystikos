@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <libos/deprecated.h>
 #include <libos/malloc.h>
+#include <libos/strings.h>
 
 int libos_strsplit(
     const char* str,
@@ -247,12 +248,30 @@ size_t libos_tokslen(const char* toks[])
 
 void libos_toks_dump(const char* toks[])
 {
-    printf("=== libos_toks_dump()\n");
+    libos_console_printf(STDOUT_FILENO, "=== libos_toks_dump()\n");
 
     for (size_t i = 0; toks[i]; i++)
-        printf("%s\n", toks[i]);
+        libos_console_printf(STDOUT_FILENO, "%s\n", toks[i]);
 
-    printf("\n");
+    libos_console_printf(STDOUT_FILENO, "\n");
+}
+
+char* libos_strdup(const char* s)
+{
+    char* p;
+    size_t len;
+
+    if (!s)
+        return NULL;
+
+    len = libos_strlen(s);
+
+    if (!(p = libos_malloc(len + 1)))
+        return NULL;
+
+    libos_memcpy(p, s, len + 1);
+
+    return p;
 }
 
 int libos_vsnprintf(char* str, size_t size, const char* format, va_list ap)
@@ -272,20 +291,51 @@ int libos_snprintf(char* str, size_t size, const char* format, ...)
     return ret;
 }
 
-char* libos_strdup(const char* s)
+int libos_console_printf(int fd, const char* format, ...)
 {
-    char* p;
-    size_t len;
+    char buf[1024];
+    va_list ap;
+    int count;
 
-    if (!s)
-        return NULL;
+    va_start(ap, format);
+    count = libos_vsnprintf(buf, sizeof(buf), format, ap);
+    va_end(ap);
 
-    len = libos_strlen(s);
+    if (count < 0 || (size_t)count >= sizeof(buf))
+        return -EINVAL;
 
-    if (!(p = libos_malloc(len + 1)))
-        return NULL;
+    return (int)libos_tcall_write_console(fd, buf, (size_t)count);
+}
 
-    libos_memcpy(p, s, len + 1);
+int libos_console_vprintf(int fd, const char* format, va_list ap)
+{
+    char buf[1024];
+    int count;
 
-    return p;
+    count = libos_vsnprintf(buf, sizeof(buf), format, ap);
+
+    if (count < 0 || (size_t)count >= sizeof(buf))
+        return -EINVAL;
+
+    return (int)libos_tcall_write_console(fd, buf, (size_t)count);
+}
+
+int libos_eprintf(const char* format, ...)
+{
+    va_list ap;
+    va_start(ap, format);
+    int n = libos_console_vprintf(STDERR_FILENO, format, ap);
+    va_end(ap);
+
+    return n;
+}
+
+int libos_printf(const char* format, ...)
+{
+    va_list ap;
+    va_start(ap, format);
+    int n = libos_console_vprintf(STDOUT_FILENO, format, ap);
+    va_end(ap);
+
+    return n;
 }

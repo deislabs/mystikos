@@ -878,12 +878,12 @@ static void _dump_bytes(const void * p_, size_t n)
         uint8_t c = *p++;
 
         if (c >= ' ' && c <= '~')
-            printf("%c", c);
+            libos_printf("%c", c);
         else
-            printf("<%02x>", c);
+            libos_printf("<%02x>", c);
     }
 
-    printf("\n");
+    libos_printf("\n");
 }
 
 void elf_dump_stack(void* stack)
@@ -895,24 +895,24 @@ void elf_dump_stack(void* stack)
     Elf64_auxv_t* auxv;
     const Elf64_auxv_t* auxv_end = NULL;
 
-    printf("=== dump_stack(%lX)\n", (unsigned long)stack);
+    libos_printf("=== dump_stack(%lX)\n", (unsigned long)stack);
 
-    printf("stack=%lx\n", (uint64_t)stack);
+    libos_printf("stack=%lx\n", (uint64_t)stack);
 
 #if 0
-    printf("prev=%lx\n", *((uint64_t*)stack - 1));
+    libos_printf("prev=%lx\n", *((uint64_t*)stack - 1));
 #endif
 
-    printf("argc=%d\n", argc);
+    libos_printf("argc=%d\n", argc);
 
     for (int i = 0; i < argc; i++)
-        printf("argv[%d]=%s [%lX]\n", i, argv[i], (uint64_t)argv[i]);
+        libos_printf("argv[%d]=%s [%lX]\n", i, argv[i], (uint64_t)argv[i]);
 
     envp = (argv + argc + 1);
 
     for (int i = 0; envp[i]; i++)
     {
-        printf("envp[%d]=%s [%lX]\n", i, envp[i], (uint64_t)envp[i]);
+        libos_printf("envp[%d]=%s [%lX]\n", i, envp[i], (uint64_t)envp[i]);
         envc++;
     }
 
@@ -923,7 +923,7 @@ void elf_dump_stack(void* stack)
     for (int i = 0; auxv[i].a_type; i++)
     {
         const Elf64_auxv_t a = auxv[i];
-        printf("%s=%lX\n", elf64_at_string(a.a_type), a.a_un.a_val);
+        libos_printf("%s=%lX\n", elf64_at_string(a.a_type), a.a_un.a_val);
         auxv_end = &auxv[i];
     }
 
@@ -985,123 +985,123 @@ int elf_dump_ehdr(const void* ehdr)
     if (!h || _test_header(h) != 0)
         return -1;
 
-    printf("=== elf64_ehdr_t(%lX)\n", (unsigned long)h);
+    libos_printf("=== elf64_ehdr_t(%lX)\n", (unsigned long)h);
 
     /* Print e_ident[] */
-    printf("e_ident[EI_MAG0]=%02x\n", h->e_ident[EI_MAG0]);
-    printf("e_ident[EI_MAG1]=%c\n", h->e_ident[EI_MAG1]);
-    printf("e_ident[EI_MAG2]=%c\n", h->e_ident[EI_MAG2]);
-    printf("e_ident[EI_MAG3]=%c\n", h->e_ident[EI_MAG3]);
+    libos_printf("e_ident[EI_MAG0]=%02x\n", h->e_ident[EI_MAG0]);
+    libos_printf("e_ident[EI_MAG1]=%c\n", h->e_ident[EI_MAG1]);
+    libos_printf("e_ident[EI_MAG2]=%c\n", h->e_ident[EI_MAG2]);
+    libos_printf("e_ident[EI_MAG3]=%c\n", h->e_ident[EI_MAG3]);
 
     switch (h->e_ident[EI_CLASS])
     {
         case ELFCLASSNONE:
-            printf("e_ident[EI_CLASS]=ELFCLASSNONE\n");
+            libos_printf("e_ident[EI_CLASS]=ELFCLASSNONE\n");
             break;
         case ELFCLASS32:
-            printf("e_ident[EI_CLASS]=ELFCLASS32\n");
+            libos_printf("e_ident[EI_CLASS]=ELFCLASS32\n");
             break;
         case ELFCLASS64:
-            printf("e_ident[EI_CLASS]=ELFCLASS64\n");
+            libos_printf("e_ident[EI_CLASS]=ELFCLASS64\n");
             break;
         default:
-            printf("e_ident[EI_CLASS]=%02x\n", h->e_ident[EI_CLASS]);
+            libos_printf("e_ident[EI_CLASS]=%02x\n", h->e_ident[EI_CLASS]);
             break;
     }
 
     switch (h->e_ident[EI_DATA])
     {
         case ELFDATANONE:
-            printf("e_ident[EI_DATA]=ELFDATANONE\n");
+            libos_printf("e_ident[EI_DATA]=ELFDATANONE\n");
             break;
         case ELFDATA2LSB:
-            printf("e_ident[EI_DATA]=ELFDATA2LSB\n");
+            libos_printf("e_ident[EI_DATA]=ELFDATA2LSB\n");
             break;
         case ELFDATA2MSB:
-            printf("e_ident[EI_DATA]=ELFDATA2MSB\n");
+            libos_printf("e_ident[EI_DATA]=ELFDATA2MSB\n");
             break;
         default:
-            printf("e_ident[EI_DATA]=%02x\n", h->e_ident[EI_DATA]);
+            libos_printf("e_ident[EI_DATA]=%02x\n", h->e_ident[EI_DATA]);
             break;
     }
 
-    printf("e_ident[EI_VERSION]=%02x\n", h->e_ident[EI_VERSION]);
-    printf("e_ident[EI_PAD]=%02x\n", h->e_ident[EI_PAD]);
+    libos_printf("e_ident[EI_VERSION]=%02x\n", h->e_ident[EI_VERSION]);
+    libos_printf("e_ident[EI_PAD]=%02x\n", h->e_ident[EI_PAD]);
 
     switch (h->e_type)
     {
         case ET_NONE:
-            printf("e_type=ET_NONE\n");
+            libos_printf("e_type=ET_NONE\n");
             break;
         case ET_REL:
-            printf("e_type=ET_REL\n");
+            libos_printf("e_type=ET_REL\n");
             break;
         case ET_EXEC:
-            printf("e_type=ET_EXEC\n");
+            libos_printf("e_type=ET_EXEC\n");
             break;
         case ET_DYN:
-            printf("e_type=ET_DYN\n");
+            libos_printf("e_type=ET_DYN\n");
             break;
         case ET_CORE:
-            printf("e_type=ET_CORE\n");
+            libos_printf("e_type=ET_CORE\n");
             break;
         case ET_LOPROC:
-            printf("e_type=ET_LOPROC\n");
+            libos_printf("e_type=ET_LOPROC\n");
             break;
         case ET_HIPROC:
-            printf("e_type=ET_HIPROC\n");
+            libos_printf("e_type=ET_HIPROC\n");
             break;
         default:
-            printf("e_type=%02x\n", h->e_type);
+            libos_printf("e_type=%02x\n", h->e_type);
             break;
     }
 
     switch (h->e_machine)
     {
         case EM_NONE:
-            printf("e_machine=EM_NONE\n");
+            libos_printf("e_machine=EM_NONE\n");
             break;
         case EM_M32:
-            printf("e_machine=EM_M32\n");
+            libos_printf("e_machine=EM_M32\n");
             break;
         case EM_SPARC:
-            printf("e_machine=EM_SPARC\n");
+            libos_printf("e_machine=EM_SPARC\n");
             break;
         case EM_386:
-            printf("e_machine=EM_386\n");
+            libos_printf("e_machine=EM_386\n");
             break;
         case EM_68K:
-            printf("e_machine=EM_68K\n");
+            libos_printf("e_machine=EM_68K\n");
             break;
         case EM_88K:
-            printf("e_machine=EM_88K\n");
+            libos_printf("e_machine=EM_88K\n");
             break;
         case EM_860:
-            printf("e_machine=EM_860\n");
+            libos_printf("e_machine=EM_860\n");
             break;
         case EM_MIPS:
-            printf("e_machine=EM_MIPS\n");
+            libos_printf("e_machine=EM_MIPS\n");
             break;
         case EM_X86_64:
-            printf("e_machine=EM_X86_64\n");
+            libos_printf("e_machine=EM_X86_64\n");
             break;
         default:
-            printf("e_machine=%u\n", h->e_machine);
+            libos_printf("e_machine=%u\n", h->e_machine);
             break;
     }
 
-    printf("e_version=%u\n", h->e_version);
-    printf("e_entry=%lX\n", h->e_entry);
-    printf("e_phoff=%lu\n", h->e_phoff);
-    printf("e_shoff=%lu\n", h->e_shoff);
-    printf("e_flags=%u\n", h->e_flags);
-    printf("e_ehsize=%u\n", h->e_ehsize);
-    printf("e_phentsize=%u\n", h->e_phentsize);
-    printf("e_phnum=%u\n", h->e_phnum);
-    printf("e_shentsize=%u\n", h->e_shentsize);
-    printf("e_shnum=%u\n", h->e_shnum);
-    printf("e_shstrndx=%u\n", h->e_shstrndx);
-    printf("\n");
+    libos_printf("e_version=%u\n", h->e_version);
+    libos_printf("e_entry=%lX\n", h->e_entry);
+    libos_printf("e_phoff=%lu\n", h->e_phoff);
+    libos_printf("e_shoff=%lu\n", h->e_shoff);
+    libos_printf("e_flags=%u\n", h->e_flags);
+    libos_printf("e_ehsize=%u\n", h->e_ehsize);
+    libos_printf("e_phentsize=%u\n", h->e_phentsize);
+    libos_printf("e_phnum=%u\n", h->e_phnum);
+    libos_printf("e_shentsize=%u\n", h->e_shentsize);
+    libos_printf("e_shnum=%u\n", h->e_shnum);
+    libos_printf("e_shstrndx=%u\n", h->e_shstrndx);
+    libos_printf("\n");
 
     return 0;
 }
@@ -1324,7 +1324,7 @@ int elf_enter_crt(
         enter, &sp)))
     {
         /* ATTN: use ERAISE */
-        fprintf(stderr, "_make_stack() failed\n");
+        libos_eprintf("_make_stack() failed\n");
         assert(0);
     }
 
@@ -1352,7 +1352,7 @@ int elf_enter_crt(
     if (!dynv)
     {
         /* ATTN: use ERAISE */
-        printf("dynv not found\n");
+        libos_printf("dynv not found\n");
         assert(0);
     }
 

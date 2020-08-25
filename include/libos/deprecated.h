@@ -6,6 +6,7 @@
 
 #include <stddef.h>
 #include <stdarg.h>
+#include <stdio.h>
 
 __attribute__((deprecated))
 void* malloc(size_t size);
@@ -69,5 +70,17 @@ size_t strcspn(const char* s, const char* reject);
 
 __attribute__((deprecated))
 char* strtok_r(char* str, const char* delim, char** saveptr);
+
+__attribute__((deprecated))
+int printf(const char* format, ...);
+
+__attribute__((deprecated))
+int fprintf(FILE* stream, const char* format, ...);
+
+__attribute__((deprecated))
+int vprintf(const char *format, va_list ap);
+
+__attribute__((deprecated))
+int vfprintf(FILE* stream, const char* format, va_list ap);
 
 #endif /* _LIBOS_DEPRECATED_H */
