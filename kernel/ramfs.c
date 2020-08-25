@@ -200,7 +200,7 @@ static inode_t* _inode_find_child(
 
     for (size_t i = 0; i < nents; i++)
     {
-        if (strcmp(ents[i].d_name, name) == 0)
+        if (libos_strcmp(ents[i].d_name, name) == 0)
             return (inode_t*)ents[i].d_ino;
     }
 
@@ -225,8 +225,11 @@ static void _inode_release_all(
             const struct dirent* ent = &ents[i];
             inode_t* child;
 
-            if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
+            if (libos_strcmp(ent->d_name, ".") == 0 ||
+                libos_strcmp(ent->d_name, "..") == 0)
+            {
                 continue;
+            }
 
             child = (inode_t*)ent->d_ino;
             assert(child);
@@ -257,7 +260,7 @@ static int _inode_remove_dirent(inode_t* inode, const char* name)
 
     for (size_t i = 0; i < nents; i++)
     {
-        if (strcmp(ents[i].d_name, name) == 0)
+        if (libos_strcmp(ents[i].d_name, name) == 0)
         {
             const size_t pos = i * sizeof(struct dirent);
             const size_t size = sizeof(struct dirent);
@@ -356,7 +359,7 @@ static int _split_path(
     char* slash;
 
     /* Reject paths that are too long. */
-    if (strlen(path) >= PATH_MAX)
+    if (libos_strlen(path) >= PATH_MAX)
         ERAISE(-EINVAL);
 
     /* Reject paths that are not absolute */
@@ -364,15 +367,15 @@ static int _split_path(
         ERAISE(-EINVAL);
 
     /* Handle root directory up front */
-    if (strcmp(path, "/") == 0)
+    if (libos_strcmp(path, "/") == 0)
     {
-        strlcpy(dirname, "/", PATH_MAX);
-        strlcpy(basename, "/", PATH_MAX);
+        libos_strlcpy(dirname, "/", PATH_MAX);
+        libos_strlcpy(basename, "/", PATH_MAX);
         goto done;
     }
 
     /* This cannot fail (prechecked) */
-    if (!(slash = strrchr(path, '/')))
+    if (!(slash = libos_strrchr(path, '/')))
         ERAISE(-EINVAL);
 
     /* If path ends with '/' character */
@@ -383,12 +386,12 @@ static int _split_path(
     {
         if (slash == path)
         {
-            strlcpy(dirname, "/", PATH_MAX);
+            libos_strlcpy(dirname, "/", PATH_MAX);
         }
         else
         {
             size_t index = (size_t)(slash - path);
-            strlcpy(dirname, path, PATH_MAX);
+            libos_strlcpy(dirname, path, PATH_MAX);
 
             if (index < PATH_MAX)
                 dirname[index] = '\0';
@@ -396,7 +399,7 @@ static int _split_path(
                 dirname[PATH_MAX - 1] = '\0';
         }
 
-        strlcpy(basename, slash + 1, PATH_MAX);
+        libos_strlcpy(basename, slash + 1, PATH_MAX);
     }
 
 done:
@@ -427,7 +430,7 @@ static int _path_to_inode_recursive(
         ERAISE(-EINVAL);
 
     /* If root directory */
-    if (strcmp(path, "/") == 0)
+    if (libos_strcmp(path, "/") == 0)
     {
         inode = ramfs->root;
 
@@ -435,7 +438,7 @@ static int _path_to_inode_recursive(
             *parent_out = parent;
 
         if (realpath)
-            strlcpy(realpath, "/", PATH_MAX);
+            libos_strlcpy(realpath, "/", PATH_MAX);
 
         *inode_out = inode;
 
@@ -459,10 +462,10 @@ static int _path_to_inode_recursive(
             {
                 if (realpath)
                 {
-                    if (strlcat(realpath, "/", PATH_MAX) >= PATH_MAX)
+                    if (libos_strlcat(realpath, "/", PATH_MAX) >= PATH_MAX)
                         ERAISE_QUIET(-ENAMETOOLONG);
 
-                    if (strlcat(realpath, toks[i], PATH_MAX) >= PATH_MAX)
+                    if (libos_strlcat(realpath, toks[i], PATH_MAX) >= PATH_MAX)
                         ERAISE_QUIET(-ENAMETOOLONG);
                 }
             }
@@ -779,7 +782,7 @@ static ssize_t _fs_read(
         }
 
         n = (count < remaining) ? count : remaining;
-        memcpy(buf, _file_current(file), n);
+        libos_memcpy(buf, _file_current(file), n);
         file->offset += n;
     }
 
@@ -825,7 +828,7 @@ static ssize_t _fs_write(
                 ERAISE(-ENOMEM);
         }
 
-        memcpy(_file_current(file), buf, count);
+        libos_memcpy(_file_current(file), buf, count);
         file->offset = new_offset;
     }
 
@@ -914,7 +917,7 @@ static int _fs_close(libos_fs_t* fs, libos_file_t* file)
     assert(file->inode->nopens > 0);
     file->inode->nopens--;
 
-    memset(file, 0xdd, sizeof(libos_file_t));
+    libos_memset(file, 0xdd, sizeof(libos_file_t));
     libos_free(file);
 
 done:
@@ -961,7 +964,7 @@ static int _stat(inode_t* inode, struct stat* statbuf)
     if (!_inode_valid(inode) || !statbuf)
         ERAISE(-EINVAL);
 
-    memset(&buf, 0, sizeof(buf));
+    libos_memset(&buf, 0, sizeof(buf));
     buf.st_dev = 0;
     buf.st_ino = (ino_t)inode;
     buf.st_mode = inode->mode;
@@ -972,9 +975,9 @@ static int _stat(inode_t* inode, struct stat* statbuf)
     buf.st_size = (off_t)inode->buf.size;
     buf.st_blksize = BLKSIZE;
     buf.st_blocks = libos_round_up_off(buf.st_size, BLKSIZE) / BLKSIZE;
-    memset(&buf.st_atim, 0, sizeof(buf.st_atim)); /* ATTN: unsupported */
-    memset(&buf.st_mtim, 0, sizeof(buf.st_mtim)); /* ATTN: unsupported */
-    memset(&buf.st_ctim, 0, sizeof(buf.st_ctim)); /* ATTN: unsupported */
+    libos_memset(&buf.st_atim, 0, sizeof(buf.st_atim)); /* ATTN: unsupported */
+    libos_memset(&buf.st_mtim, 0, sizeof(buf.st_mtim)); /* ATTN: unsupported */
+    libos_memset(&buf.st_ctim, 0, sizeof(buf.st_ctim)); /* ATTN: unsupported */
 
     *statbuf = buf;
 
@@ -1380,7 +1383,7 @@ static int _fs_symlink(libos_fs_t* fs, const char* target, const char* linkpath)
     ECHECK(_inode_new(parent, basename, (S_IFLNK | 0777), &inode));
 
     /* Write the target name into the link inode */
-    if (libos_buf_append(&inode->buf, target, strlen(target) + 1) != 0)
+    if (libos_buf_append(&inode->buf, target, libos_strlen(target) + 1) != 0)
         ERAISE(-ENOMEM);
 
 done:
@@ -1400,7 +1403,7 @@ static int _fs_realpath(
     if (!_ramfs_valid(ramfs) || !_file_valid(file) || !buf || !size)
         ERAISE(-EINVAL);
 
-    if (strlcpy(buf, file->realpath, size) >= size)
+    if (libos_strlcpy(buf, file->realpath, size) >= size)
         ERAISE(-ENAMETOOLONG);
 
 done:

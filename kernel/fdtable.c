@@ -66,7 +66,7 @@ int libos_fdtable_remove(int fd)
     {
         if (_fdtable[i].fd == fd)
         {
-            memset(&_fdtable[i], 0, sizeof(fdtable_entry_t));
+            libos_memset(&_fdtable[i], 0, sizeof(fdtable_entry_t));
             goto done;
         }
     }

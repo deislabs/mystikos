@@ -23,15 +23,18 @@ int libos_lsr(const char* root, libos_strarr_t* paths)
     /* For each entry */
     while ((ent = libos_readdir(dir)))
     {
-        if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
+        if (libos_strcmp(ent->d_name, ".") == 0 ||
+            libos_strcmp(ent->d_name, "..") == 0)
+        {
             continue;
+        }
 
-        strlcpy(path, root, sizeof(path));
+        libos_strlcpy(path, root, sizeof(path));
 
-        if (strcmp(root, "/") != 0)
-            strlcat(path, "/", sizeof(path));
+        if (libos_strcmp(root, "/") != 0)
+            libos_strlcat(path, "/", sizeof(path));
 
-        strlcat(path, ent->d_name, sizeof(path));
+        libos_strlcat(path, ent->d_name, sizeof(path));
 
         /* Append to paths[] array */
         if (libos_strarr_append(paths, path) != 0)
@@ -68,7 +71,7 @@ done:
     if (ret != 0 && paths != NULL)
     {
         libos_strarr_release(paths);
-        memset(paths, 0, sizeof(libos_strarr_t));
+        libos_memset(paths, 0, sizeof(libos_strarr_t));
     }
 
     return ret;

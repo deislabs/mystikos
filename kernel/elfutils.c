@@ -749,7 +749,7 @@ int elf_init_stack(
         envp_strings_offset = argv_strings_offset;
 
         for (size_t i = 0; i < argc; i++)
-            envp_strings_offset += strlen(argv[i]) + 1;
+            envp_strings_offset += libos_strlen(argv[i]) + 1;
     }
 
     /* calculate the offset of the end marker */
@@ -757,7 +757,7 @@ int elf_init_stack(
         end_marker_offset = envp_strings_offset;
 
         for (size_t i = 0; i < envc; i++)
-            end_marker_offset += strlen(envp[i]) + 1;
+            end_marker_offset += libos_strlen(envp[i]) + 1;
 
         end_marker_offset = _round_up_to_multiple(end_marker_offset, 8);
     }
@@ -816,14 +816,14 @@ int elf_init_stack(
 
         for (size_t i = 0; i < argc; i++)
         {
-            size_t n = strlen(argv[i]) + 1;
-            memcpy(p, argv[i], n);
+            size_t n = libos_strlen(argv[i]) + 1;
+            libos_memcpy(p, argv[i], n);
             argv_out[i] = p;
             p += n;
         }
 
         /* Initialize the terminator */
-        memset(&argv_out[argc], 0, sizeof(Elf64_auxv_t));
+        libos_memset(&argv_out[argc], 0, sizeof(Elf64_auxv_t));
     }
 
     /* Initialize envp[] */
@@ -833,8 +833,8 @@ int elf_init_stack(
 
         for (size_t i = 0; i < envc; i++)
         {
-            size_t n = strlen(envp[i]) + 1;
-            memcpy(p, envp[i], n);
+            size_t n = libos_strlen(envp[i]) + 1;
+            libos_memcpy(p, envp[i], n);
             envp_out[i] = p;
             p += n;
         }
@@ -849,14 +849,15 @@ int elf_init_stack(
         for (size_t i = 0; i < auxc; i++)
             auxv_out[i] = auxv[i];
 
-        memset(&auxv_out[auxc], 0, sizeof(Elf64_auxv_t));
+        libos_memset(&auxv_out[auxc], 0, sizeof(Elf64_auxv_t));
     }
 
     /* Write the first guard page pattern */
-    memcpy(stack, _guard_page, PAGE_SIZE);
+    libos_memcpy(stack, _guard_page, PAGE_SIZE);
 
     /* Write the second guard page pattern */
-    memcpy((uint8_t*)stack + stack_size - PAGE_SIZE, _guard_page, PAGE_SIZE);
+    libos_memcpy((uint8_t*)stack + stack_size - PAGE_SIZE, _guard_page,
+        PAGE_SIZE);
 
     *sp_out = sp;
 
@@ -1119,10 +1120,10 @@ int elf_check_stack(const void* stack, size_t stack_size)
     if (stack_size < 2 * PAGE_SIZE)
         goto done;
 
-    if (memcmp(stack, _guard_page, PAGE_SIZE) != 0)
+    if (libos_memcmp(stack, _guard_page, PAGE_SIZE) != 0)
         goto done;
 
-    if (memcmp((uint8_t*)stack + stack_size - PAGE_SIZE, _guard_page,
+    if (libos_memcmp((uint8_t*)stack + stack_size - PAGE_SIZE, _guard_page,
         PAGE_SIZE) != 0)
     {
         goto done;
@@ -1160,7 +1161,7 @@ void* elf_make_stack(
     if (!(stack = memalign(PAGE_SIZE, stack_size)))
         goto done;
 
-    memset(stack, 0, stack_size);
+    libos_memset(stack, 0, stack_size);
 
     /*  Example:
         AT_SYSINFO_EHDR=7ffebe5c8000

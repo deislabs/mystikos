@@ -12,7 +12,9 @@ CFLAGS = $(OEENCLAVE_CFLAGS)
 
 LDFLAGS = $(OEENCLAVE_LDFLAGS)
 
-LIBS = $(LIBDIR)/liboskernel.a
+LIBS =
+LIBS += $(LIBDIR)/liboskernel.a
+LIBS += $(LIBDIR)/libostargetsgx.a
 
 CLEAN = $(SUBOBJDIR)/run_t.h $(SUBOBJDIR)/run_t.c $(SUBOBJDIR)/run_args.h
 

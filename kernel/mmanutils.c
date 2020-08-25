@@ -108,11 +108,11 @@ static ssize_t _map_file_onto_memory(
             /* if copy would write past end of data */
             if (r < (size_t)n)
             {
-                memcpy(p, buf, r);
+                libos_memcpy(p, buf, r);
                 break;
             }
 
-            memcpy(p, buf, (size_t)n);
+            libos_memcpy(p, buf, (size_t)n);
             p += n;
             r -= (size_t)n;
             bytes_read += n;

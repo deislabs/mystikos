@@ -654,7 +654,7 @@ long libos_syscall_open(const char* pathname, int flags, mode_t mode)
     libos_file_t* file;
 
     /* Handle /dev/urandom as a special case */
-    if (strcmp(pathname, "/dev/urandom") == 0)
+    if (libos_strcmp(pathname, "/dev/urandom") == 0)
     {
         /* ATTN: handle relative paths to /dev/urandom */
         return DEV_URANDOM_FD;
@@ -1020,9 +1020,9 @@ long libos_syscall_getcwd(char* buf, size_t size)
         ERAISE(-EINVAL);
 
     /* ATTN: removing the next line causes strlcpy to crash */
-    memset(buf, 0, size);
+    libos_memset(buf, 0, size);
 
-    if (strlcpy(buf, _cwd, size) >= size)
+    if (libos_strlcpy(buf, _cwd, size) >= size)
         ERAISE(-ERANGE);
 
     ret = (long)buf;
@@ -1975,7 +1975,7 @@ long libos_syscall(long n, long params[6])
             _strace(n, "path=%s buf=%p", path, buf);
 
             if (buf)
-                memset(buf, 0, sizeof(*buf));
+                libos_memset(buf, 0, sizeof(*buf));
 
             return _return(n, 0);
         }

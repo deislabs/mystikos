@@ -119,20 +119,20 @@ int libos_strjoin(
     {
         /* Space for left delimiter */
         if (ldelim)
-            n += strlen(ldelim);
+            n += libos_strlen(ldelim);
 
         /* Space for right delimiter */
         if (rdelim)
-            n += strlen(rdelim);
+            n += libos_strlen(rdelim);
 
         /* Space for the strings and internal delimiters */
         for (size_t i = 0; i < ntoks; i++)
         {
-            n += strlen(toks[i]);
+            n += libos_strlen(toks[i]);
 
             /* Space for internal delimiters */
             if (delim && (i + 1) != ntoks)
-                n += strlen(delim);
+                n += libos_strlen(delim);
         }
 
         /* Space for null terminator */
@@ -150,8 +150,8 @@ int libos_strjoin(
         /* Copy the left delimiter */
         if (ldelim)
         {
-            n = strlen(ldelim);
-            memcpy(p, ldelim, n);
+            n = libos_strlen(ldelim);
+            libos_memcpy(p, ldelim, n);
             p += n;
         }
 
@@ -159,15 +159,15 @@ int libos_strjoin(
         for (size_t i = 0; i < ntoks; i++)
         {
             /* Copy the token */
-            n = strlen(toks[i]);
-            memcpy(p, toks[i], n);
+            n = libos_strlen(toks[i]);
+            libos_memcpy(p, toks[i], n);
             p += n;
 
             /* Space for internal delimiters */
             if (delim && (i + 1) != ntoks)
             {
-                n = strlen(delim);
-                memcpy(p, delim, n);
+                n = libos_strlen(delim);
+                libos_memcpy(p, delim, n);
                 p += n;
             }
         }
@@ -175,8 +175,8 @@ int libos_strjoin(
         /* Copy the right delimiter */
         if (rdelim)
         {
-            n = strlen(rdelim);
-            memcpy(p, rdelim, n);
+            n = libos_strlen(rdelim);
+            libos_memcpy(p, rdelim, n);
             p += n;
         }
 
@@ -206,7 +206,7 @@ ssize_t libos_memremove(void* data, size_t size, size_t pos, size_t count)
     rem = size - pos;
 
     if (rem)
-        memmove((uint8_t*)data + pos, (uint8_t*)data + pos + count, rem);
+        libos_memmove((uint8_t*)data + pos, (uint8_t*)data + pos + count, rem);
 
     ret = (ssize_t)(size - count);
 
@@ -251,4 +251,37 @@ void libos_toks_dump(const char* toks[])
         printf("%s\n", toks[i]);
 
     printf("\n");
+}
+
+char* libos_strchr(const char* s, int c)
+{
+    if (s)
+    {
+        while (*s && *s != c)
+            s++;
+
+        if (*s == c)
+            return (char*)s;
+    }
+
+    return NULL;
+}
+
+char* libos_strrchr(const char* s, int c)
+{
+    if (s)
+    {
+        char* p = (char*)s + libos_strlen(s);
+
+        if (c == '\0')
+            return p;
+
+        while (p != s)
+        {
+            if (*--p == c)
+                return p;
+        }
+    }
+
+    return NULL;
 }

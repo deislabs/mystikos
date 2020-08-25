@@ -33,4 +33,20 @@ ssize_t libos_memremove(void* data, size_t n, size_t pos, size_t count);
 
 ssize_t libos_memremove_u64(void* data, size_t size, size_t pos, size_t count);
 
+void* libos_memset(void* s, int c, size_t n);
+
+void* libos_memcpy(void* dest, const void* src, size_t n);
+
+int libos_memcmp(const void* s1, const void* s2, size_t n);
+
+void* libos_memmove(void* dest_, const void* src_, size_t n);
+
+size_t libos_strlen(const char* s);
+
+int libos_strcmp(const char* s1, const char* s2);
+
+char* libos_strchr(const char* s, int c);
+
+char* libos_strrchr(const char* s, int c);
+
 #endif /* _LIBOS_STRINGS_H */

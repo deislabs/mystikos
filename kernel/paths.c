@@ -26,26 +26,26 @@ int libos_path_absolute_cwd(
 
     if (path[0] == '/')
     {
-        if (strlcpy(buf, path, size) >= size)
+        if (libos_strlcpy(buf, path, size) >= size)
             ERAISE(-ENAMETOOLONG);
     }
     else
     {
         size_t cwd_len;
 
-        if (strlcpy(buf, cwd, size) >= size)
+        if (libos_strlcpy(buf, cwd, size) >= size)
             ERAISE(-ENAMETOOLONG);
 
-        if ((cwd_len = strlen(cwd)) == 0)
+        if ((cwd_len = libos_strlen(cwd)) == 0)
             ERAISE(-EINVAL);
 
         if (cwd[cwd_len-1] != '/')
         {
-            if (strlcat(buf, "/", size) >= size)
+            if (libos_strlcat(buf, "/", size) >= size)
                 ERAISE(-ENAMETOOLONG);
         }
 
-        if (strlcat(buf, path, size) >= size)
+        if (libos_strlcat(buf, path, size) >= size)
             ERAISE(-ENAMETOOLONG);
     }
 
@@ -65,7 +65,7 @@ int libos_path_absolute(const char* path, char* buf, size_t size)
 
     if (path[0] == '/')
     {
-        if (strlcpy(buf, path, size) >= size)
+        if (libos_strlcpy(buf, path, size) >= size)
             ERAISE(-ENAMETOOLONG);
     }
     else
@@ -99,7 +99,7 @@ int libos_tok_normalize(const char* toks[])
     /* Find the index of the last "/" token */
     for (size_t i = 0; toks[i]; i++)
     {
-        if (strcmp(toks[i], "/") == 0)
+        if (libos_strcmp(toks[i], "/") == 0)
         {
             start = i;
             break;
@@ -116,7 +116,7 @@ int libos_tok_normalize(const char* toks[])
     for (size_t i = 0; toks[i]; )
     {
         /* Skip "." elements */
-        if (strcmp(toks[i], ".") == 0)
+        if (libos_strcmp(toks[i], ".") == 0)
         {
             ECHECK(libos_memremove_u64(toks, size, i, 1));
             size--;
@@ -125,7 +125,7 @@ int libos_tok_normalize(const char* toks[])
         }
 
         /* If "..", remove previous element. */
-        if (strcmp(toks[i], "..") == 0)
+        if (libos_strcmp(toks[i], "..") == 0)
         {
             /* Remove this element */
             ECHECK(libos_memremove_u64(toks, size, i, 1));
@@ -169,7 +169,7 @@ int libos_normalize(const char* path, char* buf, size_t size)
     ntoks = libos_tokslen((const char**)toks);
     ECHECK(libos_strjoin((const char**)toks, ntoks, "/", "/", NULL, &str));
 
-    if (strlcpy(buf, str, size) >= size)
+    if (libos_strlcpy(buf, str, size) >= size)
         ERAISE(-ERANGE);
 
 done:
@@ -197,7 +197,7 @@ int libos_path_expand(const char* toks[], const char* buf[], size_t size)
 
     for (size_t i = 0; toks[i]; i++)
     {
-        if (i == 0 && strcmp(toks[i], "/") == 0)
+        if (i == 0 && libos_strcmp(toks[i], "/") == 0)
         {
             buf[n++] = toks[i];
             continue;

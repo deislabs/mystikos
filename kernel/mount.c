@@ -57,14 +57,14 @@ int libos_mount_resolve(
     /* Find the longest binding point that contains this path. */
     for (size_t i = 0; i < _mount_table_size; i++)
     {
-        size_t len = strlen(_mount_table[i].path);
+        size_t len = libos_strlen(_mount_table[i].path);
         const char* mpath = _mount_table[i].path;
 
         if (mpath[0] == '/' && mpath[1] == '\0')
         {
             if (len > match_len)
             {
-                strlcpy(suffix, realpath.buf, PATH_MAX);
+                libos_strlcpy(suffix, realpath.buf, PATH_MAX);
                 match_len = len;
                 fs = _mount_table[i].fs;
             }
@@ -74,10 +74,10 @@ int libos_mount_resolve(
         {
             if (len > match_len)
             {
-                strlcpy(suffix, realpath.buf + len, PATH_MAX);
+                libos_strlcpy(suffix, realpath.buf + len, PATH_MAX);
 
                 if (*suffix == '\0')
-                    strlcpy(suffix, "/", PATH_MAX);
+                    libos_strlcpy(suffix, "/", PATH_MAX);
 
                 match_len = len;
                 fs = _mount_table[i].fs;
@@ -121,7 +121,7 @@ int libos_mount(libos_fs_t* fs, const char* target)
     }
 
     /* Be sure the target directory exists (if not root) */
-    if (strcmp(target, "/") != 0)
+    if (libos_strcmp(target, "/") != 0)
     {
         struct stat buf;
         char suffix[PATH_MAX];
@@ -154,7 +154,7 @@ int libos_mount(libos_fs_t* fs, const char* target)
     /* Reject duplicate mount paths. */
     for (size_t i = 0; i < _mount_table_size; i++)
     {
-        if (strcmp(_mount_table[i].path, target) == 0)
+        if (libos_strcmp(_mount_table[i].path, target) == 0)
             ERAISE(-EEXIST);
     }
 
@@ -163,7 +163,7 @@ int libos_mount(libos_fs_t* fs, const char* target)
         if (!(mount_table_entry.path = strdup(target)))
             ERAISE(-ENOMEM);
 
-        mount_table_entry.path_size = strlen(target) + 1;
+        mount_table_entry.path_size = libos_strlen(target) + 1;
         mount_table_entry.fs = fs;
         mount_table_entry.flags = 0;
     }

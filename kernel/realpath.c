@@ -33,7 +33,7 @@ int libos_realpath(const char* path, libos_path_t* resolved_path)
 
     if (path[0] == '/')
     {
-        if (strlcpy(v->buf, path, sizeof(v->buf)) >= sizeof(v->buf))
+        if (libos_strlcpy(v->buf, path, sizeof(v->buf)) >= sizeof(v->buf))
             ERAISE(-ENAMETOOLONG);
     }
     else
@@ -44,13 +44,13 @@ int libos_realpath(const char* path, libos_path_t* resolved_path)
         if ((r = libos_syscall_getcwd(cwd, sizeof(cwd))) < 0)
             ERAISE((int)r);
 
-        if (strlcpy(v->buf, cwd, sizeof(v->buf)) >= sizeof(v->buf))
+        if (libos_strlcpy(v->buf, cwd, sizeof(v->buf)) >= sizeof(v->buf))
             ERAISE(-ENAMETOOLONG);
 
-        if (strlcat(v->buf, "/", sizeof(v->buf)) >= sizeof(v->buf))
+        if (libos_strlcat(v->buf, "/", sizeof(v->buf)) >= sizeof(v->buf))
             ERAISE(-ENAMETOOLONG);
 
-        if (strlcat(v->buf, path, sizeof(v->buf)) >= sizeof(v->buf))
+        if (libos_strlcat(v->buf, path, sizeof(v->buf)) >= sizeof(v->buf))
             ERAISE(-ENAMETOOLONG);
     }
 
@@ -72,11 +72,11 @@ int libos_realpath(const char* path, libos_path_t* resolved_path)
     for (size_t i = 0; i < nin; i++)
     {
         /* Skip "." elements. */
-        if (strcmp(v->in[i], ".") == 0)
+        if (libos_strcmp(v->in[i], ".") == 0)
             continue;
 
         /* If "..", remove previous element. */
-        if (strcmp(v->in[i], "..") == 0)
+        if (libos_strcmp(v->in[i], "..") == 0)
         {
             if (nout > 1)
                 nout--;
@@ -93,12 +93,12 @@ int libos_realpath(const char* path, libos_path_t* resolved_path)
 
         for (size_t i = 0; i < nout; i++)
         {
-            if (strlcat(resolved_path->buf, v->out[i], n) >= n)
+            if (libos_strlcat(resolved_path->buf, v->out[i], n) >= n)
                 ERAISE(-ENAMETOOLONG);
 
             if (i != 0 && i + 1 != nout)
             {
-                if (strlcat(resolved_path->buf, "/", n) >= n)
+                if (libos_strlcat(resolved_path->buf, "/", n) >= n)
                     ERAISE(-ENAMETOOLONG);
             }
         }
