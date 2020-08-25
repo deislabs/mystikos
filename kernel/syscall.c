@@ -28,7 +28,7 @@
 #include <libos/mount.h>
 #include <libos/eraise.h>
 #include <libos/buf.h>
-#include <openenclave/bits/result.h>
+#include <libos/tcall.h>
 #include <sys/vfs.h>
 #include "fdtable.h"
 
@@ -42,8 +42,6 @@
 #define COLOR_BLUE "\e[34m"
 #define COLOR_GREEN "\e[32m"
 #define COLOR_RESET "\e[0m"
-
-oe_result_t oe_random(void* data, size_t size);
 
 long libos_syscall_isatty(int fd);
 
@@ -513,13 +511,10 @@ static long _forward_syscall(long n, long params[6])
     }
     else
     {
-        extern long oe_syscall(long n, long x1, long x2, long x3, long x4,
-            long x5, long x6);
-
         if (_trace_syscalls)
             fprintf(stderr, "    [forward syscall]\n");
 
-        long ret = oe_syscall(n, x1, x2, x3, x4, x5, x6);
+        long ret = libos_tcall(n, params);
 
         if (ret == -1)
             ret = -errno;
@@ -1055,7 +1050,7 @@ long libos_syscall_getrandom(void *buf, size_t buflen, unsigned int flags)
     if (!buf && buflen)
         ERAISE(-EINVAL);
 
-    if (buf && buflen && oe_random(buf, buflen) != OE_OK)
+    if (buf && buflen && libos_tcall_random(buf, buflen) != 0)
         ERAISE(-EINVAL);
 
     ret = (long)buflen;
@@ -1226,7 +1221,7 @@ static ssize_t _dev_urandom_readv(const struct iovec* iov, int iovcnt)
     {
         if (iov->iov_base && iov->iov_len)
         {
-            if (oe_random(iov->iov_base, iov->iov_len) != OE_OK)
+            if (libos_tcall_random(iov->iov_base, iov->iov_len) != 0)
                 ERAISE(-EINVAL);
 
             nread += iov->iov_len;
@@ -1352,7 +1347,7 @@ long libos_syscall(long n, long params[6])
 
             if (fd == DEV_URANDOM_FD)
             {
-                if (oe_random(buf, count) != OE_OK)
+                if (libos_tcall_random(buf, count) != 0)
                     _return(n, -EIO);
 
                 return _return(n, (long)count);

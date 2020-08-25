@@ -1,7 +1,17 @@
 #include <libos/tcall.h>
 #include <libos/eraise.h>
+#include <sys/syscall.h>
 #include <errno.h>
 #include <openenclave/enclave.h>
+
+long oe_syscall(
+    long n,
+    long x1,
+    long x2,
+    long x3,
+    long x4,
+    long x5,
+    long x6);
 
 static long _tcall_random(void* data, size_t size)
 {
@@ -34,14 +44,7 @@ long libos_tcall(long n, long params[6])
     const long x5 = params[4];
     const long x6 = params[5];
 
-    (void)x1;
-    (void)x2;
-    (void)x3;
-    (void)x4;
-    (void)x5;
-    (void)x6;
-
-    switch ((libos_tcall_number_t)n)
+    switch (n)
     {
         case LIBOS_TCALL_RANDOM:
         {
@@ -50,6 +53,37 @@ long libos_tcall(long n, long params[6])
         case LIBOS_TCALL_THREAD_SELF:
         {
             return _tcall_thread_self();
+        }
+        case SYS_read:
+        case SYS_write:
+        case SYS_close:
+        case SYS_poll:
+        case SYS_ioctl:
+        case SYS_readv:
+        case SYS_writev:
+        case SYS_select:
+        case SYS_nanosleep:
+        case SYS_fcntl:
+        case SYS_gettimeofday:
+        case SYS_sethostname:
+        case SYS_bind:
+        case SYS_connect:
+        case SYS_recvfrom:
+        case SYS_sendfile:
+        case SYS_socket:
+        case SYS_accept:
+        case SYS_sendto:
+        case SYS_sendmsg:
+        case SYS_recvmsg:
+        case SYS_shutdown:
+        case SYS_listen:
+        case SYS_getsockname:
+        case SYS_getpeername:
+        case SYS_socketpair:
+        case SYS_setsockopt:
+        case SYS_getsockopt:
+        {
+            return oe_syscall(n, x1, x2, x3, x4, x5, x6);
         }
         default:
         {

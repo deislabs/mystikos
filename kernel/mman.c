@@ -115,17 +115,8 @@
 #include <libos/defs.h>
 #include <libos/mman.h>
 #include <libos/tcall.h>
+#include <libos/strings.h>
 #include <string.h>
-
-LIBOS_PRINTF_FORMAT(3, 4)
-int oe_snprintf(char* str, size_t size, const char* format, ...);
-
-LIBOS_PRINTF_FORMAT(1, 2)
-int oe_host_printf(const char* fmt, ...);
-
-#define SNPRINTF oe_snprintf
-
-#define PRINTF oe_host_printf
 
 /*
 **==============================================================================
@@ -316,7 +307,7 @@ static void _mman_clear_err(libos_mman_t* mman)
 static void _mman_set_err(libos_mman_t* mman, const char* str)
 {
     if (mman && str)
-        SNPRINTF(mman->err, sizeof(mman->err), "%s", str);
+        libos_strlcpy(mman->err, str, sizeof(mman->err));
 }
 
 /* Inline Helper function to check mman sanity (if enable) */
