@@ -29,6 +29,7 @@
 #include <libos/eraise.h>
 #include <libos/buf.h>
 #include <libos/tcall.h>
+#include <libos/errno.h>
 #include <sys/vfs.h>
 #include "fdtable.h"
 
@@ -536,6 +537,7 @@ static long _return(long n, long ret)
     {
         const char* red = "";
         const char* reset = "";
+        const char* error_name = NULL;
 
         if (ret < 0)
         {
@@ -546,10 +548,20 @@ static long _return(long n, long ret)
                 red = COLOR_RED;
                 reset = COLOR_RESET;
             }
+
+            error_name = libos_error_name(-ret);
         }
 
-        fprintf(stderr, "    %s%s(): return=%ld (%lX)%s\n",
-            red, syscall_str(n), ret, ret, reset);
+        if (error_name)
+        {
+            fprintf(stderr, "    %s%s(): return=-%s(%ld)%s\n",
+                red, syscall_str(n), error_name, ret, reset);
+        }
+        else
+        {
+            fprintf(stderr, "    %s%s(): return=%ld(%lX)%s\n",
+                red, syscall_str(n), ret, ret, reset);
+        }
     }
 
     return ret;
