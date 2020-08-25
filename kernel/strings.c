@@ -320,6 +320,16 @@ int libos_console_vprintf(int fd, const char* format, va_list ap)
     return (int)libos_tcall_write_console(fd, buf, (size_t)count);
 }
 
+int libos_veprintf(const char* format, va_list ap)
+{
+    return libos_console_vprintf(STDERR_FILENO, format, ap);
+}
+
+int libos_vprintf(const char* format, va_list ap)
+{
+    return libos_console_vprintf(STDOUT_FILENO, format, ap);
+}
+
 int libos_eprintf(const char* format, ...)
 {
     va_list ap;

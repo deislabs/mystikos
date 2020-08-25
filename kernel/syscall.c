@@ -470,7 +470,7 @@ static void _strace(long n, const char* fmt, ...)
 {
     if (_trace_syscalls)
     {
-        const bool isatty = libos_syscall_isatty(fileno(stderr)) == 1;
+        const bool isatty = libos_syscall_isatty(STDERR_FILENO) == 1;
         const char* blue = isatty ? COLOR_GREEN : "";
         const char* reset = isatty ? COLOR_RESET : "";
 
@@ -480,7 +480,7 @@ static void _strace(long n, const char* fmt, ...)
         {
             va_list ap;
             va_start(ap, fmt);
-            libos_stderr_vprintf(fmt, ap);
+            libos_veprintf(fmt, ap);
             va_end(ap);
         }
 

@@ -12,7 +12,6 @@
         if (ret < 0)                                                  \
         {                                                             \
             libos_eraise(__FILE__, __LINE__, __FUNCTION__, (int)ret); \
-            fflush(stdout);                                           \
             goto done;                                                \
         }                                                             \
     }                                                                 \

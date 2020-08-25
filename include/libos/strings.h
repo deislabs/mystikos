@@ -72,15 +72,9 @@ int libos_console_printf(int fd, const char* format, ...);
 
 int libos_console_vprintf(int fd, const char* format, va_list ap);
 
-LIBOS_INLINE int libos_stderr_vprintf(const char* format, va_list ap)
-{
-    return libos_console_vprintf(STDERR_FILENO, format, ap);
-}
+int libos_veprintf(const char* format, va_list ap);
 
-LIBOS_INLINE int libos_stdout_vprintf(const char* format, va_list ap)
-{
-    return libos_console_vprintf(STDOUT_FILENO, format, ap);
-}
+int libos_vprintf(const char* format, va_list ap);
 
 LIBOS_PRINTF_FORMAT(1, 2)
 int libos_eprintf(const char* format, ...);
