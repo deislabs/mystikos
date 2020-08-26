@@ -1,12 +1,13 @@
 #include <dirent.h>
 #include <stdlib.h>
-#include <assert.h>
 
 #include <libos/deprecated.h>
 #include <libos/file.h>
 #include <libos/syscall.h>
 #include <libos/eraise.h>
 #include <libos/malloc.h>
+#include <libos/assert.h>
+#include <libos/strings.h>
 
 #define DIRENT_BUF_SIZE 14
 
@@ -19,34 +20,34 @@ struct __dirstream
     uint8_t buf[4096];
 };
 
-DIR* libos_opendir(const char *name)
+int libos_opendir(const char *name, DIR** dirp)
 {
-    DIR* ret = NULL;
+    int ret = 0;
     DIR* dir = NULL;
     int fd = -1;
 
+    if (dirp)
+        *dirp = NULL;
+
+    if (!name || !dirp)
+        ERAISE(-EINVAL);
+
     if ((fd = libos_open(name, O_RDONLY|O_DIRECTORY|O_CLOEXEC, 0)) < 0)
-        goto done;
+        ERAISE(-ENOENT);
 
     if (!(dir = libos_calloc(1, sizeof(DIR))))
-    {
-        errno = ENOMEM;
-        goto done;
-    }
+        ERAISE(-ENOMEM);
 
     dir->fd = fd;
     fd = -1;
 
-    ret = dir;
+    *dirp = dir;
     dir = NULL;
 
 done:
 
     if (fd >= 0)
-    {
-        /* Avoid libos_close() since it sets errno */
         libos_syscall_close(fd);
-    }
 
     if (dir)
         libos_free(dir);
@@ -56,34 +57,30 @@ done:
 
 int libos_closedir(DIR* dir)
 {
-    int ret = -1;
+    int ret = 0;
 
     if (!dir)
-    {
-        errno = EINVAL;
-        goto done;
-    }
+        ERAISE(EINVAL);
 
     if (libos_close(dir->fd) != 0)
-        goto done;
+        ERAISE(EINVAL);
 
     libos_free(dir);
-    ret = 0;
 
 done:
     return ret;
 }
 
-struct dirent* libos_readdir(DIR *dir)
+int libos_readdir(DIR *dir, struct dirent** entp)
 {
-    struct dirent* ret = NULL;
+    int ret = 0;
     struct dirent* ent = NULL;
 
-    if (!dir)
-    {
-        errno = EINVAL;
-        goto done;
-    }
+    if (entp)
+        *entp = NULL;
+
+    if (!dir || !entp)
+        ERAISE(-EINVAL);
 
     /* If the dirent buffer is exhausted, read more entries */
     if (dir->ptr >= dir->end)
@@ -93,11 +90,8 @@ struct dirent* libos_readdir(DIR *dir)
             (struct dirent*)dir->buf,
             sizeof(dir->buf));
 
-        if (n <= 0)
-        {
-            errno = (int)n;
-            goto done;
-        }
+        if (n < 0)
+            ERAISE((int)n);
 
         if (n == 0)
         {
@@ -105,7 +99,7 @@ struct dirent* libos_readdir(DIR *dir)
             goto done;
         }
 
-        assert((size_t)n <= sizeof(dir->buf));
+        libos_assert((size_t)n <= sizeof(dir->buf));
         dir->ptr = dir->buf;
         dir->end = dir->buf + n;
     }
@@ -113,12 +107,13 @@ struct dirent* libos_readdir(DIR *dir)
     ent = (struct dirent*)(dir->ptr);
 
     /* Check for 8-byte alignement */
-    assert(((uint64_t)ent % 8) == 0);
+    libos_assert(((uint64_t)ent % 8) == 0);
 
     dir->ptr += ent->d_reclen;
     dir->tell = ent->d_off;
 
-    ret = ent;
+    *entp = ent;
+    ret = 1;
 
 done:
     return ret;

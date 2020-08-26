@@ -1,9 +1,9 @@
+#include <string.h>
+#include <stdlib.h>
+
 #include <libos/strings.h>
 #include <libos/eraise.h>
 #include <libos/tcall.h>
-#include <string.h>
-#include <stdlib.h>
-#include <assert.h>
 #include <libos/deprecated.h>
 #include <libos/malloc.h>
 #include <libos/strings.h>
@@ -78,7 +78,7 @@ int libos_strsplit(
             if ((r = libos_strcspn(in, delim)))
             {
                 toks[index++] = out;
-                strncpy(out, in, r);
+                libos_strncpy(out, in, r);
                 out[r] = '\0';
                 out += r + 1;
             }
@@ -318,6 +318,19 @@ int libos_console_vprintf(int fd, const char* format, va_list ap)
         return -EINVAL;
 
     return (int)libos_tcall_write_console(fd, buf, (size_t)count);
+}
+
+char* libos_strncpy(char* dest, const char* src, size_t n)
+{
+   size_t i;
+
+   for (i = 0; i < n && src[i]; i++)
+       dest[i] = src[i];
+
+   for ( ; i < n; i++)
+       dest[i] = '\0';
+
+   return dest;
 }
 
 int libos_veprintf(const char* format, va_list ap)

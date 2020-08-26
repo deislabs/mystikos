@@ -6,10 +6,10 @@
 #endif
 
 #include <string.h>
-#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <libos/assert.h>
 #include <libos/file.h>
 #include <libos/cpio.h>
 #include <libos/strarr.h>
@@ -754,7 +754,7 @@ static int _pack(libos_cpio_t* cpio, const char* dirname, const char* root)
     char path[LIBOS_CPIO_PATH_MAX];
     libos_strarr_t dirs = LIBOS_STRARR_INITIALIZER;
 
-    if (!(dir = libos_opendir(root)))
+    if (libos_opendir(root, &dir) != 0)
         GOTO(done);
 
     /* Append this directory to the CPIO archive. */
@@ -762,7 +762,7 @@ static int _pack(libos_cpio_t* cpio, const char* dirname, const char* root)
     {
         const char* p = root + libos_strlen(dirname);
 
-        assert(*p == '/');
+        libos_assert(*p == '/');
 
         if (*p == '/')
             p++;
@@ -772,7 +772,7 @@ static int _pack(libos_cpio_t* cpio, const char* dirname, const char* root)
     }
 
     /* Find all children of this directory. */
-    while ((ent = libos_readdir(dir)))
+    while (libos_readdir(dir, &ent) == 1)
     {
         if (libos_strcmp(ent->d_name, ".") == 0 ||
             libos_strcmp(ent->d_name, "..") == 0)
@@ -802,7 +802,7 @@ static int _pack(libos_cpio_t* cpio, const char* dirname, const char* root)
 
             const char* p = path + libos_strlen(dirname);
 
-            assert(*p == '/');
+            libos_assert(*p == '/');
 
             if (*p == '/')
                 p++;

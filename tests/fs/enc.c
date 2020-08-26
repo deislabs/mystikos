@@ -370,9 +370,9 @@ void test_readdir()
     assert((fd = libos_creat("/readdir/file2", 0666)) >= 0);
     assert(libos_close(fd) == 0);
 
-    assert(dir = libos_opendir("/readdir"));
+    assert(libos_opendir("/readdir", &dir) == 0);
 
-    while ((ent = libos_readdir(dir)))
+    while (libos_readdir(dir, &ent) == 1)
     {
         assert(ent->d_ino != 0);
         assert(strcmp(ent->d_name, entries[i].name) == 0);
@@ -392,11 +392,11 @@ void dump_dirents(const char* path)
     DIR* dir;
     struct dirent* ent;
 
-    assert((dir = libos_opendir(path)));
+    assert(libos_opendir(path, &dir) == 0);
 
     printf("=== dump_dirents(%s)\n", path);
 
-    while ((ent = libos_readdir(dir)))
+    while (libos_readdir(dir, &ent) == 0)
     {
         printf("name=\"%s\": ino=%lx type=%u off=%ld reclen=%ld\n",
             ent->d_name, ent->d_ino, ent->d_type, ent->d_off, ent->d_off);
@@ -544,7 +544,7 @@ void test_symlink(void)
     assert(st1.st_ino == st2.st_ino);
     assert(libos_lstat("/symlink/www/xxx/ddd", &st1) == 0);
 
-    assert((dir = libos_opendir("/symlink/www/xxx/ddd")));
+    assert(libos_opendir("/symlink/www/xxx/ddd", &dir) == 0);
     assert(libos_closedir(dir) == 0);
 }
 

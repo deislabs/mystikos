@@ -3,7 +3,6 @@
 #include <fcntl.h>
 #include <limits.h>
 #include <string.h>
-#include <assert.h>
 #include <libos/fs.h>
 #include <libos/ramfs.h>
 #include <libos/trace.h>
@@ -16,6 +15,7 @@
 #include "bufu64.h"
 #include <libos/deprecated.h>
 #include <libos/malloc.h>
+#include <libos/assert.h>
 
 #define BLKSIZE 512
 
@@ -233,8 +233,8 @@ static void _inode_release_all(
             }
 
             child = (inode_t*)ent->d_ino;
-            assert(child);
-            assert(_inode_valid(child));
+            libos_assert(child);
+            libos_assert(_inode_valid(child));
 
             if (child != inode)
                 _inode_release_all(inode, child, ent->d_type);
@@ -487,7 +487,7 @@ static int _path_to_inode_recursive(
                 ECHECK(_path_to_inode_recursive(
                     ramfs, target, parent, true, &parent, &p, realpath));
 
-                assert(target != NULL);
+                libos_assert(target != NULL);
             }
 
             /* If final token */
@@ -678,7 +678,7 @@ static int _fs_open(
     ECHECK(_path_to_inode_realpath(
         ramfs, pathname, true, NULL, &inode, file->realpath));
 
-    assert(_file_valid(file));
+    libos_assert(_file_valid(file));
 
     *file_out = file;
     file = NULL;
@@ -913,9 +913,9 @@ static int _fs_close(libos_fs_t* fs, libos_file_t* file)
     if (!_ramfs_valid(ramfs) || !_file_valid(file))
         ERAISE(-EINVAL);
 
-    assert(file->inode);
-    assert(_inode_valid(file->inode));
-    assert(file->inode->nopens > 0);
+    libos_assert(file->inode);
+    libos_assert(_inode_valid(file->inode));
+    libos_assert(file->inode->nopens > 0);
     file->inode->nopens--;
 
     libos_memset(file, 0xdd, sizeof(libos_file_t));
@@ -1028,7 +1028,7 @@ static int _fs_fstat(libos_fs_t* fs, libos_file_t* file, struct stat* statbuf)
     if (!_ramfs_valid(ramfs) || !_file_valid(file) || !statbuf)
         ERAISE(-EINVAL);
 
-    assert(_inode_valid(file->inode));
+    libos_assert(_inode_valid(file->inode));
     ERAISE(_stat(file->inode, statbuf));
 
 done:
@@ -1312,7 +1312,7 @@ static int _fs_getdents64(
         /* Fail if exactly one entry was not read */
         if (r != sizeof(ent))
         {
-            assert("unexpected panic" == NULL);
+            libos_assert("unexpected panic" == NULL);
             ERAISE(-EINVAL);
         }
 
@@ -1346,8 +1346,8 @@ ssize_t _fs_readlink(
     if (!S_ISLNK(inode->mode))
         ERAISE(-EINVAL);
 
-    assert(inode->buf.data);
-    assert(inode->buf.size);
+    libos_assert(inode->buf.data);
+    libos_assert(inode->buf.size);
 
     if (!inode->buf.data || !inode->buf.size)
         ERAISE(-EINVAL);

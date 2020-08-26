@@ -2,13 +2,13 @@
 #include <libos/file.h>
 #include <stdlib.h>
 #include <limits.h>
-#include <assert.h>
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <libos/deprecated.h>
 #include <libos/malloc.h>
 #include <libos/strings.h>
+#include <libos/assert.h>
 
 static libos_mman_t _mman;
 static void* _mman_start;
@@ -43,7 +43,7 @@ done:
 
 int libos_teardown_mman(void)
 {
-    assert(libos_mman_is_sane(&_mman));
+    libos_assert(libos_mman_is_sane(&_mman));
     return 0;
 }
 
@@ -169,8 +169,8 @@ void* libos_mmap(
             return (void*)-1;
 
         void* end = (uint8_t*)addr + length;
-        assert(addr >= _mman_start && addr <= _mman_end);
-        assert(end >= _mman_start && end <= _mman_end);
+        libos_assert(addr >= _mman_start && addr <= _mman_end);
+        libos_assert(end >= _mman_start && end <= _mman_end);
 
         // ISSUE: call mmap or mremap here so that this range refers to
         // a mapped region.
@@ -195,8 +195,8 @@ void* libos_mmap(
     }
 
     void* end = (uint8_t*)ptr + length;
-    assert(ptr >= _mman_start && ptr <= _mman_end);
-    assert(end >= _mman_start && end <= _mman_end);
+    libos_assert(ptr >= _mman_start && ptr <= _mman_end);
+    libos_assert(end >= _mman_start && end <= _mman_end);
 
     return ptr;
 }

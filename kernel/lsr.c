@@ -18,11 +18,11 @@ int libos_lsr(const char* root, libos_strarr_t* paths)
         goto done;
 
     /* Open the directory */
-    if (!(dir = libos_opendir(root)))
+    if (libos_opendir(root, &dir) != 0)
         goto done;
 
     /* For each entry */
-    while ((ent = libos_readdir(dir)))
+    while (libos_readdir(dir, &ent) == 1)
     {
         if (libos_strcmp(ent->d_name, ".") == 0 ||
             libos_strcmp(ent->d_name, "..") == 0)

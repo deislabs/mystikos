@@ -1,5 +1,4 @@
 #include <errno.h>
-#include <assert.h>
 #include <string.h>
 #include <stdlib.h>
 #include <libos/syscall.h>
@@ -11,6 +10,7 @@
 #include <libos/deprecated.h>
 #include <libos/strings.h>
 #include <libos/malloc.h>
+#include <libos/assert.h>
 
 int libos_path_absolute_cwd(
     const char* cwd,
@@ -96,7 +96,7 @@ int libos_tok_normalize(const char* toks[])
 
     /* Determine the size of the toks array, including the null terminator */
     size = libos_tokslen(toks) + 1;
-    assert(toks[size-1] == NULL);
+    libos_assert(toks[size-1] == NULL);
 
     /* Find the index of the last "/" token */
     for (size_t i = 0; toks[i]; i++)
@@ -122,7 +122,7 @@ int libos_tok_normalize(const char* toks[])
         {
             ECHECK(libos_memremove_u64(toks, size, i, 1));
             size--;
-            assert(toks[size-1] == NULL);
+            libos_assert(toks[size-1] == NULL);
             continue;
         }
 
@@ -132,14 +132,14 @@ int libos_tok_normalize(const char* toks[])
             /* Remove this element */
             ECHECK(libos_memremove_u64(toks, size, i, 1));
             size--;
-            assert(toks[size-1] == NULL);
+            libos_assert(toks[size-1] == NULL);
 
             if (i > 0)
             {
                 /* Remove previous element */
                 ECHECK(libos_memremove_u64(toks, size, i - 1, 1));
                 size--;
-                assert(toks[size-1] == NULL);
+                libos_assert(toks[size-1] == NULL);
                 i--;
             }
 

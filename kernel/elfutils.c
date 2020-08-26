@@ -1,3 +1,10 @@
+#include <string.h>
+#include <lthread.h>
+#include <stdio.h>
+#include <limits.h>
+#include <stdlib.h>
+#include <setjmp.h>
+
 #include <libos/elfutils.h>
 #include <libos/syscall.h>
 #include <libos/strings.h>
@@ -6,15 +13,10 @@
 #include <libos/file.h>
 #include <libos/eraise.h>
 #include <libos/atexit.h>
-#include <string.h>
-#include <lthread.h>
-#include <stdio.h>
-#include <limits.h>
-#include <stdlib.h>
-#include <assert.h>
-#include <setjmp.h>
+#include <libos/assert.h>
 #include <libos/deprecated.h>
 #include <libos/malloc.h>
+#include <libos/assert.h>
 
 extern jmp_buf __libos_exit_jmp_buf;
 
@@ -1310,7 +1312,7 @@ int elf_enter_crt(
     const size_t stack_size = 64 * PAGE_SIZE;
     enter_t enter;
 
-    assert(_test_header(ehdr) == 0);
+    libos_assert(_test_header(ehdr) == 0);
 
     enter = (enter_t)((uint8_t*)image_base + ehdr->e_entry);
 
@@ -1325,10 +1327,10 @@ int elf_enter_crt(
     {
         /* ATTN: use ERAISE */
         libos_eprintf("_make_stack() failed\n");
-        assert(0);
+        libos_assert(0);
     }
 
-    assert(elf_check_stack(stack, stack_size) == 0);
+    libos_assert(elf_check_stack(stack, stack_size) == 0);
 
     /* Find the dynamic vector */
     uint64_t* dynv = NULL;
@@ -1353,15 +1355,14 @@ int elf_enter_crt(
     {
         /* ATTN: use ERAISE */
         libos_printf("dynv not found\n");
-        assert(0);
+        libos_assert(0);
     }
 
-    assert(elf_check_stack(stack, stack_size) == 0);
+    libos_assert(elf_check_stack(stack, stack_size) == 0);
 
     if (_setup_exe_link(argv[1]) != 0)
     {
-        assert("unexpected" == NULL);
-        abort();
+        libos_assert("panic" == NULL);
     }
 
     /* Run the main program */
@@ -1381,7 +1382,7 @@ int elf_enter_crt(
 #endif
     }
 
-    assert(elf_check_stack(stack, stack_size) == 0);
+    libos_assert(elf_check_stack(stack, stack_size) == 0);
     libos_free(stack);
 
     return libos_get_exit_status();

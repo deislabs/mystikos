@@ -38,9 +38,9 @@ int libos_rmdir(const char* pathname);
 
 int libos_getdents64(int fd, struct dirent* dirp, size_t count);
 
-DIR* libos_opendir(const char* name);
+int libos_opendir(const char* name, DIR** dirp);
 
-struct dirent* libos_readdir(DIR* dir);
+int libos_readdir(DIR* dir, struct dirent** entp);
 
 int libos_closedir(DIR* dir);
 

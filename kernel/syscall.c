@@ -9,12 +9,14 @@
 #include <string.h>
 #include <limits.h>
 #include <stdarg.h>
-#include <assert.h>
 #include <stdlib.h>
 #include <sys/socket.h>
 #include <setjmp.h>
 #include <sys/uio.h>
 #include <sys/ioctl.h>
+#include <sys/vfs.h>
+#include <sys/utsname.h>
+
 #include <libos/syscall.h>
 #include <libos/elfutils.h>
 #include <libos/paths.h>
@@ -24,15 +26,16 @@
 #include <libos/trace.h>
 #include <libos/strings.h>
 #include <libos/cwd.h>
-#include <sys/utsname.h>
 #include <libos/mount.h>
 #include <libos/eraise.h>
 #include <libos/buf.h>
 #include <libos/tcall.h>
 #include <libos/errno.h>
-#include <sys/vfs.h>
-#include "fdtable.h"
 #include <libos/deprecated.h>
+#include <libos/assert.h>
+#include <libos/crash.h>
+
+#include "fdtable.h"
 
 #define DEFAULT_PID (pid_t)1
 #define DEFAULT_UID (uid_t)0
@@ -667,7 +670,7 @@ long libos_syscall_open(const char* pathname, int flags, mode_t mode)
     if ((fd = libos_fdtable_add(LIBOS_FDTABLE_TYPE_FILE, fs, file)) < 0)
     {
         libos_eprintf("libos_fdtable_add() failed: %d\n", fd);
-        assert(0);
+        libos_assert(0);
     }
 
     ECHECK(_add_fd_link(fs, file, fd));
@@ -1041,7 +1044,7 @@ long libos_syscall_clock_gettime(clockid_t clk_id, struct timespec *tp)
     (void)clk_id;
     (void)tp;
 
-    assert("unimplemented: implement in enclave" == NULL);
+    libos_assert("unimplemented: implement in enclave" == NULL);
     return -ENOTSUP;
 }
 
@@ -1050,7 +1053,7 @@ long libos_syscall_isatty(int fd)
 {
     (void)fd;
 
-    assert("unimplemented: implement in enclave" == NULL);
+    libos_assert("unimplemented: implement in enclave" == NULL);
     return -ENOTSUP;
 }
 
@@ -1104,7 +1107,7 @@ long libos_syscall_add_symbol_file(
     (void)path;
     (void)text;
     (void)text_size;
-    assert("unimplemented: implement in enclave" == NULL);
+    libos_assert("unimplemented: implement in enclave" == NULL);
     return -ENOTSUP;
 }
 
@@ -1112,7 +1115,7 @@ long libos_syscall_add_symbol_file(
 __attribute__((__weak__))
 long libos_syscall_load_symbols(void)
 {
-    assert("unimplemented: implement in enclave" == NULL);
+    libos_assert("unimplemented: implement in enclave" == NULL);
     return -ENOTSUP;
 }
 
@@ -1120,7 +1123,7 @@ long libos_syscall_load_symbols(void)
 __attribute__((__weak__))
 long libos_syscall_unload_symbols(void)
 {
-    assert("unimplemented: implement in enclave" == NULL);
+    libos_assert("unimplemented: implement in enclave" == NULL);
     return -ENOTSUP;
 }
 
@@ -1539,7 +1542,7 @@ long libos_syscall(long n, long params[6])
 
                 libos_eprintf("********** unhandled: ioctl: 0x%lX()\n",
                     request);
-                abort();
+                libos_crash();
             }
 
             return _return(n, _forward_syscall(n, params));
@@ -1678,7 +1681,7 @@ long libos_syscall(long n, long params[6])
             longjmp(__libos_exit_jmp_buf, 1);
 
             /* Unreachable! */
-            assert("unreachable" == NULL);
+            libos_assert("unreachable" == NULL);
             break;
         }
         case SYS_wait4:
@@ -2526,12 +2529,12 @@ long libos_syscall(long n, long params[6])
         default:
         {
             libos_eprintf("********** %s(): %ld\n", syscall_str(n), n);
-            abort();
+            libos_crash();
         }
     }
 
     libos_eprintf("********** unhandled: %s()\n", syscall_str(n));
-    abort();
+    libos_crash();
 
     return 0;
 }
