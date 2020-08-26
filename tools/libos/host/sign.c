@@ -19,7 +19,7 @@ extern void* _rootfs_data;
 extern size_t _rootfs_size;
 
 
-// Pulled in from liboesignlib.a
+// Pulled in from liboesign.a
 // Actual OE signer code from oesign tool.
 int oesign(
     const char* enclave,
