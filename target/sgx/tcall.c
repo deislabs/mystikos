@@ -6,6 +6,7 @@
 #include <stdarg.h>
 #include <unistd.h>
 #include <openenclave/enclave.h>
+#include "gencreds.h"
 
 long oe_syscall(
     long n,
@@ -183,6 +184,25 @@ long libos_tcall(long n, long params[6])
                 return -EIO;
 
             return (long)count;
+        }
+        case LIBOS_TCALL_GEN_CREDS:
+        {
+            uint8_t** cert = (uint8_t**)x1;
+            size_t* cert_size = (size_t*)x2;
+            uint8_t** pkey = (uint8_t**)x3;
+            size_t* pkey_size = (size_t*)x4;
+
+            return libos_gen_creds(cert, cert_size, pkey, pkey_size);
+        }
+        case LIBOS_TCALL_FREE_CREDS:
+        {
+            uint8_t* cert = (uint8_t*)x1;
+            size_t cert_size = (size_t)x2;
+            uint8_t* pkey = (uint8_t*)x3;
+            size_t pkey_size = (size_t)x4;
+
+            libos_free_creds(cert, cert_size, pkey, pkey_size);
+            return 0;
         }
         case SYS_read:
         case SYS_write:

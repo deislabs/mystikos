@@ -408,6 +408,8 @@ static pair_t _pairs[] =
     { SYS_libos_add_symbol_file, "SYS_libos_add_symbol_file" },
     { SYS_libos_load_symbols, "SYS_libos_load_symbols" },
     { SYS_libos_unload_symbols, "SYS_libos_unload_symbols" },
+    { SYS_libos_gen_creds, "SYS_libos_gen_creds" },
+    { SYS_libos_free_creds, "SYS_libos_free_creds" },
 };
 
 static size_t _n_pairs = sizeof(_pairs) / sizeof(_pairs[0]);
@@ -1350,6 +1352,16 @@ long libos_syscall(long n, long params[6])
             _strace(n, NULL);
 
             return _return(n, libos_syscall_unload_symbols());
+        }
+        case SYS_libos_gen_creds:
+        {
+            _strace(n, NULL);
+            return _forward_syscall(LIBOS_TCALL_GEN_CREDS, params);
+        }
+        case SYS_libos_free_creds:
+        {
+            _strace(n, NULL);
+            return _forward_syscall(LIBOS_TCALL_FREE_CREDS, params);
         }
         case SYS_read:
         {

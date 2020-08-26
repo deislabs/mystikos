@@ -18,6 +18,8 @@ enum
     SYS_libos_add_symbol_file = 1006,
     SYS_libos_load_symbols = 1007,
     SYS_libos_unload_symbols = 1008,
+    SYS_libos_gen_creds = 1009,
+    SYS_libos_free_creds = 1010,
 };
 
 #endif /* _LIBOS_SYSCALLEXT_H */

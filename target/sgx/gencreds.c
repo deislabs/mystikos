@@ -1,10 +1,10 @@
 #include <string.h>
+#include <stdio.h>
 #include <mbedtls/x509.h>
 #include <mbedtls/x509_crt.h>
 #include <openenclave/enclave.h>
 #include <openenclave/attestation/attester.h>
-#include <openenclave/attestation/sgx/eeid_plugin.h>
-#include "tlscreds.h"
+#include "gencreds.h"
 
 static oe_result_t _generate_key_pair(
     uint8_t** public_key_out,
@@ -93,7 +93,6 @@ static oe_result_t _generate_cert_and_private_key(
     size_t private_key_size;
     uint8_t* public_key = NULL;
     size_t public_key_size;
-    const oe_uuid_t format = {OE_FORMAT_UUID_SGX_EEID_ECDSA_P256};
 
     *cert_out = NULL;
     *cert_size_out = 0;
@@ -108,18 +107,14 @@ static oe_result_t _generate_cert_and_private_key(
         goto done;
     }
 
-    // Initialize built-in OE attesters and the eeid attester.
-    oe_attester_initialize();
-
-    if ((ret = oe_get_attestation_certificate_with_evidence(
-             &format,
-             (unsigned char*)common_name,
-             private_key,
-             private_key_size,
-             public_key,
-             public_key_size,
-             &cert,
-             &cert_size)) != OE_OK)
+    if ((ret = oe_generate_attestation_certificate(
+         (unsigned char*)common_name,
+         private_key,
+         private_key_size,
+         public_key,
+         public_key_size,
+         &cert,
+         &cert_size)) != OE_OK)
     {
         result = ret;
         goto done;
@@ -149,7 +144,7 @@ done:
     return result;
 }
 
-int libos_generate_tls_creds(
+int libos_gen_creds(
     uint8_t** cert_out,
     size_t* cert_size_out,
     uint8_t** private_key_out,
@@ -177,6 +172,7 @@ int libos_generate_tls_creds(
     if (!cert_out || !cert_size_out || !private_key_out ||
         !private_key_size_out)
     {
+        printf("TRACE:%d\n", __LINE__);
         goto done;
     }
 
@@ -185,6 +181,7 @@ int libos_generate_tls_creds(
             common_name, &cert, &cert_size, &private_key, &private_key_size) !=
         OE_OK)
     {
+        printf("TRACE:%d\n", __LINE__);
         goto done;
     }
 
@@ -197,6 +194,7 @@ int libos_generate_tls_creds(
         if (mbedtls_x509_crt_parse_der(&crt, cert, cert_size) != 0)
         {
             mbedtls_x509_crt_free(&crt);
+            printf("TRACE:%d\n", __LINE__);
             goto done;
         }
 
@@ -212,6 +210,7 @@ int libos_generate_tls_creds(
             0)
         {
             mbedtls_pk_free(&pk);
+            printf("TRACE:%d\n", __LINE__);
             goto done;
         }
 
@@ -240,4 +239,17 @@ done:
         oe_free_attestation_certificate(cert);
 
     return ret;
+}
+
+void libos_free_creds(
+    uint8_t* cert,
+    size_t cert_size,
+    uint8_t* private_key,
+    size_t private_key_size)
+{
+    if (cert)
+        oe_free_key(cert, cert_size, NULL, 0);
+
+    if (private_key)
+        oe_free_key(private_key, private_key_size, NULL, 0);
 }

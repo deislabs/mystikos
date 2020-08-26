@@ -17,6 +17,8 @@ typedef enum libos_tcall_number
     LIBOS_TCALL_DEALLOCATE,
     LIBOS_TCALL_VSNPRINTF,
     LIBOS_TCALL_WRITE_CONSOLE,
+    LIBOS_TCALL_GEN_CREDS,
+    LIBOS_TCALL_FREE_CREDS,
 }
 libos_tcall_number_t;
 
