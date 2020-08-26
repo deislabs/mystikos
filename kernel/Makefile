@@ -14,10 +14,6 @@ INCLUDES += -I$(INCDIR)/openenclave/3rdparty/libc
 
 CFLAGS = $(OEENCLAVE_CFLAGS)
 
-DEPENDS += $(TOP)/include/libos/fs.h
-DEPENDS += $(TOP)/include/libos/ramfs.h
+POST_DIRS = image
 
 include $(TOP)/rules.mak
-
-xxx:
-	@echo $(OBJECTS)

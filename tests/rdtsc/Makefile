@@ -18,11 +18,8 @@ endif
 
 GDB = $(BINDIR)/oegdb
 
-run: all
+tests: all
 	$(LIBOS) exec rootfs /bin/rdtsc red green blue yellow $(OPTS)
-
-gdb: all
-	$(GDB) --args $(LIBOS) exec rootfs /bin/rdtsc $(OPTS)
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos
