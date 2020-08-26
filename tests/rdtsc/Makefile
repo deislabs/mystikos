@@ -1,4 +1,4 @@
-SUBDIR = samples/rdtsc
+SUBDIR = tests/rdtsc
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
