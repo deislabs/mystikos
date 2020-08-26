@@ -63,3 +63,5 @@ $(SUBOBJDIR)/enter.o: enter.c
 
 clean:
 	rm -f $(TARGET) $(SUBOBJDIR)/enter.o
+
+tests:

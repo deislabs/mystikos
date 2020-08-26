@@ -14,6 +14,6 @@ INCLUDES += -I$(INCDIR)/openenclave/3rdparty/libc
 
 CFLAGS = $(OEENCLAVE_CFLAGS)
 
-POST_DIRS = image
+DIRS = image
 
 include $(TOP)/rules.mak

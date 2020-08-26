@@ -13,7 +13,7 @@ endef
 
 ifdef PROGRAM
 __PROGRAM = $(SUBBINDIR)/$(PROGRAM)
-program: dirs $(__PROGRAM) post_dirs
+program: $(__PROGRAM) dirs
 $(__PROGRAM): $(LIBS) $(__OBJECTS)
 	mkdir -p $(SUBBINDIR)
 	gcc -o $(__PROGRAM) $(CFLAGS) $(__OBJECTS) $(LIBS) $(LDFLAGS)
@@ -21,7 +21,7 @@ endif
 
 ifdef ARCHIVE
 __ARCHIVE = $(SUBLIBDIR)/$(ARCHIVE)
-archive: dirs $(__ARCHIVE) post_dirs
+archive: $(__ARCHIVE) dirs
 $(__ARCHIVE): $(__OBJECTS)
 	mkdir -p $(SUBLIBDIR)
 	ar rv $(__ARCHIVE) $(__OBJECTS)
@@ -42,18 +42,10 @@ ifdef DIRS
 	$(foreach i, $(DIRS), $(MAKE) -C $(i) $(NL) )
 endif
 
-post_dirs:
-ifdef POST_DIRS
-	$(foreach i, $(POST_DIRS), $(MAKE) -C $(i) $(NL) )
-endif
-
 clean:
 	rm -f $(__OBJECTS) $(__PROGRAM) $(__ARCHIVE) $(CLEAN)
 ifdef DIRS
 	$(foreach i, $(DIRS), $(MAKE) -C $(i) clean $(NL) )
-endif
-ifdef POST_DIRS
-	$(foreach i, $(POST_DIRS), $(MAKE) -C $(i) clean $(NL) )
 endif
 
 tests:
