@@ -1,4 +1,4 @@
-SUBDIR = samples/echo
+SUBDIR = tests/echo
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 

@@ -1,4 +1,4 @@
-SUBDIR = samples/cpuid
+SUBDIR = tests/cpuid
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
@@ -12,17 +12,8 @@ all: libos
 	$(CC) $(CFLAGS) -o $(APPDIR)/bin/cpuid cpuid.c $(LDFLAGS)
 	$(LIBOS) mkcpio $(APPDIR) rootfs
 
-ifdef STRACE
-OPTS += --strace
-endif
-
-GDB = $(BINDIR)/oegdb
-
-run: all
+tests:
 	$(LIBOS) exec rootfs /bin/cpuid $(OPTS)
-
-gdb: all
-	$(GDB) --args $(LIBOS) exec rootfs /bin/cpuid $(OPTS)
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos

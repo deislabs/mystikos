@@ -1,5 +1,5 @@
 TOP=$(abspath ../..)
-SUBDIR = samples/run
+SUBDIR = tests/run
 SUBBINDIR=$(TOP)/build/bin
 include $(TOP)/defs.mak
 

@@ -3,6 +3,7 @@ TOP=$(abspath ..)
 include $(TOP)/defs.mak
 
 DIRS =
+DIRS += cpuid
 DIRS += argv
 DIRS += shlib
 DIRS += getcwd

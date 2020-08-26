@@ -1,4 +1,4 @@
-SUBDIR = samples/cpio/host
+SUBDIR = tests/cpio/host
 TOP=$(abspath ../../..)
 include $(TOP)/defs.mak
 

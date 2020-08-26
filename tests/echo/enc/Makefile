@@ -1,4 +1,4 @@
-SUBDIR = samples/echo/enc
+SUBDIR = tests/echo/enc
 TOP=$(abspath ../../..)
 include $(TOP)/defs.mak
 

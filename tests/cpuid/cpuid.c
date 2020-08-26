@@ -15,5 +15,7 @@ int main(int argc, const char* argv[])
 
     printf("rax=%x rbx=%x rcx=%x rdx=%x\n", rax, rbx, rcx, rdx);
 
+    printf("=== passed tests (%s)\n", argv[0]);
+
     return 0;
 }

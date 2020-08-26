@@ -1,4 +1,4 @@
-SUBDIR = samples/mount
+SUBDIR = tests/mount
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 

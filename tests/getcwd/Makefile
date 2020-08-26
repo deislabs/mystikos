@@ -1,4 +1,4 @@
-SUBDIR = samples/getcwd
+SUBDIR = tests/getcwd
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 

@@ -1,4 +1,4 @@
-SUBDIR = samples/lthread
+SUBDIR = tests/lthread
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
