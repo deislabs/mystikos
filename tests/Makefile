@@ -4,6 +4,7 @@ include $(TOP)/defs.mak
 
 DIRS =
 DIRS += argv
+DIRS += shlib
 DIRS += getcwd
 DIRS += rdtsc
 DIRS += run

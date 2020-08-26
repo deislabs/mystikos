@@ -12,13 +12,7 @@ all: libos
 	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/argv argv.c $(LDFLAGS)
 	$(LIBOS) mkcpio $(APPDIR) rootfs
 
-ifdef STRACE
-OPTS += --strace
-endif
-
-GDB = $(BINDIR)/oegdb
-
-tests: all
+tests:
 	$(LIBOS) exec rootfs /bin/argv red green blue $(OPTS)
 
 libos:
