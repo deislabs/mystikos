@@ -15,13 +15,13 @@ run-server: libos
 	$(BINDIR)/libos exec $(OPTS) rootfs /ssl_server
 
 run-server-gdb: libos
-	$(BINDIR)/oegdb --args $(BINDIR)/libos exec $(OPTS) rootfs /ssl_server
+	$(OEGDB) --args $(BINDIR)/libos exec $(OPTS) rootfs /ssl_server
 
 run-client: libos
 	$(BINDIR)/libos exec $(OPTS) rootfs /ssl_client1
 
 run-client-gdb: libos
-	$(BINDIR)/oegdb --args $(BINDIR)/libos exec $(OPTS) rootfs /ssl_client1
+	$(OEGDB) --args $(BINDIR)/libos exec $(OPTS) rootfs /ssl_client1
 
 clean:
 	rm -f rootfs

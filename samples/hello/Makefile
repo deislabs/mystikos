@@ -15,15 +15,12 @@ all: libos
 ifdef STRACE
 OPTS += --strace
 endif
-OPTS += --strace
-
-GDB = $(BINDIR)/oegdb
 
 run: all
 	$(LIBOS) exec rootfs /bin/hello red green blue yellow $(OPTS)
 
 gdb: all
-	$(GDB) --args $(LIBOS) exec rootfs /bin/hello $(OPTS)
+	$(OEGDB) --args $(LIBOS) exec rootfs /bin/hello $(OPTS)
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos

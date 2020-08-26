@@ -150,11 +150,13 @@ long libos_tcall_isatty(int fd)
 /* Must be overriden by enclave application */
 __attribute__((__weak__))
 long libos_tcall_add_symbol_file(
-    const char* path,
+    const void* file_data,
+    size_t file_size,
     const void* text,
     size_t text_size)
 {
-    (void)path;
+    (void)file_data;
+    (void)file_size;
     (void)text;
     (void)text_size;
     assert("unimplemented: implement in enclave" == NULL);
@@ -270,10 +272,12 @@ long libos_tcall(long n, long params[6])
         }
         case LIBOS_TCALL_ADD_SYMBOL_FILE:
         {
-            const char* path = (const char*)x1;
-            const void* text = (const void*)x2;
-            size_t text_size = (size_t)x3;
-            return libos_tcall_add_symbol_file(path, text, text_size);
+            const void* file_data = (const void*)x1;
+            size_t file_size = (size_t)x2;
+            const void* text = (const void*)x3;
+            size_t text_size = (size_t)x4;
+            return libos_tcall_add_symbol_file(
+                file_data, file_size, text, text_size);
         }
         case LIBOS_TCALL_LOAD_SYMBOLS:
         {

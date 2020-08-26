@@ -34,6 +34,7 @@
 #include <libos/assert.h>
 #include <libos/crash.h>
 #include <libos/setjmp.h>
+#include <libos/malloc.h>
 
 #include "fdtable.h"
 
@@ -2534,8 +2535,26 @@ long libos_syscall_add_symbol_file(
     const void* text,
     size_t text_size)
 {
-    long params[6] = { (long)path, (long)text, (long)text_size };
-    return libos_tcall(LIBOS_TCALL_ADD_SYMBOL_FILE, params);
+    long ret = 0;
+    void* file_data = NULL;
+    size_t file_size;
+    long params[6] = { 0 };
+
+    ECHECK(libos_load_file(path, &file_data, &file_size));
+
+    params[0] = (long)file_data;
+    params[1] = (long)file_size;
+    params[2] = (long)text;
+    params[3] = (long)text_size;
+
+    ECHECK(libos_tcall(LIBOS_TCALL_ADD_SYMBOL_FILE, params));
+
+done:
+
+    if (file_data)
+        libos_free(file_data);
+
+    return ret;
 }
 
 long libos_syscall_load_symbols(void)

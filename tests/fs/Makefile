@@ -29,6 +29,3 @@ $(SUBOBJDIR)/run_t.c:
 
 tests:
 	$(BINDIR)/run $(SUBBINDIR)/enc
-
-gdb:
-	$(BINDIR)/oegdb --args $(BINDIR)/run $(SUBBINDIR)/enc

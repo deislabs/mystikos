@@ -18,6 +18,7 @@
 #include <libos/file.h>
 #include <libos/cpio.h>
 #include <libos/trace.h>
+#include <libos/kernel.h>
 #include "libos_t.h"
 #include "../shared.h"
 
@@ -69,50 +70,6 @@ static void _dump_args(const char* args[])
 }
 #endif
 
-static libos_fs_t* _fs;
-
-static void _setup_ramfs(void)
-{
-    if (libos_init_ramfs(&_fs) != 0)
-    {
-        fprintf(stderr, "failed to initialize the ramfs\n");
-        abort();
-    }
-
-    if (libos_mount(_fs, "/") != 0)
-    {
-        fprintf(stderr, "failed to mount ramfs\n");
-        abort();
-    }
-
-    if (libos_mkdir("/tmp", 777) != 0)
-    {
-        fprintf(stderr, "failed create the /tmp directory\n");
-        abort();
-    }
-
-    if (libos_mkdirhier("/proc/self/fd", 777) != 0)
-    {
-        fprintf(stderr, "failed create the /proc/self/fd directory\n");
-        abort();
-    }
-
-    if (libos_mkdirhier("/usr/local/etc", 777) != 0)
-    {
-        fprintf(stderr, "failed create the /usr/local/etc directory\n");
-        abort();
-    }
-}
-
-static void _teardown_ramfs(void)
-{
-    if ((*_fs->fs_release)(_fs) != 0)
-    {
-        fprintf(stderr, "failed to release ramfs\n");
-        abort();
-    }
-}
-
 static void _setup_sockets(void)
 {
     if (oe_load_module_host_socket_interface() != OE_OK)
@@ -120,55 +77,6 @@ static void _setup_sockets(void)
         fprintf(stderr, "oe_load_module_host_socket_interface() failed\n");
         assert(0);
     }
-}
-
-ssize_t _writen(int fd, const void* data, size_t size)
-{
-    int ret = -1;
-    const uint8_t* p = (const uint8_t*)data;
-    size_t r = size;
-
-    while (r > 0)
-    {
-        ssize_t n;
-
-        if ((n = libos_write(fd, p, r)) <= 0)
-        {
-            goto done;
-        }
-
-        p += n;
-        r -= (size_t)n;
-    }
-
-    ret = 0;
-
-done:
-    return ret;
-}
-
-static int _create_cpio_file(const char* path, const char* data, size_t size)
-{
-    int ret = -1;
-    int fd = -1;
-
-    if (!path || !data || !size)
-        goto done;
-
-    if ((fd = libos_open(path, O_WRONLY | O_CREAT, 0666)) < 0)
-        goto done;
-
-    if (_writen(fd, data, size) != 0)
-        goto done;
-
-    ret = 0;
-
-done:
-
-    if (fd >= 0)
-        libos_close(fd);
-
-    return ret;
 }
 
 static void _apply_relocations(
@@ -275,11 +183,14 @@ int libos_enter_ecall(
     size_t argv_size = sizeof(argv) / sizeof(argv[0]);
     const char* envp[64];
     size_t envp_size = sizeof(envp) / sizeof(envp[0]);
-    const char rootfs_path[] = "/tmp/rootfs.cpio";
-    const void* crt_image_base;
-    size_t crt_image_size;
+    const void* crt_data;
+    size_t crt_size;
+    const void* kernel_data;
+    size_t kernel_size;
     const void* rootfs_data;
     size_t rootfs_size;
+    bool trace_syscalls = false;
+    bool real_syscalls = false;
 
     if (!args || !args_size || !env || !env_size)
         goto done;
@@ -294,19 +205,28 @@ int libos_enter_ecall(
 
     if (options)
     {
-        libos_trace_syscalls(options->trace_syscalls);
-        libos_real_syscalls(options->real_syscalls);
+        trace_syscalls = options->trace_syscalls;
+        real_syscalls = options->real_syscalls;
     }
+
+    /* Setup the vectored exception handler */
+    if (oe_add_vectored_exception_handler(true, _vectored_handler) != OE_OK)
+    {
+        fprintf(stderr, "oe_add_vectored_exception_handler() failed\n");
+        assert(0);
+    }
+
+    _setup_sockets();
 
 #ifdef TRACE
     _dump_args(argv);
     _dump_args(envp);
 #endif
 
-    /* Setup the memory manager */
+    /* Get the mman region */
+    void* mman_data;
+    size_t mman_size;
     {
-        void* mman_data;
-        size_t mman_size;
         {
             extern const void* __oe_get_enclave_base(void);
             oe_region_t region;
@@ -327,25 +247,9 @@ int libos_enter_ecall(
             mman_data = (void*)(enclave_base + region.vaddr);
             mman_size = region.size;
         }
-
-        if (libos_setup_mman(mman_data, mman_size) != 0)
-        {
-            fprintf(stderr, "_setup_mman() failed\n");
-            assert(0);
-        }
     }
 
-    /* Setup the vectored exception handler */
-    if (oe_add_vectored_exception_handler(true, _vectored_handler) != OE_OK)
-    {
-        fprintf(stderr, "oe_add_vectored_exception_handler() failed\n");
-        assert(0);
-    }
-
-    /* Setup the RAM file system */
-    _setup_ramfs();
-
-    /* Fetch the rootfs image */
+    /* Get the rootfs region */
     {
         extern const void* __oe_get_enclave_base(void);
         oe_region_t region;
@@ -367,42 +271,54 @@ int libos_enter_ecall(
         rootfs_size = region.size;
     }
 
-    if (_create_cpio_file(rootfs_path, rootfs_data, rootfs_size) != 0)
+    /* Get the kernel region */
     {
-        fprintf(stderr, "failed to create %s\n", rootfs_path);
-        assert(0);
-    }
+        extern const void* __oe_get_enclave_base(void);
+        oe_region_t region;
+        const uint8_t* enclave_base;
 
-    assert(libos_access(rootfs_path, R_OK) == 0);
-
-    /* unpack the cpio archive */
-    {
-        const bool trace = libos_get_trace();
-
-        libos_set_trace(false);
-
-        if (libos_cpio_unpack(rootfs_path, "/") != 0)
+        if (!(enclave_base = __oe_get_enclave_base()))
         {
-            fprintf(stderr, "failed to unpack: %s\n", rootfs_path);
+            fprintf(stderr, "__oe_get_enclave_base() failed\n");
             assert(0);
         }
 
-        libos_set_trace(trace);
+        if (oe_region_get(KERNEL_REGION_ID, &region) != OE_OK)
+        {
+            fprintf(stderr, "failed to get kernel region\n");
+            assert(0);
+        }
+
+        kernel_data = enclave_base + region.vaddr;
+        kernel_size = region.size;
     }
 
-    /* Set up the standard directories (some may already exist) */
+    /* Apply relocations to the kernel image */
     {
-        libos_set_trace(false);
-        libos_mkdir("/tmp", 777);
-        libos_mkdir("/proc", 777);
-        libos_mkdir("/proc/self", 777);
-        libos_mkdir("/proc/self/fd", 777);
-        libos_set_trace(true);
+        extern const void* __oe_get_enclave_base(void);
+        oe_region_t region;
+        const uint8_t* enclave_base;
+
+        if (!(enclave_base = __oe_get_enclave_base()))
+        {
+            fprintf(stderr, "__oe_get_enclave_base() failed\n");
+            assert(0);
+        }
+
+        if (oe_region_get(KERNEL_RELOC_REGION_ID, &region) != OE_OK)
+        {
+            fprintf(stderr, "failed to get kernel region\n");
+            assert(0);
+        }
+
+        _apply_relocations(
+            kernel_data,
+            kernel_size,
+            enclave_base + region.vaddr,
+            region.size);
     }
 
-    _setup_sockets();
-
-    /* Find the base address of the C runtime ELF image */
+    /* Get the crt region */
     {
         extern const void* __oe_get_enclave_base(void);
         oe_region_t region;
@@ -420,8 +336,8 @@ int libos_enter_ecall(
             assert(0);
         }
 
-        crt_image_base = enclave_base + region.vaddr;
-        crt_image_size = region.size;
+        crt_data = enclave_base + region.vaddr;
+        crt_size = region.size;
     }
 
     /* Apply relocations to the crt image */
@@ -443,18 +359,55 @@ int libos_enter_ecall(
         }
 
         _apply_relocations(
-            crt_image_base,
-            crt_image_size,
+            crt_data,
+            crt_size,
             enclave_base + region.vaddr,
             region.size);
     }
 
-    const size_t argc = _count_args(argv);
-    const size_t envc = _count_args(envp);
-    ret = elf_enter_crt(crt_image_base, argc, argv, envc, envp);
+    /* Enter the kernel image */
+    {
+        libos_kernel_args_t args;
+        const Elf64_Ehdr* ehdr = kernel_data;
+        libos_kernel_entry_t entry;
 
-    _teardown_ramfs();
-    libos_teardown_mman();
+        args.argc = _count_args(argv);
+        args.argv = argv;
+        args.envc = _count_args(envp);
+        args.envp = envp;
+        args.mman_data = mman_data;
+        args.mman_size = mman_size;
+        args.rootfs_data = (void*)rootfs_data;
+        args.rootfs_size = rootfs_size;
+        args.crt_data = (void*)crt_data;
+        args.crt_size = crt_size;
+        args.trace_syscalls = trace_syscalls;
+        args.real_syscalls = real_syscalls;
+        args.tcall = libos_tcall;
+
+        /* Verify that the kernel is an ELF image */
+        {
+            const uint8_t ident[] = { 0x7f, 'E', 'L', 'F' };
+
+            if (memcmp(ehdr->e_ident, ident, sizeof(ident)) != 0)
+            {
+                fprintf(stderr, "bad kernel image\n");
+                assert(0);
+            }
+        }
+
+        /* Resolve the the kernel entry point */
+        entry = (libos_kernel_entry_t)((uint8_t*)kernel_data + ehdr->e_entry);
+
+        if ((uint8_t*)entry < (uint8_t*)kernel_data ||
+            (uint8_t*)entry >= (uint8_t*)kernel_data + kernel_size)
+        {
+            fprintf(stderr, "kernel entry point is out of bounds\n");
+            assert(0);
+        }
+
+        ret = (*entry)(&args);
+    }
 
 done:
     return ret;
@@ -477,19 +430,16 @@ long libos_tcall_clock_gettime(clockid_t clk_id, struct timespec* tp_)
 
 /* This overrides the weak version in liboskernel.a */
 long libos_tcall_add_symbol_file(
-    const char* path,
+    const void* file_data,
+    size_t file_size,
     const void* text,
     size_t text_size)
 {
     long ret = 0;
-    void* file_data = NULL;
-    size_t file_size;
     int retval;
 
-    if (!path || !text || !text_size)
+    if (!file_data || !file_size || !text || !text_size)
         ERAISE(-EINVAL);
-
-    ECHECK(libos_load_file(path, &file_data, &file_size));
 
     if (libos_add_symbol_file_ocall(&retval, file_data, file_size, text,
         text_size) != OE_OK)
@@ -498,9 +448,6 @@ long libos_tcall_add_symbol_file(
     }
 
 done:
-
-    if (file_data)
-        free(file_data);
 
     return ret;
 }

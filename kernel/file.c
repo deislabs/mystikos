@@ -174,6 +174,35 @@ done:
     return ret;
 }
 
+int libos_write_file(int fd, const void* data, size_t size)
+{
+    int ret = 0;
+    const uint8_t* p = (const uint8_t*)data;
+    size_t r = size;
+    ssize_t n;
+
+    if (fd < 0 || !data)
+        ERAISE(-EINVAL);
+
+    while (r > 0)
+    {
+        if ((n = libos_write(fd, p, r)) == 0)
+            break;
+
+        if (n < 0)
+            ERAISE((int)-n);
+
+        p += n;
+        r -= (size_t)n;
+    }
+
+    if (r != 0)
+        ERAISE(-EIO);
+
+done:
+    return ret;
+}
+
 int libos_load_file(const char* path, void** data, size_t* size)
 {
     int ret = 0;
@@ -219,34 +248,5 @@ done:
     if (buf.data)
         libos_free(buf.data);
 
-    return ret;
-}
-
-int libos_write_file(int fd, const void* data, size_t size)
-{
-    int ret = 0;
-    const uint8_t* p = (const uint8_t*)data;
-    size_t r = size;
-    ssize_t n;
-
-    if (fd < 0 || !data)
-        ERAISE(-EINVAL);
-
-    while (r > 0)
-    {
-        if ((n = libos_write(fd, p, r)) == 0)
-            break;
-
-        if (n < 0)
-            ERAISE((int)-n);
-
-        p += n;
-        r -= (size_t)n;
-    }
-
-    if (r != 0)
-        ERAISE(-EIO);
-
-done:
     return ret;
 }

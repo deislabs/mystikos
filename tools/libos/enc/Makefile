@@ -11,7 +11,6 @@ INCLUDES = $(OEENCLAVE_INCLUDES) -I$(SUBOBJDIR)
 
 CFLAGS = $(OEENCLAVE_CFLAGS)
 
-LIBS += $(LIBDIR)/liboskernel.a
 LIBS += $(LIBDIR)/libostargetsgx.a
 LIBS += $(LIBDIR)/liblthread.a
 LIBS += $(OEENCLAVE_LIBDIR)/liboehostfs.a

@@ -188,11 +188,14 @@ int _exec(int argc, const char* argv[])
     char dir[PATH_MAX];
     char libosenc[PATH_MAX];
     char liboscrt[PATH_MAX];
+    char liboskernel[PATH_MAX];
     void* args = NULL;
     size_t args_size;
     struct libos_options options;
     elf_image_t crt_image;
+    elf_image_t kernel_image;
     char crt_path[PATH_MAX];
+    char kernel_path[PATH_MAX];
     void* rootfs_data = NULL;
     size_t rootfs_size;
 
@@ -237,7 +240,7 @@ int _exec(int argc, const char* argv[])
     strcpy(dir, get_program_file());
     dirname(dir);
 
-    /* Find libosenc.so and liboscrt.so */
+    /* Find libosenc.so, liboscrt.so, and liboskernel.so */
     {
         int n;
 
@@ -249,21 +252,42 @@ int _exec(int argc, const char* argv[])
         if (n >= sizeof liboscrt)
             _err("buffer overflow when forming liboscrt.so path");
 
+        n = snprintf(liboskernel, sizeof(liboskernel),
+            "%s/liboskernel.so", dir);
+        if (n >= sizeof liboskernel)
+            _err("buffer overflow when forming liboskernel.so path");
+
         if (access(libosenc, R_OK) != 0)
             _err("cannot find: %s", libosenc);
 
         if (access(liboscrt, R_OK) != 0)
             _err("cannot find: %s", liboscrt);
+
+        if (access(liboskernel, R_OK) != 0)
+            _err("cannot find: %s", liboskernel);
     }
 
     /* Load the C runtime ELF image into memory */
     if (elf_image_load(liboscrt, &crt_image) != 0)
         _err("failed to load C runtime image: %s", liboscrt);
 
+    /* Load the kernel ELF image into memory */
+    if (elf_image_load(liboskernel, &kernel_image) != 0)
+        _err("failed to load the kernel image: %s", liboskernel);
+
     if (LIBOS_STRLCPY(crt_path, liboscrt) >= sizeof(crt_path))
         _err("path is too long: %s", liboscrt);
 
-    set_region_details(&crt_image, crt_path, rootfs_data, rootfs_size);
+    if (LIBOS_STRLCPY(kernel_path, liboskernel) >= sizeof(kernel_path))
+        _err("path is too long: %s", liboskernel);
+
+    set_region_details(
+        &crt_image,
+        crt_path,
+        &kernel_image,
+        kernel_path,
+        rootfs_data,
+        rootfs_size);
 
     /* Load the enclave: calls oe_region_add_regions() */
     r = oe_create_libos_enclave(libosenc, type, flags, NULL, 0, &enclave);
@@ -296,6 +320,7 @@ int _exec(int argc, const char* argv[])
     free(args);
     free(rootfs_data);
     elf_image_free(&crt_image);
+    elf_image_free(&kernel_image);
 
     return retval;
 }

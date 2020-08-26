@@ -15,7 +15,7 @@ run:
 	$(BINDIR)/libos exec rootfs /main $(OPTS)
 
 gdb:
-	$(BINDIR)/oegdb --args $(BINDIR)/libos exec rootfs /main $(OPTS)
+	$(OEGDB) --args $(BINDIR)/libos exec rootfs /main $(OPTS)
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos

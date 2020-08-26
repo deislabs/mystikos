@@ -14,15 +14,11 @@ all: libos
 
 #OPTS += --strace
 
-GDB = $(BINDIR)/oegdb
-
-#export AZDCAP_DEBUG_LOG_LEVEL=0
-
 run: all
 	$(LIBOS) exec rootfs /bin/gencreds $(OPTS)
 
 gdb: all
-	$(GDB) --args $(LIBOS) exec rootfs /bin/gencreds $(OPTS)
+	$(OEGDB) --args $(LIBOS) exec rootfs /bin/gencreds $(OPTS)
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos

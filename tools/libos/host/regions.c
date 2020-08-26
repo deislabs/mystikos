@@ -16,15 +16,25 @@
 #define MEGABYTE (1024UL * 1024UL)
 
 static size_t _mman_size = (64 * MEGABYTE);
-elf_image_t *_crt_image;
-char* _crt_path;
-void* _rootfs_data = NULL;
-size_t _rootfs_size;
+static elf_image_t *_crt_image;
+static elf_image_t *_kernel_image;
+static char* _crt_path;
+static char* _kernel_path;
+static void* _rootfs_data = NULL;
+static size_t _rootfs_size;
 
-void set_region_details(elf_image_t *crt_image, char *crt_path, void *rootfs_data, size_t rootfs_size)
+void set_region_details(
+    elf_image_t* crt_image,
+    char* crt_path,
+    elf_image_t* kernel_image,
+    char* kernel_path,
+    void* rootfs_data,
+    size_t rootfs_size)
 {
     _crt_image = crt_image;
     _crt_path = crt_path;
+    _kernel_image = kernel_image;
+    _kernel_path = kernel_path;
     _rootfs_data = rootfs_data;
     _rootfs_size = rootfs_size;
 }
@@ -123,6 +133,57 @@ done:
     return ret;
 }
 
+static int _load_kernel_pages(
+    oe_region_context_t* context,
+    elf_image_t* image,
+    uint64_t vaddr)
+{
+    int ret = 0;
+
+    if (!context || !image)
+        ERAISE(-EINVAL);
+
+    assert((image->image_size & (PAGE_SIZE - 1)) == 0);
+
+    /* Add the program segments first */
+    for (size_t i = 0; i < image->num_segments; i++)
+    {
+        ECHECK(_add_segment_pages(
+            context,
+            &image->segments[i],
+            image->image_data,
+            vaddr));
+    }
+
+    ret = 0;
+
+done:
+    return ret;
+}
+
+static int _add_kernel_region(oe_region_context_t* context, uint64_t* vaddr)
+{
+    int ret = 0;
+    assert(_kernel_image->image_data != NULL);
+    assert(_kernel_image->image_size != 0);
+
+    if (!context || !vaddr)
+        ERAISE(-EINVAL);
+
+    if (oe_region_start(context, KERNEL_REGION_ID, true, _kernel_path) != OE_OK)
+        ERAISE(-EINVAL);
+
+    ECHECK(_load_kernel_pages(context, _kernel_image, *vaddr));
+
+    if (oe_region_end(context) != OE_OK)
+        ERAISE(-EINVAL);
+
+    *vaddr += libos_round_up_to_page_size(_kernel_image->image_size);
+
+done:
+    return ret;
+}
+
 static int _add_crt_reloc_region(oe_region_context_t* context, uint64_t* vaddr)
 {
     int ret = 0;
@@ -141,6 +202,53 @@ static int _add_crt_reloc_region(oe_region_context_t* context, uint64_t* vaddr)
     {
         const uint8_t* page = (const uint8_t*)_crt_image->reloc_data;
         size_t npages = _crt_image->reloc_size / PAGE_SIZE;
+
+        for (size_t i = 0; i < npages; i++)
+        {
+            const bool extend = true;
+
+            if (oe_region_add_page(
+                context,
+                *vaddr,
+                page,
+                SGX_SECINFO_REG | SGX_SECINFO_R,
+                extend) != OE_OK)
+            {
+                ERAISE(-EINVAL);
+            }
+
+            page += PAGE_SIZE;
+            (*vaddr) += PAGE_SIZE;
+        }
+    }
+
+    if (oe_region_end(context) != OE_OK)
+        ERAISE(-EINVAL);
+
+done:
+    return ret;
+}
+
+static int _add_kernel_reloc_region(
+    oe_region_context_t* context,
+    uint64_t* vaddr)
+{
+    int ret = 0;
+    const bool is_elf = true;
+    assert(_kernel_image->reloc_data != NULL);
+    assert(_kernel_image->reloc_size != 0);
+    assert((_kernel_image->reloc_size % PAGE_SIZE) == 0);
+
+    if (!context || !vaddr)
+        ERAISE(-EINVAL);
+
+    if (oe_region_start(context, KERNEL_RELOC_REGION_ID, is_elf, NULL) != OE_OK)
+        ERAISE(-EINVAL);
+
+    /* Add the pages */
+    {
+        const uint8_t* page = (const uint8_t*)_kernel_image->reloc_data;
+        size_t npages = _kernel_image->reloc_size / PAGE_SIZE;
 
         for (size_t i = 0; i < npages; i++)
         {
@@ -293,6 +401,12 @@ done:
 
 oe_result_t oe_region_add_regions(oe_region_context_t* context, uint64_t vaddr)
 {
+    if (_add_kernel_region(context, &vaddr) != 0)
+        _err("_add_kernel_region() failed");
+
+    if (_add_kernel_reloc_region(context, &vaddr) != 0)
+        _err("_add_kernel_reloc_region() failed");
+
     if (_add_crt_region(context, &vaddr) != 0)
         _err("_add_crt_region() failed");
 
