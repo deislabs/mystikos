@@ -17,7 +17,9 @@ CFLAGS = $(OEHOST_CFLAGS)
 
 LDFLAGS = $(OEHOST_LDFLAGS)
 
-LIBS = $(LIBDIR)/liboshost.a
+LIBS += $(BINDIR)/liboehostmr.a
+LIBS = $(LIBDIR)/liboesignlib.a
+LIBS += $(LIBDIR)/liboshost.a
 
 CLEAN = $(SUBOBJDIR)/libos_u.h $(SUBOBJDIR)/libos_u.c $(SUBOBJDIR)/libos_args.h
 
