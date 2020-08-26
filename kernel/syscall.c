@@ -519,12 +519,7 @@ static long _forward_syscall(long n, long params[6])
         if (_trace_syscalls)
             libos_eprintf("    [forward syscall]\n");
 
-        long ret = libos_tcall(n, params);
-
-        if (ret == -1)
-            ret = -errno;
-
-        return ret;
+        return libos_tcall(n, params);
     }
 }
 
@@ -1134,12 +1129,15 @@ long libos_syscall_getpid(void)
 
 long libos_syscall_ret(long ret)
 {
+#if 0
     if ((unsigned long)ret > -4096UL)
     {
         errno = (int)-ret;
         return -1;
     }
+#endif
 
+    /* ATTN: remove this no-op function */
     return ret;
 }
 

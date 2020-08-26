@@ -238,7 +238,7 @@ int libos_write_file(int fd, const void* data, size_t size)
             break;
 
         if (n < 0)
-            ERAISE(-errno);
+            ERAISE((int)-n);
 
         p += n;
         r -= (size_t)n;

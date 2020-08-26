@@ -92,4 +92,7 @@ char* strcpy(char* dest, const char* src);
 __attribute__((deprecated))
 char* strncpy(char* dest, const char* src, size_t n);
 
+__attribute__((deprecated))
+int* __errno_location(void);
+
 #endif /* _LIBOS_DEPRECATED_H */
