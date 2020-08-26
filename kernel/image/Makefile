@@ -10,9 +10,7 @@ TARGET = $(SUBBINDIR)/$(PROGRAM)
 
 SOURCES = $(wildcard *.c)
 
-INCLUDES += -I$(INCDIR)
-INCLUDES += -I$(TOP)/include
-INCLUDES += -I$(INCDIR)/openenclave/3rdparty/libc
+INCLUDES += $(OEENCLAVE_INCLUDES)
 
 CFLAGS =
 CFLAGS += -g

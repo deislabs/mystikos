@@ -6,7 +6,7 @@ PROGRAM = enc
 
 SOURCES = $(SUBOBJDIR)/calls_t.c enc.c
 
-INCLUDES = -I$(INCDIR) -I$(SUBOBJDIR)
+INCLUDES = $(OEENCLAVE_INCLUDES) -I$(SUBOBJDIR)
 
 CFLAGS = $(OEENCLAVE_CFLAGS)
 
@@ -17,7 +17,7 @@ CLEAN = $(SUBOBJDIR)/calls_t.h $(SUBOBJDIR)/calls_t.c $(SUBOBJDIR)/calls_args.h
 include $(TOP)/rules.mak
 
 EDGER8R_OPTS += --trusted
-EDGER8R_OPTS += --search-path $(INCDIR)
+EDGER8R_OPTS += --search-path $(OE_INCDIR)
 EDGER8R_OPTS += --trusted-dir $(SUBOBJDIR)
 
 $(SUBOBJDIR)/calls_t.c:

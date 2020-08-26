@@ -6,7 +6,10 @@ PROGRAM = enc
 
 SOURCES = $(SUBOBJDIR)/run_t.c enc.c
 
-INCLUDES = -I$(INCDIR) -I$(SUBOBJDIR)
+INCLUDES = $(OEENCLAVE_INCLUDES)
+INCLUDES += -I$(SUBOBJDIR)
+INCLUDES += -I$(INCDIR)
+INCLUDES += -I$(BUILDDIR)/include
 
 CFLAGS = $(OEENCLAVE_CFLAGS)
 
@@ -17,7 +20,7 @@ CLEAN = $(SUBOBJDIR)/run_t.h $(SUBOBJDIR)/run_t.c $(SUBOBJDIR)/run_args.h
 include $(TOP)/rules.mak
 
 EDGER8R_OPTS += --trusted
-EDGER8R_OPTS += --search-path $(INCDIR)
+EDGER8R_OPTS += --search-path $(OE_INCDIR)
 EDGER8R_OPTS += --trusted-dir $(SUBOBJDIR)
 
 $(SUBOBJDIR)/run_t.c:

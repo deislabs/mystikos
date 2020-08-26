@@ -6,7 +6,7 @@ PROGRAM = image
 
 SOURCES = $(wildcard *.c)
 
-INCLUDES = -I$(INCDIR) -I$(SUBOBJDIR) -I$(TOP)/include
+INCLUDES = -I$(SUBOBJDIR) -I$(INCDIR)
 
 CFLAGS = $(OEENCLAVE_CFLAGS)
 

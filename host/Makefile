@@ -10,7 +10,7 @@ SOURCES = $(wildcard *.c)
 SOURCES += $(wildcard $(TOP)/shared/*.c)
 SOURCES += $(wildcard $(TOP)/compat/*.c)
 
-INCLUDES = -I$(TOP)/include
+INCLUDES = -I$(INCDIR)
 
 CFLAGS = $(OEHOST_CFLAGS)
 

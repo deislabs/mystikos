@@ -9,7 +9,7 @@ PROGRAM = main
 
 SOURCES = $(wildcard *.c)
 
-INCLUDES = -I$(INCDIR) -I$(SUBOBJDIR) -I$(TOP)/include
+INCLUDES = -I$(SUBOBJDIR) -I$(INCDIR)
 
 CFLAGS = $(OEHOST_CFLAGS)
 

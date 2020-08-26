@@ -6,7 +6,7 @@ PROGRAM = host
 
 SOURCES = $(SUBOBJDIR)/calls_u.c host.c
 
-INCLUDES = -I$(INCDIR) -I$(SUBOBJDIR)
+INCLUDES = $(OEHOST_INCLUDES) -I$(SUBOBJDIR)
 
 CFLAGS = $(OEHOST_CFLAGS)
 
@@ -17,7 +17,7 @@ CLEAN = $(SUBOBJDIR)/calls_u.h $(SUBOBJDIR)/calls_u.c $(SUBOBJDIR)/calls_args.h
 include $(TOP)/rules.mak
 
 EDGER8R_OPTS += --untrusted
-EDGER8R_OPTS += --search-path $(INCDIR)
+EDGER8R_OPTS += --search-path $(OE_INCDIR)
 EDGER8R_OPTS += --untrusted-dir $(SUBOBJDIR)
 
 $(SUBOBJDIR)/calls_u.c:

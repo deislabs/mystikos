@@ -18,5 +18,7 @@ DIRS += paths
 DIRS += mount
 DIRS += cpio
 DIRS += elf
+DIRS += strings
+DIRS += empty
 
 include $(TOP)/rules.mak

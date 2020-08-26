@@ -8,9 +8,7 @@ ARCHIVE = liboskernel.a
 
 SOURCES = $(wildcard *.c) $(wildcard ../shared/*.c) $(wildcard *.s)
 
-INCLUDES += -I$(INCDIR)
-INCLUDES += -I$(TOP)/include
-INCLUDES += -I$(INCDIR)/openenclave/3rdparty/libc
+INCLUDES = -I$(INCDIR) $(OEENCLAVE_INCLUDES) -I$(BUILDDIR)/include
 
 CFLAGS = $(OEENCLAVE_CFLAGS)
 
