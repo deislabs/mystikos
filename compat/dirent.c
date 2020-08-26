@@ -26,6 +26,8 @@ int libos_readdir(DIR *dir, struct dirent** entp)
     if (!dir || !entp)
         return -EINVAL;
 
+    errno = 0;
+
     if (!(*entp = readdir(dir)))
         return -errno;
 
