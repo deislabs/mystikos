@@ -1,6 +1,8 @@
 
     AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 
+    * migrate weak functions from kernel to target
+
     * implement libos signer
 
     * support attested certificate generation
