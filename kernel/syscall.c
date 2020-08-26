@@ -11,7 +11,6 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <sys/socket.h>
-#include <setjmp.h>
 #include <sys/uio.h>
 #include <sys/ioctl.h>
 #include <sys/vfs.h>
@@ -34,6 +33,7 @@
 #include <libos/deprecated.h>
 #include <libos/assert.h>
 #include <libos/crash.h>
+#include <libos/setjmp.h>
 
 #include "fdtable.h"
 
@@ -50,7 +50,7 @@
 
 long libos_syscall_isatty(int fd);
 
-jmp_buf __libos_exit_jmp_buf;
+libos_jmp_buf_t __libos_exit_jmp_buf;
 
 static bool _trace_syscalls;
 
@@ -1676,7 +1676,7 @@ long libos_syscall(long n, long params[6])
             libos_syscall_unload_symbols();
 
             _exit_status = status;
-            longjmp(__libos_exit_jmp_buf, 1);
+            libos_longjmp(&__libos_exit_jmp_buf, 1);
 
             /* Unreachable! */
             libos_assert("unreachable" == NULL);

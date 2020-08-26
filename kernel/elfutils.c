@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <limits.h>
 #include <stdlib.h>
-#include <setjmp.h>
 
 #include <libos/elfutils.h>
 #include <libos/syscall.h>
@@ -17,8 +16,9 @@
 #include <libos/deprecated.h>
 #include <libos/malloc.h>
 #include <libos/assert.h>
+#include <libos/setjmp.h>
 
-extern jmp_buf __libos_exit_jmp_buf;
+extern libos_jmp_buf_t __libos_exit_jmp_buf;
 
 typedef struct _pair
 {
@@ -1264,7 +1264,7 @@ static void _entry_thread(void* args_)
 #endif
 
     /* jumps here from _syscall() on SYS_exit */
-    if (setjmp(__libos_exit_jmp_buf) != 0)
+    if (libos_setjmp(&__libos_exit_jmp_buf) != 0)
     {
         libos_call_atexit_functions();
 #ifdef USE_LTHREADS
