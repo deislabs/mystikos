@@ -1,16 +1,33 @@
 #include <dirent.h>
+#include <errno.h>
+#include <libos/file.h>
 
-DIR* libos_opendir(const char *name)
+int libos_opendir(const char *name, DIR** dirp)
 {
-    return opendir(name);
+    if (!name || !dirp)
+        return -EINVAL;
+
+    if (!(*dirp = opendir(name)))
+        return -errno;
+
+    return 0;
 }
 
 int libos_closedir(DIR* dir)
 {
+    if (!dir)
+        return -EINVAL;
+
     return closedir(dir);
 }
 
-struct dirent* libos_readdir(DIR *dir)
+int libos_readdir(DIR *dir, struct dirent** entp)
 {
-    return readdir(dir);
+    if (!dir || !entp)
+        return -EINVAL;
+
+    if (!(*entp = readdir(dir)))
+        return -errno;
+
+    return 1;
 }

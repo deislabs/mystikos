@@ -6,7 +6,7 @@ SUBLIBDIR=$(LIBDIR)
 
 ARCHIVE = liboskernel.a
 
-SOURCES = $(wildcard *.c) $(wildcard ../shared/*.c)
+SOURCES = $(wildcard *.c) $(wildcard ../shared/*.c) $(wildcard *.s)
 
 INCLUDES += -I$(INCDIR)
 INCLUDES += -I$(TOP)/include
@@ -18,3 +18,6 @@ DEPENDS += $(TOP)/include/libos/fs.h
 DEPENDS += $(TOP)/include/libos/ramfs.h
 
 include $(TOP)/rules.mak
+
+xxx:
+	@echo $(OBJECTS)

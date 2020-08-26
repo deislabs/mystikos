@@ -396,7 +396,7 @@ void dump_dirents(const char* path)
 
     printf("=== dump_dirents(%s)\n", path);
 
-    while (libos_readdir(dir, &ent) == 0)
+    while (libos_readdir(dir, &ent) == 1)
     {
         printf("name=\"%s\": ino=%lx type=%u off=%ld reclen=%ld\n",
             ent->d_name, ent->d_ino, ent->d_type, ent->d_off, ent->d_off);
