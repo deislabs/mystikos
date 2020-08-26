@@ -19,3 +19,5 @@ samples/ssl/rootfs
 samples/alpine/alpine-minirootfs.tar.gz
 samples/cpuid/appdir
 samples/cpuid/rootfs
+tests/argv/appdir/
+tests/argv/rootfs
