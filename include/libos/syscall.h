@@ -4,9 +4,11 @@
 #include <sys/syscall.h>
 #include <sys/uio.h>
 #include <fcntl.h>
+#include <time.h>
 #include <sys/stat.h>
 #include <dirent.h>
 #include <stdbool.h>
+
 #include <libos/syscallext.h>
 
 void libos_trace_syscalls(bool flag);
@@ -85,5 +87,7 @@ long libos_syscall_load_symbols(void);
 long libos_syscall_unload_symbols(void);
 
 long libos_syscall_getpid(void);
+
+long libos_syscall_clock_gettime(clockid_t clk_id, struct timespec *tp);
 
 #endif /* _LIBOS_SYSCALL_H */

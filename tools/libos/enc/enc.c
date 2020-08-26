@@ -464,7 +464,7 @@ _Static_assert(sizeof(struct libos_timespec) == sizeof(struct timespec), "");
 
 /* ATTN: replace this with clock ticks implementation */
 /* This overrides the weak version in liboskernel.a */
-long libos_syscall_clock_gettime(clockid_t clk_id, struct timespec* tp_)
+long libos_tcall_clock_gettime(clockid_t clk_id, struct timespec* tp_)
 {
     int retval = -1;
     struct libos_timespec* tp = (struct libos_timespec*)tp_;
@@ -476,7 +476,7 @@ long libos_syscall_clock_gettime(clockid_t clk_id, struct timespec* tp_)
 }
 
 /* This overrides the weak version in liboskernel.a */
-long libos_syscall_add_symbol_file(
+long libos_tcall_add_symbol_file(
     const char* path,
     const void* text,
     size_t text_size)
@@ -506,7 +506,7 @@ done:
 }
 
 /* This overrides the weak version in liboskernel.a */
-long libos_syscall_load_symbols(void)
+long libos_tcall_load_symbols(void)
 {
     long ret = 0;
     int retval;
@@ -519,7 +519,7 @@ done:
 }
 
 /* This overrides the weak version in liboskernel.a */
-long libos_syscall_unload_symbols(void)
+long libos_tcall_unload_symbols(void)
 {
     long ret = 0;
     int retval;
@@ -532,7 +532,7 @@ done:
 }
 
 /* This overrides the weak version in liboskernel.a */
-long libos_syscall_isatty(int fd)
+long libos_tcall_isatty(int fd)
 {
     long ret;
 

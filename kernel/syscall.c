@@ -1034,26 +1034,6 @@ done:
     return ret;
 }
 
-/* This must be overriden by the library user */
-__attribute__((__weak__))
-long libos_syscall_clock_gettime(clockid_t clk_id, struct timespec *tp)
-{
-    (void)clk_id;
-    (void)tp;
-
-    libos_assert("unimplemented: implement in enclave" == NULL);
-    return -ENOTSUP;
-}
-
-__attribute__((__weak__))
-long libos_syscall_isatty(int fd)
-{
-    (void)fd;
-
-    libos_assert("unimplemented: implement in enclave" == NULL);
-    return -ENOTSUP;
-}
-
 long libos_syscall_getrandom(void *buf, size_t buflen, unsigned int flags)
 {
     long ret = 0;
@@ -1092,36 +1072,6 @@ long libos_syscall_chmod(const char *pathname, mode_t mode)
     (void)pathname;
     (void)mode;
     return 0;
-}
-
-/* This must be overriden by the library user */
-__attribute__((__weak__))
-long libos_syscall_add_symbol_file(
-    const char* path,
-    const void* text,
-    size_t text_size)
-{
-    (void)path;
-    (void)text;
-    (void)text_size;
-    libos_assert("unimplemented: implement in enclave" == NULL);
-    return -ENOTSUP;
-}
-
-/* This must be overriden by the library user */
-__attribute__((__weak__))
-long libos_syscall_load_symbols(void)
-{
-    libos_assert("unimplemented: implement in enclave" == NULL);
-    return -ENOTSUP;
-}
-
-/* This must be overriden by the library user */
-__attribute__((__weak__))
-long libos_syscall_unload_symbols(void)
-{
-    libos_assert("unimplemented: implement in enclave" == NULL);
-    return -ENOTSUP;
 }
 
 long libos_syscall_getpid(void)
@@ -2557,4 +2507,45 @@ void libos_trace_syscalls(bool flag)
 void libos_real_syscalls(bool flag)
 {
     _real_syscalls = flag;
+}
+
+/*
+**==============================================================================
+**
+** syscalls
+**
+**==============================================================================
+*/
+
+long libos_syscall_clock_gettime(clockid_t clk_id, struct timespec* tp)
+{
+    long params[6] = { (long)clk_id, (long)tp };
+    return libos_tcall(LIBOS_TCALL_CLOCK_GETTIME, params);
+}
+
+long libos_syscall_isatty(int fd)
+{
+    long params[6] = { (long)fd };
+    return libos_tcall(LIBOS_TCALL_ISATTY, params);
+}
+
+long libos_syscall_add_symbol_file(
+    const char* path,
+    const void* text,
+    size_t text_size)
+{
+    long params[6] = { (long)path, (long)text, (long)text_size };
+    return libos_tcall(LIBOS_TCALL_ADD_SYMBOL_FILE, params);
+}
+
+long libos_syscall_load_symbols(void)
+{
+    long params[6] = { 0 };
+    return libos_tcall(LIBOS_TCALL_LOAD_SYMBOLS, params);
+}
+
+long libos_syscall_unload_symbols(void)
+{
+    long params[6] = { 0 };
+    return libos_tcall(LIBOS_TCALL_UNLOAD_SYMBOLS, params);
 }

@@ -1,10 +1,12 @@
 #include <libos/tcall.h>
 #include <libos/eraise.h>
 #include <sys/syscall.h>
+#include <time.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <unistd.h>
+#include <assert.h>
 #include <openenclave/enclave.h>
 #include "gencreds.h"
 
@@ -124,6 +126,57 @@ static long _tcall_vsnprintf(
     return ret;
 }
 
+/* Must be overriden by enclave application */
+__attribute__((__weak__))
+long libos_tcall_clock_gettime(clockid_t clk_id, struct timespec *tp)
+{
+    (void)clk_id;
+    (void)tp;
+
+    assert("unimplemented: implement in enclave" == NULL);
+    return -ENOTSUP;
+}
+
+/* Must be overriden by enclave application */
+__attribute__((__weak__))
+long libos_tcall_isatty(int fd)
+{
+    (void)fd;
+
+    assert("unimplemented: implement in enclave" == NULL);
+    return -ENOTSUP;
+}
+
+/* Must be overriden by enclave application */
+__attribute__((__weak__))
+long libos_tcall_add_symbol_file(
+    const char* path,
+    const void* text,
+    size_t text_size)
+{
+    (void)path;
+    (void)text;
+    (void)text_size;
+    assert("unimplemented: implement in enclave" == NULL);
+    return -ENOTSUP;
+}
+
+/* Must be overriden by enclave application */
+__attribute__((__weak__))
+long libos_tcall_load_symbols(void)
+{
+    assert("unimplemented: implement in enclave" == NULL);
+    return -ENOTSUP;
+}
+
+/* Must be overriden by enclave application */
+__attribute__((__weak__))
+long libos_tcall_unload_symbols(void)
+{
+    assert("unimplemented: implement in enclave" == NULL);
+    return -ENOTSUP;
+}
+
 long libos_tcall(long n, long params[6])
 {
     long ret = 0;
@@ -204,6 +257,32 @@ long libos_tcall(long n, long params[6])
             libos_free_creds(cert, cert_size, pkey, pkey_size);
             return 0;
         }
+        case LIBOS_TCALL_CLOCK_GETTIME:
+        {
+            clockid_t clk_id = (clockid_t)x1;
+            struct timespec* tp = (struct timespec*)x2;
+            return libos_tcall_clock_gettime(clk_id, tp);
+        }
+        case LIBOS_TCALL_ISATTY:
+        {
+            int fd = (int)x1;
+            return libos_tcall_isatty(fd);
+        }
+        case LIBOS_TCALL_ADD_SYMBOL_FILE:
+        {
+            const char* path = (const char*)x1;
+            const void* text = (const void*)x2;
+            size_t text_size = (size_t)x3;
+            return libos_tcall_add_symbol_file(path, text, text_size);
+        }
+        case LIBOS_TCALL_LOAD_SYMBOLS:
+        {
+            return libos_tcall_load_symbols();
+        }
+        case LIBOS_TCALL_UNLOAD_SYMBOLS:
+        {
+            return libos_tcall_unload_symbols();
+        }
         case SYS_read:
         case SYS_write:
         case SYS_close:
@@ -244,3 +323,4 @@ long libos_tcall(long n, long params[6])
 done:
     return ret;
 }
+
