@@ -1,0 +1,12 @@
+# master branch pipeline configuration
+
+trigger:
+- master
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+- script: |
+    make
+  displayName: 'make'
