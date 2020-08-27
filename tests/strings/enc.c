@@ -3,6 +3,7 @@
 
 #include <openenclave/enclave.h>
 #include <libos/strings.h>
+#include <libos/malloc.h>
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -35,7 +36,7 @@ int test_strsplit(
 done:
 
     if (p)
-        free(p);
+        libos_free(p);
 
     return ret;
 }
@@ -85,7 +86,7 @@ int run_ecall(void)
         char* str = NULL;
         assert(libos_strjoin(toks, ntoks, NULL, ":", NULL, &str) == 0);
         assert(strcmp(str, "red:green:blue") == 0);
-        free(str);
+        libos_free(str);
     }
 
     {
@@ -94,7 +95,7 @@ int run_ecall(void)
         char* str = NULL;
         assert(libos_strjoin(toks, ntoks, "(", ":", ")", &str) == 0);
         assert(strcmp(str, "(red:green:blue)") == 0);
-        free(str);
+        libos_free(str);
     }
 
     {
@@ -103,15 +104,18 @@ int run_ecall(void)
         char* str = NULL;
         assert(libos_strjoin(toks, ntoks, "(", ":", ")", &str) == 0);
         assert(strcmp(str, "(x)") == 0);
-        free(str);
+        libos_free(str);
     }
 
     {
         char* str = NULL;
         assert(libos_strjoin(NULL, 0, "(", ":", ")", &str) == 0);
         assert(strcmp(str, "()") == 0);
-        free(str);
+        libos_free(str);
     }
+
+    extern int libos_find_leaks(void);
+    assert(libos_find_leaks() == 0);
 
     return 0;
 }

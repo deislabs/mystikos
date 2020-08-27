@@ -6,11 +6,14 @@
 #include <libos/cwd.h>
 #include <libos/paths.h>
 #include <libos/strings.h>
+#include <libos/malloc.h>
 #include <stdio.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 #include "run_t.h"
+
+int libos_find_leaks(void);
 
 int test_normalize(const char* toks[], const char* path)
 {
@@ -31,7 +34,7 @@ int test_normalize(const char* toks[], const char* path)
 done:
 
     if (s)
-        free(s);
+        libos_free(s);
 
     return ret;
 }
@@ -157,6 +160,8 @@ int run_ecall(void)
             assert(strcmp(buf, "/aaa") == 0);
         }
     }
+
+    assert(libos_find_leaks() == 0);
 
     return 0;
 }

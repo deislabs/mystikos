@@ -6,7 +6,7 @@
 #include <libos/list.h>
 #include <libos/strings.h>
 
-//#define ENABLE_LEAK_CHECKER
+#define ENABLE_LEAK_CHECKER
 
 static libos_list_t _list;
 static libos_spinlock_t _lock = LIBOS_SPINLOCK_INITIALIZER;
@@ -221,7 +221,7 @@ void libos_free(void* ptr)
         libos_crash();
 
 #ifdef ENABLE_LEAK_CHECKER
-    if (_remove_node(ptr) != 0)
+    if (ptr && _remove_node(ptr) != 0)
         libos_crash();
 #endif
 }
