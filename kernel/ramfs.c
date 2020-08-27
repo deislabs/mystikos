@@ -64,6 +64,7 @@ struct inode
     size_t nlink; /* number of hard links to this inode (excludes ".") */
     size_t nopens; /* number of times file is currently opened */
     libos_buf_t buf; /* file or directory data */
+    const void* data; /* set by libos_ramfs_set_buf() */
 };
 
 static bool _inode_valid(const inode_t* inode)
@@ -75,7 +76,8 @@ static void _inode_free(inode_t* inode)
 {
     if (inode)
     {
-        libos_buf_release(&inode->buf);
+        if (inode->buf.data != inode->data)
+            libos_buf_release(&inode->buf);
         libos_free(inode);
     }
 }
@@ -1498,6 +1500,39 @@ done:
 
     if (root_inode)
         libos_free(root_inode);
+
+    return ret;
+}
+
+int libos_ramfs_set_buf(
+    libos_fs_t* fs,
+    const char* pathname,
+    const void* buf,
+    size_t buf_size)
+{
+    ramfs_t* ramfs = (ramfs_t*)fs;
+    inode_t* inode = NULL;
+    int ret = 0;
+
+    if (!_ramfs_valid(ramfs))
+        ERAISE(-EINVAL);
+
+    if (!pathname)
+        ERAISE(-EINVAL);
+
+    if (!buf)
+        ERAISE(-EINVAL);
+
+    ECHECK(_path_to_inode(ramfs, pathname, true, NULL, &inode));
+
+    if (inode->buf.data != inode->data)
+        libos_buf_clear(&inode->buf);
+
+    inode->data = buf;
+    inode->buf.data = (void*)buf;
+    inode->buf.size = buf_size;
+
+done:
 
     return ret;
 }

@@ -92,11 +92,10 @@ static int _create_cpio_file(const char* path, const char* data, size_t size)
     if (!path || !data || !size)
         ERAISE(-EINVAL);
 
-    if ((fd = libos_open(path, O_WRONLY | O_CREAT, 0666)) < 0)
+    if ((fd = libos_open(path, O_WRONLY | O_CREAT, 0444)) < 0)
         ERAISE(-EINVAL);
 
-    if (_writen(fd, data, size) != 0)
-        ERAISE(-EINVAL);
+    ECHECK(libos_ramfs_set_buf(_fs, path, data, size));
 
     ret = 0;
 
