@@ -21,10 +21,13 @@ TESTS = $(shell cat supported.txt)
 tests:
 	$(foreach i, $(TESTS), $(MAKE) run TEST=$(i) $(NL) )
 
-#OPTS = --strace
+OPTS = --strace
 
 run:
 	$(BINDIR)/libos exec $(OPTS) rootfs $(TEST)
+
+run-gdb:
+	$(OEGDB) --args $(BINDIR)/libos exec $(OPTS) rootfs $(TEST)
 
 clean:
 	rm -rf rootfs appdir

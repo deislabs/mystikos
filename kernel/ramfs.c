@@ -78,6 +78,7 @@ static void _inode_free(inode_t* inode)
     {
         if (inode->buf.data != inode->data)
             libos_buf_release(&inode->buf);
+        libos_memset(inode, 0xdd, sizeof(inode_t));
         libos_free(inode);
     }
 }
