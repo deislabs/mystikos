@@ -5,29 +5,31 @@ include $(TOP)/defs.mak
 IMG=libos-alpine
 APPDIR=$(CURDIR)/appdir
 
-all: rootfs
+ifdef STRACE
+OPTS = --strace
+endif
 
-rootfs: appdir build
-	$(BINDIR)/libos mkcpio appdir rootfs
+all: srcdir build
 
-appdir:
-	cp -r $(TOP)/third_party/libc-test appdir
+srcdir:
+	cp -r $(TOP)/third_party/libc-test srcdir
 
 build:
-	sudo docker run --rm -v $(APPDIR):/appdir $(IMG) bash -c "make -C appdir"
+	sudo docker run --rm -v $(CURDIR)/srcdir:/srcdir $(IMG) bash -c "make -C srcdir"
 
 TESTS = $(shell cat supported.txt)
 
 tests:
 	$(foreach i, $(TESTS), $(MAKE) run TEST=$(i) $(NL) )
 
-OPTS = --strace
-
 run:
-	$(BINDIR)/libos exec $(OPTS) rootfs $(TEST)
-
-run-gdb:
-	$(OEGDB) --args $(BINDIR)/libos exec $(OPTS) rootfs $(TEST)
+	@ echo "=== TEST=$(TEST)"
+	@ rm -rf appdir
+	@ mkdir -p appdir/src/functional
+	@ install -D srcdir/$(TEST) appdir/$(TEST)
+	@ cp srcdir/src/functional/*.so appdir/src/functional
+	$(BINDIR)/libos mkcpio appdir rootfs
+	$(BINDIR)/libos exec --real-syscalls $(OPTS) rootfs $(TEST)
 
 clean:
-	rm -rf rootfs appdir
+	rm -rf rootfs appdir srcdir
