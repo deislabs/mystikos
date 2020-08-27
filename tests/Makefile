@@ -3,6 +3,7 @@ TOP=$(abspath ..)
 include $(TOP)/defs.mak
 
 DIRS =
+DIRS += paths
 DIRS += cpuid
 DIRS += argv
 DIRS += shlib
@@ -14,7 +15,6 @@ DIRS += lthread
 DIRS += wake
 DIRS += mman
 DIRS += fs
-DIRS += paths
 DIRS += mount
 DIRS += cpio
 DIRS += elf
