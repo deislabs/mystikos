@@ -1,15 +1,9 @@
 
     AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 
-    * migrate weak functions from kernel to target
-
     * implement libos signer
 
-    * support attested certificate generation
-
-    * make installer
-
-    * partition kernel into 'target' and 'kernel'
+    * add install rule
 
     BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
 
@@ -60,3 +54,10 @@
     X implement extensible memory regions
 
     X debugger symbols
+
+    X migrate weak functions from kernel to target
+
+    X support attested certificate generation
+
+    X partition kernel into 'target' and 'kernel'
+
