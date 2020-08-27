@@ -30,9 +30,6 @@
 #include "exec.h"
 #include "cpio.h"
 
-
-
-
 _Static_assert(sizeof(struct libos_timespec) == sizeof(struct timespec), "");
 
 int libos_clock_gettime_ocall(int clk_id, struct libos_timespec* tp)

@@ -8,35 +8,133 @@
 #include <libos/eraise.h>
 #include <errno.h>
 #include <assert.h>
+#include <limits.h>
+#include <unistd.h>
+#include <libgen.h>
+#include <sys/stat.h>
 #include "utils.h"
 #include "../shared.h"
+#include "regions.h"
 
 /* ATTN: use common header */
 #define PAGE_SIZE 4096
 #define MEGABYTE (1024UL * 1024UL)
+#define MMAN_SIZE (64 * MEGABYTE)
 
-static size_t _mman_size = (64 * MEGABYTE);
-static elf_image_t *_crt_image;
-static elf_image_t *_kernel_image;
-static char* _crt_path;
-static char* _kernel_path;
-static void* _rootfs_data = NULL;
-static size_t _rootfs_size;
+region_details _details = { 0 };
 
-void set_region_details(
-    elf_image_t* crt_image,
-    char* crt_path,
-    elf_image_t* kernel_image,
-    char* kernel_path,
-    void* rootfs_data,
-    size_t rootfs_size)
+static int _load_file(const char* path, size_t extra_space, void** data_out, size_t* size_out)
 {
-    _crt_image = crt_image;
-    _crt_path = crt_path;
-    _kernel_image = kernel_image;
-    _kernel_path = kernel_path;
-    _rootfs_data = rootfs_data;
-    _rootfs_size = rootfs_size;
+    int ret = -1;
+    FILE* is = NULL;
+    void* data = NULL;
+    size_t size;
+
+    if (data_out)
+        *data_out = NULL;
+
+    if (size_out)
+        *size_out = 0;
+
+    /* Check parameters */
+    if (!path || !data_out || !size_out)
+        goto done;
+
+    /* Get size of this file */
+    {
+        struct stat buf;
+
+        if (stat(path, &buf) != 0)
+            goto done;
+
+        size = buf.st_size;
+    }
+
+    /* Allocate memory */
+    if (!(data = malloc(size + extra_space)))
+        goto done;
+
+    /* Open the file */
+    if (!(is = fopen(path, "rb")))
+        goto done;
+
+    /* Read file into memory */
+    if (fread(data, 1, size, is) != size)
+        goto done;
+
+    *size_out = size;
+    *data_out = data;
+    data = NULL;
+    ret = 0;
+
+done:
+
+    if (data)
+        free(data);
+
+    if (is)
+        fclose(is);
+
+    return ret;
+}
+
+const region_details * create_region_details(const char *program_path, const char *rootfs_path)
+{
+    char dir[PATH_MAX];
+
+    _details.mman_size = MMAN_SIZE;
+
+    if (_load_file(rootfs_path, 0, &_details.rootfs_data, &_details.rootfs_size) != 0)
+        _err("failed to load load rootfs: %s", rootfs_path);
+
+    if (program_path[0] != '/')
+        _err("program must be an absolute path within the rootfs: %s", program_path);
+
+    /* Get the directory that contains argv[0] */
+    strcpy(dir, get_program_file());
+    dirname(dir);
+
+    /* Find libosenc.so and liboscrt.so */
+    {
+        int n;
+
+        n = snprintf(_details.enc_path, sizeof(_details.enc_path), "%s/enc/libosenc.so", dir);
+        if (n >= sizeof(_details.enc_path))
+            _err("buffer overflow when forming libosenc.so path");
+
+        n = snprintf(_details.crt_path, sizeof(_details.crt_path), "%s/enc/liboscrt.so", dir);
+        if (n >= sizeof(_details.crt_path))
+            _err("buffer overflow when forming liboscrt.so path");
+
+        n = snprintf(_details.kernel_path, sizeof(_details.kernel_path), "%s/liboskernel.so", dir);
+        if (n >= sizeof(_details.kernel_path))
+            _err("buffer overflow when forming liboscrt.so path");
+
+        if (access(_details.enc_path, R_OK) != 0)
+            _err("cannot find: %s", _details.enc_path);
+
+        if (access(_details.crt_path, R_OK) != 0)
+            _err("cannot find: %s", _details.crt_path);
+
+        if (access(_details.kernel_path, R_OK) != 0)
+            _err("cannot find: %s", _details.kernel_path);
+    }
+
+    /* Load the C runtime and kernel ELF image into memory */
+    if (elf_image_load(_details.crt_path, &_details.crt_image) != 0)
+        _err("failed to load C runtime image: %s", _details.crt_path);
+
+    if (elf_image_load(_details.kernel_path, &_details.kernel_image) != 0)
+        _err("failed to load kernel image: %s", _details.kernel_path);
+
+    return &_details;
+}
+
+void free_region_details()
+{
+    free(_details.rootfs_data);
+    elf_image_free(&_details.crt_image);
+    elf_image_free(&_details.kernel_image);
 }
 
 static int _add_segment_pages(
@@ -113,21 +211,21 @@ done:
 static int _add_crt_region(oe_region_context_t* context, uint64_t* vaddr)
 {
     int ret = 0;
-    assert(_crt_image->image_data != NULL);
-    assert(_crt_image->image_size != 0);
+    assert(_details.crt_image.image_data != NULL);
+    assert(_details.crt_image.image_size != 0);
 
     if (!context || !vaddr)
         ERAISE(-EINVAL);
 
-    if (oe_region_start(context, CRT_REGION_ID, true, _crt_path) != OE_OK)
+    if (oe_region_start(context, CRT_REGION_ID, true, _details.crt_path) != OE_OK)
         ERAISE(-EINVAL);
 
-    ECHECK(_load_crt_pages(context, _crt_image, *vaddr));
+    ECHECK(_load_crt_pages(context, &_details.crt_image, *vaddr));
 
     if (oe_region_end(context) != OE_OK)
         ERAISE(-EINVAL);
 
-    *vaddr += libos_round_up_to_page_size(_crt_image->image_size);
+    *vaddr += libos_round_up_to_page_size(_details.crt_image.image_size);
 
 done:
     return ret;
@@ -164,21 +262,21 @@ done:
 static int _add_kernel_region(oe_region_context_t* context, uint64_t* vaddr)
 {
     int ret = 0;
-    assert(_kernel_image->image_data != NULL);
-    assert(_kernel_image->image_size != 0);
+    assert(_details.kernel_image.image_data != NULL);
+    assert(_details.kernel_image.image_size != 0);
 
     if (!context || !vaddr)
         ERAISE(-EINVAL);
 
-    if (oe_region_start(context, KERNEL_REGION_ID, true, _kernel_path) != OE_OK)
+    if (oe_region_start(context, KERNEL_REGION_ID, true, _details.kernel_path) != OE_OK)
         ERAISE(-EINVAL);
 
-    ECHECK(_load_kernel_pages(context, _kernel_image, *vaddr));
+    ECHECK(_load_kernel_pages(context, &_details.kernel_image, *vaddr));
 
     if (oe_region_end(context) != OE_OK)
         ERAISE(-EINVAL);
 
-    *vaddr += libos_round_up_to_page_size(_kernel_image->image_size);
+    *vaddr += libos_round_up_to_page_size(_details.kernel_image.image_size);
 
 done:
     return ret;
@@ -188,9 +286,9 @@ static int _add_crt_reloc_region(oe_region_context_t* context, uint64_t* vaddr)
 {
     int ret = 0;
     const bool is_elf = true;
-    assert(_crt_image->reloc_data != NULL);
-    assert(_crt_image->reloc_size != 0);
-    assert((_crt_image->reloc_size % PAGE_SIZE) == 0);
+    assert(_details.crt_image.reloc_data != NULL);
+    assert(_details.crt_image.reloc_size != 0);
+    assert((_details.crt_image.reloc_size % PAGE_SIZE) == 0);
 
     if (!context || !vaddr)
         ERAISE(-EINVAL);
@@ -200,8 +298,8 @@ static int _add_crt_reloc_region(oe_region_context_t* context, uint64_t* vaddr)
 
     /* Add the pages */
     {
-        const uint8_t* page = (const uint8_t*)_crt_image->reloc_data;
-        size_t npages = _crt_image->reloc_size / PAGE_SIZE;
+        const uint8_t* page = (const uint8_t*)_details.crt_image.reloc_data;
+        size_t npages = _details.crt_image.reloc_size / PAGE_SIZE;
 
         for (size_t i = 0; i < npages; i++)
         {
@@ -235,9 +333,9 @@ static int _add_kernel_reloc_region(
 {
     int ret = 0;
     const bool is_elf = true;
-    assert(_kernel_image->reloc_data != NULL);
-    assert(_kernel_image->reloc_size != 0);
-    assert((_kernel_image->reloc_size % PAGE_SIZE) == 0);
+    assert(_details.kernel_image.reloc_data != NULL);
+    assert(_details.kernel_image.reloc_size != 0);
+    assert((_details.kernel_image.reloc_size % PAGE_SIZE) == 0);
 
     if (!context || !vaddr)
         ERAISE(-EINVAL);
@@ -247,8 +345,8 @@ static int _add_kernel_reloc_region(
 
     /* Add the pages */
     {
-        const uint8_t* page = (const uint8_t*)_kernel_image->reloc_data;
-        size_t npages = _kernel_image->reloc_size / PAGE_SIZE;
+        const uint8_t* page = (const uint8_t*)_details.kernel_image.reloc_data;
+        size_t npages = _details.kernel_image.reloc_size / PAGE_SIZE;
 
         for (size_t i = 0; i < npages; i++)
         {
@@ -279,15 +377,15 @@ done:
 static int _add_rootfs_region(oe_region_context_t* context, uint64_t* vaddr)
 {
     int ret = 0;
-    const uint8_t* p = _rootfs_data;
-    size_t n = _rootfs_size;
+    const uint8_t* p = _details.rootfs_data;
+    size_t n = _details.rootfs_size;
     size_t r = n;
 
     if (!context || !vaddr)
         ERAISE(-EINVAL);
 
-    assert(_rootfs_data != NULL);
-    assert(_rootfs_size != 0);
+    assert(_details.rootfs_data != NULL);
+    assert(_details.rootfs_size != 0);
 
     if (oe_region_start(context, ROOTFS_REGION_ID, false, NULL) != OE_OK)
         ERAISE(-EINVAL);
@@ -331,7 +429,7 @@ static int _add_mman_region(oe_region_context_t* context, uint64_t* vaddr)
     int ret = 0;
     __attribute__((__aligned__(4096)))
     uint8_t page[LIBOS_PAGE_SIZE];
-    const size_t mman_pages = _mman_size / LIBOS_PAGE_SIZE;
+    const size_t mman_pages = _details.mman_size / LIBOS_PAGE_SIZE;
 
     if (!context || !vaddr)
         ERAISE(-EINVAL);
