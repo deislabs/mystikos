@@ -11,6 +11,8 @@
 #include <libos/file.h>
 #include <libos/cpio.h>
 #include <libos/elfutils.h>
+#include <libos/malloc.h>
+#include <libos/crash.h>
 
 static libos_kernel_args_t* _args;
 
@@ -214,19 +216,19 @@ int libos_enter_kernel(libos_kernel_args_t* args)
     }
 
     /* Enter the C runtime (which enters the application) */
-    if (elf_enter_crt(
+    ret = elf_enter_crt(
         args->crt_data,
         args->argc,
         args->argv,
         args->envc,
-        args->envp) != 0)
-    {
-        libos_eprintf("failed to enter the C runtime\n");
-        ERAISE(-EINVAL);
-    }
+        args->envp);
 
     /* Tear down the RAM file system */
     _teardown_ramfs();
+
+    /* Check for memory leaks */
+    if (libos_find_leaks() != 0)
+        libos_crash();
 
 done:
     return ret;
