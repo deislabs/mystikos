@@ -123,6 +123,7 @@ static int _teardown_ramfs(void)
 int libos_enter_kernel(libos_kernel_args_t* args)
 {
     int ret = 0;
+    int exit_status;
     const char rootfs_path[] = "/tmp/rootfs.cpio";
 
     /* Check arguments */
@@ -216,7 +217,7 @@ int libos_enter_kernel(libos_kernel_args_t* args)
     }
 
     /* Enter the C runtime (which enters the application) */
-    ret = elf_enter_crt(
+    exit_status = elf_enter_crt(
         args->crt_data,
         args->argc,
         args->argv,
@@ -229,6 +230,8 @@ int libos_enter_kernel(libos_kernel_args_t* args)
     /* Check for memory leaks */
     if (libos_find_leaks() != 0)
         libos_crash();
+
+    ret = exit_status;
 
 done:
     return ret;
