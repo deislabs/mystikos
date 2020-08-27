@@ -16,8 +16,8 @@ int main(int argc, const char* argv[])
     uint64_t x1 = rdtsc();
     uint64_t x2 = rdtsc();
 
-    printf("x1=%lu\n", x1);
-    printf("x2=%lu\n", x2);
+    //printf("x1=%lu\n", x1);
+    //printf("x2=%lu\n", x2);
 
     assert(x2 >= x1);
 

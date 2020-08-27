@@ -459,11 +459,9 @@ void test_access()
     assert(libos_access("/access/w", W_OK) == 0);
     assert(libos_access("/access/x", X_OK) == 0);
 
-    libos_set_trace(false);
     assert(libos_access("/access/r", X_OK) != 0);
     assert(libos_access("/access/w", R_OK) != 0);
     assert(libos_access("/access/x", W_OK) != 0);
-    libos_set_trace(true);
 }
 
 void test_rename(void)
@@ -471,9 +469,7 @@ void test_rename(void)
     assert(libos_mkdir("/rename", 0777) == 0);
     assert(_touch("/rename/file1", 0400) == 0);
     assert(libos_rename("/rename/file1", "/rename/file2") == 0);
-    libos_set_trace(false);
     assert(libos_access("/rename/file1", R_OK) != 0);
-    libos_set_trace(true);
     assert(libos_access("/rename/file2", R_OK) == 0);
 }
 

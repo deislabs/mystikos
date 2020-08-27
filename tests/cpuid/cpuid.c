@@ -13,9 +13,9 @@ int main(int argc, const char* argv[])
 
     __cpuid_count(leaf, subleaf, rax, rbx, rcx, rdx);
 
-    printf("rax=%x rbx=%x rcx=%x rdx=%x\n", rax, rbx, rcx, rdx);
+    //printf("rax=%x rbx=%x rcx=%x rdx=%x\n", rax, rbx, rcx, rdx);
 
-    printf("=== passed tests (%s)\n", argv[0]);
+    printf("=== passed test (%s)\n", argv[0]);
 
     return 0;
 }

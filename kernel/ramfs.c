@@ -526,10 +526,7 @@ static int _path_to_inode_realpath(
     char realpath_out[PATH_MAX])
 {
     int ret = 0;
-    bool trace = libos_get_trace();
     char realpath[PATH_MAX] = { '\0' };
-
-    libos_set_trace(false);
 
     ECHECK(_path_to_inode_recursive(ramfs, path, ramfs->root, follow,
         parent_out, inode_out, realpath_out ? realpath : NULL));
@@ -538,7 +535,6 @@ static int _path_to_inode_realpath(
         ECHECK(libos_normalize(realpath, realpath_out, PATH_MAX));
 
 done:
-    libos_set_trace(trace);
     return ret;
 }
 

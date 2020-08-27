@@ -1,7 +1,7 @@
 #include <libos/trace.h>
 #include <libos/deprecated.h>
 
-static bool _trace = true;
+static bool _trace = false;
 
 void libos_set_trace(bool flag)
 {

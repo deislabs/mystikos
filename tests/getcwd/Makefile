@@ -9,13 +9,13 @@ LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 
 all: libos
 	mkdir -p $(APPDIR)/bin
-	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/main main.c $(LDFLAGS)
+	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/getcwd getcwd.c $(LDFLAGS)
 	$(LIBOS) mkcpio $(APPDIR) rootfs
 
 #OPTS = --strace
 
 tests: all
-	$(LIBOS) exec rootfs /bin/main $(OPTS)
+	$(LIBOS) exec rootfs /bin/getcwd $(OPTS)
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos

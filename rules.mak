@@ -39,18 +39,18 @@ $(SUBOBJDIR)/%.o: %.s $(DEPENDS)
 
 dirs:
 ifdef DIRS
-	$(foreach i, $(DIRS), $(MAKE) -C $(i) $(NL) )
+	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) $(NL) )
 endif
 
 clean:
 	rm -f $(__OBJECTS) $(__PROGRAM) $(__ARCHIVE) $(CLEAN)
 ifdef DIRS
-	$(foreach i, $(DIRS), $(MAKE) -C $(i) clean $(NL) )
+	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) clean $(NL) )
 endif
 
 tests:
 ifndef REDEFINE_TESTS
 ifdef DIRS
-	$(foreach i, $(DIRS), $(MAKE) -C $(i) tests $(NL) )
+	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) tests $(NL) )
 endif
 endif

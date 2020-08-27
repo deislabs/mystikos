@@ -126,10 +126,7 @@ int libos_mkdirhier(const char* pathname, mode_t mode)
     char** toks = NULL;
     size_t ntoks;
     char path[PATH_MAX];
-    const bool trace = libos_get_trace();
     struct stat buf;
-
-    libos_set_trace(false);
 
     if (!pathname)
         ERAISE(-EINVAL);
@@ -168,8 +165,6 @@ done:
 
     if (toks)
         libos_free(toks);
-
-    libos_set_trace(trace);
 
     return ret;
 }

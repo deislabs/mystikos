@@ -106,7 +106,7 @@ int main(int argc, const char* argv[])
         exit(1);
     }
 
-    printf("success\n");
+    printf("=== passed test (cpio)\n");
 
     return 0;
 }

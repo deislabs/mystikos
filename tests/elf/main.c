@@ -30,7 +30,7 @@ static char _msg[64];
 
 static void _callback(const char* msg)
 {
-    printf("=== _callback(): %s\n", msg);
+    //printf("=== _callback(): %s\n", msg);
     strcpy(_msg, msg);
 }
 
