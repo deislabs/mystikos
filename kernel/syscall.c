@@ -1622,7 +1622,7 @@ long libos_syscall(long n, long params[6])
         }
         case SYS_libos_clone:
         {
-            libos_clone_syscall_args_t* p = (void*)x2;
+            libos_clone_syscall_args_t* p = (void*)x1;
 
             _strace(
                 n,
