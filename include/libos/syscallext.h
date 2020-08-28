@@ -5,9 +5,9 @@
 #define _LIBOS_SYSCALLEXT_H
 
 #include <libos/types.h>
+#include <sys/types.h>
 
 /* libos-specific syscalls */
-
 enum
 {
     SYS_libos_trace = 1001,
@@ -20,6 +20,20 @@ enum
     SYS_libos_unload_symbols = 1008,
     SYS_libos_gen_creds = 1009,
     SYS_libos_free_creds = 1010,
+    SYS_libos_clone = 1011,
 };
+
+/* needed because syscall() only supports 6 parameters */
+typedef struct libos_clone_syscall_args
+{
+    int (*fn)(void*);
+    void* child_stack;
+    int flags;
+    void* arg;
+    pid_t* ptid;
+    void* newtls;
+    pid_t* ctid;
+}
+libos_clone_syscall_args_t;
 
 #endif /* _LIBOS_SYSCALLEXT_H */

@@ -1478,7 +1478,7 @@ long libos_syscall(long n, long params[6])
         }
         case SYS_rt_sigprocmask:
         {
-            /* ATTN: ignored for now */
+            _strace(n, NULL);
             return _return(n, 0);
         }
         case SYS_rt_sigreturn:
@@ -1616,7 +1616,10 @@ long libos_syscall(long n, long params[6])
             return _return(n, libos_syscall_getpid());
         }
         case SYS_clone:
+        {
+            /* unsupported: using SYS_libos_clone instead */
             break;
+        }
         case SYS_fork:
             break;
         case SYS_vfork:
