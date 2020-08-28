@@ -35,6 +35,10 @@
 #include <libos/crash.h>
 #include <libos/setjmp.h>
 #include <libos/malloc.h>
+#include <libos/thread.h>
+#include <libos/fsbase.h>
+#include <libos/options.h>
+#include <libos/thread.h>
 
 #include "fdtable.h"
 
@@ -54,8 +58,6 @@ long libos_syscall_isatty(int fd);
 libos_jmp_buf_t __libos_exit_jmp_buf;
 
 static bool _trace_syscalls;
-
-static bool _real_syscalls;
 
 typedef struct _pair
 {
@@ -427,50 +429,8 @@ const char* syscall_str(long n)
     return "unknown";
 }
 
-static __inline__ long _real_syscall(
-    long n,
-    long x1,
-    long x2,
-    long x3,
-    long x4,
-    long x5,
-    long x6)
-{
-    unsigned long ret;
-    register long r10 __asm__("r10") = x4;
-    register long r8 __asm__("r8") = x5;
-    register long r9 __asm__("r9") = x6;
-
-    __asm__ __volatile__(
-        "syscall"
-        : "=a"(ret)
-        : "a"(n), "D"(x1), "S"(x2), "d"(x3), "r"(r10), "r"(r8), "r"(r9)
-        : "rcx", "r11", "memory");
-
-    return (long)ret;
-}
-
 static const void* _original_fs_base;
-
-static void _set_fs_base(const void* p)
-{
-    if (_real_syscalls)
-    {
-        const long ARCH_SET_FS = 0x1002;
-        _real_syscall(SYS_arch_prctl, ARCH_SET_FS, (long)p, 0, 0, 0, 0);
-    }
-    else
-    {
-        __asm__ volatile("wrfsbase %0" ::"r"(p));
-    }
-}
-
-static void* _get_fs_base(void)
-{
-    void* p;
-    __asm__ volatile("mov %%fs:0, %0" : "=r"(p));
-    return p;
-}
+static const void* _main_fs_base;
 
 __attribute__((format(printf, 2, 3)))
 static void _strace(long n, const char* fmt, ...)
@@ -491,7 +451,7 @@ static void _strace(long n, const char* fmt, ...)
             va_end(ap);
         }
 
-        libos_eprintf("): tp=%p\n", _get_fs_base());
+        libos_eprintf("): tp=%p\n", libos_get_fs_base());
     }
 }
 
@@ -511,12 +471,12 @@ static long _forward_syscall(long n, long params[6])
     const long x5 = params[4];
     const long x6 = params[5];
 
-    if (_real_syscalls)
+    if (libos_get_real_syscalls())
     {
         if (_trace_syscalls)
             libos_eprintf("    [real syscall]\n");
 
-        return _real_syscall(n, x1, x2, x3, x4, x5, x6);
+        return libos_syscall6(n, x1, x2, x3, x4, x5, x6);
     }
     else
     {
@@ -1663,17 +1623,34 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "status=%d", status);
 
-            /* restore original fs base, else stack smashing will be detected */
-            _set_fs_base(_original_fs_base);
+            /* If the main thread is exiting */
+            if (_main_fs_base == libos_get_fs_base())
+            {
+                /* restore original fs base, else stack smashing will be detected */
+                libos_set_fs_base(_original_fs_base);
 
-            /* Unload the debugger symbols */
-            libos_syscall_unload_symbols();
+                /* Unload the debugger symbols */
+                libos_syscall_unload_symbols();
 
-            _exit_status = status;
-            libos_longjmp(&__libos_exit_jmp_buf, 1);
+                _exit_status = status;
+                libos_longjmp(&__libos_exit_jmp_buf, 1);
 
-            /* Unreachable! */
-            libos_assert("unreachable" == NULL);
+                /* Unreachable! */
+                libos_assert("unreachable" == NULL);
+            }
+            else
+            {
+                libos_thread_t* thread = libos_find_thread();
+
+                if (!thread || thread->magic != LIBOS_THREAD_MAGIC)
+                {
+                    libos_assert("failed to find thread" == NULL);
+                    libos_crash();
+                }
+
+                libos_longjmp(&thread->jmpbuf, 1);
+            }
+
             break;
         }
         case SYS_wait4:
@@ -2138,9 +2115,13 @@ long libos_syscall(long n, long params[6])
             _strace(n, "tp=%p", tp);
 
             if (!_original_fs_base)
-                _original_fs_base = _get_fs_base();
+                _original_fs_base = libos_get_fs_base();
 
-            _set_fs_base(tp);
+            /* If this is the main thread */
+            if (!_main_fs_base)
+                _main_fs_base = tp;
+
+            libos_set_fs_base(tp);
 
             return _return(n, 0);
         }
@@ -2534,11 +2515,6 @@ long libos_syscall(long n, long params[6])
 void libos_trace_syscalls(bool flag)
 {
     _trace_syscalls = flag;
-}
-
-void libos_real_syscalls(bool flag)
-{
-    _real_syscalls = flag;
 }
 
 /*

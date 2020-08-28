@@ -413,6 +413,12 @@ done:
     return ret;
 }
 
+long libos_run_thread_ecall(uint64_t cookie)
+{
+    extern long libos_run_thread(uint64_t cookie);
+    return libos_run_thread(cookie);
+}
+
 _Static_assert(sizeof(struct libos_timespec) == sizeof(struct timespec), "");
 
 /* ATTN: replace this with clock ticks implementation */
@@ -484,6 +490,16 @@ long libos_tcall_isatty(int fd)
     long ret;
 
     if (libos_syscall_isatty_ocall(&ret, fd) != OE_OK)
+        return -EINVAL;
+
+    return (long)ret;
+}
+
+long libos_tcall_create_host_thread(uint64_t cookie)
+{
+    long ret;
+
+    if (libos_create_host_thread_ocall(&ret, cookie) != OE_OK)
         return -EINVAL;
 
     return (long)ret;

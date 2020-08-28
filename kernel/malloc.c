@@ -6,7 +6,9 @@
 #include <libos/list.h>
 #include <libos/strings.h>
 
+#if 0
 #define ENABLE_LEAK_CHECKER
+#endif
 
 static libos_list_t _list;
 static libos_spinlock_t _lock = LIBOS_SPINLOCK_INITIALIZER;

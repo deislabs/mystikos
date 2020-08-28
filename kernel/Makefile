@@ -10,7 +10,7 @@ SOURCES = $(wildcard *.c) $(wildcard ../shared/*.c) $(wildcard *.s)
 
 INCLUDES = -I$(INCDIR) $(OEENCLAVE_INCLUDES) -I$(BUILDDIR)/include
 
-#DEFINES = -DENABLE_HTHREADS=1
+#DEFINES = -DENABLE_HOST_THREADS
 
 CFLAGS = $(OEENCLAVE_CFLAGS)
 

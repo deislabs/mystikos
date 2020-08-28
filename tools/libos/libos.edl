@@ -25,6 +25,8 @@ enclave
             size_t args_size,
             [in, size=env_size] const void* env,
             size_t env_size);
+
+        public long libos_run_thread_ecall(uint64_t cookie);
     };
 
     untrusted
@@ -55,5 +57,7 @@ enclave
         int libos_unload_symbols_ocall();
 
         long libos_syscall_isatty_ocall(int fd);
+
+        long libos_create_host_thread_ocall(uint64_t cookie);
     };
 };

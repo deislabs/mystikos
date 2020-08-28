@@ -13,6 +13,7 @@
 #include <libos/elfutils.h>
 #include <libos/malloc.h>
 #include <libos/crash.h>
+#include <libos/options.h>
 
 static libos_kernel_args_t* _args;
 
@@ -176,7 +177,7 @@ int libos_enter_kernel(libos_kernel_args_t* args)
 
     /* Set the tracing flags */
     libos_trace_syscalls(args->trace_syscalls);
-    libos_real_syscalls(args->real_syscalls);
+    libos_set_real_syscalls(args->real_syscalls);
 
     /* Setup the memory manager */
     if (libos_setup_mman(args->mman_data, args->mman_size) != 0)

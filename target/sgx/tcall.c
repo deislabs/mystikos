@@ -179,6 +179,15 @@ long libos_tcall_unload_symbols(void)
     return -ENOTSUP;
 }
 
+/* Must be overriden by enclave application */
+__attribute__((__weak__))
+long libos_tcall_create_host_thread(uint64_t cookie)
+{
+    (void)cookie;
+    assert("unimplemented: implement in enclave" == NULL);
+    return -ENOTSUP;
+}
+
 long libos_tcall(long n, long params[6])
 {
     long ret = 0;
@@ -286,6 +295,11 @@ long libos_tcall(long n, long params[6])
         case LIBOS_TCALL_UNLOAD_SYMBOLS:
         {
             return libos_tcall_unload_symbols();
+        }
+        case LIBOS_TCALL_CREATE_HOST_THREAD:
+        {
+            uint64_t cookie = (uint64_t)x1;
+            return libos_tcall_create_host_thread(cookie);
         }
         case SYS_read:
         case SYS_write:

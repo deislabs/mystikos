@@ -24,6 +24,7 @@ typedef enum libos_tcall_number
     LIBOS_TCALL_ADD_SYMBOL_FILE,
     LIBOS_TCALL_LOAD_SYMBOLS,
     LIBOS_TCALL_UNLOAD_SYMBOLS,
+    LIBOS_TCALL_CREATE_HOST_THREAD,
 }
 libos_tcall_number_t;
 
@@ -31,42 +32,21 @@ long libos_tcall(long n, long params[6]);
 
 typedef long (*libos_tcall_t)(long n, long params[6]);
 
-LIBOS_INLINE long libos_tcall_random(void* data, size_t size)
-{
-    long params[6] = { (long)data, (long)size };
-    return libos_tcall(LIBOS_TCALL_RANDOM, params);
-}
+long libos_tcall_random(void* data, size_t size);
 
-LIBOS_INLINE long libos_tcall_thread_self(void)
-{
-    long params[6] = { 0 };
-    return libos_tcall(LIBOS_TCALL_THREAD_SELF, params);
-}
+long libos_tcall_thread_self(void);
 
-LIBOS_INLINE long libos_tcall_vsnprintf(
+long libos_tcall_vsnprintf(
     char* str,
     size_t size,
     const char* format,
-    va_list ap)
-{
-    long params[6] = { 0 };
-    params[0] = (long)str;
-    params[1] = (long)size;
-    params[2] = (long)format;
-    params[3] = (long)ap;
-    return libos_tcall(LIBOS_TCALL_VSNPRINTF, params);
-}
+    va_list ap);
 
-LIBOS_INLINE long libos_tcall_write_console(
+long libos_tcall_write_console(
     int fd,
     const void* buf,
-    size_t count)
-{
-    long params[6] = { 0 };
-    params[0] = (long)fd;
-    params[1] = (long)buf;
-    params[2] = (long)count;
-    return libos_tcall(LIBOS_TCALL_WRITE_CONSOLE, params);
-}
+    size_t count);
+
+long libos_tcall_create_host_thread(uint64_t cookie);
 
 #endif /* _LIBOS_TCALL_H */

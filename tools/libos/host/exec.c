@@ -5,10 +5,12 @@
 #include <libos/strings.h>
 #include <sys/stat.h>
 #include <limits.h>
+#include <pthread.h>
 #include <assert.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <libgen.h>
+#include <errno.h>
 #include "utils.h"
 #include "libos_u.h"
 #include "regions.h"
@@ -123,11 +125,46 @@ static int _get_opt(
     return -1;
 }
 
+static oe_enclave_t* _enclave;
+
+static void* _thread_func(void* arg)
+{
+    long r = 0;
+    uint64_t cookie = (uint64_t)arg;
+
+    if (libos_run_thread_ecall(_enclave, &r, cookie) != OE_OK || r != 0)
+    {
+        fprintf(stderr, "posix_run_thread_ecall(): failed: retval=%ld\n", r);
+        abort();
+    }
+
+    return NULL;
+}
+
+long libos_create_host_thread_ocall(uint64_t cookie)
+{
+    long ret = 0;
+    pthread_t t;
+    pthread_attr_t attr;
+
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+
+    if (pthread_create(&t, &attr, _thread_func, (void*)cookie) != 0)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+done:
+    pthread_attr_destroy(&attr);
+    return ret;
+}
+
 int _exec(int argc, const char* argv[])
 {
     oe_result_t r;
     const oe_enclave_type_t type = OE_ENCLAVE_TYPE_SGX;
-    oe_enclave_t* enclave;
     uint32_t flags = OE_ENCLAVE_FLAG_DEBUG;
     int retval;
 
@@ -173,9 +210,13 @@ int _exec(int argc, const char* argv[])
     }
 
     /* Load the enclave: calls oe_region_add_regions() */
-    r = oe_create_libos_enclave(details->enc_path, type, flags, NULL, 0, &enclave);
-    if (r != OE_OK)
-        _err("failed to load enclave: result=%s", oe_result_str(r));
+    {
+        r = oe_create_libos_enclave(
+            details->enc_path, type, flags, NULL, 0, &_enclave);
+
+        if (r != OE_OK)
+            _err("failed to load enclave: result=%s", oe_result_str(r));
+    }
 
     /* Serialize the argv[] strings */
     if (_serialize_args(argv + 3, &args, &args_size) != 0)
@@ -185,7 +226,7 @@ int _exec(int argc, const char* argv[])
 
     /* Enter the enclave and run the program */
     r = libos_enter_ecall(
-        enclave,
+        _enclave,
         &retval,
         &options,
         args,
@@ -196,7 +237,7 @@ int _exec(int argc, const char* argv[])
         _err("failed to enter enclave: result=%s", oe_result_str(r));
 
     /* Terminate the enclave */
-    r = oe_terminate_enclave(enclave);
+    r = oe_terminate_enclave(_enclave);
     if (r != OE_OK)
         _err("failed to terminate enclave: result=%s", oe_result_str(r));
 
