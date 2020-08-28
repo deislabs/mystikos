@@ -1620,6 +1620,36 @@ long libos_syscall(long n, long params[6])
             /* unsupported: using SYS_libos_clone instead */
             break;
         }
+        case SYS_libos_clone:
+        {
+            libos_clone_syscall_args_t* p = (void*)x2;
+
+            _strace(
+                n,
+                "fn=%p "
+                "child_stack=%p "
+                "flags=%x "
+                "arg=%p "
+                "ptid=%p "
+                "newtls=%p "
+                "ctid=%p",
+                p->fn,
+                p->child_stack,
+                p->flags,
+                p->arg,
+                p->ptid,
+                p->newtls,
+                p->ctid);
+
+            return _return(n, libos_syscall_clone(
+                p->fn,
+                p->child_stack,
+                p->flags,
+                p->arg,
+                p->ptid,
+                p->newtls,
+                p->ctid));
+        }
         case SYS_fork:
             break;
         case SYS_vfork:

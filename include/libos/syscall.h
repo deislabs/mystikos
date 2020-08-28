@@ -90,4 +90,13 @@ long libos_syscall_getpid(void);
 
 long libos_syscall_clock_gettime(clockid_t clk_id, struct timespec *tp);
 
+long libos_syscall_clone(
+    int (*fn)(void*),
+    void* child_stack,
+    int flags,
+    void* arg,
+    pid_t* ptid,
+    void* newtls,
+    pid_t* ctid);
+
 #endif /* _LIBOS_SYSCALL_H */
