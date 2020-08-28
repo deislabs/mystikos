@@ -411,6 +411,7 @@ static pair_t _pairs[] =
     { SYS_libos_unload_symbols, "SYS_libos_unload_symbols" },
     { SYS_libos_gen_creds, "SYS_libos_gen_creds" },
     { SYS_libos_free_creds, "SYS_libos_free_creds" },
+    { SYS_libos_clone, "SYS_libos_clone" },
 };
 
 static size_t _n_pairs = sizeof(_pairs) / sizeof(_pairs[0]);
