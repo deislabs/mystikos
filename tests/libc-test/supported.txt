@@ -1,3 +1,2 @@
 /src/functional/socket.exe
 /src/functional/dlopen.exe
-/src/functional/stat.exe

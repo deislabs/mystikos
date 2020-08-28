@@ -12,12 +12,13 @@ all: libos
 	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/pthread pthread.c $(LDFLAGS)
 	$(LIBOS) mkcpio $(APPDIR) rootfs
 
-#ifdef STRACE
+STRACE=1
+ifdef STRACE
 OPTS += --strace
-#endif
+endif
 
 run: all
-	$(LIBOS) exec rootfs /bin/pthread $(OPTS)
+	$(LIBOS) exec $(OPTS) rootfs /bin/pthread
 
 gdb: all
 	$(OEGDB) --args $(LIBOS) exec rootfs /bin/pthread $(OPTS)
