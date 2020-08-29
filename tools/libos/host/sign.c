@@ -3,12 +3,15 @@
 
 #include <openenclave/host.h>
 #include <libos/elf.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
 #include <limits.h>
 #include <libgen.h>
+#include <errno.h>
 #include "parse_options.h"
 #include "utils.h"
 #include "libos_u.h"
@@ -41,12 +44,12 @@ and <options> are one of:\n\
 \n\
 "
 
-static const char *sign_help_present = NULL;
-static const char *sign_platform = NULL;
-static const char *sign_target = NULL;
-static const char *sign_rootfs = NULL;
-static const char *sign_pem_file = NULL;
-static const char *sign_config_file = NULL;
+static const char *help_present = NULL;
+static const char *platform = NULL;
+static const char *target = NULL;
+static const char *rootfs_file = NULL;
+static const char *pem_file = NULL;
+static const char *config_file = NULL;
 
 static const char *help_options[] = {"--help", "-h"};
 static const char *platform_options[] = {"--platform", "-p"};
@@ -58,18 +61,73 @@ static const char *config_options[] = {"--config_file", "-c"};
 struct _option option_list[] = 
 {
     // {names array}, names_count, num_extra_param, extra_param, extra_param_required
-    {help_options, sizeof(help_options)/sizeof(const char *), 0, &sign_help_present, 0},
-    {platform_options, sizeof(platform_options)/sizeof(const char *), 1, &sign_platform, 1},
-    {target_options, sizeof(target_options)/sizeof(const char *), 1, &sign_target, 1},
-    {rootfs_options, sizeof(rootfs_options)/sizeof(const char *), 1, &sign_rootfs, 1},
-    {pem_options, sizeof(pem_options)/sizeof(const char *), 1, &sign_pem_file, 1},
-    {config_options, sizeof(config_options)/sizeof(const char *), 1, &sign_config_file, 1}
+    {help_options, sizeof(help_options)/sizeof(const char *), 0, &help_present, 0},
+    {platform_options, sizeof(platform_options)/sizeof(const char *), 1, &platform, 1},
+    {target_options, sizeof(target_options)/sizeof(const char *), 1, &target, 1},
+    {rootfs_options, sizeof(rootfs_options)/sizeof(const char *), 1, &rootfs_file, 1},
+    {pem_options, sizeof(pem_options)/sizeof(const char *), 1, &pem_file, 1},
+    {config_options, sizeof(config_options)/sizeof(const char *), 1, &config_file, 1}
 };
 struct _options options =
 {
     option_list,
     sizeof(option_list)/sizeof(struct _option)
 };
+
+int _sign_file_copy(
+    const char *from_file, 
+    char to_file[PATH_MAX], size_t start_point,
+    const char *append_file)
+{
+    FILE *source = NULL;
+    FILE *target = NULL;
+    size_t read;
+    char buffer[1024];
+    int ret = -1;
+
+    strcpy(to_file+start_point, append_file);
+
+    source = fopen(from_file, "r");
+    if (source == NULL)
+    {
+        goto done;
+    }
+    target = fopen(to_file, "w");
+    if (target == NULL)
+    {
+        goto done;
+    }
+
+    do
+    {
+        read = fread(buffer, 1, sizeof(buffer), source);
+        if (read != 0)
+        {
+            if (fwrite(buffer, 1, read, target) != read)
+            {
+                break;
+            }
+        }
+    } while (read != 0);
+
+    if ((feof(source) != 0) || (ferror(target) != 0))
+    {
+        ret = -1;
+    }
+
+    ret = 0;
+
+done:
+    if (source)
+    {
+        fclose(source);
+    }
+    if (target)
+    {
+        fclose(target);
+    }
+    return ret;
+}
 
 int _sign(int argc, const char* argv[])
 {
@@ -85,15 +143,83 @@ int _sign(int argc, const char* argv[])
         _err("Failed to parse options.");
     }
 
-    if ((details = create_region_details(sign_target, sign_rootfs)) == NULL)
+    if ((details = create_region_details(target, rootfs_file)) == NULL)
     {
         _err("Creating region data failed.");
     }
 
-    // Initiate signing with extracted parameters
-    if (oesign(details->enc_path, NULL /*limited_config*/, sign_pem_file, NULL, NULL, NULL, NULL, NULL) != 0)
+    char to_filename[PATH_MAX] = "app.signed";
+    size_t appdir_len;
+
+    // Make a directory for all the bits part of the signing
+    if ((mkdir(to_filename, S_IROTH|S_IXOTH|S_IXGRP|S_IWGRP|S_IRGRP|S_IXUSR|S_IWUSR|S_IRUSR) != 0) && (errno != EEXIST))
     {
-        _err("Failed to sign binary");
+        _err("Failed to create directory \"%s\".", to_filename);
+    }
+
+    appdir_len = strlen(to_filename);
+
+    // Under that create an enclave directory
+    strcpy(to_filename+appdir_len, "/enc");
+    if ((mkdir(to_filename, S_IROTH|S_IXOTH|S_IXGRP|S_IWGRP|S_IRGRP|S_IXUSR|S_IWUSR|S_IRUSR) != 0) && (errno != EEXIST))
+    {
+        _err("Failed to create directory \"%s\".", to_filename);
+    }
+
+    // want the initial destination path to include slash
+    appdir_len++;
+
+    // Copy crt into signing enc directory
+    if (_sign_file_copy(details->crt_path, to_filename, appdir_len, "enc/liboscrt.so") != 0)
+    {
+        _err("Failed to copy \"%s\" to \"%s\"", details->crt_path, to_filename);
+    }
+
+    // Copy kernel into signing directory
+    if (_sign_file_copy(details->kernel_path, to_filename, appdir_len, "liboskernel.so") != 0)
+    {
+        _err("Failed to copy \"%s\" to \"%s\"", details->crt_path, to_filename);
+    }
+
+    // Copy libos tool into signing directory
+    if (_sign_file_copy(argv[0], to_filename, appdir_len, "libos") != 0)
+    {
+        _err("Failed to copy \"%s\" to \"%s\"", argv[0], to_filename);
+    }
+    if (chmod(to_filename, S_IROTH|S_IXOTH|S_IXGRP|S_IWGRP|S_IRGRP|S_IXUSR|S_IWUSR|S_IRUSR) != 0)
+    {
+        _err("Failed to change executable permissions on \"%s\"", to_filename);
+    }
+
+    // Copy rootfs into signing directory
+    if (_sign_file_copy(rootfs_file, to_filename, appdir_len, "rootfs") != 0)
+    {
+        _err("Failed to copy \"%s\" to \"%s\"", rootfs_file, to_filename);
+    }
+
+    // Finally (we need this path also for actual signing!)
+    // Copy enclave shared library to signing enclave directory
+    if (_sign_file_copy(details->enc_path, to_filename, appdir_len, "enc/libosenc.so") != 0)
+    {
+        _err("Failed to copy \"%s\" to \"%s\"", details->enc_path, to_filename);
+    }
+
+    // Initiate signing with extracted parameters
+    // Watch out! Previous to_path needs to be the enclave binary!
+    if (oesign(to_filename, NULL /*no config yet!*/, pem_file, NULL, NULL, NULL, NULL, NULL) != 0)
+    {
+        _err("Failed to sign \"%s\"", to_filename);
+    }
+
+    //Delete the unsigned enclave file
+    if (unlink("app.signed/enc/libosenc.so") != 0)
+    {
+        _err("Failed to delete \"%s\"", to_filename);
+    }
+
+    if (rename ("app.signed/enc/libosenc.so.signed", "app.signed/enc/libosenc.so") != 0)
+    {
+        _err("Failed to rename \"%s\" to \"%s\"", "app.signed/enc/libosenc.so.signed", "app.signed/enc/libosenc.so");
     }
 
     return 0;

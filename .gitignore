@@ -3,9 +3,12 @@ build
 *.o
 *.a
 *.so
+*.pem
+
 third_party/musl/musl/lib
 third_party/enclave-musl/musl/lib/
 appdir
+app.signed
 rootfs
 samples/alpine/alpine-minirootfs.tar.gz
 tests/libc-test/srcdir/

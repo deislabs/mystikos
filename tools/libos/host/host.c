@@ -29,6 +29,7 @@
 #include "sign.h"
 #include "exec.h"
 #include "cpio.h"
+#include "package.h"
 
 _Static_assert(sizeof(struct libos_timespec) == sizeof(struct timespec), "");
 
@@ -267,6 +268,10 @@ int main(int argc, const char* argv[])
     else if (strcmp(argv[1], "sign") == 0)
     {
         return _sign(argc, argv);
+    }
+    else if (strcmp(argv[1], "package") == 0)
+    {
+        return _package(argc, argv);
     }
     else
     {

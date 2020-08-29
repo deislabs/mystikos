@@ -17,15 +17,12 @@ int parse_options(
     for (int argv_iteration = starting_index; argv_iteration < argc; argv_iteration++)
     {
         int found_current_argv = 0;
-        fprintf(stdout, "validating argv[%d]=%s\n", argv_iteration, argv[argv_iteration]);
         for (int option_iter = 0; option_iter < options->num_options && !found_current_argv; option_iter++)
         {
             for (int option_name_iter = 0; option_name_iter < options->options[option_iter].option_names_count; option_name_iter++)
             {
-                fprintf(stdout, "checking against %s\n", options->options[option_iter].option_names[option_name_iter]);
                 if (strcmp(argv[argv_iteration],options->options[option_iter].option_names[option_name_iter]) == 0)
                 {
-                    fprintf(stdout, "found argv option %s\n", argv[argv_iteration]);
                     if (options->options[option_iter].num_extra_parameters > 0)
                     {
                         if ((argv_iteration+1) >= argc)
@@ -34,14 +31,12 @@ int parse_options(
                         }
                         assert(options->options[option_iter].extra_parameter);
                         *options->options[option_iter].extra_parameter = argv[argv_iteration+1];
-                        fprintf(stdout, "Processed option \"%s\"=\"%s\" successfully\n", argv[argv_iteration], argv[argv_iteration+1]);
                         argv_iteration ++;  //skip the extra parameter in the argv list
                     }
                     else
                     {
                         assert(options->options[option_iter].extra_parameter);
                         *options->options[option_iter].extra_parameter = "";
-                        fprintf(stdout, "Processed option \"%s\" successfully\n", argv[argv_iteration]);
                     }
                     found_current_argv = 1;
                     break;
@@ -65,6 +60,5 @@ int parse_options(
             }
         }
     }
-    fprintf(stdout, "All required options are present\n");
     return 0;
 }
