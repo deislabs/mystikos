@@ -52,7 +52,7 @@ done:
     return ret;
 }
 
-libos_thread_t* libos_find_thread(void)
+libos_thread_t* libos_self(void)
 {
     libos_thread_t* ret = NULL;
     const void* fsbase = libos_get_fs_base();

@@ -1640,7 +1640,7 @@ long libos_syscall(long n, long params[6])
             }
             else
             {
-                libos_thread_t* thread = libos_find_thread();
+                libos_thread_t* thread = libos_self();
 
                 if (!thread || thread->magic != LIBOS_THREAD_MAGIC)
                 {

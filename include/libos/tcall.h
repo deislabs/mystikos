@@ -4,8 +4,10 @@
 #ifndef _LIBOS_TCALL_H
 #define _LIBOS_TCALL_H
 
+#include <time.h>
 #include <libos/defs.h>
 #include <stddef.h>
+#include <unistd.h>
 #include <stdint.h>
 #include <stdarg.h>
 
@@ -48,5 +50,14 @@ long libos_tcall_write_console(
     size_t count);
 
 long libos_tcall_create_host_thread(uint64_t cookie);
+
+long libos_tcall_wait(pid_t tid, const struct timespec* timeout);
+
+long libos_tcall_wake(pid_t tid);
+
+long libos_tcall_wake_wait(
+    pid_t waiter_tid,
+    pid_t self_tid,
+    const struct timespec* timeout);
 
 #endif /* _LIBOS_TCALL_H */

@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <libos/tcall.h>
 
 long libos_tcall_random(void* data, size_t size)
@@ -43,4 +44,28 @@ long libos_tcall_create_host_thread(uint64_t cookie)
     long params[6] = { 0 };
     params[0] = (long)cookie;
     return libos_tcall(LIBOS_TCALL_CREATE_HOST_THREAD, params);
+}
+
+long libos_tcall_wait(pid_t tid, const struct timespec* timeout)
+{
+    (void)tid;
+    (void)timeout;
+    return -ENOTSUP;
+}
+
+long libos_tcall_wake(pid_t tid)
+{
+    (void)tid;
+    return -ENOTSUP;
+}
+
+long libos_tcall_wake_wait(
+    pid_t waiter_tid,
+    pid_t self_tid,
+    const struct timespec* timeout)
+{
+    (void)waiter_tid;
+    (void)self_tid;
+    (void)timeout;
+    return -ENOTSUP;
 }
