@@ -30,6 +30,9 @@ typedef struct libos_kernel_args
     bool trace_syscalls;
     bool real_syscalls;
 
+    /* The event object for the main thread */
+    uint64_t event;
+
     /* Callback for making target-calls */
     libos_tcall_t tcall;
 }

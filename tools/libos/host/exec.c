@@ -227,6 +227,7 @@ int _exec(int argc, const char* argv[])
     const oe_enclave_type_t type = OE_ENCLAVE_TYPE_SGX;
     uint32_t flags = OE_ENCLAVE_FLAG_DEBUG;
     int retval;
+    static int _event; /* the main-thread event (used by futex: uaddr) */
 
     void* args = NULL;
     size_t args_size;
@@ -292,7 +293,8 @@ int _exec(int argc, const char* argv[])
         args,
         args_size,
         env,
-        sizeof(env));
+        sizeof(env),
+        (uint64_t)&_event);
     if (r != OE_OK)
         _err("failed to enter enclave: result=%s", oe_result_str(r));
 
