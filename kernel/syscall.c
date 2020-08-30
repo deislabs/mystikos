@@ -2021,7 +2021,10 @@ long libos_syscall(long n, long params[6])
         case SYS_security:
             break;
         case SYS_gettid:
-            break;
+        {
+            _strace(n, NULL);
+            return _return(n, libos_gettid());
+        }
         case SYS_readahead:
             break;
         case SYS_setxattr:

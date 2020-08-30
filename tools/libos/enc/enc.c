@@ -178,7 +178,7 @@ int libos_enter_ecall(
     size_t args_size,
     const void* env,
     size_t env_size,
-    pid_t tid,
+    pid_t pid,
     uint64_t event)
 {
     int ret = -1;
@@ -387,7 +387,7 @@ int libos_enter_ecall(
         args.trace_syscalls = trace_syscalls;
         args.real_syscalls = real_syscalls;
         args.tcall = libos_tcall;
-        args.tid = tid;
+        args.pid = pid;
         args.event = event;
 
         /* Verify that the kernel is an ELF image */

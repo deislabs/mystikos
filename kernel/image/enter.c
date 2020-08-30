@@ -1,5 +1,4 @@
 #include <libos/kernel.h>
-#include <libos/crash.h>
 #include <libos/syscall.h>
 #include <libos/mmanutils.h>
 #include <libos/assert.h>
@@ -16,6 +15,7 @@
 #include <libos/options.h>
 #include <libos/thread.h>
 #include <libos/fsbase.h>
+#include <libos/process.h>
 
 static libos_kernel_args_t* _args;
 
@@ -124,7 +124,7 @@ static int _teardown_ramfs(void)
 }
 
 static int _create_main_thread(
-    pid_t tid,
+    pid_t pid,
     uint64_t event,
     libos_thread_t** thread_out)
 {
@@ -140,8 +140,10 @@ static int _create_main_thread(
     if (!(thread = libos_calloc(1, sizeof(libos_thread_t))))
         ERAISE(-ENOMEM);
 
+    libos_setpid(pid);
+
     thread->magic = LIBOS_THREAD_MAGIC;
-    thread->tid = tid;
+    thread->tid = pid;
     thread->event = event;
     thread->original_fsbase = libos_get_fs_base();
 
@@ -255,7 +257,7 @@ int libos_enter_kernel(libos_kernel_args_t* args)
 
     /* Create the main thread */
     {
-        ECHECK(_create_main_thread(args->tid, args->event, &thread));
+        ECHECK(_create_main_thread(args->pid, args->event, &thread));
 
         if (libos_add_thread(thread) != 0)
         {
@@ -278,7 +280,7 @@ int libos_enter_kernel(libos_kernel_args_t* args)
 
     /* Check for memory leaks */
     if (libos_find_leaks() != 0)
-        libos_crash();
+        libos_panic("unexpected");
 
     libos_free(thread);
     thread = NULL;

@@ -25,7 +25,7 @@ enclave
             size_t args_size,
             [in, size=env_size] const void* env,
             size_t env_size,
-            int tid,
+            int pid,
             uint64_t event);
 
         public long libos_run_thread_ecall(

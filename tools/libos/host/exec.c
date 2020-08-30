@@ -293,6 +293,8 @@ int _exec(int argc, const char* argv[])
 
     const char env[] = "PATH=/bin\0HOME=/root";
 
+printf("XXXXXXXXXXXXX: %d %d\n", getpid(), _gettid());
+
     /* Enter the enclave and run the program */
     r = libos_enter_ecall(
         _enclave,
@@ -302,7 +304,7 @@ int _exec(int argc, const char* argv[])
         args_size,
         env,
         sizeof(env),
-        _gettid(),
+        getpid(),
         (uint64_t)&_event);
     if (r != OE_OK)
         _err("failed to enter enclave: result=%s", oe_result_str(r));
