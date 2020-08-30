@@ -7,6 +7,7 @@
 #include <libos/deprecated.h>
 #include <libos/malloc.h>
 #include <libos/strings.h>
+#include <libos/crash.h>
 
 int libos_strsplit(
     const char* str,
@@ -361,4 +362,25 @@ int libos_printf(const char* format, ...)
     va_end(ap);
 
     return n;
+}
+
+void __libos_panic(
+    const char* file,
+    size_t line,
+    const char* func,
+    const char* format,
+    ...)
+{
+    va_list ap;
+
+    libos_console_printf(STDERR_FILENO, "kernel panic: %s(%zu): %s(): ",
+        file, line, func);
+
+    va_start(ap, format);
+    libos_console_vprintf(STDERR_FILENO, format, ap);
+    va_end(ap);
+
+    libos_console_printf(STDERR_FILENO, "\n");
+
+    libos_crash();
 }

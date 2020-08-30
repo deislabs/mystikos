@@ -1,6 +1,5 @@
 #include <libos/malloc.h>
 #include <libos/tcall.h>
-#include <libos/crash.h>
 #include <libos/deprecated.h>
 #include <libos/spinlock.h>
 #include <libos/list.h>
@@ -136,7 +135,7 @@ void* __libos_malloc(
 
 #ifdef ENABLE_LEAK_CHECKER
     if (_add_node(p, file, line, func) != 0)
-        libos_crash();
+        libos_panic("unexpected");
 #endif
 
     return p;
@@ -160,7 +159,7 @@ void* __libos_calloc(
 
 #ifdef ENABLE_LEAK_CHECKER
     if (_add_node(p, file, line, func) != 0)
-        libos_crash();
+        libos_panic("unexpected");
 #endif
 
     return p;
@@ -180,7 +179,7 @@ void* __libos_realloc(
 
 #ifdef ENABLE_LEAK_CHECKER
     if (ptr && _remove_node(ptr) != 0)
-        libos_crash();
+        libos_panic("unexpected");
 #endif
 
     if (libos_tcall_allocate(ptr, 0, size, 0, &p) != 0 || !p)
@@ -188,7 +187,7 @@ void* __libos_realloc(
 
 #ifdef ENABLE_LEAK_CHECKER
     if (_add_node(p, file, line, func) != 0)
-        libos_crash();
+        libos_panic("unexpected");
 #endif
 
     return p;
@@ -211,7 +210,7 @@ void* __libos_memalign(
 
 #ifdef ENABLE_LEAK_CHECKER
     if (_add_node(p, file, line, func) != 0)
-        libos_crash();
+        libos_panic("unexpected");
 #endif
 
     return p;
@@ -220,11 +219,11 @@ void* __libos_memalign(
 void libos_free(void* ptr)
 {
     if (libos_tcall_deallocate(ptr) != 0)
-        libos_crash();
+        libos_panic("unexpected");
 
 #ifdef ENABLE_LEAK_CHECKER
     if (ptr && _remove_node(ptr) != 0)
-        libos_crash();
+        libos_panic("unexpected");
 #endif
 }
 

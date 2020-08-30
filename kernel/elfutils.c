@@ -1318,9 +1318,7 @@ int elf_enter_crt(
         stack_size, image_base, phdr, phnum, phentsize,
         enter, &sp)))
     {
-        /* ATTN: use ERAISE */
-        libos_eprintf("_make_stack() failed\n");
-        libos_assert(0);
+        libos_panic("_make_stack() failed");
     }
 
     libos_assert(elf_check_stack(stack, stack_size) == 0);
@@ -1345,18 +1343,12 @@ int elf_enter_crt(
     }
 
     if (!dynv)
-    {
-        /* ATTN: use ERAISE */
-        libos_printf("dynv not found\n");
-        libos_assert(0);
-    }
+        libos_panic("null dynv");
 
     libos_assert(elf_check_stack(stack, stack_size) == 0);
 
     if (_setup_exe_link(argv[1]) != 0)
-    {
-        libos_assert("panic" == NULL);
-    }
+        libos_panic("unexpected");
 
     /* Run the main program */
     if (libos_setjmp(&thread->jmpbuf) != 0)

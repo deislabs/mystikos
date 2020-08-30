@@ -1310,10 +1310,7 @@ static int _fs_getdents64(
 
         /* Fail if exactly one entry was not read */
         if (r != sizeof(ent))
-        {
-            libos_assert("unexpected panic" == NULL);
-            ERAISE(-EINVAL);
-        }
+            libos_panic("unexpected");
 
         *dirp = ent;
         bytes += sizeof(struct dirent);

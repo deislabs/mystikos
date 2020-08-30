@@ -1,5 +1,4 @@
 #include <libos/atexit.h>
-#include <libos/crash.h>
 #include <libos/spinlock.h>
 #include <libos/malloc.h>
 #include <stdlib.h>

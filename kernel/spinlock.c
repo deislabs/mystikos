@@ -2,8 +2,8 @@
 // Licensed under the MIT License.
 
 #include <libos/spinlock.h>
-#include <libos/crash.h>
 #include <libos/deprecated.h>
+#include <libos/strings.h>
 
 /* Set the spinlock value to 1 and return the old value */
 static unsigned int _spin_set_locked(libos_spinlock_t* spinlock)
@@ -22,7 +22,7 @@ static unsigned int _spin_set_locked(libos_spinlock_t* spinlock)
 void libos_spin_lock(libos_spinlock_t* spinlock)
 {
     if (!spinlock)
-        libos_crash();
+        libos_panic("null spinlock");
 
     while (_spin_set_locked((volatile unsigned int*)spinlock) != 0)
     {
@@ -38,7 +38,7 @@ void libos_spin_lock(libos_spinlock_t* spinlock)
 void libos_spin_unlock(libos_spinlock_t* spinlock)
 {
     if (!spinlock)
-        libos_crash();
+        libos_panic("null spinlock");
 
     asm volatile("movl %0, %1;"
                  :
@@ -71,7 +71,7 @@ void libos_recursive_spin_unlock(libos_recursive_spinlock_t* s, long thread)
     libos_spin_lock(&s->owner_lock);
     {
         if (s->owner != thread)
-            libos_crash();
+            libos_panic("not owner");
 
         if (--s->count == 0)
         {

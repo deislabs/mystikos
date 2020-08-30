@@ -5,7 +5,6 @@
 #include <libos/thread.h>
 #include <libos/tcall.h>
 #include <libos/strings.h>
-#include <libos/crash.h>
 
 int libos_mutex_init(libos_mutex_t* m)
 {
@@ -92,10 +91,7 @@ int libos_mutex_lock(libos_mutex_t* mutex)
 
         /* Ask host to wait for an event on this thread */
         if (libos_tcall_wait(self->event, NULL) != 0)
-        {
-            libos_eprintf("libos_tcall_wait() panic");
-            libos_crash();
-        }
+            libos_panic("unexpected");
     }
 
     /* Unreachable! */

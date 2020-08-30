@@ -9,7 +9,6 @@
 #include <libos/fsbase.h>
 #include <libos/spinlock.h>
 #include <libos/setjmp.h>
-#include <libos/crash.h>
 #include <pthread.h>
 
 typedef struct pair
@@ -224,10 +223,7 @@ pid_t libos_gettid(void)
     libos_thread_t* thread;
 
     if (!(thread = libos_self()))
-    {
-        libos_eprintf("libos_gettid() panic");
-        libos_crash();
-    }
+        libos_panic("unexpected");
 
     return thread->tid;
 }

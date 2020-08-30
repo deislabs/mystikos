@@ -32,7 +32,6 @@
 #include <libos/errno.h>
 #include <libos/deprecated.h>
 #include <libos/assert.h>
-#include <libos/crash.h>
 #include <libos/setjmp.h>
 #include <libos/malloc.h>
 #include <libos/thread.h>
@@ -618,10 +617,7 @@ long libos_syscall_open(const char* pathname, int flags, mode_t mode)
     ECHECK((*fs->fs_open)(fs, suffix, flags, mode, &file));
 
     if ((fd = libos_fdtable_add(LIBOS_FDTABLE_TYPE_FILE, fs, file)) < 0)
-    {
-        libos_eprintf("libos_fdtable_add() failed: %d\n", fd);
-        libos_assert(0);
-    }
+        libos_panic("libos_fdtable_add() failed: %d", fd);
 
     ECHECK(_add_fd_link(fs, file, fd));
 
@@ -1450,9 +1446,7 @@ long libos_syscall(long n, long params[6])
                     return _return(n, -EINVAL);
                 }
 
-                libos_eprintf("********** unhandled: ioctl: 0x%lX()\n",
-                    request);
-                libos_crash();
+                libos_panic("unhandled ioctl: 0x%lX()", request);
             }
 
             return _return(n, _forward_syscall(n, params));
@@ -1616,11 +1610,7 @@ long libos_syscall(long n, long params[6])
             _strace(n, "status=%d", status);
 
             if (!thread || thread->magic != LIBOS_THREAD_MAGIC)
-            {
-                libos_eprintf("failed to find thread: %p\n", thread);
-                libos_assert("failed to find thread" == NULL);
-                libos_crash();
-            }
+                libos_panic("unexpected");
 
             _exit_status = status;
 
@@ -2091,18 +2081,12 @@ long libos_syscall(long n, long params[6])
             _strace(n, "tp=%p", tp);
 
             if (!(thread = libos_remove_thread()))
-            {
-                libos_eprintf("libos_remove_thread() failed");
-                libos_crash();
-            }
+                libos_panic("unexpected");
 
             libos_set_fs_base(tp);
 
             if (libos_add_thread(thread) != 0)
-            {
-                libos_eprintf("libos_add_thread() failed");
-                libos_crash();
-            }
+                libos_panic("unexpected");
 
             return _return(n, 0);
         }
@@ -2482,13 +2466,11 @@ long libos_syscall(long n, long params[6])
         }
         default:
         {
-            libos_eprintf("********** %s(): %ld\n", syscall_str(n), n);
-            libos_crash();
+            libos_panic("unknown syscall: %s(): %ld", syscall_str(n), n);
         }
     }
 
-    libos_eprintf("********** unhandled: %s()\n", syscall_str(n));
-    libos_crash();
+    libos_panic("unhandled syscall: %s()", syscall_str(n));
 
     return 0;
 }

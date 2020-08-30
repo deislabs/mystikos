@@ -82,6 +82,17 @@ int libos_eprintf(const char* format, ...);
 LIBOS_PRINTF_FORMAT(1, 2)
 int libos_printf(const char* format, ...);
 
+LIBOS_PRINTF_FORMAT(4, 5)
+void __libos_panic(
+    const char* file,
+    size_t line,
+    const char* func,
+    const char* format,
+    ...);
+
+#define libos_panic(format, ...) \
+    __libos_panic(__FILE__, __LINE__, __FUNCTION__, format, ##__VA_ARGS__)
+
 char* libos_strncpy(char* dest, const char* src, size_t n);
 
 #endif /* _LIBOS_STRINGS_H */
