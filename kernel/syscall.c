@@ -446,7 +446,7 @@ static void _strace(long n, const char* fmt, ...)
             va_end(ap);
         }
 
-        libos_eprintf("): tp=%p\n", libos_get_fs_base());
+        libos_eprintf("): tid=%d\n", libos_gettid());
     }
 }
 
@@ -539,10 +539,6 @@ static int _add_fd_link(libos_fs_t* fs, libos_file_t* file, int fd)
 
     if (libos_snprintf(linkpath, n, "/proc/self/fd/%d", fd) >= (int)n)
         ERAISE(-ENAMETOOLONG);
-
-#if 0
-    libos_printf("ADD{%s=>%s}\n", realpath, linkpath);
-#endif
 
     ECHECK(libos_symlink(realpath, linkpath));
 

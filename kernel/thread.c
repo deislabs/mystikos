@@ -9,6 +9,7 @@
 #include <libos/fsbase.h>
 #include <libos/spinlock.h>
 #include <libos/setjmp.h>
+#include <libos/crash.h>
 #include <pthread.h>
 
 typedef struct pair
@@ -108,13 +109,14 @@ static bool _valid_newtls(const void* newtls)
 }
 
 /* The target calls this from the new thread */
-static long _run(libos_thread_t* thread, uint64_t event)
+static long _run(libos_thread_t* thread, pid_t tid, uint64_t event)
 {
     long ret = 0;
 
     if (!thread || thread->magic != LIBOS_THREAD_MAGIC)
         ERAISE(-EINVAL);
 
+    thread->tid = tid;
     thread->event = event;
 
     thread->original_fsbase = libos_get_fs_base();
@@ -215,4 +217,17 @@ long libos_syscall_clone(
     (void)_syscall_clone;
     return 0;
 #endif
+}
+
+pid_t libos_gettid(void)
+{
+    libos_thread_t* thread;
+
+    if (!(thread = libos_self()))
+    {
+        libos_eprintf("libos_gettid() panic");
+        libos_crash();
+    }
+
+    return thread->tid;
 }

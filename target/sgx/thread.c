@@ -3,7 +3,7 @@
 #include <libos/thread.h>
 #include <libos/eraise.h>
 
-long libos_run_thread(uint64_t cookie, uint64_t event)
+long libos_run_thread(uint64_t cookie, pid_t tid, uint64_t event)
 {
     long ret = 0;
     libos_thread_t* thread = (libos_thread_t*)cookie;
@@ -11,7 +11,7 @@ long libos_run_thread(uint64_t cookie, uint64_t event)
     if (!thread || thread->magic != LIBOS_THREAD_MAGIC || !thread->run)
         ERAISE(-EINVAL);
 
-    ECHECK((*thread->run)(thread, event));
+    ECHECK((*thread->run)(thread, tid, event));
 
 done:
     return ret;

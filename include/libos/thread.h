@@ -30,7 +30,7 @@ struct libos_thread
     pid_t* ctid;
 
     /* the new thread calls this from the target (unused by main thread) */
-    long (*run)(libos_thread_t* thread, uint64_t event);
+    long (*run)(libos_thread_t* thread, pid_t tid, uint64_t event);
 
     /* The original fsbase as given by target */
     const void* original_fsbase;
@@ -111,6 +111,8 @@ static __inline__ bool libos_thread_queue_empty(libos_thread_queue_t* queue)
     return queue->front ? false : true;
 }
 
-long libos_run_thread(uint64_t cookie, uint64_t event);
+long libos_run_thread(uint64_t cookie, pid_t tid, uint64_t event);
+
+pid_t libos_gettid(void);
 
 #endif /* _LIBOS_THREAD_H */
