@@ -27,6 +27,9 @@ struct libos_thread
     /* the new thread calls this from the target */
     long (*run)(libos_thread_t* thread);
 
+    /* synchronization event passed in by the target (example: futex uaddr) */
+    uint64_t event;
+
     /* original fsbase (from the target) */
     const void* original_fsbase;
 

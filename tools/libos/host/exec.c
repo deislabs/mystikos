@@ -161,6 +161,24 @@ done:
     return ret;
 }
 
+long libos_wait_ocall(uint64_t event, const struct libos_timespec* timeout)
+{
+    return 0;
+}
+
+long libos_wake_ocall(uint64_t event)
+{
+    return 0;
+}
+
+long libos_wake_wait_ocall(
+    uint64_t waiter_event,
+    uint64_t self_event,
+    const struct libos_timespec* timeout)
+{
+    return 0;
+}
+
 int _exec(int argc, const char* argv[])
 {
     oe_result_t r;

@@ -505,6 +505,41 @@ long libos_tcall_create_host_thread(uint64_t cookie)
     return (long)ret;
 }
 
+long libos_tcall_wait(uint64_t event, const struct timespec* timeout)
+{
+    long retval = -EINVAL;
+    const struct libos_timespec* to = (const struct libos_timespec*)timeout;
+
+    if (libos_wait_ocall(&retval, event, to) != OE_OK)
+        return -EINVAL;
+
+    return retval;
+}
+
+long libos_tcall_wake(uint64_t event)
+{
+    long retval = -EINVAL;
+
+    if (libos_wake_ocall(&retval, event) != OE_OK)
+        return -EINVAL;
+
+    return retval;
+}
+
+long libos_tcall_wake_wait(
+    uint64_t waiter_event,
+    uint64_t self_event,
+    const struct timespec* timeout)
+{
+    long retval = -EINVAL;
+    const struct libos_timespec* to = (const struct libos_timespec*)timeout;
+
+    if (libos_wake_wait_ocall(&retval, waiter_event, self_event, to) != OE_OK)
+        return -EINVAL;
+
+    return retval;
+}
+
 OE_SET_ENCLAVE_SGX(
     1,    /* ProductID */
     1,    /* SecurityVersion */

@@ -27,6 +27,9 @@ typedef enum libos_tcall_number
     LIBOS_TCALL_LOAD_SYMBOLS,
     LIBOS_TCALL_UNLOAD_SYMBOLS,
     LIBOS_TCALL_CREATE_HOST_THREAD,
+    LIBOS_TCALL_WAIT,
+    LIBOS_TCALL_WAKE,
+    LIBOS_TCALL_WAKE_WAIT,
 }
 libos_tcall_number_t;
 
@@ -51,13 +54,13 @@ long libos_tcall_write_console(
 
 long libos_tcall_create_host_thread(uint64_t cookie);
 
-long libos_tcall_wait(pid_t tid, const struct timespec* timeout);
+long libos_tcall_wait(uint64_t event, const struct timespec* timeout);
 
-long libos_tcall_wake(pid_t tid);
+long libos_tcall_wake(uint64_t event);
 
 long libos_tcall_wake_wait(
-    pid_t waiter_tid,
-    pid_t self_tid,
+    uint64_t waiter_tid,
+    uint64_t self_tid,
     const struct timespec* timeout);
 
 #endif /* _LIBOS_TCALL_H */

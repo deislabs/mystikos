@@ -59,5 +59,16 @@ enclave
         long libos_syscall_isatty_ocall(int fd);
 
         long libos_create_host_thread_ocall(uint64_t cookie);
+
+        long libos_wait_ocall(
+            uint64_t event,
+            [in] const struct libos_timespec* timeout);
+
+        long libos_wake_ocall(uint64_t event);
+
+        long libos_wake_wait_ocall(
+            uint64_t waiter_event,
+            uint64_t self_event,
+            [in] const struct libos_timespec* timeout);
     };
 };

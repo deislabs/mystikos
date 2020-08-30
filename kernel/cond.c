@@ -68,15 +68,15 @@ int libos_cond_timedwait(
                 if (waiter)
                 {
                     ret = (int)libos_tcall_wake_wait(
-                        waiter->tid,
-                        self->tid,
+                        waiter->event,
+                        self->event,
                         timeout);
 
                     waiter = NULL;
                 }
                 else
                 {
-                    ret = (int)libos_tcall_wait(self->tid, timeout);
+                    ret = (int)libos_tcall_wait(self->event, timeout);
                 }
             }
             libos_spin_lock(&c->lock);
@@ -114,7 +114,7 @@ int libos_cond_signal(libos_cond_t* c)
     if (!waiter)
         return 0;
 
-    libos_tcall_wake(waiter->tid);
+    libos_tcall_wake(waiter->event);
     return 0;
 }
 
@@ -144,7 +144,7 @@ int libos_cond_broadcast(libos_cond_t* c, size_t n)
     for (libos_thread_t* p = waiters.front; p; p = next)
     {
         next = p->next;
-        libos_tcall_wake(p->tid);
+        libos_tcall_wake(p->event);
     }
 
     return 0;
@@ -196,7 +196,7 @@ int libos_cond_requeue(
         for (libos_thread_t* p = wakers.front; p; p = next)
         {
             next = p->next;
-            libos_tcall_wake(p->tid);
+            libos_tcall_wake(p->event);
         }
     }
 

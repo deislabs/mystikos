@@ -91,7 +91,7 @@ int libos_mutex_lock(libos_mutex_t* mutex)
         libos_spin_unlock(&m->lock);
 
         /* Ask host to wait for an event on this thread */
-        if (libos_tcall_wait(self->tid, NULL) != 0)
+        if (libos_tcall_wait(self->event, NULL) != 0)
         {
             libos_eprintf("libos_tcall_wait() panic");
             libos_crash();
@@ -165,7 +165,7 @@ int libos_mutex_unlock(libos_mutex_t* m)
     if (waiter)
     {
         /* Ask host to wake up this thread */
-        libos_tcall_wake(waiter->tid);
+        libos_tcall_wake(waiter->event);
     }
 
     return 0;

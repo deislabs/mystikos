@@ -46,26 +46,29 @@ long libos_tcall_create_host_thread(uint64_t cookie)
     return libos_tcall(LIBOS_TCALL_CREATE_HOST_THREAD, params);
 }
 
-long libos_tcall_wait(pid_t tid, const struct timespec* timeout)
+long libos_tcall_wait(uint64_t event, const struct timespec* timeout)
 {
-    (void)tid;
-    (void)timeout;
-    return -ENOTSUP;
+    long params[6] = { 0 };
+    params[0] = (long)event;
+    params[1] = (long)timeout;
+    return libos_tcall(LIBOS_TCALL_WAIT, params);
 }
 
-long libos_tcall_wake(pid_t tid)
+long libos_tcall_wake(uint64_t event)
 {
-    (void)tid;
-    return -ENOTSUP;
+    long params[6] = { 0 };
+    params[0] = (long)event;
+    return libos_tcall(LIBOS_TCALL_WAKE, params);
 }
 
 long libos_tcall_wake_wait(
-    pid_t waiter_tid,
-    pid_t self_tid,
+    uint64_t waiter_event,
+    uint64_t self_event,
     const struct timespec* timeout)
 {
-    (void)waiter_tid;
-    (void)self_tid;
-    (void)timeout;
-    return -ENOTSUP;
+    long params[6] = { 0 };
+    params[0] = (long)waiter_event;
+    params[1] = (long)self_event;
+    params[2] = (long)timeout;
+    return libos_tcall(LIBOS_TCALL_WAKE_WAIT, params);
 }

@@ -188,6 +188,39 @@ long libos_tcall_create_host_thread(uint64_t cookie)
     return -ENOTSUP;
 }
 
+/* Must be overriden by enclave application */
+__attribute__((__weak__))
+long libos_tcall_wait(uint64_t event, const struct timespec* timeout)
+{
+    (void)event;
+    (void)timeout;
+    assert("unimplemented: implement in enclave" == NULL);
+    return -ENOTSUP;
+}
+
+/* Must be overriden by enclave application */
+__attribute__((__weak__))
+long libos_tcall_wake(uint64_t event)
+{
+    (void)event;
+    assert("unimplemented: implement in enclave" == NULL);
+    return -ENOTSUP;
+}
+
+/* Must be overriden by enclave application */
+__attribute__((__weak__))
+long libos_tcall_wake_wait(
+    uint64_t waiter_event,
+    uint64_t self_event,
+    const struct timespec* timeout)
+{
+    (void)waiter_event;
+    (void)self_event;
+    (void)timeout;
+    assert("unimplemented: implement in enclave" == NULL);
+    return -ENOTSUP;
+}
+
 long libos_tcall(long n, long params[6])
 {
     long ret = 0;
@@ -301,6 +334,24 @@ long libos_tcall(long n, long params[6])
             uint64_t cookie = (uint64_t)x1;
             return libos_tcall_create_host_thread(cookie);
         }
+        case LIBOS_TCALL_WAIT:
+        {
+            uint64_t event = (uint64_t)x1;
+            const struct timespec* timeout = (const struct timespec*)x2;
+            return libos_tcall_wait(event, timeout);
+        }
+        case LIBOS_TCALL_WAKE:
+        {
+            uint64_t event = (uint64_t)x1;
+            return libos_tcall_wake(event);
+        }
+        case LIBOS_TCALL_WAKE_WAIT:
+        {
+            uint64_t waiter_event = (uint64_t)x1;
+            uint64_t self_event = (uint64_t)x2;
+            const struct timespec* timeout = (const struct timespec*)x3;
+            return libos_tcall_wake_wait(waiter_event, self_event, timeout);
+        }
         case SYS_read:
         case SYS_write:
         case SYS_close:
@@ -346,4 +397,3 @@ long libos_tcall(long n, long params[6])
 done:
     return ret;
 }
-
