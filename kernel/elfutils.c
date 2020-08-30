@@ -17,8 +17,8 @@
 #include <libos/malloc.h>
 #include <libos/assert.h>
 #include <libos/setjmp.h>
-
-extern libos_jmp_buf_t __libos_exit_jmp_buf;
+#include <libos/thread.h>
+#include <libos/fsbase.h>
 
 typedef struct _pair
 {
@@ -1252,30 +1252,20 @@ typedef struct entry_args
 }
 entry_args_t;
 
-/* ATTN: enabling this causes a crash when running /bin/pwd */
 #if 0
-#define USE_LTHREADS
-#endif
-
 static void _entry_thread(void* args_)
 {
-#ifdef USE_LTHREADS
-    lthread_detach();
-#endif
-
     /* jumps here from _syscall() on SYS_exit */
     if (libos_setjmp(&__libos_exit_jmp_buf) != 0)
     {
         libos_call_atexit_functions();
-#ifdef USE_LTHREADS
-        lthread_exit(NULL);
-#endif
         return;
     }
 
     entry_args_t* args = (entry_args_t*)args_;
     (*args->enter)(args->stack, args->dynv, args->syscall);
 }
+#endif
 
 /* Create the "/proc/<pid>/exe" link */
 static int _setup_exe_link(const char* path)
@@ -1300,6 +1290,7 @@ done:
 
 /* ATTN: convert asserts to errors */
 int elf_enter_crt(
+    libos_thread_t* thread,
     const void* image_base,
     size_t argc,
     const char* argv[],
@@ -1311,6 +1302,8 @@ int elf_enter_crt(
     void* sp = NULL;
     const size_t stack_size = 64 * PAGE_SIZE;
     enter_t enter;
+
+    /* ATTN: rework to return errors rather than to exit */
 
     libos_assert(_test_header(ehdr) == 0);
 
@@ -1366,20 +1359,23 @@ int elf_enter_crt(
     }
 
     /* Run the main program */
+    if (libos_setjmp(&thread->jmpbuf) != 0)
     {
-        static entry_args_t args;
-        args.enter = enter;
-        args.stack = sp;
-        args.dynv = dynv;
-        args.syscall = libos_syscall;
+        /* restore the original fsbase */
+        libos_set_fs_base(thread->original_fsbase);
 
-#ifdef USE_LTHREADS
-        lthread_t* lt;
-        lthread_create(&lt, _entry_thread, &args);
-        lthread_run();
-#else
-        _entry_thread(&args);
-#endif
+        /* remove the thread from the map */
+        libos_remove_thread();
+
+        /* Unload the debugger symbols */
+        libos_syscall_unload_symbols();
+
+        /* call functions installed with libos_atexit() */
+        libos_call_atexit_functions();
+    }
+    else
+    {
+        (*enter)(sp, dynv, libos_syscall);
     }
 
     libos_assert(elf_check_stack(stack, stack_size) == 0);

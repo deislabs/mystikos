@@ -55,8 +55,6 @@
 
 long libos_syscall_isatty(int fd);
 
-libos_jmp_buf_t __libos_exit_jmp_buf;
-
 static bool _trace_syscalls;
 
 typedef struct _pair
@@ -428,9 +426,6 @@ const char* syscall_str(long n)
 
     return "unknown";
 }
-
-static const void* _original_fs_base;
-static const void* _main_fs_base;
 
 __attribute__((format(printf, 2, 3)))
 static void _strace(long n, const char* fmt, ...)
@@ -1620,37 +1615,21 @@ long libos_syscall(long n, long params[6])
         case SYS_exit:
         {
             const int status = (int)x1;
+            libos_thread_t* thread = libos_self();
 
             _strace(n, "status=%d", status);
 
-            /* If the main thread is exiting */
-            if (_main_fs_base == libos_get_fs_base())
+            if (!thread || thread->magic != LIBOS_THREAD_MAGIC)
             {
-                /* restore original fs base, else stack smashing will be detected */
-                libos_set_fs_base(_original_fs_base);
-
-                /* Unload the debugger symbols */
-                libos_syscall_unload_symbols();
-
-                _exit_status = status;
-                libos_longjmp(&__libos_exit_jmp_buf, 1);
-
-                /* Unreachable! */
-                libos_assert("unreachable" == NULL);
-            }
-            else
-            {
-                libos_thread_t* thread = libos_self();
-
-                if (!thread || thread->magic != LIBOS_THREAD_MAGIC)
-                {
-                    libos_assert("failed to find thread" == NULL);
-                    libos_crash();
-                }
-
-                libos_longjmp(&thread->jmpbuf, 1);
+                libos_eprintf("failed to find thread: %p\n", thread);
+                libos_assert("failed to find thread" == NULL);
+                libos_crash();
             }
 
+            _exit_status = status;
+
+            libos_longjmp(&thread->jmpbuf, 1);
+            /* unreachable */
             break;
         }
         case SYS_wait4:
@@ -2111,17 +2090,23 @@ long libos_syscall(long n, long params[6])
         case SYS_set_thread_area:
         {
             const void* tp = (void*)params[0];
+            libos_thread_t* thread;
 
             _strace(n, "tp=%p", tp);
 
-            if (!_original_fs_base)
-                _original_fs_base = libos_get_fs_base();
-
-            /* If this is the main thread */
-            if (!_main_fs_base)
-                _main_fs_base = tp;
+            if (!(thread = libos_remove_thread()))
+            {
+                libos_eprintf("libos_remove_thread() failed");
+                libos_crash();
+            }
 
             libos_set_fs_base(tp);
+
+            if (libos_add_thread(thread) != 0)
+            {
+                libos_eprintf("libos_add_thread() failed");
+                libos_crash();
+            }
 
             return _return(n, 0);
         }

@@ -13,9 +13,14 @@ struct libos_thread
 {
     uint64_t magic;
     libos_thread_t* next;
+
+    /* thread id passed by target */
     pid_t tid;
 
-    /* arguments passed to libos_syscall_clone() */
+    /* synchronization event passed in by the target (example: futex uaddr) */
+    uint64_t event;
+
+    /* arguments passed to libos_syscall_clone() (unused by main thread)  */
     int (*fn)(void*);
     void* child_stack;
     int flags;
@@ -24,16 +29,13 @@ struct libos_thread
     void* newtls;
     pid_t* ctid;
 
-    /* the new thread calls this from the target */
+    /* the new thread calls this from the target (unused by main thread) */
     long (*run)(libos_thread_t* thread, uint64_t event);
 
-    /* synchronization event passed in by the target (example: futex uaddr) */
-    uint64_t event;
-
-    /* original fsbase (from the target) */
+    /* The original fsbase as given by target */
     const void* original_fsbase;
 
-    /* for jumping back to kernel/thread.c:_run() */
+    /* for jumping back on exit */
     libos_jmp_buf_t jmpbuf;
 };
 

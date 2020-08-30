@@ -14,6 +14,8 @@
 #include <libos/malloc.h>
 #include <libos/crash.h>
 #include <libos/options.h>
+#include <libos/thread.h>
+#include <libos/fsbase.h>
 
 static libos_kernel_args_t* _args;
 
@@ -121,11 +123,45 @@ static int _teardown_ramfs(void)
     return 0;
 }
 
+static int _create_main_thread(
+    pid_t tid,
+    uint64_t event,
+    libos_thread_t** thread_out)
+{
+    int ret = 0;
+    libos_thread_t* thread = NULL;
+
+    if (thread_out)
+        *thread_out = NULL;
+
+    if (!thread_out)
+        ERAISE(-EINVAL);
+
+    if (!(thread = libos_calloc(1, sizeof(libos_thread_t))))
+        ERAISE(-ENOMEM);
+
+    thread->magic = LIBOS_THREAD_MAGIC;
+    thread->tid = tid;
+    thread->event = event;
+    thread->original_fsbase = libos_get_fs_base();
+
+    *thread_out = thread;
+    thread = NULL;
+
+done:
+
+    if (thread)
+        libos_free(thread);
+
+    return ret;
+}
+
 int libos_enter_kernel(libos_kernel_args_t* args)
 {
     int ret = 0;
     int exit_status;
     const char rootfs_path[] = "/tmp/rootfs.cpio";
+    libos_thread_t* thread = NULL;
 
     /* Check arguments */
     {
@@ -217,8 +253,20 @@ int libos_enter_kernel(libos_kernel_args_t* args)
         ERAISE(-EINVAL);
     }
 
+    /* Create the main thread */
+    {
+        ECHECK(_create_main_thread(args->tid, args->event, &thread));
+
+        if (libos_add_thread(thread) != 0)
+        {
+            libos_free(thread);
+            thread = NULL;
+        }
+    }
+
     /* Enter the C runtime (which enters the application) */
     exit_status = elf_enter_crt(
+        thread,
         args->crt_data,
         args->argc,
         args->argv,
@@ -232,8 +280,15 @@ int libos_enter_kernel(libos_kernel_args_t* args)
     if (libos_find_leaks() != 0)
         libos_crash();
 
+    libos_free(thread);
+    thread = NULL;
+
     ret = exit_status;
 
 done:
+
+    if (thread)
+        libos_free(thread);
+
     return ret;
 }

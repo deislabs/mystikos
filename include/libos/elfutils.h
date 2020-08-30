@@ -2,6 +2,7 @@
 #define _LIBOS_ELFUTILS_H
 
 #include <elf.h>
+#include <libos/thread.h>
 
 const char* elf64_at_string(uint64_t value);
 
@@ -38,6 +39,7 @@ void* elf_make_stack(
     void** sp);
 
 int elf_enter_crt(
+    libos_thread_t* thread,
     const void* image_base,
     size_t argc,
     const char* argv[],
