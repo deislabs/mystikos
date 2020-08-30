@@ -124,6 +124,7 @@ static int _teardown_ramfs(void)
 }
 
 static int _create_main_thread(
+    pid_t ppid,
     pid_t pid,
     uint64_t event,
     libos_thread_t** thread_out)
@@ -140,6 +141,7 @@ static int _create_main_thread(
     if (!(thread = libos_calloc(1, sizeof(libos_thread_t))))
         ERAISE(-ENOMEM);
 
+    libos_setppid(ppid);
     libos_setpid(pid);
 
     thread->magic = LIBOS_THREAD_MAGIC;
@@ -257,7 +259,8 @@ int libos_enter_kernel(libos_kernel_args_t* args)
 
     /* Create the main thread */
     {
-        ECHECK(_create_main_thread(args->pid, args->event, &thread));
+        ECHECK(_create_main_thread(
+            args->ppid, args->pid, args->event, &thread));
 
         if (libos_add_thread(thread) != 0)
         {

@@ -178,6 +178,7 @@ int libos_enter_ecall(
     size_t args_size,
     const void* env,
     size_t env_size,
+    pid_t ppid,
     pid_t pid,
     uint64_t event)
 {
@@ -387,6 +388,7 @@ int libos_enter_ecall(
         args.trace_syscalls = trace_syscalls;
         args.real_syscalls = real_syscalls;
         args.tcall = libos_tcall;
+        args.ppid = ppid;
         args.pid = pid;
         args.event = event;
 

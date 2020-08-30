@@ -20,5 +20,6 @@ DIRS += cpio
 DIRS += elf
 DIRS += strings
 DIRS += empty
+DIRS += getpid
 
 include $(TOP)/rules.mak

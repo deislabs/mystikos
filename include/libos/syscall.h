@@ -199,8 +199,6 @@ long libos_syscall_load_symbols(void);
 
 long libos_syscall_unload_symbols(void);
 
-long libos_syscall_getpid(void);
-
 long libos_syscall_clock_gettime(clockid_t clk_id, struct timespec *tp);
 
 long libos_syscall_clone(

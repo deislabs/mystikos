@@ -19,6 +19,7 @@
 #include <libos/setjmp.h>
 #include <libos/thread.h>
 #include <libos/fsbase.h>
+#include <libos/process.h>
 
 typedef struct _pair
 {
@@ -1273,7 +1274,7 @@ static int _setup_exe_link(const char* path)
     int ret = 0;
     char buf[PATH_MAX];
     char target[PATH_MAX];
-    pid_t pid = (pid_t)libos_syscall_getpid();
+    pid_t pid = (pid_t)libos_getpid();
 
     if (libos_normalize(path, target, sizeof(target)) != 0)
         ERAISE(-EINVAL);

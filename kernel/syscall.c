@@ -38,10 +38,10 @@
 #include <libos/fsbase.h>
 #include <libos/options.h>
 #include <libos/thread.h>
+#include <libos/process.h>
 
 #include "fdtable.h"
 
-#define DEFAULT_PID (pid_t)1
 #define DEFAULT_UID (uid_t)0
 #define DEFAULT_GID (gid_t)0
 
@@ -1020,11 +1020,6 @@ long libos_syscall_chmod(const char *pathname, mode_t mode)
     return 0;
 }
 
-long libos_syscall_getpid(void)
-{
-    return DEFAULT_PID;
-}
-
 long libos_syscall_ret(long ret)
 {
 #if 0
@@ -1559,7 +1554,7 @@ long libos_syscall(long n, long params[6])
         case SYS_getpid:
         {
             _strace(n, NULL);
-            return _return(n, libos_syscall_getpid());
+            return _return(n, libos_getpid());
         }
         case SYS_clone:
         {
@@ -1851,7 +1846,10 @@ long libos_syscall(long n, long params[6])
         case SYS_setpgid:
             break;
         case SYS_getppid:
-            break;
+        {
+            _strace(n, NULL);
+            return _return(n, libos_getppid());
+        }
         case SYS_getpgrp:
             break;
         case SYS_setsid:

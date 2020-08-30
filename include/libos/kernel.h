@@ -30,6 +30,9 @@ typedef struct libos_kernel_args
     bool trace_syscalls;
     bool real_syscalls;
 
+    /* The parent process identifer from the target */
+    pid_t ppid;
+
     /* The process identifer from the target */
     pid_t pid;
 
