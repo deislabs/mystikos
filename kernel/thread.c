@@ -108,12 +108,14 @@ static bool _valid_newtls(const void* newtls)
 }
 
 /* The target calls this from the new thread */
-static long _run(libos_thread_t* thread)
+static long _run(libos_thread_t* thread, uint64_t event)
 {
     long ret = 0;
 
     if (!thread || thread->magic != LIBOS_THREAD_MAGIC)
         ERAISE(-EINVAL);
+
+    thread->event = event;
 
     thread->original_fsbase = libos_get_fs_base();
 

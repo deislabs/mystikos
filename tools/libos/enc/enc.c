@@ -19,6 +19,7 @@
 #include <libos/cpio.h>
 #include <libos/trace.h>
 #include <libos/kernel.h>
+#include <libos/thread.h>
 #include "libos_t.h"
 #include "../shared.h"
 
@@ -413,10 +414,9 @@ done:
     return ret;
 }
 
-long libos_run_thread_ecall(uint64_t cookie)
+long libos_run_thread_ecall(uint64_t cookie, uint64_t event)
 {
-    extern long libos_run_thread(uint64_t cookie);
-    return libos_run_thread(cookie);
+    return libos_run_thread(cookie, event);
 }
 
 _Static_assert(sizeof(struct libos_timespec) == sizeof(struct timespec), "");

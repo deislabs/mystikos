@@ -25,7 +25,7 @@ struct libos_thread
     pid_t* ctid;
 
     /* the new thread calls this from the target */
-    long (*run)(libos_thread_t* thread);
+    long (*run)(libos_thread_t* thread, uint64_t event);
 
     /* synchronization event passed in by the target (example: futex uaddr) */
     uint64_t event;
@@ -108,5 +108,7 @@ static __inline__ bool libos_thread_queue_empty(libos_thread_queue_t* queue)
 {
     return queue->front ? false : true;
 }
+
+long libos_run_thread(uint64_t cookie, uint64_t event);
 
 #endif /* _LIBOS_THREAD_H */

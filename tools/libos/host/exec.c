@@ -11,10 +11,12 @@
 #include <stdlib.h>
 #include <libgen.h>
 #include <errno.h>
+#include <syscall.h>
+#include <linux/futex.h>
+
 #include "utils.h"
 #include "libos_u.h"
 #include "regions.h"
-
 
 static int _serialize_args(
     const char* argv[],
@@ -127,12 +129,16 @@ static int _get_opt(
 
 static oe_enclave_t* _enclave;
 
+/* the address of this is eventually passed to futex (uaddr argument) */
+static __thread int _thread_event;
+
 static void* _thread_func(void* arg)
 {
     long r = 0;
     uint64_t cookie = (uint64_t)arg;
+    uint64_t event = (uint64_t)&_thread_event;
 
-    if (libos_run_thread_ecall(_enclave, &r, cookie) != OE_OK || r != 0)
+    if (libos_run_thread_ecall(_enclave, &r, cookie, event) != OE_OK || r != 0)
     {
         fprintf(stderr, "posix_run_thread_ecall(): failed: retval=%ld\n", r);
         abort();
@@ -163,12 +169,40 @@ done:
 
 long libos_wait_ocall(uint64_t event, const struct libos_timespec* timeout)
 {
-    return 0;
+    int ret = 0;
+
+    if (__sync_fetch_and_add((int*)event, -1) == 0)
+    {
+        ret = (int)syscall(
+            SYS_futex,
+            (int*)event,
+            FUTEX_WAIT_PRIVATE,
+            -1,
+            timeout,
+            NULL,
+            0);
+
+        if (ret != 0)
+            ret = -errno;
+    }
+
+    return ret;
 }
 
 long libos_wake_ocall(uint64_t event)
 {
-    return 0;
+    long ret = 0;
+
+    if (__sync_fetch_and_add((int*)event, 1) != 0)
+    {
+        ret = syscall(
+            SYS_futex, (int*)event, FUTEX_WAKE_PRIVATE, 1, NULL, NULL, 0);
+
+        if (ret != 0)
+            ret = -errno;
+    }
+
+    return ret;
 }
 
 long libos_wake_wait_ocall(
@@ -176,6 +210,14 @@ long libos_wake_wait_ocall(
     uint64_t self_event,
     const struct libos_timespec* timeout)
 {
+    long ret;
+
+    if ((ret = libos_wake_ocall(waiter_event)) != 0)
+        return ret;
+
+    if ((ret = libos_wait_ocall(self_event, timeout)) != 0)
+        return ret;
+
     return 0;
 }
 
