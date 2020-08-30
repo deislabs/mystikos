@@ -1,3 +1,4 @@
+#include <pthread.h>
 #include <libos/syscall.h>
 #include <libos/tcall.h>
 #include <libos/eraise.h>
@@ -9,7 +10,7 @@
 #include <libos/fsbase.h>
 #include <libos/spinlock.h>
 #include <libos/setjmp.h>
-#include <pthread.h>
+#include <libos/atomic.h>
 
 typedef struct pair
 {
@@ -120,6 +121,9 @@ static long _run(libos_thread_t* thread, pid_t tid, uint64_t event)
 
     thread->original_fsbase = libos_get_fs_base();
 
+    /* Set the TID for this thread */
+    libos_atomic_exchange(thread->ptid, tid);
+
     libos_set_fs_base(thread->newtls);
 
     if (libos_add_thread(thread) != 0)
@@ -135,6 +139,11 @@ static long _run(libos_thread_t* thread, pid_t tid, uint64_t event)
 
         /* remove the thread from the map */
         libos_remove_thread();
+
+        /* Clear the lock pointed to by thread->ctid */
+        libos_atomic_exchange(thread->ctid, 0);
+
+        /* ATTN: wake whichever thread is waiting on thread->ctid */
     }
     else
     {
