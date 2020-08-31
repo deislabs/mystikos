@@ -434,18 +434,22 @@ static void _strace(long n, const char* fmt, ...)
         const bool isatty = libos_syscall_isatty(STDERR_FILENO) == 1;
         const char* blue = isatty ? COLOR_GREEN : "";
         const char* reset = isatty ? COLOR_RESET : "";
-
-        libos_eprintf("=== %s%s%s(", blue, syscall_str(n), reset);
+        char buf[1024];
 
         if (fmt)
         {
             va_list ap;
             va_start(ap, fmt);
-            libos_veprintf(fmt, ap);
+            libos_vsnprintf(buf, sizeof(buf), fmt, ap);
             va_end(ap);
         }
+        else
+        {
+            *buf = '\0';
+        }
 
-        libos_eprintf("): tid=%d\n", libos_gettid());
+        libos_eprintf("=== %s%s%s(%s): tid=%d\n",
+            blue, syscall_str(n), reset, buf, libos_gettid());
     }
 }
 
@@ -511,13 +515,13 @@ static long _return(long n, long ret)
 
         if (error_name)
         {
-            libos_eprintf("    %s%s(): return=-%s(%ld)%s\n",
-                red, syscall_str(n), error_name, ret, reset);
+            libos_eprintf("    %s%s(): return=-%s(%ld)%s: tid=%d\n",
+                red, syscall_str(n), error_name, ret, reset, libos_gettid());
         }
         else
         {
-            libos_eprintf("    %s%s(): return=%ld(%lX)%s\n",
-                red, syscall_str(n), ret, ret, reset);
+            libos_eprintf("    %s%s(): return=%ld(%lX)%s: tid=%d\n",
+                red, syscall_str(n), ret, ret, reset, libos_gettid());
         }
     }
 

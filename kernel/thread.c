@@ -11,6 +11,7 @@
 #include <libos/spinlock.h>
 #include <libos/setjmp.h>
 #include <libos/atomic.h>
+#include <libos/futex.h>
 
 typedef struct pair
 {
@@ -134,16 +135,19 @@ static long _run(libos_thread_t* thread, pid_t tid, uint64_t event)
     /* Jump back here from exit */
     if (libos_setjmp(&thread->jmpbuf) != 0)
     {
-        /* restore the original fsbase */
-        libos_set_fs_base(thread->original_fsbase);
-
         /* remove the thread from the map */
-        libos_remove_thread();
+        if (libos_remove_thread() != thread)
+            libos_panic("unexpected");
 
         /* Clear the lock pointed to by thread->ctid */
         libos_atomic_exchange(thread->ctid, 0);
 
-        /* ATTN: wake whichever thread is waiting on thread->ctid */
+        /* Wake the thread that is waiting on thread->ctid */
+        const int futex_op = FUTEX_WAKE | FUTEX_PRIVATE;
+        libos_syscall_futex(thread->ctid, futex_op, 1, 0, NULL, 0);
+
+        /* restore the original fsbase */
+        libos_set_fs_base(thread->original_fsbase);
     }
     else
     {
@@ -154,7 +158,10 @@ static long _run(libos_thread_t* thread, pid_t tid, uint64_t event)
 done:
 
     if (thread)
+    {
+        libos_memset(thread, 0xdd, sizeof(libos_thread_t));
         libos_free(thread);
+    }
 
     return ret;
 }

@@ -12,7 +12,6 @@ all: libos
 	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/pthread pthread.c $(LDFLAGS)
 	$(LIBOS) mkcpio $(APPDIR) rootfs
 
-STRACE=1
 ifdef STRACE
 OPTS += --strace
 endif

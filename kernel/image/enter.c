@@ -285,6 +285,7 @@ int libos_enter_kernel(libos_kernel_args_t* args)
     if (libos_find_leaks() != 0)
         libos_panic("unexpected");
 
+    libos_memset(thread, 0xdd, sizeof(libos_thread_t));
     libos_free(thread);
     thread = NULL;
 

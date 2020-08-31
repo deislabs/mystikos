@@ -33,14 +33,12 @@ void* start_routine(void* arg)
 {
     printf("\n");
 
-#if 0
-    for (size_t i = 0; i < 500; i++)
+    for (size_t i = 0; i < 3; i++)
     {
         printf("sleep...\n");
         fflush(stdout);
-        sleep_msec(10);
+        sleep_msec(1000);
     }
-#endif
 
     _uaddr = 0;
     syscall(SYS_futex, &_uaddr, FUTEX_WAKE | FUTEX_PRIVATE, 1);
@@ -54,10 +52,11 @@ int main(int argc, const char* argv[])
     int r;
     long ret;
 
+    _uaddr = 1;
+
     r = pthread_create(&pt, NULL, start_routine, (void*)0xabcd);
     printf("pthread_create(): return: %d\n", r);
 
-    _uaddr = 1;
     ret = syscall(SYS_futex, &_uaddr, FUTEX_WAIT | FUTEX_PRIVATE, 1, NULL);
     printf("pthread_create(): syscall: %ld\n", ret);
 

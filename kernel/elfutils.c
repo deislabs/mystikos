@@ -1354,17 +1354,18 @@ int elf_enter_crt(
     /* Run the main program */
     if (libos_setjmp(&thread->jmpbuf) != 0)
     {
-        /* restore the original fsbase */
-        libos_set_fs_base(thread->original_fsbase);
-
         /* remove the thread from the map */
-        libos_remove_thread();
+        if (libos_remove_thread() != thread)
+            libos_panic("unexpected");
 
         /* Unload the debugger symbols */
         libos_syscall_unload_symbols();
 
         /* call functions installed with libos_atexit() */
         libos_call_atexit_functions();
+
+        /* restore the original fsbase */
+        libos_set_fs_base(thread->original_fsbase);
     }
     else
     {
