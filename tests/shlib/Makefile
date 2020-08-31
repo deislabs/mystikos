@@ -19,6 +19,9 @@ all: libos
 tests:
 	$(LIBOS) exec rootfs /bin/shlib $(OPTS)
 
+gdb:
+	$(OEGDB) --args $(LIBOS) exec rootfs /bin/shlib $(OPTS)
+
 libos:
 	$(MAKE) -C $(TOP)/tools/libos
 
