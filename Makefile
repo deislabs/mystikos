@@ -6,3 +6,7 @@ include $(TOP)/defs.mak
 DIRS = third_party host target kernel tools alpine tests
 
 include $(TOP)/rules.mak
+
+distclean: clean
+	rm -rf $(TOP)/build
+	$(MAKE) -C third_party/openenclave distclean
