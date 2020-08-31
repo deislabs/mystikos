@@ -219,7 +219,7 @@ long libos_syscall_clone(
     void* newtls,
     pid_t* ctid)
 {
-#ifdef ENABLE_HOST_THREADS
+#ifdef LIBOS_ENABLE_HOST_THREADS
     return _syscall_clone(fn, child_stack, flags, arg, ptid, newtls, ctid);
 #else
     (void)fn;

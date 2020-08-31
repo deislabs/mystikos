@@ -16,8 +16,12 @@ all: libos
 	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/shlib shlib.c $(LDFLAGS)
 	$(LIBOS) mkcpio appdir rootfs
 
+ifdef STRACE
+OPTS += --strace
+endif
+
 tests:
-	$(LIBOS) exec rootfs /bin/shlib $(OPTS)
+	$(LIBOS) exec $(OPTS) rootfs /bin/shlib $(OPTS)
 
 gdb:
 	$(OEGDB) --args $(LIBOS) exec rootfs /bin/shlib $(OPTS)

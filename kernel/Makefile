@@ -1,6 +1,7 @@
 SUBDIR = kernel
 TOP=$(abspath ..)
 include $(TOP)/defs.mak
+include $(TOP)/config.mak
 
 SUBLIBDIR=$(LIBDIR)
 
@@ -10,7 +11,9 @@ SOURCES = $(wildcard *.c) $(wildcard ../shared/*.c) $(wildcard *.s)
 
 INCLUDES = -I$(INCDIR) $(OEENCLAVE_INCLUDES) -I$(BUILDDIR)/include
 
-#DEFINES = -DENABLE_HOST_THREADS
+ifdef LIBOS_ENABLE_HOST_THREADS
+DEFINES = -DLIBOS_ENABLE_HOST_THREADS
+endif
 
 CFLAGS = $(OEENCLAVE_CFLAGS)
 

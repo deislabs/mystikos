@@ -2069,7 +2069,7 @@ long libos_syscall(long n, long params[6])
                 _futex_op_str(futex_op),
                 val);
 
-#ifdef ENABLE_HOST_THREADS
+#ifdef LIBOS_ENABLE_HOST_THREADS
             return _return(n, libos_syscall_futex(
                 uaddr, futex_op, val, arg, uaddr2, val3));
 #else
