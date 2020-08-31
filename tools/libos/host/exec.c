@@ -177,24 +177,34 @@ done:
 
 long libos_wait_ocall(uint64_t event, const struct libos_timespec* timeout)
 {
-    int ret = 0;
+    int* uaddr = (int*)event;
 
-    if (__sync_fetch_and_add((int*)event, -1) == 0)
+    /* if *uaddr == 0 */
+    if (__sync_fetch_and_add(uaddr, -1) == 0)
     {
-        ret = (int)syscall(
-            SYS_futex,
-            (int*)event,
-            FUTEX_WAIT_PRIVATE,
-            -1,
-            timeout,
-            NULL,
-            0);
+        do
+        {
+            long ret;
 
-        if (ret != 0)
-            ret = -errno;
+            /* wait while *uaddr == -1 */
+            ret = syscall(
+                SYS_futex,
+                (int*)event,
+                FUTEX_WAIT_PRIVATE,
+                -1,
+                timeout,
+                NULL,
+                0);
+
+            if (ret != 0 && errno == ETIMEDOUT)
+            {
+                return ETIMEDOUT;
+            }
+        }
+        while (*uaddr == -1);
     }
 
-    return ret;
+    return 0;
 }
 
 long libos_wake_ocall(uint64_t event)

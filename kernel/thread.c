@@ -12,6 +12,7 @@
 #include <libos/setjmp.h>
 #include <libos/atomic.h>
 #include <libos/futex.h>
+#include <libos/atexit.h>
 
 typedef struct pair
 {
@@ -96,6 +97,20 @@ libos_thread_t* libos_remove_thread(void)
     libos_spin_unlock(&_lock);
 
     return ret;
+}
+
+static void _free_threads(void* arg)
+{
+    (void)arg;
+
+    for (size_t i = 0; i < _nthreads; i++)
+    {
+        libos_thread_t* thread = _threads[i].thread;
+        libos_memset(thread, 0xdd, sizeof(libos_thread_t));
+        libos_free(thread);
+    }
+
+    _nthreads = 0;
 }
 
 static bool _valid_newtls(const void* newtls)
@@ -184,6 +199,18 @@ static long _syscall_clone(
 
     if (!_valid_newtls(newtls))
         ERAISE(-EINVAL);
+
+    libos_spin_lock(&_lock);
+    {
+        static bool _installed_free_threads = false;
+
+        if (!_installed_free_threads)
+        {
+            libos_atexit(_free_threads, NULL);
+            _installed_free_threads = true;
+        }
+    }
+    libos_spin_unlock(&_lock);
 
     /* Create and initialize the thread struct */
     {

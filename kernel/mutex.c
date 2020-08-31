@@ -71,6 +71,8 @@ int libos_mutex_lock(libos_mutex_t* mutex)
     /* Loop until SELF obtains mutex */
     for (;;)
     {
+        long r;
+
         libos_spin_lock(&m->lock);
         {
             /* Attempt to acquire lock */
@@ -90,8 +92,8 @@ int libos_mutex_lock(libos_mutex_t* mutex)
         libos_spin_unlock(&m->lock);
 
         /* Ask host to wait for an event on this thread */
-        if (libos_tcall_wait(self->event, NULL) != 0)
-            libos_panic("unexpected");
+        if ((r = libos_tcall_wait(self->event, NULL)) != 0)
+            libos_panic("libos_tcall_wait(): %ld: %d", r, *(int*)self->event);
     }
 
     /* Unreachable! */

@@ -20,8 +20,10 @@ build:
 
 TESTS = $(shell cat supported.txt)
 
-tests:
+tests: libos
 	$(foreach i, $(TESTS), $(MAKE) run TEST=$(i) $(NL) )
+
+#GDB = $(OEGDB) --args
 
 run:
 	@ echo "=== TEST=$(TEST)"
@@ -30,7 +32,10 @@ run:
 	@ install -D srcdir/$(TEST) appdir/$(TEST)
 	@ cp srcdir/src/functional/*.so appdir/src/functional
 	$(BINDIR)/libos mkcpio appdir rootfs
-	$(BINDIR)/libos exec --real-syscalls $(OPTS) rootfs $(TEST)
+	$(GDB) $(BINDIR)/libos exec --real-syscalls $(OPTS) rootfs $(TEST)
 
 clean:
 	rm -rf rootfs appdir srcdir
+
+libos:
+	$(MAKE) -C $(TOP)/tools/libos
