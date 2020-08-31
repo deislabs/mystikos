@@ -5,6 +5,7 @@ include $(TOP)/defs.mak
 IMG=libos-alpine
 APPDIR=$(CURDIR)/appdir
 
+STRACE=1
 ifdef STRACE
 OPTS = --strace
 endif

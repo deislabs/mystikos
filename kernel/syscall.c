@@ -2062,7 +2062,7 @@ long libos_syscall(long n, long params[6])
             int* uaddr2 = (int*)x5;
             int val3 = (int)val3;
 
-            _strace(n, "uaddr=0x%lX(0x%x) futex_op=%u(%s) val=%d",
+            _strace(n, "uaddr=0x%lX(%d) futex_op=%u(%s) val=%d",
                 (long)uaddr,
                 (uaddr ? *uaddr : -1),
                 futex_op,
