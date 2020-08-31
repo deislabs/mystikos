@@ -5,6 +5,7 @@
 #include <libos/cond.h>
 #include <libos/mutex.h>
 #include <libos/strings.h>
+#include <libos/assert.h>
 
 int libos_cond_init(libos_cond_t* c)
 {
@@ -43,6 +44,9 @@ int libos_cond_timedwait(
 {
     libos_thread_t* self = libos_self();
     int ret = 0;
+
+    libos_assert(self != NULL);
+    libos_assert(self->magic == LIBOS_THREAD_MAGIC);
 
     if (!c || !mutex)
         return EINVAL;
