@@ -210,4 +210,12 @@ long libos_syscall_clone(
     void* newtls,
     pid_t* ctid);
 
+long libos_syscall_futex(
+    int* uaddr,
+    int op,
+    int val,
+    long arg, /* timeout or val2 */
+    int* uaddr2,
+    int val3);
+
 #endif /* _LIBOS_SYSCALL_H */

@@ -1141,10 +1141,6 @@ done:
     return ret;
 }
 
-void libos_futex_breakpoint(void)
-{
-}
-
 #if 0
 static void _dump(const void* p_, size_t n)
 {
@@ -2058,6 +2054,9 @@ long libos_syscall(long n, long params[6])
             int* uaddr = (int*)x1;
             int futex_op = (int)x2;
             int val = (int)x3;
+            long arg = (long)x4;
+            int* uaddr2 = (int*)x5;
+            int val3 = (int)val3;
 
             _strace(n, "uaddr=0x%lX(0x%x) futex_op=%u(%s) val=%d",
                 (long)uaddr,
@@ -2066,9 +2065,15 @@ long libos_syscall(long n, long params[6])
                 _futex_op_str(futex_op),
                 val);
 
-            libos_futex_breakpoint();
-
+#ifdef ENABLE_HOST_THREADS
+            return _return(n, libos_syscall_futex(
+                uaddr, futex_op, val, arg, uaddr2, val3));
+#else
+            (void)arg;
+            (void)uaddr2;
+            (void)val3;
             return _return(n, 0);
+#endif
         }
         case SYS_sched_setaffinity:
             break;
