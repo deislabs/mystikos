@@ -27,6 +27,8 @@ static pair_t _threads[MAX_THREADS];
 static size_t _nthreads = 0;
 static libos_spinlock_t _lock = LIBOS_SPINLOCK_INITIALIZER;
 
+static libos_thread_t* _zombies;
+
 int libos_add_thread(libos_thread_t* thread)
 {
     int ret = -1;
@@ -113,6 +115,25 @@ static void _free_threads(void* arg)
     _nthreads = 0;
 }
 
+static void _free_zombies(void* arg)
+{
+    libos_thread_t* p;
+
+    (void)arg;
+
+    for (p = _zombies; p; )
+    {
+        libos_thread_t* next = p->next;
+
+        libos_memset(p, 0xdd, sizeof(libos_thread_t));
+        libos_free(p);
+
+        p = next;
+    }
+
+    _zombies = NULL;
+}
+
 static bool _valid_newtls(const void* newtls)
 {
     struct pthread
@@ -154,6 +175,12 @@ static long _run(libos_thread_t* thread, pid_t tid, uint64_t event)
         if (libos_remove_thread() != thread)
             libos_panic("unexpected");
 
+        /* Add thread to zombies list (thread->event might still be in use) */
+        libos_spin_lock(&_lock);
+        thread->next = _zombies;
+        _zombies = thread;
+        libos_spin_unlock(&_lock);
+
         /* Clear the lock pointed to by thread->ctid */
         libos_atomic_exchange(thread->ctid, 0);
 
@@ -171,12 +198,6 @@ static long _run(libos_thread_t* thread, pid_t tid, uint64_t event)
     }
 
 done:
-
-    if (thread)
-    {
-        libos_memset(thread, 0xdd, sizeof(libos_thread_t));
-        libos_free(thread);
-    }
 
     return ret;
 }
@@ -200,14 +221,16 @@ static long _syscall_clone(
     if (!_valid_newtls(newtls))
         ERAISE(-EINVAL);
 
+    /* Install the atexit functions */
     libos_spin_lock(&_lock);
     {
-        static bool _installed_free_threads = false;
+        static bool _installed_atexit_functions = false;
 
-        if (!_installed_free_threads)
+        if (!_installed_atexit_functions)
         {
             libos_atexit(_free_threads, NULL);
-            _installed_free_threads = true;
+            libos_atexit(_free_zombies, NULL);
+            _installed_atexit_functions = true;
         }
     }
     libos_spin_unlock(&_lock);

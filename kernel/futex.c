@@ -137,7 +137,12 @@ done:
 
 static bool _is_ownwer(libos_mutex_t* m)
 {
+#if 0
     return libos_self() == m->owner;
+#else
+    (void)m;
+    return true;
+#endif
 }
 
 static int _futex_wait(
