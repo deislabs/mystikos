@@ -6,13 +6,15 @@ PROGRAM = host
 
 SOURCES = $(SUBOBJDIR)/calls_u.c host.c
 
-INCLUDES = $(OEHOST_INCLUDES) -I$(SUBOBJDIR)
+INCLUDES = $(OEHOST_INCLUDES) -I$(SUBOBJDIR) -I$(INCDIR)
 
 CFLAGS = $(OEHOST_CFLAGS)
 
 LDFLAGS = $(OEHOST_LDFLAGS)
 
 CLEAN = $(SUBOBJDIR)/calls_u.h $(SUBOBJDIR)/calls_u.c $(SUBOBJDIR)/calls_args.h
+
+LIBS += $(LIBDIR)/liboshost.a
 
 include $(TOP)/rules.mak
 

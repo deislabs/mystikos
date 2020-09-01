@@ -1,8 +1,9 @@
-#include <libos/loadfile.h>
+#include <libos/file.h>
 #include <sys/stat.h>
 #include <stdio.h>
 #include <stdlib.h>
 
+#if 0
 int libos_load_file(const char* path, void** data_out, size_t* size_out)
 {
     int ret = -1;
@@ -57,3 +58,4 @@ done:
 
     return ret;
 }
+#endif

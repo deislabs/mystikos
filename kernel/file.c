@@ -169,6 +169,7 @@ done:
     return ret;
 }
 
+#if 0
 int libos_load_file(const char* path, void** data, size_t* size)
 {
     int ret = 0;
@@ -216,3 +217,4 @@ done:
 
     return ret;
 }
+#endif

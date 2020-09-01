@@ -8,7 +8,6 @@
 #include <limits.h>
 #include <assert.h>
 #include <libos/elf.h>
-#include <libos/loadfile.h>
 #include <libos/file.h>
 #include <sys/mman.h>
 

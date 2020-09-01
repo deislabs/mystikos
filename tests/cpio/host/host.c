@@ -6,62 +6,8 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <string.h>
+#include <libos/file.h>
 #include "calls_u.h"
-
-static int _load_file(const char* path, void** data_out, size_t* size_out)
-{
-    int ret = -1;
-    FILE* is = NULL;
-    void* data = NULL;
-    size_t size;
-
-    if (data_out)
-        *data_out = NULL;
-
-    if (size_out)
-        *size_out = 0;
-
-    /* Check parameters */
-    if (!path || !data_out || !size_out)
-        goto done;
-
-    /* Get size of this file */
-    {
-        struct stat buf;
-
-        if (stat(path, &buf) != 0)
-            goto done;
-
-        size = buf.st_size;
-    }
-
-    /* Allocate memory */
-    if (!(data = malloc(size)))
-        goto done;
-
-    /* Open the file */
-    if (!(is = fopen(path, "rb")))
-        goto done;
-
-    /* Read file into memory */
-    if (fread(data, 1, size, is) != size)
-        goto done;
-
-    *size_out = size;
-    *data_out = data;
-    data = NULL;
-    ret = 0;
-
-done:
-
-    if (data)
-        free(data);
-
-    if (is)
-        fclose(is);
-
-    return ret;
-}
 
 int main(int argc, const char* argv[])
 {
@@ -86,7 +32,7 @@ int main(int argc, const char* argv[])
         exit(1);
     }
 
-    if (_load_file(argv[2], &cpio_data, &cpio_size) != 0)
+    if (libos_load_file(argv[2], &cpio_data, &cpio_size) != 0)
     {
         fprintf(stderr, "%s: failed to load file: %s\n", argv[0], argv[2]);
         exit(1);
