@@ -143,7 +143,9 @@ static int _test_add_section(const char* path)
         exit(1);
     }
 
+#if 0
     printf("Created %s\n", new_path);
+#endif
 
     elf_unload(&elf);
 
