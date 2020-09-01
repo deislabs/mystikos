@@ -9,6 +9,7 @@
 #include <libos/eraise.h>
 #include <libos/round.h>
 #include <libos/strings.h>
+#include <libos/file.h>
 #include <stdio.h>
 #include <libgen.h>
 #include <time.h>
@@ -83,35 +84,6 @@ void libos_cpuid_ocall(
     __cpuid_count(leaf, subleaf, *rax, *rbx, *rcx, *rdx);
 }
 
-static int _write_file(int fd, const void* data, size_t size)
-{
-    int ret = 0;
-    const uint8_t* p = (const uint8_t*)data;
-    size_t r = size;
-    ssize_t n;
-
-    if (fd < 0 || !data)
-        ERAISE(-EINVAL);
-
-    while (r > 0)
-    {
-        if ((n = write(fd, p, r)) == 0)
-            break;
-
-        if (n < 0)
-            ERAISE(-errno);
-
-        p += n;
-        r -= (size_t)n;
-    }
-
-    if (r != 0)
-        ERAISE(-EIO);
-
-done:
-    return ret;
-}
-
 #define MAX_DEBUG_IMAGES 256
 
 static oe_debug_image_t _debug_images[MAX_DEBUG_IMAGES];
@@ -137,7 +109,7 @@ int libos_add_symbol_file_ocall(
         if ((fd = mkstemp(template)) <  0)
             goto done;
 
-        ECHECK(_write_file(fd, file_data, file_size));
+        ECHECK(libos_write_file_fd(fd, file_data, file_size));
 
         close(fd);
         fd = -1;

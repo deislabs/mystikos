@@ -8,9 +8,13 @@
 #include <limits.h>
 #include <assert.h>
 #include <libos/elf.h>
+#include <libos/loadfile.h>
+#include <libos/file.h>
 #include <sys/mman.h>
 
 #define PAGE_SIZE 4096
+
+const char* arg0;
 
 int _add_page_callback(
     void* arg,
@@ -34,20 +38,14 @@ static void _callback(const char* msg)
     strcpy(_msg, msg);
 }
 
-int main(int argc, const char* argv[])
+static int _test_image_load(const char* path)
 {
     elf_image_t image;
     uint8_t* data = NULL;
 
-    if (argc != 2)
+    if (elf_image_load(path, &image) != 0)
     {
-        fprintf(stderr, "Usage: %s <image>\n", argv[0]);
-        exit(1);
-    }
-
-    if (elf_image_load(argv[1], &image) != 0)
-    {
-        fprintf(stderr, "%s: failed to load image\n", argv[0]);
+        fprintf(stderr, "%s: failed to load image: %s\n", arg0, path);
         exit(1);
     }
 
@@ -61,7 +59,7 @@ int main(int argc, const char* argv[])
 
         if (!(data = memalign(PAGE_SIZE, size)))
         {
-            fprintf(stderr, "%s: out of memory\n", argv[0]);
+            fprintf(stderr, "%s: out of memory\n", arg0);
             exit(1);
         }
 
@@ -69,7 +67,7 @@ int main(int argc, const char* argv[])
 
         if (mprotect(data, size, PROT_READ | PROT_WRITE | PROT_EXEC) != 0)
         {
-            fprintf(stderr, "%s: mprotect() failed\n", argv[0]);
+            fprintf(stderr, "%s: mprotect() failed\n", arg0);
             exit(1);
         }
 
@@ -87,7 +85,7 @@ int main(int argc, const char* argv[])
 
         if (memcmp(ehdr->e_ident, magic, sizeof(magic)) != 0)
         {
-            fprintf(stderr, "%s: bad elf magic\n", argv[0]);
+            fprintf(stderr, "%s: bad elf magic\n", arg0);
             exit(1);
         }
 
@@ -100,5 +98,91 @@ int main(int argc, const char* argv[])
     elf_image_free(&image);
     free(data);
 
+    printf("=== passed test (%s: %s)\n", arg0, __FUNCTION__);
+
+    return 0;
+}
+
+static int _test_add_section(const char* path)
+{
+    elf_t elf = ELF64_INIT;
+    elf_t new_elf = ELF64_INIT;
+    void* data = NULL;
+    size_t size;
+    char new_path[PATH_MAX];
+    uint8_t* new_data;
+    size_t new_size;
+
+    if (elf_load(path, &elf) != 0)
+    {
+        fprintf(stderr, "%s: failed to load ELF image: %s \n", arg0, path);
+        exit(1);
+    }
+
+    if (libos_load_file(arg0, &data, &size) != 0)
+    {
+        fprintf(stderr, "%s: failed to load file: %s \n", arg0, arg0);
+        exit(1);
+    }
+
+    if (elf_add_section(&elf, ".mysection", SHT_PROGBITS, data, size) != 0)
+    {
+        fprintf(stderr, "%s: failed to add section\n", arg0);
+        exit(1);
+    }
+
+    if (snprintf(new_path, PATH_MAX, "%s.new", path) >= PATH_MAX)
+    {
+        fprintf(stderr, "%s: path overflow\n", arg0);
+        exit(1);
+    }
+
+    if (libos_write_file(new_path, elf.data, elf.size) != 0)
+    {
+        fprintf(stderr, "%s: failed to write file\n", arg0);
+        exit(1);
+    }
+
+    printf("Created %s\n", new_path);
+
+    elf_unload(&elf);
+
+    /* Load the new elf image */
+    if (elf_load(new_path, &new_elf) != 0)
+    {
+        fprintf(stderr, "%s: failed to load ELF image: %s \n", arg0, new_path);
+        exit(1);
+    }
+
+    /* Find the section in the new ELF image */
+    if (elf_find_section(&new_elf, ".mysection", &new_data, &new_size) != 0)
+    {
+        fprintf(stderr, "%s: failed to find section\n", arg0);
+        exit(1);
+    }
+
+    assert(new_size == size);
+    assert(memcmp(data, new_data, size) == 0);
+
+    printf("=== passed test (%s: %s)\n", arg0, __FUNCTION__);
+
+    free(data);
+    elf_unload(&new_elf);
+
+    return 0;
+}
+
+int main(int argc, const char* argv[])
+{
+    arg0 = argv[0];
+
+    if (argc != 2)
+    {
+        fprintf(stderr, "Usage: %s <image>\n", argv[0]);
+        exit(1);
+    }
+
+    _test_image_load(argv[1]);
+    _test_add_section(argv[1]);
     return 0;
 }

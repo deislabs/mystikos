@@ -25,6 +25,3 @@ IMAGE = $(TOP)/build/bin/tests/elf/image/image
 
 tests:
 	$(SUBBINDIR)/main $(IMAGE)
-
-vg:
-	valgrind --tool=memcheck --leak-check=full $(SUBBINDIR)/main $(IMAGE)

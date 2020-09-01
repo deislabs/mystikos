@@ -47,36 +47,6 @@ int libos_teardown_mman(void)
     return 0;
 }
 
-#if 0
-static void _write_file(const char* path, const void* data, size_t size)
-{
-    int fd;
-    const uint8_t* p = (const uint8_t*)data;
-    size_t r = size;
-    ssize_t n;
-
-    if ((fd = open(path, O_CREAT|O_WRONLY|O_TRUNC, 0666)) < 0)
-    {
-        fprintf(stderr, "open failed: %s\n", path);
-        exit(1);
-    }
-
-    while ((n = write(fd, p, r)) > 0)
-    {
-        p += n;
-        r -= n;
-    }
-
-    if (r != 0)
-    {
-        fprintf(stderr, "write failed: %s\n", path);
-        exit(1);
-    }
-
-    close(fd);
-}
-#endif
-
 static ssize_t _map_file_onto_memory(
     int fd,
     off_t offset,
