@@ -350,6 +350,8 @@ int main(int argc, const char* argv[])
     test_mutexes();
     test_timedlock();
     test_cond_signal();
-    //test_cond_broadcast();
+#if 0
+    test_cond_broadcast();
+#endif
     return 0;
 }

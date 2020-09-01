@@ -27,3 +27,6 @@ libos:
 
 clean:
 	rm -rf $(APPDIR) rootfs
+
+gdb-core:
+	$(OEGDB) core

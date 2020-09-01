@@ -144,6 +144,7 @@ int libos_buf_insert(
     else
         libos_memset(buf->data + pos, 0, size);
 
+    buf->size += size;
     ret = 0;
 
 done:

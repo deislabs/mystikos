@@ -145,6 +145,16 @@ static bool _valid_newtls(const void* newtls)
     return pt && pt->self == pt;
 }
 
+static void _call_thread_fn(void)
+{
+    libos_thread_t* thread = libos_self();
+
+    if (!thread)
+        libos_panic("%s()", __FUNCTION__);
+
+    thread->fn(thread->arg);
+}
+
 /* The target calls this from the new thread */
 static long _run(libos_thread_t* thread, pid_t tid, uint64_t event)
 {
@@ -193,7 +203,17 @@ static long _run(libos_thread_t* thread, pid_t tid, uint64_t event)
     }
     else
     {
+#ifdef LIBOS_USE_THREAD_STACK
+        libos_jmp_buf_t env = thread->jmpbuf;
+
+        env.rip = (uint64_t)_call_thread_fn;
+        env.rsp = (uint64_t)thread->child_stack;
+        env.rbp = (uint64_t)thread->child_stack;
+        libos_jump(&env);
+#else
         (*thread->fn)(thread->arg);
+        (void)_call_thread_fn;
+#endif
         /* unreachable */
     }
 

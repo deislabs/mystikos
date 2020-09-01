@@ -20,4 +20,6 @@ int libos_setjmp(libos_jmp_buf_t* env);
 
 void libos_longjmp(libos_jmp_buf_t* env, int val);
 
+void libos_jump(libos_jmp_buf_t* env);
+
 #endif /* _LIBOS_SETJMP_H */
