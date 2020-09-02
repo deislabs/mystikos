@@ -1,3 +1,2 @@
-/src/functional/pthread_mutex.exe
 /src/functional/socket.exe
 /src/functional/dlopen.exe

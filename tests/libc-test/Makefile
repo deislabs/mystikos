@@ -5,7 +5,6 @@ include $(TOP)/defs.mak
 IMG=libos-alpine
 APPDIR=$(CURDIR)/appdir
 
-STRACE=1
 ifdef STRACE
 OPTS = --strace
 endif
@@ -39,3 +38,6 @@ clean:
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos
+
+mutex:
+	$(MAKE) run TEST=/src/functional/pthread_mutex.exe

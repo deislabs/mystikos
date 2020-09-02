@@ -7,10 +7,6 @@
 #include <libos/thread.h>
 #include <libos/crash.h>
 
-#if 1
-#define ENABLE_LEAK_CHECKER
-#endif
-
 static libos_list_t _list;
 static libos_spinlock_t _lock = LIBOS_SPINLOCK_INITIALIZER;
 
@@ -49,7 +45,7 @@ long libos_tcall_deallocate(void* ptr)
     return libos_tcall(LIBOS_TCALL_DEALLOCATE, params);
 }
 
-#ifdef ENABLE_LEAK_CHECKER
+#ifdef LIBOS_ENABLE_LEAK_CHECKER
 static node_t* _new_node(
     void* ptr,
     const char* file,
@@ -70,7 +66,7 @@ static node_t* _new_node(
 }
 #endif
 
-#ifdef ENABLE_LEAK_CHECKER
+#ifdef LIBOS_ENABLE_LEAK_CHECKER
 static int _add_node(
     void* ptr,
     const char* file,
@@ -90,7 +86,7 @@ static int _add_node(
 }
 #endif
 
-#ifdef ENABLE_LEAK_CHECKER
+#ifdef LIBOS_ENABLE_LEAK_CHECKER
 static int _remove_node(void* ptr)
 {
     node_t* node = NULL;
@@ -135,7 +131,7 @@ void* __libos_malloc(
     if (libos_tcall_allocate(NULL, 0, size, 0, &p) != 0 || !p)
         return NULL;
 
-#ifdef ENABLE_LEAK_CHECKER
+#ifdef LIBOS_ENABLE_LEAK_CHECKER
     if (_add_node(p, file, line, func) != 0)
         libos_panic("unexpected");
 #endif
@@ -159,7 +155,7 @@ void* __libos_calloc(
     if (libos_tcall_allocate(NULL, 0, n, 1, &p) != 0 || !p)
         return NULL;
 
-#ifdef ENABLE_LEAK_CHECKER
+#ifdef LIBOS_ENABLE_LEAK_CHECKER
     if (_add_node(p, file, line, func) != 0)
         libos_panic("unexpected");
 #endif
@@ -179,7 +175,7 @@ void* __libos_realloc(
     (void)line;
     (void)func;
 
-#ifdef ENABLE_LEAK_CHECKER
+#ifdef LIBOS_ENABLE_LEAK_CHECKER
     if (ptr && _remove_node(ptr) != 0)
         libos_panic("unexpected");
 #endif
@@ -187,7 +183,7 @@ void* __libos_realloc(
     if (libos_tcall_allocate(ptr, 0, size, 0, &p) != 0 || !p)
         return NULL;
 
-#ifdef ENABLE_LEAK_CHECKER
+#ifdef LIBOS_ENABLE_LEAK_CHECKER
     if (_add_node(p, file, line, func) != 0)
         libos_panic("unexpected");
 #endif
@@ -210,7 +206,7 @@ void* __libos_memalign(
     if (libos_tcall_allocate(NULL, alignment, size, 0, &p) != 0 || !p)
         return NULL;
 
-#ifdef ENABLE_LEAK_CHECKER
+#ifdef LIBOS_ENABLE_LEAK_CHECKER
     if (_add_node(p, file, line, func) != 0)
         libos_panic("unexpected");
 #endif
@@ -231,7 +227,7 @@ void __libos_free(
     if (libos_tcall_deallocate(ptr) != 0)
         libos_panic("unexpected");
 
-#ifdef ENABLE_LEAK_CHECKER
+#ifdef LIBOS_ENABLE_LEAK_CHECKER
     if (ptr && _remove_node(ptr) != 0)
         libos_panic("unexpected");
 #endif
