@@ -10,3 +10,8 @@ include $(TOP)/rules.mak
 distclean: clean
 	rm -rf $(TOP)/build
 	$(MAKE) -C third_party/openenclave distclean
+
+size:
+	@ size -d $(BUILDDIR)/bin/enc/libosenc.so
+	@ size -d $(BUILDDIR)/bin/liboskernel.so
+	@ size -d $(BUILDDIR)/bin/enc/liboscrt.so
