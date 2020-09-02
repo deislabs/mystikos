@@ -253,3 +253,12 @@ void libos_free_creds(
     if (private_key)
         oe_free_key(private_key, private_key_size, NULL, 0);
 }
+
+int libos_verify_cert(
+    uint8_t* cert,
+    size_t cert_size,
+    oe_identity_verify_callback_t verifier,
+    void* arg)
+{
+    return oe_verify_attestation_certificate(cert, cert_size, verifier, arg);
+}

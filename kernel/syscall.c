@@ -1230,6 +1230,11 @@ long libos_syscall(long n, long params[6])
             _strace(n, NULL);
             return _forward_syscall(LIBOS_TCALL_FREE_CREDS, params);
         }
+        case SYS_libos_verify_cert:
+        {
+            _strace(n, NULL);
+            return _forward_syscall(LIBOS_TCALL_VERIFY_CERT, params);
+        }
         case SYS_read:
         {
             int fd = (int)x1;

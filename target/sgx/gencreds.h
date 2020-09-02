@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <openenclave/enclave.h>
 
 int libos_gen_creds(
     uint8_t** cert_out,
@@ -15,5 +16,11 @@ void libos_free_creds(
     size_t cert_size,
     uint8_t* private_key,
     size_t private_key_size);
+
+int libos_verify_cert(
+    uint8_t* cert,
+    size_t cert_size,
+    oe_identity_verify_callback_t verifier,
+    void* arg);
 
 #endif /* _TLSCREDS_H */

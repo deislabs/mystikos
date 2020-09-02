@@ -20,7 +20,8 @@ enum
     SYS_libos_unload_symbols = 1008,
     SYS_libos_gen_creds = 1009,
     SYS_libos_free_creds = 1010,
-    SYS_libos_clone = 1011,
+    SYS_libos_verify_cert = 1011,
+    SYS_libos_clone = 1012,
 };
 
 /* needed because syscall() only supports 6 parameters */

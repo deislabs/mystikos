@@ -301,6 +301,16 @@ long libos_tcall(long n, long params[6])
             libos_free_creds(cert, cert_size, pkey, pkey_size);
             return 0;
         }
+        case LIBOS_TCALL_VERIFY_CERT:
+        {
+            uint8_t* cert = (uint8_t*)x1;
+            size_t cert_size = (size_t)x2;
+            oe_identity_verify_callback_t verifier =
+                (oe_identity_verify_callback_t)x3;
+            void* arg = (void*)x4;
+
+            return libos_verify_cert(cert, cert_size, verifier, arg);
+        }
         case LIBOS_TCALL_CLOCK_GETTIME:
         {
             clockid_t clk_id = (clockid_t)x1;
