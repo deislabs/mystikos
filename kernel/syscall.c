@@ -1026,15 +1026,6 @@ long libos_syscall_chmod(const char *pathname, mode_t mode)
 
 long libos_syscall_ret(long ret)
 {
-#if 0
-    if ((unsigned long)ret > -4096UL)
-    {
-        errno = (int)-ret;
-        return -1;
-    }
-#endif
-
-    /* ATTN: remove this no-op function */
     return ret;
 }
 
@@ -1144,21 +1135,6 @@ static ssize_t _dev_urandom_readv(const struct iovec* iov, int iovcnt)
 done:
     return ret;
 }
-
-#if 0
-static void _dump(const void* p_, size_t n)
-{
-    const uint8_t* p = (const uint8_t*)p_;
-
-    while (n--)
-    {
-        //libos_printf("<%02x>", *p++);
-        libos_printf("<%03u>", *p++);
-    }
-
-    libos_printf("\n");
-}
-#endif
 
 long libos_syscall(long n, long params[6])
 {
@@ -2086,17 +2062,23 @@ long libos_syscall(long n, long params[6])
         case SYS_set_thread_area:
         {
             const void* tp = (void*)params[0];
-            libos_thread_t* thread;
+            static bool _initialized;
 
             _strace(n, "tp=%p", tp);
 
-            if (!(thread = libos_remove_thread()))
-                libos_panic("unexpected");
+            if (!_initialized)
+            {
+                struct pthread* pthread = (struct pthread*)tp;
 
-            libos_set_fs_base(tp);
-
-            if (libos_add_thread(thread) != 0)
-                libos_panic("unexpected");
+                libos_assert(libos_valid_pthread(pthread));
+                pthread->unused = (uint64_t)__libos_main_thread;
+                libos_set_fs_base(pthread);
+                _initialized = true;
+            }
+            else
+            {
+                libos_panic("SYS_set_thread_area called twice");
+            }
 
             return _return(n, 0);
         }

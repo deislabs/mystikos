@@ -3,7 +3,11 @@
 #include <stdlib.h>
 #include <malloc.h>
 
-void libos_free(void* ptr)
+void __libos_free(
+    void* ptr,
+    const char* file,
+    size_t line,
+    const char* func)
 {
     return free(ptr);
 }

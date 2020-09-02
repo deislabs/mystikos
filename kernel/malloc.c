@@ -4,8 +4,10 @@
 #include <libos/spinlock.h>
 #include <libos/list.h>
 #include <libos/strings.h>
+#include <libos/thread.h>
+#include <libos/crash.h>
 
-#if 0
+#if 1
 #define ENABLE_LEAK_CHECKER
 #endif
 
@@ -216,8 +218,16 @@ void* __libos_memalign(
     return p;
 }
 
-void libos_free(void* ptr)
+void __libos_free(
+    void* ptr,
+    const char* file,
+    size_t line,
+    const char* func)
 {
+    (void)file;
+    (void)line;
+    (void)func;
+
     if (libos_tcall_deallocate(ptr) != 0)
         libos_panic("unexpected");
 

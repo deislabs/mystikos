@@ -13,107 +13,13 @@
 #include <libos/atomic.h>
 #include <libos/futex.h>
 #include <libos/atexit.h>
+#include <libos/assert.h>
+#include <libos/atexit.h>
 
-typedef struct pair
-{
-    const void* fsbase;
-    libos_thread_t* thread;
-}
-pair_t;
-
-#define MAX_THREADS 1024
-
-static pair_t _threads[MAX_THREADS];
-static size_t _nthreads = 0;
-static libos_spinlock_t _lock = LIBOS_SPINLOCK_INITIALIZER;
+libos_thread_t* __libos_main_thread;
 
 static libos_thread_t* _zombies;
-
-int libos_add_thread(libos_thread_t* thread)
-{
-    int ret = -1;
-    const void* fsbase = libos_get_fs_base();
-
-    libos_spin_lock(&_lock);
-
-    for (size_t i = 0; i < _nthreads; i++)
-    {
-        if (_threads[i].fsbase == fsbase)
-            goto done;
-    }
-
-    if (_nthreads == MAX_THREADS)
-        goto done;
-
-    _threads[_nthreads].fsbase = fsbase;
-    _threads[_nthreads].thread = thread;
-    _nthreads++;
-
-    ret = 0;
-
-done:
-    libos_spin_unlock(&_lock);
-
-    return ret;
-}
-
-libos_thread_t* libos_self(void)
-{
-    libos_thread_t* ret = NULL;
-    const void* fsbase = libos_get_fs_base();
-
-    libos_spin_lock(&_lock);
-
-    for (size_t i = 0; i < _nthreads; i++)
-    {
-        if (_threads[i].fsbase == fsbase)
-        {
-            ret = _threads[i].thread;
-            break;
-        }
-    }
-
-    libos_spin_unlock(&_lock);
-
-    return ret;
-}
-
-libos_thread_t* libos_remove_thread(void)
-{
-    libos_thread_t* ret = NULL;
-    const void* fsbase = libos_get_fs_base();
-
-    libos_spin_lock(&_lock);
-
-    for (size_t i = 0; i < _nthreads; i++)
-    {
-        if (_threads[i].fsbase == fsbase)
-        {
-            ret = _threads[i].thread;
-            _threads[i] = _threads[_nthreads - 1];
-            _nthreads--;
-            break;
-        }
-    }
-
-    libos_spin_unlock(&_lock);
-
-    return ret;
-}
-
-static void _free_threads(void* arg)
-{
-    (void)arg;
-
-    for (size_t i = 0; i < _nthreads; i++)
-    {
-        libos_thread_t* thread = _threads[i].thread;
-        libos_memset(thread, 0xdd, sizeof(libos_thread_t));
-        libos_free(thread);
-    }
-
-    _nthreads = 0;
-}
+static libos_spinlock_t _lock;
 
 static void _free_zombies(void* arg)
 {
@@ -134,15 +40,42 @@ static void _free_zombies(void* arg)
     _zombies = NULL;
 }
 
-static bool _valid_newtls(const void* newtls)
+void libos_release_thread(libos_thread_t* thread)
 {
-    struct pthread
+    libos_spin_lock(&_lock);
     {
-        struct pthread *self;
-    };
+        static bool _initialized;
 
-    struct pthread* pt = (struct pthread*)newtls;
-    return pt && pt->self == pt;
+        if (!_initialized)
+        {
+            libos_atexit(_free_zombies, NULL);
+            _initialized = true;
+        }
+
+        thread->next = _zombies;
+        _zombies = thread;
+    }
+    libos_spin_unlock(&_lock);
+}
+
+bool libos_valid_pthread(const void* pthread)
+{
+    return pthread && ((const struct pthread*)pthread)->self == pthread;
+}
+
+static bool _valid_thread(const libos_thread_t* thread)
+{
+    return thread && thread->magic == LIBOS_THREAD_MAGIC;
+}
+
+libos_thread_t* libos_self(void)
+{
+    const struct pthread* pthread = libos_get_fs_base();
+
+    if (!libos_valid_pthread(pthread))
+        libos_panic("invalid pthread");
+
+    return (libos_thread_t*)pthread->unused;
 }
 
 static void _call_thread_fn(void)
@@ -159,39 +92,31 @@ static void _call_thread_fn(void)
 static long _run(libos_thread_t* thread, pid_t tid, uint64_t event)
 {
     long ret = 0;
+    struct pthread* pthread;
 
-    if (!thread || thread->magic != LIBOS_THREAD_MAGIC)
+    if (!_valid_thread(thread))
+        ERAISE(-EINVAL);
+
+    if (!libos_valid_pthread(pthread = thread->newtls))
         ERAISE(-EINVAL);
 
     thread->tid = tid;
     thread->event = event;
-
     thread->original_fsbase = libos_get_fs_base();
 
-    /* Set the TID for this thread */
+    /* link pthread to libos_thread */
+    pthread->unused = (uint64_t)thread;
+
+    libos_set_fs_base(pthread);
+
+    /* Set the TID for this thread (sets the pthread tid field */
     libos_atomic_exchange(thread->ptid, tid);
-
-    libos_set_fs_base(thread->newtls);
-
-    if (libos_add_thread(thread) != 0)
-    {
-        ERAISE(-ENOMEM);
-    }
 
     /* Jump back here from exit */
     if (libos_setjmp(&thread->jmpbuf) != 0)
     {
-        /* remove the thread from the map */
-        if (libos_remove_thread() != thread)
-            libos_panic("unexpected");
+        libos_assert(libos_gettid() != -1);
 
-        /* Add thread to zombies list (thread->event might still be in use) */
-        libos_spin_lock(&_lock);
-        thread->next = _zombies;
-        _zombies = thread;
-        libos_spin_unlock(&_lock);
-
-        /* Clear the lock pointed to by thread->ctid */
         libos_atomic_exchange(thread->ctid, 0);
 
         /* Wake the thread that is waiting on thread->ctid */
@@ -200,6 +125,11 @@ static long _run(libos_thread_t* thread, pid_t tid, uint64_t event)
 
         /* restore the original fsbase */
         libos_set_fs_base(thread->original_fsbase);
+
+        /* free the thread */
+        libos_assert(pthread->unused == (uint64_t)thread);
+        pthread->unused = 0;
+        libos_release_thread(thread);
     }
     else
     {
@@ -238,22 +168,8 @@ static long _syscall_clone(
     if (!fn)
         ERAISE(-EINVAL);
 
-    if (!_valid_newtls(newtls))
+    if (!libos_valid_pthread(newtls))
         ERAISE(-EINVAL);
-
-    /* Install the atexit functions */
-    libos_spin_lock(&_lock);
-    {
-        static bool _installed_atexit_functions = false;
-
-        if (!_installed_atexit_functions)
-        {
-            libos_atexit(_free_threads, NULL);
-            libos_atexit(_free_zombies, NULL);
-            _installed_atexit_functions = true;
-        }
-    }
-    libos_spin_unlock(&_lock);
 
     /* Create and initialize the thread struct */
     {
@@ -309,7 +225,10 @@ pid_t libos_gettid(void)
     libos_thread_t* thread;
 
     if (!(thread = libos_self()))
-        libos_panic("unexpected");
+    {
+        //libos_panic("unexpected");
+        return -1;
+    }
 
     return thread->tid;
 }

@@ -101,20 +101,6 @@ done:
     return ret;
 }
 
-#if 0
-static void _check_zeros(const uint8_t* p, size_t n)
-{
-    while (n--)
-    {
-        if (*p++)
-        {
-            fprintf(stderr, "_check_zeros() failed\n");
-            exit(1);
-        }
-    }
-}
-#endif
-
 void* libos_mmap(
     void* addr,
     size_t length,
@@ -130,10 +116,6 @@ void* libos_mmap(
     if (fd >= 0 && addr)
     {
         ssize_t n;
-
-#if 0
-        libos_printf("addr: [%016lX][%016lX]\n", (long)addr, length);
-#endif
 
         if ((n = _map_file_onto_memory(fd, offset, addr, length)) < 0)
             return (void*)-1;

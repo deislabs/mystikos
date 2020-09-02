@@ -135,16 +135,6 @@ done:
 #endif
 }
 
-static bool _is_ownwer(libos_mutex_t* m)
-{
-#if 0
-    return libos_self() == m->owner;
-#else
-    (void)m;
-    return true;
-#endif
-}
-
 static int _futex_wait(
     int* uaddr,
     int op,
@@ -271,6 +261,8 @@ static int _futex_requeue(
     int ret = 0;
     futex_t* f = NULL;
     futex_t* f2 = NULL;
+    bool locked = false;
+    bool locked2 = false;
 
 #if defined(DEBUG_TRACE)
     libos_printf("%s(): uaddr=%p\n", __FUNCTION__, uaddr);
@@ -300,8 +292,10 @@ static int _futex_requeue(
         goto done;
     }
 
-    if (!_is_ownwer(&f->mutex) || !_is_ownwer(&f2->mutex))
-        libos_panic("not mutex owner");
+    libos_mutex_lock(&f->mutex);
+    locked = true;
+    libos_mutex_lock(&f2->mutex);
+    locked2 = true;
 
     /* Invoke libos_cond_requeue() */
     {
@@ -320,6 +314,12 @@ static int _futex_requeue(
     }
 
 done:
+
+    if (locked)
+        libos_mutex_unlock(&f->mutex);
+
+    if (locked2)
+        libos_mutex_unlock(&f2->mutex);
 
     if (f)
         _put_futex(uaddr);

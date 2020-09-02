@@ -7,12 +7,26 @@
 
 #define LIBOS_THREAD_MAGIC 0xc79c53d9ad134ad4
 
+/* aligns with pthread ABI (both musl libc and glibc) */
+struct pthread
+{
+    struct pthread *self;
+    uint64_t reserved1;
+    uint64_t reserved2;
+    uint64_t reserved3;
+    uint64_t reserved4;
+    uint64_t canary;
+    uint64_t unused; /* use this as the libos_thread_t pointer */
+};
+
+bool libos_valid_pthread(const void* pthread);
+
 typedef struct libos_thread libos_thread_t;
 
 struct libos_thread
 {
     uint64_t magic;
-    libos_thread_t* next;
+    struct libos_thread* next;
 
     /* thread id passed by target */
     pid_t tid;
@@ -39,11 +53,11 @@ struct libos_thread
     libos_jmp_buf_t jmpbuf;
 };
 
-int libos_add_thread(libos_thread_t* thread);
-
 libos_thread_t* libos_self(void);
 
-libos_thread_t* libos_remove_thread(void);
+void libos_release_thread(libos_thread_t* thread);
+
+extern libos_thread_t* __libos_main_thread;
 
 typedef struct libos_thread_queue
 {

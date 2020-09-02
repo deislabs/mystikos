@@ -1253,21 +1253,6 @@ typedef struct entry_args
 }
 entry_args_t;
 
-#if 0
-static void _entry_thread(void* args_)
-{
-    /* jumps here from _syscall() on SYS_exit */
-    if (libos_setjmp(&__libos_exit_jmp_buf) != 0)
-    {
-        libos_call_atexit_functions();
-        return;
-    }
-
-    entry_args_t* args = (entry_args_t*)args_;
-    (*args->enter)(args->stack, args->dynv, args->syscall);
-}
-#endif
-
 /* Create the "/proc/<pid>/exe" link */
 static int _setup_exe_link(const char* path)
 {
@@ -1351,18 +1336,25 @@ int elf_enter_crt(
     if (_setup_exe_link(argv[1]) != 0)
         libos_panic("unexpected");
 
+    /* set the main thread */
+    __libos_main_thread = thread;
+
     /* Run the main program */
     if (libos_setjmp(&thread->jmpbuf) != 0)
     {
-        /* remove the thread from the map */
-        if (libos_remove_thread() != thread)
-            libos_panic("unexpected");
+        struct pthread* pthread;
 
         /* Unload the debugger symbols */
         libos_syscall_unload_symbols();
 
-        /* call functions installed with libos_atexit() */
-        libos_call_atexit_functions();
+        if ((pthread = (struct pthread*)libos_get_fs_base()))
+        {
+            libos_assert(pthread->unused != 0);
+            libos_assert(libos_valid_pthread(pthread));
+            libos_assert(thread == __libos_main_thread);
+            libos_assert(pthread->unused == (uint64_t)thread);
+            pthread->unused = 0;
+        }
 
         /* restore the original fsbase */
         libos_set_fs_base(thread->original_fsbase);

@@ -16,6 +16,7 @@
 #include <libos/thread.h>
 #include <libos/fsbase.h>
 #include <libos/process.h>
+#include <libos/atexit.h>
 
 static libos_kernel_args_t* _args;
 
@@ -258,16 +259,7 @@ int libos_enter_kernel(libos_kernel_args_t* args)
     }
 
     /* Create the main thread */
-    {
-        ECHECK(_create_main_thread(
-            args->ppid, args->pid, args->event, &thread));
-
-        if (libos_add_thread(thread) != 0)
-        {
-            libos_free(thread);
-            thread = NULL;
-        }
-    }
+    ECHECK(_create_main_thread(args->ppid, args->pid, args->event, &thread));
 
     /* Enter the C runtime (which enters the application) */
     exit_status = elf_enter_crt(
@@ -281,20 +273,21 @@ int libos_enter_kernel(libos_kernel_args_t* args)
     /* Tear down the RAM file system */
     _teardown_ramfs();
 
-    libos_memset(thread, 0xdd, sizeof(libos_thread_t));
-    libos_free(thread);
-    thread = NULL;
+    /* Put the thread on the zombie list */
+    libos_release_thread(thread);
+
+    /* call functions installed with libos_atexit() */
+    libos_call_atexit_functions();
 
     /* Check for memory leaks */
     if (libos_find_leaks() != 0)
         libos_panic("kernel memory leaks");
 
+    /* ATTN: move libos_call_atexit_functions() here */
+
     ret = exit_status;
 
 done:
-
-    if (thread)
-        libos_free(thread);
 
     return ret;
 }

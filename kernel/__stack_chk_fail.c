@@ -1,4 +1,5 @@
 #include <libos/strings.h>
+#include <libos/thread.h>
 
 void __stack_chk_fail(void)
 {
