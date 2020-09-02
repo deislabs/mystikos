@@ -26,6 +26,11 @@ typedef struct libos_thread libos_thread_t;
 struct libos_thread
 {
     uint64_t magic;
+
+    /* used by libos_thread_queue_t */
+    struct libos_thread* qnext;
+
+    /* used by the active-list or the zombie-list */
     struct libos_thread* next;
 
     /* thread id passed by target */
@@ -57,6 +62,8 @@ libos_thread_t* libos_self(void);
 
 void libos_release_thread(libos_thread_t* thread);
 
+size_t libos_get_num_active_threads(void);
+
 extern libos_thread_t* __libos_main_thread;
 
 typedef struct libos_thread_queue
@@ -69,7 +76,7 @@ static __inline__ size_t libos_thread_queue_size(libos_thread_queue_t* queue)
 {
     size_t n = 0;
 
-    for (libos_thread_t* p = queue->front; p; p = p->next)
+    for (libos_thread_t* p = queue->front; p; p = p->qnext)
         n++;
 
     return n;
@@ -79,10 +86,10 @@ static __inline__ void libos_thread_queue_push_back(
     libos_thread_queue_t* queue,
     libos_thread_t* thread)
 {
-    thread->next = NULL;
+    thread->qnext = NULL;
 
     if (queue->back)
-        queue->back->next = thread;
+        queue->back->qnext = thread;
     else
         queue->front = thread;
 
@@ -96,7 +103,7 @@ static __inline__ libos_thread_t* libos_thread_queue_pop_front(
 
     if (thread)
     {
-        queue->front = queue->front->next;
+        queue->front = queue->front->qnext;
 
         if (!queue->front)
             queue->back = NULL;
@@ -111,7 +118,7 @@ static __inline__ bool libos_thread_queue_contains(
 {
     libos_thread_t* p;
 
-    for (p = queue->front; p; p = p->next)
+    for (p = queue->front; p; p = p->qnext)
     {
         if (p == thread)
             return true;

@@ -276,6 +276,13 @@ int libos_enter_kernel(libos_kernel_args_t* args)
     /* Put the thread on the zombie list */
     libos_release_thread(thread);
 
+#if 0
+    {
+        size_t n = libos_get_num_active_threads();
+        libos_eprintf("num active threads: %zu\n", n);
+    }
+#endif
+
     /* call functions installed with libos_atexit() */
     libos_call_atexit_functions();
 

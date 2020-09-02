@@ -18,8 +18,89 @@
 
 libos_thread_t* __libos_main_thread;
 
+static libos_thread_t* _threads;
+static size_t _nthreads;
 static libos_thread_t* _zombies;
-static libos_spinlock_t _lock;
+static libos_spinlock_t _lock = LIBOS_SPINLOCK_INITIALIZER;
+
+size_t libos_get_num_active_threads(void)
+{
+    size_t n;
+
+    libos_spin_lock(&_lock);
+    n = _nthreads;
+    libos_spin_unlock(&_lock);
+
+    return n;
+}
+
+#if 0
+static size_t _count_threads_no_lock(void)
+{
+    size_t n = 0;
+
+    for (libos_thread_t* p = _threads; p; p = p->next)
+        n++;
+
+    return n;
+}
+#endif
+
+static int _add_thread(libos_thread_t* thread)
+{
+    int ret = 0;
+
+    libos_spin_lock(&_lock);
+
+    for (libos_thread_t* p = _threads; p; p = p->next)
+    {
+        if (p == thread)
+        {
+            ret = -1;
+            goto done;
+        }
+    }
+
+    thread->next = _threads;
+    _threads = thread;
+    _nthreads++;
+
+done:
+    libos_spin_unlock(&_lock);
+
+    return ret;
+}
+
+static int _remove_thread(libos_thread_t* thread)
+{
+    int ret = -1;
+
+    libos_spin_lock(&_lock);
+    {
+        libos_thread_t* prev = NULL;
+
+        for (libos_thread_t* p = _threads; p; p = p->next)
+        {
+            if (p == thread)
+            {
+                if (prev)
+                    prev->next = p->next;
+                else
+                    _threads = p->next;
+
+                _nthreads--;
+
+                ret = 0;
+                break;
+            }
+
+            prev = p;
+        }
+    }
+    libos_spin_unlock(&_lock);
+
+    return ret;
+}
 
 static void _free_zombies(void* arg)
 {
@@ -107,6 +188,10 @@ static long _run(libos_thread_t* thread, pid_t tid, uint64_t event)
     /* link pthread to libos_thread */
     pthread->unused = (uint64_t)thread;
 
+    /* add the thread to the active list */
+    if (_add_thread(thread) != 0)
+        libos_panic("_add_thread() failed");
+
     libos_set_fs_base(pthread);
 
     /* Set the TID for this thread (sets the pthread tid field */
@@ -123,12 +208,18 @@ static long _run(libos_thread_t* thread, pid_t tid, uint64_t event)
         const int futex_op = FUTEX_WAKE | FUTEX_PRIVATE;
         libos_syscall_futex(thread->ctid, futex_op, 1, 0, NULL, 0);
 
+        if (_remove_thread(thread) != 0)
+        {
+            libos_panic("_remove_thread() failed");
+        }
+
         /* restore the original fsbase */
         libos_set_fs_base(thread->original_fsbase);
 
         /* free the thread */
         libos_assert(pthread->unused == (uint64_t)thread);
         pthread->unused = 0;
+
         libos_release_thread(thread);
     }
     else

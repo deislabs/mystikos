@@ -147,7 +147,7 @@ int libos_cond_broadcast(libos_cond_t* c, size_t n)
 
     for (libos_thread_t* p = waiters.front; p; p = next)
     {
-        next = p->next;
+        next = p->qnext;
         libos_tcall_wake(p->event);
     }
 
@@ -199,7 +199,7 @@ int libos_cond_requeue(
 
         for (libos_thread_t* p = wakers.front; p; p = next)
         {
-            next = p->next;
+            next = p->qnext;
             libos_tcall_wake(p->event);
         }
     }
@@ -211,7 +211,7 @@ int libos_cond_requeue(
 
         for (libos_thread_t* p = requeues.front; p; p = next)
         {
-            next = p->next;
+            next = p->qnext;
             libos_thread_queue_push_back(&c2->queue, p);
         }
     }
