@@ -24,7 +24,7 @@ tests:
 	$(LIBOS) exec $(OPTS) rootfs /bin/shlib $(OPTS)
 
 gdb:
-	$(OEGDB) --args $(LIBOS) exec rootfs /bin/shlib $(OPTS)
+	$(LIBOS_GDB) --args $(LIBOS) exec rootfs /bin/shlib $(OPTS)
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos

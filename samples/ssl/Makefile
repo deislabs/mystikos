@@ -15,7 +15,7 @@ run-server: libos
 	$(BINDIR)/libos exec $(OPTS) rootfs /ssl_server
 
 run-server-gdb: libos
-	$(OEGDB) --args $(BINDIR)/libos exec $(OPTS) rootfs /ssl_server
+	$(LIBOS_GDB) --args $(BINDIR)/libos exec $(OPTS) rootfs /ssl_server
 
 run-client: libos
 	$(BINDIR)/libos exec $(OPTS) rootfs /ssl_client1

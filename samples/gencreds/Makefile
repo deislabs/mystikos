@@ -18,7 +18,7 @@ run: all
 	$(LIBOS) exec rootfs /bin/gencreds $(OPTS)
 
 gdb: all
-	$(OEGDB) --args $(LIBOS) exec rootfs /bin/gencreds $(OPTS)
+	$(LIBOS_GDB) --args $(LIBOS) exec rootfs /bin/gencreds $(OPTS)
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos

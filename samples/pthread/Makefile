@@ -20,7 +20,7 @@ run: all
 	$(LIBOS) exec $(OPTS) rootfs /bin/pthread
 
 gdb: all
-	$(OEGDB) --args $(LIBOS) exec rootfs /bin/pthread $(OPTS)
+	$(LIBOS_GDB) --args $(LIBOS) exec rootfs /bin/pthread $(OPTS)
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos
@@ -29,4 +29,4 @@ clean:
 	rm -rf $(APPDIR) rootfs
 
 gdb-core:
-	$(OEGDB) core
+	$(LIBOS_GDB) core

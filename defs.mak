@@ -101,4 +101,5 @@ MUSL_LIB=$(BUILDDIR)/host-musl/lib
 ##
 ##==============================================================================
 
+LIBOS_GDB=$(BUILDDIR)/bin/libos-gdb
 OEGDB=$(BUILDDIR)/openenclave/bin/oegdb

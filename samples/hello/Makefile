@@ -21,7 +21,7 @@ run: all
 	app.signed/libos exec app.signed/rootfs /bin/hello red green blue yellow $(OPTS)
 
 gdb: all
-	$(OEGDB) --args $(LIBOS) exec rootfs /bin/hello $(OPTS)
+	$(LIBOS_GDB) --args $(LIBOS) exec rootfs /bin/hello $(OPTS)
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos
