@@ -2121,11 +2121,11 @@ long libos_syscall(long n, long params[6])
         }
         case SYS_set_tid_address:
         {
-            const void* tidptr = (const void*)params[0];
+            int* tidptr = (int*)params[0];
 
             /* ATTN: unused */
 
-            _strace(n, "tidptr=%p", tidptr);
+            _strace(n, "tidptr=%p *tidptr=%d", tidptr, tidptr ? *tidptr : -1);
 
             return _return(n, 0);
         }
