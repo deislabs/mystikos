@@ -12,4 +12,6 @@ app.signed
 rootfs
 samples/alpine/alpine-minirootfs.tar.gz
 tests/libc-test/srcdir/
+__pycache__
+_testing.log
 third_party/enclave-musl/musl/objects.mak

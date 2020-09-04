@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# convenient script to run unit tests. Can specify 0 to many unit tests to be run. e.g. 
+# "./scripts/unit_tests.sh conf cpio fs" will run conf, cpio and fs 3 unit tests. if none of the 
+# tests is specified, e.g. "./scripts/unit_tests.sh " will run all unit tests in Exclude Mode. The 
+# excluded tests are listed in config.py file.
+
+PRJ_ROOT="$(realpath "$(dirname "$0")")/.."
+PIPELINE_SCRIPTS_ROOT="${PRJ_ROOT}"/.azure_pipelines/scripts
+
+python3 "${PIPELINE_SCRIPTS_ROOT}"/test.py -m terminal -ut "$@"

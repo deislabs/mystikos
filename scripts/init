@@ -1,0 +1,10 @@
+#!/bin/bash
+
+PRJ_ROOT="$(realpath "$(dirname "$0")")/.."
+PIPELINE_SCRIPTS_ROOT="${PRJ_ROOT}"/.azure_pipelines/scripts
+
+# install minimum initial package
+sudo apt install python3-apt
+
+# configure initial dependency package(s)
+sudo python3 -B "${PIPELINE_SCRIPTS_ROOT}"/dependencies.py
