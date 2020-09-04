@@ -1111,6 +1111,25 @@ static const char* _futex_op_str(int op)
     }
 }
 
+static ssize_t _dev_urandom_read(void* buf, size_t count)
+{
+    ssize_t ret = 0;
+
+    if (!buf && count)
+        ERAISE(-EFAULT);
+
+    if (!buf && !count)
+        return 0;
+
+    if (libos_tcall_random(buf, count) != 0)
+        ERAISE(-EIO);
+
+    ret = (ssize_t)count;
+
+done:
+    return ret;
+}
+
 static ssize_t _dev_urandom_readv(const struct iovec* iov, int iovcnt)
 {
     ssize_t ret = 0;
@@ -1121,12 +1140,12 @@ static ssize_t _dev_urandom_readv(const struct iovec* iov, int iovcnt)
 
     for (int i = 0; i < iovcnt; i++)
     {
-        if (iov->iov_base && iov->iov_len)
+        if (iov[i].iov_base && iov[i].iov_len)
         {
-            if (libos_tcall_random(iov->iov_base, iov->iov_len) != 0)
+            if (libos_tcall_random(iov[i].iov_base, iov[i].iov_len) != 0)
                 ERAISE(-EINVAL);
 
-            nread += iov->iov_len;
+            nread += iov[i].iov_len;
         }
     }
 
@@ -1244,12 +1263,7 @@ long libos_syscall(long n, long params[6])
             _strace(n, "fd=%d buf=%p count=%zu", fd, buf, count);
 
             if (fd == DEV_URANDOM_FD)
-            {
-                if (libos_tcall_random(buf, count) != 0)
-                    _return(n, -EIO);
-
-                return _return(n, (long)count);
-            }
+                return _return(n, _dev_urandom_read(buf, count));
 
             if (!libos_is_libos_fd(fd))
                 return _return(n, _forward_syscall(n, params));
