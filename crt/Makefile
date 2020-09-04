@@ -25,7 +25,7 @@ LIBCC = -lgcc
 
 OBJECTS = $(addprefix $(SUBOBJDIR)/,$(SOURCES:.c=.o))
 
-$(TARGET): $(OBJECTS)
+$(TARGET): $(MUSL_OBJECTS) $(OBJECTS)
 	mkdir -p $(SUBBINDIR)
 	$(CC) -o $@ $(LDFLAGS1) $(OBJECTS) $(MUSL_OBJECTS) $(LIBCC) $(LDFLAGS2)
 
