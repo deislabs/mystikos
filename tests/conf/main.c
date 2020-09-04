@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 #include <libos/conf.h>
-#include <libos/loadfile.h>
+#include <libos/file.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -63,6 +63,8 @@ int main(int argc, const char* argv[])
     assert(strcmp(_number, "12345") == 0);
 
     free(data);
+
+    printf("=== passed test (%s)\n", argv[0]);
 
     return 0;
 }

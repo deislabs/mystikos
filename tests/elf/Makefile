@@ -1,6 +1,5 @@
 TOP=$(abspath ../..)
 SUBDIR = tests/elf
-SUBBINDIR=$(TOP)/build/bin
 include $(TOP)/defs.mak
 
 DIRS = image

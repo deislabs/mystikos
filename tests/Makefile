@@ -23,5 +23,7 @@ DIRS += strings
 DIRS += empty
 DIRS += getpid
 DIRS += json
+DIRS += conf
+DIRS += nbio
 
 include $(TOP)/rules.mak

@@ -15,7 +15,6 @@ all: libos
 	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/nbio nbio.c $(LDFLAGS)
 	$(LIBOS) mkcpio appdir rootfs
 
-STRACE=1
 ifdef STRACE
 OPTS += --strace
 endif
