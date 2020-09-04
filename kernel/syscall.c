@@ -1411,8 +1411,13 @@ long libos_syscall(long n, long params[6])
         {
             int fd = (int)x1;
             unsigned long request = (unsigned long)x2;
+            void* arg = (void*)x3;
+            int iarg = -1;
 
-            _strace(n, "fd=%d request=0x%lX", fd, request);
+            if (request == FIONBIO && arg)
+                iarg = *(int*)arg;
+
+            _strace(n, "fd=%d request=0x%lX arg=%p iarg=%d", fd, request, arg, iarg);
 
             if (libos_is_libos_fd(fd))
             {
@@ -1633,7 +1638,7 @@ long libos_syscall(long n, long params[6])
             long arg = (long)x3;
 
             const char* cmdstr = _fcntl_cmdstr(cmd);
-            _strace(n, "fd=%d cmd=%d(%s) arg=%ld", fd, cmd, cmdstr, arg);
+            _strace(n, "fd=%d cmd=%d(%s) arg=0%lo", fd, cmd, cmdstr, arg);
 
             if (!libos_is_libos_fd(fd))
                 return _return(n, _forward_syscall(n, params));
