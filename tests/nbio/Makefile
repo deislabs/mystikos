@@ -19,7 +19,6 @@ STRACE=1
 ifdef STRACE
 OPTS += --strace
 endif
-#OPTS += --real-syscalls
 
 tests:
 	$(LIBOS) exec $(OPTS) rootfs /bin/nbio $(OPTS)

@@ -7,6 +7,8 @@
 #include <stdarg.h>
 #include <unistd.h>
 #include <assert.h>
+#include <sys/ioctl.h>
+#include <fcntl.h>
 #include <openenclave/enclave.h>
 #include "gencreds.h"
 
@@ -221,6 +223,19 @@ long libos_tcall_wake_wait(
     return -ENOTSUP;
 }
 
+/* forward system call to Open Enclave */
+static long _forward_syscall(
+    long n,
+    long x1,
+    long x2,
+    long x3,
+    long x4,
+    long x5,
+    long x6)
+{
+    return oe_syscall(n, x1, x2, x3, x4, x5, x6);
+}
+
 long libos_tcall(long n, long params[6])
 {
     long ret = 0;
@@ -362,11 +377,38 @@ long libos_tcall(long n, long params[6])
             const struct timespec* timeout = (const struct timespec*)x3;
             return libos_tcall_wake_wait(waiter_event, self_event, timeout);
         }
+        case SYS_ioctl:
+        {
+            int fd = (int)x1;
+            unsigned long request = (unsigned long)x2;
+            const int* arg = (const int*)x3;
+
+            /* Map FIONBIO to fcntl() since broken in Open Enclave */
+            if (request == FIONBIO)
+            {
+                long flags;
+
+                if (!arg)
+                    return -EINVAL;
+
+                /* Get the access mode and the file status flags */
+                flags = _forward_syscall(SYS_fcntl, fd, F_GETFL, 0, 0, 0, 0);
+
+                /* Set to non-blocking or blocking */
+                if (*arg)
+                    flags = (flags | O_NONBLOCK);
+                else
+                    flags = (flags & ~O_NONBLOCK);
+
+                return _forward_syscall(SYS_fcntl, fd, F_SETFL, flags, 0, 0, 0);
+            }
+
+            return _forward_syscall(n, x1, x2, x3, x4, x5, x6);
+        }
         case SYS_read:
         case SYS_write:
         case SYS_close:
         case SYS_poll:
-        case SYS_ioctl:
         case SYS_readv:
         case SYS_writev:
         case SYS_select:
@@ -391,12 +433,7 @@ long libos_tcall(long n, long params[6])
         case SYS_setsockopt:
         case SYS_getsockopt:
         {
-            long ret = oe_syscall(n, x1, x2, x3, x4, x5, x6);
-
-            if (ret == -1)
-                ret = -errno;
-
-            return ret;
+            return _forward_syscall(n, x1, x2, x3, x4, x5, x6);
         }
         default:
         {
