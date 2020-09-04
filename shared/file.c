@@ -29,10 +29,14 @@ int libos_load_file(const char* path, void** data_out, size_t* size_out)
     if (libos_fstat(fd, &st) != 0)
         ERAISE(-EINVAL);
 
-    if (!(data = libos_malloc((size_t)st.st_size)))
+    /* Allocate an extra byte for null termination */
+    if (!(data = libos_malloc((size_t)(st.st_size + 1))))
         ERAISE(-ENOMEM);
 
     p = data;
+
+    /* Null-terminate the data */
+    p[st.st_size] = '\0';
 
     while ((n = libos_read(fd, block, sizeof(block))) > 0)
     {

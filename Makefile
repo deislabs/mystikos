@@ -3,7 +3,7 @@ SUBDIR = top
 TOP = $(abspath $(CURDIR))
 include $(TOP)/defs.mak
 
-DIRS = third_party host target kernel tools alpine tests
+DIRS = third_party json host target kernel tools alpine tests
 
 include $(TOP)/rules.mak
 

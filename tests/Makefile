@@ -1,4 +1,4 @@
-SUBDIR = samples
+SUBDIR = tests
 TOP=$(abspath ..)
 include $(TOP)/defs.mak
 
@@ -22,5 +22,6 @@ DIRS += elf
 DIRS += strings
 DIRS += empty
 DIRS += getpid
+DIRS += json
 
 include $(TOP)/rules.mak
