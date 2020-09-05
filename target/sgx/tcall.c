@@ -233,7 +233,12 @@ static long _forward_syscall(
     long x5,
     long x6)
 {
-    return oe_syscall(n, x1, x2, x3, x4, x5, x6);
+    long ret;
+
+    if ((ret = oe_syscall(n, x1, x2, x3, x4, x5, x6)) == -1)
+        ret = -errno;
+
+    return ret;
 }
 
 long libos_tcall(long n, long params[6])
