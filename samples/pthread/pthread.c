@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
+#include <sys/syscall.h>
 
 #define NUM_THREADS 8
 
@@ -98,24 +99,39 @@ static void* _test_mutex_thread(void* arg)
     for (size_t i = 0; i < n*N; i++)
     {
         pthread_mutex_lock(&_mutex);
-        _shared_integer++;
+        int local = _shared_integer;
+
+        /* introduce some delay to amplify the race condition */
+        for (int j = 0; j < 10000; j++);
+
+        _shared_integer = local + 1;
         pthread_mutex_unlock(&_mutex);
     }
+    printf("Child %d done with mutex\n", n);
 
     return arg;
 }
 
-void test_mutexes(void)
+void test_mutexes(int mutex_type)
 {
     pthread_t threads[NUM_THREADS];
     size_t integer = 0;
+    _shared_integer = 0;
 
-    printf("=== %s()\n", __FUNCTION__);
+    printf("=== %s(), mutex type = %d\n", __FUNCTION__, mutex_type);
+
+    pthread_mutexattr_t Attr;
+    pthread_mutexattr_init(&Attr);
+    pthread_mutexattr_settype(&Attr, mutex_type);
+    pthread_mutex_init(&_mutex, &Attr);
+
+    pthread_mutex_lock(&_mutex);
+    printf("Mutex taken by main thread\n");
 
     /* Create threads */
     for (size_t i = 0; i < NUM_THREADS; i++)
     {
-        void* arg = (void*)i;
+        void* arg = (void*)(i+1);
 
         if (pthread_create(&threads[i], NULL, _test_mutex_thread, arg) != 0)
         {
@@ -123,19 +139,26 @@ void test_mutexes(void)
             abort();
         }
 
-        integer += i * N;
+        integer += (i+1) * N;
     }
+
+    pthread_mutex_unlock(&_mutex);
+    printf("Mutex released by main thread. Now starts the children.\n");
 
     /* Join threads */
     for (size_t i = 0; i < NUM_THREADS; i++)
     {
         void* retval;
         assert(pthread_join(threads[i], &retval) == 0);
-        assert((uint64_t)retval == i);
+        assert((uint64_t)retval == i+1);
         printf("joined...\n");
     }
 
-    assert(integer == _shared_integer);
+    if (integer != _shared_integer)
+    {
+        fprintf(stderr, "Expected: %d, Got: %d\n", integer, _shared_integer);
+        abort();
+    }
 
     printf("=== passed test (%s)\n", __FUNCTION__);
 }
@@ -347,7 +370,8 @@ void test_cond_broadcast(void)
 int main(int argc, const char* argv[])
 {
     test_create_thread();
-    test_mutexes();
+    test_mutexes(PTHREAD_MUTEX_NORMAL);
+    test_mutexes(PTHREAD_MUTEX_RECURSIVE);
     test_timedlock();
     test_cond_signal();
     test_cond_broadcast();

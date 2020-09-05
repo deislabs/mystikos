@@ -2146,7 +2146,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "tidptr=%p *tidptr=%d", tidptr, tidptr ? *tidptr : -1);
 
-            return _return(n, 0);
+            return _return(n, libos_getpid());
         }
         case SYS_restart_syscall:
             break;
