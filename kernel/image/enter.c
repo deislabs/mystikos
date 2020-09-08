@@ -65,31 +65,6 @@ done:
     return ret;
 }
 
-ssize_t _writen(int fd, const void* data, size_t size)
-{
-    int ret = -1;
-    const uint8_t* p = (const uint8_t*)data;
-    size_t r = size;
-
-    while (r > 0)
-    {
-        ssize_t n;
-
-        if ((n = libos_write(fd, p, r)) <= 0)
-        {
-            goto done;
-        }
-
-        p += n;
-        r -= (size_t)n;
-    }
-
-    ret = 0;
-
-done:
-    return ret;
-}
-
 static int _create_cpio_file(const char* path, const char* data, size_t size)
 {
     int ret = 0;

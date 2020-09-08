@@ -6,6 +6,10 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdarg.h>
+#include <libos/strings.h>
+#include <errno.h>
+#include <libgen.h>
+
 #include "utils.h"
 
 static int _which(const char* program, char buf[PATH_MAX])
@@ -88,12 +92,62 @@ const char *set_program_file(const char *program)
     {
         return _program;
     }
-    
 }
 
 const char *get_program_file()
 {
     return _program;
+}
+
+static const int _format_lib(char* path, size_t size, const char* suffix)
+{
+    int ret = 0;
+    char buf[PATH_MAX];
+    char* dir1;
+    char* dir2;
+    int n;
+
+    if (!path || !size || !suffix)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    if (libos_strlcpy(buf, _program, sizeof(buf)) >= sizeof(buf))
+    {
+        ret = -ENAMETOOLONG;
+        goto done;
+    }
+
+    if (!(dir1 = dirname(buf)) || !(dir2 = dirname(dir1)))
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    if ((n = snprintf(path, size, "%s/%s", dir2, suffix)) >= size)
+    {
+        ret = -ENAMETOOLONG;
+        goto done;
+    }
+
+done:
+    return ret;
+}
+
+const int format_libosenc(char* path, size_t size)
+{
+    return _format_lib(path, size, "lib/openenclave/libosenc.so");
+}
+
+const int format_liboscrt(char* path, size_t size)
+{
+    return _format_lib(path, size, "lib/liboscrt.so");
+}
+
+const int format_liboskernel(char *path, size_t size)
+{
+    return _format_lib(path, size, "lib/liboskernel.so");
 }
 
 __attribute__((format(printf, 1, 2)))

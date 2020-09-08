@@ -78,54 +78,50 @@ done:
     return ret;
 }
 
-const region_details * create_region_details(const char *program_path, const char *rootfs_path)
+const region_details * create_region_details(
+    const char* program_path,
+    const char* rootfs_path)
 {
-    char dir[PATH_MAX];
+    region_details* rd =  &_details;
 
-    _details.mman_size = MMAN_SIZE;
+    rd->mman_size = MMAN_SIZE;
 
-    if (_load_file(rootfs_path, 0, &_details.rootfs_data, &_details.rootfs_size) != 0)
+    if (_load_file(rootfs_path, 0, &rd->rootfs_data, &rd->rootfs_size) != 0)
         _err("failed to load load rootfs: %s", rootfs_path);
 
     if (program_path[0] != '/')
-        _err("program must be an absolute path within the rootfs: %s", program_path);
-
-    /* Get the directory that contains argv[0] */
-    strcpy(dir, get_program_file());
-    dirname(dir);
-
-    /* Find libosenc.so and liboscrt.so */
     {
-        int n;
+        _err("program must be an absolute path within the rootfs: %s",
+            program_path);
+    }
 
-        n = snprintf(_details.enc_path, sizeof(_details.enc_path), "%s/enc/libosenc.so", dir);
-        if (n >= sizeof(_details.enc_path))
-            _err("buffer overflow when forming libosenc.so path");
+    /* Find libosenc.so, liboscrt.so, and liboskernel.so */
+    {
+        if (format_libosenc(rd->enc_path, sizeof(rd->enc_path)) != 0)
+            _err("failed to form libosenc.so path");
 
-        n = snprintf(_details.crt_path, sizeof(_details.crt_path), "%s/enc/liboscrt.so", dir);
-        if (n >= sizeof(_details.crt_path))
-            _err("buffer overflow when forming liboscrt.so path");
+        if (format_liboscrt(rd->crt_path, sizeof(rd->crt_path)) != 0)
+            _err("failed to form liboscrt.so path");
 
-        n = snprintf(_details.kernel_path, sizeof(_details.kernel_path), "%s/liboskernel.so", dir);
-        if (n >= sizeof(_details.kernel_path))
-            _err("buffer overflow when forming liboscrt.so path");
+        if (format_liboskernel(rd->kernel_path, sizeof(rd->kernel_path)) != 0)
+            _err("failed to form liboskernel.so path");
 
-        if (access(_details.enc_path, R_OK) != 0)
-            _err("cannot find: %s", _details.enc_path);
+        if (access(rd->enc_path, R_OK) != 0)
+            _err("cannot find: %s", rd->enc_path);
 
-        if (access(_details.crt_path, R_OK) != 0)
-            _err("cannot find: %s", _details.crt_path);
+        if (access(rd->crt_path, R_OK) != 0)
+            _err("cannot find: %s", rd->crt_path);
 
-        if (access(_details.kernel_path, R_OK) != 0)
-            _err("cannot find: %s", _details.kernel_path);
+        if (access(rd->kernel_path, R_OK) != 0)
+            _err("cannot find: %s", rd->kernel_path);
     }
 
     /* Load the C runtime and kernel ELF image into memory */
-    if (elf_image_load(_details.crt_path, &_details.crt_image) != 0)
-        _err("failed to load C runtime image: %s", _details.crt_path);
+    if (elf_image_load(rd->crt_path, &rd->crt_image) != 0)
+        _err("failed to load C runtime image: %s", rd->crt_path);
 
-    if (elf_image_load(_details.kernel_path, &_details.kernel_image) != 0)
-        _err("failed to load kernel image: %s", _details.kernel_path);
+    if (elf_image_load(rd->kernel_path, &rd->kernel_image) != 0)
+        _err("failed to load kernel image: %s", rd->kernel_path);
 
     return &_details;
 }

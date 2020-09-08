@@ -12,6 +12,8 @@
 #include <limits.h>
 #include <libgen.h>
 #include <errno.h>
+#include <libos/strings.h>
+#include <libos/file.h>
 #include "parse_options.h"
 #include "utils.h"
 #include "libos_u.h"
@@ -74,65 +76,12 @@ struct _options options =
     sizeof(option_list)/sizeof(struct _option)
 };
 
-int _sign_file_copy(
-    const char *from_file, 
-    char to_file[PATH_MAX], size_t start_point,
-    const char *append_file)
-{
-    FILE *source = NULL;
-    FILE *target = NULL;
-    size_t read;
-    char buffer[1024];
-    int ret = -1;
-
-    strcpy(to_file+start_point, append_file);
-
-    source = fopen(from_file, "r");
-    if (source == NULL)
-    {
-        goto done;
-    }
-    target = fopen(to_file, "w");
-    if (target == NULL)
-    {
-        goto done;
-    }
-
-    do
-    {
-        read = fread(buffer, 1, sizeof(buffer), source);
-        if (read != 0)
-        {
-            if (fwrite(buffer, 1, read, target) != read)
-            {
-                break;
-            }
-        }
-    } while (read != 0);
-
-    if ((feof(source) != 0) || (ferror(target) != 0))
-    {
-        ret = -1;
-    }
-
-    ret = 0;
-
-done:
-    if (source)
-    {
-        fclose(source);
-    }
-    if (target)
-    {
-        fclose(target);
-    }
-    return ret;
-}
-
 int _sign(int argc, const char* argv[])
 {
     int ret = 0;
     const region_details *details;
+    const mode_t mode =
+        S_IROTH|S_IXOTH|S_IXGRP|S_IWGRP|S_IRGRP|S_IXUSR|S_IWUSR|S_IRUSR;
 
     // We are in the right operation, right?
     assert(strcmp(argv[1], "sign") == 0);
@@ -148,79 +97,83 @@ int _sign(int argc, const char* argv[])
         _err("Creating region data failed.");
     }
 
-    char to_filename[PATH_MAX] = "app.signed";
-    size_t appdir_len;
+    char dirname[PATH_MAX] = "app.signed";
+    char bindir[PATH_MAX];
+    char libdir[PATH_MAX];
+    char oelibdir[PATH_MAX];
+    char libosenc[PATH_MAX];
+    char libosenc_signed[PATH_MAX];
+    char liboscrt[PATH_MAX];
+    char liboskernel[PATH_MAX];
+    char libos[PATH_MAX];
+    char rootfs[PATH_MAX];
+
+    /* Form destination directory paths */
+    snprintf(bindir, PATH_MAX, "%s/bin", dirname);
+    snprintf(libdir, PATH_MAX, "%s/lib", dirname);
+    snprintf(oelibdir, PATH_MAX, "%s/lib/openenclave", dirname);
+
+    /* Form destination file paths */
+    snprintf(libos, PATH_MAX, "%s/libos", bindir);
+    snprintf(rootfs, PATH_MAX, "%s/rootfs", dirname);
+    snprintf(libosenc, PATH_MAX, "%s/libosenc.so", oelibdir);
+    snprintf(libosenc_signed, PATH_MAX, "%s/libosenc.so.signed", oelibdir);
+    snprintf(liboscrt, PATH_MAX, "%s/liboscrt.so", libdir);
+    snprintf(liboskernel, PATH_MAX, "%s/liboskernel.so", libdir);
 
     // Make a directory for all the bits part of the signing
-    if ((mkdir(to_filename, S_IROTH|S_IXOTH|S_IXGRP|S_IWGRP|S_IRGRP|S_IXUSR|S_IWUSR|S_IRUSR) != 0) && (errno != EEXIST))
-    {
-        _err("Failed to create directory \"%s\".", to_filename);
-    }
+    if (libos_mkdirhier(dirname, mode) != 0)
+        _err("Failed to create directory \"%s\".", dirname);
 
-    appdir_len = strlen(to_filename);
+    // Make the bin directory */
+    if (libos_mkdirhier(bindir, mode) != 0)
+        _err("Failed to create directory \"%s\".\n", bindir);
 
-    // Under that create an enclave directory
-    strcpy(to_filename+appdir_len, "/enc");
-    if ((mkdir(to_filename, S_IROTH|S_IXOTH|S_IXGRP|S_IWGRP|S_IRGRP|S_IXUSR|S_IWUSR|S_IRUSR) != 0) && (errno != EEXIST))
-    {
-        _err("Failed to create directory \"%s\".", to_filename);
-    }
+    // Make the lib directory */
+    if (libos_mkdirhier(libdir, mode) != 0)
+        _err("Failed to create directory \"%s\".\n", libdir);
 
-    // want the initial destination path to include slash
-    appdir_len++;
+    // Make the openenclave/lib directory */
+    if (libos_mkdirhier(oelibdir, mode) != 0)
+        _err("Failed to create directory \"%s\".\n", oelibdir);
 
     // Copy crt into signing enc directory
-    if (_sign_file_copy(details->crt_path, to_filename, appdir_len, "enc/liboscrt.so") != 0)
-    {
-        _err("Failed to copy \"%s\" to \"%s\"", details->crt_path, to_filename);
-    }
+    if (libos_copy_file(details->crt_path, liboscrt) != 0)
+        _err("Failed to copy \"%s\" to \"%s\"", details->crt_path, liboscrt);
 
     // Copy kernel into signing directory
-    if (_sign_file_copy(details->kernel_path, to_filename, appdir_len, "liboskernel.so") != 0)
-    {
-        _err("Failed to copy \"%s\" to \"%s\"", details->crt_path, to_filename);
-    }
+    if (libos_copy_file(details->kernel_path, liboskernel) != 0)
+        _err("Failed to copy \"%s\" to \"%s\"", details->crt_path, liboskernel);
 
     // Copy libos tool into signing directory
-    if (_sign_file_copy(argv[0], to_filename, appdir_len, "libos") != 0)
-    {
-        _err("Failed to copy \"%s\" to \"%s\"", argv[0], to_filename);
-    }
-    if (chmod(to_filename, S_IROTH|S_IXOTH|S_IXGRP|S_IWGRP|S_IRGRP|S_IXUSR|S_IWUSR|S_IRUSR) != 0)
-    {
-        _err("Failed to change executable permissions on \"%s\"", to_filename);
-    }
+    if (libos_copy_file(argv[0], libos) != 0)
+        _err("Failed to copy \"%s\" to \"%s\"", argv[0], libos);
+
+    if (chmod(libos, mode) != 0)
+        _err("Failed to change executable permissions on \"%s\"", libos);
 
     // Copy rootfs into signing directory
-    if (_sign_file_copy(rootfs_file, to_filename, appdir_len, "rootfs") != 0)
-    {
-        _err("Failed to copy \"%s\" to \"%s\"", rootfs_file, to_filename);
-    }
+    if (libos_copy_file(rootfs_file, rootfs) != 0)
+        _err("Failed to copy \"%s\" to \"%s\"", rootfs_file, rootfs);
 
     // Finally (we need this path also for actual signing!)
     // Copy enclave shared library to signing enclave directory
-    if (_sign_file_copy(details->enc_path, to_filename, appdir_len, "enc/libosenc.so") != 0)
-    {
-        _err("Failed to copy \"%s\" to \"%s\"", details->enc_path, to_filename);
-    }
+    if (libos_copy_file(details->enc_path, libosenc) != 0)
+        _err("Failed to copy \"%s\" to \"%s\"", details->enc_path, libosenc);
 
     // Initiate signing with extracted parameters
     // Watch out! Previous to_path needs to be the enclave binary!
-    if (oesign(to_filename, NULL /*no config yet!*/, pem_file, NULL, NULL, NULL, NULL, NULL) != 0)
+    if (oesign(libosenc, NULL /*no config yet!*/, pem_file, NULL, NULL, NULL, NULL, NULL) != 0)
     {
-        _err("Failed to sign \"%s\"", to_filename);
+        _err("Failed to sign \"%s\"", libosenc);
     }
 
-    //Delete the unsigned enclave file
-    if (unlink("app.signed/enc/libosenc.so") != 0)
-    {
-        _err("Failed to delete \"%s\"", to_filename);
-    }
+    // Delete the unsigned enclave file
+    if (unlink(libosenc) != 0)
+        _err("Failed to delete \"%s\"", libosenc);
 
-    if (rename ("app.signed/enc/libosenc.so.signed", "app.signed/enc/libosenc.so") != 0)
-    {
-        _err("Failed to rename \"%s\" to \"%s\"", "app.signed/enc/libosenc.so.signed", "app.signed/enc/libosenc.so");
-    }
+    if (rename (libosenc_signed, libosenc) != 0)
+        _err("Failed to rename \"%s\" to \"%s\"", libosenc_signed, libosenc);
 
     return 0;
 }

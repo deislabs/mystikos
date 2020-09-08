@@ -58,3 +58,63 @@ done:
 
     return ret;
 }
+
+ssize_t libos_writen(int fd, const void* data, size_t size)
+{
+    ssize_t ret = 0;
+    const uint8_t* p = (const uint8_t*)data;
+    size_t r = size;
+
+    while (r > 0)
+    {
+        ssize_t n = libos_write(fd, p, r);
+
+        if (n == 0)
+            break;
+        else if (n < 0)
+            ERAISE(n);
+
+        p += n;
+        r -= (size_t)n;
+    }
+
+done:
+
+    return ret;
+}
+
+int libos_copy_file(const char* oldpath, const char* newpath)
+{
+    int ret = 0;
+    int oldfd = -1;
+    int newfd = -1;
+    char buf[512];
+    ssize_t n;
+
+    if (!oldpath || !newpath)
+        ERAISE(-EINVAL);
+
+    if ((oldfd = libos_open(oldpath, O_RDONLY, 0)) < 0)
+        ERAISE(oldfd);
+
+    if ((newfd = libos_open(newpath, O_WRONLY|O_CREAT|O_TRUNC, 0)) < 0)
+        ERAISE(newfd);
+
+    while ((n = libos_read(oldfd, buf, sizeof(buf))) > 0)
+    {
+        ECHECK(libos_writen(newfd, buf, (size_t)n));
+    }
+
+    if (n < 0)
+        ERAISE((int)n);
+
+done:
+
+    if (oldfd >= 0)
+        libos_close(oldfd);
+
+    if (newfd >= 0)
+        libos_close(newfd);
+
+    return ret;
+}

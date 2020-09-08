@@ -2,11 +2,9 @@ TOP=$(abspath ../..)
 SUBDIR = kernel/image
 include $(TOP)/defs.mak
 
-SUBBINDIR=$(BINDIR)
-
 PROGRAM = liboskernel.so
 
-TARGET = $(SUBBINDIR)/$(PROGRAM)
+TARGET = $(LIBDIR)/$(PROGRAM)
 
 SOURCES = $(wildcard *.c)
 

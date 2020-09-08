@@ -1,6 +1,6 @@
 SUBDIR = tools/libos/enc
 TOP=$(abspath ../../..)
-SUBBINDIR=$(TOP)/build/bin/enc
+SUBBINDIR=$(TOP)/build/lib/openenclave
 include $(TOP)/defs.mak
 
 PROGRAM = libosenc.so

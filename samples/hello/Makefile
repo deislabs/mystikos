@@ -18,7 +18,7 @@ OPTS += --strace
 endif
 
 run: all
-	app.signed/libos exec app.signed/rootfs /bin/hello red green blue yellow $(OPTS)
+	app.signed/bin/libos exec app.signed/rootfs /bin/hello red green blue yellow $(OPTS)
 
 gdb: all
 	$(LIBOS_GDB) --args $(LIBOS) exec rootfs /bin/hello $(OPTS)

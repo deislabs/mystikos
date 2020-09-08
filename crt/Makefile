@@ -2,10 +2,7 @@ SUBDIR = crt
 TOP=$(abspath ..)
 include $(TOP)/defs.mak
 
-# ATTN: build this elsewhere!
-SUBBINDIR=$(BINDIR)/enc
-
-TARGET = $(SUBBINDIR)/liboscrt.so
+TARGET = $(LIBDIR)/liboscrt.so
 
 CFLAGS = -m64 -g -fPIC -Werror
 
@@ -26,7 +23,7 @@ LIBCC = -lgcc
 OBJECTS = $(addprefix $(SUBOBJDIR)/,$(SOURCES:.c=.o))
 
 $(TARGET): $(MUSL_OBJECTS) $(OBJECTS)
-	mkdir -p $(SUBBINDIR)
+	mkdir -p $(LIBDIR)
 	$(CC) -o $@ $(LDFLAGS1) $(OBJECTS) $(MUSL_OBJECTS) $(LIBCC) $(LDFLAGS2)
 
 $(SUBOBJDIR)/%.o: %.c
