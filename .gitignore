@@ -7,7 +7,6 @@ build
 
 third_party/musl/musl/lib
 third_party/enclave-musl/musl/lib/
-appdir
 app.signed
 rootfs
 samples/alpine/alpine-minirootfs.tar.gz
@@ -15,3 +14,20 @@ tests/libc-test/srcdir/
 __pycache__
 _testing.log
 third_party/enclave-musl/musl/objects.mak
+samples/alpine/appdir/
+samples/dlopen/appdir/main
+samples/hello/appdir/
+samples/pthread/appdir/
+samples/ssl-glibc/appdir/ssl_client1
+samples/ssl-glibc/appdir/ssl_server
+samples/ssl/appdir/ssl_client1
+samples/ssl/appdir/ssl_server
+tests/argv/appdir/
+tests/cpuid/appdir/
+tests/getcwd/appdir/
+tests/getpid/appdir/
+tests/libc-test/appdir/
+tests/nbio/appdir/
+tests/rdtsc/appdir/
+tests/shlib/appdir/
+tests/urandom/appdir/
