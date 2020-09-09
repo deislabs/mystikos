@@ -172,14 +172,13 @@ static void _call_thread_fn(void)
 /* The target calls this from the new thread */
 static long _run(libos_thread_t* thread, pid_t tid, uint64_t event)
 {
-    long ret = 0;
     struct pthread* pthread;
 
     if (!_valid_thread(thread))
-        ERAISE(-EINVAL);
+        return -EINVAL;
 
     if (!libos_valid_pthread(pthread = thread->newtls))
-        ERAISE(-EINVAL);
+        return -EINVAL;
 
     thread->tid = tid;
     thread->event = event;
@@ -238,9 +237,7 @@ static long _run(libos_thread_t* thread, pid_t tid, uint64_t event)
         /* unreachable */
     }
 
-done:
-
-    return ret;
+    return 0;
 }
 
 static long _syscall_clone(
