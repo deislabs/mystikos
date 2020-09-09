@@ -213,17 +213,33 @@ Where <action> is one of:\n\
 
 int main(int argc, const char* argv[])
 {
-    if (argc <  2)
+    if (set_program_file(argv[0]) == NULL)
     {
-        fprintf(stderr, USAGE, argv[0]);
+        fprintf(stderr, "%s: failed to get full path of argv[0]\n", argv[0]);
         return 1;
     }
 
     setenv("AZDCAP_DEBUG_LOG_LEVEL", "0", 1);
 
-    if (set_program_file(argv[0]) == NULL)
+    // First check to see if we are executing a packaged process
+    const char *executable;
+    executable = strrchr(argv[0], '/');
+    if (executable == NULL)
     {
-        fprintf(stderr, "%s: failed to get full path of argv[0]\n", argv[0]);
+        executable = argv[0];
+    }
+    if (*executable == '/')
+    {
+        executable++;
+    }
+    if (strcmp(executable, "libos") != 0)
+    {
+        return _exec_package(argc, argv);
+    }
+
+    if (argc <  2)
+    {
+        fprintf(stderr, USAGE, argv[0]);
         return 1;
     }
 

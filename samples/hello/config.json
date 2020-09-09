@@ -1,0 +1,17 @@
+{
+    // OpenEnclave specific values
+    "Debug": 1,
+    "NumKernelPages": 100,
+    "NumStackPages": 100,
+    "NumUserThreads": 2,
+    "ProductID": 1,
+    "SecurityVersion": 1,
+
+    // LibOS specific values
+    "NumUserPages": 64,
+    "ApplicationPath": "/bin/hello",
+    "ApplicationParameters": ["Enclave-red", "Enclave-blue", "Enclave-green", "Enclave-yellow"],
+    "HostApplicationParameters": false,
+    "EnvironmentVariables": ["PATH=/bin", "HOME=/root"],
+    "HostEnvironmentVariables": ["VARIABLE1", "VARIABLE2"]
+}

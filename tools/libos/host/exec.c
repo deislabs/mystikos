@@ -72,7 +72,7 @@ done:
     return ret;
 }
 
-static int _get_opt(
+int exec_get_opt(
     int* argc,
     const char* argv[],
     const char* opt,
@@ -239,16 +239,65 @@ long libos_wake_wait_ocall(
     return 0;
 }
 
-int _exec(int argc, const char* argv[])
+
+int exec_launch_enclave(
+    const char *enc_path, 
+    oe_enclave_type_t type, 
+    uint32_t flags,
+    const char *argv[],
+    struct libos_options *options)
 {
     oe_result_t r;
-    const oe_enclave_type_t type = OE_ENCLAVE_TYPE_SGX;
-    uint32_t flags = OE_ENCLAVE_FLAG_DEBUG;
+    oe_enclave_t* _enclave;
     int retval;
     static int _event; /* the main-thread event (used by futex: uaddr) */
-
     void* args = NULL;
-    size_t args_size;
+    size_t args_size = 0;
+
+    /* Load the enclave: calls oe_region_add_regions() */
+    {
+        r = oe_create_libos_enclave(
+            enc_path, type, flags, NULL, 0, &_enclave);
+
+        if (r != OE_OK)
+            _err("failed to load enclave: result=%s", oe_result_str(r));
+    }
+
+    /* Serialize the argv[] strings */
+    if (_serialize_args(argv, &args, &args_size) != 0)
+        _err("failed to serialize argv stings");
+
+    const char env[] = "PATH=/bin\0HOME=/root";
+
+    /* Enter the enclave and run the program */
+    r = libos_enter_ecall(
+        _enclave,
+        &retval,
+        options,
+        args,
+        args_size,
+        env,
+        sizeof(env),
+        getppid(),
+        getpid(),
+        (uint64_t)&_event);
+    if (r != OE_OK)
+        _err("failed to enter enclave: result=%s", oe_result_str(r));
+
+    /* Terminate the enclave */
+    r = oe_terminate_enclave(_enclave);
+    if (r != OE_OK)
+        _err("failed to terminate enclave: result=%s", oe_result_str(r));
+
+    free(args);
+
+    return retval;
+}
+
+int _exec(int argc, const char* argv[])
+{
+    const oe_enclave_type_t type = OE_ENCLAVE_TYPE_SGX;
+    uint32_t flags = OE_ENCLAVE_FLAG_DEBUG;
     struct libos_options options;
     const region_details * details;
 
@@ -257,14 +306,14 @@ int _exec(int argc, const char* argv[])
     /* Get options */
     {
         /* Get --trace-syscalls option */
-        if (_get_opt(&argc, argv, "--trace-syscalls", NULL) == 0 ||
-            _get_opt(&argc, argv, "--strace", NULL) == 0)
+        if (exec_get_opt(&argc, argv, "--trace-syscalls", NULL) == 0 ||
+            exec_get_opt(&argc, argv, "--strace", NULL) == 0)
         {
             options.trace_syscalls = true;
         }
 
         /* Get --real-syscalls option */
-        if (_get_opt(&argc, argv, "--real-syscalls", NULL) == 0)
+        if (exec_get_opt(&argc, argv, "--real-syscalls", NULL) == 0)
             options.real_syscalls = true;
     }
 
@@ -283,49 +332,19 @@ int _exec(int argc, const char* argv[])
     const char* rootfs = argv[2];
     const char* program = argv[3];
 
-    if ((details = create_region_details(program, rootfs)) == NULL)
+    // note... we have no config, but this call will go looking in the enclave if it is
+    // signed.
+    if ((details = create_region_details_from_files(program, rootfs, NULL, 0)) == NULL)
     {
         _err("Creating region data failed.");
     }
 
-    /* Load the enclave: calls oe_region_add_regions() */
+    if (exec_launch_enclave(details->enc.path, type, flags, argv + 3, &options) != 0)
     {
-        r = oe_create_libos_enclave(
-            details->enc_path, type, flags, NULL, 0, &_enclave);
-
-        if (r != OE_OK)
-            _err("failed to load enclave: result=%s", oe_result_str(r));
+        _err("Failed to run enclave %s", details->enc.path);
     }
-
-    /* Serialize the argv[] strings */
-    if (_serialize_args(argv + 3, &args, &args_size) != 0)
-        _err("failed to serialize argv stings");
-
-    const char env[] = "PATH=/bin\0HOME=/root";
-
-    /* Enter the enclave and run the program */
-    r = libos_enter_ecall(
-        _enclave,
-        &retval,
-        &options,
-        args,
-        args_size,
-        env,
-        sizeof(env),
-        getppid(),
-        getpid(),
-        (uint64_t)&_event);
-    if (r != OE_OK)
-        _err("failed to enter enclave: result=%s", oe_result_str(r));
-
-    /* Terminate the enclave */
-    r = oe_terminate_enclave(_enclave);
-    if (r != OE_OK)
-        _err("failed to terminate enclave: result=%s", oe_result_str(r));
-
-    free(args);
 
     free_region_details();
 
-    return retval;
+    return 0;
 }

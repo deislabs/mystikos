@@ -2,32 +2,49 @@ TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
 APPDIR = appdir
+APPNAME = hello
 LIBOS = $(BINDIR)/libos
 CFLAGS = -fPIC
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 
-all: libos private.pem
+all: libos
 	mkdir -p $(APPDIR)/bin
-	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/hello hello.c $(LDFLAGS)
-	$(LIBOS) mkcpio $(APPDIR) rootfs
-	$(LIBOS) sign --target /bin/hello --rootfs rootfs --platform OE --pem_file private.pem --config_file config.conf
+	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/$(APPNAME) hello.c $(LDFLAGS)
 
 ifdef STRACE
 OPTS += --strace
 endif
 
-run: all
-	app.signed/bin/libos exec app.signed/rootfs /bin/hello red green blue yellow $(OPTS)
+mkcpio: all
+	$(LIBOS) mkcpio $(APPDIR) rootfs
+
+sign: all mkcpio private-pem
+	$(LIBOS) sign rootfs private.pem config.json
+
+package: all private-pem
+	$(LIBOS) package $(APPDIR) private.pem config.json
+
+run: mkcpio
+	$(LIBOS) exec rootfs /bin/$(APPNAME) red green blue yellow $(OPTS)
+
+run-signed: sign
+	$(APPNAME).signed/bin/libos exec $(APPNAME).signed/rootfs /bin/$(APPNAME) red green blue yellow $(OPTS)
+
+run-package-with-args: package
+	$(APPNAME).signed/bin/$(APPNAME) red green blue yellow $(OPTS)
+
+run-package-no-args: package
+	$(APPNAME).signed/bin/$(APPNAME) $(OPTS)
 
 gdb: all
-	$(LIBOS_GDB) --args $(LIBOS) exec rootfs /bin/hello $(OPTS)
+	$(LIBOS_GDB) --args $(LIBOS) exec rootfs /bin/$(APPNAME) $(OPTS)
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos
 
-private.pem:
+private-pem:
 	openssl genrsa -out private.pem -3 3072
 	openssl rsa -in private.pem -pubout -out public.pem
 
 clean:
-	rm -rf $(APPDIR) rootfs private.pem public.pem app.signed
+	rm -rf $(APPDIR) rootfs private.pem public.pem $(APPNAME).signed

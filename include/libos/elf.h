@@ -239,6 +239,8 @@ typedef struct
 
 int elf_test_header(const elf_ehdr_t* header);
 
+int elf_from_buffer(void* buffer, size_t buffer_length, elf_t* elf);
+
 int elf_load(const char* path, elf_t* elf);
 
 int elf_unload(elf_t* elf);
@@ -401,6 +403,11 @@ typedef int (*elf_add_page_t)(
     bool write,
     bool exec,
     bool extend);
+
+int elf_image_from_section(
+    elf_image_t* from_elf, 
+    const char* section_name, 
+    elf_image_t* to_elf);
 
 int elf_image_load(const char* path, elf_image_t* image);
 

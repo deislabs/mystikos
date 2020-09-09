@@ -16,7 +16,7 @@ static int _compare_segments(const void* s1, const void* s2)
     return (int)(seg1->vaddr - seg2->vaddr);
 }
 
-int elf_image_load(const char* path, elf_image_t* image)
+static int _process_elf_image(elf_image_t* image)
 {
     int ret = -1;
     const elf_ehdr_t* eh;
@@ -37,15 +37,10 @@ int elf_image_load(const char* path, elf_image_t* image)
     (void)tbss_align;
     (void)tbss_size;
 
-    if (!path || !image)
+    if (!image)
         ERAISE(-EINVAL);
 
-    assert(image && path);
-
-    memset(image, 0, sizeof(*image));
-
-    if (elf_load(path, &image->elf) != 0)
-        ERAISE(-EINVAL);
+    assert(image);
 
     /* Save pointer to header for convenience */
     eh = (elf_ehdr_t*)image->elf.data;
@@ -293,6 +288,56 @@ done:
 
     return ret;
 }
+
+int elf_image_load(const char* path, elf_image_t* image)
+{
+    int ret = -1;
+
+    if (!path || !image)
+        ERAISE(-EINVAL);
+
+    assert(image && path);
+
+    memset(image, 0, sizeof(*image));
+
+    if (elf_load(path, &image->elf) != 0)
+        ERAISE(-EINVAL);
+    
+    ret = _process_elf_image(image);
+
+done:
+    return ret;
+}
+
+int elf_image_from_section(
+    elf_image_t* from_elf, 
+    const char* section_name, 
+    elf_image_t* to_elf)
+{
+    int ret = -1;
+    unsigned char *buffer = NULL;
+    size_t buffer_length = 0;
+
+    if (!from_elf || !section_name || !to_elf)
+        ERAISE(-EINVAL);
+
+    assert(from_elf && section_name && to_elf);
+
+    memset(to_elf, 0, sizeof(*to_elf));
+
+    if (elf_find_section(&from_elf->elf, section_name, &buffer, &buffer_length) != 0)
+        ERAISE(-EINVAL);
+
+    if (elf_from_buffer(buffer, buffer_length, &to_elf->elf) != 0)
+        ERAISE(-EINVAL);
+    
+    ret = _process_elf_image(to_elf);
+
+done:
+    return ret;
+}
+
+
 
 void elf_image_free(elf_image_t* image)
 {

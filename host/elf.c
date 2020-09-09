@@ -257,6 +257,32 @@ static int _reset_buffer(
     return 0;
 }
 
+int elf_from_buffer(void* buffer, size_t buffer_length, elf_t* elf)
+{
+    int rc = -1;
+
+    if (!buffer || !elf)
+    {
+        goto done;
+    }
+    memset(elf, 0, sizeof(elf_t));
+
+    elf->size = buffer_length;
+    elf->data = buffer;
+
+    /* Validate the ELF file. */
+    if (!_is_valid_elf64(elf))
+        goto done;
+
+    /* Set the magic number */
+    elf->magic = ELF_MAGIC;
+
+    rc = 0;
+
+done:
+    return rc;
+}
+
 int elf_load(const char* path, elf_t* elf)
 {
     int rc = -1;

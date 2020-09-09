@@ -22,6 +22,7 @@
 #include <libos/thread.h>
 #include "libos_t.h"
 #include "../shared.h"
+#include "../config.h"
 
 extern int oe_host_printf(const char* fmt, ...);
 
@@ -193,18 +194,78 @@ int libos_enter_ecall(
     size_t kernel_size;
     const void* rootfs_data;
     size_t rootfs_size;
+    const void* config_data;
+    size_t config_size;
     bool trace_syscalls = false;
     bool real_syscalls = false;
+    config_parsed_data_t parsed_config = { 0 };
 
     if (!args || !args_size || !env || !env_size)
         goto done;
 
-    if (_deserialize_args(args, args_size, argv + 1, argv_size - 1) != 0)
-        goto done;
+    /* Get the config region */
+    {
+        extern const void* __oe_get_enclave_base(void);
+        oe_region_t region;
+        const uint8_t* enclave_base;
 
+        if (!(enclave_base = __oe_get_enclave_base()))
+        {
+            fprintf(stderr, "__oe_get_enclave_base() failed\n");
+            assert(0);
+        }
+
+        if (oe_region_get(CONFIG_REGION_ID, &region) == OE_OK)
+        {
+            config_data = enclave_base + region.vaddr;
+            config_size = region.size;
+            if (parse_config(config_data, config_size, &parsed_config) != 0)
+            {
+                fprintf(stderr, "failed to parse configuration\n");
+                assert(0);
+            }
+
+            if (parsed_config.allow_host_parameters)
+            {
+                // passthrough of args is allowed, so do that
+                if (_deserialize_args(args, args_size, argv + 1, argv_size - 1) != 0)
+                    goto done;
+            }
+            else
+            {
+                // We need to use the configuration parameters instead.
+                // Add application name to second slot, args go after this
+                argv[1] = parsed_config.application_path;
+
+                size_t n = 0;
+
+                while ((n != parsed_config.application_parameters_count) &&
+                        ((n+3) != argv_size)) // slots including null one
+                {
+                    argv[n+2] = parsed_config.application_parameters[n];
+                    argv[n+3] = NULL;
+                    n ++;
+                }
+            }
+        }
+        else
+        {
+            // There isnt always configuration. If not then we dont restrict
+            // parameters and environment variables
+            if (_deserialize_args(args, args_size, argv + 1, argv_size - 1) != 0)
+                goto done;
+        }
+
+    }
+
+    // Need to handle config to environment
+    // in the mean time we will just pull from the host
     if (_deserialize_args(env, env_size, envp, envp_size) != 0)
         goto done;
 
+    // The deserialization of arguments starts at slot 1, not slot 0.
+    // MUSL loader requires this.
+    // The executable name in slot 0 is needed, but is not exposed to usermode app.
     argv[0] = "libosenc.so";
 
     if (options)
@@ -417,6 +478,7 @@ int libos_enter_ecall(
     }
 
 done:
+    free_config(&parsed_config);
     return ret;
 }
 

@@ -6,11 +6,12 @@ PROGRAM = libos
 
 SOURCES = $(SUBOBJDIR)/libos_u.c
 SOURCES += $(wildcard *.c)
+SOURCES += $(wildcard ../*.c)
 SOURCES += $(wildcard $(TOP)/shared/*.c)
 SOURCES += $(TOP)/compat/file.c
 SOURCES += $(TOP)/compat/dirent.c
 
-INCLUDES = $(OEHOST_INCLUDES) -I$(SUBOBJDIR) -I$(INCDIR)
+INCLUDES = $(OEHOST_INCLUDES) -I$(SUBOBJDIR) -I$(INCDIR) -I../
 
 CFLAGS = $(OEHOST_CFLAGS)
 
@@ -19,6 +20,7 @@ LDFLAGS = $(OEHOST_LDFLAGS)
 LIBS =
 LIBS += $(OEHOST_LIBDIR)/liboehostmr.a
 LIBS += $(OEHOST_LIBDIR)/liboesignlib.a
+LIBS += $(LIBDIR)/libjson.a
 LIBS += $(LIBDIR)/liboshost.a
 
 CLEAN = $(SUBOBJDIR)/libos_u.h $(SUBOBJDIR)/libos_u.c $(SUBOBJDIR)/libos_args.h

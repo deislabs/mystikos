@@ -3,6 +3,7 @@
 
 #include <openenclave/host.h>
 #include <libos/elf.h>
+#include <libos/file.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -18,6 +19,7 @@
 #include "utils.h"
 #include "libos_u.h"
 #include "regions.h"
+#include "../config.h"
 
 // Pulled in from liboesign.a
 // Actual OE signer code from oesign tool.
@@ -33,147 +35,320 @@ int oesign(
 
 #define USAGE_SIGN "\
 \n\
-Usage: %s sign <thing-to-sign> [options] ...\n\
+Usage: %s sign <rootfs_path> <pem_file> <config_file> [options] \n\
 \n\
-Where <thing-to-sign> is the binary or shared library to be signed \n\
+This operation signs all enclave components and puts then in the target directory\n\
+\n\
+Where:\n\
+    <target_path_within_appdir> -- The application path relative to start of appdir \n\
+    <rootfs_path>               -- Path to CPIO archive file \n\
+    <pem_file>                  -- Filename of private RSA key in PEM format \n\
+    <config_file>               -- Filename of signing configuration \n\
 and <options> are one of:\n\
-    --help                -- ths message\n\
-    --platform OE         -- execute an application within the libos\n\
-    --target <filename>   -- target to be signed, OE Enclave when platform is OE\n\
-    --rootfs <filename>   -- path to CPIO archive file\n\
-    --pem_file <filename> -- filename of private RSA key in PEM format\n\
-    --config_file <filename>   -- filename of signing configuration\n\
+    --help                -- This message\n\
+    --platform <platform> -- Platform for which this is being signed for. Default='OE'\n\
+    --app-name <name>     -- Application name. Default='app'. \n\
+                             This is used for the target signing directory which will be\n\
+                             <name>.signed\n\
 \n\
 "
 
 static const char *help_present = NULL;
-static const char *platform = NULL;
-static const char *target = NULL;
-static const char *rootfs_file = NULL;
-static const char *pem_file = NULL;
-static const char *config_file = NULL;
+static const char *platform = "OE";
 
 static const char *help_options[] = {"--help", "-h"};
 static const char *platform_options[] = {"--platform", "-p"};
-static const char *target_options[] = {"--target", "-t"};
-static const char *rootfs_options[] = {"--rootfs", "-r"};
-static const char *pem_options[] = {"--pem_file", "-k"};
-static const char *config_options[] = {"--config_file", "-c"};
 
-struct _option option_list[] = 
+static struct _option option_list[] = 
 {
     // {names array}, names_count, num_extra_param, extra_param, extra_param_required
     {help_options, sizeof(help_options)/sizeof(const char *), 0, &help_present, 0},
-    {platform_options, sizeof(platform_options)/sizeof(const char *), 1, &platform, 1},
-    {target_options, sizeof(target_options)/sizeof(const char *), 1, &target, 1},
-    {rootfs_options, sizeof(rootfs_options)/sizeof(const char *), 1, &rootfs_file, 1},
-    {pem_options, sizeof(pem_options)/sizeof(const char *), 1, &pem_file, 1},
-    {config_options, sizeof(config_options)/sizeof(const char *), 1, &config_file, 1}
+    {platform_options, sizeof(platform_options)/sizeof(const char *), 1, &platform, 0}
 };
-struct _options options =
+static struct _options options =
 {
     option_list,
     sizeof(option_list)/sizeof(struct _option)
 };
 
-int _sign(int argc, const char* argv[])
+int copy_files_to_signing_directory(
+    const char *appname,
+    const char *program_file,
+    const char *rootfs_file,
+    const char *config_file,
+    const region_details *details)
 {
-    int ret = 0;
-    const region_details *details;
+    char scratch_path[PATH_MAX];
     const mode_t mode =
         S_IROTH|S_IXOTH|S_IXGRP|S_IWGRP|S_IRGRP|S_IXUSR|S_IWUSR|S_IRUSR;
+
+
+    // Make a directory for all the bits part of the signing
+    if (snprintf(scratch_path, PATH_MAX, "%s.signed", appname) >= PATH_MAX)
+    {
+        _err("File path to long: %s.signed", appname);
+    }
+
+    if ((mkdir(scratch_path, mode) != 0) && (errno != EEXIST))
+    {
+        _err("Failed to create directory \"%s\".", scratch_path);
+    }
+
+    // create bin directory
+    if (snprintf(scratch_path, PATH_MAX, "%s.signed/bin", appname) >= PATH_MAX)
+    {
+        _err("File path to long: %s.signed/bin", appname);
+    }
+    if ((mkdir(scratch_path, mode) != 0) && (errno != EEXIST))
+    {
+        _err("Failed to create directory \"%s\".", scratch_path);
+    }
+
+    // create an enclave directory
+    if (snprintf(scratch_path, PATH_MAX, "%s.signed/lib", appname) >= PATH_MAX)
+    {
+        _err("File path to long: %s.signed/lib", appname);
+    }
+    if ((mkdir(scratch_path, mode) != 0) && (errno != EEXIST))
+    {
+        _err("Failed to create directory \"%s\".", scratch_path);
+    }
+
+    // Copy crt into signing enc directory
+    if (snprintf(scratch_path, PATH_MAX, "%s.signed/lib/liboscrt.so", appname) >= PATH_MAX)
+    {
+        _err("File path to long: %s.signed/lib/liboscrt.so", appname);
+    }
+    if (libos_copy_file(details->crt.path, scratch_path) != 0)
+    {
+        _err("Failed to copy \"%s\" to \"%s\"", details->crt.path, scratch_path);
+    }
+
+    // Copy kernel into signing directory
+    if (snprintf(scratch_path, PATH_MAX, "%s.signed/lib/liboskernel.so", appname) >= PATH_MAX)
+    {
+        _err("File path to long: %s.signed/lib/liboskernel.so", appname);
+    }
+    if (libos_copy_file(details->kernel.path, scratch_path) != 0)
+    {
+        _err("Failed to copy \"%s\" to \"%s\"", details->crt.path, scratch_path);
+    }
+
+    // Copy libos tool into signing directory
+    if (snprintf(scratch_path, PATH_MAX, "%s.signed/bin/libos", appname) >= PATH_MAX)
+    {
+        _err("File path to long: %s.signed/bin/libos", appname);
+    }
+    if (libos_copy_file(program_file, scratch_path) != 0)
+    {
+        _err("Failed to copy \"%s\" to \"%s\"", program_file, scratch_path);
+    }
+    if (chmod(scratch_path, mode) != 0)
+    {
+        _err("Failed to change executable permissions on \"%s\"", scratch_path);
+    }
+
+    // Copy rootfs into signing directory
+    if (snprintf(scratch_path, PATH_MAX, "%s.signed/rootfs", appname) >= PATH_MAX)
+    {
+        _err("File path to long: %s.signed/rootfs", appname);
+    }
+    if (libos_copy_file(rootfs_file, scratch_path) != 0)
+    {
+        _err("Failed to copy \"%s\" to \"%s\"", rootfs_file, scratch_path);
+    }
+
+    // Copy configuration into signing directory
+    if (snprintf(scratch_path, PATH_MAX, "%s.signed/config.json", appname) >= PATH_MAX)
+    {
+        _err("File path to long: %s.signed/rootfs", appname);
+    }
+    if (libos_copy_file(config_file, scratch_path) != 0)
+    {
+        _err("Failed to copy \"%s\" to \"%s\"", config_file, scratch_path);
+    }
+
+    // Copy enclave shared library to signing enclave directory
+    if (snprintf(scratch_path, PATH_MAX, "%s.signed/lib/libosenc.so", appname) >= PATH_MAX)
+    {
+        _err("File path to long: %s.signed/lib/libosenc.so", appname);
+    }
+    if (libos_copy_file(details->enc.path, scratch_path) != 0)
+    {
+        _err("Failed to copy \"%s\" to \"%s\"", details->enc.path, scratch_path);
+    }
+
+    return 0;
+}
+
+int add_config_to_enclave(const char *appname, const char *config_path)
+{
+    char scratch_path[PATH_MAX];
+    elf_t elf = { 0 };
+    void *config_data;
+    size_t config_size;
+    if (libos_load_file(config_path, &config_data, &config_size) != 0)
+    {
+        _err("File path to long: %s.signed/lib/libosenc.so", appname);
+    }
+
+    if (snprintf(scratch_path, PATH_MAX, "%s.signed/lib/libosenc.so", appname) >= PATH_MAX)
+    {
+        _err("File path to long: %s.signed/lib/libosenc.so", appname);
+    }
+
+    if (elf_load(scratch_path, &elf) != 0)
+    {
+       _err("Failed to load %s.signed/lib/libosenc.so", appname);
+    }
+    if (elf_add_section(&elf, ".libosconfig", SHT_PROGBITS, config_data, config_size) != 0)
+    {
+        _err("Failed to add configuration to enclave elf image");
+    }
+    if (libos_write_file(scratch_path, elf.data, elf.size) != 0)
+    {
+        _err("File to save final signed image: %s", scratch_path);
+    }
+
+    elf_unload(&elf);
+    free(config_data);
+    
+    return 0;
+}
+
+// libos sign <rootfs_path> <pem_file> <config_file>
+int _sign(int argc, const char* argv[])
+{
+    const region_details *details;
+    char scratch_path[PATH_MAX];
+    char scratch_path2[PATH_MAX];
+    char *config_data;
+    size_t config_size;
 
     // We are in the right operation, right?
     assert(strcmp(argv[1], "sign") == 0);
 
-    // Parse the extra options and validate they exist when required
-    if ((ret = parse_options(argc, argv, 2, &options)) != 0)
+    // validate parameters and parse the extra options and validate they exist when required
+    if ((argc < 5) || (parse_options(argc, argv, 5, &options) != 0) || help_present)
     {
-        _err("Failed to parse options.");
+        fprintf(stderr, USAGE_SIGN, argv[0]);
+        return -1;
     }
 
-    if ((details = create_region_details(target, rootfs_file)) == NULL)
+    const char *program_file = argv[0];
+    const char *rootfs_file = argv[2];
+    const char *pem_file = argv[3];
+    const char *config_file = argv[4];
+    const char *appname; // extracted from target
+
+    // Load the configuration file and generate oe config file
+    char temp_oeconfig_file[] = "/tmp/oeconfig.conf.XXXXXX";
+
+    if (mktemp(temp_oeconfig_file) == NULL)
     {
+        _err("Failed to generate temp file for oeconfig.conf");
+    }
+
+    config_parsed_data_t callback_data = { 0 };
+    callback_data.oe_config_out_file = fopen(temp_oeconfig_file, "w");
+    if (callback_data.oe_config_out_file == NULL)
+    {
+        unlink(temp_oeconfig_file);
+        _err("Failed to open OE config file for writing: %s", temp_oeconfig_file);
+    }
+
+    if (libos_load_file(config_file, (void**)&config_data, &config_size) != 0)
+    {
+        fclose(callback_data.oe_config_out_file);
+        unlink(temp_oeconfig_file);
+        _err("Failed to read config file %s", config_file);
+    }
+
+    if (parse_config(config_data, config_size, &callback_data) != 0)
+    {
+        fclose(callback_data.oe_config_out_file);
+        unlink(temp_oeconfig_file);
+        _err("Failed to generate OE configuration file from LibOS configuration file %s", config_file);
+    }
+
+    fclose(callback_data.oe_config_out_file);
+
+    const char *target; // Extracted from config file
+    target = callback_data.application_path;
+    if ((target == NULL) || (target[0] != '/'))
+    {
+        unlink(temp_oeconfig_file);
+        _err("target in config file must be fully qualified path within rootfs");
+    }
+
+    appname = strrchr(target, '/');
+    if (appname == NULL)
+    {
+        unlink(temp_oeconfig_file);
+        _err("Failed to get appname from target path");
+    }
+    appname++;
+    if (*appname == '\0')
+    {
+        unlink(temp_oeconfig_file);
+        _err("Failed to get appname from target path");
+    }
+
+    // Setup all the regions
+    if ((details = create_region_details_from_files(target, rootfs_file, config_file, callback_data.user_pages)) == NULL)
+    {
+        unlink(temp_oeconfig_file);
         _err("Creating region data failed.");
     }
 
-    char dirname[PATH_MAX] = "app.signed";
-    char bindir[PATH_MAX];
-    char libdir[PATH_MAX];
-    char oelibdir[PATH_MAX];
-    char libosenc[PATH_MAX];
-    char libosenc_signed[PATH_MAX];
-    char liboscrt[PATH_MAX];
-    char liboskernel[PATH_MAX];
-    char libos[PATH_MAX];
-    char rootfs[PATH_MAX];
+    if (copy_files_to_signing_directory(appname, program_file, rootfs_file, config_file, details) != 0)
+    {
+        unlink(temp_oeconfig_file);
+        _err("Failed to copy files to signing directory");
+    }
 
-    /* Form destination directory paths */
-    snprintf(bindir, PATH_MAX, "%s/bin", dirname);
-    snprintf(libdir, PATH_MAX, "%s/lib", dirname);
-    snprintf(oelibdir, PATH_MAX, "%s/lib/openenclave", dirname);
-
-    /* Form destination file paths */
-    snprintf(libos, PATH_MAX, "%s/libos", bindir);
-    snprintf(rootfs, PATH_MAX, "%s/rootfs", dirname);
-    snprintf(libosenc, PATH_MAX, "%s/libosenc.so", oelibdir);
-    snprintf(libosenc_signed, PATH_MAX, "%s/libosenc.so.signed", oelibdir);
-    snprintf(liboscrt, PATH_MAX, "%s/liboscrt.so", libdir);
-    snprintf(liboskernel, PATH_MAX, "%s/liboskernel.so", libdir);
-
-    // Make a directory for all the bits part of the signing
-    if (libos_mkdirhier(dirname, mode) != 0)
-        _err("Failed to create directory \"%s\".", dirname);
-
-    // Make the bin directory */
-    if (libos_mkdirhier(bindir, mode) != 0)
-        _err("Failed to create directory \"%s\".\n", bindir);
-
-    // Make the lib directory */
-    if (libos_mkdirhier(libdir, mode) != 0)
-        _err("Failed to create directory \"%s\".\n", libdir);
-
-    // Make the openenclave/lib directory */
-    if (libos_mkdirhier(oelibdir, mode) != 0)
-        _err("Failed to create directory \"%s\".\n", oelibdir);
-
-    // Copy crt into signing enc directory
-    if (libos_copy_file(details->crt_path, liboscrt) != 0)
-        _err("Failed to copy \"%s\" to \"%s\"", details->crt_path, liboscrt);
-
-    // Copy kernel into signing directory
-    if (libos_copy_file(details->kernel_path, liboskernel) != 0)
-        _err("Failed to copy \"%s\" to \"%s\"", details->crt_path, liboskernel);
-
-    // Copy libos tool into signing directory
-    if (libos_copy_file(argv[0], libos) != 0)
-        _err("Failed to copy \"%s\" to \"%s\"", argv[0], libos);
-
-    if (chmod(libos, mode) != 0)
-        _err("Failed to change executable permissions on \"%s\"", libos);
-
-    // Copy rootfs into signing directory
-    if (libos_copy_file(rootfs_file, rootfs) != 0)
-        _err("Failed to copy \"%s\" to \"%s\"", rootfs_file, rootfs);
-
-    // Finally (we need this path also for actual signing!)
-    // Copy enclave shared library to signing enclave directory
-    if (libos_copy_file(details->enc_path, libosenc) != 0)
-        _err("Failed to copy \"%s\" to \"%s\"", details->enc_path, libosenc);
+    if (add_config_to_enclave(appname, config_file) != 0)
+    {
+        unlink(temp_oeconfig_file);
+        _err("Failed to add configuration to enclave");
+    }
 
     // Initiate signing with extracted parameters
     // Watch out! Previous to_path needs to be the enclave binary!
-    if (oesign(libosenc, NULL /*no config yet!*/, pem_file, NULL, NULL, NULL, NULL, NULL) != 0)
+    if (snprintf(scratch_path, PATH_MAX, "%s.signed/lib/libosenc.so", appname) >= PATH_MAX)
     {
-        _err("Failed to sign \"%s\"", libosenc);
+        _err("File path to long: %s.signed/lib/libosenc.so", appname);
     }
 
-    // Delete the unsigned enclave file
-    if (unlink(libosenc) != 0)
-        _err("Failed to delete \"%s\"", libosenc);
+    if (oesign(scratch_path, temp_oeconfig_file, pem_file, NULL, NULL, NULL, NULL, NULL) != 0)
+    {
+        unlink(temp_oeconfig_file);
+        _err("Failed to sign \"%s\"", scratch_path);
+    }
 
-    if (rename (libosenc_signed, libosenc) != 0)
-        _err("Failed to rename \"%s\" to \"%s\"", libosenc_signed, libosenc);
+    // delete temporary oe config file
+    if (unlink(temp_oeconfig_file) != 0)
+    {
+        _err("Failed to remove temporary OE config file");
+    }
+
+    //Delete the unsigned enclave file
+    if (unlink(scratch_path) != 0)
+    {
+        _err("Failed to delete \"%s\"", scratch_path);
+    }
+
+    if (snprintf(scratch_path2, PATH_MAX, "%s.signed/lib/libosenc.so.signed", appname) >= PATH_MAX)
+    {
+        _err("File path to long: %s.signed/lib/libosenc.so.signed", appname);
+    }
+    if (rename(scratch_path2, scratch_path) != 0)
+    {
+        _err("Failed to rename \"%s\" to \"%s\"", scratch_path2, scratch_path);
+    }
+
+    if (config_data)
+        free(config_data);
 
     return 0;
 }

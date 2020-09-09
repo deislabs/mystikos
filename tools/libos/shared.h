@@ -7,5 +7,6 @@
 #define CRT_RELOC_REGION_ID    4
 #define ROOTFS_REGION_ID       5
 #define MMAN_REGION_ID         6
+#define CONFIG_REGION_ID       7
 
 #endif /* _LIBOS_LIBOS_SHARED_H */

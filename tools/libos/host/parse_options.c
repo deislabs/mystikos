@@ -13,6 +13,8 @@ int parse_options(
     int starting_index,
     struct _options *options)
 {
+    int ret = -1;
+
     // First parse the options and set the extra_parameter variables
     for (int argv_iteration = starting_index; argv_iteration < argc; argv_iteration++)
     {
@@ -27,7 +29,8 @@ int parse_options(
                     {
                         if ((argv_iteration+1) >= argc)
                         {
-                            _err("option \"%s\" must have an extra parameter", argv[argv_iteration]);
+                            fprintf(stderr, "option \"%s\" must have an extra parameter", argv[argv_iteration]);
+                            goto done;
                         }
                         assert(options->options[option_iter].extra_parameter);
                         *options->options[option_iter].extra_parameter = argv[argv_iteration+1];
@@ -45,7 +48,8 @@ int parse_options(
         }
         if (!found_current_argv)
         {
-            _err("invalid option \"%s\"", argv[argv_iteration]);
+            fprintf(stderr, "invalid option \"%s\"", argv[argv_iteration]);
+            goto done;
         }
     }
 
@@ -56,9 +60,13 @@ int parse_options(
         {
             if (options->options[option_iter].num_extra_parameters && options->options[option_iter].extra_parameter_required && (*options->options[option_iter].extra_parameter == NULL))
             {
-                _err("option %s is required but not specified", options->options[option_iter].option_names[0]);
+                fprintf(stderr, "option %s is required but not specified", options->options[option_iter].option_names[0]);
+                goto done;
             }
         }
     }
-    return 0;
+    ret = 0;
+
+done:
+    return ret;
 }
