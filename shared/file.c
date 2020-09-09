@@ -90,6 +90,8 @@ int libos_copy_file(const char* oldpath, const char* newpath)
     int newfd = -1;
     char buf[512];
     ssize_t n;
+    struct stat st;
+    mode_t mode;
 
     if (!oldpath || !newpath)
         ERAISE(-EINVAL);
@@ -97,7 +99,12 @@ int libos_copy_file(const char* oldpath, const char* newpath)
     if ((oldfd = libos_open(oldpath, O_RDONLY, 0)) < 0)
         ERAISE(oldfd);
 
-    if ((newfd = libos_open(newpath, O_WRONLY|O_CREAT|O_TRUNC, 0)) < 0)
+    if (libos_fstat(oldfd, &st) != 0)
+        ERAISE(-EINVAL);
+
+    mode = (st.st_mode & ~S_IFMT);
+
+    if ((newfd = libos_open(newpath, O_WRONLY|O_CREAT|O_TRUNC, mode)) < 0)
         ERAISE(newfd);
 
     while ((n = libos_read(oldfd, buf, sizeof(buf))) > 0)
