@@ -102,7 +102,7 @@ int libos_copy_file(const char* oldpath, const char* newpath)
     if (libos_fstat(oldfd, &st) != 0)
         ERAISE(-EINVAL);
 
-    mode = (st.st_mode & ~S_IFMT);
+    mode = (st.st_mode & (mode_t)(~S_IFMT));
 
     if ((newfd = libos_open(newpath, O_WRONLY|O_CREAT|O_TRUNC, mode)) < 0)
         ERAISE(newfd);
