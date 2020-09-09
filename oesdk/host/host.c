@@ -106,7 +106,15 @@ oe_result_t oe_call_enclave_function(
     (void)output_buffer_size;
     (void)output_bytes_written;
 
-    printf("oe_call_enclave_function()\n");
+    if (output_bytes_written)
+        *output_bytes_written = 0;
+
+    printf("=== oe_call_enclave_function()\n");
+    printf("enclave=%p\n", enclave);
+    printf("input_buffer=%p\n", input_buffer);
+    printf("input_buffer_size=%zu\n", input_buffer_size);
+    printf("output_buffer=%p\n", output_buffer);
+    printf("output_buffer_size=%zu\n", output_buffer_size);
 
     memset(output_buffer, 0, output_buffer_size);
     *output_bytes_written = output_buffer_size;

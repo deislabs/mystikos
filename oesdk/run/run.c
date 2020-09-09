@@ -28,9 +28,8 @@ int main(int argc, const char* argv[])
     }
 
     ret = (*main_func)(argc, argv);
-    printf("ret=%d\n", ret);
 
     dlclose(handle);
 
-    return 1;
+    return ret;
 }
