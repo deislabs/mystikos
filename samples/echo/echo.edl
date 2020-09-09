@@ -1,0 +1,12 @@
+enclave
+{
+    trusted
+    {
+        public int echo_ecall([in, string] const char* str);
+    };
+
+    untrusted
+    {
+        int echo_ocall([in, string] const char* str);
+    };
+};

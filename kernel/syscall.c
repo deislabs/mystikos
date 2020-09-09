@@ -411,6 +411,166 @@ static pair_t _pairs[] =
     { SYS_libos_gen_creds, "SYS_libos_gen_creds" },
     { SYS_libos_free_creds, "SYS_libos_free_creds" },
     { SYS_libos_clone, "SYS_libos_clone" },
+    {
+        SYS_libos_oe_add_vectored_exception_handler,
+        "SYS_libos_oe_add_vectored_exception_handler"
+    },
+    {
+        SYS_libos_oe_remove_vectored_exception_handler,
+        "SYS_libos_oe_remove_vectored_exception_handler"
+    },
+    {
+        SYS_libos_oe_is_within_enclave,
+        "SYS_libos_oe_is_within_enclave"
+    },
+    {
+        SYS_libos_oe_is_outside_enclave,
+        "SYS_libos_oe_is_outside_enclave"
+    },
+    {
+        SYS_libos_oe_host_malloc,
+        "SYS_libos_oe_host_malloc"
+    },
+    {
+        SYS_libos_oe_host_realloc,
+        "SYS_libos_oe_host_realloc"
+    },
+    {
+        SYS_libos_oe_host_calloc,
+        "SYS_libos_oe_host_calloc"
+    },
+    {
+        SYS_libos_oe_host_free,
+        "SYS_libos_oe_host_free"
+    },
+    {
+        SYS_libos_oe_strndup,
+        "SYS_libos_oe_strndup"
+    },
+    {
+        SYS_libos_oe_abort,
+        "SYS_libos_oe_abort"
+    },
+    {
+        SYS_libos_oe_assert_fail,
+        "SYS_libos_oe_assert_fail"
+    },
+    {
+        SYS_libos_oe_get_report_v2,
+        "SYS_libos_oe_get_report_v2"
+    },
+    {
+        SYS_libos_oe_free_report,
+        "SYS_libos_oe_free_report"
+    },
+    {
+        SYS_libos_oe_get_target_info_v2,
+        "SYS_libos_oe_get_target_info_v2"
+    },
+    {
+        SYS_libos_oe_free_target_info,
+        "SYS_libos_oe_free_target_info"
+    },
+    {
+        SYS_libos_oe_parse_report,
+        "SYS_libos_oe_parse_report"
+    },
+    {
+        SYS_libos_oe_verify_report,
+        "SYS_libos_oe_verify_report"
+    },
+    {
+        SYS_libos_oe_get_seal_key_by_policy_v2,
+        "SYS_libos_oe_get_seal_key_by_policy_v2"
+    },
+    {
+        SYS_libos_oe_get_public_key_by_policy,
+        "SYS_libos_oe_get_public_key_by_policy"
+    },
+    {
+        SYS_libos_oe_get_public_key,
+        "SYS_libos_oe_get_public_key"
+    },
+    {
+        SYS_libos_oe_get_private_key_by_policy,
+        "SYS_libos_oe_get_private_key_by_policy"
+    },
+    {
+        SYS_libos_oe_get_private_key,
+        "SYS_libos_oe_get_private_key"
+    },
+    {
+        SYS_libos_oe_free_key,
+        "SYS_libos_oe_free_key"
+    },
+    {
+        SYS_libos_oe_get_seal_key_v2,
+        "SYS_libos_oe_get_seal_key_v2"
+    },
+    {
+        SYS_libos_oe_free_seal_key,
+        "SYS_libos_oe_free_seal_key"
+    },
+    {
+        SYS_libos_oe_get_enclave,
+        "SYS_libos_oe_get_enclave"
+    },
+    {
+        SYS_libos_oe_random,
+        "SYS_libos_oe_random"
+    },
+    {
+        SYS_libos_oe_generate_attestation_certificate,
+        "SYS_libos_oe_generate_attestation_certificate"
+    },
+    {
+        SYS_libos_oe_free_attestation_certificate,
+        "SYS_libos_oe_free_attestation_certificate"
+    },
+    {
+        SYS_libos_oe_verify_attestation_certificate,
+        "SYS_libos_oe_verify_attestation_certificate"
+    },
+    {
+        SYS_libos_oe_load_module_host_file_system,
+        "SYS_libos_oe_load_module_host_file_system"
+    },
+    {
+        SYS_libos_oe_load_module_host_socket_interface,
+        "SYS_libos_oe_load_module_host_socket_interface"
+    },
+    {
+        SYS_libos_oe_load_module_host_resolver,
+        "SYS_libos_oe_load_module_host_resolver"
+    },
+    {
+        SYS_libos_oe_load_module_host_epoll,
+        "SYS_libos_oe_load_module_host_epoll"
+    },
+    {
+        SYS_libos_oe_sgx_set_minimum_crl_tcb_issue_date,
+        "SYS_libos_oe_sgx_set_minimum_crl_tcb_issue_date"
+    },
+    {
+        SYS_libos_oe_result_str,
+        "SYS_libos_oe_result_str"
+    },
+    {
+        SYS_libos_oe_get_enclave_status,
+        "SYS_libos_oe_get_enclave_status"
+    },
+    {
+        SYS_libos_oe_allocate_ocall_buffer,
+        "SYS_libos_oe_allocate_ocall_buffer"
+    },
+    {
+        SYS_libos_oe_free_ocall_buffer,
+        "SYS_libos_oe_free_ocall_buffer"
+    },
+    {
+        SYS_libos_oe_call_host_function,
+        "SYS_libos_oe_call_host_function",
+    },
 };
 
 static size_t _n_pairs = sizeof(_pairs) / sizeof(_pairs[0]);
@@ -2476,6 +2636,46 @@ long libos_syscall(long n, long params[6])
         case SYS_socketpair:
         case SYS_setsockopt:
         case SYS_getsockopt:
+        case SYS_libos_oe_add_vectored_exception_handler:
+        case SYS_libos_oe_remove_vectored_exception_handler:
+        case SYS_libos_oe_is_within_enclave:
+        case SYS_libos_oe_is_outside_enclave:
+        case SYS_libos_oe_host_malloc:
+        case SYS_libos_oe_host_realloc:
+        case SYS_libos_oe_host_calloc:
+        case SYS_libos_oe_host_free:
+        case SYS_libos_oe_strndup:
+        case SYS_libos_oe_abort:
+        case SYS_libos_oe_assert_fail:
+        case SYS_libos_oe_get_report_v2:
+        case SYS_libos_oe_free_report:
+        case SYS_libos_oe_get_target_info_v2:
+        case SYS_libos_oe_free_target_info:
+        case SYS_libos_oe_parse_report:
+        case SYS_libos_oe_verify_report:
+        case SYS_libos_oe_get_seal_key_by_policy_v2:
+        case SYS_libos_oe_get_public_key_by_policy:
+        case SYS_libos_oe_get_public_key:
+        case SYS_libos_oe_get_private_key_by_policy:
+        case SYS_libos_oe_get_private_key:
+        case SYS_libos_oe_free_key:
+        case SYS_libos_oe_get_seal_key_v2:
+        case SYS_libos_oe_free_seal_key:
+        case SYS_libos_oe_get_enclave:
+        case SYS_libos_oe_random:
+        case SYS_libos_oe_generate_attestation_certificate:
+        case SYS_libos_oe_free_attestation_certificate:
+        case SYS_libos_oe_verify_attestation_certificate:
+        case SYS_libos_oe_load_module_host_file_system:
+        case SYS_libos_oe_load_module_host_socket_interface:
+        case SYS_libos_oe_load_module_host_resolver:
+        case SYS_libos_oe_load_module_host_epoll:
+        case SYS_libos_oe_sgx_set_minimum_crl_tcb_issue_date:
+        case SYS_libos_oe_result_str:
+        case SYS_libos_oe_get_enclave_status:
+        case SYS_libos_oe_allocate_ocall_buffer:
+        case SYS_libos_oe_free_ocall_buffer:
+        case SYS_libos_oe_call_host_function:
         {
             _strace(n, "forwarded");
             return _return(n, _forward_syscall(n, params));

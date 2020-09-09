@@ -219,6 +219,8 @@ int main(int argc, const char* argv[])
         return 1;
     }
 
+    setenv("AZDCAP_DEBUG_LOG_LEVEL", "0", 1);
+
     if (set_program_file(argv[0]) == NULL)
     {
         fprintf(stderr, "%s: failed to get full path of argv[0]\n", argv[0]);

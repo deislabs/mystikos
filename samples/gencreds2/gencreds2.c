@@ -1,10 +1,10 @@
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <mbedtls/x509.h>
 #include <mbedtls/x509_crt.h>
 #include <openenclave/enclave.h>
 #include <openenclave/attestation/attester.h>
-#include "gencreds.h"
 
 static oe_result_t _generate_key_pair(
     uint8_t** public_key_out,
@@ -144,7 +144,7 @@ done:
     return result;
 }
 
-int libos_gen_creds(
+static int _gen_creds(
     uint8_t** cert_out,
     size_t* cert_size_out,
     uint8_t** private_key_out,
@@ -261,4 +261,32 @@ int libos_verify_cert(
     void* arg)
 {
     return oe_verify_attestation_certificate(cert, cert_size, verifier, arg);
+}
+
+
+int oe_setenv(const char* name, const char* value, int overwrite);
+
+int main(int argc, const char* argv[])
+{
+    uint8_t* cert = NULL;
+    size_t cert_size;
+    uint8_t* private_key = NULL;
+    size_t private_key_size;
+
+    if (_gen_creds(&cert, &cert_size, &private_key, &private_key_size) != 0)
+    {
+        fprintf(stderr, "%s: _gen_creds() failed\n", argv[0]);
+        exit(1);
+    }
+
+    printf("cert_size: %zu\n", cert_size);
+    printf("private_key_size: %zu\n", private_key_size);
+
+    printf("%.*s\n", (int)private_key_size, private_key);
+
+    oe_free_key(cert, cert_size, NULL, 0);
+
+    oe_free_key(private_key, private_key_size, NULL, 0);
+
+    return 0;
 }

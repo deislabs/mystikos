@@ -31,3 +31,4 @@ tests/nbio/appdir/
 tests/rdtsc/appdir/
 tests/shlib/appdir/
 tests/urandom/appdir/
+samples/echo/appdir/
