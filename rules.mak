@@ -16,7 +16,17 @@ __PROGRAM = $(SUBBINDIR)/$(PROGRAM)
 program: $(__PROGRAM) dirs
 $(__PROGRAM): $(LIBS) $(__OBJECTS)
 	mkdir -p $(SUBBINDIR)
-	gcc -o $(__PROGRAM) $(CFLAGS) $(__OBJECTS) $(LIBS) $(LDFLAGS)
+	$(CC) -o $(__PROGRAM) $(CFLAGS) $(__OBJECTS) $(LIBS) $(LDFLAGS)
+endif
+
+ifdef SHLIB
+__SHLIB = $(SUBBINDIR)/$(SHLIB)
+shlib: $(__SHLIB) dirs
+	@echo "$(__SHLIB) is up to date"
+
+$(__SHLIB): $(LIBS) $(__OBJECTS)
+	mkdir -p $(SUBBINDIR)
+	$(CC) -shared -o $(__SHLIB) $(CFLAGS) $(__OBJECTS) $(LIBS) $(LDFLAGS)
 endif
 
 ifdef ARCHIVE
@@ -43,7 +53,7 @@ ifdef DIRS
 endif
 
 clean:
-	rm -f $(__OBJECTS) $(__PROGRAM) $(__ARCHIVE) $(CLEAN)
+	rm -f $(__OBJECTS) $(__PROGRAM) $(__SHLIB) $(__ARCHIVE) $(CLEAN)
 ifdef DIRS
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) clean $(NL) )
 endif

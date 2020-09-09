@@ -2,6 +2,8 @@ SUBDIR = oesdk
 TOP=$(abspath ..)
 include $(TOP)/defs.mak
 
+CC = $(MUSL_GCC)
+
 INCLUDES = -I$(OE_INCDIR) -I$(INCDIR)
 
 TARGET = $(LIBDIR)/liboesdk.so
