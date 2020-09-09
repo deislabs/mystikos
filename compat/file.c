@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <unistd.h>
+#include <errno.h>
 #include <sys/syscall.h>
 #include <libos/file.h>
 #include <libos/eraise.h>
@@ -7,69 +8,79 @@
 #include <libos/malloc.h>
 #include <string.h>
 
+/* ATTN: the kernel-version of these functions return -errno */
+
+static long _ret(long ret)
+{
+    if (ret < 0)
+        ret = -errno;
+
+    return ret;
+}
+
 int libos_creat(const char* pathname, mode_t mode)
 {
-    return creat(pathname, mode);
+    return (int)_ret(creat(pathname, mode));
 }
 
 int libos_open(const char* pathname, int flags, mode_t mode)
 {
-    return open(pathname, flags, mode);
+    return (int)_ret(open(pathname, flags, mode));
 }
 
 off_t libos_lseek(int fd, off_t offset, int whence)
 {
-    return lseek(fd, offset, whence);
+    return (off_t)_ret(lseek(fd, offset, whence));
 }
 
 int libos_close(int fd)
 {
-    return close(fd);
+    return (int)_ret(close(fd));
 }
 
 ssize_t libos_read(int fd, void* buf, size_t count)
 {
-    return read(fd, buf, count);
+    return (ssize_t)_ret(read(fd, buf, count));
 }
 
 ssize_t libos_write(int fd, const void* buf, size_t count)
 {
-    return write(fd, buf, count);
+    return (ssize_t)_ret(write(fd, buf, count));
 }
 
 ssize_t libos_readv(int fd, const struct iovec* iov, int iovcnt)
 {
-    return readv(fd, iov, iovcnt);
+    return (ssize_t)_ret(readv(fd, iov, iovcnt));
 }
 
 ssize_t libos_writev(int fd, const struct iovec* iov, int iovcnt)
 {
-    return writev(fd, iov, iovcnt);
+    return (ssize_t)_ret(writev(fd, iov, iovcnt));
 }
 
 int libos_stat(const char* pathname, struct stat* statbuf)
 {
-    return stat(pathname, statbuf);
+    return (int)_ret(stat(pathname, statbuf));
 }
 
 int libos_lstat(const char* pathname, struct stat* statbuf)
 {
-    return lstat(pathname, statbuf);
+    return (int)_ret(lstat(pathname, statbuf));
 }
 
 int libos_fstat(int fd, struct stat* statbuf)
 {
-    return fstat(fd, statbuf);
+    return (int)_ret(fstat(fd, statbuf));
 }
 
 int libos_mkdir(const char *pathname, mode_t mode)
 {
-    return mkdir(pathname, mode);
+    return (int)_ret(mkdir(pathname, mode));
 }
 
 int libos_rmdir(const char* pathname)
 {
-    return rmdir(pathname);
+    return (int)_ret(rmdir(pathname));
 }
 
 #if 0
@@ -89,42 +100,42 @@ int libos_getdents64(int fd, struct dirent* dirp, size_t count)
 
 int libos_link(const char* oldpath, const char* newpath)
 {
-    return link(oldpath, newpath);
+    return (int)_ret(link(oldpath, newpath));
 }
 
 int libos_unlink(const char* pathname)
 {
-    return unlink(pathname);
+    return (int)_ret(unlink(pathname));
 }
 
 int libos_access(const char* pathname, int mode)
 {
-    return access(pathname, mode);
+    return (int)_ret(access(pathname, mode));
 }
 
 int libos_rename(const char* oldpath, const char* newpath)
 {
-    return rename(oldpath, newpath);
+    return (int)_ret(rename(oldpath, newpath));
 }
 
 int libos_truncate(const char* path, off_t length)
 {
-    return truncate(path, length);
+    return (int)_ret(truncate(path, length));
 }
 
 int libos_ftruncate(int fd, off_t length)
 {
-    return ftruncate(fd, length);
+    return (int)_ret(ftruncate(fd, length));
 }
 
 ssize_t libos_readlink(const char* pathname, char* buf, size_t bufsiz)
 {
-    return readlink(pathname, buf, bufsiz);
+    return (size_t)_ret(readlink(pathname, buf, bufsiz));
 }
 
 int libos_symlink(const char* target, const char* linkpath)
 {
-    return symlink(target, linkpath);
+    return (int)_ret(symlink(target, linkpath));
 }
 
 int libos_mkdirhier(const char* pathname, mode_t mode)
