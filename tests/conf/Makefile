@@ -1,6 +1,5 @@
 TOP=$(abspath ../..)
 SUBDIR = tests/conf
-SUBBINDIR=$(TOP)/build/bin
 include $(TOP)/defs.mak
 
 PROGRAM = main
