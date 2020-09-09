@@ -32,3 +32,4 @@ tests/rdtsc/appdir/
 tests/shlib/appdir/
 tests/urandom/appdir/
 samples/echo/appdir/
+samples/gencreds2/appdir/bin/
