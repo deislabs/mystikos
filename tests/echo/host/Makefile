@@ -16,9 +16,5 @@ CLEAN = $(SUBOBJDIR)/calls_u.h $(SUBOBJDIR)/calls_u.c $(SUBOBJDIR)/calls_args.h
 
 include $(TOP)/rules.mak
 
-EDGER8R_OPTS += --untrusted
-EDGER8R_OPTS += --search-path $(OE_INCDIR)
-EDGER8R_OPTS += --untrusted-dir $(SUBOBJDIR)
-
 $(SUBOBJDIR)/calls_u.c:
-	$(EDGER8R) $(EDGER8R_OPTS) ../calls.edl
+	$(EDGER8R) $(EDGER8R_UNTRUSTED_OPTS) ../calls.edl

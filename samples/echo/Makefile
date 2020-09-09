@@ -41,10 +41,6 @@ run:
 libos:
 	$(MAKE) -C $(TOP)/tools/libos
 
-EDGER8R_OPTS += --trusted
-EDGER8R_OPTS += --search-path $(OE_INCDIR)
-EDGER8R_OPTS += --trusted-dir $(SUBOBJDIR)
-
 $(SUBOBJDIR)/echo.o : echo.c
 	mkdir -p $(SUBOBJDIR)
 	$(CC) -c $(CFLAGS) $(DEFINES) $(INCLUDES) -o $@ $<
@@ -54,11 +50,9 @@ $(SUBOBJDIR)/echo_t.o : $(SUBOBJDIR)/echo_t.c
 	$(CC) -c $(CFLAGS) $(DEFINES) $(INCLUDES) -o $@ $<
 
 $(SUBOBJDIR)/echo_t.c: echo.edl
-	$(EDGER8R) $(EDGER8R_OPTS) echo.edl
+	$(EDGER8R) $(EDGER8R_TRUSTED_OPTS) echo.edl
 
-CLEAN += $(OBJECTS)
-CLEAN += $(SUBOBJDIR)/echo_t.c
-CLEAN += $(APPDIR)
+CLEAN += $(OBJECTS) $(SUBOBJDIR)/echo_t.c $(APPDIR)
 
 clean:
 	rm -rf rootfs $(CLEAN)

@@ -17,12 +17,8 @@ CLEAN = $(SUBOBJDIR)/run_u.h $(SUBOBJDIR)/run_u.c $(SUBOBJDIR)/run_args.h
 
 include $(TOP)/rules.mak
 
-EDGER8R_OPTS += --untrusted
-EDGER8R_OPTS += --search-path $(OE_INCDIR)
-EDGER8R_OPTS += --untrusted-dir $(SUBOBJDIR)
-
 $(SUBOBJDIR)/run_u.c:
-	$(EDGER8R) $(EDGER8R_OPTS) run.edl
+	$(EDGER8R) $(EDGER8R_UNTRUSTED_OPTS) run.edl
 
 run:
 	$(SUBBINDIR)/host

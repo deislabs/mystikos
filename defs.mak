@@ -115,3 +115,19 @@ MUSL_LIB=$(BUILDDIR)/host-musl/lib
 
 LIBOS_GDB=$(BUILDDIR)/bin/libos-gdb
 OEGDB=$(BUILDDIR)/openenclave/bin/oegdb
+
+##==============================================================================
+##
+## edger8r options
+##
+##==============================================================================
+
+EDGER8R_TRUSTED_OPTS =
+EDGER8R_TRUSTED_OPTS += --trusted
+EDGER8R_TRUSTED_OPTS += --search-path $(OE_INCDIR)
+EDGER8R_TRUSTED_OPTS += --trusted-dir $(SUBOBJDIR)
+
+EDGER8R_UNTRUSTED_OPTS =
+EDGER8R_UNTRUSTED_OPTS += --untrusted
+EDGER8R_UNTRUSTED_OPTS += --search-path $(OE_INCDIR)
+EDGER8R_UNTRUSTED_OPTS += --untrusted-dir $(SUBOBJDIR)
