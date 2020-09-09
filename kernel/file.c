@@ -40,6 +40,16 @@ ssize_t libos_write(int fd, const void* buf, size_t count)
     return (ssize_t)libos_syscall_ret(libos_syscall_write(fd, buf, count));
 }
 
+ssize_t libos_pread(int fd, void* buf, size_t count, off_t offset)
+{
+    return libos_syscall_ret(libos_syscall_pread(fd, buf, count, offset));
+}
+
+ssize_t libos_pwrite(int fd, const void* buf, size_t count, off_t offset)
+{
+    return libos_syscall_ret(libos_syscall_pwrite(fd, buf, count, offset));
+}
+
 ssize_t libos_readv(int fd, const struct iovec* iov, int iovcnt)
 {
     return (ssize_t)libos_syscall_ret(libos_syscall_readv(fd, iov, iovcnt));

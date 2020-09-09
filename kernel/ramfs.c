@@ -335,6 +335,11 @@ static void* _file_current(libos_file_t* file)
     return (uint8_t*)_file_data(file) + file->offset;
 }
 
+static void* _file_at(libos_file_t* file, size_t offset)
+{
+    return (uint8_t*)_file_data(file) + offset;
+}
+
 /*
 **==============================================================================
 **
@@ -810,7 +815,7 @@ static ssize_t _fs_write(
     if (!buf && count)
         ERAISE(-EINVAL);
 
-    /* reading zero bytes is okay */
+    /* writing zero bytes is okay */
     if (!count)
         goto done;
 
@@ -830,6 +835,106 @@ static ssize_t _fs_write(
 
         libos_memcpy(_file_current(file), buf, count);
         file->offset = new_offset;
+    }
+
+    ret = (ssize_t)count;
+
+done:
+    return ret;
+}
+
+static ssize_t _fs_pread(
+    libos_fs_t* fs,
+    libos_file_t* file,
+    void* buf,
+    size_t count,
+    off_t offset)
+{
+    ramfs_t* ramfs = (ramfs_t*)fs;
+    ssize_t ret = 0;
+    size_t n;
+
+    if (!_ramfs_valid(ramfs))
+        ERAISE(-EINVAL);
+
+    if (!_file_valid(file))
+        ERAISE(-EINVAL);
+
+    if (!buf && count)
+        ERAISE(-EINVAL);
+
+    if (offset < 0)
+        ERAISE(-EINVAL);
+
+    /* reading zero bytes is okay */
+    if (!count)
+        goto done;
+
+    /* Verify that the offset is in bounds */
+    if ((size_t)offset > _file_size(file))
+        ERAISE(-EINVAL);
+
+    /* Read count bytes from the file or directory */
+    {
+        size_t remaining = _file_size(file) - (size_t)offset;
+
+        if (remaining == 0)
+        {
+            /* end of file */
+            goto done;
+        }
+
+        n = (count < remaining) ? count : remaining;
+        libos_memcpy(buf, _file_at(file, (size_t)offset), n);
+    }
+
+    ret = (ssize_t)n;
+
+done:
+    return ret;
+}
+
+static ssize_t _fs_pwrite(
+    libos_fs_t* fs,
+    libos_file_t* file,
+    const void* buf,
+    size_t count,
+    off_t offset)
+{
+    ramfs_t* ramfs = (ramfs_t*)fs;
+    ssize_t ret = 0;
+
+    if (!_ramfs_valid(ramfs))
+        ERAISE(-EINVAL);
+
+    if (!_file_valid(file))
+        ERAISE(-EINVAL);
+
+    if (!buf && count)
+        ERAISE(-EINVAL);
+
+    if (offset < 0)
+        ERAISE(-EINVAL);
+
+    /* Writing zero bytes is okay */
+    if (!count)
+        goto done;
+
+    /* Verify that the offset is in bounds */
+    if ((size_t)offset > _file_size(file))
+        ERAISE(-EINVAL);
+
+    /* Write count bytes to the file or directory */
+    {
+        size_t new_offset = (size_t)offset + count;
+
+        if (new_offset > _file_size(file))
+        {
+            if (libos_buf_resize(&file->inode->buf, new_offset) != 0)
+                ERAISE(-ENOMEM);
+        }
+
+        libos_memcpy(_file_at(file, (size_t)offset), buf, count);
     }
 
     ret = (ssize_t)count;
@@ -1450,6 +1555,8 @@ int libos_init_ramfs(libos_fs_t** fs_out)
         _fs_lseek,
         _fs_read,
         _fs_write,
+        _fs_pread,
+        _fs_pwrite,
         _fs_readv,
         _fs_writev,
         _fs_close,

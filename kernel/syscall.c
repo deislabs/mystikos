@@ -856,6 +856,36 @@ done:
     return ret;
 }
 
+long libos_syscall_pread(int fd, void* buf, size_t count, off_t offset)
+{
+    long ret = 0;
+    libos_fs_t* fs;
+    libos_file_t* file;
+    const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_FILE;
+
+    ECHECK(libos_fdtable_find(fd, type, (void**)&fs, (void**)&file));
+
+    ret = (*fs->fs_pread)(fs, file, buf, count, offset);
+
+done:
+    return ret;
+}
+
+long libos_syscall_pwrite(int fd, const void* buf, size_t count, off_t offset)
+{
+    long ret = 0;
+    libos_fs_t* fs;
+    libos_file_t* file;
+    const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_FILE;
+
+    ECHECK(libos_fdtable_find(fd, type, (void**)&fs, (void**)&file));
+
+    ret = (*fs->fs_pwrite)(fs, file, buf, count, offset);
+
+done:
+    return ret;
+}
+
 long libos_syscall_readv(int fd, const struct iovec* iov, int iovcnt)
 {
     long ret = 0;
@@ -1443,6 +1473,39 @@ long libos_syscall(long n, long params[6])
 
             return _return(n, libos_syscall_write(fd, buf, count));
         }
+        case SYS_pread64:
+        {
+            int fd = (int)x1;
+            void* buf = (void*)x2;
+            size_t count = (size_t)x3;
+            off_t offset = (off_t)x4;
+
+            _strace(n, "fd=%d buf=%p count=%zu offset=%ld",
+                fd, buf, count, offset);
+
+            if (fd == DEV_URANDOM_FD)
+                return _return(n, _dev_urandom_read(buf, count));
+
+            if (!libos_is_libos_fd(fd))
+                return _return(n, _forward_syscall(n, params));
+
+            return _return(n, libos_syscall_pread(fd, buf, count, offset));
+        }
+        case SYS_pwrite64:
+        {
+            int fd = (int)x1;
+            void* buf = (void*)x2;
+            size_t count = (size_t)x3;
+            off_t offset = (off_t)x4;
+
+            _strace(n, "fd=%d buf=%p count=%zu offset=%ld",
+                fd, buf, count, offset);
+
+            if (!libos_is_libos_fd(fd))
+                return _return(n, _forward_syscall(n, params));
+
+            return _return(n, libos_syscall_pwrite(fd, buf, count, offset));
+        }
         case SYS_open:
         {
             const char* path = (const char*)x1;
@@ -1606,10 +1669,6 @@ long libos_syscall(long n, long params[6])
 
             return _return(n, _forward_syscall(n, params));
         }
-        case SYS_pread64:
-            break;
-        case SYS_pwrite64:
-            break;
         case SYS_readv:
         {
             int fd = (int)x1;

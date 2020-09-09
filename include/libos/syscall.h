@@ -152,6 +152,10 @@ long libos_syscall_read(int fd, void* buf, size_t count);
 
 long libos_syscall_write(int fd, const void* buf, size_t count);
 
+long libos_syscall_pread(int fd, void* buf, size_t count, off_t offset);
+
+long libos_syscall_pwrite(int fd, const void* buf, size_t count, off_t offset);
+
 long libos_syscall_readv(int fd, const struct iovec* iov, int iovcnt);
 
 long libos_syscall_writev(int fd, const struct iovec* iov, int iovcnt);
@@ -217,5 +221,7 @@ long libos_syscall_futex(
     long arg, /* timeout or val2 */
     int* uaddr2,
     int val3);
+
+long libos_syscall_getrandom(void *buf, size_t buflen, unsigned int flags);
 
 #endif /* _LIBOS_SYSCALL_H */

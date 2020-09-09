@@ -47,6 +47,20 @@ struct libos_fs
         const void* buf,
         size_t count);
 
+    ssize_t (*fs_pread)(
+        libos_fs_t* fs,
+        libos_file_t* file,
+        void* buf,
+        size_t count,
+        off_t offset);
+
+    ssize_t (*fs_pwrite)(
+        libos_fs_t* fs,
+        libos_file_t* file,
+        const void* buf,
+        size_t count,
+        off_t offset);
+
     ssize_t (*fs_readv)(
         libos_fs_t* fs,
         libos_file_t* file,

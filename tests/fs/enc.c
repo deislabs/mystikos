@@ -7,6 +7,7 @@
 #include <libos/atexit.h>
 #include <libos/file.h>
 #include <libos/trace.h>
+#include <libos/syscall.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <dirent.h>
@@ -17,6 +18,11 @@
 
 const char alpha[] = "abcdefghijklmnopqrstuvwxyz";
 const char ALPHA[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+static void _passed(const char* name)
+{
+    printf("=== passed test (fs: %s)\n", name);
+}
 
 static size_t _fsize(const char* path)
 {
@@ -184,6 +190,8 @@ void test_misc()
         fprintf(stderr, "fs_close() failed\n");
         abort();
     }
+
+    _passed(__FUNCTION__);
 }
 
 void test_readv(void)
@@ -248,6 +256,8 @@ void test_readv(void)
     assert(libos_lseek(fd, 0, SEEK_CUR) == sizeof(alpha));
 
     assert(libos_close(fd) == 0);
+
+    _passed(__FUNCTION__);
 }
 
 void test_writev(void)
@@ -273,6 +283,8 @@ void test_writev(void)
     assert(strcmp(buf, ALPHA) == 0);
 
     assert(libos_close(fd) == 0);
+
+    _passed(__FUNCTION__);
 }
 
 void test_stat()
@@ -281,6 +293,8 @@ void test_stat()
 
     assert(libos_stat("/test_readv", &buf) == 0);
     assert(buf.st_size == sizeof(alpha) + sizeof(ALPHA));
+
+    _passed(__FUNCTION__);
 }
 
 static uint64_t _nlink(const char* path)
@@ -323,6 +337,8 @@ void test_mkdir()
     assert(_nlink("/a/bb") == 2);
     assert(_nlink("/a/bb/ccc") == 2);
     assert(_nlink("/a/bb/ccc/file") == 1);
+
+    _passed(__FUNCTION__);
 }
 
 void test_rmdir()
@@ -337,6 +353,8 @@ void test_rmdir()
     assert(libos_rmdir("/rmdir/rmdir") == 0);
     assert(libos_rmdir("/rmdir") == 0);
     assert(libos_stat("/", &buf) == 0);
+
+    _passed(__FUNCTION__);
 }
 
 void test_readdir()
@@ -385,6 +403,8 @@ void test_readdir()
 
     assert(i == nentries);
     assert(libos_closedir(dir) == 0);
+
+    _passed(__FUNCTION__);
 }
 
 void dump_dirents(const char* path)
@@ -429,6 +449,8 @@ void test_link()
     assert(libos_unlink("/link/file2") == 0);
     assert(_nlink("/link/dir/file3") == 1);
     assert(libos_unlink("/link/dir/file3") == 0);
+
+    _passed(__FUNCTION__);
 }
 
 static int _touch(const char* pathname, mode_t mode)
@@ -462,6 +484,8 @@ void test_access()
     assert(libos_access("/access/r", X_OK) != 0);
     assert(libos_access("/access/w", R_OK) != 0);
     assert(libos_access("/access/x", W_OK) != 0);
+
+    _passed(__FUNCTION__);
 }
 
 void test_rename(void)
@@ -471,6 +495,8 @@ void test_rename(void)
     assert(libos_rename("/rename/file1", "/rename/file2") == 0);
     assert(libos_access("/rename/file1", R_OK) != 0);
     assert(libos_access("/rename/file2", R_OK) == 0);
+
+    _passed(__FUNCTION__);
 }
 
 void test_truncate(void)
@@ -505,6 +531,8 @@ void test_truncate(void)
         assert(_fdsize(fd) == 0);
         assert(libos_close(fd) == 0);
     }
+
+    _passed(__FUNCTION__);
 }
 
 void test_symlink(void)
@@ -542,6 +570,45 @@ void test_symlink(void)
 
     assert(libos_opendir("/symlink/www/xxx/ddd", &dir) == 0);
     assert(libos_closedir(dir) == 0);
+
+    _passed(__FUNCTION__);
+}
+
+void test_pread_pwrite(void)
+{
+    const ssize_t N = 64;
+    uint8_t blk1[N];
+    uint8_t blk2[N];
+    uint8_t blk3[N];
+    uint8_t buf1[N];
+    uint8_t buf2[N];
+    uint8_t buf3[N];
+    int fd;
+
+    libos_syscall_getrandom(blk1, sizeof(blk1), 0);
+    libos_syscall_getrandom(blk2, sizeof(blk2), 0);
+    libos_syscall_getrandom(blk3, sizeof(blk3), 0);
+
+    assert(libos_mkdir("/pread_pwrite", 777) == 0);
+    assert(_touch("/pread_pwrite/file", 0400) == 0);
+
+    assert((fd = libos_open("/pread_pwrite/file", O_RDWR, 0)) >= 0);
+
+    assert(libos_pwrite(fd, blk1, sizeof(blk1), 0) == N);
+    assert(libos_pwrite(fd, blk2, sizeof(blk2), N) == N);
+    assert(libos_pwrite(fd, blk3, sizeof(blk3), 2*N) == N);
+
+    assert(libos_pread(fd, buf1, sizeof(buf1), 0) == N);
+    assert(libos_pread(fd, buf2, sizeof(buf2), N) == N);
+    assert(libos_pread(fd, buf3, sizeof(buf3), 2*N) == N);
+
+    assert(memcmp(blk1, buf1, sizeof(blk1)) == 0);
+    assert(memcmp(blk2, buf2, sizeof(blk2)) == 0);
+    assert(memcmp(blk3, buf3, sizeof(blk3)) == 0);
+
+    assert((fd = libos_close(fd)) >= 0);
+
+    _passed(__FUNCTION__);
 }
 
 int run_ecall(void)
@@ -568,6 +635,7 @@ int run_ecall(void)
     test_rename();
     test_truncate();
     test_symlink();
+    test_pread_pwrite();
 
     assert((*fs->fs_release)(fs) == 0);
 
