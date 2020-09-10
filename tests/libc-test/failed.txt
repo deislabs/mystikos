@@ -1,4 +1,0 @@
-/src/functional/ipc_sem.exe
-/src/math/lgammal_r.exe
-/src/math/lgamma.exe
-/src/functional/stat.exe

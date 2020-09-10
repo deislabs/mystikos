@@ -25,5 +25,6 @@ DIRS += getpid
 DIRS += json
 DIRS += conf
 DIRS += nbio
+DIRS += libc
 
 include $(TOP)/rules.mak
