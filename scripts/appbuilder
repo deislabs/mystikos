@@ -1,0 +1,62 @@
+#!/bin/bash
+
+set -e
+set -x
+
+IMAGE_NAME="$1"
+
+# Download the docker image from dockerhub, or build it locally
+# from a docker file.
+# If no command line option is provided, it assumes there is a local
+# docke file named exactly as "Dockerfile" in the current directory.
+get_image()
+{
+    sudo usermod -aG docker $USER
+    if [ -z $IMAGE_NAME ]; then
+        IMAGE_NAME="Dockerfile"
+    fi
+
+    if [ -f "$IMAGE_NAME" ]; then
+        DOCKER_IMG_NAME="temp-docker-image"
+        DOCKER_FILE=$IMAGE_NAME
+        IMAGE_NAME=$DOCKER_IMG_NAME
+        docker build -t $DOCKER_IMG_NAME . -f "$DOCKER_FILE"
+    else
+        docker pull $IMAGE_NAME
+    fi
+}
+
+# export a flattened copy of the container
+# note that we have to start up the image to flatten it
+# TODO: there's probably a fancier way to do this with more time
+export_image()
+{
+    docker run -d --name temp-extract $IMAGE_NAME
+    docker stop temp-extract
+
+    docker export temp-extract -o temp-extract.tar
+    docker rm temp-extract
+
+    rm -rf appdir && mkdir appdir
+    tar xf temp-extract.tar -C appdir
+}
+
+# delete artifacts
+clean_up()
+{
+    if [ $DOCKER_IMG_NAME ]; then
+        docker rmi $DOCKER_IMG_NAME
+    fi
+    rm -f temp-extract.tar
+}
+
+get_image
+export_image
+clean_up
+
+set +x
+echo ""
+echo "  Sussess! Required files are extracted to appdir."
+echo "  You can run applications with the following commands (after add libos to your path):"
+echo "      libos mkcpio appdir rootfs && libos exec rootfs <cmd> <cmd line options>"
+echo "  For example, libos mkcpio appdir rootfs && libos exec rootfs /bin/ls /bin"

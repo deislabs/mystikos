@@ -1,20 +1,34 @@
 SUBDIR = samples/mariadb
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
+LIBOS=$(TOP)/build/bin/libos
+APPBUILDER=$(TOP)/scripts/appbuilder
 
-all: alpine nginx memcached
+all: alpine nginx memcached redis
 
 alpine:
-	bash ./extractor.sh alpine:latest alpine.fs
+	$(APPBUILDER) alpine:latest
+	mv appdir alpine-appdir
 
 nginx:
-	bash ./extractor.sh nginx:alpine nginx.fs
+	$(APPBUILDER) nginx:alpine
+	mv appdir nginx-appdir
 
 memcached:
-	bash ./extractor.sh memcached:alpine memcached.fs
+	$(APPBUILDER) memcached:alpine
+	mv appdir memcached-appdir
+
+redis:
+	cd redis-docker; $(APPBUILDER) Dockerfile
+	mv redis-docker/appdir redis-appdir
 
 clean:
-	rm *.fs
+	rm -rf alpine-appdir
+	rm -rf nginx-appdir
+	rm -rf memcached-appdir
+	rm -rf redis-appdir
+	rm -rf rootfs
 
 run:
-	libos exec $(OPTS) alpine.fs /bin/ls /bin 
+	$(LIBOS) mkcpio alpine-appdir rootfs && $(LIBOS) exec $(OPTS) rootfs /bin/ls /bin
+	#$(LIBOS) mkcpio nginx-appdir rootfs && $(LIBOS) exec $(OPTS) rootfs /usr/sbin/nginx
