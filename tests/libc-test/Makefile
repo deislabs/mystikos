@@ -8,13 +8,17 @@ ifdef STRACE
 OPTS = --strace
 endif
 
-all: srcdir build
+SRCDIR = $(SUBOBJDIR)/srcdir
 
-srcdir:
-	cp -r $(TOP)/third_party/libc-test srcdir
+all: $(SRCDIR) build
+
+$(SRCDIR):
+	rm -rf $(SRCDIR)
+	mkdir -p $(SUBOBJDIR)
+	cp -r $(TOP)/third_party/libc-test $(SRCDIR)
 
 build:
-	sudo docker run --rm -v $(CURDIR)/srcdir:/srcdir $(IMG) bash -c "make -C srcdir"
+	sudo docker run --rm -v $(SRCDIR):/srcdir $(IMG) bash -c "make -C srcdir"
 
 TESTS = $(shell cat supported.txt)
 
@@ -25,13 +29,13 @@ run:
 	@ echo "=== TEST=$(TEST)"
 	@ rm -rf appdir
 	@ mkdir -p appdir/src/functional
-	@ install -D srcdir/$(TEST) appdir/$(TEST)
-	@ cp srcdir/src/functional/*.so appdir/src/functional
+	@ install -D $(SRCDIR)/$(TEST) appdir/$(TEST)
+	@ cp $(SRCDIR)/src/functional/*.so appdir/src/functional
 	$(BINDIR)/libos mkcpio appdir rootfs
 	$(BINDIR)/libos exec --real-syscalls $(OPTS) rootfs $(TEST)
 
 clean:
-	rm -rf rootfs appdir srcdir
+	rm -rf rootfs appdir $(SRCDIR)
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos

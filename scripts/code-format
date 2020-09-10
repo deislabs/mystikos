@@ -1,0 +1,17 @@
+#!/bin/bash
+
+if [ "$#" == "0" ]; then
+    echo "Usage: $0 <source-file>..."
+    exit 1
+fi
+
+cf=$(which clang-format-7)
+
+if [ ! -x "${cf}" ]; then
+    echo "$0: cannot find clang-format-7"
+fi
+
+for i
+do
+    ${cf} -style=file -i ${i}
+done

@@ -143,6 +143,26 @@ long libos_tcall_clock_gettime(clockid_t clk_id, struct timespec *tp)
 
 /* Must be overriden by enclave application */
 __attribute__((__weak__))
+oe_result_t libos_oe_call_host_function(
+    size_t function_id,
+    const void* input_buffer,
+    size_t input_buffer_size,
+    void* output_buffer,
+    size_t output_buffer_size,
+    size_t* output_bytes_written)
+{
+    (void)function_id;
+    (void)input_buffer;
+    (void)input_buffer_size;
+    (void)output_buffer;
+    (void)output_buffer_size;
+    (void)output_bytes_written;
+    assert("unimplemented: implement in enclave" == NULL);
+    return -ENOTSUP;
+}
+
+/* Must be overriden by enclave application */
+__attribute__((__weak__))
 long libos_tcall_isatty(int fd)
 {
     (void)fd;
@@ -380,27 +400,13 @@ static long _oesdk_syscall(long n, long params[6])
             size_t output_buffer_size = (size_t)params[4];
             size_t* output_bytes_written = (size_t*)params[5];
 
-            *output_bytes_written = 0;
-
-            (void)function_id;
-            (void)input_buffer;
-            (void)input_buffer_size;
-            (void)output_buffer;
-            (void)output_buffer_size;
-            (void)output_bytes_written;
-
-            printf("=== SYS_libos_oe_call_host_function\n");
-            printf("function_id=%zu\n", function_id);
-            printf("input_buffer=%p\n", input_buffer);
-            printf("input_buffer_size=%zu\n", input_buffer_size);
-            printf("output_buffer=%p\n", output_buffer);
-            printf("output_buffer_size=%zu\n", output_buffer_size);
-
-            memset(output_buffer, 0, output_buffer_size);
-            *output_bytes_written = output_buffer_size;
-
-            /* ATTN: forward this to the host */
-            return 0;
+            return (long)libos_oe_call_host_function(
+                function_id,
+                input_buffer,
+                input_buffer_size,
+                output_buffer,
+                output_buffer_size,
+                output_bytes_written);
         }
         case SYS_libos_oe_add_vectored_exception_handler:
         case SYS_libos_oe_remove_vectored_exception_handler:

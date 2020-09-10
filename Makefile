@@ -55,3 +55,17 @@ install: dirs uninstall
 
 uninstall:
 	rm -rf $(LIBOS_PREFIX)
+
+##==============================================================================
+##
+## format:
+##
+##==============================================================================
+
+SOURCES_DIRS = $(filter-out third_party, $(DIRS))
+
+sources:
+	@ $(foreach i, \
+          $(SOURCES_DIRS), \
+          echo $(shell find $(i) -name '*.[ch]') )
+format:
