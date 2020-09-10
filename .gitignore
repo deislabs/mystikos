@@ -2,7 +2,6 @@
 build/
 *.o
 *.a
-*.so
 *.pem
 
 third_party/musl/musl/lib
