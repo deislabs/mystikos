@@ -5,13 +5,13 @@ CC = $(MUSL_GCC)
 
 INCLUDES = -I$(OE_INCDIR) -I$(INCDIR)
 
-TARGET = $(LIBDIR)/liboesdk.so
+TARGET = $(LIBDIR)/liboesdkenclave.a
 
 CFLAGS = -fPIC
 
 all:
 	mkdir -p $(LIBDIR)
-	$(MUSL_GCC) $(CFLAGS) $(INCLUDES) -shared -o $(TARGET)  oesdk.c
+	$(CC) $(CFLAGS) $(INCLUDES) -shared -o $(TARGET) enclave.c
 	@ echo "created $(TARGET)"
 
 tests:

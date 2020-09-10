@@ -26,7 +26,7 @@ all: $(OBJECTS)
 	$(MAKE) -C ../../tools/libos
 	mkdir -p $(APPDIR)/bin
 	mkdir -p $(APPDIR)/lib
-	cp $(LIBDIR)/liboesdk.so $(APPDIR)/lib
+	cp $(LIBDIR)/liboesdkenclave.a $(APPDIR)/lib
 	$(CC) $(CFLAGS) $(INCLUDES) -o $(TARGET) $(OBJECTS) $(LDFLAGS)
 	$(LIBOS) mkcpio appdir rootfs
 

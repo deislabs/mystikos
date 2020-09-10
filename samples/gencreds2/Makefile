@@ -14,7 +14,7 @@ export LD_LIBRARY_PATH=$(APPDIR)/lib
 all: libos
 	mkdir -p $(APPDIR)/bin
 	mkdir -p $(APPDIR)/lib
-	cp $(LIBDIR)/liboesdk.so $(APPDIR)/lib
+	cp $(LIBDIR)/liboesdkenclave.a $(APPDIR)/lib
 	$(MUSL_GCC) $(CFLAGS) $(INCLUDES) -o $(TARGET) gencreds2.c $(LDFLAGS)
 	$(LIBOS) mkcpio appdir rootfs
 
