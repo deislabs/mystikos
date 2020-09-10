@@ -62,10 +62,12 @@ uninstall:
 ##
 ##==============================================================================
 
-SOURCES_DIRS = $(filter-out third_party, $(DIRS))
+SOURCES_DIRS = $(filter-out third_party, $(DIRS)) include/libos
 
 sources:
 	@ $(foreach i, \
           $(SOURCES_DIRS), \
           echo $(shell find $(i) -name '*.[ch]') )
+
 format:
+	./scripts/code-format $(shell $(MAKE) sources)
