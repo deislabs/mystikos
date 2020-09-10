@@ -13,6 +13,9 @@ all:
 run: all
 	$(BINDIR)/libos exec $(OPTS) rootfs /curl
 
+gdb: all
+	$(LIBOS_GDB) --args $(BINDIR)/libos exec $(OPTS) rootfs /curl
+
 clean:
 	rm -f rootfs
 	$(MAKE) -C appdir clean

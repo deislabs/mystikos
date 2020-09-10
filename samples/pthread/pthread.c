@@ -107,7 +107,7 @@ static void* _test_mutex_thread(void* arg)
         _shared_integer = local + 1;
         pthread_mutex_unlock(&_mutex);
     }
-    printf("Child %d done with mutex\n", n);
+    printf("Child %zu done with mutex\n", n);
 
     return arg;
 }
@@ -115,7 +115,7 @@ static void* _test_mutex_thread(void* arg)
 void test_mutexes(int mutex_type)
 {
     pthread_t threads[NUM_THREADS];
-    size_t integer = 0;
+    uint64_t integer = 0;
     _shared_integer = 0;
 
     printf("=== %s(), mutex type = %d\n", __FUNCTION__, mutex_type);
@@ -156,7 +156,7 @@ void test_mutexes(int mutex_type)
 
     if (integer != _shared_integer)
     {
-        fprintf(stderr, "Expected: %d, Got: %d\n", integer, _shared_integer);
+        fprintf(stderr, "Expected: %ld, Got: %ld\n", integer, _shared_integer);
         abort();
     }
 

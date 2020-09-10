@@ -140,7 +140,7 @@ static pid_t _gettid(void)
 
 static void* _thread_func(void* arg)
 {
-    long r = 0;
+    long r = -1;
     uint64_t cookie = (uint64_t)arg;
     uint64_t event = (uint64_t)&_thread_event;
     pid_t tid = _gettid();
@@ -148,7 +148,8 @@ static void* _thread_func(void* arg)
     if (libos_run_thread_ecall(_enclave, &r, cookie, tid, event) != OE_OK ||
         r != 0)
     {
-        fprintf(stderr, "posix_run_thread_ecall(): failed: retval=%ld\n", r);
+        fprintf(stderr, "libos_run_thread_ecall(): failed: retval=%ld\n", r);
+        fflush(stdout);
         abort();
     }
 
@@ -246,7 +247,6 @@ int exec_launch_enclave(
     struct libos_options* options)
 {
     oe_result_t r;
-    oe_enclave_t* _enclave;
     int retval;
     static int _event; /* the main-thread event (used by futex: uaddr) */
     void* args = NULL;
