@@ -1,5 +1,4 @@
 TOP=$(abspath ../..)
-SUBDIR = tests/string
 include $(TOP)/defs.mak
 
 PROGRAM = string

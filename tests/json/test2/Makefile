@@ -1,5 +1,4 @@
 TOP=$(abspath ../../..)
-SUBDIR = tests/json/test2
 include $(TOP)/defs.mak
 
 PROGRAM = jsontest2

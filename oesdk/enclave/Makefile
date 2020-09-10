@@ -1,4 +1,3 @@
-SUBDIR = oesdk/enclave
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 

@@ -1,5 +1,4 @@
 TOP=$(abspath ../..)
-SUBDIR = kernel/image
 include $(TOP)/defs.mak
 
 PROGRAM = liboskernel.so

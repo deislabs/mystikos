@@ -1,4 +1,3 @@
-SUBDIR = tools/libos/enc
 TOP=$(abspath ../../..)
 SUBBINDIR=$(TOP)/build/lib/openenclave
 include $(TOP)/defs.mak

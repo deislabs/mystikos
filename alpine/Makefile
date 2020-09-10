@@ -1,5 +1,4 @@
 TOP = $(abspath ..)
-SUBDIR = alpine
 include $(TOP)/defs.mak
 
 all:

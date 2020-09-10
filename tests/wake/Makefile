@@ -1,4 +1,3 @@
-SUBDIR = tests/wake
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 

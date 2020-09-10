@@ -1,4 +1,3 @@
-SUBDIR = tests/argv
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 

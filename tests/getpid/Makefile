@@ -1,4 +1,3 @@
-SUBDIR = tests/getpid
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 

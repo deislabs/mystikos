@@ -1,4 +1,3 @@
-SUBDIR = crt
 TOP=$(abspath ..)
 include $(TOP)/defs.mak
 

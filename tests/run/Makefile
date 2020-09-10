@@ -1,7 +1,7 @@
 TOP=$(abspath ../..)
-SUBDIR = tests/run
-SUBBINDIR=$(TOP)/build/bin
 include $(TOP)/defs.mak
+
+SUBBINDIR=$(TOP)/build/bin
 
 PROGRAM = run
 

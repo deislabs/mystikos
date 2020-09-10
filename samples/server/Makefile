@@ -1,4 +1,3 @@
-SUBDIR = samples/main
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 

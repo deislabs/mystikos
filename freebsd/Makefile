@@ -1,5 +1,4 @@
 TOP = $(abspath ..)
-SUBDIR = freebsd
 include $(TOP)/defs.mak
 
 all:

@@ -1,4 +1,3 @@
-SUBDIR = tools/libos
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 

@@ -1,5 +1,4 @@
 TOP=$(abspath ../..)
-SUBDIR = tests/elf
 include $(TOP)/defs.mak
 
 DIRS = image

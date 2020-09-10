@@ -1,4 +1,3 @@
-SUBDIR = oesdk/app
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 

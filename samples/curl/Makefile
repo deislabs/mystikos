@@ -1,5 +1,4 @@
 TOP = $(abspath ../..)
-SUBDIR = samples/curl
 include $(TOP)/defs.mak
 
 IMG=libos-alpine

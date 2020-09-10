@@ -1,5 +1,4 @@
 TOP = $(abspath ../..)
-SUBDIR = samples/libc-test
 include $(TOP)/defs.mak
 
 IMG=libos-alpine

@@ -1,4 +1,3 @@
-SUBDIR = tests/nbio
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 

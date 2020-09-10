@@ -1,5 +1,4 @@
 TOP=$(abspath ../..)
-SUBDIR = samples/dlopen
 include $(TOP)/defs.mak
 
 IMG=libos-alpine

@@ -1,4 +1,3 @@
-SUBDIR = kernel
 TOP=$(abspath ..)
 include $(TOP)/defs.mak
 include $(TOP)/config.mak

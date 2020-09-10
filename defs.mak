@@ -1,5 +1,5 @@
-ifndef SUBDIR
-$(error "please define SUBDIR variable")
+ifndef TOP
+$(error "please define TOP variable")
 endif
 
 ##==============================================================================
@@ -7,6 +7,8 @@ endif
 ## directory locations
 ##
 ##==============================================================================
+
+SUBDIR=$(subst $(TOP)/,,$(CURDIR))
 
 BUILDDIR=$(TOP)/build
 

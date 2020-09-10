@@ -1,4 +1,3 @@
-SUBDIR = tests/cpuid
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 

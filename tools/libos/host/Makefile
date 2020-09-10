@@ -1,4 +1,3 @@
-SUBDIR = tools/libos/host
 TOP=$(abspath ../../..)
 SUBBINDIR = $(TOP)/build/bin
 include $(TOP)/defs.mak

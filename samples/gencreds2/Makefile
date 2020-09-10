@@ -1,4 +1,3 @@
-SUBDIR = tests/gencreds-oesdk
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 

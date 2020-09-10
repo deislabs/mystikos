@@ -1,4 +1,3 @@
-SUBDIR = json
 TOP=$(abspath ..)
 include $(TOP)/defs.mak
 

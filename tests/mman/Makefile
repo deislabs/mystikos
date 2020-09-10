@@ -1,4 +1,3 @@
-SUBDIR = tests/mman
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 

@@ -1,4 +1,3 @@
-SUBDIR = tests/urandom
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 

@@ -1,5 +1,4 @@
 TOP = $(abspath ../..)
-SUBDIR = samples/ssl_server
 include $(TOP)/defs.mak
 
 APPDIR=$(CURDIR)/appdir

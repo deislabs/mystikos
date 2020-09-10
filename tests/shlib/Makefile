@@ -1,4 +1,3 @@
-SUBDIR = tests/shlib
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 

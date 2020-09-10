@@ -1,6 +1,6 @@
-SUBDIR = samples/mariadb
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
+
 LIBOS=$(TOP)/build/bin/libos
 APPBUILDER=$(TOP)/scripts/appbuilder
 
