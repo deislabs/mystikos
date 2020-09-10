@@ -1,12 +1,12 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
+#include <libos/file.h>
 #include <openenclave/host.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/stat.h>
 #include <string.h>
-#include <libos/file.h>
+#include <sys/stat.h>
 #include "calls_u.h"
 
 int main(int argc, const char* argv[])

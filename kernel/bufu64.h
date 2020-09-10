@@ -7,7 +7,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define BUFU64_INITIALIZER { NULL, 0, 0 }
+#define BUFU64_INITIALIZER \
+    {                      \
+        NULL, 0, 0         \
+    }
 
 typedef struct libos_bufu64
 {

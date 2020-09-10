@@ -27,14 +27,14 @@
 **==============================================================================
 */
 
+#include <ctype.h>
+#include <libos/json.h>
 #include <limits.h>
 #include <stddef.h>
-#include <stdlib.h>
 #include <stdint.h>
-#include <ctype.h>
-#include <string.h>
 #include <stdio.h>
-#include <libos/json.h>
+#include <stdlib.h>
+#include <string.h>
 
 /*
 **==============================================================================
@@ -615,8 +615,7 @@ static json_result_t _get_number(
     if (isInteger)
     {
         *type = JSON_TYPE_INTEGER;
-        un->integer =
-            strtol(start, &end, 10);
+        un->integer = strtol(start, &end, 10);
     }
     else
     {
@@ -1250,7 +1249,7 @@ json_result_t json_print(
     json_parser_t* parser = &parser_buf;
     callback_data_t callback_data = {0, 0, 0, write, stream};
 
-extern int printf(const char* fmt, ...);
+    extern int printf(const char* fmt, ...);
     memset(&parser_buf, 0, sizeof(parser_buf));
 
     if (!write || !json_data || !json_size)
@@ -1311,8 +1310,8 @@ void json_dump_path(json_write_t write, void* stream, json_parser_t* parser)
             {
                 strbuf_t buf;
                 size_t size;
-                const char* str = _i64tostr(&buf,
-                    (int64_t)parser->path[i].size, &size);
+                const char* str =
+                    _i64tostr(&buf, (int64_t)parser->path[i].size, &size);
 
                 (*write)(stream, STRLIT("["));
                 (*write)(stream, str, size);

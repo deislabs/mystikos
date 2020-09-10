@@ -1,8 +1,9 @@
-#include <libos/atexit.h>
-#include <libos/spinlock.h>
-#include <libos/malloc.h>
 #include <stdlib.h>
+
+#include <libos/atexit.h>
 #include <libos/deprecated.h>
+#include <libos/malloc.h>
+#include <libos/spinlock.h>
 
 typedef struct atexit_entry atexit_entry_t;
 
@@ -46,7 +47,7 @@ void libos_call_atexit_functions(void)
 {
     atexit_entry_t* p;
 
-    for (p = _entries; p; )
+    for (p = _entries; p;)
     {
         atexit_entry_t* next = p->next;
 

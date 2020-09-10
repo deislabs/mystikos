@@ -1,26 +1,25 @@
 #ifndef _LIBOS_SYSCALL_H
 #define _LIBOS_SYSCALL_H
 
+#include <dirent.h>
+#include <fcntl.h>
+#include <stdbool.h>
+#include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/uio.h>
-#include <fcntl.h>
 #include <time.h>
-#include <sys/stat.h>
-#include <dirent.h>
-#include <stdbool.h>
 
-#include <libos/syscallext.h>
 #include <libos/defs.h>
+#include <libos/syscallext.h>
 
 LIBOS_INLINE long libos_syscall0(long n)
 {
     unsigned long ret;
 
-    __asm__ __volatile__(
-        "syscall"
-        : "=a"(ret)
-        : "a"(n)
-        : "rcx", "r11", "memory");
+    __asm__ __volatile__("syscall"
+                         : "=a"(ret)
+                         : "a"(n)
+                         : "rcx", "r11", "memory");
 
     return (long)ret;
 }
@@ -29,11 +28,10 @@ LIBOS_INLINE long libos_syscall1(long n, long x1)
 {
     unsigned long ret;
 
-    __asm__ __volatile__(
-        "syscall"
-        : "=a"(ret)
-        : "a"(n), "D"(x1)
-        : "rcx", "r11", "memory");
+    __asm__ __volatile__("syscall"
+                         : "=a"(ret)
+                         : "a"(n), "D"(x1)
+                         : "rcx", "r11", "memory");
 
     return (long)ret;
 }
@@ -42,11 +40,10 @@ LIBOS_INLINE long libos_syscall2(long n, long x1, long x2)
 {
     unsigned long ret;
 
-    __asm__ __volatile__(
-        "syscall"
-        : "=a"(ret)
-        : "a"(n), "D"(x1), "S"(x2)
-        : "rcx", "r11", "memory");
+    __asm__ __volatile__("syscall"
+                         : "=a"(ret)
+                         : "a"(n), "D"(x1), "S"(x2)
+                         : "rcx", "r11", "memory");
 
     return (long)ret;
 }
@@ -55,62 +52,43 @@ LIBOS_INLINE long libos_syscall3(long n, long x1, long x2, long x3)
 {
     unsigned long ret;
 
-    __asm__ __volatile__(
-        "syscall"
-        : "=a"(ret)
-        : "a"(n), "D"(x1), "S"(x2), "d"(x3)
-        : "rcx", "r11", "memory");
+    __asm__ __volatile__("syscall"
+                         : "=a"(ret)
+                         : "a"(n), "D"(x1), "S"(x2), "d"(x3)
+                         : "rcx", "r11", "memory");
 
     return (long)ret;
 }
 
-LIBOS_INLINE long libos_syscall4(
-    long n,
-    long x1,
-    long x2,
-    long x3,
-    long x4)
+LIBOS_INLINE long libos_syscall4(long n, long x1, long x2, long x3, long x4)
 {
     unsigned long ret;
     register long r10 __asm__("r10") = x4;
 
-    __asm__ __volatile__(
-        "syscall"
-        : "=a"(ret)
-        : "a"(n), "D"(x1), "S"(x2), "d"(x3), "r"(r10)
-        : "rcx", "r11", "memory");
+    __asm__ __volatile__("syscall"
+                         : "=a"(ret)
+                         : "a"(n), "D"(x1), "S"(x2), "d"(x3), "r"(r10)
+                         : "rcx", "r11", "memory");
 
     return (long)ret;
 }
 
-LIBOS_INLINE long libos_syscall5(
-    long n,
-    long x1,
-    long x2,
-    long x3,
-    long x4,
-    long x5)
+LIBOS_INLINE long
+libos_syscall5(long n, long x1, long x2, long x3, long x4, long x5)
 {
     unsigned long ret;
     register long r10 __asm__("r10") = x4;
     register long r8 __asm__("r8") = x5;
-    __asm__ __volatile__(
-        "syscall"
-        : "=a"(ret)
-        : "a"(n), "D"(x1), "S"(x2), "d"(x3), "r"(r10), "r"(r8)
-        : "rcx", "r11", "memory");
+    __asm__ __volatile__("syscall"
+                         : "=a"(ret)
+                         : "a"(n), "D"(x1), "S"(x2), "d"(x3), "r"(r10), "r"(r8)
+                         : "rcx", "r11", "memory");
 
     return (long)ret;
 }
 
-LIBOS_INLINE long libos_syscall6(
-    long n,
-    long x1,
-    long x2,
-    long x3,
-    long x4,
-    long x5,
-    long x6)
+LIBOS_INLINE long
+libos_syscall6(long n, long x1, long x2, long x3, long x4, long x5, long x6)
 {
     unsigned long ret;
     register long r10 __asm__("r10") = x4;
@@ -203,7 +181,7 @@ long libos_syscall_load_symbols(void);
 
 long libos_syscall_unload_symbols(void);
 
-long libos_syscall_clock_gettime(clockid_t clk_id, struct timespec *tp);
+long libos_syscall_clock_gettime(clockid_t clk_id, struct timespec* tp);
 
 long libos_syscall_clone(
     int (*fn)(void*),
@@ -222,6 +200,6 @@ long libos_syscall_futex(
     int* uaddr2,
     int val3);
 
-long libos_syscall_getrandom(void *buf, size_t buflen, unsigned int flags);
+long libos_syscall_getrandom(void* buf, size_t buflen, unsigned int flags);
 
 #endif /* _LIBOS_SYSCALL_H */

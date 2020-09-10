@@ -1,28 +1,21 @@
-#include <libos/tcall.h>
+#include <assert.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <libos/eraise.h>
 #include <libos/syscallext.h>
+#include <libos/tcall.h>
+#include <openenclave/edger8r/enclave.h>
+#include <openenclave/enclave.h>
+#include <stdarg.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/ioctl.h>
 #include <sys/syscall.h>
 #include <time.h>
-#include <string.h>
-#include <errno.h>
-#include <stdlib.h>
-#include <stdarg.h>
 #include <unistd.h>
-#include <assert.h>
-#include <sys/ioctl.h>
-#include <fcntl.h>
-#include <openenclave/enclave.h>
-#include <openenclave/edger8r/enclave.h>
 #include "gencreds.h"
 
-long oe_syscall(
-    long n,
-    long x1,
-    long x2,
-    long x3,
-    long x4,
-    long x5,
-    long x6);
+long oe_syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6);
 
 static long _tcall_random(void* data, size_t size)
 {
@@ -131,8 +124,9 @@ static long _tcall_vsnprintf(
 }
 
 /* Must be overriden by enclave application */
-__attribute__((__weak__))
-long libos_tcall_clock_gettime(clockid_t clk_id, struct timespec *tp)
+__attribute__((__weak__)) long libos_tcall_clock_gettime(
+    clockid_t clk_id,
+    struct timespec* tp)
 {
     (void)clk_id;
     (void)tp;
@@ -142,8 +136,7 @@ long libos_tcall_clock_gettime(clockid_t clk_id, struct timespec *tp)
 }
 
 /* Must be overriden by enclave application */
-__attribute__((__weak__))
-oe_result_t libos_oe_call_host_function(
+__attribute__((__weak__)) oe_result_t libos_oe_call_host_function(
     size_t function_id,
     const void* input_buffer,
     size_t input_buffer_size,
@@ -162,8 +155,7 @@ oe_result_t libos_oe_call_host_function(
 }
 
 /* Must be overriden by enclave application */
-__attribute__((__weak__))
-long libos_tcall_isatty(int fd)
+__attribute__((__weak__)) long libos_tcall_isatty(int fd)
 {
     (void)fd;
 
@@ -172,8 +164,7 @@ long libos_tcall_isatty(int fd)
 }
 
 /* Must be overriden by enclave application */
-__attribute__((__weak__))
-long libos_tcall_add_symbol_file(
+__attribute__((__weak__)) long libos_tcall_add_symbol_file(
     const void* file_data,
     size_t file_size,
     const void* text,
@@ -188,24 +179,21 @@ long libos_tcall_add_symbol_file(
 }
 
 /* Must be overriden by enclave application */
-__attribute__((__weak__))
-long libos_tcall_load_symbols(void)
+__attribute__((__weak__)) long libos_tcall_load_symbols(void)
 {
     assert("unimplemented: implement in enclave" == NULL);
     return -ENOTSUP;
 }
 
 /* Must be overriden by enclave application */
-__attribute__((__weak__))
-long libos_tcall_unload_symbols(void)
+__attribute__((__weak__)) long libos_tcall_unload_symbols(void)
 {
     assert("unimplemented: implement in enclave" == NULL);
     return -ENOTSUP;
 }
 
 /* Must be overriden by enclave application */
-__attribute__((__weak__))
-long libos_tcall_create_host_thread(uint64_t cookie)
+__attribute__((__weak__)) long libos_tcall_create_host_thread(uint64_t cookie)
 {
     (void)cookie;
     assert("unimplemented: implement in enclave" == NULL);
@@ -213,8 +201,9 @@ long libos_tcall_create_host_thread(uint64_t cookie)
 }
 
 /* Must be overriden by enclave application */
-__attribute__((__weak__))
-long libos_tcall_wait(uint64_t event, const struct timespec* timeout)
+__attribute__((__weak__)) long libos_tcall_wait(
+    uint64_t event,
+    const struct timespec* timeout)
 {
     (void)event;
     (void)timeout;
@@ -223,8 +212,7 @@ long libos_tcall_wait(uint64_t event, const struct timespec* timeout)
 }
 
 /* Must be overriden by enclave application */
-__attribute__((__weak__))
-long libos_tcall_wake(uint64_t event)
+__attribute__((__weak__)) long libos_tcall_wake(uint64_t event)
 {
     (void)event;
     assert("unimplemented: implement in enclave" == NULL);
@@ -232,8 +220,7 @@ long libos_tcall_wake(uint64_t event)
 }
 
 /* Must be overriden by enclave application */
-__attribute__((__weak__))
-long libos_tcall_wake_wait(
+__attribute__((__weak__)) long libos_tcall_wake_wait(
     uint64_t waiter_event,
     uint64_t self_event,
     const struct timespec* timeout)
@@ -246,14 +233,8 @@ long libos_tcall_wake_wait(
 }
 
 /* forward system call to Open Enclave */
-static long _forward_syscall(
-    long n,
-    long x1,
-    long x2,
-    long x3,
-    long x4,
-    long x5,
-    long x6)
+static long
+_forward_syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6)
 {
     long ret;
 
@@ -346,11 +327,7 @@ static long _oesdk_syscall(long n, long params[6])
             uint8_t* key_info = (uint8_t*)params[2];
             size_t key_info_size = (size_t)params[3];
 
-            oe_free_key(
-                key_buffer,
-                key_buffer_size,
-                key_info,
-                key_info_size);
+            oe_free_key(key_buffer, key_buffer_size, key_info, key_info_size);
 
             return 0;
         }
@@ -371,10 +348,7 @@ static long _oesdk_syscall(long n, long params[6])
             void* arg = (void*)params[3];
 
             return (long)oe_verify_attestation_certificate(
-                cert_in_der,
-                cert_in_der_len,
-                enclave_identity_callback,
-                arg);
+                cert_in_der, cert_in_der_len, enclave_identity_callback, arg);
         }
         case SYS_libos_oe_get_enclave_status:
         {
@@ -496,9 +470,9 @@ long libos_tcall(long n, long params[6])
             FILE* stream = NULL;
 
             if (fd == STDOUT_FILENO)
-                stream  = stdout;
+                stream = stdout;
             else if (fd == STDERR_FILENO)
-                stream  = stderr;
+                stream = stderr;
             else
                 return -EINVAL;
 

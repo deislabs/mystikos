@@ -1,21 +1,21 @@
 #include <dirent.h>
-#include <stdlib.h>
 #include <fcntl.h>
-#include <limits.h>
-#include <string.h>
+#include <libos/assert.h>
+#include <libos/buf.h>
+#include <libos/deprecated.h>
+#include <libos/eraise.h>
 #include <libos/fs.h>
+#include <libos/malloc.h>
+#include <libos/paths.h>
 #include <libos/ramfs.h>
-#include <libos/trace.h>
+#include <libos/realpath.h>
 #include <libos/round.h>
 #include <libos/strings.h>
-#include <libos/paths.h>
-#include <libos/realpath.h>
-#include <libos/buf.h>
-#include <libos/eraise.h>
+#include <libos/trace.h>
+#include <limits.h>
+#include <stdlib.h>
+#include <string.h>
 #include "bufu64.h"
-#include <libos/deprecated.h>
-#include <libos/malloc.h>
-#include <libos/assert.h>
 
 #define BLKSIZE 512
 
@@ -39,8 +39,7 @@ typedef struct ramfs
     libos_fs_t base;
     uint64_t magic;
     inode_t* root;
-}
-ramfs_t;
+} ramfs_t;
 
 static bool _ramfs_valid(const ramfs_t* ramfs)
 {
@@ -60,10 +59,10 @@ static bool _ramfs_valid(const ramfs_t* ramfs)
 struct inode
 {
     uint64_t magic;
-    uint32_t mode; /* Type and mode */
-    size_t nlink; /* number of hard links to this inode (excludes ".") */
-    size_t nopens; /* number of times file is currently opened */
-    libos_buf_t buf; /* file or directory data */
+    uint32_t mode;    /* Type and mode */
+    size_t nlink;     /* number of hard links to this inode (excludes ".") */
+    size_t nopens;    /* number of times file is currently opened */
+    libos_buf_t buf;  /* file or directory data */
     const void* data; /* set by libos_ramfs_set_buf() */
 };
 
@@ -100,8 +99,7 @@ static int _inode_add_dirent(
 
     /* Append the new directory entry */
     {
-        struct dirent ent =
-        {
+        struct dirent ent = {
             .d_ino = (ino_t)inode,
             .d_off = (off_t)dir->buf.size,
             .d_reclen = sizeof(struct dirent),
@@ -195,9 +193,7 @@ done:
     return ret;
 }
 
-static inode_t* _inode_find_child(
-    const inode_t* inode,
-    const char* name)
+static inode_t* _inode_find_child(const inode_t* inode, const char* name)
 {
     struct dirent* ents = (struct dirent*)inode->buf.data;
     size_t nents = inode->buf.size / sizeof(struct dirent);
@@ -213,10 +209,7 @@ static inode_t* _inode_find_child(
 }
 
 /* Perform a depth-first release of all inodes */
-static void _inode_release_all(
-    inode_t* parent,
-    inode_t* inode,
-    uint8_t d_type)
+static void _inode_release_all(inode_t* parent, inode_t* inode, uint8_t d_type)
 {
     struct dirent* ents = (struct dirent*)inode->buf.data;
     size_t nents = inode->buf.size / sizeof(struct dirent);
@@ -303,14 +296,14 @@ static const char* _inode_target(const inode_t* inode)
 **==============================================================================
 */
 
-#define FILE_MAGIC  0xdfe1d5c160064f8e
+#define FILE_MAGIC 0xdfe1d5c160064f8e
 
 struct libos_file
 {
     uint64_t magic;
     inode_t* inode;
-    size_t offset; /* the current file offset (files) */
-    uint32_t access; /* (O_RDONLY | O_RDWR | O_WRONLY) */
+    size_t offset;      /* the current file offset (files) */
+    uint32_t access;    /* (O_RDONLY | O_RDWR | O_WRONLY) */
     uint32_t operating; /* (O_RDONLY | O_RDWR | O_WRONLY) */
     char realpath[PATH_MAX];
 };
@@ -348,9 +341,9 @@ static void* _file_at(libos_file_t* file, size_t offset)
 **==============================================================================
 */
 
-#define MODE_R   (S_IRUSR | S_IRGRP | S_IROTH)
-#define MODE_W   (S_IWUSR | S_IWGRP | S_IWOTH)
-#define MODE_X   (S_IXUSR | S_IXGRP | S_IXOTH)
+#define MODE_R (S_IRUSR | S_IRGRP | S_IROTH)
+#define MODE_W (S_IWUSR | S_IWGRP | S_IWOTH)
+#define MODE_X (S_IXUSR | S_IXGRP | S_IXOTH)
 #define MODE_RWX (MODE_R | MODE_W | MODE_X)
 
 /* Assume that d_ino is 8 bytes (big enough to hold a pointer) */
@@ -534,10 +527,16 @@ static int _path_to_inode_realpath(
     char realpath_out[PATH_MAX])
 {
     int ret = 0;
-    char realpath[PATH_MAX] = { '\0' };
+    char realpath[PATH_MAX] = {'\0'};
 
-    ECHECK(_path_to_inode_recursive(ramfs, path, ramfs->root, follow,
-        parent_out, inode_out, realpath_out ? realpath : NULL));
+    ECHECK(_path_to_inode_recursive(
+        ramfs,
+        path,
+        ramfs->root,
+        follow,
+        parent_out,
+        inode_out,
+        realpath_out ? realpath : NULL));
 
     if (realpath_out)
         ECHECK(libos_normalize(realpath, realpath_out, PATH_MAX));
@@ -1512,11 +1511,7 @@ done:
     return ret;
 }
 
-static int _fs_fcntl(
-    libos_fs_t* fs,
-    libos_file_t* file,
-    int cmd,
-    long arg)
+static int _fs_fcntl(libos_fs_t* fs, libos_file_t* file, int cmd, long arg)
 {
     int ret = 0;
     ramfs_t* ramfs = (ramfs_t*)fs;
@@ -1547,35 +1542,13 @@ int libos_init_ramfs(libos_fs_t** fs_out)
 {
     int ret = 0;
     ramfs_t* ramfs = NULL;
-    static libos_fs_t _base =
-    {
-        _fs_release,
-        _fs_creat,
-        _fs_open,
-        _fs_lseek,
-        _fs_read,
-        _fs_write,
-        _fs_pread,
-        _fs_pwrite,
-        _fs_readv,
-        _fs_writev,
-        _fs_close,
-        _fs_access,
-        _fs_stat,
-        _fs_lstat,
-        _fs_fstat,
-        _fs_link,
-        _fs_unlink,
-        _fs_rename,
-        _fs_truncate,
-        _fs_ftruncate,
-        _fs_mkdir,
-        _fs_rmdir,
-        _fs_getdents64,
-        _fs_readlink,
-        _fs_symlink,
-        _fs_realpath,
-        _fs_fcntl,
+    static libos_fs_t _base = {
+        _fs_release,  _fs_creat,  _fs_open,       _fs_lseek,    _fs_read,
+        _fs_write,    _fs_pread,  _fs_pwrite,     _fs_readv,    _fs_writev,
+        _fs_close,    _fs_access, _fs_stat,       _fs_lstat,    _fs_fstat,
+        _fs_link,     _fs_unlink, _fs_rename,     _fs_truncate, _fs_ftruncate,
+        _fs_mkdir,    _fs_rmdir,  _fs_getdents64, _fs_readlink, _fs_symlink,
+        _fs_realpath, _fs_fcntl,
     };
     inode_t* root_inode = NULL;
 

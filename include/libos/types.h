@@ -2,8 +2,8 @@
 #define _LIBOS_TYPES_H
 
 #include <limits.h>
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #ifndef NULL
 #define NULL ((void*)0)

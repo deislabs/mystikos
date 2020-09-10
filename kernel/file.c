@@ -1,14 +1,13 @@
-#include <libos/file.h>
-#include <libos/syscall.h>
-#include <libos/strings.h>
-#include <libos/trace.h>
 #include <libos/buf.h>
+#include <libos/deprecated.h>
+#include <libos/eraise.h>
+#include <libos/file.h>
+#include <libos/malloc.h>
+#include <libos/strings.h>
+#include <libos/syscall.h>
+#include <libos/trace.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <libos/eraise.h>
-#include <libos/deprecated.h>
-#include <libos/strings.h>
-#include <libos/malloc.h>
 
 int libos_creat(const char* pathname, mode_t mode)
 {
@@ -75,7 +74,7 @@ int libos_fstat(int fd, struct stat* statbuf)
     return (int)libos_syscall_ret(libos_syscall_fstat(fd, statbuf));
 }
 
-int libos_mkdir(const char *pathname, mode_t mode)
+int libos_mkdir(const char* pathname, mode_t mode)
 {
     return (int)libos_syscall_ret(libos_syscall_mkdir(pathname, mode));
 }
@@ -122,7 +121,8 @@ int libos_ftruncate(int fd, off_t length)
 
 ssize_t libos_readlink(const char* pathname, char* buf, size_t bufsiz)
 {
-    return (int)libos_syscall_ret(libos_syscall_readlink(pathname, buf, bufsiz));
+    return (int)libos_syscall_ret(
+        libos_syscall_readlink(pathname, buf, bufsiz));
 }
 
 int libos_symlink(const char* target, const char* linkpath)

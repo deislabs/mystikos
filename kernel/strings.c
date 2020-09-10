@@ -1,13 +1,12 @@
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
-#include <libos/strings.h>
-#include <libos/eraise.h>
-#include <libos/tcall.h>
+#include <libos/crash.h>
 #include <libos/deprecated.h>
+#include <libos/eraise.h>
 #include <libos/malloc.h>
 #include <libos/strings.h>
-#include <libos/crash.h>
+#include <libos/tcall.h>
 
 int libos_strsplit(
     const char* str,
@@ -32,7 +31,7 @@ int libos_strsplit(
 
     /* First pass: determine memory requirements */
     {
-    	const char* p = str;
+        const char* p = str;
 
         while (*p)
         {
@@ -55,7 +54,7 @@ int libos_strsplit(
     /* Allocate the array of pointers followed by the strings */
     {
         /* allocate an extra array entry for the null terminator */
-        alloc_size = ((ntoks + 1)* sizeof(char*)) + nchars;
+        alloc_size = ((ntoks + 1) * sizeof(char*)) + nchars;
 
         if (!(toks = libos_malloc(alloc_size)))
             ERAISE(-ENOMEM);
@@ -63,8 +62,8 @@ int libos_strsplit(
 
     /* Second pass: copy the strings into place */
     {
-    	const char* in = str;
-    	char* out = (char*)&toks[ntoks + 1];
+        const char* in = str;
+        char* out = (char*)&toks[ntoks + 1];
         size_t index = 0;
 
         while (*in)
@@ -323,15 +322,15 @@ int libos_console_vprintf(int fd, const char* format, va_list ap)
 
 char* libos_strncpy(char* dest, const char* src, size_t n)
 {
-   size_t i;
+    size_t i;
 
-   for (i = 0; i < n && src[i]; i++)
-       dest[i] = src[i];
+    for (i = 0; i < n && src[i]; i++)
+        dest[i] = src[i];
 
-   for ( ; i < n; i++)
-       dest[i] = '\0';
+    for (; i < n; i++)
+        dest[i] = '\0';
 
-   return dest;
+    return dest;
 }
 
 int libos_veprintf(const char* format, va_list ap)
@@ -373,8 +372,8 @@ void __libos_panic(
 {
     va_list ap;
 
-    libos_console_printf(STDERR_FILENO, "kernel panic: %s(%zu): %s(): ",
-        file, line, func);
+    libos_console_printf(
+        STDERR_FILENO, "kernel panic: %s(%zu): %s(): ", file, line, func);
 
     va_start(ap, format);
     libos_console_vprintf(STDERR_FILENO, format, ap);

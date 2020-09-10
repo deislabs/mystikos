@@ -1,12 +1,12 @@
+#include <arpa/inet.h>
+#include <assert.h>
+#include <fcntl.h>
+#include <netinet/in.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include <fcntl.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/ioctl.h>
-#include <assert.h>
 
 int main(int argc, const char* argv[])
 {

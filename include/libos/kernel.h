@@ -1,8 +1,8 @@
 #ifndef _LIBOS_KERNEL_H
 #define _LIBOS_KERNEL_H
 
-#include <libos/types.h>
 #include <libos/tcall.h>
+#include <libos/types.h>
 
 typedef struct libos_kernel_args
 {
@@ -41,8 +41,7 @@ typedef struct libos_kernel_args
 
     /* Callback for making target-calls */
     libos_tcall_t tcall;
-}
-libos_kernel_args_t;
+} libos_kernel_args_t;
 
 typedef int (*libos_kernel_entry_t)(libos_kernel_args_t* args);
 

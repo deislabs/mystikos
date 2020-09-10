@@ -4,11 +4,11 @@
 #ifndef _LIBOS_FILE_H
 #define _LIBOS_FILE_H
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <sys/uio.h>
 #include <dirent.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/uio.h>
 
 int libos_creat(const char* pathname, mode_t mode);
 

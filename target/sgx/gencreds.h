@@ -1,9 +1,9 @@
 #ifndef _TLSCREDS_H
 #define _TLSCREDS_H
 
-#include <stdint.h>
-#include <stddef.h>
 #include <openenclave/enclave.h>
+#include <stddef.h>
+#include <stdint.h>
 
 int libos_gen_creds(
     uint8_t** cert_out,

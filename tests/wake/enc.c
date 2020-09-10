@@ -1,8 +1,8 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
-#include <openenclave/enclave.h>
 #include <lthread.h>
+#include <openenclave/enclave.h>
 #include "run_t.h"
 
 #define TIMEOUT_MSEC 100
@@ -21,11 +21,11 @@ static void _wait_thread(void* arg)
 
     for (size_t i = 0; i < NUM_ITERATIONS; i++)
     {
-        //PRINTF("wait...\n");
+        // PRINTF("wait...\n");
         lthread_sleep(5 * TIMEOUT_MSEC);
     }
 
-    //PRINTF("done...\n");
+    // PRINTF("done...\n");
     lthread_exit(NULL);
 }
 
@@ -37,7 +37,7 @@ static void _wake_thread(void* arg)
     for (size_t i = 0; i < NUM_ITERATIONS; i++)
     {
         lthread_sleep(TIMEOUT_MSEC);
-        //PRINTF("wake...\n");
+        // PRINTF("wake...\n");
         lthread_wakeup(lt);
     }
 
@@ -49,7 +49,7 @@ int run_ecall(void)
     lthread_t* wait_lt = NULL;
     lthread_t* wake_lt = NULL;
 
-    //oe_host_printf("=== %s(): enter\n", __FUNCTION__);
+    // oe_host_printf("=== %s(): enter\n", __FUNCTION__);
 
     /* create the main lthread */
     lthread_create(&wait_lt, _wait_thread, NULL);
@@ -57,15 +57,15 @@ int run_ecall(void)
     (void)wake_lt;
     lthread_run();
 
-    //oe_host_printf("=== %s(): leave\n\n", __FUNCTION__);
+    // oe_host_printf("=== %s(): leave\n\n", __FUNCTION__);
 
     return 0;
 }
 
 OE_SET_ENCLAVE_SGX(
-    1,    /* ProductID */
-    1,    /* SecurityVersion */
-    true, /* Debug */
-    16*4096, /* NumHeapPages */
-    4096, /* NumStackPages */
-    2);   /* NumTCS */
+    1,         /* ProductID */
+    1,         /* SecurityVersion */
+    true,      /* Debug */
+    16 * 4096, /* NumHeapPages */
+    4096,      /* NumStackPages */
+    2);        /* NumTCS */

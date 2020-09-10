@@ -4,8 +4,8 @@
 #ifndef _LIBOS_LSR_H
 #define _LIBOS_LSR_H
 
-#include <libos/types.h>
 #include <libos/strarr.h>
+#include <libos/types.h>
 
 int libos_lsr(const char* root, libos_strarr_t* paths);
 

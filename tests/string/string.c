@@ -1,15 +1,15 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
+#include <assert.h>
 #include <libos/string.h>
 #include <stdio.h>
-#include <assert.h>
 #include <string.h>
 
 int main(int argc, const char* argv[])
 {
     string_t s;
-    char buf[16+1];
+    char buf[16 + 1];
 
     string_init(&s, buf, sizeof(buf));
     assert(string_cap(&s) == sizeof(buf) - 1);

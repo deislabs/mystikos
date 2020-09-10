@@ -1,5 +1,5 @@
-#include <libos/trace.h>
 #include <libos/deprecated.h>
+#include <libos/trace.h>
 
 static bool _trace = false;
 

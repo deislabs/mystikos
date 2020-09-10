@@ -1,11 +1,11 @@
-#include <stdio.h>
-#include <fcntl.h>
 #include <assert.h>
-#include <unistd.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 #include <sys/uio.h>
+#include <unistd.h>
 
 void _dump(const void* s, size_t n)
 {

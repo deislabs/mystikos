@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-#include <libos/spinlock.h>
 #include <libos/deprecated.h>
+#include <libos/spinlock.h>
 #include <libos/strings.h>
 
 /* Set the spinlock value to 1 and return the old value */

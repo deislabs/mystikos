@@ -1,16 +1,16 @@
 #define _GNU_SOURCE
+#include <assert.h>
+#include <fcntl.h>
 #include <libos/syscallext.h>
+#include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
-#include <string.h>
-#include <syslog.h>
 #include <stdlib.h>
-#include <limits.h>
-#include <assert.h>
-#include <sys/types.h>
-#include <sys/stat.h>
+#include <string.h>
 #include <sys/select.h>
-#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <syslog.h>
 
 void _dlstart_c(size_t* sp, size_t* dynv);
 
@@ -46,21 +46,21 @@ void libos_dump_argv(int argc, const char* argv[])
 
 void libos_trace(const char* msg)
 {
-    long params[6] = { 0 };
+    long params[6] = {0};
     params[0] = (long)msg;
     (*_syscall_callback)(SYS_libos_trace, params);
 }
 
 void libos_dump_stack(const void* stack)
 {
-    long params[6] = { 0 };
+    long params[6] = {0};
     params[0] = (long)stack;
     (*_syscall_callback)(SYS_libos_dump_stack, params);
 }
 
 void libos_trace_ptr(const char* msg, const void* ptr)
 {
-    long params[6] = { 0 };
+    long params[6] = {0};
     params[0] = (long)msg;
     params[1] = (long)ptr;
     (*_syscall_callback)(SYS_libos_trace_ptr, params);
@@ -68,7 +68,7 @@ void libos_trace_ptr(const char* msg, const void* ptr)
 
 long libos_add_symbol_file(const char* path, const void* text, size_t text_size)
 {
-    long params[6] = { 0 };
+    long params[6] = {0};
     params[0] = (long)path;
     params[1] = (long)text;
     params[2] = (long)text_size;
@@ -76,12 +76,7 @@ long libos_add_symbol_file(const char* path, const void* text, size_t text_size)
 }
 
 /* Replacement for __clone() defined in clone.s */
-int __clone(
-    int (*fn)(void*),
-    void* child_stack,
-    int flags,
-    void* arg,
-    ...)
+int __clone(int (*fn)(void*), void* child_stack, int flags, void* arg, ...)
 {
     va_list ap;
     va_start(ap, arg);
@@ -90,8 +85,7 @@ int __clone(
     pid_t* ctid = va_arg(ap, pid_t*);
     va_end(ap);
 
-    libos_clone_syscall_args_t args =
-    {
+    libos_clone_syscall_args_t args = {
         .fn = fn,
         .child_stack = child_stack,
         .flags = flags,
@@ -101,14 +95,11 @@ int __clone(
         .ctid = ctid,
     };
 
-    long params[6] = { (long)&args };
+    long params[6] = {(long)&args};
     return libos_syscall(SYS_libos_clone, params);
 }
 
-void oelcrt_enter(
-    void* stack,
-    void* dynv,
-    syscall_callback_t callback)
+void oelcrt_enter(void* stack, void* dynv, syscall_callback_t callback)
 {
     _syscall_callback = callback;
 
@@ -157,17 +148,17 @@ int __snprintf_chk(
     return r;
 }
 
-int __vfprintf_chk(FILE* fp, int flag, const char*  format, va_list ap)
+int __vfprintf_chk(FILE* fp, int flag, const char* format, va_list ap)
 {
     return vfprintf(fp, format, ap);
 }
 
-char* __strcpy_chk(char*  dest, const char*  src, size_t destlen)
+char* __strcpy_chk(char* dest, const char* src, size_t destlen)
 {
     return strcpy(dest, src);
 }
 
-int __printf_chk(int flag, const char*  format, ...)
+int __printf_chk(int flag, const char* format, ...)
 {
     va_list ap;
 
@@ -183,7 +174,7 @@ void* __memcpy_chk(void* dest, const void* src, size_t len, size_t destlen)
     return memcpy(dest, src, len);
 }
 
-void __syslog_chk(int priority, int flag, const char*  format, ...)
+void __syslog_chk(int priority, int flag, const char* format, ...)
 {
     va_list ap;
 
@@ -192,7 +183,7 @@ void __syslog_chk(int priority, int flag, const char*  format, ...)
     va_end(ap);
 }
 
-int __fprintf_chk(FILE* stream, int flag, const char*  format, ...)
+int __fprintf_chk(FILE* stream, int flag, const char* format, ...)
 {
     va_list ap;
 
@@ -203,7 +194,7 @@ int __fprintf_chk(FILE* stream, int flag, const char*  format, ...)
     return r;
 }
 
-int __sprintf_chk(char*  str, int flag, size_t strlen, const char*  format, ...)
+int __sprintf_chk(char* str, int flag, size_t strlen, const char* format, ...)
 {
     va_list ap;
 
@@ -214,8 +205,7 @@ int __sprintf_chk(char*  str, int flag, size_t strlen, const char*  format, ...)
     return r;
 }
 
-char* __realpath_chk(
-    const char*  path, char*  resolved_path, size_t resolved_len)
+char* __realpath_chk(const char* path, char* resolved_path, size_t resolved_len)
 {
     return realpath(path, resolved_path);
 }
@@ -232,7 +222,7 @@ int __asprintf_chk(char** strp, const char* fmt, ...)
     return r;
 }
 
-int __open_2 (const char* file, int oflag)
+int __open_2(const char* file, int oflag)
 {
     return open(file, oflag);
 }
@@ -240,29 +230,31 @@ int __open_2 (const char* file, int oflag)
 typedef struct _FTS FTS;
 typedef struct _FTSENT FTSENT;
 
-FTS* fts_open(char*  const* path_argv, int options,
-      int (*compar)(const FTSENT* *, const FTSENT* *))
+FTS* fts_open(
+    char* const* path_argv,
+    int options,
+    int (*compar)(const FTSENT**, const FTSENT**))
 {
     assert("unhandled" == NULL);
     abort();
     return NULL;
 }
 
-FTSENT *fts_read(FTS *ftsp)
+FTSENT* fts_read(FTS* ftsp)
 {
     assert("unhandled" == NULL);
     abort();
     return NULL;
 }
 
-FTSENT *fts_children(FTS *ftsp, int options)
+FTSENT* fts_children(FTS* ftsp, int options)
 {
     assert("unhandled" == NULL);
     abort();
     return NULL;
 }
 
-int fts_set(FTS *ftsp, FTSENT *f, int options)
+int fts_set(FTS* ftsp, FTSENT* f, int options)
 {
     assert("unhandled" == NULL);
     abort();
@@ -276,7 +268,7 @@ int fts_close(FTS* ftsp)
     return 0;
 }
 
-void error(int status, int errnum, const char *format, ...)
+void error(int status, int errnum, const char* format, ...)
 {
     va_list ap;
 
@@ -293,7 +285,7 @@ void error(int status, int errnum, const char *format, ...)
         exit(status);
 }
 
-void* __memset_chk(void*  dest, int c, size_t len, size_t destlen)
+void* __memset_chk(void* dest, int c, size_t len, size_t destlen)
 {
     return memset(dest, c, len);
 }

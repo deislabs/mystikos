@@ -1,12 +1,12 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
+#include <assert.h>
 #include <libos/conf.h>
 #include <libos/file.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
-#include <assert.h>
+#include <string.h>
 
 static char _name[64];
 static char _number[64];

@@ -4,16 +4,15 @@
 #ifndef _LIBOS_COND_H
 #define _LIBOS_COND_H
 
-#include <time.h>
 #include <libos/mutex.h>
 #include <libos/spinlock.h>
+#include <time.h>
 
 typedef struct _posix_cond
 {
     libos_spinlock_t lock;
     libos_thread_queue_t queue;
-}
-libos_cond_t;
+} libos_cond_t;
 
 int libos_cond_init(libos_cond_t* c);
 

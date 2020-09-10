@@ -1,8 +1,8 @@
 #ifndef _LIBOS_THREAD_H
 #define _LIBOS_THREAD_H
 
-#include <libos/types.h>
 #include <libos/setjmp.h>
+#include <libos/types.h>
 #include <unistd.h>
 
 #define LIBOS_THREAD_MAGIC 0xc79c53d9ad134ad4
@@ -10,7 +10,7 @@
 /* aligns with pthread ABI (both musl libc and glibc) */
 struct pthread
 {
-    struct pthread *self;
+    struct pthread* self;
     uint64_t reserved1;
     uint64_t reserved2;
     uint64_t reserved3;

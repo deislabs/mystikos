@@ -1,8 +1,8 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
-#include <openenclave/enclave.h>
 #include <lthread.h>
+#include <openenclave/enclave.h>
 #include "run_t.h"
 
 #define TIMEOUT_MSEC 1
@@ -15,7 +15,7 @@ int oe_host_printf(const char* fmt, ...);
 int oe_snprintf(char* str, size_t size, const char* format, ...);
 uint64_t lthread_id();
 
-void lthread_exit(void *ptr);
+void lthread_exit(void* ptr);
 
 static void _child_thread(void* arg)
 {
@@ -27,7 +27,7 @@ static void _child_thread(void* arg)
     for (size_t i = 0; i < NUM_ITERATIONS; i++)
     {
         uint64_t ltid = lthread_id();
-        //oe_host_printf("=== thread: %lu\n", ltid);
+        // oe_host_printf("=== thread: %lu\n", ltid);
         lthread_sleep(ltid * TIMEOUT_MSEC);
     }
 
@@ -59,13 +59,13 @@ static void _run(bool detached)
 {
     lthread_t* lt;
 
-    //oe_host_printf("=== %s(): enter\n", __FUNCTION__);
+    // oe_host_printf("=== %s(): enter\n", __FUNCTION__);
 
     /* create the main lthread */
     lthread_create(&lt, _main_thread, &detached);
     lthread_run();
 
-    //oe_host_printf("=== %s(): leave\n\n", __FUNCTION__);
+    // oe_host_printf("=== %s(): leave\n\n", __FUNCTION__);
 }
 
 int run_ecall(void)

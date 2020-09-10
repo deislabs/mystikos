@@ -1,13 +1,9 @@
-#include <libos/malloc.h>
 #include <libos/defs.h>
-#include <stdlib.h>
+#include <libos/malloc.h>
 #include <malloc.h>
+#include <stdlib.h>
 
-void __libos_free(
-    void* ptr,
-    const char* file,
-    size_t line,
-    const char* func)
+void __libos_free(void* ptr, const char* file, size_t line, const char* func)
 {
     return free(ptr);
 }

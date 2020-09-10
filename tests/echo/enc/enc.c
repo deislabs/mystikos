@@ -11,8 +11,8 @@ uint64_t rdtsc(void)
     uint32_t a = 0, d = 0;
 
     /* RDTSC requires SGX-2 */
-    asm volatile ("rdtsc" : "=a"(a), "=d"(d));
-    return (((uint64_t) d << 32) | a);
+    asm volatile("rdtsc" : "=a"(a), "=d"(d));
+    return (((uint64_t)d << 32) | a);
 }
 
 int echo_ecall(char* msg)

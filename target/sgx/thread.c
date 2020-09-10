@@ -1,7 +1,7 @@
-#include <stdio.h>
 #include <errno.h>
-#include <libos/thread.h>
 #include <libos/eraise.h>
+#include <libos/thread.h>
+#include <stdio.h>
 
 long libos_run_thread(uint64_t cookie, pid_t tid, uint64_t event)
 {

@@ -1,23 +1,23 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
-#include <openenclave/host.h>
+#include <assert.h>
+#include <errno.h>
+#include <libgen.h>
 #include <libos/elf.h>
 #include <libos/strings.h>
+#include <limits.h>
+#include <linux/futex.h>
+#include <openenclave/host.h>
+#include <pthread.h>
+#include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <limits.h>
-#include <pthread.h>
-#include <assert.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <libgen.h>
-#include <errno.h>
 #include <syscall.h>
-#include <linux/futex.h>
+#include <unistd.h>
 
-#include "utils.h"
 #include "libos_u.h"
 #include "regions.h"
+#include "utils.h"
 
 static int _serialize_args(
     const char* argv[],
@@ -86,8 +86,7 @@ int exec_get_opt(
     if (!opt)
         _err("unexpected");
 
-
-    for (int i = 0; i < *argc; )
+    for (int i = 0; i < *argc;)
     {
         if (strcmp(argv[i], opt) == 0)
         {
@@ -96,14 +95,15 @@ int exec_get_opt(
                 if (i + 1 == *argc)
                     _err("%s: missing option argument", opt);
 
-                *optarg = argv[i+1];
-                memmove(&argv[i], &argv[i+2], (*argc - i - 1) * sizeof(char*));
+                *optarg = argv[i + 1];
+                memmove(
+                    &argv[i], &argv[i + 2], (*argc - i - 1) * sizeof(char*));
                 (*argc) -= 2;
                 return 0;
             }
             else
             {
-                memmove(&argv[i], &argv[i+1], (*argc - i) * sizeof(char*));
+                memmove(&argv[i], &argv[i + 1], (*argc - i) * sizeof(char*));
                 (*argc)--;
                 return 0;
             }
@@ -114,7 +114,7 @@ int exec_get_opt(
                 _err("%s: extraneous '='", opt);
 
             *optarg = &argv[i][olen + 1];
-            memmove(&argv[i], &argv[i+1], (*argc - i) * sizeof(char*));
+            memmove(&argv[i], &argv[i + 1], (*argc - i) * sizeof(char*));
             (*argc)--;
             return 0;
         }
@@ -200,8 +200,7 @@ long libos_wait_ocall(uint64_t event, const struct libos_timespec* timeout)
             {
                 return ETIMEDOUT;
             }
-        }
-        while (*uaddr == -1);
+        } while (*uaddr == -1);
     }
 
     return 0;
@@ -239,13 +238,12 @@ long libos_wake_wait_ocall(
     return 0;
 }
 
-
 int exec_launch_enclave(
-    const char *enc_path, 
-    oe_enclave_type_t type, 
+    const char* enc_path,
+    oe_enclave_type_t type,
     uint32_t flags,
-    const char *argv[],
-    struct libos_options *options)
+    const char* argv[],
+    struct libos_options* options)
 {
     oe_result_t r;
     oe_enclave_t* _enclave;
@@ -256,8 +254,7 @@ int exec_launch_enclave(
 
     /* Load the enclave: calls oe_region_add_regions() */
     {
-        r = oe_create_libos_enclave(
-            enc_path, type, flags, NULL, 0, &_enclave);
+        r = oe_create_libos_enclave(enc_path, type, flags, NULL, 0, &_enclave);
 
         if (r != OE_OK)
             _err("failed to load enclave: result=%s", oe_result_str(r));
@@ -299,7 +296,7 @@ int _exec(int argc, const char* argv[])
     const oe_enclave_type_t type = OE_ENCLAVE_TYPE_SGX;
     uint32_t flags = OE_ENCLAVE_FLAG_DEBUG;
     struct libos_options options;
-    const region_details * details;
+    const region_details* details;
 
     assert(strcmp(argv[1], "exec") == 0);
 
@@ -324,22 +321,27 @@ int _exec(int argc, const char* argv[])
 
     if (argc < 4)
     {
-        fprintf(stderr, "Usage: %s %s <rootfs> <program> <args...>\n",
-            argv[0], argv[1]);
+        fprintf(
+            stderr,
+            "Usage: %s %s <rootfs> <program> <args...>\n",
+            argv[0],
+            argv[1]);
         return 1;
     }
 
     const char* rootfs = argv[2];
     const char* program = argv[3];
 
-    // note... we have no config, but this call will go looking in the enclave if it is
-    // signed.
-    if ((details = create_region_details_from_files(program, rootfs, NULL, 0)) == NULL)
+    // note... we have no config, but this call will go looking in the enclave
+    // if it is signed.
+    if ((details = create_region_details_from_files(
+             program, rootfs, NULL, 0)) == NULL)
     {
         _err("Creating region data failed.");
     }
 
-    if (exec_launch_enclave(details->enc.path, type, flags, argv + 3, &options) != 0)
+    if (exec_launch_enclave(
+            details->enc.path, type, flags, argv + 3, &options) != 0)
     {
         _err("Failed to run enclave %s", details->enc.path);
     }

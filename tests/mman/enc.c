@@ -1,5 +1,5 @@
-#include <openenclave/enclave.h>
 #include <libos/mman.h>
+#include <openenclave/enclave.h>
 #include "run_t.h"
 
 #define D(X)
@@ -22,8 +22,7 @@ void oe_free(void* ptr);
 typedef struct _page
 {
     uint8_t buf[4096];
-}
-page_t;
+} page_t;
 
 static int _rand(void)
 {
@@ -216,7 +215,8 @@ static int _mman_unmap(libos_mman_t* heap, void* address, size_t size)
 /*
 ** test_mman_1()
 **
-**     Test libos_mman_map() and libos_mman_munmap() and check expected state between
+**     Test libos_mman_map() and libos_mman_munmap() and check expected state
+*between
 **     operations. Unmap leaves gaps and then map checks to see if those gaps
 **     are filled.
 */
@@ -331,7 +331,8 @@ void test_mman_1()
 /*
 ** test_mman_2()
 **
-**     Test libos_mman_map() and libos_mman_munmap() and check expected state between
+**     Test libos_mman_map() and libos_mman_munmap() and check expected state
+*between
 **     operations. Map several regions and then unmap regions leaving gaps.
 **     Map again and see if the new regions were allocated within the expected
 **     gaps.
@@ -951,9 +952,9 @@ int run_ecall(void)
 }
 
 OE_SET_ENCLAVE_SGX(
-    1,    /* ProductID */
-    1,    /* SecurityVersion */
-    true, /* Debug */
-    16*4096, /* NumHeapPages */
-    4096, /* NumStackPages */
-    2);   /* NumTCS */
+    1,         /* ProductID */
+    1,         /* SecurityVersion */
+    true,      /* Debug */
+    16 * 4096, /* NumHeapPages */
+    4096,      /* NumStackPages */
+    2);        /* NumTCS */

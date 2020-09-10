@@ -1,10 +1,10 @@
-#include <stdbool.h>
 #include <errno.h>
-#include <string.h>
 #include <libos/mutex.h>
-#include <libos/thread.h>
-#include <libos/tcall.h>
 #include <libos/strings.h>
+#include <libos/tcall.h>
+#include <libos/thread.h>
+#include <stdbool.h>
+#include <string.h>
 
 int libos_mutex_init(libos_mutex_t* m)
 {

@@ -1,5 +1,5 @@
-#include <openenclave/host.h>
 #include <openenclave/edger8r/host.h>
+#include <openenclave/host.h>
 #include <string.h>
 
 /* Only singleton enclave supported for now */
@@ -9,8 +9,7 @@ typedef struct ocall_table
 {
     const oe_ocall_func_t* functions;
     size_t count;
-}
-ocall_table_t;
+} ocall_table_t;
 
 struct _oe_enclave
 {
@@ -160,8 +159,7 @@ oe_result_t oe_dispatch_host_function(
 
     ocalls = _enclave->ocalls;
 
-    if (function_id >= ocalls.count ||
-        !ocalls.functions ||
+    if (function_id >= ocalls.count || !ocalls.functions ||
         !ocalls.functions[function_id])
     {
         result = OE_FAILURE;

@@ -1,36 +1,35 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
-#include <openenclave/host.h>
-#include <openenclave/bits/sgx/region.h>
+#include <assert.h>
+#include <cpuid.h>
+#include <errno.h>
+#include <libgen.h>
+#include <libos/cpio.h>
 #include <libos/elf.h>
-#include <libos/round.h>
-#include <libos/trace.h>
 #include <libos/eraise.h>
+#include <libos/file.h>
 #include <libos/round.h>
 #include <libos/strings.h>
-#include <libos/file.h>
+#include <libos/trace.h>
+#include <limits.h>
+#include <openenclave/bits/sgx/region.h>
+#include <openenclave/host.h>
+#include <stdbool.h>
 #include <stdio.h>
-#include <libgen.h>
-#include <time.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdbool.h>
-#include <assert.h>
-#include <errno.h>
-#include <limits.h>
-#include <cpuid.h>
 #include <sys/stat.h>
+#include <time.h>
 #include <unistd.h>
-#include <libos/cpio.h>
-#include "libos_u.h"
 #include "../shared.h"
-#include "debug_image.h"
-#include "utils.h"
-#include "sign.h"
-#include "exec.h"
 #include "cpio.h"
+#include "debug_image.h"
+#include "exec.h"
+#include "libos_u.h"
 #include "package.h"
+#include "sign.h"
+#include "utils.h"
 
 _Static_assert(sizeof(struct libos_timespec) == sizeof(struct timespec), "");
 
@@ -106,7 +105,7 @@ int libos_add_symbol_file_ocall(
 
     /* Create a file containing the data */
     {
-        if ((fd = mkstemp(template)) <  0)
+        if ((fd = mkstemp(template)) < 0)
             goto done;
 
         ECHECK(libos_write_file_fd(fd, file_data, file_size));
@@ -199,7 +198,8 @@ int libos_unload_symbols_ocall(void)
     return ret;
 }
 
-#define USAGE "\
+#define USAGE \
+    "\
 \n\
 Usage: %s <action> [options] ...\n\
 \n\
@@ -222,7 +222,7 @@ int main(int argc, const char* argv[])
     setenv("AZDCAP_DEBUG_LOG_LEVEL", "0", 1);
 
     // First check to see if we are executing a packaged process
-    const char *executable;
+    const char* executable;
     executable = strrchr(argv[0], '/');
     if (executable == NULL)
     {
@@ -237,7 +237,7 @@ int main(int argc, const char* argv[])
         return _exec_package(argc, argv);
     }
 
-    if (argc <  2)
+    if (argc < 2)
     {
         fprintf(stderr, USAGE, argv[0]);
         return 1;

@@ -6,7 +6,10 @@
 
 #include <libos/types.h>
 
-#define LIBOS_STRARR_INITIALIZER { NULL, 0, 0 }
+#define LIBOS_STRARR_INITIALIZER \
+    {                            \
+        NULL, 0, 0               \
+    }
 
 typedef struct libos_strarr
 {

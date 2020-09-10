@@ -1,20 +1,19 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
-#include <openenclave/enclave.h>
-#include "calls_t.h"
-#include <stdio.h>
 #include <assert.h>
-#include <string.h>
-#include <stdlib.h>
-#include <libos/file.h>
-#include <libos/ramfs.h>
-#include <libos/mount.h>
-#include <libos/file.h>
-#include <libos/cpio.h>
-#include <libos/lsr.h>
-#include <libos/trace.h>
 #include <libos/atexit.h>
+#include <libos/cpio.h>
+#include <libos/file.h>
+#include <libos/lsr.h>
+#include <libos/mount.h>
+#include <libos/ramfs.h>
+#include <libos/trace.h>
+#include <openenclave/enclave.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "calls_t.h"
 
 extern int oe_host_printf(const char* fmt, ...);
 
@@ -23,8 +22,8 @@ uint64_t rdtsc(void)
     uint32_t a = 0, d = 0;
 
     /* RDTSC requires SGX-2 */
-    asm volatile ("rdtsc" : "=a"(a), "=d"(d));
-    return (((uint64_t) d << 32) | a);
+    asm volatile("rdtsc" : "=a"(a), "=d"(d));
+    return (((uint64_t)d << 32) | a);
 }
 
 ssize_t _writen(int fd, const void* data, size_t size)
@@ -86,8 +85,7 @@ static size_t _fsize(const char* path)
     return (size_t)buf.st_size;
 }
 
-static const char* _paths[] =
-{
+static const char* _paths[] = {
     "/tmp/out/run",
     "/tmp/out/mount",
     "/tmp/out/empty",

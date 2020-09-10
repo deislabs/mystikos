@@ -1,12 +1,12 @@
 #ifndef _LIBOS_FS_H
 #define _LIBOS_FS_H
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/uio.h>
 #include <dirent.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/uio.h>
+#include <unistd.h>
 
 typedef struct libos_fs libos_fs_t;
 
@@ -35,11 +35,8 @@ struct libos_fs
         off_t offset,
         int whence);
 
-    ssize_t (*fs_read)(
-        libos_fs_t* fs,
-        libos_file_t* file,
-        void* buf,
-        size_t count);
+    ssize_t (
+        *fs_read)(libos_fs_t* fs, libos_file_t* file, void* buf, size_t count);
 
     ssize_t (*fs_write)(
         libos_fs_t* fs,

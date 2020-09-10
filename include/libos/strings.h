@@ -1,8 +1,8 @@
 #ifndef _LIBOS_STRINGS_H
 #define _LIBOS_STRINGS_H
 
-#include <libos/types.h>
 #include <libos/defs.h>
+#include <libos/types.h>
 #include <stdarg.h>
 #include <unistd.h>
 

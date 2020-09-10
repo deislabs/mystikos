@@ -1,22 +1,22 @@
-#include <libos/kernel.h>
-#include <libos/syscall.h>
-#include <libos/mmanutils.h>
 #include <libos/assert.h>
+#include <libos/atexit.h>
+#include <libos/cpio.h>
+#include <libos/crash.h>
+#include <libos/elfutils.h>
 #include <libos/eraise.h>
 #include <libos/errno.h>
-#include <libos/strings.h>
-#include <libos/ramfs.h>
-#include <libos/mount.h>
 #include <libos/file.h>
-#include <libos/cpio.h>
-#include <libos/elfutils.h>
-#include <libos/malloc.h>
-#include <libos/crash.h>
-#include <libos/options.h>
-#include <libos/thread.h>
 #include <libos/fsbase.h>
+#include <libos/kernel.h>
+#include <libos/malloc.h>
+#include <libos/mmanutils.h>
+#include <libos/mount.h>
+#include <libos/options.h>
 #include <libos/process.h>
-#include <libos/atexit.h>
+#include <libos/ramfs.h>
+#include <libos/strings.h>
+#include <libos/syscall.h>
+#include <libos/thread.h>
 
 static libos_kernel_args_t* _args;
 
@@ -211,9 +211,7 @@ int libos_enter_kernel(libos_kernel_args_t* args)
     /* Create a temporary file containing the root file system */
     {
         if (_create_cpio_file(
-            rootfs_path,
-            args->rootfs_data,
-            args->rootfs_size) != 0)
+                rootfs_path, args->rootfs_data, args->rootfs_size) != 0)
         {
             libos_eprintf("kernel: failed to create: %s\n", rootfs_path);
             ERAISE(-EINVAL);
@@ -238,12 +236,7 @@ int libos_enter_kernel(libos_kernel_args_t* args)
 
     /* Enter the C runtime (which enters the application) */
     exit_status = elf_enter_crt(
-        thread,
-        args->crt_data,
-        args->argc,
-        args->argv,
-        args->envc,
-        args->envp);
+        thread, args->crt_data, args->argc, args->argv, args->envc, args->envp);
 
     /* Tear down the RAM file system */
     _teardown_ramfs();

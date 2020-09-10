@@ -1,14 +1,14 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
-#include <limits.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <stdarg.h>
-#include <libos/strings.h>
 #include <errno.h>
 #include <libgen.h>
+#include <libos/strings.h>
+#include <limits.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 #include "utils.h"
 
@@ -82,7 +82,7 @@ done:
 
 char _program[PATH_MAX];
 
-const char *set_program_file(const char *program)
+const char* set_program_file(const char* program)
 {
     if (_which(program, _program) != 0)
     {
@@ -94,7 +94,7 @@ const char *set_program_file(const char *program)
     }
 }
 
-const char *get_program_file()
+const char* get_program_file()
 {
     return _program;
 }
@@ -145,13 +145,12 @@ const int format_liboscrt(char* path, size_t size)
     return _format_lib(path, size, "lib/liboscrt.so");
 }
 
-const int format_liboskernel(char *path, size_t size)
+const int format_liboskernel(char* path, size_t size)
 {
     return _format_lib(path, size, "lib/liboskernel.so");
 }
 
-__attribute__((format(printf, 1, 2)))
-void _err(const char* fmt, ...)
+__attribute__((format(printf, 1, 2))) void _err(const char* fmt, ...)
 {
     va_list ap;
 

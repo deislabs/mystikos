@@ -1,27 +1,26 @@
-#include <string.h>
+#include <limits.h>
 #include <lthread.h>
 #include <stdio.h>
-#include <limits.h>
 #include <stdlib.h>
+#include <string.h>
 
-#include <libos/elfutils.h>
-#include <libos/syscall.h>
-#include <libos/strings.h>
-#include <libos/round.h>
-#include <libos/paths.h>
-#include <libos/file.h>
-#include <libos/eraise.h>
+#include <libos/assert.h>
 #include <libos/atexit.h>
-#include <libos/assert.h>
 #include <libos/deprecated.h>
-#include <libos/malloc.h>
-#include <libos/assert.h>
-#include <libos/setjmp.h>
-#include <libos/thread.h>
+#include <libos/elfutils.h>
+#include <libos/eraise.h>
+#include <libos/file.h>
 #include <libos/fsbase.h>
+#include <libos/malloc.h>
+#include <libos/paths.h>
 #include <libos/process.h>
+#include <libos/round.h>
+#include <libos/setjmp.h>
 #include <libos/spinlock.h>
+#include <libos/strings.h>
+#include <libos/syscall.h>
 #include <libos/tcall.h>
+#include <libos/thread.h>
 
 #define GUARD 0x4f
 
@@ -29,54 +28,52 @@ typedef struct _pair
 {
     uint64_t num;
     const char* str;
-}
-pair_t;
+} pair_t;
 
-static pair_t _at_pairs[] =
-{
-    { AT_NULL, "AT_NULL" },
-    { AT_IGNORE, "AT_IGNORE" },
-    { AT_EXECFD, "AT_EXECFD" },
-    { AT_PHDR, "AT_PHDR" },
-    { AT_PHENT, "AT_PHENT" },
-    { AT_PHNUM, "AT_PHNUM" },
-    { AT_PAGESZ, "AT_PAGESZ" },
-    { AT_BASE, "AT_BASE" },
-    { AT_FLAGS, "AT_FLAGS" },
-    { AT_ENTRY, "AT_ENTRY" },
-    { AT_NOTELF, "AT_NOTELF" },
-    { AT_UID, "AT_UID" },
-    { AT_EUID, "AT_EUID" },
-    { AT_GID, "AT_GID" },
-    { AT_EGID, "AT_EGID" },
-    { AT_PLATFORM, "AT_PLATFORM" },
-    { AT_HWCAP, "AT_HWCAP" },
-    { AT_CLKTCK, "AT_CLKTCK" },
-    { AT_FPUCW, "AT_FPUCW" },
-    { AT_DCACHEBSIZE, "AT_DCACHEBSIZE" },
-    { AT_ICACHEBSIZE, "AT_ICACHEBSIZE" },
-    { AT_UCACHEBSIZE, "AT_UCACHEBSIZE" },
-    { AT_IGNOREPPC, "AT_IGNOREPPC" },
-    { AT_SECURE, "AT_SECURE" },
-    { AT_BASE_PLATFORM, "AT_BASE_PLATFORM" },
-    { AT_RANDOM, "AT_RANDOM" },
-    { AT_HWCAP2, "AT_HWCAP2" },
-    { AT_EXECFN, "AT_EXECFN" },
-    { AT_SYSINFO, "AT_SYSINFO" },
-    { AT_SYSINFO_EHDR, "AT_SYSINFO_EHDR" },
-    { AT_L1I_CACHESHAPE, "AT_L1I_CACHESHAPE" },
-    { AT_L1D_CACHESHAPE, "AT_L1D_CACHESHAPE" },
-    { AT_L2_CACHESHAPE, "AT_L2_CACHESHAPE" },
-    { AT_L3_CACHESHAPE, "AT_L3_CACHESHAPE" },
-    { AT_L1I_CACHESIZE, "AT_L1I_CACHESIZE" },
-    { AT_L1I_CACHEGEOMETRY, "AT_L1I_CACHEGEOMETRY" },
-    { AT_L1D_CACHESIZE, "AT_L1D_CACHESIZE" },
-    { AT_L1D_CACHEGEOMETRY, "AT_L1D_CACHEGEOMETRY" },
-    { AT_L2_CACHESIZE, "AT_L2_CACHESIZE" },
-    { AT_L2_CACHEGEOMETRY, "AT_L2_CACHEGEOMETRY" },
-    { AT_L3_CACHESIZE, "AT_L3_CACHESIZE" },
-    { AT_L3_CACHEGEOMETRY, "AT_L3_CACHEGEOMETRY" },
-    { AT_MINSIGSTKSZ, "AT_MINSIGSTKSZ" },
+static pair_t _at_pairs[] = {
+    {AT_NULL, "AT_NULL"},
+    {AT_IGNORE, "AT_IGNORE"},
+    {AT_EXECFD, "AT_EXECFD"},
+    {AT_PHDR, "AT_PHDR"},
+    {AT_PHENT, "AT_PHENT"},
+    {AT_PHNUM, "AT_PHNUM"},
+    {AT_PAGESZ, "AT_PAGESZ"},
+    {AT_BASE, "AT_BASE"},
+    {AT_FLAGS, "AT_FLAGS"},
+    {AT_ENTRY, "AT_ENTRY"},
+    {AT_NOTELF, "AT_NOTELF"},
+    {AT_UID, "AT_UID"},
+    {AT_EUID, "AT_EUID"},
+    {AT_GID, "AT_GID"},
+    {AT_EGID, "AT_EGID"},
+    {AT_PLATFORM, "AT_PLATFORM"},
+    {AT_HWCAP, "AT_HWCAP"},
+    {AT_CLKTCK, "AT_CLKTCK"},
+    {AT_FPUCW, "AT_FPUCW"},
+    {AT_DCACHEBSIZE, "AT_DCACHEBSIZE"},
+    {AT_ICACHEBSIZE, "AT_ICACHEBSIZE"},
+    {AT_UCACHEBSIZE, "AT_UCACHEBSIZE"},
+    {AT_IGNOREPPC, "AT_IGNOREPPC"},
+    {AT_SECURE, "AT_SECURE"},
+    {AT_BASE_PLATFORM, "AT_BASE_PLATFORM"},
+    {AT_RANDOM, "AT_RANDOM"},
+    {AT_HWCAP2, "AT_HWCAP2"},
+    {AT_EXECFN, "AT_EXECFN"},
+    {AT_SYSINFO, "AT_SYSINFO"},
+    {AT_SYSINFO_EHDR, "AT_SYSINFO_EHDR"},
+    {AT_L1I_CACHESHAPE, "AT_L1I_CACHESHAPE"},
+    {AT_L1D_CACHESHAPE, "AT_L1D_CACHESHAPE"},
+    {AT_L2_CACHESHAPE, "AT_L2_CACHESHAPE"},
+    {AT_L3_CACHESHAPE, "AT_L3_CACHESHAPE"},
+    {AT_L1I_CACHESIZE, "AT_L1I_CACHESIZE"},
+    {AT_L1I_CACHEGEOMETRY, "AT_L1I_CACHEGEOMETRY"},
+    {AT_L1D_CACHESIZE, "AT_L1D_CACHESIZE"},
+    {AT_L1D_CACHEGEOMETRY, "AT_L1D_CACHEGEOMETRY"},
+    {AT_L2_CACHESIZE, "AT_L2_CACHESIZE"},
+    {AT_L2_CACHEGEOMETRY, "AT_L2_CACHEGEOMETRY"},
+    {AT_L3_CACHESIZE, "AT_L3_CACHESIZE"},
+    {AT_L3_CACHEGEOMETRY, "AT_L3_CACHEGEOMETRY"},
+    {AT_MINSIGSTKSZ, "AT_MINSIGSTKSZ"},
 };
 
 static size_t _n_at_pairs = sizeof(_at_pairs) / sizeof(_at_pairs[0]);
@@ -92,28 +89,27 @@ const char* elf64_at_string(uint64_t value)
     return NULL;
 }
 
-static pair_t _pt_pairs[] =
-{
-    { PT_NULL, "PT_NULL" },
-    { PT_LOAD, "PT_LOAD" },
-    { PT_DYNAMIC, "PT_DYNAMIC" },
-    { PT_INTERP, "PT_INTERP" },
-    { PT_NOTE, "PT_NOTE" },
-    { PT_SHLIB, "PT_SHLIB" },
-    { PT_PHDR, "PT_PHDR" },
-    { PT_TLS, "PT_TLS" },
-    { PT_NUM, "PT_NUM" },
-    { PT_LOOS, "PT_LOOS" },
-    { PT_GNU_EH_FRAME, "PT_GNU_EH_FRAME" },
-    { PT_GNU_STACK, "PT_GNU_STACK" },
-    { PT_GNU_RELRO, "PT_GNU_RELRO" },
-    { PT_LOSUNW, "PT_LOSUNW" },
-    { PT_SUNWBSS, "PT_SUNWBSS" },
-    { PT_SUNWSTACK, "PT_SUNWSTACK" },
-    { PT_HISUNW, "PT_HISUNW" },
-    { PT_HIOS, "PT_HIOS" },
-    { PT_LOPROC, "PT_LOPROC" },
-    { PT_HIPROC, "PT_HIPROC" },
+static pair_t _pt_pairs[] = {
+    {PT_NULL, "PT_NULL"},
+    {PT_LOAD, "PT_LOAD"},
+    {PT_DYNAMIC, "PT_DYNAMIC"},
+    {PT_INTERP, "PT_INTERP"},
+    {PT_NOTE, "PT_NOTE"},
+    {PT_SHLIB, "PT_SHLIB"},
+    {PT_PHDR, "PT_PHDR"},
+    {PT_TLS, "PT_TLS"},
+    {PT_NUM, "PT_NUM"},
+    {PT_LOOS, "PT_LOOS"},
+    {PT_GNU_EH_FRAME, "PT_GNU_EH_FRAME"},
+    {PT_GNU_STACK, "PT_GNU_STACK"},
+    {PT_GNU_RELRO, "PT_GNU_RELRO"},
+    {PT_LOSUNW, "PT_LOSUNW"},
+    {PT_SUNWBSS, "PT_SUNWBSS"},
+    {PT_SUNWSTACK, "PT_SUNWSTACK"},
+    {PT_HISUNW, "PT_HISUNW"},
+    {PT_HIOS, "PT_HIOS"},
+    {PT_LOPROC, "PT_LOPROC"},
+    {PT_HIPROC, "PT_HIPROC"},
 };
 
 static size_t _n_pt_pairs = sizeof(_pt_pairs) / sizeof(_pt_pairs[0]);
@@ -371,7 +367,7 @@ done:
     return ret;
 }
 
-static void _dump_bytes(const void * p_, size_t n)
+static void _dump_bytes(const void* p_, size_t n)
 {
     const uint8_t* p = (const uint8_t*)p_;
     while (n--)
@@ -609,7 +605,7 @@ int elf_dump_ehdr(const void* ehdr)
 
 int elf_check_stack(const void* stack, size_t stack_size)
 {
-    int ret =  -1;
+    int ret = -1;
 
     if (!stack || !stack_size)
         goto done;
@@ -684,8 +680,7 @@ void* elf_make_stack(
         AT_EXECFN=7ffebe5abff1
         AT_PLATFORM=7ffebe5aa169
     */
-    const Elf64_auxv_t auxv[] =
-    {
+    const Elf64_auxv_t auxv[] = {
         {
             .a_type = AT_BASE,
             .a_un.a_val = (uint64_t)base,
@@ -718,7 +713,7 @@ void* elf_make_stack(
     size_t auxc = sizeof(auxv) / sizeof(auxv[0]) - 1;
 
     if (elf_init_stack(
-        argc, argv, envc, envp, auxc, auxv, stack, stack_size, sp) != 0)
+            argc, argv, envc, envp, auxc, auxv, stack, stack_size, sp) != 0)
     {
         goto done;
     }
@@ -736,8 +731,7 @@ done:
 
 typedef long (*syscall_callback_t)(long n, long params[6]);
 
-typedef void (*enter_t)(
-    void* stack, void* dynv, syscall_callback_t callback);
+typedef void (*enter_t)(void* stack, void* dynv, syscall_callback_t callback);
 
 typedef struct entry_args
 {
@@ -745,8 +739,7 @@ typedef struct entry_args
     void* stack;
     uint64_t* dynv;
     long (*syscall)(long n, long params[6]);
-}
-entry_args_t;
+} entry_args_t;
 
 /* Create the "/proc/<pid>/exe" link */
 static int _setup_exe_link(const char* path)
@@ -795,9 +788,18 @@ int elf_enter_crt(
     size_t phnum = ehdr->e_phnum;
     size_t phentsize = ehdr->e_phentsize;
 
-    if (!(stack = elf_make_stack(argc, argv, envc, envp,
-        stack_size, image_base, phdr, phnum, phentsize,
-        enter, &sp)))
+    if (!(stack = elf_make_stack(
+              argc,
+              argv,
+              envc,
+              envp,
+              stack_size,
+              image_base,
+              phdr,
+              phnum,
+              phentsize,
+              enter,
+              &sp)))
     {
         libos_panic("_make_stack() failed");
     }

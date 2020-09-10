@@ -113,11 +113,11 @@
 
 #include <errno.h>
 #include <libos/defs.h>
-#include <libos/mman.h>
-#include <libos/tcall.h>
-#include <libos/strings.h>
-#include <string.h>
 #include <libos/deprecated.h>
+#include <libos/mman.h>
+#include <libos/strings.h>
+#include <libos/tcall.h>
+#include <string.h>
 
 /*
 **==============================================================================
@@ -208,7 +208,10 @@ static void _free_list_put(libos_mman_t* mman, libos_vad_t* vad)
 */
 
 /* Insert VAD after PREV in the linked list */
-static void _list_insert_after(libos_mman_t* mman, libos_vad_t* prev, libos_vad_t* vad)
+static void _list_insert_after(
+    libos_mman_t* mman,
+    libos_vad_t* prev,
+    libos_vad_t* vad)
 {
     if (prev)
     {
@@ -787,7 +790,8 @@ int libos_mman_map(
     {
         if (!(flags & LIBOS_MAP_ANONYMOUS))
         {
-            _mman_set_err(mman, "bad flags parameter: need LIBOS_MAP_ANONYMOUS");
+            _mman_set_err(
+                mman, "bad flags parameter: need LIBOS_MAP_ANONYMOUS");
             ret = -EINVAL;
             goto done;
         }
@@ -826,7 +830,9 @@ int libos_mman_map(
         /* Fail if [addr:length] is not already mapped */
         if (!(vad = _list_find(mman, start)) || end > _end(vad))
         {
-            _mman_set_err(mman, "bad addr parameter: "
+            _mman_set_err(
+                mman,
+                "bad addr parameter: "
                 "must be null or part of an existing mapping");
         }
 
@@ -911,9 +917,11 @@ done:
 **
 ** libos_mman_munmap()
 **
-**     Release a memory mapping obtained with libos_mman_map() or libos_mman_mremap().
+**     Release a memory mapping obtained with libos_mman_map() or
+*libos_mman_mremap().
 **     Note that partial mappings are supported, in which case a portion of
-**     the memory obtained with libos_mman_map() or libos_mman_mremap() is released.
+**     the memory obtained with libos_mman_map() or libos_mman_mremap() is
+*released.
 **
 ** Parameters:
 **     [IN] mman - mman structure
@@ -1249,7 +1257,7 @@ int libos_mman_mremap(
         else
         {
             if (libos_mman_map(
-                mman, NULL, new_size, vad->prot, vad->flags, &addr) != 0)
+                    mman, NULL, new_size, vad->prot, vad->flags, &addr) != 0)
             {
                 _mman_set_err(mman, "mapping failed");
                 ret = -ENOMEM;

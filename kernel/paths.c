@@ -1,16 +1,15 @@
 #include <errno.h>
-#include <string.h>
-#include <stdlib.h>
-#include <libos/syscall.h>
-#include <libos/strings.h>
-#include <sys/stat.h>
-#include <libos/paths.h>
-#include <libos/eraise.h>
-#include "trace.h"
-#include <libos/deprecated.h>
-#include <libos/strings.h>
-#include <libos/malloc.h>
 #include <libos/assert.h>
+#include <libos/deprecated.h>
+#include <libos/eraise.h>
+#include <libos/malloc.h>
+#include <libos/paths.h>
+#include <libos/strings.h>
+#include <libos/syscall.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include "trace.h"
 
 int libos_path_absolute_cwd(
     const char* cwd,
@@ -41,7 +40,7 @@ int libos_path_absolute_cwd(
         if ((cwd_len = libos_strlen(cwd)) == 0)
             ERAISE(-EINVAL);
 
-        if (cwd[cwd_len-1] != '/')
+        if (cwd[cwd_len - 1] != '/')
         {
             if (libos_strlcat(buf, "/", size) >= size)
                 ERAISE(-ENAMETOOLONG);
@@ -96,7 +95,7 @@ int libos_tok_normalize(const char* toks[])
 
     /* Determine the size of the toks array, including the null terminator */
     size = libos_tokslen(toks) + 1;
-    libos_assert(toks[size-1] == NULL);
+    libos_assert(toks[size - 1] == NULL);
 
     /* Find the index of the last "/" token */
     for (size_t i = 0; toks[i]; i++)
@@ -115,14 +114,14 @@ int libos_tok_normalize(const char* toks[])
         size -= start;
     }
 
-    for (size_t i = 0; toks[i]; )
+    for (size_t i = 0; toks[i];)
     {
         /* Skip "." elements */
         if (libos_strcmp(toks[i], ".") == 0)
         {
             ECHECK(libos_memremove_u64(toks, size, i, 1));
             size--;
-            libos_assert(toks[size-1] == NULL);
+            libos_assert(toks[size - 1] == NULL);
             continue;
         }
 
@@ -132,14 +131,14 @@ int libos_tok_normalize(const char* toks[])
             /* Remove this element */
             ECHECK(libos_memremove_u64(toks, size, i, 1));
             size--;
-            libos_assert(toks[size-1] == NULL);
+            libos_assert(toks[size - 1] == NULL);
 
             if (i > 0)
             {
                 /* Remove previous element */
                 ECHECK(libos_memremove_u64(toks, size, i - 1, 1));
                 size--;
-                libos_assert(toks[size-1] == NULL);
+                libos_assert(toks[size - 1] == NULL);
                 i--;
             }
 

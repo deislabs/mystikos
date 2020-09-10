@@ -1,13 +1,13 @@
-#include <stdlib.h>
-#include <libos/realpath.h>
 #include <libos/atexit.h>
-#include <libos/spinlock.h>
-#include <string.h>
-#include <libos/mount.h>
-#include <libos/eraise.h>
 #include <libos/deprecated.h>
+#include <libos/eraise.h>
 #include <libos/malloc.h>
+#include <libos/mount.h>
+#include <libos/realpath.h>
+#include <libos/spinlock.h>
 #include <libos/strings.h>
+#include <stdlib.h>
+#include <string.h>
 
 #define MOUNT_TABLE_SIZE 64
 
@@ -71,7 +71,8 @@ int libos_mount_resolve(
                 fs = _mount_table[i].fs;
             }
         }
-        else if (libos_strncmp(mpath, realpath.buf, len) == 0 &&
+        else if (
+            libos_strncmp(mpath, realpath.buf, len) == 0 &&
             (realpath.buf[len] == '/' || realpath.buf[len] == '\0'))
         {
             if (len > match_len)

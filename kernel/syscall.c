@@ -1,44 +1,43 @@
 #define _GNU_SOURCE
-#include <stdio.h>
-#include <signal.h>
-#include <libos/mman.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
 #include <fcntl.h>
-#include <string.h>
+#include <libos/mman.h>
 #include <limits.h>
+#include <signal.h>
 #include <stdarg.h>
+#include <stdio.h>
 #include <stdlib.h>
-#include <sys/socket.h>
-#include <sys/uio.h>
+#include <string.h>
 #include <sys/ioctl.h>
-#include <sys/vfs.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/uio.h>
 #include <sys/utsname.h>
+#include <sys/vfs.h>
+#include <unistd.h>
 
-#include <libos/syscall.h>
-#include <libos/elfutils.h>
-#include <libos/paths.h>
-#include <libos/mmanutils.h>
-#include <libos/file.h>
-#include <libos/spinlock.h>
-#include <libos/trace.h>
-#include <libos/strings.h>
-#include <libos/cwd.h>
-#include <libos/mount.h>
-#include <libos/eraise.h>
-#include <libos/buf.h>
-#include <libos/tcall.h>
-#include <libos/errno.h>
-#include <libos/deprecated.h>
 #include <libos/assert.h>
-#include <libos/setjmp.h>
-#include <libos/malloc.h>
-#include <libos/thread.h>
+#include <libos/buf.h>
+#include <libos/cwd.h>
+#include <libos/deprecated.h>
+#include <libos/elfutils.h>
+#include <libos/eraise.h>
+#include <libos/errno.h>
+#include <libos/file.h>
 #include <libos/fsbase.h>
+#include <libos/malloc.h>
+#include <libos/mmanutils.h>
+#include <libos/mount.h>
 #include <libos/options.h>
-#include <libos/thread.h>
+#include <libos/paths.h>
 #include <libos/process.h>
+#include <libos/setjmp.h>
+#include <libos/spinlock.h>
+#include <libos/strings.h>
+#include <libos/syscall.h>
+#include <libos/tcall.h>
+#include <libos/thread.h>
+#include <libos/trace.h>
 
 #include "fdtable.h"
 
@@ -60,513 +59,407 @@ typedef struct _pair
 {
     long num;
     const char* str;
-}
-pair_t;
+} pair_t;
 
-static pair_t _pairs[] =
-{
-    { SYS_read, "SYS_read" },
-    { SYS_write, "SYS_write" },
-    { SYS_open, "SYS_open" },
-    { SYS_close, "SYS_close" },
-    { SYS_stat, "SYS_stat" },
-    { SYS_fstat, "SYS_fstat" },
-    { SYS_lstat, "SYS_lstat" },
-    { SYS_poll, "SYS_poll" },
-    { SYS_lseek, "SYS_lseek" },
-    { SYS_mmap, "SYS_mmap" },
-    { SYS_mprotect, "SYS_mprotect" },
-    { SYS_munmap, "SYS_munmap" },
-    { SYS_brk, "SYS_brk" },
-    { SYS_rt_sigaction, "SYS_rt_sigaction" },
-    { SYS_rt_sigprocmask, "SYS_rt_sigprocmask" },
-    { SYS_rt_sigreturn, "SYS_rt_sigreturn" },
-    { SYS_ioctl, "SYS_ioctl" },
-    { SYS_pread64, "SYS_pread64" },
-    { SYS_pwrite64, "SYS_pwrite64" },
-    { SYS_readv, "SYS_readv" },
-    { SYS_writev, "SYS_writev" },
-    { SYS_access, "SYS_access" },
-    { SYS_pipe, "SYS_pipe" },
-    { SYS_select, "SYS_select" },
-    { SYS_sched_yield, "SYS_sched_yield" },
-    { SYS_mremap, "SYS_mremap" },
-    { SYS_msync, "SYS_msync" },
-    { SYS_mincore, "SYS_mincore" },
-    { SYS_madvise, "SYS_madvise" },
-    { SYS_shmget, "SYS_shmget" },
-    { SYS_shmat, "SYS_shmat" },
-    { SYS_shmctl, "SYS_shmctl" },
-    { SYS_dup, "SYS_dup" },
-    { SYS_dup2, "SYS_dup2" },
-    { SYS_pause, "SYS_pause" },
-    { SYS_nanosleep, "SYS_nanosleep" },
-    { SYS_getitimer, "SYS_getitimer" },
-    { SYS_alarm, "SYS_alarm" },
-    { SYS_setitimer, "SYS_setitimer" },
-    { SYS_getpid, "SYS_getpid" },
-    { SYS_sendfile, "SYS_sendfile" },
-    { SYS_socket, "SYS_socket" },
-    { SYS_connect, "SYS_connect" },
-    { SYS_accept, "SYS_accept" },
-    { SYS_sendto, "SYS_sendto" },
-    { SYS_recvfrom, "SYS_recvfrom" },
-    { SYS_sendmsg, "SYS_sendmsg" },
-    { SYS_recvmsg, "SYS_recvmsg" },
-    { SYS_shutdown, "SYS_shutdown" },
-    { SYS_bind, "SYS_bind" },
-    { SYS_listen, "SYS_listen" },
-    { SYS_getsockname, "SYS_getsockname" },
-    { SYS_getpeername, "SYS_getpeername" },
-    { SYS_socketpair, "SYS_socketpair" },
-    { SYS_setsockopt, "SYS_setsockopt" },
-    { SYS_getsockopt, "SYS_getsockopt" },
-    { SYS_clone, "SYS_clone" },
-    { SYS_fork, "SYS_fork" },
-    { SYS_vfork, "SYS_vfork" },
-    { SYS_execve, "SYS_execve" },
-    { SYS_exit, "SYS_exit" },
-    { SYS_wait4, "SYS_wait4" },
-    { SYS_kill, "SYS_kill" },
-    { SYS_uname, "SYS_uname" },
-    { SYS_semget, "SYS_semget" },
-    { SYS_semop, "SYS_semop" },
-    { SYS_semctl, "SYS_semctl" },
-    { SYS_shmdt, "SYS_shmdt" },
-    { SYS_msgget, "SYS_msgget" },
-    { SYS_msgsnd, "SYS_msgsnd" },
-    { SYS_msgrcv, "SYS_msgrcv" },
-    { SYS_msgctl, "SYS_msgctl" },
-    { SYS_fcntl, "SYS_fcntl" },
-    { SYS_flock, "SYS_flock" },
-    { SYS_fsync, "SYS_fsync" },
-    { SYS_fdatasync, "SYS_fdatasync" },
-    { SYS_truncate, "SYS_truncate" },
-    { SYS_ftruncate, "SYS_ftruncate" },
-    { SYS_getdents, "SYS_getdents" },
-    { SYS_getcwd, "SYS_getcwd" },
-    { SYS_chdir, "SYS_chdir" },
-    { SYS_fchdir, "SYS_fchdir" },
-    { SYS_rename, "SYS_rename" },
-    { SYS_mkdir, "SYS_mkdir" },
-    { SYS_rmdir, "SYS_rmdir" },
-    { SYS_creat, "SYS_creat" },
-    { SYS_link, "SYS_link" },
-    { SYS_unlink, "SYS_unlink" },
-    { SYS_symlink, "SYS_symlink" },
-    { SYS_readlink, "SYS_readlink" },
-    { SYS_chmod, "SYS_chmod" },
-    { SYS_fchmod, "SYS_fchmod" },
-    { SYS_chown, "SYS_chown" },
-    { SYS_fchown, "SYS_fchown" },
-    { SYS_lchown, "SYS_lchown" },
-    { SYS_umask, "SYS_umask" },
-    { SYS_gettimeofday, "SYS_gettimeofday" },
-    { SYS_getrlimit, "SYS_getrlimit" },
-    { SYS_getrusage, "SYS_getrusage" },
-    { SYS_sysinfo, "SYS_sysinfo" },
-    { SYS_times, "SYS_times" },
-    { SYS_ptrace, "SYS_ptrace" },
-    { SYS_getuid, "SYS_getuid" },
-    { SYS_syslog, "SYS_syslog" },
-    { SYS_getgid, "SYS_getgid" },
-    { SYS_setuid, "SYS_setuid" },
-    { SYS_setgid, "SYS_setgid" },
-    { SYS_geteuid, "SYS_geteuid" },
-    { SYS_getegid, "SYS_getegid" },
-    { SYS_setpgid, "SYS_setpgid" },
-    { SYS_getppid, "SYS_getppid" },
-    { SYS_getpgrp, "SYS_getpgrp" },
-    { SYS_setsid, "SYS_setsid" },
-    { SYS_setreuid, "SYS_setreuid" },
-    { SYS_setregid, "SYS_setregid" },
-    { SYS_getgroups, "SYS_getgroups" },
-    { SYS_setgroups, "SYS_setgroups" },
-    { SYS_setresuid, "SYS_setresuid" },
-    { SYS_getresuid, "SYS_getresuid" },
-    { SYS_setresgid, "SYS_setresgid" },
-    { SYS_getresgid, "SYS_getresgid" },
-    { SYS_getpgid, "SYS_getpgid" },
-    { SYS_setfsuid, "SYS_setfsuid" },
-    { SYS_setfsgid, "SYS_setfsgid" },
-    { SYS_getsid, "SYS_getsid" },
-    { SYS_capget, "SYS_capget" },
-    { SYS_capset, "SYS_capset" },
-    { SYS_rt_sigpending, "SYS_rt_sigpending" },
-    { SYS_rt_sigtimedwait, "SYS_rt_sigtimedwait" },
-    { SYS_rt_sigqueueinfo, "SYS_rt_sigqueueinfo" },
-    { SYS_rt_sigsuspend, "SYS_rt_sigsuspend" },
-    { SYS_sigaltstack, "SYS_sigaltstack" },
-    { SYS_utime, "SYS_utime" },
-    { SYS_mknod, "SYS_mknod" },
-    { SYS_uselib, "SYS_uselib" },
-    { SYS_personality, "SYS_personality" },
-    { SYS_ustat, "SYS_ustat" },
-    { SYS_statfs, "SYS_statfs" },
-    { SYS_fstatfs, "SYS_fstatfs" },
-    { SYS_sysfs, "SYS_sysfs" },
-    { SYS_getpriority, "SYS_getpriority" },
-    { SYS_setpriority, "SYS_setpriority" },
-    { SYS_sched_setparam, "SYS_sched_setparam" },
-    { SYS_sched_getparam, "SYS_sched_getparam" },
-    { SYS_sched_setscheduler, "SYS_sched_setscheduler" },
-    { SYS_sched_getscheduler, "SYS_sched_getscheduler" },
-    { SYS_sched_get_priority_max, "SYS_sched_get_priority_max" },
-    { SYS_sched_get_priority_min, "SYS_sched_get_priority_min" },
-    { SYS_sched_rr_get_interval, "SYS_sched_rr_get_interval" },
-    { SYS_mlock, "SYS_mlock" },
-    { SYS_munlock, "SYS_munlock" },
-    { SYS_mlockall, "SYS_mlockall" },
-    { SYS_munlockall, "SYS_munlockall" },
-    { SYS_vhangup, "SYS_vhangup" },
-    { SYS_modify_ldt, "SYS_modify_ldt" },
-    { SYS_pivot_root, "SYS_pivot_root" },
-    { SYS__sysctl, "SYS__sysctl" },
-    { SYS_prctl, "SYS_prctl" },
-    { SYS_arch_prctl, "SYS_arch_prctl" },
-    { SYS_adjtimex, "SYS_adjtimex" },
-    { SYS_setrlimit, "SYS_setrlimit" },
-    { SYS_chroot, "SYS_chroot" },
-    { SYS_sync, "SYS_sync" },
-    { SYS_acct, "SYS_acct" },
-    { SYS_settimeofday, "SYS_settimeofday" },
-    { SYS_mount, "SYS_mount" },
-    { SYS_umount2, "SYS_umount2" },
-    { SYS_swapon, "SYS_swapon" },
-    { SYS_swapoff, "SYS_swapoff" },
-    { SYS_reboot, "SYS_reboot" },
-    { SYS_sethostname, "SYS_sethostname" },
-    { SYS_setdomainname, "SYS_setdomainname" },
-    { SYS_iopl, "SYS_iopl" },
-    { SYS_ioperm, "SYS_ioperm" },
-    { SYS_create_module, "SYS_create_module" },
-    { SYS_init_module, "SYS_init_module" },
-    { SYS_delete_module, "SYS_delete_module" },
-    { SYS_get_kernel_syms, "SYS_get_kernel_syms" },
-    { SYS_query_module, "SYS_query_module" },
-    { SYS_quotactl, "SYS_quotactl" },
-    { SYS_nfsservctl, "SYS_nfsservctl" },
-    { SYS_getpmsg, "SYS_getpmsg" },
-    { SYS_putpmsg, "SYS_putpmsg" },
-    { SYS_afs_syscall, "SYS_afs_syscall" },
-    { SYS_tuxcall, "SYS_tuxcall" },
-    { SYS_security, "SYS_security" },
-    { SYS_gettid, "SYS_gettid" },
-    { SYS_readahead, "SYS_readahead" },
-    { SYS_setxattr, "SYS_setxattr" },
-    { SYS_lsetxattr, "SYS_lsetxattr" },
-    { SYS_fsetxattr, "SYS_fsetxattr" },
-    { SYS_getxattr, "SYS_getxattr" },
-    { SYS_lgetxattr, "SYS_lgetxattr" },
-    { SYS_fgetxattr, "SYS_fgetxattr" },
-    { SYS_listxattr, "SYS_listxattr" },
-    { SYS_llistxattr, "SYS_llistxattr" },
-    { SYS_flistxattr, "SYS_flistxattr" },
-    { SYS_removexattr, "SYS_removexattr" },
-    { SYS_lremovexattr, "SYS_lremovexattr" },
-    { SYS_fremovexattr, "SYS_fremovexattr" },
-    { SYS_tkill, "SYS_tkill" },
-    { SYS_time, "SYS_time" },
-    { SYS_futex, "SYS_futex" },
-    { SYS_sched_setaffinity, "SYS_sched_setaffinity" },
-    { SYS_sched_getaffinity, "SYS_sched_getaffinity" },
-    { SYS_set_thread_area, "SYS_set_thread_area" },
-    { SYS_io_setup, "SYS_io_setup" },
-    { SYS_io_destroy, "SYS_io_destroy" },
-    { SYS_io_getevents, "SYS_io_getevents" },
-    { SYS_io_submit, "SYS_io_submit" },
-    { SYS_io_cancel, "SYS_io_cancel" },
-    { SYS_get_thread_area, "SYS_get_thread_area" },
-    { SYS_lookup_dcookie, "SYS_lookup_dcookie" },
-    { SYS_epoll_create, "SYS_epoll_create" },
-    { SYS_epoll_ctl_old, "SYS_epoll_ctl_old" },
-    { SYS_epoll_wait_old, "SYS_epoll_wait_old" },
-    { SYS_remap_file_pages, "SYS_remap_file_pages" },
-    { SYS_getdents64, "SYS_getdents64" },
-    { SYS_set_tid_address, "SYS_set_tid_address" },
-    { SYS_restart_syscall, "SYS_restart_syscall" },
-    { SYS_semtimedop, "SYS_semtimedop" },
-    { SYS_fadvise64, "SYS_fadvise64" },
-    { SYS_timer_create, "SYS_timer_create" },
-    { SYS_timer_settime, "SYS_timer_settime" },
-    { SYS_timer_gettime, "SYS_timer_gettime" },
-    { SYS_timer_getoverrun, "SYS_timer_getoverrun" },
-    { SYS_timer_delete, "SYS_timer_delete" },
-    { SYS_clock_settime, "SYS_clock_settime" },
-    { SYS_clock_gettime, "SYS_clock_gettime" },
-    { SYS_clock_getres, "SYS_clock_getres" },
-    { SYS_clock_nanosleep, "SYS_clock_nanosleep" },
-    { SYS_exit_group, "SYS_exit_group" },
-    { SYS_epoll_wait, "SYS_epoll_wait" },
-    { SYS_epoll_ctl, "SYS_epoll_ctl" },
-    { SYS_tgkill, "SYS_tgkill" },
-    { SYS_utimes, "SYS_utimes" },
-    { SYS_vserver, "SYS_vserver" },
-    { SYS_mbind, "SYS_mbind" },
-    { SYS_set_mempolicy, "SYS_set_mempolicy" },
-    { SYS_get_mempolicy, "SYS_get_mempolicy" },
-    { SYS_mq_open, "SYS_mq_open" },
-    { SYS_mq_unlink, "SYS_mq_unlink" },
-    { SYS_mq_timedsend, "SYS_mq_timedsend" },
-    { SYS_mq_timedreceive, "SYS_mq_timedreceive" },
-    { SYS_mq_notify, "SYS_mq_notify" },
-    { SYS_mq_getsetattr, "SYS_mq_getsetattr" },
-    { SYS_kexec_load, "SYS_kexec_load" },
-    { SYS_waitid, "SYS_waitid" },
-    { SYS_add_key, "SYS_add_key" },
-    { SYS_request_key, "SYS_request_key" },
-    { SYS_keyctl, "SYS_keyctl" },
-    { SYS_ioprio_set, "SYS_ioprio_set" },
-    { SYS_ioprio_get, "SYS_ioprio_get" },
-    { SYS_inotify_init, "SYS_inotify_init" },
-    { SYS_inotify_add_watch, "SYS_inotify_add_watch" },
-    { SYS_inotify_rm_watch, "SYS_inotify_rm_watch" },
-    { SYS_migrate_pages, "SYS_migrate_pages" },
-    { SYS_openat, "SYS_openat" },
-    { SYS_mkdirat, "SYS_mkdirat" },
-    { SYS_mknodat, "SYS_mknodat" },
-    { SYS_fchownat, "SYS_fchownat" },
-    { SYS_futimesat, "SYS_futimesat" },
-    { SYS_newfstatat, "SYS_newfstatat" },
-    { SYS_unlinkat, "SYS_unlinkat" },
-    { SYS_renameat, "SYS_renameat" },
-    { SYS_linkat, "SYS_linkat" },
-    { SYS_symlinkat, "SYS_symlinkat" },
-    { SYS_readlinkat, "SYS_readlinkat" },
-    { SYS_fchmodat, "SYS_fchmodat" },
-    { SYS_faccessat, "SYS_faccessat" },
-    { SYS_pselect6, "SYS_pselect6" },
-    { SYS_ppoll, "SYS_ppoll" },
-    { SYS_unshare, "SYS_unshare" },
-    { SYS_set_robust_list, "SYS_set_robust_list" },
-    { SYS_get_robust_list, "SYS_get_robust_list" },
-    { SYS_splice, "SYS_splice" },
-    { SYS_tee, "SYS_tee" },
-    { SYS_sync_file_range, "SYS_sync_file_range" },
-    { SYS_vmsplice, "SYS_vmsplice" },
-    { SYS_move_pages, "SYS_move_pages" },
-    { SYS_utimensat, "SYS_utimensat" },
-    { SYS_epoll_pwait, "SYS_epoll_pwait" },
-    { SYS_signalfd, "SYS_signalfd" },
-    { SYS_timerfd_create, "SYS_timerfd_create" },
-    { SYS_eventfd, "SYS_eventfd" },
-    { SYS_fallocate, "SYS_fallocate" },
-    { SYS_timerfd_settime, "SYS_timerfd_settime" },
-    { SYS_timerfd_gettime, "SYS_timerfd_gettime" },
-    { SYS_accept4, "SYS_accept4" },
-    { SYS_signalfd4, "SYS_signalfd4" },
-    { SYS_eventfd2, "SYS_eventfd2" },
-    { SYS_epoll_create1, "SYS_epoll_create1" },
-    { SYS_dup3, "SYS_dup3" },
-    { SYS_pipe2, "SYS_pipe2" },
-    { SYS_inotify_init1, "SYS_inotify_init1" },
-    { SYS_preadv, "SYS_preadv" },
-    { SYS_pwritev, "SYS_pwritev" },
-    { SYS_rt_tgsigqueueinfo, "SYS_rt_tgsigqueueinfo" },
-    { SYS_perf_event_open, "SYS_perf_event_open" },
-    { SYS_recvmmsg, "SYS_recvmmsg" },
-    { SYS_fanotify_init, "SYS_fanotify_init" },
-    { SYS_fanotify_mark, "SYS_fanotify_mark" },
-    { SYS_prlimit64, "SYS_prlimit64" },
-    { SYS_name_to_handle_at, "SYS_name_to_handle_at" },
-    { SYS_open_by_handle_at, "SYS_open_by_handle_at" },
-    { SYS_clock_adjtime, "SYS_clock_adjtime" },
-    { SYS_syncfs, "SYS_syncfs" },
-    { SYS_sendmmsg, "SYS_sendmmsg" },
-    { SYS_setns, "SYS_setns" },
-    { SYS_getcpu, "SYS_getcpu" },
-    { SYS_process_vm_readv, "SYS_process_vm_readv" },
-    { SYS_process_vm_writev, "SYS_process_vm_writev" },
-    { SYS_kcmp, "SYS_kcmp" },
-    { SYS_finit_module, "SYS_finit_module" },
-    { SYS_sched_setattr, "SYS_sched_setattr" },
-    { SYS_sched_getattr, "SYS_sched_getattr" },
-    { SYS_renameat2, "SYS_renameat2" },
-    { SYS_seccomp, "SYS_seccomp" },
-    { SYS_getrandom, "SYS_getrandom" },
-    { SYS_memfd_create, "SYS_memfd_create" },
-    { SYS_kexec_file_load, "SYS_kexec_file_load" },
-    { SYS_bpf, "SYS_bpf" },
-    { SYS_execveat, "SYS_execveat" },
-    { SYS_userfaultfd, "SYS_userfaultfd" },
-    { SYS_membarrier, "SYS_membarrier" },
-    { SYS_mlock2, "SYS_mlock2" },
-    { SYS_copy_file_range, "SYS_copy_file_range" },
-    { SYS_preadv2, "SYS_preadv2" },
-    { SYS_pwritev2, "SYS_pwritev2" },
-    { SYS_pkey_mprotect, "SYS_pkey_mprotect" },
-    { SYS_pkey_alloc, "SYS_pkey_alloc" },
-    { SYS_pkey_free, "SYS_pkey_free" },
-    { SYS_statx, "SYS_statx" },
-    { SYS_io_pgetevents, "SYS_io_pgetevents" },
-    { SYS_rseq, "SYS_rseq" },
-    { SYS_libos_trace, "SYS_libos_trace" },
-    { SYS_libos_trace_ptr, "SYS_libos_trace_ptr" },
-    { SYS_libos_dump_ehdr, "SYS_libos_dump_ehdr" },
-    { SYS_libos_dump_argv, "SYS_libos_dump_argv" },
-    { SYS_libos_dump_stack, "SYS_libos_dump_stack" },
-    { SYS_libos_add_symbol_file, "SYS_libos_add_symbol_file" },
-    { SYS_libos_load_symbols, "SYS_libos_load_symbols" },
-    { SYS_libos_unload_symbols, "SYS_libos_unload_symbols" },
-    { SYS_libos_gen_creds, "SYS_libos_gen_creds" },
-    { SYS_libos_free_creds, "SYS_libos_free_creds" },
-    { SYS_libos_clone, "SYS_libos_clone" },
-    {
-        SYS_libos_oe_add_vectored_exception_handler,
-        "SYS_libos_oe_add_vectored_exception_handler"
-    },
-    {
-        SYS_libos_oe_remove_vectored_exception_handler,
-        "SYS_libos_oe_remove_vectored_exception_handler"
-    },
-    {
-        SYS_libos_oe_is_within_enclave,
-        "SYS_libos_oe_is_within_enclave"
-    },
-    {
-        SYS_libos_oe_is_outside_enclave,
-        "SYS_libos_oe_is_outside_enclave"
-    },
-    {
-        SYS_libos_oe_host_malloc,
-        "SYS_libos_oe_host_malloc"
-    },
-    {
-        SYS_libos_oe_host_realloc,
-        "SYS_libos_oe_host_realloc"
-    },
-    {
-        SYS_libos_oe_host_calloc,
-        "SYS_libos_oe_host_calloc"
-    },
-    {
-        SYS_libos_oe_host_free,
-        "SYS_libos_oe_host_free"
-    },
-    {
-        SYS_libos_oe_strndup,
-        "SYS_libos_oe_strndup"
-    },
-    {
-        SYS_libos_oe_abort,
-        "SYS_libos_oe_abort"
-    },
-    {
-        SYS_libos_oe_assert_fail,
-        "SYS_libos_oe_assert_fail"
-    },
-    {
-        SYS_libos_oe_get_report_v2,
-        "SYS_libos_oe_get_report_v2"
-    },
-    {
-        SYS_libos_oe_free_report,
-        "SYS_libos_oe_free_report"
-    },
-    {
-        SYS_libos_oe_get_target_info_v2,
-        "SYS_libos_oe_get_target_info_v2"
-    },
-    {
-        SYS_libos_oe_free_target_info,
-        "SYS_libos_oe_free_target_info"
-    },
-    {
-        SYS_libos_oe_parse_report,
-        "SYS_libos_oe_parse_report"
-    },
-    {
-        SYS_libos_oe_verify_report,
-        "SYS_libos_oe_verify_report"
-    },
-    {
-        SYS_libos_oe_get_seal_key_by_policy_v2,
-        "SYS_libos_oe_get_seal_key_by_policy_v2"
-    },
-    {
-        SYS_libos_oe_get_public_key_by_policy,
-        "SYS_libos_oe_get_public_key_by_policy"
-    },
-    {
-        SYS_libos_oe_get_public_key,
-        "SYS_libos_oe_get_public_key"
-    },
-    {
-        SYS_libos_oe_get_private_key_by_policy,
-        "SYS_libos_oe_get_private_key_by_policy"
-    },
-    {
-        SYS_libos_oe_get_private_key,
-        "SYS_libos_oe_get_private_key"
-    },
-    {
-        SYS_libos_oe_free_key,
-        "SYS_libos_oe_free_key"
-    },
-    {
-        SYS_libos_oe_get_seal_key_v2,
-        "SYS_libos_oe_get_seal_key_v2"
-    },
-    {
-        SYS_libos_oe_free_seal_key,
-        "SYS_libos_oe_free_seal_key"
-    },
-    {
-        SYS_libos_oe_get_enclave,
-        "SYS_libos_oe_get_enclave"
-    },
-    {
-        SYS_libos_oe_random,
-        "SYS_libos_oe_random"
-    },
-    {
-        SYS_libos_oe_generate_attestation_certificate,
-        "SYS_libos_oe_generate_attestation_certificate"
-    },
-    {
-        SYS_libos_oe_free_attestation_certificate,
-        "SYS_libos_oe_free_attestation_certificate"
-    },
-    {
-        SYS_libos_oe_verify_attestation_certificate,
-        "SYS_libos_oe_verify_attestation_certificate"
-    },
-    {
-        SYS_libos_oe_load_module_host_file_system,
-        "SYS_libos_oe_load_module_host_file_system"
-    },
-    {
-        SYS_libos_oe_load_module_host_socket_interface,
-        "SYS_libos_oe_load_module_host_socket_interface"
-    },
-    {
-        SYS_libos_oe_load_module_host_resolver,
-        "SYS_libos_oe_load_module_host_resolver"
-    },
-    {
-        SYS_libos_oe_load_module_host_epoll,
-        "SYS_libos_oe_load_module_host_epoll"
-    },
-    {
-        SYS_libos_oe_sgx_set_minimum_crl_tcb_issue_date,
-        "SYS_libos_oe_sgx_set_minimum_crl_tcb_issue_date"
-    },
-    {
-        SYS_libos_oe_result_str,
-        "SYS_libos_oe_result_str"
-    },
-    {
-        SYS_libos_oe_get_enclave_status,
-        "SYS_libos_oe_get_enclave_status"
-    },
-    {
-        SYS_libos_oe_allocate_ocall_buffer,
-        "SYS_libos_oe_allocate_ocall_buffer"
-    },
-    {
-        SYS_libos_oe_free_ocall_buffer,
-        "SYS_libos_oe_free_ocall_buffer"
-    },
+static pair_t _pairs[] = {
+    {SYS_read, "SYS_read"},
+    {SYS_write, "SYS_write"},
+    {SYS_open, "SYS_open"},
+    {SYS_close, "SYS_close"},
+    {SYS_stat, "SYS_stat"},
+    {SYS_fstat, "SYS_fstat"},
+    {SYS_lstat, "SYS_lstat"},
+    {SYS_poll, "SYS_poll"},
+    {SYS_lseek, "SYS_lseek"},
+    {SYS_mmap, "SYS_mmap"},
+    {SYS_mprotect, "SYS_mprotect"},
+    {SYS_munmap, "SYS_munmap"},
+    {SYS_brk, "SYS_brk"},
+    {SYS_rt_sigaction, "SYS_rt_sigaction"},
+    {SYS_rt_sigprocmask, "SYS_rt_sigprocmask"},
+    {SYS_rt_sigreturn, "SYS_rt_sigreturn"},
+    {SYS_ioctl, "SYS_ioctl"},
+    {SYS_pread64, "SYS_pread64"},
+    {SYS_pwrite64, "SYS_pwrite64"},
+    {SYS_readv, "SYS_readv"},
+    {SYS_writev, "SYS_writev"},
+    {SYS_access, "SYS_access"},
+    {SYS_pipe, "SYS_pipe"},
+    {SYS_select, "SYS_select"},
+    {SYS_sched_yield, "SYS_sched_yield"},
+    {SYS_mremap, "SYS_mremap"},
+    {SYS_msync, "SYS_msync"},
+    {SYS_mincore, "SYS_mincore"},
+    {SYS_madvise, "SYS_madvise"},
+    {SYS_shmget, "SYS_shmget"},
+    {SYS_shmat, "SYS_shmat"},
+    {SYS_shmctl, "SYS_shmctl"},
+    {SYS_dup, "SYS_dup"},
+    {SYS_dup2, "SYS_dup2"},
+    {SYS_pause, "SYS_pause"},
+    {SYS_nanosleep, "SYS_nanosleep"},
+    {SYS_getitimer, "SYS_getitimer"},
+    {SYS_alarm, "SYS_alarm"},
+    {SYS_setitimer, "SYS_setitimer"},
+    {SYS_getpid, "SYS_getpid"},
+    {SYS_sendfile, "SYS_sendfile"},
+    {SYS_socket, "SYS_socket"},
+    {SYS_connect, "SYS_connect"},
+    {SYS_accept, "SYS_accept"},
+    {SYS_sendto, "SYS_sendto"},
+    {SYS_recvfrom, "SYS_recvfrom"},
+    {SYS_sendmsg, "SYS_sendmsg"},
+    {SYS_recvmsg, "SYS_recvmsg"},
+    {SYS_shutdown, "SYS_shutdown"},
+    {SYS_bind, "SYS_bind"},
+    {SYS_listen, "SYS_listen"},
+    {SYS_getsockname, "SYS_getsockname"},
+    {SYS_getpeername, "SYS_getpeername"},
+    {SYS_socketpair, "SYS_socketpair"},
+    {SYS_setsockopt, "SYS_setsockopt"},
+    {SYS_getsockopt, "SYS_getsockopt"},
+    {SYS_clone, "SYS_clone"},
+    {SYS_fork, "SYS_fork"},
+    {SYS_vfork, "SYS_vfork"},
+    {SYS_execve, "SYS_execve"},
+    {SYS_exit, "SYS_exit"},
+    {SYS_wait4, "SYS_wait4"},
+    {SYS_kill, "SYS_kill"},
+    {SYS_uname, "SYS_uname"},
+    {SYS_semget, "SYS_semget"},
+    {SYS_semop, "SYS_semop"},
+    {SYS_semctl, "SYS_semctl"},
+    {SYS_shmdt, "SYS_shmdt"},
+    {SYS_msgget, "SYS_msgget"},
+    {SYS_msgsnd, "SYS_msgsnd"},
+    {SYS_msgrcv, "SYS_msgrcv"},
+    {SYS_msgctl, "SYS_msgctl"},
+    {SYS_fcntl, "SYS_fcntl"},
+    {SYS_flock, "SYS_flock"},
+    {SYS_fsync, "SYS_fsync"},
+    {SYS_fdatasync, "SYS_fdatasync"},
+    {SYS_truncate, "SYS_truncate"},
+    {SYS_ftruncate, "SYS_ftruncate"},
+    {SYS_getdents, "SYS_getdents"},
+    {SYS_getcwd, "SYS_getcwd"},
+    {SYS_chdir, "SYS_chdir"},
+    {SYS_fchdir, "SYS_fchdir"},
+    {SYS_rename, "SYS_rename"},
+    {SYS_mkdir, "SYS_mkdir"},
+    {SYS_rmdir, "SYS_rmdir"},
+    {SYS_creat, "SYS_creat"},
+    {SYS_link, "SYS_link"},
+    {SYS_unlink, "SYS_unlink"},
+    {SYS_symlink, "SYS_symlink"},
+    {SYS_readlink, "SYS_readlink"},
+    {SYS_chmod, "SYS_chmod"},
+    {SYS_fchmod, "SYS_fchmod"},
+    {SYS_chown, "SYS_chown"},
+    {SYS_fchown, "SYS_fchown"},
+    {SYS_lchown, "SYS_lchown"},
+    {SYS_umask, "SYS_umask"},
+    {SYS_gettimeofday, "SYS_gettimeofday"},
+    {SYS_getrlimit, "SYS_getrlimit"},
+    {SYS_getrusage, "SYS_getrusage"},
+    {SYS_sysinfo, "SYS_sysinfo"},
+    {SYS_times, "SYS_times"},
+    {SYS_ptrace, "SYS_ptrace"},
+    {SYS_getuid, "SYS_getuid"},
+    {SYS_syslog, "SYS_syslog"},
+    {SYS_getgid, "SYS_getgid"},
+    {SYS_setuid, "SYS_setuid"},
+    {SYS_setgid, "SYS_setgid"},
+    {SYS_geteuid, "SYS_geteuid"},
+    {SYS_getegid, "SYS_getegid"},
+    {SYS_setpgid, "SYS_setpgid"},
+    {SYS_getppid, "SYS_getppid"},
+    {SYS_getpgrp, "SYS_getpgrp"},
+    {SYS_setsid, "SYS_setsid"},
+    {SYS_setreuid, "SYS_setreuid"},
+    {SYS_setregid, "SYS_setregid"},
+    {SYS_getgroups, "SYS_getgroups"},
+    {SYS_setgroups, "SYS_setgroups"},
+    {SYS_setresuid, "SYS_setresuid"},
+    {SYS_getresuid, "SYS_getresuid"},
+    {SYS_setresgid, "SYS_setresgid"},
+    {SYS_getresgid, "SYS_getresgid"},
+    {SYS_getpgid, "SYS_getpgid"},
+    {SYS_setfsuid, "SYS_setfsuid"},
+    {SYS_setfsgid, "SYS_setfsgid"},
+    {SYS_getsid, "SYS_getsid"},
+    {SYS_capget, "SYS_capget"},
+    {SYS_capset, "SYS_capset"},
+    {SYS_rt_sigpending, "SYS_rt_sigpending"},
+    {SYS_rt_sigtimedwait, "SYS_rt_sigtimedwait"},
+    {SYS_rt_sigqueueinfo, "SYS_rt_sigqueueinfo"},
+    {SYS_rt_sigsuspend, "SYS_rt_sigsuspend"},
+    {SYS_sigaltstack, "SYS_sigaltstack"},
+    {SYS_utime, "SYS_utime"},
+    {SYS_mknod, "SYS_mknod"},
+    {SYS_uselib, "SYS_uselib"},
+    {SYS_personality, "SYS_personality"},
+    {SYS_ustat, "SYS_ustat"},
+    {SYS_statfs, "SYS_statfs"},
+    {SYS_fstatfs, "SYS_fstatfs"},
+    {SYS_sysfs, "SYS_sysfs"},
+    {SYS_getpriority, "SYS_getpriority"},
+    {SYS_setpriority, "SYS_setpriority"},
+    {SYS_sched_setparam, "SYS_sched_setparam"},
+    {SYS_sched_getparam, "SYS_sched_getparam"},
+    {SYS_sched_setscheduler, "SYS_sched_setscheduler"},
+    {SYS_sched_getscheduler, "SYS_sched_getscheduler"},
+    {SYS_sched_get_priority_max, "SYS_sched_get_priority_max"},
+    {SYS_sched_get_priority_min, "SYS_sched_get_priority_min"},
+    {SYS_sched_rr_get_interval, "SYS_sched_rr_get_interval"},
+    {SYS_mlock, "SYS_mlock"},
+    {SYS_munlock, "SYS_munlock"},
+    {SYS_mlockall, "SYS_mlockall"},
+    {SYS_munlockall, "SYS_munlockall"},
+    {SYS_vhangup, "SYS_vhangup"},
+    {SYS_modify_ldt, "SYS_modify_ldt"},
+    {SYS_pivot_root, "SYS_pivot_root"},
+    {SYS__sysctl, "SYS__sysctl"},
+    {SYS_prctl, "SYS_prctl"},
+    {SYS_arch_prctl, "SYS_arch_prctl"},
+    {SYS_adjtimex, "SYS_adjtimex"},
+    {SYS_setrlimit, "SYS_setrlimit"},
+    {SYS_chroot, "SYS_chroot"},
+    {SYS_sync, "SYS_sync"},
+    {SYS_acct, "SYS_acct"},
+    {SYS_settimeofday, "SYS_settimeofday"},
+    {SYS_mount, "SYS_mount"},
+    {SYS_umount2, "SYS_umount2"},
+    {SYS_swapon, "SYS_swapon"},
+    {SYS_swapoff, "SYS_swapoff"},
+    {SYS_reboot, "SYS_reboot"},
+    {SYS_sethostname, "SYS_sethostname"},
+    {SYS_setdomainname, "SYS_setdomainname"},
+    {SYS_iopl, "SYS_iopl"},
+    {SYS_ioperm, "SYS_ioperm"},
+    {SYS_create_module, "SYS_create_module"},
+    {SYS_init_module, "SYS_init_module"},
+    {SYS_delete_module, "SYS_delete_module"},
+    {SYS_get_kernel_syms, "SYS_get_kernel_syms"},
+    {SYS_query_module, "SYS_query_module"},
+    {SYS_quotactl, "SYS_quotactl"},
+    {SYS_nfsservctl, "SYS_nfsservctl"},
+    {SYS_getpmsg, "SYS_getpmsg"},
+    {SYS_putpmsg, "SYS_putpmsg"},
+    {SYS_afs_syscall, "SYS_afs_syscall"},
+    {SYS_tuxcall, "SYS_tuxcall"},
+    {SYS_security, "SYS_security"},
+    {SYS_gettid, "SYS_gettid"},
+    {SYS_readahead, "SYS_readahead"},
+    {SYS_setxattr, "SYS_setxattr"},
+    {SYS_lsetxattr, "SYS_lsetxattr"},
+    {SYS_fsetxattr, "SYS_fsetxattr"},
+    {SYS_getxattr, "SYS_getxattr"},
+    {SYS_lgetxattr, "SYS_lgetxattr"},
+    {SYS_fgetxattr, "SYS_fgetxattr"},
+    {SYS_listxattr, "SYS_listxattr"},
+    {SYS_llistxattr, "SYS_llistxattr"},
+    {SYS_flistxattr, "SYS_flistxattr"},
+    {SYS_removexattr, "SYS_removexattr"},
+    {SYS_lremovexattr, "SYS_lremovexattr"},
+    {SYS_fremovexattr, "SYS_fremovexattr"},
+    {SYS_tkill, "SYS_tkill"},
+    {SYS_time, "SYS_time"},
+    {SYS_futex, "SYS_futex"},
+    {SYS_sched_setaffinity, "SYS_sched_setaffinity"},
+    {SYS_sched_getaffinity, "SYS_sched_getaffinity"},
+    {SYS_set_thread_area, "SYS_set_thread_area"},
+    {SYS_io_setup, "SYS_io_setup"},
+    {SYS_io_destroy, "SYS_io_destroy"},
+    {SYS_io_getevents, "SYS_io_getevents"},
+    {SYS_io_submit, "SYS_io_submit"},
+    {SYS_io_cancel, "SYS_io_cancel"},
+    {SYS_get_thread_area, "SYS_get_thread_area"},
+    {SYS_lookup_dcookie, "SYS_lookup_dcookie"},
+    {SYS_epoll_create, "SYS_epoll_create"},
+    {SYS_epoll_ctl_old, "SYS_epoll_ctl_old"},
+    {SYS_epoll_wait_old, "SYS_epoll_wait_old"},
+    {SYS_remap_file_pages, "SYS_remap_file_pages"},
+    {SYS_getdents64, "SYS_getdents64"},
+    {SYS_set_tid_address, "SYS_set_tid_address"},
+    {SYS_restart_syscall, "SYS_restart_syscall"},
+    {SYS_semtimedop, "SYS_semtimedop"},
+    {SYS_fadvise64, "SYS_fadvise64"},
+    {SYS_timer_create, "SYS_timer_create"},
+    {SYS_timer_settime, "SYS_timer_settime"},
+    {SYS_timer_gettime, "SYS_timer_gettime"},
+    {SYS_timer_getoverrun, "SYS_timer_getoverrun"},
+    {SYS_timer_delete, "SYS_timer_delete"},
+    {SYS_clock_settime, "SYS_clock_settime"},
+    {SYS_clock_gettime, "SYS_clock_gettime"},
+    {SYS_clock_getres, "SYS_clock_getres"},
+    {SYS_clock_nanosleep, "SYS_clock_nanosleep"},
+    {SYS_exit_group, "SYS_exit_group"},
+    {SYS_epoll_wait, "SYS_epoll_wait"},
+    {SYS_epoll_ctl, "SYS_epoll_ctl"},
+    {SYS_tgkill, "SYS_tgkill"},
+    {SYS_utimes, "SYS_utimes"},
+    {SYS_vserver, "SYS_vserver"},
+    {SYS_mbind, "SYS_mbind"},
+    {SYS_set_mempolicy, "SYS_set_mempolicy"},
+    {SYS_get_mempolicy, "SYS_get_mempolicy"},
+    {SYS_mq_open, "SYS_mq_open"},
+    {SYS_mq_unlink, "SYS_mq_unlink"},
+    {SYS_mq_timedsend, "SYS_mq_timedsend"},
+    {SYS_mq_timedreceive, "SYS_mq_timedreceive"},
+    {SYS_mq_notify, "SYS_mq_notify"},
+    {SYS_mq_getsetattr, "SYS_mq_getsetattr"},
+    {SYS_kexec_load, "SYS_kexec_load"},
+    {SYS_waitid, "SYS_waitid"},
+    {SYS_add_key, "SYS_add_key"},
+    {SYS_request_key, "SYS_request_key"},
+    {SYS_keyctl, "SYS_keyctl"},
+    {SYS_ioprio_set, "SYS_ioprio_set"},
+    {SYS_ioprio_get, "SYS_ioprio_get"},
+    {SYS_inotify_init, "SYS_inotify_init"},
+    {SYS_inotify_add_watch, "SYS_inotify_add_watch"},
+    {SYS_inotify_rm_watch, "SYS_inotify_rm_watch"},
+    {SYS_migrate_pages, "SYS_migrate_pages"},
+    {SYS_openat, "SYS_openat"},
+    {SYS_mkdirat, "SYS_mkdirat"},
+    {SYS_mknodat, "SYS_mknodat"},
+    {SYS_fchownat, "SYS_fchownat"},
+    {SYS_futimesat, "SYS_futimesat"},
+    {SYS_newfstatat, "SYS_newfstatat"},
+    {SYS_unlinkat, "SYS_unlinkat"},
+    {SYS_renameat, "SYS_renameat"},
+    {SYS_linkat, "SYS_linkat"},
+    {SYS_symlinkat, "SYS_symlinkat"},
+    {SYS_readlinkat, "SYS_readlinkat"},
+    {SYS_fchmodat, "SYS_fchmodat"},
+    {SYS_faccessat, "SYS_faccessat"},
+    {SYS_pselect6, "SYS_pselect6"},
+    {SYS_ppoll, "SYS_ppoll"},
+    {SYS_unshare, "SYS_unshare"},
+    {SYS_set_robust_list, "SYS_set_robust_list"},
+    {SYS_get_robust_list, "SYS_get_robust_list"},
+    {SYS_splice, "SYS_splice"},
+    {SYS_tee, "SYS_tee"},
+    {SYS_sync_file_range, "SYS_sync_file_range"},
+    {SYS_vmsplice, "SYS_vmsplice"},
+    {SYS_move_pages, "SYS_move_pages"},
+    {SYS_utimensat, "SYS_utimensat"},
+    {SYS_epoll_pwait, "SYS_epoll_pwait"},
+    {SYS_signalfd, "SYS_signalfd"},
+    {SYS_timerfd_create, "SYS_timerfd_create"},
+    {SYS_eventfd, "SYS_eventfd"},
+    {SYS_fallocate, "SYS_fallocate"},
+    {SYS_timerfd_settime, "SYS_timerfd_settime"},
+    {SYS_timerfd_gettime, "SYS_timerfd_gettime"},
+    {SYS_accept4, "SYS_accept4"},
+    {SYS_signalfd4, "SYS_signalfd4"},
+    {SYS_eventfd2, "SYS_eventfd2"},
+    {SYS_epoll_create1, "SYS_epoll_create1"},
+    {SYS_dup3, "SYS_dup3"},
+    {SYS_pipe2, "SYS_pipe2"},
+    {SYS_inotify_init1, "SYS_inotify_init1"},
+    {SYS_preadv, "SYS_preadv"},
+    {SYS_pwritev, "SYS_pwritev"},
+    {SYS_rt_tgsigqueueinfo, "SYS_rt_tgsigqueueinfo"},
+    {SYS_perf_event_open, "SYS_perf_event_open"},
+    {SYS_recvmmsg, "SYS_recvmmsg"},
+    {SYS_fanotify_init, "SYS_fanotify_init"},
+    {SYS_fanotify_mark, "SYS_fanotify_mark"},
+    {SYS_prlimit64, "SYS_prlimit64"},
+    {SYS_name_to_handle_at, "SYS_name_to_handle_at"},
+    {SYS_open_by_handle_at, "SYS_open_by_handle_at"},
+    {SYS_clock_adjtime, "SYS_clock_adjtime"},
+    {SYS_syncfs, "SYS_syncfs"},
+    {SYS_sendmmsg, "SYS_sendmmsg"},
+    {SYS_setns, "SYS_setns"},
+    {SYS_getcpu, "SYS_getcpu"},
+    {SYS_process_vm_readv, "SYS_process_vm_readv"},
+    {SYS_process_vm_writev, "SYS_process_vm_writev"},
+    {SYS_kcmp, "SYS_kcmp"},
+    {SYS_finit_module, "SYS_finit_module"},
+    {SYS_sched_setattr, "SYS_sched_setattr"},
+    {SYS_sched_getattr, "SYS_sched_getattr"},
+    {SYS_renameat2, "SYS_renameat2"},
+    {SYS_seccomp, "SYS_seccomp"},
+    {SYS_getrandom, "SYS_getrandom"},
+    {SYS_memfd_create, "SYS_memfd_create"},
+    {SYS_kexec_file_load, "SYS_kexec_file_load"},
+    {SYS_bpf, "SYS_bpf"},
+    {SYS_execveat, "SYS_execveat"},
+    {SYS_userfaultfd, "SYS_userfaultfd"},
+    {SYS_membarrier, "SYS_membarrier"},
+    {SYS_mlock2, "SYS_mlock2"},
+    {SYS_copy_file_range, "SYS_copy_file_range"},
+    {SYS_preadv2, "SYS_preadv2"},
+    {SYS_pwritev2, "SYS_pwritev2"},
+    {SYS_pkey_mprotect, "SYS_pkey_mprotect"},
+    {SYS_pkey_alloc, "SYS_pkey_alloc"},
+    {SYS_pkey_free, "SYS_pkey_free"},
+    {SYS_statx, "SYS_statx"},
+    {SYS_io_pgetevents, "SYS_io_pgetevents"},
+    {SYS_rseq, "SYS_rseq"},
+    {SYS_libos_trace, "SYS_libos_trace"},
+    {SYS_libos_trace_ptr, "SYS_libos_trace_ptr"},
+    {SYS_libos_dump_ehdr, "SYS_libos_dump_ehdr"},
+    {SYS_libos_dump_argv, "SYS_libos_dump_argv"},
+    {SYS_libos_dump_stack, "SYS_libos_dump_stack"},
+    {SYS_libos_add_symbol_file, "SYS_libos_add_symbol_file"},
+    {SYS_libos_load_symbols, "SYS_libos_load_symbols"},
+    {SYS_libos_unload_symbols, "SYS_libos_unload_symbols"},
+    {SYS_libos_gen_creds, "SYS_libos_gen_creds"},
+    {SYS_libos_free_creds, "SYS_libos_free_creds"},
+    {SYS_libos_clone, "SYS_libos_clone"},
+    {SYS_libos_oe_add_vectored_exception_handler,
+     "SYS_libos_oe_add_vectored_exception_handler"},
+    {SYS_libos_oe_remove_vectored_exception_handler,
+     "SYS_libos_oe_remove_vectored_exception_handler"},
+    {SYS_libos_oe_is_within_enclave, "SYS_libos_oe_is_within_enclave"},
+    {SYS_libos_oe_is_outside_enclave, "SYS_libos_oe_is_outside_enclave"},
+    {SYS_libos_oe_host_malloc, "SYS_libos_oe_host_malloc"},
+    {SYS_libos_oe_host_realloc, "SYS_libos_oe_host_realloc"},
+    {SYS_libos_oe_host_calloc, "SYS_libos_oe_host_calloc"},
+    {SYS_libos_oe_host_free, "SYS_libos_oe_host_free"},
+    {SYS_libos_oe_strndup, "SYS_libos_oe_strndup"},
+    {SYS_libos_oe_abort, "SYS_libos_oe_abort"},
+    {SYS_libos_oe_assert_fail, "SYS_libos_oe_assert_fail"},
+    {SYS_libos_oe_get_report_v2, "SYS_libos_oe_get_report_v2"},
+    {SYS_libos_oe_free_report, "SYS_libos_oe_free_report"},
+    {SYS_libos_oe_get_target_info_v2, "SYS_libos_oe_get_target_info_v2"},
+    {SYS_libos_oe_free_target_info, "SYS_libos_oe_free_target_info"},
+    {SYS_libos_oe_parse_report, "SYS_libos_oe_parse_report"},
+    {SYS_libos_oe_verify_report, "SYS_libos_oe_verify_report"},
+    {SYS_libos_oe_get_seal_key_by_policy_v2,
+     "SYS_libos_oe_get_seal_key_by_policy_v2"},
+    {SYS_libos_oe_get_public_key_by_policy,
+     "SYS_libos_oe_get_public_key_by_policy"},
+    {SYS_libos_oe_get_public_key, "SYS_libos_oe_get_public_key"},
+    {SYS_libos_oe_get_private_key_by_policy,
+     "SYS_libos_oe_get_private_key_by_policy"},
+    {SYS_libos_oe_get_private_key, "SYS_libos_oe_get_private_key"},
+    {SYS_libos_oe_free_key, "SYS_libos_oe_free_key"},
+    {SYS_libos_oe_get_seal_key_v2, "SYS_libos_oe_get_seal_key_v2"},
+    {SYS_libos_oe_free_seal_key, "SYS_libos_oe_free_seal_key"},
+    {SYS_libos_oe_get_enclave, "SYS_libos_oe_get_enclave"},
+    {SYS_libos_oe_random, "SYS_libos_oe_random"},
+    {SYS_libos_oe_generate_attestation_certificate,
+     "SYS_libos_oe_generate_attestation_certificate"},
+    {SYS_libos_oe_free_attestation_certificate,
+     "SYS_libos_oe_free_attestation_certificate"},
+    {SYS_libos_oe_verify_attestation_certificate,
+     "SYS_libos_oe_verify_attestation_certificate"},
+    {SYS_libos_oe_load_module_host_file_system,
+     "SYS_libos_oe_load_module_host_file_system"},
+    {SYS_libos_oe_load_module_host_socket_interface,
+     "SYS_libos_oe_load_module_host_socket_interface"},
+    {SYS_libos_oe_load_module_host_resolver,
+     "SYS_libos_oe_load_module_host_resolver"},
+    {SYS_libos_oe_load_module_host_epoll,
+     "SYS_libos_oe_load_module_host_epoll"},
+    {SYS_libos_oe_sgx_set_minimum_crl_tcb_issue_date,
+     "SYS_libos_oe_sgx_set_minimum_crl_tcb_issue_date"},
+    {SYS_libos_oe_result_str, "SYS_libos_oe_result_str"},
+    {SYS_libos_oe_get_enclave_status, "SYS_libos_oe_get_enclave_status"},
+    {SYS_libos_oe_allocate_ocall_buffer, "SYS_libos_oe_allocate_ocall_buffer"},
+    {SYS_libos_oe_free_ocall_buffer, "SYS_libos_oe_free_ocall_buffer"},
     {
         SYS_libos_oe_call_host_function,
         "SYS_libos_oe_call_host_function",
@@ -586,8 +479,10 @@ const char* syscall_str(long n)
     return "unknown";
 }
 
-__attribute__((format(printf, 2, 3)))
-static void _strace(long n, const char* fmt, ...)
+__attribute__((format(printf, 2, 3))) static void _strace(
+    long n,
+    const char* fmt,
+    ...)
 {
     if (_trace_syscalls)
     {
@@ -608,8 +503,13 @@ static void _strace(long n, const char* fmt, ...)
             *buf = '\0';
         }
 
-        libos_eprintf("=== %s%s%s(%s): tid=%d\n",
-            blue, syscall_str(n), reset, buf, libos_gettid());
+        libos_eprintf(
+            "=== %s%s%s(%s): tid=%d\n",
+            blue,
+            syscall_str(n),
+            reset,
+            buf,
+            libos_gettid());
     }
 }
 
@@ -649,8 +549,7 @@ typedef struct fd_entry
 {
     int fd;
     char path[PATH_MAX];
-}
-fd_entry_t;
+} fd_entry_t;
 
 static long _return(long n, long ret)
 {
@@ -675,13 +574,25 @@ static long _return(long n, long ret)
 
         if (error_name)
         {
-            libos_eprintf("    %s%s(): return=-%s(%ld)%s: tid=%d\n",
-                red, syscall_str(n), error_name, ret, reset, libos_gettid());
+            libos_eprintf(
+                "    %s%s(): return=-%s(%ld)%s: tid=%d\n",
+                red,
+                syscall_str(n),
+                error_name,
+                ret,
+                reset,
+                libos_gettid());
         }
         else
         {
-            libos_eprintf("    %s%s(): return=%ld(%lX)%s: tid=%d\n",
-                red, syscall_str(n), ret, ret, reset, libos_gettid());
+            libos_eprintf(
+                "    %s%s(): return=%ld(%lX)%s: tid=%d\n",
+                red,
+                syscall_str(n),
+                ret,
+                ret,
+                reset,
+                libos_gettid());
         }
     }
 
@@ -733,7 +644,6 @@ static int _remove_fd_link(libos_fs_t* fs, libos_file_t* file, int fd)
 done:
     return ret;
 }
-
 
 long libos_syscall_creat(const char* pathname, mode_t mode)
 {
@@ -957,7 +867,7 @@ done:
     return ret;
 }
 
-long libos_syscall_mkdir(const char *pathname, mode_t mode)
+long libos_syscall_mkdir(const char* pathname, mode_t mode)
 {
     long ret = 0;
     char suffix[PATH_MAX];
@@ -1174,7 +1084,7 @@ done:
     return ret;
 }
 
-long libos_syscall_getrandom(void *buf, size_t buflen, unsigned int flags)
+long libos_syscall_getrandom(void* buf, size_t buflen, unsigned int flags)
 {
     long ret = 0;
 
@@ -1206,7 +1116,7 @@ done:
     return ret;
 }
 
-long libos_syscall_chmod(const char *pathname, mode_t mode)
+long libos_syscall_chmod(const char* pathname, mode_t mode)
 {
     libos_printf("pathname{%s} mode{%o}\n", pathname, mode);
     (void)pathname;
@@ -1258,18 +1168,17 @@ static const char* _fcntl_cmdstr(int cmd)
     }
 }
 
-
-#define FUTEX_WAIT           0
-#define FUTEX_WAKE           1
-#define FUTEX_FD             2
-#define FUTEX_REQUEUE        3
-#define FUTEX_CMP_REQUEUE    4
-#define FUTEX_WAKE_OP        5
-#define FUTEX_LOCK_PI        6
-#define FUTEX_UNLOCK_PI      7
-#define FUTEX_TRYLOCK_PI     8
-#define FUTEX_WAIT_BITSET    9
-#define FUTEX_PRIVATE        128
+#define FUTEX_WAIT 0
+#define FUTEX_WAKE 1
+#define FUTEX_FD 2
+#define FUTEX_REQUEUE 3
+#define FUTEX_CMP_REQUEUE 4
+#define FUTEX_WAKE_OP 5
+#define FUTEX_LOCK_PI 6
+#define FUTEX_UNLOCK_PI 7
+#define FUTEX_TRYLOCK_PI 8
+#define FUTEX_WAIT_BITSET 9
+#define FUTEX_PRIVATE 128
 #define FUTEX_CLOCK_REALTIME 256
 
 static const char* _futex_op_str(int op)
@@ -1366,8 +1275,11 @@ long libos_syscall(long n, long params[6])
         }
         case SYS_libos_trace_ptr:
         {
-            libos_printf("trace: %s: %lX %ld\n",
-                (const char*)params[0], params[1], params[1]);
+            libos_printf(
+                "trace: %s: %lX %ld\n",
+                (const char*)params[0],
+                params[1],
+                params[1]);
             return _return(n, 0);
         }
         case SYS_libos_dump_stack:
@@ -1410,8 +1322,12 @@ long libos_syscall(long n, long params[6])
             size_t text_size = (size_t)x3;
             long ret;
 
-            _strace(n, "path=\"%s\" text=%p text_size=%zu\n",
-                path, text, text_size);
+            _strace(
+                n,
+                "path=\"%s\" text=%p text_size=%zu\n",
+                path,
+                text,
+                text_size);
 
             ret = libos_syscall_add_symbol_file(path, text, text_size);
 
@@ -1480,8 +1396,8 @@ long libos_syscall(long n, long params[6])
             size_t count = (size_t)x3;
             off_t offset = (off_t)x4;
 
-            _strace(n, "fd=%d buf=%p count=%zu offset=%ld",
-                fd, buf, count, offset);
+            _strace(
+                n, "fd=%d buf=%p count=%zu offset=%ld", fd, buf, count, offset);
 
             if (fd == DEV_URANDOM_FD)
                 return _return(n, _dev_urandom_read(buf, count));
@@ -1498,8 +1414,8 @@ long libos_syscall(long n, long params[6])
             size_t count = (size_t)x3;
             off_t offset = (off_t)x4;
 
-            _strace(n, "fd=%d buf=%p count=%zu offset=%ld",
-                fd, buf, count, offset);
+            _strace(
+                n, "fd=%d buf=%p count=%zu offset=%ld", fd, buf, count, offset);
 
             if (!libos_is_libos_fd(fd))
                 return _return(n, _forward_syscall(n, params));
@@ -1591,12 +1507,19 @@ long libos_syscall(long n, long params[6])
             int fd = (int)x5;
             off_t offset = (off_t)x6;
 
-            _strace(n,
+            _strace(
+                n,
                 "addr=%lX length=%zu(%lX) prot=%d flags=%d fd=%d offset=%lu",
-                (long)addr, length, length, prot, flags, fd, offset);
+                (long)addr,
+                length,
+                length,
+                prot,
+                flags,
+                fd,
+                offset);
 
-            return _return(n, (long)libos_mmap(
-                addr, length, prot, flags, fd, offset));
+            return _return(
+                n, (long)libos_mmap(addr, length, prot, flags, fd, offset));
         }
         case SYS_mprotect:
         {
@@ -1604,8 +1527,13 @@ long libos_syscall(long n, long params[6])
             const size_t length = (size_t)x2;
             const int prot = (int)x3;
 
-            _strace(n, "addr=%lX length=%zu(%lX) prot=%d",
-                (long)addr, length, length, prot);
+            _strace(
+                n,
+                "addr=%lX length=%zu(%lX) prot=%d",
+                (long)addr,
+                length,
+                length,
+                prot);
 
             return _return(n, 0);
         }
@@ -1654,7 +1582,13 @@ long libos_syscall(long n, long params[6])
             if (request == FIONBIO && arg)
                 iarg = *(int*)arg;
 
-            _strace(n, "fd=%d request=0x%lX arg=%p iarg=%d", fd, request, arg, iarg);
+            _strace(
+                n,
+                "fd=%d request=0x%lX arg=%p iarg=%d",
+                fd,
+                request,
+                arg,
+                iarg);
 
             if (libos_is_libos_fd(fd))
             {
@@ -1717,8 +1651,14 @@ long libos_syscall(long n, long params[6])
             fd_set* efds = (fd_set*)x4;
             struct timeval* timeout = (struct timeval*)x5;
 
-            _strace(n, "nfds=%d rfds=%p wfds=%p xfds=%p timeout=%p",
-                nfds, rfds, wfds, efds, timeout);
+            _strace(
+                n,
+                "nfds=%d rfds=%p wfds=%p xfds=%p timeout=%p",
+                nfds,
+                rfds,
+                wfds,
+                efds,
+                timeout);
 
             return _return(n, _forward_syscall(n, params));
         }
@@ -1801,14 +1741,16 @@ long libos_syscall(long n, long params[6])
                 p->newtls,
                 p->ctid);
 
-            return _return(n, libos_syscall_clone(
-                p->fn,
-                p->child_stack,
-                p->flags,
-                p->arg,
-                p->ptid,
-                p->newtls,
-                p->ctid));
+            return _return(
+                n,
+                libos_syscall_clone(
+                    p->fn,
+                    p->child_stack,
+                    p->flags,
+                    p->arg,
+                    p->ptid,
+                    p->newtls,
+                    p->ctid));
         }
         case SYS_fork:
             break;
@@ -1990,8 +1932,8 @@ long libos_syscall(long n, long params[6])
             char* buf = (char*)x2;
             size_t bufsiz = (size_t)x3;
 
-            _strace(n, "pathname=\"%s\" buf=%p bufsiz=%zu",
-                pathname, buf, bufsiz);
+            _strace(
+                n, "pathname=\"%s\" buf=%p bufsiz=%zu", pathname, buf, bufsiz);
 
             return _return(n, libos_syscall_readlink(pathname, buf, bufsiz));
         }
@@ -2199,7 +2141,7 @@ long libos_syscall(long n, long params[6])
             break;
         case SYS_sethostname:
         {
-            const char* name= (const char*)x1;
+            const char* name = (const char*)x1;
             size_t len = (size_t)x2;
 
             _strace(n, "name=\"%s\" len=%zu", name, len);
@@ -2281,7 +2223,9 @@ long libos_syscall(long n, long params[6])
             int* uaddr2 = (int*)x5;
             int val3 = (int)val3;
 
-            _strace(n, "uaddr=0x%lX(%d) futex_op=%u(%s) val=%d",
+            _strace(
+                n,
+                "uaddr=0x%lX(%d) futex_op=%u(%s) val=%d",
                 (long)uaddr,
                 (uaddr ? *uaddr : -1),
                 futex_op,
@@ -2289,8 +2233,9 @@ long libos_syscall(long n, long params[6])
                 val);
 
 #ifdef LIBOS_ENABLE_HOST_THREADS
-            return _return(n, libos_syscall_futex(
-                uaddr, futex_op, val, arg, uaddr2, val3));
+            return _return(
+                n,
+                libos_syscall_futex(uaddr, futex_op, val, arg, uaddr2, val3));
 #else
             (void)arg;
             (void)uaddr2;
@@ -2641,24 +2586,39 @@ long libos_syscall(long n, long params[6])
             const uint8_t ip3 = p[4];
             const uint8_t ip4 = p[5];
 
-            _strace(n, "sockfd=%d addrlen=%u family=%u ip=%u.%u.%u.%u port=%u",
-                sockfd, addrlen, addr->sa_family, ip1, ip2, ip3, ip4, port);
+            _strace(
+                n,
+                "sockfd=%d addrlen=%u family=%u ip=%u.%u.%u.%u port=%u",
+                sockfd,
+                addrlen,
+                addr->sa_family,
+                ip1,
+                ip2,
+                ip3,
+                ip4,
+                port);
 
             return _return(n, _forward_syscall(n, params));
         }
         case SYS_recvfrom:
         {
             int sockfd = (int)x1;
-            void* buf  = (void*)x2;
+            void* buf = (void*)x2;
             size_t len = (size_t)x3;
             int flags = (int)x4;
             struct sockaddr* src_addr = (struct sockaddr*)x5;
             socklen_t* addrlen = (socklen_t*)x6;
             long ret = 0;
 
-            _strace(n,
+            _strace(
+                n,
                 "sockfd=%d buf=%p len=%zu flags=%d src_addr=%p addrlen=%p",
-                sockfd, buf, len, flags, src_addr, addrlen);
+                sockfd,
+                buf,
+                len,
+                flags,
+                src_addr,
+                addrlen);
 
             for (size_t i = 0; i < 10; i++)
             {
@@ -2765,13 +2725,13 @@ void libos_trace_syscalls(bool flag)
 
 long libos_syscall_clock_gettime(clockid_t clk_id, struct timespec* tp)
 {
-    long params[6] = { (long)clk_id, (long)tp };
+    long params[6] = {(long)clk_id, (long)tp};
     return libos_tcall(LIBOS_TCALL_CLOCK_GETTIME, params);
 }
 
 long libos_syscall_isatty(int fd)
 {
-    long params[6] = { (long)fd };
+    long params[6] = {(long)fd};
     return libos_tcall(LIBOS_TCALL_ISATTY, params);
 }
 
@@ -2783,7 +2743,7 @@ long libos_syscall_add_symbol_file(
     long ret = 0;
     void* file_data = NULL;
     size_t file_size;
-    long params[6] = { 0 };
+    long params[6] = {0};
 
     ECHECK(libos_load_file(path, &file_data, &file_size));
 
@@ -2804,12 +2764,12 @@ done:
 
 long libos_syscall_load_symbols(void)
 {
-    long params[6] = { 0 };
+    long params[6] = {0};
     return libos_tcall(LIBOS_TCALL_LOAD_SYMBOLS, params);
 }
 
 long libos_syscall_unload_symbols(void)
 {
-    long params[6] = { 0 };
+    long params[6] = {0};
     return libos_tcall(LIBOS_TCALL_UNLOAD_SYMBOLS, params);
 }

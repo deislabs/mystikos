@@ -1,19 +1,19 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
-#include <openenclave/enclave.h>
-#include <libos/ramfs.h>
-#include <libos/mount.h>
+#include <assert.h>
+#include <dirent.h>
 #include <libos/atexit.h>
 #include <libos/file.h>
-#include <libos/trace.h>
+#include <libos/mount.h>
+#include <libos/ramfs.h>
 #include <libos/syscall.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <dirent.h>
+#include <libos/trace.h>
+#include <openenclave/enclave.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#include <assert.h>
+#include <unistd.h>
 #include "run_t.h"
 
 const char alpha[] = "abcdefghijklmnopqrstuvwxyz";
@@ -366,15 +366,13 @@ void test_readdir()
     {
         const char* name;
         unsigned char type;
-    }
-    entries[] =
-    {
-        { ".", DT_DIR },
-        { "..", DT_DIR },
-        { "dir1", DT_DIR },
-        { "dir2", DT_DIR },
-        { "file1", DT_REG },
-        { "file2", DT_REG },
+    } entries[] = {
+        {".", DT_DIR},
+        {"..", DT_DIR},
+        {"dir1", DT_DIR},
+        {"dir2", DT_DIR},
+        {"file1", DT_REG},
+        {"file2", DT_REG},
     };
     const size_t nentries = sizeof(entries) / sizeof(entries[0]);
     size_t i = 0;
@@ -418,8 +416,13 @@ void dump_dirents(const char* path)
 
     while (libos_readdir(dir, &ent) == 1)
     {
-        printf("name=\"%s\": ino=%lx type=%u off=%ld reclen=%ld\n",
-            ent->d_name, ent->d_ino, ent->d_type, ent->d_off, ent->d_off);
+        printf(
+            "name=\"%s\": ino=%lx type=%u off=%ld reclen=%ld\n",
+            ent->d_name,
+            ent->d_ino,
+            ent->d_type,
+            ent->d_off,
+            ent->d_off);
     }
 
     libos_closedir(dir);
@@ -525,8 +528,8 @@ void test_truncate(void)
         assert(_fdsize(fd) == 0);
         assert(libos_ftruncate(fd, sizeof(alpha)) == 0);
         assert(_fdsize(fd) == sizeof(alpha));
-        assert(libos_ftruncate(fd, 2*sizeof(alpha)) == 0);
-        assert(_fdsize(fd) == 2*sizeof(alpha));
+        assert(libos_ftruncate(fd, 2 * sizeof(alpha)) == 0);
+        assert(_fdsize(fd) == 2 * sizeof(alpha));
         assert(libos_ftruncate(fd, 0) == 0);
         assert(_fdsize(fd) == 0);
         assert(libos_close(fd) == 0);
@@ -596,11 +599,11 @@ void test_pread_pwrite(void)
 
     assert(libos_pwrite(fd, blk1, sizeof(blk1), 0) == N);
     assert(libos_pwrite(fd, blk2, sizeof(blk2), N) == N);
-    assert(libos_pwrite(fd, blk3, sizeof(blk3), 2*N) == N);
+    assert(libos_pwrite(fd, blk3, sizeof(blk3), 2 * N) == N);
 
     assert(libos_pread(fd, buf1, sizeof(buf1), 0) == N);
     assert(libos_pread(fd, buf2, sizeof(buf2), N) == N);
-    assert(libos_pread(fd, buf3, sizeof(buf3), 2*N) == N);
+    assert(libos_pread(fd, buf3, sizeof(buf3), 2 * N) == N);
 
     assert(memcmp(blk1, buf1, sizeof(blk1)) == 0);
     assert(memcmp(blk2, buf2, sizeof(blk2)) == 0);
@@ -645,9 +648,9 @@ int run_ecall(void)
 }
 
 OE_SET_ENCLAVE_SGX(
-    1,    /* ProductID */
-    1,    /* SecurityVersion */
-    true, /* Debug */
-    16*4096, /* NumHeapPages */
-    4096, /* NumStackPages */
-    2);   /* NumTCS */
+    1,         /* ProductID */
+    1,         /* SecurityVersion */
+    true,      /* Debug */
+    16 * 4096, /* NumHeapPages */
+    4096,      /* NumStackPages */
+    2);        /* NumTCS */

@@ -1,6 +1,6 @@
-#include <stdio.h>
-#include <stdint.h>
 #include <assert.h>
+#include <stdint.h>
+#include <stdio.h>
 
 #define MAGIC 0xc72a0eae2f4a4003
 

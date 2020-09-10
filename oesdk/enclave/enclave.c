@@ -1,9 +1,9 @@
-#include <unistd.h>
+#include <libos/syscallext.h>
+#include <openenclave/enclave.h>
+#include <stdio.h>
 #include <string.h>
 #include <sys/syscall.h>
-#include <stdio.h>
-#include <openenclave/enclave.h>
-#include <libos/syscallext.h>
+#include <unistd.h>
 
 oe_result_t oe_random(void* data, size_t size)
 {
@@ -19,7 +19,7 @@ oe_result_t oe_generate_attestation_certificate(
     uint8_t** output_cert,
     size_t* output_cert_size)
 {
-    long extra[] = { (long)output_cert, (long)output_cert_size };
+    long extra[] = {(long)output_cert, (long)output_cert_size};
 
     return (oe_result_t)syscall(
         SYS_libos_oe_generate_attestation_certificate,

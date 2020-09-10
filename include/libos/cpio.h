@@ -69,9 +69,7 @@ int libos_cpio_read_entry(libos_cpio_t* cpio, libos_cpio_entry_t* entry_out);
 
 ssize_t libos_cpio_read_data(libos_cpio_t* cpio, void* data, size_t size);
 
-int libos_cpio_write_entry(
-    libos_cpio_t* cpio,
-    const libos_cpio_entry_t* entry);
+int libos_cpio_write_entry(libos_cpio_t* cpio, const libos_cpio_entry_t* entry);
 
 ssize_t libos_cpio_write_data(
     libos_cpio_t* cpio,

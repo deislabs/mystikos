@@ -1,6 +1,6 @@
 #include <libos/deprecated.h>
-#include <libos/syscall.h>
 #include <libos/eraise.h>
+#include <libos/syscall.h>
 
 int libos_chdir(const char* path)
 {

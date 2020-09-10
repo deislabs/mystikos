@@ -1,6 +1,6 @@
 #include <libos/fsbase.h>
-#include <libos/syscall.h>
 #include <libos/options.h>
+#include <libos/syscall.h>
 
 void libos_set_fs_base(const void* p)
 {

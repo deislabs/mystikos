@@ -1,5 +1,5 @@
-#include <libos/file.h>
 #include <libos/eraise.h>
+#include <libos/file.h>
 
 int libos_write_file(const char* path, const void* data, size_t size)
 {
@@ -9,7 +9,7 @@ int libos_write_file(const char* path, const void* data, size_t size)
     size_t r = size;
     ssize_t n;
 
-    if ((fd = libos_open(path, O_CREAT|O_WRONLY|O_TRUNC, 0666)) < 0)
+    if ((fd = libos_open(path, O_CREAT | O_WRONLY | O_TRUNC, 0666)) < 0)
         ERAISE(-errno);
 
     while ((n = libos_write(fd, p, r)) > 0)

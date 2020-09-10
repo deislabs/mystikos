@@ -1,10 +1,10 @@
-#include <string.h>
-#include <stdio.h>
+#include "gencreds.h"
 #include <mbedtls/x509.h>
 #include <mbedtls/x509_crt.h>
-#include <openenclave/enclave.h>
 #include <openenclave/attestation/attester.h>
-#include "gencreds.h"
+#include <openenclave/enclave.h>
+#include <stdio.h>
+#include <string.h>
 
 static oe_result_t _generate_key_pair(
     uint8_t** public_key_out,
@@ -108,13 +108,13 @@ static oe_result_t _generate_cert_and_private_key(
     }
 
     if ((ret = oe_generate_attestation_certificate(
-         (unsigned char*)common_name,
-         private_key,
-         private_key_size,
-         public_key,
-         public_key_size,
-         &cert,
-         &cert_size)) != OE_OK)
+             (unsigned char*)common_name,
+             private_key,
+             private_key_size,
+             public_key,
+             public_key_size,
+             &cert,
+             &cert_size)) != OE_OK)
     {
         result = ret;
         goto done;

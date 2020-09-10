@@ -1,15 +1,15 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
-#include <libos/elf.h>
+#include <ctype.h>
 #include <libos/buf.h>
+#include <libos/elf.h>
 #include <libos/round.h>
 #include <libos/strings.h>
-#include <sys/stat.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
+#include <sys/stat.h>
 
 #define STATIC_ASSERT(COND) _Static_assert(COND, "")
 
@@ -435,9 +435,7 @@ done:
     return result;
 }
 
-const char* elf_get_string_from_strtab(
-    const elf_t* elf,
-    elf_word_t offset)
+const char* elf_get_string_from_strtab(const elf_t* elf, elf_word_t offset)
 {
     size_t index;
 
@@ -450,9 +448,7 @@ const char* elf_get_string_from_strtab(
     return _get_string_from_section_index(elf, index, offset);
 }
 
-const char* elf_get_string_from_shstrtab(
-    const elf_t* elf,
-    elf_word_t offset)
+const char* elf_get_string_from_shstrtab(const elf_t* elf, elf_word_t offset)
 {
     size_t index;
 
@@ -463,10 +459,7 @@ const char* elf_get_string_from_shstrtab(
     return _get_string_from_section_index(elf, index, offset);
 }
 
-int elf_find_symbol_by_name(
-    const elf_t* elf,
-    const char* name,
-    elf_sym_t* sym)
+int elf_find_symbol_by_name(const elf_t* elf, const char* name, elf_sym_t* sym)
 {
     int rc = -1;
     size_t index;
@@ -580,9 +573,7 @@ done:
     return rc;
 }
 
-const char* elf_get_string_from_dynstr(
-    const elf_t* elf,
-    elf_word_t offset)
+const char* elf_get_string_from_dynstr(const elf_t* elf, elf_word_t offset)
 {
     size_t index;
 
@@ -1018,8 +1009,12 @@ int elf_dump_sections(const elf_t* elf)
 
         size_t segment = _find_segment_for(elf, sh);
 
-        printf("[%03zu] %-24s %016lx %016lx ",
-            i, name, sh->sh_offset, sh->sh_size);
+        printf(
+            "[%03zu] %-24s %016lx %016lx ",
+            i,
+            name,
+            sh->sh_offset,
+            sh->sh_size);
 
         if (segment == (size_t)-1)
             printf("[???]\n");
@@ -1117,8 +1112,7 @@ static void _dump_phdr(const elf_phdr_t* ph, size_t index)
         printf("\n");
     }
 
-    printf(
-        "p_offset=%lu %016lx\n", ph->p_offset, ph->p_offset);
+    printf("p_offset=%lu %016lx\n", ph->p_offset, ph->p_offset);
     printf("p_vaddr=%lu %016lx\n", ph->p_vaddr, ph->p_vaddr);
     printf("p_paddr=%lu\n", ph->p_paddr);
     printf("p_filesz=%lu\n", ph->p_filesz);
@@ -1859,10 +1853,7 @@ done:
     return ret;
 }
 
-int elf_load_relocations(
-    const elf_t* elf,
-    void** data_out,
-    size_t* size_out)
+int elf_load_relocations(const elf_t* elf, void** data_out, size_t* size_out)
 {
     int ret = -1;
     size_t index;

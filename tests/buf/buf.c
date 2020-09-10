@@ -1,10 +1,10 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
+#include <assert.h>
 #include <libos/buf.h>
 #include <stdio.h>
 #include <string.h>
-#include <assert.h>
 
 int main(int argc, const char* argv[])
 {
@@ -22,7 +22,7 @@ int main(int argc, const char* argv[])
     assert(strcmp((char*)buf.data, "red green blue") == 0);
 
     assert(libos_buf_insert(&buf, 14, " yellow", 7) == 0);
-    assert(buf.size == 15+7);
+    assert(buf.size == 15 + 7);
     assert(strcmp((char*)buf.data, "red green blue yellow") == 0);
 
     printf("=== passed test (%s)\n", argv[0]);

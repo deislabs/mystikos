@@ -1,8 +1,8 @@
 #ifndef _LIBOS_ERAISE_H
 #define _LIBOS_ERAISE_H
 
-#include <stdint.h>
 #include <errno.h>
+#include <stdint.h>
 #include <stdio.h>
 
 #define ERAISE(ERRNUM)                                                \
@@ -14,8 +14,7 @@
             libos_eraise(__FILE__, __LINE__, __FUNCTION__, (int)ret); \
             goto done;                                                \
         }                                                             \
-    }                                                                 \
-    while (0)
+    } while (0)
 
 #define ECHECK(ERRNUM)                                                \
     do                                                                \
@@ -27,8 +26,7 @@
             libos_eraise(__FILE__, __LINE__, __FUNCTION__, (int)ret); \
             goto done;                                                \
         }                                                             \
-    }                                                                 \
-    while (0)
+    } while (0)
 
 #define ECHECK_QUIET(ERRNUM) \
     do                       \
@@ -38,16 +36,14 @@
         {                    \
             goto done;       \
         }                    \
-    }                        \
-    while (0)
+    } while (0)
 
 #define ERAISE_QUIET(ERRNUM) \
     do                       \
     {                        \
         ret = ERRNUM;        \
         goto done;           \
-    }                        \
-    while (0)
+    } while (0)
 
 void libos_eraise(
     const char* file,

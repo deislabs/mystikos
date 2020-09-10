@@ -4,9 +4,9 @@
 #ifndef _LIBOS_ELF_H
 #define _LIBOS_ELF_H
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdbool.h>
 
 /*
 **==============================================================================
@@ -199,12 +199,12 @@ typedef struct
 
 typedef struct
 {
-    elf_word_t st_name;   /* Symbol name */
+    elf_word_t st_name;     /* Symbol name */
     unsigned char st_info;  /* Type and Binding attributes */
     unsigned char st_other; /* Reserved */
-    elf_half_t st_shndx;  /* Section table index */
-    elf_addr_t st_value;  /* Symbol value */
-    elf_xword_t st_size;  /* Size of object (e.g., common) */
+    elf_half_t st_shndx;    /* Section table index */
+    elf_addr_t st_value;    /* Symbol value */
+    elf_xword_t st_size;    /* Size of object (e.g., common) */
 } elf_sym_t;
 
 typedef struct
@@ -262,14 +262,9 @@ void elf_dump_symbol(const elf_t* elf, const elf_sym_t* sym);
 
 int elf_dump_symbols(const elf_t* elf);
 
-int elf_find_symbol_by_name(
-    const elf_t* elf,
-    const char* name,
-    elf_sym_t* sym);
+int elf_find_symbol_by_name(const elf_t* elf, const char* name, elf_sym_t* sym);
 
-const char* elf_get_string_from_dynstr(
-    const elf_t* elf,
-    elf_word_t offset);
+const char* elf_get_string_from_dynstr(const elf_t* elf, elf_word_t offset);
 
 int elf_find_dynamic_symbol_by_name(
     const elf_t* elf,
@@ -294,13 +289,9 @@ int elf_find_section(
     unsigned char** data,
     size_t* size);
 
-const char* elf_get_string_from_shstrtab(
-    const elf_t* elf,
-    elf_word_t offset);
+const char* elf_get_string_from_shstrtab(const elf_t* elf, elf_word_t offset);
 
-const char* elf_get_string_from_strtab(
-    const elf_t* elf,
-    elf_word_t offset);
+const char* elf_get_string_from_strtab(const elf_t* elf, elf_word_t offset);
 
 int elf_add_section(
     elf_t* elf,
@@ -326,31 +317,22 @@ int elf_visit_symbols(
     void* data);
 
 /* Load relocations (size will be a multiple of the page size) */
-int elf_load_relocations(
-    const elf_t* elf,
-    void** data,
-    size_t* size);
+int elf_load_relocations(const elf_t* elf, void** data, size_t* size);
 
 /* Get the segment with the given index; return NULL on error */
 void* elf_get_segment(const elf_t* elf, size_t index);
 
 /* Get the section header with the given index; return NULL on error */
-elf_shdr_t* elf_get_section_header(
-    const elf_t* elf,
-    size_t index);
+elf_shdr_t* elf_get_section_header(const elf_t* elf, size_t index);
 
 /* Get the program header with the given index; return NULL on error */
-elf_phdr_t* elf_get_program_header(
-    const elf_t* elf,
-    size_t index);
+elf_phdr_t* elf_get_program_header(const elf_t* elf, size_t index);
 
 /* Get pointer to the elf_ehdr_t */
 elf_ehdr_t* elf_get_header(const elf_t* elf);
 
 /* Return the name of the function that contains this address */
-const char* elf_get_function_name(
-    const elf_t* elf,
-    elf_addr_t addr);
+const char* elf_get_function_name(const elf_t* elf, elf_addr_t addr);
 
 /*
 **==============================================================================
@@ -379,8 +361,7 @@ typedef struct elf_segment
 
     /* Memory protection flags: (PF_R | PF_W | PF_X) */
     uint32_t flags;
-}
-elf_segment_t;
+} elf_segment_t;
 
 typedef struct elf_image
 {
@@ -391,8 +372,7 @@ typedef struct elf_image
     size_t image_size;
     void* reloc_data;
     size_t reloc_size;
-}
-elf_image_t;
+} elf_image_t;
 
 typedef int (*elf_add_page_t)(
     void* arg,
@@ -405,8 +385,8 @@ typedef int (*elf_add_page_t)(
     bool extend);
 
 int elf_image_from_section(
-    elf_image_t* from_elf, 
-    const char* section_name, 
+    elf_image_t* from_elf,
+    const char* section_name,
     elf_image_t* to_elf);
 
 int elf_image_load(const char* path, elf_image_t* image);

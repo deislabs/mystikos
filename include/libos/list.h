@@ -4,9 +4,9 @@
 #ifndef _LIBOS_LIST_H
 #define _LIBOS_LIST_H
 
-#include <libos/types.h>
 #include <libos/defs.h>
 #include <libos/malloc.h>
+#include <libos/types.h>
 
 typedef struct libos_list libos_list_t;
 typedef struct libos_list_node libos_list_node_t;
@@ -24,9 +24,7 @@ struct libos_list_node
     libos_list_node_t* next;
 };
 
-LIBOS_INLINE void libos_list_remove(
-    libos_list_t* list,
-    libos_list_node_t* node)
+LIBOS_INLINE void libos_list_remove(libos_list_t* list, libos_list_node_t* node)
 {
     if (node->prev)
         node->prev->next = node->next;
@@ -63,9 +61,7 @@ LIBOS_INLINE void libos_list_prepend(
     list->size++;
 }
 
-LIBOS_INLINE void libos_list_append(
-    libos_list_t* list,
-    libos_list_node_t* node)
+LIBOS_INLINE void libos_list_append(libos_list_t* list, libos_list_node_t* node)
 {
     if (list->tail)
     {

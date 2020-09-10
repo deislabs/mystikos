@@ -1,6 +1,6 @@
 #include <libos/assert.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 void __libos_assert_fail(
     const char* expr,
@@ -8,7 +8,7 @@ void __libos_assert_fail(
     int line,
     const char* func)
 {
-    fprintf(stderr,
-        "Assertion failed: %s (%s: %s: %d)\n", expr, file, func, line);
+    fprintf(
+        stderr, "Assertion failed: %s (%s: %s: %d)\n", expr, file, func, line);
     abort();
 }

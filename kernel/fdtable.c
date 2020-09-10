@@ -1,9 +1,9 @@
+#include "fdtable.h"
+#include <libos/deprecated.h>
+#include <libos/eraise.h>
+#include <libos/strings.h>
 #include <stdbool.h>
 #include <string.h>
-#include "fdtable.h"
-#include <libos/eraise.h>
-#include <libos/deprecated.h>
-#include <libos/strings.h>
 
 /* ATTN: add locking to this table */
 
@@ -14,8 +14,7 @@ typedef struct fdtable_entry
     int fd;
     void* device; /* example: libos_fs_t */
     void* object; /* example: libos_file_t */
-}
-fdtable_entry_t;
+} fdtable_entry_t;
 
 static fdtable_entry_t _fdtable[FDTABLE_SIZE];
 
@@ -24,10 +23,7 @@ bool libos_is_libos_fd(int fd)
     return fd >= FD_OFFSET && fd <= (FD_OFFSET + FDTABLE_SIZE);
 }
 
-int libos_fdtable_add(
-    libos_fdtable_type_t type,
-    void* device,
-    void* object)
+int libos_fdtable_add(libos_fdtable_type_t type, void* device, void* object)
 {
     int ret = 0;
     int fd;

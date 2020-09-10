@@ -1,10 +1,10 @@
+#include <assert.h>
 #include <libos/elf.h>
 #include <libos/eraise.h>
 #include <libos/round.h>
-#include <assert.h>
-#include <string.h>
-#include <stdlib.h>
 #include <malloc.h>
+#include <stdlib.h>
+#include <string.h>
 
 #define PAGE_SIZE 4096
 
@@ -63,8 +63,7 @@ static int _process_elf_image(elf_image_t* image)
     {
         for (size_t i = 0; i < eh->e_shnum; i++)
         {
-            const elf_shdr_t* sh =
-                elf_get_section_header(&image->elf, i);
+            const elf_shdr_t* sh = elf_get_section_header(&image->elf, i);
 
             /* Invalid section header. The elf file is corrupted. */
             if (sh == NULL)
@@ -110,8 +109,7 @@ static int _process_elf_image(elf_image_t* image)
 
         for (size_t i = 0; i < eh->e_phnum; i++)
         {
-            const elf_phdr_t* ph =
-                elf_get_program_header(&image->elf, i);
+            const elf_phdr_t* ph = elf_get_program_header(&image->elf, i);
 
             /* Check for corrupted program header. */
             if (ph == NULL)
@@ -185,8 +183,7 @@ static int _process_elf_image(elf_image_t* image)
         /* For each program header */
         for (size_t i = 0; i < eh->e_phnum; i++)
         {
-            const elf_phdr_t* ph =
-                elf_get_program_header(&image->elf, i);
+            const elf_phdr_t* ph = elf_get_program_header(&image->elf, i);
             elf_segment_t* seg = &image->segments[n];
             void* segdata;
 
@@ -266,9 +263,7 @@ static int _process_elf_image(elf_image_t* image)
 
     /* Load the relocations into memory (zero-padded to next page size) */
     if (elf_load_relocations(
-            &image->elf,
-            &image->reloc_data,
-            &image->reloc_size) != 0)
+            &image->elf, &image->reloc_data, &image->reloc_size) != 0)
     {
         ERAISE(-EINVAL);
     }
@@ -302,7 +297,7 @@ int elf_image_load(const char* path, elf_image_t* image)
 
     if (elf_load(path, &image->elf) != 0)
         ERAISE(-EINVAL);
-    
+
     ret = _process_elf_image(image);
 
 done:
@@ -310,12 +305,12 @@ done:
 }
 
 int elf_image_from_section(
-    elf_image_t* from_elf, 
-    const char* section_name, 
+    elf_image_t* from_elf,
+    const char* section_name,
     elf_image_t* to_elf)
 {
     int ret = -1;
-    unsigned char *buffer = NULL;
+    unsigned char* buffer = NULL;
     size_t buffer_length = 0;
 
     if (!from_elf || !section_name || !to_elf)
@@ -325,19 +320,18 @@ int elf_image_from_section(
 
     memset(to_elf, 0, sizeof(*to_elf));
 
-    if (elf_find_section(&from_elf->elf, section_name, &buffer, &buffer_length) != 0)
+    if (elf_find_section(
+            &from_elf->elf, section_name, &buffer, &buffer_length) != 0)
         ERAISE(-EINVAL);
 
     if (elf_from_buffer(buffer, buffer_length, &to_elf->elf) != 0)
         ERAISE(-EINVAL);
-    
+
     ret = _process_elf_image(to_elf);
 
 done:
     return ret;
 }
-
-
 
 void elf_image_free(elf_image_t* image)
 {

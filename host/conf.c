@@ -1,10 +1,10 @@
-#include <libos/conf.h>
-#include <stddef.h>
-#include <stdarg.h>
-#include <stdio.h>
 #include <ctype.h>
-#include <string.h>
+#include <libos/conf.h>
+#include <stdarg.h>
+#include <stddef.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 static void _set_err(libos_conf_err_t* err, const char* format, ...)
 {
@@ -55,9 +55,7 @@ static const char* _skip_identifier(const char* p, const char* end)
     return p;
 }
 
-static const char* _skip_whitespace(
-    const char* p,
-    const char* end)
+static const char* _skip_whitespace(const char* p, const char* end)
 {
     while (p != end && isspace(*p))
         p++;

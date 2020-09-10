@@ -4,12 +4,12 @@
 #ifndef _LIBOS_TCALL_H
 #define _LIBOS_TCALL_H
 
-#include <time.h>
 #include <libos/defs.h>
-#include <stddef.h>
-#include <unistd.h>
-#include <stdint.h>
 #include <stdarg.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <time.h>
+#include <unistd.h>
 
 typedef enum libos_tcall_number
 {
@@ -31,8 +31,7 @@ typedef enum libos_tcall_number
     LIBOS_TCALL_WAIT,
     LIBOS_TCALL_WAKE,
     LIBOS_TCALL_WAKE_WAIT,
-}
-libos_tcall_number_t;
+} libos_tcall_number_t;
 
 long libos_tcall(long n, long params[6]);
 
@@ -48,10 +47,7 @@ long libos_tcall_vsnprintf(
     const char* format,
     va_list ap);
 
-long libos_tcall_write_console(
-    int fd,
-    const void* buf,
-    size_t count);
+long libos_tcall_write_console(int fd, const void* buf, size_t count);
 
 long libos_tcall_create_host_thread(uint64_t cookie);
 

@@ -1,12 +1,12 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
+#include "bufu64.h"
 #include <libos/buf.h>
+#include <libos/deprecated.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "bufu64.h"
-#include <libos/deprecated.h>
 
 void libos_bufu64_release(libos_bufu64_t* buf)
 {

@@ -10,9 +10,9 @@ int run_ecall(void)
 }
 
 OE_SET_ENCLAVE_SGX(
-    1,    /* ProductID */
-    1,    /* SecurityVersion */
-    true, /* Debug */
-    16*4096, /* NumHeapPages */
-    4096, /* NumStackPages */
-    2);   /* NumTCS */
+    1,         /* ProductID */
+    1,         /* SecurityVersion */
+    true,      /* Debug */
+    16 * 4096, /* NumHeapPages */
+    4096,      /* NumStackPages */
+    2);        /* NumTCS */

@@ -1,14 +1,14 @@
-#include <libos/mmanutils.h>
-#include <libos/file.h>
-#include <stdlib.h>
-#include <limits.h>
-#include <string.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <libos/deprecated.h>
-#include <libos/malloc.h>
-#include <libos/strings.h>
 #include <libos/assert.h>
+#include <libos/deprecated.h>
+#include <libos/file.h>
+#include <libos/malloc.h>
+#include <libos/mmanutils.h>
+#include <libos/strings.h>
+#include <limits.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 static libos_mman_t _mman;
 static void* _mman_start;

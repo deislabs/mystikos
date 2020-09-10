@@ -1,7 +1,6 @@
 #ifndef _LIBOS_TEE_H
 #define _LIBOS_TEE_H
 
-
 // Fixed identity property sizes
 /**
  * Size of the TEE's unique ID in bytes.

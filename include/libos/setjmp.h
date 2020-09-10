@@ -15,8 +15,7 @@ typedef struct libos_jmp_buf
     uint64_t r15;
 } libos_jmp_buf_t;
 
-__attribute__((returns_twice))
-int libos_setjmp(libos_jmp_buf_t* env);
+__attribute__((returns_twice)) int libos_setjmp(libos_jmp_buf_t* env);
 
 void libos_longjmp(libos_jmp_buf_t* env, int val);
 

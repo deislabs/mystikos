@@ -1,14 +1,13 @@
-#include <string.h>
-#include <stdlib.h>
-#include <libos/types.h>
-#include <libos/eraise.h>
 #include <libos/cwd.h>
-#include <libos/realpath.h>
-#include <libos/cwd.h>
-#include <libos/syscall.h>
 #include <libos/deprecated.h>
+#include <libos/eraise.h>
 #include <libos/malloc.h>
+#include <libos/realpath.h>
 #include <libos/strings.h>
+#include <libos/syscall.h>
+#include <libos/types.h>
+#include <stdlib.h>
+#include <string.h>
 
 int libos_realpath(const char* path, libos_path_t* resolved_path)
 {

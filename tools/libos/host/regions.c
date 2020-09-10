@@ -1,21 +1,21 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
-#include <openenclave/host.h>
-#include <openenclave/bits/sgx/region.h>
+#include "regions.h"
+#include <assert.h>
+#include <errno.h>
+#include <libgen.h>
 #include <libos/elf.h>
-#include <libos/round.h>
 #include <libos/eraise.h>
 #include <libos/file.h>
-#include <errno.h>
-#include <assert.h>
+#include <libos/round.h>
 #include <limits.h>
-#include <unistd.h>
-#include <libgen.h>
+#include <openenclave/bits/sgx/region.h>
+#include <openenclave/host.h>
 #include <sys/stat.h>
-#include "utils.h"
+#include <unistd.h>
 #include "../shared.h"
-#include "regions.h"
+#include "utils.h"
 
 /* ATTN: use common header */
 #define PAGE_SIZE 4096
@@ -23,9 +23,11 @@
 #define MMAN_DEFAULT_PAGES 64
 #define MMAN_SIZE (MMAN_DEFAULT_PAGES * MEGABYTE)
 
-region_details _details = { 0 };
+region_details _details = {0};
 
-const region_details * create_region_details_from_package(elf_image_t* libos_elf, size_t user_pages)
+const region_details* create_region_details_from_package(
+    elf_image_t* libos_elf,
+    size_t user_pages)
 {
     char dir[PATH_MAX];
 
@@ -36,28 +38,42 @@ const region_details * create_region_details_from_package(elf_image_t* libos_elf
     strcpy(dir, get_program_file());
     dirname(dir);
 
-    if (snprintf(_details.enc.path, sizeof(_details.enc.path), "%s/lib/openenclave/libosenc.so", dir) >= sizeof(_details.enc.path))
+    if (snprintf(
+            _details.enc.path,
+            sizeof(_details.enc.path),
+            "%s/lib/openenclave/libosenc.so",
+            dir) >= sizeof(_details.enc.path))
         _err("buffer overflow when forming libosenc.so path");
 
     // Load CRT
-    if (elf_image_from_section(libos_elf, ".liboscrt", &_details.crt.image) != 0)
+    if (elf_image_from_section(libos_elf, ".liboscrt", &_details.crt.image) !=
+        0)
         _err("failed to extract CRT section from : %s", get_program_file());
     _details.crt.status = REGION_ITEM_BORROWED;
 
     // Load Kernel
-    if (elf_image_from_section(libos_elf, ".liboskernel", &_details.kernel.image) != 0)
+    if (elf_image_from_section(
+            libos_elf, ".liboskernel", &_details.kernel.image) != 0)
         _err("failed to extract kernel section from : %s", get_program_file());
     _details.kernel.status = REGION_ITEM_BORROWED;
 
     // Load ROOTFS
-    if (elf_find_section(&libos_elf->elf, ".libosrootfs", (unsigned char**)&_details.rootfs.buffer, &_details.rootfs.buffer_size) != 0)
+    if (elf_find_section(
+            &libos_elf->elf,
+            ".libosrootfs",
+            (unsigned char**)&_details.rootfs.buffer,
+            &_details.rootfs.buffer_size) != 0)
     {
         _err("Failed to extract rootfs from %s.", get_program_file());
     }
     _details.rootfs.status = REGION_ITEM_BORROWED;
 
     // Load config data
-    if (elf_find_section(&libos_elf->elf, ".libosconfig", (unsigned char**)&_details.config.buffer, &_details.config.buffer_size) != 0)
+    if (elf_find_section(
+            &libos_elf->elf,
+            ".libosconfig",
+            (unsigned char**)&_details.config.buffer,
+            &_details.config.buffer_size) != 0)
     {
         _err("Failed to extract config data from %s.", get_program_file());
     }
@@ -66,23 +82,27 @@ const region_details * create_region_details_from_package(elf_image_t* libos_elf
     return &_details;
 }
 
-const region_details * create_region_details_from_files(
-    const char *program_path, 
-    const char *rootfs_path, 
-    const char *config_path,
+const region_details* create_region_details_from_files(
+    const char* program_path,
+    const char* rootfs_path,
+    const char* config_path,
     size_t user_pages)
 {
     if (user_pages == 0)
         user_pages = 64;
     _details.mman_size = user_pages * MEGABYTE;
 
-    if (libos_load_file(rootfs_path, &_details.rootfs.buffer, &_details.rootfs.buffer_size) != 0)
+    if (libos_load_file(
+            rootfs_path,
+            &_details.rootfs.buffer,
+            &_details.rootfs.buffer_size) != 0)
         _err("failed to load rootfs: %s", rootfs_path);
     _details.rootfs.status = REGION_ITEM_OWNED;
 
     if (program_path[0] != '/')
     {
-        _err("program must be an absolute path within the rootfs: %s",
+        _err(
+            "program must be an absolute path within the rootfs: %s",
             program_path);
     }
 
@@ -94,7 +114,8 @@ const region_details * create_region_details_from_files(
         if (format_liboscrt(_details.crt.path, sizeof(_details.crt.path)) != 0)
             _err("buffer overflow when forming liboscrt.so path");
 
-        if (format_liboskernel(_details.kernel.path, sizeof(_details.kernel.path)) != 0)
+        if (format_liboskernel(
+                _details.kernel.path, sizeof(_details.kernel.path)) != 0)
             _err("buffer overflow when forming liboscrt.so path");
 
         if (access(_details.enc.path, R_OK) != 0)
@@ -119,24 +140,29 @@ const region_details * create_region_details_from_files(
     if (config_path)
     {
         // if we have the configuration load it
-        if (libos_load_file(config_path, (void**)&_details.config.buffer, &_details.config.buffer_size) != 0)
+        if (libos_load_file(
+                config_path,
+                (void**)&_details.config.buffer,
+                &_details.config.buffer_size) != 0)
             _err("failed to load config: %s", rootfs_path);
         _details.config.status = REGION_ITEM_OWNED;
     }
     else
     {
-        // We have no configuration, but we can take a look in the enclave itself to see
-        // if it has been stored there!
-        elf_t enc_elf = { 0 };
+        // We have no configuration, but we can take a look in the enclave
+        // itself to see if it has been stored there!
+        elf_t enc_elf = {0};
 
         if (elf_load(_details.enc.path, &enc_elf) != 0)
             _err("failed to load enclave image: %s", _details.enc.path);
-        
-        unsigned char *temp_buf;
+
+        unsigned char* temp_buf;
         size_t temp_size;
-        if (elf_find_section(&enc_elf, ".libosconfig", &temp_buf, &temp_size) == 0)
+        if (elf_find_section(&enc_elf, ".libosconfig", &temp_buf, &temp_size) ==
+            0)
         {
-            // We are going to have to duplicate this buffer so we can unload the enclave image
+            // We are going to have to duplicate this buffer so we can unload
+            // the enclave image
             _details.config.buffer = malloc(temp_size);
             if (_details.config.buffer == NULL)
                 _err("out of memory");
@@ -192,12 +218,8 @@ static int _add_segment_pages(
         if (segment->flags & PF_X)
             flags |= SGX_SECINFO_X;
 
-        if (oe_region_add_page(
-            context,
-            dest_vaddr,
-            page,
-            flags,
-            extend) != OE_OK)
+        if (oe_region_add_page(context, dest_vaddr, page, flags, extend) !=
+            OE_OK)
         {
             ERAISE(-EINVAL);
         }
@@ -225,10 +247,7 @@ static int _load_crt_pages(
     for (size_t i = 0; i < image->num_segments; i++)
     {
         ECHECK(_add_segment_pages(
-            context,
-            &image->segments[i],
-            image->image_data,
-            vaddr));
+            context, &image->segments[i], image->image_data, vaddr));
     }
 
     ret = 0;
@@ -246,7 +265,7 @@ static int _add_crt_region(oe_region_context_t* context, uint64_t* vaddr)
     if (!context || !vaddr)
         ERAISE(-EINVAL);
 
-    char *path = NULL;
+    char* path = NULL;
     if (_details.crt.path[0] != 0)
         path = _details.crt.path;
 
@@ -280,10 +299,7 @@ static int _load_kernel_pages(
     for (size_t i = 0; i < image->num_segments; i++)
     {
         ECHECK(_add_segment_pages(
-            context,
-            &image->segments[i],
-            image->image_data,
-            vaddr));
+            context, &image->segments[i], image->image_data, vaddr));
     }
 
     ret = 0;
@@ -301,7 +317,7 @@ static int _add_kernel_region(oe_region_context_t* context, uint64_t* vaddr)
     if (!context || !vaddr)
         ERAISE(-EINVAL);
 
-    char *path = NULL;
+    char* path = NULL;
     if (_details.kernel.path[0] != 0)
         path = _details.kernel.path;
 
@@ -343,11 +359,11 @@ static int _add_crt_reloc_region(oe_region_context_t* context, uint64_t* vaddr)
             const bool extend = true;
 
             if (oe_region_add_page(
-                context,
-                *vaddr,
-                page,
-                SGX_SECINFO_REG | SGX_SECINFO_R,
-                extend) != OE_OK)
+                    context,
+                    *vaddr,
+                    page,
+                    SGX_SECINFO_REG | SGX_SECINFO_R,
+                    extend) != OE_OK)
             {
                 ERAISE(-EINVAL);
             }
@@ -390,11 +406,11 @@ static int _add_kernel_reloc_region(
             const bool extend = true;
 
             if (oe_region_add_page(
-                context,
-                *vaddr,
-                page,
-                SGX_SECINFO_REG | SGX_SECINFO_R,
-                extend) != OE_OK)
+                    context,
+                    *vaddr,
+                    page,
+                    SGX_SECINFO_REG | SGX_SECINFO_R,
+                    extend) != OE_OK)
             {
                 ERAISE(-EINVAL);
             }
@@ -429,8 +445,7 @@ static int _add_rootfs_region(oe_region_context_t* context, uint64_t* vaddr)
 
     while (r)
     {
-        __attribute__((__aligned__(4096)))
-        uint8_t page[LIBOS_PAGE_SIZE];
+        __attribute__((__aligned__(4096))) uint8_t page[LIBOS_PAGE_SIZE];
         const bool extend = true;
         const size_t min = (r < sizeof(page)) ? r : sizeof(page);
 
@@ -440,11 +455,11 @@ static int _add_rootfs_region(oe_region_context_t* context, uint64_t* vaddr)
             memset(page + r, 0, sizeof(page) - r);
 
         if (oe_region_add_page(
-            context,
-            *vaddr,
-            page,
-            SGX_SECINFO_REG | SGX_SECINFO_R,
-            extend) != OE_OK)
+                context,
+                *vaddr,
+                page,
+                SGX_SECINFO_REG | SGX_SECINFO_R,
+                extend) != OE_OK)
         {
             ERAISE(-EINVAL);
         }
@@ -472,7 +487,7 @@ static int _add_config_region(oe_region_context_t* context, uint64_t* vaddr)
         ERAISE(-EINVAL);
 
     // If we have no config then we cannot add this region
-    if(_details.config.buffer == NULL)
+    if (_details.config.buffer == NULL)
     {
         return 0;
     }
@@ -482,8 +497,7 @@ static int _add_config_region(oe_region_context_t* context, uint64_t* vaddr)
 
     while (r)
     {
-        __attribute__((__aligned__(4096)))
-        uint8_t page[LIBOS_PAGE_SIZE];
+        __attribute__((__aligned__(4096))) uint8_t page[LIBOS_PAGE_SIZE];
         const bool extend = true;
         const size_t min = (r < sizeof(page)) ? r : sizeof(page);
 
@@ -493,11 +507,11 @@ static int _add_config_region(oe_region_context_t* context, uint64_t* vaddr)
             memset(page + r, 0, sizeof(page) - r);
 
         if (oe_region_add_page(
-            context,
-            *vaddr,
-            page,
-            SGX_SECINFO_REG | SGX_SECINFO_R,
-            extend) != OE_OK)
+                context,
+                *vaddr,
+                page,
+                SGX_SECINFO_REG | SGX_SECINFO_R,
+                extend) != OE_OK)
         {
             ERAISE(-EINVAL);
         }
@@ -517,8 +531,7 @@ done:
 static int _add_mman_region(oe_region_context_t* context, uint64_t* vaddr)
 {
     int ret = 0;
-    __attribute__((__aligned__(4096)))
-    uint8_t page[LIBOS_PAGE_SIZE];
+    __attribute__((__aligned__(4096))) uint8_t page[LIBOS_PAGE_SIZE];
     const size_t mman_pages = _details.mman_size / LIBOS_PAGE_SIZE;
 
     if (!context || !vaddr)
@@ -534,11 +547,7 @@ static int _add_mman_region(oe_region_context_t* context, uint64_t* vaddr)
         const bool extend = true;
 
         if (oe_region_add_page(
-            context,
-            *vaddr,
-            page,
-            SGX_SECINFO_REG,
-            extend) != OE_OK)
+                context, *vaddr, page, SGX_SECINFO_REG, extend) != OE_OK)
         {
             ERAISE(-EINVAL);
         }
@@ -551,11 +560,11 @@ static int _add_mman_region(oe_region_context_t* context, uint64_t* vaddr)
         const bool extend = false;
 
         if (oe_region_add_page(
-            context,
-            *vaddr,
-            page,
-            SGX_SECINFO_REG|SGX_SECINFO_R|SGX_SECINFO_W|SGX_SECINFO_X,
-            extend) != OE_OK)
+                context,
+                *vaddr,
+                page,
+                SGX_SECINFO_REG | SGX_SECINFO_R | SGX_SECINFO_W | SGX_SECINFO_X,
+                extend) != OE_OK)
         {
             ERAISE(-EINVAL);
         }
@@ -568,11 +577,7 @@ static int _add_mman_region(oe_region_context_t* context, uint64_t* vaddr)
         const bool extend = true;
 
         if (oe_region_add_page(
-            context,
-            *vaddr,
-            page,
-            SGX_SECINFO_REG,
-            extend) != OE_OK)
+                context, *vaddr, page, SGX_SECINFO_REG, extend) != OE_OK)
         {
             ERAISE(-EINVAL);
         }
@@ -609,6 +614,6 @@ oe_result_t oe_region_add_regions(oe_region_context_t* context, uint64_t vaddr)
 
     if (_add_config_region(context, &vaddr) != 0)
         _err("_add_config_region() failed");
-        
+
     return OE_OK;
 }

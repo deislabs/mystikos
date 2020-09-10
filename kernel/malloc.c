@@ -1,11 +1,11 @@
-#include <libos/malloc.h>
-#include <libos/tcall.h>
-#include <libos/deprecated.h>
-#include <libos/spinlock.h>
-#include <libos/list.h>
-#include <libos/strings.h>
-#include <libos/thread.h>
 #include <libos/crash.h>
+#include <libos/deprecated.h>
+#include <libos/list.h>
+#include <libos/malloc.h>
+#include <libos/spinlock.h>
+#include <libos/strings.h>
+#include <libos/tcall.h>
+#include <libos/thread.h>
 
 static libos_list_t _list;
 static libos_spinlock_t _lock = LIBOS_SPINLOCK_INITIALIZER;
@@ -17,8 +17,7 @@ typedef struct node
     const char* file;
     size_t line;
     const char* func;
-}
-node_t;
+} node_t;
 
 long libos_tcall_allocate(
     void* ptr,
@@ -67,11 +66,7 @@ static node_t* _new_node(
 #endif
 
 #ifdef LIBOS_ENABLE_LEAK_CHECKER
-static int _add_node(
-    void* ptr,
-    const char* file,
-    size_t line,
-    const char* func)
+static int _add_node(void* ptr, const char* file, size_t line, const char* func)
 {
     node_t* node;
 
@@ -214,11 +209,7 @@ void* __libos_memalign(
     return p;
 }
 
-void __libos_free(
-    void* ptr,
-    const char* file,
-    size_t line,
-    const char* func)
+void __libos_free(void* ptr, const char* file, size_t line, const char* func)
 {
     (void)file;
     (void)line;
@@ -241,8 +232,12 @@ int libos_find_leaks(void)
     {
         node_t* node = (node_t*)p;
 
-        libos_eprintf("*********** kernel leak: %s(%zu): %s(): ptr=%p\n",
-            node->file, node->line, node->func, node->ptr);
+        libos_eprintf(
+            "*********** kernel leak: %s(%zu): %s(): ptr=%p\n",
+            node->file,
+            node->line,
+            node->func,
+            node->ptr);
 
         ret = -1;
     }

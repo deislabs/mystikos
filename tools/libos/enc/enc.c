@@ -1,28 +1,28 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
-#include <openenclave/enclave.h>
-#include <openenclave/bits/sgx/region.h>
-#include <stdio.h>
-#include <string.h>
 #include <assert.h>
 #include <errno.h>
-#include <sys/mount.h>
-#include <libos/syscall.h>
-#include <stdlib.h>
-#include <libos/mmanutils.h>
-#include <libos/eraise.h>
-#include <libos/elfutils.h>
-#include <libos/ramfs.h>
-#include <libos/mount.h>
-#include <libos/file.h>
 #include <libos/cpio.h>
-#include <libos/trace.h>
+#include <libos/elfutils.h>
+#include <libos/eraise.h>
+#include <libos/file.h>
 #include <libos/kernel.h>
+#include <libos/mmanutils.h>
+#include <libos/mount.h>
+#include <libos/ramfs.h>
+#include <libos/syscall.h>
 #include <libos/thread.h>
-#include "libos_t.h"
-#include "../shared.h"
+#include <libos/trace.h>
+#include <openenclave/bits/sgx/region.h>
+#include <openenclave/enclave.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/mount.h>
 #include "../config.h"
+#include "../shared.h"
+#include "libos_t.h"
 
 extern int oe_host_printf(const char* fmt, ...);
 
@@ -198,7 +198,7 @@ int libos_enter_ecall(
     size_t config_size;
     bool trace_syscalls = false;
     bool real_syscalls = false;
-    config_parsed_data_t parsed_config = { 0 };
+    config_parsed_data_t parsed_config = {0};
 
     if (!args || !args_size || !env || !env_size)
         goto done;
@@ -228,7 +228,8 @@ int libos_enter_ecall(
             if (parsed_config.allow_host_parameters)
             {
                 // passthrough of args is allowed, so do that
-                if (_deserialize_args(args, args_size, argv + 1, argv_size - 1) != 0)
+                if (_deserialize_args(
+                        args, args_size, argv + 1, argv_size - 1) != 0)
                     goto done;
             }
             else
@@ -240,11 +241,11 @@ int libos_enter_ecall(
                 size_t n = 0;
 
                 while ((n != parsed_config.application_parameters_count) &&
-                        ((n+3) != argv_size)) // slots including null one
+                       ((n + 3) != argv_size)) // slots including null one
                 {
-                    argv[n+2] = parsed_config.application_parameters[n];
-                    argv[n+3] = NULL;
-                    n ++;
+                    argv[n + 2] = parsed_config.application_parameters[n];
+                    argv[n + 3] = NULL;
+                    n++;
                 }
             }
         }
@@ -252,10 +253,10 @@ int libos_enter_ecall(
         {
             // There isnt always configuration. If not then we dont restrict
             // parameters and environment variables
-            if (_deserialize_args(args, args_size, argv + 1, argv_size - 1) != 0)
+            if (_deserialize_args(args, args_size, argv + 1, argv_size - 1) !=
+                0)
                 goto done;
         }
-
     }
 
     // Need to handle config to environment
@@ -265,7 +266,8 @@ int libos_enter_ecall(
 
     // The deserialization of arguments starts at slot 1, not slot 0.
     // MUSL loader requires this.
-    // The executable name in slot 0 is needed, but is not exposed to usermode app.
+    // The executable name in slot 0 is needed, but is not exposed to usermode
+    // app.
     argv[0] = "libosenc.so";
 
     if (options)
@@ -291,195 +293,186 @@ int libos_enter_ecall(
     /* Get the mman region */
     void* mman_data;
     size_t mman_size;
+    {{extern const void * __oe_get_enclave_base(void);
+    oe_region_t region;
+    const uint8_t* enclave_base;
+
+    if (!(enclave_base = __oe_get_enclave_base()))
     {
+        fprintf(stderr, "__oe_get_enclave_base() failed\n");
+        assert(0);
+    }
+
+    if (oe_region_get(MMAN_REGION_ID, &region) != OE_OK)
+    {
+        fprintf(stderr, "failed to get crt region\n");
+        assert(0);
+    }
+
+    mman_data = (void*)(enclave_base + region.vaddr);
+    mman_size = region.size;
+}
+}
+
+/* Get the rootfs region */
+{
+    extern const void* __oe_get_enclave_base(void);
+    oe_region_t region;
+    const uint8_t* enclave_base;
+
+    if (!(enclave_base = __oe_get_enclave_base()))
+    {
+        fprintf(stderr, "__oe_get_enclave_base() failed\n");
+        assert(0);
+    }
+
+    if (oe_region_get(ROOTFS_REGION_ID, &region) != OE_OK)
+    {
+        fprintf(stderr, "failed to get crt region\n");
+        assert(0);
+    }
+
+    rootfs_data = enclave_base + region.vaddr;
+    rootfs_size = region.size;
+}
+
+/* Get the kernel region */
+{
+    extern const void* __oe_get_enclave_base(void);
+    oe_region_t region;
+    const uint8_t* enclave_base;
+
+    if (!(enclave_base = __oe_get_enclave_base()))
+    {
+        fprintf(stderr, "__oe_get_enclave_base() failed\n");
+        assert(0);
+    }
+
+    if (oe_region_get(KERNEL_REGION_ID, &region) != OE_OK)
+    {
+        fprintf(stderr, "failed to get kernel region\n");
+        assert(0);
+    }
+
+    kernel_data = enclave_base + region.vaddr;
+    kernel_size = region.size;
+}
+
+/* Apply relocations to the kernel image */
+{
+    extern const void* __oe_get_enclave_base(void);
+    oe_region_t region;
+    const uint8_t* enclave_base;
+
+    if (!(enclave_base = __oe_get_enclave_base()))
+    {
+        fprintf(stderr, "__oe_get_enclave_base() failed\n");
+        assert(0);
+    }
+
+    if (oe_region_get(KERNEL_RELOC_REGION_ID, &region) != OE_OK)
+    {
+        fprintf(stderr, "failed to get kernel region\n");
+        assert(0);
+    }
+
+    _apply_relocations(
+        kernel_data, kernel_size, enclave_base + region.vaddr, region.size);
+}
+
+/* Get the crt region */
+{
+    extern const void* __oe_get_enclave_base(void);
+    oe_region_t region;
+    const uint8_t* enclave_base;
+
+    if (!(enclave_base = __oe_get_enclave_base()))
+    {
+        fprintf(stderr, "__oe_get_enclave_base() failed\n");
+        assert(0);
+    }
+
+    if (oe_region_get(CRT_REGION_ID, &region) != OE_OK)
+    {
+        fprintf(stderr, "failed to get crt region\n");
+        assert(0);
+    }
+
+    crt_data = enclave_base + region.vaddr;
+    crt_size = region.size;
+}
+
+/* Apply relocations to the crt image */
+{
+    extern const void* __oe_get_enclave_base(void);
+    oe_region_t region;
+    const uint8_t* enclave_base;
+
+    if (!(enclave_base = __oe_get_enclave_base()))
+    {
+        fprintf(stderr, "__oe_get_enclave_base() failed\n");
+        assert(0);
+    }
+
+    if (oe_region_get(CRT_RELOC_REGION_ID, &region) != OE_OK)
+    {
+        fprintf(stderr, "failed to get crt region\n");
+        assert(0);
+    }
+
+    _apply_relocations(
+        crt_data, crt_size, enclave_base + region.vaddr, region.size);
+}
+
+/* Enter the kernel image */
+{
+    libos_kernel_args_t args;
+    const Elf64_Ehdr* ehdr = kernel_data;
+    libos_kernel_entry_t entry;
+
+    args.argc = _count_args(argv);
+    args.argv = argv;
+    args.envc = _count_args(envp);
+    args.envp = envp;
+    args.mman_data = mman_data;
+    args.mman_size = mman_size;
+    args.rootfs_data = (void*)rootfs_data;
+    args.rootfs_size = rootfs_size;
+    args.crt_data = (void*)crt_data;
+    args.crt_size = crt_size;
+    args.trace_syscalls = trace_syscalls;
+    args.real_syscalls = real_syscalls;
+    args.tcall = libos_tcall;
+    args.ppid = ppid;
+    args.pid = pid;
+    args.event = event;
+
+    /* Verify that the kernel is an ELF image */
+    {
+        const uint8_t ident[] = {0x7f, 'E', 'L', 'F'};
+
+        if (memcmp(ehdr->e_ident, ident, sizeof(ident)) != 0)
         {
-            extern const void* __oe_get_enclave_base(void);
-            oe_region_t region;
-            const uint8_t* enclave_base;
-
-            if (!(enclave_base = __oe_get_enclave_base()))
-            {
-                fprintf(stderr, "__oe_get_enclave_base() failed\n");
-                assert(0);
-            }
-
-            if (oe_region_get(MMAN_REGION_ID, &region) != OE_OK)
-            {
-                fprintf(stderr, "failed to get crt region\n");
-                assert(0);
-            }
-
-            mman_data = (void*)(enclave_base + region.vaddr);
-            mman_size = region.size;
+            fprintf(stderr, "bad kernel image\n");
+            assert(0);
         }
     }
 
-    /* Get the rootfs region */
+    /* Resolve the the kernel entry point */
+    entry = (libos_kernel_entry_t)((uint8_t*)kernel_data + ehdr->e_entry);
+
+    if ((uint8_t*)entry < (uint8_t*)kernel_data ||
+        (uint8_t*)entry >= (uint8_t*)kernel_data + kernel_size)
     {
-        extern const void* __oe_get_enclave_base(void);
-        oe_region_t region;
-        const uint8_t* enclave_base;
-
-        if (!(enclave_base = __oe_get_enclave_base()))
-        {
-            fprintf(stderr, "__oe_get_enclave_base() failed\n");
-            assert(0);
-        }
-
-        if (oe_region_get(ROOTFS_REGION_ID, &region) != OE_OK)
-        {
-            fprintf(stderr, "failed to get crt region\n");
-            assert(0);
-        }
-
-        rootfs_data = enclave_base + region.vaddr;
-        rootfs_size = region.size;
+        fprintf(stderr, "kernel entry point is out of bounds\n");
+        assert(0);
     }
 
-    /* Get the kernel region */
-    {
-        extern const void* __oe_get_enclave_base(void);
-        oe_region_t region;
-        const uint8_t* enclave_base;
+    ret = (*entry)(&args);
+}
 
-        if (!(enclave_base = __oe_get_enclave_base()))
-        {
-            fprintf(stderr, "__oe_get_enclave_base() failed\n");
-            assert(0);
-        }
-
-        if (oe_region_get(KERNEL_REGION_ID, &region) != OE_OK)
-        {
-            fprintf(stderr, "failed to get kernel region\n");
-            assert(0);
-        }
-
-        kernel_data = enclave_base + region.vaddr;
-        kernel_size = region.size;
-    }
-
-    /* Apply relocations to the kernel image */
-    {
-        extern const void* __oe_get_enclave_base(void);
-        oe_region_t region;
-        const uint8_t* enclave_base;
-
-        if (!(enclave_base = __oe_get_enclave_base()))
-        {
-            fprintf(stderr, "__oe_get_enclave_base() failed\n");
-            assert(0);
-        }
-
-        if (oe_region_get(KERNEL_RELOC_REGION_ID, &region) != OE_OK)
-        {
-            fprintf(stderr, "failed to get kernel region\n");
-            assert(0);
-        }
-
-        _apply_relocations(
-            kernel_data,
-            kernel_size,
-            enclave_base + region.vaddr,
-            region.size);
-    }
-
-    /* Get the crt region */
-    {
-        extern const void* __oe_get_enclave_base(void);
-        oe_region_t region;
-        const uint8_t* enclave_base;
-
-        if (!(enclave_base = __oe_get_enclave_base()))
-        {
-            fprintf(stderr, "__oe_get_enclave_base() failed\n");
-            assert(0);
-        }
-
-        if (oe_region_get(CRT_REGION_ID, &region) != OE_OK)
-        {
-            fprintf(stderr, "failed to get crt region\n");
-            assert(0);
-        }
-
-        crt_data = enclave_base + region.vaddr;
-        crt_size = region.size;
-    }
-
-    /* Apply relocations to the crt image */
-    {
-        extern const void* __oe_get_enclave_base(void);
-        oe_region_t region;
-        const uint8_t* enclave_base;
-
-        if (!(enclave_base = __oe_get_enclave_base()))
-        {
-            fprintf(stderr, "__oe_get_enclave_base() failed\n");
-            assert(0);
-        }
-
-        if (oe_region_get(CRT_RELOC_REGION_ID, &region) != OE_OK)
-        {
-            fprintf(stderr, "failed to get crt region\n");
-            assert(0);
-        }
-
-        _apply_relocations(
-            crt_data,
-            crt_size,
-            enclave_base + region.vaddr,
-            region.size);
-    }
-
-    /* Enter the kernel image */
-    {
-        libos_kernel_args_t args;
-        const Elf64_Ehdr* ehdr = kernel_data;
-        libos_kernel_entry_t entry;
-
-        args.argc = _count_args(argv);
-        args.argv = argv;
-        args.envc = _count_args(envp);
-        args.envp = envp;
-        args.mman_data = mman_data;
-        args.mman_size = mman_size;
-        args.rootfs_data = (void*)rootfs_data;
-        args.rootfs_size = rootfs_size;
-        args.crt_data = (void*)crt_data;
-        args.crt_size = crt_size;
-        args.trace_syscalls = trace_syscalls;
-        args.real_syscalls = real_syscalls;
-        args.tcall = libos_tcall;
-        args.ppid = ppid;
-        args.pid = pid;
-        args.event = event;
-
-        /* Verify that the kernel is an ELF image */
-        {
-            const uint8_t ident[] = { 0x7f, 'E', 'L', 'F' };
-
-            if (memcmp(ehdr->e_ident, ident, sizeof(ident)) != 0)
-            {
-                fprintf(stderr, "bad kernel image\n");
-                assert(0);
-            }
-        }
-
-        /* Resolve the the kernel entry point */
-        entry = (libos_kernel_entry_t)((uint8_t*)kernel_data + ehdr->e_entry);
-
-        if ((uint8_t*)entry < (uint8_t*)kernel_data ||
-            (uint8_t*)entry >= (uint8_t*)kernel_data + kernel_size)
-        {
-            fprintf(stderr, "kernel entry point is out of bounds\n");
-            assert(0);
-        }
-
-        ret = (*entry)(&args);
-    }
-
-done:
-    free_config(&parsed_config);
-    return ret;
+done : free_config(&parsed_config);
+return ret;
 }
 
 long libos_run_thread_ecall(uint64_t cookie, int tid, uint64_t event)
@@ -515,8 +508,8 @@ long libos_tcall_add_symbol_file(
     if (!file_data || !file_size || !text || !text_size)
         ERAISE(-EINVAL);
 
-    if (libos_add_symbol_file_ocall(&retval, file_data, file_size, text,
-        text_size) != OE_OK)
+    if (libos_add_symbol_file_ocall(
+            &retval, file_data, file_size, text, text_size) != OE_OK)
     {
         ERAISE(-EINVAL);
     }
@@ -609,9 +602,9 @@ long libos_tcall_wake_wait(
 }
 
 OE_SET_ENCLAVE_SGX(
-    1,    /* ProductID */
-    1,    /* SecurityVersion */
-    true, /* Debug */
-    8*4096, /* NumHeapPages */
-    32, /* NumStackPages */
-    16);   /* NumTCS */
+    1,        /* ProductID */
+    1,        /* SecurityVersion */
+    true,     /* Debug */
+    8 * 4096, /* NumHeapPages */
+    32,       /* NumStackPages */
+    16);      /* NumTCS */

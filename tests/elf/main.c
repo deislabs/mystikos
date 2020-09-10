@@ -1,14 +1,14 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <malloc.h>
-#include <limits.h>
 #include <assert.h>
 #include <libos/elf.h>
 #include <libos/file.h>
+#include <limits.h>
+#include <malloc.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/mman.h>
 
 #define PAGE_SIZE 4096
@@ -33,7 +33,7 @@ static char _msg[64];
 
 static void _callback(const char* msg)
 {
-    //printf("=== _callback(): %s\n", msg);
+    // printf("=== _callback(): %s\n", msg);
     strcpy(_msg, msg);
 }
 
@@ -75,7 +75,7 @@ static int _test_image_load(const char* path)
 
     /* Call into the newly loaded image */
     {
-        const uint8_t magic[] = { 0x7f, 'E', 'L', 'F' };
+        const uint8_t magic[] = {0x7f, 'E', 'L', 'F'};
         typedef int (*entry_t)(void (*callback)(const char* msg));
         entry_t entry;
         int r;

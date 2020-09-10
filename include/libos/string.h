@@ -1,8 +1,8 @@
 #ifndef _LIBOS_STRING_H
 #define _LIBOS_STRING_H
 
-#include <stddef.h>
 #include <libos/defs.h>
+#include <stddef.h>
 
 #define STRING_DYNAMIC 1
 
@@ -12,10 +12,12 @@ typedef struct string
     char* ptr;
     size_t len;
     size_t cap;
-}
-string_t;
+} string_t;
 
-#define STRING_BUF(BUF) { 0, BUF, 0, sizeof(BUF) - 1 }
+#define STRING_BUF(BUF)            \
+    {                              \
+        0, BUF, 0, sizeof(BUF) - 1 \
+    }
 
 LIBOS_INLINE void string_init(string_t* string, char* buf, size_t size)
 {

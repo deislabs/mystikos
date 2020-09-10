@@ -9,7 +9,7 @@ int libos_setup_mman(void* data, size_t size);
 int libos_teardown_mman(void);
 
 void* libos_mmap(
-    void *addr,
+    void* addr,
     size_t length,
     int prot,
     int flags,

@@ -6,8 +6,7 @@
 typedef struct libos_conf_err
 {
     char buf[256];
-}
-libos_conf_err_t;
+} libos_conf_err_t;
 
 typedef int (*libos_conf_callback_t)(
     const char* name,

@@ -29,17 +29,17 @@
 
 #include "structs.h"
 
+#include <assert.h>
+#include <ctype.h>
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <ctype.h>
-#include <sys/stat.h>
 #include <string.h>
-#include <stdint.h>
-#include <assert.h>
-#include <stdbool.h>
+#include <sys/stat.h>
 
-#include <libos/json.h>
 #include <libos/file.h>
+#include <libos/json.h>
 
 #include "strings.h"
 
@@ -50,8 +50,7 @@ const char* arg0;
 typedef struct json_callback_data
 {
     header_t* hdr;
-}
-json_callback_data_t;
+} json_callback_data_t;
 
 static int _strtou64(uint64_t* x, const char* str)
 {
@@ -329,7 +328,8 @@ static json_result_t _json_read_callback(
                     goto done;
                 }
             }
-            else if (json_match(parser, "keyslots.#.area.encryption") == JSON_OK)
+            else if (
+                json_match(parser, "keyslots.#.area.encryption") == JSON_OK)
             {
                 uint64_t i = parser->path[1].number;
 
@@ -464,7 +464,7 @@ static json_result_t _json_read_callback(
 
                 luks2_segment_t* seg = &data->hdr->segments[i];
 
-                if (strcmp(un->string , "dynamic") == 0)
+                if (strcmp(un->string, "dynamic") == 0)
                     seg->size = (uint64_t)-1;
                 else if (_strtou64(&seg->size, un->string) != 0)
                 {
@@ -523,7 +523,9 @@ static json_result_t _json_read_callback(
                     goto done;
                 }
             }
-            else if (json_match(parser, "segments.#.integrity.journal_encryption") == JSON_OK)
+            else if (
+                json_match(parser, "segments.#.integrity.journal_encryption") ==
+                JSON_OK)
             {
                 uint64_t i = parser->path[1].number;
 
@@ -549,7 +551,9 @@ static json_result_t _json_read_callback(
                     goto done;
                 }
             }
-            else if (json_match(parser, "segments.#.integrity.journal_integrity") == JSON_OK)
+            else if (
+                json_match(parser, "segments.#.integrity.journal_integrity") ==
+                JSON_OK)
             {
                 uint64_t i = parser->path[1].number;
 
@@ -768,9 +772,8 @@ static void _parse(const char* path)
     size_t size;
     json_result_t r;
     header_t header;
-    json_callback_data_t callback_data = { &header };
-    static json_allocator_t allocator =
-    {
+    json_callback_data_t callback_data = {&header};
+    static json_allocator_t allocator = {
         malloc,
         free,
     };
@@ -783,16 +786,16 @@ static void _parse(const char* path)
         exit(1);
     }
 
-    const json_parser_options_t options = { 1 };
+    const json_parser_options_t options = {1};
 
     if ((r = json_parser_init(
-        &parser,
-        data,
-        size,
-        _json_read_callback,
-        &callback_data,
-        &allocator,
-        &options)) != JSON_OK)
+             &parser,
+             data,
+             size,
+             _json_read_callback,
+             &callback_data,
+             &allocator,
+             &options)) != JSON_OK)
     {
         fprintf(stderr, "%s: json_parser_init() failed: %d\n", arg0, r);
         exit(1);

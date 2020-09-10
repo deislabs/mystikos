@@ -6,7 +6,10 @@
 
 #include <libos/types.h>
 
-#define LIBOS_BUF_INITIALIZER { NULL, 0, 0 }
+#define LIBOS_BUF_INITIALIZER \
+    {                         \
+        NULL, 0, 0            \
+    }
 
 typedef struct libos_buf
 {

@@ -1,28 +1,29 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
-#include <openenclave/host.h>
-#include <openenclave/bits/sgx/region.h>
-#include "libos/file.h"
+#include <assert.h>
+#include <errno.h>
 #include <libos/elf.h>
 #include <libos/malloc.h>
-#include <assert.h>
 #include <limits.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <errno.h>
+#include <openenclave/bits/sgx/region.h>
+#include <openenclave/host.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include "../config.h"
 #include "cpio.h"
-#include "sign.h"
-#include "utils.h"
+#include "exec.h"
+#include "libos/file.h"
+#include "libos_args.h"
 #include "parse_options.h"
 #include "regions.h"
-#include "libos_args.h"
-#include "exec.h"
-#include "../config.h"
+#include "sign.h"
+#include "utils.h"
 
-#define USAGE_PACKAGE "\
+#define USAGE_PACKAGE \
+    "\
 \n\
 Usage: %s sign package <app_dir> <appname> <pem_file> <config> [options]\n\
 \n\
@@ -39,27 +40,35 @@ and <options> are one of:\n\
 \n\
 "
 
-static const char *help_present = NULL;
-static const char *platform = "OE";
+static const char* help_present = NULL;
+static const char* platform = "OE";
 
-static const char *help_options[] = {"--help", "-h"};
-static const char *platform_options[] = {"--platform", "-p"};
+static const char* help_options[] = {"--help", "-h"};
+static const char* platform_options[] = {"--platform", "-p"};
 
-static struct _option option_list[] = 
-{
-    // {names array}, names_count, num_extra_param, extra_param, extra_param_required
-    {help_options, sizeof(help_options)/sizeof(const char *), 0, &help_present, 0},
-    {platform_options, sizeof(platform_options)/sizeof(const char *), 1, &platform, 1},
+static struct _option option_list[] = {
+    // {names array}, names_count, num_extra_param, extra_param,
+    // extra_param_required
+    {help_options,
+     sizeof(help_options) / sizeof(const char*),
+     0,
+     &help_present,
+     0},
+    {platform_options,
+     sizeof(platform_options) / sizeof(const char*),
+     1,
+     &platform,
+     1},
 };
-static struct _options options =
-{
-    option_list,
-    sizeof(option_list)/sizeof(struct _option)
-};
+static struct _options options = {option_list,
+                                  sizeof(option_list) / sizeof(struct _option)};
 
-static int _add_image_to_elf_section(elf_t *elf, const char *path, const char *section_name)
+static int _add_image_to_elf_section(
+    elf_t* elf,
+    const char* path,
+    const char* section_name)
 {
-    void *image = NULL;
+    void* image = NULL;
     size_t image_length = 0;
     int ret = -1;
 
@@ -68,13 +77,14 @@ static int _add_image_to_elf_section(elf_t *elf, const char *path, const char *s
         fprintf(stderr, "Failed to load %s", path);
         goto done;
     }
-    if (elf_add_section(elf, section_name, SHT_PROGBITS, image, image_length) != 0)
+    if (elf_add_section(elf, section_name, SHT_PROGBITS, image, image_length) !=
+        0)
     {
         fprintf(stderr, "Failed to add %s to elf image", path);
         goto done;
     }
     libos_free(image);
-    
+
     ret = 0;
 
 done:
@@ -86,11 +96,12 @@ int _package(int argc, const char* argv[])
 {
     char scratch_path[PATH_MAX];
     char scratch_path2[PATH_MAX];
-    config_parsed_data_t callback_data = { 0 };
-    char *config_data = NULL;
+    config_parsed_data_t callback_data = {0};
+    char* config_data = NULL;
     size_t config_size;
 
-    if ((argc < 5) || (parse_options(argc, argv, 5, &options) != 0) || help_present)
+    if ((argc < 5) || (parse_options(argc, argv, 5, &options) != 0) ||
+        help_present)
     {
         fprintf(stderr, USAGE_PACKAGE, argv[0]);
         return -1;
@@ -99,11 +110,11 @@ int _package(int argc, const char* argv[])
     // We are in the right operation, right?
     assert(strcmp(argv[1], "package") == 0);
 
-    const char *app_dir = argv[2];
-    const char *pem_file = argv[3];
-    const char *config_file = argv[4];
-    const char *target; // Extracted from config
-    const char *appname; // Extracted from target
+    const char* app_dir = argv[2];
+    const char* pem_file = argv[3];
+    const char* config_file = argv[4];
+    const char* target;  // Extracted from config
+    const char* appname; // Extracted from target
 
     if (libos_load_file(config_file, (void**)&config_data, &config_size) != 0)
     {
@@ -112,13 +123,18 @@ int _package(int argc, const char* argv[])
 
     if (parse_config(config_data, config_size, &callback_data) != 0)
     {
-        _err("Failed to generate OE configuration file %s from LibOS configuration file %s", scratch_path2, config_file);
+        _err(
+            "Failed to generate OE configuration file %s from LibOS "
+            "configuration file %s",
+            scratch_path2,
+            config_file);
     }
 
     target = callback_data.application_path;
     if ((target == NULL) || (target[0] != '/'))
     {
-        _err("target in config file must be fully qualified path within rootfs");
+        _err(
+            "target in config file must be fully qualified path within rootfs");
     }
 
     appname = strrchr(target, '/');
@@ -138,40 +154,46 @@ int _package(int argc, const char* argv[])
         _err("File path to long: %.signed", appname);
     }
 
-    if ((mkdir(scratch_path, S_IROTH|S_IXOTH|S_IXGRP|S_IWGRP|S_IRGRP|S_IXUSR|S_IWUSR|S_IRUSR) != 0) && (errno != EEXIST))
+    if ((mkdir(
+             scratch_path,
+             S_IROTH | S_IXOTH | S_IXGRP | S_IWGRP | S_IRGRP | S_IXUSR |
+                 S_IWUSR | S_IRUSR) != 0) &&
+        (errno != EEXIST))
     {
         _err("Failed to create directory \"%s\".", scratch_path);
     }
 
-    // Make a temporary copy of the rootfs 
-    if (snprintf(scratch_path, PATH_MAX, "%s.signed/rootfs.temp", appname) >= PATH_MAX)
+    // Make a temporary copy of the rootfs
+    if (snprintf(scratch_path, PATH_MAX, "%s.signed/rootfs.temp", appname) >=
+        PATH_MAX)
     {
         _err("File path to long: %s.signed", appname);
     }
-    const char *mkcpio_args[] = 
-    {
-        argv[0],        // ..../libos
+    const char* mkcpio_args[] = {
+        argv[0], // ..../libos
         "mkcpio",
-        app_dir,        // <app_dir>
-        scratch_path    // ./<appname>.signed/rootfs.temp
+        app_dir,     // <app_dir>
+        scratch_path // ./<appname>.signed/rootfs.temp
     };
-    if (_mkcpio(sizeof(mkcpio_args)/sizeof(mkcpio_args[0]), mkcpio_args) != 0)
+    if (_mkcpio(sizeof(mkcpio_args) / sizeof(mkcpio_args[0]), mkcpio_args) != 0)
     {
-        _err("Failed to create root filesystem \"%s\" in directory \"%s\"", scratch_path, app_dir);
+        _err(
+            "Failed to create root filesystem \"%s\" in directory \"%s\"",
+            scratch_path,
+            app_dir);
     }
 
     // sign the enclave and measure all regions of enclave
-    const char *sign_args[] = 
-    {
+    const char* sign_args[] = {
         argv[0],
         "sign",
         scratch_path, // rootfs
-        pem_file, 
+        pem_file,
         config_file,
     };
 
     // Sign and copy everything into app.signed directory
-    if (_sign(sizeof(sign_args)/sizeof(sign_args[0]), sign_args) != 0)
+    if (_sign(sizeof(sign_args) / sizeof(sign_args[0]), sign_args) != 0)
     {
         _err("Failed to sign enclave file");
     }
@@ -186,7 +208,8 @@ int _package(int argc, const char* argv[])
 
     // First load the libos application so we can add the other components
     // as named sections in the image
-    if (snprintf(scratch_path, PATH_MAX, "%s.signed/bin/libos", appname) >= PATH_MAX)
+    if (snprintf(scratch_path, PATH_MAX, "%s.signed/bin/libos", appname) >=
+        PATH_MAX)
     {
         _err("File path to long: %s.signed.signed/bin/libos", appname);
     }
@@ -194,15 +217,24 @@ int _package(int argc, const char* argv[])
     {
         _err("Failed to load %s.signed/bin/libos", appname);
     }
-    
+
     // Add the enclave to libos
-    if (snprintf(scratch_path, PATH_MAX, "%s.signed/lib/openenclave/libosenc.so", appname) >= PATH_MAX)
+    if (snprintf(
+            scratch_path,
+            PATH_MAX,
+            "%s.signed/lib/openenclave/libosenc.so",
+            appname) >= PATH_MAX)
     {
-        _err("File path to long: %s.signed/openenclave/lib/libosenc.so", appname);
+        _err(
+            "File path to long: %s.signed/openenclave/lib/libosenc.so",
+            appname);
     }
     if (_add_image_to_elf_section(&elf, scratch_path, ".libosenc") != 0)
     {
-        _err("Failed to add image %s to to binary %s.signed/bin/libos", scratch_path, appname);
+        _err(
+            "Failed to add image %s to to binary %s.signed/bin/libos",
+            scratch_path,
+            appname);
     }
     if (libos_unlink(scratch_path) != 0)
     {
@@ -210,13 +242,18 @@ int _package(int argc, const char* argv[])
     }
 
     // Add the enclave CRT to libos
-    if (snprintf(scratch_path, PATH_MAX, "%s.signed/lib/liboscrt.so", appname) >= PATH_MAX)
+    if (snprintf(
+            scratch_path, PATH_MAX, "%s.signed/lib/liboscrt.so", appname) >=
+        PATH_MAX)
     {
         _err("File path to long: %s.signed/lib/liboscrt.so", appname);
     }
     if (_add_image_to_elf_section(&elf, scratch_path, ".liboscrt") != 0)
     {
-        _err("Failed to add image %s to to binary %s.signed/bin/libos", scratch_path, appname);
+        _err(
+            "Failed to add image %s to to binary %s.signed/bin/libos",
+            scratch_path,
+            appname);
     }
     if (libos_unlink(scratch_path) != 0)
     {
@@ -224,13 +261,18 @@ int _package(int argc, const char* argv[])
     }
 
     // Add the kernel to libos
-    if (snprintf(scratch_path, PATH_MAX, "%s.signed/lib/liboskernel.so", appname) >= PATH_MAX)
+    if (snprintf(
+            scratch_path, PATH_MAX, "%s.signed/lib/liboskernel.so", appname) >=
+        PATH_MAX)
     {
         _err("File path to long: %s.signed/lib/liboskernel.so", appname);
     }
     if (_add_image_to_elf_section(&elf, scratch_path, ".liboskernel") != 0)
     {
-        _err("Failed to add image %s to to binary %s.signed/lib/libos", scratch_path, appname);
+        _err(
+            "Failed to add image %s to to binary %s.signed/lib/libos",
+            scratch_path,
+            appname);
     }
     if (libos_unlink(scratch_path) != 0)
     {
@@ -238,13 +280,17 @@ int _package(int argc, const char* argv[])
     }
 
     // Add the rootfs to libos
-    if (snprintf(scratch_path, PATH_MAX, "%s.signed/rootfs", appname) >= PATH_MAX)
+    if (snprintf(scratch_path, PATH_MAX, "%s.signed/rootfs", appname) >=
+        PATH_MAX)
     {
         _err("File path to long: %s.signed/rootfs", appname);
     }
     if (_add_image_to_elf_section(&elf, scratch_path, ".libosrootfs") != 0)
     {
-        _err("Failed to add image %s to to binary %s.signed/bin/libos", scratch_path, appname);
+        _err(
+            "Failed to add image %s to to binary %s.signed/bin/libos",
+            scratch_path,
+            appname);
     }
     if (libos_unlink(scratch_path) != 0)
     {
@@ -254,11 +300,16 @@ int _package(int argc, const char* argv[])
     // Add the config to libos
     if (_add_image_to_elf_section(&elf, config_file, ".libosconfig") != 0)
     {
-        _err("Failed to add image %s to to binary %s.signed/bin/libos", config_file, appname);
+        _err(
+            "Failed to add image %s to to binary %s.signed/bin/libos",
+            config_file,
+            appname);
     }
 
     // Save new elf image back
-    if (snprintf(scratch_path, PATH_MAX, "%s.signed/bin/%s", appname, appname) >= PATH_MAX)
+    if (snprintf(
+            scratch_path, PATH_MAX, "%s.signed/bin/%s", appname, appname) >=
+        PATH_MAX)
     {
         _err("File path to long: %s.signed/bin/%s", appname, appname);
     }
@@ -276,7 +327,8 @@ int _package(int argc, const char* argv[])
     elf_unload(&elf);
 
     // clean up original libos executable
-    if (snprintf(scratch_path, PATH_MAX, "%s.signed/bin/libos", appname) >= PATH_MAX)
+    if (snprintf(scratch_path, PATH_MAX, "%s.signed/bin/libos", appname) >=
+        PATH_MAX)
     {
         _err("File path to long: %s.signed/bin/libos", appname);
     }
@@ -292,18 +344,18 @@ int _package(int argc, const char* argv[])
 }
 
 // <app_name> [app args]
-int _exec_package(int argc, const char* argv[], const char *executable)
+int _exec_package(int argc, const char* argv[], const char* executable)
 {
     char app_dir[PATH_MAX];
     char scratch_path[PATH_MAX];
-    char *scratch_string = NULL;
-    const region_details *details;
-    unsigned char *buffer = NULL;
+    char* scratch_string = NULL;
+    const region_details* details;
+    unsigned char* buffer = NULL;
     size_t buffer_length = 0;
-    elf_image_t libos_elf = { 0 };
+    elf_image_t libos_elf = {0};
     const oe_enclave_type_t type = OE_ENCLAVE_TYPE_SGX;
     uint32_t flags = OE_ENCLAVE_FLAG_DEBUG;
-    struct libos_options options = { 0 };
+    struct libos_options options = {0};
 
     /* Get options */
     {
@@ -333,25 +385,34 @@ int _exec_package(int argc, const char* argv[], const char *executable)
     {
         *scratch_string = '\0';
     }
-    
+
     // Load main executable so we can extract sections
     if (elf_image_load(get_program_file(), &libos_elf) != 0)
         _err("failed to load libos image: %s", get_program_file());
-    
+
     // Make enclave directory and extract enclave into it
     if (snprintf(scratch_path, PATH_MAX, "%s/../lib", app_dir) >= PATH_MAX)
     {
         _err("File path %s/enc is too long", app_dir);
     }
-    if ((mkdir(scratch_path, S_IROTH|S_IXOTH|S_IXGRP|S_IWGRP|S_IRGRP|S_IXUSR|S_IWUSR|S_IRUSR) != 0) && (errno != EEXIST))
+    if ((mkdir(
+             scratch_path,
+             S_IROTH | S_IXOTH | S_IXGRP | S_IWGRP | S_IRGRP | S_IXUSR |
+                 S_IWUSR | S_IRUSR) != 0) &&
+        (errno != EEXIST))
     {
         _err("Failed to create directory \"%s\".", scratch_path);
     }
-    if (snprintf(scratch_path, PATH_MAX, "%s/../lib/openenclave/libosenc.so", app_dir) >= PATH_MAX)
+    if (snprintf(
+            scratch_path,
+            PATH_MAX,
+            "%s/../lib/openenclave/libosenc.so",
+            app_dir) >= PATH_MAX)
     {
         _err("File path %s/lib/openenclave/ is too long", app_dir);
     }
-    if (elf_find_section(&libos_elf.elf, ".libosenc", &buffer, &buffer_length) != 0)
+    if (elf_find_section(
+            &libos_elf.elf, ".libosenc", &buffer, &buffer_length) != 0)
     {
         _err("Failed to extract enclave from %s", get_program_file());
     }
@@ -361,36 +422,42 @@ int _exec_package(int argc, const char* argv[], const char *executable)
         _err("Failed to write %s", scratch_path);
     }
 
-    if (elf_find_section(&libos_elf.elf, ".libosconfig", &buffer, &buffer_length) != 0)
+    if (elf_find_section(
+            &libos_elf.elf, ".libosconfig", &buffer, &buffer_length) != 0)
     {
         _err("Failed to extract config from %s", get_program_file());
     }
 
-    // Need to duplicate the config buffer or we will be corrupting the image data
-    char *copied_config = malloc(buffer_length);
+    // Need to duplicate the config buffer or we will be corrupting the image
+    // data
+    char* copied_config = malloc(buffer_length);
     if (copied_config == NULL)
     {
         _err("out of memory");
     }
     memcpy(copied_config, buffer, buffer_length);
 
-    config_parsed_data_t callback_data = { 0 };
+    config_parsed_data_t callback_data = {0};
     if (parse_config((char*)copied_config, buffer_length, &callback_data) != 0)
     {
         _err("Failed to process configuration");
     }
-    if ((callback_data.allow_host_parameters == 0) &&
-        (argc > 1))
+    if ((callback_data.allow_host_parameters == 0) && (argc > 1))
     {
-        printf("Command line arguments will be ignored due to configuration.\n");
+        printf(
+            "Command line arguments will be ignored due to configuration.\n");
     }
     if (callback_data.application_path == NULL)
     {
-        _err("No target filename in configuration. This should be the fully qualified path to the executable within the "
-             "%s directory, but should be relative to this directory", app_dir);
+        _err(
+            "No target filename in configuration. This should be the fully "
+            "qualified path to the executable within the "
+            "%s directory, but should be relative to this directory",
+            app_dir);
     }
 
-    if ((details = create_region_details_from_package(&libos_elf, callback_data.user_pages)) == NULL)
+    if ((details = create_region_details_from_package(
+             &libos_elf, callback_data.user_pages)) == NULL)
     {
         _err("Failed to extract all sections");
     }
@@ -401,10 +468,10 @@ int _exec_package(int argc, const char* argv[], const char *executable)
 
     if (callback_data.allow_host_parameters)
     {
-        num_args = argc; 
+        num_args = argc;
     }
 
-    const char **exec_args = malloc((num_args + 1) * sizeof(char*));
+    const char** exec_args = malloc((num_args + 1) * sizeof(char*));
     if (exec_args == NULL)
     {
         _err("out of memory");
@@ -418,7 +485,8 @@ int _exec_package(int argc, const char* argv[], const char *executable)
     }
     exec_args[args_iter] = NULL;
 
-    if (exec_launch_enclave(scratch_path, type, flags, exec_args, &options) != 0)
+    if (exec_launch_enclave(scratch_path, type, flags, exec_args, &options) !=
+        0)
     {
         _err("Failed to run enclave %s", scratch_path);
     }

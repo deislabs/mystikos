@@ -1,6 +1,6 @@
-#include <stdio.h>
-#include <stdint.h>
 #include <assert.h>
+#include <stdint.h>
+#include <stdio.h>
 
 uint64_t rdtsc(void)
 {
@@ -16,8 +16,8 @@ int main(int argc, const char* argv[])
     uint64_t x1 = rdtsc();
     uint64_t x2 = rdtsc();
 
-    //printf("x1=%lu\n", x1);
-    //printf("x2=%lu\n", x2);
+    // printf("x1=%lu\n", x1);
+    // printf("x2=%lu\n", x2);
 
     assert(x2 >= x1);
 

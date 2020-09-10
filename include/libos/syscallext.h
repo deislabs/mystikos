@@ -76,7 +76,6 @@ typedef struct libos_clone_syscall_args
     pid_t* ptid;
     void* newtls;
     pid_t* ctid;
-}
-libos_clone_syscall_args_t;
+} libos_clone_syscall_args_t;
 
 #endif /* _LIBOS_SYSCALLEXT_H */

@@ -1,6 +1,6 @@
-#include <stdio.h>
-#include <stdint.h>
 #include <cpuid.h>
+#include <stdint.h>
+#include <stdio.h>
 
 int main(int argc, const char* argv[])
 {
@@ -13,7 +13,7 @@ int main(int argc, const char* argv[])
 
     __cpuid_count(leaf, subleaf, rax, rbx, rcx, rdx);
 
-    //printf("rax=%x rbx=%x rcx=%x rdx=%x\n", rax, rbx, rcx, rdx);
+    // printf("rax=%x rbx=%x rcx=%x rdx=%x\n", rax, rbx, rcx, rdx);
 
     printf("=== passed test (%s)\n", argv[0]);
 

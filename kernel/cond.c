@@ -1,11 +1,11 @@
-#include <errno.h>
-#include <string.h>
 #include <assert.h>
-#include <libos/tcall.h>
+#include <errno.h>
+#include <libos/assert.h>
 #include <libos/cond.h>
 #include <libos/mutex.h>
 #include <libos/strings.h>
-#include <libos/assert.h>
+#include <libos/tcall.h>
+#include <string.h>
 
 int libos_cond_init(libos_cond_t* c)
 {
@@ -72,9 +72,7 @@ int libos_cond_timedwait(
                 if (waiter)
                 {
                     ret = (int)libos_tcall_wake_wait(
-                        waiter->event,
-                        self->event,
-                        timeout);
+                        waiter->event, self->event, timeout);
 
                     waiter = NULL;
                 }

@@ -4,10 +4,10 @@
 #ifndef _LIBOS_INTERNAL_MMAN_H
 #define _LIBOS_INTERNAL_MMAN_H
 
-#include <stdint.h>
+#include <libos/spinlock.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include <libos/spinlock.h>
+#include <stdint.h>
 
 #define LIBOS_PROT_NONE 0
 #define LIBOS_PROT_READ 1

@@ -1,20 +1,18 @@
-#include <pthread.h>
-#include <libos/syscall.h>
-#include <libos/tcall.h>
-#include <libos/eraise.h>
-#include <libos/strings.h>
-#include <libos/thread.h>
-#include <libos/malloc.h>
-#include <libos/eraise.h>
-#include <libos/trace.h>
-#include <libos/fsbase.h>
-#include <libos/spinlock.h>
-#include <libos/setjmp.h>
-#include <libos/atomic.h>
-#include <libos/futex.h>
-#include <libos/atexit.h>
 #include <libos/assert.h>
 #include <libos/atexit.h>
+#include <libos/atomic.h>
+#include <libos/eraise.h>
+#include <libos/fsbase.h>
+#include <libos/futex.h>
+#include <libos/malloc.h>
+#include <libos/setjmp.h>
+#include <libos/spinlock.h>
+#include <libos/strings.h>
+#include <libos/syscall.h>
+#include <libos/tcall.h>
+#include <libos/thread.h>
+#include <libos/trace.h>
+#include <pthread.h>
 
 libos_thread_t* __libos_main_thread;
 
@@ -108,7 +106,7 @@ static void _free_zombies(void* arg)
 
     (void)arg;
 
-    for (p = _zombies; p; )
+    for (p = _zombies; p;)
     {
         libos_thread_t* next = p->next;
 
@@ -314,7 +312,7 @@ pid_t libos_gettid(void)
 
     if (!(thread = libos_self()))
     {
-        //libos_panic("unexpected");
+        // libos_panic("unexpected");
         return -1;
     }
 

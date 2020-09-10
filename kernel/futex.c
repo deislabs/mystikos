@@ -1,12 +1,12 @@
 #include <errno.h>
 
-#include <libos/thread.h>
-#include <libos/cond.h>
-#include <libos/malloc.h>
-#include <libos/futex.h>
-#include <libos/strings.h>
-#include <libos/eraise.h>
 #include <libos/atexit.h>
+#include <libos/cond.h>
+#include <libos/eraise.h>
+#include <libos/futex.h>
+#include <libos/malloc.h>
+#include <libos/strings.h>
+#include <libos/thread.h>
 
 /*
 **==============================================================================
@@ -41,9 +41,9 @@ static void _free_futexes(void* arg)
 {
     (void)arg;
 
-    for (size_t i = 0; i <  NUM_CHAINS; i++)
+    for (size_t i = 0; i < NUM_CHAINS; i++)
     {
-        for (futex_t* p = _chains[i]; p; )
+        for (futex_t* p = _chains[i]; p;)
         {
             futex_t* next = p->next;
             libos_free(p);
@@ -135,11 +135,7 @@ done:
 #endif
 }
 
-static int _futex_wait(
-    int* uaddr,
-    int op,
-    int val,
-    const struct timespec* to)
+static int _futex_wait(int* uaddr, int op, int val, const struct timespec* to)
 {
     int ret = 0;
     futex_t* f = NULL;
@@ -148,7 +144,7 @@ static int _futex_wait(
     libos_printf("%s(): uaddr=%p\n", __FUNCTION__, uaddr);
 #endif
 
-    if (!uaddr || (op != FUTEX_WAIT && op != (FUTEX_WAIT|FUTEX_PRIVATE)))
+    if (!uaddr || (op != FUTEX_WAIT && op != (FUTEX_WAIT | FUTEX_PRIVATE)))
     {
         ret = -EINVAL;
         goto done;
@@ -196,7 +192,7 @@ static int _futex_wake(int* uaddr, int op, int val)
     libos_printf("%s(): uaddr=%p\n", __FUNCTION__, uaddr);
 #endif
 
-    if (!uaddr || (op != FUTEX_WAKE && op != (FUTEX_WAKE|FUTEX_PRIVATE)))
+    if (!uaddr || (op != FUTEX_WAKE && op != (FUTEX_WAKE | FUTEX_PRIVATE)))
     {
         ret = -EINVAL;
         goto done;
@@ -251,12 +247,7 @@ done:
     return ret;
 }
 
-static int _futex_requeue(
-    int* uaddr,
-    int op,
-    int val,
-    int val2,
-    int* uaddr2)
+static int _futex_requeue(int* uaddr, int op, int val, int val2, int* uaddr2)
 {
     int ret = 0;
     futex_t* f = NULL;
@@ -268,7 +259,8 @@ static int _futex_requeue(
     libos_printf("%s(): uaddr=%p\n", __FUNCTION__, uaddr);
 #endif
 
-    if (!uaddr || (op != FUTEX_REQUEUE && op != (FUTEX_REQUEUE|FUTEX_PRIVATE)))
+    if (!uaddr ||
+        (op != FUTEX_REQUEUE && op != (FUTEX_REQUEUE | FUTEX_PRIVATE)))
     {
         ret = -EINVAL;
         goto done;
@@ -303,10 +295,7 @@ static int _futex_requeue(
         size_t requeue_count = (val2 == INT_MAX) ? SIZE_MAX : (size_t)val2;
 
         if (libos_cond_requeue(
-            &f->cond,
-            &f2->cond,
-            wake_count,
-            requeue_count) != 0)
+                &f->cond, &f2->cond, wake_count, requeue_count) != 0)
         {
             ret = -ENOSYS;
             goto done;
@@ -350,15 +339,15 @@ long libos_syscall_futex(
 
     (void)val3;
 
-    if (op == FUTEX_WAIT || op == (FUTEX_WAIT|FUTEX_PRIVATE))
+    if (op == FUTEX_WAIT || op == (FUTEX_WAIT | FUTEX_PRIVATE))
     {
         ECHECK(_futex_wait(uaddr, op, val, (const struct timespec*)arg));
     }
-    else if (op == FUTEX_WAKE || op == (FUTEX_WAKE|FUTEX_PRIVATE))
+    else if (op == FUTEX_WAKE || op == (FUTEX_WAKE | FUTEX_PRIVATE))
     {
         ECHECK(_futex_wake(uaddr, op, val));
     }
-    else if (op == FUTEX_REQUEUE || op == (FUTEX_REQUEUE|FUTEX_PRIVATE))
+    else if (op == FUTEX_REQUEUE || op == (FUTEX_REQUEUE | FUTEX_PRIVATE))
     {
         ECHECK(_futex_requeue(uaddr, op, val, (int)arg, uaddr2));
     }
