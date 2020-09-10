@@ -11,7 +11,7 @@ LIBOS = $(BINDIR)/libos
 
 CFLAGS = -fPIC -g -Wall -Werror
 
-LDFLAGS = -Wl,-rpath=/lib -L$(APPDIR)/lib -loesdk
+LIBS = $(LIBDIR)/liboesdkenclave.a
 
 INCLUDES += -I$(OE_INCDIR)
 INCLUDES += -I$(INCDIR)
@@ -25,9 +25,7 @@ OBJECTS = $(addprefix $(SUBOBJDIR)/, $(SOURCES:.c=.o))
 all: $(OBJECTS)
 	$(MAKE) -C ../../tools/libos
 	mkdir -p $(APPDIR)/bin
-	mkdir -p $(APPDIR)/lib
-	cp $(LIBDIR)/liboesdkenclave.a $(APPDIR)/lib
-	$(CC) $(CFLAGS) $(INCLUDES) -o $(TARGET) $(OBJECTS) $(LDFLAGS)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $(TARGET) $(OBJECTS) $(LDFLAGS) $(LIBS)
 	$(LIBOS) mkcpio appdir rootfs
 
 ifdef STRACE

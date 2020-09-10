@@ -1,20 +1,16 @@
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
+SUBLIBDIR = $(LIBDIR)
+
 CC = $(MUSL_GCC)
+
+ARCHIVE = liboesdkenclave.a
 
 INCLUDES = -I$(OE_INCDIR) -I$(INCDIR)
 
-TARGET = $(LIBDIR)/liboesdkenclave.a
-
 CFLAGS = -fPIC
 
-all:
-	mkdir -p $(LIBDIR)
-	$(CC) $(CFLAGS) $(INCLUDES) -shared -o $(TARGET) enclave.c
-	@ echo "created $(TARGET)"
+SOURCES = enclave.c
 
-tests:
-
-clean:
-	rm -f $(TARGET)
+include $(TOP)/rules.mak
