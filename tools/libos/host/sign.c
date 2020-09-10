@@ -113,6 +113,15 @@ int copy_files_to_signing_directory(
     {
         _err("Failed to create directory \"%s\".", scratch_path);
     }
+    // create an enclave directory
+    if (snprintf(scratch_path, PATH_MAX, "%s.signed/lib/openenclave", appname) >= PATH_MAX)
+    {
+        _err("File path to long: %s.signed/lib/openenclave", appname);
+    }
+    if ((mkdir(scratch_path, mode) != 0) && (errno != EEXIST))
+    {
+        _err("Failed to create directory \"%s\".", scratch_path);
+    }
 
     // Copy crt into signing enc directory
     if (snprintf(scratch_path, PATH_MAX, "%s.signed/lib/liboscrt.so", appname) >= PATH_MAX)
@@ -169,9 +178,9 @@ int copy_files_to_signing_directory(
     }
 
     // Copy enclave shared library to signing enclave directory
-    if (snprintf(scratch_path, PATH_MAX, "%s.signed/lib/libosenc.so", appname) >= PATH_MAX)
+    if (snprintf(scratch_path, PATH_MAX, "%s.signed/lib/openenclave/libosenc.so", appname) >= PATH_MAX)
     {
-        _err("File path to long: %s.signed/lib/libosenc.so", appname);
+        _err("File path to long: %s.signed/lib/openenclave/libosenc.so", appname);
     }
     if (libos_copy_file(details->enc.path, scratch_path) != 0)
     {
@@ -189,17 +198,17 @@ int add_config_to_enclave(const char *appname, const char *config_path)
     size_t config_size;
     if (libos_load_file(config_path, &config_data, &config_size) != 0)
     {
-        _err("File path to long: %s.signed/lib/libosenc.so", appname);
+        _err("File path to long: %s.signed/lib/openenclave/", appname);
     }
 
-    if (snprintf(scratch_path, PATH_MAX, "%s.signed/lib/libosenc.so", appname) >= PATH_MAX)
+    if (snprintf(scratch_path, PATH_MAX, "%s.signed/lib/openenclave/libosenc.so", appname) >= PATH_MAX)
     {
-        _err("File path to long: %s.signed/lib/libosenc.so", appname);
+        _err("File path to long: %s.signed/lib/openenclave/libosenc.so", appname);
     }
 
     if (elf_load(scratch_path, &elf) != 0)
     {
-       _err("Failed to load %s.signed/lib/libosenc.so", appname);
+       _err("Failed to load %s.signed/lib/openenclave/libosenc.so", appname);
     }
     if (elf_add_section(&elf, ".libosconfig", SHT_PROGBITS, config_data, config_size) != 0)
     {
@@ -315,9 +324,9 @@ int _sign(int argc, const char* argv[])
 
     // Initiate signing with extracted parameters
     // Watch out! Previous to_path needs to be the enclave binary!
-    if (snprintf(scratch_path, PATH_MAX, "%s.signed/lib/libosenc.so", appname) >= PATH_MAX)
+    if (snprintf(scratch_path, PATH_MAX, "%s.signed/lib/openenclave/libosenc.so", appname) >= PATH_MAX)
     {
-        _err("File path to long: %s.signed/lib/libosenc.so", appname);
+        _err("File path to long: %s.signed/lib/openenclave/libosenc.so", appname);
     }
 
     if (oesign(scratch_path, temp_oeconfig_file, pem_file, NULL, NULL, NULL, NULL, NULL) != 0)
@@ -338,9 +347,9 @@ int _sign(int argc, const char* argv[])
         _err("Failed to delete \"%s\"", scratch_path);
     }
 
-    if (snprintf(scratch_path2, PATH_MAX, "%s.signed/lib/libosenc.so.signed", appname) >= PATH_MAX)
+    if (snprintf(scratch_path2, PATH_MAX, "%s.signed/lib/openenclave/libosenc.so.signed", appname) >= PATH_MAX)
     {
-        _err("File path to long: %s.signed/lib/libosenc.so.signed", appname);
+        _err("File path to long: %s.signed/lib/openenclave/libosenc.so.signed", appname);
     }
     if (rename(scratch_path2, scratch_path) != 0)
     {

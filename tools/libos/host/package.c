@@ -196,9 +196,9 @@ int _package(int argc, const char* argv[])
     }
     
     // Add the enclave to libos
-    if (snprintf(scratch_path, PATH_MAX, "%s.signed/lib/libosenc.so", appname) >= PATH_MAX)
+    if (snprintf(scratch_path, PATH_MAX, "%s.signed/lib/openenclave/libosenc.so", appname) >= PATH_MAX)
     {
-        _err("File path to long: %s.signed/lib/libosenc.so", appname);
+        _err("File path to long: %s.signed/openenclave/lib/libosenc.so", appname);
     }
     if (_add_image_to_elf_section(&elf, scratch_path, ".libosenc") != 0)
     {
@@ -339,7 +339,7 @@ int _exec_package(int argc, const char* argv[], const char *executable)
         _err("failed to load libos image: %s", get_program_file());
     
     // Make enclave directory and extract enclave into it
-    if (snprintf(scratch_path, PATH_MAX, "%s/enc", app_dir) >= PATH_MAX)
+    if (snprintf(scratch_path, PATH_MAX, "%s/../lib", app_dir) >= PATH_MAX)
     {
         _err("File path %s/enc is too long", app_dir);
     }
@@ -347,9 +347,9 @@ int _exec_package(int argc, const char* argv[], const char *executable)
     {
         _err("Failed to create directory \"%s\".", scratch_path);
     }
-    if (snprintf(scratch_path, PATH_MAX, "%s/lib/libosenc.so", app_dir) >= PATH_MAX)
+    if (snprintf(scratch_path, PATH_MAX, "%s/../lib/openenclave/libosenc.so", app_dir) >= PATH_MAX)
     {
-        _err("File path %s/lib/libosenc.so is too long", app_dir);
+        _err("File path %s/lib/openenclave/ is too long", app_dir);
     }
     if (elf_find_section(&libos_elf.elf, ".libosenc", &buffer, &buffer_length) != 0)
     {

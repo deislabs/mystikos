@@ -36,7 +36,7 @@ const region_details * create_region_details_from_package(elf_image_t* libos_elf
     strcpy(dir, get_program_file());
     dirname(dir);
 
-    if (snprintf(_details.enc.path, sizeof(_details.enc.path), "%s/lib/libosenc.so", dir) >= sizeof(_details.enc.path))
+    if (snprintf(_details.enc.path, sizeof(_details.enc.path), "%s/lib/openenclave/libosenc.so", dir) >= sizeof(_details.enc.path))
         _err("buffer overflow when forming libosenc.so path");
 
     // Load CRT
@@ -246,7 +246,11 @@ static int _add_crt_region(oe_region_context_t* context, uint64_t* vaddr)
     if (!context || !vaddr)
         ERAISE(-EINVAL);
 
-    if (oe_region_start(context, CRT_REGION_ID, true, _details.crt.path) != OE_OK)
+    char *path = NULL;
+    if (_details.crt.path[0] != 0)
+        path = _details.crt.path;
+
+    if (oe_region_start(context, CRT_REGION_ID, true, path) != OE_OK)
         ERAISE(-EINVAL);
 
     ECHECK(_load_crt_pages(context, &_details.crt.image, *vaddr));
@@ -297,7 +301,11 @@ static int _add_kernel_region(oe_region_context_t* context, uint64_t* vaddr)
     if (!context || !vaddr)
         ERAISE(-EINVAL);
 
-    if (oe_region_start(context, KERNEL_REGION_ID, true, _details.kernel.path) != OE_OK)
+    char *path = NULL;
+    if (_details.kernel.path[0] != 0)
+        path = _details.kernel.path;
+
+    if (oe_region_start(context, KERNEL_REGION_ID, true, path) != OE_OK)
         ERAISE(-EINVAL);
 
     ECHECK(_load_kernel_pages(context, &_details.kernel.image, *vaddr));
