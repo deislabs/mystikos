@@ -1072,9 +1072,6 @@ long libos_syscall_getcwd(char* buf, size_t size)
     if (!buf)
         ERAISE(-EINVAL);
 
-    /* ATTN: removing the next line causes strlcpy to crash */
-    libos_memset(buf, 0, size);
-
     if (libos_strlcpy(buf, _cwd, size) >= size)
         ERAISE(-ERANGE);
 

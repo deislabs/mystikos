@@ -95,4 +95,4 @@ touch:
 ##==============================================================================
 
 attn:
-	grep "ATTN" $(shell $(MAKE) sources)
+	@ grep "ATTN" $(shell $(MAKE) sources) | more

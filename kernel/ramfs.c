@@ -1113,8 +1113,6 @@ static int _fs_lstat(libos_fs_t* fs, const char* pathname, struct stat* statbuf)
     ramfs_t* ramfs = (ramfs_t*)fs;
     inode_t* inode;
 
-    /* ATTN: implement this */
-
     if (!_ramfs_valid(ramfs) || !pathname || !statbuf)
         ERAISE(-EINVAL);
 
