@@ -107,21 +107,7 @@ void libos_crt_enter(void* stack, void* dynv, syscall_callback_t callback)
 {
     _syscall_callback = callback;
 
-#if 0
-    /* Dump the arguments */
-    {
-        long argc = *(long*)stack;
-        const char** argv = (const char**)(((long*)stack + 1));
-
-        libos_trace_ptr("argc", (void*)argc);
-
-        for (int i = 0; i < argc; i++)
-            libos_trace(argv[i]);
-
-        libos_dump_stack(stack);
-    }
-#endif
-
+#ifdef LIBOS_ENABLE_GCOV
     /* Pass the libc interface back to the kernel */
     {
         static libc_t _libc = {
@@ -153,8 +139,9 @@ void libos_crt_enter(void* stack, void* dynv, syscall_callback_t callback)
             strlen,
         };
         long params[6] = {(long)&_libc, (long)stderr};
-        libos_syscall(SYS_libos_libc_init, params);
+        libos_syscall(SYS_libos_gcov_init, params);
     }
+#endif
 
     _dlstart_c((size_t*)stack, (size_t*)dynv);
 }

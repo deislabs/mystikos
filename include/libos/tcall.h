@@ -61,9 +61,6 @@ long libos_tcall_wake_wait(
     uint64_t self_tid,
     const struct timespec* timeout);
 
-long libos_tcall_export_file(
-    const char* path,
-    const void* data,
-    size_t size);
+long libos_tcall_export_file(const char* path, const void* data, size_t size);
 
 #endif /* _LIBOS_TCALL_H */

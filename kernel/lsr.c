@@ -56,7 +56,6 @@ int libos_lsr(const char* root, libos_strarr_t* paths, bool include_dirs)
             if (libos_strarr_append(paths, path) != 0)
                 goto done;
         }
-
     }
 
     /* Recurse into child directories */

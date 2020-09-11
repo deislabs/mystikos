@@ -71,7 +71,7 @@ void initialize_gcov(void)
         vfprintf, atoi, malloc, free, memset, memcpy, strcpy, strlen,
     };
 
-    gcov_init_libc(&_libc, strderr);
+    gcov_init_libc(&_libc, stderr);
 }
 ```
 

@@ -13,11 +13,10 @@
 #include <sys/types.h>
 #include <syscall.h>
 #include <unistd.h>
-#include <errno.h>
 
-#include <openenclave/host.h>
-#include <libos/file.h>
 #include <libos/eraise.h>
+#include <libos/file.h>
+#include <openenclave/host.h>
 
 #include "libos_u.h"
 #include "regions.h"
@@ -355,6 +354,14 @@ int _exec(int argc, const char* argv[])
         /* Get --export-ramfs option */
         if (exec_get_opt(&argc, argv, "--export-ramfs", NULL) == 0)
             options.export_ramfs = true;
+
+        /* Set export_ramfs option based on LIBOS_ENABLE_GCOV env variable */
+        {
+            const char* val;
+
+            if ((val = getenv("LIBOS_ENABLE_GCOV")) && strcmp(val, "1") == 0)
+                options.export_ramfs = true;
+        }
     }
 
     if (options.real_syscalls)

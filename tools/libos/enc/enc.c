@@ -608,10 +608,7 @@ long libos_tcall_wake_wait(
     return retval;
 }
 
-long libos_tcall_export_file(
-    const char* path,
-    const void* data,
-    size_t size)
+long libos_tcall_export_file(const char* path, const void* data, size_t size)
 {
     long retval = -1;
 

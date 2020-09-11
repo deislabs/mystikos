@@ -9,6 +9,10 @@ INCLUDES = -I$(INCDIR)
 
 SOURCES = $(wildcard *.c)
 
+ifdef LIBOS_ENABLE_GCOV
+DEFINES = -DLIBOS_ENABLE_GCOV
+endif
+
 LDFLAGS1 = -Wl,--sort-section,alignment -Wl,--sort-common -Wl,--gc-sections -Wl,--hash-style=both -Wl,--no-undefined -Wl,--exclude-libs=ALL -nostdlib -nodefaultlibs -nostartfiles
 
 LDFLAGS1 += -Wl,-elibos_crt_enter

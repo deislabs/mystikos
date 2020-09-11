@@ -18,6 +18,7 @@
 
 #include <libos/assert.h>
 #include <libos/buf.h>
+#include <libos/cpio.h>
 #include <libos/cwd.h>
 #include <libos/deprecated.h>
 #include <libos/elfutils.h>
@@ -42,7 +43,6 @@
 #include <libos/tcall.h>
 #include <libos/thread.h>
 #include <libos/trace.h>
-#include <libos/cpio.h>
 
 #include "fdtable.h"
 
@@ -469,7 +469,7 @@ static pair_t _pairs[] = {
         SYS_libos_oe_call_host_function,
         "SYS_libos_oe_call_host_function",
     },
-    {SYS_libos_libc_init, "SYS_libos_libc_init"},
+    {SYS_libos_gcov_init, "SYS_libos_gcov_init"},
 };
 
 static size_t _n_pairs = sizeof(_pairs) / sizeof(_pairs[0]);
@@ -1304,7 +1304,6 @@ int libos_export_ramfs(void)
         size = 0;
     }
 
-
     ret = 0;
 
 done:
@@ -1327,20 +1326,20 @@ long libos_syscall(long n, long params[6])
 
     switch (n)
     {
-        case SYS_libos_libc_init:
+#ifdef LIBOS_ENABLE_GCOV
+        case SYS_libos_gcov_init:
         {
             libc_t* libc = (libc_t*)x1;
             FILE* stream = (FILE*)x2;
 
             _strace(n, "libc=%p stream=%p", libc, stream);
 
-#ifdef LIBOS_ENABLE_GCOV
             if (gcov_init_libc(libc, stream) != 0)
                 libos_panic("gcov_init_libc() failed");
-#endif
 
             return _return(n, 0);
         }
+#endif
         case SYS_libos_trace:
         {
             const char* msg = (const char*)x1;

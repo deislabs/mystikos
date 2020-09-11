@@ -125,9 +125,7 @@ static long _tcall_vsnprintf(
 
 /* Must be overriden by enclave application */
 LIBOS_WEAK
-long libos_tcall_clock_gettime(
-    clockid_t clk_id,
-    struct timespec* tp)
+long libos_tcall_clock_gettime(clockid_t clk_id, struct timespec* tp)
 {
     (void)clk_id;
     (void)tp;
@@ -209,9 +207,7 @@ long libos_tcall_create_host_thread(uint64_t cookie)
 
 /* Must be overriden by enclave application */
 LIBOS_WEAK
-long libos_tcall_wait(
-    uint64_t event,
-    const struct timespec* timeout)
+long libos_tcall_wait(uint64_t event, const struct timespec* timeout)
 {
     (void)event;
     (void)timeout;
@@ -243,10 +239,7 @@ long libos_tcall_wake_wait(
 }
 
 LIBOS_WEAK
-long libos_tcall_export_file(
-    const char* path,
-    const void* data,
-    size_t size)
+long libos_tcall_export_file(const char* path, const void* data, size_t size)
 {
     (void)path;
     (void)data;
