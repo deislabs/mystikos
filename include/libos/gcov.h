@@ -4,8 +4,6 @@
 #include <libos/libc.h>
 #include <stdio.h>
 
-void gcov_set_stderr(FILE* stream);
-
-void gcov_set_libc(libc_t* libc);
+int gcov_init_libc(libc_t* libc, FILE* stderr_stream);
 
 #endif /* _LIBOS_GCOV_H */

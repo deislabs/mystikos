@@ -29,7 +29,7 @@ typedef struct libos_kernel_args
     /* Tracing options */
     bool trace_syscalls;
     bool real_syscalls;
-    bool export_rootfs;
+    bool export_ramfs;
 
     /* The parent process identifer from the target */
     pid_t ppid;

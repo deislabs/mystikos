@@ -9,7 +9,7 @@ enclave
     {
         bool trace_syscalls;
         bool real_syscalls;
-        bool export_rootfs;
+        bool export_ramfs;
     };
 
     struct libos_timespec

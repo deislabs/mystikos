@@ -1,5 +1,4 @@
 #include <fcntl.h>
-#include <libos/libc.h>
 #include <limits.h>
 #include <stdarg.h>
 #include <stddef.h>
@@ -8,19 +7,23 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <errno.h>
+
+#include <libos/gcov.h>
 
 static libc_t _libc;
 
 FILE* const stderr;
 
-void gcov_set_stderr(FILE* stream)
+int gcov_init_libc(libc_t* libc, FILE* stderr_stream)
 {
-    *(FILE**)&stderr = stream;
-}
+    if (!libc && !stderr_stream)
+        return -EINVAL;
 
-void gcov_set_libc(libc_t* libc)
-{
     _libc = *libc;
+    *(FILE**)&stderr = stderr_stream;
+
+    return 0;
 }
 
 FILE* fopen(const char* pathname, const char* mode)

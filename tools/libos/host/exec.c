@@ -257,7 +257,7 @@ long libos_export_file_ocall(const char* path, const void* data, size_t size)
     if (!(getcwd(cwd, sizeof(cwd))))
         ERAISE(-errno);
 
-    if (snprintf(file, sizeof(file), "%s/export/%s", cwd, path) >= sizeof(file))
+    if (snprintf(file, sizeof(file), "%s/ramfs/%s", cwd, path) >= sizeof(file))
         ERAISE(-ENAMETOOLONG);
 
     if (libos_strlcpy(dir, file, sizeof(dir)) >= sizeof(dir))
@@ -352,9 +352,9 @@ int _exec(int argc, const char* argv[])
         if (exec_get_opt(&argc, argv, "--real-syscalls", NULL) == 0)
             options.real_syscalls = true;
 
-        /* Get --export-rootfs option */
-        if (exec_get_opt(&argc, argv, "--export-rootfs", NULL) == 0)
-            options.export_rootfs = true;
+        /* Get --export-ramfs option */
+        if (exec_get_opt(&argc, argv, "--export-ramfs", NULL) == 0)
+            options.export_ramfs = true;
     }
 
     if (options.real_syscalls)

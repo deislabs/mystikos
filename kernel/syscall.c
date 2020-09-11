@@ -1275,7 +1275,7 @@ void libos_dump_ramfs(void)
     libos_strarr_release(&paths);
 }
 
-int libos_export_rootfs(void)
+int libos_export_ramfs(void)
 {
     int ret = -1;
     libos_strarr_t paths = LIBOS_STRARR_INITIALIZER;
@@ -1334,8 +1334,8 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "libc=%p stream=%p", libc, stream);
 
-            gcov_set_libc(libc);
-            gcov_set_stderr(stream);
+            if (gcov_init_libc(libc, stream) != 0)
+                libos_panic("gcov_init_libc() failed");
 
             return _return(n, 0);
         }
@@ -1848,8 +1848,8 @@ long libos_syscall(long n, long params[6])
             {
                 libos_call_fini_functions();
 
-                if (libos_get_export_rootfs())
-                    libos_export_rootfs();
+                if (libos_get_export_ramfs())
+                    libos_export_ramfs();
             }
 
             libos_longjmp(&thread->jmpbuf, 1);

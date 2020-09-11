@@ -12,6 +12,10 @@ ifdef STRACE
 OPTS = --strace
 endif
 
+ifdef LIBOS_ENABLE_GCOV
+OPTS += --export-ramfs
+endif
+
 run: all
 	$(BINDIR)/libos exec $(OPTS) rootfs /goodbye
 

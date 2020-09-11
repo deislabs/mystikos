@@ -44,8 +44,8 @@ all:
 	mkdir -p $(LIBDIR)
 	mkdir -p $(SUBOBJDIR)
 	cp $(LIBNAME) $(TARGET)
-	$(CC) $(CFLAGS) $(INCLUDES) -c gcov_stubs.c -o $(SUBOBJDIR)/gcov_stubs.o
-	ar r $(TARGET) $(SUBOBJDIR)/gcov_stubs.o
+	$(CC) $(CFLAGS) $(INCLUDES) -c gcov_libc.c -o $(SUBOBJDIR)/gcov_libc.o
+	ar r $(TARGET) $(SUBOBJDIR)/gcov_libc.o
 	ar d $(TARGET) _gcov_fork.o
 	ar d $(TARGET) _gcov_execl.o
 	ar d $(TARGET) _gcov_execlp.o

@@ -201,7 +201,7 @@ int libos_enter_ecall(
     size_t config_size;
     bool trace_syscalls = false;
     bool real_syscalls = false;
-    bool export_rootfs = false;
+    bool export_ramfs = false;
     config_parsed_data_t parsed_config = {0};
 
     if (!args || !args_size || !env || !env_size)
@@ -278,7 +278,7 @@ int libos_enter_ecall(
     {
         trace_syscalls = options->trace_syscalls;
         real_syscalls = options->real_syscalls;
-        export_rootfs = options->export_rootfs;
+        export_ramfs = options->export_ramfs;
     }
 
     /* Setup the vectored exception handler */
@@ -447,7 +447,7 @@ int libos_enter_ecall(
         args.crt_size = crt_size;
         args.trace_syscalls = trace_syscalls;
         args.real_syscalls = real_syscalls;
-        args.export_rootfs = export_rootfs;
+        args.export_ramfs = export_ramfs;
         args.tcall = libos_tcall;
         args.ppid = ppid;
         args.pid = pid;
