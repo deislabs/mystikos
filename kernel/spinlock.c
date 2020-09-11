@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-#include <libos/deprecated.h>
 #include <libos/spinlock.h>
 #include <libos/strings.h>
 

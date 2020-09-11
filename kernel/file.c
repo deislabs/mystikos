@@ -1,5 +1,4 @@
 #include <libos/buf.h>
-#include <libos/deprecated.h>
 #include <libos/eraise.h>
 #include <libos/file.h>
 #include <libos/malloc.h>

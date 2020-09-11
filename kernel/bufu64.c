@@ -3,7 +3,6 @@
 
 #include "bufu64.h"
 #include <libos/buf.h>
-#include <libos/deprecated.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

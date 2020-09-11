@@ -2,7 +2,6 @@
 #include <fcntl.h>
 #include <libos/assert.h>
 #include <libos/buf.h>
-#include <libos/deprecated.h>
 #include <libos/eraise.h>
 #include <libos/fs.h>
 #include <libos/malloc.h>

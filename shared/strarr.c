@@ -5,7 +5,6 @@
 #include <string.h>
 
 #include <libos/strarr.h>
-#include <libos/deprecated.h>
 #include <libos/strings.h>
 #include <libos/malloc.h>
 

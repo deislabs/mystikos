@@ -15,7 +15,6 @@
 #include <libos/strarr.h>
 #include <libos/round.h>
 #include <libos/strings.h>
-#include <libos/deprecated.h>
 #include <libos/malloc.h>
 
 void* calloc(size_t nmemb, size_t size);

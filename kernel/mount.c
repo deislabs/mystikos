@@ -1,5 +1,4 @@
 #include <libos/atexit.h>
-#include <libos/deprecated.h>
 #include <libos/eraise.h>
 #include <libos/malloc.h>
 #include <libos/mount.h>

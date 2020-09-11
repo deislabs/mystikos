@@ -1,5 +1,4 @@
 #include <libos/crash.h>
-#include <libos/deprecated.h>
 #include <libos/list.h>
 #include <libos/malloc.h>
 #include <libos/spinlock.h>

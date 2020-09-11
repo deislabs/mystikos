@@ -7,7 +7,6 @@
 #include <libos/assert.h>
 #include <libos/atexit.h>
 #include <libos/cpio.h>
-#include <libos/deprecated.h>
 #include <libos/elfutils.h>
 #include <libos/eraise.h>
 #include <libos/file.h>

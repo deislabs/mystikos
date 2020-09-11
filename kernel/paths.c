@@ -1,6 +1,5 @@
 #include <errno.h>
 #include <libos/assert.h>
-#include <libos/deprecated.h>
 #include <libos/eraise.h>
 #include <libos/malloc.h>
 #include <libos/paths.h>

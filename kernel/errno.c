@@ -1,4 +1,3 @@
-#include <libos/deprecated.h>
 #include <libos/errno.h>
 #include <stddef.h>
 #include <stdio.h>

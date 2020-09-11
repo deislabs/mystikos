@@ -1,5 +1,4 @@
 #include <libos/cwd.h>
-#include <libos/deprecated.h>
 #include <libos/eraise.h>
 #include <libos/malloc.h>
 #include <libos/realpath.h>

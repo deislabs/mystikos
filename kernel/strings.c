@@ -2,7 +2,6 @@
 #include <string.h>
 
 #include <libos/crash.h>
-#include <libos/deprecated.h>
 #include <libos/eraise.h>
 #include <libos/malloc.h>
 #include <libos/strings.h>

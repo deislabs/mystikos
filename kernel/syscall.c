@@ -20,7 +20,6 @@
 #include <libos/buf.h>
 #include <libos/cpio.h>
 #include <libos/cwd.h>
-#include <libos/deprecated.h>
 #include <libos/elfutils.h>
 #include <libos/eraise.h>
 #include <libos/errno.h>

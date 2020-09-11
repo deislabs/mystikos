@@ -113,7 +113,6 @@
 
 #include <errno.h>
 #include <libos/defs.h>
-#include <libos/deprecated.h>
 #include <libos/mman.h>
 #include <libos/strings.h>
 #include <libos/tcall.h>

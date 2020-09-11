@@ -1,5 +1,4 @@
 #include <libos/strings.h>
-#include <libos/deprecated.h>
 
 size_t libos_strlcpy(char* dest, const char* src, size_t size)
 {

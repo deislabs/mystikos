@@ -1,4 +1,3 @@
-#include <libos/deprecated.h>
 #include <libos/file.h>
 #include <libos/lsr.h>
 #include <libos/strings.h>

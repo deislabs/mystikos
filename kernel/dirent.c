@@ -2,7 +2,6 @@
 #include <stdlib.h>
 
 #include <libos/assert.h>
-#include <libos/deprecated.h>
 #include <libos/eraise.h>
 #include <libos/file.h>
 #include <libos/malloc.h>

@@ -1,5 +1,4 @@
 #include "fdtable.h"
-#include <libos/deprecated.h>
 #include <libos/eraise.h>
 #include <libos/strings.h>
 #include <stdbool.h>

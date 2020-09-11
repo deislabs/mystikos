@@ -7,7 +7,6 @@
 
 #include <libos/buf.h>
 #include <libos/strings.h>
-#include <libos/deprecated.h>
 #include <libos/malloc.h>
 
 #define LIBOS_BUF_CHUNK_SIZE 1024

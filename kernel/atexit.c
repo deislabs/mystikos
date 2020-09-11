@@ -1,7 +1,6 @@
 #include <stdlib.h>
 
 #include <libos/atexit.h>
-#include <libos/deprecated.h>
 #include <libos/malloc.h>
 #include <libos/spinlock.h>
 

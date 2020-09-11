@@ -1,5 +1,4 @@
 #include <libos/assert.h>
-#include <libos/deprecated.h>
 #include <libos/file.h>
 #include <libos/malloc.h>
 #include <libos/mmanutils.h>

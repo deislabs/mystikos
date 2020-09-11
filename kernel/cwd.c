@@ -1,4 +1,3 @@
-#include <libos/deprecated.h>
 #include <libos/eraise.h>
 #include <libos/syscall.h>
 
