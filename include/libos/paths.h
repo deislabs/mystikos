@@ -6,8 +6,6 @@
 
 #include <libos/types.h>
 
-#define LIBOS_PATHS_MAX_COMPONENTS 64
-
 int libos_path_absolute_cwd(
     const char* cwd,
     const char* path,

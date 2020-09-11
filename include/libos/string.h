@@ -14,10 +14,9 @@ typedef struct string
     size_t cap;
 } string_t;
 
-#define STRING_BUF(BUF)            \
-    {                              \
-        0, BUF, 0, sizeof(BUF) - 1 \
-    }
+// clang-format off
+#define STRING_BUF(BUF) { 0, BUF, 0, sizeof(BUF) - 1 }
+// clang-format on
 
 LIBOS_INLINE void string_init(string_t* string, char* buf, size_t size)
 {

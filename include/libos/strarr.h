@@ -6,10 +6,9 @@
 
 #include <libos/types.h>
 
-#define LIBOS_STRARR_INITIALIZER \
-    {                            \
-        NULL, 0, 0               \
-    }
+// clang-format off
+#define LIBOS_STRARR_INITIALIZER { NULL, 0, 0 }
+// clang-format on
 
 typedef struct libos_strarr
 {
