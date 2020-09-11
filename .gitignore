@@ -34,4 +34,4 @@ samples/echo/appdir/
 samples/gencreds2/appdir/bin/
 samples/curl/appdir/curl
 samples/goodbye/appdir/goodbye
-
+tests/libc/appdir/
