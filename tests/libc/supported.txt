@@ -1,0 +1,2 @@
+/src/functional/socket.exe
+/src/functional/dlopen.exe
