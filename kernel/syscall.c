@@ -25,6 +25,10 @@
 #include <libos/errno.h>
 #include <libos/file.h>
 #include <libos/fsbase.h>
+#include <libos/gcov.h>
+#include <libos/initfini.h>
+#include <libos/libc.h>
+#include <libos/lsr.h>
 #include <libos/malloc.h>
 #include <libos/mmanutils.h>
 #include <libos/mount.h>
@@ -38,6 +42,7 @@
 #include <libos/tcall.h>
 #include <libos/thread.h>
 #include <libos/trace.h>
+#include <libos/cpio.h>
 
 #include "fdtable.h"
 
@@ -464,6 +469,7 @@ static pair_t _pairs[] = {
         SYS_libos_oe_call_host_function,
         "SYS_libos_oe_call_host_function",
     },
+    {SYS_libos_libc_init, "SYS_libos_libc_init"},
 };
 
 static size_t _n_pairs = sizeof(_pairs) / sizeof(_pairs[0]);
@@ -1254,6 +1260,62 @@ done:
     return ret;
 }
 
+void libos_dump_ramfs(void)
+{
+    libos_strarr_t paths = LIBOS_STRARR_INITIALIZER;
+
+    if (libos_lsr("/", &paths, true) != 0)
+        libos_panic("unexpected");
+
+    for (size_t i = 0; i < paths.size; i++)
+    {
+        libos_printf("%s\n", paths.data[i]);
+    }
+
+    libos_strarr_release(&paths);
+}
+
+int libos_export_rootfs(void)
+{
+    int ret = -1;
+    libos_strarr_t paths = LIBOS_STRARR_INITIALIZER;
+    void* data = NULL;
+    size_t size = 0;
+
+    if (libos_lsr("/", &paths, false) != 0)
+        goto done;
+
+    for (size_t i = 0; i < paths.size; i++)
+    {
+        const char* path = paths.data[i];
+
+        /* Skip over entries in the /proc file system */
+        if (libos_strncmp(path, "/proc", 5) == 0)
+            continue;
+
+        if (libos_load_file(path, &data, &size) != 0)
+            goto done;
+
+        if (libos_tcall_export_file(path, data, size) != 0)
+            goto done;
+
+        libos_free(data);
+        data = NULL;
+        size = 0;
+    }
+
+
+    ret = 0;
+
+done:
+    libos_strarr_release(&paths);
+
+    if (data)
+        libos_free(data);
+
+    return ret;
+}
+
 long libos_syscall(long n, long params[6])
 {
     long x1 = params[0];
@@ -1265,6 +1327,18 @@ long libos_syscall(long n, long params[6])
 
     switch (n)
     {
+        case SYS_libos_libc_init:
+        {
+            libc_t* libc = (libc_t*)x1;
+            FILE* stream = (FILE*)x2;
+
+            _strace(n, "libc=%p stream=%p", libc, stream);
+
+            gcov_set_libc(libc);
+            gcov_set_stderr(stream);
+
+            return _return(n, 0);
+        }
         case SYS_libos_trace:
         {
             const char* msg = (const char*)x1;
@@ -1770,6 +1844,14 @@ long libos_syscall(long n, long params[6])
 
             _exit_status = status;
 
+            if (thread == __libos_main_thread)
+            {
+                libos_call_fini_functions();
+
+                if (libos_get_export_rootfs())
+                    libos_export_rootfs();
+            }
+
             libos_longjmp(&thread->jmpbuf, 1);
             /* unreachable */
             break;
@@ -1877,9 +1959,9 @@ long libos_syscall(long n, long params[6])
         case SYS_mkdir:
         {
             const char* pathname = (const char*)x1;
-            mode_t mode = (mode_t)x1;
+            mode_t mode = (mode_t)x2;
 
-            _strace(n, "pathname=\"%s\" mode=%u", pathname, mode);
+            _strace(n, "pathname=\"%s\" mode=0%o", pathname, mode);
 
             return _return(n, libos_syscall_mkdir(pathname, mode));
         }

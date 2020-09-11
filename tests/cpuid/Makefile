@@ -5,7 +5,10 @@ APPDIR = appdir
 LIBOS = $(BINDIR)/libos
 CFLAGS = -fPIC
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
-#OPTS = --strace
+
+ifdef STRACE
+OPTS = --strace
+endif
 
 all: libos
 	mkdir -p $(APPDIR)/bin
@@ -15,8 +18,11 @@ all: libos
 tests:
 	$(LIBOS) exec $(OPTS) rootfs /bin/cpuid $(OPTS)
 
+gdb:
+	$(LIBOS_GDB) --args $(LIBOS) exec $(OPTS) rootfs /bin/cpuid $(OPTS)
+
 libos:
 	$(MAKE) -C $(TOP)/tools/libos
 
 clean:
-	rm -rf $(APPDIR) rootfs
+	rm -rf $(APPDIR) rootfs export

@@ -10,5 +10,9 @@ void libos_set_trace(bool flag)
 
 bool libos_get_trace(void)
 {
+#if 1
     return _trace;
+#else
+    return true;
+#endif
 }

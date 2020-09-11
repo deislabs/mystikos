@@ -20,7 +20,7 @@ run-client: libos
 	$(BINDIR)/libos exec $(OPTS) rootfs /ssl_client1
 
 clean:
-	rm -f rootfs
+	rm -rf rootfs export
 	$(MAKE) -C appdir clean
 
 ls:
@@ -30,4 +30,4 @@ extract:
 	sudo docker save -o img.tar libos-alpine
 
 libos:
-	$(MAKE) -C $(TOP)/tools/libos
+	$(MAKE) -C $(TOP)/tools/libos export

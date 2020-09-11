@@ -7,6 +7,7 @@
 #include <libos/errno.h>
 #include <libos/file.h>
 #include <libos/fsbase.h>
+#include <libos/initfini.h>
 #include <libos/kernel.h>
 #include <libos/malloc.h>
 #include <libos/mmanutils.h>
@@ -143,6 +144,8 @@ int libos_enter_kernel(libos_kernel_args_t* args)
     const char rootfs_path[] = "/tmp/rootfs.cpio";
     libos_thread_t* thread = NULL;
 
+    libos_call_init_functions();
+
     /* Check arguments */
     {
         if (!args)
@@ -191,9 +194,10 @@ int libos_enter_kernel(libos_kernel_args_t* args)
     /* Save the aguments */
     _args = args;
 
-    /* Set the tracing flags */
+    /* Set the option flags */
     libos_trace_syscalls(args->trace_syscalls);
     libos_set_real_syscalls(args->real_syscalls);
+    libos_set_export_rootfs(args->export_rootfs);
 
     /* Setup the memory manager */
     if (libos_setup_mman(args->mman_data, args->mman_size) != 0)

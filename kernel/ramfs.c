@@ -1532,6 +1532,12 @@ static int _fs_fcntl(libos_fs_t* fs, libos_file_t* file, int cmd, long arg)
         goto done;
     }
 
+    if (cmd == F_SETLKW)
+    {
+        /* ATTN: silently ignoring locking for now */
+        goto done;
+    }
+
     ERAISE(-ENOTSUP);
 
 done:

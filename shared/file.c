@@ -125,3 +125,13 @@ done:
 
     return ret;
 }
+
+const char* libos_basename(const char* path)
+{
+    char* p;
+
+    if ((p = libos_strrchr(path, '/')))
+        return p + 1;
+
+    return path;
+}

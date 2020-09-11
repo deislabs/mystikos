@@ -13,6 +13,10 @@ LDFLAGS = $(OEENCLAVE_LDFLAGS)
 
 LIBS = $(LIBDIR)/liboskernel.a $(LIBDIR)/libostargetsgx.a
 
+ifdef LIBOS_ENABLE_GCOV
+LIBS += $(LIBDIR)/libgcov_musl.a
+endif
+
 CLEAN = $(SUBOBJDIR)/run_t.h $(SUBOBJDIR)/run_t.c $(SUBOBJDIR)/run_args.h
 
 include $(TOP)/rules.mak

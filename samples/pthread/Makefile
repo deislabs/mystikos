@@ -25,7 +25,4 @@ libos:
 	$(MAKE) -C $(TOP)/tools/libos
 
 clean:
-	rm -rf $(APPDIR) rootfs
-
-gdb-core:
-	$(LIBOS_GDB) core
+	rm -rf $(APPDIR) rootfs export

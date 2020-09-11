@@ -143,7 +143,7 @@ int libos_mkdirhier(const char* pathname, mode_t mode)
     int ret = 0;
     char path[PATH_MAX];
     struct stat buf;
-    char* clone;
+    char* clone = NULL;
     char* p;
     char* save;
 

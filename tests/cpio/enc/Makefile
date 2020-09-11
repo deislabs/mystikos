@@ -11,9 +11,11 @@ CFLAGS = $(OEENCLAVE_CFLAGS)
 
 LDFLAGS = $(OEENCLAVE_LDFLAGS) -L$(LIBDIR) -llthread
 
-LIBS =
-LIBS += $(LIBDIR)/liboskernel.a
-LIBS += $(LIBDIR)/libostargetsgx.a
+LIBS = $(LIBDIR)/liboskernel.a $(LIBDIR)/libostargetsgx.a
+
+ifdef LIBOS_ENABLE_GCOV
+LIBS += $(LIBDIR)/libgcov_musl.a
+endif
 
 CLEAN = $(SUBOBJDIR)/calls_t.h $(SUBOBJDIR)/calls_t.c $(SUBOBJDIR)/calls_args.h
 

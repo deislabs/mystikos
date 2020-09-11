@@ -9,6 +9,7 @@ enclave
     {
         bool trace_syscalls;
         bool real_syscalls;
+        bool export_rootfs;
     };
 
     struct libos_timespec
@@ -76,5 +77,10 @@ enclave
             uint64_t waiter_event,
             uint64_t self_event,
             [in] const struct libos_timespec* timeout);
+
+        long libos_export_file_ocall(
+            [in, string] const char* path,
+            [in, size=size] const void* data,
+            size_t size);
     };
 };

@@ -282,16 +282,18 @@ int _sign(int argc, const char* argv[])
 
     // Load the configuration file and generate oe config file
     char temp_oeconfig_file[] = "/tmp/oeconfig.conf.XXXXXX";
+    int fd;
 
-    if (mktemp(temp_oeconfig_file) == NULL)
+    if ((fd = mkstemp(temp_oeconfig_file)) < 0)
     {
         _err("Failed to generate temp file for oeconfig.conf");
     }
 
     config_parsed_data_t callback_data = {0};
-    callback_data.oe_config_out_file = fopen(temp_oeconfig_file, "w");
+    callback_data.oe_config_out_file = fdopen(fd, "w");
     if (callback_data.oe_config_out_file == NULL)
     {
+        close(fd);
         unlink(temp_oeconfig_file);
         _err(
             "Failed to open OE config file for writing: %s",

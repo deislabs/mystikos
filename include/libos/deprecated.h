@@ -78,7 +78,9 @@ __attribute__((deprecated)) char* strtok_r(
 
 __attribute__((deprecated)) int printf(const char* format, ...);
 
+#if 0
 __attribute__((deprecated)) int fprintf(FILE* stream, const char* format, ...);
+#endif
 
 __attribute__((deprecated)) int vprintf(const char* format, va_list ap);
 

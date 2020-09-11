@@ -28,4 +28,4 @@ libos:
 	$(MAKE) -C $(TOP)/tools/libos
 
 clean:
-	rm -rf $(APPDIR) rootfs
+	rm -rf $(APPDIR) rootfs export

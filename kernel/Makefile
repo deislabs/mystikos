@@ -1,6 +1,5 @@
 TOP=$(abspath ..)
 include $(TOP)/defs.mak
-include $(TOP)/config.mak
 
 SUBLIBDIR=$(LIBDIR)
 
@@ -23,6 +22,10 @@ DEFINES += -DLIBOS_ENABLE_LEAK_CHECKER
 endif
 
 CFLAGS = $(OEENCLAVE_CFLAGS)
+
+ifdef LIBOS_ENABLE_GCOV
+CFLAGS += -fprofile-arcs -ftest-coverage
+endif
 
 DIRS = image
 

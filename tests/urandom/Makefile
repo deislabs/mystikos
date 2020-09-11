@@ -21,8 +21,11 @@ endif
 tests:
 	$(LIBOS) exec $(OPTS) rootfs /bin/urandom $(OPTS)
 
+gdb:
+	$(LIBOS_GDB) --args $(LIBOS) exec $(OPTS) rootfs /bin/urandom $(OPTS)
+
 libos:
 	$(MAKE) -C $(TOP)/tools/libos
 
 clean:
-	rm -rf $(APPDIR) rootfs
+	rm -rf $(APPDIR) rootfs export

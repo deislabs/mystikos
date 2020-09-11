@@ -1,7 +1,7 @@
 #define _GNU_SOURCE
 #include <assert.h>
+#include <errno.h>
 #include <fcntl.h>
-#include <libos/syscallext.h>
 #include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -11,6 +11,10 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <syslog.h>
+#include <unistd.h>
+
+#include <libos/libc.h>
+#include <libos/syscallext.h>
 
 void _dlstart_c(size_t* sp, size_t* dynv);
 
@@ -99,7 +103,7 @@ int __clone(int (*fn)(void*), void* child_stack, int flags, void* arg, ...)
     return libos_syscall(SYS_libos_clone, params);
 }
 
-void oelcrt_enter(void* stack, void* dynv, syscall_callback_t callback)
+void libos_crt_enter(void* stack, void* dynv, syscall_callback_t callback)
 {
     _syscall_callback = callback;
 
@@ -117,6 +121,40 @@ void oelcrt_enter(void* stack, void* dynv, syscall_callback_t callback)
         libos_dump_stack(stack);
     }
 #endif
+
+    /* Pass the libc interface back to the kernel */
+    {
+        static libc_t _libc = {
+            fopen,
+            fdopen,
+            fread,
+            fwrite,
+            fseek,
+            ftell,
+            fclose,
+            setbuf,
+            open,
+            close,
+            fcntl,
+            getenv,
+            __errno_location,
+            getpid,
+            strtol,
+            access,
+            mkdir,
+            abort,
+            vfprintf,
+            atoi,
+            malloc,
+            free,
+            memset,
+            memcpy,
+            strcpy,
+            strlen,
+        };
+        long params[6] = {(long)&_libc, (long)stderr};
+        libos_syscall(SYS_libos_libc_init, params);
+    }
 
     _dlstart_c((size_t*)stack, (size_t*)dynv);
 }

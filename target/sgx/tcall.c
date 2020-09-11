@@ -124,7 +124,8 @@ static long _tcall_vsnprintf(
 }
 
 /* Must be overriden by enclave application */
-__attribute__((__weak__)) long libos_tcall_clock_gettime(
+LIBOS_WEAK
+long libos_tcall_clock_gettime(
     clockid_t clk_id,
     struct timespec* tp)
 {
@@ -136,7 +137,8 @@ __attribute__((__weak__)) long libos_tcall_clock_gettime(
 }
 
 /* Must be overriden by enclave application */
-__attribute__((__weak__)) oe_result_t libos_oe_call_host_function(
+LIBOS_WEAK
+oe_result_t libos_oe_call_host_function(
     size_t function_id,
     const void* input_buffer,
     size_t input_buffer_size,
@@ -155,7 +157,8 @@ __attribute__((__weak__)) oe_result_t libos_oe_call_host_function(
 }
 
 /* Must be overriden by enclave application */
-__attribute__((__weak__)) long libos_tcall_isatty(int fd)
+LIBOS_WEAK
+long libos_tcall_isatty(int fd)
 {
     (void)fd;
 
@@ -164,7 +167,8 @@ __attribute__((__weak__)) long libos_tcall_isatty(int fd)
 }
 
 /* Must be overriden by enclave application */
-__attribute__((__weak__)) long libos_tcall_add_symbol_file(
+LIBOS_WEAK
+long libos_tcall_add_symbol_file(
     const void* file_data,
     size_t file_size,
     const void* text,
@@ -179,21 +183,24 @@ __attribute__((__weak__)) long libos_tcall_add_symbol_file(
 }
 
 /* Must be overriden by enclave application */
-__attribute__((__weak__)) long libos_tcall_load_symbols(void)
+LIBOS_WEAK
+long libos_tcall_load_symbols(void)
 {
     assert("unimplemented: implement in enclave" == NULL);
     return -ENOTSUP;
 }
 
 /* Must be overriden by enclave application */
-__attribute__((__weak__)) long libos_tcall_unload_symbols(void)
+LIBOS_WEAK
+long libos_tcall_unload_symbols(void)
 {
     assert("unimplemented: implement in enclave" == NULL);
     return -ENOTSUP;
 }
 
 /* Must be overriden by enclave application */
-__attribute__((__weak__)) long libos_tcall_create_host_thread(uint64_t cookie)
+LIBOS_WEAK
+long libos_tcall_create_host_thread(uint64_t cookie)
 {
     (void)cookie;
     assert("unimplemented: implement in enclave" == NULL);
@@ -201,7 +208,8 @@ __attribute__((__weak__)) long libos_tcall_create_host_thread(uint64_t cookie)
 }
 
 /* Must be overriden by enclave application */
-__attribute__((__weak__)) long libos_tcall_wait(
+LIBOS_WEAK
+long libos_tcall_wait(
     uint64_t event,
     const struct timespec* timeout)
 {
@@ -212,7 +220,8 @@ __attribute__((__weak__)) long libos_tcall_wait(
 }
 
 /* Must be overriden by enclave application */
-__attribute__((__weak__)) long libos_tcall_wake(uint64_t event)
+LIBOS_WEAK
+long libos_tcall_wake(uint64_t event)
 {
     (void)event;
     assert("unimplemented: implement in enclave" == NULL);
@@ -220,7 +229,8 @@ __attribute__((__weak__)) long libos_tcall_wake(uint64_t event)
 }
 
 /* Must be overriden by enclave application */
-__attribute__((__weak__)) long libos_tcall_wake_wait(
+LIBOS_WEAK
+long libos_tcall_wake_wait(
     uint64_t waiter_event,
     uint64_t self_event,
     const struct timespec* timeout)
@@ -228,6 +238,19 @@ __attribute__((__weak__)) long libos_tcall_wake_wait(
     (void)waiter_event;
     (void)self_event;
     (void)timeout;
+    assert("unimplemented: implement in enclave" == NULL);
+    return -ENOTSUP;
+}
+
+LIBOS_WEAK
+long libos_tcall_export_file(
+    const char* path,
+    const void* data,
+    size_t size)
+{
+    (void)path;
+    (void)data;
+    (void)size;
     assert("unimplemented: implement in enclave" == NULL);
     return -ENOTSUP;
 }
@@ -560,6 +583,13 @@ long libos_tcall(long n, long params[6])
             uint64_t self_event = (uint64_t)x2;
             const struct timespec* timeout = (const struct timespec*)x3;
             return libos_tcall_wake_wait(waiter_event, self_event, timeout);
+        }
+        case LIBOS_TCALL_EXPORT_FILE:
+        {
+            const char* path = (const char*)x1;
+            const void* data = (const void*)x2;
+            size_t size = (size_t)x3;
+            return libos_tcall_export_file(path, data, size);
         }
         case SYS_ioctl:
         {

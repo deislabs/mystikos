@@ -31,6 +31,7 @@ typedef enum libos_tcall_number
     LIBOS_TCALL_WAIT,
     LIBOS_TCALL_WAKE,
     LIBOS_TCALL_WAKE_WAIT,
+    LIBOS_TCALL_EXPORT_FILE,
 } libos_tcall_number_t;
 
 long libos_tcall(long n, long params[6]);
@@ -59,5 +60,10 @@ long libos_tcall_wake_wait(
     uint64_t waiter_tid,
     uint64_t self_tid,
     const struct timespec* timeout);
+
+long libos_tcall_export_file(
+    const char* path,
+    const void* data,
+    size_t size);
 
 #endif /* _LIBOS_TCALL_H */

@@ -22,6 +22,7 @@ enum
     SYS_libos_free_creds = 1010,
     SYS_libos_verify_cert = 1011,
     SYS_libos_clone = 1012,
+    SYS_libos_libc_init = 1013,
 
     /* Open Enclave extensions */
     SYS_libos_oe_add_vectored_exception_handler = 4096,

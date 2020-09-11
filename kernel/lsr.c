@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <string.h>
 
-int libos_lsr(const char* root, libos_strarr_t* paths)
+int libos_lsr(const char* root, libos_strarr_t* paths, bool include_dirs)
 {
     int ret = -1;
     DIR* dir = NULL;
@@ -37,16 +37,26 @@ int libos_lsr(const char* root, libos_strarr_t* paths)
 
         libos_strlcat(path, ent->d_name, sizeof(path));
 
-        /* Append to paths[] array */
-        if (libos_strarr_append(paths, path) != 0)
-            goto done;
-
         /* Append to dirs[] array */
         if (ent->d_type & DT_DIR)
         {
             if (libos_strarr_append(&dirs, path) != 0)
                 goto done;
+
+            if (include_dirs)
+            {
+                /* Append to paths[] array */
+                if (libos_strarr_append(paths, path) != 0)
+                    goto done;
+            }
         }
+        else
+        {
+            /* Append to paths[] array */
+            if (libos_strarr_append(paths, path) != 0)
+                goto done;
+        }
+
     }
 
     /* Recurse into child directories */
@@ -55,7 +65,7 @@ int libos_lsr(const char* root, libos_strarr_t* paths)
 
         for (i = 0; i < dirs.size; i++)
         {
-            if (libos_lsr(dirs.data[i], paths) != 0)
+            if (libos_lsr(dirs.data[i], paths, include_dirs) != 0)
                 goto done;
         }
     }

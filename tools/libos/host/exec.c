@@ -7,13 +7,17 @@
 #include <libos/strings.h>
 #include <limits.h>
 #include <linux/futex.h>
-#include <openenclave/host.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <syscall.h>
 #include <unistd.h>
+#include <errno.h>
+
+#include <openenclave/host.h>
+#include <libos/file.h>
+#include <libos/eraise.h>
 
 #include "libos_u.h"
 #include "regions.h"
@@ -239,6 +243,39 @@ long libos_wake_wait_ocall(
     return 0;
 }
 
+long libos_export_file_ocall(const char* path, const void* data, size_t size)
+{
+    long ret = 0;
+    char cwd[PATH_MAX];
+    char file[PATH_MAX];
+    char dir[PATH_MAX];
+    char* p;
+
+    if (!path || (!data && size))
+        ERAISE(-EINVAL);
+
+    if (!(getcwd(cwd, sizeof(cwd))))
+        ERAISE(-errno);
+
+    if (snprintf(file, sizeof(file), "%s/export/%s", cwd, path) >= sizeof(file))
+        ERAISE(-ENAMETOOLONG);
+
+    if (libos_strlcpy(dir, file, sizeof(dir)) >= sizeof(dir))
+        ERAISE(-ENAMETOOLONG);
+
+    /* Chop off the final component */
+    if ((p = strrchr(dir, '/')))
+        *p = '\0';
+    else
+        ERAISE(-EINVAL);
+
+    ECHECK(libos_mkdirhier(dir, 0777));
+    ECHECK(libos_write_file(file, data, size));
+
+done:
+    return ret;
+}
+
 int exec_launch_enclave(
     const char* enc_path,
     oe_enclave_type_t type,
@@ -300,6 +337,8 @@ int _exec(int argc, const char* argv[])
 
     assert(strcmp(argv[1], "exec") == 0);
 
+    memset(&options, 0, sizeof(options));
+
     /* Get options */
     {
         /* Get --trace-syscalls option */
@@ -312,6 +351,10 @@ int _exec(int argc, const char* argv[])
         /* Get --real-syscalls option */
         if (exec_get_opt(&argc, argv, "--real-syscalls", NULL) == 0)
             options.real_syscalls = true;
+
+        /* Get --export-rootfs option */
+        if (exec_get_opt(&argc, argv, "--export-rootfs", NULL) == 0)
+            options.export_rootfs = true;
     }
 
     if (options.real_syscalls)

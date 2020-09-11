@@ -133,3 +133,5 @@ EDGER8R_UNTRUSTED_OPTS =
 EDGER8R_UNTRUSTED_OPTS += --untrusted
 EDGER8R_UNTRUSTED_OPTS += --search-path $(OE_INCDIR)
 EDGER8R_UNTRUSTED_OPTS += --untrusted-dir $(SUBOBJDIR)
+
+include $(TOP)/config.mak

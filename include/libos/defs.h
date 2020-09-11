@@ -9,4 +9,6 @@
 
 #define LIBOS_INLINE static __inline__
 
+#define LIBOS_WEAK __attribute__((weak))
+
 #endif /* _LIBOS_DEFS_H */

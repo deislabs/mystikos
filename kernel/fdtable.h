@@ -4,9 +4,9 @@
 #ifndef _LIBOS_FDTABLE_H
 #define _LIBOS_FDTABLE_H
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdbool.h>
 
 #define FDTABLE_SIZE 1024
 #define FD_OFFSET 1024

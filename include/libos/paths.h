@@ -22,4 +22,6 @@ int libos_tok_normalize(const char* toks[]);
 
 int libos_normalize(const char* path, char* buf, size_t size);
 
+const char* libos_basename(const char* path);
+
 #endif /* _LIBOS_PATHS_H */

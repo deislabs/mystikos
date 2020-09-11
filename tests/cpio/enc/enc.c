@@ -161,7 +161,7 @@ int cpio_ecall(const void* cpio_data, size_t cpio_size)
     assert(libos_cpio_unpack("/tmp/cpio", "/tmp/out") == 0);
 
     libos_strarr_t paths = LIBOS_STRARR_INITIALIZER;
-    assert(libos_lsr("/tmp/out", &paths) == 0);
+    assert(libos_lsr("/tmp/out", &paths, true) == 0);
 
     assert(_npaths == paths.size);
 

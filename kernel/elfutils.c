@@ -11,6 +11,7 @@
 #include <libos/eraise.h>
 #include <libos/file.h>
 #include <libos/fsbase.h>
+#include <libos/libc.h>
 #include <libos/malloc.h>
 #include <libos/paths.h>
 #include <libos/process.h>
@@ -21,6 +22,7 @@
 #include <libos/syscall.h>
 #include <libos/tcall.h>
 #include <libos/thread.h>
+#include <libos/cpio.h>
 
 #define GUARD 0x4f
 
@@ -739,6 +741,7 @@ typedef struct entry_args
     void* stack;
     uint64_t* dynv;
     long (*syscall)(long n, long params[6]);
+    int (*liboc_libc_init)(libc_t* libc, FILE* const stderr_file);
 } entry_args_t;
 
 /* Create the "/proc/<pid>/exe" link */
