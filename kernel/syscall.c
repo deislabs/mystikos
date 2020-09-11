@@ -1334,8 +1334,10 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "libc=%p stream=%p", libc, stream);
 
+#ifdef LIBOS_ENABLE_GCOV
             if (gcov_init_libc(libc, stream) != 0)
                 libos_panic("gcov_init_libc() failed");
+#endif
 
             return _return(n, 0);
         }

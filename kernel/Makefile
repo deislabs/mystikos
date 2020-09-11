@@ -25,6 +25,7 @@ CFLAGS = $(OEENCLAVE_CFLAGS)
 
 ifdef LIBOS_ENABLE_GCOV
 CFLAGS += -fprofile-arcs -ftest-coverage
+DEFINES += -DLIBOS_ENABLE_GCOV
 endif
 
 DIRS = image

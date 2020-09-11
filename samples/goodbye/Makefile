@@ -20,5 +20,5 @@ run: all
 	$(BINDIR)/libos exec $(OPTS) rootfs /goodbye
 
 clean:
-	rm -f rootfs
+	rm -rf rootfs ramfs
 	$(MAKE) -C appdir clean
