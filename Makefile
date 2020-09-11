@@ -57,8 +57,8 @@ uninstall:
 
 ##==============================================================================
 ##
-## format:
-##     Format C source code within the source tree (exclude third_party)
+## sources:
+##     Print the list of libos sources (excluding third-party sources)
 ##
 ##==============================================================================
 
@@ -67,5 +67,22 @@ SOURCES_DIRS = $(filter-out third_party, $(DIRS)) include/libos
 sources:
 	@ echo $(foreach i, $(SOURCES_DIRS), $(shell find $(i) -name '*.[ch]'))
 
+##==============================================================================
+##
+## format:
+##     Format C source code within the source tree (exclude third_party)
+##
+##==============================================================================
+
 format:
 	./scripts/code-format $(shell $(MAKE) sources)
+
+##==============================================================================
+##
+## touch:
+##     touch all the libos source files
+##
+##==============================================================================
+
+touch:
+	touch $(shell $(MAKE) sources)
