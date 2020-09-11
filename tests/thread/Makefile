@@ -5,10 +5,11 @@ APPDIR = appdir
 LIBOS = $(BINDIR)/libos
 CFLAGS = -fPIC
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
+CC = $(MUSL_GCC)
 
 all: libos
 	mkdir -p $(APPDIR)/bin
-	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/thread thread.c $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $(APPDIR)/bin/thread thread.c $(LDFLAGS)
 	$(LIBOS) mkcpio $(APPDIR) rootfs
 
 ifdef STRACE

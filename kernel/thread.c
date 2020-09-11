@@ -291,19 +291,7 @@ long libos_syscall_clone(
     void* newtls,
     pid_t* ctid)
 {
-#ifdef LIBOS_ENABLE_HOST_THREADS
     return _syscall_clone(fn, child_stack, flags, arg, ptid, newtls, ctid);
-#else
-    (void)fn;
-    (void)child_stack;
-    (void)flags;
-    (void)arg;
-    (void)ptid;
-    (void)newtls;
-    (void)ctid;
-    (void)_syscall_clone;
-    return 0;
-#endif
 }
 
 pid_t libos_gettid(void)

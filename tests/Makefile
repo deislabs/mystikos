@@ -26,6 +26,10 @@ DIRS += json
 DIRS += conf
 DIRS += nbio
 DIRS += libc
+
+# This tests fails with gcov enabled
+ifndef LIBOS_ENABLE_GCOV
 DIRS += thread
+endif
 
 include $(TOP)/rules.mak

@@ -10,9 +10,11 @@
 #include <unistd.h>
 
 #include <libos/gcov.h>
+#include <libos/defs.h>
 
 static libc_t _libc;
 
+LIBOS_WEAK
 FILE* const stderr;
 
 int gcov_init_libc(libc_t* libc, FILE* stderr_stream)
@@ -26,46 +28,55 @@ int gcov_init_libc(libc_t* libc, FILE* stderr_stream)
     return 0;
 }
 
+LIBOS_WEAK
 FILE* fopen(const char* pathname, const char* mode)
 {
     return _libc.fopen(pathname, mode);
 }
 
+LIBOS_WEAK
 FILE* fdopen(int fd, const char* mode)
 {
     return _libc.fdopen(fd, mode);
 }
 
+LIBOS_WEAK
 size_t fread(void* ptr, size_t size, size_t nmemb, FILE* stream)
 {
     return _libc.fread(ptr, size, nmemb, stream);
 }
 
+LIBOS_WEAK
 size_t fwrite(const void* ptr, size_t size, size_t nmemb, FILE* stream)
 {
     return _libc.fwrite(ptr, size, nmemb, stream);
 }
 
+LIBOS_WEAK
 int fseek(FILE* stream, long offset, int whence)
 {
     return _libc.fseek(stream, offset, whence);
 }
 
+LIBOS_WEAK
 long ftell(FILE* stream)
 {
     return _libc.ftell(stream);
 }
 
+LIBOS_WEAK
 int fclose(FILE* stream)
 {
     return _libc.fclose(stream);
 }
 
+LIBOS_WEAK
 void setbuf(FILE* stream, char* buf)
 {
     return _libc.setbuf(stream, buf);
 }
 
+LIBOS_WEAK
 int open(const char* pathname, int flags, ...)
 {
     va_list ap;
@@ -76,11 +87,13 @@ int open(const char* pathname, int flags, ...)
     return _libc.open(pathname, flags, mode);
 }
 
+LIBOS_WEAK
 int close(int fd)
 {
     return _libc.close(fd);
 }
 
+LIBOS_WEAK
 int fcntl(int fd, int cmd, ... /* arg */)
 {
     va_list ap;
@@ -91,66 +104,79 @@ int fcntl(int fd, int cmd, ... /* arg */)
     return _libc.fcntl(fd, cmd, arg);
 }
 
+LIBOS_WEAK
 void* malloc(size_t size)
 {
     return _libc.malloc(size);
 }
 
+LIBOS_WEAK
 void free(void* ptr)
 {
     _libc.free(ptr);
 }
 
+LIBOS_WEAK
 void* memset(void* s, int c, size_t n)
 {
     return _libc.memset(s, c, n);
 }
 
+LIBOS_WEAK
 void* memcpy(void* dest, const void* src, size_t n)
 {
     return _libc.memcpy(dest, src, n);
 }
 
+LIBOS_WEAK
 size_t strlen(const char* s)
 {
     return _libc.strlen(s);
 }
 
+LIBOS_WEAK
 char* strcpy(char* dest, const char* src)
 {
     return _libc.strcpy(dest, src);
 }
 
+LIBOS_WEAK
 char* getenv(const char* name)
 {
     return _libc.getenv(name);
 }
 
+LIBOS_WEAK
 int* __errno_location(void)
 {
     return _libc.__errno_location();
 }
 
+LIBOS_WEAK
 pid_t getpid(void)
 {
     return _libc.getpid();
 }
 
+LIBOS_WEAK
 long int strtol(const char* nptr, char** endptr, int base)
 {
     return _libc.strtol(nptr, endptr, base);
 }
 
+LIBOS_WEAK
 int access(const char* pathname, int mode)
 {
     return _libc.access(pathname, mode);
 }
 
+LIBOS_WEAK
 int mkdir(const char* pathname, mode_t mode)
 {
     return _libc.mkdir(pathname, mode);
 }
 
+LIBOS_WEAK
 _Noreturn void abort(void)
 {
     _libc.abort();
@@ -159,11 +185,13 @@ _Noreturn void abort(void)
         ;
 }
 
+LIBOS_WEAK
 int vfprintf(FILE* stream, const char* format, va_list ap)
 {
     return _libc.vfprintf(stream, format, ap);
 }
 
+LIBOS_WEAK
 int fprintf(FILE* stream, const char* format, ...)
 {
     va_list ap;
@@ -173,11 +201,13 @@ int fprintf(FILE* stream, const char* format, ...)
     return r;
 }
 
+LIBOS_WEAK
 int atoi(const char* nptr)
 {
     return _libc.atoi(nptr);
 }
 
+LIBOS_WEAK
 int __popcountdi2(unsigned long a)
 {
     size_t nbits = 0;

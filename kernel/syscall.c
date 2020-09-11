@@ -2313,16 +2313,9 @@ long libos_syscall(long n, long params[6])
                 _futex_op_str(futex_op),
                 val);
 
-#ifdef LIBOS_ENABLE_HOST_THREADS
             return _return(
                 n,
                 libos_syscall_futex(uaddr, futex_op, val, arg, uaddr2, val3));
-#else
-            (void)arg;
-            (void)uaddr2;
-            (void)val3;
-            return _return(n, 0);
-#endif
         }
         case SYS_sched_setaffinity:
             break;
