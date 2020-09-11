@@ -1,5 +1,9 @@
 #include <dirent.h>
 #include <fcntl.h>
+#include <limits.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include <libos/assert.h>
 #include <libos/buf.h>
 #include <libos/eraise.h>
@@ -11,9 +15,8 @@
 #include <libos/round.h>
 #include <libos/strings.h>
 #include <libos/trace.h>
-#include <limits.h>
-#include <stdlib.h>
-#include <string.h>
+#include <libos/id.h>
+
 #include "bufu64.h"
 
 #define BLKSIZE 512
@@ -1072,8 +1075,8 @@ static int _stat(inode_t* inode, struct stat* statbuf)
     buf.st_ino = (ino_t)inode;
     buf.st_mode = inode->mode;
     buf.st_nlink = inode->nlink;
-    buf.st_uid = 0; /* ATTN: assumes root uid */
-    buf.st_gid = 0; /* ATTN: assumes root gid */
+    buf.st_uid = LIBOS_DEFAULT_UID;
+    buf.st_gid = LIBOS_DEFAULT_GID;
     buf.st_rdev = 0;
     buf.st_size = (off_t)inode->buf.size;
     buf.st_blksize = BLKSIZE;

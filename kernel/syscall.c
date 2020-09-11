@@ -42,11 +42,9 @@
 #include <libos/tcall.h>
 #include <libos/thread.h>
 #include <libos/trace.h>
+#include <libos/id.h>
 
 #include "fdtable.h"
-
-#define DEFAULT_UID (uid_t)0
-#define DEFAULT_GID (gid_t)0
 
 #define DEV_URANDOM_FD (FD_OFFSET + FDTABLE_SIZE)
 
@@ -2061,7 +2059,7 @@ long libos_syscall(long n, long params[6])
         case SYS_getuid:
         {
             _strace(n, NULL);
-            return _return(n, DEFAULT_UID);
+            return _return(n, LIBOS_DEFAULT_UID);
         }
         case SYS_syslog:
         {
@@ -2071,7 +2069,7 @@ long libos_syscall(long n, long params[6])
         case SYS_getgid:
         {
             _strace(n, NULL);
-            return _return(n, DEFAULT_GID);
+            return _return(n, LIBOS_DEFAULT_GID);
         }
         case SYS_setuid:
             break;
@@ -2080,12 +2078,12 @@ long libos_syscall(long n, long params[6])
         case SYS_geteuid:
         {
             _strace(n, NULL);
-            return _return(n, DEFAULT_UID);
+            return _return(n, LIBOS_DEFAULT_UID);
         }
         case SYS_getegid:
         {
             _strace(n, NULL);
-            return _return(n, DEFAULT_GID);
+            return _return(n, LIBOS_DEFAULT_GID);
         }
         case SYS_setpgid:
             break;
