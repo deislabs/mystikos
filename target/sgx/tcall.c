@@ -284,14 +284,14 @@ static long _oesdk_syscall(long n, long params[6])
         }
         case SYS_libos_oe_generate_attestation_certificate:
         {
-            const unsigned char* subject_name = (const unsigned char*)params[0];
-            uint8_t* private_key = (uint8_t*)params[1];
-            size_t private_key_size = (size_t)params[2];
-            uint8_t* public_key = (uint8_t*)params[3];
-            size_t public_key_size = (size_t)params[4];
-            long* extra = (long*)params[5];
-            uint8_t** output_cert = (uint8_t**)extra[0];
-            size_t* output_cert_size = (size_t*)extra[1];
+            long* args = (long*)params[0];
+            const unsigned char* subject_name = (const unsigned char*)args[0];
+            uint8_t* private_key = (uint8_t*)args[1];
+            size_t private_key_size = (size_t)args[2];
+            uint8_t* public_key = (uint8_t*)args[3];
+            size_t public_key_size = (size_t)args[4];
+            uint8_t** output_cert = (uint8_t**)args[5];
+            size_t* output_cert_size = (size_t*)args[6];
 
             return (long)oe_generate_attestation_certificate(
                 subject_name,

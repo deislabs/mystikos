@@ -19,16 +19,18 @@ oe_result_t oe_generate_attestation_certificate(
     uint8_t** output_cert,
     size_t* output_cert_size)
 {
-    long extra[] = {(long)output_cert, (long)output_cert_size};
+    long args[] = {
+        (long)subject_name,
+        (long)private_key,
+        (long)private_key_size,
+        (long)public_key,
+        (long)public_key_size,
+        (long)output_cert,
+        (long)output_cert_size,
+    };
 
     return (oe_result_t)syscall(
-        SYS_libos_oe_generate_attestation_certificate,
-        subject_name,
-        private_key,
-        private_key_size,
-        public_key,
-        public_key_size,
-        extra);
+        SYS_libos_oe_generate_attestation_certificate, args);
 }
 
 oe_result_t oe_get_public_key_by_policy(

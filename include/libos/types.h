@@ -2,9 +2,9 @@
 #define _LIBOS_TYPES_H
 
 #include <limits.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdbool.h>
 #include <sys/types.h>
 
 #define LIBOS_PAGE_SIZE 4096

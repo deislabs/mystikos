@@ -1825,13 +1825,7 @@ long libos_syscall(long n, long params[6])
             return _return(
                 n,
                 libos_syscall_clone(
-                    fn,
-                    child_stack,
-                    flags,
-                    arg,
-                    ptid,
-                    newtls,
-                    ctid));
+                    fn, child_stack, flags, arg, ptid, newtls, ctid));
         }
         case SYS_fork:
             break;

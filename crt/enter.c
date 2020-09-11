@@ -13,9 +13,9 @@
 #include <syslog.h>
 #include <unistd.h>
 
+#include <libos/gcov.h>
 #include <libos/libc.h>
 #include <libos/syscallext.h>
-#include <libos/gcov.h>
 
 void _dlstart_c(size_t* sp, size_t* dynv);
 
@@ -100,7 +100,7 @@ int __clone(int (*fn)(void*), void* child_stack, int flags, void* arg, ...)
     args[5] = (long)newtls;
     args[6] = (long)ctid;
 
-    long params[6] = { (long)args };
+    long params[6] = {(long)args};
     return libos_syscall(SYS_libos_clone, params);
 }
 
