@@ -26,5 +26,6 @@ DIRS += json
 DIRS += conf
 DIRS += nbio
 DIRS += libc
+DIRS += thread
 
 include $(TOP)/rules.mak

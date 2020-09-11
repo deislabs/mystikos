@@ -8,6 +8,7 @@
 #include <libos/buf.h>
 #include <libos/eraise.h>
 #include <libos/fs.h>
+#include <libos/id.h>
 #include <libos/malloc.h>
 #include <libos/paths.h>
 #include <libos/ramfs.h>
@@ -15,7 +16,6 @@
 #include <libos/round.h>
 #include <libos/strings.h>
 #include <libos/trace.h>
-#include <libos/id.h>
 
 #include "bufu64.h"
 

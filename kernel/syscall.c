@@ -26,6 +26,7 @@
 #include <libos/file.h>
 #include <libos/fsbase.h>
 #include <libos/gcov.h>
+#include <libos/id.h>
 #include <libos/initfini.h>
 #include <libos/libc.h>
 #include <libos/lsr.h>
@@ -42,7 +43,6 @@
 #include <libos/tcall.h>
 #include <libos/thread.h>
 #include <libos/trace.h>
-#include <libos/id.h>
 
 #include "fdtable.h"
 
