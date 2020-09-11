@@ -15,6 +15,7 @@
 
 #include <libos/libc.h>
 #include <libos/syscallext.h>
+#include <libos/gcov.h>
 
 void _dlstart_c(size_t* sp, size_t* dynv);
 
@@ -138,8 +139,11 @@ void libos_crt_enter(void* stack, void* dynv, syscall_callback_t callback)
             strcpy,
             strlen,
         };
+
         long params[6] = {(long)&_libc, (long)stderr};
         libos_syscall(SYS_libos_gcov_init, params);
+
+        gcov_init_libc(&_libc, stderr);
     }
 #endif
 

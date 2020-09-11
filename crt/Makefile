@@ -10,6 +10,7 @@ INCLUDES = -I$(INCDIR)
 SOURCES = $(wildcard *.c)
 
 ifdef LIBOS_ENABLE_GCOV
+CFLAGS += -fprofile-arcs -ftest-coverage
 DEFINES = -DLIBOS_ENABLE_GCOV
 endif
 
@@ -18,6 +19,11 @@ LDFLAGS1 = -Wl,--sort-section,alignment -Wl,--sort-common -Wl,--gc-sections -Wl,
 LDFLAGS1 += -Wl,-elibos_crt_enter
 
 LDFLAGS2 = -Wl,-Bstatic -Wl,-Bsymbolic -Wl,--export-dynamic -Wl,-pie -Wl,--build-id -Wl,-z,noexecstack -Wl,-z,now
+
+ifdef LIBOS_ENABLE_GCOV
+LDFLAGS2 += -L$(LIBDIR)
+LDFLAGS2 += -lgcov_musl
+endif
 
 LIBCC = -lgcc
 
