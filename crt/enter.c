@@ -84,23 +84,23 @@ long libos_add_symbol_file(const char* path, const void* text, size_t text_size)
 int __clone(int (*fn)(void*), void* child_stack, int flags, void* arg, ...)
 {
     va_list ap;
+    long args[7];
+
     va_start(ap, arg);
     pid_t* ptid = va_arg(ap, pid_t*);
     void* newtls = va_arg(ap, void*);
     pid_t* ctid = va_arg(ap, pid_t*);
     va_end(ap);
 
-    libos_clone_syscall_args_t args = {
-        .fn = fn,
-        .child_stack = child_stack,
-        .flags = flags,
-        .arg = arg,
-        .ptid = ptid,
-        .newtls = newtls,
-        .ctid = ctid,
-    };
+    args[0] = (long)fn;
+    args[1] = (long)child_stack;
+    args[2] = (long)flags;
+    args[3] = (long)arg;
+    args[4] = (long)ptid;
+    args[5] = (long)newtls;
+    args[6] = (long)ctid;
 
-    long params[6] = {(long)&args};
+    long params[6] = { (long)args };
     return libos_syscall(SYS_libos_clone, params);
 }
 

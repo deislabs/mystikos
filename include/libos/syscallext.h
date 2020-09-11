@@ -67,16 +67,4 @@ enum
     SYS_libos_oe_call_host_function,
 };
 
-/* needed because syscall() only supports 6 parameters */
-typedef struct libos_clone_syscall_args
-{
-    int (*fn)(void*);
-    void* child_stack;
-    int flags;
-    void* arg;
-    pid_t* ptid;
-    void* newtls;
-    pid_t* ctid;
-} libos_clone_syscall_args_t;
-
 #endif /* _LIBOS_SYSCALLEXT_H */

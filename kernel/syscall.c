@@ -1796,7 +1796,14 @@ long libos_syscall(long n, long params[6])
         }
         case SYS_libos_clone:
         {
-            libos_clone_syscall_args_t* p = (void*)x1;
+            long* args = (long*)x1;
+            int (*fn)(void*) = (void*)args[0];
+            void* child_stack = (void*)args[1];
+            int flags = (int)args[2];
+            void* arg = (void*)args[3];
+            pid_t* ptid = (pid_t*)args[4];
+            void* newtls = (void*)args[5];
+            pid_t* ctid = (void*)args[6];
 
             _strace(
                 n,
@@ -1807,24 +1814,24 @@ long libos_syscall(long n, long params[6])
                 "ptid=%p "
                 "newtls=%p "
                 "ctid=%p",
-                p->fn,
-                p->child_stack,
-                p->flags,
-                p->arg,
-                p->ptid,
-                p->newtls,
-                p->ctid);
+                fn,
+                child_stack,
+                flags,
+                arg,
+                ptid,
+                newtls,
+                ctid);
 
             return _return(
                 n,
                 libos_syscall_clone(
-                    p->fn,
-                    p->child_stack,
-                    p->flags,
-                    p->arg,
-                    p->ptid,
-                    p->newtls,
-                    p->ctid));
+                    fn,
+                    child_stack,
+                    flags,
+                    arg,
+                    ptid,
+                    newtls,
+                    ctid));
         }
         case SYS_fork:
             break;
