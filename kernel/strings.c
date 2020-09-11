@@ -7,6 +7,10 @@
 #include <libos/strings.h>
 #include <libos/tcall.h>
 
+#define USE_BUILTIN_MEMSET
+#define USE_BUILTIN_MEMCPY
+#define USE_LOOP_UNROLLING
+
 int libos_strsplit(
     const char* str,
     const char* delim,
@@ -385,16 +389,102 @@ void __libos_panic(
 
 void* libos_memset(void* s, int c, size_t n)
 {
+#ifdef USE_BUILTIN_MEMSET
+
+    unsigned char* p = (unsigned char*)s;
+
+    while (n >= 1024)
+    {
+        __builtin_memset(p, c, 1024);
+        n -= 1024;
+        p += 1024;
+    }
+
+    while (n >= 256)
+    {
+        __builtin_memset(p, c, 256);
+        n -= 256;
+        p += 256;
+    }
+
+    while (n >= 64)
+    {
+        __builtin_memset(p, c, 64);
+        n -= 64;
+        p += 64;
+    }
+
+    while (n >= 16)
+    {
+        __builtin_memset(p, c, 16);
+        n -= 16;
+        p += 16;
+    }
+
+    while (n--)
+        *p++ = (uint8_t)c;
+
+    return s;
+
+#else /* USE_BUILTIN_MEMSET */
+
     unsigned char* p = (unsigned char*)s;
 
     while (n--)
         *p++ = (unsigned char)c;
 
     return s;
+
+#endif /* !USE_BUILTIN_MEMSET */
 }
+
 
 void* libos_memcpy(void* dest, const void* src, size_t n)
 {
+#ifdef USE_BUILTIN_MEMCPY
+
+    unsigned char* p = (unsigned char*)dest;
+    const unsigned char* q = (const unsigned char*)src;
+
+    while (n >= 1024)
+    {
+        __builtin_memcpy(p, q, 1024);
+        n -= 1024;
+        p += 1024;
+        q += 1024;
+    }
+
+    while (n >= 256)
+    {
+        __builtin_memcpy(p, q, 256);
+        n -= 256;
+        p += 256;
+        q += 256;
+    }
+
+    while (n >= 64)
+    {
+        __builtin_memcpy(p, q, 64);
+        n -= 64;
+        p += 64;
+        q += 64;
+    }
+
+    while (n >= 16)
+    {
+        __builtin_memcpy(p, q, 16);
+        n -= 16;
+        p += 16;
+        q += 16;
+    }
+
+    while (n--)
+        *p++ = *q++;
+
+    return dest;
+
+#else /* USE_BUILTIN_MEMCPY */
+
     unsigned char* p = (unsigned char*)dest;
     unsigned char* q = (unsigned char*)src;
 
@@ -402,6 +492,8 @@ void* libos_memcpy(void* dest, const void* src, size_t n)
         *p++ = *q++;
 
     return dest;
+
+#endif /* !USE_BUILTIN_MEMCPY */
 }
 
 int libos_memcmp(const void* s1, const void* s2, size_t n)
@@ -446,12 +538,39 @@ void* libos_memmove(void* dest_, const void* src_, size_t n)
 
 size_t libos_strlen(const char* s)
 {
+#ifdef USE_LOOP_UNROLLING
+
+    const char* p = s;
+
+    while (p[0] && p[1] && p[2] && p[3] && p[4] && p[5])
+        p += 6;
+
+    if (!p[0])
+        return (size_t)(p - s);
+    if (!p[1])
+        return (size_t)(p - s + 1);
+    if (!p[2])
+        return (size_t)(p - s + 2);
+    if (!p[3])
+        return (size_t)(p - s + 3);
+    if (!p[4])
+        return (size_t)(p - s + 4);
+    if (!p[5])
+        return (size_t)(p - s + 5);
+
+    /* Unreachable */
+    return 0;
+
+#else /* USE_LOOP_UNROLLING */
+
     size_t n = 0;
 
     while (*s++)
         n++;
 
     return n;
+
+#endif /* USE_LOOP_UNROLLING */
 }
 
 int libos_strcmp(const char* s1, const char* s2)
