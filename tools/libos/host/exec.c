@@ -16,6 +16,7 @@
 
 #include <libos/eraise.h>
 #include <libos/file.h>
+#include <libos/getopt.h>
 #include <openenclave/host.h>
 
 #include "libos_u.h"
@@ -81,54 +82,15 @@ int exec_get_opt(
     const char* opt,
     const char** optarg)
 {
-    size_t olen = strlen(opt);
+    char err[128];
+    int ret;
 
-    if (optarg)
-        *optarg = NULL;
+    ret = libos_get_opt(argc, argv, opt, optarg, err, sizeof(err));
 
-    if (!opt)
-        _err("unexpected");
+    if (ret < 0)
+        _err("%s", err);
 
-    for (int i = 0; i < *argc;)
-    {
-        if (strcmp(argv[i], opt) == 0)
-        {
-            if (optarg)
-            {
-                if (i + 1 == *argc)
-                    _err("%s: missing option argument", opt);
-
-                *optarg = argv[i + 1];
-                memmove(
-                    &argv[i], &argv[i + 2], (*argc - i - 1) * sizeof(char*));
-                (*argc) -= 2;
-                return 0;
-            }
-            else
-            {
-                memmove(&argv[i], &argv[i + 1], (*argc - i) * sizeof(char*));
-                (*argc)--;
-                return 0;
-            }
-        }
-        else if (strncmp(argv[i], opt, olen) == 0 && argv[i][olen] == '=')
-        {
-            if (!optarg)
-                _err("%s: extraneous '='", opt);
-
-            *optarg = &argv[i][olen + 1];
-            memmove(&argv[i], &argv[i + 1], (*argc - i) * sizeof(char*));
-            (*argc)--;
-            return 0;
-        }
-        else
-        {
-            i++;
-        }
-    }
-
-    /* Not found! */
-    return -1;
+    return ret;
 }
 
 static oe_enclave_t* _enclave;
