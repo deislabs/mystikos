@@ -38,7 +38,7 @@ static void _check_coverage()
         }
         else
         {
-            printf("=== passed OE_MMAN_COVERAGE_%zu\n", i);
+            printf("=== passed test (OE_MMAN_COVERAGE_%zu)\n", i);
         }
     }
 }
@@ -290,7 +290,7 @@ void test_mman_1()
 
     _merge_coverage(&h);
     _free_mman(&h);
-    printf("=== passed %s()\n", __FUNCTION__);
+    printf("=== passed test (%s)\n", __FUNCTION__);
 }
 
 /*
@@ -371,7 +371,7 @@ void test_mman_2()
 
     _merge_coverage(&h);
     _free_mman(&h);
-    printf("=== passed %s()\n", __FUNCTION__);
+    printf("=== passed test (%s)\n", __FUNCTION__);
 }
 
 /*
@@ -449,7 +449,7 @@ void test_mman_3()
 
     _merge_coverage(&h);
     _free_mman(&h);
-    printf("=== passed %s()\n", __FUNCTION__);
+    printf("=== passed test (%s)\n", __FUNCTION__);
 }
 
 /*
@@ -912,7 +912,7 @@ int main(int argc, const char* argv[])
     test_mman_randomly();
     test_out_of_memory();
     _check_coverage();
-    printf("=== passed all tests (%s)\n", argv[0]);
+    printf("=== passed test (%s)\n", argv[0]);
 
     return 0;
 }

@@ -104,5 +104,5 @@ attn:
 ##==============================================================================
 
 all-tests:
+	@ $(MAKE) -s tests TARGET=sgx
 	@ $(MAKE) -s tests TARGET=linux
-	@ $(MAKE) -s tests

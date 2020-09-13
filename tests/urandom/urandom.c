@@ -87,7 +87,7 @@ int main(int argc, const char* argv[])
     _test_read();
     _test_readv();
 
-    printf("=== passed tests (%s)\n", argv[0]);
+    printf("=== passed test (%s)\n", argv[0]);
 
     return 0;
 }

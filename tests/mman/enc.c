@@ -60,7 +60,7 @@ static void _check_coverage()
         }
         else
         {
-            PRINTF("=== passed LIBOS_MMAN_COVERAGE_%zu\n", i);
+            PRINTF("=== passed test (LIBOS_MMAN_COVERAGE_%zu)\n", i);
         }
     }
 }
@@ -325,7 +325,7 @@ void test_mman_1()
 
     _merge_coverage(&h);
     _free_mman(&h);
-    PRINTF("=== passed %s()\n", __FUNCTION__);
+    PRINTF("=== passed test (%s)\n", __FUNCTION__);
 }
 
 /*
@@ -407,7 +407,7 @@ void test_mman_2()
 
     _merge_coverage(&h);
     _free_mman(&h);
-    PRINTF("=== passed %s()\n", __FUNCTION__);
+    PRINTF("=== passed test (%s)\n", __FUNCTION__);
 }
 
 /*
@@ -485,7 +485,7 @@ void test_mman_3()
 
     _merge_coverage(&h);
     _free_mman(&h);
-    PRINTF("=== passed %s()\n", __FUNCTION__);
+    PRINTF("=== passed test (%s)\n", __FUNCTION__);
 }
 
 /*
@@ -529,7 +529,7 @@ void test_mman_4()
 
     _merge_coverage(&h);
     _free_mman(&h);
-    PRINTF("=== passed %s()\n", __FUNCTION__);
+    PRINTF("=== passed test (%s)\n", __FUNCTION__);
 }
 
 /*
@@ -569,7 +569,7 @@ void test_mman_5()
 
     _merge_coverage(&h);
     _free_mman(&h);
-    PRINTF("=== passed %s()\n", __FUNCTION__);
+    PRINTF("=== passed test (%s)\n", __FUNCTION__);
 }
 
 /*
@@ -604,7 +604,7 @@ void test_mman_6()
 
     _merge_coverage(&h);
     _free_mman(&h);
-    PRINTF("=== passed %s()\n", __FUNCTION__);
+    PRINTF("=== passed test (%s)\n", __FUNCTION__);
 }
 
 /*
@@ -655,7 +655,7 @@ void test_remap_1()
 
     _merge_coverage(&h);
     _free_mman(&h);
-    PRINTF("=== passed %s()\n", __FUNCTION__);
+    PRINTF("=== passed test (%s)\n", __FUNCTION__);
 }
 
 /*
@@ -694,7 +694,7 @@ void test_remap_2()
 
     _merge_coverage(&h);
     _free_mman(&h);
-    PRINTF("=== passed %s()\n", __FUNCTION__);
+    PRINTF("=== passed test (%s)\n", __FUNCTION__);
 }
 
 /*
@@ -734,7 +734,7 @@ void test_remap_3()
 
     _merge_coverage(&h);
     _free_mman(&h);
-    PRINTF("=== passed %s()\n", __FUNCTION__);
+    PRINTF("=== passed test (%s)\n", __FUNCTION__);
 }
 
 /*
@@ -776,7 +776,7 @@ void test_remap_4()
 
     _merge_coverage(&h);
     _free_mman(&h);
-    PRINTF("=== passed %s()\n", __FUNCTION__);
+    PRINTF("=== passed test (%s)\n", __FUNCTION__);
 }
 
 typedef struct _elem
@@ -905,7 +905,7 @@ void test_mman_randomly()
 
     _merge_coverage(&h);
     _free_mman(&h);
-    PRINTF("=== passed %s()\n", __FUNCTION__);
+    PRINTF("=== passed test (%s)\n", __FUNCTION__);
 }
 
 /*
@@ -929,7 +929,7 @@ void test_out_of_memory()
 
     _merge_coverage(&h);
     _free_mman(&h);
-    PRINTF("=== passed %s()\n", __FUNCTION__);
+    PRINTF("=== passed test (%s)\n", __FUNCTION__);
 }
 
 int run_ecall(void)

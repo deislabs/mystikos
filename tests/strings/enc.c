@@ -48,7 +48,7 @@ int run_ecall(void)
         const char* toks[] = {"red", "green", "blue"};
         size_t ntoks = sizeof(toks) / sizeof(toks[0]);
         assert(test_strsplit(str, ":", toks, ntoks) == 0);
-        printf("=== passed test_strsplit 1\n");
+        printf("=== passed test (strsplit 1)\n");
     }
 
     {
@@ -56,7 +56,7 @@ int run_ecall(void)
         const char* toks[] = {"red", "green", "blue"};
         size_t ntoks = sizeof(toks) / sizeof(toks[0]);
         assert(test_strsplit(str, ",;:", toks, ntoks) == 0);
-        printf("=== passed test_strsplit 2\n");
+        printf("=== passed test (strsplit 2)\n");
     }
 
     {
@@ -65,19 +65,19 @@ int run_ecall(void)
         size_t ntoks = sizeof(toks) / sizeof(toks[0]);
         test_strsplit(str, "?", toks, ntoks);
         assert(test_strsplit(str, "?", toks, ntoks) == 0);
-        printf("=== passed test_strsplit 3\n");
+        printf("=== passed test (strsplit 3)\n");
     }
 
     {
         const char str[] = "";
         assert(test_strsplit(str, ":", NULL, 0) == 0);
-        printf("=== passed test_strsplit 4\n");
+        printf("=== passed test (strsplit 4)\n");
     }
 
     {
         const char str[] = "";
         assert(test_strsplit(str, ":", NULL, 0) == 0);
-        printf("=== passed test_strsplit 5\n");
+        printf("=== passed test (strsplit 5)\n");
     }
 
     {
