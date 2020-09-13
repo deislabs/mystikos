@@ -10,9 +10,6 @@ ifdef STRACE
 OPTS = --strace
 endif
 
-TARGET = sgx
-EXEC = exec-$(TARGET)
-
 all: libos
 	mkdir -p $(APPDIR)/bin
 	$(CC) $(CFLAGS) -o $(APPDIR)/bin/cpuid cpuid.c $(LDFLAGS)

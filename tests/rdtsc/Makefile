@@ -11,9 +11,6 @@ all: libos
 	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/rdtsc rdtsc.c $(LDFLAGS)
 	$(LIBOS) mkcpio $(APPDIR) rootfs
 
-TARGET = sgx
-EXEC = exec-$(TARGET)
-
 tests:
 	$(LIBOS) $(EXEC) rootfs /bin/rdtsc red green blue yellow $(OPTS)
 

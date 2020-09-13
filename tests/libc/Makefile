@@ -25,9 +25,6 @@ TESTS = $(shell cat supported.txt)
 tests: libos
 	$(foreach i, $(TESTS), $(MAKE) run TEST=$(i) $(NL) )
 
-TARGET = sgx
-EXEC = exec-$(TARGET)
-
 run:
 	@ echo "=== TEST=$(TEST)"
 	@ rm -rf appdir

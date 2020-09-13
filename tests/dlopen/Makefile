@@ -12,9 +12,6 @@ ifdef STRACE
 OPTS = --strace
 endif
 
-TARGET = sgx
-EXEC = exec-$(TARGET)
-
 tests:
 	$(BINDIR)/libos $(EXEC) rootfs /dlopen $(OPTS)
 

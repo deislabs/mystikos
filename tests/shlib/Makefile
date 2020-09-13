@@ -19,9 +19,6 @@ ifdef STRACE
 OPTS += --strace
 endif
 
-TARGET = sgx
-EXEC = exec-$(TARGET)
-
 tests:
 	$(LIBOS) $(EXEC) $(OPTS) rootfs /bin/shlib $(OPTS)
 

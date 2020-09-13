@@ -135,3 +135,21 @@ EDGER8R_UNTRUSTED_OPTS += --search-path $(OE_INCDIR)
 EDGER8R_UNTRUSTED_OPTS += --untrusted-dir $(SUBOBJDIR)
 
 include $(TOP)/config.mak
+
+##==============================================================================
+##
+## Define $(EXEC) macro in terms of $(TARGET). This macro should be used in
+## tests as follows:
+##
+##     $ libos $(EXEC) rootfs <program-name> <args...>
+##
+## The target may be set when running the tests as shown in the following two
+## examples.
+##
+##     $ make TARGET=sgx tests
+##     $ make TARGET=linux tests
+##
+##==============================================================================
+
+TARGET = sgx
+EXEC = exec-$(TARGET)

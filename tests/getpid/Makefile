@@ -15,9 +15,6 @@ ifdef STRACE
 OPTS = --strace
 endif
 
-TARGET = sgx
-EXEC = exec-$(TARGET)
-
 tests: all
 	$(LIBOS) $(EXEC) rootfs /bin/getpid $(OPTS)
 
