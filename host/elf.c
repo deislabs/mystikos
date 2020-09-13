@@ -1618,16 +1618,6 @@ int elf_add_section(
         if (libos_buf_insert(&buf, sh.sh_offset, secdata, secsize) != 0)
             GOTO(done);
 
-#if 1
-        /* double-check the insert */
-        {
-            const void* p = buf.data + sh.sh_offset;
-
-            if (memcmp(p, secdata, secsize) != 0)
-                GOTO(done);
-        }
-#endif
-
         /* Reset ELF object based on updated memory */
         if (_reset_buffer(elf, &buf, sh.sh_offset, (ssize_t)secsize) != 0)
             GOTO(done);
@@ -1695,8 +1685,12 @@ int elf_add_section(
         if (libos_buf_append(&buf, &sh, sizeof(elf_shdr_t)) != 0)
             GOTO(done);
 
+        if (_reset_buffer(elf, &buf, 0, 0) != 0)
+            GOTO(done);
+
         /* Update number of sections */
         elf_ehdr_t* ehdr = _get_header(elf);
+
         if (ADD_OVERFLOW(ehdr->e_shnum, 1, &ehdr->e_shnum))
             GOTO(done);
 

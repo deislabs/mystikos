@@ -176,7 +176,7 @@ endif
 
 GDB_COMMAND = $(BINDIR)/libos-gdb --args
 
-ifdef LEAKS
+ifdef GDB
 __GDB_COMMAND = $(GDB_COMMAND)
 endif
 
