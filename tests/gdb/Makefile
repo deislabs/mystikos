@@ -24,7 +24,7 @@ all: libos
 tests:
 	${LIBOS_GDB} ${GDB_CMDS} ${LIBOS} ${EXEC} rootfs /bin/helloworld ${OPTS} 2>&1 > ${GDB_LOG_FILE} 2> /dev/null
 	@cat ${GDB_LOG_FILE} | grep -E "$(GDB_MATCH)" > /dev/null
-	@ echo "=== passed test: gdb"
+	@ echo "=== passed test (gdb)"
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos
