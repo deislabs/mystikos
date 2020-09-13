@@ -27,5 +27,6 @@ DIRS += conf
 DIRS += nbio
 DIRS += libc
 DIRS += thread
+DIRS += gdb
 
 include $(TOP)/rules.mak
