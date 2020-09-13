@@ -2,7 +2,6 @@ TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
 APPDIR=$(CURDIR)/appdir
-LIBOS = $(BINDIR)/libos
 CFLAGS = -fPIC
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 

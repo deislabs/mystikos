@@ -4,7 +4,6 @@ include $(TOP)/defs.mak
 TARGET = $(APPDIR)/bin/gencreds2
 CC = $(MUSL_GCC)
 APPDIR=$(CURDIR)/appdir
-LIBOS = $(BINDIR)/libos
 CFLAGS = -fPIC
 LDFLAGS = -Wl,-rpath=/lib -L$(APPDIR)/lib -lmbedcrypto -lmbedx509
 INCLUDES = -I$(OE_INCDIR) -I$(INCDIR) -I$(OE_INCDIR)/openenclave/3rdparty

@@ -7,8 +7,6 @@ TARGET = $(APPDIR)/bin/echo
 
 APPDIR=$(CURDIR)/appdir
 
-LIBOS = $(BINDIR)/libos
-
 CFLAGS = -fPIC -g -Wall -Werror
 
 LIBS = $(LIBDIR)/liboesdkenclave.a

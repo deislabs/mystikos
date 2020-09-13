@@ -1618,6 +1618,16 @@ int elf_add_section(
         if (libos_buf_insert(&buf, sh.sh_offset, secdata, secsize) != 0)
             GOTO(done);
 
+#if 1
+        /* double-check the insert */
+        {
+            const void* p = buf.data + sh.sh_offset;
+
+            if (memcmp(p, secdata, secsize) != 0)
+                GOTO(done);
+        }
+#endif
+
         /* Reset ELF object based on updated memory */
         if (_reset_buffer(elf, &buf, sh.sh_offset, (ssize_t)secsize) != 0)
             GOTO(done);

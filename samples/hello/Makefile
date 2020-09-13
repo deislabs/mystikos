@@ -3,7 +3,6 @@ include $(TOP)/defs.mak
 
 APPDIR = appdir
 APPNAME = hello
-LIBOS = $(BINDIR)/libos
 CFLAGS = -fPIC
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 
@@ -22,7 +21,7 @@ sign: all mkcpio private-pem
 	$(LIBOS) sign rootfs private.pem config.json
 
 package: all private-pem
-	$(LIBOS) package $(APPDIR) private.pem config.json
+	$(VALGRIND) $(LIBOS) package $(APPDIR) private.pem config.json
 
 run: mkcpio
 	$(LIBOS) exec rootfs /bin/$(APPNAME) red green blue yellow $(OPTS)

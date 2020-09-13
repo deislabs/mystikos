@@ -153,3 +153,37 @@ include $(TOP)/config.mak
 
 TARGET = sgx
 EXEC = exec-$(TARGET)
+
+##==============================================================================
+##
+## LEAKS
+##     Use "make LEAKS=1" to check for memory leaks.
+##
+##==============================================================================
+
+VALGRIND_COMMAND = valgrind --tool=memcheck --leak-check=full
+
+ifdef LEAKS
+__VALGRIND_COMMAND = $(VALGRIND_COMMAND)
+endif
+
+##==============================================================================
+##
+## GDB
+##     Use "make GDB=1" to run debugger
+##
+##==============================================================================
+
+GDB_COMMAND = $(BINDIR)/libos-gdb --args
+
+ifdef LEAKS
+__GDB_COMMAND = $(GDB_COMMAND)
+endif
+
+##==============================================================================
+##
+## LIBOS command
+##
+##==============================================================================
+
+LIBOS = $(__GDB_COMMAND) $(__VALGRIND_COMMAND) $(BINDIR)/libos
