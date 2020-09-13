@@ -14,7 +14,7 @@ GDB_CMDS=--batch \
 	-ex "backtrace" \
 	--args
 
-GDB_MATCH=Breakpoint 1, 0x00007fffe46..... in print_hello ()
+GDB_MATCH=Breakpoint 1, .................. in print_hello ()
 
 all: libos
 	mkdir -p $(APPDIR)/bin
