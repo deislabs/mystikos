@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 /*
 **==============================================================================
@@ -402,5 +403,11 @@ int elf_image_load_pages(
     elf_add_page_t add_page,
     void* add_page_arg,
     uint64_t* vaddr);
+
+static __inline__ bool elf_valid_ehdr_ident(const void* ehdr)
+{
+    const uint8_t ident[] = {0x7f, 'E', 'L', 'F'};
+    return memcmp(ehdr, ident, sizeof(ident)) == 0;
+}
 
 #endif /* _LIBOS_ELF_H */

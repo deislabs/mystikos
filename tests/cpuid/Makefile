@@ -10,19 +10,22 @@ ifdef STRACE
 OPTS = --strace
 endif
 
+TARGET = sgx
+EXEC = exec-$(TARGET)
+
 all: libos
 	mkdir -p $(APPDIR)/bin
 	$(CC) $(CFLAGS) -o $(APPDIR)/bin/cpuid cpuid.c $(LDFLAGS)
 	$(LIBOS) mkcpio $(APPDIR) rootfs
 
 tests:
-	$(LIBOS) exec $(OPTS) rootfs /bin/cpuid $(OPTS)
+	$(LIBOS) $(EXEC) $(OPTS) rootfs /bin/cpuid $(OPTS)
 
 gdb:
-	$(LIBOS_GDB) --args $(LIBOS) exec $(OPTS) rootfs /bin/cpuid $(OPTS)
+	$(LIBOS_GDB) --args $(LIBOS) $(EXEC) $(OPTS) rootfs /bin/cpuid $(OPTS)
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos
 
 clean:
-	rm -rf $(APPDIR) rootfs export
+	rm -rf $(APPDIR) rootfs export ramfs

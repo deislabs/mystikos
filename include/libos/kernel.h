@@ -28,7 +28,7 @@ typedef struct libos_kernel_args
 
     /* Tracing options */
     bool trace_syscalls;
-    bool real_syscalls;
+    bool have_syscall_instruction;
     bool export_ramfs;
 
     /* The parent process identifer from the target */

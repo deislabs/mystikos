@@ -17,11 +17,13 @@ CFLAGS = $(OEHOST_CFLAGS)
 
 LDFLAGS = $(OEHOST_LDFLAGS)
 
-LIBS =
 LIBS += $(OEHOST_LIBDIR)/liboehostmr.a
 LIBS += $(OEHOST_LIBDIR)/liboesignlib.a
 LIBS += $(LIBDIR)/libjson.a
 LIBS += $(LIBDIR)/liboshost.a
+LIBS += $(LIBDIR)/libostargetcommon.a
+LIBS += $(LIBDIR)/libostargetlinux.a
+LIBS += $(LIBDIR)/libostargetsgxhost.a
 
 CLEAN = $(SUBOBJDIR)/libos_u.h $(SUBOBJDIR)/libos_u.c $(SUBOBJDIR)/libos_args.h
 

@@ -11,11 +11,14 @@ all: libos
 	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/rdtsc rdtsc.c $(LDFLAGS)
 	$(LIBOS) mkcpio $(APPDIR) rootfs
 
+TARGET = sgx
+EXEC = exec-$(TARGET)
+
 tests:
-	$(LIBOS) exec rootfs /bin/rdtsc red green blue yellow $(OPTS)
+	$(LIBOS) $(EXEC) rootfs /bin/rdtsc red green blue yellow $(OPTS)
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos
 
 clean:
-	rm -rf $(APPDIR) rootfs export
+	rm -rf $(APPDIR) rootfs export ramfs

@@ -1,14 +1,16 @@
 #ifndef _LIBOS_OPTIONS_H
 #define _LIBOS_OPTIONS_H
 
-#include <stdbool.h>
+#include <libos/types.h>
 
-bool libos_get_real_syscalls(void);
+typedef struct libos_options
+{
+    bool trace_syscalls;
+    bool have_syscall_instruction;
+    bool export_ramfs;
+}
+libos_options_t;
 
-void libos_set_real_syscalls(bool flag);
-
-bool libos_get_export_ramfs(void);
-
-void libos_set_export_ramfs(bool flag);
+extern libos_options_t __options;
 
 #endif /* _LIBOS_OPTIONS_H */

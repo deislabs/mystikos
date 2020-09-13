@@ -11,13 +11,18 @@ all: libos
 	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/getpid getpid.c $(LDFLAGS)
 	$(LIBOS) mkcpio $(APPDIR) rootfs
 
-#OPTS = --strace
+ifdef STRACE
+OPTS = --strace
+endif
+
+TARGET = sgx
+EXEC = exec-$(TARGET)
 
 tests: all
-	$(LIBOS) exec rootfs /bin/getpid $(OPTS)
+	$(LIBOS) $(EXEC) rootfs /bin/getpid $(OPTS)
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos
 
 clean:
-	rm -rf $(APPDIR) rootfs export
+	rm -rf $(APPDIR) rootfs export ramfs

@@ -1,9 +1,9 @@
 #include <libos/getopt.h>
 
-#include <string.h>
 #include <libos/eraise.h>
+#include <string.h>
 
-int libos_get_opt(
+int libos_getopt(
     int* argc,
     const char* argv[],
     const char* opt,

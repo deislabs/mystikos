@@ -25,6 +25,9 @@ TESTS = $(shell cat supported.txt)
 tests: libos
 	$(foreach i, $(TESTS), $(MAKE) run TEST=$(i) $(NL) )
 
+TARGET = sgx
+EXEC = exec-$(TARGET)
+
 run:
 	@ echo "=== TEST=$(TEST)"
 	@ rm -rf appdir
@@ -32,10 +35,10 @@ run:
 	@ install -D $(SRCDIR)/$(TEST) appdir/$(TEST)
 	@ cp $(SRCDIR)/src/functional/*.so appdir/src/functional
 	$(BINDIR)/libos mkcpio appdir rootfs
-	$(BINDIR)/libos exec --real-syscalls $(OPTS) rootfs $(TEST)
+	$(BINDIR)/libos $(EXEC) $(OPTS) rootfs $(TEST)
 
 clean:
-	rm -rf rootfs appdir $(SRCDIR)
+	rm -rf rootfs appdir $(SRCDIR) ramfs
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos

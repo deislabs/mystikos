@@ -7,12 +7,6 @@ long libos_tcall_random(void* data, size_t size)
     return libos_tcall(LIBOS_TCALL_RANDOM, params);
 }
 
-long libos_tcall_thread_self(void)
-{
-    long params[6] = {0};
-    return libos_tcall(LIBOS_TCALL_THREAD_SELF, params);
-}
-
 long libos_tcall_vsnprintf(
     char* str,
     size_t size,

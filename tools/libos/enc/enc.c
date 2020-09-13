@@ -19,6 +19,7 @@
 #include <libos/mmanutils.h>
 #include <libos/mount.h>
 #include <libos/ramfs.h>
+#include <libos/reloc.h>
 #include <libos/syscall.h>
 #include <libos/thread.h>
 #include <libos/trace.h>
@@ -81,40 +82,6 @@ static void _setup_sockets(void)
     {
         fprintf(stderr, "oe_load_module_host_socket_interface() failed\n");
         assert(0);
-    }
-}
-
-static void _apply_relocations(
-    const void* image_base,
-    size_t image_size,
-    const void* reloc_base,
-    size_t reloc_size)
-{
-    const Elf64_Rela* relocs = (const Elf64_Rela*)reloc_base;
-    size_t nrelocs = reloc_size / sizeof(Elf64_Rela);
-    const uint8_t* baseaddr = (const uint8_t*)image_base;
-
-    for (size_t i = 0; i < nrelocs; i++)
-    {
-        const Elf64_Rela* p = &relocs[i];
-
-        /* If zero-padded bytes reached */
-        if (p->r_offset == 0)
-            break;
-
-        assert(p->r_offset > 0);
-        assert(p->r_offset <= image_size);
-
-        /* Compute address of reference to be relocated */
-        uint64_t* dest = (uint64_t*)(baseaddr + p->r_offset);
-
-        uint64_t reloc_type = ELF64_R_TYPE(p->r_info);
-
-        /* Relocate the reference */
-        if (reloc_type == R_X86_64_RELATIVE)
-        {
-            *dest = (uint64_t)(baseaddr + p->r_addend);
-        }
     }
 }
 
@@ -200,7 +167,6 @@ int libos_enter_ecall(
     const void* config_data;
     size_t config_size;
     bool trace_syscalls = false;
-    bool real_syscalls = false;
     bool export_ramfs = false;
     config_parsed_data_t parsed_config = {0};
 
@@ -277,7 +243,6 @@ int libos_enter_ecall(
     if (options)
     {
         trace_syscalls = options->trace_syscalls;
-        real_syscalls = options->real_syscalls;
         export_ramfs = options->export_ramfs;
     }
 
@@ -381,8 +346,15 @@ int libos_enter_ecall(
             assert(0);
         }
 
-        _apply_relocations(
-            kernel_data, kernel_size, enclave_base + region.vaddr, region.size);
+        if (libos_apply_relocations(
+                kernel_data,
+                kernel_size,
+                enclave_base + region.vaddr,
+                region.size) != 0)
+        {
+            fprintf(stderr, "libos_apply_relocations() failed\n");
+            assert(0);
+        }
     }
 
     /* Get the crt region */
@@ -425,8 +397,13 @@ int libos_enter_ecall(
             assert(0);
         }
 
-        _apply_relocations(
-            crt_data, crt_size, enclave_base + region.vaddr, region.size);
+        if (libos_apply_relocations(
+                crt_data, crt_size, enclave_base + region.vaddr, region.size) !=
+            0)
+        {
+            fprintf(stderr, "libos_apply_relocations() failed\n");
+            assert(0);
+        }
     }
 
     /* Enter the kernel image */
@@ -435,6 +412,7 @@ int libos_enter_ecall(
         const Elf64_Ehdr* ehdr = kernel_data;
         libos_kernel_entry_t entry;
 
+        memset(&args, 0, sizeof(args));
         args.argc = _count_args(argv);
         args.argv = argv;
         args.envc = _count_args(envp);
@@ -446,7 +424,6 @@ int libos_enter_ecall(
         args.crt_data = (void*)crt_data;
         args.crt_size = crt_size;
         args.trace_syscalls = trace_syscalls;
-        args.real_syscalls = real_syscalls;
         args.export_ramfs = export_ramfs;
         args.tcall = libos_tcall;
         args.ppid = ppid;

@@ -18,14 +18,17 @@ ifdef STRACE
 OPTS += --strace
 endif
 
+TARGET = sgx
+EXEC = exec-$(TARGET)
+
 tests:
-	$(LIBOS) exec $(OPTS) rootfs /bin/nbio $(OPTS)
+	$(LIBOS) $(EXEC) $(OPTS) rootfs /bin/nbio $(OPTS)
 
 gdb:
-	$(LIBOS_GDB) --args $(LIBOS) exec rootfs /bin/nbio $(OPTS)
+	$(LIBOS_GDB) --args $(LIBOS) $(EXEC) rootfs /bin/nbio $(OPTS)
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos
 
 clean:
-	rm -rf $(APPDIR) rootfs export
+	rm -rf $(APPDIR) rootfs export ramfs

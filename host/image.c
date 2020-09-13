@@ -5,6 +5,7 @@
 #include <malloc.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
 
 #define PAGE_SIZE 4096
 
@@ -155,8 +156,14 @@ static int _process_elf_image(elf_image_t* image)
 
     /* Allocate the image on a page boundary */
     {
-        if (!(image_base = memalign(PAGE_SIZE, image_size)))
+        int prot = PROT_READ | PROT_WRITE;
+        int flags = MAP_ANONYMOUS | MAP_PRIVATE;
+        void* addr;
+
+        if ((addr = mmap(NULL, image_size, prot, flags, -1, 0)) == MAP_FAILED)
             ERAISE(-ENOMEM);
+
+        image_base = addr;
 
         /* Clear the image memory */
         memset(image_base, 0, image_size);
@@ -256,6 +263,27 @@ static int _process_elf_image(elf_image_t* image)
             ERAISE(-ERANGE);
     }
 
+    /* Set memory permissions for each segment */
+    for (size_t i = 0; i < image->num_segments; i++)
+    {
+        const elf_segment_t* segment = &image->segments[i];
+        const uint64_t vaddr = libos_round_down_to_page_size(segment->vaddr);
+        void* addr = (uint8_t*)image_base + vaddr;
+        int prot = 0;
+
+        if (segment->flags & PF_R)
+            prot |= PROT_READ;
+
+        if (segment->flags & PF_W)
+            prot |= PROT_WRITE;
+
+        if (segment->flags & PF_X)
+            prot |= PROT_EXEC;
+
+        if (mprotect(addr, segment->memsz, prot) != 0)
+            ERAISE(-errno);
+    }
+
     image->elf.magic = ELF_MAGIC;
     image->image_data = image_base;
     image->image_size = image_size;
@@ -279,7 +307,7 @@ done:
     }
 
     if (image_base)
-        free(image_base);
+        munmap(image_base, image_size);
 
     return ret;
 }
@@ -343,7 +371,7 @@ void elf_image_free(elf_image_t* image)
             free(image->segments);
 
         if (image->image_data)
-            free(image->image_data);
+            munmap(image->image_data, image->image_size);
 
         if (image->reloc_data)
             free(image->reloc_data);

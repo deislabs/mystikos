@@ -11,11 +11,14 @@ all: libos
 	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/argv argv.c $(LDFLAGS)
 	$(LIBOS) mkcpio $(APPDIR) rootfs
 
+TARGET = sgx
+EXEC = exec-$(TARGET)
+
 tests:
-	$(LIBOS) exec rootfs /bin/argv red green blue $(OPTS)
+	$(LIBOS) $(EXEC) rootfs /bin/argv red green blue $(OPTS)
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos
 
 clean:
-	rm -rf $(APPDIR) rootfs export
+	rm -rf $(APPDIR) rootfs export ramfs

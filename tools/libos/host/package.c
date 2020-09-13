@@ -3,15 +3,18 @@
 
 #include <assert.h>
 #include <errno.h>
-#include <libos/elf.h>
-#include <libos/malloc.h>
 #include <limits.h>
-#include <openenclave/bits/sgx/region.h>
-#include <openenclave/host.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+#include <libos/elf.h>
+#include <libos/getopt.h>
+#include <libos/malloc.h>
+#include <openenclave/bits/sgx/region.h>
+#include <openenclave/host.h>
+
 #include "../config.h"
 #include "cpio.h"
 #include "exec.h"
@@ -343,6 +346,23 @@ int _package(int argc, const char* argv[])
     return 0;
 }
 
+static int _getopt(
+    int* argc,
+    const char* argv[],
+    const char* opt,
+    const char** optarg)
+{
+    char err[128];
+    int ret;
+
+    ret = libos_getopt(argc, argv, opt, optarg, err, sizeof(err));
+
+    if (ret < 0)
+        _err("%s", err);
+
+    return ret;
+}
+
 // <app_name> [app args]
 int _exec_package(int argc, const char* argv[], const char* executable)
 {
@@ -360,20 +380,11 @@ int _exec_package(int argc, const char* argv[], const char* executable)
     /* Get options */
     {
         /* Get --trace-syscalls option */
-        if (exec_get_opt(&argc, argv, "--trace-syscalls", NULL) == 0 ||
-            exec_get_opt(&argc, argv, "--strace", NULL) == 0)
+        if (_getopt(&argc, argv, "--trace-syscalls", NULL) == 0 ||
+            _getopt(&argc, argv, "--strace", NULL) == 0)
         {
             options.trace_syscalls = true;
         }
-
-        /* Get --real-syscalls option */
-        if (exec_get_opt(&argc, argv, "--real-syscalls", NULL) == 0)
-            options.real_syscalls = true;
-    }
-
-    if (options.real_syscalls)
-    {
-        flags |= OE_ENCLAVE_FLAG_SIMULATE;
     }
 
     if (snprintf(app_dir, PATH_MAX, "%s", argv[0]) >= PATH_MAX)

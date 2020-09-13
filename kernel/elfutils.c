@@ -10,7 +10,7 @@
 #include <libos/elfutils.h>
 #include <libos/eraise.h>
 #include <libos/file.h>
-#include <libos/fsbase.h>
+#include <libos/fsgs.h>
 #include <libos/libc.h>
 #include <libos/malloc.h>
 #include <libos/paths.h>
@@ -846,7 +846,7 @@ int elf_enter_crt(
         /* Unload the debugger symbols */
         libos_syscall_unload_symbols();
 
-        if ((pthread = (struct pthread*)libos_get_fs_base()))
+        if ((pthread = (struct pthread*)libos_get_fs()))
         {
             libos_assert(pthread->unused != 0);
             libos_assert(libos_valid_pthread(pthread));
@@ -856,7 +856,7 @@ int elf_enter_crt(
         }
 
         /* restore the original fsbase */
-        libos_set_fs_base(thread->original_fsbase);
+        libos_set_fs(thread->original_fsbase);
     }
     else
     {

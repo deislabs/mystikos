@@ -1,6 +1,6 @@
 TOP = $(abspath ..)
 include $(TOP)/defs.mak
 
-DIRS = sgx
+DIRS = common linux sgx
 
 include $(TOP)/rules.mak

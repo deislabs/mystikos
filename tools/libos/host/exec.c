@@ -5,6 +5,7 @@
 #include <libgen.h>
 #include <libos/elf.h>
 #include <libos/strings.h>
+#include <libos/tcall.h>
 #include <limits.h>
 #include <linux/futex.h>
 #include <pthread.h>
@@ -76,7 +77,7 @@ done:
     return ret;
 }
 
-int exec_get_opt(
+static int _getopt(
     int* argc,
     const char* argv[],
     const char* opt,
@@ -85,7 +86,7 @@ int exec_get_opt(
     char err[128];
     int ret;
 
-    ret = libos_get_opt(argc, argv, opt, optarg, err, sizeof(err));
+    ret = libos_getopt(argc, argv, opt, optarg, err, sizeof(err));
 
     if (ret < 0)
         _err("%s", err);
@@ -143,49 +144,13 @@ done:
 
 long libos_wait_ocall(uint64_t event, const struct libos_timespec* timeout)
 {
-    int* uaddr = (int*)event;
-
-    /* if *uaddr == 0 */
-    if (__sync_fetch_and_add(uaddr, -1) == 0)
-    {
-        do
-        {
-            long ret;
-
-            /* wait while *uaddr == -1 */
-            ret = syscall(
-                SYS_futex,
-                (int*)event,
-                FUTEX_WAIT_PRIVATE,
-                -1,
-                timeout,
-                NULL,
-                0);
-
-            if (ret != 0 && errno == ETIMEDOUT)
-            {
-                return ETIMEDOUT;
-            }
-        } while (*uaddr == -1);
-    }
-
-    return 0;
+    const struct timespec* ts = (const struct timespec*)timeout;
+    return libos_tcall_wait(event, ts);
 }
 
 long libos_wake_ocall(uint64_t event)
 {
-    long ret = 0;
-
-    if (__sync_fetch_and_add((int*)event, 1) != 0)
-    {
-        ret = syscall(
-            SYS_futex, (int*)event, FUTEX_WAKE_PRIVATE, 1, NULL, NULL, 0);
-
-        if (ret != 0)
-            ret = -errno;
-    }
-
-    return ret;
+    return libos_tcall_wake(event);
 }
 
 long libos_wake_wait_ocall(
@@ -193,48 +158,13 @@ long libos_wake_wait_ocall(
     uint64_t self_event,
     const struct libos_timespec* timeout)
 {
-    long ret;
-
-    if ((ret = libos_wake_ocall(waiter_event)) != 0)
-        return ret;
-
-    if ((ret = libos_wait_ocall(self_event, timeout)) != 0)
-        return ret;
-
-    return 0;
+    const struct timespec* ts = (const struct timespec*)timeout;
+    return libos_tcall_wake_wait(waiter_event, self_event, ts);
 }
 
 long libos_export_file_ocall(const char* path, const void* data, size_t size)
 {
-    long ret = 0;
-    char cwd[PATH_MAX];
-    char file[PATH_MAX];
-    char dir[PATH_MAX];
-    char* p;
-
-    if (!path || (!data && size))
-        ERAISE(-EINVAL);
-
-    if (!(getcwd(cwd, sizeof(cwd))))
-        ERAISE(-errno);
-
-    if (snprintf(file, sizeof(file), "%s/ramfs/%s", cwd, path) >= sizeof(file))
-        ERAISE(-ENAMETOOLONG);
-
-    if (libos_strlcpy(dir, file, sizeof(dir)) >= sizeof(dir))
-        ERAISE(-ENAMETOOLONG);
-
-    /* Chop off the final component */
-    if ((p = strrchr(dir, '/')))
-        *p = '\0';
-    else
-        ERAISE(-EINVAL);
-
-    ECHECK(libos_mkdirhier(dir, 0777));
-    ECHECK(libos_write_file(file, data, size));
-
-done:
-    return ret;
+    return libos_tcall_export_file(path, data, size);
 }
 
 int exec_launch_enclave(
@@ -262,6 +192,7 @@ int exec_launch_enclave(
     if (_serialize_args(argv, &args, &args_size) != 0)
         _err("failed to serialize argv stings");
 
+    /* ATTN: hardcoded for now */
     const char env[] = "PATH=/bin\0HOME=/root";
 
     /* Enter the enclave and run the program */
@@ -289,32 +220,29 @@ int exec_launch_enclave(
     return retval;
 }
 
-int _exec(int argc, const char* argv[])
+int exec_action(int argc, const char* argv[])
 {
     const oe_enclave_type_t type = OE_ENCLAVE_TYPE_SGX;
     uint32_t flags = OE_ENCLAVE_FLAG_DEBUG;
     struct libos_options options;
     const region_details* details;
+    int return_status;
 
-    assert(strcmp(argv[1], "exec") == 0);
+    assert(strcmp(argv[1], "exec") == 0 || strcmp(argv[1], "exec-sgx") == 0);
 
     memset(&options, 0, sizeof(options));
 
     /* Get options */
     {
         /* Get --trace-syscalls option */
-        if (exec_get_opt(&argc, argv, "--trace-syscalls", NULL) == 0 ||
-            exec_get_opt(&argc, argv, "--strace", NULL) == 0)
+        if (_getopt(&argc, argv, "--trace-syscalls", NULL) == 0 ||
+            _getopt(&argc, argv, "--strace", NULL) == 0)
         {
             options.trace_syscalls = true;
         }
 
-        /* Get --real-syscalls option */
-        if (exec_get_opt(&argc, argv, "--real-syscalls", NULL) == 0)
-            options.real_syscalls = true;
-
         /* Get --export-ramfs option */
-        if (exec_get_opt(&argc, argv, "--export-ramfs", NULL) == 0)
+        if (_getopt(&argc, argv, "--export-ramfs", NULL) == 0)
             options.export_ramfs = true;
 
         /* Set export_ramfs option based on LIBOS_ENABLE_GCOV env variable */
@@ -324,11 +252,6 @@ int _exec(int argc, const char* argv[])
             if ((val = getenv("LIBOS_ENABLE_GCOV")) && strcmp(val, "1") == 0)
                 options.export_ramfs = true;
         }
-    }
-
-    if (options.real_syscalls)
-    {
-        flags |= OE_ENCLAVE_FLAG_SIMULATE;
     }
 
     if (argc < 4)
@@ -352,13 +275,10 @@ int _exec(int argc, const char* argv[])
         _err("Creating region data failed.");
     }
 
-    if (exec_launch_enclave(
-            details->enc.path, type, flags, argv + 3, &options) != 0)
-    {
-        _err("Failed to run enclave %s", details->enc.path);
-    }
+    return_status = exec_launch_enclave(
+            details->enc.path, type, flags, argv + 3, &options);
 
     free_region_details();
 
-    return 0;
+    return return_status;
 }

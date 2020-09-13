@@ -4,14 +4,14 @@ include $(TOP)/defs.mak
 
 PROGRAM = libosenc.so
 
-SOURCES = $(SUBOBJDIR)/libos_t.c enc.c ../config.c
+SOURCES = $(SUBOBJDIR)/libos_t.c enc.c ../config.c $(TOP)/shared/reloc.c
 
 INCLUDES = $(OEENCLAVE_INCLUDES) -I$(SUBOBJDIR) -I../
 
 CFLAGS = $(OEENCLAVE_CFLAGS)
 
 LIBS += $(LIBDIR)/libjson.a
-LIBS += $(LIBDIR)/libostargetsgx.a
+LIBS += $(LIBDIR)/libostargetsgxenclave.a
 LIBS += $(LIBDIR)/liblthread.a
 LIBS += $(OEENCLAVE_LIBDIR)/liboehostfs.a
 LIBS += $(OEENCLAVE_LIBDIR)/liboehostsock.a

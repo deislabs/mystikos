@@ -12,7 +12,7 @@ CFLAGS = $(OEENCLAVE_CFLAGS)
 LDFLAGS = $(OEENCLAVE_LDFLAGS) -L$(LIBDIR)
 
 LIBS += $(LIBDIR)/liboskernel.a
-LIBS += $(LIBDIR)/libostargetsgx.a
+LIBS += $(LIBDIR)/libostargetsgxenclave.a
 
 ifdef LIBOS_ENABLE_GCOV
 LIBS += $(LIBDIR)/libgcov_musl.a

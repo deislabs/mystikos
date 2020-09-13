@@ -31,12 +31,6 @@ done:
     return ret;
 }
 
-static long _tcall_thread_self(void)
-{
-    extern uint64_t oe_thread_self(void);
-    return (long)oe_thread_self();
-}
-
 static long _tcall_allocate(
     void* ptr,
     size_t alignment,
@@ -130,7 +124,7 @@ long libos_tcall_clock_gettime(clockid_t clk_id, struct timespec* tp)
     (void)clk_id;
     (void)tp;
 
-    assert("unimplemented: implement in enclave" == NULL);
+    assert("sgx: unimplemented: implement in enclave" == NULL);
     return -ENOTSUP;
 }
 
@@ -150,7 +144,7 @@ oe_result_t libos_oe_call_host_function(
     (void)output_buffer;
     (void)output_buffer_size;
     (void)output_bytes_written;
-    assert("unimplemented: implement in enclave" == NULL);
+    assert("sgx: unimplemented: implement in enclave" == NULL);
     return -ENOTSUP;
 }
 
@@ -160,7 +154,7 @@ long libos_tcall_isatty(int fd)
 {
     (void)fd;
 
-    assert("unimplemented: implement in enclave" == NULL);
+    assert("sgx: unimplemented: implement in enclave" == NULL);
     return -ENOTSUP;
 }
 
@@ -176,7 +170,7 @@ long libos_tcall_add_symbol_file(
     (void)file_size;
     (void)text;
     (void)text_size;
-    assert("unimplemented: implement in enclave" == NULL);
+    assert("sgx: unimplemented: implement in enclave" == NULL);
     return -ENOTSUP;
 }
 
@@ -184,7 +178,7 @@ long libos_tcall_add_symbol_file(
 LIBOS_WEAK
 long libos_tcall_load_symbols(void)
 {
-    assert("unimplemented: implement in enclave" == NULL);
+    assert("sgx: unimplemented: implement in enclave" == NULL);
     return -ENOTSUP;
 }
 
@@ -192,7 +186,7 @@ long libos_tcall_load_symbols(void)
 LIBOS_WEAK
 long libos_tcall_unload_symbols(void)
 {
-    assert("unimplemented: implement in enclave" == NULL);
+    assert("sgx: unimplemented: implement in enclave" == NULL);
     return -ENOTSUP;
 }
 
@@ -201,7 +195,7 @@ LIBOS_WEAK
 long libos_tcall_create_host_thread(uint64_t cookie)
 {
     (void)cookie;
-    assert("unimplemented: implement in enclave" == NULL);
+    assert("sgx: unimplemented: implement in enclave" == NULL);
     return -ENOTSUP;
 }
 
@@ -211,7 +205,7 @@ long libos_tcall_wait(uint64_t event, const struct timespec* timeout)
 {
     (void)event;
     (void)timeout;
-    assert("unimplemented: implement in enclave" == NULL);
+    assert("sgx: unimplemented: implement in enclave" == NULL);
     return -ENOTSUP;
 }
 
@@ -220,7 +214,7 @@ LIBOS_WEAK
 long libos_tcall_wake(uint64_t event)
 {
     (void)event;
-    assert("unimplemented: implement in enclave" == NULL);
+    assert("sgx: unimplemented: implement in enclave" == NULL);
     return -ENOTSUP;
 }
 
@@ -234,7 +228,7 @@ long libos_tcall_wake_wait(
     (void)waiter_event;
     (void)self_event;
     (void)timeout;
-    assert("unimplemented: implement in enclave" == NULL);
+    assert("sgx: unimplemented: implement in enclave" == NULL);
     return -ENOTSUP;
 }
 
@@ -244,7 +238,7 @@ long libos_tcall_export_file(const char* path, const void* data, size_t size)
     (void)path;
     (void)data;
     (void)size;
-    assert("unimplemented: implement in enclave" == NULL);
+    assert("sgx: unimplemented: implement in enclave" == NULL);
     return -ENOTSUP;
 }
 
@@ -451,10 +445,6 @@ long libos_tcall(long n, long params[6])
         case LIBOS_TCALL_RANDOM:
         {
             return _tcall_random((void*)x1, (size_t)x2);
-        }
-        case LIBOS_TCALL_THREAD_SELF:
-        {
-            return _tcall_thread_self();
         }
         case LIBOS_TCALL_ALLOCATE:
         {

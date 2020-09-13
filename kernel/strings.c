@@ -438,7 +438,6 @@ void* libos_memset(void* s, int c, size_t n)
 #endif /* !USE_BUILTIN_MEMSET */
 }
 
-
 void* libos_memcpy(void* dest, const void* src, size_t n)
 {
 #ifdef USE_BUILTIN_MEMCPY

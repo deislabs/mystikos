@@ -113,9 +113,10 @@
 
 #include <errno.h>
 #include <libos/defs.h>
+#include <libos/fsgs.h>
 #include <libos/mman.h>
+#include <libos/spinlock.h>
 #include <libos/strings.h>
-#include <libos/tcall.h>
 #include <string.h>
 
 /*
@@ -285,7 +286,7 @@ static libos_vad_t* _list_find(libos_mman_t* mman, uintptr_t addr)
 /* Lock the mman and set the 'locked' parameter to true */
 static void _mman_lock(libos_mman_t* mman, bool* locked)
 {
-    libos_recursive_spin_lock(&mman->lock, libos_tcall_thread_self());
+    libos_recursive_spin_lock(&mman->lock, (long)libos_get_fs());
     *locked = true;
 }
 
@@ -294,7 +295,7 @@ static void _mman_unlock(libos_mman_t* mman, bool* locked)
 {
     if (*locked)
     {
-        libos_recursive_spin_unlock(&mman->lock, libos_tcall_thread_self());
+        libos_recursive_spin_unlock(&mman->lock, (long)libos_get_fs());
         *locked = false;
     }
 }

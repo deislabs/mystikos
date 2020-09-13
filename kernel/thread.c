@@ -2,13 +2,14 @@
 #include <libos/atexit.h>
 #include <libos/atomic.h>
 #include <libos/eraise.h>
-#include <libos/fsbase.h>
+#include <libos/fsgs.h>
 #include <libos/futex.h>
 #include <libos/malloc.h>
 #include <libos/setjmp.h>
 #include <libos/spinlock.h>
 #include <libos/strings.h>
 #include <libos/syscall.h>
+#include <libos/options.h>
 #include <libos/tcall.h>
 #include <libos/thread.h>
 #include <libos/trace.h>
@@ -149,7 +150,7 @@ static bool _valid_thread(const libos_thread_t* thread)
 
 libos_thread_t* libos_self(void)
 {
-    const struct pthread* pthread = libos_get_fs_base();
+    const struct pthread* pthread = libos_get_fs();
 
     if (!libos_valid_pthread(pthread))
         libos_panic("invalid pthread");
@@ -171,6 +172,10 @@ static void _call_thread_fn(void)
 static long _run(libos_thread_t* thread, pid_t tid, uint64_t event)
 {
     struct pthread* pthread;
+    const struct pthread* old_pthread = libos_get_fs();
+
+    if (__options.have_syscall_instruction)
+        libos_set_gs(old_pthread);
 
     if (!_valid_thread(thread))
         return -EINVAL;
@@ -178,9 +183,12 @@ static long _run(libos_thread_t* thread, pid_t tid, uint64_t event)
     if (!libos_valid_pthread(pthread = thread->newtls))
         return -EINVAL;
 
+    /* propagate the canary */
+    pthread->canary = old_pthread->canary;
+
     thread->tid = tid;
     thread->event = event;
-    thread->original_fsbase = libos_get_fs_base();
+    thread->original_fsbase = old_pthread;
 
     /* link pthread to libos_thread */
     pthread->unused = (uint64_t)thread;
@@ -189,9 +197,9 @@ static long _run(libos_thread_t* thread, pid_t tid, uint64_t event)
     if (_add_thread(thread) != 0)
         libos_panic("_add_thread() failed");
 
-    libos_set_fs_base(pthread);
+    libos_set_fs(pthread);
 
-    /* Set the TID for this thread (sets the pthread tid field */
+    /* Set the TID for this thread (sets the pthread tid field) */
     libos_atomic_exchange(thread->ptid, tid);
 
     /* Jump back here from exit */
@@ -199,23 +207,21 @@ static long _run(libos_thread_t* thread, pid_t tid, uint64_t event)
     {
         libos_assert(libos_gettid() != -1);
 
-        libos_atomic_exchange(thread->ctid, 0);
-
-        /* Wake the thread that is waiting on thread->ctid */
-        const int futex_op = FUTEX_WAKE | FUTEX_PRIVATE;
-        libos_syscall_futex(thread->ctid, futex_op, 1, 0, NULL, 0);
-
-        if (_remove_thread(thread) != 0)
-        {
-            libos_panic("_remove_thread() failed");
-        }
-
-        /* restore the original fsbase */
-        libos_set_fs_base(thread->original_fsbase);
-
-        /* free the thread */
         libos_assert(pthread->unused == (uint64_t)thread);
         pthread->unused = 0;
+
+        /* Wake up any pthread waiting on ctid */
+        {
+            libos_atomic_exchange(thread->ctid, 0);
+            const int futex_op = FUTEX_WAKE | FUTEX_PRIVATE;
+            libos_syscall_futex(thread->ctid, futex_op, 1, 0, NULL, 0);
+        }
+
+        if (_remove_thread(thread) != 0)
+            libos_panic("_remove_thread() failed");
+
+        /* restore the original fsbase */
+        libos_set_fs(thread->original_fsbase);
 
         libos_release_thread(thread);
     }
@@ -297,6 +303,9 @@ long libos_syscall_clone(
 pid_t libos_gettid(void)
 {
     libos_thread_t* thread;
+
+    if (__options.have_syscall_instruction && libos_get_fs() == libos_get_gs())
+        return -1;
 
     if (!(thread = libos_self()))
     {

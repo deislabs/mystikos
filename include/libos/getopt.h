@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 
-int libos_get_opt(
+int libos_getopt(
     int* argc,
     const char* argv[],
     const char* opt,

@@ -24,7 +24,7 @@
 #include <libos/eraise.h>
 #include <libos/errno.h>
 #include <libos/file.h>
-#include <libos/fsbase.h>
+#include <libos/fsgs.h>
 #include <libos/gcov.h>
 #include <libos/id.h>
 #include <libos/initfini.h>
@@ -54,8 +54,6 @@
 #define COLOR_RESET "\e[0m"
 
 long libos_syscall_isatty(int fd);
-
-static bool _trace_syscalls;
 
 typedef struct _pair
 {
@@ -487,7 +485,7 @@ __attribute__((format(printf, 2, 3))) static void _strace(
     const char* fmt,
     ...)
 {
-    if (_trace_syscalls)
+    if (__options.trace_syscalls)
     {
         const bool isatty = libos_syscall_isatty(STDERR_FILENO) == 1;
         const char* blue = isatty ? COLOR_GREEN : "";
@@ -525,27 +523,10 @@ int libos_get_exit_status(void)
 
 static long _forward_syscall(long n, long params[6])
 {
-    const long x1 = params[0];
-    const long x2 = params[1];
-    const long x3 = params[2];
-    const long x4 = params[3];
-    const long x5 = params[4];
-    const long x6 = params[5];
+    if (__options.trace_syscalls)
+        libos_eprintf("    [forward syscall]\n");
 
-    if (libos_get_real_syscalls())
-    {
-        if (_trace_syscalls)
-            libos_eprintf("    [real syscall]\n");
-
-        return libos_syscall6(n, x1, x2, x3, x4, x5, x6);
-    }
-    else
-    {
-        if (_trace_syscalls)
-            libos_eprintf("    [forward syscall]\n");
-
-        return libos_tcall(n, params);
-    }
+    return libos_tcall(n, params);
 }
 
 typedef struct fd_entry
@@ -556,7 +537,7 @@ typedef struct fd_entry
 
 static long _return(long n, long ret)
 {
-    if (_trace_syscalls)
+    if (__options.trace_syscalls)
     {
         const char* red = "";
         const char* reset = "";
@@ -1844,7 +1825,7 @@ long libos_syscall(long n, long params[6])
             {
                 libos_call_fini_functions();
 
-                if (libos_get_export_ramfs())
+                if (__options.export_ramfs)
                     libos_export_ramfs();
             }
 
@@ -2328,10 +2309,15 @@ long libos_syscall(long n, long params[6])
             if (!_initialized)
             {
                 struct pthread* pthread = (struct pthread*)tp;
+                struct pthread* old_pthread = (struct pthread*)libos_get_fs();
 
                 libos_assert(libos_valid_pthread(pthread));
                 pthread->unused = (uint64_t)__libos_main_thread;
-                libos_set_fs_base(pthread);
+
+                if (old_pthread)
+                    pthread->canary = old_pthread->canary;
+
+                libos_set_fs(pthread);
                 _initialized = true;
             }
             else
@@ -2779,11 +2765,6 @@ long libos_syscall(long n, long params[6])
     libos_panic("unhandled syscall: %s()", syscall_str(n));
 
     return 0;
-}
-
-void libos_trace_syscalls(bool flag)
-{
-    _trace_syscalls = flag;
 }
 
 /*

@@ -104,8 +104,6 @@ libos_syscall6(long n, long x1, long x2, long x3, long x4, long x5, long x6)
     return (long)ret;
 }
 
-void libos_trace_syscalls(bool flag);
-
 long libos_syscall(long n, long params[6]);
 
 const char* syscall_str(long n);

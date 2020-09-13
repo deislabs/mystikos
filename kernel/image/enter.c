@@ -6,26 +6,39 @@
 #include <libos/eraise.h>
 #include <libos/errno.h>
 #include <libos/file.h>
-#include <libos/fsbase.h>
+#include <libos/fsgs.h>
 #include <libos/initfini.h>
 #include <libos/kernel.h>
 #include <libos/malloc.h>
 #include <libos/mmanutils.h>
 #include <libos/mount.h>
-#include <libos/options.h>
 #include <libos/process.h>
 #include <libos/ramfs.h>
 #include <libos/strings.h>
 #include <libos/syscall.h>
 #include <libos/thread.h>
+#include <libos/options.h>
 
-static libos_kernel_args_t* _args;
+static libos_kernel_args_t _args;
 
 static libos_fs_t* _fs;
 
 long libos_tcall(long n, long params[6])
 {
-    return (*_args->tcall)(n, params);
+    const void* fs = NULL;
+
+    if (__options.have_syscall_instruction)
+    {
+        fs = libos_get_fs();
+        libos_set_fs(libos_get_gs());
+    }
+
+    long ret = (_args.tcall)(n, params);
+
+    if (fs)
+        libos_set_fs(fs);
+
+    return ret;
 }
 
 static int _setup_ramfs(void)
@@ -124,7 +137,7 @@ static int _create_main_thread(
     thread->magic = LIBOS_THREAD_MAGIC;
     thread->tid = pid;
     thread->event = event;
-    thread->original_fsbase = libos_get_fs_base();
+    thread->original_fsbase = libos_get_fs();
 
     *thread_out = thread;
     thread = NULL;
@@ -144,16 +157,23 @@ int libos_enter_kernel(libos_kernel_args_t* args)
     const char rootfs_path[] = "/tmp/rootfs.cpio";
     libos_thread_t* thread = NULL;
 
+    if (!args)
+        libos_crash();
+
+    /* Save the aguments */
+    _args = *args;
+
+    __options.trace_syscalls = _args.trace_syscalls;
+    __options.have_syscall_instruction = _args.have_syscall_instruction;
+    __options.export_ramfs = _args.export_ramfs;
+
+    if (__options.have_syscall_instruction)
+        libos_set_gs(libos_get_fs());
+
     libos_call_init_functions();
 
     /* Check arguments */
     {
-        if (!args)
-        {
-            libos_eprintf("kernel: bad args\n");
-            ERAISE(-EINVAL);
-        }
-
         if (!args->argc || !args->argv)
         {
             libos_eprintf("kernel: bad argc/argv arguments\n");
@@ -190,14 +210,6 @@ int libos_enter_kernel(libos_kernel_args_t* args)
             ERAISE(-EINVAL);
         }
     }
-
-    /* Save the aguments */
-    _args = args;
-
-    /* Set the option flags */
-    libos_trace_syscalls(args->trace_syscalls);
-    libos_set_real_syscalls(args->real_syscalls);
-    libos_set_export_ramfs(args->export_ramfs);
 
     /* Setup the memory manager */
     if (libos_setup_mman(args->mman_data, args->mman_size) != 0)

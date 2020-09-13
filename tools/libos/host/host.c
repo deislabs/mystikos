@@ -9,6 +9,7 @@
 #include <libos/elf.h>
 #include <libos/eraise.h>
 #include <libos/file.h>
+#include <libos/getopt.h>
 #include <libos/round.h>
 #include <libos/strings.h>
 #include <libos/trace.h>
@@ -26,6 +27,7 @@
 #include "cpio.h"
 #include "debug_image.h"
 #include "exec.h"
+#include "exec_linux.h"
 #include "libos_u.h"
 #include "package.h"
 #include "sign.h"
@@ -243,9 +245,14 @@ int main(int argc, const char* argv[])
         return 1;
     }
 
-    if (strcmp(argv[1], "exec") == 0)
+    if (strcmp(argv[1], "exec") == 0 ||
+        strcmp(argv[1], "exec-sgx") == 0)
     {
-        return _exec(argc, argv);
+        return exec_action(argc, argv);
+    }
+    else if (strcmp(argv[1], "exec-linux") == 0)
+    {
+        return exec_linux_action(argc, argv);
     }
     else if (strcmp(argv[1], "mkcpio") == 0)
     {

@@ -16,11 +16,14 @@ ifdef EXPORT
 OPTS = --export-rootfs
 endif
 
+TARGET = sgx
+EXEC = exec-$(TARGET)
+
 run: all
-	$(BINDIR)/libos exec $(OPTS) rootfs /curl
+	$(BINDIR)/libos $(EXEC) $(OPTS) rootfs /curl
 
 gdb: all
-	$(LIBOS_GDB) --args $(BINDIR)/libos exec $(OPTS) rootfs /curl
+	$(LIBOS_GDB) --args $(BINDIR)/libos $(EXEC) $(OPTS) rootfs /curl
 
 clean:
 	rm -rf rootfs export

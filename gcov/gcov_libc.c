@@ -9,8 +9,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <libos/gcov.h>
 #include <libos/defs.h>
+#include <libos/gcov.h>
 
 static libc_t _libc;
 
