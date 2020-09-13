@@ -5,17 +5,7 @@
 #include <cpuid.h>
 #include <errno.h>
 #include <libgen.h>
-#include <libos/cpio.h>
-#include <libos/elf.h>
-#include <libos/eraise.h>
-#include <libos/file.h>
-#include <libos/getopt.h>
-#include <libos/round.h>
-#include <libos/strings.h>
-#include <libos/trace.h>
 #include <limits.h>
-#include <openenclave/bits/sgx/region.h>
-#include <openenclave/host.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,6 +13,19 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
+
+#include <libos/cpio.h>
+#include <libos/elf.h>
+#include <libos/eraise.h>
+#include <libos/file.h>
+#include <libos/getopt.h>
+#include <libos/round.h>
+#include <libos/strings.h>
+#include <libos/tcall.h>
+#include <libos/trace.h>
+#include <openenclave/bits/sgx/region.h>
+#include <openenclave/host.h>
+
 #include "../shared.h"
 #include "cpio.h"
 #include "debug_image.h"
@@ -91,13 +94,13 @@ static oe_debug_image_t _debug_images[MAX_DEBUG_IMAGES];
 static bool _debug_images_loaded[MAX_DEBUG_IMAGES];
 static size_t _num_debug_images;
 
-int libos_add_symbol_file_ocall(
+long libos_tcall_add_symbol_file(
     const void* file_data,
     size_t file_size,
     const void* text_data,
     size_t text_size)
 {
-    int ret = -1;
+    long ret = -1;
     int fd = -1;
     char template[] = "/tmp/libosXXXXXX";
     oe_debug_image_t di;
@@ -142,6 +145,16 @@ done:
     return ret;
 }
 
+int libos_add_symbol_file_ocall(
+    const void* file_data,
+    size_t file_size,
+    const void* text_data,
+    size_t text_size)
+{
+    return (int)libos_tcall_add_symbol_file(
+        file_data, file_size, text_data, text_size);
+}
+
 OE_EXPORT
 OE_NEVER_INLINE
 void oe_notify_debugger_library_load(oe_debug_image_t* image)
@@ -168,7 +181,7 @@ oe_result_t oe_debug_notify_library_unloaded(oe_debug_image_t* image)
     return OE_OK;
 }
 
-int libos_load_symbols_ocall(void)
+long libos_tcall_load_symbols(void)
 {
     int ret = 0;
 
@@ -185,9 +198,14 @@ int libos_load_symbols_ocall(void)
     return ret;
 }
 
-int libos_unload_symbols_ocall(void)
+int libos_load_symbols_ocall(void)
 {
-    int ret = 0;
+    return libos_tcall_load_symbols();
+}
+
+long libos_tcall_unload_symbols(void)
+{
+    long ret = 0;
 
     for (size_t i = 0; i < _num_debug_images; i++)
     {
@@ -198,6 +216,11 @@ int libos_unload_symbols_ocall(void)
     }
 
     return ret;
+}
+
+int libos_unload_symbols_ocall(void)
+{
+    return libos_tcall_unload_symbols();
 }
 
 #define USAGE \
@@ -245,8 +268,7 @@ int main(int argc, const char* argv[])
         return 1;
     }
 
-    if (strcmp(argv[1], "exec") == 0 ||
-        strcmp(argv[1], "exec-sgx") == 0)
+    if (strcmp(argv[1], "exec") == 0 || strcmp(argv[1], "exec-sgx") == 0)
     {
         return exec_action(argc, argv);
     }

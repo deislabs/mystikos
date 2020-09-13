@@ -1,11 +1,11 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <malloc.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
-#include <malloc.h>
 #include <sys/syscall.h>
 #include <time.h>
 #include <unistd.h>
@@ -142,24 +142,24 @@ long libos_tcall_add_symbol_file(
     (void)file_size;
     (void)text;
     (void)text_size;
-    /* ATTN: ignored */
-    return -0;
+    assert("linux: unimplemented: implement in enclave" == NULL);
+    return -ENOTSUP;
 }
 
 /* Must be overriden by enclave application */
 LIBOS_WEAK
 long libos_tcall_load_symbols(void)
 {
-    /* ATTN: ignored */
-    return 0;
+    assert("linux: unimplemented: implement in enclave" == NULL);
+    return -ENOTSUP;
 }
 
 /* Must be overriden by enclave application */
 LIBOS_WEAK
 long libos_tcall_unload_symbols(void)
 {
-    /* ATTN: ignored */
-    return 0;
+    assert("linux: unimplemented: implement in enclave" == NULL);
+    return -ENOTSUP;
 }
 
 /* Must be overriden by enclave application */

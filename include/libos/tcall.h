@@ -62,4 +62,14 @@ long libos_tcall_wake_wait(
 
 long libos_tcall_export_file(const char* path, const void* data, size_t size);
 
+long libos_tcall_add_symbol_file(
+    const void* file_data,
+    size_t file_size,
+    const void* text_data,
+    size_t text_size);
+
+long libos_tcall_load_symbols(void);
+
+long libos_tcall_unload_symbols(void);
+
 #endif /* _LIBOS_TCALL_H */

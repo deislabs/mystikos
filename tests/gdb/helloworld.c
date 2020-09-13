@@ -4,7 +4,7 @@
 
 void print_hello(int count)
 {
-    for (int i = 0; i < count ; i++)
+    for (int i = 0; i < count; i++)
     {
         fprintf(stdout, "%d: Hello world!\n", i);
     }

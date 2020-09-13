@@ -12,12 +12,12 @@
 #include <libos/malloc.h>
 #include <libos/mmanutils.h>
 #include <libos/mount.h>
+#include <libos/options.h>
 #include <libos/process.h>
 #include <libos/ramfs.h>
 #include <libos/strings.h>
 #include <libos/syscall.h>
 #include <libos/thread.h>
-#include <libos/options.h>
 
 static libos_kernel_args_t _args;
 

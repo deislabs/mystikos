@@ -28,5 +28,6 @@ DIRS += nbio
 DIRS += libc
 DIRS += thread
 DIRS += gdb
+DIRS += dlopen
 
 include $(TOP)/rules.mak

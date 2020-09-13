@@ -5,11 +5,11 @@
 #include <libos/fsgs.h>
 #include <libos/futex.h>
 #include <libos/malloc.h>
+#include <libos/options.h>
 #include <libos/setjmp.h>
 #include <libos/spinlock.h>
 #include <libos/strings.h>
 #include <libos/syscall.h>
-#include <libos/options.h>
 #include <libos/tcall.h>
 #include <libos/thread.h>
 #include <libos/trace.h>

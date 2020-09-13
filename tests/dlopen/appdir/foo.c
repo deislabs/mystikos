@@ -1,33 +1,31 @@
-#include <stdio.h>
 #include <dlfcn.h>
+#include <stdio.h>
 #include <stdlib.h>
 
-void call_bar(void)
+int call_bar(void)
 {
     void* handle;
-    typedef void (*func_t)();
+    typedef int (*func_t)();
     func_t func;
     const char path[] = "/libbar.so";
 
     if (!(handle = dlopen(path, RTLD_NOW)))
     {
         fprintf(stderr, "libfoo: dlopen() failed\n");
-        exit(1);
+        return -1;
     }
 
     if (!(func = dlsym(handle, "bar")))
     {
         fprintf(stderr, "libfoo: dlsym() failed\n");
-        exit(1);
+        return -1;
     }
 
-    (*func)();
-
-    dlclose(handle);
+    return (*func)();
 }
 
-void foo()
+int foo()
 {
-    printf("foo()\n");
-    call_bar();
+    // printf("foo()\n");
+    return call_bar();
 }

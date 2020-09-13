@@ -2,8 +2,8 @@
 #include <libos/eraise.h>
 #include <libos/thread.h>
 #include <linux/futex.h>
-#include <sys/syscall.h>
 #include <stdio.h>
+#include <sys/syscall.h>
 
 long libos_tcall_wait(uint64_t event, const struct timespec* timeout)
 {

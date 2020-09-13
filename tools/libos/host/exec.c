@@ -275,8 +275,8 @@ int exec_action(int argc, const char* argv[])
         _err("Creating region data failed.");
     }
 
-    return_status = exec_launch_enclave(
-            details->enc.path, type, flags, argv + 3, &options);
+    return_status =
+        exec_launch_enclave(details->enc.path, type, flags, argv + 3, &options);
 
     free_region_details();
 

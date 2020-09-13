@@ -12,11 +12,14 @@ ifdef STRACE
 OPTS = --strace
 endif
 
-run:
-	$(BINDIR)/libos exec rootfs /main $(OPTS)
+TARGET = sgx
+EXEC = exec-$(TARGET)
+
+tests:
+	$(BINDIR)/libos $(EXEC) rootfs /dlopen $(OPTS)
 
 gdb:
-	$(LIBOS_GDB) --args $(BINDIR)/libos exec rootfs /main $(OPTS)
+	$(LIBOS_GDB) --args $(BINDIR)/libos $(EXEC) rootfs /dlopen $(OPTS)
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos

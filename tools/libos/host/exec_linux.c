@@ -1,16 +1,16 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
-#include <time.h>
 #include <assert.h>
+#include <linux/futex.h>
+#include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <syscall.h>
-#include <pthread.h>
-#include <linux/futex.h>
+#include <time.h>
 
 #include <libos/elf.h>
 #include <libos/eraise.h>
