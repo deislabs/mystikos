@@ -370,10 +370,12 @@ void test_cond_broadcast(void)
 int main(int argc, const char* argv[])
 {
     test_create_thread();
+#if 0
     test_mutexes(PTHREAD_MUTEX_NORMAL);
     test_mutexes(PTHREAD_MUTEX_RECURSIVE);
     test_timedlock();
     test_cond_signal();
     test_cond_broadcast();
+#endif
     return 0;
 }

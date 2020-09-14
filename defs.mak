@@ -165,6 +165,7 @@ VALGRIND_COMMAND = valgrind --tool=memcheck --leak-check=full
 
 ifdef LEAKS
 __VALGRIND_COMMAND = $(VALGRIND_COMMAND)
+__VALGRIND_COMMAND += --vgdb=yes --vgdb-error=0
 endif
 
 ##==============================================================================

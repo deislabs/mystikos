@@ -16,7 +16,7 @@ endif
 
 LDFLAGS1 = -Wl,--sort-section,alignment -Wl,--sort-common -Wl,--gc-sections -Wl,--hash-style=both -Wl,--no-undefined -Wl,--exclude-libs=ALL -nostdlib -nodefaultlibs -nostartfiles
 
-LDFLAGS1 += -Wl,-elibos_crt_enter
+LDFLAGS1 += -Wl,-elibos_enter_crt
 
 LDFLAGS2 = -Wl,-Bstatic -Wl,-Bsymbolic -Wl,--export-dynamic -Wl,-pie -Wl,--build-id -Wl,-z,noexecstack -Wl,-z,now
 

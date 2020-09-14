@@ -106,17 +106,69 @@ static void _load_regions(const char* rootfs, struct regions* r)
     if (libos_load_file(rootfs, &r->rootfs_data, &r->rootfs_size) != 0)
         _err("failed to map file: %s", rootfs);
 
-    if (format_liboscrt(path, sizeof(path)) != 0)
-        _err("cannot find liboscrt.so");
+    /* Load liboscrt.so */
+    {
+        if (format_liboscrt(path, sizeof(path)) != 0)
+            _err("cannot find liboscrt.so");
 
-    if (elf_image_load(path, &r->liboscrt) != 0)
-        _err("failed to load C runtime image: %s", path);
+        if (elf_image_load(path, &r->liboscrt) != 0)
+            _err("failed to load C runtime image: %s", path);
 
-    if (format_liboskernel(path, sizeof(path)) != 0)
-        _err("cannot find liboskernel.so");
+        /* Add crt debugger symbols to gdb */
+        {
+            void* file_data;
+            size_t file_size;
 
-    if (elf_image_load(path, &r->liboskernel) != 0)
-        _err("failed to load C runtime image: %s", path);
+            if (libos_load_file(path, &file_data, &file_size) != 0)
+                _err("failed to load file: %s", path);
+
+            if (libos_tcall_add_symbol_file(
+                file_data,
+                file_size,
+                r->liboscrt.image_data,
+                r->liboscrt.image_size) != 0)
+            {
+                _err("failed to add crt debug symbols");
+            }
+
+            /* Load symbols and notify gdb */
+            libos_tcall_load_symbols();
+
+            free(file_data);
+        }
+    }
+
+    /* Load liboscrt.so */
+    {
+        if (format_liboskernel(path, sizeof(path)) != 0)
+            _err("cannot find liboskernel.so");
+
+        if (elf_image_load(path, &r->liboskernel) != 0)
+            _err("failed to load C runtime image: %s", path);
+
+        /* Add kernel debugger symbols to gdb */
+        {
+            void* file_data;
+            size_t file_size;
+
+            if (libos_load_file(path, &file_data, &file_size) != 0)
+                _err("failed to load file: %s", path);
+
+            if (libos_tcall_add_symbol_file(
+                file_data,
+                file_size,
+                r->liboskernel.image_data,
+                r->liboskernel.image_size) != 0)
+            {
+                _err("failed to add kernel debug symbols");
+            }
+
+            /* Load symbols and notify gdb */
+            libos_tcall_load_symbols();
+
+            free(file_data);
+        }
+    }
 
     if (!(r->mman_data = _map_mmap_region(DEFAULT_MMAN_SIZE)))
         _err("failed to map mmap region");

@@ -104,7 +104,7 @@ int __clone(int (*fn)(void*), void* child_stack, int flags, void* arg, ...)
     return libos_syscall(SYS_libos_clone, params);
 }
 
-void libos_crt_enter(void* stack, void* dynv, syscall_callback_t callback)
+void libos_enter_crt(void* stack, void* dynv, syscall_callback_t callback)
 {
     _syscall_callback = callback;
 
