@@ -15,6 +15,22 @@
 #include <libos/syscallext.h>
 #include <libos/tcall.h>
 
+#include "debugmalloc.h"
+
+#ifdef LIBOS_DEBUG_MALLOC
+#define MALLOC libos_debug_malloc
+#define CALLOC libos_debug_calloc
+#define REALLOC libos_debug_realloc
+#define MEMALIGN libos_debug_memalign
+#define FREE libos_debug_free
+#else
+#define MALLOC malloc
+#define CALLOC calloc
+#define REALLOC realloc
+#define MEMALIGN memalign
+#define FREE free
+#endif
+
 static long _tcall_random(void* data, size_t size)
 {
     long ret = 0;
@@ -48,11 +64,12 @@ static long _tcall_allocate(
 
         if (size == 0)
         {
+            //FREE(ptr);
             *new_ptr = NULL;
             goto done;
         }
 
-        if (!(*new_ptr = realloc(ptr, size)))
+        if (!(*new_ptr = REALLOC(ptr, size)))
             ERAISE(-ENOMEM);
     }
     else if (alignment)
@@ -66,7 +83,7 @@ static long _tcall_allocate(
             goto done;
         }
 
-        if (!(*new_ptr = memalign(alignment, size)))
+        if (!(*new_ptr = MEMALIGN(alignment, size)))
             ERAISE(-ENOMEM);
     }
     else
@@ -79,12 +96,12 @@ static long _tcall_allocate(
 
         if (clear)
         {
-            if (!(*new_ptr = calloc(size, 1)))
+            if (!(*new_ptr = CALLOC(size, 1)))
                 ERAISE(-ENOMEM);
         }
         else
         {
-            if (!(*new_ptr = malloc(size)))
+            if (!(*new_ptr = MALLOC(size)))
                 ERAISE(-ENOMEM);
         }
     }
@@ -96,7 +113,7 @@ done:
 static long _tcall_deallocate(void* ptr)
 {
     if (ptr)
-        free(ptr);
+        FREE(ptr);
 
     return 0;
 }
