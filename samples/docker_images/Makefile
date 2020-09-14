@@ -29,5 +29,5 @@ clean:
 	rm -rf rootfs
 
 run:
-	$(LIBOS) mkcpio alpine-appdir rootfs && $(LIBOS) exec $(OPTS) rootfs /bin/ls /bin
+	$(LIBOS) mkcpio alpine-appdir rootfs && $(LIBOS_EXEC) $(OPTS) rootfs /bin/ls /bin
 	#$(LIBOS) mkcpio nginx-appdir rootfs && $(LIBOS) exec $(OPTS) rootfs /usr/sbin/nginx

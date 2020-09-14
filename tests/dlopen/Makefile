@@ -13,10 +13,7 @@ OPTS = --strace
 endif
 
 tests:
-	$(BINDIR)/libos $(EXEC) rootfs /dlopen $(OPTS)
-
-gdb:
-	$(LIBOS_GDB) --args $(BINDIR)/libos $(EXEC) rootfs /dlopen $(OPTS)
+	$(LIBOS_EXEC) rootfs /dlopen $(OPTS)
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos

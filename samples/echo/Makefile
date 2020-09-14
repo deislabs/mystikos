@@ -31,7 +31,7 @@ OPTS += --strace
 endif
 
 run:
-	$(LIBOS) exec $(OPTS) rootfs /bin/echo $(OPTS)
+	$(LIBOS_EXEC) $(OPTS) rootfs /bin/echo $(OPTS)
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos

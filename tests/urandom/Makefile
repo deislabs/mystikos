@@ -18,10 +18,7 @@ OPTS += --strace
 endif
 
 tests:
-	$(LIBOS) $(EXEC) $(OPTS) rootfs /bin/urandom $(OPTS)
-
-gdb:
-	$(LIBOS_GDB) --args $(LIBOS) $(EXEC) $(OPTS) rootfs /bin/urandom $(OPTS)
+	$(LIBOS_EXEC) $(OPTS) rootfs /bin/urandom $(OPTS)
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos

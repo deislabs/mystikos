@@ -23,10 +23,7 @@ OPTS += --trace-syscalls
 endif
 
 run: all
-	libos exec $(OPTS) rootfs /bin/ls /sbin
+	$(LIBOS_EXEC) $(OPTS) rootfs /bin/ls /sbin
 
 clean:
 	sudo rm -rf alpine-minirootfs.tar.gz appdir rootfs appdir
-
-crash:
-	libos exec --strace rootfs /bin/pwd

@@ -24,7 +24,7 @@ package: all private-pem
 	$(VALGRIND) $(LIBOS) package $(APPDIR) private.pem config.json
 
 run: mkcpio
-	$(LIBOS) exec rootfs /bin/$(APPNAME) red green blue yellow $(OPTS)
+	$(LIBOS_EXEC) rootfs /bin/$(APPNAME) red green blue yellow $(OPTS)
 
 run-signed: sign
 	$(APPNAME).signed/bin/libos exec $(APPNAME).signed/rootfs /bin/$(APPNAME) red green blue yellow $(OPTS)

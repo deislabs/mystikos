@@ -18,10 +18,7 @@ OPTS += --strace
 endif
 
 tests:
-	$(LIBOS) $(EXEC) $(OPTS) rootfs /bin/nbio $(OPTS)
-
-gdb:
-	$(LIBOS_GDB) --args $(LIBOS) $(EXEC) rootfs /bin/nbio $(OPTS)
+	$(LIBOS_EXEC) $(OPTS) rootfs /bin/nbio $(OPTS)
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos

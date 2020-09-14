@@ -191,6 +191,8 @@ static long _run(libos_thread_t* thread, pid_t tid, uint64_t event)
     struct pthread* pthread;
     const struct pthread* old_pthread = libos_get_fs();
 
+    libos_assert(libos_valid_pthread(old_pthread));
+
     if (__options.have_syscall_instruction)
         libos_set_gs(old_pthread);
 
@@ -198,7 +200,7 @@ static long _run(libos_thread_t* thread, pid_t tid, uint64_t event)
         return -EINVAL;
 
     if (!libos_valid_pthread(pthread = thread->newtls))
-        return -EINVAL;
+        libos_panic("%s(%u): invalid pthread", __FILE__, __LINE__);
 
     /* propagate the canary */
     pthread->canary = old_pthread->canary;

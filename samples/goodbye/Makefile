@@ -17,7 +17,7 @@ OPTS += --export-ramfs
 endif
 
 run: all
-	$(BINDIR)/libos exec $(OPTS) rootfs /goodbye
+	$(LIBOS_EXEC) $(OPTS) rootfs /goodbye
 
 clean:
 	rm -rf rootfs ramfs

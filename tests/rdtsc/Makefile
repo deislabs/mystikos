@@ -11,7 +11,7 @@ all: libos
 	$(LIBOS) mkcpio $(APPDIR) rootfs
 
 tests:
-	$(LIBOS) $(EXEC) rootfs /bin/rdtsc red green blue yellow $(OPTS)
+	$(LIBOS_EXEC) rootfs /bin/rdtsc red green blue yellow $(OPTS)
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos

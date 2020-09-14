@@ -22,7 +22,7 @@ OPTS += --strace
 endif
 
 run:
-	$(LIBOS) exec $(OPTS) rootfs /bin/gencreds2 $(OPTS)
+	$(LIBOS_EXEC) $(OPTS) rootfs /bin/gencreds2 $(OPTS)
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos

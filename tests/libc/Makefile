@@ -32,7 +32,7 @@ run:
 	@ install -D $(SRCDIR)/$(TEST) appdir/$(TEST)
 	@ cp $(SRCDIR)/src/functional/*.so appdir/src/functional
 	$(BINDIR)/libos mkcpio appdir rootfs
-	$(BINDIR)/libos $(EXEC) $(OPTS) rootfs $(TEST)
+	$(LIBOS_EXEC) $(OPTS) rootfs $(TEST)
 
 clean:
 	rm -rf rootfs appdir $(SRCDIR) ramfs

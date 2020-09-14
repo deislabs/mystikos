@@ -14,14 +14,8 @@ ifdef STRACE
 OPTS += --strace
 endif
 
-TARGET = sgx
-EXEC = exec-$(TARGET)
-
 run: all
-	$(LIBOS) $(EXEC) $(OPTS) rootfs /bin/pthread
-
-gdb: all
-	$(LIBOS_GDB) --args $(LIBOS) $(EXEC) rootfs /bin/pthread $(OPTS)
+	$(LIBOS_EXEC) $(OPTS) rootfs /bin/pthread
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos

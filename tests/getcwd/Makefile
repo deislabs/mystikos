@@ -15,7 +15,7 @@ OPTS = --strace
 endif
 
 tests: all
-	$(LIBOS) $(EXEC) rootfs /bin/getcwd $(OPTS)
+	$(LIBOS_EXEC) rootfs /bin/getcwd $(OPTS)
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos

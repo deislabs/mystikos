@@ -13,7 +13,7 @@ all: libos
 #OPTS = --trace-syscalls
 
 run: all
-	$(LIBOS) exec rootfs /bin/main $(OPTS)
+	$(LIBOS_EXEC) rootfs /bin/main $(OPTS)
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos

@@ -11,7 +11,7 @@ all: libos
 	$(LIBOS) mkcpio $(APPDIR) rootfs
 
 tests:
-	$(LIBOS) $(EXEC) rootfs /bin/argv red green blue $(OPTS)
+	$(LIBOS_EXEC) rootfs /bin/argv red green blue $(OPTS)
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos

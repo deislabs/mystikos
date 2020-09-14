@@ -16,7 +16,7 @@ OPTS += --strace
 endif
 
 tests:
-	$(LIBOS) $(EXEC) $(OPTS) rootfs /bin/thread
+	$(LIBOS_EXEC) $(OPTS) rootfs /bin/thread
 
 gdb:
 	$(LIBOS_GDB) --args $(LIBOS) $(EXEC) rootfs /bin/thread $(OPTS)

@@ -186,4 +186,6 @@ endif
 ##
 ##==============================================================================
 
-LIBOS = $(__GDB_COMMAND) $(__VALGRIND_COMMAND) $(BINDIR)/libos
+LIBOS_EXEC = $(__GDB_COMMAND) $(__VALGRIND_COMMAND) $(BINDIR)/libos $(EXEC)
+
+LIBOS = $(BINDIR)/libos
