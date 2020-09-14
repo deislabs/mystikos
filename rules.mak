@@ -56,7 +56,7 @@ ifdef DIRS
 endif
 
 clean:
-	rm -f $(__OBJECTS) $(__PROGRAM) $(__SHLIB) $(__ARCHIVE) $(CLEAN)
+	rm -rf $(__OBJECTS) $(__PROGRAM) $(__SHLIB) $(__ARCHIVE) $(CLEAN)
 ifdef DIRS
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) clean $(NL) )
 endif

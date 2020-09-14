@@ -11,6 +11,8 @@ include $(TOP)/defs.mak
 
 DIRS = third_party gcov json host target kernel crt oesdk tools alpine tests
 
+CLEAN = $(BUILDDIR)
+
 include $(TOP)/rules.mak
 
 ##==============================================================================

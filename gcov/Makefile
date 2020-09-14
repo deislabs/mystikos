@@ -59,7 +59,7 @@ all:
 	ar rv $(TARGET) $(SUBOBJDIR)/gcov.o
 
 clean:
-	rm -f $(TARGET) $(SUBOBJDIR)/gcov.o
+	rm -f $(TARGET) $(SUBOBJDIR)/gcov.o $(SUBOBJDIR)/gcov_libc.o
 
 tests:
 
