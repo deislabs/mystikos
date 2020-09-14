@@ -2311,13 +2311,21 @@ long libos_syscall(long n, long params[6])
                 struct pthread* pthread = (struct pthread*)tp;
                 struct pthread* old_pthread = (struct pthread*)libos_get_fs();
 
+                libos_assert(libos_valid_pthread(old_pthread));
                 libos_assert(libos_valid_pthread(pthread));
-                pthread->unused = (uint64_t)__libos_main_thread;
 
-                if (old_pthread)
-                    pthread->canary = old_pthread->canary;
+                /* set the thread pointer for this thread */
+                __libos_main_thread->newtls = (void*)tp;
 
-                libos_set_fs(pthread);
+                /* add this thread to the active thread list */
+                libos_add_self(__libos_main_thread);
+
+                /* propagate the canary from the old pthread */
+                pthread->canary = old_pthread->canary;
+
+                /* set the fs base register to point to the new thread */
+                libos_set_fs(tp);
+
                 _initialized = true;
             }
             else

@@ -16,7 +16,6 @@ struct pthread
     uint64_t reserved3;
     uint64_t reserved4;
     uint64_t canary;
-    uint64_t unused; /* use this as the libos_thread_t pointer */
 };
 
 bool libos_valid_pthread(const void* pthread);
@@ -45,7 +44,7 @@ struct libos_thread
     int flags;
     void* arg;
     pid_t* ptid;
-    void* newtls;
+    void* newtls; /* thread pointer: same as pthread_self() in musl libc */
     pid_t* ctid;
 
     /* the new thread calls this from the target (unused by main thread) */
@@ -59,6 +58,10 @@ struct libos_thread
 };
 
 libos_thread_t* libos_self(void);
+
+int libos_add_self(libos_thread_t* thread);
+
+int libos_remove_self(libos_thread_t* thread);
 
 void libos_release_thread(libos_thread_t* thread);
 

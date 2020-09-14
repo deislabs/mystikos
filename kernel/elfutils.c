@@ -841,19 +841,17 @@ int elf_enter_crt(
     /* Run the main program */
     if (libos_setjmp(&thread->jmpbuf) != 0)
     {
-        struct pthread* pthread;
+        struct pthread* pthread = (struct pthread*)libos_get_fs();
 
-        /* Unload the debugger symbols */
+        libos_assert(libos_valid_pthread(pthread));
+        libos_assert(thread == __libos_main_thread);
+
+        /* unload the debugger symbols */
         libos_syscall_unload_symbols();
 
-        if ((pthread = (struct pthread*)libos_get_fs()))
-        {
-            libos_assert(pthread->unused != 0);
-            libos_assert(libos_valid_pthread(pthread));
-            libos_assert(thread == __libos_main_thread);
-            libos_assert(pthread->unused == (uint64_t)thread);
-            pthread->unused = 0;
-        }
+        /* remove this thread from the active thread list */
+        if (libos_remove_self(__libos_main_thread) != 0)
+            libos_panic("libos_remove_self() failed");
 
         /* restore the original fsbase */
         libos_set_fs(thread->original_fsbase);

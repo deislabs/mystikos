@@ -26,3 +26,6 @@ libos:
 
 clean:
 	rm -rf $(APPDIR) rootfs export ramfs
+
+t:
+	$(LIBOS) exec-linux rootfs /bin/thread

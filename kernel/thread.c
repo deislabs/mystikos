@@ -13,6 +13,7 @@
 #include <libos/tcall.h>
 #include <libos/thread.h>
 #include <libos/trace.h>
+#include <libos/ud2.h>
 #include <pthread.h>
 
 libos_thread_t* __libos_main_thread;
@@ -45,7 +46,7 @@ static size_t _count_threads_no_lock(void)
 }
 #endif
 
-static int _add_thread(libos_thread_t* thread)
+int libos_add_self(libos_thread_t* thread)
 {
     int ret = 0;
 
@@ -70,7 +71,7 @@ done:
     return ret;
 }
 
-static int _remove_thread(libos_thread_t* thread)
+int libos_remove_self(libos_thread_t* thread)
 {
     int ret = -1;
 
@@ -151,11 +152,27 @@ static bool _valid_thread(const libos_thread_t* thread)
 libos_thread_t* libos_self(void)
 {
     const struct pthread* pthread = libos_get_fs();
+    libos_thread_t* thread = NULL;
 
     if (!libos_valid_pthread(pthread))
         libos_panic("invalid pthread");
 
-    return (libos_thread_t*)pthread->unused;
+    libos_spin_lock(&_lock);
+
+    for (libos_thread_t* p = _threads; p; p = p->next)
+    {
+        if (p->newtls == pthread)
+        {
+            thread = p;
+            break;
+        }
+    }
+
+    libos_spin_unlock(&_lock);
+
+    libos_assert(thread);
+
+    return thread;
 }
 
 static void _call_thread_fn(void)
@@ -190,12 +207,9 @@ static long _run(libos_thread_t* thread, pid_t tid, uint64_t event)
     thread->event = event;
     thread->original_fsbase = old_pthread;
 
-    /* link pthread to libos_thread */
-    pthread->unused = (uint64_t)thread;
-
     /* add the thread to the active list */
-    if (_add_thread(thread) != 0)
-        libos_panic("_add_thread() failed");
+    if (libos_add_self(thread) != 0)
+        libos_panic("libos_add_self() failed");
 
     libos_set_fs(pthread);
 
@@ -207,9 +221,6 @@ static long _run(libos_thread_t* thread, pid_t tid, uint64_t event)
     {
         libos_assert(libos_gettid() != -1);
 
-        libos_assert(pthread->unused == (uint64_t)thread);
-        pthread->unused = 0;
-
         /* Wake up any pthread waiting on ctid */
         {
             libos_atomic_exchange(thread->ctid, 0);
@@ -217,8 +228,10 @@ static long _run(libos_thread_t* thread, pid_t tid, uint64_t event)
             libos_syscall_futex(thread->ctid, futex_op, 1, 0, NULL, 0);
         }
 
-        if (_remove_thread(thread) != 0)
-            libos_panic("_remove_thread() failed");
+        if (libos_remove_self(thread) != 0)
+        {
+            libos_panic("libos_remove_self() failed");
+        }
 
         /* restore the original fsbase */
         libos_set_fs(thread->original_fsbase);

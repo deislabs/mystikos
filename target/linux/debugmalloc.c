@@ -1,21 +1,24 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
-#include <stdlib.h>
-#include <execinfo.h>
 #include <assert.h>
+#include <errno.h>
+#include <execinfo.h>
 #include <limits.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#include <errno.h>
-#include <pthread.h>
 
 #include "debugmalloc.h"
 
 #include <libos/defs.h>
 #include <libos/round.h>
+#include <libos/spinlock.h>
 
 #define BACKTRACE_MAX 64
+
+#define FILLING
+#define CLEARING
 
 /*
 **==============================================================================
@@ -122,18 +125,17 @@ LIBOS_INLINE footer_t* _get_footer(void* ptr)
 }
 
 /* Use a macro so the function name will not appear in the backtrace */
-#define INIT_BLOCK(HEADER, ALIGNMENT, SIZE)                          \
-    do                                                               \
-    {                                                                \
-        HEADER->magic1 = HEADER_MAGIC1;                              \
-        HEADER->next = NULL;                                         \
-        HEADER->prev = NULL;                                         \
-        HEADER->alignment = ALIGNMENT;                               \
-        HEADER->size = SIZE;                                         \
-        HEADER->num_addrs =                                          \
-            (uint64_t)backtrace(HEADER->addrs, BACKTRACE_MAX);       \
-        HEADER->magic2 = HEADER_MAGIC2;                              \
-        _get_footer(HEADER->data)->magic = FOOTER_MAGIC;             \
+#define INIT_BLOCK(HEADER, ALIGNMENT, SIZE)                                    \
+    do                                                                         \
+    {                                                                          \
+        HEADER->magic1 = HEADER_MAGIC1;                                        \
+        HEADER->next = NULL;                                                   \
+        HEADER->prev = NULL;                                                   \
+        HEADER->alignment = ALIGNMENT;                                         \
+        HEADER->size = SIZE;                                                   \
+        HEADER->num_addrs = (uint64_t)backtrace(HEADER->addrs, BACKTRACE_MAX); \
+        HEADER->magic2 = HEADER_MAGIC2;                                        \
+        _get_footer(HEADER->data)->magic = FOOTER_MAGIC;                       \
     } while (0)
 
 /* Assert and abort if magic numbers are wrong */
@@ -204,11 +206,11 @@ typedef struct _list
 } list_t;
 
 static list_t _list = {NULL, NULL};
-static pthread_mutex_t _mutex = PTHREAD_MUTEX_INITIALIZER;
+static libos_spinlock_t _lock = LIBOS_SPINLOCK_INITIALIZER;
 
 static void _list_insert(list_t* list, header_t* header)
 {
-    pthread_mutex_lock(&_mutex);
+    libos_spin_lock(&_lock);
     {
         if (list->head)
         {
@@ -225,12 +227,12 @@ static void _list_insert(list_t* list, header_t* header)
             list->tail = header;
         }
     }
-    pthread_mutex_unlock(&_mutex);
+    libos_spin_unlock(&_lock);
 }
 
 static void _list_remove(list_t* list, header_t* header)
 {
-    pthread_mutex_lock(&_mutex);
+    libos_spin_lock(&_lock);
     {
         if (header->next)
             header->next->prev = header->prev;
@@ -243,7 +245,7 @@ static void _list_remove(list_t* list, header_t* header)
         else if (header == list->tail)
             list->tail = header->prev;
     }
-    pthread_mutex_unlock(&_mutex);
+    libos_spin_unlock(&_lock);
 }
 
 LIBOS_INLINE bool _check_multiply_overflow(size_t x, size_t y)
@@ -285,7 +287,7 @@ static void _dump(bool need_lock)
     list_t* list = &_list;
 
     if (need_lock)
-        pthread_mutex_lock(&_mutex);
+        libos_spin_lock(&_lock);
 
     {
         size_t blocks = 0;
@@ -308,7 +310,7 @@ static void _dump(bool need_lock)
     }
 
     if (need_lock)
-        pthread_mutex_unlock(&_mutex);
+        libos_spin_unlock(&_lock);
 }
 
 /*
@@ -327,8 +329,10 @@ void* libos_debug_malloc(size_t size)
     if (!(block = malloc(block_size)))
         return NULL;
 
+#ifdef FILLING
     /* Fill block with 0xAA (Allocated) bytes */
     memset(block, 0xAA, block_size);
+#endif
 
     header_t* header = (header_t*)block;
     INIT_BLOCK(header, 0, size);
@@ -349,7 +353,10 @@ void libos_debug_free(void* ptr)
         /* Fill the whole block with 0xDD (Deallocated) bytes */
         void* block = _get_block_address(ptr);
         size_t block_size = _get_block_size(ptr);
+        (void)block_size;
+#ifdef CLEARING
         memset(block, 0xDD, block_size);
+#endif
 
         free(block);
     }
@@ -459,7 +466,7 @@ size_t libos_debug_malloc_check(void)
     list_t* list = &_list;
     size_t count = 0;
 
-    pthread_mutex_lock(&_mutex);
+    libos_spin_lock(&_lock);
     {
         for (header_t* p = list->head; p; p = p->next)
             count++;
@@ -472,7 +479,7 @@ size_t libos_debug_malloc_check(void)
                 _check_block(p);
         }
     }
-    pthread_mutex_unlock(&_mutex);
+    libos_spin_unlock(&_lock);
 
     return count;
 }

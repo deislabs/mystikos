@@ -64,7 +64,7 @@ static long _tcall_allocate(
 
         if (size == 0)
         {
-            //FREE(ptr);
+            // FREE(ptr);
             *new_ptr = NULL;
             goto done;
         }

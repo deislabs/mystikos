@@ -13,4 +13,8 @@ CFLAGS = $(DEFAULT_CFLAGS)
 
 INCLUDES = -I$(INCDIR)
 
+ifdef LIBOS_DEBUG_MALLOC
+DEFINES += -DLIBOS_DEBUG_MALLOC
+endif
+
 include $(TOP)/rules.mak
