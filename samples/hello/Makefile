@@ -35,6 +35,8 @@ run-package-with-args: package
 run-package-no-args: package
 	$(APPNAME).signed/bin/$(APPNAME) $(OPTS)
 
+run-all: run run-signed run-package-with-args run-package-no-args
+
 gdb: all
 	$(LIBOS_GDB) --args $(LIBOS) exec rootfs /bin/$(APPNAME) $(OPTS)
 

@@ -12,6 +12,6 @@
     "ApplicationPath": "/bin/hello",
     "ApplicationParameters": ["Enclave-red", "Enclave-blue", "Enclave-green", "Enclave-yellow"],
     "HostApplicationParameters": false,
-    "EnvironmentVariables": ["PATH=/bin", "HOME=/root"],
-    "HostEnvironmentVariables": ["VARIABLE1", "VARIABLE2"]
+    "EnvironmentVariables": ["ENC-PATH=/bin", "ENC-HOME=/root"],
+    "HostEnvironmentVariables": ["PATH", "VARIABLE2"]
 }

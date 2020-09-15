@@ -28,16 +28,15 @@
 #define USAGE_PACKAGE \
     "\
 \n\
-Usage: %s sign package <app_dir> <appname> <pem_file> <config> [options]\n\
+Usage: %s sign package <app_dir> <pem_file> <config> [options]\n\
 \n\
 Where:\n\
     <app_dir> -- directory with files for root filesystem\n\
-    <appname> -- final packaged binary name of application\n\
     <pem_file> -- private key to sign enclave\n\
     <config>   -- configuration for signing and application runtime\n\
 \n\
 and <options> are one of:\n\
-    --help        -- ths message\n\
+    --help        -- this message\n\
     --platform OE -- execute an application within the libos\n\
                      Default = OE\n\
 \n\
@@ -94,14 +93,16 @@ done:
     return ret;
 }
 
+#define DIR_MODE                                                          \
+    S_IROTH | S_IXOTH | S_IXGRP | S_IWGRP | S_IRGRP | S_IXUSR | S_IWUSR | \
+        S_IRUSR
+
 // libos package <app_dir> <pem_file> <config> [options]
 int _package(int argc, const char* argv[])
 {
     char scratch_path[PATH_MAX];
     char scratch_path2[PATH_MAX];
     config_parsed_data_t callback_data = {0};
-    char* config_data = NULL;
-    size_t config_size;
 
     if ((argc < 5) || (parse_options(argc, argv, 5, &options) != 0) ||
         help_present)
@@ -119,12 +120,7 @@ int _package(int argc, const char* argv[])
     const char* target;  // Extracted from config
     const char* appname; // Extracted from target
 
-    if (libos_load_file(config_file, (void**)&config_data, &config_size) != 0)
-    {
-        _err("Failed to read config file %s", config_file);
-    }
-
-    if (parse_config(config_data, config_size, &callback_data) != 0)
+    if (parse_config_from_file(config_file, &callback_data) != 0)
     {
         _err(
             "Failed to generate OE configuration file %s from LibOS "
@@ -157,11 +153,7 @@ int _package(int argc, const char* argv[])
         _err("File path to long: %.signed", appname);
     }
 
-    if ((mkdir(
-             scratch_path,
-             S_IROTH | S_IXOTH | S_IXGRP | S_IWGRP | S_IRGRP | S_IXUSR |
-                 S_IWUSR | S_IRUSR) != 0) &&
-        (errno != EEXIST))
+    if ((mkdir(scratch_path, DIR_MODE) != 0) && (errno != EEXIST))
     {
         _err("Failed to create directory \"%s\".", scratch_path);
     }
@@ -340,9 +332,6 @@ int _package(int argc, const char* argv[])
         _err("Failed to delete temporary file %s", scratch_path);
     }
 
-    if (config_data)
-        free(config_data);
-
     return 0;
 }
 
@@ -376,6 +365,8 @@ int _exec_package(int argc, const char* argv[], const char* executable)
     const oe_enclave_type_t type = OE_ENCLAVE_TYPE_SGX;
     uint32_t flags = OE_ENCLAVE_FLAG_DEBUG;
     struct libos_options options = {0};
+    char* config_buffer = NULL;
+    size_t config_size = 0;
 
     /* Get options */
     {
@@ -406,11 +397,7 @@ int _exec_package(int argc, const char* argv[], const char* executable)
     {
         _err("File path %s/enc is too long", app_dir);
     }
-    if ((mkdir(
-             scratch_path,
-             S_IROTH | S_IXOTH | S_IXGRP | S_IWGRP | S_IRGRP | S_IXUSR |
-                 S_IWUSR | S_IRUSR) != 0) &&
-        (errno != EEXIST))
+    if ((mkdir(scratch_path, DIR_MODE) != 0) && (errno != EEXIST))
     {
         _err("Failed to create directory \"%s\".", scratch_path);
     }
@@ -434,22 +421,20 @@ int _exec_package(int argc, const char* argv[], const char* executable)
     }
 
     if (elf_find_section(
-            &libos_elf.elf, ".libosconfig", &buffer, &buffer_length) != 0)
+            &libos_elf.elf,
+            ".libosconfig",
+            (unsigned char**)&config_buffer,
+            &config_size) != 0)
     {
         _err("Failed to extract config from %s", get_program_file());
     }
 
     // Need to duplicate the config buffer or we will be corrupting the image
     // data
-    char* copied_config = malloc(buffer_length);
-    if (copied_config == NULL)
-    {
-        _err("out of memory");
-    }
-    memcpy(copied_config, buffer, buffer_length);
-
     config_parsed_data_t callback_data = {0};
-    if (parse_config((char*)copied_config, buffer_length, &callback_data) != 0)
+
+    if (parse_config_from_buffer(
+            (char*)config_buffer, config_size, &callback_data) != 0)
     {
         _err("Failed to process configuration");
     }
@@ -508,6 +493,5 @@ int _exec_package(int argc, const char* argv[], const char* executable)
 
     elf_image_free(&libos_elf);
 
-    free(copied_config);
     return 0;
 }

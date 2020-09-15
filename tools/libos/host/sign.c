@@ -259,8 +259,6 @@ int _sign(int argc, const char* argv[])
     const region_details* details;
     char scratch_path[PATH_MAX];
     char scratch_path2[PATH_MAX];
-    char* config_data;
-    size_t config_size;
 
     // We are in the right operation, right?
     assert(strcmp(argv[1], "sign") == 0);
@@ -300,14 +298,7 @@ int _sign(int argc, const char* argv[])
             temp_oeconfig_file);
     }
 
-    if (libos_load_file(config_file, (void**)&config_data, &config_size) != 0)
-    {
-        fclose(callback_data.oe_config_out_file);
-        unlink(temp_oeconfig_file);
-        _err("Failed to read config file %s", config_file);
-    }
-
-    if (parse_config(config_data, config_size, &callback_data) != 0)
+    if (parse_config_from_file(config_file, &callback_data) != 0)
     {
         fclose(callback_data.oe_config_out_file);
         unlink(temp_oeconfig_file);
@@ -416,9 +407,6 @@ int _sign(int argc, const char* argv[])
     {
         _err("Failed to rename \"%s\" to \"%s\"", scratch_path2, scratch_path);
     }
-
-    if (config_data)
-        free(config_data);
 
     return 0;
 }

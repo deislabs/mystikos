@@ -4,6 +4,7 @@
 #include <memory.h>
 #include <stdlib.h>
 #include "libos/eraise.h"
+#include "libos/file.h"
 
 #define CONFIG_RAISE(ERRNUM)                                      \
     do                                                            \
@@ -12,6 +13,55 @@
         libos_eraise(__FILE__, __LINE__, __FUNCTION__, (int)ret); \
         goto done;                                                \
     } while (0)
+
+static json_result_t _config_extract_array(
+    json_type_t type,
+    const json_union_t* un,
+    char*** parameters,
+    size_t* parameters_count)
+{
+    json_result_t ret = JSON_FAILED;
+
+    if ((parameters == NULL) || (parameters_count == NULL))
+        ERAISE(JSON_BAD_PARAMETER);
+    if (type != JSON_TYPE_STRING)
+        ERAISE(JSON_TYPE_MISMATCH);
+
+    if (*parameters == NULL)
+    {
+        *parameters_count = 1;
+        // malloc enough for null entry at end
+        *parameters = malloc((2) * sizeof(char*));
+        if (*parameters == NULL)
+        {
+            CONFIG_RAISE(JSON_OUT_OF_MEMORY);
+        }
+        else
+        {
+            (*parameters)[*parameters_count - 1] = un->string;
+            (*parameters)[*parameters_count] = NULL;
+        }
+    }
+    else
+    {
+        // realloc enough for null entry at end
+        char** tmp =
+            realloc(*parameters, (*parameters_count + 2) * sizeof(char*));
+        if (tmp == NULL)
+        {
+            CONFIG_RAISE(JSON_OUT_OF_MEMORY);
+        }
+        (*parameters_count)++;
+        *parameters = tmp;
+        (*parameters)[*parameters_count - 1] = un->string;
+        (*parameters)[*parameters_count] = NULL;
+    }
+
+    ret = JSON_OK;
+
+done:
+    return ret;
+}
 
 static json_result_t _json_read_callback(
     json_parser_t* parser,
@@ -37,63 +87,94 @@ static json_result_t _json_read_callback(
                 {
                     if (((type == JSON_TYPE_BOOLEAN) && un->boolean) ||
                         ((type == JSON_TYPE_INTEGER) && un->integer))
-                        fprintf(parsed_data->oe_config_out_file, "Debug=1\n");
+                    {
+                        parsed_data->oe_debug = 1;
+                        if (parsed_data->oe_config_out_file)
+                            fprintf(
+                                parsed_data->oe_config_out_file, "Debug=1\n");
+                    }
                     else if (
                         (type == JSON_TYPE_BOOLEAN) ||
                         (type == JSON_TYPE_INTEGER))
-                        fprintf(parsed_data->oe_config_out_file, "Debug=0\n");
-                    else
                     {
-                        CONFIG_RAISE(JSON_FAILED);
+                        parsed_data->oe_debug = 1;
+                        if (parsed_data->oe_config_out_file)
+                            fprintf(
+                                parsed_data->oe_config_out_file, "Debug=0\n");
                     }
+                    else
+                        CONFIG_RAISE(JSON_FAILED);
                 }
                 else if (json_match(parser, "NumKernelPages") == JSON_OK)
                 {
                     if (type == JSON_TYPE_INTEGER)
-                        fprintf(
-                            parsed_data->oe_config_out_file,
-                            "NumHeapPages=%ld\n",
-                            un->integer);
+                    {
+                        parsed_data->oe_num_heap_pages = (uint64_t)un->integer;
+                        if (parsed_data->oe_config_out_file)
+                            fprintf(
+                                parsed_data->oe_config_out_file,
+                                "NumHeapPages=%ld\n",
+                                un->integer);
+                    }
                     else
                         CONFIG_RAISE(JSON_FAILED);
                 }
                 else if (json_match(parser, "NumStackPages") == JSON_OK)
                 {
                     if (type == JSON_TYPE_INTEGER)
-                        fprintf(
-                            parsed_data->oe_config_out_file,
-                            "NumStackPages=%ld\n",
-                            un->integer);
+                    {
+                        parsed_data->oe_num_stack_pages = (uint64_t)un->integer;
+                        if (parsed_data->oe_config_out_file)
+                            fprintf(
+                                parsed_data->oe_config_out_file,
+                                "NumStackPages=%ld\n",
+                                un->integer);
+                    }
                     else
                         CONFIG_RAISE(JSON_FAILED);
                 }
                 else if (json_match(parser, "NumUserThreads") == JSON_OK)
                 {
                     if (type == JSON_TYPE_INTEGER)
-                        fprintf(
-                            parsed_data->oe_config_out_file,
-                            "NumTCS=%ld\n",
-                            un->integer);
+                    {
+                        parsed_data->oe_num_user_threads =
+                            (uint64_t)un->integer;
+                        if (parsed_data->oe_config_out_file)
+                            fprintf(
+                                parsed_data->oe_config_out_file,
+                                "NumTCS=%ld\n",
+                                un->integer);
+                    }
                     else
                         CONFIG_RAISE(JSON_FAILED);
                 }
                 else if (json_match(parser, "ProductID") == JSON_OK)
                 {
                     if (type == JSON_TYPE_INTEGER)
-                        fprintf(
-                            parsed_data->oe_config_out_file,
-                            "ProductID=%ld\n",
-                            un->integer);
+                    {
+                        parsed_data->oe_product_id =
+                            (unsigned short)un->integer;
+                        if (parsed_data->oe_config_out_file)
+                            fprintf(
+                                parsed_data->oe_config_out_file,
+                                "ProductID=%ld\n",
+                                un->integer);
+                    }
                     else
                         CONFIG_RAISE(JSON_FAILED);
                 }
                 else if (json_match(parser, "SecurityVersion") == JSON_OK)
                 {
                     if (type == JSON_TYPE_INTEGER)
-                        fprintf(
-                            parsed_data->oe_config_out_file,
-                            "SecurityVersion=%ld\n",
-                            un->integer);
+                    {
+                        parsed_data->oe_security_version =
+                            (unsigned short)un->integer;
+                        if (parsed_data->oe_config_out_file)
+                            fprintf(
+                                parsed_data->oe_config_out_file,
+                                "SecurityVersion=%ld\n",
+                                un->integer);
+                    }
                     else
                         CONFIG_RAISE(JSON_FAILED);
                 }
@@ -126,49 +207,34 @@ static json_result_t _json_read_callback(
             }
             else if (json_match(parser, "ApplicationParameters") == JSON_OK)
             {
-                // This is an array!
-                if (type == JSON_TYPE_STRING)
-                {
-                    if (parsed_data->application_parameters == NULL)
-                    {
-                        parsed_data->application_parameters_count =
-                            2; // this + null-terminator
-                        parsed_data->application_parameters = malloc(
-                            parsed_data->application_parameters_count *
-                            sizeof(char*));
-                        if (parsed_data->application_parameters == NULL)
-                        {
-                            CONFIG_RAISE(JSON_FAILED);
-                        }
-                        else
-                        {
-                            parsed_data->application_parameters[0] = un->string;
-                            parsed_data->application_parameters[1] = NULL;
-                        }
-                    }
-                    else
-                    {
-                        char** tmp = realloc(
-                            parsed_data->application_parameters,
-                            (parsed_data->application_parameters_count + 1) *
-                                sizeof(char*));
-                        if (tmp == NULL)
-                        {
-                            CONFIG_RAISE(JSON_FAILED);
-                        }
-                        parsed_data->application_parameters = tmp;
-                        parsed_data->application_parameters
-                            [parsed_data->application_parameters_count - 1] =
-                            un->string;
-                        parsed_data->application_parameters
-                            [parsed_data->application_parameters_count] = NULL;
-                        parsed_data->application_parameters_count++;
-                    }
-                }
-                else
-                    CONFIG_RAISE(JSON_FAILED);
+                ret = _config_extract_array(
+                    type,
+                    un,
+                    &parsed_data->application_parameters,
+                    &parsed_data->application_parameters_count);
+                if (ret != JSON_OK)
+                    CONFIG_RAISE(ret);
             }
-
+            else if (json_match(parser, "EnvironmentVariables") == JSON_OK)
+            {
+                ret = _config_extract_array(
+                    type,
+                    un,
+                    &parsed_data->enclave_environment_variables,
+                    &parsed_data->enclave_environment_variables_count);
+                if (ret != JSON_OK)
+                    CONFIG_RAISE(ret);
+            }
+            else if (json_match(parser, "HostEnvironmentVariables") == JSON_OK)
+            {
+                ret = _config_extract_array(
+                    type,
+                    un,
+                    &parsed_data->host_environment_variables,
+                    &parsed_data->host_environment_variables_count);
+                if (ret != JSON_OK)
+                    CONFIG_RAISE(ret);
+            }
             else
             {
                 // Ignore everything we dont understand
@@ -205,10 +271,7 @@ done:
     return ret;
 }
 
-int parse_config(
-    const char* config_data,
-    size_t config_size,
-    config_parsed_data_t* parsed_data)
+int _parse_config(config_parsed_data_t* parsed_data)
 {
     int ret = -1;
     json_parser_t parser;
@@ -218,16 +281,10 @@ int parse_config(
         free,
     };
 
-    // Duplicate the memory into the config
-    parsed_data->buffer = malloc(config_size);
-    if (parsed_data->buffer == NULL)
-        CONFIG_RAISE(-1);
-    memcpy(parsed_data->buffer, config_data, config_size);
-
     if (json_parser_init(
             &parser,
             (char*)parsed_data->buffer,
-            config_size,
+            parsed_data->buffer_length,
             _json_read_callback,
             parsed_data,
             &allocator,
@@ -248,6 +305,26 @@ int parse_config(
     ret = 0;
 
 done:
+    return ret;
+}
+
+int parse_config_from_buffer(
+    const char* config_data,
+    size_t config_size,
+    config_parsed_data_t* parsed_data)
+{
+    int ret = -1;
+
+    // Duplicate the memory into the config
+    parsed_data->buffer = malloc(config_size);
+    if (parsed_data->buffer == NULL)
+        CONFIG_RAISE(-1);
+    memcpy(parsed_data->buffer, config_data, config_size);
+    parsed_data->buffer_length = config_size;
+
+    ret = _parse_config(parsed_data);
+
+done:
     if (ret != 0 && parsed_data->buffer)
     {
         free(parsed_data->buffer);
@@ -258,6 +335,10 @@ done:
 
 int free_config(config_parsed_data_t* parsed_data)
 {
+    if (parsed_data->enclave_environment_variables)
+        free(parsed_data->enclave_environment_variables);
+    if (parsed_data->host_environment_variables)
+        free(parsed_data->host_environment_variables);
     if (parsed_data->application_parameters)
         free(parsed_data->application_parameters);
     if (parsed_data->buffer)

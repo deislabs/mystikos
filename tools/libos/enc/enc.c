@@ -169,6 +169,7 @@ int libos_enter_ecall(
     bool trace_syscalls = false;
     bool export_ramfs = false;
     config_parsed_data_t parsed_config = {0};
+    unsigned char have_config = 0;
 
     if (!args || !args_size || !env || !env_size)
         goto done;
@@ -189,51 +190,112 @@ int libos_enter_ecall(
         {
             config_data = enclave_base + region.vaddr;
             config_size = region.size;
-            if (parse_config(config_data, config_size, &parsed_config) != 0)
+            if (parse_config_from_buffer(
+                    config_data, config_size, &parsed_config) != 0)
             {
                 fprintf(stderr, "failed to parse configuration\n");
                 assert(0);
             }
-
-            if (parsed_config.allow_host_parameters)
-            {
-                // passthrough of args is allowed, so do that
-                if (_deserialize_args(
-                        args, args_size, argv + 1, argv_size - 1) != 0)
-                    goto done;
-            }
-            else
-            {
-                // We need to use the configuration parameters instead.
-                // Add application name to second slot, args go after this
-                argv[1] = parsed_config.application_path;
-
-                size_t n = 0;
-
-                while ((n != parsed_config.application_parameters_count) &&
-                       ((n + 3) != argv_size)) // slots including null one
-                {
-                    argv[n + 2] = parsed_config.application_parameters[n];
-                    argv[n + 3] = NULL;
-                    n++;
-                }
-            }
+            have_config = 1;
         }
-        else
+    }
+
+    if (have_config == 1)
+    {
+        if (parsed_config.allow_host_parameters)
         {
-            // There isnt always configuration. If not then we dont restrict
-            // parameters and environment variables
+            // passthrough of args is allowed, so do that
             if (_deserialize_args(args, args_size, argv + 1, argv_size - 1) !=
                 0)
                 goto done;
         }
+        else
+        {
+            // We need to use the configuration parameters instead.
+            // Add application name to second slot, args go after this
+            argv[1] = parsed_config.application_path;
+
+            size_t n = 0;
+
+            while ((n != parsed_config.application_parameters_count) &&
+                   ((n + 3) != argv_size)) // slots including null one
+            {
+                argv[n + 2] = parsed_config.application_parameters[n];
+                argv[n + 3] = NULL;
+                n++;
+            }
+        }
+    }
+    else
+    {
+        // There isnt always configuration. If not then we dont restrict
+        // parameters and environment variables
+        if (_deserialize_args(args, args_size, argv + 1, argv_size - 1) != 0)
+            goto done;
     }
 
     // Need to handle config to environment
     // in the mean time we will just pull from the host
-    if (_deserialize_args(env, env_size, envp, envp_size) != 0)
-        goto done;
+    if (have_config == 1)
+    {
+        size_t env_slot = 0;
+        size_t source_slot = 0;
+        envp[env_slot] = NULL;
 
+        // First config-side environment variables
+        while ((source_slot !=
+                parsed_config.enclave_environment_variables_count) &&
+               ((env_slot + 2) != envp_size)) // slots including null one
+        {
+            envp[env_slot] =
+                parsed_config.enclave_environment_variables[source_slot];
+            envp[env_slot + 1] = NULL;
+            env_slot++;
+            source_slot++;
+        }
+
+        // now include host-side environment variables that are allowed
+        for (int allowed_index = 0;
+             (parsed_config.host_environment_variables[allowed_index] !=
+              NULL) &&
+             (allowed_index != (sizeof(envp) / sizeof(*envp)));
+             allowed_index++)
+        {
+            size_t n = 0;
+            const char* p = (const char*)env;
+            const char* end = (const char*)env + env_size;
+
+            while (p != end)
+            {
+                if (n == envp_size)
+                    break;
+
+                // Only add if it is mentioned in allow list, then we are done
+                // for this iteration
+                if (strncmp(
+                        parsed_config.host_environment_variables[allowed_index],
+                        p,
+                        strlen(
+                            parsed_config
+                                .host_environment_variables[allowed_index])) ==
+                    0)
+                {
+                    envp[env_slot] = p;
+                    envp[env_slot + 1] = NULL;
+                    env_slot++;
+                    break;
+                }
+                p += strlen(p) + 1;
+            }
+
+            argv[n] = NULL;
+        }
+    }
+    else
+    {
+        if (_deserialize_args(env, env_size, envp, envp_size) != 0)
+            goto done;
+    }
     // The deserialization of arguments starts at slot 1, not slot 0.
     // MUSL loader requires this.
     // The executable name in slot 0 is needed, but is not exposed to usermode
