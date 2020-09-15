@@ -157,7 +157,7 @@ int libos_buf_remove(libos_buf_t* buf, size_t pos, size_t size)
     if (!buf || pos > buf->size || pos + size > buf->size)
         return -1;
 
-    rem = buf->size - pos;
+    rem = buf->size - (pos + size);
 
     if (rem)
         libos_memmove(buf->data + pos, buf->data + pos + size, rem);

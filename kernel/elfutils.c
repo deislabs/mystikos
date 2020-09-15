@@ -135,8 +135,9 @@ static int _check_guard(const void* s_, size_t n)
 {
     const uint8_t* s = (const uint8_t*)s_;
     const uint8_t* p = (const uint8_t*)s_;
+    size_t r = n;
 
-    while (*p == GUARD)
+    while (r-- && *p == GUARD)
         p++;
 
     return ((size_t)(p - s) == n) ? 0 : -1;

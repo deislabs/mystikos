@@ -156,20 +156,6 @@ EXEC = exec-$(TARGET)
 
 ##==============================================================================
 ##
-## LEAKS
-##     Use "make LEAKS=1" to check for memory leaks.
-##
-##==============================================================================
-
-VALGRIND_COMMAND = valgrind --tool=memcheck --leak-check=full
-
-ifdef LEAKS
-__VALGRIND_COMMAND = $(VALGRIND_COMMAND)
-__VALGRIND_COMMAND += --vgdb=yes --vgdb-error=0
-endif
-
-##==============================================================================
-##
 ## GDB
 ##     Use "make GDB=1" to run debugger
 ##
@@ -183,10 +169,44 @@ endif
 
 ##==============================================================================
 ##
+## MEMCHECK
+##     Use "make MEMCHECK=1" to check for memory leaks.
+##
+##==============================================================================
+
+MEMCHECK_COMMAND = valgrind --tool=memcheck --leak-check=full
+
+ifdef MEMCHECK
+__MEMCHECK_COMMAND = $(MEMCHECK_COMMAND)
+endif
+
+##==============================================================================
+##
+## VGDB
+##     Use "make VGDB=1" to run the Valgrind gdb server
+##
+##==============================================================================
+
+VGDB_COMMAND = valgrind
+VGDB_COMMAND += --tool=memcheck
+VGDB_COMMAND += --leak-check=full
+VGDB_COMMAND += --vgdb=yes
+VGDB_COMMAND += --vgdb-error=0
+
+ifdef VGDB
+__VGDB_COMMAND = $(VGDB_COMMAND)
+endif
+
+##==============================================================================
+##
 ## LIBOS command
 ##
 ##==============================================================================
 
-LIBOS_EXEC = $(__GDB_COMMAND) $(__VALGRIND_COMMAND) $(BINDIR)/libos $(EXEC)
+LIBOS_EXEC += $(__GDB_COMMAND)
+LIBOS_EXEC += $(__VGDB_COMMAND)
+LIBOS_EXEC += $(__MEMCHECK_COMMAND)
+LIBOS_EXEC += $(BINDIR)/libos
+LIBOS_EXEC += $(EXEC)
 
 LIBOS = $(BINDIR)/libos
