@@ -174,10 +174,13 @@ endif
 ##
 ##==============================================================================
 
-MEMCHECK_COMMAND = valgrind --tool=memcheck --leak-check=full
+MEMCHECK_COMMAND = valgrind
+MEMCHECK_COMMAND += --tool=memcheck
+MEMCHECK_COMMAND += --leak-check=full
 
 ifdef MEMCHECK
 __MEMCHECK_COMMAND = $(MEMCHECK_COMMAND)
+export TARGET=linux
 endif
 
 ##==============================================================================
@@ -187,14 +190,13 @@ endif
 ##
 ##==============================================================================
 
-VGDB_COMMAND = valgrind
-VGDB_COMMAND += --tool=memcheck
-VGDB_COMMAND += --leak-check=full
+VGDB_COMMAND = $(MEMCHECK_COMMAND)
 VGDB_COMMAND += --vgdb=yes
 VGDB_COMMAND += --vgdb-error=0
 
 ifdef VGDB
 __VGDB_COMMAND = $(VGDB_COMMAND)
+export TARGET=linux
 endif
 
 ##==============================================================================
