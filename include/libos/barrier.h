@@ -3,6 +3,6 @@
 
 #include <libos/types.h>
 
-#define libos_barrier() __asm__ volatile("": : :"memory")
+#define libos_barrier() __asm__ volatile("" : : : "memory")
 
 #endif /* _LIBOS_BARRIER_H */

@@ -123,10 +123,10 @@ static void _load_regions(const char* rootfs, struct regions* r)
                 _err("failed to load file: %s", path);
 
             if (libos_tcall_add_symbol_file(
-                file_data,
-                file_size,
-                r->liboscrt.image_data,
-                r->liboscrt.image_size) != 0)
+                    file_data,
+                    file_size,
+                    r->liboscrt.image_data,
+                    r->liboscrt.image_size) != 0)
             {
                 _err("failed to add crt debug symbols");
             }
@@ -155,10 +155,10 @@ static void _load_regions(const char* rootfs, struct regions* r)
                 _err("failed to load file: %s", path);
 
             if (libos_tcall_add_symbol_file(
-                file_data,
-                file_size,
-                r->liboskernel.image_data,
-                r->liboskernel.image_size) != 0)
+                    file_data,
+                    file_size,
+                    r->liboskernel.image_data,
+                    r->liboskernel.image_size) != 0)
             {
                 _err("failed to add kernel debug symbols");
             }

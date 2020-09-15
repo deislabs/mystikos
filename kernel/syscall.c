@@ -17,6 +17,7 @@
 #include <unistd.h>
 
 #include <libos/assert.h>
+#include <libos/barrier.h>
 #include <libos/buf.h>
 #include <libos/cpio.h>
 #include <libos/cwd.h>
@@ -43,7 +44,6 @@
 #include <libos/tcall.h>
 #include <libos/thread.h>
 #include <libos/trace.h>
-#include <libos/barrier.h>
 
 #include "fdtable.h"
 

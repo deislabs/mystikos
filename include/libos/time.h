@@ -1,8 +1,8 @@
 #ifndef _LIBOS_TIME_H
 #define _LIBOS_TIME_H
 
-#include <time.h>
 #include <stdint.h>
+#include <time.h>
 
 long libos_syscall_nanosleep(const struct timespec* req, struct timespec* rem);
 
