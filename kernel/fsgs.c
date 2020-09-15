@@ -3,6 +3,7 @@
 #include <libos/strings.h>
 #include <libos/syscall.h>
 #include <libos/tcall.h>
+#include <libos/barrier.h>
 
 void libos_set_fs(const void* p)
 {

@@ -2,6 +2,7 @@
 #define _LIBOS_FUTEX_H
 
 #include <libos/types.h>
+#include <time.h>
 
 // clang-format off
 #define FUTEX_WAIT           0
@@ -17,5 +18,9 @@
 #define FUTEX_PRIVATE        128
 #define FUTEX_CLOCK_REALTIME 256
 // clang-format on
+
+int libos_futex_wait(int* uaddr, int val, const struct timespec* to);
+
+int libos_futex_wake(int* uaddr, int val);
 
 #endif /* _LIBOS_FUTEX_H */

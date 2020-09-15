@@ -367,13 +367,16 @@ void test_cond_broadcast(void)
 **==============================================================================
 */
 
+#define N 10
+#define LOOP(BODY, N) for (size_t i = 0; i < N; i++) BODY
+
 int main(int argc, const char* argv[])
 {
-    test_create_thread();
-    test_mutexes(PTHREAD_MUTEX_NORMAL);
-    test_mutexes(PTHREAD_MUTEX_RECURSIVE);
-    test_timedlock();
-    test_cond_signal();
-    test_cond_broadcast();
+    LOOP(test_create_thread(), N);
+    LOOP(test_mutexes(PTHREAD_MUTEX_NORMAL), N);
+    LOOP(test_mutexes(PTHREAD_MUTEX_RECURSIVE), N);
+    LOOP(test_timedlock(), N);
+    LOOP(test_cond_signal(), N);
+    LOOP(test_cond_broadcast(), N);
     return 0;
 }

@@ -1,3 +1,5 @@
+#include <pthread.h>
+
 #include <libos/assert.h>
 #include <libos/atexit.h>
 #include <libos/atomic.h>
@@ -14,7 +16,6 @@
 #include <libos/thread.h>
 #include <libos/trace.h>
 #include <libos/ud2.h>
-#include <pthread.h>
 
 libos_thread_t* __libos_main_thread;
 
@@ -246,8 +247,8 @@ static long _run(libos_thread_t* thread, pid_t tid, uint64_t event)
         libos_jmp_buf_t env = thread->jmpbuf;
 
         env.rip = (uint64_t)_call_thread_fn;
-        env.rsp = (uint64_t)thread->child_stack - 16 * 1024;
-        env.rbp = (uint64_t)thread->child_stack - 16 * 1024;
+        env.rsp = (uint64_t)thread->child_stack;
+        env.rbp = (uint64_t)thread->child_stack;
         libos_jump(&env);
 #else
         (*thread->fn)(thread->arg);

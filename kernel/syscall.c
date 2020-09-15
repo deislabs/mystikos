@@ -43,6 +43,7 @@
 #include <libos/tcall.h>
 #include <libos/thread.h>
 #include <libos/trace.h>
+#include <libos/barrier.h>
 
 #include "fdtable.h"
 
@@ -2614,6 +2615,8 @@ long libos_syscall(long n, long params[6])
             int flags = (int)x2;
 
             _strace(n, "cmd=%d flags=%d", cmd, flags);
+
+            libos_barrier();
 
             return _return(n, 0);
         }
