@@ -201,13 +201,49 @@ endif
 
 ##==============================================================================
 ##
+## CACHEGRIND
+##     Use "make CACHEGRIND=1" to profile performance
+##
+##==============================================================================
+
+CACHEGRIND_COMMAND = valgrind
+CACHEGRIND_COMMAND += --tool=cachegrind
+CACHEGRIND_COMMAND += --cachegrind-out-file=cachegrind.out
+
+ifdef CACHEGRIND
+__CACHEGRIND_COMMAND = $(CACHEGRIND_COMMAND)
+export TARGET=linux
+endif
+
+##==============================================================================
+##
+## CALLGRIND
+##     Use "make CALLGRIND=1" to profile performance
+##
+##==============================================================================
+
+CALLGRIND_COMMAND = valgrind
+CALLGRIND_COMMAND += --tool=callgrind
+CALLGRIND_COMMAND += --callgrind-out-file=callgrind.out
+CALLGRIND_COMMAND += --vgdb=yes
+CALLGRIND_COMMAND += --vgdb-error=0
+
+ifdef CALLGRIND
+__CALLGRIND_COMMAND = $(CALLGRIND_COMMAND)
+export TARGET=linux
+endif
+
+##==============================================================================
+##
 ## LIBOS command
 ##
 ##==============================================================================
 
 LIBOS_EXEC += $(__GDB_COMMAND)
-LIBOS_EXEC += $(__VGDB_COMMAND)
 LIBOS_EXEC += $(__MEMCHECK_COMMAND)
+LIBOS_EXEC += $(__VGDB_COMMAND)
+LIBOS_EXEC += $(__CACHEGRIND_COMMAND)
+LIBOS_EXEC += $(__CALLGRIND_COMMAND)
 LIBOS_EXEC += $(BINDIR)/libos
 LIBOS_EXEC += $(EXEC)
 
