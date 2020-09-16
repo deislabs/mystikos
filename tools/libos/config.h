@@ -6,6 +6,11 @@
 
 typedef struct _config_parsed_data_t
 {
+    // The version at the start of the configuration tells the parser which
+    // version of configuration schema we need to use for backwards
+    // compatibility.
+    char* configuration_version;
+
     // File handle for writing OE based configuration for oesign
     FILE* oe_config_out_file;
 

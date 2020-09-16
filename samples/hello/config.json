@@ -1,4 +1,7 @@
 {
+    // LibOS configuration version number
+    "version": "0.1",
+
     // OpenEnclave specific values
     "Debug": 1,
     "NumKernelPages": 100,

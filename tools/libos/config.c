@@ -3,15 +3,24 @@
 #include "config.h"
 #include <memory.h>
 #include <stdlib.h>
-#include "libos/eraise.h"
 #include "libos/file.h"
 
-#define CONFIG_RAISE(ERRNUM)                                      \
-    do                                                            \
-    {                                                             \
-        ret = ERRNUM;                                             \
-        libos_eraise(__FILE__, __LINE__, __FUNCTION__, (int)ret); \
-        goto done;                                                \
+#define CONFIG_RAISE(CONFIG_ERR)                                      \
+    do                                                                \
+    {                                                                 \
+        ret = CONFIG_ERR;                                             \
+        if (ret != 0)                                                 \
+        {                                                             \
+            fprintf(                                                  \
+                stderr,                                               \
+                "CONFIG_RAISE: %s(%u): %s: errno=%d: %s\n",                 \
+                __FILE__,                                             \
+                __LINE__,                                             \
+                __FUNCTION__,                                         \
+                CONFIG_ERR,                                           \
+                json_result_string(CONFIG_ERR));                      \
+            goto done;                                                \
+        }                                                             \
     } while (0)
 
 static json_result_t _config_extract_array(
@@ -23,9 +32,9 @@ static json_result_t _config_extract_array(
     json_result_t ret = JSON_FAILED;
 
     if ((parameters == NULL) || (parameters_count == NULL))
-        ERAISE(JSON_BAD_PARAMETER);
+        CONFIG_RAISE(JSON_BAD_PARAMETER);
     if (type != JSON_TYPE_STRING)
-        ERAISE(JSON_TYPE_MISMATCH);
+        CONFIG_RAISE(JSON_TYPE_MISMATCH);
 
     if (*parameters == NULL)
     {
@@ -81,119 +90,127 @@ static json_result_t _json_read_callback(
         }
         case JSON_REASON_VALUE:
         {
-            if (parsed_data->oe_config_out_file)
-            { // OE Config generation only
-                if (json_match(parser, "Debug") == JSON_OK)
+            // configuration schema version. This should be the first
+            // entry in the JSON configuration so we know how to parse
+            // everything else
+            if (json_match(parser, "version") == JSON_OK)
+            {
+                if (type == JSON_TYPE_STRING)
                 {
-                    if (((type == JSON_TYPE_BOOLEAN) && un->boolean) ||
-                        ((type == JSON_TYPE_INTEGER) && un->integer))
-                    {
-                        parsed_data->oe_debug = 1;
-                        if (parsed_data->oe_config_out_file)
-                            fprintf(
-                                parsed_data->oe_config_out_file, "Debug=1\n");
-                    }
-                    else if (
-                        (type == JSON_TYPE_BOOLEAN) ||
-                        (type == JSON_TYPE_INTEGER))
-                    {
-                        parsed_data->oe_debug = 1;
-                        if (parsed_data->oe_config_out_file)
-                            fprintf(
-                                parsed_data->oe_config_out_file, "Debug=0\n");
-                    }
-                    else
-                        CONFIG_RAISE(JSON_FAILED);
+                    parsed_data->configuration_version = un->string;
+                    if (strcmp(parsed_data->configuration_version, "0.1") != 0)
+                        CONFIG_RAISE(JSON_UNSUPPORTED);
                 }
-                else if (json_match(parser, "NumKernelPages") == JSON_OK)
+                else
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
+            }
+
+            // OE Config generation only
+            else if (json_match(parser, "Debug") == JSON_OK)
+            {
+                if (((type == JSON_TYPE_BOOLEAN) && un->boolean) ||
+                    ((type == JSON_TYPE_INTEGER) && un->integer))
                 {
-                    if (type == JSON_TYPE_INTEGER)
-                    {
-                        parsed_data->oe_num_heap_pages = (uint64_t)un->integer;
-                        if (parsed_data->oe_config_out_file)
-                            fprintf(
-                                parsed_data->oe_config_out_file,
-                                "NumHeapPages=%ld\n",
-                                un->integer);
-                    }
-                    else
-                        CONFIG_RAISE(JSON_FAILED);
+                    parsed_data->oe_debug = 1;
+                    if (parsed_data->oe_config_out_file)
+                        fprintf(parsed_data->oe_config_out_file, "Debug=1\n");
                 }
-                else if (json_match(parser, "NumStackPages") == JSON_OK)
+                else if (
+                    (type == JSON_TYPE_BOOLEAN) || (type == JSON_TYPE_INTEGER))
                 {
-                    if (type == JSON_TYPE_INTEGER)
-                    {
-                        parsed_data->oe_num_stack_pages = (uint64_t)un->integer;
-                        if (parsed_data->oe_config_out_file)
-                            fprintf(
-                                parsed_data->oe_config_out_file,
-                                "NumStackPages=%ld\n",
-                                un->integer);
-                    }
-                    else
-                        CONFIG_RAISE(JSON_FAILED);
+                    parsed_data->oe_debug = 1;
+                    if (parsed_data->oe_config_out_file)
+                        fprintf(parsed_data->oe_config_out_file, "Debug=0\n");
                 }
-                else if (json_match(parser, "NumUserThreads") == JSON_OK)
+                else
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
+            }
+            else if (json_match(parser, "NumKernelPages") == JSON_OK)
+            {
+                if (type == JSON_TYPE_INTEGER)
                 {
-                    if (type == JSON_TYPE_INTEGER)
-                    {
-                        parsed_data->oe_num_user_threads =
-                            (uint64_t)un->integer;
-                        if (parsed_data->oe_config_out_file)
-                            fprintf(
-                                parsed_data->oe_config_out_file,
-                                "NumTCS=%ld\n",
-                                un->integer);
-                    }
-                    else
-                        CONFIG_RAISE(JSON_FAILED);
+                    parsed_data->oe_num_heap_pages = (uint64_t)un->integer;
+                    if (parsed_data->oe_config_out_file)
+                        fprintf(
+                            parsed_data->oe_config_out_file,
+                            "NumHeapPages=%ld\n",
+                            un->integer);
                 }
-                else if (json_match(parser, "ProductID") == JSON_OK)
+                else
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
+            }
+            else if (json_match(parser, "NumStackPages") == JSON_OK)
+            {
+                if (type == JSON_TYPE_INTEGER)
                 {
-                    if (type == JSON_TYPE_INTEGER)
-                    {
-                        parsed_data->oe_product_id =
-                            (unsigned short)un->integer;
-                        if (parsed_data->oe_config_out_file)
-                            fprintf(
-                                parsed_data->oe_config_out_file,
-                                "ProductID=%ld\n",
-                                un->integer);
-                    }
-                    else
-                        CONFIG_RAISE(JSON_FAILED);
+                    parsed_data->oe_num_stack_pages = (uint64_t)un->integer;
+                    if (parsed_data->oe_config_out_file)
+                        fprintf(
+                            parsed_data->oe_config_out_file,
+                            "NumStackPages=%ld\n",
+                            un->integer);
                 }
-                else if (json_match(parser, "SecurityVersion") == JSON_OK)
+                else
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
+            }
+            else if (json_match(parser, "NumUserThreads") == JSON_OK)
+            {
+                if (type == JSON_TYPE_INTEGER)
                 {
-                    if (type == JSON_TYPE_INTEGER)
-                    {
-                        parsed_data->oe_security_version =
-                            (unsigned short)un->integer;
-                        if (parsed_data->oe_config_out_file)
-                            fprintf(
-                                parsed_data->oe_config_out_file,
-                                "SecurityVersion=%ld\n",
-                                un->integer);
-                    }
-                    else
-                        CONFIG_RAISE(JSON_FAILED);
+                    parsed_data->oe_num_user_threads = (uint64_t)un->integer;
+                    if (parsed_data->oe_config_out_file)
+                        fprintf(
+                            parsed_data->oe_config_out_file,
+                            "NumTCS=%ld\n",
+                            un->integer);
                 }
+                else
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
+            }
+            else if (json_match(parser, "ProductID") == JSON_OK)
+            {
+                if (type == JSON_TYPE_INTEGER)
+                {
+                    parsed_data->oe_product_id = (unsigned short)un->integer;
+                    if (parsed_data->oe_config_out_file)
+                        fprintf(
+                            parsed_data->oe_config_out_file,
+                            "ProductID=%ld\n",
+                            un->integer);
+                }
+                else
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
+            }
+            else if (json_match(parser, "SecurityVersion") == JSON_OK)
+            {
+                if (type == JSON_TYPE_INTEGER)
+                {
+                    parsed_data->oe_security_version =
+                        (unsigned short)un->integer;
+                    if (parsed_data->oe_config_out_file)
+                        fprintf(
+                            parsed_data->oe_config_out_file,
+                            "SecurityVersion=%ld\n",
+                            un->integer);
+                }
+                else
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
             }
 
             // LibOS configuration
-            if (json_match(parser, "NumUserPages") == JSON_OK)
+            else if (json_match(parser, "NumUserPages") == JSON_OK)
             {
                 if (type == JSON_TYPE_INTEGER)
                     parsed_data->user_pages = un->integer;
                 else
-                    CONFIG_RAISE(JSON_FAILED);
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
             }
             else if (json_match(parser, "ApplicationPath") == JSON_OK)
             {
                 if (type == JSON_TYPE_STRING)
                     parsed_data->application_path = un->string;
                 else
-                    CONFIG_RAISE(JSON_FAILED);
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
             }
             else if (json_match(parser, "HostApplicationParameters") == JSON_OK)
             {
@@ -203,7 +220,7 @@ static json_result_t _json_read_callback(
                     parsed_data->allow_host_parameters =
                         (un->integer == 0) ? 0 : 1;
                 else
-                    CONFIG_RAISE(JSON_FAILED);
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
             }
             else if (json_match(parser, "ApplicationParameters") == JSON_OK)
             {
@@ -281,25 +298,25 @@ int _parse_config(config_parsed_data_t* parsed_data)
         free,
     };
 
-    if (json_parser_init(
+    if ((ret = json_parser_init(
             &parser,
             (char*)parsed_data->buffer,
             parsed_data->buffer_length,
             _json_read_callback,
             parsed_data,
             &allocator,
-            &options) != JSON_OK)
+            &options)) != JSON_OK)
     {
-        CONFIG_RAISE(-1);
+        CONFIG_RAISE(ret);
     }
-    if (json_parser_parse(&parser) != JSON_OK)
+    if ((ret = json_parser_parse(&parser)) != JSON_OK)
     {
-        CONFIG_RAISE(-1);
+        CONFIG_RAISE(ret);
     }
 
     if (parser.depth != 0)
     {
-        CONFIG_RAISE(-1);
+        CONFIG_RAISE(JSON_UNEXPECTED);
     }
 
     ret = 0;
@@ -318,7 +335,7 @@ int parse_config_from_buffer(
     // Duplicate the memory into the config
     parsed_data->buffer = malloc(config_size);
     if (parsed_data->buffer == NULL)
-        CONFIG_RAISE(-1);
+        CONFIG_RAISE(JSON_OUT_OF_MEMORY);
     memcpy(parsed_data->buffer, config_data, config_size);
     parsed_data->buffer_length = config_size;
 
