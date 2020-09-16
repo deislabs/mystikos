@@ -235,15 +235,15 @@ endif
 
 ##==============================================================================
 ##
-## LIBOS_BEFORE
+## PREFIX
 ##
 ##==============================================================================
 
-LIBOS_BEFORE += $(__GDB_COMMAND)
-LIBOS_BEFORE += $(__MEMCHECK_COMMAND)
-LIBOS_BEFORE += $(__VGDB_COMMAND)
-LIBOS_BEFORE += $(__CACHEGRIND_COMMAND)
-LIBOS_BEFORE += $(__CALLGRIND_COMMAND)
+PREFIX += $(__GDB_COMMAND)
+PREFIX += $(__MEMCHECK_COMMAND)
+PREFIX += $(__VGDB_COMMAND)
+PREFIX += $(__CACHEGRIND_COMMAND)
+PREFIX += $(__CALLGRIND_COMMAND)
 
 ##==============================================================================
 ##
@@ -251,7 +251,7 @@ LIBOS_BEFORE += $(__CALLGRIND_COMMAND)
 ##
 ##==============================================================================
 
-LIBOS_EXEC += $(LIBOS_BEFORE)
+LIBOS_EXEC += $(PREFIX)
 LIBOS_EXEC += $(BINDIR)/libos
 LIBOS_EXEC += $(EXEC)
 
