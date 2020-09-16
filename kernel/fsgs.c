@@ -5,7 +5,7 @@
 #include <libos/syscall.h>
 #include <libos/tcall.h>
 
-void libos_set_fs(const void* p)
+void libos_set_fsbase(void* p)
 {
     if (__options.have_syscall_instruction)
     {
@@ -19,7 +19,7 @@ void libos_set_fs(const void* p)
     }
 }
 
-const void* libos_get_fs(void)
+void* libos_get_fsbase(void)
 {
     if (__options.have_syscall_instruction)
     {
@@ -37,7 +37,7 @@ const void* libos_get_fs(void)
     }
 }
 
-void libos_set_gs(const void* p)
+void libos_set_gsbase(void* p)
 {
     if (__options.have_syscall_instruction)
     {
@@ -52,7 +52,7 @@ void libos_set_gs(const void* p)
     }
 }
 
-const void* libos_get_gs(void)
+void* libos_get_gsbase(void)
 {
     if (__options.have_syscall_instruction)
     {

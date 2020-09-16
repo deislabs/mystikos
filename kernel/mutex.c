@@ -63,7 +63,7 @@ int __libos_mutex_trylock(libos_mutex_t* m, libos_thread_t* self)
 int libos_mutex_lock(libos_mutex_t* mutex)
 {
     libos_mutex_t* m = (libos_mutex_t*)mutex;
-    libos_thread_t* self = libos_self();
+    libos_thread_t* self = libos_get_vsbase();
 
     if (!m)
         return EINVAL;
@@ -102,7 +102,7 @@ int libos_mutex_lock(libos_mutex_t* mutex)
 int libos_mutex_trylock(libos_mutex_t* mutex)
 {
     libos_mutex_t* m = (libos_mutex_t*)mutex;
-    libos_thread_t* self = libos_self();
+    libos_thread_t* self = libos_get_vsbase();
 
     if (!m)
         return EINVAL;
@@ -124,7 +124,7 @@ int libos_mutex_trylock(libos_mutex_t* mutex)
 int __libos_mutex_unlock(libos_mutex_t* mutex, libos_thread_t** waiter)
 {
     libos_mutex_t* m = (libos_mutex_t*)mutex;
-    libos_thread_t* self = libos_self();
+    libos_thread_t* self = libos_get_vsbase();
     int ret = -1;
 
     libos_spin_lock(&m->lock);

@@ -286,7 +286,7 @@ static libos_vad_t* _list_find(libos_mman_t* mman, uintptr_t addr)
 /* Lock the mman and set the 'locked' parameter to true */
 static void _mman_lock(libos_mman_t* mman, bool* locked)
 {
-    libos_recursive_spin_lock(&mman->lock, (long)libos_get_fs());
+    libos_recursive_spin_lock(&mman->lock, (long)libos_get_fsbase());
     *locked = true;
 }
 
@@ -295,7 +295,7 @@ static void _mman_unlock(libos_mman_t* mman, bool* locked)
 {
     if (*locked)
     {
-        libos_recursive_spin_unlock(&mman->lock, (long)libos_get_fs());
+        libos_recursive_spin_unlock(&mman->lock, (long)libos_get_fsbase());
         *locked = false;
     }
 }

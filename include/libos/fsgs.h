@@ -3,12 +3,12 @@
 
 #include <libos/types.h>
 
-const void* libos_get_fs(void);
+void* libos_get_fsbase(void);
 
-void libos_set_fs(const void* p);
+void libos_set_fsbase(void* p);
 
-const void* libos_get_gs(void);
+void* libos_get_gsbase(void);
 
-void libos_set_gs(const void* p);
+void libos_set_gsbase(void* p);
 
 #endif /* _LIBOS_FSGS_H */

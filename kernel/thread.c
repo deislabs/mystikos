@@ -1,5 +1,3 @@
-#include <pthread.h>
-
 #include <libos/assert.h>
 #include <libos/atexit.h>
 #include <libos/atomic.h>
@@ -19,89 +17,8 @@
 
 libos_thread_t* __libos_main_thread;
 
-static libos_thread_t* _threads;
-static size_t _nthreads;
 static libos_thread_t* _zombies;
 static libos_spinlock_t _lock = LIBOS_SPINLOCK_INITIALIZER;
-
-size_t libos_get_num_active_threads(void)
-{
-    size_t n;
-
-    libos_spin_lock(&_lock);
-    n = _nthreads;
-    libos_spin_unlock(&_lock);
-
-    return n;
-}
-
-#if 0
-static size_t _count_threads_no_lock(void)
-{
-    size_t n = 0;
-
-    for (libos_thread_t* p = _threads; p; p = p->next)
-        n++;
-
-    return n;
-}
-#endif
-
-int libos_add_self(libos_thread_t* thread)
-{
-    int ret = 0;
-
-    libos_spin_lock(&_lock);
-
-    for (libos_thread_t* p = _threads; p; p = p->next)
-    {
-        if (p == thread)
-        {
-            ret = -1;
-            goto done;
-        }
-    }
-
-    thread->next = _threads;
-    _threads = thread;
-    _nthreads++;
-
-done:
-    libos_spin_unlock(&_lock);
-
-    return ret;
-}
-
-int libos_remove_self(libos_thread_t* thread)
-{
-    int ret = -1;
-
-    libos_spin_lock(&_lock);
-    {
-        libos_thread_t* prev = NULL;
-
-        for (libos_thread_t* p = _threads; p; p = p->next)
-        {
-            if (p == thread)
-            {
-                if (prev)
-                    prev->next = p->next;
-                else
-                    _threads = p->next;
-
-                _nthreads--;
-
-                ret = 0;
-                break;
-            }
-
-            prev = p;
-        }
-    }
-    libos_spin_unlock(&_lock);
-
-    return ret;
-}
 
 static void _free_zombies(void* arg)
 {
@@ -140,9 +57,9 @@ void libos_release_thread(libos_thread_t* thread)
     libos_spin_unlock(&_lock);
 }
 
-bool libos_valid_pthread(const void* pthread)
+bool libos_valid_td(const void* td)
 {
-    return pthread && ((const struct pthread*)pthread)->self == pthread;
+    return td && ((const libos_td_t*)td)->self == td;
 }
 
 static bool _valid_thread(const libos_thread_t* thread)
@@ -150,73 +67,47 @@ static bool _valid_thread(const libos_thread_t* thread)
     return thread && thread->magic == LIBOS_THREAD_MAGIC;
 }
 
-libos_thread_t* libos_self(void)
-{
-    const struct pthread* pthread = libos_get_fs();
-    libos_thread_t* thread = NULL;
-
-    if (!libos_valid_pthread(pthread))
-        libos_panic("invalid pthread");
-
-    libos_spin_lock(&_lock);
-
-    for (libos_thread_t* p = _threads; p; p = p->next)
-    {
-        if (p->newtls == pthread)
-        {
-            thread = p;
-            break;
-        }
-    }
-
-    libos_spin_unlock(&_lock);
-
-    libos_assert(thread);
-
-    return thread;
-}
-
 static void _call_thread_fn(void)
 {
-    libos_thread_t* thread = libos_self();
+    libos_thread_t* thread = libos_get_vsbase();
 
-    if (!thread)
-        libos_panic("%s()", __FUNCTION__);
-
+    libos_assert(thread != NULL);
     thread->fn(thread->arg);
 }
 
 /* The target calls this from the new thread */
 static long _run(libos_thread_t* thread, pid_t tid, uint64_t event)
 {
-    struct pthread* pthread;
-    const struct pthread* old_pthread = libos_get_fs();
+    libos_td_t* td;
+    libos_td_t* old_td = libos_get_fsbase();
 
-    libos_assert(libos_valid_pthread(old_pthread));
+    libos_assert(libos_valid_td(old_td));
 
     if (__options.have_syscall_instruction)
-        libos_set_gs(old_pthread);
+        libos_set_gsbase(old_td);
 
     if (!_valid_thread(thread))
         return -EINVAL;
 
-    if (!libos_valid_pthread(pthread = thread->newtls))
-        libos_panic("%s(%u): invalid pthread", __FILE__, __LINE__);
+    if (!libos_valid_td(td = thread->newtls))
+        libos_panic("invalid td");
 
     /* propagate the canary */
-    pthread->canary = old_pthread->canary;
+    td->canary = old_td->canary;
 
     thread->tid = tid;
     thread->event = event;
-    thread->original_fsbase = old_pthread;
+    thread->original_fsbase = old_td;
 
-    /* add the thread to the active list */
-    if (libos_add_self(thread) != 0)
-        libos_panic("libos_add_self() failed");
+    /* initialize the vsbase */
+    td->vsbase.magic = VSBASE_MAGIC;
+    td->vsbase.index1 = 0;
 
-    libos_set_fs(pthread);
+    /* set the fsbase to the libc thread */
+    libos_set_fsbase(td);
+    libos_set_vsbase(thread);
 
-    /* Set the TID for this thread (sets the pthread tid field) */
+    /* Set the TID for this thread (sets the td tid field) */
     libos_atomic_exchange(thread->ptid, tid);
 
     /* Jump back here from exit */
@@ -224,20 +115,16 @@ static long _run(libos_thread_t* thread, pid_t tid, uint64_t event)
     {
         libos_assert(libos_gettid() != -1);
 
-        /* Wake up any pthread waiting on ctid */
+        /* Wake up any thread waiting on ctid */
         {
             libos_atomic_exchange(thread->ctid, 0);
             const int futex_op = FUTEX_WAKE | FUTEX_PRIVATE;
             libos_syscall_futex(thread->ctid, futex_op, 1, 0, NULL, 0);
         }
 
-        if (libos_remove_self(thread) != 0)
-        {
-            libos_panic("libos_remove_self() failed");
-        }
-
         /* restore the original fsbase */
-        libos_set_fs(thread->original_fsbase);
+        libos_put_vsbase();
+        libos_set_fsbase(thread->original_fsbase);
 
         libos_release_thread(thread);
     }
@@ -276,7 +163,7 @@ static long _syscall_clone(
     if (!fn)
         ERAISE(-EINVAL);
 
-    if (!libos_valid_pthread(newtls))
+    if (!libos_valid_td(newtls))
         ERAISE(-EINVAL);
 
     /* Create and initialize the thread struct */
@@ -320,14 +207,157 @@ pid_t libos_gettid(void)
 {
     libos_thread_t* thread;
 
-    if (__options.have_syscall_instruction && libos_get_fs() == libos_get_gs())
+    if (libos_check_vsbase() != 0)
         return -1;
 
-    if (!(thread = libos_self()))
-    {
-        // libos_panic("unexpected");
-        return -1;
-    }
+    thread = libos_get_vsbase();
+    libos_assert(thread != NULL);
 
     return thread->tid;
+}
+
+/*
+**==============================================================================
+**
+** vsbase
+**
+**==============================================================================
+*/
+
+#define MAX_VSBASES 1024
+
+typedef struct vsbase_entry
+{
+    void* vsbase;
+    uint32_t next; /* one-based index; zero signifies null */
+}
+vsbase_entry_t;
+
+static vsbase_entry_t _vsbases[MAX_VSBASES];
+static uint32_t _vsbases_next; /* next available (zero-based) */
+static uint32_t _vsbases_free1; /* linked list (one-based) */
+static libos_spinlock_t _vsbases_lock;
+
+/* retrieves the vsbase in O(1) */
+void libos_set_vsbase(void* p)
+{
+    libos_td_t* td = libos_get_fsbase();
+
+    libos_assert(libos_valid_td(td));
+
+    libos_spin_lock(&_vsbases_lock);
+    {
+        uint32_t index1 = 0; /* one-based */
+
+        if (td->vsbase.magic != VSBASE_MAGIC)
+            libos_panic("bad magic");
+
+        if (td->vsbase.index1 != 0)
+            libos_panic("already in use");
+
+        if (_vsbases_next != MAX_VSBASES)
+        {
+            index1 = (uint32_t)(_vsbases_next++ + 1);
+        }
+        else
+        {
+            if (_vsbases_free1 == 0)
+                libos_panic("exhausted vsbase table");
+
+            /* get next free entry */
+            index1 = _vsbases_free1;
+
+            /* remove this entry from the free list */
+            _vsbases_free1 = _vsbases[index1-1].next;
+        }
+
+        if (index1 == 0)
+            libos_panic("exhausted vsbase table");
+
+        _vsbases[index1 - 1].vsbase = p;
+        _vsbases[index1 - 1].next = 0;
+        td->vsbase.index1 = index1;
+    }
+    libos_spin_unlock(&_vsbases_lock);
+}
+
+/* releases the vsbase in O(1) */
+void* libos_put_vsbase(void)
+{
+    libos_td_t* td = libos_get_fsbase();
+    void* vsbase = NULL;
+
+    libos_assert(libos_valid_td(td));
+
+    libos_spin_lock(&_vsbases_lock);
+    {
+        uint32_t index1; /* one-based */
+
+        if (td->vsbase.magic != VSBASE_MAGIC)
+            libos_panic("bad vsbase magic");
+
+        index1 = (uint32_t)td->vsbase.index1;
+
+        if (index1 == 0)
+            libos_panic("null vsbase");
+
+        if (index1 > MAX_VSBASES)
+            libos_panic("bad vsbase index");
+
+        /* set index to null */
+        td->vsbase.index1 = 0;
+
+        _vsbases[index1-1].next = _vsbases_free1;
+        _vsbases_free1 = index1;
+    }
+    libos_spin_unlock(&_vsbases_lock);
+
+    return vsbase;
+}
+
+/* releases the vsbase in O(1) */
+void* libos_get_vsbase(void)
+{
+    libos_td_t* td = libos_get_fsbase();
+    void* vsbase = NULL;
+
+    libos_assert(libos_valid_td(td));
+
+    libos_spin_lock(&_vsbases_lock);
+    {
+        uint32_t index1; /* one-based */
+
+        if (td->vsbase.magic != VSBASE_MAGIC)
+            libos_panic("bad vsbase magic");
+
+        index1 = td->vsbase.index1;
+
+        if (index1 == 0)
+            libos_panic("null vsbase");
+
+        if (index1 > MAX_VSBASES)
+            libos_panic("bad vsbase index");
+
+        vsbase = _vsbases[index1 - 1].vsbase;
+    }
+    libos_spin_unlock(&_vsbases_lock);
+
+    return vsbase;
+}
+
+int libos_check_vsbase(void)
+{
+    int ret = -1;
+    libos_td_t* td = libos_get_fsbase();
+
+    libos_assert(libos_valid_td(td));
+
+    libos_spin_lock(&_vsbases_lock);
+    {
+        if (td->vsbase.magic == VSBASE_MAGIC)
+            ret = 0;
+    }
+    libos_spin_unlock(&_vsbases_lock);
+
+    return ret;
 }

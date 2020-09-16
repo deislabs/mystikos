@@ -25,18 +25,18 @@ static libos_fs_t* _fs;
 
 long libos_tcall(long n, long params[6])
 {
-    const void* fs = NULL;
+    void* fs = NULL;
 
     if (__options.have_syscall_instruction)
     {
-        fs = libos_get_fs();
-        libos_set_fs(libos_get_gs());
+        fs = libos_get_fsbase();
+        libos_set_fsbase(libos_get_gsbase());
     }
 
     long ret = (_args.tcall)(n, params);
 
     if (fs)
-        libos_set_fs(fs);
+        libos_set_fsbase(fs);
 
     return ret;
 }
@@ -137,7 +137,7 @@ static int _create_main_thread(
     thread->magic = LIBOS_THREAD_MAGIC;
     thread->tid = pid;
     thread->event = event;
-    thread->original_fsbase = libos_get_fs();
+    thread->original_fsbase = libos_get_fsbase();
 
     *thread_out = thread;
     thread = NULL;
@@ -168,7 +168,7 @@ int libos_enter_kernel(libos_kernel_args_t* args)
     __options.export_ramfs = _args.export_ramfs;
 
     if (__options.have_syscall_instruction)
-        libos_set_gs(libos_get_fs());
+        libos_set_gsbase(libos_get_fsbase());
 
     libos_call_init_functions();
 

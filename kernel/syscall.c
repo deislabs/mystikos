@@ -1813,7 +1813,7 @@ long libos_syscall(long n, long params[6])
         case SYS_exit:
         {
             const int status = (int)x1;
-            libos_thread_t* thread = libos_self();
+            libos_thread_t* thread = libos_get_vsbase();
 
             _strace(n, "status=%d", status);
 
@@ -2302,30 +2302,32 @@ long libos_syscall(long n, long params[6])
             break;
         case SYS_set_thread_area:
         {
-            const void* tp = (void*)params[0];
+            void* tp = (void*)params[0];
             static bool _initialized;
 
             _strace(n, "tp=%p", tp);
 
             if (!_initialized)
             {
-                struct pthread* pthread = (struct pthread*)tp;
-                struct pthread* old_pthread = (struct pthread*)libos_get_fs();
+                libos_td_t* td = (libos_td_t*)tp;
+                libos_td_t* old_td = (libos_td_t*)libos_get_fsbase();
 
-                libos_assert(libos_valid_pthread(old_pthread));
-                libos_assert(libos_valid_pthread(pthread));
+                libos_assert(libos_valid_td(old_td));
+                libos_assert(libos_valid_td(td));
 
                 /* set the thread pointer for this thread */
                 __libos_main_thread->newtls = (void*)tp;
 
-                /* add this thread to the active thread list */
-                libos_add_self(__libos_main_thread);
+                /* propagate the canary from the old thread descriptor */
+                td->canary = old_td->canary;
 
-                /* propagate the canary from the old pthread */
-                pthread->canary = old_pthread->canary;
+                /* initialize the vsbase */
+                td->vsbase.magic = VSBASE_MAGIC;
+                td->vsbase.index1 = 0;
 
                 /* set the fs base register to point to the new thread */
-                libos_set_fs(tp);
+                libos_set_fsbase(tp);
+                libos_set_vsbase(__libos_main_thread);
 
                 _initialized = true;
             }

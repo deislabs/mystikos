@@ -3,22 +3,35 @@
 
 #include <libos/setjmp.h>
 #include <libos/types.h>
+#include <libos/tcall.h>
 #include <unistd.h>
 
 #define LIBOS_THREAD_MAGIC 0xc79c53d9ad134ad4
 
-/* aligns with pthread ABI (both musl libc and glibc) */
-struct pthread
+/* indicates that vsbase has been set */
+#define VSBASE_MAGIC 0xa992961d
+
+/* thread descriptor: initial fields align with libc pthread ABI */
+struct libos_td
 {
-    struct pthread* self;
+    struct libos_td* self;
     uint64_t reserved1;
     uint64_t reserved2;
     uint64_t reserved3;
     uint64_t reserved4;
     uint64_t canary;
+    /* these eight bytes are unused in musl libc */
+    struct
+    {
+        uint32_t magic; /* VSBASE_MAGIC */
+        uint32_t index1; /* one-based index (zero indicates null vsbase) */
+    }
+    vsbase;
 };
 
-bool libos_valid_pthread(const void* pthread);
+typedef struct libos_td libos_td_t;
+
+bool libos_valid_td(const void* td);
 
 typedef struct libos_thread libos_thread_t;
 
@@ -51,17 +64,11 @@ struct libos_thread
     long (*run)(libos_thread_t* thread, pid_t tid, uint64_t event);
 
     /* The original fsbase as given by target */
-    const void* original_fsbase;
+    void* original_fsbase;
 
     /* for jumping back on exit */
     libos_jmp_buf_t jmpbuf;
 };
-
-libos_thread_t* libos_self(void);
-
-int libos_add_self(libos_thread_t* thread);
-
-int libos_remove_self(libos_thread_t* thread);
 
 void libos_release_thread(libos_thread_t* thread);
 
@@ -138,5 +145,14 @@ static __inline__ bool libos_thread_queue_empty(libos_thread_queue_t* queue)
 long libos_run_thread(uint64_t cookie, pid_t tid, uint64_t event);
 
 pid_t libos_gettid(void);
+
+void libos_set_vsbase(void* p);
+
+void* libos_put_vsbase(void);
+
+void* libos_get_vsbase(void);
+
+/* check that the thread descriptor refers to a vsbase */
+int libos_check_vsbase(void);
 
 #endif /* _LIBOS_THREAD_H */
