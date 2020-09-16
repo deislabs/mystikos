@@ -15,19 +15,19 @@ OPTS += --strace
 endif
 
 mkcpio: all
-	$(LIBOS) mkcpio $(APPDIR) rootfs
+	$(LIBOS_BEFORE) $(LIBOS) mkcpio $(APPDIR) rootfs
 
 sign: all mkcpio private-pem
-	$(LIBOS) sign rootfs private.pem config.json
+	$(LIBOS_BEFORE) $(LIBOS) sign rootfs private.pem config.json
 
 package: all private-pem
-	$(VALGRIND) $(LIBOS) package $(APPDIR) private.pem config.json
+	$(LIBOS_BEFORE) $(VALGRIND) $(LIBOS) package $(APPDIR) private.pem config.json
 
 run: mkcpio
 	$(LIBOS_EXEC) rootfs /bin/$(APPNAME) red green blue yellow $(OPTS)
 
 run-signed: sign
-	$(APPNAME).signed/bin/libos exec $(APPNAME).signed/rootfs /bin/$(APPNAME) red green blue yellow $(OPTS)
+	$(LIBOS_BEFORE) $(APPNAME).signed/bin/libos $(EXEC) $(APPNAME).signed/rootfs /bin/$(APPNAME) red green blue yellow $(OPTS)
 
 run-package-with-args: package
 	$(APPNAME).signed/bin/$(APPNAME) red green blue yellow $(OPTS)

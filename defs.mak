@@ -235,15 +235,23 @@ endif
 
 ##==============================================================================
 ##
+## LIBOS_BEFORE
+##
+##==============================================================================
+
+LIBOS_BEFORE += $(__GDB_COMMAND)
+LIBOS_BEFORE += $(__MEMCHECK_COMMAND)
+LIBOS_BEFORE += $(__VGDB_COMMAND)
+LIBOS_BEFORE += $(__CACHEGRIND_COMMAND)
+LIBOS_BEFORE += $(__CALLGRIND_COMMAND)
+
+##==============================================================================
+##
 ## LIBOS command
 ##
 ##==============================================================================
 
-LIBOS_EXEC += $(__GDB_COMMAND)
-LIBOS_EXEC += $(__MEMCHECK_COMMAND)
-LIBOS_EXEC += $(__VGDB_COMMAND)
-LIBOS_EXEC += $(__CACHEGRIND_COMMAND)
-LIBOS_EXEC += $(__CALLGRIND_COMMAND)
+LIBOS_EXEC += $(LIBOS_BEFORE)
 LIBOS_EXEC += $(BINDIR)/libos
 LIBOS_EXEC += $(EXEC)
 
