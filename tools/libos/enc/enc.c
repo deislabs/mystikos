@@ -104,8 +104,6 @@ int libos_enter_ecall(
     size_t argv_size,
     const void* envp_data,
     size_t envp_size,
-    pid_t ppid,
-    pid_t pid,
     uint64_t event)
 {
     int ret = -1;
@@ -453,8 +451,6 @@ int libos_enter_ecall(
         args.trace_syscalls = trace_syscalls;
         args.export_ramfs = export_ramfs;
         args.tcall = libos_tcall;
-        args.ppid = ppid;
-        args.pid = pid;
         args.event = event;
 
         /* Verify that the kernel is an ELF image */
@@ -496,9 +492,9 @@ done:
     return ret;
 }
 
-long libos_run_thread_ecall(uint64_t cookie, int tid, uint64_t event)
+long libos_run_thread_ecall(uint64_t cookie, uint64_t event)
 {
-    return libos_run_thread(cookie, tid, event);
+    return libos_run_thread(cookie, event);
 }
 
 _Static_assert(sizeof(struct libos_timespec) == sizeof(struct timespec), "");
@@ -577,11 +573,11 @@ long libos_tcall_isatty(int fd)
     return (long)ret;
 }
 
-long libos_tcall_create_host_thread(uint64_t cookie)
+long libos_tcall_create_thread(uint64_t cookie)
 {
     long ret;
 
-    if (libos_create_host_thread_ocall(&ret, cookie) != OE_OK)
+    if (libos_create_thread_ocall(&ret, cookie) != OE_OK)
         return -EINVAL;
 
     return (long)ret;

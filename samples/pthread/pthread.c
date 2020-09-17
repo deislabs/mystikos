@@ -367,16 +367,39 @@ void test_cond_broadcast(void)
 **==============================================================================
 */
 
-#define N 10
 #define LOOP(BODY, N) for (size_t i = 0; i < N; i++) BODY
 
 int main(int argc, const char* argv[])
 {
-    LOOP(test_create_thread(), N);
-    LOOP(test_mutexes(PTHREAD_MUTEX_NORMAL), N);
-    LOOP(test_mutexes(PTHREAD_MUTEX_RECURSIVE), N);
-    LOOP(test_timedlock(), N);
-    LOOP(test_cond_signal(), N);
-    LOOP(test_cond_broadcast(), N);
+    unsigned long n = 1;
+
+    if (argc > 2)
+    {
+        fprintf(stderr, "Usage: %s [<count>]\n", argv[0]);
+        exit(1);
+    }
+
+    if (argc == 2)
+    {
+        char* end = NULL;
+        n = strtoul(argv[1], &end, 0);
+
+        if (!end || *end)
+        {
+            fprintf(stderr, "%s: bad count argument: %s\n", argv[0], argv[1]);
+            exit(1);
+        }
+    }
+
+    for (size_t i = 0; i < n; i++)
+    {
+        test_create_thread();
+        test_mutexes(PTHREAD_MUTEX_NORMAL);
+        test_mutexes(PTHREAD_MUTEX_RECURSIVE);
+        // test_timedlock();
+        test_cond_signal();
+        test_cond_broadcast();
+    }
+
     return 0;
 }

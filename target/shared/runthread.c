@@ -1,20 +1,8 @@
-#include <errno.h>
-#include <libos/eraise.h>
 #include <libos/thread.h>
-#include <linux/futex.h>
-#include <stdio.h>
-#include <sys/syscall.h>
 
-long libos_run_thread(uint64_t cookie, pid_t tid, uint64_t event)
+extern libos_run_thread_t __libos_run_thread;
+
+long libos_run_thread(uint64_t cookie, uint64_t event)
 {
-    long ret = 0;
-    libos_thread_t* thread = (libos_thread_t*)cookie;
-
-    if (!thread || thread->magic != LIBOS_THREAD_MAGIC || !thread->run)
-        ERAISE(-EINVAL);
-
-    ECHECK((*thread->run)(thread, tid, event));
-
-done:
-    return ret;
+    return (*__libos_run_thread)(cookie, event);
 }

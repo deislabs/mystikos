@@ -114,13 +114,13 @@ static int _teardown_ramfs(void)
 }
 
 static int _create_main_thread(
-    pid_t ppid,
-    pid_t pid,
     uint64_t event,
     libos_thread_t** thread_out)
 {
     int ret = 0;
     libos_thread_t* thread = NULL;
+    pid_t ppid = libos_generate_tid();
+    pid_t pid = libos_generate_tid();
 
     if (thread_out)
         *thread_out = NULL;
@@ -247,8 +247,11 @@ int libos_enter_kernel(libos_kernel_args_t* args)
         ERAISE(-EINVAL);
     }
 
+    /* Set the 'run-proc' which is called by the target to run new threads */
+    ECHECK(libos_tcall_set_run_thread_function(libos_run_thread));
+
     /* Create the main thread */
-    ECHECK(_create_main_thread(args->ppid, args->pid, args->event, &thread));
+    ECHECK(_create_main_thread(args->event, &thread));
 
     /* Enter the C runtime (which enters the application) */
     exit_status = elf_enter_crt(
@@ -258,7 +261,7 @@ int libos_enter_kernel(libos_kernel_args_t* args)
     _teardown_ramfs();
 
     /* Put the thread on the zombie list */
-    libos_release_thread(thread);
+    libos_zombify_thread(thread);
 
 #if 0
     {

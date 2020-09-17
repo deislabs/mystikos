@@ -17,6 +17,9 @@ endif
 run: all
 	$(LIBOS_EXEC) $(OPTS) rootfs /bin/pthread
 
+run-n: all
+	$(LIBOS_EXEC) $(OPTS) rootfs /bin/pthread 10000
+
 libos:
 	$(MAKE) -C $(TOP)/tools/libos
 

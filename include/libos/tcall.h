@@ -26,11 +26,12 @@ typedef enum libos_tcall_number
     LIBOS_TCALL_ADD_SYMBOL_FILE = 2058,
     LIBOS_TCALL_LOAD_SYMBOLS = 2059,
     LIBOS_TCALL_UNLOAD_SYMBOLS = 2060,
-    LIBOS_TCALL_CREATE_HOST_THREAD = 2061,
+    LIBOS_TCALL_CREATE_THREAD = 2061,
     LIBOS_TCALL_WAIT = 2062,
     LIBOS_TCALL_WAKE = 2063,
     LIBOS_TCALL_WAKE_WAIT = 2064,
     LIBOS_TCALL_EXPORT_FILE = 2065,
+    LIBOS_TCALL_SET_RUN_THREAD_FUNCTION = 2066,
 } libos_tcall_number_t;
 
 long libos_tcall(long n, long params[6]);
@@ -49,15 +50,15 @@ long libos_tcall_vsnprintf(
 
 long libos_tcall_write_console(int fd, const void* buf, size_t count);
 
-long libos_tcall_create_host_thread(uint64_t cookie);
+long libos_tcall_create_thread(uint64_t cookie);
 
 long libos_tcall_wait(uint64_t event, const struct timespec* timeout);
 
 long libos_tcall_wake(uint64_t event);
 
 long libos_tcall_wake_wait(
-    uint64_t waiter_tid,
-    uint64_t self_tid,
+    uint64_t waiter_event,
+    uint64_t self_event,
     const struct timespec* timeout);
 
 long libos_tcall_export_file(const char* path, const void* data, size_t size);
@@ -71,5 +72,9 @@ long libos_tcall_add_symbol_file(
 long libos_tcall_load_symbols(void);
 
 long libos_tcall_unload_symbols(void);
+
+typedef long (*libos_run_thread_t)(uint64_t cookie, uint64_t event);
+
+long libos_tcall_set_run_thread_function(libos_run_thread_t function);
 
 #endif /* _LIBOS_TCALL_H */

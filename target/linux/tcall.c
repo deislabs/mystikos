@@ -14,6 +14,7 @@
 #include <libos/syscall.h>
 #include <libos/syscallext.h>
 #include <libos/tcall.h>
+#include <libos/thread.h>
 
 #include "debugmalloc.h"
 
@@ -31,15 +32,38 @@
 #define FREE free
 #endif
 
+libos_run_thread_t __libos_run_thread;
+
 static long _tcall_random(void* data, size_t size)
 {
     long ret = 0;
+    uint8_t* p = data;
+    size_t r = size;
 
     if (!data)
         ERAISE(-EINVAL);
 
-    if (syscall(SYS_getrandom, data, size, 0) != 0)
-        ERAISE(-errno);
+    if (size == 0)
+        goto done;
+
+    while (r)
+    {
+        long n = syscall(SYS_getrandom, p, r, 0);
+
+        if (n == -EINVAL || n == -EINTR)
+            continue;
+
+        if (n < 0)
+        {
+            ret = r;
+            break;
+        }
+
+        assert(n <= r);
+
+        r -= (size_t)n;
+        p += (size_t)n;
+    }
 
 done:
     return ret;
@@ -181,7 +205,7 @@ long libos_tcall_unload_symbols(void)
 
 /* Must be overriden by enclave application */
 LIBOS_WEAK
-long libos_tcall_create_host_thread(uint64_t cookie)
+long libos_tcall_create_thread(uint64_t cookie)
 {
     (void)cookie;
     assert("linux: unimplemented: implement in enclave" == NULL);
@@ -292,10 +316,10 @@ long libos_tcall(long n, long params[6])
         {
             return libos_tcall_unload_symbols();
         }
-        case LIBOS_TCALL_CREATE_HOST_THREAD:
+        case LIBOS_TCALL_CREATE_THREAD:
         {
             uint64_t cookie = (uint64_t)x1;
-            return libos_tcall_create_host_thread(cookie);
+            return libos_tcall_create_thread(cookie);
         }
         case LIBOS_TCALL_WAIT:
         {
@@ -321,6 +345,16 @@ long libos_tcall(long n, long params[6])
             const void* data = (const void*)x2;
             size_t size = (size_t)x3;
             return libos_tcall_export_file(path, data, size);
+        }
+        case LIBOS_TCALL_SET_RUN_THREAD_FUNCTION:
+        {
+            libos_run_thread_t function = (libos_run_thread_t)x1;
+
+            if (!function)
+                return -EINVAL;
+
+            __libos_run_thread = function;
+            return 0;
         }
         case SYS_ioctl:
         {

@@ -1,6 +1,7 @@
 #include <errno.h>
 #include <libos/fsgs.h>
 #include <libos/strings.h>
+#include <libos/thread.h>
 #include <libos/tcall.h>
 
 long libos_tcall_random(void* data, size_t size)
@@ -32,11 +33,11 @@ long libos_tcall_write_console(int fd, const void* buf, size_t count)
     return libos_tcall(LIBOS_TCALL_WRITE_CONSOLE, params);
 }
 
-long libos_tcall_create_host_thread(uint64_t cookie)
+long libos_tcall_create_thread(uint64_t cookie)
 {
     long params[6] = {0};
     params[0] = (long)cookie;
-    return libos_tcall(LIBOS_TCALL_CREATE_HOST_THREAD, params);
+    return libos_tcall(LIBOS_TCALL_CREATE_THREAD, params);
 }
 
 long libos_tcall_wait(uint64_t event, const struct timespec* timeout)
@@ -70,4 +71,10 @@ long libos_tcall_wake_wait(
     params[1] = (long)self_event;
     params[2] = (long)timeout;
     return libos_tcall(LIBOS_TCALL_WAKE_WAIT, params);
+}
+
+long libos_tcall_set_run_thread_function(libos_run_thread_t function)
+{
+    long params[6] = {(long)function};
+    return libos_tcall(LIBOS_TCALL_SET_RUN_THREAD_FUNCTION, params);
 }

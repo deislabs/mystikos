@@ -25,14 +25,9 @@ enclave
             size_t args_size,
             [in, size=env_size] const void* env,
             size_t env_size,
-            int ppid,
-            int pid,
             uint64_t event);
 
-        public long libos_run_thread_ecall(
-            uint64_t cookie,
-            int tid,
-            uint64_t event);
+        public long libos_run_thread_ecall(uint64_t cookie, uint64_t event);
     };
 
     untrusted
@@ -64,7 +59,7 @@ enclave
 
         long libos_syscall_isatty_ocall(int fd);
 
-        long libos_create_host_thread_ocall(uint64_t cookie);
+        long libos_create_thread_ocall(uint64_t cookie);
 
         long libos_wait_ocall(
             uint64_t event,

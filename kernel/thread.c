@@ -14,8 +14,174 @@
 #include <libos/thread.h>
 #include <libos/trace.h>
 #include <libos/ud2.h>
+#include <libos/lfence.h>
 
 libos_thread_t* __libos_main_thread;
+
+/*
+**==============================================================================
+**
+** TID generation
+**
+**     Generate thread ids rather than depending on the ones provided by the
+**     target.
+**
+**==============================================================================
+*/
+
+#define MIN_TID 100
+
+pid_t libos_generate_tid(void)
+{
+    static pid_t _tid = MIN_TID;
+    static libos_spinlock_t _lock = LIBOS_SPINLOCK_INITIALIZER;
+    pid_t tid;
+
+    libos_spin_lock(&_lock);
+    {
+        if (_tid < MIN_TID)
+            _tid = MIN_TID;
+
+        tid = _tid++;
+    }
+    libos_spin_unlock(&_lock);
+
+    return tid;
+}
+
+/*
+**==============================================================================
+**
+** cookie map:
+**
+**     This structure maps cookies to threads. When a thread is created, the
+**     kernel passes a cookie to the target (libos_tcall_create_thread).
+**     The host creates a new thread and then calls back into the kernel on
+**     that thread (libos_run_thread). Rather than passing a thread pointer
+**     directly to the target, we pass a cookie instead. A mapping only exists
+**     while a new thread is being created and deleted from the map immediately
+**     after the thread enters the kernel. The map provides functions for
+**     adding and removing a mapping.
+**
+**     A cookie is a 64-bit integer whose upper 32-bits are an index into the
+**     cookie map array, and the lower 32-bits are a random integer.
+**
+**     The cookie map provides two operations:
+**         _get_cookie() -- assigns and returns a cookie for the thread pointer.
+**         _put_cookie() -- deletes a cookie and returns the thread pointer.
+**
+**     Both operations are O(1)
+**
+**==============================================================================
+*/
+
+#define MAX_COOKIE_MAP_ENTRIES 64
+
+typedef struct cookie_map_entry
+{
+    uint64_t cookie;
+    libos_thread_t* thread;
+    size_t next1; /* one-based next pointer */
+}
+cookie_map_entry_t;
+
+static cookie_map_entry_t _cookie_map[MAX_COOKIE_MAP_ENTRIES];
+static size_t _cookie_map_next; /* next available entry */
+static size_t _cookie_map_free1; /* free list of cookie entries (one-based) */
+static libos_spinlock_t _cookie_map_lock;
+
+/* assign a cookie for the given thread pointer and return the cookie */
+static uint64_t _get_cookie(libos_thread_t* thread)
+{
+    uint32_t rand;
+    uint64_t cookie;
+
+    /* generate a random number */
+    if (libos_syscall_getrandom(&rand, sizeof(rand), 0) != sizeof(rand))
+        libos_panic("getrandom failed");
+
+    /* add a new entry to the cookie map */
+    libos_spin_lock(&_cookie_map_lock);
+    {
+        uint32_t index;
+
+        if (_cookie_map_next < MAX_COOKIE_MAP_ENTRIES)
+        {
+            index = (uint32_t)_cookie_map_next++;
+        }
+        else if (_cookie_map_free1 != 0)
+        {
+            /* take first entry on the free list (adjust to zero-based) */
+            index = (uint32_t)(_cookie_map_free1 - 1);
+
+            /* remove this entry from the free list */
+            _cookie_map_free1 = _cookie_map[index].next1;
+        }
+        else
+        {
+            libos_panic("cookie map exhausted");
+        }
+
+        cookie = ((uint64_t)index << 32) | (uint64_t)rand;
+
+        _cookie_map[index].cookie = cookie;
+        _cookie_map[index].thread = thread;
+        _cookie_map[index].next1 = 0;
+    }
+    libos_spin_unlock(&_cookie_map_lock);
+
+    return cookie;
+}
+
+/* fetch the cookie form the cookie map, while deleting the entry */
+static libos_thread_t* _put_cookie(uint64_t cookie)
+{
+    uint32_t index;
+    libos_thread_t* thread = NULL;
+
+    if (cookie == 0)
+        libos_panic("zero-valued cookie");
+
+    libos_lfence();
+
+    /* extract the index from the cookie */
+    index = (uint32_t)((cookie & 0xffffffff00000000) >> 32);
+
+    libos_spin_lock(&_cookie_map_lock);
+    {
+        if (index >= _cookie_map_next)
+            libos_panic("bad cookie index");
+
+        if (_cookie_map[index].cookie != cookie)
+            libos_panic("cookie mismatch");
+
+        thread = _cookie_map[index].thread;
+
+        /* clear the entry */
+        _cookie_map[index].cookie = 0;
+        _cookie_map[index].thread = NULL;
+
+        /* add the entry to the free list */
+        _cookie_map[index].next1 = _cookie_map_free1;
+        _cookie_map_free1 = index + 1;
+    }
+    libos_spin_unlock(&_cookie_map_lock);
+
+    return thread;
+}
+
+/*
+**==============================================================================
+**
+** zombie list implementation:
+**
+**     Threads are moved onto the zombie list after exiting. We suspect that
+**     that synchronizing threads may need access in the future to the thread
+**     structure after the thread has exited (e.g., to retieve the exit status).**     This assumption may turn out to be false, in which case the zombie list
+**     could be removed.
+**
+**==============================================================================
+*/
 
 static libos_thread_t* _zombies;
 static libos_spinlock_t _lock = LIBOS_SPINLOCK_INITIALIZER;
@@ -39,7 +205,7 @@ static void _free_zombies(void* arg)
     _zombies = NULL;
 }
 
-void libos_release_thread(libos_thread_t* thread)
+void libos_zombify_thread(libos_thread_t* thread)
 {
     libos_spin_lock(&_lock);
     {
@@ -56,6 +222,14 @@ void libos_release_thread(libos_thread_t* thread)
     }
     libos_spin_unlock(&_lock);
 }
+
+/*
+**==============================================================================
+**
+** main thread implementation:
+**
+**==============================================================================
+*/
 
 bool libos_valid_td(const void* td)
 {
@@ -76,8 +250,9 @@ static void _call_thread_fn(void)
 }
 
 /* The target calls this from the new thread */
-static long _run(libos_thread_t* thread, pid_t tid, uint64_t event)
+long libos_run_thread(uint64_t cookie, uint64_t event)
 {
+    libos_thread_t* thread = (libos_thread_t*)_put_cookie(cookie);
     libos_td_t* td;
     libos_td_t* old_td = libos_get_fsbase();
 
@@ -95,7 +270,7 @@ static long _run(libos_thread_t* thread, pid_t tid, uint64_t event)
     /* propagate the canary */
     td->canary = old_td->canary;
 
-    thread->tid = tid;
+    thread->tid = libos_generate_tid();
     thread->event = event;
     thread->original_fsbase = old_td;
 
@@ -108,7 +283,7 @@ static long _run(libos_thread_t* thread, pid_t tid, uint64_t event)
     libos_set_vsbase(thread);
 
     /* Set the TID for this thread (sets the td tid field) */
-    libos_atomic_exchange(thread->ptid, tid);
+    libos_atomic_exchange(thread->ptid, thread->tid);
 
     /* Jump back here from exit */
     if (libos_setjmp(&thread->jmpbuf) != 0)
@@ -126,7 +301,7 @@ static long _run(libos_thread_t* thread, pid_t tid, uint64_t event)
         libos_put_vsbase();
         libos_set_fsbase(thread->original_fsbase);
 
-        libos_release_thread(thread);
+        libos_zombify_thread(thread);
     }
     else
     {
@@ -179,12 +354,12 @@ static long _syscall_clone(
         thread->ptid = ptid;
         thread->newtls = newtls;
         thread->ctid = ctid;
-        thread->run = _run;
+        thread->run_thread = libos_run_thread;
     }
 
-    cookie = (uint64_t)thread;
+    cookie = _get_cookie(thread);
 
-    if (libos_tcall_create_host_thread(cookie) != 0)
+    if (libos_tcall_create_thread(cookie) != 0)
         ERAISE(-EINVAL);
 
 done:

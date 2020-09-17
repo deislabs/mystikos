@@ -1,21 +1,25 @@
 #include <assert.h>
+#include <time.h>
+#include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <libos/eraise.h>
-#include <libos/syscallext.h>
-#include <libos/tcall.h>
-#include <openenclave/edger8r/enclave.h>
-#include <openenclave/enclave.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/syscall.h>
-#include <time.h>
-#include <unistd.h>
+
+#include <libos/eraise.h>
+#include <libos/syscallext.h>
+#include <libos/tcall.h>
+#include <libos/thread.h>
+#include <openenclave/edger8r/enclave.h>
+#include <openenclave/enclave.h>
 #include "gencreds.h"
 
 long oe_syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6);
+
+libos_run_thread_t __libos_run_thread;
 
 static long _tcall_random(void* data, size_t size)
 {
@@ -192,7 +196,7 @@ long libos_tcall_unload_symbols(void)
 
 /* Must be overriden by enclave application */
 LIBOS_WEAK
-long libos_tcall_create_host_thread(uint64_t cookie)
+long libos_tcall_create_thread(uint64_t cookie)
 {
     (void)cookie;
     assert("sgx: unimplemented: implement in enclave" == NULL);
@@ -544,10 +548,10 @@ long libos_tcall(long n, long params[6])
         {
             return libos_tcall_unload_symbols();
         }
-        case LIBOS_TCALL_CREATE_HOST_THREAD:
+        case LIBOS_TCALL_CREATE_THREAD:
         {
             uint64_t cookie = (uint64_t)x1;
-            return libos_tcall_create_host_thread(cookie);
+            return libos_tcall_create_thread(cookie);
         }
         case LIBOS_TCALL_WAIT:
         {
@@ -573,6 +577,16 @@ long libos_tcall(long n, long params[6])
             const void* data = (const void*)x2;
             size_t size = (size_t)x3;
             return libos_tcall_export_file(path, data, size);
+        }
+        case LIBOS_TCALL_SET_RUN_THREAD_FUNCTION:
+        {
+            libos_run_thread_t function = (libos_run_thread_t)x1;
+
+            if (!function)
+                return -EINVAL;
+
+            __libos_run_thread = function;
+            return 0;
         }
         case SYS_ioctl:
         {

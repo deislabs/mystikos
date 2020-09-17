@@ -3,6 +3,6 @@
 
 #include <libos/types.h>
 
-#define libos_fence() __builtin_ia32_lfence()
+#define libos_lfence() __builtin_ia32_lfence()
 
 #endif /* _LIBOS_FENCE_H */

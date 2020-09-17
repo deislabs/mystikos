@@ -31,12 +31,6 @@ typedef struct libos_kernel_args
     bool have_syscall_instruction;
     bool export_ramfs;
 
-    /* The parent process identifer from the target */
-    pid_t ppid;
-
-    /* The process identifer from the target */
-    pid_t pid;
-
     /* The event object for the main thread */
     uint64_t event;
 

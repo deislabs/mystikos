@@ -57,19 +57,13 @@ static oe_enclave_t* _enclave;
 /* the address of this is eventually passed to futex (uaddr argument) */
 static __thread int _thread_event;
 
-static pid_t _gettid(void)
-{
-    return (pid_t)syscall(SYS_gettid);
-}
-
 static void* _thread_func(void* arg)
 {
     long r = -1;
     uint64_t cookie = (uint64_t)arg;
     uint64_t event = (uint64_t)&_thread_event;
-    pid_t tid = _gettid();
 
-    if (libos_run_thread_ecall(_enclave, &r, cookie, tid, event) != OE_OK ||
+    if (libos_run_thread_ecall(_enclave, &r, cookie, event) != OE_OK ||
         r != 0)
     {
         fprintf(stderr, "libos_run_thread_ecall(): failed: retval=%ld\n", r);
@@ -80,7 +74,7 @@ static void* _thread_func(void* arg)
     return NULL;
 }
 
-long libos_create_host_thread_ocall(uint64_t cookie)
+long libos_create_thread_ocall(uint64_t cookie)
 {
     long ret = 0;
     pthread_t t;
@@ -166,8 +160,6 @@ int exec_launch_enclave(
         argv_buf.size,
         envp_buf.data,
         envp_buf.size,
-        getppid(),
-        getpid(),
         (uint64_t)&_event);
     if (r != OE_OK)
         _err("failed to enter enclave: result=%s", oe_result_str(r));

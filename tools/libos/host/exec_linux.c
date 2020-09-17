@@ -252,8 +252,6 @@ static int _enter_kernel(
     args.trace_syscalls = options->trace_syscalls;
     args.have_syscall_instruction = true;
     args.export_ramfs = options->export_ramfs;
-    args.ppid = getppid();
-    args.pid = getpid();
     args.event = (uint64_t)&_thread_event;
     args.tcall = tcall;
 
@@ -355,9 +353,8 @@ static void* _thread_func(void* arg)
 {
     uint64_t cookie = (uint64_t)arg;
     uint64_t event = (uint64_t)&_thread_event;
-    pid_t tid = (pid_t)syscall(SYS_gettid);
 
-    if (libos_run_thread(cookie, tid, event) != 0)
+    if (libos_run_thread(cookie, event) != 0)
     {
         fprintf(stderr, "libos_run_thread() failed\n");
         exit(1);
@@ -366,7 +363,7 @@ static void* _thread_func(void* arg)
     return NULL;
 }
 
-long libos_tcall_create_host_thread(uint64_t cookie)
+long libos_tcall_create_thread(uint64_t cookie)
 {
     long ret = 0;
     pthread_t t;
