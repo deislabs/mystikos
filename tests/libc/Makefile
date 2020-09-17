@@ -20,7 +20,9 @@ $(SRCDIR):
 build:
 	sudo docker run --rm -v $(SRCDIR):/srcdir $(IMG) bash -c "make -C srcdir"
 
-TESTS = $(shell cat supported.txt)
+TEST_FILE = supported.txt
+
+TESTS = $(shell cat $(TEST_FILE))
 
 tests: libos
 	$(foreach i, $(TESTS), $(MAKE) run TEST=$(i) $(NL) )

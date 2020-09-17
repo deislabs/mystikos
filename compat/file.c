@@ -1,12 +1,12 @@
-#include <stdio.h>
-#include <unistd.h>
 #include <errno.h>
-#include <sys/syscall.h>
-#include <libos/file.h>
 #include <libos/eraise.h>
-#include <libos/strings.h>
+#include <libos/file.h>
 #include <libos/malloc.h>
+#include <libos/strings.h>
+#include <stdio.h>
 #include <string.h>
+#include <sys/syscall.h>
+#include <unistd.h>
 
 /* ATTN: the kernel-version of these functions return -errno */
 
@@ -73,7 +73,7 @@ int libos_fstat(int fd, struct stat* statbuf)
     return (int)_ret(fstat(fd, statbuf));
 }
 
-int libos_mkdir(const char *pathname, mode_t mode)
+int libos_mkdir(const char* pathname, mode_t mode)
 {
     return (int)_ret(mkdir(pathname, mode));
 }

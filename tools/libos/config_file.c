@@ -6,22 +6,22 @@
 #include "config.h"
 #include "libos/file.h"
 
-#define CONFIG_RAISE(CONFIG_ERR)                                      \
-    do                                                                \
-    {                                                                 \
-        ret = CONFIG_ERR;                                             \
-        if (ret != 0)                                                 \
-        {                                                             \
-            fprintf(                                                  \
-                stderr,                                               \
-                "CONFIG_RAISE: %s(%u): %s: errno=%d: %s\n",                 \
-                __FILE__,                                             \
-                __LINE__,                                             \
-                __FUNCTION__,                                         \
-                CONFIG_ERR,                                           \
-                json_result_string(CONFIG_ERR));                      \
-            goto done;                                                \
-        }                                                             \
+#define CONFIG_RAISE(CONFIG_ERR)                            \
+    do                                                      \
+    {                                                       \
+        ret = CONFIG_ERR;                                   \
+        if (ret != 0)                                       \
+        {                                                   \
+            fprintf(                                        \
+                stderr,                                     \
+                "CONFIG_RAISE: %s(%u): %s: errno=%d: %s\n", \
+                __FILE__,                                   \
+                __LINE__,                                   \
+                __FUNCTION__,                               \
+                CONFIG_ERR,                                 \
+                json_result_string(CONFIG_ERR));            \
+            goto done;                                      \
+        }                                                   \
     } while (0)
 
 // From the main config.c file

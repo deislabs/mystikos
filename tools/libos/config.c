@@ -5,22 +5,22 @@
 #include <stdlib.h>
 #include "libos/file.h"
 
-#define CONFIG_RAISE(CONFIG_ERR)                                      \
-    do                                                                \
-    {                                                                 \
-        ret = CONFIG_ERR;                                             \
-        if (ret != 0)                                                 \
-        {                                                             \
-            fprintf(                                                  \
-                stderr,                                               \
-                "CONFIG_RAISE: %s(%u): %s: errno=%d: %s\n",                 \
-                __FILE__,                                             \
-                __LINE__,                                             \
-                __FUNCTION__,                                         \
-                CONFIG_ERR,                                           \
-                json_result_string(CONFIG_ERR));                      \
-            goto done;                                                \
-        }                                                             \
+#define CONFIG_RAISE(CONFIG_ERR)                            \
+    do                                                      \
+    {                                                       \
+        ret = CONFIG_ERR;                                   \
+        if (ret != 0)                                       \
+        {                                                   \
+            fprintf(                                        \
+                stderr,                                     \
+                "CONFIG_RAISE: %s(%u): %s: errno=%d: %s\n", \
+                __FILE__,                                   \
+                __LINE__,                                   \
+                __FUNCTION__,                               \
+                CONFIG_ERR,                                 \
+                json_result_string(CONFIG_ERR));            \
+            goto done;                                      \
+        }                                                   \
     } while (0)
 
 static json_result_t _config_extract_array(
@@ -299,13 +299,13 @@ int _parse_config(config_parsed_data_t* parsed_data)
     };
 
     if ((ret = json_parser_init(
-            &parser,
-            (char*)parsed_data->buffer,
-            parsed_data->buffer_length,
-            _json_read_callback,
-            parsed_data,
-            &allocator,
-            &options)) != JSON_OK)
+             &parser,
+             (char*)parsed_data->buffer,
+             parsed_data->buffer_length,
+             _json_read_callback,
+             parsed_data,
+             &allocator,
+             &options)) != JSON_OK)
     {
         CONFIG_RAISE(ret);
     }

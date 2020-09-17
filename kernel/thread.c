@@ -230,11 +230,10 @@ typedef struct vsbase_entry
 {
     void* vsbase;
     uint32_t next; /* one-based index; zero signifies null */
-}
-vsbase_entry_t;
+} vsbase_entry_t;
 
 static vsbase_entry_t _vsbases[MAX_VSBASES];
-static uint32_t _vsbases_next; /* next available (zero-based) */
+static uint32_t _vsbases_next;  /* next available (zero-based) */
 static uint32_t _vsbases_free1; /* linked list (one-based) */
 static libos_spinlock_t _vsbases_lock;
 
@@ -268,7 +267,7 @@ void libos_set_vsbase(void* p)
             index1 = _vsbases_free1;
 
             /* remove this entry from the free list */
-            _vsbases_free1 = _vsbases[index1-1].next;
+            _vsbases_free1 = _vsbases[index1 - 1].next;
         }
 
         if (index1 == 0)
@@ -307,7 +306,7 @@ void* libos_put_vsbase(void)
         /* set index to null */
         td->vsbase.index1 = 0;
 
-        _vsbases[index1-1].next = _vsbases_free1;
+        _vsbases[index1 - 1].next = _vsbases_free1;
         _vsbases_free1 = index1;
     }
     libos_spin_unlock(&_vsbases_lock);

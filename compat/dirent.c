@@ -2,7 +2,7 @@
 #include <errno.h>
 #include <libos/file.h>
 
-int libos_opendir(const char *name, DIR** dirp)
+int libos_opendir(const char* name, DIR** dirp)
 {
     if (!name || !dirp)
         return -EINVAL;
@@ -21,7 +21,7 @@ int libos_closedir(DIR* dir)
     return closedir(dir);
 }
 
-int libos_readdir(DIR *dir, struct dirent** entp)
+int libos_readdir(DIR* dir, struct dirent** entp)
 {
     if (!dir || !entp)
         return -EINVAL;

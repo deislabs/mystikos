@@ -2,8 +2,8 @@
 #define _LIBOS_THREAD_H
 
 #include <libos/setjmp.h>
-#include <libos/types.h>
 #include <libos/tcall.h>
+#include <libos/types.h>
 #include <unistd.h>
 
 #define LIBOS_THREAD_MAGIC 0xc79c53d9ad134ad4
@@ -23,10 +23,9 @@ struct libos_td
     /* these eight bytes are unused in musl libc */
     struct
     {
-        uint32_t magic; /* VSBASE_MAGIC */
+        uint32_t magic;  /* VSBASE_MAGIC */
         uint32_t index1; /* one-based index (zero indicates null vsbase) */
-    }
-    vsbase;
+    } vsbase;
 };
 
 typedef struct libos_td libos_td_t;

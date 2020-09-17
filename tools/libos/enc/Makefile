@@ -4,7 +4,13 @@ include $(TOP)/defs.mak
 
 PROGRAM = libosenc.so
 
-SOURCES = $(SUBOBJDIR)/libos_t.c enc.c ../config.c $(TOP)/shared/reloc.c
+SOURCES += $(SUBOBJDIR)/libos_t.c
+SOURCES += enc.c
+SOURCES += ../config.c
+SOURCES += $(TOP)/shared/reloc.c
+SOURCES += $(TOP)/shared/buf.c
+SOURCES += $(TOP)/compat/malloc.c
+SOURCES += $(TOP)/compat/strings.c
 
 INCLUDES = $(OEENCLAVE_INCLUDES) -I$(SUBOBJDIR) -I../
 

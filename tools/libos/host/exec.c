@@ -15,6 +15,7 @@
 #include <syscall.h>
 #include <unistd.h>
 
+#include <libos/buf.h>
 #include <libos/eraise.h>
 #include <libos/file.h>
 #include <libos/getopt.h>
@@ -24,57 +25,14 @@
 #include "regions.h"
 #include "utils.h"
 
-static int _serialize_args(
-    const char* argv[],
-    void** args_out,
-    size_t* args_size_out)
+static size_t _count_args(const char* args[])
 {
-    int ret = -1;
-    void* args = NULL;
-    size_t args_size = 0;
+    size_t n = 0;
 
-    if (args_out)
-        *args_out = NULL;
+    for (size_t i = 0; args[i]; i++)
+        n++;
 
-    if (args_size_out)
-        *args_size_out = 0;
-
-    if (!argv || !args_out || !args_size_out)
-        goto done;
-
-    /* Determine the size of the output buffer */
-    for (size_t i = 0; argv[i]; i++)
-        args_size += strlen(argv[i]) + 1;
-
-    if (!(args = malloc(args_size)))
-        goto done;
-
-    memset(args, 0, args_size);
-
-    /* Copy the strings */
-    {
-        uint8_t* p = args;
-
-        for (size_t i = 0; argv[i]; i++)
-        {
-            size_t n = strlen(argv[i]) + 1;
-
-            memcpy(p, argv[i], n);
-            p += n;
-        }
-    }
-
-    *args_out = args;
-    args = NULL;
-    *args_size_out = args_size;
-    ret = 0;
-
-done:
-
-    if (args)
-        free(args);
-
-    return ret;
+    return n;
 }
 
 static int _getopt(
@@ -177,8 +135,8 @@ int exec_launch_enclave(
     oe_result_t r;
     int retval;
     static int _event; /* the main-thread event (used by futex: uaddr) */
-    void* args = NULL;
-    size_t args_size = 0;
+    libos_buf_t argv_buf = LIBOS_BUF_INITIALIZER;
+    libos_buf_t envp_buf = LIBOS_BUF_INITIALIZER;
 
     /* Load the enclave: calls oe_region_add_regions() */
     {
@@ -189,21 +147,25 @@ int exec_launch_enclave(
     }
 
     /* Serialize the argv[] strings */
-    if (_serialize_args(argv, &args, &args_size) != 0)
+    if (libos_buf_pack_strings(&argv_buf, argv, _count_args(argv)) != 0)
         _err("failed to serialize argv stings");
 
     /* ATTN: hardcoded for now */
-    const char env[] = "PATH=/bin\0HOME=/root";
+    const char* envp[] = {"PATH=/bin", "HOME=/root", NULL};
+
+    /* Serialize the argv[] strings */
+    if (libos_buf_pack_strings(&envp_buf, envp, _count_args(envp)) != 0)
+        _err("failed to serialize envp stings");
 
     /* Enter the enclave and run the program */
     r = libos_enter_ecall(
         _enclave,
         &retval,
         options,
-        args,
-        args_size,
-        env,
-        sizeof(env),
+        argv_buf.data,
+        argv_buf.size,
+        envp_buf.data,
+        envp_buf.size,
         getppid(),
         getpid(),
         (uint64_t)&_event);
@@ -215,7 +177,8 @@ int exec_launch_enclave(
     if (r != OE_OK)
         _err("failed to terminate enclave: result=%s", oe_result_str(r));
 
-    free(args);
+    free(argv_buf.data);
+    free(envp_buf.data);
 
     return retval;
 }

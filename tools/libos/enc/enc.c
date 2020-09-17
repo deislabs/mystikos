@@ -11,6 +11,7 @@
 #include <openenclave/bits/sgx/region.h>
 #include <openenclave/enclave.h>
 
+#include <libos/buf.h>
 #include <libos/cpio.h>
 #include <libos/elfutils.h>
 #include <libos/eraise.h>
@@ -29,52 +30,6 @@
 #include "libos_t.h"
 
 extern int oe_host_printf(const char* fmt, ...);
-
-static int _deserialize_args(
-    const void* args,
-    size_t args_size,
-    const char* argv[],
-    size_t argv_size)
-{
-    int ret = -1;
-    size_t n = 0;
-    const char* p = (const char*)args;
-    const char* end = (const char*)args + args_size;
-
-    while (p != end)
-    {
-        if (n == argv_size)
-            goto done;
-
-        argv[n++] = p;
-        p += strlen(p) + 1;
-    }
-
-    argv[n] = NULL;
-    ret = 0;
-
-done:
-    return ret;
-}
-
-static size_t _count_args(const char* args[])
-{
-    size_t n = 0;
-
-    for (size_t i = 0; args[i]; i++)
-        n++;
-
-    return n;
-}
-
-#if 0
-static void _dump_args(const char* args[])
-{
-    printf("args=%p\n", args);
-    for (int i = 0; args[i]; i++)
-        printf("args[%d]=%s\n", i, args[i]);
-}
-#endif
 
 static void _setup_sockets(void)
 {
@@ -145,19 +100,18 @@ static uint64_t _vectored_handler(oe_exception_record_t* er)
 
 int libos_enter_ecall(
     struct libos_options* options,
-    const void* args,
-    size_t args_size,
-    const void* env,
-    size_t env_size,
+    const void* argv_data,
+    size_t argv_size,
+    const void* envp_data,
+    size_t envp_size,
     pid_t ppid,
     pid_t pid,
     uint64_t event)
 {
     int ret = -1;
-    const char* argv[64];
-    size_t argv_size = sizeof(argv) / sizeof(argv[0]);
-    const char* envp[64];
-    size_t envp_size = sizeof(envp) / sizeof(envp[0]);
+    const char** envp = NULL;
+    const size_t ENVC = 64;
+    size_t envc = 0;
     const void* crt_data;
     size_t crt_size;
     const void* kernel_data;
@@ -170,8 +124,12 @@ int libos_enter_ecall(
     bool export_ramfs = false;
     config_parsed_data_t parsed_config = {0};
     unsigned char have_config = 0;
+    const char** argv = NULL;
+    size_t argc = 0;
+    const char** xargv = NULL;
+    size_t xargc = 0;
 
-    if (!args || !args_size || !env || !env_size)
+    if (!argv_data || !argv_size || !envp_data || !envp_size)
         goto done;
 
     /* Get the config region */
@@ -200,37 +158,29 @@ int libos_enter_ecall(
         }
     }
 
-    if (have_config == 1)
+    if (have_config == 1 && parsed_config.allow_host_parameters)
     {
-        if (parsed_config.allow_host_parameters)
-        {
-            // passthrough of args is allowed, so do that
-            if (_deserialize_args(args, args_size, argv + 1, argv_size - 1) !=
-                0)
-                goto done;
-        }
-        else
-        {
-            // We need to use the configuration parameters instead.
-            // Add application name to second slot, args go after this
-            argv[1] = parsed_config.application_path;
+        /* add extra space for argv[0] */
+        argc = parsed_config.application_parameters_count + 1;
 
-            size_t n = 0;
+        /* allocate extra entry for the null terminator */
+        if (!(argv = calloc(argc + 1, sizeof(char*))))
+            goto done;
 
-            while ((n != parsed_config.application_parameters_count) &&
-                   ((n + 3) != argv_size)) // slots including null one
-            {
-                argv[n + 2] = parsed_config.application_parameters[n];
-                argv[n + 3] = NULL;
-                n++;
-            }
-        }
+        argv[0] = parsed_config.application_path;
+
+        for (size_t i = 1; i < argc; i++)
+            argv[i] = parsed_config.application_parameters[i];
     }
     else
     {
-        // There isnt always configuration. If not then we dont restrict
-        // parameters and environment variables
-        if (_deserialize_args(args, args_size, argv + 1, argv_size - 1) != 0)
+        libos_buf_t buf;
+        buf.data = (void*)argv_data;
+        buf.size = argv_size;
+        buf.cap = argv_size;
+        buf.offset = 0;
+
+        if (libos_buf_unpack_strings(&buf, &argv, &argc) != 0)
             goto done;
     }
 
@@ -240,16 +190,17 @@ int libos_enter_ecall(
     {
         size_t env_slot = 0;
         size_t source_slot = 0;
-        envp[env_slot] = NULL;
+
+        if (!(envp = calloc(ENVC, sizeof(char*))))
+            goto done;
 
         // First config-side environment variables
         while ((source_slot !=
                 parsed_config.enclave_environment_variables_count) &&
-               ((env_slot + 2) != envp_size)) // slots including null one
+               ((env_slot + 2) != ENVC)) // slots including null one
         {
             envp[env_slot] =
                 parsed_config.enclave_environment_variables[source_slot];
-            envp[env_slot + 1] = NULL;
             env_slot++;
             source_slot++;
         }
@@ -263,12 +214,12 @@ int libos_enter_ecall(
              allowed_index++)
         {
             size_t n = 0;
-            const char* p = (const char*)env;
-            const char* end = (const char*)env + env_size;
+            const char* p = (const char*)envp_data;
+            const char* end = (const char*)envp_data + envp_size;
 
             while (p != end)
             {
-                if (n == envp_size)
+                if (n == ENVC)
                     break;
 
                 // Only add if it is mentioned in allow list, then we are done
@@ -282,26 +233,26 @@ int libos_enter_ecall(
                     0)
                 {
                     envp[env_slot] = p;
-                    envp[env_slot + 1] = NULL;
                     env_slot++;
                     break;
                 }
                 p += strlen(p) + 1;
             }
-
-            argv[n] = NULL;
         }
+
+        envc = env_slot;
     }
     else
     {
-        if (_deserialize_args(env, env_size, envp, envp_size) != 0)
+        libos_buf_t buf;
+        buf.data = (uint8_t*)envp_data;
+        buf.size = envp_size;
+        buf.cap = envp_size;
+        buf.offset = 0;
+
+        if (libos_buf_unpack_strings(&buf, &envp, &envc) != 0)
             goto done;
     }
-    // The deserialization of arguments starts at slot 1, not slot 0.
-    // MUSL loader requires this.
-    // The executable name in slot 0 is needed, but is not exposed to usermode
-    // app.
-    argv[0] = "libosenc.so";
 
     if (options)
     {
@@ -318,9 +269,22 @@ int libos_enter_ecall(
 
     _setup_sockets();
 
+    /* inject the library name as argv[0] (required by musl libc) */
+    {
+        xargc = argc + 1;
+
+        if (!(xargv = calloc(xargc + 1, sizeof(char*))))
+            goto done;
+
+        xargv[0] = "libosenc.so";
+        memcpy(&xargv[1], argv, argc * sizeof(char*));
+    }
+
 #ifdef TRACE
-    _dump_args(argv);
-    _dump_args(envp);
+    printf("envc{%zu}\n", envc);
+
+    for (size_t i = 0; i < envc; i++)
+        printf("envp{%s}\n", envp[i]);
 #endif
 
     /* Get the mman region */
@@ -476,9 +440,9 @@ int libos_enter_ecall(
         libos_kernel_entry_t entry;
 
         memset(&args, 0, sizeof(args));
-        args.argc = _count_args(argv);
-        args.argv = argv;
-        args.envc = _count_args(envp);
+        args.argc = xargc;
+        args.argv = xargv;
+        args.envc = envc;
         args.envp = envp;
         args.mman_data = mman_data;
         args.mman_size = mman_size;
@@ -518,6 +482,16 @@ int libos_enter_ecall(
     }
 
 done:
+
+    if (argv)
+        free(argv);
+
+    if (xargv)
+        free(xargv);
+
+    if (envp)
+        free(envp);
+
     free_config(&parsed_config);
     return ret;
 }

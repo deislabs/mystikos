@@ -11,4 +11,6 @@
 
 #define LIBOS_WEAK __attribute__((weak))
 
+#define LIBOS_COUNTOF(ARR) (sizeof(ARR) / sizeof((ARR)[0]))
+
 #endif /* _LIBOS_DEFS_H */

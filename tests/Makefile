@@ -31,3 +31,6 @@ DIRS += gdb
 DIRS += dlopen
 
 include $(TOP)/rules.mak
+
+xxx:
+	echo "${XXX}"
