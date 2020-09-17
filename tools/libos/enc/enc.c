@@ -207,7 +207,7 @@ int libos_enter_ecall(
 
         // now include host-side environment variables that are allowed
         for (int allowed_index = 0;
-            parsed_config.host_environment_variables != NULL &&
+             parsed_config.host_environment_variables != NULL &&
              (parsed_config.host_environment_variables[allowed_index] !=
               NULL) &&
              (allowed_index != (sizeof(envp) / sizeof(*envp)));

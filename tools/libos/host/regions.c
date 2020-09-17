@@ -14,9 +14,9 @@
 #include <openenclave/host.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include "../config.h"
 #include "../shared.h"
 #include "utils.h"
-#include "../config.h"
 
 /* ATTN: use common header */
 #define PAGE_SIZE 4096
@@ -74,8 +74,11 @@ const region_details* create_region_details_from_package(
     {
         if (user_pages == 0)
         {
-            config_parsed_data_t parsed_data = { 0 };
-            if (parse_config_from_buffer(_details.config.buffer, _details.config.buffer_size, &parsed_data) == 0)
+            config_parsed_data_t parsed_data = {0};
+            if (parse_config_from_buffer(
+                    _details.config.buffer,
+                    _details.config.buffer_size,
+                    &parsed_data) == 0)
             {
                 user_pages = parsed_data.user_pages;
                 free_config(&parsed_data);
@@ -180,11 +183,13 @@ const region_details* create_region_details_from_files(
             _details.config.buffer_size = temp_size;
             _details.config.status = REGION_ITEM_OWNED;
 
-            // If we dont have the user_pages yet then we can extract them from the config.
+            // If we dont have the user_pages yet then we can extract them from
+            // the config.
             if (user_pages == 0)
             {
-                config_parsed_data_t parsed_data = { 0 };
-                if (parse_config_from_buffer(_details.config.buffer, temp_size, &parsed_data) == 0)
+                config_parsed_data_t parsed_data = {0};
+                if (parse_config_from_buffer(
+                        _details.config.buffer, temp_size, &parsed_data) == 0)
                 {
                     user_pages = parsed_data.user_pages;
                     free_config(&parsed_data);
