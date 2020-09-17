@@ -30,7 +30,10 @@ int libos_setup_mman(void* data, size_t size)
     if (libos_mman_init(&_mman, (uintptr_t)_mman_start, _mman_size) != 0)
         goto done;
 
+#ifdef SCRUB
+    /* Scrubbing unmapped memory causes memory reads due to musl libc */
     _mman.scrub = true;
+#endif
 
     libos_mman_set_sanity(&_mman, true);
 
