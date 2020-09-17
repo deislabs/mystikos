@@ -16,6 +16,7 @@
 #include <unistd.h>
 #include "../shared.h"
 #include "utils.h"
+#include "../config.h"
 
 /* ATTN: use common header */
 #define PAGE_SIZE 4096
@@ -30,10 +31,6 @@ const region_details* create_region_details_from_package(
     size_t user_pages)
 {
     char dir[PATH_MAX];
-
-    if (user_pages == 0)
-        user_pages = 64;
-    _details.mman_size = user_pages * MEGABYTE;
 
     strcpy(dir, get_program_file());
     dirname(dir);
@@ -73,11 +70,28 @@ const region_details* create_region_details_from_package(
             &libos_elf->elf,
             ".libosconfig",
             (unsigned char**)&_details.config.buffer,
-            &_details.config.buffer_size) != 0)
+            &_details.config.buffer_size) == 0)
     {
-        _err("Failed to extract config data from %s.", get_program_file());
+        if (user_pages == 0)
+        {
+            config_parsed_data_t parsed_data = { 0 };
+            if (parse_config_from_buffer(_details.config.buffer, _details.config.buffer_size, &parsed_data) == 0)
+            {
+                user_pages = parsed_data.user_pages;
+                free_config(&parsed_data);
+            }
+            else
+                _err("Failed to parse config we extracted from enclave");
+        }
     }
+    else
+        _err("Failed to extract config data from %s.", get_program_file());
+
     _details.config.status = REGION_ITEM_BORROWED;
+
+    if (user_pages == 0)
+        user_pages = MMAN_DEFAULT_PAGES;
+    _details.mman_size = user_pages * MEGABYTE;
 
     return &_details;
 }
@@ -88,10 +102,6 @@ const region_details* create_region_details_from_files(
     const char* config_path,
     size_t user_pages)
 {
-    if (user_pages == 0)
-        user_pages = 64;
-    _details.mman_size = user_pages * MEGABYTE;
-
     if (libos_load_file(
             rootfs_path,
             &_details.rootfs.buffer,
@@ -169,6 +179,19 @@ const region_details* create_region_details_from_files(
             memcpy(_details.config.buffer, temp_buf, temp_size);
             _details.config.buffer_size = temp_size;
             _details.config.status = REGION_ITEM_OWNED;
+
+            // If we dont have the user_pages yet then we can extract them from the config.
+            if (user_pages == 0)
+            {
+                config_parsed_data_t parsed_data = { 0 };
+                if (parse_config_from_buffer(_details.config.buffer, temp_size, &parsed_data) == 0)
+                {
+                    user_pages = parsed_data.user_pages;
+                    free_config(&parsed_data);
+                }
+                else
+                    _err("Failed to parse config we extracted from enclave");
+            }
         }
         else
         {
@@ -176,6 +199,10 @@ const region_details* create_region_details_from_files(
         }
         elf_unload(&enc_elf);
     }
+
+    if (user_pages == 0)
+        user_pages = MMAN_DEFAULT_PAGES;
+    _details.mman_size = user_pages * MEGABYTE;
 
     return &_details;
 }

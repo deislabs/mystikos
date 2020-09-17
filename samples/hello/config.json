@@ -4,14 +4,14 @@
 
     // OpenEnclave specific values
     "Debug": 1,
-    "NumKernelPages": 100,
-    "NumStackPages": 100,
+    "NumKernelPages": 128,
+    "NumStackPages": 64,
     "NumUserThreads": 2,
     "ProductID": 1,
     "SecurityVersion": 1,
 
     // LibOS specific values
-    "NumUserPages": 64,
+    "NumUserPages": 200,
     "ApplicationPath": "/bin/hello",
     "ApplicationParameters": ["Enclave-red", "Enclave-blue", "Enclave-green", "Enclave-yellow"],
     "HostApplicationParameters": false,
