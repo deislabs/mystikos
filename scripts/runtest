@@ -98,7 +98,6 @@ run_test()
     echo ${cmd} > ${TESTSUBDIR}/stdout
     ${timeout} ${time} ${cmd} >> ${TESTSUBDIR}/stdout 2> ${TESTSUBDIR}/stderr
     ret=$?
-    echo "ret=${ret}"
     seconds=$(cat ${tempfile})
     rm -f ${tempfile}
 
