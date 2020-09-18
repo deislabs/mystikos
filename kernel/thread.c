@@ -95,9 +95,12 @@ static uint64_t _get_cookie(libos_thread_t* thread)
     uint32_t rand;
     uint64_t cookie;
 
-    /* generate a random number */
-    if (libos_syscall_getrandom(&rand, sizeof(rand), 0) != sizeof(rand))
-        libos_panic("getrandom failed");
+    /* generate a random number (any value is fine except zero) */
+    do
+    {
+        if (libos_syscall_getrandom(&rand, sizeof(rand), 0) != sizeof(rand))
+            libos_panic("getrandom failed");
+    } while (rand == 0);
 
     /* add a new entry to the cookie map */
     libos_spin_lock(&_cookie_map_lock);
