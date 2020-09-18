@@ -42,16 +42,4 @@ LIBOS_INLINE void libos_spin_unlock(libos_spinlock_t* spinlock)
                  : "memory");
 }
 
-typedef struct libos_recursive_spinlock
-{
-    libos_spinlock_t owner_lock;
-    size_t count;
-    long owner;
-    libos_spinlock_t lock;
-} libos_recursive_spinlock_t;
-
-void libos_recursive_spin_lock(libos_recursive_spinlock_t* s, long thread);
-
-void libos_recursive_spin_unlock(libos_recursive_spinlock_t* s, long thread);
-
 #endif /* _LIBOS_SPINLOCK_H */

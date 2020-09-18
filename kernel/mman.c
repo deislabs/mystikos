@@ -284,18 +284,18 @@ static libos_vad_t* _list_find(libos_mman_t* mman, uintptr_t addr)
 */
 
 /* Lock the mman and set the 'locked' parameter to true */
-static void _mman_lock(libos_mman_t* mman, bool* locked)
+LIBOS_INLINE void _mman_lock(libos_mman_t* mman, bool* locked)
 {
-    libos_recursive_spin_lock(&mman->lock, (long)libos_get_fsbase());
+    libos_spin_lock(&mman->lock);
     *locked = true;
 }
 
 /* Unlock the mman and set the 'locked' parameter to false */
-static void _mman_unlock(libos_mman_t* mman, bool* locked)
+LIBOS_INLINE void _mman_unlock(libos_mman_t* mman, bool* locked)
 {
     if (*locked)
     {
-        libos_recursive_spin_unlock(&mman->lock, (long)libos_get_fsbase());
+        libos_spin_unlock(&mman->lock);
         *locked = false;
     }
 }
@@ -433,6 +433,334 @@ static uintptr_t _mman_find_gap(
 
 done:
     return addr;
+}
+
+static int _mman_munmap(libos_mman_t* mman, void* addr, size_t length)
+{
+    int ret = -1;
+    libos_vad_t* vad = NULL;
+
+    _mman_clear_err(mman);
+
+    /* Reject invaid parameters */
+    if (!mman || mman->magic != LIBOS_MMAN_MAGIC || !addr || !length)
+    {
+        _mman_set_err(mman, "bad parameter");
+        ret = -EINVAL;
+        goto done;
+    }
+
+    if (!_mman_is_sane(mman))
+    {
+        _mman_set_err(mman, "bad mman parameter");
+        ret = -EINVAL;
+        goto done;
+    }
+
+    /* ADDRESS must be aligned on a page boundary */
+    if ((uintptr_t)addr % LIBOS_PAGE_SIZE)
+    {
+        _mman_set_err(mman, "bad addr parameter");
+        ret = -EINVAL;
+        goto done;
+    }
+
+    /* LENGTH must be a multiple of the page size */
+    if (length % LIBOS_PAGE_SIZE)
+    {
+        _mman_set_err(mman, "bad length parameter");
+        ret = -EINVAL;
+        goto done;
+    }
+
+    /* Set start and end pointers for this area */
+    uintptr_t start = (uintptr_t)addr;
+    uintptr_t end = (uintptr_t)addr + length;
+
+    /* Find the VAD that contains this address */
+    if (!(vad = _list_find(mman, start)))
+    {
+        _mman_set_err(mman, "address not found");
+        ret = -EINVAL;
+        goto done;
+    }
+
+    /* Fail if this VAD does not contain the end address */
+    if (end > _end(vad))
+    {
+        _mman_set_err(mman, "illegal range");
+        ret = -EINVAL;
+        goto done;
+    }
+
+    /* If the unapping does not cover the entire area given by the VAD, handle
+     * the excess portions. There are 4 cases below, where u's represent
+     * the portion being unmapped.
+     *
+     *     Case1: [uuuuuuuuuuuuuuuu]
+     *     Case2: [uuuu............]
+     *     Case3: [............uuuu]
+     *     Case4: [....uuuu........]
+     */
+    if (vad->addr == start && _end(vad) == end)
+    {
+        /* Case1: [uuuuuuuuuuuuuuuu] */
+
+        _list_remove(mman, vad);
+        _mman_sync_top(mman);
+        _free_list_put(mman, vad);
+        mman->coverage[LIBOS_MMAN_COVERAGE_3] = true;
+    }
+    else if (vad->addr == start)
+    {
+        /* Case2: [uuuu............] */
+
+        vad->addr += length;
+        vad->size -= (uint32_t)length;
+        _mman_sync_top(mman);
+        mman->coverage[LIBOS_MMAN_COVERAGE_4] = true;
+    }
+    else if (_end(vad) == end)
+    {
+        /* Case3: [............uuuu] */
+
+        vad->size -= (uint32_t)length;
+        mman->coverage[LIBOS_MMAN_COVERAGE_5] = true;
+    }
+    else
+    {
+        /* Case4: [....uuuu........] */
+
+        size_t vad_end = _end(vad);
+
+        /* Adjust the left portion */
+        vad->size = (uint32_t)(start - vad->addr);
+
+        libos_vad_t* right;
+
+        /* Create VAD for the excess right portion */
+        if (!(right = _mman_new_vad(
+                  mman, end, vad_end - end, vad->prot, vad->flags)))
+        {
+            _mman_set_err(mman, "out of VADs");
+            ret = -EINVAL;
+            goto done;
+        }
+
+        _list_insert_after(mman, vad, right);
+        _mman_sync_top(mman);
+        mman->coverage[LIBOS_MMAN_COVERAGE_6] = true;
+    }
+
+    /* If scrubbing is enabled, then scrub the unmapped memory */
+    if (mman->scrub)
+        libos_memset(addr, 0xDD, length);
+
+    if (!_mman_is_sane(mman))
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = 0;
+
+done:
+    return ret;
+}
+
+static int _mman_map(
+    libos_mman_t* mman,
+    void* addr,
+    size_t length,
+    int prot,
+    int flags,
+    void** ptr_out)
+{
+    int ret = 0;
+    uintptr_t start = 0;
+
+    if (ptr_out)
+        *ptr_out = NULL;
+
+    _mman_clear_err(mman);
+
+    /* Check for valid mman parameter */
+    if (!mman || mman->magic != LIBOS_MMAN_MAGIC || !ptr_out)
+    {
+        _mman_set_err(mman, "bad mman parameter");
+        ret = -EINVAL;
+        goto done;
+    }
+
+    if (!_mman_is_sane(mman))
+        goto done;
+
+    /* ADDR must be page aligned */
+    if (addr && (uintptr_t)addr % LIBOS_PAGE_SIZE)
+    {
+        _mman_set_err(mman, "bad addr parameter");
+        ret = -EINVAL;
+        goto done;
+    }
+
+    /* LENGTH must be non-zero */
+    if (length == 0)
+    {
+        _mman_set_err(mman, "bad length parameter");
+        ret = -EINVAL;
+        goto done;
+    }
+
+    /* Ignore protection for SGX-1 */
+#if 0
+    {
+        if (!(prot & LIBOS_PROT_READ))
+        {
+            _mman_set_err(mman, "bad prot parameter: need LIBOS_PROT_READ");
+            ret = -EINVAL;
+            goto done;
+        }
+
+        if (!(prot & LIBOS_PROT_WRITE))
+        {
+            _mman_set_err(mman, "bad prot parameter: need LIBOS_PROT_WRITE");
+            ret = -EINVAL;
+            goto done;
+        }
+
+        if (prot & LIBOS_PROT_EXEC)
+        {
+            _mman_set_err(mman, "bad prot parameter: remove LIBOS_PROT_EXEC");
+            ret = -EINVAL;
+            goto done;
+        }
+    }
+#endif
+
+    /* FLAGS must be (LIBOS_MAP_ANONYMOUS | LIBOS_MAP_PRIVATE) */
+    {
+        if (!(flags & LIBOS_MAP_ANONYMOUS))
+        {
+            _mman_set_err(
+                mman, "bad flags parameter: need LIBOS_MAP_ANONYMOUS");
+            ret = -EINVAL;
+            goto done;
+        }
+
+        if (!(flags & LIBOS_MAP_PRIVATE))
+        {
+            _mman_set_err(mman, "bad flags parameter: need LIBOS_MAP_PRIVATE");
+            ret = -EINVAL;
+            goto done;
+        }
+
+        if (flags & LIBOS_MAP_SHARED)
+        {
+            _mman_set_err(mman, "bad flags parameter: remove LIBOS_MAP_SHARED");
+            ret = -EINVAL;
+            goto done;
+        }
+
+        if (flags & LIBOS_MAP_FIXED)
+        {
+            _mman_set_err(mman, "bad flags parameter: remove LIBOS_MAP_FIXED");
+            ret = -EINVAL;
+            goto done;
+        }
+    }
+
+    /* Round LENGTH to multiple of page size */
+    length = (length + LIBOS_PAGE_SIZE - 1) / LIBOS_PAGE_SIZE * LIBOS_PAGE_SIZE;
+
+    if (addr)
+    {
+        libos_vad_t* vad;
+        uintptr_t start = (uintptr_t)addr;
+        uintptr_t end = (uintptr_t)addr + length;
+
+        /* Fail if [addr:length] is not already mapped */
+        if (!(vad = _list_find(mman, start)) || end > _end(vad))
+        {
+            _mman_set_err(
+                mman,
+                "bad addr parameter: "
+                "must be null or part of an existing mapping");
+        }
+
+        *ptr_out = addr;
+        goto done;
+    }
+    else
+    {
+        libos_vad_t* left;
+        libos_vad_t* right;
+
+        /* Find a gap that is big enough */
+        if (!(start = _mman_find_gap(mman, length, &left, &right)))
+        {
+            _mman_set_err(mman, "out of memory");
+            ret = -ENOMEM;
+            goto done;
+        }
+
+        if (left && _end(left) == start)
+        {
+            /* Coalesce with LEFT neighbor */
+
+            left->size += (uint32_t)length;
+
+            /* Coalesce with RIGHT neighbor (and release right neighbor) */
+            if (right && (start + length == right->addr))
+            {
+                _list_remove(mman, right);
+                left->size += right->size;
+                _free_list_put(mman, right);
+            }
+
+            mman->coverage[LIBOS_MMAN_COVERAGE_0] = true;
+        }
+        else if (right && (start + length == right->addr))
+        {
+            /* Coalesce with RIGHT neighbor */
+
+            right->addr = start;
+            right->size += (uint32_t)length;
+            _mman_sync_top(mman);
+
+            mman->coverage[LIBOS_MMAN_COVERAGE_1] = true;
+        }
+        else
+        {
+            libos_vad_t* vad;
+
+            /* Create a new VAD and insert it into the list */
+
+            if (!(vad = _mman_new_vad(mman, start, length, prot, flags)))
+            {
+                _mman_set_err(mman, "unexpected: list insert failed");
+                ret = -EINVAL;
+                goto done;
+            }
+
+            _list_insert_after(mman, left, vad);
+            _mman_sync_top(mman);
+
+            mman->coverage[LIBOS_MMAN_COVERAGE_2] = true;
+        }
+    }
+
+    if (!_mman_is_sane(mman))
+        goto done;
+
+    *ptr_out = (void*)start;
+
+done:
+
+    /* Zero-fill mapped memory */
+    if (ptr_out && *ptr_out)
+        libos_memset(*ptr_out, 0, length);
+
+    return ret;
 }
 
 /*
@@ -722,193 +1050,11 @@ int libos_mman_map(
     int flags,
     void** ptr_out)
 {
-    int ret = 0;
-    uintptr_t start = 0;
     bool locked = false;
 
-    if (ptr_out)
-        *ptr_out = NULL;
-
     _mman_lock(mman, &locked);
-
-    _mman_clear_err(mman);
-
-    /* Check for valid mman parameter */
-    if (!mman || mman->magic != LIBOS_MMAN_MAGIC || !ptr_out)
-    {
-        _mman_set_err(mman, "bad mman parameter");
-        ret = -EINVAL;
-        goto done;
-    }
-
-    if (!_mman_is_sane(mman))
-        goto done;
-
-    /* ADDR must be page aligned */
-    if (addr && (uintptr_t)addr % LIBOS_PAGE_SIZE)
-    {
-        _mman_set_err(mman, "bad addr parameter");
-        ret = -EINVAL;
-        goto done;
-    }
-
-    /* LENGTH must be non-zero */
-    if (length == 0)
-    {
-        _mman_set_err(mman, "bad length parameter");
-        ret = -EINVAL;
-        goto done;
-    }
-
-    /* Ignore protection for SGX-1 */
-#if 0
-    {
-        if (!(prot & LIBOS_PROT_READ))
-        {
-            _mman_set_err(mman, "bad prot parameter: need LIBOS_PROT_READ");
-            ret = -EINVAL;
-            goto done;
-        }
-
-        if (!(prot & LIBOS_PROT_WRITE))
-        {
-            _mman_set_err(mman, "bad prot parameter: need LIBOS_PROT_WRITE");
-            ret = -EINVAL;
-            goto done;
-        }
-
-        if (prot & LIBOS_PROT_EXEC)
-        {
-            _mman_set_err(mman, "bad prot parameter: remove LIBOS_PROT_EXEC");
-            ret = -EINVAL;
-            goto done;
-        }
-    }
-#endif
-
-    /* FLAGS must be (LIBOS_MAP_ANONYMOUS | LIBOS_MAP_PRIVATE) */
-    {
-        if (!(flags & LIBOS_MAP_ANONYMOUS))
-        {
-            _mman_set_err(
-                mman, "bad flags parameter: need LIBOS_MAP_ANONYMOUS");
-            ret = -EINVAL;
-            goto done;
-        }
-
-        if (!(flags & LIBOS_MAP_PRIVATE))
-        {
-            _mman_set_err(mman, "bad flags parameter: need LIBOS_MAP_PRIVATE");
-            ret = -EINVAL;
-            goto done;
-        }
-
-        if (flags & LIBOS_MAP_SHARED)
-        {
-            _mman_set_err(mman, "bad flags parameter: remove LIBOS_MAP_SHARED");
-            ret = -EINVAL;
-            goto done;
-        }
-
-        if (flags & LIBOS_MAP_FIXED)
-        {
-            _mman_set_err(mman, "bad flags parameter: remove LIBOS_MAP_FIXED");
-            ret = -EINVAL;
-            goto done;
-        }
-    }
-
-    /* Round LENGTH to multiple of page size */
-    length = (length + LIBOS_PAGE_SIZE - 1) / LIBOS_PAGE_SIZE * LIBOS_PAGE_SIZE;
-
-    if (addr)
-    {
-        libos_vad_t* vad;
-        uintptr_t start = (uintptr_t)addr;
-        uintptr_t end = (uintptr_t)addr + length;
-
-        /* Fail if [addr:length] is not already mapped */
-        if (!(vad = _list_find(mman, start)) || end > _end(vad))
-        {
-            _mman_set_err(
-                mman,
-                "bad addr parameter: "
-                "must be null or part of an existing mapping");
-        }
-
-        *ptr_out = addr;
-        goto done;
-    }
-    else
-    {
-        libos_vad_t* left;
-        libos_vad_t* right;
-
-        /* Find a gap that is big enough */
-        if (!(start = _mman_find_gap(mman, length, &left, &right)))
-        {
-            _mman_set_err(mman, "out of memory");
-            ret = -ENOMEM;
-            goto done;
-        }
-
-        if (left && _end(left) == start)
-        {
-            /* Coalesce with LEFT neighbor */
-
-            left->size += (uint32_t)length;
-
-            /* Coalesce with RIGHT neighbor (and release right neighbor) */
-            if (right && (start + length == right->addr))
-            {
-                _list_remove(mman, right);
-                left->size += right->size;
-                _free_list_put(mman, right);
-            }
-
-            mman->coverage[LIBOS_MMAN_COVERAGE_0] = true;
-        }
-        else if (right && (start + length == right->addr))
-        {
-            /* Coalesce with RIGHT neighbor */
-
-            right->addr = start;
-            right->size += (uint32_t)length;
-            _mman_sync_top(mman);
-
-            mman->coverage[LIBOS_MMAN_COVERAGE_1] = true;
-        }
-        else
-        {
-            libos_vad_t* vad;
-
-            /* Create a new VAD and insert it into the list */
-
-            if (!(vad = _mman_new_vad(mman, start, length, prot, flags)))
-            {
-                _mman_set_err(mman, "unexpected: list insert failed");
-                ret = -EINVAL;
-                goto done;
-            }
-
-            _list_insert_after(mman, left, vad);
-            _mman_sync_top(mman);
-
-            mman->coverage[LIBOS_MMAN_COVERAGE_2] = true;
-        }
-    }
-
-    if (!_mman_is_sane(mman))
-        goto done;
-
-    *ptr_out = (void*)start;
-
-done:
+    int ret = _mman_map(mman, addr, length, prot, flags, ptr_out);
     _mman_unlock(mman, &locked);
-
-    /* Zero-fill mapped memory */
-    if (ptr_out && *ptr_out)
-        libos_memset(*ptr_out, 0, length);
 
     return ret;
 }
@@ -944,138 +1090,12 @@ done:
 */
 int libos_mman_munmap(libos_mman_t* mman, void* addr, size_t length)
 {
-    int ret = -1;
-    libos_vad_t* vad = NULL;
     bool locked = false;
 
     _mman_lock(mman, &locked);
-
-    _mman_clear_err(mman);
-
-    /* Reject invaid parameters */
-    if (!mman || mman->magic != LIBOS_MMAN_MAGIC || !addr || !length)
-    {
-        _mman_set_err(mman, "bad parameter");
-        ret = -EINVAL;
-        goto done;
-    }
-
-    if (!_mman_is_sane(mman))
-    {
-        _mman_set_err(mman, "bad mman parameter");
-        ret = -EINVAL;
-        goto done;
-    }
-
-    /* ADDRESS must be aligned on a page boundary */
-    if ((uintptr_t)addr % LIBOS_PAGE_SIZE)
-    {
-        _mman_set_err(mman, "bad addr parameter");
-        ret = -EINVAL;
-        goto done;
-    }
-
-    /* LENGTH must be a multiple of the page size */
-    if (length % LIBOS_PAGE_SIZE)
-    {
-        _mman_set_err(mman, "bad length parameter");
-        ret = -EINVAL;
-        goto done;
-    }
-
-    /* Set start and end pointers for this area */
-    uintptr_t start = (uintptr_t)addr;
-    uintptr_t end = (uintptr_t)addr + length;
-
-    /* Find the VAD that contains this address */
-    if (!(vad = _list_find(mman, start)))
-    {
-        _mman_set_err(mman, "address not found");
-        ret = -EINVAL;
-        goto done;
-    }
-
-    /* Fail if this VAD does not contain the end address */
-    if (end > _end(vad))
-    {
-        _mman_set_err(mman, "illegal range");
-        ret = -EINVAL;
-        goto done;
-    }
-
-    /* If the unapping does not cover the entire area given by the VAD, handle
-     * the excess portions. There are 4 cases below, where u's represent
-     * the portion being unmapped.
-     *
-     *     Case1: [uuuuuuuuuuuuuuuu]
-     *     Case2: [uuuu............]
-     *     Case3: [............uuuu]
-     *     Case4: [....uuuu........]
-     */
-    if (vad->addr == start && _end(vad) == end)
-    {
-        /* Case1: [uuuuuuuuuuuuuuuu] */
-
-        _list_remove(mman, vad);
-        _mman_sync_top(mman);
-        _free_list_put(mman, vad);
-        mman->coverage[LIBOS_MMAN_COVERAGE_3] = true;
-    }
-    else if (vad->addr == start)
-    {
-        /* Case2: [uuuu............] */
-
-        vad->addr += length;
-        vad->size -= (uint32_t)length;
-        _mman_sync_top(mman);
-        mman->coverage[LIBOS_MMAN_COVERAGE_4] = true;
-    }
-    else if (_end(vad) == end)
-    {
-        /* Case3: [............uuuu] */
-
-        vad->size -= (uint32_t)length;
-        mman->coverage[LIBOS_MMAN_COVERAGE_5] = true;
-    }
-    else
-    {
-        /* Case4: [....uuuu........] */
-
-        size_t vad_end = _end(vad);
-
-        /* Adjust the left portion */
-        vad->size = (uint32_t)(start - vad->addr);
-
-        libos_vad_t* right;
-
-        /* Create VAD for the excess right portion */
-        if (!(right = _mman_new_vad(
-                  mman, end, vad_end - end, vad->prot, vad->flags)))
-        {
-            _mman_set_err(mman, "out of VADs");
-            ret = -EINVAL;
-            goto done;
-        }
-
-        _list_insert_after(mman, vad, right);
-        _mman_sync_top(mman);
-        mman->coverage[LIBOS_MMAN_COVERAGE_6] = true;
-    }
-
-    /* If scrubbing is enabled, then scrub the unmapped memory */
-    if (mman->scrub)
-        libos_memset(addr, 0xDD, length);
-
-    if (!_mman_is_sane(mman))
-    {
-        ret = -EINVAL;
-        goto done;
-    }
-
-    ret = 0;
-
-done:
+    int ret = _mman_munmap(mman, addr, length);
     _mman_unlock(mman, &locked);
+
     return ret;
 }
 
@@ -1256,7 +1276,7 @@ int libos_mman_mremap(
         }
         else
         {
-            if (libos_mman_map(
+            if (_mman_map(
                     mman, NULL, new_size, vad->prot, vad->flags, &addr) != 0)
             {
                 _mman_set_err(mman, "mapping failed");
@@ -1267,7 +1287,7 @@ int libos_mman_mremap(
             libos_memcpy(addr, (void*)start, old_size);
 
             /* Ummap the old area */
-            if (libos_mman_munmap(mman, (void*)start, old_size) != 0)
+            if (_mman_munmap(mman, (void*)start, old_size) != 0)
             {
                 _mman_set_err(mman, "unmapping failed");
                 ret = -ENOMEM;

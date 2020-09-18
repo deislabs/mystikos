@@ -122,7 +122,7 @@ typedef struct libos_mman
     bool scrub;
 
     /* Heap locking */
-    libos_recursive_spinlock_t lock;
+    libos_spinlock_t lock;
 
     /* Error string */
     char err[LIBOS_MMAN_ERROR_SIZE];

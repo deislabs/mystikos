@@ -35,7 +35,9 @@ int libos_setup_mman(void* data, size_t size)
     _mman.scrub = true;
 #endif
 
+#ifdef SANITY
     libos_mman_set_sanity(&_mman, true);
+#endif
 
     ret = 0;
 
