@@ -19,10 +19,8 @@
 #include "utils.h"
 
 /* ATTN: use common header */
-#define PAGE_SIZE 4096
-#define MEGABYTE (1024UL * 1024UL)
-#define MMAN_DEFAULT_PAGES 64
-#define MMAN_SIZE (MMAN_DEFAULT_PAGES * MEGABYTE)
+// 64MB = 64*1024*1024/4096
+#define MMAN_DEFAULT_PAGES 16384
 
 region_details _details = {0};
 
@@ -94,7 +92,7 @@ const region_details* create_region_details_from_package(
 
     if (user_pages == 0)
         user_pages = MMAN_DEFAULT_PAGES;
-    _details.mman_size = user_pages * MEGABYTE;
+    _details.mman_size = user_pages * LIBOS_PAGE_SIZE;
 
     return &_details;
 }
@@ -207,7 +205,7 @@ const region_details* create_region_details_from_files(
 
     if (user_pages == 0)
         user_pages = MMAN_DEFAULT_PAGES;
-    _details.mman_size = user_pages * MEGABYTE;
+    _details.mman_size = user_pages * LIBOS_PAGE_SIZE;
 
     return &_details;
 }
@@ -234,7 +232,7 @@ static int _add_segment_pages(
     uint64_t page_vaddr = libos_round_down_to_page_size(segment->vaddr);
     uint64_t segment_end = segment->vaddr + segment->memsz;
 
-    for (; page_vaddr < segment_end; page_vaddr += PAGE_SIZE)
+    for (; page_vaddr < segment_end; page_vaddr += LIBOS_PAGE_SIZE)
     {
         const uint64_t dest_vaddr = vaddr + page_vaddr;
         const void* page = (uint8_t*)image_base + page_vaddr;
@@ -273,7 +271,7 @@ static int _load_crt_pages(
     if (!context || !image)
         ERAISE(-EINVAL);
 
-    assert((image->image_size & (PAGE_SIZE - 1)) == 0);
+    assert((image->image_size & (LIBOS_PAGE_SIZE - 1)) == 0);
 
     /* Add the program segments first */
     for (size_t i = 0; i < image->num_segments; i++)
@@ -325,7 +323,7 @@ static int _load_kernel_pages(
     if (!context || !image)
         ERAISE(-EINVAL);
 
-    assert((image->image_size & (PAGE_SIZE - 1)) == 0);
+    assert((image->image_size & (LIBOS_PAGE_SIZE - 1)) == 0);
 
     /* Add the program segments first */
     for (size_t i = 0; i < image->num_segments; i++)
@@ -373,7 +371,7 @@ static int _add_crt_reloc_region(oe_region_context_t* context, uint64_t* vaddr)
     const bool is_elf = true;
     assert(_details.crt.image.reloc_data != NULL);
     assert(_details.crt.image.reloc_size != 0);
-    assert((_details.crt.image.reloc_size % PAGE_SIZE) == 0);
+    assert((_details.crt.image.reloc_size % LIBOS_PAGE_SIZE) == 0);
 
     if (!context || !vaddr)
         ERAISE(-EINVAL);
@@ -384,7 +382,7 @@ static int _add_crt_reloc_region(oe_region_context_t* context, uint64_t* vaddr)
     /* Add the pages */
     {
         const uint8_t* page = (const uint8_t*)_details.crt.image.reloc_data;
-        size_t npages = _details.crt.image.reloc_size / PAGE_SIZE;
+        size_t npages = _details.crt.image.reloc_size / LIBOS_PAGE_SIZE;
 
         for (size_t i = 0; i < npages; i++)
         {
@@ -400,8 +398,8 @@ static int _add_crt_reloc_region(oe_region_context_t* context, uint64_t* vaddr)
                 ERAISE(-EINVAL);
             }
 
-            page += PAGE_SIZE;
-            (*vaddr) += PAGE_SIZE;
+            page += LIBOS_PAGE_SIZE;
+            (*vaddr) += LIBOS_PAGE_SIZE;
         }
     }
 
@@ -420,7 +418,7 @@ static int _add_kernel_reloc_region(
     const bool is_elf = true;
     assert(_details.kernel.image.reloc_data != NULL);
     assert(_details.kernel.image.reloc_size != 0);
-    assert((_details.kernel.image.reloc_size % PAGE_SIZE) == 0);
+    assert((_details.kernel.image.reloc_size % LIBOS_PAGE_SIZE) == 0);
 
     if (!context || !vaddr)
         ERAISE(-EINVAL);
@@ -431,7 +429,7 @@ static int _add_kernel_reloc_region(
     /* Add the pages */
     {
         const uint8_t* page = (const uint8_t*)_details.kernel.image.reloc_data;
-        size_t npages = _details.kernel.image.reloc_size / PAGE_SIZE;
+        size_t npages = _details.kernel.image.reloc_size / LIBOS_PAGE_SIZE;
 
         for (size_t i = 0; i < npages; i++)
         {
@@ -447,8 +445,8 @@ static int _add_kernel_reloc_region(
                 ERAISE(-EINVAL);
             }
 
-            page += PAGE_SIZE;
-            (*vaddr) += PAGE_SIZE;
+            page += LIBOS_PAGE_SIZE;
+            (*vaddr) += LIBOS_PAGE_SIZE;
         }
     }
 

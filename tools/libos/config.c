@@ -1,6 +1,7 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 #include "config.h"
+#include <libos/round.h>
 #include <memory.h>
 #include <stdlib.h>
 #include "libos/file.h"
@@ -22,6 +23,59 @@
             goto done;                                      \
         }                                                   \
     } while (0)
+
+static json_result_t _extract_mem_size(
+    json_type_t type,
+    const json_union_t* un,
+    uint64_t* num_pages)
+{
+    json_result_t ret = JSON_FAILED;
+    uint64_t value;
+
+    if (num_pages == NULL)
+        CONFIG_RAISE(JSON_FAILED);
+
+    if (type == JSON_TYPE_INTEGER)
+        value = (uint64_t)un->integer; // number in bytes
+    else if (type == JSON_TYPE_STRING)
+    {
+        char* endptr = NULL;
+        value = strtoul(un->string, &endptr, 10);
+        if (endptr[0] == '\0')
+        {
+            // nothing to do... in bytes
+        }
+        else if (strcasecmp(endptr, "k") == 0)
+        {
+            value *= 1024;
+        }
+        else if (strcasecmp(endptr, "m") == 0)
+        {
+            value *= 1024;
+            value *= 1024;
+        }
+        else
+        {
+            fprintf(
+                stderr,
+                "ERROR: Configuration: MemSize values can be in megabyte (m), "
+                "kilobytes (k) or bytes\n");
+            fprintf(stderr, "for example \"10m\", \"100k\" or \"100000000\"\n");
+            CONFIG_RAISE(JSON_OUT_OF_BOUNDS);
+        }
+    }
+    else
+        CONFIG_RAISE(JSON_TYPE_MISMATCH);
+
+    value = libos_round_up_to_page_size(value);
+    value /= LIBOS_PAGE_SIZE;
+
+    *num_pages = value;
+
+    ret = JSON_OK;
+done:
+    return ret;
+}
 
 static json_result_t _config_extract_array(
     json_type_t type,
@@ -125,33 +179,39 @@ static json_result_t _json_read_callback(
                 else
                     CONFIG_RAISE(JSON_TYPE_MISMATCH);
             }
-            else if (json_match(parser, "NumKernelPages") == JSON_OK)
+            else if (json_match(parser, "KernelMemSize") == JSON_OK)
             {
-                if (type == JSON_TYPE_INTEGER)
+                ret = _extract_mem_size(
+                    type, un, &parsed_data->oe_num_heap_pages);
+                if (ret == JSON_OK)
                 {
-                    parsed_data->oe_num_heap_pages = (uint64_t)un->integer;
                     if (parsed_data->oe_config_out_file)
+                    {
                         fprintf(
                             parsed_data->oe_config_out_file,
                             "NumHeapPages=%ld\n",
-                            un->integer);
+                            parsed_data->oe_num_heap_pages);
+                    }
                 }
                 else
-                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
+                    CONFIG_RAISE(ret);
             }
-            else if (json_match(parser, "NumStackPages") == JSON_OK)
+            else if (json_match(parser, "StackMemSize") == JSON_OK)
             {
-                if (type == JSON_TYPE_INTEGER)
+                ret = _extract_mem_size(
+                    type, un, &parsed_data->oe_num_stack_pages);
+                if (ret == JSON_OK)
                 {
-                    parsed_data->oe_num_stack_pages = (uint64_t)un->integer;
                     if (parsed_data->oe_config_out_file)
+                    {
                         fprintf(
                             parsed_data->oe_config_out_file,
                             "NumStackPages=%ld\n",
-                            un->integer);
+                            parsed_data->oe_num_stack_pages);
+                    }
                 }
                 else
-                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
+                    CONFIG_RAISE(ret);
             }
             else if (json_match(parser, "NumUserThreads") == JSON_OK)
             {
@@ -198,12 +258,11 @@ static json_result_t _json_read_callback(
             }
 
             // LibOS configuration
-            else if (json_match(parser, "NumUserPages") == JSON_OK)
+            else if (json_match(parser, "UserMemSize") == JSON_OK)
             {
-                if (type == JSON_TYPE_INTEGER)
-                    parsed_data->user_pages = un->integer;
-                else
-                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
+                ret = _extract_mem_size(type, un, &parsed_data->user_pages);
+                if (ret != JSON_OK)
+                    CONFIG_RAISE(ret);
             }
             else if (json_match(parser, "ApplicationPath") == JSON_OK)
             {

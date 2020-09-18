@@ -1,8 +1,8 @@
 #include <errno.h>
 #include <libos/fsgs.h>
 #include <libos/strings.h>
-#include <libos/thread.h>
 #include <libos/tcall.h>
+#include <libos/thread.h>
 
 long libos_tcall_random(void* data, size_t size)
 {

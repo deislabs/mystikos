@@ -63,8 +63,7 @@ static void* _thread_func(void* arg)
     uint64_t cookie = (uint64_t)arg;
     uint64_t event = (uint64_t)&_thread_event;
 
-    if (libos_run_thread_ecall(_enclave, &r, cookie, event) != OE_OK ||
-        r != 0)
+    if (libos_run_thread_ecall(_enclave, &r, cookie, event) != OE_OK || r != 0)
     {
         fprintf(stderr, "libos_run_thread_ecall(): failed: retval=%ld\n", r);
         fflush(stdout);

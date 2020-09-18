@@ -113,9 +113,7 @@ static int _teardown_ramfs(void)
     return 0;
 }
 
-static int _create_main_thread(
-    uint64_t event,
-    libos_thread_t** thread_out)
+static int _create_main_thread(uint64_t event, libos_thread_t** thread_out)
 {
     int ret = 0;
     libos_thread_t* thread = NULL;

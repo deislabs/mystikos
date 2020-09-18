@@ -1,6 +1,4 @@
 #include <assert.h>
-#include <time.h>
-#include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdarg.h>
@@ -8,6 +6,8 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/syscall.h>
+#include <time.h>
+#include <unistd.h>
 
 #include <libos/eraise.h>
 #include <libos/syscallext.h>

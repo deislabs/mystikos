@@ -4,6 +4,7 @@
 #include <libos/eraise.h>
 #include <libos/fsgs.h>
 #include <libos/futex.h>
+#include <libos/lfence.h>
 #include <libos/malloc.h>
 #include <libos/options.h>
 #include <libos/setjmp.h>
@@ -14,7 +15,6 @@
 #include <libos/thread.h>
 #include <libos/trace.h>
 #include <libos/ud2.h>
-#include <libos/lfence.h>
 
 libos_thread_t* __libos_main_thread;
 
@@ -82,11 +82,10 @@ typedef struct cookie_map_entry
     uint64_t cookie;
     libos_thread_t* thread;
     size_t next1; /* one-based next pointer */
-}
-cookie_map_entry_t;
+} cookie_map_entry_t;
 
 static cookie_map_entry_t _cookie_map[MAX_COOKIE_MAP_ENTRIES];
-static size_t _cookie_map_next; /* next available entry */
+static size_t _cookie_map_next;  /* next available entry */
 static size_t _cookie_map_free1; /* free list of cookie entries (one-based) */
 static libos_spinlock_t _cookie_map_lock;
 
@@ -177,7 +176,9 @@ static libos_thread_t* _put_cookie(uint64_t cookie)
 **
 **     Threads are moved onto the zombie list after exiting. We suspect that
 **     that synchronizing threads may need access in the future to the thread
-**     structure after the thread has exited (e.g., to retieve the exit status).**     This assumption may turn out to be false, in which case the zombie list
+**     structure after the thread has exited (e.g., to retieve the exit
+*status).**     This assumption may turn out to be false, in which case the
+*zombie list
 **     could be removed.
 **
 **==============================================================================

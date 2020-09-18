@@ -23,7 +23,7 @@ typedef struct _config_parsed_data_t
     unsigned short oe_security_version;
 
     // LibOS config values
-    int64_t user_pages;
+    uint64_t user_pages; // user_pages*4096=value-in-config
     char* application_path;
     unsigned char allow_host_parameters;
     char** application_parameters;
