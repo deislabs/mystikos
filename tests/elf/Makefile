@@ -22,4 +22,4 @@ include $(TOP)/rules.mak
 IMAGE = $(TOP)/build/bin/tests/elf/image/image
 
 tests:
-	$(SUBBINDIR)/main $(IMAGE)
+	$(RUNTEST) $(SUBBINDIR)/main $(IMAGE)

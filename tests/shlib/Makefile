@@ -19,7 +19,7 @@ OPTS += --strace
 endif
 
 tests:
-	$(LIBOS_EXEC) $(OPTS) rootfs /bin/shlib $(OPTS)
+	$(RUNTEST) $(LIBOS_EXEC) $(OPTS) rootfs /bin/shlib $(OPTS)
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos

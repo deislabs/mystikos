@@ -1,0 +1,105 @@
+#!/bin/bash
+
+if [ "$#" == "0" ]; then
+    echo "Usage: $0 <test> <args...>"
+    exit 1
+fi
+
+if [ -z "${TESTNAME}" ]; then
+    echo "$0: TESTNAME is undefined"
+    exit 1
+fi
+
+if [ -z "${TESTDIR}" ]; then
+    echo "$0: TESTDIR is undefined"
+    exit 1
+fi
+
+if [ -z "${TESTSUBDIR}" ]; then
+    echo "$0: TESTSUBDIR is undefined"
+    exit 1
+fi
+
+test_passed()
+{
+    local cmd=$*
+    echo "    passed (${TESTNAME})"
+    echo "" >> ${TESTSUBDIR}/passed
+}
+
+test_failed()
+{
+    local cmd;
+
+    cmd=$*
+    echo "    failed: ${TESTNAME}"
+    echo "" >> ${TESTSUBDIR}/failed
+}
+
+run_test()
+{
+    local cmd;
+
+    # Remove extraneous whitespace from the command:
+    for i in $*
+    do
+        cmd="${cmd} $i"
+    done
+
+    echo "=== start (${TESTNAME})"
+
+    local tempfile=$(/bin/mktemp)
+
+    # run the test
+    time="/usr/bin/time -f "%e" -o ${tempfile}"
+    echo ${cmd} > ${TESTSUBDIR}/stdout
+    ${time} ${cmd} >> ${TESTSUBDIR}/stdout 2>> ${TESTSUBDIR}/stderr
+    seconds=$(cat ${tempfile})
+    rm -f ${tempfile}
+
+    if [ "$?" == "0" ]; then
+        if [ "${VERBOSE}" == "1" ]; then
+            echo "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+            cat ${TESTSUBDIR}/stdout
+            cat ${TESTSUBDIR}/stderr
+            echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+        fi
+        test_passed $cmd
+        echo "    ${seconds} seconds"
+    else
+        if [ "${VERBOSE}" == "1" ]; then
+            echo "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+            cat ${TESTSUBDIR}/stdout
+            cat ${TESTSUBDIR}/stderr
+            echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+        fi
+        test_failed $cmd
+    fi
+
+    echo ""
+}
+
+summarize()
+{
+    if [ "${SUMMARY}" == "1" ]; then
+        find ${TESTDIR} -name 'failed' | wc -l > ${TESTDIR}/num.failed
+        find ${TESTDIR} -name 'passed' | wc -l > ${TESTDIR}/num.passed
+        num_passed=$(cat ${TESTDIR}/num.passed)
+        num_failed=$(cat ${TESTDIR}/num.failed)
+        echo "passed: ${num_passed}"
+        echo "failed: ${num_failed}"
+
+        exit ${num_failed}
+    fi
+}
+
+mkdir -p ${TESTSUBDIR}
+
+if [ ! -d "${TESTSUBDIR}" ]; then
+    echo "$0: cannot created directory: ${TESTSUBDIR}"
+    exit 1
+fi
+
+run_test $*
+
+summarize

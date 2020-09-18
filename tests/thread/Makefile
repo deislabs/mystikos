@@ -16,16 +16,10 @@ OPTS += --strace
 endif
 
 tests:
-	$(LIBOS_EXEC) $(OPTS) rootfs /bin/thread
-
-gdb:
-	$(LIBOS_GDB) --args $(LIBOS) $(EXEC) rootfs /bin/thread $(OPTS)
+	$(RUNTEST) $(LIBOS_EXEC) $(OPTS) rootfs /bin/thread
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos
 
 clean:
 	rm -rf $(APPDIR) rootfs export ramfs
-
-t:
-	$(LIBOS) exec-linux rootfs /bin/thread

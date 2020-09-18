@@ -26,4 +26,4 @@ $(SUBOBJDIR)/run_t.c:
 	$(EDGER8R) $(EDGER8R_TRUSTED_OPTS) ../run/run.edl
 
 tests:
-	$(BINDIR)/run $(SUBBINDIR)/enc
+	$(RUNTEST) $(BINDIR)/run $(SUBBINDIR)/enc

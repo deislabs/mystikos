@@ -19,4 +19,4 @@ REDEFINE_TESTS=1
 include $(TOP)/rules.mak
 
 tests:
-	$(SUBBINDIR)/jsontest1 sample.json
+	$(RUNTEST) $(SUBBINDIR)/jsontest1 sample.json

@@ -18,4 +18,4 @@ REDEFINE_TESTS=1
 include $(TOP)/rules.mak
 
 tests:
-	$(SUBBINDIR)/string
+	$(RUNTEST) $(SUBBINDIR)/string

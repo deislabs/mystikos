@@ -25,7 +25,7 @@ TEST_FILE = supported.txt
 TESTS = $(shell cat $(TEST_FILE))
 
 tests: libos
-	$(foreach i, $(TESTS), $(MAKE) run TEST=$(i) $(NL) )
+	@ $(foreach i, $(TESTS), TESTNAME=$(TESTNAME)$(i)$(TESTSUFFIX) $(RUNTEST) $(MAKE) run TEST=$(i) $(NL) )
 
 run:
 	@ echo "=== TEST=$(TEST)"

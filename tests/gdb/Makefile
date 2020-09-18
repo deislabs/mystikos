@@ -21,6 +21,9 @@ all: libos
 	$(LIBOS) mkcpio $(APPDIR) rootfs
 
 tests:
+	$(RUNTEST) $(MAKE) __tests
+
+__tests:
 	${LIBOS_GDB} ${GDB_CMDS} ${LIBOS} ${EXEC} rootfs /bin/helloworld ${OPTS} 2>&1 > ${GDB_LOG_FILE} 2> /dev/null
 	@cat ${GDB_LOG_FILE} | grep -E "$(GDB_MATCH)" > /dev/null
 	@ echo "=== passed test (gdb)"

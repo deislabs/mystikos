@@ -8,4 +8,4 @@ REDEFINE_TESTS=1
 include $(TOP)/rules.mak
 
 tests:
-	$(SUBBINDIR)/host/host $(SUBBINDIR)/enc/enc cpio
+	$(RUNTEST) $(SUBBINDIR)/host/host $(SUBBINDIR)/enc/enc cpio

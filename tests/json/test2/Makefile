@@ -18,7 +18,9 @@ REDEFINE_TESTS=1
 
 include $(TOP)/rules.mak
 
-tests: test-a test-b
+tests:
+	$(RUNTEST) $(MAKE) test-a
+	$(RUNTEST) $(MAKE) test-b
 
 test-a:
 	@ $(eval TMP1 := $(shell /bin/mktemp))

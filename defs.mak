@@ -29,6 +29,10 @@ endif
 
 INCDIR=$(TOP)/include
 
+export TESTNAME=$(SUBDIR)$(TESTSUFFIX)
+export TESTDIR=$(BUILDDIR)/tests
+export TESTSUBDIR=$(TESTDIR)/$(TESTNAME)
+
 define NL
 
 
@@ -256,3 +260,11 @@ LIBOS_EXEC += $(BINDIR)/libos
 LIBOS_EXEC += $(EXEC)
 
 LIBOS = $(BINDIR)/libos
+
+##==============================================================================
+##
+## RUNTEST command
+##
+##==============================================================================
+
+RUNTEST=$(TOP)/scripts/runtest

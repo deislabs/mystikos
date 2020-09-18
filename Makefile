@@ -13,6 +13,7 @@ DIRS = third_party gcov json host target kernel crt oesdk tools alpine tests
 
 CLEAN = $(BUILDDIR)
 
+REDEFINE_TESTS=1
 include $(TOP)/rules.mak
 
 ##==============================================================================
@@ -99,12 +100,5 @@ touch:
 attn:
 	@ grep "ATTN" $(shell $(MAKE) sources) | more
 
-##==============================================================================
-##
-## all-tests:
-##
-##==============================================================================
-
-all-tests:
-	@ $(MAKE) -s tests TARGET=sgx
-	@ $(MAKE) -s tests TARGET=linux
+tests:
+	$(MAKE) -s -C tests tests

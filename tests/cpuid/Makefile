@@ -15,7 +15,7 @@ all: libos
 	$(LIBOS) mkcpio $(APPDIR) rootfs
 
 tests:
-	$(LIBOS_EXEC) $(OPTS) rootfs /bin/cpuid $(OPTS)
+	$(RUNTEST) $(LIBOS_EXEC) $(OPTS) rootfs /bin/cpuid $(OPTS)
 
 gdb:
 	$(LIBOS_GDB) --args $(LIBOS) $(EXEC) $(OPTS) rootfs /bin/cpuid $(OPTS)
