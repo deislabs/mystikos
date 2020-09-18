@@ -3,7 +3,7 @@ include $(TOP)/defs.mak
 
 APPDIR = appdir
 APPNAME = hello
-CFLAGS = -fPIC
+CFLAGS = -fPIC -g
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 
 all: libos

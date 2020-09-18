@@ -289,6 +289,8 @@ done:
 static int _add_crt_region(oe_region_context_t* context, uint64_t* vaddr)
 {
     int ret = 0;
+    const uint64_t id = LIBOS_CRT_REGION_ID;
+
     assert(_details.crt.image.image_data != NULL);
     assert(_details.crt.image.image_size != 0);
 
@@ -299,7 +301,7 @@ static int _add_crt_region(oe_region_context_t* context, uint64_t* vaddr)
     if (_details.crt.path[0] != 0)
         path = _details.crt.path;
 
-    if (oe_region_start(context, CRT_REGION_ID, true, path) != OE_OK)
+    if (oe_region_start(context, id, true, path) != OE_OK)
         ERAISE(-EINVAL);
 
     ECHECK(_load_crt_pages(context, &_details.crt.image, *vaddr));
@@ -341,6 +343,8 @@ done:
 static int _add_kernel_region(oe_region_context_t* context, uint64_t* vaddr)
 {
     int ret = 0;
+    const uint64_t id = LIBOS_KERNEL_REGION_ID;
+
     assert(_details.kernel.image.image_data != NULL);
     assert(_details.kernel.image.image_size != 0);
 
@@ -351,7 +355,7 @@ static int _add_kernel_region(oe_region_context_t* context, uint64_t* vaddr)
     if (_details.kernel.path[0] != 0)
         path = _details.kernel.path;
 
-    if (oe_region_start(context, KERNEL_REGION_ID, true, path) != OE_OK)
+    if (oe_region_start(context, id, true, path) != OE_OK)
         ERAISE(-EINVAL);
 
     ECHECK(_load_kernel_pages(context, &_details.kernel.image, *vaddr));
@@ -369,6 +373,8 @@ static int _add_crt_reloc_region(oe_region_context_t* context, uint64_t* vaddr)
 {
     int ret = 0;
     const bool is_elf = true;
+    const uint64_t id = LIBOS_CRT_RELOC_REGION_ID;
+
     assert(_details.crt.image.reloc_data != NULL);
     assert(_details.crt.image.reloc_size != 0);
     assert((_details.crt.image.reloc_size % LIBOS_PAGE_SIZE) == 0);
@@ -376,7 +382,7 @@ static int _add_crt_reloc_region(oe_region_context_t* context, uint64_t* vaddr)
     if (!context || !vaddr)
         ERAISE(-EINVAL);
 
-    if (oe_region_start(context, CRT_RELOC_REGION_ID, is_elf, NULL) != OE_OK)
+    if (oe_region_start(context, id, is_elf, NULL) != OE_OK)
         ERAISE(-EINVAL);
 
     /* Add the pages */
@@ -416,6 +422,8 @@ static int _add_kernel_reloc_region(
 {
     int ret = 0;
     const bool is_elf = true;
+    const uint64_t id = LIBOS_KERNEL_RELOC_REGION_ID;
+
     assert(_details.kernel.image.reloc_data != NULL);
     assert(_details.kernel.image.reloc_size != 0);
     assert((_details.kernel.image.reloc_size % LIBOS_PAGE_SIZE) == 0);
@@ -423,7 +431,7 @@ static int _add_kernel_reloc_region(
     if (!context || !vaddr)
         ERAISE(-EINVAL);
 
-    if (oe_region_start(context, KERNEL_RELOC_REGION_ID, is_elf, NULL) != OE_OK)
+    if (oe_region_start(context, id, is_elf, NULL) != OE_OK)
         ERAISE(-EINVAL);
 
     /* Add the pages */
@@ -463,6 +471,7 @@ static int _add_rootfs_region(oe_region_context_t* context, uint64_t* vaddr)
     const uint8_t* p = _details.rootfs.buffer;
     size_t n = _details.rootfs.buffer_size;
     size_t r = n;
+    const uint64_t id = LIBOS_ROOTFS_REGION_ID;
 
     if (!context || !vaddr)
         ERAISE(-EINVAL);
@@ -470,7 +479,7 @@ static int _add_rootfs_region(oe_region_context_t* context, uint64_t* vaddr)
     assert(_details.rootfs.buffer != NULL);
     assert(_details.rootfs.buffer_size != 0);
 
-    if (oe_region_start(context, ROOTFS_REGION_ID, false, NULL) != OE_OK)
+    if (oe_region_start(context, id, false, NULL) != OE_OK)
         ERAISE(-EINVAL);
 
     while (r)
@@ -512,6 +521,7 @@ static int _add_config_region(oe_region_context_t* context, uint64_t* vaddr)
     const uint8_t* p = (uint8_t*)_details.config.buffer;
     size_t n = _details.config.buffer_size;
     size_t r = n;
+    const uint64_t id = LIBOS_CONFIG_REGION_ID;
 
     if (!context || !vaddr)
         ERAISE(-EINVAL);
@@ -522,7 +532,7 @@ static int _add_config_region(oe_region_context_t* context, uint64_t* vaddr)
         return 0;
     }
 
-    if (oe_region_start(context, CONFIG_REGION_ID, false, NULL) != OE_OK)
+    if (oe_region_start(context, id, false, NULL) != OE_OK)
         ERAISE(-EINVAL);
 
     while (r)
@@ -563,11 +573,12 @@ static int _add_mman_region(oe_region_context_t* context, uint64_t* vaddr)
     int ret = 0;
     __attribute__((__aligned__(4096))) uint8_t page[LIBOS_PAGE_SIZE];
     const size_t mman_pages = _details.mman_size / LIBOS_PAGE_SIZE;
+    const uint64_t id = LIBOS_MMAN_REGION_ID;
 
     if (!context || !vaddr)
         ERAISE(-EINVAL);
 
-    if (oe_region_start(context, MMAN_REGION_ID, false, NULL) != OE_OK)
+    if (oe_region_start(context, id, false, NULL) != OE_OK)
         ERAISE(-EINVAL);
 
     memset(page, 0, sizeof(page));

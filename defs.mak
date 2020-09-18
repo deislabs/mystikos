@@ -243,11 +243,25 @@ endif
 ##
 ##==============================================================================
 
+ifdef __GDB_COMMAND
 PREFIX += $(__GDB_COMMAND)
+endif
+
+ifdef __MEMCHECK_COMMAND
 PREFIX += $(__MEMCHECK_COMMAND)
+endif
+
+ifdef __VGDB_COMMAND
 PREFIX += $(__VGDB_COMMAND)
+endif
+
+ifdef __CACHEGRIND_COMMAND
 PREFIX += $(__CACHEGRIND_COMMAND)
+endif
+
+ifdef __CALLGRIND_COMMAND
 PREFIX += $(__CALLGRIND_COMMAND)
+endif
 
 ##==============================================================================
 ##
@@ -267,4 +281,6 @@ LIBOS = $(BINDIR)/libos
 ##
 ##==============================================================================
 
+ifndef PREFIX
 RUNTEST=$(TOP)/scripts/runtest
+endif

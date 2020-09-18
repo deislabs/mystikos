@@ -13,4 +13,7 @@
 
 #define LIBOS_COUNTOF(ARR) (sizeof(ARR) / sizeof((ARR)[0]))
 
+#define LIBOS_WEAK_ALIAS(OLD, NEW) \
+    extern __typeof(OLD) NEW __attribute__((__weak__, alias(#OLD)))
+
 #endif /* _LIBOS_DEFS_H */

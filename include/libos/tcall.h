@@ -32,6 +32,7 @@ typedef enum libos_tcall_number
     LIBOS_TCALL_WAKE_WAIT = 2064,
     LIBOS_TCALL_EXPORT_FILE = 2065,
     LIBOS_TCALL_SET_RUN_THREAD_FUNCTION = 2066,
+    LIBOS_TCALL_TARGET_STAT = 2067,
 } libos_tcall_number_t;
 
 long libos_tcall(long n, long params[6]);
@@ -76,5 +77,14 @@ long libos_tcall_unload_symbols(void);
 typedef long (*libos_run_thread_t)(uint64_t cookie, uint64_t event);
 
 long libos_tcall_set_run_thread_function(libos_run_thread_t function);
+
+/* for getting statistical information from the target */
+typedef struct libos_target_stat
+{
+    uint64_t heap_size; /* 0 indicates unbounded */
+}
+libos_target_stat_t;
+
+long libos_tcall_target_stat(libos_target_stat_t* buf);
 
 #endif /* _LIBOS_TCALL_H */

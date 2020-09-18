@@ -78,3 +78,9 @@ long libos_tcall_set_run_thread_function(libos_run_thread_t function)
     long params[6] = {(long)function};
     return libos_tcall(LIBOS_TCALL_SET_RUN_THREAD_FUNCTION, params);
 }
+
+long libos_tcall_target_stat(libos_target_stat_t* target_stat)
+{
+    long params[6] = {(long)target_stat};
+    return libos_tcall(LIBOS_TCALL_TARGET_STAT, params);
+}

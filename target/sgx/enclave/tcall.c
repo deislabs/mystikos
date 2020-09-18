@@ -13,7 +13,9 @@
 #include <libos/syscallext.h>
 #include <libos/tcall.h>
 #include <libos/thread.h>
+#include <libos/regions.h>
 #include <openenclave/edger8r/enclave.h>
+#include <openenclave/bits/sgx/region.h>
 #include <openenclave/enclave.h>
 #include "gencreds.h"
 
@@ -434,6 +436,24 @@ static long _oesdk_syscall(long n, long params[6])
     }
 }
 
+long libos_target_stat(libos_target_stat_t* buf)
+{
+    long ret = 0;
+    extern oe_sgx_enclave_properties_t oe_enclave_properties_sgx;
+    const oe_sgx_enclave_properties_t* p = &oe_enclave_properties_sgx;
+
+    if (!buf)
+        ERAISE(-EINVAL);
+
+    memset(buf, 0, sizeof(libos_target_stat_t));
+
+    /* get the kernel memory size (the OE heap size) */
+    buf->heap_size = p->header.size_settings.num_heap_pages * OE_PAGE_SIZE;
+
+done:
+    return ret;
+}
+
 long libos_tcall(long n, long params[6])
 {
     long ret = 0;
@@ -587,6 +607,11 @@ long libos_tcall(long n, long params[6])
 
             __libos_run_thread = function;
             return 0;
+        }
+        case LIBOS_TCALL_TARGET_STAT:
+        {
+            libos_target_stat_t* buf = (libos_target_stat_t*)x1;
+            return libos_target_stat(buf);
         }
         case SYS_ioctl:
         {

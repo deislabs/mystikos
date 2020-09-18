@@ -42,4 +42,6 @@ typedef int (*libos_kernel_entry_t)(libos_kernel_args_t* args);
 
 int libos_enter_kernel(libos_kernel_args_t* args);
 
+extern libos_kernel_args_t __libos_kernel_args;
+
 #endif /* _LIBOS_KERNEL_H */

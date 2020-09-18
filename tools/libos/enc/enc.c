@@ -142,7 +142,7 @@ int libos_enter_ecall(
             assert(0);
         }
 
-        if (oe_region_get(CONFIG_REGION_ID, &region) == OE_OK)
+        if (oe_region_get(LIBOS_CONFIG_REGION_ID, &region) == OE_OK)
         {
             config_data = enclave_base + region.vaddr;
             config_size = region.size;
@@ -299,7 +299,7 @@ int libos_enter_ecall(
             assert(0);
         }
 
-        if (oe_region_get(MMAN_REGION_ID, &region) != OE_OK)
+        if (oe_region_get(LIBOS_MMAN_REGION_ID, &region) != OE_OK)
         {
             fprintf(stderr, "failed to get crt region\n");
             assert(0);
@@ -321,7 +321,7 @@ int libos_enter_ecall(
             assert(0);
         }
 
-        if (oe_region_get(ROOTFS_REGION_ID, &region) != OE_OK)
+        if (oe_region_get(LIBOS_ROOTFS_REGION_ID, &region) != OE_OK)
         {
             fprintf(stderr, "failed to get crt region\n");
             assert(0);
@@ -343,7 +343,7 @@ int libos_enter_ecall(
             assert(0);
         }
 
-        if (oe_region_get(KERNEL_REGION_ID, &region) != OE_OK)
+        if (oe_region_get(LIBOS_KERNEL_REGION_ID, &region) != OE_OK)
         {
             fprintf(stderr, "failed to get kernel region\n");
             assert(0);
@@ -365,7 +365,7 @@ int libos_enter_ecall(
             assert(0);
         }
 
-        if (oe_region_get(KERNEL_RELOC_REGION_ID, &region) != OE_OK)
+        if (oe_region_get(LIBOS_KERNEL_RELOC_REGION_ID, &region) != OE_OK)
         {
             fprintf(stderr, "failed to get kernel region\n");
             assert(0);
@@ -394,7 +394,7 @@ int libos_enter_ecall(
             assert(0);
         }
 
-        if (oe_region_get(CRT_REGION_ID, &region) != OE_OK)
+        if (oe_region_get(LIBOS_CRT_REGION_ID, &region) != OE_OK)
         {
             fprintf(stderr, "failed to get crt region\n");
             assert(0);
@@ -416,7 +416,7 @@ int libos_enter_ecall(
             assert(0);
         }
 
-        if (oe_region_get(CRT_RELOC_REGION_ID, &region) != OE_OK)
+        if (oe_region_get(LIBOS_CRT_RELOC_REGION_ID, &region) != OE_OK)
         {
             fprintf(stderr, "failed to get crt region\n");
             assert(0);

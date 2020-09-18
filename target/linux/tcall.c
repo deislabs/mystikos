@@ -229,6 +229,21 @@ _forward_syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6)
     return libos_syscall6(n, x1, x2, x3, x4, x5, x6);
 }
 
+long libos_target_stat(libos_target_stat_t* buf)
+{
+    long ret = 0;
+
+    if (!buf)
+        ERAISE(-EINVAL);
+
+    memset(buf, 0, sizeof(libos_target_stat_t));
+
+    /* nothing to provide */
+
+done:
+    return ret;
+}
+
 long libos_tcall(long n, long params[6])
 {
     long ret = 0;
@@ -355,6 +370,11 @@ long libos_tcall(long n, long params[6])
 
             __libos_run_thread = function;
             return 0;
+        }
+        case LIBOS_TCALL_TARGET_STAT:
+        {
+            libos_target_stat_t* buf = (libos_target_stat_t*)x1;
+            return libos_target_stat(buf);
         }
         case SYS_ioctl:
         {

@@ -19,8 +19,6 @@
 #include <libos/syscall.h>
 #include <libos/thread.h>
 
-static libos_kernel_args_t _args;
-
 static libos_fs_t* _fs;
 
 long libos_tcall(long n, long params[6])
@@ -33,7 +31,7 @@ long libos_tcall(long n, long params[6])
         libos_set_fsbase(libos_get_gsbase());
     }
 
-    long ret = (_args.tcall)(n, params);
+    long ret = (__libos_kernel_args.tcall)(n, params);
 
     if (fs)
         libos_set_fsbase(fs);
@@ -159,11 +157,11 @@ int libos_enter_kernel(libos_kernel_args_t* args)
         libos_crash();
 
     /* Save the aguments */
-    _args = *args;
+    __libos_kernel_args = *args;
 
-    __options.trace_syscalls = _args.trace_syscalls;
-    __options.have_syscall_instruction = _args.have_syscall_instruction;
-    __options.export_ramfs = _args.export_ramfs;
+    __options.trace_syscalls = args->trace_syscalls;
+    __options.have_syscall_instruction = args->have_syscall_instruction;
+    __options.export_ramfs = args->export_ramfs;
 
     if (__options.have_syscall_instruction)
         libos_set_gsbase(libos_get_fsbase());
