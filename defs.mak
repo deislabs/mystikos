@@ -281,6 +281,4 @@ LIBOS = $(BINDIR)/libos
 ##
 ##==============================================================================
 
-ifndef PREFIX
-RUNTEST=$(TOP)/scripts/runtest
-endif
+RUNTEST_COMMAND=$(TOP)/scripts/runtest
