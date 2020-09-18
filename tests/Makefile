@@ -36,11 +36,7 @@ include $(TOP)/rules.mak
 __tests:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) tests $(NL) )
 
-summary:
-	@ SUMMARY=1 $(RUNTEST) /bin/true
-
 tests:
 	@ rm -rf $(TESTDIR)
 	@ $(MAKE) -s __tests TARGET=sgx TESTSUFFIX=.sgx
 	@ $(MAKE) -s __tests TARGET=linux TESTSUFFIX=.linux
-	@ $(MAKE) -s summary

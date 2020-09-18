@@ -128,10 +128,23 @@ summarize()
         find ${TESTDIR} -name 'passed' | wc -l > ${TESTDIR}/num.passed
         num_passed=$(cat ${TESTDIR}/num.passed)
         num_failed=$(cat ${TESTDIR}/num.failed)
+
         echo "passed: ${num_passed}"
         echo "failed: ${num_failed}"
 
-        exit ${num_failed}
+        if [ "${num_failed}" != "0" ]; then
+            failed=$(find ${TESTDIR} -name failed)
+            for i in ${failed}
+            do
+                r=$(echo ${i} | sed "s~${TESTDIR}/~~g")
+                echo -n -e ${red}
+                echo "failed: ${r}"
+                echo -n -e ${default}
+            done
+            exit 1
+        else
+            exit 0
+        fi
     fi
 }
 
