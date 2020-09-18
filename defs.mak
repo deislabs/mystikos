@@ -31,7 +31,6 @@ INCDIR=$(TOP)/include
 
 export TESTNAME=$(SUBDIR)$(TESTSUFFIX)
 export TESTDIR=$(BUILDDIR)/tests
-export TESTSUBDIR=$(TESTDIR)/$(TESTNAME)
 
 define NL
 

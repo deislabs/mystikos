@@ -2,6 +2,7 @@ TOP=$(abspath ..)
 include $(TOP)/defs.mak
 
 DIRS =
+DIRS += libc
 DIRS += urandom
 DIRS += buf
 DIRS += paths
@@ -25,7 +26,6 @@ DIRS += getpid
 DIRS += json
 DIRS += conf
 DIRS += nbio
-DIRS += libc
 DIRS += thread
 DIRS += gdb
 DIRS += dlopen

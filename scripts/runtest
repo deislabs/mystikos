@@ -15,10 +15,7 @@ if [ -z "${TESTDIR}" ]; then
     exit 1
 fi
 
-if [ -z "${TESTSUBDIR}" ]; then
-    echo "$0: TESTSUBDIR is undefined"
-    exit 1
-fi
+TESTSUBDIR=${TESTDIR}/${TESTNAME}
 
 # Use colors if stdout is a tty device (non-batch mode)
 if [ -t 1 ]; then
