@@ -93,7 +93,11 @@ run_test()
     local tempfile=$(/bin/mktemp)
 
     # run the test
-    timeout="/usr/bin/timeout ${timeout}"
+    if [ -z "${NOTIMEOUT}" ]; then
+        timeout="/usr/bin/timeout ${timeout}"
+    else
+        timeout=
+    fi
     time="/usr/bin/time -f "%e" --quiet -o ${tempfile}"
     echo ${cmd} > ${TESTSUBDIR}/stdout
     ${timeout} ${time} ${cmd} >> ${TESTSUBDIR}/stdout 2> ${TESTSUBDIR}/stderr
