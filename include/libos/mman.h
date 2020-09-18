@@ -134,7 +134,7 @@ typedef struct libos_mman
 
 int libos_mman_init(libos_mman_t* heap, uintptr_t base, size_t size);
 
-int libos_mman_map(
+int libos_mman_mmap(
     libos_mman_t* heap,
     void* addr,
     size_t length,

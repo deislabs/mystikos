@@ -9,6 +9,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#define SCRUB
+
 static libos_mman_t _mman;
 static void* _mman_start;
 static size_t _mman_size;
@@ -136,9 +138,9 @@ void* libos_mmap(
 
     int tflags = LIBOS_MAP_ANONYMOUS | LIBOS_MAP_PRIVATE;
 
-    if (libos_mman_map(&_mman, addr, length, prot, tflags, &ptr) != 0)
+    if (libos_mman_mmap(&_mman, addr, length, prot, tflags, &ptr) != 0)
     {
-        libos_printf("libos_mman_map: error: %s\n", _mman.err);
+        libos_printf("libos_mman_mmap: error: %s\n", _mman.err);
         return (void*)-1;
     }
 

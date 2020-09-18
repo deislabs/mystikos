@@ -150,7 +150,7 @@ static bool _is_flush(const libos_mman_t* heap, const libos_vad_t* list)
     return true;
 }
 
-/* Helper for calling libos_mman_map() */
+/* Helper for calling libos_mman_mmap() */
 static void* _mman_mmap(libos_mman_t* heap, void* addr, size_t length)
 {
     int prot = LIBOS_PROT_READ | LIBOS_PROT_WRITE;
@@ -158,16 +158,16 @@ static void* _mman_mmap(libos_mman_t* heap, void* addr, size_t length)
 
     void* result;
 
-    if (libos_mman_map(heap, addr, length, prot, flags, &result) != 0)
+    if (libos_mman_mmap(heap, addr, length, prot, flags, &result) != 0)
     {
-        PRINTF("ERROR: libos_mman_map(): %s\n", heap->err);
-        oe_assert("libos_mman_map(): failed" == NULL);
+        PRINTF("ERROR: libos_mman_mmap(): %s\n", heap->err);
+        oe_assert("libos_mman_mmap(): failed" == NULL);
     }
 
     return result;
 }
 
-/* Helper for calling libos_mman_map() without printing an error */
+/* Helper for calling libos_mman_mmap() without printing an error */
 static void* _mman_mmap_no_err(libos_mman_t* heap, void* addr, size_t length)
 {
     int prot = LIBOS_PROT_READ | LIBOS_PROT_WRITE;
@@ -175,7 +175,7 @@ static void* _mman_mmap_no_err(libos_mman_t* heap, void* addr, size_t length)
 
     void* result = NULL;
 
-    if (libos_mman_map(heap, addr, length, prot, flags, &result) != 0)
+    if (libos_mman_mmap(heap, addr, length, prot, flags, &result) != 0)
         return NULL;
 
     return result;
@@ -215,7 +215,7 @@ static int _mman_unmap(libos_mman_t* heap, void* address, size_t size)
 /*
 ** test_mman_1()
 **
-**     Test libos_mman_map() and libos_mman_munmap() and check expected state
+**     Test libos_mman_mmap() and libos_mman_munmap() and check expected state
 *between
 **     operations. Unmap leaves gaps and then map checks to see if those gaps
 **     are filled.
@@ -331,7 +331,7 @@ void test_mman_1()
 /*
 ** test_mman_2()
 **
-**     Test libos_mman_map() and libos_mman_munmap() and check expected state
+**     Test libos_mman_mmap() and libos_mman_munmap() and check expected state
 *between
 **     operations. Map several regions and then unmap regions leaving gaps.
 **     Map again and see if the new regions were allocated within the expected

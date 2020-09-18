@@ -435,7 +435,7 @@ done:
     return addr;
 }
 
-static int _mman_munmap(libos_mman_t* mman, void* addr, size_t length)
+static int _munmap(libos_mman_t* mman, void* addr, size_t length)
 {
     int ret = -1;
     libos_vad_t* vad = NULL;
@@ -568,7 +568,7 @@ done:
     return ret;
 }
 
-static int _mman_map(
+static int _mmap(
     libos_mman_t* mman,
     void* addr,
     size_t length,
@@ -1018,7 +1018,7 @@ done:
 
 /*
 **
-** libos_mman_map()
+** libos_mman_mmap()
 **
 **     Allocate 'length' bytes from the MAPPED region. The 'length' parameter
 **     is rounded to a multiple of the page size.
@@ -1042,7 +1042,7 @@ done:
 **     VAD list.
 **
 */
-int libos_mman_map(
+int libos_mman_mmap(
     libos_mman_t* mman,
     void* addr,
     size_t length,
@@ -1053,7 +1053,7 @@ int libos_mman_map(
     bool locked = false;
 
     _mman_lock(mman, &locked);
-    int ret = _mman_map(mman, addr, length, prot, flags, ptr_out);
+    int ret = _mmap(mman, addr, length, prot, flags, ptr_out);
     _mman_unlock(mman, &locked);
 
     return ret;
@@ -1063,11 +1063,12 @@ int libos_mman_map(
 **
 ** libos_mman_munmap()
 **
-**     Release a memory mapping obtained with libos_mman_map() or
-*libos_mman_mremap().
+**     Release a memory mapping obtained with libos_mman_mmap() or
+**     libos_mman_mremap().
+**
 **     Note that partial mappings are supported, in which case a portion of
-**     the memory obtained with libos_mman_map() or libos_mman_mremap() is
-*released.
+**     the memory obtained with libos_mman_mmap() or libos_mman_mremap() is
+**     released.
 **
 ** Parameters:
 **     [IN] mman - mman structure
@@ -1093,7 +1094,7 @@ int libos_mman_munmap(libos_mman_t* mman, void* addr, size_t length)
     bool locked = false;
 
     _mman_lock(mman, &locked);
-    int ret = _mman_munmap(mman, addr, length);
+    int ret = _munmap(mman, addr, length);
     _mman_unlock(mman, &locked);
 
     return ret;
@@ -1276,8 +1277,7 @@ int libos_mman_mremap(
         }
         else
         {
-            if (_mman_map(
-                    mman, NULL, new_size, vad->prot, vad->flags, &addr) != 0)
+            if (_mmap(mman, NULL, new_size, vad->prot, vad->flags, &addr) != 0)
             {
                 _mman_set_err(mman, "mapping failed");
                 ret = -ENOMEM;
@@ -1287,7 +1287,7 @@ int libos_mman_mremap(
             libos_memcpy(addr, (void*)start, old_size);
 
             /* Ummap the old area */
-            if (_mman_munmap(mman, (void*)start, old_size) != 0)
+            if (_munmap(mman, (void*)start, old_size) != 0)
             {
                 _mman_set_err(mman, "unmapping failed");
                 ret = -ENOMEM;
