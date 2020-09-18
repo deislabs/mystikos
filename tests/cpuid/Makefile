@@ -17,9 +17,6 @@ all: libos
 tests:
 	$(RUNTEST) $(LIBOS_EXEC) $(OPTS) rootfs /bin/cpuid $(OPTS)
 
-gdb:
-	$(LIBOS_GDB) --args $(LIBOS) $(EXEC) $(OPTS) rootfs /bin/cpuid $(OPTS)
-
 libos:
 	$(MAKE) -C $(TOP)/tools/libos
 

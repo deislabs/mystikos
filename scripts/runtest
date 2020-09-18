@@ -20,10 +20,25 @@ if [ -z "${TESTSUBDIR}" ]; then
     exit 1
 fi
 
+# Use colors if stdout is a tty device (non-batch mode)
+if [ -t 1 ]; then
+    green="\e[32m"
+    red="\e[31m"
+    lightblue="\e[94m"
+    default="\e[39m"
+else
+    green=
+    red=
+    lightblue=
+    default=
+fi
+
 test_passed()
 {
     local cmd=$*
+    echo -n -e ${green}
     echo "    passed (${TESTNAME})"
+    echo -n -e ${default}
     echo "" >> ${TESTSUBDIR}/passed
 }
 
@@ -32,8 +47,35 @@ test_failed()
     local cmd;
 
     cmd=$*
-    echo "    failed: ${TESTNAME}"
+    echo -n -e ${red}
+    echo "    failed (${TESTNAME})"
+    echo -n -e ${default}
     echo "" >> ${TESTSUBDIR}/failed
+}
+
+test_timedout()
+{
+    local cmd;
+
+    cmd=$*
+    echo -n -e ${red}
+    echo "    timedout (${TESTNAME})"
+    echo -n -e ${default}
+    echo "" >> ${TESTSUBDIR}/failed
+}
+
+timeout=10
+
+print_output()
+{
+    if [ "${VERBOSE}" == "1" ]; then
+        echo -n -e ${lightblue}
+        echo "======================= BEGIN OUTPUT ======================="
+        cat ${TESTSUBDIR}/stdout
+        cat ${TESTSUBDIR}/stderr
+        echo "======================== END OUTPUT ========================"
+        echo -n -e ${default}
+    fi
 }
 
 run_test()
@@ -51,29 +93,26 @@ run_test()
     local tempfile=$(/bin/mktemp)
 
     # run the test
-    time="/usr/bin/time -f "%e" -o ${tempfile}"
+    timeout="/usr/bin/timeout ${timeout}"
+    time="/usr/bin/time -f "%e" --quiet -o ${tempfile}"
     echo ${cmd} > ${TESTSUBDIR}/stdout
-    ${time} ${cmd} >> ${TESTSUBDIR}/stdout 2>> ${TESTSUBDIR}/stderr
+    ${timeout} ${time} ${cmd} >> ${TESTSUBDIR}/stdout 2> ${TESTSUBDIR}/stderr
+    ret=$?
+    echo "ret=${ret}"
     seconds=$(cat ${tempfile})
     rm -f ${tempfile}
 
-    if [ "$?" == "0" ]; then
-        if [ "${VERBOSE}" == "1" ]; then
-            echo "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
-            cat ${TESTSUBDIR}/stdout
-            cat ${TESTSUBDIR}/stderr
-            echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
-        fi
+    if [ "${ret}" == "0" ]; then
+        print_output
         test_passed $cmd
         echo "    ${seconds} seconds"
+    elif [ "${ret}" == "124" ]; then
+        print_output
+        test_timedout $cmd
     else
-        if [ "${VERBOSE}" == "1" ]; then
-            echo "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
-            cat ${TESTSUBDIR}/stdout
-            cat ${TESTSUBDIR}/stderr
-            echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
-        fi
-        test_failed $cmd
+        print_output
+        test_failed ${cmd}
+        echo "    ${seconds} seconds"
     fi
 
     echo ""
