@@ -312,6 +312,7 @@ int libos_buf_unpack_str(libos_buf_t* buf, const char** str, size_t* len)
     if (libos_buf_unpack_bytes(buf, &p, &size) != 0)
         goto done;
 
+    /* a string must have at least one null byte */
     if (size == 0)
         goto done;
 
@@ -324,6 +325,14 @@ done:
     return ret;
 }
 
+/*
+** This function serializes an array of pointers to strings into the following
+** format:
+**
+**     <num-strings>(<string-size><string-bytes>+)*
+**
+** Note that a string will always have at least one null byte.
+*/
 int libos_buf_pack_strings(
     libos_buf_t* buf,
     const char* strings[],
@@ -366,7 +375,7 @@ int libos_buf_unpack_strings(
     if (!buf || !strings_out || !count_out)
         goto done;
 
-    /* pack the number of strings */
+    /* unpack the number of strings */
     if (libos_buf_unpack_u64(buf, &count) != 0)
         goto done;
 
