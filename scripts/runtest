@@ -18,17 +18,17 @@ fi
 TESTSUBDIR=${TESTDIR}/${TESTNAME}
 
 # Use colors if stdout is a tty device (non-batch mode)
-if [ -t 1 ]; then
+#if [ -t 1 ]; then
     green="\e[32m"
     red="\e[31m"
     lightblue="\e[94m"
     default="\e[39m"
-else
-    green=
-    red=
-    lightblue=
-    default=
-fi
+#else
+#    green=
+#    red=
+#    lightblue=
+#    default=
+#fi
 
 test_passed()
 {

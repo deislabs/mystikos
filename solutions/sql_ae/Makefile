@@ -12,7 +12,7 @@ DNSSERVER = $(shell systemd-resolve --status | grep "DNS Servers" | cut -f2 -d:)
 all: libos app
 	$(LIBOS) mkcpio $(APPDIR) rootfs
 
-#OPTS = --trace-syscalls
+OPTS = --trace-syscalls
 
 run: cpio
 	$(LIBOS) exec rootfs /odbc_app msi default $(OPTS)
