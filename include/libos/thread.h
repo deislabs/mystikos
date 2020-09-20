@@ -1,17 +1,23 @@
 #ifndef _LIBOS_THREAD_H
 #define _LIBOS_THREAD_H
 
+#include <unistd.h>
+
+#include <libos/assume.h>
 #include <libos/setjmp.h>
 #include <libos/tcall.h>
 #include <libos/types.h>
-#include <unistd.h>
 
 #define LIBOS_THREAD_MAGIC 0xc79c53d9ad134ad4
 
 /* indicates that vsbase has been set */
 #define VSBASE_MAGIC 0xa992961d
 
-/* thread descriptor: initial fields align with libc pthread ABI */
+typedef struct libos_thread libos_thread_t;
+
+typedef struct libos_td libos_td_t;
+
+/* thread descriptor for libc threads (initial fields of struct pthread) */
 struct libos_td
 {
     struct libos_td* self;
@@ -20,19 +26,10 @@ struct libos_td
     uint64_t reserved3;
     uint64_t reserved4;
     uint64_t canary;
-    /* these eight bytes are unused in musl libc */
-    struct
-    {
-        uint32_t magic;  /* VSBASE_MAGIC */
-        uint32_t index1; /* one-based index (zero indicates null vsbase) */
-    } vsbase;
+    uint64_t tsd; /* unused by musl libc pthread structure */
 };
 
-typedef struct libos_td libos_td_t;
-
 bool libos_valid_td(const void* td);
-
-typedef struct libos_thread libos_thread_t;
 
 struct libos_thread
 {
@@ -56,18 +53,25 @@ struct libos_thread
     int flags;
     void* arg;
     pid_t* ptid;
-    void* newtls; /* thread pointer: same as pthread_self() in musl libc */
+    libos_td_t* crt_td; /* same as newtls clone() argument */
     pid_t* ctid;
 
-    /* the new thread calls this from the target (unused by main thread) */
+    /* called by target to run child theads */
     long (*run_thread)(uint64_t cookie, uint64_t event);
 
-    /* The original fsbase as given by target */
-    void* original_fsbase;
+    /* pointer to the target and C-runtime thread descriptors */
+    libos_td_t* target_td;
 
     /* for jumping back on exit */
     libos_jmp_buf_t jmpbuf;
 };
+
+LIBOS_INLINE bool libos_valid_thread(const libos_thread_t* thread)
+{
+    return thread && thread->magic == LIBOS_THREAD_MAGIC;
+}
+
+libos_thread_t* libos_thread_self(void);
 
 void libos_zombify_thread(libos_thread_t* thread);
 
@@ -146,12 +150,6 @@ long libos_run_thread(uint64_t cookie, uint64_t event);
 pid_t libos_generate_tid(void);
 
 pid_t libos_gettid(void);
-
-void libos_set_vsbase(void* p);
-
-void* libos_put_vsbase(void);
-
-void* libos_get_vsbase(void);
 
 /* check that the thread descriptor refers to a vsbase */
 int libos_check_vsbase(void);

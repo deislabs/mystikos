@@ -842,22 +842,24 @@ int elf_enter_crt(
     /* Run the main program */
     if (libos_setjmp(&thread->jmpbuf) != 0)
     {
-        libos_td_t* td = (libos_td_t*)libos_get_fsbase();
+        /* ---------- running C-runtime thread descriptor ---------- */
 
-        libos_assert(libos_valid_td(td));
-        libos_assert(thread == __libos_main_thread);
+        /* assuming that this was called by the main thread */
+        libos_assume(thread == __libos_main_thread);
+
+        /* restore the target thread descriptor */
+        libos_set_fsbase(thread->target_td);
+
+        /* ---------- running target thread descriptor ---------- */
 
         /* unload the debugger symbols */
         libos_syscall_unload_symbols();
-
-        /* clear the vsbase */
-        libos_put_vsbase();
-
-        /* restore the original fsbase */
-        libos_set_fsbase(thread->original_fsbase);
     }
     else
     {
+        /* ---------- running target thread descriptor ---------- */
+
+        /* enter the C-runtime on the target thread descriptor */
         (*enter)(sp, dynv, libos_syscall);
     }
 

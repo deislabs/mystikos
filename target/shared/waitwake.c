@@ -3,33 +3,40 @@
 #include <libos/thread.h>
 #include <linux/futex.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/syscall.h>
 
 long libos_tcall_wait(uint64_t event, const struct timespec* timeout)
 {
-    int* uaddr = (int*)event;
+    volatile int* uaddr = (volatile int*)event;
 
     /* if *uaddr == 0 */
+#if 1
     if (__sync_fetch_and_add(uaddr, -1) == 0)
+#else
+    int32_t expected = 0;
+    int32_t desired = -1;
+    bool weak = false;
+    // if uaddr == expected: uaddr := desired (and return true)
+    if (!__atomic_compare_exchange_n(
+            uaddr,
+            &expected,
+            desired,
+            weak,
+            __ATOMIC_ACQ_REL,
+            __ATOMIC_ACQUIRE))
+#endif
     {
         do
         {
             long ret;
 
-            /* wait while *uaddr == -1 */
+            /* wait if *uaddr == -1 */
             ret = syscall(
-                SYS_futex,
-                (int*)event,
-                FUTEX_WAIT_PRIVATE,
-                -1,
-                timeout,
-                NULL,
-                0);
+                SYS_futex, uaddr, FUTEX_WAIT_PRIVATE, -1, timeout, NULL, 0);
 
             if (ret != 0 && errno == ETIMEDOUT)
-            {
                 return ETIMEDOUT;
-            }
         } while (*uaddr == -1);
     }
 
@@ -39,11 +46,11 @@ long libos_tcall_wait(uint64_t event, const struct timespec* timeout)
 long libos_tcall_wake(uint64_t event)
 {
     long ret = 0;
+    volatile int* uaddr = (volatile int*)event;
 
-    if (__sync_fetch_and_add((int*)event, 1) != 0)
+    if (__sync_fetch_and_add(uaddr, 1) != 0)
     {
-        ret = syscall(
-            SYS_futex, (int*)event, FUTEX_WAKE_PRIVATE, 1, NULL, NULL, 0);
+        ret = syscall(SYS_futex, uaddr, FUTEX_WAKE_PRIVATE, 1, NULL, NULL, 0);
 
         if (ret != 0)
             ret = -errno;
@@ -60,7 +67,10 @@ long libos_tcall_wake_wait(
     long ret;
 
     if ((ret = libos_tcall_wake(waiter_event)) != 0)
-        return ret;
+    {
+        if (ret != -EAGAIN)
+            return ret;
+    }
 
     if ((ret = libos_tcall_wait(self_event, timeout)) != 0)
         return ret;

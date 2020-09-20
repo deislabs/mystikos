@@ -1291,14 +1291,66 @@ done:
     return ret;
 }
 
+#define BREAK(RET)           \
+    do                       \
+    {                        \
+        syscall_ret = (RET); \
+        goto done;           \
+    } while (0)
+
 long libos_syscall(long n, long params[6])
 {
+    long syscall_ret = 0;
     long x1 = params[0];
     long x2 = params[1];
     long x3 = params[2];
     long x4 = params[3];
     long x5 = params[4];
     long x6 = params[5];
+    static bool _set_thread_area_called;
+    libos_td_t* target_td = NULL;
+    libos_td_t* crt_td = NULL;
+    libos_thread_t* thread = NULL;
+
+    /* resolve the target-thread-descriptor and the crt-thread-descriptor */
+    if (_set_thread_area_called)
+    {
+        /* ---------- running C-runtime thread descriptor ---------- */
+
+        /* get crt_td */
+        crt_td = libos_get_fsbase();
+        libos_assume(libos_valid_td(crt_td));
+
+        /* get thread */
+        thread = (libos_thread_t*)crt_td->tsd;
+        libos_assume(libos_valid_thread(thread));
+
+        /* get target_td */
+        target_td = thread->target_td;
+        libos_assume(libos_valid_td(target_td));
+
+        /* the syscall on the target thread descriptor */
+        libos_set_fsbase(target_td);
+    }
+    else
+    {
+        /* ---------- running target thread descriptor ---------- */
+
+        /* get target_td */
+        target_td = libos_get_fsbase();
+        libos_assume(libos_valid_td(target_td));
+
+        /* get thread */
+        libos_assume(libos_tcall_get_tsd((uint64_t*)&thread) == 0);
+        libos_assume(libos_valid_thread(thread));
+
+        /* crt_td is null */
+    }
+
+    /* ---------- running target thread descriptor ---------- */
+
+    libos_assume(target_td != NULL);
+    libos_assume(thread != NULL);
 
     switch (n)
     {
@@ -1313,7 +1365,7 @@ long libos_syscall(long n, long params[6])
             if (gcov_init_libc(libc, stream) != 0)
                 libos_panic("gcov_init_libc() failed");
 
-            return _return(n, 0);
+            BREAK(_return(n, 0));
         }
 #endif
         case SYS_libos_trace:
@@ -1322,7 +1374,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "msg=%s", msg);
 
-            return _return(n, 0);
+            BREAK(_return(n, 0));
         }
         case SYS_libos_trace_ptr:
         {
@@ -1331,7 +1383,7 @@ long libos_syscall(long n, long params[6])
                 (const char*)params[0],
                 params[1],
                 params[1]);
-            return _return(n, 0);
+            BREAK(_return(n, 0));
         }
         case SYS_libos_dump_stack:
         {
@@ -1340,12 +1392,12 @@ long libos_syscall(long n, long params[6])
             _strace(n, NULL);
 
             elf_dump_stack((void*)stack);
-            return _return(n, 0);
+            BREAK(_return(n, 0));
         }
         case SYS_libos_dump_ehdr:
         {
             elf_dump_ehdr((void*)params[0]);
-            return _return(n, 0);
+            BREAK(_return(n, 0));
         }
         case SYS_libos_dump_argv:
         {
@@ -1364,7 +1416,7 @@ long libos_syscall(long n, long params[6])
 
             libos_printf("argv[argc]=%p\n", argv[argc]);
 
-            return _return(n, 0);
+            BREAK(_return(n, 0));
         }
         case SYS_libos_add_symbol_file:
         {
@@ -1382,34 +1434,34 @@ long libos_syscall(long n, long params[6])
 
             ret = libos_syscall_add_symbol_file(path, text, text_size);
 
-            return _return(n, ret);
+            BREAK(_return(n, ret));
         }
         case SYS_libos_load_symbols:
         {
             _strace(n, NULL);
 
-            return _return(n, libos_syscall_load_symbols());
+            BREAK(_return(n, libos_syscall_load_symbols()));
         }
         case SYS_libos_unload_symbols:
         {
             _strace(n, NULL);
 
-            return _return(n, libos_syscall_unload_symbols());
+            BREAK(_return(n, libos_syscall_unload_symbols()));
         }
         case SYS_libos_gen_creds:
         {
             _strace(n, NULL);
-            return _forward_syscall(LIBOS_TCALL_GEN_CREDS, params);
+            BREAK(_forward_syscall(LIBOS_TCALL_GEN_CREDS, params));
         }
         case SYS_libos_free_creds:
         {
             _strace(n, NULL);
-            return _forward_syscall(LIBOS_TCALL_FREE_CREDS, params);
+            BREAK(_forward_syscall(LIBOS_TCALL_FREE_CREDS, params));
         }
         case SYS_libos_verify_cert:
         {
             _strace(n, NULL);
-            return _forward_syscall(LIBOS_TCALL_VERIFY_CERT, params);
+            BREAK(_forward_syscall(LIBOS_TCALL_VERIFY_CERT, params));
         }
         case SYS_read:
         {
@@ -1420,12 +1472,12 @@ long libos_syscall(long n, long params[6])
             _strace(n, "fd=%d buf=%p count=%zu", fd, buf, count);
 
             if (fd == DEV_URANDOM_FD)
-                return _return(n, _dev_urandom_read(buf, count));
+                BREAK(_return(n, _dev_urandom_read(buf, count)));
 
             if (!libos_is_libos_fd(fd))
-                return _return(n, _forward_syscall(n, params));
+                BREAK(_return(n, _forward_syscall(n, params)));
 
-            return _return(n, libos_syscall_read(fd, buf, count));
+            BREAK(_return(n, libos_syscall_read(fd, buf, count)));
         }
         case SYS_write:
         {
@@ -1436,9 +1488,9 @@ long libos_syscall(long n, long params[6])
             _strace(n, "fd=%d buf=%p count=%zu", fd, buf, count);
 
             if (!libos_is_libos_fd(fd))
-                return _return(n, _forward_syscall(n, params));
+                BREAK(_return(n, _forward_syscall(n, params)));
 
-            return _return(n, libos_syscall_write(fd, buf, count));
+            BREAK(_return(n, libos_syscall_write(fd, buf, count)));
         }
         case SYS_pread64:
         {
@@ -1451,12 +1503,12 @@ long libos_syscall(long n, long params[6])
                 n, "fd=%d buf=%p count=%zu offset=%ld", fd, buf, count, offset);
 
             if (fd == DEV_URANDOM_FD)
-                return _return(n, _dev_urandom_read(buf, count));
+                BREAK(_return(n, _dev_urandom_read(buf, count)));
 
             if (!libos_is_libos_fd(fd))
-                return _return(n, _forward_syscall(n, params));
+                BREAK(_return(n, _forward_syscall(n, params)));
 
-            return _return(n, libos_syscall_pread(fd, buf, count, offset));
+            BREAK(_return(n, libos_syscall_pread(fd, buf, count, offset)));
         }
         case SYS_pwrite64:
         {
@@ -1469,9 +1521,9 @@ long libos_syscall(long n, long params[6])
                 n, "fd=%d buf=%p count=%zu offset=%ld", fd, buf, count, offset);
 
             if (!libos_is_libos_fd(fd))
-                return _return(n, _forward_syscall(n, params));
+                BREAK(_return(n, _forward_syscall(n, params)));
 
-            return _return(n, libos_syscall_pwrite(fd, buf, count, offset));
+            BREAK(_return(n, libos_syscall_pwrite(fd, buf, count, offset)));
         }
         case SYS_open:
         {
@@ -1484,7 +1536,7 @@ long libos_syscall(long n, long params[6])
 
             ret = libos_syscall_open(path, flags, mode);
 
-            return _return(n, ret);
+            BREAK(_return(n, ret));
         }
         case SYS_close:
         {
@@ -1493,12 +1545,12 @@ long libos_syscall(long n, long params[6])
             _strace(n, "fd=%d", fd);
 
             if (fd == DEV_URANDOM_FD)
-                return _return(n, 0);
+                BREAK(_return(n, 0));
 
             if (!libos_is_libos_fd(fd))
-                return _return(n, _forward_syscall(n, params));
+                BREAK(_return(n, _forward_syscall(n, params)));
 
-            return _return(n, libos_syscall_close(fd));
+            BREAK(_return(n, libos_syscall_close(fd)));
         }
         case SYS_stat:
         {
@@ -1507,7 +1559,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "pathname=\"%s\" statbuf=%p", pathname, statbuf);
 
-            return _return(n, libos_syscall_stat(pathname, statbuf));
+            BREAK(_return(n, libos_syscall_stat(pathname, statbuf)));
         }
         case SYS_fstat:
         {
@@ -1516,7 +1568,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "fd=%d statbuf=%p", fd, statbuf);
 
-            return _return(n, libos_syscall_fstat(fd, statbuf));
+            BREAK(_return(n, libos_syscall_fstat(fd, statbuf)));
         }
         case SYS_lstat:
         {
@@ -1526,12 +1578,12 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "pathname=\"%s\" statbuf=%p", pathname, statbuf);
 
-            return _return(n, libos_syscall_lstat(pathname, statbuf));
+            BREAK(_return(n, libos_syscall_lstat(pathname, statbuf)));
         }
         case SYS_poll:
         {
             _strace(n, NULL);
-            return _return(n, _forward_syscall(n, params));
+            BREAK(_return(n, _forward_syscall(n, params)));
         }
         case SYS_lseek:
         {
@@ -1544,10 +1596,10 @@ long libos_syscall(long n, long params[6])
             if (fd == DEV_URANDOM_FD)
             {
                 /* ATTN: ignored */
-                return _return(n, 0);
+                BREAK(_return(n, 0));
             }
 
-            return _return(n, libos_syscall_lseek(fd, offset, whence));
+            BREAK(_return(n, libos_syscall_lseek(fd, offset, whence)));
         }
         case SYS_mmap:
         {
@@ -1569,8 +1621,8 @@ long libos_syscall(long n, long params[6])
                 fd,
                 offset);
 
-            return _return(
-                n, (long)libos_mmap(addr, length, prot, flags, fd, offset));
+            BREAK(_return(
+                n, (long)libos_mmap(addr, length, prot, flags, fd, offset)));
         }
         case SYS_mprotect:
         {
@@ -1586,7 +1638,7 @@ long libos_syscall(long n, long params[6])
                 length,
                 prot);
 
-            return _return(n, 0);
+            BREAK(_return(n, 0));
         }
         case SYS_munmap:
         {
@@ -1595,7 +1647,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "addr=%lX length=%zu(%lX)", (long)addr, length, length);
 
-            return _return(n, (long)libos_munmap(addr, length));
+            BREAK(_return(n, (long)libos_munmap(addr, length)));
         }
         case SYS_brk:
         {
@@ -1603,7 +1655,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "addr=%lX", (long)addr);
 
-            return _return(n, libos_syscall_brk(addr));
+            BREAK(_return(n, libos_syscall_brk(addr)));
         }
         case SYS_rt_sigaction:
         {
@@ -1614,12 +1666,12 @@ long libos_syscall(long n, long params[6])
             /* ATTN: silently ignore since SYS_kill is not supported */
             _strace(n, "signum=%d act=%p oldact=%p", signum, act, oldact);
 
-            return _return(n, 0);
+            BREAK(_return(n, 0));
         }
         case SYS_rt_sigprocmask:
         {
             _strace(n, NULL);
-            return _return(n, 0);
+            BREAK(_return(n, 0));
         }
         case SYS_rt_sigreturn:
             break;
@@ -1646,13 +1698,13 @@ long libos_syscall(long n, long params[6])
                 if (request == TIOCGWINSZ)
                 {
                     /* Fail because no libos fd can be a console device */
-                    return _return(n, -EINVAL);
+                    BREAK(_return(n, -EINVAL));
                 }
 
                 libos_panic("unhandled ioctl: 0x%lX()", request);
             }
 
-            return _return(n, _forward_syscall(n, params));
+            BREAK(_return(n, _forward_syscall(n, params)));
         }
         case SYS_readv:
         {
@@ -1663,12 +1715,12 @@ long libos_syscall(long n, long params[6])
             _strace(n, "fd=%d iov=%p iovcnt=%d", fd, iov, iovcnt);
 
             if (fd == DEV_URANDOM_FD)
-                return _return(n, (long)_dev_urandom_readv(iov, iovcnt));
+                BREAK(_return(n, (long)_dev_urandom_readv(iov, iovcnt)));
 
             if (!libos_is_libos_fd(fd))
-                return _return(n, _forward_syscall(n, params));
+                BREAK(_return(n, _forward_syscall(n, params)));
 
-            return _return(n, libos_syscall_readv(fd, iov, iovcnt));
+            BREAK(_return(n, libos_syscall_readv(fd, iov, iovcnt)));
         }
         case SYS_writev:
         {
@@ -1679,9 +1731,9 @@ long libos_syscall(long n, long params[6])
             _strace(n, "fd=%d iov=%p iovcnt=%d", fd, iov, iovcnt);
 
             if (!libos_is_libos_fd(fd))
-                return _return(n, _forward_syscall(n, params));
+                BREAK(_return(n, _forward_syscall(n, params)));
 
-            return _return(n, libos_syscall_writev(fd, iov, iovcnt));
+            BREAK(_return(n, libos_syscall_writev(fd, iov, iovcnt)));
         }
         case SYS_access:
         {
@@ -1690,7 +1742,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "pathname=\"%s\" mode=%d", pathname, mode);
 
-            return _return(n, libos_syscall_access(pathname, mode));
+            BREAK(_return(n, libos_syscall_access(pathname, mode)));
         }
         case SYS_pipe:
             break;
@@ -1711,7 +1763,7 @@ long libos_syscall(long n, long params[6])
                 efds,
                 timeout);
 
-            return _return(n, _forward_syscall(n, params));
+            BREAK(_return(n, _forward_syscall(n, params)));
         }
         case SYS_sched_yield:
             break;
@@ -1732,7 +1784,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "addr=%p length=%zu advice=%d", addr, length, advice);
 
-            return _return(n, 0);
+            BREAK(_return(n, 0));
         }
         case SYS_shmget:
             break;
@@ -1753,7 +1805,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "req=%p rem=%p", req, rem);
 
-            return _return(n, _forward_syscall(n, params));
+            BREAK(_return(n, _forward_syscall(n, params)));
         }
         case SYS_getitimer:
             break;
@@ -1764,7 +1816,7 @@ long libos_syscall(long n, long params[6])
         case SYS_getpid:
         {
             _strace(n, NULL);
-            return _return(n, libos_getpid());
+            BREAK(_return(n, libos_getpid()));
         }
         case SYS_clone:
         {
@@ -1799,10 +1851,10 @@ long libos_syscall(long n, long params[6])
                 newtls,
                 ctid);
 
-            return _return(
+            BREAK(_return(
                 n,
                 libos_syscall_clone(
-                    fn, child_stack, flags, arg, ptid, newtls, ctid));
+                    fn, child_stack, flags, arg, ptid, newtls, ctid)));
         }
         case SYS_fork:
             break;
@@ -1813,7 +1865,7 @@ long libos_syscall(long n, long params[6])
         case SYS_exit:
         {
             const int status = (int)x1;
-            libos_thread_t* thread = libos_get_vsbase();
+            libos_thread_t* thread = libos_thread_self();
 
             _strace(n, "status=%d", status);
 
@@ -1848,7 +1900,7 @@ long libos_syscall(long n, long params[6])
             LIBOS_STRLCPY(buf->version, "Libos 1.0.0");
             LIBOS_STRLCPY(buf->machine, "x86_64");
 
-            return _return(n, 0);
+            BREAK(_return(n, 0));
         }
         case SYS_semget:
             break;
@@ -1876,9 +1928,9 @@ long libos_syscall(long n, long params[6])
             _strace(n, "fd=%d cmd=%d(%s) arg=0%lo", fd, cmd, cmdstr, arg);
 
             if (!libos_is_libos_fd(fd))
-                return _return(n, _forward_syscall(n, params));
+                BREAK(_return(n, _forward_syscall(n, params)));
 
-            return _return(n, libos_syscall_fcntl(fd, cmd, arg));
+            BREAK(_return(n, libos_syscall_fcntl(fd, cmd, arg)));
         }
         case SYS_flock:
             break;
@@ -1893,7 +1945,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "path=\"%s\" length=%ld", path, length);
 
-            return _return(n, libos_syscall_truncate(path, length));
+            BREAK(_return(n, libos_syscall_truncate(path, length)));
         }
         case SYS_ftruncate:
         {
@@ -1902,7 +1954,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "fd=%d length=%ld", fd, length);
 
-            return _return(n, libos_syscall_ftruncate(fd, length));
+            BREAK(_return(n, libos_syscall_ftruncate(fd, length)));
         }
         case SYS_getdents:
             break;
@@ -1913,7 +1965,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "buf=%p size=%zu", buf, size);
 
-            return _return(n, libos_syscall_getcwd(buf, size));
+            BREAK(_return(n, libos_syscall_getcwd(buf, size)));
         }
         case SYS_chdir:
         {
@@ -1921,7 +1973,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "path=\"%s\"", path);
 
-            return _return(n, libos_syscall_chdir(path));
+            BREAK(_return(n, libos_syscall_chdir(path)));
         }
         case SYS_fchdir:
             break;
@@ -1932,7 +1984,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "oldpath=\"%s\" newpath=\"%s\"", oldpath, newpath);
 
-            return _return(n, libos_syscall_rename(oldpath, newpath));
+            BREAK(_return(n, libos_syscall_rename(oldpath, newpath)));
         }
         case SYS_mkdir:
         {
@@ -1941,7 +1993,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "pathname=\"%s\" mode=0%o", pathname, mode);
 
-            return _return(n, libos_syscall_mkdir(pathname, mode));
+            BREAK(_return(n, libos_syscall_mkdir(pathname, mode)));
         }
         case SYS_rmdir:
         {
@@ -1949,7 +2001,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "pathname=\"%s\"", pathname);
 
-            return _return(n, libos_syscall_rmdir(pathname));
+            BREAK(_return(n, libos_syscall_rmdir(pathname)));
         }
         case SYS_creat:
         {
@@ -1958,7 +2010,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "pathname=\"%s\" mode=%x", pathname, mode);
 
-            return _return(n, libos_syscall_creat(pathname, mode));
+            BREAK(_return(n, libos_syscall_creat(pathname, mode)));
         }
         case SYS_link:
         {
@@ -1967,7 +2019,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "oldpath=\"%s\" newpath=\"%s\"", oldpath, newpath);
 
-            return _return(n, libos_syscall_link(oldpath, newpath));
+            BREAK(_return(n, libos_syscall_link(oldpath, newpath)));
         }
         case SYS_unlink:
         {
@@ -1975,7 +2027,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "pathname=\"%s\"", pathname);
 
-            return _return(n, libos_syscall_unlink(pathname));
+            BREAK(_return(n, libos_syscall_unlink(pathname)));
         }
         case SYS_symlink:
         {
@@ -1984,7 +2036,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "target=\"%s\" linkpath=\"%s\"", target, linkpath);
 
-            return _return(n, libos_syscall_symlink(target, linkpath));
+            BREAK(_return(n, libos_syscall_symlink(target, linkpath)));
         }
         case SYS_readlink:
         {
@@ -1995,7 +2047,7 @@ long libos_syscall(long n, long params[6])
             _strace(
                 n, "pathname=\"%s\" buf=%p bufsiz=%zu", pathname, buf, bufsiz);
 
-            return _return(n, libos_syscall_readlink(pathname, buf, bufsiz));
+            BREAK(_return(n, libos_syscall_readlink(pathname, buf, bufsiz)));
         }
         case SYS_chmod:
         {
@@ -2004,7 +2056,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "pathname=\"%s\" mode=%o", pathname, mode);
 
-            return _return(n, libos_syscall_chmod(pathname, mode));
+            BREAK(_return(n, libos_syscall_chmod(pathname, mode)));
         }
         case SYS_fchmod:
             break;
@@ -2023,7 +2075,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "tv=%p tz=%p", tv, tz);
 
-            return _return(n, _forward_syscall(n, params));
+            BREAK(_return(n, _forward_syscall(n, params)));
         }
         case SYS_getrlimit:
             break;
@@ -2038,17 +2090,17 @@ long libos_syscall(long n, long params[6])
         case SYS_getuid:
         {
             _strace(n, NULL);
-            return _return(n, LIBOS_DEFAULT_UID);
+            BREAK(_return(n, LIBOS_DEFAULT_UID));
         }
         case SYS_syslog:
         {
             /* Ignore syslog for now */
-            return _return(n, 0);
+            BREAK(_return(n, 0));
         }
         case SYS_getgid:
         {
             _strace(n, NULL);
-            return _return(n, LIBOS_DEFAULT_GID);
+            BREAK(_return(n, LIBOS_DEFAULT_GID));
         }
         case SYS_setuid:
             break;
@@ -2057,19 +2109,19 @@ long libos_syscall(long n, long params[6])
         case SYS_geteuid:
         {
             _strace(n, NULL);
-            return _return(n, LIBOS_DEFAULT_UID);
+            BREAK(_return(n, LIBOS_DEFAULT_UID));
         }
         case SYS_getegid:
         {
             _strace(n, NULL);
-            return _return(n, LIBOS_DEFAULT_GID);
+            BREAK(_return(n, LIBOS_DEFAULT_GID));
         }
         case SYS_setpgid:
             break;
         case SYS_getppid:
         {
             _strace(n, NULL);
-            return _return(n, libos_getppid());
+            BREAK(_return(n, libos_getppid()));
         }
         case SYS_getpgrp:
             break;
@@ -2133,7 +2185,7 @@ long libos_syscall(long n, long params[6])
             if (buf)
                 libos_memset(buf, 0, sizeof(*buf));
 
-            return _return(n, 0);
+            BREAK(_return(n, 0));
         }
         case SYS_fstatfs:
             break;
@@ -2206,8 +2258,8 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "name=\"%s\" len=%zu", name, len);
 
-            return 0;
-            return _return(n, _forward_syscall(n, params));
+            BREAK(0);
+            // BREAK(_return(n, _forward_syscall(n, params)));
         }
         case SYS_setdomainname:
             break;
@@ -2242,7 +2294,7 @@ long libos_syscall(long n, long params[6])
         case SYS_gettid:
         {
             _strace(n, NULL);
-            return _return(n, libos_gettid());
+            BREAK(_return(n, libos_gettid()));
         }
         case SYS_readahead:
             break;
@@ -2292,9 +2344,9 @@ long libos_syscall(long n, long params[6])
                 _futex_op_str(futex_op),
                 val);
 
-            return _return(
+            BREAK(_return(
                 n,
-                libos_syscall_futex(uaddr, futex_op, val, arg, uaddr2, val3));
+                libos_syscall_futex(uaddr, futex_op, val, arg, uaddr2, val3)));
         }
         case SYS_sched_setaffinity:
             break;
@@ -2303,40 +2355,34 @@ long libos_syscall(long n, long params[6])
         case SYS_set_thread_area:
         {
             void* tp = (void*)params[0];
-            static bool _initialized;
 
             _strace(n, "tp=%p", tp);
 
-            if (!_initialized)
+            /* ---------- running target thread descriptor ---------- */
+
+            if (!_set_thread_area_called)
             {
-                libos_td_t* td = (libos_td_t*)tp;
-                libos_td_t* old_td = (libos_td_t*)libos_get_fsbase();
+                /* get the C-runtime thread descriptor */
+                crt_td = (libos_td_t*)tp;
+                libos_assert(libos_valid_td(crt_td));
 
-                libos_assert(libos_valid_td(old_td));
-                libos_assert(libos_valid_td(td));
-
-                /* set the thread pointer for this thread */
-                __libos_main_thread->newtls = (void*)tp;
+                /* set the C-runtime thread descriptor for this thread */
+                thread->crt_td = crt_td;
 
                 /* propagate the canary from the old thread descriptor */
-                td->canary = old_td->canary;
+                crt_td->canary = target_td->canary;
 
-                /* initialize the vsbase */
-                td->vsbase.magic = VSBASE_MAGIC;
-                td->vsbase.index1 = 0;
+                /* bind the thread to the C-runtime thread descriptor */
+                crt_td->tsd = (uint64_t)thread;
 
-                /* set the fs base register to point to the new thread */
-                libos_set_fsbase(tp);
-                libos_set_vsbase(__libos_main_thread);
-
-                _initialized = true;
+                _set_thread_area_called = true;
             }
             else
             {
                 libos_panic("SYS_set_thread_area called twice");
             }
 
-            return _return(n, 0);
+            BREAK(_return(n, 0));
         }
         case SYS_io_setup:
             break;
@@ -2368,7 +2414,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "fd=%d dirp=%p count=%u", fd, dirp, count);
 
-            return _return(n, libos_syscall_getdents64((int)fd, dirp, count));
+            BREAK(_return(n, libos_syscall_getdents64((int)fd, dirp, count)));
         }
         case SYS_set_tid_address:
         {
@@ -2378,7 +2424,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "tidptr=%p *tidptr=%d", tidptr, tidptr ? *tidptr : -1);
 
-            return _return(n, libos_getpid());
+            BREAK(_return(n, libos_getpid()));
         }
         case SYS_restart_syscall:
             break;
@@ -2405,7 +2451,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "clk_id=%u tp=%p", clk_id, tp);
 
-            return _return(n, libos_syscall_clock_gettime(clk_id, tp));
+            BREAK(_return(n, libos_syscall_clock_gettime(clk_id, tp)));
         }
         case SYS_clock_getres:
             break;
@@ -2417,7 +2463,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "status=%d", status);
 
-            return 0;
+            BREAK(0);
         }
         case SYS_epoll_wait:
             break;
@@ -2599,7 +2645,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "buf=%p buflen=%zu flags=%d", buf, buflen, flags);
 
-            return _return(n, libos_syscall_getrandom(buf, buflen, flags));
+            BREAK(_return(n, libos_syscall_getrandom(buf, buflen, flags)));
         }
         case SYS_memfd_create:
             break;
@@ -2620,7 +2666,7 @@ long libos_syscall(long n, long params[6])
 
             libos_barrier();
 
-            return _return(n, 0);
+            BREAK(_return(n, 0));
         }
         case SYS_mlock2:
             break;
@@ -2668,7 +2714,7 @@ long libos_syscall(long n, long params[6])
                 ip4,
                 port);
 
-            return _return(n, _forward_syscall(n, params));
+            BREAK(_return(n, _forward_syscall(n, params)));
         }
         case SYS_recvfrom:
         {
@@ -2709,7 +2755,7 @@ long libos_syscall(long n, long params[6])
                 }
             }
 
-            return _return(n, ret);
+            BREAK(_return(n, ret));
         }
         /* forward network syscdalls to OE */
         case SYS_sendfile:
@@ -2767,7 +2813,7 @@ long libos_syscall(long n, long params[6])
         case SYS_libos_oe_call_host_function:
         {
             _strace(n, "forwarded");
-            return _return(n, _forward_syscall(n, params));
+            BREAK(_return(n, _forward_syscall(n, params)));
         }
         default:
         {
@@ -2777,7 +2823,15 @@ long libos_syscall(long n, long params[6])
 
     libos_panic("unhandled syscall: %s()", syscall_str(n));
 
-    return 0;
+done:
+
+    /* ---------- running target thread descriptor ---------- */
+
+    /* the C-runtime must execute on its own thread descriptor */
+    if (crt_td)
+        libos_set_fsbase(crt_td);
+
+    return syscall_ret;
 }
 
 /*

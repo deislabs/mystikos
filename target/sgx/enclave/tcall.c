@@ -10,12 +10,12 @@
 #include <unistd.h>
 
 #include <libos/eraise.h>
+#include <libos/regions.h>
 #include <libos/syscallext.h>
 #include <libos/tcall.h>
 #include <libos/thread.h>
-#include <libos/regions.h>
-#include <openenclave/edger8r/enclave.h>
 #include <openenclave/bits/sgx/region.h>
+#include <openenclave/edger8r/enclave.h>
 #include <openenclave/enclave.h>
 #include "gencreds.h"
 
@@ -436,7 +436,7 @@ static long _oesdk_syscall(long n, long params[6])
     }
 }
 
-long libos_target_stat(libos_target_stat_t* buf)
+static long _tcall_target_stat(libos_target_stat_t* buf)
 {
     long ret = 0;
     extern oe_sgx_enclave_properties_t oe_enclave_properties_sgx;
@@ -452,6 +452,36 @@ long libos_target_stat(libos_target_stat_t* buf)
 
 done:
     return ret;
+}
+
+void* _get_fsbase(void)
+{
+    void* p;
+    __asm__ volatile("mov %%fs:0, %0" : "=r"(p));
+    return p;
+}
+
+static long _tcall_set_tsd(uint64_t value)
+{
+    libos_td_t* td = _get_fsbase();
+
+    assert(td != NULL);
+    td->tsd = value;
+
+    return 0;
+}
+
+static long _tcall_get_tsd(uint64_t* value)
+{
+    libos_td_t* td = _get_fsbase();
+
+    if (!value)
+        return -EINVAL;
+
+    assert(td != NULL);
+    *value = td->tsd;
+
+    return 0;
 }
 
 long libos_tcall(long n, long params[6])
@@ -611,7 +641,17 @@ long libos_tcall(long n, long params[6])
         case LIBOS_TCALL_TARGET_STAT:
         {
             libos_target_stat_t* buf = (libos_target_stat_t*)x1;
-            return libos_target_stat(buf);
+            return _tcall_target_stat(buf);
+        }
+        case LIBOS_TCALL_SET_TSD:
+        {
+            uint64_t value = (uint64_t)x1;
+            return _tcall_set_tsd(value);
+        }
+        case LIBOS_TCALL_GET_TSD:
+        {
+            uint64_t* value = (uint64_t*)x1;
+            return _tcall_get_tsd(value);
         }
         case SYS_ioctl:
         {

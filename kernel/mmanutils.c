@@ -130,7 +130,7 @@ void* libos_mmap(
         libos_assert(addr >= _mman_start && addr <= _mman_end);
         libos_assert(end >= _mman_start && end <= _mman_end);
 
-        // ISSUE: call mmap or mremap here so that this range refers to
+        // ATTN: call mmap or mremap here so that this range refers to
         // a mapped region.
 
         return addr;

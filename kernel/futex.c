@@ -28,14 +28,35 @@ struct futex
 {
     futex_t* next;
     size_t refs;
-    int* uaddr;
+    volatile int* uaddr;
     libos_cond_t cond;
     libos_mutex_t mutex;
 };
 
 static futex_t* _chains[NUM_CHAINS];
 static bool _installed_free_futexes;
-static libos_spinlock_t _lock = LIBOS_SPINLOCK_INITIALIZER;
+
+#if 1
+static libos_spinlock_t _spin = LIBOS_SPINLOCK_INITIALIZER;
+static void _lock(void)
+{
+    libos_spin_lock(&_spin);
+}
+static void _unlock(void)
+{
+    libos_spin_unlock(&_spin);
+}
+#else
+static libos_mutex_t _mutex;
+static void _lock(void)
+{
+    libos_mutex_lock(&_mutex);
+}
+static void _unlock(void)
+{
+    libos_mutex_unlock(&_mutex);
+}
+#endif
 
 static void _free_futexes(void* arg)
 {
@@ -52,13 +73,13 @@ static void _free_futexes(void* arg)
     }
 }
 
-static futex_t* _get_futex(int* uaddr)
+static futex_t* _get_futex(volatile int* uaddr)
 {
     futex_t* ret = NULL;
     uint64_t index = ((uint64_t)uaddr >> 4) % NUM_CHAINS;
     futex_t* f;
 
-    libos_spin_lock(&_lock);
+    _lock();
 
     if (!_installed_free_futexes)
     {
@@ -88,7 +109,7 @@ static futex_t* _get_futex(int* uaddr)
 
 done:
 
-    libos_spin_unlock(&_lock);
+    _unlock();
 
     return ret;
 }
@@ -204,13 +225,9 @@ int libos_futex_wake(int* uaddr, int val)
         goto done;
     }
 
-#if 1
     libos_mutex_lock(&f->mutex);
     locked = true;
-#else
-    if (!_is_ownwer(&f->mutex))
-        libos_panic("not mutex owner");
-#endif
+    libos_assume(f->mutex.owner == libos_thread_self());
 
     if (val == 1)
     {
