@@ -42,7 +42,7 @@ int libos_cond_timedwait(
     libos_mutex_t* mutex,
     const struct timespec* timeout)
 {
-    libos_thread_t* self = libos_get_vsbase();
+    libos_thread_t* self = libos_thread_self();
     int ret = 0;
 
     libos_assert(self != NULL);

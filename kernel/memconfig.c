@@ -1,7 +1,7 @@
-#include <libos/tcall.h>
 #include <libos/defs.h>
-#include <libos/strings.h>
 #include <libos/kernel.h>
+#include <libos/strings.h>
+#include <libos/tcall.h>
 
 static void _dump_target_stat(void)
 {

@@ -113,6 +113,10 @@ tests:
 	$(MAKE) -s -C tests tests RUNTEST=$(RUNTEST_COMMAND)
 	$(MAKE) -s summary
 
+pipeline-tests:
+	$(MAKE) -s tests ALLTESTS=1 VERBOSE=1
+
+
 ##==============================================================================
 ##
 ## sub:

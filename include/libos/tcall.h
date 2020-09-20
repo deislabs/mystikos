@@ -33,6 +33,8 @@ typedef enum libos_tcall_number
     LIBOS_TCALL_EXPORT_FILE = 2065,
     LIBOS_TCALL_SET_RUN_THREAD_FUNCTION = 2066,
     LIBOS_TCALL_TARGET_STAT = 2067,
+    LIBOS_TCALL_SET_TSD = 2068,
+    LIBOS_TCALL_GET_TSD = 2069,
 } libos_tcall_number_t;
 
 long libos_tcall(long n, long params[6]);
@@ -82,9 +84,14 @@ long libos_tcall_set_run_thread_function(libos_run_thread_t function);
 typedef struct libos_target_stat
 {
     uint64_t heap_size; /* 0 indicates unbounded */
-}
-libos_target_stat_t;
+} libos_target_stat_t;
 
 long libos_tcall_target_stat(libos_target_stat_t* buf);
+
+/* set the thread-specific-data slot in the target (only one slot) */
+long libos_tcall_set_tsd(uint64_t value);
+
+/* get the thread-specific-data slot in the target (only one slot) */
+long libos_tcall_get_tsd(uint64_t* value);
 
 #endif /* _LIBOS_TCALL_H */

@@ -18,17 +18,10 @@ fi
 TESTSUBDIR=${TESTDIR}/${TESTNAME}
 
 # Use colors if stdout is a tty device (non-batch mode)
-#if [ -t 1 ]; then
-    green="\e[32m"
-    red="\e[31m"
-    lightblue="\e[94m"
-    default="\e[39m"
-#else
-#    green=
-#    red=
-#    lightblue=
-#    default=
-#fi
+green="\e[32m"
+red="\e[31m"
+lightblue="\e[94m"
+default="\e[39m"
 
 test_passed()
 {
@@ -61,19 +54,7 @@ test_timedout()
     echo "" >> ${TESTSUBDIR}/failed
 }
 
-timeout=10
-
-print_output()
-{
-    if [ "${VERBOSE}" == "1" ]; then
-        echo -n -e ${lightblue}
-        echo "======================= BEGIN OUTPUT ======================="
-        cat ${TESTSUBDIR}/stdout
-        cat ${TESTSUBDIR}/stderr
-        echo "======================== END OUTPUT ========================"
-        echo -n -e ${default}
-    fi
-}
+timeout=60
 
 run_test()
 {
@@ -85,7 +66,9 @@ run_test()
         cmd="${cmd} $i"
     done
 
+    echo -n -e ${lightblue}
     echo "=== start (${TESTNAME})"
+    echo -n -e ${default}
 
     local tempfile=$(/bin/mktemp)
 
@@ -95,24 +78,34 @@ run_test()
     else
         timeout=
     fi
+
+    output=${TESTSUBDIR}/output
     time="/usr/bin/time -f "%e" --quiet -o ${tempfile}"
-    echo ${cmd} > ${TESTSUBDIR}/stdout
-    ${timeout} ${time} ${cmd} >> ${TESTSUBDIR}/stdout 2> ${TESTSUBDIR}/stderr
+
+    if [ -z "${VERBOSE}" ]; then
+        echo ${cmd} 2>&1 | tee ${output} > /dev/null
+        ${timeout} ${time} ${cmd} 2>&1 | tee -a ${output} > /dev/null
+    else
+        echo ${cmd} 2>&1 | tee ${output}
+        ${timeout} ${time} ${cmd} 2>&1 | tee -a ${output}
+    fi
+
     ret=$?
     seconds=$(cat ${tempfile})
     rm -f ${tempfile}
 
     if [ "${ret}" == "0" ]; then
-        print_output
         test_passed $cmd
+        echo -n -e ${lightblue}
         echo "    ${seconds} seconds"
+        echo -n -e ${default}
     elif [ "${ret}" == "124" ]; then
-        print_output
         test_timedout $cmd
     else
-        print_output
         test_failed ${cmd}
+        echo -n -e ${lightblue}
         echo "    ${seconds} seconds"
+        echo -n -e ${default}
     fi
 
     echo ""

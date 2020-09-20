@@ -133,7 +133,10 @@ static int _create_main_thread(uint64_t event, libos_thread_t** thread_out)
     thread->magic = LIBOS_THREAD_MAGIC;
     thread->tid = pid;
     thread->event = event;
-    thread->original_fsbase = libos_get_fsbase();
+    thread->target_td = libos_get_fsbase();
+
+    /* bind this thread to the target */
+    libos_assume(libos_tcall_set_tsd((uint64_t)thread) == 0);
 
     *thread_out = thread;
     thread = NULL;

@@ -1,13 +1,23 @@
-#include <pthread.h>
-#include <stdio.h>
 #include <assert.h>
-#include <stdint.h>
-#include <stdlib.h>
 #include <errno.h>
-#include <unistd.h>
+#include <pthread.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <sys/syscall.h>
+#include <unistd.h>
 
 #define NUM_THREADS 8
+
+#if 0
+#define TRACE
+#endif
+
+#ifdef TRACE
+#define T(EXPR) EXPR
+#else
+#define T(EXPR)
+#endif
 
 void sleep_msec(uint64_t milliseconds)
 {
@@ -39,7 +49,7 @@ static void* _thread_func(void* arg)
     uint64_t secs = (size_t)arg;
     uint64_t msecs = secs * 1000;
 
-    printf("_thread_func()\n");
+    T(printf("_thread_func()\n");)
     sleep_msec(msecs / 10);
 
     return arg;
@@ -49,7 +59,7 @@ void test_create_thread(void)
 {
     pthread_t threads[NUM_THREADS];
 
-    printf("=== %s()\n", __FUNCTION__);
+    printf("=== start test (%s)\n", __FUNCTION__);
 
     /* Create threads */
     for (size_t i = 0; i < NUM_THREADS; i++)
@@ -72,7 +82,7 @@ void test_create_thread(void)
             abort();
         }
 
-        printf("joined...\n");
+        T(printf("joined...\n");)
 
         assert((uint64_t)retval == i);
     }
@@ -96,18 +106,19 @@ static void* _test_mutex_thread(void* arg)
 {
     size_t n = (uint64_t)arg;
 
-    for (size_t i = 0; i < n*N; i++)
+    for (size_t i = 0; i < n * N; i++)
     {
         pthread_mutex_lock(&_mutex);
         int local = _shared_integer;
 
         /* introduce some delay to amplify the race condition */
-        for (int j = 0; j < 10000; j++);
+        for (int j = 0; j < 10000; j++)
+            ;
 
         _shared_integer = local + 1;
         pthread_mutex_unlock(&_mutex);
     }
-    printf("Child %zu done with mutex\n", n);
+    T(printf("child %zu done with mutex\n", n);)
 
     return arg;
 }
@@ -118,7 +129,7 @@ void test_mutexes(int mutex_type)
     uint64_t integer = 0;
     _shared_integer = 0;
 
-    printf("=== %s(), mutex type = %d\n", __FUNCTION__, mutex_type);
+    printf("=== start test (%s:%d)\n", __FUNCTION__, mutex_type);
 
     pthread_mutexattr_t Attr;
     pthread_mutexattr_init(&Attr);
@@ -126,12 +137,12 @@ void test_mutexes(int mutex_type)
     pthread_mutex_init(&_mutex, &Attr);
 
     pthread_mutex_lock(&_mutex);
-    printf("Mutex taken by main thread\n");
+    T(printf("mutex taken by main thread\n");)
 
     /* Create threads */
     for (size_t i = 0; i < NUM_THREADS; i++)
     {
-        void* arg = (void*)(i+1);
+        void* arg = (void*)(i + 1);
 
         if (pthread_create(&threads[i], NULL, _test_mutex_thread, arg) != 0)
         {
@@ -139,19 +150,19 @@ void test_mutexes(int mutex_type)
             abort();
         }
 
-        integer += (i+1) * N;
+        integer += (i + 1) * N;
     }
 
     pthread_mutex_unlock(&_mutex);
-    printf("Mutex released by main thread. Now starts the children.\n");
+    T(printf("mutex released by main thread; now starting children.\n");)
 
     /* Join threads */
     for (size_t i = 0; i < NUM_THREADS; i++)
     {
         void* retval;
         assert(pthread_join(threads[i], &retval) == 0);
-        assert((uint64_t)retval == i+1);
-        printf("joined...\n");
+        assert((uint64_t)retval == i + 1);
+        T(printf("joined...\n");)
     }
 
     if (integer != _shared_integer)
@@ -186,7 +197,7 @@ static __int128 _time(void)
 static void* _test_timedlock(void* arg)
 {
     (void)arg;
-    const uint64_t TIMEOUT_SEC = 3;
+    const uint64_t TIMEOUT_SEC = 1;
     const __int128 BILLION = 1000000000;
     const __int128 LO = (TIMEOUT_SEC * BILLION) - (BILLION / 5);
     const __int128 HI = (TIMEOUT_SEC * BILLION) + (BILLION / 5);
@@ -211,7 +222,7 @@ void test_timedlock(void)
 {
     pthread_t thread;
 
-    printf("=== %s()\n", __FUNCTION__);
+    printf("=== start test (%s)\n", __FUNCTION__);
 
     pthread_mutex_lock(&_timed_mutex);
 
@@ -221,9 +232,9 @@ void test_timedlock(void)
         abort();
     }
 
-    for (size_t i = 0; i < 6; i++)
+    for (size_t i = 0; i < 2; i++)
     {
-        printf("sleeping...\n");
+        T(printf("sleeping...\n");)
         sleep(1);
     }
 
@@ -258,7 +269,7 @@ static void* _test_cond(void* arg_)
     struct test_cond_arg* arg = (struct test_cond_arg*)arg_;
 
     pthread_mutex_lock(&arg->m);
-    printf("wait: %p\n", pthread_self());
+    T(printf("wait: %p\n", pthread_self());)
     pthread_cond_wait(&arg->c, &arg->m);
     arg->n++;
     pthread_mutex_unlock(&arg->m);
@@ -270,7 +281,7 @@ void test_cond_signal(void)
 {
     pthread_t threads[NUM_THREADS];
 
-    printf("=== %s()\n", __FUNCTION__);
+    printf("=== start test (%s)\n", __FUNCTION__);
 
     struct test_cond_arg arg;
 
@@ -292,7 +303,7 @@ void test_cond_signal(void)
     for (size_t i = 0; i < NUM_THREADS; i++)
     {
         pthread_mutex_lock(&arg.m);
-        printf("signal...\n");
+        T(printf("signal...\n");)
         pthread_cond_signal(&arg.c);
         pthread_mutex_unlock(&arg.m);
         sleep_msec(50);
@@ -302,7 +313,7 @@ void test_cond_signal(void)
     {
         void* retval = NULL;
         assert(pthread_join(threads[i], &retval) == 0);
-        printf("joined:%p\n", retval);
+        T(printf("joined:%p\n", retval);)
     }
 
     assert(arg.n == NUM_THREADS);
@@ -324,7 +335,7 @@ void test_cond_broadcast(void)
 {
     pthread_t threads[NUM_THREADS];
 
-    printf("=== %s()\n", __FUNCTION__);
+    printf("=== start test (%s)\n", __FUNCTION__);
 
     struct test_cond_arg arg;
 
@@ -343,7 +354,7 @@ void test_cond_broadcast(void)
 
     sleep_msec(100);
     pthread_mutex_lock(&arg.m);
-    printf("broadcast...\n");
+    T(printf("broadcast...\n");)
     pthread_cond_broadcast(&arg.c);
     pthread_mutex_unlock(&arg.m);
 
@@ -351,12 +362,14 @@ void test_cond_broadcast(void)
     {
         void* retval = NULL;
         assert(pthread_join(threads[i], &retval) == 0);
-        printf("joined:%p\n", retval);
+        T(printf("joined:%p\n", retval);)
     }
 
     assert(arg.n == NUM_THREADS);
     pthread_mutex_destroy(&arg.m);
     pthread_cond_destroy(&arg.c);
+
+    printf("=== passed test (%s)\n", __FUNCTION__);
 }
 
 /*
@@ -367,11 +380,15 @@ void test_cond_broadcast(void)
 **==============================================================================
 */
 
-#define LOOP(BODY, N) for (size_t i = 0; i < N; i++) BODY
+#define LOOP(BODY, N)              \
+    for (size_t i = 0; i < N; i++) \
+    BODY
 
 int main(int argc, const char* argv[])
 {
     unsigned long n = 1;
+
+    printf("=== start test (%s)\n", argv[0]);
 
     if (argc > 2)
     {
@@ -396,10 +413,12 @@ int main(int argc, const char* argv[])
         test_create_thread();
         test_mutexes(PTHREAD_MUTEX_NORMAL);
         test_mutexes(PTHREAD_MUTEX_RECURSIVE);
-        // test_timedlock();
+        test_timedlock();
         test_cond_signal();
         test_cond_broadcast();
     }
+
+    printf("=== passed test (%s)\n", argv[0]);
 
     return 0;
 }

@@ -84,3 +84,15 @@ long libos_tcall_target_stat(libos_target_stat_t* target_stat)
     long params[6] = {(long)target_stat};
     return libos_tcall(LIBOS_TCALL_TARGET_STAT, params);
 }
+
+long libos_tcall_set_tsd(uint64_t value)
+{
+    long params[6] = {(long)value};
+    return libos_tcall(LIBOS_TCALL_SET_TSD, params);
+}
+
+long libos_tcall_get_tsd(uint64_t* value)
+{
+    long params[6] = {(long)value};
+    return libos_tcall(LIBOS_TCALL_GET_TSD, params);
+}

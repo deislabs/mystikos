@@ -7,7 +7,8 @@
 
 #define LIBOS_SPINLOCK_INITIALIZER 0
 
-#define LIBOS_SPINLOCK_BUILTINS
+// #define LIBOS_SPINLOCK_BUILTINS
+#define LIBOS_SPINLOCK_ASSEMBLY
 
 /*
 **==============================================================================

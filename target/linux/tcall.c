@@ -229,7 +229,7 @@ _forward_syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6)
     return libos_syscall6(n, x1, x2, x3, x4, x5, x6);
 }
 
-long libos_target_stat(libos_target_stat_t* buf)
+static long _tcall_target_stat(libos_target_stat_t* buf)
 {
     long ret = 0;
 
@@ -242,6 +242,25 @@ long libos_target_stat(libos_target_stat_t* buf)
 
 done:
     return ret;
+}
+
+static __thread uint64_t _tsd;
+
+static long _tcall_set_tsd(uint64_t value)
+{
+    _tsd = value;
+
+    return 0;
+}
+
+static long _tcall_get_tsd(uint64_t* value)
+{
+    if (!value)
+        return -EINVAL;
+
+    *value = _tsd;
+
+    return 0;
 }
 
 long libos_tcall(long n, long params[6])
@@ -374,7 +393,17 @@ long libos_tcall(long n, long params[6])
         case LIBOS_TCALL_TARGET_STAT:
         {
             libos_target_stat_t* buf = (libos_target_stat_t*)x1;
-            return libos_target_stat(buf);
+            return _tcall_target_stat(buf);
+        }
+        case LIBOS_TCALL_SET_TSD:
+        {
+            uint64_t value = (uint64_t)x1;
+            return _tcall_set_tsd(value);
+        }
+        case LIBOS_TCALL_GET_TSD:
+        {
+            uint64_t* value = (uint64_t*)x1;
+            return _tcall_get_tsd(value);
         }
         case SYS_ioctl:
         {
