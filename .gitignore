@@ -41,3 +41,4 @@ tests/gdb/libos_gdb_out.log
 tests/dlopen/appdir/
 .gdb_history
 tests/pthread/appdir/
+tests/alpine/appdir/

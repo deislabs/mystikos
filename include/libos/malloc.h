@@ -34,6 +34,15 @@ void __libos_free(void* ptr, const char* file, size_t line, const char* func);
 
 int libos_find_leaks(void);
 
+typedef struct libos_malloc_stats
+{
+    size_t usage;      /* bytes currently in use */
+    size_t peak_usage; /* the maximum bytes ever in use */
+} libos_malloc_stats_t;
+
+/* only works with LIBOS_ENABLE_LEAK_CHECKER flags. Returns -ENOTSUP */
+int libos_get_malloc_stats(libos_malloc_stats_t* stats);
+
 #define libos_malloc(size) \
     __libos_malloc(size, __FILE__, __LINE__, __FUNCTION__)
 

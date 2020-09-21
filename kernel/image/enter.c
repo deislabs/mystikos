@@ -39,6 +39,17 @@ long libos_tcall(long n, long params[6])
     return ret;
 }
 
+void libos_dump_malloc_stats(void)
+{
+    libos_malloc_stats_t stats;
+
+    if (libos_get_malloc_stats(&stats) == 0)
+    {
+        libos_eprintf("kernel: memory used: %zu\n", stats.usage);
+        libos_eprintf("kernel: peak memory used: %zu\n", stats.peak_usage);
+    }
+}
+
 static int _setup_ramfs(void)
 {
     int ret = 0;
@@ -77,18 +88,24 @@ done:
     return ret;
 }
 
-static int _create_cpio_file(const char* path, const char* data, size_t size)
+static int _create_mem_file(
+    const char* path,
+    const void* file_data,
+    size_t file_size)
 {
     int ret = 0;
     int fd = -1;
 
-    if (!path || !data || !size)
+    if (!path || !file_data)
         ERAISE(-EINVAL);
 
     if ((fd = libos_open(path, O_WRONLY | O_CREAT, 0444)) < 0)
-        ERAISE(-EINVAL);
+    {
+        libos_panic("kernel: libos_open(): %s\n", path);
+        ERAISE(-ENOENT);
+    }
 
-    ECHECK(libos_ramfs_set_buf(_fs, path, data, size));
+    ECHECK(libos_ramfs_set_buf(_fs, path, file_data, file_size));
 
     ret = 0;
 
@@ -153,8 +170,8 @@ int libos_enter_kernel(libos_kernel_args_t* args)
 {
     int ret = 0;
     int exit_status;
-    const char rootfs_path[] = "/tmp/rootfs.cpio";
     libos_thread_t* thread = NULL;
+    libos_cpio_create_file_function_t create_file = NULL;
 
     if (!args)
         libos_crash();
@@ -223,26 +240,18 @@ int libos_enter_kernel(libos_kernel_args_t* args)
         ERAISE(-EINVAL);
     }
 
-    /* Create a temporary file containing the root file system */
-    {
-        if (_create_cpio_file(
-                rootfs_path, args->rootfs_data, args->rootfs_size) != 0)
-        {
-            libos_eprintf("kernel: failed to create: %s\n", rootfs_path);
-            ERAISE(-EINVAL);
-        }
+#define USE_RAMFS_SET_BUF
+#ifdef USE_RAMFS_SET_BUF
+    create_file = _create_mem_file;
+#else
+    (void)_create_mem_file;
+#endif
 
-        if (libos_access(rootfs_path, R_OK) != 0)
-        {
-            libos_eprintf("kernel: failed to create: %s\n", rootfs_path);
-            ERAISE(-EINVAL);
-        }
-    }
-
-    /* Unpack the root file system */
-    if (libos_cpio_unpack(rootfs_path, "/") != 0)
+    /* Unpack the CPIO from memory */
+    if (libos_cpio_mem_unpack(
+            args->rootfs_data, args->rootfs_size, "/", create_file) != 0)
     {
-        libos_eprintf("failed to unpack: %s\n", rootfs_path);
+        libos_eprintf("failed to unpack root file system\n");
         ERAISE(-EINVAL);
     }
 
@@ -251,6 +260,9 @@ int libos_enter_kernel(libos_kernel_args_t* args)
 
     /* Create the main thread */
     ECHECK(_create_main_thread(args->event, &thread));
+
+    /* print out memory statistics */
+    libos_dump_malloc_stats();
 
     /* Enter the C runtime (which enters the application) */
     exit_status = elf_enter_crt(

@@ -12,11 +12,14 @@ static libos_spinlock_t _lock = LIBOS_SPINLOCK_INITIALIZER;
 typedef struct node
 {
     libos_list_node_t base;
-    void* ptr;
+    void* __ptr;
+    size_t size;
     const char* file;
     size_t line;
     const char* func;
 } node_t;
+
+static libos_malloc_stats_t _malloc_stats;
 
 long libos_tcall_allocate(
     void* ptr,
@@ -46,6 +49,7 @@ long libos_tcall_deallocate(void* ptr)
 #ifdef LIBOS_ENABLE_LEAK_CHECKER
 static node_t* _new_node(
     void* ptr,
+    size_t size,
     const char* file,
     size_t line,
     const char* func)
@@ -55,7 +59,8 @@ static node_t* _new_node(
     if (libos_tcall_allocate(NULL, 0, sizeof(node_t), 0, (void**)&p) != 0 || !p)
         return NULL;
 
-    p->ptr = ptr;
+    p->__ptr = ptr;
+    p->size = size;
     p->file = file;
     p->line = line;
     p->func = func;
@@ -65,15 +70,26 @@ static node_t* _new_node(
 #endif
 
 #ifdef LIBOS_ENABLE_LEAK_CHECKER
-static int _add_node(void* ptr, const char* file, size_t line, const char* func)
+static int _add_node(
+    void* ptr,
+    size_t size,
+    const char* file,
+    size_t line,
+    const char* func)
 {
     node_t* node;
 
-    if (!(node = _new_node(ptr, file, line, func)))
+    if (!(node = _new_node(ptr, size, file, line, func)))
         return -1;
 
     libos_spin_lock(&_lock);
-    libos_list_append(&_list, (libos_list_node_t*)node);
+    {
+        libos_list_append(&_list, (libos_list_node_t*)node);
+        _malloc_stats.usage += size;
+
+        if (_malloc_stats.usage > _malloc_stats.peak_usage)
+            _malloc_stats.peak_usage = _malloc_stats.usage;
+    }
     libos_spin_unlock(&_lock);
 
     return 0;
@@ -91,9 +107,10 @@ static int _remove_node(void* ptr)
         {
             node_t* tmp = (node_t*)p;
 
-            if (tmp->ptr == ptr)
+            if (tmp->__ptr == ptr)
             {
                 node = tmp;
+                _malloc_stats.usage -= node->size;
                 libos_list_remove(&_list, p);
                 break;
             }
@@ -126,7 +143,7 @@ void* __libos_malloc(
         return NULL;
 
 #ifdef LIBOS_ENABLE_LEAK_CHECKER
-    if (_add_node(p, file, line, func) != 0)
+    if (_add_node(p, size, file, line, func) != 0)
         libos_panic("unexpected");
 #endif
 
@@ -150,7 +167,7 @@ void* __libos_calloc(
         return NULL;
 
 #ifdef LIBOS_ENABLE_LEAK_CHECKER
-    if (_add_node(p, file, line, func) != 0)
+    if (_add_node(p, n, file, line, func) != 0)
         libos_panic("unexpected");
 #endif
 
@@ -178,7 +195,7 @@ void* __libos_realloc(
         return NULL;
 
 #ifdef LIBOS_ENABLE_LEAK_CHECKER
-    if (_add_node(p, file, line, func) != 0)
+    if (_add_node(p, size, file, line, func) != 0)
         libos_panic("unexpected");
 #endif
 
@@ -201,7 +218,7 @@ void* __libos_memalign(
         return NULL;
 
 #ifdef LIBOS_ENABLE_LEAK_CHECKER
-    if (_add_node(p, file, line, func) != 0)
+    if (_add_node(p, size, file, line, func) != 0)
         libos_panic("unexpected");
 #endif
 
@@ -232,14 +249,43 @@ int libos_find_leaks(void)
         node_t* node = (node_t*)p;
 
         libos_eprintf(
-            "*********** kernel leak: %s(%zu): %s(): ptr=%p\n",
+            "*********** kernel leak: %s(%zu): %s(): ptr=%p size=%zu\n",
             node->file,
             node->line,
             node->func,
-            node->ptr);
+            node->__ptr,
+            node->size);
 
         ret = -1;
     }
 
+    if (_malloc_stats.usage != 0)
+    {
+        libos_eprintf(
+            "********** kernel: memory still in use: %zu\n",
+            _malloc_stats.usage);
+        ret = -1;
+    }
+
     return ret;
+}
+
+int libos_get_malloc_stats(libos_malloc_stats_t* stats)
+{
+#ifdef LIBOS_ENABLE_LEAK_CHECKER
+    {
+        if (!stats)
+            return -EINVAL;
+
+        libos_spin_lock(&_lock);
+        *stats = _malloc_stats;
+        libos_spin_unlock(&_lock);
+
+        return 0;
+    }
+#else
+    (void)stats;
+    (void)_malloc_stats;
+    return -ENOTSUP;
+#endif
 }
