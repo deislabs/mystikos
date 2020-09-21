@@ -20,14 +20,16 @@ $(SRCDIR):
 build:
 	sudo docker run --rm -v $(SRCDIR):/srcdir $(IMG) bash -c "make -C srcdir"
 
+TEST_FILE = tests.txt
+
 ifdef ALLTESTS
-TEST_FILE = alltests.txt
-else
-  ifdef FAILED
-    TEST_FILE = failed.txt
-  else
-    TEST_FILE = tests.txt
-  endif
+  TEST_FILE = alltests.txt
+endif
+
+ifdef FAILED
+  RUNTEST=$(RUNTEST_COMMAND)
+  TEST_FILE = failed.txt
+  TIMEOUT=10
 endif
 
 TESTS = $(shell cat $(TEST_FILE))

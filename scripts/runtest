@@ -54,7 +54,11 @@ test_timedout()
     echo "" >> ${TESTSUBDIR}/failed
 }
 
+if [ -z "${TIMEOUT}" ]; then
 timeout=60
+else
+timeout=${TIMEOUT}
+fi
 
 run_test()
 {
@@ -84,13 +88,17 @@ run_test()
 
     if [ -z "${VERBOSE}" ]; then
         echo ${cmd} 2>&1 | tee ${output} > /dev/null
+        set -o pipefail
         ${timeout} ${time} ${cmd} 2>&1 | tee -a ${output} > /dev/null
+        ret=$?
+        set +o pipefail
     else
         echo ${cmd} 2>&1 | tee ${output}
+        set -o pipefail
         ${timeout} ${time} ${cmd} 2>&1 | tee -a ${output}
+        ret=$?
+        set +o pipefail
     fi
-
-    ret=$?
     seconds=$(cat ${tempfile})
     rm -f ${tempfile}
 
