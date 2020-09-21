@@ -23,13 +23,14 @@ build:
 TEST_FILE = tests.txt
 
 ifdef ALLTESTS
+  RUNTEST=$(RUNTEST_COMMAND)
   TEST_FILE = alltests.txt
 endif
 
 ifdef FAILED
   RUNTEST=$(RUNTEST_COMMAND)
   TEST_FILE = failed.txt
-  TIMEOUT=10
+  export TIMEOUT=10
 endif
 
 TESTS = $(shell cat $(TEST_FILE))
