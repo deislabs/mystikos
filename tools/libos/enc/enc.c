@@ -12,7 +12,6 @@
 #include <openenclave/enclave.h>
 
 #include <libos/buf.h>
-#include <libos/cpio.h>
 #include <libos/elfutils.h>
 #include <libos/eraise.h>
 #include <libos/file.h>

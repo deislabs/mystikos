@@ -2,6 +2,7 @@ TOP=$(abspath ..)
 include $(TOP)/defs.mak
 
 DIRS =
+DIRS += alpine
 DIRS += pthread
 DIRS += libc
 DIRS += urandom

@@ -80,4 +80,22 @@ int libos_cpio_pack(const char* source, const char* target);
 
 int libos_cpio_unpack(const char* source, const char* target);
 
+int libos_cpio_next_entry(
+    const void* data,
+    size_t size,
+    size_t* pos,
+    libos_cpio_entry_t* entry,
+    const void** file_data);
+
+typedef int (*libos_cpio_create_file_function_t)(
+    const char* path,
+    const void* file_data,
+    size_t file_size);
+
+int libos_cpio_mem_unpack(
+    const void* cpio_data,
+    size_t cpio_size,
+    const char* target,
+    libos_cpio_create_file_function_t create_file);
+
 #endif /* _LIBOS_CPIO_H */

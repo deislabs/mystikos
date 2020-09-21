@@ -20,6 +20,9 @@ endif
 tests:
 	$(RUNTEST) $(LIBOS_EXEC) $(OPTS) rootfs /bin/pthread $(COUNT)
 
+tests-n:
+	$(RUNTEST) $(LIBOS_EXEC) $(OPTS) rootfs /bin/pthread 1000
+
 libos:
 	$(MAKE) -C $(TOP)/tools/libos
 

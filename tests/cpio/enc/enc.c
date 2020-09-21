@@ -139,7 +139,7 @@ static const char* _paths[] = {
 
 static const size_t _npaths = sizeof(_paths) / sizeof(_paths[0]);
 
-int cpio_ecall(const void* cpio_data, size_t cpio_size)
+int cpio_ecall(const void* cpio_data, size_t cpio_size, bool load_from_memory)
 {
     libos_fs_t* fs;
 
@@ -152,13 +152,23 @@ int cpio_ecall(const void* cpio_data, size_t cpio_size)
     assert(libos_mkdir("/tmp", 0777) == 0);
     assert(libos_mkdir("/tmp/out", 0777) == 0);
 
-    /* create /tmp/cpio */
-    assert(_create_cpio_file("/tmp/cpio", cpio_data, cpio_size) == 0);
-    assert(libos_access("/tmp/cpio", R_OK) == 0);
-    assert(_fsize("/tmp/cpio") == cpio_size);
+    if (load_from_memory)
+    {
+        if (libos_cpio_mem_unpack(cpio_data, cpio_size, "/tmp/out", NULL) != 0)
+        {
+            assert(false);
+        }
+    }
+    else
+    {
+        /* create /tmp/cpio */
+        assert(_create_cpio_file("/tmp/cpio", cpio_data, cpio_size) == 0);
+        assert(libos_access("/tmp/cpio", R_OK) == 0);
+        assert(_fsize("/tmp/cpio") == cpio_size);
 
-    /* unpack the cpio archive */
-    assert(libos_cpio_unpack("/tmp/cpio", "/tmp/out") == 0);
+        /* unpack the cpio archive */
+        assert(libos_cpio_unpack("/tmp/cpio", "/tmp/out") == 0);
+    }
 
     libos_strarr_t paths = LIBOS_STRARR_INITIALIZER;
     assert(libos_lsr("/tmp/out", &paths, true) == 0);

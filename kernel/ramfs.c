@@ -1604,7 +1604,7 @@ int libos_ramfs_set_buf(
     if (!pathname)
         ERAISE(-EINVAL);
 
-    if (!buf)
+    if (!buf && buf_size)
         ERAISE(-EINVAL);
 
     ECHECK(_path_to_inode(ramfs, pathname, true, NULL, &inode));

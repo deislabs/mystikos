@@ -9,6 +9,7 @@ enclave
     {
         public int cpio_ecall(
             [in, size=cpio_size] const void* cpio_data,
-            size_t cpio_size);
+            size_t cpio_size,
+            bool load_from_memory);
     };
 };

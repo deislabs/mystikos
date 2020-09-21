@@ -21,6 +21,8 @@ TESTSUBDIR=${TESTDIR}/${TESTNAME}
 green="\e[32m"
 red="\e[31m"
 lightblue="\e[94m"
+magenta="\e[35m"
+cyan="\e[36m"
 default="\e[39m"
 
 test_passed()
@@ -70,7 +72,7 @@ run_test()
         cmd="${cmd} $i"
     done
 
-    echo -n -e ${lightblue}
+    echo -n -e ${cyan}
     echo "=== start (${TESTNAME})"
     echo -n -e ${default}
 
@@ -104,14 +106,14 @@ run_test()
 
     if [ "${ret}" == "0" ]; then
         test_passed $cmd
-        echo -n -e ${lightblue}
+        echo -n -e ${cyan}
         echo "    ${seconds} seconds"
         echo -n -e ${default}
     elif [ "${ret}" == "124" ]; then
         test_timedout $cmd
     else
         test_failed ${cmd}
-        echo -n -e ${lightblue}
+        echo -n -e ${cyan}
         echo "    ${seconds} seconds"
         echo -n -e ${default}
     fi
@@ -127,8 +129,10 @@ summarize()
         num_passed=$(cat ${TESTDIR}/num.passed)
         num_failed=$(cat ${TESTDIR}/num.failed)
 
+        echo -n -e ${magenta}
         echo "passed: ${num_passed}"
         echo "failed: ${num_failed}"
+        echo -n -e ${default}
 
         if [ "${num_failed}" != "0" ]; then
             failed=$(find ${TESTDIR} -name failed)

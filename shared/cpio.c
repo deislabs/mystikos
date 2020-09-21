@@ -857,3 +857,245 @@ done:
 
     return ret;
 }
+
+/*
+**==============================================================================
+**
+** memory-based scanner:
+**
+**==============================================================================
+*/
+
+int libos_cpio_next_entry(
+    const void* data_,
+    size_t size,
+    size_t* pos_in_out,
+    libos_cpio_entry_t* entry_out,
+    const void** file_data_out)
+{
+    int ret = -1;
+    const uint8_t* data = (const uint8_t*)data_;
+    size_t pos;
+    size_t rem;
+    cpio_header_t hdr;
+    libos_cpio_entry_t entry;
+    ssize_t r;
+    size_t namesize;
+    uint64_t file_pos;
+
+    if (!data || !size || !pos_in_out || !entry_out || !file_data_out)
+        GOTO(done);
+
+    pos = *pos_in_out;
+    libos_memset(entry_out, 0, sizeof(libos_cpio_entry_t));
+    *file_data_out = NULL;
+
+    if (pos > size)
+        GOTO(done);
+
+    rem = size - pos;
+
+    /* Read the header */
+    {
+        if (sizeof(hdr) > rem)
+            GOTO(done);
+
+        libos_memcpy(&hdr, &data[pos], sizeof(hdr));
+        pos += sizeof(hdr);
+        rem -= sizeof(hdr);
+
+        if (!_valid_header(&hdr))
+            GOTO(done);
+    }
+
+    /* Get the file size. */
+    {
+        if ((r = _get_filesize(&hdr)) < 0)
+            GOTO(done);
+
+        entry.size = (size_t)r;
+    }
+
+    /* Get the file mode. */
+    {
+        if ((r = _get_mode(&hdr)) < 0 || r >= UINT32_MAX)
+            GOTO(done);
+
+        entry.mode = (uint32_t)r;
+    }
+
+    /* Get the name size. */
+    {
+        if ((r = _get_namesize(&hdr)) < 0 || r >= LIBOS_CPIO_PATH_MAX)
+            GOTO(done);
+
+        namesize = (size_t)r;
+    }
+
+    /* Read the name. */
+    {
+        if (namesize > rem)
+            GOTO(done);
+
+        libos_memcpy(&entry.name, &data[pos], namesize);
+        pos += namesize;
+        rem -= namesize;
+    }
+
+    /* Skip any padding after the name. */
+    {
+        size_t new_pos = libos_round_up_u64(pos, 4);
+        size_t padding = new_pos - pos;
+
+        if (padding > rem)
+            GOTO(done);
+
+        pos += padding;
+        rem -= padding;
+    }
+
+    /* Save the file offset. */
+    file_pos = pos;
+
+    /* Skip over the file data. */
+    {
+        if (entry.size > rem)
+            GOTO(done);
+
+        pos += entry.size;
+        rem -= entry.size;
+    }
+
+    /* Skip any padding after the file data. */
+    {
+        size_t new_pos = libos_round_up_u64(pos, 4);
+        size_t padding = new_pos - pos;
+
+        if (padding > rem)
+            GOTO(done);
+
+        pos += padding;
+        rem -= padding;
+    }
+
+    /* Save the offset to the start of the next entry. */
+    *pos_in_out = pos;
+
+    /* Check for end-of-file. */
+    if (libos_strcmp(entry.name, "TRAILER!!!") == 0)
+    {
+        ret = 0;
+        goto done;
+    }
+
+    *entry_out = entry;
+    *file_data_out = &data[file_pos];
+
+    ret = 1;
+
+done:
+    return ret;
+}
+
+int libos_cpio_mem_unpack(
+    const void* cpio_data,
+    size_t cpio_size,
+    const char* target,
+    libos_cpio_create_file_function_t create_file)
+{
+    int ret = -1;
+    char path[LIBOS_CPIO_PATH_MAX];
+    size_t pos = 0;
+
+    for (;;)
+    {
+        libos_cpio_entry_t ent;
+        const void* file_data;
+        int r;
+
+        if ((r = libos_cpio_next_entry(
+            cpio_data, cpio_size, &pos, &ent, &file_data)) == 0)
+        {
+            break;
+        }
+
+        if (libos_strcmp(ent.name, ".") == 0)
+            continue;
+
+        LIBOS_STRLCPY(path, target);
+        LIBOS_STRLCAT(path, "/");
+        LIBOS_STRLCAT(path, ent.name);
+
+        if (S_ISDIR(ent.mode))
+        {
+            struct stat st;
+
+            if (libos_stat(path, &st) == 0)
+            {
+                if (!S_ISDIR(st.st_mode))
+                {
+                    EPRINTF("*** cpio: already exists: %s\n", path);
+                    GOTO(done);
+                }
+            }
+            else if (libos_mkdir(path, ent.mode) != 0)
+            {
+                GOTO(done);
+            }
+        }
+        else if (S_ISREG(ent.mode))
+        {
+            if (create_file)
+            {
+                if ((*create_file)(path, file_data, ent.size) != 0)
+                    GOTO(done);
+            }
+            else
+            {
+                int fd;
+                ssize_t n = (ssize_t)ent.size;
+
+                if ((fd = libos_open(path, O_WRONLY | O_CREAT, 0666)) < 0)
+                    GOTO(done);
+
+                if (libos_write(fd, file_data, (size_t)n) != n)
+                {
+                    libos_close(fd);
+                    GOTO(done);
+                }
+
+                libos_close(fd);
+                fd = -1;
+            }
+        }
+        else if (S_ISLNK(ent.mode))
+        {
+            char target[PATH_MAX];
+
+            /* read the target from CPIO archive */
+            {
+                ssize_t n = (ssize_t)ent.size;
+
+                if (n < 1 || n >= (ssize_t)sizeof(target))
+                    GOTO(done);
+
+                libos_memcpy(target, file_data, ent.size);
+                target[n] = '\0';
+            }
+
+            /* create the symlink */
+            if (libos_symlink(target, path) != 0)
+                GOTO(done);
+        }
+        else
+        {
+            GOTO(done);
+        }
+    }
+
+    ret = 0;
+
+done:
+
+    return ret;
+}
