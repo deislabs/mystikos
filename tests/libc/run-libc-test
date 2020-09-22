@@ -1,0 +1,69 @@
+#!/bin/bash
+
+if [ "$#" != "4" ]; then
+    echo "Usage: $0 <libos> <target> <srcdir> <testpath>"
+    exit 1
+fi
+
+libos=$1
+if [ ! -x "${libos}" ]; then
+    echo "$0: not an executable file: ${libos}"
+    exit 1
+fi
+
+target=$2
+
+srcdir=$3
+if [ ! -x "${srcdir}" ]; then
+    echo "$0: source directory does not exist: ${srcdir}"
+    exit 1
+fi
+
+testpath=$4
+
+##
+## Create the output gcov directory
+##
+dirname=$PWD/gcov/${testpath}/${target}
+mkdir -p ${dirname}
+if [ ! -d "${dirname}" ]; then
+    echo "$0: failed to create directory: ${dirname}"
+    exit 1
+fi
+
+##
+## Build the rootfs
+##
+rm -rf appdir
+mkdir -p appdir/src/functional
+
+install -D ${srcdir}/${testpath} appdir/${testpath}
+if [ "$?" != "0" ]; then
+    echo "$0: install failed"
+    exit 1
+fi
+
+cp ${srcdir}/src/functional/*.so appdir/src/functional
+if [ "$?" != "0" ]; then
+    echo "$0: copy failed"
+    exit 1
+fi
+
+${libos} mkcpio appdir rootfs
+if [ "$?" != "0" ]; then
+    echo "$0: mkcpio failed"
+    exit 1
+fi
+
+##
+## Run the command:
+##
+export LIBOS_EXPORT_RAMFS=${dirname}
+
+echo "=== libc test: ${testpath}/${target}"
+
+${libos} exec rootfs ${testpath}
+if [ "$?" != "0" ]; then
+    echo "$0: libos exec failed"
+    exit 1
+fi

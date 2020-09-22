@@ -35,20 +35,13 @@ endif
 
 TESTS = $(shell cat $(TEST_FILE))
 
-tests: libos
-	@ $(foreach i, $(TESTS), TESTNAME=$(TESTNAME)$(i)$(TESTSUFFIX) $(RUNTEST) $(MAKE) run TEST=$(i) $(NL) )
+GCOVDIR=$(CURDIR)/gcov
 
-run:
-	@ echo "=== TEST=$(TEST)"
-	@ rm -rf appdir
-	@ mkdir -p appdir/src/functional
-	@ install -D $(SRCDIR)/$(TEST) appdir/$(TEST)
-	@ cp $(SRCDIR)/src/functional/*.so appdir/src/functional
-	$(BINDIR)/libos mkcpio appdir rootfs
-	$(LIBOS_EXEC) $(OPTS) rootfs $(TEST)
+tests: libos
+	@ $(foreach i, $(TESTS), TESTNAME=$(TESTNAME)$(i)$(TESTSUFFIX) $(RUNTEST) ./run-libc-test ${LIBOS} ${TARGET} ${SRCDIR} $(i) $(NL) )
 
 clean:
-	rm -rf rootfs appdir $(SRCDIR) ramfs
+	rm -rf rootfs appdir $(SRCDIR) gcov
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos
