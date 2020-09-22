@@ -353,7 +353,11 @@ static int _getopt(
 }
 
 // <app_name> [app args]
-int _exec_package(int argc, const char* argv[], const char* executable)
+int _exec_package(
+    int argc,
+    const char* argv[],
+    const char* envp[],
+    const char* executable)
 {
     char app_dir[PATH_MAX];
     char scratch_path[PATH_MAX];
@@ -481,8 +485,8 @@ int _exec_package(int argc, const char* argv[], const char* executable)
     }
     exec_args[args_iter] = NULL;
 
-    if (exec_launch_enclave(scratch_path, type, flags, exec_args, &options) !=
-        0)
+    if (exec_launch_enclave(
+            scratch_path, type, flags, exec_args, envp, &options) != 0)
     {
         _err("Failed to run enclave %s", scratch_path);
     }

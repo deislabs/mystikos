@@ -283,7 +283,7 @@ static long _tcall(long n, long params[6])
     return libos_tcall(n, params);
 }
 
-int exec_linux_action(int argc, const char* argv[])
+int exec_linux_action(int argc, const char* argv[], const char* envp[])
 {
     struct options options = {.trace_syscalls = false, .export_ramfs = false};
     const char* rootfs_arg;
@@ -309,9 +309,11 @@ int exec_linux_action(int argc, const char* argv[])
     /* Load the regions into memory */
     _load_regions(rootfs_arg, &regions);
 
-    /* ATTN: hardcoded for now */
-    const char* envp[] = {"PATH=/bin", "HOME=/root", NULL};
-    int envc = (sizeof(envp) / sizeof(envp[0])) - 1;
+    int envc = 0;
+    while (envp[envc] != NULL)
+    {
+        envc++;
+    }
     int return_status = 0;
 
     assert(argc >= 4);

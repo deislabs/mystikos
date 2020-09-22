@@ -236,7 +236,7 @@ Where <action> is one of:\n\
 \n\
 "
 
-int main(int argc, const char* argv[])
+int main(int argc, const char* argv[], const char* envp[])
 {
     if (set_program_file(argv[0]) == NULL)
     {
@@ -259,7 +259,7 @@ int main(int argc, const char* argv[])
     }
     if (strcmp(executable, "libos") != 0)
     {
-        return _exec_package(argc, argv);
+        return _exec_package(argc, argv, envp);
     }
 
     if (argc < 2)
@@ -270,11 +270,11 @@ int main(int argc, const char* argv[])
 
     if (strcmp(argv[1], "exec") == 0 || strcmp(argv[1], "exec-sgx") == 0)
     {
-        return exec_action(argc, argv);
+        return exec_action(argc, argv, envp);
     }
     else if (strcmp(argv[1], "exec-linux") == 0)
     {
-        return exec_linux_action(argc, argv);
+        return exec_linux_action(argc, argv, envp);
     }
     else if (strcmp(argv[1], "mkcpio") == 0)
     {
@@ -290,7 +290,7 @@ int main(int argc, const char* argv[])
     }
     else if (strcmp(argv[1], "package") == 0)
     {
-        return _package(argc, argv);
+        return _package(argc, argv, envp);
     }
     else
     {

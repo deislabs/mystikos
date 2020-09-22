@@ -1,0 +1,8 @@
+
+argv[0]=/bin/hello
+
+envp[0]=ENC-ENVP-1=Enclave_envp_1
+envp[1]=ENC-ENVP-2=Enclave_envp_1
+
+=== Hello World!
+

@@ -15,7 +15,6 @@ _testing.log
 third_party/enclave-musl/musl/objects.mak
 samples/alpine/appdir/
 samples/dlopen/appdir/main
-samples/hello/appdir/
 samples/pthread/appdir/
 samples/ssl-glibc/appdir/ssl_client1
 samples/ssl-glibc/appdir/ssl_server
