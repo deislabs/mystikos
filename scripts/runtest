@@ -117,8 +117,8 @@ summarize()
         num_passed=$(cat ${TESTDIR}/num.passed)
         num_failed=$(cat ${TESTDIR}/num.failed)
 
-        echo -e "${green}passed: ${num_passed}${reset}"
-        echo -e "${green}failed: ${num_failed}${reset}"
+        echo -e "${magenta}passed: ${num_passed}${reset}"
+        echo -e "${magenta}failed: ${num_failed}${reset}"
 
         if [ "${num_failed}" != "0" ]; then
             failed=$(find ${TESTDIR} -name failed)
