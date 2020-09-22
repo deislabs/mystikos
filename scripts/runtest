@@ -37,7 +37,7 @@ test_failed()
     local cmd;
 
     cmd=$*
-    echo -e "${read}    failed (${TESTNAME})${reset}"
+    echo -e "${red}    failed (${TESTNAME})${reset}"
     echo "" >> ${TESTSUBDIR}/failed
 }
 
