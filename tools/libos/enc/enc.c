@@ -107,8 +107,9 @@ int libos_enter_ecall(
 {
     int ret = -1;
     const char** envp = NULL;
-    const size_t ENVC = 64;
     size_t envc = 0;
+    const char **unpacked_envp = NULL;
+    size_t unpacked_envc;
     const void* crt_data;
     size_t crt_size;
     const void* kernel_data;
@@ -155,7 +156,7 @@ int libos_enter_ecall(
         }
     }
 
-    if (have_config == 1 && parsed_config.allow_host_parameters)
+    if (have_config == 1 && !parsed_config.allow_host_parameters)
     {
         /* add extra space for argv[0] */
         argc = parsed_config.application_parameters_count + 1;
@@ -166,8 +167,8 @@ int libos_enter_ecall(
 
         argv[0] = parsed_config.application_path;
 
-        for (size_t i = 1; i < argc; i++)
-            argv[i] = parsed_config.application_parameters[i];
+        for (size_t i = 0; i < parsed_config.application_parameters_count; i++)
+            argv[i + 1] = parsed_config.application_parameters[i];
     }
     else
     {
@@ -187,14 +188,15 @@ int libos_enter_ecall(
     {
         size_t env_slot = 0;
         size_t source_slot = 0;
-
-        if (!(envp = calloc(ENVC, sizeof(char*))))
+        size_t tmp_envc = parsed_config.enclave_environment_variables_count +
+                      parsed_config.host_environment_variables_count;
+        if (!(envp = calloc(tmp_envc + 1, sizeof(char*))))
             goto done;
 
         // First config-side environment variables
         while ((source_slot !=
                 parsed_config.enclave_environment_variables_count) &&
-               ((env_slot + 2) != ENVC)) // slots including null one
+               (env_slot != tmp_envc))
         {
             envp[env_slot] =
                 parsed_config.enclave_environment_variables[source_slot];
@@ -203,40 +205,45 @@ int libos_enter_ecall(
         }
 
         // now include host-side environment variables that are allowed
-        for (int allowed_index = 0;
-             parsed_config.host_environment_variables != NULL &&
-             (parsed_config.host_environment_variables[allowed_index] !=
-              NULL) &&
-             (allowed_index != (sizeof(envp) / sizeof(*envp)));
-             allowed_index++)
+        if (parsed_config.host_environment_variables &&
+            parsed_config.host_environment_variables_count)
         {
-            size_t n = 0;
-            const char* p = (const char*)envp_data;
-            const char* end = (const char*)envp_data + envp_size;
+            libos_buf_t buf;
+            buf.data = (void*)envp_data;
+            buf.size = envp_size;
+            buf.cap = envp_size;
+            buf.offset = 0;
 
-            while (p != end)
+            if (libos_buf_unpack_strings(&buf, &unpacked_envp, &unpacked_envc) != 0)
+                goto done;
+
+            for (size_t allowed_index = 0;
+                 allowed_index !=
+                     parsed_config.host_environment_variables_count &&
+                 env_slot != tmp_envc;
+                 allowed_index++)
             {
-                if (n == ENVC)
-                    break;
 
-                // Only add if it is mentioned in allow list, then we are done
-                // for this iteration
-                if (strncmp(
-                        parsed_config.host_environment_variables[allowed_index],
-                        p,
-                        strlen(
-                            parsed_config
-                                .host_environment_variables[allowed_index])) ==
-                    0)
+                for (size_t unpack_index = 0; unpack_index != unpacked_envc; unpack_index++)
                 {
-                    envp[env_slot] = p;
-                    env_slot++;
-                    break;
+                    // Only add if it is mentioned in allow list, then we are
+                    // done for this iteration
+                    if (strncmp(
+                            parsed_config.host_environment_variables[allowed_index],
+                            unpacked_envp[unpack_index],
+                            strlen(parsed_config.host_environment_variables
+                                       [allowed_index])) == 0)
+                    {
+                        envp[env_slot] = unpacked_envp[unpack_index];
+                        env_slot++;
+                        break;
+                    }
                 }
-                p += strlen(p) + 1;
             }
         }
 
+        // We may not have found all the host variables so set it to the final
+        // count
         envc = env_slot;
     }
     else
@@ -486,6 +493,9 @@ done:
 
     if (envp)
         free(envp);
+
+    if (unpacked_envp)
+        free(unpacked_envp);
 
     free_config(&parsed_config);
     return ret;

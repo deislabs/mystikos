@@ -6,13 +6,14 @@
 
 struct libos_options;
 
-int exec_action(int argc, const char* argv[]);
+int exec_action(int argc, const char* argv[], const char* envp[]);
 
 int exec_launch_enclave(
     const char* enc_path,
     oe_enclave_type_t type,
     uint32_t flags,
     const char* argv[],
+    const char* envp[],
     struct libos_options* options);
 
 #endif /* _LIBOS_HOST_EXEC_H */

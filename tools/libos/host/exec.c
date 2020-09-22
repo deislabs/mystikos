@@ -123,6 +123,7 @@ int exec_launch_enclave(
     oe_enclave_type_t type,
     uint32_t flags,
     const char* argv[],
+    const char* envp[],
     struct libos_options* options)
 {
     oe_result_t r;
@@ -142,9 +143,6 @@ int exec_launch_enclave(
     /* Serialize the argv[] strings */
     if (libos_buf_pack_strings(&argv_buf, argv, _count_args(argv)) != 0)
         _err("failed to serialize argv stings");
-
-    /* ATTN: hardcoded for now */
-    const char* envp[] = {"PATH=/bin", "HOME=/root", NULL};
 
     /* Serialize the argv[] strings */
     if (libos_buf_pack_strings(&envp_buf, envp, _count_args(envp)) != 0)
@@ -174,7 +172,7 @@ int exec_launch_enclave(
     return retval;
 }
 
-int exec_action(int argc, const char* argv[])
+int exec_action(int argc, const char* argv[], const char* envp[])
 {
     const oe_enclave_type_t type = OE_ENCLAVE_TYPE_SGX;
     uint32_t flags = OE_ENCLAVE_FLAG_DEBUG;
@@ -229,8 +227,8 @@ int exec_action(int argc, const char* argv[])
         _err("Creating region data failed.");
     }
 
-    return_status =
-        exec_launch_enclave(details->enc.path, type, flags, argv + 3, &options);
+    return_status = exec_launch_enclave(
+        details->enc.path, type, flags, argv + 3, envp, &options);
 
     free_region_details();
 
