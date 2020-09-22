@@ -23,14 +23,12 @@ red="\e[31m"
 lightblue="\e[94m"
 magenta="\e[35m"
 cyan="\e[36m"
-default="\e[39m"
+reset="\e[39m"
 
 test_passed()
 {
     local cmd=$*
-    echo -n -e ${green}
-    echo "    passed (${TESTNAME})"
-    echo -n -e ${default}
+    echo -e "${green}    passed (${TESTNAME})${reset}"
     echo "" >> ${TESTSUBDIR}/passed
 }
 
@@ -39,9 +37,7 @@ test_failed()
     local cmd;
 
     cmd=$*
-    echo -n -e ${red}
-    echo "    failed (${TESTNAME})"
-    echo -n -e ${default}
+    echo -e "${read}    failed (${TESTNAME})${reset}"
     echo "" >> ${TESTSUBDIR}/failed
 }
 
@@ -50,9 +46,7 @@ test_timedout()
     local cmd;
 
     cmd=$*
-    echo -n -e ${red}
-    echo "    timedout (${TESTNAME})"
-    echo -n -e ${default}
+    echo -e "${red}    timedout (${TESTNAME})${reset}"
     echo "" >> ${TESTSUBDIR}/failed
 }
 
@@ -72,9 +66,7 @@ run_test()
         cmd="${cmd} $i"
     done
 
-    echo -n -e ${cyan}
-    echo "=== start (${TESTNAME})"
-    echo -n -e ${default}
+    echo -e "${lightblue}=== start (${TESTNAME})${reset}"
 
     local tempfile=$(/bin/mktemp)
 
@@ -106,16 +98,12 @@ run_test()
 
     if [ "${ret}" == "0" ]; then
         test_passed $cmd
-        echo -n -e ${cyan}
-        echo "    ${seconds} seconds"
-        echo -n -e ${default}
+        echo -e "${lightblue}    ${seconds} seconds${reset}"
     elif [ "${ret}" == "124" ]; then
         test_timedout $cmd
     else
         test_failed ${cmd}
-        echo -n -e ${cyan}
-        echo "    ${seconds} seconds"
-        echo -n -e ${default}
+        echo -e "${lightblue}    ${seconds} seconds${reset}"
     fi
 
     echo ""
@@ -129,19 +117,15 @@ summarize()
         num_passed=$(cat ${TESTDIR}/num.passed)
         num_failed=$(cat ${TESTDIR}/num.failed)
 
-        echo -n -e ${magenta}
-        echo "passed: ${num_passed}"
-        echo "failed: ${num_failed}"
-        echo -n -e ${default}
+        echo -e "${green}passed: ${num_passed}${reset}"
+        echo -e "${green}failed: ${num_failed}${reset}"
 
         if [ "${num_failed}" != "0" ]; then
             failed=$(find ${TESTDIR} -name failed)
             for i in ${failed}
             do
                 r=$(echo ${i} | sed "s~${TESTDIR}/~~g")
-                echo -n -e ${red}
-                echo "failed: ${r}"
-                echo -n -e ${default}
+                echo -e "${red}failed: ${r}${reset}"
             done
             exit 1
         else
@@ -153,7 +137,7 @@ summarize()
 mkdir -p ${TESTSUBDIR}
 
 if [ ! -d "${TESTSUBDIR}" ]; then
-    echo "$0: cannot created directory: ${TESTSUBDIR}"
+    echo "$0: cannot create directory: ${TESTSUBDIR}"
     exit 1
 fi
 
