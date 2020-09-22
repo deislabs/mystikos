@@ -1876,7 +1876,11 @@ long libos_syscall(long n, long params[6])
 
             if (thread == __libos_main_thread)
             {
+                // execute fini functions with the CRT fsbase since only
+                // gcov uses them and gcov calls into CRT.
+                libos_set_fsbase(crt_td);
                 libos_call_fini_functions();
+                libos_set_fsbase(target_td);
 
                 if (__options.export_ramfs)
                     libos_export_ramfs();
