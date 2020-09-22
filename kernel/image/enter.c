@@ -186,9 +186,7 @@ int libos_enter_kernel(libos_kernel_args_t* args)
     if (__options.have_syscall_instruction)
         libos_set_gsbase(libos_get_fsbase());
 
-#if 0
     libos_call_init_functions();
-#endif
 
     /* Check arguments */
     {
