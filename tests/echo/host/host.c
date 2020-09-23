@@ -62,7 +62,7 @@ int main(int argc, const char* argv[])
         exit(1);
     }
 
-    printf("success\n");
+    printf("=== passed test (%s)\n", argv[0]);
 
     return 0;
 }

@@ -1,0 +1,90 @@
+##
+## check the usage:
+##
+if [ "$#" -lt "2" ]; then
+    echo "Usage: $0 <program> <rootfs> <extra...>"
+    exit 1
+fi
+
+program=$(which $1)
+shift
+
+rootfs=$(realpath $1)
+shift
+
+extra=$*
+
+##
+## get the program argument:
+##
+program_basename=$(basename ${program})
+if [ ! -x "${program}" ]; then
+    echo "$0: not an executable program: ${program}"
+    exit 1
+fi
+
+##
+## create a temporary directory to put the files:
+##
+tempdir=$(mktemp -d)
+if [ ! -d "${tempdir}" ]; then
+    echo "$0: failed to create temporary directory"
+    exit 1
+fi
+
+##
+## copy the program to the temporary directory:
+##
+mkdir -p ${tempdir}/bin
+cp ${program} ${tempdir}/bin
+if [ ! -x "${tempdir}/bin/${program_basename}" ]; then
+    echo "$0: failed to create ${tempdir}/bin/${program_basename}"
+    exit 1
+fi
+
+##
+## build /etc/ld.conf
+##
+mkdir -p ${tempdir}/etc
+echo "/lib64:/usr/lib/x86_64-linux-gnu:/lib/x86_64-linux-gnu" > ${tempdir}/etc/ld-musl-x86_64.path
+
+##
+## use ldd to find the library dependencies and add them to the tmp directory:
+##
+libs=$(ldd ${tempdir}/bin/${program_basename} | grep -v linux-vdso.so.1 | sed 's/.*=> //g' | sed 's/(.*//g' )
+
+for i in ${libs} ${extra}
+do
+    if [ -f "${i}" ]; then
+        dirname=$(dirname ${i})
+        basename=$(basename ${i})
+        mkdir -p ${tempdir}/${dirname}
+        cp ${i} ${tempdir}/${dirname}/${basename}
+        if [ "$?" != "0" ]; then
+            echo "$0: copy failed: ${i} => ${tempdir}/${dirname}/${basename}"
+        fi
+    else
+        echo "$0: error: file not found: ${i}"
+        exit 1
+    fi
+done
+
+#find ${tempdir}
+
+##
+## create the rootfs output file:
+##
+
+cd ${tempdir}
+if [ "$?" != "0" ]; then
+    echo "$0: failed to change to temporary directory"
+    exit 1
+fi
+
+( find . | cpio --create --format='newc' > ${rootfs} 2> /dev/null )
+if [ "$?" != "0" ]; then
+    echo "$0: failed to create rootfs file: ${rootfs}"
+    exit 1
+fi
+
+rm -rf ${tempdir}

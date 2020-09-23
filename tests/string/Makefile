@@ -17,5 +17,11 @@ REDEFINE_TESTS=1
 
 include $(TOP)/rules.mak
 
-tests:
+tests: test1 test2
+
+test1:
 	$(RUNTEST) $(SUBBINDIR)/string
+
+test2:
+	@ $(MKROOTFS) $(SUBBINDIR)/$(PROGRAM) rootfs
+	@ $(RUNTEST) $(LIBOS_EXEC) rootfs /bin/$(PROGRAM)
