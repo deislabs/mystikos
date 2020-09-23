@@ -17,3 +17,6 @@ include $(TOP)/rules.mak
 
 $(SUBOBJDIR)/calls_u.c:
 	$(EDGER8R) $(EDGER8R_UNTRUSTED_OPTS) ../calls.edl
+
+tests:
+	$(RUNTEST) $(SUBBINDIR)/host $(BINDIR)/tests/echo/enc/enc

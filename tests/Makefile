@@ -3,6 +3,7 @@ include $(TOP)/defs.mak
 
 DIRS =
 DIRS += libc
+DIRS += echo
 DIRS += alpine
 DIRS += pthread
 DIRS += urandom

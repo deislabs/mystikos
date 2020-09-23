@@ -18,5 +18,11 @@ REDEFINE_TESTS=1
 
 include $(TOP)/rules.mak
 
-tests:
+tests: test1 test2
+
+test1:
 	$(RUNTEST) $(SUBBINDIR)/jsontest1 sample.json
+
+test2:
+	@ $(MKROOTFS) $(SUBBINDIR)/$(PROGRAM) rootfs sample.json
+	@ $(RUNTEST) $(LIBOS_EXEC) rootfs /bin/$(PROGRAM) sample.json

@@ -15,7 +15,15 @@ LIBS = $(LIBDIR)/liboshost.a
 
 REDEFINE_TESTS=1
 
+CLEAN = rootfs
+
 include $(TOP)/rules.mak
 
-tests:
+tests: test1 test2
+
+test1:
 	$(RUNTEST) $(PREFIX) $(SUBBINDIR)/buf
+
+test2:
+	@ $(MKROOTFS) $(SUBBINDIR)/$(PROGRAM) rootfs
+	@ $(RUNTEST) $(LIBOS_EXEC) rootfs /bin/$(PROGRAM)

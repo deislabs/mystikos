@@ -292,3 +292,11 @@ ifdef LIBOS_ENABLE_GCOV
 GCOV_CFLAGS = -fprofile-arcs -ftest-coverage
 GCOV_LDFLAGS = -lgcov
 endif
+
+##==============================================================================
+##
+## MKROOTFS script
+##
+##==============================================================================
+
+MKROOTFS=$(TOP)/scripts/mkrootfs

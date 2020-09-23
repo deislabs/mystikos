@@ -21,5 +21,11 @@ include $(TOP)/rules.mak
 
 IMAGE = $(TOP)/build/bin/tests/elf/image/image
 
-tests:
+tests: test1 test2
+
+test1:
 	$(RUNTEST) $(SUBBINDIR)/main $(IMAGE)
+
+test2:
+	@ $(MKROOTFS) $(SUBBINDIR)/$(PROGRAM) rootfs $(IMAGE)
+	@ $(RUNTEST) $(LIBOS_EXEC) rootfs /bin/$(PROGRAM) $(IMAGE)
