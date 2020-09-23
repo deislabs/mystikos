@@ -222,8 +222,6 @@ static void _list_insert_after(
             prev->next->prev = vad;
 
         prev->next = vad;
-
-        mman->coverage[LIBOS_MMAN_COVERAGE_16] = true;
     }
     else
     {
@@ -234,8 +232,6 @@ static void _list_insert_after(
             mman->vad_list->prev = vad;
 
         mman->vad_list = vad;
-
-        mman->coverage[LIBOS_MMAN_COVERAGE_17] = true;
     }
 }
 
@@ -406,7 +402,6 @@ static uintptr_t _mman_find_gap(
                 *right = p->next;
 
                 addr = _end(p);
-                mman->coverage[LIBOS_MMAN_COVERAGE_13] = true;
                 goto done;
             }
         }
@@ -419,7 +414,6 @@ static uintptr_t _mman_find_gap(
         /* If memory was exceeded (overrun of break value) */
         if (!(mman->brk <= start))
         {
-            mman->coverage[LIBOS_MMAN_COVERAGE_14] = true;
             goto done;
         }
 
@@ -427,7 +421,6 @@ static uintptr_t _mman_find_gap(
             *right = mman->vad_list;
 
         addr = start;
-        mman->coverage[LIBOS_MMAN_COVERAGE_15] = true;
         goto done;
     }
 
@@ -509,7 +502,6 @@ static int _munmap(libos_mman_t* mman, void* addr, size_t length)
         _list_remove(mman, vad);
         _mman_sync_top(mman);
         _free_list_put(mman, vad);
-        mman->coverage[LIBOS_MMAN_COVERAGE_3] = true;
     }
     else if (vad->addr == start)
     {
@@ -518,14 +510,12 @@ static int _munmap(libos_mman_t* mman, void* addr, size_t length)
         vad->addr += length;
         vad->size -= (uint32_t)length;
         _mman_sync_top(mman);
-        mman->coverage[LIBOS_MMAN_COVERAGE_4] = true;
     }
     else if (_end(vad) == end)
     {
         /* Case3: [............uuuu] */
 
         vad->size -= (uint32_t)length;
-        mman->coverage[LIBOS_MMAN_COVERAGE_5] = true;
     }
     else
     {
@@ -549,7 +539,6 @@ static int _munmap(libos_mman_t* mman, void* addr, size_t length)
 
         _list_insert_after(mman, vad, right);
         _mman_sync_top(mman);
-        mman->coverage[LIBOS_MMAN_COVERAGE_6] = true;
     }
 
     /* If scrubbing is enabled, then scrub the unmapped memory */
@@ -716,8 +705,6 @@ static int _mmap(
                 left->size += right->size;
                 _free_list_put(mman, right);
             }
-
-            mman->coverage[LIBOS_MMAN_COVERAGE_0] = true;
         }
         else if (right && (start + length == right->addr))
         {
@@ -726,8 +713,6 @@ static int _mmap(
             right->addr = start;
             right->size += (uint32_t)length;
             _mman_sync_top(mman);
-
-            mman->coverage[LIBOS_MMAN_COVERAGE_1] = true;
         }
         else
         {
@@ -744,8 +729,6 @@ static int _mmap(
 
             _list_insert_after(mman, left, vad);
             _mman_sync_top(mman);
-
-            mman->coverage[LIBOS_MMAN_COVERAGE_2] = true;
         }
     }
 
@@ -874,8 +857,6 @@ int libos_mman_init(libos_mman_t* mman, uintptr_t base, size_t size)
     }
 
     ret = 0;
-
-    mman->coverage[LIBOS_MMAN_COVERAGE_18] = true;
 
 done:
     return ret;
@@ -1239,13 +1220,10 @@ int libos_mman_mremap(
 
             _list_insert_after(mman, vad, right);
             _mman_sync_top(mman);
-
-            mman->coverage[LIBOS_MMAN_COVERAGE_7] = true;
         }
 
         vad->size = (uint32_t)(new_end - vad->addr);
         new_addr = addr;
-        mman->coverage[LIBOS_MMAN_COVERAGE_8] = true;
 
         /* If scrubbing is enabled, scrub the unmapped portion */
         if (mman->scrub)
@@ -1262,7 +1240,6 @@ int libos_mman_mremap(
             vad->size += (uint32_t)delta;
             libos_memset((void*)(start + old_size), 0, delta);
             new_addr = addr;
-            mman->coverage[LIBOS_MMAN_COVERAGE_9] = true;
 
             /* If VAD is now contiguous with next one, coalesce them */
             if (vad->next && _end(vad) == vad->next->addr)
@@ -1272,7 +1249,6 @@ int libos_mman_mremap(
                 _list_remove(mman, next);
                 _mman_sync_top(mman);
                 _free_list_put(mman, next);
-                mman->coverage[LIBOS_MMAN_COVERAGE_10] = true;
             }
         }
         else
@@ -1295,13 +1271,11 @@ int libos_mman_mremap(
             }
 
             new_addr = (void*)addr;
-            mman->coverage[LIBOS_MMAN_COVERAGE_11] = true;
         }
     }
     else
     {
         /* Nothing to do since size did not change */
-        mman->coverage[LIBOS_MMAN_COVERAGE_12] = true;
         new_addr = addr;
     }
 

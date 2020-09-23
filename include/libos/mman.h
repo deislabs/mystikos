@@ -51,31 +51,6 @@ _Static_assert(sizeof(libos_vad_t) == 32, "");
 
 #define LIBOS_MMAN_ERR_SIZE 256
 
-/* Heap Code coverage */
-typedef enum _LIBOS_HeapCoverage
-{
-    LIBOS_MMAN_COVERAGE_0,
-    LIBOS_MMAN_COVERAGE_1,
-    LIBOS_MMAN_COVERAGE_2,
-    LIBOS_MMAN_COVERAGE_3,
-    LIBOS_MMAN_COVERAGE_4,
-    LIBOS_MMAN_COVERAGE_5,
-    LIBOS_MMAN_COVERAGE_6,
-    LIBOS_MMAN_COVERAGE_7,
-    LIBOS_MMAN_COVERAGE_8,
-    LIBOS_MMAN_COVERAGE_9,
-    LIBOS_MMAN_COVERAGE_10,
-    LIBOS_MMAN_COVERAGE_11,
-    LIBOS_MMAN_COVERAGE_12,
-    LIBOS_MMAN_COVERAGE_13,
-    LIBOS_MMAN_COVERAGE_14,
-    LIBOS_MMAN_COVERAGE_15,
-    LIBOS_MMAN_COVERAGE_16,
-    LIBOS_MMAN_COVERAGE_17,
-    LIBOS_MMAN_COVERAGE_18,
-    LIBOS_MMAN_COVERAGE_N,
-} libos_mman_coverage_t;
-
 /* libos_mman_t data structures and fields */
 typedef struct libos_mman
 {
@@ -126,9 +101,6 @@ typedef struct libos_mman
 
     /* Error string */
     char err[LIBOS_MMAN_ERROR_SIZE];
-
-    /* Code coverage array */
-    bool coverage[LIBOS_MMAN_COVERAGE_N];
 
 } libos_mman_t;
 
