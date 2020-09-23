@@ -11,6 +11,7 @@
 #include <openenclave/bits/sgx/region.h>
 #include <openenclave/enclave.h>
 
+#include <libos/args.h>
 #include <libos/buf.h>
 #include <libos/elfutils.h>
 #include <libos/eraise.h>
@@ -97,6 +98,22 @@ static uint64_t _vectored_handler(oe_exception_record_t* er)
     return OE_EXCEPTION_CONTINUE_SEARCH;
 }
 
+static bool _is_allowed_env_variable(
+    const config_parsed_data_t* config,
+    const char* env)
+{
+    for (size_t i = 0; i < config->host_environment_variables_count; i++)
+    {
+        const char* allowed = config->host_environment_variables[i];
+        size_t len = strlen(allowed);
+
+        if (strncmp(env, allowed, len) == 0 && env[len] == '=')
+            return true;
+    }
+
+    return false;
+}
+
 int libos_enter_ecall(
     struct libos_options* options,
     const void* argv_data,
@@ -106,10 +123,6 @@ int libos_enter_ecall(
     uint64_t event)
 {
     int ret = -1;
-    const char** envp = NULL;
-    size_t envc = 0;
-    const char **unpacked_envp = NULL;
-    size_t unpacked_envc;
     const void* crt_data;
     size_t crt_size;
     const void* kernel_data;
@@ -122,13 +135,14 @@ int libos_enter_ecall(
     bool export_ramfs = false;
     config_parsed_data_t parsed_config = {0};
     unsigned char have_config = 0;
-    const char** argv = NULL;
-    size_t argc = 0;
-    const char** xargv = NULL;
-    size_t xargc = 0;
+    libos_args_t args;
+    libos_args_t env;
 
     if (!argv_data || !argv_size || !envp_data || !envp_size)
         goto done;
+
+    memset(&args, 0, sizeof(args));
+    memset(&env, 0, sizeof(env));
 
     /* Get the config region */
     {
@@ -158,103 +172,72 @@ int libos_enter_ecall(
 
     if (have_config == 1 && !parsed_config.allow_host_parameters)
     {
-        /* add extra space for argv[0] */
-        argc = parsed_config.application_parameters_count + 1;
-
-        /* allocate extra entry for the null terminator */
-        if (!(argv = calloc(argc + 1, sizeof(char*))))
+        if (libos_args_init(&args) != 0)
             goto done;
 
-        argv[0] = parsed_config.application_path;
+        if (libos_args_append1(&args, parsed_config.application_path) != 0)
+            goto done;
 
-        for (size_t i = 0; i < parsed_config.application_parameters_count; i++)
-            argv[i + 1] = parsed_config.application_parameters[i];
+        if (libos_args_append(
+            &args,
+            (const char**)parsed_config.application_parameters,
+            parsed_config.application_parameters_count) != 0)
+        {
+            goto done;
+        }
     }
     else
     {
-        libos_buf_t buf;
-        buf.data = (void*)argv_data;
-        buf.size = argv_size;
-        buf.cap = argv_size;
-        buf.offset = 0;
-
-        if (libos_buf_unpack_strings(&buf, &argv, &argc) != 0)
+        if (libos_args_unpack(&args, argv_data, argv_size) != 0)
             goto done;
     }
+
+    /* musl libc requires the application name to start at argv[1] */
+    if (libos_args_prepend1(&args, "libosenc.so") != 0)
+        goto done;
 
     // Need to handle config to environment
     // in the mean time we will just pull from the host
     if (have_config == 1)
     {
-        size_t env_slot = 0;
-        size_t source_slot = 0;
-        size_t tmp_envc = parsed_config.enclave_environment_variables_count +
-                      parsed_config.host_environment_variables_count;
-        if (!(envp = calloc(tmp_envc + 1, sizeof(char*))))
-            goto done;
+        libos_args_init(&env);
 
-        // First config-side environment variables
-        while ((source_slot !=
-                parsed_config.enclave_environment_variables_count) &&
-               (env_slot != tmp_envc))
+        // append all enclave-side environment variables first
+        if (libos_args_append(
+                &env,
+                (const char**)parsed_config.enclave_environment_variables,
+                parsed_config.enclave_environment_variables_count) != 0)
         {
-            envp[env_slot] =
-                parsed_config.enclave_environment_variables[source_slot];
-            env_slot++;
-            source_slot++;
+            goto done;
         }
 
         // now include host-side environment variables that are allowed
         if (parsed_config.host_environment_variables &&
             parsed_config.host_environment_variables_count)
         {
-            libos_buf_t buf;
-            buf.data = (void*)envp_data;
-            buf.size = envp_size;
-            buf.cap = envp_size;
-            buf.offset = 0;
+            libos_args_t tmp;
 
-            if (libos_buf_unpack_strings(&buf, &unpacked_envp, &unpacked_envc) != 0)
+            if (libos_args_unpack(&tmp, envp_data, envp_size) != 0)
                 goto done;
 
-            for (size_t allowed_index = 0;
-                 allowed_index !=
-                     parsed_config.host_environment_variables_count &&
-                 env_slot != tmp_envc;
-                 allowed_index++)
+            for (size_t i = 0; i < tmp.size; i++)
             {
-
-                for (size_t unpack_index = 0; unpack_index != unpacked_envc; unpack_index++)
+                if (_is_allowed_env_variable(&parsed_config, tmp.data[i]))
                 {
-                    // Only add if it is mentioned in allow list, then we are
-                    // done for this iteration
-                    if (strncmp(
-                            parsed_config.host_environment_variables[allowed_index],
-                            unpacked_envp[unpack_index],
-                            strlen(parsed_config.host_environment_variables
-                                       [allowed_index])) == 0)
+                    if (libos_args_append1(&env, tmp.data[i]) != 0)
                     {
-                        envp[env_slot] = unpacked_envp[unpack_index];
-                        env_slot++;
-                        break;
+                        free(tmp.data);
+                        goto done;
                     }
                 }
             }
-        }
 
-        // We may not have found all the host variables so set it to the final
-        // count
-        envc = env_slot;
+            free(tmp.data);
+        }
     }
     else
     {
-        libos_buf_t buf;
-        buf.data = (uint8_t*)envp_data;
-        buf.size = envp_size;
-        buf.cap = envp_size;
-        buf.offset = 0;
-
-        if (libos_buf_unpack_strings(&buf, &envp, &envc) != 0)
+        if (libos_args_unpack(&env, envp_data, envp_size) != 0)
             goto done;
     }
 
@@ -272,24 +255,6 @@ int libos_enter_ecall(
     }
 
     _setup_sockets();
-
-    /* inject the library name as argv[0] (required by musl libc) */
-    {
-        xargc = argc + 1;
-
-        if (!(xargv = calloc(xargc + 1, sizeof(char*))))
-            goto done;
-
-        xargv[0] = "libosenc.so";
-        memcpy(&xargv[1], argv, argc * sizeof(char*));
-    }
-
-#ifdef TRACE
-    printf("envc{%zu}\n", envc);
-
-    for (size_t i = 0; i < envc; i++)
-        printf("envp{%s}\n", envp[i]);
-#endif
 
     /* Get the mman region */
     void* mman_data;
@@ -439,25 +404,25 @@ int libos_enter_ecall(
 
     /* Enter the kernel image */
     {
-        libos_kernel_args_t args;
+        libos_kernel_args_t kargs;
         const Elf64_Ehdr* ehdr = kernel_data;
         libos_kernel_entry_t entry;
 
-        memset(&args, 0, sizeof(args));
-        args.argc = xargc;
-        args.argv = xargv;
-        args.envc = envc;
-        args.envp = envp;
-        args.mman_data = mman_data;
-        args.mman_size = mman_size;
-        args.rootfs_data = (void*)rootfs_data;
-        args.rootfs_size = rootfs_size;
-        args.crt_data = (void*)crt_data;
-        args.crt_size = crt_size;
-        args.trace_syscalls = trace_syscalls;
-        args.export_ramfs = export_ramfs;
-        args.tcall = libos_tcall;
-        args.event = event;
+        memset(&kargs, 0, sizeof(kargs));
+        kargs.argc = args.size;
+        kargs.argv = args.data;
+        kargs.envc = env.size;
+        kargs.envp = env.data;
+        kargs.mman_data = mman_data;
+        kargs.mman_size = mman_size;
+        kargs.rootfs_data = (void*)rootfs_data;
+        kargs.rootfs_size = rootfs_size;
+        kargs.crt_data = (void*)crt_data;
+        kargs.crt_size = crt_size;
+        kargs.trace_syscalls = trace_syscalls;
+        kargs.export_ramfs = export_ramfs;
+        kargs.tcall = libos_tcall;
+        kargs.event = event;
 
         /* Verify that the kernel is an ELF image */
         {
@@ -480,22 +445,16 @@ int libos_enter_ecall(
             assert(0);
         }
 
-        ret = (*entry)(&args);
+        ret = (*entry)(&kargs);
     }
 
 done:
 
-    if (argv)
-        free(argv);
+    if (args.data)
+        free(args.data);
 
-    if (xargv)
-        free(xargv);
-
-    if (envp)
-        free(envp);
-
-    if (unpacked_envp)
-        free(unpacked_envp);
+    if (env.data)
+        free(env.data);
 
     free_config(&parsed_config);
     return ret;

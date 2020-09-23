@@ -6,6 +6,7 @@
 
 #include <libos/assert.h>
 #include <libos/buf.h>
+#include <libos/bufu64.h>
 #include <libos/eraise.h>
 #include <libos/fs.h>
 #include <libos/id.h>
@@ -16,7 +17,6 @@
 #include <libos/round.h>
 #include <libos/strings.h>
 #include <libos/trace.h>
-#include <libos/bufu64.h>
 
 #define BLKSIZE 512
 
