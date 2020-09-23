@@ -50,6 +50,21 @@ void test(void)
     assert(strcmp(args.data[3], "blue") == 0);
     assert(args.data[4] == NULL);
 
+    void* packed_data;
+    size_t packed_size;
+    assert(libos_args_pack(&args, &packed_data, &packed_size) == 0);
+    assert(packed_data != NULL);
+    assert(packed_size != 0);
+
+    libos_args_t out;
+    assert(libos_args_unpack(&out, packed_data, packed_size) == 0);
+    assert(out.size == 4);
+    assert(strcmp(out.data[0], "yellow") == 0);
+    assert(strcmp(out.data[1], "red") == 0);
+    assert(strcmp(out.data[2], "green") == 0);
+    assert(strcmp(out.data[3], "blue") == 0);
+    assert(out.data[4] == NULL);
+
     assert(libos_args_prepend(&args, args.data, args.size) == 0);
     assert(args.size == 8);
     assert(strcmp(args.data[0], "yellow") == 0);
@@ -76,6 +91,10 @@ void test(void)
     assert(libos_args_remove(&args, 0, 1) == 0);
     assert(args.size == 0);
     assert(args.data[0] == NULL);
+
+    free(args.data);
+    free(out.data);
+    free(packed_data);
 }
 
 int main(int argc, const char* argv[])

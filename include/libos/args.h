@@ -40,4 +40,14 @@ int libos_args_insert(
 
 int libos_args_remove(libos_args_t* self, size_t pos, size_t size);
 
+int libos_args_pack(
+    const libos_args_t* self,
+    void** packed_data,
+    size_t* packed_size);
+
+int libos_args_unpack(
+    libos_args_t* self,
+    const void* packed_data,
+    size_t packed_size);
+
 #endif /* _LIBOS_ARGS_H */
