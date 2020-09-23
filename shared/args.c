@@ -91,7 +91,7 @@ int libos_args_append(libos_args_t* self, const char** data, size_t size)
 {
     libos_bufu64_t buf = _to_buf(self);
 
-    if (!self || !data)
+    if (!self || (!data && size))
         return -1;
 
     if (size == 0)

@@ -24,6 +24,8 @@ void test(void)
     assert(args.size == 0);
     assert(args.data[0] == NULL);
 
+    assert(libos_args_append(&args, NULL, 0) == 0);
+
     assert(libos_args_append1(&args, "red") == 0);
     assert(args.size == 1);
     assert(strcmp(args.data[0], "red") == 0);
