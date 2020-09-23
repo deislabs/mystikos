@@ -41,3 +41,5 @@ tests/dlopen/appdir/
 .gdb_history
 tests/pthread/appdir/
 tests/alpine/appdir/
+tests/libos/exec-not-signed/appdir/
+tests/libos/exec-not-signed/result

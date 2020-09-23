@@ -16,8 +16,7 @@
 #include <libos/round.h>
 #include <libos/strings.h>
 #include <libos/trace.h>
-
-#include "bufu64.h"
+#include <libos/bufu64.h>
 
 #define BLKSIZE 512
 
