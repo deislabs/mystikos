@@ -179,9 +179,9 @@ int libos_enter_ecall(
             goto done;
 
         if (libos_args_append(
-            &args,
-            (const char**)parsed_config.application_parameters,
-            parsed_config.application_parameters_count) != 0)
+                &args,
+                (const char**)parsed_config.application_parameters,
+                parsed_config.application_parameters_count) != 0)
         {
             goto done;
         }

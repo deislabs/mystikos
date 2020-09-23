@@ -10,6 +10,9 @@
 /* Mount a file system onto a target path */
 int libos_mount(libos_fs_t* fs, const char* target);
 
+/* Unmount the file system that is mounted on target */
+int libos_umount(const char* target);
+
 /* Use mounter to resolve this path to a target path */
 int libos_mount_resolve(
     const char* path,

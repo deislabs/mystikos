@@ -160,6 +160,9 @@ int libos_mount(libos_fs_t* fs, const char* target)
             ERAISE(-EEXIST);
     }
 
+    /* Tell the file system that it has been mounted */
+    ECHECK((*fs->fs_mount)(fs, target));
+
     /* Assign and initialize new mount point. */
     {
         if (!(mount_table_entry.path = libos_strdup(target)))
@@ -172,6 +175,7 @@ int libos_mount(libos_fs_t* fs, const char* target)
 
     _mount_table[_mount_table_size++] = mount_table_entry;
     mount_table_entry.path = NULL;
+
     ret = 0;
 
 done:
@@ -181,6 +185,49 @@ done:
 
     if (locked)
         libos_spin_unlock(&_lock);
+
+    return ret;
+}
+
+int libos_umount(const char* target)
+{
+    int ret = 0;
+    libos_path_t realpath;
+    bool found = false;
+
+    libos_spin_lock(&_lock);
+
+    /* Find the real path (the absolute non-relative path) */
+    ECHECK(libos_realpath(target, &realpath));
+
+    /* search the mount table for an entry with this name */
+    for (size_t i = 0; i < _mount_table_size; i++)
+    {
+        mount_table_entry_t* entry = &_mount_table[i];
+
+        if (libos_strcmp(entry->path, realpath.buf) == 0)
+        {
+            /* release the path */
+            libos_free(entry->path);
+
+            /* release the file system */
+            ECHECK((*entry->fs->fs_release)(entry->fs));
+
+            /* remove this entry from the mount table */
+            _mount_table[i] = _mount_table[_mount_table_size - 1];
+            _mount_table_size--;
+
+            found = true;
+            break;
+        }
+    }
+
+    if (!found)
+        ERAISE(-ENOENT);
+
+done:
+
+    libos_spin_unlock(&_lock);
 
     return ret;
 }

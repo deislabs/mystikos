@@ -1,15 +1,19 @@
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <limits.h>
-#include <unistd.h>
-#include <stdbool.h>
 #include <assert.h>
+#include <limits.h>
 #include <malloc.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 #include <libos/mman.h>
 
 #define D(X)
+
+#ifndef PAGE_SIZE
+#define PAGE_SIZE 4096
+#endif
 
 typedef struct _page
 {

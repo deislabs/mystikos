@@ -1,28 +1,34 @@
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
-PROGRAM = enc
+PROGRAM = mount
 
-SOURCES = $(SUBOBJDIR)/run_t.c enc.c
+SOURCES = mount.c
 
-INCLUDES = $(OEENCLAVE_INCLUDES) -I$(SUBOBJDIR) -I$(INCDIR)
+INCLUDES =
 
-CFLAGS = $(OEENCLAVE_CFLAGS)
+CFLAGS = -Wall -fPIC -g $(GCOV_CFLAGS)
 
-LDFLAGS = $(OEENCLAVE_LDFLAGS)
-
-LIBS = $(LIBDIR)/liboskernel.a $(LIBDIR)/libostargetsgxenclave.a
+LDFLAGS = $(GCOV_LDFLAGS)
 
 ifdef LIBOS_ENABLE_GCOV
-LIBS += $(LIBDIR)/libgcov_musl.a
+LDFLAGS = -lgcov
 endif
 
-CLEAN = $(SUBOBJDIR)/run_t.h $(SUBOBJDIR)/run_t.c $(SUBOBJDIR)/run_args.h
+ifdef STRACE
+OPTS += --strace
+endif
+
+CLEAN = appdir rootfs
 
 include $(TOP)/rules.mak
 
-$(SUBOBJDIR)/run_t.c:
-	$(EDGER8R) $(EDGER8R_TRUSTED_OPTS) ../run/run.edl
-
 tests:
-	$(RUNTEST) $(BINDIR)/run $(SUBBINDIR)/enc
+	rm -rf appdir
+	rm -rf rootfs
+	$(MKROOTFS) $(SUBBINDIR)/mount rootfs
+	$(LIBOS) excpio rootfs appdir
+	$(LIBOS) mkcpio datafs appdir/datafs
+	mkdir -p appdir/mnt/datafs
+	$(LIBOS) mkcpio appdir rootfs
+	$(RUNTEST) $(LIBOS_EXEC) $(OPTS) rootfs /bin/mount

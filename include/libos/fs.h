@@ -16,6 +16,8 @@ struct libos_fs
 {
     int (*fs_release)(libos_fs_t* fs);
 
+    int (*fs_mount)(libos_fs_t* fs, const char* target);
+
     int (*fs_creat)(
         libos_fs_t* fs,
         const char* pathname,

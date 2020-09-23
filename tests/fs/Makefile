@@ -1,28 +1,22 @@
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
-PROGRAM = enc
+PROGRAM = fs
 
-SOURCES = $(SUBOBJDIR)/run_t.c enc.c
+SOURCES = fs.c
 
-INCLUDES = $(OEENCLAVE_INCLUDES) -I$(SUBOBJDIR) -I$(INCDIR)
+INCLUDES =
 
-CFLAGS = $(OEENCLAVE_CFLAGS)
+CFLAGS = -Wall -fPIC -g $(GCOV_CFLAGS)
 
-LDFLAGS = $(OEENCLAVE_LDFLAGS) -L$(LIBDIR) -llthread
-
-LIBS = $(LIBDIR)/liboskernel.a $(LIBDIR)/libostargetsgxenclave.a
+LDFLAGS = $(GCOV_LDFLAGS)
 
 ifdef LIBOS_ENABLE_GCOV
-LIBS += $(LIBDIR)/libgcov_musl.a
+LDFLAGS = -lgcov
 endif
-
-CLEAN = $(SUBOBJDIR)/run_t.h $(SUBOBJDIR)/run_t.c $(SUBOBJDIR)/run_args.h
 
 include $(TOP)/rules.mak
 
-$(SUBOBJDIR)/run_t.c:
-	$(EDGER8R) $(EDGER8R_TRUSTED_OPTS) ../run/run.edl
-
 tests:
-	$(RUNTEST) $(BINDIR)/run $(SUBBINDIR)/enc
+	$(MKROOTFS) $(SUBBINDIR)/fs rootfs
+	$(RUNTEST) $(LIBOS_EXEC) rootfs /bin/fs
