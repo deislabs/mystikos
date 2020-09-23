@@ -37,6 +37,7 @@
 #include <libos/options.h>
 #include <libos/paths.h>
 #include <libos/process.h>
+#include <libos/ramfs.h>
 #include <libos/setjmp.h>
 #include <libos/spinlock.h>
 #include <libos/strings.h>
@@ -624,7 +625,15 @@ static int _remove_fd_link(libos_fs_t* fs, libos_file_t* file, int fd)
     libos_printf("REMOVE{%s=>%s}\n", realpath, linkpath);
 #endif
 
-    ECHECK((*fs->fs_unlink)(fs, linkpath));
+    /* only the root file system can remove the link path */
+    {
+        char suffix[PATH_MAX];
+        libos_fs_t* rootfs;
+
+        ECHECK(libos_mount_resolve("/", suffix, &rootfs));
+
+        ECHECK((*rootfs->fs_unlink)(rootfs, linkpath));
+    }
 
 done:
     return ret;
@@ -1104,6 +1113,53 @@ long libos_syscall_chmod(const char* pathname, mode_t mode)
     (void)pathname;
     (void)mode;
     return 0;
+}
+
+long libos_syscall_mount(
+    const char* source,
+    const char* target,
+    const char* filesystemtype,
+    unsigned long mountflags,
+    const void* data)
+{
+    long ret = 0;
+    libos_fs_t* fs = NULL;
+
+    if (!source || !target || !filesystemtype)
+        ERAISE(-EINVAL);
+
+    /* only "ramfs" is supported */
+    if (libos_strcmp(filesystemtype, "ramfs") != 0)
+        ERAISE(-ENOTSUP);
+
+    /* these arguments should be zero and null */
+    if (mountflags || data)
+        ERAISE(-EINVAL);
+
+    /* create a new ramfs instance */
+    ECHECK(libos_init_ramfs(&fs));
+
+    /* perform the mount */
+    ECHECK(libos_mount(fs, target));
+
+    /* load the rootfs */
+    ECHECK(libos_cpio_unpack(source, target));
+
+done:
+    return ret;
+}
+
+long libos_syscall_umount2(const char* target, int flags)
+{
+    long ret = 0;
+
+    if (!target || flags != 0)
+        ERAISE(-EINVAL);
+
+    ECHECK(libos_umount(target));
+
+done:
+    return ret;
 }
 
 long libos_syscall_ret(long ret)
@@ -2246,9 +2302,40 @@ long libos_syscall(long n, long params[6])
         case SYS_settimeofday:
             break;
         case SYS_mount:
-            break;
+        {
+            const char* source = (const char*)x1;
+            const char* target = (const char*)x2;
+            const char* filesystemtype = (const char*)x3;
+            unsigned long mountflags = (unsigned long)x4;
+            void* data = (void*)x5;
+            long ret;
+
+            _strace(
+                n,
+                "source=%s target=%s filesystemtype=%s mountflags=%lu data=%p",
+                source,
+                target,
+                filesystemtype,
+                mountflags,
+                data);
+
+            ret = libos_syscall_mount(
+                source, target, filesystemtype, mountflags, data);
+
+            BREAK(_return(n, ret));
+        }
         case SYS_umount2:
-            break;
+        {
+            const char* target = (const char*)x1;
+            int flags = (int)x2;
+            long ret;
+
+            _strace(n, "target=%p flags=%d", target, flags);
+
+            ret = libos_syscall_umount2(target, flags);
+
+            BREAK(_return(n, ret));
+        }
         case SYS_swapon:
             break;
         case SYS_swapoff:

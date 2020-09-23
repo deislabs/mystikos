@@ -40,6 +40,7 @@ typedef struct ramfs
     libos_fs_t base;
     uint64_t magic;
     inode_t* root;
+    char target[PATH_MAX]; /* the directory this file system is mounted on */
 } ramfs_t;
 
 static bool _ramfs_valid(const ramfs_t* ramfs)
@@ -576,6 +577,23 @@ static int _fs_release(libos_fs_t* fs)
     _inode_release_all(NULL, ramfs->root, DT_DIR);
 
     libos_free(ramfs);
+
+done:
+    return ret;
+}
+
+static int _fs_mount(libos_fs_t* fs, const char* target)
+{
+    int ret = 0;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+
+    if (!_ramfs_valid(ramfs) || !target)
+        ERAISE(-EINVAL);
+
+    if (libos_strlen(target) >= sizeof(ramfs->target))
+        ERAISE(-ENAMETOOLONG);
+
+    libos_strlcpy(ramfs->target, target, sizeof(ramfs->target));
 
 done:
     return ret;
@@ -1503,8 +1521,19 @@ static int _fs_realpath(
     if (!_ramfs_valid(ramfs) || !_file_valid(file) || !buf || !size)
         ERAISE(-EINVAL);
 
-    if (libos_strlcpy(buf, file->realpath, size) >= size)
-        ERAISE(-ENAMETOOLONG);
+    if (libos_strcmp(ramfs->target, "/") == 0)
+    {
+        if (libos_strlcpy(buf, file->realpath, size) >= size)
+            ERAISE(-ENAMETOOLONG);
+    }
+    else
+    {
+        int n =
+            libos_snprintf(buf, size, "%s%s", ramfs->target, file->realpath);
+
+        if (n < 0 || n >= (int)size)
+            ERAISE(-ENAMETOOLONG);
+    }
 
 done:
     return ret;
@@ -1548,12 +1577,12 @@ int libos_init_ramfs(libos_fs_t** fs_out)
     int ret = 0;
     ramfs_t* ramfs = NULL;
     static libos_fs_t _base = {
-        _fs_release,  _fs_creat,  _fs_open,       _fs_lseek,    _fs_read,
-        _fs_write,    _fs_pread,  _fs_pwrite,     _fs_readv,    _fs_writev,
-        _fs_close,    _fs_access, _fs_stat,       _fs_lstat,    _fs_fstat,
-        _fs_link,     _fs_unlink, _fs_rename,     _fs_truncate, _fs_ftruncate,
-        _fs_mkdir,    _fs_rmdir,  _fs_getdents64, _fs_readlink, _fs_symlink,
-        _fs_realpath, _fs_fcntl,
+        _fs_release,   _fs_mount,    _fs_creat,  _fs_open,       _fs_lseek,
+        _fs_read,      _fs_write,    _fs_pread,  _fs_pwrite,     _fs_readv,
+        _fs_writev,    _fs_close,    _fs_access, _fs_stat,       _fs_lstat,
+        _fs_fstat,     _fs_link,     _fs_unlink, _fs_rename,     _fs_truncate,
+        _fs_ftruncate, _fs_mkdir,    _fs_rmdir,  _fs_getdents64, _fs_readlink,
+        _fs_symlink,   _fs_realpath, _fs_fcntl,
     };
     inode_t* root_inode = NULL;
 
@@ -1571,6 +1600,7 @@ int libos_init_ramfs(libos_fs_t** fs_out)
     ramfs->magic = RAMFS_MAGIC;
     ramfs->base = _base;
     ramfs->root = root_inode;
+    libos_strlcpy(ramfs->target, "/", sizeof(ramfs->target));
     root_inode = NULL;
 
     *fs_out = &ramfs->base;

@@ -627,7 +627,9 @@ int libos_cpio_unpack(const char* source, const char* target)
                     GOTO(done);
             }
 
-            libos_close(fd);
+            if (libos_close(fd) != 0)
+                GOTO(done);
+
             fd = -1;
         }
         else if (S_ISLNK(entry.mode))

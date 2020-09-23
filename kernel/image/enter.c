@@ -62,25 +62,25 @@ static int _setup_ramfs(void)
 
     if (libos_mount(_fs, "/") != 0)
     {
-        libos_eprintf("failed create the / directory\n");
+        libos_eprintf("cannot mount root file system\n");
         ERAISE(-EINVAL);
     }
 
     if (libos_mkdir("/tmp", 777) != 0)
     {
-        libos_eprintf("failed create the /tmp directory\n");
+        libos_eprintf("cannot create the /tmp directory\n");
         ERAISE(-EINVAL);
     }
 
     if (libos_mkdirhier("/proc/self/fd", 777) != 0)
     {
-        libos_eprintf("failed create the /proc/self/fd directory\n");
+        libos_eprintf("cannot create the /proc/self/fd directory\n");
         ERAISE(-EINVAL);
     }
 
     if (libos_mkdirhier("/usr/local/etc", 777) != 0)
     {
-        libos_eprintf("failed create the /usr/local/etc directory\n");
+        libos_eprintf("cannot create the /usr/local/etc directory\n");
         ERAISE(-EINVAL);
     }
 
