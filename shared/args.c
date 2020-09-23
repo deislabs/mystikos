@@ -1,4 +1,5 @@
 #include <libos/bufu64.h>
+#include <libos/buf.h>
 #include <libos/args.h>
 #include <libos/malloc.h>
 
@@ -184,5 +185,57 @@ int libos_args_remove(libos_args_t* self, size_t pos, size_t size)
         return -1;
 
     *self = _to_args(&buf);
+    return 0;
+}
+
+int libos_args_pack(
+    const libos_args_t* self,
+    void** packed_data,
+    size_t* packed_size)
+{
+    int ret = -1;
+    libos_buf_t buf = LIBOS_BUF_INITIALIZER;
+
+    if (!self || !packed_data || !packed_size)
+        goto done;
+
+    if (!self->data)
+        goto done;
+
+    if (libos_buf_pack_strings(&buf, self->data, self->size) != 0)
+        goto done;
+
+    *packed_data = buf.data;
+    *packed_size = buf.size;
+
+    ret = 0;
+
+done:
+    return ret;
+}
+
+int libos_args_unpack(
+    libos_args_t* self,
+    const void* packed_data,
+    size_t packed_size)
+{
+    libos_buf_t buf;
+    buf.data = (uint8_t*)packed_data;
+    buf.size = packed_size;
+    buf.cap = packed_size;
+    buf.offset = 0;
+    const char** data;
+    size_t size;
+
+    if (!self || !packed_data || !packed_size)
+        return 0;
+
+    if (libos_buf_unpack_strings(&buf, &data, &size) != 0)
+        return -1;
+
+    self->data = data;
+    self->size = size;
+    self->cap = size;
+
     return 0;
 }
