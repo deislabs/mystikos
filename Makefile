@@ -64,14 +64,15 @@ uninstall:
 
 ##==============================================================================
 ##
-## sources:
+## src:
 ##     Print the list of libos sources (excluding third-party sources)
 ##
 ##==============================================================================
 
-SOURCES_DIRS = $(filter-out third_party, $(DIRS)) include/libos
+__SOURCES_DIRS = $(filter-out third_party/, $(shell  ls -d -1 */))
+SOURCES_DIRS = $(filter-out build/, $(__SOURCES_DIRS))
 
-sources:
+src:
 	@ echo $(foreach i, $(SOURCES_DIRS), $(shell find $(i) -name '*.[ch]'))
 
 ##==============================================================================
@@ -82,7 +83,7 @@ sources:
 ##==============================================================================
 
 format:
-	./scripts/code-format $(shell $(MAKE) sources)
+	./scripts/code-format $(shell $(MAKE) src)
 
 ##==============================================================================
 ##
@@ -92,7 +93,7 @@ format:
 ##==============================================================================
 
 touch:
-	touch $(shell $(MAKE) sources)
+	touch $(shell $(MAKE) src)
 
 ##==============================================================================
 ##
@@ -102,7 +103,7 @@ touch:
 ##==============================================================================
 
 attn:
-	@ grep "ATTN" $(shell $(MAKE) sources) | more
+	@ grep "ATTN" $(shell $(MAKE) src) | more
 
 ##==============================================================================
 ##
@@ -129,4 +130,4 @@ pipeline-tests:
 ##==============================================================================
 
 sub:
-	@ $(TOP)/scripts/sub $(shell $(MAKE) sources)
+	@ $(TOP)/scripts/sub $(shell $(MAKE) src)
