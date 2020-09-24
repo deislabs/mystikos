@@ -46,16 +46,18 @@ size:
 ##
 ##==============================================================================
 
-INSTALL = install -D
+INSTALL=install -D
+INSTDIR=$(DESTDIR)/$(LIBOS_PREFIX)
 
-install: dirs uninstall
-	$(INSTALL) $(BINDIR)/libos $(LIBOS_PREFIX)/bin/libos
-	$(INSTALL) $(LIBDIR)/liboscrt.so $(LIBOS_PREFIX)/lib/liboscrt.so
-	$(INSTALL) $(LIBDIR)/liboskernel.so $(LIBOS_PREFIX)/lib/liboskernel.so
-	$(INSTALL) $(LIBDIR)/openenclave/libosenc.so $(LIBOS_PREFIX)/lib/openenclave/libosenc.so
-	$(INSTALL) $(BUILDDIR)/openenclave/bin/oegdb $(LIBOS_PREFIX)/bin/libos-gdb
-	rm -rf $(LIBOS_PREFIX)/lib/openenclave/debugger
-	cp -r $(BUILDDIR)/openenclave/lib/openenclave/debugger $(LIBOS_PREFIX)/lib/openenclave/debugger
+install:
+	rm -rf $(INSTDIR)
+	$(INSTALL) $(BINDIR)/libos $(INSTDIR)/bin/libos
+	$(INSTALL) $(LIBDIR)/liboscrt.so $(INSTDIR)/lib/liboscrt.so
+	$(INSTALL) $(LIBDIR)/liboskernel.so $(INSTDIR)/lib/liboskernel.so
+	$(INSTALL) $(LIBDIR)/openenclave/libosenc.so $(INSTDIR)/lib/openenclave/libosenc.so
+	$(INSTALL) $(BUILDDIR)/openenclave/bin/oegdb $(INSTDIR)/bin/libos-gdb
+	rm -rf $(INSTDIR)/lib/openenclave/debugger
+	cp -r $(BUILDDIR)/openenclave/lib/openenclave/debugger $(INSTDIR)/lib/openenclave/debugger
 
 uninstall:
 	rm -rf $(LIBOS_PREFIX)
