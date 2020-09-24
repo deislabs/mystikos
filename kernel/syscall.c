@@ -1326,10 +1326,16 @@ int libos_export_ramfs(void)
             continue;
 
         if (libos_load_file(path, &data, &size) != 0)
-            goto done;
+        {
+            libos_eprintf("Warning! failed to load %s from ramfs\n", path);
+            continue;
+        }
 
         if (libos_tcall_export_file(path, data, size) != 0)
-            goto done;
+        {
+            libos_eprintf("Warning! failed to export %s from ramfs\n", path);
+            continue;
+        }
 
         libos_free(data);
         data = NULL;
