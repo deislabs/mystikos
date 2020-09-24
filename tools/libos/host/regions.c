@@ -9,6 +9,7 @@
 #include <libos/eraise.h>
 #include <libos/file.h>
 #include <libos/round.h>
+#include <libos/strings.h>
 #include <limits.h>
 #include <openenclave/bits/sgx/region.h>
 #include <openenclave/host.h>
@@ -41,15 +42,23 @@ const region_details* create_region_details_from_package(
         _err("buffer overflow when forming libosenc.so path");
 
     // Load CRT
-    if (elf_image_from_section(libos_elf, ".liboscrt", &_details.crt.image) !=
-        0)
+    if (elf_image_from_section(
+            libos_elf, ".liboscrt", &_details.crt.image, NULL, 0) != 0)
+    {
         _err("failed to extract CRT section from : %s", get_program_file());
+    }
     _details.crt.status = REGION_ITEM_BORROWED;
 
     // Load Kernel
     if (elf_image_from_section(
-            libos_elf, ".liboskernel", &_details.kernel.image) != 0)
+            libos_elf,
+            ".liboskernel",
+            &_details.kernel.image,
+            (const void**)&_details.kernel.buffer,
+            &_details.kernel.buffer_size) != 0)
+    {
         _err("failed to extract kernel section from : %s", get_program_file());
+    }
     _details.kernel.status = REGION_ITEM_BORROWED;
 
     // Load ROOTFS
@@ -220,6 +229,10 @@ void free_region_details()
         elf_image_free(&_details.kernel.image);
     if (_details.config.status == REGION_ITEM_OWNED)
         free(_details.config.buffer);
+
+    /* delete the temporary file if any */
+    if (strncmp(_details.kernel.path, "/tmp/libos", 10) == 0)
+        unlink(_details.kernel.path);
 }
 
 static int _add_segment_pages(
@@ -344,6 +357,7 @@ static int _add_kernel_region(oe_region_context_t* context, uint64_t* vaddr)
 {
     int ret = 0;
     const uint64_t id = LIBOS_KERNEL_REGION_ID;
+    int fd = -1;
 
     assert(_details.kernel.image.image_data != NULL);
     assert(_details.kernel.image.image_size != 0);
@@ -354,6 +368,30 @@ static int _add_kernel_region(oe_region_context_t* context, uint64_t* vaddr)
     char* path = NULL;
     if (_details.kernel.path[0] != 0)
         path = _details.kernel.path;
+
+    /* packaged case: create temporary file where oegdb can read symbols */
+    if (!path)
+    {
+        char template[] = "/tmp/libosXXXXXX";
+
+        if ((fd = mkstemp(template)) < 0)
+            goto done;
+
+        /* write the ELF file to disk */
+        ECHECK(libos_write_file_fd(
+            fd, _details.kernel.buffer, _details.kernel.buffer_size));
+
+        /* save the path so it can be deleted later */
+        {
+            if (sizeof(template) > sizeof(_details.kernel.path))
+                ERAISE(-ENAMETOOLONG);
+
+            strcpy(_details.kernel.path, template);
+        }
+
+        /* this path is passed to OE */
+        path = _details.kernel.path;
+    }
 
     if (oe_region_start(context, id, true, path) != OE_OK)
         ERAISE(-EINVAL);
@@ -366,6 +404,10 @@ static int _add_kernel_region(oe_region_context_t* context, uint64_t* vaddr)
     *vaddr += libos_round_up_to_page_size(_details.kernel.image.image_size);
 
 done:
+
+    if (fd >= 0)
+        close(fd);
+
     return ret;
 }
 

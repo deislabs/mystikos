@@ -388,7 +388,9 @@ typedef int (*elf_add_page_t)(
 int elf_image_from_section(
     elf_image_t* from_elf,
     const char* section_name,
-    elf_image_t* to_elf);
+    elf_image_t* to_elf,
+    const void** buffer,
+    size_t* buffer_size);
 
 int elf_image_load(const char* path, elf_image_t* image);
 
