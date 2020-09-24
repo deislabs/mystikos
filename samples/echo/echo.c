@@ -1,8 +1,8 @@
-#include <string.h>
+#include <echo_t.h>
+#include <openenclave/enclave.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <openenclave/enclave.h>
-#include <echo_t.h>
+#include <string.h>
 
 int echo_ecall(const char* msg)
 {

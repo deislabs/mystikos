@@ -4,9 +4,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <libos/malloc.h>
 #include <libos/strarr.h>
 #include <libos/strings.h>
-#include <libos/malloc.h>
 
 static size_t _CAPACITY = 32;
 

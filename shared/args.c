@@ -1,6 +1,6 @@
-#include <libos/bufu64.h>
-#include <libos/buf.h>
 #include <libos/args.h>
+#include <libos/buf.h>
+#include <libos/bufu64.h>
 #include <libos/malloc.h>
 
 #define CAP 16

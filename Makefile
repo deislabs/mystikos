@@ -69,8 +69,7 @@ uninstall:
 ##
 ##==============================================================================
 
-__SOURCES_DIRS = $(filter-out third_party/, $(shell  ls -d -1 */))
-SOURCES_DIRS = $(filter-out build/, $(__SOURCES_DIRS))
+SOURCES_DIRS = $(shell  ls -d -1 */ | grep -v third_party | grep -v build | grep -v solutions)
 
 src:
 	@ echo $(foreach i, $(SOURCES_DIRS), $(shell find $(i) -name '*.[ch]'))

@@ -6,9 +6,9 @@
 #include <string.h>
 
 #include <libos/buf.h>
-#include <libos/strings.h>
 #include <libos/malloc.h>
 #include <libos/round.h>
+#include <libos/strings.h>
 
 #define LIBOS_BUF_CHUNK_SIZE 1024
 

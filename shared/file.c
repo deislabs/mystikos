@@ -1,8 +1,8 @@
-#include <libos/file.h>
-#include <libos/types.h>
 #include <libos/eraise.h>
+#include <libos/file.h>
 #include <libos/malloc.h>
 #include <libos/strings.h>
+#include <libos/types.h>
 
 int libos_load_file(const char* path, void** data_out, size_t* size_out)
 {
@@ -104,7 +104,7 @@ int libos_copy_file(const char* oldpath, const char* newpath)
 
     mode = (st.st_mode & (mode_t)(~S_IFMT));
 
-    if ((newfd = libos_open(newpath, O_WRONLY|O_CREAT|O_TRUNC, mode)) < 0)
+    if ((newfd = libos_open(newpath, O_WRONLY | O_CREAT | O_TRUNC, mode)) < 0)
         ERAISE(newfd);
 
     while ((n = libos_read(oldfd, buf, sizeof(buf))) > 0)

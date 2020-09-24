@@ -1,8 +1,8 @@
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/syscall.h>
 #include <unistd.h>
-#include <assert.h>
 
 /* Extended syscall */
 
@@ -21,8 +21,13 @@ int main(int argc, const char* argv[])
     ret = syscall(SYS_libos_gen_creds, &cert, &cert_size, &pkey, &pkey_size);
     assert(ret == 0);
 
-    printf("ret=%ld cert=%p cert_size=%zu pkey=%p pkey_size=%zu\n",
-        ret, cert, cert_size, pkey, pkey_size);
+    printf(
+        "ret=%ld cert=%p cert_size=%zu pkey=%p pkey_size=%zu\n",
+        ret,
+        cert,
+        cert_size,
+        pkey,
+        pkey_size);
 
     ret = syscall(SYS_libos_free_creds, cert, cert_size, pkey, pkey_size);
     assert(ret == 0);

@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-#include <libos/bufu64.h>
 #include <libos/buf.h>
+#include <libos/bufu64.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
