@@ -1,8 +1,8 @@
-#include <elf.h>
 #include <assert.h>
+#include <elf.h>
 
-#include <libos/reloc.h>
 #include <libos/eraise.h>
+#include <libos/reloc.h>
 
 int libos_apply_relocations(
     const void* image_base,

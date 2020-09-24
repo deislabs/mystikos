@@ -5,17 +5,17 @@
 #define _GNU_SOURCE
 #endif
 
-#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <libos/assert.h>
-#include <libos/file.h>
 #include <libos/cpio.h>
-#include <libos/strarr.h>
-#include <libos/round.h>
-#include <libos/strings.h>
+#include <libos/file.h>
 #include <libos/malloc.h>
+#include <libos/round.h>
+#include <libos/strarr.h>
+#include <libos/strings.h>
 
 void* calloc(size_t nmemb, size_t size);
 void free(void* ptr);
@@ -1016,7 +1016,7 @@ int libos_cpio_mem_unpack(
         int r;
 
         if ((r = libos_cpio_next_entry(
-            cpio_data, cpio_size, &pos, &ent, &file_data)) == 0)
+                 cpio_data, cpio_size, &pos, &ent, &file_data)) == 0)
         {
             break;
         }
