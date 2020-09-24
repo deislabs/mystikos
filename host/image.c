@@ -350,8 +350,8 @@ int elf_image_from_section(
 
     memset(to_elf, 0, sizeof(*to_elf));
 
-    if (elf_find_section(
-            &from_elf->elf, section_name, &buffer, &buffer_size) != 0)
+    if (elf_find_section(&from_elf->elf, section_name, &buffer, &buffer_size) !=
+        0)
         ERAISE(-EINVAL);
 
     if (elf_from_buffer(buffer, buffer_size, &to_elf->elf) != 0)
@@ -362,7 +362,6 @@ int elf_image_from_section(
 
     if (buffer_size_out)
         *buffer_size_out = buffer_size;
-
 
     ret = _process_elf_image(to_elf);
 
