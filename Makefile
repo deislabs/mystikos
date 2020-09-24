@@ -25,6 +25,8 @@ include $(TOP)/rules.mak
 distclean: clean
 	rm -rf $(TOP)/build
 	$(MAKE) -C third_party/openenclave distclean
+	$(MAKE) -C third_party/enclave-musl distclean
+	$(MAKE) -C third_party/host-musl distclean
 
 ##==============================================================================
 ##
