@@ -385,6 +385,8 @@ void __libos_panic(
     libos_console_printf(STDERR_FILENO, "\n");
 
     libos_crash();
+    for (;;)
+        ;
 }
 
 void* libos_memset(void* s, int c, size_t n)

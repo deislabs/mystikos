@@ -18,7 +18,9 @@ GDB_MATCH=Breakpoint 1, .................. in print_hello ()
 # runtest timeouts cause gdb to hang
 export NOTIMEOUT=1
 
-all: libos
+all: libos rootfs
+
+rootfs: helloworld.c
 	mkdir -p $(APPDIR)/bin
 	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/helloworld helloworld.c $(LDFLAGS)
 	$(LIBOS) mkcpio $(APPDIR) rootfs

@@ -9,7 +9,9 @@ ifdef STRACE
 OPTS = --strace
 endif
 
-all: libos
+all: libos rootfs
+
+rootfs: cpuid.c
 	mkdir -p $(APPDIR)/bin
 	$(CC) $(CFLAGS) -o $(APPDIR)/bin/cpuid cpuid.c $(LDFLAGS)
 	$(LIBOS) mkcpio $(APPDIR) rootfs

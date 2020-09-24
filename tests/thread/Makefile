@@ -6,7 +6,9 @@ CFLAGS = -fPIC
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 CC = $(MUSL_GCC)
 
-all: libos
+all: libos rootfs
+
+rootfs: thread.c
 	mkdir -p $(APPDIR)/bin
 	$(CC) $(CFLAGS) -o $(APPDIR)/bin/thread thread.c $(LDFLAGS)
 	$(LIBOS) mkcpio $(APPDIR) rootfs

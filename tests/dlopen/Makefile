@@ -4,9 +4,13 @@ include $(TOP)/defs.mak
 IMG=libos-alpine
 APPDIR=$(CURDIR)/appdir
 
-all: libos
-	sudo docker run --rm -v $(APPDIR):/appdir $(IMG) bash -c "make -C appdir"
+all: libos rootfs
+
+rootfs: $(APPDIR)/dlopen
 	$(BINDIR)/libos mkcpio appdir rootfs
+
+$(APPDIR)/dlopen:
+	sudo docker run --rm -v $(APPDIR):/appdir $(IMG) bash -c "make -C appdir"
 
 ifdef STRACE
 OPTS = --strace

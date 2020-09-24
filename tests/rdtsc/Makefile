@@ -5,7 +5,9 @@ APPDIR = appdir
 CFLAGS = -fPIC
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 
-all: libos
+all: libos rootfs
+
+rootfs: rdtsc.c
 	mkdir -p $(APPDIR)/bin
 	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/rdtsc rdtsc.c $(LDFLAGS)
 	$(LIBOS) mkcpio $(APPDIR) rootfs

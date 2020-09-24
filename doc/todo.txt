@@ -13,6 +13,10 @@
 
     * support posix_spawn()
 
+    * encrypted file system (data volume)
+
+    * writable encrypted file system
+
     CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 
     * implement symlink across file systems

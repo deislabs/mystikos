@@ -17,8 +17,11 @@ $(SRCDIR):
 	mkdir -p $(SUBOBJDIR)
 	cp -r $(TOP)/third_party/libc-test $(SRCDIR)
 
-build:
+build: $(SRCDIR)/target
+
+$(SRCDIR)/target:
 	sudo docker run --rm -v $(SRCDIR):/srcdir $(IMG) bash -c "make -C srcdir"
+	touch $(SRCDIR)/target
 
 TEST_FILE = tests.txt
 

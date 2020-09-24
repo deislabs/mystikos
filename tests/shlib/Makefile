@@ -7,7 +7,9 @@ LDFLAGS = -Wl,-rpath=/lib -L$(APPDIR)/lib -lfoo
 
 export LD_LIBRARY_PATH=$(APPDIR)/lib
 
-all: libos
+all: libos rootfs
+
+rootfs: foo.c shlib.c
 	mkdir -p $(APPDIR)/bin
 	mkdir -p $(APPDIR)/lib
 	$(MUSL_GCC) $(CFLAGS) -shared -o $(APPDIR)/lib/libfoo.so foo.c

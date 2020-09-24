@@ -40,7 +40,9 @@ LOCAL += stderr
 
 INCLUDES = $(DEFAULT_INCLUDES)
 
-all:
+all: $(TARGET)
+
+$(TARGET):
 	mkdir -p $(LIBDIR)
 	mkdir -p $(SUBOBJDIR)
 	cp $(LIBNAME) $(TARGET)

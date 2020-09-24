@@ -11,6 +11,8 @@
 
 #define LIBOS_WEAK __attribute__((weak))
 
+#define LIBOS_NORETURN __attribute__((__noreturn__))
+
 #define LIBOS_COUNTOF(ARR) (sizeof(ARR) / sizeof((ARR)[0]))
 
 #define LIBOS_WEAK_ALIAS(OLD, NEW) \
