@@ -335,11 +335,13 @@ done:
 int elf_image_from_section(
     elf_image_t* from_elf,
     const char* section_name,
-    elf_image_t* to_elf)
+    elf_image_t* to_elf,
+    const void** buffer_out,
+    size_t* buffer_size_out)
 {
     int ret = -1;
     unsigned char* buffer = NULL;
-    size_t buffer_length = 0;
+    size_t buffer_size = 0;
 
     if (!from_elf || !section_name || !to_elf)
         ERAISE(-EINVAL);
@@ -349,11 +351,18 @@ int elf_image_from_section(
     memset(to_elf, 0, sizeof(*to_elf));
 
     if (elf_find_section(
-            &from_elf->elf, section_name, &buffer, &buffer_length) != 0)
+            &from_elf->elf, section_name, &buffer, &buffer_size) != 0)
         ERAISE(-EINVAL);
 
-    if (elf_from_buffer(buffer, buffer_length, &to_elf->elf) != 0)
+    if (elf_from_buffer(buffer, buffer_size, &to_elf->elf) != 0)
         ERAISE(-EINVAL);
+
+    if (buffer_out)
+        *buffer_out = buffer;
+
+    if (buffer_size_out)
+        *buffer_size_out = buffer_size;
+
 
     ret = _process_elf_image(to_elf);
 
