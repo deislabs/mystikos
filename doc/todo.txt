@@ -1,33 +1,17 @@
 
     AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 
-    * implement libos signer
+    * system-call-tracer
 
-    * add install rule
+    * POSIX signals
+
+    * clok tick
 
     BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
 
-    * libos mkappdir action (build appdir from executable name)
+    * symlink on non-root-mounted file systems (subtract mountpoint)
 
-    * distinguish rootfs from approotfs
-
-    * review and cleanup mman module
-
-    * implement linux target without OE
-
-    * implement system-call-tracer
-
-    * implement threading (clone, futex, and TLS)
-
-    * fix crash on hash of load symbols
-
-    * fix cp_syscall() workaround
-
-    * support symlink on non-root-mounted file systems (subtract mountpoint)
-
-    * implement SYS_memorybarrier properly
-
-    * minimize rootfs enclave memory usage (avoid second copy, share file mem)
+    * support posix_spawn()
 
     CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 
@@ -61,3 +45,24 @@
 
     X partition kernel into 'target' and 'kernel'
 
+    X libos mkappdir action (build appdir from executable name)
+
+    X implement libos signer
+
+    X add install rule
+
+    X distinguish rootfs from approotfs
+
+    X review and cleanup mman module
+
+    X implement linux target without OE
+
+    X implement threading (clone, futex, and TLS)
+
+    X fix crash on hash of load symbols
+
+    X fix cp_syscall() workaround
+
+    X implement SYS_memorybarrier properly
+
+    X minimize rootfs enclave memory usage (avoid second copy, share file mem)
