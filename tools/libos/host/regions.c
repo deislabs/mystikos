@@ -382,15 +382,8 @@ static int _add_kernel_region(oe_region_context_t* context, uint64_t* vaddr)
             fd, _details.kernel.buffer, _details.kernel.buffer_size));
 
         /* save the path so it can be deleted later */
-        {
-            if (sizeof(template) > sizeof(_details.kernel.path))
-                ERAISE(-ENAMETOOLONG);
-
-            strcpy(_details.kernel.path, template);
-        }
-
-        /* this path is passed to OE */
         path = _details.kernel.path;
+        libos_strlcpy(path, template, sizeof(_details.kernel.path));
     }
 
     if (oe_region_start(context, id, true, path) != OE_OK)
