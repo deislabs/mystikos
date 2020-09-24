@@ -5,7 +5,9 @@ APPDIR = appdir
 CFLAGS = -fPIC
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 
-all: libos
+all: libos rootfs
+
+rootfs: getcwd.c
 	mkdir -p $(APPDIR)/bin
 	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/getcwd getcwd.c $(LDFLAGS)
 	$(LIBOS) mkcpio $(APPDIR) rootfs

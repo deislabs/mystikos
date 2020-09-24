@@ -83,7 +83,7 @@ LIBOS_PRINTF_FORMAT(1, 2)
 int libos_printf(const char* format, ...);
 
 LIBOS_PRINTF_FORMAT(4, 5)
-void __libos_panic(
+LIBOS_NORETURN void __libos_panic(
     const char* file,
     size_t line,
     const char* func,
