@@ -1,7 +1,6 @@
 #include <stdlib.h>
 
 #include <libos/atexit.h>
-#include <libos/malloc.h>
 #include <libos/spinlock.h>
 
 typedef struct atexit_entry atexit_entry_t;
@@ -24,7 +23,7 @@ int libos_atexit(void (*function)(void*), void* arg)
     if (!function)
         goto done;
 
-    if (!(entry = libos_calloc(1, sizeof(atexit_entry_t))))
+    if (!(entry = calloc(1, sizeof(atexit_entry_t))))
         goto done;
 
     entry->function = function;
@@ -53,7 +52,7 @@ void libos_call_atexit_functions(void)
         if (p->function)
             (*p->function)(p->arg);
 
-        libos_free(p);
+        free(p);
 
         p = next;
     }

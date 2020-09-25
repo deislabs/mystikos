@@ -241,6 +241,22 @@ int libos_enter_ecall(
             goto done;
     }
 
+    /* Inject the LIBOS_TARGET environment variable */
+    {
+        const char val[] = "LIBOS_TARGET=";
+
+        for (size_t i = 0; i < env.size; i++)
+        {
+            if (strncmp(env.data[i], val, sizeof(val) - 1) == 0)
+            {
+                fprintf(stderr, "environment already contains %s", val);
+                goto done;
+            }
+        }
+
+        libos_args_append1(&env, "LIBOS_TARGET=sgx");
+    }
+
     if (options)
     {
         trace_syscalls = options->trace_syscalls;

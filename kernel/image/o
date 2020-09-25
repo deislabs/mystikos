@@ -1,0 +1,294 @@
+/root/oe-libos/build/obj/kernel/image/enter.o: In function `_setup_ramfs':
+/root/oe-libos/kernel/image/enter.c:65: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/image/enter.c:71: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/image/enter.c:77: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/image/enter.c:83: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/image/enter.c:89: undefined reference to `libos_eraise'
+/root/oe-libos/build/obj/kernel/image/enter.o:/root/oe-libos/kernel/image/enter.c:105: more undefined references to `libos_eraise' follow
+/root/oe-libos/build/obj/kernel/image/enter.o: In function `libos_enter_kernel':
+/root/oe-libos/kernel/image/enter.c:256: undefined reference to `libos_cpio_mem_unpack'
+/root/oe-libos/kernel/image/enter.c:260: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/image/enter.c:264: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/image/enter.c:267: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(lsr.o): In function `libos_lsr':
+/root/oe-libos/kernel/lsr.c:32: undefined reference to `libos_strlcpy'
+/root/oe-libos/kernel/lsr.c:35: undefined reference to `libos_strlcat'
+/root/oe-libos/kernel/lsr.c:37: undefined reference to `libos_strlcat'
+/root/oe-libos/kernel/lsr.c:42: undefined reference to `libos_strarr_append'
+/root/oe-libos/kernel/lsr.c:48: undefined reference to `libos_strarr_append'
+/root/oe-libos/kernel/lsr.c:55: undefined reference to `libos_strarr_append'
+/root/oe-libos/kernel/lsr.c:78: undefined reference to `libos_strarr_release'
+/root/oe-libos/kernel/lsr.c:82: undefined reference to `libos_strarr_release'
+/root/oe-libos/build/lib/liboskernel.a(realpath.o): In function `libos_realpath':
+/root/oe-libos/kernel/realpath.c:27: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/realpath.c:31: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/realpath.c:35: undefined reference to `libos_strlcpy'
+/root/oe-libos/kernel/realpath.c:36: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/realpath.c:44: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/realpath.c:46: undefined reference to `libos_strlcpy'
+/root/oe-libos/kernel/realpath.c:47: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/realpath.c:49: undefined reference to `libos_strlcat'
+/root/oe-libos/kernel/realpath.c:50: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/realpath.c:52: undefined reference to `libos_strlcat'
+/root/oe-libos/kernel/realpath.c:53: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/realpath.c:95: undefined reference to `libos_strlcat'
+/root/oe-libos/kernel/realpath.c:96: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/realpath.c:100: undefined reference to `libos_strlcat'
+/root/oe-libos/kernel/realpath.c:101: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(mount.o): In function `libos_mount_resolve':
+/root/oe-libos/kernel/mount.c:51: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/mount.c:54: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/mount.c:69: undefined reference to `libos_strlcpy'
+/root/oe-libos/kernel/mount.c:80: undefined reference to `libos_strlcpy'
+/root/oe-libos/kernel/mount.c:83: undefined reference to `libos_strlcpy'
+/root/oe-libos/kernel/mount.c:98: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(mount.o): In function `libos_mount':
+/root/oe-libos/kernel/mount.c:118: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/mount.c:122: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/mount.c:134: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/mount.c:136: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(mount.o):/root/oe-libos/kernel/mount.c:139: more undefined references to `libos_eraise' follow
+/root/oe-libos/build/lib/liboskernel.a(mman.o): In function `_mman_set_err':
+/root/oe-libos/kernel/mman.c:310: undefined reference to `libos_strlcpy'
+/root/oe-libos/build/lib/liboskernel.a(syscall.o): In function `_add_fd_link':
+/root/oe-libos/kernel/syscall.c:597: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/syscall.c:599: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/syscall.c:602: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/syscall.c:604: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(syscall.o): In function `_remove_fd_link':
+/root/oe-libos/kernel/syscall.c:618: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(syscall.o):/root/oe-libos/kernel/syscall.c:620: more undefined references to `libos_eraise' follow
+/root/oe-libos/build/lib/liboskernel.a(syscall.o): In function `libos_syscall_chdir':
+/root/oe-libos/kernel/syscall.c:1048: undefined reference to `libos_strlcpy'
+/root/oe-libos/kernel/syscall.c:1049: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(syscall.o): In function `libos_syscall_getcwd':
+/root/oe-libos/kernel/syscall.c:1065: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/syscall.c:1067: undefined reference to `libos_strlcpy'
+/root/oe-libos/kernel/syscall.c:1068: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(syscall.o): In function `libos_syscall_getrandom':
+/root/oe-libos/kernel/syscall.c:1086: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/syscall.c:1089: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(syscall.o): In function `libos_syscall_fcntl':
+/root/oe-libos/kernel/syscall.c:1104: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/syscall.c:1105: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(syscall.o):/root/oe-libos/kernel/syscall.c:1130: more undefined references to `libos_eraise' follow
+/root/oe-libos/build/lib/liboskernel.a(syscall.o): In function `libos_syscall_mount':
+/root/oe-libos/kernel/syscall.c:1147: undefined reference to `libos_cpio_unpack'
+/root/oe-libos/kernel/syscall.c:1147: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(syscall.o): In function `libos_syscall_umount2':
+/root/oe-libos/kernel/syscall.c:1158: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/syscall.c:1160: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(syscall.o): In function `_dev_urandom_read':
+/root/oe-libos/kernel/syscall.c:1257: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/syscall.c:1263: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(syscall.o):/root/oe-libos/kernel/syscall.c:1277: more undefined references to `libos_eraise' follow
+/root/oe-libos/build/lib/liboskernel.a(syscall.o): In function `libos_dump_ramfs':
+/root/oe-libos/kernel/syscall.c:1308: undefined reference to `libos_strarr_release'
+/root/oe-libos/build/lib/liboskernel.a(syscall.o): In function `libos_export_ramfs':
+/root/oe-libos/kernel/syscall.c:1329: undefined reference to `libos_load_file'
+/root/oe-libos/kernel/syscall.c:1349: undefined reference to `libos_strarr_release'
+/root/oe-libos/build/lib/liboskernel.a(syscall.o): In function `libos_syscall':
+/root/oe-libos/kernel/syscall.c:1964: undefined reference to `libos_strlcpy'
+/root/oe-libos/kernel/syscall.c:1965: undefined reference to `libos_strlcpy'
+/root/oe-libos/kernel/syscall.c:1966: undefined reference to `libos_strlcpy'
+/root/oe-libos/kernel/syscall.c:1967: undefined reference to `libos_strlcpy'
+/root/oe-libos/kernel/syscall.c:1968: undefined reference to `libos_strlcpy'
+/root/oe-libos/build/lib/liboskernel.a(syscall.o): In function `libos_syscall_add_symbol_file':
+/root/oe-libos/kernel/syscall.c:2965: undefined reference to `libos_load_file'
+/root/oe-libos/kernel/syscall.c:2965: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/syscall.c:2972: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(dirent.o): In function `libos_opendir':
+/root/oe-libos/kernel/dirent.c:32: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/dirent.c:35: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/dirent.c:38: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(dirent.o):/root/oe-libos/kernel/dirent.c:62: more undefined references to `libos_eraise' follow
+/root/oe-libos/build/lib/liboskernel.a(file.o): In function `libos_mkdirhier':
+/root/oe-libos/kernel/file.c:147: undefined reference to `libos_strsplit'
+/root/oe-libos/kernel/file.c:147: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/file.c:153: undefined reference to `libos_strlcat'
+/root/oe-libos/kernel/file.c:154: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/file.c:156: undefined reference to `libos_strlcat'
+/root/oe-libos/kernel/file.c:157: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/file.c:162: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/file.c:166: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/file.c:171: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(paths.o): In function `libos_path_absolute_cwd':
+/root/oe-libos/kernel/paths.c:25: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/paths.c:29: undefined reference to `libos_strlcpy'
+/root/oe-libos/kernel/paths.c:30: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/paths.c:36: undefined reference to `libos_strlcpy'
+/root/oe-libos/kernel/paths.c:37: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/paths.c:40: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/paths.c:44: undefined reference to `libos_strlcat'
+/root/oe-libos/kernel/paths.c:45: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/paths.c:48: undefined reference to `libos_strlcat'
+/root/oe-libos/kernel/paths.c:49: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(paths.o): In function `libos_path_absolute':
+/root/oe-libos/kernel/paths.c:64: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/paths.c:68: undefined reference to `libos_strlcpy'
+/root/oe-libos/kernel/paths.c:69: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/paths.c:77: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/paths.c:79: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(paths.o): In function `libos_tok_normalize':
+/root/oe-libos/kernel/paths.c:93: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/paths.c:96: undefined reference to `libos_tokslen'
+/root/oe-libos/kernel/paths.c:112: undefined reference to `libos_memremove_u64'
+/root/oe-libos/kernel/paths.c:112: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/paths.c:121: undefined reference to `libos_memremove_u64'
+/root/oe-libos/kernel/paths.c:121: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/paths.c:131: undefined reference to `libos_memremove_u64'
+/root/oe-libos/kernel/paths.c:131: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/paths.c:138: undefined reference to `libos_memremove_u64'
+/root/oe-libos/kernel/paths.c:138: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(paths.o): In function `libos_normalize':
+/root/oe-libos/kernel/paths.c:165: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/paths.c:167: undefined reference to `libos_strsplit'
+/root/oe-libos/kernel/paths.c:167: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/paths.c:168: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/paths.c:169: undefined reference to `libos_tokslen'
+/root/oe-libos/kernel/paths.c:170: undefined reference to `libos_strjoin'
+/root/oe-libos/kernel/paths.c:170: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/paths.c:172: undefined reference to `libos_strlcpy'
+/root/oe-libos/kernel/paths.c:173: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(paths.o): In function `libos_path_expand':
+/root/oe-libos/kernel/paths.c:196: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/paths.c:209: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/paths.c:215: undefined reference to `libos_strjoin'
+/root/oe-libos/kernel/paths.c:215: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/paths.c:218: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/paths.c:226: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/paths.c:228: undefined reference to `libos_strsplit'
+/root/oe-libos/kernel/paths.c:228: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/paths.c:237: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(futex.o): In function `libos_syscall_futex':
+/root/oe-libos/kernel/futex.c:361: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/futex.c:365: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/futex.c:369: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(futex.o):/root/oe-libos/kernel/futex.c:373: more undefined references to `libos_eraise' follow
+/root/oe-libos/build/lib/liboskernel.a(ramfs.o): In function `_inode_free':
+/root/oe-libos/kernel/ramfs.c:82: undefined reference to `libos_buf_release'
+/root/oe-libos/build/lib/liboskernel.a(ramfs.o): In function `_inode_add_dirent':
+/root/oe-libos/kernel/ramfs.c:98: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:101: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:112: undefined reference to `libos_strlcpy'
+/root/oe-libos/kernel/ramfs.c:113: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:115: undefined reference to `libos_buf_append'
+/root/oe-libos/kernel/ramfs.c:116: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(ramfs.o): In function `_inode_new':
+/root/oe-libos/kernel/ramfs.c:143: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:146: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:160: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:163: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(ramfs.o):/root/oe-libos/kernel/ramfs.c:179: more undefined references to `libos_eraise' follow
+/root/oe-libos/build/lib/liboskernel.a(ramfs.o): In function `_inode_remove_dirent':
+/root/oe-libos/kernel/ramfs.c:268: undefined reference to `libos_buf_remove'
+/root/oe-libos/kernel/ramfs.c:269: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:277: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(ramfs.o): In function `_split_path':
+/root/oe-libos/kernel/ramfs.c:368: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:372: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:377: undefined reference to `libos_strlcpy'
+/root/oe-libos/kernel/ramfs.c:378: undefined reference to `libos_strlcpy'
+/root/oe-libos/kernel/ramfs.c:384: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:388: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:394: undefined reference to `libos_strlcpy'
+/root/oe-libos/kernel/ramfs.c:399: undefined reference to `libos_strlcpy'
+/root/oe-libos/kernel/ramfs.c:407: undefined reference to `libos_strlcpy'
+/root/oe-libos/build/lib/liboskernel.a(ramfs.o): In function `_path_to_inode_recursive':
+/root/oe-libos/kernel/ramfs.c:435: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:446: undefined reference to `libos_strlcpy'
+/root/oe-libos/kernel/ramfs.c:455: undefined reference to `libos_strsplit'
+/root/oe-libos/kernel/ramfs.c:455: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:470: undefined reference to `libos_strlcat'
+/root/oe-libos/kernel/ramfs.c:473: undefined reference to `libos_strlcat'
+/root/oe-libos/kernel/ramfs.c:491: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(ramfs.o): In function `_path_to_inode_realpath':
+/root/oe-libos/kernel/ramfs.c:535: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:545: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(ramfs.o): In function `_fs_release':
+/root/oe-libos/kernel/ramfs.c:576: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(ramfs.o): In function `_fs_mount':
+/root/oe-libos/kernel/ramfs.c:592: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(ramfs.o):/root/oe-libos/kernel/ramfs.c:595: more undefined references to `libos_eraise' follow
+/root/oe-libos/build/lib/liboskernel.a(ramfs.o): In function `_fs_mount':
+/root/oe-libos/kernel/ramfs.c:597: undefined reference to `libos_strlcpy'
+/root/oe-libos/build/lib/liboskernel.a(ramfs.o): In function `_fs_creat':
+/root/oe-libos/kernel/ramfs.c:613: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:615: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(ramfs.o): In function `_fs_open':
+/root/oe-libos/kernel/ramfs.c:639: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:642: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:645: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(ramfs.o):/root/oe-libos/kernel/ramfs.c:649: more undefined references to `libos_eraise' follow
+/root/oe-libos/build/lib/liboskernel.a(ramfs.o): In function `_fs_open':
+/root/oe-libos/kernel/ramfs.c:663: undefined reference to `libos_buf_clear'
+/root/oe-libos/kernel/ramfs.c:677: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:680: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:683: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:686: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:690: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(ramfs.o):/root/oe-libos/kernel/ramfs.c:701: more undefined references to `libos_eraise' follow
+/root/oe-libos/build/lib/liboskernel.a(ramfs.o): In function `_fs_write':
+/root/oe-libos/kernel/ramfs.c:851: undefined reference to `libos_buf_resize'
+/root/oe-libos/kernel/ramfs.c:852: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(ramfs.o): In function `_fs_pread':
+/root/oe-libos/kernel/ramfs.c:877: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:880: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:883: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:886: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(ramfs.o):/root/oe-libos/kernel/ramfs.c:894: more undefined references to `libos_eraise' follow
+/root/oe-libos/build/lib/liboskernel.a(ramfs.o): In function `_fs_pwrite':
+/root/oe-libos/kernel/ramfs.c:952: undefined reference to `libos_buf_resize'
+/root/oe-libos/kernel/ramfs.c:953: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(ramfs.o): In function `_fs_readv':
+/root/oe-libos/kernel/ramfs.c:976: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:984: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(ramfs.o): In function `_fs_writev':
+/root/oe-libos/kernel/ramfs.c:1009: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:1017: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(ramfs.o):/root/oe-libos/kernel/ramfs.c:1037: more undefined references to `libos_eraise' follow
+/root/oe-libos/build/lib/liboskernel.a(ramfs.o): In function `_fs_truncate':
+/root/oe-libos/kernel/ramfs.c:1311: undefined reference to `libos_buf_resize'
+/root/oe-libos/kernel/ramfs.c:1312: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(ramfs.o): In function `_fs_ftruncate':
+/root/oe-libos/kernel/ramfs.c:1324: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:1327: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:1329: undefined reference to `libos_buf_resize'
+/root/oe-libos/kernel/ramfs.c:1330: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(ramfs.o): In function `_fs_mkdir':
+/root/oe-libos/kernel/ramfs.c:1345: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:1347: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:1348: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:1352: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(ramfs.o):/root/oe-libos/kernel/ramfs.c:1356: more undefined references to `libos_eraise' follow
+/root/oe-libos/build/lib/liboskernel.a(ramfs.o): In function `_fs_readlink':
+/root/oe-libos/kernel/ramfs.c:1473: undefined reference to `libos_strlcpy'
+/root/oe-libos/build/lib/liboskernel.a(ramfs.o): In function `_fs_symlink':
+/root/oe-libos/kernel/ramfs.c:1490: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:1493: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:1496: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:1499: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:1502: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:1505: undefined reference to `libos_buf_append'
+/root/oe-libos/kernel/ramfs.c:1506: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(ramfs.o): In function `_fs_realpath':
+/root/oe-libos/kernel/ramfs.c:1523: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:1527: undefined reference to `libos_strlcpy'
+/root/oe-libos/kernel/ramfs.c:1528: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:1536: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(ramfs.o): In function `_fs_fcntl':
+/root/oe-libos/kernel/ramfs.c:1549: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:1570: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(ramfs.o): In function `libos_init_ramfs':
+/root/oe-libos/kernel/ramfs.c:1594: undefined reference to `libos_eraise'
+/root/oe-libos/build/lib/liboskernel.a(ramfs.o):/root/oe-libos/kernel/ramfs.c:1597: more undefined references to `libos_eraise' follow
+/root/oe-libos/build/lib/liboskernel.a(ramfs.o): In function `libos_init_ramfs':
+/root/oe-libos/kernel/ramfs.c:1604: undefined reference to `libos_strlcpy'
+/root/oe-libos/build/lib/liboskernel.a(ramfs.o): In function `libos_ramfs_set_buf':
+/root/oe-libos/kernel/ramfs.c:1632: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:1635: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:1638: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:1640: undefined reference to `libos_eraise'
+/root/oe-libos/kernel/ramfs.c:1643: undefined reference to `libos_buf_clear'
+collect2: error: ld returned 1 exit status
+make: *** [/root/oe-libos/build/lib/liboskernel.so] Error 1

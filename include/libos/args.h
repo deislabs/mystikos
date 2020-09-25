@@ -50,4 +50,6 @@ int libos_args_unpack(
     const void* packed_data,
     size_t packed_size);
 
+void libos_args_dump(libos_args_t* self);
+
 #endif /* _LIBOS_ARGS_H */

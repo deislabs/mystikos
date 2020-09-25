@@ -1,7 +1,9 @@
+#include <stdio.h>
+#include <stdlib.h>
+
 #include <libos/args.h>
 #include <libos/buf.h>
 #include <libos/bufu64.h>
-#include <libos/malloc.h>
 
 #define CAP 16
 
@@ -33,7 +35,7 @@ int libos_args_init(libos_args_t* self)
         return -1;
 
     /* allocate an extra entry for the null terminator */
-    if (!(self->data = libos_calloc(CAP + 1, sizeof(char*))))
+    if (!(self->data = calloc(CAP + 1, sizeof(char*))))
         return -1;
 
     self->size = 0;
@@ -68,7 +70,7 @@ int libos_args_adopt(libos_args_t* self, const char** data, size_t size)
 void libos_args_release(libos_args_t* self)
 {
     if (self && self->data)
-        libos_free(self->data);
+        free(self->data);
 }
 
 int libos_args_reserve(libos_args_t* self, size_t cap)
@@ -238,4 +240,20 @@ int libos_args_unpack(
     self->cap = size;
 
     return 0;
+}
+
+void libos_args_dump(libos_args_t* self)
+{
+    if (!self)
+        return;
+
+    printf("==== libos_args_dump()\n");
+
+    for (size_t i = 0; i < self->size; i++)
+    {
+        printf("data[%zu]=%s\n", i, self->data[i]);
+    }
+
+    printf("data[%zu]=%s\n", self->size, self->data[self->size]);
+    printf("\n");
 }

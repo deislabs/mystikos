@@ -1,12 +1,37 @@
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
-DIRS = enc host
+PROGRAM = cpio
+
+SOURCES = $(wildcard *.c)
+
+INCLUDES = -I$(INCDIR)
+
+CFLAGS = $(OEHOST_CFLAGS) $(GCOV_CFLAGS)
+
+LDFLAGS = $(OEHOST_LDFLAGS) $(GCOV_LDFLAGS)
+
+LIBS = $(LIBDIR)/liboshost.a
+LIBS = $(LIBDIR)/libosutils.a
 
 REDEFINE_TESTS=1
 
+CLEAN = rootfs
+
 include $(TOP)/rules.mak
 
-tests:
-	$(RUNTEST) $(SUBBINDIR)/host/host $(SUBBINDIR)/enc/enc cpio mem
-	$(RUNTEST) $(SUBBINDIR)/host/host $(SUBBINDIR)/enc/enc cpio file
+tests: test1 test2 test3 test4
+
+test1:
+	$(RUNTEST) $(PREFIX) $(SUBBINDIR)/cpio cpio mem
+
+test2:
+	$(RUNTEST) $(PREFIX) $(SUBBINDIR)/cpio cpio file
+
+test3:
+	@ $(MKROOTFS) $(SUBBINDIR)/$(PROGRAM) rootfs cpio
+	@ $(RUNTEST) $(LIBOS_EXEC) rootfs /bin/$(PROGRAM) cpio mem
+
+test4:
+	@ $(MKROOTFS) $(SUBBINDIR)/$(PROGRAM) rootfs cpio
+	@ $(RUNTEST) $(LIBOS_EXEC) rootfs /bin/$(PROGRAM) cpio file

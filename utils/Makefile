@@ -3,14 +3,14 @@ include $(TOP)/defs.mak
 
 SUBLIBDIR=$(LIBDIR)
 
-ARCHIVE = liboshost.a
+ARCHIVE = libosutils.a
 
 SOURCES = $(wildcard *.c)
 
-INCLUDES = -I$(INCDIR)
+INCLUDES = $(DEFAULT_INCLUDES)
 
-CFLAGS = $(OEHOST_CFLAGS)
+CFLAGS = $(DEFAULT_CFLAGS)
 
-LDFLAGS = $(OEHOST_LDFLAGS)
+LDFLAGS = $(DEFAULT_LDFLAGS)
 
 include $(TOP)/rules.mak

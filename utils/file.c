@@ -1,6 +1,10 @@
+#include <fcntl.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 #include <libos/eraise.h>
-#include <libos/file.h>
-#include <libos/malloc.h>
 #include <libos/strings.h>
 #include <libos/types.h>
 
@@ -23,14 +27,14 @@ int libos_load_file(const char* path, void** data_out, size_t* size_out)
     if (!path || !data_out || !size_out)
         ERAISE(-EINVAL);
 
-    if ((fd = libos_open(path, O_RDONLY, 0)) < 0)
+    if ((fd = open(path, O_RDONLY, 0)) < 0)
         ERAISE(-ENOENT);
 
-    if (libos_fstat(fd, &st) != 0)
+    if (fstat(fd, &st) != 0)
         ERAISE(-EINVAL);
 
     /* Allocate an extra byte for null termination */
-    if (!(data = libos_malloc((size_t)(st.st_size + 1))))
+    if (!(data = malloc((size_t)(st.st_size + 1))))
         ERAISE(-ENOMEM);
 
     p = data;
@@ -38,9 +42,9 @@ int libos_load_file(const char* path, void** data_out, size_t* size_out)
     /* Null-terminate the data */
     p[st.st_size] = '\0';
 
-    while ((n = libos_read(fd, block, sizeof(block))) > 0)
+    while ((n = read(fd, block, sizeof(block))) > 0)
     {
-        libos_memcpy(p, block, (size_t)n);
+        memcpy(p, block, (size_t)n);
         p += n;
     }
 
@@ -51,10 +55,10 @@ int libos_load_file(const char* path, void** data_out, size_t* size_out)
 done:
 
     if (fd >= 0)
-        libos_close(fd);
+        close(fd);
 
     if (data)
-        libos_free(data);
+        free(data);
 
     return ret;
 }
@@ -67,7 +71,7 @@ ssize_t libos_writen(int fd, const void* data, size_t size)
 
     while (r > 0)
     {
-        ssize_t n = libos_write(fd, p, r);
+        ssize_t n = write(fd, p, r);
 
         if (n == 0)
             break;
@@ -96,18 +100,18 @@ int libos_copy_file(const char* oldpath, const char* newpath)
     if (!oldpath || !newpath)
         ERAISE(-EINVAL);
 
-    if ((oldfd = libos_open(oldpath, O_RDONLY, 0)) < 0)
+    if ((oldfd = open(oldpath, O_RDONLY, 0)) < 0)
         ERAISE(oldfd);
 
-    if (libos_fstat(oldfd, &st) != 0)
+    if (fstat(oldfd, &st) != 0)
         ERAISE(-EINVAL);
 
     mode = (st.st_mode & (mode_t)(~S_IFMT));
 
-    if ((newfd = libos_open(newpath, O_WRONLY | O_CREAT | O_TRUNC, mode)) < 0)
+    if ((newfd = open(newpath, O_WRONLY | O_CREAT | O_TRUNC, mode)) < 0)
         ERAISE(newfd);
 
-    while ((n = libos_read(oldfd, buf, sizeof(buf))) > 0)
+    while ((n = read(oldfd, buf, sizeof(buf))) > 0)
     {
         ECHECK(libos_writen(newfd, buf, (size_t)n));
     }
@@ -118,10 +122,10 @@ int libos_copy_file(const char* oldpath, const char* newpath)
 done:
 
     if (oldfd >= 0)
-        libos_close(oldfd);
+        close(oldfd);
 
     if (newfd >= 0)
-        libos_close(newfd);
+        close(newfd);
 
     return ret;
 }
@@ -130,8 +134,57 @@ const char* libos_basename(const char* path)
 {
     char* p;
 
-    if ((p = libos_strrchr(path, '/')))
+    if ((p = strrchr(path, '/')))
         return p + 1;
 
     return path;
+}
+
+int libos_mkdirhier(const char* pathname, mode_t mode)
+{
+    int ret = 0;
+    char** toks = NULL;
+    size_t ntoks;
+    char path[PATH_MAX];
+    struct stat buf;
+
+    if (!pathname)
+        ERAISE(-EINVAL);
+
+    /* If the directory already exists, stop here */
+    if (stat(pathname, &buf) == 0 && S_ISDIR(buf.st_mode))
+        goto done;
+
+    ECHECK(libos_strsplit(pathname, "/", &toks, &ntoks));
+
+    *path = '\0';
+
+    for (size_t i = 0; i < ntoks; i++)
+    {
+        if (LIBOS_STRLCAT(path, "/") >= PATH_MAX)
+            ERAISE(-ENAMETOOLONG);
+
+        if (LIBOS_STRLCAT(path, toks[i]) >= PATH_MAX)
+            ERAISE(-ENAMETOOLONG);
+
+        if (stat(path, &buf) == 0)
+        {
+            if (!S_ISDIR(buf.st_mode))
+                ERAISE(-ENOTDIR);
+        }
+        else
+        {
+            ECHECK(mkdir(path, mode));
+        }
+    }
+
+    if (stat(pathname, &buf) != 0 || !S_ISDIR(buf.st_mode))
+        ERAISE(-EPERM);
+
+done:
+
+    if (toks)
+        free(toks);
+
+    return ret;
 }

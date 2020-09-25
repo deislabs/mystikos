@@ -1,17 +1,18 @@
+#include <assert.h>
 #include <dirent.h>
 #include <fcntl.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <libos/assert.h>
 #include <libos/buf.h>
 #include <libos/bufu64.h>
 #include <libos/eraise.h>
 #include <libos/fs.h>
 #include <libos/id.h>
-#include <libos/malloc.h>
+#include <libos/panic.h>
 #include <libos/paths.h>
+#include <libos/printf.h>
 #include <libos/ramfs.h>
 #include <libos/realpath.h>
 #include <libos/round.h>
@@ -79,8 +80,8 @@ static void _inode_free(inode_t* inode)
     {
         if (inode->buf.data != inode->data)
             libos_buf_release(&inode->buf);
-        libos_memset(inode, 0xdd, sizeof(inode_t));
-        libos_free(inode);
+        memset(inode, 0xdd, sizeof(inode_t));
+        free(inode);
     }
 }
 
@@ -141,7 +142,7 @@ static int _inode_new(
     if (!name)
         ERAISE(-EINVAL);
 
-    if (!(inode = libos_calloc(1, sizeof(inode_t))))
+    if (!(inode = calloc(1, sizeof(inode_t))))
         ERAISE(-ENOMEM);
 
     inode->magic = INODE_MAGIC;
@@ -202,7 +203,7 @@ static inode_t* _inode_find_child(const inode_t* inode, const char* name)
 
     for (size_t i = 0; i < nents; i++)
     {
-        if (libos_strcmp(ents[i].d_name, name) == 0)
+        if (strcmp(ents[i].d_name, name) == 0)
             return (inode_t*)ents[i].d_ino;
     }
 
@@ -224,15 +225,14 @@ static void _inode_release_all(inode_t* parent, inode_t* inode, uint8_t d_type)
             const struct dirent* ent = &ents[i];
             inode_t* child;
 
-            if (libos_strcmp(ent->d_name, ".") == 0 ||
-                libos_strcmp(ent->d_name, "..") == 0)
+            if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
             {
                 continue;
             }
 
             child = (inode_t*)ent->d_ino;
-            libos_assert(child);
-            libos_assert(_inode_valid(child));
+            assert(child);
+            assert(_inode_valid(child));
 
             if (child != inode)
                 _inode_release_all(inode, child, ent->d_type);
@@ -259,7 +259,7 @@ static int _inode_remove_dirent(inode_t* inode, const char* name)
 
     for (size_t i = 0; i < nents; i++)
     {
-        if (libos_strcmp(ents[i].d_name, name) == 0)
+        if (strcmp(ents[i].d_name, name) == 0)
         {
             const size_t pos = i * sizeof(struct dirent);
             const size_t size = sizeof(struct dirent);
@@ -363,7 +363,7 @@ static int _split_path(
     char* slash;
 
     /* Reject paths that are too long. */
-    if (libos_strlen(path) >= PATH_MAX)
+    if (strlen(path) >= PATH_MAX)
         ERAISE(-EINVAL);
 
     /* Reject paths that are not absolute */
@@ -371,7 +371,7 @@ static int _split_path(
         ERAISE(-EINVAL);
 
     /* Handle root directory up front */
-    if (libos_strcmp(path, "/") == 0)
+    if (strcmp(path, "/") == 0)
     {
         libos_strlcpy(dirname, "/", PATH_MAX);
         libos_strlcpy(basename, "/", PATH_MAX);
@@ -379,7 +379,7 @@ static int _split_path(
     }
 
     /* This cannot fail (prechecked) */
-    if (!(slash = libos_strrchr(path, '/')))
+    if (!(slash = strrchr(path, '/')))
         ERAISE(-EINVAL);
 
     /* If path ends with '/' character */
@@ -434,7 +434,7 @@ static int _path_to_inode_recursive(
         ERAISE(-EINVAL);
 
     /* If root directory */
-    if (libos_strcmp(path, "/") == 0)
+    if (strcmp(path, "/") == 0)
     {
         inode = ramfs->root;
 
@@ -490,7 +490,7 @@ static int _path_to_inode_recursive(
                 ECHECK(_path_to_inode_recursive(
                     ramfs, target, parent, true, &parent, &p, realpath));
 
-                libos_assert(target != NULL);
+                assert(target != NULL);
             }
 
             /* If final token */
@@ -515,7 +515,7 @@ static int _path_to_inode_recursive(
 done:
 
     if (toks)
-        libos_free(toks);
+        free(toks);
 
     return ret;
 }
@@ -576,7 +576,7 @@ static int _fs_release(libos_fs_t* fs)
 
     _inode_release_all(NULL, ramfs->root, DT_DIR);
 
-    libos_free(ramfs);
+    free(ramfs);
 
 done:
     return ret;
@@ -590,7 +590,7 @@ static int _fs_mount(libos_fs_t* fs, const char* target)
     if (!_ramfs_valid(ramfs) || !target)
         ERAISE(-EINVAL);
 
-    if (libos_strlen(target) >= sizeof(ramfs->target))
+    if (strlen(target) >= sizeof(ramfs->target))
         ERAISE(-ENAMETOOLONG);
 
     libos_strlcpy(ramfs->target, target, sizeof(ramfs->target));
@@ -644,7 +644,7 @@ static int _fs_open(
         ERAISE(-EINVAL);
 
     /* Create the file object */
-    if (!(file = libos_calloc(1, sizeof(libos_file_t))))
+    if (!(file = calloc(1, sizeof(libos_file_t))))
         ERAISE(-ENOMEM);
 
     errnum = _path_to_inode(ramfs, pathname, true, NULL, &inode);
@@ -700,7 +700,7 @@ static int _fs_open(
     ECHECK(_path_to_inode_realpath(
         ramfs, pathname, true, NULL, &inode, file->realpath));
 
-    libos_assert(_file_valid(file));
+    assert(_file_valid(file));
 
     *file_out = file;
     file = NULL;
@@ -709,10 +709,10 @@ static int _fs_open(
 done:
 
     if (inode && is_i_new)
-        libos_free(inode);
+        free(inode);
 
     if (file)
-        libos_free(file);
+        free(file);
 
     return ret;
 }
@@ -805,7 +805,7 @@ static ssize_t _fs_read(
         }
 
         n = (count < remaining) ? count : remaining;
-        libos_memcpy(buf, _file_current(file), n);
+        memcpy(buf, _file_current(file), n);
         file->offset += n;
     }
 
@@ -851,7 +851,7 @@ static ssize_t _fs_write(
                 ERAISE(-ENOMEM);
         }
 
-        libos_memcpy(_file_current(file), buf, count);
+        memcpy(_file_current(file), buf, count);
         file->offset = new_offset;
     }
 
@@ -903,7 +903,7 @@ static ssize_t _fs_pread(
         }
 
         n = (count < remaining) ? count : remaining;
-        libos_memcpy(buf, _file_at(file, (size_t)offset), n);
+        memcpy(buf, _file_at(file, (size_t)offset), n);
     }
 
     ret = (ssize_t)n;
@@ -952,7 +952,7 @@ static ssize_t _fs_pwrite(
                 ERAISE(-ENOMEM);
         }
 
-        libos_memcpy(_file_at(file, (size_t)offset), buf, count);
+        memcpy(_file_at(file, (size_t)offset), buf, count);
     }
 
     ret = (ssize_t)count;
@@ -1035,13 +1035,13 @@ static int _fs_close(libos_fs_t* fs, libos_file_t* file)
     if (!_ramfs_valid(ramfs) || !_file_valid(file))
         ERAISE(-EINVAL);
 
-    libos_assert(file->inode);
-    libos_assert(_inode_valid(file->inode));
-    libos_assert(file->inode->nopens > 0);
+    assert(file->inode);
+    assert(_inode_valid(file->inode));
+    assert(file->inode->nopens > 0);
     file->inode->nopens--;
 
-    libos_memset(file, 0xdd, sizeof(libos_file_t));
-    libos_free(file);
+    memset(file, 0xdd, sizeof(libos_file_t));
+    free(file);
 
 done:
     return ret;
@@ -1087,7 +1087,7 @@ static int _stat(inode_t* inode, struct stat* statbuf)
     if (!_inode_valid(inode) || !statbuf)
         ERAISE(-EINVAL);
 
-    libos_memset(&buf, 0, sizeof(buf));
+    memset(&buf, 0, sizeof(buf));
     buf.st_dev = 0;
     buf.st_ino = (ino_t)inode;
     buf.st_mode = inode->mode;
@@ -1098,9 +1098,9 @@ static int _stat(inode_t* inode, struct stat* statbuf)
     buf.st_size = (off_t)inode->buf.size;
     buf.st_blksize = BLKSIZE;
     buf.st_blocks = libos_round_up_off(buf.st_size, BLKSIZE) / BLKSIZE;
-    libos_memset(&buf.st_atim, 0, sizeof(buf.st_atim)); /* ATTN: unsupported */
-    libos_memset(&buf.st_mtim, 0, sizeof(buf.st_mtim)); /* ATTN: unsupported */
-    libos_memset(&buf.st_ctim, 0, sizeof(buf.st_ctim)); /* ATTN: unsupported */
+    memset(&buf.st_atim, 0, sizeof(buf.st_atim)); /* ATTN: unsupported */
+    memset(&buf.st_mtim, 0, sizeof(buf.st_mtim)); /* ATTN: unsupported */
+    memset(&buf.st_ctim, 0, sizeof(buf.st_ctim)); /* ATTN: unsupported */
 
     *statbuf = buf;
 
@@ -1148,7 +1148,7 @@ static int _fs_fstat(libos_fs_t* fs, libos_file_t* file, struct stat* statbuf)
     if (!_ramfs_valid(ramfs) || !_file_valid(file) || !statbuf)
         ERAISE(-EINVAL);
 
-    libos_assert(_inode_valid(file->inode));
+    assert(_inode_valid(file->inode));
     ERAISE(_stat(file->inode, statbuf));
 
 done:
@@ -1463,8 +1463,8 @@ ssize_t _fs_readlink(
     if (!S_ISLNK(inode->mode))
         ERAISE(-EINVAL);
 
-    libos_assert(inode->buf.data);
-    libos_assert(inode->buf.size);
+    assert(inode->buf.data);
+    assert(inode->buf.size);
 
     if (!inode->buf.data || !inode->buf.size)
         ERAISE(-EINVAL);
@@ -1501,7 +1501,7 @@ static int _fs_symlink(libos_fs_t* fs, const char* target, const char* linkpath)
     ECHECK(_inode_new(parent, basename, (S_IFLNK | 0777), &inode));
 
     /* Write the target name into the link inode */
-    if (libos_buf_append(&inode->buf, target, libos_strlen(target) + 1) != 0)
+    if (libos_buf_append(&inode->buf, target, strlen(target) + 1) != 0)
         ERAISE(-ENOMEM);
 
 done:
@@ -1521,15 +1521,14 @@ static int _fs_realpath(
     if (!_ramfs_valid(ramfs) || !_file_valid(file) || !buf || !size)
         ERAISE(-EINVAL);
 
-    if (libos_strcmp(ramfs->target, "/") == 0)
+    if (strcmp(ramfs->target, "/") == 0)
     {
         if (libos_strlcpy(buf, file->realpath, size) >= size)
             ERAISE(-ENAMETOOLONG);
     }
     else
     {
-        int n =
-            libos_snprintf(buf, size, "%s%s", ramfs->target, file->realpath);
+        int n = snprintf(buf, size, "%s%s", ramfs->target, file->realpath);
 
         if (n < 0 || n >= (int)size)
             ERAISE(-ENAMETOOLONG);
@@ -1592,7 +1591,7 @@ int libos_init_ramfs(libos_fs_t** fs_out)
     if (!fs_out)
         ERAISE(-EINVAL);
 
-    if (!(ramfs = libos_calloc(1, sizeof(ramfs_t))))
+    if (!(ramfs = calloc(1, sizeof(ramfs_t))))
         ERAISE(-ENOMEM);
 
     ECHECK(_inode_new(NULL, "/", (S_IFDIR | MODE_RWX), &root_inode));
@@ -1609,10 +1608,10 @@ int libos_init_ramfs(libos_fs_t** fs_out)
 done:
 
     if (ramfs)
-        libos_free(ramfs);
+        free(ramfs);
 
     if (root_inode)
-        libos_free(root_inode);
+        free(root_inode);
 
     return ret;
 }

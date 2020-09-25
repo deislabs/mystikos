@@ -1,28 +1,30 @@
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
-PROGRAM = enc
+PROGRAM = strings
 
-SOURCES = $(SUBOBJDIR)/run_t.c enc.c
+SOURCES = $(wildcard *.c)
 
-INCLUDES = -I$(SUBOBJDIR) $(OEENCLAVE_INCLUDES)
+INCLUDES = -I$(INCDIR)
 
-CFLAGS = $(OEENCLAVE_CFLAGS)
+CFLAGS = $(OEHOST_CFLAGS) $(GCOV_CFLAGS)
 
-LDFLAGS = $(OEENCLAVE_LDFLAGS)
+LDFLAGS = $(OEHOST_LDFLAGS) $(GCOV_LDFLAGS)
 
-LIBS = $(LIBDIR)/liboskernel.a $(LIBDIR)/libostargetsgxenclave.a
+LIBS = $(LIBDIR)/liboshost.a
+LIBS = $(LIBDIR)/libosutils.a
 
-ifdef LIBOS_ENABLE_GCOV
-LIBS += $(LIBDIR)/libgcov_musl.a
-endif
+REDEFINE_TESTS=1
 
-CLEAN = $(SUBOBJDIR)/run_t.h $(SUBOBJDIR)/run_t.c $(SUBOBJDIR)/run_args.h
+CLEAN = rootfs
 
 include $(TOP)/rules.mak
 
-$(SUBOBJDIR)/run_t.c:
-	$(EDGER8R) $(EDGER8R_TRUSTED_OPTS) ../run/run.edl
+tests: test1 test2
 
-tests:
-	$(RUNTEST) $(BINDIR)/run $(SUBBINDIR)/enc
+test1:
+	$(RUNTEST) $(PREFIX) $(SUBBINDIR)/strings
+
+test2:
+	@ $(MKROOTFS) $(SUBBINDIR)/$(PROGRAM) rootfs
+	@ $(RUNTEST) $(LIBOS_EXEC) rootfs /bin/$(PROGRAM)

@@ -1,12 +1,12 @@
+#include <stdlib.h>
+#include <string.h>
+
 #include <libos/atexit.h>
 #include <libos/eraise.h>
-#include <libos/malloc.h>
 #include <libos/mount.h>
 #include <libos/realpath.h>
 #include <libos/spinlock.h>
 #include <libos/strings.h>
-#include <stdlib.h>
-#include <string.h>
 
 #define MOUNT_TABLE_SIZE 64
 
@@ -29,7 +29,7 @@ static void _free_mount_table(void* arg)
     (void)arg;
 
     for (size_t i = 0; i < _mount_table_size; i++)
-        libos_free(_mount_table[i].path);
+        free(_mount_table[i].path);
 }
 
 int libos_mount_resolve(
@@ -58,7 +58,7 @@ int libos_mount_resolve(
     /* Find the longest binding point that contains this path. */
     for (size_t i = 0; i < _mount_table_size; i++)
     {
-        size_t len = libos_strlen(_mount_table[i].path);
+        size_t len = strlen(_mount_table[i].path);
         const char* mpath = _mount_table[i].path;
 
         if (mpath[0] == '/' && mpath[1] == '\0')
@@ -71,7 +71,7 @@ int libos_mount_resolve(
             }
         }
         else if (
-            libos_strncmp(mpath, realpath.buf, len) == 0 &&
+            strncmp(mpath, realpath.buf, len) == 0 &&
             (realpath.buf[len] == '/' || realpath.buf[len] == '\0'))
         {
             if (len > match_len)
@@ -123,7 +123,7 @@ int libos_mount(libos_fs_t* fs, const char* target)
     }
 
     /* Be sure the target directory exists (if not root) */
-    if (libos_strcmp(target, "/") != 0)
+    if (strcmp(target, "/") != 0)
     {
         struct stat buf;
         char suffix[PATH_MAX];
@@ -156,7 +156,7 @@ int libos_mount(libos_fs_t* fs, const char* target)
     /* Reject duplicate mount paths. */
     for (size_t i = 0; i < _mount_table_size; i++)
     {
-        if (libos_strcmp(_mount_table[i].path, target) == 0)
+        if (strcmp(_mount_table[i].path, target) == 0)
             ERAISE(-EEXIST);
     }
 
@@ -165,10 +165,10 @@ int libos_mount(libos_fs_t* fs, const char* target)
 
     /* Assign and initialize new mount point. */
     {
-        if (!(mount_table_entry.path = libos_strdup(target)))
+        if (!(mount_table_entry.path = strdup(target)))
             ERAISE(-ENOMEM);
 
-        mount_table_entry.path_size = libos_strlen(target) + 1;
+        mount_table_entry.path_size = strlen(target) + 1;
         mount_table_entry.fs = fs;
         mount_table_entry.flags = 0;
     }
@@ -181,7 +181,7 @@ int libos_mount(libos_fs_t* fs, const char* target)
 done:
 
     if (mount_table_entry.path)
-        libos_free(mount_table_entry.path);
+        free(mount_table_entry.path);
 
     if (locked)
         libos_spin_unlock(&_lock);
@@ -205,10 +205,10 @@ int libos_umount(const char* target)
     {
         mount_table_entry_t* entry = &_mount_table[i];
 
-        if (libos_strcmp(entry->path, realpath.buf) == 0)
+        if (strcmp(entry->path, realpath.buf) == 0)
         {
             /* release the path */
-            libos_free(entry->path);
+            free(entry->path);
 
             /* release the file system */
             ECHECK((*entry->fs->fs_release)(entry->fs));

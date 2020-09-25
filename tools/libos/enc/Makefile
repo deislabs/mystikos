@@ -7,12 +7,6 @@ PROGRAM = libosenc.so
 SOURCES += $(SUBOBJDIR)/libos_t.c
 SOURCES += enc.c
 SOURCES += ../config.c
-SOURCES += $(TOP)/shared/reloc.c
-SOURCES += $(TOP)/shared/args.c
-SOURCES += $(TOP)/shared/bufu64.c
-SOURCES += $(TOP)/shared/buf.c
-SOURCES += $(TOP)/compat/malloc.c
-SOURCES += $(TOP)/compat/strings.c
 
 INCLUDES = $(OEENCLAVE_INCLUDES) -I$(SUBOBJDIR) -I../
 
@@ -21,6 +15,7 @@ CFLAGS = $(OEENCLAVE_CFLAGS)
 LIBS += $(LIBDIR)/libjson.a
 LIBS += $(LIBDIR)/libostargetsgxenclave.a
 LIBS += $(LIBDIR)/liblthread.a
+LIBS += $(LIBDIR)/libosutils.a
 LIBS += $(OEENCLAVE_LIBDIR)/liboehostfs.a
 LIBS += $(OEENCLAVE_LIBDIR)/liboehostsock.a
 

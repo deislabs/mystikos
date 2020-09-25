@@ -6,7 +6,8 @@
 #include <string.h>
 
 #include <libos/buf.h>
-#include <libos/malloc.h>
+#include <stdlib.h>
+
 #include <libos/round.h>
 #include <libos/strings.h>
 
@@ -16,11 +17,11 @@ void libos_buf_release(libos_buf_t* buf)
 {
     if (buf && buf->data)
     {
-        libos_memset(buf->data, 0xDD, buf->size);
-        libos_free(buf->data);
+        memset(buf->data, 0xDD, buf->size);
+        free(buf->data);
     }
 
-    libos_memset(buf, 0x00, sizeof(libos_buf_t));
+    memset(buf, 0x00, sizeof(libos_buf_t));
 }
 
 int libos_buf_clear(libos_buf_t* buf)
@@ -55,7 +56,7 @@ int libos_buf_reserve(libos_buf_t* buf, size_t cap)
         }
 
         /* Expand allocation */
-        if (!(new_data = libos_realloc(buf->data, new_cap)))
+        if (!(new_data = realloc(buf->data, new_cap)))
             return -1;
 
         buf->data = new_data;
@@ -73,7 +74,7 @@ int libos_buf_resize(libos_buf_t* buf, size_t new_size)
     if (new_size == 0)
     {
         libos_buf_release(buf);
-        libos_memset(buf, 0, sizeof(libos_buf_t));
+        memset(buf, 0, sizeof(libos_buf_t));
         return 0;
     }
 
@@ -81,7 +82,7 @@ int libos_buf_resize(libos_buf_t* buf, size_t new_size)
         return -1;
 
     if (new_size > buf->size)
-        libos_memset(buf->data + buf->size, 0, new_size - buf->size);
+        memset(buf->data + buf->size, 0, new_size - buf->size);
 
     buf->size = new_size;
 
@@ -113,7 +114,7 @@ int libos_buf_append(libos_buf_t* buf, const void* data, size_t size)
     }
 
     /* Copy the data */
-    libos_memcpy(buf->data + buf->size, data, size);
+    memcpy(buf->data + buf->size, data, size);
     buf->size = new_size;
 
     return 0;
@@ -137,12 +138,12 @@ int libos_buf_insert(
     rem = buf->size - pos;
 
     if (rem)
-        libos_memmove(buf->data + pos + size, buf->data + pos, rem);
+        memmove(buf->data + pos + size, buf->data + pos, rem);
 
     if (data)
-        libos_memcpy(buf->data + pos, data, size);
+        memcpy(buf->data + pos, data, size);
     else
-        libos_memset(buf->data + pos, 0, size);
+        memset(buf->data + pos, 0, size);
 
     buf->size += size;
     ret = 0;
@@ -161,7 +162,7 @@ int libos_buf_remove(libos_buf_t* buf, size_t pos, size_t size)
     rem = buf->size - (pos + size);
 
     if (rem)
-        libos_memmove(buf->data + pos, buf->data + pos + size, rem);
+        memmove(buf->data + pos, buf->data + pos + size, rem);
 
     buf->size -= size;
 
@@ -199,7 +200,7 @@ int libos_buf_unpack_u64(libos_buf_t* buf, uint64_t* x)
     if (r < n)
         goto done;
 
-    libos_memcpy(x, buf->data + buf->offset, n);
+    memcpy(x, buf->data + buf->offset, n);
     buf->offset += n;
 
     ret = 0;
@@ -226,7 +227,7 @@ int libos_buf_pack_bytes(libos_buf_t* buf, const void* p, size_t size)
 
     /* zero-out part of the alignment bytes array */
     if (align)
-        libos_memset(align_buf, 0, align);
+        memset(align_buf, 0, align);
 
     /* append the size */
     if (libos_buf_pack_u64(buf, size) != 0)
@@ -287,7 +288,7 @@ int libos_buf_pack_str(libos_buf_t* buf, const char* str)
     if (!buf || !str)
         goto done;
 
-    len = libos_strlen(str);
+    len = strlen(str);
 
     /* pack the characters and the null terminator */
     if (libos_buf_pack_bytes(buf, str, len + 1) != 0)
@@ -380,7 +381,7 @@ int libos_buf_unpack_strings(
         goto done;
 
     /* allocate array of pointers to strings */
-    if (!(strings = libos_calloc(count + 1, sizeof(char*))))
+    if (!(strings = calloc(count + 1, sizeof(char*))))
         goto done;
 
     /* unpack each of the strings */
@@ -404,7 +405,7 @@ int libos_buf_unpack_strings(
 done:
 
     if (strings)
-        libos_free(strings);
+        free(strings);
 
     return ret;
 }

@@ -1,8 +1,11 @@
-#include <libos/assert.h>
+#include <assert.h>
+
 #include <libos/crash.h>
+#include <libos/panic.h>
+#include <libos/printf.h>
 #include <libos/strings.h>
 
-void __libos_assert_fail(
+void __assert_fail(
     const char* expr,
     const char* file,
     int line,
@@ -11,4 +14,7 @@ void __libos_assert_fail(
     libos_eprintf(
         "Assertion failed: %s (%s: %s: %d)\n", expr, file, func, line);
     libos_crash();
+
+    for (;;)
+        ;
 }

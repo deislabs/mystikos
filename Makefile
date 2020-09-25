@@ -9,7 +9,18 @@ include $(TOP)/defs.mak
 ##
 ##==============================================================================
 
-DIRS = third_party gcov json host target kernel crt oesdk tools alpine tests
+DIRS += third_party
+DIRS += gcov
+DIRS += json
+DIRS += utils
+DIRS += host
+DIRS += target
+DIRS += kernel
+DIRS += crt
+DIRS += oesdk
+DIRS += tools
+DIRS += alpine
+DIRS += tests
 
 CLEAN = $(BUILDDIR)
 

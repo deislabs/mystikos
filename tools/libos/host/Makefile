@@ -4,12 +4,10 @@ include $(TOP)/defs.mak
 
 PROGRAM = libos
 
-SOURCES = $(SUBOBJDIR)/libos_u.c
+SOURCES =
+SOURCES += $(SUBOBJDIR)/libos_u.c
 SOURCES += $(wildcard *.c)
 SOURCES += $(wildcard ../*.c)
-SOURCES += $(wildcard $(TOP)/shared/*.c)
-SOURCES += $(TOP)/compat/file.c
-SOURCES += $(TOP)/compat/dirent.c
 
 INCLUDES = $(OEHOST_INCLUDES) -I$(SUBOBJDIR) -I$(INCDIR) -I../
 
@@ -24,6 +22,7 @@ LIBS += $(LIBDIR)/liboshost.a
 LIBS += $(LIBDIR)/libostargetcommon.a
 LIBS += $(LIBDIR)/libostargetlinux.a
 LIBS += $(LIBDIR)/libostargetsgxhost.a
+LIBS += $(LIBDIR)/libosutils.a
 
 CLEAN = $(SUBOBJDIR)/libos_u.h $(SUBOBJDIR)/libos_u.c $(SUBOBJDIR)/libos_args.h
 
@@ -35,3 +34,6 @@ EDGER8R_OPTS += --untrusted-dir $(SUBOBJDIR)
 
 $(SUBOBJDIR)/libos_u.c: ../libos.edl
 	$(EDGER8R) $(EDGER8R_OPTS) ../libos.edl
+
+x:
+	echo $(SUBOBJDIR)

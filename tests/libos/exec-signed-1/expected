@@ -8,6 +8,7 @@ argv[5]=Enclave-pink
 
 envp[0]=ENC-ENVP-1=Enclave_envp_1
 envp[1]=ENC-ENVP-2=Enclave_envp_1
+envp[3]=LIBOS_TARGET=sgx
 
 === Hello World!
 
