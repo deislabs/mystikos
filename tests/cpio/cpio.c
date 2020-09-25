@@ -177,7 +177,12 @@ void test(const void* cpio_data, size_t cpio_size, bool load_from_memory)
     {
         char tmp[PATH_MAX];
         snprintf(tmp, sizeof(tmp), "%s/%s", tmpdir, _paths[i]);
-        assert(strcmp(paths.data[i], tmp) == 0);
+
+        if (strcmp(paths.data[i], tmp) != 0)
+        {
+            fprintf(stderr, "compare: {%s} != {%s}\n", paths.data[i], tmp);
+            assert(false);
+        }
     }
 
     libos_strarr_release(&paths);
