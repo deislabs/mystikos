@@ -170,13 +170,23 @@ void test(const void* cpio_data, size_t cpio_size, bool load_from_memory)
 
     libos_strarr_t paths = LIBOS_STRARR_INITIALIZER;
     assert(libos_lsr(tmpdir, &paths, true) == 0);
+    libos_strarr_sort(&paths);
 
-    assert(_npaths == paths.size);
+    /* create sorted paths array */
+    libos_strarr_t sorted = LIBOS_STRARR_INITIALIZER;
+    {
+        for (size_t i = 0; i < _npaths; i++)
+            assert(libos_strarr_append(&sorted, _paths[i]) == 0);
+
+        libos_strarr_sort(&sorted);
+    }
+
+    assert(sorted.size == paths.size);
 
     for (size_t i = 0; i < paths.size; i++)
     {
         char tmp[PATH_MAX];
-        snprintf(tmp, sizeof(tmp), "%s/%s", tmpdir, _paths[i]);
+        snprintf(tmp, sizeof(tmp), "%s/%s", tmpdir, sorted.data[i]);
 
         if (strcmp(paths.data[i], tmp) != 0)
         {
@@ -186,6 +196,7 @@ void test(const void* cpio_data, size_t cpio_size, bool load_from_memory)
     }
 
     libos_strarr_release(&paths);
+    libos_strarr_release(&sorted);
 }
 
 int main(int argc, const char* argv[])
