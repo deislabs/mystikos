@@ -34,8 +34,6 @@ DIRS += gdb
 DIRS += dlopen
 DIRS += libos
 
-DIRS = cpio
-
 REDEFINE_TESTS=1
 include $(TOP)/rules.mak
 
