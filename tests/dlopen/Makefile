@@ -24,4 +24,4 @@ libos:
 
 clean:
 	$(MAKE) -C appdir clean
-	rm -rf rootfs
+	rm -rf rootfs ramfs

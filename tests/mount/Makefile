@@ -19,7 +19,7 @@ ifdef STRACE
 OPTS += --strace
 endif
 
-CLEAN = appdir rootfs
+CLEAN = appdir rootfs ramfs
 
 include $(TOP)/rules.mak
 

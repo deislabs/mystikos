@@ -8,6 +8,8 @@ LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 
 REDEFINE_TESTS=1
 
+CLEAN = appdir result rootfs
+
 include $(TOP)/rules.mak
 
 tests:
