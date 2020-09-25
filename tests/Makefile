@@ -9,7 +9,6 @@ DIRS += alpine
 DIRS += pthread
 DIRS += urandom
 DIRS += buf
-DIRS += paths
 DIRS += cpuid
 DIRS += argv
 DIRS += shlib
