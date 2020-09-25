@@ -51,10 +51,12 @@ LDFLAGS += -L$(LIBDIR)
 LDFLAGS += -lgcov_musl
 endif
 
-OBJECTS += $(wildcard $(OBJDIR)/kernel/*.o)
-OBJECTS += $(wildcard $(OBJDIR)/shared/*.o)
 OBJECTS += $(SUBOBJDIR)/enter.o
 OBJECTS += $(SUBOBJDIR)/initfini.o
+
+LIBS =
+LIBS += $(LIBDIR)/libosutils.a
+LIBS += $(LIBDIR)/liboskernel.a
 
 $(TARGET): $(OBJECTS)
 	$(CC) -o $(TARGET) $(OBJECTS) $(LDFLAGS) $(LIBS)

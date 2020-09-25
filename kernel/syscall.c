@@ -1,4 +1,5 @@
 #define _GNU_SOURCE
+#include <assert.h>
 #include <fcntl.h>
 #include <libos/mman.h>
 #include <limits.h>
@@ -16,7 +17,6 @@
 #include <sys/vfs.h>
 #include <unistd.h>
 
-#include <libos/assert.h>
 #include <libos/barrier.h>
 #include <libos/buf.h>
 #include <libos/cpio.h>
@@ -31,11 +31,12 @@
 #include <libos/initfini.h>
 #include <libos/libc.h>
 #include <libos/lsr.h>
-#include <libos/malloc.h>
 #include <libos/mmanutils.h>
 #include <libos/mount.h>
 #include <libos/options.h>
+#include <libos/panic.h>
 #include <libos/paths.h>
+#include <libos/printf.h>
 #include <libos/process.h>
 #include <libos/ramfs.h>
 #include <libos/setjmp.h>
@@ -498,7 +499,7 @@ __attribute__((format(printf, 2, 3))) static void _strace(
         {
             va_list ap;
             va_start(ap, fmt);
-            libos_vsnprintf(buf, sizeof(buf), fmt, ap);
+            vsnprintf(buf, sizeof(buf), fmt, ap);
             va_end(ap);
         }
         else
@@ -597,10 +598,10 @@ static int _add_fd_link(libos_fs_t* fs, libos_file_t* file, int fd)
 
     ECHECK((*fs->fs_realpath)(fs, file, realpath, sizeof(realpath)));
 
-    if (libos_snprintf(linkpath, n, "/proc/self/fd/%d", fd) >= (int)n)
+    if (snprintf(linkpath, n, "/proc/self/fd/%d", fd) >= (int)n)
         ERAISE(-ENAMETOOLONG);
 
-    ECHECK(libos_symlink(realpath, linkpath));
+    ECHECK(symlink(realpath, linkpath));
 
 done:
     return ret;
@@ -618,11 +619,11 @@ static int _remove_fd_link(libos_fs_t* fs, libos_file_t* file, int fd)
 
     ECHECK((*fs->fs_realpath)(fs, file, realpath, sizeof(realpath)));
 
-    if (libos_snprintf(linkpath, n, "/proc/self/fd/%d", fd) >= (int)n)
+    if (snprintf(linkpath, n, "/proc/self/fd/%d", fd) >= (int)n)
         ERAISE(-ENAMETOOLONG);
 
 #if 0
-    libos_printf("REMOVE{%s=>%s}\n", realpath, linkpath);
+    printf("REMOVE{%s=>%s}\n", realpath, linkpath);
 #endif
 
     /* only the root file system can remove the link path */
@@ -674,7 +675,7 @@ long libos_syscall_open(const char* pathname, int flags, mode_t mode)
     libos_file_t* file;
 
     /* Handle /dev/urandom as a special case */
-    if (libos_strcmp(pathname, "/dev/urandom") == 0)
+    if (strcmp(pathname, "/dev/urandom") == 0)
     {
         /* ATTN: handle relative paths to /dev/urandom */
         return DEV_URANDOM_FD;
@@ -1109,7 +1110,7 @@ done:
 
 long libos_syscall_chmod(const char* pathname, mode_t mode)
 {
-    libos_printf("pathname{%s} mode{%o}\n", pathname, mode);
+    printf("pathname{%s} mode{%o}\n", pathname, mode);
     (void)pathname;
     (void)mode;
     return 0;
@@ -1129,7 +1130,7 @@ long libos_syscall_mount(
         ERAISE(-EINVAL);
 
     /* only "ramfs" is supported */
-    if (libos_strcmp(filesystemtype, "ramfs") != 0)
+    if (strcmp(filesystemtype, "ramfs") != 0)
         ERAISE(-ENOTSUP);
 
     /* these arguments should be zero and null */
@@ -1301,7 +1302,7 @@ void libos_dump_ramfs(void)
 
     for (size_t i = 0; i < paths.size; i++)
     {
-        libos_printf("%s\n", paths.data[i]);
+        printf("%s\n", paths.data[i]);
     }
 
     libos_strarr_release(&paths);
@@ -1322,7 +1323,7 @@ int libos_export_ramfs(void)
         const char* path = paths.data[i];
 
         /* Skip over entries in the /proc file system */
-        if (libos_strncmp(path, "/proc", 5) == 0)
+        if (strncmp(path, "/proc", 5) == 0)
             continue;
 
         if (libos_load_file(path, &data, &size) != 0)
@@ -1337,7 +1338,7 @@ int libos_export_ramfs(void)
             continue;
         }
 
-        libos_free(data);
+        free(data);
         data = NULL;
         size = 0;
     }
@@ -1348,7 +1349,7 @@ done:
     libos_strarr_release(&paths);
 
     if (data)
-        libos_free(data);
+        free(data);
 
     return ret;
 }
@@ -1440,7 +1441,7 @@ long libos_syscall(long n, long params[6])
         }
         case SYS_libos_trace_ptr:
         {
-            libos_printf(
+            printf(
                 "trace: %s: %lX %ld\n",
                 (const char*)params[0],
                 params[1],
@@ -1466,17 +1467,17 @@ long libos_syscall(long n, long params[6])
             int argc = (int)x1;
             const char** argv = (const char**)x2;
 
-            libos_printf("=== SYS_libos_dump_argv\n");
+            printf("=== SYS_libos_dump_argv\n");
 
-            libos_printf("argc=%d\n", argc);
-            libos_printf("argv=%p\n", argv);
+            printf("argc=%d\n", argc);
+            printf("argv=%p\n", argv);
 
             for (int i = 0; i < argc; i++)
             {
-                libos_printf("argv[%d]=%s\n", i, argv[i]);
+                printf("argv[%d]=%s\n", i, argv[i]);
             }
 
-            libos_printf("argv[argc]=%p\n", argv[argc]);
+            printf("argv[argc]=%p\n", argv[argc]);
 
             BREAK(_return(n, 0));
         }
@@ -2249,7 +2250,7 @@ long libos_syscall(long n, long params[6])
             _strace(n, "path=%s buf=%p", path, buf);
 
             if (buf)
-                libos_memset(buf, 0, sizeof(*buf));
+                memset(buf, 0, sizeof(*buf));
 
             BREAK(_return(n, 0));
         }
@@ -2461,7 +2462,7 @@ long libos_syscall(long n, long params[6])
             {
                 /* get the C-runtime thread descriptor */
                 crt_td = (libos_td_t*)tp;
-                libos_assert(libos_valid_td(crt_td));
+                assert(libos_valid_td(crt_td));
 
                 /* set the C-runtime thread descriptor for this thread */
                 thread->crt_td = crt_td;
@@ -2973,7 +2974,7 @@ long libos_syscall_add_symbol_file(
 done:
 
     if (file_data)
-        libos_free(file_data);
+        free(file_data);
 
     return ret;
 }

@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <limits.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -11,7 +12,6 @@
 
 #include <libos/elf.h>
 #include <libos/getopt.h>
-#include <libos/malloc.h>
 #include <openenclave/bits/sgx/region.h>
 #include <openenclave/host.h>
 
@@ -85,7 +85,7 @@ static int _add_image_to_elf_section(
         fprintf(stderr, "Failed to add %s to elf image", path);
         goto done;
     }
-    libos_free(image);
+    free(image);
 
     ret = 0;
 
@@ -231,7 +231,7 @@ int _package(int argc, const char* argv[])
             scratch_path,
             appname);
     }
-    if (libos_unlink(scratch_path) != 0)
+    if (unlink(scratch_path) != 0)
     {
         _err("Failed to delete temporary file %s", scratch_path);
     }
@@ -250,7 +250,7 @@ int _package(int argc, const char* argv[])
             scratch_path,
             appname);
     }
-    if (libos_unlink(scratch_path) != 0)
+    if (unlink(scratch_path) != 0)
     {
         _err("Failed to delete temporary file %s", scratch_path);
     }
@@ -269,7 +269,7 @@ int _package(int argc, const char* argv[])
             scratch_path,
             appname);
     }
-    if (libos_unlink(scratch_path) != 0)
+    if (unlink(scratch_path) != 0)
     {
         _err("Failed to delete temporary file %s", scratch_path);
     }
@@ -287,7 +287,7 @@ int _package(int argc, const char* argv[])
             scratch_path,
             appname);
     }
-    if (libos_unlink(scratch_path) != 0)
+    if (unlink(scratch_path) != 0)
     {
         _err("Failed to delete temporary file %s", scratch_path);
     }
@@ -308,7 +308,7 @@ int _package(int argc, const char* argv[])
     {
         _err("File path to long: %s.signed/bin/%s", appname, appname);
     }
-    int fd = libos_open(scratch_path, O_WRONLY | O_CREAT | O_TRUNC, 0774);
+    int fd = open(scratch_path, O_WRONLY | O_CREAT | O_TRUNC, 0774);
     if (fd == 0)
     {
         _err("Failed to create %s for writing", scratch_path);
@@ -317,7 +317,7 @@ int _package(int argc, const char* argv[])
     {
         _err("File to save final signed image: %s", scratch_path);
     }
-    libos_close(fd);
+    close(fd);
 
     elf_unload(&elf);
 
@@ -327,7 +327,7 @@ int _package(int argc, const char* argv[])
     {
         _err("File path to long: %s.signed/bin/libos", appname);
     }
-    if (libos_unlink(scratch_path) != 0)
+    if (unlink(scratch_path) != 0)
     {
         _err("Failed to delete temporary file %s", scratch_path);
     }

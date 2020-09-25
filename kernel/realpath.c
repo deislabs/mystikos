@@ -1,6 +1,5 @@
 #include <libos/cwd.h>
 #include <libos/eraise.h>
-#include <libos/malloc.h>
 #include <libos/realpath.h>
 #include <libos/strings.h>
 #include <libos/syscall.h>
@@ -28,7 +27,7 @@ int libos_realpath(const char* path, libos_path_t* resolved_path)
         ERAISE(-EINVAL);
 
     /* Allocate variables on the heap since too big for the stack. */
-    if (!(v = libos_calloc(1, sizeof(variables_t))))
+    if (!(v = calloc(1, sizeof(variables_t))))
         ERAISE(-ENOMEM);
 
     if (path[0] == '/')
@@ -61,8 +60,8 @@ int libos_realpath(const char* path, libos_path_t* resolved_path)
 
         v->in[nin++] = "/";
 
-        for (p = libos_strtok_r(v->buf, "/", &save); p;
-             p = libos_strtok_r(NULL, "/", &save))
+        for (p = strtok_r(v->buf, "/", &save); p;
+             p = strtok_r(NULL, "/", &save))
         {
             v->in[nin++] = p;
         }
@@ -72,11 +71,11 @@ int libos_realpath(const char* path, libos_path_t* resolved_path)
     for (size_t i = 0; i < nin; i++)
     {
         /* Skip "." elements. */
-        if (libos_strcmp(v->in[i], ".") == 0)
+        if (strcmp(v->in[i], ".") == 0)
             continue;
 
         /* If "..", remove previous element. */
-        if (libos_strcmp(v->in[i], "..") == 0)
+        if (strcmp(v->in[i], "..") == 0)
         {
             if (nout > 1)
                 nout--;
@@ -107,7 +106,7 @@ int libos_realpath(const char* path, libos_path_t* resolved_path)
 done:
 
     if (v)
-        libos_free(v);
+        free(v);
 
     return ret;
 }

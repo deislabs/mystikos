@@ -1,18 +1,18 @@
 #include <assert.h>
 #include <errno.h>
-#include <libos/assert.h>
+#include <string.h>
+
 #include <libos/cond.h>
 #include <libos/mutex.h>
 #include <libos/strings.h>
 #include <libos/tcall.h>
-#include <string.h>
 
 int libos_cond_init(libos_cond_t* c)
 {
     if (!c)
         return EINVAL;
 
-    libos_memset(c, 0, sizeof(libos_cond_t));
+    memset(c, 0, sizeof(libos_cond_t));
     c->lock = 0;
 
     return 0;
@@ -45,8 +45,8 @@ int libos_cond_timedwait(
     libos_thread_t* self = libos_thread_self();
     int ret = 0;
 
-    libos_assert(self != NULL);
-    libos_assert(self->magic == LIBOS_THREAD_MAGIC);
+    assert(self != NULL);
+    assert(self->magic == LIBOS_THREAD_MAGIC);
 
     if (!c || !mutex)
         return EINVAL;

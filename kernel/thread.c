@@ -1,4 +1,7 @@
-#include <libos/assert.h>
+#include <assert.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include <libos/assume.h>
 #include <libos/atexit.h>
 #include <libos/atomic.h>
@@ -6,8 +9,9 @@
 #include <libos/fsgs.h>
 #include <libos/futex.h>
 #include <libos/lfence.h>
-#include <libos/malloc.h>
 #include <libos/options.h>
+#include <libos/panic.h>
+#include <libos/printf.h>
 #include <libos/setjmp.h>
 #include <libos/spinlock.h>
 #include <libos/strings.h>
@@ -200,8 +204,8 @@ static void _free_zombies(void* arg)
     {
         libos_thread_t* next = p->next;
 
-        libos_memset(p, 0xdd, sizeof(libos_thread_t));
-        libos_free(p);
+        memset(p, 0xdd, sizeof(libos_thread_t));
+        free(p);
 
         p = next;
     }
@@ -264,7 +268,7 @@ long libos_run_thread(uint64_t cookie, uint64_t event)
     libos_td_t* target_td = libos_get_fsbase();
     libos_td_t* crt_td;
 
-    libos_assert(libos_valid_td(target_td));
+    assert(libos_valid_td(target_td));
 
     if (__options.have_syscall_instruction)
         libos_set_gsbase(target_td);
@@ -305,7 +309,7 @@ long libos_run_thread(uint64_t cookie, uint64_t event)
     {
         /* ---------- running C-runtime thread descriptor ---------- */
 
-        libos_assert(libos_gettid() != -1);
+        assert(libos_gettid() != -1);
 
         /* restore the target thread descriptor */
         libos_set_fsbase(thread->target_td);
@@ -368,7 +372,7 @@ static long _syscall_clone(
 
     /* Create and initialize the thread struct */
     {
-        if (!(thread = libos_calloc(1, sizeof(libos_thread_t))))
+        if (!(thread = calloc(1, sizeof(libos_thread_t))))
             ERAISE(-ENOMEM);
 
         thread->magic = LIBOS_THREAD_MAGIC;

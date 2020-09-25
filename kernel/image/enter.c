@@ -1,4 +1,6 @@
-#include <libos/assert.h>
+#include <assert.h>
+#include <stdlib.h>
+
 #include <libos/atexit.h>
 #include <libos/cpio.h>
 #include <libos/crash.h>
@@ -9,10 +11,11 @@
 #include <libos/fsgs.h>
 #include <libos/initfini.h>
 #include <libos/kernel.h>
-#include <libos/malloc.h>
 #include <libos/mmanutils.h>
 #include <libos/mount.h>
 #include <libos/options.h>
+#include <libos/panic.h>
+#include <libos/printf.h>
 #include <libos/process.h>
 #include <libos/ramfs.h>
 #include <libos/strings.h>
@@ -39,6 +42,7 @@ long libos_tcall(long n, long params[6])
     return ret;
 }
 
+#if 0
 void libos_dump_malloc_stats(void)
 {
     libos_malloc_stats_t stats;
@@ -49,6 +53,7 @@ void libos_dump_malloc_stats(void)
         libos_eprintf("kernel: peak memory used: %zu\n", stats.peak_usage);
     }
 }
+#endif
 
 static int _setup_ramfs(void)
 {
@@ -66,7 +71,7 @@ static int _setup_ramfs(void)
         ERAISE(-EINVAL);
     }
 
-    if (libos_mkdir("/tmp", 777) != 0)
+    if (mkdir("/tmp", 777) != 0)
     {
         libos_eprintf("cannot create the /tmp directory\n");
         ERAISE(-EINVAL);
@@ -99,9 +104,9 @@ static int _create_mem_file(
     if (!path || !file_data)
         ERAISE(-EINVAL);
 
-    if ((fd = libos_open(path, O_WRONLY | O_CREAT, 0444)) < 0)
+    if ((fd = open(path, O_WRONLY | O_CREAT, 0444)) < 0)
     {
-        libos_panic("kernel: libos_open(): %s\n", path);
+        libos_panic("kernel: open(): %s\n", path);
         ERAISE(-ENOENT);
     }
 
@@ -112,7 +117,7 @@ static int _create_mem_file(
 done:
 
     if (fd >= 0)
-        libos_close(fd);
+        close(fd);
 
     return ret;
 }
@@ -141,7 +146,7 @@ static int _create_main_thread(uint64_t event, libos_thread_t** thread_out)
     if (!thread_out)
         ERAISE(-EINVAL);
 
-    if (!(thread = libos_calloc(1, sizeof(libos_thread_t))))
+    if (!(thread = calloc(1, sizeof(libos_thread_t))))
         ERAISE(-ENOMEM);
 
     libos_setppid(ppid);
@@ -161,7 +166,7 @@ static int _create_main_thread(uint64_t event, libos_thread_t** thread_out)
 done:
 
     if (thread)
-        libos_free(thread);
+        free(thread);
 
     return ret;
 }
@@ -261,8 +266,10 @@ int libos_enter_kernel(libos_kernel_args_t* args)
     /* Create the main thread */
     ECHECK(_create_main_thread(args->event, &thread));
 
+#if 0
     /* print out memory statistics */
     libos_dump_malloc_stats();
+#endif
 
     /* Enter the C runtime (which enters the application) */
     exit_status = elf_enter_crt(
@@ -284,9 +291,11 @@ int libos_enter_kernel(libos_kernel_args_t* args)
     /* call functions installed with libos_atexit() */
     libos_call_atexit_functions();
 
+#if 0
     /* Check for memory leaks */
     if (libos_find_leaks() != 0)
         libos_panic("kernel memory leaks");
+#endif
 
     /* ATTN: move libos_call_atexit_functions() here */
 

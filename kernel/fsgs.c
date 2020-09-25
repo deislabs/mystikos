@@ -1,6 +1,8 @@
 #include <libos/barrier.h>
 #include <libos/fsgs.h>
 #include <libos/options.h>
+#include <libos/panic.h>
+#include <libos/printf.h>
 #include <libos/strings.h>
 #include <libos/syscall.h>
 #include <libos/tcall.h>

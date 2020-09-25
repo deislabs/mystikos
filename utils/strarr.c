@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <libos/malloc.h>
 #include <libos/strarr.h>
 #include <libos/strings.h>
 
@@ -15,10 +14,10 @@ void libos_strarr_release(libos_strarr_t* self)
     size_t i;
 
     for (i = 0; i < self->size; i++)
-        libos_free(self->data[i]);
+        free(self->data[i]);
 
-    libos_free(self->data);
-    libos_memset(self, 0, sizeof(libos_strarr_t));
+    free(self->data);
+    memset(self, 0, sizeof(libos_strarr_t));
 }
 
 int libos_strarr_append(libos_strarr_t* self, const char* str)
@@ -34,7 +33,7 @@ int libos_strarr_append(libos_strarr_t* self, const char* str)
         else
             capacity = _CAPACITY;
 
-        if (!(data = libos_realloc(self->data, sizeof(char*) * capacity)))
+        if (!(data = realloc(self->data, sizeof(char*) * capacity)))
             return -1;
 
         self->data = data;
@@ -47,7 +46,7 @@ int libos_strarr_append(libos_strarr_t* self, const char* str)
 
         if (str)
         {
-            if (!(newStr = libos_strdup(str)))
+            if (!(newStr = strdup(str)))
                 return -1;
         }
         else
@@ -69,7 +68,7 @@ int libos_strarr_remove(libos_strarr_t* self, size_t index)
     if (index >= self->size)
         return -1;
 
-    libos_free(self->data[index]);
+    free(self->data[index]);
 
     /* Remove the element */
     for (i = index; i < self->size - 1; i++)
@@ -98,7 +97,7 @@ void libos_strarr_sort(libos_strarr_t* self)
 
         for (j = 0; j < n; j++)
         {
-            if (libos_strcmp(self->data[j], self->data[j + 1]) > 0)
+            if (strcmp(self->data[j], self->data[j + 1]) > 0)
             {
                 char* tmp = self->data[j];
                 self->data[j] = self->data[j + 1];

@@ -1,10 +1,10 @@
 #include <errno.h>
+#include <stdlib.h>
 
 #include <libos/atexit.h>
 #include <libos/cond.h>
 #include <libos/eraise.h>
 #include <libos/futex.h>
-#include <libos/malloc.h>
 #include <libos/strings.h>
 #include <libos/thread.h>
 
@@ -67,7 +67,7 @@ static void _free_futexes(void* arg)
         for (futex_t* p = _chains[i]; p;)
         {
             futex_t* next = p->next;
-            libos_free(p);
+            free(p);
             p = next;
         }
     }
@@ -97,7 +97,7 @@ static futex_t* _get_futex(volatile int* uaddr)
         }
     }
 
-    if (!(f = libos_calloc(1, sizeof(futex_t))))
+    if (!(f = calloc(1, sizeof(futex_t))))
         goto done;
 
     f->refs = 1;
@@ -136,7 +136,7 @@ static int _put_futex(int* uaddr)
                 else
                     _chains[index] = p->next;
 
-                libos_free(p);
+                free(p);
             }
 
             ret = 0;
@@ -162,7 +162,7 @@ int libos_futex_wait(int* uaddr, int val, const struct timespec* to)
     futex_t* f = NULL;
 
 #if defined(DEBUG_TRACE)
-    libos_printf("%s(): uaddr=%p\n", __FUNCTION__, uaddr);
+    printf("%s(): uaddr=%p\n", __FUNCTION__, uaddr);
 #endif
 
     if (!uaddr)
@@ -210,7 +210,7 @@ int libos_futex_wake(int* uaddr, int val)
     bool locked = false;
 
 #if defined(DEBUG_TRACE)
-    libos_printf("%s(): uaddr=%p\n", __FUNCTION__, uaddr);
+    printf("%s(): uaddr=%p\n", __FUNCTION__, uaddr);
 #endif
 
     if (!uaddr)
@@ -273,7 +273,7 @@ static int _futex_requeue(int* uaddr, int op, int val, int val2, int* uaddr2)
     bool locked2 = false;
 
 #if defined(DEBUG_TRACE)
-    libos_printf("%s(): uaddr=%p\n", __FUNCTION__, uaddr);
+    printf("%s(): uaddr=%p\n", __FUNCTION__, uaddr);
 #endif
 
     if (!uaddr ||

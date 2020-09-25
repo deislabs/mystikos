@@ -17,21 +17,20 @@ int libos_lsr(const char* root, libos_strarr_t* paths, bool include_dirs)
         goto done;
 
     /* Open the directory */
-    if (libos_opendir(root, &dir) != 0)
+    if (!(dir = opendir(root)))
         goto done;
 
     /* For each entry */
-    while (libos_readdir(dir, &ent) == 1)
+    while ((ent = readdir(dir)))
     {
-        if (libos_strcmp(ent->d_name, ".") == 0 ||
-            libos_strcmp(ent->d_name, "..") == 0)
+        if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
         {
             continue;
         }
 
         libos_strlcpy(path, root, sizeof(path));
 
-        if (libos_strcmp(root, "/") != 0)
+        if (strcmp(root, "/") != 0)
             libos_strlcat(path, "/", sizeof(path));
 
         libos_strlcat(path, ent->d_name, sizeof(path));
@@ -73,14 +72,14 @@ int libos_lsr(const char* root, libos_strarr_t* paths, bool include_dirs)
 done:
 
     if (dir)
-        libos_closedir(dir);
+        closedir(dir);
 
     libos_strarr_release(&dirs);
 
     if (ret != 0 && paths != NULL)
     {
         libos_strarr_release(paths);
-        libos_memset(paths, 0, sizeof(libos_strarr_t));
+        memset(paths, 0, sizeof(libos_strarr_t));
     }
 
     return ret;

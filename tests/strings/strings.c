@@ -2,13 +2,11 @@
 // Licensed under the MIT License.
 
 #include <assert.h>
-#include <libos/malloc.h>
-#include <libos/strings.h>
-#include <openenclave/enclave.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "run_t.h"
+
+#include <libos/strings.h>
 
 int test_strsplit(
     const char* str,
@@ -36,12 +34,12 @@ int test_strsplit(
 done:
 
     if (p)
-        libos_free(p);
+        free(p);
 
     return ret;
 }
 
-int run_ecall(void)
+static int _test(void)
 {
     {
         const char str[] = "red:green:blue";
@@ -86,7 +84,7 @@ int run_ecall(void)
         char* str = NULL;
         assert(libos_strjoin(toks, ntoks, NULL, ":", NULL, &str) == 0);
         assert(strcmp(str, "red:green:blue") == 0);
-        libos_free(str);
+        free(str);
     }
 
     {
@@ -95,7 +93,7 @@ int run_ecall(void)
         char* str = NULL;
         assert(libos_strjoin(toks, ntoks, "(", ":", ")", &str) == 0);
         assert(strcmp(str, "(red:green:blue)") == 0);
-        libos_free(str);
+        free(str);
     }
 
     {
@@ -104,26 +102,26 @@ int run_ecall(void)
         char* str = NULL;
         assert(libos_strjoin(toks, ntoks, "(", ":", ")", &str) == 0);
         assert(strcmp(str, "(x)") == 0);
-        libos_free(str);
+        free(str);
     }
 
     {
         char* str = NULL;
         assert(libos_strjoin(NULL, 0, "(", ":", ")", &str) == 0);
         assert(strcmp(str, "()") == 0);
-        libos_free(str);
+        free(str);
     }
 
     extern int libos_find_leaks(void);
+#if 0
     assert(libos_find_leaks() == 0);
+#endif
 
     return 0;
 }
 
-OE_SET_ENCLAVE_SGX(
-    1,         /* ProductID */
-    1,         /* SecurityVersion */
-    true,      /* Debug */
-    16 * 4096, /* NumHeapPages */
-    4096,      /* NumStackPages */
-    2);        /* NumTCS */
+int main()
+{
+    _test();
+    return 0;
+}

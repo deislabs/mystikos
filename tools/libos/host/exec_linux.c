@@ -12,6 +12,7 @@
 #include <syscall.h>
 #include <time.h>
 
+#include <libos/args.h>
 #include <libos/elf.h>
 #include <libos/eraise.h>
 #include <libos/file.h>
@@ -223,11 +224,14 @@ static int _enter_kernel(
     libos_kernel_args_t args;
     const elf_ehdr_t* ehdr = regions->liboskernel.image_data;
     libos_kernel_entry_t entry;
+    libos_args_t env;
 
     if (err)
         *err = '\0';
     else
         ERAISE(-EINVAL);
+
+    memset(&env, 0, sizeof(env));
 
     if (!argv || !envp || !options || !regions || !tcall || !return_status)
     {
@@ -238,11 +242,42 @@ static int _enter_kernel(
     if (return_status)
         *return_status = 0;
 
+    /* Make a copy of the environment variables */
+    {
+        if (libos_args_init(&env) != 0)
+        {
+            snprintf(err, err_size, "libos_args_init() failed");
+            ERAISE(-EINVAL);
+        }
+
+        if (libos_args_append(&env, envp, envc) != 0)
+        {
+            snprintf(err, err_size, "libos_args_append() failed");
+            ERAISE(-EINVAL);
+        }
+    }
+
+    /* Inject the LIBOS_TARGET environment variable */
+    {
+        const char val[] = "LIBOS_TARGET=";
+
+        for (size_t i = 0; i < env.size; i++)
+        {
+            if (strncmp(env.data[i], val, sizeof(val) - 1) == 0)
+            {
+                snprintf(err, err_size, "environment already contains %s", val);
+                ERAISE(-EINVAL);
+            }
+        }
+
+        libos_args_append1(&env, "LIBOS_TARGET=linux");
+    }
+
     memset(&args, 0, sizeof(args));
     args.argc = argc;
     args.argv = argv;
-    args.envc = envc;
-    args.envp = envp;
+    args.envc = env.size;
+    args.envp = env.data;
     args.mman_data = regions->mman_data;
     args.mman_size = regions->mman_size;
     args.rootfs_data = regions->rootfs_data;
@@ -275,6 +310,10 @@ static int _enter_kernel(
     *return_status = (*entry)(&args);
 
 done:
+
+    if (env.data)
+        free(env.data);
+
     return ret;
 }
 

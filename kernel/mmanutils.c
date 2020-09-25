@@ -1,6 +1,7 @@
-#include <libos/assert.h>
+#include <assert.h>
+#include <stdlib.h>
+
 #include <libos/file.h>
-#include <libos/malloc.h>
 #include <libos/mmanutils.h>
 #include <libos/strings.h>
 #include <limits.h>
@@ -49,7 +50,7 @@ done:
 
 int libos_teardown_mman(void)
 {
-    libos_assert(libos_mman_is_sane(&_mman));
+    assert(libos_mman_is_sane(&_mman));
     return 0;
 }
 
@@ -67,11 +68,11 @@ static ssize_t _map_file_onto_memory(
         goto done;
 
     /* save the current file position */
-    if ((save_pos = libos_lseek(fd, 0, SEEK_CUR)) == (off_t)-1)
+    if ((save_pos = lseek(fd, 0, SEEK_CUR)) == (off_t)-1)
         goto done;
 
     /* seek start of file */
-    if (libos_lseek(fd, offset, SEEK_SET) == (off_t)-1)
+    if (lseek(fd, offset, SEEK_SET) == (off_t)-1)
         goto done;
 
     /* read file onto memory */
@@ -81,16 +82,16 @@ static ssize_t _map_file_onto_memory(
         uint8_t* p = data;
         size_t r = size;
 
-        while ((n = libos_read(fd, buf, sizeof buf)) > 0)
+        while ((n = read(fd, buf, sizeof buf)) > 0)
         {
             /* if copy would write past end of data */
             if (r < (size_t)n)
             {
-                libos_memcpy(p, buf, r);
+                memcpy(p, buf, r);
                 break;
             }
 
-            libos_memcpy(p, buf, (size_t)n);
+            memcpy(p, buf, (size_t)n);
             p += n;
             r -= (size_t)n;
             bytes_read += n;
@@ -98,7 +99,7 @@ static ssize_t _map_file_onto_memory(
     }
 
     /* restore the file position */
-    if (libos_lseek(fd, save_pos, SEEK_SET) == (off_t)-1)
+    if (lseek(fd, save_pos, SEEK_SET) == (off_t)-1)
         goto done;
 
     ret = bytes_read;
@@ -127,8 +128,8 @@ void* libos_mmap(
             return (void*)-1;
 
         void* end = (uint8_t*)addr + length;
-        libos_assert(addr >= _mman_start && addr <= _mman_end);
-        libos_assert(end >= _mman_start && end <= _mman_end);
+        assert(addr >= _mman_start && addr <= _mman_end);
+        assert(end >= _mman_start && end <= _mman_end);
 
         // ATTN: call mmap or mremap here so that this range refers to
         // a mapped region.
@@ -140,7 +141,7 @@ void* libos_mmap(
 
     if (libos_mman_mmap(&_mman, addr, length, prot, tflags, &ptr) != 0)
     {
-        libos_printf("libos_mman_mmap: error: %s\n", _mman.err);
+        printf("libos_mman_mmap: error: %s\n", _mman.err);
         return (void*)-1;
     }
 
@@ -153,8 +154,8 @@ void* libos_mmap(
     }
 
     void* end = (uint8_t*)ptr + length;
-    libos_assert(ptr >= _mman_start && ptr <= _mman_end);
-    libos_assert(end >= _mman_start && end <= _mman_end);
+    assert(ptr >= _mman_start && ptr <= _mman_end);
+    assert(end >= _mman_start && end <= _mman_end);
 
     return ptr;
 }

@@ -1,10 +1,10 @@
+#include <assert.h>
 #include <limits.h>
 #include <lthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <libos/assert.h>
 #include <libos/atexit.h>
 #include <libos/cpio.h>
 #include <libos/elfutils.h>
@@ -12,8 +12,9 @@
 #include <libos/file.h>
 #include <libos/fsgs.h>
 #include <libos/libc.h>
-#include <libos/malloc.h>
+#include <libos/panic.h>
 #include <libos/paths.h>
+#include <libos/printf.h>
 #include <libos/process.h>
 #include <libos/round.h>
 #include <libos/setjmp.h>
@@ -251,7 +252,7 @@ int elf_init_stack(
         envp_strings_offset = argv_strings_offset;
 
         for (size_t i = 0; i < argc; i++)
-            envp_strings_offset += libos_strlen(argv[i]) + 1;
+            envp_strings_offset += strlen(argv[i]) + 1;
     }
 
     /* calculate the offset of the end marker */
@@ -259,7 +260,7 @@ int elf_init_stack(
         end_marker_offset = envp_strings_offset;
 
         for (size_t i = 0; i < envc; i++)
-            end_marker_offset += libos_strlen(envp[i]) + 1;
+            end_marker_offset += strlen(envp[i]) + 1;
 
         end_marker_offset = _round_up_to_multiple(end_marker_offset, 8);
     }
@@ -318,14 +319,14 @@ int elf_init_stack(
 
         for (size_t i = 0; i < argc; i++)
         {
-            size_t n = libos_strlen(argv[i]) + 1;
-            libos_memcpy(p, argv[i], n);
+            size_t n = strlen(argv[i]) + 1;
+            memcpy(p, argv[i], n);
             argv_out[i] = p;
             p += n;
         }
 
         /* Initialize the terminator */
-        libos_memset(&argv_out[argc], 0, sizeof(Elf64_auxv_t));
+        memset(&argv_out[argc], 0, sizeof(Elf64_auxv_t));
     }
 
     /* Initialize envp[] */
@@ -335,8 +336,8 @@ int elf_init_stack(
 
         for (size_t i = 0; i < envc; i++)
         {
-            size_t n = libos_strlen(envp[i]) + 1;
-            libos_memcpy(p, envp[i], n);
+            size_t n = strlen(envp[i]) + 1;
+            memcpy(p, envp[i], n);
             envp_out[i] = p;
             p += n;
         }
@@ -351,14 +352,14 @@ int elf_init_stack(
         for (size_t i = 0; i < auxc; i++)
             auxv_out[i] = auxv[i];
 
-        libos_memset(&auxv_out[auxc], 0, sizeof(Elf64_auxv_t));
+        memset(&auxv_out[auxc], 0, sizeof(Elf64_auxv_t));
     }
 
     /* Write the first guard page pattern */
-    libos_memset(stack, GUARD, PAGE_SIZE);
+    memset(stack, GUARD, PAGE_SIZE);
 
     /* Write the second guard page pattern */
-    libos_memset((uint8_t*)stack + stack_size - PAGE_SIZE, GUARD, PAGE_SIZE);
+    memset((uint8_t*)stack + stack_size - PAGE_SIZE, GUARD, PAGE_SIZE);
 
     *sp_out = sp;
 
@@ -377,12 +378,12 @@ static void _dump_bytes(const void* p_, size_t n)
         uint8_t c = *p++;
 
         if (c >= ' ' && c <= '~')
-            libos_printf("%c", c);
+            printf("%c", c);
         else
-            libos_printf("<%02x>", c);
+            printf("<%02x>", c);
     }
 
-    libos_printf("\n");
+    printf("\n");
 }
 
 void elf_dump_stack(void* stack)
@@ -394,24 +395,24 @@ void elf_dump_stack(void* stack)
     Elf64_auxv_t* auxv;
     const Elf64_auxv_t* auxv_end = NULL;
 
-    libos_printf("=== dump_stack(%lX)\n", (unsigned long)stack);
+    printf("=== dump_stack(%lX)\n", (unsigned long)stack);
 
-    libos_printf("stack=%lx\n", (uint64_t)stack);
+    printf("stack=%lx\n", (uint64_t)stack);
 
 #if 0
-    libos_printf("prev=%lx\n", *((uint64_t*)stack - 1));
+    printf("prev=%lx\n", *((uint64_t*)stack - 1));
 #endif
 
-    libos_printf("argc=%d\n", argc);
+    printf("argc=%d\n", argc);
 
     for (int i = 0; i < argc; i++)
-        libos_printf("argv[%d]=%s [%lX]\n", i, argv[i], (uint64_t)argv[i]);
+        printf("argv[%d]=%s [%lX]\n", i, argv[i], (uint64_t)argv[i]);
 
     envp = (argv + argc + 1);
 
     for (int i = 0; envp[i]; i++)
     {
-        libos_printf("envp[%d]=%s [%lX]\n", i, envp[i], (uint64_t)envp[i]);
+        printf("envp[%d]=%s [%lX]\n", i, envp[i], (uint64_t)envp[i]);
         envc++;
     }
 
@@ -422,7 +423,7 @@ void elf_dump_stack(void* stack)
     for (int i = 0; auxv[i].a_type; i++)
     {
         const Elf64_auxv_t a = auxv[i];
-        libos_printf("%s=%lX\n", elf64_at_string(a.a_type), a.a_un.a_val);
+        printf("%s=%lX\n", elf64_at_string(a.a_type), a.a_un.a_val);
         auxv_end = &auxv[i];
     }
 
@@ -484,123 +485,123 @@ int elf_dump_ehdr(const void* ehdr)
     if (!h || _test_header(h) != 0)
         return -1;
 
-    libos_printf("=== elf64_ehdr_t(%lX)\n", (unsigned long)h);
+    printf("=== elf64_ehdr_t(%lX)\n", (unsigned long)h);
 
     /* Print e_ident[] */
-    libos_printf("e_ident[EI_MAG0]=%02x\n", h->e_ident[EI_MAG0]);
-    libos_printf("e_ident[EI_MAG1]=%c\n", h->e_ident[EI_MAG1]);
-    libos_printf("e_ident[EI_MAG2]=%c\n", h->e_ident[EI_MAG2]);
-    libos_printf("e_ident[EI_MAG3]=%c\n", h->e_ident[EI_MAG3]);
+    printf("e_ident[EI_MAG0]=%02x\n", h->e_ident[EI_MAG0]);
+    printf("e_ident[EI_MAG1]=%c\n", h->e_ident[EI_MAG1]);
+    printf("e_ident[EI_MAG2]=%c\n", h->e_ident[EI_MAG2]);
+    printf("e_ident[EI_MAG3]=%c\n", h->e_ident[EI_MAG3]);
 
     switch (h->e_ident[EI_CLASS])
     {
         case ELFCLASSNONE:
-            libos_printf("e_ident[EI_CLASS]=ELFCLASSNONE\n");
+            printf("e_ident[EI_CLASS]=ELFCLASSNONE\n");
             break;
         case ELFCLASS32:
-            libos_printf("e_ident[EI_CLASS]=ELFCLASS32\n");
+            printf("e_ident[EI_CLASS]=ELFCLASS32\n");
             break;
         case ELFCLASS64:
-            libos_printf("e_ident[EI_CLASS]=ELFCLASS64\n");
+            printf("e_ident[EI_CLASS]=ELFCLASS64\n");
             break;
         default:
-            libos_printf("e_ident[EI_CLASS]=%02x\n", h->e_ident[EI_CLASS]);
+            printf("e_ident[EI_CLASS]=%02x\n", h->e_ident[EI_CLASS]);
             break;
     }
 
     switch (h->e_ident[EI_DATA])
     {
         case ELFDATANONE:
-            libos_printf("e_ident[EI_DATA]=ELFDATANONE\n");
+            printf("e_ident[EI_DATA]=ELFDATANONE\n");
             break;
         case ELFDATA2LSB:
-            libos_printf("e_ident[EI_DATA]=ELFDATA2LSB\n");
+            printf("e_ident[EI_DATA]=ELFDATA2LSB\n");
             break;
         case ELFDATA2MSB:
-            libos_printf("e_ident[EI_DATA]=ELFDATA2MSB\n");
+            printf("e_ident[EI_DATA]=ELFDATA2MSB\n");
             break;
         default:
-            libos_printf("e_ident[EI_DATA]=%02x\n", h->e_ident[EI_DATA]);
+            printf("e_ident[EI_DATA]=%02x\n", h->e_ident[EI_DATA]);
             break;
     }
 
-    libos_printf("e_ident[EI_VERSION]=%02x\n", h->e_ident[EI_VERSION]);
-    libos_printf("e_ident[EI_PAD]=%02x\n", h->e_ident[EI_PAD]);
+    printf("e_ident[EI_VERSION]=%02x\n", h->e_ident[EI_VERSION]);
+    printf("e_ident[EI_PAD]=%02x\n", h->e_ident[EI_PAD]);
 
     switch (h->e_type)
     {
         case ET_NONE:
-            libos_printf("e_type=ET_NONE\n");
+            printf("e_type=ET_NONE\n");
             break;
         case ET_REL:
-            libos_printf("e_type=ET_REL\n");
+            printf("e_type=ET_REL\n");
             break;
         case ET_EXEC:
-            libos_printf("e_type=ET_EXEC\n");
+            printf("e_type=ET_EXEC\n");
             break;
         case ET_DYN:
-            libos_printf("e_type=ET_DYN\n");
+            printf("e_type=ET_DYN\n");
             break;
         case ET_CORE:
-            libos_printf("e_type=ET_CORE\n");
+            printf("e_type=ET_CORE\n");
             break;
         case ET_LOPROC:
-            libos_printf("e_type=ET_LOPROC\n");
+            printf("e_type=ET_LOPROC\n");
             break;
         case ET_HIPROC:
-            libos_printf("e_type=ET_HIPROC\n");
+            printf("e_type=ET_HIPROC\n");
             break;
         default:
-            libos_printf("e_type=%02x\n", h->e_type);
+            printf("e_type=%02x\n", h->e_type);
             break;
     }
 
     switch (h->e_machine)
     {
         case EM_NONE:
-            libos_printf("e_machine=EM_NONE\n");
+            printf("e_machine=EM_NONE\n");
             break;
         case EM_M32:
-            libos_printf("e_machine=EM_M32\n");
+            printf("e_machine=EM_M32\n");
             break;
         case EM_SPARC:
-            libos_printf("e_machine=EM_SPARC\n");
+            printf("e_machine=EM_SPARC\n");
             break;
         case EM_386:
-            libos_printf("e_machine=EM_386\n");
+            printf("e_machine=EM_386\n");
             break;
         case EM_68K:
-            libos_printf("e_machine=EM_68K\n");
+            printf("e_machine=EM_68K\n");
             break;
         case EM_88K:
-            libos_printf("e_machine=EM_88K\n");
+            printf("e_machine=EM_88K\n");
             break;
         case EM_860:
-            libos_printf("e_machine=EM_860\n");
+            printf("e_machine=EM_860\n");
             break;
         case EM_MIPS:
-            libos_printf("e_machine=EM_MIPS\n");
+            printf("e_machine=EM_MIPS\n");
             break;
         case EM_X86_64:
-            libos_printf("e_machine=EM_X86_64\n");
+            printf("e_machine=EM_X86_64\n");
             break;
         default:
-            libos_printf("e_machine=%u\n", h->e_machine);
+            printf("e_machine=%u\n", h->e_machine);
             break;
     }
 
-    libos_printf("e_version=%u\n", h->e_version);
-    libos_printf("e_entry=%lX\n", h->e_entry);
-    libos_printf("e_phoff=%lu\n", h->e_phoff);
-    libos_printf("e_shoff=%lu\n", h->e_shoff);
-    libos_printf("e_flags=%u\n", h->e_flags);
-    libos_printf("e_ehsize=%u\n", h->e_ehsize);
-    libos_printf("e_phentsize=%u\n", h->e_phentsize);
-    libos_printf("e_phnum=%u\n", h->e_phnum);
-    libos_printf("e_shentsize=%u\n", h->e_shentsize);
-    libos_printf("e_shnum=%u\n", h->e_shnum);
-    libos_printf("e_shstrndx=%u\n", h->e_shstrndx);
-    libos_printf("\n");
+    printf("e_version=%u\n", h->e_version);
+    printf("e_entry=%lX\n", h->e_entry);
+    printf("e_phoff=%lu\n", h->e_phoff);
+    printf("e_shoff=%lu\n", h->e_shoff);
+    printf("e_flags=%u\n", h->e_flags);
+    printf("e_ehsize=%u\n", h->e_ehsize);
+    printf("e_phentsize=%u\n", h->e_phentsize);
+    printf("e_phnum=%u\n", h->e_phnum);
+    printf("e_shentsize=%u\n", h->e_shentsize);
+    printf("e_shnum=%u\n", h->e_shnum);
+    printf("e_shstrndx=%u\n", h->e_shstrndx);
+    printf("\n");
 
     return 0;
 }
@@ -656,10 +657,10 @@ void* elf_make_stack(
     if (stack_size % PAGE_SIZE)
         goto done;
 
-    if (!(stack = libos_memalign(PAGE_SIZE, stack_size)))
+    if (!(stack = memalign(PAGE_SIZE, stack_size)))
         goto done;
 
-    libos_memset(stack, 0, stack_size);
+    memset(stack, 0, stack_size);
 
     /*  Example:
         AT_SYSINFO_EHDR=7ffebe5c8000
@@ -726,7 +727,7 @@ void* elf_make_stack(
 done:
 
     if (stack)
-        libos_free(stack);
+        free(stack);
 
     return ret;
 }
@@ -755,10 +756,10 @@ static int _setup_exe_link(const char* path)
     if (libos_normalize(path, target, sizeof(target)) != 0)
         ERAISE(-EINVAL);
 
-    libos_snprintf(buf, sizeof(buf), "/proc/%u", pid);
+    snprintf(buf, sizeof(buf), "/proc/%u", pid);
     ECHECK(libos_mkdirhier(buf, 0777));
 
-    libos_snprintf(buf, sizeof(buf), "/proc/%u/exe", pid);
+    snprintf(buf, sizeof(buf), "/proc/%u/exe", pid);
     ECHECK(libos_syscall_symlink(target, buf));
 
 done:
@@ -782,7 +783,7 @@ int elf_enter_crt(
 
     /* ATTN: rework to return errors rather than to exit */
 
-    libos_assert(_test_header(ehdr) == 0);
+    assert(_test_header(ehdr) == 0);
 
     enter = (enter_t)((uint8_t*)image_base + ehdr->e_entry);
 
@@ -807,7 +808,7 @@ int elf_enter_crt(
         libos_panic("_make_stack() failed");
     }
 
-    libos_assert(elf_check_stack(stack, stack_size) == 0);
+    assert(elf_check_stack(stack, stack_size) == 0);
 
     /* Find the dynamic vector */
     uint64_t* dynv = NULL;
@@ -831,7 +832,7 @@ int elf_enter_crt(
     if (!dynv)
         libos_panic("null dynv");
 
-    libos_assert(elf_check_stack(stack, stack_size) == 0);
+    assert(elf_check_stack(stack, stack_size) == 0);
 
     if (_setup_exe_link(argv[1]) != 0)
         libos_panic("unexpected");
@@ -863,8 +864,8 @@ int elf_enter_crt(
         (*enter)(sp, dynv, libos_syscall);
     }
 
-    libos_assert(elf_check_stack(stack, stack_size) == 0);
-    libos_free(stack);
+    assert(elf_check_stack(stack, stack_size) == 0);
+    free(stack);
 
     return libos_get_exit_status();
 }

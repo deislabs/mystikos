@@ -1,3 +1,8 @@
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+
 #include <libos/eraise.h>
 #include <libos/file.h>
 
@@ -9,10 +14,10 @@ int libos_write_file(const char* path, const void* data, size_t size)
     size_t r = size;
     ssize_t n;
 
-    if ((fd = libos_open(path, O_CREAT | O_WRONLY | O_TRUNC, 0666)) < 0)
+    if ((fd = open(path, O_CREAT | O_WRONLY | O_TRUNC, 0666)) < 0)
         ERAISE(-errno);
 
-    while ((n = libos_write(fd, p, r)) > 0)
+    while ((n = write(fd, p, r)) > 0)
     {
         p += n;
         r -= n;
@@ -21,7 +26,7 @@ int libos_write_file(const char* path, const void* data, size_t size)
     if (r != 0)
         ERAISE(-EIO);
 
-    libos_close(fd);
+    close(fd);
 
 done:
     return ret;
@@ -39,7 +44,7 @@ int libos_write_file_fd(int fd, const void* data, size_t size)
 
     while (r > 0)
     {
-        if ((n = libos_write(fd, p, r)) == 0)
+        if ((n = write(fd, p, r)) == 0)
             break;
 
         if (n < 0)

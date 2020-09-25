@@ -543,7 +543,7 @@ static int _munmap(libos_mman_t* mman, void* addr, size_t length)
 
     /* If scrubbing is enabled, then scrub the unmapped memory */
     if (mman->scrub)
-        libos_memset(addr, 0xDD, length);
+        memset(addr, 0xDD, length);
 
     if (!_mman_is_sane(mman))
     {
@@ -741,7 +741,7 @@ done:
 
     /* Zero-fill mapped memory */
     if (ptr_out && *ptr_out)
-        libos_memset(*ptr_out, 0, length);
+        memset(*ptr_out, 0, length);
 
     return ret;
 }
@@ -802,7 +802,7 @@ int libos_mman_init(libos_mman_t* mman, uintptr_t base, size_t size)
     }
 
     /* Clear the heap object */
-    libos_memset(mman, 0, sizeof(libos_mman_t));
+    memset(mman, 0, sizeof(libos_mman_t));
 
     /* Calculate the total number of pages */
     size_t num_pages = size / LIBOS_PAGE_SIZE;
@@ -1227,7 +1227,7 @@ int libos_mman_mremap(
 
         /* If scrubbing is enabled, scrub the unmapped portion */
         if (mman->scrub)
-            libos_memset((void*)new_end, 0xDD, old_size - new_size);
+            memset((void*)new_end, 0xDD, old_size - new_size);
     }
     else if (new_size > old_size)
     {
@@ -1238,7 +1238,7 @@ int libos_mman_mremap(
         if (_end(vad) == old_end && _get_right_gap(mman, vad) >= delta)
         {
             vad->size += (uint32_t)delta;
-            libos_memset((void*)(start + old_size), 0, delta);
+            memset((void*)(start + old_size), 0, delta);
             new_addr = addr;
 
             /* If VAD is now contiguous with next one, coalesce them */
@@ -1260,7 +1260,7 @@ int libos_mman_mremap(
             }
 
             /* Copy over data from old area */
-            libos_memcpy(addr, (void*)start, old_size);
+            memcpy(addr, (void*)start, old_size);
 
             /* Ummap the old area */
             if (_munmap(mman, (void*)start, old_size) != 0)

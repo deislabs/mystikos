@@ -1,3 +1,4 @@
+#include <libos/panic.h>
 #include <libos/strings.h>
 #include <libos/thread.h>
 

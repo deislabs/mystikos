@@ -1,5 +1,8 @@
-#include <libos/defs.h>
+#include <stdio.h>
+
 #include <libos/kernel.h>
+#include <libos/panic.h>
+#include <libos/printf.h>
 #include <libos/strings.h>
 #include <libos/tcall.h>
 
@@ -14,11 +17,11 @@ static void _dump_target_stat(void)
     if (libos_tcall_target_stat(&config) != 0)
         libos_panic("libos_tcall_target_stat() failed");
 
-    libos_printf("=== libos memory configuration:\n");
-    libos_printf("kernel_mem_size=%zu\n", config.heap_size);
-    libos_printf("user_mem_size=%zu\n", args->mman_size);
-    libos_printf("rootfs_size=%zu\n", args->rootfs_size);
-    libos_printf("crt_size=%zu\n", args->crt_size);
+    printf("=== libos memory configuration:\n");
+    printf("kernel_mem_size=%zu\n", config.heap_size);
+    printf("user_mem_size=%zu\n", args->mman_size);
+    printf("rootfs_size=%zu\n", args->rootfs_size);
+    printf("crt_size=%zu\n", args->crt_size);
 }
 
 LIBOS_WEAK_ALIAS(_dump_target_stat, libos_dump_target_stat);

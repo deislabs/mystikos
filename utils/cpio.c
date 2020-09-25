@@ -5,14 +5,17 @@
 #define _GNU_SOURCE
 #endif
 
+#include <assert.h>
+#include <dirent.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
-#include <libos/assert.h>
 #include <libos/cpio.h>
-#include <libos/file.h>
-#include <libos/malloc.h>
 #include <libos/round.h>
 #include <libos/strarr.h>
 #include <libos/strings.h>
@@ -23,8 +26,7 @@ void free(void* ptr);
 #define CPIO_BLOCK_SIZE 512
 
 #define TRACE
-#define PRINTF libos_printf
-#define EPRINTF libos_eprintf
+#define PRINTF printf
 
 // clang-format off
 #if defined(TRACE)
@@ -130,7 +132,7 @@ static void _dump(const uint8_t* data, size_t size)
 
 static bool _valid_header(const cpio_header_t* header)
 {
-    return libos_memcmp(header->magic, "070701", 6) == 0;
+    return memcmp(header->magic, "070701", 6) == 0;
 }
 
 static ssize_t _hex_to_ssize(const char* str, size_t len)
@@ -236,12 +238,12 @@ static int _skip_padding(int fd)
     int64_t pos;
     int64_t new_pos;
 
-    if ((pos = libos_lseek(fd, 0, SEEK_CUR)) < 0)
+    if ((pos = lseek(fd, 0, SEEK_CUR)) < 0)
         GOTO(done);
 
     new_pos = libos_round_up_i64(pos, 4);
 
-    if (new_pos != pos && libos_lseek(fd, new_pos, SEEK_SET) < 0)
+    if (new_pos != pos && lseek(fd, new_pos, SEEK_SET) < 0)
         GOTO(done);
 
     ret = 0;
@@ -256,7 +258,7 @@ static int _write_padding(int fd, size_t n)
     int64_t pos;
     int64_t new_pos;
 
-    if ((pos = libos_lseek(fd, 0, SEEK_CUR)) < 0)
+    if ((pos = lseek(fd, 0, SEEK_CUR)) < 0)
         GOTO(done);
 
     new_pos = libos_round_up_i64(pos, (int64_t)n);
@@ -265,7 +267,7 @@ static int _write_padding(int fd, size_t n)
     {
         char c = '\0';
 
-        if (libos_write(fd, &c, sizeof(c)) != 1)
+        if (write(fd, &c, sizeof(c)) != 1)
             GOTO(done);
     }
 
@@ -284,15 +286,15 @@ libos_cpio_t* libos_cpio_open(const char* path, uint32_t flags)
     if (!path)
         GOTO(done);
 
-    if (!(cpio = libos_calloc(1, sizeof(libos_cpio_t))))
+    if (!(cpio = calloc(1, sizeof(libos_cpio_t))))
         GOTO(done);
 
     if ((flags & LIBOS_CPIO_FLAG_CREATE))
     {
-        if ((fd = libos_open(path, O_WRONLY | O_CREAT | O_TRUNC, 0666)) < 0)
+        if ((fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0666)) < 0)
             GOTO(done);
 
-        if (libos_write(fd, &_dot, _dot.size) != (ssize_t)_dot.size)
+        if (write(fd, &_dot, _dot.size) != (ssize_t)_dot.size)
             GOTO(done);
 
         cpio->fd = fd;
@@ -301,7 +303,7 @@ libos_cpio_t* libos_cpio_open(const char* path, uint32_t flags)
     }
     else
     {
-        if ((fd = libos_open(path, O_RDONLY, 0666)) < 0)
+        if ((fd = open(path, O_RDONLY, 0666)) < 0)
             GOTO(done);
 
         cpio->fd = fd;
@@ -314,10 +316,10 @@ libos_cpio_t* libos_cpio_open(const char* path, uint32_t flags)
 done:
 
     if (fd >= 0)
-        libos_close(fd);
+        close(fd);
 
     if (cpio)
-        libos_free(cpio);
+        free(cpio);
 
     return ret;
 }
@@ -334,7 +336,7 @@ int libos_cpio_close(libos_cpio_t* cpio)
         const size_t size = _trailer.size;
 
         /* Write the trailer. */
-        if (libos_write(cpio->fd, &_trailer, size) != (ssize_t)size)
+        if (write(cpio->fd, &_trailer, size) != (ssize_t)size)
         {
             GOTO(done);
         }
@@ -350,9 +352,9 @@ int libos_cpio_close(libos_cpio_t* cpio)
 
 done:
 
-    libos_close(cpio->fd);
-    libos_memset(cpio, 0, sizeof(libos_cpio_t));
-    libos_free(cpio);
+    close(cpio->fd);
+    memset(cpio, 0, sizeof(libos_cpio_t));
+    free(cpio);
 
     return ret;
 }
@@ -368,16 +370,16 @@ int libos_cpio_read_entry(libos_cpio_t* cpio, libos_cpio_entry_t* entry_out)
     size_t namesize;
 
     if (entry_out)
-        libos_memset(entry_out, 0, sizeof(libos_cpio_entry_t));
+        memset(entry_out, 0, sizeof(libos_cpio_entry_t));
 
     if (!cpio || cpio->fd < 0)
         GOTO(done);
 
     /* Set the position to the next entry. */
-    if (libos_lseek(cpio->fd, cpio->offset, SEEK_SET) < 0)
+    if (lseek(cpio->fd, cpio->offset, SEEK_SET) < 0)
         GOTO(done);
 
-    if (libos_read(cpio->fd, &hdr, sizeof(hdr)) != (ssize_t)sizeof(hdr))
+    if (read(cpio->fd, &hdr, sizeof(hdr)) != (ssize_t)sizeof(hdr))
         GOTO(done);
 
     if (!_valid_header(&hdr))
@@ -408,7 +410,7 @@ int libos_cpio_read_entry(libos_cpio_t* cpio, libos_cpio_entry_t* entry_out)
     }
 
     /* Read the name. */
-    if (libos_read(cpio->fd, &entry.name, namesize) != (ssize_t)namesize)
+    if (read(cpio->fd, &entry.name, namesize) != (ssize_t)namesize)
         GOTO(done);
 
     /* Skip any padding after the name. */
@@ -416,28 +418,28 @@ int libos_cpio_read_entry(libos_cpio_t* cpio, libos_cpio_entry_t* entry_out)
         GOTO(done);
 
     /* Save the file offset. */
-    file_offset = libos_lseek(cpio->fd, 0, SEEK_CUR);
+    file_offset = lseek(cpio->fd, 0, SEEK_CUR);
 
     /* Skip over the file data. */
-    if (libos_lseek(cpio->fd, (off_t)entry.size, SEEK_CUR) < 0)
+    if (lseek(cpio->fd, (off_t)entry.size, SEEK_CUR) < 0)
         GOTO(done);
 
     /* Save the file offset. */
-    cpio->eof_offset = libos_lseek(cpio->fd, 0, SEEK_CUR);
+    cpio->eof_offset = lseek(cpio->fd, 0, SEEK_CUR);
 
     /* Skip any padding after the file data. */
     if (_skip_padding(cpio->fd) != 0)
         GOTO(done);
 
     /* Save the offset of the next entry. */
-    cpio->offset = libos_lseek(cpio->fd, 0, SEEK_CUR);
+    cpio->offset = lseek(cpio->fd, 0, SEEK_CUR);
 
     /* Rewind to the file offset. */
-    if (libos_lseek(cpio->fd, file_offset, SEEK_SET) < 0)
+    if (lseek(cpio->fd, file_offset, SEEK_SET) < 0)
         GOTO(done);
 
     /* Check for end-of-file. */
-    if (libos_strcmp(entry.name, "TRAILER!!!") == 0)
+    if (strcmp(entry.name, "TRAILER!!!") == 0)
     {
         ret = 0;
         goto done;
@@ -461,7 +463,7 @@ ssize_t libos_cpio_read_data(libos_cpio_t* cpio, void* data, size_t size)
     if (!cpio || cpio->fd < 0 || !data)
         GOTO(done);
 
-    offset = libos_lseek(cpio->fd, 0, SEEK_CUR);
+    offset = lseek(cpio->fd, 0, SEEK_CUR);
 
     if (offset > cpio->eof_offset)
         GOTO(done);
@@ -471,7 +473,7 @@ ssize_t libos_cpio_read_data(libos_cpio_t* cpio, void* data, size_t size)
     if (size > rem)
         size = rem;
 
-    if ((n = libos_read(cpio->fd, data, size)) != (ssize_t)size)
+    if ((n = read(cpio->fd, data, size)) != (ssize_t)size)
         GOTO(done);
 
     ret = (ssize_t)n;
@@ -504,13 +506,13 @@ int libos_cpio_write_entry(libos_cpio_t* cpio, const libos_cpio_entry_t* entry)
     }
 
     /* Calculate the size of the name */
-    if ((namesize = libos_strlen(entry->name) + 1) > LIBOS_CPIO_PATH_MAX)
+    if ((namesize = strlen(entry->name) + 1) > LIBOS_CPIO_PATH_MAX)
         GOTO(done);
 
     /* Write the CPIO header */
     {
-        libos_memset(&h, 0, sizeof(h));
-        libos_memcpy(h.magic, "070701", sizeof(h.magic));
+        memset(&h, 0, sizeof(h));
+        memcpy(h.magic, "070701", sizeof(h.magic));
         _uint_to_hex(h.ino, 0);
         _uint_to_hex(h.mode, entry->mode);
         _uint_to_hex(h.uid, 0);
@@ -525,13 +527,13 @@ int libos_cpio_write_entry(libos_cpio_t* cpio, const libos_cpio_entry_t* entry)
         _uint_to_hex(h.namesize, (unsigned int)namesize);
         _uint_to_hex(h.check, 0);
 
-        if (libos_write(cpio->fd, &h, sizeof(h)) != sizeof(h))
+        if (write(cpio->fd, &h, sizeof(h)) != sizeof(h))
             GOTO(done);
     }
 
     /* Write the file name. */
     {
-        if (libos_write(cpio->fd, entry->name, namesize) != (ssize_t)namesize)
+        if (write(cpio->fd, entry->name, namesize) != (ssize_t)namesize)
             GOTO(done);
 
         /* Pad to four-byte boundary. */
@@ -554,7 +556,7 @@ ssize_t libos_cpio_write_data(libos_cpio_t* cpio, const void* data, size_t size)
 
     if (size)
     {
-        if (libos_write(cpio->fd, data, size) != (ssize_t)size)
+        if (write(cpio->fd, data, size) != (ssize_t)size)
             GOTO(done);
     }
     else
@@ -584,12 +586,12 @@ int libos_cpio_unpack(const char* source, const char* target)
     if (!(cpio = libos_cpio_open(source, 0)))
         GOTO(done);
 
-    if (libos_access(target, R_OK) != 0 && libos_mkdir(target, 0766) != 0)
+    if (access(target, R_OK) != 0 && mkdir(target, 0766) != 0)
         GOTO(done);
 
     while ((r = libos_cpio_read_entry(cpio, &entry)) > 0)
     {
-        if (libos_strcmp(entry.name, ".") == 0)
+        if (strcmp(entry.name, ".") == 0)
             continue;
 
         LIBOS_STRLCPY(path, target);
@@ -600,15 +602,15 @@ int libos_cpio_unpack(const char* source, const char* target)
         {
             struct stat st;
 
-            if (libos_stat(path, &st) == 0)
+            if (stat(path, &st) == 0)
             {
                 if (!S_ISDIR(st.st_mode))
                 {
-                    EPRINTF("*** cpio: already exists: %s\n", path);
+                    PRINTF("*** cpio: already exists: %s\n", path);
                     GOTO(done);
                 }
             }
-            else if (libos_mkdir(path, entry.mode) != 0)
+            else if (mkdir(path, entry.mode) != 0)
             {
                 GOTO(done);
             }
@@ -618,16 +620,16 @@ int libos_cpio_unpack(const char* source, const char* target)
             char data[512];
             ssize_t n;
 
-            if ((fd = libos_open(path, O_WRONLY | O_CREAT, 0666)) < 0)
+            if ((fd = open(path, O_WRONLY | O_CREAT, 0666)) < 0)
                 GOTO(done);
 
             while ((n = libos_cpio_read_data(cpio, data, sizeof(data))) > 0)
             {
-                if (libos_write(fd, data, (size_t)n) != n)
+                if (write(fd, data, (size_t)n) != n)
                     GOTO(done);
             }
 
-            if (libos_close(fd) != 0)
+            if (close(fd) != 0)
                 GOTO(done);
 
             fd = -1;
@@ -645,7 +647,7 @@ int libos_cpio_unpack(const char* source, const char* target)
             target[n] = '\0';
 
             /* create the symlink */
-            if (libos_symlink(target, path) != 0)
+            if (symlink(target, path) != 0)
                 GOTO(done);
         }
         else
@@ -662,7 +664,7 @@ done:
         libos_cpio_close(cpio);
 
     if (fd >= 0)
-        libos_close(fd);
+        close(fd);
 
     return ret;
 }
@@ -678,14 +680,14 @@ static int _append_file(libos_cpio_t* cpio, const char* path, const char* name)
         GOTO(done);
 
     /* Stat the file to get the size and mode. */
-    if (libos_lstat(path, &st) != 0)
+    if (lstat(path, &st) != 0)
         GOTO(done);
 
     /* Write the CPIO header. */
     {
         libos_cpio_entry_t ent;
 
-        libos_memset(&ent, 0, sizeof(ent));
+        memset(&ent, 0, sizeof(ent));
 
         if (S_ISDIR(st.st_mode))
             st.st_size = 0;
@@ -708,10 +710,10 @@ static int _append_file(libos_cpio_t* cpio, const char* path, const char* name)
     {
         char buf[4096];
 
-        if ((fd = libos_open(path, O_RDONLY, 444)) < 0)
+        if ((fd = open(path, O_RDONLY, 444)) < 0)
             GOTO(done);
 
-        while ((n = libos_read(fd, buf, sizeof(buf))) > 0)
+        while ((n = read(fd, buf, sizeof(buf))) > 0)
         {
             if (libos_cpio_write_data(cpio, buf, (size_t)n) != 0)
                 GOTO(done);
@@ -725,7 +727,7 @@ static int _append_file(libos_cpio_t* cpio, const char* path, const char* name)
         char buf[PATH_MAX];
         ssize_t n;
 
-        n = libos_readlink(path, buf, sizeof(buf));
+        n = readlink(path, buf, sizeof(buf));
 
         if (n <= 0 || n >= (ssize_t)sizeof(buf))
             GOTO(done);
@@ -742,7 +744,7 @@ static int _append_file(libos_cpio_t* cpio, const char* path, const char* name)
 done:
 
     if (fd >= 0)
-        libos_close(fd);
+        close(fd);
 
     return ret;
 }
@@ -755,15 +757,15 @@ static int _pack(libos_cpio_t* cpio, const char* dirname, const char* root)
     char path[LIBOS_CPIO_PATH_MAX];
     libos_strarr_t dirs = LIBOS_STRARR_INITIALIZER;
 
-    if (libos_opendir(root, &dir) != 0)
+    if (!(dir = opendir(root)))
         GOTO(done);
 
     /* Append this directory to the CPIO archive. */
-    if (libos_strcmp(dirname, root) != 0)
+    if (strcmp(dirname, root) != 0)
     {
-        const char* p = root + libos_strlen(dirname);
+        const char* p = root + strlen(dirname);
 
-        libos_assert(*p == '/');
+        assert(*p == '/');
 
         if (*p == '/')
             p++;
@@ -773,17 +775,16 @@ static int _pack(libos_cpio_t* cpio, const char* dirname, const char* root)
     }
 
     /* Find all children of this directory. */
-    while (libos_readdir(dir, &ent) == 1)
+    while ((ent = readdir(dir)))
     {
-        if (libos_strcmp(ent->d_name, ".") == 0 ||
-            libos_strcmp(ent->d_name, "..") == 0)
+        if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
         {
             continue;
         }
 
         *path = '\0';
 
-        if (libos_strcmp(root, ".") != 0)
+        if (strcmp(root, ".") != 0)
         {
             LIBOS_STRLCAT(path, root);
             LIBOS_STRLCAT(path, "/");
@@ -801,9 +802,9 @@ static int _pack(libos_cpio_t* cpio, const char* dirname, const char* root)
         {
             /* Append this file to the CPIO archive (remove the dirname). */
 
-            const char* p = path + libos_strlen(dirname);
+            const char* p = path + strlen(dirname);
 
-            libos_assert(*p == '/');
+            assert(*p == '/');
 
             if (*p == '/')
                 p++;
@@ -829,7 +830,7 @@ static int _pack(libos_cpio_t* cpio, const char* dirname, const char* root)
 done:
 
     if (dir)
-        libos_closedir(dir);
+        closedir(dir);
 
     libos_strarr_release(&dirs);
 
@@ -889,7 +890,7 @@ int libos_cpio_next_entry(
         GOTO(done);
 
     pos = *pos_in_out;
-    libos_memset(entry_out, 0, sizeof(libos_cpio_entry_t));
+    memset(entry_out, 0, sizeof(libos_cpio_entry_t));
     *file_data_out = NULL;
 
     if (pos > size)
@@ -902,7 +903,7 @@ int libos_cpio_next_entry(
         if (sizeof(hdr) > rem)
             GOTO(done);
 
-        libos_memcpy(&hdr, &data[pos], sizeof(hdr));
+        memcpy(&hdr, &data[pos], sizeof(hdr));
         pos += sizeof(hdr);
         rem -= sizeof(hdr);
 
@@ -939,7 +940,7 @@ int libos_cpio_next_entry(
         if (namesize > rem)
             GOTO(done);
 
-        libos_memcpy(&entry.name, &data[pos], namesize);
+        memcpy(&entry.name, &data[pos], namesize);
         pos += namesize;
         rem -= namesize;
     }
@@ -984,7 +985,7 @@ int libos_cpio_next_entry(
     *pos_in_out = pos;
 
     /* Check for end-of-file. */
-    if (libos_strcmp(entry.name, "TRAILER!!!") == 0)
+    if (strcmp(entry.name, "TRAILER!!!") == 0)
     {
         ret = 0;
         goto done;
@@ -1021,7 +1022,7 @@ int libos_cpio_mem_unpack(
             break;
         }
 
-        if (libos_strcmp(ent.name, ".") == 0)
+        if (strcmp(ent.name, ".") == 0)
             continue;
 
         LIBOS_STRLCPY(path, target);
@@ -1032,15 +1033,15 @@ int libos_cpio_mem_unpack(
         {
             struct stat st;
 
-            if (libos_stat(path, &st) == 0)
+            if (stat(path, &st) == 0)
             {
                 if (!S_ISDIR(st.st_mode))
                 {
-                    EPRINTF("*** cpio: already exists: %s\n", path);
+                    PRINTF("*** cpio: already exists: %s\n", path);
                     GOTO(done);
                 }
             }
-            else if (libos_mkdir(path, ent.mode) != 0)
+            else if (mkdir(path, ent.mode) != 0)
             {
                 GOTO(done);
             }
@@ -1057,16 +1058,16 @@ int libos_cpio_mem_unpack(
                 int fd;
                 ssize_t n = (ssize_t)ent.size;
 
-                if ((fd = libos_open(path, O_WRONLY | O_CREAT, 0666)) < 0)
+                if ((fd = open(path, O_WRONLY | O_CREAT, 0666)) < 0)
                     GOTO(done);
 
-                if (libos_write(fd, file_data, (size_t)n) != n)
+                if (write(fd, file_data, (size_t)n) != n)
                 {
-                    libos_close(fd);
+                    close(fd);
                     GOTO(done);
                 }
 
-                libos_close(fd);
+                close(fd);
                 fd = -1;
             }
         }
@@ -1081,12 +1082,12 @@ int libos_cpio_mem_unpack(
                 if (n < 1 || n >= (ssize_t)sizeof(target))
                     GOTO(done);
 
-                libos_memcpy(target, file_data, ent.size);
+                memcpy(target, file_data, ent.size);
                 target[n] = '\0';
             }
 
             /* create the symlink */
-            if (libos_symlink(target, path) != 0)
+            if (symlink(target, path) != 0)
                 GOTO(done);
         }
         else

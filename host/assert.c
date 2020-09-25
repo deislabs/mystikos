@@ -1,4 +1,4 @@
-#include <libos/assert.h>
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 

@@ -1,10 +1,13 @@
 #include <errno.h>
+#include <stdbool.h>
+#include <string.h>
+
 #include <libos/mutex.h>
+#include <libos/panic.h>
+#include <libos/printf.h>
 #include <libos/strings.h>
 #include <libos/tcall.h>
 #include <libos/thread.h>
-#include <stdbool.h>
-#include <string.h>
 
 int libos_mutex_init(libos_mutex_t* m)
 {
@@ -13,7 +16,7 @@ int libos_mutex_init(libos_mutex_t* m)
     if (!m)
         return EINVAL;
 
-    libos_memset(m, 0, sizeof(libos_mutex_t));
+    memset(m, 0, sizeof(libos_mutex_t));
     m->lock = 0;
 
     ret = 0;
@@ -182,7 +185,7 @@ int libos_mutex_destroy(libos_mutex_t* mutex)
     {
         if (libos_thread_queue_empty(&m->queue))
         {
-            libos_memset(m, 0, sizeof(libos_mutex_t));
+            memset(m, 0, sizeof(libos_mutex_t));
             ret = 0;
         }
     }
