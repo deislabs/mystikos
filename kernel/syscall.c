@@ -1165,6 +1165,12 @@ done:
 
 long libos_syscall_ret(long ret)
 {
+    if (ret < 0)
+    {
+        errno = (int)-ret;
+        ret = -1;
+    }
+
     return ret;
 }
 
