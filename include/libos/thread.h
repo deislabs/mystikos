@@ -26,7 +26,11 @@ struct libos_td
     uint64_t reserved3;
     uint64_t reserved4;
     uint64_t canary;
-    uint64_t tsd; /* unused by musl libc pthread structure */
+    uint64_t tsd; /* thread pointer: unused by musl libc and Open Enclave */
+    uint64_t reserved5;
+    uint64_t reserved6;
+    int errnum; /* errno: unused Open Enclave */
+    int padding; /* unused by Open Enclave */
 };
 
 bool libos_valid_td(const void* td);
