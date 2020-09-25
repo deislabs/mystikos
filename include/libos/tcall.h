@@ -35,6 +35,7 @@ typedef enum libos_tcall_number
     LIBOS_TCALL_TARGET_STAT = 2067,
     LIBOS_TCALL_SET_TSD = 2068,
     LIBOS_TCALL_GET_TSD = 2069,
+    LIBOS_TCALL_GET_ERRNO_LOCATION = 2070,
 } libos_tcall_number_t;
 
 long libos_tcall(long n, long params[6]);
@@ -93,5 +94,8 @@ long libos_tcall_set_tsd(uint64_t value);
 
 /* get the thread-specific-data slot in the target (only one slot) */
 long libos_tcall_get_tsd(uint64_t* value);
+
+/* get the address of the thread-specific errno variable */
+long libos_tcall_get_errno_location(int** ptr);
 
 #endif /* _LIBOS_TCALL_H */

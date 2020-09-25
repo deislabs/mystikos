@@ -405,6 +405,17 @@ long libos_tcall(long n, long params[6])
             uint64_t* value = (uint64_t*)x1;
             return _tcall_get_tsd(value);
         }
+        case LIBOS_TCALL_GET_ERRNO_LOCATION:
+        {
+            static __thread int _errnum;
+            int** ptr = (int**)x1;
+
+            if (!ptr)
+                return -EINVAL;
+
+            *ptr = &_errnum;
+            return 0;
+        }
         case SYS_ioctl:
         {
             int fd = (int)x1;

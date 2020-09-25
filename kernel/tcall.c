@@ -96,3 +96,9 @@ long libos_tcall_get_tsd(uint64_t* value)
     long params[6] = {(long)value};
     return libos_tcall(LIBOS_TCALL_GET_TSD, params);
 }
+
+long libos_tcall_get_errno_location(int** ptr)
+{
+    long params[6] = {(long)ptr};
+    return libos_tcall(LIBOS_TCALL_GET_ERRNO_LOCATION, params);
+}
