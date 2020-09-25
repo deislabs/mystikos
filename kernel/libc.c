@@ -646,23 +646,26 @@ struct __dirstream
     uint8_t buf[4096];
 };
 
-/*
-ATTN: errno
-*/
 DIR* opendir(const char* name)
 {
-    DIR* ret = 0;
+    DIR* ret = NULL;
     DIR* dir = NULL;
     int fd = -1;
 
     if (!name)
+    {
+        errno = EINVAL;
         goto done;
+    }
 
     if ((fd = open(name, O_RDONLY | O_DIRECTORY | O_CLOEXEC, 0)) < 0)
         goto done;
 
     if (!(dir = calloc(1, sizeof(DIR))))
+    {
+        errno = ENOMEM;
         goto done;
+    }
 
     dir->fd = fd;
     fd = -1;
@@ -683,15 +686,19 @@ done:
 
 int closedir(DIR* dir)
 {
-    int ret = 0;
+    int ret = -1;
 
     if (!dir)
-        ERAISE(EINVAL);
+    {
+        errno = ENOMEM;
+        goto done;
+    }
 
     if (close(dir->fd) != 0)
-        ERAISE(EINVAL);
+        goto done;
 
     free(dir);
+    ret = 0;
 
 done:
     return ret;
@@ -703,7 +710,10 @@ struct dirent* readdir(DIR* dir)
     struct dirent* ent = NULL;
 
     if (!dir)
+    {
+        errno = ENOMEM;
         goto done;
+    }
 
     /* If the dirent buffer is exhausted, read more entries */
     if (dir->ptr >= dir->end)
@@ -712,7 +722,10 @@ struct dirent* readdir(DIR* dir)
             dir->fd, (struct dirent*)dir->buf, sizeof(dir->buf));
 
         if (n < 0)
+        {
+            errno = (int)-n;
             goto done;
+        }
 
         if (n == 0)
         {
