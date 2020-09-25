@@ -16,7 +16,7 @@ LIBS = $(LIBDIR)/libosutils.a
 
 REDEFINE_TESTS=1
 
-CLEAN = rootfs
+CLEAN = rootfs ramfs
 
 include $(TOP)/rules.mak
 

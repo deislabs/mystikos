@@ -15,6 +15,8 @@ ifdef LIBOS_ENABLE_GCOV
 LDFLAGS = -lgcov
 endif
 
+CLEAN = rootfs ramfs
+
 include $(TOP)/rules.mak
 
 tests:

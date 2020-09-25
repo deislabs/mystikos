@@ -19,6 +19,8 @@ LIBS += $(LIBDIR)/libosutils.a
 
 REDEFINE_TESTS=1
 
+CLEAN = ramfs rootfs
+
 include $(TOP)/rules.mak
 
 IMAGE = $(TOP)/build/bin/tests/elf/image/image

@@ -32,4 +32,4 @@ test-pwd:
 	TESTNAME=$(SUBDIR)-pwd $(RUNTEST) $(LIBOS_EXEC) $(OPTS) rootfs /bin/pwd
 
 clean:
-	sudo rm -rf $(TARGZ) appdir rootfs appdir
+	sudo rm -rf $(TARGZ) appdir rootfs appdir ramfs
