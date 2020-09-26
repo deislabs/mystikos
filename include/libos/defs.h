@@ -18,4 +18,6 @@
 #define LIBOS_WEAK_ALIAS(OLD, NEW) \
     extern __typeof(OLD) NEW __attribute__((__weak__, alias(#OLD)))
 
+#define LIBOS_NOINLINE __attribute__((noinline))
+
 #endif /* _LIBOS_DEFS_H */
