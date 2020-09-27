@@ -25,15 +25,19 @@ LDFLAGS2 += -L$(LIBDIR)
 LDFLAGS2 += -lgcov_musl
 endif
 
+LDFLAGS2 += -Wl,--whole-archive
+
+LIBS = $(LIBDIR)/libosglibccompat.a
+
 LIBCC = -lgcc
 
 -include $(TOP)/third_party/enclave-musl/musl/objects.mak
 
 OBJECTS = $(addprefix $(SUBOBJDIR)/,$(SOURCES:.c=.o))
 
-$(TARGET): $(MUSL_OBJECTS) $(OBJECTS)
+$(TARGET): $(MUSL_OBJECTS) $(OBJECTS) $(LIBS)
 	mkdir -p $(LIBDIR)
-	$(CC) -o $@ $(LDFLAGS1) $(OBJECTS) $(MUSL_OBJECTS) $(LIBCC) $(LDFLAGS2)
+	$(CC) -o $@ $(LDFLAGS1) $(OBJECTS) $(MUSL_OBJECTS) $(LIBCC) $(LDFLAGS2) $(LIBS)
 
 $(SUBOBJDIR)/%.o: %.c
 	mkdir -p $(SUBOBJDIR)
