@@ -42,7 +42,6 @@ long libos_tcall(long n, long params[6])
     return ret;
 }
 
-#if 0
 void libos_dump_malloc_stats(void)
 {
     libos_malloc_stats_t stats;
@@ -53,7 +52,6 @@ void libos_dump_malloc_stats(void)
         libos_eprintf("kernel: peak memory used: %zu\n", stats.peak_usage);
     }
 }
-#endif
 
 static int _setup_ramfs(void)
 {
@@ -266,9 +264,9 @@ int libos_enter_kernel(libos_kernel_args_t* args)
     /* Create the main thread */
     ECHECK(_create_main_thread(args->event, &thread));
 
-#if 0
+#ifdef LIBOS_ENABLE_LEAK_CHECKER
     /* print out memory statistics */
-    libos_dump_malloc_stats();
+    // libos_dump_malloc_stats();
 #endif
 
     /* Enter the C runtime (which enters the application) */
@@ -276,25 +274,22 @@ int libos_enter_kernel(libos_kernel_args_t* args)
         thread, args->crt_data, args->argc, args->argv, args->envc, args->envp);
 
     /* Tear down the RAM file system */
+    //_teardown_ramfs();
     _teardown_ramfs();
 
     /* Put the thread on the zombie list */
     libos_zombify_thread(thread);
 
-#if 0
-    {
-        size_t n = libos_get_num_active_threads();
-        libos_eprintf("num active threads: %zu\n", n);
-    }
-#endif
-
     /* call functions installed with libos_atexit() */
     libos_call_atexit_functions();
 
-#if 0
+#ifdef LIBOS_ENABLE_LEAK_CHECKER
     /* Check for memory leaks */
     if (libos_find_leaks() != 0)
+    {
+        libos_crash();
         libos_panic("kernel memory leaks");
+    }
 #endif
 
     /* ATTN: move libos_call_atexit_functions() here */

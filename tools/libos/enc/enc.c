@@ -114,6 +114,9 @@ static bool _is_allowed_env_variable(
     return false;
 }
 
+const void* __oe_get_enclave_base(void);
+size_t __oe_get_enclave_size(void);
+
 int libos_enter_ecall(
     struct libos_options* options,
     const void* argv_data,
@@ -127,6 +130,16 @@ int libos_enter_ecall(
     size_t crt_size;
     const void* kernel_data;
     size_t kernel_size;
+    const void* kernel_reloc_data;
+    size_t kernel_reloc_size;
+    const void* kernel_symtab_data;
+    size_t kernel_symtab_size;
+    const void* kernel_dynsym_data;
+    size_t kernel_dynsym_size;
+    const void* kernel_strtab_data;
+    size_t kernel_strtab_size;
+    const void* kernel_dynstr_data;
+    size_t kernel_dynstr_size;
     const void* rootfs_data;
     size_t rootfs_size;
     const void* config_data;
@@ -137,6 +150,8 @@ int libos_enter_ecall(
     unsigned char have_config = 0;
     libos_args_t args;
     libos_args_t env;
+    const uint8_t* enclave_base;
+    size_t enclave_size;
 
     if (!argv_data || !argv_size || !envp_data || !envp_size)
         goto done;
@@ -144,17 +159,19 @@ int libos_enter_ecall(
     memset(&args, 0, sizeof(args));
     memset(&env, 0, sizeof(env));
 
+    /* Get the enclave base address */
+    if (!(enclave_base = __oe_get_enclave_base()))
+    {
+        fprintf(stderr, "__oe_get_enclave_base() failed\n");
+        assert(0);
+    }
+
+    /* Get the enclave size */
+    enclave_size = __oe_get_enclave_size();
+
     /* Get the config region */
     {
-        extern const void* __oe_get_enclave_base(void);
         oe_region_t region;
-        const uint8_t* enclave_base;
-
-        if (!(enclave_base = __oe_get_enclave_base()))
-        {
-            fprintf(stderr, "__oe_get_enclave_base() failed\n");
-            assert(0);
-        }
 
         if (oe_region_get(LIBOS_CONFIG_REGION_ID, &region) == OE_OK)
         {
@@ -276,15 +293,7 @@ int libos_enter_ecall(
     void* mman_data;
     size_t mman_size;
     {
-        extern const void* __oe_get_enclave_base(void);
         oe_region_t region;
-        const uint8_t* enclave_base;
-
-        if (!(enclave_base = __oe_get_enclave_base()))
-        {
-            fprintf(stderr, "__oe_get_enclave_base() failed\n");
-            assert(0);
-        }
 
         if (oe_region_get(LIBOS_MMAN_REGION_ID, &region) != OE_OK)
         {
@@ -298,15 +307,7 @@ int libos_enter_ecall(
 
     /* Get the rootfs region */
     {
-        extern const void* __oe_get_enclave_base(void);
         oe_region_t region;
-        const uint8_t* enclave_base;
-
-        if (!(enclave_base = __oe_get_enclave_base()))
-        {
-            fprintf(stderr, "__oe_get_enclave_base() failed\n");
-            assert(0);
-        }
 
         if (oe_region_get(LIBOS_ROOTFS_REGION_ID, &region) != OE_OK)
         {
@@ -320,15 +321,7 @@ int libos_enter_ecall(
 
     /* Get the kernel region */
     {
-        extern const void* __oe_get_enclave_base(void);
         oe_region_t region;
-        const uint8_t* enclave_base;
-
-        if (!(enclave_base = __oe_get_enclave_base()))
-        {
-            fprintf(stderr, "__oe_get_enclave_base() failed\n");
-            assert(0);
-        }
 
         if (oe_region_get(LIBOS_KERNEL_REGION_ID, &region) != OE_OK)
         {
@@ -342,15 +335,7 @@ int libos_enter_ecall(
 
     /* Apply relocations to the kernel image */
     {
-        extern const void* __oe_get_enclave_base(void);
         oe_region_t region;
-        const uint8_t* enclave_base;
-
-        if (!(enclave_base = __oe_get_enclave_base()))
-        {
-            fprintf(stderr, "__oe_get_enclave_base() failed\n");
-            assert(0);
-        }
 
         if (oe_region_get(LIBOS_KERNEL_RELOC_REGION_ID, &region) != OE_OK)
         {
@@ -367,19 +352,70 @@ int libos_enter_ecall(
             fprintf(stderr, "libos_apply_relocations() failed\n");
             assert(0);
         }
+
+        kernel_reloc_data = enclave_base + region.vaddr;
+        kernel_reloc_size = region.size;
+    }
+
+    /* Get the kernel symbol table region */
+    {
+        oe_region_t region;
+
+        if (oe_region_get(LIBOS_KERNEL_SYMTAB_REGION_ID, &region) != OE_OK)
+        {
+            fprintf(stderr, "failed to get kernel symtab region\n");
+            assert(0);
+        }
+
+        kernel_symtab_data = enclave_base + region.vaddr;
+        kernel_symtab_size = region.size;
+    }
+
+    /* Get the kernel dynamic symbol table region */
+    {
+        oe_region_t region;
+
+        if (oe_region_get(LIBOS_KERNEL_DYNSYM_REGION_ID, &region) != OE_OK)
+        {
+            fprintf(stderr, "failed to get kernel dynsym region\n");
+            assert(0);
+        }
+
+        kernel_dynsym_data = enclave_base + region.vaddr;
+        kernel_dynsym_size = region.size;
+    }
+
+    /* Get the kernel string table region */
+    {
+        oe_region_t region;
+
+        if (oe_region_get(LIBOS_KERNEL_STRTAB_REGION_ID, &region) != OE_OK)
+        {
+            fprintf(stderr, "failed to get kernel strtab region\n");
+            assert(0);
+        }
+
+        kernel_strtab_data = enclave_base + region.vaddr;
+        kernel_strtab_size = region.size;
+    }
+
+    /* Get the kernel dynamic string table region */
+    {
+        oe_region_t region;
+
+        if (oe_region_get(LIBOS_KERNEL_DYNSTR_REGION_ID, &region) != OE_OK)
+        {
+            fprintf(stderr, "failed to get kernel dynstr region\n");
+            assert(0);
+        }
+
+        kernel_dynstr_data = enclave_base + region.vaddr;
+        kernel_dynstr_size = region.size;
     }
 
     /* Get the crt region */
     {
-        extern const void* __oe_get_enclave_base(void);
         oe_region_t region;
-        const uint8_t* enclave_base;
-
-        if (!(enclave_base = __oe_get_enclave_base()))
-        {
-            fprintf(stderr, "__oe_get_enclave_base() failed\n");
-            assert(0);
-        }
 
         if (oe_region_get(LIBOS_CRT_REGION_ID, &region) != OE_OK)
         {
@@ -393,15 +429,7 @@ int libos_enter_ecall(
 
     /* Apply relocations to the crt image */
     {
-        extern const void* __oe_get_enclave_base(void);
         oe_region_t region;
-        const uint8_t* enclave_base;
-
-        if (!(enclave_base = __oe_get_enclave_base()))
-        {
-            fprintf(stderr, "__oe_get_enclave_base() failed\n");
-            assert(0);
-        }
 
         if (oe_region_get(LIBOS_CRT_RELOC_REGION_ID, &region) != OE_OK)
         {
@@ -425,6 +453,20 @@ int libos_enter_ecall(
         libos_kernel_entry_t entry;
 
         memset(&kargs, 0, sizeof(kargs));
+        kargs.image_data = enclave_base;
+        kargs.image_size = enclave_size;
+        kargs.kernel_data = kernel_data;
+        kargs.kernel_size = kernel_size;
+        kargs.reloc_data = kernel_reloc_data;
+        kargs.reloc_size = kernel_reloc_size;
+        kargs.symtab_data = kernel_symtab_data;
+        kargs.symtab_size = kernel_symtab_size;
+        kargs.dynsym_data = kernel_dynsym_data;
+        kargs.dynsym_size = kernel_dynsym_size;
+        kargs.strtab_data = kernel_strtab_data;
+        kargs.strtab_size = kernel_strtab_size;
+        kargs.dynstr_data = kernel_dynstr_data;
+        kargs.dynstr_size = kernel_dynstr_size;
         kargs.argc = args.size;
         kargs.argv = args.data;
         kargs.envc = env.size;

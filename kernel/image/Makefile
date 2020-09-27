@@ -8,6 +8,7 @@ INCLUDES += $(OEENCLAVE_INCLUDES)
 
 CFLAGS =
 CFLAGS += -g
+CFLAGS += -O0
 CFLAGS += -nostdinc
 CFLAGS += -m64
 CFLAGS += -fPIE
@@ -28,6 +29,10 @@ CFLAGS += -Wno-type-limits
 ifdef LIBOS_ENABLE_GCOV
 CFLAGS += -fprofile-arcs
 CFLAGS += -ftest-coverage
+endif
+
+ifdef LIBOS_ENABLE_LEAK_CHECKER
+DEFINES += -DLIBOS_ENABLE_LEAK_CHECKER
 endif
 
 LDFLAGS =
@@ -58,17 +63,17 @@ LIBS =
 LIBS += $(LIBDIR)/libosutils.a
 LIBS += $(LIBDIR)/liboskernel.a
 
-$(TARGET): $(OBJECTS)
+$(TARGET): $(OBJECTS) $(LIBS)
 	$(CC) -o $(TARGET) $(OBJECTS) $(LDFLAGS) $(LIBS)
 	size $(TARGET)
 
 $(SUBOBJDIR)/enter.o: enter.c
 	mkdir -p $(SUBOBJDIR)
-	$(CC) -c $(CFLAGS) $(INCLUDES) -o $(SUBOBJDIR)/enter.o enter.c
+	$(CC) -c $(CFLAGS) $(DEFINES) $(INCLUDES) -o $(SUBOBJDIR)/enter.o enter.c
 
 $(SUBOBJDIR)/initfini.o: initfini.c
 	mkdir -p $(SUBOBJDIR)
-	$(CC) -c $(CFLAGS) $(INCLUDES) -o $(SUBOBJDIR)/initfini.o initfini.c
+	$(CC) -c $(CFLAGS) $(DEFINES) $(INCLUDES) -o $(SUBOBJDIR)/initfini.o initfini.c
 
 CLEAN = $(TARGET)
 CLEAN += $(SUBOBJDIR)/enter.o

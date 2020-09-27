@@ -18,6 +18,7 @@
 #include <libos/round.h>
 #include <libos/strings.h>
 #include <libos/trace.h>
+#include <libos/backtrace.h>
 
 #define BLKSIZE 512
 

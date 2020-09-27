@@ -12,5 +12,9 @@
 #define LIBOS_ROOTFS_REGION_ID 5
 #define LIBOS_MMAN_REGION_ID 6
 #define LIBOS_CONFIG_REGION_ID 7
+#define LIBOS_KERNEL_SYMTAB_REGION_ID 8 /* .symtab section */
+#define LIBOS_KERNEL_STRTAB_REGION_ID 9 /* .strtab section */
+#define LIBOS_KERNEL_DYNSYM_REGION_ID 10 /* .dynsym section */
+#define LIBOS_KERNEL_DYNSTR_REGION_ID 11 /* .dynstr section */
 
 #endif /* _LIBOS_REGIONS_H */

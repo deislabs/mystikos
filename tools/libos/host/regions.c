@@ -500,6 +500,202 @@ done:
     return ret;
 }
 
+static int _add_kernel_symtab_region(
+    oe_region_context_t* context,
+    uint64_t* vaddr)
+{
+    int ret = 0;
+    const bool is_elf = true;
+    const uint64_t id = LIBOS_KERNEL_SYMTAB_REGION_ID;
+
+    assert(_details.kernel.image.symtab_data != NULL);
+    assert(_details.kernel.image.symtab_size != 0);
+    assert((_details.kernel.image.symtab_size % LIBOS_PAGE_SIZE) == 0);
+
+    if (!context || !vaddr)
+        ERAISE(-EINVAL);
+
+    if (oe_region_start(context, id, is_elf, NULL) != OE_OK)
+        ERAISE(-EINVAL);
+
+    /* Add the pages */
+    {
+        const uint8_t* page = (const uint8_t*)_details.kernel.image.symtab_data;
+        size_t npages = _details.kernel.image.symtab_size / LIBOS_PAGE_SIZE;
+
+        for (size_t i = 0; i < npages; i++)
+        {
+            const bool extend = true;
+
+            if (oe_region_add_page(
+                    context,
+                    *vaddr,
+                    page,
+                    SGX_SECINFO_REG | SGX_SECINFO_R,
+                    extend) != OE_OK)
+            {
+                ERAISE(-EINVAL);
+            }
+
+            page += LIBOS_PAGE_SIZE;
+            (*vaddr) += LIBOS_PAGE_SIZE;
+        }
+    }
+
+    if (oe_region_end(context) != OE_OK)
+        ERAISE(-EINVAL);
+
+done:
+    return ret;
+}
+
+static int _add_kernel_dynsym_region(
+    oe_region_context_t* context,
+    uint64_t* vaddr)
+{
+    int ret = 0;
+    const bool is_elf = true;
+    const uint64_t id = LIBOS_KERNEL_DYNSYM_REGION_ID;
+
+    assert(_details.kernel.image.dynsym_data != NULL);
+    assert(_details.kernel.image.dynsym_size != 0);
+    assert((_details.kernel.image.dynsym_size % LIBOS_PAGE_SIZE) == 0);
+
+    if (!context || !vaddr)
+        ERAISE(-EINVAL);
+
+    if (oe_region_start(context, id, is_elf, NULL) != OE_OK)
+        ERAISE(-EINVAL);
+
+    /* Add the pages */
+    {
+        const uint8_t* page = (const uint8_t*)_details.kernel.image.dynsym_data;
+        size_t npages = _details.kernel.image.dynsym_size / LIBOS_PAGE_SIZE;
+
+        for (size_t i = 0; i < npages; i++)
+        {
+            const bool extend = true;
+
+            if (oe_region_add_page(
+                    context,
+                    *vaddr,
+                    page,
+                    SGX_SECINFO_REG | SGX_SECINFO_R,
+                    extend) != OE_OK)
+            {
+                ERAISE(-EINVAL);
+            }
+
+            page += LIBOS_PAGE_SIZE;
+            (*vaddr) += LIBOS_PAGE_SIZE;
+        }
+    }
+
+    if (oe_region_end(context) != OE_OK)
+        ERAISE(-EINVAL);
+
+done:
+    return ret;
+}
+
+static int _add_kernel_strtab_region(
+    oe_region_context_t* context,
+    uint64_t* vaddr)
+{
+    int ret = 0;
+    const bool is_elf = true;
+    const uint64_t id = LIBOS_KERNEL_STRTAB_REGION_ID;
+
+    assert(_details.kernel.image.strtab_data != NULL);
+    assert(_details.kernel.image.strtab_size != 0);
+    assert((_details.kernel.image.strtab_size % LIBOS_PAGE_SIZE) == 0);
+
+    if (!context || !vaddr)
+        ERAISE(-EINVAL);
+
+    if (oe_region_start(context, id, is_elf, NULL) != OE_OK)
+        ERAISE(-EINVAL);
+
+    /* Add the pages */
+    {
+        const uint8_t* page = (const uint8_t*)_details.kernel.image.strtab_data;
+        size_t npages = _details.kernel.image.strtab_size / LIBOS_PAGE_SIZE;
+
+        for (size_t i = 0; i < npages; i++)
+        {
+            const bool extend = true;
+
+            if (oe_region_add_page(
+                    context,
+                    *vaddr,
+                    page,
+                    SGX_SECINFO_REG | SGX_SECINFO_R,
+                    extend) != OE_OK)
+            {
+                ERAISE(-EINVAL);
+            }
+
+            page += LIBOS_PAGE_SIZE;
+            (*vaddr) += LIBOS_PAGE_SIZE;
+        }
+    }
+
+    if (oe_region_end(context) != OE_OK)
+        ERAISE(-EINVAL);
+
+done:
+    return ret;
+}
+
+static int _add_kernel_dynstr_region(
+    oe_region_context_t* context,
+    uint64_t* vaddr)
+{
+    int ret = 0;
+    const bool is_elf = true;
+    const uint64_t id = LIBOS_KERNEL_DYNSTR_REGION_ID;
+
+    assert(_details.kernel.image.dynstr_data != NULL);
+    assert(_details.kernel.image.dynstr_size != 0);
+    assert((_details.kernel.image.dynstr_size % LIBOS_PAGE_SIZE) == 0);
+
+    if (!context || !vaddr)
+        ERAISE(-EINVAL);
+
+    if (oe_region_start(context, id, is_elf, NULL) != OE_OK)
+        ERAISE(-EINVAL);
+
+    /* Add the pages */
+    {
+        const uint8_t* page = (const uint8_t*)_details.kernel.image.dynstr_data;
+        size_t npages = _details.kernel.image.dynstr_size / LIBOS_PAGE_SIZE;
+
+        for (size_t i = 0; i < npages; i++)
+        {
+            const bool extend = true;
+
+            if (oe_region_add_page(
+                    context,
+                    *vaddr,
+                    page,
+                    SGX_SECINFO_REG | SGX_SECINFO_R,
+                    extend) != OE_OK)
+            {
+                ERAISE(-EINVAL);
+            }
+
+            page += LIBOS_PAGE_SIZE;
+            (*vaddr) += LIBOS_PAGE_SIZE;
+        }
+    }
+
+    if (oe_region_end(context) != OE_OK)
+        ERAISE(-EINVAL);
+
+done:
+    return ret;
+}
+
 static int _add_rootfs_region(oe_region_context_t* context, uint64_t* vaddr)
 {
     int ret = 0;
@@ -675,6 +871,18 @@ oe_result_t oe_region_add_regions(oe_region_context_t* context, uint64_t vaddr)
 
     if (_add_kernel_reloc_region(context, &vaddr) != 0)
         _err("_add_kernel_reloc_region() failed");
+
+    if (_add_kernel_symtab_region(context, &vaddr) != 0)
+        _err("_add_kernel_symtab_region() failed");
+
+    if (_add_kernel_dynsym_region(context, &vaddr) != 0)
+        _err("_add_kernel_dynsym_region() failed");
+
+    if (_add_kernel_strtab_region(context, &vaddr) != 0)
+        _err("_add_kernel_strtab_region() failed");
+
+    if (_add_kernel_dynstr_region(context, &vaddr) != 0)
+        _err("_add_kernel_dynstr_region() failed");
 
     if (_add_crt_region(context, &vaddr) != 0)
         _err("_add_crt_region() failed");

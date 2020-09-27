@@ -46,6 +46,7 @@
 #include <libos/tcall.h>
 #include <libos/thread.h>
 #include <libos/trace.h>
+#include <libos/backtrace.h>
 
 #include "fdtable.h"
 

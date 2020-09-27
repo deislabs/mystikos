@@ -296,6 +296,96 @@ static int _process_elf_image(elf_image_t* image)
         ERAISE(-EINVAL);
     }
 
+    /* Load the symbol table (.symtab) */
+    {
+        uint8_t* p;
+        size_t n;
+        void* symtab_data;
+        size_t symtab_size;
+
+        if (elf_find_section(&image->elf, ".symtab", &p, &n) != 0)
+            ERAISE(-EINVAL);
+
+        symtab_size = libos_round_up_to_page_size(n);
+
+        if (!(symtab_data = memalign(PAGE_SIZE, symtab_size)))
+            ERAISE(-ENOMEM);
+
+
+        memset(symtab_data, 0, symtab_size);
+        memcpy(symtab_data, p, symtab_size);
+
+        image->symtab_data = symtab_data;
+        image->symtab_size = symtab_size;
+    }
+
+    /* Load the symbol table (.dynsym) */
+    {
+        uint8_t* p;
+        size_t n;
+        void* dynsym_data;
+        size_t dynsym_size;
+
+        if (elf_find_section(&image->elf, ".dynsym", &p, &n) != 0)
+            ERAISE(-EINVAL);
+
+        dynsym_size = libos_round_up_to_page_size(n);
+
+        if (!(dynsym_data = memalign(PAGE_SIZE, dynsym_size)))
+            ERAISE(-ENOMEM);
+
+
+        memset(dynsym_data, 0, dynsym_size);
+        memcpy(dynsym_data, p, dynsym_size);
+
+        image->dynsym_data = dynsym_data;
+        image->dynsym_size = dynsym_size;
+    }
+
+    /* Load the string table (.strtab) */
+    {
+        uint8_t* p;
+        size_t n;
+        void* strtab_data = NULL;
+        size_t strtab_size;
+
+        if (elf_find_section(&image->elf, ".strtab", &p, &n) != 0)
+            ERAISE(-EINVAL);
+
+        strtab_size = libos_round_up_to_page_size(n);
+
+        if (!(strtab_data = memalign(PAGE_SIZE, strtab_size)))
+            ERAISE(-ENOMEM);
+
+        memset(strtab_data, 0, strtab_size);
+        memcpy(strtab_data, p, n);
+
+        image->strtab_data = strtab_data;
+        image->strtab_size = strtab_size;
+    }
+
+    /* Load the string table (.dynstr) */
+    {
+        uint8_t* p;
+        size_t n;
+        void* dynstr_data = NULL;
+        size_t dynstr_size;
+
+        if (elf_find_section(&image->elf, ".dynstr", &p, &n) != 0)
+            ERAISE(-EINVAL);
+
+        dynstr_size = libos_round_up_to_page_size(n);
+
+        if (!(dynstr_data = memalign(PAGE_SIZE, dynstr_size)))
+            ERAISE(-ENOMEM);
+
+        memset(dynstr_data, 0, dynstr_size);
+        memcpy(dynstr_data, p, n);
+
+        image->dynstr_data = dynstr_data;
+        image->dynstr_size = dynstr_size;
+    }
+
     ret = 0;
 
 done:
@@ -327,6 +417,13 @@ int elf_image_load(const char* path, elf_image_t* image)
         ERAISE(-EINVAL);
 
     ret = _process_elf_image(image);
+
+#if 0
+    printf("image_size=%zu\n", image->image_size);
+    printf("reloc_size=%zu\n", image->reloc_size);
+    printf("symtab_size=%zu\n", image->symtab_size);
+    printf("strtab_size=%zu\n", image->strtab_size);
+#endif
 
 done:
     return ret;
@@ -384,6 +481,18 @@ void elf_image_free(elf_image_t* image)
         if (image->reloc_data)
             free(image->reloc_data);
 
+        if (image->symtab_data)
+            free(image->symtab_data);
+
+        if (image->strtab_data)
+            free(image->strtab_data);
+
+        if (image->dynsym_data)
+            free(image->dynsym_data);
+
+        if (image->dynstr_data)
+            free(image->dynstr_data);
+
         memset(image, 0, sizeof(*image));
     }
 }
@@ -399,6 +508,10 @@ void elf_image_dump(const elf_image_t* image)
     printf("image_size: %zu\n", image->image_size);
     printf("reloc_data: %p\n", image->reloc_data);
     printf("reloc_size: %zu\n", image->reloc_size);
+    printf("symtab_data: %p\n", image->symtab_data);
+    printf("symtab_size: %zu\n", image->symtab_size);
+    printf("strtab_data: %p\n", image->strtab_data);
+    printf("strtab_size: %zu\n", image->strtab_size);
     printf("num_segments: %zu\n", image->num_segments);
     printf("segments: %p\n", image->segments);
     printf("num_segments: %zu\n", image->num_segments);

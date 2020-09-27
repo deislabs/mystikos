@@ -3,12 +3,17 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <libos/defs.h>
+#include <libos/list.h>
 #include <libos/eraise.h>
 #include <libos/panic.h>
 #include <libos/printf.h>
 #include <libos/strings.h>
 #include <libos/syscall.h>
 #include <libos/tcall.h>
+#include <libos/spinlock.h>
+#include <libos/kernel.h>
+#include <libos/backtrace.h>
 
 /*
 **==============================================================================
@@ -413,6 +418,8 @@ int putchar(int c)
 **==============================================================================
 */
 
+#define MAX_BACKTRACE_ADDRS 16
+
 static long _tcall_allocate(
     void* ptr,
     size_t alignment,
@@ -437,6 +444,93 @@ static long _tcall_deallocate(void* ptr)
 
     return libos_tcall(LIBOS_TCALL_DEALLOCATE, params);
 }
+#ifdef LIBOS_ENABLE_LEAK_CHECKER
+static libos_list_t _list;
+static libos_spinlock_t _lock = LIBOS_SPINLOCK_INITIALIZER;
+#endif
+
+static libos_malloc_stats_t _malloc_stats;
+
+#ifdef LIBOS_ENABLE_LEAK_CHECKER
+typedef struct node
+{
+    libos_list_node_t base;
+    void* ptr;
+    size_t size;
+    void* addrs[MAX_BACKTRACE_ADDRS];
+    size_t num_addrs;
+} node_t;
+#endif
+
+#ifdef LIBOS_ENABLE_LEAK_CHECKER
+static node_t* _new_node(void* ptr, size_t size)
+{
+    node_t* p;
+
+    if (_tcall_allocate(NULL, 0, sizeof(node_t), 0, (void**)&p) != 0 || !p)
+        return NULL;
+
+    p->ptr = ptr;
+    p->size = size;
+    p->num_addrs = libos_backtrace(p->addrs, LIBOS_COUNTOF(p->addrs));
+
+    return p;
+}
+#endif
+
+#ifdef LIBOS_ENABLE_LEAK_CHECKER
+static int _add_node(void* ptr, size_t size)
+{
+    node_t* node;
+
+    if (!(node = _new_node(ptr, size)))
+        return -1;
+
+    libos_spin_lock(&_lock);
+    {
+        libos_list_append(&_list, (libos_list_node_t*)node);
+        _malloc_stats.usage += size;
+
+        if (_malloc_stats.usage > _malloc_stats.peak_usage)
+            _malloc_stats.peak_usage = _malloc_stats.usage;
+    }
+    libos_spin_unlock(&_lock);
+
+    return 0;
+}
+#endif
+
+#ifdef LIBOS_ENABLE_LEAK_CHECKER
+static int _remove_node(void* ptr)
+{
+    node_t* node = NULL;
+
+    libos_spin_lock(&_lock);
+    {
+        for (libos_list_node_t* p = _list.head; p; p = p->next)
+        {
+            node_t* tmp = (node_t*)p;
+
+            if (tmp->ptr == ptr)
+            {
+                node = tmp;
+                _malloc_stats.usage -= node->size;
+                libos_list_remove(&_list, p);
+                break;
+            }
+        }
+    }
+    libos_spin_unlock(&_lock);
+
+    if (node)
+    {
+        _tcall_deallocate(node);
+        return 0;
+    }
+
+    return -1;
+}
+#endif
 
 LIBOS_WEAK
 void* malloc(size_t size)
@@ -445,6 +539,11 @@ void* malloc(size_t size)
 
     if (_tcall_allocate(NULL, 0, size, 0, &p) != 0 || !p)
         return NULL;
+
+#ifdef LIBOS_ENABLE_LEAK_CHECKER
+    if (_add_node(p, size) != 0)
+        libos_panic("unexpected");
+#endif
 
     return p;
 }
@@ -458,6 +557,11 @@ void* calloc(size_t nmemb, size_t size)
     if (_tcall_allocate(NULL, 0, n, 1, &p) != 0 || !p)
         return NULL;
 
+#ifdef LIBOS_ENABLE_LEAK_CHECKER
+    if (_add_node(p, n) != 0)
+        libos_panic("unexpected");
+#endif
+
     return p;
 }
 
@@ -466,8 +570,18 @@ void* realloc(void* ptr, size_t size)
 {
     void* p = NULL;
 
+#ifdef LIBOS_ENABLE_LEAK_CHECKER
+    if (ptr && _remove_node(ptr) != 0)
+        libos_panic("unexpected");
+#endif
+
     if (_tcall_allocate(ptr, 0, size, 0, &p) != 0 || !p)
         return NULL;
+
+#ifdef LIBOS_ENABLE_LEAK_CHECKER
+    if (_add_node(p, size) != 0)
+        libos_panic("unexpected");
+#endif
 
     return p;
 }
@@ -480,6 +594,11 @@ void* memalign(size_t alignment, size_t size)
     if (_tcall_allocate(NULL, alignment, size, 0, &p) != 0 || !p)
         return NULL;
 
+#ifdef LIBOS_ENABLE_LEAK_CHECKER
+    if (_add_node(p, size) != 0)
+        libos_panic("unexpected");
+#endif
+
     return p;
 }
 
@@ -488,8 +607,59 @@ void free(void* ptr)
 {
     if (_tcall_deallocate(ptr) != 0)
         libos_panic("unexpected");
+
+#ifdef LIBOS_ENABLE_LEAK_CHECKER
+    if (ptr && _remove_node(ptr) != 0)
+        libos_panic("unexpected");
+#endif
 }
 
+int libos_find_leaks(void)
+{
+#ifdef LIBOS_ENABLE_LEAK_CHECKER
+    int ret = 0;
+
+    for (libos_list_node_t* p = _list.head; p; p = p->next)
+    {
+        node_t* node = (node_t*)p;
+
+        libos_eprintf("*** kernel leak: ptr=%p size=%zu\n", node->ptr, node->size);
+        libos_dump_backtrace(node->addrs, node->num_addrs);
+        libos_eprintf("\n");
+        ret = -1;
+    }
+
+    if (_malloc_stats.usage != 0)
+    {
+        libos_eprintf("*** kernel: memory still in use: %zu\n", _malloc_stats.usage);
+        ret = -1;
+    }
+
+    return ret;
+#else
+    return 0;
+#endif
+}
+
+int libos_get_malloc_stats(libos_malloc_stats_t* stats)
+{
+#ifdef LIBOS_ENABLE_LEAK_CHECKER
+    {
+        if (!stats)
+            return -EINVAL;
+
+        libos_spin_lock(&_lock);
+        *stats = _malloc_stats;
+        libos_spin_unlock(&_lock);
+
+        return 0;
+    }
+#else
+    (void)stats;
+    (void)_malloc_stats;
+    return -ENOTSUP;
+#endif
+}
 /*
 **==============================================================================
 **

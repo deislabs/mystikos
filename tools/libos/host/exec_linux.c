@@ -274,6 +274,20 @@ static int _enter_kernel(
     }
 
     memset(&args, 0, sizeof(args));
+    args.image_data = (void*)0;
+    args.image_size = 0x7fffffffffffffff;
+    args.kernel_data = regions->liboskernel.image_data;
+    args.kernel_size = regions->liboskernel.image_size;
+    args.reloc_data = regions->liboskernel.reloc_data;
+    args.reloc_size = regions->liboskernel.reloc_size;
+    args.symtab_data = regions->liboskernel.symtab_data;
+    args.symtab_size = regions->liboskernel.symtab_size;
+    args.dynsym_data = regions->liboskernel.dynsym_data;
+    args.dynsym_size = regions->liboskernel.dynsym_size;
+    args.strtab_data = regions->liboskernel.strtab_data;
+    args.strtab_size = regions->liboskernel.strtab_size;
+    args.dynstr_data = regions->liboskernel.dynstr_data;
+    args.dynstr_size = regions->liboskernel.dynstr_size;
     args.argc = argc;
     args.argv = argv;
     args.envc = env.size;
