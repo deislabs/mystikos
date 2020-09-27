@@ -6,7 +6,7 @@ SUBBINDIR=$(LIBDIR)
 
 PROGRAM = liboskernel.so
 
-SOURCES = $(wildcard *.c) $(wildcard *.s)
+SOURCES = $(wildcard *.[cs])
 
 INCLUDES = -I$(INCDIR) -I$(BUILDDIR)/host-musl/include
 
@@ -18,10 +18,32 @@ ifdef LIBOS_ENABLE_LEAK_CHECKER
 DEFINES += -DLIBOS_ENABLE_LEAK_CHECKER
 endif
 
-CFLAGS = $(OEENCLAVE_CFLAGS) -O0
+WARNINGS =
+WARNINGS += -Wall
+WARNINGS += -Werror
+WARNINGS += -Wpointer-arith
+WARNINGS += -Wconversion
+WARNINGS += -Wextra
+WARNINGS += -Wno-missing-field-initializers
+WARNINGS += -Wno-type-limits
+WARNINGS += -Wno-conversion
+
+CFLAGS =
+CFLAGS += -g
+CFLAGS += -Os
+CFLAGS += -nostdinc
+CFLAGS += -m64
+CFLAGS += -fPIC
+CFLAGS += -ftls-model=local-exec
+CFLAGS += -fstack-protector-strong
+CFLAGS += -fno-omit-frame-pointer
+CFLAGS += -ffunction-sections
+CFLAGS += -fdata-sections
+CFLAGS += $(WARNINGS)
 
 # suppress conversion errors in musl lib headers
-CFLAGS = -Wno-conversion
+CFLAGS += -Wno-conversion
+CFLAGS += -Wno-parentheses
 
 ifdef LIBOS_ENABLE_GCOV
 CFLAGS += -fprofile-arcs -ftest-coverage
@@ -42,9 +64,9 @@ LDFLAGS += -Wl,-z,noexecstack
 LDFLAGS += -Wl,-z,now
 LDFLAGS += -Wl,-gc-sections
 LDFLAGS += -Wl,-elibos_enter_kernel
-#LDFLAGS += -Wl,--whole-archive
 
-LIBS = $(LIBDIR)/libosutils.a
+LIBS =
+LIBS += $(LIBDIR)/libosutils.a
 
 include $(TOP)/rules.mak
 
