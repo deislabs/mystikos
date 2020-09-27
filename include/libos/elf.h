@@ -373,6 +373,14 @@ typedef struct elf_image
     size_t image_size;
     void* reloc_data;
     size_t reloc_size;
+    void* symtab_data;
+    size_t symtab_size;
+    void* strtab_data;
+    size_t strtab_size;
+    void* dynsym_data;
+    size_t dynsym_size;
+    void* dynstr_data;
+    size_t dynstr_size;
 } elf_image_t;
 
 typedef int (*elf_add_page_t)(

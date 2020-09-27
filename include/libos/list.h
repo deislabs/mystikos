@@ -4,8 +4,9 @@
 #ifndef _LIBOS_LIST_H
 #define _LIBOS_LIST_H
 
+#include <stdlib.h>
+
 #include <libos/defs.h>
-#include <libos/malloc.h>
 #include <libos/types.h>
 
 typedef struct libos_list libos_list_t;
@@ -86,7 +87,7 @@ LIBOS_INLINE void libos_list_free(libos_list_t* list)
     for (libos_list_node_t* p = list->head; p;)
     {
         libos_list_node_t* next = p->next;
-        libos_free(p);
+        free(p);
         p = next;
     }
 

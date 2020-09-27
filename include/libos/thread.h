@@ -79,8 +79,6 @@ libos_thread_t* libos_thread_self(void);
 
 void libos_zombify_thread(libos_thread_t* thread);
 
-size_t libos_get_num_active_threads(void);
-
 extern libos_thread_t* __libos_main_thread;
 
 typedef struct libos_thread_queue

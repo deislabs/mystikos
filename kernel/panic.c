@@ -3,6 +3,7 @@
 #include <libos/crash.h>
 #include <libos/panic.h>
 #include <libos/printf.h>
+#include <libos/backtrace.h>
 
 void __libos_panic(
     const char* file,
@@ -12,9 +13,12 @@ void __libos_panic(
     ...)
 {
     va_list ap;
+    void* buf[16];
+
+    size_t n = libos_backtrace(buf, LIBOS_COUNTOF(buf));
 
     libos_console_printf(
-        STDERR_FILENO, "kernel panic: %s(%zu): %s(): ", file, line, func);
+        STDERR_FILENO, "*** kernel panic: %s(%zu): %s(): ", file, line, func);
 
     va_start(ap, format);
     libos_console_vprintf(STDERR_FILENO, format, ap);
@@ -22,7 +26,10 @@ void __libos_panic(
 
     libos_console_printf(STDERR_FILENO, "\n");
 
+    libos_dump_backtrace(buf, n);
+
     libos_crash();
+
     for (;;)
         ;
 }
