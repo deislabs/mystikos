@@ -2,12 +2,31 @@ TOP=$(abspath ..)
 include $(TOP)/defs.mak
 
 SUBLIBDIR=$(LIBDIR)
+SUBBINDIR=$(LIBDIR)
 
-ARCHIVE = liboskernel.a
+PROGRAM = liboskernel.so
 
 SOURCES = $(wildcard *.c) $(wildcard ../shared/*.c) $(wildcard *.s)
 
 INCLUDES = -I$(INCDIR) $(OEENCLAVE_INCLUDES) -I$(BUILDDIR)/include
+
+LDFLAGS =
+LDFLAGS += -nostdlib
+LDFLAGS += -nodefaultlibs
+LDFLAGS += -nostartfiles
+LDFLAGS += -Wl,--no-undefined
+LDFLAGS += -Wl,-Bstatic
+LDFLAGS += -Wl,-Bsymbolic
+LDFLAGS += -Wl,--export-dynamic
+LDFLAGS += -Wl,-pie
+LDFLAGS += -Wl,--build-id
+LDFLAGS += -Wl,-z,noexecstack
+LDFLAGS += -Wl,-z,now
+LDFLAGS += -Wl,-gc-sections
+LDFLAGS += -Wl,-elibos_enter_kernel
+LDFLAGS += -Wl,--whole-archive
+
+LIBS = $(LIBDIR)/libosutils.a
 
 ifdef LIBOS_ENABLE_HOST_THREADS
 DEFINES += -DLIBOS_ENABLE_HOST_THREADS
@@ -27,7 +46,5 @@ ifdef LIBOS_ENABLE_GCOV
 CFLAGS += -fprofile-arcs -ftest-coverage
 DEFINES += -DLIBOS_ENABLE_GCOV
 endif
-
-DIRS = image
 
 include $(TOP)/rules.mak
