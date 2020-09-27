@@ -7,9 +7,16 @@ ARCHIVE = libosutils.a
 
 SOURCES = $(wildcard *.c)
 
-INCLUDES = $(DEFAULT_INCLUDES)
+INCLUDES = -I$(INCDIR) -I$(BUILDDIR)/host-musl/include
 
-CFLAGS = $(DEFAULT_CFLAGS)
+CFLAGS =
+CFLAGS += $(DEFAULT_CFLAGS)
+CFLAGS += -Os
+CFLAGS += -nostdinc
+CFLAGS += -ffunction-sections
+CFLAGS += -fdata-sections
+CFLAGS += -Wno-conversion
+CFLAGS += -Wno-parentheses
 
 LDFLAGS = $(DEFAULT_LDFLAGS)
 
