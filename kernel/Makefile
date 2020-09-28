@@ -65,8 +65,8 @@ LDFLAGS += -Wl,-z,now
 LDFLAGS += -Wl,-gc-sections
 LDFLAGS += -Wl,-elibos_enter_kernel
 
-LIBS =
 LIBS += $(LIBDIR)/libosutils.a
+LIBS += $(LIBDIR)/libgcov_musl.a
 
 include $(TOP)/rules.mak
 
