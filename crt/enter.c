@@ -149,3 +149,8 @@ void libos_enter_crt(void* stack, void* dynv, syscall_callback_t callback)
 
     _dlstart_c((size_t*)stack, (size_t*)dynv);
 }
+
+int __vfprintf_chk(FILE* fp, int flag, const char* format, va_list ap)
+{
+    return vfprintf(fp, format, ap);
+}
