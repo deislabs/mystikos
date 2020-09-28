@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/uio.h>
+#include <sys/time.h>
 #include <time.h>
 
 #include <libos/defs.h>
@@ -180,6 +181,12 @@ long libos_syscall_load_symbols(void);
 long libos_syscall_unload_symbols(void);
 
 long libos_syscall_clock_gettime(clockid_t clk_id, struct timespec* tp);
+
+long libos_syscall_clock_settime(clockid_t clk_id, struct timespec* tp);
+
+long libos_syscall_gettimeofday(struct timeval* tv, struct timezone* tz);
+
+long libos_syscall_time(time_t* tloc);
 
 long libos_syscall_clone(
     int (*fn)(void*),

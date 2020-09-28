@@ -21,6 +21,7 @@
 #include <libos/mount.h>
 #include <libos/ramfs.h>
 #include <libos/reloc.h>
+#include <libos/shm.h>
 #include <libos/syscall.h>
 #include <libos/thread.h>
 #include <libos/trace.h>
@@ -30,6 +31,8 @@
 #include "libos_t.h"
 
 extern int oe_host_printf(const char* fmt, ...);
+
+int libos_setup_clock(struct clock_ctrl*);
 
 static void _setup_sockets(void)
 {
@@ -119,6 +122,7 @@ size_t __oe_get_enclave_size(void);
 
 int libos_enter_ecall(
     struct libos_options* options,
+    struct libos_shm* shared_memory,
     const void* argv_data,
     size_t argv_size,
     const void* envp_data,
@@ -288,6 +292,8 @@ int libos_enter_ecall(
     }
 
     _setup_sockets();
+
+    libos_setup_clock(shared_memory->clock);
 
     /* Get the mman region */
     void* mman_data;
@@ -521,21 +527,6 @@ done:
 long libos_run_thread_ecall(uint64_t cookie, uint64_t event)
 {
     return libos_run_thread(cookie, event);
-}
-
-_Static_assert(sizeof(struct libos_timespec) == sizeof(struct timespec), "");
-
-/* ATTN: replace this with clock ticks implementation */
-/* This overrides the weak version in liboskernel.a */
-long libos_tcall_clock_gettime(clockid_t clk_id, struct timespec* tp_)
-{
-    int retval = -1;
-    struct libos_timespec* tp = (struct libos_timespec*)tp_;
-
-    if (libos_clock_gettime_ocall(&retval, clk_id, tp) != OE_OK)
-        return -EINVAL;
-
-    return (long)retval;
 }
 
 /* This overrides the weak version in liboskernel.a */
