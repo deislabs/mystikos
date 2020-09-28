@@ -4,7 +4,7 @@
 
     // OpenEnclave specific values
     "Debug": 1,
-    "KernelMemSize": "512k",
+    "KernelMemSize": "4m",
     "StackMemSize": "256k",
     "NumUserThreads": 2,
     "ProductID": 1,
