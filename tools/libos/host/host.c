@@ -38,14 +38,6 @@
 
 _Static_assert(sizeof(struct libos_timespec) == sizeof(struct timespec), "");
 
-int libos_clock_gettime_ocall(int clk_id, struct libos_timespec* tp)
-{
-    if (clock_gettime(clk_id, (struct timespec*)tp) != 0)
-        return -errno;
-
-    return 0;
-}
-
 long libos_syscall_isatty_ocall(int fd)
 {
     if (isatty(fd) != 1)

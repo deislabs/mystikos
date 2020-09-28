@@ -2149,7 +2149,8 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "tv=%p tz=%p", tv, tz);
 
-            BREAK(_return(n, _forward_syscall(n, params)));
+            long ret = libos_syscall_gettimeofday(tv, tz);
+            BREAK(_return(n, ret));
         }
         case SYS_getrlimit:
             break;
@@ -2430,7 +2431,13 @@ long libos_syscall(long n, long params[6])
         case SYS_tkill:
             break;
         case SYS_time:
-            break;
+        {
+            time_t* tloc = (time_t*)x1;
+
+            _strace(n, "tloc=%p", tloc);
+            long ret = libos_syscall_time(tloc);
+            BREAK(_return(n, ret));
+        }
         case SYS_futex:
         {
             int* uaddr = (int*)x1;
@@ -2548,7 +2555,14 @@ long libos_syscall(long n, long params[6])
         case SYS_timer_delete:
             break;
         case SYS_clock_settime:
-            break;
+        {
+            clockid_t clk_id = (clockid_t)x1;
+            struct timespec* tp = (struct timespec*)x2;
+
+            _strace(n, "clk_id=%u tp=%p", clk_id, tp);
+
+            BREAK(_return(n, libos_syscall_clock_settime(clk_id, tp)));
+        }
         case SYS_clock_gettime:
         {
             clockid_t clk_id = (clockid_t)x1;
@@ -2951,6 +2965,41 @@ long libos_syscall_clock_gettime(clockid_t clk_id, struct timespec* tp)
 {
     long params[6] = {(long)clk_id, (long)tp};
     return libos_tcall(LIBOS_TCALL_CLOCK_GETTIME, params);
+}
+
+long libos_syscall_clock_settime(clockid_t clk_id, struct timespec* tp)
+{
+    long params[6] = {(long)clk_id, (long)tp};
+    return libos_tcall(LIBOS_TCALL_CLOCK_SETTIME, params);
+}
+
+long libos_syscall_gettimeofday(struct timeval* tv, struct timezone* tz)
+{
+    (void)tz;
+    struct timespec tp = {0};
+    if (tv == NULL)
+        return 0;
+
+    long ret = libos_syscall_clock_gettime(CLOCK_REALTIME, &tp);
+    if (ret == 0)
+    {
+        tv->tv_sec = tp.tv_sec;
+        tv->tv_usec = tp.tv_nsec / 1000;
+    }
+    return ret;
+}
+
+long libos_syscall_time(time_t* tloc)
+{
+    struct timespec tp = {0};
+    long ret = libos_syscall_clock_gettime(CLOCK_REALTIME, &tp);
+    if (ret == 0)
+    {
+        if (tloc != NULL)
+            *tloc = tp.tv_sec;
+        ret = tp.tv_sec;
+    }
+    return ret;
 }
 
 long libos_syscall_isatty(int fd)

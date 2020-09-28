@@ -136,6 +136,17 @@ long libos_tcall_clock_gettime(clockid_t clk_id, struct timespec* tp)
 
 /* Must be overriden by enclave application */
 LIBOS_WEAK
+long libos_tcall_clock_settime(clockid_t clk_id, struct timespec* tp)
+{
+    (void)clk_id;
+    (void)tp;
+
+    assert("sgx: unimplemented: implement in enclave" == NULL);
+    return -ENOTSUP;
+}
+
+/* Must be overriden by enclave application */
+LIBOS_WEAK
 oe_result_t libos_oe_call_host_function(
     size_t function_id,
     const void* input_buffer,
@@ -575,6 +586,12 @@ long libos_tcall(long n, long params[6])
             clockid_t clk_id = (clockid_t)x1;
             struct timespec* tp = (struct timespec*)x2;
             return libos_tcall_clock_gettime(clk_id, tp);
+        }
+        case LIBOS_TCALL_CLOCK_SETTIME:
+        {
+            clockid_t clk_id = (clockid_t)x1;
+            struct timespec* tp = (struct timespec*)x2;
+            return libos_tcall_clock_settime(clk_id, tp);
         }
         case LIBOS_TCALL_ISATTY:
         {

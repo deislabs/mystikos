@@ -6,6 +6,7 @@ PROGRAM = libosenc.so
 
 SOURCES += $(SUBOBJDIR)/libos_t.c
 SOURCES += enc.c
+SOURCES += clock.c
 SOURCES += ../config.c
 
 INCLUDES = $(OEENCLAVE_INCLUDES) -I$(SUBOBJDIR) -I../

@@ -5,6 +5,8 @@ enclave
     from "openenclave/edl/logging.edl" import oe_write_ocall;
     from "openenclave/edl/fcntl.edl" import *;
 
+    include "libos/shm.h"
+
     struct libos_options
     {
         bool trace_syscalls;
@@ -21,6 +23,7 @@ enclave
     {
         public int libos_enter_ecall(
             [in] struct libos_options* options,
+            [in] struct libos_shm* shared_memory,
             [in, size=args_size] const void* args,
             size_t args_size,
             [in, size=env_size] const void* env,
@@ -32,11 +35,6 @@ enclave
 
     untrusted
     {
-        /* return errno */
-        int libos_clock_gettime_ocall(
-            int clk_id,
-            [out] struct libos_timespec* tp);
-
         void libos_rdtsc_ocall([out] uint32_t* rax, [out] uint32_t* rdx);
 
         void libos_cpuid_ocall(

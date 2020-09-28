@@ -161,6 +161,11 @@ static long _tcall_clock_gettime(clockid_t clk_id, struct timespec* tp)
     return syscall(SYS_clock_gettime, clk_id, tp);
 }
 
+static long _tcall_clock_settime(clockid_t clk_id, struct timespec* tp)
+{
+    return syscall(SYS_clock_settime, clk_id, tp);
+}
+
 static long _isatty(int fd)
 {
     int ret = isatty(fd);
@@ -327,6 +332,12 @@ long libos_tcall(long n, long params[6])
             clockid_t clk_id = (clockid_t)x1;
             struct timespec* tp = (struct timespec*)x2;
             return _tcall_clock_gettime(clk_id, tp);
+        }
+        case LIBOS_TCALL_CLOCK_SETTIME:
+        {
+            clockid_t clk_id = (clockid_t)x1;
+            struct timespec* tp = (struct timespec*)x2;
+            return _tcall_clock_settime(clk_id, tp);
         }
         case LIBOS_TCALL_ISATTY:
         {

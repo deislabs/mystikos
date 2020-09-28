@@ -19,11 +19,18 @@
 #include <libos/eraise.h>
 #include <libos/file.h>
 #include <libos/getopt.h>
+#include <libos/shm.h>
 #include <openenclave/host.h>
 
 #include "libos_u.h"
 #include "regions.h"
 #include "utils.h"
+
+/* How many nanoseconds between two clock ticks */
+/* TODO: Make it configurable through json */
+#define CLOCK_TICK 1000
+
+static struct libos_shm shared_memory = {0};
 
 static size_t _count_args(const char* args[])
 {
@@ -148,11 +155,15 @@ int exec_launch_enclave(
     if (libos_buf_pack_strings(&envp_buf, envp, _count_args(envp)) != 0)
         _err("failed to serialize envp stings");
 
+    /* Get clock times right before entering the enclave */
+    shm_create_clock(&shared_memory, CLOCK_TICK);
+
     /* Enter the enclave and run the program */
     r = libos_enter_ecall(
         _enclave,
         &retval,
         options,
+        &shared_memory,
         argv_buf.data,
         argv_buf.size,
         envp_buf.data,
@@ -165,6 +176,8 @@ int exec_launch_enclave(
     r = oe_terminate_enclave(_enclave);
     if (r != OE_OK)
         _err("failed to terminate enclave: result=%s", oe_result_str(r));
+
+    shm_free_clock(&shared_memory);
 
     free(argv_buf.data);
     free(envp_buf.data);
