@@ -12,7 +12,6 @@ include $(TOP)/defs.mak
 DIRS += third_party
 DIRS += gcov
 DIRS += json
-DIRS += glibccompat
 DIRS += utils
 DIRS += host
 DIRS += target

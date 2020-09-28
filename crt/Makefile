@@ -7,7 +7,7 @@ CFLAGS = -m64 -g -fPIC -Werror
 
 INCLUDES = -I$(INCDIR)
 
-SOURCES = $(wildcard *.c)
+SOURCES = $(wildcard *.c) $(wildcard glibc/*.c)
 
 ifdef LIBOS_ENABLE_GCOV
 CFLAGS += -fprofile-arcs -ftest-coverage
@@ -20,10 +20,6 @@ LDFLAGS1 += -Wl,-elibos_enter_crt
 
 LDFLAGS2 = -Wl,-Bstatic -Wl,-Bsymbolic -Wl,--export-dynamic -Wl,-pie -Wl,--build-id -Wl,-z,noexecstack -Wl,-z,now
 
-LDFLAGS2 += -Wl,--whole-archive
-LIBS = $(LIBDIR)/libosglibccompat.a
-LDFLAGS2 += -Wl,--no-whole-archive
-
 ifdef LIBOS_ENABLE_GCOV
 LDFLAGS2 += -L$(LIBDIR)
 LDFLAGS2 += -lgcov_musl
@@ -35,7 +31,7 @@ LIBCC = -lgcc
 
 OBJECTS = $(addprefix $(SUBOBJDIR)/,$(SOURCES:.c=.o))
 
-$(TARGET): $(MUSL_OBJECTS) $(OBJECTS) $(LIBS)
+$(TARGET): $(MUSL_OBJECTS) $(OBJECTS)
 	mkdir -p $(LIBDIR)
 	$(CC) -o $@ $(LDFLAGS1) $(OBJECTS) $(MUSL_OBJECTS) $(LIBCC) $(LDFLAGS2) $(LIBS)
 
@@ -48,3 +44,6 @@ clean:
 	rm -f $(OBJECTS) $(TARGET)
 
 tests:
+
+t:
+	nm $(TARGET) | grep memcpy
