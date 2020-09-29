@@ -2472,27 +2472,25 @@ long libos_syscall(long n, long params[6])
 
             /* ---------- running target thread descriptor ---------- */
 
-            if (!_set_thread_area_called)
-            {
-                /* get the C-runtime thread descriptor */
-                crt_td = (libos_td_t*)tp;
-                assert(libos_valid_td(crt_td));
-
-                /* set the C-runtime thread descriptor for this thread */
-                thread->crt_td = crt_td;
-
-                /* propagate the canary from the old thread descriptor */
-                crt_td->canary = target_td->canary;
-
-                /* bind the thread to the C-runtime thread descriptor */
-                crt_td->tsd = (uint64_t)thread;
-
-                _set_thread_area_called = true;
-            }
-            else
-            {
+#ifdef DISABLE_MULTIPLE_SET_THREAD_AREA_SYSCALLS
+            if (_set_thread_area_called)
                 libos_panic("SYS_set_thread_area called twice");
-            }
+#endif
+
+            /* get the C-runtime thread descriptor */
+            crt_td = (libos_td_t*)tp;
+            assert(libos_valid_td(crt_td));
+
+            /* set the C-runtime thread descriptor for this thread */
+            thread->crt_td = crt_td;
+
+            /* propagate the canary from the old thread descriptor */
+            crt_td->canary = target_td->canary;
+
+            /* bind the thread to the C-runtime thread descriptor */
+            crt_td->tsd = (uint64_t)thread;
+
+            _set_thread_area_called = true;
 
             BREAK(_return(n, 0));
         }
