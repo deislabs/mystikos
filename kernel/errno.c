@@ -1,7 +1,7 @@
 #include <errno.h>
 
-#include <libos/thread.h>
 #include <libos/tcall.h>
+#include <libos/thread.h>
 
 int* __errno_location(void)
 {

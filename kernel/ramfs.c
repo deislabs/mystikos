@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <libos/backtrace.h>
 #include <libos/buf.h>
 #include <libos/bufu64.h>
 #include <libos/eraise.h>
@@ -18,7 +19,6 @@
 #include <libos/round.h>
 #include <libos/strings.h>
 #include <libos/trace.h>
-#include <libos/backtrace.h>
 
 #define BLKSIZE 512
 

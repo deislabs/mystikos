@@ -3,17 +3,17 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <libos/backtrace.h>
 #include <libos/defs.h>
-#include <libos/list.h>
 #include <libos/eraise.h>
+#include <libos/kernel.h>
+#include <libos/list.h>
 #include <libos/panic.h>
 #include <libos/printf.h>
+#include <libos/spinlock.h>
 #include <libos/strings.h>
 #include <libos/syscall.h>
 #include <libos/tcall.h>
-#include <libos/spinlock.h>
-#include <libos/kernel.h>
-#include <libos/backtrace.h>
 
 /*
 **==============================================================================
@@ -623,7 +623,8 @@ int libos_find_leaks(void)
     {
         node_t* node = (node_t*)p;
 
-        libos_eprintf("*** kernel leak: ptr=%p size=%zu\n", node->ptr, node->size);
+        libos_eprintf(
+            "*** kernel leak: ptr=%p size=%zu\n", node->ptr, node->size);
         libos_dump_backtrace(node->addrs, node->num_addrs);
         libos_eprintf("\n");
         ret = -1;
@@ -631,7 +632,8 @@ int libos_find_leaks(void)
 
     if (_malloc_stats.usage != 0)
     {
-        libos_eprintf("*** kernel: memory still in use: %zu\n", _malloc_stats.usage);
+        libos_eprintf(
+            "*** kernel: memory still in use: %zu\n", _malloc_stats.usage);
         ret = -1;
     }
 

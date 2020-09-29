@@ -4,9 +4,9 @@
 #ifndef _LIBOS_ONCE_H
 #define _LIBOS_ONCE_H
 
-#include <stdint.h>
 #include <errno.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 
 #include <libos/defs.h>

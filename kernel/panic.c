@@ -1,9 +1,9 @@
 #include <stdarg.h>
 
+#include <libos/backtrace.h>
 #include <libos/crash.h>
 #include <libos/panic.h>
 #include <libos/printf.h>
-#include <libos/backtrace.h>
 
 void __libos_panic(
     const char* file,

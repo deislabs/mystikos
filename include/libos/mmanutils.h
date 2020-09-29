@@ -20,4 +20,11 @@ int libos_munmap(void* addr, size_t length);
 
 long libos_syscall_brk(void* addr);
 
+void* libos_mremap(
+    void* old_address,
+    size_t old_size,
+    size_t new_size,
+    int flags,
+    void* new_address);
+
 #endif /* _LIBOS_MMANUTILS_H */

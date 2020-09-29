@@ -111,13 +111,15 @@
 **==============================================================================
 */
 
+#include <string.h>
+#include <stdio.h>
+
 #include <errno.h>
 #include <libos/defs.h>
 #include <libos/fsgs.h>
 #include <libos/mman.h>
 #include <libos/spinlock.h>
 #include <libos/strings.h>
-#include <string.h>
 
 /*
 **==============================================================================
