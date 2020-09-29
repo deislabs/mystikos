@@ -76,8 +76,7 @@ typedef struct libos_malloc_stats
 {
     size_t usage;
     size_t peak_usage;
-}
-libos_malloc_stats_t;
+} libos_malloc_stats_t;
 
 int libos_get_malloc_stats(libos_malloc_stats_t* stats);
 

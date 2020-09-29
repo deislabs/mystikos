@@ -17,6 +17,7 @@
 #include <sys/vfs.h>
 #include <unistd.h>
 
+#include <libos/backtrace.h>
 #include <libos/barrier.h>
 #include <libos/buf.h>
 #include <libos/cpio.h>
@@ -46,7 +47,6 @@
 #include <libos/tcall.h>
 #include <libos/thread.h>
 #include <libos/trace.h>
-#include <libos/backtrace.h>
 
 #include "fdtable.h"
 
@@ -574,7 +574,7 @@ static long _return(long n, long ret)
         else
         {
             libos_eprintf(
-                "    %s%s(): return=%ld(%lX)%s: tid=%d\n",
+                "    %s%s(): return=%ld(%lx)%s: tid=%d\n",
                 red,
                 syscall_str(n),
                 ret,
@@ -1449,7 +1449,7 @@ long libos_syscall(long n, long params[6])
         case SYS_libos_trace_ptr:
         {
             printf(
-                "trace: %s: %lX %ld\n",
+                "trace: %s: %lx %ld\n",
                 (const char*)params[0],
                 params[1],
                 params[1]);
@@ -1682,7 +1682,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(
                 n,
-                "addr=%lX length=%zu(%lX) prot=%d flags=%d fd=%d offset=%lu",
+                "addr=%lx length=%zu(%lx) prot=%d flags=%d fd=%d offset=%lu",
                 (long)addr,
                 length,
                 length,
@@ -1702,7 +1702,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(
                 n,
-                "addr=%lX length=%zu(%lX) prot=%d",
+                "addr=%lx length=%zu(%lx) prot=%d",
                 (long)addr,
                 length,
                 length,
@@ -1715,7 +1715,7 @@ long libos_syscall(long n, long params[6])
             void* addr = (void*)x1;
             size_t length = (size_t)x2;
 
-            _strace(n, "addr=%lX length=%zu(%lX)", (long)addr, length, length);
+            _strace(n, "addr=%lx length=%zu(%lx)", (long)addr, length, length);
 
             BREAK(_return(n, (long)libos_munmap(addr, length)));
         }
@@ -1723,7 +1723,7 @@ long libos_syscall(long n, long params[6])
         {
             void* addr = (void*)x1;
 
-            _strace(n, "addr=%lX", (long)addr);
+            _strace(n, "addr=%lx", (long)addr);
 
             BREAK(_return(n, libos_syscall_brk(addr)));
         }
@@ -1757,7 +1757,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(
                 n,
-                "fd=%d request=0x%lX arg=%p iarg=%d",
+                "fd=%d request=0x%lx arg=%p iarg=%d",
                 fd,
                 request,
                 arg,
@@ -1771,7 +1771,7 @@ long libos_syscall(long n, long params[6])
                     BREAK(_return(n, -EINVAL));
                 }
 
-                libos_panic("unhandled ioctl: 0x%lX()", request);
+                libos_panic("unhandled ioctl: 0x%lx()", request);
             }
 
             BREAK(_return(n, _forward_syscall(n, params)));
@@ -1838,8 +1838,32 @@ long libos_syscall(long n, long params[6])
         case SYS_sched_yield:
             break;
         case SYS_mremap:
-            /* ATTN: hook up implementation */
-            break;
+        {
+            void* old_address = (void*)x1;
+            size_t old_size = (size_t)x2;
+            size_t new_size = (size_t)x3;
+            int flags = (int)x4;
+            void* new_address = (void*)x5;
+            long ret;
+
+            _strace(
+                n,
+                "old_address=%p "
+                "old_size=%zu "
+                "new_size=%zu "
+                "flags=%d "
+                "new_address=%p ",
+                old_address,
+                old_size,
+                new_size,
+                flags,
+                new_address);
+
+            ret = (long)libos_mremap(
+                old_address, old_size, new_size, flags, new_address);
+
+            BREAK(_return(n, ret));
+        }
         case SYS_msync:
             /* ATTN: hook up implementation */
             break;
@@ -2449,7 +2473,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(
                 n,
-                "uaddr=0x%lX(%d) futex_op=%u(%s) val=%d",
+                "uaddr=0x%lx(%d) futex_op=%u(%s) val=%d",
                 (long)uaddr,
                 (uaddr ? *uaddr : -1),
                 futex_op,

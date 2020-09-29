@@ -15,12 +15,7 @@ int libos_once(libos_once_t* once, void (*func)(void))
         libos_once_t expected = 0;
 
         bool ret = __atomic_compare_exchange_n(
-            once,
-            &expected,
-            busy,
-            false,
-            __ATOMIC_RELEASE,
-            __ATOMIC_ACQUIRE);
+            once, &expected, busy, false, __ATOMIC_RELEASE, __ATOMIC_ACQUIRE);
 
         if (ret)
         {

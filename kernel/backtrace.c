@@ -1,15 +1,15 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
+#include <elf.h>
 #include <errno.h>
 #include <stdlib.h>
-#include <elf.h>
 
-#include <libos/kernel.h>
+#include <libos/backtrace.h>
 #include <libos/defs.h>
 #include <libos/eraise.h>
+#include <libos/kernel.h>
 #include <libos/printf.h>
-#include <libos/backtrace.h>
 
 const void* _check_address(const void* ptr)
 {
@@ -96,7 +96,8 @@ static int _symtab_find_name(
 
             if (addr >= lo && addr <= hi)
             {
-                ECHECK(_symtab_get_string(strtab, strtab_size, p->st_name, name));
+                ECHECK(
+                    _symtab_get_string(strtab, strtab_size, p->st_name, name));
                 goto done;
             }
         }
@@ -114,24 +115,24 @@ static int _addr_to_func_name(uint64_t addr, const char** name)
 
     /* search the symbol table */
     if (_symtab_find_name(
-        __libos_kernel_args.symtab_data,
-        __libos_kernel_args.symtab_size,
-        __libos_kernel_args.strtab_data,
-        __libos_kernel_args.strtab_size,
-        addr,
-        name) == 0)
+            __libos_kernel_args.symtab_data,
+            __libos_kernel_args.symtab_size,
+            __libos_kernel_args.strtab_data,
+            __libos_kernel_args.strtab_size,
+            addr,
+            name) == 0)
     {
         goto done;
     }
 
     /* search the dynamic symbol table */
     if (_symtab_find_name(
-        __libos_kernel_args.dynsym_data,
-        __libos_kernel_args.dynsym_size,
-        __libos_kernel_args.dynstr_data,
-        __libos_kernel_args.dynstr_size,
-        addr,
-        name) == 0)
+            __libos_kernel_args.dynsym_data,
+            __libos_kernel_args.dynsym_size,
+            __libos_kernel_args.dynstr_data,
+            __libos_kernel_args.dynstr_size,
+            addr,
+            name) == 0)
     {
         goto done;
     }

@@ -6,8 +6,8 @@
 #include <stdbool.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
-#include <sys/uio.h>
 #include <sys/time.h>
+#include <sys/uio.h>
 #include <time.h>
 
 #include <libos/defs.h>

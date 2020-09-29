@@ -160,6 +160,27 @@ void* libos_mmap(
     return ptr;
 }
 
+void* libos_mremap(
+    void* old_address,
+    size_t old_size,
+    size_t new_size,
+    int flags,
+    void* new_address)
+{
+    void* p;
+    int r;
+
+    if (new_address)
+        return (void*)-EINVAL;
+
+    r = libos_mman_mremap(&_mman, old_address, old_size, new_size, flags, &p);
+
+    if (r != 0)
+        return (void*)(long)r;
+
+    return p;
+}
+
 int libos_munmap(void* addr, size_t length)
 {
     return libos_mman_munmap(&_mman, addr, length);
