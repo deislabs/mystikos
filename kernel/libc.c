@@ -42,6 +42,16 @@ char* strdup(const char* s)
     return p;
 }
 
+char* strcpy(char* dest, const char* src)
+{
+    char* p = dest;
+
+    while (*src)
+        *p++ = *src++;
+
+    return dest;
+}
+
 char* strncpy(char* dest, const char* src, size_t n)
 {
     size_t i;
@@ -662,6 +672,7 @@ int libos_get_malloc_stats(libos_malloc_stats_t* stats)
     return -ENOTSUP;
 #endif
 }
+
 /*
 **==============================================================================
 **

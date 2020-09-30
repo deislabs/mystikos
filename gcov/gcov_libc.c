@@ -105,42 +105,6 @@ int fcntl(int fd, int cmd, ... /* arg */)
 }
 
 LIBOS_WEAK
-void* malloc(size_t size)
-{
-    return _libc.malloc(size);
-}
-
-LIBOS_WEAK
-void free(void* ptr)
-{
-    _libc.free(ptr);
-}
-
-LIBOS_WEAK
-void* memset(void* s, int c, size_t n)
-{
-    return _libc.memset(s, c, n);
-}
-
-LIBOS_WEAK
-void* memcpy(void* dest, const void* src, size_t n)
-{
-    return _libc.memcpy(dest, src, n);
-}
-
-LIBOS_WEAK
-size_t strlen(const char* s)
-{
-    return _libc.strlen(s);
-}
-
-LIBOS_WEAK
-char* strcpy(char* dest, const char* src)
-{
-    return _libc.strcpy(dest, src);
-}
-
-LIBOS_WEAK
 char* getenv(const char* name)
 {
     return _libc.getenv(name);
@@ -199,12 +163,6 @@ int fprintf(FILE* stream, const char* format, ...)
     int r = vfprintf(stream, format, ap);
     va_end(ap);
     return r;
-}
-
-LIBOS_WEAK
-int atoi(const char* nptr)
-{
-    return _libc.atoi(nptr);
 }
 
 LIBOS_WEAK
