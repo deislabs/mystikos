@@ -131,13 +131,6 @@ void libos_enter_crt(void* stack, void* dynv, syscall_callback_t callback)
             mkdir,
             abort,
             vfprintf,
-            atoi,
-            malloc,
-            free,
-            memset,
-            memcpy,
-            strcpy,
-            strlen,
         };
 
         long params[6] = {(long)&_libc, (long)stderr};
