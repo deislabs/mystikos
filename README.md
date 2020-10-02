@@ -17,3 +17,5 @@ Your application needs to be linked against the libc shared libraries rather tha
 ## Documents
 
 User getting started guide: [click here](doc/user-getting-started.MD)
+
+Release management: [click here](doc/releasing.md)
