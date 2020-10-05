@@ -120,6 +120,8 @@ static bool _is_allowed_env_variable(
 const void* __oe_get_enclave_base(void);
 size_t __oe_get_enclave_size(void);
 
+volatile int libos_enter_ecall_lock = 0;
+
 int libos_enter_ecall(
     struct libos_options* options,
     struct libos_shm* shared_memory,
@@ -156,6 +158,13 @@ int libos_enter_ecall(
     libos_args_t env;
     const uint8_t* enclave_base;
     size_t enclave_size;
+
+    if (__sync_fetch_and_add(&libos_enter_ecall_lock, 1) != 0)
+    {
+        fprintf(stderr, "ERROR: libos_enter_ecall() can only be called once\n");
+        libos_enter_ecall_lock = 1; // stop this from wrapping
+        goto done;    
+    }
 
     if (!argv_data || !argv_size || !envp_data || !envp_size)
         goto done;
