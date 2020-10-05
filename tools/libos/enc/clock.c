@@ -4,10 +4,11 @@
 #include <libos/clock.h>
 #include <libos/syscall.h>
 #include <libos/syscallext.h>
+#include <stdio.h>
 
-static unsigned long _realtime0 = 0;
-static unsigned long _monotime0 = 0;
-static volatile unsigned long* _monotime_now = 0;
+static long _realtime0 = 0;
+static long _monotime0 = 0;
+static volatile long* _monotime_now = 0;
 static long _realtime_delta = 0;
 
 int libos_setup_clock(struct clock_ctrl* ctrl)
@@ -15,7 +16,7 @@ int libos_setup_clock(struct clock_ctrl* ctrl)
     int ret = -1;
     if (ctrl != NULL)
     {
-        if (oe_is_within_enclave(ctrl, sizeof(struct clock_ctrl)))
+        if (!oe_is_outside_enclave(ctrl, sizeof(struct clock_ctrl)))
             return ret;
 
         // Copy the starting values into enclave to isolate them
@@ -23,6 +24,9 @@ int libos_setup_clock(struct clock_ctrl* ctrl)
         // the time spent in entering the enclave.
         _realtime0 = ctrl->realtime0;
         _monotime0 = ctrl->monotime0;
+
+        if (_realtime0 <= 0 || _monotime0 <= 0)
+            goto done;
 
         // If ctrl is outside of the enclave, ctrl->now
         // should be outside too. _monotime_now is a host address. The address
@@ -34,14 +38,26 @@ int libos_setup_clock(struct clock_ctrl* ctrl)
 
         ret = 0;
     }
+done:
     return ret;
 }
 
-/* Return monotonic clock in nanoseconds since a starting point */
-static unsigned long _get_monotime()
+static void _check(bool overflowed)
 {
-    static unsigned long prev = 0;
-    unsigned long now = *_monotime_now;
+    if (overflowed)
+    {
+        fprintf(stderr, "clock overflow\n");
+        oe_abort();
+    }
+}
+
+/* Return monotonic clock in nanoseconds since a starting point */
+static long _get_monotime()
+{
+    static long prev = 0;
+    if (prev == 0)
+        prev = _monotime0;
+    long now = *_monotime_now;
     if (now > prev)
     {
         prev = now;
@@ -56,13 +72,15 @@ static unsigned long _get_monotime()
 }
 
 /* Return realtime clock in nanoseconds since the epoch */
-static unsigned long _get_realtime()
+static long _get_realtime()
 {
     // Derive the realtime clock from the monotonic clock.
     // Any adjustment to the system clock is invisible to the
     // enclave application once it is launched.
-    return _get_monotime() - _monotime0 + _realtime0 +
-           (unsigned long)_realtime_delta;
+    long ret = _get_monotime() - _monotime0;
+    _check(__builtin_saddl_overflow(ret, _realtime0, &ret));
+    _check(__builtin_saddl_overflow(ret, _realtime_delta, &ret));
+    return ret;
 }
 
 /* This overrides the weak version in liboskernel.a */
@@ -70,14 +88,14 @@ long libos_tcall_clock_gettime(clockid_t clk_id, struct timespec* tp)
 {
     if (clk_id == CLOCK_MONOTONIC)
     {
-        long nanoseconds = (long)_get_monotime();
+        long nanoseconds = _get_monotime();
         tp->tv_sec = nanoseconds / NANO_IN_SECOND;
         tp->tv_nsec = nanoseconds % NANO_IN_SECOND;
         return 0;
     }
     else if (clk_id == CLOCK_REALTIME)
     {
-        long nanoseconds = (long)_get_realtime();
+        long nanoseconds = _get_realtime();
         tp->tv_sec = nanoseconds / NANO_IN_SECOND;
         tp->tv_nsec = nanoseconds % NANO_IN_SECOND;
         return 0;
@@ -97,7 +115,10 @@ long libos_tcall_clock_settime(clockid_t clk_id, struct timespec* tp)
         if (new_time <= cur_time)
             return 0; // trying to set clock backward, make it no-op
 
-        _realtime_delta += new_time - cur_time;
+        if (_realtime_delta > _realtime_delta + (new_time - cur_time))
+            return -EINVAL; // possible overflow, make it no-op
+
+        _realtime_delta += (new_time - cur_time);
         return 0;
     }
 

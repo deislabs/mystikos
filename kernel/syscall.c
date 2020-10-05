@@ -2983,16 +2983,25 @@ done:
 **==============================================================================
 */
 
+static libos_spinlock_t _get_time_lock = LIBOS_SPINLOCK_INITIALIZER;
+static libos_spinlock_t _set_time_lock = LIBOS_SPINLOCK_INITIALIZER;
+
 long libos_syscall_clock_gettime(clockid_t clk_id, struct timespec* tp)
 {
     long params[6] = {(long)clk_id, (long)tp};
-    return libos_tcall(LIBOS_TCALL_CLOCK_GETTIME, params);
+    libos_spin_lock(&_get_time_lock);
+    long ret = libos_tcall(LIBOS_TCALL_CLOCK_GETTIME, params);
+    libos_spin_unlock(&_get_time_lock);
+    return ret;
 }
 
 long libos_syscall_clock_settime(clockid_t clk_id, struct timespec* tp)
 {
     long params[6] = {(long)clk_id, (long)tp};
-    return libos_tcall(LIBOS_TCALL_CLOCK_SETTIME, params);
+    libos_spin_lock(&_set_time_lock);
+    long ret = libos_tcall(LIBOS_TCALL_CLOCK_SETTIME, params);
+    libos_spin_unlock(&_set_time_lock);
+    return ret;
 }
 
 long libos_syscall_gettimeofday(struct timeval* tv, struct timezone* tz)
