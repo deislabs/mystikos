@@ -5,9 +5,9 @@
 
 struct clock_ctrl
 {
-    unsigned long realtime0;
-    unsigned long monotime0;
-    volatile unsigned long now;
+    long realtime0;
+    long monotime0;
+    volatile long now;
     unsigned long interval;
     volatile int done;
 };

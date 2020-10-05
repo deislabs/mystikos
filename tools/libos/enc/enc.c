@@ -293,7 +293,11 @@ int libos_enter_ecall(
 
     _setup_sockets();
 
-    libos_setup_clock(shared_memory->clock);
+    if (libos_setup_clock(shared_memory->clock))
+    {
+        fprintf(stderr, "libos_setup_clock() failed\n");
+        assert(0);
+    }
 
     /* Get the mman region */
     void* mman_data;
