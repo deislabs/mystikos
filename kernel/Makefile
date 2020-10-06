@@ -30,7 +30,7 @@ WARNINGS += -Wno-conversion
 
 CFLAGS =
 CFLAGS += -g
-CFLAGS += -Os
+CFLAGS += $(OPTIMIZATION_CFLAGS)
 CFLAGS += -nostdinc
 CFLAGS += -m64
 CFLAGS += -fPIC
