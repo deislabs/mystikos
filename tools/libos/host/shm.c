@@ -10,15 +10,6 @@ static void* _host_clock_task(void* args)
     struct timespec tp, sleep_tp;
     struct clock_ctrl* ctrl = (struct clock_ctrl*)args;
 
-    // Remeber the base real time.
-    clock_gettime(CLOCK_REALTIME, &tp);
-    ctrl->realtime0 = tp.tv_sec * NANO_IN_SECOND + tp.tv_nsec;
-
-    // Remeber the base monotonic time.
-    clock_gettime(CLOCK_MONOTONIC, &tp);
-    ctrl->monotime0 = tp.tv_sec * NANO_IN_SECOND + tp.tv_nsec;
-    ctrl->now = ctrl->monotime0;
-
     // Set up sleep interval
     sleep_tp.tv_sec = ctrl->interval / NANO_IN_SECOND;
     sleep_tp.tv_nsec = ctrl->interval % NANO_IN_SECOND;
@@ -36,6 +27,7 @@ static void* _host_clock_task(void* args)
 
 int shm_create_clock(struct libos_shm* shm, unsigned long clock_tick)
 {
+    struct timespec tp;
     int res = -1;
     shm->clock = calloc(1, sizeof(struct clock_ctrl));
     if (shm->clock == NULL)
@@ -46,6 +38,15 @@ int shm_create_clock(struct libos_shm* shm, unsigned long clock_tick)
 
     // How many nanoseconds between 2 clock ticks.
     shm->clock->interval = clock_tick;
+
+    // Remeber the base real time.
+    clock_gettime(CLOCK_REALTIME, &tp);
+    shm->clock->realtime0 = tp.tv_sec * NANO_IN_SECOND + tp.tv_nsec;
+
+    // Remeber the base monotonic time.
+    clock_gettime(CLOCK_MONOTONIC, &tp);
+    shm->clock->monotime0 = tp.tv_sec * NANO_IN_SECOND + tp.tv_nsec;
+    shm->clock->now = shm->clock->monotime0;
 
     if (pthread_create(&_clock_thread, 0, _host_clock_task, (void*)shm->clock))
     {
