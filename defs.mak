@@ -55,6 +55,10 @@ DEFAULT_INCLUDES = -I$(INCDIR)
 
 DEFAULT_CFLAGS = -Wall -Werror -g -fPIC
 
+ifeq ($(LIBOS_RELEASE),1)
+OPTIMIZATION_CFLAGS += -Os
+endif
+
 DEFAULT_LDFLAGS =
 
 ##==============================================================================

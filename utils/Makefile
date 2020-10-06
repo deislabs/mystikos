@@ -11,7 +11,7 @@ INCLUDES = -I$(INCDIR) -I$(BUILDDIR)/host-musl/include
 
 CFLAGS =
 CFLAGS += $(DEFAULT_CFLAGS)
-CFLAGS += -Os
+CFLAGS += $(OPTIMIZATION_CFLAGS)
 CFLAGS += -nostdinc
 CFLAGS += -ffunction-sections
 CFLAGS += -fdata-sections
