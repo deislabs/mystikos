@@ -304,17 +304,21 @@ int libos_buf_unpack_str(libos_buf_t* buf, const char** str, size_t* len)
 {
     int ret = -1;
     size_t size;
-    const void* p;
+    const char* p;
 
     if (!buf || !str || !len)
         goto done;
 
     /* unpack the array of charaters */
-    if (libos_buf_unpack_bytes(buf, &p, &size) != 0)
+    if (libos_buf_unpack_bytes(buf, (const void**)&p, &size) != 0)
         goto done;
 
     /* a string must have at least one null byte */
     if (size == 0)
+        goto done;
+
+    /* verify that the string is zero-terminated */
+    if (p[size-1] != '\0')
         goto done;
 
     *str = p;
