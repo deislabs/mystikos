@@ -141,3 +141,21 @@ alltests:
 
 sub:
 	@ $(TOP)/scripts/sub $(shell $(MAKE) src)
+
+##==============================================================================
+##
+## bindist:
+##     Create a binary distribution based on the VERSION file
+##
+##==============================================================================
+
+VERSION=$(shell cat VERSION)
+PKGNAME=openlibos-$(VERSION)-x86_64
+
+bindist:
+	@ rm -rf $(BUILDDIR)/bindist
+	@ $(MAKE) install DESTDIR=$(BUILDDIR)/bindist
+	@ ( cd $(BUILDDIR)/bindist/opt; tar zcf $(PKGNAME).tar.gz openlibos )
+	@ mv $(BUILDDIR)/bindist/opt/$(PKGNAME).tar.gz .
+	@ echo "Created $(PKGNAME).tar.gz"
+
