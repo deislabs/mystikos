@@ -298,6 +298,7 @@ static int _enter_kernel(
     args.rootfs_size = regions->rootfs_size;
     args.crt_data = regions->liboscrt.image_data;
     args.crt_size = regions->liboscrt.image_size;
+    args.max_threads = SIZE_MAX;
     args.trace_syscalls = options->trace_syscalls;
     args.have_syscall_instruction = true;
     args.export_ramfs = options->export_ramfs;
