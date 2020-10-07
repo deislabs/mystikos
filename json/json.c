@@ -572,6 +572,13 @@ static json_result_t _get_object(json_parser_t* parser)
 
             /* Expect: value */
             CHECK(_get_value(parser));
+
+            /* Ignore whitespace afer the value */
+            CHECK(skip_whitespace(parser));
+
+            /* A value must be followed by a comma or closing brace */
+            if (*parser->ptr != ',' && *parser->ptr != '}')
+                RAISE(JSON_BAD_SYNTAX);
         }
         else if (c == '}')
         {
