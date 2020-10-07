@@ -8,7 +8,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define FDTABLE_SIZE 1024
+#define FDTABLE_SIZE 128
 #define FD_OFFSET 1024
 
 typedef enum libos_fdtable_type

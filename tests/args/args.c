@@ -4,10 +4,10 @@
 #include <assert.h>
 #include <libos/args.h>
 #include <libos/defs.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdbool.h>
 
 void dump(const char* args[], size_t size)
 {

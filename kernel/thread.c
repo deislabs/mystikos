@@ -8,6 +8,7 @@
 #include <libos/eraise.h>
 #include <libos/fsgs.h>
 #include <libos/futex.h>
+#include <libos/kernel.h>
 #include <libos/lfence.h>
 #include <libos/options.h>
 #include <libos/panic.h>
@@ -19,7 +20,6 @@
 #include <libos/tcall.h>
 #include <libos/thread.h>
 #include <libos/trace.h>
-#include <libos/kernel.h>
 
 libos_thread_t* __libos_main_thread;
 

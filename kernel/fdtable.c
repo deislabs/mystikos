@@ -1,10 +1,13 @@
-#include "fdtable.h"
-#include <libos/eraise.h>
-#include <libos/strings.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <string.h>
 
-/* ATTN: add locking to this table */
+#include <libos/atexit.h>
+#include <libos/eraise.h>
+#include <libos/once.h>
+#include <libos/spinlock.h>
+#include <libos/strings.h>
+#include "fdtable.h"
 
 typedef struct fdtable_entry
 {
@@ -15,7 +18,25 @@ typedef struct fdtable_entry
     void* object; /* example: libos_file_t */
 } fdtable_entry_t;
 
-static fdtable_entry_t _fdtable[FDTABLE_SIZE];
+static fdtable_entry_t* _fdtable[FDTABLE_SIZE];
+static libos_spinlock_t _lock;
+static libos_once_t _once;
+
+static void _atexit_function(void* arg)
+{
+    (void)arg;
+
+    for (size_t i = 0; i < FDTABLE_SIZE; i++)
+    {
+        if (_fdtable[i])
+            free(_fdtable[i]);
+    }
+}
+
+static void _once_function(void)
+{
+    libos_atexit(_atexit_function, NULL);
+}
 
 bool libos_is_libos_fd(int fd)
 {
@@ -26,43 +47,61 @@ int libos_fdtable_add(libos_fdtable_type_t type, void* device, void* object)
 {
     int ret = 0;
     int fd;
+    bool locked = false;
 
     if (!device || !object)
         ERAISE(-EINVAL);
 
+    libos_once(&_once, _once_function);
+
+    libos_spin_lock(&_lock);
+    locked = true;
+
     /* Find an available entry */
     for (int i = 0; i < FDTABLE_SIZE; i++)
     {
-        if (!_fdtable[i].used)
+        if (!_fdtable[i])
         {
+            if (!(_fdtable[i] = calloc(1, sizeof(fdtable_entry_t))))
+                ERAISE(-ENOMEM);
+
             fd = i + FD_OFFSET;
-            _fdtable[i].used = true;
-            _fdtable[i].type = type;
-            _fdtable[i].fd = fd;
-            _fdtable[i].device = device;
-            _fdtable[i].object = object;
+            _fdtable[i]->used = true;
+            _fdtable[i]->type = type;
+            _fdtable[i]->fd = fd;
+            _fdtable[i]->device = device;
+            _fdtable[i]->object = object;
             ret = fd;
             goto done;
         }
     }
 
 done:
+
+    if (locked)
+        libos_spin_unlock(&_lock);
+
     return ret;
 }
 
 int libos_fdtable_remove(int fd)
 {
     int ret = 0;
+    bool locked = false;
 
     if (fd < 0)
         ERAISE(-EBADF);
 
+    libos_spin_lock(&_lock);
+    locked = true;
+
     /* Find and clear the entry */
     for (int i = 0; i < FDTABLE_SIZE; i++)
     {
-        if (_fdtable[i].fd == fd)
+        if (_fdtable[i] && _fdtable[i]->fd == fd)
         {
-            memset(&_fdtable[i], 0, sizeof(fdtable_entry_t));
+            free(_fdtable[i]);
+            _fdtable[i] = NULL;
             goto done;
         }
     }
@@ -71,6 +110,10 @@ int libos_fdtable_remove(int fd)
     ERAISE(-ENOENT);
 
 done:
+
+    if (locked)
+        libos_spin_unlock(&_lock);
+
     return ret;
 }
 
@@ -82,6 +125,7 @@ int libos_fdtable_find(
 {
     int ret = 0;
     size_t index;
+    bool locked = false;
 
     if (fd < FD_OFFSET || (fd >= (FDTABLE_SIZE + FD_OFFSET)))
         ERAISE(-EINVAL);
@@ -94,24 +138,31 @@ int libos_fdtable_find(
     if (index >= FDTABLE_SIZE)
         ERAISE(-EINVAL);
 
-    if (!_fdtable[index].used)
+    libos_spin_lock(&_lock);
+    locked = true;
+
+    if (!_fdtable[index])
         ERAISE(-ENOENT);
 
-    if (_fdtable[index].type != type)
+    if (_fdtable[index]->type != type)
         ERAISE(-ENOENT);
 
-    if (_fdtable[index].fd != fd)
+    if (_fdtable[index]->fd != fd)
         ERAISE(-ENOENT);
 
-    if (!_fdtable[index].device)
+    if (!_fdtable[index]->device)
         ERAISE(-ENOENT);
 
-    if (!_fdtable[index].object)
+    if (!_fdtable[index]->object)
         ERAISE(-ENOENT);
 
-    *device = _fdtable[index].device;
-    *object = _fdtable[index].object;
+    *device = _fdtable[index]->device;
+    *object = _fdtable[index]->object;
 
 done:
+
+    if (locked)
+        libos_spin_unlock(&_lock);
+
     return ret;
 }

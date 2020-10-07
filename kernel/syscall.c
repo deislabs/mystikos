@@ -30,6 +30,7 @@
 #include <libos/gcov.h>
 #include <libos/id.h>
 #include <libos/initfini.h>
+#include <libos/kernel.h>
 #include <libos/libc.h>
 #include <libos/lsr.h>
 #include <libos/mmanutils.h>
@@ -47,7 +48,6 @@
 #include <libos/tcall.h>
 #include <libos/thread.h>
 #include <libos/trace.h>
-#include <libos/kernel.h>
 
 #include "fdtable.h"
 

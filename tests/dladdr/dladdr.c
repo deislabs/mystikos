@@ -1,7 +1,7 @@
 #include <assert.h>
+#include <dlfcn.h>
 #include <stdio.h>
 #include <string.h>
-#include <dlfcn.h>
 
 void foo()
 {
