@@ -33,7 +33,7 @@ OBJECTS = $(addprefix $(SUBOBJDIR)/,$(SOURCES:.c=.o))
 
 $(TARGET): $(MUSL_OBJECTS) $(OBJECTS)
 	mkdir -p $(LIBDIR)
-	$(CC) -o $@ $(LDFLAGS1) $(OBJECTS) $(MUSL_OBJECTS) $(LIBCC) $(LDFLAGS2) $(LIBS)
+	$(CC) -o $@ $(LDFLAGS1) $(OBJECTS) $(MUSL_OBJECTS) $(LIBCC) $(LDFLAGS2)
 
 $(SUBOBJDIR)/%.o: %.c
 	mkdir -p $(SUBOBJDIR)
@@ -44,6 +44,3 @@ clean:
 	rm -f $(OBJECTS) $(TARGET)
 
 tests:
-
-t:
-	nm $(TARGET) | grep memcpy
