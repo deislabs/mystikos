@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <limits.h>
 #include <sys/syscall.h>
 #include <unistd.h>
 
@@ -480,7 +481,8 @@ int main(int argc, const char* argv[])
         test_timedlock();
         test_cond_signal();
         test_cond_broadcast();
-        test_exhaust_threads();
+        if (_get_max_threads() != LONG_MAX)
+            test_exhaust_threads();
     }
 
     printf("=== passed test (%s)\n", argv[0]);
