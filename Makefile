@@ -3,6 +3,10 @@ SUBDIR = top
 TOP = $(abspath $(CURDIR))
 include $(TOP)/defs.mak
 
+VERSION=$(shell cat VERSION)
+PKGNAME=openlibos-$(VERSION)-x86_64
+TARBALL=$(PKGNAME).tar.gz
+
 ##==============================================================================
 ##
 ## dirs:
@@ -22,7 +26,7 @@ DIRS += tools
 DIRS += alpine
 DIRS += tests
 
-CLEAN = $(BUILDDIR)
+CLEAN = $(BUILDDIR) $(TARBALL)
 
 REDEFINE_TESTS=1
 include $(TOP)/rules.mak
@@ -60,7 +64,7 @@ size:
 INSTALL=install -D
 INSTDIR=$(DESTDIR)/$(LIBOS_PREFIX)
 
-install:
+install: dirs
 	rm -rf $(INSTDIR)
 	$(INSTALL) $(BINDIR)/libos $(INSTDIR)/bin/libos
 	$(INSTALL) $(LIBDIR)/liboscrt.so $(INSTDIR)/lib/liboscrt.so
@@ -149,13 +153,9 @@ sub:
 ##
 ##==============================================================================
 
-VERSION=$(shell cat VERSION)
-PKGNAME=openlibos-$(VERSION)-x86_64
-
 bindist:
 	@ rm -rf $(BUILDDIR)/bindist
 	@ $(MAKE) install DESTDIR=$(BUILDDIR)/bindist
-	@ ( cd $(BUILDDIR)/bindist/opt; tar zcf $(PKGNAME).tar.gz openlibos )
-	@ mv $(BUILDDIR)/bindist/opt/$(PKGNAME).tar.gz .
-	@ echo "Created $(PKGNAME).tar.gz"
-
+	@ ( cd $(BUILDDIR)/bindist/opt; tar zcf $(TARBALL) openlibos )
+	@ cp $(BUILDDIR)/bindist/opt/$(TARBALL) .
+	@ echo "=== Created $(TARBALL)"
