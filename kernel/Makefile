@@ -28,6 +28,9 @@ WARNINGS += -Wno-missing-field-initializers
 WARNINGS += -Wno-type-limits
 WARNINGS += -Wno-conversion
 
+# ATTN: this optimization makes little difference for the kernel
+#USE_GC_SECTIONS=1
+
 CFLAGS =
 CFLAGS += -g
 CFLAGS += $(OPTIMIZATION_CFLAGS)
@@ -37,8 +40,10 @@ CFLAGS += -fPIC
 CFLAGS += -ftls-model=local-exec
 CFLAGS += -fstack-protector-strong
 CFLAGS += -fno-omit-frame-pointer
+ifdef USE_GC_SECTIONS
 CFLAGS += -ffunction-sections
 CFLAGS += -fdata-sections
+endif
 CFLAGS += $(WARNINGS)
 
 # suppress conversion errors in musl lib headers
@@ -62,11 +67,16 @@ LDFLAGS += -Wl,-pie
 LDFLAGS += -Wl,--build-id
 LDFLAGS += -Wl,-z,noexecstack
 LDFLAGS += -Wl,-z,now
+ifdef USE_GC_SECTIONS
 LDFLAGS += -Wl,-gc-sections
+endif
 LDFLAGS += -Wl,-elibos_enter_kernel
 
 LIBS += $(LIBDIR)/libosutils.a
+
+ifdef LIBOS_ENABLE_GCOV
 LIBS += $(LIBDIR)/libgcov_musl.a
+endif
 
 include $(TOP)/rules.mak
 
