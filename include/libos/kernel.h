@@ -54,6 +54,9 @@ typedef struct libos_kernel_args
     void* crt_data;
     size_t crt_size;
 
+    /* The number of threads that can be created (including the main thread) */
+    size_t max_threads;
+
     /* Tracing options */
     bool trace_syscalls;
     bool have_syscall_instruction;

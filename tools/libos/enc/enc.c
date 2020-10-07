@@ -30,7 +30,12 @@
 #include "../shared.h"
 #include "libos_t.h"
 
-extern int oe_host_printf(const char* fmt, ...);
+extern volatile const oe_sgx_enclave_properties_t oe_enclave_properties_sgx;
+
+static size_t _get_num_tcs(void)
+{
+    return oe_enclave_properties_sgx.header.size_settings.num_tcs;
+}
 
 int libos_setup_clock(struct clock_ctrl*);
 
@@ -496,6 +501,7 @@ int libos_enter_ecall(
         kargs.rootfs_size = rootfs_size;
         kargs.crt_data = (void*)crt_data;
         kargs.crt_size = crt_size;
+        kargs.max_threads = _get_num_tcs();
         kargs.trace_syscalls = trace_syscalls;
         kargs.export_ramfs = export_ramfs;
         kargs.tcall = libos_tcall;

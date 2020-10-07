@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <stdbool.h>
 #include <sys/syscall.h>
 #include <unistd.h>
 
@@ -18,6 +20,21 @@
 #else
 #define T(EXPR)
 #endif
+
+static size_t _get_max_threads(void)
+{
+    const long SYS_libos_max_threads = 1014;
+
+    long n = syscall(SYS_libos_max_threads);
+
+    if (n < 0)
+    {
+        fprintf(stderr, "_get_max_threads() failed\n");
+        assert(0);
+    }
+
+    return (size_t)n;
+}
 
 void sleep_msec(uint64_t milliseconds)
 {
@@ -375,14 +392,61 @@ void test_cond_broadcast(void)
 /*
 **==============================================================================
 **
-** main()
+** test_exhaust_threads()
 **
 **==============================================================================
 */
 
-#define LOOP(BODY, N)              \
-    for (size_t i = 0; i < N; i++) \
-    BODY
+static void* _exhaust_thread(void* arg)
+{
+    sleep(1);
+    return arg;
+}
+
+void test_exhaust_threads(void)
+{
+    const size_t max_threads = _get_max_threads();
+    pthread_t threads[max_threads];
+
+    printf("=== start test (%s)\n", __FUNCTION__);
+
+    /* Create threads until exhausted (last iteration fails with EAGAIN) */
+    for (size_t i = 0; i < max_threads; i++)
+    {
+        int r = pthread_create(&threads[i], NULL, _exhaust_thread, (void*)i);
+
+        if (i + 1 == max_threads)
+            assert(r == EAGAIN);
+        else
+            assert(r == 0);
+    }
+
+    /* Join threads except for the last one that failed */
+    for (size_t i = 0; i < max_threads - 1; i++)
+    {
+        void* retval;
+
+        if (pthread_join(threads[i], &retval) != 0)
+        {
+            fprintf(stderr, "pthread_join() failed\n");
+            abort();
+        }
+
+        T(printf("joined...\n");)
+
+        assert((uint64_t)retval == i);
+    }
+
+    printf("=== passed test (%s)\n", __FUNCTION__);
+}
+
+/*
+**==============================================================================
+**
+** main()
+**
+**==============================================================================
+*/
 
 int main(int argc, const char* argv[])
 {
@@ -416,6 +480,7 @@ int main(int argc, const char* argv[])
         test_timedlock();
         test_cond_signal();
         test_cond_broadcast();
+        test_exhaust_threads();
     }
 
     printf("=== passed test (%s)\n", argv[0]);

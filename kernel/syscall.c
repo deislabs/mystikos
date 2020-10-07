@@ -47,6 +47,7 @@
 #include <libos/tcall.h>
 #include <libos/thread.h>
 #include <libos/trace.h>
+#include <libos/kernel.h>
 
 #include "fdtable.h"
 
@@ -412,6 +413,9 @@ static pair_t _pairs[] = {
     {SYS_libos_gen_creds, "SYS_libos_gen_creds"},
     {SYS_libos_free_creds, "SYS_libos_free_creds"},
     {SYS_libos_clone, "SYS_libos_clone"},
+    {SYS_libos_gcov_init, "SYS_libos_gcov_init"},
+    {SYS_libos_max_threads, "SYS_libos_max_threads"},
+    /* OE */
     {SYS_libos_oe_add_vectored_exception_handler,
      "SYS_libos_oe_add_vectored_exception_handler"},
     {SYS_libos_oe_remove_vectored_exception_handler,
@@ -468,7 +472,6 @@ static pair_t _pairs[] = {
         SYS_libos_oe_call_host_function,
         "SYS_libos_oe_call_host_function",
     },
-    {SYS_libos_gcov_init, "SYS_libos_gcov_init"},
 };
 
 static size_t _n_pairs = sizeof(_pairs) / sizeof(_pairs[0]);
@@ -1532,6 +1535,11 @@ long libos_syscall(long n, long params[6])
         {
             _strace(n, NULL);
             BREAK(_forward_syscall(LIBOS_TCALL_VERIFY_CERT, params));
+        }
+        case SYS_libos_max_threads:
+        {
+            _strace(n, NULL);
+            BREAK(_return(n, __libos_kernel_args.max_threads));
         }
         case SYS_read:
         {

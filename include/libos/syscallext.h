@@ -23,6 +23,7 @@ enum
     SYS_libos_verify_cert = 1011,
     SYS_libos_clone = 1012,
     SYS_libos_gcov_init = 1013,
+    SYS_libos_max_threads = 1014,
 
     /* Open Enclave extensions */
     SYS_libos_oe_add_vectored_exception_handler = 4096,
