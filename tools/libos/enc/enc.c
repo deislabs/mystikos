@@ -168,7 +168,7 @@ int libos_enter_ecall(
     {
         fprintf(stderr, "ERROR: libos_enter_ecall() can only be called once\n");
         libos_enter_ecall_lock = 1; // stop this from wrapping
-        goto done;    
+        goto done;
     }
 
     if (!argv_data || !argv_size || !envp_data || !envp_size)

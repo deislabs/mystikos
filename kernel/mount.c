@@ -8,7 +8,7 @@
 #include <libos/spinlock.h>
 #include <libos/strings.h>
 
-#define MOUNT_TABLE_SIZE 64
+#define MOUNT_TABLE_SIZE 8
 
 typedef struct mount_table_entry
 {

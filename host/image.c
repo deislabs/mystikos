@@ -311,7 +311,6 @@ static int _process_elf_image(elf_image_t* image)
         if (!(symtab_data = memalign(PAGE_SIZE, symtab_size)))
             ERAISE(-ENOMEM);
 
-
         memset(symtab_data, 0, symtab_size);
         memcpy(symtab_data, p, symtab_size);
 
@@ -333,7 +332,6 @@ static int _process_elf_image(elf_image_t* image)
 
         if (!(dynsym_data = memalign(PAGE_SIZE, dynsym_size)))
             ERAISE(-ENOMEM);
-
 
         memset(dynsym_data, 0, dynsym_size);
         memcpy(dynsym_data, p, dynsym_size);

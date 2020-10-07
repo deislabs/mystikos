@@ -12,7 +12,7 @@ int main(int argc, const char* argv[])
     assert(argv[4] == NULL);
 
     printf("  Hello world!\n  I received: ");
-    for (int i=0; i<argc; i++)
+    for (int i = 0; i < argc; i++)
     {
         if (i > 0)
             printf(", ");

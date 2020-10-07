@@ -318,7 +318,7 @@ int libos_buf_unpack_str(libos_buf_t* buf, const char** str, size_t* len)
         goto done;
 
     /* verify that the string is zero-terminated */
-    if (p[size-1] != '\0')
+    if (p[size - 1] != '\0')
         goto done;
 
     *str = p;
