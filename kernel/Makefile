@@ -82,3 +82,6 @@ include $(TOP)/rules.mak
 
 size:
 	size $(LIBDIR)/liboskernel.so
+
+sizes:
+	@ $(foreach i, $(__OBJECTS), size $(i) $(NL) )
