@@ -64,13 +64,15 @@ size:
 INSTALL=install -D
 INSTDIR=$(DESTDIR)/$(LIBOS_PREFIX)
 
-install: dirs
+install:
 	rm -rf $(INSTDIR)
 	$(INSTALL) $(BINDIR)/libos $(INSTDIR)/bin/libos
 	$(INSTALL) $(LIBDIR)/liboscrt.so $(INSTDIR)/lib/liboscrt.so
 	$(INSTALL) $(LIBDIR)/liboskernel.so $(INSTDIR)/lib/liboskernel.so
 	$(INSTALL) $(LIBDIR)/openenclave/libosenc.so $(INSTDIR)/lib/openenclave/libosenc.so
 	$(INSTALL) $(BUILDDIR)/openenclave/bin/oegdb $(INSTDIR)/bin/libos-gdb
+	$(INSTALL) ./scripts/appbuilder $(INSTDIR)/bin/libos-appbuilder
+	$(INSTALL) include/libos/tee.h $(INSTDIR)/include/libos/tee.h
 	rm -rf $(INSTDIR)/lib/openenclave/debugger
 	cp -r $(BUILDDIR)/openenclave/lib/openenclave/debugger $(INSTDIR)/lib/openenclave/debugger
 
