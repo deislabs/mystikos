@@ -21,6 +21,7 @@
 #include <libos/strings.h>
 #include <libos/syscall.h>
 #include <libos/thread.h>
+#include <libos/times.h>
 
 static libos_fs_t* _fs;
 
@@ -268,6 +269,8 @@ int libos_enter_kernel(libos_kernel_args_t* args)
     /* print out memory statistics */
     // libos_dump_malloc_stats();
 #endif
+
+    libos_times_start();
 
     /* Enter the C runtime (which enters the application) */
     exit_status = elf_enter_crt(
