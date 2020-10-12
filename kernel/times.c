@@ -30,9 +30,16 @@ struct timespec libos_times_enter_kernel()
     long lapsed = (enter_kernel_tp.tv_sec - tp0.tv_sec) * NANO_IN_SECOND +
                   (enter_kernel_tp.tv_nsec - tp0.tv_nsec);
 
-    assert(lapsed > 0);
-
-    __atomic_fetch_add (&_user_time_elapsed, lapsed, __ATOMIC_SEQ_CST);
+    if (lapsed <= 0)
+    {
+        // Impossible in a rational world.
+        // For now, just ignore lapsed because it's inaccurate anyway since
+        // _leave_kernel_tp is corrupted by another thread.
+    }
+    else
+    {
+        __atomic_fetch_add (&_user_time_elapsed, lapsed, __ATOMIC_SEQ_CST);
+    }
     return enter_kernel_tp;
 }
 
