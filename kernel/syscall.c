@@ -12,6 +12,7 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/times.h>
 #include <sys/uio.h>
 #include <sys/utsname.h>
 #include <sys/vfs.h>
@@ -47,6 +48,7 @@
 #include <libos/syscall.h>
 #include <libos/tcall.h>
 #include <libos/thread.h>
+#include <libos/times.h>
 #include <libos/trace.h>
 
 #include "fdtable.h"
@@ -1385,6 +1387,8 @@ long libos_syscall(long n, long params[6])
     libos_td_t* crt_td = NULL;
     libos_thread_t* thread = NULL;
 
+    struct timespec tp_enter = libos_times_enter_kernel();
+
     /* resolve the target-thread-descriptor and the crt-thread-descriptor */
     if (_set_thread_area_called)
     {
@@ -2191,7 +2195,22 @@ long libos_syscall(long n, long params[6])
         case SYS_sysinfo:
             break;
         case SYS_times:
-            break;
+        {
+            struct tms *tm = (struct tms*)x1;
+            _strace(n, "tm=%p", tm);
+
+            long stime = libos_times_system_time();
+            long utime = libos_times_user_time();
+            if (tm != NULL)
+            {
+                tm->tms_utime = utime;
+                tm->tms_stime = stime;
+                tm->tms_cutime = 0;
+                tm->tms_cstime = 0;
+            }
+
+            BREAK(_return(n, stime + utime));
+        }
         case SYS_ptrace:
             break;
         case SYS_getuid:
@@ -2979,6 +2998,8 @@ done:
     /* the C-runtime must execute on its own thread descriptor */
     if (crt_td)
         libos_set_fsbase(crt_td);
+
+    libos_times_leave_kernel(tp_enter);
 
     return syscall_ret;
 }

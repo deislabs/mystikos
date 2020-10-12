@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/syscall.h>
+#include <sys/times.h>
 #include <unistd.h>
 
 #define NUM_THREADS 8
@@ -484,6 +485,10 @@ int main(int argc, const char* argv[])
         if (_get_max_threads() != LONG_MAX)
             test_exhaust_threads();
     }
+
+    struct tms tms;
+    assert(times(&tms) != -1);
+    printf("System time: %ld, user time: %ld\n", tms.tms_stime, tms.tms_utime);
 
     printf("=== passed test (%s)\n", argv[0]);
 
