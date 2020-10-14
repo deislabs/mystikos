@@ -1,6 +1,6 @@
-#include <libos/syscall.h>
-#include <libos/clock.h>
 #include <assert.h>
+#include <libos/clock.h>
+#include <libos/syscall.h>
 
 static struct timespec _start_tp = {0};
 static struct timespec _leave_kernel_tp = {0}; // attn: make it thread local
@@ -38,7 +38,7 @@ struct timespec libos_times_enter_kernel()
     }
     else
     {
-        __atomic_fetch_add (&_user_time_elapsed, lapsed, __ATOMIC_SEQ_CST);
+        __atomic_fetch_add(&_user_time_elapsed, lapsed, __ATOMIC_SEQ_CST);
     }
     return enter_kernel_tp;
 }
@@ -52,7 +52,7 @@ void libos_times_leave_kernel(struct timespec tp0)
 
     assert(lapsed > 0);
 
-    __atomic_fetch_add (&_system_time_elapsed, lapsed, __ATOMIC_SEQ_CST);
+    __atomic_fetch_add(&_system_time_elapsed, lapsed, __ATOMIC_SEQ_CST);
 }
 
 long libos_times_system_time()

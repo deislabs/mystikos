@@ -11,8 +11,8 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 #include <sys/times.h>
+#include <sys/types.h>
 #include <sys/uio.h>
 #include <sys/utsname.h>
 #include <sys/vfs.h>
@@ -2196,7 +2196,7 @@ long libos_syscall(long n, long params[6])
             break;
         case SYS_times:
         {
-            struct tms *tm = (struct tms*)x1;
+            struct tms* tm = (struct tms*)x1;
             _strace(n, "tm=%p", tm);
 
             long stime = libos_times_system_time();
