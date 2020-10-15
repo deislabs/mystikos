@@ -8,12 +8,16 @@
 #include <sys/uio.h>
 #include <unistd.h>
 
+#include <libos/fdops.h>
+
 typedef struct libos_fs libos_fs_t;
 
 typedef struct libos_file libos_file_t;
 
 struct libos_fs
 {
+    libos_fdops_t fdops;
+
     int (*fs_release)(libos_fs_t* fs);
 
     int (*fs_mount)(libos_fs_t* fs, const char* target);

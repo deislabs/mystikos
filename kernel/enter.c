@@ -4,9 +4,9 @@
 #include <libos/atexit.h>
 #include <libos/cpio.h>
 #include <libos/crash.h>
-#include <libos/elfutils.h>
 #include <libos/eraise.h>
 #include <libos/errno.h>
+#include <libos/exec.h>
 #include <libos/file.h>
 #include <libos/fsgs.h>
 #include <libos/initfini.h>
@@ -148,13 +148,15 @@ static int _create_main_thread(uint64_t event, libos_thread_t** thread_out)
     if (!(thread = calloc(1, sizeof(libos_thread_t))))
         ERAISE(-ENOMEM);
 
-    libos_setppid(ppid);
-    libos_setpid(pid);
-
     thread->magic = LIBOS_THREAD_MAGIC;
+    thread->ppid = ppid;
+    thread->pid = pid;
     thread->tid = pid;
     thread->event = event;
     thread->target_td = libos_get_fsbase();
+
+    /* allocate the new fdtable for this process */
+    ECHECK(libos_fdtable_create(&thread->fdtable));
 
     /* bind this thread to the target */
     libos_assume(libos_tcall_set_tsd((uint64_t)thread) == 0);
@@ -174,8 +176,13 @@ int libos_enter_kernel(libos_kernel_args_t* args)
 {
     int ret = 0;
     int exit_status;
-    libos_thread_t* thread = NULL;
     libos_cpio_create_file_function_t create_file = NULL;
+    libos_thread_t* thread = NULL;
+
+#if 0
+    extern void libos_set_trace(bool flag);
+    libos_set_trace(true);
+#endif
 
     if (!args)
         libos_crash();
@@ -251,6 +258,10 @@ int libos_enter_kernel(libos_kernel_args_t* args)
     (void)_create_mem_file;
 #endif
 
+    /* Create the main thread */
+    ECHECK(_create_main_thread(args->event, &thread));
+    __libos_main_thread = thread;
+
     /* Unpack the CPIO from memory */
     if (libos_cpio_mem_unpack(
             args->rootfs_data, args->rootfs_size, "/", create_file) != 0)
@@ -262,9 +273,6 @@ int libos_enter_kernel(libos_kernel_args_t* args)
     /* Set the 'run-proc' which is called by the target to run new threads */
     ECHECK(libos_tcall_set_run_thread_function(libos_run_thread));
 
-    /* Create the main thread */
-    ECHECK(_create_main_thread(args->event, &thread));
-
 #ifdef LIBOS_ENABLE_LEAK_CHECKER
     /* print out memory statistics */
     // libos_dump_malloc_stats();
@@ -272,12 +280,62 @@ int libos_enter_kernel(libos_kernel_args_t* args)
 
     libos_times_start();
 
-    /* Enter the C runtime (which enters the application) */
-    exit_status = elf_enter_crt(
-        thread, args->crt_data, args->argc, args->argv, args->envc, args->envp);
+    /* Run the main program: wait for SYS_exit to perform longjmp() */
+    if (libos_setjmp(&thread->jmpbuf) == 0)
+    {
+        /* enter the C-runtime on the target thread descriptor */
+        if (libos_exec(
+                thread,
+                args->crt_data,
+                args->crt_size,
+                args->crt_reloc_data,
+                args->crt_reloc_size,
+                args->argc,
+                args->argv,
+                args->envc,
+                args->envp) != 0)
+        {
+            libos_panic("libos_exec() failed");
+        }
+
+        /* never returns */
+    }
+    else
+    {
+        /* thread jumps here on SYS_exit syscall */
+        exit_status = thread->exit_status;
+
+        /* release the fdtable */
+        if (thread->fdtable)
+        {
+            libos_fdtable_free(thread->fdtable);
+            thread->fdtable = NULL;
+        }
+
+        /* release the exec stack */
+        if (thread->main.exec_stack)
+        {
+            free(thread->main.exec_stack);
+            thread->main.exec_stack = NULL;
+        }
+
+        /* release the exec copy of the CRT data */
+        if (thread->main.exec_crt_data)
+        {
+            libos_munmap(
+                thread->main.exec_crt_data, thread->main.exec_crt_size);
+            thread->main.exec_crt_data = NULL;
+            thread->main.exec_crt_size = 0;
+        }
+
+        /* switch back to the target thread descriptor */
+        libos_set_fsbase(thread->target_td);
+    }
+
+    /* unload the debugger symbols */
+    libos_syscall_unload_symbols();
 
     /* Tear down the RAM file system */
-    //_teardown_ramfs();
     _teardown_ramfs();
 
     /* Put the thread on the zombie list */

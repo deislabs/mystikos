@@ -4,14 +4,13 @@
 #include <unistd.h>
 
 #include <libos/assume.h>
+#include <libos/defs.h>
+#include <libos/fdtable.h>
 #include <libos/setjmp.h>
 #include <libos/tcall.h>
 #include <libos/types.h>
 
 #define LIBOS_THREAD_MAGIC 0xc79c53d9ad134ad4
-
-/* indicates that vsbase has been set */
-#define VSBASE_MAGIC 0xa992961d
 
 typedef struct libos_thread libos_thread_t;
 
@@ -26,7 +25,7 @@ struct libos_td
     uint64_t reserved3;
     uint64_t reserved4;
     uint64_t canary;
-    uint64_t tsd; /* thread pointer: unused by musl libc and Open Enclave */
+    uint64_t tsd; /* pointer to libos_thread_t (within OE gsbase) */
     uint64_t reserved5;
     uint64_t reserved6;
     int errnum;  /* errno: unused Open Enclave */
@@ -37,37 +36,67 @@ bool libos_valid_td(const void* td);
 
 struct libos_thread
 {
+    /* LIBOS_THREAD_MAGIC */
     uint64_t magic;
 
-    /* used by libos_thread_queue_t */
+    /* used by libos_thread_queue_t (condition variables and mutexes) */
     struct libos_thread* qnext;
 
-    /* used by the active-list or the zombie-list */
+    /* used by zombie-list */
     struct libos_thread* next;
 
-    /* thread id passed by target */
+    /* the parent process identifier (inherited from main thread) */
+    pid_t ppid;
+
+    /* the process identifier (inherited from main thread) */
+    pid_t pid;
+
+    /* unique thread identifier (same as pid for main thread) */
     pid_t tid;
 
-    /* synchronization event passed in by the target (example: futex uaddr) */
-    uint64_t event;
+    /* The exit status passed to SYS_exit */
+    int exit_status;
 
-    /* arguments passed to libos_syscall_clone() (unused by main thread)  */
-    int (*fn)(void*);
-    void* child_stack;
-    int flags;
-    void* arg;
-    pid_t* ptid;
-    libos_td_t* crt_td; /* same as newtls clone() argument */
-    pid_t* ctid;
+    /* the C-runtime thread descriptor */
+    libos_td_t* crt_td;
+
+    /* the target and thread descriptor */
+    libos_td_t* target_td;
 
     /* called by target to run child theads */
     long (*run_thread)(uint64_t cookie, uint64_t event);
 
-    /* pointer to the target and C-runtime thread descriptors */
-    libos_td_t* target_td;
+    /* synchronization event from libos_thread_t.run_thread() */
+    uint64_t event;
 
     /* for jumping back on exit */
     libos_jmp_buf_t jmpbuf;
+
+    /* the file-descriptor table is inherited from process thread */
+    libos_fdtable_t* fdtable;
+
+    /* arguments passed in from SYS_clone */
+    struct
+    {
+        int (*fn)(void*);
+        void* child_stack;
+        int flags;
+        void* arg;
+        pid_t* ptid;  /* null for vfork */
+        void* newtls; /* null for vfork */
+        pid_t* ctid;  /* null for vfork */
+    } clone;
+
+    /* fields used by main thread (process thread) */
+    struct
+    {
+        /* the stack that was created by libos_exec() */
+        void* exec_stack;
+
+        /* the copy of the CRT data made by libos_exec() */
+        void* exec_crt_data;
+        size_t exec_crt_size;
+    } main;
 };
 
 LIBOS_INLINE bool libos_valid_thread(const libos_thread_t* thread)
@@ -87,7 +116,7 @@ typedef struct libos_thread_queue
     libos_thread_t* back;
 } libos_thread_queue_t;
 
-static __inline__ size_t libos_thread_queue_size(libos_thread_queue_t* queue)
+LIBOS_INLINE size_t libos_thread_queue_size(libos_thread_queue_t* queue)
 {
     size_t n = 0;
 
@@ -97,7 +126,7 @@ static __inline__ size_t libos_thread_queue_size(libos_thread_queue_t* queue)
     return n;
 }
 
-static __inline__ void libos_thread_queue_push_back(
+LIBOS_INLINE void libos_thread_queue_push_back(
     libos_thread_queue_t* queue,
     libos_thread_t* thread)
 {
@@ -111,7 +140,7 @@ static __inline__ void libos_thread_queue_push_back(
     queue->back = thread;
 }
 
-static __inline__ libos_thread_t* libos_thread_queue_pop_front(
+LIBOS_INLINE libos_thread_t* libos_thread_queue_pop_front(
     libos_thread_queue_t* queue)
 {
     libos_thread_t* thread = queue->front;
@@ -127,7 +156,7 @@ static __inline__ libos_thread_t* libos_thread_queue_pop_front(
     return thread;
 }
 
-static __inline__ bool libos_thread_queue_contains(
+LIBOS_INLINE bool libos_thread_queue_contains(
     libos_thread_queue_t* queue,
     libos_thread_t* thread)
 {
@@ -142,9 +171,14 @@ static __inline__ bool libos_thread_queue_contains(
     return false;
 }
 
-static __inline__ bool libos_thread_queue_empty(libos_thread_queue_t* queue)
+LIBOS_INLINE bool libos_thread_queue_empty(libos_thread_queue_t* queue)
 {
     return queue->front ? false : true;
+}
+
+LIBOS_INLINE bool libos_is_process_thread(const libos_thread_t* thread)
+{
+    return thread && thread->pid == thread->tid;
 }
 
 long libos_run_thread(uint64_t cookie, uint64_t event);
@@ -152,8 +186,5 @@ long libos_run_thread(uint64_t cookie, uint64_t event);
 pid_t libos_generate_tid(void);
 
 pid_t libos_gettid(void);
-
-/* check that the thread descriptor refers to a vsbase */
-int libos_check_vsbase(void);
 
 #endif /* _LIBOS_THREAD_H */

@@ -23,9 +23,10 @@
 #include <libos/buf.h>
 #include <libos/cpio.h>
 #include <libos/cwd.h>
-#include <libos/elfutils.h>
 #include <libos/eraise.h>
 #include <libos/errno.h>
+#include <libos/exec.h>
+#include <libos/fdtable.h>
 #include <libos/file.h>
 #include <libos/fsgs.h>
 #include <libos/gcov.h>
@@ -39,6 +40,7 @@
 #include <libos/options.h>
 #include <libos/panic.h>
 #include <libos/paths.h>
+#include <libos/pipedev.h>
 #include <libos/printf.h>
 #include <libos/process.h>
 #include <libos/ramfs.h>
@@ -50,8 +52,6 @@
 #include <libos/thread.h>
 #include <libos/times.h>
 #include <libos/trace.h>
-
-#include "fdtable.h"
 
 #define DEV_URANDOM_FD (FD_OFFSET + FDTABLE_SIZE)
 
@@ -523,13 +523,6 @@ __attribute__((format(printf, 2, 3))) static void _strace(
     }
 }
 
-static int _exit_status;
-
-int libos_get_exit_status(void)
-{
-    return _exit_status;
-}
-
 static long _forward_syscall(long n, long params[6])
 {
     if (__options.trace_syscalls)
@@ -653,14 +646,16 @@ long libos_syscall_creat(const char* pathname, mode_t mode)
     char suffix[PATH_MAX];
     libos_fs_t* fs;
     libos_file_t* file;
+    libos_fdtable_t* fdtable = libos_fdtable_current();
 
     ECHECK(libos_mount_resolve(pathname, suffix, &fs));
 
     ECHECK((*fs->fs_creat)(fs, suffix, mode, &file));
 
-    if ((fd = libos_fdtable_add(LIBOS_FDTABLE_TYPE_FILE, fs, file)) < 0)
+    if ((fd = libos_fdtable_assign(
+             fdtable, LIBOS_FDTABLE_TYPE_FILE, fs, file)) < 0)
     {
-        libos_eprintf("libos_fdtable_add() failed: %d\n", fd);
+        libos_eprintf("libos_fdtable_assign() failed: %d\n", fd);
     }
 
     ECHECK(_add_fd_link(fs, file, fd));
@@ -679,6 +674,7 @@ long libos_syscall_open(const char* pathname, int flags, mode_t mode)
     char suffix[PATH_MAX];
     libos_fs_t* fs;
     libos_file_t* file;
+    libos_fdtable_t* fdtable = libos_fdtable_current();
 
     /* Handle /dev/urandom as a special case */
     if (strcmp(pathname, "/dev/urandom") == 0)
@@ -691,8 +687,9 @@ long libos_syscall_open(const char* pathname, int flags, mode_t mode)
 
     ECHECK((*fs->fs_open)(fs, suffix, flags, mode, &file));
 
-    if ((fd = libos_fdtable_add(LIBOS_FDTABLE_TYPE_FILE, fs, file)) < 0)
-        libos_panic("libos_fdtable_add() failed: %d", fd);
+    if ((fd = libos_fdtable_assign(
+             fdtable, LIBOS_FDTABLE_TYPE_FILE, fs, file)) < 0)
+        libos_panic("libos_fdtable_assign() failed: %d", fd);
 
     ECHECK(_add_fd_link(fs, file, fd));
 
@@ -709,8 +706,9 @@ long libos_syscall_lseek(int fd, off_t offset, int whence)
     libos_fs_t* fs;
     libos_file_t* file;
     const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_FILE;
+    libos_fdtable_t* fdtable = libos_fdtable_current();
 
-    ECHECK(libos_fdtable_find(fd, type, (void**)&fs, (void**)&file));
+    ECHECK(libos_fdtable_get(fdtable, fd, type, (void**)&fs, (void**)&file));
 
     ret = ((*fs->fs_lseek)(fs, file, offset, whence));
 
@@ -721,17 +719,20 @@ done:
 long libos_syscall_close(int fd)
 {
     long ret = 0;
-    libos_fs_t* fs;
-    libos_file_t* file;
-    const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_FILE;
+    libos_fdtable_t* fdtable = libos_fdtable_current();
+    libos_fdtable_type_t type;
+    void* device = NULL;
+    void* object = NULL;
+    libos_fdops_t* fdops;
 
-    ECHECK(libos_fdtable_find(fd, type, (void**)&fs, (void**)&file));
+    ECHECK(libos_fdtable_get_any(fdtable, fd, &type, &device, &object));
+    fdops = device;
 
-    ECHECK(_remove_fd_link(fs, file, fd));
+    if (type == LIBOS_FDTABLE_TYPE_FILE)
+        ECHECK(_remove_fd_link(device, object, fd));
 
-    ECHECK((*fs->fs_close)(fs, file));
-
-    ECHECK(libos_fdtable_remove(fd));
+    ECHECK((*fdops->fd_close)(device, object));
+    ECHECK(libos_fdtable_remove(fdtable, fd));
 
 done:
     return ret;
@@ -740,13 +741,16 @@ done:
 long libos_syscall_read(int fd, void* buf, size_t count)
 {
     long ret = 0;
-    libos_fs_t* fs;
-    libos_file_t* file;
-    const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_FILE;
+    void* device = NULL;
+    void* object = NULL;
+    libos_fdtable_type_t type;
+    libos_fdtable_t* fdtable = libos_fdtable_current();
+    libos_fdops_t* fdops;
 
-    ECHECK(libos_fdtable_find(fd, type, (void**)&fs, (void**)&file));
+    ECHECK(libos_fdtable_get_any(fdtable, fd, &type, &device, &object));
+    fdops = device;
 
-    ret = (*fs->fs_read)(fs, file, buf, count);
+    ret = (*fdops->fd_read)(device, object, buf, count);
 
 done:
     return ret;
@@ -755,13 +759,16 @@ done:
 long libos_syscall_write(int fd, const void* buf, size_t count)
 {
     long ret = 0;
-    libos_fs_t* fs;
-    libos_file_t* file;
-    const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_FILE;
+    void* device = NULL;
+    void* object = NULL;
+    libos_fdtable_type_t type;
+    libos_fdtable_t* fdtable = libos_fdtable_current();
+    libos_fdops_t* fdops;
 
-    ECHECK(libos_fdtable_find(fd, type, (void**)&fs, (void**)&file));
+    ECHECK(libos_fdtable_get_any(fdtable, fd, &type, &device, &object));
+    fdops = device;
 
-    ret = (*fs->fs_write)(fs, file, buf, count);
+    ret = (*fdops->fd_write)(device, object, buf, count);
 
 done:
     return ret;
@@ -773,8 +780,9 @@ long libos_syscall_pread(int fd, void* buf, size_t count, off_t offset)
     libos_fs_t* fs;
     libos_file_t* file;
     const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_FILE;
+    libos_fdtable_t* fdtable = libos_fdtable_current();
 
-    ECHECK(libos_fdtable_find(fd, type, (void**)&fs, (void**)&file));
+    ECHECK(libos_fdtable_get(fdtable, fd, type, (void**)&fs, (void**)&file));
 
     ret = (*fs->fs_pread)(fs, file, buf, count, offset);
 
@@ -788,8 +796,9 @@ long libos_syscall_pwrite(int fd, const void* buf, size_t count, off_t offset)
     libos_fs_t* fs;
     libos_file_t* file;
     const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_FILE;
+    libos_fdtable_t* fdtable = libos_fdtable_current();
 
-    ECHECK(libos_fdtable_find(fd, type, (void**)&fs, (void**)&file));
+    ECHECK(libos_fdtable_get(fdtable, fd, type, (void**)&fs, (void**)&file));
 
     ret = (*fs->fs_pwrite)(fs, file, buf, count, offset);
 
@@ -803,8 +812,9 @@ long libos_syscall_readv(int fd, const struct iovec* iov, int iovcnt)
     libos_fs_t* fs;
     libos_file_t* file;
     const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_FILE;
+    libos_fdtable_t* fdtable = libos_fdtable_current();
 
-    ECHECK(libos_fdtable_find(fd, type, (void**)&fs, (void**)&file));
+    ECHECK(libos_fdtable_get(fdtable, fd, type, (void**)&fs, (void**)&file));
 
     ret = (*fs->fs_readv)(fs, file, iov, iovcnt);
 
@@ -818,8 +828,9 @@ long libos_syscall_writev(int fd, const struct iovec* iov, int iovcnt)
     libos_fs_t* fs;
     libos_file_t* file;
     const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_FILE;
+    libos_fdtable_t* fdtable = libos_fdtable_current();
 
-    ECHECK(libos_fdtable_find(fd, type, (void**)&fs, (void**)&file));
+    ECHECK(libos_fdtable_get(fdtable, fd, type, (void**)&fs, (void**)&file));
 
     ret = (*fs->fs_writev)(fs, file, iov, iovcnt);
 
@@ -856,13 +867,16 @@ done:
 long libos_syscall_fstat(int fd, struct stat* statbuf)
 {
     long ret = 0;
-    libos_fs_t* fs;
-    libos_file_t* file;
-    const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_FILE;
+    libos_fdtable_t* fdtable = libos_fdtable_current();
+    libos_fdtable_type_t type;
+    void* device;
+    void* object;
+    libos_fdops_t* fdops;
 
-    ECHECK(libos_fdtable_find(fd, type, (void**)&fs, (void**)&file));
+    ECHECK(libos_fdtable_get_any(fdtable, fd, &type, &device, &object));
+    fdops = device;
 
-    ret = (*fs->fs_fstat)(fs, file, statbuf);
+    ret = (*fdops->fd_fstat)(device, object, statbuf);
 
 done:
     return ret;
@@ -900,8 +914,9 @@ long libos_syscall_getdents64(int fd, struct dirent* dirp, size_t count)
     libos_fs_t* fs;
     libos_file_t* file;
     const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_FILE;
+    libos_fdtable_t* fdtable = libos_fdtable_current();
 
-    ECHECK(libos_fdtable_find(fd, type, (void**)&fs, (void**)&file));
+    ECHECK(libos_fdtable_get(fdtable, fd, type, (void**)&fs, (void**)&file));
 
     ret = (*fs->fs_getdents64)(fs, file, dirp, count);
 
@@ -1000,8 +1015,9 @@ long libos_syscall_ftruncate(int fd, off_t length)
     libos_fs_t* fs;
     libos_file_t* file;
     const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_FILE;
+    libos_fdtable_t* fdtable = libos_fdtable_current();
 
-    ECHECK(libos_fdtable_find(fd, type, (void**)&fs, (void**)&file));
+    ECHECK(libos_fdtable_get(fdtable, fd, type, (void**)&fs, (void**)&file));
     ERAISE((*fs->fs_ftruncate)(fs, file, length));
 
 done:
@@ -1103,12 +1119,16 @@ done:
 long libos_syscall_fcntl(int fd, int cmd, long arg)
 {
     long ret = 0;
-    libos_fs_t* fs;
-    libos_file_t* file;
-    const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_FILE;
+    void* device = NULL;
+    void* object = NULL;
+    libos_fdtable_type_t type;
+    libos_fdtable_t* fdtable = libos_fdtable_current();
+    libos_fdops_t* fdops;
 
-    ECHECK(libos_fdtable_find(fd, type, (void**)&fs, (void**)&file));
-    ERAISE((*fs->fs_fcntl)(fs, file, cmd, arg));
+    ECHECK(libos_fdtable_get_any(fdtable, fd, &type, &device, &object));
+    fdops = device;
+
+    ret = (*fdops->fd_fcntl)(device, object, cmd, arg);
 
 done:
     return ret;
@@ -1167,6 +1187,78 @@ long libos_syscall_umount2(const char* target, int flags)
 
 done:
     return ret;
+}
+
+long libos_syscall_pipe2(int pipefd[2], int flags)
+{
+    int ret = 0;
+    libos_pipe_t* pipe[2];
+    int fd0;
+    int fd1;
+    libos_fdtable_t* fdtable = libos_fdtable_current();
+    const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_PIPE;
+    libos_pipedev_t* pd = libos_pipedev_get();
+
+    if (!pipefd)
+        ERAISE(-EINVAL);
+
+    ECHECK((*pd->pd_pipe2)(pd, pipe, flags));
+
+    if ((fd0 = libos_fdtable_assign(fdtable, type, pd, pipe[0])) < 0)
+    {
+        libos_panic("libos_fdtable_assign() failed");
+    }
+
+    if ((fd1 = libos_fdtable_assign(fdtable, type, pd, pipe[1])) < 0)
+    {
+        libos_panic("libos_fdtable_assign() failed");
+    }
+
+    pipefd[0] = fd0;
+    pipefd[1] = fd1;
+
+done:
+    return ret;
+}
+
+static size_t _count_args(char* const args[])
+{
+    size_t n = 0;
+
+    if (args)
+    {
+        while (*args++)
+            n++;
+    }
+
+    return n;
+}
+
+long libos_syscall_execve(
+    const char* filename,
+    char* const argv[],
+    char* const envp[])
+{
+    /* ATTN: this will fail if filename is different than argv[0] */
+    (void)filename;
+
+    /* only returns on failure */
+    if (libos_exec(
+            libos_thread_self(),
+            __libos_kernel_args.crt_data,
+            __libos_kernel_args.crt_size,
+            __libos_kernel_args.crt_reloc_data,
+            __libos_kernel_args.crt_reloc_size,
+            _count_args(argv),
+            (const char**)argv,
+            _count_args(envp),
+            (const char**)envp) != 0)
+    {
+        return -ENOENT;
+    }
+
+    /* unreachable */
+    return 0;
 }
 
 long libos_syscall_ret(long ret)
@@ -1399,7 +1491,7 @@ long libos_syscall(long n, long params[6])
         libos_assume(libos_valid_td(crt_td));
 
         /* get thread */
-        thread = (libos_thread_t*)crt_td->tsd;
+        libos_assume(libos_tcall_get_tsd((uint64_t*)&thread) == 0);
         libos_assume(libos_valid_thread(thread));
 
         /* get target_td */
@@ -1468,12 +1560,12 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, NULL);
 
-            elf_dump_stack((void*)stack);
+            libos_dump_stack((void*)stack);
             BREAK(_return(n, 0));
         }
         case SYS_libos_dump_ehdr:
         {
-            elf_dump_ehdr((void*)params[0]);
+            libos_dump_ehdr((void*)params[0]);
             BREAK(_return(n, 0));
         }
         case SYS_libos_dump_argv:
@@ -1827,7 +1919,13 @@ long libos_syscall(long n, long params[6])
             BREAK(_return(n, libos_syscall_access(pathname, mode)));
         }
         case SYS_pipe:
-            break;
+        {
+            int* pipefd = (int*)x1;
+
+            _strace(n, "pipefd=%p flags=%0o", pipefd, 0);
+
+            BREAK(_return(n, libos_syscall_pipe2(pipefd, 0)));
+        }
         case SYS_select:
         {
             int nfds = (int)x1;
@@ -1967,7 +2065,16 @@ long libos_syscall(long n, long params[6])
         case SYS_vfork:
             break;
         case SYS_execve:
-            break;
+        {
+            const char* filename = (const char*)x1;
+            char** argv = (char**)x2;
+            char** envp = (char**)x3;
+
+            _strace(n, "filename=%s argv=%p envp=%p", filename, argv, envp);
+
+            long ret = libos_syscall_execve(filename, argv, envp);
+            BREAK(_return(n, ret));
+        }
         case SYS_exit:
         {
             const int status = (int)x1;
@@ -1978,7 +2085,7 @@ long libos_syscall(long n, long params[6])
             if (!thread || thread->magic != LIBOS_THREAD_MAGIC)
                 libos_panic("unexpected");
 
-            _exit_status = status;
+            thread->exit_status = status;
 
             if (thread == __libos_main_thread)
             {
@@ -1997,7 +2104,16 @@ long libos_syscall(long n, long params[6])
             break;
         }
         case SYS_wait4:
-            break;
+        {
+            pid_t pid = (pid_t)x1;
+            int* wstatus = (int*)x2;
+            int options = (int)x3;
+            struct rusage* rusage = (struct rusage*)x4;
+            long ret;
+
+            ret = libos_syscall_wait4(pid, wstatus, options, rusage);
+            BREAK(_return(n, ret));
+        }
         case SYS_kill:
             break;
         case SYS_uname:
@@ -2538,9 +2654,6 @@ long libos_syscall(long n, long params[6])
             /* propagate the canary from the old thread descriptor */
             crt_td->canary = target_td->canary;
 
-            /* bind the thread to the C-runtime thread descriptor */
-            crt_td->tsd = (uint64_t)thread;
-
             _set_thread_area_called = true;
 
             BREAK(_return(n, 0));
@@ -2756,7 +2869,14 @@ long libos_syscall(long n, long params[6])
         case SYS_dup3:
             break;
         case SYS_pipe2:
-            break;
+        {
+            int* pipefd = (int*)x1;
+            int flags = (int)x2;
+
+            _strace(n, "pipefd=%p flags=%0o", pipefd, flags);
+
+            BREAK(_return(n, libos_syscall_pipe2(pipefd, flags)));
+        }
         case SYS_inotify_init1:
             break;
         case SYS_preadv:

@@ -14,7 +14,7 @@ typedef struct libos_kernel_args
     const void* kernel_data;
     size_t kernel_size;
 
-    /* Relocation entries */
+    /* Kernel relocation entries */
     const void* reloc_data;
     size_t reloc_size;
 
@@ -53,6 +53,10 @@ typedef struct libos_kernel_args
     /* The C runtime image */
     void* crt_data;
     size_t crt_size;
+
+    /* CRT relocation entries */
+    const void* crt_reloc_data;
+    size_t crt_reloc_size;
 
     /* The number of threads that can be created (including the main thread) */
     size_t max_threads;

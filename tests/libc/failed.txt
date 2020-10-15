@@ -18,7 +18,6 @@
 /src/functional/sscanf_long.exe
 /src/functional/stat.exe
 /src/functional/strptime.exe
-/src/functional/tls_local_exec.exe
 /src/functional/ungetc.exe
 /src/functional/utime.exe
 /src/functional/vfork.exe

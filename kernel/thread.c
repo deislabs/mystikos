@@ -1,15 +1,21 @@
+#define _GNU_SOURCE
 #include <assert.h>
+#include <sched.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/wait.h>
 
 #include <libos/assume.h>
 #include <libos/atexit.h>
 #include <libos/atomic.h>
+#include <libos/cond.h>
 #include <libos/eraise.h>
+#include <libos/fdtable.h>
 #include <libos/fsgs.h>
 #include <libos/futex.h>
 #include <libos/kernel.h>
 #include <libos/lfence.h>
+#include <libos/mmanutils.h>
 #include <libos/options.h>
 #include <libos/panic.h>
 #include <libos/printf.h>
@@ -19,6 +25,7 @@
 #include <libos/syscall.h>
 #include <libos/tcall.h>
 #include <libos/thread.h>
+#include <libos/time.h>
 #include <libos/trace.h>
 
 libos_thread_t* __libos_main_thread;
@@ -76,7 +83,7 @@ pid_t libos_generate_tid(void)
 **     cookie map array, and the lower 32-bits are a random integer.
 **
 **     The cookie map provides two operations:
-**         _get_cookie() -- assigns and returns a cookie for the thread pointer.
+**         _get_cookie() -- assigns and returns a cookie for the new pointer.
 **         _put_cookie() -- deletes a cookie and returns the thread pointer.
 **
 **     Both operations are O(1)
@@ -186,26 +193,22 @@ static libos_thread_t* _put_cookie(uint64_t cookie)
 **
 ** zombie list implementation:
 **
-**     Threads are moved onto the zombie list after exiting. We suspect that
-**     that synchronizing threads may need access in the future to the thread
-**     structure after the thread has exited (e.g., to retieve the exit
-*status).**     This assumption may turn out to be false, in which case the
-*zombie list
-**     could be removed.
+**     Threads are moved onto the zombie list after exiting.
+**
+**     ATTN: consider separate process-zombies list (for performance).
 **
 **==============================================================================
 */
 
 static libos_thread_t* _zombies;
-static libos_spinlock_t _lock = LIBOS_SPINLOCK_INITIALIZER;
+static libos_mutex_t _zombies_mutex;
+static libos_cond_t _zombies_cond;
 
 static void _free_zombies(void* arg)
 {
-    libos_thread_t* p;
-
     (void)arg;
 
-    for (p = _zombies; p;)
+    for (libos_thread_t* p = _zombies; p;)
     {
         libos_thread_t* next = p->next;
 
@@ -220,7 +223,7 @@ static void _free_zombies(void* arg)
 
 void libos_zombify_thread(libos_thread_t* thread)
 {
-    libos_spin_lock(&_lock);
+    libos_mutex_lock(&_zombies_mutex);
     {
         static bool _initialized;
 
@@ -232,8 +235,76 @@ void libos_zombify_thread(libos_thread_t* thread)
 
         thread->next = _zombies;
         _zombies = thread;
+
+        /* signal waiting threads */
+        libos_cond_signal(&_zombies_cond);
     }
-    libos_spin_unlock(&_lock);
+    libos_mutex_unlock(&_zombies_mutex);
+}
+
+long libos_syscall_wait4(
+    pid_t pid,
+    int* wstatus,
+    int options,
+    struct rusage* rusage)
+{
+    long ret = 0;
+
+    if (rusage)
+        ERAISE(-EINVAL);
+
+    if (options & ~(WNOHANG | WUNTRACED | WCONTINUED))
+        ERAISE(-EINVAL);
+
+    /* ATTN: process groups not supported yet */
+    if (pid == 0 || pid < -1)
+        ERAISE(-ENOTSUP);
+
+    libos_mutex_lock(&_zombies_mutex);
+
+    for (;;)
+    {
+        /* search the zombie list for a process thread */
+        for (libos_thread_t* p = _zombies; p;)
+        {
+            bool match = false;
+
+            if (!libos_is_process_thread(p))
+                continue;
+
+            if (pid > 0) /* wait for a specific child process */
+            {
+                match = p->pid == pid;
+            }
+            else if (pid == -1) /* wait for any child process */
+            {
+                match = true;
+            }
+
+            if (match)
+            {
+                if (wstatus)
+                    *wstatus = (p->exit_status << 8);
+
+                ret = p->pid;
+                goto done;
+            }
+        }
+
+        if ((options & WNOHANG))
+        {
+            ret = 0;
+            goto done;
+        }
+
+        /* wait for signal from libos_zombify_thread() */
+        libos_cond_wait(&_zombies_cond, &_zombies_mutex);
+    }
+
+done:
+    libos_mutex_unlock(&_zombies_mutex);
+
+    return ret;
 }
 
 /*
@@ -263,7 +334,7 @@ libos_thread_t* libos_thread_self(void)
 static void _call_thread_fn(void)
 {
     libos_thread_t* thread = libos_thread_self();
-    thread->fn(thread->arg);
+    thread->clone.fn(thread->clone.arg);
 }
 
 /* The target calls this from the new thread */
@@ -271,7 +342,8 @@ long libos_run_thread(uint64_t cookie, uint64_t event)
 {
     libos_thread_t* thread = (libos_thread_t*)_put_cookie(cookie);
     libos_td_t* target_td = libos_get_fsbase();
-    libos_td_t* crt_td;
+    libos_td_t* crt_td = NULL;
+    bool is_child_thread;
 
     assert(libos_valid_td(target_td));
 
@@ -280,14 +352,19 @@ long libos_run_thread(uint64_t cookie, uint64_t event)
 
     libos_assume(libos_valid_thread(thread));
 
-    crt_td = thread->crt_td;
-    libos_assume(libos_valid_td(crt_td));
+    is_child_thread = thread->crt_td ? true : false;
 
-    /* propagate the canary */
-    crt_td->canary = target_td->canary;
+    if (is_child_thread)
+    {
+        crt_td = thread->crt_td;
+        libos_assume(libos_valid_td(crt_td));
 
-    /* generate a thread id for this new thread */
-    thread->tid = libos_generate_tid();
+        /* propagate the canary */
+        crt_td->canary = target_td->canary;
+
+        /* generate a thread id for this new thread */
+        thread->tid = libos_generate_tid();
+    }
 
     /* set the target into the thread */
     thread->target_td = target_td;
@@ -300,13 +377,14 @@ long libos_run_thread(uint64_t cookie, uint64_t event)
     libos_assume(libos_tcall_set_tsd((uint64_t)thread) == 0);
 
     /* bind thread to the C-runtime thread-descriptor */
-    crt_td->tsd = (uint64_t)thread;
-
-    /* Set the TID for this thread (sets the tid field) */
+    if (is_child_thread)
     {
-        libos_atomic_exchange(thread->ptid, thread->tid);
-        const int futex_op = FUTEX_WAKE | FUTEX_PRIVATE;
-        libos_syscall_futex(thread->ptid, futex_op, 1, 0, NULL, 0);
+        /* Set the TID for this thread (sets the tid field) */
+        {
+            libos_atomic_exchange(thread->clone.ptid, thread->tid);
+            const int futex_op = FUTEX_WAKE | FUTEX_PRIVATE;
+            libos_syscall_futex(thread->clone.ptid, futex_op, 1, 0, NULL, 0);
+        }
     }
 
     /* Jump back here from exit */
@@ -322,10 +400,35 @@ long libos_run_thread(uint64_t cookie, uint64_t event)
         /* ---------- running target thread descriptor ---------- */
 
         /* Wake up any thread waiting on ctid */
+        if (is_child_thread)
         {
-            libos_atomic_exchange(thread->ctid, 0);
+            libos_atomic_exchange(thread->clone.ctid, 0);
             const int futex_op = FUTEX_WAKE | FUTEX_PRIVATE;
-            libos_syscall_futex(thread->ctid, futex_op, 1, 0, NULL, 0);
+            libos_syscall_futex(thread->clone.ctid, futex_op, 1, 0, NULL, 0);
+        }
+
+        /* Release memory objects owned by the main/process thread */
+        if (!is_child_thread)
+        {
+            if (thread->fdtable)
+            {
+                libos_fdtable_free(thread->fdtable);
+                thread->fdtable = NULL;
+            }
+
+            if (thread->main.exec_stack)
+            {
+                free(thread->main.exec_stack);
+                thread->main.exec_stack = NULL;
+            }
+
+            if (thread->main.exec_crt_data)
+            {
+                libos_munmap(
+                    thread->main.exec_crt_data, thread->main.exec_crt_size);
+                thread->main.exec_crt_data = NULL;
+                thread->main.exec_crt_size = 0;
+            }
         }
 
         libos_zombify_thread(thread);
@@ -344,21 +447,26 @@ long libos_run_thread(uint64_t cookie, uint64_t event)
         /* ---------- running target thread descriptor ---------- */
 
         /* set the fsbase to C-runtime */
-        libos_set_fsbase(crt_td);
+        if (is_child_thread)
+            libos_set_fsbase(crt_td);
 
         /* ---------- running C-runtime thread descriptor ---------- */
 
-#ifdef LIBOS_USE_THREAD_STACK
-        libos_jmp_buf_t env = thread->jmpbuf;
+        if (is_child_thread)
+        {
+            /* use the stack provided by clone() */
+            libos_jmp_buf_t env = thread->jmpbuf;
+            env.rip = (uint64_t)_call_thread_fn;
+            env.rsp = (uint64_t)thread->clone.child_stack;
+            env.rbp = (uint64_t)thread->clone.child_stack;
+            libos_jump(&env);
+        }
+        else
+        {
+            /* use the target stack */
+            _call_thread_fn();
+        }
 
-        env.rip = (uint64_t)_call_thread_fn;
-        env.rsp = (uint64_t)thread->child_stack;
-        env.rbp = (uint64_t)thread->child_stack;
-        libos_jump(&env);
-#else
-        (*thread->fn)(thread->arg);
-        (void)_call_thread_fn;
-#endif
         /* unreachable */
     }
 
@@ -376,7 +484,8 @@ static long _syscall_clone(
 {
     long ret = 0;
     uint64_t cookie = 0;
-    libos_thread_t* thread;
+    libos_thread_t* parent = libos_thread_self();
+    libos_thread_t* child;
 
     if (!fn)
         ERAISE(-EINVAL);
@@ -398,26 +507,94 @@ static long _syscall_clone(
     }
     libos_spin_unlock(&_num_threads_lock);
 
-    /* Create and initialize the thread struct */
+    /* Create and initialize the child thread struct */
     {
-        if (!(thread = calloc(1, sizeof(libos_thread_t))))
+        if (!(child = calloc(1, sizeof(libos_thread_t))))
             ERAISE(-ENOMEM);
 
-        thread->magic = LIBOS_THREAD_MAGIC;
-        thread->fn = fn;
-        thread->child_stack = child_stack;
-        thread->flags = flags;
-        thread->arg = arg;
-        thread->ptid = ptid;
-        thread->crt_td = newtls;
-        thread->ctid = ctid;
-        thread->run_thread = libos_run_thread;
+        child->magic = LIBOS_THREAD_MAGIC;
+        child->fdtable = parent->fdtable;
+        child->ppid = parent->ppid;
+        child->pid = parent->pid;
+        child->crt_td = newtls;
+        child->run_thread = libos_run_thread;
+
+        /* save the clone() arguments */
+        child->clone.fn = fn;
+        child->clone.child_stack = child_stack;
+        child->clone.flags = flags;
+        child->clone.arg = arg;
+        child->clone.ptid = ptid;
+        child->clone.newtls = newtls;
+        child->clone.ctid = ctid;
     }
 
-    cookie = _get_cookie(thread);
+    cookie = _get_cookie(child);
 
     if (libos_tcall_create_thread(cookie) != 0)
         ERAISE(-EINVAL);
+
+done:
+    return ret;
+}
+
+/* create a new process (main) thread */
+static long _syscall_clone_vfork(
+    int (*fn)(void*),
+    void* child_stack,
+    int flags,
+    void* arg)
+{
+    long ret = 0;
+    uint64_t cookie = 0;
+    libos_thread_t* parent = libos_thread_self();
+    libos_thread_t* child;
+
+    if (!fn)
+        ERAISE(-EINVAL);
+
+    /* Check whether the maximum number of threads has been reached */
+    libos_spin_lock(&_num_threads_lock);
+    {
+        /* if too many threads already running */
+        if (_num_threads == __libos_kernel_args.max_threads)
+        {
+            libos_spin_unlock(&_num_threads_lock);
+            ERAISE(-EAGAIN);
+        }
+
+        _num_threads++;
+    }
+    libos_spin_unlock(&_num_threads_lock);
+
+    /* Create and initialize the thread struct */
+    {
+        if (!(child = calloc(1, sizeof(libos_thread_t))))
+            ERAISE(-ENOMEM);
+
+        child->magic = LIBOS_THREAD_MAGIC;
+        child->fdtable = parent->fdtable;
+        child->ppid = parent->ppid;
+        child->pid = libos_generate_tid();
+        child->tid = child->pid;
+        child->run_thread = libos_run_thread;
+
+        if (libos_fdtable_clone(parent->fdtable, &child->fdtable) != 0)
+            ERAISE(-ENOMEM);
+
+        /* save the clone() arguments */
+        child->clone.fn = fn;
+        child->clone.child_stack = child_stack;
+        child->clone.flags = flags;
+        child->clone.arg = arg;
+    }
+
+    cookie = _get_cookie(child);
+
+    if (libos_tcall_create_thread(cookie) != 0)
+        ERAISE(-EINVAL);
+
+    ret = child->pid;
 
 done:
     return ret;
@@ -432,7 +609,10 @@ long libos_syscall_clone(
     void* newtls,
     pid_t* ctid)
 {
-    return _syscall_clone(fn, child_stack, flags, arg, ptid, newtls, ctid);
+    if (flags & CLONE_VFORK)
+        return _syscall_clone_vfork(fn, child_stack, flags, arg);
+    else
+        return _syscall_clone(fn, child_stack, flags, arg, ptid, newtls, ctid);
 }
 
 pid_t libos_gettid(void)

@@ -1,3 +1,4 @@
+/src/functional/tls_local_exec.exe
 /src/functional/argv.exe
 /src/functional/basename.exe
 /src/functional/clocale_mbfuncs.exe

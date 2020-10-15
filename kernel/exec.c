@@ -3,18 +3,21 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
 
 #include <libos/atexit.h>
 #include <libos/cpio.h>
-#include <libos/elfutils.h>
 #include <libos/eraise.h>
+#include <libos/exec.h>
 #include <libos/file.h>
 #include <libos/fsgs.h>
 #include <libos/libc.h>
+#include <libos/mmanutils.h>
 #include <libos/panic.h>
 #include <libos/paths.h>
 #include <libos/printf.h>
 #include <libos/process.h>
+#include <libos/reloc.h>
 #include <libos/round.h>
 #include <libos/setjmp.h>
 #include <libos/spinlock.h>
@@ -195,6 +198,7 @@ int elf_init_stack(
     size_t end = 0;
     uint8_t* base;
     void* sp;
+    const char arg0[] = "ldso";
 
     if (sp_out)
         *sp_out = NULL;
@@ -207,6 +211,9 @@ int elf_init_stack(
 
     if (envp == NULL && envc != 0)
         goto done;
+
+    /* make room for injecting the dummy arg0 */
+    argc++;
 
     /* The stack must be a multiple of the page size */
     if (stack_size % PAGE_SIZE)
@@ -251,7 +258,10 @@ int elf_init_stack(
         envp_strings_offset = argv_strings_offset;
 
         for (size_t i = 0; i < argc; i++)
-            envp_strings_offset += strlen(argv[i]) + 1;
+        {
+            const char* arg = (i == 0) ? arg0 : argv[i - 1];
+            envp_strings_offset += strlen(arg) + 1;
+        }
     }
 
     /* calculate the offset of the end marker */
@@ -318,8 +328,9 @@ int elf_init_stack(
 
         for (size_t i = 0; i < argc; i++)
         {
-            size_t n = strlen(argv[i]) + 1;
-            memcpy(p, argv[i], n);
+            const char* arg = (i == 0) ? arg0 : argv[i - 1];
+            size_t n = strlen(arg) + 1;
+            memcpy(p, arg, n);
             argv_out[i] = p;
             p += n;
         }
@@ -385,7 +396,7 @@ static void _dump_bytes(const void* p_, size_t n)
     printf("\n");
 }
 
-void elf_dump_stack(void* stack)
+void libos_dump_stack(void* stack)
 {
     int argc = (int)(*(uint64_t*)stack);
     char** argv = (char**)((uint8_t*)stack + sizeof(uint64_t));
@@ -477,7 +488,7 @@ int _test_header(const Elf64_Ehdr* ehdr)
     return 0;
 }
 
-int elf_dump_ehdr(const void* ehdr)
+int libos_dump_ehdr(const void* ehdr)
 {
     const Elf64_Ehdr* h = (const Elf64_Ehdr*)ehdr;
 
@@ -652,9 +663,8 @@ void* elf_make_stack(
     if (sp)
         *sp = NULL;
 
-    /* The stack must be a multiple of the page size */
-    if (stack_size % PAGE_SIZE)
-        goto done;
+    /* Assume that the stack is aligned on a page boundary */
+    libos_assume((stack_size % PAGE_SIZE) == 0);
 
     if (!(stack = memalign(PAGE_SIZE, stack_size)))
         goto done;
@@ -761,35 +771,133 @@ static int _setup_exe_link(const char* path)
     snprintf(buf, sizeof(buf), "/proc/%u/exe", pid);
     ECHECK(libos_syscall_symlink(target, buf));
 
+    snprintf(buf, sizeof(buf), "/proc/self/exe");
+    ECHECK(libos_syscall_symlink(target, buf));
+
 done:
     return ret;
 }
 
-/* ATTN: convert asserts to errors */
-int elf_enter_crt(
+int libos_exec(
     libos_thread_t* thread,
-    const void* image_base,
+    const void* crt_data_in,
+    size_t crt_size,
+    const void* crt_reloc_data,
+    size_t crt_reloc_size,
     size_t argc,
     const char* argv[],
     size_t envc,
     const char* envp[])
 {
-    const Elf64_Ehdr* ehdr = image_base;
+    int ret = 0;
     void* stack;
     void* sp = NULL;
     const size_t stack_size = 64 * PAGE_SIZE;
+    void* crt_data = NULL;
+    const Elf64_Ehdr* ehdr = NULL;
+    const Elf64_Phdr* phdr = NULL;
+    uint64_t* dynv = NULL;
     enter_t enter;
 
-    /* ATTN: rework to return errors rather than to exit */
+    if (!thread || !crt_data_in || !crt_size || !argv || !envp)
+        ERAISE(-EINVAL);
 
-    assert(_test_header(ehdr) == 0);
+    /* fail if image does not have a valid ELF header */
+    if (_test_header(crt_data_in) != 0)
+        ERAISE(-EINVAL);
 
-    enter = (enter_t)((uint8_t*)image_base + ehdr->e_entry);
+    /* fail if the CRT size is not a multiple of the page size */
+    if ((crt_size & PAGE_SIZE) != 0)
+        ERAISE(-EINVAL);
 
-    /* Extract program-header related info */
-    const uint8_t* phdr = (const uint8_t*)image_base + ehdr->e_phoff;
-    size_t phnum = ehdr->e_phnum;
-    size_t phentsize = ehdr->e_phentsize;
+    /* allocate and zero-fill the new CRT image */
+    {
+        const int prot = PROT_READ | PROT_WRITE | PROT_EXEC;
+        const int flags = MAP_ANONYMOUS | MAP_PRIVATE;
+
+        crt_data = libos_mmap(NULL, crt_size, prot, flags, -1, 0);
+
+        if (crt_data == (void*)-1)
+            ERAISE(-ENOMEM);
+    }
+
+    /* Copy over the loadable segments */
+    {
+        const Elf64_Ehdr* eh = crt_data_in;
+        const uint8_t* p = (const uint8_t*)crt_data_in + eh->e_phoff;
+        size_t ending_vaddr = 0;
+
+        for (size_t i = 0; i < eh->e_phnum; i++)
+        {
+            const Elf64_Phdr* ph = (const Elf64_Phdr*)p;
+
+            if (ph->p_type == PT_LOAD)
+            {
+                void* dest = (uint8_t*)crt_data + ph->p_vaddr;
+                const void* src = (const uint8_t*)crt_data_in + ph->p_vaddr;
+                size_t gap_size;
+
+                if (ph->p_vaddr < ending_vaddr)
+                    libos_panic("unsorted segments");
+
+                memcpy(dest, src, ph->p_memsz);
+
+                /* unmap any gap between this segment and the last */
+                if ((gap_size = ph->p_vaddr - ending_vaddr))
+                {
+                    uint8_t* gap = (uint8_t*)crt_data + ending_vaddr;
+
+                    /* round gap up to page size */
+                    gap = (void*)libos_round_up_to_page_size((uint64_t)gap);
+
+                    /* round the gap size down to the page size */
+                    gap_size = libos_round_down_to_page_size(gap_size);
+
+                    ECHECK(libos_munmap(gap, gap_size));
+                }
+
+                /* remember the end of this segment for the next pass */
+                ending_vaddr = ph->p_vaddr + ph->p_memsz;
+            }
+
+            p += eh->e_phentsize;
+        }
+    }
+
+    /* Find the dynamic vector: dynv */
+    {
+        ehdr = crt_data;
+        const uint8_t* p = (const uint8_t*)crt_data + ehdr->e_phoff;
+
+        for (size_t i = 0; i < ehdr->e_phnum; i++)
+        {
+            const Elf64_Phdr* ph = (const Elf64_Phdr*)p;
+
+            if (ph->p_type == PT_DYNAMIC)
+            {
+                dynv = (uint64_t*)((uint8_t*)crt_data + ph->p_vaddr);
+                break;
+            }
+
+            p += ehdr->e_phentsize;
+        }
+    }
+
+    /* apply relocations to the new CRT data */
+    if (libos_apply_relocations(
+            crt_data, crt_size, crt_reloc_data, crt_reloc_size) != 0)
+    {
+        ERAISE(-EINVAL);
+    }
+
+    /* save the phdr */
+    phdr = (const Elf64_Phdr*)((const uint8_t*)crt_data + ehdr->e_phoff);
+
+    /* save the entry point */
+    enter = (enter_t)((uint8_t*)crt_data + ehdr->e_entry);
+
+    if (!dynv)
+        ERAISE(-EINVAL);
 
     if (!(stack = elf_make_stack(
               argc,
@@ -797,74 +905,49 @@ int elf_enter_crt(
               envc,
               envp,
               stack_size,
-              image_base,
+              crt_data,
               phdr,
-              phnum,
-              phentsize,
+              ehdr->e_phnum,
+              ehdr->e_phentsize,
               enter,
               &sp)))
     {
-        libos_panic("_make_stack() failed");
+        ERAISE(-ENOMEM);
     }
 
     assert(elf_check_stack(stack, stack_size) == 0);
 
-    /* Find the dynamic vector */
-    uint64_t* dynv = NULL;
+    /* create "/proc/<pid>/exe" which is a link to the program executable */
+    if (_setup_exe_link(argv[0]) != 0)
+        ERAISE(-EIO);
+
+    /* The thread is responsible for freeing the stack */
+    thread->main.exec_stack = stack;
+    thread->main.exec_crt_data = crt_data;
+    thread->main.exec_crt_size = crt_size;
+
+    /* close file descriptors marked with O_CLOEXEC */
     {
-        const uint8_t* p = phdr;
-
-        for (size_t i = 0; i < phnum; i++)
-        {
-            const Elf64_Phdr* ph = (const Elf64_Phdr*)p;
-
-            if (ph->p_type == PT_DYNAMIC)
-            {
-                dynv = (uint64_t*)((uint8_t*)image_base + ph->p_vaddr);
-                break;
-            }
-
-            p += phentsize;
-        }
+        libos_fdtable_t* fdtable = libos_fdtable_current();
+        libos_fdtable_cloexec(fdtable);
     }
 
-    if (!dynv)
-        libos_panic("null dynv");
+    /* enter the C-runtime on the target thread descriptor */
+    (*enter)(sp, dynv, libos_syscall);
+    /* unreachable */
 
-    assert(elf_check_stack(stack, stack_size) == 0);
+    thread->main.exec_stack = NULL;
+    thread->main.exec_crt_data = NULL;
+    thread->main.exec_crt_size = 0;
+    ERAISE(-ENOEXEC);
 
-    if (_setup_exe_link(argv[1]) != 0)
-        libos_panic("unexpected");
+done:
 
-    /* set the main thread */
-    __libos_main_thread = thread;
+    if (stack)
+        free(stack);
 
-    /* Run the main program */
-    if (libos_setjmp(&thread->jmpbuf) != 0)
-    {
-        /* ---------- running C-runtime thread descriptor ---------- */
+    if (crt_data)
+        libos_munmap(crt_data, crt_size);
 
-        /* assuming that this was called by the main thread */
-        libos_assume(thread == __libos_main_thread);
-
-        /* restore the target thread descriptor */
-        libos_set_fsbase(thread->target_td);
-
-        /* ---------- running target thread descriptor ---------- */
-
-        /* unload the debugger symbols */
-        libos_syscall_unload_symbols();
-    }
-    else
-    {
-        /* ---------- running target thread descriptor ---------- */
-
-        /* enter the C-runtime on the target thread descriptor */
-        (*enter)(sp, dynv, libos_syscall);
-    }
-
-    assert(elf_check_stack(stack, stack_size) == 0);
-    free(stack);
-
-    return libos_get_exit_status();
+    return ret;
 }

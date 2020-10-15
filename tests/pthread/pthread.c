@@ -63,12 +63,23 @@ void sleep_msec(uint64_t milliseconds)
 **==============================================================================
 */
 
+static int _gettid()
+{
+    return (int)syscall(SYS_gettid);
+}
+
 static void* _thread_func(void* arg)
 {
     uint64_t secs = (size_t)arg;
     uint64_t msecs = secs * 1000;
+    pid_t ppid = getppid();
+    pid_t pid = getpid();
+    pid_t tid = _gettid();
 
-    T(printf("_thread_func()\n");)
+    T(printf("_thread_func(): ppid=%d pid=%d tid=%d\n", ppid, pid, tid));
+    (void)ppid;
+    (void)pid;
+    (void)tid;
     sleep_msec(msecs / 10);
 
     return arg;
@@ -288,12 +299,12 @@ static void* _test_cond(void* arg_)
     struct test_cond_arg* arg = (struct test_cond_arg*)arg_;
 
     pthread_mutex_lock(&arg->m);
-    T(printf("wait: %p\n", pthread_self());)
+    T(printf("wait: %p\n", (void*)pthread_self());)
     pthread_cond_wait(&arg->c, &arg->m);
     arg->n++;
     pthread_mutex_unlock(&arg->m);
 
-    return pthread_self();
+    return (void*)pthread_self();
 }
 
 void test_cond_signal(void)

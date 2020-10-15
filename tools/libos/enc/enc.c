@@ -11,9 +11,9 @@
 #include <openenclave/bits/sgx/region.h>
 #include <openenclave/enclave.h>
 
+#include <elf.h>
 #include <libos/args.h>
 #include <libos/buf.h>
-#include <libos/elfutils.h>
 #include <libos/eraise.h>
 #include <libos/file.h>
 #include <libos/kernel.h>
@@ -139,6 +139,8 @@ int libos_enter_ecall(
     int ret = -1;
     const void* crt_data;
     size_t crt_size;
+    const void* crt_reloc_data;
+    size_t crt_reloc_size;
     const void* kernel_data;
     size_t kernel_size;
     const void* kernel_reloc_data;
@@ -226,10 +228,6 @@ int libos_enter_ecall(
         if (libos_args_unpack(&args, argv_data, argv_size) != 0)
             goto done;
     }
-
-    /* musl libc requires the application name to start at argv[1] */
-    if (libos_args_prepend1(&args, "libosenc.so") != 0)
-        goto done;
 
     // Need to handle config to environment
     // in the mean time we will just pull from the host
@@ -451,7 +449,7 @@ int libos_enter_ecall(
         crt_size = region.size;
     }
 
-    /* Apply relocations to the crt image */
+    /* Get relocations to the crt image */
     {
         oe_region_t region;
 
@@ -461,13 +459,8 @@ int libos_enter_ecall(
             assert(0);
         }
 
-        if (libos_apply_relocations(
-                crt_data, crt_size, enclave_base + region.vaddr, region.size) !=
-            0)
-        {
-            fprintf(stderr, "libos_apply_relocations() failed\n");
-            assert(0);
-        }
+        crt_reloc_data = enclave_base + region.vaddr;
+        crt_reloc_size = region.size;
     }
 
     /* Enter the kernel image */
@@ -483,6 +476,8 @@ int libos_enter_ecall(
         kargs.kernel_size = kernel_size;
         kargs.reloc_data = kernel_reloc_data;
         kargs.reloc_size = kernel_reloc_size;
+        kargs.crt_reloc_data = crt_reloc_data;
+        kargs.crt_reloc_size = crt_reloc_size;
         kargs.symtab_data = kernel_symtab_data;
         kargs.symtab_size = kernel_symtab_size;
         kargs.dynsym_data = kernel_dynsym_data;
