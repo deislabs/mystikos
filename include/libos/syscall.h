@@ -109,8 +109,6 @@ long libos_syscall(long n, long params[6]);
 
 const char* syscall_str(long n);
 
-int libos_get_exit_status(void);
-
 void libos_set_rootfs(const char* path);
 
 long libos_syscall_ret(long r);
@@ -206,5 +204,13 @@ long libos_syscall_futex(
     int val3);
 
 long libos_syscall_getrandom(void* buf, size_t buflen, unsigned int flags);
+
+struct rusage;
+
+long libos_syscall_wait4(
+    pid_t pid,
+    int* wstatus,
+    int options,
+    struct rusage* rusage);
 
 #endif /* _LIBOS_SYSCALL_H */

@@ -62,7 +62,11 @@ export LIBOS_EXPORT_RAMFS=${dirname}
 
 echo "=== libc test: ${testpath}/${target}"
 
-${libos} exec rootfs ${testpath}
+if [ "${STRACE}" == "1" ]; then
+    STRACE_OPT=--strace
+fi
+
+${libos} exec ${STRACE_OPT} rootfs ${testpath}
 if [ "$?" != "0" ]; then
     echo "$0: libos exec failed"
     exit 1

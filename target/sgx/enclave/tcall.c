@@ -465,16 +465,16 @@ done:
     return ret;
 }
 
-void* _get_fsbase(void)
+void* _get_gsbase(void)
 {
     void* p;
-    __asm__ volatile("mov %%fs:0, %0" : "=r"(p));
+    __asm__ volatile("mov %%gs:0, %0" : "=r"(p));
     return p;
 }
 
 static long _tcall_set_tsd(uint64_t value)
 {
-    libos_td_t* td = _get_fsbase();
+    libos_td_t* td = _get_gsbase();
 
     assert(td != NULL);
     td->tsd = value;
@@ -484,7 +484,7 @@ static long _tcall_set_tsd(uint64_t value)
 
 static long _tcall_get_tsd(uint64_t* value)
 {
-    libos_td_t* td = _get_fsbase();
+    libos_td_t* td = _get_gsbase();
 
     if (!value)
         return -EINVAL;
@@ -673,7 +673,7 @@ long libos_tcall(long n, long params[6])
         case LIBOS_TCALL_GET_ERRNO_LOCATION:
         {
             int** ptr = (int**)x1;
-            libos_td_t* td = _get_fsbase();
+            libos_td_t* td = _get_gsbase();
 
             if (!ptr)
                 return -EINVAL;

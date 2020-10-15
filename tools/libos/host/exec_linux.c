@@ -174,16 +174,6 @@ static void _load_regions(const char* rootfs, struct regions* r)
     if (!(r->mman_data = _map_mmap_region(DEFAULT_MMAN_SIZE)))
         _err("failed to map mmap region");
 
-    /* Apply relocations to the liboscrt.so image */
-    if (libos_apply_relocations(
-            r->liboscrt.image_data,
-            r->liboscrt.image_size,
-            r->liboscrt.reloc_data,
-            r->liboscrt.reloc_size) != 0)
-    {
-        _err("failed to apply relocations to liboscrt.so\n");
-    }
-
     /* Apply relocations to the liboskernel.so image */
     if (libos_apply_relocations(
             r->liboskernel.image_data,
@@ -280,6 +270,8 @@ static int _enter_kernel(
     args.kernel_size = regions->liboskernel.image_size;
     args.reloc_data = regions->liboskernel.reloc_data;
     args.reloc_size = regions->liboskernel.reloc_size;
+    args.crt_reloc_data = regions->liboscrt.reloc_data;
+    args.crt_reloc_size = regions->liboscrt.reloc_size;
     args.symtab_data = regions->liboskernel.symtab_data;
     args.symtab_size = regions->liboskernel.symtab_size;
     args.dynsym_data = regions->liboskernel.dynsym_data;
@@ -371,9 +363,8 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
     int return_status = 0;
 
     assert(argc >= 4);
-    argc -= 2;
-    argv += 2;
-    argv[0] = "exec-linux";
+    argc -= 3;
+    argv += 3;
 
     /* Enter the kernel image */
     if (_enter_kernel(

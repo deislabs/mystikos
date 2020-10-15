@@ -1576,14 +1576,48 @@ int libos_init_ramfs(libos_fs_t** fs_out)
 {
     int ret = 0;
     ramfs_t* ramfs = NULL;
-    static libos_fs_t _base = {
-        _fs_release,   _fs_mount,    _fs_creat,  _fs_open,       _fs_lseek,
-        _fs_read,      _fs_write,    _fs_pread,  _fs_pwrite,     _fs_readv,
-        _fs_writev,    _fs_close,    _fs_access, _fs_stat,       _fs_lstat,
-        _fs_fstat,     _fs_link,     _fs_unlink, _fs_rename,     _fs_truncate,
-        _fs_ftruncate, _fs_mkdir,    _fs_rmdir,  _fs_getdents64, _fs_readlink,
-        _fs_symlink,   _fs_realpath, _fs_fcntl,
+    // clang-format off
+    static libos_fs_t _base =
+    {
+        {
+            .fd_read = (void*)_fs_read,
+            .fd_write = (void*)_fs_write,
+            .fd_readv = (void*)_fs_readv,
+            .fd_writev = (void*)_fs_writev,
+            .fd_fstat = (void*)_fs_fstat,
+            .fd_fcntl = (void*)_fs_fcntl,
+            .fd_close = (void*)_fs_close,
+        },
+        .fs_release = _fs_release,
+        .fs_mount = _fs_mount,
+        .fs_creat = _fs_creat,
+        .fs_open = _fs_open,
+        .fs_lseek = _fs_lseek,
+        .fs_read = _fs_read,
+        .fs_write = _fs_write,
+        .fs_pread = _fs_pread,
+        .fs_pwrite = _fs_pwrite,
+        .fs_readv = _fs_readv,
+        .fs_writev = _fs_writev,
+        .fs_close = _fs_close,
+        .fs_access = _fs_access,
+        .fs_stat = _fs_stat,
+        .fs_lstat = _fs_lstat,
+        .fs_fstat = _fs_fstat,
+        .fs_link = _fs_link,
+        .fs_unlink = _fs_unlink,
+        .fs_rename = _fs_rename,
+        .fs_truncate = _fs_truncate,
+        .fs_ftruncate = _fs_ftruncate,
+        .fs_mkdir = _fs_mkdir,
+        .fs_rmdir = _fs_rmdir,
+        .fs_getdents64 = _fs_getdents64,
+        .fs_readlink = _fs_readlink,
+        .fs_symlink = _fs_symlink,
+        .fs_realpath = _fs_realpath,
+        .fs_fcntl = _fs_fcntl,
     };
+    // clang-format on
     inode_t* root_inode = NULL;
 
     if (fs_out)

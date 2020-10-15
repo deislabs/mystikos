@@ -33,6 +33,8 @@ DIRS += thread
 DIRS += gdb
 DIRS += dlopen
 DIRS += libos
+DIRS += pipe
+DIRS += spawn
 
 REDEFINE_TESTS=1
 include $(TOP)/rules.mak
