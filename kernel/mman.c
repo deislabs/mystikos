@@ -676,6 +676,8 @@ static int _mmap(
                 mman,
                 "bad addr parameter: "
                 "must be null or part of an existing mapping");
+            ret = -EINVAL;
+            goto done;
         }
 
         *ptr_out = addr;

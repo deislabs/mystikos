@@ -140,10 +140,7 @@ void* libos_mmap(
     int tflags = LIBOS_MAP_ANONYMOUS | LIBOS_MAP_PRIVATE;
 
     if (libos_mman_mmap(&_mman, addr, length, prot, tflags, &ptr) != 0)
-    {
-        printf("libos_mman_mmap: error: %s\n", _mman.err);
         return (void*)-1;
-    }
 
     if (fd >= 0 && !addr)
     {
