@@ -514,6 +514,7 @@ static long _syscall_clone(
 
         child->magic = LIBOS_THREAD_MAGIC;
         child->fdtable = parent->fdtable;
+        child->sid = parent->sid;
         child->ppid = parent->ppid;
         child->pid = parent->pid;
         child->crt_td = newtls;
@@ -574,6 +575,7 @@ static long _syscall_clone_vfork(
 
         child->magic = LIBOS_THREAD_MAGIC;
         child->fdtable = parent->fdtable;
+        child->sid = parent->sid;
         child->ppid = parent->ppid;
         child->pid = libos_generate_tid();
         child->tid = child->pid;
