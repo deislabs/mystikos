@@ -4,6 +4,7 @@ include $(TOP)/defs.mak
 DIRS =
 DIRS += attested_tls
 DIRS += sql_ae
+DIRS += msgpack_c
 
 REDEFINE_TESTS=1
 include $(TOP)/rules.mak
