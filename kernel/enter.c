@@ -149,6 +149,7 @@ static int _create_main_thread(uint64_t event, libos_thread_t** thread_out)
         ERAISE(-ENOMEM);
 
     thread->magic = LIBOS_THREAD_MAGIC;
+    thread->sid = ppid;
     thread->ppid = ppid;
     thread->pid = pid;
     thread->tid = pid;

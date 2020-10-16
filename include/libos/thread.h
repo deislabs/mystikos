@@ -45,6 +45,9 @@ struct libos_thread
     /* used by zombie-list */
     struct libos_thread* next;
 
+    /* the session id (see getsid() function) */
+    pid_t sid;
+
     /* the parent process identifier (inherited from main thread) */
     pid_t ppid;
 

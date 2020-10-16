@@ -2392,7 +2392,10 @@ long libos_syscall(long n, long params[6])
         case SYS_setfsgid:
             break;
         case SYS_getsid:
-            break;
+        {
+            _strace(n, NULL);
+            BREAK(_return(n, libos_getsid()));
+        }
         case SYS_capget:
             break;
         case SYS_capset:
