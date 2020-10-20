@@ -424,6 +424,15 @@ void test_symlink(void)
     _passed(__FUNCTION__);
 }
 
+void test_tmpfile(void)
+{
+    FILE* fp = tmpfile();
+    assert(fp != NULL);
+    fprintf(fp, "hhheeello\n");
+    fclose(fp);
+    _passed(__FUNCTION__);
+}
+
 void test_pread_pwrite(void)
 {
     const ssize_t N = 64;
@@ -474,6 +483,7 @@ int main(void)
     test_rename();
     test_truncate();
     test_symlink();
+    test_tmpfile();
     test_pread_pwrite();
 
     return 0;

@@ -2,7 +2,7 @@ TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
 APPDIR = appdir
-CFLAGS = -fPIC
+CFLAGS = -fPIC -g
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 
 all: libos rootfs
