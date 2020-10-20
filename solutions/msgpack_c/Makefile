@@ -11,7 +11,7 @@ LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 
 all: libos cpio
 
-OPTS = --trace-syscalls
+#OPTS = --trace-syscalls
 
 run: 
 	@ echo -e "\n------starting msgpack-c cpp unit tests------\n"

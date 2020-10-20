@@ -8,6 +8,8 @@
 /src/functional/dlopen.exe
 /src/functional/fdopen.exe
 /src/functional/fnmatch.exe
+/src/functional/fscanf.exe
+/src/functional/fwscanf.exe
 /src/functional/iconv_open.exe
 /src/functional/inet_pton.exe
 /src/functional/mbc.exe
@@ -46,6 +48,7 @@
 /src/functional/tls_init_dlopen.exe
 /src/functional/tls_init.exe
 /src/functional/udiv.exe
+/src/functional/ungetc.exe
 /src/functional/wcsstr.exe
 /src/functional/wcstol.exe
 /src/math/acos.exe

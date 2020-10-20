@@ -1,14 +1,13 @@
 /src/common/runtest.exe
 /src/functional/env.exe
 /src/functional/fcntl.exe
-/src/functional/fscanf.exe
-/src/functional/fwscanf.exe
 /src/functional/ipc_msg.exe
 /src/functional/ipc_sem.exe
 /src/functional/ipc_shm.exe
 /src/functional/popen.exe
 /src/functional/pthread_cancel.exe
 /src/functional/pthread_cancel-points.exe
+/src/regression/pthread_cancel-sem_wait.exe
 /src/functional/pthread_mutex.exe
 /src/functional/pthread_mutex_pi.exe
 /src/functional/pthread_robust.exe
@@ -18,7 +17,6 @@
 /src/functional/sscanf_long.exe
 /src/functional/stat.exe
 /src/functional/strptime.exe
-/src/functional/ungetc.exe
 /src/functional/utime.exe
 /src/functional/vfork.exe
 /src/math/fmal.exe
@@ -36,7 +34,6 @@
 /src/regression/malloc-brk-fail.exe
 /src/regression/malloc-oom.exe
 /src/regression/pthread_atfork-errno-clobber.exe
-/src/regression/pthread_cancel-sem_wait.exe
 /src/regression/pthread_cond_wait-cancel_ignored.exe
 /src/regression/pthread_create-oom.exe
 /src/regression/pthread_exit-dtor.exe

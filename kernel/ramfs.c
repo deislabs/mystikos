@@ -1039,7 +1039,13 @@ static int _fs_close(libos_fs_t* fs, libos_file_t* file)
     assert(file->inode);
     assert(_inode_valid(file->inode));
     assert(file->inode->nopens > 0);
+
     file->inode->nopens--;
+
+    if (file->inode->nopens == 0 && file->inode->nlink == 0)
+    {
+        _inode_free(file->inode);
+    }
 
     memset(file, 0xdd, sizeof(libos_file_t));
     free(file);
@@ -1219,13 +1225,19 @@ static int _fs_unlink(libos_fs_t* fs, const char* pathname)
     ECHECK(_split_path(pathname, dirname, basename));
     ECHECK(_path_to_inode(ramfs, dirname, true, NULL, &parent));
 
+    inode->nlink--;
     /* Find and remove the parent's directory entry */
     ECHECK(_inode_remove_dirent(parent, basename));
     parent->nlink--;
 
-    /* Decrement the number of links and free if final link */
-    if (--inode->nlink == 0)
+    // Delete the inode immediately if it's a symbolic link
+    // or nobody owned. The deletion is delayed to _fs_close
+    // if file is still linked or opened by someone.
+    if (S_ISLNK(inode->mode) ||
+        (inode->nlink == 0 && inode->nopens == 0))
+    {
         _inode_free(inode);
+    }
 
 done:
     return ret;
