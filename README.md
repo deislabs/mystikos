@@ -1,4 +1,4 @@
-- PR Pipeline: [![Build Status](https://openenclave.visualstudio.com/ACC-Services/_apis/build/status/oe-libos-master-pipeline?branchName=master)](https://openenclave.visualstudio.com/ACC-Services/_build/latest?definitionId=70&branchName=master)
+- PR Pipeline: [![Build Status](https://openenclave.visualstudio.com/ACC-Services/_apis/build/status/oe-libos-pr-pipeline?branchName=master)](https://openenclave.visualstudio.com/ACC-Services/_build/latest?definitionId=70&branchName=master)
 - Nightly Pipeline: [![Build Status](https://openenclave.visualstudio.com/ACC-Services/_apis/build/status/oe-libos-nightly-pipeline?branchName=master)](https://openenclave.visualstudio.com/ACC-Services/_build/latest?definitionId=83&branchName=master)
 
 # Open LibOS
