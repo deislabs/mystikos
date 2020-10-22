@@ -103,7 +103,7 @@ OEHOST_INCLUDES = -I$(OE_INCDIR)
 
 OEHOST_LIBDIR = $(BUILDDIR)/openenclave/lib/openenclave/host
 
-OEHOST_LDFLAGS = -L$(OEHOST_LIBDIR) -Wl,-z,noexecstack -loehost -ldl -lpthread -lsgx_dcap_ql -lssl -lcrypto
+OEHOST_LDFLAGS = -L$(OEHOST_LIBDIR) -Wl,-z,noexecstack -loehost -ldl -lpthread -lsgx_enclave_common -lsgx_dcap_ql -lssl -lcrypto
 
 OEHOST_CFLAGS = -g -Wall -Werror
 
