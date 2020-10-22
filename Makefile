@@ -161,3 +161,5 @@ bindist:
 	@ ( cd $(BUILDDIR)/bindist/opt; tar zcf $(TARBALL) openlibos )
 	@ cp $(BUILDDIR)/bindist/opt/$(TARBALL) .
 	@ echo "=== Created $(TARBALL)"
+
+# Test content
