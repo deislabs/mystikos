@@ -553,7 +553,7 @@ long libos_tcall_add_symbol_file(
     long ret = 0;
     int retval;
 
-    if (!file_data || !file_size || !text || !text_size)
+    if (!text || !text_size)
         ERAISE(-EINVAL);
 
     if (libos_add_symbol_file_ocall(

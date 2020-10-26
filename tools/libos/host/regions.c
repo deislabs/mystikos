@@ -310,11 +310,7 @@ static int _add_crt_region(oe_region_context_t* context, uint64_t* vaddr)
     if (!context || !vaddr)
         ERAISE(-EINVAL);
 
-    char* path = NULL;
-    if (_details.crt.path[0] != 0)
-        path = _details.crt.path;
-
-    if (oe_region_start(context, id, true, path) != OE_OK)
+    if (oe_region_start(context, id, false, NULL) != OE_OK)
         ERAISE(-EINVAL);
 
     ECHECK(_load_crt_pages(context, &_details.crt.image, *vaddr));

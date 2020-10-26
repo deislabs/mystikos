@@ -38,6 +38,18 @@
 
 _Static_assert(sizeof(struct libos_timespec) == sizeof(struct timespec), "");
 
+typedef struct debug_image debug_image_t;
+
+struct debug_image
+{
+    oe_debug_image_t base;
+    debug_image_t* next;
+    char buf[PATH_MAX];
+    bool loaded;
+};
+
+static debug_image_t* _debug_images;
+
 long libos_syscall_isatty_ocall(int fd)
 {
     if (isatty(fd) != 1)
@@ -80,73 +92,6 @@ void libos_cpuid_ocall(
     __cpuid_count(leaf, subleaf, *rax, *rbx, *rcx, *rdx);
 }
 
-#define MAX_DEBUG_IMAGES 256
-
-static oe_debug_image_t _debug_images[MAX_DEBUG_IMAGES];
-static bool _debug_images_loaded[MAX_DEBUG_IMAGES];
-static size_t _num_debug_images;
-
-long libos_tcall_add_symbol_file(
-    const void* file_data,
-    size_t file_size,
-    const void* text_data,
-    size_t text_size)
-{
-    long ret = -1;
-    int fd = -1;
-    char template[] = "/tmp/libosXXXXXX";
-    oe_debug_image_t di;
-
-    if (!file_data || !file_size || !text_data || !text_size)
-        ERAISE(-EINVAL);
-
-    /* Create a file containing the data */
-    {
-        if ((fd = mkstemp(template)) < 0)
-            goto done;
-
-        ECHECK(libos_write_file_fd(fd, file_data, file_size));
-
-        close(fd);
-        fd = -1;
-    }
-
-    /* Add new debug image to the table */
-    {
-        if (_num_debug_images == MAX_DEBUG_IMAGES)
-            ERAISE(-ENOMEM);
-
-        if (!(di.path = strdup(template)))
-            ERAISE(-ENOMEM);
-
-        di.magic = OE_DEBUG_IMAGE_MAGIC;
-        di.version = 1;
-        di.path_length = strlen(di.path);
-        di.base_address = (uint64_t)text_data;
-        di.size = text_size;
-        _debug_images[_num_debug_images++] = di;
-    }
-
-    ret = 0;
-
-done:
-
-    if (fd > 0)
-        close(fd);
-
-    return ret;
-}
-
-int libos_add_symbol_file_ocall(
-    const void* file_data,
-    size_t file_size,
-    const void* text_data,
-    size_t text_size)
-{
-    return (int)libos_tcall_add_symbol_file(
-        file_data, file_size, text_data, text_size);
-}
-
 OE_EXPORT
 OE_NEVER_INLINE
 void oe_notify_debugger_library_load(oe_debug_image_t* image)
@@ -173,17 +118,107 @@ oe_result_t oe_debug_notify_library_unloaded(oe_debug_image_t* image)
     return OE_OK;
 }
 
+
+long libos_tcall_add_symbol_file(
+    const void* file_data,
+    size_t file_size,
+    const void* text_data,
+    size_t text_size)
+{
+    long ret = 0;
+    int fd = -1;
+    char tmp[] = "/tmp/libosXXXXXX";
+    debug_image_t* di = NULL;
+    void* data = NULL;
+
+    if (!text_data || !text_size || (!file_data && file_size))
+        ERAISE(-EINVAL);
+
+    /* assume liboscrt if no file data */
+    if (!file_data)
+    {
+        char path[PATH_MAX];
+
+        ECHECK(format_liboscrt(path, sizeof path));
+        ECHECK(libos_load_file(path, &data, &file_size));
+        file_data = data;
+    }
+
+    /* Create a file containing the data */
+    {
+        if ((fd = mkstemp(tmp)) < 0)
+            goto done;
+
+        ECHECK(libos_write_file_fd(fd, file_data, file_size));
+
+        close(fd);
+        fd = -1;
+    }
+
+    /* Add new debug image to the table */
+    {
+        if (!(di = calloc(1, sizeof(debug_image_t))))
+            ERAISE(-ENOMEM);
+
+        if (libos_strlcpy(di->buf, tmp, sizeof(di->buf)) >= sizeof(di->buf))
+            ERAISE(-ENAMETOOLONG);
+
+        di->base.magic = OE_DEBUG_IMAGE_MAGIC;
+        di->base.version = 1;
+        di->base.path = di->buf;
+        di->base.path_length = strlen(di->base.path);
+        di->base.base_address = (uint64_t)text_data;
+        di->base.size = text_size;
+
+        if (data)
+        {
+            /* notify gdb to load the symbols */
+            oe_debug_notify_library_loaded(&di->base);
+            di->loaded = true;
+        }
+
+        /* add to the front of the list */
+        di->next = _debug_images;
+        _debug_images = di;
+        di = NULL;
+    }
+
+done:
+
+    if (di)
+        free(di);
+
+    if (data)
+        free(data);
+
+    if (fd > 0)
+        close(fd);
+
+    return ret;
+}
+
+int libos_add_symbol_file_ocall(
+    const void* file_data,
+    size_t file_size,
+    const void* text_data,
+    size_t text_size)
+{
+    return (int)libos_tcall_add_symbol_file(
+            file_data, file_size, text_data, text_size);
+
+    return 0;
+}
+
 long libos_tcall_load_symbols(void)
 {
     int ret = 0;
 
-    for (size_t i = 0; i < _num_debug_images; i++)
+    for (debug_image_t* p = _debug_images; p; p = p->next)
     {
-        if (!_debug_images_loaded[i])
+        if (!p->loaded)
         {
-            oe_debug_image_t* di = &_debug_images[i];
-            oe_debug_notify_library_loaded(di);
-            _debug_images_loaded[i] = true;
+            oe_debug_notify_library_loaded(&p->base);
+            p->loaded = true;
         }
     }
 
@@ -199,12 +234,15 @@ long libos_tcall_unload_symbols(void)
 {
     long ret = 0;
 
-    for (size_t i = 0; i < _num_debug_images; i++)
+    for (debug_image_t* p = _debug_images; p; )
     {
-        oe_debug_image_t* di = &_debug_images[i];
-        oe_debug_notify_library_unloaded(di);
-        unlink(di->path);
-        free(di->path);
+        debug_image_t* next = p->next;
+
+        oe_debug_notify_library_unloaded(&p->base);
+        unlink(p->base.path);
+        free(p);
+
+        p = next;
     }
 
     return ret;
