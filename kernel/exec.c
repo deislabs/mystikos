@@ -778,6 +778,23 @@ done:
     return ret;
 }
 
+static long _add_crt_symbols(const void* text, size_t text_size)
+{
+    long ret = 0;
+    long params[6] = {0};
+
+    params[0] = (long)NULL;
+    params[1] = 0;
+    params[2] = (long)text;
+    params[3] = (long)text_size;
+
+    ECHECK(libos_tcall(LIBOS_TCALL_ADD_SYMBOL_FILE, params));
+
+done:
+
+    return ret;
+}
+
 int libos_exec(
     libos_thread_t* thread,
     const void* crt_data_in,
@@ -931,6 +948,9 @@ int libos_exec(
         libos_fdtable_t* fdtable = libos_fdtable_current();
         libos_fdtable_cloexec(fdtable);
     }
+
+    /* register the new CRT symbols with the debugger */
+    ECHECK(_add_crt_symbols(crt_data, crt_size));
 
     /* enter the C-runtime on the target thread descriptor */
     (*enter)(sp, dynv, libos_syscall);
