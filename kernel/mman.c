@@ -1437,3 +1437,57 @@ void libos_mman_set_sanity(libos_mman_t* mman, bool sanity)
     if (mman)
         mman->sanity = sanity;
 }
+
+/* return the total size of the mman region */
+int libos_mman_total_size(libos_mman_t* mman, size_t* size)
+{
+    ssize_t ret = 0;
+
+    if (*size)
+        *size = 0;
+
+    if (!mman || !size)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    libos_spin_lock(&mman->lock);
+    *size = mman->size;
+    libos_spin_unlock(&mman->lock);
+
+done:
+    return ret;
+}
+
+/* return the amount of free space */
+int libos_mman_free_size(libos_mman_t* mman, size_t* size_out)
+{
+    ssize_t ret = 0;
+    size_t size;
+
+    if (*size_out)
+        *size_out = 0;
+
+    if (!mman || !size_out)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    libos_spin_lock(&mman->lock);
+    {
+        /* determine the bytes between the BRK value and MAP value */
+        size = mman->map - mman->brk;
+
+        /* determine the total size of all gaps */
+        for (libos_vad_t* p = mman->vad_list; p; p = p->next)
+            size += _get_right_gap(mman, p);
+    }
+    libos_spin_unlock(&mman->lock);
+
+    *size_out = size;
+
+done:
+    return ret;
+}

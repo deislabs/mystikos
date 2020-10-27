@@ -134,4 +134,8 @@ void libos_mman_set_sanity(libos_mman_t* heap, bool sanity);
 
 bool libos_mman_is_sane(libos_mman_t* heap);
 
+int libos_mman_total_size(libos_mman_t* mman, size_t* size);
+
+int libos_mman_free_size(libos_mman_t* mman, size_t* size);
+
 #endif /* _LIBOS_INTERNAL_MMAN_H */
