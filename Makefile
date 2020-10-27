@@ -14,7 +14,11 @@ TARBALL=$(PKGNAME).tar.gz
 ##==============================================================================
 
 DIRS += third_party
+
+ifndef LIBOS_PRODUCT_BUILD
 DIRS += gcov
+endif
+
 DIRS += json
 DIRS += utils
 DIRS += host
@@ -23,8 +27,11 @@ DIRS += kernel
 DIRS += crt
 DIRS += oesdk
 DIRS += tools
+
+ifndef LIBOS_PRODUCT_BUILD
 DIRS += alpine
 DIRS += tests
+endif
 
 CLEAN = $(BUILDDIR) $(TARBALL)
 
