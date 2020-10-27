@@ -192,3 +192,13 @@ long libos_syscall_brk(void* addr)
 
     return (long)ptr;
 }
+
+int libos_get_total_ram(size_t* size)
+{
+    return libos_mman_total_size(&_mman, size);
+}
+
+int libos_get_free_ram(size_t* size)
+{
+    return libos_mman_free_size(&_mman, size);
+}

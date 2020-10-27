@@ -27,4 +27,8 @@ void* libos_mremap(
     int flags,
     void* new_address);
 
+int libos_get_total_ram(size_t* size);
+
+int libos_get_free_ram(size_t* size);
+
 #endif /* _LIBOS_MMANUTILS_H */
