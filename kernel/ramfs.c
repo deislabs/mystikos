@@ -1233,8 +1233,7 @@ static int _fs_unlink(libos_fs_t* fs, const char* pathname)
     // Delete the inode immediately if it's a symbolic link
     // or nobody owned. The deletion is delayed to _fs_close
     // if file is still linked or opened by someone.
-    if (S_ISLNK(inode->mode) ||
-        (inode->nlink == 0 && inode->nopens == 0))
+    if (S_ISLNK(inode->mode) || (inode->nlink == 0 && inode->nopens == 0))
     {
         _inode_free(inode);
     }

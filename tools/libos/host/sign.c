@@ -272,7 +272,7 @@ int _sign(int argc, const char* argv[])
         return -1;
     }
 
-    const char* program_file = argv[0];
+    const char* program_file = get_program_file();
     const char* rootfs_file = argv[2];
     const char* pem_file = argv[3];
     const char* config_file = argv[4];

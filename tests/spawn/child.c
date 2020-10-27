@@ -1,10 +1,10 @@
+#include <assert.h>
 #include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <assert.h>
-#include <string.h>
 
 int main(int argc, const char* argv[], const char* envp[])
 {

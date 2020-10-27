@@ -33,6 +33,7 @@
 #include "exec_linux.h"
 #include "libos_u.h"
 #include "package.h"
+#include "regions.h"
 #include "sign.h"
 #include "utils.h"
 
@@ -118,7 +119,6 @@ oe_result_t oe_debug_notify_library_unloaded(oe_debug_image_t* image)
     return OE_OK;
 }
 
-
 long libos_tcall_add_symbol_file(
     const void* file_data,
     size_t file_size,
@@ -130,6 +130,7 @@ long libos_tcall_add_symbol_file(
     char tmp[] = "/tmp/libosXXXXXX";
     debug_image_t* di = NULL;
     void* data = NULL;
+    bool notify = false;
 
     if (!text_data || !text_size || (!file_data && file_size))
         ERAISE(-EINVAL);
@@ -140,8 +141,20 @@ long libos_tcall_add_symbol_file(
         char path[PATH_MAX];
 
         ECHECK(format_liboscrt(path, sizeof path));
-        ECHECK(libos_load_file(path, &data, &file_size));
-        file_data = data;
+
+        if (access(path, R_OK) == 0)
+        {
+            ECHECK(libos_load_file(path, &data, &file_size));
+            file_data = data;
+        }
+        else
+        {
+            const region_details* rd = get_region_details();
+            file_data = rd->crt.buffer;
+            file_size = rd->crt.buffer_size;
+        }
+
+        notify = true;
     }
 
     /* Create a file containing the data */
@@ -170,7 +183,7 @@ long libos_tcall_add_symbol_file(
         di->base.base_address = (uint64_t)text_data;
         di->base.size = text_size;
 
-        if (data)
+        if (notify)
         {
             /* notify gdb to load the symbols */
             oe_debug_notify_library_loaded(&di->base);
@@ -204,7 +217,7 @@ int libos_add_symbol_file_ocall(
     size_t text_size)
 {
     return (int)libos_tcall_add_symbol_file(
-            file_data, file_size, text_data, text_size);
+        file_data, file_size, text_data, text_size);
 
     return 0;
 }
@@ -234,7 +247,7 @@ long libos_tcall_unload_symbols(void)
 {
     long ret = 0;
 
-    for (debug_image_t* p = _debug_images; p; )
+    for (debug_image_t* p = _debug_images; p;)
     {
         debug_image_t* next = p->next;
 

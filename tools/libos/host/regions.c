@@ -43,7 +43,11 @@ const region_details* create_region_details_from_package(
 
     // Load CRT
     if (elf_image_from_section(
-            libos_elf, ".liboscrt", &_details.crt.image, NULL, 0) != 0)
+            libos_elf,
+            ".liboscrt",
+            &_details.crt.image,
+            (const void**)&_details.crt.buffer,
+            &_details.crt.buffer_size) != 0)
     {
         _err("failed to extract CRT section from : %s", get_program_file());
     }
@@ -103,6 +107,11 @@ const region_details* create_region_details_from_package(
         user_pages = MMAN_DEFAULT_PAGES;
     _details.mman_size = user_pages * LIBOS_PAGE_SIZE;
 
+    return &_details;
+}
+
+const region_details* get_region_details(void)
+{
     return &_details;
 }
 
