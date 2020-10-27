@@ -28,12 +28,16 @@ typedef struct _region_details
     region_details_item config;
 } region_details;
 
+const region_details* get_region_details(void);
+
 const region_details* create_region_details_from_files(
     const char* program_path,
     const char* rootfs_path,
     const char* config_path,
     size_t user_pages);
+
 const region_details* create_region_details_from_package(
     elf_image_t* libos_elf,
     size_t user_pages);
+
 void free_region_details();
