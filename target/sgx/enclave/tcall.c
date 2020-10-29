@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/stat.h>
 #include <sys/syscall.h>
 #include <time.h>
 #include <unistd.h>
@@ -255,6 +256,34 @@ long libos_tcall_export_file(const char* path, const void* data, size_t size)
     (void)path;
     (void)data;
     (void)size;
+    assert("sgx: unimplemented: implement in enclave" == NULL);
+    return -ENOTSUP;
+}
+
+LIBOS_STATIC_ASSERT((sizeof(struct stat) % 8) == 0);
+LIBOS_STATIC_ASSERT(sizeof(struct stat) >= 120);
+LIBOS_STATIC_ASSERT(OE_OFFSETOF(struct stat, st_dev) == 0);
+LIBOS_STATIC_ASSERT(OE_OFFSETOF(struct stat, st_ino) == 8);
+LIBOS_STATIC_ASSERT(OE_OFFSETOF(struct stat, st_nlink) == 16);
+LIBOS_STATIC_ASSERT(OE_OFFSETOF(struct stat, st_mode) == 24);
+LIBOS_STATIC_ASSERT(OE_OFFSETOF(struct stat, st_uid) == 28);
+LIBOS_STATIC_ASSERT(OE_OFFSETOF(struct stat, st_gid) == 32);
+LIBOS_STATIC_ASSERT(OE_OFFSETOF(struct stat, st_rdev) == 40);
+LIBOS_STATIC_ASSERT(OE_OFFSETOF(struct stat, st_size) == 48);
+LIBOS_STATIC_ASSERT(OE_OFFSETOF(struct stat, st_blksize) == 56);
+LIBOS_STATIC_ASSERT(OE_OFFSETOF(struct stat, st_blocks) == 64);
+LIBOS_STATIC_ASSERT(OE_OFFSETOF(struct stat, st_atim.tv_sec) == 72);
+LIBOS_STATIC_ASSERT(OE_OFFSETOF(struct stat, st_atim.tv_nsec) == 80);
+LIBOS_STATIC_ASSERT(OE_OFFSETOF(struct stat, st_mtim.tv_sec) == 88);
+LIBOS_STATIC_ASSERT(OE_OFFSETOF(struct stat, st_mtim.tv_nsec) == 96);
+LIBOS_STATIC_ASSERT(OE_OFFSETOF(struct stat, st_ctim.tv_sec) == 104);
+LIBOS_STATIC_ASSERT(OE_OFFSETOF(struct stat, st_ctim.tv_nsec) == 112);
+
+LIBOS_WEAK
+long libos_tcall_fstat(int fd, struct stat* statbuf)
+{
+    (void)fd;
+    (void)statbuf;
     assert("sgx: unimplemented: implement in enclave" == NULL);
     return -ENOTSUP;
 }
@@ -711,6 +740,13 @@ long libos_tcall(long n, long params[6])
             }
 
             return _forward_syscall(n, x1, x2, x3, x4, x5, x6);
+        }
+        case SYS_fstat:
+        {
+            int fd = (int)x1;
+            struct stat* statbuf = (struct stat*)x2;
+
+            return libos_tcall_fstat(fd, statbuf);
         }
         case SYS_read:
         case SYS_write:

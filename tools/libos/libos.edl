@@ -19,6 +19,24 @@ enclave
        long tv_nsec;
     };
 
+    struct libos_stat
+    {
+        unsigned long st_dev;
+        unsigned long st_ino;
+        unsigned long st_nlink;
+        unsigned int st_mode;
+        unsigned int st_uid;
+        unsigned int st_gid;
+        unsigned int __st_pad0;
+        unsigned long st_rdev;
+        long st_size;
+        long st_blksize;
+        long st_blocks;
+        struct libos_timespec st_atim;
+        struct libos_timespec st_mtim;
+        struct libos_timespec st_ctim;
+    };
+
     trusted
     {
         public int libos_enter_ecall(
@@ -74,5 +92,8 @@ enclave
             [in, string] const char* path,
             [in, size=size] const void* data,
             size_t size);
+
+        /* returns -errno on failure */
+        long libos_fstat_ocall(long fd, [out] struct libos_stat* statbuf);
     };
 };

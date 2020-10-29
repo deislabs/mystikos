@@ -455,6 +455,7 @@ long libos_tcall(long n, long params[6])
 
             return _forward_syscall(n, x1, x2, x3, x4, x5, x6);
         }
+        case SYS_fstat:
         case SYS_read:
         case SYS_write:
         case SYS_close:
