@@ -24,6 +24,8 @@ oe_result_t oe_create_enclave(
     uint32_t setting_count,
     const oe_ocall_func_t* ocall_table,
     uint32_t ocall_count,
+    const oe_ecall_info_t* ecall_name_table,
+    uint32_t ecall_count,
     oe_enclave_t** enclave_out)
 {
     oe_result_t result = OE_OK;
@@ -108,7 +110,8 @@ done:
 
 oe_result_t oe_call_enclave_function(
     oe_enclave_t* enclave,
-    uint32_t function_id,
+    uint64_t* global_id,
+    const char* name,
     const void* input_buffer,
     size_t input_buffer_size,
     void* output_buffer,
