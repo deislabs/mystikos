@@ -1742,6 +1742,9 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "fd=%d statbuf=%p", fd, statbuf);
 
+            if (!libos_is_libos_fd(fd))
+                BREAK(_return(n, _forward_syscall(n, params)));
+
             BREAK(_return(n, libos_syscall_fstat(fd, statbuf)));
         }
         case SYS_lstat:

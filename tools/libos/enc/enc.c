@@ -659,6 +659,25 @@ long libos_tcall_export_file(const char* path, const void* data, size_t size)
     return retval;
 }
 
+/* overrides function by same name in SGX target */
+long libos_tcall_fstat(int fd, struct stat* statbuf)
+{
+    extern long oe_get_host_fd(int fd);
+    long retval = 0;
+    long hfd;
+
+    if (!statbuf)
+        return -EINVAL;
+
+    if ((hfd = oe_get_host_fd(fd)) < 0)
+        return -EINVAL;
+
+    if (libos_fstat_ocall(&retval, hfd, (struct libos_stat*)statbuf) != OE_OK)
+        return -EINVAL;
+
+    return retval;
+}
+
 OE_SET_ENCLAVE_SGX(
     1,        /* ProductID */
     1,        /* SecurityVersion */

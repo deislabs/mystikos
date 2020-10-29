@@ -247,3 +247,33 @@ int exec_action(int argc, const char* argv[], const char* envp[])
 
     return return_status;
 }
+
+OE_STATIC_ASSERT((sizeof(struct libos_stat) % 8) == 0);
+OE_STATIC_ASSERT(sizeof(struct libos_stat) == 120);
+OE_STATIC_ASSERT(OE_OFFSETOF(struct libos_stat, st_dev) == 0);
+OE_STATIC_ASSERT(OE_OFFSETOF(struct libos_stat, st_ino) == 8);
+OE_STATIC_ASSERT(OE_OFFSETOF(struct libos_stat, st_nlink) == 16);
+OE_STATIC_ASSERT(OE_OFFSETOF(struct libos_stat, st_mode) == 24);
+OE_STATIC_ASSERT(OE_OFFSETOF(struct libos_stat, st_uid) == 28);
+OE_STATIC_ASSERT(OE_OFFSETOF(struct libos_stat, st_gid) == 32);
+OE_STATIC_ASSERT(OE_OFFSETOF(struct libos_stat, st_rdev) == 40);
+OE_STATIC_ASSERT(OE_OFFSETOF(struct libos_stat, st_size) == 48);
+OE_STATIC_ASSERT(OE_OFFSETOF(struct libos_stat, st_blksize) == 56);
+OE_STATIC_ASSERT(OE_OFFSETOF(struct libos_stat, st_blocks) == 64);
+OE_STATIC_ASSERT(OE_OFFSETOF(struct libos_stat, st_atim.tv_sec) == 72);
+OE_STATIC_ASSERT(OE_OFFSETOF(struct libos_stat, st_atim.tv_nsec) == 80);
+OE_STATIC_ASSERT(OE_OFFSETOF(struct libos_stat, st_mtim.tv_sec) == 88);
+OE_STATIC_ASSERT(OE_OFFSETOF(struct libos_stat, st_mtim.tv_nsec) == 96);
+OE_STATIC_ASSERT(OE_OFFSETOF(struct libos_stat, st_ctim.tv_sec) == 104);
+OE_STATIC_ASSERT(OE_OFFSETOF(struct libos_stat, st_ctim.tv_nsec) == 112);
+
+long libos_fstat_ocall(long fd, struct libos_stat* statbuf)
+{
+    if (fd > INT_MAX)
+        return -EINVAL;
+
+    if (fstat((int)fd, (struct stat*)statbuf) != 0)
+        return -errno;
+
+    return 0;
+}
