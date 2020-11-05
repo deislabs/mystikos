@@ -47,6 +47,7 @@ tests/mount/appdir/
 samples/ssl/ramfs/
 solutions/attested_tls/ramfs/
 tests/libos/exec-package/appdir/
+tests/libos/exec-package/libos/
 tests/libos/exec-package/result
 tests/hello/appdir/
 tests/fstat/appdir/

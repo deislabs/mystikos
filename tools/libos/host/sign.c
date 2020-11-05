@@ -13,6 +13,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <libos/types.h>
 #include <unistd.h>
 #include "../config.h"
 #include "libos_u.h"
@@ -55,9 +56,11 @@ and <options> are one of:\n\
 
 static const char* help_present = NULL;
 static const char* platform = "OE";
+static const char* user_sign_dir = NULL;
 
 static const char* help_options[] = {"--help", "-h"};
 static const char* platform_options[] = {"--platform", "-p"};
+static const char* sign_dir_options[] = {"--ourdir", "-d"};
 
 static struct _option option_list[] = {
     // {names array}, names_count, num_extra_param, extra_param,
@@ -71,12 +74,17 @@ static struct _option option_list[] = {
      sizeof(platform_options) / sizeof(const char*),
      1,
      &platform,
+     0},
+    {sign_dir_options,
+     sizeof(sign_dir_options) / sizeof(const char*),
+     1,
+     &user_sign_dir,
      0}};
 static struct _options options = {option_list,
                                   sizeof(option_list) / sizeof(struct _option)};
 
 int copy_files_to_signing_directory(
-    const char* appname,
+    const char* sign_dir,
     const char* program_file,
     const char* rootfs_file,
     const char* config_file,
@@ -86,21 +94,10 @@ int copy_files_to_signing_directory(
     const mode_t mode = S_IROTH | S_IXOTH | S_IXGRP | S_IWGRP | S_IRGRP |
                         S_IXUSR | S_IWUSR | S_IRUSR;
 
-    // Make a directory for all the bits part of the signing
-    if (snprintf(scratch_path, PATH_MAX, "%s.signed", appname) >= PATH_MAX)
-    {
-        _err("File path to long: %s.signed", appname);
-    }
-
-    if ((mkdir(scratch_path, mode) != 0) && (errno != EEXIST))
-    {
-        _err("Failed to create directory \"%s\".", scratch_path);
-    }
-
     // create bin directory
-    if (snprintf(scratch_path, PATH_MAX, "%s.signed/bin", appname) >= PATH_MAX)
+    if (snprintf(scratch_path, PATH_MAX, "%s/bin", sign_dir) >= PATH_MAX)
     {
-        _err("File path to long: %s.signed/bin", appname);
+        _err("File path to long: %s/bin", sign_dir);
     }
     if ((mkdir(scratch_path, mode) != 0) && (errno != EEXIST))
     {
@@ -108,20 +105,19 @@ int copy_files_to_signing_directory(
     }
 
     // create an enclave directory
-    if (snprintf(scratch_path, PATH_MAX, "%s.signed/lib", appname) >= PATH_MAX)
+    if (snprintf(scratch_path, PATH_MAX, "%s/lib", sign_dir) >= PATH_MAX)
     {
-        _err("File path to long: %s.signed/lib", appname);
+        _err("File path to long: %s/lib", sign_dir);
     }
     if ((mkdir(scratch_path, mode) != 0) && (errno != EEXIST))
     {
         _err("Failed to create directory \"%s\".", scratch_path);
     }
     // create an enclave directory
-    if (snprintf(
-            scratch_path, PATH_MAX, "%s.signed/lib/openenclave", appname) >=
+    if (snprintf(scratch_path, PATH_MAX, "%s/lib/openenclave", sign_dir) >=
         PATH_MAX)
     {
-        _err("File path to long: %s.signed/lib/openenclave", appname);
+        _err("File path to long: %s/lib/openenclave", sign_dir);
     }
     if ((mkdir(scratch_path, mode) != 0) && (errno != EEXIST))
     {
@@ -129,11 +125,10 @@ int copy_files_to_signing_directory(
     }
 
     // Copy crt into signing enc directory
-    if (snprintf(
-            scratch_path, PATH_MAX, "%s.signed/lib/liboscrt.so", appname) >=
+    if (snprintf(scratch_path, PATH_MAX, "%s/lib/liboscrt.so", sign_dir) >=
         PATH_MAX)
     {
-        _err("File path to long: %s.signed/lib/liboscrt.so", appname);
+        _err("File path to long: %s/lib/liboscrt.so", sign_dir);
     }
     if (libos_copy_file(details->crt.path, scratch_path) != 0)
     {
@@ -142,11 +137,10 @@ int copy_files_to_signing_directory(
     }
 
     // Copy kernel into signing directory
-    if (snprintf(
-            scratch_path, PATH_MAX, "%s.signed/lib/liboskernel.so", appname) >=
+    if (snprintf(scratch_path, PATH_MAX, "%s/lib/liboskernel.so", sign_dir) >=
         PATH_MAX)
     {
-        _err("File path to long: %s.signed/lib/liboskernel.so", appname);
+        _err("File path to long: %s/lib/liboskernel.so", sign_dir);
     }
     if (libos_copy_file(details->kernel.path, scratch_path) != 0)
     {
@@ -155,10 +149,9 @@ int copy_files_to_signing_directory(
     }
 
     // Copy libos tool into signing directory
-    if (snprintf(scratch_path, PATH_MAX, "%s.signed/bin/libos", appname) >=
-        PATH_MAX)
+    if (snprintf(scratch_path, PATH_MAX, "%s/bin/libos", sign_dir) >= PATH_MAX)
     {
-        _err("File path to long: %s.signed/bin/libos", appname);
+        _err("File path to long: %s/bin/libos", sign_dir);
     }
     if (libos_copy_file(program_file, scratch_path) != 0)
     {
@@ -170,10 +163,9 @@ int copy_files_to_signing_directory(
     }
 
     // Copy rootfs into signing directory
-    if (snprintf(scratch_path, PATH_MAX, "%s.signed/rootfs", appname) >=
-        PATH_MAX)
+    if (snprintf(scratch_path, PATH_MAX, "%s/rootfs", sign_dir) >= PATH_MAX)
     {
-        _err("File path to long: %s.signed/rootfs", appname);
+        _err("File path to long: %s/rootfs", sign_dir);
     }
     if (libos_copy_file(rootfs_file, scratch_path) != 0)
     {
@@ -181,10 +173,10 @@ int copy_files_to_signing_directory(
     }
 
     // Copy configuration into signing directory
-    if (snprintf(scratch_path, PATH_MAX, "%s.signed/config.json", appname) >=
+    if (snprintf(scratch_path, PATH_MAX, "%s/config.json", sign_dir) >=
         PATH_MAX)
     {
-        _err("File path to long: %s.signed/rootfs", appname);
+        _err("File path to long: %s/config.json", sign_dir);
     }
     if (libos_copy_file(config_file, scratch_path) != 0)
     {
@@ -195,12 +187,10 @@ int copy_files_to_signing_directory(
     if (snprintf(
             scratch_path,
             PATH_MAX,
-            "%s.signed/lib/openenclave/libosenc.so",
-            appname) >= PATH_MAX)
+            "%s/lib/openenclave/libosenc.so",
+            sign_dir) >= PATH_MAX)
     {
-        _err(
-            "File path to long: %s.signed/lib/openenclave/libosenc.so",
-            appname);
+        _err("File path to long: %s/lib/openenclave/libosenc.so", sign_dir);
     }
     if (libos_copy_file(details->enc.path, scratch_path) != 0)
     {
@@ -211,7 +201,7 @@ int copy_files_to_signing_directory(
     return 0;
 }
 
-int add_config_to_enclave(const char* appname, const char* config_path)
+int add_config_to_enclave(const char* sign_dir, const char* config_path)
 {
     char scratch_path[PATH_MAX];
     elf_t elf = {0};
@@ -219,23 +209,23 @@ int add_config_to_enclave(const char* appname, const char* config_path)
     size_t config_size;
     if (libos_load_file(config_path, &config_data, &config_size) != 0)
     {
-        _err("File path to long: %s.signed/lib/openenclave/", appname);
+        _err("Failed to load config file %s", config_path);
     }
 
     if (snprintf(
             scratch_path,
             PATH_MAX,
-            "%s.signed/lib/openenclave/libosenc.so",
-            appname) >= PATH_MAX)
+            "%s/lib/openenclave/libosenc.so",
+            sign_dir) >= PATH_MAX)
     {
         _err(
-            "File path to long: %s.signed/lib/openenclave/libosenc.so",
-            appname);
+            "File path to long: %s/lib/openenclave/libosenc.so",
+            sign_dir);
     }
 
     if (elf_load(scratch_path, &elf) != 0)
     {
-        _err("Failed to load %s.signed/lib/openenclave/libosenc.so", appname);
+        _err("Failed to load ELF image %s", scratch_path);
     }
     if (elf_add_section(
             &elf, ".libosconfig", SHT_PROGBITS, config_data, config_size) != 0)
@@ -276,45 +266,24 @@ int _sign(int argc, const char* argv[])
     const char* rootfs_file = argv[2];
     const char* pem_file = argv[3];
     const char* config_file = argv[4];
-    const char* appname; // extracted from target
+    const char* target = NULL;  // Extracted from config file
+    const char* appname = NULL; // extracted from target
+    char temp_oeconfig_file[PATH_MAX];
+    char sign_dir[PATH_MAX];
+    config_parsed_data_t parsed_data = {0};
 
     // Load the configuration file and generate oe config file
-    char temp_oeconfig_file[] = "/tmp/oeconfig.conf.XXXXXX";
-    int fd;
-
-    if ((fd = mkstemp(temp_oeconfig_file)) < 0)
+    if (parse_config_from_file(config_file, &parsed_data) != 0)
     {
-        _err("Failed to generate temp file for oeconfig.conf");
-    }
-
-    config_parsed_data_t callback_data = {0};
-    callback_data.oe_config_out_file = fdopen(fd, "w");
-    if (callback_data.oe_config_out_file == NULL)
-    {
-        close(fd);
-        unlink(temp_oeconfig_file);
         _err(
-            "Failed to open OE config file for writing: %s",
-            temp_oeconfig_file);
-    }
-
-    if (parse_config_from_file(config_file, &callback_data) != 0)
-    {
-        fclose(callback_data.oe_config_out_file);
-        unlink(temp_oeconfig_file);
-        _err(
-            "Failed to generate OE configuration file from LibOS configuration "
+            "Failed to parse configuration file from LibOS configuration "
             "file %s",
             config_file);
     }
 
-    fclose(callback_data.oe_config_out_file);
-
-    const char* target; // Extracted from config file
-    target = callback_data.application_path;
+    target = parsed_data.application_path;
     if ((target == NULL) || (target[0] != '/'))
     {
-        unlink(temp_oeconfig_file);
         _err(
             "target in config file must be fully qualified path within rootfs");
     }
@@ -322,33 +291,81 @@ int _sign(int argc, const char* argv[])
     appname = strrchr(target, '/');
     if (appname == NULL)
     {
-        unlink(temp_oeconfig_file);
         _err("Failed to get appname from target path");
     }
     appname++;
     if (*appname == '\0')
     {
-        unlink(temp_oeconfig_file);
         _err("Failed to get appname from target path");
     }
 
+    // Do we need to create our own signing directory?
+    if (user_sign_dir == NULL)
+    {
+        if (snprintf(sign_dir, PATH_MAX, "%s.signed", appname) >= PATH_MAX)
+        {
+            _err("Signing directory path to long: %s.signed", appname);
+        }
+        if (mkdir(sign_dir, 0777) != 0)
+        {
+            _err("Failed to create signing directory: %s", sign_dir);
+        }
+    }
+    else
+    {
+        if (snprintf(sign_dir, PATH_MAX, "%s", user_sign_dir) >= PATH_MAX)
+        {
+            _err("Signing directory path to long: %s", sign_dir);
+        }
+    }
+
+    if (snprintf(
+            temp_oeconfig_file, PATH_MAX, "%s/oeconfig-XXXXXX", sign_dir) >=
+        PATH_MAX)
+    {
+        _err("OE config file path to long: %s/oeconfig-XXXXXX", sign_dir);
+    }
+
+    int fd = mkstemp(temp_oeconfig_file);
+    if (fd < 0)
+        _err("Failed to create temporary file for OE configuration");
+
+    // Need to calculate the OE user memory which in our case
+    // means enclave binary, the kernel and the rootfs.
+    // We know the size of the rootfs through inspection so we add a bit
+    // to cover the other required space.
+    struct stat st;
+    stat(rootfs_file, &st);
+
+    parsed_data.oe_num_heap_pages = (st.st_size + (5 * 1024 * 1024)) / LIBOS_PAGE_SIZE;
+
+    if (write_oe_config_fd(fd, &parsed_data) != 0)
+    {
+        unlink(temp_oeconfig_file);
+        close(fd);
+        _err(
+            "Failed to generate OE configuration file from LibOS configuration "
+            "file %s",
+            config_file);
+    }
+    close(fd);
+
     // Setup all the regions
     if ((details = create_region_details_from_files(
-             target, rootfs_file, config_file, callback_data.user_pages)) ==
-        NULL)
+             target, rootfs_file, config_file, parsed_data.user_pages)) == NULL)
     {
         unlink(temp_oeconfig_file);
         _err("Creating region data failed.");
     }
 
     if (copy_files_to_signing_directory(
-            appname, program_file, rootfs_file, config_file, details) != 0)
+            sign_dir, program_file, rootfs_file, config_file, details) != 0)
     {
         unlink(temp_oeconfig_file);
         _err("Failed to copy files to signing directory");
     }
 
-    if (add_config_to_enclave(appname, config_file) != 0)
+    if (add_config_to_enclave(sign_dir, config_file) != 0)
     {
         unlink(temp_oeconfig_file);
         _err("Failed to add configuration to enclave");
@@ -359,12 +376,11 @@ int _sign(int argc, const char* argv[])
     if (snprintf(
             scratch_path,
             PATH_MAX,
-            "%s.signed/lib/openenclave/libosenc.so",
-            appname) >= PATH_MAX)
+            "%s/lib/openenclave/libosenc.so",
+            sign_dir) >= PATH_MAX)
     {
-        _err(
-            "File path to long: %s.signed/lib/openenclave/libosenc.so",
-            appname);
+        unlink(temp_oeconfig_file);
+        _err("File path to long: %s/lib/openenclave/libosenc.so", sign_dir);
     }
 
     if (oesign(
@@ -396,12 +412,12 @@ int _sign(int argc, const char* argv[])
     if (snprintf(
             scratch_path2,
             PATH_MAX,
-            "%s.signed/lib/openenclave/libosenc.so.signed",
-            appname) >= PATH_MAX)
+            "%s/lib/openenclave/libosenc.so.signed",
+            sign_dir) >= PATH_MAX)
     {
         _err(
-            "File path to long: %s.signed/lib/openenclave/libosenc.so.signed",
-            appname);
+            "File path to long: %s/lib/openenclave/libosenc.so.signed",
+            sign_dir);
     }
     if (rename(scratch_path2, scratch_path) != 0)
     {

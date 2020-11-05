@@ -4,6 +4,7 @@
 #include <libos/round.h>
 #include <memory.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include "libos/file.h"
 
 #define CONFIG_RAISE(CONFIG_ERR)                            \
@@ -138,10 +139,6 @@ static json_result_t _json_read_callback(
 
     switch (reason)
     {
-        case JSON_REASON_NAME:
-        {
-            break;
-        }
         case JSON_REASON_VALUE:
         {
             // configuration schema version. This should be the first
@@ -166,51 +163,20 @@ static json_result_t _json_read_callback(
                     ((type == JSON_TYPE_INTEGER) && un->integer))
                 {
                     parsed_data->oe_debug = 1;
-                    if (parsed_data->oe_config_out_file)
-                        fprintf(parsed_data->oe_config_out_file, "Debug=1\n");
                 }
                 else if (
                     (type == JSON_TYPE_BOOLEAN) || (type == JSON_TYPE_INTEGER))
                 {
-                    parsed_data->oe_debug = 1;
-                    if (parsed_data->oe_config_out_file)
-                        fprintf(parsed_data->oe_config_out_file, "Debug=0\n");
+                    parsed_data->oe_debug = 0;
                 }
                 else
                     CONFIG_RAISE(JSON_TYPE_MISMATCH);
-            }
-            else if (json_match(parser, "KernelMemSize") == JSON_OK)
-            {
-                ret = _extract_mem_size(
-                    type, un, &parsed_data->oe_num_heap_pages);
-                if (ret == JSON_OK)
-                {
-                    if (parsed_data->oe_config_out_file)
-                    {
-                        fprintf(
-                            parsed_data->oe_config_out_file,
-                            "NumHeapPages=%ld\n",
-                            parsed_data->oe_num_heap_pages);
-                    }
-                }
-                else
-                    CONFIG_RAISE(ret);
             }
             else if (json_match(parser, "StackMemSize") == JSON_OK)
             {
                 ret = _extract_mem_size(
                     type, un, &parsed_data->oe_num_stack_pages);
-                if (ret == JSON_OK)
-                {
-                    if (parsed_data->oe_config_out_file)
-                    {
-                        fprintf(
-                            parsed_data->oe_config_out_file,
-                            "NumStackPages=%ld\n",
-                            parsed_data->oe_num_stack_pages);
-                    }
-                }
-                else
+                if (ret != JSON_OK)
                     CONFIG_RAISE(ret);
             }
             else if (json_match(parser, "NumUserThreads") == JSON_OK)
@@ -218,11 +184,6 @@ static json_result_t _json_read_callback(
                 if (type == JSON_TYPE_INTEGER)
                 {
                     parsed_data->oe_num_user_threads = (uint64_t)un->integer;
-                    if (parsed_data->oe_config_out_file)
-                        fprintf(
-                            parsed_data->oe_config_out_file,
-                            "NumTCS=%ld\n",
-                            un->integer);
                 }
                 else
                     CONFIG_RAISE(JSON_TYPE_MISMATCH);
@@ -232,11 +193,6 @@ static json_result_t _json_read_callback(
                 if (type == JSON_TYPE_INTEGER)
                 {
                     parsed_data->oe_product_id = (unsigned short)un->integer;
-                    if (parsed_data->oe_config_out_file)
-                        fprintf(
-                            parsed_data->oe_config_out_file,
-                            "ProductID=%ld\n",
-                            un->integer);
                 }
                 else
                     CONFIG_RAISE(JSON_TYPE_MISMATCH);
@@ -247,11 +203,6 @@ static json_result_t _json_read_callback(
                 {
                     parsed_data->oe_security_version =
                         (unsigned short)un->integer;
-                    if (parsed_data->oe_config_out_file)
-                        fprintf(
-                            parsed_data->oe_config_out_file,
-                            "SecurityVersion=%ld\n",
-                            un->integer);
                 }
                 else
                     CONFIG_RAISE(JSON_TYPE_MISMATCH);
@@ -316,24 +267,6 @@ static json_result_t _json_read_callback(
                 // Ignore everything we dont understand
             }
 
-            break;
-        }
-        case JSON_REASON_BEGIN_OBJECT:
-        {
-            // TODO! Make sure we process depth properly
-            break;
-        }
-        case JSON_REASON_END_OBJECT:
-        {
-            // TODO! Make sure we process depth properly
-            break;
-        }
-        case JSON_REASON_BEGIN_ARRAY:
-        {
-            break;
-        }
-        case JSON_REASON_END_ARRAY:
-        {
             break;
         }
         default:
@@ -421,4 +354,40 @@ int free_config(config_parsed_data_t* parsed_data)
         free(parsed_data->buffer);
     memset(parsed_data, 0, sizeof(*parsed_data));
     return 0;
+}
+
+int write_oe_config_fd(int fd, config_parsed_data_t* parsed_data)
+{
+    FILE* out_file = NULL;
+    int ret = -1;
+
+    out_file = fdopen(fd, "w");
+    if (out_file == NULL)
+    {
+        fprintf(stderr, "Failed to open OE config file for writing/n");
+        goto done;
+    }
+
+    if (parsed_data->oe_debug == 0)
+        fprintf(out_file, "Debug=0\n");
+    else
+        fprintf(out_file, "Debug=1\n");
+
+    fprintf(out_file, "NumHeapPages=%ld\n", parsed_data->oe_num_heap_pages);
+
+    fprintf(out_file, "NumStackPages=%ld\n", parsed_data->oe_num_stack_pages);
+
+    fprintf(out_file, "NumTCS=%ld\n", parsed_data->oe_num_user_threads);
+
+    fprintf(out_file, "ProductID=%d\n", parsed_data->oe_product_id);
+
+    fprintf(out_file, "SecurityVersion=%d\n", parsed_data->oe_security_version);
+
+    ret = 0;
+
+done:
+    if (out_file)
+        fclose(out_file);
+
+    return ret;
 }
