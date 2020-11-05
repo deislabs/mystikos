@@ -15,10 +15,14 @@ const char* set_program_file(const char* program);
 // gets the previously set program file
 const char* get_program_file();
 
-int format_libosenc(char* path, size_t size);
+const int format_libosenc(char* path, size_t size);
 
-int format_liboscrt(char* path, size_t size);
+const int format_liboscrt(char* path, size_t size);
 
-int format_liboskernel(char* path, size_t size);
+const int format_liboskernel(char* path, size_t size);
+
+// delete a directory and anything in it
+// NOTE: this is not thread safe!
+int remove_recursive(const char* path);
 
 #endif /* _HOST_LIBOS_UTILS_H */

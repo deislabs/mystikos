@@ -1,6 +1,8 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
+#define _XOPEN_SOURCE 500
 #include <errno.h>
+#include <ftw.h>
 #include <libgen.h>
 #include <libos/strings.h>
 #include <limits.h>
@@ -161,4 +163,25 @@ __attribute__((format(printf, 1, 2))) void _err(const char* fmt, ...)
     fprintf(stderr, "\n");
 
     exit(1);
+}
+
+int unlink_cb(
+    const char* fpath,
+    const struct stat* sb,
+    int typeflag,
+    struct FTW* ftwbuf)
+{
+    int rv = remove(fpath);
+
+    if (rv)
+        perror(fpath);
+
+    return rv;
+}
+
+// delete a directory and anything in it
+// NOTE: this is not thread safe!
+int remove_recursive(const char* path)
+{
+    return nftw(path, unlink_cb, 64, FTW_DEPTH | FTW_PHYS);
 }

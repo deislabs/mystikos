@@ -11,12 +11,9 @@ typedef struct _config_parsed_data_t
     // compatibility.
     char* configuration_version;
 
-    // File handle for writing OE based configuration for oesign
-    FILE* oe_config_out_file;
-
     // OE settings
     unsigned char oe_debug;
-    uint64_t oe_num_heap_pages; // NumKernelPages
+    uint64_t oe_num_heap_pages;
     uint64_t oe_num_stack_pages;
     uint64_t oe_num_user_threads;
     unsigned short oe_product_id;
@@ -46,5 +43,7 @@ int parse_config_from_buffer(
 int parse_config_from_file(
     const char* config_path,
     config_parsed_data_t* parsed_data);
+
+int write_oe_config_fd(int fd, config_parsed_data_t* parsed_data);
 
 int free_config(config_parsed_data_t* parsed_data);
