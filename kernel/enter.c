@@ -7,6 +7,7 @@
 #include <libos/eraise.h>
 #include <libos/errno.h>
 #include <libos/exec.h>
+#include <libos/fdtable.h>
 #include <libos/file.h>
 #include <libos/fsgs.h>
 #include <libos/initfini.h>
@@ -22,6 +23,7 @@
 #include <libos/syscall.h>
 #include <libos/thread.h>
 #include <libos/times.h>
+#include <libos/ttydev.h>
 
 static libos_fs_t* _fs;
 
@@ -52,6 +54,68 @@ void libos_dump_malloc_stats(void)
         libos_eprintf("kernel: memory used: %zu\n", stats.usage);
         libos_eprintf("kernel: peak memory used: %zu\n", stats.peak_usage);
     }
+}
+
+static int _setup_tty(void)
+{
+    int ret = 0;
+    libos_ttydev_t* ttydev = libos_ttydev_get();
+    libos_fdtable_t* fdtable = libos_fdtable_current();
+    libos_tty_t* stdin_tty;
+    libos_tty_t* stdout_tty;
+    libos_tty_t* stderr_tty;
+    int fd;
+
+    if ((*ttydev->td_create)(ttydev, STDIN_FILENO, &stdin_tty) != 0)
+    {
+        libos_eprintf("kernel: failed to create stdin device\n");
+        ERAISE(-EINVAL);
+    }
+
+    if ((*ttydev->td_create)(ttydev, STDOUT_FILENO, &stdout_tty) != 0)
+    {
+        libos_eprintf("kernel: failed to create stdout device\n");
+        ERAISE(-EINVAL);
+    }
+
+    if ((*ttydev->td_create)(ttydev, STDERR_FILENO, &stderr_tty) != 0)
+    {
+        libos_eprintf("kernel: failed to create stderr device\n");
+        ERAISE(-EINVAL);
+    }
+
+    ECHECK(
+        (fd = libos_fdtable_assign(
+             fdtable, LIBOS_FDTABLE_TYPE_TTY, ttydev, stdin_tty)));
+
+    if (fd != STDIN_FILENO)
+    {
+        libos_eprintf("kernel: failed to assign stdin fd\n");
+        ERAISE(-EINVAL);
+    }
+
+    ECHECK(
+        (fd = libos_fdtable_assign(
+             fdtable, LIBOS_FDTABLE_TYPE_TTY, ttydev, stdout_tty)));
+
+    if (fd != STDOUT_FILENO)
+    {
+        libos_eprintf("kernel: failed to assign stdout fd\n");
+        ERAISE(-EINVAL);
+    }
+
+    ECHECK(
+        (fd = libos_fdtable_assign(
+             fdtable, LIBOS_FDTABLE_TYPE_TTY, ttydev, stderr_tty)));
+
+    if (fd != STDERR_FILENO)
+    {
+        libos_eprintf("kernel: failed to assign stderr fd\n");
+        ERAISE(-EINVAL);
+    }
+
+done:
+    return ret;
 }
 
 static int _setup_ramfs(void)
@@ -263,6 +327,13 @@ int libos_enter_kernel(libos_kernel_args_t* args)
     ECHECK(_create_main_thread(args->event, &thread));
     __libos_main_thread = thread;
 
+    /* setup the TTY devices */
+    if (_setup_tty() != 0)
+    {
+        libos_eprintf("kernel: failed to setup of TTY devices\n");
+        ERAISE(-EINVAL);
+    }
+
     /* Unpack the CPIO from memory */
     if (libos_cpio_mem_unpack(
             args->rootfs_data, args->rootfs_size, "/", create_file) != 0)
@@ -294,7 +365,9 @@ int libos_enter_kernel(libos_kernel_args_t* args)
                 args->argc,
                 args->argv,
                 args->envc,
-                args->envp) != 0)
+                args->envp,
+                NULL,
+                NULL) != 0)
         {
             libos_panic("libos_exec() failed");
         }

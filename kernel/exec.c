@@ -804,10 +804,12 @@ int libos_exec(
     size_t argc,
     const char* argv[],
     size_t envc,
-    const char* envp[])
+    const char* envp[],
+    void (*callback)(void*), /* used to release caller-allocated parameters */
+    void* callback_arg)
 {
     int ret = 0;
-    void* stack;
+    void* stack = NULL;
     void* sp = NULL;
     const size_t stack_size = 64 * PAGE_SIZE;
     void* crt_data = NULL;
@@ -815,8 +817,12 @@ int libos_exec(
     const Elf64_Phdr* phdr = NULL;
     uint64_t* dynv = NULL;
     enter_t enter;
+    char* envp_buf[] = {NULL};
 
-    if (!thread || !crt_data_in || !crt_size || !argv || !envp)
+    if (!envp)
+        envp = (const char**)envp_buf;
+
+    if (!thread || !crt_data_in || !crt_size || !argv)
         ERAISE(-EINVAL);
 
     /* fail if image does not have a valid ELF header */
@@ -943,7 +949,7 @@ int libos_exec(
     thread->main.exec_crt_data = crt_data;
     thread->main.exec_crt_size = crt_size;
 
-    /* close file descriptors marked with O_CLOEXEC */
+    /* close file descriptors with FD_CLOEXEC flag */
     {
         libos_fdtable_t* fdtable = libos_fdtable_current();
         libos_fdtable_cloexec(fdtable);
@@ -951,6 +957,10 @@ int libos_exec(
 
     /* register the new CRT symbols with the debugger */
     ECHECK(_add_crt_symbols(crt_data, crt_size));
+
+    /* invoke the caller's callback here */
+    if (callback)
+        (*callback)(callback_arg);
 
     /* enter the C-runtime on the target thread descriptor */
     (*enter)(sp, dynv, libos_syscall);

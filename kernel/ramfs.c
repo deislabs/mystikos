@@ -4,6 +4,7 @@
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
 
 #include <libos/backtrace.h>
 #include <libos/buf.h>
@@ -308,6 +309,7 @@ struct libos_file
     size_t offset;      /* the current file offset (files) */
     uint32_t access;    /* (O_RDONLY | O_RDWR | O_WRONLY) */
     uint32_t operating; /* (O_RDONLY | O_RDWR | O_WRONLY) */
+    int fdflags;        /* file descriptor flags: FD_CLOEXEC */
     char realpath[PATH_MAX];
 };
 
@@ -1558,26 +1560,112 @@ static int _fs_fcntl(libos_fs_t* fs, libos_file_t* file, int cmd, long arg)
     if (!_ramfs_valid(ramfs) || !_file_valid(file))
         ERAISE(-EINVAL);
 
-    if (cmd == F_SETFD && arg == FD_CLOEXEC)
+    switch (cmd)
     {
-        /* FD_CLOEXEC can be safely ignored (fork/exec not supported) */
-        goto done;
+        case F_SETFD:
+        {
+            if (arg != FD_CLOEXEC && arg != 0)
+                ERAISE(-EINVAL);
+
+            file->fdflags = FD_CLOEXEC;
+            goto done;
+        }
+        case F_GETFD:
+        {
+            ret = file->fdflags;
+            goto done;
+        }
+        case F_GETFL:
+        {
+            ret = (int)(file->access | file->operating);
+            goto done;
+        }
+        case F_SETLKW:
+        {
+            /* ATTN: silently ignoring locking for now */
+            goto done;
+        }
+        default:
+        {
+            ERAISE(-ENOTSUP);
+        }
     }
 
-    /* Get the file-access-mode and the file-status-flags */
-    if (cmd == F_GETFL)
-    {
-        ret = (int)(file->access | file->operating);
-        goto done;
-    }
+done:
+    return ret;
+}
 
-    if (cmd == F_SETLKW)
-    {
-        /* ATTN: silently ignoring locking for now */
-        goto done;
-    }
+static int _fs_ioctl(
+    libos_fs_t* fs,
+    libos_file_t* file,
+    unsigned long request,
+    long arg)
+{
+    ramfs_t* ramfs = (ramfs_t*)fs;
+    int ret = 0;
+
+    (void)arg;
+
+    if (!_ramfs_valid(ramfs) || !_file_valid(file))
+        ERAISE(-EBADF);
+
+    if (request == TIOCGWINSZ)
+        ERAISE(-EINVAL);
 
     ERAISE(-ENOTSUP);
+
+done:
+
+    return ret;
+}
+
+static int _fs_dup(
+    libos_fs_t* fs,
+    const libos_file_t* file,
+    libos_file_t** file_out)
+{
+    ramfs_t* ramfs = (ramfs_t*)fs;
+    int ret = 0;
+    libos_file_t* new_file = NULL;
+
+    if (!_ramfs_valid(ramfs) || !_file_valid(file) || !file_out)
+        ERAISE(-EINVAL);
+
+    /* Create the new file object */
+    {
+        if (!(new_file = calloc(1, sizeof(libos_file_t))))
+            ERAISE(-ENOMEM);
+
+        *new_file = *file;
+        new_file->inode->nopens++;
+
+        /* file descriptor flags FD_CLOEXEC are not propagaged */
+        new_file->fdflags = 0;
+    }
+
+    *file_out = new_file;
+    new_file = NULL;
+
+done:
+
+    if (new_file)
+    {
+        memset(new_file, 0, sizeof(libos_file_t));
+        free(new_file);
+    }
+
+    return ret;
+}
+
+static int _fs_target_fd(libos_fs_t* fs, libos_file_t* file)
+{
+    int ret = 0;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+
+    if (!_ramfs_valid(ramfs) || !_file_valid(file))
+        ERAISE(-EINVAL);
+
+    ret = -ENOTSUP;
 
 done:
     return ret;
@@ -1597,7 +1685,10 @@ int libos_init_ramfs(libos_fs_t** fs_out)
             .fd_writev = (void*)_fs_writev,
             .fd_fstat = (void*)_fs_fstat,
             .fd_fcntl = (void*)_fs_fcntl,
+            .fd_ioctl = (void*)_fs_ioctl,
+            .fd_dup = (void*)_fs_dup,
             .fd_close = (void*)_fs_close,
+            .fd_target_fd = (void*)_fs_target_fd,
         },
         .fs_release = _fs_release,
         .fs_mount = _fs_mount,
@@ -1627,6 +1718,9 @@ int libos_init_ramfs(libos_fs_t** fs_out)
         .fs_symlink = _fs_symlink,
         .fs_realpath = _fs_realpath,
         .fs_fcntl = _fs_fcntl,
+        .fs_ioctl = _fs_ioctl,
+        .fs_dup = _fs_dup,
+        .fs_target_fd = _fs_target_fd,
     };
     // clang-format on
     inode_t* root_inode = NULL;

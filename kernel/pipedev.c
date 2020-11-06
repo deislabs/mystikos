@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <unistd.h>
 
 #include <libos/cond.h>
@@ -30,8 +31,9 @@ typedef struct pipe_impl
 struct libos_pipe
 {
     uint32_t magic;
-    int mode;  /* O_RDONLY or O_WRONLY */
-    int flags; /* (O_NONBLOCK | O_CLOEXEC | O_DIRECT) */
+    int mode;    /* O_RDONLY or O_WRONLY */
+    int flags;   /* (O_NONBLOCK | O_CLOEXEC | O_DIRECT) */
+    int fdflags; /* FD_CLOEXEC */
     pipe_impl_t* impl;
 };
 
@@ -50,27 +52,6 @@ static void _unlock(libos_pipe_t* pipe)
 {
     libos_assume(_valid_pipe(pipe));
     libos_mutex_unlock(&pipe->impl->mutex);
-}
-
-static ssize_t _get_total_iov_size(const struct iovec* iov, int iovcnt)
-{
-    ssize_t ret = 0;
-    ssize_t size = 0;
-
-    for (int i = 0; i < iovcnt; i++)
-    {
-        const struct iovec* v = &iov[i];
-
-        if (!v->iov_base && v->iov_len)
-            ERAISE(-EINVAL);
-
-        size += v->iov_len;
-    }
-
-    ret = size;
-
-done:
-    return ret;
 }
 
 static int _pd_pipe2(libos_pipedev_t* pipedev, libos_pipe_t* pipe[2], int flags)
@@ -102,6 +83,9 @@ static int _pd_pipe2(libos_pipedev_t* pipedev, libos_pipe_t* pipe[2], int flags)
         rdpipe->mode = O_RDONLY;
         rdpipe->flags = flags;
         rdpipe->impl = impl;
+
+        if (flags & O_CLOEXEC)
+            rdpipe->fdflags = FD_CLOEXEC;
     }
 
     /* Create the write pipe */
@@ -113,6 +97,9 @@ static int _pd_pipe2(libos_pipedev_t* pipedev, libos_pipe_t* pipe[2], int flags)
         wrpipe->mode = O_WRONLY;
         wrpipe->flags = flags;
         wrpipe->impl = impl;
+
+        if (flags & O_CLOEXEC)
+            wrpipe->fdflags = FD_CLOEXEC;
     }
 
     pipe[0] = rdpipe;
@@ -307,56 +294,14 @@ static ssize_t _pd_readv(
     int iovcnt)
 {
     ssize_t ret = 0;
-    ssize_t count = 0;
-    uint8_t scratch[SCRATCH_BUF_SIZE];
-    void* buf;
-    size_t r;
 
-    if (!_valid_pipe(pipe) || (!iov && iovcnt) || iovcnt < 0)
+    if (!pipedev || !_valid_pipe(pipe))
         ERAISE(-EINVAL);
 
-    /* Calculate the number of bytes to read */
-    ECHECK(count = _get_total_iov_size(iov, iovcnt));
-
-    /* suceed if zero bytes to read */
-    if (count == 0)
-        goto done;
-
-    /* choose between the scratch buffer and the dynamic buffer */
-    if ((size_t)count <= sizeof(scratch))
-        buf = scratch;
-    else if (!(buf = malloc(count)))
-        ERAISE(-ENOMEM);
-
-    /* Peform the read */
-    if ((r = _pd_read(pipedev, pipe, buf, count)) < 0)
-        ERAISE(r);
-
-    /* Copy the data back to the caller's buffer */
-    {
-        const uint8_t* ptr = buf;
-        size_t rem = r;
-
-        for (int i = 0; i < iovcnt && rem; i++)
-        {
-            const struct iovec* v = &iov[i];
-
-            if (v->iov_len)
-            {
-                size_t min = (rem < v->iov_len) ? rem : v->iov_len;
-                memcpy(v->iov_base, ptr, min);
-                ptr += min;
-                rem -= min;
-            }
-        }
-    }
-
-    ret = r;
+    ret = libos_fdops_readv(&pipedev->fdops, pipe, iov, iovcnt);
+    ECHECK(ret);
 
 done:
-
-    if (buf != scratch)
-        free(buf);
 
     return ret;
 }
@@ -368,53 +313,14 @@ static ssize_t _pd_writev(
     int iovcnt)
 {
     ssize_t ret = 0;
-    ssize_t count = 0;
-    uint8_t scratch[SCRATCH_BUF_SIZE];
-    void* buf;
-    size_t r;
 
-    if (!pipedev || !_valid_pipe(pipe) || (!iov && iovcnt) || iovcnt < 0)
+    if (!pipedev || !_valid_pipe(pipe))
         ERAISE(-EINVAL);
 
-    /* Calculate the number of bytes to write */
-    ECHECK(count = _get_total_iov_size(iov, iovcnt));
-
-    /* suceed if zero bytes to write */
-    if (count == 0)
-        goto done;
-
-    /* choose between the scratch buffer and the dynamic buffer */
-    if ((size_t)count <= sizeof(scratch))
-        buf = scratch;
-    else if (!(buf = malloc(count)))
-        ERAISE(-ENOMEM);
-
-    /* Copy the caller buffer onto the flat buffer */
-    {
-        uint8_t* ptr = buf;
-
-        for (int i = 0; i < iovcnt; i++)
-        {
-            const struct iovec* v = &iov[i];
-
-            if (v->iov_len)
-            {
-                memcpy(ptr, v->iov_base, v->iov_len);
-                ptr += v->iov_len;
-            }
-        }
-    }
-
-    /* Peform the write */
-    if ((r = _pd_write(pipedev, pipe, buf, count)) < 0)
-        ERAISE(r);
-
-    ret = r;
+    ret = libos_fdops_writev(&pipedev->fdops, pipe, iov, iovcnt);
+    ECHECK(ret);
 
 done:
-
-    if (buf != scratch)
-        free(buf);
 
     return ret;
 }
@@ -462,21 +368,95 @@ static int _pd_fcntl(
     if (!pipedev || !_valid_pipe(pipe))
         ERAISE(-EINVAL);
 
-    if (cmd == F_SETFD && arg == FD_CLOEXEC)
+    switch (cmd)
     {
-        pipe->flags |= O_CLOEXEC;
-        goto done;
-    }
+        case F_SETFD:
+        {
+            if (arg != FD_CLOEXEC && arg != 0)
+                ERAISE(-EINVAL);
 
-    if (cmd == F_GETFD)
-    {
-        ret = pipe->flags;
-        goto done;
+            pipe->fdflags = arg;
+            goto done;
+        }
+        case F_GETFD:
+        {
+            ret = pipe->fdflags;
+            goto done;
+        }
+        default:
+        {
+            ERAISE(-ENOTSUP);
+        }
     }
 
     ERAISE(-ENOTSUP);
 
 done:
+    return ret;
+}
+
+static int _pd_ioctl(
+    libos_pipedev_t* pipedev,
+    libos_pipe_t* pipe,
+    unsigned long request,
+    long arg)
+{
+    int ret = 0;
+
+    (void)arg;
+
+    if (!pipedev || !_valid_pipe(pipe))
+        ERAISE(-EBADF);
+
+    if (request == TIOCGWINSZ)
+        ERAISE(-EINVAL);
+
+    ERAISE(-ENOTSUP);
+
+done:
+
+    return ret;
+}
+
+static int _pd_dup(
+    libos_pipedev_t* pipedev,
+    const libos_pipe_t* pipe,
+    libos_pipe_t** pipe_out)
+{
+    int ret = 0;
+    libos_pipe_t* new_pipe = NULL;
+
+    if (pipe_out)
+        *pipe_out = NULL;
+
+    if (!pipedev || !_valid_pipe(pipe) || !pipe_out)
+        ERAISE(-EINVAL);
+
+    if (!(new_pipe = calloc(1, sizeof(libos_pipe_t))))
+        ERAISE(-ENOMEM);
+
+    *new_pipe = *pipe;
+
+    /* file descriptor flags are not propagated */
+    new_pipe->fdflags = 0;
+
+    _lock((libos_pipe_t*)new_pipe);
+
+    if (new_pipe->mode == O_RDONLY)
+        new_pipe->impl->nreaders++;
+    else
+        new_pipe->impl->nwriters++;
+
+    _unlock((libos_pipe_t*)new_pipe);
+
+    *pipe_out = new_pipe;
+    new_pipe = NULL;
+
+done:
+
+    if (new_pipe)
+        free(new_pipe);
+
     return ret;
 }
 
@@ -520,6 +500,19 @@ done:
     return ret;
 }
 
+static int _pd_target_fd(libos_pipedev_t* pipedev, libos_pipe_t* pipe)
+{
+    int ret = 0;
+
+    if (!pipedev || !_valid_pipe(pipe))
+        ERAISE(-EINVAL);
+
+    ret = -ENOTSUP;
+
+done:
+    return ret;
+}
+
 extern libos_pipedev_t* libos_pipedev_get(void)
 {
     // clang-format-off
@@ -531,7 +524,10 @@ extern libos_pipedev_t* libos_pipedev_get(void)
             .fd_writev = (void*)_pd_writev,
             .fd_fstat = (void*)_pd_fstat,
             .fd_fcntl = (void*)_pd_fcntl,
+            .fd_ioctl = (void*)_pd_ioctl,
+            .fd_dup = (void*)_pd_dup,
             .fd_close = (void*)_pd_close,
+            .fd_target_fd = (void*)_pd_target_fd,
         },
         .pd_pipe2 = _pd_pipe2,
         .pd_read = _pd_read,
@@ -540,48 +536,12 @@ extern libos_pipedev_t* libos_pipedev_get(void)
         .pd_writev = _pd_writev,
         .pd_fstat = _pd_fstat,
         .pd_fcntl = _pd_fcntl,
+        .pd_ioctl = _pd_ioctl,
+        .pd_dup = _pd_dup,
         .pd_close = _pd_close,
+        .pd_target_fd = _pd_target_fd,
     };
     // clang-format-on
 
     return &_pipdev;
-}
-
-int libos_pipedev_clone_pipe(
-    libos_pipedev_t* pipedev,
-    const libos_pipe_t* pipe,
-    libos_pipe_t** pipe_out)
-{
-    int ret = 0;
-    libos_pipe_t* new_pipe = NULL;
-
-    if (pipe_out)
-        *pipe_out = NULL;
-
-    if (!pipedev || !_valid_pipe(pipe) || !pipe_out)
-        ERAISE(-EINVAL);
-
-    if (!(new_pipe = calloc(1, sizeof(libos_pipe_t))))
-        ERAISE(-ENOMEM);
-
-    *new_pipe = *pipe;
-
-    _lock((libos_pipe_t*)new_pipe);
-
-    if (new_pipe->mode == O_RDONLY)
-        new_pipe->impl->nreaders++;
-    else
-        new_pipe->impl->nwriters++;
-
-    _unlock((libos_pipe_t*)new_pipe);
-
-    *pipe_out = new_pipe;
-    new_pipe = NULL;
-
-done:
-
-    if (new_pipe)
-        free(new_pipe);
-
-    return ret;
 }

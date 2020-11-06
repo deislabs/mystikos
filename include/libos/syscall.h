@@ -3,7 +3,9 @@
 
 #include <dirent.h>
 #include <fcntl.h>
+#include <poll.h>
 #include <stdbool.h>
+#include <sys/select.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/time.h>
@@ -212,5 +214,14 @@ long libos_syscall_wait4(
     int* wstatus,
     int options,
     struct rusage* rusage);
+
+long libos_syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout);
+
+long libos_syscall_select(
+    int nfds,
+    fd_set* readfds,
+    fd_set* writefds,
+    fd_set* exceptfds,
+    struct timeval* timeout);
 
 #endif /* _LIBOS_SYSCALL_H */

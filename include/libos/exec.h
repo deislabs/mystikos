@@ -17,6 +17,8 @@ int libos_exec(
     size_t argc,
     const char* argv[],
     size_t envc,
-    const char* envp[]);
+    const char* envp[],
+    void (*callback)(void*),
+    void* callback_arg);
 
 #endif /* _LIBOS_EXEC_H */

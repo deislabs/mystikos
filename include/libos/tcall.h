@@ -37,6 +37,7 @@ typedef enum libos_tcall_number
     LIBOS_TCALL_SET_TSD = 2069,
     LIBOS_TCALL_GET_TSD = 2070,
     LIBOS_TCALL_GET_ERRNO_LOCATION = 2071,
+    LIBOS_TCALL_READ_CONSOLE = 2072,
 } libos_tcall_number_t;
 
 long libos_tcall(long n, long params[6]);
@@ -52,6 +53,8 @@ long libos_tcall_vsnprintf(
     size_t size,
     const char* format,
     va_list ap);
+
+long libos_tcall_read_console(int fd, void* buf, size_t count);
 
 long libos_tcall_write_console(int fd, const void* buf, size_t count);
 

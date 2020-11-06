@@ -36,6 +36,9 @@ DIRS += libos
 DIRS += pipe
 DIRS += spawn
 DIRS += fstat
+DIRS += popen
+DIRS += system
+DIRS += ids
 
 REDEFINE_TESTS=1
 include $(TOP)/rules.mak
