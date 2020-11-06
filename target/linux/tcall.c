@@ -327,6 +327,25 @@ long libos_tcall(long n, long params[6])
 
             return (long)count;
         }
+        case LIBOS_TCALL_READ_CONSOLE:
+        {
+            int fd = (int)x1;
+            void* buf = (void*)x2;
+            size_t count = (size_t)x3;
+            FILE* stream = NULL;
+
+            if (fd == STDOUT_FILENO)
+                stream = stdout;
+            else if (fd == STDERR_FILENO)
+                stream = stderr;
+            else
+                return -EINVAL;
+
+            if (fread(buf, 1, count, stream) != count)
+                return -EIO;
+
+            return (long)count;
+        }
         case LIBOS_TCALL_CLOCK_GETTIME:
         {
             clockid_t clk_id = (clockid_t)x1;

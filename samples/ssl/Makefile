@@ -8,6 +8,12 @@ all: libos
 	sudo docker run --rm -v $(APPDIR):/appdir $(IMG) bash -c "make -C appdir"
 	$(BINDIR)/libos mkcpio appdir rootfs
 
+#OPTS=--strace
+
+# ATTN: does not work: do not use
+run-ssl: libos
+	$(LIBOS_EXEC) $(OPTS) rootfs /ssl
+
 run-server: libos
 	$(LIBOS_EXEC) $(OPTS) rootfs /ssl_server
 

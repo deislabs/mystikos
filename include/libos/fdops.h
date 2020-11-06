@@ -6,6 +6,7 @@
 
 #include <stddef.h>
 #include <sys/stat.h>
+#include <sys/uio.h>
 
 typedef struct libos_fdops libos_fdops_t;
 
@@ -32,7 +33,26 @@ struct libos_fdops
 
     int (*fd_fcntl)(void* device, void* object, int cmd, long arg);
 
+    int (
+        *fd_ioctl)(void* device, void* object, unsigned long request, long arg);
+
+    int (*fd_dup)(void* device, void* object, void** object_out);
+
     int (*fd_close)(void* device, void* object);
+
+    int (*fd_target_fd)(void* device, void* object);
 };
+
+ssize_t libos_fdops_readv(
+    libos_fdops_t* fdops,
+    void* object,
+    const struct iovec* iov,
+    int iovcnt);
+
+ssize_t libos_fdops_writev(
+    libos_fdops_t* fdops,
+    void* object,
+    const struct iovec* iov,
+    int iovcnt);
 
 #endif /* _LIBOS_FDOPS_H */

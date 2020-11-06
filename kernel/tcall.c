@@ -24,6 +24,15 @@ long libos_tcall_vsnprintf(
     return libos_tcall(LIBOS_TCALL_VSNPRINTF, params);
 }
 
+long libos_tcall_read_console(int fd, void* buf, size_t count)
+{
+    long params[6] = {0};
+    params[0] = (long)fd;
+    params[1] = (long)buf;
+    params[2] = (long)count;
+    return libos_tcall(LIBOS_TCALL_READ_CONSOLE, params);
+}
+
 long libos_tcall_write_console(int fd, const void* buf, size_t count)
 {
     long params[6] = {0};

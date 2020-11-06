@@ -249,6 +249,7 @@ long libos_syscall_wait4(
     struct rusage* rusage)
 {
     long ret = 0;
+    bool locked = false;
 
     if (rusage)
         ERAISE(-EINVAL);
@@ -261,11 +262,12 @@ long libos_syscall_wait4(
         ERAISE(-ENOTSUP);
 
     libos_mutex_lock(&_zombies_mutex);
+    locked = true;
 
     for (;;)
     {
         /* search the zombie list for a process thread */
-        for (libos_thread_t* p = _zombies; p;)
+        for (libos_thread_t* p = _zombies; p; p = p->next)
         {
             bool match = false;
 
@@ -302,7 +304,9 @@ long libos_syscall_wait4(
     }
 
 done:
-    libos_mutex_unlock(&_zombies_mutex);
+
+    if (locked)
+        libos_mutex_unlock(&_zombies_mutex);
 
     return ret;
 }

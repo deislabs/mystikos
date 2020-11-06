@@ -21,6 +21,7 @@ void test_cpuid()
 int main(int argc, const char* argv[])
 {
     test_cpuid();
+
     printf("=== passed test (%s)\n", argv[0]);
 
     return 0;

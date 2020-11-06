@@ -7,18 +7,24 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <unistd.h>
 
 #include <libos/defs.h>
+#include <libos/fs.h>
+#include <libos/pipedev.h>
+#include <libos/sockdev.h>
 #include <libos/spinlock.h>
+#include <libos/ttydev.h>
 
 #define FDTABLE_SIZE 1024
-#define FD_OFFSET 1024
 
 typedef enum libos_fdtable_type
 {
+    LIBOS_FDTABLE_TYPE_NONE,
+    LIBOS_FDTABLE_TYPE_TTY,
     LIBOS_FDTABLE_TYPE_FILE,
     LIBOS_FDTABLE_TYPE_PIPE,
-    LIBOS_FDTABLE_TYPE_SOCKET,
+    LIBOS_FDTABLE_TYPE_SOCK,
 } libos_fdtable_type_t;
 
 typedef struct libos_fdtable_entry
@@ -42,31 +48,83 @@ int libos_fdtable_free(libos_fdtable_t* fdtable);
 
 /* returns a file descriptor */
 int libos_fdtable_assign(
-    libos_fdtable_t* libos_fdtable,
+    libos_fdtable_t* fdtable,
     libos_fdtable_type_t type,
     void* device,
     void* object);
 
-int libos_fdtable_remove(libos_fdtable_t* libos_fdtable, int fd);
+typedef enum
+{
+    LIBOS_DUP, /* dup() */
+    LIBOS_DUP2, /* dup2() */
+    LIBOS_DUP3, /* dup3() */
+    LIBOS_DUPFD, /* fcntl(fd, DUPFD) */
+    LIBOS_DUPFD_CLOEXEC, /* fcntl(fd, DUPFD_CLOEXEC) */
+}
+libos_dup_type_t;
+
+int libos_fdtable_dup(
+    libos_fdtable_t* fdtable,
+    libos_dup_type_t duptype,
+    int oldfd,
+    int newfd,
+    int flags); /* O_CLOEXEC */
+
+int libos_fdtable_remove(libos_fdtable_t* fdtable, int fd);
 
 int libos_fdtable_get(
-    libos_fdtable_t* libos_fdtable,
+    libos_fdtable_t* fdtable,
     int fd,
     libos_fdtable_type_t type,
     void** device,
     void** object);
 
+LIBOS_INLINE int libos_fdtable_get_tty(
+    libos_fdtable_t* fdtable,
+    int fd,
+    libos_ttydev_t** device,
+    libos_tty_t** tty)
+{
+    const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_TTY;
+    return libos_fdtable_get(fdtable, fd, type, (void**)device, (void**)tty);
+}
+
+LIBOS_INLINE int libos_fdtable_get_sock(
+    libos_fdtable_t* fdtable,
+    int fd,
+    libos_sockdev_t** device,
+    libos_sock_t** sock)
+{
+    const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_SOCK;
+    return libos_fdtable_get(fdtable, fd, type, (void**)device, (void**)sock);
+}
+
+LIBOS_INLINE int libos_fdtable_get_file(
+    libos_fdtable_t* fdtable,
+    int fd,
+    libos_fs_t** fs,
+    libos_file_t** file)
+{
+    const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_FILE;
+    return libos_fdtable_get(fdtable, fd, type, (void**)fs, (void**)file);
+}
+
+LIBOS_INLINE int libos_fdtable_get_pipe(
+    libos_fdtable_t* fdtable,
+    int fd,
+    libos_pipedev_t** device,
+    libos_pipe_t** pipe)
+{
+    const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_PIPE;
+    return libos_fdtable_get(fdtable, fd, type, (void**)device, (void**)pipe);
+}
+
 int libos_fdtable_get_any(
-    libos_fdtable_t* libos_fdtable,
+    libos_fdtable_t* fdtable,
     int fd,
     libos_fdtable_type_t* type,
     void** device,
     void** object);
-
-LIBOS_INLINE bool libos_is_libos_fd(int fd)
-{
-    return fd >= FD_OFFSET && fd <= (FD_OFFSET + FDTABLE_SIZE);
-}
 
 /* get the fdtable for the current thread */
 libos_fdtable_t* libos_fdtable_current(void);

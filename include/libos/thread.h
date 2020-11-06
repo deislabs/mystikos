@@ -190,4 +190,6 @@ pid_t libos_generate_tid(void);
 
 pid_t libos_gettid(void);
 
+void libos_wait_on_child_processes(void);
+
 #endif /* _LIBOS_THREAD_H */

@@ -121,6 +121,21 @@ struct libos_fs
         size_t size);
 
     int (*fs_fcntl)(libos_fs_t* fs, libos_file_t* file, int cmd, long arg);
+
+    int (*fs_ioctl)(
+        libos_fs_t* fs,
+        libos_file_t* file,
+        unsigned long request,
+        long arg);
+
+    int (*fs_dup)(
+        libos_fs_t* fs,
+        const libos_file_t* file,
+        libos_file_t** file_out);
+
+    int (*fs_target_fd)(libos_fs_t* fs, libos_file_t* file);
 };
+
+int libos_remove_fd_link(libos_fs_t* fs, libos_file_t* file, int fd);
 
 #endif /* _LIBOS_FS_H */
