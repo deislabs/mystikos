@@ -39,6 +39,10 @@ DIRS += fstat
 DIRS += popen
 DIRS += system
 DIRS += ids
+DIRS += dup
+DIRS += sockets
+DIRS += sendmsg
+DIRS += poll
 
 REDEFINE_TESTS=1
 include $(TOP)/rules.mak
