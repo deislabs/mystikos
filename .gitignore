@@ -51,3 +51,8 @@ tests/libos/exec-package/libos/
 tests/libos/exec-package/result
 tests/hello/appdir/
 tests/fstat/appdir/
+tests/dup/appdir/
+tests/ids/appdir/
+tests/poll/appdir/
+tests/sendmsg/appdir/
+tests/sockets/appdir/

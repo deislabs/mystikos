@@ -3434,6 +3434,11 @@ long libos_syscall(long n, long params[6])
                 src_addr,
                 addrlen);
 
+#if 1
+            /* ATTN: this mitigation introduces a severe performance penalty */
+            // This mitigation works around a problem with a certain
+            // application that fails handle EGAIN. This should be removed
+            // when possible.
             for (size_t i = 0; i < 10; i++)
             {
                 ret = libos_syscall_recvfrom(
@@ -3453,6 +3458,7 @@ long libos_syscall(long n, long params[6])
                     continue;
                 }
             }
+#endif
 
             BREAK(_return(n, ret));
         }
