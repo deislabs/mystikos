@@ -277,3 +277,8 @@ long libos_fstat_ocall(long fd, struct libos_stat* statbuf)
 
     return 0;
 }
+
+long libos_sched_yield_ocall(void)
+{
+    return (sched_yield() == 0) ? 0 : -errno;
+}

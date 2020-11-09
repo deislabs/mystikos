@@ -288,6 +288,13 @@ long libos_tcall_fstat(int fd, struct stat* statbuf)
     return -ENOTSUP;
 }
 
+LIBOS_WEAK
+long libos_tcall_sched_yield(void)
+{
+    assert("sgx: unimplemented: implement in enclave" == NULL);
+    return -ENOTSUP;
+}
+
 /* forward system call to Open Enclave */
 static long
 _forward_syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6)
@@ -766,6 +773,10 @@ long libos_tcall(long n, long params[6])
             struct stat* statbuf = (struct stat*)x2;
 
             return libos_tcall_fstat(fd, statbuf);
+        }
+        case SYS_sched_yield:
+        {
+            return libos_tcall_sched_yield();
         }
         case SYS_read:
         case SYS_write:
