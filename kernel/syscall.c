@@ -29,6 +29,7 @@
 #include <libos/fdops.h>
 #include <libos/fdtable.h>
 #include <libos/file.h>
+#include <libos/fs.h>
 #include <libos/fsgs.h>
 #include <libos/gcov.h>
 #include <libos/id.h>
@@ -45,7 +46,6 @@
 #include <libos/printf.h>
 #include <libos/process.h>
 #include <libos/ramfs.h>
-#include <libos/fs.h>
 #include <libos/setjmp.h>
 #include <libos/spinlock.h>
 #include <libos/strings.h>
@@ -1625,6 +1625,12 @@ done:
     return ret;
 }
 
+long libos_syscall_nanosleep(const struct timespec* req, struct timespec* rem)
+{
+    long params[6] = {(long)req, (long)rem};
+    return _forward_syscall(SYS_nanosleep, params);
+}
+
 long libos_syscall_ret(long ret)
 {
     if (ret < 0)
@@ -2379,7 +2385,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "req=%p rem=%p", req, rem);
 
-            BREAK(_return(n, _forward_syscall(n, params)));
+            BREAK(_return(n, libos_syscall_nanosleep(req, rem)));
         }
         case SYS_getitimer:
             break;
