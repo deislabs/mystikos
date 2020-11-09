@@ -224,4 +224,6 @@ long libos_syscall_select(
     fd_set* exceptfds,
     struct timeval* timeout);
 
+long libos_syscall_nanosleep(const struct timespec* req, struct timespec* rem);
+
 #endif /* _LIBOS_SYSCALL_H */

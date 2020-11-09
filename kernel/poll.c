@@ -18,6 +18,31 @@ long libos_syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
     libos_fdtable_t* fdtable;
     long retval;
 
+    /* special case: if nfds is zero, then sleep */
+    if (nfds == 0)
+    {
+        if (timeout < 0)
+        {
+            /* sleep forever */
+            for (;;)
+            {
+                struct timespec ts;
+                ts.tv_sec = LONG_MAX;
+                ts.tv_nsec = LONG_MAX;
+                ECHECK(libos_syscall_nanosleep(&ts, NULL));
+            }
+        }
+        else
+        {
+            struct timespec ts;
+            ts.tv_sec = (uint64_t)timeout / 1000UL;
+            ts.tv_nsec = ((int64_t)timeout % 1000UL) * 1000000UL;
+            ret = libos_syscall_nanosleep(&ts, NULL);
+            ECHECK(ret);
+            goto done;
+        }
+    }
+
     if (!fds || nfds == 0)
         ERAISE(-EINVAL);
 
