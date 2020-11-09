@@ -1625,6 +1625,12 @@ done:
     return ret;
 }
 
+long libos_syscall_sched_yield(void)
+{
+    long params[] = { 0 };
+    return libos_tcall(SYS_sched_yield, params);
+}
+
 long libos_syscall_nanosleep(const struct timespec* req, struct timespec* rem)
 {
     long params[6] = {(long)req, (long)rem};
@@ -2293,7 +2299,11 @@ long libos_syscall(long n, long params[6])
             BREAK(_return(n, ret));
         }
         case SYS_sched_yield:
-            break;
+        {
+            _strace(n, NULL);
+
+            BREAK(_return(n, libos_syscall_sched_yield()));
+        }
         case SYS_mremap:
         {
             void* old_address = (void*)x1;

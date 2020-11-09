@@ -678,6 +678,16 @@ long libos_tcall_fstat(int fd, struct stat* statbuf)
     return retval;
 }
 
+long libos_tcall_sched_yield(void)
+{
+    long retval = 0;
+
+    if (libos_sched_yield_ocall(&retval) != OE_OK)
+        return -EINVAL;
+
+    return retval;
+}
+
 OE_SET_ENCLAVE_SGX(
     1,        /* ProductID */
     1,        /* SecurityVersion */

@@ -95,5 +95,8 @@ enclave
 
         /* returns -errno on failure */
         long libos_fstat_ocall(long fd, [out] struct libos_stat* statbuf);
+
+        /* returns -errno on failure */
+        long libos_sched_yield_ocall();
     };
 };

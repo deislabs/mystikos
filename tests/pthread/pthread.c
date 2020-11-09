@@ -143,7 +143,10 @@ static void* _test_mutex_thread(void* arg)
 
         /* introduce some delay to amplify the race condition */
         for (int j = 0; j < 10000; j++)
-            ;
+        {
+            if ((j % 3000) == 0)
+                sched_yield();
+        }
 
         _shared_integer = local + 1;
         pthread_mutex_unlock(&_mutex);
