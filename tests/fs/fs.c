@@ -1,6 +1,7 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
+#define _GNU_SOURCE
 #include <assert.h>
 #include <dirent.h>
 #include <fcntl.h>
@@ -11,6 +12,8 @@
 #include <sys/random.h>
 #include <sys/stat.h>
 #include <sys/uio.h>
+#include <sys/types.h>
+#include <sys/fcntl.h>
 #include <unistd.h>
 
 const char alpha[] = "abcdefghijklmnopqrstuvwxyz";
@@ -470,8 +473,73 @@ void test_pread_pwrite(void)
     _passed(__FUNCTION__);
 }
 
+static void test_fstatat(void)
+{
+    int dirfd;
+    const char path[] = "/fstatat/dir1/file1";
+
+    assert(chdir("/") == 0);
+
+    /* Create directories and files */
+    {
+        assert(mkdir("/fstatat", 0777) == 0);
+        assert(mkdir("/fstatat/dir1", 0777) == 0);
+
+        dirfd = open("/fstatat/dir1", O_RDONLY);
+        assert(dirfd >= 0);
+
+        int fd;
+        assert((fd = open(path, O_CREAT | O_WRONLY, 0666)) >= 0);
+        assert(write(fd, alpha, sizeof(alpha)) == sizeof(alpha));
+        assert(close(fd) == 0);
+
+    }
+
+    /* Test fstatat() with a relative path */
+    {
+        struct stat buf;
+        int r = fstatat(dirfd, "./file1", &buf, 0);
+        assert(r == 0);
+        assert(buf.st_size == sizeof(alpha));
+    }
+
+    /* Test fstatat() with an absoute path */
+    {
+        struct stat buf;
+        int r = fstatat(dirfd, "/fstatat/dir1/file1", &buf, 0);
+        assert(r == 0);
+        assert(buf.st_size == sizeof(alpha));
+    }
+
+    /* Test fstatat() with AT_FDCWD */
+    {
+        struct stat buf;
+        int r = fstatat(AT_FDCWD, "fstatat/dir1/file1", &buf, 0);
+        assert(r == 0);
+        assert(buf.st_size == sizeof(alpha));
+    }
+
+    /* Test fsstat() with an empty path */
+    {
+        /* reopen the file */
+        int filefd = open(path, O_RDONLY);
+        assert(filefd > 0);
+
+        struct stat buf;
+        int r = fstatat(filefd, "", &buf, AT_EMPTY_PATH);
+        assert(r == 0);
+        assert(buf.st_size == sizeof(alpha));
+        close(filefd);
+    }
+
+    close(dirfd);
+
+    _passed(__FUNCTION__);
+}
+
 int main(void)
 {
+    test_fstatat();
     test_readv();
     test_writev();
     test_stat();
