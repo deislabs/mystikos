@@ -11,5 +11,6 @@ DIRS += exec-signed-2
 endif
 
 DIRS += exec-package
+DIRS += dump-package
 
 include $(TOP)/rules.mak
