@@ -29,6 +29,7 @@
 #include "../shared.h"
 #include "cpio.h"
 #include "debug_image.h"
+#include "dump.h"
 #include "exec.h"
 #include "exec_linux.h"
 #include "libos_u.h"
@@ -314,6 +315,10 @@ int main(int argc, const char* argv[], const char* envp[])
     if (strcmp(argv[1], "exec") == 0 || strcmp(argv[1], "exec-sgx") == 0)
     {
         return exec_action(argc, argv, envp);
+    }
+    else if (strcmp(argv[1], "dump") == 0 || strcmp(argv[1], "dump-sgx") == 0)
+    {
+        return dump_action(argc, argv, envp);
     }
     else if (strcmp(argv[1], "exec-linux") == 0)
     {
