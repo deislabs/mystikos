@@ -3,14 +3,14 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <libgen.h>
+#include <libos/types.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <libos/types.h>
-#include <libgen.h>
 
 #include <libos/elf.h>
 #include <libos/getopt.h>
@@ -249,8 +249,7 @@ int _package(int argc, const char* argv[])
     if (snprintf(scratch_path, PATH_MAX, "%s/lib/liboscrt.so", tmp_dir) >=
         PATH_MAX)
     {
-        fprintf(
-            stderr, "File path to long: %s/lib/liboscrt.so", tmp_dir);
+        fprintf(stderr, "File path to long: %s/lib/liboscrt.so", tmp_dir);
         goto done;
     }
     if (_add_image_to_elf_section(&elf, scratch_path, ".liboscrt") != 0)
@@ -263,12 +262,10 @@ int _package(int argc, const char* argv[])
     }
 
     // Add the kernel to libos
-    if (snprintf(
-            scratch_path, PATH_MAX, "%s/lib/liboskernel.so", tmp_dir) >=
+    if (snprintf(scratch_path, PATH_MAX, "%s/lib/liboskernel.so", tmp_dir) >=
         PATH_MAX)
     {
-        fprintf(
-            stderr, "File path to long: %s/lib/liboskernel.so", tmp_dir);
+        fprintf(stderr, "File path to long: %s/lib/liboskernel.so", tmp_dir);
         goto done;
     }
     if (_add_image_to_elf_section(&elf, scratch_path, ".liboskernel") != 0)
@@ -301,24 +298,28 @@ int _package(int argc, const char* argv[])
     }
 
     // Save new elf image back
-    if (snprintf(
-            scratch_path, PATH_MAX, "%s/bin/%s", tmp_dir, appname) >=
+    if (snprintf(scratch_path, PATH_MAX, "%s/bin/%s", tmp_dir, appname) >=
         PATH_MAX)
     {
-        fprintf(
-            stderr, "File path to long: %s/bin/%s", tmp_dir, appname);
+        fprintf(stderr, "File path to long: %s/bin/%s", tmp_dir, appname);
         goto done;
     }
     int fd = open(scratch_path, O_WRONLY | O_CREAT | O_TRUNC, 0774);
     if (fd == 0)
     {
-        fprintf(stderr, "Failed to epn file to write final binary image back to %s", scratch_path);
+        fprintf(
+            stderr,
+            "Failed to epn file to write final binary image back to %s",
+            scratch_path);
         goto done;
     }
     if (libos_write_file_fd(fd, elf.data, elf.size) != 0)
     {
         close(fd);
-        fprintf(stderr, "File to save final binary image back to: %s", scratch_path);
+        fprintf(
+            stderr,
+            "File to save final binary image back to: %s",
+            scratch_path);
         goto done;
     }
     close(fd);
@@ -331,26 +332,19 @@ int _package(int argc, const char* argv[])
     // Create destination directory libos/bin
     if ((mkdir("libos", 0775) != 0) && (errno != EEXIST))
     {
-        fprintf(
-            stderr,
-            "Failed to make destination directory libos\n");
+        fprintf(stderr, "Failed to make destination directory libos\n");
         goto done;
     }
     if ((mkdir("libos/bin", 0775) != 0) && (errno != EEXIST))
     {
-        fprintf(
-            stderr,
-            "Failed to make destination directory libos/bin\n");
+        fprintf(stderr, "Failed to make destination directory libos/bin\n");
         goto done;
     }
 
     // Destination filename
-    if (snprintf(
-            scratch_path, PATH_MAX, "libos/bin/%s", appname) >=
-        PATH_MAX)
+    if (snprintf(scratch_path, PATH_MAX, "libos/bin/%s", appname) >= PATH_MAX)
     {
-        fprintf(
-            stderr, "File path to long: libos/bin/%s", appname);
+        fprintf(stderr, "File path to long: libos/bin/%s", appname);
         goto done;
     }
 
@@ -407,8 +401,8 @@ int _exec_package(
     const char* executable)
 {
     char full_app_path[PATH_MAX];
-    char *app_dir = NULL;
-    char *app_name = NULL;
+    char* app_dir = NULL;
+    char* app_name = NULL;
     char scratch_path[PATH_MAX];
     const region_details* details = NULL;
     unsigned char* buffer = NULL;
@@ -421,7 +415,7 @@ int _exec_package(
     char* config_buffer = NULL;
     size_t config_size = 0;
     char unpack_dir_template[] = "/tmp/libosXXXXXX";
-    char *unpack_dir = NULL;
+    char* unpack_dir = NULL;
     int ret = -1;
     const char** exec_args = NULL;
 
@@ -470,9 +464,11 @@ int _exec_package(
         fprintf(stderr, "Failed to create directory \"%s\".\n", scratch_path);
         goto done;
     }
-    if (snprintf(scratch_path, PATH_MAX, "%s/lib/openenclave", unpack_dir) >= PATH_MAX)
+    if (snprintf(scratch_path, PATH_MAX, "%s/lib/openenclave", unpack_dir) >=
+        PATH_MAX)
     {
-        fprintf(stderr, "File path %s/lib/openenclave is too long\n", unpack_dir);
+        fprintf(
+            stderr, "File path %s/lib/openenclave is too long\n", unpack_dir);
         goto done;
     }
     if ((mkdir(scratch_path, DIR_MODE) != 0) && (errno != EEXIST))
@@ -490,14 +486,20 @@ int _exec_package(
     elf_loaded = 1;
 
     // copy executable to unpack directory where we will run it from
-    if (snprintf(scratch_path, PATH_MAX, "%s/bin/%s", unpack_dir, app_name) >= PATH_MAX)
+    if (snprintf(scratch_path, PATH_MAX, "%s/bin/%s", unpack_dir, app_name) >=
+        PATH_MAX)
     {
-        fprintf(stderr, "File path %s/bin/%s is too long\n", unpack_dir, app_name);
+        fprintf(
+            stderr, "File path %s/bin/%s is too long\n", unpack_dir, app_name);
         goto done;
     }
     if (libos_copy_file(get_program_file(), scratch_path) < 0)
     {
-        fprintf(stderr, "Failed to copy %s to %s\n", get_program_file(), scratch_path);
+        fprintf(
+            stderr,
+            "Failed to copy %s to %s\n",
+            get_program_file(),
+            scratch_path);
         goto done;
     }
 
@@ -508,13 +510,15 @@ int _exec_package(
             "%s/lib/openenclave/libosenc.so",
             unpack_dir) >= PATH_MAX)
     {
-        fprintf(stderr, "File path %s/lib/openenclave/ is too long\n", unpack_dir);
+        fprintf(
+            stderr, "File path %s/lib/openenclave/ is too long\n", unpack_dir);
         goto done;
     }
     if (elf_find_section(
             &libos_elf.elf, ".libosenc", &buffer, &buffer_length) != 0)
     {
-        fprintf(stderr, "Failed to extract enclave from %s\n", get_program_file());
+        fprintf(
+            stderr, "Failed to extract enclave from %s\n", get_program_file());
         goto done;
     }
 
@@ -530,7 +534,8 @@ int _exec_package(
             (unsigned char**)&config_buffer,
             &config_size) != 0)
     {
-        fprintf(stderr, "Failed to extract config from %s\n", get_program_file());
+        fprintf(
+            stderr, "Failed to extract config from %s\n", get_program_file());
         goto done;
     }
     elf_loaded = 1;
@@ -551,7 +556,8 @@ int _exec_package(
     }
     if (parsed_data.application_path == NULL)
     {
-        fprintf(stderr,
+        fprintf(
+            stderr,
             "No target filename in configuration. This should be the fully "
             "qualified path to the executable within the "
             "%s directory, but should be relative to this directory\n",
@@ -566,7 +572,8 @@ int _exec_package(
         goto done;
     }
 
-    parsed_data.oe_num_heap_pages = (details->rootfs.buffer_size + (5 * 1024 * 1024)) / LIBOS_PAGE_SIZE; 
+    parsed_data.oe_num_heap_pages =
+        (details->rootfs.buffer_size + (5 * 1024 * 1024)) / LIBOS_PAGE_SIZE;
 
     // build argv with application name. If we are allowed command line args
     // then append them also
@@ -598,7 +605,8 @@ int _exec_package(
             "%s/lib/openenclave/libosenc.so",
             unpack_dir) >= PATH_MAX)
     {
-        fprintf(stderr, "File path %s/lib/openenclave/ is too long\n", unpack_dir);
+        fprintf(
+            stderr, "File path %s/lib/openenclave/ is too long\n", unpack_dir);
         goto done;
     }
 

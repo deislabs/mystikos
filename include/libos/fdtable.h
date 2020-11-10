@@ -55,13 +55,12 @@ int libos_fdtable_assign(
 
 typedef enum
 {
-    LIBOS_DUP, /* dup() */
-    LIBOS_DUP2, /* dup2() */
-    LIBOS_DUP3, /* dup3() */
-    LIBOS_DUPFD, /* fcntl(fd, DUPFD) */
+    LIBOS_DUP,           /* dup() */
+    LIBOS_DUP2,          /* dup2() */
+    LIBOS_DUP3,          /* dup3() */
+    LIBOS_DUPFD,         /* fcntl(fd, DUPFD) */
     LIBOS_DUPFD_CLOEXEC, /* fcntl(fd, DUPFD_CLOEXEC) */
-}
-libos_dup_type_t;
+} libos_dup_type_t;
 
 int libos_fdtable_dup(
     libos_fdtable_t* fdtable,

@@ -43,6 +43,8 @@ DIRS += dup
 DIRS += sockets
 DIRS += sendmsg
 DIRS += poll
+DIRS += clock
+DIRS += sysinfo
 
 REDEFINE_TESTS=1
 include $(TOP)/rules.mak

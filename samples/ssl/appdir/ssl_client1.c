@@ -213,8 +213,8 @@ int main(void)
 
     while ((ret = mbedtls_ssl_handshake(&ssl)) != 0)
     {
-mbedtls_printf("  Inside...................\n");
-fflush(stdout);
+        mbedtls_printf("  Inside...................\n");
+        fflush(stdout);
         if (ret != MBEDTLS_ERR_SSL_WANT_READ &&
             ret != MBEDTLS_ERR_SSL_WANT_WRITE)
         {
@@ -225,7 +225,7 @@ fflush(stdout);
     }
 
     mbedtls_printf(" ok\n");
-fflush(stdout);
+    fflush(stdout);
 
     /*
      * 5. Verify the server certificate
@@ -321,7 +321,7 @@ exit:
     mbedtls_net_free(&server_fd);
 
     mbedtls_x509_crt_free(&cacert);
-    //mbedtls_ssl_free(&ssl);
+    // mbedtls_ssl_free(&ssl);
     mbedtls_ssl_config_free(&conf);
     mbedtls_ctr_drbg_free(&ctr_drbg);
     mbedtls_entropy_free(&entropy);

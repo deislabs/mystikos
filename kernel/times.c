@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <libos/clock.h>
+#include <libos/eraise.h>
 #include <libos/syscall.h>
 
 static struct timespec _start_tp = {0};
@@ -63,4 +64,24 @@ long libos_times_system_time()
 long libos_times_user_time()
 {
     return _user_time_elapsed;
+}
+
+long libos_times_uptime()
+{
+    long ret = 0;
+
+    if (is_zero_tp(&_start_tp))
+        ERAISE(-EINVAL);
+
+    struct timespec tp_now = {0};
+    ECHECK(libos_syscall_clock_gettime(CLOCK_BOOTTIME, &tp_now));
+
+    long lapsed = (tp_now.tv_sec - _start_tp.tv_sec) * NANO_IN_SECOND +
+                  (tp_now.tv_nsec - _start_tp.tv_nsec);
+    ECHECK(lapsed);
+
+    ret = lapsed;
+
+done:
+    return ret;
 }

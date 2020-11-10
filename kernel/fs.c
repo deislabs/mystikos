@@ -1,7 +1,7 @@
 #include <limits.h>
 
-#include <libos/fs.h>
 #include <libos/eraise.h>
+#include <libos/fs.h>
 #include <libos/mount.h>
 
 int libos_remove_fd_link(libos_fs_t* fs, libos_file_t* file, int fd)

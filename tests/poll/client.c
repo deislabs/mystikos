@@ -1,22 +1,20 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
+#include <assert.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <netinet/in.h>
+#include <poll.h>
+#include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <string.h>
-#include <assert.h>
-#include <stdio.h>
-#include <string.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <pthread.h>
-#include <unistd.h>
-#include <time.h>
-#include <poll.h>
-#include <fcntl.h>
-#include <errno.h>
 #include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
 #include <sys/time.h>
+#include <time.h>
+#include <unistd.h>
 
 void run_client(uint16_t port)
 {

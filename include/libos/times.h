@@ -18,4 +18,6 @@ long libos_times_system_time();
 /* Return the time (in nanoseconds) spent on user space execution */
 long libos_times_user_time();
 
+/* Return nanoseconds since startup */
+long libos_times_uptime();
 #endif /* _LIBOS_TIMES_H */
