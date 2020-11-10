@@ -868,6 +868,86 @@ done:
     return ret;
 }
 
+long libos_syscall_fstatat(
+    int dirfd,
+    const char* pathname,
+    struct stat* statbuf,
+    int flags)
+{
+    long ret = 0;
+
+    if (!pathname || !statbuf)
+        ERAISE(-EINVAL);
+
+    /* If pathname is absolute, then ignore dirfd */
+    if (*pathname == '/' || dirfd == AT_FDCWD)
+    {
+        if (flags & AT_SYMLINK_NOFOLLOW)
+        {
+            ECHECK(libos_syscall_lstat(pathname, statbuf));
+            goto done;
+        }
+        else
+        {
+            ECHECK(libos_syscall_stat(pathname, statbuf));
+            goto done;
+        }
+    }
+    else if (*pathname == '\0')
+    {
+        if (!(flags & AT_EMPTY_PATH))
+            ERAISE(-EINVAL);
+
+        if (flags & AT_SYMLINK_NOFOLLOW)
+        {
+            libos_fdtable_t* fdtable = libos_fdtable_current();
+            libos_fs_t* fs;
+            libos_file_t* file;
+            char realpath[PATH_MAX];
+
+            ECHECK(libos_fdtable_get_file(fdtable, dirfd, &fs, &file));
+            ECHECK((*fs->fs_realpath)(fs, file, realpath, sizeof(realpath)));
+            ECHECK(libos_syscall_lstat(realpath, statbuf));
+            goto done;
+        }
+        else
+        {
+            ECHECK(libos_syscall_fstat(dirfd, statbuf));
+            goto done;
+        }
+    }
+    else
+    {
+        libos_fdtable_t* fdtable = libos_fdtable_current();
+        libos_fs_t* fs;
+        libos_file_t* file;
+        char dirpath[PATH_MAX];
+        char path[PATH_MAX];
+        int n;
+
+        ECHECK(libos_fdtable_get_file(fdtable, dirfd, &fs, &file));
+        ECHECK((*fs->fs_realpath)(fs, file, dirpath, sizeof(dirpath)));
+
+        n = snprintf(path, sizeof(path), "%s/%s", dirpath, pathname);
+        if ((size_t)n >= sizeof(path))
+            ERAISE(-ENAMETOOLONG);
+
+        if (flags & AT_SYMLINK_NOFOLLOW)
+        {
+            ECHECK(libos_syscall_lstat(path, statbuf));
+            goto done;
+        }
+        else
+        {
+            ECHECK(libos_syscall_stat(path, statbuf));
+            goto done;
+        }
+    }
+
+done:
+    return ret;
+}
+
 long libos_syscall_mkdir(const char* pathname, mode_t mode)
 {
     long ret = 0;
@@ -1627,7 +1707,7 @@ done:
 
 long libos_syscall_sched_yield(void)
 {
-    long params[] = { 0 };
+    long params[] = {0};
     return libos_tcall(SYS_sched_yield, params);
 }
 
@@ -3217,7 +3297,20 @@ long libos_syscall(long n, long params[6])
         case SYS_futimesat:
             break;
         case SYS_newfstatat:
+        {
+            int dirfd = (int)x1;
+            const char* pathname = (const char*)x2;
+            struct stat* statbuf = (struct stat*)x3;
+            int flags = (int)x4;
+            long ret;
+
+            _strace(n, "dirfd=%d pathname=%s statbuf=%p flags=%d",
+                dirfd, pathname, statbuf, flags);
+
+            ret = libos_syscall_fstatat(dirfd, pathname, statbuf, flags);
+            BREAK(_return(n, ret));
             break;
+        }
         case SYS_unlinkat:
             break;
         case SYS_renameat:
