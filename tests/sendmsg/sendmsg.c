@@ -2,15 +2,15 @@
 // Licensed under the MIT License.
 
 #include <assert.h>
+#include <errno.h>
+#include <netinet/in.h>
+#include <pthread.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include <netinet/in.h>
 #include <sys/socket.h>
-#include <pthread.h>
-#include <unistd.h>
 #include <time.h>
-#include <stdbool.h>
-#include <errno.h>
+#include <unistd.h>
 
 static const uint16_t port = 12345;
 

@@ -11,6 +11,7 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/sysinfo.h>
 #include <sys/times.h>
 #include <sys/types.h>
 #include <sys/uio.h>
@@ -1716,6 +1717,37 @@ long libos_syscall_nanosleep(const struct timespec* req, struct timespec* rem)
     long params[6] = {(long)req, (long)rem};
     return _forward_syscall(SYS_nanosleep, params);
 }
+#define NANO_IN_SECOND 1000000000
+
+long libos_syscall_sysinfo(struct sysinfo* info)
+{
+    long ret = 0;
+    long uptime_in_nsecs;
+    size_t totalram;
+    size_t freeram;
+
+    if (!info)
+        ERAISE(-EINVAL);
+
+    ECHECK(libos_get_total_ram(&totalram));
+    ECHECK(libos_get_free_ram(&freeram));
+
+    memset(info, 0, sizeof(struct sysinfo));
+    info->totalram = totalram;
+    info->freeram = freeram;
+    info->mem_unit = 1;
+
+    ECHECK((info->procs = libos_get_num_threads()));
+
+    ECHECK((uptime_in_nsecs = libos_times_uptime()));
+    info->uptime = uptime_in_nsecs / NANO_IN_SECOND;
+
+    // loads[3], sharedram, bufferram, totalswap,
+    // freeswap, totalhigh and freehigh are not supported.
+
+done:
+    return ret;
+}
 
 long libos_syscall_ret(long ret)
 {
@@ -2774,7 +2806,12 @@ long libos_syscall(long n, long params[6])
         case SYS_getrusage:
             break;
         case SYS_sysinfo:
-            break;
+        {
+            struct sysinfo* info = (struct sysinfo*)x1;
+            _strace(n, "info=%p", info);
+            long ret = libos_syscall_sysinfo(info);
+            BREAK(_return(n, ret));
+        }
         case SYS_times:
         {
             struct tms* tm = (struct tms*)x1;

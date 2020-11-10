@@ -6,6 +6,16 @@
 #include <time.h>
 
 #define NANO_IN_SECOND 1000000000
+#define SGX_TARGET "sgx"
+
+static int is_sgx_target()
+{
+    char* target = getenv("TARGET");
+    if (target == NULL || !strcmp(SGX_TARGET, target))
+        return 1;
+    else
+        return 0;
+}
 
 static int test_clock_get_time(long reference)
 {
@@ -38,18 +48,36 @@ static int test_clock_get_time(long reference)
         }
     }
 
-    // No support for the following clock ids, yet.
-    assert(clock_gettime(CLOCK_REALTIME_ALARM, &tp) == -1);
-    assert(clock_gettime(CLOCK_REALTIME_COARSE, &tp) == -1);
-    assert(clock_gettime(CLOCK_TAI, &tp) == -1);
-    assert(clock_gettime(CLOCK_MONOTONIC_COARSE, &tp) == -1);
-    assert(clock_gettime(CLOCK_MONOTONIC_RAW, &tp) == -1);
-    assert(clock_gettime(CLOCK_BOOTTIME, &tp) == -1);
-    assert(clock_gettime(CLOCK_BOOTTIME_ALARM, &tp) == -1);
-    assert(clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &tp) == -1);
-    assert(clock_gettime(CLOCK_THREAD_CPUTIME_ID, &tp) == -1);
+    // Check if montonic clock is close to boottime clock
+    struct timespec mono_tp = {0};
+    struct timespec boot_tp = {0};
+    assert(clock_gettime(CLOCK_MONOTONIC, &mono_tp) == 0);
+    assert(clock_gettime(CLOCK_BOOTTIME, &boot_tp) == 0);
+    long mono_timestamp = mono_tp.tv_sec * NANO_IN_SECOND + mono_tp.tv_nsec;
+    long boot_timestamp = boot_tp.tv_sec * NANO_IN_SECOND + boot_tp.tv_nsec;
+    long mono_boot_diff = boot_timestamp - mono_timestamp;
+    long mono_boot_tolerance = 50000; // in nanoseconds
+    printf(
+        "Diff between mono and boot = %ld ns (expected  %ld ns)\n",
+        mono_boot_diff,
+        mono_boot_tolerance);
+    assert(mono_boot_diff >= 0 && mono_boot_diff < mono_boot_tolerance);
 
-    // ATTN: compare realtime timestamp with a reply from icanhazepoch.com
+    // Check coarse clocks
+    assert(clock_gettime(CLOCK_REALTIME_COARSE, &tp) == 0);
+    assert(clock_gettime(CLOCK_MONOTONIC_COARSE, &tp) == 0);
+
+    if (is_sgx_target())
+    {
+        // No support for the following clock ids, yet.
+        assert(clock_gettime(CLOCK_REALTIME_ALARM, &tp) == -1);
+        assert(clock_gettime(CLOCK_TAI, &tp) == -1);
+        assert(clock_gettime(CLOCK_MONOTONIC_RAW, &tp) == -1);
+        assert(clock_gettime(CLOCK_BOOTTIME_ALARM, &tp) == -1);
+        assert(clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &tp) == -1);
+        assert(clock_gettime(CLOCK_THREAD_CPUTIME_ID, &tp) == -1);
+        // ATTN: compare realtime timestamp with a reply from icanhazepoch.com
+    }
 
     return 0;
 }
@@ -68,10 +96,14 @@ static int test_clock_set_time()
     update_tp.tv_sec -= adjust; // move clock back by `adjust` seconds
     assert(clock_settime(CLOCK_REALTIME, &update_tp) == 0);
 
-    // Validate we can't set the realtime clock backward
+    // Validate we can't set the realtime clock backward in the sgx target
+    // As only the sgx target maintains the monotonicity of the realtime clock
     assert(clock_gettime(CLOCK_REALTIME, &tp1) == 0);
     timestamp1 = tp1.tv_sec * NANO_IN_SECOND + tp1.tv_nsec;
-    assert(timestamp1 > timestamp0);
+    if (is_sgx_target())
+    {
+        assert(timestamp1 > timestamp0);
+    }
 
     update_tp = tp1;
     update_tp.tv_sec += adjust; // move clock forward by `adjust` seconds

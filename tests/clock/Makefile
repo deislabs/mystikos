@@ -14,7 +14,11 @@ all: libos
 	$(LIBOS) mkcpio $(APPDIR) rootfs
 
 tests:
+ifeq ($(TARGET),linux)
+	sudo -E $(RUNTEST) $(LIBOS_EXEC) rootfs /bin/clock  $(sec) $(nsec) $(OPTS)
+else
 	$(RUNTEST) $(LIBOS_EXEC) rootfs /bin/clock  $(sec) $(nsec) $(OPTS)
+endif
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos

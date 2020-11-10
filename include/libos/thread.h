@@ -192,4 +192,6 @@ pid_t libos_gettid(void);
 
 void libos_wait_on_child_processes(void);
 
+int libos_get_num_threads(void);
+
 #endif /* _LIBOS_THREAD_H */

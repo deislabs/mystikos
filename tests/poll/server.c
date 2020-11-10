@@ -1,23 +1,20 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
+#include <assert.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <netinet/in.h>
+#include <poll.h>
+#include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <string.h>
-#include <assert.h>
-#include <stdio.h>
-#include <string.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <pthread.h>
-#include <unistd.h>
-#include <time.h>
-#include <poll.h>
-#include <fcntl.h>
-#include <errno.h>
 #include <stdlib.h>
-#include <time.h>
+#include <string.h>
+#include <sys/socket.h>
 #include <sys/time.h>
+#include <time.h>
+#include <unistd.h>
 
 #define BUFFER_SIZE 13
 
@@ -71,8 +68,7 @@ typedef struct _clients
 {
     client_t data[MAX_CLIENTS];
     size_t size;
-}
-clients_t;
+} clients_t;
 
 client_t* find_client(clients_t* clients, int sock)
 {
@@ -154,7 +150,10 @@ static int add_events(struct pollfd* fds, size_t* nfds, int sock, short events)
 }
 
 static int remove_events(
-    struct pollfd* fds, size_t* nfds, int sock, short events)
+    struct pollfd* fds,
+    size_t* nfds,
+    int sock,
+    short events)
 {
     for (size_t i = 0; i < *nfds; i++)
     {
@@ -265,8 +264,8 @@ void run_server(uint16_t port, size_t num_clients)
                         fflush(stdout);
 
                         assert(client_append(client, buf, n) == 0);
-                        assert(add_events(
-                            fds, &nfds, client->sock, POLLOUT) == 0);
+                        assert(
+                            add_events(fds, &nfds, client->sock, POLLOUT) == 0);
                     }
                     else if (n == 0)
                     {
@@ -319,8 +318,8 @@ void run_server(uint16_t port, size_t num_clients)
 
                     if (n > 0)
                     {
-                        printf("client %d output: %zd bytes\n", client->sock,
-                            n);
+                        printf(
+                            "client %d output: %zd bytes\n", client->sock, n);
                         fflush(stdout);
 
                         assert(client_remove_leading(client, n) == 0);

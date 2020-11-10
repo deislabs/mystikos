@@ -71,6 +71,12 @@ static long _get_monotime()
     }
 }
 
+static long _get_boottime()
+{
+    /* Boottime clock relies on monotonic clock */
+    return _get_monotime();
+}
+
 /* Return realtime clock in nanoseconds since the epoch */
 static long _get_realtime()
 {
@@ -86,22 +92,34 @@ static long _get_realtime()
 /* This overrides the weak version in liboskernel.a */
 long libos_tcall_clock_gettime(clockid_t clk_id, struct timespec* tp)
 {
-    if (clk_id == CLOCK_MONOTONIC)
+    long nanoseconds;
+    switch (clk_id)
     {
-        long nanoseconds = _get_monotime();
-        tp->tv_sec = nanoseconds / NANO_IN_SECOND;
-        tp->tv_nsec = nanoseconds % NANO_IN_SECOND;
-        return 0;
-    }
-    else if (clk_id == CLOCK_REALTIME)
-    {
-        long nanoseconds = _get_realtime();
-        tp->tv_sec = nanoseconds / NANO_IN_SECOND;
-        tp->tv_nsec = nanoseconds % NANO_IN_SECOND;
-        return 0;
+        case CLOCK_MONOTONIC_COARSE:
+        case CLOCK_MONOTONIC:
+        {
+            nanoseconds = _get_monotime();
+            break;
+        }
+        case CLOCK_REALTIME_COARSE:
+        case CLOCK_REALTIME:
+        {
+            nanoseconds = _get_realtime();
+            break;
+        }
+        case CLOCK_BOOTTIME:
+        {
+            nanoseconds = _get_boottime();
+            break;
+        }
+        default:
+            return -EINVAL;
     }
 
-    return -EINVAL;
+    tp->tv_sec = nanoseconds / NANO_IN_SECOND;
+    tp->tv_nsec = nanoseconds % NANO_IN_SECOND;
+
+    return 0;
 }
 
 /* This overrides the weak version in liboskernel.a */

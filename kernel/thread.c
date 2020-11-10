@@ -31,8 +31,7 @@
 libos_thread_t* __libos_main_thread;
 
 /* The total number of threads running (including the main thread) */
-static size_t _num_threads = 1;
-static libos_spinlock_t _num_threads_lock = LIBOS_SPINLOCK_INITIALIZER;
+static _Atomic(size_t) _num_threads = 1;
 
 /*
 **==============================================================================
@@ -437,12 +436,10 @@ long libos_run_thread(uint64_t cookie, uint64_t event)
 
         libos_zombify_thread(thread);
 
-        libos_spin_lock(&_num_threads_lock);
         {
             libos_assume(_num_threads > 1);
             _num_threads--;
         }
-        libos_spin_unlock(&_num_threads_lock);
 
         /* Return to target, which will exit this thread */
     }
@@ -498,18 +495,13 @@ static long _syscall_clone(
         ERAISE(-EINVAL);
 
     /* Check whether the maximum number of threads has been reached */
-    libos_spin_lock(&_num_threads_lock);
     {
         /* if too many threads already running */
         if (_num_threads == __libos_kernel_args.max_threads)
-        {
-            libos_spin_unlock(&_num_threads_lock);
             ERAISE(-EAGAIN);
-        }
 
         _num_threads++;
     }
-    libos_spin_unlock(&_num_threads_lock);
 
     /* Create and initialize the child thread struct */
     {
@@ -559,18 +551,13 @@ static long _syscall_clone_vfork(
         ERAISE(-EINVAL);
 
     /* Check whether the maximum number of threads has been reached */
-    libos_spin_lock(&_num_threads_lock);
     {
         /* if too many threads already running */
         if (_num_threads == __libos_kernel_args.max_threads)
-        {
-            libos_spin_unlock(&_num_threads_lock);
             ERAISE(-EAGAIN);
-        }
 
         _num_threads++;
     }
-    libos_spin_unlock(&_num_threads_lock);
 
     /* Create and initialize the thread struct */
     {
@@ -624,4 +611,9 @@ long libos_syscall_clone(
 pid_t libos_gettid(void)
 {
     return libos_thread_self()->tid;
+}
+
+int libos_get_num_threads(void)
+{
+    return _num_threads;
 }

@@ -1,11 +1,10 @@
 #define _GNU_SOURCE
 #include <assert.h>
-#include <stdio.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <string.h>
-#include <stdbool.h>
 #include <fcntl.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
 
 static const char alpha[] = "abcdefghijklmnopqrstuvwxyz";
 
@@ -70,7 +69,7 @@ void test_dup(int version, int arg)
 
         assert(fd == STDOUT_FILENO);
 
-        //printf("%s\n", alpha);
+        // printf("%s\n", alpha);
         write(fd, alpha, sizeof(alpha) - 1);
 
         fflush(out);
@@ -100,7 +99,7 @@ int main(int argc, const char* argv[])
     int fd;
 
     assert((fd = dup(STDOUT_FILENO)) >= 0);
-    assert(_out= fdopen(fd, "w"));
+    assert(_out = fdopen(fd, "w"));
 
     test_dup(1, 0);
     test_dup(2, 0);
