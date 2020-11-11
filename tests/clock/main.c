@@ -10,8 +10,8 @@
 
 static int is_sgx_target()
 {
-    char* target = getenv("TARGET");
-    if (target == NULL || !strcmp(SGX_TARGET, target))
+    char* target = getenv("LIBOS_TARGET");
+    if (target != NULL && !strcmp(SGX_TARGET, target))
         return 1;
     else
         return 0;
@@ -20,7 +20,7 @@ static int is_sgx_target()
 static int test_clock_get_time(long reference)
 {
     struct timespec tp = {0};
-    long tolerance = NANO_IN_SECOND * 1; // 1s
+    long tolerance = NANO_IN_SECOND * 2; // 2s
     long timestamp = 0, prev_timestamp = 0;
 
     // Check if the current time is close to the time passed from command line
