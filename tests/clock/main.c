@@ -56,7 +56,7 @@ static int test_clock_get_time(long reference)
     long mono_timestamp = mono_tp.tv_sec * NANO_IN_SECOND + mono_tp.tv_nsec;
     long boot_timestamp = boot_tp.tv_sec * NANO_IN_SECOND + boot_tp.tv_nsec;
     long mono_boot_diff = boot_timestamp - mono_timestamp;
-    long mono_boot_tolerance = 50000; // in nanoseconds
+    long mono_boot_tolerance = 60000; // in nanoseconds
     printf(
         "Diff between mono and boot = %ld ns (expected  %ld ns)\n",
         mono_boot_diff,
