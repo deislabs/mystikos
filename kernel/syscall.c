@@ -1214,10 +1214,43 @@ done:
 
 long libos_syscall_chmod(const char* pathname, mode_t mode)
 {
-    printf("pathname{%s} mode{%o}\n", pathname, mode);
     (void)pathname;
     (void)mode;
     return 0;
+}
+
+long libos_syscall_fchmod(int fd, mode_t mode)
+{
+    long ret = 0;
+    libos_fdtable_t* fdtable = libos_fdtable_current();
+    libos_fdtable_type_t type;
+    void* device = NULL;
+    void* object = NULL;
+
+    ECHECK(libos_fdtable_get_any(fdtable, fd, &type, &device, &object));
+
+    if (type == LIBOS_FDTABLE_TYPE_SOCK)
+    {
+        libos_fdops_t* fdops = device;
+        int target_fd = (*fdops->fd_target_fd)(fdops, object);
+
+        if (target_fd < 0)
+            ERAISE(-EBADF);
+
+        long params[] = {target_fd, mode};
+        ret = _forward_syscall(SYS_fchmod, params);
+    }
+    else if (type == LIBOS_FDTABLE_TYPE_FILE)
+    {
+        /* ignore fchmod on files */
+    }
+    else
+    {
+        ERAISE(-ENOTSUP);
+    }
+
+done:
+    return ret;
 }
 
 long libos_syscall_mount(
@@ -2782,7 +2815,14 @@ long libos_syscall(long n, long params[6])
             BREAK(_return(n, libos_syscall_chmod(pathname, mode)));
         }
         case SYS_fchmod:
-            break;
+        {
+            int fd = (int)x1;
+            mode_t mode = (mode_t)x2;
+
+            _strace(n, "fd=%d mode=%o", fd, mode);
+
+            BREAK(_return(n, libos_syscall_fchmod(fd, mode)));
+        }
         case SYS_chown:
             break;
         case SYS_fchown:

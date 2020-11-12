@@ -16,11 +16,17 @@ ifdef STRACE
 OPTS = --strace
 endif
 
+UDSPATH=$(OBJDIR)/uds
+
 tests: all
-	$(RUNTEST) $(LIBOS_EXEC) rootfs /bin/sockets $(OPTS)
+	rm -rf $(UDSPATH)
+	$(RUNTEST) $(LIBOS_EXEC) rootfs /bin/sockets $(UDSPATH) $(OPTS)
 
 libos:
 	$(MAKE) -C $(TOP)/tools/libos
 
 clean:
 	rm -rf $(APPDIR) rootfs export ramfs
+
+ls:
+	ls $(UDSPATH)

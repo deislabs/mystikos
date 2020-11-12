@@ -282,3 +282,8 @@ long libos_sched_yield_ocall(void)
 {
     return (sched_yield() == 0) ? 0 : -errno;
 }
+
+long libos_fchmod_ocall(int fd, uint32_t mode)
+{
+    return fchmod(fd, mode);
+}

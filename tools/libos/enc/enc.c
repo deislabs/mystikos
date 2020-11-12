@@ -659,10 +659,11 @@ long libos_tcall_export_file(const char* path, const void* data, size_t size)
     return retval;
 }
 
+long oe_get_host_fd(int fd);
+
 /* overrides function by same name in SGX target */
 long libos_tcall_fstat(int fd, struct stat* statbuf)
 {
-    extern long oe_get_host_fd(int fd);
     long retval = 0;
     long hfd;
 
@@ -683,6 +684,20 @@ long libos_tcall_sched_yield(void)
     long retval = 0;
 
     if (libos_sched_yield_ocall(&retval) != OE_OK)
+        return -EINVAL;
+
+    return retval;
+}
+
+long libos_tcall_fchmod(int fd, mode_t mode)
+{
+    long retval;
+    long hfd;
+
+    if ((hfd = oe_get_host_fd(fd)) < 0)
+        return -EINVAL;
+
+    if (libos_fchmod_ocall(&retval, (int)hfd, mode) != OE_OK)
         return -EINVAL;
 
     return retval;
