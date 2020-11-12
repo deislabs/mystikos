@@ -2,7 +2,7 @@ TOP := $(abspath ../../..)
 include $(TOP)/defs.mak
 
 APPDIR        := appdir
-BUILD_DIR     := $(abspath $(CURDIR))
+BUILD_DIR     := $(CURDIR)
 CFLAGS        := -fPIC
 DOCKER_IMG    := openlibos-hello
 LDFLAGS       := -Wl,-rpath=$(MUSL_LIB)
@@ -32,4 +32,4 @@ tests: libos rootfs
 	$(RUNTEST) $(LIBOS_EXEC) rootfs /bin/hello red green blue $(OPTS)
 
 clean:
-	@rm -f appdir $(LIBOS_TARBALL) rootfs
+	@rm -rf appdir $(LIBOS_TARBALL) rootfs
