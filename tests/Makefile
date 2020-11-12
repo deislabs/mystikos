@@ -45,6 +45,7 @@ DIRS += sendmsg
 DIRS += poll
 DIRS += clock
 DIRS += sysinfo
+DIRS += cpp-exceptions
 
 REDEFINE_TESTS=1
 include $(TOP)/rules.mak
