@@ -5,8 +5,11 @@
 #include <netinet/in.h>
 #include <pthread.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/un.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -22,15 +25,21 @@ static void _sleep_msec(uint32_t msec)
     nanosleep(&ts, NULL);
 }
 
+typedef struct args
+{
+    int domain;
+    const char* path;
+} args_t;
+
 static void* _srv_thread_func(void* arg)
 {
+    args_t* args = (args_t*)arg;
     int lsock;
     int r;
-    struct sockaddr_in addr;
 
     (void)arg;
 
-    assert((lsock = socket(AF_INET, SOCK_STREAM, 0)) >= 0);
+    assert((lsock = socket(args->domain, SOCK_STREAM, 0)) >= 0);
 
     /* reuse the server address */
     {
@@ -40,12 +49,39 @@ static void* _srv_thread_func(void* arg)
         assert(r == 0);
     }
 
-    memset(&addr, 0, sizeof(addr));
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-    addr.sin_port = htons(port);
+    if (args->domain == AF_INET)
+    {
+        struct sockaddr_in addr;
+        memset(&addr, 0, sizeof(addr));
+        addr.sin_family = AF_INET;
+        addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+        addr.sin_port = htons(port);
+        assert(bind(lsock, (struct sockaddr*)&addr, sizeof(addr)) == 0);
+    }
+    else if (args->domain == AF_UNIX)
+    {
+        struct sockaddr_un addr;
+        memset(&addr, 0, sizeof(addr));
+        addr.sun_family = AF_UNIX;
+        strcpy(addr.sun_path, args->path);
 
-    assert(bind(lsock, (struct sockaddr*)&addr, sizeof(addr)) == 0);
+        struct stat buf;
+
+        assert(fchmod(lsock, 0000) == 0);
+        assert(fstat(lsock, &buf) == 0);
+        assert((buf.st_mode & 0x000001ff) == 0000);
+
+        assert(fchmod(lsock, 0777) == 0);
+        assert(fstat(lsock, &buf) == 0);
+        assert((buf.st_mode & 0x000001ff) == 0777);
+
+        assert(bind(lsock, (struct sockaddr*)&addr, sizeof(addr)) == 0);
+    }
+    else
+    {
+        assert(0);
+    }
+
     assert(listen(lsock, 10) == 0);
 
     for (;;)
@@ -72,21 +108,33 @@ static void* _srv_thread_func(void* arg)
 
 static void* _cli_thread_func(void* arg)
 {
+    args_t* args = (args_t*)arg;
     int sock = 0;
     ssize_t n = 0;
-    struct sockaddr_in addr = {0};
 
-    assert((sock = socket(AF_INET, SOCK_STREAM, 0)) >= 0);
+    assert((sock = socket(args->domain, SOCK_STREAM, 0)) >= 0);
 
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-    addr.sin_port = htons(port);
-
-    int retries = 0;
-    static const int max_retries = 400;
-
-    printf("client: connect\n");
-    assert(connect(sock, (struct sockaddr*)&addr, sizeof(addr)) >= 0);
+    if (args->domain == AF_INET)
+    {
+        printf("client: connect\n");
+        struct sockaddr_in addr = {0};
+        addr.sin_family = AF_INET;
+        addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+        addr.sin_port = htons(port);
+        assert(connect(sock, (struct sockaddr*)&addr, sizeof(addr)) >= 0);
+    }
+    else if (args->domain == AF_UNIX)
+    {
+        struct sockaddr_un addr;
+        memset(&addr, 0, sizeof(addr));
+        addr.sun_family = AF_UNIX;
+        strcpy(addr.sun_path, args->path);
+        assert(connect(sock, (struct sockaddr*)&addr, sizeof(addr)) >= 0);
+    }
+    else
+    {
+        assert(0);
+    }
 
     for (;;)
     {
@@ -110,17 +158,34 @@ static void* _cli_thread_func(void* arg)
     return NULL;
 }
 
-int main(int argc, const char* argv[])
+void test_sockets(args_t* args)
 {
     pthread_t srv_thread;
     pthread_t cli_thread;
 
-    assert(pthread_create(&srv_thread, NULL, _srv_thread_func, NULL) == 0);
+    assert(pthread_create(&srv_thread, NULL, _srv_thread_func, args) == 0);
     _sleep_msec(100);
-    assert(pthread_create(&cli_thread, NULL, _cli_thread_func, NULL) == 0);
+    assert(pthread_create(&cli_thread, NULL, _cli_thread_func, args) == 0);
 
     pthread_join(cli_thread, NULL);
     pthread_join(srv_thread, NULL);
+
+    printf("=== passed test (test_sockets: domain=%d)\n", args->domain);
+}
+
+int main(int argc, const char* argv[])
+{
+    if (argc != 2)
+    {
+        fprintf(stderr, "Usage: %s <uds-path>\n", argv[0]);
+        exit(1);
+    }
+
+    args_t inet_args = {AF_INET, NULL};
+    args_t unix_args = {AF_UNIX, argv[1]};
+
+    test_sockets(&inet_args);
+    test_sockets(&unix_args);
 
     printf("=== passed test (%s)\n", argv[0]);
     return 0;
