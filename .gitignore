@@ -56,3 +56,4 @@ tests/ids/appdir/
 tests/poll/appdir/
 tests/sendmsg/appdir/
 tests/sockets/appdir/
+third_party/libc-test/libc-test/

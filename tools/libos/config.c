@@ -1,5 +1,6 @@
-// Copyright (c) Open Enclave SDK contributors.
+// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
+
 #include "config.h"
 #include <libos/round.h>
 #include <memory.h>

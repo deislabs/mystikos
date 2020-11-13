@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 #include <libos/thread.h>
 
 extern libos_run_thread_t __libos_run_thread;

@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 #include <stdio.h>
 
 int main(int argc, const char* argv[])

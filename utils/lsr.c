@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 #include <libos/file.h>
 #include <libos/lsr.h>
 #include <libos/strings.h>

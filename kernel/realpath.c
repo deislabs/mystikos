@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 #include <libos/cwd.h>
 #include <libos/eraise.h>
 #include <libos/realpath.h>

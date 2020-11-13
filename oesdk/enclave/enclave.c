@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 #include <libos/syscallext.h>
 #include <openenclave/enclave.h>
 #include <stdio.h>

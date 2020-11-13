@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 #include <libos/barrier.h>
 #include <libos/fsgs.h>
 #include <libos/options.h>

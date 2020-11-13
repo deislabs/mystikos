@@ -1,13 +1,10 @@
-#include <stdio.h>
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 
-void foofoo()
-{
-}
+#include <stdio.h>
 
 int main(int argc, const char* argv[], const char* envp[])
 {
-    foofoo();
-
     printf("\n");
 
     for (int i = 0; i < argc; i++)

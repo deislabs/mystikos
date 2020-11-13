@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 #include <dlfcn.h>
 #include <stdio.h>
 #include <stdlib.h>

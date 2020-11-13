@@ -1,4 +1,4 @@
-// Copyright (c) Open Enclave SDK contributors.
+// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
 #ifndef _LIBOS_CPIO_H

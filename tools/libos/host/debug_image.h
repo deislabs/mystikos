@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 #ifndef _DEBUG_IMAGE_H
 #define _DEBUG_IMAGE_H
 

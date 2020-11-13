@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 #include <echo_t.h>
 #include <openenclave/enclave.h>
 #include <stdio.h>

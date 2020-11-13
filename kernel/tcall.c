@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 #include <errno.h>
 #include <libos/fsgs.h>
 #include <libos/strings.h>

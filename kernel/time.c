@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 #include <libos/syscall.h>
 #include <libos/tcall.h>
 #include <libos/time.h>

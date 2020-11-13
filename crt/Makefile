@@ -27,7 +27,9 @@ endif
 
 LIBCC = -lgcc
 
--include $(TOP)/third_party/enclave-musl/musl/objects.mak
+MUSLSRC=$(BUILDDIR)/crt-musl
+
+-include $(MUSLSRC)/objects.mak
 
 OBJECTS = $(addprefix $(SUBOBJDIR)/,$(SOURCES:.c=.o))
 

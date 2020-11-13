@@ -1,4 +1,4 @@
-// Copyright (c) Open Enclave SDK contributors.
+// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
 int start_image(void (*callback)(const char* msg))

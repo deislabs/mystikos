@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 #include <libos/eraise.h>
 #include <libos/trace.h>
 #include <stdio.h>

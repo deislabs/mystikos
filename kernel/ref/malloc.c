@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 #include <libos/crash.h>
 #include <libos/list.h>
 #include <libos/malloc.h>

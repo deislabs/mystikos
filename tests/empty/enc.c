@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
