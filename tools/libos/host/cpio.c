@@ -1,5 +1,6 @@
-// Copyright (c) Open Enclave SDK contributors.
+// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
+
 #include "cpio.h"
 #include <assert.h>
 #include <libos/cpio.h>

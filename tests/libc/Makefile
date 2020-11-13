@@ -15,7 +15,7 @@ all: $(SRCDIR) build
 $(SRCDIR):
 	rm -rf $(SRCDIR)
 	mkdir -p $(SUBOBJDIR)
-	cp -r $(TOP)/third_party/libc-test $(SRCDIR)
+	cp -r $(TOP)/third_party/libc-test/libc-test $(SRCDIR)
 
 build: $(SRCDIR)/target
 

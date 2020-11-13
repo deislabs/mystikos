@@ -1,5 +1,6 @@
-// Copyright (c) Open Enclave SDK contributors.
+// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
+
 #define _XOPEN_SOURCE 500
 #include <errno.h>
 #include <ftw.h>

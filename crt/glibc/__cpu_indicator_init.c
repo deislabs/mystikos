@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 struct __processor_model
 {
     unsigned int __cpu_vendor;

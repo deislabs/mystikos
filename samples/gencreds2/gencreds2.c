@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 #include <mbedtls/x509.h>
 #include <mbedtls/x509_crt.h>
 #include <openenclave/attestation/attester.h>

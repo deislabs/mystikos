@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 #include <libos/once.h>
 
 int libos_once(libos_once_t* once, void (*func)(void))

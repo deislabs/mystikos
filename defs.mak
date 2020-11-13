@@ -113,8 +113,8 @@ OEHOST_CFLAGS = -g -Wall -Werror
 ##
 ##==============================================================================
 
-MUSL_GCC=$(BUILDDIR)/host-musl/bin/musl-gcc
-MUSL_LIB=$(BUILDDIR)/host-musl/lib
+MUSL_GCC=$(BUILDDIR)/musl/bin/musl-gcc
+MUSL_LIB=$(BUILDDIR)/musl/lib
 
 ##==============================================================================
 ##

@@ -7,7 +7,7 @@ ARCHIVE = libosutils.a
 
 SOURCES = $(wildcard *.c)
 
-INCLUDES = -I$(INCDIR) -I$(BUILDDIR)/host-musl/include
+INCLUDES = -I$(INCDIR) -I$(BUILDDIR)/musl/include
 
 CFLAGS =
 CFLAGS += $(DEFAULT_CFLAGS)

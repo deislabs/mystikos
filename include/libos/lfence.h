@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 #ifndef _LIBOS_FENCE_H
 #define _LIBOS_FENCE_H
 

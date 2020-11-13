@@ -8,7 +8,7 @@ PROGRAM = liboskernel.so
 
 SOURCES = $(wildcard *.[cs])
 
-INCLUDES = -I$(INCDIR) -I$(BUILDDIR)/host-musl/include
+INCLUDES = -I$(INCDIR) -I$(BUILDDIR)/musl/include
 
 ifdef LIBOS_USE_THREAD_STACK
 DEFINES += -DLIBOS_USE_THREAD_STACK

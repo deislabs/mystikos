@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 #ifndef _LIBOS_FSGS_H
 #define _LIBOS_FSGS_H
 

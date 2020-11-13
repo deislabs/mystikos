@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 #include <libos/panic.h>
 #include <libos/strings.h>
 #include <libos/thread.h>

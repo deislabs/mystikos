@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 #ifndef _TLSCREDS_H
 #define _TLSCREDS_H
 

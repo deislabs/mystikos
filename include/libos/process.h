@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 #ifndef _LIBOS_PROCESS_H
 #define _LIBOS_PROCESS_H
 

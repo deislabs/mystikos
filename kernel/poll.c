@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 #include <errno.h>
 #include <poll.h>
 #include <stddef.h>

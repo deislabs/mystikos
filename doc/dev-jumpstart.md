@@ -57,7 +57,7 @@ The following instructions assume Open LibOS is cloned to `$HOME/oe-libos`.
     *  bin: the executables of Open LibOS, including:
         * the main executable `libos`
         * the debugger `libos-gdb`
-    * host-musl, including:
+    * musl, including:
         * musl-gcc, which is used to compile the enclave-musl, kernel and target libraries
     * lib, including:
         * liboscrt.so, the output from building `enclave-musl`

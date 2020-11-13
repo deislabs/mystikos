@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 #include <openenclave/edger8r/host.h>
 #include <openenclave/host.h>
 #include <string.h>

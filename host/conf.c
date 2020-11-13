@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 #include <ctype.h>
 #include <libos/conf.h>
 #include <stdarg.h>

@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 #include <arpa/inet.h>
 #include <assert.h>
 #include <fcntl.h>

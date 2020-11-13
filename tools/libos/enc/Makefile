@@ -15,7 +15,6 @@ CFLAGS = $(OEENCLAVE_CFLAGS)
 
 LIBS += $(LIBDIR)/libjson.a
 LIBS += $(LIBDIR)/libostargetsgxenclave.a
-LIBS += $(LIBDIR)/liblthread.a
 LIBS += $(LIBDIR)/libosutils.a
 LIBS += $(OEENCLAVE_LIBDIR)/liboehostfs.a
 LIBS += $(OEENCLAVE_LIBDIR)/liboehostsock.a

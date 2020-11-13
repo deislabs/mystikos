@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -296,7 +299,6 @@ int libos_fdtable_dup(
         libos_fdtable_entry_t* old = &fdtable->entries[oldfd];
         libos_fdtable_entry_t* new = NULL;
         libos_fdops_t* old_fdops = old->device;
-        libos_fdops_t* new_fdops = old->device;
         void* newobj;
         int r;
 
@@ -335,6 +337,7 @@ int libos_fdtable_dup(
             /* if new entry is not empty, close the descriptor */
             if (new->type != LIBOS_FDTABLE_TYPE_NONE)
             {
+                libos_fdops_t* new_fdops = new->device;
                 (new_fdops->fd_close)(new->device, new->object);
 
                 if (new->type == LIBOS_FDTABLE_TYPE_FILE)
@@ -351,7 +354,7 @@ int libos_fdtable_dup(
             ERAISE(r);
 
         if (set_cloexec && flags == O_CLOEXEC)
-            (*new_fdops->fd_fcntl)(new_fdops, newobj, F_SETFD, FD_CLOEXEC);
+            (*old_fdops->fd_fcntl)(old_fdops, newobj, F_SETFD, FD_CLOEXEC);
 
         new->type = old->type;
         new->device = old->device;
