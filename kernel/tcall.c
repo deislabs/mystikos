@@ -6,6 +6,8 @@
 #include <libos/strings.h>
 #include <libos/tcall.h>
 #include <libos/thread.h>
+#include <syscall.h>
+#include <unistd.h>
 
 long libos_tcall_random(void* data, size_t size)
 {
@@ -113,4 +115,16 @@ long libos_tcall_get_errno_location(int** ptr)
 {
     long params[6] = {(long)ptr};
     return libos_tcall(LIBOS_TCALL_GET_ERRNO_LOCATION, params);
+}
+
+long libos_tcall_poll_wake(void)
+{
+    long params[6] = {0};
+    return libos_tcall(LIBOS_TCALL_POLL_WAKE, params);
+}
+
+long libos_tcall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
+{
+    long params[6] = {(long)fds, nfds, timeout};
+    return libos_tcall(SYS_poll, params);
 }

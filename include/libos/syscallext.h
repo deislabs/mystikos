@@ -24,6 +24,7 @@ enum
     SYS_libos_clone = 1012,
     SYS_libos_gcov_init = 1013,
     SYS_libos_max_threads = 1014,
+    SYS_libos_poll_wake = 1015,
 
     /* Open Enclave extensions */
     SYS_libos_oe_add_vectored_exception_handler = 4096,

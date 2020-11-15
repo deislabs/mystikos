@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include <time.h>
 #include <unistd.h>
+#include <poll.h>
 
 typedef enum libos_tcall_number
 {
@@ -38,6 +39,7 @@ typedef enum libos_tcall_number
     LIBOS_TCALL_GET_TSD = 2070,
     LIBOS_TCALL_GET_ERRNO_LOCATION = 2071,
     LIBOS_TCALL_READ_CONSOLE = 2072,
+    LIBOS_TCALL_POLL_WAKE = 2073,
 } libos_tcall_number_t;
 
 long libos_tcall(long n, long params[6]);
@@ -101,5 +103,10 @@ long libos_tcall_get_tsd(uint64_t* value);
 
 /* get the address of the thread-specific errno variable */
 long libos_tcall_get_errno_location(int** ptr);
+
+/* break out of poll() */
+long libos_tcall_poll_wake(void);
+
+long libos_tcall_poll(struct pollfd* fds, nfds_t nfds, int timeout);
 
 #endif /* _LIBOS_TCALL_H */

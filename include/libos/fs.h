@@ -137,6 +137,8 @@ struct libos_fs
         libos_file_t** file_out);
 
     int (*fs_target_fd)(libos_fs_t* fs, libos_file_t* file);
+
+    int (*fs_get_events)(libos_fs_t* fs, libos_file_t* file);
 };
 
 int libos_remove_fd_link(libos_fs_t* fs, libos_file_t* file, int fd);

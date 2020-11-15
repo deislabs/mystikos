@@ -158,6 +158,8 @@ struct libos_sockdev
     int (*sd_close)(libos_sockdev_t* sd, libos_sock_t* sock);
 
     int (*sd_target_fd)(libos_sockdev_t* sd, libos_sock_t* sock);
+
+    int (*sd_get_events)(libos_sockdev_t* sd, libos_sock_t* sock);
 };
 
 libos_sockdev_t* libos_sockdev_get(void);

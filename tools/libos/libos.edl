@@ -37,6 +37,13 @@ enclave
         struct libos_timespec st_ctim;
     };
 
+    struct libos_pollfd
+    {
+        int fd;
+        short events;
+        short revents;
+    };
+
     trusted
     {
         public int libos_enter_ecall(
@@ -101,5 +108,12 @@ enclave
 
         /* returns -errno on failure */
         long libos_fchmod_ocall(int fd, uint32_t mode);
+
+        long libos_poll_ocall(
+            [in, out, count=nfds] struct libos_pollfd* fds,
+            unsigned long nfds,
+            int timeout);
+
+        long libos_poll_wake_ocall();
     };
 };

@@ -318,6 +318,19 @@ done:
     return ret;
 }
 
+static int _td_get_events(libos_ttydev_t* ttydev, libos_tty_t* tty)
+{
+    int ret = 0;
+
+    if (!ttydev || !_valid_tty(tty))
+        ERAISE(-EINVAL);
+
+    ret = -ENOTSUP;
+
+done:
+    return ret;
+}
+
 extern libos_ttydev_t* libos_ttydev_get(void)
 {
     // clang-format-off
@@ -333,6 +346,7 @@ extern libos_ttydev_t* libos_ttydev_get(void)
             .fd_dup = (void*)_td_dup,
             .fd_close = (void*)_td_close,
             .fd_target_fd = (void*)_td_target_fd,
+            .fd_get_events = (void*)_td_get_events,
         },
         .td_create = _td_create,
         .td_read = _td_read,
@@ -345,6 +359,7 @@ extern libos_ttydev_t* libos_ttydev_get(void)
         .td_dup = _td_dup,
         .td_close = _td_close,
         .td_target_fd = _td_target_fd,
+        .td_get_events = _td_get_events,
     };
     // clang-format-on
 
