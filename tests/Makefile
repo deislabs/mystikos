@@ -50,8 +50,6 @@ ifndef LIBOS_USE_OECACHE
 DIRS += cpp-exceptions
 endif
 
-DIRS = pthread
-
 REDEFINE_TESTS=1
 include $(TOP)/rules.mak
 
