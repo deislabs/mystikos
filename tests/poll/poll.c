@@ -4,13 +4,17 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
+#define _GNU_SOURCE
 #include <assert.h>
+#include <errno.h>
 #include <poll.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <sys/syscall.h>
 #include <sys/time.h>
 #include <time.h>
+#include <unistd.h>
 
 const uint16_t port = 12345;
 const size_t num_clients = 1;
@@ -37,10 +41,40 @@ static void* _client_thread_func(void* arg)
     run_client(port);
 }
 
+static void* _poll_forever_thread(void* arg)
+{
+    /* wait forever */
+    int r = poll(NULL, 0, -1);
+    assert(r == 0);
+
+    return arg;
+}
+
 int main(int argc, const char* argv[])
 {
     pthread_t sthread;
     pthread_t cthread;
+
+    /* Test SYS_libos_poll_wake system call */
+    {
+        const long SYS_libos_poll_wake = 1015;
+        pthread_t thread;
+
+        /* create a thread that will poll forever */
+        assert(pthread_create(&thread, NULL, _poll_forever_thread, NULL) == 0);
+
+        /* use extended syscall to break out of poll() */
+        syscall(SYS_libos_poll_wake);
+
+        pthread_join(thread, NULL);
+    }
+
+    /* Test poll() with illegal parameters */
+    assert(poll(NULL, 1, 0) == -1);
+    assert(errno == EFAULT);
+
+    /* Test that first parameter is ignored when nfds == 0 */
+    assert(poll((void*)1, 0, 0) == 0);
 
     assert(pthread_create(&sthread, NULL, _server_thread_func, NULL) == 0);
     _sleep_msec(100);

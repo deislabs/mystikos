@@ -653,6 +653,19 @@ done:
     return ret;
 }
 
+static int _sd_get_events(libos_sockdev_t* sd, libos_sock_t* sock)
+{
+    int ret = 0;
+
+    if (!sd || !_valid_sock(sock))
+        ERAISE(-EINVAL);
+
+    ret = sock->fd;
+
+done:
+    return ret;
+}
+
 extern libos_sockdev_t* libos_sockdev_get(void)
 {
     // clang-format-off
@@ -668,6 +681,7 @@ extern libos_sockdev_t* libos_sockdev_get(void)
             .fd_dup = (void*)_sd_dup,
             .fd_close = (void*)_sd_close,
             .fd_target_fd = (void*)_sd_target_fd,
+            .fd_get_events = (void*)_sd_get_events,
         },
         .sd_socket = _sd_socket,
         .sd_socketpair = _sd_socketpair,
@@ -694,6 +708,7 @@ extern libos_sockdev_t* libos_sockdev_get(void)
         .sd_dup = _sd_dup,
         .sd_close = _sd_close,
         .sd_target_fd = _sd_target_fd,
+        .sd_get_events = _sd_get_events,
     };
     // clang-format-on
 

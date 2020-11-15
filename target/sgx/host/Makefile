@@ -6,6 +6,7 @@ SUBLIBDIR=$(LIBDIR)
 ARCHIVE = libostargetsgxhost.a
 
 SOURCES += ../../shared/waitwake.c
+SOURCES += ../../shared/poll.c
 
 CFLAGS = $(DEFAULT_CFLAGS)
 

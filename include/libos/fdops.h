@@ -41,6 +41,9 @@ struct libos_fdops
     int (*fd_close)(void* device, void* object);
 
     int (*fd_target_fd)(void* device, void* object);
+
+    /* returns POLLIN | POLLOUT | POLLERR */
+    int (*fd_get_events)(void* device, void* object);
 };
 
 ssize_t libos_fdops_readv(

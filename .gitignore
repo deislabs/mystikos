@@ -56,4 +56,8 @@ tests/ids/appdir/
 tests/poll/appdir/
 tests/sendmsg/appdir/
 tests/sockets/appdir/
+tests/clock/appdir/
+tests/pollpipe/appdir/
+tests/sysinfo/appdir/
 third_party/libc-test/libc-test/
+tests/pipesz/appdir/

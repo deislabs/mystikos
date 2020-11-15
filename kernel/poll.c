@@ -14,48 +14,89 @@
 #include <libos/syscall.h>
 #include <libos/tcall.h>
 
-long libos_syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
+long _poll_kernel(struct pollfd* fds, nfds_t nfds)
 {
     long ret = 0;
-    struct pollfd* tfds = NULL; /* target file descriptors */
     libos_fdtable_t* fdtable;
-    long retval;
-
-    /* special case: if nfds is zero, then sleep */
-    if (nfds == 0)
-    {
-        if (timeout < 0)
-        {
-            /* sleep forever */
-            for (;;)
-            {
-                struct timespec ts;
-                ts.tv_sec = LONG_MAX;
-                ts.tv_nsec = LONG_MAX;
-                ECHECK(libos_syscall_nanosleep(&ts, NULL));
-            }
-        }
-        else
-        {
-            struct timespec ts;
-            ts.tv_sec = (uint64_t)timeout / 1000UL;
-            ts.tv_nsec = ((int64_t)timeout % 1000UL) * 1000000UL;
-            ret = libos_syscall_nanosleep(&ts, NULL);
-            ECHECK(ret);
-            goto done;
-        }
-    }
-
-    if (!fds || nfds == 0)
-        ERAISE(-EINVAL);
-
-    if (!(tfds = calloc(nfds, sizeof(struct pollfd))))
-        ERAISE(-ENOMEM);
+    long total = 0;
 
     if (!(fdtable = libos_fdtable_current()))
         ERAISE(-ENOSYS);
 
-    /* convert kernel fds to target fds */
+    for (nfds_t i = 0; i < nfds; i++)
+    {
+        libos_fdtable_type_t type;
+        libos_fdops_t* fdops;
+        void* object;
+        int events;
+
+        fds[i].revents = 0;
+
+        /* get the device for this file descriptor */
+        ECHECK(libos_fdtable_get_any(
+            fdtable, fds[i].fd, &type, (void**)&fdops, (void**)&object));
+
+        if ((events = (*fdops->fd_get_events)(fdops, object)) >= 0)
+        {
+            fds[i].revents = events;
+
+            if (events)
+                total++;
+        }
+        else if (events != -ENOTSUP)
+        {
+            ERAISE(-EINVAL);
+        }
+    }
+
+    ret = total;
+
+done:
+    return ret;
+}
+
+long libos_syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
+{
+    long ret = 0;
+    libos_fdtable_t* fdtable;
+    struct pollfd* tfds = NULL; /* target file descriptors */
+    struct pollfd* kfds = NULL; /* kernel file descriptors */
+    nfds_t tnfds = 0; /* number of target file descriptors */
+    nfds_t knfds = 0; /* number of kernel file descriptors */
+    size_t* tindices = NULL; /* target indices */
+    size_t* kindices = NULL; /* kernel indices */
+    long tevents = 0; /* the number of target events */
+    long kevents = 0; /* the number of kernel events */
+
+    /* special case: if nfds is zero */
+    if (nfds == 0)
+    {
+        long r;
+        long params[6] = {(long)NULL, nfds, timeout};
+        ECHECK((r = libos_tcall(SYS_poll, params)));
+        ret = r;
+        goto done;
+    }
+
+    if (!fds && nfds)
+        ERAISE(-EFAULT);
+
+    if (!(fdtable = libos_fdtable_current()))
+        ERAISE(-ENOSYS);
+
+    if (!(tfds = calloc(nfds, sizeof(struct pollfd))))
+        ERAISE(-ENOMEM);
+
+    if (!(kfds = calloc(nfds, sizeof(struct pollfd))))
+        ERAISE(-ENOMEM);
+
+    if (!(tindices = calloc(nfds, sizeof(size_t))))
+        ERAISE(-ENOMEM);
+
+    if (!(kindices = calloc(nfds, sizeof(size_t))))
+        ERAISE(-ENOMEM);
+
+    /* Split fds[] into two arrays: tfds[] (target) and kfds[] (kernel) */
     for (nfds_t i = 0; i < nfds; i++)
     {
         int tfd;
@@ -67,29 +108,75 @@ long libos_syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
         ECHECK(libos_fdtable_get_any(
             fdtable, fds[i].fd, &type, (void**)&fdops, (void**)&object));
 
-        /* get the target fd for this object */
-        ECHECK((tfd = (*fdops->fd_target_fd)(fdops, object)));
-
-        tfds[i].events = fds[i].events;
-        tfds[i].fd = tfd;
+        /* get the target fd for this object (or -ENOTSUP) */
+        if ((tfd = (*fdops->fd_target_fd)(fdops, object)) >= 0)
+        {
+            tfds[tnfds].events = fds[i].events;
+            tfds[tnfds].fd = tfd;
+            tindices[tnfds] = i;
+            tnfds++;
+        }
+        else if (tfd == -ENOTSUP)
+        {
+            kfds[knfds].events = fds[i].events;
+            kfds[knfds].fd = fds[i].fd;
+            kindices[knfds] = i;
+            knfds++;
+        }
+        else
+        {
+            ERAISE(-EINVAL);
+        }
     }
 
-    /* perform syscall */
+    /* pre-poll for kernel events */
     {
-        long params[6] = {(long)tfds, nfds, timeout};
-        ECHECK((retval = libos_tcall(SYS_poll, params)));
+        ECHECK((kevents = _poll_kernel(kfds, knfds)));
+
+        /* if any kernel events were found, change timeout to zero */
+        if (kevents)
+            timeout = 0;
     }
 
-    /* Update kernel events with recieved target events */
-    for (nfds_t i = 0; i < nfds; i++)
-        fds[i].revents = tfds[i].revents;
+    /* poll for target events */
+    if (tnfds && tfds)
+    {
+        ECHECK((tevents = libos_tcall_poll(tfds, tnfds, timeout)));
+    }
+    else
+    {
+        ECHECK((tevents = libos_tcall_poll(NULL, tnfds, timeout)));
+    }
 
-    ret = retval;
+    /* post-poll for kernel events (avoid if already polled above) */
+    if (kevents == 0)
+    {
+        ECHECK((kevents = _poll_kernel(kfds, knfds)));
+    }
+
+    /* update fds[] with the target events */
+    for (nfds_t i = 0; i < tnfds; i++)
+        fds[tindices[i]].revents = tfds[i].revents;
+
+    /* update fds[] with the kernel events */
+    for (nfds_t i = 0; i < knfds; i++)
+        fds[kindices[i]].revents = kfds[i].revents;
+
+    ret = tevents + kevents;
 
 done:
 
     if (tfds)
         free(tfds);
+
+    if (kfds)
+        free(kfds);
+
+    if (tindices)
+        free(tindices);
+
+    if (kindices)
+        free(kindices);
 
     return ret;
 }

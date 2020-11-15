@@ -66,6 +66,8 @@ struct libos_ttydev
     int (*td_close)(libos_ttydev_t* ttydev, libos_tty_t* tty);
 
     int (*td_target_fd)(libos_ttydev_t* ttydev, libos_tty_t* tty);
+
+    int (*td_get_events)(libos_ttydev_t* ttydev, libos_tty_t* tty);
 };
 
 libos_ttydev_t* libos_ttydev_get(void);

@@ -2161,6 +2161,11 @@ long libos_syscall(long n, long params[6])
             _strace(n, NULL);
             BREAK(_return(n, __libos_kernel_args.max_threads));
         }
+        case SYS_libos_poll_wake:
+        {
+            _strace(n, NULL);
+            BREAK(_return(n, libos_tcall_poll_wake()));
+        }
         case SYS_read:
         {
             int fd = (int)x1;
@@ -3384,8 +3389,13 @@ long libos_syscall(long n, long params[6])
             int flags = (int)x4;
             long ret;
 
-            _strace(n, "dirfd=%d pathname=%s statbuf=%p flags=%d",
-                dirfd, pathname, statbuf, flags);
+            _strace(
+                n,
+                "dirfd=%d pathname=%s statbuf=%p flags=%d",
+                dirfd,
+                pathname,
+                statbuf,
+                flags);
 
             ret = libos_syscall_fstatat(dirfd, pathname, statbuf, flags);
             BREAK(_return(n, ret));

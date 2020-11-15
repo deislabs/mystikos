@@ -9,6 +9,7 @@
 #include <libos/tcall.h>
 #include <limits.h>
 #include <linux/futex.h>
+#include <poll.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <sys/stat.h>
@@ -286,5 +287,23 @@ long libos_sched_yield_ocall(void)
 
 long libos_fchmod_ocall(int fd, uint32_t mode)
 {
-    return fchmod(fd, mode);
+    if (fchmod(fd, mode) != 0)
+        return -errno;
+
+    return 0;
+}
+
+long libos_poll_wake_ocall(void)
+{
+    extern long libos_tcall_poll_wake();
+
+    return libos_tcall_poll_wake();
+}
+
+long libos_poll_ocall(struct libos_pollfd* fds, unsigned long nfds, int timeout)
+{
+    extern long libos_tcall_poll(
+        struct pollfd * lfds, unsigned long nfds, int timeout);
+
+    return libos_tcall_poll((struct pollfd*)fds, nfds, timeout);
 }

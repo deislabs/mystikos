@@ -703,6 +703,88 @@ long libos_tcall_fchmod(int fd, mode_t mode)
     return retval;
 }
 
+long libos_tcall_poll_wake(void)
+{
+    long r;
+
+    if (libos_poll_wake_ocall(&r) != OE_OK)
+        return -EINVAL;
+
+    return r;
+}
+
+long libos_tcall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
+{
+    long ret = 0;
+    struct libos_pollfd* lfds = NULL;
+    long r;
+
+    if (nfds == 0)
+    {
+        lfds = (struct libos_pollfd*)fds;
+
+        if (libos_poll_ocall(&r, lfds, nfds, timeout) != OE_OK)
+        {
+            ret = -EINVAL;
+            goto done;
+        }
+
+        ret = r;
+        goto done;
+    }
+
+    /* translate fds to host fds */
+    if (fds)
+    {
+        if (!(lfds = calloc(nfds, sizeof(struct libos_pollfd))))
+        {
+            ret = -ENOMEM;
+            goto done;
+        }
+
+        for (nfds_t i = 0; i < nfds; i++)
+        {
+            lfds[i].fd = fds[i].fd;
+            lfds[i].events = fds[i].events;
+            lfds[i].revents = fds[i].revents;
+
+            if (fds[i].fd >= 0)
+            {
+                long fd = oe_get_host_fd(fds[i].fd);
+
+                if (fd < 0 || fd > INT_MAX)
+                {
+                    ret = -EBADF;
+                    goto done;
+                }
+
+                lfds[i].fd = (int)fd;
+            }
+        }
+    }
+
+    if (libos_poll_ocall(&r, lfds, nfds, timeout) != OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    if (fds)
+    {
+        for (nfds_t i = 0; i < nfds; i++)
+            fds[i].revents = lfds[i].revents;
+    }
+
+    ret = r;
+
+done:
+
+    if (lfds)
+        free(lfds);
+
+    return ret;
+}
+
 OE_SET_ENCLAVE_SGX(
     1,        /* ProductID */
     1,        /* SecurityVersion */

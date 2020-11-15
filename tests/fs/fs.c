@@ -9,11 +9,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/fcntl.h>
 #include <sys/random.h>
 #include <sys/stat.h>
-#include <sys/uio.h>
 #include <sys/types.h>
-#include <sys/fcntl.h>
+#include <sys/uio.h>
 #include <unistd.h>
 
 const char alpha[] = "abcdefghijklmnopqrstuvwxyz";
@@ -492,7 +492,6 @@ static void test_fstatat(void)
         assert((fd = open(path, O_CREAT | O_WRONLY, 0666)) >= 0);
         assert(write(fd, alpha, sizeof(alpha)) == sizeof(alpha));
         assert(close(fd) == 0);
-
     }
 
     /* Test fstatat() with a relative path */

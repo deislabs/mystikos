@@ -16,6 +16,7 @@
 #include <libos/id.h>
 #include <libos/panic.h>
 #include <libos/pipedev.h>
+#include <libos/round.h>
 
 #define MAGIC 0x9906acdc
 
@@ -25,10 +26,13 @@ typedef struct pipe_impl
 {
     libos_cond_t cond;
     libos_mutex_t mutex;
+    char* data; /* points to buf or heap-allocated memory */
+    size_t pipesz;
     char buf[PIPE_BUF];
     size_t nbytes;
     size_t nreaders;
     size_t nwriters;
+    size_t wrsize; /* set by write(), decremented by read() */
 } pipe_impl_t;
 
 struct libos_pipe
@@ -75,6 +79,10 @@ static int _pd_pipe2(libos_pipedev_t* pipedev, libos_pipe_t* pipe[2], int flags)
         /* initially there is one read and one writer */
         impl->nreaders = 1;
         impl->nwriters = 1;
+
+        /* setup the default pipe buffer */
+        impl->data = impl->buf;
+        impl->pipesz = PIPE_BUF;
     }
 
     /* Create the read pipe */
@@ -133,6 +141,8 @@ static ssize_t _pd_read(
 {
     ssize_t ret = 0;
     pipe_impl_t* p;
+    uint8_t* ptr = buf;
+    size_t rem = count;
 
     if (!pipedev || !_valid_pipe(pipe))
         ERAISE(-EBADF);
@@ -152,57 +162,91 @@ static ssize_t _pd_read(
         ERAISE(-EBADF);
     }
 
-    /* block here while the pipe is empty */
-    while (p->nbytes == 0)
+    while (rem)
     {
-        /* Handle non-blocking write */
-        if (pipe->flags & O_NONBLOCK)
+        /* block here while the pipe is empty */
+        while (p->nbytes == 0)
         {
-            _unlock(pipe);
-            ERAISE(-EAGAIN);
+            /* Handle non-blocking write */
+            if (pipe->flags & O_NONBLOCK)
+            {
+                _unlock(pipe);
+
+                if (rem < count)
+                {
+                    /* return short count */
+                    ret = count - rem;
+                    goto done;
+                }
+
+                ERAISE(-EAGAIN);
+            }
+
+            /* if there are no writers, then fail */
+            if (p->nwriters == 0)
+            {
+                _unlock(pipe);
+
+                if (rem < count)
+                {
+                    /* return short count */
+                    ret = count - rem;
+                    goto done;
+                }
+
+                /* broken pipe */
+                ERAISE(-EPIPE);
+            }
+
+            /* If write operation is finished */
+            if (p->wrsize == 0 && rem < count)
+            {
+                _unlock(pipe);
+                /* return short count */
+                ret = count - rem;
+                goto done;
+            }
+
+            /* wait here for another thread to write */
+            if (libos_cond_wait(&p->cond, &p->mutex) != 0)
+            {
+                /* unexpected */
+                _unlock(pipe);
+                ERAISE(-EPIPE);
+            }
         }
 
-        /* if there are no writers, then fail */
-        if (p->nwriters == 0)
+        /* copy bytes from pipe to the caller buffer */
+        if (p->nbytes <= rem)
         {
-            _unlock(pipe);
-            /* broken pipe */
-            ERAISE(-EPIPE);
+            const size_t n = p->nbytes;
+            memcpy(ptr, p->data, n);
+            p->nbytes = 0;
+            libos_cond_signal(&p->cond);
+            rem -= n;
+            ptr += n;
+            p->wrsize -= n;
         }
-
-        /* wait here for another thread to write */
-        if (libos_cond_wait(&p->cond, &p->mutex) != 0)
+        else /* p->nbytes > count */
         {
-            /* unexpected */
-            _unlock(pipe);
-            ERAISE(-EPIPE);
+            const size_t n = rem;
+            memcpy(ptr, p->data, n);
+            memmove(p->data, p->data + n, p->nbytes - rem);
+            p->nbytes -= n;
+            p->wrsize -= n;
+            libos_cond_signal(&p->cond);
+            break;
         }
     }
 
-    /* copy bytes from pipe to the caller buffer */
-    if (p->nbytes <= count)
-    {
-        const size_t n = p->nbytes;
-        memcpy(buf, p->buf, n);
-        p->nbytes = 0;
-        libos_cond_signal(&p->cond);
-        _unlock(pipe);
-        ret = n;
-        goto done;
-    }
-    else /* p->nbytes > count */
-    {
-        const size_t n = count;
-        memcpy(buf, p->buf, n);
-        memmove(p->buf, p->buf + n, p->nbytes - count);
-        p->nbytes -= n;
-        libos_cond_signal(&p->cond);
-        _unlock(pipe);
-        ret = n;
-        goto done;
-    }
+    _unlock(pipe);
+    ret = count;
 
 done:
+
+    if (ret > 0)
+        libos_tcall_poll_wake();
+
     return ret;
 }
 
@@ -213,8 +257,10 @@ static ssize_t _pd_write(
     size_t count)
 {
     ssize_t ret = 0;
-    pipe_impl_t* p = pipe->impl;
+    pipe_impl_t* p;
     size_t nspace;
+    const uint8_t* ptr = buf;
+    size_t rem = count;
 
     if (!pipedev || !_valid_pipe(pipe))
         ERAISE(-EBADF);
@@ -228,65 +274,90 @@ static ssize_t _pd_write(
     _lock(pipe);
     p = pipe->impl;
 
+    p->wrsize += count;
+
     if (!_valid_pipe(pipe))
     {
         /* cannot unlock since mutex is no longer valid */
         ERAISE(-EBADF);
     }
 
-    /* Block here while the pipe is full */
-    while (p->nbytes == PIPE_BUF)
+    while (rem)
     {
-        /* Handle non-blocking read */
-        if (pipe->flags & O_NONBLOCK)
+        /* Block here while the pipe is full */
+        while (p->nbytes == p->pipesz)
         {
-            _unlock(pipe);
-            ERAISE(-EAGAIN);
+            /* Handle non-blocking read */
+            if (pipe->flags & O_NONBLOCK)
+            {
+                _unlock(pipe);
+
+                if (rem < count)
+                {
+                    /* return short count */
+                    ret = count - rem;
+                    goto done;
+                }
+
+                ERAISE(-EAGAIN);
+            }
+
+            /* if there are no readers, then fail */
+            if (p->nreaders == 0)
+            {
+                _unlock(pipe);
+
+                if (rem < count)
+                {
+                    /* return short count */
+                    ret = count - rem;
+                    goto done;
+                }
+
+                /* broken pipe */
+                ERAISE(-EPIPE);
+            }
+
+            /* wait here for another thread to read */
+            if (libos_cond_wait(&p->cond, &p->mutex) != 0)
+            {
+                /* unexpected */
+                _unlock(pipe);
+                ERAISE(-EPIPE);
+            }
         }
 
-        /* if there are no readers, then fail */
-        if (p->nreaders == 0)
-        {
-            _unlock(pipe);
-            /* broken pipe */
-            ERAISE(-EPIPE);
-        }
+        /* calculate the space in the pipe buffer */
+        nspace = p->pipesz - p->nbytes;
 
-        /* wait here for another thread to read */
-        if (libos_cond_wait(&p->cond, &p->mutex) != 0)
+        /* copy bytes from caller buffer to pipe */
+        if (nspace <= rem)
         {
-            /* unexpected */
-            _unlock(pipe);
-            ERAISE(-EPIPE);
+            const size_t n = nspace;
+            memcpy(p->data + p->nbytes, ptr, n);
+            p->nbytes += n;
+            libos_cond_signal(&p->cond);
+            rem -= n;
+            ptr += n;
+        }
+        else /* nspace > r */
+        {
+            const size_t n = rem;
+            memcpy(p->data + p->nbytes, ptr, n);
+            p->nbytes += n;
+            libos_cond_signal(&p->cond);
+            break;
         }
     }
 
-    /* calculate the space in the pipe buffer */
-    nspace = PIPE_BUF - p->nbytes;
-
-    /* copy bytes from caller buffer to pipe */
-    if (nspace <= count)
-    {
-        const size_t n = nspace;
-        memcpy(p->buf + p->nbytes, buf, n);
-        p->nbytes += n;
-        libos_cond_signal(&p->cond);
-        _unlock(pipe);
-        ret = n;
-        goto done;
-    }
-    else /* nspace > count */
-    {
-        const size_t n = count;
-        memcpy(p->buf + p->nbytes, buf, n);
-        p->nbytes += n;
-        libos_cond_signal(&p->cond);
-        _unlock(pipe);
-        ret = n;
-        goto done;
-    }
+    _unlock(pipe);
+    ret = count;
 
 done:
+
+    if (ret > 0)
+        libos_tcall_poll_wake();
+
     return ret;
 }
 
@@ -367,9 +438,15 @@ static int _pd_fcntl(
     long arg)
 {
     int ret = 0;
+    pipe_impl_t* p;
+    bool locked = false;
 
     if (!pipedev || !_valid_pipe(pipe))
         ERAISE(-EINVAL);
+
+    _lock(pipe);
+    locked = true;
+    p = pipe->impl;
 
     switch (cmd)
     {
@@ -386,15 +463,47 @@ static int _pd_fcntl(
             ret = pipe->fdflags;
             goto done;
         }
+        case F_SETPIPE_SZ:
+        {
+            void* data;
+            size_t pipesz;
+
+            if (arg <= 0)
+                arg = PIPE_BUF;
+
+            pipesz = libos_round_up_u64(arg, PIPE_BUF);
+
+            if (!(data = calloc(pipesz, 1)))
+                ERAISE(-ENOMEM);
+
+            if (p->data != p->buf)
+                free(p->data);
+
+            p->data = data;
+            p->pipesz = pipesz;
+
+            ret = (long)pipesz;
+            goto done;
+        }
+        case F_GETPIPE_SZ:
+        {
+            ret = p->pipesz;
+            goto done;
+        }
         default:
         {
             ERAISE(-ENOTSUP);
         }
     }
 
-    ERAISE(-ENOTSUP);
+    /* unreachable */
+    libos_assume(false);
 
 done:
+
+    if (locked)
+        _unlock(pipe);
+
     return ret;
 }
 
@@ -487,6 +596,10 @@ static int _pd_close(libos_pipedev_t* pipedev, libos_pipe_t* pipe)
     if (pipe->impl->nreaders == 0 && pipe->impl->nwriters == 0)
     {
         _unlock(pipe);
+
+        if (pipe->impl->data != pipe->impl->buf)
+            free(pipe->impl->data);
+
         memset(pipe->impl, 0, sizeof(pipe_impl_t));
         free(pipe->impl);
     }
@@ -516,6 +629,35 @@ done:
     return ret;
 }
 
+static int _pd_get_events(libos_pipedev_t* pipedev, libos_pipe_t* pipe)
+{
+    int ret = 0;
+    int events = 0;
+
+    if (!pipedev || !_valid_pipe(pipe))
+        ERAISE(-EINVAL);
+
+    _lock(pipe);
+    {
+        if (pipe->mode == O_RDONLY)
+        {
+            if (pipe->impl->nbytes)
+                events |= POLLIN;
+        }
+        else if (pipe->mode == O_WRONLY)
+        {
+            if (pipe->impl->nbytes)
+                events |= POLLOUT;
+        }
+    }
+    _unlock(pipe);
+
+    ret = events;
+
+done:
+    return ret;
+}
+
 extern libos_pipedev_t* libos_pipedev_get(void)
 {
     // clang-format-off
@@ -531,6 +673,7 @@ extern libos_pipedev_t* libos_pipedev_get(void)
             .fd_dup = (void*)_pd_dup,
             .fd_close = (void*)_pd_close,
             .fd_target_fd = (void*)_pd_target_fd,
+            .fd_get_events = (void*)_pd_get_events,
         },
         .pd_pipe2 = _pd_pipe2,
         .pd_read = _pd_read,
@@ -543,6 +686,7 @@ extern libos_pipedev_t* libos_pipedev_get(void)
         .pd_dup = _pd_dup,
         .pd_close = _pd_close,
         .pd_target_fd = _pd_target_fd,
+        .pd_get_events = _pd_get_events,
     };
     // clang-format-on
 

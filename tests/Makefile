@@ -43,6 +43,8 @@ DIRS += sendmsg
 DIRS += poll
 DIRS += clock
 DIRS += sysinfo
+DIRS += pollpipe
+DIRS += pipesz
 
 ifndef LIBOS_USE_OECACHE
 DIRS += cpp-exceptions

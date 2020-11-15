@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <poll.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
@@ -304,6 +305,24 @@ long libos_tcall_fchmod(int fd, mode_t mode)
     (void)fd;
     (void)mode;
 
+    assert("sgx: unimplemented: implement in enclave" == NULL);
+    return -ENOTSUP;
+}
+
+LIBOS_WEAK
+long libos_tcall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
+{
+    (void)fds;
+    (void)nfds;
+    (void)timeout;
+
+    assert("sgx: unimplemented: implement in enclave" == NULL);
+    return -ENOTSUP;
+}
+
+LIBOS_WEAK
+long libos_tcall_poll_wake(void)
+{
     assert("sgx: unimplemented: implement in enclave" == NULL);
     return -ENOTSUP;
 }
@@ -752,6 +771,10 @@ long libos_tcall(long n, long params[6])
 
             return 0;
         }
+        case LIBOS_TCALL_POLL_WAKE:
+        {
+            return libos_tcall_poll_wake();
+        }
         case SYS_ioctl:
         {
             int fd = (int)x1;
@@ -798,10 +821,17 @@ long libos_tcall(long n, long params[6])
 
             return libos_tcall_fchmod(fd, mode);
         }
+        case SYS_poll:
+        {
+            struct pollfd* fds = (struct pollfd*)x1;
+            nfds_t nfds = (nfds_t)x2;
+            int timeout = (int)x3;
+
+            return libos_tcall_poll(fds, nfds, timeout);
+        }
         case SYS_read:
         case SYS_write:
         case SYS_close:
-        case SYS_poll:
         case SYS_readv:
         case SYS_writev:
         case SYS_select:

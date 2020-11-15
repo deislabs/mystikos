@@ -69,6 +69,8 @@ struct libos_pipedev
     int (*pd_close)(libos_pipedev_t* pipedev, libos_pipe_t* pipe);
 
     int (*pd_target_fd)(libos_pipedev_t* pipedev, libos_pipe_t* pipe);
+
+    int (*pd_get_events)(libos_pipedev_t* pipedev, libos_pipe_t* pipe);
 };
 
 libos_pipedev_t* libos_pipedev_get(void);
