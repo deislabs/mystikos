@@ -26,9 +26,6 @@ endif
 
 tests:
 	TESTNAME=$(SUBDIR)-ls $(RUNTEST) $(LIBOS_EXEC) $(OPTS) rootfs /bin/ls /sbin
-
-# ATTN: broken test:
-test-pwd:
 	TESTNAME=$(SUBDIR)-pwd $(RUNTEST) $(LIBOS_EXEC) $(OPTS) rootfs /bin/pwd
 
 clean:
