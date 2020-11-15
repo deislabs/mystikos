@@ -19,6 +19,9 @@ ifdef ALLTESTS
 COUNT = 10
 endif
 
+# Increase timeout for these tests
+export TIMEOUT=120
+
 tests:
 	$(RUNTEST) $(LIBOS_EXEC) $(OPTS) rootfs /bin/pthread $(COUNT)
 
