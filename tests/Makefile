@@ -43,7 +43,10 @@ DIRS += sendmsg
 DIRS += poll
 DIRS += clock
 DIRS += sysinfo
+
+ifndef LIBOS_USE_OECACHE
 DIRS += cpp-exceptions
+endif
 
 REDEFINE_TESTS=1
 include $(TOP)/rules.mak
