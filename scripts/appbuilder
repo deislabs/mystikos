@@ -20,9 +20,9 @@ get_image()
         DOCKER_IMG_NAME="temp-docker-image"
         DOCKER_FILE=$IMAGE_NAME
         IMAGE_NAME=$DOCKER_IMG_NAME
-        docker build -t $DOCKER_IMG_NAME . -f "$DOCKER_FILE"
+        sudo docker build -t $DOCKER_IMG_NAME . -f "$DOCKER_FILE"
     else
-        docker pull $IMAGE_NAME
+        sudo docker pull $IMAGE_NAME
     fi
 }
 
@@ -31,11 +31,12 @@ get_image()
 # TODO: there's probably a fancier way to do this with more time
 export_image()
 {
-    docker run -d --name temp-extract $IMAGE_NAME
-    docker stop temp-extract
+    sudo docker run -d --name temp-extract $IMAGE_NAME
+    sudo docker stop temp-extract
 
-    docker export temp-extract -o temp-extract.tar
-    docker rm temp-extract
+    sudo docker export temp-extract -o temp-extract.tar
+    sudo chmod 777 temp-extract.tar
+    sudo docker rm temp-extract
 
     rm -rf appdir && mkdir appdir
     tar xf temp-extract.tar -C appdir
@@ -45,7 +46,7 @@ export_image()
 clean_up()
 {
     if [ $DOCKER_IMG_NAME ]; then
-        docker rmi $DOCKER_IMG_NAME
+        sudo docker rmi $DOCKER_IMG_NAME
     fi
     rm -f temp-extract.tar
 }
