@@ -41,7 +41,6 @@ long libos_tcall_wake(uint64_t event)
     long ret = 0;
     volatile int* uaddr = (volatile int*)event;
 
-    printf("wake before...{%d}\n", *uaddr);
     if (__sync_fetch_and_add(uaddr, 1) != 0)
     {
         ret = syscall(SYS_futex, uaddr, FUTEX_WAKE_PRIVATE, 1, NULL, NULL, 0);
@@ -49,7 +48,6 @@ long libos_tcall_wake(uint64_t event)
         if (ret != 0)
             ret = -errno;
     }
-    printf("wake after...{%d}\n", *uaddr);
 
     return ret;
 }
