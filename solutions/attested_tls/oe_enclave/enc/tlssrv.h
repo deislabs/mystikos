@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 #ifndef _TLSSRV_H
 #define _TLSSRV_H
 
