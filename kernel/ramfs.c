@@ -1298,6 +1298,13 @@ static int _fs_rename(libos_fs_t* fs, const char* oldpath, const char* newpath)
     ECHECK(_inode_remove_dirent(old_parent, old_basename));
     old_parent->nlink--;
 
+    /* Remove the newpath directory entry if any */
+    if (new_inode)
+    {
+        ECHECK(_inode_remove_dirent(new_parent, new_basename));
+        new_parent->nlink--;
+    }
+
     /* Add the newpath directory entry */
     _inode_add_dirent(new_parent, old_inode, DT_REG, new_basename);
     new_parent->nlink++;
