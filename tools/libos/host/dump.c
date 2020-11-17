@@ -1,6 +1,9 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 #include <inttypes.h>
 #include <openssl/sha.h>
 #include <stdio.h>
