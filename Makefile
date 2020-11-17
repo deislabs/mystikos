@@ -168,12 +168,12 @@ bindist:
 
 ##==============================================================================
 ##
-## license:
+## nolicense:
 ##     Print names of source files without a license notice
 ##
 ##==============================================================================
 
-license:
+nolicense:
 	@ $(foreach i, $(shell $(MAKE) src), ( grep -q -l "// Copyright (c)" $(i) || echo $(i) ) $(NL) )
 
 ##==============================================================================
@@ -185,3 +185,28 @@ license:
 
 oelicense:
 	@ $(foreach i, $(shell $(MAKE) src), ( grep -l "// Copyright (c) Open Enclave" $(i) || /bin/true ) $(NL) )
+
+##==============================================================================
+##
+## help:
+##
+##==============================================================================
+
+help:
+	@ echo ""
+	@ echo "make -- build everything"
+	@ echo "make clean -- remove generated binaries"
+	@ echo "make distclean -- remove build configuration and binaries"
+	@ echo "make tests -- run critical tests"
+	@ echo "make alltests -- run all tests"
+	@ echo "make install -- install the project"
+	@ echo "make uninstall -- uninstall the project"
+	@ echo "make touch -- touch all source files"
+	@ echo "make bindist -- generate a binary distribution file"
+	@ echo "make src -- print project source file names"
+	@ echo "make nolicense -- print source file names no license"
+	@ echo "make oelicense -- print source file names with OE SDK license"
+	@ echo "make sub -- perform global substitution using /tmp/sub.sed"
+	@ echo "make attn -- print sources with 'ATTN' annotations"
+	@ echo "make format -- format all sources"
+	@ echo ""
