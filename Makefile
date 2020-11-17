@@ -90,7 +90,7 @@ uninstall:
 ##
 ##==============================================================================
 
-SOURCES_DIRS = $(shell  ls -d -1 */ | grep -v third_party | grep -v build | grep -v solutions)
+SOURCES_DIRS = $(shell  ls -d -1 */ | grep -v third_party | grep -v build )
 
 src:
 	@ echo $(foreach i, $(SOURCES_DIRS), $(shell find $(i) -name '*.[ch]'))
@@ -165,3 +165,13 @@ bindist:
 	@ ( cd $(BUILDDIR)/bindist/opt; tar zcf $(TARBALL) openlibos )
 	@ cp $(BUILDDIR)/bindist/opt/$(TARBALL) .
 	@ echo "=== Created $(TARBALL)"
+
+##==============================================================================
+##
+## license:
+##     Print names of source files without a license notice
+##
+##==============================================================================
+
+license:
+	@ $(foreach i, $(shell $(MAKE) src), ( grep -q -l "// Copyright (c)" $(i) || echo $(i) ) $(NL) )
