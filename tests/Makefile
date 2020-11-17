@@ -45,6 +45,7 @@ DIRS += clock
 DIRS += sysinfo
 DIRS += pollpipe
 DIRS += pipesz
+DIRS += futex
 
 ifndef LIBOS_USE_OECACHE
 DIRS += cpp-exceptions
