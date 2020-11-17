@@ -1,7 +1,7 @@
-// Copyright (c) Microsoft Corporation.
+// Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
-// Copyright (c) Open Enclave SDK contributors.
+// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
 #include <assert.h>
