@@ -175,3 +175,13 @@ bindist:
 
 license:
 	@ $(foreach i, $(shell $(MAKE) src), ( grep -q -l "// Copyright (c)" $(i) || echo $(i) ) $(NL) )
+
+##==============================================================================
+##
+## oelicense:
+##     Print names of source files with the OE license
+##
+##==============================================================================
+
+oelicense:
+	@ $(foreach i, $(shell $(MAKE) src), ( grep -l "// Copyright (c) Open Enclave" $(i) || /bin/true ) $(NL) )
