@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 #include <assert.h>
 #include <limits.h>
 #include <stdio.h>
