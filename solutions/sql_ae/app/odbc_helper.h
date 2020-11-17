@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 #ifndef ODBC_HELPER_H
 #define ODBC_HELPER_H
 

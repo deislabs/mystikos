@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 #ifndef _OE_GENCREDS_H
 #define _OE_GENCREDS_H
 
