@@ -5,7 +5,7 @@ DIRS =
 DIRS += attested_tls
 DIRS += sql_ae
 DIRS += msgpack_c
-
+DIRS += python
 
 REDEFINE_TESTS=1
 include $(TOP)/rules.mak
