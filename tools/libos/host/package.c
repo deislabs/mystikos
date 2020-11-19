@@ -429,13 +429,15 @@ int _exec_package(
         }
     }
 
-    if (snprintf(full_app_path, PATH_MAX, "%s", argv[0]) >= PATH_MAX)
+    if (!realpath(argv[0], full_app_path))
     {
-        fprintf(stderr, "File path %s is too long\n", argv[0]);
+        fprintf(stderr, "Invalid path %s\n", argv[0]);
         goto done;
     }
-    app_dir = dirname(full_app_path);
-    app_name = basename(full_app_path);
+    app_dir = full_app_path;
+    app_name = strrchr(full_app_path, '/');
+    *app_name = '\0';
+    app_name++;
 
     // Create a directory to unpack the package into, and to run from,
     // as well as the directory structure we need
