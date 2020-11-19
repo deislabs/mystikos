@@ -3107,7 +3107,6 @@ long libos_syscall(long n, long params[6])
             _strace(n, "name=\"%s\" len=%zu", name, len);
 
             BREAK(0);
-            // BREAK(_return(n, _forward_syscall(n, params)));
         }
         case SYS_setdomainname:
             break;

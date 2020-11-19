@@ -7,6 +7,7 @@ PROGRAM = libosenc.so
 SOURCES += $(SUBOBJDIR)/libos_t.c
 SOURCES += enc.c
 SOURCES += clock.c
+SOURCES += syscall.c
 SOURCES += ../config.c
 
 INCLUDES = $(OEENCLAVE_INCLUDES) -I$(SUBOBJDIR) -I../
@@ -16,8 +17,6 @@ CFLAGS = $(OEENCLAVE_CFLAGS)
 LIBS += $(LIBDIR)/libjson.a
 LIBS += $(LIBDIR)/libostargetsgxenclave.a
 LIBS += $(LIBDIR)/libosutils.a
-LIBS += $(OEENCLAVE_LIBDIR)/liboehostfs.a
-LIBS += $(OEENCLAVE_LIBDIR)/liboehostsock.a
 
 LDFLAGS += $(OEENCLAVE_LDFLAGS)
 
