@@ -118,6 +118,7 @@
 #include <libos/defs.h>
 #include <libos/fsgs.h>
 #include <libos/mman.h>
+#include <libos/round.h>
 #include <libos/spinlock.h>
 #include <libos/strings.h>
 
@@ -460,12 +461,17 @@ static int _munmap(libos_mman_t* mman, void* addr, size_t length)
         goto done;
     }
 
-    /* LENGTH must be a multiple of the page size */
+    /* Align LENGTH to a multiple of the page size */
     if (length % LIBOS_PAGE_SIZE)
     {
-        _mman_set_err(mman, "bad length parameter");
-        ret = -EINVAL;
-        goto done;
+        size_t length2 = libos_round_up_to_page_size(length);
+        if (length2 <= length)
+        {
+            _mman_set_err(mman, "Integer overflow: length");
+            ret = -EINVAL;
+            goto done;
+        }
+        length = length2;
     }
 
     /* Set start and end pointers for this area */
