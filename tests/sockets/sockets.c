@@ -92,8 +92,24 @@ static void* _srv_thread_func(void* arg)
         int sock;
 
         printf("server: waiting for connection...\n");
-        sock = accept(lsock, (struct sockaddr*)NULL, NULL);
-        assert(sock > 0);
+
+        if (args->domain == AF_INET)
+        {
+            struct sockaddr_in addr;
+            socklen_t addrlen = sizeof(addr);
+            sock = accept(lsock, (struct sockaddr*)NULL, &addrlen);
+            assert(sock > 0);
+
+            printf("addrlen=%u/%zu\n", addrlen, sizeof(addr));
+        }
+        else
+        {
+            struct sockaddr_un addr;
+            socklen_t addrlen = sizeof(addr);
+            sock = accept(lsock, (struct sockaddr*)&addr, &addrlen);
+            assert(sock > 0);
+        }
+
         printf("server: accepted connection: %d\n", sock);
 
         printf("server: send\n");
@@ -151,7 +167,7 @@ static void* _cli_thread_func(void* arg)
 
         assert(n > 0);
 
-        printf("buf{%s}\n", buf);
+        printf("buf{%s} n=%zd\n", buf, n);
         assert(n == strlen(alpha));
         assert(memcmp(buf, alpha, n) == 0);
     }

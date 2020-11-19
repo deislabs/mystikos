@@ -269,12 +269,9 @@ OE_STATIC_ASSERT(OE_OFFSETOF(struct libos_stat, st_mtim.tv_nsec) == 96);
 OE_STATIC_ASSERT(OE_OFFSETOF(struct libos_stat, st_ctim.tv_sec) == 104);
 OE_STATIC_ASSERT(OE_OFFSETOF(struct libos_stat, st_ctim.tv_nsec) == 112);
 
-long libos_fstat_ocall(long fd, struct libos_stat* statbuf)
+long libos_fstat_ocall(int fd, struct libos_stat* statbuf)
 {
-    if (fd > INT_MAX)
-        return -EINVAL;
-
-    if (fstat((int)fd, (struct stat*)statbuf) != 0)
+    if (fstat(fd, (struct stat*)statbuf) != 0)
         return -errno;
 
     return 0;
@@ -300,10 +297,10 @@ long libos_poll_wake_ocall(void)
     return libos_tcall_poll_wake();
 }
 
-long libos_poll_ocall(struct libos_pollfd* fds, unsigned long nfds, int timeout)
+long libos_poll_ocall(struct pollfd* fds, unsigned long nfds, int timeout)
 {
     extern long libos_tcall_poll(
         struct pollfd * lfds, unsigned long nfds, int timeout);
 
-    return libos_tcall_poll((struct pollfd*)fds, nfds, timeout);
+    return libos_tcall_poll(fds, nfds, timeout);
 }

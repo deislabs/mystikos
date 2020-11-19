@@ -39,15 +39,6 @@ static size_t _get_num_tcs(void)
 
 int libos_setup_clock(struct clock_ctrl*);
 
-static void _setup_sockets(void)
-{
-    if (oe_load_module_host_socket_interface() != OE_OK)
-    {
-        fprintf(stderr, "oe_load_module_host_socket_interface() failed\n");
-        assert(0);
-    }
-}
-
 /* Handle illegal SGX instructions */
 static uint64_t _vectored_handler(oe_exception_record_t* er)
 {
@@ -302,8 +293,6 @@ int libos_enter_ecall(
         fprintf(stderr, "oe_add_vectored_exception_handler() failed\n");
         assert(0);
     }
-
-    _setup_sockets();
 
     if (libos_setup_clock(shared_memory->clock))
     {
@@ -659,50 +648,6 @@ long libos_tcall_export_file(const char* path, const void* data, size_t size)
     return retval;
 }
 
-long oe_get_host_fd(int fd);
-
-/* overrides function by same name in SGX target */
-long libos_tcall_fstat(int fd, struct stat* statbuf)
-{
-    long retval = 0;
-    long hfd;
-
-    if (!statbuf)
-        return -EINVAL;
-
-    if ((hfd = oe_get_host_fd(fd)) < 0)
-        return -EINVAL;
-
-    if (libos_fstat_ocall(&retval, hfd, (struct libos_stat*)statbuf) != OE_OK)
-        return -EINVAL;
-
-    return retval;
-}
-
-long libos_tcall_sched_yield(void)
-{
-    long retval = 0;
-
-    if (libos_sched_yield_ocall(&retval) != OE_OK)
-        return -EINVAL;
-
-    return retval;
-}
-
-long libos_tcall_fchmod(int fd, mode_t mode)
-{
-    long retval;
-    long hfd;
-
-    if ((hfd = oe_get_host_fd(fd)) < 0)
-        return -EINVAL;
-
-    if (libos_fchmod_ocall(&retval, (int)hfd, mode) != OE_OK)
-        return -EINVAL;
-
-    return retval;
-}
-
 long libos_tcall_poll_wake(void)
 {
     long r;
@@ -711,78 +656,6 @@ long libos_tcall_poll_wake(void)
         return -EINVAL;
 
     return r;
-}
-
-long libos_tcall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
-{
-    long ret = 0;
-    struct libos_pollfd* lfds = NULL;
-    long r;
-
-    if (nfds == 0)
-    {
-        lfds = (struct libos_pollfd*)fds;
-
-        if (libos_poll_ocall(&r, lfds, nfds, timeout) != OE_OK)
-        {
-            ret = -EINVAL;
-            goto done;
-        }
-
-        ret = r;
-        goto done;
-    }
-
-    /* translate fds to host fds */
-    if (fds)
-    {
-        if (!(lfds = calloc(nfds, sizeof(struct libos_pollfd))))
-        {
-            ret = -ENOMEM;
-            goto done;
-        }
-
-        for (nfds_t i = 0; i < nfds; i++)
-        {
-            lfds[i].fd = fds[i].fd;
-            lfds[i].events = fds[i].events;
-            lfds[i].revents = fds[i].revents;
-
-            if (fds[i].fd >= 0)
-            {
-                long fd = oe_get_host_fd(fds[i].fd);
-
-                if (fd < 0 || fd > INT_MAX)
-                {
-                    ret = -EBADF;
-                    goto done;
-                }
-
-                lfds[i].fd = (int)fd;
-            }
-        }
-    }
-
-    if (libos_poll_ocall(&r, lfds, nfds, timeout) != OE_OK)
-    {
-        ret = -EINVAL;
-        goto done;
-    }
-
-    if (fds)
-    {
-        for (nfds_t i = 0; i < nfds; i++)
-            fds[i].revents = lfds[i].revents;
-    }
-
-    ret = r;
-
-done:
-
-    if (lfds)
-        free(lfds);
-
-    return ret;
 }
 
 OE_SET_ENCLAVE_SGX(

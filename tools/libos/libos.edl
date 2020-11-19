@@ -1,11 +1,14 @@
 enclave
 {
     from "openenclave/edl/sgx/platform.edl" import *;
-    from "openenclave/edl/syscall.edl" import *;
     from "openenclave/edl/logging.edl" import oe_write_ocall;
-    from "openenclave/edl/fcntl.edl" import *;
+    from "openenclave/edl/fcntl.edl" import oe_syscall_writev_ocall;
+    from "openenclave/edl/fcntl.edl" import oe_syscall_dup_ocall;
 
+    include "time.h"
+    include "sys/socket.h"
     include "libos/shm.h"
+    include "poll.h"
 
     struct libos_options
     {
@@ -35,13 +38,6 @@ enclave
         struct libos_timespec st_atim;
         struct libos_timespec st_mtim;
         struct libos_timespec st_ctim;
-    };
-
-    struct libos_pollfd
-    {
-        int fd;
-        short events;
-        short revents;
     };
 
     trusted
@@ -100,20 +96,141 @@ enclave
             [in, size=size] const void* data,
             size_t size);
 
-        /* returns -errno on failure */
-        long libos_fstat_ocall(long fd, [out] struct libos_stat* statbuf);
+        long libos_fstat_ocall(int fd, [out] struct libos_stat* statbuf);
 
-        /* returns -errno on failure */
         long libos_sched_yield_ocall();
 
-        /* returns -errno on failure */
         long libos_fchmod_ocall(int fd, uint32_t mode);
 
         long libos_poll_ocall(
-            [in, out, count=nfds] struct libos_pollfd* fds,
+            [in, out, count=nfds] struct pollfd* fds,
             unsigned long nfds,
             int timeout);
 
         long libos_poll_wake_ocall();
+
+        long libos_read_ocall(
+            int fd,
+            [in, size=count] void* buf,
+            size_t count);
+
+        long libos_write_ocall(
+            int fd,
+            [out, size=count] const void* buf,
+            size_t count);
+
+        long libos_close_ocall(int fd);
+
+        long libos_nanosleep_ocall(
+            [in] const struct timespec* req,
+            [out] struct timespec* rem);
+
+        long libos_fcntl_ocall(int fd, int cmd, long arg);
+
+        long libos_bind_ocall(
+            int sockfd,
+            [in, size=addrlen] const struct sockaddr* addr,
+            socklen_t addrlen);
+
+        long libos_connect_ocall(
+            int sockfd,
+            [in, size=addrlen] const struct sockaddr* addr,
+            socklen_t addrlen);
+
+        long libos_recvfrom_ocall(
+            int sockfd,
+            [out, size=len] void* buf,
+            size_t len,
+            int flags,
+            [out, size=src_addr_size] struct sockaddr* src_addr,
+            [in, out] socklen_t* addrlen_out,
+            socklen_t src_addr_size);
+
+        long libos_sendto_ocall(
+            int sockfd,
+            [in, size=len] const void* buf,
+            size_t len,
+            int flags,
+            [in, size=addrlen] const struct sockaddr* dest_addr,
+            socklen_t addrlen);
+
+        long libos_socket_ocall(int domain, int type, int protocol);
+
+        long libos_accept_ocall(
+            int sockfd,
+            [out, size=addr_size] struct sockaddr* addr,
+            [in, out] socklen_t* addrlen,
+            size_t addr_size);
+
+        long libos_sendmsg_ocall(
+            int sockfd,
+            /* -- begin struct msghdr -- */
+            [in, size=msg_namelen] const void* msg_name,
+            socklen_t msg_namelen,
+            [in, size=len] const void* buf,
+            size_t len,
+            [in, size=msg_controllen] const void* msg_control,
+            socklen_t msg_controllen,
+            int msg_flags,
+            /* -- end struct msghdr -- */
+            int flags);
+
+        long libos_recvmsg_ocall(
+            int sockfd,
+            /* -- begin struct msghdr -- */
+            [out, size=msg_namelen] void* msg_name,
+            socklen_t msg_namelen,
+            [out] socklen_t* msg_namelen_out,
+            [out, size=len] void* buf,
+            size_t len,
+            [out, size=msg_controllen] void* msg_control,
+            socklen_t msg_controllen,
+            [out] socklen_t* msg_controllen_out,
+            [out] int* msg_flags,
+            /* -- end struct msghdr -- */
+            int flags);
+
+        long libos_shutdown_ocall(int sockfd, int how);
+
+        long libos_listen_ocall(int sockfd, int backlog);
+
+        long libos_getsockname_ocall(
+            int sockfd,
+            [out, size=addr_size] struct sockaddr* addr,
+            [in, out] socklen_t* addrlen,
+            socklen_t addr_size);
+
+        long libos_getpeername_ocall(
+            int sockfd,
+            [out, size=addr_size] struct sockaddr* addr,
+            [in, out] socklen_t* addrlen,
+            socklen_t addr_size);
+
+        long libos_socketpair_ocall(
+            int domain,
+            int type,
+            int protocol,
+            [out] int sv[2]);
+
+        long libos_setsockopt_ocall(
+            int sockfd,
+            int level,
+            int optname,
+            [in, size=optlen] const void* optval,
+            socklen_t optlen);
+
+        long libos_getsockopt_ocall(
+            int sockfd,
+            int level,
+            int optname,
+            [out, size=optval_size] void* optval,
+            [in, out] socklen_t* optlen,
+            socklen_t optval_size);
+
+        long libos_ioctl_ocall(
+            int fd,
+            unsigned long request,
+            [in, out, size=argp_size] void* argp,
+            size_t argp_size);
     };
 };

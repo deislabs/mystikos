@@ -494,11 +494,8 @@ static ssize_t _sd_readv(
     if (!sd || !_valid_sock(sock))
         ERAISE(-EINVAL);
 
-    /* perform syscall */
-    {
-        long params[6] = {sock->fd, (long)iov, iovcnt};
-        ECHECK((ret = libos_tcall(SYS_readv, params)));
-    }
+    ret = libos_fdops_readv(&sd->fdops, sock, iov, iovcnt);
+    ECHECK(ret);
 
 done:
     return ret;
@@ -515,11 +512,8 @@ static ssize_t _sd_writev(
     if (!sd || !_valid_sock(sock))
         ERAISE(-EINVAL);
 
-    /* perform syscall */
-    {
-        long params[6] = {sock->fd, (long)iov, iovcnt};
-        ECHECK((ret = libos_tcall(SYS_writev, params)));
-    }
+    ret = libos_fdops_writev(&sd->fdops, sock, iov, iovcnt);
+    ECHECK(ret);
 
 done:
     return ret;

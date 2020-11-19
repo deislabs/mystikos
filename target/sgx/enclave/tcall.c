@@ -24,6 +24,8 @@
 #include <openenclave/enclave.h>
 #include "gencreds.h"
 
+long libos_handle_tcall(long n, long params[6]);
+
 long oe_syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6);
 
 libos_run_thread_t __libos_run_thread;
@@ -284,59 +286,10 @@ LIBOS_STATIC_ASSERT(OE_OFFSETOF(struct stat, st_ctim.tv_sec) == 104);
 LIBOS_STATIC_ASSERT(OE_OFFSETOF(struct stat, st_ctim.tv_nsec) == 112);
 
 LIBOS_WEAK
-long libos_tcall_fstat(int fd, struct stat* statbuf)
-{
-    (void)fd;
-    (void)statbuf;
-    assert("sgx: unimplemented: implement in enclave" == NULL);
-    return -ENOTSUP;
-}
-
-LIBOS_WEAK
-long libos_tcall_sched_yield(void)
-{
-    assert("sgx: unimplemented: implement in enclave" == NULL);
-    return -ENOTSUP;
-}
-
-LIBOS_WEAK
-long libos_tcall_fchmod(int fd, mode_t mode)
-{
-    (void)fd;
-    (void)mode;
-
-    assert("sgx: unimplemented: implement in enclave" == NULL);
-    return -ENOTSUP;
-}
-
-LIBOS_WEAK
-long libos_tcall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
-{
-    (void)fds;
-    (void)nfds;
-    (void)timeout;
-
-    assert("sgx: unimplemented: implement in enclave" == NULL);
-    return -ENOTSUP;
-}
-
-LIBOS_WEAK
 long libos_tcall_poll_wake(void)
 {
     assert("sgx: unimplemented: implement in enclave" == NULL);
     return -ENOTSUP;
-}
-
-/* forward system call to Open Enclave */
-static long
-_forward_syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6)
-{
-    long ret;
-
-    if ((ret = oe_syscall(n, x1, x2, x3, x4, x5, x6)) == -1)
-        ret = -errno;
-
-    return ret;
 }
 
 static long _oesdk_syscall(long n, long params[6])
@@ -573,6 +526,8 @@ long libos_tcall(long n, long params[6])
     const long x5 = params[4];
     const long x6 = params[5];
 
+    (void)x6;
+
     switch (n)
     {
         case LIBOS_TCALL_RANDOM:
@@ -775,77 +730,17 @@ long libos_tcall(long n, long params[6])
         {
             return libos_tcall_poll_wake();
         }
-        case SYS_ioctl:
-        {
-            int fd = (int)x1;
-            unsigned long request = (unsigned long)x2;
-            const int* arg = (const int*)x3;
-
-            /* Map FIONBIO to fcntl() since broken in Open Enclave */
-            if (request == FIONBIO)
-            {
-                long flags;
-
-                if (!arg)
-                    return -EINVAL;
-
-                /* Get the access mode and the file status flags */
-                flags = _forward_syscall(SYS_fcntl, fd, F_GETFL, 0, 0, 0, 0);
-
-                /* Set to non-blocking or blocking */
-                if (*arg)
-                    flags = (flags | O_NONBLOCK);
-                else
-                    flags = (flags & ~O_NONBLOCK);
-
-                return _forward_syscall(SYS_fcntl, fd, F_SETFL, flags, 0, 0, 0);
-            }
-
-            return _forward_syscall(n, x1, x2, x3, x4, x5, x6);
-        }
-        case SYS_fstat:
-        {
-            int fd = (int)x1;
-            struct stat* statbuf = (struct stat*)x2;
-
-            return libos_tcall_fstat(fd, statbuf);
-        }
-        case SYS_sched_yield:
-        {
-            return libos_tcall_sched_yield();
-        }
-        case SYS_fchmod:
-        {
-            int fd = (int)x1;
-            mode_t mode = (mode_t)x2;
-
-            return libos_tcall_fchmod(fd, mode);
-        }
-        case SYS_poll:
-        {
-            struct pollfd* fds = (struct pollfd*)x1;
-            nfds_t nfds = (nfds_t)x2;
-            int timeout = (int)x3;
-
-            return libos_tcall_poll(fds, nfds, timeout);
-        }
         case SYS_read:
         case SYS_write:
         case SYS_close:
-        case SYS_readv:
-        case SYS_writev:
-        case SYS_select:
         case SYS_nanosleep:
         case SYS_fcntl:
-        case SYS_gettimeofday:
-        case SYS_sethostname:
         case SYS_bind:
         case SYS_connect:
         case SYS_recvfrom:
-        case SYS_sendfile:
+        case SYS_sendto:
         case SYS_socket:
         case SYS_accept:
-        case SYS_sendto:
         case SYS_sendmsg:
         case SYS_recvmsg:
         case SYS_shutdown:
@@ -855,8 +750,14 @@ long libos_tcall(long n, long params[6])
         case SYS_socketpair:
         case SYS_setsockopt:
         case SYS_getsockopt:
+        case SYS_ioctl:
+        case SYS_fstat:
+        case SYS_sched_yield:
+        case SYS_fchmod:
+        case SYS_poll:
         {
-            return _forward_syscall(n, x1, x2, x3, x4, x5, x6);
+            extern long libos_handle_tcall(long n, long params[6]);
+            return libos_handle_tcall(n, params);
         }
         case SYS_libos_oe_add_vectored_exception_handler:
         case SYS_libos_oe_remove_vectored_exception_handler:
