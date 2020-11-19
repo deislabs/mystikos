@@ -23,7 +23,7 @@ void test_double_wait(void)
 {
     const uint64_t nsec = 1000000000;
     const uint64_t timeout = nsec / 10;
-    const uint64_t slop = 500000;
+    const uint64_t slop = 5000000;
     const uint64_t lo = timeout - slop;
     const uint64_t hi = timeout + slop;
     uint64_t delta;
