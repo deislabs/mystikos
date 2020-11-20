@@ -103,10 +103,8 @@ static int test_clock_set_time()
     // As only the sgx target maintains the monotonicity of the realtime clock
     assert(clock_gettime(CLOCK_REALTIME, &tp1) == 0);
     timestamp1 = tp1.tv_sec * NANO_IN_SECOND + tp1.tv_nsec;
-    if (is_sgx_target())
-    {
-        assert(timestamp1 > timestamp0);
-    }
+
+    assert(timestamp1 > timestamp0);
 
     update_tp = tp1;
     update_tp.tv_sec += adjust; // move clock forward by `adjust` seconds
@@ -163,7 +161,10 @@ int main(int argc, const char* argv[])
 
     assert(test_clock_get_time(now_from_cmdline) == 0);
 
-    assert(test_clock_set_time() == 0);
+    if (is_sgx_target())
+    {
+        assert(test_clock_set_time() == 0);
+    }
 
     assert(test_diff_precisions() == 0);
 
