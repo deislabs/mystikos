@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/resource.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/sysinfo.h>
@@ -1785,6 +1786,22 @@ done:
     return ret;
 }
 
+long libos_syscall_getrusage(int who, struct rusage* usage)
+{
+    // ATTN: support child process and per-thread usage reporting.
+    if (who == RUSAGE_CHILDREN || who == RUSAGE_THREAD)
+        return -EINVAL;
+
+    long stime = libos_times_system_time();
+    long utime = libos_times_user_time();
+    usage->ru_utime.tv_sec = utime / 1000000000;
+    usage->ru_utime.tv_usec = utime % 1000000000 * 1000;
+    usage->ru_stime.tv_sec = stime / 1000000000;
+    usage->ru_stime.tv_usec = stime % 1000000000 * 1000;
+
+    return 0;
+}
+
 long libos_syscall_ret(long ret)
 {
     if (ret < 0)
@@ -2852,7 +2869,15 @@ long libos_syscall(long n, long params[6])
         case SYS_getrlimit:
             break;
         case SYS_getrusage:
-            break;
+        {
+            int who = (int)x1;
+            struct rusage* usage = (struct rusage*)x2;
+
+            _strace(n, "who=%d usage=%p", who, usage);
+
+            long ret = libos_syscall_getrusage(who, usage);
+            BREAK(_return(n, ret));
+        }
         case SYS_sysinfo:
         {
             struct sysinfo* info = (struct sysinfo*)x1;
