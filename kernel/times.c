@@ -1,15 +1,20 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
+#include <sys/times.h>
 
-#include <assert.h>
+#include <libos/assume.h>
 #include <libos/clock.h>
 #include <libos/eraise.h>
 #include <libos/syscall.h>
+#include <libos/thread.h>
 
-static struct timespec _start_tp = {0};
-static struct timespec _leave_kernel_tp = {0}; // attn: make it thread local
-static long _system_time_elapsed = 0;
-static long _user_time_elapsed = 0;
+/* Time spent by the main thread and its children */
+struct tms process_times;
+
+LIBOS_INLINE long lapsed_nsecs(struct timespec t0, struct timespec t1)
+{
+    return (t1.tv_sec - t0.tv_sec) * NANO_IN_SECOND + (t1.tv_nsec - t0.tv_nsec);
+}
 
 static bool is_zero_tp(struct timespec* tp)
 {
@@ -18,73 +23,61 @@ static bool is_zero_tp(struct timespec* tp)
 
 void libos_times_start()
 {
-    libos_syscall_clock_gettime(CLOCK_MONOTONIC, &_start_tp);
+    libos_thread_t* thread = libos_thread_self();
+    libos_syscall_clock_gettime(CLOCK_MONOTONIC, &thread->start_ts);
 }
 
-struct timespec libos_times_enter_kernel()
+void libos_times_enter_kernel()
 {
-    struct timespec tp0 = {0}, enter_kernel_tp = {0};
-    libos_syscall_clock_gettime(CLOCK_MONOTONIC, &enter_kernel_tp);
+    libos_thread_t* current = libos_thread_self();
 
-    if (is_zero_tp(&_leave_kernel_tp))
-        tp0 = _start_tp;
-    else
-        tp0 = _leave_kernel_tp;
+    libos_syscall_clock_gettime(CLOCK_MONOTONIC, &current->enter_kernel_ts);
 
-    long lapsed = (enter_kernel_tp.tv_sec - tp0.tv_sec) * NANO_IN_SECOND +
-                  (enter_kernel_tp.tv_nsec - tp0.tv_nsec);
+    // Thread might be entering the kernel for the first time
+    if (is_zero_tp(&current->leave_kernel_ts))
+        current->leave_kernel_ts = current->start_ts;
 
-    if (lapsed <= 0)
-    {
-        // Impossible in a rational world.
-        // For now, just ignore lapsed because it's inaccurate anyway since
-        // _leave_kernel_tp is corrupted by another thread.
-    }
-    else
-    {
-        __atomic_fetch_add(&_user_time_elapsed, lapsed, __ATOMIC_SEQ_CST);
-    }
-    return enter_kernel_tp;
+    long lapsed =
+        lapsed_nsecs(current->leave_kernel_ts, current->enter_kernel_ts);
+    libos_assume(lapsed >= 0);
+    __atomic_fetch_add(&process_times.tms_utime, lapsed, __ATOMIC_SEQ_CST);
 }
 
-void libos_times_leave_kernel(struct timespec tp0)
+void libos_times_leave_kernel()
 {
-    libos_syscall_clock_gettime(CLOCK_MONOTONIC, &_leave_kernel_tp);
+    libos_thread_t* current = libos_thread_self();
+    libos_syscall_clock_gettime(CLOCK_MONOTONIC, &current->leave_kernel_ts);
 
-    long lapsed = (_leave_kernel_tp.tv_sec - tp0.tv_sec) * NANO_IN_SECOND +
-                  (_leave_kernel_tp.tv_nsec - tp0.tv_nsec);
-
-    assert(lapsed > 0);
-
-    __atomic_fetch_add(&_system_time_elapsed, lapsed, __ATOMIC_SEQ_CST);
+    long lapsed =
+        lapsed_nsecs(current->enter_kernel_ts, current->leave_kernel_ts);
+    libos_assume(lapsed > 0);
+    __atomic_fetch_add(&process_times.tms_stime, lapsed, __ATOMIC_SEQ_CST);
 }
 
 long libos_times_system_time()
 {
-    return _system_time_elapsed;
+    return process_times.tms_stime;
 }
 
 long libos_times_user_time()
 {
-    return _user_time_elapsed;
+    return process_times.tms_utime;
+}
+
+long libos_times_process_time()
+{
+    return process_times.tms_stime + process_times.tms_utime +
+            process_times.tms_cstime + process_times.tms_cutime;
+}
+
+long libos_times_thread_time()
+{
+    libos_thread_t* current = libos_thread_self();
+    long lapsed = lapsed_nsecs(current->enter_kernel_ts, current->start_ts);
+    return lapsed;
 }
 
 long libos_times_uptime()
 {
-    long ret = 0;
-
-    if (is_zero_tp(&_start_tp))
-        ERAISE(-EINVAL);
-
-    struct timespec tp_now = {0};
-    ECHECK(libos_syscall_clock_gettime(CLOCK_BOOTTIME, &tp_now));
-
-    long lapsed = (tp_now.tv_sec - _start_tp.tv_sec) * NANO_IN_SECOND +
-                  (tp_now.tv_nsec - _start_tp.tv_nsec);
-    ECHECK(lapsed);
-
-    ret = lapsed;
-
-done:
-    return ret;
+    return process_times.tms_stime + process_times.tms_utime;
 }

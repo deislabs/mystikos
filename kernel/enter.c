@@ -309,7 +309,7 @@ int libos_enter_kernel(libos_kernel_args_t* args)
     /* Setup the memory manager */
     if (libos_setup_mman(args->mman_data, args->mman_size) != 0)
     {
-        libos_eprintf("kernel: memory manageger setup failed\n");
+        libos_eprintf("kernel: memory manager setup failed\n");
         ERAISE(-EINVAL);
     }
 

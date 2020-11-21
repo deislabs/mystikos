@@ -3948,8 +3948,29 @@ static libos_spinlock_t _set_time_lock = LIBOS_SPINLOCK_INITIALIZER;
 
 long libos_syscall_clock_gettime(clockid_t clk_id, struct timespec* tp)
 {
-    long params[6] = {(long)clk_id, (long)tp};
+    libos_thread_t* current = libos_thread_self();
+    if (// mirrors clock id obtained from pthread_getcpuclockid
+        clk_id == (clockid_t)((-current->tid - 1) * 8U + 6) ||
+        clk_id == CLOCK_THREAD_CPUTIME_ID)
+    {
+        long nanoseconds = libos_times_thread_time();
+        tp->tv_sec = nanoseconds / NANO_IN_SECOND;
+        tp->tv_nsec = nanoseconds % NANO_IN_SECOND;
+        return 0;
+    }
+
+    if (// mirrors clock id obtained from clock_getcpuclockid
+        clk_id == (clockid_t)((-current->pid - 1) * 8U + 2) ||
+        clk_id == CLOCK_PROCESS_CPUTIME_ID)
+    {
+        long nanoseconds = libos_times_process_time();
+        tp->tv_sec = nanoseconds / NANO_IN_SECOND;
+        tp->tv_nsec = nanoseconds % NANO_IN_SECOND;
+        return 0;
+    }
+
     libos_spin_lock(&_get_time_lock);
+    long params[6] = {(long)clk_id, (long)tp};
     long ret = libos_tcall(LIBOS_TCALL_CLOCK_GETTIME, params);
     libos_spin_unlock(&_get_time_lock);
     return ret;
