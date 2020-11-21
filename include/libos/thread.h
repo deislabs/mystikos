@@ -4,6 +4,7 @@
 #ifndef _LIBOS_THREAD_H
 #define _LIBOS_THREAD_H
 
+#include <sys/times.h>
 #include <unistd.h>
 
 #include <libos/assume.h>
@@ -62,6 +63,15 @@ struct libos_thread
 
     /* The exit status passed to SYS_exit */
     int exit_status;
+
+    /* Timespec at process creation */
+    struct timespec start_ts;
+
+    /* Timespec at when the thread last entered userspace */
+    struct timespec enter_kernel_ts;
+
+    /* Timespec at when the thread last crossed over to userspace */
+    struct timespec leave_kernel_ts;
 
     /* the C-runtime thread descriptor */
     libos_td_t* crt_td;

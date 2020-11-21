@@ -70,6 +70,10 @@ static int test_clock_get_time(long reference)
     assert(clock_gettime(CLOCK_REALTIME_COARSE, &tp) == 0);
     assert(clock_gettime(CLOCK_MONOTONIC_COARSE, &tp) == 0);
 
+    // Check process and thread cputime clocks
+    assert(clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &tp) == 0);
+    assert(clock_gettime(CLOCK_THREAD_CPUTIME_ID, &tp) == 0);
+
     if (is_sgx_target())
     {
         // No support for the following clock ids, yet.
@@ -77,8 +81,6 @@ static int test_clock_get_time(long reference)
         assert(clock_gettime(CLOCK_TAI, &tp) == -1);
         assert(clock_gettime(CLOCK_MONOTONIC_RAW, &tp) == -1);
         assert(clock_gettime(CLOCK_BOOTTIME_ALARM, &tp) == -1);
-        assert(clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &tp) == -1);
-        assert(clock_gettime(CLOCK_THREAD_CPUTIME_ID, &tp) == -1);
         // ATTN: compare realtime timestamp with a reply from icanhazepoch.com
     }
 

@@ -29,6 +29,7 @@
 #include <libos/tcall.h>
 #include <libos/thread.h>
 #include <libos/time.h>
+#include <libos/times.h>
 #include <libos/trace.h>
 
 libos_thread_t* __libos_main_thread;
@@ -391,6 +392,9 @@ long libos_run_thread(uint64_t cookie, uint64_t event)
             const int futex_op = FUTEX_WAKE | FUTEX_PRIVATE;
             libos_syscall_futex(thread->clone.ptid, futex_op, 1, 0, NULL, 0);
         }
+
+        /* Start time tracking for this thread */
+        libos_times_start();
     }
 
     /* Jump back here from exit */
