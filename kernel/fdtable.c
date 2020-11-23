@@ -18,11 +18,6 @@
 #include <libos/thread.h>
 #include <libos/ttydev.h>
 
-static bool _valid_fd(int fd)
-{
-    return fd >= 0 && fd < FDTABLE_SIZE;
-}
-
 int libos_fdtable_create(libos_fdtable_t** fdtable_out)
 {
     int ret = 0;
@@ -66,7 +61,7 @@ int libos_fdtable_clone(libos_fdtable_t* fdtable, libos_fdtable_t** fdtable_out)
 
     libos_spin_lock(&fdtable->lock);
     {
-        for (int i = 0; i < FDTABLE_SIZE; i++)
+        for (int i = 0; i < LIBOS_FDTABLE_SIZE; i++)
         {
             const libos_fdtable_entry_t* entry = &fdtable->entries[i];
 
@@ -112,7 +107,7 @@ int libos_fdtable_cloexec(libos_fdtable_t* fdtable)
     libos_spin_lock(&fdtable->lock);
     {
         /* close any file descriptors with FD_CLOEXEC flag */
-        for (int i = 0; i < FDTABLE_SIZE; i++)
+        for (int i = 0; i < LIBOS_FDTABLE_SIZE; i++)
         {
             libos_fdtable_entry_t* entry = &fdtable->entries[i];
 
@@ -157,7 +152,7 @@ int libos_fdtable_free(libos_fdtable_t* fdtable)
         ERAISE(-EINVAL);
 
     /* Close all objects */
-    for (int i = 0; i < FDTABLE_SIZE; i++)
+    for (int i = 0; i < LIBOS_FDTABLE_SIZE; i++)
     {
         libos_fdtable_entry_t* entry = &fdtable->entries[i];
 
@@ -199,7 +194,7 @@ int libos_fdtable_assign(
     libos_spin_lock(&fdtable->lock);
     {
         /* Use the first available entry */
-        for (int i = 0; i < FDTABLE_SIZE; i++)
+        for (int i = 0; i < LIBOS_FDTABLE_SIZE; i++)
         {
             libos_fdtable_entry_t* entry = &fdtable->entries[i];
 
@@ -239,7 +234,7 @@ int libos_fdtable_dup(
     if (!fdtable)
         ERAISE(-EINVAL);
 
-    if (!_valid_fd(oldfd))
+    if (!libos_valid_fd(oldfd))
         ERAISE(-EINVAL);
 
     switch (duptype)
@@ -254,14 +249,14 @@ int libos_fdtable_dup(
         }
         case LIBOS_DUP2:
         {
-            if (!_valid_fd(newfd) || flags != -1)
+            if (!libos_valid_fd(newfd) || flags != -1)
                 ERAISE(-EINVAL);
 
             break;
         }
         case LIBOS_DUP3:
         {
-            if (!_valid_fd(newfd) || oldfd == newfd)
+            if (!libos_valid_fd(newfd) || oldfd == newfd)
                 ERAISE(-EINVAL);
 
             if (flags != O_CLOEXEC && flags != 0)
@@ -272,7 +267,7 @@ int libos_fdtable_dup(
         }
         case LIBOS_DUPFD:
         {
-            if (!_valid_fd(newfd))
+            if (!libos_valid_fd(newfd))
                 ERAISE(-EINVAL);
 
             use_next_available_fd = true;
@@ -281,7 +276,7 @@ int libos_fdtable_dup(
         }
         case LIBOS_DUPFD_CLOEXEC:
         {
-            if (!_valid_fd(newfd))
+            if (!libos_valid_fd(newfd))
                 ERAISE(-EINVAL);
 
             flags = O_CLOEXEC;
@@ -378,7 +373,7 @@ int libos_fdtable_remove(libos_fdtable_t* fdtable, int fd)
     if (!fdtable)
         ERAISE(-EINVAL);
 
-    if (fd < 0 || fd >= FDTABLE_SIZE)
+    if (fd < 0 || fd >= LIBOS_FDTABLE_SIZE)
         ERAISE(-EINVAL);
 
     libos_spin_lock(&fdtable->lock);
@@ -401,7 +396,7 @@ int libos_fdtable_get(
     if (!fdtable || !device || !object)
         ERAISE(-EINVAL);
 
-    if (!(fd >= 0 && fd < FDTABLE_SIZE))
+    if (!(fd >= 0 && fd < LIBOS_FDTABLE_SIZE))
         ERAISE(-EINVAL);
 
     if (type == LIBOS_FDTABLE_TYPE_NONE)
@@ -442,7 +437,7 @@ int libos_fdtable_get_any(
     if (!fdtable || !type || !device || !object)
         ERAISE(-EINVAL);
 
-    if (!(fd >= 0 && fd < FDTABLE_SIZE))
+    if (!(fd >= 0 && fd < LIBOS_FDTABLE_SIZE))
         ERAISE(-EINVAL);
 
     libos_spin_lock(&fdtable->lock);

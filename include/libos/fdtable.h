@@ -15,8 +15,9 @@
 #include <libos/sockdev.h>
 #include <libos/spinlock.h>
 #include <libos/ttydev.h>
+#include <libos/epolldev.h>
 
-#define FDTABLE_SIZE 1024
+#define LIBOS_FDTABLE_SIZE 1024
 
 typedef enum libos_fdtable_type
 {
@@ -25,6 +26,7 @@ typedef enum libos_fdtable_type
     LIBOS_FDTABLE_TYPE_FILE,
     LIBOS_FDTABLE_TYPE_PIPE,
     LIBOS_FDTABLE_TYPE_SOCK,
+    LIBOS_FDTABLE_TYPE_EPOLL,
 } libos_fdtable_type_t;
 
 typedef struct libos_fdtable_entry
@@ -36,7 +38,7 @@ typedef struct libos_fdtable_entry
 
 typedef struct libos_fdtable
 {
-    libos_fdtable_entry_t entries[FDTABLE_SIZE];
+    libos_fdtable_entry_t entries[LIBOS_FDTABLE_SIZE];
     libos_spinlock_t lock;
 } libos_fdtable_t;
 
@@ -98,6 +100,16 @@ LIBOS_INLINE int libos_fdtable_get_sock(
     return libos_fdtable_get(fdtable, fd, type, (void**)device, (void**)sock);
 }
 
+LIBOS_INLINE int libos_fdtable_get_epoll(
+    libos_fdtable_t* fdtable,
+    int fd,
+    libos_epolldev_t** device,
+    libos_epoll_t** epoll)
+{
+    const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_EPOLL;
+    return libos_fdtable_get(fdtable, fd, type, (void**)device, (void**)epoll);
+}
+
 LIBOS_INLINE int libos_fdtable_get_file(
     libos_fdtable_t* fdtable,
     int fd,
@@ -131,5 +143,10 @@ libos_fdtable_t* libos_fdtable_current(void);
 int libos_fdtable_clone(
     libos_fdtable_t* fdtable,
     libos_fdtable_t** fdtable_out);
+
+LIBOS_INLINE bool libos_valid_fd(int fd)
+{
+    return fd >= 0 && fd < LIBOS_FDTABLE_SIZE;
+}
 
 #endif /* _LIBOS_FDTABLE_H */
