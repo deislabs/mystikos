@@ -18,8 +18,6 @@
 
 #define ADD_OVERFLOW(A, B, C) __builtin_add_overflow(A, B, C)
 
-#define PAGE_SIZE 4096
-
 #define GOTO(LABEL)                                            \
     do                                                         \
     {                                                          \
@@ -1640,7 +1638,8 @@ int elf_add_section(
         if (ADD_OVERFLOW(strlen(name), 1, &namesize))
             GOTO(done);
 
-        namesize = libos_round_up_u64(namesize, sizeof(elf_shdr_t));
+        if (libos_round_up(namesize, sizeof(elf_shdr_t), &namesize) != 0)
+            GOTO(done);
 
         /* Insert space for the new name */
         if (libos_buf_insert(&buf, nameoffset, NULL, namesize) != 0)
@@ -1948,7 +1947,8 @@ int elf_load_relocations(const elf_t* elf, void** data_out, size_t* size_out)
     {
         extern void* memalign(size_t alignment, size_t size);
 
-        *size_out = libos_round_up_u64(size, PAGE_SIZE);
+        if (libos_round_up(size, PAGE_SIZE, size_out) != 0)
+            GOTO(done);
 
         if (!(*data_out = memalign(PAGE_SIZE, *size_out)))
         {

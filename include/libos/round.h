@@ -4,37 +4,21 @@
 #ifndef _LIBOS_ROUND_H
 #define _LIBOS_ROUND_H
 
-#include <libos/types.h>
+#include <stdint.h>
+#include <limits.h>
+#include <sys/user.h>
 
-static inline uint64_t libos_round_up_u64(uint64_t x, uint64_t m)
+#include <libos/defs.h>
+
+static __inline__ uint64_t libos_round_down_to_page_size(uint64_t x)
 {
-    return (x + m - 1) / m * m;
+    return x & ~((uint64_t)PAGE_SIZE - 1);
 }
 
-static inline off_t libos_round_up_off(off_t x, off_t m)
-{
-    return (x + m - 1) / m * m;
-}
+/* round x up to next multiple of m (possible x itself) */
+int libos_round_up(uint64_t x, uint64_t m, uint64_t* r);
 
-static inline const void* libos_round_up_ptr(const void* x, uint64_t m)
-{
-    return (void*)(((uint64_t)x + m - 1) / m * m);
-}
-
-static inline int64_t libos_round_up_i64(int64_t x, int64_t m)
-{
-    return (x + m - 1) / m * m;
-}
-
-static inline uint64_t libos_round_up_to_page_size(uint64_t x)
-{
-    uint64_t n = LIBOS_PAGE_SIZE;
-    return (x + n - 1) / n * n;
-}
-
-static inline uint64_t libos_round_down_to_page_size(uint64_t x)
-{
-    return x & ~((uint64_t)LIBOS_PAGE_SIZE - 1);
-}
+/* round x up to next multiple of m (possible x itself) */
+int libos_round_up_signed(int64_t x, int64_t m, int64_t* r);
 
 #endif /* _LIBOS_ROUND_H */

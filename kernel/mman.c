@@ -130,11 +130,6 @@
 **==============================================================================
 */
 
-static uint64_t _round_up_to_multiple(uint64_t x, uint64_t m)
-{
-    return (x + m - 1) / m * m;
-}
-
 /* Get the end address of a VAD */
 static uintptr_t _end(libos_vad_t* vad)
 {
@@ -454,7 +449,7 @@ static int _munmap(libos_mman_t* mman, void* addr, size_t length)
     }
 
     /* ADDRESS must be aligned on a page boundary */
-    if ((uintptr_t)addr % LIBOS_PAGE_SIZE)
+    if ((uintptr_t)addr % PAGE_SIZE)
     {
         _mman_set_err(mman, "bad addr parameter");
         ret = -EINVAL;
@@ -462,16 +457,14 @@ static int _munmap(libos_mman_t* mman, void* addr, size_t length)
     }
 
     /* Align LENGTH to a multiple of the page size */
-    if (length % LIBOS_PAGE_SIZE)
+    if (length % PAGE_SIZE)
     {
-        size_t length2 = libos_round_up_to_page_size(length);
-        if (length2 <= length)
+        if (libos_round_up(length, PAGE_SIZE, &length) != 0)
         {
-            _mman_set_err(mman, "Integer overflow: length");
+            _mman_set_err(mman, "rounding error: length");
             ret = -EINVAL;
             goto done;
         }
-        length = length2;
     }
 
     /* Set start and end pointers for this area */
@@ -593,7 +586,7 @@ static int _mmap(
         goto done;
 
     /* ADDR must be page aligned */
-    if (addr && (uintptr_t)addr % LIBOS_PAGE_SIZE)
+    if (addr && (uintptr_t)addr % PAGE_SIZE)
     {
         _mman_set_err(mman, "bad addr parameter");
         ret = -EINVAL;
@@ -667,7 +660,12 @@ static int _mmap(
     }
 
     /* Round LENGTH to multiple of page size */
-    length = (length + LIBOS_PAGE_SIZE - 1) / LIBOS_PAGE_SIZE * LIBOS_PAGE_SIZE;
+    if (libos_round_up(length, PAGE_SIZE, &length) != 0)
+    {
+        _mman_set_err(mman, "rounding error: length");
+        ret = -EINVAL;
+        goto done;
+    }
 
     if (addr)
     {
@@ -796,7 +794,7 @@ int libos_mman_init(libos_mman_t* mman, uintptr_t base, size_t size)
     }
 
     /* BASE must be aligned on a page boundary */
-    if (base % LIBOS_PAGE_SIZE)
+    if (base % PAGE_SIZE)
     {
         _mman_set_err(mman, "bad base parameter");
         ret = -EINVAL;
@@ -804,7 +802,7 @@ int libos_mman_init(libos_mman_t* mman, uintptr_t base, size_t size)
     }
 
     /* SIZE must be a mulitple of the page size */
-    if (size % LIBOS_PAGE_SIZE)
+    if (size % PAGE_SIZE)
     {
         _mman_set_err(mman, "bad size parameter");
         ret = -EINVAL;
@@ -815,7 +813,7 @@ int libos_mman_init(libos_mman_t* mman, uintptr_t base, size_t size)
     memset(mman, 0, sizeof(libos_mman_t));
 
     /* Calculate the total number of pages */
-    size_t num_pages = size / LIBOS_PAGE_SIZE;
+    size_t num_pages = size / PAGE_SIZE;
 
     /* Save the base of the heap */
     mman->base = base;
@@ -827,7 +825,12 @@ int libos_mman_init(libos_mman_t* mman, uintptr_t base, size_t size)
     mman->start = base + (num_pages * sizeof(libos_vad_t));
 
     /* Round start up to next page multiple */
-    mman->start = _round_up_to_multiple(mman->start, LIBOS_PAGE_SIZE);
+    if (libos_round_up(mman->start, PAGE_SIZE, &mman->start) != 0)
+    {
+        _mman_set_err(mman, "rounding error: mman->start");
+        ret = -EINVAL;
+        goto done;
+    }
 
     /* Set the end of the heap area */
     mman->end = base + size;
@@ -1147,7 +1150,7 @@ int libos_mman_mremap(
         goto done;
 
     /* ADDR must be page aligned */
-    if ((uintptr_t)addr % LIBOS_PAGE_SIZE)
+    if ((uintptr_t)addr % PAGE_SIZE)
     {
         _mman_set_err(
             mman, "bad addr parameter: must be multiple of page size");
@@ -1181,10 +1184,20 @@ int libos_mman_mremap(
     }
 
     /* Round OLD_SIZE to multiple of page size */
-    old_size = _round_up_to_multiple(old_size, LIBOS_PAGE_SIZE);
+    if (libos_round_up(old_size, PAGE_SIZE, &old_size) != 0)
+    {
+        _mman_set_err(mman, "rounding error: old_size");
+        ret = -EINVAL;
+        goto done;
+    }
 
     /* Round NEW_SIZE to multiple of page size */
-    new_size = _round_up_to_multiple(new_size, LIBOS_PAGE_SIZE);
+    if (libos_round_up(new_size, PAGE_SIZE, &new_size) != 0)
+    {
+        _mman_set_err(mman, "rounding error: new_size");
+        ret = -EINVAL;
+        goto done;
+    }
 
     /* Set start and end pointers for this area */
     uintptr_t start = (uintptr_t)addr;

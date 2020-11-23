@@ -471,7 +471,7 @@ static int _pd_fcntl(
             if (arg <= 0)
                 arg = PIPE_BUF;
 
-            pipesz = libos_round_up_u64(arg, PIPE_BUF);
+            ECHECK(libos_round_up(arg, PIPE_BUF, &pipesz));
 
             if (!(data = calloc(pipesz, 1)))
                 ERAISE(-ENOMEM);

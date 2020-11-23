@@ -1095,9 +1095,12 @@ static int _stat(inode_t* inode, struct stat* statbuf)
 {
     int ret = 0;
     struct stat buf;
+    off_t rounded;
 
     if (!_inode_valid(inode) || !statbuf)
         ERAISE(-EINVAL);
+
+    ECHECK(libos_round_up_signed(buf.st_size, BLKSIZE, &rounded));
 
     memset(&buf, 0, sizeof(buf));
     buf.st_dev = 0;
@@ -1109,7 +1112,7 @@ static int _stat(inode_t* inode, struct stat* statbuf)
     buf.st_rdev = 0;
     buf.st_size = (off_t)inode->buf.size;
     buf.st_blksize = BLKSIZE;
-    buf.st_blocks = libos_round_up_off(buf.st_size, BLKSIZE) / BLKSIZE;
+    buf.st_blocks = rounded / BLKSIZE;
     memset(&buf.st_atim, 0, sizeof(buf.st_atim)); /* ATTN: unsupported */
     memset(&buf.st_mtim, 0, sizeof(buf.st_mtim)); /* ATTN: unsupported */
     memset(&buf.st_ctim, 0, sizeof(buf.st_ctim)); /* ATTN: unsupported */

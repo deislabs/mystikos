@@ -10,8 +10,6 @@
 #include <string.h>
 #include <sys/mman.h>
 
-#define PAGE_SIZE 4096
-
 static int _compare_segments(const void* s1, const void* s2)
 {
     const elf_segment_t* seg1 = (const elf_segment_t*)s1;
@@ -154,7 +152,7 @@ static int _process_elf_image(elf_image_t* image)
             ERAISE(-EINVAL);
 
         /* Calculate the full size of the image (rounded up to the page size) */
-        image_size = libos_round_up_to_page_size(hi - lo);
+        ECHECK(libos_round_up(hi - lo, PAGE_SIZE, &image_size));
     }
 
     /* Allocate the image on a page boundary */
@@ -309,7 +307,7 @@ static int _process_elf_image(elf_image_t* image)
         if (elf_find_section(&image->elf, ".symtab", &p, &n) != 0)
             ERAISE(-EINVAL);
 
-        symtab_size = libos_round_up_to_page_size(n);
+        ECHECK(libos_round_up(n, PAGE_SIZE, &symtab_size));
 
         if (!(symtab_data = memalign(PAGE_SIZE, symtab_size)))
             ERAISE(-ENOMEM);
@@ -331,7 +329,7 @@ static int _process_elf_image(elf_image_t* image)
         if (elf_find_section(&image->elf, ".dynsym", &p, &n) != 0)
             ERAISE(-EINVAL);
 
-        dynsym_size = libos_round_up_to_page_size(n);
+        ECHECK(libos_round_up(n, PAGE_SIZE, &dynsym_size));
 
         if (!(dynsym_data = memalign(PAGE_SIZE, dynsym_size)))
             ERAISE(-ENOMEM);
@@ -353,7 +351,7 @@ static int _process_elf_image(elf_image_t* image)
         if (elf_find_section(&image->elf, ".strtab", &p, &n) != 0)
             ERAISE(-EINVAL);
 
-        strtab_size = libos_round_up_to_page_size(n);
+        ECHECK(libos_round_up(n, PAGE_SIZE, &strtab_size));
 
         if (!(strtab_data = memalign(PAGE_SIZE, strtab_size)))
             ERAISE(-ENOMEM);
@@ -375,7 +373,7 @@ static int _process_elf_image(elf_image_t* image)
         if (elf_find_section(&image->elf, ".dynstr", &p, &n) != 0)
             ERAISE(-EINVAL);
 
-        dynstr_size = libos_round_up_to_page_size(n);
+        ECHECK(libos_round_up(n, PAGE_SIZE, &dynstr_size));
 
         if (!(dynstr_data = memalign(PAGE_SIZE, dynstr_size)))
             ERAISE(-ENOMEM);

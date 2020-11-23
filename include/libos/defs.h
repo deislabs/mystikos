@@ -4,8 +4,6 @@
 #ifndef _LIBOS_DEFS_H
 #define _LIBOS_DEFS_H
 
-#define LIBOS_PAGE_SIZE 4096
-
 #define LIBOS_PRINTF_FORMAT(N, M) __attribute__((format(printf, N, M)))
 
 #define LIBOS_STATIC_ASSERT(COND) _Static_assert(COND, __FILE__)
