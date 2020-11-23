@@ -159,7 +159,9 @@ static int _td_fstat(
     memset(&buf, 0, sizeof(buf));
     buf.st_dev = 22; /* TTY device */
     buf.st_ino = (ino_t)tty;
-    buf.st_mode = S_IFCHR | S_IRUSR | S_IWUSR;
+    buf.st_mode = S_IFCHR | S_IRUSR;
+    if (tty->fd != STDIN_FILENO)
+        buf.st_mode |= S_IWUSR;
     buf.st_nlink = 1;
     buf.st_uid = LIBOS_DEFAULT_UID;
     buf.st_gid = LIBOS_DEFAULT_GID;
@@ -170,6 +172,7 @@ static int _td_fstat(
     memset(&buf.st_atim, 0, sizeof(buf.st_atim));
     memset(&buf.st_mtim, 0, sizeof(buf.st_mtim));
     memset(&buf.st_ctim, 0, sizeof(buf.st_ctim));
+
 
     *statbuf = buf;
 

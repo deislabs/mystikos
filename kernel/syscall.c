@@ -59,8 +59,9 @@
 #include <libos/thread.h>
 #include <libos/times.h>
 #include <libos/trace.h>
+#include <libos/epolldev.h>
 
-#define DEV_URANDOM_FD FDTABLE_SIZE
+#define DEV_URANDOM_FD LIBOS_FDTABLE_SIZE
 
 #define COLOR_RED "\e[31m"
 #define COLOR_BLUE "\e[34m"
@@ -679,6 +680,38 @@ long libos_syscall_open(const char* pathname, int flags, mode_t mode)
         libos_fdtable_remove(fdtable, fd);
         (*fs->fs_close)(fs, file);
         ERAISE(r);
+    }
+
+    ret = fd;
+
+done:
+
+    return ret;
+}
+
+long libos_syscall_epoll_create1(int flags)
+{
+    long ret = 0;
+    libos_epolldev_t* ed = libos_epolldev_get();
+    libos_epoll_t* epoll;
+    int fd;
+
+    if (!ed)
+        ERAISE(-EINVAL);
+
+    /* create the epoll object */
+    ECHECK((*ed->ed_epoll_create1)(ed, flags, &epoll));
+
+    /* add to file descriptor table */
+    {
+        libos_fdtable_t* fdtable = libos_fdtable_current();
+        const libos_fdtable_type_t fdtype = LIBOS_FDTABLE_TYPE_EPOLL;
+
+        if ((fd = libos_fdtable_assign(fdtable, fdtype, ed, epoll)) < 0)
+        {
+            (*ed->ed_close)(ed, epoll);
+            ERAISE(fd);
+        }
     }
 
     ret = fd;
@@ -1781,6 +1814,44 @@ long libos_syscall_sysinfo(struct sysinfo* info)
 
     // loads[3], sharedram, bufferram, totalswap,
     // freeswap, totalhigh and freehigh are not supported.
+
+done:
+    return ret;
+}
+
+long libos_syscall_epoll_ctl(
+    int epfd,
+    int op,
+    int fd,
+    struct epoll_event *event)
+{
+    long ret = 0;
+    libos_fdtable_t* fdtable = libos_fdtable_current();
+    libos_epolldev_t* ed;
+    libos_epoll_t* epoll;
+
+    ECHECK(libos_fdtable_get_epoll(fdtable, epfd, &ed, &epoll));
+
+    ret = (*ed->ed_epoll_ctl)(ed, epoll, op, fd, event);
+
+done:
+    return ret;
+}
+
+long libos_syscall_epoll_wait(
+    int epfd,
+    struct epoll_event *events,
+    int maxevents,
+    int timeout)
+{
+    long ret = 0;
+    libos_fdtable_t* fdtable = libos_fdtable_current();
+    libos_epolldev_t* ed;
+    libos_epoll_t* epoll;
+
+    ECHECK(libos_fdtable_get_epoll(fdtable, epfd, &ed, &epoll));
+
+    ret = (*ed->ed_epoll_wait)(ed, epoll, events, maxevents, timeout);
 
 done:
     return ret;
@@ -3272,7 +3343,16 @@ long libos_syscall(long n, long params[6])
         case SYS_lookup_dcookie:
             break;
         case SYS_epoll_create:
-            break;
+        {
+            int size = (int)x1;
+
+            _strace(n, "size=%d", size);
+
+            if (size <= 0)
+                BREAK(_return(n, -EINVAL));
+
+            BREAK(_return(n, libos_syscall_epoll_create1(0)));
+        }
         case SYS_epoll_ctl_old:
             break;
         case SYS_epoll_wait_old:
@@ -3346,9 +3426,32 @@ long libos_syscall(long n, long params[6])
             BREAK(0);
         }
         case SYS_epoll_wait:
-            break;
+        {
+            int epfd = (int)x1;
+            struct epoll_event* events = (struct epoll_event*)x2;
+            int maxevents = (int)x3;
+            int timeout = (int)x4;
+            long ret;
+
+            _strace(n, "edpf=%d events=%p maxevents=%d timeout=%d",
+                epfd, events, maxevents, timeout);
+
+            ret = libos_syscall_epoll_wait(epfd, events, maxevents, timeout);
+            BREAK(_return(n, ret));
+        }
         case SYS_epoll_ctl:
-            break;
+        {
+            int epfd = (int)x1;
+            int op = (int)x2;
+            int fd = (int)x3;
+            struct epoll_event* event = (struct epoll_event*)x4;
+            long ret;
+
+            _strace(n, "edpf=%d op=%d fd=%d event=%p", epfd, op, fd, event);
+
+            ret = libos_syscall_epoll_ctl(epfd, op, fd, event);
+            BREAK(_return(n, ret));
+        }
         case SYS_tgkill:
             break;
         case SYS_utimes:
@@ -3462,7 +3565,21 @@ long libos_syscall(long n, long params[6])
         case SYS_utimensat:
             break;
         case SYS_epoll_pwait:
-            break;
+        {
+            int epfd = (int)x1;
+            struct epoll_event* events = (struct epoll_event*)x2;
+            int maxevents = (int)x3;
+            int timeout = (int)x4;
+            const sigset_t *sigmask = (const sigset_t*)x5;
+            long ret;
+
+            _strace(n, "edpf=%d events=%p maxevents=%d timeout=%d sigmask=%p",
+                epfd, events, maxevents, timeout, sigmask);
+
+            /* ATTN: ignore sigmask */
+            ret = libos_syscall_epoll_wait(epfd, events, maxevents, timeout);
+            BREAK(_return(n, ret));
+        }
         case SYS_signalfd:
             break;
         case SYS_timerfd_create:
@@ -3482,7 +3599,12 @@ long libos_syscall(long n, long params[6])
         case SYS_eventfd2:
             break;
         case SYS_epoll_create1:
-            break;
+        {
+            int flags = (int)x1;
+
+            _strace(n, "flags=%d", flags);
+            BREAK(_return(n, libos_syscall_epoll_create1(flags)));
+        }
         case SYS_pipe2:
         {
             int* pipefd = (int*)x1;
@@ -3657,7 +3779,10 @@ long libos_syscall(long n, long params[6])
                 src_addr,
                 addrlen);
 
-#if 1
+#ifdef LIBOS_NO_RECVMSG_MITIGATION
+            ret = libos_syscall_recvfrom(
+                sockfd, buf, len, flags, src_addr, addrlen);
+#else /* LIBOS_NO_RECVMSG_WORKAROUND */
             /* ATTN: this mitigation introduces a severe performance penalty */
             // This mitigation works around a problem with a certain
             // application that fails handle EGAIN. This should be removed
@@ -3681,8 +3806,7 @@ long libos_syscall(long n, long params[6])
                     continue;
                 }
             }
-#endif
-
+#endif /* LIBOS_NO_RECVMSG_WORKAROUND */
             BREAK(_return(n, ret));
         }
         case SYS_sendto:

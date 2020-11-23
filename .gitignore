@@ -62,3 +62,4 @@ tests/sysinfo/appdir/
 third_party/libc-test/libc-test/
 tests/pipesz/appdir/
 tests/futex/appdir/
+tests/epoll/appdir/
