@@ -874,7 +874,8 @@ int libos_exec(
                     uint8_t* gap = (uint8_t*)crt_data + ending_vaddr;
 
                     /* round gap up to page size */
-                    gap = (void*)libos_round_up_to_page_size((uint64_t)gap);
+                    const uint64_t m = PAGE_SIZE;
+                    ECHECK(libos_round_up((uint64_t)gap, m, (uint64_t*)&gap));
 
                     /* round the gap size down to the page size */
                     gap_size = libos_round_down_to_page_size(gap_size);

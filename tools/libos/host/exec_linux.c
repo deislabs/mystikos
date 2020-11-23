@@ -92,7 +92,7 @@ static void* _map_mmap_region(size_t length)
     const int flags = MAP_ANONYMOUS | MAP_PRIVATE;
     void* addr;
 
-    assert((length % LIBOS_PAGE_SIZE) == 0);
+    assert((length % PAGE_SIZE) == 0);
 
     if ((addr = mmap(NULL, length, prot, flags, -1, 0)) == MAP_FAILED)
         return NULL;

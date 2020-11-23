@@ -10,6 +10,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/user.h>
 #include <unistd.h>
 
 #include <libos/elf.h>
@@ -26,6 +27,8 @@
 #include "regions.h"
 #include "sign.h"
 #include "utils.h"
+
+_Static_assert(PAGE_SIZE == 4096, "");
 
 #define USAGE_PACKAGE \
     "\
@@ -575,7 +578,7 @@ int _exec_package(
     }
 
     parsed_data.oe_num_heap_pages =
-        (details->rootfs.buffer_size + (5 * 1024 * 1024)) / LIBOS_PAGE_SIZE;
+        (details->rootfs.buffer_size + (5 * 1024 * 1024)) / PAGE_SIZE;
 
     // build argv with application name. If we are allowed command line args
     // then append them also

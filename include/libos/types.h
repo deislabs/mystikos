@@ -10,8 +10,6 @@
 #include <stdint.h>
 #include <sys/types.h>
 
-#define LIBOS_PAGE_SIZE 4096
-
 typedef struct _libos_path
 {
     char buf[PATH_MAX];

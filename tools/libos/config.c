@@ -69,8 +69,10 @@ static json_result_t _extract_mem_size(
     else
         CONFIG_RAISE(JSON_TYPE_MISMATCH);
 
-    value = libos_round_up_to_page_size(value);
-    value /= LIBOS_PAGE_SIZE;
+    if (libos_round_up(value, PAGE_SIZE, &value) != 0)
+        CONFIG_RAISE(JSON_FAILED);
+
+    value /= PAGE_SIZE;
 
     *num_pages = value;
 

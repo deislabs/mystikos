@@ -220,7 +220,8 @@ int libos_buf_pack_bytes(libos_buf_t* buf, const void* p, size_t size)
         goto done;
 
     /* total size should be a multiple of 8 to guarantee alignment */
-    n = libos_round_up_u64(size, sizeof(uint64_t));
+    if (libos_round_up(size, sizeof(uint64_t), &n) != 0)
+        goto done;
 
     /* calculate how many extra alignment bytes are needed */
     align = n - size;
@@ -262,7 +263,10 @@ int libos_buf_unpack_bytes(libos_buf_t* buf, const void** p, size_t* size_out)
     /* unpack the array bytes */
     {
         size_t r;
-        const size_t n = libos_round_up_u64(size, sizeof(uint64_t));
+        size_t n;
+
+        if (libos_round_up(size, sizeof(uint64_t), &n) != 0)
+            goto done;
 
         r = buf->size - buf->offset;
 

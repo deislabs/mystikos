@@ -105,7 +105,7 @@ const region_details* create_region_details_from_package(
 
     if (user_pages == 0)
         user_pages = MMAN_DEFAULT_PAGES;
-    _details.mman_size = user_pages * LIBOS_PAGE_SIZE;
+    _details.mman_size = user_pages * PAGE_SIZE;
 
     return &_details;
 }
@@ -223,7 +223,7 @@ const region_details* create_region_details_from_files(
 
     if (user_pages == 0)
         user_pages = MMAN_DEFAULT_PAGES;
-    _details.mman_size = user_pages * LIBOS_PAGE_SIZE;
+    _details.mman_size = user_pages * PAGE_SIZE;
 
     return &_details;
 }
@@ -254,7 +254,7 @@ static int _add_segment_pages(
     uint64_t page_vaddr = libos_round_down_to_page_size(segment->vaddr);
     uint64_t segment_end = segment->vaddr + segment->memsz;
 
-    for (; page_vaddr < segment_end; page_vaddr += LIBOS_PAGE_SIZE)
+    for (; page_vaddr < segment_end; page_vaddr += PAGE_SIZE)
     {
         const uint64_t dest_vaddr = vaddr + page_vaddr;
         const void* page = (uint8_t*)image_base + page_vaddr;
@@ -293,7 +293,7 @@ static int _load_crt_pages(
     if (!context || !image)
         ERAISE(-EINVAL);
 
-    assert((image->image_size & (LIBOS_PAGE_SIZE - 1)) == 0);
+    assert((image->image_size & (PAGE_SIZE - 1)) == 0);
 
     /* Add the program segments first */
     for (size_t i = 0; i < image->num_segments; i++)
@@ -312,6 +312,7 @@ static int _add_crt_region(oe_region_context_t* context, uint64_t* vaddr)
 {
     int ret = 0;
     const uint64_t id = LIBOS_CRT_REGION_ID;
+    uint64_t r;
 
     assert(_details.crt.image.image_data != NULL);
     assert(_details.crt.image.image_size != 0);
@@ -327,7 +328,9 @@ static int _add_crt_region(oe_region_context_t* context, uint64_t* vaddr)
     if (oe_region_end(context) != OE_OK)
         ERAISE(-EINVAL);
 
-    *vaddr += libos_round_up_to_page_size(_details.crt.image.image_size);
+    const uint64_t m = PAGE_SIZE;
+    ECHECK(libos_round_up(_details.crt.image.image_size, m, &r));
+    *vaddr += r;
 
 done:
     return ret;
@@ -343,7 +346,7 @@ static int _load_kernel_pages(
     if (!context || !image)
         ERAISE(-EINVAL);
 
-    assert((image->image_size & (LIBOS_PAGE_SIZE - 1)) == 0);
+    assert((image->image_size & (PAGE_SIZE - 1)) == 0);
 
     /* Add the program segments first */
     for (size_t i = 0; i < image->num_segments; i++)
@@ -363,6 +366,7 @@ static int _add_kernel_region(oe_region_context_t* context, uint64_t* vaddr)
     int ret = 0;
     const uint64_t id = LIBOS_KERNEL_REGION_ID;
     int fd = -1;
+    uint64_t r;
 
     assert(_details.kernel.image.image_data != NULL);
     assert(_details.kernel.image.image_size != 0);
@@ -399,7 +403,9 @@ static int _add_kernel_region(oe_region_context_t* context, uint64_t* vaddr)
     if (oe_region_end(context) != OE_OK)
         ERAISE(-EINVAL);
 
-    *vaddr += libos_round_up_to_page_size(_details.kernel.image.image_size);
+    const uint64_t m = PAGE_SIZE;
+    ECHECK(libos_round_up(_details.kernel.image.image_size, m, &r));
+    *vaddr += r;
 
 done:
 
@@ -417,7 +423,7 @@ static int _add_crt_reloc_region(oe_region_context_t* context, uint64_t* vaddr)
 
     assert(_details.crt.image.reloc_data != NULL);
     assert(_details.crt.image.reloc_size != 0);
-    assert((_details.crt.image.reloc_size % LIBOS_PAGE_SIZE) == 0);
+    assert((_details.crt.image.reloc_size % PAGE_SIZE) == 0);
 
     if (!context || !vaddr)
         ERAISE(-EINVAL);
@@ -428,7 +434,7 @@ static int _add_crt_reloc_region(oe_region_context_t* context, uint64_t* vaddr)
     /* Add the pages */
     {
         const uint8_t* page = (const uint8_t*)_details.crt.image.reloc_data;
-        size_t npages = _details.crt.image.reloc_size / LIBOS_PAGE_SIZE;
+        size_t npages = _details.crt.image.reloc_size / PAGE_SIZE;
 
         for (size_t i = 0; i < npages; i++)
         {
@@ -444,8 +450,8 @@ static int _add_crt_reloc_region(oe_region_context_t* context, uint64_t* vaddr)
                 ERAISE(-EINVAL);
             }
 
-            page += LIBOS_PAGE_SIZE;
-            (*vaddr) += LIBOS_PAGE_SIZE;
+            page += PAGE_SIZE;
+            (*vaddr) += PAGE_SIZE;
         }
     }
 
@@ -466,7 +472,7 @@ static int _add_kernel_reloc_region(
 
     assert(_details.kernel.image.reloc_data != NULL);
     assert(_details.kernel.image.reloc_size != 0);
-    assert((_details.kernel.image.reloc_size % LIBOS_PAGE_SIZE) == 0);
+    assert((_details.kernel.image.reloc_size % PAGE_SIZE) == 0);
 
     if (!context || !vaddr)
         ERAISE(-EINVAL);
@@ -477,7 +483,7 @@ static int _add_kernel_reloc_region(
     /* Add the pages */
     {
         const uint8_t* page = (const uint8_t*)_details.kernel.image.reloc_data;
-        size_t npages = _details.kernel.image.reloc_size / LIBOS_PAGE_SIZE;
+        size_t npages = _details.kernel.image.reloc_size / PAGE_SIZE;
 
         for (size_t i = 0; i < npages; i++)
         {
@@ -493,8 +499,8 @@ static int _add_kernel_reloc_region(
                 ERAISE(-EINVAL);
             }
 
-            page += LIBOS_PAGE_SIZE;
-            (*vaddr) += LIBOS_PAGE_SIZE;
+            page += PAGE_SIZE;
+            (*vaddr) += PAGE_SIZE;
         }
     }
 
@@ -515,7 +521,7 @@ static int _add_kernel_symtab_region(
 
     assert(_details.kernel.image.symtab_data != NULL);
     assert(_details.kernel.image.symtab_size != 0);
-    assert((_details.kernel.image.symtab_size % LIBOS_PAGE_SIZE) == 0);
+    assert((_details.kernel.image.symtab_size % PAGE_SIZE) == 0);
 
     if (!context || !vaddr)
         ERAISE(-EINVAL);
@@ -526,7 +532,7 @@ static int _add_kernel_symtab_region(
     /* Add the pages */
     {
         const uint8_t* page = (const uint8_t*)_details.kernel.image.symtab_data;
-        size_t npages = _details.kernel.image.symtab_size / LIBOS_PAGE_SIZE;
+        size_t npages = _details.kernel.image.symtab_size / PAGE_SIZE;
 
         for (size_t i = 0; i < npages; i++)
         {
@@ -542,8 +548,8 @@ static int _add_kernel_symtab_region(
                 ERAISE(-EINVAL);
             }
 
-            page += LIBOS_PAGE_SIZE;
-            (*vaddr) += LIBOS_PAGE_SIZE;
+            page += PAGE_SIZE;
+            (*vaddr) += PAGE_SIZE;
         }
     }
 
@@ -564,7 +570,7 @@ static int _add_kernel_dynsym_region(
 
     assert(_details.kernel.image.dynsym_data != NULL);
     assert(_details.kernel.image.dynsym_size != 0);
-    assert((_details.kernel.image.dynsym_size % LIBOS_PAGE_SIZE) == 0);
+    assert((_details.kernel.image.dynsym_size % PAGE_SIZE) == 0);
 
     if (!context || !vaddr)
         ERAISE(-EINVAL);
@@ -575,7 +581,7 @@ static int _add_kernel_dynsym_region(
     /* Add the pages */
     {
         const uint8_t* page = (const uint8_t*)_details.kernel.image.dynsym_data;
-        size_t npages = _details.kernel.image.dynsym_size / LIBOS_PAGE_SIZE;
+        size_t npages = _details.kernel.image.dynsym_size / PAGE_SIZE;
 
         for (size_t i = 0; i < npages; i++)
         {
@@ -591,8 +597,8 @@ static int _add_kernel_dynsym_region(
                 ERAISE(-EINVAL);
             }
 
-            page += LIBOS_PAGE_SIZE;
-            (*vaddr) += LIBOS_PAGE_SIZE;
+            page += PAGE_SIZE;
+            (*vaddr) += PAGE_SIZE;
         }
     }
 
@@ -613,7 +619,7 @@ static int _add_kernel_strtab_region(
 
     assert(_details.kernel.image.strtab_data != NULL);
     assert(_details.kernel.image.strtab_size != 0);
-    assert((_details.kernel.image.strtab_size % LIBOS_PAGE_SIZE) == 0);
+    assert((_details.kernel.image.strtab_size % PAGE_SIZE) == 0);
 
     if (!context || !vaddr)
         ERAISE(-EINVAL);
@@ -624,7 +630,7 @@ static int _add_kernel_strtab_region(
     /* Add the pages */
     {
         const uint8_t* page = (const uint8_t*)_details.kernel.image.strtab_data;
-        size_t npages = _details.kernel.image.strtab_size / LIBOS_PAGE_SIZE;
+        size_t npages = _details.kernel.image.strtab_size / PAGE_SIZE;
 
         for (size_t i = 0; i < npages; i++)
         {
@@ -640,8 +646,8 @@ static int _add_kernel_strtab_region(
                 ERAISE(-EINVAL);
             }
 
-            page += LIBOS_PAGE_SIZE;
-            (*vaddr) += LIBOS_PAGE_SIZE;
+            page += PAGE_SIZE;
+            (*vaddr) += PAGE_SIZE;
         }
     }
 
@@ -662,7 +668,7 @@ static int _add_kernel_dynstr_region(
 
     assert(_details.kernel.image.dynstr_data != NULL);
     assert(_details.kernel.image.dynstr_size != 0);
-    assert((_details.kernel.image.dynstr_size % LIBOS_PAGE_SIZE) == 0);
+    assert((_details.kernel.image.dynstr_size % PAGE_SIZE) == 0);
 
     if (!context || !vaddr)
         ERAISE(-EINVAL);
@@ -673,7 +679,7 @@ static int _add_kernel_dynstr_region(
     /* Add the pages */
     {
         const uint8_t* page = (const uint8_t*)_details.kernel.image.dynstr_data;
-        size_t npages = _details.kernel.image.dynstr_size / LIBOS_PAGE_SIZE;
+        size_t npages = _details.kernel.image.dynstr_size / PAGE_SIZE;
 
         for (size_t i = 0; i < npages; i++)
         {
@@ -689,8 +695,8 @@ static int _add_kernel_dynstr_region(
                 ERAISE(-EINVAL);
             }
 
-            page += LIBOS_PAGE_SIZE;
-            (*vaddr) += LIBOS_PAGE_SIZE;
+            page += PAGE_SIZE;
+            (*vaddr) += PAGE_SIZE;
         }
     }
 
@@ -720,7 +726,7 @@ static int _add_rootfs_region(oe_region_context_t* context, uint64_t* vaddr)
 
     while (r)
     {
-        __attribute__((__aligned__(4096))) uint8_t page[LIBOS_PAGE_SIZE];
+        __attribute__((__aligned__(PAGE_SIZE))) uint8_t page[PAGE_SIZE];
         const bool extend = true;
         const size_t min = (r < sizeof(page)) ? r : sizeof(page);
 
@@ -773,7 +779,7 @@ static int _add_config_region(oe_region_context_t* context, uint64_t* vaddr)
 
     while (r)
     {
-        __attribute__((__aligned__(4096))) uint8_t page[LIBOS_PAGE_SIZE];
+        __attribute__((__aligned__(PAGE_SIZE))) uint8_t page[PAGE_SIZE];
         const bool extend = true;
         const size_t min = (r < sizeof(page)) ? r : sizeof(page);
 
@@ -807,8 +813,8 @@ done:
 static int _add_mman_region(oe_region_context_t* context, uint64_t* vaddr)
 {
     int ret = 0;
-    __attribute__((__aligned__(4096))) uint8_t page[LIBOS_PAGE_SIZE];
-    const size_t mman_pages = _details.mman_size / LIBOS_PAGE_SIZE;
+    __attribute__((__aligned__(PAGE_SIZE))) uint8_t page[PAGE_SIZE];
+    const size_t mman_pages = _details.mman_size / PAGE_SIZE;
     const uint64_t id = LIBOS_MMAN_REGION_ID;
 
     if (!context || !vaddr)

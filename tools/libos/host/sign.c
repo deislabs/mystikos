@@ -4,18 +4,20 @@
 #include <assert.h>
 #include <errno.h>
 #include <libgen.h>
-#include <libos/elf.h>
-#include <libos/file.h>
-#include <libos/strings.h>
-#include <libos/types.h>
+#include <sys/user.h>
 #include <limits.h>
-#include <openenclave/host.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+
 #include "../config.h"
+#include <openenclave/host.h>
+#include <libos/elf.h>
+#include <libos/file.h>
+#include <libos/strings.h>
+#include <libos/types.h>
 #include "libos_u.h"
 #include "parse_options.h"
 #include "regions.h"
@@ -336,7 +338,7 @@ int _sign(int argc, const char* argv[])
     stat(rootfs_file, &st);
 
     parsed_data.oe_num_heap_pages =
-        (st.st_size + (5 * 1024 * 1024)) / LIBOS_PAGE_SIZE;
+        (st.st_size + (5 * 1024 * 1024)) / PAGE_SIZE;
 
     if (write_oe_config_fd(fd, &parsed_data) != 0)
     {

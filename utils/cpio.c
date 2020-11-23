@@ -241,7 +241,8 @@ static int _skip_padding(int fd)
     if ((pos = lseek(fd, 0, SEEK_CUR)) < 0)
         GOTO(done);
 
-    new_pos = libos_round_up_i64(pos, 4);
+    if (libos_round_up_signed(pos, 4, &new_pos) != 0)
+        GOTO(done);
 
     if (new_pos != pos && lseek(fd, new_pos, SEEK_SET) < 0)
         GOTO(done);
@@ -261,7 +262,8 @@ static int _write_padding(int fd, size_t n)
     if ((pos = lseek(fd, 0, SEEK_CUR)) < 0)
         GOTO(done);
 
-    new_pos = libos_round_up_i64(pos, (int64_t)n);
+    if (libos_round_up_signed(pos, n, &new_pos) != 0)
+        GOTO(done);
 
     for (int64_t i = pos; i < new_pos; i++)
     {
@@ -947,7 +949,11 @@ int libos_cpio_next_entry(
 
     /* Skip any padding after the name. */
     {
-        size_t new_pos = libos_round_up_u64(pos, 4);
+        size_t new_pos;
+
+        if (libos_round_up(pos, 4, &new_pos) != 0)
+            GOTO(done);
+
         size_t padding = new_pos - pos;
 
         if (padding > rem)
@@ -971,7 +977,11 @@ int libos_cpio_next_entry(
 
     /* Skip any padding after the file data. */
     {
-        size_t new_pos = libos_round_up_u64(pos, 4);
+        size_t new_pos;
+
+        if (libos_round_up(pos, 4, &new_pos) != 0)
+            GOTO(done);
+
         size_t padding = new_pos - pos;
 
         if (padding > rem)
