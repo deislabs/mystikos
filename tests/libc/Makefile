@@ -20,7 +20,7 @@ $(SRCDIR):
 build: $(SRCDIR)/target
 
 $(SRCDIR)/target:
-	sudo docker run --rm -v $(SRCDIR):/srcdir $(IMG) bash -c "make -C srcdir"
+	docker run --rm -v $(SRCDIR):/srcdir $(IMG) bash -c "make -C srcdir"
 	touch $(SRCDIR)/target
 
 TEST_FILE = tests.txt
