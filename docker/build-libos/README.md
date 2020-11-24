@@ -6,7 +6,7 @@ It does not do the normal developer build because that builds tests that are not
 If running from this directory you would build the Docker image with a command similar to this:
 
 ```bash
-sudo docker build -t image-name:latest .
+docker build -t image-name:latest .
 ```
 
 This builds the docker image using `Dockerfile`.
@@ -23,7 +23,7 @@ We have the image from the previous command.
 Now, if we run from the current directory in the Open LibOS repository, a command similar to this would be run:
 
 ```bash
-sudo docker run  --rm  --tty --interactive  -v /../..:/src:rw image-name:latest
+docker run  --rm  --tty --interactive  -v /../..:/src:rw image-name:latest
 ```
 
 This command uses the `-v from:to` option to mount the root of the Open LibOS source into the `/src/` directory inside the container. It should be noted that this is mounted as read/write.

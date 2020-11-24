@@ -10,7 +10,7 @@ rootfs: $(APPDIR)/dlopen
 	$(BINDIR)/libos mkcpio appdir rootfs
 
 $(APPDIR)/dlopen:
-	sudo docker run --rm -v $(APPDIR):/appdir $(IMG) bash -c "make -C appdir"
+	docker run --rm -v $(APPDIR):/appdir $(IMG) bash -c "make -C appdir"
 
 ifdef STRACE
 OPTS = --strace
