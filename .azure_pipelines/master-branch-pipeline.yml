@@ -1,0 +1,66 @@
+variables:
+  - name: LOG_FILE_PATH
+    value: $(Build.SourcesDirectory)/_testing.log
+  - name: SCRIPTS_ROOT
+    value: $(Build.SourcesDirectory)/.azure_pipelines/scripts
+
+# master branch pipeline configuration
+trigger:
+  branches:
+    include:
+    - master
+  paths:
+    exclude:
+    - doc/*
+    - notes.txt
+
+# PR configuration
+pr:
+  branches:
+    include:
+    - master
+  paths:
+    exclude:
+    - docs/*
+
+jobs:
+  - job: BuildAndTest
+    displayName: 'Building and Testing'
+    pool: '1804DC4v2agentpool'
+
+    steps:
+      # install minimum required package to run script
+      - script: |
+          sudo apt install python3-apt
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+          sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+        displayName: 'minimum init package'
+
+      # install all dependencies from config
+      - bash: sudo python3 -B '${{ variables.SCRIPTS_ROOT }}/dependencies.py'
+        displayName: 'Install dependencies'
+
+      # build all source files
+      - script: |
+          make
+        displayName: 'build repo source'
+        workingDirectory: $(Build.SourcesDirectory)
+
+      # run unit tests
+      - task: PythonScript@0
+        displayName: 'Run Unit Tests'
+        inputs:
+          scriptSource: 'filePath'
+          scriptPath: ${{ variables.SCRIPTS_ROOT }}/test.py
+          pythonInterpreter: /usr/bin/python3
+          workingDirectory: $(Build.SourcesDirectory)
+
+      # run libc tests
+      - task: PythonScript@0
+        displayName: 'Run LibC Tests'
+        inputs:
+          scriptSource: 'filePath'
+          scriptPath: ${{ variables.SCRIPTS_ROOT }}/test.py
+          arguments: '-ct all'
+          pythonInterpreter: /usr/bin/python3
+          workingDirectory: $(Build.SourcesDirectory)

@@ -1,0 +1,66 @@
+variables:
+  - name: SCRIPTS_ROOT
+    value: $(Build.SourcesDirectory)/.azure_pipelines/scripts
+
+# master branch pipeline configuration
+trigger:
+  branches:
+    include:
+    - master
+  paths:
+    exclude:
+    - doc/*
+    - notes.txt
+
+# PR configuration
+pr:
+  branches:
+    include:
+    - master
+  paths:
+    exclude:
+    - docs/*
+
+jobs:
+  - job: BuildAndTest
+    displayName: 'Building and Testing'
+    pool: '1804DC4v2agentpool'
+
+    steps:
+      # install minimum required package to run pipeline
+      - script: |
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+          sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+          sudo apt-get update
+          sudo apt-get install build-essential python3-setuptools libmbedtls-dev docker-ce -y 
+          sudo chmod 666 /var/run/docker.sock
+        displayName: 'minimum init config'
+
+      # build all source files
+      - script: |
+          make clean && make
+        displayName: 'build repo source'
+        workingDirectory: $(Build.SourcesDirectory)
+
+      # run all tests
+      - script: |
+          make tests ALLTESTS=1 VERBOSE=1
+        displayName: 'run all tests'
+        continueOnError: true
+        enabled: true
+        workingDirectory: $(Build.SourcesDirectory)
+
+      # run solution tests
+      - script: |
+          make tests -C $(Build.SourcesDirectory)/solutions
+        displayName: 'run solution tests'
+        continueOnError: true
+        enabled: true
+        workingDirectory: $(Build.SourcesDirectory)
+      
+      # if any previous step(s) not succeed, fail the job
+      - script: |
+          echo "Not all steps succeed."
+          exit 1
+        displayName: 'Error(s) Check'
+        condition: not(eq(variables['Agent.JobStatus'], 'succeeded'))
