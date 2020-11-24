@@ -173,7 +173,6 @@ static int _td_fstat(
     memset(&buf.st_mtim, 0, sizeof(buf.st_mtim));
     memset(&buf.st_ctim, 0, sizeof(buf.st_ctim));
 
-
     *statbuf = buf;
 
 done:

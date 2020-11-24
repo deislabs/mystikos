@@ -67,7 +67,7 @@ long libos_times_user_time()
 long libos_times_process_time()
 {
     return process_times.tms_stime + process_times.tms_utime +
-            process_times.tms_cstime + process_times.tms_cutime;
+           process_times.tms_cstime + process_times.tms_cutime;
 }
 
 long libos_times_thread_time()

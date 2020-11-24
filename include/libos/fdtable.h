@@ -10,12 +10,12 @@
 #include <unistd.h>
 
 #include <libos/defs.h>
+#include <libos/epolldev.h>
 #include <libos/fs.h>
 #include <libos/pipedev.h>
 #include <libos/sockdev.h>
 #include <libos/spinlock.h>
 #include <libos/ttydev.h>
-#include <libos/epolldev.h>
 
 #define LIBOS_FDTABLE_SIZE 1024
 

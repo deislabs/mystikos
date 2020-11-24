@@ -4,8 +4,8 @@
 #ifndef _LIBOS_ROUND_H
 #define _LIBOS_ROUND_H
 
-#include <stdint.h>
 #include <limits.h>
+#include <stdint.h>
 #include <sys/user.h>
 
 #include <libos/defs.h>

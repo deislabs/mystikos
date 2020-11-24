@@ -21,9 +21,9 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
+#include <unistd.h>
 #include "tee.h"
 
 #define DEBUG_LEVEL 1
@@ -162,13 +162,10 @@ static int _verifier_callback(libos_tee_identity_t* identity, void* arg)
     int result = 1;
 
     // OE enclave MRSIGNER
-    const uint8_t OE_MRSIGNER[] =
-    {
-        0x0b, 0xfc, 0x0c, 0x81, 0xf7, 0x1a, 0xc1, 0x34,
-        0xda, 0x8a, 0xf7, 0x85, 0xb3, 0x05, 0x96, 0x35,
-        0xe5, 0x64, 0x60, 0xec, 0x17, 0x5c, 0xda, 0xfe,
-        0x81, 0x8b, 0xdf, 0xec, 0x55, 0x79, 0x00, 0xe4
-    };
+    const uint8_t OE_MRSIGNER[] = {
+        0x0b, 0xfc, 0x0c, 0x81, 0xf7, 0x1a, 0xc1, 0x34, 0xda, 0x8a, 0xf7,
+        0x85, 0xb3, 0x05, 0x96, 0x35, 0xe5, 0x64, 0x60, 0xec, 0x17, 0x5c,
+        0xda, 0xfe, 0x81, 0x8b, 0xdf, 0xec, 0x55, 0x79, 0x00, 0xe4};
 
     const uint8_t OE_ISVPRODID[LIBOS_PRODUCT_ID_SIZE] = {1};
 
@@ -217,20 +214,24 @@ static int _cert_verify_callback(
     printf(
         "Client: Received TLS certificate.\n"
         "  crt->version = %d cert_size = %zu\n",
-        crt->version, cert_size);
+        crt->version,
+        cert_size);
 
     // The existence of the manifesto file indicates we are running in
     // an enclave. Ask the kernel for help.
-    if( access("/manifesto", F_OK ) != -1 ) {
-        ret = syscall(SYS_libos_verify_cert, cert, cert_size,
-            _verifier_callback, NULL);
+    if (access("/manifesto", F_OK) != -1)
+    {
+        ret = syscall(
+            SYS_libos_verify_cert, cert, cert_size, _verifier_callback, NULL);
     }
-    else {
+    else
+    {
         // Blindly accept any certificate in non-enclave mode.
         ret = 0;
     }
 
-    printf("Client: attestation certificate %s.\n",
+    printf(
+        "Client: attestation certificate %s.\n",
         ret == 0 ? "verified" : "rejected");
 
     *flags = 0;
@@ -272,7 +273,8 @@ static int _configure_cli(
         goto done;
     }
 
-    if ((r = mbedtls_pk_parse_key(&cli->pk, private_key, private_key_size, NULL, 0)) != 0)
+    if ((r = mbedtls_pk_parse_key(
+             &cli->pk, private_key, private_key_size, NULL, 0)) != 0)
     {
         _put_mbedtls_err(err, r, "%s", "unable to add private key");
         ret = r;
@@ -385,7 +387,14 @@ int tlscli_connect(
         goto done;
     }
 
-    if ((r = _configure_cli(cli, debug, cert, cert_size, private_key, private_key_size, err)) != 0)
+    if ((r = _configure_cli(
+             cli,
+             debug,
+             cert,
+             cert_size,
+             private_key,
+             private_key_size,
+             err)) != 0)
     {
         ret = r;
         goto done;

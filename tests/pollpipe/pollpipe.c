@@ -3,13 +3,13 @@
 
 #include <assert.h>
 #include <limits.h>
+#include <poll.h>
+#include <pthread.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdint.h>
 #include <unistd.h>
-#include <poll.h>
-#include <pthread.h>
 
 #define ITERATIONS 1000
 
@@ -48,7 +48,7 @@ static void* _reader(void* arg)
 
         assert(n == 1);
 
-        T( printf("read:  %zu\n", i); )
+        T(printf("read:  %zu\n", i);)
         ssize_t count = read(pipefd[0], buf, sizeof(buf));
 
         if (count != sizeof(alphabet))
@@ -67,7 +67,7 @@ static void* _writer(void* arg)
 
     for (size_t i = 0; i < ITERATIONS; i++)
     {
-        T( printf("write: %zu\n", i); )
+        T(printf("write: %zu\n", i);)
         ssize_t n = write(pipefd[1], alphabet, sizeof(alphabet));
 
         if (n != sizeof(alphabet))

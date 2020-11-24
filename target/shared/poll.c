@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 #include <errno.h>
+#include <fcntl.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -9,7 +10,6 @@
 #include <string.h>
 #include <sys/poll.h>
 #include <unistd.h>
-#include <fcntl.h>
 
 #define WAKE_MAGIC 0x617eafc2e697492c
 

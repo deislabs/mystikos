@@ -24,7 +24,10 @@ int main(int argc, char** argv)
 
     if (argc != 3)
     {
-        fprintf(stderr, "Error: correct usage: %s (msi|classic) ('reg_init'|<whatever>)\n", argv[0]);
+        fprintf(
+            stderr,
+            "Error: correct usage: %s (msi|classic) ('reg_init'|<whatever>)\n",
+            argv[0]);
         goto done;
     }
 

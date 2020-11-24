@@ -2,9 +2,9 @@
 // Licensed under the MIT License.
 
 #include <assert.h>
-#include <stdio.h>
 #include <errno.h>
 #include <limits.h>
+#include <stdio.h>
 
 #include <libos/round.h>
 

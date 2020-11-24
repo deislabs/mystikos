@@ -5,8 +5,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
-#include <syscall.h>
 #include <sys/stat.h>
+#include <syscall.h>
 #include <unistd.h>
 
 #include <libos/iov.h>

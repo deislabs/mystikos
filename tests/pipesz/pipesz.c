@@ -3,16 +3,16 @@
 
 #define _GNU_SOURCE
 #include <assert.h>
+#include <fcntl.h>
 #include <limits.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <pthread.h>
-#include <fcntl.h>
 
-#define WRITE_SIZE 2*PIPE_BUF * 2
-#define READ_SIZE 2*PIPE_BUF * 4
+#define WRITE_SIZE 2 * PIPE_BUF * 2
+#define READ_SIZE 2 * PIPE_BUF * 4
 
 static void* _writer(void* args)
 {
