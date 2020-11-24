@@ -6,6 +6,7 @@ DIRS += attested_tls
 DIRS += sql_ae
 DIRS += msgpack_c
 DIRS += python
+DIRS += dotnet
 
 REDEFINE_TESTS=1
 include $(TOP)/rules.mak

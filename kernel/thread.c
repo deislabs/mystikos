@@ -338,6 +338,8 @@ libos_thread_t* libos_thread_self(void)
     return thread;
 }
 
+/* Force the caller stack to be aligned */
+__attribute__((force_align_arg_pointer))
 static void _call_thread_fn(void)
 {
     libos_thread_t* thread = libos_thread_self();

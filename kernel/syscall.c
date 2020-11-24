@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <libos/mman.h>
 #include <limits.h>
+#include <sched.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -3077,11 +3078,32 @@ long libos_syscall(long n, long params[6])
         case SYS_rt_sigsuspend:
             break;
         case SYS_sigaltstack:
-            break;
+        {
+            /* ATTN: support user space stack for segv handling. */
+            BREAK(_return(n, 0));
+        }
         case SYS_utime:
             break;
         case SYS_mknod:
-            break;
+        {
+            const char *pathname = (const char*)x1;
+            mode_t mode = (mode_t)x2;
+            dev_t dev = (dev_t)x3;
+            long ret = 0;
+
+            _strace(n, "pathname=%s mode=%d dev=%lu", pathname, mode, dev);
+
+            if (S_ISFIFO(mode))
+            {
+                /* ATTN: create a pipe here! */
+            }
+            else
+            {
+                ret = -ENOTSUP;
+            }
+
+            BREAK(_return(n, ret));
+        }
         case SYS_uselib:
             break;
         case SYS_personality:
@@ -3109,21 +3131,63 @@ long libos_syscall(long n, long params[6])
         case SYS_setpriority:
             break;
         case SYS_sched_setparam:
-            break;
+        {
+            /* ATTN: support setting thread priorities. */
+            BREAK(_return(n, 0));
+        }
         case SYS_sched_getparam:
-            break;
+       {
+            pid_t pid = (pid_t)x1;
+            struct sched_param* param = (struct sched_param*)x2;
+
+            _strace(n, "pid=%d param=%p", pid, param);
+
+            // ATTN: Return the priority from SYS_sched_setparam.
+            if (param != NULL)
+                memset(param, 0, sizeof(*param));
+
+            BREAK(_return(n, 0));
+        }
         case SYS_sched_setscheduler:
-            break;
+        {
+            // ATTN: support different schedules, FIFO, RR, BATCH, etc.
+            // The more control we have on threads inside the kernel, the more
+            // schedulers we could support.
+            BREAK(_return(n, 0));
+        }
         case SYS_sched_getscheduler:
-            break;
+        {
+            /* ATTN: return the scheduler installed from sched_setscheduler. */
+            BREAK(_return(n, SCHED_OTHER));
+        }
         case SYS_sched_get_priority_max:
-            break;
+        {
+            /* ATTN: support thread priorities */
+            BREAK(_return(n, 0));
+        }
         case SYS_sched_get_priority_min:
-            break;
+        {
+            /* ATTN: support thread priorities */
+            BREAK(_return(n, 0));
+        }
         case SYS_sched_rr_get_interval:
             break;
         case SYS_mlock:
-            break;
+        {
+            const void *addr = (const void*)x1;
+            size_t len = (size_t)x2;
+            long ret = 0;
+
+            _strace(n, "addr=%p len=%zu\n", addr, len);
+
+            if (!addr)
+                ret = -EINVAL;
+
+            // ATTN: forward the request to target.
+            // Some targets, such as sgx, probably just ignore it.
+
+            BREAK(_return(n, ret));
+        }
         case SYS_munlock:
             break;
         case SYS_mlockall:
@@ -3298,9 +3362,37 @@ long libos_syscall(long n, long params[6])
                 libos_syscall_futex(uaddr, futex_op, val, arg, uaddr2, val3)));
         }
         case SYS_sched_setaffinity:
-            break;
+        {
+            pid_t pid = (pid_t)x1;
+            size_t cpusetsize = (pid_t)x2;
+            cpu_set_t* mask = (cpu_set_t*)x3;
+
+            _strace(n,
+                "pid=%d cpusetsize=%zu mask=%p\n", pid, cpusetsize, mask);
+
+            /* ATTN: support set affinity requests */
+
+            BREAK(_return(n, 0));
+        }
         case SYS_sched_getaffinity:
-            break;
+        {
+            pid_t pid = (pid_t)x1;
+            size_t cpusetsize = (pid_t)x2;
+            cpu_set_t* mask = (cpu_set_t*)x3;
+
+            _strace(n,
+                "pid=%d cpusetsize=%zu mask=%p\n", pid, cpusetsize, mask);
+
+            // ATTN: return the cpu id from sched_setaffinity.
+            // for now, make all threads fixed to cpu 0.
+            if (mask != NULL)
+            {
+                CPU_ZERO(mask);
+                CPU_SET(0, mask);
+            }
+
+            BREAK(_return(n, cpusetsize));
+        }
         case SYS_set_thread_area:
         {
             void* tp = (void*)params[0];
@@ -3650,7 +3742,23 @@ long libos_syscall(long n, long params[6])
         case SYS_setns:
             break;
         case SYS_getcpu:
-            break;
+        {
+            unsigned* cpu = (unsigned*)x1;
+            unsigned* node = (unsigned*)x2;
+            struct getcpu_cache *tcache = (struct getcpu_cache*)x3;
+
+            _strace(n, "cpu=%p node=%p, tcache=%p", cpu, node, tcache);
+
+            // ATTN: report the real NUMA node id and cpu id.
+            // For now, always report id 0 for them.
+            if (cpu)
+                *cpu = 0;
+
+            if (node)
+                *node = 0;
+
+            BREAK(_return(n, 0));
+        }
         case SYS_process_vm_readv:
             break;
         case SYS_process_vm_writev:

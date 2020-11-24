@@ -1,0 +1,28 @@
+{
+    // OpenEnclave specific values
+
+    // Whether we are running libos+OE+app in debug mode
+    "Debug": 1,
+    // The heap size of the kernel. Accepted values are: "16m", "256k", 2560000.
+    // without suffix 'm' or 'k', the size is in bytes.
+    "KernelMemSize": "8m",
+    // The stack size of each ethread
+    "StackMemSize": "400k",
+    // The number of ethreads
+    "NumUserThreads": 8,
+    "ProductID": 1,
+    "SecurityVersion": 1,
+
+    // LibOS specific values
+
+    // The heap size of the user application. Increase this setting if your app experienced OOM.
+    "UserMemSize": "512m",
+    // The path to the entry point application in rootfs
+    "ApplicationPath": "/HelloWorld/build/HelloWorld",
+    // The parameters to the entry point application
+    "ApplicationParameters": [],
+    // Whether we allow "ApplicationParameters" to be overridden by command line options of "libos exec"
+    "HostApplicationParameters": false,
+    // The host environment variables accessible inside the enclave.
+    "HostEnvironmentVariables": []
+}
