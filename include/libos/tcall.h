@@ -5,12 +5,12 @@
 #define _LIBOS_TCALL_H
 
 #include <libos/defs.h>
+#include <poll.h>
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <time.h>
 #include <unistd.h>
-#include <poll.h>
 
 typedef enum libos_tcall_number
 {

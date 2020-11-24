@@ -29,6 +29,7 @@
 #include <libos/buf.h>
 #include <libos/cpio.h>
 #include <libos/cwd.h>
+#include <libos/epolldev.h>
 #include <libos/eraise.h>
 #include <libos/errno.h>
 #include <libos/exec.h>
@@ -60,7 +61,6 @@
 #include <libos/thread.h>
 #include <libos/times.h>
 #include <libos/trace.h>
-#include <libos/epolldev.h>
 
 #define DEV_URANDOM_FD LIBOS_FDTABLE_SIZE
 
@@ -1824,7 +1824,7 @@ long libos_syscall_epoll_ctl(
     int epfd,
     int op,
     int fd,
-    struct epoll_event *event)
+    struct epoll_event* event)
 {
     long ret = 0;
     libos_fdtable_t* fdtable = libos_fdtable_current();
@@ -1841,7 +1841,7 @@ done:
 
 long libos_syscall_epoll_wait(
     int epfd,
-    struct epoll_event *events,
+    struct epoll_event* events,
     int maxevents,
     int timeout)
 {
@@ -3086,7 +3086,7 @@ long libos_syscall(long n, long params[6])
             break;
         case SYS_mknod:
         {
-            const char *pathname = (const char*)x1;
+            const char* pathname = (const char*)x1;
             mode_t mode = (mode_t)x2;
             dev_t dev = (dev_t)x3;
             long ret = 0;
@@ -3136,7 +3136,7 @@ long libos_syscall(long n, long params[6])
             BREAK(_return(n, 0));
         }
         case SYS_sched_getparam:
-       {
+        {
             pid_t pid = (pid_t)x1;
             struct sched_param* param = (struct sched_param*)x2;
 
@@ -3174,7 +3174,7 @@ long libos_syscall(long n, long params[6])
             break;
         case SYS_mlock:
         {
-            const void *addr = (const void*)x1;
+            const void* addr = (const void*)x1;
             size_t len = (size_t)x2;
             long ret = 0;
 
@@ -3367,8 +3367,8 @@ long libos_syscall(long n, long params[6])
             size_t cpusetsize = (pid_t)x2;
             cpu_set_t* mask = (cpu_set_t*)x3;
 
-            _strace(n,
-                "pid=%d cpusetsize=%zu mask=%p\n", pid, cpusetsize, mask);
+            _strace(
+                n, "pid=%d cpusetsize=%zu mask=%p\n", pid, cpusetsize, mask);
 
             /* ATTN: support set affinity requests */
 
@@ -3380,8 +3380,8 @@ long libos_syscall(long n, long params[6])
             size_t cpusetsize = (pid_t)x2;
             cpu_set_t* mask = (cpu_set_t*)x3;
 
-            _strace(n,
-                "pid=%d cpusetsize=%zu mask=%p\n", pid, cpusetsize, mask);
+            _strace(
+                n, "pid=%d cpusetsize=%zu mask=%p\n", pid, cpusetsize, mask);
 
             // ATTN: return the cpu id from sched_setaffinity.
             // for now, make all threads fixed to cpu 0.
@@ -3525,8 +3525,13 @@ long libos_syscall(long n, long params[6])
             int timeout = (int)x4;
             long ret;
 
-            _strace(n, "edpf=%d events=%p maxevents=%d timeout=%d",
-                epfd, events, maxevents, timeout);
+            _strace(
+                n,
+                "edpf=%d events=%p maxevents=%d timeout=%d",
+                epfd,
+                events,
+                maxevents,
+                timeout);
 
             ret = libos_syscall_epoll_wait(epfd, events, maxevents, timeout);
             BREAK(_return(n, ret));
@@ -3662,11 +3667,17 @@ long libos_syscall(long n, long params[6])
             struct epoll_event* events = (struct epoll_event*)x2;
             int maxevents = (int)x3;
             int timeout = (int)x4;
-            const sigset_t *sigmask = (const sigset_t*)x5;
+            const sigset_t* sigmask = (const sigset_t*)x5;
             long ret;
 
-            _strace(n, "edpf=%d events=%p maxevents=%d timeout=%d sigmask=%p",
-                epfd, events, maxevents, timeout, sigmask);
+            _strace(
+                n,
+                "edpf=%d events=%p maxevents=%d timeout=%d sigmask=%p",
+                epfd,
+                events,
+                maxevents,
+                timeout,
+                sigmask);
 
             /* ATTN: ignore sigmask */
             ret = libos_syscall_epoll_wait(epfd, events, maxevents, timeout);
@@ -3745,7 +3756,7 @@ long libos_syscall(long n, long params[6])
         {
             unsigned* cpu = (unsigned*)x1;
             unsigned* node = (unsigned*)x2;
-            struct getcpu_cache *tcache = (struct getcpu_cache*)x3;
+            struct getcpu_cache* tcache = (struct getcpu_cache*)x3;
 
             _strace(n, "cpu=%p node=%p, tcache=%p", cpu, node, tcache);
 
@@ -3890,7 +3901,7 @@ long libos_syscall(long n, long params[6])
 #ifdef LIBOS_NO_RECVMSG_MITIGATION
             ret = libos_syscall_recvfrom(
                 sockfd, buf, len, flags, src_addr, addrlen);
-#else /* LIBOS_NO_RECVMSG_WORKAROUND */
+#else  /* LIBOS_NO_RECVMSG_WORKAROUND */
             /* ATTN: this mitigation introduces a severe performance penalty */
             // This mitigation works around a problem with a certain
             // application that fails handle EGAIN. This should be removed
@@ -4181,7 +4192,7 @@ static libos_spinlock_t _set_time_lock = LIBOS_SPINLOCK_INITIALIZER;
 long libos_syscall_clock_gettime(clockid_t clk_id, struct timespec* tp)
 {
     libos_thread_t* current = libos_thread_self();
-    if (// mirrors clock id obtained from pthread_getcpuclockid
+    if ( // mirrors clock id obtained from pthread_getcpuclockid
         clk_id == (clockid_t)((-current->tid - 1) * 8U + 6) ||
         clk_id == CLOCK_THREAD_CPUTIME_ID)
     {
@@ -4191,7 +4202,7 @@ long libos_syscall_clock_gettime(clockid_t clk_id, struct timespec* tp)
         return 0;
     }
 
-    if (// mirrors clock id obtained from clock_getcpuclockid
+    if ( // mirrors clock id obtained from clock_getcpuclockid
         clk_id == (clockid_t)((-current->pid - 1) * 8U + 2) ||
         clk_id == CLOCK_PROCESS_CPUTIME_ID)
     {

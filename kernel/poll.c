@@ -61,12 +61,12 @@ long libos_syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
     libos_fdtable_t* fdtable;
     struct pollfd* tfds = NULL; /* target file descriptors */
     struct pollfd* kfds = NULL; /* kernel file descriptors */
-    nfds_t tnfds = 0; /* number of target file descriptors */
-    nfds_t knfds = 0; /* number of kernel file descriptors */
-    size_t* tindices = NULL; /* target indices */
-    size_t* kindices = NULL; /* kernel indices */
-    long tevents = 0; /* the number of target events */
-    long kevents = 0; /* the number of kernel events */
+    nfds_t tnfds = 0;           /* number of target file descriptors */
+    nfds_t knfds = 0;           /* number of kernel file descriptors */
+    size_t* tindices = NULL;    /* target indices */
+    size_t* kindices = NULL;    /* kernel indices */
+    long tevents = 0;           /* the number of target events */
+    long kevents = 0;           /* the number of kernel events */
 
     /* special case: if nfds is zero */
     if (nfds == 0)

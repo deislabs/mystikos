@@ -25,7 +25,7 @@ void test_reader(void)
 
     memset(buf, 0, sizeof(buf));
 
-    size_t n = fread(buf, 1, sizeof(buf)-1, stream);
+    size_t n = fread(buf, 1, sizeof(buf) - 1, stream);
     assert(n == sizeof(alphabet) - 1);
     assert(memcmp(buf, alphabet, sizeof(alphabet) - 1) == 0);
     pclose(stream);
@@ -55,7 +55,7 @@ void test_writer(void)
 int main(int argc, const char* argv[])
 {
     test_reader();
-    //test_writer();
+    // test_writer();
 
     printf("=== passed test (%s)\n", argv[0]);
 

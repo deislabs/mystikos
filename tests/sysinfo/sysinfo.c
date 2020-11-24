@@ -86,24 +86,26 @@ void test_getrusage()
     // We have sleeped in the previously executed test_uptime
     // for SLEEP_DURATION seconds. It's safe to assert utime
     // and stime are greater than it.
-    assert(usage.ru_utime.tv_sec * MICRO_IN_SECOND + usage.ru_utime.tv_usec >
-            SLEEP_DURATION * MICRO_IN_SECOND);
-    assert(usage.ru_stime.tv_sec * MICRO_IN_SECOND + usage.ru_stime.tv_usec >
-            SLEEP_DURATION * MICRO_IN_SECOND);
-    assert(usage.ru_maxrss == 0);        /* maximum resident set size */
-    assert(usage.ru_ixrss == 0);         /* integral shared memory size */
-    assert(usage.ru_idrss == 0);         /* integral unshared data size */
-    assert(usage.ru_isrss == 0);         /* integral unshared stack size */
-    assert(usage.ru_minflt == 0);        /* page reclaims (soft page faults) */
-    assert(usage.ru_majflt == 0);        /* page faults (hard page faults) */
-    assert(usage.ru_nswap == 0);         /* swaps */
-    assert(usage.ru_inblock == 0);       /* block input operations */
-    assert(usage.ru_oublock == 0);       /* block output operations */
-    assert(usage.ru_msgsnd == 0);        /* IPC messages sent */
-    assert(usage.ru_msgrcv == 0);        /* IPC messages received */
-    assert(usage.ru_nsignals == 0);      /* signals received */
-    assert(usage.ru_nvcsw == 0);         /* voluntary context switches */
-    assert(usage.ru_nivcsw == 0);        /* involuntary context switches */
+    assert(
+        usage.ru_utime.tv_sec * MICRO_IN_SECOND + usage.ru_utime.tv_usec >
+        SLEEP_DURATION * MICRO_IN_SECOND);
+    assert(
+        usage.ru_stime.tv_sec * MICRO_IN_SECOND + usage.ru_stime.tv_usec >
+        SLEEP_DURATION * MICRO_IN_SECOND);
+    assert(usage.ru_maxrss == 0);   /* maximum resident set size */
+    assert(usage.ru_ixrss == 0);    /* integral shared memory size */
+    assert(usage.ru_idrss == 0);    /* integral unshared data size */
+    assert(usage.ru_isrss == 0);    /* integral unshared stack size */
+    assert(usage.ru_minflt == 0);   /* page reclaims (soft page faults) */
+    assert(usage.ru_majflt == 0);   /* page faults (hard page faults) */
+    assert(usage.ru_nswap == 0);    /* swaps */
+    assert(usage.ru_inblock == 0);  /* block input operations */
+    assert(usage.ru_oublock == 0);  /* block output operations */
+    assert(usage.ru_msgsnd == 0);   /* IPC messages sent */
+    assert(usage.ru_msgrcv == 0);   /* IPC messages received */
+    assert(usage.ru_nsignals == 0); /* signals received */
+    assert(usage.ru_nvcsw == 0);    /* voluntary context switches */
+    assert(usage.ru_nivcsw == 0);   /* involuntary context switches */
 }
 
 int main(int argc, const char* argv[])

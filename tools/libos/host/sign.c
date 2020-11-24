@@ -4,20 +4,20 @@
 #include <assert.h>
 #include <errno.h>
 #include <libgen.h>
-#include <sys/user.h>
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/user.h>
 #include <unistd.h>
 
-#include "../config.h"
-#include <openenclave/host.h>
 #include <libos/elf.h>
 #include <libos/file.h>
 #include <libos/strings.h>
 #include <libos/types.h>
+#include <openenclave/host.h>
+#include "../config.h"
 #include "libos_u.h"
 #include "parse_options.h"
 #include "regions.h"

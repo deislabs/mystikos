@@ -345,7 +345,6 @@ void test_rename(void)
 {
     assert(mkdir("/rename", 0777) == 0);
 
-
     assert(_touch("/rename/file1", 0400) == 0);
     assert(rename("/rename/file1", "/rename/file2") == 0);
     assert(access("/rename/file1", R_OK) != 0);
