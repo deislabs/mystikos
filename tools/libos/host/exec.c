@@ -44,23 +44,6 @@ static size_t _count_args(const char* args[])
     return n;
 }
 
-static int _getopt(
-    int* argc,
-    const char* argv[],
-    const char* opt,
-    const char** optarg)
-{
-    char err[128];
-    int ret;
-
-    ret = libos_getopt(argc, argv, opt, optarg, err, sizeof(err));
-
-    if (ret < 0)
-        _err("%s", err);
-
-    return ret;
-}
-
 static oe_enclave_t* _enclave;
 
 /* the address of this is eventually passed to futex (uaddr argument) */
@@ -187,6 +170,25 @@ int exec_launch_enclave(
     return retval;
 }
 
+#define USAGE_EXEC_SGX \
+    "\
+\n\
+Usage: %s exec-sgx <rootfs> <application> <app_args...> [options]\n\
+\n\
+Where:\n\
+    exec-sgx      -- execute the specified <application> from within the\n\
+                     <rootfs> with the <app_arguments> within an SGX enclave\n\
+    <rootfs>      -- This is the CPIO archive (created via mkcpio) of the\n\
+                     application directory\n\
+    <application> -- the application path from within <rootfs> to run within the SGX enclave\n\
+    <app_args>    -- the application arguments to pass through to\n\
+                     <application>\n\
+\n\
+and <options> are one of:\n\
+    --help        -- this message\n\
+\n\
+"
+
 int exec_action(int argc, const char* argv[], const char* envp[])
 {
     const oe_enclave_type_t type = OE_ENCLAVE_TYPE_SGX;
@@ -202,15 +204,23 @@ int exec_action(int argc, const char* argv[], const char* envp[])
     /* Get options */
     {
         /* Get --trace-syscalls option */
-        if (_getopt(&argc, argv, "--trace-syscalls", NULL) == 0 ||
-            _getopt(&argc, argv, "--strace", NULL) == 0)
+        if (cli_getopt(&argc, argv, "--trace-syscalls", NULL) == 0 ||
+            cli_getopt(&argc, argv, "--strace", NULL) == 0)
         {
             options.trace_syscalls = true;
         }
 
         /* Get --export-ramfs option */
-        if (_getopt(&argc, argv, "--export-ramfs", NULL) == 0)
+        if (cli_getopt(&argc, argv, "--export-ramfs", NULL) == 0)
             options.export_ramfs = true;
+
+        /* Get --export-ramfs option */
+        if ((cli_getopt(&argc, argv, "--help", NULL) == 0) ||
+            (cli_getopt(&argc, argv, "-h", NULL) == 0))
+        {
+            fprintf(stderr, USAGE_EXEC_SGX, argv[0]);
+            return 1;
+        }
 
         /* Set export_ramfs option based on LIBOS_ENABLE_GCOV env variable */
         {
@@ -223,11 +233,7 @@ int exec_action(int argc, const char* argv[], const char* envp[])
 
     if (argc < 4)
     {
-        fprintf(
-            stderr,
-            "Usage: %s %s <rootfs> <program> <args...>\n",
-            argv[0],
-            argv[1]);
+        fprintf(stderr, USAGE_EXEC_SGX, argv[0]);
         return 1;
     }
 

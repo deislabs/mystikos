@@ -273,10 +273,20 @@ int libos_unload_symbols_ocall(void)
 Usage: %s <action> [options] ...\n\
 \n\
 Where <action> is one of:\n\
-    exec   -- execute an application within the libos\n\
-    mkcpio -- create a CPIO archive from a directory\n\
-    excpio -- extract the CPIO archive into a directory\n\
-    sign   -- sign the platform application and root filesystem\n\
+    exec-sgx      -- execute an application from within the CPIO\n\
+                     archive inside an SGX enclave\n\
+    exec-linux    -- execute an application within the CPIO archive in a none\n\
+                     trusted environment environment (Linux)\n\
+    mkcpio        -- create a CPIO archive from an application directory\n\
+    excpio        -- extract the CPIO archive into an application directory\n\
+    sign-sgx      -- sign the CPIO archive along with configuration and system\n\
+                     files into a directory for the SGX platform\n\
+    package-sgx   -- create an executable package to run on the SGX platform\n\
+                     from an application directory, package configuration and\n\
+                     system files, signing and measuring all enclave resident\n\
+                     pieces during in the process\n\
+    dump-sgx      -- dump the SGX enclave configuration along with the\n\
+                     packaging configuration from an SGX packaged executable\n\
 \n\
 "
 
@@ -332,17 +342,20 @@ int main(int argc, const char* argv[], const char* envp[])
     {
         return _excpio(argc, argv);
     }
-    else if (strcmp(argv[1], "sign") == 0)
+    else if (
+        (strcmp(argv[1], "sign") == 0) || (strcmp(argv[1], "sign-sgx") == 0))
     {
         return _sign(argc, argv);
     }
-    else if (strcmp(argv[1], "package") == 0)
+    else if (
+        (strcmp(argv[1], "package") == 0) ||
+        (strcmp(argv[1], "package-sgx") == 0))
     {
         return _package(argc, argv, envp);
     }
     else
     {
-        _err("unknown action: %s", argv[1]);
+        fprintf(stderr, USAGE, argv[0]);
         return 1;
     }
 }

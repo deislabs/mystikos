@@ -23,7 +23,6 @@
 #include "exec.h"
 #include "libos/file.h"
 #include "libos_args.h"
-#include "parse_options.h"
 #include "regions.h"
 #include "sign.h"
 #include "utils.h"
@@ -33,41 +32,21 @@ _Static_assert(PAGE_SIZE == 4096, "");
 #define USAGE_PACKAGE \
     "\
 \n\
-Usage: %s sign package <app_dir> <pem_file> <config> [options]\n\
+Usage: %s package-sgx <app_dir> <pem_file> <config> [options]\n\
 \n\
 Where:\n\
-    <app_dir> -- directory with files for root filesystem\n\
-    <pem_file> -- private key to sign enclave\n\
-    <config>   -- configuration for signing and application runtime\n\
+    package-sgx -- create an executable package to run on the SGX platform\n\
+                   from an application directory, package configuration and\n\
+                   system files, signing and measuring all enclave resident\n\
+                   pieces during in the process\n\
+    <app_dir>   -- application directory with files for root filesystem\n\
+    <pem_file>  -- private key to sign and measure SGX enclave files\n\
+    <config>    -- configuration for signing and application runtime\n\
 \n\
 and <options> are one of:\n\
-    --help        -- this message\n\
-    --platform OE -- execute an application within the libos\n\
-                     Default = OE\n\
+    --help      -- this message\n\
 \n\
 "
-
-static const char* help_present = NULL;
-static const char* platform = "OE";
-
-static const char* help_options[] = {"--help", "-h"};
-static const char* platform_options[] = {"--platform", "-p"};
-
-static struct _option option_list[] = {
-    // {names array}, names_count, num_extra_param, extra_param,
-    // extra_param_required
-    {help_options,
-     sizeof(help_options) / sizeof(const char*),
-     0,
-     &help_present,
-     0},
-    {platform_options,
-     sizeof(platform_options) / sizeof(const char*),
-     1,
-     &platform,
-     1}};
-static struct _options options = {option_list,
-                                  sizeof(option_list) / sizeof(struct _option)};
 
 static int _add_image_to_elf_section(
     elf_t* elf,
@@ -117,15 +96,17 @@ int _package(int argc, const char* argv[])
     char scratch_path2[PATH_MAX];
     config_parsed_data_t parsed_data = {0};
 
-    if ((argc < 5) || (parse_options(argc, argv, 5, &options) != 0) ||
-        help_present)
+    if ((argc < 5) || (cli_getopt(&argc, argv, "--help", NULL) == 0) ||
+        (cli_getopt(&argc, argv, "-h", NULL) == 0))
     {
         fprintf(stderr, USAGE_PACKAGE, argv[0]);
         goto done;
     }
 
     // We are in the right operation, right?
-    assert(strcmp(argv[1], "package") == 0);
+    assert(
+        (strcmp(argv[1], "package") == 0) ||
+        (strcmp(argv[1], "package-sgx") == 0));
 
     app_dir = argv[2];
     pem_file = argv[3];
@@ -198,7 +179,7 @@ int _package(int argc, const char* argv[])
                                rootfs_file,
                                pem_file,
                                config_file,
-                               "--ourdir",
+                               "--outdir",
                                tmp_dir};
 
     // Sign and copy everything into app.signed directory
@@ -379,23 +360,6 @@ done:
     return ret;
 }
 
-static int _getopt(
-    int* argc,
-    const char* argv[],
-    const char* opt,
-    const char** optarg)
-{
-    char err[128];
-    int ret;
-
-    ret = libos_getopt(argc, argv, opt, optarg, err, sizeof(err));
-
-    if (ret < 0)
-        _err("%s", err);
-
-    return ret;
-}
-
 // <app_name> [app args]
 int _exec_package(
     int argc,
@@ -425,8 +389,8 @@ int _exec_package(
     /* Get options */
     {
         /* Get --trace-syscalls option */
-        if (_getopt(&argc, argv, "--trace-syscalls", NULL) == 0 ||
-            _getopt(&argc, argv, "--strace", NULL) == 0)
+        if (cli_getopt(&argc, argv, "--trace-syscalls", NULL) == 0 ||
+            cli_getopt(&argc, argv, "--strace", NULL) == 0)
         {
             options.trace_syscalls = true;
         }

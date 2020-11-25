@@ -16,7 +16,6 @@
 #include <libos/elf.h>
 #include <libos/eraise.h>
 #include <libos/file.h>
-#include <libos/getopt.h>
 #include <libos/kernel.h>
 #include <libos/reloc.h>
 #include <libos/round.h>
@@ -29,7 +28,24 @@
 /* standardize this value! */
 #define DEFAULT_MMAN_SIZE (256 * 1024 * 1024)
 
-#define USAGE_FORMAT "Usage: %s %s <rootfs> <program> <args...>\n"
+#define USAGE_FORMAT \
+    "\
+\n\
+Usage: %s exec-linux <rootfs> <application> <args...> [options]\n\
+\n\
+Where:\n\
+    exec-linux   -- execute an application within the CPIO archive in a none\n\
+                    trusted environment environment (Linux)\n\
+    <rootfs>     -- this is the CPIO archive (created via mkcpio) of the\n\
+                    application directory\n\
+    <application> -- the application path from within <rootfs> to run within the SGX enclave\n\
+    <app_args>    -- the application arguments to pass through to\n\
+                     <application>\n\
+\n\
+and <options> are one of:\n\
+    --help        -- this message\n\
+\n\
+"
 
 struct options
 {
@@ -47,34 +63,17 @@ struct regions
     size_t mman_size;
 };
 
-static int _getopt(
-    int* argc,
-    const char* argv[],
-    const char* opt,
-    const char** optarg)
-{
-    char err[128];
-    int ret;
-
-    ret = libos_getopt(argc, argv, opt, optarg, err, sizeof(err));
-
-    if (ret < 0)
-        _err("%s", err);
-
-    return ret;
-}
-
 static void _get_options(int* argc, const char* argv[], struct options* options)
 {
     /* Get --trace-syscalls option */
-    if (_getopt(argc, argv, "--trace-syscalls", NULL) == 0 ||
-        _getopt(argc, argv, "--strace", NULL) == 0)
+    if (cli_getopt(argc, argv, "--trace-syscalls", NULL) == 0 ||
+        cli_getopt(argc, argv, "--strace", NULL) == 0)
     {
         options->trace_syscalls = true;
     }
 
     /* Get --export-ramfs option */
-    if (_getopt(argc, argv, "--export-ramfs", NULL) == 0)
+    if (cli_getopt(argc, argv, "--export-ramfs", NULL) == 0)
         options->export_ramfs = true;
 
     /* Set export_ramfs option based on LIBOS_ENABLE_GCOV env variable */
@@ -345,7 +344,7 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
     /* Check usage */
     if (argc < 4)
     {
-        fprintf(stderr, USAGE_FORMAT, argv[0], argv[1]);
+        fprintf(stderr, USAGE_FORMAT, argv[0]);
         return 1;
     }
 

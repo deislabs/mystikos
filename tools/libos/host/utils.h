@@ -25,4 +25,10 @@ const int format_liboskernel(char* path, size_t size);
 // NOTE: this is not thread safe!
 int remove_recursive(const char* path);
 
+int cli_getopt(
+    int* argc,
+    const char* argv[],
+    const char* opt,
+    const char** optarg);
+
 #endif /* _HOST_LIBOS_UTILS_H */

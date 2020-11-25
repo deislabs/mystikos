@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <ftw.h>
 #include <libgen.h>
+#include <libos/getopt.h>
 #include <libos/strings.h>
 #include <limits.h>
 #include <stdarg.h>
@@ -185,4 +186,21 @@ int unlink_cb(
 int remove_recursive(const char* path)
 {
     return nftw(path, unlink_cb, 64, FTW_DEPTH | FTW_PHYS);
+}
+
+int cli_getopt(
+    int* argc,
+    const char* argv[],
+    const char* opt,
+    const char** optarg)
+{
+    char err[128];
+    int ret;
+
+    ret = libos_getopt(argc, argv, opt, optarg, err, sizeof(err));
+
+    if (ret < 0)
+        _err("%s", err);
+
+    return ret;
 }
