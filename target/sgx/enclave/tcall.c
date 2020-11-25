@@ -292,182 +292,6 @@ long libos_tcall_poll_wake(void)
     return -ENOTSUP;
 }
 
-static long _oesdk_syscall(long n, long params[6])
-{
-    switch (n)
-    {
-        case SYS_libos_oe_is_within_enclave:
-        {
-            const void* ptr = (void*)params[0];
-            size_t size = (size_t)params[1];
-            return (long)oe_is_within_enclave(ptr, size);
-        }
-        case SYS_libos_oe_is_outside_enclave:
-        {
-            const void* ptr = (void*)params[0];
-            size_t size = (size_t)params[1];
-            return (long)oe_is_outside_enclave(ptr, size);
-        }
-        case SYS_libos_oe_random:
-        {
-            void* data = (void*)params[0];
-            size_t size = (size_t)params[1];
-            return (long)oe_random(data, size);
-        }
-        case SYS_libos_oe_generate_attestation_certificate:
-        {
-            long* args = (long*)params[0];
-            const unsigned char* subject_name = (const unsigned char*)args[0];
-            uint8_t* private_key = (uint8_t*)args[1];
-            size_t private_key_size = (size_t)args[2];
-            uint8_t* public_key = (uint8_t*)args[3];
-            size_t public_key_size = (size_t)args[4];
-            uint8_t** output_cert = (uint8_t**)args[5];
-            size_t* output_cert_size = (size_t*)args[6];
-
-            return (long)oe_generate_attestation_certificate(
-                subject_name,
-                private_key,
-                private_key_size,
-                public_key,
-                public_key_size,
-                output_cert,
-                output_cert_size);
-        }
-        case SYS_libos_oe_get_public_key_by_policy:
-        {
-            oe_seal_policy_t seal_policy = (oe_seal_policy_t)params[0];
-            const oe_asymmetric_key_params_t* key_params = (void*)params[1];
-            uint8_t** key_buffer = (uint8_t**)params[2];
-            size_t* key_buffer_size = (size_t*)params[3];
-            uint8_t** key_info = (uint8_t**)params[4];
-            size_t* key_info_size = (size_t*)params[5];
-
-            return (long)oe_get_public_key_by_policy(
-                seal_policy,
-                key_params,
-                key_buffer,
-                key_buffer_size,
-                key_info,
-                key_info_size);
-        }
-        case SYS_libos_oe_get_private_key_by_policy:
-        {
-            oe_seal_policy_t seal_policy = (oe_seal_policy_t)params[0];
-            const oe_asymmetric_key_params_t* key_params = (void*)params[1];
-            uint8_t** key_buffer = (uint8_t**)params[2];
-            size_t* key_buffer_size = (size_t*)params[3];
-            uint8_t** key_info = (uint8_t**)params[4];
-            size_t* key_info_size = (size_t*)params[5];
-
-            return (long)oe_get_private_key_by_policy(
-                seal_policy,
-                key_params,
-                key_buffer,
-                key_buffer_size,
-                key_info,
-                key_info_size);
-        }
-        case SYS_libos_oe_free_key:
-        {
-            uint8_t* key_buffer = (uint8_t*)params[0];
-            size_t key_buffer_size = (size_t)params[1];
-            uint8_t* key_info = (uint8_t*)params[2];
-            size_t key_info_size = (size_t)params[3];
-
-            oe_free_key(key_buffer, key_buffer_size, key_info, key_info_size);
-
-            return 0;
-        }
-        case SYS_libos_oe_free_attestation_certificate:
-        {
-            uint8_t* cert = (uint8_t*)params[0];
-
-            oe_free_attestation_certificate(cert);
-
-            return 0;
-        }
-        case SYS_libos_oe_verify_attestation_certificate:
-        {
-            uint8_t* cert_in_der = (uint8_t*)params[0];
-            size_t cert_in_der_len = (size_t)params[1];
-            oe_identity_verify_callback_t enclave_identity_callback =
-                (oe_identity_verify_callback_t)params[2];
-            void* arg = (void*)params[3];
-
-            return (long)oe_verify_attestation_certificate(
-                cert_in_der, cert_in_der_len, enclave_identity_callback, arg);
-        }
-        case SYS_libos_oe_get_enclave_status:
-        {
-            return (long)oe_get_enclave_status();
-        }
-        case SYS_libos_oe_allocate_ocall_buffer:
-        {
-            size_t size = (size_t)params[0];
-            return (long)oe_allocate_ocall_buffer(size);
-        }
-        case SYS_libos_oe_free_ocall_buffer:
-        {
-            void* buffer = (void*)params[0];
-            oe_free_ocall_buffer(buffer);
-            return 0;
-        }
-        case SYS_libos_oe_call_host_function:
-        {
-            size_t function_id = (size_t)params[0];
-            const void* input_buffer = (const void*)params[1];
-            size_t input_buffer_size = (size_t)params[2];
-            void* output_buffer = (void*)params[3];
-            size_t output_buffer_size = (size_t)params[4];
-            size_t* output_bytes_written = (size_t*)params[5];
-
-            return (long)libos_oe_call_host_function(
-                function_id,
-                input_buffer,
-                input_buffer_size,
-                output_buffer,
-                output_buffer_size,
-                output_bytes_written);
-        }
-        case SYS_libos_oe_add_vectored_exception_handler:
-        case SYS_libos_oe_remove_vectored_exception_handler:
-        case SYS_libos_oe_host_malloc:
-        case SYS_libos_oe_host_realloc:
-        case SYS_libos_oe_host_calloc:
-        case SYS_libos_oe_host_free:
-        case SYS_libos_oe_strndup:
-        case SYS_libos_oe_abort:
-        case SYS_libos_oe_assert_fail:
-        case SYS_libos_oe_get_report_v2:
-        case SYS_libos_oe_free_report:
-        case SYS_libos_oe_get_target_info_v2:
-        case SYS_libos_oe_free_target_info:
-        case SYS_libos_oe_parse_report:
-        case SYS_libos_oe_verify_report:
-        case SYS_libos_oe_get_seal_key_by_policy_v2:
-        case SYS_libos_oe_get_public_key:
-        case SYS_libos_oe_get_private_key:
-        case SYS_libos_oe_get_seal_key_v2:
-        case SYS_libos_oe_free_seal_key:
-        case SYS_libos_oe_get_enclave:
-        case SYS_libos_oe_load_module_host_file_system:
-        case SYS_libos_oe_load_module_host_socket_interface:
-        case SYS_libos_oe_load_module_host_resolver:
-        case SYS_libos_oe_load_module_host_epoll:
-        case SYS_libos_oe_sgx_set_minimum_crl_tcb_issue_date:
-        case SYS_libos_oe_result_str:
-        {
-            return (long)OE_UNSUPPORTED;
-        }
-        default:
-        {
-            assert("unsupported OE TCALL" == NULL);
-            return (long)OE_UNSUPPORTED;
-        }
-    }
-}
-
 static long _tcall_target_stat(libos_target_stat_t* buf)
 {
     long ret = 0;
@@ -759,48 +583,165 @@ long libos_tcall(long n, long params[6])
             extern long libos_handle_tcall(long n, long params[6]);
             return libos_handle_tcall(n, params);
         }
-        case SYS_libos_oe_add_vectored_exception_handler:
-        case SYS_libos_oe_remove_vectored_exception_handler:
-        case SYS_libos_oe_is_within_enclave:
-        case SYS_libos_oe_is_outside_enclave:
-        case SYS_libos_oe_host_malloc:
-        case SYS_libos_oe_host_realloc:
-        case SYS_libos_oe_host_calloc:
-        case SYS_libos_oe_host_free:
-        case SYS_libos_oe_strndup:
-        case SYS_libos_oe_abort:
-        case SYS_libos_oe_assert_fail:
+        /* Open Enclave extensions */
         case SYS_libos_oe_get_report_v2:
-        case SYS_libos_oe_free_report:
-        case SYS_libos_oe_get_target_info_v2:
-        case SYS_libos_oe_free_target_info:
-        case SYS_libos_oe_parse_report:
-        case SYS_libos_oe_verify_report:
-        case SYS_libos_oe_get_seal_key_by_policy_v2:
-        case SYS_libos_oe_get_public_key_by_policy:
-        case SYS_libos_oe_get_public_key:
-        case SYS_libos_oe_get_private_key_by_policy:
-        case SYS_libos_oe_get_private_key:
-        case SYS_libos_oe_free_key:
-        case SYS_libos_oe_get_seal_key_v2:
-        case SYS_libos_oe_free_seal_key:
-        case SYS_libos_oe_get_enclave:
-        case SYS_libos_oe_random:
-        case SYS_libos_oe_generate_attestation_certificate:
-        case SYS_libos_oe_free_attestation_certificate:
-        case SYS_libos_oe_verify_attestation_certificate:
-        case SYS_libos_oe_load_module_host_file_system:
-        case SYS_libos_oe_load_module_host_socket_interface:
-        case SYS_libos_oe_load_module_host_resolver:
-        case SYS_libos_oe_load_module_host_epoll:
-        case SYS_libos_oe_sgx_set_minimum_crl_tcb_issue_date:
-        case SYS_libos_oe_result_str:
-        case SYS_libos_oe_get_enclave_status:
-        case SYS_libos_oe_allocate_ocall_buffer:
-        case SYS_libos_oe_free_ocall_buffer:
-        case SYS_libos_oe_call_host_function:
         {
-            return _oesdk_syscall(n, params);
+            uint64_t* args = (uint64_t*)x1;
+            return oe_get_report_v2(
+                (uint32_t)args[0],
+                (const uint8_t*)args[1],
+                (size_t)args[2],
+                (const void*)args[3],
+                (size_t)args[4],
+                (uint8_t**)args[5],
+                (size_t*)args[6]);
+        }
+        case SYS_libos_oe_free_report:
+        {
+            uint64_t* args = (uint64_t*)x1;
+            oe_free_report((uint8_t*)args[0]);
+            return 0;
+        }
+        case SYS_libos_oe_get_target_info_v2:
+        {
+            uint64_t* args = (uint64_t*)x1;
+            return oe_get_target_info_v2(
+                (const uint8_t*)args[0],
+                (size_t)args[1],
+                (void**)args[2],
+                (size_t*)args[3]);
+            return 0;
+        }
+        case SYS_libos_oe_free_target_info:
+        {
+            uint64_t* args = (uint64_t*)x1;
+            oe_free_target_info((void*)args[0]);
+            return 0;
+        }
+        case SYS_libos_oe_parse_report:
+        {
+            uint64_t* args = (uint64_t*)x1;
+            return oe_parse_report(
+                (const uint8_t*)args[0],
+                (size_t)args[1],
+                (oe_report_t*)args[2]);
+        }
+        case SYS_libos_oe_verify_report:
+        {
+            uint64_t* args = (uint64_t*)x1;
+            return oe_verify_report(
+                (const uint8_t*)args[0],
+                (size_t)args[1],
+                (oe_report_t*)args[2]);
+        }
+        case SYS_libos_oe_get_seal_key_by_policy_v2:
+        {
+            uint64_t* args = (uint64_t*)x1;
+            return oe_get_seal_key_by_policy_v2(
+                (oe_seal_policy_t)args[0],
+                (uint8_t**)args[1],
+                (size_t*)args[2],
+                (uint8_t**)args[3],
+                (size_t*)args[4]);
+        }
+        case SYS_libos_oe_get_public_key_by_policy:
+        {
+            uint64_t* args = (uint64_t*)x1;
+            return oe_get_public_key_by_policy(
+                (oe_seal_policy_t)args[0],
+                (const oe_asymmetric_key_params_t*)args[1],
+                (uint8_t**)args[2],
+                (size_t*)args[3],
+                (uint8_t**)args[4],
+                (size_t*)args[5]);
+        }
+        case SYS_libos_oe_get_public_key:
+        {
+            uint64_t* args = (uint64_t*)x1;
+            return oe_get_public_key(
+                (const oe_asymmetric_key_params_t*)args[0],
+                (const uint8_t*)args[1],
+                (size_t)args[2],
+                (uint8_t**)args[3],
+                (size_t*)args[4]);
+        }
+        case SYS_libos_oe_get_private_key_by_policy:
+        {
+            uint64_t* args = (uint64_t*)x1;
+            return oe_get_private_key_by_policy(
+                (oe_seal_policy_t)args[0],
+                (const oe_asymmetric_key_params_t*)args[1],
+                (uint8_t**)args[2],
+                (size_t*)args[3],
+                (uint8_t**)args[4],
+                (size_t*)args[5]);
+        }
+        case SYS_libos_oe_get_private_key:
+        {
+            uint64_t* args = (uint64_t*)x1;
+            return oe_get_private_key(
+                (const oe_asymmetric_key_params_t*)args[0],
+                (const uint8_t*)args[1],
+                (size_t)args[2],
+                (uint8_t**)args[3],
+                (size_t*)args[4]);
+        }
+        case SYS_libos_oe_free_key:
+        {
+            uint64_t* args = (uint64_t*)x1;
+            oe_free_key(
+                (uint8_t*)args[0],
+                (size_t)args[1],
+                (uint8_t*)args[2],
+                (size_t)args[3]);
+            return 0;
+        }
+        case SYS_libos_oe_get_seal_key_v2:
+        {
+            uint64_t* args = (uint64_t*)x1;
+            return oe_get_seal_key_v2(
+                (const uint8_t*)args[0],
+                (size_t)args[1],
+                (uint8_t**)args[2],
+                (size_t*)args[3]);
+        }
+        case SYS_libos_oe_free_seal_key:
+        {
+            uint64_t* args = (uint64_t*)x1;
+            oe_free_seal_key((uint8_t*)args[0], (uint8_t*)args[1]);
+            return 0;
+        }
+        case SYS_libos_oe_generate_attestation_certificate:
+        {
+            uint64_t* args = (uint64_t*)x1;
+            return oe_generate_attestation_certificate(
+                (const unsigned char*)args[0],
+                (uint8_t*)args[1],
+                (size_t)args[2],
+                (uint8_t*)args[3],
+                (size_t)args[4],
+                (uint8_t**)args[5],
+                (size_t*)args[6]);
+        }
+        case SYS_libos_oe_free_attestation_certificate:
+        {
+            uint64_t* args = (uint64_t*)x1;
+            oe_free_attestation_certificate((uint8_t*)args[0]);
+            return 0;
+        }
+        case SYS_libos_oe_verify_attestation_certificate:
+        {
+            uint64_t* args = (uint64_t*)x1;
+            return oe_verify_attestation_certificate(
+                (uint8_t*)args[0],
+                (size_t)args[1],
+                (oe_identity_verify_callback_t)args[2],
+                (void*)args[3]);
+        }
+        case SYS_libos_oe_result_str:
+        {
+            uint64_t* args = (uint64_t*)x1;
+            return (long)oe_result_str((oe_result_t)args[0]);
         }
         default:
         {
