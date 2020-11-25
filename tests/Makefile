@@ -56,6 +56,7 @@ REDEFINE_TESTS=1
 include $(TOP)/rules.mak
 
 DIRS += epoll
+DIRS += oe
 
 __tests:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) tests $(NL) )

@@ -25,7 +25,7 @@ DIRS += host
 DIRS += target
 DIRS += kernel
 DIRS += crt
-#DIRS += oesdk
+DIRS += oe
 DIRS += tools
 
 ifndef LIBOS_PRODUCT_BUILD
