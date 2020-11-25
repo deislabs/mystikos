@@ -17,6 +17,7 @@
 #include <openenclave/host.h>
 
 #include "dump.h"
+#include "utils.h"
 
 // Helper functions from within OE to get OE related info
 oe_result_t oe_read_oeinfo_sgx(
@@ -97,6 +98,21 @@ static int dump_enclave_properties(oe_sgx_enclave_properties_t* properties)
     return 0;
 }
 
+#define USAGE_DUMP \
+    "\
+\n\
+Usage: %s dump-sgx <sgx_package> [options]\n\
+\n\
+Where:\n\
+    dump-sgx      -- dump the SGX enclave configuration along with the\n\
+                     packaging configuration from an SGX packaged executable\n\
+    <sgx-package> -- path to the packaged SGX application\n\
+\n\
+and <options> are one of:\n\
+    --help        -- this message\n\
+\n\
+"
+
 int dump_action(int argc, const char* argv[], const char* envp[])
 {
     int ret = -1;
@@ -110,10 +126,10 @@ int dump_action(int argc, const char* argv[], const char* envp[])
     char* enc_filename = NULL;
 
     // check parameters
-    if (argc != 3)
+    if ((argc < 3) || (cli_getopt(&argc, argv, "--help", NULL) == 0) ||
+        (cli_getopt(&argc, argv, "-h", NULL) == 0))
     {
-        fprintf(
-            stderr, "%s: Usage: libos dump-package <libos-package>\n", argv[0]);
+        fprintf(stderr, USAGE_DUMP, argv[0]);
         goto done;
     }
 

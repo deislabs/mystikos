@@ -19,7 +19,6 @@
 #include <openenclave/host.h>
 #include "../config.h"
 #include "libos_u.h"
-#include "parse_options.h"
 #include "regions.h"
 #include "utils.h"
 
@@ -38,52 +37,26 @@ int oesign(
 #define USAGE_SIGN \
     "\
 \n\
-Usage: %s sign <rootfs_path> <pem_file> <config_file> [options] \n\
-\n\
-This operation signs all enclave components and puts then in the target directory\n\
+Usage: %s sign-sgx <rootfs_path> <pem_file> <config_file> [options] \n\
 \n\
 Where:\n\
-    <target_path_within_appdir> -- The application path relative to start of appdir \n\
-    <rootfs_path>               -- Path to CPIO archive file \n\
-    <pem_file>                  -- Filename of private RSA key in PEM format \n\
-    <config_file>               -- Filename of signing configuration \n\
+    sign-sgx                    -- This operation signs and measures all\n\
+                                   SGX enclave loadable components and puts\n\
+                                   then in the target directory\n\
+    <rootfs_path>               -- Path to CPIO archive file of the\n\
+                                   application directory\n\
+    <pem_file>                  -- Filename of private RSA key in PEM format\n\
+    <config_file>               -- Filename of signing configuration\n\
+\n\
 and <options> are one of:\n\
-    --help                -- This message\n\
-    --platform <platform> -- Platform for which this is being signed for. Default='OE'\n\
-    --app-name <name>     -- Application name. Default='app'. \n\
-                             This is used for the target signing directory which will be\n\
-                             <name>.signed\n\
+    --help                      -- This message\n\
+    --outdir <path>             -- optional output directory path. If not\n\
+                                   specified goes into the configurations\n\
+                                   <appdir>.signed directpry\n\
 \n\
 "
 
-static const char* help_present = NULL;
-static const char* platform = "OE";
 static const char* user_sign_dir = NULL;
-
-static const char* help_options[] = {"--help", "-h"};
-static const char* platform_options[] = {"--platform", "-p"};
-static const char* sign_dir_options[] = {"--ourdir", "-d"};
-
-static struct _option option_list[] = {
-    // {names array}, names_count, num_extra_param, extra_param,
-    // extra_param_required
-    {help_options,
-     sizeof(help_options) / sizeof(const char*),
-     0,
-     &help_present,
-     0},
-    {platform_options,
-     sizeof(platform_options) / sizeof(const char*),
-     1,
-     &platform,
-     0},
-    {sign_dir_options,
-     sizeof(sign_dir_options) / sizeof(const char*),
-     1,
-     &user_sign_dir,
-     0}};
-static struct _options options = {option_list,
-                                  sizeof(option_list) / sizeof(struct _option)};
 
 int copy_files_to_signing_directory(
     const char* sign_dir,
@@ -251,15 +224,21 @@ int _sign(int argc, const char* argv[])
     char scratch_path2[PATH_MAX];
 
     // We are in the right operation, right?
-    assert(strcmp(argv[1], "sign") == 0);
+    assert(
+        (strcmp(argv[1], "sign") == 0) || (strcmp(argv[1], "sign-sgx") == 0));
 
     // validate parameters and parse the extra options and validate they exist
     // when required
-    if ((argc < 5) || (parse_options(argc, argv, 5, &options) != 0) ||
-        help_present)
+    if ((argc < 5) || (cli_getopt(&argc, argv, "--help", NULL) == 0) ||
+        (cli_getopt(&argc, argv, "-h", NULL) == 0))
     {
         fprintf(stderr, USAGE_SIGN, argv[0]);
         return -1;
+    }
+    if ((cli_getopt(&argc, argv, "--outdir", &user_sign_dir) == 0) ||
+        (cli_getopt(&argc, argv, "-d", &user_sign_dir) == 0))
+    {
+        // we have the optional signing dir
     }
 
     const char* program_file = get_program_file();

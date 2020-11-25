@@ -8,17 +8,43 @@
 #include <string.h>
 #include "utils.h"
 
+#define USAGE_EXCPIO \
+    "\
+\n\
+Usage: %s excpio <cpioarchive> <directory> [options]\n\
+\n\
+Where:\n\
+    excpio        -- extract the CPIO archive into an application directory\n\
+    <cpioarchive> -- the CPIO archive file to extract\n\
+    <directory>   -- the directory to extract the CPIO archive into\n\
+\n\
+and <options> are one of:\n\
+    --help        -- this message\n\
+\n\
+"
+
+#define USAGE_MKCPIO \
+    "\
+\n\
+Usage: %s mkcpio <directory> <cpioarchive> [options]\n\
+\n\
+Where:\n\
+    mkcpio        -- create a CPIO archive from an application directory\n\
+    <directory>   -- the directory to be recursively added to the CPIO archive\n\
+    <cpioarchive> -- the output CPIO archive file name\n\
+\n\
+and <options> are one of:\n\
+    --help        -- this message\n\
+\n\
+"
+
 int _mkcpio(int argc, const char* argv[])
 {
     assert(strcmp(argv[1], "mkcpio") == 0);
 
     if (argc != 4)
     {
-        fprintf(
-            stderr,
-            "Usage: %s %s <directory> <cpioarchive>\n",
-            argv[0],
-            argv[1]);
+        fprintf(stderr, USAGE_MKCPIO, argv[0]);
         return 1;
     }
 
@@ -43,11 +69,7 @@ int _excpio(int argc, const char* argv[])
 
     if (argc != 4)
     {
-        fprintf(
-            stderr,
-            "Usage: %s %s <cpioarchive> <directory>\n",
-            argv[0],
-            argv[1]);
+        fprintf(stderr, USAGE_EXCPIO, argv[0]);
         return 1;
     }
 

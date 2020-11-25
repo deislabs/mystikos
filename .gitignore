@@ -64,3 +64,6 @@ tests/pipesz/appdir/
 tests/futex/appdir/
 tests/epoll/appdir/
 tests/oe/seal/appdir/
+tests/cpp-exceptions/appdir/
+tests/cpp-exceptions/libcxx-tests/
+tests/curl/appdir/
