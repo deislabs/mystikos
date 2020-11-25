@@ -111,12 +111,12 @@ enclave
 
         long libos_read_ocall(
             int fd,
-            [in, size=count] void* buf,
+            [out, size=count] void* buf,
             size_t count);
 
         long libos_write_ocall(
             int fd,
-            [out, size=count] const void* buf,
+            [in, size=count] const void* buf,
             size_t count);
 
         long libos_close_ocall(int fd);

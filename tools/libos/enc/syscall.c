@@ -34,7 +34,7 @@ static long _read(int fd, void* buf, size_t count)
 
     if (retval < 0)
     {
-        ret = -EINVAL;
+        ret = retval;
         goto done;
     }
 
@@ -70,7 +70,7 @@ static long _write(int fd, const void* buf, size_t count)
 
     if (retval < 0)
     {
-        ret = -EINVAL;
+        ret = retval;
         goto done;
     }
 
@@ -248,7 +248,7 @@ static long _sendto(
 
     if (retval < 0)
     {
-        ret = -EINVAL;
+        ret = retval;
         goto done;
     }
 
@@ -285,7 +285,7 @@ static long _accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
 
     if (retval < 0)
     {
-        ret = -EINVAL;
+        ret = retval;
         goto done;
     }
 
@@ -352,7 +352,7 @@ static long _sendmsg(int sockfd, const struct msghdr* msg, int flags)
 
     if (retval < 0)
     {
-        ret = -EINVAL;
+        ret = retval;
         goto done;
     }
 
@@ -515,7 +515,7 @@ static long _getsockname(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
 
     if (retval < 0)
     {
-        ret = -EINVAL;
+        ret = retval;
         goto done;
     }
 
@@ -560,7 +560,7 @@ static long _getpeername(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
     if (retval < 0)
     {
         *addrlen = 0;
-        ret = -EINVAL;
+        ret = retval;
         goto done;
     }
 
@@ -628,7 +628,7 @@ static long _getsockopt(
 
     if (retval < 0)
     {
-        ret = -EINVAL;
+        ret = retval;
         goto done;
     }
 
