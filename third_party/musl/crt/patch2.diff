@@ -318,6 +318,57 @@ index 2f9d5e97..c2bf57d7 100644
  	if (r==-EINTR && nr!=SYS_close && self->cancel &&
  	    self->canceldisable != PTHREAD_CANCEL_DISABLE)
  		r = __cancel();
+diff --git a/src/thread/x86_64/__set_thread_area.s b/src/thread/x86_64/__set_thread_area.s
+deleted file mode 100644
+index 7347ff4d..00000000
+--- a/src/thread/x86_64/__set_thread_area.s
++++ /dev/null
+@@ -1,11 +0,0 @@
+-/* Copyright 2011-2012 Nicholas J. Kain, licensed under standard MIT license */
+-.text
+-.global __set_thread_area
+-.hidden __set_thread_area
+-.type __set_thread_area,@function
+-__set_thread_area:
+-	mov %rdi,%rsi           /* shift for syscall */
+-	movl $0x1002,%edi       /* SET_FS register */
+-	movl $158,%eax          /* set fs segment to */
+-	syscall                 /* arch_prctl(SET_FS, arg)*/
+-	ret
+diff --git a/src/thread/x86_64/clone.s b/src/thread/x86_64/clone.s
+deleted file mode 100644
+index 6e47bc0a..00000000
+--- a/src/thread/x86_64/clone.s
++++ /dev/null
+@@ -1,28 +0,0 @@
+-.text
+-.global __clone
+-.hidden __clone
+-.type   __clone,@function
+-__clone:
+-	xor %eax,%eax
+-	mov $56,%al
+-	mov %rdi,%r11
+-	mov %rdx,%rdi
+-	mov %r8,%rdx
+-	mov %r9,%r8
+-	mov 8(%rsp),%r10
+-	mov %r11,%r9
+-	and $-16,%rsi
+-	sub $8,%rsi
+-	mov %rcx,(%rsi)
+-	syscall
+-	test %eax,%eax
+-	jnz 1f
+-	xor %ebp,%ebp
+-	pop %rdi
+-	call *%r9
+-	mov %eax,%edi
+-	xor %eax,%eax
+-	mov $60,%al
+-	syscall
+-	hlt
+-1:	ret
 diff --git a/src/thread/x86_64/syscall_cp.s b/src/thread/x86_64/syscall_cp.s
 index 4f101716..78d207c6 100644
 --- a/src/thread/x86_64/syscall_cp.s
