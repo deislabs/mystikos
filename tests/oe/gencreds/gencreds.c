@@ -1,10 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include <mbedtls/x509.h>
-#include <mbedtls/x509_crt.h>
 #include <openenclave/attestation/attester.h>
 #include <openenclave/enclave.h>
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -147,7 +146,7 @@ done:
     return result;
 }
 
-static int _gen_creds(
+static int test_gen_creds(
     uint8_t** cert_out,
     size_t* cert_size_out,
     uint8_t** private_key_out,
@@ -188,39 +187,6 @@ static int _gen_creds(
         goto done;
     }
 
-#if DEBUG
-    /* Verify that the certificate can be parsed as DER */
-    {
-        mbedtls_x509_crt crt;
-        mbedtls_x509_crt_init(&crt);
-
-        if (mbedtls_x509_crt_parse_der(&crt, cert, cert_size) != 0)
-        {
-            mbedtls_x509_crt_free(&crt);
-            printf("TRACE:%d\n", __LINE__);
-            goto done;
-        }
-
-        mbedtls_x509_crt_free(&crt);
-    }
-
-    /* Verify that the private key can be parsed as PEM */
-    {
-        mbedtls_pk_context pk;
-        mbedtls_pk_init(&pk);
-
-        if (mbedtls_pk_parse_key(&pk, private_key, private_key_size, NULL, 0) !=
-            0)
-        {
-            mbedtls_pk_free(&pk);
-            printf("TRACE:%d\n", __LINE__);
-            goto done;
-        }
-
-        mbedtls_pk_free(&pk);
-    }
-#endif
-
     *cert_out = cert;
     cert = NULL;
     *cert_size_out = cert_size;
@@ -244,7 +210,7 @@ done:
     return ret;
 }
 
-void libos_free_creds(
+static void _free_creds(
     uint8_t* cert,
     size_t cert_size,
     uint8_t* private_key,
@@ -257,7 +223,59 @@ void libos_free_creds(
         oe_free_key(private_key, private_key_size, NULL, 0);
 }
 
-int libos_verify_cert(
+static oe_result_t _verifier(oe_identity_t* identity, void* arg)
+{
+    const uint64_t OE_ISVSVN = 1;
+    const uint8_t OE_ISVPRODID[OE_PRODUCT_ID_SIZE] = {1};
+
+    // OE SDK Debug MRSIGNER
+    const uint8_t OE_MRSIGNER[] =
+    {
+        0xca, 0x9a, 0xd7, 0x33, 0x14, 0x48, 0x98, 0x0a,
+        0xa2, 0x88, 0x90, 0xce, 0x73, 0xe4, 0x33, 0x63,
+        0x83, 0x77, 0xf1, 0x79, 0xab, 0x44, 0x56, 0xb2,
+        0xfe, 0x23, 0x71, 0x93, 0x19, 0x3a, 0x8d, 0x0a
+    };
+
+    (void)arg;
+
+    const uint8_t* mrenclave = identity->unique_id;
+    const uint8_t* mrsigner = identity->signer_id;
+    const uint8_t* isvprodid = identity->product_id;
+    uint64_t isvsvn = identity->security_version;
+
+    if (!mrenclave || !mrsigner || !isvprodid)
+    {
+        fprintf(stderr, "_verify_identity() failed: line %d\n", __LINE__);
+        return OE_VERIFY_FAILED;
+    }
+
+    printf("=== _verify_identity()\n");
+    printf("ISVSVN: %lu\n", isvsvn);
+
+    if (memcmp(mrsigner, OE_MRSIGNER, OE_SIGNER_ID_SIZE) == 0)
+    {
+        if (memcmp(isvprodid, OE_ISVPRODID, OE_PRODUCT_ID_SIZE) != 0)
+        {
+            fprintf(stderr, "_verify_identity() failed: line %d\n", __LINE__);
+            return OE_VERIFY_FAILED;
+        }
+        if (isvsvn != OE_ISVSVN)
+        {
+            fprintf(stderr, "_verify_identity() failed: line %d\n", __LINE__);
+            return OE_VERIFY_FAILED;
+        }
+    }
+    else
+    {
+        fprintf(stderr, "_verify_identity() failed: line %d\n", __LINE__);
+        return OE_VERIFY_FAILED;
+    }
+
+    return OE_OK;
+}
+
+int test_verify_cert(
     uint8_t* cert,
     size_t cert_size,
     oe_identity_verify_callback_t verifier,
@@ -266,8 +284,6 @@ int libos_verify_cert(
     return oe_verify_attestation_certificate(cert, cert_size, verifier, arg);
 }
 
-int oe_setenv(const char* name, const char* value, int overwrite);
-
 int main(int argc, const char* argv[])
 {
     uint8_t* cert = NULL;
@@ -275,20 +291,23 @@ int main(int argc, const char* argv[])
     uint8_t* private_key = NULL;
     size_t private_key_size;
 
-    if (_gen_creds(&cert, &cert_size, &private_key, &private_key_size) != 0)
+    if (strcmp(getenv("LIBOS_TARGET"), "sgx") == 0)
     {
-        fprintf(stderr, "%s: _gen_creds() failed\n", argv[0]);
-        exit(1);
+        assert(test_gen_creds(
+                &cert,
+                &cert_size,
+                &private_key,
+                &private_key_size) == 0);
+
+        assert(test_verify_cert(cert, cert_size, _verifier, NULL) == 0);
+
+        printf("cert_size: %zu\n", cert_size);
+        printf("private_key_size: %zu\n", private_key_size);
+
+        _free_creds(cert, cert_size, private_key, private_key_size);
     }
 
-    printf("cert_size: %zu\n", cert_size);
-    printf("private_key_size: %zu\n", private_key_size);
-
-    printf("%.*s\n", (int)private_key_size, private_key);
-
-    oe_free_key(cert, cert_size, NULL, 0);
-
-    oe_free_key(private_key, private_key_size, NULL, 0);
+    printf("=== passed test (%s)\n", argv[0]);
 
     return 0;
 }

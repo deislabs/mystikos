@@ -50,6 +50,7 @@ DIRS += round
 
 ifndef LIBOS_USE_OECACHE
 DIRS += cpp-exceptions
+DIRS += curl
 endif
 
 REDEFINE_TESTS=1
