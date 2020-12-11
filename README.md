@@ -1,22 +1,82 @@
-- PR Pipeline: [![Build Status](https://openenclave.visualstudio.com/ACC-Services/_apis/build/status/oe-libos-pr-pipeline?branchName=master)](https://openenclave.visualstudio.com/ACC-Services/_build/latest?definitionId=70&branchName=master)
-- Nightly Pipeline: [![Build Status](https://openenclave.visualstudio.com/ACC-Services/_apis/build/status/oe-libos-nightly-pipeline?branchName=master)](https://openenclave.visualstudio.com/ACC-Services/_build/latest?definitionId=83&branchName=master)
-
 # Open LibOS
 
-Open Library Operating System, or Open LibOS for short.
+**Open LibOS** is a set of tools for running user applications in a trusted
+execution environment (TEE). The current release supports **Intel &reg; SGX**
+while other TEEs may be supported in future releases.
 
-## Introduction
+## Goals
 
-Run your applications inside a TEE. Currently support running in an SGX enclave, or in an unprotected environment within the operating system.
+- Protect user data throughout its lifecyle (at rest, in flight, in use).
+- Lift and shift applications, either native or containerized, into TEEs with
+  little or no modification.
+- Allow users to minimize, control and inspect the makeup of the trusted computing
+  base (TCB).
+- Simplify retargeting to different TEEs through a plugin architecture.
+- Publish under a non-restrictive open-source license (MIT).
 
-Open LibOS is not tied to a specific TEE, and instead is architected to allow different TEEs (or targets) to be plugged in against our Open LibOS kernel.
+## Architecture
 
-The Open LibOS kernel Handles most of the operating system primitives that a normal operating system would handle (with limits), and certain operations (like networking) are delegated to the actual operating outside the TEE itself.
+**Open LibOS** consists of a C-runtime (CRT) based on
+[MUSL](https://www.musl-libc.org/), a minimalist
+kernel, and a target agnostic kernel-target interface (TCALL).
 
-Your application needs to be linked against the libc shared libraries rather than statically linking as Open LibOS needs to hook certain functions within that library so calls get routed through the Open LibOS kernel. MUSL is supported, with GLIBC support being implemented.
+The minimalist kernel of Open LibOS manages essential computing resources
+inside the TEE, such as CPU/threads, memory, files, networks, etc. It handles
+most of the syscalls that a normal operating system would handle (with limits).
+and certain operations are delegated to the target.
 
-## Documents
+![](./arch.png)
 
-User getting started guide: [click here](doc/user-getting-started.md)
+# Install or build
 
-Release management: [click here](doc/releasing.md)
+Binary downloads of the Open LibOS releases can be found on the Releases page
+(coming).
+
+Open LibOS can be built on an Ubuntu 18.04 machine with or without SGX
+capability.
+
+## Install the prerequisites
+
+```
+sudo apt update
+sudo apt install -y git make
+sudo apt install -y libmbedtls-dev
+sudo apt install -y docker.io && sudo systemctl start docker && sudo systemctl enable docker
+sudo chmod 666 /var/run/docker.sock
+```
+
+## Clone and build
+
+```
+git clone https://msazure.visualstudio.com/DefaultCollection/One/_git/OpenLibOS
+cd OpenLibOS
+make
+```
+
+Open LibOS can be used to run applications on a non-sgx Ubuntu 18.04 machine while
+targeting for Linux. Obviously you need a sgx capable machine to target for SGX.
+We recommend an [ACC VM](https://aka.ms/accgetstarted).
+
+# Documents
+
+- Key features of Open LibOS: [click here](doc/key-features.md)
+- Getting started with a native program: [click here](doc/user-getting-started-c.md)
+- Getting started with a containerized C++ program: [click here](doc/user-getting-started-docker-c++.md)
+- Getting started with a containerized C# program: [click here](doc/user-getting-started-docker-c#.md)
+- Getting started with a containerized Python program: [click here](doc/user-getting-started-docker-python.md)
+- Open LibOS developer's jump start guide: [click here](doc/dev-jumpstart.md)
+- Signing and packaging applications with Open LibOS: [click here](doc/sign-package.md)
+- Release management: [click here](doc/releasing.md)
+
+# Contributing to Open LibOS
+
+You can contribute to Open LibOS in several ways:
+
+- Contribute code. Please read developer's [jumpstart guide](doc/dev-jumpstart.md) first.
+- File issues.
+- Or simply provide feedbacks.
+
+Please follow [Code of Conduct (coming)] while participating in the Open LibOS community.
+
+
+
