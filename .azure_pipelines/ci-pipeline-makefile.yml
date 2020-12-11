@@ -1,4 +1,5 @@
 variables:
+  - group: libos-pipeline
   - name: SCRIPTS_ROOT
     value: $(Build.SourcesDirectory)/.azure_pipelines/scripts
 
@@ -57,7 +58,13 @@ jobs:
         continueOnError: true
         enabled: true
         workingDirectory: $(Build.SourcesDirectory)
-      
+        env:
+          LIBOS_ENABLE_GCOV: 1
+          # by default sql solution test will run on US EAST DB Node
+          DB_NAME: $(DB_NAME_USEAST)
+          DB_SERVER_NAME: $(DB_SERVER_NAME_USEAST)
+          MAA_URL: $(DB_MAA_URL_USEAST)
+          
       # if any previous step(s) not succeed, fail the job
       - script: |
           echo "Not all steps succeed."
