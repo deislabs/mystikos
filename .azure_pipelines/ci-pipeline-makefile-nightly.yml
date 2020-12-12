@@ -1,27 +1,21 @@
 variables:
-  - group: libos-nightly-pipeline
+  - group: libos-pipeline
   - name: SCRIPTS_ROOT
     value: $(Build.SourcesDirectory)/.azure_pipelines/scripts
   - name: LIBOS_NIGHTLY_RUN_DASHBOARD
     value: 'https://openenclave.visualstudio.com/ACC-Services/_dashboards/dashboard/90072dae-a6fb-41f2-93ec-176f04066da6'
 
+# nightly pipeline will be triggered in pipeline schedule settings.
+
 trigger: none
 pr: none
-
-# Nightly pipeline will be triggered daily midnight (PDT) for master
-schedules:
-  - cron: "0 7 * * *"
-    displayName: Daily midnight run (PDT)
-    branches:
-      include:
-      - master
 
 jobs:
 - job: BuildAndTest
   displayName: 'Building and Testing'
-  # nightly pipeline will have 120 min timeout
-  timeoutInMinutes: 120 
-  pool: '1804DC4v2agentpool'
+  # nightly pipeline will have 180 min timeout
+  timeoutInMinutes: 180
+  pool: '1804CISGXagentpool'
 
   steps:
     # install minimum required package to run pipeline
@@ -52,6 +46,20 @@ jobs:
       env:
         LIBOS_ENABLE_GCOV: 1
 
+    # run sql solution test on Canada Central DB Node
+    - script: |
+        make clean -C $(Build.SourcesDirectory)/solutions/sql_ae
+        make run -C $(Build.SourcesDirectory)/solutions/sql_ae
+        make clean -C $(Build.SourcesDirectory)/solutions/sql_ae
+      displayName: 'run sql solution test on Canda Central Node'
+      continueOnError: true
+      enabled: true
+      workingDirectory: $(Build.SourcesDirectory)
+      env:
+        DB_NAME: $(DB_NAME_CANADACENTRAL)
+        DB_SERVER_NAME: $(DB_SERVER_NAME_CANADACENTRAL)
+        MAA_URL: $(DB_MAA_URL_CANADACENTRAL)
+
     # run solution tests
     - script: |
         make tests -C $(Build.SourcesDirectory)/solutions
@@ -61,6 +69,10 @@ jobs:
       workingDirectory: $(Build.SourcesDirectory)
       env:
         LIBOS_ENABLE_GCOV: 1
+        # by default sql solution test will run on US EAST DB Node
+        DB_NAME: $(DB_NAME_USEAST)
+        DB_SERVER_NAME: $(DB_SERVER_NAME_USEAST)
+        MAA_URL: $(DB_MAA_URL_USEAST)
 
     # measure code coverage
     - script: |

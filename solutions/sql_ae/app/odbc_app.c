@@ -13,12 +13,9 @@ int main(int argc, char** argv)
     int result = FAILURE;
     char fullConnstr[CONNSTR_MAX_LEN];
 
-    // TODO: get both settings from white-listed env. variables
-    // MAA_URL, DB_NAME and DB_SERVER_NAME
-    char* db_name = "SGXLKLDEVDB";
-    char* db_server = "sgxlkldev.database.windows.net";
-    char* maa_url = "https://sharedeus2.eus2.attest.azure.net/";
-
+    char* db_server = getenv("DB_SERVER_NAME");
+    char* db_name = getenv("DB_NAME");
+    char* maa_url = getenv("MAA_URL");
     char* db_uid = getenv("DB_USERID");
     char* db_password = getenv("DB_PASSWORD");
 
