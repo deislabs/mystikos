@@ -11,7 +11,7 @@ trigger:
   paths:
     exclude:
     - doc/*
-    - notes.txt
+    - *.txt
 
 # PR configuration
 pr:
