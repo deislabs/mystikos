@@ -98,13 +98,19 @@ jobs:
         summaryFileLocation: $(Build.SourcesDirectory)/total_cov.xml
         #failIfCoverageEmpty: false # Optional
     
-    - task: PublishBuildArtifacts@1
-      displayName: "Archive Reports"
-      condition: always()
-      inputs:
-        pathtoPublish: "$(Build.SourcesDirectory)/total_cov.info"
-        artifactName: total_cov
+    # - task: PublishBuildArtifacts@1
+    #   displayName: "Archive Reports"
+    #   condition: always()
+    #   inputs:
+    #     pathtoPublish: "$(Build.SourcesDirectory)/total_cov.info"
+    #     artifactName: total_cov
     
+    - task: PublishPipelineArtifact@1
+      displayName: "Archive Reports(Download)"
+      inputs:
+        targetPath: $(Build.SourcesDirectory)/total_cov.info
+        artifactName: total_cov.info
+
     # if any previous step(s) not succeed, fail the job
     - script: |
         echo "Not all steps succeed."
@@ -133,48 +139,48 @@ jobs:
         usePreviousEnvironment: false
         smtpConnectionEndpoint: 'SMTPConnectionForEmailReportTask'
 
-- job: EmailCodeCoverage
-  displayName: 'Send Code Coverage Report'
-  timeoutInMinutes: 10 
-  dependsOn: BuildAndTest
-  condition: always()
-  pool:
-    vmImage: windows-latest
+# - job: EmailCodeCoverage
+#   displayName: 'Send Code Coverage Report'
+#   timeoutInMinutes: 10 
+#   dependsOn: BuildAndTest
+#   condition: always()
+#   pool:
+#     vmImage: windows-latest
   
-  steps:
-    - task: DownloadBuildArtifacts@0
-      displayName: Download Code Coverage Reports
-      inputs:
-        downloadPath: $(Build.SourcesDirectory)
-        downloadType: 'current'
-        itemPattern: 'total_cov/total_cov.info'
+#   steps:
+#     - task: DownloadBuildArtifacts@0
+#       displayName: Download Code Coverage Reports
+#       inputs:
+#         downloadPath: $(Build.SourcesDirectory)
+#         downloadType: 'current'
+#         itemPattern: 'total_cov/total_cov.info'
 
-    - task: SendEmail@1
-      inputs:
-        To: 'openlibos_notify@microsoft.com'
-        From: 'akstestpipeline@outlook.com'
-        Subject: '[Build $(Agent.JobStatus)] LibOS Nightly Pipeline Code Coverage Report'
-        Body: '
-        <head> 
-          <h3>[Build $(Agent.JobStatus)] LibOS Nightly Pipeline Build Notification</h3>
-        </head>
-        <body> 
-          <p> Build number $(Build.BuildNumber) in $(Build.Repository.Name): </p>
-          <p> Status: $(Agent.JobStatus)</p>
-          <p> Branch: $(Build.SourceBranchName)</p>
-          <p> <a href="$(LIBOS_NIGHTLY_RUN_DASHBOARD)" target="_blank">Code Coverage Dashboard</a>
-</p>
-          <br>
-          <p> Note:</p>
-          <p> To have the report locally, please download the attached file: total_cov.info, and run below command:</p>
-          <p> genhtml --ignore-errors source /path/downloaded/attachment/total_cov.info --legend --title "libos code coverage" --output-directory=/path/to/store/the/report </p>
-          <br>
-        </body>'
-        BodyAsHtml: true
-        AddAttachment: true
-        Attachment: '$(Build.SourcesDirectory)/total_cov/total_cov.info'
-        SmtpServer: $(SMTP_SERVER)
-        SmtpUsername: $(SMTP_USERNAME)
-        SmtpPassword: $(SMTP_PASSWORD)
+#     - task: SendEmail@1
+#       inputs:
+#         To: 'openlibos_notify@microsoft.com'
+#         From: 'akstestpipeline@outlook.com'
+#         Subject: '[Build $(Agent.JobStatus)] LibOS Nightly Pipeline Code Coverage Report'
+#         Body: '
+#         <head> 
+#           <h3>[Build $(Agent.JobStatus)] LibOS Nightly Pipeline Build Notification</h3>
+#         </head>
+#         <body> 
+#           <p> Build number $(Build.BuildNumber) in $(Build.Repository.Name): </p>
+#           <p> Status: $(Agent.JobStatus)</p>
+#           <p> Branch: $(Build.SourceBranchName)</p>
+#           <p> <a href="$(LIBOS_NIGHTLY_RUN_DASHBOARD)" target="_blank">Code Coverage Dashboard</a>
+# </p>
+#           <br>
+#           <p> Note:</p>
+#           <p> To have the report locally, please download the attached file: total_cov.info, and run below command:</p>
+#           <p> genhtml --ignore-errors source /path/downloaded/attachment/total_cov.info --legend --title "libos code coverage" --output-directory=/path/to/store/the/report </p>
+#           <br>
+#         </body>'
+#         BodyAsHtml: true
+#         AddAttachment: true
+#         Attachment: '$(Build.SourcesDirectory)/total_cov/total_cov.info'
+#         SmtpServer: $(SMTP_SERVER)
+#         SmtpUsername: $(SMTP_USERNAME)
+#         SmtpPassword: $(SMTP_PASSWORD)
         
     
