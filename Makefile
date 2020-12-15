@@ -77,6 +77,7 @@ install:
 	$(INSTALL) $(BUILDDIR)/openenclave/bin/oegdb $(INSTDIR)/bin/libos-gdb
 	$(INSTALL) ./scripts/appbuilder $(INSTDIR)/bin/libos-appbuilder
 	$(INSTALL) include/libos/tee.h $(INSTDIR)/include/libos/tee.h
+	$(INSTALL) $(BINDIR)/../musl/bin/musl-gcc $(INSTDIR)/bin/libos-gcc
 	rm -rf $(INSTDIR)/lib/openenclave/debugger
 	cp -r $(BUILDDIR)/openenclave/lib/openenclave/debugger $(INSTDIR)/lib/openenclave/debugger
 

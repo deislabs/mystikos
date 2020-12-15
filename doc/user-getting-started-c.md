@@ -1,0 +1,70 @@
+# Getting started with a native C program
+
+Please see [README](../README.md) for how to install Open LibOS or build
+it from source code.
+
+## Write the program
+
+As usual, we use the familiar code:
+```
+#include <stdio.h>
+
+int main()
+{
+    printf("Hello world from Open LibOS!");
+    return 0;
+}
+```
+Save it to a folder and call it `helloworld.c`.
+
+## Build the program
+
+Compile `helloworld.c` with `libos-gcc`, and place it under a subfolder
+`appdir`. `libos-gcc` is a wrapper for musl-gcc which compiles C programs
+dynamically linked to MUSL libc instead of the default glibc.
+
+```
+mkdir -p appdir
+libos-gcc -g -o appdir/hello helloworld.c
+```
+
+In most cases, we would generate much more files in `appdir`, a folder to hold
+the root file system including the application, the dependent libraries, and
+configurations. Our hello world program is so simple that it doesn't depend
+on any library other than MUSL or any configuration. So `appdir` contains
+a lonely `hello` executable. That's all we need to run the app inside a TEE.
+
+## Create a CPIO archive
+
+Now we can create a CPIO named `rootfs` out of the folder `appdir` with:
+```
+libos mkcpio appdir rootfs
+```
+
+## Run the program inside a SGX enclave
+
+The command to launch the program inside an SGX enclave is a little bit
+long, compared to just `./appdir/hello` on Linux.
+
+```
+libos exec-sgx rootfs /hello
+```
+
+The command specifies `libos` as the driver, and asks the driver to execute
+a program in a SGX enclave in this manner:
+
+1. Load rootfs as the root file system into the enclave
+1. Load `/hello` from the file system and execute it.
+1. Send parameters following the executable `/hello` to it.
+(in this case we have none)
+
+If you are interested in shortening the command, please see
+[packaging](./sign-package.md) as a solution.
+
+## Further readings
+
+If your C program is complicated and requires many dependent libraries,
+we recommend you to wrap your application in a container. Please see
+[Getting started with a containerized C++ program](./user-getting-started-docker-c++.md)
+for details.
+
