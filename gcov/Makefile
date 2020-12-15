@@ -56,7 +56,7 @@ gen-libgcov:
 	docker stop $(CONTAINER_ID)
 
 $(TARGET):
-ifneq (,$(wildcard $(CURDIR)/$(LIBNAME)))
+ifeq (,$(wildcard $(CURDIR)/$(LIBNAME)))
 	$(MAKE) gen-libgcov
 endif
 	mkdir -p $(LIBDIR)
