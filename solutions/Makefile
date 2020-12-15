@@ -6,7 +6,11 @@ DIRS += attested_tls
 DIRS += sql_ae
 DIRS += msgpack_c
 DIRS += python
+# temporary ban dotnet test for code coverage due to the gcov infra (malcode filename) bug
+ifndef LIBOS_ENABLE_GCOV
 DIRS += dotnet
+endif
+
 
 REDEFINE_TESTS=1
 include $(TOP)/rules.mak

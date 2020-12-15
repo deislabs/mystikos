@@ -13,8 +13,11 @@ pr: none
 jobs:
 - job: BuildAndTest
   displayName: 'Building and Testing'
-  # nightly pipeline will have 180 min timeout
-  timeoutInMinutes: 180
+  # nightly pipeline will have 300 min timeout, approx. time used:
+  # 1~1.5h build
+  # 1h basic/unit tests
+  # 1-2h solution tests(based on which are enabled)
+  timeoutInMinutes: 300
   pool: '1804CISGXagentpool'
 
   steps:
@@ -74,6 +77,18 @@ jobs:
         DB_SERVER_NAME: $(DB_SERVER_NAME_USEAST)
         MAA_URL: $(DB_MAA_URL_USEAST)
 
+    # single out dotnet solution test due to code coverage crash
+    # but it still need to be disabled. Because dotnet sample will
+    # crash with gcov built libos runtime
+    # - script: |
+    #     make clean -C $(Build.SourcesDirectory)/solutions/dotnet
+    #     make run -C $(Build.SourcesDirectory)/solutions/dotnet
+    #     make clean -C $(Build.SourcesDirectory)/solutions/dotnet
+    #   displayName: '.NET w/o code coverage'
+    #   continueOnError: true
+    #   enabled: true
+    #   workingDirectory: $(Build.SourcesDirectory)
+
     # measure code coverage
     - script: |
         bash $(Build.SourcesDirectory)/scripts/libos_cc
@@ -98,13 +113,12 @@ jobs:
         summaryFileLocation: $(Build.SourcesDirectory)/total_cov.xml
         #failIfCoverageEmpty: false # Optional
     
-    - task: PublishBuildArtifacts@1
-      displayName: "Archive Reports"
-      condition: always()
+    - task: PublishPipelineArtifact@1
+      displayName: "Archive Reports(Download)"
       inputs:
-        pathtoPublish: "$(Build.SourcesDirectory)/total_cov.info"
-        artifactName: total_cov
-    
+        targetPath: $(Build.SourcesDirectory)/total_cov.info
+        artifactName: total_cov.info
+
     # if any previous step(s) not succeed, fail the job
     - script: |
         echo "Not all steps succeed."
@@ -112,69 +126,73 @@ jobs:
       displayName: 'Error(s) Check'
       condition: not(eq(variables['Agent.JobStatus'], 'succeeded'))
 
-- job: EmailTestSummary
-  displayName: 'Send Build Summary'
-  timeoutInMinutes: 10 
-  dependsOn: BuildAndTest
-  condition: always()
-  pool:
-    vmImage: windows-latest
-  steps:
-    - task: EmailReport@1
-      inputs:
-        sendMailConditionConfig: 'Always'
-        toAddress: 'openlibos_notify@microsoft.com'
-        subject: '{environmentStatus}: LibOS Nightly Pipeline Summary for Build $(Build.BuildNumber)'
-        defaultDomain: 'microsoft.com'
-        groupTestResultsBy: 'run'
-        includeCommits: true
-        maxTestFailuresToShow: '15'
-        includeOthersInTotal: false
-        usePreviousEnvironment: false
-        smtpConnectionEndpoint: 'SMTPConnectionForEmailReportTask'
+# current ADO repo MSAzure/One does not have required plugin and 
+# SMTP service configured. Temporarily comment out all email related 
+# modules to unblock the nightly pipeline. They will be restored back 
+# after approval.
+# - job: EmailTestSummary
+#   displayName: 'Send Build Summary'
+#   timeoutInMinutes: 10 
+#   dependsOn: BuildAndTest
+#   condition: always()
+#   pool:
+#     vmImage: windows-latest
+#   steps:
+#     - task: EmailReport@1
+#       inputs:
+#         sendMailConditionConfig: 'Always'
+#         toAddress: 'openlibos_notify@microsoft.com'
+#         subject: '{environmentStatus}: LibOS Nightly Pipeline Summary for Build $(Build.BuildNumber)'
+#         defaultDomain: 'microsoft.com'
+#         groupTestResultsBy: 'run'
+#         includeCommits: true
+#         maxTestFailuresToShow: '15'
+#         includeOthersInTotal: false
+#         usePreviousEnvironment: false
+#         smtpConnectionEndpoint: 'SMTPConnectionForEmailReportTask'
 
-- job: EmailCodeCoverage
-  displayName: 'Send Code Coverage Report'
-  timeoutInMinutes: 10 
-  dependsOn: BuildAndTest
-  condition: always()
-  pool:
-    vmImage: windows-latest
+# - job: EmailCodeCoverage
+#   displayName: 'Send Code Coverage Report'
+#   timeoutInMinutes: 10 
+#   dependsOn: BuildAndTest
+#   condition: always()
+#   pool:
+#     vmImage: windows-latest
   
-  steps:
-    - task: DownloadBuildArtifacts@0
-      displayName: Download Code Coverage Reports
-      inputs:
-        downloadPath: $(Build.SourcesDirectory)
-        downloadType: 'current'
-        itemPattern: 'total_cov/total_cov.info'
+#   steps:
+#     - task: DownloadBuildArtifacts@0
+#       displayName: Download Code Coverage Reports
+#       inputs:
+#         downloadPath: $(Build.SourcesDirectory)
+#         downloadType: 'current'
+#         itemPattern: 'total_cov/total_cov.info'
 
-    - task: SendEmail@1
-      inputs:
-        To: 'openlibos_notify@microsoft.com'
-        From: 'akstestpipeline@outlook.com'
-        Subject: '[Build $(Agent.JobStatus)] LibOS Nightly Pipeline Code Coverage Report'
-        Body: '
-        <head> 
-          <h3>[Build $(Agent.JobStatus)] LibOS Nightly Pipeline Build Notification</h3>
-        </head>
-        <body> 
-          <p> Build number $(Build.BuildNumber) in $(Build.Repository.Name): </p>
-          <p> Status: $(Agent.JobStatus)</p>
-          <p> Branch: $(Build.SourceBranchName)</p>
-          <p> <a href="$(LIBOS_NIGHTLY_RUN_DASHBOARD)" target="_blank">Code Coverage Dashboard</a>
-</p>
-          <br>
-          <p> Note:</p>
-          <p> To have the report locally, please download the attached file: total_cov.info, and run below command:</p>
-          <p> genhtml --ignore-errors source /path/downloaded/attachment/total_cov.info --legend --title "libos code coverage" --output-directory=/path/to/store/the/report </p>
-          <br>
-        </body>'
-        BodyAsHtml: true
-        AddAttachment: true
-        Attachment: '$(Build.SourcesDirectory)/total_cov/total_cov.info'
-        SmtpServer: $(SMTP_SERVER)
-        SmtpUsername: $(SMTP_USERNAME)
-        SmtpPassword: $(SMTP_PASSWORD)
+#     - task: SendEmail@1
+#       inputs:
+#         To: 'openlibos_notify@microsoft.com'
+#         From: 'akstestpipeline@outlook.com'
+#         Subject: '[Build $(Agent.JobStatus)] LibOS Nightly Pipeline Code Coverage Report'
+#         Body: '
+#         <head> 
+#           <h3>[Build $(Agent.JobStatus)] LibOS Nightly Pipeline Build Notification</h3>
+#         </head>
+#         <body> 
+#           <p> Build number $(Build.BuildNumber) in $(Build.Repository.Name): </p>
+#           <p> Status: $(Agent.JobStatus)</p>
+#           <p> Branch: $(Build.SourceBranchName)</p>
+#           <p> <a href="$(LIBOS_NIGHTLY_RUN_DASHBOARD)" target="_blank">Code Coverage Dashboard</a>
+# </p>
+#           <br>
+#           <p> Note:</p>
+#           <p> To have the report locally, please download the attached file: total_cov.info, and run below command:</p>
+#           <p> genhtml --ignore-errors source /path/downloaded/attachment/total_cov.info --legend --title "libos code coverage" --output-directory=/path/to/store/the/report </p>
+#           <br>
+#         </body>'
+#         BodyAsHtml: true
+#         AddAttachment: true
+#         Attachment: '$(Build.SourcesDirectory)/total_cov/total_cov.info'
+#         SmtpServer: $(SMTP_SERVER)
+#         SmtpUsername: $(SMTP_USERNAME)
+#         SmtpPassword: $(SMTP_PASSWORD)
         
     
