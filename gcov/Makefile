@@ -51,7 +51,10 @@ gen-libgcov:
 	--build-arg IMAGE_FLAVOR=$(CONTAINER_IMAGE_FLAVOR) \
 	--build-arg IMAGE_VERSION=$(CONTAINER_IMAGE_VERSION) \
 	--build-arg GCC_VERSION=$(GCOV_GCC_VERSION)
+	@echo GCC $(GCOV_GCC_VERSION) container build finished
 	$(eval CONTAINER_ID:=$(shell docker run -it --rm --detach $(CONTAINER_NAME))) 
+	$(shell sleep 10s)
+	@echo The container ID is:$(CONTAINER_ID)
 	docker cp $(CONTAINER_ID):/gcc-$(GCOV_GCC_VERSION)/host-x86_64-alpine-linux-musl/gcc/libgcov.a $(CURDIR)/$(LIBNAME)
 	docker stop $(CONTAINER_ID)
 
