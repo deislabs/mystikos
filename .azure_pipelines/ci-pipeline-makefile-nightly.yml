@@ -13,8 +13,11 @@ pr: none
 jobs:
 - job: BuildAndTest
   displayName: 'Building and Testing'
-  # nightly pipeline will have 180 min timeout
-  timeoutInMinutes: 180
+  # nightly pipeline will have 300 min timeout, approx. time used:
+  # 1~1.5h build
+  # 1h basic/unit tests
+  # 1-2h solution tests(based on which are enabled)
+  timeoutInMinutes: 300
   pool: '1804CISGXagentpool'
 
   steps:
@@ -73,6 +76,18 @@ jobs:
         DB_NAME: $(DB_NAME_USEAST)
         DB_SERVER_NAME: $(DB_SERVER_NAME_USEAST)
         MAA_URL: $(DB_MAA_URL_USEAST)
+
+    # single out dotnet solution test due to code coverage crash
+    # but it still need to be disabled. Because dotnet sample will
+    # crash with gcov built libos runtime
+    # - script: |
+    #     make clean -C $(Build.SourcesDirectory)/solutions/dotnet
+    #     make run -C $(Build.SourcesDirectory)/solutions/dotnet
+    #     make clean -C $(Build.SourcesDirectory)/solutions/dotnet
+    #   displayName: '.NET w/o code coverage'
+    #   continueOnError: true
+    #   enabled: true
+    #   workingDirectory: $(Build.SourcesDirectory)
 
     # measure code coverage
     - script: |
