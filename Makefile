@@ -16,7 +16,10 @@ TARBALL=$(PKGNAME).tar.gz
 DIRS += third_party
 
 ifndef LIBOS_PRODUCT_BUILD
-#DIRS += gcov
+endif
+
+ifdef LIBOS_ENABLE_GCOV
+DIRS += gcov
 endif
 
 DIRS += json
