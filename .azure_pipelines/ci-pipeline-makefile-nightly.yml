@@ -113,13 +113,6 @@ jobs:
         summaryFileLocation: $(Build.SourcesDirectory)/total_cov.xml
         #failIfCoverageEmpty: false # Optional
     
-    # - task: PublishBuildArtifacts@1
-    #   displayName: "Archive Reports"
-    #   condition: always()
-    #   inputs:
-    #     pathtoPublish: "$(Build.SourcesDirectory)/total_cov.info"
-    #     artifactName: total_cov
-    
     - task: PublishPipelineArtifact@1
       displayName: "Archive Reports(Download)"
       inputs:
@@ -133,6 +126,10 @@ jobs:
       displayName: 'Error(s) Check'
       condition: not(eq(variables['Agent.JobStatus'], 'succeeded'))
 
+# current ADO repo MSAzure/One does not have required plugin and 
+# SMTP service configured. Temporarily comment out all email related 
+# modules to unblock the nightly pipeline. They will be restored back 
+# after approval.
 # - job: EmailTestSummary
 #   displayName: 'Send Build Summary'
 #   timeoutInMinutes: 10 
