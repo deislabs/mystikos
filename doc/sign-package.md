@@ -1,100 +1,28 @@
-# Open LibOS Getting Started Guide
+# Signing and packaging an application with Open LibOS
 
-This document describes how to use the Open LibOS, from building the project to packaging your application through to executing it.
+During development of a confidential application, with few exceptions,
+we can run/test the application without signing or packaging. However,
+for production usage of the application, or if the application needs to
+be configured in certain ways, we recommend signing or packaging the
+application.
 
-First we will explain a little about what Open LibOS does, followed by how to build the application yourself, along with installing the tools.
+Signing takes the application folder, a config file, and a private key
+only known to the owner of the application, and generates a signed
+application that is ready for production.
 
-Then how to use the tools to package up your executable within the Open LibOS environment, followed by how to run and debug your executable.
+Packaging takes this further, besides generated the signed application,
+it also packages the libos kernel, the C-runtime, the application,
+the config file, and other necessary bits into a single ELF image.
+This results in a single file that can be easily deployed.
 
-Note: Open LibOS is currently only tested on Ubuntu 18.04.
-Note: Currently the Open LibOS codebase is in a private GitHub repository.
+This document describes how to sign or package your application after you
+have built the `appdir` folder. See other user getting started guides on
+how to generate `appdir`.
 
----
-
-## Introduction to Open LibOS
-
-Open LibOS is a set of binaries and libraries that allows an application to be run under different environments.
-
-The primary environment is currently to run an application on in an Intel SGX Enclave. This is a protected environment that protects your run-time data from the rest of the operating system. If the application is being run within a virtual machine then it also protects the run-time data from the host operating system as well. Run-time data in this case could be a stream of data being fed to the application through a secure TLS channel where machine learning applications can process the data and protect the data from other applications running within the same operating system, guest operating system, or host operating system.
-
-Another environment exists to run the same application outside the SGX enclave, and targeted against the operating system directly. This is a great environment for checking if your application is having problems within an SGX enclave only, or is having problems for some other reason.
-
-Along with the runtime comes a debugger extension to allow developers to debug their application when run within the secure enclave, but this is only available in debug mode which allows the application to run in the secure enclave but the data is not secure and should never be used in production environments.
-
-Open LibOS is made up of a number of parts, from the tools needed to prepare your application to be run, to the components needed to run your application within Open LibOS, to the debugging tools.
-
----
-
-## Building and installing Open LibOS
-
-Currently Open LibOS can only be installed after being built from source. This section describes the process for pulling down the source and how to build and install it.
-
-First the sources need to be pulled down to your Ubuntu machine and built.
-
-Grabbing the source through `git clone` is done as follows:
-
-```bash
-git clone --recurse-submodules https://github.com/mikbras/oe-libos.git
-```
-
-***TODO*** What are the prerequisites for building Open LibOS?
-
-Change into the directory and build the project:
-
-```bash
-make
-```
-
-The binaries are built into the `build` directory.
-
-You can run this to get the initial usage help of Open LibOS:
-
-```bash
-./build/bin/libos
-```
-
-Open LibOS can be run directly from this directory, or it can be installed.
-
-Install Open LibOS by running the following command:
-
-```bash
-sudo make install
-```
-
-This will install into the default installation directory `/opt/openlibos`. If you want you can override the `LIBOS_PREFIX` environment variable before building and install it wherever you want, for instance you may want to install under your user home directory. Installing to the default location requires elevated permissions via `sudo`, but in the case of installing under your home directory the `sudo` is not needed. You just need to set your path the the `bin` directory under where you install to.
-
----
-
-## Preparing your application to run under Open LibOS
-
-For your application to be run within Open LibOS you need to package up the executable and all associated shared libraries and configuration within into a directory that can be consumed by the packaging process.
-
-Currently your application will need to be built against the MUSL C-runtime, rather than the GLIBC runtime.
-
-Once built you will need to place it under a directory that will become the root filesystem for your application when it is run. Only files placed in this directory will be available within the root filesystem. It is also important to note that although this will become a read/write filesystem during executable, this filesystem will not be persisted for the next execution and will be started with the same initial filesystem each time.
-
-What you may have for your project is this under your source directory:
-
-```bash
-$ ls .
-Makefile
-source.c
-```
-
-As before you will build and place all relevant files into a directory that may result in a directory structure like this:
-
-```bash
-$ ls ./appdir
-myapp
-```
-
-If you have an executable with different shared libraries and configuration you may end up mimicking the Linux filesystem structure. This `appdir` will be important for the next step.
-
----
 
 ## Packaging your application in Open LibOS
 
-In order to prepare your application to run under Open LibOS you need to package your application directory `appdir` using the Open LibOS tools to produce a singleOpenLibOS executable that will run your executable within the target environment, be it an SGX enclave or the none protected operating system.
+In order to prepare your application to run under Open LibOS you need to package your application directory `appdir` using the Open LibOS tools to produce a single executable that will run your executable within the target environment, be it an SGX enclave or the none protected operating system.
 
 For preparing to run under the SGX enclave you will need a couple of different things along with your existing `appdir`.
 

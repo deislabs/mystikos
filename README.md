@@ -9,16 +9,18 @@ while other TEEs may be supported in future releases.
 - Protect user data throughout its lifecyle (at rest, in flight, in use).
 - Lift and shift applications, either native or containerized, into TEEs with
   little or no modification.
-- Allow users to minimize, control and inspect the makeup of the trusted computing
+- Allow users to minimize, control, and inspect the makeup of the trusted computing
   base (TCB).
 - Simplify retargeting to different TEEs through a plugin architecture.
-- Publish under a non-restrictive open-source license (MIT).
+- Publish under a non-restrictive open-source license.
 
 ## Architecture
 
-**Open LibOS** consists of a C-runtime (CRT) based on
-[MUSL](https://www.musl-libc.org/), a minimalist
-kernel, and a target agnostic kernel-target interface (TCALL).
+**Open LibOS** consists of a C-runtime based on
+[MUSL](https://www.musl-libc.org/), a kernel, and kernel-target interface (TCALL).
+We also provide a reference implementation for the SGX target (based on
+[Open Enclave SDK](https://github.com/openenclave/openenclave))
+and the Linux target.
 
 The minimalist kernel of Open LibOS manages essential computing resources
 inside the TEE, such as CPU/threads, memory, files, networks, etc. It handles
@@ -27,10 +29,17 @@ and certain operations are delegated to the target.
 
 ![](./arch.png)
 
-# Install or build
+# Install or build from source
 
 Binary downloads of the Open LibOS releases can be found on the Releases page
-(coming).
+(coming). After download the tarball, install it with the following commands:
+```
+tar xvfz <tarball-name> /opt
+export PATH=$PATH:/opt/openlibos/bin
+```
+
+To remove a previously installed Open LibOS, simply
+`sudo rm -rf /opt/openlibos`.
 
 Open LibOS can be built on an Ubuntu 18.04 machine with or without SGX
 capability.
@@ -39,42 +48,54 @@ capability.
 
 ```
 sudo apt update
-sudo apt install -y git make
-sudo apt install -y libmbedtls-dev
-sudo apt install -y docker.io && sudo systemctl start docker && sudo systemctl enable docker
-sudo chmod 666 /var/run/docker.sock
+sudo apt install -y git make libmbedtls-dev docker.io
+sudo systemctl start docker && sudo systemctl enable docker && sudo chmod 666 /var/run/docker.sock
 ```
 
-## Clone and build
+## Clone, build, and install Open LibOS
 
 ```
 git clone https://msazure.visualstudio.com/DefaultCollection/One/_git/OpenLibOS
-cd OpenLibOS
-make
+cd OpenLibOS && make
+sudo make install
+export PATH=$PATH:/opt/openlibos/bin
 ```
 
+The build process will automatically install all prerequisite for OE SDK first,
+including Intel SGX driver and PSW, and then build the project. Finally, install
+the build outputs to /opt/openlibos.
+
 Open LibOS can be used to run applications on a non-sgx Ubuntu 18.04 machine while
-targeting for Linux. Obviously you need a sgx capable machine to target for SGX.
-We recommend an [ACC VM](https://aka.ms/accgetstarted).
+running with the Linux target. Obviously you need a sgx capable machine to try out
+the SGX target. We recommend an [ACC VM](https://aka.ms/accgetstarted) for that.
 
 # Documents
 
-- Key features of Open LibOS: [click here](doc/key-features.md)
-- Getting started with a native program: [click here](doc/user-getting-started-c.md)
+- Getting started with a native C program: [click here](doc/user-getting-started-c.md)
 - Getting started with a containerized C++ program: [click here](doc/user-getting-started-docker-c++.md)
-- Getting started with a containerized C# program: [click here](doc/user-getting-started-docker-c#.md)
+- Getting started with a containerized C# program: [click here](doc/user-getting-started-docker-dotnet.md)
 - Getting started with a containerized Python program: [click here](doc/user-getting-started-docker-python.md)
+- Getting started with a TEE-aware program: [click here](doc/user-getting-started-tee-aware.md)
+- Key features of Open LibOS: [click here](doc/key-features.md)
 - Open LibOS developer's jump start guide: [click here](doc/dev-jumpstart.md)
+- Deep dive into Open LibOS architecture: [coming]
+- How to plug a TEE into Open LibOS: [coming]
+- Multi-processing and multi-threading in Open LibOS and limitations: [coming]
+- Notable unsupported kernel features and syscalls: [coming]
 - Signing and packaging applications with Open LibOS: [click here](doc/sign-package.md)
 - Release management: [click here](doc/releasing.md)
 
+# Licensing
+
+This project is released under the `MIT License`.
+
 # Contributing to Open LibOS
 
-You can contribute to Open LibOS in several ways:
+You could contribute to Open LibOS in several ways by:
 
-- Contribute code. Please read developer's [jumpstart guide](doc/dev-jumpstart.md) first.
-- File issues.
-- Or simply provide feedbacks.
+- contributing code. Please read developer's [jumpstart guide](doc/dev-jumpstart.md) first,
+- filing issues with github issues, or
+- simply providing feedbacks via github issues or email openlibos_notify@microsoft.com.
 
 Please follow [Code of Conduct (coming)] while participating in the Open LibOS community.
 
