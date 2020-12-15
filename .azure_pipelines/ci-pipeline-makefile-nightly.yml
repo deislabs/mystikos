@@ -118,26 +118,26 @@ jobs:
       displayName: 'Error(s) Check'
       condition: not(eq(variables['Agent.JobStatus'], 'succeeded'))
 
-- job: EmailTestSummary
-  displayName: 'Send Build Summary'
-  timeoutInMinutes: 10 
-  dependsOn: BuildAndTest
-  condition: always()
-  pool:
-    vmImage: windows-latest
-  steps:
-    - task: EmailReport@1
-      inputs:
-        sendMailConditionConfig: 'Always'
-        toAddress: 'openlibos_notify@microsoft.com'
-        subject: '{environmentStatus}: LibOS Nightly Pipeline Summary for Build $(Build.BuildNumber)'
-        defaultDomain: 'microsoft.com'
-        groupTestResultsBy: 'run'
-        includeCommits: true
-        maxTestFailuresToShow: '15'
-        includeOthersInTotal: false
-        usePreviousEnvironment: false
-        smtpConnectionEndpoint: 'SMTPConnectionForEmailReportTask'
+# - job: EmailTestSummary
+#   displayName: 'Send Build Summary'
+#   timeoutInMinutes: 10 
+#   dependsOn: BuildAndTest
+#   condition: always()
+#   pool:
+#     vmImage: windows-latest
+#   steps:
+#     - task: EmailReport@1
+#       inputs:
+#         sendMailConditionConfig: 'Always'
+#         toAddress: 'openlibos_notify@microsoft.com'
+#         subject: '{environmentStatus}: LibOS Nightly Pipeline Summary for Build $(Build.BuildNumber)'
+#         defaultDomain: 'microsoft.com'
+#         groupTestResultsBy: 'run'
+#         includeCommits: true
+#         maxTestFailuresToShow: '15'
+#         includeOthersInTotal: false
+#         usePreviousEnvironment: false
+#         smtpConnectionEndpoint: 'SMTPConnectionForEmailReportTask'
 
 # - job: EmailCodeCoverage
 #   displayName: 'Send Code Coverage Report'
