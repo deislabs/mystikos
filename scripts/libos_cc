@@ -27,14 +27,17 @@ echo "Created $CC_DIR $CC_DIR/info folders"
 # To be able to generate code coverage data, gcno, gcda and source files must be copied into same location
 # Create source tree for kernel, shared, crt, ... Copy  *.gcno files
 cp -R $LIBOS_ROOT/build/obj/* $CC_DIR
-echo "Copied kernel, crt, utils, host gcno files"
+echo "Copied crt,host,kernel,target,tools,utils, gcno files"
 
 # Copy kernel, crt, utils, host *.c and *.h source files
 cp -R $LIBOS_ROOT/kernel/* $CC_DIR/kernel
 cp -R $LIBOS_ROOT/crt/* $CC_DIR/crt
 cp -R $LIBOS_ROOT/utils/* $CC_DIR/utils
 cp -R $LIBOS_ROOT/host/* $CC_DIR/host
-echo "Copied kernel, crt, utils, host source files"
+cp -R $LIBOS_ROOT/target/* $CC_DIR/target
+cp -R $LIBOS_ROOT/tools/* $CC_DIR/tools
+cp -R $LIBOS_ROOT/utils/* $CC_DIR/utils
+echo "Copied kernel, crt, utils, host, target, tools source files"
 
 # Create source tree for libc and copy *.gcno, *.c and *.h source files
 # We also need to copy gco, gcda and source files into same location for enclave-musl as well

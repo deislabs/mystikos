@@ -19,6 +19,11 @@ LIBS += $(LIBDIR)/libostargetsgxenclave.a
 LIBS += $(LIBDIR)/libosutils.a
 
 LDFLAGS += $(OEENCLAVE_LDFLAGS)
+ifdef LIBOS_ENABLE_GCOV
+CFLAGS += $(GCOV_CFLAGS)
+LDFLAGS += $(GCOV_LDFLAGS)
+LIBS += $(LIBDIR)/libgcov_musl.a
+endif
 
 CLEAN = $(SUBOBJDIR)/libos_t.h $(SUBOBJDIR)/libos_t.c $(SUBOBJDIR)/libos_args.h
 
