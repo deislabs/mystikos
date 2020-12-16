@@ -25,7 +25,7 @@ and the Linux target.
 The minimalist kernel of Open LibOS manages essential computing resources
 inside the TEE, such as CPU/threads, memory, files, networks, etc. It handles
 most of the syscalls that a normal operating system would handle (with limits).
-and certain operations are delegated to the target.
+and delegates the unhandled syscalls to the target.
 
 ![](./arch.png)
 
@@ -66,7 +66,8 @@ including Intel SGX driver and PSW, and then build the project. Finally, install
 the build outputs to /opt/openlibos.
 
 Open LibOS can be used to run applications on a non-sgx Ubuntu 18.04 machine while
-running with the Linux target. Obviously you need a sgx capable machine to try out
+running with the Linux target (simulation mode). Obviously you need a sgx capable
+machine to try out
 the SGX target. We recommend an [ACC VM](https://aka.ms/accgetstarted) for that.
 
 # Documents
