@@ -1,22 +1,104 @@
-- PR Pipeline: [![Build Status](https://openenclave.visualstudio.com/ACC-Services/_apis/build/status/oe-libos-pr-pipeline?branchName=master)](https://openenclave.visualstudio.com/ACC-Services/_build/latest?definitionId=70&branchName=master)
-- Nightly Pipeline: [![Build Status](https://openenclave.visualstudio.com/ACC-Services/_apis/build/status/oe-libos-nightly-pipeline?branchName=master)](https://openenclave.visualstudio.com/ACC-Services/_build/latest?definitionId=83&branchName=master)
-
 # Open LibOS
 
-Open Library Operating System, or Open LibOS for short.
+**Open LibOS** is a set of tools for running user applications in a trusted
+execution environment (TEE). The current release supports **Intel &reg; SGX**
+while other TEEs may be supported in future releases.
 
-## Introduction
+## Goals
 
-Run your applications inside a TEE. Currently support running in an SGX enclave, or in an unprotected environment within the operating system.
+- Protect user data throughout its lifecyle (at rest, in flight, in use).
+- Lift and shift applications, either native or containerized, into TEEs with
+  little or no modification.
+- Allow users to minimize, control, and inspect the makeup of the trusted computing
+  base (TCB).
+- Simplify retargeting to different TEEs through a plugin architecture.
+- Publish under a non-restrictive open-source license.
 
-Open LibOS is not tied to a specific TEE, and instead is architected to allow different TEEs (or targets) to be plugged in against our Open LibOS kernel.
+## Architecture
 
-The Open LibOS kernel Handles most of the operating system primitives that a normal operating system would handle (with limits), and certain operations (like networking) are delegated to the actual operating outside the TEE itself.
+**Open LibOS** consists of a C-runtime based on
+[MUSL](https://www.musl-libc.org/), a kernel, and kernel-target interface (TCALL).
+We also provide a reference implementation for the SGX target (based on
+[Open Enclave SDK](https://github.com/openenclave/openenclave))
+and the Linux target.
 
-Your application needs to be linked against the libc shared libraries rather than statically linking as Open LibOS needs to hook certain functions within that library so calls get routed through the Open LibOS kernel. MUSL is supported, with GLIBC support being implemented.
+The minimalist kernel of Open LibOS manages essential computing resources
+inside the TEE, such as CPU/threads, memory, files, networks, etc. It handles
+most of the syscalls that a normal operating system would handle (with limits).
+and delegates the unhandled syscalls to the target.
 
-## Documents
+![](./arch.png)
 
-User getting started guide: [click here](doc/user-getting-started.md)
+# Install or build from source
 
-Release management: [click here](doc/releasing.md)
+Binary downloads of the Open LibOS releases can be found on the Releases page
+(coming). After download the tarball, install it with the following commands:
+```
+tar xvfz <tarball-name> /opt
+export PATH=$PATH:/opt/openlibos/bin
+```
+
+To remove a previously installed Open LibOS, simply
+`sudo rm -rf /opt/openlibos`.
+
+Open LibOS can be built on an Ubuntu 18.04 machine with or without SGX
+capability.
+
+## Install the prerequisites
+
+```
+sudo apt update
+sudo apt install -y git make libmbedtls-dev docker.io
+sudo systemctl start docker && sudo systemctl enable docker && sudo chmod 666 /var/run/docker.sock
+```
+
+## Clone, build, and install Open LibOS
+
+```
+git clone https://msazure.visualstudio.com/DefaultCollection/One/_git/OpenLibOS
+cd OpenLibOS && make
+sudo make install
+export PATH=$PATH:/opt/openlibos/bin
+```
+
+The build process will automatically install all prerequisite for OE SDK first,
+including Intel SGX driver and PSW, and then build the project. Finally, install
+the build outputs to /opt/openlibos.
+
+Open LibOS can be used to run applications on a non-sgx Ubuntu 18.04 machine while
+running with the Linux target (simulation mode). Obviously you need a sgx capable
+machine to try out
+the SGX target. We recommend an [ACC VM](https://aka.ms/accgetstarted) for that.
+
+# Documents
+
+- Getting started with a native C program: [click here](doc/user-getting-started-c.md)
+- Getting started with a containerized C++ program: [click here](doc/user-getting-started-docker-c++.md)
+- Getting started with a containerized C# program: [click here](doc/user-getting-started-docker-dotnet.md)
+- Getting started with a containerized Python program: [click here](doc/user-getting-started-docker-python.md)
+- Getting started with a TEE-aware program: [click here](doc/user-getting-started-tee-aware.md)
+- Key features of Open LibOS: [click here](doc/key-features.md)
+- Open LibOS developer's jump start guide: [click here](doc/dev-jumpstart.md)
+- Deep dive into Open LibOS architecture: [coming]
+- How to plug a TEE into Open LibOS: [coming]
+- Multi-processing and multi-threading in Open LibOS and limitations: [coming]
+- Notable unsupported kernel features and syscalls: [coming]
+- Signing and packaging applications with Open LibOS: [click here](doc/sign-package.md)
+- Release management: [click here](doc/releasing.md)
+
+# Licensing
+
+This project is released under the `MIT License`.
+
+# Contributing to Open LibOS
+
+You could contribute to Open LibOS in several ways by:
+
+- contributing code. Please read developer's [jumpstart guide](doc/dev-jumpstart.md) first,
+- filing issues with github issues, or
+- simply providing feedbacks via github issues or email openlibos_notify@microsoft.com.
+
+Please follow [Code of Conduct (coming)] while participating in the Open LibOS community.
+
+
+
