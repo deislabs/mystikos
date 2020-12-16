@@ -28,7 +28,7 @@ mkdir -p appdir
 libos-gcc -g -o appdir/hello helloworld.c
 ```
 
-In most cases, we would generate much more files in `appdir`, a folder to hold
+In most cases, we would generate many more files in `appdir`, a folder to hold
 the root file system including the application, the dependent libraries, and
 configurations. Our hello world program is so simple that it doesn't depend
 on any library other than MUSL or any configuration. So `appdir` contains
@@ -57,6 +57,12 @@ a program in a SGX enclave in this manner:
 1. Load `/hello` from the file system and execute it.
 1. Send parameters following the executable `/hello` to it.
 (in this case we have none)
+
+The command specifies libos as the execution environment, and executes a
+program in a generic Open LibOS SGX enclave for development and debugging
+purpose. This execution mode does not capture the identity of the
+executing program in the SGX Enclave attestation data, thus is not
+suitable for production use.
 
 If you are interested in shortening the command, please see
 [packaging](./sign-package.md) as a solution.

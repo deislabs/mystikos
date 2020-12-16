@@ -9,17 +9,26 @@ Before executing in TEE, we have to prove to the TEE that the application,
 together with other factors of its execution, such as kernel, C-runtime,
 depended libraries, configuration, etc.,  are free from tampering.
 
-In Open LibOS, the C-runtime and the kernel are measured as part of the TEE
-image. The measurement also includes the hash of the root file system
-on which resides the application, the depended libraries, and the
+Likewise, to establish trust with a relying party during its execution,
+the identity of a TEE application, together with other factors of its
+execution, needs to be presented to the relying party.
+
+In the current implementation of Open LibOS, the C-runtime and the kernel
+are measured as part of the TEE application image. The measurement also
+includes the hash of the root file system
+on which resides the application, the dependent libraries, and the
 configuration. In other words, Open LibOS takes all factors that could
 influence the execution, and measure them into a single concrete and
 verifiable value.
 
 The single measurement could be verified at loading time by the TEE hardware,
-therefore protecting the code integrity, or by a relying party during
+therefore protecting the code integrity, and by a relying party during
 attestation before secrets are exchanged between the application and the
 relying party.
+
+Layered Attestation support, where the identity of the application and
+the identity of the application's environment, such as the kernel and
+the C-runtime, can be attested separately, is under evaluation.
 
 ## Single executable package
 
@@ -63,14 +72,20 @@ and the kernel space. The only allowed interactions are:
 
 Some applications might want to be aware of the TEE they are running inside.
 For example, an application might want to behave differently running inside
-a TEE vs. outside a TEE. Open LibOS provides a mechanism for them to query
+a TEE vs. outside a TEE, or utilize TEE-specific capabilities.
+Open LibOS provides a mechanism for them to query
 what kind of TEE they are running inside.
 
-Many times, an application running inside the TEE wants to attest to a relying
+Quite often, an application running inside the TEE wants to attest to a relying
 party with proofs chained to the hardware root of trust, or it wants to
-verify the attestation artifacts from an external party. Open LibOS offers
+verify the attestation artifacts from an external party. In its current
+implementation, Open LibOS offers
 two syscalls to user space, one for generating self-signed certificates rooted
 to the TEE, and one for verifying self-signed certificates from another party.
 
-In a more direct way, applications may include header a link a library to
+In a more direct way, applications may include headers and link a library to
 invoke SGX extensions for sealing, attestation, etc..
+
+Please refer to
+[get started with a TEE aware app](./user-getting-started-tee-aware.md)
+for details.
