@@ -49,20 +49,6 @@ jobs:
       env:
         LIBOS_ENABLE_GCOV: 1
 
-    # run sql solution test on Canada Central DB Node
-    - script: |
-        make clean -C $(Build.SourcesDirectory)/solutions/sql_ae
-        make run -C $(Build.SourcesDirectory)/solutions/sql_ae
-        make clean -C $(Build.SourcesDirectory)/solutions/sql_ae
-      displayName: 'run sql solution test on Canada Central Node'
-      continueOnError: true
-      enabled: true
-      workingDirectory: $(Build.SourcesDirectory)
-      env:
-        DB_NAME: $(DB_NAME_CANADACENTRAL)
-        DB_SERVER_NAME: $(DB_SERVER_NAME_CANADACENTRAL)
-        MAA_URL: $(DB_MAA_URL_CANADACENTRAL)
-
     # run solution tests
     - script: |
         make tests -C $(Build.SourcesDirectory)/solutions
@@ -76,18 +62,6 @@ jobs:
         DB_NAME: $(DB_NAME_USEAST)
         DB_SERVER_NAME: $(DB_SERVER_NAME_USEAST)
         MAA_URL: $(DB_MAA_URL_USEAST)
-
-    # single out dotnet solution test due to code coverage crash
-    # but it still need to be disabled. Because dotnet sample will
-    # crash with gcov built libos runtime
-    # - script: |
-    #     make clean -C $(Build.SourcesDirectory)/solutions/dotnet
-    #     make run -C $(Build.SourcesDirectory)/solutions/dotnet
-    #     make clean -C $(Build.SourcesDirectory)/solutions/dotnet
-    #   displayName: '.NET w/o code coverage'
-    #   continueOnError: true
-    #   enabled: true
-    #   workingDirectory: $(Build.SourcesDirectory)
 
     # measure code coverage
     - script: |

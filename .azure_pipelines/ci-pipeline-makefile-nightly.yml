@@ -46,7 +46,6 @@ jobs:
     - script: |
         make clean -C $(Build.SourcesDirectory)/solutions/sql_ae
         make run -C $(Build.SourcesDirectory)/solutions/sql_ae
-        make clean -C $(Build.SourcesDirectory)/solutions/sql_ae
       displayName: 'run sql solution on Canada Central Node'
       continueOnError: true
       enabled: true
