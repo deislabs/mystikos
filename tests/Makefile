@@ -53,6 +53,10 @@ DIRS += cpp-exceptions
 DIRS += curl
 endif
 
+ifdef LIBOS_NIGHTLY_TEST
+DIRS += ltp
+endif
+
 REDEFINE_TESTS=1
 include $(TOP)/rules.mak
 

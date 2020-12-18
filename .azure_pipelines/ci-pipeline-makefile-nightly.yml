@@ -33,6 +33,8 @@ jobs:
         make clean && make
       displayName: 'build repo source'
       workingDirectory: $(Build.SourcesDirectory)
+      env:
+        LIBOS_NIGHTLY_TEST: 1
 
     # run all tests
     - script: |
@@ -41,6 +43,8 @@ jobs:
       continueOnError: true
       enabled: true
       workingDirectory: $(Build.SourcesDirectory)
+      env:
+        LIBOS_NIGHTLY_TEST: 1
 
     # run sql solution test on Canada Central DB Node
     - script: |
