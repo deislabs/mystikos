@@ -74,8 +74,8 @@ jobs:
     #   continueOnError: true
     #   enabled: true
     #   workingDirectory: $(Build.SourcesDirectory)
-    # measure code coverage
 
+    # measure code coverage
     - script: |
         bash $(Build.SourcesDirectory)/scripts/libos_cc
         python3 -m "lcov_cobertura" total_cov.info -o total_cov.xml
