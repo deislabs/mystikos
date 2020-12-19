@@ -49,6 +49,18 @@ jobs:
       env:
         LIBOS_ENABLE_GCOV: 1
 
+    # single out dotnet solution test due to code coverage crash
+    # but it still need to be disabled. Because dotnet sample will
+    # crash with gcov built libos runtime
+    # - script: |
+    #     make clean -C $(Build.SourcesDirectory)/solutions/dotnet
+    #     make run -C $(Build.SourcesDirectory)/solutions/dotnet
+    #     make clean -C $(Build.SourcesDirectory)/solutions/dotnet
+    #   displayName: '.NET w/o code coverage'
+    #   continueOnError: true
+    #   enabled: true
+    #   workingDirectory: $(Build.SourcesDirectory)
+
     # run solution tests
     - script: |
         make tests -C $(Build.SourcesDirectory)/solutions
