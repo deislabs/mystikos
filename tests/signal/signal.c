@@ -10,10 +10,13 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
+static sem_t sem1, sem2, sem3;
+
 static void* start_async(void* arg)
 {
+    (void)arg;
     pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, 0);
-    sem_post(arg);
+    sem_post(&sem1);
     for (;;)
     {
         // We have to trigger a syscall to reach a cancellation point.
@@ -45,6 +48,7 @@ static void cleanup4(void* arg)
 static void* start_single(void* arg)
 {
     pthread_cleanup_push(cleanup1, arg);
+    sem_post(&sem2);
     sleep(3);
     pthread_cleanup_pop(0);
     return 0;
@@ -57,6 +61,7 @@ static void* start_nested(void* arg)
     pthread_cleanup_push(cleanup2, foo + 1);
     pthread_cleanup_push(cleanup3, foo + 2);
     pthread_cleanup_push(cleanup4, foo + 3);
+    sem_post(&sem3);
     sleep(3);
     pthread_cleanup_pop(0);
     pthread_cleanup_pop(0);
@@ -68,12 +73,13 @@ static void* start_nested(void* arg)
 static int test_pthread_cancel(const char* test_name)
 {
     pthread_t td;
-    sem_t sem1;
     int r;
     void* res;
     _Atomic(int) foo[4];
 
     assert(sem_init(&sem1, 0, 0) == 0 && "creating semaphore");
+    assert(sem_init(&sem2, 0, 0) == 0 && "creating semaphore");
+    assert(sem_init(&sem3, 0, 0) == 0 && "creating semaphore");
 
     /* Asynchronous cancellation */
     assert(
@@ -92,6 +98,9 @@ static int test_pthread_cancel(const char* test_name)
     assert(
         pthread_create(&td, 0, start_single, foo) == 0 &&
         "failed to create thread");
+
+    while (sem_wait(&sem2))
+        ;
     assert(pthread_cancel(td) == 0 && "failed to cancel");
     assert(pthread_join(td, &res) == 0 && "failed to join");
     assert(res == PTHREAD_CANCELED && "canceled thread exit status");
@@ -104,6 +113,8 @@ static int test_pthread_cancel(const char* test_name)
     assert(
         pthread_create(&td, 0, start_nested, foo) == 0 &&
         "failed to create thread");
+    while (sem_wait(&sem3))
+        ;
     assert(pthread_cancel(td) == 0 && "failed to cancel");
     assert(pthread_join(td, &res) == 0 && "failed to join");
     assert(res == PTHREAD_CANCELED && "canceled thread exit status");
