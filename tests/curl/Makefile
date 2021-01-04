@@ -13,7 +13,7 @@ ifdef EXPORT
 OPTS = --export-rootfs
 endif
 
-all: libos rootfs
+all: libos appdir rootfs
 
 tests:
 	$(RUNTEST) $(LIBOS_EXEC) $(OPTS) rootfs /curl https://www.microsoft.com 2>&1 > /dev/null
@@ -21,9 +21,11 @@ tests:
 gdb: all
 	$(LIBOS_GDB) --args $(LIBOS_EXEC) $(EXEC) $(OPTS) rootfs /curl https://www.microsoft.com
 
-rootfs: libos
+appdir:
 	$(APPBUILDER) Dockerfile
 	echo "nameserver $(DNSSERVER)" >> $(APPDIR)/etc/resolv.conf
+
+rootfs:
 	$(BINDIR)/libos mkcpio appdir rootfs
 
 libos:
