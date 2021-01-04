@@ -47,6 +47,7 @@ DIRS += pollpipe
 DIRS += pipesz
 DIRS += futex
 DIRS += round
+DIRS += signal
 
 ifndef LIBOS_USE_OECACHE
 DIRS += cpp-exceptions

@@ -23,6 +23,7 @@
 #include <libos/panic.h>
 #include <libos/printf.h>
 #include <libos/setjmp.h>
+#include <libos/signal.h>
 #include <libos/spinlock.h>
 #include <libos/strings.h>
 #include <libos/syscall.h>
@@ -239,6 +240,8 @@ void libos_zombify_thread(libos_thread_t* thread)
         thread->next = _zombies;
         _zombies = thread;
 
+        thread->status = LIBOS_ZOMBIE;
+
         /* signal waiting threads */
         libos_cond_signal(&_zombies_cond);
     }
@@ -312,6 +315,38 @@ done:
         libos_mutex_unlock(&_zombies_mutex);
 
     return ret;
+}
+
+libos_thread_t* libos_find_thread(int tid)
+{
+    libos_thread_t* thread = libos_thread_self();
+    libos_thread_t* target = NULL;
+    libos_thread_t* t = NULL;
+
+    // Search forward in the doubly linked list for a match
+    for (t = thread; t != NULL; t = t->group_next)
+    {
+        if (t->tid == tid)
+        {
+            target = t;
+            break;
+        }
+    }
+
+    if (target == NULL)
+    {
+        // Search backward in the doubly linked list for a match
+        for (t = thread->group_prev; t != NULL; t = t->group_prev)
+        {
+            if (t->tid == tid)
+            {
+                target = t;
+                break;
+            }
+        }
+    }
+
+    return target;
 }
 
 /*
@@ -427,6 +462,8 @@ long libos_run_thread(uint64_t cookie, uint64_t event)
                 thread->fdtable = NULL;
             }
 
+            libos_signal_free(thread);
+
             if (thread->main.exec_stack)
             {
                 free(thread->main.exec_stack);
@@ -524,6 +561,20 @@ static long _syscall_clone(
         child->crt_td = newtls;
         child->run_thread = libos_run_thread;
 
+        // Link up parent, child, and the previous head child of the parent,
+        // if there is one, in the same thread group.
+        libos_thread_t* prev_head_child = parent->group_next;
+        parent->group_next = child;
+        child->group_prev = parent;
+        if (prev_head_child)
+        {
+            child->group_next = prev_head_child;
+            prev_head_child->group_prev = child;
+        }
+
+        // Inherit signal dispositions
+        child->signal.sigactions = parent->signal.sigactions;
+
         /* save the clone() arguments */
         child->clone.fn = fn;
         child->clone.child_stack = child_stack;
@@ -583,6 +634,9 @@ static long _syscall_clone_vfork(
         if (libos_fdtable_clone(parent->fdtable, &child->fdtable) != 0)
             ERAISE(-ENOMEM);
 
+        if (libos_signal_clone(parent, child) != 0)
+            ERAISE(-ENOMEM);
+
         /* save the clone() arguments */
         child->clone.fn = fn;
         child->clone.child_stack = child_stack;
@@ -624,4 +678,53 @@ pid_t libos_gettid(void)
 int libos_get_num_threads(void)
 {
     return _num_threads;
+}
+
+// Send kill signal to each thread in the group, and use the best effort to
+// ensure they are stopped.
+// Return: the number of still running child threads.
+size_t libos_kill_thread_group()
+{
+    libos_thread_t* thread = libos_thread_self();
+    libos_thread_t* t = NULL;
+    libos_thread_t* tail = NULL;
+    size_t count = 0;
+
+    // Find the tail of the doubly linked list.
+    for (t = thread; t != NULL; t = t->group_next)
+    {
+        if (t->group_next == NULL)
+            tail = t;
+    }
+    assert(tail);
+
+    // Send termination signal to all running child threads.
+    for (t = tail; t != NULL; t = t->group_prev)
+    {
+        if (!libos_is_process_thread(t) && t->status == LIBOS_RUNNING)
+        {
+            count++;
+            libos_signal_deliver(t, SIGKILL, 0);
+            // Wake up the thread from futex_wait if necessary.
+            if (t->signal.cond_wait)
+                libos_cond_signal(t->signal.cond_wait);
+        }
+    }
+
+    // Wait ~1 second for the child threads to hurry up and exit.
+    int i = 0;
+    while (i++ < 10)
+    {
+        for (t = tail; t != NULL; t = t->group_prev)
+        {
+            if (t->status != LIBOS_KILLED && t->status != LIBOS_ZOMBIE)
+                break;
+        }
+        if (t == NULL)
+            break;
+
+        libos_sleep_msec(1);
+    }
+
+    return count;
 }
