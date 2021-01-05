@@ -294,7 +294,7 @@ index be80c8ea..afc8d160 100644
  {
  	return -ENOSYS;
 diff --git a/src/thread/pthread_cancel.c b/src/thread/pthread_cancel.c
-index 2f9d5e97..c2bf57d7 100644
+index 2f9d5e97..e4d3d000 100644
 --- a/src/thread/pthread_cancel.c
 +++ b/src/thread/pthread_cancel.c
 @@ -14,9 +14,7 @@ long __cancel()
@@ -318,6 +318,23 @@ index 2f9d5e97..c2bf57d7 100644
  	if (r==-EINTR && nr!=SYS_close && self->cancel &&
  	    self->canceldisable != PTHREAD_CANCEL_DISABLE)
  		r = __cancel();
+@@ -56,7 +55,7 @@ static void cancel_handler(int sig, siginfo_t *si, void *ctx)
+ 
+ 	_sigaddset(&uc->uc_sigmask, SIGCANCEL);
+ 
+-	if (self->cancelasync || pc >= (uintptr_t)__cp_begin && pc < (uintptr_t)__cp_end) {
++	if (pc >= (uintptr_t)__cp_begin && pc < (uintptr_t)__cp_end) {
+ 		uc->uc_mcontext.MC_PC = (uintptr_t)__cp_cancel;
+ #ifdef CANCEL_GOT
+ 		uc->uc_mcontext.MC_GOT = CANCEL_GOT;
+@@ -64,6 +63,7 @@ static void cancel_handler(int sig, siginfo_t *si, void *ctx)
+ 		return;
+ 	}
+ 
++	__cancel();
+ 	__syscall(SYS_tkill, self->tid, SIGCANCEL);
+ }
+ 
 diff --git a/src/thread/x86_64/__set_thread_area.s b/src/thread/x86_64/__set_thread_area.s
 deleted file mode 100644
 index 7347ff4d..00000000

@@ -22,6 +22,7 @@
 #include <libos/printf.h>
 #include <libos/process.h>
 #include <libos/ramfs.h>
+#include <libos/signal.h>
 #include <libos/strings.h>
 #include <libos/syscall.h>
 #include <libos/thread.h>
@@ -226,6 +227,9 @@ static int _create_main_thread(uint64_t event, libos_thread_t** thread_out)
     /* allocate the new fdtable for this process */
     ECHECK(libos_fdtable_create(&thread->fdtable));
 
+    /* allocate the sigactions array */
+    ECHECK(libos_signal_init(thread));
+
     /* bind this thread to the target */
     libos_assume(libos_tcall_set_tsd((uint64_t)thread) == 0);
 
@@ -388,6 +392,9 @@ int libos_enter_kernel(libos_kernel_args_t* args)
             libos_fdtable_free(thread->fdtable);
             thread->fdtable = NULL;
         }
+
+        /* release signal related heap memory */
+        libos_signal_free(thread);
 
         /* release the exec stack */
         if (thread->main.exec_stack)
