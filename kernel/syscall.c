@@ -54,6 +54,7 @@
 #include <libos/process.h>
 #include <libos/ramfs.h>
 #include <libos/setjmp.h>
+#include <libos/signal.h>
 #include <libos/spinlock.h>
 #include <libos/strings.h>
 #include <libos/syscall.h>
@@ -2097,6 +2098,9 @@ long libos_syscall(long n, long params[6])
         /* crt_td is null */
     }
 
+    // Process signals pending for this thread, if there is any.
+    libos_signal_process(thread);
+
     /* ---------- running target thread descriptor ---------- */
 
     libos_assume(target_td != NULL);
@@ -2412,18 +2416,24 @@ long libos_syscall(long n, long params[6])
         case SYS_rt_sigaction:
         {
             int signum = (int)x1;
-            const struct sigaction* act = (const struct sigaction*)x2;
-            struct sigaction* oldact = (struct sigaction*)x3;
+            const posix_sigaction_t* act = (const posix_sigaction_t*)x2;
+            posix_sigaction_t* oldact = (posix_sigaction_t*)x3;
 
-            /* ATTN: silently ignore since SYS_kill is not supported */
             _strace(n, "signum=%d act=%p oldact=%p", signum, act, oldact);
 
-            BREAK(_return(n, 0));
+            long ret = libos_signal_sigaction(signum, act, oldact);
+            BREAK(_return(n, ret));
         }
         case SYS_rt_sigprocmask:
         {
-            _strace(n, NULL);
-            BREAK(_return(n, 0));
+            int how = (int)x1;
+            const sigset_t* set = (sigset_t*)x2;
+            sigset_t* oldset = (sigset_t*)x3;
+
+            _strace(n, "how=%d set=%p oldset=%p", how, set, oldset);
+
+            long ret = libos_signal_sigprocmask(how, set, oldset);
+            BREAK(_return(n, ret));
         }
         case SYS_rt_sigreturn:
             break;
@@ -3038,7 +3048,11 @@ long libos_syscall(long n, long params[6])
         case SYS_capset:
             break;
         case SYS_rt_sigpending:
-            break;
+        {
+            sigset_t* set = (sigset_t*)x1;
+            unsigned size = (unsigned)x2;
+            BREAK(_return(n, libos_signal_sigpending(set, size)));
+        }
         case SYS_rt_sigtimedwait:
             break;
         case SYS_rt_sigqueueinfo:
@@ -3298,7 +3312,18 @@ long libos_syscall(long n, long params[6])
         case SYS_fremovexattr:
             break;
         case SYS_tkill:
-            break;
+        {
+            int tid = (int)x1;
+            int sig = (int)x2;
+
+            _strace(n, "tid=%d sig=%d", tid, sig);
+
+            libos_thread_t* thread = libos_thread_self();
+            int tgid = thread->pid;
+
+            long ret = libos_syscall_tgkill(tgid, tid, sig);
+            BREAK(_return(n, ret));
+        }
         case SYS_time:
         {
             time_t* tloc = (time_t*)x1;
@@ -3480,10 +3505,10 @@ long libos_syscall(long n, long params[6])
         case SYS_exit_group:
         {
             int status = (int)x1;
-
             _strace(n, "status=%d", status);
 
-            BREAK(0);
+            libos_kill_thread_group();
+            BREAK(_return(n, 0));
         }
         case SYS_epoll_wait:
         {
@@ -3518,7 +3543,16 @@ long libos_syscall(long n, long params[6])
             BREAK(_return(n, ret));
         }
         case SYS_tgkill:
-            break;
+        {
+            int tgid = (int)x1;
+            int tid = (int)x2;
+            int sig = (int)x3;
+
+            _strace(n, "tgid=%d tid=%d sig=%d", tgid, tid, sig);
+
+            long ret = libos_syscall_tgkill(tgid, tid, sig);
+            BREAK(_return(n, ret));
+        }
         case SYS_utimes:
             break;
         case SYS_vserver:
@@ -4121,6 +4155,9 @@ done:
 
     libos_times_leave_kernel(tp_enter);
 
+    // Process signals pending for this thread, if there is any.
+    libos_signal_process(thread);
+
     return syscall_ret;
 }
 
@@ -4200,6 +4237,28 @@ long libos_syscall_time(time_t* tloc)
             *tloc = tp.tv_sec;
         ret = tp.tv_sec;
     }
+    return ret;
+}
+
+long libos_syscall_tgkill(int tgid, int tid, int sig)
+{
+    long ret = 0;
+    libos_thread_t* thread = libos_thread_self();
+    libos_thread_t* target = libos_find_thread(tid);
+
+    if (target == NULL)
+        ERAISE(-ESRCH);
+
+    // Only allow a thread to kill other threads in the same group.
+    if (tgid != thread->pid)
+        ERAISE(-EINVAL);
+
+    siginfo_t* siginfo = calloc(1, sizeof(siginfo_t));
+    siginfo->si_code = SI_TKILL;
+    siginfo->si_signo = sig;
+    libos_signal_deliver(target, sig, siginfo);
+
+done:
     return ret;
 }
 

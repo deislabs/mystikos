@@ -833,7 +833,7 @@ int libos_exec(
         ERAISE(-EINVAL);
 
     /* fail if the CRT size is not a multiple of the page size */
-    if ((crt_size & PAGE_SIZE) != 0)
+    if ((crt_size % PAGE_SIZE) != 0)
         ERAISE(-EINVAL);
 
     /* allocate and zero-fill the new CRT image */

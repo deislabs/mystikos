@@ -4,6 +4,7 @@
 #ifndef _LIBOS_THREAD_H
 #define _LIBOS_THREAD_H
 
+#include <signal.h>
 #include <sys/times.h>
 #include <unistd.h>
 
@@ -19,6 +20,13 @@
 typedef struct libos_thread libos_thread_t;
 
 typedef struct libos_td libos_td_t;
+
+enum libos_thread_status
+{
+    LIBOS_RUNNING = 0,
+    LIBOS_KILLED,
+    LIBOS_ZOMBIE,
+};
 
 /* thread descriptor for libc threads (initial fields of struct pthread) */
 struct libos_td
@@ -37,6 +45,14 @@ struct libos_td
 };
 
 bool libos_valid_td(const void* td);
+
+typedef struct
+{
+    uint64_t handler;
+    unsigned long flags;
+    uint64_t restorer;
+    uint64_t mask;
+} posix_sigaction_t;
 
 struct libos_thread
 {
@@ -113,6 +129,34 @@ struct libos_thread
         void* exec_crt_data;
         size_t exec_crt_size;
     } main;
+
+    volatile _Atomic enum libos_thread_status status;
+
+    /* fields used by signal handling */
+    struct
+    {
+        // the signal handles registered through sigaction and
+        // shared by threads in the prcoess.
+        posix_sigaction_t* sigactions;
+
+        /* The condition we were waiting on a futex */
+        void* cond_wait;
+
+        /* The mask of blocked signals */
+        uint64_t mask;
+
+        /* The pending signals */
+        _Atomic uint64_t pending;
+
+        /* The lock to ensure sequential delivery of signals */
+        libos_spinlock_t lock;
+
+        /* The list of siginfo_t for pending signals */
+        siginfo_t* siginfos[NSIG - 1];
+    } signal;
+
+    struct libos_thread* group_prev;
+    struct libos_thread* group_next;
 };
 
 LIBOS_INLINE bool libos_valid_thread(const libos_thread_t* thread)
@@ -197,6 +241,14 @@ LIBOS_INLINE bool libos_is_process_thread(const libos_thread_t* thread)
     return thread && thread->pid == thread->tid;
 }
 
+LIBOS_INLINE libos_thread_t* libos_find_process_thread(libos_thread_t* thread)
+{
+    libos_thread_t* t = NULL;
+    for (t = thread; t != NULL && libos_is_process_thread(t); t = t->group_prev)
+        ;
+    return t;
+}
+
 long libos_run_thread(uint64_t cookie, uint64_t event);
 
 pid_t libos_generate_tid(void);
@@ -206,5 +258,9 @@ pid_t libos_gettid(void);
 void libos_wait_on_child_processes(void);
 
 int libos_get_num_threads(void);
+
+libos_thread_t* libos_find_thread(int tid);
+
+size_t libos_kill_thread_group();
 
 #endif /* _LIBOS_THREAD_H */

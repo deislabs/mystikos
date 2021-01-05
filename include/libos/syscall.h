@@ -229,4 +229,8 @@ long libos_syscall_select(
 
 long libos_syscall_nanosleep(const struct timespec* req, struct timespec* rem);
 
+long libos_syscall_exit_group(int status);
+
+long libos_syscall_tgkill(int tgid, int tid, int sig);
+
 #endif /* _LIBOS_SYSCALL_H */
