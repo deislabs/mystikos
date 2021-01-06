@@ -11,7 +11,7 @@ while other TEEs may be supported in future releases.
   little or no modification.
 - Allow users to minimize, control, and inspect the makeup of the trusted
   computing base (TCB).
-- Simplify retargeting to different TEEs through a plugin architecture.
+- Simplify re-targeting to different TEEs through a plugin architecture.
 - Publish under a non-restrictive [open-source license] (LICENSE).
 
 ## Architecture
