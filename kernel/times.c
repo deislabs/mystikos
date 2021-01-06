@@ -73,7 +73,7 @@ long myst_times_process_time()
 long myst_times_thread_time()
 {
     myst_thread_t* current = myst_thread_self();
-    long lapsed = lapsed_nsecs(current->enter_kernel_ts, current->start_ts);
+    long lapsed = lapsed_nsecs(current->start_ts, current->enter_kernel_ts);
     return lapsed;
 }
 
