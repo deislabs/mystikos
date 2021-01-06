@@ -3741,7 +3741,24 @@ long myst_syscall(long n, long params[6])
         case SYS_fanotify_mark:
             break;
         case SYS_prlimit64:
-            break;
+        {
+            int pid = (int)x1;
+            int resource = (int)x2;
+            struct rlimit* new_rlim = (struct rlimit*)x3;
+            struct rlimit* old_rlim = (struct rlimit*)x4;
+
+            _strace(
+                n,
+                "pid=%d, resource=%d, new_rlim=%p, old_rlim=%",
+                pid,
+                resource,
+                new_rlim,
+                old_rlim);
+
+            int ret =
+                libos_syscall_prlimit64(pid, resource, new_rlim, old_rlim);
+            BREAK(_return(n, ret));
+        }
         case SYS_name_to_handle_at:
             break;
         case SYS_open_by_handle_at:
@@ -4305,4 +4322,23 @@ long myst_syscall_unload_symbols(void)
 {
     long params[6] = {0};
     return myst_tcall(MYST_TCALL_UNLOAD_SYMBOLS, params);
+}
+
+long libos_syscall_prlimit64(
+    int pid,
+    int resource,
+    struct rlimit* new_rlim,
+    struct rlimit* old_rlim)
+{
+    // Only supports getting rlimit for NOFILE resource
+    if (resource >= RLIM_NLIMITS || new_rlim || resource != RLIMIT_NOFILE)
+        ERAISE(-EINVAL);
+
+    if (resource == RLIMIT_NOFILE)
+    {
+        old_rlim->rlim_cur = 65536;
+        old_rlim->rlim_max = 65536;
+    }
+
+    return ret;
 }
