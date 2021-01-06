@@ -18,7 +18,7 @@ while other TEEs may be supported in future releases.
 ## Architecture
 
 **Open LibOS** consists of the following components.
-- a C-runtime based on [musl libc](https://www.musl-libc.org/),
+- a C-runtime based on [musl libc](https://www.musl-libc.org),
 - a micro kernel, and
 - a kernel-target interface (TCALL).
 
