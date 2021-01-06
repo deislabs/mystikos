@@ -18,9 +18,9 @@ while other TEEs may be supported in future releases.
 ## Architecture
 
 **Open LibOS** consists of the following components.
-- a C-runtime based on [musl libc](https://www.musl-libc.org)
-- a micro kernel
-- a kernel-target interface (TCALL)
+- C-runtime based on [musl libc](https://www.musl-libc.org)
+- micro kernel
+- kernel-target interface (TCALL)
 
 So far, two target implementations are provided:
 - The SGX target (based on the [Open Enclave SDK](https://github.com/openenclave/openenclave))
