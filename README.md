@@ -9,18 +9,20 @@ while other TEEs may be supported in future releases.
 - Protect user data throughout its lifecyle (at rest, in flight, in use).
 - Lift and shift applications, either native or containerized, into TEEs with
   little or no modification.
-- Allow users to minimize, control, and inspect the makeup of the trusted computing
-  base (TCB).
+- Allow users to minimize, control, and inspect the makeup of the trusted
+  computing base (TCB).
 - Simplify retargeting to different TEEs through a plugin architecture.
-- Publish under a non-restrictive open-source license.
+- Publish under a non-restrictive [open-source license] (LICENSE).
 
 ## Architecture
 
-**Open LibOS** consists of a C-runtime based on
-[MUSL](https://www.musl-libc.org/), a kernel, and kernel-target interface (TCALL).
-We also provide a reference implementation for the SGX target (based on
-[Open Enclave SDK](https://github.com/openenclave/openenclave))
-and the Linux target.
+**Open LibOS** consists of the following components.
+- a C-runtime based on [musl libc](https://www.musl-libc.org/),
+- a micro kernel, and
+- a kernel-target interface (TCALL).
+So far, two target implementations are provided:
+- The SGX target (based on the [Open Enclave SDK](https://github.com/openenclave/openenclave))
+- The Linux target (for verification on non-SGX platforms)
 
 The minimalist kernel of Open LibOS manages essential computing resources
 inside the TEE, such as CPU/threads, memory, files, networks, etc. It handles
@@ -32,7 +34,8 @@ and delegates the unhandled syscalls to the target.
 # Install or build from source
 
 Binary downloads of the Open LibOS releases can be found on the Releases page
-(coming). After download the tarball, install it with the following commands:
+(coming). After downloading the tarball, install it with the following commands:
+
 ```
 tar xvfz <tarball-name> /opt
 export PATH=$PATH:/opt/openlibos/bin
@@ -62,13 +65,13 @@ export PATH=$PATH:/opt/openlibos/bin
 ```
 
 The build process will automatically install all prerequisite for OE SDK first,
-including Intel SGX driver and PSW, and then build the project. Finally, install
-the build outputs to /opt/openlibos.
+including the Intel SGX driver and PSW, and then build the project. Finally,
+it installs the build outputs to /opt/openlibos.
 
-Open LibOS can be used to run applications on a non-sgx Ubuntu 18.04 machine while
-running with the Linux target (simulation mode). Obviously you need a sgx capable
-machine to try out
-the SGX target. We recommend an [ACC VM](https://aka.ms/accgetstarted) for that.
+Open LibOS can be used to run applications on a non-SGX Ubuntu 18.04 machine
+while running with the Linux target (simulation mode). Obviously you need an
+SGX-capable machine to try out the SGX target. For that, we recommend either an
+[ACC VM](https://aka.ms/accgetstarted) or a bare-metal machine with SGX support.
 
 # Documents
 
@@ -88,17 +91,14 @@ the SGX target. We recommend an [ACC VM](https://aka.ms/accgetstarted) for that.
 
 # Licensing
 
-This project is released under the `MIT License`.
+This project is released under the [MIT License](LICENSE)
 
 # Contributing to Open LibOS
 
-You could contribute to Open LibOS in several ways by:
+You can contribute to Open LibOS in several ways by:
 
 - contributing code. Please read developer's [jumpstart guide](doc/dev-jumpstart.md) first,
 - filing issues with github issues, or
-- simply providing feedbacks via github issues or email openlibos_notify@microsoft.com.
+- by simply providing feedback via github issues or email openlibos_notify@microsoft.com.
 
-Please follow [Code of Conduct (coming)] while participating in the Open LibOS community.
-
-
-
+Please follow the [Code of Conduct (coming)] while participating in the Open LibOS community.
