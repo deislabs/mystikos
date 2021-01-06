@@ -20,6 +20,7 @@ while other TEEs may be supported in future releases.
 - a C-runtime based on [musl libc](https://www.musl-libc.org/),
 - a micro kernel, and
 - a kernel-target interface (TCALL).
+
 So far, two target implementations are provided:
 - The SGX target (based on the [Open Enclave SDK](https://github.com/openenclave/openenclave))
 - The Linux target (for verification on non-SGX platforms)
