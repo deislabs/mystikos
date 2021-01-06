@@ -94,7 +94,7 @@ SGX-capable machine to try out the SGX target. For that, we recommend either an
 
 # Licensing
 
-This project is released under the [MIT License](LICENSE)
+This project is released under the [MIT License](LICENSE).
 
 # Contributing to Open LibOS
 
