@@ -12,7 +12,7 @@ while other TEEs may be supported in future releases.
 - Allow users to minimize, control, and inspect the makeup of the trusted
   computing base (TCB).
 - Simplify re-targeting to different TEEs through a plugin architecture.
-- Publish under a non-restrictive [open-source license] (LICENSE).
+- Publish under a non-restrictive [open-source license](LICENSE).
 
 ## Architecture
 
