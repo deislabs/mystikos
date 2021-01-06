@@ -19,7 +19,7 @@ while other TEEs may be supported in future releases.
 
 **Open LibOS** consists of the following components.
 - C-runtime based on [musl libc](https://www.musl-libc.org)
-- micro kernel
+- kernel
 - kernel-target interface (TCALL)
 
 So far, two target implementations are provided:
@@ -29,7 +29,8 @@ So far, two target implementations are provided:
 The minimalist kernel of Open LibOS manages essential computing resources
 inside the TEE, such as CPU/threads, memory, files, networks, etc. It handles
 most of the syscalls that a normal operating system would handle (with limits).
-and delegates the unhandled syscalls to the target.
+Many syscalls are handled directly by the kernel while others are delegated to
+the target.
 
 ![](./arch.png)
 
