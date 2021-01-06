@@ -1843,6 +1843,25 @@ long myst_syscall_getrusage(int who, struct rusage* usage)
     return 0;
 }
 
+long libos_syscall_prlimit64(
+    int pid,
+    int resource,
+    struct rlimit* new_rlim,
+    struct rlimit* old_rlim)
+{
+    // Only supports getting rlimit for NOFILE resource
+    if (pid || resource >= RLIM_NLIMITS || new_rlim || resource != RLIMIT_NOFILE)
+        return -EINVAL;
+
+    if (resource == RLIMIT_NOFILE)
+    {
+        old_rlim->rlim_cur = 65536;
+        old_rlim->rlim_max = 65536;
+    }
+
+    return 0;
+}
+
 long myst_syscall_ret(long ret)
 {
     if (ret < 0)
@@ -3749,7 +3768,7 @@ long myst_syscall(long n, long params[6])
 
             _strace(
                 n,
-                "pid=%d, resource=%d, new_rlim=%p, old_rlim=%",
+                "pid=%d, resource=%d, new_rlim=%p, old_rlim=%p",
                 pid,
                 resource,
                 new_rlim,
@@ -4324,21 +4343,3 @@ long myst_syscall_unload_symbols(void)
     return myst_tcall(MYST_TCALL_UNLOAD_SYMBOLS, params);
 }
 
-long libos_syscall_prlimit64(
-    int pid,
-    int resource,
-    struct rlimit* new_rlim,
-    struct rlimit* old_rlim)
-{
-    // Only supports getting rlimit for NOFILE resource
-    if (resource >= RLIM_NLIMITS || new_rlim || resource != RLIMIT_NOFILE)
-        ERAISE(-EINVAL);
-
-    if (resource == RLIMIT_NOFILE)
-    {
-        old_rlim->rlim_cur = 65536;
-        old_rlim->rlim_max = 65536;
-    }
-
-    return ret;
-}
