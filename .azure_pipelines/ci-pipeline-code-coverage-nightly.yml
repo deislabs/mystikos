@@ -127,9 +127,9 @@ jobs:
 #     - task: EmailReport@1
 #       inputs:
 #         sendMailConditionConfig: 'Always'
-#         toAddress: 'mystikos@microsoft.com'
+#         toAddress: 'mystikos@service.microsoft.com'
 #         subject: '{environmentStatus}: Mystikos Nightly Pipeline Summary for Build $(Build.BuildNumber)'
-#         defaultDomain: 'microsoft.com'
+#         defaultDomain: 'service.microsoft.com'
 #         groupTestResultsBy: 'run'
 #         includeCommits: true
 #         maxTestFailuresToShow: '15'
@@ -155,7 +155,7 @@ jobs:
 
 #     - task: SendEmail@1
 #       inputs:
-#         To: 'mystikos@microsoft.com'
+#         To: 'mystikos@service.microsoft.com'
 #         From: 'akstestpipeline@outlook.com'
 #         Subject: '[Build $(Agent.JobStatus)] Mystikos Nightly Pipeline Code Coverage Report'
 #         Body: '
