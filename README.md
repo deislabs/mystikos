@@ -61,7 +61,7 @@ sudo systemctl start docker && sudo systemctl enable docker && sudo chmod 666 /v
 ## Clone, build, and install Mystikos
 
 ```
-git clone https://msazure.visualstudio.com/DefaultCollection/One/_git/Mystikos
+git clone https://msazure.visualstudio.com/DefaultCollection/One/_git/OpenLibOS
 cd Mystikos && make
 sudo make install
 export PATH=$PATH:/opt/mystikos/bin
