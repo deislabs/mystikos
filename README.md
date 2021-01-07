@@ -102,6 +102,6 @@ You can contribute to Mystikos in several ways by:
 
 - contributing code. Please read developer's [jumpstart guide](doc/dev-jumpstart.md) first,
 - filing issues with github issues, or
-- by simply providing feedback via github issues or email Mystikos_notify@microsoft.com.
+- by simply providing feedback via github issues or email mystikos_notify@microsoft.com.
 
 Please follow the [Code of Conduct (coming)] while participating in the Mystikos community.
