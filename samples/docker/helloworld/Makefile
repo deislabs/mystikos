@@ -4,16 +4,16 @@ include $(TOP)/defs.mak
 APPDIR        := appdir
 BUILD_DIR     := $(CURDIR)
 CFLAGS        := -fPIC
-DOCKER_IMG    := Mystikos-hello
+DOCKER_IMG    := mystikos-hello
 LDFLAGS       := -Wl,-rpath=$(MUSL_LIB)
-MYST_TARBALL := Mystikos.tar.gz
+MYST_TARBALL := mystikos.tar.gz
 OPTS          := --strace
 PSW_VERSION   := 2.11
 
 .PHONY: build run tests clean
 
 build: myst rootfs
-	@cd $(TOP) && make bindist | sed -n 's/.*\(Mystikos.*\.tar\.gz\).*/\1/p' | xargs -I {} mv {} $(BUILD_DIR)/$(MYST_TARBALL)
+	@cd $(TOP) && make bindist | sed -n 's/.*\(mystikos.*\.tar\.gz\).*/\1/p' | xargs -I {} mv {} $(BUILD_DIR)/$(MYST_TARBALL)
 	@docker build --build-arg PSW_VERSION=$(PSW_VERSION) -t $(DOCKER_IMG) .
 
 myst:
