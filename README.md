@@ -41,11 +41,11 @@ Binary downloads of the Mystikos releases can be found on the Releases page
 
 ```
 tar xvfz <tarball-name> /opt
-export PATH=$PATH:/opt/Mystikos/bin
+export PATH=$PATH:/opt/mystikos/bin
 ```
 
 To remove a previously installed Mystikos, simply
-`sudo rm -rf /opt/Mystikos`.
+`sudo rm -rf /opt/mystikos`.
 
 Mystikos can be built on an Ubuntu 18.04 machine with or without SGX
 capability.
@@ -64,12 +64,12 @@ sudo systemctl start docker && sudo systemctl enable docker && sudo chmod 666 /v
 git clone https://msazure.visualstudio.com/DefaultCollection/One/_git/Mystikos
 cd Mystikos && make
 sudo make install
-export PATH=$PATH:/opt/Mystikos/bin
+export PATH=$PATH:/opt/mystikos/bin
 ```
 
 The build process will automatically install all prerequisite for OE SDK first,
 including the Intel SGX driver and PSW, and then build the project. Finally,
-it installs the build outputs to /opt/Mystikos.
+it installs the build outputs to /opt/mystikos.
 
 Mystikos can be used to run applications on a non-SGX Ubuntu 18.04 machine
 while running with the Linux target (simulation mode). Obviously you need an
