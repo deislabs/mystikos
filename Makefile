@@ -4,7 +4,7 @@ TOP = $(abspath $(CURDIR))
 include $(TOP)/defs.mak
 
 VERSION=$(shell cat VERSION)
-PKGNAME=Mystikos-$(VERSION)-x86_64
+PKGNAME=mystikos-$(VERSION)-x86_64
 TARBALL=$(PKGNAME).tar.gz
 
 ##==============================================================================
@@ -166,7 +166,7 @@ sub:
 bindist:
 	@ rm -rf $(BUILDDIR)/bindist
 	@ $(MAKE) install DESTDIR=$(BUILDDIR)/bindist
-	@ ( cd $(BUILDDIR)/bindist/opt; tar zcf $(TARBALL) Mystikos )
+	@ ( cd $(BUILDDIR)/bindist/opt; tar zcf $(TARBALL) mystikos )
 	@ cp $(BUILDDIR)/bindist/opt/$(TARBALL) .
 	@ echo "=== Created $(TARBALL)"
 
