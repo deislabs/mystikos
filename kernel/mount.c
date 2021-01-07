@@ -4,12 +4,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <libos/atexit.h>
-#include <libos/eraise.h>
-#include <libos/mount.h>
-#include <libos/realpath.h>
-#include <libos/spinlock.h>
-#include <libos/strings.h>
+#include <myst/atexit.h>
+#include <myst/eraise.h>
+#include <myst/mount.h>
+#include <myst/realpath.h>
+#include <myst/spinlock.h>
+#include <myst/strings.h>
 
 #define MOUNT_TABLE_SIZE 8
 
@@ -17,13 +17,13 @@ typedef struct mount_table_entry
 {
     char* path;
     size_t path_size;
-    libos_fs_t* fs;
+    myst_fs_t* fs;
     uint32_t flags;
 } mount_table_entry_t;
 
 static mount_table_entry_t _mount_table[MOUNT_TABLE_SIZE];
 static size_t _mount_table_size = 0;
-static libos_spinlock_t _lock = LIBOS_SPINLOCK_INITIALIZER;
+static myst_spinlock_t _lock = MYST_SPINLOCK_INITIALIZER;
 
 static bool _installed_free_mount_table = false;
 
@@ -35,16 +35,16 @@ static void _free_mount_table(void* arg)
         free(_mount_table[i].path);
 }
 
-int libos_mount_resolve(
+int myst_mount_resolve(
     const char* path,
     char suffix[PATH_MAX],
-    libos_fs_t** fs_out)
+    myst_fs_t** fs_out)
 {
     int ret = 0;
     size_t match_len = 0;
-    libos_path_t realpath;
+    myst_path_t realpath;
     bool locked = false;
-    libos_fs_t* fs = NULL;
+    myst_fs_t* fs = NULL;
 
     if (fs_out)
         *fs_out = NULL;
@@ -53,9 +53,9 @@ int libos_mount_resolve(
         ERAISE(-EINVAL);
 
     /* Find the real path (the absolute non-relative path). */
-    ECHECK(libos_realpath(path, &realpath));
+    ECHECK(myst_realpath(path, &realpath));
 
-    libos_spin_lock(&_lock);
+    myst_spin_lock(&_lock);
     locked = true;
 
     /* Find the longest binding point that contains this path. */
@@ -68,7 +68,7 @@ int libos_mount_resolve(
         {
             if (len > match_len)
             {
-                libos_strlcpy(suffix, realpath.buf, PATH_MAX);
+                myst_strlcpy(suffix, realpath.buf, PATH_MAX);
                 match_len = len;
                 fs = _mount_table[i].fs;
             }
@@ -79,10 +79,10 @@ int libos_mount_resolve(
         {
             if (len > match_len)
             {
-                libos_strlcpy(suffix, realpath.buf + len, PATH_MAX);
+                myst_strlcpy(suffix, realpath.buf + len, PATH_MAX);
 
                 if (*suffix == '\0')
-                    libos_strlcpy(suffix, "/", PATH_MAX);
+                    myst_strlcpy(suffix, "/", PATH_MAX);
 
                 match_len = len;
                 fs = _mount_table[i].fs;
@@ -92,7 +92,7 @@ int libos_mount_resolve(
 
     if (locked)
     {
-        libos_spin_unlock(&_lock);
+        myst_spin_unlock(&_lock);
         locked = false;
     }
 
@@ -104,16 +104,16 @@ int libos_mount_resolve(
 done:
 
     if (locked)
-        libos_spin_unlock(&_lock);
+        myst_spin_unlock(&_lock);
 
     return ret;
 }
 
-int libos_mount(libos_fs_t* fs, const char* target)
+int myst_mount(myst_fs_t* fs, const char* target)
 {
     int ret = -1;
     bool locked = false;
-    libos_path_t target_buf;
+    myst_path_t target_buf;
     mount_table_entry_t mount_table_entry = {0};
 
     if (!fs || !target)
@@ -121,7 +121,7 @@ int libos_mount(libos_fs_t* fs, const char* target)
 
     /* Normalize the target path */
     {
-        ECHECK(libos_realpath(target, &target_buf));
+        ECHECK(myst_realpath(target, &target_buf));
         target = target_buf.buf;
     }
 
@@ -130,10 +130,10 @@ int libos_mount(libos_fs_t* fs, const char* target)
     {
         struct stat buf;
         char suffix[PATH_MAX];
-        libos_fs_t* parent;
+        myst_fs_t* parent;
 
         /* Find the file system onto which the mount will occur */
-        ECHECK(libos_mount_resolve(target, suffix, &parent));
+        ECHECK(myst_mount_resolve(target, suffix, &parent));
 
         ECHECK((*parent->fs_stat)(parent, target, &buf));
 
@@ -142,13 +142,13 @@ int libos_mount(libos_fs_t* fs, const char* target)
     }
 
     /* Lock the mount table. */
-    libos_spin_lock(&_lock);
+    myst_spin_lock(&_lock);
     locked = true;
 
     /* Install _free_mount_table() if not already installed. */
     if (_installed_free_mount_table == false)
     {
-        libos_atexit(_free_mount_table, NULL);
+        myst_atexit(_free_mount_table, NULL);
         _installed_free_mount_table = true;
     }
 
@@ -187,21 +187,21 @@ done:
         free(mount_table_entry.path);
 
     if (locked)
-        libos_spin_unlock(&_lock);
+        myst_spin_unlock(&_lock);
 
     return ret;
 }
 
-int libos_umount(const char* target)
+int myst_umount(const char* target)
 {
     int ret = 0;
-    libos_path_t realpath;
+    myst_path_t realpath;
     bool found = false;
 
-    libos_spin_lock(&_lock);
+    myst_spin_lock(&_lock);
 
     /* Find the real path (the absolute non-relative path) */
-    ECHECK(libos_realpath(target, &realpath));
+    ECHECK(myst_realpath(target, &realpath));
 
     /* search the mount table for an entry with this name */
     for (size_t i = 0; i < _mount_table_size; i++)
@@ -230,7 +230,7 @@ int libos_umount(const char* target)
 
 done:
 
-    libos_spin_unlock(&_lock);
+    myst_spin_unlock(&_lock);
 
     return ret;
 }

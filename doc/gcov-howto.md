@@ -1,19 +1,19 @@
-How to use gcov in openlibos
+How to use gcov in Mystikos
 ============================
 
 Instrumenting
 =============
 
-To enable **gcov** define the **LIBOS_ENABLE_GCOV** environment variable and
-rebuild openlibos. For example:
+To enable **gcov** define the **MYST_ENABLE_GCOV** environment variable and
+rebuild Mystikos. For example:
 
 ```
-$ export LIBOS_ENABLE_GCOV=1
+$ export MYST_ENABLE_GCOV=1
 $ make clean
 $ make
 ```
 
-This instruments **liboskernel.so** with **gcov** by compiling sources with
+This instruments **libmystkernel.so** with **gcov** by compiling sources with
 the following options:
 
 ```
@@ -59,7 +59,7 @@ example:
 #include <unistd.h>
 #include <errno.h>
 
-#include <libos/gcov.h>
+#include <myst/gcov.h>
 
 __attribute__((constructor))
 void initialize_gcov(void)
@@ -83,7 +83,7 @@ file system (**ramfs**). These are exported with the **--export-ramfs**
 option. For example:
 
 ```
-$ libos exec --export-ramfs rootfs /bin/hello
+$ myst exec --export-ramfs rootfs /bin/hello
 ```
 
 This creates a directory called **ramfs** under the current directory.

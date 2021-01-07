@@ -291,7 +291,7 @@ int main(int argc, const char* argv[])
     uint8_t* private_key = NULL;
     size_t private_key_size;
 
-    if (strcmp(getenv("LIBOS_TARGET"), "sgx") == 0)
+    if (strcmp(getenv("MYST_TARGET"), "sgx") == 0)
     {
         assert(test_gen_creds(
                 &cert,

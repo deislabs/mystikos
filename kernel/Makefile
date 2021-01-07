@@ -4,22 +4,22 @@ include $(TOP)/defs.mak
 SUBLIBDIR=$(LIBDIR)
 SUBBINDIR=$(LIBDIR)
 
-PROGRAM = liboskernel.so
+PROGRAM = libmystkernel.so
 
 SOURCES = $(wildcard *.[cs])
 
 INCLUDES = -I$(INCDIR) -I$(BUILDDIR)/musl/include
 
-ifdef LIBOS_USE_THREAD_STACK
-DEFINES += -DLIBOS_USE_THREAD_STACK
+ifdef MYST_USE_THREAD_STACK
+DEFINES += -DMYST_USE_THREAD_STACK
 endif
 
-ifdef LIBOS_ENABLE_LEAK_CHECKER
-DEFINES += -DLIBOS_ENABLE_LEAK_CHECKER
+ifdef MYST_ENABLE_LEAK_CHECKER
+DEFINES += -DMYST_ENABLE_LEAK_CHECKER
 endif
 
-ifdef LIBOS_NO_RECVMSG_MITIGATION
-DEFINES += -DLIBOS_NO_RECVMSG_MITIGATION
+ifdef MYST_NO_RECVMSG_MITIGATION
+DEFINES += -DMYST_NO_RECVMSG_MITIGATION
 endif
 
 WARNINGS =
@@ -54,9 +54,9 @@ CFLAGS += $(WARNINGS)
 CFLAGS += -Wno-conversion
 CFLAGS += -Wno-parentheses
 
-ifdef LIBOS_ENABLE_GCOV
+ifdef MYST_ENABLE_GCOV
 CFLAGS += -fprofile-arcs -ftest-coverage
-DEFINES += -DLIBOS_ENABLE_GCOV
+DEFINES += -DMYST_ENABLE_GCOV
 endif
 
 LDFLAGS =
@@ -74,18 +74,18 @@ LDFLAGS += -Wl,-z,now
 ifdef USE_GC_SECTIONS
 LDFLAGS += -Wl,-gc-sections
 endif
-LDFLAGS += -Wl,-elibos_enter_kernel
+LDFLAGS += -Wl,-emyst_enter_kernel
 
-LIBS += $(LIBDIR)/libosutils.a
+LIBS += $(LIBDIR)/libmystutils.a
 
-ifdef LIBOS_ENABLE_GCOV
+ifdef MYST_ENABLE_GCOV
 LIBS += $(LIBDIR)/libgcov_musl.a
 endif
 
 include $(TOP)/rules.mak
 
 size:
-	size $(LIBDIR)/liboskernel.so
+	size $(LIBDIR)/libmystkernel.so
 
 sizes:
 	@ $(foreach i, $(__OBJECTS), size $(i) $(NL) )

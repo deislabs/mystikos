@@ -6,22 +6,22 @@ CFLAGS = -fPIC
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 CC = $(MUSL_GCC)
 
-all: libos rootfs
+all: myst rootfs
 
 rootfs: thread.c
 	mkdir -p $(APPDIR)/bin
 	$(CC) $(CFLAGS) -o $(APPDIR)/bin/thread thread.c $(LDFLAGS)
-	$(LIBOS) mkcpio $(APPDIR) rootfs
+	$(MYST) mkcpio $(APPDIR) rootfs
 
 ifdef STRACE
 OPTS += --strace
 endif
 
 tests:
-	$(RUNTEST) $(LIBOS_EXEC) $(OPTS) rootfs /bin/thread
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/thread
 
-libos:
-	$(MAKE) -C $(TOP)/tools/libos
+myst:
+	$(MAKE) -C $(TOP)/tools/myst
 
 clean:
 	rm -rf $(APPDIR) rootfs export ramfs

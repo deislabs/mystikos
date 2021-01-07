@@ -2,12 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <libos/eraise.h>
-#include <libos/printf.h>
-#include <libos/signal.h>
+#include <myst/eraise.h>
+#include <myst/printf.h>
+#include <myst/signal.h>
 
 /* The lock for installing signal dispositions */
-static libos_spinlock_t _lock = LIBOS_SPINLOCK_INITIALIZER;
+static myst_spinlock_t _lock = MYST_SPINLOCK_INITIALIZER;
 
 static int _check_signum(unsigned signum)
 {
@@ -26,7 +26,7 @@ static void _uint64_to_sigset(uint64_t val, sigset_t* set)
     *p = val;
 }
 
-int libos_signal_init(libos_thread_t* thread)
+int myst_signal_init(myst_thread_t* thread)
 {
     int ret = 0;
 
@@ -39,14 +39,14 @@ done:
     return ret;
 }
 
-void libos_signal_free(libos_thread_t* thread)
+void myst_signal_free(myst_thread_t* thread)
 {
-    assert(thread && libos_is_process_thread(thread));
+    assert(thread && myst_is_process_thread(thread));
     free(thread->signal.sigactions);
     thread->signal.sigactions = NULL;
 }
 
-long libos_signal_sigaction(
+long myst_signal_sigaction(
     unsigned signum,
     const posix_sigaction_t* new_action,
     posix_sigaction_t* old_action)
@@ -57,12 +57,12 @@ long libos_signal_sigaction(
     if (signum == SIGKILL || signum == SIGSTOP)
         ERAISE(-EINVAL);
 
-    libos_thread_t* thread = libos_thread_self();
+    myst_thread_t* thread = myst_thread_self();
     assert(thread->signal.sigactions);
 
     // Sigactions are shared process-wide. We need to ensure
     // no simultaneous updates from multiple threads.
-    libos_spin_lock(&_lock);
+    myst_spin_lock(&_lock);
 
     if (old_action)
         *old_action = thread->signal.sigactions[signum - 1];
@@ -70,16 +70,16 @@ long libos_signal_sigaction(
     if (new_action)
         thread->signal.sigactions[signum - 1] = *new_action;
 
-    libos_spin_unlock(&_lock);
+    myst_spin_unlock(&_lock);
 
 done:
     return ret;
 }
 
-long libos_signal_sigprocmask(int how, const sigset_t* set, sigset_t* oldset)
+long myst_signal_sigprocmask(int how, const sigset_t* set, sigset_t* oldset)
 {
     long ret = 0;
-    libos_thread_t* thread = libos_thread_self();
+    myst_thread_t* thread = myst_thread_self();
 
     if (oldset != NULL)
     {
@@ -115,12 +115,12 @@ static long _default_signal_handler(unsigned signum)
         return 0;
     }
 
-    libos_thread_t* thread = libos_thread_self();
+    myst_thread_t* thread = myst_thread_self();
 
     // A hard kill. Never returns.
     thread->exit_status = -1;
-    thread->status = LIBOS_KILLED;
-    libos_longjmp(&thread->jmpbuf, 1);
+    thread->status = MYST_KILLED;
+    myst_longjmp(&thread->jmpbuf, 1);
 
     // Unreachable
     assert(0);
@@ -132,7 +132,7 @@ static long _handle_one_signal(unsigned signum, siginfo_t* siginfo)
     long ret = 0;
     ECHECK(_check_signum(signum));
 
-    libos_thread_t* thread = libos_thread_self();
+    myst_thread_t* thread = myst_thread_self();
 
     uint64_t mask = (uint64_t)1 << (signum - 1);
 
@@ -180,7 +180,7 @@ done:
     return ret;
 }
 
-long libos_signal_process(libos_thread_t* thread)
+long myst_signal_process(myst_thread_t* thread)
 {
     while (thread->signal.pending != 0)
     {
@@ -207,8 +207,8 @@ long libos_signal_process(libos_thread_t* thread)
     return 0;
 }
 
-long libos_signal_deliver(
-    libos_thread_t* thread,
+long myst_signal_deliver(
+    myst_thread_t* thread,
     unsigned signum,
     siginfo_t* siginfo)
 {
@@ -221,7 +221,7 @@ long libos_signal_deliver(
     {
         // Multiple threads could be trying to deliver a signal
         // to this thread simultaneously. Protect with a lock.
-        libos_spin_lock(&thread->signal.lock);
+        myst_spin_lock(&thread->signal.lock);
 
         // If the signal is not blocked, wait for the same signal from a
         // previous delivery to be handled.
@@ -231,7 +231,7 @@ long libos_signal_deliver(
         thread->signal.siginfos[signum - 1] = siginfo;
         thread->signal.pending |= mask;
 
-        libos_spin_unlock(&thread->signal.lock);
+        myst_spin_unlock(&thread->signal.lock);
     }
     else
     {
@@ -242,16 +242,16 @@ done:
     return ret;
 }
 
-long libos_signal_sigpending(sigset_t* set, unsigned size)
+long myst_signal_sigpending(sigset_t* set, unsigned size)
 {
     if (size > sizeof(sigset_t) || !set)
         return -EINVAL;
 
     memset(set, 0, size);
 
-    libos_thread_t* thread = libos_thread_self();
+    myst_thread_t* thread = myst_thread_self();
 
-    libos_thread_t* process = libos_find_process_thread(thread);
+    myst_thread_t* process = myst_find_process_thread(thread);
 
     assert(process);
 
@@ -261,10 +261,10 @@ long libos_signal_sigpending(sigset_t* set, unsigned size)
     return 0;
 }
 
-long libos_signal_clone(libos_thread_t* parent, libos_thread_t* child)
+long myst_signal_clone(myst_thread_t* parent, myst_thread_t* child)
 {
     int ret = 0;
-    ECHECK(libos_signal_init(child));
+    ECHECK(myst_signal_init(child));
 
     // Clone the signal dispositions
     unsigned len = (NSIG - 1) * sizeof(posix_sigaction_t);

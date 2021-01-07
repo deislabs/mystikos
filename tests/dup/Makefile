@@ -5,26 +5,26 @@ APPDIR = appdir
 CFLAGS = -fPIC
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 
-all: libos rootfs
+all: myst rootfs
 
 rootfs: dup.c
 	mkdir -p $(APPDIR)/bin
 	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/dup dup.c $(LDFLAGS)
-	$(LIBOS) mkcpio $(APPDIR) rootfs
+	$(MYST) mkcpio $(APPDIR) rootfs
 
 ifdef STRACE
 OPTS = --strace
 endif
 
 tests: all
-	$(RUNTEST) $(LIBOS_EXEC) rootfs /bin/dup $(OPTS)
+	$(RUNTEST) $(MYST_EXEC) rootfs /bin/dup $(OPTS)
 
 tests2:
 	gcc dup.c
 	./a.out
 
-libos:
-	$(MAKE) -C $(TOP)/tools/libos
+myst:
+	$(MAKE) -C $(TOP)/tools/myst
 
 clean:
 	rm -rf $(APPDIR) rootfs export ramfs

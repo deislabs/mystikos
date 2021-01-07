@@ -5,12 +5,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <libos/eraise.h>
-#include <libos/file.h>
-#include <libos/strings.h>
-#include <libos/tcall.h>
+#include <myst/eraise.h>
+#include <myst/file.h>
+#include <myst/strings.h>
+#include <myst/tcall.h>
 
-long libos_tcall_export_file(const char* path, const void* data, size_t size)
+long myst_tcall_export_file(const char* path, const void* data, size_t size)
 {
     long ret = 0;
     const char* env;
@@ -22,14 +22,14 @@ long libos_tcall_export_file(const char* path, const void* data, size_t size)
     if (!path || (!data && size))
         ERAISE(-EINVAL);
 
-    if ((env = getenv("LIBOS_EXPORT_RAMFS")))
+    if ((env = getenv("MYST_EXPORT_RAMFS")))
     {
         struct stat buf;
 
         if (stat(env, &buf) != 0 || !S_ISDIR(buf.st_mode))
             ERAISE(-ENOTDIR);
 
-        if (libos_strlcpy(root, env, sizeof(root)) >= sizeof(root))
+        if (myst_strlcpy(root, env, sizeof(root)) >= sizeof(root))
             ERAISE(-ENAMETOOLONG);
     }
     else
@@ -41,7 +41,7 @@ long libos_tcall_export_file(const char* path, const void* data, size_t size)
     if (snprintf(file, sizeof(file), "%s/ramfs/%s", root, path) >= sizeof(file))
         ERAISE(-ENAMETOOLONG);
 
-    if (libos_strlcpy(dir, file, sizeof(dir)) >= sizeof(dir))
+    if (myst_strlcpy(dir, file, sizeof(dir)) >= sizeof(dir))
         ERAISE(-ENAMETOOLONG);
 
     /* Chop off the final component */
@@ -50,8 +50,8 @@ long libos_tcall_export_file(const char* path, const void* data, size_t size)
     else
         ERAISE(-EINVAL);
 
-    ECHECK(libos_mkdirhier(dir, 0777));
-    ECHECK(libos_write_file(file, data, size));
+    ECHECK(myst_mkdirhier(dir, 0777));
+    ECHECK(myst_write_file(file, data, size));
 
 done:
     return ret;

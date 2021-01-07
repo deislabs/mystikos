@@ -6,11 +6,11 @@ WHICH_GCC = $(shell which gcc)
 
 CFLAGS = -g -Werror -fPIC
 
-ifeq ($(LIBOS_RELEASE),1)
+ifeq ($(MYST_RELEASE),1)
 CFLAGS += -Og
 endif
 
-ifdef LIBOS_ENABLE_GCOV
+ifdef MYST_ENABLE_GCOV
 CFLAGS += -fprofile-arcs -ftest-coverage
 endif
 

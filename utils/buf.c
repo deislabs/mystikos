@@ -5,15 +5,15 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <libos/buf.h>
+#include <myst/buf.h>
 #include <stdlib.h>
 
-#include <libos/round.h>
-#include <libos/strings.h>
+#include <myst/round.h>
+#include <myst/strings.h>
 
-#define LIBOS_BUF_CHUNK_SIZE 1024
+#define MYST_BUF_CHUNK_SIZE 1024
 
-void libos_buf_release(libos_buf_t* buf)
+void myst_buf_release(myst_buf_t* buf)
 {
     if (buf && buf->data)
     {
@@ -21,10 +21,10 @@ void libos_buf_release(libos_buf_t* buf)
         free(buf->data);
     }
 
-    memset(buf, 0x00, sizeof(libos_buf_t));
+    memset(buf, 0x00, sizeof(myst_buf_t));
 }
 
-int libos_buf_clear(libos_buf_t* buf)
+int myst_buf_clear(myst_buf_t* buf)
 {
     if (!buf)
         return -1;
@@ -34,7 +34,7 @@ int libos_buf_clear(libos_buf_t* buf)
     return 0;
 }
 
-int libos_buf_reserve(libos_buf_t* buf, size_t cap)
+int myst_buf_reserve(myst_buf_t* buf, size_t cap)
 {
     if (!buf)
         return -1;
@@ -51,7 +51,7 @@ int libos_buf_reserve(libos_buf_t* buf, size_t cap)
         /* If capacity still insufficent, round to multiple of chunk size */
         if (cap > new_cap)
         {
-            const size_t N = LIBOS_BUF_CHUNK_SIZE;
+            const size_t N = MYST_BUF_CHUNK_SIZE;
             new_cap = (cap + N - 1) / N * N;
         }
 
@@ -66,19 +66,19 @@ int libos_buf_reserve(libos_buf_t* buf, size_t cap)
     return 0;
 }
 
-int libos_buf_resize(libos_buf_t* buf, size_t new_size)
+int myst_buf_resize(myst_buf_t* buf, size_t new_size)
 {
     if (!buf)
         return -1;
 
     if (new_size == 0)
     {
-        libos_buf_release(buf);
-        memset(buf, 0, sizeof(libos_buf_t));
+        myst_buf_release(buf);
+        memset(buf, 0, sizeof(myst_buf_t));
         return 0;
     }
 
-    if (libos_buf_reserve(buf, new_size) != 0)
+    if (myst_buf_reserve(buf, new_size) != 0)
         return -1;
 
     if (new_size > buf->size)
@@ -89,7 +89,7 @@ int libos_buf_resize(libos_buf_t* buf, size_t new_size)
     return 0;
 }
 
-int libos_buf_append(libos_buf_t* buf, const void* data, size_t size)
+int myst_buf_append(myst_buf_t* buf, const void* data, size_t size)
 {
     size_t new_size;
 
@@ -109,7 +109,7 @@ int libos_buf_append(libos_buf_t* buf, const void* data, size_t size)
     {
         int err;
 
-        if ((err = libos_buf_reserve(buf, new_size)) != 0)
+        if ((err = myst_buf_reserve(buf, new_size)) != 0)
             return err;
     }
 
@@ -120,8 +120,8 @@ int libos_buf_append(libos_buf_t* buf, const void* data, size_t size)
     return 0;
 }
 
-int libos_buf_insert(
-    libos_buf_t* buf,
+int myst_buf_insert(
+    myst_buf_t* buf,
     size_t pos,
     const void* data,
     size_t size)
@@ -132,7 +132,7 @@ int libos_buf_insert(
     if (!buf || pos > buf->size)
         goto done;
 
-    if (libos_buf_reserve(buf, buf->size + size) != 0)
+    if (myst_buf_reserve(buf, buf->size + size) != 0)
         return -1;
 
     rem = buf->size - pos;
@@ -152,7 +152,7 @@ done:
     return ret;
 }
 
-int libos_buf_remove(libos_buf_t* buf, size_t pos, size_t size)
+int myst_buf_remove(myst_buf_t* buf, size_t pos, size_t size)
 {
     size_t rem;
 
@@ -169,7 +169,7 @@ int libos_buf_remove(libos_buf_t* buf, size_t pos, size_t size)
     return 0;
 }
 
-int libos_buf_pack_u64(libos_buf_t* buf, uint64_t x)
+int myst_buf_pack_u64(myst_buf_t* buf, uint64_t x)
 {
     int ret = -1;
     const size_t n = sizeof(uint64_t);
@@ -177,7 +177,7 @@ int libos_buf_pack_u64(libos_buf_t* buf, uint64_t x)
     if (!buf)
         goto done;
 
-    if (libos_buf_append(buf, &x, n) != 0)
+    if (myst_buf_append(buf, &x, n) != 0)
         goto done;
 
     ret = 0;
@@ -186,7 +186,7 @@ done:
     return ret;
 }
 
-int libos_buf_unpack_u64(libos_buf_t* buf, uint64_t* x)
+int myst_buf_unpack_u64(myst_buf_t* buf, uint64_t* x)
 {
     int ret = -1;
     size_t r;
@@ -209,7 +209,7 @@ done:
     return ret;
 }
 
-int libos_buf_pack_bytes(libos_buf_t* buf, const void* p, size_t size)
+int myst_buf_pack_bytes(myst_buf_t* buf, const void* p, size_t size)
 {
     int ret = -1;
     size_t n;
@@ -220,7 +220,7 @@ int libos_buf_pack_bytes(libos_buf_t* buf, const void* p, size_t size)
         goto done;
 
     /* total size should be a multiple of 8 to guarantee alignment */
-    if (libos_round_up(size, sizeof(uint64_t), &n) != 0)
+    if (myst_round_up(size, sizeof(uint64_t), &n) != 0)
         goto done;
 
     /* calculate how many extra alignment bytes are needed */
@@ -231,15 +231,15 @@ int libos_buf_pack_bytes(libos_buf_t* buf, const void* p, size_t size)
         memset(align_buf, 0, align);
 
     /* append the size */
-    if (libos_buf_pack_u64(buf, size) != 0)
+    if (myst_buf_pack_u64(buf, size) != 0)
         goto done;
 
     /* append the bytes */
-    if (size && libos_buf_append(buf, p, size) != 0)
+    if (size && myst_buf_append(buf, p, size) != 0)
         goto done;
 
     /* append the alignment bytes */
-    if (align && libos_buf_append(buf, align_buf, align) != 0)
+    if (align && myst_buf_append(buf, align_buf, align) != 0)
         goto done;
 
     ret = 0;
@@ -248,7 +248,7 @@ done:
     return ret;
 }
 
-int libos_buf_unpack_bytes(libos_buf_t* buf, const void** p, size_t* size_out)
+int myst_buf_unpack_bytes(myst_buf_t* buf, const void** p, size_t* size_out)
 {
     int ret = -1;
     size_t size;
@@ -257,7 +257,7 @@ int libos_buf_unpack_bytes(libos_buf_t* buf, const void** p, size_t* size_out)
         goto done;
 
     /* unpack the size of the array */
-    if (libos_buf_unpack_u64(buf, &size) != 0)
+    if (myst_buf_unpack_u64(buf, &size) != 0)
         goto done;
 
     /* unpack the array bytes */
@@ -265,7 +265,7 @@ int libos_buf_unpack_bytes(libos_buf_t* buf, const void** p, size_t* size_out)
         size_t r;
         size_t n;
 
-        if (libos_round_up(size, sizeof(uint64_t), &n) != 0)
+        if (myst_round_up(size, sizeof(uint64_t), &n) != 0)
             goto done;
 
         r = buf->size - buf->offset;
@@ -284,7 +284,7 @@ done:
     return ret;
 }
 
-int libos_buf_pack_str(libos_buf_t* buf, const char* str)
+int myst_buf_pack_str(myst_buf_t* buf, const char* str)
 {
     int ret = -1;
     size_t len;
@@ -295,7 +295,7 @@ int libos_buf_pack_str(libos_buf_t* buf, const char* str)
     len = strlen(str);
 
     /* pack the characters and the null terminator */
-    if (libos_buf_pack_bytes(buf, str, len + 1) != 0)
+    if (myst_buf_pack_bytes(buf, str, len + 1) != 0)
         goto done;
 
     ret = 0;
@@ -304,7 +304,7 @@ done:
     return ret;
 }
 
-int libos_buf_unpack_str(libos_buf_t* buf, const char** str, size_t* len)
+int myst_buf_unpack_str(myst_buf_t* buf, const char** str, size_t* len)
 {
     int ret = -1;
     size_t size;
@@ -314,7 +314,7 @@ int libos_buf_unpack_str(libos_buf_t* buf, const char** str, size_t* len)
         goto done;
 
     /* unpack the array of charaters */
-    if (libos_buf_unpack_bytes(buf, (const void**)&p, &size) != 0)
+    if (myst_buf_unpack_bytes(buf, (const void**)&p, &size) != 0)
         goto done;
 
     /* a string must have at least one null byte */
@@ -342,8 +342,8 @@ done:
 **
 ** Note that a string will always have at least one null byte.
 */
-int libos_buf_pack_strings(
-    libos_buf_t* buf,
+int myst_buf_pack_strings(
+    myst_buf_t* buf,
     const char* strings[],
     size_t count)
 {
@@ -353,7 +353,7 @@ int libos_buf_pack_strings(
         goto done;
 
     /* pack the number of strings */
-    if (libos_buf_pack_u64(buf, count) != 0)
+    if (myst_buf_pack_u64(buf, count) != 0)
         goto done;
 
     /* pack each of the strings */
@@ -362,7 +362,7 @@ int libos_buf_pack_strings(
         if (!strings[i])
             goto done;
 
-        if (libos_buf_pack_str(buf, strings[i]) != 0)
+        if (myst_buf_pack_str(buf, strings[i]) != 0)
             goto done;
     }
 
@@ -372,8 +372,8 @@ done:
     return ret;
 }
 
-int libos_buf_unpack_strings(
-    libos_buf_t* buf,
+int myst_buf_unpack_strings(
+    myst_buf_t* buf,
     const char*** strings_out,
     size_t* count_out)
 {
@@ -385,7 +385,7 @@ int libos_buf_unpack_strings(
         goto done;
 
     /* unpack the number of strings */
-    if (libos_buf_unpack_u64(buf, &count) != 0)
+    if (myst_buf_unpack_u64(buf, &count) != 0)
         goto done;
 
     /* allocate array of pointers to strings */
@@ -398,7 +398,7 @@ int libos_buf_unpack_strings(
         const char* str;
         size_t len;
 
-        if (libos_buf_unpack_str(buf, &str, &len) != 0)
+        if (myst_buf_unpack_str(buf, &str, &len) != 0)
             goto done;
 
         strings[i] = str;

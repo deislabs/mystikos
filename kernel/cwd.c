@@ -1,15 +1,15 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include <libos/eraise.h>
-#include <libos/syscall.h>
+#include <myst/eraise.h>
+#include <myst/syscall.h>
 
-int libos_chdir(const char* path)
+int myst_chdir(const char* path)
 {
-    return (int)libos_syscall_ret(libos_syscall_chdir(path));
+    return (int)myst_syscall_ret(myst_syscall_chdir(path));
 }
 
-char* libos_getcwd(char* buf, size_t size)
+char* myst_getcwd(char* buf, size_t size)
 {
-    return (char*)libos_syscall_ret(libos_syscall_getcwd(buf, size));
+    return (char*)myst_syscall_ret(myst_syscall_getcwd(buf, size));
 }

@@ -1,7 +1,7 @@
 TOP=$(abspath ..)
 include $(TOP)/defs.mak
 
-TARGET = $(LIBDIR)/liboscrt.so
+TARGET = $(LIBDIR)/libmystcrt.so
 
 CFLAGS = -m64 -g -fPIC -Werror
 
@@ -9,18 +9,18 @@ INCLUDES = -I$(INCDIR)
 
 SOURCES = $(wildcard *.c) $(wildcard glibc/*.c)
 
-ifdef LIBOS_ENABLE_GCOV
+ifdef MYST_ENABLE_GCOV
 CFLAGS += -fprofile-arcs -ftest-coverage
-DEFINES = -DLIBOS_ENABLE_GCOV
+DEFINES = -DMYST_ENABLE_GCOV
 endif
 
 LDFLAGS1 = -Wl,--sort-section,alignment -Wl,--sort-common -Wl,--gc-sections -Wl,--hash-style=both -Wl,--no-undefined -Wl,--exclude-libs=ALL -nostdlib -nodefaultlibs -nostartfiles
 
-LDFLAGS1 += -Wl,-elibos_enter_crt
+LDFLAGS1 += -Wl,-emyst_enter_crt
 
 LDFLAGS2 = -Wl,-Bstatic -Wl,-Bsymbolic -Wl,--export-dynamic -Wl,-pie -Wl,--build-id -Wl,-z,noexecstack -Wl,-z,now
 
-ifdef LIBOS_ENABLE_GCOV
+ifdef MYST_ENABLE_GCOV
 LDFLAGS2 += -L$(LIBDIR)
 LDFLAGS2 += -lgcov_musl
 endif

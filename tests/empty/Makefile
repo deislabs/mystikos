@@ -11,9 +11,9 @@ CFLAGS = $(OEENCLAVE_CFLAGS)
 
 LDFLAGS = $(OEENCLAVE_LDFLAGS)
 
-LIBS = $(LIBDIR)/libosutils.a
+LIBS = $(LIBDIR)/libmystutils.a
 
-ifdef LIBOS_ENABLE_GCOV
+ifdef MYST_ENABLE_GCOV
 LIBS += $(LIBDIR)/libgcov_musl.a
 endif
 

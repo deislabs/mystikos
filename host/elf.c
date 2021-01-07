@@ -5,10 +5,10 @@
 // Licensed under the MIT License.
 
 #include <ctype.h>
-#include <libos/buf.h>
-#include <libos/elf.h>
-#include <libos/round.h>
-#include <libos/strings.h>
+#include <myst/buf.h>
+#include <myst/elf.h>
+#include <myst/round.h>
+#include <myst/strings.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -244,7 +244,7 @@ static void _adjust_section_header_offsets(
 
 static int _reset_buffer(
     elf_t* elf,
-    libos_buf_t* buf,
+    myst_buf_t* buf,
     size_t offset,
     ssize_t adjustment)
 {
@@ -1571,7 +1571,7 @@ int elf_add_section(
 {
     int rc = -1;
     size_t shstrndx;
-    libos_buf_t buf = LIBOS_BUF_INITIALIZER;
+    myst_buf_t buf = MYST_BUF_INITIALIZER;
     elf_shdr_t sh;
 
     /* Reject invalid parameters */
@@ -1616,7 +1616,7 @@ int elf_add_section(
     /* Insert new section at SECOFFSET */
     {
         /* Insert the new section */
-        if (libos_buf_insert(&buf, sh.sh_offset, secdata, secsize) != 0)
+        if (myst_buf_insert(&buf, sh.sh_offset, secdata, secsize) != 0)
             GOTO(done);
 
         /* Reset ELF object based on updated memory */
@@ -1638,15 +1638,15 @@ int elf_add_section(
         if (ADD_OVERFLOW(strlen(name), 1, &namesize))
             GOTO(done);
 
-        if (libos_round_up(namesize, sizeof(elf_shdr_t), &namesize) != 0)
+        if (myst_round_up(namesize, sizeof(elf_shdr_t), &namesize) != 0)
             GOTO(done);
 
         /* Insert space for the new name */
-        if (libos_buf_insert(&buf, nameoffset, NULL, namesize) != 0)
+        if (myst_buf_insert(&buf, nameoffset, NULL, namesize) != 0)
             GOTO(done);
 
         /* Copy the section name to the .shstrtab section */
-        libos_strlcat((char*)buf.data + nameoffset, name, namesize);
+        myst_strlcat((char*)buf.data + nameoffset, name, namesize);
 
         /* Reset ELF object based on updated memory */
 
@@ -1684,7 +1684,7 @@ int elf_add_section(
             GOTO(done);
 
         /* Insert new section header at end of data */
-        if (libos_buf_append(&buf, &sh, sizeof(elf_shdr_t)) != 0)
+        if (myst_buf_append(&buf, &sh, sizeof(elf_shdr_t)) != 0)
             GOTO(done);
 
         if (_reset_buffer(elf, &buf, 0, 0) != 0)
@@ -1947,7 +1947,7 @@ int elf_load_relocations(const elf_t* elf, void** data_out, size_t* size_out)
     {
         extern void* memalign(size_t alignment, size_t size);
 
-        if (libos_round_up(size, PAGE_SIZE, size_out) != 0)
+        if (myst_round_up(size, PAGE_SIZE, size_out) != 0)
             GOTO(done);
 
         if (!(*data_out = memalign(PAGE_SIZE, *size_out)))

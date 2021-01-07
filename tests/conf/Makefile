@@ -12,8 +12,8 @@ CFLAGS = $(OEHOST_CFLAGS) $(GCOV_CFLAGS)
 LDFLAGS = $(OEHOST_LDFLAGS) $(GCOV_LDFLAGS)
 
 LIBS =
-LIBS += $(LIBDIR)/liboshost.a
-LIBS += $(LIBDIR)/libosutils.a
+LIBS += $(LIBDIR)/libmysthost.a
+LIBS += $(LIBDIR)/libmystutils.a
 
 REDEFINE_TESTS=1
 
@@ -28,4 +28,4 @@ test1:
 
 test2:
 	@ $(MKROOTFS) $(SUBBINDIR)/$(PROGRAM) rootfs conf
-	@ $(RUNTEST) $(LIBOS_EXEC) rootfs /bin/$(PROGRAM) conf
+	@ $(RUNTEST) $(MYST_EXEC) rootfs /bin/$(PROGRAM) conf

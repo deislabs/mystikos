@@ -3,8 +3,8 @@
 
 #include <stdlib.h>
 
-#include <libos/atexit.h>
-#include <libos/spinlock.h>
+#include <myst/atexit.h>
+#include <myst/spinlock.h>
 
 typedef struct atexit_entry atexit_entry_t;
 
@@ -16,9 +16,9 @@ struct atexit_entry
 };
 
 static atexit_entry_t* _entries;
-static libos_spinlock_t _lock;
+static myst_spinlock_t _lock;
 
-int libos_atexit(void (*function)(void*), void* arg)
+int myst_atexit(void (*function)(void*), void* arg)
 {
     int ret = -1;
     atexit_entry_t* entry;
@@ -32,10 +32,10 @@ int libos_atexit(void (*function)(void*), void* arg)
     entry->function = function;
     entry->arg = arg;
 
-    libos_spin_lock(&_lock);
+    myst_spin_lock(&_lock);
     entry->next = _entries;
     _entries = entry;
-    libos_spin_unlock(&_lock);
+    myst_spin_unlock(&_lock);
 
     ret = 0;
 
@@ -44,7 +44,7 @@ done:
     return ret;
 }
 
-void libos_call_atexit_functions(void)
+void myst_call_atexit_functions(void)
 {
     atexit_entry_t* p;
 

@@ -3,13 +3,13 @@ include $(TOP)/defs.mak
 
 SUBLIBDIR=$(LIBDIR)
 
-ARCHIVE = libostargetcommon.a
+ARCHIVE = libmysttargetcommon.a
 
 SOURCES += $(wildcard *.c)
 
 CFLAGS = $(DEFAULT_CFLAGS)
 
-ifdef LIBOS_ENABLE_GCOV
+ifdef MYST_ENABLE_GCOV
 CFLAGS += $(GCOV_CFLAGS)
 endif
 

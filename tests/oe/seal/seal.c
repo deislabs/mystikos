@@ -123,7 +123,7 @@ void test_sealing(void)
 
 int main(int argc, const char* argv[])
 {
-    const char* target = getenv("LIBOS_TARGET");
+    const char* target = getenv("MYST_TARGET");
 
     if (strcmp(target, "sgx") == 0)
         test_sealing();

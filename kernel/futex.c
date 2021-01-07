@@ -4,12 +4,12 @@
 #include <errno.h>
 #include <stdlib.h>
 
-#include <libos/atexit.h>
-#include <libos/cond.h>
-#include <libos/eraise.h>
-#include <libos/futex.h>
-#include <libos/strings.h>
-#include <libos/thread.h>
+#include <myst/atexit.h>
+#include <myst/cond.h>
+#include <myst/eraise.h>
+#include <myst/futex.h>
+#include <myst/strings.h>
+#include <myst/thread.h>
 
 /*
 **==============================================================================
@@ -32,32 +32,32 @@ struct futex
     futex_t* next;
     size_t refs;
     volatile int* uaddr;
-    libos_cond_t cond;
-    libos_mutex_t mutex;
+    myst_cond_t cond;
+    myst_mutex_t mutex;
 };
 
 static futex_t* _chains[NUM_CHAINS];
 static bool _installed_free_futexes;
 
 #if 1
-static libos_spinlock_t _spin = LIBOS_SPINLOCK_INITIALIZER;
+static myst_spinlock_t _spin = MYST_SPINLOCK_INITIALIZER;
 static void _lock(void)
 {
-    libos_spin_lock(&_spin);
+    myst_spin_lock(&_spin);
 }
 static void _unlock(void)
 {
-    libos_spin_unlock(&_spin);
+    myst_spin_unlock(&_spin);
 }
 #else
-static libos_mutex_t _mutex;
+static myst_mutex_t _mutex;
 static void _lock(void)
 {
-    libos_mutex_lock(&_mutex);
+    myst_mutex_lock(&_mutex);
 }
 static void _unlock(void)
 {
-    libos_mutex_unlock(&_mutex);
+    myst_mutex_unlock(&_mutex);
 }
 #endif
 
@@ -86,7 +86,7 @@ static futex_t* _get_futex(volatile int* uaddr)
 
     if (!_installed_free_futexes)
     {
-        libos_atexit(_free_futexes, NULL);
+        myst_atexit(_free_futexes, NULL);
         _installed_free_futexes = true;
     }
 
@@ -124,7 +124,7 @@ static int _put_futex(int* uaddr)
     uint64_t index = ((uint64_t)uaddr >> 2) % NUM_CHAINS;
     futex_t* prev = NULL;
 
-    libos_spin_lock(&_lock);
+    myst_spin_lock(&_lock);
 
     for (futex_t* p = _chains[index]; p; p = p->next)
     {
@@ -150,7 +150,7 @@ static int _put_futex(int* uaddr)
     }
 
 done:
-    libos_spin_unlock(&_lock);
+    myst_spin_unlock(&_lock);
 
     return ret;
 #else
@@ -159,11 +159,11 @@ done:
 #endif
 }
 
-int libos_futex_wait(int* uaddr, int val, const struct timespec* to)
+int myst_futex_wait(int* uaddr, int val, const struct timespec* to)
 {
     int ret = 0;
     futex_t* f = NULL;
-    libos_thread_t* me = libos_thread_self();
+    myst_thread_t* me = myst_thread_self();
 
 #if defined(DEBUG_TRACE)
     printf("%s(): uaddr=%p\n", __FUNCTION__, uaddr);
@@ -181,13 +181,13 @@ int libos_futex_wait(int* uaddr, int val, const struct timespec* to)
         goto done;
     }
 
-    libos_mutex_lock(&f->mutex);
+    myst_mutex_lock(&f->mutex);
     {
         int retval;
 
         if (*uaddr != val)
         {
-            libos_mutex_unlock(&f->mutex);
+            myst_mutex_unlock(&f->mutex);
             ret = -EAGAIN;
             goto done;
         }
@@ -195,14 +195,14 @@ int libos_futex_wait(int* uaddr, int val, const struct timespec* to)
         // Give termination signal handler a chance to wake up the thread.
         me->signal.cond_wait = &f->cond;
 
-        retval = libos_cond_timedwait(&f->cond, &f->mutex, to);
+        retval = myst_cond_timedwait(&f->cond, &f->mutex, to);
 
         me->signal.cond_wait = NULL;
 
         if (retval != 0)
             ret = -retval;
     }
-    libos_mutex_unlock(&f->mutex);
+    myst_mutex_unlock(&f->mutex);
 
 done:
 
@@ -212,7 +212,7 @@ done:
     return ret;
 }
 
-int libos_futex_wake(int* uaddr, int val)
+int myst_futex_wake(int* uaddr, int val)
 {
     int ret = 0;
     futex_t* f = NULL;
@@ -234,13 +234,13 @@ int libos_futex_wake(int* uaddr, int val)
         goto done;
     }
 
-    libos_mutex_lock(&f->mutex);
+    myst_mutex_lock(&f->mutex);
     locked = true;
-    libos_assume(f->mutex.owner == libos_thread_self());
+    myst_assume(f->mutex.owner == myst_thread_self());
 
     if (val == 1)
     {
-        if (libos_cond_signal(&f->cond) != 0)
+        if (myst_cond_signal(&f->cond) != 0)
         {
             ret = -ENOSYS;
             goto done;
@@ -250,7 +250,7 @@ int libos_futex_wake(int* uaddr, int val)
     {
         size_t n = (val == INT_MAX) ? SIZE_MAX : (size_t)val;
 
-        if (libos_cond_broadcast(&f->cond, n) != 0)
+        if (myst_cond_broadcast(&f->cond, n) != 0)
         {
             ret = -ENOSYS;
             goto done;
@@ -265,7 +265,7 @@ int libos_futex_wake(int* uaddr, int val)
 done:
 
     if (locked)
-        libos_mutex_unlock(&f->mutex);
+        myst_mutex_unlock(&f->mutex);
 
     if (f)
         _put_futex(uaddr);
@@ -310,17 +310,17 @@ static int _futex_requeue(int* uaddr, int op, int val, int val2, int* uaddr2)
         goto done;
     }
 
-    libos_mutex_lock(&f->mutex);
+    myst_mutex_lock(&f->mutex);
     locked = true;
-    libos_mutex_lock(&f2->mutex);
+    myst_mutex_lock(&f2->mutex);
     locked2 = true;
 
-    /* Invoke libos_cond_requeue() */
+    /* Invoke myst_cond_requeue() */
     {
         size_t wake_count = (val == INT_MAX) ? SIZE_MAX : (size_t)val;
         size_t requeue_count = (val2 == INT_MAX) ? SIZE_MAX : (size_t)val2;
 
-        if (libos_cond_requeue(
+        if (myst_cond_requeue(
                 &f->cond, &f2->cond, wake_count, requeue_count) != 0)
         {
             ret = -ENOSYS;
@@ -331,10 +331,10 @@ static int _futex_requeue(int* uaddr, int op, int val, int val2, int* uaddr2)
 done:
 
     if (locked)
-        libos_mutex_unlock(&f->mutex);
+        myst_mutex_unlock(&f->mutex);
 
     if (locked2)
-        libos_mutex_unlock(&f2->mutex);
+        myst_mutex_unlock(&f2->mutex);
 
     if (f)
         _put_futex(uaddr);
@@ -353,7 +353,7 @@ done:
 **==============================================================================
 */
 
-long libos_syscall_futex(
+long myst_syscall_futex(
     int* uaddr,
     int op,
     int val,
@@ -367,11 +367,11 @@ long libos_syscall_futex(
 
     if (op == FUTEX_WAIT || op == (FUTEX_WAIT | FUTEX_PRIVATE))
     {
-        ECHECK(libos_futex_wait(uaddr, val, (const struct timespec*)arg));
+        ECHECK(myst_futex_wait(uaddr, val, (const struct timespec*)arg));
     }
     else if (op == FUTEX_WAKE || op == (FUTEX_WAKE | FUTEX_PRIVATE))
     {
-        ECHECK(libos_futex_wake(uaddr, val));
+        ECHECK(myst_futex_wake(uaddr, val));
     }
     else if (op == FUTEX_REQUEUE || op == (FUTEX_REQUEUE | FUTEX_PRIVATE))
     {

@@ -12,8 +12,8 @@
 #include <string.h>
 #include <sys/stat.h>
 
-#include <libos/file.h>
-#include <libos/json.h>
+#include <myst/file.h>
+#include <myst/json.h>
 
 #include "strings.h"
 
@@ -754,7 +754,7 @@ static void _parse(const char* path)
 
     memset(&header, 0, sizeof(header));
 
-    if (libos_load_file(path, (void**)&data, &size) != 0)
+    if (myst_load_file(path, (void**)&data, &size) != 0)
     {
         fprintf(stderr, "%s: failed to access '%s'\n", arg0, path);
         exit(1);

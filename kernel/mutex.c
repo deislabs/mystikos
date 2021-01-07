@@ -8,21 +8,21 @@
 #include <stdbool.h>
 #include <string.h>
 
-#include <libos/mutex.h>
-#include <libos/panic.h>
-#include <libos/printf.h>
-#include <libos/strings.h>
-#include <libos/tcall.h>
-#include <libos/thread.h>
+#include <myst/mutex.h>
+#include <myst/panic.h>
+#include <myst/printf.h>
+#include <myst/strings.h>
+#include <myst/tcall.h>
+#include <myst/thread.h>
 
-int libos_mutex_init(libos_mutex_t* m)
+int myst_mutex_init(myst_mutex_t* m)
 {
     int ret = -1;
 
     if (!m)
         return EINVAL;
 
-    memset(m, 0, sizeof(libos_mutex_t));
+    memset(m, 0, sizeof(myst_mutex_t));
     m->lock = 0;
 
     ret = 0;
@@ -31,7 +31,7 @@ int libos_mutex_init(libos_mutex_t* m)
 }
 
 /* Caller manages the spinlock */
-int __libos_mutex_trylock(libos_mutex_t* m, libos_thread_t* self)
+int __myst_mutex_trylock(myst_mutex_t* m, myst_thread_t* self)
 {
     /* If this thread has already locked the mutex */
     if (m->owner == self)
@@ -57,7 +57,7 @@ int __libos_mutex_trylock(libos_mutex_t* m, libos_thread_t* self)
         if (m->queue.front == self)
         {
             /* Remove this thread from front of the waiters queue */
-            libos_thread_queue_pop_front(&m->queue);
+            myst_thread_queue_pop_front(&m->queue);
 
             /* Obtain the mutex */
             m->owner = self;
@@ -69,10 +69,10 @@ int __libos_mutex_trylock(libos_mutex_t* m, libos_thread_t* self)
     return -1;
 }
 
-int libos_mutex_lock(libos_mutex_t* mutex)
+int myst_mutex_lock(myst_mutex_t* mutex)
 {
-    libos_mutex_t* m = (libos_mutex_t*)mutex;
-    libos_thread_t* self = libos_thread_self();
+    myst_mutex_t* m = (myst_mutex_t*)mutex;
+    myst_thread_t* self = myst_thread_self();
 
     if (!m)
         return EINVAL;
@@ -82,61 +82,61 @@ int libos_mutex_lock(libos_mutex_t* mutex)
     {
         long r;
 
-        libos_spin_lock(&m->lock);
+        myst_spin_lock(&m->lock);
         {
             /* Attempt to acquire lock */
-            if (__libos_mutex_trylock(m, self) == 0)
+            if (__myst_mutex_trylock(m, self) == 0)
             {
-                libos_spin_unlock(&m->lock);
+                myst_spin_unlock(&m->lock);
                 return 0;
             }
 
             /* If the waiters queue does not contain this thread */
-            if (!libos_thread_queue_contains(&m->queue, self))
+            if (!myst_thread_queue_contains(&m->queue, self))
             {
                 /* Insert thread at back of waiters queue */
-                libos_thread_queue_push_back(&m->queue, self);
+                myst_thread_queue_push_back(&m->queue, self);
             }
         }
-        libos_spin_unlock(&m->lock);
+        myst_spin_unlock(&m->lock);
 
         /* Ask host to wait for an event on this thread */
-        if ((r = libos_tcall_wait(self->event, NULL)) != 0)
-            libos_panic("libos_tcall_wait(): %ld: %d", r, *(int*)self->event);
+        if ((r = myst_tcall_wait(self->event, NULL)) != 0)
+            myst_panic("myst_tcall_wait(): %ld: %d", r, *(int*)self->event);
     }
 
     /* Unreachable! */
 }
 
-int libos_mutex_trylock(libos_mutex_t* mutex)
+int myst_mutex_trylock(myst_mutex_t* mutex)
 {
-    libos_mutex_t* m = (libos_mutex_t*)mutex;
-    libos_thread_t* self = libos_thread_self();
+    myst_mutex_t* m = (myst_mutex_t*)mutex;
+    myst_thread_t* self = myst_thread_self();
 
     if (!m)
         return EINVAL;
 
-    libos_spin_lock(&m->lock);
+    myst_spin_lock(&m->lock);
     {
         /* Attempt to acquire lock */
-        if (__libos_mutex_trylock(m, self) == 0)
+        if (__myst_mutex_trylock(m, self) == 0)
         {
-            libos_spin_unlock(&m->lock);
+            myst_spin_unlock(&m->lock);
             return 0;
         }
     }
-    libos_spin_unlock(&m->lock);
+    myst_spin_unlock(&m->lock);
 
     return EBUSY;
 }
 
-int __libos_mutex_unlock(libos_mutex_t* mutex, libos_thread_t** waiter)
+int __myst_mutex_unlock(myst_mutex_t* mutex, myst_thread_t** waiter)
 {
-    libos_mutex_t* m = (libos_mutex_t*)mutex;
-    libos_thread_t* self = libos_thread_self();
+    myst_mutex_t* m = (myst_mutex_t*)mutex;
+    myst_thread_t* self = myst_thread_self();
     int ret = -1;
 
-    libos_spin_lock(&m->lock);
+    myst_spin_lock(&m->lock);
     {
         /* If this thread has the mutex locked */
         if (m->owner == self)
@@ -154,62 +154,62 @@ int __libos_mutex_unlock(libos_mutex_t* mutex, libos_thread_t** waiter)
             ret = 0;
         }
     }
-    libos_spin_unlock(&m->lock);
+    myst_spin_unlock(&m->lock);
 
     return ret;
 }
 
-int libos_mutex_unlock(libos_mutex_t* m)
+int myst_mutex_unlock(myst_mutex_t* m)
 {
-    libos_thread_t* waiter = NULL;
+    myst_thread_t* waiter = NULL;
 
     if (!m)
         return EINVAL;
 
-    if (__libos_mutex_unlock(m, &waiter) != 0)
+    if (__myst_mutex_unlock(m, &waiter) != 0)
         return EPERM;
 
     if (waiter)
     {
         /* Ask host to wake up this thread */
-        libos_tcall_wake(waiter->event);
+        myst_tcall_wake(waiter->event);
     }
 
     return 0;
 }
 
-int libos_mutex_destroy(libos_mutex_t* mutex)
+int myst_mutex_destroy(myst_mutex_t* mutex)
 {
-    libos_mutex_t* m = (libos_mutex_t*)mutex;
+    myst_mutex_t* m = (myst_mutex_t*)mutex;
 
     if (!m)
         return EINVAL;
 
     int ret = EBUSY;
 
-    libos_spin_lock(&m->lock);
+    myst_spin_lock(&m->lock);
     {
-        if (libos_thread_queue_empty(&m->queue))
+        if (myst_thread_queue_empty(&m->queue))
         {
-            memset(m, 0, sizeof(libos_mutex_t));
+            memset(m, 0, sizeof(myst_mutex_t));
             ret = 0;
         }
     }
-    libos_spin_unlock(&m->lock);
+    myst_spin_unlock(&m->lock);
 
     return ret;
 }
 
-libos_thread_t* libos_mutex_owner(libos_mutex_t* m)
+myst_thread_t* myst_mutex_owner(myst_mutex_t* m)
 {
-    libos_thread_t* owner;
+    myst_thread_t* owner;
 
     if (!m)
         return NULL;
 
-    libos_spin_lock(&m->lock);
+    myst_spin_lock(&m->lock);
     owner = m->owner;
-    libos_spin_unlock(&m->lock);
+    myst_spin_unlock(&m->lock);
 
     return owner;
 }

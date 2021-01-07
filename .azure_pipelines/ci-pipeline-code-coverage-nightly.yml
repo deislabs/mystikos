@@ -1,8 +1,8 @@
 variables:
-  - group: libos-pipeline
+  - group: myst-pipeline
   - name: SCRIPTS_ROOT
     value: $(Build.SourcesDirectory)/.azure_pipelines/scripts
-  - name: LIBOS_NIGHTLY_RUN_DASHBOARD
+  - name: MYST_NIGHTLY_RUN_DASHBOARD
     value: 'https://openenclave.visualstudio.com/ACC-Services/_dashboards/dashboard/90072dae-a6fb-41f2-93ec-176f04066da6'
 
 # nightly pipeline will be triggered in pipeline schedule settings.
@@ -37,7 +37,7 @@ jobs:
       displayName: 'build repo source'
       workingDirectory: $(Build.SourcesDirectory)
       env:
-        LIBOS_ENABLE_GCOV: 1
+        MYST_ENABLE_GCOV: 1
 
     # run all tests
     - script: |
@@ -47,7 +47,7 @@ jobs:
       enabled: true
       workingDirectory: $(Build.SourcesDirectory)
       env:
-        LIBOS_ENABLE_GCOV: 1
+        MYST_ENABLE_GCOV: 1
 
     # run solution tests
     - script: |
@@ -57,7 +57,7 @@ jobs:
       enabled: true
       workingDirectory: $(Build.SourcesDirectory)
       env:
-        LIBOS_ENABLE_GCOV: 1
+        MYST_ENABLE_GCOV: 1
         # by default sql solution test will run on US EAST DB Node
         DB_NAME: $(DB_NAME_USEAST)
         DB_SERVER_NAME: $(DB_SERVER_NAME_USEAST)
@@ -65,7 +65,7 @@ jobs:
 
     # single out dotnet solution test due to code coverage crash
     # but it still need to be disabled. Because dotnet sample will
-    # crash with gcov built libos runtime
+    # crash with gcov built myst runtime
     # - script: |
     #     make clean -C $(Build.SourcesDirectory)/solutions/dotnet
     #     make run -C $(Build.SourcesDirectory)/solutions/dotnet
@@ -77,7 +77,7 @@ jobs:
 
     # measure code coverage
     - script: |
-        bash $(Build.SourcesDirectory)/scripts/libos_cc
+        bash $(Build.SourcesDirectory)/scripts/myst_cc
         python3 -m "lcov_cobertura" total_cov.info -o total_cov.xml
       displayName: 'measure code coverage'
       workingDirectory: $(Build.SourcesDirectory)
@@ -127,8 +127,8 @@ jobs:
 #     - task: EmailReport@1
 #       inputs:
 #         sendMailConditionConfig: 'Always'
-#         toAddress: 'openlibos_notify@microsoft.com'
-#         subject: '{environmentStatus}: LibOS Nightly Pipeline Summary for Build $(Build.BuildNumber)'
+#         toAddress: 'Mystikos_notify@microsoft.com'
+#         subject: '{environmentStatus}: Mystikos Nightly Pipeline Summary for Build $(Build.BuildNumber)'
 #         defaultDomain: 'microsoft.com'
 #         groupTestResultsBy: 'run'
 #         includeCommits: true
@@ -155,23 +155,23 @@ jobs:
 
 #     - task: SendEmail@1
 #       inputs:
-#         To: 'openlibos_notify@microsoft.com'
+#         To: 'Mystikos_notify@microsoft.com'
 #         From: 'akstestpipeline@outlook.com'
-#         Subject: '[Build $(Agent.JobStatus)] LibOS Nightly Pipeline Code Coverage Report'
+#         Subject: '[Build $(Agent.JobStatus)] Mystikos Nightly Pipeline Code Coverage Report'
 #         Body: '
 #         <head> 
-#           <h3>[Build $(Agent.JobStatus)] LibOS Nightly Pipeline Build Notification</h3>
+#           <h3>[Build $(Agent.JobStatus)] Mystikos Nightly Pipeline Build Notification</h3>
 #         </head>
 #         <body> 
 #           <p> Build number $(Build.BuildNumber) in $(Build.Repository.Name): </p>
 #           <p> Status: $(Agent.JobStatus)</p>
 #           <p> Branch: $(Build.SourceBranchName)</p>
-#           <p> <a href="$(LIBOS_NIGHTLY_RUN_DASHBOARD)" target="_blank">Code Coverage Dashboard</a>
+#           <p> <a href="$(MYST_NIGHTLY_RUN_DASHBOARD)" target="_blank">Code Coverage Dashboard</a>
 # </p>
 #           <br>
 #           <p> Note:</p>
 #           <p> To have the report locally, please download the attached file: total_cov.info, and run below command:</p>
-#           <p> genhtml --ignore-errors source /path/downloaded/attachment/total_cov.info --legend --title "libos code coverage" --output-directory=/path/to/store/the/report </p>
+#           <p> genhtml --ignore-errors source /path/downloaded/attachment/total_cov.info --legend --title "myst code coverage" --output-directory=/path/to/store/the/report </p>
 #           <br>
 #         </body>'
 #         BodyAsHtml: true

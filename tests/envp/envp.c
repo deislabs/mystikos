@@ -17,7 +17,7 @@ int main(int argc, const char* argv[], const char* envp[])
         return 1;
     }
 
-    assert(target = getenv("LIBOS_TARGET"));
+    assert(target = getenv("MYST_TARGET"));
     assert(strcmp(target, argv[1]) == 0);
 
     printf("target=%s\n", target);

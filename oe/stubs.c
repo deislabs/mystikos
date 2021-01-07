@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include <libos/syscallext.h>
+#include <myst/syscallext.h>
 #include <openenclave/enclave.h>
 #include <stdio.h>
 #include <string.h>
@@ -27,13 +27,13 @@ oe_result_t oe_get_report_v2(
         (uint64_t)report_buffer_size,
     };
 
-    return (oe_result_t)syscall(SYS_libos_oe_get_report_v2, args);
+    return (oe_result_t)syscall(SYS_myst_oe_get_report_v2, args);
 }
 
 void oe_free_report(uint8_t* report_buffer)
 {
     uint64_t args[] = {(uint64_t)report_buffer};
-    syscall(SYS_libos_oe_free_report, args);
+    syscall(SYS_myst_oe_free_report, args);
 }
 
 oe_result_t oe_get_target_info_v2(
@@ -48,13 +48,13 @@ oe_result_t oe_get_target_info_v2(
         (uint64_t)target_info_buffer,
         (uint64_t)target_info_size,
     };
-    return (oe_result_t)syscall(SYS_libos_oe_get_target_info_v2, args);
+    return (oe_result_t)syscall(SYS_myst_oe_get_target_info_v2, args);
 }
 
 void oe_free_target_info(void* target_info)
 {
     uint64_t args[] = {(uint64_t)target_info};
-    syscall(SYS_libos_oe_free_target_info, args);
+    syscall(SYS_myst_oe_free_target_info, args);
 }
 
 oe_result_t oe_parse_report(
@@ -67,7 +67,7 @@ oe_result_t oe_parse_report(
         (uint64_t)report_size,
         (uint64_t)parsed_report,
     };
-    return (oe_result_t)syscall(SYS_libos_oe_parse_report, args);
+    return (oe_result_t)syscall(SYS_myst_oe_parse_report, args);
 }
 
 oe_result_t oe_verify_report(
@@ -80,7 +80,7 @@ oe_result_t oe_verify_report(
         (uint64_t)report_size,
         (uint64_t)parsed_report,
     };
-    return (oe_result_t)syscall(SYS_libos_oe_verify_report, args);
+    return (oe_result_t)syscall(SYS_myst_oe_verify_report, args);
 }
 
 oe_result_t oe_get_seal_key_by_policy_v2(
@@ -97,7 +97,7 @@ oe_result_t oe_get_seal_key_by_policy_v2(
         (uint64_t)key_info,
         (uint64_t)key_info_size,
     };
-    return (oe_result_t)syscall(SYS_libos_oe_get_seal_key_by_policy_v2, args);
+    return (oe_result_t)syscall(SYS_myst_oe_get_seal_key_by_policy_v2, args);
 }
 
 oe_result_t oe_get_public_key_by_policy(
@@ -116,7 +116,7 @@ oe_result_t oe_get_public_key_by_policy(
         (uint64_t)key_info,
         (uint64_t)key_info_size,
     };
-    return (oe_result_t)syscall(SYS_libos_oe_get_public_key_by_policy, args);
+    return (oe_result_t)syscall(SYS_myst_oe_get_public_key_by_policy, args);
 }
 
 oe_result_t oe_get_public_key(
@@ -133,7 +133,7 @@ oe_result_t oe_get_public_key(
         (uint64_t)key_buffer,
         (uint64_t)key_buffer_size,
     };
-    return (oe_result_t)syscall(SYS_libos_oe_get_public_key, args);
+    return (oe_result_t)syscall(SYS_myst_oe_get_public_key, args);
 }
 
 oe_result_t oe_get_private_key_by_policy(
@@ -152,7 +152,7 @@ oe_result_t oe_get_private_key_by_policy(
         (uint64_t)key_info,
         (uint64_t)key_info_size,
     };
-    return (oe_result_t)syscall(SYS_libos_oe_get_private_key_by_policy, args);
+    return (oe_result_t)syscall(SYS_myst_oe_get_private_key_by_policy, args);
 }
 
 oe_result_t oe_get_private_key(
@@ -169,7 +169,7 @@ oe_result_t oe_get_private_key(
         (uint64_t)key_buffer,
         (uint64_t)key_buffer_size,
     };
-    return (oe_result_t)syscall(SYS_libos_oe_get_private_key, args);
+    return (oe_result_t)syscall(SYS_myst_oe_get_private_key, args);
 }
 
 void oe_free_key(
@@ -184,7 +184,7 @@ void oe_free_key(
         (uint64_t)key_info,
         (uint64_t)key_info_size,
     };
-    syscall(SYS_libos_oe_free_key, args);
+    syscall(SYS_myst_oe_free_key, args);
 }
 
 oe_result_t oe_get_seal_key_v2(
@@ -199,7 +199,7 @@ oe_result_t oe_get_seal_key_v2(
         (uint64_t)key_buffer,
         (uint64_t)key_buffer_size,
     };
-    return (oe_result_t)syscall(SYS_libos_oe_get_seal_key_v2, args);
+    return (oe_result_t)syscall(SYS_myst_oe_get_seal_key_v2, args);
 }
 
 void oe_free_seal_key(uint8_t* key_buffer, uint8_t* key_info)
@@ -208,7 +208,7 @@ void oe_free_seal_key(uint8_t* key_buffer, uint8_t* key_info)
         (uint64_t)key_buffer,
         (uint64_t)key_info,
     };
-    syscall(SYS_libos_oe_free_seal_key, args);
+    syscall(SYS_myst_oe_free_seal_key, args);
 }
 
 oe_result_t oe_generate_attestation_certificate(
@@ -231,7 +231,7 @@ oe_result_t oe_generate_attestation_certificate(
     };
 
     return (oe_result_t)syscall(
-        SYS_libos_oe_generate_attestation_certificate, args);
+        SYS_myst_oe_generate_attestation_certificate, args);
 }
 
 void oe_free_attestation_certificate(uint8_t* cert)
@@ -240,7 +240,7 @@ void oe_free_attestation_certificate(uint8_t* cert)
         (uint64_t)cert,
     };
 
-    syscall(SYS_libos_oe_free_attestation_certificate, args);
+    syscall(SYS_myst_oe_free_attestation_certificate, args);
 }
 
 oe_result_t oe_verify_attestation_certificate(
@@ -257,7 +257,7 @@ oe_result_t oe_verify_attestation_certificate(
     };
 
     return (oe_result_t)syscall(
-        SYS_libos_oe_verify_attestation_certificate, args);
+        SYS_myst_oe_verify_attestation_certificate, args);
 }
 
 const char* oe_result_string(oe_result_t result)
@@ -266,5 +266,5 @@ const char* oe_result_string(oe_result_t result)
         (uint64_t)result,
     };
 
-    return (const char*)syscall(SYS_libos_oe_result_str, args);
+    return (const char*)syscall(SYS_myst_oe_result_str, args);
 }

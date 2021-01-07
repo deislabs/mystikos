@@ -49,9 +49,9 @@
 
     X partition kernel into 'target' and 'kernel'
 
-    X libos mkappdir action (build appdir from executable name)
+    X myst mkappdir action (build appdir from executable name)
 
-    X implement libos signer
+    X implement myst signer
 
     X add install rule
 

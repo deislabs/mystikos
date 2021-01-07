@@ -1,9 +1,9 @@
 # Getting started with a containerized C# program
 
-Please see [README](../README.md) for how to install Open LibOS or build
+Please see [README](../README.md) for how to install Mystikos or build
 it from source code.
 
-**Disclaimer**: Open LibOS's support for dotnet and C# is incomplete.
+**Disclaimer**: Mystikos's support for dotnet and C# is incomplete.
 We are working towards complete C# support.
 
 ## Write the program
@@ -82,7 +82,7 @@ ENTRYPOINT [ "dotnet", "/app/sum.dll", "1", "2", "3" ]
 It you have an existing docker file for your application running on an
 Ubuntu-based container, some adjustments are needed to run it on
 an Alpine Linux based container, which happens to be compatible with
-Open LibOS (they both use MUSL as C-runtime).
+Mystikos (they both use MUSL as C-runtime).
 
 * During the build stage, we need to tell the compiler that we are cross
 compiling for Alpine Linux with the switch `-r linux-musl-x64`
@@ -102,13 +102,13 @@ container app on Linux with the following command:
 
 `docker run $(docker build -q .)`
 
-## Build the app folder with Open LibOS
+## Build the app folder with Mystikos
 
 We use a script to take the same docker file and generates an
-app folder `appdir` for preparing the program to be run with Open LibOS.
+app folder `appdir` for preparing the program to be run with Mystikos.
 
 ```
-libos-appbuilder Dockerfile
+myst-appbuilder Dockerfile
 ```
 `appdir` contains the typical Linux root file system, such as `/usr`,
 `/home`, `/bin`, etc. It also contains our application under `/app`.
@@ -116,7 +116,7 @@ The dotnet runtime is also included.
 
 ## Package the application
 
-dotnet runtime requires more heap memory than Open LibOS provides
+dotnet runtime requires more heap memory than Mystikos provides
 by default. To expand the memory, we need to sign or package the application
 with a configuration file, in which a higher limit of user heap size
 can be specified as follows:
@@ -130,14 +130,14 @@ can be specified as follows:
     "ProductID": 1,
     "SecurityVersion": 1,
 
-	// Open LibOS specific settings
+	// Mystikos specific settings
     // The heap size of the user application. Increase this setting if your app experienced OOM.
     "UserMemSize": "512m",
     // The path to the entry point application in rootfs
     "ApplicationPath": "/usr/bin/dotnet",
     // The parameters to the entry point application
     "ApplicationParameters": ["/app/sum.dll"],
-    // Whether we allow "ApplicationParameters" to be overridden by command line options of "libos exec"
+    // Whether we allow "ApplicationParameters" to be overridden by command line options of "myst exec"
     "HostApplicationParameters": true,
 }
 ```
@@ -148,15 +148,15 @@ by dotnet runtime, and you can increase it as needed. For details of the config 
 Save the above config file to `config.json`, and package the app with:
 ```
 openssl genrsa -out private.pem -3 3072
-libos package appdir private.pem config.json
+myst package appdir private.pem config.json
 ```
 
 ## Run the program inside a SGX enclave
 
-Packaging produces an executable under `$PWD/libos/dotnet`, which can be launched
+Packaging produces an executable under `$PWD/myst/dotnet`, which can be launched
 like any system-installed dotnet runtime (except the execution actually happens in a TEE):
 ```
-libos/bin/dotnet /app/sum.dll 1 2 3
+myst/bin/dotnet /app/sum.dll 1 2 3
 ```
 
 The expected outputs, not surprisingly, is ``Welcome to C#! Sum is 6``

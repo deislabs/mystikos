@@ -1,13 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include <libos/buf.h>
-#include <libos/bufu64.h>
+#include <myst/buf.h>
+#include <myst/bufu64.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-int libos_bufu64_init(libos_bufu64_t* buf, uint64_t* data, size_t size)
+int myst_bufu64_init(myst_bufu64_t* buf, uint64_t* data, size_t size)
 {
     if (!buf || (!data && size > 0))
         return -1;
@@ -19,20 +19,20 @@ int libos_bufu64_init(libos_bufu64_t* buf, uint64_t* data, size_t size)
     return 0;
 }
 
-void libos_bufu64_release(libos_bufu64_t* buf)
+void myst_bufu64_release(myst_bufu64_t* buf)
 {
-    libos_buf_t tmp;
+    myst_buf_t tmp;
     const size_t n = sizeof(uint64_t);
 
     tmp.data = (uint8_t*)buf->data;
     tmp.size = buf->size * n;
     tmp.cap = buf->cap * n;
-    libos_buf_release(&tmp);
+    myst_buf_release(&tmp);
 }
 
-int libos_bufu64_reserve(libos_bufu64_t* buf, size_t cap)
+int myst_bufu64_reserve(myst_bufu64_t* buf, size_t cap)
 {
-    libos_buf_t tmp;
+    myst_buf_t tmp;
     const size_t n = sizeof(uint64_t);
 
     tmp.data = (uint8_t*)buf->data;
@@ -40,7 +40,7 @@ int libos_bufu64_reserve(libos_bufu64_t* buf, size_t cap)
     tmp.cap = buf->cap * n;
     cap *= n;
 
-    if (libos_buf_reserve(&tmp, cap) != 0)
+    if (myst_buf_reserve(&tmp, cap) != 0)
         return -1;
 
     buf->data = (uint64_t*)tmp.data;
@@ -50,9 +50,9 @@ int libos_bufu64_reserve(libos_bufu64_t* buf, size_t cap)
     return 0;
 }
 
-int libos_bufu64_resize(libos_bufu64_t* buf, size_t new_size)
+int myst_bufu64_resize(myst_bufu64_t* buf, size_t new_size)
 {
-    libos_buf_t tmp;
+    myst_buf_t tmp;
     const size_t n = sizeof(uint64_t);
 
     tmp.data = (uint8_t*)buf->data;
@@ -60,7 +60,7 @@ int libos_bufu64_resize(libos_bufu64_t* buf, size_t new_size)
     tmp.cap = buf->cap * n;
     new_size *= n;
 
-    if (libos_buf_resize(&tmp, new_size) != 0)
+    if (myst_buf_resize(&tmp, new_size) != 0)
         return -1;
 
     buf->data = (uint64_t*)tmp.data;
@@ -70,17 +70,17 @@ int libos_bufu64_resize(libos_bufu64_t* buf, size_t new_size)
     return 0;
 }
 
-void libos_bufu64_clear(libos_bufu64_t* buf)
+void myst_bufu64_clear(myst_bufu64_t* buf)
 {
-    libos_bufu64_release(buf);
+    myst_bufu64_release(buf);
     buf->data = NULL;
     buf->size = 0;
     buf->cap = 0;
 }
 
-int libos_bufu64_append(libos_bufu64_t* buf, const uint64_t* data, size_t size)
+int myst_bufu64_append(myst_bufu64_t* buf, const uint64_t* data, size_t size)
 {
-    libos_buf_t tmp;
+    myst_buf_t tmp;
     const size_t n = sizeof(uint64_t);
 
     tmp.data = (uint8_t*)buf->data;
@@ -88,7 +88,7 @@ int libos_bufu64_append(libos_bufu64_t* buf, const uint64_t* data, size_t size)
     tmp.cap = buf->cap * n;
     size *= n;
 
-    if (libos_buf_append(&tmp, data, size) != 0)
+    if (myst_buf_append(&tmp, data, size) != 0)
         return -1;
 
     buf->data = (uint64_t*)tmp.data;
@@ -98,18 +98,18 @@ int libos_bufu64_append(libos_bufu64_t* buf, const uint64_t* data, size_t size)
     return 0;
 }
 
-int libos_bufu64_append1(libos_bufu64_t* buf, uint64_t data)
+int myst_bufu64_append1(myst_bufu64_t* buf, uint64_t data)
 {
-    return libos_bufu64_append(buf, &data, 1);
+    return myst_bufu64_append(buf, &data, 1);
 }
 
-int libos_bufu64_insert(
-    libos_bufu64_t* buf,
+int myst_bufu64_insert(
+    myst_bufu64_t* buf,
     size_t pos,
     const uint64_t* data,
     size_t size)
 {
-    libos_buf_t tmp;
+    myst_buf_t tmp;
     const size_t n = sizeof(uint64_t);
 
     tmp.data = (uint8_t*)buf->data;
@@ -119,7 +119,7 @@ int libos_bufu64_insert(
     pos *= n;
     size *= n;
 
-    if (libos_buf_insert(&tmp, pos, data, size) != 0)
+    if (myst_buf_insert(&tmp, pos, data, size) != 0)
         return -1;
 
     buf->data = (uint64_t*)tmp.data;
@@ -129,9 +129,9 @@ int libos_bufu64_insert(
     return 0;
 }
 
-int libos_bufu64_remove(libos_bufu64_t* buf, size_t pos, size_t size)
+int myst_bufu64_remove(myst_bufu64_t* buf, size_t pos, size_t size)
 {
-    libos_buf_t tmp;
+    myst_buf_t tmp;
     const size_t n = sizeof(uint64_t);
 
     tmp.data = (uint8_t*)buf->data;
@@ -141,7 +141,7 @@ int libos_bufu64_remove(libos_bufu64_t* buf, size_t pos, size_t size)
     pos *= n;
     size *= n;
 
-    if (libos_buf_remove(&tmp, pos, size) != 0)
+    if (myst_buf_remove(&tmp, pos, size) != 0)
         return -1;
 
     buf->data = (uint64_t*)tmp.data;

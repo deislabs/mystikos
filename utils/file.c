@@ -7,11 +7,11 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include <libos/eraise.h>
-#include <libos/strings.h>
-#include <libos/types.h>
+#include <myst/eraise.h>
+#include <myst/strings.h>
+#include <myst/types.h>
 
-int libos_load_file(const char* path, void** data_out, size_t* size_out)
+int myst_load_file(const char* path, void** data_out, size_t* size_out)
 {
     int ret = 0;
     ssize_t n;
@@ -66,7 +66,7 @@ done:
     return ret;
 }
 
-ssize_t libos_writen(int fd, const void* data, size_t size)
+ssize_t myst_writen(int fd, const void* data, size_t size)
 {
     ssize_t ret = 0;
     const uint8_t* p = (const uint8_t*)data;
@@ -90,7 +90,7 @@ done:
     return ret;
 }
 
-int libos_copy_file(const char* oldpath, const char* newpath)
+int myst_copy_file(const char* oldpath, const char* newpath)
 {
     int ret = 0;
     int oldfd = -1;
@@ -116,7 +116,7 @@ int libos_copy_file(const char* oldpath, const char* newpath)
 
     while ((n = read(oldfd, buf, sizeof(buf))) > 0)
     {
-        ECHECK(libos_writen(newfd, buf, (size_t)n));
+        ECHECK(myst_writen(newfd, buf, (size_t)n));
     }
 
     if (n < 0)
@@ -133,7 +133,7 @@ done:
     return ret;
 }
 
-const char* libos_basename(const char* path)
+const char* myst_basename(const char* path)
 {
     char* p;
 
@@ -143,7 +143,7 @@ const char* libos_basename(const char* path)
     return path;
 }
 
-int libos_mkdirhier(const char* pathname, mode_t mode)
+int myst_mkdirhier(const char* pathname, mode_t mode)
 {
     int ret = 0;
     char** toks = NULL;
@@ -158,16 +158,16 @@ int libos_mkdirhier(const char* pathname, mode_t mode)
     if (stat(pathname, &buf) == 0 && S_ISDIR(buf.st_mode))
         goto done;
 
-    ECHECK(libos_strsplit(pathname, "/", &toks, &ntoks));
+    ECHECK(myst_strsplit(pathname, "/", &toks, &ntoks));
 
     *path = '\0';
 
     for (size_t i = 0; i < ntoks; i++)
     {
-        if (LIBOS_STRLCAT(path, "/") >= PATH_MAX)
+        if (MYST_STRLCAT(path, "/") >= PATH_MAX)
             ERAISE(-ENAMETOOLONG);
 
-        if (LIBOS_STRLCAT(path, toks[i]) >= PATH_MAX)
+        if (MYST_STRLCAT(path, toks[i]) >= PATH_MAX)
             ERAISE(-ENAMETOOLONG);
 
         if (stat(path, &buf) == 0)

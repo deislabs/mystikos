@@ -13,23 +13,23 @@ ifdef EXPORT
 OPTS = --export-rootfs
 endif
 
-all: libos appdir rootfs
+all: myst appdir rootfs
 
 tests:
-	$(RUNTEST) $(LIBOS_EXEC) $(OPTS) rootfs /curl https://www.microsoft.com 2>&1 > /dev/null
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /curl https://www.microsoft.com 2>&1 > /dev/null
 
 gdb: all
-	$(LIBOS_GDB) --args $(LIBOS_EXEC) $(EXEC) $(OPTS) rootfs /curl https://www.microsoft.com
+	$(MYST_GDB) --args $(MYST_EXEC) $(EXEC) $(OPTS) rootfs /curl https://www.microsoft.com
 
 appdir:
 	$(APPBUILDER) Dockerfile
 	echo "nameserver $(DNSSERVER)" >> $(APPDIR)/etc/resolv.conf
 
 rootfs:
-	$(BINDIR)/libos mkcpio appdir rootfs
+	$(BINDIR)/myst mkcpio appdir rootfs
 
-libos:
-	$(MAKE) -C $(TOP)/tools/libos
+myst:
+	$(MAKE) -C $(TOP)/tools/myst
 
 clean:
 	rm -rf rootfs export $(APPDIR)

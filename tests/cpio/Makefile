@@ -11,8 +11,8 @@ CFLAGS = $(OEHOST_CFLAGS) $(GCOV_CFLAGS)
 
 LDFLAGS = $(OEHOST_LDFLAGS) $(GCOV_LDFLAGS)
 
-LIBS = $(LIBDIR)/liboshost.a
-LIBS = $(LIBDIR)/libosutils.a
+LIBS = $(LIBDIR)/libmysthost.a
+LIBS = $(LIBDIR)/libmystutils.a
 
 REDEFINE_TESTS=1
 
@@ -30,8 +30,8 @@ test2:
 
 test3:
 	@ $(MKROOTFS) $(SUBBINDIR)/$(PROGRAM) rootfs cpio
-	@ $(RUNTEST) $(LIBOS_EXEC) rootfs /bin/$(PROGRAM) cpio mem
+	@ $(RUNTEST) $(MYST_EXEC) rootfs /bin/$(PROGRAM) cpio mem
 
 test4:
 	@ $(MKROOTFS) $(SUBBINDIR)/$(PROGRAM) rootfs cpio
-	@ $(RUNTEST) $(LIBOS_EXEC) rootfs /bin/$(PROGRAM) cpio file
+	@ $(RUNTEST) $(MYST_EXEC) rootfs /bin/$(PROGRAM) cpio file

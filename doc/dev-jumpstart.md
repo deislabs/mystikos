@@ -1,4 +1,4 @@
-# Open LibOS Developer's Jumpstart Guide
+# Mystikos Developer's Jumpstart Guide
 
 ## Browsing the source code
 
@@ -17,12 +17,12 @@ Also under the root directory:
 
 * The `tests` folder contains test cases we run for CI/CD pipelines.
 * The `solutions` folder contains sophisticated applications we can run with
-Open LibOS. They are also covered by the CI/CD pipeline.
+Mystikos. They are also covered by the CI/CD pipeline.
 * The `samples` folder contains test cases for evolving features which are
 not stable enough to be moved into `tests`.
-* The `scripts` folder contains several helper scripts for using Open LibOS
+* The `scripts` folder contains several helper scripts for using Mystikos
 or integrating with the pipeline.
-* The `tools` folder contains a SGX enclave that bootstraps Open LibOS, as
+* The `tools` folder contains a SGX enclave that bootstraps Mystikos, as
 well as the host launcher.
 
 
@@ -31,27 +31,27 @@ well as the host launcher.
 Please see [README](../README.md) for how to install the pre-requisite packages
 and build the source code.
 
-The following instructions assume Open LibOS is cloned to `$HOME/OpenLibOS`,
+The following instructions assume Mystikos is cloned to `$HOME/Mystikos`,
 referred to as `project root` hereafter.
 
 1. The build process creates a `build` folder under the project root, which
 consists of the following artifacts:
-    * bin: the executables of Open LibOS, including:
-        * the main executable `libos`
-        * the debugger `libos-gdb`
+    * bin: the executables of Mystikos, including:
+        * the main executable `myst`
+        * the debugger `myst-gdb`
     * musl, including:
         * musl-gcc, which is used to compile the C-runtime, kernel and target
         libraries
     * lib, including:
-        * liboscrt.so, the output from building `third_party/musl/crt`
-        * liboskernel.so, the output from building `kernel`
-        * libostarget*.a, the output from building target libraries
-        * openenclave/libosenc.so, the output from building `tools/libos/enc`
+        * libmystcrt.so, the output from building `third_party/musl/crt`
+        * libmystkernel.so, the output from building `kernel`
+        * mysttarget*.a, the output from building target libraries
+        * openenclave/mystenc.so, the output from building `tools/myst/enc`
     * openenclave, including the outputs from building OE SDK.
     * crt-musl: the source code of C-runtime, after patching MUSL
 1. Run a simple application built with musl-gcc
     ```
-    cd OpenLibOS/tests/hello
+    cd Mystikos/tests/hello
     make
     make tests
     ```
@@ -59,7 +59,7 @@ consists of the following artifacts:
     `hello.c` with `musl-gcc`, and place the output executable under
     `appdir/bin/hello`, finally we create a CPIO archive out of `appdir`.
 
-    In the 3rd step `make tests`, we launch `libos`, giving it the CPIO
+    In the 3rd step `make tests`, we launch `myst`, giving it the CPIO
     archive, the command to run (`/bin/hello` in this case), and
     finally, the command line arguments, e.g., "red", "green", and "blue".
     With this step, we should see the following outputs:
@@ -70,18 +70,18 @@ consists of the following artifacts:
 1. Run an existing application included in Alpine Linux
 
     [Alpine Linux](https://alpinelinux.org/) is a Linux distribution that uses
-    MUSL as its libc implementation. Since Open LibOS provides a libc
+    MUSL as its libc implementation. Since Mystikos provides a libc
     interface based on MUSL, many applications included in Alpine Linux could
-    be run with Open LibOS without modification.
+    be run with Mystikos without modification.
     ```
-    cd OpenLibOS/tests/alpine
+    cd Mystikos/tests/alpine
     make
     make tests
     ```
     In the 2nd step, we download and extract a version of `alpine-minirootfs`,
     put it under `appdir`, and create a CPIO archive out of `appdir`.
 
-    In the 3rd step, we execute command `ls` on the CPIO archive with `libos`.
+    In the 3rd step, we execute command `ls` on the CPIO archive with `myst`.
 
 ## Advanced experiments
 
@@ -94,7 +94,7 @@ a default Dockerfile
     `alpine/Dockerfile` under the project root for building some
     of our tests/samples.
     ```
-    cd OpenLibOS/samples/goodbye
+    cd Mystikos/samples/goodbye
     make
     make run
     ```
@@ -111,7 +111,7 @@ customized Dockerfile
     libraries not included in the default dockerfile, we need to provide a
     customized Dockerfile.
     ```
-    cd OpenLibOS/solutions/attested_tls
+    cd Mystikos/solutions/attested_tls
     make run
     ```
     During `make run`, we use a customized dockerfile
@@ -124,41 +124,41 @@ customized Dockerfile
 1. For most applications under `tests`, we can launch the debugger with
 command `make tests GDB=1`. For example:
     ```
-    cd OpenLibOS/tests/hello
+    cd Mystikos/tests/hello
     make && make tests GDB=1
     ```
 
 1. Once inside the gdb window, we can set two breakpoints to examine the
-events during booting Open LibOS and launching user applications.
+events during booting Mystikos and launching user applications.
     ```
     break main
-    break libos_enter_crt
+    break myst_enter_crt
     run
     ```
 
 1. The first breakpoint should be hit at the `main` function in
-`OpenLibOS/tools/libos/host/host.c`. This is the host launcher for the
+`Mystikos/tools/myst/host/host.c`. This is the host launcher for the
 bootstrapping enclave.
 
 1. Enter `continue` command to gdb, the second breakpoint should be hit
-at the `libos_enter_crt` function in `OpenLibOS/crt/enter.c`.
+at the `myst_enter_crt` function in `Mystikos/crt/enter.c`.
 
 1. The `where` command to gdb reveals that we have gone through the
 following events to reach the point of starting C-runtime (CRT):
 
-    * **libos_enter_ecall**, where we cross the boundary between the
+    * **myst_enter_ecall**, where we cross the boundary between the
     host launcher and the bootstrapping enclave.
-    * **libos_enter_kernel**, where we cross the boundary between
+    * **myst_enter_kernel**, where we cross the boundary between
     the bootstrapping enclave and the kernel.
-    * **libos_enter_crt**, where we cross the boundary between the
+    * **myst_enter_crt**, where we cross the boundary between the
     kernel and CRT
 
 1. Enter `continue` command to gdb, the third breakpoint should be hit
 at the `main` function in the user application.
-1. Now in the GDB window, set a breakpoint to observe how Open LibOS
+1. Now in the GDB window, set a breakpoint to observe how Mystikos
 handles syscalls.
     ```
-    break libos_syscall
+    break myst_syscall
     continue
     where
     ```

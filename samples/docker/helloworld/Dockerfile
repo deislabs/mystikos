@@ -1,7 +1,7 @@
 FROM ubuntu:18.04
 ARG PSW_VERSION
 
-ADD openlibos.tar.gz /
+ADD Mystikos.tar.gz /
 ADD rootfs /
 RUN if [ -z "$PSW_VERSION" ]; then echo "Please set PSW_VERSION (e.g. 2.11)." >&2; exit 1; fi
 RUN apt-get update && apt-get install -y \
@@ -31,4 +31,4 @@ RUN apt-get update && apt-get install -y \
     open-enclave
 
 WORKDIR /
-CMD [ "/openlibos/bin/libos", "exec-sgx", "/rootfs", "/bin/hello", "red", "green", "blue" ]
+CMD [ "/Mystikos/bin/myst", "exec-sgx", "/rootfs", "/bin/hello", "red", "green", "blue" ]

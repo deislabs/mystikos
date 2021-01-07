@@ -7,7 +7,7 @@ APPBUILDER=$(TOP)/scripts/appbuilder
 TEST_FILE=ltp_enabled.txt
 TESTS=$(shell cat $(TEST_FILE))
 
-all: libos rootfs
+all: myst rootfs
 
 $(APPDIR): buildltp.sh
 	@ rm -fr ltp
@@ -16,13 +16,13 @@ $(APPDIR): buildltp.sh
 	$(APPBUILDER) Dockerfile
 
 rootfs: $(APPDIR)
-	$(LIBOS) mkcpio $(APPDIR) "$@"
+	$(MYST) mkcpio $(APPDIR) "$@"
 
 tests:
-	@ $(foreach i, $(TESTS), $(RUNTEST) $(LIBOS_EXEC) rootfs $(i) $(OPTS) $(NL) )
+	@ $(foreach i, $(TESTS), $(RUNTEST) $(MYST_EXEC) rootfs $(i) $(OPTS) $(NL) )
 
-libos:
-	$(MAKE) -C $(TOP)/tools/libos
+myst:
+	$(MAKE) -C $(TOP)/tools/myst
 
 clean:
 	rm -rf $(APPDIR) rootfs ltp export ramfs

@@ -3,7 +3,7 @@
 
 //==============================================================================
 //
-// void libos_setjmp(libos_jmp_buf* env)
+// void myst_setjmp(myst_jmp_buf* env)
 //
 //     Implementation of standard setjmp() function.
 //
@@ -13,9 +13,9 @@
 
 // Modified from musl-libc root/src/setjmp/x86_64/setjmp.s
 
-.globl libos_setjmp
-.type libos_setjmp,@function
-libos_setjmp:
+.globl myst_setjmp
+.type myst_setjmp,@function
+myst_setjmp:
 .cfi_startproc
     lea  8(%rsp), %rdx # this is our rsp WITHOUT current ret addr
     mov  %rdx, (%rdi)

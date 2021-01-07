@@ -1,10 +1,10 @@
-# Open LibOS Release Management
+# Mystikos Release Management
 
-This document describes the process of releasing the Open LibOS binaries and the tagging of the source.
+This document describes the process of releasing the Mystikos binaries and the tagging of the source.
 
 ## Problem area
 
-When a release or pre-release of Open LibOS is done we need to make sure that a release can be patched and re-released with an incremental versioning update.
+When a release or pre-release of Mystikos is done we need to make sure that a release can be patched and re-released with an incremental versioning update.
 
 Customers tend to do a test of a specific release of a product and if they find a bug they don't want to have to move to the next major or minor  version that pulls in lots of new features. Rather they prefer to have an incrementally patched version based on what they are are already using with only important fixes that are required. Forcing a customer to move to the next release, or even going against daily builds just to pull in a fix is not acceptable as they would need to do a full test pass of the complete codebase.
 
@@ -40,10 +40,10 @@ Sources are only part of what is needed, but once the code is open sourced we ne
 
 GitHub allows releases to be created which are made against specific code tags. Once a versioned branch is complete and tagged, a release is then made, using the release tag created against the head of the release branch, and that tag can then be used within the GitHub release page where a binary tarball can be dropped and tarballs of the source are made available based on that source tag automatically by GitHub.
 
-Compressed binary tarballs should be named: **openlibos-\<major\>-\<minor\>-\<point\>-\<OS\>.tar.gz*
+Compressed binary tarballs should be named: **Mystikos-\<major\>-\<minor\>-\<point\>-\<OS\>.tar.gz*
 
-If DEB or RPM packages are released: **openlibos-\<major\>-\<minor\>-\<point\>-\<deb|rpm\>.gz**
+If DEB or RPM packages are released: **Mystikos-\<major\>-\<minor\>-\<point\>-\<deb|rpm\>.gz**
 
 Examples:
-    openlibos-0.1.0-x86_64.tar.gz
-    openlibos-0.1.0-x86_64.rpm.gz
+    Mystikos-0.1.0-x86_64.tar.gz
+    Mystikos-0.1.0-x86_64.rpm.gz

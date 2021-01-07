@@ -55,7 +55,7 @@ DEFAULT_INCLUDES = -I$(INCDIR)
 
 DEFAULT_CFLAGS = -Wall -Werror -g -fPIC
 
-ifeq ($(LIBOS_RELEASE),1)
+ifeq ($(MYST_RELEASE),1)
 OPTIMIZATION_CFLAGS += -Os
 endif
 
@@ -122,7 +122,7 @@ MUSL_LIB=$(BUILDDIR)/musl/lib
 ##
 ##==============================================================================
 
-LIBOS_GDB=$(BUILDDIR)/bin/libos-gdb
+MYST_GDB=$(BUILDDIR)/bin/myst-gdb
 OEGDB=$(BUILDDIR)/openenclave/bin/oegdb
 
 ##==============================================================================
@@ -148,7 +148,7 @@ include $(TOP)/config.mak
 ## Define $(EXEC) macro in terms of $(TARGET). This macro should be used in
 ## tests as follows:
 ##
-##     $ libos $(EXEC) rootfs <program-name> <args...>
+##     $ myst $(EXEC) rootfs <program-name> <args...>
 ##
 ## The target may be set when running the tests as shown in the following two
 ## examples.
@@ -168,7 +168,7 @@ EXEC = exec-$(TARGET)
 ##
 ##==============================================================================
 
-GDB_COMMAND = $(BINDIR)/libos-gdb --args
+GDB_COMMAND = $(BINDIR)/myst-gdb --args
 
 ifdef GDB
 __GDB_COMMAND = $(GDB_COMMAND)
@@ -268,15 +268,15 @@ endif
 
 ##==============================================================================
 ##
-## LIBOS command
+## MYST command
 ##
 ##==============================================================================
 
-LIBOS_EXEC += $(PREFIX)
-LIBOS_EXEC += $(BINDIR)/libos
-LIBOS_EXEC += $(EXEC)
+MYST_EXEC += $(PREFIX)
+MYST_EXEC += $(BINDIR)/myst
+MYST_EXEC += $(EXEC)
 
-LIBOS = $(BINDIR)/libos
+MYST = $(BINDIR)/myst
 
 ##==============================================================================
 ##
@@ -292,7 +292,7 @@ RUNTEST_COMMAND=$(TOP)/scripts/runtest
 ##
 ##==============================================================================
 
-ifdef LIBOS_ENABLE_GCOV
+ifdef MYST_ENABLE_GCOV
 GCOV_CFLAGS = -fprofile-arcs -ftest-coverage
 GCOV_LDFLAGS = -lgcov
 endif

@@ -11,6 +11,6 @@ CFLAGS = $(OEENCLAVE_CFLAGS)
 
 LDFLAGS = $(OEENCLAVE_LDFLAGS)
 
-LIBS = $(LIBDIR)/liboshost.a
+LIBS = $(LIBDIR)/libmysthost.a
 
 include $(TOP)/rules.mak

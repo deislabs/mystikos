@@ -3,7 +3,7 @@ include $(TOP)/defs.mak
 
 SUBLIBDIR=$(LIBDIR)
 
-ARCHIVE = libostargetsgxhost.a
+ARCHIVE = libmysttargetsgxhost.a
 
 SOURCES += ../../shared/waitwake.c
 SOURCES += ../../shared/poll.c

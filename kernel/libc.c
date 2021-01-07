@@ -6,17 +6,17 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <libos/backtrace.h>
-#include <libos/defs.h>
-#include <libos/eraise.h>
-#include <libos/kernel.h>
-#include <libos/list.h>
-#include <libos/panic.h>
-#include <libos/printf.h>
-#include <libos/spinlock.h>
-#include <libos/strings.h>
-#include <libos/syscall.h>
-#include <libos/tcall.h>
+#include <myst/backtrace.h>
+#include <myst/defs.h>
+#include <myst/eraise.h>
+#include <myst/kernel.h>
+#include <myst/list.h>
+#include <myst/panic.h>
+#include <myst/printf.h>
+#include <myst/spinlock.h>
+#include <myst/strings.h>
+#include <myst/syscall.h>
+#include <myst/tcall.h>
 
 /*
 **==============================================================================
@@ -381,7 +381,7 @@ char* strrchr(const char* s, int c)
 
 int vsnprintf(char* str, size_t size, const char* format, va_list ap)
 {
-    return (int)libos_tcall_vsnprintf(str, size, format, ap);
+    return (int)myst_tcall_vsnprintf(str, size, format, ap);
 }
 
 int snprintf(char* str, size_t size, const char* format, ...)
@@ -398,14 +398,14 @@ int snprintf(char* str, size_t size, const char* format, ...)
 
 int vprintf(const char* format, va_list ap)
 {
-    return libos_console_vprintf(STDOUT_FILENO, format, ap);
+    return myst_console_vprintf(STDOUT_FILENO, format, ap);
 }
 
 int printf(const char* format, ...)
 {
     va_list ap;
     va_start(ap, format);
-    int n = libos_console_vprintf(STDOUT_FILENO, format, ap);
+    int n = myst_console_vprintf(STDOUT_FILENO, format, ap);
     va_end(ap);
 
     return n;
@@ -413,13 +413,13 @@ int printf(const char* format, ...)
 
 int puts(const char* s)
 {
-    libos_console_printf(STDOUT_FILENO, "%s\n", s);
+    myst_console_printf(STDOUT_FILENO, "%s\n", s);
     return 0;
 }
 
 int putchar(int c)
 {
-    libos_console_printf(STDOUT_FILENO, "%c", c);
+    myst_console_printf(STDOUT_FILENO, "%c", c);
     return (int)c;
 }
 
@@ -447,7 +447,7 @@ static long _tcall_allocate(
     params[3] = (long)clear;
     params[4] = (long)new_ptr;
 
-    return libos_tcall(LIBOS_TCALL_ALLOCATE, params);
+    return myst_tcall(MYST_TCALL_ALLOCATE, params);
 }
 
 static long _tcall_deallocate(void* ptr)
@@ -455,19 +455,19 @@ static long _tcall_deallocate(void* ptr)
     long params[6];
     params[0] = (long)ptr;
 
-    return libos_tcall(LIBOS_TCALL_DEALLOCATE, params);
+    return myst_tcall(MYST_TCALL_DEALLOCATE, params);
 }
-#ifdef LIBOS_ENABLE_LEAK_CHECKER
-static libos_list_t _list;
-static libos_spinlock_t _lock = LIBOS_SPINLOCK_INITIALIZER;
+#ifdef MYST_ENABLE_LEAK_CHECKER
+static myst_list_t _list;
+static myst_spinlock_t _lock = MYST_SPINLOCK_INITIALIZER;
 #endif
 
-static libos_malloc_stats_t _malloc_stats;
+static myst_malloc_stats_t _malloc_stats;
 
-#ifdef LIBOS_ENABLE_LEAK_CHECKER
+#ifdef MYST_ENABLE_LEAK_CHECKER
 typedef struct node
 {
-    libos_list_node_t base;
+    myst_list_node_t base;
     void* ptr;
     size_t size;
     void* addrs[MAX_BACKTRACE_ADDRS];
@@ -475,7 +475,7 @@ typedef struct node
 } node_t;
 #endif
 
-#ifdef LIBOS_ENABLE_LEAK_CHECKER
+#ifdef MYST_ENABLE_LEAK_CHECKER
 static node_t* _new_node(void* ptr, size_t size)
 {
     node_t* p;
@@ -485,13 +485,13 @@ static node_t* _new_node(void* ptr, size_t size)
 
     p->ptr = ptr;
     p->size = size;
-    p->num_addrs = libos_backtrace(p->addrs, LIBOS_COUNTOF(p->addrs));
+    p->num_addrs = myst_backtrace(p->addrs, MYST_COUNTOF(p->addrs));
 
     return p;
 }
 #endif
 
-#ifdef LIBOS_ENABLE_LEAK_CHECKER
+#ifdef MYST_ENABLE_LEAK_CHECKER
 static int _add_node(void* ptr, size_t size)
 {
     node_t* node;
@@ -499,28 +499,28 @@ static int _add_node(void* ptr, size_t size)
     if (!(node = _new_node(ptr, size)))
         return -1;
 
-    libos_spin_lock(&_lock);
+    myst_spin_lock(&_lock);
     {
-        libos_list_append(&_list, (libos_list_node_t*)node);
+        myst_list_append(&_list, (myst_list_node_t*)node);
         _malloc_stats.usage += size;
 
         if (_malloc_stats.usage > _malloc_stats.peak_usage)
             _malloc_stats.peak_usage = _malloc_stats.usage;
     }
-    libos_spin_unlock(&_lock);
+    myst_spin_unlock(&_lock);
 
     return 0;
 }
 #endif
 
-#ifdef LIBOS_ENABLE_LEAK_CHECKER
+#ifdef MYST_ENABLE_LEAK_CHECKER
 static int _remove_node(void* ptr)
 {
     node_t* node = NULL;
 
-    libos_spin_lock(&_lock);
+    myst_spin_lock(&_lock);
     {
-        for (libos_list_node_t* p = _list.head; p; p = p->next)
+        for (myst_list_node_t* p = _list.head; p; p = p->next)
         {
             node_t* tmp = (node_t*)p;
 
@@ -528,12 +528,12 @@ static int _remove_node(void* ptr)
             {
                 node = tmp;
                 _malloc_stats.usage -= node->size;
-                libos_list_remove(&_list, p);
+                myst_list_remove(&_list, p);
                 break;
             }
         }
     }
-    libos_spin_unlock(&_lock);
+    myst_spin_unlock(&_lock);
 
     if (node)
     {
@@ -545,7 +545,7 @@ static int _remove_node(void* ptr)
 }
 #endif
 
-LIBOS_WEAK
+MYST_WEAK
 void* malloc(size_t size)
 {
     void* p = NULL;
@@ -553,15 +553,15 @@ void* malloc(size_t size)
     if (_tcall_allocate(NULL, 0, size, 0, &p) != 0 || !p)
         return NULL;
 
-#ifdef LIBOS_ENABLE_LEAK_CHECKER
+#ifdef MYST_ENABLE_LEAK_CHECKER
     if (_add_node(p, size) != 0)
-        libos_panic("unexpected");
+        myst_panic("unexpected");
 #endif
 
     return p;
 }
 
-LIBOS_WEAK
+MYST_WEAK
 void* calloc(size_t nmemb, size_t size)
 {
     void* p = NULL;
@@ -570,36 +570,36 @@ void* calloc(size_t nmemb, size_t size)
     if (_tcall_allocate(NULL, 0, n, 1, &p) != 0 || !p)
         return NULL;
 
-#ifdef LIBOS_ENABLE_LEAK_CHECKER
+#ifdef MYST_ENABLE_LEAK_CHECKER
     if (_add_node(p, n) != 0)
-        libos_panic("unexpected");
+        myst_panic("unexpected");
 #endif
 
     return p;
 }
 
-LIBOS_WEAK
+MYST_WEAK
 void* realloc(void* ptr, size_t size)
 {
     void* p = NULL;
 
-#ifdef LIBOS_ENABLE_LEAK_CHECKER
+#ifdef MYST_ENABLE_LEAK_CHECKER
     if (ptr && _remove_node(ptr) != 0)
-        libos_panic("unexpected");
+        myst_panic("unexpected");
 #endif
 
     if (_tcall_allocate(ptr, 0, size, 0, &p) != 0 || !p)
         return NULL;
 
-#ifdef LIBOS_ENABLE_LEAK_CHECKER
+#ifdef MYST_ENABLE_LEAK_CHECKER
     if (_add_node(p, size) != 0)
-        libos_panic("unexpected");
+        myst_panic("unexpected");
 #endif
 
     return p;
 }
 
-LIBOS_WEAK
+MYST_WEAK
 void* memalign(size_t alignment, size_t size)
 {
     void* p = NULL;
@@ -607,45 +607,45 @@ void* memalign(size_t alignment, size_t size)
     if (_tcall_allocate(NULL, alignment, size, 0, &p) != 0 || !p)
         return NULL;
 
-#ifdef LIBOS_ENABLE_LEAK_CHECKER
+#ifdef MYST_ENABLE_LEAK_CHECKER
     if (_add_node(p, size) != 0)
-        libos_panic("unexpected");
+        myst_panic("unexpected");
 #endif
 
     return p;
 }
 
-LIBOS_WEAK
+MYST_WEAK
 void free(void* ptr)
 {
     if (_tcall_deallocate(ptr) != 0)
-        libos_panic("unexpected");
+        myst_panic("unexpected");
 
-#ifdef LIBOS_ENABLE_LEAK_CHECKER
+#ifdef MYST_ENABLE_LEAK_CHECKER
     if (ptr && _remove_node(ptr) != 0)
-        libos_panic("unexpected");
+        myst_panic("unexpected");
 #endif
 }
 
-int libos_find_leaks(void)
+int myst_find_leaks(void)
 {
-#ifdef LIBOS_ENABLE_LEAK_CHECKER
+#ifdef MYST_ENABLE_LEAK_CHECKER
     int ret = 0;
 
-    for (libos_list_node_t* p = _list.head; p; p = p->next)
+    for (myst_list_node_t* p = _list.head; p; p = p->next)
     {
         node_t* node = (node_t*)p;
 
-        libos_eprintf(
+        myst_eprintf(
             "*** kernel leak: ptr=%p size=%zu\n", node->ptr, node->size);
-        libos_dump_backtrace(node->addrs, node->num_addrs);
-        libos_eprintf("\n");
+        myst_dump_backtrace(node->addrs, node->num_addrs);
+        myst_eprintf("\n");
         ret = -1;
     }
 
     if (_malloc_stats.usage != 0)
     {
-        libos_eprintf(
+        myst_eprintf(
             "*** kernel: memory still in use: %zu\n", _malloc_stats.usage);
         ret = -1;
     }
@@ -656,16 +656,16 @@ int libos_find_leaks(void)
 #endif
 }
 
-int libos_get_malloc_stats(libos_malloc_stats_t* stats)
+int myst_get_malloc_stats(myst_malloc_stats_t* stats)
 {
-#ifdef LIBOS_ENABLE_LEAK_CHECKER
+#ifdef MYST_ENABLE_LEAK_CHECKER
     {
         if (!stats)
             return -EINVAL;
 
-        libos_spin_lock(&_lock);
+        myst_spin_lock(&_lock);
         *stats = _malloc_stats;
-        libos_spin_unlock(&_lock);
+        myst_spin_unlock(&_lock);
 
         return 0;
     }
@@ -686,7 +686,7 @@ int libos_get_malloc_stats(libos_malloc_stats_t* stats)
 
 int creat(const char* pathname, mode_t mode)
 {
-    return (int)libos_syscall_ret(libos_syscall_creat(pathname, mode));
+    return (int)myst_syscall_ret(myst_syscall_creat(pathname, mode));
 }
 
 int open(const char* pathname, int flags, ...)
@@ -697,108 +697,108 @@ int open(const char* pathname, int flags, ...)
     mode_t mode = va_arg(ap, mode_t);
     va_end(ap);
 
-    return (int)libos_syscall_ret(libos_syscall_open(pathname, flags, mode));
+    return (int)myst_syscall_ret(myst_syscall_open(pathname, flags, mode));
 }
 
 off_t lseek(int fd, off_t offset, int whence)
 {
-    return (off_t)libos_syscall_ret(libos_syscall_lseek(fd, offset, whence));
+    return (off_t)myst_syscall_ret(myst_syscall_lseek(fd, offset, whence));
 }
 
 ssize_t read(int fd, void* buf, size_t count)
 {
-    return (ssize_t)libos_syscall_ret(libos_syscall_read(fd, buf, count));
+    return (ssize_t)myst_syscall_ret(myst_syscall_read(fd, buf, count));
 }
 
 ssize_t write(int fd, const void* buf, size_t count)
 {
-    return (ssize_t)libos_syscall_ret(libos_syscall_write(fd, buf, count));
+    return (ssize_t)myst_syscall_ret(myst_syscall_write(fd, buf, count));
 }
 
 ssize_t pread(int fd, void* buf, size_t count, off_t offset)
 {
-    return libos_syscall_ret(libos_syscall_pread(fd, buf, count, offset));
+    return myst_syscall_ret(myst_syscall_pread(fd, buf, count, offset));
 }
 
-ssize_t libos_pwrite(int fd, const void* buf, size_t count, off_t offset)
+ssize_t myst_pwrite(int fd, const void* buf, size_t count, off_t offset)
 {
-    return libos_syscall_ret(libos_syscall_pwrite(fd, buf, count, offset));
+    return myst_syscall_ret(myst_syscall_pwrite(fd, buf, count, offset));
 }
 
 ssize_t readv(int fd, const struct iovec* iov, int iovcnt)
 {
-    return (ssize_t)libos_syscall_ret(libos_syscall_readv(fd, iov, iovcnt));
+    return (ssize_t)myst_syscall_ret(myst_syscall_readv(fd, iov, iovcnt));
 }
 
 ssize_t writev(int fd, const struct iovec* iov, int iovcnt)
 {
-    return (ssize_t)libos_syscall_ret(libos_syscall_writev(fd, iov, iovcnt));
+    return (ssize_t)myst_syscall_ret(myst_syscall_writev(fd, iov, iovcnt));
 }
 
 int stat(const char* pathname, struct stat* statbuf)
 {
-    return (int)libos_syscall_ret(libos_syscall_stat(pathname, statbuf));
+    return (int)myst_syscall_ret(myst_syscall_stat(pathname, statbuf));
 }
 
 int lstat(const char* pathname, struct stat* statbuf)
 {
-    return (int)libos_syscall_ret(libos_syscall_lstat(pathname, statbuf));
+    return (int)myst_syscall_ret(myst_syscall_lstat(pathname, statbuf));
 }
 
 int fstat(int fd, struct stat* statbuf)
 {
-    return (int)libos_syscall_ret(libos_syscall_fstat(fd, statbuf));
+    return (int)myst_syscall_ret(myst_syscall_fstat(fd, statbuf));
 }
 
 int mkdir(const char* pathname, mode_t mode)
 {
-    return (int)libos_syscall_ret(libos_syscall_mkdir(pathname, mode));
+    return (int)myst_syscall_ret(myst_syscall_mkdir(pathname, mode));
 }
 
 int rmdir(const char* pathname)
 {
-    return (int)libos_syscall_ret(libos_syscall_rmdir(pathname));
+    return (int)myst_syscall_ret(myst_syscall_rmdir(pathname));
 }
 
 int link(const char* oldpath, const char* newpath)
 {
-    return (int)libos_syscall_ret(libos_syscall_link(oldpath, newpath));
+    return (int)myst_syscall_ret(myst_syscall_link(oldpath, newpath));
 }
 
 int unlink(const char* pathname)
 {
-    return (int)libos_syscall_ret(libos_syscall_unlink(pathname));
+    return (int)myst_syscall_ret(myst_syscall_unlink(pathname));
 }
 
 int access(const char* pathname, int mode)
 {
-    return (int)libos_syscall_ret(libos_syscall_access(pathname, mode));
+    return (int)myst_syscall_ret(myst_syscall_access(pathname, mode));
 }
 
 int rename(const char* oldpath, const char* newpath)
 {
-    return (int)libos_syscall_ret(libos_syscall_rename(oldpath, newpath));
+    return (int)myst_syscall_ret(myst_syscall_rename(oldpath, newpath));
 }
 
 int truncate(const char* path, off_t length)
 {
-    return (int)libos_syscall_ret(libos_syscall_truncate(path, length));
+    return (int)myst_syscall_ret(myst_syscall_truncate(path, length));
 }
 
 int ftruncate(int fd, off_t length)
 {
-    return (int)libos_syscall_ret(libos_syscall_ftruncate(fd, length));
+    return (int)myst_syscall_ret(myst_syscall_ftruncate(fd, length));
 }
 
 ssize_t readlink(const char* pathname, char* buf, size_t bufsiz)
 {
-    return (int)libos_syscall_ret(
-        libos_syscall_readlink(pathname, buf, bufsiz));
+    return (int)myst_syscall_ret(
+        myst_syscall_readlink(pathname, buf, bufsiz));
 }
 
 int symlink(const char* target, const char* linkpath)
 {
-    return (int)libos_syscall_ret(libos_syscall_symlink(target, linkpath));
+    return (int)myst_syscall_ret(myst_syscall_symlink(target, linkpath));
 }
 
 /*
@@ -811,7 +811,7 @@ int symlink(const char* target, const char* linkpath)
 
 int close(int fd)
 {
-    return (int)libos_syscall_ret(libos_syscall_close(fd));
+    return (int)myst_syscall_ret(myst_syscall_close(fd));
 }
 
 /*
@@ -862,7 +862,7 @@ DIR* opendir(const char* name)
 done:
 
     if (fd >= 0)
-        libos_syscall_close(fd);
+        myst_syscall_close(fd);
 
     if (dir)
         free(dir);
@@ -904,7 +904,7 @@ struct dirent* readdir(DIR* dir)
     /* If the dirent buffer is exhausted, read more entries */
     if (dir->ptr >= dir->end)
     {
-        long n = libos_syscall_getdents64(
+        long n = myst_syscall_getdents64(
             dir->fd, (struct dirent*)dir->buf, sizeof(dir->buf));
 
         if (n < 0)

@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include <libos/errno.h>
+#include <myst/errno.h>
 #include <stddef.h>
 #include <stdio.h>
 
@@ -150,7 +150,7 @@ static pair_t _pairs[] = {
 
 static size_t _npairs = sizeof(_pairs) / sizeof(_pairs[0]);
 
-const char* libos_error_name(long errnum)
+const char* myst_error_name(long errnum)
 {
     for (size_t i = 0; i < _npairs; i++)
     {
