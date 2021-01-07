@@ -1,7 +1,7 @@
 FROM ubuntu:18.04
 ARG PSW_VERSION
 
-ADD Mystikos.tar.gz /
+ADD mystikos.tar.gz /
 ADD rootfs /
 RUN if [ -z "$PSW_VERSION" ]; then echo "Please set PSW_VERSION (e.g. 2.11)." >&2; exit 1; fi
 RUN apt-get update && apt-get install -y \
@@ -31,4 +31,4 @@ RUN apt-get update && apt-get install -y \
     open-enclave
 
 WORKDIR /
-CMD [ "/Mystikos/bin/myst", "exec-sgx", "/rootfs", "/bin/hello", "red", "green", "blue" ]
+CMD [ "/mystikos/bin/myst", "exec-sgx", "/rootfs", "/bin/hello", "red", "green", "blue" ]
