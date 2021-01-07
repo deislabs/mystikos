@@ -40,10 +40,10 @@ Sources are only part of what is needed, but once the code is open sourced we ne
 
 GitHub allows releases to be created which are made against specific code tags. Once a versioned branch is complete and tagged, a release is then made, using the release tag created against the head of the release branch, and that tag can then be used within the GitHub release page where a binary tarball can be dropped and tarballs of the source are made available based on that source tag automatically by GitHub.
 
-Compressed binary tarballs should be named: **Mystikos-\<major\>-\<minor\>-\<point\>-\<OS\>.tar.gz*
+Compressed binary tarballs should be named: **mystikos-\<major\>-\<minor\>-\<point\>-\<OS\>.tar.gz*
 
-If DEB or RPM packages are released: **Mystikos-\<major\>-\<minor\>-\<point\>-\<deb|rpm\>.gz**
+If DEB or RPM packages are released: **mystikos-\<major\>-\<minor\>-\<point\>-\<deb|rpm\>.gz**
 
 Examples:
-    Mystikos-0.1.0-x86_64.tar.gz
-    Mystikos-0.1.0-x86_64.rpm.gz
+    mystikos-0.1.0-x86_64.tar.gz
+    mystikos-0.1.0-x86_64.rpm.gz
