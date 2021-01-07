@@ -9,18 +9,18 @@ ifdef STRACE
 OPTS = --strace
 endif
 
-all: libos rootfs
+all: myst rootfs
 
 rootfs: cpuid.c
 	mkdir -p $(APPDIR)/bin
 	$(CC) $(CFLAGS) -o $(APPDIR)/bin/cpuid cpuid.c $(LDFLAGS)
-	$(LIBOS) mkcpio $(APPDIR) rootfs
+	$(MYST) mkcpio $(APPDIR) rootfs
 
 tests:
-	$(RUNTEST) $(LIBOS_EXEC) $(OPTS) rootfs /bin/cpuid $(OPTS)
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/cpuid $(OPTS)
 
-libos:
-	$(MAKE) -C $(TOP)/tools/libos
+myst:
+	$(MAKE) -C $(TOP)/tools/myst
 
 clean:
 	rm -rf $(APPDIR) rootfs export ramfs

@@ -12,13 +12,13 @@ INCLUDES = -I$(SUBOBJDIR) -I$(INCDIR)
 CFLAGS = $(OEHOST_CFLAGS)
 
 LDFLAGS = $(OEHOST_LDFLAGS)
-ifdef LIBOS_ENABLE_GCOV
+ifdef MYST_ENABLE_GCOV
 LDFLAGS += $(GCOV_LDFLAGS)
 endif
 
 LIBS =
-LIBS += $(LIBDIR)/liboshost.a
-LIBS += $(LIBDIR)/libosutils.a
+LIBS += $(LIBDIR)/libmysthost.a
+LIBS += $(LIBDIR)/libmystutils.a
 
 REDEFINE_TESTS=1
 
@@ -35,4 +35,4 @@ test1:
 
 test2:
 	@ $(MKROOTFS) $(SUBBINDIR)/$(PROGRAM) rootfs $(IMAGE)
-	@ $(RUNTEST) $(LIBOS_EXEC) rootfs /bin/$(PROGRAM) $(IMAGE)
+	@ $(RUNTEST) $(MYST_EXEC) rootfs /bin/$(PROGRAM) $(IMAGE)

@@ -1,6 +1,6 @@
-.globl libos_jump
-.type libos_jump, @function
-libos_jump:
+.globl myst_jump
+.type myst_jump, @function
+myst_jump:
 .cfi_startproc
     mov (%rdi),%rsp
     mov 8(%rdi),%rbp

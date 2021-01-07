@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#ifndef _LIBOS_FDTABLE_H
-#define _LIBOS_FDTABLE_H
+#ifndef _MYST_FDTABLE_H
+#define _MYST_FDTABLE_H
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -11,22 +11,22 @@
 #define FDTABLE_SIZE 128
 #define FD_OFFSET 1024
 
-typedef enum libos_fdtable_type
+typedef enum myst_fdtable_type
 {
-    LIBOS_FDTABLE_TYPE_FILE,
-} libos_fdtable_type_t;
+    MYST_FDTABLE_TYPE_FILE,
+} myst_fdtable_type_t;
 
-bool libos_is_libos_fd(int fd);
+bool myst_is_myst_fd(int fd);
 
 /* return a file descriptor */
-int libos_fdtable_add(libos_fdtable_type_t type, void* device, void* object);
+int myst_fdtable_add(myst_fdtable_type_t type, void* device, void* object);
 
-int libos_fdtable_remove(int fd);
+int myst_fdtable_remove(int fd);
 
-int libos_fdtable_find(
+int myst_fdtable_find(
     int fd,
-    libos_fdtable_type_t type,
+    myst_fdtable_type_t type,
     void** device,
     void** object);
 
-#endif /* _LIBOS_FDTABLE_H */
+#endif /* _MYST_FDTABLE_H */

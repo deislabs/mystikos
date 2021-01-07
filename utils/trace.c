@@ -1,16 +1,16 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include <libos/trace.h>
+#include <myst/trace.h>
 
 static bool _trace = false;
 
-void libos_set_trace(bool flag)
+void myst_set_trace(bool flag)
 {
     _trace = flag;
 }
 
-bool libos_get_trace(void)
+bool myst_get_trace(void)
 {
 #if 1
     return _trace;

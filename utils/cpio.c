@@ -15,10 +15,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <libos/cpio.h>
-#include <libos/round.h>
-#include <libos/strarr.h>
-#include <libos/strings.h>
+#include <myst/cpio.h>
+#include <myst/round.h>
+#include <myst/strarr.h>
+#include <myst/strings.h>
 
 void* calloc(size_t nmemb, size_t size);
 void free(void* ptr);
@@ -60,7 +60,7 @@ typedef struct _cpio_header
     char check[8];
 } cpio_header_t;
 
-struct _libos_cpio
+struct _myst_cpio
 {
     int fd;
     cpio_header_t header;
@@ -73,7 +73,7 @@ struct _libos_cpio
 typedef struct _entry
 {
     cpio_header_t header;
-    char name[LIBOS_CPIO_PATH_MAX];
+    char name[MYST_CPIO_PATH_MAX];
     size_t size;
 } entry_t;
 
@@ -241,7 +241,7 @@ static int _skip_padding(int fd)
     if ((pos = lseek(fd, 0, SEEK_CUR)) < 0)
         GOTO(done);
 
-    if (libos_round_up_signed(pos, 4, &new_pos) != 0)
+    if (myst_round_up_signed(pos, 4, &new_pos) != 0)
         GOTO(done);
 
     if (new_pos != pos && lseek(fd, new_pos, SEEK_SET) < 0)
@@ -262,7 +262,7 @@ static int _write_padding(int fd, size_t n)
     if ((pos = lseek(fd, 0, SEEK_CUR)) < 0)
         GOTO(done);
 
-    if (libos_round_up_signed(pos, n, &new_pos) != 0)
+    if (myst_round_up_signed(pos, n, &new_pos) != 0)
         GOTO(done);
 
     for (int64_t i = pos; i < new_pos; i++)
@@ -279,19 +279,19 @@ done:
     return ret;
 }
 
-libos_cpio_t* libos_cpio_open(const char* path, uint32_t flags)
+myst_cpio_t* myst_cpio_open(const char* path, uint32_t flags)
 {
-    libos_cpio_t* ret = NULL;
-    libos_cpio_t* cpio = NULL;
+    myst_cpio_t* ret = NULL;
+    myst_cpio_t* cpio = NULL;
     int fd = -1;
 
     if (!path)
         GOTO(done);
 
-    if (!(cpio = calloc(1, sizeof(libos_cpio_t))))
+    if (!(cpio = calloc(1, sizeof(myst_cpio_t))))
         GOTO(done);
 
-    if ((flags & LIBOS_CPIO_FLAG_CREATE))
+    if ((flags & MYST_CPIO_FLAG_CREATE))
     {
         if ((fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0666)) < 0)
             GOTO(done);
@@ -326,7 +326,7 @@ done:
     return ret;
 }
 
-int libos_cpio_close(libos_cpio_t* cpio)
+int myst_cpio_close(myst_cpio_t* cpio)
 {
     int ret = -1;
 
@@ -355,24 +355,24 @@ int libos_cpio_close(libos_cpio_t* cpio)
 done:
 
     close(cpio->fd);
-    memset(cpio, 0, sizeof(libos_cpio_t));
+    memset(cpio, 0, sizeof(myst_cpio_t));
     free(cpio);
 
     return ret;
 }
 
 /* Read next entry: HEADER + NAME + FILEDATA + PADDING */
-int libos_cpio_read_entry(libos_cpio_t* cpio, libos_cpio_entry_t* entry_out)
+int myst_cpio_read_entry(myst_cpio_t* cpio, myst_cpio_entry_t* entry_out)
 {
     int ret = -1;
     cpio_header_t hdr;
-    libos_cpio_entry_t entry;
+    myst_cpio_entry_t entry;
     ssize_t r;
     int64_t file_offset;
     size_t namesize;
 
     if (entry_out)
-        memset(entry_out, 0, sizeof(libos_cpio_entry_t));
+        memset(entry_out, 0, sizeof(myst_cpio_entry_t));
 
     if (!cpio || cpio->fd < 0)
         GOTO(done);
@@ -405,7 +405,7 @@ int libos_cpio_read_entry(libos_cpio_t* cpio, libos_cpio_entry_t* entry_out)
 
     /* Get the name size. */
     {
-        if ((r = _get_namesize(&hdr)) < 0 || r >= LIBOS_CPIO_PATH_MAX)
+        if ((r = _get_namesize(&hdr)) < 0 || r >= MYST_CPIO_PATH_MAX)
             GOTO(done);
 
         namesize = (size_t)r;
@@ -455,7 +455,7 @@ done:
     return ret;
 }
 
-ssize_t libos_cpio_read_data(libos_cpio_t* cpio, void* data, size_t size)
+ssize_t myst_cpio_read_data(myst_cpio_t* cpio, void* data, size_t size)
 {
     ssize_t ret = -1;
     size_t rem;
@@ -484,7 +484,7 @@ done:
     return ret;
 }
 
-int libos_cpio_write_entry(libos_cpio_t* cpio, const libos_cpio_entry_t* entry)
+int myst_cpio_write_entry(myst_cpio_t* cpio, const myst_cpio_entry_t* entry)
 {
     int ret = -1;
     cpio_header_t h;
@@ -508,7 +508,7 @@ int libos_cpio_write_entry(libos_cpio_t* cpio, const libos_cpio_entry_t* entry)
     }
 
     /* Calculate the size of the name */
-    if ((namesize = strlen(entry->name) + 1) > LIBOS_CPIO_PATH_MAX)
+    if ((namesize = strlen(entry->name) + 1) > MYST_CPIO_PATH_MAX)
         GOTO(done);
 
     /* Write the CPIO header */
@@ -549,7 +549,7 @@ done:
     return ret;
 }
 
-ssize_t libos_cpio_write_data(libos_cpio_t* cpio, const void* data, size_t size)
+ssize_t myst_cpio_write_data(myst_cpio_t* cpio, const void* data, size_t size)
 {
     ssize_t ret = -1;
 
@@ -573,32 +573,32 @@ done:
     return ret;
 }
 
-int libos_cpio_unpack(const char* source, const char* target)
+int myst_cpio_unpack(const char* source, const char* target)
 {
     int ret = -1;
-    libos_cpio_t* cpio = NULL;
+    myst_cpio_t* cpio = NULL;
     int r;
-    libos_cpio_entry_t entry;
-    char path[LIBOS_CPIO_PATH_MAX];
+    myst_cpio_entry_t entry;
+    char path[MYST_CPIO_PATH_MAX];
     int fd = -1;
 
     if (!source || !target)
         GOTO(done);
 
-    if (!(cpio = libos_cpio_open(source, 0)))
+    if (!(cpio = myst_cpio_open(source, 0)))
         GOTO(done);
 
     if (access(target, R_OK) != 0 && mkdir(target, 0766) != 0)
         GOTO(done);
 
-    while ((r = libos_cpio_read_entry(cpio, &entry)) > 0)
+    while ((r = myst_cpio_read_entry(cpio, &entry)) > 0)
     {
         if (strcmp(entry.name, ".") == 0)
             continue;
 
-        LIBOS_STRLCPY(path, target);
-        LIBOS_STRLCAT(path, "/");
-        LIBOS_STRLCAT(path, entry.name);
+        MYST_STRLCPY(path, target);
+        MYST_STRLCAT(path, "/");
+        MYST_STRLCAT(path, entry.name);
 
         if (S_ISDIR(entry.mode))
         {
@@ -625,7 +625,7 @@ int libos_cpio_unpack(const char* source, const char* target)
             if ((fd = open(path, O_WRONLY | O_CREAT, 0666)) < 0)
                 GOTO(done);
 
-            while ((n = libos_cpio_read_data(cpio, data, sizeof(data))) > 0)
+            while ((n = myst_cpio_read_data(cpio, data, sizeof(data))) > 0)
             {
                 if (write(fd, data, (size_t)n) != n)
                     GOTO(done);
@@ -642,7 +642,7 @@ int libos_cpio_unpack(const char* source, const char* target)
             ssize_t n;
 
             /* read the target from CPIO archive */
-            n = libos_cpio_read_data(cpio, target, sizeof(target));
+            n = myst_cpio_read_data(cpio, target, sizeof(target));
             if (n < 1 || n >= (ssize_t)sizeof(target))
                 GOTO(done);
 
@@ -663,7 +663,7 @@ int libos_cpio_unpack(const char* source, const char* target)
 done:
 
     if (cpio)
-        libos_cpio_close(cpio);
+        myst_cpio_close(cpio);
 
     if (fd >= 0)
         close(fd);
@@ -671,7 +671,7 @@ done:
     return ret;
 }
 
-static int _append_file(libos_cpio_t* cpio, const char* path, const char* name)
+static int _append_file(myst_cpio_t* cpio, const char* path, const char* name)
 {
     int ret = -1;
     struct stat st;
@@ -687,7 +687,7 @@ static int _append_file(libos_cpio_t* cpio, const char* path, const char* name)
 
     /* Write the CPIO header. */
     {
-        libos_cpio_entry_t ent;
+        myst_cpio_entry_t ent;
 
         memset(&ent, 0, sizeof(ent));
 
@@ -698,10 +698,10 @@ static int _append_file(libos_cpio_t* cpio, const char* path, const char* name)
 
         ent.mode = st.st_mode;
 
-        if (LIBOS_STRLCPY(ent.name, name) >= sizeof(ent.name))
+        if (MYST_STRLCPY(ent.name, name) >= sizeof(ent.name))
             GOTO(done);
 
-        if (libos_cpio_write_entry(cpio, &ent) != 0)
+        if (myst_cpio_write_entry(cpio, &ent) != 0)
         {
             GOTO(done);
         }
@@ -717,7 +717,7 @@ static int _append_file(libos_cpio_t* cpio, const char* path, const char* name)
 
         while ((n = read(fd, buf, sizeof(buf))) > 0)
         {
-            if (libos_cpio_write_data(cpio, buf, (size_t)n) != 0)
+            if (myst_cpio_write_data(cpio, buf, (size_t)n) != 0)
                 GOTO(done);
         }
 
@@ -734,11 +734,11 @@ static int _append_file(libos_cpio_t* cpio, const char* path, const char* name)
         if (n <= 0 || n >= (ssize_t)sizeof(buf))
             GOTO(done);
 
-        if (libos_cpio_write_data(cpio, buf, (size_t)n) != 0)
+        if (myst_cpio_write_data(cpio, buf, (size_t)n) != 0)
             GOTO(done);
     }
 
-    if (libos_cpio_write_data(cpio, NULL, 0) != 0)
+    if (myst_cpio_write_data(cpio, NULL, 0) != 0)
         GOTO(done);
 
     ret = 0;
@@ -751,13 +751,13 @@ done:
     return ret;
 }
 
-static int _pack(libos_cpio_t* cpio, const char* dirname, const char* root)
+static int _pack(myst_cpio_t* cpio, const char* dirname, const char* root)
 {
     int ret = -1;
     DIR* dir = NULL;
     struct dirent* ent;
-    char path[LIBOS_CPIO_PATH_MAX];
-    libos_strarr_t dirs = LIBOS_STRARR_INITIALIZER;
+    char path[MYST_CPIO_PATH_MAX];
+    myst_strarr_t dirs = MYST_STRARR_INITIALIZER;
 
     if (!(dir = opendir(root)))
         GOTO(done);
@@ -788,16 +788,16 @@ static int _pack(libos_cpio_t* cpio, const char* dirname, const char* root)
 
         if (strcmp(root, ".") != 0)
         {
-            LIBOS_STRLCAT(path, root);
-            LIBOS_STRLCAT(path, "/");
+            MYST_STRLCAT(path, root);
+            MYST_STRLCAT(path, "/");
         }
 
-        LIBOS_STRLCAT(path, ent->d_name);
+        MYST_STRLCAT(path, ent->d_name);
 
         /* Append to dirs[] array */
         if (ent->d_type & DT_DIR)
         {
-            if (libos_strarr_append(&dirs, path) != 0)
+            if (myst_strarr_append(&dirs, path) != 0)
                 GOTO(done);
         }
         else
@@ -834,20 +834,20 @@ done:
     if (dir)
         closedir(dir);
 
-    libos_strarr_release(&dirs);
+    myst_strarr_release(&dirs);
 
     return ret;
 }
 
-int libos_cpio_pack(const char* source, const char* target)
+int myst_cpio_pack(const char* source, const char* target)
 {
     int ret = -1;
-    libos_cpio_t* cpio = NULL;
+    myst_cpio_t* cpio = NULL;
 
     if (!source || !target)
         GOTO(done);
 
-    if (!(cpio = libos_cpio_open(target, LIBOS_CPIO_FLAG_CREATE)))
+    if (!(cpio = myst_cpio_open(target, MYST_CPIO_FLAG_CREATE)))
         GOTO(done);
 
     if (_pack(cpio, source, source) != 0)
@@ -858,7 +858,7 @@ int libos_cpio_pack(const char* source, const char* target)
 done:
 
     if (cpio)
-        libos_cpio_close(cpio);
+        myst_cpio_close(cpio);
 
     return ret;
 }
@@ -871,11 +871,11 @@ done:
 **==============================================================================
 */
 
-int libos_cpio_next_entry(
+int myst_cpio_next_entry(
     const void* data_,
     size_t size,
     size_t* pos_in_out,
-    libos_cpio_entry_t* entry_out,
+    myst_cpio_entry_t* entry_out,
     const void** file_data_out)
 {
     int ret = -1;
@@ -883,7 +883,7 @@ int libos_cpio_next_entry(
     size_t pos;
     size_t rem;
     cpio_header_t hdr;
-    libos_cpio_entry_t entry;
+    myst_cpio_entry_t entry;
     ssize_t r;
     size_t namesize;
     uint64_t file_pos;
@@ -892,7 +892,7 @@ int libos_cpio_next_entry(
         GOTO(done);
 
     pos = *pos_in_out;
-    memset(entry_out, 0, sizeof(libos_cpio_entry_t));
+    memset(entry_out, 0, sizeof(myst_cpio_entry_t));
     *file_data_out = NULL;
 
     if (pos > size)
@@ -931,7 +931,7 @@ int libos_cpio_next_entry(
 
     /* Get the name size. */
     {
-        if ((r = _get_namesize(&hdr)) < 0 || r >= LIBOS_CPIO_PATH_MAX)
+        if ((r = _get_namesize(&hdr)) < 0 || r >= MYST_CPIO_PATH_MAX)
             GOTO(done);
 
         namesize = (size_t)r;
@@ -951,7 +951,7 @@ int libos_cpio_next_entry(
     {
         size_t new_pos;
 
-        if (libos_round_up(pos, 4, &new_pos) != 0)
+        if (myst_round_up(pos, 4, &new_pos) != 0)
             GOTO(done);
 
         size_t padding = new_pos - pos;
@@ -979,7 +979,7 @@ int libos_cpio_next_entry(
     {
         size_t new_pos;
 
-        if (libos_round_up(pos, 4, &new_pos) != 0)
+        if (myst_round_up(pos, 4, &new_pos) != 0)
             GOTO(done);
 
         size_t padding = new_pos - pos;
@@ -1010,23 +1010,23 @@ done:
     return ret;
 }
 
-int libos_cpio_mem_unpack(
+int myst_cpio_mem_unpack(
     const void* cpio_data,
     size_t cpio_size,
     const char* target,
-    libos_cpio_create_file_function_t create_file)
+    myst_cpio_create_file_function_t create_file)
 {
     int ret = -1;
-    char path[LIBOS_CPIO_PATH_MAX];
+    char path[MYST_CPIO_PATH_MAX];
     size_t pos = 0;
 
     for (;;)
     {
-        libos_cpio_entry_t ent;
+        myst_cpio_entry_t ent;
         const void* file_data;
         int r;
 
-        if ((r = libos_cpio_next_entry(
+        if ((r = myst_cpio_next_entry(
                  cpio_data, cpio_size, &pos, &ent, &file_data)) == 0)
         {
             break;
@@ -1035,9 +1035,9 @@ int libos_cpio_mem_unpack(
         if (strcmp(ent.name, ".") == 0)
             continue;
 
-        LIBOS_STRLCPY(path, target);
-        LIBOS_STRLCAT(path, "/");
-        LIBOS_STRLCAT(path, ent.name);
+        MYST_STRLCPY(path, target);
+        MYST_STRLCAT(path, "/");
+        MYST_STRLCAT(path, ent.name);
 
         if (S_ISDIR(ent.mode))
         {

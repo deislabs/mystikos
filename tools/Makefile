@@ -1,6 +1,6 @@
 TOP=$(abspath ..)
 include $(TOP)/defs.mak
 
-DIRS = libos
+DIRS = myst
 
 include $(TOP)/rules.mak

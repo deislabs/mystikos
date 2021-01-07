@@ -2,8 +2,8 @@
 // Licensed under the MIT License.
 
 #include <assert.h>
-#include <libos/args.h>
-#include <libos/defs.h>
+#include <myst/args.h>
+#include <myst/defs.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,33 +19,33 @@ void dump(const char* args[], size_t size)
 
 void test_pack_unpack(void)
 {
-    libos_args_t args;
+    myst_args_t args;
 
-    assert(libos_args_init(&args) == 0);
+    assert(myst_args_init(&args) == 0);
     assert(args.size == 0);
     assert(args.data[0] == NULL);
 
-    assert(libos_args_append(&args, NULL, 0) == 0);
+    assert(myst_args_append(&args, NULL, 0) == 0);
 
-    assert(libos_args_append1(&args, "red") == 0);
+    assert(myst_args_append1(&args, "red") == 0);
     assert(args.size == 1);
     assert(strcmp(args.data[0], "red") == 0);
     assert(args.data[1] == NULL);
 
-    assert(libos_args_append1(&args, "green") == 0);
+    assert(myst_args_append1(&args, "green") == 0);
     assert(args.size == 2);
     assert(strcmp(args.data[0], "red") == 0);
     assert(strcmp(args.data[1], "green") == 0);
     assert(args.data[2] == NULL);
 
-    assert(libos_args_append1(&args, "blue") == 0);
+    assert(myst_args_append1(&args, "blue") == 0);
     assert(args.size == 3);
     assert(strcmp(args.data[0], "red") == 0);
     assert(strcmp(args.data[1], "green") == 0);
     assert(strcmp(args.data[2], "blue") == 0);
     assert(args.data[3] == NULL);
 
-    assert(libos_args_prepend1(&args, "yellow") == 0);
+    assert(myst_args_prepend1(&args, "yellow") == 0);
     assert(args.size == 4);
     assert(strcmp(args.data[0], "yellow") == 0);
     assert(strcmp(args.data[1], "red") == 0);
@@ -55,12 +55,12 @@ void test_pack_unpack(void)
 
     void* packed_data;
     size_t packed_size;
-    assert(libos_args_pack(&args, &packed_data, &packed_size) == 0);
+    assert(myst_args_pack(&args, &packed_data, &packed_size) == 0);
     assert(packed_data != NULL);
     assert(packed_size != 0);
 
-    libos_args_t out;
-    assert(libos_args_unpack(&out, packed_data, packed_size) == 0);
+    myst_args_t out;
+    assert(myst_args_unpack(&out, packed_data, packed_size) == 0);
     assert(out.size == 4);
     assert(strcmp(out.data[0], "yellow") == 0);
     assert(strcmp(out.data[1], "red") == 0);
@@ -68,7 +68,7 @@ void test_pack_unpack(void)
     assert(strcmp(out.data[3], "blue") == 0);
     assert(out.data[4] == NULL);
 
-    assert(libos_args_prepend(&args, args.data, args.size) == 0);
+    assert(myst_args_prepend(&args, args.data, args.size) == 0);
     assert(args.size == 8);
     assert(strcmp(args.data[0], "yellow") == 0);
     assert(strcmp(args.data[1], "red") == 0);
@@ -80,18 +80,18 @@ void test_pack_unpack(void)
     assert(strcmp(args.data[7], "blue") == 0);
     assert(args.data[8] == NULL);
 
-    assert(libos_args_remove(&args, 1, 6) == 0);
+    assert(myst_args_remove(&args, 1, 6) == 0);
     assert(args.size == 2);
     assert(strcmp(args.data[0], "yellow") == 0);
     assert(strcmp(args.data[1], "blue") == 0);
     assert(args.data[2] == NULL);
 
-    assert(libos_args_remove(&args, 1, 1) == 0);
+    assert(myst_args_remove(&args, 1, 1) == 0);
     assert(args.size == 1);
     assert(strcmp(args.data[0], "yellow") == 0);
     assert(args.data[1] == NULL);
 
-    assert(libos_args_remove(&args, 0, 1) == 0);
+    assert(myst_args_remove(&args, 0, 1) == 0);
     assert(args.size == 0);
     assert(args.data[0] == NULL);
 
@@ -102,21 +102,21 @@ void test_pack_unpack(void)
 
 void test_missing_null_terminator(void)
 {
-    libos_args_t args;
+    myst_args_t args;
 
-    assert(libos_args_init(&args) == 0);
+    assert(myst_args_init(&args) == 0);
     assert(args.size == 0);
     assert(args.data[0] == NULL);
 
-    assert(libos_args_append(&args, NULL, 0) == 0);
+    assert(myst_args_append(&args, NULL, 0) == 0);
 
-    assert(libos_args_append1(&args, "arg0") == 0);
+    assert(myst_args_append1(&args, "arg0") == 0);
     assert(args.size == 1);
 
     assert(strcmp(args.data[0], "arg0") == 0);
     assert(args.data[1] == NULL);
 
-    assert(libos_args_append1(&args, "arg1") == 0);
+    assert(myst_args_append1(&args, "arg1") == 0);
     assert(args.size == 2);
 
     assert(strcmp(args.data[1], "arg1") == 0);
@@ -124,7 +124,7 @@ void test_missing_null_terminator(void)
 
     void* packed_data;
     size_t packed_size;
-    assert(libos_args_pack(&args, &packed_data, &packed_size) == 0);
+    assert(myst_args_pack(&args, &packed_data, &packed_size) == 0);
     assert(packed_data != NULL);
     assert(packed_size != 0);
 
@@ -148,8 +148,8 @@ void test_missing_null_terminator(void)
     }
 
     /* unpacking should detect the missing null byte and fail */
-    libos_args_t out;
-    assert(libos_args_unpack(&out, packed_data, packed_size) == -1);
+    myst_args_t out;
+    assert(myst_args_unpack(&out, packed_data, packed_size) == -1);
 
     free(args.data);
     free(packed_data);
@@ -157,15 +157,15 @@ void test_missing_null_terminator(void)
 
 void test_bounds_violation(void)
 {
-    libos_args_t args;
+    myst_args_t args;
 
-    assert(libos_args_init(&args) == 0);
+    assert(myst_args_init(&args) == 0);
     assert(args.size == 0);
     assert(args.data[0] == NULL);
 
-    assert(libos_args_append(&args, NULL, 0) == 0);
+    assert(myst_args_append(&args, NULL, 0) == 0);
 
-    assert(libos_args_append1(&args, "arg0") == 0);
+    assert(myst_args_append1(&args, "arg0") == 0);
     assert(args.size == 1);
 
     assert(strcmp(args.data[0], "arg0") == 0);
@@ -173,7 +173,7 @@ void test_bounds_violation(void)
 
     void* packed_data;
     size_t packed_size;
-    assert(libos_args_pack(&args, &packed_data, &packed_size) == 0);
+    assert(myst_args_pack(&args, &packed_data, &packed_size) == 0);
     assert(packed_data != NULL);
     assert(packed_size != 0);
 
@@ -206,8 +206,8 @@ void test_bounds_violation(void)
     }
 
     /* unpacking should detect the missing null byte and fail */
-    libos_args_t out;
-    assert(libos_args_unpack(&out, packed_data, packed_size) == -1);
+    myst_args_t out;
+    assert(myst_args_unpack(&out, packed_data, packed_size) == -1);
 
     free(args.data);
     free(packed_data);

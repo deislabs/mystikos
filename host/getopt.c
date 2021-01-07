@@ -1,12 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include <libos/getopt.h>
+#include <myst/getopt.h>
 
-#include <libos/eraise.h>
+#include <myst/eraise.h>
 #include <string.h>
 
-int libos_getopt(
+int myst_getopt(
     int* argc,
     const char* argv[],
     const char* opt,

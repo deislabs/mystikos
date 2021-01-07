@@ -4,12 +4,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <libos/strarr.h>
-#include <libos/strings.h>
+#include <myst/strarr.h>
+#include <myst/strings.h>
 
 static size_t _CAPACITY = 32;
 
-void libos_strarr_release(libos_strarr_t* self)
+void myst_strarr_release(myst_strarr_t* self)
 {
     size_t i;
 
@@ -17,10 +17,10 @@ void libos_strarr_release(libos_strarr_t* self)
         free(self->data[i]);
 
     free(self->data);
-    memset(self, 0, sizeof(libos_strarr_t));
+    memset(self, 0, sizeof(myst_strarr_t));
 }
 
-int libos_strarr_append(libos_strarr_t* self, const char* str)
+int myst_strarr_append(myst_strarr_t* self, const char* str)
 {
     /* Increase the capacity */
     if (self->size == self->capacity)
@@ -60,7 +60,7 @@ int libos_strarr_append(libos_strarr_t* self, const char* str)
     return 0;
 }
 
-int libos_strarr_remove(libos_strarr_t* self, size_t index)
+int myst_strarr_remove(myst_strarr_t* self, size_t index)
 {
     size_t i;
 
@@ -80,7 +80,7 @@ int libos_strarr_remove(libos_strarr_t* self, size_t index)
     return 0;
 }
 
-void libos_strarr_sort(libos_strarr_t* self)
+void myst_strarr_sort(myst_strarr_t* self)
 {
     size_t i;
     size_t j;

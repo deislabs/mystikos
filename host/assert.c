@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void __libos_assert_fail(
+void __myst_assert_fail(
     const char* expr,
     const char* file,
     int line,

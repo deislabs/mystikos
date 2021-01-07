@@ -2,8 +2,8 @@
 // Licensed under the MIT License.
 
 #include <assert.h>
-#include <libos/elf.h>
-#include <libos/file.h>
+#include <myst/elf.h>
+#include <myst/file.h>
 #include <limits.h>
 #include <malloc.h>
 #include <stdio.h>
@@ -118,7 +118,7 @@ static int _test_add_section(const char* path)
         exit(1);
     }
 
-    if (libos_load_file(arg0, &data, &size) != 0)
+    if (myst_load_file(arg0, &data, &size) != 0)
     {
         fprintf(stderr, "%s: failed to load file: %s \n", arg0, arg0);
         exit(1);
@@ -136,7 +136,7 @@ static int _test_add_section(const char* path)
         exit(1);
     }
 
-    if (libos_write_file(new_path, elf.data, elf.size) != 0)
+    if (myst_write_file(new_path, elf.data, elf.size) != 0)
     {
         fprintf(stderr, "%s: failed to write file\n", arg0);
         exit(1);

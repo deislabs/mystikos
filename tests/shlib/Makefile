@@ -7,24 +7,24 @@ LDFLAGS = -Wl,-rpath=/lib -L$(APPDIR)/lib -lfoo
 
 export LD_LIBRARY_PATH=$(APPDIR)/lib
 
-all: libos rootfs
+all: myst rootfs
 
 rootfs: foo.c shlib.c
 	mkdir -p $(APPDIR)/bin
 	mkdir -p $(APPDIR)/lib
 	$(MUSL_GCC) $(CFLAGS) -shared -o $(APPDIR)/lib/libfoo.so foo.c
 	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/shlib shlib.c $(LDFLAGS)
-	$(LIBOS) mkcpio appdir rootfs
+	$(MYST) mkcpio appdir rootfs
 
 ifdef STRACE
 OPTS += --strace
 endif
 
 tests:
-	$(RUNTEST) $(LIBOS_EXEC) $(OPTS) rootfs /bin/shlib $(OPTS)
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/shlib $(OPTS)
 
-libos:
-	$(MAKE) -C $(TOP)/tools/libos
+myst:
+	$(MAKE) -C $(TOP)/tools/myst
 
 clean:
 	rm -rf $(APPDIR) rootfs export ramfs

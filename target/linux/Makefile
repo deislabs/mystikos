@@ -3,7 +3,7 @@ include $(TOP)/defs.mak
 
 SUBLIBDIR=$(LIBDIR)
 
-ARCHIVE = libostargetlinux.a
+ARCHIVE = libmysttargetlinux.a
 
 SOURCES += $(wildcard *.c)
 SOURCES += ../shared/waitwake.c
@@ -12,14 +12,14 @@ SOURCES += ../shared/poll.c
 
 CFLAGS = $(DEFAULT_CFLAGS)
 
-ifdef LIBOS_ENABLE_GCOV
+ifdef MYST_ENABLE_GCOV
 CFLAGS += $(GCOV_CFLAGS)
 endif
 
 INCLUDES = -I$(INCDIR)
 
-ifdef LIBOS_DEBUG_MALLOC
-DEFINES += -DLIBOS_DEBUG_MALLOC
+ifdef MYST_DEBUG_MALLOC
+DEFINES += -DMYST_DEBUG_MALLOC
 endif
 
 include $(TOP)/rules.mak

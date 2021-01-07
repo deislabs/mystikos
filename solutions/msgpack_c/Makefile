@@ -5,26 +5,26 @@ include $(TOP)/defs.mak
 
 APPDIR = appdir
 TESTSDIR_HOST=$(CURDIR)/$(APPDIR)/tests
-TESTSDIR_LIBOS=/tests
+TESTSDIR_MYST=/tests
 CFLAGS = -fPIC
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 
-all: libos cpio
+all: myst cpio
 
 #OPTS = --trace-syscalls
 
 run: 
 	@ echo -e "\n------starting msgpack-c cpp unit tests------\n"
-	$(foreach test, $(shell ls $(TESTSDIR_HOST)), $(LIBOS) exec rootfs $(TESTSDIR_LIBOS)/$(test) $(OPTS) $(NL))
+	$(foreach test, $(shell ls $(TESTSDIR_HOST)), $(MYST) exec rootfs $(TESTSDIR_MYST)/$(test) $(OPTS) $(NL))
 
-libos:
-	$(MAKE) -C $(TOP)/tools/libos
+myst:
+	$(MAKE) -C $(TOP)/tools/myst
 
 app: clean
 	$(TOP)/scripts/appbuilder Dockerfile
 
 cpio: app
-	$(LIBOS) mkcpio $(APPDIR) rootfs
+	$(MYST) mkcpio $(APPDIR) rootfs
 
 clean:
 	rm -rf rootfs $(APPDIR)

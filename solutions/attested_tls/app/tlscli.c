@@ -157,7 +157,7 @@ static void _log_hex_data(const char* msg, const uint8_t* data, size_t size)
     printf("\n");
 }
 
-static int _verifier_callback(libos_tee_identity_t* identity, void* arg)
+static int _verifier_callback(myst_tee_identity_t* identity, void* arg)
 {
     int result = 1;
 
@@ -167,23 +167,23 @@ static int _verifier_callback(libos_tee_identity_t* identity, void* arg)
         0x85, 0xb3, 0x05, 0x96, 0x35, 0xe5, 0x64, 0x60, 0xec, 0x17, 0x5c,
         0xda, 0xfe, 0x81, 0x8b, 0xdf, 0xec, 0x55, 0x79, 0x00, 0xe4};
 
-    const uint8_t OE_ISVPRODID[LIBOS_PRODUCT_ID_SIZE] = {1};
+    const uint8_t OE_ISVPRODID[MYST_PRODUCT_ID_SIZE] = {1};
 
     (void)arg;
 
     printf("\n");
     printf("=== _verify_identity()\n");
-    _log_hex_data("Unique ID", identity->unique_id, LIBOS_UNIQUE_ID_SIZE);
-    _log_hex_data("Signer", identity->signer_id, LIBOS_SIGNER_ID_SIZE);
-    _log_hex_data("Product ID", identity->product_id, LIBOS_PRODUCT_ID_SIZE);
+    _log_hex_data("Unique ID", identity->unique_id, MYST_UNIQUE_ID_SIZE);
+    _log_hex_data("Signer", identity->signer_id, MYST_SIGNER_ID_SIZE);
+    _log_hex_data("Product ID", identity->product_id, MYST_PRODUCT_ID_SIZE);
     printf("\n");
 
-    if (memcmp(identity->signer_id, OE_MRSIGNER, LIBOS_SIGNER_ID_SIZE) != 0)
+    if (memcmp(identity->signer_id, OE_MRSIGNER, MYST_SIGNER_ID_SIZE) != 0)
     {
         printf("\nMRSIGNER verification failed!\n");
         goto done;
     }
-    if (memcmp(identity->product_id, OE_ISVPRODID, LIBOS_PRODUCT_ID_SIZE) != 0)
+    if (memcmp(identity->product_id, OE_ISVPRODID, MYST_PRODUCT_ID_SIZE) != 0)
     {
         printf("\nISVPRODID verification failed!\n");
         goto done;
@@ -204,7 +204,7 @@ static int _cert_verify_callback(
     uint32_t* flags)
 {
     int ret = 1;
-    const long SYS_libos_verify_cert = 1011;
+    const long SYS_myst_verify_cert = 1011;
     (void)data;
     (void)depth;
 
@@ -222,7 +222,7 @@ static int _cert_verify_callback(
     if (access("/manifesto", F_OK) != -1)
     {
         ret = syscall(
-            SYS_libos_verify_cert, cert, cert_size, _verifier_callback, NULL);
+            SYS_myst_verify_cert, cert, cert_size, _verifier_callback, NULL);
     }
     else
     {

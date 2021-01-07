@@ -1,11 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include <libos/syscall.h>
-#include <libos/tcall.h>
-#include <libos/time.h>
+#include <myst/syscall.h>
+#include <myst/tcall.h>
+#include <myst/time.h>
 
-void libos_sleep_msec(uint64_t milliseconds)
+void myst_sleep_msec(uint64_t milliseconds)
 {
     struct timespec ts;
     const struct timespec* req = &ts;
@@ -19,5 +19,5 @@ void libos_sleep_msec(uint64_t milliseconds)
     params[0] = (long)req;
     params[1] = (long)NULL;
 
-    libos_tcall(SYS_nanosleep, params);
+    myst_tcall(SYS_nanosleep, params);
 }

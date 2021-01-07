@@ -3,31 +3,31 @@
 
 #include <stdio.h>
 
-#include <libos/kernel.h>
-#include <libos/panic.h>
-#include <libos/printf.h>
-#include <libos/strings.h>
-#include <libos/tcall.h>
+#include <myst/kernel.h>
+#include <myst/panic.h>
+#include <myst/printf.h>
+#include <myst/strings.h>
+#include <myst/tcall.h>
 
 static void _dump_target_stat(void)
 {
-    libos_target_stat_t config;
-    const libos_kernel_args_t* args = &__libos_kernel_args;
+    myst_target_stat_t config;
+    const myst_kernel_args_t* args = &__myst_kernel_args;
 
     if (!args)
-        libos_panic("bad argument");
+        myst_panic("bad argument");
 
-    if (libos_tcall_target_stat(&config) != 0)
-        libos_panic("libos_tcall_target_stat() failed");
+    if (myst_tcall_target_stat(&config) != 0)
+        myst_panic("myst_tcall_target_stat() failed");
 
-    printf("=== libos memory configuration:\n");
+    printf("=== myst memory configuration:\n");
     printf("kernel_mem_size=%zu\n", config.heap_size);
     printf("user_mem_size=%zu\n", args->mman_size);
     printf("rootfs_size=%zu\n", args->rootfs_size);
     printf("crt_size=%zu\n", args->crt_size);
 }
 
-LIBOS_WEAK_ALIAS(_dump_target_stat, libos_dump_target_stat);
+MYST_WEAK_ALIAS(_dump_target_stat, myst_dump_target_stat);
 
 /* shorten name to make it convenient to call from debugger */
-LIBOS_WEAK_ALIAS(_dump_target_stat, memconf);
+MYST_WEAK_ALIAS(_dump_target_stat, memconf);

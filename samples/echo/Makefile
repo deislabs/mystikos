@@ -21,20 +21,20 @@ SOURCES = echo_t.c echo.c
 OBJECTS = $(addprefix $(SUBOBJDIR)/, $(SOURCES:.c=.o))
 
 all: $(OBJECTS)
-	$(MAKE) -C ../../tools/libos
+	$(MAKE) -C ../../tools/myst
 	mkdir -p $(APPDIR)/bin
 	$(CC) $(CFLAGS) $(INCLUDES) -o $(TARGET) $(OBJECTS) $(LDFLAGS) $(LIBS)
-	$(LIBOS) mkcpio appdir rootfs
+	$(MYST) mkcpio appdir rootfs
 
 ifdef STRACE
 OPTS += --strace
 endif
 
 run:
-	$(LIBOS_EXEC) $(OPTS) rootfs /bin/echo $(OPTS)
+	$(MYST_EXEC) $(OPTS) rootfs /bin/echo $(OPTS)
 
-libos:
-	$(MAKE) -C $(TOP)/tools/libos
+myst:
+	$(MAKE) -C $(TOP)/tools/myst
 
 $(SUBOBJDIR)/echo.o : echo.c
 	mkdir -p $(SUBOBJDIR)

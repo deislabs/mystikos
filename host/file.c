@@ -6,10 +6,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <libos/eraise.h>
-#include <libos/file.h>
+#include <myst/eraise.h>
+#include <myst/file.h>
 
-int libos_write_file(const char* path, const void* data, size_t size)
+int myst_write_file(const char* path, const void* data, size_t size)
 {
     int ret = 0;
     int fd;
@@ -35,7 +35,7 @@ done:
     return ret;
 }
 
-int libos_write_file_fd(int fd, const void* data, size_t size)
+int myst_write_file_fd(int fd, const void* data, size_t size)
 {
     int ret = 0;
     const uint8_t* p = (const uint8_t*)data;

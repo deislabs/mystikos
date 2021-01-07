@@ -1,6 +1,6 @@
 # Getting started with a containerized C++ program
 
-Please see [README](../README.md) for how to install Open LibOS or build
+Please see [README](../README.md) for how to install Mystikos or build
 it from source code.
 
 ## Write the program
@@ -67,7 +67,7 @@ CMD ["/square", "1", "2", "3"]
 It you have an existing docker file for your application running on an
 Ubuntu-based container, some minor adjustments are needed to run it on
 an Alpine Linux based container, which happens to be compatible with
-Open LibOS (they both use MUSL as C-runtime).
+Mystikos (they both use MUSL as C-runtime).
 
 For example, the base image should be changed from maybe `ubuntu:18.04`
 to `alpine:3.10`. Also instead of `apt install <package list>`, we use
@@ -82,13 +82,13 @@ to make sure it's correct:
 
 The expected outputs, again, are "1 4 9".
 
-## Build the app folder with Open LibOS
+## Build the app folder with Mystikos
 
 We use a script to take the same docker file and generates
-an app folder `appdir` for preparing the program to be run with Open LibOS.
+an app folder `appdir` for preparing the program to be run with Mystikos.
 
 ```
-libos-appbuilder Dockerfile
+myst-appbuilder Dockerfile
 ```
 `appdir` contains the typical Linux root file system, such as `/usr`,
 `/home`, `/bin`, etc. It also contains our application `square` under
@@ -99,8 +99,8 @@ the root directory. The C++ runtime library `libstdc++` is also included.
 These two steps are almost identical to the descriptions
 [here](./user-getting-started-c.md#create-a-cpio-archive)
 ```
-libos mkcpio appdir rootfs
-libos exec-sgx rootfs /square 1 2 3
+myst mkcpio appdir rootfs
+myst exec-sgx rootfs /square 1 2 3
 ```
 
 The expected outputs, not surprisingly, are "1 4 9". But perhaps we have more

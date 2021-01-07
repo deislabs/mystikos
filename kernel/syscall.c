@@ -4,7 +4,7 @@
 #define _GNU_SOURCE
 #include <assert.h>
 #include <fcntl.h>
-#include <libos/mman.h>
+#include <myst/mman.h>
 #include <limits.h>
 #include <sched.h>
 #include <signal.h>
@@ -24,53 +24,53 @@
 #include <sys/vfs.h>
 #include <unistd.h>
 
-#include <libos/backtrace.h>
-#include <libos/barrier.h>
-#include <libos/buf.h>
-#include <libos/cpio.h>
-#include <libos/cwd.h>
-#include <libos/epolldev.h>
-#include <libos/eraise.h>
-#include <libos/errno.h>
-#include <libos/exec.h>
-#include <libos/fdops.h>
-#include <libos/fdtable.h>
-#include <libos/file.h>
-#include <libos/fs.h>
-#include <libos/fsgs.h>
-#include <libos/gcov.h>
-#include <libos/id.h>
-#include <libos/initfini.h>
-#include <libos/kernel.h>
-#include <libos/libc.h>
-#include <libos/lsr.h>
-#include <libos/mmanutils.h>
-#include <libos/mount.h>
-#include <libos/options.h>
-#include <libos/panic.h>
-#include <libos/paths.h>
-#include <libos/pipedev.h>
-#include <libos/printf.h>
-#include <libos/process.h>
-#include <libos/ramfs.h>
-#include <libos/setjmp.h>
-#include <libos/signal.h>
-#include <libos/spinlock.h>
-#include <libos/strings.h>
-#include <libos/syscall.h>
-#include <libos/tcall.h>
-#include <libos/thread.h>
-#include <libos/times.h>
-#include <libos/trace.h>
+#include <myst/backtrace.h>
+#include <myst/barrier.h>
+#include <myst/buf.h>
+#include <myst/cpio.h>
+#include <myst/cwd.h>
+#include <myst/epolldev.h>
+#include <myst/eraise.h>
+#include <myst/errno.h>
+#include <myst/exec.h>
+#include <myst/fdops.h>
+#include <myst/fdtable.h>
+#include <myst/file.h>
+#include <myst/fs.h>
+#include <myst/fsgs.h>
+#include <myst/gcov.h>
+#include <myst/id.h>
+#include <myst/initfini.h>
+#include <myst/kernel.h>
+#include <myst/libc.h>
+#include <myst/lsr.h>
+#include <myst/mmanutils.h>
+#include <myst/mount.h>
+#include <myst/options.h>
+#include <myst/panic.h>
+#include <myst/paths.h>
+#include <myst/pipedev.h>
+#include <myst/printf.h>
+#include <myst/process.h>
+#include <myst/ramfs.h>
+#include <myst/setjmp.h>
+#include <myst/signal.h>
+#include <myst/spinlock.h>
+#include <myst/strings.h>
+#include <myst/syscall.h>
+#include <myst/tcall.h>
+#include <myst/thread.h>
+#include <myst/times.h>
+#include <myst/trace.h>
 
-#define DEV_URANDOM_FD LIBOS_FDTABLE_SIZE
+#define DEV_URANDOM_FD MYST_FDTABLE_SIZE
 
 #define COLOR_RED "\e[31m"
 #define COLOR_BLUE "\e[34m"
 #define COLOR_GREEN "\e[32m"
 #define COLOR_RESET "\e[0m"
 
-long libos_syscall_isatty(int fd);
+long myst_syscall_isatty(int fd);
 
 typedef struct _pair
 {
@@ -414,44 +414,44 @@ static pair_t _pairs[] = {
     {SYS_statx, "SYS_statx"},
     {SYS_io_pgetevents, "SYS_io_pgetevents"},
     {SYS_rseq, "SYS_rseq"},
-    {SYS_libos_trace, "SYS_libos_trace"},
-    {SYS_libos_trace_ptr, "SYS_libos_trace_ptr"},
-    {SYS_libos_dump_ehdr, "SYS_libos_dump_ehdr"},
-    {SYS_libos_dump_argv, "SYS_libos_dump_argv"},
-    {SYS_libos_dump_stack, "SYS_libos_dump_stack"},
-    {SYS_libos_add_symbol_file, "SYS_libos_add_symbol_file"},
-    {SYS_libos_load_symbols, "SYS_libos_load_symbols"},
-    {SYS_libos_unload_symbols, "SYS_libos_unload_symbols"},
-    {SYS_libos_gen_creds, "SYS_libos_gen_creds"},
-    {SYS_libos_free_creds, "SYS_libos_free_creds"},
-    {SYS_libos_clone, "SYS_libos_clone"},
-    {SYS_libos_gcov_init, "SYS_libos_gcov_init"},
-    {SYS_libos_max_threads, "SYS_libos_max_threads"},
+    {SYS_myst_trace, "SYS_myst_trace"},
+    {SYS_myst_trace_ptr, "SYS_myst_trace_ptr"},
+    {SYS_myst_dump_ehdr, "SYS_myst_dump_ehdr"},
+    {SYS_myst_dump_argv, "SYS_myst_dump_argv"},
+    {SYS_myst_dump_stack, "SYS_myst_dump_stack"},
+    {SYS_myst_add_symbol_file, "SYS_myst_add_symbol_file"},
+    {SYS_myst_load_symbols, "SYS_myst_load_symbols"},
+    {SYS_myst_unload_symbols, "SYS_myst_unload_symbols"},
+    {SYS_myst_gen_creds, "SYS_myst_gen_creds"},
+    {SYS_myst_free_creds, "SYS_myst_free_creds"},
+    {SYS_myst_clone, "SYS_myst_clone"},
+    {SYS_myst_gcov_init, "SYS_myst_gcov_init"},
+    {SYS_myst_max_threads, "SYS_myst_max_threads"},
     /* Open Enclave extensions */
-    {SYS_libos_oe_get_report_v2, "SYS_libos_oe_get_report_v2"},
-    {SYS_libos_oe_free_report, "SYS_libos_oe_free_report"},
-    {SYS_libos_oe_get_target_info_v2, "SYS_libos_oe_get_target_info_v2"},
-    {SYS_libos_oe_free_target_info, "SYS_libos_oe_free_target_info"},
-    {SYS_libos_oe_parse_report, "SYS_libos_oe_parse_report"},
-    {SYS_libos_oe_verify_report, "SYS_libos_oe_verify_report"},
-    {SYS_libos_oe_get_seal_key_by_policy_v2,
-     "SYS_libos_oe_get_seal_key_by_policy_v2"},
-    {SYS_libos_oe_get_public_key_by_policy,
-     "SYS_libos_oe_get_public_key_by_policy"},
-    {SYS_libos_oe_get_public_key, "SYS_libos_oe_get_public_key"},
-    {SYS_libos_oe_get_private_key_by_policy,
-     "SYS_libos_oe_get_private_key_by_policy"},
-    {SYS_libos_oe_get_private_key, "SYS_libos_oe_get_private_key"},
-    {SYS_libos_oe_free_key, "SYS_libos_oe_free_key"},
-    {SYS_libos_oe_get_seal_key_v2, "SYS_libos_oe_get_seal_key_v2"},
-    {SYS_libos_oe_free_seal_key, "SYS_libos_oe_free_seal_key"},
-    {SYS_libos_oe_generate_attestation_certificate,
-     "SYS_libos_oe_generate_attestation_certificate"},
-    {SYS_libos_oe_free_attestation_certificate,
-     "SYS_libos_oe_free_attestation_certificate"},
-    {SYS_libos_oe_verify_attestation_certificate,
-     "SYS_libos_oe_verify_attestation_certificate"},
-    {SYS_libos_oe_result_str, "SYS_libos_oe_result_str"},
+    {SYS_myst_oe_get_report_v2, "SYS_myst_oe_get_report_v2"},
+    {SYS_myst_oe_free_report, "SYS_myst_oe_free_report"},
+    {SYS_myst_oe_get_target_info_v2, "SYS_myst_oe_get_target_info_v2"},
+    {SYS_myst_oe_free_target_info, "SYS_myst_oe_free_target_info"},
+    {SYS_myst_oe_parse_report, "SYS_myst_oe_parse_report"},
+    {SYS_myst_oe_verify_report, "SYS_myst_oe_verify_report"},
+    {SYS_myst_oe_get_seal_key_by_policy_v2,
+     "SYS_myst_oe_get_seal_key_by_policy_v2"},
+    {SYS_myst_oe_get_public_key_by_policy,
+     "SYS_myst_oe_get_public_key_by_policy"},
+    {SYS_myst_oe_get_public_key, "SYS_myst_oe_get_public_key"},
+    {SYS_myst_oe_get_private_key_by_policy,
+     "SYS_myst_oe_get_private_key_by_policy"},
+    {SYS_myst_oe_get_private_key, "SYS_myst_oe_get_private_key"},
+    {SYS_myst_oe_free_key, "SYS_myst_oe_free_key"},
+    {SYS_myst_oe_get_seal_key_v2, "SYS_myst_oe_get_seal_key_v2"},
+    {SYS_myst_oe_free_seal_key, "SYS_myst_oe_free_seal_key"},
+    {SYS_myst_oe_generate_attestation_certificate,
+     "SYS_myst_oe_generate_attestation_certificate"},
+    {SYS_myst_oe_free_attestation_certificate,
+     "SYS_myst_oe_free_attestation_certificate"},
+    {SYS_myst_oe_verify_attestation_certificate,
+     "SYS_myst_oe_verify_attestation_certificate"},
+    {SYS_myst_oe_result_str, "SYS_myst_oe_result_str"},
 };
 
 static size_t _n_pairs = sizeof(_pairs) / sizeof(_pairs[0]);
@@ -474,7 +474,7 @@ __attribute__((format(printf, 2, 3))) static void _strace(
 {
     if (__options.trace_syscalls)
     {
-        const bool isatty = libos_syscall_isatty(STDERR_FILENO) == 1;
+        const bool isatty = myst_syscall_isatty(STDERR_FILENO) == 1;
         const char* blue = isatty ? COLOR_GREEN : "";
         const char* reset = isatty ? COLOR_RESET : "";
         char buf[1024];
@@ -491,22 +491,22 @@ __attribute__((format(printf, 2, 3))) static void _strace(
             *buf = '\0';
         }
 
-        libos_eprintf(
+        myst_eprintf(
             "=== %s%s%s(%s): tid=%d\n",
             blue,
             syscall_str(n),
             reset,
             buf,
-            libos_gettid());
+            myst_gettid());
     }
 }
 
 static long _forward_syscall(long n, long params[6])
 {
     if (__options.trace_syscalls)
-        libos_eprintf("    [forward syscall]\n");
+        myst_eprintf("    [forward syscall]\n");
 
-    return libos_tcall(n, params);
+    return myst_tcall(n, params);
 }
 
 typedef struct fd_entry
@@ -525,7 +525,7 @@ static long _return(long n, long ret)
 
         if (ret < 0)
         {
-            const bool isatty = libos_syscall_isatty(STDERR_FILENO) == 1;
+            const bool isatty = myst_syscall_isatty(STDERR_FILENO) == 1;
 
             if (isatty)
             {
@@ -533,37 +533,37 @@ static long _return(long n, long ret)
                 reset = COLOR_RESET;
             }
 
-            error_name = libos_error_name(-ret);
+            error_name = myst_error_name(-ret);
         }
 
         if (error_name)
         {
-            libos_eprintf(
+            myst_eprintf(
                 "    %s%s(): return=-%s(%ld)%s: tid=%d\n",
                 red,
                 syscall_str(n),
                 error_name,
                 ret,
                 reset,
-                libos_gettid());
+                myst_gettid());
         }
         else
         {
-            libos_eprintf(
+            myst_eprintf(
                 "    %s%s(): return=%ld(%lx)%s: tid=%d\n",
                 red,
                 syscall_str(n),
                 ret,
                 ret,
                 reset,
-                libos_gettid());
+                myst_gettid());
         }
     }
 
     return ret;
 }
 
-static int _add_fd_link(libos_fs_t* fs, libos_file_t* file, int fd)
+static int _add_fd_link(myst_fs_t* fs, myst_file_t* file, int fd)
 {
     int ret = 0;
     char realpath[PATH_MAX];
@@ -584,21 +584,21 @@ done:
     return ret;
 }
 
-long libos_syscall_creat(const char* pathname, mode_t mode)
+long myst_syscall_creat(const char* pathname, mode_t mode)
 {
     long ret = 0;
     int fd;
     char suffix[PATH_MAX];
-    libos_fs_t* fs;
-    libos_file_t* file;
-    libos_fdtable_t* fdtable = libos_fdtable_current();
-    const libos_fdtable_type_t fdtype = LIBOS_FDTABLE_TYPE_FILE;
+    myst_fs_t* fs;
+    myst_file_t* file;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    const myst_fdtable_type_t fdtype = MYST_FDTABLE_TYPE_FILE;
     long r;
 
-    ECHECK(libos_mount_resolve(pathname, suffix, &fs));
+    ECHECK(myst_mount_resolve(pathname, suffix, &fs));
     ECHECK((*fs->fs_creat)(fs, suffix, mode, &file));
 
-    if ((fd = libos_fdtable_assign(fdtable, fdtype, fs, file)) < 0)
+    if ((fd = myst_fdtable_assign(fdtable, fdtype, fs, file)) < 0)
     {
         (*fs->fs_close)(fs, file);
         ERAISE(fd);
@@ -606,7 +606,7 @@ long libos_syscall_creat(const char* pathname, mode_t mode)
 
     if ((r = _add_fd_link(fs, file, fd)) != 0)
     {
-        libos_fdtable_remove(fdtable, fd);
+        myst_fdtable_remove(fdtable, fd);
         (*fs->fs_close)(fs, file);
         ERAISE(r);
     }
@@ -618,14 +618,14 @@ done:
     return ret;
 }
 
-long libos_syscall_open(const char* pathname, int flags, mode_t mode)
+long myst_syscall_open(const char* pathname, int flags, mode_t mode)
 {
     long ret = 0;
     char suffix[PATH_MAX];
-    libos_fs_t* fs;
-    libos_file_t* file;
-    libos_fdtable_t* fdtable = libos_fdtable_current();
-    const libos_fdtable_type_t fdtype = LIBOS_FDTABLE_TYPE_FILE;
+    myst_fs_t* fs;
+    myst_file_t* file;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    const myst_fdtable_type_t fdtype = MYST_FDTABLE_TYPE_FILE;
     int fd;
     int r;
 
@@ -636,10 +636,10 @@ long libos_syscall_open(const char* pathname, int flags, mode_t mode)
         return DEV_URANDOM_FD;
     }
 
-    ECHECK(libos_mount_resolve(pathname, suffix, &fs));
+    ECHECK(myst_mount_resolve(pathname, suffix, &fs));
     ECHECK((*fs->fs_open)(fs, suffix, flags, mode, &file));
 
-    if ((fd = libos_fdtable_assign(fdtable, fdtype, fs, file)) < 0)
+    if ((fd = myst_fdtable_assign(fdtable, fdtype, fs, file)) < 0)
     {
         (*fs->fs_close)(fs, file);
         ERAISE(fd);
@@ -647,7 +647,7 @@ long libos_syscall_open(const char* pathname, int flags, mode_t mode)
 
     if ((r = _add_fd_link(fs, file, fd)) != 0)
     {
-        libos_fdtable_remove(fdtable, fd);
+        myst_fdtable_remove(fdtable, fd);
         (*fs->fs_close)(fs, file);
         ERAISE(r);
     }
@@ -659,11 +659,11 @@ done:
     return ret;
 }
 
-long libos_syscall_epoll_create1(int flags)
+long myst_syscall_epoll_create1(int flags)
 {
     long ret = 0;
-    libos_epolldev_t* ed = libos_epolldev_get();
-    libos_epoll_t* epoll;
+    myst_epolldev_t* ed = myst_epolldev_get();
+    myst_epoll_t* epoll;
     int fd;
 
     if (!ed)
@@ -674,10 +674,10 @@ long libos_syscall_epoll_create1(int flags)
 
     /* add to file descriptor table */
     {
-        libos_fdtable_t* fdtable = libos_fdtable_current();
-        const libos_fdtable_type_t fdtype = LIBOS_FDTABLE_TYPE_EPOLL;
+        myst_fdtable_t* fdtable = myst_fdtable_current();
+        const myst_fdtable_type_t fdtype = MYST_FDTABLE_TYPE_EPOLL;
 
-        if ((fd = libos_fdtable_assign(fdtable, fdtype, ed, epoll)) < 0)
+        if ((fd = myst_fdtable_assign(fdtable, fdtype, ed, epoll)) < 0)
         {
             (*ed->ed_close)(ed, epoll);
             ERAISE(fd);
@@ -691,15 +691,15 @@ done:
     return ret;
 }
 
-long libos_syscall_lseek(int fd, off_t offset, int whence)
+long myst_syscall_lseek(int fd, off_t offset, int whence)
 {
     long ret = 0;
-    libos_fs_t* fs;
-    libos_file_t* file;
-    const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_FILE;
-    libos_fdtable_t* fdtable = libos_fdtable_current();
+    myst_fs_t* fs;
+    myst_file_t* file;
+    const myst_fdtable_type_t type = MYST_FDTABLE_TYPE_FILE;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
 
-    ECHECK(libos_fdtable_get(fdtable, fd, type, (void**)&fs, (void**)&file));
+    ECHECK(myst_fdtable_get(fdtable, fd, type, (void**)&fs, (void**)&file));
 
     ret = ((*fs->fs_lseek)(fs, file, offset, whence));
 
@@ -707,41 +707,41 @@ done:
     return ret;
 }
 
-long libos_syscall_close(int fd)
+long myst_syscall_close(int fd)
 {
     long ret = 0;
-    libos_fdtable_t* fdtable = libos_fdtable_current();
-    libos_fdtable_type_t type;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_fdtable_type_t type;
     void* device = NULL;
     void* object = NULL;
-    libos_fdops_t* fdops;
+    myst_fdops_t* fdops;
 
-    ECHECK(libos_fdtable_get_any(fdtable, fd, &type, &device, &object));
+    ECHECK(myst_fdtable_get_any(fdtable, fd, &type, &device, &object));
     fdops = device;
 
-    if (type == LIBOS_FDTABLE_TYPE_FILE)
+    if (type == MYST_FDTABLE_TYPE_FILE)
     {
         /* why does this sometimes fail? */
-        libos_remove_fd_link(device, object, fd);
+        myst_remove_fd_link(device, object, fd);
     }
 
     ECHECK((*fdops->fd_close)(device, object));
-    ECHECK(libos_fdtable_remove(fdtable, fd));
+    ECHECK(myst_fdtable_remove(fdtable, fd));
 
 done:
     return ret;
 }
 
-long libos_syscall_read(int fd, void* buf, size_t count)
+long myst_syscall_read(int fd, void* buf, size_t count)
 {
     long ret = 0;
     void* device = NULL;
     void* object = NULL;
-    libos_fdtable_type_t type;
-    libos_fdtable_t* fdtable = libos_fdtable_current();
-    libos_fdops_t* fdops;
+    myst_fdtable_type_t type;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_fdops_t* fdops;
 
-    ECHECK(libos_fdtable_get_any(fdtable, fd, &type, &device, &object));
+    ECHECK(myst_fdtable_get_any(fdtable, fd, &type, &device, &object));
     fdops = device;
 
     ret = (*fdops->fd_read)(device, object, buf, count);
@@ -750,16 +750,16 @@ done:
     return ret;
 }
 
-long libos_syscall_write(int fd, const void* buf, size_t count)
+long myst_syscall_write(int fd, const void* buf, size_t count)
 {
     long ret = 0;
     void* device = NULL;
     void* object = NULL;
-    libos_fdtable_type_t type;
-    libos_fdtable_t* fdtable = libos_fdtable_current();
-    libos_fdops_t* fdops;
+    myst_fdtable_type_t type;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_fdops_t* fdops;
 
-    ECHECK(libos_fdtable_get_any(fdtable, fd, &type, &device, &object));
+    ECHECK(myst_fdtable_get_any(fdtable, fd, &type, &device, &object));
     fdops = device;
 
     ret = (*fdops->fd_write)(device, object, buf, count);
@@ -768,44 +768,44 @@ done:
     return ret;
 }
 
-long libos_syscall_pread(int fd, void* buf, size_t count, off_t offset)
+long myst_syscall_pread(int fd, void* buf, size_t count, off_t offset)
 {
     long ret = 0;
-    libos_fdtable_t* fdtable = libos_fdtable_current();
-    libos_fs_t* fs;
-    libos_file_t* file;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_fs_t* fs;
+    myst_file_t* file;
 
-    ECHECK(libos_fdtable_get_file(fdtable, fd, &fs, &file));
+    ECHECK(myst_fdtable_get_file(fdtable, fd, &fs, &file));
     ret = (*fs->fs_pread)(fs, file, buf, count, offset);
 
 done:
     return ret;
 }
 
-long libos_syscall_pwrite(int fd, const void* buf, size_t count, off_t offset)
+long myst_syscall_pwrite(int fd, const void* buf, size_t count, off_t offset)
 {
     long ret = 0;
-    libos_fdtable_t* fdtable = libos_fdtable_current();
-    libos_fs_t* fs;
-    libos_file_t* file;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_fs_t* fs;
+    myst_file_t* file;
 
-    ECHECK(libos_fdtable_get_file(fdtable, fd, &fs, &file));
+    ECHECK(myst_fdtable_get_file(fdtable, fd, &fs, &file));
     ret = (*fs->fs_pwrite)(fs, file, buf, count, offset);
 
 done:
     return ret;
 }
 
-long libos_syscall_readv(int fd, const struct iovec* iov, int iovcnt)
+long myst_syscall_readv(int fd, const struct iovec* iov, int iovcnt)
 {
     long ret = 0;
-    libos_fdtable_t* fdtable = libos_fdtable_current();
+    myst_fdtable_t* fdtable = myst_fdtable_current();
     void* device = NULL;
     void* object = NULL;
-    libos_fdtable_type_t type;
-    libos_fdops_t* fdops;
+    myst_fdtable_type_t type;
+    myst_fdops_t* fdops;
 
-    ECHECK(libos_fdtable_get_any(fdtable, fd, &type, &device, &object));
+    ECHECK(myst_fdtable_get_any(fdtable, fd, &type, &device, &object));
     fdops = device;
 
     ret = (*fdops->fd_readv)(device, object, iov, iovcnt);
@@ -814,16 +814,16 @@ done:
     return ret;
 }
 
-long libos_syscall_writev(int fd, const struct iovec* iov, int iovcnt)
+long myst_syscall_writev(int fd, const struct iovec* iov, int iovcnt)
 {
     long ret = 0;
-    libos_fdtable_t* fdtable = libos_fdtable_current();
+    myst_fdtable_t* fdtable = myst_fdtable_current();
     void* device = NULL;
     void* object = NULL;
-    libos_fdtable_type_t type;
-    libos_fdops_t* fdops;
+    myst_fdtable_type_t type;
+    myst_fdops_t* fdops;
 
-    ECHECK(libos_fdtable_get_any(fdtable, fd, &type, &device, &object));
+    ECHECK(myst_fdtable_get_any(fdtable, fd, &type, &device, &object));
     fdops = device;
 
     ret = (*fdops->fd_writev)(device, object, iov, iovcnt);
@@ -832,42 +832,42 @@ done:
     return ret;
 }
 
-long libos_syscall_stat(const char* pathname, struct stat* statbuf)
+long myst_syscall_stat(const char* pathname, struct stat* statbuf)
 {
     long ret = 0;
     char suffix[PATH_MAX];
-    libos_fs_t* fs;
+    myst_fs_t* fs;
 
-    ECHECK(libos_mount_resolve(pathname, suffix, &fs));
+    ECHECK(myst_mount_resolve(pathname, suffix, &fs));
     ECHECK((*fs->fs_stat)(fs, suffix, statbuf));
 
 done:
     return ret;
 }
 
-long libos_syscall_lstat(const char* pathname, struct stat* statbuf)
+long myst_syscall_lstat(const char* pathname, struct stat* statbuf)
 {
     long ret = 0;
     char suffix[PATH_MAX];
-    libos_fs_t* fs;
+    myst_fs_t* fs;
 
-    ECHECK(libos_mount_resolve(pathname, suffix, &fs));
+    ECHECK(myst_mount_resolve(pathname, suffix, &fs));
     ECHECK((*fs->fs_lstat)(fs, suffix, statbuf));
 
 done:
     return ret;
 }
 
-long libos_syscall_fstat(int fd, struct stat* statbuf)
+long myst_syscall_fstat(int fd, struct stat* statbuf)
 {
     long ret = 0;
-    libos_fdtable_t* fdtable = libos_fdtable_current();
-    libos_fdtable_type_t type;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_fdtable_type_t type;
     void* device;
     void* object;
-    libos_fdops_t* fdops;
+    myst_fdops_t* fdops;
 
-    ECHECK(libos_fdtable_get_any(fdtable, fd, &type, &device, &object));
+    ECHECK(myst_fdtable_get_any(fdtable, fd, &type, &device, &object));
     fdops = device;
 
     ret = (*fdops->fd_fstat)(device, object, statbuf);
@@ -876,7 +876,7 @@ done:
     return ret;
 }
 
-long libos_syscall_fstatat(
+long myst_syscall_fstatat(
     int dirfd,
     const char* pathname,
     struct stat* statbuf,
@@ -892,12 +892,12 @@ long libos_syscall_fstatat(
     {
         if (flags & AT_SYMLINK_NOFOLLOW)
         {
-            ECHECK(libos_syscall_lstat(pathname, statbuf));
+            ECHECK(myst_syscall_lstat(pathname, statbuf));
             goto done;
         }
         else
         {
-            ECHECK(libos_syscall_stat(pathname, statbuf));
+            ECHECK(myst_syscall_stat(pathname, statbuf));
             goto done;
         }
     }
@@ -908,32 +908,32 @@ long libos_syscall_fstatat(
 
         if (flags & AT_SYMLINK_NOFOLLOW)
         {
-            libos_fdtable_t* fdtable = libos_fdtable_current();
-            libos_fs_t* fs;
-            libos_file_t* file;
+            myst_fdtable_t* fdtable = myst_fdtable_current();
+            myst_fs_t* fs;
+            myst_file_t* file;
             char realpath[PATH_MAX];
 
-            ECHECK(libos_fdtable_get_file(fdtable, dirfd, &fs, &file));
+            ECHECK(myst_fdtable_get_file(fdtable, dirfd, &fs, &file));
             ECHECK((*fs->fs_realpath)(fs, file, realpath, sizeof(realpath)));
-            ECHECK(libos_syscall_lstat(realpath, statbuf));
+            ECHECK(myst_syscall_lstat(realpath, statbuf));
             goto done;
         }
         else
         {
-            ECHECK(libos_syscall_fstat(dirfd, statbuf));
+            ECHECK(myst_syscall_fstat(dirfd, statbuf));
             goto done;
         }
     }
     else
     {
-        libos_fdtable_t* fdtable = libos_fdtable_current();
-        libos_fs_t* fs;
-        libos_file_t* file;
+        myst_fdtable_t* fdtable = myst_fdtable_current();
+        myst_fs_t* fs;
+        myst_file_t* file;
         char dirpath[PATH_MAX];
         char path[PATH_MAX];
         int n;
 
-        ECHECK(libos_fdtable_get_file(fdtable, dirfd, &fs, &file));
+        ECHECK(myst_fdtable_get_file(fdtable, dirfd, &fs, &file));
         ECHECK((*fs->fs_realpath)(fs, file, dirpath, sizeof(dirpath)));
 
         n = snprintf(path, sizeof(path), "%s/%s", dirpath, pathname);
@@ -942,12 +942,12 @@ long libos_syscall_fstatat(
 
         if (flags & AT_SYMLINK_NOFOLLOW)
         {
-            ECHECK(libos_syscall_lstat(path, statbuf));
+            ECHECK(myst_syscall_lstat(path, statbuf));
             goto done;
         }
         else
         {
-            ECHECK(libos_syscall_stat(path, statbuf));
+            ECHECK(myst_syscall_stat(path, statbuf));
             goto done;
         }
     }
@@ -956,41 +956,41 @@ done:
     return ret;
 }
 
-long libos_syscall_mkdir(const char* pathname, mode_t mode)
+long myst_syscall_mkdir(const char* pathname, mode_t mode)
 {
     long ret = 0;
     char suffix[PATH_MAX];
-    libos_fs_t* fs;
+    myst_fs_t* fs;
 
-    ECHECK(libos_mount_resolve(pathname, suffix, &fs));
+    ECHECK(myst_mount_resolve(pathname, suffix, &fs));
     ECHECK((*fs->fs_mkdir)(fs, suffix, mode));
 
 done:
     return ret;
 }
 
-long libos_syscall_rmdir(const char* pathname)
+long myst_syscall_rmdir(const char* pathname)
 {
     long ret = 0;
     char suffix[PATH_MAX];
-    libos_fs_t* fs;
+    myst_fs_t* fs;
 
-    ECHECK(libos_mount_resolve(pathname, suffix, &fs));
+    ECHECK(myst_mount_resolve(pathname, suffix, &fs));
     ECHECK((*fs->fs_rmdir)(fs, suffix));
 
 done:
     return ret;
 }
 
-long libos_syscall_getdents64(int fd, struct dirent* dirp, size_t count)
+long myst_syscall_getdents64(int fd, struct dirent* dirp, size_t count)
 {
     long ret = 0;
-    libos_fs_t* fs;
-    libos_file_t* file;
-    const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_FILE;
-    libos_fdtable_t* fdtable = libos_fdtable_current();
+    myst_fs_t* fs;
+    myst_file_t* file;
+    const myst_fdtable_type_t type = MYST_FDTABLE_TYPE_FILE;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
 
-    ECHECK(libos_fdtable_get(fdtable, fd, type, (void**)&fs, (void**)&file));
+    ECHECK(myst_fdtable_get(fdtable, fd, type, (void**)&fs, (void**)&file));
 
     ret = (*fs->fs_getdents64)(fs, file, dirp, count);
 
@@ -998,16 +998,16 @@ done:
     return ret;
 }
 
-long libos_syscall_link(const char* oldpath, const char* newpath)
+long myst_syscall_link(const char* oldpath, const char* newpath)
 {
     long ret = 0;
     char old_suffix[PATH_MAX];
     char new_suffix[PATH_MAX];
-    libos_fs_t* old_fs;
-    libos_fs_t* new_fs;
+    myst_fs_t* old_fs;
+    myst_fs_t* new_fs;
 
-    ECHECK(libos_mount_resolve(oldpath, old_suffix, &old_fs));
-    ECHECK(libos_mount_resolve(newpath, new_suffix, &new_fs));
+    ECHECK(myst_mount_resolve(oldpath, old_suffix, &old_fs));
+    ECHECK(myst_mount_resolve(newpath, new_suffix, &new_fs));
 
     if (old_fs != new_fs)
     {
@@ -1021,42 +1021,42 @@ done:
     return ret;
 }
 
-long libos_syscall_unlink(const char* pathname)
+long myst_syscall_unlink(const char* pathname)
 {
     long ret = 0;
     char suffix[PATH_MAX];
-    libos_fs_t* fs;
+    myst_fs_t* fs;
 
-    ECHECK(libos_mount_resolve(pathname, suffix, &fs));
+    ECHECK(myst_mount_resolve(pathname, suffix, &fs));
     ECHECK((*fs->fs_unlink)(fs, suffix));
 
 done:
     return ret;
 }
 
-long libos_syscall_access(const char* pathname, int mode)
+long myst_syscall_access(const char* pathname, int mode)
 {
     long ret = 0;
     char suffix[PATH_MAX];
-    libos_fs_t* fs;
+    myst_fs_t* fs;
 
-    ECHECK(libos_mount_resolve(pathname, suffix, &fs));
+    ECHECK(myst_mount_resolve(pathname, suffix, &fs));
     ECHECK((*fs->fs_access)(fs, suffix, mode));
 
 done:
     return ret;
 }
 
-long libos_syscall_rename(const char* oldpath, const char* newpath)
+long myst_syscall_rename(const char* oldpath, const char* newpath)
 {
     long ret = 0;
     char old_suffix[PATH_MAX];
     char new_suffix[PATH_MAX];
-    libos_fs_t* old_fs;
-    libos_fs_t* new_fs;
+    myst_fs_t* old_fs;
+    myst_fs_t* new_fs;
 
-    ECHECK(libos_mount_resolve(oldpath, old_suffix, &old_fs));
-    ECHECK(libos_mount_resolve(newpath, new_suffix, &new_fs));
+    ECHECK(myst_mount_resolve(oldpath, old_suffix, &old_fs));
+    ECHECK(myst_mount_resolve(newpath, new_suffix, &new_fs));
 
     if (old_fs != new_fs)
     {
@@ -1070,54 +1070,54 @@ done:
     return ret;
 }
 
-long libos_syscall_truncate(const char* path, off_t length)
+long myst_syscall_truncate(const char* path, off_t length)
 {
     long ret = 0;
     char suffix[PATH_MAX];
-    libos_fs_t* fs;
+    myst_fs_t* fs;
 
-    ECHECK(libos_mount_resolve(path, suffix, &fs));
+    ECHECK(myst_mount_resolve(path, suffix, &fs));
     ERAISE((*fs->fs_truncate)(fs, suffix, length));
 
 done:
     return ret;
 }
 
-long libos_syscall_ftruncate(int fd, off_t length)
+long myst_syscall_ftruncate(int fd, off_t length)
 {
     long ret = 0;
-    libos_fs_t* fs;
-    libos_file_t* file;
-    const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_FILE;
-    libos_fdtable_t* fdtable = libos_fdtable_current();
+    myst_fs_t* fs;
+    myst_file_t* file;
+    const myst_fdtable_type_t type = MYST_FDTABLE_TYPE_FILE;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
 
-    ECHECK(libos_fdtable_get(fdtable, fd, type, (void**)&fs, (void**)&file));
+    ECHECK(myst_fdtable_get(fdtable, fd, type, (void**)&fs, (void**)&file));
     ERAISE((*fs->fs_ftruncate)(fs, file, length));
 
 done:
     return ret;
 }
 
-long libos_syscall_readlink(const char* pathname, char* buf, size_t bufsiz)
+long myst_syscall_readlink(const char* pathname, char* buf, size_t bufsiz)
 {
     long ret = 0;
     char suffix[PATH_MAX];
-    libos_fs_t* fs;
+    myst_fs_t* fs;
 
-    ECHECK(libos_mount_resolve(pathname, suffix, &fs));
+    ECHECK(myst_mount_resolve(pathname, suffix, &fs));
     ERAISE((*fs->fs_readlink)(fs, pathname, buf, bufsiz));
 
 done:
     return ret;
 }
 
-long libos_syscall_symlink(const char* target, const char* linkpath)
+long myst_syscall_symlink(const char* target, const char* linkpath)
 {
     long ret = 0;
     char suffix[PATH_MAX];
-    libos_fs_t* fs;
+    myst_fs_t* fs;
 
-    ECHECK(libos_mount_resolve(linkpath, suffix, &fs));
+    ECHECK(myst_mount_resolve(linkpath, suffix, &fs));
     ERAISE((*fs->fs_symlink)(fs, target, suffix));
 
 done:
@@ -1125,54 +1125,54 @@ done:
 }
 
 static char _cwd[PATH_MAX] = "/";
-static libos_spinlock_t _cwd_lock = LIBOS_SPINLOCK_INITIALIZER;
+static myst_spinlock_t _cwd_lock = MYST_SPINLOCK_INITIALIZER;
 
-long libos_syscall_chdir(const char* path)
+long myst_syscall_chdir(const char* path)
 {
     long ret = 0;
     char buf[PATH_MAX];
     char buf2[PATH_MAX];
 
-    libos_spin_lock(&_cwd_lock);
+    myst_spin_lock(&_cwd_lock);
 
     if (!path)
         ERAISE(-EINVAL);
 
-    ECHECK(libos_path_absolute_cwd(_cwd, path, buf, sizeof(buf)));
-    ECHECK(libos_normalize(buf, buf2, sizeof(buf2)));
+    ECHECK(myst_path_absolute_cwd(_cwd, path, buf, sizeof(buf)));
+    ECHECK(myst_normalize(buf, buf2, sizeof(buf2)));
 
-    if (LIBOS_STRLCPY(_cwd, buf2) >= sizeof(_cwd))
+    if (MYST_STRLCPY(_cwd, buf2) >= sizeof(_cwd))
         ERAISE(-ERANGE);
 
 done:
 
-    libos_spin_unlock(&_cwd_lock);
+    myst_spin_unlock(&_cwd_lock);
 
     return ret;
 }
 
-long libos_syscall_getcwd(char* buf, size_t size)
+long myst_syscall_getcwd(char* buf, size_t size)
 {
     long ret = 0;
 
-    libos_spin_lock(&_cwd_lock);
+    myst_spin_lock(&_cwd_lock);
 
     if (!buf)
         ERAISE(-EINVAL);
 
-    if (libos_strlcpy(buf, _cwd, size) >= size)
+    if (myst_strlcpy(buf, _cwd, size) >= size)
         ERAISE(-ERANGE);
 
     ret = (long)buf;
 
 done:
 
-    libos_spin_unlock(&_cwd_lock);
+    myst_spin_unlock(&_cwd_lock);
 
     return ret;
 }
 
-long libos_syscall_getrandom(void* buf, size_t buflen, unsigned int flags)
+long myst_syscall_getrandom(void* buf, size_t buflen, unsigned int flags)
 {
     long ret = 0;
 
@@ -1181,7 +1181,7 @@ long libos_syscall_getrandom(void* buf, size_t buflen, unsigned int flags)
     if (!buf && buflen)
         ERAISE(-EINVAL);
 
-    if (buf && buflen && libos_tcall_random(buf, buflen) != 0)
+    if (buf && buflen && myst_tcall_random(buf, buflen) != 0)
         ERAISE(-EINVAL);
 
     ret = (long)buflen;
@@ -1190,27 +1190,27 @@ done:
     return ret;
 }
 
-long libos_syscall_fcntl(int fd, int cmd, long arg)
+long myst_syscall_fcntl(int fd, int cmd, long arg)
 {
     long ret = 0;
-    libos_fdtable_t* fdtable = libos_fdtable_current();
+    myst_fdtable_t* fdtable = myst_fdtable_current();
 
     if (cmd == F_DUPFD)
     {
-        ret = libos_fdtable_dup(fdtable, LIBOS_DUPFD, fd, (int)arg, -1);
+        ret = myst_fdtable_dup(fdtable, MYST_DUPFD, fd, (int)arg, -1);
     }
     else if (cmd == F_DUPFD_CLOEXEC)
     {
-        ret = libos_fdtable_dup(fdtable, LIBOS_DUPFD_CLOEXEC, fd, (int)arg, -1);
+        ret = myst_fdtable_dup(fdtable, MYST_DUPFD_CLOEXEC, fd, (int)arg, -1);
     }
     else
     {
         void* device = NULL;
         void* object = NULL;
-        libos_fdtable_type_t type;
-        libos_fdops_t* fdops;
+        myst_fdtable_type_t type;
+        myst_fdops_t* fdops;
 
-        ECHECK(libos_fdtable_get_any(fdtable, fd, &type, &device, &object));
+        ECHECK(myst_fdtable_get_any(fdtable, fd, &type, &device, &object));
         fdops = device;
         ret = (*fdops->fd_fcntl)(device, object, cmd, arg);
     }
@@ -1219,26 +1219,26 @@ done:
     return ret;
 }
 
-long libos_syscall_chmod(const char* pathname, mode_t mode)
+long myst_syscall_chmod(const char* pathname, mode_t mode)
 {
     (void)pathname;
     (void)mode;
     return 0;
 }
 
-long libos_syscall_fchmod(int fd, mode_t mode)
+long myst_syscall_fchmod(int fd, mode_t mode)
 {
     long ret = 0;
-    libos_fdtable_t* fdtable = libos_fdtable_current();
-    libos_fdtable_type_t type;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_fdtable_type_t type;
     void* device = NULL;
     void* object = NULL;
 
-    ECHECK(libos_fdtable_get_any(fdtable, fd, &type, &device, &object));
+    ECHECK(myst_fdtable_get_any(fdtable, fd, &type, &device, &object));
 
-    if (type == LIBOS_FDTABLE_TYPE_SOCK)
+    if (type == MYST_FDTABLE_TYPE_SOCK)
     {
-        libos_fdops_t* fdops = device;
+        myst_fdops_t* fdops = device;
         int target_fd = (*fdops->fd_target_fd)(fdops, object);
 
         if (target_fd < 0)
@@ -1247,7 +1247,7 @@ long libos_syscall_fchmod(int fd, mode_t mode)
         long params[] = {target_fd, mode};
         ret = _forward_syscall(SYS_fchmod, params);
     }
-    else if (type == LIBOS_FDTABLE_TYPE_FILE)
+    else if (type == MYST_FDTABLE_TYPE_FILE)
     {
         /* ignore fchmod on files */
     }
@@ -1260,7 +1260,7 @@ done:
     return ret;
 }
 
-long libos_syscall_mount(
+long myst_syscall_mount(
     const char* source,
     const char* target,
     const char* filesystemtype,
@@ -1268,7 +1268,7 @@ long libos_syscall_mount(
     const void* data)
 {
     long ret = 0;
-    libos_fs_t* fs = NULL;
+    myst_fs_t* fs = NULL;
 
     if (!source || !target || !filesystemtype)
         ERAISE(-EINVAL);
@@ -1282,56 +1282,56 @@ long libos_syscall_mount(
         ERAISE(-EINVAL);
 
     /* create a new ramfs instance */
-    ECHECK(libos_init_ramfs(&fs));
+    ECHECK(myst_init_ramfs(&fs));
 
     /* perform the mount */
-    ECHECK(libos_mount(fs, target));
+    ECHECK(myst_mount(fs, target));
 
     /* load the rootfs */
-    ECHECK(libos_cpio_unpack(source, target));
+    ECHECK(myst_cpio_unpack(source, target));
 
 done:
     return ret;
 }
 
-long libos_syscall_umount2(const char* target, int flags)
+long myst_syscall_umount2(const char* target, int flags)
 {
     long ret = 0;
 
     if (!target || flags != 0)
         ERAISE(-EINVAL);
 
-    ECHECK(libos_umount(target));
+    ECHECK(myst_umount(target));
 
 done:
     return ret;
 }
 
-long libos_syscall_pipe2(int pipefd[2], int flags)
+long myst_syscall_pipe2(int pipefd[2], int flags)
 {
     int ret = 0;
-    libos_pipe_t* pipe[2];
+    myst_pipe_t* pipe[2];
     int fd0;
     int fd1;
-    libos_fdtable_t* fdtable = libos_fdtable_current();
-    const libos_fdtable_type_t type = LIBOS_FDTABLE_TYPE_PIPE;
-    libos_pipedev_t* pd = libos_pipedev_get();
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    const myst_fdtable_type_t type = MYST_FDTABLE_TYPE_PIPE;
+    myst_pipedev_t* pd = myst_pipedev_get();
 
     if (!pipefd)
         ERAISE(-EINVAL);
 
     ECHECK((*pd->pd_pipe2)(pd, pipe, flags));
 
-    if ((fd0 = libos_fdtable_assign(fdtable, type, pd, pipe[0])) < 0)
+    if ((fd0 = myst_fdtable_assign(fdtable, type, pd, pipe[0])) < 0)
     {
         (*pd->pd_close)(pd, pipe[0]);
         (*pd->pd_close)(pd, pipe[1]);
         ERAISE(fd0);
     }
 
-    if ((fd1 = libos_fdtable_assign(fdtable, type, pd, pipe[1])) < 0)
+    if ((fd1 = myst_fdtable_assign(fdtable, type, pd, pipe[1])) < 0)
     {
-        libos_fdtable_remove(fdtable, fd0);
+        myst_fdtable_remove(fdtable, fd0);
         (*pd->pd_close)(pd, pipe[0]);
         (*pd->pd_close)(pd, pipe[1]);
         ERAISE(fd1);
@@ -1357,7 +1357,7 @@ static size_t _count_args(const char* const args[])
     return n;
 }
 
-long libos_syscall_execve(
+long myst_syscall_execve(
     const char* filename,
     char* const argv_in[],
     char* const envp[])
@@ -1384,12 +1384,12 @@ long libos_syscall_execve(
     }
 
     /* only returns on failure */
-    if (libos_exec(
-            libos_thread_self(),
-            __libos_kernel_args.crt_data,
-            __libos_kernel_args.crt_size,
-            __libos_kernel_args.crt_reloc_data,
-            __libos_kernel_args.crt_reloc_size,
+    if (myst_exec(
+            myst_thread_self(),
+            __myst_kernel_args.crt_data,
+            __myst_kernel_args.crt_size,
+            __myst_kernel_args.crt_reloc_data,
+            __myst_kernel_args.crt_reloc_size,
             _count_args(argv),
             (const char**)argv,
             _count_args((const char* const*)envp),
@@ -1404,16 +1404,16 @@ done:
     return ret;
 }
 
-long libos_syscall_ioctl(int fd, unsigned long request, long arg)
+long myst_syscall_ioctl(int fd, unsigned long request, long arg)
 {
     long ret = 0;
     void* device = NULL;
     void* object = NULL;
-    libos_fdtable_type_t type;
-    libos_fdtable_t* fdtable = libos_fdtable_current();
-    libos_fdops_t* fdops;
+    myst_fdtable_type_t type;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_fdops_t* fdops;
 
-    ECHECK(libos_fdtable_get_any(fdtable, fd, &type, &device, &object));
+    ECHECK(myst_fdtable_get_any(fdtable, fd, &type, &device, &object));
     fdops = device;
 
     ret = (*fdops->fd_ioctl)(device, object, request, arg);
@@ -1422,41 +1422,41 @@ done:
     return ret;
 }
 
-int libos_syscall_bind(
+int myst_syscall_bind(
     int sockfd,
     const struct sockaddr* addr,
     socklen_t addrlen)
 {
     long ret = 0;
-    libos_fdtable_t* fdtable = libos_fdtable_current();
-    libos_sockdev_t* sd;
-    libos_sock_t* sock;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_sockdev_t* sd;
+    myst_sock_t* sock;
 
-    ECHECK(libos_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
+    ECHECK(myst_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
     ret = (*sd->sd_bind)(sd, sock, addr, addrlen);
 
 done:
     return ret;
 }
 
-long libos_syscall_connect(
+long myst_syscall_connect(
     int sockfd,
     const struct sockaddr* addr,
     socklen_t addrlen)
 {
     long ret = 0;
-    libos_fdtable_t* fdtable = libos_fdtable_current();
-    libos_sockdev_t* sd;
-    libos_sock_t* sock;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_sockdev_t* sd;
+    myst_sock_t* sock;
 
-    ECHECK(libos_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
+    ECHECK(myst_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
     ret = (*sd->sd_connect)(sd, sock, addr, addrlen);
 
 done:
     return ret;
 }
 
-long libos_syscall_recvfrom(
+long myst_syscall_recvfrom(
     int sockfd,
     void* buf,
     size_t len,
@@ -1465,18 +1465,18 @@ long libos_syscall_recvfrom(
     socklen_t* addrlen)
 {
     long ret = 0;
-    libos_fdtable_t* fdtable = libos_fdtable_current();
-    libos_sockdev_t* sd;
-    libos_sock_t* sock;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_sockdev_t* sd;
+    myst_sock_t* sock;
 
-    ECHECK(libos_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
+    ECHECK(myst_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
     ret = (*sd->sd_recvfrom)(sd, sock, buf, len, flags, src_addr, addrlen);
 
 done:
     return ret;
 }
 
-long libos_syscall_sendto(
+long myst_syscall_sendto(
     int sockfd,
     const void* buf,
     size_t len,
@@ -1485,29 +1485,29 @@ long libos_syscall_sendto(
     socklen_t addrlen)
 {
     long ret = 0;
-    libos_fdtable_t* fdtable = libos_fdtable_current();
-    libos_sockdev_t* sd;
-    libos_sock_t* sock;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_sockdev_t* sd;
+    myst_sock_t* sock;
 
-    ECHECK(libos_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
+    ECHECK(myst_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
     ret = (*sd->sd_sendto)(sd, sock, buf, len, flags, dest_addr, addrlen);
 
 done:
     return ret;
 }
 
-long libos_syscall_socket(int domain, int type, int protocol)
+long myst_syscall_socket(int domain, int type, int protocol)
 {
     long ret = 0;
-    libos_sockdev_t* sd = libos_sockdev_get();
-    libos_fdtable_t* fdtable = libos_fdtable_current();
-    libos_sock_t* sock = NULL;
+    myst_sockdev_t* sd = myst_sockdev_get();
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_sock_t* sock = NULL;
     int sockfd;
-    const libos_fdtable_type_t fdtype = LIBOS_FDTABLE_TYPE_SOCK;
+    const myst_fdtable_type_t fdtype = MYST_FDTABLE_TYPE_SOCK;
 
     ECHECK((*sd->sd_socket)(sd, domain, type, protocol, &sock));
 
-    if ((sockfd = libos_fdtable_assign(fdtable, fdtype, sd, sock)) < 0)
+    if ((sockfd = myst_fdtable_assign(fdtable, fdtype, sd, sock)) < 0)
     {
         (*sd->sd_close)(sd, sock);
         ERAISE(sockfd);
@@ -1520,19 +1520,19 @@ done:
     return ret;
 }
 
-long libos_syscall_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
+long myst_syscall_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
 {
     long ret = 0;
-    libos_fdtable_t* fdtable = libos_fdtable_current();
-    libos_sockdev_t* sd;
-    libos_sock_t* sock;
-    libos_sock_t* new_sock = NULL;
-    const libos_fdtable_type_t fdtype = LIBOS_FDTABLE_TYPE_SOCK;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_sockdev_t* sd;
+    myst_sock_t* sock;
+    myst_sock_t* new_sock = NULL;
+    const myst_fdtable_type_t fdtype = MYST_FDTABLE_TYPE_SOCK;
 
-    ECHECK(libos_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
+    ECHECK(myst_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
     ECHECK((*sd->sd_accept)(sd, sock, addr, addrlen, &new_sock));
 
-    if ((sockfd = libos_fdtable_assign(fdtable, fdtype, sd, new_sock)) < 0)
+    if ((sockfd = myst_fdtable_assign(fdtable, fdtype, sd, new_sock)) < 0)
     {
         (*sd->sd_close)(sd, new_sock);
         ERAISE(sockfd);
@@ -1545,101 +1545,101 @@ done:
     return ret;
 }
 
-long libos_syscall_sendmsg(int sockfd, const struct msghdr* msg, int flags)
+long myst_syscall_sendmsg(int sockfd, const struct msghdr* msg, int flags)
 {
     long ret = 0;
-    libos_fdtable_t* fdtable = libos_fdtable_current();
-    libos_sockdev_t* sd;
-    libos_sock_t* sock;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_sockdev_t* sd;
+    myst_sock_t* sock;
 
-    ECHECK(libos_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
+    ECHECK(myst_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
     ret = (*sd->sd_sendmsg)(sd, sock, msg, flags);
 
 done:
     return ret;
 }
 
-long libos_syscall_recvmsg(int sockfd, struct msghdr* msg, int flags)
+long myst_syscall_recvmsg(int sockfd, struct msghdr* msg, int flags)
 {
     long ret = 0;
-    libos_fdtable_t* fdtable = libos_fdtable_current();
-    libos_sockdev_t* sd;
-    libos_sock_t* sock;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_sockdev_t* sd;
+    myst_sock_t* sock;
 
-    ECHECK(libos_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
+    ECHECK(myst_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
     ret = (*sd->sd_recvmsg)(sd, sock, msg, flags);
 
 done:
     return ret;
 }
 
-long libos_syscall_shutdown(int sockfd, int how)
+long myst_syscall_shutdown(int sockfd, int how)
 {
     long ret = 0;
-    libos_fdtable_t* fdtable = libos_fdtable_current();
-    libos_sockdev_t* sd;
-    libos_sock_t* sock;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_sockdev_t* sd;
+    myst_sock_t* sock;
 
-    ECHECK(libos_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
+    ECHECK(myst_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
     ret = (*sd->sd_shutdown)(sd, sock, how);
 
 done:
     return ret;
 }
 
-long libos_syscall_listen(int sockfd, int backlog)
+long myst_syscall_listen(int sockfd, int backlog)
 {
     long ret = 0;
-    libos_fdtable_t* fdtable = libos_fdtable_current();
-    libos_sockdev_t* sd;
-    libos_sock_t* sock;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_sockdev_t* sd;
+    myst_sock_t* sock;
 
-    ECHECK(libos_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
+    ECHECK(myst_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
     ret = (*sd->sd_listen)(sd, sock, backlog);
 
 done:
     return ret;
 }
 
-long libos_syscall_getsockname(
+long myst_syscall_getsockname(
     int sockfd,
     struct sockaddr* addr,
     socklen_t* addrlen)
 {
     long ret = 0;
-    libos_fdtable_t* fdtable = libos_fdtable_current();
-    libos_sockdev_t* sd;
-    libos_sock_t* sock;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_sockdev_t* sd;
+    myst_sock_t* sock;
 
-    ECHECK(libos_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
+    ECHECK(myst_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
     ret = (*sd->sd_getsockname)(sd, sock, addr, addrlen);
 
 done:
     return ret;
 }
 
-long libos_syscall_socketpair(int domain, int type, int protocol, int sv[2])
+long myst_syscall_socketpair(int domain, int type, int protocol, int sv[2])
 {
     int ret = 0;
     int fd0;
     int fd1;
-    libos_sock_t* pair[2];
-    libos_fdtable_t* fdtable = libos_fdtable_current();
-    libos_sockdev_t* sd = libos_sockdev_get();
-    const libos_fdtable_type_t fdtype = LIBOS_FDTABLE_TYPE_SOCK;
+    myst_sock_t* pair[2];
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_sockdev_t* sd = myst_sockdev_get();
+    const myst_fdtable_type_t fdtype = MYST_FDTABLE_TYPE_SOCK;
 
     ECHECK((*sd->sd_socketpair)(sd, domain, type, protocol, pair));
 
-    if ((fd0 = libos_fdtable_assign(fdtable, fdtype, sd, pair[0])) < 0)
+    if ((fd0 = myst_fdtable_assign(fdtable, fdtype, sd, pair[0])) < 0)
     {
         (*sd->sd_close)(sd, pair[0]);
         (*sd->sd_close)(sd, pair[1]);
         ERAISE(fd0);
     }
 
-    if ((fd1 = libos_fdtable_assign(fdtable, fdtype, sd, pair[1])) < 0)
+    if ((fd1 = myst_fdtable_assign(fdtable, fdtype, sd, pair[1])) < 0)
     {
-        libos_fdtable_remove(fdtable, fd0);
+        myst_fdtable_remove(fdtable, fd0);
         (*sd->sd_close)(sd, pair[0]);
         (*sd->sd_close)(sd, pair[1]);
         ERAISE(fd1);
@@ -1652,24 +1652,24 @@ done:
     return ret;
 }
 
-long libos_syscall_getpeername(
+long myst_syscall_getpeername(
     int sockfd,
     struct sockaddr* addr,
     socklen_t* addrlen)
 {
     long ret = 0;
-    libos_fdtable_t* fdtable = libos_fdtable_current();
-    libos_sockdev_t* sd;
-    libos_sock_t* sock;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_sockdev_t* sd;
+    myst_sock_t* sock;
 
-    ECHECK(libos_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
+    ECHECK(myst_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
     ret = (*sd->sd_getpeername)(sd, sock, addr, addrlen);
 
 done:
     return ret;
 }
 
-long libos_syscall_setsockopt(
+long myst_syscall_setsockopt(
     int sockfd,
     int level,
     int optname,
@@ -1677,18 +1677,18 @@ long libos_syscall_setsockopt(
     socklen_t optlen)
 {
     long ret = 0;
-    libos_fdtable_t* fdtable = libos_fdtable_current();
-    libos_sockdev_t* sd;
-    libos_sock_t* sock;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_sockdev_t* sd;
+    myst_sock_t* sock;
 
-    ECHECK(libos_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
+    ECHECK(myst_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
     ret = (*sd->sd_setsockopt)(sd, sock, level, optname, optval, optlen);
 
 done:
     return ret;
 }
 
-long libos_syscall_getsockopt(
+long myst_syscall_getsockopt(
     int sockfd,
     int level,
     int optname,
@@ -1696,70 +1696,70 @@ long libos_syscall_getsockopt(
     socklen_t* optlen)
 {
     long ret = 0;
-    libos_fdtable_t* fdtable = libos_fdtable_current();
-    libos_sockdev_t* sd;
-    libos_sock_t* sock;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_sockdev_t* sd;
+    myst_sock_t* sock;
 
-    ECHECK(libos_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
+    ECHECK(myst_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
     ret = (*sd->sd_getsockopt)(sd, sock, level, optname, optval, optlen);
 
 done:
     return ret;
 }
 
-long libos_syscall_dup(int oldfd)
+long myst_syscall_dup(int oldfd)
 {
     long ret = 0;
-    libos_fdtable_t* fdtable = libos_fdtable_current();
-    libos_dup_type_t duptype = LIBOS_DUP;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_dup_type_t duptype = MYST_DUP;
 
-    ret = libos_fdtable_dup(fdtable, duptype, oldfd, -1, -1);
+    ret = myst_fdtable_dup(fdtable, duptype, oldfd, -1, -1);
     ECHECK(ret);
 
 done:
     return ret;
 }
 
-long libos_syscall_dup2(int oldfd, int newfd)
+long myst_syscall_dup2(int oldfd, int newfd)
 {
     long ret = 0;
-    libos_fdtable_t* fdtable = libos_fdtable_current();
-    libos_dup_type_t duptype = LIBOS_DUP2;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_dup_type_t duptype = MYST_DUP2;
 
-    ret = libos_fdtable_dup(fdtable, duptype, oldfd, newfd, -1);
+    ret = myst_fdtable_dup(fdtable, duptype, oldfd, newfd, -1);
     ECHECK(ret);
 
 done:
     return ret;
 }
 
-long libos_syscall_dup3(int oldfd, int newfd, int flags)
+long myst_syscall_dup3(int oldfd, int newfd, int flags)
 {
     long ret = 0;
-    libos_fdtable_t* fdtable = libos_fdtable_current();
-    libos_dup_type_t duptype = LIBOS_DUP3;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_dup_type_t duptype = MYST_DUP3;
 
-    ret = libos_fdtable_dup(fdtable, duptype, oldfd, newfd, flags);
+    ret = myst_fdtable_dup(fdtable, duptype, oldfd, newfd, flags);
     ECHECK(ret);
 
 done:
     return ret;
 }
 
-long libos_syscall_sched_yield(void)
+long myst_syscall_sched_yield(void)
 {
     long params[] = {0};
-    return libos_tcall(SYS_sched_yield, params);
+    return myst_tcall(SYS_sched_yield, params);
 }
 
-long libos_syscall_nanosleep(const struct timespec* req, struct timespec* rem)
+long myst_syscall_nanosleep(const struct timespec* req, struct timespec* rem)
 {
     long params[6] = {(long)req, (long)rem};
     return _forward_syscall(SYS_nanosleep, params);
 }
 #define NANO_IN_SECOND 1000000000
 
-long libos_syscall_sysinfo(struct sysinfo* info)
+long myst_syscall_sysinfo(struct sysinfo* info)
 {
     long ret = 0;
     long uptime_in_nsecs;
@@ -1769,17 +1769,17 @@ long libos_syscall_sysinfo(struct sysinfo* info)
     if (!info)
         ERAISE(-EINVAL);
 
-    ECHECK(libos_get_total_ram(&totalram));
-    ECHECK(libos_get_free_ram(&freeram));
+    ECHECK(myst_get_total_ram(&totalram));
+    ECHECK(myst_get_free_ram(&freeram));
 
     memset(info, 0, sizeof(struct sysinfo));
     info->totalram = totalram;
     info->freeram = freeram;
     info->mem_unit = 1;
 
-    ECHECK((info->procs = libos_get_num_threads()));
+    ECHECK((info->procs = myst_get_num_threads()));
 
-    ECHECK((uptime_in_nsecs = libos_times_uptime()));
+    ECHECK((uptime_in_nsecs = myst_times_uptime()));
     info->uptime = uptime_in_nsecs / NANO_IN_SECOND;
 
     // loads[3], sharedram, bufferram, totalswap,
@@ -1789,18 +1789,18 @@ done:
     return ret;
 }
 
-long libos_syscall_epoll_ctl(
+long myst_syscall_epoll_ctl(
     int epfd,
     int op,
     int fd,
     struct epoll_event* event)
 {
     long ret = 0;
-    libos_fdtable_t* fdtable = libos_fdtable_current();
-    libos_epolldev_t* ed;
-    libos_epoll_t* epoll;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_epolldev_t* ed;
+    myst_epoll_t* epoll;
 
-    ECHECK(libos_fdtable_get_epoll(fdtable, epfd, &ed, &epoll));
+    ECHECK(myst_fdtable_get_epoll(fdtable, epfd, &ed, &epoll));
 
     ret = (*ed->ed_epoll_ctl)(ed, epoll, op, fd, event);
 
@@ -1808,18 +1808,18 @@ done:
     return ret;
 }
 
-long libos_syscall_epoll_wait(
+long myst_syscall_epoll_wait(
     int epfd,
     struct epoll_event* events,
     int maxevents,
     int timeout)
 {
     long ret = 0;
-    libos_fdtable_t* fdtable = libos_fdtable_current();
-    libos_epolldev_t* ed;
-    libos_epoll_t* epoll;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_epolldev_t* ed;
+    myst_epoll_t* epoll;
 
-    ECHECK(libos_fdtable_get_epoll(fdtable, epfd, &ed, &epoll));
+    ECHECK(myst_fdtable_get_epoll(fdtable, epfd, &ed, &epoll));
 
     ret = (*ed->ed_epoll_wait)(ed, epoll, events, maxevents, timeout);
 
@@ -1827,14 +1827,14 @@ done:
     return ret;
 }
 
-long libos_syscall_getrusage(int who, struct rusage* usage)
+long myst_syscall_getrusage(int who, struct rusage* usage)
 {
     // ATTN: support child process and per-thread usage reporting.
     if (who == RUSAGE_CHILDREN || who == RUSAGE_THREAD)
         return -EINVAL;
 
-    long stime = libos_times_system_time();
-    long utime = libos_times_user_time();
+    long stime = myst_times_system_time();
+    long utime = myst_times_user_time();
     usage->ru_utime.tv_sec = utime / 1000000000;
     usage->ru_utime.tv_usec = utime % 1000000000 * 1000;
     usage->ru_stime.tv_sec = stime / 1000000000;
@@ -1843,7 +1843,7 @@ long libos_syscall_getrusage(int who, struct rusage* usage)
     return 0;
 }
 
-long libos_syscall_ret(long ret)
+long myst_syscall_ret(long ret)
 {
     if (ret < 0)
     {
@@ -1945,7 +1945,7 @@ static ssize_t _dev_urandom_read(void* buf, size_t count)
     if (!buf && !count)
         return 0;
 
-    if (libos_tcall_random(buf, count) != 0)
+    if (myst_tcall_random(buf, count) != 0)
         ERAISE(-EIO);
 
     ret = (ssize_t)count;
@@ -1966,7 +1966,7 @@ static ssize_t _dev_urandom_readv(const struct iovec* iov, int iovcnt)
     {
         if (iov[i].iov_base && iov[i].iov_len)
         {
-            if (libos_tcall_random(iov[i].iov_base, iov[i].iov_len) != 0)
+            if (myst_tcall_random(iov[i].iov_base, iov[i].iov_len) != 0)
                 ERAISE(-EINVAL);
 
             nread += iov[i].iov_len;
@@ -1979,29 +1979,29 @@ done:
     return ret;
 }
 
-void libos_dump_ramfs(void)
+void myst_dump_ramfs(void)
 {
-    libos_strarr_t paths = LIBOS_STRARR_INITIALIZER;
+    myst_strarr_t paths = MYST_STRARR_INITIALIZER;
 
-    if (libos_lsr("/", &paths, true) != 0)
-        libos_panic("unexpected");
+    if (myst_lsr("/", &paths, true) != 0)
+        myst_panic("unexpected");
 
     for (size_t i = 0; i < paths.size; i++)
     {
         printf("%s\n", paths.data[i]);
     }
 
-    libos_strarr_release(&paths);
+    myst_strarr_release(&paths);
 }
 
-int libos_export_ramfs(void)
+int myst_export_ramfs(void)
 {
     int ret = -1;
-    libos_strarr_t paths = LIBOS_STRARR_INITIALIZER;
+    myst_strarr_t paths = MYST_STRARR_INITIALIZER;
     void* data = NULL;
     size_t size = 0;
 
-    if (libos_lsr("/", &paths, false) != 0)
+    if (myst_lsr("/", &paths, false) != 0)
         goto done;
 
     for (size_t i = 0; i < paths.size; i++)
@@ -2012,15 +2012,15 @@ int libos_export_ramfs(void)
         if (strncmp(path, "/proc", 5) == 0)
             continue;
 
-        if (libos_load_file(path, &data, &size) != 0)
+        if (myst_load_file(path, &data, &size) != 0)
         {
-            libos_eprintf("Warning! failed to load %s from ramfs\n", path);
+            myst_eprintf("Warning! failed to load %s from ramfs\n", path);
             continue;
         }
 
-        if (libos_tcall_export_file(path, data, size) != 0)
+        if (myst_tcall_export_file(path, data, size) != 0)
         {
-            libos_eprintf("Warning! failed to export %s from ramfs\n", path);
+            myst_eprintf("Warning! failed to export %s from ramfs\n", path);
             continue;
         }
 
@@ -2032,7 +2032,7 @@ int libos_export_ramfs(void)
     ret = 0;
 
 done:
-    libos_strarr_release(&paths);
+    myst_strarr_release(&paths);
 
     if (data)
         free(data);
@@ -2047,7 +2047,7 @@ done:
         goto done;           \
     } while (0)
 
-long libos_syscall(long n, long params[6])
+long myst_syscall(long n, long params[6])
 {
     long syscall_ret = 0;
     long x1 = params[0];
@@ -2057,11 +2057,11 @@ long libos_syscall(long n, long params[6])
     long x5 = params[4];
     long x6 = params[5];
     static bool _set_thread_area_called;
-    libos_td_t* target_td = NULL;
-    libos_td_t* crt_td = NULL;
-    libos_thread_t* thread = NULL;
+    myst_td_t* target_td = NULL;
+    myst_td_t* crt_td = NULL;
+    myst_thread_t* thread = NULL;
 
-    struct timespec tp_enter = libos_times_enter_kernel();
+    struct timespec tp_enter = myst_times_enter_kernel();
 
     /* resolve the target-thread-descriptor and the crt-thread-descriptor */
     if (_set_thread_area_called)
@@ -2069,47 +2069,47 @@ long libos_syscall(long n, long params[6])
         /* ---------- running C-runtime thread descriptor ---------- */
 
         /* get crt_td */
-        crt_td = libos_get_fsbase();
-        libos_assume(libos_valid_td(crt_td));
+        crt_td = myst_get_fsbase();
+        myst_assume(myst_valid_td(crt_td));
 
         /* get thread */
-        libos_assume(libos_tcall_get_tsd((uint64_t*)&thread) == 0);
-        libos_assume(libos_valid_thread(thread));
+        myst_assume(myst_tcall_get_tsd((uint64_t*)&thread) == 0);
+        myst_assume(myst_valid_thread(thread));
 
         /* get target_td */
         target_td = thread->target_td;
-        libos_assume(libos_valid_td(target_td));
+        myst_assume(myst_valid_td(target_td));
 
         /* the syscall on the target thread descriptor */
-        libos_set_fsbase(target_td);
+        myst_set_fsbase(target_td);
     }
     else
     {
         /* ---------- running target thread descriptor ---------- */
 
         /* get target_td */
-        target_td = libos_get_fsbase();
-        libos_assume(libos_valid_td(target_td));
+        target_td = myst_get_fsbase();
+        myst_assume(myst_valid_td(target_td));
 
         /* get thread */
-        libos_assume(libos_tcall_get_tsd((uint64_t*)&thread) == 0);
-        libos_assume(libos_valid_thread(thread));
+        myst_assume(myst_tcall_get_tsd((uint64_t*)&thread) == 0);
+        myst_assume(myst_valid_thread(thread));
 
         /* crt_td is null */
     }
 
     // Process signals pending for this thread, if there is any.
-    libos_signal_process(thread);
+    myst_signal_process(thread);
 
     /* ---------- running target thread descriptor ---------- */
 
-    libos_assume(target_td != NULL);
-    libos_assume(thread != NULL);
+    myst_assume(target_td != NULL);
+    myst_assume(thread != NULL);
 
     switch (n)
     {
-#ifdef LIBOS_ENABLE_GCOV
-        case SYS_libos_gcov_init:
+#ifdef MYST_ENABLE_GCOV
+        case SYS_myst_gcov_init:
         {
             libc_t* libc = (libc_t*)x1;
             FILE* stream = (FILE*)x2;
@@ -2117,12 +2117,12 @@ long libos_syscall(long n, long params[6])
             _strace(n, "libc=%p stream=%p", libc, stream);
 
             if (gcov_init_libc(libc, stream) != 0)
-                libos_panic("gcov_init_libc() failed");
+                myst_panic("gcov_init_libc() failed");
 
             BREAK(_return(n, 0));
         }
 #endif
-        case SYS_libos_trace:
+        case SYS_myst_trace:
         {
             const char* msg = (const char*)x1;
 
@@ -2130,7 +2130,7 @@ long libos_syscall(long n, long params[6])
 
             BREAK(_return(n, 0));
         }
-        case SYS_libos_trace_ptr:
+        case SYS_myst_trace_ptr:
         {
             printf(
                 "trace: %s: %lx %ld\n",
@@ -2139,26 +2139,26 @@ long libos_syscall(long n, long params[6])
                 params[1]);
             BREAK(_return(n, 0));
         }
-        case SYS_libos_dump_stack:
+        case SYS_myst_dump_stack:
         {
             const void* stack = (void*)x1;
 
             _strace(n, NULL);
 
-            libos_dump_stack((void*)stack);
+            myst_dump_stack((void*)stack);
             BREAK(_return(n, 0));
         }
-        case SYS_libos_dump_ehdr:
+        case SYS_myst_dump_ehdr:
         {
-            libos_dump_ehdr((void*)params[0]);
+            myst_dump_ehdr((void*)params[0]);
             BREAK(_return(n, 0));
         }
-        case SYS_libos_dump_argv:
+        case SYS_myst_dump_argv:
         {
             int argc = (int)x1;
             const char** argv = (const char**)x2;
 
-            printf("=== SYS_libos_dump_argv\n");
+            printf("=== SYS_myst_dump_argv\n");
 
             printf("argc=%d\n", argc);
             printf("argv=%p\n", argv);
@@ -2172,7 +2172,7 @@ long libos_syscall(long n, long params[6])
 
             BREAK(_return(n, 0));
         }
-        case SYS_libos_add_symbol_file:
+        case SYS_myst_add_symbol_file:
         {
             const char* path = (const char*)x1;
             const void* text = (const void*)x2;
@@ -2186,46 +2186,46 @@ long libos_syscall(long n, long params[6])
                 text,
                 text_size);
 
-            ret = libos_syscall_add_symbol_file(path, text, text_size);
+            ret = myst_syscall_add_symbol_file(path, text, text_size);
 
             BREAK(_return(n, ret));
         }
-        case SYS_libos_load_symbols:
+        case SYS_myst_load_symbols:
         {
             _strace(n, NULL);
 
-            BREAK(_return(n, libos_syscall_load_symbols()));
+            BREAK(_return(n, myst_syscall_load_symbols()));
         }
-        case SYS_libos_unload_symbols:
+        case SYS_myst_unload_symbols:
         {
             _strace(n, NULL);
 
-            BREAK(_return(n, libos_syscall_unload_symbols()));
+            BREAK(_return(n, myst_syscall_unload_symbols()));
         }
-        case SYS_libos_gen_creds:
+        case SYS_myst_gen_creds:
         {
             _strace(n, NULL);
-            BREAK(_forward_syscall(LIBOS_TCALL_GEN_CREDS, params));
+            BREAK(_forward_syscall(MYST_TCALL_GEN_CREDS, params));
         }
-        case SYS_libos_free_creds:
+        case SYS_myst_free_creds:
         {
             _strace(n, NULL);
-            BREAK(_forward_syscall(LIBOS_TCALL_FREE_CREDS, params));
+            BREAK(_forward_syscall(MYST_TCALL_FREE_CREDS, params));
         }
-        case SYS_libos_verify_cert:
+        case SYS_myst_verify_cert:
         {
             _strace(n, NULL);
-            BREAK(_forward_syscall(LIBOS_TCALL_VERIFY_CERT, params));
+            BREAK(_forward_syscall(MYST_TCALL_VERIFY_CERT, params));
         }
-        case SYS_libos_max_threads:
+        case SYS_myst_max_threads:
         {
             _strace(n, NULL);
-            BREAK(_return(n, __libos_kernel_args.max_threads));
+            BREAK(_return(n, __myst_kernel_args.max_threads));
         }
-        case SYS_libos_poll_wake:
+        case SYS_myst_poll_wake:
         {
             _strace(n, NULL);
-            BREAK(_return(n, libos_tcall_poll_wake()));
+            BREAK(_return(n, myst_tcall_poll_wake()));
         }
         case SYS_read:
         {
@@ -2238,7 +2238,7 @@ long libos_syscall(long n, long params[6])
             if (fd == DEV_URANDOM_FD)
                 BREAK(_return(n, _dev_urandom_read(buf, count)));
 
-            BREAK(_return(n, libos_syscall_read(fd, buf, count)));
+            BREAK(_return(n, myst_syscall_read(fd, buf, count)));
         }
         case SYS_write:
         {
@@ -2248,7 +2248,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "fd=%d buf=%p count=%zu", fd, buf, count);
 
-            BREAK(_return(n, libos_syscall_write(fd, buf, count)));
+            BREAK(_return(n, myst_syscall_write(fd, buf, count)));
         }
         case SYS_pread64:
         {
@@ -2263,7 +2263,7 @@ long libos_syscall(long n, long params[6])
             if (fd == DEV_URANDOM_FD)
                 BREAK(_return(n, _dev_urandom_read(buf, count)));
 
-            BREAK(_return(n, libos_syscall_pread(fd, buf, count, offset)));
+            BREAK(_return(n, myst_syscall_pread(fd, buf, count, offset)));
         }
         case SYS_pwrite64:
         {
@@ -2275,7 +2275,7 @@ long libos_syscall(long n, long params[6])
             _strace(
                 n, "fd=%d buf=%p count=%zu offset=%ld", fd, buf, count, offset);
 
-            BREAK(_return(n, libos_syscall_pwrite(fd, buf, count, offset)));
+            BREAK(_return(n, myst_syscall_pwrite(fd, buf, count, offset)));
         }
         case SYS_open:
         {
@@ -2286,7 +2286,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "path=\"%s\" flags=0%o mode=0%o", path, flags, mode);
 
-            ret = libos_syscall_open(path, flags, mode);
+            ret = myst_syscall_open(path, flags, mode);
 
             BREAK(_return(n, ret));
         }
@@ -2299,7 +2299,7 @@ long libos_syscall(long n, long params[6])
             if (fd == DEV_URANDOM_FD)
                 BREAK(_return(n, 0));
 
-            BREAK(_return(n, libos_syscall_close(fd)));
+            BREAK(_return(n, myst_syscall_close(fd)));
         }
         case SYS_stat:
         {
@@ -2308,7 +2308,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "pathname=\"%s\" statbuf=%p", pathname, statbuf);
 
-            BREAK(_return(n, libos_syscall_stat(pathname, statbuf)));
+            BREAK(_return(n, myst_syscall_stat(pathname, statbuf)));
         }
         case SYS_fstat:
         {
@@ -2317,7 +2317,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "fd=%d statbuf=%p", fd, statbuf);
 
-            BREAK(_return(n, libos_syscall_fstat(fd, statbuf)));
+            BREAK(_return(n, myst_syscall_fstat(fd, statbuf)));
         }
         case SYS_lstat:
         {
@@ -2327,7 +2327,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "pathname=\"%s\" statbuf=%p", pathname, statbuf);
 
-            BREAK(_return(n, libos_syscall_lstat(pathname, statbuf)));
+            BREAK(_return(n, myst_syscall_lstat(pathname, statbuf)));
         }
         case SYS_poll:
         {
@@ -2338,7 +2338,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "fds=%p nfds=%ld timeout=%d", fds, nfds, timeout);
 
-            ret = libos_syscall_poll(fds, nfds, timeout);
+            ret = myst_syscall_poll(fds, nfds, timeout);
             BREAK(_return(n, ret));
         }
         case SYS_lseek:
@@ -2355,7 +2355,7 @@ long libos_syscall(long n, long params[6])
                 BREAK(_return(n, 0));
             }
 
-            BREAK(_return(n, libos_syscall_lseek(fd, offset, whence)));
+            BREAK(_return(n, myst_syscall_lseek(fd, offset, whence)));
         }
         case SYS_mmap:
         {
@@ -2378,7 +2378,7 @@ long libos_syscall(long n, long params[6])
                 offset);
 
             BREAK(_return(
-                n, (long)libos_mmap(addr, length, prot, flags, fd, offset)));
+                n, (long)myst_mmap(addr, length, prot, flags, fd, offset)));
         }
         case SYS_mprotect:
         {
@@ -2403,7 +2403,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "addr=%lx length=%zu(%lx)", (long)addr, length, length);
 
-            BREAK(_return(n, (long)libos_munmap(addr, length)));
+            BREAK(_return(n, (long)myst_munmap(addr, length)));
         }
         case SYS_brk:
         {
@@ -2411,7 +2411,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "addr=%lx", (long)addr);
 
-            BREAK(_return(n, libos_syscall_brk(addr)));
+            BREAK(_return(n, myst_syscall_brk(addr)));
         }
         case SYS_rt_sigaction:
         {
@@ -2421,7 +2421,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "signum=%d act=%p oldact=%p", signum, act, oldact);
 
-            long ret = libos_signal_sigaction(signum, act, oldact);
+            long ret = myst_signal_sigaction(signum, act, oldact);
             BREAK(_return(n, ret));
         }
         case SYS_rt_sigprocmask:
@@ -2432,7 +2432,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "how=%d set=%p oldset=%p", how, set, oldset);
 
-            long ret = libos_signal_sigprocmask(how, set, oldset);
+            long ret = myst_signal_sigprocmask(how, set, oldset);
             BREAK(_return(n, ret));
         }
         case SYS_rt_sigreturn:
@@ -2455,7 +2455,7 @@ long libos_syscall(long n, long params[6])
                 arg,
                 iarg);
 
-            BREAK(_return(n, libos_syscall_ioctl(fd, request, arg)));
+            BREAK(_return(n, myst_syscall_ioctl(fd, request, arg)));
         }
         case SYS_readv:
         {
@@ -2468,7 +2468,7 @@ long libos_syscall(long n, long params[6])
             if (fd == DEV_URANDOM_FD)
                 BREAK(_return(n, (long)_dev_urandom_readv(iov, iovcnt)));
 
-            BREAK(_return(n, libos_syscall_readv(fd, iov, iovcnt)));
+            BREAK(_return(n, myst_syscall_readv(fd, iov, iovcnt)));
         }
         case SYS_writev:
         {
@@ -2478,7 +2478,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "fd=%d iov=%p iovcnt=%d", fd, iov, iovcnt);
 
-            BREAK(_return(n, libos_syscall_writev(fd, iov, iovcnt)));
+            BREAK(_return(n, myst_syscall_writev(fd, iov, iovcnt)));
         }
         case SYS_access:
         {
@@ -2487,7 +2487,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "pathname=\"%s\" mode=%d", pathname, mode);
 
-            BREAK(_return(n, libos_syscall_access(pathname, mode)));
+            BREAK(_return(n, myst_syscall_access(pathname, mode)));
         }
         case SYS_pipe:
         {
@@ -2495,7 +2495,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "pipefd=%p flags=%0o", pipefd, 0);
 
-            BREAK(_return(n, libos_syscall_pipe2(pipefd, 0)));
+            BREAK(_return(n, myst_syscall_pipe2(pipefd, 0)));
         }
         case SYS_select:
         {
@@ -2515,14 +2515,14 @@ long libos_syscall(long n, long params[6])
                 efds,
                 timeout);
 
-            ret = libos_syscall_select(nfds, rfds, wfds, efds, timeout);
+            ret = myst_syscall_select(nfds, rfds, wfds, efds, timeout);
             BREAK(_return(n, ret));
         }
         case SYS_sched_yield:
         {
             _strace(n, NULL);
 
-            BREAK(_return(n, libos_syscall_sched_yield()));
+            BREAK(_return(n, myst_syscall_sched_yield()));
         }
         case SYS_mremap:
         {
@@ -2546,7 +2546,7 @@ long libos_syscall(long n, long params[6])
                 flags,
                 new_address);
 
-            ret = (long)libos_mremap(
+            ret = (long)myst_mremap(
                 old_address, old_size, new_size, flags, new_address);
 
             BREAK(_return(n, ret));
@@ -2580,7 +2580,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "oldfd=%d", oldfd);
 
-            ret = libos_syscall_dup(oldfd);
+            ret = myst_syscall_dup(oldfd);
             BREAK(_return(n, ret));
         }
         case SYS_dup2:
@@ -2591,7 +2591,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "oldfd=%d newfd=%d", oldfd, newfd);
 
-            ret = libos_syscall_dup2(oldfd, newfd);
+            ret = myst_syscall_dup2(oldfd, newfd);
             BREAK(_return(n, ret));
         }
         case SYS_dup3:
@@ -2603,7 +2603,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "oldfd=%d newfd=%d flags=%o", oldfd, newfd, flags);
 
-            ret = libos_syscall_dup3(oldfd, newfd, flags);
+            ret = myst_syscall_dup3(oldfd, newfd, flags);
             BREAK(_return(n, ret));
         }
         case SYS_pause:
@@ -2615,7 +2615,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "req=%p rem=%p", req, rem);
 
-            BREAK(_return(n, libos_syscall_nanosleep(req, rem)));
+            BREAK(_return(n, myst_syscall_nanosleep(req, rem)));
         }
         case SYS_getitimer:
             break;
@@ -2626,14 +2626,14 @@ long libos_syscall(long n, long params[6])
         case SYS_getpid:
         {
             _strace(n, NULL);
-            BREAK(_return(n, libos_getpid()));
+            BREAK(_return(n, myst_getpid()));
         }
         case SYS_clone:
         {
-            /* unsupported: using SYS_libos_clone instead */
+            /* unsupported: using SYS_myst_clone instead */
             break;
         }
-        case SYS_libos_clone:
+        case SYS_myst_clone:
         {
             long* args = (long*)x1;
             int (*fn)(void*) = (void*)args[0];
@@ -2663,7 +2663,7 @@ long libos_syscall(long n, long params[6])
 
             BREAK(_return(
                 n,
-                libos_syscall_clone(
+                myst_syscall_clone(
                     fn, child_stack, flags, arg, ptid, newtls, ctid)));
         }
         case SYS_fork:
@@ -2678,34 +2678,34 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "filename=%s argv=%p envp=%p", filename, argv, envp);
 
-            long ret = libos_syscall_execve(filename, argv, envp);
+            long ret = myst_syscall_execve(filename, argv, envp);
             BREAK(_return(n, ret));
         }
         case SYS_exit:
         {
             const int status = (int)x1;
-            libos_thread_t* thread = libos_thread_self();
+            myst_thread_t* thread = myst_thread_self();
 
             _strace(n, "status=%d", status);
 
-            if (!thread || thread->magic != LIBOS_THREAD_MAGIC)
-                libos_panic("unexpected");
+            if (!thread || thread->magic != MYST_THREAD_MAGIC)
+                myst_panic("unexpected");
 
             thread->exit_status = status;
 
-            if (thread == __libos_main_thread)
+            if (thread == __myst_main_thread)
             {
                 // execute fini functions with the CRT fsbase since only
                 // gcov uses them and gcov calls into CRT.
-                libos_set_fsbase(crt_td);
-                libos_call_fini_functions();
-                libos_set_fsbase(target_td);
+                myst_set_fsbase(crt_td);
+                myst_call_fini_functions();
+                myst_set_fsbase(target_td);
 
                 if (__options.export_ramfs)
-                    libos_export_ramfs();
+                    myst_export_ramfs();
             }
 
-            libos_longjmp(&thread->jmpbuf, 1);
+            myst_longjmp(&thread->jmpbuf, 1);
             /* unreachable */
             break;
         }
@@ -2717,7 +2717,7 @@ long libos_syscall(long n, long params[6])
             struct rusage* rusage = (struct rusage*)x4;
             long ret;
 
-            ret = libos_syscall_wait4(pid, wstatus, options, rusage);
+            ret = myst_syscall_wait4(pid, wstatus, options, rusage);
             BREAK(_return(n, ret));
         }
         case SYS_kill:
@@ -2726,11 +2726,11 @@ long libos_syscall(long n, long params[6])
         {
             struct utsname* buf = (struct utsname*)x1;
 
-            LIBOS_STRLCPY(buf->sysname, "OpenLibos");
-            LIBOS_STRLCPY(buf->nodename, "libos");
-            LIBOS_STRLCPY(buf->release, "1.0.0");
-            LIBOS_STRLCPY(buf->version, "Libos 1.0.0");
-            LIBOS_STRLCPY(buf->machine, "x86_64");
+            MYST_STRLCPY(buf->sysname, "Mystikos");
+            MYST_STRLCPY(buf->nodename, "myst");
+            MYST_STRLCPY(buf->release, "1.0.0");
+            MYST_STRLCPY(buf->version, "Mystikos 1.0.0");
+            MYST_STRLCPY(buf->machine, "x86_64");
 
             BREAK(_return(n, 0));
         }
@@ -2760,7 +2760,7 @@ long libos_syscall(long n, long params[6])
             const char* cmdstr = _fcntl_cmdstr(cmd);
             _strace(n, "fd=%d cmd=%d(%s) arg=0%lo", fd, cmd, cmdstr, arg);
 
-            ret = libos_syscall_fcntl(fd, cmd, arg);
+            ret = myst_syscall_fcntl(fd, cmd, arg);
             BREAK(_return(n, ret));
         }
         case SYS_flock:
@@ -2776,7 +2776,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "path=\"%s\" length=%ld", path, length);
 
-            BREAK(_return(n, libos_syscall_truncate(path, length)));
+            BREAK(_return(n, myst_syscall_truncate(path, length)));
         }
         case SYS_ftruncate:
         {
@@ -2785,7 +2785,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "fd=%d length=%ld", fd, length);
 
-            BREAK(_return(n, libos_syscall_ftruncate(fd, length)));
+            BREAK(_return(n, myst_syscall_ftruncate(fd, length)));
         }
         case SYS_getdents:
             break;
@@ -2796,7 +2796,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "buf=%p size=%zu", buf, size);
 
-            BREAK(_return(n, libos_syscall_getcwd(buf, size)));
+            BREAK(_return(n, myst_syscall_getcwd(buf, size)));
         }
         case SYS_chdir:
         {
@@ -2804,7 +2804,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "path=\"%s\"", path);
 
-            BREAK(_return(n, libos_syscall_chdir(path)));
+            BREAK(_return(n, myst_syscall_chdir(path)));
         }
         case SYS_fchdir:
             break;
@@ -2815,7 +2815,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "oldpath=\"%s\" newpath=\"%s\"", oldpath, newpath);
 
-            BREAK(_return(n, libos_syscall_rename(oldpath, newpath)));
+            BREAK(_return(n, myst_syscall_rename(oldpath, newpath)));
         }
         case SYS_mkdir:
         {
@@ -2824,7 +2824,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "pathname=\"%s\" mode=0%o", pathname, mode);
 
-            BREAK(_return(n, libos_syscall_mkdir(pathname, mode)));
+            BREAK(_return(n, myst_syscall_mkdir(pathname, mode)));
         }
         case SYS_rmdir:
         {
@@ -2832,7 +2832,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "pathname=\"%s\"", pathname);
 
-            BREAK(_return(n, libos_syscall_rmdir(pathname)));
+            BREAK(_return(n, myst_syscall_rmdir(pathname)));
         }
         case SYS_creat:
         {
@@ -2841,7 +2841,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "pathname=\"%s\" mode=%x", pathname, mode);
 
-            BREAK(_return(n, libos_syscall_creat(pathname, mode)));
+            BREAK(_return(n, myst_syscall_creat(pathname, mode)));
         }
         case SYS_link:
         {
@@ -2850,7 +2850,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "oldpath=\"%s\" newpath=\"%s\"", oldpath, newpath);
 
-            BREAK(_return(n, libos_syscall_link(oldpath, newpath)));
+            BREAK(_return(n, myst_syscall_link(oldpath, newpath)));
         }
         case SYS_unlink:
         {
@@ -2858,7 +2858,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "pathname=\"%s\"", pathname);
 
-            BREAK(_return(n, libos_syscall_unlink(pathname)));
+            BREAK(_return(n, myst_syscall_unlink(pathname)));
         }
         case SYS_symlink:
         {
@@ -2867,7 +2867,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "target=\"%s\" linkpath=\"%s\"", target, linkpath);
 
-            BREAK(_return(n, libos_syscall_symlink(target, linkpath)));
+            BREAK(_return(n, myst_syscall_symlink(target, linkpath)));
         }
         case SYS_readlink:
         {
@@ -2878,7 +2878,7 @@ long libos_syscall(long n, long params[6])
             _strace(
                 n, "pathname=\"%s\" buf=%p bufsiz=%zu", pathname, buf, bufsiz);
 
-            BREAK(_return(n, libos_syscall_readlink(pathname, buf, bufsiz)));
+            BREAK(_return(n, myst_syscall_readlink(pathname, buf, bufsiz)));
         }
         case SYS_chmod:
         {
@@ -2887,7 +2887,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "pathname=\"%s\" mode=%o", pathname, mode);
 
-            BREAK(_return(n, libos_syscall_chmod(pathname, mode)));
+            BREAK(_return(n, myst_syscall_chmod(pathname, mode)));
         }
         case SYS_fchmod:
         {
@@ -2896,7 +2896,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "fd=%d mode=%o", fd, mode);
 
-            BREAK(_return(n, libos_syscall_fchmod(fd, mode)));
+            BREAK(_return(n, myst_syscall_fchmod(fd, mode)));
         }
         case SYS_chown:
             break;
@@ -2913,7 +2913,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "tv=%p tz=%p", tv, tz);
 
-            long ret = libos_syscall_gettimeofday(tv, tz);
+            long ret = myst_syscall_gettimeofday(tv, tz);
             BREAK(_return(n, ret));
         }
         case SYS_getrlimit:
@@ -2925,14 +2925,14 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "who=%d usage=%p", who, usage);
 
-            long ret = libos_syscall_getrusage(who, usage);
+            long ret = myst_syscall_getrusage(who, usage);
             BREAK(_return(n, ret));
         }
         case SYS_sysinfo:
         {
             struct sysinfo* info = (struct sysinfo*)x1;
             _strace(n, "info=%p", info);
-            long ret = libos_syscall_sysinfo(info);
+            long ret = myst_syscall_sysinfo(info);
             BREAK(_return(n, ret));
         }
         case SYS_times:
@@ -2940,8 +2940,8 @@ long libos_syscall(long n, long params[6])
             struct tms* tm = (struct tms*)x1;
             _strace(n, "tm=%p", tm);
 
-            long stime = libos_times_system_time();
-            long utime = libos_times_user_time();
+            long stime = myst_times_system_time();
+            long utime = myst_times_user_time();
             if (tm != NULL)
             {
                 tm->tms_utime = utime;
@@ -2957,7 +2957,7 @@ long libos_syscall(long n, long params[6])
         case SYS_getuid:
         {
             _strace(n, NULL);
-            BREAK(_return(n, LIBOS_DEFAULT_UID));
+            BREAK(_return(n, MYST_DEFAULT_UID));
         }
         case SYS_syslog:
         {
@@ -2967,7 +2967,7 @@ long libos_syscall(long n, long params[6])
         case SYS_getgid:
         {
             _strace(n, NULL);
-            BREAK(_return(n, LIBOS_DEFAULT_GID));
+            BREAK(_return(n, MYST_DEFAULT_GID));
         }
         case SYS_setuid:
         {
@@ -2977,7 +2977,7 @@ long libos_syscall(long n, long params[6])
             _strace(n, "uid=%u", uid);
 
             /* do not allow the UID to be changed */
-            if (uid != LIBOS_DEFAULT_UID)
+            if (uid != MYST_DEFAULT_UID)
                 ret = -EPERM;
 
             BREAK(_return(n, ret));
@@ -2990,7 +2990,7 @@ long libos_syscall(long n, long params[6])
             _strace(n, "gid=%u", gid);
 
             /* do not allow the GID to be changed */
-            if (gid != LIBOS_DEFAULT_GID)
+            if (gid != MYST_DEFAULT_GID)
                 ret = -EPERM;
 
             BREAK(_return(n, ret));
@@ -2998,19 +2998,19 @@ long libos_syscall(long n, long params[6])
         case SYS_geteuid:
         {
             _strace(n, NULL);
-            BREAK(_return(n, LIBOS_DEFAULT_UID));
+            BREAK(_return(n, MYST_DEFAULT_UID));
         }
         case SYS_getegid:
         {
             _strace(n, NULL);
-            BREAK(_return(n, LIBOS_DEFAULT_GID));
+            BREAK(_return(n, MYST_DEFAULT_GID));
         }
         case SYS_setpgid:
             break;
         case SYS_getppid:
         {
             _strace(n, NULL);
-            BREAK(_return(n, libos_getppid()));
+            BREAK(_return(n, myst_getppid()));
         }
         case SYS_getpgrp:
             break;
@@ -3041,7 +3041,7 @@ long libos_syscall(long n, long params[6])
         case SYS_getsid:
         {
             _strace(n, NULL);
-            BREAK(_return(n, libos_getsid()));
+            BREAK(_return(n, myst_getsid()));
         }
         case SYS_capget:
             break;
@@ -3051,7 +3051,7 @@ long libos_syscall(long n, long params[6])
         {
             sigset_t* set = (sigset_t*)x1;
             unsigned size = (unsigned)x2;
-            BREAK(_return(n, libos_signal_sigpending(set, size)));
+            BREAK(_return(n, myst_signal_sigpending(set, size)));
         }
         case SYS_rt_sigtimedwait:
             break;
@@ -3218,7 +3218,7 @@ long libos_syscall(long n, long params[6])
                 mountflags,
                 data);
 
-            ret = libos_syscall_mount(
+            ret = myst_syscall_mount(
                 source, target, filesystemtype, mountflags, data);
 
             BREAK(_return(n, ret));
@@ -3231,7 +3231,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "target=%p flags=%d", target, flags);
 
-            ret = libos_syscall_umount2(target, flags);
+            ret = myst_syscall_umount2(target, flags);
 
             BREAK(_return(n, ret));
         }
@@ -3283,7 +3283,7 @@ long libos_syscall(long n, long params[6])
         case SYS_gettid:
         {
             _strace(n, NULL);
-            BREAK(_return(n, libos_gettid()));
+            BREAK(_return(n, myst_gettid()));
         }
         case SYS_readahead:
             break;
@@ -3318,10 +3318,10 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "tid=%d sig=%d", tid, sig);
 
-            libos_thread_t* thread = libos_thread_self();
+            myst_thread_t* thread = myst_thread_self();
             int tgid = thread->pid;
 
-            long ret = libos_syscall_tgkill(tgid, tid, sig);
+            long ret = myst_syscall_tgkill(tgid, tid, sig);
             BREAK(_return(n, ret));
         }
         case SYS_time:
@@ -3329,7 +3329,7 @@ long libos_syscall(long n, long params[6])
             time_t* tloc = (time_t*)x1;
 
             _strace(n, "tloc=%p", tloc);
-            long ret = libos_syscall_time(tloc);
+            long ret = myst_syscall_time(tloc);
             BREAK(_return(n, ret));
         }
         case SYS_futex:
@@ -3352,7 +3352,7 @@ long libos_syscall(long n, long params[6])
 
             BREAK(_return(
                 n,
-                libos_syscall_futex(uaddr, futex_op, val, arg, uaddr2, val3)));
+                myst_syscall_futex(uaddr, futex_op, val, arg, uaddr2, val3)));
         }
         case SYS_sched_setaffinity:
         {
@@ -3396,12 +3396,12 @@ long libos_syscall(long n, long params[6])
 
 #ifdef DISABLE_MULTIPLE_SET_THREAD_AREA_SYSCALLS
             if (_set_thread_area_called)
-                libos_panic("SYS_set_thread_area called twice");
+                myst_panic("SYS_set_thread_area called twice");
 #endif
 
             /* get the C-runtime thread descriptor */
-            crt_td = (libos_td_t*)tp;
-            assert(libos_valid_td(crt_td));
+            crt_td = (myst_td_t*)tp;
+            assert(myst_valid_td(crt_td));
 
             /* set the C-runtime thread descriptor for this thread */
             thread->crt_td = crt_td;
@@ -3436,7 +3436,7 @@ long libos_syscall(long n, long params[6])
             if (size <= 0)
                 BREAK(_return(n, -EINVAL));
 
-            BREAK(_return(n, libos_syscall_epoll_create1(0)));
+            BREAK(_return(n, myst_syscall_epoll_create1(0)));
         }
         case SYS_epoll_ctl_old:
             break;
@@ -3452,7 +3452,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "fd=%d dirp=%p count=%u", fd, dirp, count);
 
-            BREAK(_return(n, libos_syscall_getdents64((int)fd, dirp, count)));
+            BREAK(_return(n, myst_syscall_getdents64((int)fd, dirp, count)));
         }
         case SYS_set_tid_address:
         {
@@ -3462,7 +3462,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "tidptr=%p *tidptr=%d", tidptr, tidptr ? *tidptr : -1);
 
-            BREAK(_return(n, libos_getpid()));
+            BREAK(_return(n, myst_getpid()));
         }
         case SYS_restart_syscall:
             break;
@@ -3487,7 +3487,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "clk_id=%u tp=%p", clk_id, tp);
 
-            BREAK(_return(n, libos_syscall_clock_settime(clk_id, tp)));
+            BREAK(_return(n, myst_syscall_clock_settime(clk_id, tp)));
         }
         case SYS_clock_gettime:
         {
@@ -3496,7 +3496,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "clk_id=%u tp=%p", clk_id, tp);
 
-            BREAK(_return(n, libos_syscall_clock_gettime(clk_id, tp)));
+            BREAK(_return(n, myst_syscall_clock_gettime(clk_id, tp)));
         }
         case SYS_clock_getres:
             break;
@@ -3507,7 +3507,7 @@ long libos_syscall(long n, long params[6])
             int status = (int)x1;
             _strace(n, "status=%d", status);
 
-            libos_kill_thread_group();
+            myst_kill_thread_group();
             BREAK(_return(n, 0));
         }
         case SYS_epoll_wait:
@@ -3526,7 +3526,7 @@ long libos_syscall(long n, long params[6])
                 maxevents,
                 timeout);
 
-            ret = libos_syscall_epoll_wait(epfd, events, maxevents, timeout);
+            ret = myst_syscall_epoll_wait(epfd, events, maxevents, timeout);
             BREAK(_return(n, ret));
         }
         case SYS_epoll_ctl:
@@ -3539,7 +3539,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "edpf=%d op=%d fd=%d event=%p", epfd, op, fd, event);
 
-            ret = libos_syscall_epoll_ctl(epfd, op, fd, event);
+            ret = myst_syscall_epoll_ctl(epfd, op, fd, event);
             BREAK(_return(n, ret));
         }
         case SYS_tgkill:
@@ -3550,7 +3550,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "tgid=%d tid=%d sig=%d", tgid, tid, sig);
 
-            long ret = libos_syscall_tgkill(tgid, tid, sig);
+            long ret = myst_syscall_tgkill(tgid, tid, sig);
             BREAK(_return(n, ret));
         }
         case SYS_utimes:
@@ -3623,7 +3623,7 @@ long libos_syscall(long n, long params[6])
                 statbuf,
                 flags);
 
-            ret = libos_syscall_fstatat(dirfd, pathname, statbuf, flags);
+            ret = myst_syscall_fstatat(dirfd, pathname, statbuf, flags);
             BREAK(_return(n, ret));
             break;
         }
@@ -3682,7 +3682,7 @@ long libos_syscall(long n, long params[6])
                 sigmask);
 
             /* ATTN: ignore sigmask */
-            ret = libos_syscall_epoll_wait(epfd, events, maxevents, timeout);
+            ret = myst_syscall_epoll_wait(epfd, events, maxevents, timeout);
             BREAK(_return(n, ret));
         }
         case SYS_signalfd:
@@ -3708,7 +3708,7 @@ long libos_syscall(long n, long params[6])
             int flags = (int)x1;
 
             _strace(n, "flags=%d", flags);
-            BREAK(_return(n, libos_syscall_epoll_create1(flags)));
+            BREAK(_return(n, myst_syscall_epoll_create1(flags)));
         }
         case SYS_pipe2:
         {
@@ -3717,10 +3717,10 @@ long libos_syscall(long n, long params[6])
             long ret;
 
             _strace(n, "pipefd=%p flags=%0o", pipefd, flags);
-            ret = libos_syscall_pipe2(pipefd, flags);
+            ret = myst_syscall_pipe2(pipefd, flags);
 
             if (__options.trace_syscalls)
-                libos_eprintf("    pipefd[]=[%d:%d]\n", pipefd[0], pipefd[1]);
+                myst_eprintf("    pipefd[]=[%d:%d]\n", pipefd[0], pipefd[1]);
 
             BREAK(_return(n, ret));
         }
@@ -3796,7 +3796,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "buf=%p buflen=%zu flags=%d", buf, buflen, flags);
 
-            BREAK(_return(n, libos_syscall_getrandom(buf, buflen, flags)));
+            BREAK(_return(n, myst_syscall_getrandom(buf, buflen, flags)));
         }
         case SYS_memfd_create:
             break;
@@ -3815,7 +3815,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "cmd=%d flags=%d", cmd, flags);
 
-            libos_barrier();
+            myst_barrier();
 
             BREAK(_return(n, 0));
         }
@@ -3848,7 +3848,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "sockfd=%d addr=%p addrlen=%u", sockfd, addr, addrlen);
 
-            ret = libos_syscall_bind(sockfd, addr, addrlen);
+            ret = myst_syscall_bind(sockfd, addr, addrlen);
             BREAK(_return(n, ret));
         }
         case SYS_connect:
@@ -3877,7 +3877,7 @@ long libos_syscall(long n, long params[6])
                 ip4,
                 port);
 
-            ret = libos_syscall_connect(sockfd, addr, addrlen);
+            ret = myst_syscall_connect(sockfd, addr, addrlen);
             BREAK(_return(n, ret));
         }
         case SYS_recvfrom:
@@ -3900,17 +3900,17 @@ long libos_syscall(long n, long params[6])
                 src_addr,
                 addrlen);
 
-#ifdef LIBOS_NO_RECVMSG_MITIGATION
-            ret = libos_syscall_recvfrom(
+#ifdef MYST_NO_RECVMSG_MITIGATION
+            ret = myst_syscall_recvfrom(
                 sockfd, buf, len, flags, src_addr, addrlen);
-#else  /* LIBOS_NO_RECVMSG_WORKAROUND */
+#else  /* MYST_NO_RECVMSG_WORKAROUND */
             /* ATTN: this mitigation introduces a severe performance penalty */
             // This mitigation works around a problem with a certain
             // application that fails handle EGAIN. This should be removed
             // when possible.
             for (size_t i = 0; i < 10; i++)
             {
-                ret = libos_syscall_recvfrom(
+                ret = myst_syscall_recvfrom(
                     sockfd, buf, len, flags, src_addr, addrlen);
 
                 if (ret != -EAGAIN)
@@ -3927,7 +3927,7 @@ long libos_syscall(long n, long params[6])
                     continue;
                 }
             }
-#endif /* LIBOS_NO_RECVMSG_WORKAROUND */
+#endif /* MYST_NO_RECVMSG_WORKAROUND */
             BREAK(_return(n, ret));
         }
         case SYS_sendto:
@@ -3950,7 +3950,7 @@ long libos_syscall(long n, long params[6])
                 dest_addr,
                 addrlen);
 
-            ret = libos_syscall_sendto(
+            ret = myst_syscall_sendto(
                 sockfd, buf, len, flags, dest_addr, addrlen);
 
             BREAK(_return(n, ret));
@@ -3964,7 +3964,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "domain=%d type=%d protocol=%d", domain, type, protocol);
 
-            ret = libos_syscall_socket(domain, type, protocol);
+            ret = myst_syscall_socket(domain, type, protocol);
             BREAK(_return(n, ret));
         }
         case SYS_accept:
@@ -3976,7 +3976,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "sockfd=%d addr=%p addrlen=%p", sockfd, addr, addrlen);
 
-            ret = libos_syscall_accept(sockfd, addr, addrlen);
+            ret = myst_syscall_accept(sockfd, addr, addrlen);
             BREAK(_return(n, ret));
         }
         case SYS_sendmsg:
@@ -3988,7 +3988,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "sockfd=%d msg=%p flags=%d", sockfd, msg, flags);
 
-            ret = libos_syscall_sendmsg(sockfd, msg, flags);
+            ret = myst_syscall_sendmsg(sockfd, msg, flags);
             BREAK(_return(n, ret));
         }
         case SYS_recvmsg:
@@ -4000,7 +4000,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "sockfd=%d msg=%p flags=%d", sockfd, msg, flags);
 
-            ret = libos_syscall_recvmsg(sockfd, msg, flags);
+            ret = myst_syscall_recvmsg(sockfd, msg, flags);
             BREAK(_return(n, ret));
         }
         case SYS_shutdown:
@@ -4011,7 +4011,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "sockfd=%d how=%d", sockfd, how);
 
-            ret = libos_syscall_shutdown(sockfd, how);
+            ret = myst_syscall_shutdown(sockfd, how);
             BREAK(_return(n, ret));
         }
         case SYS_listen:
@@ -4022,7 +4022,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "sockfd=%d backlog=%d", sockfd, backlog);
 
-            ret = libos_syscall_listen(sockfd, backlog);
+            ret = myst_syscall_listen(sockfd, backlog);
             BREAK(_return(n, ret));
         }
         case SYS_getsockname:
@@ -4034,7 +4034,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "sockfd=%d addr=%p addrlen=%p", sockfd, addr, addrlen);
 
-            ret = libos_syscall_getsockname(sockfd, addr, addrlen);
+            ret = myst_syscall_getsockname(sockfd, addr, addrlen);
             BREAK(_return(n, ret));
         }
         case SYS_getpeername:
@@ -4046,7 +4046,7 @@ long libos_syscall(long n, long params[6])
 
             _strace(n, "sockfd=%d addr=%p addrlen=%p", sockfd, addr, addrlen);
 
-            ret = libos_syscall_getpeername(sockfd, addr, addrlen);
+            ret = myst_syscall_getpeername(sockfd, addr, addrlen);
             BREAK(_return(n, ret));
         }
         case SYS_socketpair:
@@ -4065,7 +4065,7 @@ long libos_syscall(long n, long params[6])
                 protocol,
                 sv);
 
-            ret = libos_syscall_socketpair(domain, type, protocol, sv);
+            ret = myst_syscall_socketpair(domain, type, protocol, sv);
             BREAK(_return(n, ret));
         }
         case SYS_setsockopt:
@@ -4086,7 +4086,7 @@ long libos_syscall(long n, long params[6])
                 optval,
                 optlen);
 
-            ret = libos_syscall_setsockopt(
+            ret = myst_syscall_setsockopt(
                 sockfd, level, optname, optval, optlen);
             BREAK(_return(n, ret));
         }
@@ -4108,42 +4108,42 @@ long libos_syscall(long n, long params[6])
                 optval,
                 optlen);
 
-            ret = libos_syscall_getsockopt(
+            ret = myst_syscall_getsockopt(
                 sockfd, level, optname, optval, optlen);
             BREAK(_return(n, ret));
         }
         case SYS_sendfile:
             break;
         /* forward Open Enclave extensions to the target */
-        case SYS_libos_oe_get_report_v2:
-        case SYS_libos_oe_free_report:
-        case SYS_libos_oe_get_target_info_v2:
-        case SYS_libos_oe_free_target_info:
-        case SYS_libos_oe_parse_report:
-        case SYS_libos_oe_verify_report:
-        case SYS_libos_oe_get_seal_key_by_policy_v2:
-        case SYS_libos_oe_get_public_key_by_policy:
-        case SYS_libos_oe_get_public_key:
-        case SYS_libos_oe_get_private_key_by_policy:
-        case SYS_libos_oe_get_private_key:
-        case SYS_libos_oe_free_key:
-        case SYS_libos_oe_get_seal_key_v2:
-        case SYS_libos_oe_free_seal_key:
-        case SYS_libos_oe_generate_attestation_certificate:
-        case SYS_libos_oe_free_attestation_certificate:
-        case SYS_libos_oe_verify_attestation_certificate:
-        case SYS_libos_oe_result_str:
+        case SYS_myst_oe_get_report_v2:
+        case SYS_myst_oe_free_report:
+        case SYS_myst_oe_get_target_info_v2:
+        case SYS_myst_oe_free_target_info:
+        case SYS_myst_oe_parse_report:
+        case SYS_myst_oe_verify_report:
+        case SYS_myst_oe_get_seal_key_by_policy_v2:
+        case SYS_myst_oe_get_public_key_by_policy:
+        case SYS_myst_oe_get_public_key:
+        case SYS_myst_oe_get_private_key_by_policy:
+        case SYS_myst_oe_get_private_key:
+        case SYS_myst_oe_free_key:
+        case SYS_myst_oe_get_seal_key_v2:
+        case SYS_myst_oe_free_seal_key:
+        case SYS_myst_oe_generate_attestation_certificate:
+        case SYS_myst_oe_free_attestation_certificate:
+        case SYS_myst_oe_verify_attestation_certificate:
+        case SYS_myst_oe_result_str:
         {
             _strace(n, "forwarded");
             BREAK(_return(n, _forward_syscall(n, params)));
         }
         default:
         {
-            libos_panic("unknown syscall: %s(): %ld", syscall_str(n), n);
+            myst_panic("unknown syscall: %s(): %ld", syscall_str(n), n);
         }
     }
 
-    libos_panic("unhandled syscall: %s()", syscall_str(n));
+    myst_panic("unhandled syscall: %s()", syscall_str(n));
 
 done:
 
@@ -4151,12 +4151,12 @@ done:
 
     /* the C-runtime must execute on its own thread descriptor */
     if (crt_td)
-        libos_set_fsbase(crt_td);
+        myst_set_fsbase(crt_td);
 
-    libos_times_leave_kernel(tp_enter);
+    myst_times_leave_kernel(tp_enter);
 
     // Process signals pending for this thread, if there is any.
-    libos_signal_process(thread);
+    myst_signal_process(thread);
 
     return syscall_ret;
 }
@@ -4169,17 +4169,17 @@ done:
 **==============================================================================
 */
 
-static libos_spinlock_t _get_time_lock = LIBOS_SPINLOCK_INITIALIZER;
-static libos_spinlock_t _set_time_lock = LIBOS_SPINLOCK_INITIALIZER;
+static myst_spinlock_t _get_time_lock = MYST_SPINLOCK_INITIALIZER;
+static myst_spinlock_t _set_time_lock = MYST_SPINLOCK_INITIALIZER;
 
-long libos_syscall_clock_gettime(clockid_t clk_id, struct timespec* tp)
+long myst_syscall_clock_gettime(clockid_t clk_id, struct timespec* tp)
 {
-    libos_thread_t* current = libos_thread_self();
+    myst_thread_t* current = myst_thread_self();
     if ( // mirrors clock id obtained from pthread_getcpuclockid
         clk_id == (clockid_t)((-current->tid - 1) * 8U + 6) ||
         clk_id == CLOCK_THREAD_CPUTIME_ID)
     {
-        long nanoseconds = libos_times_thread_time();
+        long nanoseconds = myst_times_thread_time();
         tp->tv_sec = nanoseconds / NANO_IN_SECOND;
         tp->tv_nsec = nanoseconds % NANO_IN_SECOND;
         return 0;
@@ -4189,36 +4189,36 @@ long libos_syscall_clock_gettime(clockid_t clk_id, struct timespec* tp)
         clk_id == (clockid_t)((-current->pid - 1) * 8U + 2) ||
         clk_id == CLOCK_PROCESS_CPUTIME_ID)
     {
-        long nanoseconds = libos_times_process_time();
+        long nanoseconds = myst_times_process_time();
         tp->tv_sec = nanoseconds / NANO_IN_SECOND;
         tp->tv_nsec = nanoseconds % NANO_IN_SECOND;
         return 0;
     }
 
-    libos_spin_lock(&_get_time_lock);
+    myst_spin_lock(&_get_time_lock);
     long params[6] = {(long)clk_id, (long)tp};
-    long ret = libos_tcall(LIBOS_TCALL_CLOCK_GETTIME, params);
-    libos_spin_unlock(&_get_time_lock);
+    long ret = myst_tcall(MYST_TCALL_CLOCK_GETTIME, params);
+    myst_spin_unlock(&_get_time_lock);
     return ret;
 }
 
-long libos_syscall_clock_settime(clockid_t clk_id, struct timespec* tp)
+long myst_syscall_clock_settime(clockid_t clk_id, struct timespec* tp)
 {
     long params[6] = {(long)clk_id, (long)tp};
-    libos_spin_lock(&_set_time_lock);
-    long ret = libos_tcall(LIBOS_TCALL_CLOCK_SETTIME, params);
-    libos_spin_unlock(&_set_time_lock);
+    myst_spin_lock(&_set_time_lock);
+    long ret = myst_tcall(MYST_TCALL_CLOCK_SETTIME, params);
+    myst_spin_unlock(&_set_time_lock);
     return ret;
 }
 
-long libos_syscall_gettimeofday(struct timeval* tv, struct timezone* tz)
+long myst_syscall_gettimeofday(struct timeval* tv, struct timezone* tz)
 {
     (void)tz;
     struct timespec tp = {0};
     if (tv == NULL)
         return 0;
 
-    long ret = libos_syscall_clock_gettime(CLOCK_REALTIME, &tp);
+    long ret = myst_syscall_clock_gettime(CLOCK_REALTIME, &tp);
     if (ret == 0)
     {
         tv->tv_sec = tp.tv_sec;
@@ -4227,10 +4227,10 @@ long libos_syscall_gettimeofday(struct timeval* tv, struct timezone* tz)
     return ret;
 }
 
-long libos_syscall_time(time_t* tloc)
+long myst_syscall_time(time_t* tloc)
 {
     struct timespec tp = {0};
-    long ret = libos_syscall_clock_gettime(CLOCK_REALTIME, &tp);
+    long ret = myst_syscall_clock_gettime(CLOCK_REALTIME, &tp);
     if (ret == 0)
     {
         if (tloc != NULL)
@@ -4240,11 +4240,11 @@ long libos_syscall_time(time_t* tloc)
     return ret;
 }
 
-long libos_syscall_tgkill(int tgid, int tid, int sig)
+long myst_syscall_tgkill(int tgid, int tid, int sig)
 {
     long ret = 0;
-    libos_thread_t* thread = libos_thread_self();
-    libos_thread_t* target = libos_find_thread(tid);
+    myst_thread_t* thread = myst_thread_self();
+    myst_thread_t* target = myst_find_thread(tid);
 
     if (target == NULL)
         ERAISE(-ESRCH);
@@ -4256,19 +4256,19 @@ long libos_syscall_tgkill(int tgid, int tid, int sig)
     siginfo_t* siginfo = calloc(1, sizeof(siginfo_t));
     siginfo->si_code = SI_TKILL;
     siginfo->si_signo = sig;
-    libos_signal_deliver(target, sig, siginfo);
+    myst_signal_deliver(target, sig, siginfo);
 
 done:
     return ret;
 }
 
-long libos_syscall_isatty(int fd)
+long myst_syscall_isatty(int fd)
 {
     long params[6] = {(long)fd};
-    return libos_tcall(LIBOS_TCALL_ISATTY, params);
+    return myst_tcall(MYST_TCALL_ISATTY, params);
 }
 
-long libos_syscall_add_symbol_file(
+long myst_syscall_add_symbol_file(
     const char* path,
     const void* text,
     size_t text_size)
@@ -4278,14 +4278,14 @@ long libos_syscall_add_symbol_file(
     size_t file_size;
     long params[6] = {0};
 
-    ECHECK(libos_load_file(path, &file_data, &file_size));
+    ECHECK(myst_load_file(path, &file_data, &file_size));
 
     params[0] = (long)file_data;
     params[1] = (long)file_size;
     params[2] = (long)text;
     params[3] = (long)text_size;
 
-    ECHECK(libos_tcall(LIBOS_TCALL_ADD_SYMBOL_FILE, params));
+    ECHECK(myst_tcall(MYST_TCALL_ADD_SYMBOL_FILE, params));
 
 done:
 
@@ -4295,14 +4295,14 @@ done:
     return ret;
 }
 
-long libos_syscall_load_symbols(void)
+long myst_syscall_load_symbols(void)
 {
     long params[6] = {0};
-    return libos_tcall(LIBOS_TCALL_LOAD_SYMBOLS, params);
+    return myst_tcall(MYST_TCALL_LOAD_SYMBOLS, params);
 }
 
-long libos_syscall_unload_symbols(void)
+long myst_syscall_unload_symbols(void)
 {
     long params[6] = {0};
-    return libos_tcall(LIBOS_TCALL_UNLOAD_SYMBOLS, params);
+    return myst_tcall(MYST_TCALL_UNLOAD_SYMBOLS, params);
 }

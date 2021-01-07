@@ -3,7 +3,7 @@ include $(TOP)/defs.mak
 
 SUBLIBDIR=$(LIBDIR)
 
-ARCHIVE = libostargetsgxenclave.a
+ARCHIVE = libmysttargetsgxenclave.a
 
 SOURCES += $(wildcard *.c)
 SOURCES += ../../shared/runthread.c

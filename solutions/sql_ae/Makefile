@@ -9,16 +9,16 @@ LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 
 DNSSERVER = $(shell systemd-resolve --status | grep "DNS Servers" | cut -f2 -d:)
 
-all: libos app
-	$(LIBOS) mkcpio $(APPDIR) rootfs
+all: myst app
+	$(MYST) mkcpio $(APPDIR) rootfs
 
 OPTS = --trace-syscalls
 
 run: cpio
-	$(LIBOS) exec rootfs /odbc_app msi default $(OPTS)
+	$(MYST) exec rootfs /odbc_app msi default $(OPTS)
 
-libos:
-	$(MAKE) -C $(TOP)/tools/libos
+myst:
+	$(MAKE) -C $(TOP)/tools/myst
 
 app:
 	rm -rf app/odbc_app $(APPDIR)
@@ -33,7 +33,7 @@ app:
 	ls -l $(APPDIR)/odbc_app $(APPDIR)/cksp.so; date
 
 cpio: app
-	$(LIBOS) mkcpio $(APPDIR) rootfs
+	$(MYST) mkcpio $(APPDIR) rootfs
 
 run-host:
 	gcc -g -fshort-wchar -fPIC -o cksp.so -shared app/cksp.c -I/opt/microsoft/msodbcsql17/include

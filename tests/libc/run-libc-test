@@ -1,13 +1,13 @@
 #!/bin/bash
 
 if [ "$#" != "4" ]; then
-    echo "Usage: $0 <libos> <target> <srcdir> <testpath>"
+    echo "Usage: $0 <myst> <target> <srcdir> <testpath>"
     exit 1
 fi
 
-libos=$1
-if [ ! -x "${libos}" ]; then
-    echo "$0: not an executable file: ${libos}"
+myst=$1
+if [ ! -x "${myst}" ]; then
+    echo "$0: not an executable file: ${myst}"
     exit 1
 fi
 
@@ -49,7 +49,7 @@ if [ "$?" != "0" ]; then
     exit 1
 fi
 
-${libos} mkcpio appdir rootfs
+${myst} mkcpio appdir rootfs
 if [ "$?" != "0" ]; then
     echo "$0: mkcpio failed"
     exit 1
@@ -58,7 +58,7 @@ fi
 ##
 ## Run the command:
 ##
-export LIBOS_EXPORT_RAMFS=${dirname}
+export MYST_EXPORT_RAMFS=${dirname}
 
 echo "=== libc test: ${testpath}/${target}"
 
@@ -66,8 +66,8 @@ if [ "${STRACE}" == "1" ]; then
     STRACE_OPT=--strace
 fi
 
-${libos} exec ${STRACE_OPT} rootfs ${testpath}
+${myst} exec ${STRACE_OPT} rootfs ${testpath}
 if [ "$?" != "0" ]; then
-    echo "$0: libos exec failed"
+    echo "$0: myst exec failed"
     exit 1
 fi

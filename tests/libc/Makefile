@@ -1,7 +1,7 @@
 TOP = $(abspath ../..)
 include $(TOP)/defs.mak
 
-IMG=libos-alpine
+IMG=myst-alpine
 APPDIR=$(CURDIR)/appdir
 
 ifdef STRACE
@@ -40,14 +40,14 @@ TESTS = $(shell cat $(TEST_FILE))
 
 GCOVDIR=$(CURDIR)/gcov
 
-tests: libos
-	@ $(foreach i, $(TESTS), TESTNAME=$(TESTNAME)$(i)$(TESTSUFFIX) $(RUNTEST) ./run-libc-test ${LIBOS} ${TARGET} ${SRCDIR} $(i) $(NL) )
+tests: myst
+	@ $(foreach i, $(TESTS), TESTNAME=$(TESTNAME)$(i)$(TESTSUFFIX) $(RUNTEST) ./run-libc-test ${MYST} ${TARGET} ${SRCDIR} $(i) $(NL) )
 
 clean:
 	rm -rf rootfs appdir $(SRCDIR) gcov
 
-libos:
-	$(MAKE) -C $(TOP)/tools/libos
+myst:
+	$(MAKE) -C $(TOP)/tools/myst
 
 mutex:
 	$(MAKE) run TEST=/src/functional/pthread_mutex.exe

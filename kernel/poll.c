@@ -6,34 +6,34 @@
 #include <stddef.h>
 #include <stdlib.h>
 
-#include <libos/defs.h>
-#include <libos/eraise.h>
-#include <libos/fdops.h>
-#include <libos/fdtable.h>
-#include <libos/sockdev.h>
-#include <libos/syscall.h>
-#include <libos/tcall.h>
+#include <myst/defs.h>
+#include <myst/eraise.h>
+#include <myst/fdops.h>
+#include <myst/fdtable.h>
+#include <myst/sockdev.h>
+#include <myst/syscall.h>
+#include <myst/tcall.h>
 
 long _poll_kernel(struct pollfd* fds, nfds_t nfds)
 {
     long ret = 0;
-    libos_fdtable_t* fdtable;
+    myst_fdtable_t* fdtable;
     long total = 0;
 
-    if (!(fdtable = libos_fdtable_current()))
+    if (!(fdtable = myst_fdtable_current()))
         ERAISE(-ENOSYS);
 
     for (nfds_t i = 0; i < nfds; i++)
     {
-        libos_fdtable_type_t type;
-        libos_fdops_t* fdops;
+        myst_fdtable_type_t type;
+        myst_fdops_t* fdops;
         void* object;
         int events;
 
         fds[i].revents = 0;
 
         /* get the device for this file descriptor */
-        ECHECK(libos_fdtable_get_any(
+        ECHECK(myst_fdtable_get_any(
             fdtable, fds[i].fd, &type, (void**)&fdops, (void**)&object));
 
         if ((events = (*fdops->fd_get_events)(fdops, object)) >= 0)
@@ -55,10 +55,10 @@ done:
     return ret;
 }
 
-long libos_syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
+long myst_syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
 {
     long ret = 0;
-    libos_fdtable_t* fdtable;
+    myst_fdtable_t* fdtable;
     struct pollfd* tfds = NULL; /* target file descriptors */
     struct pollfd* kfds = NULL; /* kernel file descriptors */
     nfds_t tnfds = 0;           /* number of target file descriptors */
@@ -73,7 +73,7 @@ long libos_syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
     {
         long r;
         long params[6] = {(long)NULL, nfds, timeout};
-        ECHECK((r = libos_tcall(SYS_poll, params)));
+        ECHECK((r = myst_tcall(SYS_poll, params)));
         ret = r;
         goto done;
     }
@@ -81,7 +81,7 @@ long libos_syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
     if (!fds && nfds)
         ERAISE(-EFAULT);
 
-    if (!(fdtable = libos_fdtable_current()))
+    if (!(fdtable = myst_fdtable_current()))
         ERAISE(-ENOSYS);
 
     if (!(tfds = calloc(nfds, sizeof(struct pollfd))))
@@ -100,12 +100,12 @@ long libos_syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
     for (nfds_t i = 0; i < nfds; i++)
     {
         int tfd;
-        libos_fdtable_type_t type;
-        libos_fdops_t* fdops;
+        myst_fdtable_type_t type;
+        myst_fdops_t* fdops;
         void* object;
 
         /* get the device for this file descriptor */
-        ECHECK(libos_fdtable_get_any(
+        ECHECK(myst_fdtable_get_any(
             fdtable, fds[i].fd, &type, (void**)&fdops, (void**)&object));
 
         /* get the target fd for this object (or -ENOTSUP) */
@@ -141,11 +141,11 @@ long libos_syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
     /* poll for target events */
     if (tnfds && tfds)
     {
-        ECHECK((tevents = libos_tcall_poll(tfds, tnfds, timeout)));
+        ECHECK((tevents = myst_tcall_poll(tfds, tnfds, timeout)));
     }
     else
     {
-        ECHECK((tevents = libos_tcall_poll(NULL, tnfds, timeout)));
+        ECHECK((tevents = myst_tcall_poll(NULL, tnfds, timeout)));
     }
 
     /* post-poll for kernel events (avoid if already polled above) */

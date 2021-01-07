@@ -5,10 +5,10 @@ URL=https://nl.alpinelinux.org/alpine/v3.12/releases/x86_64/alpine-minirootfs-3.
 
 TARGZ=alpine-minirootfs.tar.gz
 
-all: libos appdir rootfs
+all: myst appdir rootfs
 
-libos:
-	$(MAKE) -C $(TOP)/tools/libos
+myst:
+	$(MAKE) -C $(TOP)/tools/myst
 
 appdir:
 	rm -rf appdir
@@ -18,15 +18,15 @@ appdir:
 	rm -f $(TARGZ)
 
 rootfs:
-	$(LIBOS) mkcpio appdir rootfs
+	$(MYST) mkcpio appdir rootfs
 
 ifdef STRACE
 OPTS += --strace
 endif
 
 tests:
-	TESTNAME=$(SUBDIR)-ls $(RUNTEST) $(LIBOS_EXEC) $(OPTS) rootfs /bin/ls /sbin
-	TESTNAME=$(SUBDIR)-pwd $(RUNTEST) $(LIBOS_EXEC) $(OPTS) rootfs /bin/pwd
+	TESTNAME=$(SUBDIR)-ls $(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/ls /sbin
+	TESTNAME=$(SUBDIR)-pwd $(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/pwd
 
 clean:
 	sudo rm -rf $(TARGZ) appdir rootfs appdir ramfs

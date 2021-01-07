@@ -2,14 +2,14 @@
 // Licensed under the MIT License.
 
 #include <errno.h>
-#include <libos/eraise.h>
-#include <libos/thread.h>
+#include <myst/eraise.h>
+#include <myst/thread.h>
 #include <linux/futex.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/syscall.h>
 
-long libos_tcall_wait(uint64_t event, const struct timespec* timeout)
+long myst_tcall_wait(uint64_t event, const struct timespec* timeout)
 {
     volatile int* uaddr = (volatile int*)event;
 
@@ -36,7 +36,7 @@ long libos_tcall_wait(uint64_t event, const struct timespec* timeout)
     return 0;
 }
 
-long libos_tcall_wake(uint64_t event)
+long myst_tcall_wake(uint64_t event)
 {
     long ret = 0;
     volatile int* uaddr = (volatile int*)event;
@@ -52,20 +52,20 @@ long libos_tcall_wake(uint64_t event)
     return ret;
 }
 
-long libos_tcall_wake_wait(
+long myst_tcall_wake_wait(
     uint64_t waiter_event,
     uint64_t self_event,
     const struct timespec* timeout)
 {
     long ret;
 
-    if ((ret = libos_tcall_wake(waiter_event)) != 0)
+    if ((ret = myst_tcall_wake(waiter_event)) != 0)
     {
         if (ret != -EAGAIN)
             return ret;
     }
 
-    if ((ret = libos_tcall_wait(self_event, timeout)) != 0)
+    if ((ret = myst_tcall_wait(self_event, timeout)) != 0)
         return ret;
 
     return 0;

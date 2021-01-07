@@ -13,4 +13,4 @@ include $(TOP)/rules.mak
 
 tests:
 	@ $(MKROOTFS) $(SUBBINDIR)/$(PROGRAM) rootfs
-	@ $(RUNTEST) $(LIBOS_EXEC) rootfs /bin/$(PROGRAM)
+	@ $(RUNTEST) $(MYST_EXEC) rootfs /bin/$(PROGRAM)

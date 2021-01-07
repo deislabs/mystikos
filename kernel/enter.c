@@ -4,117 +4,117 @@
 #include <assert.h>
 #include <stdlib.h>
 
-#include <libos/atexit.h>
-#include <libos/cpio.h>
-#include <libos/crash.h>
-#include <libos/eraise.h>
-#include <libos/errno.h>
-#include <libos/exec.h>
-#include <libos/fdtable.h>
-#include <libos/file.h>
-#include <libos/fsgs.h>
-#include <libos/initfini.h>
-#include <libos/kernel.h>
-#include <libos/mmanutils.h>
-#include <libos/mount.h>
-#include <libos/options.h>
-#include <libos/panic.h>
-#include <libos/printf.h>
-#include <libos/process.h>
-#include <libos/ramfs.h>
-#include <libos/signal.h>
-#include <libos/strings.h>
-#include <libos/syscall.h>
-#include <libos/thread.h>
-#include <libos/times.h>
-#include <libos/ttydev.h>
+#include <myst/atexit.h>
+#include <myst/cpio.h>
+#include <myst/crash.h>
+#include <myst/eraise.h>
+#include <myst/errno.h>
+#include <myst/exec.h>
+#include <myst/fdtable.h>
+#include <myst/file.h>
+#include <myst/fsgs.h>
+#include <myst/initfini.h>
+#include <myst/kernel.h>
+#include <myst/mmanutils.h>
+#include <myst/mount.h>
+#include <myst/options.h>
+#include <myst/panic.h>
+#include <myst/printf.h>
+#include <myst/process.h>
+#include <myst/ramfs.h>
+#include <myst/signal.h>
+#include <myst/strings.h>
+#include <myst/syscall.h>
+#include <myst/thread.h>
+#include <myst/times.h>
+#include <myst/ttydev.h>
 
-static libos_fs_t* _fs;
+static myst_fs_t* _fs;
 
-long libos_tcall(long n, long params[6])
+long myst_tcall(long n, long params[6])
 {
     void* fs = NULL;
 
     if (__options.have_syscall_instruction)
     {
-        fs = libos_get_fsbase();
-        libos_set_fsbase(libos_get_gsbase());
+        fs = myst_get_fsbase();
+        myst_set_fsbase(myst_get_gsbase());
     }
 
-    long ret = (__libos_kernel_args.tcall)(n, params);
+    long ret = (__myst_kernel_args.tcall)(n, params);
 
     if (fs)
-        libos_set_fsbase(fs);
+        myst_set_fsbase(fs);
 
     return ret;
 }
 
-void libos_dump_malloc_stats(void)
+void myst_dump_malloc_stats(void)
 {
-    libos_malloc_stats_t stats;
+    myst_malloc_stats_t stats;
 
-    if (libos_get_malloc_stats(&stats) == 0)
+    if (myst_get_malloc_stats(&stats) == 0)
     {
-        libos_eprintf("kernel: memory used: %zu\n", stats.usage);
-        libos_eprintf("kernel: peak memory used: %zu\n", stats.peak_usage);
+        myst_eprintf("kernel: memory used: %zu\n", stats.usage);
+        myst_eprintf("kernel: peak memory used: %zu\n", stats.peak_usage);
     }
 }
 
 static int _setup_tty(void)
 {
     int ret = 0;
-    libos_ttydev_t* ttydev = libos_ttydev_get();
-    libos_fdtable_t* fdtable = libos_fdtable_current();
-    libos_tty_t* stdin_tty;
-    libos_tty_t* stdout_tty;
-    libos_tty_t* stderr_tty;
+    myst_ttydev_t* ttydev = myst_ttydev_get();
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_tty_t* stdin_tty;
+    myst_tty_t* stdout_tty;
+    myst_tty_t* stderr_tty;
     int fd;
 
     if ((*ttydev->td_create)(ttydev, STDIN_FILENO, &stdin_tty) != 0)
     {
-        libos_eprintf("kernel: failed to create stdin device\n");
+        myst_eprintf("kernel: failed to create stdin device\n");
         ERAISE(-EINVAL);
     }
 
     if ((*ttydev->td_create)(ttydev, STDOUT_FILENO, &stdout_tty) != 0)
     {
-        libos_eprintf("kernel: failed to create stdout device\n");
+        myst_eprintf("kernel: failed to create stdout device\n");
         ERAISE(-EINVAL);
     }
 
     if ((*ttydev->td_create)(ttydev, STDERR_FILENO, &stderr_tty) != 0)
     {
-        libos_eprintf("kernel: failed to create stderr device\n");
+        myst_eprintf("kernel: failed to create stderr device\n");
         ERAISE(-EINVAL);
     }
 
     ECHECK(
-        (fd = libos_fdtable_assign(
-             fdtable, LIBOS_FDTABLE_TYPE_TTY, ttydev, stdin_tty)));
+        (fd = myst_fdtable_assign(
+             fdtable, MYST_FDTABLE_TYPE_TTY, ttydev, stdin_tty)));
 
     if (fd != STDIN_FILENO)
     {
-        libos_eprintf("kernel: failed to assign stdin fd\n");
+        myst_eprintf("kernel: failed to assign stdin fd\n");
         ERAISE(-EINVAL);
     }
 
     ECHECK(
-        (fd = libos_fdtable_assign(
-             fdtable, LIBOS_FDTABLE_TYPE_TTY, ttydev, stdout_tty)));
+        (fd = myst_fdtable_assign(
+             fdtable, MYST_FDTABLE_TYPE_TTY, ttydev, stdout_tty)));
 
     if (fd != STDOUT_FILENO)
     {
-        libos_eprintf("kernel: failed to assign stdout fd\n");
+        myst_eprintf("kernel: failed to assign stdout fd\n");
         ERAISE(-EINVAL);
     }
 
     ECHECK(
-        (fd = libos_fdtable_assign(
-             fdtable, LIBOS_FDTABLE_TYPE_TTY, ttydev, stderr_tty)));
+        (fd = myst_fdtable_assign(
+             fdtable, MYST_FDTABLE_TYPE_TTY, ttydev, stderr_tty)));
 
     if (fd != STDERR_FILENO)
     {
-        libos_eprintf("kernel: failed to assign stderr fd\n");
+        myst_eprintf("kernel: failed to assign stderr fd\n");
         ERAISE(-EINVAL);
     }
 
@@ -126,33 +126,33 @@ static int _setup_ramfs(void)
 {
     int ret = 0;
 
-    if (libos_init_ramfs(&_fs) != 0)
+    if (myst_init_ramfs(&_fs) != 0)
     {
-        libos_eprintf("failed initialize the RAM files system\n");
+        myst_eprintf("failed initialize the RAM files system\n");
         ERAISE(-EINVAL);
     }
 
-    if (libos_mount(_fs, "/") != 0)
+    if (myst_mount(_fs, "/") != 0)
     {
-        libos_eprintf("cannot mount root file system\n");
+        myst_eprintf("cannot mount root file system\n");
         ERAISE(-EINVAL);
     }
 
     if (mkdir("/tmp", 777) != 0)
     {
-        libos_eprintf("cannot create the /tmp directory\n");
+        myst_eprintf("cannot create the /tmp directory\n");
         ERAISE(-EINVAL);
     }
 
-    if (libos_mkdirhier("/proc/self/fd", 777) != 0)
+    if (myst_mkdirhier("/proc/self/fd", 777) != 0)
     {
-        libos_eprintf("cannot create the /proc/self/fd directory\n");
+        myst_eprintf("cannot create the /proc/self/fd directory\n");
         ERAISE(-EINVAL);
     }
 
-    if (libos_mkdirhier("/usr/local/etc", 777) != 0)
+    if (myst_mkdirhier("/usr/local/etc", 777) != 0)
     {
-        libos_eprintf("cannot create the /usr/local/etc directory\n");
+        myst_eprintf("cannot create the /usr/local/etc directory\n");
         ERAISE(-EINVAL);
     }
 
@@ -173,11 +173,11 @@ static int _create_mem_file(
 
     if ((fd = open(path, O_WRONLY | O_CREAT, 0444)) < 0)
     {
-        libos_panic("kernel: open(): %s\n", path);
+        myst_panic("kernel: open(): %s\n", path);
         ERAISE(-ENOENT);
     }
 
-    ECHECK(libos_ramfs_set_buf(_fs, path, file_data, file_size));
+    ECHECK(myst_ramfs_set_buf(_fs, path, file_data, file_size));
 
     ret = 0;
 
@@ -193,19 +193,19 @@ static int _teardown_ramfs(void)
 {
     if ((*_fs->fs_release)(_fs) != 0)
     {
-        libos_eprintf("failed to release ramfs\n");
+        myst_eprintf("failed to release ramfs\n");
         return -1;
     }
 
     return 0;
 }
 
-static int _create_main_thread(uint64_t event, libos_thread_t** thread_out)
+static int _create_main_thread(uint64_t event, myst_thread_t** thread_out)
 {
     int ret = 0;
-    libos_thread_t* thread = NULL;
-    pid_t ppid = libos_generate_tid();
-    pid_t pid = libos_generate_tid();
+    myst_thread_t* thread = NULL;
+    pid_t ppid = myst_generate_tid();
+    pid_t pid = myst_generate_tid();
 
     if (thread_out)
         *thread_out = NULL;
@@ -213,25 +213,25 @@ static int _create_main_thread(uint64_t event, libos_thread_t** thread_out)
     if (!thread_out)
         ERAISE(-EINVAL);
 
-    if (!(thread = calloc(1, sizeof(libos_thread_t))))
+    if (!(thread = calloc(1, sizeof(myst_thread_t))))
         ERAISE(-ENOMEM);
 
-    thread->magic = LIBOS_THREAD_MAGIC;
+    thread->magic = MYST_THREAD_MAGIC;
     thread->sid = ppid;
     thread->ppid = ppid;
     thread->pid = pid;
     thread->tid = pid;
     thread->event = event;
-    thread->target_td = libos_get_fsbase();
+    thread->target_td = myst_get_fsbase();
 
     /* allocate the new fdtable for this process */
-    ECHECK(libos_fdtable_create(&thread->fdtable));
+    ECHECK(myst_fdtable_create(&thread->fdtable));
 
     /* allocate the sigactions array */
-    ECHECK(libos_signal_init(thread));
+    ECHECK(myst_signal_init(thread));
 
     /* bind this thread to the target */
-    libos_assume(libos_tcall_set_tsd((uint64_t)thread) == 0);
+    myst_assume(myst_tcall_set_tsd((uint64_t)thread) == 0);
 
     *thread_out = thread;
     thread = NULL;
@@ -244,76 +244,76 @@ done:
     return ret;
 }
 
-int libos_enter_kernel(libos_kernel_args_t* args)
+int myst_enter_kernel(myst_kernel_args_t* args)
 {
     int ret = 0;
     int exit_status;
-    libos_cpio_create_file_function_t create_file = NULL;
-    libos_thread_t* thread = NULL;
+    myst_cpio_create_file_function_t create_file = NULL;
+    myst_thread_t* thread = NULL;
 
 #if 0
-    extern void libos_set_trace(bool flag);
-    libos_set_trace(true);
+    extern void myst_set_trace(bool flag);
+    myst_set_trace(true);
 #endif
 
     if (!args)
-        libos_crash();
+        myst_crash();
 
     /* Save the aguments */
-    __libos_kernel_args = *args;
+    __myst_kernel_args = *args;
 
     __options.trace_syscalls = args->trace_syscalls;
     __options.have_syscall_instruction = args->have_syscall_instruction;
     __options.export_ramfs = args->export_ramfs;
 
     if (__options.have_syscall_instruction)
-        libos_set_gsbase(libos_get_fsbase());
+        myst_set_gsbase(myst_get_fsbase());
 
-    libos_call_init_functions();
+    myst_call_init_functions();
 
     /* Check arguments */
     {
         if (!args->argc || !args->argv)
         {
-            libos_eprintf("kernel: bad argc/argv arguments\n");
+            myst_eprintf("kernel: bad argc/argv arguments\n");
             ERAISE(-EINVAL);
         }
 
         if (!args->envc || !args->envp)
         {
-            libos_eprintf("kernel: bad envc/envp arguments\n");
+            myst_eprintf("kernel: bad envc/envp arguments\n");
             ERAISE(-EINVAL);
         }
 
         if (!args->mman_data || !args->mman_size)
         {
-            libos_eprintf("kernel: bad mman arguments\n");
+            myst_eprintf("kernel: bad mman arguments\n");
             ERAISE(-EINVAL);
         }
 
         if (!args->rootfs_data || !args->rootfs_size)
         {
-            libos_eprintf("kernel: bad rootfs arguments\n");
+            myst_eprintf("kernel: bad rootfs arguments\n");
             ERAISE(-EINVAL);
         }
 
         if (!args->crt_data || !args->crt_size)
         {
-            libos_eprintf("kernel: bad crt arguments\n");
+            myst_eprintf("kernel: bad crt arguments\n");
             ERAISE(-EINVAL);
         }
 
         if (!args->tcall)
         {
-            libos_eprintf("kernel: bad tcall argument\n");
+            myst_eprintf("kernel: bad tcall argument\n");
             ERAISE(-EINVAL);
         }
     }
 
     /* Setup the memory manager */
-    if (libos_setup_mman(args->mman_data, args->mman_size) != 0)
+    if (myst_setup_mman(args->mman_data, args->mman_size) != 0)
     {
-        libos_eprintf("kernel: memory manager setup failed\n");
+        myst_eprintf("kernel: memory manager setup failed\n");
         ERAISE(-EINVAL);
     }
 
@@ -332,38 +332,38 @@ int libos_enter_kernel(libos_kernel_args_t* args)
 
     /* Create the main thread */
     ECHECK(_create_main_thread(args->event, &thread));
-    __libos_main_thread = thread;
+    __myst_main_thread = thread;
 
     /* setup the TTY devices */
     if (_setup_tty() != 0)
     {
-        libos_eprintf("kernel: failed to setup of TTY devices\n");
+        myst_eprintf("kernel: failed to setup of TTY devices\n");
         ERAISE(-EINVAL);
     }
 
     /* Unpack the CPIO from memory */
-    if (libos_cpio_mem_unpack(
+    if (myst_cpio_mem_unpack(
             args->rootfs_data, args->rootfs_size, "/", create_file) != 0)
     {
-        libos_eprintf("failed to unpack root file system\n");
+        myst_eprintf("failed to unpack root file system\n");
         ERAISE(-EINVAL);
     }
 
     /* Set the 'run-proc' which is called by the target to run new threads */
-    ECHECK(libos_tcall_set_run_thread_function(libos_run_thread));
+    ECHECK(myst_tcall_set_run_thread_function(myst_run_thread));
 
-#ifdef LIBOS_ENABLE_LEAK_CHECKER
+#ifdef MYST_ENABLE_LEAK_CHECKER
     /* print out memory statistics */
-    // libos_dump_malloc_stats();
+    // myst_dump_malloc_stats();
 #endif
 
-    libos_times_start();
+    myst_times_start();
 
     /* Run the main program: wait for SYS_exit to perform longjmp() */
-    if (libos_setjmp(&thread->jmpbuf) == 0)
+    if (myst_setjmp(&thread->jmpbuf) == 0)
     {
         /* enter the C-runtime on the target thread descriptor */
-        if (libos_exec(
+        if (myst_exec(
                 thread,
                 args->crt_data,
                 args->crt_size,
@@ -376,7 +376,7 @@ int libos_enter_kernel(libos_kernel_args_t* args)
                 NULL,
                 NULL) != 0)
         {
-            libos_panic("libos_exec() failed");
+            myst_panic("myst_exec() failed");
         }
 
         /* never returns */
@@ -389,12 +389,12 @@ int libos_enter_kernel(libos_kernel_args_t* args)
         /* release the fdtable */
         if (thread->fdtable)
         {
-            libos_fdtable_free(thread->fdtable);
+            myst_fdtable_free(thread->fdtable);
             thread->fdtable = NULL;
         }
 
         /* release signal related heap memory */
-        libos_signal_free(thread);
+        myst_signal_free(thread);
 
         /* release the exec stack */
         if (thread->main.exec_stack)
@@ -406,38 +406,38 @@ int libos_enter_kernel(libos_kernel_args_t* args)
         /* release the exec copy of the CRT data */
         if (thread->main.exec_crt_data)
         {
-            libos_munmap(
+            myst_munmap(
                 thread->main.exec_crt_data, thread->main.exec_crt_size);
             thread->main.exec_crt_data = NULL;
             thread->main.exec_crt_size = 0;
         }
 
         /* switch back to the target thread descriptor */
-        libos_set_fsbase(thread->target_td);
+        myst_set_fsbase(thread->target_td);
     }
 
     /* unload the debugger symbols */
-    libos_syscall_unload_symbols();
+    myst_syscall_unload_symbols();
 
     /* Tear down the RAM file system */
     _teardown_ramfs();
 
     /* Put the thread on the zombie list */
-    libos_zombify_thread(thread);
+    myst_zombify_thread(thread);
 
-    /* call functions installed with libos_atexit() */
-    libos_call_atexit_functions();
+    /* call functions installed with myst_atexit() */
+    myst_call_atexit_functions();
 
-#ifdef LIBOS_ENABLE_LEAK_CHECKER
+#ifdef MYST_ENABLE_LEAK_CHECKER
     /* Check for memory leaks */
-    if (libos_find_leaks() != 0)
+    if (myst_find_leaks() != 0)
     {
-        libos_crash();
-        libos_panic("kernel memory leaks");
+        myst_crash();
+        myst_panic("kernel memory leaks");
     }
 #endif
 
-    /* ATTN: move libos_call_atexit_functions() here */
+    /* ATTN: move myst_call_atexit_functions() here */
 
     ret = exit_status;
 
