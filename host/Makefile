@@ -3,7 +3,7 @@ include $(TOP)/defs.mak
 
 SUBLIBDIR=$(LIBDIR)
 
-ARCHIVE = liboshost.a
+ARCHIVE = libmysthost.a
 
 SOURCES = $(wildcard *.c)
 

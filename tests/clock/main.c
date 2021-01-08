@@ -13,7 +13,7 @@
 
 static int is_sgx_target()
 {
-    char* target = getenv("LIBOS_TARGET");
+    char* target = getenv("MYST_TARGET");
     if (target != NULL && !strcmp(SGX_TARGET, target))
         return 1;
     else
@@ -30,7 +30,7 @@ static int test_clock_get_time(long reference)
     assert(clock_gettime(CLOCK_REALTIME, &tp) == 0);
     timestamp = tp.tv_sec * NANO_IN_SECOND + tp.tv_nsec;
     long diff = timestamp - reference;
-    printf("Time spent on booting libos = %ld ms\n", diff / 1000000);
+    printf("Time spent on booting myst = %ld ms\n", diff / 1000000);
     assert(diff > 0 && diff < tolerance);
 
     // Check if the monotonic clock goes backward

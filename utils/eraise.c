@@ -1,17 +1,17 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include <libos/eraise.h>
-#include <libos/errno.h>
-#include <libos/printf.h>
-#include <libos/strings.h>
-#include <libos/trace.h>
+#include <myst/eraise.h>
+#include <myst/errno.h>
+#include <myst/printf.h>
+#include <myst/strings.h>
+#include <myst/trace.h>
 #include <stdio.h>
 #include <string.h>
 
-void libos_eraise(const char* file, uint32_t line, const char* func, int errnum)
+void myst_eraise(const char* file, uint32_t line, const char* func, int errnum)
 {
-    if (libos_get_trace())
+    if (myst_get_trace())
     {
         if (errnum < 0)
             errnum = -errnum;
@@ -22,6 +22,6 @@ void libos_eraise(const char* file, uint32_t line, const char* func, int errnum)
             line,
             func,
             errnum,
-            libos_error_name(errnum));
+            myst_error_name(errnum));
     }
 }

@@ -10,7 +10,7 @@ endif
 
 run:
 	$(MKROOTFS) ./hello_world rootfs
-	$(LIBOS_EXEC) $(OPTS) rootfs /bin/hello_world
+	$(MYST_EXEC) $(OPTS) rootfs /bin/hello_world
 
 clean:
 	rm -rf rootfs hello_world

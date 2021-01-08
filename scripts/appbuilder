@@ -57,6 +57,6 @@ clean_up
 set +x
 echo ""
 echo "  Success! Required files are extracted to appdir."
-echo "  You can run applications with the following commands (after add libos to your path):"
-echo "      libos mkcpio appdir rootfs && libos exec rootfs <cmd> <cmd line options>"
-echo "  For example, libos mkcpio appdir rootfs && libos exec rootfs /bin/ls /bin"
+echo "  You can run applications with the following commands (after add myst to your path):"
+echo "      myst mkcpio appdir rootfs && myst exec rootfs <cmd> <cmd line options>"
+echo "  For example, myst mkcpio appdir rootfs && myst exec rootfs /bin/ls /bin"

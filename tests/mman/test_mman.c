@@ -10,7 +10,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <libos/mman.h>
+#include <myst/mman.h>
 
 #define D(X)
 
@@ -29,9 +29,9 @@ static int _rand(void)
 }
 
 /* Cound the VADs in the VAD list */
-size_t _count_vads(const libos_vad_t* list)
+size_t _count_vads(const myst_vad_t* list)
 {
-    const libos_vad_t* p;
+    const myst_vad_t* p;
     size_t count = 0;
 
     for (p = list; p; p = p->next)
@@ -41,7 +41,7 @@ size_t _count_vads(const libos_vad_t* list)
 }
 
 /* Initialize the heap object */
-static int _init_mman(libos_mman_t* heap, size_t size)
+static int _init_mman(myst_mman_t* heap, size_t size)
 {
     void* base;
 
@@ -52,30 +52,30 @@ static int _init_mman(libos_mman_t* heap, size_t size)
         return -1;
     }
 
-    if (libos_mman_init(heap, (uintptr_t)base, size) != 0)
+    if (myst_mman_init(heap, (uintptr_t)base, size) != 0)
     {
-        printf("ERROR: libos_mman_init(): %s\n", heap->err);
+        printf("ERROR: myst_mman_init(): %s\n", heap->err);
         return -1;
     }
 
     heap->scrub = true;
 
-    libos_mman_set_sanity(heap, true);
+    myst_mman_set_sanity(heap, true);
 
     return 0;
 }
 
 /* Free the base of the heap */
-static void _free_mman(libos_mman_t* heap)
+static void _free_mman(myst_mman_t* heap)
 {
     free((void*)heap->base);
 }
 
 /* Check that the VAD list is sorted by starting address */
-static bool _is_sorted(const libos_vad_t* list)
+static bool _is_sorted(const myst_vad_t* list)
 {
-    const libos_vad_t* p;
-    const libos_vad_t* prev = NULL;
+    const myst_vad_t* p;
+    const myst_vad_t* prev = NULL;
 
     for (p = list; p; prev = p, p = p->next)
     {
@@ -87,10 +87,10 @@ static bool _is_sorted(const libos_vad_t* list)
 }
 
 /* Check that there are no gaps between the VADs in the list */
-static bool _is_flush(const libos_mman_t* heap, const libos_vad_t* list)
+static bool _is_flush(const myst_mman_t* heap, const myst_vad_t* list)
 {
-    const libos_vad_t* p;
-    const libos_vad_t* prev = NULL;
+    const myst_vad_t* p;
+    const myst_vad_t* prev = NULL;
 
     if (!list)
         return true;
@@ -113,64 +113,64 @@ static bool _is_flush(const libos_mman_t* heap, const libos_vad_t* list)
     return true;
 }
 
-/* Helper for calling libos_mman_mmap() */
-static void* _mman_mmap(libos_mman_t* heap, void* addr, size_t length)
+/* Helper for calling myst_mman_mmap() */
+static void* _mman_mmap(myst_mman_t* heap, void* addr, size_t length)
 {
-    int prot = LIBOS_PROT_READ | LIBOS_PROT_WRITE;
-    int flags = LIBOS_MAP_ANONYMOUS | LIBOS_MAP_PRIVATE;
+    int prot = MYST_PROT_READ | MYST_PROT_WRITE;
+    int flags = MYST_MAP_ANONYMOUS | MYST_MAP_PRIVATE;
 
     void* result;
 
-    if (libos_mman_mmap(heap, addr, length, prot, flags, &result) != 0)
+    if (myst_mman_mmap(heap, addr, length, prot, flags, &result) != 0)
     {
-        printf("ERROR: libos_mman_mmap(): %s\n", heap->err);
-        assert("libos_mman_mmap(): failed" == NULL);
+        printf("ERROR: myst_mman_mmap(): %s\n", heap->err);
+        assert("myst_mman_mmap(): failed" == NULL);
     }
 
     return result;
 }
 
-/* Helper for calling libos_mman_mmap() without printing an error */
-static void* _mman_mmap_no_err(libos_mman_t* heap, void* addr, size_t length)
+/* Helper for calling myst_mman_mmap() without printing an error */
+static void* _mman_mmap_no_err(myst_mman_t* heap, void* addr, size_t length)
 {
-    int prot = LIBOS_PROT_READ | LIBOS_PROT_WRITE;
-    int flags = LIBOS_MAP_ANONYMOUS | LIBOS_MAP_PRIVATE;
+    int prot = MYST_PROT_READ | MYST_PROT_WRITE;
+    int flags = MYST_MAP_ANONYMOUS | MYST_MAP_PRIVATE;
 
     void* result = NULL;
 
-    if (libos_mman_mmap(heap, addr, length, prot, flags, &result) != 0)
+    if (myst_mman_mmap(heap, addr, length, prot, flags, &result) != 0)
         return NULL;
 
     return result;
 }
 
-/* Helper for calling libos_mman_mremap() */
+/* Helper for calling myst_mman_mremap() */
 static void* _mman_remap(
-    libos_mman_t* heap,
+    myst_mman_t* heap,
     void* addr,
     size_t old_size,
     size_t new_size)
 {
-    int flags = LIBOS_MREMAP_MAYMOVE;
+    int flags = MYST_MREMAP_MAYMOVE;
 
     void* result = NULL;
 
-    if (libos_mman_mremap(heap, addr, old_size, new_size, flags, &result) != 0)
+    if (myst_mman_mremap(heap, addr, old_size, new_size, flags, &result) != 0)
     {
-        printf("ERROR: libos_mman_mremap(): %s\n", heap->err);
+        printf("ERROR: myst_mman_mremap(): %s\n", heap->err);
         assert(false);
     }
 
     return result;
 }
 
-/* Helper for calling libos_mman_munmap() */
-static int _mman_unmap(libos_mman_t* heap, void* address, size_t size)
+/* Helper for calling myst_mman_munmap() */
+static int _mman_unmap(myst_mman_t* heap, void* address, size_t size)
 {
-    int rc = (int)libos_mman_munmap(heap, address, size);
+    int rc = (int)myst_mman_munmap(heap, address, size);
 
     if (rc != 0)
-        printf("ERROR: libos_mman_munmap(): %s\n", heap->err);
+        printf("ERROR: myst_mman_munmap(): %s\n", heap->err);
 
     return rc;
 }
@@ -178,7 +178,7 @@ static int _mman_unmap(libos_mman_t* heap, void* address, size_t size)
 /*
 ** test_mman_1()
 **
-**     Test libos_mman_mmap() and libos_mman_munmap() and check expected state
+**     Test myst_mman_mmap() and myst_mman_munmap() and check expected state
 *between
 **     operations. Unmap leaves gaps and then map checks to see if those gaps
 **     are filled.
@@ -187,7 +187,7 @@ void test_mman_1()
 {
     // char buf1[4096];
     //(void)buf1;
-    libos_mman_t h;
+    myst_mman_t h;
     // char buf2[4096];
     //(void)buf2;
 
@@ -293,7 +293,7 @@ void test_mman_1()
 /*
 ** test_mman_2()
 **
-**     Test libos_mman_mmap() and libos_mman_munmap() and check expected state
+**     Test myst_mman_mmap() and myst_mman_munmap() and check expected state
 *between
 **     operations. Map several regions and then unmap regions leaving gaps.
 **     Map again and see if the new regions were allocated within the expected
@@ -301,7 +301,7 @@ void test_mman_1()
 */
 void test_mman_2()
 {
-    libos_mman_t h;
+    myst_mman_t h;
 
     const size_t npages = 1024;
     const size_t size = npages * PAGE_SIZE;
@@ -380,7 +380,7 @@ void test_mman_2()
 */
 void test_mman_3()
 {
-    libos_mman_t h;
+    myst_mman_t h;
 
     const size_t npages = 1024;
     const size_t size = npages * PAGE_SIZE;
@@ -414,7 +414,7 @@ void test_mman_3()
     assert(_is_sorted(h.vad_list));
 
     /* This should be illegal since it overruns the end */
-    assert(libos_mman_munmap(&h, ptrs[0], 2 * PAGE_SIZE) != 0);
+    assert(myst_mman_munmap(&h, ptrs[0], 2 * PAGE_SIZE) != 0);
     assert(_is_sorted(h.vad_list));
     assert(_is_flush(&h, h.vad_list));
 
@@ -457,7 +457,7 @@ void test_mman_3()
 */
 void test_mman_4()
 {
-    libos_mman_t h;
+    myst_mman_t h;
 
     const size_t npages = 1024;
     const size_t size = npages * PAGE_SIZE;
@@ -482,7 +482,7 @@ void test_mman_4()
     assert(_is_sorted(h.vad_list));
 
     /* This should fail */
-    assert(libos_mman_munmap(&h, ptrs[7], 1024 * PAGE_SIZE) != 0);
+    assert(myst_mman_munmap(&h, ptrs[7], 1024 * PAGE_SIZE) != 0);
 
     /* Unmap everything */
     assert(_mman_unmap(&h, ptrs[7], m) == 0);
@@ -500,7 +500,7 @@ void test_mman_4()
 */
 void test_mman_5()
 {
-    libos_mman_t h;
+    myst_mman_t h;
 
     const size_t npages = 1024;
     const size_t size = npages * PAGE_SIZE;
@@ -524,7 +524,7 @@ void test_mman_5()
     assert(_mman_unmap(&h, ptrs[4], 5 * PAGE_SIZE) == 0);
 
     /* Unmap everything */
-    assert(libos_mman_munmap(&h, ptrs[7], m) != 0);
+    assert(myst_mman_munmap(&h, ptrs[7], m) != 0);
 
     _free_mman(&h);
     printf("=== passed test (%s)\n", __FUNCTION__);
@@ -539,7 +539,7 @@ void test_mman_5()
 */
 void test_mman_6()
 {
-    libos_mman_t h;
+    myst_mman_t h;
     size_t i;
     const size_t n = 8;
     const size_t npages = 1024;
@@ -573,7 +573,7 @@ void test_mman_6()
 */
 void test_remap_1()
 {
-    libos_mman_t h;
+    myst_mman_t h;
     const size_t npages = 1024;
     const size_t size = npages * PAGE_SIZE;
     size_t old_size;
@@ -623,7 +623,7 @@ void test_remap_1()
 */
 void test_remap_2()
 {
-    libos_mman_t h;
+    myst_mman_t h;
     const size_t npages = 1024;
     const size_t size = npages * PAGE_SIZE;
     size_t old_size;
@@ -661,7 +661,7 @@ void test_remap_2()
 */
 void test_remap_3()
 {
-    libos_mman_t h;
+    myst_mman_t h;
     const size_t npages = 1024;
     const size_t size = npages * PAGE_SIZE;
 
@@ -700,7 +700,7 @@ void test_remap_3()
 */
 void test_remap_4()
 {
-    libos_mman_t h;
+    myst_mman_t h;
     const size_t npages = 1024;
     const size_t size = npages * PAGE_SIZE;
 
@@ -772,7 +772,7 @@ static bool _check_mem(elem_t* elem)
 */
 void test_mman_randomly()
 {
-    libos_mman_t h;
+    myst_mman_t h;
     const size_t heap_size = 64 * 1024 * 1024;
 
     assert(_init_mman(&h, heap_size) == 0);
@@ -854,7 +854,7 @@ void test_mman_randomly()
     /* Everything should be unmapped */
     assert(h.vad_list == NULL);
 
-    assert(libos_mman_is_sane(&h));
+    assert(myst_mman_is_sane(&h));
 
     _free_mman(&h);
     printf("=== passed test (%s)\n", __FUNCTION__);
@@ -868,7 +868,7 @@ void test_mman_randomly()
 */
 void test_out_of_memory()
 {
-    libos_mman_t h;
+    myst_mman_t h;
     const size_t heap_size = 64 * 1024 * 1024;
 
     assert(_init_mman(&h, heap_size) == 0);
@@ -877,7 +877,7 @@ void test_out_of_memory()
     while (_mman_mmap_no_err(&h, NULL, 64 * PAGE_SIZE))
         ;
 
-    assert(libos_mman_is_sane(&h));
+    assert(myst_mman_is_sane(&h));
 
     _free_mman(&h);
     printf("=== passed test (%s)\n", __FUNCTION__);

@@ -3,7 +3,7 @@
 
 //==============================================================================
 //
-// void libos_longjmp(libos_jmp_buf* env, int val)
+// void myst_longjmp(myst_jmp_buf* env, int val)
 //
 //     Implementation of standard longjmp() function.
 //
@@ -14,9 +14,9 @@
 
 // Modified from musl-libc root/src/setjmp/x86_64/longjmp.s
 
-.globl libos_longjmp
-.type libos_longjmp, @function
-libos_longjmp:
+.globl myst_longjmp
+.type myst_longjmp, @function
+myst_longjmp:
 .cfi_startproc
     mov %rsi, %rax
     // if (val == 0) then set val to 1.

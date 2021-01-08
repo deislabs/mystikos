@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include <libos/defs.h>
-#include <libos/options.h>
+#include <myst/defs.h>
+#include <myst/options.h>
 
-libos_options_t __options;
+myst_options_t __options;

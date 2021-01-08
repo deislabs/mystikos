@@ -3,11 +3,11 @@
 
 #include <limits.h>
 
-#include <libos/eraise.h>
-#include <libos/fs.h>
-#include <libos/mount.h>
+#include <myst/eraise.h>
+#include <myst/fs.h>
+#include <myst/mount.h>
 
-int libos_remove_fd_link(libos_fs_t* fs, libos_file_t* file, int fd)
+int myst_remove_fd_link(myst_fs_t* fs, myst_file_t* file, int fd)
 {
     int ret = 0;
     char linkpath[PATH_MAX];
@@ -25,9 +25,9 @@ int libos_remove_fd_link(libos_fs_t* fs, libos_file_t* file, int fd)
     /* only the root file system can remove the link path */
     {
         char suffix[PATH_MAX];
-        libos_fs_t* rootfs;
+        myst_fs_t* rootfs;
 
-        ECHECK(libos_mount_resolve("/", suffix, &rootfs));
+        ECHECK(myst_mount_resolve("/", suffix, &rootfs));
 
         ECHECK((*rootfs->fs_unlink)(rootfs, linkpath));
     }

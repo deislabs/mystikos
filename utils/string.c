@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include <libos/string.h>
+#include <myst/string.h>
 
 int string_cpy(string_t* string, const char* s)
 {

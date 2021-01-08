@@ -30,7 +30,7 @@ DIRS += nbio
 DIRS += thread
 DIRS += gdb
 DIRS += dlopen
-DIRS += libos
+DIRS += myst
 DIRS += pipe
 DIRS += spawn
 DIRS += fstat
@@ -49,12 +49,12 @@ DIRS += futex
 DIRS += round
 DIRS += signal
 
-ifndef LIBOS_USE_OECACHE
+ifndef MYST_USE_OECACHE
 DIRS += cpp-exceptions
 DIRS += curl
 endif
 
-ifdef LIBOS_NIGHTLY_TEST
+ifdef MYST_NIGHTLY_TEST
 DIRS += ltp
 endif
 

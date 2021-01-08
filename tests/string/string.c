@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 #include <assert.h>
-#include <libos/string.h>
+#include <myst/string.h>
 #include <stdio.h>
 #include <string.h>
 

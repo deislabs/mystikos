@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <libos/strings.h>
+#include <myst/strings.h>
 
 int test_strsplit(
     const char* str,
@@ -18,7 +18,7 @@ int test_strsplit(
     char** p = NULL;
     size_t n = 0;
 
-    assert(libos_strsplit(str, delim, &p, &n) == 0);
+    assert(myst_strsplit(str, delim, &p, &n) == 0);
 
     if (n != ntoks)
         goto done;
@@ -82,7 +82,7 @@ static int _test(void)
         const char* toks[] = {"red", "green", "blue"};
         size_t ntoks = sizeof(toks) / sizeof(toks[0]);
         char* str = NULL;
-        assert(libos_strjoin(toks, ntoks, NULL, ":", NULL, &str) == 0);
+        assert(myst_strjoin(toks, ntoks, NULL, ":", NULL, &str) == 0);
         assert(strcmp(str, "red:green:blue") == 0);
         free(str);
     }
@@ -91,7 +91,7 @@ static int _test(void)
         const char* toks[] = {"red", "green", "blue"};
         size_t ntoks = sizeof(toks) / sizeof(toks[0]);
         char* str = NULL;
-        assert(libos_strjoin(toks, ntoks, "(", ":", ")", &str) == 0);
+        assert(myst_strjoin(toks, ntoks, "(", ":", ")", &str) == 0);
         assert(strcmp(str, "(red:green:blue)") == 0);
         free(str);
     }
@@ -100,21 +100,21 @@ static int _test(void)
         const char* toks[] = {"x"};
         size_t ntoks = sizeof(toks) / sizeof(toks[0]);
         char* str = NULL;
-        assert(libos_strjoin(toks, ntoks, "(", ":", ")", &str) == 0);
+        assert(myst_strjoin(toks, ntoks, "(", ":", ")", &str) == 0);
         assert(strcmp(str, "(x)") == 0);
         free(str);
     }
 
     {
         char* str = NULL;
-        assert(libos_strjoin(NULL, 0, "(", ":", ")", &str) == 0);
+        assert(myst_strjoin(NULL, 0, "(", ":", ")", &str) == 0);
         assert(strcmp(str, "()") == 0);
         free(str);
     }
 
-    extern int libos_find_leaks(void);
+    extern int myst_find_leaks(void);
 #if 0
-    assert(libos_find_leaks() == 0);
+    assert(myst_find_leaks() == 0);
 #endif
 
     return 0;

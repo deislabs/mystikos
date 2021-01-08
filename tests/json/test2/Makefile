@@ -11,9 +11,9 @@ CFLAGS = $(OEHOST_CFLAGS) $(GCOV_CFLAGS)
 
 LDFLAGS = $(OEHOST_LDFLAGS) $(GCOV_LDFLAGS)
 
-LIBS += $(LIBDIR)/liboshost.a
+LIBS += $(LIBDIR)/libmysthost.a
 LIBS += $(LIBDIR)/libjson.a
-LIBS += $(LIBDIR)/libosutils.a
+LIBS += $(LIBDIR)/libmystutils.a
 
 REDEFINE_TESTS=1
 

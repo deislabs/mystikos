@@ -2,14 +2,14 @@
 // Licensed under the MIT License.
 
 #include <ctype.h>
-#include <libos/conf.h>
+#include <myst/conf.h>
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-static void _set_err(libos_conf_err_t* err, const char* format, ...)
+static void _set_err(myst_conf_err_t* err, const char* format, ...)
 {
     if (err)
     {
@@ -20,10 +20,10 @@ static void _set_err(libos_conf_err_t* err, const char* format, ...)
     }
 }
 
-static void _clear_err(libos_conf_err_t* err)
+static void _clear_err(myst_conf_err_t* err)
 {
     if (err)
-        memset(err, 0, sizeof(libos_conf_err_t));
+        memset(err, 0, sizeof(myst_conf_err_t));
 }
 
 static const char* _get_line(const char** pp, const char* end)
@@ -66,13 +66,13 @@ static const char* _skip_whitespace(const char* p, const char* end)
     return p;
 }
 
-int libos_conf_parse(
+int myst_conf_parse(
     const char* text,
     size_t text_size,
-    libos_conf_callback_t callback,
+    myst_conf_callback_t callback,
     void* callback_data,
     size_t* error_line,
-    libos_conf_err_t* err)
+    myst_conf_err_t* err)
 {
     int status = 0;
     const char* line;

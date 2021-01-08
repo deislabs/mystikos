@@ -27,7 +27,7 @@ index 92d5c179..a3e53791 100644
  #define __SYSCALL_LL_E(x) (x)
  #define __SYSCALL_LL_O(x) (x)
  
-+long libos_syscall(long n, long params[6]);
++long myst_syscall(long n, long params[6]);
 +
  static __inline long __syscall0(long n)
  {
@@ -35,7 +35,7 @@ index 92d5c179..a3e53791 100644
 -	__asm__ __volatile__ ("syscall" : "=a"(ret) : "a"(n) : "rcx", "r11", "memory");
 -	return ret;
 +    long params[6] = { 0, 0, 0, 0, 0, 0 };
-+    return libos_syscall(n, params);
++    return myst_syscall(n, params);
  }
  
  static __inline long __syscall1(long n, long a1)
@@ -45,7 +45,7 @@ index 92d5c179..a3e53791 100644
 -	return ret;
 +    long params[6] = { 0, 0, 0, 0, 0, 0 };
 +    params[0] = a1;
-+    return libos_syscall(n, params);
++    return myst_syscall(n, params);
  }
  
  static __inline long __syscall2(long n, long a1, long a2)
@@ -57,7 +57,7 @@ index 92d5c179..a3e53791 100644
 +    long params[6] = { 0, 0, 0, 0, 0, 0 };
 +    params[0] = a1;
 +    params[1] = a2;
-+    return libos_syscall(n, params);
++    return myst_syscall(n, params);
  }
  
  static __inline long __syscall3(long n, long a1, long a2, long a3)
@@ -70,7 +70,7 @@ index 92d5c179..a3e53791 100644
 +    params[0] = a1;
 +    params[1] = a2;
 +    params[2] = a3;
-+    return libos_syscall(n, params);
++    return myst_syscall(n, params);
  }
  
  static __inline long __syscall4(long n, long a1, long a2, long a3, long a4)
@@ -85,7 +85,7 @@ index 92d5c179..a3e53791 100644
 +    params[1] = a2;
 +    params[2] = a3;
 +    params[3] = a4;
-+    return libos_syscall(n, params);
++    return myst_syscall(n, params);
  }
  
  static __inline long __syscall5(long n, long a1, long a2, long a3, long a4, long a5)
@@ -102,7 +102,7 @@ index 92d5c179..a3e53791 100644
 +    params[2] = a3;
 +    params[3] = a4;
 +    params[4] = a5;
-+    return libos_syscall(n, params);
++    return myst_syscall(n, params);
  }
  
  static __inline long __syscall6(long n, long a1, long a2, long a3, long a4, long a5, long a6)
@@ -121,7 +121,7 @@ index 92d5c179..a3e53791 100644
 +    params[3] = a4;
 +    params[4] = a5;
 +    params[5] = a6;
-+    return libos_syscall(n, params);
++    return myst_syscall(n, params);
  }
  
  #define VDSO_USEFUL
@@ -149,32 +149,32 @@ index 20d50f2c..b352874f 100644
  }
 +
 +__attribute__((__weak__))
-+void libos_trace(const char* msg)
++void myst_trace(const char* msg)
 +{
 +}
 +
 +__attribute__((__weak__))
-+void libos_trace_ptr(const char* msg, const void* ptr)
++void myst_trace_ptr(const char* msg, const void* ptr)
 +{
 +}
 +
 +__attribute__((__weak__))
-+void libos_dump_argv(int argc, const char* argv[])
++void myst_dump_argv(int argc, const char* argv[])
 +{
 +}
 +
 +__attribute__((__weak__))
-+void libos_dump_stack(const void* stack)
++void myst_dump_stack(const void* stack)
 +{
 +}
 +
 +__attribute__((__weak__))
-+void libos_load_symbols(void)
++void myst_load_symbols(void)
 +{
 +}
 +
 +__attribute__((__weak__))
-+long libos_add_symbol_file(const char* path, const void* text, size_t text_size)
++long myst_add_symbol_file(const char* path, const void* text, size_t text_size)
 +{
 +    return -ENOTSUP;
 +}
@@ -186,9 +186,9 @@ index afec985a..9e2a2da5 100644
  
  static void error(const char *, ...);
  
-+void libos_trace(const char* msg);
-+void libos_load_symbols(void);
-+long libos_add_symbol_file(
++void myst_trace(const char* msg);
++void myst_load_symbols(void);
++long myst_add_symbol_file(
 +    const char* path,
 +    const void* text,
 +    size_t text_size);
@@ -200,7 +200,7 @@ index afec985a..9e2a2da5 100644
  	map = noload ? 0 : map_library(fd, &temp_dso);
  	close(fd);
  	if (!map) return 0;
-+	libos_add_symbol_file(pathname, temp_dso.map, temp_dso.map_len);
++	myst_add_symbol_file(pathname, temp_dso.map, temp_dso.map_len);
  
  	/* Avoid the danger of getting two versions of libc mapped into the
  	 * same process when an absolute pathname was used. The symbols
@@ -208,7 +208,7 @@ index afec985a..9e2a2da5 100644
  			dprintf(2, "%s: %s: Not a valid dynamic program\n", ldname, argv[0]);
  			_exit(1);
  		}
-+	        libos_add_symbol_file(argv[0], app.map, app.map_len);
++	        myst_add_symbol_file(argv[0], app.map, app.map_len);
  		close(fd);
  		ldso.name = ldname;
  		app.name = argv[0];
@@ -224,8 +224,8 @@ index afec985a..9e2a2da5 100644
  
  	errno = 0;
  
-+        libos_trace("entering program");
-+        libos_load_symbols();
++        myst_trace("entering program");
++        myst_load_symbols();
 +
  	CRTJMP((void *)aux[AT_ENTRY], argv-1);
 +
@@ -236,7 +236,7 @@ index afec985a..9e2a2da5 100644
  		free(ctor_queue);
  	}
  	pthread_setcancelstate(cs, 0);
-+        libos_load_symbols();
++        myst_load_symbols();
  	return p;
  }
  
@@ -258,14 +258,14 @@ index 6f3ef656..009b29dd 100644
  }
 +
 +__attribute__((__weak__))
-+long libos_syscall(long n, long params[6])
++long myst_syscall(long n, long params[6])
 +{
 +    (void)n;
 +    (void)params;
 +    return EINVAL;
 +}
 +
-+long libos_syscall_variadic(long n, ...)
++long myst_syscall_variadic(long n, ...)
 +{
 +    va_list ap;
 +    long params[6];
@@ -279,7 +279,7 @@ index 6f3ef656..009b29dd 100644
 +    params[5] = va_arg(ap, long);
 +    va_end(ap);
 +
-+    return libos_syscall(n, params);
++    return myst_syscall(n, params);
 +}
 diff --git a/src/thread/clone.c b/src/thread/clone.c
 index be80c8ea..afc8d160 100644
@@ -414,7 +414,7 @@ index 4f101716..78d207c6 100644
 +        mov %rdx, %rsi
  	mov %r11,8(%rsp)
 -	syscall
-+	jmp libos_syscall
++	jmp myst_syscall
  __cp_end:
  	ret
  __cp_cancel:

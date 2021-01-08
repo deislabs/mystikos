@@ -1,11 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include <libos/panic.h>
-#include <libos/strings.h>
-#include <libos/thread.h>
+#include <myst/panic.h>
+#include <myst/strings.h>
+#include <myst/thread.h>
 
 void __stack_chk_fail(void)
 {
-    libos_panic("__stack_chk_fail()");
+    myst_panic("__stack_chk_fail()");
 }

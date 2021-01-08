@@ -4,16 +4,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <libos/crash.h>
-#include <libos/eraise.h>
-#include <libos/strings.h>
-#include <libos/tcall.h>
+#include <myst/crash.h>
+#include <myst/eraise.h>
+#include <myst/strings.h>
+#include <myst/tcall.h>
 
 #define USE_BUILTIN_MEMSET
 #define USE_BUILTIN_MEMCPY
 #define USE_LOOP_UNROLLING
 
-int libos_strsplit(
+int myst_strsplit(
     const char* str,
     const char* delim,
     char*** toks_out,
@@ -107,7 +107,7 @@ done:
     return ret;
 }
 
-int libos_strjoin(
+int myst_strjoin(
     const char* toks[],
     size_t ntoks,
     const char* ldelim,
@@ -203,7 +203,7 @@ done:
     return ret;
 }
 
-ssize_t libos_memremove(void* data, size_t size, size_t pos, size_t count)
+ssize_t myst_memremove(void* data, size_t size, size_t pos, size_t count)
 {
     ssize_t ret = 0;
     size_t rem;
@@ -222,7 +222,7 @@ done:
     return ret;
 }
 
-ssize_t libos_memremove_u64(void* data, size_t size, size_t pos, size_t count)
+ssize_t myst_memremove_u64(void* data, size_t size, size_t pos, size_t count)
 {
     ssize_t ret = 0;
     size_t tsize = size * sizeof(uint64_t);
@@ -230,7 +230,7 @@ ssize_t libos_memremove_u64(void* data, size_t size, size_t pos, size_t count)
     size_t tcount = count * sizeof(uint64_t);
     ssize_t n;
 
-    ECHECK((n = libos_memremove(data, tsize, tpos, tcount)));
+    ECHECK((n = myst_memremove(data, tsize, tpos, tcount)));
 
     ret = n / (ssize_t)sizeof(uint64_t);
 
@@ -238,7 +238,7 @@ done:
     return ret;
 }
 
-size_t libos_tokslen(const char* toks[])
+size_t myst_tokslen(const char* toks[])
 {
     size_t n = 0;
 
@@ -251,9 +251,9 @@ size_t libos_tokslen(const char* toks[])
     return n;
 }
 
-void libos_toks_dump(const char* toks[])
+void myst_toks_dump(const char* toks[])
 {
-    printf("=== libos_toks_dump()\n");
+    printf("=== myst_toks_dump()\n");
 
     for (size_t i = 0; toks[i]; i++)
         printf("%s\n", toks[i]);
@@ -261,7 +261,7 @@ void libos_toks_dump(const char* toks[])
     printf("\n");
 }
 
-size_t libos_strlcpy(char* dest, const char* src, size_t size)
+size_t myst_strlcpy(char* dest, const char* src, size_t size)
 {
     const char* start = src;
 
@@ -281,7 +281,7 @@ size_t libos_strlcpy(char* dest, const char* src, size_t size)
     return (size_t)(src - start);
 }
 
-size_t libos_strlcat(char* dest, const char* src, size_t size)
+size_t myst_strlcat(char* dest, const char* src, size_t size)
 {
     size_t n = 0;
 

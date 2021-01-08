@@ -14,15 +14,15 @@ all: appdir private.pem
 # Default is 64mb, and the runtime requires at least 512mb.
 # Enable after issue 146 is resolved.
 #run-unsigned:
-#	$(LIBOS) mkcpio appdir rootfs
-#	$(LIBOS_EXEC) $(OPTS) rootfs /HelloWorld/build/HelloWorld
+#	$(MYST) mkcpio appdir rootfs
+#	$(MYST_EXEC) $(OPTS) rootfs /HelloWorld/build/HelloWorld
 
 run: appdir private.pem
-	$(LIBOS) package appdir private.pem config.json
-	libos/bin/$(APPNAME) $(OPTS)
+	$(MYST) package appdir private.pem config.json
+	myst/bin/$(APPNAME) $(OPTS)
 	
 gdb: appdir private.pem
-	$(LIBOS_GDB) --args libos/bin/$(APPNAME) $(OPTS)
+	$(MYST_GDB) --args myst/bin/$(APPNAME) $(OPTS)
 
 appdir:
 	# ATTN: replace the debugger build of dotnet SDK jxyang100/dotnet:alpine
@@ -43,4 +43,4 @@ private.pem:
 	openssl genrsa -out private.pem -3 3072
 
 clean:
-	rm -fr appdir rootfs HelloWorld/build HelloWorld/obj HelloWorld/bin libos private.pem
+	rm -fr appdir rootfs HelloWorld/build HelloWorld/obj HelloWorld/bin myst private.pem

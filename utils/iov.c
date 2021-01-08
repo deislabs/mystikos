@@ -3,9 +3,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <libos/iov.h>
+#include <myst/iov.h>
 
-ssize_t libos_iov_len(const struct iovec* iov, int iovcnt)
+ssize_t myst_iov_len(const struct iovec* iov, int iovcnt)
 {
     ssize_t ret = 0;
     ssize_t size = 0;
@@ -35,7 +35,7 @@ done:
     return ret;
 }
 
-ssize_t libos_iov_gather(const struct iovec* iov, int iovcnt, void** buf_out)
+ssize_t myst_iov_gather(const struct iovec* iov, int iovcnt, void** buf_out)
 {
     ssize_t ret = 0;
     ssize_t len = 0;
@@ -51,7 +51,7 @@ ssize_t libos_iov_gather(const struct iovec* iov, int iovcnt, void** buf_out)
     }
 
     /* calculate the length of the flat output buffer */
-    if ((len = libos_iov_len(iov, iovcnt)) < 0)
+    if ((len = myst_iov_len(iov, iovcnt)) < 0)
     {
         ret = len;
         goto done;
@@ -99,7 +99,7 @@ done:
     return ret;
 }
 
-long libos_iov_scatter(
+long myst_iov_scatter(
     const struct iovec* iov,
     int iovcnt,
     const void* buf,

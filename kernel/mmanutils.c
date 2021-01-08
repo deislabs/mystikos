@@ -4,9 +4,9 @@
 #include <assert.h>
 #include <stdlib.h>
 
-#include <libos/file.h>
-#include <libos/mmanutils.h>
-#include <libos/strings.h>
+#include <myst/file.h>
+#include <myst/mmanutils.h>
+#include <myst/strings.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,12 +15,12 @@
 
 #define SCRUB
 
-static libos_mman_t _mman;
+static myst_mman_t _mman;
 static void* _mman_start;
 static size_t _mman_size;
 static void* _mman_end;
 
-int libos_setup_mman(void* data, size_t size)
+int myst_setup_mman(void* data, size_t size)
 {
     int ret = -1;
 
@@ -33,7 +33,7 @@ int libos_setup_mman(void* data, size_t size)
     _mman_end = (uint8_t*)data + size - PAGE_SIZE;
     _mman_size = size - (2 * PAGE_SIZE);
 
-    if (libos_mman_init(&_mman, (uintptr_t)_mman_start, _mman_size) != 0)
+    if (myst_mman_init(&_mman, (uintptr_t)_mman_start, _mman_size) != 0)
         goto done;
 
 #ifdef SCRUB
@@ -42,7 +42,7 @@ int libos_setup_mman(void* data, size_t size)
 #endif
 
 #ifdef SANITY
-    libos_mman_set_sanity(&_mman, true);
+    myst_mman_set_sanity(&_mman, true);
 #endif
 
     ret = 0;
@@ -51,9 +51,9 @@ done:
     return ret;
 }
 
-int libos_teardown_mman(void)
+int myst_teardown_mman(void)
 {
-    assert(libos_mman_is_sane(&_mman));
+    assert(myst_mman_is_sane(&_mman));
     return 0;
 }
 
@@ -111,7 +111,7 @@ done:
     return ret;
 }
 
-void* libos_mmap(
+void* myst_mmap(
     void* addr,
     size_t length,
     int prot,
@@ -140,9 +140,9 @@ void* libos_mmap(
         return addr;
     }
 
-    int tflags = LIBOS_MAP_ANONYMOUS | LIBOS_MAP_PRIVATE;
+    int tflags = MYST_MAP_ANONYMOUS | MYST_MAP_PRIVATE;
 
-    if (libos_mman_mmap(&_mman, addr, length, prot, tflags, &ptr) != 0)
+    if (myst_mman_mmap(&_mman, addr, length, prot, tflags, &ptr) != 0)
         return (void*)-1;
 
     if (fd >= 0 && !addr)
@@ -160,7 +160,7 @@ void* libos_mmap(
     return ptr;
 }
 
-void* libos_mremap(
+void* myst_mremap(
     void* old_address,
     size_t old_size,
     size_t new_size,
@@ -173,7 +173,7 @@ void* libos_mremap(
     if (new_address)
         return (void*)-EINVAL;
 
-    r = libos_mman_mremap(&_mman, old_address, old_size, new_size, flags, &p);
+    r = myst_mman_mremap(&_mman, old_address, old_size, new_size, flags, &p);
 
     if (r != 0)
         return (void*)(long)r;
@@ -181,27 +181,27 @@ void* libos_mremap(
     return p;
 }
 
-int libos_munmap(void* addr, size_t length)
+int myst_munmap(void* addr, size_t length)
 {
-    return libos_mman_munmap(&_mman, addr, length);
+    return myst_mman_munmap(&_mman, addr, length);
 }
 
-long libos_syscall_brk(void* addr)
+long myst_syscall_brk(void* addr)
 {
     void* ptr = NULL;
 
     /* Ignore return value (ptr is set to the current brk value on failure) */
-    libos_mman_brk(&_mman, addr, &ptr);
+    myst_mman_brk(&_mman, addr, &ptr);
 
     return (long)ptr;
 }
 
-int libos_get_total_ram(size_t* size)
+int myst_get_total_ram(size_t* size)
 {
-    return libos_mman_total_size(&_mman, size);
+    return myst_mman_total_size(&_mman, size);
 }
 
-int libos_get_free_ram(size_t* size)
+int myst_get_free_ram(size_t* size)
 {
-    return libos_mman_free_size(&_mman, size);
+    return myst_mman_free_size(&_mman, size);
 }

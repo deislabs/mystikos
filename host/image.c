@@ -2,9 +2,9 @@
 // Licensed under the MIT License.
 
 #include <assert.h>
-#include <libos/elf.h>
-#include <libos/eraise.h>
-#include <libos/round.h>
+#include <myst/elf.h>
+#include <myst/eraise.h>
+#include <myst/round.h>
 #include <malloc.h>
 #include <stdlib.h>
 #include <string.h>
@@ -152,7 +152,7 @@ static int _process_elf_image(elf_image_t* image)
             ERAISE(-EINVAL);
 
         /* Calculate the full size of the image (rounded up to the page size) */
-        ECHECK(libos_round_up(hi - lo, PAGE_SIZE, &image_size));
+        ECHECK(myst_round_up(hi - lo, PAGE_SIZE, &image_size));
     }
 
     /* Allocate the image on a page boundary */
@@ -258,7 +258,7 @@ static int _process_elf_image(elf_image_t* image)
     {
         const elf_segment_t* seg = &image->segments[i];
         const elf_segment_t* seg_next = &image->segments[i + 1];
-        size_t seg_next_size = libos_round_down_to_page_size(seg_next->vaddr);
+        size_t seg_next_size = myst_round_down_to_page_size(seg_next->vaddr);
 
         if ((seg->vaddr + seg->memsz) > seg_next_size)
             ERAISE(-ERANGE);
@@ -268,7 +268,7 @@ static int _process_elf_image(elf_image_t* image)
     for (size_t i = 0; i < image->num_segments; i++)
     {
         const elf_segment_t* segment = &image->segments[i];
-        const uint64_t vaddr = libos_round_down_to_page_size(segment->vaddr);
+        const uint64_t vaddr = myst_round_down_to_page_size(segment->vaddr);
         void* addr = (uint8_t*)image_base + vaddr;
         int prot = 0;
 
@@ -307,7 +307,7 @@ static int _process_elf_image(elf_image_t* image)
         if (elf_find_section(&image->elf, ".symtab", &p, &n) != 0)
             ERAISE(-EINVAL);
 
-        ECHECK(libos_round_up(n, PAGE_SIZE, &symtab_size));
+        ECHECK(myst_round_up(n, PAGE_SIZE, &symtab_size));
 
         if (!(symtab_data = memalign(PAGE_SIZE, symtab_size)))
             ERAISE(-ENOMEM);
@@ -329,7 +329,7 @@ static int _process_elf_image(elf_image_t* image)
         if (elf_find_section(&image->elf, ".dynsym", &p, &n) != 0)
             ERAISE(-EINVAL);
 
-        ECHECK(libos_round_up(n, PAGE_SIZE, &dynsym_size));
+        ECHECK(myst_round_up(n, PAGE_SIZE, &dynsym_size));
 
         if (!(dynsym_data = memalign(PAGE_SIZE, dynsym_size)))
             ERAISE(-ENOMEM);
@@ -351,7 +351,7 @@ static int _process_elf_image(elf_image_t* image)
         if (elf_find_section(&image->elf, ".strtab", &p, &n) != 0)
             ERAISE(-EINVAL);
 
-        ECHECK(libos_round_up(n, PAGE_SIZE, &strtab_size));
+        ECHECK(myst_round_up(n, PAGE_SIZE, &strtab_size));
 
         if (!(strtab_data = memalign(PAGE_SIZE, strtab_size)))
             ERAISE(-ENOMEM);
@@ -373,7 +373,7 @@ static int _process_elf_image(elf_image_t* image)
         if (elf_find_section(&image->elf, ".dynstr", &p, &n) != 0)
             ERAISE(-EINVAL);
 
-        ECHECK(libos_round_up(n, PAGE_SIZE, &dynstr_size));
+        ECHECK(myst_round_up(n, PAGE_SIZE, &dynstr_size));
 
         if (!(dynstr_data = memalign(PAGE_SIZE, dynstr_size)))
             ERAISE(-ENOMEM);

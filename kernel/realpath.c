@@ -1,16 +1,16 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include <libos/cwd.h>
-#include <libos/eraise.h>
-#include <libos/realpath.h>
-#include <libos/strings.h>
-#include <libos/syscall.h>
-#include <libos/types.h>
+#include <myst/cwd.h>
+#include <myst/eraise.h>
+#include <myst/realpath.h>
+#include <myst/strings.h>
+#include <myst/syscall.h>
+#include <myst/types.h>
 #include <stdlib.h>
 #include <string.h>
 
-int libos_realpath(const char* path, libos_path_t* resolved_path)
+int myst_realpath(const char* path, myst_path_t* resolved_path)
 {
     int ret = 0;
     typedef struct _variables
@@ -35,7 +35,7 @@ int libos_realpath(const char* path, libos_path_t* resolved_path)
 
     if (path[0] == '/')
     {
-        if (libos_strlcpy(v->buf, path, sizeof(v->buf)) >= sizeof(v->buf))
+        if (myst_strlcpy(v->buf, path, sizeof(v->buf)) >= sizeof(v->buf))
             ERAISE(-ENAMETOOLONG);
     }
     else
@@ -43,16 +43,16 @@ int libos_realpath(const char* path, libos_path_t* resolved_path)
         char cwd[PATH_MAX];
         long r;
 
-        if ((r = libos_syscall_getcwd(cwd, sizeof(cwd))) < 0)
+        if ((r = myst_syscall_getcwd(cwd, sizeof(cwd))) < 0)
             ERAISE((int)r);
 
-        if (libos_strlcpy(v->buf, cwd, sizeof(v->buf)) >= sizeof(v->buf))
+        if (myst_strlcpy(v->buf, cwd, sizeof(v->buf)) >= sizeof(v->buf))
             ERAISE(-ENAMETOOLONG);
 
-        if (libos_strlcat(v->buf, "/", sizeof(v->buf)) >= sizeof(v->buf))
+        if (myst_strlcat(v->buf, "/", sizeof(v->buf)) >= sizeof(v->buf))
             ERAISE(-ENAMETOOLONG);
 
-        if (libos_strlcat(v->buf, path, sizeof(v->buf)) >= sizeof(v->buf))
+        if (myst_strlcat(v->buf, path, sizeof(v->buf)) >= sizeof(v->buf))
             ERAISE(-ENAMETOOLONG);
     }
 
@@ -90,17 +90,17 @@ int libos_realpath(const char* path, libos_path_t* resolved_path)
 
     /* Build the resolved path. */
     {
-        const size_t n = sizeof(libos_path_t);
+        const size_t n = sizeof(myst_path_t);
         *resolved_path->buf = '\0';
 
         for (size_t i = 0; i < nout; i++)
         {
-            if (libos_strlcat(resolved_path->buf, v->out[i], n) >= n)
+            if (myst_strlcat(resolved_path->buf, v->out[i], n) >= n)
                 ERAISE(-ENAMETOOLONG);
 
             if (i != 0 && i + 1 != nout)
             {
-                if (libos_strlcat(resolved_path->buf, "/", n) >= n)
+                if (myst_strlcat(resolved_path->buf, "/", n) >= n)
                     ERAISE(-ENAMETOOLONG);
             }
         }

@@ -1,9 +1,9 @@
 # Getting started with a containerized Python program
 
-Please see [README](../README.md) for how to install Open LibOS or build
+Please see [README](../README.md) for how to install Mystikos or build
 it from source code.
 
-**Disclaimer**: Open LibOS's support for Python is incomplete.
+**Disclaimer**: Mystikos's support for Python is incomplete.
 We are working towards complete Python support.
 
 ## Write the program
@@ -55,7 +55,7 @@ ENTRYPOINT ["python3", "hello.py"]
 It you have an existing docker file for your application running on an
 Ubuntu-based container, some adjustments are needed to run it on
 an Alpine Linux based container, which happens to be compatible with
-Open LibOS (they both use MUSL as C-runtime).
+Mystikos (they both use MUSL as C-runtime).
 
 * The base image should be changed to `python:3-alpine`
 (or other supported versions for Alpine Linux).
@@ -74,13 +74,13 @@ and run the container app on Linux with the following command:
 
 `docker run $(docker build -q .)`
 
-## Build the app folder with Open LibOS
+## Build the app folder with Mystikos
 
 We use a script to take the same docker file and generates an
-app folder `appdir` for preparing the program to be run with Open LibOS.
+app folder `appdir` for preparing the program to be run with Mystikos.
 
 ```
-libos-appbuilder Dockerfile
+myst-appbuilder Dockerfile
 ```
 `appdir` contains the typical Linux root file system, such as `/usr`,
 `/home`, `/bin`, etc. It also contains our application under `/app`.
@@ -93,8 +93,8 @@ a file system. See [here](./user-getting-started-c.md#create-a-cpio-archive)
 for details.
 
 ```bash
-libos mkcpio appdir rootfs
-libos exec rootfs /usr/local/bin/python3 /app/hello.py
+myst mkcpio appdir rootfs
+myst exec rootfs /usr/local/bin/python3 /app/hello.py
 ```
 
 The expected outputs, not surprisingly, is:

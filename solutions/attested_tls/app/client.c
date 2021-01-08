@@ -65,8 +65,8 @@ static int trusted_channel_init(const char* serverIP)
     size_t cert_size = 0;
     void* pkey = NULL;
     size_t pkey_size = 0;
-    const long SYS_libos_gen_creds = 1009;
-    const long SYS_libos_free_creds = 1010;
+    const long SYS_myst_gen_creds = 1009;
+    const long SYS_myst_free_creds = 1010;
     bool enclave_mode = false;
 
     if ((rc = tlscli_startup(&tlsError)) != 0)
@@ -81,7 +81,7 @@ static int trusted_channel_init(const char* serverIP)
         // The existence of the manifesto file indicates we are running in
         // an enclave. Ask the kernel for help.
         int ret =
-            syscall(SYS_libos_gen_creds, &cert, &cert_size, &pkey, &pkey_size);
+            syscall(SYS_myst_gen_creds, &cert, &cert_size, &pkey, &pkey_size);
         if (ret != 0)
         {
             fprintf(stderr, "Error: failed to generate TLS credentials\n");
@@ -130,7 +130,7 @@ done:
     if (cert || pkey)
     {
         if (enclave_mode)
-            syscall(SYS_libos_free_creds, cert, cert_size, pkey, pkey_size);
+            syscall(SYS_myst_free_creds, cert, cert_size, pkey, pkey_size);
         else
         {
             free(cert);

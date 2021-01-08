@@ -6,44 +6,44 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <libos/eraise.h>
-#include <libos/panic.h>
-#include <libos/sockdev.h>
-#include <libos/spinlock.h>
-#include <libos/syscall.h>
-#include <libos/tcall.h>
+#include <myst/eraise.h>
+#include <myst/panic.h>
+#include <myst/sockdev.h>
+#include <myst/spinlock.h>
+#include <myst/syscall.h>
+#include <myst/tcall.h>
 
 #define MAGIC 0xc436d7e6
 
-struct libos_sock
+struct myst_sock
 {
     uint32_t magic; /* MAGIC */
     int fd;         /* the target-relative file descriptor */
 };
 
-LIBOS_INLINE bool _valid_sock(const libos_sock_t* sock)
+MYST_INLINE bool _valid_sock(const myst_sock_t* sock)
 {
     return sock && sock->magic == MAGIC;
 }
 
-static void _free_sock(libos_sock_t* sock)
+static void _free_sock(myst_sock_t* sock)
 {
     if (sock)
     {
-        memset(sock, 0, sizeof(libos_sock_t));
+        memset(sock, 0, sizeof(myst_sock_t));
         free(sock);
     }
 }
 
-static int _new_sock(libos_sock_t** sock_out)
+static int _new_sock(myst_sock_t** sock_out)
 {
     int ret = 0;
-    libos_sock_t* sock = NULL;
+    myst_sock_t* sock = NULL;
 
     if (!sock_out)
         ERAISE(-EINVAL);
 
-    if (!(sock = calloc(1, sizeof(libos_sock_t))))
+    if (!(sock = calloc(1, sizeof(myst_sock_t))))
         ERAISE(-ENOMEM);
 
     sock->magic = MAGIC;
@@ -63,14 +63,14 @@ done:
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 
 static int _sd_socket(
-    libos_sockdev_t* sd,
+    myst_sockdev_t* sd,
     int domain,
     int type,
     int protocol,
-    libos_sock_t** sock_out)
+    myst_sock_t** sock_out)
 {
     int ret = 0;
-    libos_sock_t* sock = NULL;
+    myst_sock_t* sock = NULL;
     long fd;
 
     if (sock_out)
@@ -84,7 +84,7 @@ static int _sd_socket(
     /* perform syscall */
     {
         long params[6] = {domain, type, protocol};
-        ECHECK(fd = libos_tcall(SYS_socket, params));
+        ECHECK(fd = myst_tcall(SYS_socket, params));
     }
 
     sock->fd = (int)fd;
@@ -100,30 +100,30 @@ done:
 }
 
 static int _sd_socketpair(
-    libos_sockdev_t* sd,
+    myst_sockdev_t* sd,
     int domain,
     int type,
     int protocol,
-    libos_sock_t* pair[2])
+    myst_sock_t* pair[2])
 {
     int ret = 0;
-    libos_sock_t* sock0 = NULL;
-    libos_sock_t* sock1 = NULL;
+    myst_sock_t* sock0 = NULL;
+    myst_sock_t* sock1 = NULL;
     int sv[2];
 
     if (!sd || !pair)
         ERAISE(-EINVAL);
 
-    if (!(sock0 = calloc(1, sizeof(libos_sock_t))))
+    if (!(sock0 = calloc(1, sizeof(myst_sock_t))))
         ERAISE(-ENOMEM);
 
-    if (!(sock1 = calloc(1, sizeof(libos_sock_t))))
+    if (!(sock1 = calloc(1, sizeof(myst_sock_t))))
         ERAISE(-ENOMEM);
 
     /* perform syscall */
     {
         long params[6] = {domain, type, protocol, (long)sv};
-        ECHECK(libos_tcall(SYS_socketpair, params));
+        ECHECK(myst_tcall(SYS_socketpair, params));
     }
 
     sock0->magic = MAGIC;
@@ -148,8 +148,8 @@ done:
 }
 
 static int _sd_connect(
-    libos_sockdev_t* sd,
-    libos_sock_t* sock,
+    myst_sockdev_t* sd,
+    myst_sock_t* sock,
     const struct sockaddr* addr,
     socklen_t addrlen)
 {
@@ -161,7 +161,7 @@ static int _sd_connect(
     /* perform syscall */
     {
         long params[6] = {sock->fd, (long)addr, addrlen};
-        ECHECK(libos_tcall(SYS_connect, params));
+        ECHECK(myst_tcall(SYS_connect, params));
     }
 
 done:
@@ -169,14 +169,14 @@ done:
 }
 
 static int _sd_accept(
-    libos_sockdev_t* sd,
-    libos_sock_t* sock,
+    myst_sockdev_t* sd,
+    myst_sock_t* sock,
     struct sockaddr* addr,
     socklen_t* addrlen,
-    libos_sock_t** new_sock_out)
+    myst_sock_t** new_sock_out)
 {
     int ret = 0;
-    libos_sock_t* new_sock = NULL;
+    myst_sock_t* new_sock = NULL;
     int fd;
 
     if (!sd || !_valid_sock(sock))
@@ -187,7 +187,7 @@ static int _sd_accept(
     /* perform syscall */
     {
         long params[6] = {sock->fd, (long)addr, (long)addrlen};
-        ECHECK((fd = libos_tcall(SYS_accept, params)));
+        ECHECK((fd = myst_tcall(SYS_accept, params)));
     }
 
     new_sock->fd = fd;
@@ -203,8 +203,8 @@ done:
 }
 
 static int _sd_bind(
-    libos_sockdev_t* sd,
-    libos_sock_t* sock,
+    myst_sockdev_t* sd,
+    myst_sock_t* sock,
     const struct sockaddr* addr,
     socklen_t addrlen)
 {
@@ -216,7 +216,7 @@ static int _sd_bind(
     /* perform syscall */
     {
         long params[6] = {sock->fd, (long)addr, addrlen};
-        ECHECK(libos_tcall(SYS_bind, params));
+        ECHECK(myst_tcall(SYS_bind, params));
     }
 
 done:
@@ -224,7 +224,7 @@ done:
     return ret;
 }
 
-static int _sd_listen(libos_sockdev_t* sd, libos_sock_t* sock, int backlog)
+static int _sd_listen(myst_sockdev_t* sd, myst_sock_t* sock, int backlog)
 {
     int ret = 0;
 
@@ -234,7 +234,7 @@ static int _sd_listen(libos_sockdev_t* sd, libos_sock_t* sock, int backlog)
     /* perform syscall */
     {
         long params[6] = {sock->fd, backlog};
-        ECHECK(libos_tcall(SYS_listen, params));
+        ECHECK(myst_tcall(SYS_listen, params));
     }
 
 done:
@@ -243,8 +243,8 @@ done:
 }
 
 static ssize_t _sd_sendto(
-    libos_sockdev_t* sd,
-    libos_sock_t* sock,
+    myst_sockdev_t* sd,
+    myst_sock_t* sock,
     const void* buf,
     size_t len,
     int flags,
@@ -261,7 +261,7 @@ static ssize_t _sd_sendto(
         long params[6] = {
             sock->fd, (long)buf, len, flags, (long)dest_addr, (long)addrlen};
 
-        ECHECK((ret = libos_tcall(SYS_sendto, params)));
+        ECHECK((ret = myst_tcall(SYS_sendto, params)));
     }
 
 done:
@@ -269,8 +269,8 @@ done:
 }
 
 static ssize_t _sd_recvfrom(
-    libos_sockdev_t* sd,
-    libos_sock_t* sock,
+    myst_sockdev_t* sd,
+    myst_sock_t* sock,
     void* buf,
     size_t len,
     int flags,
@@ -287,7 +287,7 @@ static ssize_t _sd_recvfrom(
         long params[6] = {
             sock->fd, (long)buf, len, flags, (long)src_addr, (long)addrlen};
 
-        ECHECK((ret = libos_tcall(SYS_recvfrom, params)));
+        ECHECK((ret = myst_tcall(SYS_recvfrom, params)));
     }
 
 done:
@@ -295,8 +295,8 @@ done:
 }
 
 static int _sd_sendmsg(
-    libos_sockdev_t* sd,
-    libos_sock_t* sock,
+    myst_sockdev_t* sd,
+    myst_sock_t* sock,
     const struct msghdr* msg,
     int flags)
 {
@@ -308,7 +308,7 @@ static int _sd_sendmsg(
     /* perform syscall */
     {
         long params[6] = {sock->fd, (long)msg, flags};
-        ECHECK((ret = libos_tcall(SYS_sendmsg, params)));
+        ECHECK((ret = myst_tcall(SYS_sendmsg, params)));
     }
 
 done:
@@ -316,8 +316,8 @@ done:
 }
 
 static int _sd_recvmsg(
-    libos_sockdev_t* sd,
-    libos_sock_t* sock,
+    myst_sockdev_t* sd,
+    myst_sock_t* sock,
     struct msghdr* msg,
     int flags)
 {
@@ -329,14 +329,14 @@ static int _sd_recvmsg(
     /* perform syscall */
     {
         long params[6] = {sock->fd, (long)msg, flags};
-        ECHECK((ret = libos_tcall(SYS_recvmsg, params)));
+        ECHECK((ret = myst_tcall(SYS_recvmsg, params)));
     }
 
 done:
     return ret;
 }
 
-static int _sd_shutdown(libos_sockdev_t* sd, libos_sock_t* sock, int how)
+static int _sd_shutdown(myst_sockdev_t* sd, myst_sock_t* sock, int how)
 {
     ssize_t ret = 0;
 
@@ -346,7 +346,7 @@ static int _sd_shutdown(libos_sockdev_t* sd, libos_sock_t* sock, int how)
     /* perform syscall */
     {
         long params[6] = {sock->fd, how};
-        ECHECK(libos_tcall(SYS_shutdown, params));
+        ECHECK(myst_tcall(SYS_shutdown, params));
     }
 
 done:
@@ -354,8 +354,8 @@ done:
 }
 
 static int _sd_getsockopt(
-    libos_sockdev_t* sd,
-    libos_sock_t* sock,
+    myst_sockdev_t* sd,
+    myst_sock_t* sock,
     int level,
     int optname,
     void* optval,
@@ -369,7 +369,7 @@ static int _sd_getsockopt(
     /* perform syscall */
     {
         long params[6] = {sock->fd, level, optname, (long)optval, (long)optlen};
-        ECHECK(libos_tcall(SYS_getsockopt, params));
+        ECHECK(myst_tcall(SYS_getsockopt, params));
     }
 
 done:
@@ -377,8 +377,8 @@ done:
 }
 
 static int _sd_setsockopt(
-    libos_sockdev_t* sd,
-    libos_sock_t* sock,
+    myst_sockdev_t* sd,
+    myst_sock_t* sock,
     int level,
     int optname,
     const void* optval,
@@ -392,7 +392,7 @@ static int _sd_setsockopt(
     /* perform syscall */
     {
         long params[6] = {sock->fd, level, optname, (long)optval, (long)optlen};
-        ECHECK(libos_tcall(SYS_setsockopt, params));
+        ECHECK(myst_tcall(SYS_setsockopt, params));
     }
 
 done:
@@ -400,8 +400,8 @@ done:
 }
 
 static int _sd_getpeername(
-    libos_sockdev_t* sd,
-    libos_sock_t* sock,
+    myst_sockdev_t* sd,
+    myst_sock_t* sock,
     struct sockaddr* addr,
     socklen_t* addrlen)
 {
@@ -413,7 +413,7 @@ static int _sd_getpeername(
     /* perform syscall */
     {
         long params[6] = {sock->fd, (long)addr, (long)addrlen};
-        ECHECK(libos_tcall(SYS_getpeername, params));
+        ECHECK(myst_tcall(SYS_getpeername, params));
     }
 
 done:
@@ -421,8 +421,8 @@ done:
 }
 
 static int _sd_getsockname(
-    libos_sockdev_t* sd,
-    libos_sock_t* sock,
+    myst_sockdev_t* sd,
+    myst_sock_t* sock,
     struct sockaddr* addr,
     socklen_t* addrlen)
 {
@@ -434,7 +434,7 @@ static int _sd_getsockname(
     /* perform syscall */
     {
         long params[6] = {sock->fd, (long)addr, (long)addrlen};
-        ECHECK(libos_tcall(SYS_getsockname, params));
+        ECHECK(myst_tcall(SYS_getsockname, params));
     }
 
 done:
@@ -442,8 +442,8 @@ done:
 }
 
 static ssize_t _sd_read(
-    libos_sockdev_t* sd,
-    libos_sock_t* sock,
+    myst_sockdev_t* sd,
+    myst_sock_t* sock,
     void* buf,
     size_t count)
 {
@@ -455,7 +455,7 @@ static ssize_t _sd_read(
     /* perform syscall */
     {
         long params[6] = {sock->fd, (long)buf, count};
-        ECHECK((ret = libos_tcall(SYS_read, params)));
+        ECHECK((ret = myst_tcall(SYS_read, params)));
     }
 
 done:
@@ -463,8 +463,8 @@ done:
 }
 
 static ssize_t _sd_write(
-    libos_sockdev_t* sd,
-    libos_sock_t* sock,
+    myst_sockdev_t* sd,
+    myst_sock_t* sock,
     const void* buf,
     size_t count)
 {
@@ -476,7 +476,7 @@ static ssize_t _sd_write(
     /* perform syscall */
     {
         long params[6] = {sock->fd, (long)buf, count};
-        ECHECK((ret = libos_tcall(SYS_write, params)));
+        ECHECK((ret = myst_tcall(SYS_write, params)));
     }
 
 done:
@@ -484,8 +484,8 @@ done:
 }
 
 static ssize_t _sd_readv(
-    libos_sockdev_t* sd,
-    libos_sock_t* sock,
+    myst_sockdev_t* sd,
+    myst_sock_t* sock,
     const struct iovec* iov,
     int iovcnt)
 {
@@ -494,7 +494,7 @@ static ssize_t _sd_readv(
     if (!sd || !_valid_sock(sock))
         ERAISE(-EINVAL);
 
-    ret = libos_fdops_readv(&sd->fdops, sock, iov, iovcnt);
+    ret = myst_fdops_readv(&sd->fdops, sock, iov, iovcnt);
     ECHECK(ret);
 
 done:
@@ -502,8 +502,8 @@ done:
 }
 
 static ssize_t _sd_writev(
-    libos_sockdev_t* sd,
-    libos_sock_t* sock,
+    myst_sockdev_t* sd,
+    myst_sock_t* sock,
     const struct iovec* iov,
     int iovcnt)
 {
@@ -512,7 +512,7 @@ static ssize_t _sd_writev(
     if (!sd || !_valid_sock(sock))
         ERAISE(-EINVAL);
 
-    ret = libos_fdops_writev(&sd->fdops, sock, iov, iovcnt);
+    ret = myst_fdops_writev(&sd->fdops, sock, iov, iovcnt);
     ECHECK(ret);
 
 done:
@@ -520,8 +520,8 @@ done:
 }
 
 static int _sd_fstat(
-    libos_sockdev_t* sd,
-    libos_sock_t* sock,
+    myst_sockdev_t* sd,
+    myst_sock_t* sock,
     struct stat* statbuf)
 {
     ssize_t ret = 0;
@@ -532,7 +532,7 @@ static int _sd_fstat(
     /* perform syscall */
     {
         long params[6] = {sock->fd, (long)statbuf};
-        ECHECK(libos_tcall(SYS_fstat, params));
+        ECHECK(myst_tcall(SYS_fstat, params));
     }
 
 done:
@@ -540,8 +540,8 @@ done:
 }
 
 static int _sd_ioctl(
-    libos_sockdev_t* sd,
-    libos_sock_t* sock,
+    myst_sockdev_t* sd,
+    myst_sock_t* sock,
     unsigned long request,
     long arg)
 {
@@ -553,14 +553,14 @@ static int _sd_ioctl(
     /* perform syscall */
     {
         long params[6] = {sock->fd, request, arg};
-        ECHECK(libos_tcall(SYS_ioctl, params));
+        ECHECK(myst_tcall(SYS_ioctl, params));
     }
 
 done:
     return ret;
 }
 
-static int _sd_fcntl(libos_sockdev_t* sd, libos_sock_t* sock, int cmd, long arg)
+static int _sd_fcntl(myst_sockdev_t* sd, myst_sock_t* sock, int cmd, long arg)
 {
     ssize_t ret = 0;
 
@@ -570,7 +570,7 @@ static int _sd_fcntl(libos_sockdev_t* sd, libos_sock_t* sock, int cmd, long arg)
     /* perform syscall */
     {
         long params[6] = {sock->fd, cmd, arg};
-        ECHECK((ret = libos_tcall(SYS_fcntl, params)));
+        ECHECK((ret = myst_tcall(SYS_fcntl, params)));
     }
 
 done:
@@ -578,12 +578,12 @@ done:
 }
 
 static int _sd_dup(
-    libos_sockdev_t* sd,
-    const libos_sock_t* sock,
-    libos_sock_t** sock_out)
+    myst_sockdev_t* sd,
+    const myst_sock_t* sock,
+    myst_sock_t** sock_out)
 {
     int ret = 0;
-    libos_sock_t* new_sock = NULL;
+    myst_sock_t* new_sock = NULL;
     long fd;
 
     if (sock_out)
@@ -592,13 +592,13 @@ static int _sd_dup(
     if (!sd || !_valid_sock(sock) || !sock_out)
         ERAISE(-EINVAL);
 
-    if (!(new_sock = calloc(1, sizeof(libos_sock_t))))
+    if (!(new_sock = calloc(1, sizeof(myst_sock_t))))
         ERAISE(-ENOMEM);
 
     /* perform syscall */
     {
         long params[6] = {sock->fd};
-        ECHECK((fd = libos_tcall(SYS_dup, params)));
+        ECHECK((fd = myst_tcall(SYS_dup, params)));
     }
 
     new_sock->magic = MAGIC;
@@ -614,7 +614,7 @@ done:
     return ret;
 }
 
-static int _sd_close(libos_sockdev_t* sd, libos_sock_t* sock)
+static int _sd_close(myst_sockdev_t* sd, myst_sock_t* sock)
 {
     ssize_t ret = 0;
 
@@ -624,17 +624,17 @@ static int _sd_close(libos_sockdev_t* sd, libos_sock_t* sock)
     /* perform syscall */
     {
         long params[6] = {sock->fd};
-        ECHECK((ret = libos_tcall(SYS_close, params)));
+        ECHECK((ret = myst_tcall(SYS_close, params)));
     }
 
-    memset(sock, 0, sizeof(libos_sock_t));
+    memset(sock, 0, sizeof(myst_sock_t));
     free(sock);
 
 done:
     return ret;
 }
 
-static int _sd_target_fd(libos_sockdev_t* sd, libos_sock_t* sock)
+static int _sd_target_fd(myst_sockdev_t* sd, myst_sock_t* sock)
 {
     int ret = 0;
 
@@ -647,7 +647,7 @@ done:
     return ret;
 }
 
-static int _sd_get_events(libos_sockdev_t* sd, libos_sock_t* sock)
+static int _sd_get_events(myst_sockdev_t* sd, myst_sock_t* sock)
 {
     int ret = 0;
 
@@ -660,10 +660,10 @@ done:
     return ret;
 }
 
-extern libos_sockdev_t* libos_sockdev_get(void)
+extern myst_sockdev_t* myst_sockdev_get(void)
 {
     // clang-format-off
-    static libos_sockdev_t _sockdev = {
+    static myst_sockdev_t _sockdev = {
         {
             .fd_read = (void*)_sd_read,
             .fd_write = (void*)_sd_write,

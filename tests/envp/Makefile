@@ -7,18 +7,18 @@ LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 
 export UUID_051005DCD0B0448AAD4746E8538F4D81=12345
 
-all: libos rootfs
+all: myst rootfs
 
 rootfs: envp.c
 	mkdir -p $(APPDIR)/bin
 	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/envp envp.c $(LDFLAGS)
-	$(LIBOS) mkcpio $(APPDIR) rootfs
+	$(MYST) mkcpio $(APPDIR) rootfs
 
 tests:
-	$(RUNTEST) $(LIBOS_EXEC) $(OPTS) rootfs /bin/envp $(TARGET)
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/envp $(TARGET)
 
-libos:
-	$(MAKE) -C $(TOP)/tools/libos
+myst:
+	$(MAKE) -C $(TOP)/tools/myst
 
 clean:
 	rm -rf $(APPDIR) rootfs export ramfs

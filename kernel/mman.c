@@ -115,12 +115,12 @@
 #include <string.h>
 
 #include <errno.h>
-#include <libos/defs.h>
-#include <libos/fsgs.h>
-#include <libos/mman.h>
-#include <libos/round.h>
-#include <libos/spinlock.h>
-#include <libos/strings.h>
+#include <myst/defs.h>
+#include <myst/fsgs.h>
+#include <myst/mman.h>
+#include <myst/round.h>
+#include <myst/spinlock.h>
+#include <myst/strings.h>
 
 /*
 **==============================================================================
@@ -131,13 +131,13 @@
 */
 
 /* Get the end address of a VAD */
-static uintptr_t _end(libos_vad_t* vad)
+static uintptr_t _end(myst_vad_t* vad)
 {
     return vad->addr + vad->size;
 }
 
 /* Get the size of the gap to the right of this VAD */
-static size_t _get_right_gap(libos_mman_t* mman, libos_vad_t* vad)
+static size_t _get_right_gap(myst_mman_t* mman, myst_vad_t* vad)
 {
     if (vad->next)
     {
@@ -160,9 +160,9 @@ static size_t _get_right_gap(libos_mman_t* mman, libos_vad_t* vad)
 */
 
 /* Get a VAD from the free list */
-static libos_vad_t* _free_list_get(libos_mman_t* mman)
+static myst_vad_t* _free_list_get(myst_mman_t* mman)
 {
-    libos_vad_t* vad = NULL;
+    myst_vad_t* vad = NULL;
 
     /* First try the free list */
     if (mman->free_vads)
@@ -172,7 +172,7 @@ static libos_vad_t* _free_list_get(libos_mman_t* mman)
         goto done;
     }
 
-    /* Now try the libos_vad_t array */
+    /* Now try the myst_vad_t array */
     if (mman->next_vad != mman->end_vad)
     {
         vad = mman->next_vad++;
@@ -183,8 +183,8 @@ done:
     return vad;
 }
 
-/* Return a free libos_vad_t to the free list */
-static void _free_list_put(libos_mman_t* mman, libos_vad_t* vad)
+/* Return a free myst_vad_t to the free list */
+static void _free_list_put(myst_mman_t* mman, myst_vad_t* vad)
 {
     /* Clear the VAD */
     vad->addr = 0;
@@ -207,9 +207,9 @@ static void _free_list_put(libos_mman_t* mman, libos_vad_t* vad)
 
 /* Insert VAD after PREV in the linked list */
 static void _list_insert_after(
-    libos_mman_t* mman,
-    libos_vad_t* prev,
-    libos_vad_t* vad)
+    myst_mman_t* mman,
+    myst_vad_t* prev,
+    myst_vad_t* vad)
 {
     if (prev)
     {
@@ -234,7 +234,7 @@ static void _list_insert_after(
 }
 
 /* Remove VAD from the doubly-linked list */
-static void _list_remove(libos_mman_t* mman, libos_vad_t* vad)
+static void _list_remove(myst_mman_t* mman, myst_vad_t* vad)
 {
     /* Remove from doubly-linked list */
     if (vad == mman->vad_list)
@@ -255,9 +255,9 @@ static void _list_remove(libos_mman_t* mman, libos_vad_t* vad)
 }
 
 /* Find a VAD that contains the given address */
-static libos_vad_t* _list_find(libos_mman_t* mman, uintptr_t addr)
+static myst_vad_t* _list_find(myst_mman_t* mman, uintptr_t addr)
 {
-    libos_vad_t* p;
+    myst_vad_t* p;
 
     for (p = mman->vad_list; p; p = p->next)
     {
@@ -278,54 +278,54 @@ static libos_vad_t* _list_find(libos_mman_t* mman, uintptr_t addr)
 */
 
 /* Lock the mman and set the 'locked' parameter to true */
-LIBOS_INLINE void _mman_lock(libos_mman_t* mman, bool* locked)
+MYST_INLINE void _mman_lock(myst_mman_t* mman, bool* locked)
 {
-    libos_spin_lock(&mman->lock);
+    myst_spin_lock(&mman->lock);
     *locked = true;
 }
 
 /* Unlock the mman and set the 'locked' parameter to false */
-LIBOS_INLINE void _mman_unlock(libos_mman_t* mman, bool* locked)
+MYST_INLINE void _mman_unlock(myst_mman_t* mman, bool* locked)
 {
     if (*locked)
     {
-        libos_spin_unlock(&mman->lock);
+        myst_spin_unlock(&mman->lock);
         *locked = false;
     }
 }
 
 /* Clear the mman error message */
-static void _mman_clear_err(libos_mman_t* mman)
+static void _mman_clear_err(myst_mman_t* mman)
 {
     if (mman)
         mman->err[0] = '\0';
 }
 
 /* Set the mman error message */
-static void _mman_set_err(libos_mman_t* mman, const char* str)
+static void _mman_set_err(myst_mman_t* mman, const char* str)
 {
     if (mman && str)
-        libos_strlcpy(mman->err, str, sizeof(mman->err));
+        myst_strlcpy(mman->err, str, sizeof(mman->err));
 }
 
 /* Inline Helper function to check mman sanity (if enable) */
-static bool _mman_is_sane(libos_mman_t* mman)
+static bool _mman_is_sane(myst_mman_t* mman)
 {
     if (mman->sanity)
-        return libos_mman_is_sane(mman);
+        return myst_mman_is_sane(mman);
 
     return true;
 }
 
 /* Allocate and initialize a new VAD */
-static libos_vad_t* _mman_new_vad(
-    libos_mman_t* mman,
+static myst_vad_t* _mman_new_vad(
+    myst_mman_t* mman,
     uintptr_t addr,
     size_t size,
     int prot,
     int flags)
 {
-    libos_vad_t* vad = NULL;
+    myst_vad_t* vad = NULL;
 
     if (!(vad = _free_list_get(mman)))
         goto done;
@@ -340,7 +340,7 @@ done:
 }
 
 /* Synchronize the MAP value to the address of the first list element */
-static void _mman_sync_top(libos_mman_t* mman)
+static void _mman_sync_top(myst_mman_t* mman)
 {
     if (mman->vad_list)
         mman->map = mman->vad_list->addr;
@@ -372,10 +372,10 @@ static void _mman_sync_top(libos_mman_t* mman)
 **
 */
 static uintptr_t _mman_find_gap(
-    libos_mman_t* mman,
+    myst_mman_t* mman,
     size_t size,
-    libos_vad_t** left,
-    libos_vad_t** right)
+    myst_vad_t** left,
+    myst_vad_t** right)
 {
     uintptr_t addr = 0;
 
@@ -387,7 +387,7 @@ static uintptr_t _mman_find_gap(
 
     /* Look for a gap in the VAD list */
     {
-        libos_vad_t* p;
+        myst_vad_t* p;
 
         /* Search for gaps between HEAD and TAIL */
         for (p = mman->vad_list; p; p = p->next)
@@ -426,15 +426,15 @@ done:
     return addr;
 }
 
-static int _munmap(libos_mman_t* mman, void* addr, size_t length)
+static int _munmap(myst_mman_t* mman, void* addr, size_t length)
 {
     int ret = -1;
-    libos_vad_t* vad = NULL;
+    myst_vad_t* vad = NULL;
 
     _mman_clear_err(mman);
 
     /* Reject invaid parameters */
-    if (!mman || mman->magic != LIBOS_MMAN_MAGIC || !addr || !length)
+    if (!mman || mman->magic != MYST_MMAN_MAGIC || !addr || !length)
     {
         _mman_set_err(mman, "bad parameter");
         ret = -EINVAL;
@@ -459,7 +459,7 @@ static int _munmap(libos_mman_t* mman, void* addr, size_t length)
     /* Align LENGTH to a multiple of the page size */
     if (length % PAGE_SIZE)
     {
-        if (libos_round_up(length, PAGE_SIZE, &length) != 0)
+        if (myst_round_up(length, PAGE_SIZE, &length) != 0)
         {
             _mman_set_err(mman, "rounding error: length");
             ret = -EINVAL;
@@ -527,7 +527,7 @@ static int _munmap(libos_mman_t* mman, void* addr, size_t length)
         /* Adjust the left portion */
         vad->size = (uint32_t)(start - vad->addr);
 
-        libos_vad_t* right;
+        myst_vad_t* right;
 
         /* Create VAD for the excess right portion */
         if (!(right = _mman_new_vad(
@@ -559,7 +559,7 @@ done:
 }
 
 static int _mmap(
-    libos_mman_t* mman,
+    myst_mman_t* mman,
     void* addr,
     size_t length,
     int prot,
@@ -575,7 +575,7 @@ static int _mmap(
     _mman_clear_err(mman);
 
     /* Check for valid mman parameter */
-    if (!mman || mman->magic != LIBOS_MMAN_MAGIC || !ptr_out)
+    if (!mman || mman->magic != MYST_MMAN_MAGIC || !ptr_out)
     {
         _mman_set_err(mman, "bad mman parameter");
         ret = -EINVAL;
@@ -604,63 +604,63 @@ static int _mmap(
     /* Ignore protection for SGX-1 */
 #if 0
     {
-        if (!(prot & LIBOS_PROT_READ))
+        if (!(prot & MYST_PROT_READ))
         {
-            _mman_set_err(mman, "bad prot parameter: need LIBOS_PROT_READ");
+            _mman_set_err(mman, "bad prot parameter: need MYST_PROT_READ");
             ret = -EINVAL;
             goto done;
         }
 
-        if (!(prot & LIBOS_PROT_WRITE))
+        if (!(prot & MYST_PROT_WRITE))
         {
-            _mman_set_err(mman, "bad prot parameter: need LIBOS_PROT_WRITE");
+            _mman_set_err(mman, "bad prot parameter: need MYST_PROT_WRITE");
             ret = -EINVAL;
             goto done;
         }
 
-        if (prot & LIBOS_PROT_EXEC)
+        if (prot & MYST_PROT_EXEC)
         {
-            _mman_set_err(mman, "bad prot parameter: remove LIBOS_PROT_EXEC");
+            _mman_set_err(mman, "bad prot parameter: remove MYST_PROT_EXEC");
             ret = -EINVAL;
             goto done;
         }
     }
 #endif
 
-    /* FLAGS must be (LIBOS_MAP_ANONYMOUS | LIBOS_MAP_PRIVATE) */
+    /* FLAGS must be (MYST_MAP_ANONYMOUS | MYST_MAP_PRIVATE) */
     {
-        if (!(flags & LIBOS_MAP_ANONYMOUS))
+        if (!(flags & MYST_MAP_ANONYMOUS))
         {
             _mman_set_err(
-                mman, "bad flags parameter: need LIBOS_MAP_ANONYMOUS");
+                mman, "bad flags parameter: need MYST_MAP_ANONYMOUS");
             ret = -EINVAL;
             goto done;
         }
 
-        if (!(flags & LIBOS_MAP_PRIVATE))
+        if (!(flags & MYST_MAP_PRIVATE))
         {
-            _mman_set_err(mman, "bad flags parameter: need LIBOS_MAP_PRIVATE");
+            _mman_set_err(mman, "bad flags parameter: need MYST_MAP_PRIVATE");
             ret = -EINVAL;
             goto done;
         }
 
-        if (flags & LIBOS_MAP_SHARED)
+        if (flags & MYST_MAP_SHARED)
         {
-            _mman_set_err(mman, "bad flags parameter: remove LIBOS_MAP_SHARED");
+            _mman_set_err(mman, "bad flags parameter: remove MYST_MAP_SHARED");
             ret = -EINVAL;
             goto done;
         }
 
-        if (flags & LIBOS_MAP_FIXED)
+        if (flags & MYST_MAP_FIXED)
         {
-            _mman_set_err(mman, "bad flags parameter: remove LIBOS_MAP_FIXED");
+            _mman_set_err(mman, "bad flags parameter: remove MYST_MAP_FIXED");
             ret = -EINVAL;
             goto done;
         }
     }
 
     /* Round LENGTH to multiple of page size */
-    if (libos_round_up(length, PAGE_SIZE, &length) != 0)
+    if (myst_round_up(length, PAGE_SIZE, &length) != 0)
     {
         _mman_set_err(mman, "rounding error: length");
         ret = -EINVAL;
@@ -669,7 +669,7 @@ static int _mmap(
 
     if (addr)
     {
-        libos_vad_t* vad;
+        myst_vad_t* vad;
         uintptr_t start = (uintptr_t)addr;
         uintptr_t end = (uintptr_t)addr + length;
 
@@ -689,8 +689,8 @@ static int _mmap(
     }
     else
     {
-        libos_vad_t* left;
-        libos_vad_t* right;
+        myst_vad_t* left;
+        myst_vad_t* right;
 
         /* Find a gap that is big enough */
         if (!(start = _mman_find_gap(mman, length, &left, &right)))
@@ -724,7 +724,7 @@ static int _mmap(
         }
         else
         {
-            libos_vad_t* vad;
+            myst_vad_t* vad;
 
             /* Create a new VAD and insert it into the list */
 
@@ -764,7 +764,7 @@ done:
 
 /*
 **
-** libos_mman_init()
+** myst_mman_init()
 **
 **     Initialize a mman structure by setting the 'base' and 'size' and other
 **     internal state variables. Note that the caller must obtain a lock if
@@ -779,7 +779,7 @@ done:
 **     0 if successful.
 **
 */
-int libos_mman_init(libos_mman_t* mman, uintptr_t base, size_t size)
+int myst_mman_init(myst_mman_t* mman, uintptr_t base, size_t size)
 {
     int ret = 0;
 
@@ -810,7 +810,7 @@ int libos_mman_init(libos_mman_t* mman, uintptr_t base, size_t size)
     }
 
     /* Clear the heap object */
-    memset(mman, 0, sizeof(libos_mman_t));
+    memset(mman, 0, sizeof(myst_mman_t));
 
     /* Calculate the total number of pages */
     size_t num_pages = size / PAGE_SIZE;
@@ -822,10 +822,10 @@ int libos_mman_init(libos_mman_t* mman, uintptr_t base, size_t size)
     mman->size = size;
 
     /* Set the start of the heap area, which follows the VADs array */
-    mman->start = base + (num_pages * sizeof(libos_vad_t));
+    mman->start = base + (num_pages * sizeof(myst_vad_t));
 
     /* Round start up to next page multiple */
-    if (libos_round_up(mman->start, PAGE_SIZE, &mman->start) != 0)
+    if (myst_round_up(mman->start, PAGE_SIZE, &mman->start) != 0)
     {
         _mman_set_err(mman, "rounding error: mman->start");
         ret = -EINVAL;
@@ -841,23 +841,23 @@ int libos_mman_init(libos_mman_t* mman, uintptr_t base, size_t size)
     /* Set the top of the mapped memory (grows negativey) */
     mman->map = mman->end;
 
-    /* Set pointer to the next available entry in the libos_vad_t array */
-    mman->next_vad = (libos_vad_t*)base;
+    /* Set pointer to the next available entry in the myst_vad_t array */
+    mman->next_vad = (myst_vad_t*)base;
 
-    /* Set pointer to the end address of the libos_vad_t array */
-    mman->end_vad = (libos_vad_t*)mman->start;
+    /* Set pointer to the end address of the myst_vad_t array */
+    mman->end_vad = (myst_vad_t*)mman->start;
 
-    /* Set the free libos_vad_t list to null */
+    /* Set the free myst_vad_t list to null */
     mman->free_vads = NULL;
 
-    /* Set the libos_vad_t linked list to null */
+    /* Set the myst_vad_t linked list to null */
     mman->vad_list = NULL;
 
     /* Sanity checks are disabled by default */
     mman->sanity = false;
 
     /* Set the magic number */
-    mman->magic = LIBOS_MMAN_MAGIC;
+    mman->magic = MYST_MMAN_MAGIC;
 
     /* Finally, set initialized to true */
     mman->initialized = 1;
@@ -877,7 +877,7 @@ done:
 
 /*
 **
-** libos_mman_sbrk()
+** myst_mman_sbrk()
 **
 **     Allocate space from the BREAK region (between the START and BRK value)
 **     This increases the BRK value by at least the increment size (rounding
@@ -894,7 +894,7 @@ done:
 **     This function is similar to the POSIX sbrk() function.
 **
 */
-int libos_mman_sbrk(libos_mman_t* mman, ptrdiff_t increment, void** ptr_out)
+int myst_mman_sbrk(myst_mman_t* mman, ptrdiff_t increment, void** ptr_out)
 {
     int ret = 0;
     void* ptr = NULL;
@@ -943,7 +943,7 @@ done:
 
 /*
 **
-** libos_mman_brk()
+** myst_mman_brk()
 **
 **     Change the BREAK value (within the BREAK region). Increasing the
 **     break value has the effect of allocating memory. Decresing the
@@ -961,7 +961,7 @@ done:
 **     This function is similar to the POSIX brk() function.
 **
 */
-int libos_mman_brk(libos_mman_t* mman, void* addr, void** ptr)
+int myst_mman_brk(myst_mman_t* mman, void* addr, void** ptr)
 {
     int ret = 0;
     bool locked = false;
@@ -1012,7 +1012,7 @@ done:
 
 /*
 **
-** libos_mman_mmap()
+** myst_mman_mmap()
 **
 **     Allocate 'length' bytes from the MAPPED region. The 'length' parameter
 **     is rounded to a multiple of the page size.
@@ -1021,8 +1021,8 @@ done:
 **     [IN] mman - mman structure
 **     [IN] addr - must be null in this implementation
 **     [IN] length - length in bytes of the new allocation
-**     [IN] prot - must be (LIBOS_PROT_READ | LIBOS_PROT_WRITE)
-**     [IN] flags - must be (LIBOS_MAP_ANONYMOUS | LIBOS_MAP_PRIVATE)
+**     [IN] prot - must be (MYST_PROT_READ | MYST_PROT_WRITE)
+**     [IN] flags - must be (MYST_MAP_ANONYMOUS | MYST_MAP_PRIVATE)
 **
 ** Returns:
 **     Pointer to newly mapped memory if successful.
@@ -1036,8 +1036,8 @@ done:
 **     VAD list.
 **
 */
-int libos_mman_mmap(
-    libos_mman_t* mman,
+int myst_mman_mmap(
+    myst_mman_t* mman,
     void* addr,
     size_t length,
     int prot,
@@ -1055,13 +1055,13 @@ int libos_mman_mmap(
 
 /*
 **
-** libos_mman_munmap()
+** myst_mman_munmap()
 **
-**     Release a memory mapping obtained with libos_mman_mmap() or
-**     libos_mman_mremap().
+**     Release a memory mapping obtained with myst_mman_mmap() or
+**     myst_mman_mremap().
 **
 **     Note that partial mappings are supported, in which case a portion of
-**     the memory obtained with libos_mman_mmap() or libos_mman_mremap() is
+**     the memory obtained with myst_mman_mmap() or myst_mman_mremap() is
 **     released.
 **
 ** Parameters:
@@ -1070,7 +1070,7 @@ int libos_mman_mmap(
 **     [IN] length - length of memory being released (multiple of page size).
 **
 ** Returns:
-**     LIBOS_OK if successful.
+**     MYST_OK if successful.
 **
 ** Notes:
 **     This function is similar to the POSIX munmap() function.
@@ -1083,7 +1083,7 @@ int libos_mman_mmap(
 **     excess (if any) is split into its own VAD.
 **
 */
-int libos_mman_munmap(libos_mman_t* mman, void* addr, size_t length)
+int myst_mman_munmap(myst_mman_t* mman, void* addr, size_t length)
 {
     bool locked = false;
 
@@ -1096,7 +1096,7 @@ int libos_mman_munmap(libos_mman_t* mman, void* addr, size_t length)
 
 /*
 **
-** libos_mman_mremap()
+** myst_mman_mremap()
 **
 **     Remap an existing memory region, either making it bigger or smaller.
 **
@@ -1105,7 +1105,7 @@ int libos_mman_munmap(libos_mman_t* mman, void* addr, size_t length)
 **     [IN] addr - addresss being remapped (must be multiple of page size)
 **     [IN] old_size - original size of the memory mapping
 **     [IN] new_size - new size of memory mapping (rounded up to page multiple)
-**     [IN] flags - must be LIBOS_MREMAP_MAYMOVE
+**     [IN] flags - must be MYST_MREMAP_MAYMOVE
 **
 ** Returns:
 **     Pointer to new memory region.
@@ -1118,8 +1118,8 @@ int libos_mman_munmap(libos_mman_t* mman, void* addr, size_t length)
 **     not, it moves it to a new location.
 **
 */
-int libos_mman_mremap(
-    libos_mman_t* mman,
+int myst_mman_mremap(
+    myst_mman_t* mman,
     void* addr,
     size_t old_size,
     size_t new_size,
@@ -1128,7 +1128,7 @@ int libos_mman_mremap(
 {
     int ret = 0;
     void* new_addr = NULL;
-    libos_vad_t* vad = NULL;
+    myst_vad_t* vad = NULL;
     bool locked = false;
 
     if (ptr_out)
@@ -1139,7 +1139,7 @@ int libos_mman_mremap(
     _mman_clear_err(mman);
 
     /* Check for valid mman parameter */
-    if (!mman || mman->magic != LIBOS_MMAN_MAGIC || !addr || !ptr_out)
+    if (!mman || mman->magic != MYST_MMAN_MAGIC || !addr || !ptr_out)
     {
         _mman_set_err(mman, "invalid parameter");
         ret = -EINVAL;
@@ -1174,17 +1174,17 @@ int libos_mman_mremap(
         goto done;
     }
 
-    /* FLAGS must be exactly LIBOS_MREMAP_MAYMOVE) */
-    if (flags != LIBOS_MREMAP_MAYMOVE)
+    /* FLAGS must be exactly MYST_MREMAP_MAYMOVE) */
+    if (flags != MYST_MREMAP_MAYMOVE)
     {
         _mman_set_err(
-            mman, "invalid flags parameter: must be LIBOS_MREMAP_MAYMOVE");
+            mman, "invalid flags parameter: must be MYST_MREMAP_MAYMOVE");
         ret = -EINVAL;
         goto done;
     }
 
     /* Round OLD_SIZE to multiple of page size */
-    if (libos_round_up(old_size, PAGE_SIZE, &old_size) != 0)
+    if (myst_round_up(old_size, PAGE_SIZE, &old_size) != 0)
     {
         _mman_set_err(mman, "rounding error: old_size");
         ret = -EINVAL;
@@ -1192,7 +1192,7 @@ int libos_mman_mremap(
     }
 
     /* Round NEW_SIZE to multiple of page size */
-    if (libos_round_up(new_size, PAGE_SIZE, &new_size) != 0)
+    if (myst_round_up(new_size, PAGE_SIZE, &new_size) != 0)
     {
         _mman_set_err(mman, "rounding error: new_size");
         ret = -EINVAL;
@@ -1226,7 +1226,7 @@ int libos_mman_mremap(
         /* If there are excess bytes on the right of this VAD area */
         if (_end(vad) != old_end)
         {
-            libos_vad_t* right;
+            myst_vad_t* right;
 
             /* Create VAD for rightward excess */
             if (!(right = _mman_new_vad(
@@ -1267,7 +1267,7 @@ int libos_mman_mremap(
             /* If VAD is now contiguous with next one, coalesce them */
             if (vad->next && _end(vad) == vad->next->addr)
             {
-                libos_vad_t* next = vad->next;
+                myst_vad_t* next = vad->next;
                 vad->size += next->size;
                 _list_remove(mman, next);
                 _mman_sync_top(mman);
@@ -1314,7 +1314,7 @@ done:
 
 /*
 **
-** libos_mman_is_sane()
+** myst_mman_is_sane()
 **
 **     Debugging function used to check sanity (validity) of a mman structure.
 **
@@ -1329,7 +1329,7 @@ done:
 **     being sorted.
 **
 */
-bool libos_mman_is_sane(libos_mman_t* mman)
+bool myst_mman_is_sane(myst_mman_t* mman)
 {
     bool result = false;
 
@@ -1344,7 +1344,7 @@ bool libos_mman_is_sane(libos_mman_t* mman)
     _mman_clear_err(mman);
 
     /* Check the magic number */
-    if (mman->magic != LIBOS_MMAN_MAGIC)
+    if (mman->magic != MYST_MMAN_MAGIC)
     {
         _mman_set_err(mman, "bad magic");
         goto done;
@@ -1401,11 +1401,11 @@ bool libos_mman_is_sane(libos_mman_t* mman)
 
     /* Verify that the list is sorted */
     {
-        libos_vad_t* p;
+        myst_vad_t* p;
 
         for (p = mman->vad_list; p; p = p->next)
         {
-            libos_vad_t* next = p->next;
+            myst_vad_t* next = p->next;
 
             if (next)
             {
@@ -1439,7 +1439,7 @@ done:
 
 /*
 **
-** libos_mman_set_sanity()
+** myst_mman_set_sanity()
 **
 **     Enable live sanity checking on the given mman structure. Once enabled,
 **     sanity checking is performed in all mapping functions. Be aware that
@@ -1451,14 +1451,14 @@ done:
 **     [IN] sanity - true to enable sanity checking; false otherwise.
 **
 */
-void libos_mman_set_sanity(libos_mman_t* mman, bool sanity)
+void myst_mman_set_sanity(myst_mman_t* mman, bool sanity)
 {
     if (mman)
         mman->sanity = sanity;
 }
 
 /* return the total size of the mman region */
-int libos_mman_total_size(libos_mman_t* mman, size_t* size)
+int myst_mman_total_size(myst_mman_t* mman, size_t* size)
 {
     ssize_t ret = 0;
 
@@ -1471,16 +1471,16 @@ int libos_mman_total_size(libos_mman_t* mman, size_t* size)
         goto done;
     }
 
-    libos_spin_lock(&mman->lock);
+    myst_spin_lock(&mman->lock);
     *size = mman->size;
-    libos_spin_unlock(&mman->lock);
+    myst_spin_unlock(&mman->lock);
 
 done:
     return ret;
 }
 
 /* return the amount of free space */
-int libos_mman_free_size(libos_mman_t* mman, size_t* size_out)
+int myst_mman_free_size(myst_mman_t* mman, size_t* size_out)
 {
     ssize_t ret = 0;
     size_t size;
@@ -1494,16 +1494,16 @@ int libos_mman_free_size(libos_mman_t* mman, size_t* size_out)
         goto done;
     }
 
-    libos_spin_lock(&mman->lock);
+    myst_spin_lock(&mman->lock);
     {
         /* determine the bytes between the BRK value and MAP value */
         size = mman->map - mman->brk;
 
         /* determine the total size of all gaps */
-        for (libos_vad_t* p = mman->vad_list; p; p = p->next)
+        for (myst_vad_t* p = mman->vad_list; p; p = p->next)
             size += _get_right_gap(mman, p);
     }
-    libos_spin_unlock(&mman->lock);
+    myst_spin_unlock(&mman->lock);
 
     *size_out = size;
 

@@ -13,13 +13,13 @@
 #include <time.h>
 #include <unistd.h>
 
-#include <libos/eraise.h>
-#include <libos/syscall.h>
-#include <libos/syscallext.h>
-#include <libos/tcall.h>
-#include <libos/thread.h>
+#include <myst/eraise.h>
+#include <myst/syscall.h>
+#include <myst/syscallext.h>
+#include <myst/tcall.h>
+#include <myst/thread.h>
 
-libos_run_thread_t __libos_run_thread;
+myst_run_thread_t __myst_run_thread;
 
 static long _tcall_random(void* data, size_t size)
 {
@@ -164,8 +164,8 @@ static long _isatty(int fd)
 }
 
 /* Must be overriden by enclave application */
-LIBOS_WEAK
-long libos_tcall_add_symbol_file(
+MYST_WEAK
+long myst_tcall_add_symbol_file(
     const void* file_data,
     size_t file_size,
     const void* text,
@@ -180,32 +180,32 @@ long libos_tcall_add_symbol_file(
 }
 
 /* Must be overriden by enclave application */
-LIBOS_WEAK
-long libos_tcall_load_symbols(void)
+MYST_WEAK
+long myst_tcall_load_symbols(void)
 {
     assert("linux: unimplemented: implement in enclave" == NULL);
     return -ENOTSUP;
 }
 
 /* Must be overriden by enclave application */
-LIBOS_WEAK
-long libos_tcall_unload_symbols(void)
+MYST_WEAK
+long myst_tcall_unload_symbols(void)
 {
     assert("linux: unimplemented: implement in enclave" == NULL);
     return -ENOTSUP;
 }
 
 /* Must be overriden by enclave application */
-LIBOS_WEAK
-long libos_tcall_create_thread(uint64_t cookie)
+MYST_WEAK
+long myst_tcall_create_thread(uint64_t cookie)
 {
     (void)cookie;
     assert("linux: unimplemented: implement in enclave" == NULL);
     return -ENOTSUP;
 }
 
-LIBOS_WEAK
-long libos_tcall_export_file(const char* path, const void* data, size_t size)
+MYST_WEAK
+long myst_tcall_export_file(const char* path, const void* data, size_t size)
 {
     (void)path;
     (void)data;
@@ -218,17 +218,17 @@ long libos_tcall_export_file(const char* path, const void* data, size_t size)
 static long
 _forward_syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6)
 {
-    return libos_syscall6(n, x1, x2, x3, x4, x5, x6);
+    return myst_syscall6(n, x1, x2, x3, x4, x5, x6);
 }
 
-static long _tcall_target_stat(libos_target_stat_t* buf)
+static long _tcall_target_stat(myst_target_stat_t* buf)
 {
     long ret = 0;
 
     if (!buf)
         ERAISE(-EINVAL);
 
-    memset(buf, 0, sizeof(libos_target_stat_t));
+    memset(buf, 0, sizeof(myst_target_stat_t));
 
     /* nothing to provide */
 
@@ -255,7 +255,7 @@ static long _tcall_get_tsd(uint64_t* value)
     return 0;
 }
 
-long libos_tcall(long n, long params[6])
+long myst_tcall(long n, long params[6])
 {
     long ret = 0;
     const long x1 = params[0];
@@ -265,15 +265,15 @@ long libos_tcall(long n, long params[6])
     const long x5 = params[4];
     const long x6 = params[5];
 
-    // printf("libos_tcall(): n=%ld\n", n);
+    // printf("myst_tcall(): n=%ld\n", n);
 
     switch (n)
     {
-        case LIBOS_TCALL_RANDOM:
+        case MYST_TCALL_RANDOM:
         {
             return _tcall_random((void*)x1, (size_t)x2);
         }
-        case LIBOS_TCALL_ALLOCATE:
+        case MYST_TCALL_ALLOCATE:
         {
             void* ptr = (void*)x1;
             size_t alignment = (size_t)x2;
@@ -282,12 +282,12 @@ long libos_tcall(long n, long params[6])
             void** new_ptr = (void**)x5;
             return _tcall_allocate(ptr, alignment, size, clear, new_ptr);
         }
-        case LIBOS_TCALL_DEALLOCATE:
+        case MYST_TCALL_DEALLOCATE:
         {
             void* ptr = (void*)x1;
             return _tcall_deallocate(ptr);
         }
-        case LIBOS_TCALL_VSNPRINTF:
+        case MYST_TCALL_VSNPRINTF:
         {
             char* str = (char*)x1;
             size_t size = (size_t)x2;
@@ -295,7 +295,7 @@ long libos_tcall(long n, long params[6])
             va_list* ap = (va_list*)x4;
             return _tcall_vsnprintf(str, size, format, *ap);
         }
-        case LIBOS_TCALL_WRITE_CONSOLE:
+        case MYST_TCALL_WRITE_CONSOLE:
         {
             int fd = (int)x1;
             const void* buf = (const void*)x2;
@@ -314,7 +314,7 @@ long libos_tcall(long n, long params[6])
 
             return (long)count;
         }
-        case LIBOS_TCALL_READ_CONSOLE:
+        case MYST_TCALL_READ_CONSOLE:
         {
             int fd = (int)x1;
             void* buf = (void*)x2;
@@ -333,96 +333,96 @@ long libos_tcall(long n, long params[6])
 
             return (long)count;
         }
-        case LIBOS_TCALL_CLOCK_GETTIME:
+        case MYST_TCALL_CLOCK_GETTIME:
         {
             clockid_t clk_id = (clockid_t)x1;
             struct timespec* tp = (struct timespec*)x2;
             return _tcall_clock_gettime(clk_id, tp);
         }
-        case LIBOS_TCALL_CLOCK_SETTIME:
+        case MYST_TCALL_CLOCK_SETTIME:
         {
             clockid_t clk_id = (clockid_t)x1;
             struct timespec* tp = (struct timespec*)x2;
             return _tcall_clock_settime(clk_id, tp);
         }
-        case LIBOS_TCALL_ISATTY:
+        case MYST_TCALL_ISATTY:
         {
             int fd = (int)x1;
             return _isatty(fd);
         }
-        case LIBOS_TCALL_ADD_SYMBOL_FILE:
+        case MYST_TCALL_ADD_SYMBOL_FILE:
         {
             const void* file_data = (const void*)x1;
             size_t file_size = (size_t)x2;
             const void* text = (const void*)x3;
             size_t text_size = (size_t)x4;
-            return libos_tcall_add_symbol_file(
+            return myst_tcall_add_symbol_file(
                 file_data, file_size, text, text_size);
         }
-        case LIBOS_TCALL_LOAD_SYMBOLS:
+        case MYST_TCALL_LOAD_SYMBOLS:
         {
-            return libos_tcall_load_symbols();
+            return myst_tcall_load_symbols();
         }
-        case LIBOS_TCALL_UNLOAD_SYMBOLS:
+        case MYST_TCALL_UNLOAD_SYMBOLS:
         {
-            return libos_tcall_unload_symbols();
+            return myst_tcall_unload_symbols();
         }
-        case LIBOS_TCALL_CREATE_THREAD:
+        case MYST_TCALL_CREATE_THREAD:
         {
             uint64_t cookie = (uint64_t)x1;
-            return libos_tcall_create_thread(cookie);
+            return myst_tcall_create_thread(cookie);
         }
-        case LIBOS_TCALL_WAIT:
+        case MYST_TCALL_WAIT:
         {
             uint64_t event = (uint64_t)x1;
             const struct timespec* timeout = (const struct timespec*)x2;
-            return libos_tcall_wait(event, timeout);
+            return myst_tcall_wait(event, timeout);
         }
-        case LIBOS_TCALL_WAKE:
+        case MYST_TCALL_WAKE:
         {
             uint64_t event = (uint64_t)x1;
-            return libos_tcall_wake(event);
+            return myst_tcall_wake(event);
         }
-        case LIBOS_TCALL_WAKE_WAIT:
+        case MYST_TCALL_WAKE_WAIT:
         {
             uint64_t waiter_event = (uint64_t)x1;
             uint64_t self_event = (uint64_t)x2;
             const struct timespec* timeout = (const struct timespec*)x3;
-            return libos_tcall_wake_wait(waiter_event, self_event, timeout);
+            return myst_tcall_wake_wait(waiter_event, self_event, timeout);
         }
-        case LIBOS_TCALL_EXPORT_FILE:
+        case MYST_TCALL_EXPORT_FILE:
         {
             const char* path = (const char*)x1;
             const void* data = (const void*)x2;
             size_t size = (size_t)x3;
-            return libos_tcall_export_file(path, data, size);
+            return myst_tcall_export_file(path, data, size);
         }
-        case LIBOS_TCALL_SET_RUN_THREAD_FUNCTION:
+        case MYST_TCALL_SET_RUN_THREAD_FUNCTION:
         {
-            libos_run_thread_t function = (libos_run_thread_t)x1;
+            myst_run_thread_t function = (myst_run_thread_t)x1;
 
             if (!function)
                 return -EINVAL;
 
-            __libos_run_thread = function;
+            __myst_run_thread = function;
             return 0;
         }
-        case LIBOS_TCALL_TARGET_STAT:
+        case MYST_TCALL_TARGET_STAT:
         {
-            libos_target_stat_t* buf = (libos_target_stat_t*)x1;
+            myst_target_stat_t* buf = (myst_target_stat_t*)x1;
             return _tcall_target_stat(buf);
         }
-        case LIBOS_TCALL_SET_TSD:
+        case MYST_TCALL_SET_TSD:
         {
             uint64_t value = (uint64_t)x1;
             return _tcall_set_tsd(value);
         }
-        case LIBOS_TCALL_GET_TSD:
+        case MYST_TCALL_GET_TSD:
         {
             uint64_t* value = (uint64_t*)x1;
             return _tcall_get_tsd(value);
         }
-        case LIBOS_TCALL_GET_ERRNO_LOCATION:
+        case MYST_TCALL_GET_ERRNO_LOCATION:
         {
             static __thread int _errnum;
             int** ptr = (int**)x1;
@@ -433,9 +433,9 @@ long libos_tcall(long n, long params[6])
             *ptr = &_errnum;
             return 0;
         }
-        case LIBOS_TCALL_POLL_WAKE:
+        case MYST_TCALL_POLL_WAKE:
         {
-            return libos_tcall_poll_wake();
+            return myst_tcall_poll_wake();
         }
         case SYS_ioctl:
         {
@@ -470,7 +470,7 @@ long libos_tcall(long n, long params[6])
             struct pollfd* fds = (struct pollfd*)x1;
             nfds_t nfds = (nfds_t)x2;
             int timeout = (int)x3;
-            return libos_tcall_poll(fds, nfds, timeout);
+            return myst_tcall_poll(fds, nfds, timeout);
         }
         case SYS_sched_yield:
         case SYS_fstat:

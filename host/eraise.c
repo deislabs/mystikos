@@ -1,11 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include <libos/eraise.h>
+#include <myst/eraise.h>
 #include <stdio.h>
 #include <string.h>
 
-void libos_eraise(const char* file, uint32_t line, const char* func, int errnum)
+void myst_eraise(const char* file, uint32_t line, const char* func, int errnum)
 {
     if (errnum < 0)
         errnum = -errnum;

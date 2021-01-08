@@ -1,5 +1,5 @@
 variables:
-  - group: libos-pipeline
+  - group: myst-pipeline
   - name: SCRIPTS_ROOT
     value: $(Build.SourcesDirectory)/.azure_pipelines/scripts
 

@@ -3,10 +3,10 @@
 
 #include <assert.h>
 
-#include <libos/crash.h>
-#include <libos/panic.h>
-#include <libos/printf.h>
-#include <libos/strings.h>
+#include <myst/crash.h>
+#include <myst/panic.h>
+#include <myst/printf.h>
+#include <myst/strings.h>
 
 void __assert_fail(
     const char* expr,
@@ -14,9 +14,9 @@ void __assert_fail(
     int line,
     const char* func)
 {
-    libos_eprintf(
+    myst_eprintf(
         "Assertion failed: %s (%s: %s: %d)\n", expr, file, func, line);
-    libos_crash();
+    myst_crash();
 
     for (;;)
         ;

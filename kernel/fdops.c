@@ -5,8 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <libos/eraise.h>
-#include <libos/fdops.h>
+#include <myst/eraise.h>
+#include <myst/fdops.h>
 
 #define SCRATCH_BUF_SIZE 256
 
@@ -31,8 +31,8 @@ done:
     return ret;
 }
 
-ssize_t libos_fdops_readv(
-    libos_fdops_t* fdops,
+ssize_t myst_fdops_readv(
+    myst_fdops_t* fdops,
     void* object,
     const struct iovec* iov,
     int iovcnt)
@@ -92,8 +92,8 @@ done:
     return ret;
 }
 
-ssize_t libos_fdops_writev(
-    libos_fdops_t* fdops,
+ssize_t myst_fdops_writev(
+    myst_fdops_t* fdops,
     void* object,
     const struct iovec* iov,
     int iovcnt)

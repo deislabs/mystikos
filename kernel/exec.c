@@ -8,26 +8,26 @@
 #include <string.h>
 #include <sys/mman.h>
 
-#include <libos/atexit.h>
-#include <libos/cpio.h>
-#include <libos/eraise.h>
-#include <libos/exec.h>
-#include <libos/file.h>
-#include <libos/fsgs.h>
-#include <libos/libc.h>
-#include <libos/mmanutils.h>
-#include <libos/panic.h>
-#include <libos/paths.h>
-#include <libos/printf.h>
-#include <libos/process.h>
-#include <libos/reloc.h>
-#include <libos/round.h>
-#include <libos/setjmp.h>
-#include <libos/spinlock.h>
-#include <libos/strings.h>
-#include <libos/syscall.h>
-#include <libos/tcall.h>
-#include <libos/thread.h>
+#include <myst/atexit.h>
+#include <myst/cpio.h>
+#include <myst/eraise.h>
+#include <myst/exec.h>
+#include <myst/file.h>
+#include <myst/fsgs.h>
+#include <myst/libc.h>
+#include <myst/mmanutils.h>
+#include <myst/panic.h>
+#include <myst/paths.h>
+#include <myst/printf.h>
+#include <myst/process.h>
+#include <myst/reloc.h>
+#include <myst/round.h>
+#include <myst/setjmp.h>
+#include <myst/spinlock.h>
+#include <myst/strings.h>
+#include <myst/syscall.h>
+#include <myst/tcall.h>
+#include <myst/thread.h>
 
 #define GUARD 0x4f
 
@@ -399,7 +399,7 @@ static void _dump_bytes(const void* p_, size_t n)
     printf("\n");
 }
 
-void libos_dump_stack(void* stack)
+void myst_dump_stack(void* stack)
 {
     int argc = (int)(*(uint64_t*)stack);
     char** argv = (char**)((uint8_t*)stack + sizeof(uint64_t));
@@ -491,7 +491,7 @@ int _test_header(const Elf64_Ehdr* ehdr)
     return 0;
 }
 
-int libos_dump_ehdr(const void* ehdr)
+int myst_dump_ehdr(const void* ehdr)
 {
     const Elf64_Ehdr* h = (const Elf64_Ehdr*)ehdr;
 
@@ -667,7 +667,7 @@ void* elf_make_stack(
         *sp = NULL;
 
     /* Assume that the stack is aligned on a page boundary */
-    libos_assume((stack_size % PAGE_SIZE) == 0);
+    myst_assume((stack_size % PAGE_SIZE) == 0);
 
     if (!(stack = memalign(PAGE_SIZE, stack_size)))
         goto done;
@@ -763,19 +763,19 @@ static int _setup_exe_link(const char* path)
     int ret = 0;
     char buf[PATH_MAX];
     char target[PATH_MAX];
-    pid_t pid = (pid_t)libos_getpid();
+    pid_t pid = (pid_t)myst_getpid();
 
-    if (libos_normalize(path, target, sizeof(target)) != 0)
+    if (myst_normalize(path, target, sizeof(target)) != 0)
         ERAISE(-EINVAL);
 
     snprintf(buf, sizeof(buf), "/proc/%u", pid);
-    ECHECK(libos_mkdirhier(buf, 0777));
+    ECHECK(myst_mkdirhier(buf, 0777));
 
     snprintf(buf, sizeof(buf), "/proc/%u/exe", pid);
-    ECHECK(libos_syscall_symlink(target, buf));
+    ECHECK(myst_syscall_symlink(target, buf));
 
     snprintf(buf, sizeof(buf), "/proc/self/exe");
-    ECHECK(libos_syscall_symlink(target, buf));
+    ECHECK(myst_syscall_symlink(target, buf));
 
 done:
     return ret;
@@ -791,15 +791,15 @@ static long _add_crt_symbols(const void* text, size_t text_size)
     params[2] = (long)text;
     params[3] = (long)text_size;
 
-    ECHECK(libos_tcall(LIBOS_TCALL_ADD_SYMBOL_FILE, params));
+    ECHECK(myst_tcall(MYST_TCALL_ADD_SYMBOL_FILE, params));
 
 done:
 
     return ret;
 }
 
-int libos_exec(
-    libos_thread_t* thread,
+int myst_exec(
+    myst_thread_t* thread,
     const void* crt_data_in,
     size_t crt_size,
     const void* crt_reloc_data,
@@ -841,7 +841,7 @@ int libos_exec(
         const int prot = PROT_READ | PROT_WRITE | PROT_EXEC;
         const int flags = MAP_ANONYMOUS | MAP_PRIVATE;
 
-        crt_data = libos_mmap(NULL, crt_size, prot, flags, -1, 0);
+        crt_data = myst_mmap(NULL, crt_size, prot, flags, -1, 0);
 
         if (crt_data == (void*)-1)
             ERAISE(-ENOMEM);
@@ -864,7 +864,7 @@ int libos_exec(
                 size_t gap_size;
 
                 if (ph->p_vaddr < ending_vaddr)
-                    libos_panic("unsorted segments");
+                    myst_panic("unsorted segments");
 
                 memcpy(dest, src, ph->p_memsz);
 
@@ -875,12 +875,12 @@ int libos_exec(
 
                     /* round gap up to page size */
                     const uint64_t m = PAGE_SIZE;
-                    ECHECK(libos_round_up((uint64_t)gap, m, (uint64_t*)&gap));
+                    ECHECK(myst_round_up((uint64_t)gap, m, (uint64_t*)&gap));
 
                     /* round the gap size down to the page size */
-                    gap_size = libos_round_down_to_page_size(gap_size);
+                    gap_size = myst_round_down_to_page_size(gap_size);
 
-                    ECHECK(libos_munmap(gap, gap_size));
+                    ECHECK(myst_munmap(gap, gap_size));
                 }
 
                 /* remember the end of this segment for the next pass */
@@ -911,7 +911,7 @@ int libos_exec(
     }
 
     /* apply relocations to the new CRT data */
-    if (libos_apply_relocations(
+    if (myst_apply_relocations(
             crt_data, crt_size, crt_reloc_data, crt_reloc_size) != 0)
     {
         ERAISE(-EINVAL);
@@ -955,8 +955,8 @@ int libos_exec(
 
     /* close file descriptors with FD_CLOEXEC flag */
     {
-        libos_fdtable_t* fdtable = libos_fdtable_current();
-        libos_fdtable_cloexec(fdtable);
+        myst_fdtable_t* fdtable = myst_fdtable_current();
+        myst_fdtable_cloexec(fdtable);
     }
 
     /* register the new CRT symbols with the debugger */
@@ -967,7 +967,7 @@ int libos_exec(
         (*callback)(callback_arg);
 
     /* enter the C-runtime on the target thread descriptor */
-    (*enter)(sp, dynv, libos_syscall);
+    (*enter)(sp, dynv, myst_syscall);
     /* unreachable */
 
     thread->main.exec_stack = NULL;
@@ -981,7 +981,7 @@ done:
         free(stack);
 
     if (crt_data)
-        libos_munmap(crt_data, crt_size);
+        myst_munmap(crt_data, crt_size);
 
     return ret;
 }

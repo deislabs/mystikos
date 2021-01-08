@@ -6,13 +6,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <libos/atexit.h>
-#include <libos/cpio.h>
-#include <libos/file.h>
-#include <libos/lsr.h>
-#include <libos/mount.h>
-#include <libos/ramfs.h>
-#include <libos/trace.h>
+#include <myst/atexit.h>
+#include <myst/cpio.h>
+#include <myst/file.h>
+#include <myst/lsr.h>
+#include <myst/mount.h>
+#include <myst/ramfs.h>
+#include <myst/trace.h>
 
 extern int oe_host_printf(const char* fmt, ...);
 
@@ -140,14 +140,14 @@ static const size_t _npaths = sizeof(_paths) / sizeof(_paths[0]);
 
 void test(const void* cpio_data, size_t cpio_size, bool load_from_memory)
 {
-    char template[] = "/tmp/libosXXXXXX";
+    char template[] = "/tmp/mystXXXXXX";
     char* tmpdir;
 
     assert((tmpdir = mkdtemp(template)) != NULL);
 
     if (load_from_memory)
     {
-        if (libos_cpio_mem_unpack(cpio_data, cpio_size, tmpdir, NULL) != 0)
+        if (myst_cpio_mem_unpack(cpio_data, cpio_size, tmpdir, NULL) != 0)
         {
             assert(false);
         }
@@ -163,22 +163,22 @@ void test(const void* cpio_data, size_t cpio_size, bool load_from_memory)
         assert(_fsize(path) == cpio_size);
 
         /* unpack the cpio archive */
-        assert(libos_cpio_unpack(path, tmpdir) == 0);
+        assert(myst_cpio_unpack(path, tmpdir) == 0);
 
         unlink(path);
     }
 
-    libos_strarr_t paths = LIBOS_STRARR_INITIALIZER;
-    assert(libos_lsr(tmpdir, &paths, true) == 0);
-    libos_strarr_sort(&paths);
+    myst_strarr_t paths = MYST_STRARR_INITIALIZER;
+    assert(myst_lsr(tmpdir, &paths, true) == 0);
+    myst_strarr_sort(&paths);
 
     /* create sorted paths array */
-    libos_strarr_t sorted = LIBOS_STRARR_INITIALIZER;
+    myst_strarr_t sorted = MYST_STRARR_INITIALIZER;
     {
         for (size_t i = 0; i < _npaths; i++)
-            assert(libos_strarr_append(&sorted, _paths[i]) == 0);
+            assert(myst_strarr_append(&sorted, _paths[i]) == 0);
 
-        libos_strarr_sort(&sorted);
+        myst_strarr_sort(&sorted);
     }
 
     assert(sorted.size == paths.size);
@@ -195,8 +195,8 @@ void test(const void* cpio_data, size_t cpio_size, bool load_from_memory)
         }
     }
 
-    libos_strarr_release(&paths);
-    libos_strarr_release(&sorted);
+    myst_strarr_release(&paths);
+    myst_strarr_release(&sorted);
 }
 
 int main(int argc, const char* argv[])
@@ -225,7 +225,7 @@ int main(int argc, const char* argv[])
         return 1;
     }
 
-    if (libos_load_file(argv[1], &data, &size) != 0)
+    if (myst_load_file(argv[1], &data, &size) != 0)
         assert(false);
 
     assert(data != NULL);

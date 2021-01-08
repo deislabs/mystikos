@@ -1,4 +1,4 @@
-Open LibOS depends on the following open source packages:
+Mystikos depends on the following open source packages:
 
 musl libc
 =========

@@ -147,7 +147,7 @@ done:
     return result;
 }
 
-int libos_gen_creds(
+int myst_gen_creds(
     uint8_t** cert_out,
     size_t* cert_size_out,
     uint8_t** private_key_out,
@@ -244,7 +244,7 @@ done:
     return ret;
 }
 
-void libos_free_creds(
+void myst_free_creds(
     uint8_t* cert,
     size_t cert_size,
     uint8_t* private_key,
@@ -257,7 +257,7 @@ void libos_free_creds(
         oe_free_key(private_key, private_key_size, NULL, 0);
 }
 
-int libos_verify_cert(
+int myst_verify_cert(
     uint8_t* cert,
     size_t cert_size,
     oe_identity_verify_callback_t verifier,
