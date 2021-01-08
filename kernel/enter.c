@@ -380,6 +380,8 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         }
 
         /* never returns */
+        for (;;)
+            ;
     }
     else
     {
