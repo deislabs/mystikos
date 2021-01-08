@@ -1100,7 +1100,7 @@ static int _stat(inode_t* inode, struct stat* statbuf)
     if (!_inode_valid(inode) || !statbuf)
         ERAISE(-EINVAL);
 
-    ECHECK(myst_round_up_signed(buf.st_size, BLKSIZE, &rounded));
+    ECHECK(myst_round_up_signed(inode->buf.size, BLKSIZE, &rounded));
 
     memset(&buf, 0, sizeof(buf));
     buf.st_dev = 0;
