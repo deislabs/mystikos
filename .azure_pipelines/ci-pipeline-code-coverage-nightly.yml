@@ -1,5 +1,5 @@
 variables:
-  - group: myst-pipeline
+  - group: libos-pipeline
   - name: SCRIPTS_ROOT
     value: $(Build.SourcesDirectory)/.azure_pipelines/scripts
   - name: MYST_NIGHTLY_RUN_DASHBOARD
