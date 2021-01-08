@@ -1,10 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include <libos/initfini.h>
-#include <libos/strings.h>
+#include <myst/initfini.h>
+#include <myst/strings.h>
 
-void libos_call_init_functions(void)
+void myst_call_init_functions(void)
 {
     void (**fn)(void);
     extern void (*__init_array_start)(void);
@@ -16,7 +16,7 @@ void libos_call_init_functions(void)
     }
 }
 
-void libos_call_fini_functions(void)
+void myst_call_fini_functions(void)
 {
     void (**fn)(void);
     extern void (*__fini_array_start)(void);

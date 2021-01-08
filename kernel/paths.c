@@ -4,11 +4,11 @@
 #include <errno.h>
 #include <string.h>
 
-#include <libos/eraise.h>
-#include <libos/strings.h>
-#include <libos/syscall.h>
+#include <myst/eraise.h>
+#include <myst/strings.h>
+#include <myst/syscall.h>
 
-int libos_path_absolute_cwd(
+int myst_path_absolute_cwd(
     const char* cwd,
     const char* path,
     char* buf,
@@ -24,14 +24,14 @@ int libos_path_absolute_cwd(
 
     if (path[0] == '/')
     {
-        if (libos_strlcpy(buf, path, size) >= size)
+        if (myst_strlcpy(buf, path, size) >= size)
             ERAISE(-ENAMETOOLONG);
     }
     else
     {
         size_t cwd_len;
 
-        if (libos_strlcpy(buf, cwd, size) >= size)
+        if (myst_strlcpy(buf, cwd, size) >= size)
             ERAISE(-ENAMETOOLONG);
 
         if ((cwd_len = strlen(cwd)) == 0)
@@ -39,11 +39,11 @@ int libos_path_absolute_cwd(
 
         if (cwd[cwd_len - 1] != '/')
         {
-            if (libos_strlcat(buf, "/", size) >= size)
+            if (myst_strlcat(buf, "/", size) >= size)
                 ERAISE(-ENAMETOOLONG);
         }
 
-        if (libos_strlcat(buf, path, size) >= size)
+        if (myst_strlcat(buf, path, size) >= size)
             ERAISE(-ENAMETOOLONG);
     }
 
@@ -51,7 +51,7 @@ done:
     return ret;
 }
 
-int libos_path_absolute(const char* path, char* buf, size_t size)
+int myst_path_absolute(const char* path, char* buf, size_t size)
 {
     int ret = 0;
 
@@ -63,7 +63,7 @@ int libos_path_absolute(const char* path, char* buf, size_t size)
 
     if (path[0] == '/')
     {
-        if (libos_strlcpy(buf, path, size) >= size)
+        if (myst_strlcpy(buf, path, size) >= size)
             ERAISE(-ENAMETOOLONG);
     }
     else
@@ -71,10 +71,10 @@ int libos_path_absolute(const char* path, char* buf, size_t size)
         long r;
         char cwd[PATH_MAX];
 
-        if ((r = libos_syscall_getcwd(cwd, sizeof(cwd))) < 0)
+        if ((r = myst_syscall_getcwd(cwd, sizeof(cwd))) < 0)
             ERAISE((int)r);
 
-        ERAISE(libos_path_absolute_cwd(cwd, path, buf, size));
+        ERAISE(myst_path_absolute_cwd(cwd, path, buf, size));
     }
 
 done:

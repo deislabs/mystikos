@@ -4,7 +4,7 @@ TOP = $(abspath $(CURDIR))
 include $(TOP)/defs.mak
 
 VERSION=$(shell cat VERSION)
-PKGNAME=openlibos-$(VERSION)-x86_64
+PKGNAME=mystikos-$(VERSION)-x86_64
 TARBALL=$(PKGNAME).tar.gz
 
 ##==============================================================================
@@ -15,10 +15,10 @@ TARBALL=$(PKGNAME).tar.gz
 
 DIRS += third_party
 
-ifndef LIBOS_PRODUCT_BUILD
+ifndef MYST_PRODUCT_BUILD
 endif
 
-ifdef LIBOS_ENABLE_GCOV
+ifdef MYST_ENABLE_GCOV
 DIRS += gcov
 endif
 
@@ -31,7 +31,7 @@ DIRS += crt
 DIRS += oe
 DIRS += tools
 
-ifndef LIBOS_PRODUCT_BUILD
+ifndef MYST_PRODUCT_BUILD
 DIRS += alpine
 DIRS += tests
 endif
@@ -57,9 +57,9 @@ distclean: clean
 ##==============================================================================
 
 size:
-	@ size -d $(BUILDDIR)/lib/openenclave/libosenc.so
-	@ size -d $(BUILDDIR)/lib/liboskernel.so
-	@ size -d $(BUILDDIR)/lib/liboscrt.so
+	@ size -d $(BUILDDIR)/lib/openenclave/mystenc.so
+	@ size -d $(BUILDDIR)/lib/libmystkernel.so
+	@ size -d $(BUILDDIR)/lib/libmystcrt.so
 
 ##==============================================================================
 ##
@@ -69,28 +69,28 @@ size:
 ##==============================================================================
 
 INSTALL=install -D
-INSTDIR=$(DESTDIR)/$(LIBOS_PREFIX)
+INSTDIR=$(DESTDIR)/$(MYST_PREFIX)
 
 install:
 	rm -rf $(INSTDIR)
-	$(INSTALL) $(BINDIR)/libos $(INSTDIR)/bin/libos
-	$(INSTALL) $(LIBDIR)/liboscrt.so $(INSTDIR)/lib/liboscrt.so
-	$(INSTALL) $(LIBDIR)/liboskernel.so $(INSTDIR)/lib/liboskernel.so
-	$(INSTALL) $(LIBDIR)/openenclave/libosenc.so $(INSTDIR)/lib/openenclave/libosenc.so
-	$(INSTALL) $(BUILDDIR)/openenclave/bin/oegdb $(INSTDIR)/bin/libos-gdb
-	$(INSTALL) ./scripts/appbuilder $(INSTDIR)/bin/libos-appbuilder
-	$(INSTALL) include/libos/tee.h $(INSTDIR)/include/libos/tee.h
-	$(INSTALL) $(BINDIR)/../musl/bin/musl-gcc $(INSTDIR)/bin/libos-gcc
+	$(INSTALL) $(BINDIR)/myst $(INSTDIR)/bin/myst
+	$(INSTALL) $(LIBDIR)/libmystcrt.so $(INSTDIR)/lib/libmystcrt.so
+	$(INSTALL) $(LIBDIR)/libmystkernel.so $(INSTDIR)/lib/libmystkernel.so
+	$(INSTALL) $(LIBDIR)/openenclave/mystenc.so $(INSTDIR)/lib/openenclave/mystenc.so
+	$(INSTALL) $(BUILDDIR)/openenclave/bin/oegdb $(INSTDIR)/bin/myst-gdb
+	$(INSTALL) ./scripts/appbuilder $(INSTDIR)/bin/myst-appbuilder
+	$(INSTALL) include/myst/tee.h $(INSTDIR)/include/myst/tee.h
+	$(INSTALL) $(BINDIR)/../musl/bin/musl-gcc $(INSTDIR)/bin/myst-gcc
 	rm -rf $(INSTDIR)/lib/openenclave/debugger
 	cp -r $(BUILDDIR)/openenclave/lib/openenclave/debugger $(INSTDIR)/lib/openenclave/debugger
 
 uninstall:
-	rm -rf $(LIBOS_PREFIX)
+	rm -rf $(MYST_PREFIX)
 
 ##==============================================================================
 ##
 ## src:
-##     Print the list of libos sources (excluding third-party sources)
+##     Print the list of myst sources (excluding third-party sources)
 ##
 ##==============================================================================
 
@@ -112,7 +112,7 @@ format:
 ##==============================================================================
 ##
 ## touch:
-##     touch all the libos source files
+##     touch all the myst source files
 ##
 ##==============================================================================
 
@@ -149,7 +149,7 @@ alltests:
 ##==============================================================================
 ##
 ## sub:
-##     Apply /tmp/sub.sed to all libos sources
+##     Apply /tmp/sub.sed to all myst sources
 ##
 ##==============================================================================
 
@@ -166,7 +166,7 @@ sub:
 bindist:
 	@ rm -rf $(BUILDDIR)/bindist
 	@ $(MAKE) install DESTDIR=$(BUILDDIR)/bindist
-	@ ( cd $(BUILDDIR)/bindist/opt; tar zcf $(TARBALL) openlibos )
+	@ ( cd $(BUILDDIR)/bindist/opt; tar zcf $(TARBALL) mystikos )
 	@ cp $(BUILDDIR)/bindist/opt/$(TARBALL) .
 	@ echo "=== Created $(TARBALL)"
 

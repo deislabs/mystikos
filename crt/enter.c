@@ -16,9 +16,9 @@
 #include <syslog.h>
 #include <unistd.h>
 
-#include <libos/gcov.h>
-#include <libos/libc.h>
-#include <libos/syscallext.h>
+#include <myst/gcov.h>
+#include <myst/libc.h>
+#include <myst/syscallext.h>
 
 void _dlstart_c(size_t* sp, size_t* dynv);
 
@@ -26,61 +26,61 @@ typedef long (*syscall_callback_t)(long n, long params[6]);
 
 static syscall_callback_t _syscall_callback;
 
-void libos_trace_ptr(const char* msg, const void* ptr);
+void myst_trace_ptr(const char* msg, const void* ptr);
 
-void libos_trace(const char* msg);
+void myst_trace(const char* msg);
 
-void libos_dump_argv(int argc, const char* argv[]);
+void myst_dump_argv(int argc, const char* argv[]);
 
-long libos_syscall(long n, long params[6])
+long myst_syscall(long n, long params[6])
 {
     return (*_syscall_callback)(n, params);
 }
 
-void libos_load_symbols(void)
+void myst_load_symbols(void)
 {
     long params[6];
-    libos_syscall(SYS_libos_load_symbols, params);
+    myst_syscall(SYS_myst_load_symbols, params);
 }
 
-void libos_dump_argv(int argc, const char* argv[])
+void myst_dump_argv(int argc, const char* argv[])
 {
     long params[6];
     params[0] = (long)argc;
     params[1] = (long)argv;
 
-    libos_syscall(SYS_libos_dump_argv, params);
+    myst_syscall(SYS_myst_dump_argv, params);
 }
 
-void libos_trace(const char* msg)
+void myst_trace(const char* msg)
 {
     long params[6] = {0};
     params[0] = (long)msg;
-    (*_syscall_callback)(SYS_libos_trace, params);
+    (*_syscall_callback)(SYS_myst_trace, params);
 }
 
-void libos_dump_stack(const void* stack)
+void myst_dump_stack(const void* stack)
 {
     long params[6] = {0};
     params[0] = (long)stack;
-    (*_syscall_callback)(SYS_libos_dump_stack, params);
+    (*_syscall_callback)(SYS_myst_dump_stack, params);
 }
 
-void libos_trace_ptr(const char* msg, const void* ptr)
+void myst_trace_ptr(const char* msg, const void* ptr)
 {
     long params[6] = {0};
     params[0] = (long)msg;
     params[1] = (long)ptr;
-    (*_syscall_callback)(SYS_libos_trace_ptr, params);
+    (*_syscall_callback)(SYS_myst_trace_ptr, params);
 }
 
-long libos_add_symbol_file(const char* path, const void* text, size_t text_size)
+long myst_add_symbol_file(const char* path, const void* text, size_t text_size)
 {
     long params[6] = {0};
     params[0] = (long)path;
     params[1] = (long)text;
     params[2] = (long)text_size;
-    return (*_syscall_callback)(SYS_libos_add_symbol_file, params);
+    return (*_syscall_callback)(SYS_myst_add_symbol_file, params);
 }
 
 /* Replacement for __clone() defined in clone.s */
@@ -104,14 +104,14 @@ int __clone(int (*fn)(void*), void* child_stack, int flags, void* arg, ...)
     args[6] = (long)ctid;
 
     long params[6] = {(long)args};
-    return libos_syscall(SYS_libos_clone, params);
+    return myst_syscall(SYS_myst_clone, params);
 }
 
-void libos_enter_crt(void* stack, void* dynv, syscall_callback_t callback)
+void myst_enter_crt(void* stack, void* dynv, syscall_callback_t callback)
 {
     _syscall_callback = callback;
 
-#ifdef LIBOS_ENABLE_GCOV
+#ifdef MYST_ENABLE_GCOV
     /* Pass the libc interface back to the kernel */
     {
         static libc_t _libc = {
@@ -137,7 +137,7 @@ void libos_enter_crt(void* stack, void* dynv, syscall_callback_t callback)
         };
 
         long params[6] = {(long)&_libc, (long)stderr};
-        libos_syscall(SYS_libos_gcov_init, params);
+        myst_syscall(SYS_myst_gcov_init, params);
 
         gcov_init_libc(&_libc, stderr);
     }

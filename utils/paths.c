@@ -7,12 +7,12 @@
 #include <string.h>
 #include <sys/stat.h>
 
-#include <libos/eraise.h>
-#include <libos/paths.h>
-#include <libos/strings.h>
-#include <libos/syscall.h>
+#include <myst/eraise.h>
+#include <myst/paths.h>
+#include <myst/strings.h>
+#include <myst/syscall.h>
 
-int libos_tok_normalize(const char* toks[])
+int myst_tok_normalize(const char* toks[])
 {
     int ret = 0;
     size_t start = (size_t)-1;
@@ -22,7 +22,7 @@ int libos_tok_normalize(const char* toks[])
         ERAISE(-EINVAL);
 
     /* Determine the size of the toks array, including the null terminator */
-    size = libos_tokslen(toks) + 1;
+    size = myst_tokslen(toks) + 1;
     assert(toks[size - 1] == NULL);
 
     /* Find the index of the last "/" token */
@@ -38,7 +38,7 @@ int libos_tok_normalize(const char* toks[])
     /* Remove everything up to the last "/" token */
     if (start != (size_t)-1)
     {
-        ECHECK(libos_memremove_u64(toks, size, 0, start));
+        ECHECK(myst_memremove_u64(toks, size, 0, start));
         size -= start;
     }
 
@@ -47,7 +47,7 @@ int libos_tok_normalize(const char* toks[])
         /* Skip "." elements */
         if (strcmp(toks[i], ".") == 0)
         {
-            ECHECK(libos_memremove_u64(toks, size, i, 1));
+            ECHECK(myst_memremove_u64(toks, size, i, 1));
             size--;
             assert(toks[size - 1] == NULL);
             continue;
@@ -57,14 +57,14 @@ int libos_tok_normalize(const char* toks[])
         if (strcmp(toks[i], "..") == 0)
         {
             /* Remove this element */
-            ECHECK(libos_memremove_u64(toks, size, i, 1));
+            ECHECK(myst_memremove_u64(toks, size, i, 1));
             size--;
             assert(toks[size - 1] == NULL);
 
             if (i > 0)
             {
                 /* Remove previous element */
-                ECHECK(libos_memremove_u64(toks, size, i - 1, 1));
+                ECHECK(myst_memremove_u64(toks, size, i - 1, 1));
                 size--;
                 assert(toks[size - 1] == NULL);
                 i--;
@@ -83,7 +83,7 @@ done:
     return ret;
 }
 
-int libos_normalize(const char* path, char* buf, size_t size)
+int myst_normalize(const char* path, char* buf, size_t size)
 {
     int ret = 0;
     char** toks = NULL;
@@ -93,12 +93,12 @@ int libos_normalize(const char* path, char* buf, size_t size)
     if (!path)
         ERAISE(-EINVAL);
 
-    ECHECK(libos_strsplit(path, "/", &toks, &ntoks));
-    ECHECK(libos_tok_normalize((const char**)toks));
-    ntoks = libos_tokslen((const char**)toks);
-    ECHECK(libos_strjoin((const char**)toks, ntoks, "/", "/", NULL, &str));
+    ECHECK(myst_strsplit(path, "/", &toks, &ntoks));
+    ECHECK(myst_tok_normalize((const char**)toks));
+    ntoks = myst_tokslen((const char**)toks);
+    ECHECK(myst_strjoin((const char**)toks, ntoks, "/", "/", NULL, &str));
 
-    if (libos_strlcpy(buf, str, size) >= size)
+    if (myst_strlcpy(buf, str, size) >= size)
         ERAISE(-ERANGE);
 
 done:
@@ -113,7 +113,7 @@ done:
 }
 
 #if 0
-int libos_path_expand(const char* toks[], const char* buf[], size_t size)
+int myst_path_expand(const char* toks[], const char* buf[], size_t size)
 {
     int ret = 0;
     size_t n = 0;
@@ -141,10 +141,10 @@ int libos_path_expand(const char* toks[], const char* buf[], size_t size)
         }
 
         /* Build a path out of what we have so far */
-        ECHECK(libos_strjoin(buf, n, "/", "/", NULL, &path));
+        ECHECK(myst_strjoin(buf, n, "/", "/", NULL, &path));
 
         /* Stat the path */
-        ECHECK(libos_syscall_lstat(path, &st));
+        ECHECK(myst_syscall_lstat(path, &st));
 
         /* If it's a link, then inject all elements of the target */
         if (S_ISLNK(st.st_mode))
@@ -152,9 +152,9 @@ int libos_path_expand(const char* toks[], const char* buf[], size_t size)
             char target[PATH_MAX];
             size_t nsplit;
 
-            ECHECK(libos_syscall_readlink(path, target, sizeof(target)));
+            ECHECK(myst_syscall_readlink(path, target, sizeof(target)));
 
-            ECHECK(libos_strsplit(target, "/", &split, &nsplit));
+            ECHECK(myst_strsplit(target, "/", &split, &nsplit));
 
             /* remove the link name */
             n--;

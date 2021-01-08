@@ -1,0 +1,19 @@
+s/Open LibOS/Mystikos/g
+s/OpenLibOS/Mystikos/g
+s/OpenLibos/Mystikos/g
+s/Open-LibOS/Mystikos/g
+s/open-libOS/Mystikos/g
+s/openlibos/Mystikos/g
+s/LibOS/Mystikos/g
+s/Libos/Mystikos/g
+s/liboscrt/libmystcrt/g
+s/libosext2/libmystext2/g
+s/liboshost/libmysthost/g
+s/liboskernel/libmystkernel/g
+s/libostargetcommon/libmysttargetcommon/g
+s/libostargetlinux/libmysttargetlinux/g
+s/libostargetsgxenclave/libmysttargetsgxenclave/g
+s/libostargetsgxhost/libmysttargetsgxhost/g
+s/libosutils/libmystutils/g
+s/libos/myst/g
+s/LIBOS/MYST/g

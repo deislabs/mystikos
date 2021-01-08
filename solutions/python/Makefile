@@ -13,9 +13,9 @@ appdir:
 	$(APPBUILDER) Dockerfile
 
 rootfs:
-	$(LIBOS) mkcpio appdir rootfs
+	$(MYST) mkcpio appdir rootfs
 run:
-	$(LIBOS_EXEC) $(OPTS) rootfs /usr/local/bin/python3 /app/hello_world.py
+	$(MYST_EXEC) $(OPTS) rootfs /usr/local/bin/python3 /app/hello_world.py
 
 clean:
 	rm -rf rootfs appdir

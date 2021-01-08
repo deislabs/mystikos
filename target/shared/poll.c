@@ -43,7 +43,7 @@ static void _create_wakefds(void)
         abort();
 }
 
-long libos_tcall_poll_wake(void)
+long myst_tcall_poll_wake(void)
 {
     uint64_t x = WAKE_MAGIC;
 
@@ -56,7 +56,7 @@ long libos_tcall_poll_wake(void)
     return 0;
 }
 
-long libos_tcall_poll(struct pollfd* lfds, unsigned long nfds, int timeout)
+long myst_tcall_poll(struct pollfd* lfds, unsigned long nfds, int timeout)
 {
     long ret = 0;
     long r;

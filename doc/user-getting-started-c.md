@@ -1,6 +1,6 @@
 # Getting started with a native C program
 
-Please see [README](../README.md) for how to install Open LibOS or build
+Please see [README](../README.md) for how to install Mystikos or build
 it from source code.
 
 ## Write the program
@@ -11,7 +11,7 @@ As usual, we use the familiar code:
 
 int main()
 {
-    printf("Hello world from Open LibOS!");
+    printf("Hello world from Mystikos!");
     return 0;
 }
 ```
@@ -19,13 +19,13 @@ Save it to a folder and call it `helloworld.c`.
 
 ## Build the program
 
-Compile `helloworld.c` with `libos-gcc`, and place it under a subfolder
-`appdir`. `libos-gcc` is a wrapper for musl-gcc which compiles C programs
+Compile `helloworld.c` with `myst-gcc`, and place it under a subfolder
+`appdir`. `myst-gcc` is a wrapper for musl-gcc which compiles C programs
 dynamically linked to MUSL libc instead of the default glibc.
 
 ```
 mkdir -p appdir
-libos-gcc -g -o appdir/hello helloworld.c
+myst-gcc -g -o appdir/hello helloworld.c
 ```
 
 In most cases, we would generate many more files in `appdir`, a folder to hold
@@ -38,7 +38,7 @@ a lonely `hello` executable. That's all we need to run the app inside a TEE.
 
 Now we can create a CPIO named `rootfs` out of the folder `appdir` with:
 ```
-libos mkcpio appdir rootfs
+myst mkcpio appdir rootfs
 ```
 
 ## Run the program inside a SGX enclave
@@ -47,10 +47,10 @@ The command to launch the program inside an SGX enclave is a little bit
 long, compared to just `./appdir/hello` on Linux.
 
 ```
-libos exec-sgx rootfs /hello
+myst exec-sgx rootfs /hello
 ```
 
-The command specifies `libos` as the driver, and asks the driver to execute
+The command specifies `myst` as the driver, and asks the driver to execute
 a program in a SGX enclave in this manner:
 
 1. Load rootfs as the root file system into the enclave
@@ -58,8 +58,8 @@ a program in a SGX enclave in this manner:
 1. Send parameters following the executable `/hello` to it.
 (in this case we have none)
 
-The command specifies libos as the execution environment, and executes a
-program in a generic Open LibOS SGX enclave for development and debugging
+The command specifies myst as the execution environment, and executes a
+program in a generic Mystikos SGX enclave for development and debugging
 purpose. This execution mode does not capture the identity of the
 executing program in the SGX Enclave attestation data, thus is not
 suitable for production use.

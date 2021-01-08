@@ -9,15 +9,15 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
-#include <libos/assume.h>
-#include <libos/eraise.h>
-#include <libos/id.h>
-#include <libos/tcall.h>
-#include <libos/ttydev.h>
+#include <myst/assume.h>
+#include <myst/eraise.h>
+#include <myst/id.h>
+#include <myst/tcall.h>
+#include <myst/ttydev.h>
 
 #define MAGIC 0xc436d7e6
 
-struct libos_tty
+struct myst_tty
 {
     uint32_t magic; /* MAGIC */
     int fd;         /* STDIN_FILENO | STDOUT_FILENO | STDERR_FILENO */
@@ -25,15 +25,15 @@ struct libos_tty
     int fdflags; /* file descriptor flags: FD_CLOEXEC */
 };
 
-LIBOS_INLINE bool _valid_tty(const libos_tty_t* tty)
+MYST_INLINE bool _valid_tty(const myst_tty_t* tty)
 {
     return tty && tty->magic == MAGIC;
 }
 
-static int _td_create(libos_ttydev_t* ttydev, int fd, libos_tty_t** tty_out)
+static int _td_create(myst_ttydev_t* ttydev, int fd, myst_tty_t** tty_out)
 {
     int ret = 0;
-    libos_tty_t* tty = NULL;
+    myst_tty_t* tty = NULL;
 
     if (tty_out)
         *tty_out = NULL;
@@ -43,7 +43,7 @@ static int _td_create(libos_ttydev_t* ttydev, int fd, libos_tty_t** tty_out)
 
     /* Create the tty implementation structure */
     {
-        if (!(tty = calloc(1, sizeof(libos_tty_t))))
+        if (!(tty = calloc(1, sizeof(myst_tty_t))))
             ERAISE(-ENOMEM);
 
         tty->magic = MAGIC;
@@ -62,8 +62,8 @@ done:
 }
 
 static ssize_t _td_read(
-    libos_ttydev_t* ttydev,
-    libos_tty_t* tty,
+    myst_ttydev_t* ttydev,
+    myst_tty_t* tty,
     void* buf,
     size_t count)
 {
@@ -78,15 +78,15 @@ static ssize_t _td_read(
     if (count == 0)
         goto done;
 
-    ERAISE(libos_tcall_read_console(tty->fd, buf, count));
+    ERAISE(myst_tcall_read_console(tty->fd, buf, count));
 
 done:
     return ret;
 }
 
 static ssize_t _td_write(
-    libos_ttydev_t* ttydev,
-    libos_tty_t* tty,
+    myst_ttydev_t* ttydev,
+    myst_tty_t* tty,
     const void* buf,
     size_t count)
 {
@@ -101,15 +101,15 @@ static ssize_t _td_write(
     if (count == 0)
         goto done;
 
-    ERAISE(libos_tcall_write_console(tty->fd, buf, count));
+    ERAISE(myst_tcall_write_console(tty->fd, buf, count));
 
 done:
     return ret;
 }
 
 static ssize_t _td_readv(
-    libos_ttydev_t* ttydev,
-    libos_tty_t* tty,
+    myst_ttydev_t* ttydev,
+    myst_tty_t* tty,
     const struct iovec* iov,
     int iovcnt)
 {
@@ -118,7 +118,7 @@ static ssize_t _td_readv(
     if (!ttydev || !_valid_tty(tty))
         ERAISE(-EINVAL);
 
-    ret = libos_fdops_readv(&ttydev->fdops, tty, iov, iovcnt);
+    ret = myst_fdops_readv(&ttydev->fdops, tty, iov, iovcnt);
     ECHECK(ret);
 
 done:
@@ -127,8 +127,8 @@ done:
 }
 
 static ssize_t _td_writev(
-    libos_ttydev_t* ttydev,
-    libos_tty_t* tty,
+    myst_ttydev_t* ttydev,
+    myst_tty_t* tty,
     const struct iovec* iov,
     int iovcnt)
 {
@@ -137,7 +137,7 @@ static ssize_t _td_writev(
     if (!ttydev || !_valid_tty(tty))
         ERAISE(-EINVAL);
 
-    ret = libos_fdops_writev(&ttydev->fdops, tty, iov, iovcnt);
+    ret = myst_fdops_writev(&ttydev->fdops, tty, iov, iovcnt);
     ECHECK(ret);
 
 done:
@@ -146,8 +146,8 @@ done:
 }
 
 static int _td_fstat(
-    libos_ttydev_t* ttydev,
-    libos_tty_t* tty,
+    myst_ttydev_t* ttydev,
+    myst_tty_t* tty,
     struct stat* statbuf)
 {
     int ret = 0;
@@ -163,8 +163,8 @@ static int _td_fstat(
     if (tty->fd != STDIN_FILENO)
         buf.st_mode |= S_IWUSR;
     buf.st_nlink = 1;
-    buf.st_uid = LIBOS_DEFAULT_UID;
-    buf.st_gid = LIBOS_DEFAULT_GID;
+    buf.st_uid = MYST_DEFAULT_UID;
+    buf.st_gid = MYST_DEFAULT_GID;
     buf.st_rdev = 0;
     buf.st_size = 0;
     buf.st_blksize = 1024;
@@ -180,8 +180,8 @@ done:
 }
 
 static int _td_fcntl(
-    libos_ttydev_t* ttydev,
-    libos_tty_t* tty,
+    myst_ttydev_t* ttydev,
+    myst_tty_t* tty,
     int cmd,
     long arg)
 {
@@ -216,8 +216,8 @@ done:
 }
 
 static int _td_ioctl(
-    libos_ttydev_t* ttydev,
-    libos_tty_t* tty,
+    myst_ttydev_t* ttydev,
+    myst_tty_t* tty,
     unsigned long request,
     long arg)
 {
@@ -259,12 +259,12 @@ done:
 }
 
 static int _td_dup(
-    libos_ttydev_t* ttydev,
-    const libos_tty_t* tty,
-    libos_tty_t** tty_out)
+    myst_ttydev_t* ttydev,
+    const myst_tty_t* tty,
+    myst_tty_t** tty_out)
 {
     int ret = 0;
-    libos_tty_t* new_tty = NULL;
+    myst_tty_t* new_tty = NULL;
 
     if (tty_out)
         *tty_out = NULL;
@@ -272,7 +272,7 @@ static int _td_dup(
     if (!ttydev || !_valid_tty(tty) || !tty_out)
         ERAISE(-EINVAL);
 
-    if (!(new_tty = calloc(1, sizeof(libos_tty_t))))
+    if (!(new_tty = calloc(1, sizeof(myst_tty_t))))
         ERAISE(-ENOMEM);
 
     *new_tty = *tty;
@@ -292,14 +292,14 @@ done:
     return ret;
 }
 
-static int _td_close(libos_ttydev_t* ttydev, libos_tty_t* tty)
+static int _td_close(myst_ttydev_t* ttydev, myst_tty_t* tty)
 {
     int ret = 0;
 
     if (!ttydev || !_valid_tty(tty))
         ERAISE(-EBADF);
 
-    memset(tty, 0, sizeof(libos_tty_t));
+    memset(tty, 0, sizeof(myst_tty_t));
     free(tty);
 
 done:
@@ -307,7 +307,7 @@ done:
     return ret;
 }
 
-static int _td_target_fd(libos_ttydev_t* ttydev, libos_tty_t* tty)
+static int _td_target_fd(myst_ttydev_t* ttydev, myst_tty_t* tty)
 {
     int ret = 0;
 
@@ -320,7 +320,7 @@ done:
     return ret;
 }
 
-static int _td_get_events(libos_ttydev_t* ttydev, libos_tty_t* tty)
+static int _td_get_events(myst_ttydev_t* ttydev, myst_tty_t* tty)
 {
     int ret = 0;
 
@@ -333,10 +333,10 @@ done:
     return ret;
 }
 
-extern libos_ttydev_t* libos_ttydev_get(void)
+extern myst_ttydev_t* myst_ttydev_get(void)
 {
     // clang-format-off
-    static libos_ttydev_t _ttydev = {
+    static myst_ttydev_t _ttydev = {
         {
             .fd_read = (void*)_td_read,
             .fd_write = (void*)_td_write,

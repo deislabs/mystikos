@@ -1,11 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include <libos/thread.h>
+#include <myst/thread.h>
 
-extern libos_run_thread_t __libos_run_thread;
+extern myst_run_thread_t __myst_run_thread;
 
-long libos_run_thread(uint64_t cookie, uint64_t event)
+long myst_run_thread(uint64_t cookie, uint64_t event)
 {
-    return (*__libos_run_thread)(cookie, event);
+    return (*__myst_run_thread)(cookie, event);
 }

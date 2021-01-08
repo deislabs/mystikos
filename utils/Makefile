@@ -3,7 +3,7 @@ include $(TOP)/defs.mak
 
 SUBLIBDIR=$(LIBDIR)
 
-ARCHIVE = libosutils.a
+ARCHIVE = libmystutils.a
 
 SOURCES = $(wildcard *.c)
 
@@ -20,7 +20,7 @@ CFLAGS += -Wno-parentheses
 
 LDFLAGS = $(DEFAULT_LDFLAGS)
 
-ifdef LIBOS_ENABLE_GCOV
+ifdef MYST_ENABLE_GCOV
 CFLAGS += $(GCOV_CFLAGS)
 endif
 

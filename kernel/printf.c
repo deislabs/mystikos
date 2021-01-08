@@ -4,14 +4,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <libos/crash.h>
-#include <libos/eraise.h>
-#include <libos/panic.h>
-#include <libos/printf.h>
-#include <libos/strings.h>
-#include <libos/tcall.h>
+#include <myst/crash.h>
+#include <myst/eraise.h>
+#include <myst/panic.h>
+#include <myst/printf.h>
+#include <myst/strings.h>
+#include <myst/tcall.h>
 
-int libos_console_printf(int fd, const char* format, ...)
+int myst_console_printf(int fd, const char* format, ...)
 {
     char buf[1024];
     va_list ap;
@@ -24,10 +24,10 @@ int libos_console_printf(int fd, const char* format, ...)
     if (count < 0 || (size_t)count >= sizeof(buf))
         return -EINVAL;
 
-    return (int)libos_tcall_write_console(fd, buf, (size_t)count);
+    return (int)myst_tcall_write_console(fd, buf, (size_t)count);
 }
 
-int libos_console_vprintf(int fd, const char* format, va_list ap)
+int myst_console_vprintf(int fd, const char* format, va_list ap)
 {
     char buf[1024];
     int count;
@@ -37,19 +37,19 @@ int libos_console_vprintf(int fd, const char* format, va_list ap)
     if (count < 0 || (size_t)count >= sizeof(buf))
         return -EINVAL;
 
-    return (int)libos_tcall_write_console(fd, buf, (size_t)count);
+    return (int)myst_tcall_write_console(fd, buf, (size_t)count);
 }
 
-int libos_veprintf(const char* format, va_list ap)
+int myst_veprintf(const char* format, va_list ap)
 {
-    return libos_console_vprintf(STDERR_FILENO, format, ap);
+    return myst_console_vprintf(STDERR_FILENO, format, ap);
 }
 
-int libos_eprintf(const char* format, ...)
+int myst_eprintf(const char* format, ...)
 {
     va_list ap;
     va_start(ap, format);
-    int n = libos_console_vprintf(STDERR_FILENO, format, ap);
+    int n = myst_console_vprintf(STDERR_FILENO, format, ap);
     va_end(ap);
 
     return n;

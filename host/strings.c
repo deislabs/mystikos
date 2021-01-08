@@ -1,17 +1,17 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include <libos/strings.h>
+#include <myst/strings.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 
-char* libos_strdup(const char* s)
+char* myst_strdup(const char* s)
 {
     return strdup(s);
 }
 
-int libos_eprintf(const char* format, ...)
+int myst_eprintf(const char* format, ...)
 {
     va_list ap;
     va_start(ap, format);
@@ -21,7 +21,7 @@ int libos_eprintf(const char* format, ...)
     return n;
 }
 
-int libos_printf(const char* format, ...)
+int myst_printf(const char* format, ...)
 {
     va_list ap;
     va_start(ap, format);

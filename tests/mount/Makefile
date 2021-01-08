@@ -11,7 +11,7 @@ CFLAGS = -Wall -fPIC -g $(GCOV_CFLAGS)
 
 LDFLAGS = $(GCOV_LDFLAGS)
 
-ifdef LIBOS_ENABLE_GCOV
+ifdef MYST_ENABLE_GCOV
 LDFLAGS = -lgcov
 endif
 
@@ -27,8 +27,8 @@ tests:
 	rm -rf appdir
 	rm -rf rootfs
 	$(MKROOTFS) $(SUBBINDIR)/mount rootfs
-	$(LIBOS) excpio rootfs appdir
-	$(LIBOS) mkcpio datafs appdir/datafs
+	$(MYST) excpio rootfs appdir
+	$(MYST) mkcpio datafs appdir/datafs
 	mkdir -p appdir/mnt/datafs
-	$(LIBOS) mkcpio appdir rootfs
-	$(RUNTEST) $(LIBOS_EXEC) $(OPTS) rootfs /bin/mount
+	$(MYST) mkcpio appdir rootfs
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/mount

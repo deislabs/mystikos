@@ -8,32 +8,32 @@
 #include <string.h>
 #include <sys/wait.h>
 
-#include <libos/assume.h>
-#include <libos/atexit.h>
-#include <libos/atomic.h>
-#include <libos/cond.h>
-#include <libos/eraise.h>
-#include <libos/fdtable.h>
-#include <libos/fsgs.h>
-#include <libos/futex.h>
-#include <libos/kernel.h>
-#include <libos/lfence.h>
-#include <libos/mmanutils.h>
-#include <libos/options.h>
-#include <libos/panic.h>
-#include <libos/printf.h>
-#include <libos/setjmp.h>
-#include <libos/signal.h>
-#include <libos/spinlock.h>
-#include <libos/strings.h>
-#include <libos/syscall.h>
-#include <libos/tcall.h>
-#include <libos/thread.h>
-#include <libos/time.h>
-#include <libos/times.h>
-#include <libos/trace.h>
+#include <myst/assume.h>
+#include <myst/atexit.h>
+#include <myst/atomic.h>
+#include <myst/cond.h>
+#include <myst/eraise.h>
+#include <myst/fdtable.h>
+#include <myst/fsgs.h>
+#include <myst/futex.h>
+#include <myst/kernel.h>
+#include <myst/lfence.h>
+#include <myst/mmanutils.h>
+#include <myst/options.h>
+#include <myst/panic.h>
+#include <myst/printf.h>
+#include <myst/setjmp.h>
+#include <myst/signal.h>
+#include <myst/spinlock.h>
+#include <myst/strings.h>
+#include <myst/syscall.h>
+#include <myst/tcall.h>
+#include <myst/thread.h>
+#include <myst/time.h>
+#include <myst/times.h>
+#include <myst/trace.h>
 
-libos_thread_t* __libos_main_thread;
+myst_thread_t* __myst_main_thread;
 
 /* The total number of threads running (including the main thread) */
 static _Atomic(size_t) _num_threads = 1;
@@ -51,20 +51,20 @@ static _Atomic(size_t) _num_threads = 1;
 
 #define MIN_TID 100
 
-pid_t libos_generate_tid(void)
+pid_t myst_generate_tid(void)
 {
     static pid_t _tid = MIN_TID;
-    static libos_spinlock_t _lock = LIBOS_SPINLOCK_INITIALIZER;
+    static myst_spinlock_t _lock = MYST_SPINLOCK_INITIALIZER;
     pid_t tid;
 
-    libos_spin_lock(&_lock);
+    myst_spin_lock(&_lock);
     {
         if (_tid < MIN_TID)
             _tid = MIN_TID;
 
         tid = _tid++;
     }
-    libos_spin_unlock(&_lock);
+    myst_spin_unlock(&_lock);
 
     return tid;
 }
@@ -75,9 +75,9 @@ pid_t libos_generate_tid(void)
 ** cookie map:
 **
 **     This structure maps cookies to threads. When a thread is created, the
-**     kernel passes a cookie to the target (libos_tcall_create_thread).
+**     kernel passes a cookie to the target (myst_tcall_create_thread).
 **     The host creates a new thread and then calls back into the kernel on
-**     that thread (libos_run_thread). Rather than passing a thread pointer
+**     that thread (myst_run_thread). Rather than passing a thread pointer
 **     directly to the target, we pass a cookie instead. A mapping only exists
 **     while a new thread is being created and deleted from the map immediately
 **     after the thread enters the kernel. The map provides functions for
@@ -100,17 +100,17 @@ pid_t libos_generate_tid(void)
 typedef struct cookie_map_entry
 {
     uint64_t cookie;
-    libos_thread_t* thread;
+    myst_thread_t* thread;
     size_t next1; /* one-based next pointer */
 } cookie_map_entry_t;
 
 static cookie_map_entry_t _cookie_map[MAX_COOKIE_MAP_ENTRIES];
 static size_t _cookie_map_next;  /* next available entry */
 static size_t _cookie_map_free1; /* free list of cookie entries (one-based) */
-static libos_spinlock_t _cookie_map_lock;
+static myst_spinlock_t _cookie_map_lock;
 
 /* assign a cookie for the given thread pointer and return the cookie */
-static uint64_t _get_cookie(libos_thread_t* thread)
+static uint64_t _get_cookie(myst_thread_t* thread)
 {
     uint32_t rand;
     uint64_t cookie;
@@ -118,12 +118,12 @@ static uint64_t _get_cookie(libos_thread_t* thread)
     /* generate a random number (any value is fine except zero) */
     do
     {
-        if (libos_syscall_getrandom(&rand, sizeof(rand), 0) != sizeof(rand))
-            libos_panic("getrandom failed");
+        if (myst_syscall_getrandom(&rand, sizeof(rand), 0) != sizeof(rand))
+            myst_panic("getrandom failed");
     } while (rand == 0);
 
     /* add a new entry to the cookie map */
-    libos_spin_lock(&_cookie_map_lock);
+    myst_spin_lock(&_cookie_map_lock);
     {
         uint32_t index;
 
@@ -141,7 +141,7 @@ static uint64_t _get_cookie(libos_thread_t* thread)
         }
         else
         {
-            libos_panic("cookie map exhausted");
+            myst_panic("cookie map exhausted");
         }
 
         cookie = ((uint64_t)index << 32) | (uint64_t)rand;
@@ -150,32 +150,32 @@ static uint64_t _get_cookie(libos_thread_t* thread)
         _cookie_map[index].thread = thread;
         _cookie_map[index].next1 = 0;
     }
-    libos_spin_unlock(&_cookie_map_lock);
+    myst_spin_unlock(&_cookie_map_lock);
 
     return cookie;
 }
 
 /* fetch the cookie form the cookie map, while deleting the entry */
-static libos_thread_t* _put_cookie(uint64_t cookie)
+static myst_thread_t* _put_cookie(uint64_t cookie)
 {
     uint32_t index;
-    libos_thread_t* thread = NULL;
+    myst_thread_t* thread = NULL;
 
     if (cookie == 0)
-        libos_panic("zero-valued cookie");
+        myst_panic("zero-valued cookie");
 
-    libos_lfence();
+    myst_lfence();
 
     /* extract the index from the cookie */
     index = (uint32_t)((cookie & 0xffffffff00000000) >> 32);
 
-    libos_spin_lock(&_cookie_map_lock);
+    myst_spin_lock(&_cookie_map_lock);
     {
         if (index >= _cookie_map_next)
-            libos_panic("bad cookie index");
+            myst_panic("bad cookie index");
 
         if (_cookie_map[index].cookie != cookie)
-            libos_panic("cookie mismatch");
+            myst_panic("cookie mismatch");
 
         thread = _cookie_map[index].thread;
 
@@ -187,7 +187,7 @@ static libos_thread_t* _put_cookie(uint64_t cookie)
         _cookie_map[index].next1 = _cookie_map_free1;
         _cookie_map_free1 = index + 1;
     }
-    libos_spin_unlock(&_cookie_map_lock);
+    myst_spin_unlock(&_cookie_map_lock);
 
     return thread;
 }
@@ -204,19 +204,19 @@ static libos_thread_t* _put_cookie(uint64_t cookie)
 **==============================================================================
 */
 
-static libos_thread_t* _zombies;
-static libos_mutex_t _zombies_mutex;
-static libos_cond_t _zombies_cond;
+static myst_thread_t* _zombies;
+static myst_mutex_t _zombies_mutex;
+static myst_cond_t _zombies_cond;
 
 static void _free_zombies(void* arg)
 {
     (void)arg;
 
-    for (libos_thread_t* p = _zombies; p;)
+    for (myst_thread_t* p = _zombies; p;)
     {
-        libos_thread_t* next = p->next;
+        myst_thread_t* next = p->next;
 
-        memset(p, 0xdd, sizeof(libos_thread_t));
+        memset(p, 0xdd, sizeof(myst_thread_t));
         free(p);
 
         p = next;
@@ -225,30 +225,30 @@ static void _free_zombies(void* arg)
     _zombies = NULL;
 }
 
-void libos_zombify_thread(libos_thread_t* thread)
+void myst_zombify_thread(myst_thread_t* thread)
 {
-    libos_mutex_lock(&_zombies_mutex);
+    myst_mutex_lock(&_zombies_mutex);
     {
         static bool _initialized;
 
         if (!_initialized)
         {
-            libos_atexit(_free_zombies, NULL);
+            myst_atexit(_free_zombies, NULL);
             _initialized = true;
         }
 
         thread->next = _zombies;
         _zombies = thread;
 
-        thread->status = LIBOS_ZOMBIE;
+        thread->status = MYST_ZOMBIE;
 
         /* signal waiting threads */
-        libos_cond_signal(&_zombies_cond);
+        myst_cond_signal(&_zombies_cond);
     }
-    libos_mutex_unlock(&_zombies_mutex);
+    myst_mutex_unlock(&_zombies_mutex);
 }
 
-long libos_syscall_wait4(
+long myst_syscall_wait4(
     pid_t pid,
     int* wstatus,
     int options,
@@ -267,17 +267,17 @@ long libos_syscall_wait4(
     if (pid == 0 || pid < -1)
         ERAISE(-ENOTSUP);
 
-    libos_mutex_lock(&_zombies_mutex);
+    myst_mutex_lock(&_zombies_mutex);
     locked = true;
 
     for (;;)
     {
         /* search the zombie list for a process thread */
-        for (libos_thread_t* p = _zombies; p; p = p->next)
+        for (myst_thread_t* p = _zombies; p; p = p->next)
         {
             bool match = false;
 
-            if (!libos_is_process_thread(p))
+            if (!myst_is_process_thread(p))
                 continue;
 
             if (pid > 0) /* wait for a specific child process */
@@ -305,23 +305,23 @@ long libos_syscall_wait4(
             goto done;
         }
 
-        /* wait for signal from libos_zombify_thread() */
-        libos_cond_wait(&_zombies_cond, &_zombies_mutex);
+        /* wait for signal from myst_zombify_thread() */
+        myst_cond_wait(&_zombies_cond, &_zombies_mutex);
     }
 
 done:
 
     if (locked)
-        libos_mutex_unlock(&_zombies_mutex);
+        myst_mutex_unlock(&_zombies_mutex);
 
     return ret;
 }
 
-libos_thread_t* libos_find_thread(int tid)
+myst_thread_t* myst_find_thread(int tid)
 {
-    libos_thread_t* thread = libos_thread_self();
-    libos_thread_t* target = NULL;
-    libos_thread_t* t = NULL;
+    myst_thread_t* thread = myst_thread_self();
+    myst_thread_t* target = NULL;
+    myst_thread_t* t = NULL;
 
     // Search forward in the doubly linked list for a match
     for (t = thread; t != NULL; t = t->group_next)
@@ -357,18 +357,18 @@ libos_thread_t* libos_find_thread(int tid)
 **==============================================================================
 */
 
-bool libos_valid_td(const void* td)
+bool myst_valid_td(const void* td)
 {
-    return td && ((const libos_td_t*)td)->self == td;
+    return td && ((const myst_td_t*)td)->self == td;
 }
 
-libos_thread_t* libos_thread_self(void)
+myst_thread_t* myst_thread_self(void)
 {
     uint64_t value;
-    libos_assume(libos_tcall_get_tsd(&value) == 0);
+    myst_assume(myst_tcall_get_tsd(&value) == 0);
 
-    libos_thread_t* thread = (libos_thread_t*)value;
-    libos_assume(libos_valid_thread(thread));
+    myst_thread_t* thread = (myst_thread_t*)value;
+    myst_assume(myst_valid_thread(thread));
 
     return thread;
 }
@@ -376,81 +376,81 @@ libos_thread_t* libos_thread_self(void)
 /* Force the caller stack to be aligned */
 __attribute__((force_align_arg_pointer)) static void _call_thread_fn(void)
 {
-    libos_thread_t* thread = libos_thread_self();
+    myst_thread_t* thread = myst_thread_self();
     thread->clone.fn(thread->clone.arg);
 }
 
 /* The target calls this from the new thread */
-long libos_run_thread(uint64_t cookie, uint64_t event)
+long myst_run_thread(uint64_t cookie, uint64_t event)
 {
-    libos_thread_t* thread = (libos_thread_t*)_put_cookie(cookie);
-    libos_td_t* target_td = libos_get_fsbase();
-    libos_td_t* crt_td = NULL;
+    myst_thread_t* thread = (myst_thread_t*)_put_cookie(cookie);
+    myst_td_t* target_td = myst_get_fsbase();
+    myst_td_t* crt_td = NULL;
     bool is_child_thread;
 
-    assert(libos_valid_td(target_td));
+    assert(myst_valid_td(target_td));
 
     if (__options.have_syscall_instruction)
-        libos_set_gsbase(target_td);
+        myst_set_gsbase(target_td);
 
-    libos_assume(libos_valid_thread(thread));
+    myst_assume(myst_valid_thread(thread));
 
     is_child_thread = thread->crt_td ? true : false;
 
     if (is_child_thread)
     {
         crt_td = thread->crt_td;
-        libos_assume(libos_valid_td(crt_td));
+        myst_assume(myst_valid_td(crt_td));
 
         /* propagate the canary */
         crt_td->canary = target_td->canary;
 
         /* generate a thread id for this new thread */
-        thread->tid = libos_generate_tid();
+        thread->tid = myst_generate_tid();
     }
 
     /* set the target into the thread */
     thread->target_td = target_td;
 
     /* save the host thread event */
-    libos_assume(event != 0);
+    myst_assume(event != 0);
     thread->event = event;
 
     /* bind this thread to the target thread-descriptor */
-    libos_assume(libos_tcall_set_tsd((uint64_t)thread) == 0);
+    myst_assume(myst_tcall_set_tsd((uint64_t)thread) == 0);
 
     /* bind thread to the C-runtime thread-descriptor */
     if (is_child_thread)
     {
         /* Set the TID for this thread (sets the tid field) */
         {
-            libos_atomic_exchange(thread->clone.ptid, thread->tid);
+            myst_atomic_exchange(thread->clone.ptid, thread->tid);
             const int futex_op = FUTEX_WAKE | FUTEX_PRIVATE;
-            libos_syscall_futex(thread->clone.ptid, futex_op, 1, 0, NULL, 0);
+            myst_syscall_futex(thread->clone.ptid, futex_op, 1, 0, NULL, 0);
         }
 
         /* Start time tracking for this thread */
-        libos_times_start();
+        myst_times_start();
     }
 
     /* Jump back here from exit */
-    if (libos_setjmp(&thread->jmpbuf) != 0)
+    if (myst_setjmp(&thread->jmpbuf) != 0)
     {
         /* ---------- running C-runtime thread descriptor ---------- */
 
-        assert(libos_gettid() != -1);
+        assert(myst_gettid() != -1);
 
         /* restore the target thread descriptor */
-        libos_set_fsbase(thread->target_td);
+        myst_set_fsbase(thread->target_td);
 
         /* ---------- running target thread descriptor ---------- */
 
         /* Wake up any thread waiting on ctid */
         if (is_child_thread)
         {
-            libos_atomic_exchange(thread->clone.ctid, 0);
+            myst_atomic_exchange(thread->clone.ctid, 0);
             const int futex_op = FUTEX_WAKE | FUTEX_PRIVATE;
-            libos_syscall_futex(thread->clone.ctid, futex_op, 1, 0, NULL, 0);
+            myst_syscall_futex(thread->clone.ctid, futex_op, 1, 0, NULL, 0);
         }
 
         /* Release memory objects owned by the main/process thread */
@@ -458,11 +458,11 @@ long libos_run_thread(uint64_t cookie, uint64_t event)
         {
             if (thread->fdtable)
             {
-                libos_fdtable_free(thread->fdtable);
+                myst_fdtable_free(thread->fdtable);
                 thread->fdtable = NULL;
             }
 
-            libos_signal_free(thread);
+            myst_signal_free(thread);
 
             if (thread->main.exec_stack)
             {
@@ -472,17 +472,17 @@ long libos_run_thread(uint64_t cookie, uint64_t event)
 
             if (thread->main.exec_crt_data)
             {
-                libos_munmap(
+                myst_munmap(
                     thread->main.exec_crt_data, thread->main.exec_crt_size);
                 thread->main.exec_crt_data = NULL;
                 thread->main.exec_crt_size = 0;
             }
         }
 
-        libos_zombify_thread(thread);
+        myst_zombify_thread(thread);
 
         {
-            libos_assume(_num_threads > 1);
+            myst_assume(_num_threads > 1);
             _num_threads--;
         }
 
@@ -494,18 +494,18 @@ long libos_run_thread(uint64_t cookie, uint64_t event)
 
         /* set the fsbase to C-runtime */
         if (is_child_thread)
-            libos_set_fsbase(crt_td);
+            myst_set_fsbase(crt_td);
 
         /* ---------- running C-runtime thread descriptor ---------- */
 
         if (is_child_thread)
         {
             /* use the stack provided by clone() */
-            libos_jmp_buf_t env = thread->jmpbuf;
+            myst_jmp_buf_t env = thread->jmpbuf;
             env.rip = (uint64_t)_call_thread_fn;
             env.rsp = (uint64_t)thread->clone.child_stack;
             env.rbp = (uint64_t)thread->clone.child_stack;
-            libos_jump(&env);
+            myst_jump(&env);
         }
         else
         {
@@ -530,19 +530,19 @@ static long _syscall_clone(
 {
     long ret = 0;
     uint64_t cookie = 0;
-    libos_thread_t* parent = libos_thread_self();
-    libos_thread_t* child;
+    myst_thread_t* parent = myst_thread_self();
+    myst_thread_t* child;
 
     if (!fn)
         ERAISE(-EINVAL);
 
-    if (!libos_valid_td(newtls))
+    if (!myst_valid_td(newtls))
         ERAISE(-EINVAL);
 
     /* Check whether the maximum number of threads has been reached */
     {
         /* if too many threads already running */
-        if (_num_threads == __libos_kernel_args.max_threads)
+        if (_num_threads == __myst_kernel_args.max_threads)
             ERAISE(-EAGAIN);
 
         _num_threads++;
@@ -550,20 +550,20 @@ static long _syscall_clone(
 
     /* Create and initialize the child thread struct */
     {
-        if (!(child = calloc(1, sizeof(libos_thread_t))))
+        if (!(child = calloc(1, sizeof(myst_thread_t))))
             ERAISE(-ENOMEM);
 
-        child->magic = LIBOS_THREAD_MAGIC;
+        child->magic = MYST_THREAD_MAGIC;
         child->fdtable = parent->fdtable;
         child->sid = parent->sid;
         child->ppid = parent->ppid;
         child->pid = parent->pid;
         child->crt_td = newtls;
-        child->run_thread = libos_run_thread;
+        child->run_thread = myst_run_thread;
 
         // Link up parent, child, and the previous head child of the parent,
         // if there is one, in the same thread group.
-        libos_thread_t* prev_head_child = parent->group_next;
+        myst_thread_t* prev_head_child = parent->group_next;
         parent->group_next = child;
         child->group_prev = parent;
         if (prev_head_child)
@@ -587,7 +587,7 @@ static long _syscall_clone(
 
     cookie = _get_cookie(child);
 
-    if (libos_tcall_create_thread(cookie) != 0)
+    if (myst_tcall_create_thread(cookie) != 0)
         ERAISE(-EINVAL);
 
 done:
@@ -603,8 +603,8 @@ static long _syscall_clone_vfork(
 {
     long ret = 0;
     uint64_t cookie = 0;
-    libos_thread_t* parent = libos_thread_self();
-    libos_thread_t* child;
+    myst_thread_t* parent = myst_thread_self();
+    myst_thread_t* child;
 
     if (!fn)
         ERAISE(-EINVAL);
@@ -612,7 +612,7 @@ static long _syscall_clone_vfork(
     /* Check whether the maximum number of threads has been reached */
     {
         /* if too many threads already running */
-        if (_num_threads == __libos_kernel_args.max_threads)
+        if (_num_threads == __myst_kernel_args.max_threads)
             ERAISE(-EAGAIN);
 
         _num_threads++;
@@ -620,21 +620,21 @@ static long _syscall_clone_vfork(
 
     /* Create and initialize the thread struct */
     {
-        if (!(child = calloc(1, sizeof(libos_thread_t))))
+        if (!(child = calloc(1, sizeof(myst_thread_t))))
             ERAISE(-ENOMEM);
 
-        child->magic = LIBOS_THREAD_MAGIC;
+        child->magic = MYST_THREAD_MAGIC;
         child->fdtable = parent->fdtable;
         child->sid = parent->sid;
         child->ppid = parent->ppid;
-        child->pid = libos_generate_tid();
+        child->pid = myst_generate_tid();
         child->tid = child->pid;
-        child->run_thread = libos_run_thread;
+        child->run_thread = myst_run_thread;
 
-        if (libos_fdtable_clone(parent->fdtable, &child->fdtable) != 0)
+        if (myst_fdtable_clone(parent->fdtable, &child->fdtable) != 0)
             ERAISE(-ENOMEM);
 
-        if (libos_signal_clone(parent, child) != 0)
+        if (myst_signal_clone(parent, child) != 0)
             ERAISE(-ENOMEM);
 
         /* save the clone() arguments */
@@ -646,7 +646,7 @@ static long _syscall_clone_vfork(
 
     cookie = _get_cookie(child);
 
-    if (libos_tcall_create_thread(cookie) != 0)
+    if (myst_tcall_create_thread(cookie) != 0)
         ERAISE(-EINVAL);
 
     ret = child->pid;
@@ -655,7 +655,7 @@ done:
     return ret;
 }
 
-long libos_syscall_clone(
+long myst_syscall_clone(
     int (*fn)(void*),
     void* child_stack,
     int flags,
@@ -670,12 +670,12 @@ long libos_syscall_clone(
         return _syscall_clone(fn, child_stack, flags, arg, ptid, newtls, ctid);
 }
 
-pid_t libos_gettid(void)
+pid_t myst_gettid(void)
 {
-    return libos_thread_self()->tid;
+    return myst_thread_self()->tid;
 }
 
-int libos_get_num_threads(void)
+int myst_get_num_threads(void)
 {
     return _num_threads;
 }
@@ -683,11 +683,11 @@ int libos_get_num_threads(void)
 // Send kill signal to each thread in the group, and use the best effort to
 // ensure they are stopped.
 // Return: the number of still running child threads.
-size_t libos_kill_thread_group()
+size_t myst_kill_thread_group()
 {
-    libos_thread_t* thread = libos_thread_self();
-    libos_thread_t* t = NULL;
-    libos_thread_t* tail = NULL;
+    myst_thread_t* thread = myst_thread_self();
+    myst_thread_t* t = NULL;
+    myst_thread_t* tail = NULL;
     size_t count = 0;
 
     // Find the tail of the doubly linked list.
@@ -701,13 +701,13 @@ size_t libos_kill_thread_group()
     // Send termination signal to all running child threads.
     for (t = tail; t != NULL; t = t->group_prev)
     {
-        if (!libos_is_process_thread(t) && t->status == LIBOS_RUNNING)
+        if (!myst_is_process_thread(t) && t->status == MYST_RUNNING)
         {
             count++;
-            libos_signal_deliver(t, SIGKILL, 0);
+            myst_signal_deliver(t, SIGKILL, 0);
             // Wake up the thread from futex_wait if necessary.
             if (t->signal.cond_wait)
-                libos_cond_signal(t->signal.cond_wait);
+                myst_cond_signal(t->signal.cond_wait);
         }
     }
 
@@ -717,13 +717,13 @@ size_t libos_kill_thread_group()
     {
         for (t = tail; t != NULL; t = t->group_prev)
         {
-            if (t->status != LIBOS_KILLED && t->status != LIBOS_ZOMBIE)
+            if (t->status != MYST_KILLED && t->status != MYST_ZOMBIE)
                 break;
         }
         if (t == NULL)
             break;
 
-        libos_sleep_msec(1);
+        myst_sleep_msec(1);
     }
 
     return count;

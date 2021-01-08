@@ -4,15 +4,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <libos/args.h>
-#include <libos/buf.h>
-#include <libos/bufu64.h>
+#include <myst/args.h>
+#include <myst/buf.h>
+#include <myst/bufu64.h>
 
 #define CAP 16
 
-LIBOS_INLINE libos_bufu64_t _to_buf(const libos_args_t* args)
+MYST_INLINE myst_bufu64_t _to_buf(const myst_args_t* args)
 {
-    libos_bufu64_t ret;
+    myst_bufu64_t ret;
 
     ret.data = (uint64_t*)args->data;
     ret.size = args->size + 1;
@@ -21,9 +21,9 @@ LIBOS_INLINE libos_bufu64_t _to_buf(const libos_args_t* args)
     return ret;
 }
 
-LIBOS_INLINE libos_args_t _to_args(const libos_bufu64_t* buf)
+MYST_INLINE myst_args_t _to_args(const myst_bufu64_t* buf)
 {
-    libos_args_t ret;
+    myst_args_t ret;
 
     ret.data = (const char**)buf->data;
     ret.size = buf->size - 1;
@@ -32,7 +32,7 @@ LIBOS_INLINE libos_args_t _to_args(const libos_bufu64_t* buf)
     return ret;
 }
 
-int libos_args_init(libos_args_t* self)
+int myst_args_init(myst_args_t* self)
 {
     if (!self)
         return -1;
@@ -47,7 +47,7 @@ int libos_args_init(libos_args_t* self)
     return 0;
 }
 
-int libos_args_adopt(libos_args_t* self, const char** data, size_t size)
+int myst_args_adopt(myst_args_t* self, const char** data, size_t size)
 {
     if (!self || !data)
         return -1;
@@ -70,31 +70,31 @@ int libos_args_adopt(libos_args_t* self, const char** data, size_t size)
     return 0;
 }
 
-void libos_args_release(libos_args_t* self)
+void myst_args_release(myst_args_t* self)
 {
     if (self && self->data)
         free(self->data);
 }
 
-int libos_args_reserve(libos_args_t* self, size_t cap)
+int myst_args_reserve(myst_args_t* self, size_t cap)
 {
-    libos_bufu64_t buf = _to_buf(self);
+    myst_bufu64_t buf = _to_buf(self);
 
     if (!self)
         return -1;
 
     cap++;
 
-    if (libos_bufu64_reserve(&buf, cap) != 0)
+    if (myst_bufu64_reserve(&buf, cap) != 0)
         return -1;
 
     *self = _to_args(&buf);
     return 0;
 }
 
-int libos_args_append(libos_args_t* self, const char** data, size_t size)
+int myst_args_append(myst_args_t* self, const char** data, size_t size)
 {
-    libos_bufu64_t buf = _to_buf(self);
+    myst_bufu64_t buf = _to_buf(self);
 
     if (!self || (!data && size))
         return -1;
@@ -103,31 +103,31 @@ int libos_args_append(libos_args_t* self, const char** data, size_t size)
         return 0;
 
     /* insert right before the null terminator */
-    if (libos_bufu64_insert(&buf, self->size, (const uint64_t*)data, size) != 0)
+    if (myst_bufu64_insert(&buf, self->size, (const uint64_t*)data, size) != 0)
         return -1;
 
     *self = _to_args(&buf);
     return 0;
 }
 
-int libos_args_append1(libos_args_t* self, const char* data)
+int myst_args_append1(myst_args_t* self, const char* data)
 {
-    libos_bufu64_t buf = _to_buf(self);
+    myst_bufu64_t buf = _to_buf(self);
 
     if (!self || !data)
         return -1;
 
     /* insert right before the null terminator */
-    if (libos_bufu64_insert(&buf, self->size, (const uint64_t*)&data, 1) != 0)
+    if (myst_bufu64_insert(&buf, self->size, (const uint64_t*)&data, 1) != 0)
         return -1;
 
     *self = _to_args(&buf);
     return 0;
 }
 
-int libos_args_prepend(libos_args_t* self, const char** data, size_t size)
+int myst_args_prepend(myst_args_t* self, const char** data, size_t size)
 {
-    libos_bufu64_t buf = _to_buf(self);
+    myst_bufu64_t buf = _to_buf(self);
 
     if (!self || !data)
         return -1;
@@ -136,35 +136,35 @@ int libos_args_prepend(libos_args_t* self, const char** data, size_t size)
         return 0;
 
     /* insert right before the null terminator */
-    if (libos_bufu64_insert(&buf, 0, (const uint64_t*)data, size) != 0)
+    if (myst_bufu64_insert(&buf, 0, (const uint64_t*)data, size) != 0)
         return -1;
 
     *self = _to_args(&buf);
     return 0;
 }
 
-int libos_args_prepend1(libos_args_t* self, const char* data)
+int myst_args_prepend1(myst_args_t* self, const char* data)
 {
-    libos_bufu64_t buf = _to_buf(self);
+    myst_bufu64_t buf = _to_buf(self);
 
     if (!self || !data)
         return -1;
 
     /* insert right before the null terminator */
-    if (libos_bufu64_insert(&buf, 0, (const uint64_t*)&data, 1) != 0)
+    if (myst_bufu64_insert(&buf, 0, (const uint64_t*)&data, 1) != 0)
         return -1;
 
     *self = _to_args(&buf);
     return 0;
 }
 
-int libos_args_insert(
-    libos_args_t* self,
+int myst_args_insert(
+    myst_args_t* self,
     size_t pos,
     const char** data,
     size_t size)
 {
-    libos_bufu64_t buf = _to_buf(self);
+    myst_bufu64_t buf = _to_buf(self);
 
     if (!self || !data || pos > size)
         return -1;
@@ -172,34 +172,34 @@ int libos_args_insert(
     if (size == 0)
         return 0;
 
-    if (libos_bufu64_insert(&buf, pos, (const uint64_t*)data, size) != 0)
+    if (myst_bufu64_insert(&buf, pos, (const uint64_t*)data, size) != 0)
         return -1;
 
     *self = _to_args(&buf);
     return 0;
 }
 
-int libos_args_remove(libos_args_t* self, size_t pos, size_t size)
+int myst_args_remove(myst_args_t* self, size_t pos, size_t size)
 {
-    libos_bufu64_t buf = _to_buf(self);
+    myst_bufu64_t buf = _to_buf(self);
 
     if (!self || pos + size > self->size)
         return -1;
 
-    if (libos_bufu64_remove(&buf, pos, size) != 0)
+    if (myst_bufu64_remove(&buf, pos, size) != 0)
         return -1;
 
     *self = _to_args(&buf);
     return 0;
 }
 
-int libos_args_pack(
-    const libos_args_t* self,
+int myst_args_pack(
+    const myst_args_t* self,
     void** packed_data,
     size_t* packed_size)
 {
     int ret = -1;
-    libos_buf_t buf = LIBOS_BUF_INITIALIZER;
+    myst_buf_t buf = MYST_BUF_INITIALIZER;
 
     if (!self || !packed_data || !packed_size)
         goto done;
@@ -207,7 +207,7 @@ int libos_args_pack(
     if (!self->data)
         goto done;
 
-    if (libos_buf_pack_strings(&buf, self->data, self->size) != 0)
+    if (myst_buf_pack_strings(&buf, self->data, self->size) != 0)
         goto done;
 
     *packed_data = buf.data;
@@ -219,12 +219,12 @@ done:
     return ret;
 }
 
-int libos_args_unpack(
-    libos_args_t* self,
+int myst_args_unpack(
+    myst_args_t* self,
     const void* packed_data,
     size_t packed_size)
 {
-    libos_buf_t buf;
+    myst_buf_t buf;
     buf.data = (uint8_t*)packed_data;
     buf.size = packed_size;
     buf.cap = packed_size;
@@ -235,7 +235,7 @@ int libos_args_unpack(
     if (!self || !packed_data || !packed_size)
         return 0;
 
-    if (libos_buf_unpack_strings(&buf, &data, &size) != 0)
+    if (myst_buf_unpack_strings(&buf, &data, &size) != 0)
         return -1;
 
     self->data = data;
@@ -245,12 +245,12 @@ int libos_args_unpack(
     return 0;
 }
 
-void libos_args_dump(libos_args_t* self)
+void myst_args_dump(myst_args_t* self)
 {
     if (!self)
         return;
 
-    printf("==== libos_args_dump()\n");
+    printf("==== myst_args_dump()\n");
 
     for (size_t i = 0; i < self->size; i++)
     {

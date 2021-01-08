@@ -10,13 +10,13 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
-#include <libos/cond.h>
-#include <libos/defs.h>
-#include <libos/eraise.h>
-#include <libos/id.h>
-#include <libos/panic.h>
-#include <libos/pipedev.h>
-#include <libos/round.h>
+#include <myst/cond.h>
+#include <myst/defs.h>
+#include <myst/eraise.h>
+#include <myst/id.h>
+#include <myst/panic.h>
+#include <myst/pipedev.h>
+#include <myst/round.h>
 
 #define MAGIC 0x9906acdc
 
@@ -24,8 +24,8 @@
 
 typedef struct pipe_impl
 {
-    libos_cond_t cond;
-    libos_mutex_t mutex;
+    myst_cond_t cond;
+    myst_mutex_t mutex;
     char* data; /* points to buf or heap-allocated memory */
     size_t pipesz;
     char buf[PIPE_BUF];
@@ -35,7 +35,7 @@ typedef struct pipe_impl
     size_t wrsize; /* set by write(), decremented by read() */
 } pipe_impl_t;
 
-struct libos_pipe
+struct myst_pipe
 {
     uint32_t magic;
     int mode;    /* O_RDONLY or O_WRONLY */
@@ -44,28 +44,28 @@ struct libos_pipe
     pipe_impl_t* impl;
 };
 
-LIBOS_INLINE bool _valid_pipe(const libos_pipe_t* pipe)
+MYST_INLINE bool _valid_pipe(const myst_pipe_t* pipe)
 {
     return pipe && pipe->magic == MAGIC && pipe->impl;
 }
 
-static void _lock(libos_pipe_t* pipe)
+static void _lock(myst_pipe_t* pipe)
 {
-    libos_assume(_valid_pipe(pipe));
-    libos_mutex_lock(&pipe->impl->mutex);
+    myst_assume(_valid_pipe(pipe));
+    myst_mutex_lock(&pipe->impl->mutex);
 }
 
-static void _unlock(libos_pipe_t* pipe)
+static void _unlock(myst_pipe_t* pipe)
 {
-    libos_assume(_valid_pipe(pipe));
-    libos_mutex_unlock(&pipe->impl->mutex);
+    myst_assume(_valid_pipe(pipe));
+    myst_mutex_unlock(&pipe->impl->mutex);
 }
 
-static int _pd_pipe2(libos_pipedev_t* pipedev, libos_pipe_t* pipe[2], int flags)
+static int _pd_pipe2(myst_pipedev_t* pipedev, myst_pipe_t* pipe[2], int flags)
 {
     int ret = 0;
-    libos_pipe_t* rdpipe = NULL;
-    libos_pipe_t* wrpipe = NULL;
+    myst_pipe_t* rdpipe = NULL;
+    myst_pipe_t* wrpipe = NULL;
     pipe_impl_t* impl = NULL;
 
     if (!pipedev || !pipe || (flags & ~(O_CLOEXEC | O_DIRECT | O_NONBLOCK)))
@@ -87,7 +87,7 @@ static int _pd_pipe2(libos_pipedev_t* pipedev, libos_pipe_t* pipe[2], int flags)
 
     /* Create the read pipe */
     {
-        if (!(rdpipe = calloc(1, sizeof(libos_pipe_t))))
+        if (!(rdpipe = calloc(1, sizeof(myst_pipe_t))))
             ERAISE(-ENOMEM);
 
         rdpipe->magic = MAGIC;
@@ -101,7 +101,7 @@ static int _pd_pipe2(libos_pipedev_t* pipedev, libos_pipe_t* pipe[2], int flags)
 
     /* Create the write pipe */
     {
-        if (!(wrpipe = calloc(1, sizeof(libos_pipe_t))))
+        if (!(wrpipe = calloc(1, sizeof(myst_pipe_t))))
             ERAISE(-ENOMEM);
 
         wrpipe->magic = MAGIC;
@@ -134,8 +134,8 @@ done:
 }
 
 static ssize_t _pd_read(
-    libos_pipedev_t* pipedev,
-    libos_pipe_t* pipe,
+    myst_pipedev_t* pipedev,
+    myst_pipe_t* pipe,
     void* buf,
     size_t count)
 {
@@ -208,7 +208,7 @@ static ssize_t _pd_read(
             }
 
             /* wait here for another thread to write */
-            if (libos_cond_wait(&p->cond, &p->mutex) != 0)
+            if (myst_cond_wait(&p->cond, &p->mutex) != 0)
             {
                 /* unexpected */
                 _unlock(pipe);
@@ -222,7 +222,7 @@ static ssize_t _pd_read(
             const size_t n = p->nbytes;
             memcpy(ptr, p->data, n);
             p->nbytes = 0;
-            libos_cond_signal(&p->cond);
+            myst_cond_signal(&p->cond);
             rem -= n;
             ptr += n;
             p->wrsize -= n;
@@ -234,7 +234,7 @@ static ssize_t _pd_read(
             memmove(p->data, p->data + n, p->nbytes - rem);
             p->nbytes -= n;
             p->wrsize -= n;
-            libos_cond_signal(&p->cond);
+            myst_cond_signal(&p->cond);
             break;
         }
     }
@@ -245,14 +245,14 @@ static ssize_t _pd_read(
 done:
 
     if (ret > 0)
-        libos_tcall_poll_wake();
+        myst_tcall_poll_wake();
 
     return ret;
 }
 
 static ssize_t _pd_write(
-    libos_pipedev_t* pipedev,
-    libos_pipe_t* pipe,
+    myst_pipedev_t* pipedev,
+    myst_pipe_t* pipe,
     const void* buf,
     size_t count)
 {
@@ -319,7 +319,7 @@ static ssize_t _pd_write(
             }
 
             /* wait here for another thread to read */
-            if (libos_cond_wait(&p->cond, &p->mutex) != 0)
+            if (myst_cond_wait(&p->cond, &p->mutex) != 0)
             {
                 /* unexpected */
                 _unlock(pipe);
@@ -336,7 +336,7 @@ static ssize_t _pd_write(
             const size_t n = nspace;
             memcpy(p->data + p->nbytes, ptr, n);
             p->nbytes += n;
-            libos_cond_signal(&p->cond);
+            myst_cond_signal(&p->cond);
             rem -= n;
             ptr += n;
         }
@@ -345,7 +345,7 @@ static ssize_t _pd_write(
             const size_t n = rem;
             memcpy(p->data + p->nbytes, ptr, n);
             p->nbytes += n;
-            libos_cond_signal(&p->cond);
+            myst_cond_signal(&p->cond);
             break;
         }
     }
@@ -356,14 +356,14 @@ static ssize_t _pd_write(
 done:
 
     if (ret > 0)
-        libos_tcall_poll_wake();
+        myst_tcall_poll_wake();
 
     return ret;
 }
 
 static ssize_t _pd_readv(
-    libos_pipedev_t* pipedev,
-    libos_pipe_t* pipe,
+    myst_pipedev_t* pipedev,
+    myst_pipe_t* pipe,
     const struct iovec* iov,
     int iovcnt)
 {
@@ -372,7 +372,7 @@ static ssize_t _pd_readv(
     if (!pipedev || !_valid_pipe(pipe))
         ERAISE(-EINVAL);
 
-    ret = libos_fdops_readv(&pipedev->fdops, pipe, iov, iovcnt);
+    ret = myst_fdops_readv(&pipedev->fdops, pipe, iov, iovcnt);
     ECHECK(ret);
 
 done:
@@ -381,8 +381,8 @@ done:
 }
 
 static ssize_t _pd_writev(
-    libos_pipedev_t* pipedev,
-    libos_pipe_t* pipe,
+    myst_pipedev_t* pipedev,
+    myst_pipe_t* pipe,
     const struct iovec* iov,
     int iovcnt)
 {
@@ -391,7 +391,7 @@ static ssize_t _pd_writev(
     if (!pipedev || !_valid_pipe(pipe))
         ERAISE(-EINVAL);
 
-    ret = libos_fdops_writev(&pipedev->fdops, pipe, iov, iovcnt);
+    ret = myst_fdops_writev(&pipedev->fdops, pipe, iov, iovcnt);
     ECHECK(ret);
 
 done:
@@ -400,8 +400,8 @@ done:
 }
 
 static int _pd_fstat(
-    libos_pipedev_t* pipedev,
-    libos_pipe_t* pipe,
+    myst_pipedev_t* pipedev,
+    myst_pipe_t* pipe,
     struct stat* statbuf)
 {
     int ret = 0;
@@ -415,8 +415,8 @@ static int _pd_fstat(
     buf.st_ino = (ino_t)pipe;
     buf.st_mode = S_IFIFO | O_EXCL | O_NOCTTY;
     buf.st_nlink = 1;
-    buf.st_uid = LIBOS_DEFAULT_UID;
-    buf.st_gid = LIBOS_DEFAULT_GID;
+    buf.st_uid = MYST_DEFAULT_UID;
+    buf.st_gid = MYST_DEFAULT_GID;
     buf.st_rdev = 0;
     buf.st_size = 0;
     buf.st_blksize = PIPE_BUF;
@@ -432,8 +432,8 @@ done:
 }
 
 static int _pd_fcntl(
-    libos_pipedev_t* pipedev,
-    libos_pipe_t* pipe,
+    myst_pipedev_t* pipedev,
+    myst_pipe_t* pipe,
     int cmd,
     long arg)
 {
@@ -471,7 +471,7 @@ static int _pd_fcntl(
             if (arg <= 0)
                 arg = PIPE_BUF;
 
-            ECHECK(libos_round_up(arg, PIPE_BUF, &pipesz));
+            ECHECK(myst_round_up(arg, PIPE_BUF, &pipesz));
 
             if (!(data = calloc(pipesz, 1)))
                 ERAISE(-ENOMEM);
@@ -497,7 +497,7 @@ static int _pd_fcntl(
     }
 
     /* unreachable */
-    libos_assume(false);
+    myst_assume(false);
 
 done:
 
@@ -508,8 +508,8 @@ done:
 }
 
 static int _pd_ioctl(
-    libos_pipedev_t* pipedev,
-    libos_pipe_t* pipe,
+    myst_pipedev_t* pipedev,
+    myst_pipe_t* pipe,
     unsigned long request,
     long arg)
 {
@@ -531,12 +531,12 @@ done:
 }
 
 static int _pd_dup(
-    libos_pipedev_t* pipedev,
-    const libos_pipe_t* pipe,
-    libos_pipe_t** pipe_out)
+    myst_pipedev_t* pipedev,
+    const myst_pipe_t* pipe,
+    myst_pipe_t** pipe_out)
 {
     int ret = 0;
-    libos_pipe_t* new_pipe = NULL;
+    myst_pipe_t* new_pipe = NULL;
 
     if (pipe_out)
         *pipe_out = NULL;
@@ -544,7 +544,7 @@ static int _pd_dup(
     if (!pipedev || !_valid_pipe(pipe) || !pipe_out)
         ERAISE(-EINVAL);
 
-    if (!(new_pipe = calloc(1, sizeof(libos_pipe_t))))
+    if (!(new_pipe = calloc(1, sizeof(myst_pipe_t))))
         ERAISE(-ENOMEM);
 
     *new_pipe = *pipe;
@@ -552,14 +552,14 @@ static int _pd_dup(
     /* file descriptor flags are not propagated */
     new_pipe->fdflags = 0;
 
-    _lock((libos_pipe_t*)new_pipe);
+    _lock((myst_pipe_t*)new_pipe);
 
     if (new_pipe->mode == O_RDONLY)
         new_pipe->impl->nreaders++;
     else
         new_pipe->impl->nwriters++;
 
-    _unlock((libos_pipe_t*)new_pipe);
+    _unlock((myst_pipe_t*)new_pipe);
 
     *pipe_out = new_pipe;
     new_pipe = NULL;
@@ -572,7 +572,7 @@ done:
     return ret;
 }
 
-static int _pd_close(libos_pipedev_t* pipedev, libos_pipe_t* pipe)
+static int _pd_close(myst_pipedev_t* pipedev, myst_pipe_t* pipe)
 {
     int ret = 0;
 
@@ -590,7 +590,7 @@ static int _pd_close(libos_pipedev_t* pipedev, libos_pipe_t* pipe)
         pipe->impl->nwriters--;
 
     /* signal any threads blocked on read or write */
-    libos_cond_signal(&pipe->impl->cond);
+    myst_cond_signal(&pipe->impl->cond);
 
     /* Release the pipe if no more readers or writers */
     if (pipe->impl->nreaders == 0 && pipe->impl->nwriters == 0)
@@ -608,7 +608,7 @@ static int _pd_close(libos_pipedev_t* pipedev, libos_pipe_t* pipe)
         _unlock(pipe);
     }
 
-    memset(pipe, 0, sizeof(libos_pipe_t));
+    memset(pipe, 0, sizeof(myst_pipe_t));
     free(pipe);
 
 done:
@@ -616,7 +616,7 @@ done:
     return ret;
 }
 
-static int _pd_target_fd(libos_pipedev_t* pipedev, libos_pipe_t* pipe)
+static int _pd_target_fd(myst_pipedev_t* pipedev, myst_pipe_t* pipe)
 {
     int ret = 0;
 
@@ -629,7 +629,7 @@ done:
     return ret;
 }
 
-static int _pd_get_events(libos_pipedev_t* pipedev, libos_pipe_t* pipe)
+static int _pd_get_events(myst_pipedev_t* pipedev, myst_pipe_t* pipe)
 {
     int ret = 0;
     int events = 0;
@@ -658,10 +658,10 @@ done:
     return ret;
 }
 
-extern libos_pipedev_t* libos_pipedev_get(void)
+extern myst_pipedev_t* myst_pipedev_get(void)
 {
     // clang-format-off
-    static libos_pipedev_t _pipdev = {
+    static myst_pipedev_t _pipdev = {
         {
             .fd_read = (void*)_pd_read,
             .fd_write = (void*)_pd_write,

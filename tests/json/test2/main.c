@@ -7,8 +7,8 @@
 #include <string.h>
 #include <sys/stat.h>
 
-#include <libos/file.h>
-#include <libos/json.h>
+#include <myst/file.h>
+#include <myst/json.h>
 
 const char* arg0;
 
@@ -225,7 +225,7 @@ static void _parse(const char* path)
     cd.newline = 0;
     cd.comma = 0;
 
-    if (libos_load_file(path, (void**)&data, &size) != 0)
+    if (myst_load_file(path, (void**)&data, &size) != 0)
     {
         fprintf(stderr, "%s: failed to access '%s'\n", arg0, path);
         exit(1);

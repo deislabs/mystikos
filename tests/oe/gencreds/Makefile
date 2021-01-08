@@ -7,7 +7,7 @@ LDFLAGS += -L$(LIBDIR) -lopenenclave
 
 INCLUDES += $(OEENCLAVE_INCLUDES)
 
-all: libos rootfs
+all: myst rootfs
 
 rootfs: gencreds.c
 	mkdir -p $(SUBBINDIR)
@@ -19,10 +19,10 @@ OPTS = --strace
 endif
 
 tests: all
-	$(RUNTEST) $(LIBOS_EXEC) rootfs /bin/gencreds $(OPTS)
+	$(RUNTEST) $(MYST_EXEC) rootfs /bin/gencreds $(OPTS)
 
-libos:
-	$(MAKE) -C $(TOP)/tools/libos
+myst:
+	$(MAKE) -C $(TOP)/tools/myst
 
 clean:
 	rm -rf rootfs

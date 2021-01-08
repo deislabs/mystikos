@@ -1,5 +1,5 @@
 variables:
-  - group: libos-pipeline
+  - group: myst-pipeline
   - name: SCRIPTS_ROOT
     value: $(Build.SourcesDirectory)/.azure_pipelines/scripts
 
@@ -34,7 +34,7 @@ jobs:
       displayName: 'build repo source'
       workingDirectory: $(Build.SourcesDirectory)
       env:
-        LIBOS_NIGHTLY_TEST: 1
+        MYST_NIGHTLY_TEST: 1
 
     # run all tests
     - script: |
@@ -44,7 +44,7 @@ jobs:
       enabled: true
       workingDirectory: $(Build.SourcesDirectory)
       env:
-        LIBOS_NIGHTLY_TEST: 1
+        MYST_NIGHTLY_TEST: 1
 
     # run sql solution test on Canada Central DB Node
     - script: |

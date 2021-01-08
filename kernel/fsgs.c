@@ -1,22 +1,22 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include <libos/barrier.h>
-#include <libos/fsgs.h>
-#include <libos/options.h>
-#include <libos/panic.h>
-#include <libos/printf.h>
-#include <libos/strings.h>
-#include <libos/syscall.h>
-#include <libos/tcall.h>
+#include <myst/barrier.h>
+#include <myst/fsgs.h>
+#include <myst/options.h>
+#include <myst/panic.h>
+#include <myst/printf.h>
+#include <myst/strings.h>
+#include <myst/syscall.h>
+#include <myst/tcall.h>
 
-void libos_set_fsbase(void* p)
+void myst_set_fsbase(void* p)
 {
     if (__options.have_syscall_instruction)
     {
         const long ARCH_SET_FS = 0x1002;
         const long n = SYS_arch_prctl;
-        libos_syscall2(n, ARCH_SET_FS, (long)p);
+        myst_syscall2(n, ARCH_SET_FS, (long)p);
     }
     else
     {
@@ -24,14 +24,14 @@ void libos_set_fsbase(void* p)
     }
 }
 
-void* libos_get_fsbase(void)
+void* myst_get_fsbase(void)
 {
     if (__options.have_syscall_instruction)
     {
         const long ARCH_GET_FS = 0x1003;
         const long n = SYS_arch_prctl;
         void* p;
-        libos_syscall2(n, ARCH_GET_FS, (long)&p);
+        myst_syscall2(n, ARCH_GET_FS, (long)&p);
         return p;
     }
     else
@@ -42,29 +42,29 @@ void* libos_get_fsbase(void)
     }
 }
 
-void libos_set_gsbase(void* p)
+void myst_set_gsbase(void* p)
 {
     if (__options.have_syscall_instruction)
     {
         const long ARCH_SET_GS = 0x1001;
         const long n = SYS_arch_prctl;
-        libos_syscall2(n, ARCH_SET_GS, (long)p);
+        myst_syscall2(n, ARCH_SET_GS, (long)p);
     }
     else
     {
         /* unsupported but not needed */
-        libos_panic("wrgsbase emulation is unsupported");
+        myst_panic("wrgsbase emulation is unsupported");
     }
 }
 
-void* libos_get_gsbase(void)
+void* myst_get_gsbase(void)
 {
     if (__options.have_syscall_instruction)
     {
         const long ARCH_GET_GS = 0x1004;
         const long n = SYS_arch_prctl;
         void* p;
-        libos_syscall2(n, ARCH_GET_GS, (long)&p);
+        myst_syscall2(n, ARCH_GET_GS, (long)&p);
         return p;
     }
     else

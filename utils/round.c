@@ -1,7 +1,7 @@
 #include <errno.h>
-#include <libos/round.h>
+#include <myst/round.h>
 
-int libos_round_up(uint64_t x, uint64_t m, uint64_t* r)
+int myst_round_up(uint64_t x, uint64_t m, uint64_t* r)
 {
     uint64_t t;
 
@@ -22,7 +22,7 @@ int libos_round_up(uint64_t x, uint64_t m, uint64_t* r)
 }
 
 /* round x up to next multiple of m (possible x itself) */
-int libos_round_up_signed(int64_t x, int64_t m, int64_t* r)
+int myst_round_up_signed(int64_t x, int64_t m, int64_t* r)
 {
     int64_t t;
 

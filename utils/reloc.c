@@ -4,10 +4,10 @@
 #include <assert.h>
 #include <elf.h>
 
-#include <libos/eraise.h>
-#include <libos/reloc.h>
+#include <myst/eraise.h>
+#include <myst/reloc.h>
 
-int libos_apply_relocations(
+int myst_apply_relocations(
     const void* image_base,
     size_t image_size,
     const void* reloc_base,

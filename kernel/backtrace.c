@@ -5,16 +5,16 @@
 #include <errno.h>
 #include <stdlib.h>
 
-#include <libos/backtrace.h>
-#include <libos/defs.h>
-#include <libos/eraise.h>
-#include <libos/kernel.h>
-#include <libos/printf.h>
+#include <myst/backtrace.h>
+#include <myst/defs.h>
+#include <myst/eraise.h>
+#include <myst/kernel.h>
+#include <myst/printf.h>
 
 const void* _check_address(const void* ptr)
 {
-    const uint64_t base = (uint64_t)__libos_kernel_args.image_data;
-    const uint64_t end = base + __libos_kernel_args.image_size;
+    const uint64_t base = (uint64_t)__myst_kernel_args.image_data;
+    const uint64_t end = base + __myst_kernel_args.image_size;
 
     if ((uint64_t)ptr < base || (uint64_t)ptr >= end)
         return NULL;
@@ -22,8 +22,8 @@ const void* _check_address(const void* ptr)
     return ptr;
 }
 
-LIBOS_NOINLINE
-size_t libos_backtrace_impl(void** start_frame, void** buffer, size_t size)
+MYST_NOINLINE
+size_t myst_backtrace_impl(void** start_frame, void** buffer, size_t size)
 {
     void** frame = start_frame;
     size_t n = 0;
@@ -40,9 +40,9 @@ size_t libos_backtrace_impl(void** start_frame, void** buffer, size_t size)
     return n;
 }
 
-size_t libos_backtrace(void** buffer, size_t size)
+size_t myst_backtrace(void** buffer, size_t size)
 {
-    return libos_backtrace_impl(__builtin_frame_address(0), buffer, size);
+    return myst_backtrace_impl(__builtin_frame_address(0), buffer, size);
 }
 
 static int _symtab_get_string(
@@ -73,8 +73,8 @@ static int _symtab_find_name(
     int ret = 0;
     const Elf64_Sym* s = symtab;
     size_t n = symtab_size / sizeof(Elf64_Sym);
-    const uint64_t base = (uint64_t)__libos_kernel_args.kernel_data;
-    const uint64_t end = base + __libos_kernel_args.kernel_size;
+    const uint64_t base = (uint64_t)__myst_kernel_args.kernel_data;
+    const uint64_t end = base + __myst_kernel_args.kernel_size;
 
     if (name)
         *name = '\0';
@@ -115,10 +115,10 @@ static int _addr_to_func_name(uint64_t addr, const char** name)
 
     /* search the symbol table */
     if (_symtab_find_name(
-            __libos_kernel_args.symtab_data,
-            __libos_kernel_args.symtab_size,
-            __libos_kernel_args.strtab_data,
-            __libos_kernel_args.strtab_size,
+            __myst_kernel_args.symtab_data,
+            __myst_kernel_args.symtab_size,
+            __myst_kernel_args.strtab_data,
+            __myst_kernel_args.strtab_size,
             addr,
             name) == 0)
     {
@@ -127,10 +127,10 @@ static int _addr_to_func_name(uint64_t addr, const char** name)
 
     /* search the dynamic symbol table */
     if (_symtab_find_name(
-            __libos_kernel_args.dynsym_data,
-            __libos_kernel_args.dynsym_size,
-            __libos_kernel_args.dynstr_data,
-            __libos_kernel_args.dynstr_size,
+            __myst_kernel_args.dynsym_data,
+            __myst_kernel_args.dynsym_size,
+            __myst_kernel_args.dynstr_data,
+            __myst_kernel_args.dynstr_size,
             addr,
             name) == 0)
     {
@@ -143,7 +143,7 @@ done:
     return ret;
 }
 
-void libos_dump_backtrace(void** buffer, size_t size)
+void myst_dump_backtrace(void** buffer, size_t size)
 {
     for (size_t i = 0; i < size; i++)
     {
@@ -151,8 +151,8 @@ void libos_dump_backtrace(void** buffer, size_t size)
         const char* name;
 
         if (_addr_to_func_name(addr, &name) == 0)
-            libos_eprintf("%p: %s()\n", buffer[i], name);
+            myst_eprintf("%p: %s()\n", buffer[i], name);
         else
-            libos_eprintf("%p: unknown\n", buffer[i]);
+            myst_eprintf("%p: unknown\n", buffer[i]);
     }
 }

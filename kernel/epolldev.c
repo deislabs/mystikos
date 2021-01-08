@@ -10,16 +10,16 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
-#include <libos/assume.h>
-#include <libos/bufalloc.h>
-#include <libos/epolldev.h>
-#include <libos/eraise.h>
-#include <libos/fdtable.h>
-#include <libos/id.h>
-#include <libos/list.h>
-#include <libos/spinlock.h>
-#include <libos/syscall.h>
-#include <libos/tcall.h>
+#include <myst/assume.h>
+#include <myst/bufalloc.h>
+#include <myst/epolldev.h>
+#include <myst/eraise.h>
+#include <myst/fdtable.h>
+#include <myst/id.h>
+#include <myst/list.h>
+#include <myst/spinlock.h>
+#include <myst/syscall.h>
+#include <myst/tcall.h>
 
 #define MAGIC 0xc436d7e6
 
@@ -27,22 +27,22 @@ typedef struct epoll_entry epoll_entry_t;
 
 struct epoll_entry
 {
-    /* these leading fields align with the same fields in libos_list_node_t */
+    /* these leading fields align with the same fields in myst_list_node_t */
     epoll_entry_t* prev;
     epoll_entry_t* next;
     int fd;
     struct epoll_event event;
 };
 
-struct libos_epoll
+struct myst_epoll
 {
     uint32_t magic; /* MAGIC */
     int flags;      /* flags passed to epoll_create1() or set by fcntl() */
-    libos_spinlock_t lock;
-    libos_list_t list;
+    myst_spinlock_t lock;
+    myst_list_t list;
 };
 
-static epoll_entry_t* _find(libos_epoll_t* epoll, int fd)
+static epoll_entry_t* _find(myst_epoll_t* epoll, int fd)
 {
     for (epoll_entry_t* p = (epoll_entry_t*)epoll->list.head; p; p = p->next)
     {
@@ -53,18 +53,18 @@ static epoll_entry_t* _find(libos_epoll_t* epoll, int fd)
     return NULL;
 }
 
-static bool _valid_epoll(const libos_epoll_t* epoll)
+static bool _valid_epoll(const myst_epoll_t* epoll)
 {
     return epoll && epoll->magic == MAGIC;
 }
 
 static int _ed_epoll_create1(
-    libos_epolldev_t* epolldev,
+    myst_epolldev_t* epolldev,
     int flags,
-    libos_epoll_t** epoll_out)
+    myst_epoll_t** epoll_out)
 {
     int ret = 0;
-    libos_epoll_t* epoll = NULL;
+    myst_epoll_t* epoll = NULL;
 
     if (epoll_out)
         *epoll_out = NULL;
@@ -74,7 +74,7 @@ static int _ed_epoll_create1(
 
     /* Create the epoll implementation structure */
     {
-        if (!(epoll = calloc(1, sizeof(libos_epoll_t))))
+        if (!(epoll = calloc(1, sizeof(myst_epoll_t))))
             ERAISE(-ENOMEM);
 
         epoll->magic = MAGIC;
@@ -93,8 +93,8 @@ done:
 }
 
 static int _ed_epoll_ctl(
-    libos_epolldev_t* epolldev,
-    libos_epoll_t* epoll,
+    myst_epolldev_t* epolldev,
+    myst_epoll_t* epoll,
     int op,
     int fd,
     struct epoll_event* event)
@@ -105,10 +105,10 @@ static int _ed_epoll_ctl(
     if (!epolldev || !_valid_epoll(epoll) || !event)
         ERAISE(-EBADF);
 
-    if (!libos_valid_fd(fd))
+    if (!myst_valid_fd(fd))
         ERAISE(-EBADF);
 
-    libos_spin_lock(&epoll->lock);
+    myst_spin_lock(&epoll->lock);
     locked = true;
 
     /* handle the operation */
@@ -130,7 +130,7 @@ static int _ed_epoll_ctl(
             entry->event = *event;
 
             /* add the entry to the list */
-            libos_list_append(&epoll->list, (libos_list_node_t*)entry);
+            myst_list_append(&epoll->list, (myst_list_node_t*)entry);
 
             break;
         }
@@ -154,7 +154,7 @@ static int _ed_epoll_ctl(
             if (!(entry = _find(epoll, fd)))
                 ERAISE(-ENOENT);
 
-            libos_list_remove(&epoll->list, (libos_list_node_t*)entry);
+            myst_list_remove(&epoll->list, (myst_list_node_t*)entry);
             free(entry);
             break;
         }
@@ -167,14 +167,14 @@ static int _ed_epoll_ctl(
 done:
 
     if (locked)
-        libos_spin_unlock(&epoll->lock);
+        myst_spin_unlock(&epoll->lock);
 
     return ret;
 }
 
 static int _ed_epoll_wait(
-    libos_epolldev_t* epolldev,
-    libos_epoll_t* epoll,
+    myst_epolldev_t* epolldev,
+    myst_epoll_t* epoll,
     struct epoll_event* events,
     int maxevents,
     int timeout) /* milliseconds */
@@ -193,7 +193,7 @@ static int _ed_epoll_wait(
     nfds = epoll->list.size;
 
     /* allocates the fds array */
-    if (!(fds = libos_buf_calloc(buf, buflen, nfds, sizeof(struct pollfd))))
+    if (!(fds = myst_buf_calloc(buf, buflen, nfds, sizeof(struct pollfd))))
         ERAISE(-ENOMEM);
 
     /* convert from epoll-set to poll-set */
@@ -233,7 +233,7 @@ static int _ed_epoll_wait(
         }
     }
 
-    ECHECK((n = libos_syscall_poll(fds, nfds, timeout)));
+    ECHECK((n = myst_syscall_poll(fds, nfds, timeout)));
 
     /* this should never happen */
     if ((size_t)n > nfds)
@@ -287,14 +287,14 @@ static int _ed_epoll_wait(
 done:
 
     if (fds)
-        libos_buf_free(buf, fds);
+        myst_buf_free(buf, fds);
 
     return ret;
 }
 
 static ssize_t _ed_read(
-    libos_epolldev_t* epolldev,
-    libos_epoll_t* epoll,
+    myst_epolldev_t* epolldev,
+    myst_epoll_t* epoll,
     void* buf,
     size_t count)
 {
@@ -313,8 +313,8 @@ done:
 }
 
 static ssize_t _ed_write(
-    libos_epolldev_t* epolldev,
-    libos_epoll_t* epoll,
+    myst_epolldev_t* epolldev,
+    myst_epoll_t* epoll,
     const void* buf,
     size_t count)
 {
@@ -333,8 +333,8 @@ done:
 }
 
 static ssize_t _ed_readv(
-    libos_epolldev_t* epolldev,
-    libos_epoll_t* epoll,
+    myst_epolldev_t* epolldev,
+    myst_epoll_t* epoll,
     const struct iovec* iov,
     int iovcnt)
 {
@@ -354,8 +354,8 @@ done:
 }
 
 static ssize_t _ed_writev(
-    libos_epolldev_t* epolldev,
-    libos_epoll_t* epoll,
+    myst_epolldev_t* epolldev,
+    myst_epoll_t* epoll,
     const struct iovec* iov,
     int iovcnt)
 {
@@ -375,8 +375,8 @@ done:
 }
 
 static int _ed_fstat(
-    libos_epolldev_t* epolldev,
-    libos_epoll_t* epoll,
+    myst_epolldev_t* epolldev,
+    myst_epoll_t* epoll,
     struct stat* statbuf)
 {
     int ret = 0;
@@ -390,8 +390,8 @@ static int _ed_fstat(
     buf.st_ino = (ino_t)epoll;
     buf.st_mode = S_IRUSR | S_IWUSR;
     buf.st_nlink = 1;
-    buf.st_uid = LIBOS_DEFAULT_UID;
-    buf.st_gid = LIBOS_DEFAULT_GID;
+    buf.st_uid = MYST_DEFAULT_UID;
+    buf.st_gid = MYST_DEFAULT_GID;
     buf.st_rdev = 0;
     buf.st_size = 0;
     buf.st_blksize = 4096;
@@ -407,8 +407,8 @@ done:
 }
 
 static int _ed_fcntl(
-    libos_epolldev_t* epolldev,
-    libos_epoll_t* epoll,
+    myst_epolldev_t* epolldev,
+    myst_epoll_t* epoll,
     int cmd,
     long arg)
 {
@@ -443,8 +443,8 @@ done:
 }
 
 static int _ed_ioctl(
-    libos_epolldev_t* epolldev,
-    libos_epoll_t* epoll,
+    myst_epolldev_t* epolldev,
+    myst_epoll_t* epoll,
     unsigned long request,
     long arg)
 {
@@ -464,9 +464,9 @@ done:
 }
 
 static int _ed_dup(
-    libos_epolldev_t* epolldev,
-    const libos_epoll_t* epoll,
-    libos_epoll_t** epoll_out)
+    myst_epolldev_t* epolldev,
+    const myst_epoll_t* epoll,
+    myst_epoll_t** epoll_out)
 {
     int ret = 0;
 
@@ -484,14 +484,14 @@ done:
     return ret;
 }
 
-static int _ed_close(libos_epolldev_t* epolldev, libos_epoll_t* epoll)
+static int _ed_close(myst_epolldev_t* epolldev, myst_epoll_t* epoll)
 {
     int ret = 0;
 
     if (!epolldev || !_valid_epoll(epoll))
         ERAISE(-EBADF);
 
-    memset(epoll, 0, sizeof(libos_epoll_t));
+    memset(epoll, 0, sizeof(myst_epoll_t));
     free(epoll);
 
 done:
@@ -499,7 +499,7 @@ done:
     return ret;
 }
 
-static int _ed_target_fd(libos_epolldev_t* epolldev, libos_epoll_t* epoll)
+static int _ed_target_fd(myst_epolldev_t* epolldev, myst_epoll_t* epoll)
 {
     int ret = 0;
 
@@ -512,7 +512,7 @@ done:
     return ret;
 }
 
-static int _ed_get_events(libos_epolldev_t* epolldev, libos_epoll_t* epoll)
+static int _ed_get_events(myst_epolldev_t* epolldev, myst_epoll_t* epoll)
 {
     int ret = 0;
 
@@ -525,10 +525,10 @@ done:
     return ret;
 }
 
-extern libos_epolldev_t* libos_epolldev_get(void)
+extern myst_epolldev_t* myst_epolldev_get(void)
 {
     // clang-format-off
-    static libos_epolldev_t _epolldev = {
+    static myst_epolldev_t _epolldev = {
         {
             .fd_read = (void*)_ed_read,
             .fd_write = (void*)_ed_write,

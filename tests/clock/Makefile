@@ -8,16 +8,16 @@ LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 sec = $(shell date +%s)
 nsec = $(shell date +%N)
 
-all: libos
+all: myst
 	mkdir -p $(APPDIR)/bin
 	$(MUSL_GCC) $(CFLAGS) -g -o $(APPDIR)/bin/clock main.c $(LDFLAGS)
-	$(LIBOS) mkcpio $(APPDIR) rootfs
+	$(MYST) mkcpio $(APPDIR) rootfs
 
 tests:
-	$(RUNTEST) $(LIBOS_EXEC) rootfs /bin/clock  $(sec) $(nsec) $(OPTS)
+	$(RUNTEST) $(MYST_EXEC) rootfs /bin/clock  $(sec) $(nsec) $(OPTS)
 
-libos:
-	$(MAKE) -C $(TOP)/tools/libos
+myst:
+	$(MAKE) -C $(TOP)/tools/myst
 
 clean:
 	rm -rf $(APPDIR) rootfs ramfs

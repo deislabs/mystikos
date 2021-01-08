@@ -14,7 +14,7 @@ LIBCXX_EXCEPTION_HEADER_FILE=$(TOP)/third_party/openenclave/openenclave/3rdparty
 TEST_FILE = tests.txt
 TESTS = $(shell cat $(TEST_FILE))
 
-all: libos appdir rootfs
+all: myst appdir rootfs
 
 libcxx-tests:
 	mkdir libcxx-tests
@@ -26,14 +26,14 @@ appdir: libcxx-tests
 	$(APPBUILDER) Dockerfile
 
 rootfs:
-	$(BINDIR)/libos mkcpio appdir rootfs
+	$(BINDIR)/myst mkcpio appdir rootfs
 
 tests:
-	$(RUNTEST) $(LIBOS_EXEC) rootfs /app/basic-exceptions.cpp.exe $(OPTS)
-	@ $(foreach i, $(TESTS), TESTNAME=$(TESTNAME)$(i)$(TESTSUFFIX) $(RUNTEST_COMMAND) $(LIBOS_EXEC) rootfs $(i) $(NL))
+	$(RUNTEST) $(MYST_EXEC) rootfs /app/basic-exceptions.cpp.exe $(OPTS)
+	@ $(foreach i, $(TESTS), TESTNAME=$(TESTNAME)$(i)$(TESTSUFFIX) $(RUNTEST_COMMAND) $(MYST_EXEC) rootfs $(i) $(NL))
 
-libos:
-	$(MAKE) -C $(TOP)/tools/libos
+myst:
+	$(MAKE) -C $(TOP)/tools/myst
 
 clean:
 	rm -rf rootfs appdir libcxx-tests

@@ -9,13 +9,13 @@
 #include <stddef.h>
 #include <stdlib.h>
 
-#include <libos/defs.h>
-#include <libos/eraise.h>
-#include <libos/fdops.h>
-#include <libos/fdtable.h>
-#include <libos/sockdev.h>
-#include <libos/syscall.h>
-#include <libos/tcall.h>
+#include <myst/defs.h>
+#include <myst/eraise.h>
+#include <myst/fdops.h>
+#include <myst/fdtable.h>
+#include <myst/sockdev.h>
+#include <myst/syscall.h>
+#include <myst/tcall.h>
 
 typedef struct _poll_fds
 {
@@ -40,7 +40,7 @@ int _update_fds(poll_fds_t* fds, int fd, short events)
     }
 
     /* if the array is exhausted */
-    if (fds->size == LIBOS_COUNTOF(fds->data))
+    if (fds->size == MYST_COUNTOF(fds->data))
         ERAISE(-EINVAL);
 
     /* append the new element */
@@ -87,7 +87,7 @@ int _fds_to_fdset(poll_fds_t* fds, short revents, fd_set* set)
     return num_ready;
 }
 
-long libos_syscall_select(
+long myst_syscall_select(
     int nfds,
     fd_set* readfds,
     fd_set* writefds,
@@ -123,7 +123,7 @@ long libos_syscall_select(
         ECHECK(_fdset_to_fds(&fds, events, exceptfds, nfds));
     }
 
-    ECHECK(libos_syscall_poll(fds.data, fds.size, poll_timeout));
+    ECHECK(myst_syscall_poll(fds.data, fds.size, poll_timeout));
 
     if (readfds)
         FD_ZERO(readfds);

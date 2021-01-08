@@ -1,6 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include <libos/kernel.h>
+#include <myst/kernel.h>
 
-libos_kernel_args_t __libos_kernel_args;
+myst_kernel_args_t __myst_kernel_args;

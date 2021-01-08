@@ -9,20 +9,20 @@
 #include <string.h>
 #include <sys/ioctl.h>
 
-#include <libos/backtrace.h>
-#include <libos/buf.h>
-#include <libos/bufu64.h>
-#include <libos/eraise.h>
-#include <libos/fs.h>
-#include <libos/id.h>
-#include <libos/panic.h>
-#include <libos/paths.h>
-#include <libos/printf.h>
-#include <libos/ramfs.h>
-#include <libos/realpath.h>
-#include <libos/round.h>
-#include <libos/strings.h>
-#include <libos/trace.h>
+#include <myst/backtrace.h>
+#include <myst/buf.h>
+#include <myst/bufu64.h>
+#include <myst/eraise.h>
+#include <myst/fs.h>
+#include <myst/id.h>
+#include <myst/panic.h>
+#include <myst/paths.h>
+#include <myst/printf.h>
+#include <myst/ramfs.h>
+#include <myst/realpath.h>
+#include <myst/round.h>
+#include <myst/strings.h>
+#include <myst/trace.h>
 
 #define BLKSIZE 512
 
@@ -43,7 +43,7 @@ typedef struct inode inode_t;
 
 typedef struct ramfs
 {
-    libos_fs_t base;
+    myst_fs_t base;
     uint64_t magic;
     inode_t* root;
     char target[PATH_MAX]; /* the directory this file system is mounted on */
@@ -70,8 +70,8 @@ struct inode
     uint32_t mode;    /* Type and mode */
     size_t nlink;     /* number of hard links to this inode (excludes ".") */
     size_t nopens;    /* number of times file is currently opened */
-    libos_buf_t buf;  /* file or directory data */
-    const void* data; /* set by libos_ramfs_set_buf() */
+    myst_buf_t buf;  /* file or directory data */
+    const void* data; /* set by myst_ramfs_set_buf() */
 };
 
 static bool _inode_valid(const inode_t* inode)
@@ -84,7 +84,7 @@ static void _inode_free(inode_t* inode)
     if (inode)
     {
         if (inode->buf.data != inode->data)
-            libos_buf_release(&inode->buf);
+            myst_buf_release(&inode->buf);
         memset(inode, 0xdd, sizeof(inode_t));
         free(inode);
     }
@@ -114,10 +114,10 @@ static int _inode_add_dirent(
             .d_type = type,
         };
 
-        if (LIBOS_STRLCPY(ent.d_name, name) >= sizeof(ent.d_name))
+        if (MYST_STRLCPY(ent.d_name, name) >= sizeof(ent.d_name))
             ERAISE(-ENAMETOOLONG);
 
-        if (libos_buf_append(&dir->buf, &ent, sizeof(ent)) != 0)
+        if (myst_buf_append(&dir->buf, &ent, sizeof(ent)) != 0)
             ERAISE(-ENOMEM);
     }
 
@@ -269,7 +269,7 @@ static int _inode_remove_dirent(inode_t* inode, const char* name)
             const size_t pos = i * sizeof(struct dirent);
             const size_t size = sizeof(struct dirent);
 
-            if (libos_buf_remove(&inode->buf, pos, size) != 0)
+            if (myst_buf_remove(&inode->buf, pos, size) != 0)
                 ERAISE(-ENOMEM);
 
             index = i;
@@ -298,14 +298,14 @@ static const char* _inode_target(const inode_t* inode)
 /*
 **==============================================================================
 **
-** libos_file_t
+** myst_file_t
 **
 **==============================================================================
 */
 
 #define FILE_MAGIC 0xdfe1d5c160064f8e
 
-struct libos_file
+struct myst_file
 {
     uint64_t magic;
     inode_t* inode;
@@ -316,27 +316,27 @@ struct libos_file
     char realpath[PATH_MAX];
 };
 
-static bool _file_valid(const libos_file_t* file)
+static bool _file_valid(const myst_file_t* file)
 {
     return file && file->magic == FILE_MAGIC;
 }
 
-static void* _file_data(const libos_file_t* file)
+static void* _file_data(const myst_file_t* file)
 {
     return file->inode->buf.data;
 }
 
-static size_t _file_size(const libos_file_t* file)
+static size_t _file_size(const myst_file_t* file)
 {
     return file->inode->buf.size;
 }
 
-static void* _file_current(libos_file_t* file)
+static void* _file_current(myst_file_t* file)
 {
     return (uint8_t*)_file_data(file) + file->offset;
 }
 
-static void* _file_at(libos_file_t* file, size_t offset)
+static void* _file_at(myst_file_t* file, size_t offset)
 {
     return (uint8_t*)_file_data(file) + offset;
 }
@@ -379,8 +379,8 @@ static int _split_path(
     /* Handle root directory up front */
     if (strcmp(path, "/") == 0)
     {
-        libos_strlcpy(dirname, "/", PATH_MAX);
-        libos_strlcpy(basename, "/", PATH_MAX);
+        myst_strlcpy(dirname, "/", PATH_MAX);
+        myst_strlcpy(basename, "/", PATH_MAX);
         goto done;
     }
 
@@ -396,12 +396,12 @@ static int _split_path(
     {
         if (slash == path)
         {
-            libos_strlcpy(dirname, "/", PATH_MAX);
+            myst_strlcpy(dirname, "/", PATH_MAX);
         }
         else
         {
             size_t index = (size_t)(slash - path);
-            libos_strlcpy(dirname, path, PATH_MAX);
+            myst_strlcpy(dirname, path, PATH_MAX);
 
             if (index < PATH_MAX)
                 dirname[index] = '\0';
@@ -409,7 +409,7 @@ static int _split_path(
                 dirname[PATH_MAX - 1] = '\0';
         }
 
-        libos_strlcpy(basename, slash + 1, PATH_MAX);
+        myst_strlcpy(basename, slash + 1, PATH_MAX);
     }
 
 done:
@@ -448,7 +448,7 @@ static int _path_to_inode_recursive(
             *parent_out = parent;
 
         if (realpath)
-            libos_strlcpy(realpath, "/", PATH_MAX);
+            myst_strlcpy(realpath, "/", PATH_MAX);
 
         *inode_out = inode;
 
@@ -457,7 +457,7 @@ static int _path_to_inode_recursive(
     }
 
     /* Split the path into tokens */
-    ECHECK(libos_strsplit(path, "/", &toks, &ntoks));
+    ECHECK(myst_strsplit(path, "/", &toks, &ntoks));
 
     /* search for the inode */
     {
@@ -472,10 +472,10 @@ static int _path_to_inode_recursive(
             {
                 if (realpath)
                 {
-                    if (libos_strlcat(realpath, "/", PATH_MAX) >= PATH_MAX)
+                    if (myst_strlcat(realpath, "/", PATH_MAX) >= PATH_MAX)
                         ERAISE_QUIET(-ENAMETOOLONG);
 
-                    if (libos_strlcat(realpath, toks[i], PATH_MAX) >= PATH_MAX)
+                    if (myst_strlcat(realpath, toks[i], PATH_MAX) >= PATH_MAX)
                         ERAISE_QUIET(-ENAMETOOLONG);
                 }
             }
@@ -547,7 +547,7 @@ static int _path_to_inode_realpath(
         realpath_out ? realpath : NULL));
 
     if (realpath_out)
-        ECHECK(libos_normalize(realpath, realpath_out, PATH_MAX));
+        ECHECK(myst_normalize(realpath, realpath_out, PATH_MAX));
 
 done:
     return ret;
@@ -572,7 +572,7 @@ static int _path_to_inode(
 **==============================================================================
 */
 
-static int _fs_release(libos_fs_t* fs)
+static int _fs_release(myst_fs_t* fs)
 {
     int ret = 0;
     ramfs_t* ramfs = (ramfs_t*)fs;
@@ -588,7 +588,7 @@ done:
     return ret;
 }
 
-static int _fs_mount(libos_fs_t* fs, const char* target)
+static int _fs_mount(myst_fs_t* fs, const char* target)
 {
     int ret = 0;
     ramfs_t* ramfs = (ramfs_t*)fs;
@@ -599,17 +599,17 @@ static int _fs_mount(libos_fs_t* fs, const char* target)
     if (strlen(target) >= sizeof(ramfs->target))
         ERAISE(-ENAMETOOLONG);
 
-    libos_strlcpy(ramfs->target, target, sizeof(ramfs->target));
+    myst_strlcpy(ramfs->target, target, sizeof(ramfs->target));
 
 done:
     return ret;
 }
 
 static int _fs_creat(
-    libos_fs_t* fs,
+    myst_fs_t* fs,
     const char* pathname,
     mode_t mode,
-    libos_file_t** file)
+    myst_file_t** file)
 {
     int ret = 0;
     const int flags = O_CREAT | O_WRONLY | O_TRUNC;
@@ -624,15 +624,15 @@ done:
 }
 
 static int _fs_open(
-    libos_fs_t* fs,
+    myst_fs_t* fs,
     const char* pathname,
     int flags,
     mode_t mode,
-    libos_file_t** file_out)
+    myst_file_t** file_out)
 {
     ramfs_t* ramfs = (ramfs_t*)fs;
     inode_t* inode = NULL;
-    libos_file_t* file = NULL;
+    myst_file_t* file = NULL;
     int ret = 0;
     int errnum;
     bool is_i_new = false;
@@ -650,7 +650,7 @@ static int _fs_open(
         ERAISE(-EINVAL);
 
     /* Create the file object */
-    if (!(file = calloc(1, sizeof(libos_file_t))))
+    if (!(file = calloc(1, sizeof(myst_file_t))))
         ERAISE(-ENOMEM);
 
     errnum = _path_to_inode(ramfs, pathname, true, NULL, &inode);
@@ -665,7 +665,7 @@ static int _fs_open(
             ERAISE(-ENOTDIR);
 
         if ((flags & O_TRUNC))
-            libos_buf_clear(&inode->buf);
+            myst_buf_clear(&inode->buf);
 
         if ((flags & O_APPEND))
             file->offset = inode->buf.size;
@@ -724,8 +724,8 @@ done:
 }
 
 static off_t _fs_lseek(
-    libos_fs_t* fs,
-    libos_file_t* file,
+    myst_fs_t* fs,
+    myst_file_t* file,
     off_t offset,
     int whence)
 {
@@ -774,8 +774,8 @@ done:
 }
 
 static ssize_t _fs_read(
-    libos_fs_t* fs,
-    libos_file_t* file,
+    myst_fs_t* fs,
+    myst_file_t* file,
     void* buf,
     size_t count)
 {
@@ -822,8 +822,8 @@ done:
 }
 
 static ssize_t _fs_write(
-    libos_fs_t* fs,
-    libos_file_t* file,
+    myst_fs_t* fs,
+    myst_file_t* file,
     const void* buf,
     size_t count)
 {
@@ -853,7 +853,7 @@ static ssize_t _fs_write(
 
         if (new_offset > _file_size(file))
         {
-            if (libos_buf_resize(&file->inode->buf, new_offset) != 0)
+            if (myst_buf_resize(&file->inode->buf, new_offset) != 0)
                 ERAISE(-ENOMEM);
         }
 
@@ -868,8 +868,8 @@ done:
 }
 
 static ssize_t _fs_pread(
-    libos_fs_t* fs,
-    libos_file_t* file,
+    myst_fs_t* fs,
+    myst_file_t* file,
     void* buf,
     size_t count,
     off_t offset)
@@ -919,8 +919,8 @@ done:
 }
 
 static ssize_t _fs_pwrite(
-    libos_fs_t* fs,
-    libos_file_t* file,
+    myst_fs_t* fs,
+    myst_file_t* file,
     const void* buf,
     size_t count,
     off_t offset)
@@ -954,7 +954,7 @@ static ssize_t _fs_pwrite(
 
         if (new_offset > _file_size(file))
         {
-            if (libos_buf_resize(&file->inode->buf, new_offset) != 0)
+            if (myst_buf_resize(&file->inode->buf, new_offset) != 0)
                 ERAISE(-ENOMEM);
         }
 
@@ -968,8 +968,8 @@ done:
 }
 
 static ssize_t _fs_readv(
-    libos_fs_t* fs,
-    libos_file_t* file,
+    myst_fs_t* fs,
+    myst_file_t* file,
     const struct iovec* iov,
     int iovcnt)
 {
@@ -1001,8 +1001,8 @@ done:
 }
 
 static ssize_t _fs_writev(
-    libos_fs_t* fs,
-    libos_file_t* file,
+    myst_fs_t* fs,
+    myst_file_t* file,
     const struct iovec* iov,
     int iovcnt)
 {
@@ -1033,7 +1033,7 @@ done:
     return ret;
 }
 
-static int _fs_close(libos_fs_t* fs, libos_file_t* file)
+static int _fs_close(myst_fs_t* fs, myst_file_t* file)
 {
     int ret = 0;
     ramfs_t* ramfs = (ramfs_t*)fs;
@@ -1052,14 +1052,14 @@ static int _fs_close(libos_fs_t* fs, libos_file_t* file)
         _inode_free(file->inode);
     }
 
-    memset(file, 0xdd, sizeof(libos_file_t));
+    memset(file, 0xdd, sizeof(myst_file_t));
     free(file);
 
 done:
     return ret;
 }
 
-static int _fs_access(libos_fs_t* fs, const char* pathname, int mode)
+static int _fs_access(myst_fs_t* fs, const char* pathname, int mode)
 {
     int ret = 0;
     ramfs_t* ramfs = (ramfs_t*)fs;
@@ -1100,15 +1100,15 @@ static int _stat(inode_t* inode, struct stat* statbuf)
     if (!_inode_valid(inode) || !statbuf)
         ERAISE(-EINVAL);
 
-    ECHECK(libos_round_up_signed(buf.st_size, BLKSIZE, &rounded));
+    ECHECK(myst_round_up_signed(buf.st_size, BLKSIZE, &rounded));
 
     memset(&buf, 0, sizeof(buf));
     buf.st_dev = 0;
     buf.st_ino = (ino_t)inode;
     buf.st_mode = inode->mode;
     buf.st_nlink = inode->nlink;
-    buf.st_uid = LIBOS_DEFAULT_UID;
-    buf.st_gid = LIBOS_DEFAULT_GID;
+    buf.st_uid = MYST_DEFAULT_UID;
+    buf.st_gid = MYST_DEFAULT_GID;
     buf.st_rdev = 0;
     buf.st_size = (off_t)inode->buf.size;
     buf.st_blksize = BLKSIZE;
@@ -1123,7 +1123,7 @@ done:
     return ret;
 }
 
-static int _fs_stat(libos_fs_t* fs, const char* pathname, struct stat* statbuf)
+static int _fs_stat(myst_fs_t* fs, const char* pathname, struct stat* statbuf)
 {
     int ret = 0;
     ramfs_t* ramfs = (ramfs_t*)fs;
@@ -1139,7 +1139,7 @@ done:
     return ret;
 }
 
-static int _fs_lstat(libos_fs_t* fs, const char* pathname, struct stat* statbuf)
+static int _fs_lstat(myst_fs_t* fs, const char* pathname, struct stat* statbuf)
 {
     int ret = 0;
     ramfs_t* ramfs = (ramfs_t*)fs;
@@ -1155,7 +1155,7 @@ done:
     return ret;
 }
 
-static int _fs_fstat(libos_fs_t* fs, libos_file_t* file, struct stat* statbuf)
+static int _fs_fstat(myst_fs_t* fs, myst_file_t* file, struct stat* statbuf)
 {
     int ret = 0;
     ramfs_t* ramfs = (ramfs_t*)fs;
@@ -1170,7 +1170,7 @@ done:
     return ret;
 }
 
-static int _fs_link(libos_fs_t* fs, const char* oldpath, const char* newpath)
+static int _fs_link(myst_fs_t* fs, const char* oldpath, const char* newpath)
 {
     int ret = 0;
     ramfs_t* ramfs = (ramfs_t*)fs;
@@ -1210,7 +1210,7 @@ done:
     return ret;
 }
 
-static int _fs_unlink(libos_fs_t* fs, const char* pathname)
+static int _fs_unlink(myst_fs_t* fs, const char* pathname)
 {
     int ret = 0;
     ramfs_t* ramfs = (ramfs_t*)fs;
@@ -1250,7 +1250,7 @@ done:
     return ret;
 }
 
-static int _fs_rename(libos_fs_t* fs, const char* oldpath, const char* newpath)
+static int _fs_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
 {
     int ret = 0;
     ramfs_t* ramfs = (ramfs_t*)fs;
@@ -1320,7 +1320,7 @@ done:
     return ret;
 }
 
-static int _fs_truncate(libos_fs_t* fs, const char* path, off_t length)
+static int _fs_truncate(myst_fs_t* fs, const char* path, off_t length)
 {
     int ret = 0;
     ramfs_t* ramfs = (ramfs_t*)fs;
@@ -1334,14 +1334,14 @@ static int _fs_truncate(libos_fs_t* fs, const char* path, off_t length)
     if (S_ISDIR(inode->mode))
         ERAISE(-EISDIR);
 
-    if (libos_buf_resize(&inode->buf, (size_t)length) != 0)
+    if (myst_buf_resize(&inode->buf, (size_t)length) != 0)
         ERAISE(-ENOMEM);
 
 done:
     return ret;
 }
 
-static int _fs_ftruncate(libos_fs_t* fs, libos_file_t* file, off_t length)
+static int _fs_ftruncate(myst_fs_t* fs, myst_file_t* file, off_t length)
 {
     int ret = 0;
     ramfs_t* ramfs = (ramfs_t*)fs;
@@ -1352,14 +1352,14 @@ static int _fs_ftruncate(libos_fs_t* fs, libos_file_t* file, off_t length)
     if (S_ISDIR(file->inode->mode))
         ERAISE(-EISDIR);
 
-    if (libos_buf_resize(&file->inode->buf, (size_t)length) != 0)
+    if (myst_buf_resize(&file->inode->buf, (size_t)length) != 0)
         ERAISE(-ENOMEM);
 
 done:
     return ret;
 }
 
-static int _fs_mkdir(libos_fs_t* fs, const char* pathname, mode_t mode)
+static int _fs_mkdir(myst_fs_t* fs, const char* pathname, mode_t mode)
 {
     int ret = 0;
     ramfs_t* ramfs = (ramfs_t*)fs;
@@ -1388,7 +1388,7 @@ done:
     return ret;
 }
 
-static int _fs_rmdir(libos_fs_t* fs, const char* pathname)
+static int _fs_rmdir(myst_fs_t* fs, const char* pathname)
 {
     int ret = 0;
     ramfs_t* ramfs = (ramfs_t*)fs;
@@ -1431,8 +1431,8 @@ done:
 }
 
 static int _fs_getdents64(
-    libos_fs_t* fs,
-    libos_file_t* file,
+    myst_fs_t* fs,
+    myst_file_t* file,
     struct dirent* dirp,
     size_t count)
 {
@@ -1458,7 +1458,7 @@ static int _fs_getdents64(
 
         /* Fail if exactly one entry was not read */
         if (r != sizeof(ent))
-            libos_panic("unexpected");
+            myst_panic("unexpected");
 
         *dirp = ent;
         bytes += sizeof(struct dirent);
@@ -1472,7 +1472,7 @@ done:
 }
 
 ssize_t _fs_readlink(
-    libos_fs_t* fs,
+    myst_fs_t* fs,
     const char* pathname,
     char* buf,
     size_t bufsiz)
@@ -1496,14 +1496,14 @@ ssize_t _fs_readlink(
     if (!inode->buf.data || !inode->buf.size)
         ERAISE(-EINVAL);
 
-    ret = (ssize_t)libos_strlcpy(buf, (char*)inode->buf.data, bufsiz);
+    ret = (ssize_t)myst_strlcpy(buf, (char*)inode->buf.data, bufsiz);
 
 done:
 
     return ret;
 }
 
-static int _fs_symlink(libos_fs_t* fs, const char* target, const char* linkpath)
+static int _fs_symlink(myst_fs_t* fs, const char* target, const char* linkpath)
 {
     int ret = 0;
     ramfs_t* ramfs = (ramfs_t*)fs;
@@ -1528,7 +1528,7 @@ static int _fs_symlink(libos_fs_t* fs, const char* target, const char* linkpath)
     ECHECK(_inode_new(parent, basename, (S_IFLNK | 0777), &inode));
 
     /* Write the target name into the link inode */
-    if (libos_buf_append(&inode->buf, target, strlen(target) + 1) != 0)
+    if (myst_buf_append(&inode->buf, target, strlen(target) + 1) != 0)
         ERAISE(-ENOMEM);
 
 done:
@@ -1537,8 +1537,8 @@ done:
 }
 
 static int _fs_realpath(
-    libos_fs_t* fs,
-    libos_file_t* file,
+    myst_fs_t* fs,
+    myst_file_t* file,
     char* buf,
     size_t size)
 {
@@ -1550,7 +1550,7 @@ static int _fs_realpath(
 
     if (strcmp(ramfs->target, "/") == 0)
     {
-        if (libos_strlcpy(buf, file->realpath, size) >= size)
+        if (myst_strlcpy(buf, file->realpath, size) >= size)
             ERAISE(-ENAMETOOLONG);
     }
     else
@@ -1565,7 +1565,7 @@ done:
     return ret;
 }
 
-static int _fs_fcntl(libos_fs_t* fs, libos_file_t* file, int cmd, long arg)
+static int _fs_fcntl(myst_fs_t* fs, myst_file_t* file, int cmd, long arg)
 {
     int ret = 0;
     ramfs_t* ramfs = (ramfs_t*)fs;
@@ -1609,8 +1609,8 @@ done:
 }
 
 static int _fs_ioctl(
-    libos_fs_t* fs,
-    libos_file_t* file,
+    myst_fs_t* fs,
+    myst_file_t* file,
     unsigned long request,
     long arg)
 {
@@ -1633,20 +1633,20 @@ done:
 }
 
 static int _fs_dup(
-    libos_fs_t* fs,
-    const libos_file_t* file,
-    libos_file_t** file_out)
+    myst_fs_t* fs,
+    const myst_file_t* file,
+    myst_file_t** file_out)
 {
     ramfs_t* ramfs = (ramfs_t*)fs;
     int ret = 0;
-    libos_file_t* new_file = NULL;
+    myst_file_t* new_file = NULL;
 
     if (!_ramfs_valid(ramfs) || !_file_valid(file) || !file_out)
         ERAISE(-EINVAL);
 
     /* Create the new file object */
     {
-        if (!(new_file = calloc(1, sizeof(libos_file_t))))
+        if (!(new_file = calloc(1, sizeof(myst_file_t))))
             ERAISE(-ENOMEM);
 
         *new_file = *file;
@@ -1663,14 +1663,14 @@ done:
 
     if (new_file)
     {
-        memset(new_file, 0, sizeof(libos_file_t));
+        memset(new_file, 0, sizeof(myst_file_t));
         free(new_file);
     }
 
     return ret;
 }
 
-static int _fs_target_fd(libos_fs_t* fs, libos_file_t* file)
+static int _fs_target_fd(myst_fs_t* fs, myst_file_t* file)
 {
     int ret = 0;
     ramfs_t* ramfs = (ramfs_t*)fs;
@@ -1684,7 +1684,7 @@ done:
     return ret;
 }
 
-static int _fs_get_events(libos_fs_t* fs, libos_file_t* file)
+static int _fs_get_events(myst_fs_t* fs, myst_file_t* file)
 {
     int ret = 0;
     ramfs_t* ramfs = (ramfs_t*)fs;
@@ -1698,12 +1698,12 @@ done:
     return ret;
 }
 
-int libos_init_ramfs(libos_fs_t** fs_out)
+int myst_init_ramfs(myst_fs_t** fs_out)
 {
     int ret = 0;
     ramfs_t* ramfs = NULL;
     // clang-format off
-    static libos_fs_t _base =
+    static myst_fs_t _base =
     {
         {
             .fd_read = (void*)_fs_read,
@@ -1768,7 +1768,7 @@ int libos_init_ramfs(libos_fs_t** fs_out)
     ramfs->magic = RAMFS_MAGIC;
     ramfs->base = _base;
     ramfs->root = root_inode;
-    libos_strlcpy(ramfs->target, "/", sizeof(ramfs->target));
+    myst_strlcpy(ramfs->target, "/", sizeof(ramfs->target));
     root_inode = NULL;
 
     *fs_out = &ramfs->base;
@@ -1785,8 +1785,8 @@ done:
     return ret;
 }
 
-int libos_ramfs_set_buf(
-    libos_fs_t* fs,
+int myst_ramfs_set_buf(
+    myst_fs_t* fs,
     const char* pathname,
     const void* buf,
     size_t buf_size)
@@ -1807,7 +1807,7 @@ int libos_ramfs_set_buf(
     ECHECK(_path_to_inode(ramfs, pathname, true, NULL, &inode));
 
     if (inode->buf.data != inode->data)
-        libos_buf_clear(&inode->buf);
+        myst_buf_clear(&inode->buf);
 
     inode->data = buf;
     inode->buf.data = (void*)buf;

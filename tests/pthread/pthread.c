@@ -28,9 +28,9 @@
 
 static size_t _get_max_threads(void)
 {
-    const long SYS_libos_max_threads = 1014;
+    const long SYS_myst_max_threads = 1014;
 
-    long n = syscall(SYS_libos_max_threads);
+    long n = syscall(SYS_myst_max_threads);
 
     if (n < 0)
     {

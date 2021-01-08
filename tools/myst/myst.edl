@@ -1,0 +1,236 @@
+enclave
+{
+    from "openenclave/edl/sgx/platform.edl" import *;
+    from "openenclave/edl/logging.edl" import oe_write_ocall;
+    from "openenclave/edl/fcntl.edl" import oe_syscall_writev_ocall;
+    from "openenclave/edl/fcntl.edl" import oe_syscall_dup_ocall;
+
+    include "time.h"
+    include "sys/socket.h"
+    include "myst/shm.h"
+    include "poll.h"
+
+    struct myst_options
+    {
+        bool trace_syscalls;
+        bool export_ramfs;
+    };
+
+    struct myst_timespec
+    {
+       long tv_sec;
+       long tv_nsec;
+    };
+
+    struct myst_stat
+    {
+        unsigned long st_dev;
+        unsigned long st_ino;
+        unsigned long st_nlink;
+        unsigned int st_mode;
+        unsigned int st_uid;
+        unsigned int st_gid;
+        unsigned int __st_pad0;
+        unsigned long st_rdev;
+        long st_size;
+        long st_blksize;
+        long st_blocks;
+        struct myst_timespec st_atim;
+        struct myst_timespec st_mtim;
+        struct myst_timespec st_ctim;
+    };
+
+    trusted
+    {
+        public int myst_enter_ecall(
+            [in] struct myst_options* options,
+            [in] struct myst_shm* shared_memory,
+            [in, size=args_size] const void* args,
+            size_t args_size,
+            [in, size=env_size] const void* env,
+            size_t env_size,
+            uint64_t event);
+
+        public long myst_run_thread_ecall(uint64_t cookie, uint64_t event);
+    };
+
+    untrusted
+    {
+        void myst_rdtsc_ocall([out] uint32_t* rax, [out] uint32_t* rdx);
+
+        void myst_cpuid_ocall(
+            uint32_t leaf,
+            uint32_t subleaf,
+            [out] uint32_t* rax,
+            [out] uint32_t* rbx,
+            [out] uint32_t* rcx,
+            [out] uint32_t* rdx);
+
+        int myst_add_symbol_file_ocall(
+            [in, size=file_size] const void* file_data,
+            size_t file_size,
+            [user_check] const void* text_data,
+            size_t text_size);
+
+        int myst_load_symbols_ocall();
+
+        int myst_unload_symbols_ocall();
+
+        long myst_syscall_isatty_ocall(int fd);
+
+        long myst_create_thread_ocall(uint64_t cookie);
+
+        long myst_wait_ocall(
+            uint64_t event,
+            [in] const struct myst_timespec* timeout);
+
+        long myst_wake_ocall(uint64_t event);
+
+        long myst_wake_wait_ocall(
+            uint64_t waiter_event,
+            uint64_t self_event,
+            [in] const struct myst_timespec* timeout);
+
+        long myst_export_file_ocall(
+            [in, string] const char* path,
+            [in, size=size] const void* data,
+            size_t size);
+
+        long myst_fstat_ocall(int fd, [out] struct myst_stat* statbuf);
+
+        long myst_sched_yield_ocall();
+
+        long myst_fchmod_ocall(int fd, uint32_t mode);
+
+        long myst_poll_ocall(
+            [in, out, count=nfds] struct pollfd* fds,
+            unsigned long nfds,
+            int timeout);
+
+        long myst_poll_wake_ocall();
+
+        long myst_read_ocall(
+            int fd,
+            [out, size=count] void* buf,
+            size_t count);
+
+        long myst_write_ocall(
+            int fd,
+            [in, size=count] const void* buf,
+            size_t count);
+
+        long myst_close_ocall(int fd);
+
+        long myst_nanosleep_ocall(
+            [in] const struct timespec* req,
+            [out] struct timespec* rem);
+
+        long myst_fcntl_ocall(int fd, int cmd, long arg);
+
+        long myst_bind_ocall(
+            int sockfd,
+            [in, size=addrlen] const struct sockaddr* addr,
+            socklen_t addrlen);
+
+        long myst_connect_ocall(
+            int sockfd,
+            [in, size=addrlen] const struct sockaddr* addr,
+            socklen_t addrlen);
+
+        long myst_recvfrom_ocall(
+            int sockfd,
+            [out, size=len] void* buf,
+            size_t len,
+            int flags,
+            [out, size=src_addr_size] struct sockaddr* src_addr,
+            [in, out] socklen_t* addrlen_out,
+            socklen_t src_addr_size);
+
+        long myst_sendto_ocall(
+            int sockfd,
+            [in, size=len] const void* buf,
+            size_t len,
+            int flags,
+            [in, size=addrlen] const struct sockaddr* dest_addr,
+            socklen_t addrlen);
+
+        long myst_socket_ocall(int domain, int type, int protocol);
+
+        long myst_accept_ocall(
+            int sockfd,
+            [out, size=addr_size] struct sockaddr* addr,
+            [in, out] socklen_t* addrlen,
+            size_t addr_size);
+
+        long myst_sendmsg_ocall(
+            int sockfd,
+            /* -- begin struct msghdr -- */
+            [in, size=msg_namelen] const void* msg_name,
+            socklen_t msg_namelen,
+            [in, size=len] const void* buf,
+            size_t len,
+            [in, size=msg_controllen] const void* msg_control,
+            socklen_t msg_controllen,
+            int msg_flags,
+            /* -- end struct msghdr -- */
+            int flags);
+
+        long myst_recvmsg_ocall(
+            int sockfd,
+            /* -- begin struct msghdr -- */
+            [out, size=msg_namelen] void* msg_name,
+            socklen_t msg_namelen,
+            [out] socklen_t* msg_namelen_out,
+            [out, size=len] void* buf,
+            size_t len,
+            [out, size=msg_controllen] void* msg_control,
+            socklen_t msg_controllen,
+            [out] socklen_t* msg_controllen_out,
+            [out] int* msg_flags,
+            /* -- end struct msghdr -- */
+            int flags);
+
+        long myst_shutdown_ocall(int sockfd, int how);
+
+        long myst_listen_ocall(int sockfd, int backlog);
+
+        long myst_getsockname_ocall(
+            int sockfd,
+            [out, size=addr_size] struct sockaddr* addr,
+            [in, out] socklen_t* addrlen,
+            socklen_t addr_size);
+
+        long myst_getpeername_ocall(
+            int sockfd,
+            [out, size=addr_size] struct sockaddr* addr,
+            [in, out] socklen_t* addrlen,
+            socklen_t addr_size);
+
+        long myst_socketpair_ocall(
+            int domain,
+            int type,
+            int protocol,
+            [out] int sv[2]);
+
+        long myst_setsockopt_ocall(
+            int sockfd,
+            int level,
+            int optname,
+            [in, size=optlen] const void* optval,
+            socklen_t optlen);
+
+        long myst_getsockopt_ocall(
+            int sockfd,
+            int level,
+            int optname,
+            [out, size=optval_size] void* optval,
+            [in, out] socklen_t* optlen,
+            socklen_t optval_size);
+
+        long myst_ioctl_ocall(
+            int fd,
+            unsigned long request,
+            [in, out, size=argp_size] void* argp,
+            size_t argp_size);
+    };
+};
