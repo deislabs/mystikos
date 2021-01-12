@@ -67,3 +67,4 @@ tests/oe/seal/appdir/
 tests/cpp-exceptions/appdir/
 tests/cpp-exceptions/libcxx-tests/
 tests/curl/appdir/
+tests/signal/appdir/

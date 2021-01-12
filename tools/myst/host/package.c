@@ -590,7 +590,7 @@ int _exec_package(
 
 done:
     if (unpack_dir)
-        unlink(unpack_dir);
+        remove_recursive(unpack_dir);
 
     if (elf_loaded)
         elf_image_free(&myst_elf);
