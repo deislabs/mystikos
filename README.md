@@ -104,4 +104,4 @@ You can contribute to Mystikos in several ways by:
 - filing issues with github issues, or
 - by simply providing feedback via github issues or email mystikos@service.microsoft.com.
 
-Please follow the [Code of Conduct (coming)] while participating in the Mystikos community.
+This project has adopted the [Microsoft Code of Conduct](https://opensource.microsoft.com/codeofconduct/). All participants are expected to abide by these basic tenets to ensure that the community is a welcoming place for everyone.
