@@ -1,6 +1,6 @@
 # Key Features of Mystikos
 
-**Disclaimer:** The following key features are subject to change or addition with the
+**Disclaimer:** The following key features are subject to change with the
 evolvement of Mystikos.
 
 ## Trust based on a single measurement
@@ -32,9 +32,9 @@ the C-runtime, can be attested separately, is under evaluation.
 
 ## Single executable package
 
-Of all of things Mystikos tries to measure, C-runtime, the kernel, and the
-root file system, we could package them into a single executable. The
-measurements before and after the packaging remain the same.
+Mystikos measures the C-runtime, kernel, and root file system and, whether
+these are packaged into a single executable or not, the measurements before and
+after the packaging remain the same.
 
 We recommend packaging for production usages of Mystikos as it greatly
 simplifies deployment.
@@ -71,17 +71,17 @@ and the kernel space. The only allowed interactions are:
 ## TEE-aware applications
 
 Some applications might want to be aware of the TEE they are running inside.
-For example, an application might want to behave differently running inside
-a TEE vs. outside a TEE, or utilize TEE-specific capabilities.
-Mystikos provides a mechanism for them to query
-what kind of TEE they are running inside.
+For example, an application might want to behave differently running inside a
+TEE vs. outside a TEE, or utilize TEE-specific capabilities on different
+platforms.  Mystikos provides a mechanism for them to query what kind of TEE
+they are running inside.
 
 Quite often, an application running inside the TEE wants to attest to a relying
-party with proofs chained to the hardware root of trust, or it wants to
-verify the attestation artifacts from an external party. In its current
-implementation, Mystikos offers
-two syscalls to user space, one for generating self-signed certificates rooted
-to the TEE, and one for verifying self-signed certificates from another party.
+party with proofs chained to the hardware root of trust, or it wants to verify
+the attestation artifacts from an external party. In its current
+implementation, Mystikos offers two syscalls to user space, one for generating
+self-signed certificates rooted to the TEE, and one for verifying self-signed
+certificates from another party.
 
 In a more direct way, applications may include headers and link a library to
 invoke SGX extensions for sealing, attestation, etc..
