@@ -10,7 +10,6 @@ RUN git fetch origin master && git checkout v5.0.0-rtm.20519.4 && git cherry-pic
 RUN ./build.sh clr+libs \
         -c release \
         -lc release \
-        -keepnativesymbols true \
         /p:RuntimeOS=linux-musl \
         /p:OutputRid=linux-musl-x64 \
     && ./src/coreclr/build-test.sh \
