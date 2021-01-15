@@ -8,14 +8,14 @@ ifdef STRACE
 OPTS += --strace
 endif
 
-all: appdir private.pem libos
+all: appdir private.pem myst
 
 run:
-	libos/bin/$(APPNAME) /coreclr-tests-all/JIT/Generics/Arrays/TypeParameters/Jagged/class01/class01.dll $(OPTS)
+	myst/bin/$(APPNAME) /coreclr-tests-all/JIT/Generics/Arrays/TypeParameters/Jagged/class01/class01.dll $(OPTS)
 	cleantmp
 	
 gdb:
-	$(LIBOS_GDB) --args libos/bin/$(APPNAME) /coreclr-tests-all/GC/Scenarios/MinLeakGen/minleakgen/minleakgen.dll $(OPTS)
+	$(MYST_GDB) --args myst/bin/$(APPNAME) /coreclr-tests-all/GC/Scenarios/MinLeakGen/minleakgen/minleakgen.dll $(OPTS)
 
 # docker build time ~1hr. Using prebuilt image.
 appdir:
@@ -27,16 +27,16 @@ appdir:
 	#$(APPBUILDER) vtikoo/coreclr-tests:debug3
 
 rootfs:
-	$(LIBOS) mkcpio appdir rootfs
+	$(MYST) mkcpio appdir rootfs
 
-libos:
-	$(LIBOS) package appdir private.pem config.json
+myst:
+	$(MYST) package appdir private.pem config.json
 
 private.pem:
 	openssl genrsa -out private.pem -3 3072
 
 clean:
-	rm -fr appdir rootfs private.pem libos /tmp/libos*
+	rm -fr appdir rootfs private.pem myst /tmp/myst*
 
 cleantmp:
-	rm -fr /tmp/libos*
+	rm -fr /tmp/myst*
