@@ -262,6 +262,7 @@ json_result_t _json_print_callback(
 json_result_t json_print(
     json_write_t write,
     void* stream,
+    json_trace_t trace,
     const char* json_data,
     size_t json_size,
     json_allocator_t* allocator)
@@ -271,6 +272,7 @@ json_result_t json_print(
     json_parser_t parser_buf;
     json_parser_t* parser = &parser_buf;
     callback_data_t callback_data = {0, 0, 0, write, stream};
+    json_parser_options_t options;
 
     extern int printf(const char* fmt, ...);
     memset(&parser_buf, 0, sizeof(parser_buf));
@@ -286,6 +288,8 @@ json_result_t json_print(
 
     memcpy(data, json_data, json_size);
 
+    options.allow_whitespace = 1;
+
     if (json_parser_init(
             parser,
             data,
@@ -293,10 +297,12 @@ json_result_t json_print(
             _json_print_callback,
             &callback_data,
             allocator,
-            NULL) != JSON_OK)
+            &options) != JSON_OK)
     {
         RAISE(JSON_FAILED);
     }
+
+    parser->trace = trace;
 
     if (json_parser_parse(parser) != JSON_OK)
     {

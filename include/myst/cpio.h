@@ -4,6 +4,10 @@
 #ifndef _MYST_CPIO_H
 #define _MYST_CPIO_H
 
+#include <stdbool.h>
+#include <string.h>
+
+#include <myst/defs.h>
 #include <myst/types.h>
 
 /*
@@ -19,6 +23,8 @@
 **
 **==============================================================================
 */
+
+#define MYST_CPIO_MAGIC_INITIALIZER { '0', '7', '0', '7', '0', '1' }
 
 #define MYST_CPIO_PATH_MAX 256
 
@@ -97,5 +103,14 @@ int myst_cpio_mem_unpack(
     size_t cpio_size,
     const char* target,
     myst_cpio_create_file_function_t create_file);
+
+/* Test for CPIO magic string: "070701"; return 0 or ENOTSUP */
+int myst_cpio_test(const char* path);
+
+MYST_INLINE bool myst_is_cpio_archive(const void* data, size_t size)
+{
+    uint8_t m[] = MYST_CPIO_MAGIC_INITIALIZER;
+    return data && (size > sizeof(m)) && memcmp(data, m, sizeof(m)) == 0;
+}
 
 #endif /* _MYST_CPIO_H */

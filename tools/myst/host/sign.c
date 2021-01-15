@@ -9,6 +9,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <myst/getopt.h>
 #include <sys/user.h>
 #include <unistd.h>
 
@@ -21,6 +22,7 @@
 #include "myst_u.h"
 #include "regions.h"
 #include "utils.h"
+#include "archive.h"
 
 // Pulled in from liboesign.a
 // Actual OE signer code from oesign tool.
@@ -62,6 +64,7 @@ int copy_files_to_signing_directory(
     const char* sign_dir,
     const char* program_file,
     const char* rootfs_file,
+    const char* archive_file,
     const char* config_file,
     const region_details* details)
 {
@@ -147,6 +150,16 @@ int copy_files_to_signing_directory(
         _err("Failed to copy \"%s\" to \"%s\"", rootfs_file, scratch_path);
     }
 
+    // Copy archive into signing directory
+    if (snprintf(scratch_path, PATH_MAX, "%s/archive", sign_dir) >= PATH_MAX)
+    {
+        _err("File path to long: %s/archive", sign_dir);
+    }
+    if (myst_copy_file(archive_file, scratch_path) != 0)
+    {
+        _err("Failed to copy \"%s\" to \"%s\"", archive_file, scratch_path);
+    }
+
     // Copy configuration into signing directory
     if (snprintf(scratch_path, PATH_MAX, "%s/config.json", sign_dir) >=
         PATH_MAX)
@@ -216,16 +229,54 @@ int add_config_to_enclave(const char* sign_dir, const char* config_path)
     return 0;
 }
 
+static int _getopt(
+    int* argc,
+    const char* argv[],
+    const char* opt,
+    const char** optarg)
+{
+    char err[128];
+    int ret;
+
+    ret = myst_getopt(argc, argv, opt, optarg, err, sizeof(err));
+
+    if (ret < 0)
+        _err("%s", err);
+
+    return ret;
+}
+
 // myst sign <rootfs_path> <pem_file> <config_file>
 int _sign(int argc, const char* argv[])
 {
     const region_details* details;
     char scratch_path[PATH_MAX];
     char scratch_path2[PATH_MAX];
+    char archive_buf[PATH_MAX];
+    const char* archive = NULL;
+    static const size_t max_pubkeys = 128;
+    const char* pubkeys[max_pubkeys];
+    size_t num_pubkeys = 0;
+    static const size_t max_roothashes = 128;
+    const char* roothashes[max_roothashes];
+    size_t num_roothashes = 0;
 
     // We are in the right operation, right?
     assert(
         (strcmp(argv[1], "sign") == 0) || (strcmp(argv[1], "sign-sgx") == 0));
+
+    if (_getopt(&argc, argv, "--archive", &archive) != 0)
+    {
+        get_archive_options(
+            &argc,
+            argv,
+            pubkeys,
+            max_pubkeys,
+            &num_pubkeys,
+            roothashes,
+            max_roothashes,
+            &num_roothashes);
+    }
 
     // validate parameters and parse the extra options and validate they exist
     // when required
@@ -330,16 +381,27 @@ int _sign(int argc, const char* argv[])
     }
     close(fd);
 
+    if (!archive)
+    {
+        create_archive(
+            pubkeys, num_pubkeys, roothashes, num_roothashes, archive_buf);
+        archive = archive_buf;
+    }
+
     // Setup all the regions
     if ((details = create_region_details_from_files(
-             target, rootfs_file, config_file, parsed_data.user_pages)) == NULL)
+             target,
+             rootfs_file,
+             archive,
+             config_file,
+             parsed_data.user_pages)) == NULL)
     {
         unlink(temp_oeconfig_file);
         _err("Creating region data failed.");
     }
 
-    if (copy_files_to_signing_directory(
-            sign_dir, program_file, rootfs_file, config_file, details) != 0)
+    if (copy_files_to_signing_directory(sign_dir, program_file,
+            rootfs_file, archive, config_file, details) != 0)
     {
         unlink(temp_oeconfig_file);
         _err("Failed to copy files to signing directory");

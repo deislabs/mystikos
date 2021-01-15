@@ -93,6 +93,13 @@ typedef struct _json_parser_options
     int allow_whitespace;
 } json_parser_options_t;
 
+typedef void (*json_trace_t)(
+        json_parser_t* parser,
+        const char* file,
+        unsigned int line,
+        const char* func,
+        const char* message);
+
 struct _json_parser
 {
     unsigned int magic;
@@ -105,12 +112,7 @@ struct _json_parser
     json_node_t path[JSON_MAX_NESTING];
     size_t depth;
     json_allocator_t* allocator;
-    void (*trace)(
-        json_parser_t* parser,
-        const char* file,
-        unsigned int line,
-        const char* func,
-        const char* message);
+    json_trace_t trace;
     json_parser_options_t options;
 };
 
@@ -249,6 +251,7 @@ void json_print_value(
 json_result_t json_print(
     json_write_t write,
     void* write_data,
+    json_trace_t trace,
     const char* json_data,
     size_t json_size,
     json_allocator_t* allocator);

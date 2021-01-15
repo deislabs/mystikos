@@ -13,6 +13,9 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <myst/process.h>
+#include <myst/eraise.h>
+
 #define SCRUB
 
 static myst_mman_t _mman;
@@ -183,7 +186,17 @@ void* myst_mremap(
 
 int myst_munmap(void* addr, size_t length)
 {
-    return myst_mman_munmap(&_mman, addr, length);
+    int ret = myst_mman_munmap(&_mman, addr, length);
+
+#if 0
+    /* ATTN-2AA04DD0: fails during process cleanup */
+    if (ret != 0)
+    {
+        printf("*** MUNMAP: ret=%d err=%s\n", ret, _mman.err);
+    }
+#endif
+
+    return ret;
 }
 
 long myst_syscall_brk(void* addr)
@@ -204,4 +217,87 @@ int myst_get_total_ram(size_t* size)
 int myst_get_free_ram(size_t* size)
 {
     return myst_mman_free_size(&_mman, size);
+}
+
+typedef struct myst_process_mapping myst_process_mapping_t;
+
+struct myst_process_mapping
+{
+    myst_process_mapping_t* next;
+    pid_t pid;
+    void* addr;
+    size_t size;
+};
+
+static myst_process_mapping_t* _mappings;
+static myst_spinlock_t _mappings_lock;
+
+/* keep track of mappings made by this process */
+int myst_register_process_mapping(pid_t pid, void* addr, size_t size)
+{
+    int ret = 0;
+    myst_process_mapping_t* m = NULL;
+
+    if (pid < 0 || !addr || (addr == (void*)-1) || !size)
+        ERAISE(-EINVAL);
+
+    if (!(m = calloc(1, sizeof(myst_process_mapping_t))))
+        ERAISE(-ENOMEM);
+
+    m->pid = pid;
+    m->addr = addr;
+    m->size = size;
+
+    myst_spin_lock(&_mappings_lock);
+    {
+        m->next = _mappings;
+        _mappings = m;
+    }
+    myst_spin_unlock(&_mappings_lock);
+
+done:
+
+    return ret;
+}
+
+/* release mappings made the given process */
+int myst_release_process_mappings(pid_t pid)
+{
+    int ret = 0;
+
+    if (pid < 0)
+        ERAISE(-EINVAL);
+
+    myst_spin_lock(&_mappings_lock);
+    {
+        myst_process_mapping_t* prev = NULL;
+        myst_process_mapping_t* next = NULL;
+
+        for (myst_process_mapping_t* p = _mappings; p; p = next)
+        {
+            next = p->next;
+
+            if (p->pid == pid)
+            {
+                myst_munmap(p->addr, p->size);
+
+                if (prev)
+                    prev->next = next;
+                else
+                    _mappings = next;
+
+                free(p);
+            }
+            else
+            {
+                prev = p;
+            }
+
+            p = next;
+        }
+    }
+    myst_spin_unlock(&_mappings_lock);
+
+done:
+    return ret;
 }

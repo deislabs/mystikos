@@ -1510,3 +1510,24 @@ int myst_mman_free_size(myst_mman_t* mman, size_t* size_out)
 done:
     return ret;
 }
+
+void myst_mman_dump_vads(myst_mman_t* mman)
+{
+    if (!mman)
+        return;
+
+    printf("=== myst_mman_dump_vads()\n");
+
+    myst_spin_lock(&mman->lock);
+    {
+        /* determine the total size of all gaps */
+        for (myst_vad_t* p = mman->vad_list; p; p = p->next)
+        {
+            uint64_t start = p->addr;
+            uint64_t end = p->addr + p->size;
+
+            printf("VAD(range[%lx:%lx] size=%lu)\n", start, end, end - start);
+        }
+    }
+    myst_spin_unlock(&mman->lock);
+}

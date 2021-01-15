@@ -138,4 +138,6 @@ int myst_mman_total_size(myst_mman_t* mman, size_t* size);
 
 int myst_mman_free_size(myst_mman_t* mman, size_t* size);
 
+void myst_mman_dump_vads(myst_mman_t* mman);
+
 #endif /* _MYST_INTERNAL_MMAN_H */

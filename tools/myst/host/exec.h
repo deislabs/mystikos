@@ -4,7 +4,7 @@
 #ifndef _MYST_HOST_EXEC_H
 #define _MYST_HOST_EXEC_H
 
-struct myst_options;
+#include <myst/options.h>
 
 int exec_action(int argc, const char* argv[], const char* envp[]);
 

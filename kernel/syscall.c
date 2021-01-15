@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <myst/mman.h>
+#include <sys/mman.h>
 #include <limits.h>
 #include <sched.h>
 #include <signal.h>
@@ -26,6 +27,7 @@
 
 #include <myst/backtrace.h>
 #include <myst/barrier.h>
+#include <myst/blkdev.h>
 #include <myst/buf.h>
 #include <myst/cpio.h>
 #include <myst/cwd.h>
@@ -33,6 +35,7 @@
 #include <myst/eraise.h>
 #include <myst/errno.h>
 #include <myst/exec.h>
+#include <myst/ext2.h>
 #include <myst/fdops.h>
 #include <myst/fdtable.h>
 #include <myst/file.h>
@@ -62,6 +65,8 @@
 #include <myst/thread.h>
 #include <myst/times.h>
 #include <myst/trace.h>
+#include <myst/hex.h>
+#include <myst/pubkey.h>
 
 #define DEV_URANDOM_FD MYST_FDTABLE_SIZE
 
@@ -1105,7 +1110,7 @@ long myst_syscall_readlink(const char* pathname, char* buf, size_t bufsiz)
     myst_fs_t* fs;
 
     ECHECK(myst_mount_resolve(pathname, suffix, &fs));
-    ERAISE((*fs->fs_readlink)(fs, pathname, buf, bufsiz));
+    ERAISE((*fs->fs_readlink)(fs, suffix, buf, bufsiz));
 
 done:
     return ret;
@@ -1255,53 +1260,6 @@ long myst_syscall_fchmod(int fd, mode_t mode)
     {
         ERAISE(-ENOTSUP);
     }
-
-done:
-    return ret;
-}
-
-long myst_syscall_mount(
-    const char* source,
-    const char* target,
-    const char* filesystemtype,
-    unsigned long mountflags,
-    const void* data)
-{
-    long ret = 0;
-    myst_fs_t* fs = NULL;
-
-    if (!source || !target || !filesystemtype)
-        ERAISE(-EINVAL);
-
-    /* only "ramfs" is supported */
-    if (strcmp(filesystemtype, "ramfs") != 0)
-        ERAISE(-ENOTSUP);
-
-    /* these arguments should be zero and null */
-    if (mountflags || data)
-        ERAISE(-EINVAL);
-
-    /* create a new ramfs instance */
-    ECHECK(myst_init_ramfs(&fs));
-
-    /* perform the mount */
-    ECHECK(myst_mount(fs, target));
-
-    /* load the rootfs */
-    ECHECK(myst_cpio_unpack(source, target));
-
-done:
-    return ret;
-}
-
-long myst_syscall_umount2(const char* target, int flags)
-{
-    long ret = 0;
-
-    if (!target || flags != 0)
-        ERAISE(-EINVAL);
-
-    ECHECK(myst_umount(target));
 
 done:
     return ret;
@@ -2365,6 +2323,8 @@ long myst_syscall(long n, long params[6])
             int flags = (int)x4;
             int fd = (int)x5;
             off_t offset = (off_t)x6;
+            void* ptr;
+            long ret = 0;
 
             _strace(
                 n,
@@ -2377,8 +2337,23 @@ long myst_syscall(long n, long params[6])
                 fd,
                 offset);
 
-            BREAK(_return(
-                n, (long)myst_mmap(addr, length, prot, flags, fd, offset)));
+            ptr = myst_mmap(addr, length, prot, flags, fd, offset);
+
+            if (ptr == MAP_FAILED || !ptr)
+            {
+                ret = -ENOMEM;
+            }
+            else
+            {
+                pid_t pid = myst_getpid();
+
+                if (myst_register_process_mapping(pid, ptr, length) != 0)
+                    myst_panic("failed to register process mapping");
+
+                ret = (long)ptr;
+            }
+
+            BREAK(_return(n, ret));
         }
         case SYS_mprotect:
         {
@@ -4260,6 +4235,11 @@ long myst_syscall_tgkill(int tgid, int tid, int sig)
 
 done:
     return ret;
+}
+
+time_t time(time_t* tloc)
+{
+    return myst_syscall_time(tloc);
 }
 
 long myst_syscall_isatty(int fd)

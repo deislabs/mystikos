@@ -25,6 +25,7 @@ typedef struct _region_details
     region_details_item crt;
     region_details_item kernel;
     region_details_item rootfs;
+    region_details_item archive;
     region_details_item config;
 } region_details;
 
@@ -33,6 +34,7 @@ const region_details* get_region_details(void);
 const region_details* create_region_details_from_files(
     const char* program_path,
     const char* rootfs_path,
+    const char* archive_path,
     const char* config_path,
     size_t user_pages);
 
