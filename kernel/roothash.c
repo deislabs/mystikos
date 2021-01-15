@@ -73,7 +73,7 @@ int myst_roothash_verify(
                 memcpy(ascii, file_data, ent.size);
                 ascii[ent.size] = '\0';
 
-                /* remove trailing slashes */
+                /* remove trailing whitespaces */
                 {
                     char* end = ascii + strlen(ascii);
 
