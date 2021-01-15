@@ -399,9 +399,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     // myst_dump_malloc_stats();
 #endif
 
-#if 1
     myst_times_start();
-#endif
 
     /* Run the main program: wait for SYS_exit to perform longjmp() */
     if (myst_setjmp(&thread->jmpbuf) == 0)
