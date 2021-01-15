@@ -26,6 +26,7 @@
 #include "regions.h"
 #include "sign.h"
 #include "utils.h"
+#include "archive.h"
 
 _Static_assert(PAGE_SIZE == 4096, "");
 
@@ -92,9 +93,27 @@ int _package(int argc, const char* argv[])
     char* tmp_dir = NULL;
     char dir_template[] = "/tmp/mystXXXXXX";
     char rootfs_file[PATH_MAX];
+    char archive_file[PATH_MAX];
     char scratch_path[PATH_MAX];
     char scratch_path2[PATH_MAX];
     config_parsed_data_t parsed_data = {0};
+    static const size_t max_pubkeys = 128;
+    const char* pubkeys[max_pubkeys];
+    size_t num_pubkeys = 0;
+    static const size_t max_roothashes = 128;
+    const char* roothashes[max_roothashes];
+    size_t num_roothashes = 0;
+
+    /* Get --pubkey=filename and --roothash=filename options */
+    get_archive_options(
+        &argc,
+        argv,
+        pubkeys,
+        max_pubkeys,
+        &num_pubkeys,
+        roothashes,
+        max_roothashes,
+        &num_roothashes);
 
     if ((argc < 5) || (cli_getopt(&argc, argv, "--help", NULL) == 0) ||
         (cli_getopt(&argc, argv, "-h", NULL) == 0))
@@ -111,6 +130,8 @@ int _package(int argc, const char* argv[])
     app_dir = argv[2];
     pem_file = argv[3];
     config_file = argv[4];
+    create_archive(
+        pubkeys, num_pubkeys, roothashes, num_roothashes, archive_file);
 
     tmp_dir = mkdtemp(dir_template);
     if (tmp_dir == NULL)
@@ -179,6 +200,8 @@ int _package(int argc, const char* argv[])
                                rootfs_file,
                                pem_file,
                                config_file,
+                               "--archive",
+                               archive_file,
                                "--outdir",
                                tmp_dir};
 
@@ -268,6 +291,16 @@ int _package(int argc, const char* argv[])
             stderr,
             "Failed to add image %s to enclave section .mystrootfs",
             rootfs_file);
+        goto done;
+    }
+
+    // Add the archive to myst
+    if (_add_image_to_elf_section(&elf, archive_file, ".mystarchive") != 0)
+    {
+        fprintf(
+            stderr,
+            "Failed to add image %s to enclave section .mystarchive",
+            archive_file);
         goto done;
     }
 

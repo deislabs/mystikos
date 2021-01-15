@@ -472,10 +472,19 @@ long myst_run_thread(uint64_t cookie, uint64_t event)
 
             if (thread->main.exec_crt_data)
             {
-                myst_munmap(
+                long r = myst_munmap(
                     thread->main.exec_crt_data, thread->main.exec_crt_size);
                 thread->main.exec_crt_data = NULL;
                 thread->main.exec_crt_size = 0;
+
+                if (r != 0)
+                {
+                    myst_eprintf("%s(%u): myst_munmap() failed",
+                        __FILE__, __LINE__);
+                }
+
+                /* unmap any mapping made by the process */
+                myst_release_process_mappings(thread->pid);
             }
         }
 

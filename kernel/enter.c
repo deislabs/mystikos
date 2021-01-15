@@ -3,6 +3,7 @@
 
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <myst/atexit.h>
 #include <myst/cpio.h>
@@ -15,6 +16,7 @@
 #include <myst/fsgs.h>
 #include <myst/initfini.h>
 #include <myst/kernel.h>
+#include <myst/hex.h>
 #include <myst/mmanutils.h>
 #include <myst/mount.h>
 #include <myst/options.h>
@@ -22,12 +24,14 @@
 #include <myst/printf.h>
 #include <myst/process.h>
 #include <myst/ramfs.h>
+#include <myst/fs.h>
 #include <myst/signal.h>
 #include <myst/strings.h>
 #include <myst/syscall.h>
 #include <myst/thread.h>
 #include <myst/times.h>
 #include <myst/ttydev.h>
+#include <myst/pubkey.h>
 
 static myst_fs_t* _fs;
 
@@ -122,21 +126,9 @@ done:
     return ret;
 }
 
-static int _setup_ramfs(void)
+static int _create_standard_directories(void)
 {
     int ret = 0;
-
-    if (myst_init_ramfs(&_fs) != 0)
-    {
-        myst_eprintf("failed initialize the RAM files system\n");
-        ERAISE(-EINVAL);
-    }
-
-    if (myst_mount(_fs, "/") != 0)
-    {
-        myst_eprintf("cannot mount root file system\n");
-        ERAISE(-EINVAL);
-    }
 
     if (mkdir("/tmp", 777) != 0)
     {
@@ -155,6 +147,51 @@ static int _setup_ramfs(void)
         myst_eprintf("cannot create the /usr/local/etc directory\n");
         ERAISE(-EINVAL);
     }
+
+done:
+    return ret;
+}
+
+static int _setup_ramfs(void)
+{
+    int ret = 0;
+
+    if (myst_init_ramfs(&_fs) != 0)
+    {
+        myst_eprintf("failed initialize the RAM files system\n");
+        ERAISE(-EINVAL);
+    }
+
+    if (myst_mount(_fs, "/") != 0)
+    {
+        myst_eprintf("cannot mount root file system\n");
+        ERAISE(-EINVAL);
+    }
+
+    _create_standard_directories();
+
+done:
+    return ret;
+}
+
+static int _setup_ext2(const char* rootfs)
+{
+    int ret = 0;
+    const char* key = NULL; /* not automatic key-release support yet */
+
+    if (myst_load_fs(rootfs, key, &_fs) != 0)
+    {
+        myst_eprintf("failed load the ext2 rootfs: %s\n", rootfs);
+        ERAISE(-EINVAL);
+    }
+
+    if (myst_mount(_fs, "/") != 0)
+    {
+        myst_eprintf("cannot mount root file system\n");
+        ERAISE(-EINVAL);
+    }
+
+    _create_standard_directories();
 
 done:
     return ret;
@@ -248,8 +285,8 @@ int myst_enter_kernel(myst_kernel_args_t* args)
 {
     int ret = 0;
     int exit_status;
-    myst_cpio_create_file_function_t create_file = NULL;
     myst_thread_t* thread = NULL;
+    bool use_cpio;
 
 #if 0
     extern void myst_set_trace(bool flag);
@@ -262,6 +299,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     /* Save the aguments */
     __myst_kernel_args = *args;
 
+    /* ATTN: it seems __options can be eliminated */
     __options.trace_syscalls = args->trace_syscalls;
     __options.have_syscall_instruction = args->have_syscall_instruction;
     __options.export_ramfs = args->export_ramfs;
@@ -317,18 +355,22 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         ERAISE(-EINVAL);
     }
 
-    /* Setup the RAM file system */
-    if (_setup_ramfs() != 0)
-    {
-        ERAISE(-EINVAL);
-    }
+    /* determine whether rootfs is a CPIO archive */
+    use_cpio = myst_is_cpio_archive(args->rootfs_data, args->rootfs_size);
 
-#define USE_RAMFS_SET_BUF
-#ifdef USE_RAMFS_SET_BUF
-    create_file = _create_mem_file;
-#else
-    (void)_create_mem_file;
-#endif
+    /* if not a CPIO archive, then use EXT2 mounting */
+    if (use_cpio)
+    {
+        /* Setup the RAM file system */
+        if (_setup_ramfs() != 0)
+            ERAISE(-EINVAL);
+    }
+    else
+    {
+        /* setup and mount the EXT2 file system */
+        if (_setup_ext2(args->rootfs) != 0)
+            ERAISE(-EINVAL);
+    }
 
     /* Create the main thread */
     ECHECK(_create_main_thread(args->event, &thread));
@@ -342,8 +384,8 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     }
 
     /* Unpack the CPIO from memory */
-    if (myst_cpio_mem_unpack(
-            args->rootfs_data, args->rootfs_size, "/", create_file) != 0)
+    if (use_cpio && myst_cpio_mem_unpack(
+            args->rootfs_data, args->rootfs_size, "/", _create_mem_file) != 0)
     {
         myst_eprintf("failed to unpack root file system\n");
         ERAISE(-EINVAL);
@@ -357,7 +399,9 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     // myst_dump_malloc_stats();
 #endif
 
+#if 1
     myst_times_start();
+#endif
 
     /* Run the main program: wait for SYS_exit to perform longjmp() */
     if (myst_setjmp(&thread->jmpbuf) == 0)

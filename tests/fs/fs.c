@@ -24,6 +24,7 @@ static void _passed(const char* name)
     printf("=== passed test (fs: %s)\n", name);
 }
 
+__attribute__((__unused__))
 static size_t _fsize(const char* path)
 {
     struct stat buf;
@@ -34,6 +35,7 @@ static size_t _fsize(const char* path)
     return (size_t)buf.st_size;
 }
 
+__attribute__((__unused__))
 static size_t _fdsize(int fd)
 {
     struct stat buf;
@@ -48,6 +50,7 @@ void test_readv(void)
 {
     int fd;
     char buf[sizeof(ALPHA)];
+    struct stat st;
 
     assert((fd = open("/test_readv", O_CREAT | O_WRONLY, 0)) >= 0);
     assert(write(fd, alpha, sizeof(alpha)) == sizeof(alpha));
@@ -60,6 +63,9 @@ void test_readv(void)
         char target[PATH_MAX];
 
         snprintf(fdlink, sizeof(fdlink), "/proc/self/fd/%d", fd);
+        assert(stat("/proc/self/fd", &st) == 0);
+        assert(lstat(fdlink, &st) == 0);
+        assert(stat(fdlink, &st) == 0);
         ssize_t n = readlink(fdlink, target, sizeof(target));
         assert(n > 0);
         assert(strcmp(target, "/test_readv") == 0);
@@ -183,9 +189,9 @@ void test_mkdir()
         assert(close(fd) == 0);
     }
 
-    assert(_nlink("/a") == 2);
-    assert(_nlink("/a/bb") == 2);
-    assert(_nlink("/a/bb/ccc") == 2);
+    assert(_nlink("/a") == 3);
+    assert(_nlink("/a/bb") == 3);
+    assert(_nlink("/a/bb/ccc") == 3);
     assert(_nlink("/a/bb/ccc/file") == 1);
 
     _passed(__FUNCTION__);
@@ -243,7 +249,6 @@ void test_readdir()
         assert(ent->d_ino != 0);
         assert(strcmp(ent->d_name, entries[i].name) == 0);
         assert(ent->d_type == entries[i].type);
-        assert(ent->d_off == off);
         assert(ent->d_reclen == sizeof(struct dirent));
         i++;
         off += (off_t)sizeof(struct dirent);
@@ -409,7 +414,7 @@ void test_symlink(void)
     assert(symlink("/symlink/file", "/symlink/link") == 0);
     assert(access("/symlink/link", R_OK) == 0);
     assert(readlink("/symlink/link", target, sizeof(target)) == 13);
-    assert(strcmp(target, "/symlink/file") == 0);
+    assert(memcmp(target, "/symlink/file", 13) == 0);
 
     assert(mkdir("/symlink/aaa", 777) == 0);
     assert(symlink("/symlink/ccc", "/symlink/aaa/bbb") == 0);

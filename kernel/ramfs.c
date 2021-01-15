@@ -1117,6 +1117,9 @@ static int _stat(inode_t* inode, struct stat* statbuf)
     memset(&buf.st_mtim, 0, sizeof(buf.st_mtim)); /* ATTN: unsupported */
     memset(&buf.st_ctim, 0, sizeof(buf.st_ctim)); /* ATTN: unsupported */
 
+    if (S_ISDIR(buf.st_mode))
+        buf.st_nlink++;
+
     *statbuf = buf;
 
 done:

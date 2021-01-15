@@ -19,13 +19,14 @@
 #include <myst/round.h>
 #include <myst/strarr.h>
 #include <myst/strings.h>
+#include <myst/eraise.h>
 
 void* calloc(size_t nmemb, size_t size);
 void free(void* ptr);
 
 #define CPIO_BLOCK_SIZE 512
 
-#define TRACE
+//#define TRACE
 #define PRINTF printf
 
 // clang-format off
@@ -1109,6 +1110,33 @@ int myst_cpio_mem_unpack(
     ret = 0;
 
 done:
+
+    return ret;
+}
+
+int myst_cpio_test(const char* path)
+{
+    int ret = 0;
+    int fd = -1;
+    const char magic[] = { '0', '7', '0', '7', '0', '1' };
+    char buf[sizeof(magic)];
+
+    if (!path)
+        ERAISE(-EINVAL);
+
+    if ((fd = open(path, O_RDONLY)) < 0)
+        ERAISE(-ENOENT);
+
+    if (read(fd, buf, sizeof(buf)) != sizeof(magic))
+        ERAISE(-ENOTSUP);
+
+    if (memcmp(buf, magic, sizeof(magic)) != 0)
+        ERAISE(-ENOTSUP);
+
+done:
+
+    if (fd >= 0)
+        close(fd);
 
     return ret;
 }

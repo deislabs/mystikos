@@ -143,4 +143,6 @@ struct myst_fs
 
 int myst_remove_fd_link(myst_fs_t* fs, myst_file_t* file, int fd);
 
+int myst_load_fs(const char* source, const char* key, myst_fs_t** fs_out);
+
 #endif /* _MYST_FS_H */

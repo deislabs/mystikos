@@ -76,6 +76,17 @@ const region_details* create_region_details_from_package(
     }
     _details.rootfs.status = REGION_ITEM_BORROWED;
 
+    // Load archive:
+    if (elf_find_section(
+            &myst_elf->elf,
+            ".mystarchive",
+            (unsigned char**)&_details.archive.buffer,
+            &_details.archive.buffer_size) != 0)
+    {
+        _err("Failed to extract archive from %s.", get_program_file());
+    }
+    _details.archive.status = REGION_ITEM_BORROWED;
+
     // Load config data
     if (elf_find_section(
             &myst_elf->elf,
@@ -118,6 +129,7 @@ const region_details* get_region_details(void)
 const region_details* create_region_details_from_files(
     const char* program_path,
     const char* rootfs_path,
+    const char* archive_path,
     const char* config_path,
     size_t user_pages)
 {
@@ -127,6 +139,19 @@ const region_details* create_region_details_from_files(
             &_details.rootfs.buffer_size) != 0)
         _err("failed to load rootfs: %s", rootfs_path);
     _details.rootfs.status = REGION_ITEM_OWNED;
+
+    /* load archive file */
+    {
+        if (myst_load_file(
+                archive_path,
+                (void**)&_details.archive.buffer,
+                &_details.archive.buffer_size) != 0)
+        {
+            _err("failed to load archive: %s", archive_path);
+        }
+
+        _details.config.status = REGION_ITEM_OWNED;
+    }
 
     if (program_path[0] != '/')
     {
@@ -173,7 +198,7 @@ const region_details* create_region_details_from_files(
                 config_path,
                 (void**)&_details.config.buffer,
                 &_details.config.buffer_size) != 0)
-            _err("failed to load config: %s", rootfs_path);
+            _err("failed to load config: %s", config_path);
         _details.config.status = REGION_ITEM_OWNED;
     }
     else
@@ -232,6 +257,8 @@ void free_region_details()
 {
     if (_details.rootfs.status == REGION_ITEM_OWNED)
         free(_details.rootfs.buffer);
+    if (_details.archive.status == REGION_ITEM_OWNED)
+        free(_details.archive.buffer);
     if (_details.crt.status == REGION_ITEM_OWNED)
         elf_image_free(&_details.crt.image);
     if (_details.kernel.status == REGION_ITEM_OWNED)
@@ -757,6 +784,56 @@ done:
     return ret;
 }
 
+static int _add_archive_region(oe_region_context_t* context, uint64_t* vaddr)
+{
+    int ret = 0;
+    const uint8_t* p = _details.archive.buffer;
+    size_t n = _details.archive.buffer_size;
+    size_t r = n;
+    const uint64_t id = MYST_ARCHIVE_REGION_ID;
+
+    if (!context || !vaddr)
+        ERAISE(-EINVAL);
+
+    assert(_details.archive.buffer != NULL);
+    assert(_details.archive.buffer_size != 0);
+
+    if (oe_region_start(context, id, false, NULL) != OE_OK)
+        ERAISE(-EINVAL);
+
+    while (r)
+    {
+        __attribute__((__aligned__(PAGE_SIZE))) uint8_t page[PAGE_SIZE];
+        const bool extend = true;
+        const size_t min = (r < sizeof(page)) ? r : sizeof(page);
+
+        memcpy(page, p, min);
+
+        if (min < sizeof(page))
+            memset(page + r, 0, sizeof(page) - r);
+
+        if (oe_region_add_page(
+                context,
+                *vaddr,
+                page,
+                SGX_SECINFO_REG | SGX_SECINFO_R,
+                extend) != OE_OK)
+        {
+            ERAISE(-EINVAL);
+        }
+
+        *vaddr += sizeof(page);
+        p += min;
+        r -= min;
+    }
+
+    if (oe_region_end(context) != OE_OK)
+        ERAISE(-EINVAL);
+
+done:
+    return ret;
+}
+
 static int _add_config_region(oe_region_context_t* context, uint64_t* vaddr)
 {
     int ret = 0;
@@ -903,6 +980,9 @@ oe_result_t oe_region_add_regions(oe_region_context_t* context, uint64_t vaddr)
 
     if (_add_rootfs_region(context, &vaddr) != 0)
         _err("_add_rootfs_region() failed");
+
+    if (_add_archive_region(context, &vaddr) != 0)
+        _err("_add_archive_region() failed");
 
     if (_add_mman_region(context, &vaddr) != 0)
         _err("_add_mman_region() failed");
