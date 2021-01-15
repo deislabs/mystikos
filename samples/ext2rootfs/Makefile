@@ -12,7 +12,7 @@ MKEXT2_OPTS += --force
 MKEXT2_OPTS += --sign=public.pem:private.pem
 
 rootfs:
-	myst mkext2 $(MKEXT2_OPTS) appdir rootfs
+	$(MYST) mkext2 $(MKEXT2_OPTS) appdir rootfs
 
 keyfile:
 	head -c 64 /dev/urandom > keyfile
@@ -24,18 +24,18 @@ public.pem: private.pem
 	openssl rsa -in private.pem -pubout -out public.pem
 
 dump:
-	myst fssig rootfs
+	$(MYST) fssig rootfs
 
 run: deps
-	myst exec-sgx --pubkey=public.pem rootfs /bin/hello
+	$(MYST) exec-sgx --pubkey=public.pem rootfs /bin/hello
 
 run2: deps
-	myst mkcpio appdir rootfs2
-	myst exec-sgx rootfs2 /bin/hello
+	$(MYST) mkcpio appdir rootfs2
+	$(MYST) exec-sgx rootfs2 /bin/hello
 
 
 gdb: deps
-	myst-gdb --args myst exec-sgx --pubkey=public.pem rootfs /bin/hello
+	$(MYST_GDB) --args $(MYST) exec-sgx --pubkey=public.pem rootfs /bin/hello
 
 clean:
 	rm -rf rootfs private.pem public.pem keyfile appdir
