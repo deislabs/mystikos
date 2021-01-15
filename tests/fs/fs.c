@@ -68,7 +68,7 @@ void test_readv(void)
         assert(stat(fdlink, &st) == 0);
         ssize_t n = readlink(fdlink, target, sizeof(target));
         assert(n > 0);
-        assert(strcmp(target, "/test_readv") == 0);
+        assert(memcmp(target, "/test_readv", 11) == 0);
     }
 
     assert(close(fd) == 0);
