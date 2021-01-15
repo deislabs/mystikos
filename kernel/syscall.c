@@ -2571,8 +2571,21 @@ long myst_syscall(long n, long params[6])
             BREAK(_return(n, ret));
         }
         case SYS_msync:
+        {
+            void* addr = (void*)x1;
+            size_t length = (size_t)x2;
+            int flags = (int)x3;
+
+            _strace(
+                n,
+                "addr=%p length=%zu flags=%d ",
+                addr,
+                length,
+                flags);
+
             /* ATTN: hook up implementation */
-            break;
+            BREAK(_return(n,0));
+        }
         case SYS_mincore:
             /* ATTN: hook up implementation */
             break;
@@ -2783,7 +2796,14 @@ long myst_syscall(long n, long params[6])
             BREAK(_return(n, ret));
         }
         case SYS_flock:
-            break;
+        {
+            int fd = (int)x1;
+            int cmd = (int)x2;
+
+            _strace(n, "fd=%d cmd=%d", fd, cmd);
+
+            BREAK(_return(n, 0));
+        }
         case SYS_fsync:
             break;
         case SYS_fdatasync:
