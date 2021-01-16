@@ -160,7 +160,7 @@ static int _id_close(myst_inotifydev_t* dev, myst_inotify_t* obj)
     if (!dev || !_valid_inotify(obj))
         ERAISE(-EINVAL);
 
-    memset(obj, 0, sizeof(myst_obj_t));
+    memset(obj, 0, sizeof(myst_inotify_t));
     free(obj);
 
 done:
