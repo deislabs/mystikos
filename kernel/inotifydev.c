@@ -3,12 +3,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/inotify.h>
+#include <sys/ioctl.h>
 
 #include <myst/defs.h>
 #include <myst/eraise.h>
 #include <myst/inotifydev.h>
 
 #define MAGIC 0x223b6b68
+
+// examples:
+//     https://www.thegeekstuff.com/2010/04/inotify-c-program-example
+//     https://man7.org/tlpi/code/online/diff/inotify/demo_inotify.c.html
 
 struct myst_inotify
 {
@@ -135,11 +140,21 @@ static int _id_ioctl(
     unsigned long request,
     long arg)
 {
-    (void)dev;
-    (void)obj;
-    (void)request;
+    int ret = 0;
+
     (void)arg;
-    return -EINVAL;
+
+    if (!dev || !_valid_inotify(obj))
+        ERAISE(-EBADF);
+
+    if (request == TIOCGWINSZ)
+        ERAISE(-EINVAL);
+
+    ERAISE(-ENOTSUP);
+
+done:
+
+    return ret;
 }
 
 static int _id_dup(
