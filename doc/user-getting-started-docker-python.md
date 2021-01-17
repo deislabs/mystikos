@@ -18,10 +18,10 @@ print("Welcome to Python and numpy!")
 ```
 
 After save it to `hello.py`, you can build and run the program on Ubuntu
-with the following command (after install `python` and `numpy`) to make
+with the following command (after installing `python` and `numpy`) to make
 sure it's correct: `python3 hello.py`
 
-The expected outputs is a welcome message and the square of integers:
+The expected outputs are a welcome message and the square of integers:
 
 ```
 [[ 0  1  2  3  4  5  6  7  8  9]
@@ -113,4 +113,4 @@ Welcome to Python and numpy!
 ```
 
 Congratulations! You have written a Python application and
-successfully launched in a TEE.
+successfully launched it in a TEE.
