@@ -113,7 +113,7 @@ Settings | Description
 UserMemSize | Amount of user memory your application needs to run. Try not to make this just a very large number as the larger this number needs to be the slower load time will be. In this case 40 MB. Value can be bytes (just a number), Kilobytes (number with k after), or megabytes (number with m after)
 ApplicationPath | The executable path relative to the root of your appdir. This executable name is used to determine the final application name once packaged.
 ApplicationParameters | Enclave defined application parameters if HostApplicationParameters is set to false.
-HostApplicationParameters | This parameter specifies if application parameters can be specified on the command line or not. If true they are and the command line arguments are used instead of the ApplicationParameters list of parameters
+HostApplicationParameters | This parameter specifies if application parameters can be specified on the command line or not. If true, the command line arguments are used instead of the ApplicationParameters list of parameters
 EnvironmentVariables | Enclave defined environment variables
 HostEnvironmentVariables | A list of environment variables that can be imported from the insecure host
 
@@ -135,7 +135,7 @@ myst package-sgx ./appdir private.pem config.json
 
 During the packaging process all the Mystikos executables and shared libraries are pulled together with the application directory and configuration and signed with the signing certificate. All enclave resident pieces of Mystikos and the `appdir` are all measured during the signing process and this measurement is verified while the SGX enclave is created. If there is a mismatch then the loading will fail.
 
-The results of this command is a single executable with the same name as specified in the configuration.
+The result of this command is a single executable with the same name as specified in the configuration.
 
 Execution is as simple as running the executable:
 
@@ -151,6 +151,6 @@ If your configuration allows command line parameters from the insecure host then
 
 If the host arguments are not allowed to be passed then any specified within the configuration will be added when Mystikos transitions to the secure enclave.
 
-If any host environment variables are configured as available within the SGX enclave then this command will pass them though. Enclave specific environment variables will be added once Mystikos transfers control to the enclave.
+If any host environment variables are configured as available within the SGX enclave, then this command will pass them though. Enclave specific environment variables will be added once Mystikos transfers control to the enclave.
 
 ---
