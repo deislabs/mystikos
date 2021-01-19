@@ -5,25 +5,101 @@
 #include <sys/inotify.h>
 #include <sys/ioctl.h>
 
+#include <myst/bits.h>
 #include <myst/defs.h>
 #include <myst/eraise.h>
+#include <myst/fdtable.h>
 #include <myst/inotifydev.h>
+#include <myst/list.h>
+#include <myst/paths.h>
+#include <myst/spinlock.h>
+#include <myst/strings.h>
 
 #define MAGIC 0x223b6b68
 
-// examples:
-//     https://www.thegeekstuff.com/2010/04/inotify-c-program-example
-//     https://man7.org/tlpi/code/online/diff/inotify/demo_inotify.c.html
+typedef struct watch
+{
+    struct watch* prev;
+    struct watch* next;
+    char path[PATH_MAX];
+    int wd;
+    uint32_t mask;
+} watch_t;
 
 struct myst_inotify
 {
     uint32_t magic;
     int flags;
+    myst_list_t watches;
+    myst_spinlock_t lock;
 };
 
 MYST_INLINE bool _valid_inotify(const myst_inotify_t* obj)
 {
     return obj && obj->magic == MAGIC;
+}
+
+#define NUM_WDS 4096
+
+static uint8_t _wds[NUM_WDS / 8];
+static myst_spinlock_t _wds_lock = MYST_SPINLOCK_INITIALIZER;
+
+static int _get_wd(void)
+{
+    int ret = 0;
+    int wd = -1;
+
+    myst_spin_lock(&_wds_lock);
+    {
+        for (size_t i = 0; i < NUM_WDS; i++)
+        {
+            if (!myst_test_bit(_wds, i))
+            {
+                myst_set_bit(_wds, i);
+                wd = (int)i;
+                break;
+            }
+        }
+    }
+    myst_spin_unlock(&_wds_lock);
+
+    if (wd == -1)
+        ERAISE(-ENOMEM);
+
+    wd += MYST_FDTABLE_SIZE;
+    ret = wd;
+
+done:
+
+    return ret;
+}
+
+static int _put_wd(int wd)
+{
+    int ret = 0;
+
+    wd -= MYST_FDTABLE_SIZE;
+
+    if (wd < 0 || wd >= NUM_WDS)
+        ERAISE(-EINVAL);
+
+    myst_spin_lock(&_wds_lock);
+    {
+        if (myst_test_bit(_wds, wd))
+        {
+            myst_clear_bit(_wds, wd);
+        }
+        else
+        {
+            myst_spin_unlock(&_wds_lock);
+            ERAISE(-EINVAL);
+        }
+    }
+    myst_spin_unlock(&_wds_lock);
+
+done:
+
+    return ret;
 }
 
 static int _id_inotify_init1(
@@ -64,11 +140,15 @@ static ssize_t _id_read(
     void* buf,
     size_t count)
 {
-    (void)dev;
-    (void)obj;
-    (void)buf;
-    (void)count;
-    return -EINVAL;
+    ssize_t ret = 0;
+
+    if (!dev || !_valid_inotify(obj) || (!buf && count))
+        ERAISE(-EINVAL);
+
+    /* notification not supported yet so return zero bytes */
+
+done:
+    return ret;
 }
 
 static ssize_t _id_write(
@@ -208,11 +288,61 @@ static int _id_inotify_add_watch(
     const char* pathname,
     uint32_t mask)
 {
-    (void)dev;
-    (void)obj;
-    (void)pathname;
-    (void)mask;
-    return -EINVAL;
+    int ret = 0;
+    char path[PATH_MAX];
+    watch_t* watch = NULL;
+    bool found = false;
+
+    if (!dev || !_valid_inotify(obj) || !pathname)
+        ERAISE(-EINVAL);
+
+    /* normalize the path */
+    ECHECK(myst_normalize(pathname, path, sizeof(path)));
+
+    /* see if there's already a watch for this path */
+    {
+        myst_spin_lock(&obj->lock);
+
+        for (watch_t* p = (watch_t*)obj->watches.head; p; p = p->next)
+        {
+            if (strcmp(p->path, pathname) == 0)
+            {
+                ret = p->wd;
+                found = true;
+                break;
+            }
+        }
+
+        myst_spin_unlock(&obj->lock);
+    }
+
+    /* if not found, then add a new watch object for this path */
+    if (!found)
+    {
+        int wd;
+
+        if (!(watch = calloc(1, sizeof(watch_t))))
+            ERAISE(-ENOMEM);
+
+        myst_strlcpy(watch->path, path, sizeof(watch->path));
+        ECHECK((wd = _get_wd()));
+        watch->wd = wd;
+        watch->mask = mask;
+
+        myst_spin_lock(&obj->lock);
+        myst_list_append(&obj->watches, (myst_list_node_t*)watch);
+        myst_spin_unlock(&obj->lock);
+
+        ret = wd;
+        watch = NULL;
+    }
+
+done:
+
+    if (watch)
+        free(watch);
+
+    return ret;
 }
 
 static int _id_inotify_rm_watch(
@@ -220,10 +350,40 @@ static int _id_inotify_rm_watch(
     myst_inotify_t* obj,
     int wd)
 {
-    (void)dev;
-    (void)obj;
-    (void)wd;
-    return -EINVAL;
+    int ret = 0;
+    bool found = false;
+
+    if (!dev || !_valid_inotify(obj))
+        ERAISE(-EINVAL);
+
+    if (wd < 0)
+        ERAISE(-EBADF);
+
+    /* see if there's already a watch for this path */
+    {
+        myst_spin_lock(&obj->lock);
+
+        for (watch_t* p = (watch_t*)obj->watches.head; p; p = p->next)
+        {
+            if (p->wd == wd)
+            {
+                myst_list_remove(&obj->watches, (myst_list_node_t*)p);
+                free(p);
+                found = true;
+                break;
+            }
+        }
+
+        myst_spin_unlock(&obj->lock);
+    }
+
+    if (!found)
+        ERAISE(-EINVAL);
+
+    ECHECK(_put_wd(wd));
+
+done:
+    return ret;
 }
 
 myst_inotifydev_t* myst_inotifydev_get(void)

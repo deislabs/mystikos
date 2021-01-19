@@ -62,6 +62,7 @@
 #include <myst/thread.h>
 #include <myst/times.h>
 #include <myst/trace.h>
+#include <myst/inotifydev.h>
 
 #define DEV_URANDOM_FD MYST_FDTABLE_SIZE
 
@@ -1339,6 +1340,62 @@ long myst_syscall_pipe2(int pipefd[2], int flags)
 
     pipefd[0] = fd0;
     pipefd[1] = fd1;
+
+done:
+    return ret;
+}
+
+long myst_syscall_inotify_init1(int flags)
+{
+    long ret = 0;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    const myst_fdtable_type_t type = MYST_FDTABLE_TYPE_INOTIFY;
+    myst_inotifydev_t* dev = myst_inotifydev_get();
+    myst_inotify_t* obj = NULL;
+    int fd;
+
+    ECHECK((*dev->id_inotify_init1)(dev, flags, &obj));
+
+    if ((fd = myst_fdtable_assign(fdtable, type, dev, obj)) < 0)
+    {
+        (*dev->id_close)(dev, obj);
+        ERAISE(fd);
+    }
+
+    ret = fd;
+
+done:
+    return ret;
+}
+
+long myst_syscall_inotify_add_watch(
+    int fd,
+    const char* pathname,
+    uint32_t mask)
+{
+    long ret = 0;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_inotifydev_t* dev;
+    myst_inotify_t* obj;
+    int wd;
+
+    ECHECK(myst_fdtable_get_inotify(fdtable, fd, &dev, &obj));
+    ECHECK(wd = (*dev->id_inotify_add_watch)(dev, obj, pathname, mask));
+    ret = wd;
+
+done:
+    return ret;
+}
+
+long myst_syscall_inotify_rm_watch(int fd, int wd)
+{
+    long ret = 0;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_inotifydev_t* dev;
+    myst_inotify_t* obj;
+
+    ECHECK(myst_fdtable_get_inotify(fdtable, fd, &dev, &obj));
+    ECHECK((*dev->id_inotify_rm_watch)(dev, obj, wd));
 
 done:
     return ret;
@@ -3590,11 +3647,35 @@ long myst_syscall(long n, long params[6])
         case SYS_ioprio_get:
             break;
         case SYS_inotify_init:
-            break;
+        {
+            _strace(n, NULL);
+
+            long ret = myst_syscall_inotify_init1(0);
+            BREAK(_return(n,ret));
+        }
         case SYS_inotify_add_watch:
+        {
+            int fd = (int)x1;
+            const char* pathname = (const char*)x2;
+            uint32_t mask = (uint32_t)x3;
+
+            _strace(n, "fd=%d pathname=%s mask=%x", fd, pathname, mask);
+
+            long ret = myst_syscall_inotify_add_watch(fd, pathname, mask);
+            BREAK(_return(n,ret));
             break;
+        }
         case SYS_inotify_rm_watch:
+        {
+            int fd = (int)x1;
+            int wd = (int)x2;
+
+            _strace(n, "fd=%d wd=%d", fd, wd);
+
+            long ret = myst_syscall_inotify_rm_watch(fd, wd);
+            BREAK(_return(n,ret));
             break;
+        }
         case SYS_migrate_pages:
             break;
         case SYS_openat:
@@ -3725,7 +3806,14 @@ long myst_syscall(long n, long params[6])
             BREAK(_return(n, ret));
         }
         case SYS_inotify_init1:
-            break;
+        {
+            int flags = (int)x1;
+
+            _strace(n, "flags=%x", flags);
+
+            long ret = myst_syscall_inotify_init1(flags);
+            BREAK(_return(n,ret));
+        }
         case SYS_preadv:
             break;
         case SYS_pwritev:
