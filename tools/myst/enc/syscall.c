@@ -271,13 +271,17 @@ static long _socket(int domain, int type, int protocol)
     RETURN(myst_socket_ocall(&ret, domain, type, protocol));
 }
 
-static long _accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
+static long _accept4(
+    int sockfd,
+    struct sockaddr* addr,
+    socklen_t* addrlen,
+    int flags)
 {
     long ret = 0;
     long retval;
     socklen_t n = (addr && addrlen) ? *addrlen : 0;
 
-    if (myst_accept_ocall(&retval, sockfd, addr, &n, n) != OE_OK)
+    if (myst_accept4_ocall(&retval, sockfd, addr, &n, n, flags) != OE_OK)
     {
         ret = -EINVAL;
         goto done;
@@ -815,7 +819,11 @@ long myst_handle_tcall(long n, long params[6])
         }
         case SYS_accept:
         {
-            return _accept((int)a, (struct sockaddr*)b, (socklen_t*)c);
+            return _accept4((int)a, (struct sockaddr*)b, (socklen_t*)c, (int)0);
+        }
+        case SYS_accept4:
+        {
+            return _accept4((int)a, (struct sockaddr*)b, (socklen_t*)c, (int)d);
         }
         case SYS_sendmsg:
         {
