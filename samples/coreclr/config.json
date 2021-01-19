@@ -3,9 +3,6 @@
 
     // Whether we are running libos+OE+app in debug mode
     "Debug": 1,
-    // The heap size of the kernel. Accepted values are: "16m", "256k", 2560000.
-    // without suffix 'm' or 'k', the size is in bytes.
-    "KernelMemSize": "8m",
     // The stack size of each ethread
     "StackMemSize": "400k",
     // The number of ethreads
@@ -19,8 +16,6 @@
     "UserMemSize": "1024m",
     // The path to the entry point application in rootfs
     "ApplicationPath": "/coreclr-tests-all/Tests/Core_Root/corerun",
-    // The parameters to the entry point application
-    "ApplicationParameters": ["/coreclr-tests-all/JIT/Generics/Arrays/TypeParameters/Jagged/class01/class01.dll"],
     // Whether we allow "ApplicationParameters" to be overridden by command line options of "libos exec"
     "HostApplicationParameters": true,
     // The host environment variables accessible inside the enclave.

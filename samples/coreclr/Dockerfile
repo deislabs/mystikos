@@ -4,6 +4,11 @@ WORKDIR /build
 RUN git clone --single-branch --branch v5.0.0-rtm.20519.4 https://github.com/dotnet/runtime.git
 WORKDIR /build/runtime/
 
+# Include keep native symbols commit
+RUN git fetch origin master \
+    && git checkout v5.0.0-rtm.20519.4 \
+    && git cherry-pick -n 2f1694ea116cc9819644382861690f17f1c8517b
+
 # Build clr+libs+clr.tests in debug
 RUN ./build.sh clr+libs /p:RuntimeOS=linux-musl \
     && ./src/coreclr/build-test.sh \
