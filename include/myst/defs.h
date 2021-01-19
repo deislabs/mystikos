@@ -21,4 +21,6 @@
 
 #define MYST_NOINLINE __attribute__((noinline))
 
+#define MYST_UNUSED __attribute__((__unused__))
+
 #endif /* _MYST_DEFS_H */
