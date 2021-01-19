@@ -82,15 +82,6 @@ long myst_socket_ocall(int domain, int type, int protocol)
     RETURN(socket(domain, type, protocol));
 }
 
-long myst_accept_ocall(
-    int sockfd,
-    struct sockaddr* addr,
-    socklen_t* addrlen,
-    size_t addr_size)
-{
-    RETURN(accept(sockfd, addr, addrlen));
-}
-
 long myst_accept4_ocall(
     int sockfd,
     struct sockaddr* addr,

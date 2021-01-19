@@ -20,9 +20,7 @@ UDSPATH=$(OBJDIR)/uds1
 
 tests: all
 	rm -rf $(UDSPATH)
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/sockets $(UDSPATH) accept
-	rm -rf $(UDSPATH)
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/sockets $(UDSPATH) accept4
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/sockets $(UDSPATH)
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst

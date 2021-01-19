@@ -1577,31 +1577,6 @@ done:
     return ret;
 }
 
-long myst_syscall_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
-{
-    long ret = 0;
-    myst_fdtable_t* fdtable = myst_fdtable_current();
-    myst_sockdev_t* sd;
-    myst_sock_t* sock;
-    myst_sock_t* new_sock = NULL;
-    const myst_fdtable_type_t fdtype = MYST_FDTABLE_TYPE_SOCK;
-
-    ECHECK(myst_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
-    ECHECK((*sd->sd_accept)(sd, sock, addr, addrlen, &new_sock));
-
-    if ((sockfd = myst_fdtable_assign(fdtable, fdtype, sd, new_sock)) < 0)
-    {
-        (*sd->sd_close)(sd, new_sock);
-        ERAISE(sockfd);
-    }
-
-    ret = sockfd;
-
-done:
-
-    return ret;
-}
-
 long myst_syscall_accept4(
     int sockfd,
     struct sockaddr* addr,
@@ -4105,7 +4080,7 @@ long myst_syscall(long n, long params[6])
 
             _strace(n, "sockfd=%d addr=%p addrlen=%p", sockfd, addr, addrlen);
 
-            ret = myst_syscall_accept(sockfd, addr, addrlen);
+            ret = myst_syscall_accept4(sockfd, addr, addrlen, 0);
             BREAK(_return(n, ret));
         }
         case SYS_sendmsg:
