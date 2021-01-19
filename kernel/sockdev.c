@@ -168,11 +168,12 @@ done:
     return ret;
 }
 
-static int _sd_accept(
+static int _sd_accept4(
     myst_sockdev_t* sd,
     myst_sock_t* sock,
     struct sockaddr* addr,
     socklen_t* addrlen,
+    int flags,
     myst_sock_t** new_sock_out)
 {
     int ret = 0;
@@ -186,8 +187,8 @@ static int _sd_accept(
 
     /* perform syscall */
     {
-        long params[6] = {sock->fd, (long)addr, (long)addrlen};
-        ECHECK((fd = myst_tcall(SYS_accept, params)));
+        long params[6] = {sock->fd, (long)addr, (long)addrlen, flags};
+        ECHECK((fd = myst_tcall(SYS_accept4, params)));
     }
 
     new_sock->fd = fd;
@@ -680,7 +681,7 @@ extern myst_sockdev_t* myst_sockdev_get(void)
         .sd_socket = _sd_socket,
         .sd_socketpair = _sd_socketpair,
         .sd_connect = _sd_connect,
-        .sd_accept = _sd_accept,
+        .sd_accept4 = _sd_accept4,
         .sd_bind = _sd_bind,
         .sd_listen = _sd_listen,
         .sd_sendto = _sd_sendto,

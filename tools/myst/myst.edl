@@ -156,11 +156,12 @@ enclave
 
         long myst_socket_ocall(int domain, int type, int protocol);
 
-        long myst_accept_ocall(
+        long myst_accept4_ocall(
             int sockfd,
             [out, size=addr_size] struct sockaddr* addr,
             [in, out] socklen_t* addrlen,
-            size_t addr_size);
+            size_t addr_size,
+            int flags);
 
         long myst_sendmsg_ocall(
             int sockfd,
