@@ -490,6 +490,7 @@ long myst_tcall(long n, long params[6])
         case SYS_sendfile:
         case SYS_socket:
         case SYS_accept:
+        case SYS_accept4:
         case SYS_sendto:
         case SYS_sendmsg:
         case SYS_recvmsg:
