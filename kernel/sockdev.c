@@ -203,40 +203,6 @@ done:
     return ret;
 }
 
-static int _sd_accept(
-    myst_sockdev_t* sd,
-    myst_sock_t* sock,
-    struct sockaddr* addr,
-    socklen_t* addrlen,
-    myst_sock_t** new_sock_out)
-{
-    int ret = 0;
-    myst_sock_t* new_sock = NULL;
-    int fd;
-
-    if (!sd || !_valid_sock(sock))
-        ERAISE(-EINVAL);
-
-    ECHECK(_new_sock(&new_sock));
-
-    /* perform syscall */
-    {
-        long params[6] = {sock->fd, (long)addr, (long)addrlen};
-        ECHECK((fd = myst_tcall(SYS_accept, params)));
-    }
-
-    new_sock->fd = fd;
-    *new_sock_out = new_sock;
-    new_sock = NULL;
-
-done:
-
-    if (new_sock)
-        _free_sock(new_sock);
-
-    return ret;
-}
-
 static int _sd_bind(
     myst_sockdev_t* sd,
     myst_sock_t* sock,
@@ -715,7 +681,6 @@ extern myst_sockdev_t* myst_sockdev_get(void)
         .sd_socket = _sd_socket,
         .sd_socketpair = _sd_socketpair,
         .sd_connect = _sd_connect,
-        .sd_accept = _sd_accept,
         .sd_accept4 = _sd_accept4,
         .sd_bind = _sd_bind,
         .sd_listen = _sd_listen,

@@ -271,43 +271,6 @@ static long _socket(int domain, int type, int protocol)
     RETURN(myst_socket_ocall(&ret, domain, type, protocol));
 }
 
-static long _accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
-{
-    long ret = 0;
-    long retval;
-    socklen_t n = (addr && addrlen) ? *addrlen : 0;
-
-    if (myst_accept_ocall(&retval, sockfd, addr, &n, n) != OE_OK)
-    {
-        ret = -EINVAL;
-        goto done;
-    }
-
-    if (retval < 0)
-    {
-        ret = retval;
-        goto done;
-    }
-
-    /* guard against the host returning too large a size */
-    if (addr && addrlen)
-    {
-        if (n > sizeof(struct sockaddr_storage))
-        {
-            ret = -EINVAL;
-            goto done;
-        }
-
-        /* note: n may legitimately be bigger due to truncation */
-        *addrlen = n;
-    }
-
-    ret = retval;
-
-done:
-    return ret;
-}
-
 static long _accept4(
     int sockfd,
     struct sockaddr* addr,
@@ -856,7 +819,7 @@ long myst_handle_tcall(long n, long params[6])
         }
         case SYS_accept:
         {
-            return _accept((int)a, (struct sockaddr*)b, (socklen_t*)c);
+            return _accept4((int)a, (struct sockaddr*)b, (socklen_t*)c, (int)0);
         }
         case SYS_accept4:
         {

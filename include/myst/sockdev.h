@@ -38,13 +38,6 @@ struct myst_sockdev
         const struct sockaddr* addr,
         socklen_t addrlen);
 
-    int (*sd_accept)(
-        myst_sockdev_t* sd,
-        myst_sock_t* sock,
-        struct sockaddr* addr,
-        socklen_t* addrlen,
-        myst_sock_t** new_sock);
-
     int (*sd_accept4)(
         myst_sockdev_t* sd,
         myst_sock_t* sock,

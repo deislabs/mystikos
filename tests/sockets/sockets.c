@@ -35,27 +35,6 @@ typedef struct args
     const char* path;
 } args_t;
 
-static bool _use_accept4 = false;
-static bool _called_accept4 = false;
-
-static int _call_accept(
-    int sockfd,
-    struct sockaddr* addr,
-    socklen_t* addrlen,
-    int flags)
-{
-    if (_use_accept4)
-    {
-        _called_accept4 = true;
-        return accept4(sockfd, addr, addrlen, flags);
-    }
-    else
-    {
-        _called_accept4 = false;
-        return accept(sockfd, addr, addrlen);
-    }
-}
-
 static void* _srv_thread_func(void* arg)
 {
     args_t* args = (args_t*)arg;
@@ -119,7 +98,7 @@ static void* _srv_thread_func(void* arg)
         {
             struct sockaddr_in addr;
             socklen_t addrlen = sizeof(addr);
-            sock = _call_accept(lsock, (struct sockaddr*)NULL, &addrlen, 0);
+            sock = accept4(lsock, (struct sockaddr*)NULL, &addrlen, 0);
             assert(sock > 0);
 
             printf("addrlen=%u/%zu\n", addrlen, sizeof(addr));
@@ -128,7 +107,7 @@ static void* _srv_thread_func(void* arg)
         {
             struct sockaddr_un addr;
             socklen_t addrlen = sizeof(addr);
-            sock = _call_accept(lsock, (struct sockaddr*)&addr, &addrlen, 0);
+            sock = accept4(lsock, (struct sockaddr*)&addr, &addrlen, 0);
             assert(sock > 0);
         }
 
@@ -216,27 +195,17 @@ void test_sockets(args_t* args)
 
 int main(int argc, const char* argv[])
 {
-    if (argc != 3)
+    if (argc != 2)
     {
-        fprintf(stderr, "Usage: %s <uds-path> [accept|accept4]\n", argv[0]);
+        fprintf(stderr, "Usage: %s <uds-path>\n", argv[0]);
         exit(1);
     }
 
     args_t inet_args = {AF_INET, NULL};
     args_t unix_args = {AF_UNIX, argv[1]};
 
-    if (strcmp(argv[2], "accept4") == 0)
-        _use_accept4 = true;
-    else
-        assert(strcmp(argv[2], "accept") == 0);
-
     test_sockets(&inet_args);
     test_sockets(&unix_args);
-
-    if (strcmp(argv[2], "accept4") == 0)
-        assert(_called_accept4);
-    else
-        assert(!_called_accept4);
 
     printf("=== passed test (%s)\n", argv[0]);
     return 0;
