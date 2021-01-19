@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
@@ -88,6 +89,16 @@ long myst_accept_ocall(
     size_t addr_size)
 {
     RETURN(accept(sockfd, addr, addrlen));
+}
+
+long myst_accept4_ocall(
+    int sockfd,
+    struct sockaddr* addr,
+    socklen_t* addrlen,
+    size_t addr_size,
+    int flags)
+{
+    RETURN(accept4(sockfd, addr, addrlen, flags));
 }
 
 long myst_sendmsg_ocall(

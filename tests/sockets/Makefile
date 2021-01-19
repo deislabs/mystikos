@@ -16,11 +16,13 @@ ifdef STRACE
 OPTS = --strace
 endif
 
-UDSPATH=$(OBJDIR)/uds
+UDSPATH=$(OBJDIR)/uds1
 
 tests: all
 	rm -rf $(UDSPATH)
-	$(RUNTEST) $(MYST_EXEC) rootfs /bin/sockets $(UDSPATH) $(OPTS)
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/sockets $(UDSPATH) accept
+	rm -rf $(UDSPATH)
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/sockets $(UDSPATH) accept4
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst
