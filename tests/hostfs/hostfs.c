@@ -37,7 +37,6 @@ int main(int argc, const char* argv[])
 
     /* test creat() and write() */
     {
-printf("filename{%s}\n", filename);
         assert((fd = creat(filename, 0666)) >= 0);
         assert(write(fd, alpha, sizeof(alpha)) == sizeof(alpha));
         assert(close(fd) == 0);
