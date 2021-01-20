@@ -189,7 +189,14 @@ int myst_munmap(void* addr, size_t length)
     int ret = myst_mman_munmap(&_mman, addr, length);
 
 #if 0
-    /* ATTN-2AA04DD0: fails during process cleanup */
+    // ATTN-2AA04DD0: fails during process cleanup for unknown reasons. When
+    // the process is created, we call myst_register_process_mapping() to keep
+    // track of the mapping so that it can be released when the process exist
+    // by calling myst_release_process_mappings(), where this failure occurs.
+    // This probably because the mappings are overlapping and some where
+    // already partially released by the application. In any case, more
+    // investigation is need to find a root cause. This is only a problem after
+    // a posix_spawn().
     if (ret != 0)
     {
         printf("*** MUNMAP: ret=%d err=%s\n", ret, _mman.err);
