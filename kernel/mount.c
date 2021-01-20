@@ -19,7 +19,6 @@
 #include <myst/sha256.h>
 #include <myst/spinlock.h>
 #include <myst/strings.h>
-#include <myst/strtoint.h>
 #include <myst/syscall.h>
 #include <myst/verity.h>
 #include <myst/fssig.h>
