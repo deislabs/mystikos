@@ -685,11 +685,6 @@ done:
     return groups;
 }
 
-static uint32_t _make_ino(const ext2_t* ext2, uint32_t grpno, uint32_t lino)
-{
-    return (grpno * ext2->sb.s_inodes_per_group) + (lino + 1);
-}
-
 static uint32_t _ino_to_grpno(const ext2_t* ext2, ext2_ino_t ino)
 {
 #ifdef CHECK
@@ -754,7 +749,7 @@ static int _get_ino(ext2_t* ext2, ext2_ino_t* ino)
             if (!ext2_test_bit(bitmap.data, bitmap.size, lino))
             {
                 _set_bit(bitmap.data, bitmap.size, lino);
-                *ino = _make_ino(ext2, grpno, lino);
+                *ino = ext2_make_ino(ext2, grpno, lino);
                 break;
             }
         }
@@ -836,7 +831,7 @@ static int _write_inode(
     /* Check the reverse mapping */
     {
         ext2_ino_t tmp;
-        tmp = _make_ino(ext2, grpno, lino);
+        tmp = ext2_make_ino(ext2, grpno, lino);
         assert(tmp == ino);
     }
 #endif
@@ -2730,7 +2725,7 @@ int ext2_check(const ext2_t* ext2)
                 if ((lino + 1) < EXT2_FIRST_INO && (lino + 1) != EXT2_ROOT_INO)
                     continue;
 
-                ino = _make_ino(ext2, grpno, lino);
+                ino = ext2_make_ino(ext2, grpno, lino);
 
                 ECHECK(ext2_read_inode(ext2, ino, &inode));
 
@@ -2798,7 +2793,7 @@ int ext2_read_inode(const ext2_t* ext2, ext2_ino_t ino, ext2_inode_t* inode)
     /* Check the reverse mapping */
     {
         ext2_ino_t tmp;
-        tmp = _make_ino(ext2, grpno, lino);
+        tmp = ext2_make_ino(ext2, grpno, lino);
         assert(tmp == ino);
     }
 

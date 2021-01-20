@@ -2,6 +2,7 @@
 #define _EXT2COMMON_H
 
 #include <myst/defs.h>
+#include <myst/ext2.h>
 #include <stdint.h>
 
 MYST_INLINE bool ext2_test_bit(
@@ -22,5 +23,11 @@ MYST_INLINE uint32_t ext2_count_bits(uint8_t byte)
 }
 
 uint32_t ext2_count_bits_n(const uint8_t* data, uint32_t size);
+
+MYST_INLINE uint32_t ext2_make_ino(
+    const ext2_t* ext2, uint32_t grpno, uint32_t lino)
+{
+    return (grpno * ext2->sb.s_inodes_per_group) + (lino + 1);
+}
 
 #endif /* _EXT2COMMON_H */
