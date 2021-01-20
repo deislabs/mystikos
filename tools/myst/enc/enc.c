@@ -30,6 +30,11 @@
 #include "../shared.h"
 #include "myst_t.h"
 
+#define IRETFRAME_Rip 0
+#define IRETFRAME_SegCs IRETFRAME_Rip+8
+#define IRETFRAME_EFlags IRETFRAME_SegCs+8
+#define IRETFRAME_Rsp IRETFRAME_EFlags+8
+
 extern volatile const oe_sgx_enclave_properties_t oe_enclave_properties_sgx;
 
 static size_t _get_num_tcs(void)
@@ -44,6 +49,7 @@ static uint64_t _vectored_handler(oe_exception_record_t* er)
 {
     const uint16_t RDTSC_OPCODE = 0x310F;
     const uint16_t CPUID_OPCODE = 0xA20F;
+    const uint16_t IRETQ_OPCODE = 0xCF48;
     const uint16_t opcode = *((uint16_t*)er->context->rip);
 
     if (er->code == OE_EXCEPTION_ILLEGAL_INSTRUCTION && opcode == RDTSC_OPCODE)
@@ -90,6 +96,17 @@ static uint64_t _vectored_handler(oe_exception_record_t* er)
         er->context->rbx = rbx;
         er->context->rcx = rcx;
         er->context->rdx = rdx;
+
+        return OE_EXCEPTION_CONTINUE_EXECUTION;
+    }
+    if (er->code == OE_EXCEPTION_ILLEGAL_INSTRUCTION && opcode == IRETQ_OPCODE)
+    {
+        // Restore RSP, RIP, EFLAGS from the stack. CS and SS are not
+        // applicable for sgx applications, and restoring them triggers #UD.
+
+        er->context->flags = *(uint64_t*)(er->context->rsp + IRETFRAME_EFlags);
+        er->context->rip = *(uint64_t*)(er->context->rsp + IRETFRAME_Rip);
+        er->context->rsp = *(uint64_t*)(er->context->rsp + IRETFRAME_Rsp);
 
         return OE_EXCEPTION_CONTINUE_EXECUTION;
     }
