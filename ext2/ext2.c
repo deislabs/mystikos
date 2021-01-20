@@ -14,6 +14,7 @@
 #include <myst/hex.h>
 #include <myst/round.h>
 #include <myst/strings.h>
+#include <myst/paths.h>
 #include "ext2common.h"
 
 #define EXT2_S_MAGIC 0xEF53
@@ -1362,49 +1363,15 @@ static int _split_path(
     char dirname[EXT2_PATH_MAX],
     char basename[EXT2_PATH_MAX])
 {
-    char* slash;
+    int ret = 0;
 
-    /* Reject paths that are not absolute */
-    if (path[0] != '/')
-        return -EINVAL;
+    if (strlen(path) >= EXT2_PATH_MAX)
+        ERAISE(-ENAMETOOLONG);
 
-    /* Handle root directory up front */
-    if (strcmp(path, "/") == 0)
-    {
-        myst_strlcpy(dirname, "/", EXT2_PATH_MAX);
-        myst_strlcpy(basename, "/", EXT2_PATH_MAX);
-        return 0;
-    }
+    ECHECK(myst_split_path(path, dirname, basename));
 
-    /* This cannot fail (prechecked) */
-    if (!(slash = strrchr(path, '/')))
-        return -EINVAL;
-
-    /* If path ends with '/' character */
-    if (!slash[1])
-        return -EINVAL;
-
-    /* Split the path */
-    {
-        if (slash == path)
-        {
-            myst_strlcpy(dirname, "/", EXT2_PATH_MAX);
-        }
-        else
-        {
-            uint64_t index = slash - path;
-            myst_strlcpy(dirname, path, EXT2_PATH_MAX);
-
-            if (index < EXT2_PATH_MAX)
-                dirname[index] = '\0';
-            else
-                dirname[EXT2_PATH_MAX - 1] = '\0';
-        }
-
-        myst_strlcpy(basename, slash + 1, EXT2_PATH_MAX);
-    }
-
-    return 0;
+done:
+    return ret;
 }
 
 static size_t _inode_get_num_blocks(ext2_t* ext2, ext2_inode_t* inode)
