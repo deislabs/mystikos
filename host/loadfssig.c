@@ -26,6 +26,8 @@ int myst_load_fssig(const char* path, myst_fssig_t* fssig)
     if (fseek(os, -size, SEEK_END) != 0)
         ERAISE(-ENOENT);
 
+    memset(&buf, 0, sizeof(buf));
+
     if (fread(&buf, 1, size, os) != size)
         ERAISE(-EIO);
 

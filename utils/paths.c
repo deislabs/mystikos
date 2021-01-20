@@ -114,15 +114,13 @@ done:
 
 int myst_split_path(
     const char* path,
-    char dirname[PATH_MAX],
-    char basename[PATH_MAX])
+    char* dirname,
+    size_t dirname_size,
+    char* basename,
+    size_t basename_size)
 {
     int ret = 0;
     char* slash;
-
-    /* Reject paths that are too long. */
-    if (strlen(path) >= PATH_MAX)
-        ERAISE(-EINVAL);
 
     /* Reject paths that are not absolute */
     if (path[0] != '/')
@@ -131,8 +129,8 @@ int myst_split_path(
     /* Handle root directory up front */
     if (strcmp(path, "/") == 0)
     {
-        myst_strlcpy(dirname, "/", PATH_MAX);
-        myst_strlcpy(basename, "/", PATH_MAX);
+        myst_strlcpy(dirname, "/", dirname_size);
+        myst_strlcpy(basename, "/", dirname_size);
         goto done;
     }
 
@@ -148,20 +146,20 @@ int myst_split_path(
     {
         if (slash == path)
         {
-            myst_strlcpy(dirname, "/", PATH_MAX);
+            myst_strlcpy(dirname, "/", dirname_size);
         }
         else
         {
             size_t index = (size_t)(slash - path);
-            myst_strlcpy(dirname, path, PATH_MAX);
+            myst_strlcpy(dirname, path, dirname_size);
 
-            if (index < PATH_MAX)
+            if (index < dirname_size)
                 dirname[index] = '\0';
             else
-                dirname[PATH_MAX - 1] = '\0';
+                dirname[dirname_size - 1] = '\0';
         }
 
-        myst_strlcpy(basename, slash + 1, PATH_MAX);
+        myst_strlcpy(basename, slash + 1, basename_size);
     }
 
 done:
