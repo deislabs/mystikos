@@ -14,6 +14,7 @@
 #include <myst/hex.h>
 #include <myst/round.h>
 #include <myst/strings.h>
+#include "ext2common.h"
 
 #define EXT2_S_MAGIC 0xEF53
 
@@ -137,11 +138,7 @@ static bool _zero_filled_u32(const uint32_t* s, size_t n)
     return p == end;
 }
 
-static ssize_t _read(
-    myst_blkdev_t* dev,
-    size_t offset,
-    void* data,
-    size_t size)
+static ssize_t _read(myst_blkdev_t* dev, size_t offset, void* data, size_t size)
 {
     uint32_t blkno;
     uint32_t i;
@@ -267,46 +264,31 @@ static ssize_t _write(
     return size;
 }
 
-static uint32_t _count_bits(uint8_t byte)
-{
-    uint8_t i;
-    uint8_t n = 0;
+const uint8_t ext2_count_bits_table[] = {
+    0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, 1, 2, 2, 3, 2, 3, 3, 4,
+    2, 3, 3, 4, 3, 4, 4, 5, 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
+    2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 1, 2, 2, 3, 2, 3, 3, 4,
+    2, 3, 3, 4, 3, 4, 4, 5, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+    2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 3, 4, 4, 5, 4, 5, 5, 6,
+    4, 5, 5, 6, 5, 6, 6, 7, 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
+    2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 2, 3, 3, 4, 3, 4, 4, 5,
+    3, 4, 4, 5, 4, 5, 5, 6, 3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
+    2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 3, 4, 4, 5, 4, 5, 5, 6,
+    4, 5, 5, 6, 5, 6, 6, 7, 3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
+    4, 5, 5, 6, 5, 6, 6, 7, 5, 6, 6, 7, 6, 7, 7, 8,
+};
 
-    for (i = 0; i < 8; i++)
-    {
-        if (byte & (1 << i))
-            n++;
-    }
-
-    return n;
-}
-
-static uint32_t _count_bits_n(const uint8_t* data, uint32_t size)
+uint32_t ext2_count_bits_n(const uint8_t* data, uint32_t size)
 {
     uint32_t i;
     uint32_t n = 0;
 
     for (i = 0; i < size; i++)
     {
-        n += _count_bits(data[i]);
+        n += ext2_count_bits(data[i]);
     }
 
     return n;
-}
-
-static __inline__ bool _test_bit(
-    const uint8_t* data,
-    uint32_t size,
-    uint32_t index)
-{
-    uint32_t byte = index / 8;
-    uint32_t bit = index % 8;
-
-#ifdef CHECKS
-    assert(byte < size);
-#endif
-
-    return ((uint32_t)(data[byte]) & (1 << bit)) ? 1 : 0;
 }
 
 static __inline__ void _set_bit(uint8_t* data, uint32_t size, uint32_t index)
@@ -601,7 +583,7 @@ static int _get_blkno(ext2_t* ext2, uint32_t* blkno)
 
             for (; lblkno < bitmap.size * 8; lblkno++)
             {
-                if (!_test_bit(bitmap.data, bitmap.size, lblkno))
+                if (!ext2_test_bit(bitmap.data, bitmap.size, lblkno))
                 {
                     _set_bit(bitmap.data, bitmap.size, lblkno);
                     *blkno = _make_blkno(ext2, grpno, lblkno);
@@ -769,7 +751,7 @@ static int _get_ino(ext2_t* ext2, ext2_ino_t* ino)
         /* Scan the bitmap, looking for free bit */
         for (lino = 0; lino < bitmap.size * 8; lino++)
         {
-            if (!_test_bit(bitmap.data, bitmap.size, lino))
+            if (!ext2_test_bit(bitmap.data, bitmap.size, lino))
             {
                 _set_bit(bitmap.data, bitmap.size, lino);
                 *ino = _make_ino(ext2, grpno, lino);
@@ -2038,11 +2020,7 @@ done:
 }
 #endif
 
-static int _ftruncate(
-    ext2_t* ext2,
-    myst_file_t* file,
-    off_t length,
-    bool isdir)
+static int _ftruncate(ext2_t* ext2, myst_file_t* file, off_t length, bool isdir)
 {
     int ret = 0;
     size_t file_size;
@@ -2678,7 +2656,7 @@ int ext2_check(const ext2_t* ext2)
             nfree += ext2->groups[i].bg_free_blocks_count;
 
             ECHECK(ext2_read_block_bitmap(ext2, i, &bitmap));
-            nused += _count_bits_n(bitmap.data, bitmap.size);
+            nused += ext2_count_bits_n(bitmap.data, bitmap.size);
             n += bitmap.size * 8;
         }
 
@@ -2710,7 +2688,7 @@ int ext2_check(const ext2_t* ext2)
             nfree += ext2->groups[i].bg_free_inodes_count;
 
             ECHECK(ext2_read_inode_bitmap(ext2, i, &bitmap));
-            nused += _count_bits_n(bitmap.data, bitmap.size);
+            nused += ext2_count_bits_n(bitmap.data, bitmap.size);
             n += bitmap.size * 8;
         }
 
@@ -2736,7 +2714,7 @@ int ext2_check(const ext2_t* ext2)
             /* Get inode bitmap for this group */
             ECHECK(ext2_read_inode_bitmap(ext2, grpno, &bitmap));
 
-            nbits += _count_bits_n(bitmap.data, bitmap.size);
+            nbits += ext2_count_bits_n(bitmap.data, bitmap.size);
 
             /* For each bit set in the bit map */
             for (lino = 0; lino < ext2->sb.s_inodes_per_group; lino++)
@@ -2744,7 +2722,7 @@ int ext2_check(const ext2_t* ext2)
                 ext2_inode_t inode;
                 ext2_ino_t ino;
 
-                if (!_test_bit(bitmap.data, bitmap.size, lino))
+                if (!ext2_test_bit(bitmap.data, bitmap.size, lino))
                     continue;
 
                 mbits++;

@@ -8,44 +8,7 @@
 #include <myst/eraise.h>
 #include <myst/ext2.h>
 #include <myst/strings.h>
-
-static bool _test_bit(const uint8_t* data, uint32_t size, uint32_t index)
-{
-    uint32_t byte = index / 8;
-    uint32_t bit = index % 8;
-
-    if (byte >= size)
-        return 0;
-
-    return ((uint32_t)(data[byte]) & (1 << bit)) ? 1 : 0;
-}
-
-static uint32_t _count_bits(uint8_t byte)
-{
-    uint8_t i;
-    uint8_t n = 0;
-
-    for (i = 0; i < 8; i++)
-    {
-        if (byte & (1 << i))
-            n++;
-    }
-
-    return n;
-}
-
-static uint32_t _count_bits_n(const uint8_t* data, uint32_t size)
-{
-    uint32_t i;
-    uint32_t n = 0;
-
-    for (i = 0; i < size; i++)
-    {
-        n += _count_bits(data[i]);
-    }
-
-    return n;
-}
+#include "ext2common.h"
 
 static uint32_t _make_ino(const ext2_t* ext2, uint32_t grpno, uint32_t lino)
 {
@@ -406,7 +369,7 @@ int ext2_dump(const ext2_t* ext2)
             /* Get inode bitmap for this group */
             ECHECK(ext2_read_inode_bitmap(ext2, grpno, &bitmap));
 
-            nbits += _count_bits_n(bitmap.data, bitmap.size);
+            nbits += ext2_count_bits_n(bitmap.data, bitmap.size);
 
             /* For each bit set in the bit map */
             for (lino = 0; lino < ext2->sb.s_inodes_per_group; lino++)
@@ -414,7 +377,7 @@ int ext2_dump(const ext2_t* ext2)
                 ext2_inode_t inode;
                 ext2_ino_t ino;
 
-                if (!_test_bit(bitmap.data, bitmap.size, lino))
+                if (!ext2_test_bit(bitmap.data, bitmap.size, lino))
                     continue;
 
                 mbits++;
