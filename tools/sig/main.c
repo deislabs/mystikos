@@ -202,7 +202,7 @@ int _signer_action(int argc, const char* argv[])
 
     if (argc != 3)
     {
-        fprintf(stderr, "Usage: %s verify <public-key>\n", argv[0]);
+        fprintf(stderr, "Usage: %s signer <public-key>\n", argv[0]);
         exit(1);
     }
 

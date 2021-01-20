@@ -1118,7 +1118,7 @@ int myst_cpio_test(const char* path)
 {
     int ret = 0;
     int fd = -1;
-    const char magic[] = { '0', '7', '0', '7', '0', '1' };
+    const char magic[] = MYST_CPIO_MAGIC_INITIALIZER;
     char buf[sizeof(magic)];
 
     if (!path)
