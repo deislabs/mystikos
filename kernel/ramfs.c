@@ -1071,7 +1071,10 @@ static int _stat(inode_t* inode, struct stat* statbuf)
     memset(&buf.st_ctim, 0, sizeof(buf.st_ctim)); /* ATTN: unsupported */
 
     if (S_ISDIR(buf.st_mode))
+    {
+        /* add an extra link to account for the "." entry */
         buf.st_nlink++;
+    }
 
     *statbuf = buf;
 
