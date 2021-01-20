@@ -10,11 +10,6 @@
 #include <myst/strings.h>
 #include "ext2common.h"
 
-static uint32_t _make_ino(const ext2_t* ext2, uint32_t grpno, uint32_t lino)
-{
-    return (grpno * ext2->sb.s_inodes_per_group) + (lino + 1);
-}
-
 static void _hex_dump(const uint8_t* data, uint32_t size, bool printables)
 {
     uint32_t i;
@@ -385,7 +380,7 @@ int ext2_dump(const ext2_t* ext2)
                 if ((lino + 1) < EXT2_FIRST_INO && (lino + 1) != EXT2_ROOT_INO)
                     continue;
 
-                ino = _make_ino(ext2, grpno, lino);
+                ino = ext2_make_ino(ext2, grpno, lino);
 
                 ECHECK(ext2_read_inode(ext2, ino, &inode));
 
