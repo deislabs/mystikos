@@ -24,7 +24,9 @@ const char* myst_basename(const char* path);
 
 int myst_split_path(
     const char* path,
-    char dirname[PATH_MAX],
-    char basename[PATH_MAX]);
+    char* dirname,
+    size_t dirname_size,
+    char* basename,
+    size_t basename_size);
 
 #endif /* _MYST_PATHS_H */

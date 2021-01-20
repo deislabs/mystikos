@@ -91,6 +91,14 @@ static void _inode_free(inode_t* inode)
     }
 }
 
+static int _split_path(
+    const char* path,
+    char dirname[PATH_MAX],
+    char basename[PATH_MAX])
+{
+    return myst_split_path(path, dirname, PATH_MAX, basename, PATH_MAX);
+}
+
 /* Note: does not update nlink */
 static int _inode_add_dirent(
     inode_t* dir,
@@ -627,7 +635,7 @@ static int _fs_open(
             ERAISE(-ENOENT);
 
         /* Split the path into parent directory and file name */
-        ECHECK(myst_split_path(pathname, dirname, basename));
+        ECHECK(_split_path(pathname, dirname, basename));
 
         /* Get the inode of the parent directory. */
         ECHECK(_path_to_inode(ramfs, dirname, true, NULL, &parent));
@@ -1138,7 +1146,7 @@ static int _fs_link(myst_fs_t* fs, const char* oldpath, const char* newpath)
         ERAISE(-EPERM);
 
     /* Find the parent inode of newpath */
-    ECHECK(myst_split_path(newpath, new_dirname, new_basename));
+    ECHECK(_split_path(newpath, new_dirname, new_basename));
     ECHECK(_path_to_inode(ramfs, new_dirname, true, NULL, &new_parent));
 
     /* Fail if newpath already exists */
@@ -1178,7 +1186,7 @@ static int _fs_unlink(myst_fs_t* fs, const char* pathname)
         ERAISE(-EPERM);
 
     /* Get the parent inode */
-    ECHECK(myst_split_path(pathname, dirname, basename));
+    ECHECK(_split_path(pathname, dirname, basename));
     ECHECK(_path_to_inode(ramfs, dirname, true, NULL, &parent));
 
     inode->nlink--;
@@ -1218,8 +1226,8 @@ static int _fs_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
         ERAISE(-EINVAL);
 
     /* Split oldpath and newpath */
-    ECHECK(myst_split_path(newpath, new_dirname, new_basename));
-    ECHECK(myst_split_path(oldpath, old_dirname, old_basename));
+    ECHECK(_split_path(newpath, new_dirname, new_basename));
+    ECHECK(_split_path(oldpath, old_dirname, old_basename));
 
     /* Find the oldpath inode */
     ECHECK(_path_to_inode(ramfs, oldpath, true, &old_parent, &old_inode));
@@ -1318,7 +1326,7 @@ static int _fs_mkdir(myst_fs_t* fs, const char* pathname, mode_t mode)
     if (!_ramfs_valid(ramfs) || !pathname)
         ERAISE(-EINVAL);
 
-    ECHECK(myst_split_path(pathname, dirname, basename));
+    ECHECK(_split_path(pathname, dirname, basename));
     ECHECK(_path_to_inode(ramfs, dirname, true, NULL, &parent));
 
     /* The parent must be a directory */
@@ -1360,7 +1368,7 @@ static int _fs_rmdir(myst_fs_t* fs, const char* pathname)
         ERAISE(-ENOTEMPTY);
 
     /* Get the parent inode */
-    ECHECK(myst_split_path(pathname, dirname, basename));
+    ECHECK(_split_path(pathname, dirname, basename));
     ECHECK(_path_to_inode(ramfs, dirname, true, NULL, &parent));
 
     /* Find and remove the parent's directory entry */
@@ -1467,7 +1475,7 @@ static int _fs_symlink(myst_fs_t* fs, const char* target, const char* linkpath)
         ERAISE(-EINVAL);
 
     /* Split linkpath into directory and filename */
-    ECHECK(myst_split_path(linkpath, dirname, basename));
+    ECHECK(_split_path(linkpath, dirname, basename));
 
     /* Get the inode of the parent directory */
     ECHECK(_path_to_inode(ramfs, dirname, true, NULL, &parent));

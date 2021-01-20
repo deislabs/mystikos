@@ -12,9 +12,9 @@
 #include <myst/eraise.h>
 #include <myst/ext2.h>
 #include <myst/hex.h>
+#include <myst/paths.h>
 #include <myst/round.h>
 #include <myst/strings.h>
-#include <myst/paths.h>
 #include "ext2common.h"
 
 #define EXT2_S_MAGIC 0xEF53
@@ -1363,15 +1363,8 @@ static int _split_path(
     char dirname[EXT2_PATH_MAX],
     char basename[EXT2_PATH_MAX])
 {
-    int ret = 0;
-
-    if (strlen(path) >= EXT2_PATH_MAX)
-        ERAISE(-ENAMETOOLONG);
-
-    ECHECK(myst_split_path(path, dirname, basename));
-
-done:
-    return ret;
+    return myst_split_path(
+        path, dirname, EXT2_PATH_MAX, basename, EXT2_PATH_MAX);
 }
 
 static size_t _inode_get_num_blocks(ext2_t* ext2, ext2_inode_t* inode)
