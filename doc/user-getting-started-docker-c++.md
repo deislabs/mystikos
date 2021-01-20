@@ -84,7 +84,7 @@ The expected outputs, again, are "1 4 9".
 
 ## Build the app folder with Mystikos
 
-We use a script to take the same docker file and generates
+We use a script to take the same docker file and generate
 an app folder `appdir` for preparing the program to be run with Mystikos.
 
 ```
@@ -104,4 +104,4 @@ myst exec-sgx rootfs /square 1 2 3
 ```
 
 The expected outputs, not surprisingly, are "1 4 9". But perhaps we have more
-confidence in the answer because we just run the program in a TEE!
+confidence in the answer because we just ran the program in a TEE!

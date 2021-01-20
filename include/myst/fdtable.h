@@ -16,6 +16,7 @@
 #include <myst/sockdev.h>
 #include <myst/spinlock.h>
 #include <myst/ttydev.h>
+#include <myst/inotifydev.h>
 
 #define MYST_FDTABLE_SIZE 1024
 
@@ -27,6 +28,7 @@ typedef enum myst_fdtable_type
     MYST_FDTABLE_TYPE_PIPE,
     MYST_FDTABLE_TYPE_SOCK,
     MYST_FDTABLE_TYPE_EPOLL,
+    MYST_FDTABLE_TYPE_INOTIFY,
 } myst_fdtable_type_t;
 
 typedef struct myst_fdtable_entry
@@ -128,6 +130,16 @@ MYST_INLINE int myst_fdtable_get_pipe(
 {
     const myst_fdtable_type_t type = MYST_FDTABLE_TYPE_PIPE;
     return myst_fdtable_get(fdtable, fd, type, (void**)device, (void**)pipe);
+}
+
+MYST_INLINE int myst_fdtable_get_inotify(
+    myst_fdtable_t* fdtable,
+    int fd,
+    myst_inotifydev_t** device,
+    myst_inotify_t** inotify)
+{
+    const myst_fdtable_type_t type = MYST_FDTABLE_TYPE_INOTIFY;
+    return myst_fdtable_get(fdtable, fd, type, (void**)device, (void**)inotify);
 }
 
 int myst_fdtable_get_any(

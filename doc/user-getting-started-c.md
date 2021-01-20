@@ -70,7 +70,7 @@ If you are interested in shortening the command, please see
 ## Further readings
 
 If your C program is complicated and requires many dependent libraries,
-we recommend you to wrap your application in a container. Please see
+we recommend that you wrap your application in a container. Please see
 [Getting started with a containerized C++ program](./user-getting-started-docker-c++.md)
 for details.
 

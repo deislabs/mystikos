@@ -67,6 +67,7 @@
 #include <myst/trace.h>
 #include <myst/hex.h>
 #include <myst/pubkey.h>
+#include <myst/inotifydev.h>
 
 #define DEV_URANDOM_FD MYST_FDTABLE_SIZE
 
@@ -1302,6 +1303,62 @@ done:
     return ret;
 }
 
+long myst_syscall_inotify_init1(int flags)
+{
+    long ret = 0;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    const myst_fdtable_type_t type = MYST_FDTABLE_TYPE_INOTIFY;
+    myst_inotifydev_t* dev = myst_inotifydev_get();
+    myst_inotify_t* obj = NULL;
+    int fd;
+
+    ECHECK((*dev->id_inotify_init1)(dev, flags, &obj));
+
+    if ((fd = myst_fdtable_assign(fdtable, type, dev, obj)) < 0)
+    {
+        (*dev->id_close)(dev, obj);
+        ERAISE(fd);
+    }
+
+    ret = fd;
+
+done:
+    return ret;
+}
+
+long myst_syscall_inotify_add_watch(
+    int fd,
+    const char* pathname,
+    uint32_t mask)
+{
+    long ret = 0;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_inotifydev_t* dev;
+    myst_inotify_t* obj;
+    int wd;
+
+    ECHECK(myst_fdtable_get_inotify(fdtable, fd, &dev, &obj));
+    ECHECK(wd = (*dev->id_inotify_add_watch)(dev, obj, pathname, mask));
+    ret = wd;
+
+done:
+    return ret;
+}
+
+long myst_syscall_inotify_rm_watch(int fd, int wd)
+{
+    long ret = 0;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_inotifydev_t* dev;
+    myst_inotify_t* obj;
+
+    ECHECK(myst_fdtable_get_inotify(fdtable, fd, &dev, &obj));
+    ECHECK((*dev->id_inotify_rm_watch)(dev, obj, wd));
+
+done:
+    return ret;
+}
+
 static size_t _count_args(const char* const args[])
 {
     size_t n = 0;
@@ -1478,7 +1535,11 @@ done:
     return ret;
 }
 
-long myst_syscall_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
+long myst_syscall_accept4(
+    int sockfd,
+    struct sockaddr* addr,
+    socklen_t* addrlen,
+    int flags)
 {
     long ret = 0;
     myst_fdtable_t* fdtable = myst_fdtable_current();
@@ -1488,7 +1549,7 @@ long myst_syscall_accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
     const myst_fdtable_type_t fdtype = MYST_FDTABLE_TYPE_SOCK;
 
     ECHECK(myst_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
-    ECHECK((*sd->sd_accept)(sd, sock, addr, addrlen, &new_sock));
+    ECHECK((*sd->sd_accept4)(sd, sock, addr, addrlen, flags, &new_sock));
 
     if ((sockfd = myst_fdtable_assign(fdtable, fdtype, sd, new_sock)) < 0)
     {
@@ -3565,11 +3626,35 @@ long myst_syscall(long n, long params[6])
         case SYS_ioprio_get:
             break;
         case SYS_inotify_init:
-            break;
+        {
+            _strace(n, NULL);
+
+            long ret = myst_syscall_inotify_init1(0);
+            BREAK(_return(n,ret));
+        }
         case SYS_inotify_add_watch:
+        {
+            int fd = (int)x1;
+            const char* pathname = (const char*)x2;
+            uint32_t mask = (uint32_t)x3;
+
+            _strace(n, "fd=%d pathname=%s mask=%x", fd, pathname, mask);
+
+            long ret = myst_syscall_inotify_add_watch(fd, pathname, mask);
+            BREAK(_return(n,ret));
             break;
+        }
         case SYS_inotify_rm_watch:
+        {
+            int fd = (int)x1;
+            int wd = (int)x2;
+
+            _strace(n, "fd=%d wd=%d", fd, wd);
+
+            long ret = myst_syscall_inotify_rm_watch(fd, wd);
+            BREAK(_return(n,ret));
             break;
+        }
         case SYS_migrate_pages:
             break;
         case SYS_openat:
@@ -3673,7 +3758,19 @@ long myst_syscall(long n, long params[6])
         case SYS_timerfd_gettime:
             break;
         case SYS_accept4:
-            break;
+        {
+            int sockfd = (int)x1;
+            struct sockaddr* addr = (struct sockaddr*)x2;
+            socklen_t* addrlen = (socklen_t*)x3;
+            int flags = (int)x4;
+            long ret;
+
+            _strace(n, "sockfd=%d addr=%p addrlen=%p flags=%x",
+                sockfd, addr, addrlen, flags);
+
+            ret = myst_syscall_accept4(sockfd, addr, addrlen, flags);
+            BREAK(_return(n, ret));
+        }
         case SYS_signalfd4:
             break;
         case SYS_eventfd2:
@@ -3700,7 +3797,14 @@ long myst_syscall(long n, long params[6])
             BREAK(_return(n, ret));
         }
         case SYS_inotify_init1:
-            break;
+        {
+            int flags = (int)x1;
+
+            _strace(n, "flags=%x", flags);
+
+            long ret = myst_syscall_inotify_init1(flags);
+            BREAK(_return(n,ret));
+        }
         case SYS_preadv:
             break;
         case SYS_pwritev:
@@ -3951,7 +4055,7 @@ long myst_syscall(long n, long params[6])
 
             _strace(n, "sockfd=%d addr=%p addrlen=%p", sockfd, addr, addrlen);
 
-            ret = myst_syscall_accept(sockfd, addr, addrlen);
+            ret = myst_syscall_accept4(sockfd, addr, addrlen, 0);
             BREAK(_return(n, ret));
         }
         case SYS_sendmsg:
