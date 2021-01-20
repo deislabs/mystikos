@@ -24,6 +24,7 @@ endif
 
 DIRS += json
 DIRS += utils
+DIRS += hostfs
 DIRS += host
 DIRS += target
 DIRS += kernel
