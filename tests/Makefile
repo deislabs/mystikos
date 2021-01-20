@@ -64,6 +64,10 @@ include $(TOP)/rules.mak
 DIRS += epoll
 DIRS += oe
 
+ifeq ($(MYST_ENABLE_HOSTFS),1)
+DIRS += hostfs
+endif
+
 __tests:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) tests $(NL) )
 

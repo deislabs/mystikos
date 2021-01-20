@@ -109,14 +109,14 @@ done:
     return ret;
 }
 
-int myst_mount(myst_fs_t* fs, const char* target)
+int myst_mount(myst_fs_t* fs, const char* source, const char* target)
 {
     int ret = -1;
     bool locked = false;
     myst_path_t target_buf;
     mount_table_entry_t mount_table_entry = {0};
 
-    if (!fs || !target)
+    if (!fs || !source || !target)
         ERAISE(-EINVAL);
 
     /* Normalize the target path */
@@ -164,7 +164,7 @@ int myst_mount(myst_fs_t* fs, const char* target)
     }
 
     /* Tell the file system that it has been mounted */
-    ECHECK((*fs->fs_mount)(fs, target));
+    ECHECK((*fs->fs_mount)(fs, source, target));
 
     /* Assign and initialize new mount point. */
     {

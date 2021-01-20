@@ -580,6 +580,23 @@ long myst_tcall(long n, long params[6])
         case SYS_sched_yield:
         case SYS_fchmod:
         case SYS_poll:
+        case SYS_open:
+        case SYS_stat:
+        case SYS_access:
+        case SYS_dup:
+        case SYS_pread64:
+        case SYS_pwrite64:
+        case SYS_link:
+        case SYS_unlink:
+        case SYS_mkdir:
+        case SYS_rmdir:
+        case SYS_getdents64:
+        case SYS_rename:
+        case SYS_truncate:
+        case SYS_ftruncate:
+        case SYS_symlink:
+        case SYS_lstat:
+        case SYS_readlink:
         {
             extern long myst_handle_tcall(long n, long params[6]);
             return myst_handle_tcall(n, params);
