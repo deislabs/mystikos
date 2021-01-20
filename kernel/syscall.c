@@ -39,6 +39,7 @@
 #include <myst/fs.h>
 #include <myst/fsgs.h>
 #include <myst/gcov.h>
+#include <myst/hostfs.h>
 #include <myst/id.h>
 #include <myst/initfini.h>
 #include <myst/kernel.h>
@@ -1106,7 +1107,7 @@ long myst_syscall_readlink(const char* pathname, char* buf, size_t bufsiz)
     myst_fs_t* fs;
 
     ECHECK(myst_mount_resolve(pathname, suffix, &fs));
-    ERAISE((*fs->fs_readlink)(fs, pathname, buf, bufsiz));
+    ERAISE((*fs->fs_readlink)(fs, suffix, buf, bufsiz));
 
 done:
     return ret;
@@ -1275,21 +1276,39 @@ long myst_syscall_mount(
         ERAISE(-EINVAL);
 
     /* only "ramfs" is supported */
-    if (strcmp(filesystemtype, "ramfs") != 0)
+    if (strcmp(filesystemtype, "ramfs") == 0)
+    {
+        /* these arguments should be zero and null */
+        if (mountflags || data)
+            ERAISE(-EINVAL);
+
+        /* create a new ramfs instance */
+        ECHECK(myst_init_ramfs(&fs));
+
+        /* perform the mount */
+        ECHECK(myst_mount(fs, source, target));
+
+        /* load the rootfs */
+        ECHECK(myst_cpio_unpack(source, target));
+    }
+#ifdef MYST_ENABLE_HOSTFS
+    else if (strcmp(filesystemtype, "hostfs") == 0)
+    {
+        /* these arguments should be zero and null */
+        if (mountflags || data)
+            ERAISE(-EINVAL);
+
+        /* create a new ramfs instance */
+        ECHECK(myst_init_hostfs(&fs));
+
+        /* perform the mount */
+        ECHECK(myst_mount(fs, source, target));
+    }
+#endif
+    else
+    {
         ERAISE(-ENOTSUP);
-
-    /* these arguments should be zero and null */
-    if (mountflags || data)
-        ERAISE(-EINVAL);
-
-    /* create a new ramfs instance */
-    ECHECK(myst_init_ramfs(&fs));
-
-    /* perform the mount */
-    ECHECK(myst_mount(fs, target));
-
-    /* load the rootfs */
-    ECHECK(myst_cpio_unpack(source, target));
+    }
 
 done:
     return ret;

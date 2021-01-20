@@ -2,6 +2,8 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
+#include <sys/stat.h>
+#include <sys/syscall.h>
 #include <unistd.h>
 
 #include "myst_u.h"
@@ -240,4 +242,92 @@ long myst_ioctl_ocall(
     size_t argp_size)
 {
     RETURN(ioctl(fd, request, argp));
+}
+
+long myst_open_ocall(const char* pathname, int flags, mode_t mode)
+{
+    RETURN(open(pathname, flags, mode));
+}
+
+long myst_stat_ocall(const char* pathname, struct myst_stat* statbuf)
+{
+    RETURN(stat(pathname, (struct stat*)statbuf));
+}
+
+long myst_lstat_ocall(const char* pathname, struct myst_stat* statbuf)
+{
+    RETURN(lstat(pathname, (struct stat*)statbuf));
+}
+
+long myst_access_ocall(const char* pathname, int mode)
+{
+    RETURN(access(pathname, mode));
+}
+
+long myst_dup_ocall(int oldfd)
+{
+    RETURN(dup(oldfd));
+}
+
+long myst_pread64_ocall(int fd, void* buf, size_t count, off_t offset)
+{
+    RETURN(pread(fd, buf, count, offset));
+}
+
+long myst_pwrite64_ocall(int fd, const void* buf, size_t count, off_t offset)
+{
+    RETURN(pwrite(fd, buf, count, offset));
+}
+
+long myst_link_ocall(const char* oldpath, const char* newpath)
+{
+    RETURN(link(oldpath, newpath));
+}
+
+long myst_unlink_ocall(const char* pathname)
+{
+    RETURN(unlink(pathname));
+}
+
+long myst_mkdir_ocall(const char* pathname, mode_t mode)
+{
+    RETURN(mkdir(pathname, mode));
+}
+
+long myst_rmdir_ocall(const char* pathname)
+{
+    RETURN(rmdir(pathname));
+}
+
+long myst_getdents64_ocall(
+    unsigned int fd,
+    struct myst_linux_dirent64* dirp,
+    unsigned int count)
+{
+    RETURN(syscall(SYS_getdents64, fd, dirp, count));
+}
+
+long myst_rename_ocall(const char* oldpath, const char* newpath)
+{
+    RETURN(rename(oldpath, newpath));
+}
+
+long myst_truncate_ocall(const char* path, off_t length)
+{
+    RETURN(truncate(path, length));
+}
+
+long myst_ftruncate_ocall(int fd, off_t length)
+{
+    RETURN(ftruncate(fd, length));
+}
+
+long myst_symlink_ocall(const char* target, const char* linkpath)
+{
+    RETURN(symlink(target, linkpath));
+}
+
+long myst_readlink_ocall(const char* pathname, char* buf, size_t bufsiz)
+{
+    RETURN(readlink(pathname, buf, bufsiz));
 }

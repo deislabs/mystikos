@@ -132,7 +132,7 @@ static int _setup_ramfs(void)
         ERAISE(-EINVAL);
     }
 
-    if (myst_mount(_fs, "/") != 0)
+    if (myst_mount(_fs, "/", "/") != 0)
     {
         myst_eprintf("cannot mount root file system\n");
         ERAISE(-EINVAL);
