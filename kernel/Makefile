@@ -80,6 +80,7 @@ LDFLAGS += -Wl,-gc-sections
 endif
 LDFLAGS += -Wl,-emyst_enter_kernel
 
+LIBS += $(LIBDIR)/libmysthostfs.a
 LIBS += $(LIBDIR)/libmystutils.a
 
 ifdef MYST_ENABLE_GCOV
