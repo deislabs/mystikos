@@ -15,6 +15,7 @@
 #include <sys/un.h>
 #include <time.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 static const uint16_t port = 12345;
 
@@ -97,7 +98,7 @@ static void* _srv_thread_func(void* arg)
         {
             struct sockaddr_in addr;
             socklen_t addrlen = sizeof(addr);
-            sock = accept(lsock, (struct sockaddr*)NULL, &addrlen);
+            sock = accept4(lsock, (struct sockaddr*)NULL, &addrlen, 0);
             assert(sock > 0);
 
             printf("addrlen=%u/%zu\n", addrlen, sizeof(addr));
@@ -106,7 +107,7 @@ static void* _srv_thread_func(void* arg)
         {
             struct sockaddr_un addr;
             socklen_t addrlen = sizeof(addr);
-            sock = accept(lsock, (struct sockaddr*)&addr, &addrlen);
+            sock = accept4(lsock, (struct sockaddr*)&addr, &addrlen, 0);
             assert(sock > 0);
         }
 
