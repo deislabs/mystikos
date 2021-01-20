@@ -79,3 +79,4 @@ samples/ext2rootfs/keyfile
 samples/ext2rootfs/rootfs2
 tests/fs/appdir/
 tests/fs/ext2rootfs
+tests/libc2/appdir/

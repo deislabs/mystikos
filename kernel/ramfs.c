@@ -23,6 +23,7 @@
 #include <myst/round.h>
 #include <myst/strings.h>
 #include <myst/trace.h>
+#include <myst/paths.h>
 
 #define BLKSIZE 512
 
@@ -360,62 +361,6 @@ _Static_assert(sizeof(((struct dirent*)0)->d_ino) == 8, "d_ino");
 /* Assume struct dirent is eight-byte aligned */
 _Static_assert(sizeof(struct dirent) % 8 == 0, "dirent");
 
-static int _split_path(
-    const char* path,
-    char dirname[PATH_MAX],
-    char basename[PATH_MAX])
-{
-    int ret = 0;
-    char* slash;
-
-    /* Reject paths that are too long. */
-    if (strlen(path) >= PATH_MAX)
-        ERAISE(-EINVAL);
-
-    /* Reject paths that are not absolute */
-    if (path[0] != '/')
-        ERAISE(-EINVAL);
-
-    /* Handle root directory up front */
-    if (strcmp(path, "/") == 0)
-    {
-        myst_strlcpy(dirname, "/", PATH_MAX);
-        myst_strlcpy(basename, "/", PATH_MAX);
-        goto done;
-    }
-
-    /* This cannot fail (prechecked) */
-    if (!(slash = strrchr(path, '/')))
-        ERAISE(-EINVAL);
-
-    /* If path ends with '/' character */
-    if (!slash[1])
-        ERAISE(-EINVAL);
-
-    /* Split the path */
-    {
-        if (slash == path)
-        {
-            myst_strlcpy(dirname, "/", PATH_MAX);
-        }
-        else
-        {
-            size_t index = (size_t)(slash - path);
-            myst_strlcpy(dirname, path, PATH_MAX);
-
-            if (index < PATH_MAX)
-                dirname[index] = '\0';
-            else
-                dirname[PATH_MAX - 1] = '\0';
-        }
-
-        myst_strlcpy(basename, slash + 1, PATH_MAX);
-    }
-
-done:
-    return ret;
-}
-
 static int _path_to_inode_recursive(
     ramfs_t* ramfs,
     const char* path,
@@ -682,7 +627,7 @@ static int _fs_open(
             ERAISE(-ENOENT);
 
         /* Split the path into parent directory and file name */
-        ECHECK(_split_path(pathname, dirname, basename));
+        ECHECK(myst_split_path(pathname, dirname, basename));
 
         /* Get the inode of the parent directory. */
         ECHECK(_path_to_inode(ramfs, dirname, true, NULL, &parent));
@@ -1193,7 +1138,7 @@ static int _fs_link(myst_fs_t* fs, const char* oldpath, const char* newpath)
         ERAISE(-EPERM);
 
     /* Find the parent inode of newpath */
-    ECHECK(_split_path(newpath, new_dirname, new_basename));
+    ECHECK(myst_split_path(newpath, new_dirname, new_basename));
     ECHECK(_path_to_inode(ramfs, new_dirname, true, NULL, &new_parent));
 
     /* Fail if newpath already exists */
@@ -1233,7 +1178,7 @@ static int _fs_unlink(myst_fs_t* fs, const char* pathname)
         ERAISE(-EPERM);
 
     /* Get the parent inode */
-    ECHECK(_split_path(pathname, dirname, basename));
+    ECHECK(myst_split_path(pathname, dirname, basename));
     ECHECK(_path_to_inode(ramfs, dirname, true, NULL, &parent));
 
     inode->nlink--;
@@ -1273,8 +1218,8 @@ static int _fs_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
         ERAISE(-EINVAL);
 
     /* Split oldpath and newpath */
-    ECHECK(_split_path(newpath, new_dirname, new_basename));
-    ECHECK(_split_path(oldpath, old_dirname, old_basename));
+    ECHECK(myst_split_path(newpath, new_dirname, new_basename));
+    ECHECK(myst_split_path(oldpath, old_dirname, old_basename));
 
     /* Find the oldpath inode */
     ECHECK(_path_to_inode(ramfs, oldpath, true, &old_parent, &old_inode));
@@ -1373,7 +1318,7 @@ static int _fs_mkdir(myst_fs_t* fs, const char* pathname, mode_t mode)
     if (!_ramfs_valid(ramfs) || !pathname)
         ERAISE(-EINVAL);
 
-    ECHECK(_split_path(pathname, dirname, basename));
+    ECHECK(myst_split_path(pathname, dirname, basename));
     ECHECK(_path_to_inode(ramfs, dirname, true, NULL, &parent));
 
     /* The parent must be a directory */
@@ -1415,7 +1360,7 @@ static int _fs_rmdir(myst_fs_t* fs, const char* pathname)
         ERAISE(-ENOTEMPTY);
 
     /* Get the parent inode */
-    ECHECK(_split_path(pathname, dirname, basename));
+    ECHECK(myst_split_path(pathname, dirname, basename));
     ECHECK(_path_to_inode(ramfs, dirname, true, NULL, &parent));
 
     /* Find and remove the parent's directory entry */
@@ -1522,7 +1467,7 @@ static int _fs_symlink(myst_fs_t* fs, const char* target, const char* linkpath)
         ERAISE(-EINVAL);
 
     /* Split linkpath into directory and filename */
-    ECHECK(_split_path(linkpath, dirname, basename));
+    ECHECK(myst_split_path(linkpath, dirname, basename));
 
     /* Get the inode of the parent directory */
     ECHECK(_path_to_inode(ramfs, dirname, true, NULL, &parent));
