@@ -3,8 +3,6 @@ include $(TOP)/defs.mak
 
 DIRS =
 DIRS += ext2
-DIRS += luks
-DIRS += verity
 
 DIRS += libc
 DIRS += libc2

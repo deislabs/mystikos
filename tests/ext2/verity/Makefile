@@ -1,4 +1,4 @@
-TOP=$(abspath ../..)
+TOP=$(abspath ../../..)
 include $(TOP)/defs.mak
 
 APPDIR = appdir
@@ -18,8 +18,8 @@ rootfs: main.c $(PUBKEY)
 	$(MYST) mkcpio $(APPDIR) rootfs
 
 deps:
-	$(MAKE) -C ../../utils
-	$(MAKE) -C ../../kernel
+	$(MAKE) -C ../../../utils
+	$(MAKE) -C ../../../kernel
 	$(MAKE) -C $(TOP)/tools/myst
 
 tests: rootfs image
