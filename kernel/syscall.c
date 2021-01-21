@@ -4416,10 +4416,12 @@ long myst_syscall_unload_symbols(void)
 /*
 **==============================================================================
 **
-** myst_syscall()
+** syscall stacks:
 **
 **==============================================================================
 */
+
+#define MYST_SYSCALL_STACK_SIZE (64 * 1024)
 
 typedef struct syscall_stack
 {
@@ -4486,6 +4488,14 @@ static void _put_syscall_stack(syscall_stack_t* stack)
     myst_list_append(&_syscall_stacks, (myst_list_node_t*)stack);
     myst_spin_unlock(&_syscall_stacks_lock);
 }
+
+/*
+**==============================================================================
+**
+** myst_syscall()
+**
+**==============================================================================
+*/
 
 long myst_syscall(long n, long params[6])
 {
