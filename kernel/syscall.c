@@ -4431,15 +4431,20 @@ typedef struct syscall_stack
 }
 syscall_stack_t;
 
-static myst_list_t _syscall_stacks;
-static myst_spinlock_t _syscall_stacks_lock = MYST_SPINLOCK_INITIALIZER;
-static bool _syscall_stacks_initialized = false;
+/* define syscall_stack_list_t and associated functions */
+#define MYST_LIST_NODE syscall_stack
+#include <myst/list_t.h>
+#undef MYST_LIST_NODE
 
-static void _release_syscall_stacks(void* arg)
+static syscall_stack_list_t _syscall_stack_list;
+static myst_spinlock_t _syscall_stack_list_lock = MYST_SPINLOCK_INITIALIZER;
+static bool _syscall_stack_list_initialized = false;
+
+static void _release_syscall_stack_list(void* arg)
 {
     (void)arg;
 
-    for (syscall_stack_t* p = (syscall_stack_t*)_syscall_stacks.head; p; )
+    for (syscall_stack_t* p = _syscall_stack_list.head; p; )
     {
         syscall_stack_t* next = p->next;
         free(p);
@@ -4452,21 +4457,21 @@ static syscall_stack_t* _get_syscall_stack(void)
     syscall_stack_t* ret = NULL;
     syscall_stack_t* stack = NULL;
 
-    myst_spin_lock(&_syscall_stacks_lock);
+    myst_spin_lock(&_syscall_stack_list_lock);
     {
-        if (!_syscall_stacks_initialized)
+        if (!_syscall_stack_list_initialized)
         {
-            myst_atexit(_release_syscall_stacks, NULL);
-            _syscall_stacks_initialized = true;
+            myst_atexit(_release_syscall_stack_list, NULL);
+            _syscall_stack_list_initialized = true;
         }
 
-        if (_syscall_stacks.head)
+        if (_syscall_stack_list.head)
         {
-            stack = (syscall_stack_t*)_syscall_stacks.head;
-            myst_list_remove(&_syscall_stacks, (myst_list_node_t*)stack);
+            stack = _syscall_stack_list.head;
+            syscall_stack_list_remove(&_syscall_stack_list, stack);
         }
     }
-    myst_spin_unlock(&_syscall_stacks_lock);
+    myst_spin_unlock(&_syscall_stack_list_lock);
 
     if (!stack)
     {
@@ -4484,9 +4489,9 @@ done:
 
 static void _put_syscall_stack(syscall_stack_t* stack)
 {
-    myst_spin_lock(&_syscall_stacks_lock);
-    myst_list_append(&_syscall_stacks, (myst_list_node_t*)stack);
-    myst_spin_unlock(&_syscall_stacks_lock);
+    myst_spin_lock(&_syscall_stack_list_lock);
+    syscall_stack_list_append(&_syscall_stack_list, stack);
+    myst_spin_unlock(&_syscall_stack_list_lock);
 }
 
 /*

@@ -23,4 +23,7 @@
 
 #define MYST_UNUSED __attribute__((__unused__))
 
+#define __MYST_CONCAT(x, y) x ## y
+#define MYST_CONCAT(x, y) __MYST_CONCAT(x, y)
+
 #endif /* _MYST_DEFS_H */
