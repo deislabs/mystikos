@@ -1850,10 +1850,10 @@ long libos_syscall_prlimit64(
     struct rlimit* old_rlim)
 {
     // Only supports getting rlimit for NOFILE resource
-    if (pid || resource >= RLIM_NLIMITS || new_rlim || resource != RLIMIT_NOFILE)
+    if (pid || resource >= RLIM_NLIMITS || resource != RLIMIT_NOFILE)
         return -EINVAL;
 
-    if (resource == RLIMIT_NOFILE)
+    if (old_rlim && resource == RLIMIT_NOFILE)
     {
         old_rlim->rlim_cur = 65536;
         old_rlim->rlim_max = 65536;
