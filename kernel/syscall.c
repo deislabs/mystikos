@@ -1843,18 +1843,33 @@ long myst_syscall_getrusage(int who, struct rusage* usage)
     return 0;
 }
 
-long libos_syscall_prlimit64(
+long myst_syscall_prlimit64(
     int pid,
     int resource,
     struct rlimit* new_rlim,
     struct rlimit* old_rlim)
 {
-    // Only supports getting rlimit for NOFILE resource
-    if (pid || resource >= RLIM_NLIMITS || resource != RLIMIT_NOFILE)
+    if (resource >= RLIM_NLIMITS)
         return -EINVAL;
 
-    if (old_rlim && resource == RLIMIT_NOFILE)
+    // Only support for current process
+    if (pid)
+        return -EINVAL;
+
+    // Only support resource NOFILE
+    if (resource != RLIMIT_NOFILE)
+        return -EINVAL;
+
+    // Set new limit for NOFILE is a nop
+    if (new_rlim) {
+        return 0;
+    }
+
+    if (!old_rlim)
     {
+        return -EFAULT;
+    }
+    else{
         old_rlim->rlim_cur = 65536;
         old_rlim->rlim_max = 65536;
     }
@@ -3795,7 +3810,7 @@ long myst_syscall(long n, long params[6])
                 old_rlim);
 
             int ret =
-                libos_syscall_prlimit64(pid, resource, new_rlim, old_rlim);
+                myst_syscall_prlimit64(pid, resource, new_rlim, old_rlim);
             BREAK(_return(n, ret));
         }
         case SYS_name_to_handle_at:
