@@ -4421,13 +4421,18 @@ long myst_syscall_unload_symbols(void)
 **==============================================================================
 */
 
-#define MYST_SYSCALL_STACK_SIZE (64 * 1024)
+#define SYSCALL_STACK_SIZE (64 * 1024)
+#define GUARD_SIZE 4
+#define GUARD_BYTE 0xaa
+#define GUARD_WORD ((uint64_t)0xaaaaaaaaaaaaaaaa)
 
 typedef struct syscall_stack
 {
     struct syscall_stack* prev;
     struct syscall_stack* next;
-    uint8_t data[MYST_SYSCALL_STACK_SIZE];
+    uint64_t guard1[GUARD_SIZE];
+    uint8_t data[SYSCALL_STACK_SIZE];
+    uint64_t guard2[GUARD_SIZE];
 }
 syscall_stack_t;
 
@@ -4441,6 +4446,22 @@ syscall_stack_t;
 static syscall_stacks_t _syscall_stacks;
 static myst_spinlock_t _syscall_stacks_lock = MYST_SPINLOCK_INITIALIZER;
 static bool _syscall_stacks_initialized = false;
+
+static bool _guard_okay(const uint64_t guard[GUARD_SIZE])
+{
+#if (GUARD_SIZE == 4)
+    const uint64_t w = GUARD_WORD;
+    return guard[0] == w && guard[1] == w && guard[2] == w && guard[3] == w;
+#else
+    for (size_t i = 0; i < GUARD_SIZE; i++)
+    {
+        if (guard[0] != GUARD_WORD)
+            return false;
+    }
+
+    return true;
+#endif
+}
 
 static void _release_syscall_stacks(void* arg)
 {
@@ -4475,7 +4496,9 @@ static syscall_stack_t* _get_syscall_stack(void)
         if (!(stack = memalign(16, sizeof(syscall_stack_t))))
             goto done;
 
-        memset(stack, 0, sizeof(syscall_stack_t));
+        memset(stack->guard1, GUARD_BYTE, sizeof(stack->guard1));
+        memset(stack->data, 0, sizeof(stack->data));
+        memset(stack->guard2, GUARD_BYTE, sizeof(stack->guard2));
     }
 
     ret = stack;
@@ -4512,8 +4535,14 @@ long myst_syscall(long n, long params[6])
     if (!(stack = _get_syscall_stack()))
         ERAISE(-ENOMEM);
 
-    stack_end = stack->data + MYST_SYSCALL_STACK_SIZE - 64;
+    stack_end = stack->data + SYSCALL_STACK_SIZE;
     ret = myst_syscall_asm(stack_end, n, params);
+
+    if (!_guard_okay(stack->guard1))
+        myst_panic("corrupt guard1");
+
+    if (!_guard_okay(stack->guard2))
+        myst_panic("corrupt guard2");
 
 done:
 
