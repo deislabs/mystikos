@@ -4453,14 +4453,14 @@ static syscall_stack_t* _get_syscall_stack(void)
     syscall_stack_t* ret = NULL;
     syscall_stack_t* stack = NULL;
 
+    if (!_syscall_stacks_initialized)
+    {
+        myst_atexit(_release_syscall_stacks, NULL);
+        _syscall_stacks_initialized = true;
+    }
+
     myst_spin_lock(&_syscall_stacks_lock);
     {
-        if (!_syscall_stacks_initialized)
-        {
-            myst_atexit(_release_syscall_stacks, NULL);
-            _syscall_stacks_initialized = true;
-        }
-
         if (_syscall_stacks.head)
         {
             stack = _syscall_stacks.head;
@@ -4471,6 +4471,7 @@ static syscall_stack_t* _get_syscall_stack(void)
 
     if (!stack)
     {
+        /* ensure stack is 16-byte aligned */
         if (!(stack = memalign(16, sizeof(syscall_stack_t))))
             goto done;
 
