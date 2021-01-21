@@ -12,7 +12,6 @@ try:
     client = Client((ip, port), connect_timeout=TIMEOUT_SEC, timeout=TIMEOUT_SEC)
 
     key, value = "some_key", "some_value"
-    KVs = {f"key-{i}": f"value-{i}" for i in range(NUM_TEST_PAIRS)}
 
     # cmd "set", create/update key:value
     assert client.set(key, value)
