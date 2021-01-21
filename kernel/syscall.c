@@ -4432,9 +4432,11 @@ typedef struct syscall_stack
 syscall_stack_t;
 
 /* define syscall_stack_list_t and associated functions */
+#define MYST_LIST syscall_stack_list
 #define MYST_LIST_NODE syscall_stack
+#define MYST_LIST_PREV prev
+#define MYST_LIST_NEXT next
 #include <myst/list_t.h>
-#undef MYST_LIST_NODE
 
 static syscall_stack_list_t _syscall_stack_list;
 static myst_spinlock_t _syscall_stack_list_lock = MYST_SPINLOCK_INITIALIZER;

@@ -7,15 +7,18 @@
 **
 **     struct widget
 **     {
-**         struct widget* prev; // must be first field
-**         struct widget* next; // must be second field
-**         // user-defined fields
+**         struct widget* prev;
+**         struct widget* next;
+**         struct widget* group_prev;
+**         struct widget* group_next;
 **         ...
 **     };
 **
+**     #define MYST_LIST widget_list
 **     #define MYST_LIST_NODE widget
+**     #define MYST_LIST_PREV prev
+**     #define MYST_LIST_NEXT next
 **     #include <myst/list_t.h>
-**     #undef MYST_LIST_NODE widget
 **
 ** The above example generates the following defintions.
 **
@@ -39,58 +42,63 @@
 
 #include <myst/defs.h>
 
+#ifndef MYST_LIST
+#error "please define MYST_LIST"
+#endif
+
 #ifndef MYST_LIST_NODE
 #error "please define MYST_LIST_NODE"
 #endif
 
-struct MYST_CONCAT(MYST_LIST_NODE, _list)
+#ifndef MYST_LIST_PREV
+#error "please define MYST_LIST_PREV"
+#endif
+
+#ifndef MYST_LIST_NEXT
+#error "please define MYST_LIST_NEXT"
+#endif
+
+struct MYST_LIST
 {
     struct MYST_LIST_NODE* head;
     struct MYST_LIST_NODE* tail;
     size_t size;
 };
 
-typedef struct MYST_CONCAT(MYST_LIST_NODE, _list)
-    MYST_CONCAT(MYST_LIST_NODE, _list_t);
+typedef struct MYST_LIST MYST_CONCAT(MYST_LIST, _t);
 
-/* verify that prev field is the first field */
-MYST_STATIC_ASSERT(offsetof(struct MYST_LIST_NODE, prev) == 0);
-
-/* verify that next field is the second field */
-MYST_STATIC_ASSERT(offsetof(struct MYST_LIST_NODE, next) == sizeof(void*));
-
-MYST_INLINE void MYST_CONCAT(MYST_LIST_NODE, _list_remove)(
-    struct MYST_CONCAT(MYST_LIST_NODE, _list) * list,
+MYST_INLINE void MYST_CONCAT(MYST_LIST, _remove)(
+    struct MYST_LIST * list,
     struct MYST_LIST_NODE* node)
 {
-    if (node->prev)
-        node->prev->next = node->next;
+    if (node->MYST_LIST_PREV)
+        node->MYST_LIST_PREV->MYST_LIST_NEXT = node->MYST_LIST_NEXT;
     else
-        list->head = node->next;
+        list->head = node->MYST_LIST_NEXT;
 
-    if (node->next)
-        node->next->prev = node->prev;
+    if (node->MYST_LIST_NEXT)
+        node->MYST_LIST_NEXT->MYST_LIST_PREV = node->MYST_LIST_PREV;
     else
-        list->tail = node->prev;
+        list->tail = node->MYST_LIST_PREV;
 
     list->size--;
 }
 
-MYST_INLINE void MYST_CONCAT(MYST_LIST_NODE, _list_prepend)(
-    struct MYST_CONCAT(MYST_LIST_NODE, _list) * list,
+MYST_INLINE void MYST_CONCAT(MYST_LIST, _prepend)(
+    struct MYST_LIST * list,
     struct MYST_LIST_NODE* node)
 {
     if (list->head)
     {
-        node->prev = NULL;
-        node->next = list->head;
-        list->head->prev = node;
+        node->MYST_LIST_PREV = NULL;
+        node->MYST_LIST_NEXT = list->head;
+        list->head->MYST_LIST_PREV = node;
         list->head = node;
     }
     else
     {
-        node->next = NULL;
-        node->prev = NULL;
+        node->MYST_LIST_NEXT = NULL;
+        node->MYST_LIST_PREV = NULL;
         list->head = node;
         list->tail = node;
     }
@@ -98,21 +106,21 @@ MYST_INLINE void MYST_CONCAT(MYST_LIST_NODE, _list_prepend)(
     list->size++;
 }
 
-MYST_INLINE void MYST_CONCAT(MYST_LIST_NODE, _list_append)(
-    struct MYST_CONCAT(MYST_LIST_NODE, _list) * list,
+MYST_INLINE void MYST_CONCAT(MYST_LIST, _append)(
+    struct MYST_LIST * list,
     struct MYST_LIST_NODE* node)
 {
     if (list->tail)
     {
-        node->next = NULL;
-        node->prev = list->tail;
-        list->tail->next = node;
+        node->MYST_LIST_NEXT = NULL;
+        node->MYST_LIST_PREV = list->tail;
+        list->tail->MYST_LIST_NEXT = node;
         list->tail = node;
     }
     else
     {
-        node->next = NULL;
-        node->prev = NULL;
+        node->MYST_LIST_NEXT = NULL;
+        node->MYST_LIST_PREV = NULL;
         list->head = node;
         list->tail = node;
     }
@@ -120,17 +128,22 @@ MYST_INLINE void MYST_CONCAT(MYST_LIST_NODE, _list_append)(
     list->size++;
 }
 
-MYST_INLINE void MYST_CONCAT(MYST_LIST_NODE, _list_free)(
-    struct MYST_CONCAT(MYST_LIST_NODE, _list) * list)
+MYST_INLINE void MYST_CONCAT(MYST_LIST, _free)(
+    struct MYST_LIST * list)
 {
     for (struct MYST_LIST_NODE* p = list->head; p;)
     {
-        struct MYST_LIST_NODE* next = p->next;
+        struct MYST_LIST_NODE* MYST_LIST_NEXT = p->MYST_LIST_NEXT;
         free(p);
-        p = next;
+        p = MYST_LIST_NEXT;
     }
 
     list->head = NULL;
     list->tail = NULL;
     list->size = 0;
 }
+
+#undef MYST_LIST
+#undef MYST_LIST_NODE
+#undef MYST_LIST_PREV
+#undef MYST_LIST_NEXT
