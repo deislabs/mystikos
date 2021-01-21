@@ -76,6 +76,7 @@ LDFLAGS += -Wl,-gc-sections
 endif
 LDFLAGS += -Wl,-emyst_enter_kernel
 
+LIBS += $(LIBDIR)/libmystext2.a
 LIBS += $(LIBDIR)/libmystutils.a
 
 ifdef MYST_ENABLE_GCOV

@@ -112,6 +112,60 @@ done:
     return ret;
 }
 
+int myst_split_path(
+    const char* path,
+    char* dirname,
+    size_t dirname_size,
+    char* basename,
+    size_t basename_size)
+{
+    int ret = 0;
+    char* slash;
+
+    /* Reject paths that are not absolute */
+    if (path[0] != '/')
+        ERAISE(-EINVAL);
+
+    /* Handle root directory up front */
+    if (strcmp(path, "/") == 0)
+    {
+        myst_strlcpy(dirname, "/", dirname_size);
+        myst_strlcpy(basename, "/", dirname_size);
+        goto done;
+    }
+
+    /* This cannot fail (prechecked) */
+    if (!(slash = strrchr(path, '/')))
+        ERAISE(-EINVAL);
+
+    /* If path ends with '/' character */
+    if (!slash[1])
+        ERAISE(-EINVAL);
+
+    /* Split the path */
+    {
+        if (slash == path)
+        {
+            myst_strlcpy(dirname, "/", dirname_size);
+        }
+        else
+        {
+            size_t index = (size_t)(slash - path);
+            myst_strlcpy(dirname, path, dirname_size);
+
+            if (index < dirname_size)
+                dirname[index] = '\0';
+            else
+                dirname[dirname_size - 1] = '\0';
+        }
+
+        myst_strlcpy(basename, slash + 1, basename_size);
+    }
+
+done:
+    return ret;
+}
+
 #if 0
 int myst_path_expand(const char* toks[], const char* buf[], size_t size)
 {

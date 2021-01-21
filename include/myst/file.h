@@ -24,4 +24,6 @@ ssize_t myst_writen(int fd, const void* data, size_t size);
 
 int myst_copy_file(const char* oldpath, const char* newpath);
 
+int myst_copy_file_fd(char* oldpath, int newfd);
+
 #endif /* _MYST_FILE_H */

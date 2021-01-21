@@ -68,4 +68,16 @@ tests/cpp-exceptions/appdir/
 tests/cpp-exceptions/libcxx-tests/
 tests/curl/appdir/
 tests/signal/appdir/
+tests/ext2fs/appdir/
+tests/luks/appdir/
+tests/verity/appdir/
+third_party/mbedtls/mbedtls/
+tests/ext2part/appdir/
+tests/luksverity/appdir/
+samples/ext2rootfs/appdir/
+samples/ext2rootfs/keyfile
+samples/ext2rootfs/rootfs2
+tests/fs/appdir/
+tests/fs/ext2rootfs
+tests/libc2/appdir/
 tests/inotify/appdir/

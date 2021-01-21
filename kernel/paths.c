@@ -7,6 +7,7 @@
 #include <myst/eraise.h>
 #include <myst/strings.h>
 #include <myst/syscall.h>
+#include <myst/paths.h>
 
 int myst_path_absolute_cwd(
     const char* cwd,

@@ -4,13 +4,16 @@
 #ifndef _MYST_TCALL_H
 #define _MYST_TCALL_H
 
-#include <myst/defs.h>
 #include <poll.h>
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <time.h>
 #include <unistd.h>
+
+#include <myst/defs.h>
+#include <myst/blockdevice.h>
+#include <myst/fssig.h>
 
 typedef enum myst_tcall_number
 {
@@ -40,6 +43,17 @@ typedef enum myst_tcall_number
     MYST_TCALL_GET_ERRNO_LOCATION = 2071,
     MYST_TCALL_READ_CONSOLE = 2072,
     MYST_TCALL_POLL_WAKE = 2073,
+    MYST_TCALL_OPEN_BLOCK_DEVICE = 2074,
+    MYST_TCALL_CLOSE_BLOCK_DEVICE = 2075,
+    MYST_TCALL_READ_BLOCK_DEVICE = 2076,
+    MYST_TCALL_WRITE_BLOCK_DEVICE = 2077,
+    MYST_TCALL_LUKS_ENCRYPT = 2078,
+    MYST_TCALL_LUKS_DECRYPT = 2079,
+    MYST_TCALL_SHA256_START = 2080,
+    MYST_TCALL_SHA256_UPDATE = 2081,
+    MYST_TCALL_SHA256_FINISH = 2082,
+    MYST_TCALL_VERIFY_SIGNATURE = 2083,
+    MYST_TCALL_LOAD_FSSIG = 2084,
 } myst_tcall_number_t;
 
 long myst_tcall(long n, long params[6]);
@@ -108,5 +122,32 @@ long myst_tcall_get_errno_location(int** ptr);
 long myst_tcall_poll_wake(void);
 
 long myst_tcall_poll(struct pollfd* fds, nfds_t nfds, int timeout);
+
+int myst_tcall_open_block_device(const char* path, bool read_only);
+
+int myst_tcall_close_block_device(int blkdev);
+
+int myst_tcall_write_block_device(
+    int blkdev,
+    uint64_t blkno,
+    const struct myst_block* blocks,
+    size_t num_blocks);
+
+int myst_tcall_read_block_device(
+    int blkdev,
+    uint64_t blkno,
+    struct myst_block* blocks,
+    size_t num_blocks);
+
+int myst_tcall_verify_signature(
+    const char* pem_public_key,
+    const uint8_t* hash,
+    size_t hash_size,
+    const uint8_t* signer,
+    size_t signer_size,
+    const uint8_t* signature,
+    size_t signature_size);
+
+int myst_tcall_load_fssig(const char* path, myst_fssig_t* fssig);
 
 #endif /* _MYST_TCALL_H */

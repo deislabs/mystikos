@@ -21,6 +21,11 @@
 
 #define MYST_NOINLINE __attribute__((noinline))
 
+#define MYST_PACK_BEGIN _Pragma("pack(push, 1)")
+#define MYST_PACK_END _Pragma("pack(pop)")
+
+#define MYST_OFFSETOF(TYPE, MEMBER) __builtin_offsetof(TYPE, MEMBER)
+
 #define MYST_UNUSED __attribute__((__unused__))
 
 #endif /* _MYST_DEFS_H */

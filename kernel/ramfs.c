@@ -23,6 +23,7 @@
 #include <myst/round.h>
 #include <myst/strings.h>
 #include <myst/trace.h>
+#include <myst/paths.h>
 
 #define BLKSIZE 512
 
@@ -88,6 +89,14 @@ static void _inode_free(inode_t* inode)
         memset(inode, 0xdd, sizeof(inode_t));
         free(inode);
     }
+}
+
+static int _split_path(
+    const char* path,
+    char dirname[PATH_MAX],
+    char basename[PATH_MAX])
+{
+    return myst_split_path(path, dirname, PATH_MAX, basename, PATH_MAX);
 }
 
 /* Note: does not update nlink */
@@ -359,62 +368,6 @@ _Static_assert(sizeof(((struct dirent*)0)->d_ino) == 8, "d_ino");
 
 /* Assume struct dirent is eight-byte aligned */
 _Static_assert(sizeof(struct dirent) % 8 == 0, "dirent");
-
-static int _split_path(
-    const char* path,
-    char dirname[PATH_MAX],
-    char basename[PATH_MAX])
-{
-    int ret = 0;
-    char* slash;
-
-    /* Reject paths that are too long. */
-    if (strlen(path) >= PATH_MAX)
-        ERAISE(-EINVAL);
-
-    /* Reject paths that are not absolute */
-    if (path[0] != '/')
-        ERAISE(-EINVAL);
-
-    /* Handle root directory up front */
-    if (strcmp(path, "/") == 0)
-    {
-        myst_strlcpy(dirname, "/", PATH_MAX);
-        myst_strlcpy(basename, "/", PATH_MAX);
-        goto done;
-    }
-
-    /* This cannot fail (prechecked) */
-    if (!(slash = strrchr(path, '/')))
-        ERAISE(-EINVAL);
-
-    /* If path ends with '/' character */
-    if (!slash[1])
-        ERAISE(-EINVAL);
-
-    /* Split the path */
-    {
-        if (slash == path)
-        {
-            myst_strlcpy(dirname, "/", PATH_MAX);
-        }
-        else
-        {
-            size_t index = (size_t)(slash - path);
-            myst_strlcpy(dirname, path, PATH_MAX);
-
-            if (index < PATH_MAX)
-                dirname[index] = '\0';
-            else
-                dirname[PATH_MAX - 1] = '\0';
-        }
-
-        myst_strlcpy(basename, slash + 1, PATH_MAX);
-    }
-
-done:
-    return ret;
-}
 
 static int _path_to_inode_recursive(
     ramfs_t* ramfs,
@@ -1116,6 +1069,12 @@ static int _stat(inode_t* inode, struct stat* statbuf)
     memset(&buf.st_atim, 0, sizeof(buf.st_atim)); /* ATTN: unsupported */
     memset(&buf.st_mtim, 0, sizeof(buf.st_mtim)); /* ATTN: unsupported */
     memset(&buf.st_ctim, 0, sizeof(buf.st_ctim)); /* ATTN: unsupported */
+
+    if (S_ISDIR(buf.st_mode))
+    {
+        /* add an extra link to account for the "." entry */
+        buf.st_nlink++;
+    }
 
     *statbuf = buf;
 

@@ -25,6 +25,8 @@
 #include <myst/syscall.h>
 #include <myst/thread.h>
 #include <myst/trace.h>
+#include <myst/tcall.h>
+#include <myst/strings.h>
 
 #include "../config.h"
 #include "../shared.h"
@@ -163,10 +165,13 @@ int myst_enter_ecall(
     size_t kernel_dynstr_size;
     const void* rootfs_data;
     size_t rootfs_size;
+    const void* archive_data;
+    size_t archive_size;
     const void* config_data;
     size_t config_size;
     bool trace_syscalls = false;
     bool export_ramfs = false;
+    const char* rootfs = NULL;
     config_parsed_data_t parsed_config = {0};
     unsigned char have_config = 0;
     myst_args_t args;
@@ -302,6 +307,14 @@ int myst_enter_ecall(
     {
         trace_syscalls = options->trace_syscalls;
         export_ramfs = options->export_ramfs;
+
+        if (strlen(options->rootfs) >= PATH_MAX)
+        {
+            fprintf(stderr, "rootfs path too long (> %u)\n", PATH_MAX);
+            goto done;
+        }
+
+        rootfs = options->rootfs;
     }
 
     /* Setup the vectored exception handler */
@@ -339,12 +352,26 @@ int myst_enter_ecall(
 
         if (oe_region_get(MYST_ROOTFS_REGION_ID, &region) != OE_OK)
         {
-            fprintf(stderr, "failed to get crt region\n");
+            fprintf(stderr, "failed to get rootfs region\n");
             assert(0);
         }
 
         rootfs_data = enclave_base + region.vaddr;
         rootfs_size = region.size;
+    }
+
+    /* Get the archive region */
+    {
+        oe_region_t region;
+
+        if (oe_region_get(MYST_ARCHIVE_REGION_ID, &region) != OE_OK)
+        {
+            fprintf(stderr, "failed to get archive region\n");
+            assert(0);
+        }
+
+        archive_data = enclave_base + region.vaddr;
+        archive_size = region.size;
     }
 
     /* Get the kernel region */
@@ -500,6 +527,8 @@ int myst_enter_ecall(
         kargs.mman_size = mman_size;
         kargs.rootfs_data = (void*)rootfs_data;
         kargs.rootfs_size = rootfs_size;
+        kargs.archive_data = (void*)archive_data;
+        kargs.archive_size = archive_size;
         kargs.crt_data = (void*)crt_data;
         kargs.crt_size = crt_size;
         kargs.max_threads = _get_num_tcs();
@@ -507,6 +536,9 @@ int myst_enter_ecall(
         kargs.export_ramfs = export_ramfs;
         kargs.tcall = myst_tcall;
         kargs.event = event;
+
+        if (rootfs)
+            myst_strlcpy(kargs.rootfs, rootfs, sizeof(kargs.rootfs));
 
         /* Verify that the kernel is an ELF image */
         {
@@ -673,6 +705,79 @@ long myst_tcall_poll_wake(void)
         return -EINVAL;
 
     return r;
+}
+
+int myst_tcall_open_block_device(const char* path, bool read_only)
+{
+    int retval;
+
+    if (myst_open_block_device_ocall(&retval, path, read_only) != OE_OK)
+        return -EINVAL;
+
+    return retval;
+}
+
+int myst_tcall_close_block_device(int blkdev)
+{
+    int retval;
+
+    if (myst_close_block_device_ocall(&retval, blkdev) != OE_OK)
+        return -EINVAL;
+
+    return retval;
+}
+
+int myst_tcall_read_block_device(
+    int blkdev,
+    uint64_t blkno,
+    struct myst_block* blocks,
+    size_t num_blocks)
+{
+    int retval;
+
+    if (myst_read_block_device_ocall(
+            &retval, blkdev, blkno, blocks, num_blocks) != OE_OK)
+    {
+        return -EINVAL;
+    }
+
+    return retval;
+}
+
+int myst_tcall_write_block_device(
+    int blkdev,
+    uint64_t blkno,
+    const struct myst_block* blocks,
+    size_t num_blocks)
+{
+    int retval;
+
+    if (myst_write_block_device_ocall(
+            &retval, blkdev, blkno, blocks, num_blocks) != OE_OK)
+    {
+        return -EINVAL;
+    }
+
+    return retval;
+}
+
+int myst_load_fssig(const char* path, myst_fssig_t* fssig)
+{
+    int retval;
+
+    if (!path || !fssig)
+        return -EINVAL;
+
+    if (myst_load_fssig_ocall(&retval, path, fssig) != OE_OK)
+        return -EINVAL;
+
+    if (fssig->signature_size > sizeof(fssig->signature))
+    {
+        memset(fssig, 0, sizeof(myst_fssig_t));
+        return -EPERM;
+    }
+
+    return retval;
 }
 
 OE_SET_ENCLAVE_SGX(

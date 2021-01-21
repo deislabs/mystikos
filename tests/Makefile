@@ -2,7 +2,10 @@ TOP=$(abspath ..)
 include $(TOP)/defs.mak
 
 DIRS =
+DIRS += ext2
+
 DIRS += libc
+DIRS += libc2
 DIRS += args
 DIRS += echo
 DIRS += alpine
