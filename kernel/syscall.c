@@ -1860,18 +1860,15 @@ long myst_syscall_prlimit64(
     if (resource != RLIMIT_NOFILE)
         return -EINVAL;
 
-    // Set new limit for NOFILE is a nop
-    if (new_rlim) {
-        return 0;
-    }
-
-    if (!old_rlim)
+    if (old_rlim)
     {
-        return -EFAULT;
-    }
-    else{
+        // ATTN: return currently effective RLIMIT_NOFILE settings
         old_rlim->rlim_cur = 65536;
         old_rlim->rlim_max = 65536;
+    }
+
+    if (new_rlim) {
+        // ATTN: make RLIMIT_NOFILE settings effective ;
     }
 
     return 0;
@@ -4377,4 +4374,3 @@ long myst_syscall_unload_symbols(void)
     long params[6] = {0};
     return myst_tcall(MYST_TCALL_UNLOAD_SYMBOLS, params);
 }
-
