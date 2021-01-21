@@ -2108,7 +2108,7 @@ done:
         goto done;           \
     } while (0)
 
-long myst_syscall(long n, long params[6])
+long myst_syscall_c(long n, long params[6])
 {
     long syscall_ret = 0;
     long x1 = params[0];
@@ -4409,4 +4409,27 @@ long myst_syscall_unload_symbols(void)
 {
     long params[6] = {0};
     return myst_tcall(MYST_TCALL_UNLOAD_SYMBOLS, params);
+}
+
+long myst_syscall(long n, long params[6])
+{
+    long ret = 0;
+    void* stack = NULL;
+    size_t stack_size = 128 *1024;
+    extern long myst_syscall_asm(void* stack, long n, long params[6]);
+
+    if (n < 0 || !params)
+        ERAISE(-EINVAL);
+
+    if (!(stack = calloc(1, stack_size)))
+        ERAISE(-ENOMEM);
+
+    ret = myst_syscall_asm((uint8_t*)stack + stack_size - 64, n, params);
+
+done:
+
+    if (stack)
+        free(stack);
+
+    return ret;
 }
