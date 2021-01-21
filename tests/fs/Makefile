@@ -37,7 +37,7 @@ rootfs: appdir
 	$(MYST) mkcpio appdir rootfs
 
 ext2rootfs: appdir
-	$(MYST) mkext2 appdir ext2rootfs
+	sudo $(MYST) mkext2 appdir ext2rootfs
 
 appdir: $(SUBBINDIR)/fs
 	mkdir -p appdir/bin

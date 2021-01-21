@@ -34,7 +34,7 @@ $(APPDIR)/bin/run: run.c
 	$(MUSL_GCC) -Wall -o $(APPDIR)/bin/run run.c
 
 $(ROOTFS): run.c
-	$(MYST) mkext2 --force $(APPDIR) $(ROOTFS)
+	sudo $(MYST) mkext2 --force $(APPDIR) $(ROOTFS)
 
 $(ROOTHASH): run.c
 	mkdir -p $(SUBOBJDIR)
