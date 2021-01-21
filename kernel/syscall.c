@@ -1904,6 +1904,37 @@ long myst_syscall_getrusage(int who, struct rusage* usage)
     return 0;
 }
 
+long myst_syscall_prlimit64(
+    int pid,
+    int resource,
+    struct rlimit* new_rlim,
+    struct rlimit* old_rlim)
+{
+    if (resource >= RLIM_NLIMITS)
+        return -EINVAL;
+
+    // Only support for current process
+    if (pid)
+        return -EINVAL;
+
+    // Only support resource NOFILE
+    if (resource != RLIMIT_NOFILE)
+        return -EINVAL;
+
+    if (old_rlim)
+    {
+        // ATTN: return currently effective RLIMIT_NOFILE settings
+        old_rlim->rlim_cur = 65536;
+        old_rlim->rlim_max = 65536;
+    }
+
+    if (new_rlim) {
+        // ATTN: make RLIMIT_NOFILE settings effective ;
+    }
+
+    return 0;
+}
+
 long myst_syscall_ret(long ret)
 {
     if (ret < 0)
@@ -2613,8 +2644,21 @@ long myst_syscall(long n, long params[6])
             BREAK(_return(n, ret));
         }
         case SYS_msync:
+        {
+            void* addr = (void*)x1;
+            size_t length = (size_t)x2;
+            int flags = (int)x3;
+
+            _strace(
+                n,
+                "addr=%p length=%zu flags=%d ",
+                addr,
+                length,
+                flags);
+
             /* ATTN: hook up implementation */
-            break;
+            BREAK(_return(n,0));
+        }
         case SYS_mincore:
             /* ATTN: hook up implementation */
             break;
@@ -2825,7 +2869,14 @@ long myst_syscall(long n, long params[6])
             BREAK(_return(n, ret));
         }
         case SYS_flock:
-            break;
+        {
+            int fd = (int)x1;
+            int cmd = (int)x2;
+
+            _strace(n, "fd=%d cmd=%d", fd, cmd);
+
+            BREAK(_return(n, 0));
+        }
         case SYS_fsync:
             break;
         case SYS_fdatasync:
@@ -3845,7 +3896,24 @@ long myst_syscall(long n, long params[6])
         case SYS_fanotify_mark:
             break;
         case SYS_prlimit64:
-            break;
+        {
+            int pid = (int)x1;
+            int resource = (int)x2;
+            struct rlimit* new_rlim = (struct rlimit*)x3;
+            struct rlimit* old_rlim = (struct rlimit*)x4;
+
+            _strace(
+                n,
+                "pid=%d, resource=%d, new_rlim=%p, old_rlim=%p",
+                pid,
+                resource,
+                new_rlim,
+                old_rlim);
+
+            int ret =
+                myst_syscall_prlimit64(pid, resource, new_rlim, old_rlim);
+            BREAK(_return(n, ret));
+        }
         case SYS_name_to_handle_at:
             break;
         case SYS_open_by_handle_at:
