@@ -33,7 +33,7 @@ EXT2FS_SIZE=134217728
 
 tests:
 	mkdir -p $(SUBOBJDIR)
-	$(MYST) mkext2 --force --size=$(EXT2FS_SIZE) ext2dir $(EXT2FS)
+	sudo $(MYST) mkext2 --force --size=$(EXT2FS_SIZE) ext2dir $(EXT2FS)
 	$(PREFIX) $(RUNTEST) $(PREFIX) $(SUBBINDIR)/ext2 $(EXT2FS)
 	rm -rf $(EXT2FS)
 

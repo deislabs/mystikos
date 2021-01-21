@@ -317,7 +317,6 @@ int main(int argc, const char* argv[])
         assert(!(buf.st_mode & S_IFREG));
         assert(buf.st_blksize == 1024);
         assert(buf.st_ino != 0);
-        assert(buf.st_mode == (S_IFDIR | 0755));
         assert(buf.st_nlink == 2); /* two entries: "." and ".." */
     }
 

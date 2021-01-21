@@ -56,7 +56,7 @@ image: $(IMAGE)
 
 $(IMAGE):
 	mkdir -p $(SUBOBJDIR)
-	$(MYST) mkext2 $(MKEXT2_OPTS) ext2dir $(IMAGE)
+	sudo $(MYST) mkext2 $(MKEXT2_OPTS) ext2dir $(IMAGE)
 	$(MYST) fssig $(IMAGE) > $(OUTFILE)
 	@ grep root_hash= $(OUTFILE) | cut -d= -f 2 > $(ROOTHASH)
 
