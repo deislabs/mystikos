@@ -63,6 +63,8 @@
 #include <myst/times.h>
 #include <myst/trace.h>
 #include <myst/inotifydev.h>
+#include <myst/list.h>
+#include <myst/atexit.h>
 
 #define DEV_URANDOM_FD MYST_FDTABLE_SIZE
 
@@ -4411,25 +4413,100 @@ long myst_syscall_unload_symbols(void)
     return myst_tcall(MYST_TCALL_UNLOAD_SYMBOLS, params);
 }
 
+/*
+**==============================================================================
+**
+** myst_syscall()
+**
+**==============================================================================
+*/
+
+typedef struct syscall_stack
+{
+    struct syscall_stack* prev;
+    struct syscall_stack* next;
+    uint8_t data[MYST_SYSCALL_STACK_SIZE];
+}
+syscall_stack_t;
+
+static myst_list_t _syscall_stacks;
+static myst_spinlock_t _syscall_stacks_lock = MYST_SPINLOCK_INITIALIZER;
+static bool _syscall_stacks_initialized = false;
+
+static void _release_syscall_stacks(void* arg)
+{
+    (void)arg;
+
+    for (syscall_stack_t* p = (syscall_stack_t*)_syscall_stacks.head; p; )
+    {
+        syscall_stack_t* next = p->next;
+        free(p);
+        p = next;
+    }
+}
+
+static syscall_stack_t* _get_syscall_stack(void)
+{
+    syscall_stack_t* ret = NULL;
+    syscall_stack_t* stack = NULL;
+
+    myst_spin_lock(&_syscall_stacks_lock);
+    {
+        if (!_syscall_stacks_initialized)
+        {
+            myst_atexit(_release_syscall_stacks, NULL);
+            _syscall_stacks_initialized = true;
+        }
+
+        if (_syscall_stacks.head)
+        {
+            stack = (syscall_stack_t*)_syscall_stacks.head;
+            myst_list_remove(&_syscall_stacks, (myst_list_node_t*)stack);
+        }
+    }
+    myst_spin_unlock(&_syscall_stacks_lock);
+
+    if (!stack)
+    {
+        if (!(stack = memalign(16, sizeof(syscall_stack_t))))
+            goto done;
+
+        memset(stack, 0, sizeof(syscall_stack_t));
+    }
+
+    ret = stack;
+
+done:
+    return ret;
+}
+
+static void _put_syscall_stack(syscall_stack_t* stack)
+{
+    myst_spin_lock(&_syscall_stacks_lock);
+    myst_list_append(&_syscall_stacks, (myst_list_node_t*)stack);
+    myst_spin_unlock(&_syscall_stacks_lock);
+}
+
 long myst_syscall(long n, long params[6])
 {
     long ret = 0;
-    void* stack = NULL;
-    size_t stack_size = 128 *1024;
+    syscall_stack_t* stack;
     extern long myst_syscall_asm(void* stack, long n, long params[6]);
+    void* stack_end;
 
     if (n < 0 || !params)
         ERAISE(-EINVAL);
 
-    if (!(stack = calloc(1, stack_size)))
+    if (!(stack = _get_syscall_stack()))
         ERAISE(-ENOMEM);
 
-    ret = myst_syscall_asm((uint8_t*)stack + stack_size - 64, n, params);
+    stack_end = stack->data + MYST_SYSCALL_STACK_SIZE - 64;
+    ret = myst_syscall_asm(stack_end, n, params);
 
 done:
 
     if (stack)
-        free(stack);
+        _put_syscall_stack(stack);
 
     return ret;
 }

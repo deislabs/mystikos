@@ -7,6 +7,8 @@
 #include <myst/tcall.h>
 #include <myst/types.h>
 
+#define MYST_SYSCALL_STACK_SIZE (64 * 1024)
+
 typedef struct myst_kernel_args
 {
     /* The image that contains the kernel and crt etc. */
