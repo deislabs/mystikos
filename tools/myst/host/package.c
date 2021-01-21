@@ -579,14 +579,14 @@ int _exec_package(
         goto done;
     }
 
-    if (exec_launch_enclave(
-            scratch_path, type, flags, exec_args, envp, &options) != 0)
+    ret = exec_launch_enclave(
+            scratch_path, type, flags, exec_args, envp, &options);
+    if (ret != 0)
     {
-        fprintf(stderr, "Failed to run enclave %s\n", scratch_path);
+        
+        fprintf(stderr, "Enclave %s returned %d\n", scratch_path, ret);
         goto done;
     }
-
-    ret = 0;
 
 done:
     if (unpack_dir)
