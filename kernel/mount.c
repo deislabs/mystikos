@@ -5,11 +5,23 @@
 #include <string.h>
 
 #include <myst/atexit.h>
+#include <myst/blkdev.h>
+#include <myst/cpio.h>
 #include <myst/eraise.h>
+#include <myst/ext2.h>
+#include <myst/hex.h>
+#include <myst/kernel.h>
 #include <myst/mount.h>
+#include <myst/pubkey.h>
+#include <myst/ramfs.h>
 #include <myst/realpath.h>
+#include <myst/roothash.h>
+#include <myst/sha256.h>
 #include <myst/spinlock.h>
 #include <myst/strings.h>
+#include <myst/syscall.h>
+#include <myst/verity.h>
+#include <myst/fssig.h>
 
 #define MOUNT_TABLE_SIZE 8
 
@@ -232,5 +244,98 @@ done:
 
     myst_spin_unlock(&_lock);
 
+    return ret;
+}
+
+static const char* _find_arg(const char* args[], const char* name)
+{
+    if (!args)
+        return NULL;
+
+    for (size_t i = 0; args[i]; i += 2)
+    {
+        if (!args[i + 1])
+            return NULL;
+
+        if (strcmp(args[i], name) == 0)
+            return args[i + 1];
+    }
+
+    /* not found */
+    return NULL;
+}
+
+long myst_syscall_mount(
+    const char* source,
+    const char* target,
+    const char* filesystemtype,
+    unsigned long mountflags,
+    const void* data)
+{
+    long ret = 0;
+    myst_fs_t* fs = NULL;
+    myst_blkdev_t* blkdev = NULL;
+
+    if (!source || !target || !filesystemtype)
+        ERAISE(-EINVAL);
+
+    if (strcmp(filesystemtype, "ramfs") == 0)
+    {
+        /* these arguments should be zero and null */
+        if (mountflags || data)
+            ERAISE(-EINVAL);
+
+        /* create a new ramfs instance */
+        ECHECK(myst_init_ramfs(&fs));
+
+        /* perform the mount */
+        ECHECK(myst_mount(fs, target));
+        fs = NULL;
+
+        /* load the rootfs */
+        ECHECK(myst_cpio_unpack(source, target));
+    }
+    else if (strcmp(filesystemtype, "ext2") == 0)
+    {
+        const char** args = (const char**)data;
+        const char* key;
+
+        if (mountflags || !source)
+            ERAISE(-EINVAL);
+
+        key = _find_arg(args, "key");
+
+        ECHECK(myst_load_fs(source, key, &fs));
+
+        /* perform the mount */
+        ECHECK(myst_mount(fs, target));
+        fs = NULL;
+    }
+    else
+    {
+        ERAISE(-ENOTSUP);
+    }
+
+done:
+
+    if (blkdev)
+        (blkdev->close)(blkdev);
+
+    if (fs)
+        (fs->fs_release)(fs);
+
+    return ret;
+}
+
+long myst_syscall_umount2(const char* target, int flags)
+{
+    long ret = 0;
+
+    if (!target || flags != 0)
+        ERAISE(-EINVAL);
+
+    ECHECK(myst_umount(target));
+
+done:
     return ret;
 }

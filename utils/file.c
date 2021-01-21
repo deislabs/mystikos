@@ -10,6 +10,7 @@
 #include <myst/eraise.h>
 #include <myst/strings.h>
 #include <myst/types.h>
+#include <myst/file.h>
 
 int myst_load_file(const char* path, void** data_out, size_t* size_out)
 {
@@ -86,6 +87,39 @@ ssize_t myst_writen(int fd, const void* data, size_t size)
     }
 
 done:
+
+    return ret;
+}
+
+int myst_copy_file_fd(char* oldpath, int newfd)
+{
+    int ret = 0;
+    int oldfd = -1;
+    char buf[512];
+    ssize_t n;
+    struct stat st;
+
+    if (!oldpath || newfd < 0)
+        ERAISE(-EINVAL);
+
+    if ((oldfd = open(oldpath, O_RDONLY, 0)) < 0)
+        ERAISE(oldfd);
+
+    if (fstat(oldfd, &st) != 0)
+        ERAISE(-EINVAL);
+
+    while ((n = read(oldfd, buf, sizeof(buf))) > 0)
+    {
+        ECHECK(myst_writen(newfd, buf, (size_t)n));
+    }
+
+    if (n < 0)
+        ERAISE((int)n);
+
+done:
+
+    if (oldfd >= 0)
+        close(oldfd);
 
     return ret;
 }

@@ -233,4 +233,13 @@ long myst_syscall_exit_group(int status);
 
 long myst_syscall_tgkill(int tgid, int tid, int sig);
 
+long myst_syscall_mount(
+    const char* source,
+    const char* target,
+    const char* filesystemtype,
+    unsigned long mountflags,
+    const void* data);
+
+long myst_syscall_umount2(const char* target, int flags);
+
 #endif /* _MYST_SYSCALL_H */
