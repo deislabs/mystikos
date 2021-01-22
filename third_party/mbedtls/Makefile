@@ -8,7 +8,7 @@ all: mbedtls
 	$(MAKE) -C mbedtls install DESTDIR=$(INSTALL_PREFIX)
 
 clean:
-	$(MAKE) -C mbedtls clean
+	( /usr/bin/test ! -d mbedtls || $(MAKE) -C mbedtls clean )
 
 distclean:
 	rm -rf mbedtls
