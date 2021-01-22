@@ -36,24 +36,15 @@ the target.
 
 # Install or build from source
 
-Binary downloads of the Mystikos releases can be found on the Releases page
-(coming). After downloading the tarball, install it with the following commands:
+Binary downloads of Mystikos will be made available in the future. For now, 
+you should clone from GitHub and compile it following the directions below.
 
-```
-tar xvfz <tarball-name> /opt
-export PATH=$PATH:/opt/mystikos/bin
-```
-
-To remove a previously installed Mystikos, simply
-`sudo rm -rf /opt/mystikos`.
-
-If you prefer not using the tarball, Mystikos can be built on an Ubuntu
-**18.04** machine with or without SGX capability as described below.
+Mystikos should be built on **Ubuntu 18.04**, with or without SGX capability.
 
 ## Install the prerequisites
 
 ```
-sudo apt update
+sudo apt update && sudo apt upgrade
 sudo apt install -y git make libmbedtls-dev docker.io
 sudo systemctl start docker && sudo systemctl enable docker && sudo chmod 666 /var/run/docker.sock
 ```
