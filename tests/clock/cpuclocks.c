@@ -20,6 +20,13 @@ static int read_clock(char* msg, clockid_t clk_id)
     return ret;
 }
 
+static int write_clock(clockid_t clk_id)
+{
+    struct timespec ts;
+    int ret = clock_settime(clk_id, &ts);
+    return ret;
+}
+
 // spend some cycles in userland
 static int scan_array()
 {
@@ -50,10 +57,11 @@ int main(int argc, char* argv[])
     scan_array();
     assert(read_clock("main's thread time", CLOCK_THREAD_CPUTIME_ID) == 0);
 
-    // ATTN: clock_getcpuclockid requires SYS_clock_getres
-    // int pid = getpid();
-    // clock_getcpuclockid(pid, &cid);
-    // assert(read_clock(cid) == 0);
+    int pid = getpid();
+    clock_getcpuclockid(pid, &cid);
+    assert(read_clock("main's clock_getcpuclockid time", cid) == 0);
+    // test clock_getcpuclockid clocks not settable
+    assert(write_clock(cid) != 0);
 
     scan_array();
     pthread_getcpuclockid(pthread_self(), &cid);
@@ -62,6 +70,8 @@ int main(int argc, char* argv[])
     scan_array();
     pthread_getcpuclockid(thread, &cid);
     assert(read_clock("child's pthread clockid time", cid) == 0);
+    // test pthread_getcpuclockid clocks not settable
+    assert(write_clock(cid) != 0);
 
     printf("=== passed test (%s)\n", argv[0]);
     exit(0);

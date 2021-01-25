@@ -152,6 +152,11 @@ static long _tcall_vsnprintf(
     return ret;
 }
 
+static long _tcall_clock_getres(clockid_t clk_id, struct timespec* res)
+{
+    return syscall(SYS_clock_getres, clk_id, res);
+}
+
 static long _tcall_clock_gettime(clockid_t clk_id, struct timespec* tp)
 {
     return syscall(SYS_clock_gettime, clk_id, tp);
@@ -341,6 +346,12 @@ long myst_tcall(long n, long params[6])
                 return -EIO;
 
             return (long)count;
+        }
+        case MYST_TCALL_CLOCK_GETRES:
+        {
+            clockid_t clk_id = (clockid_t)x1;
+            struct timespec* res = (struct timespec*)x2;
+            return _tcall_clock_getres(clk_id, res);
         }
         case MYST_TCALL_CLOCK_GETTIME:
         {
