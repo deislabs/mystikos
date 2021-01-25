@@ -4327,7 +4327,7 @@ long myst_syscall_clock_gettime(clockid_t clk_id, struct timespec* tp)
         if (IS_DYNAMIC_CLOCK(clk_id))
             return -ENOTSUP;
         else
-            return myst_times_cpu_clock_get(clk_id, tp);
+            return myst_times_get_cpu_clock_time(clk_id, tp);
     }
 
     if (clk_id == CLOCK_PROCESS_CPUTIME_ID)

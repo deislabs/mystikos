@@ -19,8 +19,8 @@ MYST_INLINE long lapsed_nsecs(struct timespec t0, struct timespec t1)
 
 MYST_INLINE void set_timespec_from_nanos(struct timespec* tp, long nanos)
 {
-        tp->tv_sec = nanos / NANO_IN_SECOND;
-        tp->tv_nsec = nanos % NANO_IN_SECOND;
+    tp->tv_sec = nanos / NANO_IN_SECOND;
+    tp->tv_nsec = nanos % NANO_IN_SECOND;
 }
 
 static bool is_zero_tp(struct timespec* tp)
@@ -89,8 +89,7 @@ long myst_times_uptime()
     return process_times.tms_stime + process_times.tms_utime;
 }
 
-
-long myst_times_cpu_clock_get(clockid_t clk_id, struct timespec* tp)
+long myst_times_get_cpu_clock_time(clockid_t clk_id, struct timespec* tp)
 {
     pid_t tid = CPU_CLOCK_TID(clk_id);
     int per_thread = CPU_CLOCK_PERTHREAD(clk_id);
