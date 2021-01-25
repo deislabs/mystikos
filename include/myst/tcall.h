@@ -54,6 +54,7 @@ typedef enum myst_tcall_number
     MYST_TCALL_SHA256_FINISH = 2082,
     MYST_TCALL_VERIFY_SIGNATURE = 2083,
     MYST_TCALL_LOAD_FSSIG = 2084,
+    MYST_TCALL_CLOCK_GETRES = 2085,
 } myst_tcall_number_t;
 
 long myst_tcall(long n, long params[6]);
