@@ -433,6 +433,7 @@ static pair_t _pairs[] = {
     {SYS_myst_clone, "SYS_myst_clone"},
     {SYS_myst_gcov_init, "SYS_myst_gcov_init"},
     {SYS_myst_max_threads, "SYS_myst_max_threads"},
+    {SYS_myst_clean_exit, "SYS_myst_clean_exit"},
     /* Open Enclave extensions */
     {SYS_myst_oe_get_report_v2, "SYS_myst_oe_get_report_v2"},
     {SYS_myst_oe_free_report, "SYS_myst_oe_free_report"},
@@ -2785,6 +2786,37 @@ long myst_syscall(long n, long params[6])
                     myst_export_ramfs();
             }
 
+            myst_longjmp(&thread->jmpbuf, 1);
+            /* unreachable */
+            break;
+        }
+        case SYS_myst_clean_exit:
+        {
+            const int status = (int)x1;
+            void* addr = (void*)x2;
+            size_t length = (size_t)x3;
+            myst_thread_t* thread = myst_thread_self();
+
+            _strace(n, "status=%d addr=%p length=%ld", status, addr, length);
+
+            if (!thread || thread->magic != MYST_THREAD_MAGIC)
+                myst_panic("unexpected");
+
+            thread->exit_status = status;
+
+            if (thread == __myst_main_thread)
+            {
+                // execute fini functions with the CRT fsbase since only
+                // gcov uses them and gcov calls into CRT.
+                myst_set_fsbase(crt_td);
+                myst_call_fini_functions();
+                myst_set_fsbase(target_td);
+
+                if (__options.export_ramfs)
+                    myst_export_ramfs();
+            }
+
+            myst_assume(myst_munmap(addr, length) == 0);
             myst_longjmp(&thread->jmpbuf, 1);
             /* unreachable */
             break;
