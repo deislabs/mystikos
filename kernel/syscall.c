@@ -3575,7 +3575,14 @@ long myst_syscall(long n, long params[6])
             BREAK(_return(n, myst_syscall_clock_gettime(clk_id, tp)));
         }
         case SYS_clock_getres:
-            break;
+        {
+            clockid_t clk_id = (clockid_t)x1;
+            struct timespec* res = (struct timespec*)x2;
+
+            _strace(n, "clk_id=%u tp=%p", clk_id, res);
+
+            BREAK(_return(n, myst_syscall_clock_getres(clk_id, res)));
+        }
         case SYS_clock_nanosleep:
             break;
         case SYS_exit_group:
@@ -4380,6 +4387,13 @@ long myst_syscall_time(time_t* tloc)
             *tloc = tp.tv_sec;
         ret = tp.tv_sec;
     }
+    return ret;
+}
+
+long myst_syscall_clock_getres(clockid_t clk_id, struct timespec* res)
+{
+    long params[6] = {(long)clk_id, (long)res};
+    long ret = myst_tcall(MYST_TCALL_CLOCK_GETRES, params);
     return ret;
 }
 

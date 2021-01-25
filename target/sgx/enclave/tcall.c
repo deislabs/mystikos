@@ -136,6 +136,17 @@ static long _tcall_vsnprintf(
 
 /* Must be overriden by enclave application */
 MYST_WEAK
+long myst_tcall_clock_getres(clockid_t clk_id, struct timespec* res)
+{
+    (void)clk_id;
+    (void)res;
+
+    assert("sgx: unimplemented: implement in enclave" == NULL);
+    return -ENOTSUP;
+}
+
+/* Must be overriden by enclave application */
+MYST_WEAK
 long myst_tcall_clock_gettime(clockid_t clk_id, struct timespec* tp)
 {
     (void)clk_id;
@@ -450,6 +461,12 @@ long myst_tcall(long n, long params[6])
             void* arg = (void*)x4;
 
             return myst_verify_cert(cert, cert_size, verifier, arg);
+        }
+        case MYST_TCALL_CLOCK_GETRES:
+        {
+            clockid_t clk_id = (clockid_t)x1;
+            struct timespec* res = (struct timespec*)x2;
+            return myst_tcall_clock_getres(clk_id, res);
         }
         case MYST_TCALL_CLOCK_GETTIME:
         {

@@ -183,6 +183,8 @@ long myst_syscall_load_symbols(void);
 
 long myst_syscall_unload_symbols(void);
 
+long myst_syscall_clock_getres(clockid_t clk_id, struct timespec* res);
+
 long myst_syscall_clock_gettime(clockid_t clk_id, struct timespec* tp);
 
 long myst_syscall_clock_settime(clockid_t clk_id, struct timespec* tp);
