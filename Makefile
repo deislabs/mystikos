@@ -33,7 +33,7 @@ DIRS += oe
 DIRS += tools
 
 ifndef MYST_PRODUCT_BUILD
-DIRS += alpine
+DIRS += alpine/docker
 DIRS += tests
 endif
 
