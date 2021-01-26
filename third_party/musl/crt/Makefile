@@ -37,7 +37,7 @@ $(MUSLSRC)/config.mak:
 
 tests:
 
-genpatch:
+genpatch: $(MUSLSRC)
 	rm -f patch.diff
 	( cd $(MUSLSRC); git diff > $(THISDIR)/patch.diff )
 	( cd $(MUSLSRC); git diff --cached >> $(THISDIR)/patch.diff )
