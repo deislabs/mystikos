@@ -49,21 +49,27 @@ llvm-project:
 
 appdir: 
 	$(APPBUILDER) sagoel/libcxx_10x:0.1
+	$(MAKE) patch_appdir
 	# To build a new image, modify the appbuilder script to build the image with the correct name, 
 	# and not clean it up. Then once the image is built, push it to dockerhub and update 
 	# this call.
 
+patch_appdir:
+	rm -rf appdir/usr/lib/libstdc++.so.6
+	cp appdir/usr/lib/libstdc++.so.6.0.28 appdir/usr/lib/libstdc++.so.6
+
 rootfs:
-	$(BINDIR)/myst mkcpio appdir rootfs
+	$(MYST) mkext2 --force appdir rootfs
+	$(MYST) fssig --roothash rootfs > roothash
 	# want to use ext2 here -> mkext2
 	# run with posix spawn
 
 tests:
-	@ $(foreach i, $(TESTS), TESTNAME=$(TESTNAME)$(i)$(TESTSUFFIX) $(RUNTEST_COMMAND) $(MYST_EXEC) rootfs $(i) $(NL))
+	$(foreach i, $(TESTS), TESTNAME=$(TESTNAME)$(i)$(TESTSUFFIX) $(RUNTEST_COMMAND) $(MYST_EXEC) rootfs --roothash=roothash $(i) $(NL))
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst
 
 clean:
-	rm -rf rootfs appdir 
+	rm -rf rootfs roothash appdir
 	# libcxx-tests
