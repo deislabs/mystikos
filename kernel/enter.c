@@ -130,7 +130,8 @@ static int _create_standard_directories(void)
 {
     int ret = 0;
 
-    if (mkdir("/tmp", 777) != 0)
+    /* create /tmp if it does not already exist */
+    if (myst_mkdirhier("/tmp", 777) != 0)
     {
         myst_eprintf("cannot create the /tmp directory\n");
         ERAISE(-EINVAL);
