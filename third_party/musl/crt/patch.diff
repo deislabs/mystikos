@@ -1,0 +1,488 @@
+diff --git a/Makefile b/Makefile
+index bd8f5c38..fcc35f3e 100644
+--- a/Makefile
++++ b/Makefile
+@@ -160,12 +160,16 @@ obj/%.lo: $(srcdir)/%.c $(GENH) $(IMPH)
+ lib/libc.so: $(LOBJS) $(LDSO_OBJS)
+ 	$(CC) $(CFLAGS_ALL) $(LDFLAGS_ALL) -nostdlib -shared \
+ 	-Wl,-e,_dlstart -o $@ $(LOBJS) $(LDSO_OBJS) $(LIBCC)
++	$(MAKE) objects.mak
+ 
+ lib/libc.a: $(AOBJS)
+ 	rm -f $@
+ 	$(AR) rc $@ $(AOBJS)
+ 	$(RANLIB) $@
+ 
++objects.mak: $(LOBJS) $(LDSO_OBJS)
++	@ echo "MUSL_OBJECTS = $(addprefix $(CURDIR)/,$(LOBJS) $(LDSO_OBJS))" > objects.mak
++
+ $(EMPTY_LIBS):
+ 	rm -f $@
+ 	$(AR) rc $@
+diff --git a/arch/x86_64/syscall_arch.h b/arch/x86_64/syscall_arch.h
+index 92d5c179..e94deece 100644
+--- a/arch/x86_64/syscall_arch.h
++++ b/arch/x86_64/syscall_arch.h
+@@ -1,64 +1,69 @@
+ #define __SYSCALL_LL_E(x) (x)
+ #define __SYSCALL_LL_O(x) (x)
+ 
++long myst_syscall(long n, long params[6]);
++
+ static __inline long __syscall0(long n)
+ {
+-	unsigned long ret;
+-	__asm__ __volatile__ ("syscall" : "=a"(ret) : "a"(n) : "rcx", "r11", "memory");
+-	return ret;
++    long params[6] = { 0, 0, 0, 0, 0, 0 };
++    return myst_syscall(n, params);
+ }
+ 
+ static __inline long __syscall1(long n, long a1)
+ {
+-	unsigned long ret;
+-	__asm__ __volatile__ ("syscall" : "=a"(ret) : "a"(n), "D"(a1) : "rcx", "r11", "memory");
+-	return ret;
++    long params[6] = { 0, 0, 0, 0, 0, 0 };
++    params[0] = a1;
++    return myst_syscall(n, params);
+ }
+ 
+ static __inline long __syscall2(long n, long a1, long a2)
+ {
+-	unsigned long ret;
+-	__asm__ __volatile__ ("syscall" : "=a"(ret) : "a"(n), "D"(a1), "S"(a2)
+-						  : "rcx", "r11", "memory");
+-	return ret;
++    long params[6] = { 0, 0, 0, 0, 0, 0 };
++    params[0] = a1;
++    params[1] = a2;
++    return myst_syscall(n, params);
+ }
+ 
+ static __inline long __syscall3(long n, long a1, long a2, long a3)
+ {
+-	unsigned long ret;
+-	__asm__ __volatile__ ("syscall" : "=a"(ret) : "a"(n), "D"(a1), "S"(a2),
+-						  "d"(a3) : "rcx", "r11", "memory");
+-	return ret;
++    long params[6] = { 0, 0, 0, 0, 0, 0 };
++    params[0] = a1;
++    params[1] = a2;
++    params[2] = a3;
++    return myst_syscall(n, params);
+ }
+ 
+ static __inline long __syscall4(long n, long a1, long a2, long a3, long a4)
+ {
+-	unsigned long ret;
+-	register long r10 __asm__("r10") = a4;
+-	__asm__ __volatile__ ("syscall" : "=a"(ret) : "a"(n), "D"(a1), "S"(a2),
+-						  "d"(a3), "r"(r10): "rcx", "r11", "memory");
+-	return ret;
++    long params[6] = { 0, 0, 0, 0, 0, 0 };
++    params[0] = a1;
++    params[1] = a2;
++    params[2] = a3;
++    params[3] = a4;
++    return myst_syscall(n, params);
+ }
+ 
+ static __inline long __syscall5(long n, long a1, long a2, long a3, long a4, long a5)
+ {
+-	unsigned long ret;
+-	register long r10 __asm__("r10") = a4;
+-	register long r8 __asm__("r8") = a5;
+-	__asm__ __volatile__ ("syscall" : "=a"(ret) : "a"(n), "D"(a1), "S"(a2),
+-						  "d"(a3), "r"(r10), "r"(r8) : "rcx", "r11", "memory");
+-	return ret;
++    long params[6] = { 0, 0, 0, 0, 0, 0 };
++    params[0] = a1;
++    params[1] = a2;
++    params[2] = a3;
++    params[3] = a4;
++    params[4] = a5;
++    return myst_syscall(n, params);
+ }
+ 
+ static __inline long __syscall6(long n, long a1, long a2, long a3, long a4, long a5, long a6)
+ {
+-	unsigned long ret;
+-	register long r10 __asm__("r10") = a4;
+-	register long r8 __asm__("r8") = a5;
+-	register long r9 __asm__("r9") = a6;
+-	__asm__ __volatile__ ("syscall" : "=a"(ret) : "a"(n), "D"(a1), "S"(a2),
+-						  "d"(a3), "r"(r10), "r"(r8), "r"(r9) : "rcx", "r11", "memory");
+-	return ret;
++    long params[6] = { 0, 0, 0, 0, 0, 0 };
++    params[0] = a1;
++    params[1] = a2;
++    params[2] = a3;
++    params[3] = a4;
++    params[4] = a5;
++    params[5] = a6;
++    return myst_syscall(n, params);
+ }
+ 
+ #define VDSO_USEFUL
+diff --git a/ldso/dlstart.c b/ldso/dlstart.c
+index 20d50f2c..c6ad4096 100644
+--- a/ldso/dlstart.c
++++ b/ldso/dlstart.c
+@@ -1,4 +1,5 @@
+ #include <stddef.h>
++#include <errno.h>
+ #include "dynlink.h"
+ #include "libc.h"
+ 
+@@ -124,7 +125,6 @@ hidden void _dlstart_c(size_t *sp, size_t *dynv)
+ 			local_cnt = dynv[i+1];
+ 		for (i=0; i<local_cnt; i++) got[i] += base;
+ 	}
+-
+ 	rel = (void *)(base+dyn[DT_REL]);
+ 	rel_size = dyn[DT_RELSZ];
+ 	for (; rel_size; rel+=2, rel_size-=2*sizeof(size_t)) {
+@@ -146,3 +146,34 @@ hidden void _dlstart_c(size_t *sp, size_t *dynv)
+ 	GETFUNCSYM(&dls2, __dls2, base+dyn[DT_PLTGOT]);
+ 	dls2((void *)base, sp);
+ }
++
++__attribute__((__weak__))
++void myst_trace(const char* msg)
++{
++}
++
++__attribute__((__weak__))
++void myst_trace_ptr(const char* msg, const void* ptr)
++{
++}
++
++__attribute__((__weak__))
++void myst_dump_argv(int argc, const char* argv[])
++{
++}
++
++__attribute__((__weak__))
++void myst_dump_stack(const void* stack)
++{
++}
++
++__attribute__((__weak__))
++void myst_load_symbols(void)
++{
++}
++
++__attribute__((__weak__))
++long myst_add_symbol_file(const char* path, const void* text, size_t text_size)
++{
++    return -ENOTSUP;
++}
+diff --git a/ldso/dynlink.c b/ldso/dynlink.c
+index afec985a..62f3687f 100644
+--- a/ldso/dynlink.c
++++ b/ldso/dynlink.c
+@@ -27,6 +27,13 @@
+ 
+ static void error(const char *, ...);
+ 
++void myst_trace(const char* msg);
++void myst_load_symbols(void);
++long myst_add_symbol_file(
++    const char* path,
++    const void* text,
++    size_t text_size);
++
+ #define MAXP2(a,b) (-(-(a)&-(b)))
+ #define ALIGN(x,y) ((x)+(y)-1 & -(y))
+ 
+@@ -1098,6 +1105,7 @@ static struct dso *load_library(const char *name, struct dso *needed_by)
+ 	map = noload ? 0 : map_library(fd, &temp_dso);
+ 	close(fd);
+ 	if (!map) return 0;
++	myst_add_symbol_file(pathname, temp_dso.map, temp_dso.map_len);
+ 
+ 	/* Avoid the danger of getting two versions of libc mapped into the
+ 	 * same process when an absolute pathname was used. The symbols
+@@ -1797,6 +1805,7 @@ void __dls3(size_t *sp, size_t *auxv)
+ 			dprintf(2, "%s: %s: Not a valid dynamic program\n", ldname, argv[0]);
+ 			_exit(1);
+ 		}
++	        myst_add_symbol_file(argv[0], app.map, app.map_len);
+ 		close(fd);
+ 		ldso.name = ldname;
+ 		app.name = argv[0];
+@@ -1936,6 +1945,7 @@ void __dls3(size_t *sp, size_t *auxv)
+ 	/* Determine if malloc was interposed by a replacement implementation
+ 	 * so that calloc and the memalign family can harden against the
+ 	 * possibility of incomplete replacement. */
++
+ 	if (find_sym(head, "malloc", 1).dso != &ldso)
+ 		__malloc_replaced = 1;
+ 
+@@ -1955,7 +1965,11 @@ void __dls3(size_t *sp, size_t *auxv)
+ 
+ 	errno = 0;
+ 
++        myst_trace("entering program");
++        myst_load_symbols();
++
+ 	CRTJMP((void *)aux[AT_ENTRY], argv-1);
++
+ 	for(;;);
+ }
+ 
+@@ -2100,6 +2114,7 @@ end:
+ 		free(ctor_queue);
+ 	}
+ 	pthread_setcancelstate(cs, 0);
++        myst_load_symbols();
+ 	return p;
+ }
+ 
+diff --git a/src/misc/syscall.c b/src/misc/syscall.c
+index 6f3ef656..614121c3 100644
+--- a/src/misc/syscall.c
++++ b/src/misc/syscall.c
+@@ -2,6 +2,7 @@
+ #include <unistd.h>
+ #include "syscall.h"
+ #include <stdarg.h>
++#include <errno.h>
+ 
+ #undef syscall
+ 
+@@ -19,3 +20,28 @@ long syscall(long n, ...)
+ 	va_end(ap);
+ 	return __syscall_ret(__syscall(n,a,b,c,d,e,f));
+ }
++
++__attribute__((__weak__))
++long myst_syscall(long n, long params[6])
++{
++    (void)n;
++    (void)params;
++    return EINVAL;
++}
++
++long myst_syscall_variadic(long n, ...)
++{
++    va_list ap;
++    long params[6];
++
++    va_start(ap, n);
++    params[0] = va_arg(ap, long);
++    params[1] = va_arg(ap, long);
++    params[2] = va_arg(ap, long);
++    params[3] = va_arg(ap, long);
++    params[4] = va_arg(ap, long);
++    params[5] = va_arg(ap, long);
++    va_end(ap);
++
++    return myst_syscall(n, params);
++}
+diff --git a/src/thread/clone.c b/src/thread/clone.c
+index be80c8ea..afc8d160 100644
+--- a/src/thread/clone.c
++++ b/src/thread/clone.c
+@@ -1,6 +1,7 @@
+ #include <errno.h>
+ #include "pthread_impl.h"
+ 
++weak
+ int __clone(int (*func)(void *), void *stack, int flags, void *arg, ...)
+ {
+ 	return -ENOSYS;
+diff --git a/src/thread/pthread_cancel.c b/src/thread/pthread_cancel.c
+index 2f9d5e97..e4d3d000 100644
+--- a/src/thread/pthread_cancel.c
++++ b/src/thread/pthread_cancel.c
+@@ -14,9 +14,7 @@ long __cancel()
+ 	return -ECANCELED;
+ }
+ 
+-long __syscall_cp_asm(volatile void *, syscall_arg_t,
+-                      syscall_arg_t, syscall_arg_t, syscall_arg_t,
+-                      syscall_arg_t, syscall_arg_t, syscall_arg_t);
++long __syscall_cp_asm(volatile void* cancel, long n, long params[6]);
+ 
+ long __syscall_cp_c(syscall_arg_t nr,
+                     syscall_arg_t u, syscall_arg_t v, syscall_arg_t w,
+@@ -30,7 +28,8 @@ long __syscall_cp_c(syscall_arg_t nr,
+ 	    && (st==PTHREAD_CANCEL_DISABLE || nr==SYS_close))
+ 		return __syscall(nr, u, v, w, x, y, z);
+ 
+-	r = __syscall_cp_asm(&self->cancel, nr, u, v, w, x, y, z);
++        long params[6] = { u, v, w, x, y, z };
++	r = __syscall_cp_asm(&self->cancel, nr, params);
+ 	if (r==-EINTR && nr!=SYS_close && self->cancel &&
+ 	    self->canceldisable != PTHREAD_CANCEL_DISABLE)
+ 		r = __cancel();
+@@ -56,7 +55,7 @@ static void cancel_handler(int sig, siginfo_t *si, void *ctx)
+ 
+ 	_sigaddset(&uc->uc_sigmask, SIGCANCEL);
+ 
+-	if (self->cancelasync || pc >= (uintptr_t)__cp_begin && pc < (uintptr_t)__cp_end) {
++	if (pc >= (uintptr_t)__cp_begin && pc < (uintptr_t)__cp_end) {
+ 		uc->uc_mcontext.MC_PC = (uintptr_t)__cp_cancel;
+ #ifdef CANCEL_GOT
+ 		uc->uc_mcontext.MC_GOT = CANCEL_GOT;
+@@ -64,6 +63,7 @@ static void cancel_handler(int sig, siginfo_t *si, void *ctx)
+ 		return;
+ 	}
+ 
++	__cancel();
+ 	__syscall(SYS_tkill, self->tid, SIGCANCEL);
+ }
+ 
+diff --git a/src/thread/x86_64/__set_thread_area.s b/src/thread/x86_64/__set_thread_area.s
+deleted file mode 100644
+index 7347ff4d..00000000
+--- a/src/thread/x86_64/__set_thread_area.s
++++ /dev/null
+@@ -1,11 +0,0 @@
+-/* Copyright 2011-2012 Nicholas J. Kain, licensed under standard MIT license */
+-.text
+-.global __set_thread_area
+-.hidden __set_thread_area
+-.type __set_thread_area,@function
+-__set_thread_area:
+-	mov %rdi,%rsi           /* shift for syscall */
+-	movl $0x1002,%edi       /* SET_FS register */
+-	movl $158,%eax          /* set fs segment to */
+-	syscall                 /* arch_prctl(SET_FS, arg)*/
+-	ret
+diff --git a/src/thread/x86_64/clone.s b/src/thread/x86_64/clone.s
+deleted file mode 100644
+index 6e47bc0a..00000000
+--- a/src/thread/x86_64/clone.s
++++ /dev/null
+@@ -1,28 +0,0 @@
+-.text
+-.global __clone
+-.hidden __clone
+-.type   __clone,@function
+-__clone:
+-	xor %eax,%eax
+-	mov $56,%al
+-	mov %rdi,%r11
+-	mov %rdx,%rdi
+-	mov %r8,%rdx
+-	mov %r9,%r8
+-	mov 8(%rsp),%r10
+-	mov %r11,%r9
+-	and $-16,%rsi
+-	sub $8,%rsi
+-	mov %rcx,(%rsi)
+-	syscall
+-	test %eax,%eax
+-	jnz 1f
+-	xor %ebp,%ebp
+-	pop %rdi
+-	call *%r9
+-	mov %eax,%edi
+-	xor %eax,%eax
+-	mov $60,%al
+-	syscall
+-	hlt
+-1:	ret
+diff --git a/src/thread/x86_64/syscall_cp.s b/src/thread/x86_64/syscall_cp.s
+index 4f101716..c6091da5 100644
+--- a/src/thread/x86_64/syscall_cp.s
++++ b/src/thread/x86_64/syscall_cp.s
+@@ -9,22 +9,19 @@
+ .global __syscall_cp_asm
+ .hidden __syscall_cp_asm
+ .type   __syscall_cp_asm,@function
++// __syscall_cp_asm(%rdi=cancel, %rsi=n, %rdx=params)
+ __syscall_cp_asm:
+ 
+ __cp_begin:
+ 	mov (%rdi),%eax
+ 	test %eax,%eax
+ 	jnz __cp_cancel
++
+ 	mov %rdi,%r11
+-	mov %rsi,%rax
+-	mov %rdx,%rdi
+-	mov %rcx,%rsi
+-	mov %r8,%rdx
+-	mov %r9,%r10
+-	mov 8(%rsp),%r8
+-	mov 16(%rsp),%r9
++        mov %rsi, %rdi
++        mov %rdx, %rsi
+ 	mov %r11,8(%rsp)
+-	syscall
++	jmp myst_syscall
+ __cp_end:
+ 	ret
+ __cp_cancel:
+diff --git a/src/internal/__popcountdi2.c b/src/internal/__popcountdi2.c
+new file mode 100644
+index 00000000..b4b374a1
+--- /dev/null
++++ b/src/internal/__popcountdi2.c
+@@ -0,0 +1,16 @@
++
++__attribute__((__weak__))
++int __popcountdi2(unsigned long a)
++{
++    unsigned long nbits = 0;
++
++    /* Count the number of bits that are set */
++    for (unsigned long i = 0; i < 64; i++)
++    {
++        if ((a & (1LU << i)))
++            nbits++;
++    }
++
++    /* Return 1 if the nbits is odd; return 0 if nbits is event */
++    return (nbits % 2) ? 1 : 0;
++}
+diff --git a/src/stdio/__fprintf_chk.c b/src/stdio/__fprintf_chk.c
+new file mode 100644
+index 00000000..50253c11
+--- /dev/null
++++ b/src/stdio/__fprintf_chk.c
+@@ -0,0 +1,23 @@
++#include <stdio.h>
++#include <stdarg.h>
++
++extern int __vfprintf_chk(
++    FILE *stream,
++    int flag,
++    const char *format,
++    va_list ap);
++
++__attribute__((__weak__))
++int __fprintf_chk(FILE *stream, int flag, const char *format, ...)
++{
++    int ret;
++    va_list ap;
++
++    (void)flag;
++
++    va_start(ap, format);
++    ret = __vfprintf_chk(stream, flag, format, ap);
++    va_end(ap);
++
++    return ret;
++}
+diff --git a/src/stdio/__vfprintf_chk.c b/src/stdio/__vfprintf_chk.c
+new file mode 100644
+index 00000000..5493e453
+--- /dev/null
++++ b/src/stdio/__vfprintf_chk.c
+@@ -0,0 +1,11 @@
++#include <stdio.h>
++#include <assert.h>
++
++__attribute__((__weak__))
++int __vfprintf_chk(FILE *stream, int flag, const char *format, va_list ap)
++{
++    assert(stream);
++    assert(format);
++    (void)flag;
++    return vfprintf(stream, format, ap);
++}
