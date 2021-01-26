@@ -13,7 +13,7 @@ LIBCXX_EXCEPTION_TESTS_DIR=llvm-project/libcxx/test/
 TEST_FILE = builttests_exe.passed
 TESTS = $(shell cat $(TEST_FILE))
 
-all: clean libos appdir rootfs
+all: clean myst appdir rootfs
 
 libcxx-tests: llvm-project
 	mkdir libcxx-tests
@@ -54,15 +54,15 @@ appdir:
 	# this call.
 
 rootfs:
-	$(BINDIR)/libos mkcpio appdir rootfs
+	$(BINDIR)/myst mkcpio appdir rootfs
 	# want to use ext2 here -> mkext2
 	# run with posix spawn
 
 tests:
-	@ $(foreach i, $(TESTS), TESTNAME=$(TESTNAME)$(i)$(TESTSUFFIX) $(RUNTEST_COMMAND) $(LIBOS_EXEC) rootfs $(i) $(NL))
+	@ $(foreach i, $(TESTS), TESTNAME=$(TESTNAME)$(i)$(TESTSUFFIX) $(RUNTEST_COMMAND) $(MYST_EXEC) rootfs $(i) $(NL))
 
-libos:
-	$(MAKE) -C $(TOP)/tools/libos
+myst:
+	$(MAKE) -C $(TOP)/tools/myst
 
 clean:
 	rm -rf rootfs appdir 
