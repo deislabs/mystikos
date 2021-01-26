@@ -2464,6 +2464,32 @@ long myst_syscall(long n, long params[6])
 
             _strace(n, "addr=%lx length=%zu(%lx)", (long)addr, length, length);
 
+            // if the ummapped region overlaps the CRT thread descriptor, then
+            // postpone the unmap because unmapping now would invalidate the
+            // stack canary and would raise __stack_chk_fail(); this occurs
+            // when munmap() is called from __unmapself()
+            if (crt_td && addr && length)
+            {
+                const uint8_t* p = (const uint8_t*)crt_td;
+                const uint8_t* pend = p + sizeof(myst_td_t);
+                const uint8_t* q = (const uint8_t*)addr;
+                const uint8_t* qend = q + length;
+
+                if ((p >= q && p < qend) || (pend >= q && pend < qend))
+                {
+                    myst_thread_t* thread = myst_thread_self();
+
+                    /* unmap this later when the thread exits */
+                    if (thread)
+                    {
+                        thread->unmapself_addr = addr;
+                        thread->unmapself_length = length;
+                    }
+
+                    BREAK(_return(n, 0));
+                }
+            }
+
             BREAK(_return(n, (long)myst_munmap(addr, length)));
         }
         case SYS_brk:

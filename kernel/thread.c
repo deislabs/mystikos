@@ -483,6 +483,9 @@ long myst_run_thread(uint64_t cookie, uint64_t event)
                         __FILE__, __LINE__);
                 }
 
+                /* unmap the memory containing the thread descriptor */
+                myst_munmap(thread->unmapself_addr, thread->unmapself_length);
+
                 /* unmap any mapping made by the process */
                 myst_release_process_mappings(thread->pid);
             }
