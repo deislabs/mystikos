@@ -155,6 +155,10 @@ struct myst_thread
         siginfo_t* siginfos[NSIG - 1];
     } signal;
 
+    /* the parameters passed to the munmap syscall by __unmapself() */
+    void* unmapself_addr;
+    size_t unmapself_length;
+
     struct myst_thread* group_prev;
     struct myst_thread* group_next;
 };
