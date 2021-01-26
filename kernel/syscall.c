@@ -2795,9 +2795,12 @@ long myst_syscall(long n, long params[6])
         {
             struct utsname* buf = (struct utsname*)x1;
 
-            MYST_STRLCPY(buf->sysname, "Mystikos");
-            MYST_STRLCPY(buf->nodename, "myst");
-            MYST_STRLCPY(buf->release, "1.0.0");
+            // We are emulating Linux syscalls. 5.4.0 is the LTS release we
+            // try to emulate. The release number should be updated when
+            // Mystikos adapts to syscall API changes in future Linux releases.
+            MYST_STRLCPY(buf->sysname, "Linux");
+            MYST_STRLCPY(buf->nodename, "TEE");
+            MYST_STRLCPY(buf->release, "5.4.0");
             MYST_STRLCPY(buf->version, "Mystikos 1.0.0");
             MYST_STRLCPY(buf->machine, "x86_64");
 
