@@ -483,8 +483,13 @@ long myst_run_thread(uint64_t cookie, uint64_t event)
                         __FILE__, __LINE__);
                 }
 
-                /* unmap the memory containing the thread descriptor */
-                myst_munmap(thread->unmapself_addr, thread->unmapself_length);
+                // unmap the memory containing the thread descriptor; set by
+                // __unmapself() when it invoke SYS_unmap.
+                if (thread->unmapself_addr)
+                {
+                    myst_munmap(thread->unmapself_addr,
+                        thread->unmapself_length);
+                }
 
                 /* unmap any mapping made by the process */
                 myst_release_process_mappings(thread->pid);
