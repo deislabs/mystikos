@@ -24,16 +24,9 @@ libcxx-tests:
 
 appdir: libcxx-tests
 	$(APPBUILDER) Dockerfile
-	$(MAKE) patch_appdir
-
-patch_appdir:
-	rm -rf appdir/usr/lib/libstdc++.so.6
-	cp appdir/usr/lib/libstdc++.so.6.0.28 appdir/usr/lib/libstdc++.so.6
 
 rootfs:
-	sudo $(MYST) mkext2 --force appdir rootfs
-	$(MYST) fssig --roothash rootfs > roothash
-	# run with posix spawn
+	$(BINDIR)/myst mkcpio appdir rootfs
 
 tests:
 	$(RUNTEST) $(MYST_EXEC) rootfs /app/basic-exceptions.cpp.exe $(OPTS)
