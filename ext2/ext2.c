@@ -857,11 +857,9 @@ static int _load_file(
     size_t* size_out)
 {
     int ret = 0;
-    ssize_t n;
     struct stat st;
     char block[1024];
     void* data = NULL;
-    uint8_t* p;
 
     if (data_out)
         *data_out = NULL;
@@ -871,15 +869,26 @@ static int _load_file(
 
     ECHECK(ext2_fstat(&ext2->base, file, &st));
 
+    assert(st.st_size == file->inode.i_size);
+
     if (!(data = malloc((size_t)(st.st_size))))
         ERAISE(-ENOMEM);
 
-    p = data;
-
-    while ((n = ext2_read(&ext2->base, file, block, sizeof(block))) > 0)
+    /* handle symlinks shorter than 60 bytes up front */
+    if (S_ISLNK(file->inode.i_mode) && file->inode.i_size < 60)
     {
-        memcpy(p, block, (size_t)n);
-        p += n;
+        memcpy(data, file->inode.i_block, file->inode.i_size);
+    }
+    else
+    {
+        uint8_t* p = data;
+        ssize_t n;
+
+        while ((n = ext2_read(&ext2->base, file, block, sizeof(block))) > 0)
+        {
+            memcpy(p, block, (size_t)n);
+            p += n;
+        }
     }
 
     *data_out = data;
@@ -2512,8 +2521,13 @@ static int _inode_unlink(ext2_t* ext2, ext2_ino_t ino, ext2_inode_t* inode)
     {
         size_t num_blocks = _inode_get_num_blocks(ext2, inode);
 
+        if (S_ISLNK(inode->i_mode) && inode->i_size < 60)
+            num_blocks = 0;
+
         for (size_t i = 0; i < num_blocks; i++)
+        {
             ECHECK(_inode_put_blkno(ext2, ino, inode, i));
+        }
 
         /* return the inode to the free list */
         ECHECK(_put_ino(ext2, ino));
@@ -2840,7 +2854,7 @@ static int _stat(
     /* find the inode of the file */
     ECHECK(_path_to_inode(ext2, pathname, follow, NULL, &ino, NULL, &inode));
 
-    /* call _ftruncate() */
+    /* call ext2_fstat() */
     {
         myst_file_t file = {
             .ino = ino,
@@ -3345,6 +3359,7 @@ int ext2_symlink(myst_fs_t* fs, const char* target, const char* linkpath)
     char dirname[PATH_MAX];
     char filename[PATH_MAX];
     ext2_dirent_t ent;
+    size_t target_len;
 
     if (!_ext2_valid(ext2))
         ERAISE(-EINVAL);
@@ -3365,8 +3380,21 @@ int ext2_symlink(myst_fs_t* fs, const char* target, const char* linkpath)
     _dirent_init(&ent, ino, EXT2_FT_SYMLINK, filename);
     ECHECK(_add_dirent(ext2, dino, &dinode, filename, &ent));
 
-    /* write the file content */
-    ECHECK(_inode_write_data(ext2, ino, &inode, target, strlen(target)));
+    /* get the length of the target */
+    target_len = strlen(target);
+
+    /* store targets less than 60 bytes in the inode itself */
+    if (target_len < 60)
+    {
+        memcpy(inode.i_block, target, target_len);
+        inode.i_size = target_len;
+        inode.i_blocks = 0;
+    }
+    else
+    {
+        /* write the file content */
+        ECHECK(_inode_write_data(ext2, ino, &inode, target, strlen(target)));
+    }
 
     /* write the inode */
     ECHECK(_write_inode(ext2, ino, &inode));
