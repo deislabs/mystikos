@@ -47,8 +47,8 @@ export PATH=$PATH:/opt/mystikos/bin
 To remove a previously installed Mystikos, simply
 `sudo rm -rf /opt/mystikos`.
 
-Mystikos can be built on an Ubuntu 18.04 machine with or without SGX
-capability.
+If you prefer not using the tarball, Mystikos can be built on an Ubuntu
+**18.04** machine with or without SGX capability as described below.
 
 ## Install the prerequisites
 
@@ -61,8 +61,8 @@ sudo systemctl start docker && sudo systemctl enable docker && sudo chmod 666 /v
 ## Clone, build, and install Mystikos
 
 ```
-git clone https://msazure.visualstudio.com/DefaultCollection/One/_git/OpenLibOS
-cd Mystikos && make
+git clone https://github.com/deislabs/mystikos.git
+cd mystikos && make
 sudo make install
 export PATH=$PATH:/opt/mystikos/bin
 ```
@@ -96,6 +96,14 @@ SGX-capable machine to try out the SGX target. For that, we recommend either an
 
 This project is released under the [MIT License](LICENSE).
 
+# Reporting a Vulnerability
+
+Security issues and bugs should be reported privately via email to the
+[Microsoft Security Response Center](https://www.microsoft.com/en-us/msrc)
+(MSRC) at secure@microsoft.com. You should receive a response within 24 hours.
+If for some reason you do not, please follow up via email to ensure we received
+your original message.
+
 # Contributing to Mystikos
 
 You can contribute to Mystikos in several ways by:
@@ -104,4 +112,7 @@ You can contribute to Mystikos in several ways by:
 - filing issues with github issues, or
 - by simply providing feedback via github issues or email mystikos@service.microsoft.com.
 
-This project has adopted the [Microsoft Code of Conduct](https://opensource.microsoft.com/codeofconduct/). All participants are expected to abide by these basic tenets to ensure that the community is a welcoming place for everyone.
+This project has adopted the
+[Microsoft Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
+All participants are expected to abide by these basic tenets to ensure that the
+community is a welcoming place for everyone.
