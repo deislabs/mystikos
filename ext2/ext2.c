@@ -869,8 +869,6 @@ static int _load_file(
 
     ECHECK(ext2_fstat(&ext2->base, file, &st));
 
-    assert(st.st_size == file->inode.i_size);
-
     if (!(data = malloc((size_t)(st.st_size))))
         ERAISE(-ENOMEM);
 
