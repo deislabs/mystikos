@@ -54,7 +54,6 @@ DIRS += signal
 DIRS += libcxx
 
 ifndef MYST_USE_OECACHE
-DIRS += cpp-exceptions
 DIRS += curl
 endif
 
