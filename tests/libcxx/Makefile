@@ -20,7 +20,7 @@ libcxx-tests: llvm-project
 	find $(LIBCXX_TESTS_DIR) -name \*pass.cpp -exec cp --parent {}  libcxx-tests \; 
 	find $(LIBCXX_TESTS_DIR) -name \*.h -exec cp --parent {}  libcxx-tests \; 
 	
-	copy all test names
+	# copy all test names
 	find $(LIBCXX_TESTS_DIR) -name \*pass.cpp > alltests.txt 
 
 	sed -i 's/libcxx-tests\/llvm-project\/libcxx\/test\///g' alltests.txt
