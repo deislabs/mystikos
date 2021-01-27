@@ -1887,6 +1887,35 @@ long myst_syscall_prlimit64(
     return 0;
 }
 
+long myst_syscall_sendfile(int out_fd, int in_fd, off_t *offset, size_t count)
+{
+    long ret = 0;
+
+    if (out_fd < 0 || in_fd < 0)
+        ERAISE(-EINVAL);
+
+    if (offset)
+    {
+    }
+    else
+    {
+        ssize_t n;
+        char buf[BUFSIZ];
+        size_t r = (count < sizeof(buf)) ? count : sizeof(buf);
+
+        while (r > 0 && (n = read(in_fd, buf, r)) > 0)
+        {
+            ssize_t m = myst_syscall_write(out_fd, buf, n);
+            ECHECK(m);
+
+            r -= n;
+        }
+    }
+
+done:
+    return ret;
+}
+
 long myst_syscall_ret(long ret)
 {
     if (ret < 0)
@@ -4260,7 +4289,19 @@ long myst_syscall(long n, long params[6])
             BREAK(_return(n, ret));
         }
         case SYS_sendfile:
+        {
+            int out_fd = (int)x1;
+            int in_fd = (int)x2;
+            off_t* offset = (off_t*)x3;
+            size_t count = (size_t)x4;
+
+            _strace(n, "out_fd=%d in_fd=%d offset=%p count=%zu",
+                out_fd, in_fd, offset, count);
+
+            long ret = myst_syscall_sendfile(out_fd, in_fd, offset, count);
+            BREAK(_return(n, ret));
             break;
+        }
         /* forward Open Enclave extensions to the target */
         case SYS_myst_oe_get_report_v2:
         case SYS_myst_oe_free_report:
