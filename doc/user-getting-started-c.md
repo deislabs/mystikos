@@ -11,7 +11,7 @@ As usual, we use the familiar code:
 
 int main()
 {
-    printf("Hello world from Mystikos!");
+    printf("Hello world from Mystikos!\n");
     return 0;
 }
 ```

@@ -9,7 +9,8 @@ We are working towards complete C# support.
 ## Write the program
 
 In this example, we take numbers from command line and output the sum.
-C# requires us to create a project first. You can easily do that with:
+C# requires us to create a project first. First we need to install dotnet
+SDK 3.1 with `sudo apt install dotnet-sdk-3.1`. Then run the command:
 
 ```
 dotnet new console -o sum
@@ -42,7 +43,7 @@ namespace sum
 ```
 
 You can build and run the program on Ubuntu with the following command
-(after `sudo apt install dotnet-sdk-3.1`) to make sure it's correct:
+to make sure it's correct:
 
 ```
 cd sum
