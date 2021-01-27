@@ -8,7 +8,7 @@ endif
 APPDIR=$(CURDIR)/appdir
 APPBUILDER=$(TOP)/scripts/appbuilder
 
-LIBCXX_EXCEPTION_TESTS_DIR=llvm-project/libcxx/test/
+LIBCXX_TESTS_DIR=llvm-project/libcxx/test/
 
 TEST_FILE = builttests_exe.passed
 TESTS = $(shell cat $(TEST_FILE))
@@ -17,11 +17,11 @@ all: clean myst appdir rootfs
 
 libcxx-tests: llvm-project
 	mkdir libcxx-tests
-	find $(LIBCXX_EXCEPTION_TESTS_DIR) -name \*pass.cpp -exec cp --parent {}  libcxx-tests \; 
-	find $(LIBCXX_EXCEPTION_TESTS_DIR) -name \*.h -exec cp --parent {}  libcxx-tests \; 
+	find $(LIBCXX_TESTS_DIR) -name \*pass.cpp -exec cp --parent {}  libcxx-tests \; 
+	find $(LIBCXX_TESTS_DIR) -name \*.h -exec cp --parent {}  libcxx-tests \; 
 	
 	copy all test names
-	find $(LIBCXX_EXCEPTION_TESTS_DIR) -name \*pass.cpp > alltests.txt 
+	find $(LIBCXX_TESTS_DIR) -name \*pass.cpp > alltests.txt 
 
 	sed -i 's/libcxx-tests\/llvm-project\/libcxx\/test\///g' alltests.txt
 	sed -i -e 's/^/\/app\//' alltests.txt
@@ -41,7 +41,7 @@ libcxx-tests: llvm-project
     done;
 
 	cd $(START)/libcxx-tests
-	find $(LIBCXX_EXCEPTION_TESTS_DIR) -name \*pass.cpp.exe > builttests_exe.txt
+	find $(LIBCXX_TESTS_DIR) -name \*pass.cpp.exe > builttests_exe.txt
 	sed -i -e 's/^/\/app\//' builttests_exe.txt
 
 llvm-project: 
@@ -59,9 +59,8 @@ patch_appdir:
 	cp appdir/usr/lib/libstdc++.so.6.0.28 appdir/usr/lib/libstdc++.so.6
 
 rootfs:
-	$(MYST) mkext2 --force appdir rootfs
+	sudo $(MYST) mkext2 --force appdir rootfs
 	$(MYST) fssig --roothash rootfs > roothash
-	# want to use ext2 here -> mkext2
 	# run with posix spawn
 
 tests:
