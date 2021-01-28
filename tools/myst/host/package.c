@@ -4,8 +4,8 @@
 #include <assert.h>
 #include <errno.h>
 #include <libgen.h>
-#include <myst/types.h>
 #include <limits.h>
+#include <myst/types.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -19,6 +19,7 @@
 #include <openenclave/host.h>
 
 #include "../config.h"
+#include "archive.h"
 #include "cpio.h"
 #include "exec.h"
 #include "myst/file.h"
@@ -26,7 +27,6 @@
 #include "regions.h"
 #include "sign.h"
 #include "utils.h"
-#include "archive.h"
 
 _Static_assert(PAGE_SIZE == 4096, "");
 
@@ -232,10 +232,8 @@ int _package(int argc, const char* argv[])
 
     // Add the enclave to myst
     if (snprintf(
-            scratch_path,
-            PATH_MAX,
-            "%s/lib/openenclave/mystenc.so",
-            tmp_dir) >= PATH_MAX)
+            scratch_path, PATH_MAX, "%s/lib/openenclave/mystenc.so", tmp_dir) >=
+        PATH_MAX)
     {
         fprintf(
             stderr,
@@ -516,8 +514,8 @@ int _exec_package(
             stderr, "File path %s/lib/openenclave/ is too long\n", unpack_dir);
         goto done;
     }
-    if (elf_find_section(
-            &myst_elf.elf, ".mystenc", &buffer, &buffer_length) != 0)
+    if (elf_find_section(&myst_elf.elf, ".mystenc", &buffer, &buffer_length) !=
+        0)
     {
         fprintf(
             stderr, "Failed to extract enclave from %s\n", get_program_file());
@@ -613,10 +611,9 @@ int _exec_package(
     }
 
     ret = exec_launch_enclave(
-            scratch_path, type, flags, exec_args, envp, &options);
+        scratch_path, type, flags, exec_args, envp, &options);
     if (ret != 0)
     {
-        
         fprintf(stderr, "Enclave %s returned %d\n", scratch_path, ret);
         goto done;
     }

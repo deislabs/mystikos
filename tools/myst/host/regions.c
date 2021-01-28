@@ -5,12 +5,12 @@
 #include <assert.h>
 #include <errno.h>
 #include <libgen.h>
+#include <limits.h>
 #include <myst/elf.h>
 #include <myst/eraise.h>
 #include <myst/file.h>
 #include <myst/round.h>
 #include <myst/strings.h>
-#include <limits.h>
 #include <openenclave/bits/sgx/region.h>
 #include <openenclave/host.h>
 #include <sys/stat.h>
@@ -165,7 +165,8 @@ const region_details* create_region_details_from_files(
         if (format_mystenc(_details.enc.path, sizeof(_details.enc.path)) != 0)
             _err("buffer overflow when forming mystenc.so path");
 
-        if (format_libmystcrt(_details.crt.path, sizeof(_details.crt.path)) != 0)
+        if (format_libmystcrt(_details.crt.path, sizeof(_details.crt.path)) !=
+            0)
             _err("buffer overflow when forming libmystcrt.so path");
 
         if (format_libmystkernel(

@@ -39,10 +39,10 @@ clock_getcpuclockid: pid -> (-pid-1)*8U + 2
 pthread_getcpuclockid: tid -> (-tid-1)*8U + 6;
 
 Order of operations:
-	1. negate pid or tid
-	2. subtract 1
-	3. mul 8
-	4. add 2(pid) or 6(tid)
+    1. negate pid or tid
+    2. subtract 1
+    3. mul 8
+    4. add 2(pid) or 6(tid)
 
 Steps 1-3. differentiate these clockids from real id clocks.
 Step 4 differentiates thread clocks from process clocks.

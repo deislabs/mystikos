@@ -4,9 +4,9 @@
 #ifndef _MYST_FSSIG_H
 #define _MYST_FSSIG_H
 
-#include <stdint.h>
 #include <myst/defs.h>
 #include <myst/sha256.h>
+#include <stdint.h>
 
 #define MYST_FSSIG_MAGIC 0xf55198a153624d38
 
@@ -41,8 +41,7 @@ typedef struct myst_fssig
 
     /* padding */
     uint8_t padding[2976];
-}
-myst_fssig_t;
+} myst_fssig_t;
 
 MYST_STATIC_ASSERT(sizeof(myst_fssig_t) == 4096);
 

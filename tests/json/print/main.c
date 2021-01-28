@@ -29,8 +29,7 @@ static void _trace(
 
 int main(int argc, char** argv)
 {
-    static json_allocator_t allocator =
-    {
+    static json_allocator_t allocator = {
         malloc,
         free,
     };

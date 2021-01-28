@@ -8,9 +8,9 @@
 #include <unistd.h>
 
 #include <myst/eraise.h>
+#include <myst/file.h>
 #include <myst/strings.h>
 #include <myst/types.h>
-#include <myst/file.h>
 
 int myst_load_file(const char* path, void** data_out, size_t* size_out)
 {
