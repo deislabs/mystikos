@@ -17,7 +17,7 @@ RUN echo "Num directories = " && find . -type d | wc -l
 RUN for dir in $(find . -type d); \
     do cd $dir ; \
     for f in $(ls | grep pass.cpp); \
-        do g++ -g -I $PREFIX_DIR/support -fPIC -Wall -o $( basename ${f}.exe) $f ; \
+        do g++ -I $PREFIX_DIR/support -fPIC -Wall -o $( basename ${f}.exe) $f ; \
         done; \
     cd $TEST_DIR ; \
     done;
