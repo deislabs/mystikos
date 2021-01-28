@@ -393,6 +393,28 @@ int main(int argc, const char* argv[])
         printf("=== passed test (case1)\n");
     }
 
+    /* test rewinddir() */
+    {
+        DIR* dir;
+        struct dirent* ent;
+
+        assert((dir = opendir("/")));
+
+        for (size_t i = 0; i < 10; i++)
+        {
+            size_t n = 0;
+
+            while (ent = readdir(dir))
+                n++;
+
+            assert(n == 7);
+
+            rewinddir(dir);
+        }
+
+        assert(closedir(dir) == 0);
+    }
+
     printf("=== passed test (%s)\n", argv[0]);
 
     return 0;
