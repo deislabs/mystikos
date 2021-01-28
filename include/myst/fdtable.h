@@ -12,11 +12,11 @@
 #include <myst/defs.h>
 #include <myst/epolldev.h>
 #include <myst/fs.h>
+#include <myst/inotifydev.h>
 #include <myst/pipedev.h>
 #include <myst/sockdev.h>
 #include <myst/spinlock.h>
 #include <myst/ttydev.h>
-#include <myst/inotifydev.h>
 
 #define MYST_FDTABLE_SIZE 1024
 
@@ -152,9 +152,7 @@ int myst_fdtable_get_any(
 /* get the fdtable for the current thread */
 myst_fdtable_t* myst_fdtable_current(void);
 
-int myst_fdtable_clone(
-    myst_fdtable_t* fdtable,
-    myst_fdtable_t** fdtable_out);
+int myst_fdtable_clone(myst_fdtable_t* fdtable, myst_fdtable_t** fdtable_out);
 
 MYST_INLINE bool myst_valid_fd(int fd)
 {

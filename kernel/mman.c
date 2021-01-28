@@ -631,8 +631,7 @@ static int _mmap(
     {
         if (!(flags & MYST_MAP_ANONYMOUS))
         {
-            _mman_set_err(
-                mman, "bad flags parameter: need MYST_MAP_ANONYMOUS");
+            _mman_set_err(mman, "bad flags parameter: need MYST_MAP_ANONYMOUS");
             ret = -EINVAL;
             goto done;
         }

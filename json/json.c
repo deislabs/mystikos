@@ -2,8 +2,8 @@
 // Licensed under the MIT License.
 
 #include <ctype.h>
-#include <myst/json.h>
 #include <limits.h>
+#include <myst/json.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>

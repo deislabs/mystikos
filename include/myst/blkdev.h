@@ -5,9 +5,9 @@
 #define _MYST_BLKDEV_H
 
 #include <fcntl.h>
-#include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <sys/stat.h>
 
 #define MYST_BLKSIZE 512

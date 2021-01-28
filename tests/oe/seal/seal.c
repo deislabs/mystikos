@@ -1,9 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include <stdio.h>
 #include <assert.h>
-#include <mbedtls/aes.h>
 #include <mbedtls/aes.h>
 #include <mbedtls/config.h>
 #include <mbedtls/error.h>
@@ -12,8 +10,9 @@
 #include <mbedtls/pkcs5.h>
 #include <mbedtls/rsa.h>
 #include <mbedtls/sha256.h>
-#include <string.h>
 #include <openenclave/enclave.h>
+#include <stdio.h>
+#include <string.h>
 
 static const char text[64] = "abcdefghijklmnopqrstuvwxyz01234";
 
@@ -54,12 +53,12 @@ static int crypt(
     }
 
     if ((ret = mbedtls_aes_crypt_cbc(
-        &ctx,
-        encrypt ? MBEDTLS_AES_ENCRYPT : MBEDTLS_AES_DECRYPT,
-        input_size,
-        iv,
-        input,
-        output)) != 0)
+             &ctx,
+             encrypt ? MBEDTLS_AES_ENCRYPT : MBEDTLS_AES_DECRYPT,
+             input_size,
+             iv,
+             input,
+             output)) != 0)
     {
         goto done;
     }
@@ -80,37 +79,19 @@ void test_sealing(void)
     char plain[sizeof(text)];
 
     result = oe_get_seal_key_by_policy_v2(
-        OE_SEAL_POLICY_UNIQUE,
-        &key,
-        &key_size,
-        NULL,
-        NULL);
+        OE_SEAL_POLICY_UNIQUE, &key, &key_size, NULL, NULL);
     assert(result == OE_OK);
 
     memset(iv, 0xdd, sizeof(iv));
 
-    if (crypt(
-        true,
-        key,
-        key_size,
-        iv,
-        text,
-        sizeof(text),
-        cipher) != 0)
+    if (crypt(true, key, key_size, iv, text, sizeof(text), cipher) != 0)
     {
         assert(false);
     }
 
     memset(iv, 0xdd, sizeof(iv));
 
-    if (crypt(
-        false,
-        key,
-        key_size,
-        iv,
-        cipher,
-        sizeof(text),
-        plain) != 0)
+    if (crypt(false, key, key_size, iv, cipher, sizeof(text), plain) != 0)
     {
         assert(false);
     }

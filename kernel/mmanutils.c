@@ -4,17 +4,17 @@
 #include <assert.h>
 #include <stdlib.h>
 
+#include <limits.h>
 #include <myst/file.h>
 #include <myst/mmanutils.h>
 #include <myst/strings.h>
-#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
-#include <myst/process.h>
 #include <myst/eraise.h>
+#include <myst/process.h>
 
 #define SCRUB
 

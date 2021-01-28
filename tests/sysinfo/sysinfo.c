@@ -112,7 +112,7 @@ void test_prlimit()
 {
     struct rlimit rlim;
     int ret;
-    
+
     ret = -1;
     // test get and set resource limit for NOFILE resource
     ret = getrlimit(7, &rlim);
@@ -127,7 +127,6 @@ void test_prlimit()
 
     ret = setrlimit(0, &rlim);
     assert(ret < 0);
-
 }
 
 int main(int argc, const char* argv[])
