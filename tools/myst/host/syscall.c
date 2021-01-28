@@ -38,10 +38,7 @@ long myst_fcntl_ocall(int fd, int cmd, long arg)
     RETURN(fcntl(fd, cmd, arg));
 }
 
-long myst_bind_ocall(
-    int sockfd,
-    const struct sockaddr* addr,
-    socklen_t addrlen)
+long myst_bind_ocall(int sockfd, const struct sockaddr* addr, socklen_t addrlen)
 {
     RETURN(bind(sockfd, addr, addrlen));
 }

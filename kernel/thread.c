@@ -479,8 +479,8 @@ long myst_run_thread(uint64_t cookie, uint64_t event)
 
                 if (r != 0)
                 {
-                    myst_eprintf("%s(%u): myst_munmap() failed",
-                        __FILE__, __LINE__);
+                    myst_eprintf(
+                        "%s(%u): myst_munmap() failed", __FILE__, __LINE__);
                 }
 
                 // unmap the memory containing the thread descriptor; set by

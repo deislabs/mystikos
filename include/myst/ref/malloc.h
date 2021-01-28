@@ -46,8 +46,7 @@ typedef struct myst_malloc_stats
 /* only works with MYST_ENABLE_LEAK_CHECKER flags. Returns -ENOTSUP */
 int myst_get_malloc_stats(myst_malloc_stats_t* stats);
 
-#define myst_malloc(size) \
-    __myst_malloc(size, __FILE__, __LINE__, __FUNCTION__)
+#define myst_malloc(size) __myst_malloc(size, __FILE__, __LINE__, __FUNCTION__)
 
 #define myst_calloc(nmemb, size) \
     __myst_calloc(nmemb, size, __FILE__, __LINE__, __FUNCTION__)

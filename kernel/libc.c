@@ -792,8 +792,7 @@ int ftruncate(int fd, off_t length)
 
 ssize_t readlink(const char* pathname, char* buf, size_t bufsiz)
 {
-    return (int)myst_syscall_ret(
-        myst_syscall_readlink(pathname, buf, bufsiz));
+    return (int)myst_syscall_ret(myst_syscall_readlink(pathname, buf, bufsiz));
 }
 
 int symlink(const char* target, const char* linkpath)

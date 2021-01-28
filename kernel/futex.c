@@ -320,8 +320,8 @@ static int _futex_requeue(int* uaddr, int op, int val, int val2, int* uaddr2)
         size_t wake_count = (val == INT_MAX) ? SIZE_MAX : (size_t)val;
         size_t requeue_count = (val2 == INT_MAX) ? SIZE_MAX : (size_t)val2;
 
-        if (myst_cond_requeue(
-                &f->cond, &f2->cond, wake_count, requeue_count) != 0)
+        if (myst_cond_requeue(&f->cond, &f2->cond, wake_count, requeue_count) !=
+            0)
         {
             ret = -ENOSYS;
             goto done;

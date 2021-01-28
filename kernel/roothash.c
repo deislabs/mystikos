@@ -4,9 +4,9 @@
 
 #include <myst/cpio.h>
 #include <myst/eraise.h>
+#include <myst/hex.h>
 #include <myst/roothash.h>
 #include <myst/sha256.h>
-#include <myst/hex.h>
 
 static bool _isspace(char c)
 {

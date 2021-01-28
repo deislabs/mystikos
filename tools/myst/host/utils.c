@@ -5,9 +5,9 @@
 #include <errno.h>
 #include <ftw.h>
 #include <libgen.h>
+#include <limits.h>
 #include <myst/getopt.h>
 #include <myst/strings.h>
-#include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>

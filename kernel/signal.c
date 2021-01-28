@@ -235,7 +235,7 @@ long myst_signal_deliver(
     }
     else
     {
-        free(siginfo);  // Free the siginfo object if not delivered.
+        free(siginfo); // Free the siginfo object if not delivered.
     }
 
 done:

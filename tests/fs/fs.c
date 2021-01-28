@@ -24,8 +24,7 @@ static void _passed(const char* name)
     printf("=== passed test (fs: %s)\n", name);
 }
 
-__attribute__((__unused__))
-static size_t _fsize(const char* path)
+__attribute__((__unused__)) static size_t _fsize(const char* path)
 {
     struct stat buf;
 
@@ -35,8 +34,7 @@ static size_t _fsize(const char* path)
     return (size_t)buf.st_size;
 }
 
-__attribute__((__unused__))
-static size_t _fdsize(int fd)
+__attribute__((__unused__)) static size_t _fdsize(int fd)
 {
     struct stat buf;
 

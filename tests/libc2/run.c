@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 #include <assert.h>
+#include <errno.h>
 #include <limits.h>
 #include <spawn.h>
 #include <stdio.h>
@@ -9,7 +10,6 @@
 #include <string.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <errno.h>
 
 static void _run_tests(const char* tests[], size_t ntests)
 {
@@ -39,8 +39,7 @@ static void _run_tests(const char* tests[], size_t ntests)
 
 int main(int argc, const char* argv[])
 {
-    static const char* tests[] =
-    {
+    static const char* tests[] = {
         "/src/functional/tls_local_exec.exe",
         "/src/functional/argv.exe",
         "/src/functional/basename.exe",

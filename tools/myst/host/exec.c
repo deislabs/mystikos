@@ -4,34 +4,34 @@
 #include <assert.h>
 #include <errno.h>
 #include <libgen.h>
+#include <limits.h>
+#include <linux/futex.h>
 #include <myst/elf.h>
 #include <myst/strings.h>
 #include <myst/tcall.h>
-#include <limits.h>
-#include <linux/futex.h>
 #include <poll.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/user.h>
 #include <syscall.h>
 #include <unistd.h>
-#include <sys/user.h>
 
 #include <myst/buf.h>
+#include <myst/cpio.h>
 #include <myst/eraise.h>
 #include <myst/file.h>
-#include <myst/getopt.h>
-#include <myst/shm.h>
 #include <myst/fssig.h>
-#include <openenclave/host.h>
-#include <myst/cpio.h>
+#include <myst/getopt.h>
 #include <myst/options.h>
+#include <myst/shm.h>
+#include <openenclave/host.h>
 
+#include "archive.h"
 #include "myst_u.h"
 #include "regions.h"
 #include "utils.h"
-#include "archive.h"
 
 /* How many nanoseconds between two clock ticks */
 /* TODO: Make it configurable through json */

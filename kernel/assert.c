@@ -14,8 +14,7 @@ void __assert_fail(
     int line,
     const char* func)
 {
-    myst_eprintf(
-        "Assertion failed: %s (%s: %s: %d)\n", expr, file, func, line);
+    myst_eprintf("Assertion failed: %s (%s: %s: %d)\n", expr, file, func, line);
     myst_crash();
 
     for (;;)

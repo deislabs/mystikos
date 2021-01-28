@@ -120,11 +120,7 @@ int myst_buf_append(myst_buf_t* buf, const void* data, size_t size)
     return 0;
 }
 
-int myst_buf_insert(
-    myst_buf_t* buf,
-    size_t pos,
-    const void* data,
-    size_t size)
+int myst_buf_insert(myst_buf_t* buf, size_t pos, const void* data, size_t size)
 {
     int ret = -1;
     size_t rem;
@@ -342,10 +338,7 @@ done:
 **
 ** Note that a string will always have at least one null byte.
 */
-int myst_buf_pack_strings(
-    myst_buf_t* buf,
-    const char* strings[],
-    size_t count)
+int myst_buf_pack_strings(myst_buf_t* buf, const char* strings[], size_t count)
 {
     int ret = -1;
 

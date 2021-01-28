@@ -16,10 +16,10 @@
 #include <unistd.h>
 
 #include <myst/cpio.h>
+#include <myst/eraise.h>
 #include <myst/round.h>
 #include <myst/strarr.h>
 #include <myst/strings.h>
-#include <myst/eraise.h>
 
 void* calloc(size_t nmemb, size_t size);
 void free(void* ptr);
