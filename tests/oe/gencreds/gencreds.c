@@ -1,9 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#include <assert.h>
 #include <openenclave/attestation/attester.h>
 #include <openenclave/enclave.h>
-#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -229,13 +229,10 @@ static oe_result_t _verifier(oe_identity_t* identity, void* arg)
     const uint8_t OE_ISVPRODID[OE_PRODUCT_ID_SIZE] = {1};
 
     // OE SDK Debug MRSIGNER
-    const uint8_t OE_MRSIGNER[] =
-    {
-        0xca, 0x9a, 0xd7, 0x33, 0x14, 0x48, 0x98, 0x0a,
-        0xa2, 0x88, 0x90, 0xce, 0x73, 0xe4, 0x33, 0x63,
-        0x83, 0x77, 0xf1, 0x79, 0xab, 0x44, 0x56, 0xb2,
-        0xfe, 0x23, 0x71, 0x93, 0x19, 0x3a, 0x8d, 0x0a
-    };
+    const uint8_t OE_MRSIGNER[] = {
+        0xca, 0x9a, 0xd7, 0x33, 0x14, 0x48, 0x98, 0x0a, 0xa2, 0x88, 0x90,
+        0xce, 0x73, 0xe4, 0x33, 0x63, 0x83, 0x77, 0xf1, 0x79, 0xab, 0x44,
+        0x56, 0xb2, 0xfe, 0x23, 0x71, 0x93, 0x19, 0x3a, 0x8d, 0x0a};
 
     (void)arg;
 
@@ -293,11 +290,9 @@ int main(int argc, const char* argv[])
 
     if (strcmp(getenv("MYST_TARGET"), "sgx") == 0)
     {
-        assert(test_gen_creds(
-                &cert,
-                &cert_size,
-                &private_key,
-                &private_key_size) == 0);
+        assert(
+            test_gen_creds(
+                &cert, &cert_size, &private_key, &private_key_size) == 0);
 
         assert(test_verify_cert(cert, cert_size, _verifier, NULL) == 0);
 

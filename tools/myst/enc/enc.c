@@ -22,20 +22,20 @@
 #include <myst/ramfs.h>
 #include <myst/reloc.h>
 #include <myst/shm.h>
+#include <myst/strings.h>
 #include <myst/syscall.h>
+#include <myst/tcall.h>
 #include <myst/thread.h>
 #include <myst/trace.h>
-#include <myst/tcall.h>
-#include <myst/strings.h>
 
 #include "../config.h"
 #include "../shared.h"
 #include "myst_t.h"
 
 #define IRETFRAME_Rip 0
-#define IRETFRAME_SegCs IRETFRAME_Rip+8
-#define IRETFRAME_EFlags IRETFRAME_SegCs+8
-#define IRETFRAME_Rsp IRETFRAME_EFlags+8
+#define IRETFRAME_SegCs IRETFRAME_Rip + 8
+#define IRETFRAME_EFlags IRETFRAME_SegCs + 8
+#define IRETFRAME_Rsp IRETFRAME_EFlags + 8
 
 extern volatile const oe_sgx_enclave_properties_t oe_enclave_properties_sgx;
 

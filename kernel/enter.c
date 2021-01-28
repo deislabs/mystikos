@@ -13,25 +13,25 @@
 #include <myst/exec.h>
 #include <myst/fdtable.h>
 #include <myst/file.h>
+#include <myst/fs.h>
 #include <myst/fsgs.h>
+#include <myst/hex.h>
 #include <myst/initfini.h>
 #include <myst/kernel.h>
-#include <myst/hex.h>
 #include <myst/mmanutils.h>
 #include <myst/mount.h>
 #include <myst/options.h>
 #include <myst/panic.h>
 #include <myst/printf.h>
 #include <myst/process.h>
+#include <myst/pubkey.h>
 #include <myst/ramfs.h>
-#include <myst/fs.h>
 #include <myst/signal.h>
 #include <myst/strings.h>
 #include <myst/syscall.h>
 #include <myst/thread.h>
 #include <myst/times.h>
 #include <myst/ttydev.h>
-#include <myst/pubkey.h>
 
 static myst_fs_t* _fs;
 
@@ -385,7 +385,8 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     }
 
     /* Unpack the CPIO from memory */
-    if (use_cpio && myst_cpio_mem_unpack(
+    if (use_cpio &&
+        myst_cpio_mem_unpack(
             args->rootfs_data, args->rootfs_size, "/", _create_mem_file) != 0)
     {
         myst_eprintf("failed to unpack root file system\n");
@@ -451,8 +452,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         /* release the exec copy of the CRT data */
         if (thread->main.exec_crt_data)
         {
-            myst_munmap(
-                thread->main.exec_crt_data, thread->main.exec_crt_size);
+            myst_munmap(thread->main.exec_crt_data, thread->main.exec_crt_size);
             thread->main.exec_crt_data = NULL;
             thread->main.exec_crt_size = 0;
         }

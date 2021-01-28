@@ -9,6 +9,7 @@
 #include <myst/cpio.h>
 #include <myst/eraise.h>
 #include <myst/ext2.h>
+#include <myst/fssig.h>
 #include <myst/hex.h>
 #include <myst/kernel.h>
 #include <myst/mount.h>
@@ -21,7 +22,6 @@
 #include <myst/strings.h>
 #include <myst/syscall.h>
 #include <myst/verity.h>
-#include <myst/fssig.h>
 
 #define MOUNT_TABLE_SIZE 8
 

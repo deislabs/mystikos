@@ -138,10 +138,8 @@ struct myst_sockdev
         const struct iovec* iov,
         int iovcnt);
 
-    int (*sd_fstat)(
-        myst_sockdev_t* sd,
-        myst_sock_t* sock,
-        struct stat* statbuf);
+    int (
+        *sd_fstat)(myst_sockdev_t* sd, myst_sock_t* sock, struct stat* statbuf);
 
     int (*sd_ioctl)(
         myst_sockdev_t* sd,

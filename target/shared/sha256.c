@@ -3,9 +3,9 @@
 
 #include <mbedtls/sha256.h>
 
-#include <myst/sha256.h>
-#include <myst/eraise.h>
 #include <myst/defs.h>
+#include <myst/eraise.h>
+#include <myst/sha256.h>
 
 MYST_STATIC_ASSERT(sizeof(mbedtls_sha256_context) <= sizeof(myst_sha256_ctx_t));
 

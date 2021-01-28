@@ -259,11 +259,7 @@ int ext2_open(
     mode_t mode,
     myst_file_t** file);
 
-int64_t ext2_read(
-    myst_fs_t* fs,
-    myst_file_t* file,
-    void* data,
-    uint64_t size);
+int64_t ext2_read(myst_fs_t* fs, myst_file_t* file, void* data, uint64_t size);
 
 int64_t ext2_write(
     myst_fs_t* fs,

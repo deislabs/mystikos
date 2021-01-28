@@ -179,11 +179,7 @@ done:
     return ret;
 }
 
-static int _td_fcntl(
-    myst_ttydev_t* ttydev,
-    myst_tty_t* tty,
-    int cmd,
-    long arg)
+static int _td_fcntl(myst_ttydev_t* ttydev, myst_tty_t* tty, int cmd, long arg)
 {
     int ret = 0;
 

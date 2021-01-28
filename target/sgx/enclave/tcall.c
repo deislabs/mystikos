@@ -15,17 +15,17 @@
 #include <unistd.h>
 
 #include <myst/eraise.h>
+#include <myst/fssig.h>
+#include <myst/luks.h>
 #include <myst/regions.h>
+#include <myst/sha256.h>
 #include <myst/syscallext.h>
 #include <myst/tcall.h>
 #include <myst/thread.h>
-#include <myst/luks.h>
-#include <myst/sha256.h>
-#include <myst/fssig.h>
+#include <oeprivate/rsa.h>
 #include <openenclave/bits/sgx/region.h>
 #include <openenclave/edger8r/enclave.h>
 #include <openenclave/enclave.h>
-#include <oeprivate/rsa.h>
 #include "gencreds.h"
 
 long myst_handle_tcall(long n, long params[6]);
@@ -586,10 +586,7 @@ long myst_tcall(long n, long params[6])
         case MYST_TCALL_READ_BLOCK_DEVICE:
         {
             return myst_tcall_read_block_device(
-                (int)x1,
-                (uint64_t)x2,
-                (struct myst_block*)x3,
-                (size_t)x4);
+                (int)x1, (uint64_t)x2, (struct myst_block*)x3, (size_t)x4);
         }
         case MYST_TCALL_WRITE_BLOCK_DEVICE:
         {
@@ -626,15 +623,12 @@ long myst_tcall(long n, long params[6])
         case MYST_TCALL_SHA256_UPDATE:
         {
             return myst_sha256_update(
-                (myst_sha256_ctx_t*)x1,
-                (const void*)x2,
-                (size_t)x3);
+                (myst_sha256_ctx_t*)x1, (const void*)x2, (size_t)x3);
         }
         case MYST_TCALL_SHA256_FINISH:
         {
             return myst_sha256_finish(
-                (myst_sha256_ctx_t*)x1,
-                (myst_sha256_t*)x2);
+                (myst_sha256_ctx_t*)x1, (myst_sha256_t*)x2);
         }
         case MYST_TCALL_VERIFY_SIGNATURE:
         {

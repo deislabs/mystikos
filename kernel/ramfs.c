@@ -23,7 +23,6 @@
 #include <myst/round.h>
 #include <myst/strings.h>
 #include <myst/trace.h>
-#include <myst/paths.h>
 
 #define BLKSIZE 512
 
@@ -71,7 +70,7 @@ struct inode
     uint32_t mode;    /* Type and mode */
     size_t nlink;     /* number of hard links to this inode (excludes ".") */
     size_t nopens;    /* number of times file is currently opened */
-    myst_buf_t buf;  /* file or directory data */
+    myst_buf_t buf;   /* file or directory data */
     const void* data; /* set by myst_ramfs_set_buf() */
 };
 

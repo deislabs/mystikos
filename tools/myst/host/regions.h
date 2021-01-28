@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include <myst/elf.h>
 #include <limits.h>
+#include <myst/elf.h>
 
 typedef struct _region_details_item
 {

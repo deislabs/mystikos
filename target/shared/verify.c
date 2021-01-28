@@ -1,12 +1,12 @@
 #include <string.h>
 
+#include <myst/eraise.h>
 #include <myst/sha256.h>
+#include <myst/tcall.h>
+#include <oeprivate/rsa.h>
 #include <openenclave/bits/sgx/region.h>
 #include <openenclave/edger8r/enclave.h>
 #include <openenclave/enclave.h>
-#include <oeprivate/rsa.h>
-#include <myst/eraise.h>
-#include <myst/tcall.h>
 
 int myst_tcall_verify_signature(
     const char* public_key,
