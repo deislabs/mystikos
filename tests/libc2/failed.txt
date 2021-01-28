@@ -7,12 +7,10 @@
 /src/functional/popen.exe
 /src/functional/pthread_cancel.exe
 /src/functional/pthread_cancel-points.exe
-/src/regression/pthread_cancel-sem_wait.exe
 /src/functional/pthread_mutex.exe
 /src/functional/pthread_mutex_pi.exe
 /src/functional/pthread_robust.exe
 /src/functional/sem_open.exe
-/src/functional/setjmp.exe
 /src/functional/spawn.exe
 /src/functional/sscanf_long.exe
 /src/functional/stat.exe
@@ -29,7 +27,6 @@
 /src/regression/execle-env.exe
 /src/regression/fflush-exit.exe
 /src/regression/fgetwc-buffering.exe
-/src/regression/flockfile-list.exe
 /src/regression/lseek-large.exe
 /src/regression/malloc-brk-fail.exe
 /src/regression/malloc-oom.exe
@@ -39,10 +36,8 @@
 /src/regression/pthread_exit-dtor.exe
 /src/regression/pthread-robust-detach.exe
 /src/regression/raise-race.exe
-/src/regression/rewind-clear-error.exe
 /src/regression/rlimit-open-files.exe
 /src/regression/setenv-oom.exe
-/src/regression/sigaltstack.exe
 /src/regression/sigreturn.exe
 /src/regression/statvfs.exe
 /src/regression/syscall-sign-extend.exe
