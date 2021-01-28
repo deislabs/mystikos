@@ -8,12 +8,15 @@ endif
 APPDIR=$(CURDIR)/appdir
 APPBUILDER=$(TOP)/scripts/appbuilder
 
+ROOTFS=$(CURDIR)/rootfs
+ROOTHASH=$(SUBOBJDIR)/roothash
+
 LIBCXX_TESTS_DIR=llvm-project/libcxx/test/
 
 TEST_FILE = builttests_exe.passed
 TESTS = $(shell cat $(TEST_FILE))
 
-all: clean myst appdir rootfs
+all: clean myst $(APPDIR) $(APPDIR)/bin/run $(ROOTFS) $(ROOTHASH)
 
 libcxx-tests: llvm-project
 	mkdir libcxx-tests
@@ -46,28 +49,33 @@ libcxx-tests: llvm-project
 llvm-project: 
 	git clone -b LibOS_v10.0.1 --single-branch https://github.com/salsal97/llvm-project.git
 
-appdir: 
+$(APPDIR)/bin/run: run.c
+	mkdir -p $(APPDIR)/bin
+	$(MUSL_GCC) -Wall -o $(APPDIR)/bin/run run.c
+
+$(APPDIR):
 	$(APPBUILDER) sagoel/libcxx_10x:0.1
-	$(MAKE) patch_appdir
 	# To build a new image, modify the appbuilder script to build the image with the correct name, 
 	# and not clean it up. Then once the image is built, push it to dockerhub and update 
 	# this call.
 
-patch_appdir:
-	rm -rf appdir/usr/lib/libstdc++.so.6
-	cp appdir/usr/lib/libstdc++.so.6.0.28 appdir/usr/lib/libstdc++.so.6
-
-rootfs:
-	sudo $(MYST) mkext2 --force appdir rootfs
-	$(MYST) fssig --roothash rootfs > roothash
+$(ROOTFS): run.c
+	sudo $(MYST) mkext2 $(APPDIR) $(ROOTFS)
 	# run with posix spawn
 
+$(ROOTHASH): run.c
+	mkdir -p $(SUBOBJDIR)
+	$(MYST) fssig --roothash $(ROOTFS) > $(ROOTHASH)
+
+RUN = $(RUNTEST) $(MYST_EXEC) $(OPTS) --roothash=$(ROOTHASH) $(ROOTFS)
+
+OPTS += --roothash=$(ROOTHASH)
+
 tests:
-	$(foreach i, $(TESTS), TESTNAME=$(TESTNAME)$(i)$(TESTSUFFIX) $(RUNTEST_COMMAND) $(MYST_EXEC) rootfs --roothash=roothash $(i) $(NL))
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst
 
 clean:
-	rm -rf rootfs roothash appdir
-	# libcxx-tests
+	rm -rf $(APPDIR) $(ROOTFS) $(ROOTHASH)
