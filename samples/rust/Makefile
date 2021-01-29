@@ -1,6 +1,10 @@
 TOP = $(abspath ../..)
 include $(TOP)/defs.mak
 
+ifeq (, $(shell which rustc))
+ $(error "Please install rustc first!")
+endif
+
 all:
 	rustc ./hello_world.rs
 
