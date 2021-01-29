@@ -25,18 +25,6 @@ gdb: appdir private.pem
 	$(MYST_GDB) --args myst/bin/$(APPNAME) $(OPTS)
 
 appdir:
-	# ATTN: replace the debugger build of dotnet SDK jxyang100/dotnet:alpine
-	# with the release version from ACR
-
-	# Compile the C# app and put all required dotnet libraries under
-	# $APPNAME/build
-	docker run --rm -v${CURDIR}/HelloWorld:/HelloWorld -w /HelloWorld jxyang100/dotnet:alpine /dotnet/dotnet  publish -o build --self-contained true -r alpine-x64 /p:PublishTrimmed=true
-	sudo chown $(USER):$(GROUP) -R HelloWorld
-
-	# Remove the unnecessary folder.
-	rm -rf HelloWorld/bin
-
-	# Create appdir out of the docker file and the locally compiled app
 	$(APPBUILDER) Dockerfile
 
 private.pem:
