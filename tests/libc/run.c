@@ -29,10 +29,7 @@ static void _run_tests(const char* test_file, bool passed)
         char* const args[] = {(char*)line, NULL};
         char* const envp[] = {"VALUE=1", NULL};
 
-        if (r = posix_spawn(&pid, line, NULL, NULL, args, envp) < 0)
-        {
-            printf("HMM");
-        }
+        r = posix_spawn(&pid, line, NULL, NULL, args, envp);
 
         if (passed)
         {
