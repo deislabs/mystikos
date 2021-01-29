@@ -13,8 +13,17 @@ ROOTHASH=$(SUBOBJDIR)/roothash
 
 LIBCXX_TESTS_DIR=llvm-project/libcxx/test/
 
-TEST_FILE = builttests_exe.passed
-TESTS = $(shell cat $(TEST_FILE))
+ifdef ALLTESTS
+  TEST_FILE = builttests_exe.passed
+  STATUS=PASSED
+endif	
+
+
+ifdef FAILED
+  TEST_FILE = builttests_exe.failed
+  STATUS=FAILED
+  export TIMEOUT=10	
+endif
 
 all: clean myst $(APPDIR) $(APPDIR)/bin/run $(ROOTFS) $(ROOTHASH)
 
@@ -55,6 +64,8 @@ $(APPDIR)/bin/run: run.c
 
 $(APPDIR):
 	$(APPBUILDER) sagoel/libcxx_10x:0.1
+	cp $(CURDIR)/builttests_exe.passed $(APPDIR)
+	cp $(CURDIR)/builttests_exe.failed $(APPDIR)
 	# To build a new image, modify the appbuilder script to build the image with the correct name, 
 	# and not clean it up. Then once the image is built, push it to dockerhub and update 
 	# this call.
@@ -72,7 +83,7 @@ RUN = $(RUNTEST) $(MYST_EXEC) $(OPTS) --roothash=$(ROOTHASH) $(ROOTFS)
 OPTS += --roothash=$(ROOTHASH)
 
 tests:
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run $(STATUS) $(TEST_FILE)
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst
