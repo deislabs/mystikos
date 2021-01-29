@@ -243,5 +243,6 @@ long myst_syscall_mount(
     const void* data);
 
 long myst_syscall_umount2(const char* target, int flags);
+long myst_syscall_kill(int pid, int sig);
 
 #endif /* _MYST_SYSCALL_H */

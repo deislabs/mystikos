@@ -261,6 +261,14 @@ static int _create_main_thread(uint64_t event, myst_thread_t** thread_out)
     thread->tid = pid;
     thread->event = event;
     thread->target_td = myst_get_fsbase();
+    thread->main.thread_group_lock = MYST_SPINLOCK_INITIALIZER;
+    thread->thread_lock = &thread->main.thread_group_lock;
+
+    // Initial process list is just us. All new processes will be inserted in
+    // the list. Dont need to set these as they are already NULL, but being here
+    // helps to track where main threads are created and torn down!
+    // thread->main.prev_process_thread = NULL;
+    // thread->main.next_process_thread = NULL;
 
     /* allocate the new fdtable for this process */
     ECHECK(myst_fdtable_create(&thread->fdtable));

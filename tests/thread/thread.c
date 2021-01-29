@@ -112,7 +112,7 @@ void test_detach_thread(void)
 
     while (counter != NUM_THREADS)
     {
-      ; // wait until all children are done.
+        ; // wait until all children are done.
     }
 
     printf("=== passed test (%s)\n", __FUNCTION__);
