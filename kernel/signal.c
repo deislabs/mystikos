@@ -227,7 +227,6 @@ long myst_signal_deliver(
         // previous delivery to be handled.
         while (thread->signal.pending & mask)
             ;
-
         thread->signal.siginfos[signum - 1] = siginfo;
         thread->signal.pending |= mask;
 

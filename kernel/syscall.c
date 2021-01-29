@@ -2816,7 +2816,15 @@ long myst_syscall(long n, long params[6])
             BREAK(_return(n, ret));
         }
         case SYS_kill:
-            break;
+        {
+            int pid = (int)x1;
+            int sig = (int)x2;
+
+            _strace(n, "pid=%d sig=%d", pid, sig);
+
+            long ret = myst_syscall_kill(pid, sig);
+            BREAK(_return(n, ret));
+        }
         case SYS_uname:
         {
             struct utsname* buf = (struct utsname*)x1;
@@ -4451,6 +4459,54 @@ done:
 time_t time(time_t* tloc)
 {
     return myst_syscall_time(tloc);
+}
+
+long myst_syscall_kill(int pid, int sig)
+{
+    long ret = 0;
+    myst_thread_t* thread = myst_thread_self();
+    myst_thread_t* process_thread = myst_find_process_thread(thread);
+
+    myst_spin_lock(&myst_process_list_lock);
+
+    // If not this thread search back through list of processes
+    while ((process_thread->pid != pid) &&
+           (process_thread->main.prev_process_thread != NULL))
+    {
+        process_thread = process_thread->main.prev_process_thread;
+    }
+
+    // If still not found search forwards through processes
+    if (process_thread->pid != pid)
+    {
+        process_thread = process_thread;
+
+        while ((process_thread->pid != pid) &&
+               (process_thread->main.next_process_thread != NULL))
+        {
+            process_thread = process_thread->main.next_process_thread;
+        }
+    }
+
+    myst_spin_unlock(&myst_process_list_lock);
+
+    // Did we finally find it?
+    if (process_thread->pid == pid)
+    {
+        // Deliver signal
+        siginfo_t* siginfo = calloc(1, sizeof(siginfo_t));
+        siginfo->si_code = SI_USER;
+        siginfo->si_signo = sig;
+        siginfo->si_pid = thread->pid;
+        siginfo->si_uid = MYST_DEFAULT_UID;
+
+        ret = myst_signal_deliver(process_thread, sig, siginfo);
+    }
+    else
+        ERAISE(-ESRCH);
+
+done:
+    return ret;
 }
 
 long myst_syscall_isatty(int fd)
