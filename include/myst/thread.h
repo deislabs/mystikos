@@ -12,6 +12,7 @@
 #include <myst/defs.h>
 #include <myst/fdtable.h>
 #include <myst/setjmp.h>
+#include <myst/spinlock.h>
 #include <myst/tcall.h>
 #include <myst/types.h>
 
@@ -45,6 +46,8 @@ struct myst_td
 };
 
 bool myst_valid_td(const void* td);
+
+extern myst_spinlock_t myst_process_list_lock;
 
 typedef struct
 {
@@ -128,6 +131,15 @@ struct myst_thread
         /* the copy of the CRT data made by myst_exec() */
         void* exec_crt_data;
         size_t exec_crt_size;
+
+        /* lock when enumerating all threads in this process
+           while enumerating over thread->group_prev/next */
+        myst_spinlock_t thread_group_lock;
+
+        /* use this lock when using */
+        /* myst_process_list_lock */
+        myst_thread_t* prev_process_thread;
+        myst_thread_t* next_process_thread;
     } main;
 
     volatile _Atomic enum myst_thread_status status;
@@ -159,6 +171,10 @@ struct myst_thread
     void* unmapself_addr;
     size_t unmapself_length;
 
+    // linked list of threads in process
+    // lock points to the one in the main thread. Use when
+    // iterating over the list.
+    myst_spinlock_t* thread_lock;
     struct myst_thread* group_prev;
     struct myst_thread* group_next;
 };
@@ -248,8 +264,10 @@ MYST_INLINE bool myst_is_process_thread(const myst_thread_t* thread)
 MYST_INLINE myst_thread_t* myst_find_process_thread(myst_thread_t* thread)
 {
     myst_thread_t* t = NULL;
-    for (t = thread; t != NULL && myst_is_process_thread(t); t = t->group_prev)
+    myst_spin_lock(thread->thread_lock);
+    for (t = thread; t != NULL && !myst_is_process_thread(t); t = t->group_prev)
         ;
+    myst_spin_unlock(thread->thread_lock);
     return t;
 }
 
