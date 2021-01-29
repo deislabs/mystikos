@@ -15,6 +15,11 @@
 static void _run_tests(const char* test_file, bool passed)
 {
     FILE* file = fopen(test_file, "r");
+
+    if (!file)
+    {
+        fprintf(stderr, "File %s not found \n", test_file);
+    }
     char line[256];
 
     while (fgets(line, sizeof(line), file))
