@@ -29,7 +29,7 @@
 #include "utils.h"
 
 /* standardize this value! */
-#define DEFAULT_MMAN_SIZE (256 * 1024 * 1024)
+#define DEFAULT_MMAN_SIZE (1024 * 1024 * 1024)
 
 #define USAGE_FORMAT \
     "\
