@@ -16,6 +16,7 @@ LIBCXX_TESTS_DIR=llvm-project/libcxx/test/
 ifdef ALLTESTS
   TEST_FILE1 = builttests_exe.passed
   TEST_FILE2 = builttests_exe2.passed
+  TEST_FILE3 = builttests_exe3.passed
   STATUS=PASSED
 endif	
 
@@ -67,6 +68,7 @@ $(APPDIR):
 	$(APPBUILDER) sagoel/libcxx_10x:0.1
 	cp $(CURDIR)/builttests_exe.passed $(APPDIR)
 	cp $(CURDIR)/builttests_exe2.passed $(APPDIR)
+	cp $(CURDIR)/builttests_exe3.passed $(APPDIR)
 	cp $(CURDIR)/builttests_exe.failed $(APPDIR)
 	# To build a new image, modify the appbuilder script to build the image with the correct name, 
 	# and not clean it up. Then once the image is built, push it to dockerhub and update 
@@ -88,6 +90,7 @@ tests:
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run $(STATUS) $(TEST_FILE1)
 ifdef ALLTESTS
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run $(STATUS) $(TEST_FILE2)
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run $(STATUS) $(TEST_FILE3)
 endif
 
 myst:
