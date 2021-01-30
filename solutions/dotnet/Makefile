@@ -43,4 +43,4 @@ private.pem:
 	openssl genrsa -out private.pem -3 3072
 
 clean:
-	rm -fr appdir rootfs HelloWorld/build HelloWorld/obj HelloWorld/bin myst private.pem
+	sudo rm -fr appdir rootfs HelloWorld/build HelloWorld/obj HelloWorld/bin myst private.pem
