@@ -51,12 +51,12 @@ cd tests; make tests; cd ..
 cd solutions; make tests; cd ..
 ```
 
-After a core-developer determines the validity of a PR, the Core can trigger
-our CI pipeline with the comment `/AzurePipelines run`.
+After a core developer determines the validity of a PR, the core developer can
+trigger our CI pipeline with the comment `/AzurePipelines run`.
 
-Every PR must be reviewed by at least one Core Developer of the Project before
-it can be merged. Once a PR has been marked "Approved" (and as long as no Core
-Devs have "Rejected" it), then the PR must be tested by our CI pipeline, and
+Every PR must be reviewed by at least one core developer of the Project before
+it can be merged. Once a PR has been marked "Approved" (and as long as no core
+devs have "Rejected" it), then the PR must be tested by our CI pipeline, and
 finally it may be merged (assuming it passed the automated tests).
 
 While everyone is welcome (and encouraged) to review and discuss code, only
