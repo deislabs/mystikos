@@ -437,7 +437,11 @@ void test_exhaust_threads(void)
         if (i + 1 == max_threads)
             assert(r == EAGAIN);
         else
+        {
+            if (r != 0)
+                printf("errno=%s\n", strerror(errno));
             assert(r == 0);
+        }
     }
 
     /* Join threads except for the last one that failed */
