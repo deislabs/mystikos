@@ -9,6 +9,7 @@ SOURCES += enc.c
 SOURCES += clock.c
 SOURCES += syscall.c
 SOURCES += ../config.c
+SOURCES += enter.s
 
 INCLUDES = $(OEENCLAVE_INCLUDES) -I$(SUBOBJDIR) -I../
 

@@ -137,14 +137,18 @@ size_t __oe_get_enclave_size(void);
 
 volatile int myst_enter_ecall_lock = 0;
 
-int myst_enter_ecall(
-    struct myst_options* options,
-    struct myst_shm* shared_memory,
-    const void* argv_data,
-    size_t argv_size,
-    const void* envp_data,
-    size_t envp_size,
-    uint64_t event)
+struct enter_arg
+{
+    struct myst_options* options;
+    struct myst_shm* shared_memory;
+    const void* argv_data;
+    size_t argv_size;
+    const void* envp_data;
+    size_t envp_size;
+    uint64_t event;
+};
+
+int myst_enter(struct enter_arg* arg)
 {
     int ret = -1;
     const void* crt_data;
@@ -186,8 +190,11 @@ int myst_enter_ecall(
         goto done;
     }
 
-    if (!argv_data || !argv_size || !envp_data || !envp_size)
+    if (!arg->argv_data || !arg->argv_size || !arg->envp_data ||
+        !arg->envp_size)
+    {
         goto done;
+    }
 
     memset(&args, 0, sizeof(args));
     memset(&env, 0, sizeof(env));
@@ -238,7 +245,7 @@ int myst_enter_ecall(
     }
     else
     {
-        if (myst_args_unpack(&args, argv_data, argv_size) != 0)
+        if (myst_args_unpack(&args, arg->argv_data, arg->argv_size) != 0)
             goto done;
     }
 
@@ -263,7 +270,7 @@ int myst_enter_ecall(
         {
             myst_args_t tmp;
 
-            if (myst_args_unpack(&tmp, envp_data, envp_size) != 0)
+            if (myst_args_unpack(&tmp, arg->envp_data, arg->envp_size) != 0)
                 goto done;
 
             for (size_t i = 0; i < tmp.size; i++)
@@ -283,7 +290,7 @@ int myst_enter_ecall(
     }
     else
     {
-        if (myst_args_unpack(&env, envp_data, envp_size) != 0)
+        if (myst_args_unpack(&env, arg->envp_data, arg->envp_size) != 0)
             goto done;
     }
 
@@ -303,18 +310,18 @@ int myst_enter_ecall(
         myst_args_append1(&env, "MYST_TARGET=sgx");
     }
 
-    if (options)
+    if (arg->options)
     {
-        trace_syscalls = options->trace_syscalls;
-        export_ramfs = options->export_ramfs;
+        trace_syscalls = arg->options->trace_syscalls;
+        export_ramfs = arg->options->export_ramfs;
 
-        if (strlen(options->rootfs) >= PATH_MAX)
+        if (strlen(arg->options->rootfs) >= PATH_MAX)
         {
             fprintf(stderr, "rootfs path too long (> %u)\n", PATH_MAX);
             goto done;
         }
 
-        rootfs = options->rootfs;
+        rootfs = arg->options->rootfs;
     }
 
     /* Setup the vectored exception handler */
@@ -324,7 +331,7 @@ int myst_enter_ecall(
         assert(0);
     }
 
-    if (myst_setup_clock(shared_memory->clock))
+    if (myst_setup_clock(arg->shared_memory->clock))
     {
         fprintf(stderr, "myst_setup_clock() failed\n");
         assert(0);
@@ -535,7 +542,7 @@ int myst_enter_ecall(
         kargs.trace_syscalls = trace_syscalls;
         kargs.export_ramfs = export_ramfs;
         kargs.tcall = myst_tcall;
-        kargs.event = event;
+        kargs.event = arg->event;
 
         if (rootfs)
             myst_strlcpy(kargs.rootfs, rootfs, sizeof(kargs.rootfs));
@@ -574,6 +581,48 @@ done:
 
     free_config(&parsed_config);
     return ret;
+}
+
+int myst_enter_ecall(
+    struct myst_options* options,
+    struct myst_shm* shared_memory,
+    const void* argv_data,
+    size_t argv_size,
+    const void* envp_data,
+    size_t envp_size,
+    uint64_t event)
+{
+    size_t stack_size = 32 * 4096;
+    void* stack;
+    struct enter_arg* arg;
+
+    if (!(stack = memalign(64, stack_size)))
+    {
+        fprintf(stderr, "out of memory: cannot allocate entry stack\n");
+        assert(0);
+    }
+
+    if (!(arg = calloc(1, sizeof(struct enter_arg))))
+    {
+        fprintf(stderr, "out of memory: cannot allocate entry args\n");
+        assert(0);
+    }
+
+    arg->options = options;
+    arg->shared_memory = shared_memory;
+    arg->argv_data = argv_data;
+    arg->argv_size = argv_size;
+    arg->envp_data = envp_data;
+    arg->envp_size = envp_size;
+    arg->event = event;
+
+    /* call myst_enter() on the new stack */
+    {
+        extern int myst_enter_asm(void* sp, void* arg);
+        myst_enter_asm((uint8_t*)stack + stack_size - 4096, arg);
+    }
+
+    return 0;
 }
 
 long myst_run_thread_ecall(uint64_t cookie, uint64_t event)
@@ -785,5 +834,5 @@ OE_SET_ENCLAVE_SGX(
     1,        /* SecurityVersion */
     true,     /* Debug */
     8 * 4096, /* NumHeapPages */
-    32,       /* NumStackPages */
-    16);      /* NumTCS */
+    2,       /* NumStackPages */
+    1024);      /* NumTCS */
