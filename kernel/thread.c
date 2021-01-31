@@ -385,7 +385,7 @@ __attribute__((force_align_arg_pointer)) static void _call_thread_fn(void)
 }
 
 /* The target calls this from the new thread */
-long myst_run_thread(uint64_t cookie, uint64_t event)
+long myst_run_thread_c(uint64_t cookie, uint64_t event)
 {
     myst_thread_t* thread = (myst_thread_t*)_put_cookie(cookie);
     myst_td_t* target_td = myst_get_fsbase();
@@ -541,6 +541,16 @@ long myst_run_thread(uint64_t cookie, uint64_t event)
     }
 
     return 0;
+}
+
+long myst_run_thread(uint64_t cookie, uint64_t event)
+{
+    int myst_run_thread_asm(void* stack, uint64_t cookie, uint64_t event);
+    uint8_t* stack;
+    size_t stack_size = 64 * 1024;
+
+    stack = memalign(64, stack_size);
+    return myst_run_thread_asm(stack + stack_size, cookie, event);
 }
 
 static long _syscall_clone(
