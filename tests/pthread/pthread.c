@@ -432,14 +432,19 @@ void test_exhaust_threads(void)
     /* Create threads until exhausted (last iteration fails with EAGAIN) */
     for (size_t i = 0; i < max_threads; i++)
     {
-        int r = pthread_create(&threads[i], NULL, _exhaust_thread, (void*)i);
+        pthread_attr_t attr;
+
+        pthread_attr_init(&attr);
+        pthread_attr_setstacksize(&attr, PAGE_SIZE);
+
+        int r = pthread_create(&threads[i], &attr, _exhaust_thread, (void*)i);
 
         if (i + 1 == max_threads)
             assert(r == EAGAIN);
         else
         {
             if (r != 0)
-                printf("errno=%s\n", strerror(errno));
+                printf("thread=%zu errno=%s\n", i, strerror(errno));
             assert(r == 0);
         }
     }
