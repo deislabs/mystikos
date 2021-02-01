@@ -3,10 +3,10 @@
 
 //==============================================================================
 //
-// int myst_run_thread_asm(void* stack, uint64_t cookie, uint64_t event)
-//
-//     %rdi := stack
-//     %rsi := args
+// int myst_run_thread_asm(
+//     [RDI] void* stack,
+//     [RSI] uint64_t cookie,
+//     [RDX] uint64_t event)
 //
 //==============================================================================
 
