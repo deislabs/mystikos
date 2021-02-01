@@ -546,11 +546,18 @@ long myst_run_thread_c(uint64_t cookie, uint64_t event)
 long myst_run_thread(uint64_t cookie, uint64_t event)
 {
     int myst_run_thread_asm(void* stack, uint64_t cookie, uint64_t event);
-    uint8_t* stack;
-    size_t stack_size = 64 * 1024;
+    struct stack
+    {
+        uint8_t data[16 * PAGE_SIZE];
+        uint8_t sp[];
+    };
+    struct stack* stack;
 
-    stack = memalign(64, stack_size);
-    long ret = myst_run_thread_asm(stack + stack_size, cookie, event);
+    if (!(stack = memalign(16, sizeof(struct stack))))
+        return -ENOMEM;
+
+    long ret = myst_run_thread_asm(stack->sp, cookie, event);
+
     free(stack);
 
     return ret;
