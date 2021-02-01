@@ -12,10 +12,10 @@ jobs:
 - job: BuildAndTest
   displayName: 'Building and Testing'
   # nightly pipeline will have 300 min timeout, approx. time used:
-  # 1~1.5h build
-  # 1h basic/unit tests
-  # 1-2h solution tests(based on which are enabled)
-  timeoutInMinutes: 180
+  # 10m build
+  # 15m basic/unit tests
+  # 1-4h solution tests(based on which are enabled)
+  timeoutInMinutes: 300
   pool: '1804DC4CCagentpool'
 
   steps:
@@ -76,6 +76,7 @@ jobs:
         DB_NAME: $(DB_NAME_USEAST)
         DB_SERVER_NAME: $(DB_SERVER_NAME_USEAST)
         MAA_URL: $(DB_MAA_URL_USEAST)
+        RUN_CORECLR_TESTS: 1
     
     # if any previous step(s) not succeed, fail the job
     - script: |
