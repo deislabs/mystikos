@@ -281,6 +281,19 @@ index 6f3ef656..614121c3 100644
 +
 +    return myst_syscall(n, params);
 +}
+diff --git a/src/thread/__unmapself.c b/src/thread/__unmapself.c
+index 31d94e67..e34cca2e 100644
+--- a/src/thread/__unmapself.c
++++ b/src/thread/__unmapself.c
+@@ -6,7 +6,7 @@
+ 
+ static void *unmap_base;
+ static size_t unmap_size;
+-static char shared_stack[256];
++static char shared_stack[4096];
+ 
+ static void do_unmap()
+ {
 diff --git a/src/thread/clone.c b/src/thread/clone.c
 index be80c8ea..afc8d160 100644
 --- a/src/thread/clone.c
@@ -352,6 +365,22 @@ index 7347ff4d..00000000
 -	movl $158,%eax          /* set fs segment to */
 -	syscall                 /* arch_prctl(SET_FS, arg)*/
 -	ret
+diff --git a/src/thread/x86_64/__unmapself.s b/src/thread/x86_64/__unmapself.s
+deleted file mode 100644
+index e2689e65..00000000
+--- a/src/thread/x86_64/__unmapself.s
++++ /dev/null
+@@ -1,10 +0,0 @@
+-/* Copyright 2011-2012 Nicholas J. Kain, licensed under standard MIT license */
+-.text
+-.global __unmapself
+-.type   __unmapself,@function
+-__unmapself:
+-	movl $11,%eax   /* SYS_munmap */
+-	syscall         /* munmap(arg2,arg3) */
+-	xor %rdi,%rdi   /* exit() args: always return success */
+-	movl $60,%eax   /* SYS_exit */
+-	syscall         /* exit(0) */
 diff --git a/src/thread/x86_64/clone.s b/src/thread/x86_64/clone.s
 deleted file mode 100644
 index 6e47bc0a..00000000
@@ -486,19 +515,3 @@ index 00000000..5493e453
 +    (void)flag;
 +    return vfprintf(stream, format, ap);
 +}
-diff --git a/src/thread/x86_64/__unmapself.s b/src/thread/x86_64/__unmapself.s
-deleted file mode 100644
-index e2689e65..00000000
---- a/src/thread/x86_64/__unmapself.s
-+++ /dev/null
-@@ -1,10 +0,0 @@
--/* Copyright 2011-2012 Nicholas J. Kain, licensed under standard MIT license */
--.text
--.global __unmapself
--.type   __unmapself,@function
--__unmapself:
--	movl $11,%eax   /* SYS_munmap */
--	syscall         /* munmap(arg2,arg3) */
--	xor %rdi,%rdi   /* exit() args: always return success */
--	movl $60,%eax   /* SYS_exit */
--	syscall         /* exit(0) */
