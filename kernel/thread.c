@@ -550,7 +550,10 @@ long myst_run_thread(uint64_t cookie, uint64_t event)
     size_t stack_size = 64 * 1024;
 
     stack = memalign(64, stack_size);
-    return myst_run_thread_asm(stack + stack_size, cookie, event);
+    long ret = myst_run_thread_asm(stack + stack_size, cookie, event);
+    free(stack);
+
+    return ret;
 }
 
 static long _syscall_clone(
