@@ -3582,7 +3582,20 @@ long myst_syscall(long n, long params[6])
         case SYS_semtimedop:
             break;
         case SYS_fadvise64:
-            break;
+        {
+            int fd = (int)x1;
+            loff_t offset = (loff_t)x2;
+            loff_t len = (loff_t)x3;
+            int advice = (int)x4;
+
+            _strace(
+                n,
+                "fd=%d offset=%ld len=%ld advice=%d",
+                fd, offset, len, advice);
+
+            /* ATTN: no-op */
+             BREAK(_return(n, 0));
+        }
         case SYS_timer_create:
             break;
         case SYS_timer_settime:
