@@ -24,7 +24,6 @@ static void _run_tests(const char* test_file, bool passed)
 
     while (fgets(line, sizeof(line), file))
     {
-printf("line{%s}\n", line);
         line[strlen(line) - 1] = '\0';
         int r;
         pid_t pid;
