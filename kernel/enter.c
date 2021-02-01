@@ -441,11 +441,12 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         exit_status = thread->exit_status;
 
         /* release the fdtable */
-        if (thread->fdtable)
-        {
-            myst_fdtable_free(thread->fdtable);
-            thread->fdtable = NULL;
-        }
+        // ATTN: remove this once GH #9 fixed
+        // if (thread->fdtable)
+        // {
+        //     myst_fdtable_free(thread->fdtable);
+        //     thread->fdtable = NULL;
+        // }
 
         /* release signal related heap memory */
         myst_signal_free(thread);
