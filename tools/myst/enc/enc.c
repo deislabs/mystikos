@@ -137,17 +137,6 @@ size_t __oe_get_enclave_size(void);
 
 volatile int myst_enter_ecall_lock = 0;
 
-struct enter_arg
-{
-    struct myst_options* options;
-    struct myst_shm* shared_memory;
-    const void* argv_data;
-    size_t argv_size;
-    const void* envp_data;
-    size_t envp_size;
-    uint64_t event;
-};
-
 int myst_enter_ecall(
     struct myst_options* options,
     struct myst_shm* shared_memory,
@@ -197,11 +186,8 @@ int myst_enter_ecall(
         goto done;
     }
 
-    if (!argv_data || !argv_size || !envp_data ||
-        !envp_size)
-    {
+    if (!argv_data || !argv_size || !envp_data || !envp_size)
         goto done;
-    }
 
     memset(&args, 0, sizeof(args));
     memset(&env, 0, sizeof(env));
