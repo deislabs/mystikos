@@ -369,3 +369,14 @@ int main(int argc, const char* argv[], const char* envp[])
         return 1;
     }
 }
+
+size_t oe_get_num_stack_pages_hook(size_t tcs_index)
+{
+    const size_t num_main_stack_pages = 32;
+    const size_t num_child_stack_pages = 2;
+
+    if (tcs_index == 0)
+        return num_main_stack_pages;
+    else
+        return num_child_stack_pages;
+}
