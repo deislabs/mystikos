@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-
 //==============================================================================
 //
 // int myst_run_thread_asm(
