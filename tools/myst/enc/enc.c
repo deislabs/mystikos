@@ -800,4 +800,4 @@ OE_SET_ENCLAVE_SGX(
     true,     /* Debug */
     8 * 4096, /* NumHeapPages */
     32,       /* NumStackPages */
-    1024);    /* NumTCS */
+    256);     /* NumTCS */
