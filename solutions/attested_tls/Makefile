@@ -7,8 +7,10 @@ APPDIR = appdir
 CFLAGS = -fPIC
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 
-export PATH := $(PATH):$(BUILDDIR)/openenclave/bin
-export PKG_CONFIG_PATH:=$(BUILDDIR)/openenclave/share/pkgconfig
+OEENCLAVE = oe_enclave/enc/tlssrv_enc.signed
+OEDUMP = $(BUILDDIR)/openenclave/bin/oesign dump -e $(OEENCLAVE)
+PATH := $(PATH):$(BUILDDIR)/openenclave/bin
+export PKG_CONFIG_PATH := $(BUILDDIR)/openenclave/share/pkgconfig
 export AZDCAP_DEBUG_LOG_LEVEL := 0
 
 DNSSERVER = $(shell systemd-resolve --status | grep "DNS Servers" | cut -f2 -d:)
@@ -52,11 +54,11 @@ app/peer_tee_identity.h: oe_enclave
 	# Generate peer identity file for the other enclave
 	echo "#ifndef _PEER_TEE_IDENTITY_H" > app/peer_tee_identity.h
 	echo "#define _PEER_TEE_IDENTITY_H\n" >> app/peer_tee_identity.h
-	echo "#define PEER_PRODUCT_ID $(shell oesign dump -e oe_enclave/enc/tlssrv_enc.signed | grep product_id= | cut -d= -f2)" >> app/peer_tee_identity.h
-	echo "#define PEER_SVN $(shell oesign dump -e oe_enclave/enc/tlssrv_enc.signed | grep security_version= | cut -d= -f2)" >> app/peer_tee_identity.h
-	echo "#define PEER_DEBUG $(shell oesign dump -e oe_enclave/enc/tlssrv_enc.signed | grep debug= | cut -d= -f2)" >> app/peer_tee_identity.h
-	echo "#define PEER_MRENCLAVE \"$(shell oesign dump -e oe_enclave/enc/tlssrv_enc.signed | grep mrenclave= | cut -d= -f2)\"" >> app/peer_tee_identity.h
-	echo "#define PEER_MRSIGNER \"$(shell oesign dump -e oe_enclave/enc/tlssrv_enc.signed | grep mrsigner= | cut -d= -f2)\"" >> app/peer_tee_identity.h
+	echo "#define PEER_PRODUCT_ID $(shell $(OEDUMP) | grep product_id= | cut -d= -f2)" >> app/peer_tee_identity.h
+	echo "#define PEER_SVN $(shell $(OEDUMP) | grep security_version= | cut -d= -f2)" >> app/peer_tee_identity.h
+	echo "#define PEER_DEBUG $(shell $(OEDUMP) | grep debug= | cut -d= -f2)" >> app/peer_tee_identity.h
+	echo "#define PEER_MRENCLAVE \"$(shell $(OEDUMP) | grep mrenclave= | cut -d= -f2)\"" >> app/peer_tee_identity.h
+	echo "#define PEER_MRSIGNER \"$(shell $(OEDUMP) | grep mrsigner= | cut -d= -f2)\"" >> app/peer_tee_identity.h
 	echo "\n#endif" >> app/peer_tee_identity.h
 
 cpio: app
