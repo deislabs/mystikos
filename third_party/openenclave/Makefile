@@ -37,7 +37,7 @@ $(TOP)/build/bin/myst-gdb:
 ##==============================================================================
 
 submodules:
-	git submodule update --recursive --init --progress
+	#git submodule update --recursive --init --progress
 
 ##==============================================================================
 ##
@@ -78,6 +78,7 @@ endif
 CMAKE_OPTS += -DHAS_QUOTE_PROVIDER=OFF
 CMAKE_OPTS += -DBUILD_TESTS=OFF
 CMAKE_OPTS += -DCMAKE_INSTALL_PREFIX=$(OPENENCLAVE_INSTALL_PREFIX)
+CMAKE_OPTS += -DSGX_MAX_TCS=4096
 
 $(OPENENCLAVE_BUILD)/Makefile:
 	rm -rf $(OPENENCLAVE_BUILD)
