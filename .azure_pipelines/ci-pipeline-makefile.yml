@@ -25,7 +25,7 @@ pr:
 jobs:
   - job: BuildAndTest
     displayName: 'Building and Testing'
-    pool: '1804DC4v2agentpool'
+    pool: '1804DC4CCagentpool'
 
     steps:
       # install minimum required package to run pipeline

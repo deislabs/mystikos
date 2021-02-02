@@ -16,7 +16,7 @@ jobs:
   # 1h basic/unit tests
   # 1-2h solution tests(based on which are enabled)
   timeoutInMinutes: 180
-  pool: '1804DC4v2agentpool'
+  pool: '1804DC4CCagentpool'
 
   steps:
     # install minimum required package to run pipeline
