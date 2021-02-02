@@ -26,6 +26,10 @@ exec-signed:
 	rm -rf $(APPDIR) result rootfs private.pem public.pem $(APPNAME).signed
 	@ echo "=== passed test (myst: exec-signed)"
 
+xxx:
+	rm -rf hello.signed
+	$(PREFIX) $(MYST) sign rootfs private.pem config.json
+
 clean-exec-signed-1:
 	rm -rf $(APPDIR) result rootfs private.pem public.pem $(APPNAME).signed
 
