@@ -37,7 +37,7 @@ $(TOP)/build/bin/myst-gdb:
 ##==============================================================================
 
 submodules:
-	#git submodule update --recursive --init --progress
+	git submodule update --recursive --init --progress
 
 ##==============================================================================
 ##
