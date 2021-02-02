@@ -1,4 +1,4 @@
-.PHONY: all app cpio
+.PHONY: all app
 
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
@@ -9,13 +9,13 @@ LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 
 DNSSERVER = $(shell systemd-resolve --status | grep "DNS Servers" | cut -f2 -d:)
 
+OPTS = --strace
+
 all: myst app
 	$(MYST) mkcpio $(APPDIR) rootfs
 
-OPTS = --trace-syscalls
-
-run: cpio
-	$(MYST) exec rootfs /odbc_app msi default $(OPTS)
+run: appdir
+	$(MYST_EXEC) rootfs /odbc_app msi default $(OPTS)
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst
@@ -31,9 +31,6 @@ app:
 	cp app/cksp.so $(APPDIR)/cksp.so
 	# make sure the app we are running is the one we just built.
 	ls -l $(APPDIR)/odbc_app $(APPDIR)/cksp.so; date
-
-cpio: app
-	$(MYST) mkcpio $(APPDIR) rootfs
 
 run-host:
 	gcc -g -fshort-wchar -fPIC -o cksp.so -shared app/cksp.c -I/opt/microsoft/msodbcsql17/include
