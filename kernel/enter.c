@@ -163,7 +163,7 @@ static int _setup_ramfs(void)
         ERAISE(-EINVAL);
     }
 
-    if (myst_mount(_fs, "/") != 0)
+    if (myst_mount(_fs, "/", "/") != 0)
     {
         myst_eprintf("cannot mount root file system\n");
         ERAISE(-EINVAL);
@@ -178,15 +178,15 @@ done:
 static int _setup_ext2(const char* rootfs)
 {
     int ret = 0;
-    const char* key = NULL; /* not automatic key-release support yet */
+    const char* key = NULL; /* no automatic key-release support yet */
 
     if (myst_load_fs(rootfs, key, &_fs) != 0)
     {
-        myst_eprintf("failed load the ext2 rootfs: %s\n", rootfs);
+        myst_eprintf("failed to load the ext2 rootfs: %s\n", rootfs);
         ERAISE(-EINVAL);
     }
 
-    if (myst_mount(_fs, "/") != 0)
+    if (myst_mount(_fs, rootfs, "/") != 0)
     {
         myst_eprintf("cannot mount root file system\n");
         ERAISE(-EINVAL);

@@ -42,6 +42,7 @@
 #include <myst/fs.h>
 #include <myst/fsgs.h>
 #include <myst/gcov.h>
+#include <myst/hostfs.h>
 #include <myst/hex.h>
 #include <myst/id.h>
 #include <myst/initfini.h>
