@@ -139,8 +139,6 @@ static int _fs_open(
     char path[PATH_MAX];
     long tret;
 
-printf("OOOOOOOOOOOOOOOOO\n");
-
     if (!_hostfs_valid(hostfs) || !pathname || !file_out)
         ERAISE(-EINVAL);
 
