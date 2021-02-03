@@ -53,6 +53,7 @@ jobs:
     # run sql solution test on Canada Central DB Node
     - script: |
         make clean -C $(Build.SourcesDirectory)/solutions/sql_ae
+        make -C $(Build.SourcesDirectory)/solutions/sql_ae 
         make run -C $(Build.SourcesDirectory)/solutions/sql_ae
       displayName: 'run sql solution on Canada Central Node'
       continueOnError: true
