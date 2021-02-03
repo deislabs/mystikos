@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <syscall.h>
 #include <unistd.h>
+#include <string.h>
 
 #include <myst/iov.h>
 #include <myst/tcall.h>
@@ -740,16 +741,60 @@ static long _poll(struct pollfd* fds, nfds_t nfds, int timeout)
 {
     long ret = 0;
     long retval;
+    struct pollfd buf[256]; /* use this buffer if large enough */
+    struct pollfd* copy; /* pointer to buf or heap-allocated memory */
 
-    if (myst_poll_ocall(&retval, fds, nfds, timeout) != OE_OK)
+    if (!fds)
     {
         ret = -EINVAL;
         goto done;
     }
 
+    /* make copy of fds[] to prevent modification of fd and events fields */
+    {
+        size_t size;
+
+        /* find the size of fds[] in bytes and check for overflow */
+        if (__builtin_mul_overflow(nfds, sizeof(struct pollfd), &size))
+        {
+            ret = -EINVAL;
+            goto done;
+        }
+
+        /* use local buffer if possible to avoid unecessary heap allocation */
+        if (size <= sizeof(buf))
+        {
+            copy = buf;
+        }
+        else if (!(copy = malloc(size)))
+        {
+            ret = -ENOMEM;
+            goto done;
+        }
+
+        if (size)
+            memcpy(copy, fds, size);
+    }
+
+    if (myst_poll_ocall(&retval, copy, nfds, timeout) != OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    /* copy back the revents field */
+    for (nfds_t i = 0; i < nfds; i++)
+    {
+        fds[i].revents = copy[i].revents;
+    }
+
     ret = retval;
 
 done:
+
+    if (copy && copy != buf)
+        free(copy);
+
     return ret;
 }
 
