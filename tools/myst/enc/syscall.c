@@ -744,13 +744,14 @@ static long _poll(struct pollfd* fds, nfds_t nfds, int timeout)
     struct pollfd buf[256]; /* use this buffer if large enough */
     struct pollfd* copy; /* pointer to buf or heap-allocated memory */
 
-    if (!fds)
+    if (!fds && nfds > 0)
     {
         ret = -EINVAL;
         goto done;
     }
 
     /* make copy of fds[] to prevent modification of fd and events fields */
+    if (fds)
     {
         size_t size;
 
@@ -764,6 +765,7 @@ static long _poll(struct pollfd* fds, nfds_t nfds, int timeout)
         /* use local buffer if possible to avoid unecessary heap allocation */
         if (size <= sizeof(buf))
         {
+            /* size could be zero but that is acceptable */
             copy = buf;
         }
         else if (!(copy = malloc(size)))
@@ -774,6 +776,10 @@ static long _poll(struct pollfd* fds, nfds_t nfds, int timeout)
 
         if (size)
             memcpy(copy, fds, size);
+    }
+    else
+    {
+        copy = NULL;
     }
 
     if (myst_poll_ocall(&retval, copy, nfds, timeout) != OE_OK)
