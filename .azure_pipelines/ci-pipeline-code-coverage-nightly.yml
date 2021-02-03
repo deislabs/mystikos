@@ -18,7 +18,7 @@ jobs:
   # 1h basic/unit tests
   # 1-2h solution tests(based on which are enabled)
   timeoutInMinutes: 300
-  pool: '1804CISGXagentpool'
+  pool: '1804DC4CCagentpool'
 
   steps:
     # perform cleanup before starting pipeline
