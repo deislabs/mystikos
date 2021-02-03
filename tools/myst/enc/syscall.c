@@ -16,6 +16,12 @@
 
 #define RETURN(EXPR) return ((EXPR) == OE_OK ? ret : -EINVAL)
 
+// Force downsizing of ocall output lengths to prevent reading past the end
+// of the caller's buffer. See issue #83. This breaks API compatibility in
+// some cases. If such a case is encountered, undefine this macro termporarily
+// to diagnose the issue.
+#define DOWNSIZE_OCALL_OUTPUT_LENGTHS
+
 static long _read(int fd, void* buf, size_t count)
 {
     long ret = 0;
@@ -303,6 +309,11 @@ static long _accept4(
             goto done;
         }
 
+#ifdef DOWNSIZE_OCALL_OUTPUT_LENGTHS
+        if (n > *addrlen)
+            n = *addrlen;
+#endif
+
         /* note: n may legitimately be bigger due to truncation */
         *addrlen = n;
     }
@@ -446,12 +457,25 @@ static long _recvmsg(int sockfd, struct msghdr* msg, int flags)
             goto done;
         }
 
+#ifdef DOWNSIZE_OCALL_OUTPUT_LENGTHS
+        if (namelen > msg->msg_namelen)
+            namelen = msg->msg_namelen;
+#endif
+
         /* note: namelen may legitimately be bigger due to truncation */
         msg->msg_namelen = msg->msg_name ? namelen : 0;
     }
 
     /* guard against host returning too large a value for msg_controllen */
     {
+#ifdef DOWNSIZE_OCALL_OUTPUT_LENGTHS
+        if (controllen > msg->msg_controllen)
+        {
+            controllen = msg->msg_controllen;
+            msg->msg_flags |= MSG_CTRUNC;
+        }
+#endif
+
         /* note: controllen may legitimately be bigger due to truncation */
         msg->msg_controllen = msg->msg_control ? controllen : 0;
     }
@@ -459,6 +483,9 @@ static long _recvmsg(int sockfd, struct msghdr* msg, int flags)
     /* guard against host returning a size larger than the buffer */
     if (retval > len)
     {
+        // ATTN: this implementation fails if returned length is greater than
+        // buffer length, although this is legal according to the recvmsg()
+        // documentation.
         ret = -EINVAL;
         goto done;
     }
@@ -532,7 +559,11 @@ static long _getsockname(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
             goto done;
         }
 
-        /* note: n may legitimately be bigger due to truncation */
+#ifdef DOWNSIZE_OCALL_OUTPUT_LENGTHS
+        if (n > *addrlen)
+            n = *addrlen;
+#endif
+
         *addrlen = n;
     }
 
@@ -576,6 +607,11 @@ static long _getpeername(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
             ret = -EINVAL;
             goto done;
         }
+
+#ifdef DOWNSIZE_OCALL_OUTPUT_LENGTHS
+        if (n > *addrlen)
+            n = *addrlen;
+#endif
 
         /* note: n may legitimately be bigger due to truncation */
         *addrlen = n;
