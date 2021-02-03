@@ -42,7 +42,7 @@ endif
 
 $(APPDIR)/bin/run: run.c
 	mkdir -p $(APPDIR)/bin
-	$(MUSL_GCC) -Wall -o $(APPDIR)/bin/run run.c 
+	$(MUSL_GCC) -Wall -o $(APPDIR)/bin/run run.c
 
 $(ROOTFS): run.c
 	sudo $(MYST) mkext2 --force $(APPDIR) $(ROOTFS)

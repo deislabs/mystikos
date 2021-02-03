@@ -22,6 +22,10 @@ ifdef MYST_NO_RECVMSG_MITIGATION
 DEFINES += -DMYST_NO_RECVMSG_MITIGATION
 endif
 
+ifeq ($(MYST_ENABLE_HOSTFS),1)
+DEFINES += -DMYST_ENABLE_HOSTFS
+endif
+
 WARNINGS =
 WARNINGS += -Wall
 WARNINGS += -Werror
@@ -76,6 +80,7 @@ LDFLAGS += -Wl,-gc-sections
 endif
 LDFLAGS += -Wl,-emyst_enter_kernel
 
+LIBS += $(LIBDIR)/libmysthostfs.a
 LIBS += $(LIBDIR)/libmystext2.a
 LIBS += $(LIBDIR)/libmystutils.a
 

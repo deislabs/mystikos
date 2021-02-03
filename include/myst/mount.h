@@ -8,7 +8,7 @@
 #include <myst/fs.h>
 
 /* Mount a file system onto a target path */
-int myst_mount(myst_fs_t* fs, const char* target);
+int myst_mount(myst_fs_t* fs, const char* source, const char* target);
 
 /* Unmount the file system that is mounted on target */
 int myst_umount(const char* target);
