@@ -30,4 +30,4 @@ myst:
 	$(MAKE) -C $(TOP)/tools/myst
 
 clean:
-	rm -rf $(APPDIR) rootfs export ramfs
+	rm -rf $(APPDIR) $(HOSTDIR) rootfs export ramfs
