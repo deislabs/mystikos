@@ -60,7 +60,6 @@ static int load_file(const char* path, void** buf, size_t* n)
 static int trusted_channel_init(const char* serverIP)
 {
     int rc = 1;
-    FILE* fin = NULL;
     void* cert = NULL;
     size_t cert_size = 0;
     void* pkey = NULL;
@@ -75,7 +74,8 @@ static int trusted_channel_init(const char* serverIP)
         goto done;
     }
 
-    if ((fin = fopen("/manifesto", "r")))
+    char* target = getenv("MYST_TARGET");
+    if (target && strcmp(target, "sgx") == 0)
     {
         enclave_mode = true;
         // The existence of the manifesto file indicates we are running in
@@ -85,10 +85,8 @@ static int trusted_channel_init(const char* serverIP)
         if (ret != 0)
         {
             fprintf(stderr, "Error: failed to generate TLS credentials\n");
-            fclose(fin);
             goto done;
         }
-        fclose(fin);
     }
     else
     {

@@ -2,9 +2,9 @@
 // Licensed under the MIT License.
 
 #include <errno.h>
+#include <linux/futex.h>
 #include <myst/eraise.h>
 #include <myst/thread.h>
-#include <linux/futex.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/syscall.h>

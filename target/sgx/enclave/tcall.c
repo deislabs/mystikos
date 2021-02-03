@@ -15,10 +15,14 @@
 #include <unistd.h>
 
 #include <myst/eraise.h>
+#include <myst/fssig.h>
+#include <myst/luks.h>
 #include <myst/regions.h>
+#include <myst/sha256.h>
 #include <myst/syscallext.h>
 #include <myst/tcall.h>
 #include <myst/thread.h>
+#include <oeprivate/rsa.h>
 #include <openenclave/bits/sgx/region.h>
 #include <openenclave/edger8r/enclave.h>
 #include <openenclave/enclave.h>
@@ -128,6 +132,17 @@ static long _tcall_vsnprintf(
     long ret = (long)vsnprintf(str, size, format, ap);
 
     return ret;
+}
+
+/* Must be overriden by enclave application */
+MYST_WEAK
+long myst_tcall_clock_getres(clockid_t clk_id, struct timespec* res)
+{
+    (void)clk_id;
+    (void)res;
+
+    assert("sgx: unimplemented: implement in enclave" == NULL);
+    return -ENOTSUP;
 }
 
 /* Must be overriden by enclave application */
@@ -447,6 +462,12 @@ long myst_tcall(long n, long params[6])
 
             return myst_verify_cert(cert, cert_size, verifier, arg);
         }
+        case MYST_TCALL_CLOCK_GETRES:
+        {
+            clockid_t clk_id = (clockid_t)x1;
+            struct timespec* res = (struct timespec*)x2;
+            return myst_tcall_clock_getres(clk_id, res);
+        }
         case MYST_TCALL_CLOCK_GETTIME:
         {
             clockid_t clk_id = (clockid_t)x1;
@@ -553,6 +574,77 @@ long myst_tcall(long n, long params[6])
         case MYST_TCALL_POLL_WAKE:
         {
             return myst_tcall_poll_wake();
+        }
+        case MYST_TCALL_OPEN_BLOCK_DEVICE:
+        {
+            return myst_tcall_open_block_device((const char*)x1, (bool)x2);
+        }
+        case MYST_TCALL_CLOSE_BLOCK_DEVICE:
+        {
+            return myst_tcall_close_block_device((int)x1);
+        }
+        case MYST_TCALL_READ_BLOCK_DEVICE:
+        {
+            return myst_tcall_read_block_device(
+                (int)x1, (uint64_t)x2, (struct myst_block*)x3, (size_t)x4);
+        }
+        case MYST_TCALL_WRITE_BLOCK_DEVICE:
+        {
+            return myst_tcall_write_block_device(
+                (int)x1,
+                (uint64_t)x2,
+                (const struct myst_block*)x3,
+                (size_t)x4);
+        }
+        case MYST_TCALL_LUKS_ENCRYPT:
+        {
+            return myst_luks_encrypt(
+                (const luks_phdr_t*)x1,
+                (const void*)x2,
+                (const uint8_t*)x3,
+                (uint8_t*)x4,
+                (size_t)x5,
+                (uint64_t)x6);
+        }
+        case MYST_TCALL_LUKS_DECRYPT:
+        {
+            return myst_luks_decrypt(
+                (const luks_phdr_t*)x1,
+                (const void*)x2,
+                (const uint8_t*)x3,
+                (uint8_t*)x4,
+                (size_t)x5,
+                (uint64_t)x6);
+        }
+        case MYST_TCALL_SHA256_START:
+        {
+            return myst_sha256_start((myst_sha256_ctx_t*)x1);
+        }
+        case MYST_TCALL_SHA256_UPDATE:
+        {
+            return myst_sha256_update(
+                (myst_sha256_ctx_t*)x1, (const void*)x2, (size_t)x3);
+        }
+        case MYST_TCALL_SHA256_FINISH:
+        {
+            return myst_sha256_finish(
+                (myst_sha256_ctx_t*)x1, (myst_sha256_t*)x2);
+        }
+        case MYST_TCALL_VERIFY_SIGNATURE:
+        {
+            long* args = (long*)x1;
+            return myst_tcall_verify_signature(
+                (const char*)args[0],
+                (const uint8_t*)args[1],
+                (size_t)args[2],
+                (const uint8_t*)args[3],
+                (size_t)args[4],
+                (const uint8_t*)args[5],
+                (size_t)args[6]);
+        }
+        case MYST_TCALL_LOAD_FSSIG:
+        {
+            return myst_load_fssig((const char*)x1, (myst_fssig_t*)x2);
         }
         case SYS_read:
         case SYS_write:

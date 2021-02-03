@@ -50,8 +50,13 @@ typedef struct myst_kernel_args
     size_t mman_size;
 
     /* The CPIO root file system image */
+    char rootfs[PATH_MAX];
     void* rootfs_data;
     size_t rootfs_size;
+
+    /* The CPIO archive image */
+    void* archive_data;
+    size_t archive_size;
 
     /* The C runtime image */
     void* crt_data;

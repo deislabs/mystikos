@@ -4,8 +4,8 @@
 #define _GNU_SOURCE
 #include <assert.h>
 #include <fcntl.h>
-#include <myst/mman.h>
 #include <limits.h>
+#include <myst/mman.h>
 #include <sched.h>
 #include <signal.h>
 #include <stdarg.h>
@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/mman.h>
 #include <sys/resource.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -26,6 +27,7 @@
 
 #include <myst/backtrace.h>
 #include <myst/barrier.h>
+#include <myst/blkdev.h>
 #include <myst/buf.h>
 #include <myst/cpio.h>
 #include <myst/cwd.h>
@@ -33,6 +35,7 @@
 #include <myst/eraise.h>
 #include <myst/errno.h>
 #include <myst/exec.h>
+#include <myst/ext2.h>
 #include <myst/fdops.h>
 #include <myst/fdtable.h>
 #include <myst/file.h>
@@ -40,8 +43,10 @@
 #include <myst/fsgs.h>
 #include <myst/gcov.h>
 #include <myst/hostfs.h>
+#include <myst/hex.h>
 #include <myst/id.h>
 #include <myst/initfini.h>
+#include <myst/inotifydev.h>
 #include <myst/kernel.h>
 #include <myst/libc.h>
 #include <myst/lsr.h>
@@ -53,6 +58,7 @@
 #include <myst/pipedev.h>
 #include <myst/printf.h>
 #include <myst/process.h>
+#include <myst/pubkey.h>
 #include <myst/ramfs.h>
 #include <myst/setjmp.h>
 #include <myst/signal.h>
@@ -63,7 +69,6 @@
 #include <myst/thread.h>
 #include <myst/times.h>
 #include <myst/trace.h>
-#include <myst/inotifydev.h>
 
 #define DEV_URANDOM_FD MYST_FDTABLE_SIZE
 
@@ -1262,71 +1267,6 @@ done:
     return ret;
 }
 
-long myst_syscall_mount(
-    const char* source,
-    const char* target,
-    const char* filesystemtype,
-    unsigned long mountflags,
-    const void* data)
-{
-    long ret = 0;
-    myst_fs_t* fs = NULL;
-
-    if (!source || !target || !filesystemtype)
-        ERAISE(-EINVAL);
-
-    /* only "ramfs" is supported */
-    if (strcmp(filesystemtype, "ramfs") == 0)
-    {
-        /* these arguments should be zero and null */
-        if (mountflags || data)
-            ERAISE(-EINVAL);
-
-        /* create a new ramfs instance */
-        ECHECK(myst_init_ramfs(&fs));
-
-        /* perform the mount */
-        ECHECK(myst_mount(fs, source, target));
-
-        /* load the rootfs */
-        ECHECK(myst_cpio_unpack(source, target));
-    }
-#ifdef MYST_ENABLE_HOSTFS
-    else if (strcmp(filesystemtype, "hostfs") == 0)
-    {
-        /* these arguments should be zero and null */
-        if (mountflags || data)
-            ERAISE(-EINVAL);
-
-        /* create a new ramfs instance */
-        ECHECK(myst_init_hostfs(&fs));
-
-        /* perform the mount */
-        ECHECK(myst_mount(fs, source, target));
-    }
-#endif
-    else
-    {
-        ERAISE(-ENOTSUP);
-    }
-
-done:
-    return ret;
-}
-
-long myst_syscall_umount2(const char* target, int flags)
-{
-    long ret = 0;
-
-    if (!target || flags != 0)
-        ERAISE(-EINVAL);
-
-    ECHECK(myst_umount(target));
-
-done:
-    return ret;
-}
-
 long myst_syscall_pipe2(int pipefd[2], int flags)
 {
     int ret = 0;
@@ -1387,10 +1327,7 @@ done:
     return ret;
 }
 
-long myst_syscall_inotify_add_watch(
-    int fd,
-    const char* pathname,
-    uint32_t mask)
+long myst_syscall_inotify_add_watch(int fd, const char* pathname, uint32_t mask)
 {
     long ret = 0;
     myst_fdtable_t* fdtable = myst_fdtable_current();
@@ -1869,11 +1806,7 @@ done:
     return ret;
 }
 
-long myst_syscall_epoll_ctl(
-    int epfd,
-    int op,
-    int fd,
-    struct epoll_event* event)
+long myst_syscall_epoll_ctl(int epfd, int op, int fd, struct epoll_event* event)
 {
     long ret = 0;
     myst_fdtable_t* fdtable = myst_fdtable_current();
@@ -1919,6 +1852,38 @@ long myst_syscall_getrusage(int who, struct rusage* usage)
     usage->ru_utime.tv_usec = utime % 1000000000 * 1000;
     usage->ru_stime.tv_sec = stime / 1000000000;
     usage->ru_stime.tv_usec = stime % 1000000000 * 1000;
+
+    return 0;
+}
+
+long myst_syscall_prlimit64(
+    int pid,
+    int resource,
+    struct rlimit* new_rlim,
+    struct rlimit* old_rlim)
+{
+    if (resource >= RLIM_NLIMITS)
+        return -EINVAL;
+
+    // Only support for current process
+    if (pid)
+        return -EINVAL;
+
+    // Only support resource NOFILE
+    if (resource != RLIMIT_NOFILE)
+        return -EINVAL;
+
+    if (old_rlim)
+    {
+        // ATTN: return currently effective RLIMIT_NOFILE settings
+        old_rlim->rlim_cur = 65536;
+        old_rlim->rlim_max = 65536;
+    }
+
+    if (new_rlim)
+    {
+        // ATTN: make RLIMIT_NOFILE settings effective ;
+    }
 
     return 0;
 }
@@ -2141,7 +2106,7 @@ long myst_syscall(long n, long params[6])
     myst_td_t* crt_td = NULL;
     myst_thread_t* thread = NULL;
 
-    struct timespec tp_enter = myst_times_enter_kernel();
+    myst_times_enter_kernel();
 
     /* resolve the target-thread-descriptor and the crt-thread-descriptor */
     if (_set_thread_area_called)
@@ -2445,6 +2410,8 @@ long myst_syscall(long n, long params[6])
             int flags = (int)x4;
             int fd = (int)x5;
             off_t offset = (off_t)x6;
+            void* ptr;
+            long ret = 0;
 
             _strace(
                 n,
@@ -2457,8 +2424,23 @@ long myst_syscall(long n, long params[6])
                 fd,
                 offset);
 
-            BREAK(_return(
-                n, (long)myst_mmap(addr, length, prot, flags, fd, offset)));
+            ptr = myst_mmap(addr, length, prot, flags, fd, offset);
+
+            if (ptr == MAP_FAILED || !ptr)
+            {
+                ret = -ENOMEM;
+            }
+            else
+            {
+                pid_t pid = myst_getpid();
+
+                if (myst_register_process_mapping(pid, ptr, length) != 0)
+                    myst_panic("failed to register process mapping");
+
+                ret = (long)ptr;
+            }
+
+            BREAK(_return(n, ret));
         }
         case SYS_mprotect:
         {
@@ -2482,6 +2464,32 @@ long myst_syscall(long n, long params[6])
             size_t length = (size_t)x2;
 
             _strace(n, "addr=%lx length=%zu(%lx)", (long)addr, length, length);
+
+            // if the ummapped region overlaps the CRT thread descriptor, then
+            // postpone the unmap because unmapping now would invalidate the
+            // stack canary and would raise __stack_chk_fail(); this occurs
+            // when munmap() is called from __unmapself()
+            if (crt_td && addr && length)
+            {
+                const uint8_t* p = (const uint8_t*)crt_td;
+                const uint8_t* pend = p + sizeof(myst_td_t);
+                const uint8_t* q = (const uint8_t*)addr;
+                const uint8_t* qend = q + length;
+
+                if ((p >= q && p < qend) || (pend >= q && pend < qend))
+                {
+                    myst_thread_t* thread = myst_thread_self();
+
+                    /* unmap this later when the thread exits */
+                    if (thread)
+                    {
+                        thread->unmapself_addr = addr;
+                        thread->unmapself_length = length;
+                    }
+
+                    BREAK(_return(n, 0));
+                }
+            }
 
             BREAK(_return(n, (long)myst_munmap(addr, length)));
         }
@@ -2632,8 +2640,16 @@ long myst_syscall(long n, long params[6])
             BREAK(_return(n, ret));
         }
         case SYS_msync:
+        {
+            void* addr = (void*)x1;
+            size_t length = (size_t)x2;
+            int flags = (int)x3;
+
+            _strace(n, "addr=%p length=%zu flags=%d ", addr, length, flags);
+
             /* ATTN: hook up implementation */
-            break;
+            BREAK(_return(n, 0));
+        }
         case SYS_mincore:
             /* ATTN: hook up implementation */
             break;
@@ -2801,14 +2817,25 @@ long myst_syscall(long n, long params[6])
             BREAK(_return(n, ret));
         }
         case SYS_kill:
-            break;
+        {
+            int pid = (int)x1;
+            int sig = (int)x2;
+
+            _strace(n, "pid=%d sig=%d", pid, sig);
+
+            long ret = myst_syscall_kill(pid, sig);
+            BREAK(_return(n, ret));
+        }
         case SYS_uname:
         {
             struct utsname* buf = (struct utsname*)x1;
 
-            MYST_STRLCPY(buf->sysname, "Mystikos");
-            MYST_STRLCPY(buf->nodename, "myst");
-            MYST_STRLCPY(buf->release, "1.0.0");
+            // We are emulating Linux syscalls. 5.4.0 is the LTS release we
+            // try to emulate. The release number should be updated when
+            // Mystikos adapts to syscall API changes in future Linux releases.
+            MYST_STRLCPY(buf->sysname, "Linux");
+            MYST_STRLCPY(buf->nodename, "TEE");
+            MYST_STRLCPY(buf->release, "5.4.0");
             MYST_STRLCPY(buf->version, "Mystikos 1.0.0");
             MYST_STRLCPY(buf->machine, "x86_64");
 
@@ -2844,7 +2871,14 @@ long myst_syscall(long n, long params[6])
             BREAK(_return(n, ret));
         }
         case SYS_flock:
-            break;
+        {
+            int fd = (int)x1;
+            int cmd = (int)x2;
+
+            _strace(n, "fd=%d cmd=%d", fd, cmd);
+
+            BREAK(_return(n, 0));
+        }
         case SYS_fsync:
             break;
         case SYS_fdatasync:
@@ -3549,7 +3583,20 @@ long myst_syscall(long n, long params[6])
         case SYS_semtimedop:
             break;
         case SYS_fadvise64:
-            break;
+        {
+            int fd = (int)x1;
+            loff_t offset = (loff_t)x2;
+            loff_t len = (loff_t)x3;
+            int advice = (int)x4;
+
+            _strace(
+                n,
+                "fd=%d offset=%ld len=%ld advice=%d",
+                fd, offset, len, advice);
+
+            /* ATTN: no-op */
+             BREAK(_return(n, 0));
+        }
         case SYS_timer_create:
             break;
         case SYS_timer_settime:
@@ -3579,7 +3626,14 @@ long myst_syscall(long n, long params[6])
             BREAK(_return(n, myst_syscall_clock_gettime(clk_id, tp)));
         }
         case SYS_clock_getres:
-            break;
+        {
+            clockid_t clk_id = (clockid_t)x1;
+            struct timespec* res = (struct timespec*)x2;
+
+            _strace(n, "clk_id=%u tp=%p", clk_id, res);
+
+            BREAK(_return(n, myst_syscall_clock_getres(clk_id, res)));
+        }
         case SYS_clock_nanosleep:
             break;
         case SYS_exit_group:
@@ -3674,7 +3728,7 @@ long myst_syscall(long n, long params[6])
             _strace(n, NULL);
 
             long ret = myst_syscall_inotify_init1(0);
-            BREAK(_return(n,ret));
+            BREAK(_return(n, ret));
         }
         case SYS_inotify_add_watch:
         {
@@ -3685,7 +3739,7 @@ long myst_syscall(long n, long params[6])
             _strace(n, "fd=%d pathname=%s mask=%x", fd, pathname, mask);
 
             long ret = myst_syscall_inotify_add_watch(fd, pathname, mask);
-            BREAK(_return(n,ret));
+            BREAK(_return(n, ret));
             break;
         }
         case SYS_inotify_rm_watch:
@@ -3696,7 +3750,7 @@ long myst_syscall(long n, long params[6])
             _strace(n, "fd=%d wd=%d", fd, wd);
 
             long ret = myst_syscall_inotify_rm_watch(fd, wd);
-            BREAK(_return(n,ret));
+            BREAK(_return(n, ret));
             break;
         }
         case SYS_migrate_pages:
@@ -3809,8 +3863,13 @@ long myst_syscall(long n, long params[6])
             int flags = (int)x4;
             long ret;
 
-            _strace(n, "sockfd=%d addr=%p addrlen=%p flags=%x",
-                sockfd, addr, addrlen, flags);
+            _strace(
+                n,
+                "sockfd=%d addr=%p addrlen=%p flags=%x",
+                sockfd,
+                addr,
+                addrlen,
+                flags);
 
             ret = myst_syscall_accept4(sockfd, addr, addrlen, flags);
             BREAK(_return(n, ret));
@@ -3847,7 +3906,7 @@ long myst_syscall(long n, long params[6])
             _strace(n, "flags=%x", flags);
 
             long ret = myst_syscall_inotify_init1(flags);
-            BREAK(_return(n,ret));
+            BREAK(_return(n, ret));
         }
         case SYS_preadv:
             break;
@@ -3864,7 +3923,23 @@ long myst_syscall(long n, long params[6])
         case SYS_fanotify_mark:
             break;
         case SYS_prlimit64:
-            break;
+        {
+            int pid = (int)x1;
+            int resource = (int)x2;
+            struct rlimit* new_rlim = (struct rlimit*)x3;
+            struct rlimit* old_rlim = (struct rlimit*)x4;
+
+            _strace(
+                n,
+                "pid=%d, resource=%d, new_rlim=%p, old_rlim=%p",
+                pid,
+                resource,
+                new_rlim,
+                old_rlim);
+
+            int ret = myst_syscall_prlimit64(pid, resource, new_rlim, old_rlim);
+            BREAK(_return(n, ret));
+        }
         case SYS_name_to_handle_at:
             break;
         case SYS_open_by_handle_at:
@@ -4209,8 +4284,8 @@ long myst_syscall(long n, long params[6])
                 optval,
                 optlen);
 
-            ret = myst_syscall_setsockopt(
-                sockfd, level, optname, optval, optlen);
+            ret =
+                myst_syscall_setsockopt(sockfd, level, optname, optval, optlen);
             BREAK(_return(n, ret));
         }
         case SYS_getsockopt:
@@ -4231,8 +4306,8 @@ long myst_syscall(long n, long params[6])
                 optval,
                 optlen);
 
-            ret = myst_syscall_getsockopt(
-                sockfd, level, optname, optval, optlen);
+            ret =
+                myst_syscall_getsockopt(sockfd, level, optname, optval, optlen);
             BREAK(_return(n, ret));
         }
         case SYS_sendfile:
@@ -4276,7 +4351,7 @@ done:
     if (crt_td)
         myst_set_fsbase(crt_td);
 
-    myst_times_leave_kernel(tp_enter);
+    myst_times_leave_kernel();
 
     // Process signals pending for this thread, if there is any.
     myst_signal_process(thread);
@@ -4297,22 +4372,25 @@ static myst_spinlock_t _set_time_lock = MYST_SPINLOCK_INITIALIZER;
 
 long myst_syscall_clock_gettime(clockid_t clk_id, struct timespec* tp)
 {
-    myst_thread_t* current = myst_thread_self();
-    if ( // mirrors clock id obtained from pthread_getcpuclockid
-        clk_id == (clockid_t)((-current->tid - 1) * 8U + 6) ||
-        clk_id == CLOCK_THREAD_CPUTIME_ID)
+    if (clk_id < 0)
     {
-        long nanoseconds = myst_times_thread_time();
+        // ATTN: Support Dynamic clocks
+        if (IS_DYNAMIC_CLOCK(clk_id))
+            return -ENOTSUP;
+        else
+            return myst_times_get_cpu_clock_time(clk_id, tp);
+    }
+
+    if (clk_id == CLOCK_PROCESS_CPUTIME_ID)
+    {
+        long nanoseconds = myst_times_process_time();
         tp->tv_sec = nanoseconds / NANO_IN_SECOND;
         tp->tv_nsec = nanoseconds % NANO_IN_SECOND;
         return 0;
     }
-
-    if ( // mirrors clock id obtained from clock_getcpuclockid
-        clk_id == (clockid_t)((-current->pid - 1) * 8U + 2) ||
-        clk_id == CLOCK_PROCESS_CPUTIME_ID)
+    if (clk_id == CLOCK_THREAD_CPUTIME_ID)
     {
-        long nanoseconds = myst_times_process_time();
+        long nanoseconds = myst_times_thread_time();
         tp->tv_sec = nanoseconds / NANO_IN_SECOND;
         tp->tv_nsec = nanoseconds % NANO_IN_SECOND;
         return 0;
@@ -4363,6 +4441,13 @@ long myst_syscall_time(time_t* tloc)
     return ret;
 }
 
+long myst_syscall_clock_getres(clockid_t clk_id, struct timespec* res)
+{
+    long params[6] = {(long)clk_id, (long)res};
+    long ret = myst_tcall(MYST_TCALL_CLOCK_GETRES, params);
+    return ret;
+}
+
 long myst_syscall_tgkill(int tgid, int tid, int sig)
 {
     long ret = 0;
@@ -4380,6 +4465,59 @@ long myst_syscall_tgkill(int tgid, int tid, int sig)
     siginfo->si_code = SI_TKILL;
     siginfo->si_signo = sig;
     myst_signal_deliver(target, sig, siginfo);
+
+done:
+    return ret;
+}
+
+time_t time(time_t* tloc)
+{
+    return myst_syscall_time(tloc);
+}
+
+long myst_syscall_kill(int pid, int sig)
+{
+    long ret = 0;
+    myst_thread_t* thread = myst_thread_self();
+    myst_thread_t* process_thread = myst_find_process_thread(thread);
+
+    myst_spin_lock(&myst_process_list_lock);
+
+    // If not this thread search back through list of processes
+    while ((process_thread->pid != pid) &&
+           (process_thread->main.prev_process_thread != NULL))
+    {
+        process_thread = process_thread->main.prev_process_thread;
+    }
+
+    // If still not found search forwards through processes
+    if (process_thread->pid != pid)
+    {
+        process_thread = process_thread;
+
+        while ((process_thread->pid != pid) &&
+               (process_thread->main.next_process_thread != NULL))
+        {
+            process_thread = process_thread->main.next_process_thread;
+        }
+    }
+
+    myst_spin_unlock(&myst_process_list_lock);
+
+    // Did we finally find it?
+    if (process_thread->pid == pid)
+    {
+        // Deliver signal
+        siginfo_t* siginfo = calloc(1, sizeof(siginfo_t));
+        siginfo->si_code = SI_USER;
+        siginfo->si_signo = sig;
+        siginfo->si_pid = thread->pid;
+        siginfo->si_uid = MYST_DEFAULT_UID;
+
+        ret = myst_signal_deliver(process_thread, sig, siginfo);
+    }
+    else
+        ERAISE(-ESRCH);
 
 done:
     return ret;

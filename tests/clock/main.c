@@ -155,6 +155,18 @@ static int test_diff_precisions()
     return 0;
 }
 
+static int test_clock_getres()
+{
+    struct timespec res = {0}, res1 = {0};
+    int ret;
+    ret = clock_getres(CLOCK_REALTIME, &res);
+    assert(!ret && res.tv_nsec);
+
+    ret = clock_getres(CLOCK_REALTIME, &res1);
+    assert(!ret && res1.tv_nsec);
+    return 0;
+}
+
 int main(int argc, const char* argv[])
 {
     assert(argc == 3);
@@ -169,6 +181,8 @@ int main(int argc, const char* argv[])
     }
 
     assert(test_diff_precisions() == 0);
+
+    assert(test_clock_getres() == 0);
 
     printf("=== passed test (%s)\n", argv[0]);
 

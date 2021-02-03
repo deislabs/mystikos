@@ -81,6 +81,7 @@ endif
 LDFLAGS += -Wl,-emyst_enter_kernel
 
 LIBS += $(LIBDIR)/libmysthostfs.a
+LIBS += $(LIBDIR)/libmystext2.a
 LIBS += $(LIBDIR)/libmystutils.a
 
 ifdef MYST_ENABLE_GCOV

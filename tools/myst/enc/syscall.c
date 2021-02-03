@@ -600,8 +600,7 @@ static long _setsockopt(
     socklen_t optlen)
 {
     long ret;
-    RETURN(
-        myst_setsockopt_ocall(&ret, sockfd, level, optname, optval, optlen));
+    RETURN(myst_setsockopt_ocall(&ret, sockfd, level, optname, optval, optlen));
 }
 
 static long _getsockopt(
@@ -623,8 +622,8 @@ static long _getsockopt(
 
     n = *optlen;
 
-    if (myst_getsockopt_ocall(
-            &retval, sockfd, level, optname, optval, &n, n) != OE_OK)
+    if (myst_getsockopt_ocall(&retval, sockfd, level, optname, optval, &n, n) !=
+        OE_OK)
     {
         ret = -EINVAL;
         goto done;

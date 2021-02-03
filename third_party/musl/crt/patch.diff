@@ -20,7 +20,7 @@ index bd8f5c38..fcc35f3e 100644
  	rm -f $@
  	$(AR) rc $@
 diff --git a/arch/x86_64/syscall_arch.h b/arch/x86_64/syscall_arch.h
-index 92d5c179..a3e53791 100644
+index 92d5c179..e94deece 100644
 --- a/arch/x86_64/syscall_arch.h
 +++ b/arch/x86_64/syscall_arch.h
 @@ -1,64 +1,69 @@
@@ -126,7 +126,7 @@ index 92d5c179..a3e53791 100644
  
  #define VDSO_USEFUL
 diff --git a/ldso/dlstart.c b/ldso/dlstart.c
-index 20d50f2c..b352874f 100644
+index 20d50f2c..c6ad4096 100644
 --- a/ldso/dlstart.c
 +++ b/ldso/dlstart.c
 @@ -1,4 +1,5 @@
@@ -179,7 +179,7 @@ index 20d50f2c..b352874f 100644
 +    return -ENOTSUP;
 +}
 diff --git a/ldso/dynlink.c b/ldso/dynlink.c
-index afec985a..9e2a2da5 100644
+index afec985a..62f3687f 100644
 --- a/ldso/dynlink.c
 +++ b/ldso/dynlink.c
 @@ -27,6 +27,13 @@
@@ -241,7 +241,7 @@ index afec985a..9e2a2da5 100644
  }
  
 diff --git a/src/misc/syscall.c b/src/misc/syscall.c
-index 6f3ef656..009b29dd 100644
+index 6f3ef656..614121c3 100644
 --- a/src/misc/syscall.c
 +++ b/src/misc/syscall.c
 @@ -2,6 +2,7 @@
@@ -281,6 +281,19 @@ index 6f3ef656..009b29dd 100644
 +
 +    return myst_syscall(n, params);
 +}
+diff --git a/src/thread/__unmapself.c b/src/thread/__unmapself.c
+index 31d94e67..e34cca2e 100644
+--- a/src/thread/__unmapself.c
++++ b/src/thread/__unmapself.c
+@@ -6,7 +6,7 @@
+ 
+ static void *unmap_base;
+ static size_t unmap_size;
+-static char shared_stack[256];
++static char shared_stack[4096];
+ 
+ static void do_unmap()
+ {
 diff --git a/src/thread/clone.c b/src/thread/clone.c
 index be80c8ea..afc8d160 100644
 --- a/src/thread/clone.c
@@ -352,6 +365,22 @@ index 7347ff4d..00000000
 -	movl $158,%eax          /* set fs segment to */
 -	syscall                 /* arch_prctl(SET_FS, arg)*/
 -	ret
+diff --git a/src/thread/x86_64/__unmapself.s b/src/thread/x86_64/__unmapself.s
+deleted file mode 100644
+index e2689e65..00000000
+--- a/src/thread/x86_64/__unmapself.s
++++ /dev/null
+@@ -1,10 +0,0 @@
+-/* Copyright 2011-2012 Nicholas J. Kain, licensed under standard MIT license */
+-.text
+-.global __unmapself
+-.type   __unmapself,@function
+-__unmapself:
+-	movl $11,%eax   /* SYS_munmap */
+-	syscall         /* munmap(arg2,arg3) */
+-	xor %rdi,%rdi   /* exit() args: always return success */
+-	movl $60,%eax   /* SYS_exit */
+-	syscall         /* exit(0) */
 diff --git a/src/thread/x86_64/clone.s b/src/thread/x86_64/clone.s
 deleted file mode 100644
 index 6e47bc0a..00000000
@@ -387,7 +416,7 @@ index 6e47bc0a..00000000
 -	hlt
 -1:	ret
 diff --git a/src/thread/x86_64/syscall_cp.s b/src/thread/x86_64/syscall_cp.s
-index 4f101716..78d207c6 100644
+index 4f101716..c6091da5 100644
 --- a/src/thread/x86_64/syscall_cp.s
 +++ b/src/thread/x86_64/syscall_cp.s
 @@ -9,22 +9,19 @@
@@ -418,3 +447,71 @@ index 4f101716..78d207c6 100644
  __cp_end:
  	ret
  __cp_cancel:
+diff --git a/src/internal/__popcountdi2.c b/src/internal/__popcountdi2.c
+new file mode 100644
+index 00000000..b4b374a1
+--- /dev/null
++++ b/src/internal/__popcountdi2.c
+@@ -0,0 +1,16 @@
++
++__attribute__((__weak__))
++int __popcountdi2(unsigned long a)
++{
++    unsigned long nbits = 0;
++
++    /* Count the number of bits that are set */
++    for (unsigned long i = 0; i < 64; i++)
++    {
++        if ((a & (1LU << i)))
++            nbits++;
++    }
++
++    /* Return 1 if the nbits is odd; return 0 if nbits is event */
++    return (nbits % 2) ? 1 : 0;
++}
+diff --git a/src/stdio/__fprintf_chk.c b/src/stdio/__fprintf_chk.c
+new file mode 100644
+index 00000000..50253c11
+--- /dev/null
++++ b/src/stdio/__fprintf_chk.c
+@@ -0,0 +1,23 @@
++#include <stdio.h>
++#include <stdarg.h>
++
++extern int __vfprintf_chk(
++    FILE *stream,
++    int flag,
++    const char *format,
++    va_list ap);
++
++__attribute__((__weak__))
++int __fprintf_chk(FILE *stream, int flag, const char *format, ...)
++{
++    int ret;
++    va_list ap;
++
++    (void)flag;
++
++    va_start(ap, format);
++    ret = __vfprintf_chk(stream, flag, format, ap);
++    va_end(ap);
++
++    return ret;
++}
+diff --git a/src/stdio/__vfprintf_chk.c b/src/stdio/__vfprintf_chk.c
+new file mode 100644
+index 00000000..5493e453
+--- /dev/null
++++ b/src/stdio/__vfprintf_chk.c
+@@ -0,0 +1,11 @@
++#include <stdio.h>
++#include <assert.h>
++
++__attribute__((__weak__))
++int __vfprintf_chk(FILE *stream, int flag, const char *format, va_list ap)
++{
++    assert(stream);
++    assert(format);
++    (void)flag;
++    return vfprintf(stream, format, ap);
++}

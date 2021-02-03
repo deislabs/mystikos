@@ -353,6 +353,16 @@ int main(int argc, const char* argv[], const char* envp[])
     {
         return _package(argc, argv, envp);
     }
+    else if (strcmp(argv[1], "mkext2") == 0)
+    {
+        extern int mkext2_action(int argc, const char* argv[]);
+        return mkext2_action(argc, argv);
+    }
+    else if (strcmp(argv[1], "fssig") == 0)
+    {
+        extern int fssig_action(int argc, const char* argv[]);
+        return fssig_action(argc, argv);
+    }
     else
     {
         fprintf(stderr, USAGE, argv[0]);

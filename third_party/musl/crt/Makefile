@@ -16,6 +16,8 @@ endif
 
 MUSLSRC=$(BUILDDIR)/crt-musl
 
+THISDIR=$(CURDIR)
+
 all: muslsrc $(MUSLSRC)/config.mak
 	( cd $(MUSLSRC); $(MAKE) CC="$(WHICH_GCC) $(CFLAGS)" )
 
@@ -35,29 +37,22 @@ $(MUSLSRC)/config.mak:
 
 tests:
 
+genpatch: $(MUSLSRC)
+	rm -f patch.diff
+	( cd $(MUSLSRC); git diff > $(THISDIR)/patch.diff )
+	( cd $(MUSLSRC); git diff --cached >> $(THISDIR)/patch.diff )
+
 PATCHDIR=$(TOP)/third_party/musl/crt
 
 muslsrc: $(MUSLSRC)
 
-$(MUSLSRC):
-	mkdir -p $(BUILDDIR)
-	git clone git://git.musl-libc.org/musl -b v1.2.0 $(MUSLSRC)
-	( cd $(MUSLSRC); git apply $(PATCHDIR)/patch1.diff )
-	( cd $(MUSLSRC); git apply $(PATCHDIR)/patch2.diff )
-
-##==============================================================================
-##
-## genpatch -- regenerates patch1.diff and patch2.diff
-##
-##==============================================================================
-
+NEWFILES =
 NEWFILES += src/internal/__popcountdi2.c
 NEWFILES += src/stdio/__fprintf_chk.c
 NEWFILES += src/stdio/__vfprintf_chk.c
 
-genpatch: all
-	( cd $(MUSLSRC); make clean )
-	( cd $(MUSLSRC); make distclean )
-	( cd $(MUSLSRC); $(foreach i, $(NEWFILES), git add $(i) ; ) )
-	( cd $(MUSLSRC); git diff --cached --staged > $(PATCHDIR)/patch1.diff )
-	( cd $(MUSLSRC); git diff > $(PATCHDIR)/patch2.diff )
+$(MUSLSRC):
+	mkdir -p $(BUILDDIR)
+	git clone git://git.musl-libc.org/musl -b v1.2.0 $(MUSLSRC)
+	( cd $(MUSLSRC); git apply $(PATCHDIR)/patch.diff )
+	$(foreach i, $(NEWFILES), ( cd $(MUSLSRC); git add $(i) ); $(NL) )

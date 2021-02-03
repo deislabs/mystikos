@@ -4,26 +4,31 @@
 #include <assert.h>
 #include <errno.h>
 #include <libgen.h>
+#include <limits.h>
+#include <linux/futex.h>
 #include <myst/elf.h>
 #include <myst/strings.h>
 #include <myst/tcall.h>
-#include <limits.h>
-#include <linux/futex.h>
 #include <poll.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/user.h>
 #include <syscall.h>
 #include <unistd.h>
 
 #include <myst/buf.h>
+#include <myst/cpio.h>
 #include <myst/eraise.h>
 #include <myst/file.h>
+#include <myst/fssig.h>
 #include <myst/getopt.h>
+#include <myst/options.h>
 #include <myst/shm.h>
 #include <openenclave/host.h>
 
+#include "archive.h"
 #include "myst_u.h"
 #include "regions.h"
 #include "utils.h"
@@ -194,8 +199,16 @@ int exec_action(int argc, const char* argv[], const char* envp[])
     const oe_enclave_type_t type = OE_ENCLAVE_TYPE_SGX;
     uint32_t flags = OE_ENCLAVE_FLAG_DEBUG;
     struct myst_options options;
+    static const size_t max_pubkeys = 128;
+    const char* pubkeys[max_pubkeys];
+    size_t num_pubkeys = 0;
+    static const size_t max_roothashes = 128;
+    const char* roothashes[max_roothashes];
+    size_t num_roothashes = 0;
     const region_details* details;
     int return_status;
+    char archive_path[PATH_MAX];
+    char rootfs_path[] = "/tmp/mystXXXXXX";
 
     assert(strcmp(argv[1], "exec") == 0 || strcmp(argv[1], "exec-sgx") == 0);
 
@@ -229,6 +242,17 @@ int exec_action(int argc, const char* argv[], const char* envp[])
             if ((val = getenv("MYST_ENABLE_GCOV")) && strcmp(val, "1") == 0)
                 options.export_ramfs = true;
         }
+
+        /* Get --pubkey=filename and --roothash=filename options */
+        get_archive_options(
+            &argc,
+            argv,
+            pubkeys,
+            max_pubkeys,
+            &num_pubkeys,
+            roothashes,
+            max_roothashes,
+            &num_roothashes);
     }
 
     if (argc < 4)
@@ -239,19 +263,51 @@ int exec_action(int argc, const char* argv[], const char* envp[])
 
     const char* rootfs = argv[2];
     const char* program = argv[3];
+    create_archive(
+        pubkeys, num_pubkeys, roothashes, num_roothashes, archive_path);
+
+    /* copy the rootfs path to the options */
+    if (myst_strlcpy(options.rootfs, rootfs, sizeof(options.rootfs)) >=
+        sizeof(options.rootfs))
+    {
+        _err("<rootfs> command line argument is too long: %s", rootfs);
+    }
+
+    /* if not a CPIO archive, create a zero-filled file with one page */
+    if (myst_cpio_test(rootfs) == -ENOTSUP)
+    {
+        int fd;
+        uint8_t page[PAGE_SIZE];
+
+        if ((fd = mkstemp(rootfs_path)) < 0)
+            _err("failed to create temporary file");
+
+        memset(page, 0, sizeof(page));
+
+        if (write(fd, page, sizeof(page)) != sizeof(page))
+            _err("failed to create file");
+
+        close(fd);
+        rootfs = rootfs_path;
+    }
 
     // note... we have no config, but this call will go looking in the enclave
     // if it is signed.
     if ((details = create_region_details_from_files(
-             program, rootfs, NULL, 0)) == NULL)
+             program, rootfs, archive_path, NULL, 0)) == NULL)
     {
         _err("Creating region data failed.");
     }
+
+    unlink(archive_path);
 
     return_status = exec_launch_enclave(
         details->enc.path, type, flags, argv + 3, envp, &options);
 
     free_region_details();
+
+    if (rootfs == rootfs_path)
+        unlink(rootfs_path);
 
     return return_status;
 }
@@ -309,4 +365,9 @@ long myst_poll_ocall(struct pollfd* fds, unsigned long nfds, int timeout)
         struct pollfd * lfds, unsigned long nfds, int timeout);
 
     return myst_tcall_poll(fds, nfds, timeout);
+}
+
+int myst_load_fssig_ocall(const char* path, myst_fssig_t* fssig)
+{
+    return myst_load_fssig(path, fssig);
 }

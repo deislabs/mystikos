@@ -7,6 +7,7 @@ PROGRAM = myst
 SOURCES =
 SOURCES += $(SUBOBJDIR)/myst_u.c
 SOURCES += $(wildcard *.c)
+SOURCES += $(wildcard mkext2/*.c)
 SOURCES += $(wildcard ../*.c)
 
 INCLUDES = $(OEHOST_INCLUDES) -I$(SUBOBJDIR) -I$(INCDIR) -I../
@@ -27,6 +28,7 @@ LIBS += $(LIBDIR)/libmysttargetcommon.a
 LIBS += $(LIBDIR)/libmysttargetlinux.a
 LIBS += $(LIBDIR)/libmysttargetsgxhost.a
 LIBS += $(LIBDIR)/libmystutils.a
+LIBS += $(MBEDTLS_LIBS)
 
 CLEAN = $(SUBOBJDIR)/myst_u.h $(SUBOBJDIR)/myst_u.c $(SUBOBJDIR)/myst_args.h
 

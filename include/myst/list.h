@@ -40,9 +40,7 @@ MYST_INLINE void myst_list_remove(myst_list_t* list, myst_list_node_t* node)
     list->size--;
 }
 
-MYST_INLINE void myst_list_prepend(
-    myst_list_t* list,
-    myst_list_node_t* node)
+MYST_INLINE void myst_list_prepend(myst_list_t* list, myst_list_node_t* node)
 {
     if (list->head)
     {

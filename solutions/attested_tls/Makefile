@@ -7,17 +7,20 @@ APPDIR = appdir
 CFLAGS = -fPIC
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 
-export PATH := $(PATH):$(BUILDDIR)/openenclave/bin
-export PKG_CONFIG_PATH:=$(BUILDDIR)/openenclave/share/pkgconfig
+OEENCLAVE = oe_enclave/enc/tlssrv_enc.signed
+OEDUMP = $(BUILDDIR)/openenclave/bin/oesign dump -e $(OEENCLAVE)
+PATH := $(PATH):$(BUILDDIR)/openenclave/bin
+export PKG_CONFIG_PATH := $(BUILDDIR)/openenclave/share/pkgconfig
+export AZDCAP_DEBUG_LOG_LEVEL := 0
 
 DNSSERVER = $(shell systemd-resolve --status | grep "DNS Servers" | cut -f2 -d:)
 
 all: myst app
 	$(MYST) mkcpio $(APPDIR) rootfs
 
-#OPTS = --trace-syscalls
+#OPTS = --strace
 
-run: app cpio oe_enclave 
+run: appdir
 	# Kill the running instance of the TLS server before exit.
 	@trap "exit" INT TERM
 	@trap "killall -9 tlssrv_host" EXIT
@@ -28,25 +31,10 @@ run: app cpio oe_enclave
 	$(MYST_EXEC) rootfs /client 127.0.0.1 $(OPTS)
 	@wait
 
-run-host: oe_enclave
-	# Kill the running instance of the TLS server before exit.
-	@trap "exit" INT TERM
-	@trap "killall -9 tlssrv_host" EXIT
-	# Launch the TLS server the OE enclave
-	@oe_enclave/host/tlssrv_host oe_enclave/enc/tlssrv_enc.signed hw &
-	@echo "OE Enclave app started..."
-	# Give server some time to start up.
-	sleep 1
-	cp $(TOP)/include/myst/tee.h app
-	gcc -g -o app/client app/client.c app/tlscli.c -lmbedtls -lmbedx509 -lmbedcrypto
-	# We rely on private_key.pem and cert.der in "app" folder for attested TLS.
-	app/client 127.0.0.1
-	@wait
-
 myst:
 	$(MAKE) -C $(TOP)/tools/myst
 
-app:
+app:	app/peer_tee_identity.h
 	rm -rf app/client app/tee.h
 	docker build -t alpine.build -f app-dockerfile .
 	cp $(TOP)/include/myst/tee.h app
@@ -55,14 +43,23 @@ app:
 	sudo chown $(USER):$(GROUP) app/client
 	$(TOP)/scripts/appbuilder Dockerfile
 	cp app/client $(APPDIR)/
-	# We need the manifesto file inform the app we are running in enclave.
-	touch $(APPDIR)/manifesto
 	# make sure the app we are running is the one we just built.
 	ls -l $(APPDIR)/client; date
 
 oe_enclave:
 	make -C oe_enclave/enc
 	make -C oe_enclave/host
+
+app/peer_tee_identity.h: oe_enclave
+	# Generate peer identity file for the other enclave
+	echo "#ifndef _PEER_TEE_IDENTITY_H" > app/peer_tee_identity.h
+	echo "#define _PEER_TEE_IDENTITY_H\n" >> app/peer_tee_identity.h
+	echo "#define PEER_PRODUCT_ID $(shell $(OEDUMP) | grep product_id= | cut -d= -f2)" >> app/peer_tee_identity.h
+	echo "#define PEER_SVN $(shell $(OEDUMP) | grep security_version= | cut -d= -f2)" >> app/peer_tee_identity.h
+	echo "#define PEER_DEBUG $(shell $(OEDUMP) | grep debug= | cut -d= -f2)" >> app/peer_tee_identity.h
+	echo "#define PEER_MRENCLAVE \"$(shell $(OEDUMP) | grep mrenclave= | cut -d= -f2)\"" >> app/peer_tee_identity.h
+	echo "#define PEER_MRSIGNER \"$(shell $(OEDUMP) | grep mrsigner= | cut -d= -f2)\"" >> app/peer_tee_identity.h
+	echo "\n#endif" >> app/peer_tee_identity.h
 
 cpio: app
 	$(MYST) mkcpio $(APPDIR) rootfs
@@ -71,4 +68,4 @@ clean:
 	rm -rf rootfs appdir
 	make clean -C oe_enclave/enc
 	make clean -C oe_enclave/host
-	rm -rf app/client app/tee.h
+	rm -rf app/client app/tee.h app/peer_tee_identity.h

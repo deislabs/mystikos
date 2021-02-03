@@ -2,12 +2,16 @@
 // Licensed under the MIT License.
 
 #include <errno.h>
+#include <syscall.h>
+#include <unistd.h>
+
+#include <myst/blockdevice.h>
 #include <myst/fsgs.h>
+#include <myst/luks.h>
+#include <myst/sha256.h>
 #include <myst/strings.h>
 #include <myst/tcall.h>
 #include <myst/thread.h>
-#include <syscall.h>
-#include <unistd.h>
 
 long myst_tcall_random(void* data, size_t size)
 {
@@ -127,4 +131,104 @@ long myst_tcall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
 {
     long params[6] = {(long)fds, nfds, timeout};
     return myst_tcall(SYS_poll, params);
+}
+
+int myst_open_block_device(const char* path, bool read_only)
+{
+    long params[6] = {(long)path, read_only};
+    return myst_tcall(MYST_TCALL_OPEN_BLOCK_DEVICE, params);
+}
+
+int myst_close_block_device(int blkdev)
+{
+    long params[6] = {blkdev};
+    return myst_tcall(MYST_TCALL_CLOSE_BLOCK_DEVICE, params);
+}
+
+int myst_read_block_device(
+    int blkdev,
+    uint64_t blkno,
+    struct myst_block* blocks,
+    size_t num_blocks)
+{
+    long params[6] = {blkdev, blkno, (long)blocks, num_blocks};
+    return myst_tcall(MYST_TCALL_READ_BLOCK_DEVICE, params);
+}
+
+int myst_write_block_device(
+    int blkdev,
+    uint64_t blkno,
+    const struct myst_block* blocks,
+    size_t num_blocks)
+{
+    long params[6] = {blkdev, blkno, (long)blocks, num_blocks};
+    return myst_tcall(MYST_TCALL_WRITE_BLOCK_DEVICE, params);
+}
+
+int myst_luks_encrypt(
+    const luks_phdr_t* phdr,
+    const void* key,
+    const uint8_t* in,
+    uint8_t* out,
+    size_t size,
+    uint64_t secno)
+{
+    long params[6] = {(long)phdr, (long)key, (long)in, (long)out, size, secno};
+    return myst_tcall(MYST_TCALL_LUKS_ENCRYPT, params);
+}
+
+int myst_luks_decrypt(
+    const luks_phdr_t* phdr,
+    const void* key,
+    const uint8_t* in,
+    uint8_t* out,
+    size_t size,
+    uint64_t secno)
+{
+    long params[6] = {(long)phdr, (long)key, (long)in, (long)out, size, secno};
+    return myst_tcall(MYST_TCALL_LUKS_DECRYPT, params);
+}
+
+int myst_sha256_start(myst_sha256_ctx_t* ctx)
+{
+    long params[6] = {(long)ctx};
+    return myst_tcall(MYST_TCALL_SHA256_START, params);
+}
+
+int myst_sha256_update(myst_sha256_ctx_t* ctx, const void* data, size_t size)
+{
+    long params[6] = {(long)ctx, (long)data, size};
+    return myst_tcall(MYST_TCALL_SHA256_UPDATE, params);
+}
+
+int myst_sha256_finish(myst_sha256_ctx_t* ctx, myst_sha256_t* sha256)
+{
+    long params[6] = {(long)ctx, (long)sha256};
+    return myst_tcall(MYST_TCALL_SHA256_FINISH, params);
+}
+
+int myst_tcall_verify_signature(
+    const char* pem_public_key,
+    const uint8_t* hash,
+    size_t hash_size,
+    const uint8_t* signer,
+    size_t signer_size,
+    const uint8_t* signature,
+    size_t signature_size)
+{
+    long args[7] = {(long)pem_public_key,
+                    (long)hash,
+                    hash_size,
+                    (long)signer,
+                    signer_size,
+                    (long)signature,
+                    signature_size};
+    long params[6] = {(long)args};
+    return myst_tcall(MYST_TCALL_VERIFY_SIGNATURE, params);
+}
+
+int myst_tcall_load_fssig(const char* path, myst_fssig_t* fssig)
+{
+    long params[6] = {(long)path, (long)fssig};
+    return myst_tcall(MYST_TCALL_LOAD_FSSIG, params);
 }

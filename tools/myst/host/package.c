@@ -4,8 +4,8 @@
 #include <assert.h>
 #include <errno.h>
 #include <libgen.h>
-#include <myst/types.h>
 #include <limits.h>
+#include <myst/types.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -19,6 +19,7 @@
 #include <openenclave/host.h>
 
 #include "../config.h"
+#include "archive.h"
 #include "cpio.h"
 #include "exec.h"
 #include "myst/file.h"
@@ -92,9 +93,27 @@ int _package(int argc, const char* argv[])
     char* tmp_dir = NULL;
     char dir_template[] = "/tmp/mystXXXXXX";
     char rootfs_file[PATH_MAX];
+    char archive_file[PATH_MAX];
     char scratch_path[PATH_MAX];
     char scratch_path2[PATH_MAX];
     config_parsed_data_t parsed_data = {0};
+    static const size_t max_pubkeys = 128;
+    const char* pubkeys[max_pubkeys];
+    size_t num_pubkeys = 0;
+    static const size_t max_roothashes = 128;
+    const char* roothashes[max_roothashes];
+    size_t num_roothashes = 0;
+
+    /* Get --pubkey=filename and --roothash=filename options */
+    get_archive_options(
+        &argc,
+        argv,
+        pubkeys,
+        max_pubkeys,
+        &num_pubkeys,
+        roothashes,
+        max_roothashes,
+        &num_roothashes);
 
     if ((argc < 5) || (cli_getopt(&argc, argv, "--help", NULL) == 0) ||
         (cli_getopt(&argc, argv, "-h", NULL) == 0))
@@ -111,6 +130,8 @@ int _package(int argc, const char* argv[])
     app_dir = argv[2];
     pem_file = argv[3];
     config_file = argv[4];
+    create_archive(
+        pubkeys, num_pubkeys, roothashes, num_roothashes, archive_file);
 
     tmp_dir = mkdtemp(dir_template);
     if (tmp_dir == NULL)
@@ -179,6 +200,8 @@ int _package(int argc, const char* argv[])
                                rootfs_file,
                                pem_file,
                                config_file,
+                               "--archive",
+                               archive_file,
                                "--outdir",
                                tmp_dir};
 
@@ -209,10 +232,8 @@ int _package(int argc, const char* argv[])
 
     // Add the enclave to myst
     if (snprintf(
-            scratch_path,
-            PATH_MAX,
-            "%s/lib/openenclave/mystenc.so",
-            tmp_dir) >= PATH_MAX)
+            scratch_path, PATH_MAX, "%s/lib/openenclave/mystenc.so", tmp_dir) >=
+        PATH_MAX)
     {
         fprintf(
             stderr,
@@ -268,6 +289,16 @@ int _package(int argc, const char* argv[])
             stderr,
             "Failed to add image %s to enclave section .mystrootfs",
             rootfs_file);
+        goto done;
+    }
+
+    // Add the archive to myst
+    if (_add_image_to_elf_section(&elf, archive_file, ".mystarchive") != 0)
+    {
+        fprintf(
+            stderr,
+            "Failed to add image %s to enclave section .mystarchive",
+            archive_file);
         goto done;
     }
 
@@ -483,8 +514,8 @@ int _exec_package(
             stderr, "File path %s/lib/openenclave/ is too long\n", unpack_dir);
         goto done;
     }
-    if (elf_find_section(
-            &myst_elf.elf, ".mystenc", &buffer, &buffer_length) != 0)
+    if (elf_find_section(&myst_elf.elf, ".mystenc", &buffer, &buffer_length) !=
+        0)
     {
         fprintf(
             stderr, "Failed to extract enclave from %s\n", get_program_file());
@@ -579,14 +610,13 @@ int _exec_package(
         goto done;
     }
 
-    if (exec_launch_enclave(
-            scratch_path, type, flags, exec_args, envp, &options) != 0)
+    ret = exec_launch_enclave(
+        scratch_path, type, flags, exec_args, envp, &options);
+    if (ret != 0)
     {
-        fprintf(stderr, "Failed to run enclave %s\n", scratch_path);
+        fprintf(stderr, "Enclave %s returned %d\n", scratch_path, ret);
         goto done;
     }
-
-    ret = 0;
 
 done:
     if (unpack_dir)

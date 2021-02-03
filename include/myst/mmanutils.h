@@ -34,4 +34,8 @@ int myst_get_total_ram(size_t* size);
 
 int myst_get_free_ram(size_t* size);
 
+int myst_register_process_mapping(pid_t pid, void* addr, size_t size);
+
+int myst_release_process_mappings(pid_t pid);
+
 #endif /* _MYST_MMANUTILS_H */

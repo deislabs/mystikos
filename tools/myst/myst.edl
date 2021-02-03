@@ -8,14 +8,11 @@ enclave
     include "time.h"
     include "sys/socket.h"
     include "myst/shm.h"
+    include "myst/fssig.h"
+    include "myst/blockdevice.h"
+    include "myst/options.h"
     include "poll.h"
     include "fcntl.h"
-
-    struct myst_options
-    {
-        bool trace_syscalls;
-        bool export_ramfs;
-    };
 
     struct myst_timespec
     {
@@ -312,5 +309,40 @@ enclave
             [in, string] const char* pathname,
             [out, size=bufsiz] char* buf,
             size_t bufsiz);
+
+        /*
+        **======================================================================
+        **
+        ** block devices
+        **
+        **======================================================================
+        */
+
+        /* returns a handle to the block device */
+        int myst_open_block_device_ocall(
+            [in, string] const char* path,
+            bool read_only);
+
+        /* closes a block device */
+        int myst_close_block_device_ocall(int blkdev);
+
+        /* writes to the block device */
+        int myst_write_block_device_ocall(
+            int blkdev,
+            uint64_t blkno,
+            [in, count=num_blocks] const struct myst_block* blocks,
+            size_t num_blocks);
+
+        /* reads from the block device */
+        int myst_read_block_device_ocall(
+            int blkdev,
+            uint64_t blkno,
+            [out, count=num_blocks] struct myst_block* blocks,
+            size_t num_blocks);
+
+        /* load the file-system signature structure from the given image */
+        int myst_load_fssig_ocall(
+            [in, string] const char* path,
+            [out] myst_fssig_t* fssig);
     };
 };

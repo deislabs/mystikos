@@ -2,8 +2,8 @@
 // Licensed under the MIT License.
 
 #include "config.h"
-#include <myst/round.h>
 #include <memory.h>
+#include <myst/round.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include "myst/file.h"

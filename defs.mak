@@ -80,6 +80,7 @@ OEENCLAVE_INCLUDES =
 OEENCLAVE_INCLUDES += -I$(OE_INCDIR)
 OEENCLAVE_INCLUDES += -I$(OE_INCDIR)/openenclave/3rdparty
 OEENCLAVE_INCLUDES += -I$(OE_INCDIR)/openenclave/3rdparty/libc
+OEENCLAVE_INCLUDES += -I$(OE_INCDIR)/openenclave/3rdparty/mbedtls
 OEENCLAVE_INCLUDES += -I$(INCDIR)
 OEENCLAVE_INCLUDES += -I$(TOP)/include
 
@@ -115,6 +116,21 @@ OEHOST_CFLAGS = -g -Wall -Werror
 
 MUSL_GCC=$(BUILDDIR)/musl/bin/musl-gcc
 MUSL_LIB=$(BUILDDIR)/musl/lib
+
+##==============================================================================
+##
+## MBEDTLS definitions
+##
+##==============================================================================
+
+MBEDTLS_PREFIX=$(BUILDDIR)/mbedtls
+MBEDTLS_INCDIR=$(MBEDTLS_PREFIX)/include
+MBEDTLS_LIBDIR=$(MBEDTLS_PREFIX)/lib
+
+MBEDTLS_LIBS =
+MBEDTLS_LIBS += $(MBEDTLS_LIBDIR)/libmbedcrypto.a
+MBEDTLS_LIBS += $(MBEDTLS_LIBDIR)/libmbedtls.a
+MBEDTLS_LIBS += $(MBEDTLS_LIBDIR)/libmbedx509.a
 
 ##==============================================================================
 ##

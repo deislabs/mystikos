@@ -4,6 +4,8 @@
 #ifndef _MYST_OPTIONS_H
 #define _MYST_OPTIONS_H
 
+#include <limits.h>
+
 #include <myst/types.h>
 
 typedef struct myst_options
@@ -11,6 +13,7 @@ typedef struct myst_options
     bool trace_syscalls;
     bool have_syscall_instruction;
     bool export_ramfs;
+    char rootfs[PATH_MAX];
 } myst_options_t;
 
 extern myst_options_t __options;

@@ -1,4 +1,4 @@
-TOP = $(abspath ..)
+TOP = $(abspath ../..)
 include $(TOP)/defs.mak
 
 all:

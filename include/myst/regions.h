@@ -19,5 +19,6 @@
 #define MYST_KERNEL_STRTAB_REGION_ID 9  /* .strtab section */
 #define MYST_KERNEL_DYNSYM_REGION_ID 10 /* .dynsym section */
 #define MYST_KERNEL_DYNSTR_REGION_ID 11 /* .dynstr section */
+#define MYST_ARCHIVE_REGION_ID 12
 
 #endif /* _MYST_REGIONS_H */
