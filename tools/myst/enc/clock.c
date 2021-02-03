@@ -13,6 +13,7 @@ static long _realtime0 = 0;
 static long _monotime0 = 0;
 static volatile long* _monotime_now = 0;
 static long _realtime_delta = 0;
+static long enc_clock_res = 0;
 
 int myst_setup_clock(struct clock_ctrl* ctrl)
 {
@@ -38,6 +39,8 @@ int myst_setup_clock(struct clock_ctrl* ctrl)
         // to, decreaing the value over time, i.e., a clock goes backward. Both
         // _get_monotime and _get_realtime are guarded against such attacks.
         _monotime_now = &ctrl->now;
+
+        enc_clock_res = (long)ctrl->interval;
 
         ret = 0;
     }
@@ -90,6 +93,14 @@ static long _get_realtime()
     _check(__builtin_saddl_overflow(ret, _realtime0, &ret));
     _check(__builtin_saddl_overflow(ret, _realtime_delta, &ret));
     return ret;
+}
+
+long myst_tcall_clock_getres(clockid_t clk_id, struct timespec* res)
+{
+    (void)clk_id;
+    res->tv_sec = enc_clock_res / NANO_IN_SECOND;
+    res->tv_nsec = enc_clock_res % NANO_IN_SECOND;
+    return 0;
 }
 
 /* This overrides the weak version in libmystkernel.a */

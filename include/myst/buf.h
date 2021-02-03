@@ -29,11 +29,7 @@ int myst_buf_resize(myst_buf_t* buf, size_t new_size);
 
 int myst_buf_append(myst_buf_t* buf, const void* p, size_t size);
 
-int myst_buf_insert(
-    myst_buf_t* buf,
-    size_t pos,
-    const void* data,
-    size_t size);
+int myst_buf_insert(myst_buf_t* buf, size_t pos, const void* data, size_t size);
 
 int myst_buf_remove(myst_buf_t* buf, size_t pos, size_t size);
 
@@ -49,10 +45,7 @@ int myst_buf_pack_str(myst_buf_t* buf, const char* str);
 
 int myst_buf_unpack_str(myst_buf_t* buf, const char** str, size_t* len);
 
-int myst_buf_pack_strings(
-    myst_buf_t* buf,
-    const char* strings[],
-    size_t count);
+int myst_buf_pack_strings(myst_buf_t* buf, const char* strings[], size_t count);
 
 int myst_buf_unpack_strings(
     myst_buf_t* buf,

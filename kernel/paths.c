@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include <myst/eraise.h>
+#include <myst/paths.h>
 #include <myst/strings.h>
 #include <myst/syscall.h>
 

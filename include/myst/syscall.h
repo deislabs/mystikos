@@ -183,6 +183,8 @@ long myst_syscall_load_symbols(void);
 
 long myst_syscall_unload_symbols(void);
 
+long myst_syscall_clock_getres(clockid_t clk_id, struct timespec* res);
+
 long myst_syscall_clock_gettime(clockid_t clk_id, struct timespec* tp);
 
 long myst_syscall_clock_settime(clockid_t clk_id, struct timespec* tp);
@@ -232,5 +234,15 @@ long myst_syscall_nanosleep(const struct timespec* req, struct timespec* rem);
 long myst_syscall_exit_group(int status);
 
 long myst_syscall_tgkill(int tgid, int tid, int sig);
+
+long myst_syscall_mount(
+    const char* source,
+    const char* target,
+    const char* filesystemtype,
+    unsigned long mountflags,
+    const void* data);
+
+long myst_syscall_umount2(const char* target, int flags);
+long myst_syscall_kill(int pid, int sig);
 
 #endif /* _MYST_SYSCALL_H */

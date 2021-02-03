@@ -13,15 +13,18 @@
 #include <time.h>
 
 #include <myst/args.h>
+#include <myst/cpio.h>
 #include <myst/elf.h>
 #include <myst/eraise.h>
 #include <myst/file.h>
 #include <myst/kernel.h>
 #include <myst/reloc.h>
 #include <myst/round.h>
+#include <myst/strings.h>
 #include <myst/tcall.h>
 #include <myst/thread.h>
 
+#include "archive.h"
 #include "exec_linux.h"
 #include "utils.h"
 
@@ -51,12 +54,15 @@ struct options
 {
     bool trace_syscalls;
     bool export_ramfs;
+    char rootfs[PATH_MAX];
 };
 
 struct regions
 {
     void* rootfs_data;
     size_t rootfs_size;
+    void* archive_data;
+    size_t archive_size;
     elf_image_t libmystkernel;
     elf_image_t libmystcrt;
     void* mman_data;
@@ -99,12 +105,18 @@ static void* _map_mmap_region(size_t length)
     return addr;
 }
 
-static void _load_regions(const char* rootfs, struct regions* r)
+static void _load_regions(
+    const char* rootfs,
+    const char* archive,
+    struct regions* r)
 {
     char path[PATH_MAX];
 
     if (myst_load_file(rootfs, &r->rootfs_data, &r->rootfs_size) != 0)
         _err("failed to map file: %s", rootfs);
+
+    if (myst_load_file(archive, &r->archive_data, &r->archive_size) != 0)
+        _err("failed to map file: %s", archive);
 
     /* Load libmystcrt.so */
     {
@@ -189,6 +201,7 @@ static void _load_regions(const char* rootfs, struct regions* r)
 static void _release_regions(struct regions* r)
 {
     free(r->rootfs_data);
+    free(r->archive_data);
     elf_image_free(&r->libmystcrt);
     elf_image_free(&r->libmystkernel);
     munmap(r->mman_data, r->mman_size);
@@ -287,6 +300,8 @@ static int _enter_kernel(
     args.mman_size = regions->mman_size;
     args.rootfs_data = regions->rootfs_data;
     args.rootfs_size = regions->rootfs_size;
+    args.archive_data = regions->archive_data;
+    args.archive_size = regions->archive_size;
     args.crt_data = regions->libmystcrt.image_data;
     args.crt_size = regions->libmystcrt.image_size;
     args.max_threads = LONG_MAX;
@@ -295,6 +310,9 @@ static int _enter_kernel(
     args.export_ramfs = options->export_ramfs;
     args.event = (uint64_t)&_thread_event;
     args.tcall = tcall;
+
+    if (options->rootfs)
+        myst_strlcpy(args.rootfs, options->rootfs, sizeof(args.rootfs));
 
     /* Verify that the kernel is an ELF image */
     if (!elf_valid_ehdr_ident(ehdr))
@@ -335,11 +353,30 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
     const char* program_arg;
     struct regions regions;
     char err[128];
+    static const size_t max_pubkeys = 128;
+    const char* pubkeys[max_pubkeys];
+    size_t num_pubkeys = 0;
+    static const size_t max_roothashes = 128;
+    const char* roothashes[max_roothashes];
+    size_t num_roothashes = 0;
+    char archive_path[PATH_MAX];
+    char rootfs_path[] = "/tmp/mystXXXXXX";
 
     (void)program_arg;
 
     /* Get the command-line options */
     _get_options(&argc, argv, &options);
+
+    /* Get --pubkey=filename options */
+    get_archive_options(
+        &argc,
+        argv,
+        pubkeys,
+        max_pubkeys,
+        &num_pubkeys,
+        roothashes,
+        max_roothashes,
+        &num_roothashes);
 
     /* Check usage */
     if (argc < 4)
@@ -350,9 +387,38 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
 
     rootfs_arg = argv[2];
     program_arg = argv[3];
+    create_archive(
+        pubkeys, num_pubkeys, roothashes, num_roothashes, archive_path);
+
+    /* copy the rootfs path to the options */
+    if (myst_strlcpy(options.rootfs, rootfs_arg, sizeof(options.rootfs)) >=
+        sizeof(options.rootfs))
+    {
+        _err("<rootfs> command line argument is too long: %s", rootfs_arg);
+    }
+
+    /* if not a CPIO archive, create a zero-filled file with one page */
+    if (myst_cpio_test(rootfs_arg) == -ENOTSUP)
+    {
+        int fd;
+        uint8_t page[PAGE_SIZE];
+
+        if ((fd = mkstemp(rootfs_path)) < 0)
+            _err("failed to create temporary file");
+
+        memset(page, 0, sizeof(page));
+
+        if (write(fd, page, sizeof(page)) != sizeof(page))
+            _err("failed to create file");
+
+        close(fd);
+        rootfs_arg = rootfs_path;
+    }
 
     /* Load the regions into memory */
-    _load_regions(rootfs_arg, &regions);
+    _load_regions(rootfs_arg, archive_path, &regions);
+
+    unlink(archive_path);
 
     int envc = 0;
     while (envp[envc] != NULL)
@@ -383,6 +449,11 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
 
     /* release the regions memory */
     _release_regions(&regions);
+
+#if 0
+    if (rootfs_arg == rootfs_path)
+        unlink(rootfs_path);
+#endif
 
     return return_status;
 }

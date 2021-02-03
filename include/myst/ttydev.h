@@ -55,8 +55,7 @@ struct myst_ttydev
         unsigned long request,
         long arg);
 
-    int (
-        *td_fcntl)(myst_ttydev_t* ttydev, myst_tty_t* tty, int cmd, long arg);
+    int (*td_fcntl)(myst_ttydev_t* ttydev, myst_tty_t* tty, int cmd, long arg);
 
     int (*td_dup)(
         myst_ttydev_t* ttydev,

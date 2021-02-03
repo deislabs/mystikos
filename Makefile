@@ -25,6 +25,7 @@ endif
 DIRS += json
 DIRS += utils
 DIRS += hostfs
+DIRS += ext2
 DIRS += host
 DIRS += target
 DIRS += kernel
@@ -33,7 +34,7 @@ DIRS += oe
 DIRS += tools
 
 ifndef MYST_PRODUCT_BUILD
-DIRS += alpine
+DIRS += alpine/docker
 DIRS += tests
 endif
 

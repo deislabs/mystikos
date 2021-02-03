@@ -9,6 +9,9 @@ SOURCES += $(wildcard *.c)
 SOURCES += ../shared/waitwake.c
 SOURCES += ../shared/runthread.c
 SOURCES += ../shared/poll.c
+SOURCES += ../shared/luks.c
+SOURCES += ../shared/sha256.c
+SOURCES += ../shared/verify.c
 
 CFLAGS = $(DEFAULT_CFLAGS)
 
@@ -16,7 +19,7 @@ ifdef MYST_ENABLE_GCOV
 CFLAGS += $(GCOV_CFLAGS)
 endif
 
-INCLUDES = -I$(INCDIR)
+INCLUDES = -I$(INCDIR) -I$(MBEDTLS_INCDIR) -I$(OE_INCDIR)
 
 ifdef MYST_DEBUG_MALLOC
 DEFINES += -DMYST_DEBUG_MALLOC

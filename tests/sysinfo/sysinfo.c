@@ -108,6 +108,27 @@ void test_getrusage()
     assert(usage.ru_nivcsw == 0);   /* involuntary context switches */
 }
 
+void test_prlimit()
+{
+    struct rlimit rlim;
+    int ret;
+
+    ret = -1;
+    // test get and set resource limit for NOFILE resource
+    ret = getrlimit(7, &rlim);
+    assert(ret == 0 && rlim.rlim_cur && rlim.rlim_max);
+
+    ret = setrlimit(7, &rlim);
+    assert(ret == 0);
+
+    // test operations on unsupported resources
+    ret = getrlimit(0, &rlim);
+    assert(ret < 0);
+
+    ret = setrlimit(0, &rlim);
+    assert(ret < 0);
+}
+
 int main(int argc, const char* argv[])
 {
     assert(test_uptime());
@@ -115,6 +136,7 @@ int main(int argc, const char* argv[])
     test_unsupported_fields_are_zero();
 
     test_getrusage();
+    test_prlimit();
 
     printf("\n=== passed test (%s)\n", argv[0]);
 

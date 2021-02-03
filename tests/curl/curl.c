@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include <curl/curl.h>
 #include <assert.h>
+#include <curl/curl.h>
 #include <stdio.h>
 
 int test_url(const char* url)

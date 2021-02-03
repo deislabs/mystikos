@@ -2,6 +2,8 @@ TOP=$(abspath ..)
 include $(TOP)/defs.mak
 
 DIRS =
+DIRS += ext2
+
 DIRS += libc
 DIRS += args
 DIRS += echo
