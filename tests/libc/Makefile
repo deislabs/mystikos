@@ -31,16 +31,13 @@ $(APPDIR)/target:
 	sudo docker run --rm -v $(APPDIR):/appdir $(IMG) bash -c "make -C appdir"
 	touch $(APPDIR)/target
 
-ifdef ALLTESTS
-  TEST_FILE = alltests.txt
-  STATUS=PASSED
-endif
-
-
 ifdef FAILED
   TEST_FILE = failed.txt
   STATUS=FAILED
   export TIMEOUT=10
+else
+  TEST_FILE = alltests.txt
+  STATUS=PASSED
 endif
 
 $(APPDIR)/bin/run: run.c
