@@ -23,7 +23,7 @@ struct myst_fs
 
     int (*fs_release)(myst_fs_t* fs);
 
-    int (*fs_mount)(myst_fs_t* fs, const char* target);
+    int (*fs_mount)(myst_fs_t* fs, const char* source, const char* target);
 
     int (*fs_creat)(
         myst_fs_t* fs,

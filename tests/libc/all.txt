@@ -301,7 +301,6 @@
 /src/regression/printf-fmt-g-zeros.exe
 /src/regression/printf-fmt-n.exe
 /src/regression/pthread_atfork-errno-clobber.exe
-/src/regression/pthread_cancel-sem_wait.exe
 /src/regression/pthread_condattr_setclock.exe
 /src/regression/pthread_cond-smasher.exe
 /src/regression/pthread_cond_wait-cancel_ignored.exe

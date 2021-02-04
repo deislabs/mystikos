@@ -11,6 +11,7 @@
 #include <myst/ext2.h>
 #include <myst/fssig.h>
 #include <myst/hex.h>
+#include <myst/hostfs.h>
 #include <myst/kernel.h>
 #include <myst/mount.h>
 #include <myst/pubkey.h>
@@ -121,14 +122,14 @@ done:
     return ret;
 }
 
-int myst_mount(myst_fs_t* fs, const char* target)
+int myst_mount(myst_fs_t* fs, const char* source, const char* target)
 {
     int ret = -1;
     bool locked = false;
     myst_path_t target_buf;
     mount_table_entry_t mount_table_entry = {0};
 
-    if (!fs || !target)
+    if (!fs || !source || !target)
         ERAISE(-EINVAL);
 
     /* Normalize the target path */
@@ -176,7 +177,7 @@ int myst_mount(myst_fs_t* fs, const char* target)
     }
 
     /* Tell the file system that it has been mounted */
-    ECHECK((*fs->fs_mount)(fs, target));
+    ECHECK((*fs->fs_mount)(fs, source, target));
 
     /* Assign and initialize new mount point. */
     {
@@ -289,11 +290,24 @@ long myst_syscall_mount(
         ECHECK(myst_init_ramfs(&fs));
 
         /* perform the mount */
-        ECHECK(myst_mount(fs, target));
+        ECHECK(myst_mount(fs, source, target));
         fs = NULL;
 
         /* load the rootfs */
         ECHECK(myst_cpio_unpack(source, target));
+    }
+    else if (strcmp(filesystemtype, "hostfs") == 0)
+    {
+        /* these arguments should be zero and null */
+        if (mountflags || data)
+            ERAISE(-EINVAL);
+
+        /* create a new ramfs instance */
+        ECHECK(myst_init_hostfs(&fs));
+
+        /* perform the mount */
+        ECHECK(myst_mount(fs, source, target));
+        fs = NULL;
     }
     else if (strcmp(filesystemtype, "ext2") == 0)
     {
@@ -308,7 +322,7 @@ long myst_syscall_mount(
         ECHECK(myst_load_fs(source, key, &fs));
 
         /* perform the mount */
-        ECHECK(myst_mount(fs, target));
+        ECHECK(myst_mount(fs, source, target));
         fs = NULL;
     }
     else

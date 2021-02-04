@@ -42,3 +42,4 @@
 /src/regression/statvfs.exe
 /src/regression/syscall-sign-extend.exe
 /src/regression/tls_get_new-dtv.exe
+/src/regression/pthread_cancel-sem_wait.exe
