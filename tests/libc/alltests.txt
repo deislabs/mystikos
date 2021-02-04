@@ -14,7 +14,6 @@
 /src/functional/inet_pton.exe
 /src/functional/mbc.exe
 /src/functional/memstream.exe
-/src/regression/pthread_cancel-sem_wait.exe
 /src/functional/pthread_cond.exe
 /src/functional/pthread_tsd.exe
 /src/functional/qsort.exe
