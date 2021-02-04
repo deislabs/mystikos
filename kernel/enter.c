@@ -163,7 +163,7 @@ static int _setup_ramfs(void)
         ERAISE(-EINVAL);
     }
 
-    if (myst_mount(_fs, "/") != 0)
+    if (myst_mount(_fs, "/", "/") != 0)
     {
         myst_eprintf("cannot mount root file system\n");
         ERAISE(-EINVAL);
@@ -175,18 +175,19 @@ done:
     return ret;
 }
 
+#ifdef MYST_ENABLE_EXT2FS
 static int _setup_ext2(const char* rootfs)
 {
     int ret = 0;
-    const char* key = NULL; /* not automatic key-release support yet */
+    const char* key = NULL; /* no automatic key-release support yet */
 
     if (myst_load_fs(rootfs, key, &_fs) != 0)
     {
-        myst_eprintf("failed load the ext2 rootfs: %s\n", rootfs);
+        myst_eprintf("failed to load the ext2 rootfs: %s\n", rootfs);
         ERAISE(-EINVAL);
     }
 
-    if (myst_mount(_fs, "/") != 0)
+    if (myst_mount(_fs, rootfs, "/") != 0)
     {
         myst_eprintf("cannot mount root file system\n");
         ERAISE(-EINVAL);
@@ -197,6 +198,7 @@ static int _setup_ext2(const char* rootfs)
 done:
     return ret;
 }
+#endif /* MYST_ENABLE_EXT2FS */
 
 static int _create_mem_file(
     const char* path,
@@ -376,9 +378,15 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     }
     else
     {
+#ifdef MYST_ENABLE_EXT2FS
+
         /* setup and mount the EXT2 file system */
         if (_setup_ext2(args->rootfs) != 0)
             ERAISE(-EINVAL);
+
+#else /* MYST_ENABLE_EXT2FS */
+        myst_panic("ext2 not supported");
+#endif /* MYST_ENABLE_EXT2FS */
     }
 
     /* Create the main thread */

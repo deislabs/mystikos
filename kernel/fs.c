@@ -45,6 +45,7 @@ done:
     return ret;
 }
 
+#ifdef MYST_ENABLE_EXT2FS
 int myst_load_fs(const char* source, const char* key, myst_fs_t** fs_out)
 {
     int ret = 0;
@@ -130,3 +131,4 @@ done:
 
     return ret;
 }
+#endif /* MYST_ENABLE_EXT2FS */
