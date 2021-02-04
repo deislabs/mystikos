@@ -31,6 +31,10 @@ static void _run_tests(const char* test_file, bool passed)
 
         printf("=== start test: %s\n", line);
 
+        /* skip lines that begin with '#' */
+        if (line[0] == '#')
+            continue;
+
         char* const args[] = {(char*)line, NULL};
         char* const envp[] = {"VALUE=1", NULL};
 
