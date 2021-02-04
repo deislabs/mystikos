@@ -192,63 +192,82 @@ const region_details* create_region_details_from_files(
         _err("failed to load kernel image: %s", _details.kernel.path);
     _details.kernel.status = REGION_ITEM_OWNED;
 
-    if (config_path)
+    // We need to prioritize enclave resident config before falling back. That
+    // way we cannot override the signed configuration path and only use in the
+    // unsigned path
+    elf_t enc_elf = {0};
+
+    if (elf_load(_details.enc.path, &enc_elf) != 0)
+        _err("failed to load enclave image: %s", _details.enc.path);
+
+    unsigned char* temp_buf;
+    size_t temp_size;
+    if (elf_find_section(&enc_elf, ".mystconfig", &temp_buf, &temp_size) == 0)
     {
-        // if we have the configuration load it
-        if (myst_load_file(
-                config_path,
-                (void**)&_details.config.buffer,
-                &_details.config.buffer_size) != 0)
-            _err("failed to load config: %s", config_path);
+        // We are going to have to duplicate this buffer so we can unload
+        // the enclave image
+        _details.config.buffer = malloc(temp_size);
+        if (_details.config.buffer == NULL)
+            _err("out of memory");
+        memcpy(_details.config.buffer, temp_buf, temp_size);
+        _details.config.buffer_size = temp_size;
         _details.config.status = REGION_ITEM_OWNED;
-    }
-    else
-    {
-        // We have no configuration, but we can take a look in the enclave
-        // itself to see if it has been stored there!
-        elf_t enc_elf = {0};
 
-        if (elf_load(_details.enc.path, &enc_elf) != 0)
-            _err("failed to load enclave image: %s", _details.enc.path);
-
-        unsigned char* temp_buf;
-        size_t temp_size;
-        if (elf_find_section(&enc_elf, ".mystconfig", &temp_buf, &temp_size) ==
-            0)
+        // We should always use the config value if it is present, otherwise
+        // we use what is passed in to the funtion. If it is still zero we
+        // will eventually use the default value
+        config_parsed_data_t parsed_data = {0};
+        if (parse_config_from_buffer(
+                _details.config.buffer, temp_size, &parsed_data) == 0)
         {
-            // We are going to have to duplicate this buffer so we can unload
-            // the enclave image
-            _details.config.buffer = malloc(temp_size);
-            if (_details.config.buffer == NULL)
-                _err("out of memory");
-            memcpy(_details.config.buffer, temp_buf, temp_size);
-            _details.config.buffer_size = temp_size;
-            _details.config.status = REGION_ITEM_OWNED;
-
-            // If we dont have the user_pages yet then we can extract them from
-            // the config.
-            if (user_pages == 0)
-            {
-                config_parsed_data_t parsed_data = {0};
-                if (parse_config_from_buffer(
-                        _details.config.buffer, temp_size, &parsed_data) == 0)
-                {
-                    user_pages = parsed_data.user_pages;
-                    free_config(&parsed_data);
-                }
-                else
-                    _err("Failed to parse config we extracted from enclave");
-            }
+            user_pages = parsed_data.user_pages;
+            free_config(&parsed_data);
         }
         else
         {
-            // This is not a signed enclave so we have no config
+            _err("Failed to parse configuration stored in enclave");
         }
-        elf_unload(&enc_elf);
+    }
+    else if (config_path)
+    {
+        // config in enclave is not there so fall back to the config path is
+        // specified
+        if (myst_load_file(
+                config_path,
+                (void**)&_details.config.buffer,
+                &_details.config.buffer_size) == 0)
+        {
+            // We should always use the config value if it is present,
+            // otherwise we use what is passed in to the function. If it is
+            // still zero we will eventually use the default value
+            config_parsed_data_t parsed_data = {0};
+            if (parse_config_from_buffer(
+                    _details.config.buffer,
+                    _details.config.buffer_size,
+                    &parsed_data) == 0)
+            {
+                user_pages = parsed_data.user_pages;
+                free_config(&parsed_data);
+            }
+            else
+            {
+                _err(
+                    "Failed to parse config from specified config path %s",
+                    config_path);
+            }
+        }
+        else
+            _err("failed to load config: %s", config_path);
+        _details.config.status = REGION_ITEM_OWNED;
     }
 
+    elf_unload(&enc_elf);
+
     if (user_pages == 0)
+    {
         user_pages = MMAN_DEFAULT_PAGES;
+    }
+
     _details.mman_size = user_pages * PAGE_SIZE;
 
     return &_details;

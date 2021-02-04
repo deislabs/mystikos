@@ -24,8 +24,8 @@
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <unistd.h>
-#include "tee.h"
 #include "peer_tee_identity.h"
+#include "tee.h"
 
 #define DEBUG_LEVEL 1
 

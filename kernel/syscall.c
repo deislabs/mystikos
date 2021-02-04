@@ -42,8 +42,8 @@
 #include <myst/fs.h>
 #include <myst/fsgs.h>
 #include <myst/gcov.h>
-#include <myst/hostfs.h>
 #include <myst/hex.h>
+#include <myst/hostfs.h>
 #include <myst/id.h>
 #include <myst/initfini.h>
 #include <myst/inotifydev.h>
@@ -3592,10 +3592,13 @@ long myst_syscall(long n, long params[6])
             _strace(
                 n,
                 "fd=%d offset=%ld len=%ld advice=%d",
-                fd, offset, len, advice);
+                fd,
+                offset,
+                len,
+                advice);
 
             /* ATTN: no-op */
-             BREAK(_return(n, 0));
+            BREAK(_return(n, 0));
         }
         case SYS_timer_create:
             break;

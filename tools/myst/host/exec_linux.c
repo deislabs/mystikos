@@ -89,6 +89,12 @@ static void _get_options(int* argc, const char* argv[], struct options* options)
         if ((val = getenv("MYST_ENABLE_GCOV")) && strcmp(val, "1") == 0)
             options->export_ramfs = true;
     }
+
+    // Retrieve this setting as it is used in sgx option and we just ignore it
+    // here
+    const char* temp_setting = NULL;
+    cli_getopt(argc, argv, "--user-mem-size", &temp_setting);
+    cli_getopt(argc, argv, "--app-config-path", &temp_setting);
 }
 
 static void* _map_mmap_region(size_t length)
