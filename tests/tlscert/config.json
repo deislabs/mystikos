@@ -1,0 +1,6 @@
+{
+    // Mystikos specific values
+    "ApplicationPath": "/tlscert",
+    "ApplicationParameters": [],
+    "EnvironmentVariables": ["MYST_WANT_TLS_CREDENTIAL=1"],
+}
