@@ -18,7 +18,9 @@ ifdef FAILED
   STATUS=FAILED
   export TIMEOUT=10
 else
-  TEST_FILE = alltests.txt
+  TEST_FILE1 = builttests_exe.passed
+  TEST_FILE2 = builttests_exe2.passed
+  TEST_FILE3 = builttests_exe3.passed
   STATUS=PASSED
 endif
 
@@ -82,10 +84,10 @@ RUN = $(RUNTEST) $(MYST_EXEC) $(OPTS) --roothash=$(ROOTHASH) $(ROOTFS)
 OPTS += --roothash=$(ROOTHASH)
 
 tests:
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) --user-mem-size 1024m /bin/run $(STATUS) $(TEST_FILE1)
-ifdef ALLTESTS
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) --user-mem-size 1024m /bin/run $(STATUS) $(TEST_FILE2)
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) --user-mem-size 1024m /bin/run $(STATUS) $(TEST_FILE3)
+	$(RUNTEST) $(MYST_EXEC) --user-mem-size 1024m $(OPTS) $(ROOTFS) /bin/run $(STATUS) $(TEST_FILE1)
+ifndef FAILED
+	$(RUNTEST) $(MYST_EXEC) --user-mem-size 1024m $(OPTS) $(ROOTFS) /bin/run $(STATUS) $(TEST_FILE2)
+	$(RUNTEST) $(MYST_EXEC) --user-mem-size 1024m $(OPTS) $(ROOTFS) /bin/run $(STATUS) $(TEST_FILE3)
 endif
 
 myst:
