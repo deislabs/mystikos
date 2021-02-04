@@ -198,7 +198,8 @@ static cache_block_t* _get_cache(blkdev_t* dev, uint64_t blkno)
             break;
     }
 
-    /* if found, not dirty, and not the only entry; move to the back of the LRU list */
+    /* if found, not dirty, and not the only entry; move to the back of the LRU
+     * list */
     if (p && p != head && !p->dirty)
     {
         _lru_remove(dev, p);
