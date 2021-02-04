@@ -560,6 +560,7 @@ static long _getsockname(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
         }
 
 #ifdef DOWNSIZE_OCALL_OUTPUT_LENGTHS
+        /* note: n may legitimately be bigger due to truncation */
         if (n > *addrlen)
             n = *addrlen;
 #endif
@@ -815,6 +816,7 @@ static long _poll(struct pollfd* fds, nfds_t nfds, int timeout)
     }
     else
     {
+        /* support null fds[] array: example: poll(NULL, 0, 1000) */
         copy = NULL;
     }
 
@@ -828,6 +830,13 @@ static long _poll(struct pollfd* fds, nfds_t nfds, int timeout)
     for (nfds_t i = 0; i < nfds; i++)
     {
         fds[i].revents = copy[i].revents;
+    }
+
+    /* guard against return value that is bigger than nfds */
+    if (retval >= 0 && (nfds_t)retval > nfds)
+    {
+        ret = -EINVAL;
+        goto done;
     }
 
     ret = retval;
