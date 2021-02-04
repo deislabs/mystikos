@@ -196,8 +196,8 @@ and [options] are one or more of:\n\
     --user-mem-size <size>          -- for running an unsigned binary this overrides the\n\
                                        default user memory size for an application.\n\
                                        The <size> format is a number that is in\n\
-                                       bytes (<size>), in kilobytes (<size>k) or\n\
-                                       in megabytes (<size>m)\n\
+                                       bytes (<size>), in kilobytes (<size>k), \n\
+                                       in megabytes (<size>m), or gigabytes (<size>g)\n\
     --app-config-path <config.json> -- specifies the configuration json file for running an\n\
                                        unsigned binary. The file can be the same \n\
                                        one used for the signing process.\n\
@@ -219,7 +219,7 @@ int exec_action(int argc, const char* argv[], const char* envp[])
     int return_status;
     char archive_path[PATH_MAX];
     char rootfs_path[] = "/tmp/mystXXXXXX";
-    size_t user_mem_pages = 0;
+    uint64_t user_mem_size = 0;
     const char* commandline_config = NULL;
 
     assert(strcmp(argv[1], "exec") == 0 || strcmp(argv[1], "exec-sgx") == 0);
@@ -244,34 +244,14 @@ int exec_action(int argc, const char* argv[], const char* envp[])
         if ((cli_getopt(&argc, argv, "--user-mem-size", &mem_size) == 0) &&
             mem_size)
         {
-            char* endptr = NULL;
-            user_mem_pages = strtoul(mem_size, &endptr, 10);
-            if (endptr[0] == '\0')
-            {
-                // nothing to do... in bytes
-            }
-            else if (strcasecmp(endptr, "k") == 0)
-            {
-                user_mem_pages *= 1024;
-            }
-            else if (strcasecmp(endptr, "m") == 0)
-            {
-                user_mem_pages *= 1024;
-                user_mem_pages *= 1024;
-            }
-            else
+            if ((myst_expand_size_string_to_ulong(mem_size, &user_mem_size) !=
+                 0) ||
+                (myst_round_up(user_mem_size, PAGE_SIZE, &user_mem_size) != 0))
             {
                 _err("--user-mem-size <size> -- The <size> format is a number "
-                     "that is in bytes (<size>), in kilobytes (<size>k) or "
-                     "in megabytes (<size>m)");
+                     "that is in bytes (<size>), in kilobytes (<size>k), "
+                     "in megabytes (<size>m), or gigabytes (<size>g");
             }
-            if (myst_round_up(user_mem_pages, PAGE_SIZE, &user_mem_pages) != 0)
-            {
-                _err("Failed to round up memory size to page size");
-            }
-
-            // Now convert to number of pages
-            user_mem_pages /= PAGE_SIZE;
         }
 
         /* Get --app-config option if it exists, otherwise we use default values
@@ -349,7 +329,7 @@ int exec_action(int argc, const char* argv[], const char* envp[])
              rootfs,
              archive_path,
              commandline_config,
-             user_mem_pages)) == NULL)
+             user_mem_size)) == NULL)
     {
         _err("Creating region data failed.");
     }
