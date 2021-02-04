@@ -13,18 +13,13 @@ ROOTHASH=$(SUBOBJDIR)/roothash
 
 LIBCXX_TESTS_DIR=llvm-project/libcxx/test/
 
-ifdef ALLTESTS
-  TEST_FILE1 = builttests_exe.passed
-  TEST_FILE2 = builttests_exe2.passed
-  TEST_FILE3 = builttests_exe3.passed
-  STATUS=PASSED
-endif	
-
-
 ifdef FAILED
   TEST_FILE1 = builttests_exe.failed
   STATUS=FAILED
-  export TIMEOUT=10	
+  export TIMEOUT=10
+else
+  TEST_FILE = alltests.txt
+  STATUS=PASSED
 endif
 
 all: clean myst $(APPDIR) $(APPDIR)/bin/run $(ROOTFS) $(ROOTHASH)
