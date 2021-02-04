@@ -9,9 +9,9 @@
 #include <myst/cpio.h>
 #include <myst/eraise.h>
 #include <myst/ext2.h>
-#include <myst/hostfs.h>
 #include <myst/fssig.h>
 #include <myst/hex.h>
+#include <myst/hostfs.h>
 #include <myst/kernel.h>
 #include <myst/mount.h>
 #include <myst/pubkey.h>
