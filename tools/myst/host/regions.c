@@ -21,8 +21,7 @@
 
 /* ATTN: use common header */
 // 64MB = 64*1024*1024/4096
-// 1024MB = 1024*1024*1024/4096
-#define MMAN_DEFAULT_PAGES 262144
+#define MMAN_DEFAULT_PAGES 16384
 
 region_details _details = {0};
 

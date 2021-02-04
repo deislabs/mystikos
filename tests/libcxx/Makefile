@@ -87,10 +87,10 @@ RUN = $(RUNTEST) $(MYST_EXEC) $(OPTS) --roothash=$(ROOTHASH) $(ROOTFS)
 OPTS += --roothash=$(ROOTHASH)
 
 tests:
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run $(STATUS) $(TEST_FILE1)
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) --user-mem-size 1024m /bin/run $(STATUS) $(TEST_FILE1)
 ifdef ALLTESTS
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run $(STATUS) $(TEST_FILE2)
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run $(STATUS) $(TEST_FILE3)
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) --user-mem-size 1024m /bin/run $(STATUS) $(TEST_FILE2)
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) --user-mem-size 1024m /bin/run $(STATUS) $(TEST_FILE3)
 endif
 
 myst:
