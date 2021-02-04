@@ -29,9 +29,12 @@
 #include <myst/signal.h>
 #include <myst/strings.h>
 #include <myst/syscall.h>
+#include <myst/tee.h>
 #include <myst/thread.h>
 #include <myst/times.h>
 #include <myst/ttydev.h>
+
+#define WANT_TLS_CREDENTIAL "MYST_WANT_TLS_CREDENTIAL"
 
 static myst_fs_t* _fs;
 
@@ -199,6 +202,74 @@ done:
     return ret;
 }
 #endif /* MYST_ENABLE_EXT2FS */
+
+static const char* _getenv(const char** envp, const char* varname)
+{
+    const char* ret = NULL;
+    if (envp != NULL)
+    {
+        size_t len = strlen(varname);
+        for (const char** env = envp; *env != NULL; env++)
+        {
+            if (strncmp(*env, varname, len) == 0 && *(*env + len) == '=')
+            {
+                ret = *env + len + 1;
+                break;
+            }
+        }
+    }
+    return ret;
+}
+
+static int _create_tls_credentials()
+{
+    int ret = 1;
+    uint8_t* cert = NULL;
+    size_t cert_size = 0;
+    uint8_t* pkey = NULL;
+    size_t pkey_size = 0;
+
+    assert(_fs != NULL);
+
+    myst_file_t* file = NULL;
+    int flags = O_CREAT | O_WRONLY;
+
+    long params[6] =
+    {
+      (long)&cert,
+      (long)&cert_size,
+      (long)&pkey,
+      (long)&pkey_size
+    };
+    ECHECK(myst_tcall(MYST_TCALL_GEN_CREDS, params));
+
+    // Save the certificate
+    ECHECK((_fs->fs_open)(_fs, MYST_CERTIFICATE_PATH, flags, 0444, &file));
+    ECHECK((_fs->fs_write)(_fs, file, cert, cert_size));
+    ECHECK((_fs->fs_close)(_fs, file));
+
+    // Save the private key
+    ECHECK((_fs->fs_open)(_fs, MYST_PRIVATE_KEY_PATH, flags, 0444, &file));
+    ECHECK((_fs->fs_write)(_fs, file, pkey, pkey_size));
+    ECHECK((_fs->fs_close)(_fs, file));
+
+    ret = 0;
+
+done:
+    if (cert || pkey)
+    {
+        long params[6] =
+        {
+            (long)cert,
+            (long)cert_size,
+            (long)pkey,
+            (long)pkey_size
+        };
+        myst_tcall(MYST_TCALL_FREE_CREDS, params);
+    }
+
+    return ret;
+}
 
 static int _create_mem_file(
     const char* path,
@@ -388,6 +459,11 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         myst_panic("ext2 not supported");
 #endif /* MYST_ENABLE_EXT2FS */
     }
+
+    /* Generate TLS credentials if needed */
+    const char* want_tls_creds = _getenv(args->envp, WANT_TLS_CREDENTIAL);
+    if (want_tls_creds != NULL && want_tls_creds[0] == '1')
+        ECHECK(_create_tls_credentials());
 
     /* Create the main thread */
     ECHECK(_create_main_thread(args->event, &thread));

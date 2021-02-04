@@ -54,6 +54,7 @@ DIRS += futex
 DIRS += round
 DIRS += signal
 DIRS += libcxx
+DIRS += tlscert
 
 ifndef MYST_USE_OECACHE
 DIRS += curl
