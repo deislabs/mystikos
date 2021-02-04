@@ -21,8 +21,4 @@ endif
 
 INCLUDES = -I$(INCDIR) -I$(MBEDTLS_INCDIR) -I$(OE_INCDIR)
 
-ifdef MYST_DEBUG_MALLOC
-DEFINES += -DMYST_DEBUG_MALLOC
-endif
-
 include $(TOP)/rules.mak

@@ -161,6 +161,30 @@ include $(TOP)/config.mak
 
 ##==============================================================================
 ##
+## MYST_DEFINES
+##
+##==============================================================================
+
+MYST_DEFINES =
+
+ifdef MYST_ENABLE_GCOV
+MYST_DEFINES += -DMYST_ENABLE_GCOV
+endif
+
+ifdef MYST_ENABLE_LEAK_CHECKER
+MYST_DEFINES += -DMYST_ENABLE_LEAK_CHECKER
+endif
+
+ifdef MYST_ENABLE_HOSTFS
+MYST_DEFINES += -DMYST_ENABLE_HOSTFS
+endif
+
+ifdef MYST_ENABLE_EXT2FS
+MYST_DEFINES += -DMYST_ENABLE_EXT2FS
+endif
+
+##==============================================================================
+##
 ## Define $(EXEC) macro in terms of $(TARGET). This macro should be used in
 ## tests as follows:
 ##
