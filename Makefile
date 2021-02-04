@@ -24,6 +24,7 @@ endif
 
 DIRS += json
 DIRS += utils
+<<<<<<< HEAD
 
 ifdef MYST_ENABLE_EXT2FS
 DIRS += ext2
