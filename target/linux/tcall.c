@@ -593,11 +593,29 @@ long myst_tcall(long n, long params[6])
         case SYS_setsockopt:
         case SYS_getsockopt:
         case SYS_fchmod:
+        case SYS_open:
+        case SYS_stat:
+        case SYS_access:
+        case SYS_dup:
+        case SYS_pread64:
+        case SYS_pwrite64:
+        case SYS_link:
+        case SYS_unlink:
+        case SYS_mkdir:
+        case SYS_rmdir:
+        case SYS_getdents64:
+        case SYS_rename:
+        case SYS_truncate:
+        case SYS_ftruncate:
+        case SYS_symlink:
+        case SYS_lstat:
+        case SYS_readlink:
         {
             return _forward_syscall(n, x1, x2, x3, x4, x5, x6);
         }
         default:
         {
+            fprintf(stderr, "unhandled tcall: %ld\n", n);
             ERAISE(-EINVAL);
         }
     }

@@ -18,9 +18,13 @@ jobs:
   # 1h basic/unit tests
   # 1-2h solution tests(based on which are enabled)
   timeoutInMinutes: 300
-  pool: '1804CISGXagentpool'
+  pool: '1804DC4CCagentpool'
 
   steps:
+    # perform cleanup before starting pipeline
+    - script: |
+        sudo rm -rf /tmp/myst*
+      displayName: 'cleanup tmpfiles'
     # install minimum required package to run pipeline
     - script: |
         curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -

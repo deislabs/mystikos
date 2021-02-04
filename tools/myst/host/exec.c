@@ -25,6 +25,7 @@
 #include <myst/fssig.h>
 #include <myst/getopt.h>
 #include <myst/options.h>
+#include <myst/round.h>
 #include <myst/shm.h>
 #include <openenclave/host.h>
 
@@ -178,19 +179,28 @@ int exec_launch_enclave(
 #define USAGE_EXEC_SGX \
     "\
 \n\
-Usage: %s exec-sgx <rootfs> <application> <app_args...> [options]\n\
+Usage: %s exec-sgx <rootfs> [options] <application> <app_args...>\n\
 \n\
 Where:\n\
     exec-sgx      -- execute the specified <application> from within the\n\
                      <rootfs> with the <app_arguments> within an SGX enclave\n\
     <rootfs>      -- This is the CPIO archive (created via mkcpio) of the\n\
                      application directory\n\
-    <application> -- the application path from within <rootfs> to run within the SGX enclave\n\
+    <application> -- the application path from within <rootfs> to run within\n\
+                     the SGX enclave\n\
     <app_args>    -- the application arguments to pass through to\n\
                      <application>\n\
 \n\
-and <options> are one of:\n\
-    --help        -- this message\n\
+and [options] are one or more of:\n\
+    --help                          -- this message\n\
+    --user-mem-size <size>          -- for running an unsigned binary this overrides the\n\
+                                       default user memory size for an application.\n\
+                                       The <size> format is a number that is in\n\
+                                       bytes (<size>), in kilobytes (<size>k), \n\
+                                       in megabytes (<size>m), or gigabytes (<size>g)\n\
+    --app-config-path <config.json> -- specifies the configuration json file for running an\n\
+                                       unsigned binary. The file can be the same \n\
+                                       one used for the signing process.\n\
 \n\
 "
 
@@ -209,6 +219,8 @@ int exec_action(int argc, const char* argv[], const char* envp[])
     int return_status;
     char archive_path[PATH_MAX];
     char rootfs_path[] = "/tmp/mystXXXXXX";
+    uint64_t user_mem_size = 0;
+    const char* commandline_config = NULL;
 
     assert(strcmp(argv[1], "exec") == 0 || strcmp(argv[1], "exec-sgx") == 0);
 
@@ -227,7 +239,26 @@ int exec_action(int argc, const char* argv[], const char* envp[])
         if (cli_getopt(&argc, argv, "--export-ramfs", NULL) == 0)
             options.export_ramfs = true;
 
-        /* Get --export-ramfs option */
+        /* Get --user-mem-size option */
+        const char* mem_size = NULL;
+        if ((cli_getopt(&argc, argv, "--user-mem-size", &mem_size) == 0) &&
+            mem_size)
+        {
+            if ((myst_expand_size_string_to_ulong(mem_size, &user_mem_size) !=
+                 0) ||
+                (myst_round_up(user_mem_size, PAGE_SIZE, &user_mem_size) != 0))
+            {
+                _err("--user-mem-size <size> -- The <size> format is a number "
+                     "that is in bytes (<size>), in kilobytes (<size>k), "
+                     "in megabytes (<size>m), or gigabytes (<size>g");
+            }
+        }
+
+        /* Get --app-config option if it exists, otherwise we use default values
+         */
+        cli_getopt(&argc, argv, "--app-config-path", &commandline_config);
+
+        /* Get --help option */
         if ((cli_getopt(&argc, argv, "--help", NULL) == 0) ||
             (cli_getopt(&argc, argv, "-h", NULL) == 0))
         {
@@ -294,7 +325,11 @@ int exec_action(int argc, const char* argv[], const char* envp[])
     // note... we have no config, but this call will go looking in the enclave
     // if it is signed.
     if ((details = create_region_details_from_files(
-             program, rootfs, archive_path, NULL, 0)) == NULL)
+             program,
+             rootfs,
+             archive_path,
+             commandline_config,
+             user_mem_size)) == NULL)
     {
         _err("Creating region data failed.");
     }

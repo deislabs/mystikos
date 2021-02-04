@@ -3973,10 +3973,12 @@ done:
     return ret;
 }
 
-static int _ext2_mount(myst_fs_t* fs, const char* target)
+static int _ext2_mount(myst_fs_t* fs, const char* source, const char* target)
 {
     int ret = 0;
     ext2_t* ext2 = (ext2_t*)fs;
+
+    (void)source;
 
     if (!_ext2_valid(ext2) || !target)
         ERAISE(-EINVAL);

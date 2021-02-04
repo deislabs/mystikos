@@ -31,21 +31,18 @@ $(APPDIR)/target:
 	sudo docker run --rm -v $(APPDIR):/appdir $(IMG) bash -c "make -C appdir"
 	touch $(APPDIR)/target
 
-ifdef ALLTESTS
-  TEST_FILE = alltests.txt
-  STATUS=PASSED
-endif	
-
-
 ifdef FAILED
   TEST_FILE = failed.txt
   STATUS=FAILED
-  export TIMEOUT=10	
+  export TIMEOUT=10
+else
+  TEST_FILE = alltests.txt
+  STATUS=PASSED
 endif
 
 $(APPDIR)/bin/run: run.c
 	mkdir -p $(APPDIR)/bin
-	$(MUSL_GCC) -Wall -o $(APPDIR)/bin/run run.c 
+	$(MUSL_GCC) -Wall -o $(APPDIR)/bin/run run.c
 
 $(ROOTFS): run.c
 	sudo $(MYST) mkext2 --force $(APPDIR) $(ROOTFS)
