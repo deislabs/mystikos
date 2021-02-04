@@ -248,6 +248,7 @@ done:
     return ret;
 }
 
+#ifdef MYST_ENABLE_EXT2FS
 static const char* _find_arg(const char* args[], const char* name)
 {
     if (!args)
@@ -265,6 +266,7 @@ static const char* _find_arg(const char* args[], const char* name)
     /* not found */
     return NULL;
 }
+#endif /* MYST_ENABLE_EXT2FS */
 
 long myst_syscall_mount(
     const char* source,
@@ -296,6 +298,7 @@ long myst_syscall_mount(
         /* load the rootfs */
         ECHECK(myst_cpio_unpack(source, target));
     }
+#ifdef MYST_ENABLE_HOSTFS
     else if (strcmp(filesystemtype, "hostfs") == 0)
     {
         /* these arguments should be zero and null */
@@ -309,6 +312,8 @@ long myst_syscall_mount(
         ECHECK(myst_mount(fs, source, target));
         fs = NULL;
     }
+#endif /* MYST_ENABLE_HOSTFS */
+#ifdef MYST_ENABLE_EXT2FS
     else if (strcmp(filesystemtype, "ext2") == 0)
     {
         const char** args = (const char**)data;
@@ -325,6 +330,7 @@ long myst_syscall_mount(
         ECHECK(myst_mount(fs, source, target));
         fs = NULL;
     }
+#endif /* MYST_ENABLE_EXT2FS */
     else
     {
         ERAISE(-ENOTSUP);

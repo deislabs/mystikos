@@ -10,13 +10,7 @@ SOURCES = $(wildcard *.[cs])
 
 INCLUDES = -I$(INCDIR) -I$(BUILDDIR)/musl/include
 
-ifdef MYST_USE_THREAD_STACK
-DEFINES += -DMYST_USE_THREAD_STACK
-endif
-
-ifdef MYST_ENABLE_LEAK_CHECKER
-DEFINES += -DMYST_ENABLE_LEAK_CHECKER
-endif
+DEFINES = $(MYST_DEFINES)
 
 ifdef MYST_NO_RECVMSG_MITIGATION
 DEFINES += -DMYST_NO_RECVMSG_MITIGATION
@@ -60,7 +54,6 @@ CFLAGS += -Wno-parentheses
 
 ifdef MYST_ENABLE_GCOV
 CFLAGS += -fprofile-arcs -ftest-coverage
-DEFINES += -DMYST_ENABLE_GCOV
 endif
 
 LDFLAGS =
@@ -80,8 +73,14 @@ LDFLAGS += -Wl,-gc-sections
 endif
 LDFLAGS += -Wl,-emyst_enter_kernel
 
-LIBS += $(LIBDIR)/libmysthostfs.a
+ifdef MYST_ENABLE_EXT2FS
 LIBS += $(LIBDIR)/libmystext2.a
+endif
+
+ifdef MYST_ENABLE_HOSTFS
+LIBS += $(LIBDIR)/libmysthostfs.a
+endif
+
 LIBS += $(LIBDIR)/libmystutils.a
 
 ifdef MYST_ENABLE_GCOV

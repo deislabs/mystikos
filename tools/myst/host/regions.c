@@ -19,10 +19,6 @@
 #include "../shared.h"
 #include "utils.h"
 
-/* ATTN: use common header */
-// 64MB = 64*1024*1024/4096
-#define MMAN_DEFAULT_PAGES 16384
-
 region_details _details = {0};
 
 const region_details* create_region_details_from_package(
@@ -115,7 +111,7 @@ const region_details* create_region_details_from_package(
     _details.config.status = REGION_ITEM_BORROWED;
 
     if (user_pages == 0)
-        user_pages = MMAN_DEFAULT_PAGES;
+        user_pages = DEFAULT_MMAN_SIZE;
     _details.mman_size = user_pages * PAGE_SIZE;
 
     return &_details;
@@ -131,7 +127,7 @@ const region_details* create_region_details_from_files(
     const char* rootfs_path,
     const char* archive_path,
     const char* config_path,
-    size_t user_pages)
+    size_t user_mem_size)
 {
     if (myst_load_file(
             rootfs_path,
@@ -220,7 +216,7 @@ const region_details* create_region_details_from_files(
         if (parse_config_from_buffer(
                 _details.config.buffer, temp_size, &parsed_data) == 0)
         {
-            user_pages = parsed_data.user_pages;
+            user_mem_size = parsed_data.user_pages * PAGE_SIZE;
             free_config(&parsed_data);
         }
         else
@@ -246,7 +242,7 @@ const region_details* create_region_details_from_files(
                     _details.config.buffer_size,
                     &parsed_data) == 0)
             {
-                user_pages = parsed_data.user_pages;
+                user_mem_size = parsed_data.user_pages * PAGE_SIZE;
                 free_config(&parsed_data);
             }
             else
@@ -263,12 +259,12 @@ const region_details* create_region_details_from_files(
 
     elf_unload(&enc_elf);
 
-    if (user_pages == 0)
+    if (user_mem_size == 0)
     {
-        user_pages = MMAN_DEFAULT_PAGES;
+        user_mem_size = DEFAULT_MMAN_SIZE;
     }
 
-    _details.mman_size = user_pages * PAGE_SIZE;
+    _details.mman_size = user_mem_size;
 
     return &_details;
 }

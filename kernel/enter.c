@@ -175,6 +175,7 @@ done:
     return ret;
 }
 
+#ifdef MYST_ENABLE_EXT2FS
 static int _setup_ext2(const char* rootfs)
 {
     int ret = 0;
@@ -197,6 +198,7 @@ static int _setup_ext2(const char* rootfs)
 done:
     return ret;
 }
+#endif /* MYST_ENABLE_EXT2FS */
 
 static int _create_mem_file(
     const char* path,
@@ -376,9 +378,15 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     }
     else
     {
+#ifdef MYST_ENABLE_EXT2FS
+
         /* setup and mount the EXT2 file system */
         if (_setup_ext2(args->rootfs) != 0)
             ERAISE(-EINVAL);
+
+#else /* MYST_ENABLE_EXT2FS */
+        myst_panic("ext2 not supported");
+#endif /* MYST_ENABLE_EXT2FS */
     }
 
     /* Create the main thread */
@@ -441,11 +449,12 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         exit_status = thread->exit_status;
 
         /* release the fdtable */
-        if (thread->fdtable)
-        {
-            myst_fdtable_free(thread->fdtable);
-            thread->fdtable = NULL;
-        }
+        // ATTN: remove this once GH #9 fixed
+        // if (thread->fdtable)
+        // {
+        //     myst_fdtable_free(thread->fdtable);
+        //     thread->fdtable = NULL;
+        // }
 
         /* release signal related heap memory */
         myst_signal_free(thread);
