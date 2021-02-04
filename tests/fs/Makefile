@@ -30,8 +30,10 @@ test1: rootfs
 t: test2
 
 test2: ext2rootfs
+ifdef MYST_ENABLE_EXT2FS
 	$(MYST) fssig --roothash ext2rootfs > $(ROOTHASH)
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) ext2rootfs --roothash=$(ROOTHASH) /bin/fs
+endif
 
 rootfs: appdir
 	$(MYST) mkcpio appdir rootfs
