@@ -245,13 +245,15 @@ static int _create_tls_credentials()
 
     // Save the certificate
     ECHECK((_fs->fs_open)(_fs, MYST_CERTIFICATE_PATH, flags, 0444, &file));
-    ECHECK((_fs->fs_write)(_fs, file, cert, cert_size));
+    ECHECK((_fs->fs_write)(_fs, file, cert, cert_size) == (int64_t)cert_size);
     ECHECK((_fs->fs_close)(_fs, file));
+    file = NULL;
 
     // Save the private key
     ECHECK((_fs->fs_open)(_fs, MYST_PRIVATE_KEY_PATH, flags, 0444, &file));
-    ECHECK((_fs->fs_write)(_fs, file, pkey, pkey_size));
+    ECHECK((_fs->fs_write)(_fs, file, pkey, pkey_size) == (int64_t)pkey_size);
     ECHECK((_fs->fs_close)(_fs, file));
+    file = NULL;
 
     ret = 0;
 
@@ -266,6 +268,11 @@ done:
             (long)pkey_size
         };
         myst_tcall(MYST_TCALL_FREE_CREDS, params);
+    }
+
+    if (file)
+    {
+        _fs->fs_close(_fs, file);
     }
 
     return ret;
@@ -462,8 +469,18 @@ int myst_enter_kernel(myst_kernel_args_t* args)
 
     /* Generate TLS credentials if needed */
     const char* want_tls_creds = _getenv(args->envp, WANT_TLS_CREDENTIAL);
-    if (want_tls_creds != NULL && want_tls_creds[0] == '1')
-        ECHECK(_create_tls_credentials());
+    if (want_tls_creds != NULL)
+    {
+        if (strcmp(want_tls_creds, "1") == 0)
+            ECHECK(_create_tls_credentials());
+        else if (strcmp(want_tls_creds, "0") != 0)
+        {
+            myst_eprintf(
+                "Environment variable %s only accept 0 or 1\n",
+                WANT_TLS_CREDENTIAL);
+            ERAISE(-EINVAL);
+        }
+    }
 
     /* Create the main thread */
     ECHECK(_create_main_thread(args->event, &thread));

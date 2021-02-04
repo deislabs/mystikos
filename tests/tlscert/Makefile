@@ -12,7 +12,7 @@ rootfs: tlscert.c
 	$(MYST) mkcpio $(APPDIR) rootfs
 
 tests:
-	$(RUNTEST) $(MYST_EXEC) rootfs /tlscert $(OPTS)
+	$(RUNTEST) $(MYST_EXEC) rootfs --app-config-path config.json /tlscert $(OPTS)
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst
