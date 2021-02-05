@@ -13,6 +13,8 @@ ROOTHASH=$(SUBOBJDIR)/roothash
 
 LIBCXX_TESTS_DIR=llvm-project/libcxx/test/
 
+# batching passed testfiles here helps to remove large heap memory requirement from 3gb 
+# to 1gb
 ifdef FAILED
   TEST_FILE1 = builttests_exe.failed
   STATUS=FAILED
@@ -78,8 +80,6 @@ $(ROOTFS): run.c
 $(ROOTHASH): run.c
 	mkdir -p $(SUBOBJDIR)
 	$(MYST) fssig --roothash $(ROOTFS) > $(ROOTHASH)
-
-RUN = $(RUNTEST) $(MYST_EXEC) $(OPTS) --roothash=$(ROOTHASH) $(ROOTFS)
 
 OPTS += --roothash=$(ROOTHASH)
 
