@@ -8,12 +8,19 @@
 #include <sys/stat.h>
 #include <syscall.h>
 #include <unistd.h>
+#include <string.h>
 
 #include <myst/iov.h>
 #include <myst/tcall.h>
 #include "myst_t.h"
 
 #define RETURN(EXPR) return ((EXPR) == OE_OK ? ret : -EINVAL)
+
+// Force downsizing of ocall output lengths to prevent reading past the end
+// of the caller's buffer. See issue #83. This breaks API compatibility in
+// some cases. If such a case is encountered, undefine this macro termporarily
+// to diagnose the issue.
+#define DOWNSIZE_OCALL_OUTPUT_LENGTHS
 
 static long _read(int fd, void* buf, size_t count)
 {
@@ -302,6 +309,11 @@ static long _accept4(
             goto done;
         }
 
+#ifdef DOWNSIZE_OCALL_OUTPUT_LENGTHS
+        if (n > *addrlen)
+            n = *addrlen;
+#endif
+
         /* note: n may legitimately be bigger due to truncation */
         *addrlen = n;
     }
@@ -445,12 +457,25 @@ static long _recvmsg(int sockfd, struct msghdr* msg, int flags)
             goto done;
         }
 
+#ifdef DOWNSIZE_OCALL_OUTPUT_LENGTHS
+        if (namelen > msg->msg_namelen)
+            namelen = msg->msg_namelen;
+#endif
+
         /* note: namelen may legitimately be bigger due to truncation */
         msg->msg_namelen = msg->msg_name ? namelen : 0;
     }
 
     /* guard against host returning too large a value for msg_controllen */
     {
+#ifdef DOWNSIZE_OCALL_OUTPUT_LENGTHS
+        if (controllen > msg->msg_controllen)
+        {
+            controllen = msg->msg_controllen;
+            msg->msg_flags |= MSG_CTRUNC;
+        }
+#endif
+
         /* note: controllen may legitimately be bigger due to truncation */
         msg->msg_controllen = msg->msg_control ? controllen : 0;
     }
@@ -458,6 +483,9 @@ static long _recvmsg(int sockfd, struct msghdr* msg, int flags)
     /* guard against host returning a size larger than the buffer */
     if (retval > len)
     {
+        // ATTN: this implementation fails if returned length is greater than
+        // buffer length, although this is legal according to the recvmsg()
+        // documentation.
         ret = -EINVAL;
         goto done;
     }
@@ -531,7 +559,12 @@ static long _getsockname(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
             goto done;
         }
 
+#ifdef DOWNSIZE_OCALL_OUTPUT_LENGTHS
         /* note: n may legitimately be bigger due to truncation */
+        if (n > *addrlen)
+            n = *addrlen;
+#endif
+
         *addrlen = n;
     }
 
@@ -575,6 +608,11 @@ static long _getpeername(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
             ret = -EINVAL;
             goto done;
         }
+
+#ifdef DOWNSIZE_OCALL_OUTPUT_LENGTHS
+        if (n > *addrlen)
+            n = *addrlen;
+#endif
 
         /* note: n may legitimately be bigger due to truncation */
         *addrlen = n;
@@ -740,8 +778,62 @@ static long _poll(struct pollfd* fds, nfds_t nfds, int timeout)
 {
     long ret = 0;
     long retval;
+    struct pollfd buf[256]; /* use this buffer if large enough */
+    struct pollfd* copy; /* pointer to buf or heap-allocated memory */
 
-    if (myst_poll_ocall(&retval, fds, nfds, timeout) != OE_OK)
+    if (!fds && nfds > 0)
+    {
+        ret = -EFAULT;
+        goto done;
+    }
+
+    /* make copy of fds[] to prevent modification of fd and events fields */
+    if (fds)
+    {
+        size_t size;
+
+        /* find the size of fds[] in bytes and check for overflow */
+        if (__builtin_mul_overflow(nfds, sizeof(struct pollfd), &size))
+        {
+            ret = -EINVAL;
+            goto done;
+        }
+
+        /* use local buffer if possible to avoid unecessary heap allocation */
+        if (size <= sizeof(buf))
+        {
+            /* size could be zero but that is acceptable */
+            copy = buf;
+        }
+        else if (!(copy = malloc(size)))
+        {
+            ret = -ENOMEM;
+            goto done;
+        }
+
+        if (size)
+            memcpy(copy, fds, size);
+    }
+    else
+    {
+        /* support null fds[] array: example: poll(NULL, 0, 1000) */
+        copy = NULL;
+    }
+
+    if (myst_poll_ocall(&retval, copy, nfds, timeout) != OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    /* copy back the revents field */
+    for (nfds_t i = 0; i < nfds; i++)
+    {
+        fds[i].revents = copy[i].revents;
+    }
+
+    /* guard against return value that is bigger than nfds */
+    if (retval >= 0 && (nfds_t)retval > nfds)
     {
         ret = -EINVAL;
         goto done;
@@ -750,6 +842,10 @@ static long _poll(struct pollfd* fds, nfds_t nfds, int timeout)
     ret = retval;
 
 done:
+
+    if (copy && copy != buf)
+        free(copy);
+
     return ret;
 }
 
