@@ -1,12 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include "config.h"
 #include <memory.h>
+#include <myst/file.h>
 #include <myst/round.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include "myst/file.h"
+
+#include "config.h"
 
 #define CONFIG_RAISE(CONFIG_ERR)                            \
     do                                                      \
