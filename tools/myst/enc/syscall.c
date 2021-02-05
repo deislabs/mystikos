@@ -783,7 +783,7 @@ static long _poll(struct pollfd* fds, nfds_t nfds, int timeout)
 
     if (!fds && nfds > 0)
     {
-        ret = -EINVAL;
+        ret = -EFAULT;
         goto done;
     }
 
