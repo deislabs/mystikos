@@ -18,7 +18,7 @@ ifdef FAILED
   STATUS=FAILED
   export TIMEOUT=10
 else
-  TEST_FILE1 = builttests_exe.passed
+  TEST_FILE1 = builttests_exe1.passed
   TEST_FILE2 = builttests_exe2.passed
   TEST_FILE3 = builttests_exe3.passed
   STATUS=PASSED
@@ -63,7 +63,7 @@ $(APPDIR)/bin/run: run.c
 
 $(APPDIR):
 	$(APPBUILDER) sagoel/libcxx_10x:0.1
-	cp $(CURDIR)/builttests_exe.passed $(APPDIR)
+	cp $(CURDIR)/builttests_exe1.passed $(APPDIR)
 	cp $(CURDIR)/builttests_exe2.passed $(APPDIR)
 	cp $(CURDIR)/builttests_exe3.passed $(APPDIR)
 	cp $(CURDIR)/builttests_exe.failed $(APPDIR)
