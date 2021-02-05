@@ -12,6 +12,7 @@
 #include <myst/strings.h>
 #include <myst/tcall.h>
 #include <myst/thread.h>
+#include <myst/signal.h>
 
 long myst_tcall_random(void* data, size_t size)
 {
@@ -63,7 +64,10 @@ long myst_tcall_wait(uint64_t event, const struct timespec* timeout)
     long params[6] = {0};
     params[0] = (long)event;
     params[1] = (long)timeout;
-    return myst_tcall(MYST_TCALL_WAIT, params);
+    long ret = myst_tcall(MYST_TCALL_WAIT, params);
+    // check for signals
+    myst_signal_process(myst_thread_self());
+    return ret;
 }
 
 long myst_tcall_wake(uint64_t event)
