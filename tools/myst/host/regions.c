@@ -111,8 +111,9 @@ const region_details* create_region_details_from_package(
     _details.config.status = REGION_ITEM_BORROWED;
 
     if (user_pages == 0)
-        user_pages = DEFAULT_MMAN_SIZE;
-    _details.mman_size = user_pages * PAGE_SIZE;
+        _details.mman_size = DEFAULT_MMAN_SIZE;
+    else
+        _details.mman_size = user_pages * PAGE_SIZE;
 
     return &_details;
 }
