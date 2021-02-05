@@ -223,7 +223,7 @@ static const char* _getenv(const char** envp, const char* varname)
 
 static int _create_tls_credentials()
 {
-    int ret = 1;
+    int ret = -EINVAL;
     uint8_t* cert = NULL;
     size_t cert_size = 0;
     uint8_t* pkey = NULL;
