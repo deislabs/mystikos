@@ -211,7 +211,17 @@ static void _load_regions(
         }
     }
 
-    if (!(r->mman_data = _map_mmap_region(DEFAULT_MMAN_SIZE)))
+    if (user_mem_size == 0)
+    {
+        r->mman_size = DEFAULT_MMAN_SIZE;
+    }
+    else
+    {
+        /* command line parsing gave pages. convert to size */
+        r->mman_size = user_mem_size;
+    }
+
+    if (!(r->mman_data = _map_mmap_region(r->mman_size)))
         _err("failed to map mmap region");
 
     /* Apply relocations to the libmystkernel.so image */
@@ -222,16 +232,6 @@ static void _load_regions(
             r->libmystkernel.reloc_size) != 0)
     {
         _err("failed to apply relocations to libmystkernel.so\n");
-    }
-
-    if (user_mem_size == 0)
-    {
-        r->mman_size = DEFAULT_MMAN_SIZE;
-    }
-    else
-    {
-        /* command line parsing gave pages. convert to size */
-        r->mman_size = user_mem_size;
     }
 }
 
