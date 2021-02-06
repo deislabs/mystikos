@@ -56,6 +56,7 @@ DIRS += signal
 DIRS += libcxx
 DIRS += tlscert
 DIRS += wake_and_kill
+DIRS += network
 
 ifndef MYST_USE_OECACHE
 DIRS += curl
