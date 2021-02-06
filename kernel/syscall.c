@@ -1890,27 +1890,59 @@ long myst_syscall_prlimit64(
 long myst_syscall_sendfile(int out_fd, int in_fd, off_t *offset, size_t count)
 {
     long ret = 0;
+    ssize_t nwritten = 0;
+    off_t original_offset;
 
     if (out_fd < 0 || in_fd < 0)
         ERAISE(-EINVAL);
 
+    /* if offset is not null, set file offset to this value */
     if (offset)
     {
+        /* get the current offset */
+        original_offset = lseek(in_fd, 0, SEEK_CUR);
+        ECHECK(original_offset);
+
+        /* seek the new offset */
+        ECHECK(lseek(in_fd, *offset, SEEK_SET));
     }
-    else
+
+    /* copy from in_fd to out_fd */
     {
         ssize_t n;
         char buf[BUFSIZ];
-        size_t r = (count < sizeof(buf)) ? count : sizeof(buf);
+        size_t r = count;
 
-        while (r > 0 && (n = read(in_fd, buf, r)) > 0)
+        while (r > 0 && (n = read(in_fd, buf, sizeof(buf))) > 0)
         {
             ssize_t m = myst_syscall_write(out_fd, buf, n);
             ECHECK(m);
 
-            r -= n;
+            if (m != n)
+                ERAISE(EIO);
+
+            nwritten += m;
+            r -= m;
         }
     }
+
+    /* if offset is null, restore the original offset */
+    if (offset)
+    {
+        /* get the final offset */
+        off_t final_offset = lseek(in_fd, 0, SEEK_CUR);
+        ECHECK(final_offset);
+
+        if (*offset + nwritten != final_offset)
+            ERAISE(-EIO);
+
+        /* restore the original offset */
+        ECHECK(lseek(in_fd, original_offset, SEEK_SET));
+        *offset = final_offset;
+    }
+
+    /* return the number of bytes written to out_fd */
+    ret = nwritten;
 
 done:
     return ret;
@@ -4294,9 +4326,10 @@ long myst_syscall(long n, long params[6])
             int in_fd = (int)x2;
             off_t* offset = (off_t*)x3;
             size_t count = (size_t)x4;
+            off_t off = offset ? *offset : 0;
 
-            _strace(n, "out_fd=%d in_fd=%d offset=%p count=%zu",
-                out_fd, in_fd, offset, count);
+            _strace(n, "out_fd=%d in_fd=%d offset=%p *offset=%ld count=%zu",
+                out_fd, in_fd, offset, off, count);
 
             long ret = myst_syscall_sendfile(out_fd, in_fd, offset, count);
             BREAK(_return(n, ret));
