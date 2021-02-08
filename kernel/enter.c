@@ -419,15 +419,6 @@ int myst_enter_kernel(myst_kernel_args_t* args)
 
     myst_times_start();
 
-    /* dump argc/argv */
-    if (args->trace_syscalls)
-    {
-        myst_eprintf("=== argc/argv:\n");
-
-        for (size_t i = 0; i < args->argc + 1; i++)
-            myst_eprintf("argv[%zu]=\"%s\"\n", i, args->argv[i]);
-    }
-
     /* Run the main program: wait for SYS_exit to perform longjmp() */
     if (myst_setjmp(&thread->jmpbuf) == 0)
     {
