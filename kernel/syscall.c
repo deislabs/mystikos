@@ -3170,7 +3170,10 @@ long myst_syscall(long n, long params[6])
         case SYS_getresgid:
             break;
         case SYS_getpgid:
-            break;
+        {
+            _strace(n, NULL);
+            BREAK(_return(n, MYST_DEFAULT_GID));
+        }
         case SYS_setfsuid:
             break;
         case SYS_setfsgid:

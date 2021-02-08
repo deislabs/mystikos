@@ -18,16 +18,12 @@ endif
 
 CLEAN = appdir rootfs ext2rootfs ramfs
 
-DEPENDS = deps
-
 include $(TOP)/rules.mak
 
-tests: test1 test2
+tests: program test1 test2
 
 test1: rootfs
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/fs
-
-t: test2
 
 test2: ext2rootfs
 	$(MYST) fssig --roothash ext2rootfs > $(ROOTHASH)
@@ -37,11 +33,8 @@ rootfs: appdir
 	$(MYST) mkcpio appdir rootfs
 
 ext2rootfs: appdir
-	sudo $(MYST) mkext2 appdir ext2rootfs
+	sudo $(MYST) mkext2 --force appdir ext2rootfs
 
 appdir: $(SUBBINDIR)/fs
 	mkdir -p appdir/bin
 	cp $(SUBBINDIR)/fs appdir/bin/fs
-
-deps:
-	$(MAKE) -C ../../kernel

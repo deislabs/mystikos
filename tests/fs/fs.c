@@ -13,8 +13,10 @@
 #include <sys/random.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/sendfile.h>
 #include <sys/uio.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 const char alpha[] = "abcdefghijklmnopqrstuvwxyz";
 const char ALPHA[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -549,7 +551,110 @@ static void test_fstatat(void)
     _passed(__FUNCTION__);
 }
 
-int main(void)
+void test_sendfile(bool test_offset)
+{
+    const char in_path[] = "/sendfile_in";
+    const char out_path[] = "/sendfile_out";
+    int out_fd;
+    int in_fd;
+    const size_t N = 4096;
+    size_t n = 0;
+    int ret;
+    off_t nn = (sizeof(alpha) * N) / 2;
+    off_t offset;
+    off_t* offset_ptr;
+    struct stat st;
+
+    assert(N % 2 == 0);
+
+    if (test_offset)
+    {
+        offset = nn;
+        offset_ptr = &offset;
+    }
+    else
+    {
+        offset = 0;
+        offset_ptr = NULL;
+    }
+
+    /* create the input file */
+    {
+        assert((in_fd = open(in_path, O_CREAT | O_WRONLY, 0)) >= 0);
+
+        for (size_t i = 0; i < N; i++)
+        {
+            assert(write(in_fd, alpha, sizeof(alpha)) == sizeof(alpha));
+            n += sizeof(alpha);
+        }
+
+        assert(close(in_fd) == 0);
+    }
+
+    /* use sendfile() to create the output file */
+    {
+        assert((in_fd = open(in_path, O_RDONLY, 0)) >= 0);
+        assert((out_fd = open(out_path, O_CREAT | O_WRONLY, 0)) >= 0);
+
+        ret = sendfile(out_fd, in_fd, offset_ptr, n);
+
+        if (test_offset)
+            assert(ret == nn);
+        else
+            assert(ret == n);
+
+        if (test_offset)
+            assert(offset == n);
+
+        assert(close(in_fd) == 0);
+        assert(close(out_fd) == 0);
+
+        if (test_offset)
+            assert(stat(out_path, &st) == 0 && st.st_size == nn);
+        else
+            assert(stat(out_path, &st) == 0 && st.st_size == n);
+    }
+
+    /* check the size of the output file */
+    if (test_offset)
+        assert(stat(out_path, &st) == 0 && st.st_size == nn);
+    else
+        assert(stat(out_path, &st) == 0 && st.st_size == n);
+
+    /* check the content of the output file */
+    {
+        assert((out_fd = open(out_path, O_RDONLY, 0)) >= 0);
+        size_t m = 0;
+        size_t size;
+
+        if (test_offset)
+            size = N / 2;
+        else
+            size = N;
+
+        for (size_t i = 0; i < size; i++)
+        {
+            char buf[sizeof(alpha)];
+            assert(read(out_fd, buf, sizeof(buf)) == sizeof(buf));
+            assert(memcmp(buf, alpha, sizeof(buf)) == 0);
+            m += sizeof(alpha);
+        }
+
+        assert(close(out_fd) == 0);
+
+        if (test_offset)
+            assert(nn == m);
+        else
+            assert(n == m);
+    }
+
+    assert(unlink(in_path) == 0);
+    assert(unlink(out_path) == 0);
+
+    _passed(__FUNCTION__);
+}
+
+int main(int argc, const char* argv[])
 {
     test_fstatat();
     test_readv();
@@ -565,6 +670,10 @@ int main(void)
     test_symlink();
     test_tmpfile();
     test_pread_pwrite();
+    test_sendfile(true);
+    test_sendfile(false);
+
+    printf("=== passed all tests (%s)\n", argv[0]);
 
     return 0;
 }
