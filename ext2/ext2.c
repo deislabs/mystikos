@@ -3836,11 +3836,11 @@ int ext2_readdir(myst_fs_t* fs, ext2_dir_t* dir, struct dirent** ent_out)
 
                 /* Set struct dirent.d_name */
                 {
-                    size_t n1 = sizeof(dir->ent.d_name) - 1;
+                    size_t n1 = sizeof(dir->ent.d_name);
                     size_t n2 = de->name_len;
-                    size_t n = _min_size(n1, n2);
+                    size_t n = _min_size(n1 - 1, n2);
                     memcpy(dir->ent.d_name, de->name, n);
-                    dir->ent.d_name[n] = '\0';
+                    memset(dir->ent.d_name + n, '\0', n1 - n);
                 }
 
                 /* Success! */
@@ -3973,10 +3973,12 @@ done:
     return ret;
 }
 
-static int _ext2_mount(myst_fs_t* fs, const char* target)
+static int _ext2_mount(myst_fs_t* fs, const char* source, const char* target)
 {
     int ret = 0;
     ext2_t* ext2 = (ext2_t*)fs;
+
+    (void)source;
 
     if (!_ext2_valid(ext2) || !target)
         ERAISE(-EINVAL);
@@ -4184,6 +4186,9 @@ static int _ext2_getdents64(
     if (count == 0)
         goto done;
 
+    /* set next relative to offset in case rewinddir() was called */
+    file->dir.next = (uint8_t*)file->dir.data + file->offset;
+
     for (size_t i = 0; i < n; i++)
     {
         int r;
@@ -4201,6 +4206,9 @@ static int _ext2_getdents64(
         *dirp = *ent;
         bytes += sizeof(struct dirent);
         dirp++;
+
+        /* update the file offset */
+        file->offset = (uint8_t*)file->dir.next - (uint8_t*)file->dir.data;
     }
 
     ret = (int)bytes;

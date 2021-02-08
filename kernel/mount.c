@@ -9,7 +9,9 @@
 #include <myst/cpio.h>
 #include <myst/eraise.h>
 #include <myst/ext2.h>
+#include <myst/fssig.h>
 #include <myst/hex.h>
+#include <myst/hostfs.h>
 #include <myst/kernel.h>
 #include <myst/mount.h>
 #include <myst/pubkey.h>
@@ -21,7 +23,6 @@
 #include <myst/strings.h>
 #include <myst/syscall.h>
 #include <myst/verity.h>
-#include <myst/fssig.h>
 
 #define MOUNT_TABLE_SIZE 8
 
@@ -121,14 +122,14 @@ done:
     return ret;
 }
 
-int myst_mount(myst_fs_t* fs, const char* target)
+int myst_mount(myst_fs_t* fs, const char* source, const char* target)
 {
     int ret = -1;
     bool locked = false;
     myst_path_t target_buf;
     mount_table_entry_t mount_table_entry = {0};
 
-    if (!fs || !target)
+    if (!fs || !source || !target)
         ERAISE(-EINVAL);
 
     /* Normalize the target path */
@@ -176,7 +177,7 @@ int myst_mount(myst_fs_t* fs, const char* target)
     }
 
     /* Tell the file system that it has been mounted */
-    ECHECK((*fs->fs_mount)(fs, target));
+    ECHECK((*fs->fs_mount)(fs, source, target));
 
     /* Assign and initialize new mount point. */
     {
@@ -247,6 +248,7 @@ done:
     return ret;
 }
 
+#ifdef MYST_ENABLE_EXT2FS
 static const char* _find_arg(const char* args[], const char* name)
 {
     if (!args)
@@ -264,6 +266,7 @@ static const char* _find_arg(const char* args[], const char* name)
     /* not found */
     return NULL;
 }
+#endif /* MYST_ENABLE_EXT2FS */
 
 long myst_syscall_mount(
     const char* source,
@@ -289,12 +292,28 @@ long myst_syscall_mount(
         ECHECK(myst_init_ramfs(&fs));
 
         /* perform the mount */
-        ECHECK(myst_mount(fs, target));
+        ECHECK(myst_mount(fs, source, target));
         fs = NULL;
 
         /* load the rootfs */
         ECHECK(myst_cpio_unpack(source, target));
     }
+#ifdef MYST_ENABLE_HOSTFS
+    else if (strcmp(filesystemtype, "hostfs") == 0)
+    {
+        /* these arguments should be zero and null */
+        if (mountflags || data)
+            ERAISE(-EINVAL);
+
+        /* create a new ramfs instance */
+        ECHECK(myst_init_hostfs(&fs));
+
+        /* perform the mount */
+        ECHECK(myst_mount(fs, source, target));
+        fs = NULL;
+    }
+#endif /* MYST_ENABLE_HOSTFS */
+#ifdef MYST_ENABLE_EXT2FS
     else if (strcmp(filesystemtype, "ext2") == 0)
     {
         const char** args = (const char**)data;
@@ -308,9 +327,10 @@ long myst_syscall_mount(
         ECHECK(myst_load_fs(source, key, &fs));
 
         /* perform the mount */
-        ECHECK(myst_mount(fs, target));
+        ECHECK(myst_mount(fs, source, target));
         fs = NULL;
     }
+#endif /* MYST_ENABLE_EXT2FS */
     else
     {
         ERAISE(-ENOTSUP);

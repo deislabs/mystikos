@@ -94,11 +94,11 @@ typedef struct _json_parser_options
 } json_parser_options_t;
 
 typedef void (*json_trace_t)(
-        json_parser_t* parser,
-        const char* file,
-        unsigned int line,
-        const char* func,
-        const char* message);
+    json_parser_t* parser,
+    const char* file,
+    unsigned int line,
+    const char* func,
+    const char* message);
 
 struct _json_parser
 {

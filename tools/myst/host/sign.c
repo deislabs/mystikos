@@ -5,11 +5,11 @@
 #include <errno.h>
 #include <libgen.h>
 #include <limits.h>
+#include <myst/getopt.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <myst/getopt.h>
 #include <sys/user.h>
 #include <unistd.h>
 
@@ -19,10 +19,10 @@
 #include <myst/types.h>
 #include <openenclave/host.h>
 #include "../config.h"
+#include "archive.h"
 #include "myst_u.h"
 #include "regions.h"
 #include "utils.h"
-#include "archive.h"
 
 // Pulled in from liboesign.a
 // Actual OE signer code from oesign tool.
@@ -375,7 +375,8 @@ int _sign(int argc, const char* argv[])
         unlink(temp_oeconfig_file);
         close(fd);
         _err(
-            "Failed to generate OE configuration file from Mystikos configuration "
+            "Failed to generate OE configuration file from Mystikos "
+            "configuration "
             "file %s",
             config_file);
     }
@@ -400,8 +401,13 @@ int _sign(int argc, const char* argv[])
         _err("Creating region data failed.");
     }
 
-    if (copy_files_to_signing_directory(sign_dir, program_file,
-            rootfs_file, archive, config_file, details) != 0)
+    if (copy_files_to_signing_directory(
+            sign_dir,
+            program_file,
+            rootfs_file,
+            archive,
+            config_file,
+            details) != 0)
     {
         unlink(temp_oeconfig_file);
         _err("Failed to copy files to signing directory");

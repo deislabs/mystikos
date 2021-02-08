@@ -13,70 +13,43 @@ while other TEEs may be supported in future releases.
   computing base (TCB).
 - Simplify re-targeting to other TEE architectures through a plugin
   architecture.
-- Publish under a non-restrictive [open-source license](LICENSE).
 
 ## Architecture
 
 **Mystikos** consists of the following components.
-- C-runtime based on [musl libc](https://www.musl-libc.org)
-- kernel
-- kernel-target interface (TCALL)
+- a C-runtime based on [musl libc](https://musl.libc.org)
+- a "lib-os like" kernel
+- the kernel-target interface (TCALL)
+- a command-line interface
+- some related utilities
 
-So far, two target implementations are provided:
+Today, two target implementations are provided:
 - The SGX target (based on the [Open Enclave SDK](https://github.com/openenclave/openenclave))
 - The Linux target (for verification on non-SGX platforms)
 
 The minimalist kernel of Mystikos manages essential computing resources
 inside the TEE, such as CPU/threads, memory, files, networks, etc. It handles
-most of the syscalls that a normal operating system would handle (with limits).
-Many syscalls are handled directly by the kernel while others are delegated to
-the target.
+most of the syscalls that a normal operating system would handle (with
+[limits](SYSCALL-LIMITATIONS)).  Many syscalls are handled directly by the
+kernel while others are delegated to the target.
 
 ![](./arch.png)
 
 # Install or build from source
 
-Binary downloads of the Mystikos releases can be found on the Releases page
-(coming). After downloading the tarball, install it with the following commands:
+Binary downloads of Mystikos will be made available in the future. 
 
-```
-tar xvfz <tarball-name> /opt
-export PATH=$PATH:/opt/mystikos/bin
-```
+To build Mystikos from source, follow the [build instructions](BUILDING).
 
-To remove a previously installed Mystikos, simply
-`sudo rm -rf /opt/mystikos`.
+**NOTE** that Mystikos can only be built on **Ubuntu 18.04** due to current
+limitations in Open Enclave SDK.
 
-Mystikos can be built on an Ubuntu 18.04 machine with or without SGX
-capability.
 
-## Install the prerequisites
+# Try it out
 
-```
-sudo apt update
-sudo apt install -y git make libmbedtls-dev docker.io
-sudo systemctl start docker && sudo systemctl enable docker && sudo chmod 666 /var/run/docker.sock
-```
-
-## Clone, build, and install Mystikos
-
-```
-git clone https://msazure.visualstudio.com/DefaultCollection/One/_git/OpenLibOS
-cd Mystikos && make
-sudo make install
-export PATH=$PATH:/opt/mystikos/bin
-```
-
-The build process will automatically install all prerequisite for OE SDK first,
-including the Intel SGX driver and PSW, and then build the project. Finally,
-it installs the build outputs to /opt/mystikos.
-
-Mystikos can be used to run applications on a non-SGX Ubuntu 18.04 machine
-while running with the Linux target (simulation mode). Obviously you need an
-SGX-capable machine to try out the SGX target. For that, we recommend either an
-[ACC VM](https://aka.ms/accgetstarted) or a bare-metal machine with SGX support.
-
-# Documents
+Below, you will find a series of guides, increasing in complexity, which
+demonstrate various capabilities and use-cases for Mystikos. Go ahead, give it
+a try!
 
 - Getting started with a native C program: [click here](doc/user-getting-started-c.md)
 - Getting started with a containerized C++ program: [click here](doc/user-getting-started-docker-c++.md)
@@ -88,6 +61,11 @@ SGX-capable machine to try out the SGX target. For that, we recommend either an
 - Deep dive into Mystikos architecture: [coming]
 - How to plug a TEE into Mystikos: [coming]
 - Multi-processing and multi-threading in Mystikos and limitations: [coming]
+
+# Additional Documentation
+
+Here are some additional documents, which we should organize better in the future.
+
 - Notable unsupported kernel features and syscalls: [coming]
 - Signing and packaging applications with Mystikos: [click here](doc/sign-package.md)
 - Release management: [click here](doc/releasing.md)
@@ -96,12 +74,21 @@ SGX-capable machine to try out the SGX target. For that, we recommend either an
 
 This project is released under the [MIT License](LICENSE).
 
+# Reporting a Vulnerability
+
+Security issues and bugs should be reported privately via email to the
+[Microsoft Security Response Center](https://www.microsoft.com/en-us/msrc)
+(MSRC) at secure@microsoft.com. You should receive a response within 24 hours.
+If for some reason you do not, please follow up via email to ensure we received
+your original message.
+
 # Contributing to Mystikos
 
-You can contribute to Mystikos in several ways by:
+See the [Contributing Guide](CONTRIBUTING).
 
-- contributing code. Please read developer's [jumpstart guide](doc/dev-jumpstart.md) first,
-- filing issues with github issues, or
-- by simply providing feedback via github issues or email mystikos@service.microsoft.com.
+# Code of Conduct
 
-This project has adopted the [Microsoft Code of Conduct](https://opensource.microsoft.com/codeofconduct/). All participants are expected to abide by these basic tenets to ensure that the community is a welcoming place for everyone.
+This project has adopted the
+[Microsoft Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
+All participants are expected to abide by these basic tenets to ensure that the
+community is a welcoming place for everyone.

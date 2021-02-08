@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <netinet/in.h>
 #include <pthread.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,7 +16,6 @@
 #include <sys/un.h>
 #include <time.h>
 #include <unistd.h>
-#include <stdbool.h>
 
 static const uint16_t port = 12345;
 

@@ -2,10 +2,10 @@
 // Licensed under the MIT License.
 
 #include <assert.h>
-#include <myst/elf.h>
-#include <myst/file.h>
 #include <limits.h>
 #include <malloc.h>
+#include <myst/elf.h>
+#include <myst/file.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

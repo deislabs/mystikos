@@ -227,7 +227,6 @@ long myst_signal_deliver(
         // previous delivery to be handled.
         while (thread->signal.pending & mask)
             ;
-
         thread->signal.siginfos[signum - 1] = siginfo;
         thread->signal.pending |= mask;
 
@@ -235,7 +234,7 @@ long myst_signal_deliver(
     }
     else
     {
-        free(siginfo);  // Free the siginfo object if not delivered.
+        free(siginfo); // Free the siginfo object if not delivered.
     }
 
 done:

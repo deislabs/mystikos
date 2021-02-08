@@ -1,15 +1,12 @@
+#include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include <errno.h>
 
-#include <myst/hex.h>
 #include <myst/eraise.h>
+#include <myst/hex.h>
 
-void myst_hexdump(
-    const char* label,
-    const void* data,
-    size_t size)
+void myst_hexdump(const char* label, const void* data, size_t size)
 {
     const uint8_t* p = data;
 

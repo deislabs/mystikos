@@ -13,25 +13,25 @@
 #include <myst/exec.h>
 #include <myst/fdtable.h>
 #include <myst/file.h>
+#include <myst/fs.h>
 #include <myst/fsgs.h>
+#include <myst/hex.h>
 #include <myst/initfini.h>
 #include <myst/kernel.h>
-#include <myst/hex.h>
 #include <myst/mmanutils.h>
 #include <myst/mount.h>
 #include <myst/options.h>
 #include <myst/panic.h>
 #include <myst/printf.h>
 #include <myst/process.h>
+#include <myst/pubkey.h>
 #include <myst/ramfs.h>
-#include <myst/fs.h>
 #include <myst/signal.h>
 #include <myst/strings.h>
 #include <myst/syscall.h>
 #include <myst/thread.h>
 #include <myst/times.h>
 #include <myst/ttydev.h>
-#include <myst/pubkey.h>
 
 static myst_fs_t* _fs;
 
@@ -163,7 +163,7 @@ static int _setup_ramfs(void)
         ERAISE(-EINVAL);
     }
 
-    if (myst_mount(_fs, "/") != 0)
+    if (myst_mount(_fs, "/", "/") != 0)
     {
         myst_eprintf("cannot mount root file system\n");
         ERAISE(-EINVAL);
@@ -175,18 +175,19 @@ done:
     return ret;
 }
 
+#ifdef MYST_ENABLE_EXT2FS
 static int _setup_ext2(const char* rootfs)
 {
     int ret = 0;
-    const char* key = NULL; /* not automatic key-release support yet */
+    const char* key = NULL; /* no automatic key-release support yet */
 
     if (myst_load_fs(rootfs, key, &_fs) != 0)
     {
-        myst_eprintf("failed load the ext2 rootfs: %s\n", rootfs);
+        myst_eprintf("failed to load the ext2 rootfs: %s\n", rootfs);
         ERAISE(-EINVAL);
     }
 
-    if (myst_mount(_fs, "/") != 0)
+    if (myst_mount(_fs, rootfs, "/") != 0)
     {
         myst_eprintf("cannot mount root file system\n");
         ERAISE(-EINVAL);
@@ -197,6 +198,7 @@ static int _setup_ext2(const char* rootfs)
 done:
     return ret;
 }
+#endif /* MYST_ENABLE_EXT2FS */
 
 static int _create_mem_file(
     const char* path,
@@ -261,6 +263,14 @@ static int _create_main_thread(uint64_t event, myst_thread_t** thread_out)
     thread->tid = pid;
     thread->event = event;
     thread->target_td = myst_get_fsbase();
+    thread->main.thread_group_lock = MYST_SPINLOCK_INITIALIZER;
+    thread->thread_lock = &thread->main.thread_group_lock;
+
+    // Initial process list is just us. All new processes will be inserted in
+    // the list. Dont need to set these as they are already NULL, but being here
+    // helps to track where main threads are created and torn down!
+    // thread->main.prev_process_thread = NULL;
+    // thread->main.next_process_thread = NULL;
 
     /* allocate the new fdtable for this process */
     ECHECK(myst_fdtable_create(&thread->fdtable));
@@ -368,9 +378,15 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     }
     else
     {
+#ifdef MYST_ENABLE_EXT2FS
+
         /* setup and mount the EXT2 file system */
         if (_setup_ext2(args->rootfs) != 0)
             ERAISE(-EINVAL);
+
+#else /* MYST_ENABLE_EXT2FS */
+        myst_panic("ext2 not supported");
+#endif /* MYST_ENABLE_EXT2FS */
     }
 
     /* Create the main thread */
@@ -385,7 +401,8 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     }
 
     /* Unpack the CPIO from memory */
-    if (use_cpio && myst_cpio_mem_unpack(
+    if (use_cpio &&
+        myst_cpio_mem_unpack(
             args->rootfs_data, args->rootfs_size, "/", _create_mem_file) != 0)
     {
         myst_eprintf("failed to unpack root file system\n");
@@ -441,11 +458,12 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         exit_status = thread->exit_status;
 
         /* release the fdtable */
-        if (thread->fdtable)
-        {
-            myst_fdtable_free(thread->fdtable);
-            thread->fdtable = NULL;
-        }
+        // ATTN: remove this once GH #9 fixed
+        // if (thread->fdtable)
+        // {
+        //     myst_fdtable_free(thread->fdtable);
+        //     thread->fdtable = NULL;
+        // }
 
         /* release signal related heap memory */
         myst_signal_free(thread);
@@ -460,8 +478,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         /* release the exec copy of the CRT data */
         if (thread->main.exec_crt_data)
         {
-            myst_munmap(
-                thread->main.exec_crt_data, thread->main.exec_crt_size);
+            myst_munmap(thread->main.exec_crt_data, thread->main.exec_crt_size);
             thread->main.exec_crt_data = NULL;
             thread->main.exec_crt_size = 0;
         }

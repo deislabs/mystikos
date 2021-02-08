@@ -24,7 +24,10 @@
 **==============================================================================
 */
 
-#define MYST_CPIO_MAGIC_INITIALIZER { '0', '7', '0', '7', '0', '1' }
+#define MYST_CPIO_MAGIC_INITIALIZER  \
+    {                                \
+        '0', '7', '0', '7', '0', '1' \
+    }
 
 #define MYST_CPIO_PATH_MAX 256
 
@@ -77,10 +80,7 @@ ssize_t myst_cpio_read_data(myst_cpio_t* cpio, void* data, size_t size);
 
 int myst_cpio_write_entry(myst_cpio_t* cpio, const myst_cpio_entry_t* entry);
 
-ssize_t myst_cpio_write_data(
-    myst_cpio_t* cpio,
-    const void* data,
-    size_t size);
+ssize_t myst_cpio_write_data(myst_cpio_t* cpio, const void* data, size_t size);
 
 int myst_cpio_pack(const char* source, const char* target);
 

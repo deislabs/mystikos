@@ -9,13 +9,11 @@ static __inline__ bool myst_is_big_endian(void)
 #if defined(__i386) || defined(__x86_64)
     return false;
 #else
-    typedef union un
-    {
+    typedef union un {
         unsigned short x;
         unsigned char bytes[2];
-    }
-    un;
-    static un u = { 0xABCD };
+    } un;
+    static un u = {0xABCD};
     return u.bytes[0] == 0xAB ? true : false;
 #endif
 }

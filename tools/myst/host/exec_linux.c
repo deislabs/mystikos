@@ -13,23 +13,20 @@
 #include <time.h>
 
 #include <myst/args.h>
+#include <myst/cpio.h>
 #include <myst/elf.h>
 #include <myst/eraise.h>
 #include <myst/file.h>
 #include <myst/kernel.h>
 #include <myst/reloc.h>
 #include <myst/round.h>
+#include <myst/strings.h>
 #include <myst/tcall.h>
 #include <myst/thread.h>
-#include <myst/cpio.h>
-#include <myst/strings.h>
 
+#include "archive.h"
 #include "exec_linux.h"
 #include "utils.h"
-#include "archive.h"
-
-/* standardize this value! */
-#define DEFAULT_MMAN_SIZE (256 * 1024 * 1024)
 
 #define USAGE_FORMAT \
     "\
@@ -46,7 +43,12 @@ Where:\n\
                      <application>\n\
 \n\
 and <options> are one of:\n\
-    --help        -- this message\n\
+    --help                  -- this message\n\
+    --user-mem-size <size>  -- for running an unsigned binary this overrides the\n\
+                               default user memory size for an application.\n\
+                               The <size> format is a number that is in\n\
+                               bytes (<size>), in kilobytes (<size>k),\n\
+                               in megabytes (<size>m), or gigabytes (<size>g)\n\
 \n\
 "
 
@@ -69,7 +71,11 @@ struct regions
     size_t mman_size;
 };
 
-static void _get_options(int* argc, const char* argv[], struct options* options)
+static void _get_options(
+    int* argc,
+    const char* argv[],
+    struct options* options,
+    size_t* user_mem_size)
 {
     /* Get --trace-syscalls option */
     if (cli_getopt(argc, argv, "--trace-syscalls", NULL) == 0 ||
@@ -88,6 +94,28 @@ static void _get_options(int* argc, const char* argv[], struct options* options)
 
         if ((val = getenv("MYST_ENABLE_GCOV")) && strcmp(val, "1") == 0)
             options->export_ramfs = true;
+    }
+
+    // Retrieve this setting as it is used in sgx option and we just ignore it
+    // here
+    const char* mem_size = NULL;
+    if ((cli_getopt(argc, argv, "--user-mem-size", &mem_size) == 0) && mem_size)
+    {
+        if ((myst_expand_size_string_to_ulong(mem_size, user_mem_size) != 0) ||
+            (myst_round_up(*user_mem_size, PAGE_SIZE, user_mem_size) != 0))
+        {
+            _err("--user-mem-size <size> -- The <size> format is a number "
+                 "that is in bytes (<size>), in kilobytes (<size>k), "
+                 "in megabytes (<size>m), or gigabytes (<size>g");
+        }
+    }
+
+    // Currently app config is not used on linux. Ignoring it here.
+    const char* temp_setting = NULL;
+    if (cli_getopt(argc, argv, "--app-config-path", &temp_setting) == 0)
+    {
+        printf(
+            "Warning: --app-config-path option is ignored for Linux target\n");
     }
 }
 
@@ -108,6 +136,7 @@ static void* _map_mmap_region(size_t length)
 static void _load_regions(
     const char* rootfs,
     const char* archive,
+    size_t user_mem_size,
     struct regions* r)
 {
     char path[PATH_MAX];
@@ -195,7 +224,15 @@ static void _load_regions(
         _err("failed to apply relocations to libmystkernel.so\n");
     }
 
-    r->mman_size = DEFAULT_MMAN_SIZE;
+    if (user_mem_size == 0)
+    {
+        r->mman_size = DEFAULT_MMAN_SIZE;
+    }
+    else
+    {
+        /* command line parsing gave pages. convert to size */
+        r->mman_size = user_mem_size;
+    }
 }
 
 static void _release_regions(struct regions* r)
@@ -361,11 +398,12 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
     size_t num_roothashes = 0;
     char archive_path[PATH_MAX];
     char rootfs_path[] = "/tmp/mystXXXXXX";
+    size_t user_mem_size = 0;
 
     (void)program_arg;
 
     /* Get the command-line options */
-    _get_options(&argc, argv, &options);
+    _get_options(&argc, argv, &options, &user_mem_size);
 
     /* Get --pubkey=filename options */
     get_archive_options(
@@ -416,7 +454,7 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
     }
 
     /* Load the regions into memory */
-    _load_regions(rootfs_arg, archive_path, &regions);
+    _load_regions(rootfs_arg, archive_path, user_mem_size, &regions);
 
     unlink(archive_path);
 

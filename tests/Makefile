@@ -2,10 +2,12 @@ TOP=$(abspath ..)
 include $(TOP)/defs.mak
 
 DIRS =
-DIRS += ext2
 
+ifdef MYST_ENABLE_EXT2FS
+DIRS += ext2
 DIRS += libc
-DIRS += libc2
+endif
+
 DIRS += args
 DIRS += echo
 DIRS += alpine
@@ -66,6 +68,10 @@ include $(TOP)/rules.mak
 
 DIRS += epoll
 DIRS += oe
+
+ifeq ($(MYST_ENABLE_HOSTFS),1)
+DIRS += hostfs
+endif
 
 __tests:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) tests $(NL) )

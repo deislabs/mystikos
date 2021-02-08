@@ -4,15 +4,14 @@
 #ifndef _MYST_RAWBLKDEV_H
 #define _MYST_RAWBLKDEV_H
 
-#include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 typedef struct myst_block
 {
     uint8_t data[512];
-}
-myst_block_t;
+} myst_block_t;
 
 int myst_open_block_device(const char* path, bool read_only);
 

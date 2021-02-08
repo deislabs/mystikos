@@ -43,6 +43,7 @@
 #include <myst/fsgs.h>
 #include <myst/gcov.h>
 #include <myst/hex.h>
+#include <myst/hostfs.h>
 #include <myst/id.h>
 #include <myst/initfini.h>
 #include <myst/inotifydev.h>
@@ -2525,6 +2526,32 @@ long myst_syscall(long n, long params[6])
 
             _strace(n, "addr=%lx length=%zu(%lx)", (long)addr, length, length);
 
+            // if the ummapped region overlaps the CRT thread descriptor, then
+            // postpone the unmap because unmapping now would invalidate the
+            // stack canary and would raise __stack_chk_fail(); this occurs
+            // when munmap() is called from __unmapself()
+            if (crt_td && addr && length)
+            {
+                const uint8_t* p = (const uint8_t*)crt_td;
+                const uint8_t* pend = p + sizeof(myst_td_t);
+                const uint8_t* q = (const uint8_t*)addr;
+                const uint8_t* qend = q + length;
+
+                if ((p >= q && p < qend) || (pend >= q && pend < qend))
+                {
+                    myst_thread_t* thread = myst_thread_self();
+
+                    /* unmap this later when the thread exits */
+                    if (thread)
+                    {
+                        thread->unmapself_addr = addr;
+                        thread->unmapself_length = length;
+                    }
+
+                    BREAK(_return(n, 0));
+                }
+            }
+
             BREAK(_return(n, (long)myst_munmap(addr, length)));
         }
         case SYS_brk:
@@ -2851,14 +2878,25 @@ long myst_syscall(long n, long params[6])
             BREAK(_return(n, ret));
         }
         case SYS_kill:
-            break;
+        {
+            int pid = (int)x1;
+            int sig = (int)x2;
+
+            _strace(n, "pid=%d sig=%d", pid, sig);
+
+            long ret = myst_syscall_kill(pid, sig);
+            BREAK(_return(n, ret));
+        }
         case SYS_uname:
         {
             struct utsname* buf = (struct utsname*)x1;
 
-            MYST_STRLCPY(buf->sysname, "Mystikos");
-            MYST_STRLCPY(buf->nodename, "myst");
-            MYST_STRLCPY(buf->release, "1.0.0");
+            // We are emulating Linux syscalls. 5.4.0 is the LTS release we
+            // try to emulate. The release number should be updated when
+            // Mystikos adapts to syscall API changes in future Linux releases.
+            MYST_STRLCPY(buf->sysname, "Linux");
+            MYST_STRLCPY(buf->nodename, "TEE");
+            MYST_STRLCPY(buf->release, "5.4.0");
             MYST_STRLCPY(buf->version, "Mystikos 1.0.0");
             MYST_STRLCPY(buf->machine, "x86_64");
 
@@ -3609,7 +3647,23 @@ long myst_syscall(long n, long params[6])
         case SYS_semtimedop:
             break;
         case SYS_fadvise64:
-            break;
+        {
+            int fd = (int)x1;
+            loff_t offset = (loff_t)x2;
+            loff_t len = (loff_t)x3;
+            int advice = (int)x4;
+
+            _strace(
+                n,
+                "fd=%d offset=%ld len=%ld advice=%d",
+                fd,
+                offset,
+                len,
+                advice);
+
+            /* ATTN: no-op */
+            BREAK(_return(n, 0));
+        }
         case SYS_timer_create:
             break;
         case SYS_timer_settime:
@@ -4499,6 +4553,54 @@ done:
 time_t time(time_t* tloc)
 {
     return myst_syscall_time(tloc);
+}
+
+long myst_syscall_kill(int pid, int sig)
+{
+    long ret = 0;
+    myst_thread_t* thread = myst_thread_self();
+    myst_thread_t* process_thread = myst_find_process_thread(thread);
+
+    myst_spin_lock(&myst_process_list_lock);
+
+    // If not this thread search back through list of processes
+    while ((process_thread->pid != pid) &&
+           (process_thread->main.prev_process_thread != NULL))
+    {
+        process_thread = process_thread->main.prev_process_thread;
+    }
+
+    // If still not found search forwards through processes
+    if (process_thread->pid != pid)
+    {
+        process_thread = process_thread;
+
+        while ((process_thread->pid != pid) &&
+               (process_thread->main.next_process_thread != NULL))
+        {
+            process_thread = process_thread->main.next_process_thread;
+        }
+    }
+
+    myst_spin_unlock(&myst_process_list_lock);
+
+    // Did we finally find it?
+    if (process_thread->pid == pid)
+    {
+        // Deliver signal
+        siginfo_t* siginfo = calloc(1, sizeof(siginfo_t));
+        siginfo->si_code = SI_USER;
+        siginfo->si_signo = sig;
+        siginfo->si_pid = thread->pid;
+        siginfo->si_uid = MYST_DEFAULT_UID;
+
+        ret = myst_signal_deliver(process_thread, sig, siginfo);
+    }
+    else
+        ERAISE(-ESRCH);
+
+done:
+    return ret;
 }
 
 long myst_syscall_isatty(int fd)

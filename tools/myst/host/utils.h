@@ -6,6 +6,9 @@
 
 #include <limits.h>
 
+// default size used for user app memory
+#define DEFAULT_MMAN_SIZE (64 * 1024 * 1024)
+
 // print error and exit process with 1
 void _err(const char* fmt, ...);
 
@@ -30,5 +33,7 @@ int cli_getopt(
     const char* argv[],
     const char* opt,
     const char** optarg);
+
+int myst_expand_size_string_to_ulong(const char* size_string, size_t* size);
 
 #endif /* _HOST_MYST_UTILS_H */

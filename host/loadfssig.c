@@ -12,7 +12,7 @@ int myst_load_fssig(const char* path, myst_fssig_t* fssig)
     myst_fssig_t buf;
 
     if (fssig)
-        memset(fssig, 0, sizeof (myst_fssig_t));
+        memset(fssig, 0, sizeof(myst_fssig_t));
 
     if (!path || !fssig)
         ERAISE(-EINVAL);

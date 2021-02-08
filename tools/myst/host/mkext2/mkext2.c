@@ -25,7 +25,8 @@ typedef enum _oe_result
 
 static bool _trace = false;
 
-#define USAGE "\n\
+#define USAGE \
+    "\n\
 Usage: %s %s [options] <directory> <disk-image>\n\
 \n\
 Synopsis:\n\
@@ -58,16 +59,7 @@ Options:\n\
 
 static void _print_usage(const char* arg0, const char* arg1)
 {
-    printf(
-        USAGE,
-        arg0,
-        arg1,
-        arg0,
-        arg1,
-        arg0,
-        arg1,
-        arg0,
-        arg1);
+    printf(USAGE, arg0, arg1, arg0, arg1, arg0, arg1, arg0, arg1);
 }
 
 static int _getopt(
@@ -641,7 +633,7 @@ int fssig_action(int argc, const char* argv[])
     if (isatty(STDOUT_FILENO))
     {
         color = "\e[32m"; /* green */
-        reset = "\e[0m"; /* reset */
+        reset = "\e[0m";  /* reset */
     }
 
     const char* image = argv[2];

@@ -35,6 +35,8 @@
 
 myst_thread_t* __myst_main_thread;
 
+myst_spinlock_t myst_process_list_lock = MYST_SPINLOCK_INITIALIZER;
+
 /* The total number of threads running (including the main thread) */
 static _Atomic(size_t) _num_threads = 1;
 
@@ -336,6 +338,7 @@ myst_thread_t* myst_find_thread(int tid)
     if (target == NULL)
     {
         // Search backward in the doubly linked list for a match
+        myst_spin_lock(thread->thread_lock);
         for (t = thread->group_prev; t != NULL; t = t->group_prev)
         {
             if (t->tid == tid)
@@ -344,6 +347,7 @@ myst_thread_t* myst_find_thread(int tid)
                 break;
             }
         }
+        myst_spin_unlock(thread->thread_lock);
     }
 
     return target;
@@ -479,8 +483,16 @@ long myst_run_thread(uint64_t cookie, uint64_t event)
 
                 if (r != 0)
                 {
-                    myst_eprintf("%s(%u): myst_munmap() failed",
-                        __FILE__, __LINE__);
+                    myst_eprintf(
+                        "%s(%u): myst_munmap() failed", __FILE__, __LINE__);
+                }
+
+                // unmap the memory containing the thread descriptor; set by
+                // __unmapself() when it invoke SYS_unmap.
+                if (thread->unmapself_addr)
+                {
+                    myst_munmap(
+                        thread->unmapself_addr, thread->unmapself_length);
                 }
 
                 /* unmap any mapping made by the process */
@@ -489,6 +501,9 @@ long myst_run_thread(uint64_t cookie, uint64_t event)
         }
 
         myst_zombify_thread(thread);
+
+        /* Send a SIGCHLD to the parent process */
+        myst_syscall_kill(thread->ppid, SIGCHLD);
 
         {
             myst_assume(_num_threads > 1);
@@ -569,10 +584,13 @@ static long _syscall_clone(
         child->pid = parent->pid;
         child->crt_td = newtls;
         child->run_thread = myst_run_thread;
+        child->thread_lock = parent->thread_lock;
 
         // Link up parent, child, and the previous head child of the parent,
         // if there is one, in the same thread group.
+
         myst_thread_t* prev_head_child = parent->group_next;
+        myst_spin_lock(parent->thread_lock);
         parent->group_next = child;
         child->group_prev = parent;
         if (prev_head_child)
@@ -580,6 +598,7 @@ static long _syscall_clone(
             child->group_next = prev_head_child;
             prev_head_child->group_prev = child;
         }
+        myst_spin_unlock(parent->thread_lock);
 
         // Inherit signal dispositions
         child->signal.sigactions = parent->signal.sigactions;
@@ -635,10 +654,12 @@ static long _syscall_clone_vfork(
         child->magic = MYST_THREAD_MAGIC;
         child->fdtable = parent->fdtable;
         child->sid = parent->sid;
-        child->ppid = parent->ppid;
+        child->ppid = parent->pid;
         child->pid = myst_generate_tid();
         child->tid = child->pid;
         child->run_thread = myst_run_thread;
+        child->main.thread_group_lock = MYST_SPINLOCK_INITIALIZER;
+        child->thread_lock = &child->main.thread_group_lock;
 
         if (myst_fdtable_clone(parent->fdtable, &child->fdtable) != 0)
             ERAISE(-ENOMEM);
@@ -651,6 +672,23 @@ static long _syscall_clone_vfork(
         child->clone.child_stack = child_stack;
         child->clone.flags = flags;
         child->clone.arg = arg;
+
+        myst_thread_t* parent_main_thread = parent;
+        if (!myst_is_process_thread(parent))
+            parent_main_thread = myst_find_process_thread(parent);
+
+        myst_assume(parent_main_thread != NULL);
+
+        /* add this main process thread to the process linked list */
+        myst_spin_lock(&myst_process_list_lock);
+        child->main.next_process_thread =
+            parent_main_thread->main.next_process_thread;
+        if (parent_main_thread->main.next_process_thread)
+            parent_main_thread->main.next_process_thread->main
+                .prev_process_thread = child;
+        child->main.prev_process_thread = parent_main_thread;
+        parent_main_thread->main.next_process_thread = child;
+        myst_spin_unlock(&myst_process_list_lock);
     }
 
     cookie = _get_cookie(child);
@@ -700,35 +738,44 @@ size_t myst_kill_thread_group()
     size_t count = 0;
 
     // Find the tail of the doubly linked list.
+    myst_spin_lock(thread->thread_lock);
     for (t = thread; t != NULL; t = t->group_next)
     {
         if (t->group_next == NULL)
             tail = t;
     }
+    myst_spin_unlock(thread->thread_lock);
     assert(tail);
 
     // Send termination signal to all running child threads.
+    myst_spin_lock(thread->thread_lock);
     for (t = tail; t != NULL; t = t->group_prev)
     {
         if (!myst_is_process_thread(t) && t->status == MYST_RUNNING)
         {
             count++;
+            myst_spin_unlock(thread->thread_lock);
             myst_signal_deliver(t, SIGKILL, 0);
             // Wake up the thread from futex_wait if necessary.
             if (t->signal.cond_wait)
                 myst_cond_signal(t->signal.cond_wait);
+            myst_spin_lock(thread->thread_lock);
         }
     }
+    myst_spin_unlock(thread->thread_lock);
 
     // Wait ~1 second for the child threads to hurry up and exit.
     int i = 0;
     while (i++ < 10)
     {
+        myst_spin_lock(thread->thread_lock);
         for (t = tail; t != NULL; t = t->group_prev)
         {
             if (t->status != MYST_KILLED && t->status != MYST_ZOMBIE)
                 break;
         }
+        myst_spin_unlock(thread->thread_lock);
+
         if (t == NULL)
             break;
 

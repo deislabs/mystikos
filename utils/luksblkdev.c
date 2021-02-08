@@ -5,9 +5,9 @@
 #include <string.h>
 
 #include <myst/blkdev.h>
+#include <myst/byteorder.h>
 #include <myst/eraise.h>
 #include <myst/luks.h>
-#include <myst/byteorder.h>
 
 // clang-format off
 #define LUKS_MAGIC_INITIALIZER { 'L', 'U', 'K', 'S', 0xba, 0xbe }

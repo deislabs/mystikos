@@ -7,11 +7,12 @@ CFLAGS = -m64 -g -fPIC -Werror
 
 INCLUDES = -I$(INCDIR)
 
+DEFINES = $(MYST_DEFINES)
+
 SOURCES = $(wildcard *.c) $(wildcard glibc/*.c)
 
 ifdef MYST_ENABLE_GCOV
 CFLAGS += -fprofile-arcs -ftest-coverage
-DEFINES = -DMYST_ENABLE_GCOV
 endif
 
 LDFLAGS1 = -Wl,--sort-section,alignment -Wl,--sort-common -Wl,--gc-sections -Wl,--hash-style=both -Wl,--no-undefined -Wl,--exclude-libs=ALL -nostdlib -nodefaultlibs -nostartfiles

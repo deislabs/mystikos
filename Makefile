@@ -24,7 +24,15 @@ endif
 
 DIRS += json
 DIRS += utils
+
+ifdef MYST_ENABLE_EXT2FS
 DIRS += ext2
+endif
+
+ifdef MYST_ENABLE_HOSTFS
+DIRS += hostfs
+endif
+
 DIRS += host
 DIRS += target
 DIRS += kernel

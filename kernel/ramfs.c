@@ -23,7 +23,6 @@
 #include <myst/round.h>
 #include <myst/strings.h>
 #include <myst/trace.h>
-#include <myst/paths.h>
 
 #define BLKSIZE 512
 
@@ -47,7 +46,8 @@ typedef struct ramfs
     myst_fs_t base;
     uint64_t magic;
     inode_t* root;
-    char target[PATH_MAX]; /* the directory this file system is mounted on */
+    char source[PATH_MAX]; /* source argument to myst_mount() */
+    char target[PATH_MAX]; /* target argument to myst_mount() */
 } ramfs_t;
 
 static bool _ramfs_valid(const ramfs_t* ramfs)
@@ -71,7 +71,7 @@ struct inode
     uint32_t mode;    /* Type and mode */
     size_t nlink;     /* number of hard links to this inode (excludes ".") */
     size_t nopens;    /* number of times file is currently opened */
-    myst_buf_t buf;  /* file or directory data */
+    myst_buf_t buf;   /* file or directory data */
     const void* data; /* set by myst_ramfs_set_buf() */
 };
 
@@ -541,7 +541,7 @@ done:
     return ret;
 }
 
-static int _fs_mount(myst_fs_t* fs, const char* target)
+static int _fs_mount(myst_fs_t* fs, const char* source, const char* target)
 {
     int ret = 0;
     ramfs_t* ramfs = (ramfs_t*)fs;
@@ -549,10 +549,11 @@ static int _fs_mount(myst_fs_t* fs, const char* target)
     if (!_ramfs_valid(ramfs) || !target)
         ERAISE(-EINVAL);
 
-    if (strlen(target) >= sizeof(ramfs->target))
+    if (myst_strlcpy(ramfs->target, target, PATH_MAX) >= PATH_MAX)
         ERAISE(-ENAMETOOLONG);
 
-    myst_strlcpy(ramfs->target, target, sizeof(ramfs->target));
+    if (myst_strlcpy(ramfs->source, source, PATH_MAX) >= PATH_MAX)
+        ERAISE(-ENAMETOOLONG);
 
 done:
     return ret;
@@ -1430,7 +1431,7 @@ done:
     return ret;
 }
 
-ssize_t _fs_readlink(
+static ssize_t _fs_readlink(
     myst_fs_t* fs,
     const char* pathname,
     char* buf,

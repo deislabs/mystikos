@@ -1,4 +1,4 @@
-FROM alpine
+FROM alpine:3.7
 
 RUN apk add bash build-base automake \
     autoconf linux-headers glib bison flex gawk xz 

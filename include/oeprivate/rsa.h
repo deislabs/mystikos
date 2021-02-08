@@ -54,6 +54,7 @@ oe_result_t oe_rsa_public_key_verify(
 oe_result_t oe_rsa_public_key_get_modulus(
     const oe_rsa_public_key_t* public_key,
     uint8_t* buffer,
-    size_t* buffer_size);;
+    size_t* buffer_size);
+;
 
 #endif /* _MYST_OEPRIVATE_RSA_H */
