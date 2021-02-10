@@ -29,6 +29,7 @@
 #include <myst/shm.h>
 #include <openenclave/host.h>
 
+#include "../shared.h"
 #include "archive.h"
 #include "myst_u.h"
 #include "regions.h"

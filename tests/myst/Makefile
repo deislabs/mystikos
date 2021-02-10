@@ -13,4 +13,6 @@ endif
 DIRS += exec-package
 DIRS += dump-package
 
+DIRS += cwd-config
+
 include $(TOP)/rules.mak
