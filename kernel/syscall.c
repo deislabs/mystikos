@@ -1131,29 +1131,32 @@ done:
     return ret;
 }
 
-static char _cwd[PATH_MAX] = "/";
-static myst_spinlock_t _cwd_lock = MYST_SPINLOCK_INITIALIZER;
-
 long myst_syscall_chdir(const char* path)
 {
     long ret = 0;
+    myst_thread_t* thread = myst_thread_self();
+    myst_thread_t* process_thread = myst_find_process_thread(thread);
     char buf[PATH_MAX];
     char buf2[PATH_MAX];
 
-    myst_spin_lock(&_cwd_lock);
+    myst_spin_lock(&process_thread->main.cwd_lock);
 
     if (!path)
         ERAISE(-EINVAL);
 
-    ECHECK(myst_path_absolute_cwd(_cwd, path, buf, sizeof(buf)));
+    ECHECK(myst_path_absolute_cwd(
+        process_thread->main.cwd, path, buf, sizeof(buf)));
     ECHECK(myst_normalize(buf, buf2, sizeof(buf2)));
 
-    if (MYST_STRLCPY(_cwd, buf2) >= sizeof(_cwd))
-        ERAISE(-ERANGE);
+    char* tmp = strdup(buf2);
+    if (tmp == NULL)
+        ERAISE(-ENOMEM);
+    free(process_thread->main.cwd);
+    process_thread->main.cwd = tmp;
 
 done:
 
-    myst_spin_unlock(&_cwd_lock);
+    myst_spin_unlock(&process_thread->main.cwd_lock);
 
     return ret;
 }
@@ -1161,20 +1164,22 @@ done:
 long myst_syscall_getcwd(char* buf, size_t size)
 {
     long ret = 0;
+    myst_thread_t* thread = myst_thread_self();
+    myst_thread_t* process_thread = myst_find_process_thread(thread);
 
-    myst_spin_lock(&_cwd_lock);
+    myst_spin_lock(&process_thread->main.cwd_lock);
 
     if (!buf)
         ERAISE(-EINVAL);
 
-    if (myst_strlcpy(buf, _cwd, size) >= size)
+    if (myst_strlcpy(buf, process_thread->main.cwd, size) >= size)
         ERAISE(-ERANGE);
 
     ret = (long)buf;
 
 done:
 
-    myst_spin_unlock(&_cwd_lock);
+    myst_spin_unlock(&process_thread->main.cwd_lock);
 
     return ret;
 }
@@ -1377,6 +1382,7 @@ long myst_syscall_execve(
 {
     long ret = 0;
     const char** argv = NULL;
+    myst_thread_t* current_thread = myst_thread_self();
 
     /* ATTN: the filename should be resolved if not an absolute path */
     if (!filename || filename[0] != '/')
@@ -1398,7 +1404,7 @@ long myst_syscall_execve(
 
     /* only returns on failure */
     if (myst_exec(
-            myst_thread_self(),
+            current_thread,
             __myst_kernel_args.crt_data,
             __myst_kernel_args.crt_size,
             __myst_kernel_args.crt_reloc_data,

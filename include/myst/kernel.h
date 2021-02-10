@@ -45,6 +45,9 @@ typedef struct myst_kernel_args
     size_t envc;
     const char** envp;
 
+    /* current working directory for app */
+    const char* cwd;
+
     /* The read-write-execute memory management pages */
     void* mman_data;
     size_t mman_size;

@@ -1,0 +1,21 @@
+{
+    // Mystikos configuration version number
+    "version": "0.1",
+
+    // OpenEnclave specific values
+    "Debug": 1,
+    "KernelMemSize": "8m",
+    "StackMemSize": "256k",
+    "NumUserThreads": 2,
+    "ProductID": 1,
+    "SecurityVersion": 1,
+
+    // Mystikos specific values
+    "UserMemSize": "30m",
+    "ApplicationPath": "/bin/hello",
+    "CurrentWorkingDirectory": "/test1",
+    "ApplicationParameters": ["Enclave-red", "Enclave-blue", "Enclave-green", "Enclave-yellow", "Enclave-pink"],
+    "HostApplicationParameters": true,
+    "EnvironmentVariables": ["ENC-ENVP-1=Enclave_envp_1", "ENC-ENVP-2=Enclave_envp_1"],
+    "HostEnvironmentVariables": ["TESTNAME"]
+}

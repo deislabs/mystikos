@@ -30,6 +30,7 @@ typedef struct _config_parsed_data_t
     size_t enclave_environment_variables_count;
     char** host_environment_variables;
     size_t host_environment_variables_count;
+    char* cwd;
 
     // Internal data
     void* buffer;

@@ -9,10 +9,10 @@
 #include <myst/fsgs.h>
 #include <myst/luks.h>
 #include <myst/sha256.h>
+#include <myst/signal.h>
 #include <myst/strings.h>
 #include <myst/tcall.h>
 #include <myst/thread.h>
-#include <myst/signal.h>
 
 long myst_tcall_random(void* data, size_t size)
 {
