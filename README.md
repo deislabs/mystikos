@@ -30,7 +30,7 @@ Today, two target implementations are provided:
 The minimalist kernel of Mystikos manages essential computing resources
 inside the TEE, such as CPU/threads, memory, files, networks, etc. It handles
 most of the syscalls that a normal operating system would handle (with
-[limits](SYSCALL-LIMITATIONS)).  Many syscalls are handled directly by the
+[limits](SYSCALL-LIMITATIONS.md)).  Many syscalls are handled directly by the
 kernel while others are delegated to the target.
 
 ![](./arch.png)
@@ -39,7 +39,7 @@ kernel while others are delegated to the target.
 
 Binary downloads of Mystikos will be made available in the future. 
 
-To build Mystikos from source, follow the [build instructions](BUILDING).
+To build Mystikos from source, follow the [build instructions](BUILDING.md).
 
 **NOTE** that Mystikos can only be built on **Ubuntu 18.04** due to current
 limitations in Open Enclave SDK.
@@ -84,7 +84,7 @@ your original message.
 
 # Contributing to Mystikos
 
-See the [Contributing Guide](CONTRIBUTING).
+See the [Contributing Guide](CONTRIBUTING.md).
 
 # Code of Conduct
 
