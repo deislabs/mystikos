@@ -481,6 +481,10 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     if (thread->main.cwd == NULL)
         ERAISE(-ENOMEM);
 
+    if (args->hostname)
+        ECHECK(
+            myst_syscall_sethostname(args->hostname, strlen(args->hostname)));
+
     /* setup the TTY devices */
     if (_setup_tty() != 0)
     {

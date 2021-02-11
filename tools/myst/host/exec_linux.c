@@ -269,7 +269,8 @@ static int _enter_kernel(
     const elf_ehdr_t* ehdr = regions->libmystkernel.image_data;
     myst_kernel_entry_t entry;
     myst_args_t env;
-    const char* cwd = "/"; /* default */
+    const char* cwd = "/";       /* default */
+    const char* hostname = NULL; // kernel has a default
 
     if (err)
         *err = '\0';
@@ -329,6 +330,9 @@ static int _enter_kernel(
             /* only override if we have a cwd config item */
             if (parsed_data.cwd)
                 cwd = parsed_data.cwd;
+
+            if (parsed_data.hostname)
+                hostname = parsed_data.hostname;
         }
         else
         {
@@ -358,6 +362,7 @@ static int _enter_kernel(
     args.envc = env.size;
     args.envp = env.data;
     args.cwd = cwd;
+    args.hostname = hostname;
     args.mman_data = regions->mman_data;
     args.mman_size = regions->mman_size;
     args.rootfs_data = regions->rootfs_data;

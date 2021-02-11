@@ -31,6 +31,7 @@ typedef struct _config_parsed_data_t
     char** host_environment_variables;
     size_t host_environment_variables_count;
     char* cwd;
+    char* hostname;
 
     // Internal data
     void* buffer;
