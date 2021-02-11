@@ -48,6 +48,9 @@ typedef struct myst_kernel_args
     /* current working directory for app */
     const char* cwd;
 
+    /* configure hostname in kernel */
+    const char* hostname;
+
     /* The read-write-execute memory management pages */
     void* mman_data;
     size_t mman_size;

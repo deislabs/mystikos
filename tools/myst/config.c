@@ -259,6 +259,13 @@ static json_result_t _json_read_callback(
                 else
                     CONFIG_RAISE(JSON_TYPE_MISMATCH);
             }
+            else if (json_match(parser, "Hostname") == JSON_OK)
+            {
+                if (type == JSON_TYPE_STRING)
+                    parsed_data->hostname = un->string;
+                else
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
+            }
             else
             {
                 // Ignore everything we dont understand

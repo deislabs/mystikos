@@ -176,7 +176,8 @@ int myst_enter_ecall(
     unsigned char have_config = 0;
     myst_args_t args;
     myst_args_t env;
-    const char* cwd = "/"; // default to root dir
+    const char* cwd = "/";       // default to root dir
+    const char* hostname = NULL; // kernel has a default
     const uint8_t* enclave_base;
     size_t enclave_size;
 
@@ -292,6 +293,12 @@ int myst_enter_ecall(
     if (have_config && parsed_config.cwd)
     {
         cwd = parsed_config.cwd;
+    }
+
+    // Override current working directory if present in config
+    if (have_config && parsed_config.hostname)
+    {
+        hostname = parsed_config.hostname;
     }
 
     /* Inject the MYST_TARGET environment variable */
@@ -531,6 +538,7 @@ int myst_enter_ecall(
         kargs.envc = env.size;
         kargs.envp = env.data;
         kargs.cwd = cwd;
+        kargs.hostname = hostname;
         kargs.mman_data = mman_data;
         kargs.mman_size = mman_size;
         kargs.rootfs_data = (void*)rootfs_data;
