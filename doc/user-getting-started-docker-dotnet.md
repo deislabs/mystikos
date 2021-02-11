@@ -125,7 +125,6 @@ can be specified as follows:
 {
 	// OpenEnclave specific settings
 	"Debug": 1,
-    "KernelMemSize": "8m",
     "StackMemSize": "400k",
     "NumUserThreads": 8,
     "ProductID": 1,
