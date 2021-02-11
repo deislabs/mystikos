@@ -14,5 +14,6 @@ DIRS += exec-package
 DIRS += dump-package
 
 DIRS += cwd-config
+DIRS += hostname-config
 
 include $(TOP)/rules.mak

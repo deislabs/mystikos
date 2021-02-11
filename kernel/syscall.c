@@ -1184,6 +1184,36 @@ done:
     return ret;
 }
 
+static char _hostname[HOST_NAME_MAX] = "TEE";
+static myst_spinlock_t _hostname_lock = MYST_SPINLOCK_INITIALIZER;
+
+long myst_syscall_uname(struct utsname* buf)
+{
+    // We are emulating Linux syscalls. 5.4.0 is the LTS release we
+    // try to emulate. The release number should be updated when
+    // Mystikos adapts to syscall API changes in future Linux releases.
+    MYST_STRLCPY(buf->sysname, "Linux");
+    MYST_STRLCPY(buf->release, "5.4.0");
+    MYST_STRLCPY(buf->version, "Mystikos 1.0.0");
+    MYST_STRLCPY(buf->machine, "x86_64");
+
+    myst_spin_lock(&_hostname_lock);
+    MYST_STRLCPY(buf->nodename, _hostname);
+    myst_spin_unlock(&_hostname_lock);
+
+
+    return 0;
+}
+
+long myst_syscall_sethostname(const char* hostname, MYST_UNUSED size_t len)
+{
+    myst_spin_lock(&_hostname_lock);
+    MYST_STRLCPY(_hostname, hostname);
+    myst_spin_unlock(&_hostname_lock);
+
+    return 0;
+}
+
 long myst_syscall_getrandom(void* buf, size_t buflen, unsigned int flags)
 {
     long ret = 0;
@@ -2836,16 +2866,7 @@ long myst_syscall(long n, long params[6])
         {
             struct utsname* buf = (struct utsname*)x1;
 
-            // We are emulating Linux syscalls. 5.4.0 is the LTS release we
-            // try to emulate. The release number should be updated when
-            // Mystikos adapts to syscall API changes in future Linux releases.
-            MYST_STRLCPY(buf->sysname, "Linux");
-            MYST_STRLCPY(buf->nodename, "TEE");
-            MYST_STRLCPY(buf->release, "5.4.0");
-            MYST_STRLCPY(buf->version, "Mystikos 1.0.0");
-            MYST_STRLCPY(buf->machine, "x86_64");
-
-            BREAK(_return(n, 0));
+            BREAK(_return(n, myst_syscall_uname(buf)));
         }
         case SYS_semget:
             break;
@@ -3368,7 +3389,7 @@ long myst_syscall(long n, long params[6])
 
             _strace(n, "name=\"%s\" len=%zu", name, len);
 
-            BREAK(0);
+            BREAK(_return(n, myst_syscall_sethostname(name, len)));
         }
         case SYS_setdomainname:
             break;
