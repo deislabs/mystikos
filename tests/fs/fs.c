@@ -15,6 +15,7 @@
 #include <sys/types.h>
 #include <sys/sendfile.h>
 #include <sys/uio.h>
+#include <sys/vfs.h>
 #include <unistd.h>
 #include <stdbool.h>
 
@@ -652,6 +653,21 @@ void test_sendfile(bool test_offset)
     _passed(__FUNCTION__);
 }
 
+void test_statfs(char* program_name)
+{
+    int result;
+    struct statfs stats;
+
+    // test statfs fails for non-existent file path
+    result = statfs("/unknown/file", &stats);
+    assert(result != 0);
+
+    result = statfs(program_name, &stats);
+    assert(result == 0);
+
+    _passed(__FUNCTION__);
+}
+
 int main(int argc, const char* argv[])
 {
     test_fstatat();
@@ -670,6 +686,7 @@ int main(int argc, const char* argv[])
     test_pread_pwrite();
     test_sendfile(true);
     test_sendfile(false);
+    test_statfs(argv[0]);
 
     printf("=== passed all tests (%s)\n", argv[0]);
 
