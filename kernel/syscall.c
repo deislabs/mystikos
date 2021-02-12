@@ -1184,6 +1184,23 @@ done:
     return ret;
 }
 
+long myst_syscall_statfs(const char* path, struct statfs *buf)
+{
+    long ret = 0;
+    char suffix[PATH_MAX];
+    myst_fs_t* fs;
+    struct stat statbuf;
+
+    ECHECK(myst_mount_resolve(path, suffix, &fs));
+    ECHECK((*fs->fs_stat)(fs, suffix, &statbuf));
+
+    if (buf)
+        memset(buf, 0, sizeof(*buf));
+done:
+
+    return ret;
+}
+
 static char _hostname[HOST_NAME_MAX] = "TEE";
 static myst_spinlock_t _hostname_lock = MYST_SPINLOCK_INITIALIZER;
 
@@ -3243,10 +3260,9 @@ long myst_syscall(long n, long params[6])
 
             _strace(n, "path=%s buf=%p", path, buf);
 
-            if (buf)
-                memset(buf, 0, sizeof(*buf));
+            long ret = myst_syscall_statfs(path, buf);
 
-            BREAK(_return(n, 0));
+            BREAK(_return(n, ret));
         }
         case SYS_fstatfs:
             break;
