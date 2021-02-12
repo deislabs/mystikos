@@ -13,14 +13,6 @@ ROOTHASH=$(CURDIR)/roothash
 
 all: clean myst $(APPDIR) $(ROOTFS) $(ROOTHASH)
 
-sockperf: 
-	git clone -b sagoel.mystikos --single-branch  https://github.com/salsal97/sockperf.git
-	cd sockperf && ./autogen.sh \
-    && ./configure --enable-test \
-    && make \
-    && sudo make install \
-	&& cd ..
-
 $(APPDIR):
 	$(APPBUILDER) sagoel/sockperf:1.0
 	# This docker image contains the compiled contents of the dockerfile that is in the same file tree here.
@@ -36,19 +28,17 @@ $(ROOTHASH):
 
 OPTS += --roothash=$(ROOTHASH)
 
-tests: sockperf
-	./sockperf/sockperf server&
+tests:
+	docker run --network="host" sagoel/sockperf:1.0 /app/sockperf server& 
 	echo "Server created"
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /app/sockperf ping-pong 
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /app/sockperf under-load
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /app/sockperf throughput --msg-size=1472
-	killall -9 sockperf
-	./sockperf/sockperf server --tcp &
+	docker run --network="host" sagoel/sockperf:1.0 /app/sockperf server --tcp &
 	echo "Server created"
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /app/sockperf ping-pong --tcp 
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /app/sockperf under-load --tcp 
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /app/sockperf throughput --msg-size=1472 --tcp
-	killall -9 sockperf
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst
