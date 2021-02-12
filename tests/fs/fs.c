@@ -14,6 +14,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/uio.h>
+#include <sys/vfs.h>
 #include <unistd.h>
 
 const char alpha[] = "abcdefghijklmnopqrstuvwxyz";
@@ -547,7 +548,22 @@ static void test_fstatat(void)
     _passed(__FUNCTION__);
 }
 
-int main(void)
+void test_statfs(char* program_name)
+{
+    int result;
+    struct statfs stats;
+
+    // test statfs fails for non-existent file path
+    result = statfs("/unknown/file", &stats);
+    assert(result != 0);
+
+    result = statfs(program_name, &stats);
+    assert(result == 0);
+
+    _passed(__FUNCTION__);
+}
+
+int main(int argc, char* argv[])
 {
     test_fstatat();
     test_readv();
@@ -563,6 +579,7 @@ int main(void)
     test_symlink();
     test_tmpfile();
     test_pread_pwrite();
+    test_statfs(argv[0]);
 
     return 0;
 }
