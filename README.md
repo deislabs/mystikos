@@ -25,7 +25,7 @@ no additional protection.
 
 **Mystikos** consists of the following components:
 - a C-runtime based on [musl libc](https://musl.libc.org)
-- a "lib-os like" microkernel
+- a "lib-os like" kernel
 - the kernel-target interface (TCALL)
 - a command-line interface
 - some related utilities
@@ -55,7 +55,7 @@ page](https://github.com/deislabs/mystikos/releases)
 
 ## From Source
 
-You may also [build Mystikos from source](BUILDING). In our experience, this
+You may also [build Mystikos from source](BUILDING.md). In our experience, this
 takes about 20 minutes. 
 
 **NOTE** that Mystikos can only be built on **Ubuntu 18.04** due to current
@@ -113,7 +113,7 @@ section.
 - Release management: [click here](doc/releasing.md)
 - Notable unsupported kernel features and syscalls: [coming soon]
 
-For more information, see the [Contributing Guide](CONTRIBUTING).
+For more information, see the [Contributing Guide](CONTRIBUTING.md).
 
 
 # Licensing
