@@ -1,12 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include "config.h"
 #include <memory.h>
+#include <myst/file.h>
 #include <myst/round.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include "myst/file.h"
+
+#include "config.h"
+#include "shared.h"
 
 #define CONFIG_RAISE(CONFIG_ERR)                            \
     do                                                      \
@@ -41,22 +43,7 @@ static json_result_t _extract_mem_size(
         value = (uint64_t)un->integer; // number in bytes
     else if (type == JSON_TYPE_STRING)
     {
-        char* endptr = NULL;
-        value = strtoul(un->string, &endptr, 10);
-        if (endptr[0] == '\0')
-        {
-            // nothing to do... in bytes
-        }
-        else if (strcasecmp(endptr, "k") == 0)
-        {
-            value *= 1024;
-        }
-        else if (strcasecmp(endptr, "m") == 0)
-        {
-            value *= 1024;
-            value *= 1024;
-        }
-        else
+        if (myst_expand_size_string_to_ulong(un->string, &value) != 0)
         {
             fprintf(
                 stderr,
@@ -264,6 +251,20 @@ static json_result_t _json_read_callback(
                     &parsed_data->host_environment_variables_count);
                 if (ret != JSON_OK)
                     CONFIG_RAISE(ret);
+            }
+            else if (json_match(parser, "CurrentWorkingDirectory") == JSON_OK)
+            {
+                if (type == JSON_TYPE_STRING)
+                    parsed_data->cwd = un->string;
+                else
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
+            }
+            else if (json_match(parser, "Hostname") == JSON_OK)
+            {
+                if (type == JSON_TYPE_STRING)
+                    parsed_data->hostname = un->string;
+                else
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
             }
             else
             {

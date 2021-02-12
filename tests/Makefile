@@ -53,9 +53,11 @@ DIRS += pipesz
 DIRS += futex
 DIRS += round
 DIRS += signal
+DIRS += libcxx
+DIRS += tlscert
+DIRS += wake_and_kill
 
 ifndef MYST_USE_OECACHE
-DIRS += cpp-exceptions
 DIRS += curl
 endif
 

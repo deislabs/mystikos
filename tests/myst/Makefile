@@ -11,6 +11,10 @@ DIRS += exec-signed-2
 endif
 
 DIRS += exec-package
+DIRS += exec-package-ext2
 DIRS += dump-package
+
+DIRS += cwd-config
+DIRS += hostname-config
 
 include $(TOP)/rules.mak

@@ -248,4 +248,6 @@ long myst_syscall_kill(int pid, int sig);
 
 long myst_syscall_sendfile(int out_fd, int in_fd, off_t *offset, size_t count);
 
+long myst_syscall_sethostname(const char* hostname, size_t len);
+
 #endif /* _MYST_SYSCALL_H */

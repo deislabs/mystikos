@@ -84,3 +84,4 @@ tests/inotify/appdir/
 tests/hostfs/appdir/
 tests/ext2/crypt/appdir/
 tests/ext2/verity/appdir/
+tests/myst/exec-package-ext2/myst/
