@@ -1,0 +1,115 @@
+From e594a4fbfef5c2ee49b9baa64f90e5cc6b54ce47 Mon Sep 17 00:00:00 2001
+From: salsal97 <salonigoel97@gmail.com>
+Date: Thu, 11 Feb 2021 19:34:58 +0000
+Subject: [PATCH] added changes to build on alpine without itimers using sleep
+
+---
+ src/client.cpp     | 28 ++++++++++++++++++++++++++++
+ src/client.h       |  4 ++++
+ src/ticks.h        |  1 +
+ src/vma-redirect.h |  3 ++-
+ 4 files changed, 35 insertions(+), 1 deletion(-)
+
+diff --git a/src/client.cpp b/src/client.cpp
+index a355089..823b108 100644
+--- a/src/client.cpp
++++ b/src/client.cpp
+@@ -35,6 +35,10 @@
+ 
+ TicksTime s_startTime, s_endTime;
+ 
++#ifdef NO_SETITIMERS_SYSCALL
++    pthread_t parent;
++#endif
++
+ //==============================================================================
+ //==============================================================================
+ 
+@@ -524,6 +528,20 @@ static int _connect_check(int ifd) {
+     return rc;
+ }
+ 
++#ifdef NO_SETITIMERS_SYSCALL
++void* thread_sleep(void* args)
++{
++    int sec = (g_pApp->m_const_params.cooldown_msec + g_pApp->m_const_params.warmup_msec) / 1000 +
++        g_pApp->m_const_params.sec_test_duration;
++    int usec = (g_pApp->m_const_params.cooldown_msec + g_pApp->m_const_params.warmup_msec) % 1000;
++    log_msg("Start sleep for %d seconds %d useconds", sec, usec);
++    sleep(sec);
++    usleep(usec);
++    pthread_kill(parent, SIGUSR1);
++    return NULL;
++}
++#endif
++
+ //------------------------------------------------------------------------------
+ template <class IoType, class SwitchDataIntegrity, class SwitchActivityInfo,
+           class SwitchCycleDuration, class SwitchMsgSize, class PongModeCare>
+@@ -637,12 +655,22 @@ int Client<IoType, SwitchDataIntegrity, SwitchActivityInfo, SwitchCycleDuration,
+                     log_msg("Starting test...");
+ 
+                     if (!g_pApp->m_const_params.pPlaybackVector) {
++                        #ifndef NO_SETITIMERS_SYSCALL
+                         struct itimerval timer;
+                         set_client_timer(&timer);
+                         if (os_set_duration_timer(timer, client_sig_handler)) {
+                             log_err("Failed setting test duration timer");
+                             rc = SOCKPERF_ERR_FATAL;
+                         }
++                        #else
++                        parent = pthread_self();
++                        os_set_signal_action(SIGUSR1, client_sig_handler);
++
++                        os_thread_t thread;
++                        os_thread_init(&thread);
++                        os_thread_exec(&thread, thread_sleep, NULL);
++                        os_thread_detach(&thread);
++                        #endif
+                     }
+ 
+                     if (rc == SOCKPERF_ERR_NONE) {
+diff --git a/src/client.h b/src/client.h
+index e50acb4..8178856 100644
+--- a/src/client.h
++++ b/src/client.h
+@@ -29,6 +29,10 @@
+ #ifndef CLIENT_H_
+ #define CLIENT_H_
+ 
++#ifndef NO_SETITIMERS_SYSCALL
++#define NO_SETITIMERS_SYSCALL
++#endif
++
+ #include "common.h"
+ #include "packet.h"
+ 
+diff --git a/src/ticks.h b/src/ticks.h
+index 3bf932a..69169ef 100644
+--- a/src/ticks.h
++++ b/src/ticks.h
+@@ -103,6 +103,7 @@ with simple integral values. The following describes these calculations:
+ #endif
+ 
+ #include "ticks_os.h"
++#include "os_abstract.h"
+ 
+ // usefull constants
+ static const int64_t USEC_IN_SEC = 1000 * 1000;
+diff --git a/src/vma-redirect.h b/src/vma-redirect.h
+index 2467bef..aed846a 100644
+--- a/src/vma-redirect.h
++++ b/src/vma-redirect.h
+@@ -33,7 +33,8 @@
+ #include <unistd.h>
+ #include <stdlib.h>
+ #include <signal.h>
+-#include <sys/poll.h>
++#include <stdio.h>
++#include <poll.h>
+ #include <sched.h>
+ #include <sys/ioctl.h>
+ 
+-- 
+2.17.1
+

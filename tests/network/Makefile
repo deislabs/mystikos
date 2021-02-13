@@ -14,7 +14,7 @@ ROOTHASH=$(CURDIR)/roothash
 all: clean myst $(APPDIR) $(ROOTFS) $(ROOTHASH)
 
 $(APPDIR):
-	$(APPBUILDER) sagoel/sockperf:1.0
+	$(APPBUILDER) Dockerfile
 	# This docker image contains the compiled contents of the dockerfile that is in the same file tree here.
 	# To update the image, update the dockerfile and then push a new image.
 	# Then, replace this container name with the new name.
@@ -29,7 +29,7 @@ $(ROOTHASH):
 OPTS += --roothash=$(ROOTHASH)
 
 tests:
-	docker run --network="host" sagoel/sockperf:1.0 /app/sockperf server& 
+	docker run --network="host" sagoel/sockperf:1.0 /app/sockperf server&
 	echo "Server created"
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /app/sockperf ping-pong 
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /app/sockperf under-load
