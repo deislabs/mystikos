@@ -1658,6 +1658,52 @@ done:
     return ret;
 }
 
+static int _statfs(struct statfs* buf)
+{
+    int ret = 0;
+
+    if (!buf)
+        ERAISE(-EINVAL);
+
+    memset(buf, 0, sizeof(struct statfs));
+    buf->f_type = 0x858458f6; // RAMFS_MAGIC from man(2) statfs
+    buf->f_bsize = BLKSIZE;
+
+done:
+    return ret;
+}
+
+static int _fs_statfs(myst_fs_t* fs, const char* path, struct statfs* buf)
+{
+    int ret = 0;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+    inode_t* inode;
+
+    if (!_ramfs_valid(ramfs) || !path || !buf)
+        ERAISE(-EINVAL);
+
+    /* Check if path exists */
+    ECHECK(_path_to_inode(ramfs, path, false, NULL, &inode));
+    ECHECK(_statfs(buf));
+
+done:
+    return ret;
+}
+
+static int _fs_fstatfs(myst_fs_t* fs, myst_file_t* file, struct statfs* buf)
+{
+    int ret = 0;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+
+    if (!_ramfs_valid(ramfs) || !_file_valid(file) || !buf)
+        ERAISE(-EINVAL);
+
+    ECHECK(_statfs(buf));
+
+done:
+    return ret;
+}
+
 int myst_init_ramfs(myst_fs_t** fs_out)
 {
     int ret = 0;
@@ -1710,6 +1756,8 @@ int myst_init_ramfs(myst_fs_t** fs_out)
         .fs_dup = _fs_dup,
         .fs_target_fd = _fs_target_fd,
         .fs_get_events = _fs_get_events,
+        .fs_statfs = _fs_statfs,
+        .fs_fstatfs = _fs_fstatfs,
     };
     // clang-format on
     inode_t* root_inode = NULL;

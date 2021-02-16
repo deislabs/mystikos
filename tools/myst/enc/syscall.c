@@ -1298,6 +1298,44 @@ done:
 }
 #endif
 
+#ifdef MYST_ENABLE_HOSTFS
+static long _statfs(const char* pathname, struct myst_statfs* buf)
+{
+    long ret = 0;
+    long retval;
+
+    if (myst_statfs_ocall(&retval, pathname, buf) != OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = retval;
+
+done:
+    return ret;
+}
+#endif
+
+#ifdef MYST_ENABLE_HOSTFS
+static long _fstatfs(int fd, struct myst_statfs* buf)
+{
+    long ret = 0;
+    long retval;
+
+    if (myst_fstatfs_ocall(&retval, fd, buf) != OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = retval;
+
+done:
+    return ret;
+}
+#endif
+
 long myst_handle_tcall(long n, long params[6])
 {
     const long a = params[0];
@@ -1497,6 +1535,14 @@ long myst_handle_tcall(long n, long params[6])
         case SYS_readlink:
         {
             return _readlink((const char*)a, (char*)b, (size_t)c);
+        }
+        case SYS_statfs:
+        {
+            return _statfs((const char*)a, (struct myst_statfs*)b);
+        }
+        case SYS_fstatfs:
+        {
+            return _fstatfs((int)a, (struct myst_statfs*)b);
         }
 #endif
         default:

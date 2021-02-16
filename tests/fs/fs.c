@@ -5,19 +5,19 @@
 #include <assert.h>
 #include <dirent.h>
 #include <fcntl.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/fcntl.h>
 #include <sys/random.h>
+#include <sys/sendfile.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/sendfile.h>
 #include <sys/uio.h>
 #include <sys/vfs.h>
 #include <unistd.h>
-#include <stdbool.h>
 
 const char alpha[] = "abcdefghijklmnopqrstuvwxyz";
 const char ALPHA[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -668,6 +668,17 @@ void test_statfs(char* program_name)
     _passed(__FUNCTION__);
 }
 
+void test_fstatfs(char* program_name)
+{
+    int result;
+    struct statfs stats;
+    int fd = open(program_name, O_RDONLY);
+    result = fstatfs(fd, &stats);
+    assert(result == 0);
+
+    _passed(__FUNCTION__);
+}
+
 int main(int argc, const char* argv[])
 {
     test_fstatat();
@@ -687,6 +698,7 @@ int main(int argc, const char* argv[])
     test_sendfile(true);
     test_sendfile(false);
     test_statfs(argv[0]);
+    test_fstatfs(argv[0]);
 
     printf("=== passed all tests (%s)\n", argv[0]);
 
