@@ -75,6 +75,7 @@ struct inode
     size_t nopens;    /* number of times file is currently opened */
     myst_buf_t buf;   /* file or directory data */
     const void* data; /* set by myst_ramfs_set_buf() */
+    int (*vcallback)(myst_buf_t* buf);
 };
 
 static bool _inode_valid(const inode_t* inode)
@@ -374,6 +375,7 @@ struct myst_file
     uint32_t operating; /* (O_RDONLY | O_RDWR | O_WRONLY) */
     int fdflags;        /* file descriptor flags: FD_CLOEXEC */
     char realpath[PATH_MAX];
+    myst_buf_t vbuf;    /* virtual file buffer */
 };
 
 static bool _file_valid(const myst_file_t* file)
@@ -383,12 +385,12 @@ static bool _file_valid(const myst_file_t* file)
 
 static void* _file_data(const myst_file_t* file)
 {
-    return file->inode->buf.data;
+    return (file->inode->vcallback) ? file->vbuf.data : file->inode->buf.data;
 }
 
 static size_t _file_size(const myst_file_t* file)
 {
-    return file->inode->buf.size;
+    return (file->inode->vcallback) ? file->vbuf.size : file->inode->buf.size;
 }
 
 static void* _file_current(myst_file_t* file)
@@ -730,6 +732,24 @@ static int _fs_open(
         if ((flags & O_CREAT) && (flags & O_EXCL))
             ERAISE(-EEXIST);
 
+#if 0
+        {
+            const int access = flags & 0x03;
+
+            if (access == O_RDONLY && !(inode->mode & S_IRUSR))
+                ERAISE(-EPERM);
+
+            if (access == O_WRONLY && !(inode->mode & S_IWUSR))
+                ERAISE(-EPERM);
+
+            if (access == O_RDWR && !(inode->mode & S_IRUSR))
+                ERAISE(-EPERM);
+
+            if (access == O_RDWR && !(inode->mode & S_IWUSR))
+                ERAISE(-EPERM);
+        }
+#endif
+
         if ((flags & O_DIRECTORY) && !S_ISDIR(inode->mode))
             ERAISE(-ENOTDIR);
 
@@ -738,6 +758,9 @@ static int _fs_open(
 
         if ((flags & O_APPEND))
             file->offset = inode->buf.size;
+
+        if (inode->vcallback)
+            ECHECK((*inode->vcallback)(&file->vbuf));
     }
     else if (errnum == -ENOENT)
     {
@@ -1122,6 +1145,10 @@ static int _fs_close(myst_fs_t* fs, myst_file_t* file)
     assert(_inode_valid(file->inode));
     assert(file->inode->nopens > 0);
 
+    /* release the virtual file data on close */
+    if (file->inode->vcallback)
+        myst_buf_release(&file->vbuf);
+
     file->inode->nopens--;
 
     /* handle case where file was deleted while open */
@@ -1183,11 +1210,23 @@ static int _stat(inode_t* inode, struct stat* statbuf)
     int ret = 0;
     struct stat buf;
     off_t rounded;
+    myst_buf_t vbuf = MYST_BUF_INITIALIZER;
+    size_t size;
 
     if (!_inode_valid(inode) || !statbuf)
         ERAISE(-EINVAL);
 
-    ECHECK(myst_round_up_signed(inode->buf.size, BLKSIZE, &rounded));
+    if (inode->vcallback)
+    {
+        ECHECK((*inode->vcallback)(&vbuf));
+        size = vbuf.size;
+        ECHECK(myst_round_up_signed(size, BLKSIZE, &rounded));
+    }
+    else
+    {
+        size = inode->buf.size;
+        ECHECK(myst_round_up_signed(size, BLKSIZE, &rounded));
+    }
 
     memset(&buf, 0, sizeof(buf));
     buf.st_dev = 0;
@@ -1197,7 +1236,7 @@ static int _stat(inode_t* inode, struct stat* statbuf)
     buf.st_uid = MYST_DEFAULT_UID;
     buf.st_gid = MYST_DEFAULT_GID;
     buf.st_rdev = 0;
-    buf.st_size = (off_t)inode->buf.size;
+    buf.st_size = (off_t)size;
     buf.st_blksize = BLKSIZE;
     buf.st_blocks = rounded / BLKSIZE;
     memset(&buf.st_atim, 0, sizeof(buf.st_atim)); /* ATTN: unsupported */
@@ -1207,6 +1246,7 @@ static int _stat(inode_t* inode, struct stat* statbuf)
     *statbuf = buf;
 
 done:
+    myst_buf_release(&vbuf);
     return ret;
 }
 
@@ -2087,6 +2127,50 @@ int myst_ramfs_set_buf(
     inode->buf.size = buf_size;
 
 done:
+
+    return ret;
+}
+
+int myst_create_virtual_file(
+    myst_fs_t* fs,
+    const char* pathname,
+    int (*vcallback)(myst_buf_t* buf))
+{
+    int ret = 0;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+    int fd = -1;
+
+    if (!_ramfs_valid(ramfs))
+        ERAISE(-EINVAL);
+
+    if (!pathname || !vcallback)
+        ERAISE(-EINVAL);
+
+    /* create an empty file */
+    {
+        if ((fd = creat(pathname, 0444)) < 0)
+        {
+            myst_panic("kernel: open(): %s\n", pathname);
+            ERAISE(-ENOENT);
+        }
+
+        close(fd);
+        fd = -1;
+    }
+
+    /* inject vcallback into the inode */
+    {
+        inode_t* inode = NULL;
+        ECHECK(_path_to_inode(ramfs, pathname, true, NULL, &inode));
+        inode->vcallback = vcallback;
+    }
+
+    ret = 0;
+
+done:
+
+    if (fd >= 0)
+        close(fd);
 
     return ret;
 }
