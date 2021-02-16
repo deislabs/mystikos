@@ -563,6 +563,17 @@ void test_statfs(char* program_name)
     _passed(__FUNCTION__);
 }
 
+void test_fstatfs(char* program_name)
+{
+    int result;
+    struct statfs stats;
+    int fd = open(program_name, O_RDONLY);
+    result = fstatfs(fd, &stats);
+    assert(result == 0);
+
+    _passed(__FUNCTION__);
+}
+
 int main(int argc, char* argv[])
 {
     test_fstatat();
@@ -580,6 +591,7 @@ int main(int argc, char* argv[])
     test_tmpfile();
     test_pread_pwrite();
     test_statfs(argv[0]);
+    test_fstatfs(argv[0]);
 
     return 0;
 }

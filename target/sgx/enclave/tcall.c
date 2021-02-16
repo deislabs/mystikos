@@ -689,6 +689,8 @@ long myst_tcall(long n, long params[6])
         case SYS_symlink:
         case SYS_lstat:
         case SYS_readlink:
+        case SYS_statfs:
+        case SYS_fstatfs:
         {
             extern long myst_handle_tcall(long n, long params[6]);
             return myst_handle_tcall(n, params);

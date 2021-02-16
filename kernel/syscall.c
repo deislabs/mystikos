@@ -1189,13 +1189,31 @@ long myst_syscall_statfs(const char* path, struct statfs *buf)
     long ret = 0;
     char suffix[PATH_MAX];
     myst_fs_t* fs;
-    struct stat statbuf;
 
     ECHECK(myst_mount_resolve(path, suffix, &fs));
-    ECHECK((*fs->fs_stat)(fs, suffix, &statbuf));
-
     if (buf)
         memset(buf, 0, sizeof(*buf));
+    ECHECK((*fs->fs_statfs)(fs, suffix, buf));
+
+done:
+
+    return ret;
+}
+
+long myst_syscall_fstatfs(int fd, struct statfs *buf)
+{
+    long ret = 0;
+    myst_fs_t* fs;
+    myst_file_t* file;
+
+    const myst_fdtable_type_t type = MYST_FDTABLE_TYPE_FILE;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+
+    ECHECK(myst_fdtable_get(fdtable, fd, type, (void**)&fs, (void**)&file));
+    if (buf)
+        memset(buf, 0, sizeof(*buf));
+    ECHECK((*fs->fs_fstatfs)(fs, file, buf));
+
 done:
 
     return ret;
@@ -3262,7 +3280,16 @@ long myst_syscall(long n, long params[6])
             BREAK(_return(n, ret));
         }
         case SYS_fstatfs:
-            break;
+        {
+            int fd = (int)x1;
+            struct statfs* buf = (struct statfs*)x2;
+
+            _strace(n, "fd=%d buf=%p", fd, buf);
+
+            long ret = myst_syscall_fstatfs(fd, buf);
+
+            BREAK(_return(n, ret));
+        }
         case SYS_sysfs:
             break;
         case SYS_getpriority:

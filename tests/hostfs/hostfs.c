@@ -11,6 +11,7 @@
 #include <string.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
+#include <sys/statfs.h>
 #include <sys/uio.h>
 #include <unistd.h>
 
@@ -69,6 +70,20 @@ int main(int argc, const char* argv[])
         assert((fd = open(filename, O_RDONLY, 0)) >= 0);
         assert(fstat(fd, &buf) == 0);
         assert(buf.st_size == sizeof(alpha));
+        assert(close(fd) == 0);
+    }
+
+    /* test statfs() */
+    {
+        struct statfs buf;
+        assert(statfs(filename, &buf) == 0);
+    }
+
+    /* test fstatfs() */
+    {
+        struct statfs buf;
+        assert((fd = open(filename, O_RDONLY, 0)) >= 0);
+        assert(fstatfs(fd, &buf) == 0);
         assert(close(fd) == 0);
     }
 

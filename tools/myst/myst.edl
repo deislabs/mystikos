@@ -20,6 +20,7 @@ enclave
        long tv_nsec;
     };
 
+
     struct myst_stat
     {
         unsigned long st_dev;
@@ -37,6 +38,26 @@ enclave
         struct myst_timespec st_mtim;
         struct myst_timespec st_ctim;
     };
+
+    struct myst_fsid {
+	    int __val[2];
+    };
+    struct myst_statfs
+    {
+	    unsigned long f_type;
+        unsigned long f_bsize;
+	    unsigned long f_blocks;
+        unsigned long f_bfree;
+        unsigned long f_bavail;
+	    unsigned long f_files;
+        unsigned long f_ffree;
+	    struct myst_fsid f_fsid;
+	    unsigned long f_namelen;
+        unsigned long f_frsize;
+        unsigned long f_flags;
+        unsigned long f_spare[4];
+    };
+
 
     struct myst_linux_dirent64
     {
@@ -309,6 +330,14 @@ enclave
             [in, string] const char* pathname,
             [out, size=bufsiz] char* buf,
             size_t bufsiz);
+
+        long myst_statfs_ocall(
+            [in, string] const char* path,
+            [out] struct myst_statfs* buf);
+
+        long myst_fstatfs_ocall(
+            int fd,
+            [out] struct myst_statfs* buf);
 
         /*
         **======================================================================

@@ -3,6 +3,7 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
+#include <sys/statfs.h>
 #include <sys/syscall.h>
 #include <unistd.h>
 
@@ -327,4 +328,14 @@ long myst_symlink_ocall(const char* target, const char* linkpath)
 long myst_readlink_ocall(const char* pathname, char* buf, size_t bufsiz)
 {
     RETURN(readlink(pathname, buf, bufsiz));
+}
+
+long myst_statfs_ocall(const char* path, struct myst_statfs* buf)
+{
+    RETURN(statfs(path, (struct statfs*)buf));
+}
+
+long myst_fstatfs_ocall(int fd, struct myst_statfs* buf)
+{
+    RETURN(fstatfs(fd, (struct statfs*)buf));
 }

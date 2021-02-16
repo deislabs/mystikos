@@ -7,6 +7,7 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/statfs.h>
 #include <sys/types.h>
 #include <sys/uio.h>
 #include <unistd.h>
@@ -133,6 +134,10 @@ struct myst_fs
     int (*fs_target_fd)(myst_fs_t* fs, myst_file_t* file);
 
     int (*fs_get_events)(myst_fs_t* fs, myst_file_t* file);
+
+    int (*fs_statfs)(myst_fs_t* fs, const char* path, struct statfs* buf);
+
+    int (*fs_fstatfs)(myst_fs_t* fs, myst_file_t* file, struct statfs* buf);
 };
 
 int myst_remove_fd_link(myst_fs_t* fs, myst_file_t* file, int fd);
