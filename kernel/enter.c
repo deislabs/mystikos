@@ -586,6 +586,14 @@ done:
     return ret;
 }
 
+static int _meminfo_vcallback(myst_buf_t* vbuf)
+{
+    const char alpha[] = "abcdefghijklmnopqrstuvwxyz";
+    myst_buf_clear(vbuf);
+    myst_buf_append(vbuf, alpha, sizeof(alpha));
+    return 0;
+}
+
 int myst_enter_kernel(myst_kernel_args_t* args)
 {
     int ret = 0;
@@ -721,6 +729,9 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         myst_eprintf("failed to unpack root file system\n");
         ERAISE(-EINVAL);
     }
+
+    /* Create /proc/meminfo */
+    ECHECK(myst_create_virtual_file(_fs, "/proc/meminfo", _meminfo_vcallback));
 
     /* Set the 'run-proc' which is called by the target to run new threads */
     ECHECK(myst_tcall_set_run_thread_function(myst_run_thread));
