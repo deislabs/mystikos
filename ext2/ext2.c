@@ -4217,6 +4217,55 @@ done:
     return ret;
 }
 
+static int _statfs(ext2_t* ext2, struct statfs* buf)
+{
+    int ret = 0;
+
+    if (!buf)
+        ERAISE(-EINVAL);
+
+    memset(buf, 0, sizeof(struct statfs));
+    buf->f_type = ext2->sb.s_magic;
+    buf->f_bsize = ext2->block_size;
+    buf->f_blocks = ext2->sb.s_blocks_count;
+    buf->f_bfree = ext2->sb.s_free_blocks_count;
+    buf->f_bavail = ext2->sb.s_free_blocks_count;
+
+done:
+    return ret;
+}
+
+static int _ext2_statfs(myst_fs_t* fs, const char* path, struct statfs* buf)
+{
+    int ret = 0;
+    ext2_t* ext2 = (ext2_t*)fs;
+    ext2_inode_t inode;
+
+    if (!_ext2_valid(ext2) || !path || !buf)
+        ERAISE(-EINVAL);
+
+    /* Check if path exists */
+    ECHECK(_path_to_inode(ext2, path, FOLLOW, NULL, NULL, NULL, &inode));
+    ECHECK(_statfs(ext2, buf));
+
+done:
+    return ret;
+}
+
+static int _ext2_fstatfs(myst_fs_t* fs, myst_file_t* file, struct statfs* buf)
+{
+    int ret = 0;
+    ext2_t* ext2 = (ext2_t*)fs;
+
+    if (!_ext2_valid(ext2) || !file || !buf)
+        ERAISE(-EINVAL);
+
+    ECHECK(_statfs(ext2, buf));
+
+done:
+    return ret;
+}
+
 static myst_fs_t _base = {
     {
         .fd_read = (void*)ext2_read,
@@ -4263,6 +4312,8 @@ static myst_fs_t _base = {
     .fs_dup = _ext2_dup,
     .fs_target_fd = _ext2_target_fd,
     .fs_get_events = _ext2_get_events,
+    .fs_statfs = _ext2_statfs,
+    .fs_fstatfs = _ext2_fstatfs,
 };
 
 int ext2_create(myst_blkdev_t* dev, myst_fs_t** fs_out)

@@ -610,6 +610,8 @@ long myst_tcall(long n, long params[6])
         case SYS_symlink:
         case SYS_lstat:
         case SYS_readlink:
+        case SYS_statfs:
+        case SYS_fstatfs:
         {
             return _forward_syscall(n, x1, x2, x3, x4, x5, x6);
         }

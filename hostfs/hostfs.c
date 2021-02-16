@@ -877,6 +877,51 @@ done:
     return ret;
 }
 
+static int _fs_statfs(myst_fs_t* fs, const char* pathname, struct statfs* buf)
+{
+    int ret = 0;
+    hostfs_t* hostfs = (hostfs_t*)fs;
+    char path[PATH_MAX];
+    long tret;
+
+    if (!_hostfs_valid(hostfs) || !pathname || !buf)
+        ERAISE(-EINVAL);
+
+    ECHECK(_fixup_path(hostfs, path, sizeof(path), pathname));
+
+    long params[6] = {(long)path, (long)buf};
+    ECHECK((tret = myst_tcall(SYS_statfs, params)));
+
+    if (tret != 0)
+        ERAISE(-EINVAL);
+
+    ret = tret;
+
+done:
+    return ret;
+}
+
+static int _fs_fstatfs(myst_fs_t* fs, myst_file_t* file, struct statfs* buf)
+{
+    int ret = 0;
+    hostfs_t* hostfs = (hostfs_t*)fs;
+    long tret;
+
+    if (!_hostfs_valid(hostfs) || !_file_valid(file) || !buf)
+        ERAISE(-EINVAL);
+
+    long params[6] = {file->fd, (long)buf};
+    ECHECK((tret = myst_tcall(SYS_fstatfs, params)));
+
+    if (tret != 0)
+        ERAISE(-EINVAL);
+
+    ret = tret;
+
+done:
+    return ret;
+}
+
 int myst_init_hostfs(myst_fs_t** fs_out)
 {
     int ret = 0;
@@ -929,6 +974,8 @@ int myst_init_hostfs(myst_fs_t** fs_out)
         .fs_dup = _fs_dup,
         .fs_target_fd = _fs_target_fd,
         .fs_get_events = _fs_get_events,
+        .fs_statfs = _fs_statfs,
+        .fs_fstatfs = _fs_fstatfs,
     };
     // clang-format on
 
