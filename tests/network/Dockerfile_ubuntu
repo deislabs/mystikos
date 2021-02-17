@@ -1,0 +1,26 @@
+FROM ubuntu:18.04 as builder
+
+RUN apt-get update && apt-get install -y \
+    build-essential perl make automake autoconf m4 git libtool-bin
+
+RUN git clone -b sockperf_v2 --single-branch  https://github.com/Mellanox/sockperf.git
+
+WORKDIR /sockperf
+
+RUN git checkout b3df070d564973c9d6a4a0e143de7703043c5713
+
+COPY mystikos_changes.patch /sockperf
+RUN git apply mystikos_changes.patch
+
+RUN ./autogen.sh \
+    && ./configure --enable-test \
+    && make \
+    && make install
+
+FROM ubuntu:18.04
+
+RUN apt-get update && apt-get install -y build-essential
+
+RUN mkdir /app
+
+COPY --from=builder /sockperf/sockperf /app
