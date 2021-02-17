@@ -3174,7 +3174,10 @@ long myst_syscall(long n, long params[6])
         case SYS_getresgid:
             break;
         case SYS_getpgid:
-            break;
+        {
+            _strace(n, NULL);
+            BREAK(_return(n, MYST_DEFAULT_GID));
+        }
         case SYS_setfsuid:
             break;
         case SYS_setfsgid:
@@ -4341,7 +4344,20 @@ long myst_syscall(long n, long params[6])
             BREAK(_return(n, ret));
         }
         case SYS_sendfile:
+        {
+            int out_fd = (int)x1;
+            int in_fd = (int)x2;
+            off_t* offset = (off_t*)x3;
+            size_t count = (size_t)x4;
+            off_t off = offset ? *offset : 0;
+
+            _strace(n, "out_fd=%d in_fd=%d offset=%p *offset=%ld count=%zu",
+                out_fd, in_fd, offset, off, count);
+
+            long ret = myst_syscall_sendfile(out_fd, in_fd, offset, count);
+            BREAK(_return(n, ret));
             break;
+        }
         /* forward Open Enclave extensions to the target */
         case SYS_myst_oe_get_report_v2:
         case SYS_myst_oe_free_report:
