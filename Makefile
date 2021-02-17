@@ -3,6 +3,7 @@ SUBDIR = top
 TOP = $(abspath $(CURDIR))
 include $(TOP)/defs.mak
 
+
 VERSION=$(shell cat VERSION)
 PKGNAME=mystikos-$(VERSION)-x86_64
 TARBALL=$(PKGNAME).tar.gz
