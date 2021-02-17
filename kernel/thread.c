@@ -218,6 +218,8 @@ static void _free_zombies(void* arg)
     {
         myst_thread_t* next = p->next;
 
+        assert(p->main.cwd == NULL);
+
         memset(p, 0xdd, sizeof(myst_thread_t));
         free(p);
 
@@ -498,6 +500,9 @@ long myst_run_thread(uint64_t cookie, uint64_t event)
                 /* unmap any mapping made by the process */
                 myst_release_process_mappings(thread->pid);
             }
+
+            free(thread->main.cwd);
+            thread->main.cwd = NULL;
         }
 
         myst_zombify_thread(thread);
@@ -660,6 +665,12 @@ static long _syscall_clone_vfork(
         child->run_thread = myst_run_thread;
         child->main.thread_group_lock = MYST_SPINLOCK_INITIALIZER;
         child->thread_lock = &child->main.thread_group_lock;
+
+        /* Inherit parent current working directory */
+        child->main.cwd_lock = MYST_SPINLOCK_INITIALIZER;
+        child->main.cwd = strdup(parent->main.cwd);
+        if (child->main.cwd == NULL)
+            ERAISE(-ENOMEM);
 
         if (myst_fdtable_clone(parent->fdtable, &child->fdtable) != 0)
             ERAISE(-ENOMEM);

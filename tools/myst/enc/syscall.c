@@ -4,11 +4,11 @@
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <syscall.h>
 #include <unistd.h>
-#include <string.h>
 
 #include <myst/iov.h>
 #include <myst/tcall.h>
@@ -779,7 +779,7 @@ static long _poll(struct pollfd* fds, nfds_t nfds, int timeout)
     long ret = 0;
     long retval;
     struct pollfd buf[256]; /* use this buffer if large enough */
-    struct pollfd* copy; /* pointer to buf or heap-allocated memory */
+    struct pollfd* copy;    /* pointer to buf or heap-allocated memory */
 
     if (!fds && nfds > 0)
     {

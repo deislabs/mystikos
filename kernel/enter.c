@@ -234,13 +234,8 @@ static int _create_tls_credentials()
     myst_file_t* file = NULL;
     int flags = O_CREAT | O_WRONLY;
 
-    long params[6] =
-    {
-      (long)&cert,
-      (long)&cert_size,
-      (long)&pkey,
-      (long)&pkey_size
-    };
+    long params[6] = {
+        (long)&cert, (long)&cert_size, (long)&pkey, (long)&pkey_size};
     ECHECK(myst_tcall(MYST_TCALL_GEN_CREDS, params));
 
     // Save the certificate
@@ -260,13 +255,8 @@ static int _create_tls_credentials()
 done:
     if (cert || pkey)
     {
-        long params[6] =
-        {
-            (long)cert,
-            (long)cert_size,
-            (long)pkey,
-            (long)pkey_size
-        };
+        long params[6] = {
+            (long)cert, (long)cert_size, (long)pkey, (long)pkey_size};
         myst_tcall(MYST_TCALL_FREE_CREDS, params);
     }
 
@@ -462,7 +452,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         if (_setup_ext2(args->rootfs) != 0)
             ERAISE(-EINVAL);
 
-#else /* MYST_ENABLE_EXT2FS */
+#else  /* MYST_ENABLE_EXT2FS */
         myst_panic("ext2 not supported");
 #endif /* MYST_ENABLE_EXT2FS */
     }
@@ -485,6 +475,15 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     /* Create the main thread */
     ECHECK(_create_main_thread(args->event, &thread));
     __myst_main_thread = thread;
+
+    thread->main.cwd_lock = MYST_SPINLOCK_INITIALIZER;
+    thread->main.cwd = strdup(args->cwd);
+    if (thread->main.cwd == NULL)
+        ERAISE(-ENOMEM);
+
+    if (args->hostname)
+        ECHECK(
+            myst_syscall_sethostname(args->hostname, strlen(args->hostname)));
 
     /* setup the TTY devices */
     if (_setup_tty() != 0)
@@ -565,6 +564,12 @@ int myst_enter_kernel(myst_kernel_args_t* args)
             thread->main.exec_crt_data = NULL;
             thread->main.exec_crt_size = 0;
         }
+        /* unmap any mapping made by the process */
+        myst_release_process_mappings(thread->pid);
+
+        /* Free CWD */
+        free(thread->main.cwd);
+        thread->main.cwd = NULL;
 
         /* switch back to the target thread descriptor */
         myst_set_fsbase(thread->target_td);

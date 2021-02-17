@@ -15,8 +15,8 @@ void* thread_func(void* args)
     {
         int ret, data;
         // read is blocking until writer writes to pipe
-        while ((ret = read(readFd, &data, 1)) < 0 
-                && errno == EINTR);
+        while ((ret = read(readFd, &data, 1)) < 0 && errno == EINTR)
+            ;
 
         if (ret < 0)
         {
