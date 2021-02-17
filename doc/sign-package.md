@@ -55,7 +55,6 @@ Included is a sample JSON configuration where the elements will be described nex
     "version": "0.1",
 
     "Debug": 1,
-    "KernelMemSize": "4m",
     "StackMemSize": "256k",
     "NumUserThreads": 2,
     "ProductID": 1,
@@ -96,7 +95,6 @@ Next we have settings specific to configuring the SGX enclave itself.
 Setting | Description
 -|-
 Debug | Enable debugging within the SGX enclave, turn off for release builds
-KernelMemSize | The amount of memory for the Mystikos kernel, in this case 4 MB
 StackMemSize | Stack size for kernel
 NumUserThreads | Number of threads allowed within the enclave. If more threads are created than this number thread creation will fail
 ProductID | The product ID of your application. This is an integer value
@@ -116,6 +114,9 @@ ApplicationParameters | Enclave defined application parameters if HostApplicatio
 HostApplicationParameters | This parameter specifies if application parameters can be specified on the command line or not. If true, the command line arguments are used instead of the ApplicationParameters list of parameters
 EnvironmentVariables | Enclave defined environment variables
 HostEnvironmentVariables | A list of environment variables that can be imported from the insecure host
+Hostname | The default hostname exposed to application
+CurrentWorkingDirectory | The default working directory for the application
+
 
 ---
 

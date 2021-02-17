@@ -4,7 +4,9 @@ include $(TOP)/defs.mak
 CFLAGS = -Wall -g -fPIC
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 
-all: myst rootfs
+all:
+	$(MAKE) myst
+	$(MAKE) rootfs
 
 rootfs: pthread.c
 	mkdir -p appdir/bin

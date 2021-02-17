@@ -5,7 +5,10 @@ URL=https://nl.alpinelinux.org/alpine/v3.12/releases/x86_64/alpine-minirootfs-3.
 
 TARGZ=alpine-minirootfs.tar.gz
 
-all: myst appdir rootfs
+all:
+	$(MAKE) myst
+	$(MAKE) appdir
+	$(MAKE) rootfs
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst

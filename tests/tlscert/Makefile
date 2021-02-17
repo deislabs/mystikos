@@ -4,7 +4,9 @@ include $(TOP)/defs.mak
 APPDIR = appdir
 CFLAGS = -fPIC -g
 
-all: myst rootfs
+all:
+	$(MAKE) myst
+	$(MAKE) rootfs
 
 rootfs: tlscert.c
 	mkdir -p $(APPDIR)/

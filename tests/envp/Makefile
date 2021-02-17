@@ -7,7 +7,9 @@ LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 
 export UUID_051005DCD0B0448AAD4746E8538F4D81=12345
 
-all: myst rootfs
+all:
+	$(MAKE) myst
+	$(MAKE) rootfs
 
 rootfs: envp.c
 	mkdir -p $(APPDIR)/bin

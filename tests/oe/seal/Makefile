@@ -7,7 +7,9 @@ LDFLAGS += -L$(LIBDIR) -lopenenclave -lmbedcrypto
 
 INCLUDES += $(OEENCLAVE_INCLUDES)
 
-all: myst rootfs
+all:
+	$(MAKE) myst
+	$(MAKE) rootfs
 
 rootfs: seal.c
 	mkdir -p $(SUBBINDIR)

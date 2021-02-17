@@ -140,6 +140,12 @@ struct myst_thread
         /* myst_process_list_lock */
         myst_thread_t* prev_process_thread;
         myst_thread_t* next_process_thread;
+
+        /* process CWD. Can be set on differnt threads so need to protect it too
+         */
+        char* cwd;
+        myst_spinlock_t cwd_lock;
+
     } main;
 
     volatile _Atomic enum myst_thread_status status;

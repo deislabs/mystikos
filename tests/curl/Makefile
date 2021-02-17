@@ -13,7 +13,10 @@ ifdef EXPORT
 OPTS = --export-rootfs
 endif
 
-all: myst appdir rootfs
+all:
+	$(MAKE) myst
+	$(MAKE) appdir
+	$(MAKE) rootfs
 
 tests:
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /curl https://www.microsoft.com 2>&1 > /dev/null

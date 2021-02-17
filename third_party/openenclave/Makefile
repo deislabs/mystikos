@@ -1,18 +1,30 @@
+.NOTPARALLEL:
+
 TOP=$(abspath $(CURDIR)/../..)
 
 BUILDDIR=${TOP}/build
 
-OECACHE_DIR=$(HOME)/.myst/oecache
+URL=https://github.com/openenclave/openenclave
+
+BRANCH=mystikos
+
+# get the hash of the remote github repository (for the given branch)
+HASH=$(shell git ls-remote $(URL) -b $(BRANCH) | cut -f1 )
+
+CACHE_DIR=$(HOME)/.mystikos/cache/openenclave
+
+CACHE=$(CACHE_DIR)/$(HASH)
 
 all: $(BUILDDIR)/include/openenclave
 
-ifdef MYST_USE_OECACHE
-OECACHE_CHECK=$(wildcard $(OECACHE_DIR)/__oe__/include/openenclave/enclave.h)
+ifdef MYST_USE_BUILD_CACHE
+CACHE_CHECK=$(wildcard $(CACHE))
+ANSIBLE_CACHE_CHECK=$(wildcard $(CACHE)/ansible.cache)
 endif
 
 $(BUILDDIR)/include/openenclave:
-ifeq ($(OECACHE_CHECK),)
-	$(MAKE) submodules
+ifeq ($(CACHE_CHECK),)
+	$(MAKE) submodule
 	$(MAKE) openenclave
 else
 	$(MAKE) fetch_oecache
@@ -23,7 +35,7 @@ fetch_oecache: $(TOP)/build/openenclave $(TOP)/build/bin/myst-gdb
 $(TOP)/build/openenclave:
 	mkdir -p $(BUILDDIR)
 	rm -rf $(BUILDDIR)/openenclave
-	cp -r $(OECACHE_DIR)/__oe__ $(BUILDDIR)/openenclave
+	cp -r $(CACHE) $(BUILDDIR)/openenclave
 
 $(TOP)/build/bin/myst-gdb:
 	mkdir -p $(BUILDDIR)/bin
@@ -32,12 +44,12 @@ $(TOP)/build/bin/myst-gdb:
 
 ##==============================================================================
 ##
-## submodules:
+## submodule:
 ##
 ##==============================================================================
 
-submodules:
-	git submodule update --recursive --init --progress
+submodule:
+	git submodule update --recursive --init --progress $(CURDIR)/openenclave
 
 ##==============================================================================
 ##
@@ -48,7 +60,6 @@ submodules:
 OPENENCLAVE_INSTALL_PREFIX=$(BUILDDIR)/openenclave
 
 OPENENCLAVE_SRC = $(CURDIR)/openenclave
-
 OPENENCLAVE_BUILD = $(CURDIR)/openenclave/build
 
 .PHONY: openenclave
@@ -59,11 +70,21 @@ DEPENDENCY_TARGET = $(OPENENCLAVE_BUILD)/dependency_target
 openenclave: $(DEPENDENCY_TARGET) configure_oe install_oe
 
 $(DEPENDENCY_TARGET):
-ifneq ($(MYST_IGNORE_PREREQS),1)
-	sudo $(OPENENCLAVE_SRC)/scripts/ansible/install-ansible.sh
-	sudo ansible-playbook $(OPENENCLAVE_SRC)/scripts/ansible/oe-contributors-acc-setup-no-driver.yml
+ifeq ($(ANSIBLE_CACHE_CHECK),)
+	$(MAKE) ansible
+	mkdir -p $(CACHE)
+	touch $(CACHE)/ansible.cache
 endif
 	mkdir -p $(OPENENCLAVE_BUILD)
+
+ansible:
+ifneq ($(MYST_IGNORE_ANSIBLE),1)
+	$(MAKE) __ansible
+endif
+
+__ansible:
+	sudo $(OPENENCLAVE_SRC)/scripts/ansible/install-ansible.sh
+	sudo ansible-playbook $(OPENENCLAVE_SRC)/scripts/ansible/oe-contributors-acc-setup-no-driver.yml
 
 configure_oe: $(OPENENCLAVE_BUILD)/Makefile
 
@@ -83,14 +104,15 @@ $(OPENENCLAVE_BUILD)/Makefile:
 	rm -rf $(OPENENCLAVE_BUILD)
 	mkdir -p $(OPENENCLAVE_BUILD)
 	touch $(DEPENDENCY_TARGET)
-	( cd $(OPENENCLAVE_BUILD); cmake $(CMAKE_OPTS) .. )
+	( cd $(OPENENCLAVE_BUILD); cmake $(CMAKE_OPTS) $(OPENENCLAVE_SRC) )
 
 install_oe:
 	$(MAKE) -C $(OPENENCLAVE_BUILD) install
-ifdef MYST_USE_OECACHE
-	rm -rf $(OECACHE_DIR)
-	$(MAKE) -C $(OPENENCLAVE_BUILD) install DESTDIR=$(OECACHE_DIR)
-	mv $(OECACHE_DIR)/$(OPENENCLAVE_INSTALL_PREFIX) $(OECACHE_DIR)/__oe__
+ifdef MYST_USE_BUILD_CACHE
+	rm -rf $(CACHE)
+	$(MAKE) -C $(OPENENCLAVE_BUILD) install DESTDIR=$(CACHE_DIR)/tmp
+	mv $(CACHE_DIR)/tmp/$(OPENENCLAVE_INSTALL_PREFIX) $(CACHE)
+	rm -rf $(CACHE_DIR)/tmp
 endif
 	mkdir -p $(TOP)/build/bin
 	rm -f $(TOP)/build/bin/myst-gdb

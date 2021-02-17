@@ -1,7 +1,11 @@
+.NOTPARALLEL:
+
 TOP=$(abspath ..)
 include $(TOP)/defs.mak
 
 DIRS =
+
+DIRS += myst
 
 ifdef MYST_ENABLE_EXT2FS
 DIRS += ext2
@@ -35,7 +39,6 @@ DIRS += nbio
 DIRS += thread
 DIRS += gdb
 DIRS += dlopen
-DIRS += myst
 DIRS += pipe
 DIRS += spawn
 DIRS += fstat
@@ -53,8 +56,12 @@ DIRS += pipesz
 DIRS += futex
 DIRS += round
 DIRS += signal
-DIRS += libcxx
 DIRS += tlscert
+DIRS += wake_and_kill
+
+ifndef MYST_SKIP_LIBCXX_TESTS
+DIRS += libcxx
+endif
 
 ifndef MYST_USE_OECACHE
 DIRS += curl

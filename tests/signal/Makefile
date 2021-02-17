@@ -7,7 +7,9 @@ LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 
 #OPTS = --strace
 
-all: myst rootfs
+all:
+	$(MAKE) myst
+	$(MAKE) rootfs
 
 rootfs: signal.c
 	mkdir -p $(APPDIR)/bin

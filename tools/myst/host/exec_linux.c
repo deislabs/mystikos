@@ -24,6 +24,8 @@
 #include <myst/tcall.h>
 #include <myst/thread.h>
 
+#include "../config.h"
+#include "../shared.h"
 #include "archive.h"
 #include "exec_linux.h"
 #include "utils.h"
@@ -69,13 +71,16 @@ struct regions
     elf_image_t libmystcrt;
     void* mman_data;
     size_t mman_size;
+    void* app_config;
+    size_t app_config_size;
 };
 
 static void _get_options(
     int* argc,
     const char* argv[],
     struct options* options,
-    size_t* user_mem_size)
+    size_t* user_mem_size,
+    const char** app_config_path)
 {
     /* Get --trace-syscalls option */
     if (cli_getopt(argc, argv, "--trace-syscalls", NULL) == 0 ||
@@ -110,13 +115,8 @@ static void _get_options(
         }
     }
 
-    // Currently app config is not used on linux. Ignoring it here.
-    const char* temp_setting = NULL;
-    if (cli_getopt(argc, argv, "--app-config-path", &temp_setting) == 0)
-    {
-        printf(
-            "Warning: --app-config-path option is ignored for Linux target\n");
-    }
+    // get app config if present
+    cli_getopt(argc, argv, "--app-config-path", app_config_path);
 }
 
 static void* _map_mmap_region(size_t length)
@@ -137,6 +137,7 @@ static void _load_regions(
     const char* rootfs,
     const char* archive,
     size_t user_mem_size,
+    const char* app_config,
     struct regions* r)
 {
     char path[PATH_MAX];
@@ -146,6 +147,10 @@ static void _load_regions(
 
     if (myst_load_file(archive, &r->archive_data, &r->archive_size) != 0)
         _err("failed to map file: %s", archive);
+
+    if (app_config &&
+        (myst_load_file(app_config, &r->app_config, &r->app_config_size) != 0))
+        _err("failed to load config file: %s", app_config);
 
     /* Load libmystcrt.so */
     {
@@ -264,6 +269,8 @@ static int _enter_kernel(
     const elf_ehdr_t* ehdr = regions->libmystkernel.image_data;
     myst_kernel_entry_t entry;
     myst_args_t env;
+    const char* cwd = "/";       /* default */
+    const char* hostname = NULL; // kernel has a default
 
     if (err)
         *err = '\0';
@@ -312,6 +319,27 @@ static int _enter_kernel(
         myst_args_append1(&env, "MYST_TARGET=linux");
     }
 
+    /* Extract any settings from the config, if present */
+    config_parsed_data_t parsed_data = {0};
+    if (regions->app_config && regions->app_config_size)
+    {
+        if (parse_config_from_buffer(
+                regions->app_config, regions->app_config_size, &parsed_data) ==
+            0)
+        {
+            /* only override if we have a cwd config item */
+            if (parsed_data.cwd)
+                cwd = parsed_data.cwd;
+
+            if (parsed_data.hostname)
+                hostname = parsed_data.hostname;
+        }
+        else
+        {
+            _err("Failed to parse app config from");
+        }
+    }
+
     memset(&args, 0, sizeof(args));
     args.image_data = (void*)0;
     args.image_size = 0x7fffffffffffffff;
@@ -333,6 +361,8 @@ static int _enter_kernel(
     args.argv = argv;
     args.envc = env.size;
     args.envp = env.data;
+    args.cwd = cwd;
+    args.hostname = hostname;
     args.mman_data = regions->mman_data;
     args.mman_size = regions->mman_size;
     args.rootfs_data = regions->rootfs_data;
@@ -371,6 +401,8 @@ static int _enter_kernel(
     *return_status = (*entry)(&args);
 
 done:
+    if (regions->app_config && regions->app_config_size)
+        free_config(&parsed_data);
 
     if (env.data)
         free(env.data);
@@ -399,11 +431,12 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
     char archive_path[PATH_MAX];
     char rootfs_path[] = "/tmp/mystXXXXXX";
     size_t user_mem_size = 0;
+    const char* app_config_path = NULL;
 
     (void)program_arg;
 
     /* Get the command-line options */
-    _get_options(&argc, argv, &options, &user_mem_size);
+    _get_options(&argc, argv, &options, &user_mem_size, &app_config_path);
 
     /* Get --pubkey=filename options */
     get_archive_options(
@@ -454,7 +487,8 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
     }
 
     /* Load the regions into memory */
-    _load_regions(rootfs_arg, archive_path, user_mem_size, &regions);
+    _load_regions(
+        rootfs_arg, archive_path, user_mem_size, app_config_path, &regions);
 
     unlink(archive_path);
 

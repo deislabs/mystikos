@@ -1,3 +1,5 @@
+.NOTPARALLEL:
+
 TOP = $(abspath ../..)
 include $(TOP)/defs.mak
 
@@ -28,7 +30,7 @@ $(APPDIR):
 	cp $(CURDIR)/failed.txt $(APPDIR)
 
 $(APPDIR)/target:
-	sudo docker run --rm -v $(APPDIR):/appdir $(IMG) bash -c "make -C appdir"
+	sudo docker run --rm -v $(APPDIR):/appdir $(IMG) bash -c "make -j -C appdir"
 	touch $(APPDIR)/target
 
 ifdef FAILED

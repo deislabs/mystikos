@@ -28,7 +28,7 @@ endif
 
 LIBCC = -lgcc
 
-MUSLSRC=$(BUILDDIR)/crt-musl
+MUSLSRC=$(TOP)/third_party/musl/crt/musl
 
 -include $(MUSLSRC)/objects.mak
 

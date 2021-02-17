@@ -4,4 +4,4 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
 
-#include "../third_party/musl/musl/src/stdlib/atoi.c"
+#include "../third_party/musl/crt/musl/src/stdlib/atoi.c"
