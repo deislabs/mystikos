@@ -13,25 +13,28 @@
 #include <myst/exec.h>
 #include <myst/fdtable.h>
 #include <myst/file.h>
+#include <myst/fs.h>
 #include <myst/fsgs.h>
+#include <myst/hex.h>
 #include <myst/initfini.h>
 #include <myst/kernel.h>
-#include <myst/hex.h>
 #include <myst/mmanutils.h>
 #include <myst/mount.h>
 #include <myst/options.h>
 #include <myst/panic.h>
 #include <myst/printf.h>
 #include <myst/process.h>
+#include <myst/pubkey.h>
 #include <myst/ramfs.h>
-#include <myst/fs.h>
 #include <myst/signal.h>
 #include <myst/strings.h>
 #include <myst/syscall.h>
+#include <myst/tee.h>
 #include <myst/thread.h>
 #include <myst/times.h>
 #include <myst/ttydev.h>
-#include <myst/pubkey.h>
+
+#define WANT_TLS_CREDENTIAL "MYST_WANT_TLS_CREDENTIAL"
 
 static myst_fs_t* _fs;
 
@@ -163,7 +166,7 @@ static int _setup_ramfs(void)
         ERAISE(-EINVAL);
     }
 
-    if (myst_mount(_fs, "/") != 0)
+    if (myst_mount(_fs, "/", "/") != 0)
     {
         myst_eprintf("cannot mount root file system\n");
         ERAISE(-EINVAL);
@@ -175,18 +178,19 @@ done:
     return ret;
 }
 
+#ifdef MYST_ENABLE_EXT2FS
 static int _setup_ext2(const char* rootfs)
 {
     int ret = 0;
-    const char* key = NULL; /* not automatic key-release support yet */
+    const char* key = NULL; /* no automatic key-release support yet */
 
     if (myst_load_fs(rootfs, key, &_fs) != 0)
     {
-        myst_eprintf("failed load the ext2 rootfs: %s\n", rootfs);
+        myst_eprintf("failed to load the ext2 rootfs: %s\n", rootfs);
         ERAISE(-EINVAL);
     }
 
-    if (myst_mount(_fs, "/") != 0)
+    if (myst_mount(_fs, rootfs, "/") != 0)
     {
         myst_eprintf("cannot mount root file system\n");
         ERAISE(-EINVAL);
@@ -195,6 +199,72 @@ static int _setup_ext2(const char* rootfs)
     _create_standard_directories();
 
 done:
+    return ret;
+}
+#endif /* MYST_ENABLE_EXT2FS */
+
+static const char* _getenv(const char** envp, const char* varname)
+{
+    const char* ret = NULL;
+    if (envp != NULL)
+    {
+        size_t len = strlen(varname);
+        for (const char** env = envp; *env != NULL; env++)
+        {
+            if (strncmp(*env, varname, len) == 0 && *(*env + len) == '=')
+            {
+                ret = *env + len + 1;
+                break;
+            }
+        }
+    }
+    return ret;
+}
+
+static int _create_tls_credentials()
+{
+    int ret = -EINVAL;
+    uint8_t* cert = NULL;
+    size_t cert_size = 0;
+    uint8_t* pkey = NULL;
+    size_t pkey_size = 0;
+
+    assert(_fs != NULL);
+
+    myst_file_t* file = NULL;
+    int flags = O_CREAT | O_WRONLY;
+
+    long params[6] = {
+        (long)&cert, (long)&cert_size, (long)&pkey, (long)&pkey_size};
+    ECHECK(myst_tcall(MYST_TCALL_GEN_CREDS, params));
+
+    // Save the certificate
+    ECHECK((_fs->fs_open)(_fs, MYST_CERTIFICATE_PATH, flags, 0444, &file));
+    ECHECK((_fs->fs_write)(_fs, file, cert, cert_size) == (int64_t)cert_size);
+    ECHECK((_fs->fs_close)(_fs, file));
+    file = NULL;
+
+    // Save the private key
+    ECHECK((_fs->fs_open)(_fs, MYST_PRIVATE_KEY_PATH, flags, 0444, &file));
+    ECHECK((_fs->fs_write)(_fs, file, pkey, pkey_size) == (int64_t)pkey_size);
+    ECHECK((_fs->fs_close)(_fs, file));
+    file = NULL;
+
+    ret = 0;
+
+done:
+    if (cert || pkey)
+    {
+        long params[6] = {
+            (long)cert, (long)cert_size, (long)pkey, (long)pkey_size};
+        myst_tcall(MYST_TCALL_FREE_CREDS, params);
+    }
+
+    if (file)
+    {
+        _fs->fs_close(_fs, file);
+    }
+
     return ret;
 }
 
@@ -261,6 +331,14 @@ static int _create_main_thread(uint64_t event, myst_thread_t** thread_out)
     thread->tid = pid;
     thread->event = event;
     thread->target_td = myst_get_fsbase();
+    thread->main.thread_group_lock = MYST_SPINLOCK_INITIALIZER;
+    thread->thread_lock = &thread->main.thread_group_lock;
+
+    // Initial process list is just us. All new processes will be inserted in
+    // the list. Dont need to set these as they are already NULL, but being here
+    // helps to track where main threads are created and torn down!
+    // thread->main.prev_process_thread = NULL;
+    // thread->main.next_process_thread = NULL;
 
     /* allocate the new fdtable for this process */
     ECHECK(myst_fdtable_create(&thread->fdtable));
@@ -368,14 +446,44 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     }
     else
     {
+#ifdef MYST_ENABLE_EXT2FS
+
         /* setup and mount the EXT2 file system */
         if (_setup_ext2(args->rootfs) != 0)
             ERAISE(-EINVAL);
+
+#else  /* MYST_ENABLE_EXT2FS */
+        myst_panic("ext2 not supported");
+#endif /* MYST_ENABLE_EXT2FS */
+    }
+
+    /* Generate TLS credentials if needed */
+    const char* want_tls_creds = _getenv(args->envp, WANT_TLS_CREDENTIAL);
+    if (want_tls_creds != NULL)
+    {
+        if (strcmp(want_tls_creds, "1") == 0)
+            ECHECK(_create_tls_credentials());
+        else if (strcmp(want_tls_creds, "0") != 0)
+        {
+            myst_eprintf(
+                "Environment variable %s only accept 0 or 1\n",
+                WANT_TLS_CREDENTIAL);
+            ERAISE(-EINVAL);
+        }
     }
 
     /* Create the main thread */
     ECHECK(_create_main_thread(args->event, &thread));
     __myst_main_thread = thread;
+
+    thread->main.cwd_lock = MYST_SPINLOCK_INITIALIZER;
+    thread->main.cwd = strdup(args->cwd);
+    if (thread->main.cwd == NULL)
+        ERAISE(-ENOMEM);
+
+    if (args->hostname)
+        ECHECK(
+            myst_syscall_sethostname(args->hostname, strlen(args->hostname)));
 
     /* setup the TTY devices */
     if (_setup_tty() != 0)
@@ -385,7 +493,8 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     }
 
     /* Unpack the CPIO from memory */
-    if (use_cpio && myst_cpio_mem_unpack(
+    if (use_cpio &&
+        myst_cpio_mem_unpack(
             args->rootfs_data, args->rootfs_size, "/", _create_mem_file) != 0)
     {
         myst_eprintf("failed to unpack root file system\n");
@@ -451,11 +560,16 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         /* release the exec copy of the CRT data */
         if (thread->main.exec_crt_data)
         {
-            myst_munmap(
-                thread->main.exec_crt_data, thread->main.exec_crt_size);
+            myst_munmap(thread->main.exec_crt_data, thread->main.exec_crt_size);
             thread->main.exec_crt_data = NULL;
             thread->main.exec_crt_size = 0;
         }
+        /* unmap any mapping made by the process */
+        myst_release_process_mappings(thread->pid);
+
+        /* Free CWD */
+        free(thread->main.cwd);
+        thread->main.cwd = NULL;
 
         /* switch back to the target thread descriptor */
         myst_set_fsbase(thread->target_td);

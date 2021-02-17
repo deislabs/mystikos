@@ -9,6 +9,11 @@ SOURCES += enc.c
 SOURCES += clock.c
 SOURCES += syscall.c
 SOURCES += ../config.c
+SOURCES += ../common.c
+
+ifdef MYST_ENABLE_HOSTFS
+DEFINES += -DMYST_ENABLE_HOSTFS
+endif
 
 INCLUDES = $(OEENCLAVE_INCLUDES) -I$(SUBOBJDIR) -I../
 

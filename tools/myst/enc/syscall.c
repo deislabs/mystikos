@@ -4,6 +4,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <syscall.h>
@@ -14,6 +15,12 @@
 #include "myst_t.h"
 
 #define RETURN(EXPR) return ((EXPR) == OE_OK ? ret : -EINVAL)
+
+// Force downsizing of ocall output lengths to prevent reading past the end
+// of the caller's buffer. See issue #83. This breaks API compatibility in
+// some cases. If such a case is encountered, undefine this macro termporarily
+// to diagnose the issue.
+#define DOWNSIZE_OCALL_OUTPUT_LENGTHS
 
 static long _read(int fd, void* buf, size_t count)
 {
@@ -302,6 +309,11 @@ static long _accept4(
             goto done;
         }
 
+#ifdef DOWNSIZE_OCALL_OUTPUT_LENGTHS
+        if (n > *addrlen)
+            n = *addrlen;
+#endif
+
         /* note: n may legitimately be bigger due to truncation */
         *addrlen = n;
     }
@@ -445,12 +457,25 @@ static long _recvmsg(int sockfd, struct msghdr* msg, int flags)
             goto done;
         }
 
+#ifdef DOWNSIZE_OCALL_OUTPUT_LENGTHS
+        if (namelen > msg->msg_namelen)
+            namelen = msg->msg_namelen;
+#endif
+
         /* note: namelen may legitimately be bigger due to truncation */
         msg->msg_namelen = msg->msg_name ? namelen : 0;
     }
 
     /* guard against host returning too large a value for msg_controllen */
     {
+#ifdef DOWNSIZE_OCALL_OUTPUT_LENGTHS
+        if (controllen > msg->msg_controllen)
+        {
+            controllen = msg->msg_controllen;
+            msg->msg_flags |= MSG_CTRUNC;
+        }
+#endif
+
         /* note: controllen may legitimately be bigger due to truncation */
         msg->msg_controllen = msg->msg_control ? controllen : 0;
     }
@@ -458,6 +483,9 @@ static long _recvmsg(int sockfd, struct msghdr* msg, int flags)
     /* guard against host returning a size larger than the buffer */
     if (retval > len)
     {
+        // ATTN: this implementation fails if returned length is greater than
+        // buffer length, although this is legal according to the recvmsg()
+        // documentation.
         ret = -EINVAL;
         goto done;
     }
@@ -531,7 +559,12 @@ static long _getsockname(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
             goto done;
         }
 
+#ifdef DOWNSIZE_OCALL_OUTPUT_LENGTHS
         /* note: n may legitimately be bigger due to truncation */
+        if (n > *addrlen)
+            n = *addrlen;
+#endif
+
         *addrlen = n;
     }
 
@@ -576,6 +609,11 @@ static long _getpeername(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
             goto done;
         }
 
+#ifdef DOWNSIZE_OCALL_OUTPUT_LENGTHS
+        if (n > *addrlen)
+            n = *addrlen;
+#endif
+
         /* note: n may legitimately be bigger due to truncation */
         *addrlen = n;
     }
@@ -600,8 +638,7 @@ static long _setsockopt(
     socklen_t optlen)
 {
     long ret;
-    RETURN(
-        myst_setsockopt_ocall(&ret, sockfd, level, optname, optval, optlen));
+    RETURN(myst_setsockopt_ocall(&ret, sockfd, level, optname, optval, optlen));
 }
 
 static long _getsockopt(
@@ -623,8 +660,8 @@ static long _getsockopt(
 
     n = *optlen;
 
-    if (myst_getsockopt_ocall(
-            &retval, sockfd, level, optname, optval, &n, n) != OE_OK)
+    if (myst_getsockopt_ocall(&retval, sockfd, level, optname, optval, &n, n) !=
+        OE_OK)
     {
         ret = -EINVAL;
         goto done;
@@ -741,8 +778,84 @@ static long _poll(struct pollfd* fds, nfds_t nfds, int timeout)
 {
     long ret = 0;
     long retval;
+    struct pollfd buf[256]; /* use this buffer if large enough */
+    struct pollfd* copy;    /* pointer to buf or heap-allocated memory */
 
-    if (myst_poll_ocall(&retval, fds, nfds, timeout) != OE_OK)
+    if (!fds && nfds > 0)
+    {
+        ret = -EFAULT;
+        goto done;
+    }
+
+    /* make copy of fds[] to prevent modification of fd and events fields */
+    if (fds)
+    {
+        size_t size;
+
+        /* find the size of fds[] in bytes and check for overflow */
+        if (__builtin_mul_overflow(nfds, sizeof(struct pollfd), &size))
+        {
+            ret = -EINVAL;
+            goto done;
+        }
+
+        /* use local buffer if possible to avoid unecessary heap allocation */
+        if (size <= sizeof(buf))
+        {
+            /* size could be zero but that is acceptable */
+            copy = buf;
+        }
+        else if (!(copy = malloc(size)))
+        {
+            ret = -ENOMEM;
+            goto done;
+        }
+
+        if (size)
+            memcpy(copy, fds, size);
+    }
+    else
+    {
+        /* support null fds[] array: example: poll(NULL, 0, 1000) */
+        copy = NULL;
+    }
+
+    if (myst_poll_ocall(&retval, copy, nfds, timeout) != OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    /* copy back the revents field */
+    for (nfds_t i = 0; i < nfds; i++)
+    {
+        fds[i].revents = copy[i].revents;
+    }
+
+    /* guard against return value that is bigger than nfds */
+    if (retval >= 0 && (nfds_t)retval > nfds)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = retval;
+
+done:
+
+    if (copy && copy != buf)
+        free(copy);
+
+    return ret;
+}
+
+#ifdef MYST_ENABLE_HOSTFS
+static long _open(const char* pathname, int flags, mode_t mode)
+{
+    long ret = 0;
+    long retval;
+
+    if (myst_open_ocall(&retval, pathname, flags, mode) != OE_OK)
     {
         ret = -EINVAL;
         goto done;
@@ -753,6 +866,437 @@ static long _poll(struct pollfd* fds, nfds_t nfds, int timeout)
 done:
     return ret;
 }
+#endif
+
+#ifdef MYST_ENABLE_HOSTFS
+static long _stat(const char* pathname, struct myst_stat* statbuf)
+{
+    long ret = 0;
+    long retval;
+
+    if (myst_stat_ocall(&retval, pathname, statbuf) != OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = retval;
+
+done:
+    return ret;
+}
+#endif
+
+#ifdef MYST_ENABLE_HOSTFS
+static long _lstat(const char* pathname, struct myst_stat* statbuf)
+{
+    long ret = 0;
+    long retval;
+
+    if (myst_lstat_ocall(&retval, pathname, statbuf) != OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = retval;
+
+done:
+    return ret;
+}
+#endif
+
+#ifdef MYST_ENABLE_HOSTFS
+static long _access(const char* pathname, int mode)
+{
+    long ret = 0;
+    long retval;
+
+    if (myst_access_ocall(&retval, pathname, mode) != OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = retval;
+
+done:
+    return ret;
+}
+#endif
+
+#ifdef MYST_ENABLE_HOSTFS
+static long _dup(int oldfd)
+{
+    long ret = 0;
+    long retval;
+
+    if (myst_dup_ocall(&retval, oldfd) != OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = retval;
+
+done:
+    return ret;
+}
+#endif
+
+#ifdef MYST_ENABLE_HOSTFS
+static long _pread64(int fd, void* buf, size_t count, off_t offset)
+{
+    long ret = 0;
+    long retval;
+
+    if (fd < 0 || (!buf && count) || count > SSIZE_MAX)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    if (myst_pread64_ocall(&retval, fd, buf, count, offset) != OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    if (retval < 0)
+    {
+        ret = retval;
+        goto done;
+    }
+
+    /* guard against host setting the return value greater than count */
+    if (retval > (ssize_t)count)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = retval;
+
+done:
+    return ret;
+}
+#endif
+
+#ifdef MYST_ENABLE_HOSTFS
+static long _pwrite64(int fd, const void* buf, size_t count, off_t offset)
+{
+    long ret = 0;
+    long retval;
+
+    if (fd < 0 || (!buf && count) || count > SSIZE_MAX)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    if (myst_pwrite64_ocall(&retval, fd, buf, count, offset) != OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    if (retval < 0)
+    {
+        ret = retval;
+        goto done;
+    }
+
+    /* guard against host returning a size bigger than buffer */
+    if (retval > (ssize_t)count)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = retval;
+
+done:
+    return ret;
+}
+#endif
+
+#ifdef MYST_ENABLE_HOSTFS
+static long _link(const char* oldpath, const char* newpath)
+{
+    long ret = 0;
+    long retval;
+
+    if (!oldpath || !newpath)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    if (myst_link_ocall(&retval, oldpath, newpath) != OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = retval;
+
+done:
+    return ret;
+}
+#endif
+
+#ifdef MYST_ENABLE_HOSTFS
+static long _unlink(const char* pathname)
+{
+    long ret = 0;
+    long retval;
+
+    if (!pathname)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    if (myst_unlink_ocall(&retval, pathname) != OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = retval;
+
+done:
+    return ret;
+}
+#endif
+
+#ifdef MYST_ENABLE_HOSTFS
+static long _mkdir(const char* pathname, mode_t mode)
+{
+    long ret = 0;
+    long retval;
+
+    if (!pathname)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    if (myst_mkdir_ocall(&retval, pathname, mode) != OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = retval;
+
+done:
+    return ret;
+}
+#endif
+
+#ifdef MYST_ENABLE_HOSTFS
+static long _rmdir(const char* pathname)
+{
+    long ret = 0;
+    long retval;
+
+    if (!pathname)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    if (myst_rmdir_ocall(&retval, pathname) != OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = retval;
+
+done:
+    return ret;
+}
+#endif
+
+#ifdef MYST_ENABLE_HOSTFS
+static long _getdents64(
+    unsigned int fd,
+    struct myst_linux_dirent64* dirp,
+    unsigned int count)
+{
+    long ret = 0;
+    long retval;
+
+    if (fd >= INT_MAX || (dirp && !count))
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    if (myst_getdents64_ocall(&retval, fd, dirp, count) != OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    if (retval < 0)
+    {
+        ret = retval;
+        goto done;
+    }
+
+    /* guard against host returning a size bigger than the buffer */
+    if (retval > count)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = retval;
+
+done:
+    return ret;
+}
+#endif
+
+#ifdef MYST_ENABLE_HOSTFS
+static long _rename(const char* oldpath, const char* newpath)
+{
+    long ret = 0;
+    long retval;
+
+    if (!oldpath || !newpath)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    if (myst_rename_ocall(&retval, oldpath, newpath) != OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = retval;
+
+done:
+    return ret;
+}
+#endif
+
+#ifdef MYST_ENABLE_HOSTFS
+static long _truncate(const char* path, off_t length)
+{
+    long ret = 0;
+    long retval;
+
+    if (!path)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    if (myst_truncate_ocall(&retval, path, length) != OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = retval;
+
+done:
+    return ret;
+}
+#endif
+
+#ifdef MYST_ENABLE_HOSTFS
+static long _ftruncate(int fd, off_t length)
+{
+    long ret = 0;
+    long retval;
+
+    if (fd < 0)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    if (myst_ftruncate_ocall(&retval, fd, length) != OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = retval;
+
+done:
+    return ret;
+}
+#endif
+
+#ifdef MYST_ENABLE_HOSTFS
+static long _symlink(const char* target, const char* linkpath)
+{
+    long ret = 0;
+    long retval;
+
+    if (!target || !linkpath)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    if (myst_symlink_ocall(&retval, target, linkpath) != OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = retval;
+
+done:
+    return ret;
+}
+#endif
+
+#ifdef MYST_ENABLE_HOSTFS
+static long _readlink(const char* pathname, char* buf, size_t bufsiz)
+{
+    long ret = 0;
+    long retval;
+
+    if (!pathname || (buf && !bufsiz))
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    if (myst_readlink_ocall(&retval, pathname, buf, bufsiz) != OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    if (retval < 0)
+    {
+        ret = retval;
+        goto done;
+    }
+
+    if ((size_t)retval > bufsiz)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = retval;
+
+done:
+    return ret;
+}
+#endif
 
 long myst_handle_tcall(long n, long params[6])
 {
@@ -882,6 +1426,79 @@ long myst_handle_tcall(long n, long params[6])
         {
             return _poll((struct pollfd*)a, (nfds_t)b, (int)c);
         }
+#ifdef MYST_ENABLE_HOSTFS
+        case SYS_open:
+        {
+            return _open((const char*)a, (int)b, (mode_t)c);
+        }
+        case SYS_stat:
+        {
+            return _stat((const char*)a, (struct myst_stat*)b);
+        }
+        case SYS_lstat:
+        {
+            return _lstat((const char*)a, (struct myst_stat*)b);
+        }
+        case SYS_access:
+        {
+            return _access((const char*)a, (int)b);
+        }
+        case SYS_dup:
+        {
+            return _dup((int)a);
+        }
+        case SYS_pread64:
+        {
+            return _pread64((int)a, (void*)b, (size_t)c, (off_t)d);
+        }
+        case SYS_pwrite64:
+        {
+            return _pwrite64((int)a, (const void*)b, (size_t)c, (off_t)d);
+        }
+        case SYS_link:
+        {
+            return _link((const char*)a, (const char*)b);
+        }
+        case SYS_unlink:
+        {
+            return _unlink((const char*)a);
+        }
+        case SYS_mkdir:
+        {
+            return _mkdir((const char*)a, (mode_t)b);
+        }
+        case SYS_rmdir:
+        {
+            return _rmdir((const char*)a);
+        }
+        case SYS_getdents64:
+        {
+            return _getdents64(
+                (unsigned int)a,
+                (struct myst_linux_dirent64*)b,
+                (unsigned int)c);
+        }
+        case SYS_rename:
+        {
+            return _rename((const char*)a, (const char*)b);
+        }
+        case SYS_truncate:
+        {
+            return _truncate((const char*)a, (off_t)b);
+        }
+        case SYS_ftruncate:
+        {
+            return _ftruncate((int)a, (off_t)b);
+        }
+        case SYS_symlink:
+        {
+            return _symlink((const char*)a, (const char*)b);
+        }
+        case SYS_readlink:
+        {
+            return _readlink((const char*)a, (char*)b, (size_t)c);
+        }
+#endif
         default:
         {
             return -ENOTSUP;

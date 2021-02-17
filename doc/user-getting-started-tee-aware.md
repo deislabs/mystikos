@@ -74,7 +74,7 @@ The output should be: `I am in unknown environment`.
 
 Now build and run the program in SGX with the following commands:
 ```bash
-mkdir appdir; myst-gcc a.c -o appdir/tee
+mkdir appdir; myst-gcc tee.c -o appdir/tee
 myst mkcpio appdir rootfs && myst exec rootfs /tee
 ```
 
@@ -97,7 +97,7 @@ int _verifier(myst_tee_identity_t* identity, void* ptr)
     // Expected Product ID: {1}
     const uint8_t PRODID[MYST_PRODUCT_ID_SIZE] = {1};
     // Expected security version: 1
-    const SVN = 1;
+    const int SVN = 1;
 
     // Returning 0 means pass.
     // We can easily expand this to more sophicated checks
@@ -135,7 +135,7 @@ int main()
 Save the file as `tee2.c`. Now build and run the program in SGX with the
 following commands:
 ```bash
-myst-gcc tee2.c -I/opt/Mystikos/include -o appdir/tee2
+myst-gcc tee2.c -I/opt/mystikos/include -o appdir/tee2
 myst mkcpio appdir rootfs && myst exec rootfs /tee2
 ```
 And the output should be:

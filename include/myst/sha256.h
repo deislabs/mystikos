@@ -12,14 +12,12 @@
 typedef struct myst_sha256_ctx
 {
     uint64_t opaque[16];
-}
-myst_sha256_ctx_t;
+} myst_sha256_ctx_t;
 
 typedef struct myst_sha256
 {
     uint8_t data[MYST_SHA256_SIZE];
-}
-myst_sha256_t;
+} myst_sha256_t;
 
 int myst_sha256(myst_sha256_t* sha256, const void* data, size_t size);
 

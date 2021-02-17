@@ -998,7 +998,7 @@ int main(int argc, const char* argv[])
     assert(memcmp(&sb, &__ext2->sb, sizeof(sb)) == 0);
 
     ext2_release(fs);
-    //dev->close(dev);
+    // dev->close(dev);
 
     printf("=== passed test (%s)\n", argv[0]);
 

@@ -7,7 +7,7 @@
 IMG=alpine-virt-3.13.0-x86_64.iso
 URL=https://dl-cdn.alpinelinux.org/alpine/v3.13/releases/x86_64/$(IMG)
 SIZE=4G
-GCOW=apline.gcow2
+GCOW=alpine.gcow2
 
 all:
 
@@ -71,5 +71,10 @@ clean:
 ##
 ##==============================================================================
 
+ifdef STRACE
+OPTS = --strace
+endif
+
 run:
-	myst exec ext2.img /root/bin/hello
+	$(MAKE) -C ../../kernel
+	myst exec $(OPTS) ext2.img /bin/ls /bin

@@ -23,7 +23,7 @@ struct myst_fs
 
     int (*fs_release)(myst_fs_t* fs);
 
-    int (*fs_mount)(myst_fs_t* fs, const char* target);
+    int (*fs_mount)(myst_fs_t* fs, const char* source, const char* target);
 
     int (*fs_creat)(
         myst_fs_t* fs,
@@ -38,11 +38,8 @@ struct myst_fs
         mode_t mode,
         myst_file_t** file);
 
-    off_t (*fs_lseek)(
-        myst_fs_t* fs,
-        myst_file_t* file,
-        off_t offset,
-        int whence);
+    off_t (
+        *fs_lseek)(myst_fs_t* fs, myst_file_t* file, off_t offset, int whence);
 
     ssize_t (
         *fs_read)(myst_fs_t* fs, myst_file_t* file, void* buf, size_t count);
@@ -117,11 +114,8 @@ struct myst_fs
 
     int (*fs_symlink)(myst_fs_t* fs, const char* target, const char* linkpath);
 
-    int (*fs_realpath)(
-        myst_fs_t* fs,
-        myst_file_t* file,
-        char* buf,
-        size_t size);
+    int (
+        *fs_realpath)(myst_fs_t* fs, myst_file_t* file, char* buf, size_t size);
 
     int (*fs_fcntl)(myst_fs_t* fs, myst_file_t* file, int cmd, long arg);
 

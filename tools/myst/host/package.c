@@ -4,8 +4,8 @@
 #include <assert.h>
 #include <errno.h>
 #include <libgen.h>
-#include <myst/types.h>
 #include <limits.h>
+#include <myst/types.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -17,8 +17,10 @@
 #include <myst/getopt.h>
 #include <openenclave/bits/sgx/region.h>
 #include <openenclave/host.h>
+#include <myst/strings.h>
 
 #include "../config.h"
+#include "archive.h"
 #include "cpio.h"
 #include "exec.h"
 #include "myst/file.h"
@@ -26,14 +28,14 @@
 #include "regions.h"
 #include "sign.h"
 #include "utils.h"
-#include "archive.h"
 
 _Static_assert(PAGE_SIZE == 4096, "");
 
-#define USAGE_PACKAGE \
-    "\
+#define USAGE_PACKAGE "\
 \n\
-Usage: %s package-sgx <app_dir> <pem_file> <config> [options]\n\
+Usage:\n\
+    %s package-sgx [options] <app_dir> <pem_file> <config>\n\
+    %s package-sgx [options] <pem_file> <config>\n\
 \n\
 Where:\n\
     package-sgx -- create an executable package to run on the SGX platform\n\
@@ -45,7 +47,9 @@ Where:\n\
     <config>    -- configuration for signing and application runtime\n\
 \n\
 and <options> are one of:\n\
-    --help      -- this message\n\
+    --help                -- this message\n\
+    --pubkey=pem_file     -- trust disks signed by this key (repeatable)\n\
+    --roothash=ascii_file -- trust disks with this roothash (repeatable)\n\
 \n\
 "
 
@@ -115,10 +119,10 @@ int _package(int argc, const char* argv[])
         max_roothashes,
         &num_roothashes);
 
-    if ((argc < 5) || (cli_getopt(&argc, argv, "--help", NULL) == 0) ||
+    if ((argc < 4) || (cli_getopt(&argc, argv, "--help", NULL) == 0) ||
         (cli_getopt(&argc, argv, "-h", NULL) == 0))
     {
-        fprintf(stderr, USAGE_PACKAGE, argv[0]);
+        fprintf(stderr, USAGE_PACKAGE, argv[0], argv[0]);
         goto done;
     }
 
@@ -127,9 +131,19 @@ int _package(int argc, const char* argv[])
         (strcmp(argv[1], "package") == 0) ||
         (strcmp(argv[1], "package-sgx") == 0));
 
-    app_dir = argv[2];
-    pem_file = argv[3];
-    config_file = argv[4];
+    if (argc == 5)
+    {
+        app_dir = argv[2];
+        pem_file = argv[3];
+        config_file = argv[4];
+    }
+    else if (argc == 4)
+    {
+        app_dir = NULL;
+        pem_file = argv[2];
+        config_file = argv[3];
+    }
+
     create_archive(
         pubkeys, num_pubkeys, roothashes, num_roothashes, archive_file);
 
@@ -146,19 +160,41 @@ int _package(int argc, const char* argv[])
         goto done;
     }
 
-    const char* mkcpio_args[] = {argv[0], // ..../myst
-                                 "mkcpio",
-                                 app_dir,
-                                 rootfs_file};
-
-    if (_mkcpio(sizeof(mkcpio_args) / sizeof(mkcpio_args[0]), mkcpio_args) != 0)
+    if (app_dir)
     {
-        fprintf(
-            stderr,
-            "Failed to create root filesystem \"%s\" from directory \"%s\"\n",
-            rootfs_file,
-            app_dir);
-        goto done;
+        const char* mkcpio_args[] = {argv[0], // ..../myst
+                                     "mkcpio",
+                                     app_dir,
+                                     rootfs_file};
+
+        if (_mkcpio(
+                sizeof(mkcpio_args) / sizeof(mkcpio_args[0]), mkcpio_args) != 0)
+        {
+            fprintf(
+                stderr,
+                "Failed to create root filesystem \"%s\" from directory "
+                "\"%s\"\n",
+                rootfs_file,
+                app_dir);
+            goto done;
+        }
+    }
+    else
+    {
+        /* generate a dummy CPIO rootfs with one page of zero bytes */
+        int fd;
+        uint8_t page[PAGE_SIZE];
+        const int flags = O_CREAT | O_WRONLY | O_TRUNC;
+
+        if ((fd = open(rootfs_file, flags, 0666)) < 0)
+            _err("failed to create temporary file");
+
+        memset(page, 0, sizeof(page));
+
+        if (write(fd, page, sizeof(page)) != sizeof(page))
+            _err("failed to create file: %s", rootfs_file);
+
+        close(fd);
     }
 
     if (parse_config_from_file(config_file, &parsed_data) != 0)
@@ -232,10 +268,8 @@ int _package(int argc, const char* argv[])
 
     // Add the enclave to myst
     if (snprintf(
-            scratch_path,
-            PATH_MAX,
-            "%s/lib/openenclave/mystenc.so",
-            tmp_dir) >= PATH_MAX)
+            scratch_path, PATH_MAX, "%s/lib/openenclave/mystenc.so", tmp_dir) >=
+        PATH_MAX)
     {
         fprintf(
             stderr,
@@ -393,6 +427,23 @@ done:
     return ret;
 }
 
+/* if this is the null rootfs (one page full of zeros) */
+static bool _is_null_rootfs(const void* s, size_t n)
+{
+    const uint8_t* p = s;
+
+    if (!s || n != PAGE_SIZE)
+        return false;
+
+    while (n--)
+    {
+        if (*p++)
+            return false;
+    }
+
+    return true;
+}
+
 // <app_name> [app args]
 int _exec_package(
     int argc,
@@ -516,8 +567,8 @@ int _exec_package(
             stderr, "File path %s/lib/openenclave/ is too long\n", unpack_dir);
         goto done;
     }
-    if (elf_find_section(
-            &myst_elf.elf, ".mystenc", &buffer, &buffer_length) != 0)
+    if (elf_find_section(&myst_elf.elf, ".mystenc", &buffer, &buffer_length) !=
+        0)
     {
         fprintf(
             stderr, "Failed to extract enclave from %s\n", get_program_file());
@@ -574,6 +625,31 @@ int _exec_package(
         goto done;
     }
 
+    if (_is_null_rootfs(details->rootfs.buffer, details->rootfs.buffer_size))
+    {
+        char* env;
+
+        if (!(env = getenv("MYST_ROOTFS_PATH")))
+        {
+            fprintf(stderr, "MYST_ROOTFS_PATH is undefined\n");
+            goto done;
+        }
+
+        if (access(env, R_OK) != 0)
+        {
+            fprintf(stderr, "MYST_ROOTFS_PATH=%s not found\n", env);
+            goto done;
+        }
+
+        if (myst_strlcpy(options.rootfs, env, sizeof(options.rootfs)) >=
+            sizeof(options.rootfs))
+        {
+            fprintf(stderr, "MYST_ROOTFS_PATH is too long (> %zu)\n",
+                sizeof(options.rootfs));
+            goto done;
+        }
+    }
+
     parsed_data.oe_num_heap_pages =
         (details->rootfs.buffer_size + (5 * 1024 * 1024)) / PAGE_SIZE;
 
@@ -613,10 +689,9 @@ int _exec_package(
     }
 
     ret = exec_launch_enclave(
-            scratch_path, type, flags, exec_args, envp, &options);
+        scratch_path, type, flags, exec_args, envp, &options);
     if (ret != 0)
     {
-        
         fprintf(stderr, "Enclave %s returned %d\n", scratch_path, ret);
         goto done;
     }

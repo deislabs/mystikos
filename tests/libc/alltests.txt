@@ -23,6 +23,7 @@
 /src/functional/search_lsearch.exe
 /src/functional/search_tsearch.exe
 /src/functional/sem_init.exe
+/src/functional/setjmp.exe
 /src/functional/snprintf.exe
 /src/functional/socket.exe
 /src/functional/sscanf.exe
@@ -247,6 +248,7 @@
 /src/regression/dn_expand-empty.exe
 /src/regression/dn_expand-ptr-0.exe
 /src/regression/fgets-eof.exe
+/src/regression/flockfile-list.exe
 /src/regression/fpclassify-invalid-ld80.exe
 /src/regression/ftello-unflushed-append.exe
 /src/regression/getpwnam_r-crash.exe
@@ -278,10 +280,12 @@
 /src/regression/regex-ere-backref.exe
 /src/regression/regex-escaped-high-byte.exe
 /src/regression/regex-negated-range.exe
+/src/regression/rewind-clear-error.exe
 /src/regression/scanf-bytes-consumed.exe
 /src/regression/scanf-match-literal-eof.exe
 /src/regression/scanf-nullbyte-char.exe
 /src/regression/setvbuf-unget.exe
+/src/regression/sigaltstack.exe
 /src/regression/sigprocmask-internal.exe
 /src/regression/sscanf-eof.exe
 /src/regression/strverscmp.exe

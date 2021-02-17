@@ -13,23 +13,22 @@
 #include <time.h>
 
 #include <myst/args.h>
+#include <myst/cpio.h>
 #include <myst/elf.h>
 #include <myst/eraise.h>
 #include <myst/file.h>
 #include <myst/kernel.h>
 #include <myst/reloc.h>
 #include <myst/round.h>
+#include <myst/strings.h>
 #include <myst/tcall.h>
 #include <myst/thread.h>
-#include <myst/cpio.h>
-#include <myst/strings.h>
 
+#include "../config.h"
+#include "../shared.h"
+#include "archive.h"
 #include "exec_linux.h"
 #include "utils.h"
-#include "archive.h"
-
-/* standardize this value! */
-#define DEFAULT_MMAN_SIZE (256 * 1024 * 1024)
 
 #define USAGE_FORMAT \
     "\
@@ -46,7 +45,12 @@ Where:\n\
                      <application>\n\
 \n\
 and <options> are one of:\n\
-    --help        -- this message\n\
+    --help                  -- this message\n\
+    --user-mem-size <size>  -- for running an unsigned binary this overrides the\n\
+                               default user memory size for an application.\n\
+                               The <size> format is a number that is in\n\
+                               bytes (<size>), in kilobytes (<size>k),\n\
+                               in megabytes (<size>m), or gigabytes (<size>g)\n\
 \n\
 "
 
@@ -67,9 +71,16 @@ struct regions
     elf_image_t libmystcrt;
     void* mman_data;
     size_t mman_size;
+    void* app_config;
+    size_t app_config_size;
 };
 
-static void _get_options(int* argc, const char* argv[], struct options* options)
+static void _get_options(
+    int* argc,
+    const char* argv[],
+    struct options* options,
+    size_t* user_mem_size,
+    const char** app_config_path)
 {
     /* Get --trace-syscalls option */
     if (cli_getopt(argc, argv, "--trace-syscalls", NULL) == 0 ||
@@ -89,6 +100,23 @@ static void _get_options(int* argc, const char* argv[], struct options* options)
         if ((val = getenv("MYST_ENABLE_GCOV")) && strcmp(val, "1") == 0)
             options->export_ramfs = true;
     }
+
+    // Retrieve this setting as it is used in sgx option and we just ignore it
+    // here
+    const char* mem_size = NULL;
+    if ((cli_getopt(argc, argv, "--user-mem-size", &mem_size) == 0) && mem_size)
+    {
+        if ((myst_expand_size_string_to_ulong(mem_size, user_mem_size) != 0) ||
+            (myst_round_up(*user_mem_size, PAGE_SIZE, user_mem_size) != 0))
+        {
+            _err("--user-mem-size <size> -- The <size> format is a number "
+                 "that is in bytes (<size>), in kilobytes (<size>k), "
+                 "in megabytes (<size>m), or gigabytes (<size>g");
+        }
+    }
+
+    // get app config if present
+    cli_getopt(argc, argv, "--app-config-path", app_config_path);
 }
 
 static void* _map_mmap_region(size_t length)
@@ -108,6 +136,8 @@ static void* _map_mmap_region(size_t length)
 static void _load_regions(
     const char* rootfs,
     const char* archive,
+    size_t user_mem_size,
+    const char* app_config,
     struct regions* r)
 {
     char path[PATH_MAX];
@@ -117,6 +147,10 @@ static void _load_regions(
 
     if (myst_load_file(archive, &r->archive_data, &r->archive_size) != 0)
         _err("failed to map file: %s", archive);
+
+    if (app_config &&
+        (myst_load_file(app_config, &r->app_config, &r->app_config_size) != 0))
+        _err("failed to load config file: %s", app_config);
 
     /* Load libmystcrt.so */
     {
@@ -182,7 +216,17 @@ static void _load_regions(
         }
     }
 
-    if (!(r->mman_data = _map_mmap_region(DEFAULT_MMAN_SIZE)))
+    if (user_mem_size == 0)
+    {
+        r->mman_size = DEFAULT_MMAN_SIZE;
+    }
+    else
+    {
+        /* command line parsing gave pages. convert to size */
+        r->mman_size = user_mem_size;
+    }
+
+    if (!(r->mman_data = _map_mmap_region(r->mman_size)))
         _err("failed to map mmap region");
 
     /* Apply relocations to the libmystkernel.so image */
@@ -194,8 +238,6 @@ static void _load_regions(
     {
         _err("failed to apply relocations to libmystkernel.so\n");
     }
-
-    r->mman_size = DEFAULT_MMAN_SIZE;
 }
 
 static void _release_regions(struct regions* r)
@@ -227,6 +269,8 @@ static int _enter_kernel(
     const elf_ehdr_t* ehdr = regions->libmystkernel.image_data;
     myst_kernel_entry_t entry;
     myst_args_t env;
+    const char* cwd = "/";       /* default */
+    const char* hostname = NULL; // kernel has a default
 
     if (err)
         *err = '\0';
@@ -275,6 +319,27 @@ static int _enter_kernel(
         myst_args_append1(&env, "MYST_TARGET=linux");
     }
 
+    /* Extract any settings from the config, if present */
+    config_parsed_data_t parsed_data = {0};
+    if (regions->app_config && regions->app_config_size)
+    {
+        if (parse_config_from_buffer(
+                regions->app_config, regions->app_config_size, &parsed_data) ==
+            0)
+        {
+            /* only override if we have a cwd config item */
+            if (parsed_data.cwd)
+                cwd = parsed_data.cwd;
+
+            if (parsed_data.hostname)
+                hostname = parsed_data.hostname;
+        }
+        else
+        {
+            _err("Failed to parse app config from");
+        }
+    }
+
     memset(&args, 0, sizeof(args));
     args.image_data = (void*)0;
     args.image_size = 0x7fffffffffffffff;
@@ -296,6 +361,8 @@ static int _enter_kernel(
     args.argv = argv;
     args.envc = env.size;
     args.envp = env.data;
+    args.cwd = cwd;
+    args.hostname = hostname;
     args.mman_data = regions->mman_data;
     args.mman_size = regions->mman_size;
     args.rootfs_data = regions->rootfs_data;
@@ -334,6 +401,8 @@ static int _enter_kernel(
     *return_status = (*entry)(&args);
 
 done:
+    if (regions->app_config && regions->app_config_size)
+        free_config(&parsed_data);
 
     if (env.data)
         free(env.data);
@@ -361,11 +430,13 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
     size_t num_roothashes = 0;
     char archive_path[PATH_MAX];
     char rootfs_path[] = "/tmp/mystXXXXXX";
+    size_t user_mem_size = 0;
+    const char* app_config_path = NULL;
 
     (void)program_arg;
 
     /* Get the command-line options */
-    _get_options(&argc, argv, &options);
+    _get_options(&argc, argv, &options, &user_mem_size, &app_config_path);
 
     /* Get --pubkey=filename options */
     get_archive_options(
@@ -416,7 +487,8 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
     }
 
     /* Load the regions into memory */
-    _load_regions(rootfs_arg, archive_path, &regions);
+    _load_regions(
+        rootfs_arg, archive_path, user_mem_size, app_config_path, &regions);
 
     unlink(archive_path);
 

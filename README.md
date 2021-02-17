@@ -1,107 +1,139 @@
 # Mystikos
 
-**Mystikos** is a set of tools for running user applications in a trusted
+**Mystikos** is a set of tools for running applications in a hardware trusted
 execution environment (TEE). The current release supports **Intel &reg; SGX**
-while other TEEs may be supported in future releases.
+while other TEEs may be supported in future releases. **Linux** is also a
+supported target, though only suitable for testing purposes as it provides
+no additional protection.
 
 ## Goals
 
-- Protect user data throughout its lifecyle (at rest, in flight, in use).
+- Enable protection of application code and data while in memory through the
+  use of HW TEEs. This should be combined with proper key management,
+  attestation and hardware roots of trust, and encryption of data at rest and
+  in transit to protect against other threats which are out of scope for this
+  project.
 - Lift and shift applications, either native or containerized, into TEEs with
   little or no modification.
-- Allow users to minimize, control, and inspect the makeup of the trusted
-  computing base (TCB).
+- Allow users and application developers control over the makeup of the trusted
+  computing base (TCB), ensuring that all components running inside the TEE are
+  open source.
 - Simplify re-targeting to other TEE architectures through a plugin
   architecture.
-- Publish under a non-restrictive [open-source license](LICENSE).
 
 ## Architecture
 
-**Mystikos** consists of the following components.
-- C-runtime based on [musl libc](https://www.musl-libc.org)
-- kernel
-- kernel-target interface (TCALL)
+**Mystikos** consists of the following components:
+- a C-runtime based on [musl libc](https://musl.libc.org)
+- a "lib-os like" kernel
+- the kernel-target interface (TCALL)
+- a command-line interface
+- some related utilities
 
-So far, two target implementations are provided:
-- The SGX target (based on the [Open Enclave SDK](https://github.com/openenclave/openenclave))
-- The Linux target (for verification on non-SGX platforms)
+Today, two target implementations are provided:
+- The **SGX** target (based on the [Open Enclave
+  SDK](https://github.com/openenclave/openenclave))
+- The **Linux** target (for verification on non-SGX platforms)
 
 The minimalist kernel of Mystikos manages essential computing resources
 inside the TEE, such as CPU/threads, memory, files, networks, etc. It handles
-most of the syscalls that a normal operating system would handle (with limits).
-Many syscalls are handled directly by the kernel while others are delegated to
-the target.
+most of the syscalls that a normal operating system would handle (with
+[limits](SYSCALL-LIMITATIONS.md)).  Many syscalls are handled directly by the
+kernel while others are delegated to the target.
 
 ![](./arch.png)
 
-# Install or build from source
 
-Binary downloads of the Mystikos releases can be found on the Releases page
-(coming). After downloading the tarball, install it with the following commands:
+# Installation Guide
 
-```
-tar xvfz <tarball-name> /opt
-export PATH=$PATH:/opt/mystikos/bin
-```
+## From Binaries
 
-To remove a previously installed Mystikos, simply
-`sudo rm -rf /opt/mystikos`.
+You can download the latest binary release [from our builds
+page](https://github.com/deislabs/mystikos/releases)
 
-Mystikos can be built on an Ubuntu 18.04 machine with or without SGX
-capability.
+**TODO**: Include installation instructions. 
 
-## Install the prerequisites
+## From Source
 
-```
-sudo apt update
-sudo apt install -y git make libmbedtls-dev docker.io
-sudo systemctl start docker && sudo systemctl enable docker && sudo chmod 666 /var/run/docker.sock
-```
+You may also [build Mystikos from source](BUILDING.md). In our experience, this
+takes about 20 minutes. 
 
-## Clone, build, and install Mystikos
+**NOTE** that Mystikos can only be built on **Ubuntu 18.04** due to current
+limitations in [Open Enclave SDK](https://github.com/openenclave/openenclave).
 
-```
-git clone https://msazure.visualstudio.com/DefaultCollection/One/_git/OpenLibOS
-cd Mystikos && make
-sudo make install
-export PATH=$PATH:/opt/mystikos/bin
-```
 
-The build process will automatically install all prerequisite for OE SDK first,
-including the Intel SGX driver and PSW, and then build the project. Finally,
-it installs the build outputs to /opt/mystikos.
+# Quick Start Docs
 
-Mystikos can be used to run applications on a non-SGX Ubuntu 18.04 machine
-while running with the Linux target (simulation mode). Obviously you need an
-SGX-capable machine to try out the SGX target. For that, we recommend either an
-[ACC VM](https://aka.ms/accgetstarted) or a bare-metal machine with SGX support.
+Eager to get started with Mystikos? We've prepared a few guides, starting from
+a simple "hello world" C program and increasing in complexity, including
+demonstrations of DotNet and Python/NumPy.
 
-# Documents
+Give it a try and let us know what you think!
 
-- Getting started with a native C program: [click here](doc/user-getting-started-c.md)
-- Getting started with a containerized C++ program: [click here](doc/user-getting-started-docker-c++.md)
-- Getting started with a containerized C# program: [click here](doc/user-getting-started-docker-dotnet.md)
-- Getting started with a containerized Python program: [click here](doc/user-getting-started-docker-python.md)
-- Getting started with a TEE-aware program: [click here](doc/user-getting-started-tee-aware.md)
+## Simple Applications
+
+- A Simple "Hello World" in C: [click here](doc/user-getting-started-c.md)
+- Packaging your "Hello World" app in Docker: [click
+  here](doc/user-getting-started-docker-c++.md)
+- Introducing Enclave Configuration with a DotNet program: [click
+  here](doc/user-getting-started-docker-dotnet.md)
+- Running Python & NumPy for complex calculations: [click
+  here](doc/user-getting-started-docker-python.md)
+
+## Enclave Aware Applications
+
+Sometimes, you want to take advantage of specific properties of the Trusted
+Execution Environment, such as attestation. The following example shows how to
+write a C program which changes its behaviour when it detects that it has been
+securely launched inside an SGX enclave.
+
+- Getting started with a TEE-aware program: [click
+  here](doc/user-getting-started-tee-aware.md)
+
+## More Docs!
+
+We've got plans for a lot more documentation as the project grows, and we'd
+love your feedback and contributions, too.
+
 - Key features of Mystikos: [click here](doc/key-features.md)
-- Mystikos developer's jump start guide: [click here](doc/dev-jumpstart.md)
-- Deep dive into Mystikos architecture: [coming]
-- How to plug a TEE into Mystikos: [coming]
-- Multi-processing and multi-threading in Mystikos and limitations: [coming]
-- Notable unsupported kernel features and syscalls: [coming]
-- Signing and packaging applications with Mystikos: [click here](doc/sign-package.md)
+- Deep dive into Mystikos architecture: [coming soon]
+- How to implement support for a new TEE: [coming soon]
+- Multi-processing and multi-threading in Mystikos and limitations: [coming
+  soon]
+
+
+# Developer Docs
+
+Looking for information to help you with your first PR? You've found the right
+section.
+
+- Developer's jump start guide: [click here](doc/dev-jumpstart.md)
+- Signing and packaging applications with Mystikos: [click
+  here](doc/sign-package.md)
 - Release management: [click here](doc/releasing.md)
+- Notable unsupported kernel features and syscalls: [coming soon]
+
+For more information, see the [Contributing Guide](CONTRIBUTING.md).
+
 
 # Licensing
 
 This project is released under the [MIT License](LICENSE).
 
-# Contributing to Mystikos
+# Reporting a Vulnerability
 
-You can contribute to Mystikos in several ways by:
+**Please DO NOT open vulnerability reports directly on GitHub.**
 
-- contributing code. Please read developer's [jumpstart guide](doc/dev-jumpstart.md) first,
-- filing issues with github issues, or
-- by simply providing feedback via github issues or email mystikos@service.microsoft.com.
+Security issues and bugs should be reported privately via email to the
+[Microsoft Security Response Center](https://www.microsoft.com/en-us/msrc)
+(MSRC) at secure@microsoft.com. You should receive a response within 24 hours.
+If for some reason you do not, please follow up via email to ensure we received
+your original message.
 
-This project has adopted the [Microsoft Code of Conduct](https://opensource.microsoft.com/codeofconduct/). All participants are expected to abide by these basic tenets to ensure that the community is a welcoming place for everyone.
+
+# Code of Conduct
+
+This project has adopted the
+[Microsoft Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
+All participants are expected to abide by these basic tenets to ensure that the
+community is a welcoming place for everyone.

@@ -1,13 +1,13 @@
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include <myst/file.h>
 #include <myst/cpio.h>
-#include <myst/strings.h>
+#include <myst/file.h>
 #include <myst/getopt.h>
 #include <myst/paths.h>
+#include <myst/strings.h>
 
 #include "archive.h"
 #include "utils.h"
@@ -135,8 +135,7 @@ void create_archive(
             const char* roothash = roothashes[i];
             const char* basename = myst_basename(roothash);
 
-            if (snprintf(path, n, "%s/roothashes/%s", dirname, basename)
-                >= n)
+            if (snprintf(path, n, "%s/roothashes/%s", dirname, basename) >= n)
             {
                 _err("path too long");
             }

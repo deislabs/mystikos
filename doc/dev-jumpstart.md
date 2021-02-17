@@ -1,5 +1,7 @@
 # Mystikos Developer's Jumpstart Guide
 
+This document contains an overview of the code layout and development model, to help a new developer get started writing code for the project. It's a good read before your first PR.
+
 ## Browsing the source code
 
 Please see [README](../README.md) for how to obtain the source code.

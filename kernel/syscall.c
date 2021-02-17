@@ -43,6 +43,7 @@
 #include <myst/fsgs.h>
 #include <myst/gcov.h>
 #include <myst/hex.h>
+#include <myst/hostfs.h>
 #include <myst/id.h>
 #include <myst/initfini.h>
 #include <myst/inotifydev.h>
@@ -1130,29 +1131,32 @@ done:
     return ret;
 }
 
-static char _cwd[PATH_MAX] = "/";
-static myst_spinlock_t _cwd_lock = MYST_SPINLOCK_INITIALIZER;
-
 long myst_syscall_chdir(const char* path)
 {
     long ret = 0;
+    myst_thread_t* thread = myst_thread_self();
+    myst_thread_t* process_thread = myst_find_process_thread(thread);
     char buf[PATH_MAX];
     char buf2[PATH_MAX];
 
-    myst_spin_lock(&_cwd_lock);
+    myst_spin_lock(&process_thread->main.cwd_lock);
 
     if (!path)
         ERAISE(-EINVAL);
 
-    ECHECK(myst_path_absolute_cwd(_cwd, path, buf, sizeof(buf)));
+    ECHECK(myst_path_absolute_cwd(
+        process_thread->main.cwd, path, buf, sizeof(buf)));
     ECHECK(myst_normalize(buf, buf2, sizeof(buf2)));
 
-    if (MYST_STRLCPY(_cwd, buf2) >= sizeof(_cwd))
-        ERAISE(-ERANGE);
+    char* tmp = strdup(buf2);
+    if (tmp == NULL)
+        ERAISE(-ENOMEM);
+    free(process_thread->main.cwd);
+    process_thread->main.cwd = tmp;
 
 done:
 
-    myst_spin_unlock(&_cwd_lock);
+    myst_spin_unlock(&process_thread->main.cwd_lock);
 
     return ret;
 }
@@ -1160,22 +1164,54 @@ done:
 long myst_syscall_getcwd(char* buf, size_t size)
 {
     long ret = 0;
+    myst_thread_t* thread = myst_thread_self();
+    myst_thread_t* process_thread = myst_find_process_thread(thread);
 
-    myst_spin_lock(&_cwd_lock);
+    myst_spin_lock(&process_thread->main.cwd_lock);
 
     if (!buf)
         ERAISE(-EINVAL);
 
-    if (myst_strlcpy(buf, _cwd, size) >= size)
+    if (myst_strlcpy(buf, process_thread->main.cwd, size) >= size)
         ERAISE(-ERANGE);
 
     ret = (long)buf;
 
 done:
 
-    myst_spin_unlock(&_cwd_lock);
+    myst_spin_unlock(&process_thread->main.cwd_lock);
 
     return ret;
+}
+
+static char _hostname[HOST_NAME_MAX] = "TEE";
+static myst_spinlock_t _hostname_lock = MYST_SPINLOCK_INITIALIZER;
+
+long myst_syscall_uname(struct utsname* buf)
+{
+    // We are emulating Linux syscalls. 5.4.0 is the LTS release we
+    // try to emulate. The release number should be updated when
+    // Mystikos adapts to syscall API changes in future Linux releases.
+    MYST_STRLCPY(buf->sysname, "Linux");
+    MYST_STRLCPY(buf->release, "5.4.0");
+    MYST_STRLCPY(buf->version, "Mystikos 1.0.0");
+    MYST_STRLCPY(buf->machine, "x86_64");
+
+    myst_spin_lock(&_hostname_lock);
+    MYST_STRLCPY(buf->nodename, _hostname);
+    myst_spin_unlock(&_hostname_lock);
+
+
+    return 0;
+}
+
+long myst_syscall_sethostname(const char* hostname, MYST_UNUSED size_t len)
+{
+    myst_spin_lock(&_hostname_lock);
+    MYST_STRLCPY(_hostname, hostname);
+    myst_spin_unlock(&_hostname_lock);
+
+    return 0;
 }
 
 long myst_syscall_getrandom(void* buf, size_t buflen, unsigned int flags)
@@ -1376,6 +1412,7 @@ long myst_syscall_execve(
 {
     long ret = 0;
     const char** argv = NULL;
+    myst_thread_t* current_thread = myst_thread_self();
 
     /* ATTN: the filename should be resolved if not an absolute path */
     if (!filename || filename[0] != '/')
@@ -1397,7 +1434,7 @@ long myst_syscall_execve(
 
     /* only returns on failure */
     if (myst_exec(
-            myst_thread_self(),
+            current_thread,
             __myst_kernel_args.crt_data,
             __myst_kernel_args.crt_size,
             __myst_kernel_args.crt_reloc_data,
@@ -2464,6 +2501,32 @@ long myst_syscall(long n, long params[6])
 
             _strace(n, "addr=%lx length=%zu(%lx)", (long)addr, length, length);
 
+            // if the ummapped region overlaps the CRT thread descriptor, then
+            // postpone the unmap because unmapping now would invalidate the
+            // stack canary and would raise __stack_chk_fail(); this occurs
+            // when munmap() is called from __unmapself()
+            if (crt_td && addr && length)
+            {
+                const uint8_t* p = (const uint8_t*)crt_td;
+                const uint8_t* pend = p + sizeof(myst_td_t);
+                const uint8_t* q = (const uint8_t*)addr;
+                const uint8_t* qend = q + length;
+
+                if ((p >= q && p < qend) || (pend >= q && pend < qend))
+                {
+                    myst_thread_t* thread = myst_thread_self();
+
+                    /* unmap this later when the thread exits */
+                    if (thread)
+                    {
+                        thread->unmapself_addr = addr;
+                        thread->unmapself_length = length;
+                    }
+
+                    BREAK(_return(n, 0));
+                }
+            }
+
             BREAK(_return(n, (long)myst_munmap(addr, length)));
         }
         case SYS_brk:
@@ -2790,18 +2853,20 @@ long myst_syscall(long n, long params[6])
             BREAK(_return(n, ret));
         }
         case SYS_kill:
-            break;
+        {
+            int pid = (int)x1;
+            int sig = (int)x2;
+
+            _strace(n, "pid=%d sig=%d", pid, sig);
+
+            long ret = myst_syscall_kill(pid, sig);
+            BREAK(_return(n, ret));
+        }
         case SYS_uname:
         {
             struct utsname* buf = (struct utsname*)x1;
 
-            MYST_STRLCPY(buf->sysname, "Mystikos");
-            MYST_STRLCPY(buf->nodename, "myst");
-            MYST_STRLCPY(buf->release, "1.0.0");
-            MYST_STRLCPY(buf->version, "Mystikos 1.0.0");
-            MYST_STRLCPY(buf->machine, "x86_64");
-
-            BREAK(_return(n, 0));
+            BREAK(_return(n, myst_syscall_uname(buf)));
         }
         case SYS_semget:
             break;
@@ -3109,7 +3174,10 @@ long myst_syscall(long n, long params[6])
         case SYS_getresgid:
             break;
         case SYS_getpgid:
-            break;
+        {
+            _strace(n, NULL);
+            BREAK(_return(n, MYST_DEFAULT_GID));
+        }
         case SYS_setfsuid:
             break;
         case SYS_setfsgid:
@@ -3324,7 +3392,7 @@ long myst_syscall(long n, long params[6])
 
             _strace(n, "name=\"%s\" len=%zu", name, len);
 
-            BREAK(0);
+            BREAK(_return(n, myst_syscall_sethostname(name, len)));
         }
         case SYS_setdomainname:
             break;
@@ -3545,7 +3613,23 @@ long myst_syscall(long n, long params[6])
         case SYS_semtimedop:
             break;
         case SYS_fadvise64:
-            break;
+        {
+            int fd = (int)x1;
+            loff_t offset = (loff_t)x2;
+            loff_t len = (loff_t)x3;
+            int advice = (int)x4;
+
+            _strace(
+                n,
+                "fd=%d offset=%ld len=%ld advice=%d",
+                fd,
+                offset,
+                len,
+                advice);
+
+            /* ATTN: no-op */
+            BREAK(_return(n, 0));
+        }
         case SYS_timer_create:
             break;
         case SYS_timer_settime:
@@ -4260,7 +4344,20 @@ long myst_syscall(long n, long params[6])
             BREAK(_return(n, ret));
         }
         case SYS_sendfile:
+        {
+            int out_fd = (int)x1;
+            int in_fd = (int)x2;
+            off_t* offset = (off_t*)x3;
+            size_t count = (size_t)x4;
+            off_t off = offset ? *offset : 0;
+
+            _strace(n, "out_fd=%d in_fd=%d offset=%p *offset=%ld count=%zu",
+                out_fd, in_fd, offset, off, count);
+
+            long ret = myst_syscall_sendfile(out_fd, in_fd, offset, count);
+            BREAK(_return(n, ret));
             break;
+        }
         /* forward Open Enclave extensions to the target */
         case SYS_myst_oe_get_report_v2:
         case SYS_myst_oe_free_report:
@@ -4327,7 +4424,7 @@ long myst_syscall_clock_gettime(clockid_t clk_id, struct timespec* tp)
         if (IS_DYNAMIC_CLOCK(clk_id))
             return -ENOTSUP;
         else
-            return myst_times_cpu_clock_get(clk_id, tp);
+            return myst_times_get_cpu_clock_time(clk_id, tp);
     }
 
     if (clk_id == CLOCK_PROCESS_CPUTIME_ID)
@@ -4422,6 +4519,54 @@ done:
 time_t time(time_t* tloc)
 {
     return myst_syscall_time(tloc);
+}
+
+long myst_syscall_kill(int pid, int sig)
+{
+    long ret = 0;
+    myst_thread_t* thread = myst_thread_self();
+    myst_thread_t* process_thread = myst_find_process_thread(thread);
+
+    myst_spin_lock(&myst_process_list_lock);
+
+    // If not this thread search back through list of processes
+    while ((process_thread->pid != pid) &&
+           (process_thread->main.prev_process_thread != NULL))
+    {
+        process_thread = process_thread->main.prev_process_thread;
+    }
+
+    // If still not found search forwards through processes
+    if (process_thread->pid != pid)
+    {
+        process_thread = process_thread;
+
+        while ((process_thread->pid != pid) &&
+               (process_thread->main.next_process_thread != NULL))
+        {
+            process_thread = process_thread->main.next_process_thread;
+        }
+    }
+
+    myst_spin_unlock(&myst_process_list_lock);
+
+    // Did we finally find it?
+    if (process_thread->pid == pid)
+    {
+        // Deliver signal
+        siginfo_t* siginfo = calloc(1, sizeof(siginfo_t));
+        siginfo->si_code = SI_USER;
+        siginfo->si_signo = sig;
+        siginfo->si_pid = thread->pid;
+        siginfo->si_uid = MYST_DEFAULT_UID;
+
+        ret = myst_signal_deliver(process_thread, sig, siginfo);
+    }
+    else
+        ERAISE(-ESRCH);
+
+done:
+    return ret;
 }
 
 long myst_syscall_isatty(int fd)

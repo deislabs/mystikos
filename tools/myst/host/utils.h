@@ -6,6 +6,9 @@
 
 #include <limits.h>
 
+// default size used for user app memory
+#define DEFAULT_MMAN_SIZE (64 * 1024 * 1024)
+
 // print error and exit process with 1
 void _err(const char* fmt, ...);
 

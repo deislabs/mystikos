@@ -1,17 +1,18 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#include <errno.h>
 #include <syscall.h>
 #include <unistd.h>
-#include <errno.h>
 
+#include <myst/blockdevice.h>
 #include <myst/fsgs.h>
+#include <myst/luks.h>
+#include <myst/sha256.h>
+#include <myst/signal.h>
 #include <myst/strings.h>
 #include <myst/tcall.h>
 #include <myst/thread.h>
-#include <myst/blockdevice.h>
-#include <myst/luks.h>
-#include <myst/sha256.h>
 
 long myst_tcall_random(void* data, size_t size)
 {
@@ -63,7 +64,10 @@ long myst_tcall_wait(uint64_t event, const struct timespec* timeout)
     long params[6] = {0};
     params[0] = (long)event;
     params[1] = (long)timeout;
-    return myst_tcall(MYST_TCALL_WAIT, params);
+    long ret = myst_tcall(MYST_TCALL_WAIT, params);
+    // check for signals
+    myst_signal_process(myst_thread_self());
+    return ret;
 }
 
 long myst_tcall_wake(uint64_t event)
@@ -216,9 +220,13 @@ int myst_tcall_verify_signature(
     const uint8_t* signature,
     size_t signature_size)
 {
-    long args[7] = {(long)pem_public_key, (long)hash, hash_size,
-        (long)signer, signer_size,
-        (long)signature, signature_size};
+    long args[7] = {(long)pem_public_key,
+                    (long)hash,
+                    hash_size,
+                    (long)signer,
+                    signer_size,
+                    (long)signature,
+                    signature_size};
     long params[6] = {(long)args};
     return myst_tcall(MYST_TCALL_VERIFY_SIGNATURE, params);
 }

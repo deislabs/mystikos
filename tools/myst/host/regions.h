@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include <myst/elf.h>
 #include <limits.h>
+#include <myst/elf.h>
 
 typedef struct _region_details_item
 {
@@ -36,7 +36,7 @@ const region_details* create_region_details_from_files(
     const char* rootfs_path,
     const char* archive_path,
     const char* config_path,
-    size_t user_pages);
+    size_t user_mem_size);
 
 const region_details* create_region_details_from_package(
     elf_image_t* myst_elf,

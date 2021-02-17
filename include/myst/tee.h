@@ -19,6 +19,15 @@
 #define MYST_PRODUCT_ID_SIZE 16
 
 /**
+ * Self-signed certificate by TEE
+ */
+#define MYST_CERTIFICATE_PATH "/tmp/myst.pem"
+/**
+ * Private key corresponding to the self-signed cert
+ */
+#define MYST_PRIVATE_KEY_PATH "/tmp/myst.key"
+
+/**
  * The TEE identity for apps running with myst. This should encompass all
  * identity attributes of all kinds of TEEs myst supports.
  */

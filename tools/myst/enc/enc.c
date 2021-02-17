@@ -22,20 +22,20 @@
 #include <myst/ramfs.h>
 #include <myst/reloc.h>
 #include <myst/shm.h>
+#include <myst/strings.h>
 #include <myst/syscall.h>
+#include <myst/tcall.h>
 #include <myst/thread.h>
 #include <myst/trace.h>
-#include <myst/tcall.h>
-#include <myst/strings.h>
 
 #include "../config.h"
 #include "../shared.h"
 #include "myst_t.h"
 
 #define IRETFRAME_Rip 0
-#define IRETFRAME_SegCs IRETFRAME_Rip+8
-#define IRETFRAME_EFlags IRETFRAME_SegCs+8
-#define IRETFRAME_Rsp IRETFRAME_EFlags+8
+#define IRETFRAME_SegCs IRETFRAME_Rip + 8
+#define IRETFRAME_EFlags IRETFRAME_SegCs + 8
+#define IRETFRAME_Rsp IRETFRAME_EFlags + 8
 
 extern volatile const oe_sgx_enclave_properties_t oe_enclave_properties_sgx;
 
@@ -176,6 +176,8 @@ int myst_enter_ecall(
     unsigned char have_config = 0;
     myst_args_t args;
     myst_args_t env;
+    const char* cwd = "/";       // default to root dir
+    const char* hostname = NULL; // kernel has a default
     const uint8_t* enclave_base;
     size_t enclave_size;
 
@@ -285,6 +287,18 @@ int myst_enter_ecall(
     {
         if (myst_args_unpack(&env, envp_data, envp_size) != 0)
             goto done;
+    }
+
+    // Override current working directory if present in config
+    if (have_config && parsed_config.cwd)
+    {
+        cwd = parsed_config.cwd;
+    }
+
+    // Override current working directory if present in config
+    if (have_config && parsed_config.hostname)
+    {
+        hostname = parsed_config.hostname;
     }
 
     /* Inject the MYST_TARGET environment variable */
@@ -523,6 +537,8 @@ int myst_enter_ecall(
         kargs.argv = args.data;
         kargs.envc = env.size;
         kargs.envp = env.data;
+        kargs.cwd = cwd;
+        kargs.hostname = hostname;
         kargs.mman_data = mman_data;
         kargs.mman_size = mman_size;
         kargs.rootfs_data = (void*)rootfs_data;

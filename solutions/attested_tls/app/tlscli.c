@@ -24,6 +24,7 @@
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <unistd.h>
+#include "peer_tee_identity.h"
 #include "tee.h"
 
 #define DEBUG_LEVEL 1
@@ -142,19 +143,15 @@ done:
     return ret;
 }
 
-static void _log_hex_data(const char* msg, const uint8_t* data, size_t size)
+static void _hex_to_string(char* buffer, const uint8_t* data, size_t size)
 {
-    printf("%s: ", msg);
-
+    buffer[0] = '\0';
+    char tmp[3];
     for (size_t i = 0; i < size; i++)
     {
-        printf("0x%02x,", data[i]);
-
-        if (i + 1 != size)
-            printf(" ");
+        sprintf(tmp, "%02x", data[i]);
+        strcat(buffer, tmp);
     }
-
-    printf("\n");
 }
 
 static int _verifier_callback(myst_tee_identity_t* identity, void* arg)
@@ -162,30 +159,29 @@ static int _verifier_callback(myst_tee_identity_t* identity, void* arg)
     int result = 1;
 
     // OE enclave MRSIGNER
-    const uint8_t OE_MRSIGNER[] = {
-        0x0b, 0xfc, 0x0c, 0x81, 0xf7, 0x1a, 0xc1, 0x34, 0xda, 0x8a, 0xf7,
-        0x85, 0xb3, 0x05, 0x96, 0x35, 0xe5, 0x64, 0x60, 0xec, 0x17, 0x5c,
-        0xda, 0xfe, 0x81, 0x8b, 0xdf, 0xec, 0x55, 0x79, 0x00, 0xe4};
-
-    const uint8_t OE_ISVPRODID[MYST_PRODUCT_ID_SIZE] = {1};
+    char id_str[128];
+    char signer_str[128];
 
     (void)arg;
 
     printf("\n");
     printf("=== _verify_identity()\n");
-    _log_hex_data("Unique ID", identity->unique_id, MYST_UNIQUE_ID_SIZE);
-    _log_hex_data("Signer", identity->signer_id, MYST_SIGNER_ID_SIZE);
-    _log_hex_data("Product ID", identity->product_id, MYST_PRODUCT_ID_SIZE);
+
+    _hex_to_string(&id_str, identity->unique_id, MYST_UNIQUE_ID_SIZE);
+    _hex_to_string(&signer_str, identity->signer_id, MYST_SIGNER_ID_SIZE);
+    printf("Unique ID = %s\n", id_str);
+    printf("Signer ID = %s\n", signer_str);
     printf("\n");
 
-    if (memcmp(identity->signer_id, OE_MRSIGNER, MYST_SIGNER_ID_SIZE) != 0)
+    if (strcmp(id_str, PEER_MRENCLAVE) != 0)
     {
-        printf("\nMRSIGNER verification failed!\n");
+        printf("\nMRENCLAVE verification failed!\n");
         goto done;
     }
-    if (memcmp(identity->product_id, OE_ISVPRODID, MYST_PRODUCT_ID_SIZE) != 0)
+
+    if (strcmp(signer_str, PEER_MRSIGNER) != 0)
     {
-        printf("\nISVPRODID verification failed!\n");
+        printf("\nMRSIGNER verification failed!\n");
         goto done;
     }
 
@@ -217,9 +213,8 @@ static int _cert_verify_callback(
         crt->version,
         cert_size);
 
-    // The existence of the manifesto file indicates we are running in
-    // an enclave. Ask the kernel for help.
-    if (access("/manifesto", F_OK) != -1)
+    char* target = getenv("MYST_TARGET");
+    if (target && strcmp(target, "sgx") == 0)
     {
         ret = syscall(
             SYS_myst_verify_cert, cert, cert_size, _verifier_callback, NULL);

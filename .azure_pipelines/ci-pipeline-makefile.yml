@@ -3,11 +3,11 @@ variables:
   - name: SCRIPTS_ROOT
     value: $(Build.SourcesDirectory)/.azure_pipelines/scripts
 
-# master branch pipeline configuration
+# main branch pipeline configuration
 trigger:
   branches:
     include:
-    - master
+    - main
   paths:
     exclude:
     - doc/*
@@ -17,7 +17,7 @@ trigger:
 pr:
   branches:
     include:
-    - master
+    - main
   paths:
     exclude:
     - docs/*
@@ -25,9 +25,13 @@ pr:
 jobs:
   - job: BuildAndTest
     displayName: 'Building and Testing'
-    pool: '1804CISGXagentpool'
+    pool: '1804DC4CCagentpool'
 
     steps:
+      # perform cleanup before starting pipeline
+      - script: |
+          sudo rm -rf /tmp/myst*
+        displayName: 'cleanup tmpfiles'
       # install minimum required package to run pipeline
       - script: |
           curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
