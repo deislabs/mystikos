@@ -85,3 +85,7 @@ tests/hostfs/appdir/
 tests/ext2/crypt/appdir/
 tests/ext2/verity/appdir/
 tests/myst/exec-package-ext2/myst/
+tests/msync/appdir/
+tests/tlscert/appdir/
+tests/wake_and_kill/appdir/
+third_party/musl/crt/musl/

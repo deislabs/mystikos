@@ -65,7 +65,10 @@ endif
 
 DIRS += tlscert
 DIRS += wake_and_kill
+
+ifndef MYST_SKIP_NETWORK_TESTS
 DIRS += network
+endif
 
 ifndef MYST_USE_OECACHE
 DIRS += curl

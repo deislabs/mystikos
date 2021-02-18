@@ -38,4 +38,8 @@ int myst_register_process_mapping(pid_t pid, void* addr, size_t size);
 
 int myst_release_process_mappings(pid_t pid);
 
+int myst_msync(void* addr, size_t length, int flags);
+
+int myst_mman_close_notify(int fd);
+
 #endif /* _MYST_MMANUTILS_H */
