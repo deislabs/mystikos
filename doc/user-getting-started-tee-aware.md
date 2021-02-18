@@ -20,7 +20,7 @@ possible requirements are:
   running inside a TEE with certain identities.
 
 Why is **collaborated confidential computing** so important?
-Imaging a doomsday scenario when the digital world is fallen: all routers/NICs
+Imagine a doomsday scenario when the digital world has fallen: all routers/NICs
 on the internet and all operating systems become untrustworthy, the
 **collaborated confidential computing** would enable a group of
 applications, serving as `safe harbors`, to collaborate and fight against
