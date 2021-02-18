@@ -24,9 +24,16 @@ else
   TEST_FILE2 = builttests_exe2.passed
   TEST_FILE3 = builttests_exe3.passed
   STATUS=PASSED
+  export TIMEOUT=10000
 endif
 
-all: clean myst $(APPDIR) $(APPDIR)/bin/run $(ROOTFS) $(ROOTHASH)
+all:
+	$(MAKE) clean
+	$(MAKE) myst
+	$(MAKE) $(APPDIR)
+	$(MAKE) $(APPDIR)/bin/run
+	$(MAKE) $(ROOTFS)
+	$(MAKE) $(ROOTHASH)
 
 libcxx-tests: llvm-project
 	mkdir libcxx-tests

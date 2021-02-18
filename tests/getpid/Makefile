@@ -5,10 +5,12 @@ APPDIR = appdir
 CFLAGS = -fPIC
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 
-all: myst rootfs
+all:
+	$(MAKE) myst
+	$(MAKE) rootfs
 
 rootfs: getpid.c
-	mkdir -p $(APPDIR)/bin
+	 mkdir -p $(APPDIR)/bin
 	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/getpid getpid.c $(LDFLAGS)
 	$(MYST) mkcpio $(APPDIR) rootfs
 

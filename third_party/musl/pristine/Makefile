@@ -1,25 +1,55 @@
 TOP=$(abspath ../../.. )
 include $(TOP)/defs.mak
 
-PREFIX=$(TOP)/build/musl
+URL=git://git.musl-libc.org/musl
 
-MUSL_SRCDIR=$(BUILDDIR)/pristine-musl
+BRANCH=v1.2.0
 
-all: $(MUSL_SRCDIR) $(MUSL_SRCDIR)/config.mak
-	( cd $(MUSL_SRCDIR); make )
-	( cd $(MUSL_SRCDIR); make install )
+# get the hash of the remote github repository (for the given branch)
+HASH=$(shell git ls-remote $(URL) -b $(BRANCH) | cut -f1 )
+
+CACHE_DIR=$(HOME)/.mystikos/cache/musl/pristine
+
+ifdef MYST_USE_BUILD_CACHE
+CACHE_CHECK=$(wildcard $(CACHE_DIR)/$(HASH))
+endif
+
+PREFIX=$(BUILDDIR)/musl
+
+all:
+ifeq ($(CACHE_CHECK),)
+	$(MAKE) build
+else
+	$(MAKE) fetch_cache
+endif
+
+build:
+	$(MAKE) musl
+	$(MAKE) musl/config.mak
+	( cd musl; make install )
+	$(MAKE) cache
+
+fetch_cache:
+	rm -rf $(PREFIX)
+	mkdir -p $(BUILDDIR)
+	cp -r $(CACHE_DIR)/$(HASH) $(PREFIX)
+
+cache:
+ifdef MYST_USE_BUILD_CACHE
+	rm -rf $(CACHE_DIR)/$(HASH)
+	mkdir -p $(CACHE_DIR)
+	cp -r $(PREFIX) $(CACHE_DIR)/$(HASH)
+endif
 
 clean:
-	rm -rf $(MUSL_SRCDIR)
+	rm -rf musl
 
 distclean: clean
 
-$(MUSL_SRCDIR)/config.mak:
-	( cd $(MUSL_SRCDIR); ./configure --prefix=$(PREFIX) )
+musl/config.mak:
+	( cd musl; ./configure --prefix=$(PREFIX) )
 
-$(MUSL_SRCDIR):
-	rm -rf $(MUSL_SRCDIR)
-	mkdir -p $(BUILDDIR)
-	cp -r ../musl $(MUSL_SRCDIR)
+musl:
+	git clone $(URL) -b $(BRANCH)
 
 tests:

@@ -40,8 +40,8 @@ build: clean-exec-signed-1
 mkcpio: build
 	$(PREFIX) $(MYST) mkcpio $(APPDIR) rootfs
 
-sign: mkcpio pem 
+sign: mkcpio pem
 	$(PREFIX) $(MYST) sign rootfs private.pem config.json
 
-run: sign 
+run: sign
 	$(PREFIX) $(APPNAME).signed/bin/myst $(EXEC) $(APPNAME).signed/rootfs /bin/$(APPNAME) red green blue yellow

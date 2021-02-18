@@ -4,3 +4,6 @@ include $(TOP)/defs.mak
 DIRS = openenclave musl mbedtls libc-test
 
 include $(TOP)/rules.mak
+
+distclean:
+	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) distclean $(NL) )

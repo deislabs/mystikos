@@ -9,7 +9,9 @@ ifdef STRACE
 OPTS = --strace
 endif
 
-all: myst rootfs
+all:
+	$(MAKE) myst
+	$(MAKE) rootfs
 
 rootfs: cpuid.c
 	mkdir -p $(APPDIR)/bin
