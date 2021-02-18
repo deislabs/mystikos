@@ -7,7 +7,9 @@ APPBUILDER=$(TOP)/scripts/appbuilder
 TEST_FILE=ltp_enabled.txt
 TESTS=$(shell cat $(TEST_FILE))
 
-all: myst rootfs
+all:
+	$(MAKE) myst
+	$(MAKE) rootfs
 
 $(APPDIR): buildltp.sh
 	@ rm -fr ltp

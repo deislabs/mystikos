@@ -10,7 +10,7 @@ REDEFINE_TESTS=1
 
 include $(TOP)/rules.mak
 
-tests:	
+tests:
 	$(RUNTEST) $(MAKE) exec-signed
 
 exec-signed:

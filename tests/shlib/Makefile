@@ -7,7 +7,9 @@ LDFLAGS = -Wl,-rpath=/lib -L$(APPDIR)/lib -lfoo
 
 export LD_LIBRARY_PATH=$(APPDIR)/lib
 
-all: myst rootfs
+all:
+	$(MAKE) myst
+	$(MAKE) rootfs
 
 rootfs: foo.c shlib.c
 	mkdir -p $(APPDIR)/bin

@@ -7,7 +7,9 @@ LDFLAGS += -L$(LIBDIR) -lopenenclave
 
 INCLUDES += $(OEENCLAVE_INCLUDES)
 
-all: myst rootfs
+all:
+	$(MAKE) myst
+	$(MAKE) rootfs
 
 rootfs: gencreds.c
 	mkdir -p $(SUBBINDIR)
