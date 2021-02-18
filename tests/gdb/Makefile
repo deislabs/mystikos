@@ -18,7 +18,9 @@ GDB_MATCH=Breakpoint 1, .................. in print_hello ()
 # runtest timeouts cause gdb to hang
 export NOTIMEOUT=1
 
-all: myst rootfs
+all:
+	$(MAKE) myst
+	$(MAKE) rootfs
 
 rootfs: helloworld.c
 	mkdir -p $(APPDIR)/bin

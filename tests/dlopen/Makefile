@@ -4,7 +4,9 @@ include $(TOP)/defs.mak
 IMG=myst-alpine
 APPDIR=$(CURDIR)/appdir
 
-all: myst rootfs
+all:
+	$(MAKE) myst
+	$(MAKE) rootfs
 
 rootfs: $(APPDIR)/dlopen
 	$(BINDIR)/myst mkcpio appdir rootfs

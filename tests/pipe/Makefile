@@ -5,7 +5,9 @@ CFLAGS = -Wall -g -fPIC
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 APPDIR = $(SUBOBJDIR)/appdir
 
-all: myst rootfs
+all:
+	$(MAKE) myst
+	$(MAKE) rootfs
 
 rootfs: pipe.c
 	mkdir -p $(APPDIR)/bin

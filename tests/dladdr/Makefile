@@ -5,7 +5,9 @@ APPDIR = appdir
 CFLAGS = -rdynamic -Wall -g -fPIC
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 
-all: myst rootfs
+all:
+	$(MAKE) myst
+	$(MAKE) rootfs
 
 rootfs: dladdr.c
 	mkdir -p $(APPDIR)/bin

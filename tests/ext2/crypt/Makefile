@@ -10,7 +10,9 @@ KEYFILE=$(SUBOBJDIR)/keyfile
 KEY := $(shell cat $(KEYFILE) | hexdump -v -e '/1 "%02x"' 2> /dev/null)
 ROOTHASH=$(SUBOBJDIR)/roothash
 
-all: deps rootfs
+all:
+	$(MAKE) deps
+	$(MAKE) rootfs
 
 rootfs: main.c
 	mkdir -p $(APPDIR)/bin

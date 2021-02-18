@@ -6,7 +6,9 @@ CFLAGS = -fPIC
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 CC = $(MUSL_GCC)
 
-all: myst rootfs
+all:
+	$(MAKE) myst
+	$(MAKE) rootfs
 
 rootfs: thread.c
 	mkdir -p $(APPDIR)/bin

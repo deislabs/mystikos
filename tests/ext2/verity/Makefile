@@ -10,7 +10,9 @@ ROOTHASH=$(SUBOBJDIR)/roothash
 PUBKEY=$(SUBOBJDIR)/public.pem
 PRIVKEY=$(SUBOBJDIR)/private.pem
 
-all: deps rootfs
+all:
+	$(MAKE) deps
+	$(MAKE) rootfs
 
 rootfs: main.c $(PUBKEY)
 	mkdir -p $(APPDIR)/bin

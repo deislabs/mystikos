@@ -6,7 +6,8 @@ APPDIR = appdir
 CFLAGS = -fPIC -g
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 
-all: rootfs
+all:
+	$(MAKE) rootfs
 
 rootfs: $(PROG).c
 	mkdir -p $(APPDIR)/bin

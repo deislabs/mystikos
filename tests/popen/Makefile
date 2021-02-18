@@ -5,7 +5,9 @@ APPDIR = $(SUBOBJDIR)/appdir
 CFLAGS = -fPIC
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 
-all: myst rootfs
+all:
+	$(MAKE) myst
+	$(MAKE) rootfs
 
 rootfs: popen.c sh.c
 	mkdir -p $(APPDIR)/bin
