@@ -11,8 +11,6 @@ APPBUILDER=$(TOP)/scripts/appbuilder
 ROOTFS=$(CURDIR)/rootfs
 ROOTHASH=$(CURDIR)/roothash
 
-export TIMEOUT=10
-
 all: clean myst $(APPDIR) $(ROOTFS) $(ROOTHASH)
 
 $(APPDIR):
