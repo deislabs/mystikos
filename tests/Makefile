@@ -65,7 +65,6 @@ endif
 
 DIRS += tlscert
 DIRS += wake_and_kill
-DIRS += network
 
 ifndef MYST_USE_OECACHE
 DIRS += curl
@@ -73,6 +72,7 @@ endif
 
 ifdef MYST_NIGHTLY_TEST
 DIRS += ltp
+DIRS += sockperf
 endif
 
 REDEFINE_TESTS=1
