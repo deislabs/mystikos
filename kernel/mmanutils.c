@@ -2,19 +2,18 @@
 // Licensed under the MIT License.
 
 #include <assert.h>
-#include <stdlib.h>
-
 #include <limits.h>
-#include <myst/file.h>
-#include <myst/mmanutils.h>
-#include <myst/strings.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <unistd.h>
 
 #include <myst/eraise.h>
+#include <myst/file.h>
+#include <myst/mmanutils.h>
 #include <myst/process.h>
+#include <myst/strings.h>
 
 #define SCRUB
 
@@ -22,6 +21,21 @@ static myst_mman_t _mman;
 static void* _mman_start;
 static size_t _mman_size;
 static void* _mman_end;
+
+/* msync mappings are created by mmap() and released with munmap() */
+typedef struct msync_mapping
+{
+    struct msync_mapping* next;
+    struct msync_mapping* tmp_next; /* used within functions to build lists */
+    int fd;
+    off_t offset;
+    void* addr;
+    size_t length;
+} msync_mapping_t;
+
+/* linked list of msync mappings */
+static msync_mapping_t* _msync_mappings;
+static myst_spinlock_t _msync_mappings_lock = MYST_SPINLOCK_INITIALIZER;
 
 int myst_setup_mman(void* data, size_t size)
 {
@@ -63,34 +77,28 @@ int myst_teardown_mman(void)
 static ssize_t _map_file_onto_memory(
     int fd,
     off_t offset,
-    void* data,
-    size_t size)
+    void* addr,
+    size_t length,
+    int mmap_flags)
 {
-    ssize_t ret = -1;
+    ssize_t ret = 0;
     ssize_t bytes_read = 0;
-    off_t save_pos;
+    int flags;
 
-    if (fd < 0 || !data || !size)
-        goto done;
-
-    /* save the current file position */
-    if ((save_pos = lseek(fd, 0, SEEK_CUR)) == (off_t)-1)
-        goto done;
-
-    /* seek start of file */
-    if (lseek(fd, offset, SEEK_SET) == (off_t)-1)
-        goto done;
+    if (fd < 0 || !addr || !length)
+        ERAISE(-EINVAL);
 
     /* read file onto memory */
     {
         char buf[BUFSIZ];
         ssize_t n;
-        uint8_t* p = data;
-        size_t r = size;
+        uint8_t* p = addr;
+        size_t r = length;
+        size_t o = offset;
 
-        while ((n = read(fd, buf, sizeof buf)) > 0)
+        while ((n = pread(fd, buf, sizeof buf, o)) > 0)
         {
-            /* if copy would write past end of data */
+            /* if copy would write past end of buffer */
             if (r < (size_t)n)
             {
                 memcpy(p, buf, r);
@@ -99,14 +107,48 @@ static ssize_t _map_file_onto_memory(
 
             memcpy(p, buf, (size_t)n);
             p += n;
+            o += n;
             r -= (size_t)n;
             bytes_read += n;
         }
     }
 
-    /* restore the file position */
-    if (lseek(fd, save_pos, SEEK_SET) == (off_t)-1)
-        goto done;
+    /* get the fd flags */
+    ECHECK(flags = fcntl(fd, F_GETFL));
+
+    /* if file is writable, then create msync mappings for msync() */
+    if ((mmap_flags & MAP_SHARED) && flags & (O_RDWR | O_WRONLY))
+    {
+        const size_t n = length / PAGE_SIZE;
+        size_t o = offset;
+        uint8_t* p = addr;
+
+        myst_spin_lock(&_msync_mappings_lock);
+
+        for (size_t i = 0; i < n; i++)
+        {
+            msync_mapping_t* fm;
+
+            if (!(fm = calloc(1, sizeof(msync_mapping_t))))
+            {
+                myst_spin_unlock(&_msync_mappings_lock);
+                ERAISE(-ENOMEM);
+            }
+
+            fm->fd = fd;
+            fm->offset = o;
+            fm->addr = p;
+            fm->length = PAGE_SIZE;
+
+            fm->next = _msync_mappings;
+            _msync_mappings = fm;
+
+            p += PAGE_SIZE;
+            o += PAGE_SIZE;
+        }
+
+        myst_spin_unlock(&_msync_mappings_lock);
+    }
 
     ret = bytes_read;
 
@@ -130,7 +172,7 @@ void* myst_mmap(
     {
         ssize_t n;
 
-        if ((n = _map_file_onto_memory(fd, offset, addr, length)) < 0)
+        if ((n = _map_file_onto_memory(fd, offset, addr, length, flags)) < 0)
             return (void*)-1;
 
         void* end = (uint8_t*)addr + length;
@@ -152,7 +194,7 @@ void* myst_mmap(
     {
         ssize_t n;
 
-        if ((n = _map_file_onto_memory(fd, offset, ptr, length)) < 0)
+        if ((n = _map_file_onto_memory(fd, offset, ptr, length, flags)) < 0)
             return (void*)-1;
     }
 
@@ -184,9 +226,59 @@ void* myst_mremap(
     return p;
 }
 
+/* release msync mappings that are contained in the range [addr:addr+length] */
+static int _release_msync_mappings(void* addr, size_t length)
+{
+    int ret = 0;
+
+    myst_spin_lock(&_msync_mappings_lock);
+    {
+        msync_mapping_t* p = _msync_mappings;
+        msync_mapping_t* prev = NULL;
+        void* addr_end = (uint8_t*)addr + length;
+
+        while (p)
+        {
+            msync_mapping_t* next = p->next;
+            void* p_addr_end = (uint8_t*)p->addr + p->length;
+
+            if (p->addr >= addr && p_addr_end <= addr_end)
+            {
+                if (prev)
+                    prev->next = p->next;
+                else
+                    _msync_mappings = p->next;
+
+                free(p);
+            }
+            else
+            {
+                prev = p;
+            }
+
+            p = next;
+        }
+    }
+    myst_spin_unlock(&_msync_mappings_lock);
+
+    return ret;
+}
+
 int myst_munmap(void* addr, size_t length)
 {
-    int ret = myst_mman_munmap(&_mman, addr, length);
+    int ret = 0;
+
+    /* address cannot be null and must be aligned on a page boundary */
+    if (!addr || ((uint64_t)addr % PAGE_SIZE))
+        ERAISE(-EINVAL);
+
+    /* length cannot be 0 and must be aligned on a page boundary */
+    if (!length || (length % PAGE_SIZE))
+        ERAISE(-EINVAL);
+
+    ECHECK(myst_mman_munmap(&_mman, addr, length));
+
+    ECHECK(_release_msync_mappings(addr, length));
 
 #if 0
     // ATTN-2AA04DD0: fails during process cleanup for unknown reasons. When
@@ -203,6 +295,7 @@ int myst_munmap(void* addr, size_t length)
     }
 #endif
 
+done:
     return ret;
 }
 
@@ -304,6 +397,133 @@ int myst_release_process_mappings(pid_t pid)
         }
     }
     myst_spin_unlock(&_mappings_lock);
+
+done:
+    return ret;
+}
+
+static int _sync_file(int fd, off_t offset, const void* addr, size_t length)
+{
+    int ret = 0;
+    const uint8_t* p = (const uint8_t*)addr;
+    size_t r = length;
+    off_t o = offset;
+
+    while (r > 0)
+    {
+        ssize_t n = pwrite(fd, p, r, o);
+
+        if (n == 0)
+            break;
+        else if (n < 0)
+            ERAISE(n);
+
+        p += n;
+        o += n;
+        r -= (size_t)n;
+    }
+
+done:
+    return ret;
+}
+
+int myst_msync(void* addr, size_t length, int flags)
+{
+    int ret = 0;
+    const int mask = MS_SYNC | MS_ASYNC | MS_INVALIDATE;
+
+    /* reject bad parameters and unknown flags */
+    if (!addr || !length || (flags & ~mask))
+        ERAISE(-EINVAL);
+
+    /* fail if both MS_SYNC and MS_ASYNC are both present */
+    if ((flags & MS_SYNC) && (flags & MS_ASYNC))
+        ERAISE(-EINVAL);
+
+    // Note: Asynchronous sync (MS_ASYNC) is not supported so all syncs are
+    // treated as though they were non-asynchronous (MS_SYNC). The caller will
+    // be unable to detect any difference in behavior.
+
+    // Note: experimentation reveals that Linux invalidates other mappings
+    // of the same file, whether  MS_INVALIDATE is present or not (meaning
+    // that they too are updated to reflect the contents of the file with
+    // or without the MS_INVALIDATE flag).
+
+    myst_spin_lock(&_msync_mappings_lock);
+    {
+        void* addr_end = (uint8_t*)addr + length;
+        msync_mapping_t* head = NULL;
+
+        /* flush any msync mappings contained by this address range */
+        for (msync_mapping_t* p = _msync_mappings; p; p = p->next)
+        {
+            void* p_addr_end = (uint8_t*)p->addr + p->length;
+
+            if (p->addr >= addr && p_addr_end <= addr_end)
+            {
+                ECHECK(_sync_file(p->fd, p->offset, p->addr, p->length));
+
+                /* add to local list */
+                p->tmp_next = head;
+                head = p;
+            }
+        }
+
+        /* reload any msync mappings that reference the same file pages */
+        for (msync_mapping_t* p = _msync_mappings; p; p = p->next)
+        {
+            for (msync_mapping_t* q = head; q; q = q->tmp_next)
+            {
+                if (p != q && p->fd == q->fd && p->offset == q->offset)
+                {
+                    /* read page from file without adding msync mappings */
+                    ECHECK(_map_file_onto_memory(
+                        p->fd, p->offset, p->addr, p->length, 0));
+                }
+            }
+        }
+    }
+    myst_spin_unlock(&_msync_mappings_lock);
+
+done:
+    return ret;
+}
+
+/* notified on close to remove msync mappings involving fd */
+int myst_mman_close_notify(int fd)
+{
+    int ret = 0;
+
+    if (fd < 0)
+        ERAISE(-EINVAL);
+
+    myst_spin_lock(&_msync_mappings_lock);
+    {
+        msync_mapping_t* p = _msync_mappings;
+        msync_mapping_t* prev = NULL;
+
+        while (p)
+        {
+            msync_mapping_t* next = p->next;
+
+            if (p->fd == fd)
+            {
+                if (prev)
+                    prev->next = p->next;
+                else
+                    _msync_mappings = p->next;
+
+                free(p);
+            }
+            else
+            {
+                prev = p;
+            }
+
+            p = next;
+        }
+    }
+    myst_spin_unlock(&_msync_mappings_lock);
 
 done:
     return ret;
