@@ -48,8 +48,13 @@ $(TOP)/build/bin/myst-gdb:
 ##
 ##==============================================================================
 
+FETCH_SUBMODULE = git submodule update --init --progress
+
 submodule:
-	git submodule update --recursive --init --progress $(CURDIR)/openenclave
+	$(FETCH_SUBMODULE) $(CURDIR)/openenclave
+	( cd openenclave; $(FETCH_SUBMODULE) tools/oeedger8r-cpp )
+	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/mbedtls/mbedtls )
+	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/snmalloc )
 
 ##==============================================================================
 ##
