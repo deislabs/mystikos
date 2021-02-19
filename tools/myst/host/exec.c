@@ -27,6 +27,8 @@
 #include <myst/options.h>
 #include <myst/round.h>
 #include <myst/shm.h>
+#include <openenclave/bits/properties.h>
+#include <openenclave/bits/sgx/sgxproperties.h>
 #include <openenclave/host.h>
 
 #include "../shared.h"
@@ -34,6 +36,21 @@
 #include "myst_u.h"
 #include "regions.h"
 #include "utils.h"
+
+// This is a default enclave configuration that we use when overriding the
+// unsigned configuration
+#undef OE_INFO_SECTION_BEGIN
+#define OE_INFO_SECTION_BEGIN
+#undef OE_INFO_SECTION_END
+#define OE_INFO_SECTION_END
+
+OE_SET_ENCLAVE_SGX(
+    1,        /* ProductID */
+    1,        /* SecurityVersion */
+    true,     /* Debug */
+    8 * 4096, /* NumHeapPages */
+    32,       /* NumStackPages */
+    16);      /* NumTCS */
 
 /* How many nanoseconds between two clock ticks */
 /* TODO: Make it configurable through json */
@@ -123,7 +140,8 @@ int exec_launch_enclave(
     uint32_t flags,
     const char* argv[],
     const char* envp[],
-    struct myst_options* options)
+    struct myst_options* options,
+    oe_sgx_enclave_properties_t* enclave_properties)
 {
     oe_result_t r;
     int retval;
@@ -132,12 +150,21 @@ int exec_launch_enclave(
     myst_buf_t envp_buf = MYST_BUF_INITIALIZER;
 
     /* Load the enclave: calls oe_region_add_regions() */
+    if (enclave_properties)
+    {
+        oe_enclave_setting_t enclave_settings = {
+            .setting_type = OE_ENCLAVE_SETTING_PROPERTY_OVERRIDE,
+            .u.enclave_properties = enclave_properties};
+        r = oe_create_myst_enclave(
+            enc_path, type, flags, &enclave_settings, 1, &_enclave);
+    }
+    else
     {
         r = oe_create_myst_enclave(enc_path, type, flags, NULL, 0, &_enclave);
-
-        if (r != OE_OK)
-            _err("failed to load enclave: result=%s", oe_result_str(r));
     }
+
+    if (r != OE_OK)
+        _err("failed to load enclave: result=%s", oe_result_str(r));
 
     /* Serialize the argv[] strings */
     if (myst_buf_pack_strings(&argv_buf, argv, _count_args(argv)) != 0)
@@ -323,8 +350,9 @@ int exec_action(int argc, const char* argv[], const char* envp[])
         rootfs = rootfs_path;
     }
 
-    // note... we have no config, but this call will go looking in the enclave
-    // if it is signed.
+    // we may  or may not have config passed in through the commandline.
+    // If the enclave is signed that config will take precedence over
+    // this version
     if ((details = create_region_details_from_files(
              program,
              rootfs,
@@ -337,8 +365,26 @@ int exec_action(int argc, const char* argv[], const char* envp[])
 
     unlink(archive_path);
 
-    return_status = exec_launch_enclave(
-        details->enc.path, type, flags, argv + 3, envp, &options);
+    if (details->oe_num_heap_pages)
+    {
+        oe_sgx_enclave_properties_t enclave_properties =
+            oe_enclave_properties_sgx;
+        enclave_properties.header.size_settings.num_heap_pages =
+            details->oe_num_heap_pages;
+        return_status = exec_launch_enclave(
+            details->enc.path,
+            type,
+            flags,
+            argv + 3,
+            envp,
+            &options,
+            &enclave_properties);
+    }
+    else
+    {
+        return_status = exec_launch_enclave(
+            details->enc.path, type, flags, argv + 3, envp, &options, NULL);
+    }
 
     free_region_details();
 

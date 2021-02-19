@@ -15,9 +15,9 @@
 
 #include <myst/elf.h>
 #include <myst/getopt.h>
+#include <myst/strings.h>
 #include <openenclave/bits/sgx/region.h>
 #include <openenclave/host.h>
-#include <myst/strings.h>
 
 #include "../config.h"
 #include "archive.h"
@@ -31,7 +31,8 @@
 
 _Static_assert(PAGE_SIZE == 4096, "");
 
-#define USAGE_PACKAGE "\
+#define USAGE_PACKAGE \
+    "\
 \n\
 Usage:\n\
     %s package-sgx [options] <app_dir> <pem_file> <config>\n\
@@ -644,14 +645,13 @@ int _exec_package(
         if (myst_strlcpy(options.rootfs, env, sizeof(options.rootfs)) >=
             sizeof(options.rootfs))
         {
-            fprintf(stderr, "MYST_ROOTFS_PATH is too long (> %zu)\n",
+            fprintf(
+                stderr,
+                "MYST_ROOTFS_PATH is too long (> %zu)\n",
                 sizeof(options.rootfs));
             goto done;
         }
     }
-
-    parsed_data.oe_num_heap_pages =
-        (details->rootfs.buffer_size + (5 * 1024 * 1024)) / PAGE_SIZE;
 
     // build argv with application name. If we are allowed command line args
     // then append them also
@@ -689,7 +689,7 @@ int _exec_package(
     }
 
     ret = exec_launch_enclave(
-        scratch_path, type, flags, exec_args, envp, &options);
+        scratch_path, type, flags, exec_args, envp, &options, NULL);
     if (ret != 0)
     {
         fprintf(stderr, "Enclave %s returned %d\n", scratch_path, ret);

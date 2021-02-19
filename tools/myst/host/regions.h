@@ -21,6 +21,7 @@ typedef struct _region_details_item
 typedef struct _region_details
 {
     size_t mman_size;
+    size_t oe_num_heap_pages;
     region_details_item enc;
     region_details_item crt;
     region_details_item kernel;
