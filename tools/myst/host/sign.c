@@ -367,8 +367,7 @@ int _sign(int argc, const char* argv[])
     struct stat st;
     stat(rootfs_file, &st);
 
-    parsed_data.oe_num_heap_pages =
-        (st.st_size + (5 * 1024 * 1024)) / PAGE_SIZE;
+    parsed_data.oe_num_heap_pages = make_oe_num_heap_pages(st.st_size);
 
     if (write_oe_config_fd(fd, &parsed_data) != 0)
     {

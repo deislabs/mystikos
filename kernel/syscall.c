@@ -1201,7 +1201,6 @@ long myst_syscall_uname(struct utsname* buf)
     MYST_STRLCPY(buf->nodename, _hostname);
     myst_spin_unlock(&_hostname_lock);
 
-
     return 0;
 }
 
@@ -4351,8 +4350,14 @@ long myst_syscall(long n, long params[6])
             size_t count = (size_t)x4;
             off_t off = offset ? *offset : 0;
 
-            _strace(n, "out_fd=%d in_fd=%d offset=%p *offset=%ld count=%zu",
-                out_fd, in_fd, offset, off, count);
+            _strace(
+                n,
+                "out_fd=%d in_fd=%d offset=%p *offset=%ld count=%zu",
+                out_fd,
+                in_fd,
+                offset,
+                off,
+                count);
 
             long ret = myst_syscall_sendfile(out_fd, in_fd, offset, count);
             BREAK(_return(n, ret));

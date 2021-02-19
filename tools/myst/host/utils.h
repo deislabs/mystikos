@@ -4,7 +4,8 @@
 #ifndef _HOST_MYST_UTILS_H
 #define _HOST_MYST_UTILS_H
 
-#include <limits.h>
+#include <myst/defs.h>
+#include <sys/user.h>
 
 // default size used for user app memory
 #define DEFAULT_MMAN_SIZE (64 * 1024 * 1024)
@@ -33,5 +34,10 @@ int cli_getopt(
     const char* argv[],
     const char* opt,
     const char** optarg);
+
+MYST_INLINE uint64_t make_oe_num_heap_pages(off_t rootfs_size)
+{
+    return ((rootfs_size + (50 * 1024 * 1024)) / PAGE_SIZE);
+}
 
 #endif /* _HOST_MYST_UTILS_H */
