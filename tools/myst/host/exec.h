@@ -14,6 +14,7 @@ int exec_launch_enclave(
     uint32_t flags,
     const char* argv[],
     const char* envp[],
-    struct myst_options* options);
+    struct myst_options* options,
+    oe_sgx_enclave_properties_t* enclave_properties);
 
 #endif /* _MYST_HOST_EXEC_H */

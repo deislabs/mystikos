@@ -3,7 +3,7 @@
 #include <myst/eraise.h>
 #include <myst/syscall.h>
 
-long myst_syscall_sendfile(int out_fd, int in_fd, off_t *offset, size_t count)
+long myst_syscall_sendfile(int out_fd, int in_fd, off_t* offset, size_t count)
 {
     long ret = 0;
     ssize_t nwritten = 0;
