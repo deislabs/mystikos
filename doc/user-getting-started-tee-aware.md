@@ -201,3 +201,9 @@ application running inside a TEE with no regard to the application identity.
 If the application does want to reject/approve based on app identity, it
 must include `myst/tee.h`, define a function similar to `_verifier`,
 and pass it to syscall `SYS_myst_verify_cert`.
+
+## Further readings
+
+Please read [exposed Open Enclave SDK APIs](./exposed-oe-apis.md]
+if you are interested in writing applications that interact more closely
+with the TEE.
