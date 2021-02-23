@@ -9,7 +9,7 @@ we implement a particular system call in Mystikos kernel:
 1. Applicability. Whether the syscall is applicable in a TEE context.
 1. Popularity. The more applications uses the syscall, the higher
 priority it is to us.
-1. Difficulty. If all other factors equal, we have to defer syscalls that
+1. Complexity. If all other factors equal, the more complex the syscall support is,
 are more difficult to implement, given the limited engineering resources.
 
 Out of the system calls that are not fully supported yet, we have three
@@ -135,7 +135,6 @@ lowering the incompatibilities to enable more applications.
 | SYS_iopl / SYS_ioperm / io_setup / SYS_io_destroy / SYS_io_getevents / SYS_io_submit SYS_io_cancel / SYS_ioprio_set / SYS_ioprio_get | I/O operations | Unhandled |
 | SYS_reboot / YS_kexec_load / SYS_kexec_file_load | System-wide operations | Unhandled |
 | SYS_init_module / SYS_finit_module / SYS_delete_module / SYS_query_module | kernel module operations | Unhandled |
-
 
 
 
