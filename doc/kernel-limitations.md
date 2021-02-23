@@ -55,7 +55,7 @@ is reasonable so we don't waste too much stack memory on unused threads.
 
 When an user application calls `pthread_create`, Mystikos makes an OCALL
 to the host to create a host thread, and re-enters the enclave with an
-ECALL, and once inside the enclave, jump to the thread routine. The long
+ECALL, and once inside the enclave, jump to the thread routine. When an user application calls `pthread_yield`, Mystikos makes an OCALL to the host to request the host to suspend the calling thread. The long
 chain of events leads to delays and performance problems occasionally.
 
 The security implication of using host threads is that the untrusted host
@@ -171,4 +171,3 @@ security guarantee among the three and thus must be used with caution.
 Typically, the above mentioned limitations are reflected in the kernel
 implementation of system calls. Interested readers are welcome to continue on
 [notable incompatible syscalls in Mystikos](kernel-incompatible-syscalls.md).
-
