@@ -20,7 +20,7 @@ directly, or indirectly, from the application, results in a crash.
 * **Stub only**: In the current implementation, Mystikos does nothing more than making an acknowledgement
 to the caller. This no-op could satisfy the application most times, unless
 the application has a hard dependency on the `effects` of the syscall.
-* **Partial**: The kernel only handles some cases or aspects of the syscall.
+* **Partial**: In the current implementation, the kernel only handles some cases or aspects of the syscall.
 
 The following lists of incompatible system calls are by no means exhaustive.
 The lists may seem long, but keep in mind that many of them are not applicable
@@ -135,6 +135,5 @@ lowering the incompatibilities to enable more applications.
 | SYS_iopl / SYS_ioperm / io_setup / SYS_io_destroy / SYS_io_getevents / SYS_io_submit SYS_io_cancel / SYS_ioprio_set / SYS_ioprio_get | I/O operations | Unhandled |
 | SYS_reboot / YS_kexec_load / SYS_kexec_file_load | System-wide operations | Unhandled |
 | SYS_init_module / SYS_finit_module / SYS_delete_module / SYS_query_module | kernel module operations | Unhandled |
-
 
 
