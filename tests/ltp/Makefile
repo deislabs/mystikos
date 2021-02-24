@@ -8,6 +8,7 @@ TEST_FILE=ltp_enabled.txt
 TESTS=$(shell cat $(TEST_FILE))
 
 all:
+	git submodule update --init --progress $(TOP)/third_party/ltp/ltp
 	$(MAKE) myst
 	$(MAKE) rootfs
 
