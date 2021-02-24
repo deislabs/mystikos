@@ -43,13 +43,13 @@ jobs:
 
       # build all source files
       - script: |
-          make clean && make
+          make clean && make -j
         displayName: 'build repo source'
         workingDirectory: $(Build.SourcesDirectory)
 
       # run all tests
       - script: |
-          make tests ALLTESTS=1 VERBOSE=1
+          make -j tests ALLTESTS=1 VERBOSE=1
         displayName: 'run all tests'
         continueOnError: true
         enabled: true
