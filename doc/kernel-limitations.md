@@ -12,7 +12,7 @@ run Linux applications with little or no modifications. There are still
 incompatibilities/limitations worth noting as summarized below:
 
 | Limitation                    | Description         | Potential impacts on applications |
-| ------------------------------|---------------------|---------| -----------------|
+| ------------------------------|---------------------|---------|
 | [Multi-process limitation](#limitations-arisen-from-sgxs-single-process-model) | No forking of child processes. However `posix_spawn` is supported. | Communication and address space isolation between processes |
 | [Thread limitations](#limitations-arisen-from-sgx1-limitations) | Thread creation is slow and limited to a user setting. Thread scheduling is subject to attacks by host. | Required Configuration / Thread starvation / D.o.S. |
 | [Memory limitations](#limitations-arisen-from-sgx1-limitations) | User stack/heap memory is limited to a user setting. Page permission enforcement is under host control. | Required Configuration / OOM / Page table manipulation |
