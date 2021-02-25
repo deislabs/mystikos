@@ -22,7 +22,7 @@ incompatibilities/limitations worth noting as summarized below:
 | [File system limitations](#file-System-limitations) | Support ramfs, hostfs, and ext2 only. Mounting of a file system has to be explicit. Changes are not always persisted. | Required FS conversion / Unprotected files once persisted to outside of TEE   |
 
 * Note, many attacks above are only possible with a malicious host OS/kernel,
-which is deliberately excluded from TCB by the SGX thread model.
+which is deliberately excluded from TCB by the SGX threat model.
 
 ## Limitations arisen from SGX's single process model
 
