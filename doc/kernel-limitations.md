@@ -65,9 +65,6 @@ application calls `pthread_yield`, Mystikos makes an OCALL to the host to
 request the host to suspend the calling thread. The long
 chain of events leads to delays and performance problems occasionally.
 
-This limitation is likely to be relaxed when EDMM of SGX2 is officially
-supported in Mystikos.
-
 ### SGX1 Memory model
 
 With SGX1, the heap size of the enclave application has to be statically
