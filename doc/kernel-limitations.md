@@ -21,6 +21,9 @@ incompatibilities/limitations worth noting as summarized below:
 | [Network limitation](#network-limitations)  | Networking has to pass through host | Missed or delayed packages / Eavesdropping / D.o.S. |
 | [File system limitations](#file-System-limitations) | Support ramfs, hostfs, and ext2 only. Mounting of a file system has to be explicit. Changes are not always persisted. | Required FS conversion / Unprotected files once persisted to outside of TEE   |
 
+* Note, many attacks above are only possible with a malicious OS/kernel,
+which is deliberately excluded from TCB by the SGX thread model.
+
 ## Limitations arisen from SGX's single process model
 
 With SGX, an enclave application runs as a single process in a single
