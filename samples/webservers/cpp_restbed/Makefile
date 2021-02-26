@@ -6,8 +6,6 @@ include $(TOP)/defs.mak
 APPDIR = appdir
 TESTSDIR_HOST=$(CURDIR)/$(APPDIR)/tests
 TESTSDIR_MYST=/tests
-CFLAGS = -fPIC
-LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 
 #OPTS = --strace
 
