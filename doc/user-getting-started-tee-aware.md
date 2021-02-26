@@ -73,18 +73,20 @@ operations only when running inside a TEE.
 int main()
 {
     const char* target = getenv("MYST_TARGET");
-    if (target && strcmp(target, "linux") == 0)
+    if ( !target )
     {
-        printf("I am in non-TEE\n");
+       printf("I am in unknown environment\n");
+       return 1;
     }
-    else if (target && strcmp(target, "sgx") == 0)
+    if (strcmp(target, "sgx") != 0)
     {
-        printf("I am in SGX\n");
-        // Perform secret operations below
-        // ...
+        printf("I am in non-TEE\n");\
+        return 1;
     }
-    else
-        printf("I am in unknown environment\n");
+
+    printf("I am in SGX!  Now, for secrets!\n");
+    // Perform secret operations below
+    // ...
 
     return 0;
 }
