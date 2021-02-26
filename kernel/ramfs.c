@@ -48,6 +48,7 @@ typedef struct ramfs
     inode_t* root;
     char source[PATH_MAX]; /* source argument to myst_mount() */
     char target[PATH_MAX]; /* target argument to myst_mount() */
+    myst_mount_resolve_callback_t resolve;
 } ramfs_t;
 
 static bool _ramfs_valid(const ramfs_t* ramfs)
@@ -378,7 +379,8 @@ static int _path_to_inode_recursive(
     bool follow,
     inode_t** parent_out,
     inode_t** inode_out,
-    char realpath[PATH_MAX])
+    char realpath[PATH_MAX],
+    char target_out[PATH_MAX])
 {
     int ret = 0;
     char** toks = NULL;
@@ -439,17 +441,25 @@ static int _path_to_inode_recursive(
             {
                 const char* target = _inode_target(p);
 
-                /* ATTN: Handle case where ramfs not mounted on "/" */
                 if (*target == '/')
                 {
-                    if (realpath)
-                        *realpath = '\0';
+                    if (target_out)
+                    {
+                        myst_strlcpy(target_out, target, PATH_MAX);
+                        goto done;
+                    }
+                    else
+                    {
+                        if (realpath)
+                            *realpath = '\0';
 
-                    parent = ramfs->root;
+                        parent = ramfs->root;
+                    }
                 }
 
                 ECHECK(_path_to_inode_recursive(
-                    ramfs, target, parent, true, &parent, &p, realpath));
+                    ramfs, target, parent, true, &parent, &p, realpath,
+                    target_out));
 
                 assert(target != NULL);
             }
@@ -487,7 +497,8 @@ static int _path_to_inode_realpath(
     bool follow,
     inode_t** parent_out,
     inode_t** inode_out,
-    char realpath_out[PATH_MAX])
+    char realpath_out[PATH_MAX],
+    char target[PATH_MAX])
 {
     int ret = 0;
     char realpath[PATH_MAX] = {'\0'};
@@ -499,7 +510,8 @@ static int _path_to_inode_realpath(
         follow,
         parent_out,
         inode_out,
-        realpath_out ? realpath : NULL));
+        realpath_out ? realpath : NULL,
+        target));
 
     if (realpath_out)
         ECHECK(myst_normalize(realpath, realpath_out, PATH_MAX));
@@ -516,7 +528,19 @@ static int _path_to_inode(
     inode_t** inode_out)
 {
     return _path_to_inode_realpath(
-        ramfs, path, follow, parent_out, inode_out, NULL);
+        ramfs, path, follow, parent_out, inode_out, NULL, NULL);
+}
+
+static int _path_to_inode2(
+    ramfs_t* ramfs,
+    const char* path,
+    bool follow,
+    inode_t** parent_out,
+    inode_t** inode_out,
+    char target[PATH_MAX])
+{
+    return _path_to_inode_realpath(
+        ramfs, path, follow, parent_out, inode_out, NULL, target);
 }
 
 /*
@@ -592,6 +616,7 @@ static int _fs_open(
     int ret = 0;
     int errnum;
     bool is_i_new = false;
+    char target[PATH_MAX];
 
     if (file_out)
         *file_out = NULL;
@@ -609,7 +634,18 @@ static int _fs_open(
     if (!(file = calloc(1, sizeof(myst_file_t))))
         ERAISE(-ENOMEM);
 
-    errnum = _path_to_inode(ramfs, pathname, true, NULL, &inode);
+    *target = '\0';
+    errnum = _path_to_inode2(ramfs, pathname, true, NULL, &inode, target);
+
+    if (ramfs->resolve && *target != '\0')
+    {
+        char suffix[PATH_MAX];
+        myst_fs_t* fs;
+
+        ECHECK((*ramfs->resolve)(target, suffix, &fs));
+        ECHECK(fs->fs_open(fs, suffix, flags, mode, file_out));
+        goto done;
+    }
 
     /* If the file already exists */
     if (errnum == 0)
@@ -660,7 +696,7 @@ static int _fs_open(
 
     /* Get the realpath of this file */
     ECHECK(_path_to_inode_realpath(
-        ramfs, pathname, true, NULL, &inode, file->realpath));
+        ramfs, pathname, true, NULL, &inode, file->realpath, NULL));
 
     assert(_file_valid(file));
 
@@ -1714,7 +1750,7 @@ done:
     return ret;
 }
 
-int myst_init_ramfs(myst_fs_t** fs_out)
+int myst_init_ramfs(myst_mount_resolve_callback_t resolve, myst_fs_t** fs_out)
 {
     int ret = 0;
     ramfs_t* ramfs = NULL;
@@ -1786,6 +1822,7 @@ int myst_init_ramfs(myst_fs_t** fs_out)
     ramfs->magic = RAMFS_MAGIC;
     ramfs->base = _base;
     ramfs->root = root_inode;
+    ramfs->resolve = resolve;
     myst_strlcpy(ramfs->target, "/", sizeof(ramfs->target));
     root_inode = NULL;
 

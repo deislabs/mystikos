@@ -5,6 +5,7 @@
 #define _MYST_FS_H
 
 #include <dirent.h>
+#include <limits.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/statfs.h>
@@ -30,6 +31,11 @@ const char* myst_fstype_name(myst_fstype_t fstype);
 typedef struct myst_fs myst_fs_t;
 
 typedef struct myst_file myst_file_t;
+
+typedef int (*myst_mount_resolve_callback_t)(
+    const char* path,
+    char suffix[PATH_MAX],
+    myst_fs_t** fs);
 
 struct myst_fs
 {

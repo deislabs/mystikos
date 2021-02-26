@@ -7,7 +7,7 @@
 #include <myst/fs.h>
 #include <stdbool.h>
 
-int myst_init_ramfs(myst_fs_t** fs_out);
+int myst_init_ramfs(myst_mount_resolve_callback_t resolve, myst_fs_t** fs_out);
 
 int myst_ramfs_set_buf(
     myst_fs_t* fs,
