@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/stat.h>
 
 #include <myst/backtrace.h>
 #include <myst/buf.h>
@@ -2138,7 +2139,6 @@ int myst_create_virtual_file(
 {
     int ret = 0;
     ramfs_t* ramfs = (ramfs_t*)fs;
-    int fd = -1;
 
     if (!_ramfs_valid(ramfs))
         ERAISE(-EINVAL);
@@ -2148,29 +2148,20 @@ int myst_create_virtual_file(
 
     /* create an empty file */
     {
-        if ((fd = creat(pathname, 0444)) < 0)
-        {
-            myst_panic("kernel: open(): %s\n", pathname);
-            ERAISE(-ENOENT);
-        }
-
-        close(fd);
-        fd = -1;
+        myst_file_t* file = NULL;
+        ECHECK((*fs->fs_open)(fs, pathname, O_RDONLY | O_CREAT, S_IFREG, NULL, &file));
     }
 
     /* inject vcallback into the inode */
     {
         inode_t* inode = NULL;
-        ECHECK(_path_to_inode(ramfs, pathname, true, NULL, &inode));
+        ECHECK(_path_to_inode(ramfs, pathname, true, NULL, &inode, NULL, NULL));
         inode->vcallback = vcallback;
     }
 
     ret = 0;
 
 done:
-
-    if (fd >= 0)
-        close(fd);
 
     return ret;
 }

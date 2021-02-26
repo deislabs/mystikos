@@ -39,6 +39,7 @@
 #define WANT_TLS_CREDENTIAL "MYST_WANT_TLS_CREDENTIAL"
 
 static myst_fs_t* _fs;
+static myst_fs_t* _procfs;
 
 long myst_tcall(long n, long params[6])
 {
@@ -175,7 +176,6 @@ static int _create_standard_directories(void)
 
 #ifdef USE_TMPFS
     ECHECK(_init_tmpfs("/tmp", &_tmpfs));
-    ECHECK(_init_tmpfs("/proc", &_procfs));
 #endif
 
 #ifndef USE_TMPFS
@@ -185,20 +185,6 @@ static int _create_standard_directories(void)
         ERAISE(-EINVAL);
     }
 #endif
-
-#ifndef USE_TMPFS
-    if (myst_mkdirhier("/proc", mode) != 0)
-    {
-        myst_eprintf("cannot create /proc directory\n");
-        ERAISE(-EINVAL);
-    }
-#endif
-
-    if (myst_mkdirhier("/proc/self/fd", mode) != 0)
-    {
-        myst_eprintf("cannot create the /proc/self/fd directory\n");
-        ERAISE(-EINVAL);
-    }
 
     if (myst_mkdirhier("/usr/local/etc", mode) != 0)
     {
@@ -216,7 +202,7 @@ static int _setup_ramfs(void)
 
     if (myst_init_ramfs(myst_mount_resolve, &_fs) != 0)
     {
-        myst_eprintf("failed initialize the RAM files system\n");
+        myst_eprintf("failed initialize the RAM file system\n");
         ERAISE(-EINVAL);
     }
 
@@ -281,11 +267,40 @@ static int _setup_hostfs(const char* rootfs, char* err, size_t err_size)
     }
 
     _create_standard_directories();
+}
+#endif /* MYST_ENABLE_HOSTFS */
+
+static int _setup_procfs(void)
+{
+    int ret = 0;
+
+    if (myst_init_ramfs(myst_mount_resolve, &_procfs) != 0)
+    {
+        myst_eprintf("failed initialize the proc file system\n");
+        ERAISE(-EINVAL);
+    }
+
+    if (myst_mkdirhier("/proc", 777) != 0)
+    {
+        myst_eprintf("cannot create mount point for procfs\n");
+        ERAISE(-EINVAL);
+    }
+
+    if (myst_mount(_procfs, "/", "/proc") != 0)
+    {
+        myst_eprintf("cannot mount proc file system\n");
+        ERAISE(-EINVAL);
+    }
+
+    if (myst_mkdirhier("/proc/self/fd", 777) != 0)
+    {
+        myst_eprintf("cannot create the /proc/self/fd directory\n");
+        ERAISE(-EINVAL);
+    }
 
 done:
     return ret;
 }
-#endif /* MYST_ENABLE_HOSTFS */
 
 static const char* _getenv(const char** envp, const char* varname)
 {
@@ -673,6 +688,9 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     /* Mount the root file system */
     ECHECK(_mount_rootfs(args, fstype));
 
+    /* Setup virtual proc filesystem */
+    _setup_procfs();
+
     /* Generate TLS credentials if needed */
     want_tls_creds = _getenv(args->envp, WANT_TLS_CREDENTIAL);
     if (want_tls_creds != NULL)
@@ -726,7 +744,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     }
 
     /* Create /proc/meminfo */
-    ECHECK(myst_create_virtual_file(_fs, "/proc/meminfo", _meminfo_vcallback));
+    ECHECK(myst_create_virtual_file(_procfs, "/meminfo", _meminfo_vcallback));
 
     /* Set the 'run-proc' which is called by the target to run new threads */
     ECHECK(myst_tcall_set_run_thread_function(myst_run_thread));
