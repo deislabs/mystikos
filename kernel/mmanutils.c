@@ -15,6 +15,7 @@
 #include <myst/mmanutils.h>
 #include <myst/process.h>
 #include <myst/strings.h>
+#include <myst/round.h>
 
 #define SCRUB
 
@@ -335,7 +336,7 @@ static int _release_msync_mappings(void* addr, size_t length)
 
                     /* update the left mapping length */
                     p->length = llength;
-                    prev = p;
+                    prev = rm;
                 }
                 else if (llength)
                 {
@@ -385,12 +386,11 @@ int myst_munmap(void* addr, size_t length)
     int ret = 0;
 
     /* address cannot be null and must be aligned on a page boundary */
-    if (!addr || ((uint64_t)addr % PAGE_SIZE))
+    if (!addr || ((uint64_t)addr % PAGE_SIZE) || !length)
         ERAISE(-EINVAL);
 
-    /* length cannot be 0 and must be aligned on a page boundary */
-    if (!length || (length % PAGE_SIZE))
-        ERAISE(-EINVAL);
+    /* align length to a page boundary */
+    ECHECK(myst_round_up(length, PAGE_SIZE, &length));
 
     ECHECK(myst_mman_munmap(&_mman, addr, length));
 
