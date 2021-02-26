@@ -162,7 +162,7 @@ static int _setup_ramfs(void)
 {
     int ret = 0;
 
-    if (myst_init_ramfs(&_fs) != 0)
+    if (myst_init_ramfs(myst_mount_resolve, &_fs) != 0)
     {
         myst_eprintf("failed initialize the RAM files system\n");
         ERAISE(-EINVAL);
