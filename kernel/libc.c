@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include <myst/backtrace.h>
+#include <myst/syscall.h>
 #include <myst/defs.h>
 #include <myst/eraise.h>
 #include <myst/kernel.h>
@@ -720,7 +721,7 @@ ssize_t pread(int fd, void* buf, size_t count, off_t offset)
     return myst_syscall_ret(myst_syscall_pread(fd, buf, count, offset));
 }
 
-ssize_t myst_pwrite(int fd, const void* buf, size_t count, off_t offset)
+ssize_t pwrite(int fd, const void* buf, size_t count, off_t offset)
 {
     return myst_syscall_ret(myst_syscall_pwrite(fd, buf, count, offset));
 }
@@ -798,6 +799,15 @@ ssize_t readlink(const char* pathname, char* buf, size_t bufsiz)
 int symlink(const char* target, const char* linkpath)
 {
     return (int)myst_syscall_ret(myst_syscall_symlink(target, linkpath));
+}
+
+int fcntl(int fd, int cmd, ...)
+{
+    va_list ap;
+    va_start(ap, cmd);
+    long arg = va_arg(ap, long);
+    va_end(ap);
+    return (int)myst_syscall_ret(myst_syscall_fcntl(fd, cmd, arg));
 }
 
 /*
