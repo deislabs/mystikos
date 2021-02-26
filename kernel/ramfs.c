@@ -537,10 +537,26 @@ static int _path_to_inode2(
     bool follow,
     inode_t** parent_out,
     inode_t** inode_out,
-    char target[PATH_MAX])
+    char suffix[PATH_MAX],
+    myst_fs_t** fs_out)
 {
-    return _path_to_inode_realpath(
-        ramfs, path, follow, parent_out, inode_out, NULL, target);
+    int ret = 0;
+    char target[PATH_MAX];
+
+    *suffix = '\0';
+    *fs_out = NULL;
+    *target = '\0';
+
+    ECHECK(_path_to_inode_realpath(
+        ramfs, path, follow, parent_out, inode_out, NULL, target));
+
+    if (ramfs->resolve && *target != '\0')
+    {
+        ECHECK((*ramfs->resolve)(target, suffix, fs_out));
+    }
+
+done:
+    return ret;
 }
 
 /*
@@ -616,7 +632,8 @@ static int _fs_open(
     int ret = 0;
     int errnum;
     bool is_i_new = false;
-    char target[PATH_MAX];
+    char suffix[PATH_MAX];
+    myst_fs_t* tfs = NULL;
 
     if (file_out)
         *file_out = NULL;
@@ -634,16 +651,11 @@ static int _fs_open(
     if (!(file = calloc(1, sizeof(myst_file_t))))
         ERAISE(-ENOMEM);
 
-    *target = '\0';
-    errnum = _path_to_inode2(ramfs, pathname, true, NULL, &inode, target);
+    errnum = _path_to_inode2(ramfs, pathname, true, NULL, &inode, suffix, &tfs);
 
-    if (ramfs->resolve && *target != '\0')
+    if (tfs)
     {
-        char suffix[PATH_MAX];
-        myst_fs_t* fs;
-
-        ECHECK((*ramfs->resolve)(target, suffix, &fs));
-        ECHECK(fs->fs_open(fs, suffix, flags, mode, file_out));
+        ECHECK((ret = tfs->fs_open(tfs, suffix, flags, mode, file_out)));
         goto done;
     }
 
