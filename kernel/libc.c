@@ -801,15 +801,6 @@ int symlink(const char* target, const char* linkpath)
     return (int)myst_syscall_ret(myst_syscall_symlink(target, linkpath));
 }
 
-int fcntl(int fd, int cmd, ...)
-{
-    va_list ap;
-    va_start(ap, cmd);
-    long arg = va_arg(ap, long);
-    va_end(ap);
-    return (int)myst_syscall_ret(myst_syscall_fcntl(fd, cmd, arg));
-}
-
 /*
 **==============================================================================
 **

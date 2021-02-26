@@ -85,6 +85,8 @@ ifeq ($(MYST_ENABLE_HOSTFS),1)
 DIRS += hostfs
 endif
 
+DIRS += msync
+
 __tests:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) tests $(NL) )
 
