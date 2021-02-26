@@ -732,6 +732,7 @@ long myst_syscall_close(int fd)
         myst_remove_fd_link(device, object, fd);
     }
 
+    myst_mman_close_notify(fd);
     ECHECK((*fdops->fd_close)(device, object));
     ECHECK(myst_fdtable_remove(fdtable, fd));
 
@@ -2717,8 +2718,7 @@ long myst_syscall(long n, long params[6])
 
             _strace(n, "addr=%p length=%zu flags=%d ", addr, length, flags);
 
-            /* ATTN: hook up implementation */
-            BREAK(_return(n, 0));
+            BREAK(_return(n, myst_msync(addr, length, flags)));
         }
         case SYS_mincore:
             /* ATTN: hook up implementation */
