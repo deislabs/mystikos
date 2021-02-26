@@ -19,7 +19,7 @@ $(APPDIR): buildltp.sh
 	$(APPBUILDER) Dockerfile
 
 rootfs: $(APPDIR)
-	$(MYST) mkext2 $(APPDIR) "$@"
+	sudo $(MYST) mkext2 $(APPDIR) "$@"
 	truncate --size=-4096 "$@"
 
 ifdef STRACE
