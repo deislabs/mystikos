@@ -672,6 +672,9 @@ static long _syscall_clone_vfork(
         if (child->main.cwd == NULL)
             ERAISE(-ENOMEM);
 
+        /* inherit the umask from the parent process */
+        child->main.umask = parent->main.umask;
+
         if (myst_fdtable_clone(parent->fdtable, &child->fdtable) != 0)
             ERAISE(-ENOMEM);
 

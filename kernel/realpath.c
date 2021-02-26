@@ -68,13 +68,21 @@ int myst_realpath(const char* path, myst_path_t* resolved_path)
         {
             v->in[nin++] = p;
         }
+
+        /* if the path ends in '/' and not root then add '.' */
+        {
+            size_t len = strlen(path);
+
+            if (len > 1 && path[len-1] == '/')
+                v->in[nin++] = ".";
+        }
     }
 
     /* Normalize the path. */
     for (size_t i = 0; i < nin; i++)
     {
         /* Skip "." elements. */
-        if (strcmp(v->in[i], ".") == 0)
+        if (i + 1 != nin && strcmp(v->in[i], ".") == 0)
             continue;
 
         /* If "..", remove previous element. */

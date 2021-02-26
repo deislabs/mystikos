@@ -8,6 +8,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#define MYST_DEFAULT_UMASK (S_IWGRP | S_IWOTH)
+
 MYST_INLINE pid_t myst_getsid(void)
 {
     return myst_thread_self()->sid;

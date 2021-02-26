@@ -253,4 +253,6 @@ long myst_syscall_sendfile(int out_fd, int in_fd, off_t* offset, size_t count);
 
 long myst_syscall_sethostname(const char* hostname, size_t len);
 
+long myst_syscall_umask(mode_t mask);
+
 #endif /* _MYST_SYSCALL_H */

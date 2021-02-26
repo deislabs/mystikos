@@ -8,20 +8,26 @@ TEST_FILE=ltp_enabled.txt
 TESTS=$(shell cat $(TEST_FILE))
 
 all:
+	git submodule update --init --progress $(TOP)/third_party/ltp/ltp
 	$(MAKE) myst
 	$(MAKE) rootfs
 
 $(APPDIR): buildltp.sh
 	@ rm -fr ltp
 	@ mkdir ltp
-	@ cp -R ../../third_party/ltp/ltp/* ltp/ 
+	@ cp -R ../../third_party/ltp/ltp/* ltp/
 	$(APPBUILDER) Dockerfile
 
 rootfs: $(APPDIR)
-	$(MYST) mkcpio $(APPDIR) "$@"
+	$(MYST) mkext2 $(APPDIR) "$@"
+	truncate --size=-4096 "$@"
+
+ifdef STRACE
+OPTS = --strace
+endif
 
 tests:
-	@ $(foreach i, $(TESTS), $(RUNTEST) $(MYST_EXEC) rootfs $(i) $(OPTS) $(NL) )
+	@ $(foreach i, $(TESTS), $(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs $(i) $(OPTS) $(NL) )
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst

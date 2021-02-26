@@ -1,3 +1,6 @@
+/ltp/testcases/kernel/syscalls/open/open03
+/ltp/testcases/kernel/syscalls/open/open07
+/ltp/testcases/kernel/syscalls/open/open09
 /ltp/testcases/kernel/syscalls/chdir/chdir02
 /ltp/testcases/kernel/syscalls/epoll/epoll-ltp
 /ltp/testcases/kernel/syscalls/futex/futex_wait01
