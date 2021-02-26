@@ -3074,13 +3074,28 @@ long myst_syscall(long n, long params[6])
             BREAK(_return(n, myst_syscall_fchmod(fd, mode)));
         }
         case SYS_chown:
-            break;
+        {
+            const char* pathname = (const char*)x1;
+            uid_t owner = (uid_t)x2;
+            gid_t group = (gid_t)x3;
+
+            _strace(n, "pathname=%s owner=%u group=%u", pathname, owner, group);
+
+            /* owner is a no-op for now since kernel executes as root */
+            BREAK(_return(n, 0));
+        }
         case SYS_fchown:
             break;
         case SYS_lchown:
             break;
         case SYS_umask:
-            break;
+        {
+            mode_t mask = (mode_t)x1;
+
+            _strace(n, "mask=%o", mask);
+
+            BREAK(_return(n, myst_syscall_umask(mask)));
+        }
         case SYS_gettimeofday:
         {
             struct timeval* tv = (struct timeval*)x1;
@@ -3181,7 +3196,18 @@ long myst_syscall(long n, long params[6])
             BREAK(_return(n, MYST_DEFAULT_GID));
         }
         case SYS_setpgid:
-            break;
+        {
+            gid_t gid = (gid_t)x1;
+            long ret = 0;
+
+            _strace(n, "gid=%u", gid);
+
+            /* do not allow the GID to be changed */
+            if (gid != MYST_DEFAULT_GID)
+                ret = -EPERM;
+
+            BREAK(_return(n, ret));
+        }
         case SYS_getppid:
         {
             _strace(n, NULL);

@@ -959,6 +959,7 @@ static int _load_file_by_inode(
             .ino = ino,
             .inode = *inode,
             .offset = 0,
+            .access = O_RDONLY,
             .open_flags = O_RDONLY,
         };
 
@@ -989,6 +990,7 @@ static int _load_file_by_ino(
             .ino = ino,
             .inode = inode,
             .offset = 0,
+            .access = O_RDONLY,
             .open_flags = O_RDONLY,
         };
 
@@ -2040,6 +2042,7 @@ static int _inode_write_data(
         .ino = ino,
         .inode = *inode,
         .offset = 0,
+        .access = O_WRONLY,
         .open_flags = O_WRONLY,
     };
     const uint8_t* p = data;
@@ -2858,6 +2861,7 @@ static int _stat(
             .ino = ino,
             .inode = inode,
             .offset = 0,
+            .access = O_RDONLY,
             .open_flags = O_RDONLY,
         };
         ECHECK(ext2_fstat(&ext2->base, &file, statbuf));
@@ -2950,7 +2954,6 @@ int ext2_open(
         file->open_flags = flags;
         file->access = (flags & (O_RDONLY | O_RDWR | O_WRONLY));
         file->operating = (flags & O_APPEND);
-        file->open_flags = flags;
     }
 
     /* truncate the file if requested and if not zero-sized */
@@ -3006,6 +3009,10 @@ int64_t ext2_read(myst_fs_t* fs, myst_file_t* file, void* data, uint64_t size)
     /* Check parameters */
     if (!_ext2_valid(ext2) || !file || !data)
         ERAISE(-EINVAL);
+
+    /* fail if file has been opened for write only */
+    if (file->access == O_WRONLY)
+        ERAISE(-EBADF);
 
     /* The index of the first block to read */
     first = file->offset / ext2->block_size;
@@ -3076,14 +3083,13 @@ int64_t ext2_write(
     uint8_t* p = (uint8_t*)data;
     uint32_t blkno = 0;
     size_t file_size;
-    const int mask = (O_RDONLY | O_WRONLY | O_RDWR);
 
     /* check parameters */
     if (!_ext2_valid(ext2) || !file || (!data && size))
         ERAISE(-EINVAL);
 
     /* check that file has been opened for write */
-    if ((file->open_flags & mask) == O_RDONLY)
+    if (file->access == O_RDONLY)
         ERAISE(-EBADF);
 
     /* succeed if writing zero bytes */
@@ -3604,6 +3610,7 @@ int ext2_truncate(myst_fs_t* fs, const char* path, off_t length)
             .ino = ino,
             .inode = inode,
             .offset = 0,
+            .access = O_WRONLY,
             .open_flags = O_WRONLY,
         };
         ECHECK(_ftruncate(ext2, &file, length, false));
@@ -3710,6 +3717,7 @@ int ext2_rmdir(myst_fs_t* fs, const char* path)
             .ino = ino,
             .inode = inode,
             .offset = 0,
+            .access = O_WRONLY,
             .open_flags = O_WRONLY,
         };
 

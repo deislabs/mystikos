@@ -746,6 +746,10 @@ static ssize_t _fs_read(
     if (!buf && count)
         ERAISE(-EINVAL);
 
+    /* fail if file has been opened for write only */
+    if (file->access == O_WRONLY)
+        ERAISE(-EBADF);
+
     /* reading zero bytes is okay */
     if (!count)
         goto done;
@@ -796,6 +800,10 @@ static ssize_t _fs_write(
     /* writing zero bytes is okay */
     if (!count)
         goto done;
+
+    /* fail if file has been opened for read only */
+    if (file->access == O_RDONLY)
+        ERAISE(-EBADF);
 
     /* Verify that the offset is in bounds */
     if (file->offset > _file_size(file))

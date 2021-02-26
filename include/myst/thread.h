@@ -146,6 +146,10 @@ struct myst_thread
         char* cwd;
         myst_spinlock_t cwd_lock;
 
+        /* The current umask this process */
+        mode_t umask;
+        myst_spinlock_t umask_lock;
+
     } main;
 
     volatile _Atomic enum myst_thread_status status;

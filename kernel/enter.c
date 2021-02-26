@@ -481,6 +481,8 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     if (thread->main.cwd == NULL)
         ERAISE(-ENOMEM);
 
+    thread->main.umask = MYST_DEFAULT_UMASK;
+
     if (args->hostname)
         ECHECK(
             myst_syscall_sethostname(args->hostname, strlen(args->hostname)));

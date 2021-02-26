@@ -15,6 +15,7 @@
 #include <myst/roothash.h>
 #include <myst/tcall.h>
 #include <myst/verity.h>
+#include <myst/thread.h>
 
 int myst_remove_fd_link(myst_fs_t* fs, myst_file_t* file, int fd)
 {
@@ -132,3 +133,20 @@ done:
     return ret;
 }
 #endif /* MYST_ENABLE_EXT2FS */
+
+long myst_syscall_umask(mode_t mask)
+{
+    long ret;
+    myst_thread_t* process;
+
+    if (!(process = myst_find_process_thread(myst_thread_self())))
+        ERAISE(-EINVAL);
+
+    myst_spin_lock(&process->main.umask_lock);
+    ret = process->main.umask;
+    process->main.umask = mask;
+    myst_spin_unlock(&process->main.umask_lock);
+
+done:
+    return ret;
+}
