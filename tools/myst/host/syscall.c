@@ -160,7 +160,7 @@ long myst_recvmsg_ocall(
 
     if ((retval = recvmsg(sockfd, &msg, flags)) < 0)
     {
-        ret = retval;
+        ret = -errno;
         goto done;
     }
 
