@@ -6,6 +6,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <netinet/in.h>
 #include <pthread.h>
 #include <stdbool.h>
@@ -86,6 +87,11 @@ static void* _srv_thread_func(void* arg)
                     if (strncmp(str, "quit", msg.msg_iov[0].iov_len) == 0)
                     {
                         quit = true;
+                        // Before quit, check if recvmsg returns EAGAIN
+                        // for nonblocking socks.
+                        fcntl(sock, F_SETFL, 04002);
+                        int r = recvmsg(sock, &msg, 2);
+                        assert(r == -1 && errno == EAGAIN);
                         break;
                     }
                 }
@@ -214,7 +220,8 @@ static void* _cli_thread_func(void* arg)
         assert(m == sizeof(iov0));
     }
 
-    close(sock);
+    // Be nasty here. Leave the connection open.
+    //close(sock);
 
     return NULL;
 }
