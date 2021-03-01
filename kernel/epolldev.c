@@ -189,6 +189,29 @@ static int _ed_epoll_wait(
     if (!epolldev || !epoll || !events || maxevents < 0)
         ERAISE(-EINVAL);
 
+    /* Prune the interested FDs that have been closed */
+    {
+        myst_fdtable_t* fdtable = NULL;
+        myst_fdtable_type_t type;
+        myst_fdops_t* fdops;
+        void* object;
+
+        if (!(fdtable = myst_fdtable_current()))
+            ERAISE(-ENOSYS);
+
+        for (epoll_entry_t* src = (epoll_entry_t*)epoll->list.head; src; )
+        {
+            epoll_entry_t* next = src->next;
+            if (myst_fdtable_get_any(
+                fdtable, src->fd, &type, (void**)&fdops, (void**)&object))
+            {
+                myst_list_remove(&epoll->list, (myst_list_node_t*)src);
+                free(src);
+            }
+            src = next;
+        }
+    }
+
     /* Get the number of events */
     nfds = epoll->list.size;
 

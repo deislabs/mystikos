@@ -16,7 +16,7 @@
 #include <unistd.h>
 
 const uint16_t port = 12345;
-const size_t num_clients = 1;
+const size_t num_clients = 2;
 
 static void _sleep_msec(uint32_t msec)
 {
@@ -41,13 +41,16 @@ static void* _client_thread_func(void* arg)
 int main(int argc, const char* argv[])
 {
     pthread_t sthread;
-    pthread_t cthread;
+    pthread_t cthread1;
+    pthread_t cthread2;
 
     assert(pthread_create(&sthread, NULL, _server_thread_func, NULL) == 0);
     _sleep_msec(100);
-    assert(pthread_create(&cthread, NULL, _client_thread_func, NULL) == 0);
+    assert(pthread_create(&cthread1, NULL, _client_thread_func, NULL) == 0);
+    assert(pthread_create(&cthread2, NULL, _client_thread_func, NULL) == 0);
 
-    pthread_join(cthread, NULL);
+    pthread_join(cthread1, NULL);
+    pthread_join(cthread2, NULL);
     pthread_join(sthread, NULL);
 
     printf("=== passed test (%s)\n", argv[0]);
