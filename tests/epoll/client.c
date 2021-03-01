@@ -23,7 +23,7 @@ void run_client(uint16_t port)
     int sd;
     const char alphabet[] = "abcdefghijklmnopqrstuvwxyz";
     char buf[1024];
-    const size_t N = 10;
+    const size_t N = 3;
 
     /* Create the client socket. */
     if ((sd = socket(AF_INET, SOCK_STREAM, 0)) == -1)

@@ -189,7 +189,7 @@ void run_server(uint16_t port, size_t num_clients)
                 continue;
 
             /* Handle client connection. */
-            if (events->data.fd == lsock)
+            if (event->data.fd == lsock)
             {
                 if ((event->events & EPOLLIN))
                 {
@@ -222,7 +222,7 @@ void run_server(uint16_t port, size_t num_clients)
             }
 
             /* Find the client for this event. */
-            assert((client = find_client(&clients, events->data.fd)));
+            assert((client = find_client(&clients, event->data.fd)));
 
             /* Handle client input. */
             if ((event->events & EPOLLIN))
@@ -251,17 +251,17 @@ void run_server(uint16_t port, size_t num_clients)
                         fflush(stdout);
 
                         /* Client disconnect. */
-                        del_events(epfd, client->sock);
+                        // Be nasty here: keep the closed sock in epoll FD list.
+                        //del_events(epfd, client->sock);
                         close(client->sock);
+                        client->sock = -1;
 
                         num_disconnects++;
 
                         if (num_disconnects == num_clients)
                         {
                             quit = true;
-                            break;
                         }
-
                         break;
                     }
                     else if (errno == EAGAIN)
@@ -279,7 +279,7 @@ void run_server(uint16_t port, size_t num_clients)
             }
 
             /* Handle client input. */
-            if ((event->events & EPOLLOUT))
+            if (client->sock != -1 && (event->events & EPOLLOUT))
             {
                 /* Write until output is exhausted or EAGAIN encountered. */
                 for (;;)
