@@ -82,7 +82,7 @@ size is backed by physical EPC memory of the system. If the declared heap
 size is much more than the available physical EPC memory size, the application
 performance is likely to suffer due to severe `EPC paging`.
 
-Also with SGX1, the untrusted host can manipulate the page permissions at
+Also with SGX1, the Enclave cannot change Enclave enforced page access restriction after the Enclave is initialized. It's possible for the enclave SW to request the host to enforce the restriction in the page tables, but with the SGX thread model, the Enclave SW should assume the host might silently drop the requests.
 will because the page tables are solely controlled by the host. The implies
 the host can trigger page fault whenever and/or at whichever address it likes.
 
