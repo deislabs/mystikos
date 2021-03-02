@@ -38,7 +38,7 @@ Today, two target implementations are provided:
 The minimalist kernel of Mystikos manages essential computing resources
 inside the TEE, such as CPU/threads, memory, files, networks, etc. It handles
 most of the syscalls that a normal operating system would handle (with
-[limits](SYSCALL-LIMITATIONS.md)).  Many syscalls are handled directly by the
+[limits](doc/syscall-limitations.md)).  Many syscalls are handled directly by the
 kernel while others are delegated to the target.
 
 ![](./arch.png)
@@ -98,6 +98,7 @@ love your feedback and contributions, too.
 - Key features of Mystikos: [click here](doc/key-features.md)
 - Deep dive into Mystikos architecture: [coming soon]
 - How to implement support for a new TEE: [coming soon]
+- Kernel limitations: [click here](doc/kernel-limitations.md)
 - Multi-processing and multi-threading in Mystikos and limitations: [coming
   soon]
 
