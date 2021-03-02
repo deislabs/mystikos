@@ -21,8 +21,7 @@ namespace webapp
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
                     webBuilder.UseStartup<Startup>();
-										//webBuilder.UseKestrel();
-										webBuilder.UseUrls("http://0.0.0.0:5050");
+                    webBuilder.UseUrls("http://0.0.0.0:5050");
                 });
     }
 }

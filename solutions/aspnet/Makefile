@@ -11,6 +11,7 @@ APPNAME=webapp
 all: appdir private.pem
 
 run: appdir private.pem
+	# Kill the server from a previous run if it wasn't shut down properly.
 	test -f server.pid && kill -9 `cat server.pid` || true
 	$(MYST) package appdir private.pem config.json
 	myst/bin/$(APPNAME) $(OPTS) & echo $$! > server.pid
