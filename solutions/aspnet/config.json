@@ -21,5 +21,5 @@
     // Whether we allow "ApplicationParameters" to be overridden by command line options of "myst exec"
     "HostApplicationParameters": true,
     // The environment variables accessible inside the enclave.
-    "EnvironmentVariables": ["COMPlus_EnableDiagnostics=0", "ASPNETCORE_URLS=http://*:5050", "ASPNETCORE_URLS=http://*:5051"],
+    "EnvironmentVariables": ["COMPlus_EnableDiagnostics=0"],
 }
