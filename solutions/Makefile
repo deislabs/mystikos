@@ -21,6 +21,7 @@ DIRS += dotnet
 # Run coreclr tests only in nightly pipeline
 ifdef RUN_CORECLR_TESTS
 DIRS += coreclr
+DIRS += aspnet
 endif
 endif
 
