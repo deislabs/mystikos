@@ -14,11 +14,11 @@ incompatibilities/limitations worth noting as summarized below:
 | Limitation                    | Description         | Potential impacts on applications |
 | ------------------------------|---------------------|---------|
 | [Multi-process limitation](#limitations-arisen-from-sgxs-single-process-model) | No forking of child processes. However `posix_spawn` is supported. | Communication and address space isolation between processes |
-| [Thread limitations](#limitations-arisen-from-sgx1-limitations) | Thread creation is slow and limited to a user setting. Thread scheduling is subject to attacks by host. | Required Configuration / Thread starvation / D.o.S. |
+| [Thread limitations](#limitations-arisen-from-sgx1-limitations) | Thread creation is slow and limited to a user setting. Thread scheduling is under host control. | Required Configuration / Thread starvation / D.o.S. |
 | [Memory limitations](#limitations-arisen-from-sgx1-limitations) | User stack/heap memory is limited to a user setting. Page permission enforcement is under host control. | Required Configuration / OOM / Page table manipulation |
 | [Clock limitation](#limitations-arisen-from-lack-of-access-to-time-source) | Clock ticks and resolution are controlled by host | Clock resolution / Untrusted time |
-| [Exception handling limitation](#hardware-exception-handling-limitations) | Direct #PF/#GP exception handling inside the Mystikos environment is not supported | Missed or arbitrary exceptions / Exception handling with long delays |
-| [Network limitation](#network-limitations)  | Networking has to pass through host | Missed or delayed packages / Eavesdropping / D.o.S. |
+| [Exception handling limitation](#limitations-arisen-from-sgx1-limitations) | Direct #PF/#GP exception handling inside the Mystikos environment is not supported |  Exception handling with long delays |
+| [Network limitation](#network-limitations)  | Networking has to pass through host | Missed or delayed packets / Eavesdropping of unencrypted packets / D.o.S. |
 | [File system limitations](#file-System-limitations) | Support ramfs, hostfs, and ext2 only. Mounting of a file system has to be explicit. Changes are not always persisted. | Required FS conversion / Unprotected files once persisted to outside of TEE   |
 
 * Note, many attacks above are only possible with a malicious host OS/kernel,
@@ -82,9 +82,11 @@ size is backed by physical EPC memory of the system. If the declared heap
 size is much more than the available physical EPC memory size, the application
 performance is likely to suffer due to severe `EPC paging`.
 
-Also with SGX1, the untrusted host can manipulate the page permissions at
-will because the page tables are solely controlled by the host. The implies
-the host can trigger page fault whenever and/or at whichever address it likes.
+Also with SGX1, the Enclave cannot change Enclave enforced page access
+restriction after the Enclave is initialized. It's possible for the
+enclave software to request the host to enforce the restriction in the page
+tables, but with the SGX thread model, the enclave software should assume
+the host might silently drop the requests.
 
 These limitations are likely to be relaxed when EDMM of SGX2 is officially
 supported in Mystikos.
@@ -111,12 +113,17 @@ query a trusted time server to detect such attacks.
 When hardware exceptions happen, the execution context is saved, and the ISR
 of the kernel is invoked. This is even true for exceptions triggered by code
 running inside an SGX enclave. It has to perform an `enclave exit` (`AEX`)
-before invoke the kernel handler, and re-enter enclave with `AEP` after it.
-This basically means the untrusted host is trusted with the confidential
-execution context, e.g., the register values, when a hardware exception
-occurs. It also means that the untrusted host is in the middle of the handling
-loop, thus is able to withhold, manipulate, or manufacture hardware
-exceptions to the enclave.
+before invoke the kernel handler, and re-enter enclave with `AEP` after it,
+possibly passing control to a trusted exception handler inside the enclave.
+This basically means that the untrusted host is in the middle of the handling
+loop.
+
+The SGX CPU makes sure the untrusted kernel handler cannot observe SGX enclave
+execution context, e.g., CPU register values, by recording the execution context
+within the enclave memory and replacing the context with a "synthetic" context
+before invoking the kernel ISR. However, with SGX1, for #PF/#GP faults, only
+partial exception context is recorded within the enclave memory. Thus host
+is able to "cheat" on the unrecorded exception context.
 
 This security impact is likely to be mitigated when SGX2 is officially
 supported in Mystikos. With SGX2, the CPU saves full `EXIT_INFO`
