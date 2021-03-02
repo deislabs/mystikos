@@ -51,7 +51,24 @@ kernel while others are delegated to the target.
 You can download the latest binary release [from our builds
 page](https://github.com/deislabs/mystikos/releases)
 
-**TODO**: Include installation instructions. 
+```
+# change this to match the latest version
+LATEST='0.1.2'
+RELEASE="mystikos-${LATEST}-x86_64"
+
+# this will create the "mystikos" directory within your current working directory
+curl -sSL --ssl https://github.com/deislabs/mystikos/releases/download/v${LATEST}/${RELEASE}.tar.gz | tar -xzf -
+
+# you can use mystikos from your home directory
+export PATH="$PATH:$(pwd)/mystikos/bin"
+
+# or you can move it to a system-wide location
+sudo mv mystikos /opt/
+sudo chown -R root:root /opt/mystikos
+sudo chmod -R o-rw /opt/mystikos
+export PATH="$PATH:/opt/mystikos/bin"
+```
+
 
 ## From Source
 
