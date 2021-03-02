@@ -17,7 +17,7 @@ incompatibilities/limitations worth noting as summarized below:
 | [Thread limitations](#limitations-arisen-from-sgx1-limitations) | Thread creation is slow and limited to a user setting. Thread scheduling is under host control. | Required Configuration / Thread starvation / D.o.S. |
 | [Memory limitations](#limitations-arisen-from-sgx1-limitations) | User stack/heap memory is limited to a user setting. Page permission enforcement is under host control. | Required Configuration / OOM / Page table manipulation |
 | [Clock limitation](#limitations-arisen-from-lack-of-access-to-time-source) | Clock ticks and resolution are controlled by host | Clock resolution / Untrusted time |
-| [Exception handling limitation](#hardware-exception-handling-limitations) | Direct #PF/#GP exception handling inside the Mystikos environment is not supported | Missed or arbitrary exceptions / Exception handling with long delays |
+| [Exception handling limitation](#limitations-arisen-from-sgx1-limitations) | Direct #PF/#GP exception handling inside the Mystikos environment is not supported |  Exception handling with long delays |
 | [Network limitation](#network-limitations)  | Networking has to pass through host | Missed or delayed packages / Eavesdropping / D.o.S. |
 | [File system limitations](#file-System-limitations) | Support ramfs, hostfs, and ext2 only. Mounting of a file system has to be explicit. Changes are not always persisted. | Required FS conversion / Unprotected files once persisted to outside of TEE   |
 
