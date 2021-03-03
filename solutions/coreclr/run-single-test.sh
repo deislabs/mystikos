@@ -6,13 +6,15 @@ ret_val=-1
 t0=$(date +"%s")
 
 if [[ "$3" == "ext2" ]]; then
-    timeout 30 $1 $2 ext2fs \
+    timeout --kill-after=30s --signal=KILL 30 \
+        $1 $2 ext2fs \
         --user-mem-size $HEAP_SIZE \
         --roothash=roothash \
         /coreclr-tests-all/Tests/Core_Root/corerun \
         /coreclr-tests-all/$4 > /dev/null 2>&1
 elif [[ "$3" == "cpio" ]]; then
-    timeout 30 $1 $2 rootfs \
+    timeout --kill-after=30s --signal=KILL 30 \
+        $1 $2 rootfs \
         --user-mem-size $HEAP_SIZE \
         /coreclr-tests-all/Tests/Core_Root/corerun \
         /coreclr-tests-all/$4 > /dev/null 2>&1
