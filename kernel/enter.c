@@ -188,7 +188,7 @@ static int _setup_ext2(const char* rootfs, char* err, size_t err_size)
 
     *err = '\0';
 
-    if (myst_load_fs(rootfs, key, &_fs) != 0)
+    if (myst_load_fs(myst_mount_resolve, rootfs, key, &_fs) != 0)
     {
         snprintf(err, err_size, "cannot load or verify EXT2 image: %s", rootfs);
         ERAISE(-EINVAL);
@@ -271,13 +271,13 @@ static int _create_tls_credentials()
     ECHECK(myst_tcall(MYST_TCALL_GEN_CREDS, params));
 
     // Save the certificate
-    ECHECK((_fs->fs_open)(_fs, MYST_CERTIFICATE_PATH, flags, 0444, &file));
+    ECHECK((_fs->fs_open)(_fs, MYST_CERTIFICATE_PATH, flags, 0444, NULL, &file));
     ECHECK((_fs->fs_write)(_fs, file, cert, cert_size) == (int64_t)cert_size);
     ECHECK((_fs->fs_close)(_fs, file));
     file = NULL;
 
     // Save the private key
-    ECHECK((_fs->fs_open)(_fs, MYST_PRIVATE_KEY_PATH, flags, 0444, &file));
+    ECHECK((_fs->fs_open)(_fs, MYST_PRIVATE_KEY_PATH, flags, 0444, NULL, &file));
     ECHECK((_fs->fs_write)(_fs, file, pkey, pkey_size) == (int64_t)pkey_size);
     ECHECK((_fs->fs_close)(_fs, file));
     file = NULL;

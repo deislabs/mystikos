@@ -597,25 +597,25 @@ long myst_syscall_creat(const char* pathname, mode_t mode)
     long ret = 0;
     int fd;
     char suffix[PATH_MAX];
-    myst_fs_t* fs;
+    myst_fs_t *fs, *fs_out;
     myst_file_t* file;
     myst_fdtable_t* fdtable = myst_fdtable_current();
     const myst_fdtable_type_t fdtype = MYST_FDTABLE_TYPE_FILE;
     long r;
 
     ECHECK(myst_mount_resolve(pathname, suffix, &fs));
-    ECHECK((*fs->fs_creat)(fs, suffix, mode, &file));
+    ECHECK((*fs->fs_creat)(fs, suffix, mode, &fs_out, &file));
 
-    if ((fd = myst_fdtable_assign(fdtable, fdtype, fs, file)) < 0)
+    if ((fd = myst_fdtable_assign(fdtable, fdtype, fs_out, file)) < 0)
     {
-        (*fs->fs_close)(fs, file);
+        (*fs_out->fs_close)(fs_out, file);
         ERAISE(fd);
     }
 
-    if ((r = _add_fd_link(fs, file, fd)) != 0)
+    if ((r = _add_fd_link(fs_out, file, fd)) != 0)
     {
         myst_fdtable_remove(fdtable, fd);
-        (*fs->fs_close)(fs, file);
+        (*fs_out->fs_close)(fs_out, file);
         ERAISE(r);
     }
 
@@ -630,7 +630,7 @@ long myst_syscall_open(const char* pathname, int flags, mode_t mode)
 {
     long ret = 0;
     char suffix[PATH_MAX];
-    myst_fs_t* fs;
+    myst_fs_t *fs, *fs_out;
     myst_file_t* file;
     myst_fdtable_t* fdtable = myst_fdtable_current();
     const myst_fdtable_type_t fdtype = MYST_FDTABLE_TYPE_FILE;
@@ -645,18 +645,18 @@ long myst_syscall_open(const char* pathname, int flags, mode_t mode)
     }
 
     ECHECK(myst_mount_resolve(pathname, suffix, &fs));
-    ECHECK((*fs->fs_open)(fs, suffix, flags, mode, &file));
+    ECHECK((*fs->fs_open)(fs, suffix, flags, mode, &fs_out, &file));
 
-    if ((fd = myst_fdtable_assign(fdtable, fdtype, fs, file)) < 0)
+    if ((fd = myst_fdtable_assign(fdtable, fdtype, fs_out, file)) < 0)
     {
-        (*fs->fs_close)(fs, file);
+        (*fs_out->fs_close)(fs_out, file);
         ERAISE(fd);
     }
 
-    if ((r = _add_fd_link(fs, file, fd)) != 0)
+    if ((r = _add_fd_link(fs_out, file, fd)) != 0)
     {
         myst_fdtable_remove(fdtable, fd);
-        (*fs->fs_close)(fs, file);
+        (*fs_out->fs_close)(fs_out, file);
         ERAISE(r);
     }
 

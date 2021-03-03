@@ -49,6 +49,7 @@ struct myst_fs
         myst_fs_t* fs,
         const char* pathname,
         mode_t mode,
+        myst_fs_t** fs_out,
         myst_file_t** file);
 
     int (*fs_open)(
@@ -56,6 +57,7 @@ struct myst_fs
         const char* pathname,
         int flags,
         mode_t mode,
+        myst_fs_t** fs_out,
         myst_file_t** file);
 
     off_t (
@@ -161,6 +163,6 @@ struct myst_fs
 
 int myst_remove_fd_link(myst_fs_t* fs, myst_file_t* file, int fd);
 
-int myst_load_fs(const char* source, const char* key, myst_fs_t** fs_out);
+int myst_load_fs(myst_mount_resolve_callback_t resolve_cb, const char* source, const char* key, myst_fs_t** fs_out);
 
 #endif /* _MYST_FS_H */
