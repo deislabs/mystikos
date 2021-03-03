@@ -80,7 +80,7 @@ static int _create_file(
     myst_file_t* file;
     int flags = O_CREAT | O_TRUNC | O_WRONLY;
 
-    assert(ext2_open(fs, path, flags, mode, &file) == 0);
+    assert(ext2_open(fs, path, flags, mode, NULL, &file) == 0);
 
     if (buf && count)
         assert(ext2_write(fs, file, buf, count) == (ssize_t)count);
@@ -104,7 +104,7 @@ static void _touch(myst_fs_t* fs, const char* path)
 {
     int flags = O_CREAT | O_TRUNC | O_WRONLY;
     myst_file_t* file;
-    assert(ext2_open(fs, path, flags, 0666, &file) == 0);
+    assert(ext2_open(fs, path, flags, 0666, NULL, &file) == 0);
     assert(ext2_close(fs, file) == 0);
 }
 
@@ -113,7 +113,7 @@ static int _touch_mode(myst_fs_t* fs, const char* path, mode_t mode)
     int flags = O_CREAT | O_TRUNC | O_WRONLY;
     myst_file_t* file;
 
-    if (ext2_open(fs, path, flags, mode, &file) != 0)
+    if (ext2_open(fs, path, flags, mode, NULL, &file) != 0)
         return -1;
 
     if (ext2_close(fs, file) != 0)
@@ -124,12 +124,22 @@ static int _touch_mode(myst_fs_t* fs, const char* path, mode_t mode)
 
 //#define DUMP
 //#define TRACE
+ext2_t* __ext2;
+
+int mock_mount_resolve(
+    const char* path,
+    char suffix[PATH_MAX],
+    myst_fs_t** fs_out)
+{
+    strcpy(suffix, path);
+    *fs_out = (myst_fs_t*)__ext2;
+    return 0;
+}
 
 int main(int argc, const char* argv[])
 {
     myst_blkdev_t* dev;
     myst_fs_t* fs;
-    ext2_t* __ext2;
     const char alpha[] = "abcdefghijklmnopqrstuvwxyz";
     const mode_t mode = S_IFREG | 0640;
     ext2_super_block_t sb;
@@ -151,7 +161,7 @@ int main(int argc, const char* argv[])
         exit(1);
     }
 
-    if (ext2_create(dev, &fs) != 0)
+    if (ext2_create(dev, &fs, mock_mount_resolve) != 0)
     {
         fprintf(stderr, "%s: ext2_create() failed\n", argv[0]);
         exit(1);
@@ -175,7 +185,7 @@ int main(int argc, const char* argv[])
     /* test ext2_size_file() on "/alpha" */
     {
         myst_file_t* file;
-        assert(ext2_open(fs, "/alpha", O_RDONLY, 0000, &file) == 0);
+        assert(ext2_open(fs, "/alpha", O_RDONLY, 0000, NULL, &file) == 0);
         assert(_ffilesize(fs, file) == sizeof(alpha));
         assert(ext2_close(fs, file) == 0);
     }
@@ -186,7 +196,7 @@ int main(int argc, const char* argv[])
     /* test ext2_size_file() on "/empty" */
     {
         myst_file_t* file;
-        assert(ext2_open(fs, "/empty", O_RDONLY, 0000, &file) == 0);
+        assert(ext2_open(fs, "/empty", O_RDONLY, 0000, NULL, &file) == 0);
         assert(_ffilesize(fs, file) == 0);
         assert(ext2_close(fs, file) == 0);
     }
@@ -197,7 +207,7 @@ int main(int argc, const char* argv[])
         char buf[128];
         ssize_t n;
 
-        assert(ext2_open(fs, "/alpha", O_RDONLY, 0000, &file) == 0);
+        assert(ext2_open(fs, "/alpha", O_RDONLY, 0000, NULL, &file) == 0);
         assert((n = ext2_read(fs, file, buf, sizeof(buf))) > 0);
         assert(n == sizeof(alpha));
         assert(memcmp(buf, alpha, sizeof(alpha)) == 0);
@@ -211,7 +221,7 @@ int main(int argc, const char* argv[])
         char buf2[sizeof(alpha) - sizeof(buf1)];
         ssize_t n;
 
-        assert(ext2_open(fs, "/alpha", O_RDONLY, 0000, &file) == 0);
+        assert(ext2_open(fs, "/alpha", O_RDONLY, 0000, NULL, &file) == 0);
 
         assert(ext2_lseek(fs, file, 0, SEEK_CUR) == 0);
 
@@ -236,7 +246,7 @@ int main(int argc, const char* argv[])
         char buf2[sizeof(alpha) - sizeof(buf1)];
         ssize_t n;
 
-        assert(ext2_open(fs, "/alpha", O_RDONLY, 0000, &file) == 0);
+        assert(ext2_open(fs, "/alpha", O_RDONLY, 0000, NULL, &file) == 0);
         assert(ext2_lseek(fs, file, sizeof(buf1), SEEK_SET) == sizeof(buf1));
         assert((n = ext2_read(fs, file, buf2, sizeof(buf2))) > 0);
         assert(n == sizeof(buf2));
@@ -250,7 +260,7 @@ int main(int argc, const char* argv[])
         char buf[128];
         ssize_t n;
 
-        assert(ext2_open(fs, "/empty", O_RDONLY, 0000, &file) == 0);
+        assert(ext2_open(fs, "/empty", O_RDONLY, 0000, NULL, &file) == 0);
         assert((n = ext2_read(fs, file, buf, sizeof(buf))) >= 0);
         assert(n == 0);
         assert(ext2_close(fs, file) == 0);
@@ -325,7 +335,7 @@ int main(int argc, const char* argv[])
         const char path[] = "/dir/alpha";
         myst_file_t* file;
         assert(_create_file(fs, path, mode, alpha, sizeof(alpha)) == 0);
-        assert(ext2_open(fs, path, O_RDONLY, 0000, &file) == 0);
+        assert(ext2_open(fs, path, O_RDONLY, 0000, NULL, &file) == 0);
         assert(_ffilesize(fs, file) == sizeof(alpha));
         assert(ext2_close(fs, file) == 0);
     }
@@ -348,7 +358,7 @@ int main(int argc, const char* argv[])
         const char path[] = "/dir/dir/alpha";
         myst_file_t* file;
         assert(_create_file(fs, path, mode, alpha, sizeof(alpha)) == 0);
-        assert(ext2_open(fs, path, O_RDONLY, 0000, &file) == 0);
+        assert(ext2_open(fs, path, O_RDONLY, 0000, NULL, &file) == 0);
         assert(_ffilesize(fs, file) == sizeof(alpha));
         assert(ext2_close(fs, file) == 0);
     }
@@ -554,7 +564,7 @@ int main(int argc, const char* argv[])
         }
 
         assert(_create_file(fs, path, mode, data, size) == 0);
-        assert(ext2_open(fs, path, O_RDONLY, 0000, &file) == 0);
+        assert(ext2_open(fs, path, O_RDONLY, 0000, NULL, &file) == 0);
         assert(_ffilesize(fs, file) == size);
         /* read the blocks back */
         {
@@ -595,7 +605,7 @@ int main(int argc, const char* argv[])
 
             assert(_create_file(fs, path, mode, NULL, 0) == 0);
             assert(ext2_stat(fs, path, &statbuf) == 0);
-            assert(ext2_open(fs, path, O_WRONLY, 0000, &file) == 0);
+            assert(ext2_open(fs, path, O_WRONLY, 0000, NULL, &file) == 0);
 
             /* write the alphabet multiple times */
             for (i = 0; i < count; i++)
@@ -619,7 +629,7 @@ int main(int argc, const char* argv[])
         {
             size_t i;
 
-            assert(ext2_open(fs, path, O_RDONLY, 0000, &file) == 0);
+            assert(ext2_open(fs, path, O_RDONLY, 0000, NULL, &file) == 0);
 
             /* write the alphabet multiple times */
             for (i = 0; i < count; i++)
@@ -644,7 +654,7 @@ int main(int argc, const char* argv[])
         /* test open() with O_TRUNC */
         {
             char buf[1024];
-            assert(ext2_open(fs, path, O_TRUNC | O_RDWR, 0666, &file) == 0);
+            assert(ext2_open(fs, path, O_TRUNC | O_RDWR, 0666, NULL, &file) == 0);
             assert(ext2_write(fs, file, "abcd", 4) == 4);
             assert(ext2_write(fs, file, "efg", 3) == 3);
             assert(ext2_write(fs, file, "hijk", 4) == 4);
@@ -669,13 +679,13 @@ int main(int argc, const char* argv[])
         memset(buf1, 0xff, sizeof(buf1));
         memset(zeros, 0x00, sizeof(zeros));
 
-        assert(ext2_open(fs, path, O_WRONLY | O_CREAT, 0666, &file) == 0);
+        assert(ext2_open(fs, path, O_WRONLY | O_CREAT, 0666, NULL, &file) == 0);
         assert(ext2_lseek(fs, file, 1024, SEEK_SET) == 1024);
         assert(ext2_write(fs, file, buf1, sizeof(buf1)) == sizeof(buf1));
         assert(ext2_close(fs, file) == 0);
         assert(_filesize(fs, path) == 2048);
 
-        assert(ext2_open(fs, path, O_RDONLY, 0000, &file) == 0);
+        assert(ext2_open(fs, path, O_RDONLY, 0000, NULL, &file) == 0);
 
         char buf2[1024];
         assert(ext2_lseek(fs, file, 1024, SEEK_SET) == 1024);
@@ -895,7 +905,7 @@ int main(int argc, const char* argv[])
         assert(statbuf.st_size == strlen(target));
 
         myst_file_t* file;
-        assert(ext2_open(fs, linkpath, O_RDONLY, 0000, &file) == 0);
+        assert(ext2_open(fs, linkpath, O_RDONLY, 0000, NULL, &file) == 0);
         char buf[128];
         assert(ext2_read(fs, file, buf, sizeof(buf)) == sizeof(alpha));
         assert(memcmp(buf, alpha, sizeof(alpha)) == 0);
@@ -914,7 +924,7 @@ int main(int argc, const char* argv[])
         assert(ext2_symlink(fs, "./target", linkpath) == 0);
 
         myst_file_t* file;
-        assert(ext2_open(fs, linkpath, O_RDONLY, 0000, &file) == 0);
+        assert(ext2_open(fs, linkpath, O_RDONLY, 0000, NULL, &file) == 0);
         char buf[128];
         assert(ext2_read(fs, file, buf, sizeof(buf)) == sizeof(alpha));
         assert(memcmp(buf, alpha, sizeof(alpha)) == 0);
@@ -933,7 +943,7 @@ int main(int argc, const char* argv[])
         assert(ext2_symlink(fs, "../target", linkpath) == 0);
 
         myst_file_t* file;
-        assert(ext2_open(fs, linkpath, O_RDONLY, 0000, &file) == 0);
+        assert(ext2_open(fs, linkpath, O_RDONLY, 0000, NULL, &file) == 0);
         char buf[128];
         assert(ext2_read(fs, file, buf, sizeof(buf)) == sizeof(alpha));
         assert(memcmp(buf, alpha, sizeof(alpha)) == 0);
@@ -970,7 +980,7 @@ int main(int argc, const char* argv[])
         {
             myst_file_t* file;
             const char path[] = "/lnkdir1/lnkdir2/symlink/lnkdir4/file";
-            assert(ext2_open(fs, path, O_RDONLY, 0000, &file) == 0);
+            assert(ext2_open(fs, path, O_RDONLY, 0000, NULL, &file) == 0);
             char buf[128];
             assert(ext2_read(fs, file, buf, sizeof(buf)) == sizeof(alpha));
             assert(memcmp(buf, alpha, sizeof(alpha)) == 0);

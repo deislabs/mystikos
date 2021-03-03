@@ -64,7 +64,7 @@ done:
 }
 
 #ifdef MYST_ENABLE_EXT2FS
-int myst_load_fs(const char* source, const char* key, myst_fs_t** fs_out)
+int myst_load_fs(myst_mount_resolve_callback_t resolve_cb, const char* source, const char* key, myst_fs_t** fs_out)
 {
     int ret = 0;
     myst_blkdev_t* blkdev = NULL;
@@ -133,7 +133,7 @@ int myst_load_fs(const char* source, const char* key, myst_fs_t** fs_out)
         blkdev = tmp;
     }
 
-    ECHECK(ext2_create(blkdev, &fs));
+    ECHECK(ext2_create(blkdev, &fs, resolve_cb));
     blkdev = NULL;
 
     *fs_out = fs;

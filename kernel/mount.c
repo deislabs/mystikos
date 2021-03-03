@@ -324,7 +324,7 @@ long myst_syscall_mount(
 
         key = _find_arg(args, "key");
 
-        ECHECK(myst_load_fs(source, key, &fs));
+        ECHECK(myst_load_fs(myst_mount_resolve, source, key, &fs));
 
         /* perform the mount */
         ECHECK(myst_mount(fs, source, target));

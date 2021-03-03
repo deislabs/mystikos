@@ -150,6 +150,7 @@ static int _fs_open(
     const char* pathname,
     int flags,
     mode_t mode,
+    myst_fs_t** fs_out,
     myst_file_t** file_out)
 {
     int ret = 0;
@@ -179,6 +180,8 @@ static int _fs_open(
 
     *file_out = file;
     file = NULL;
+    /* hostfs does not delegate the open operation */
+    *fs_out = fs;
 
 done:
 
@@ -192,9 +195,10 @@ static int _fs_creat(
     myst_fs_t* fs,
     const char* pathname,
     mode_t mode,
+    myst_fs_t** fs_out,
     myst_file_t** file)
 {
-    return _fs_open(fs, pathname, O_CREAT | O_WRONLY | O_TRUNC, mode, file);
+    return _fs_open(fs, pathname, O_CREAT | O_WRONLY | O_TRUNC, mode, fs_out, file);
 }
 
 static off_t _fs_lseek(

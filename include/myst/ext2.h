@@ -200,6 +200,7 @@ struct ext2
     ext2_group_desc_t* groups;
     ext2_inode_t root_inode;
     char target[EXT2_PATH_MAX];
+    myst_mount_resolve_callback_t resolve;
 };
 
 /*
@@ -210,7 +211,7 @@ struct ext2
 **==============================================================================
 */
 
-int ext2_create(myst_blkdev_t* dev, myst_fs_t** fs);
+int ext2_create(myst_blkdev_t* dev, myst_fs_t** fs, myst_mount_resolve_callback_t resolve_cb);
 
 int ext2_release(myst_fs_t* fs);
 
@@ -257,6 +258,7 @@ int ext2_open(
     const char* path,
     int flags,
     mode_t mode,
+    myst_fs_t** fs_out,
     myst_file_t** file);
 
 int64_t ext2_read(myst_fs_t* fs, myst_file_t* file, void* data, uint64_t size);
