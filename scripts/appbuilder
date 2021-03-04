@@ -8,13 +8,14 @@
 function print_usage {
     echo "$(basename $0): a useful shell script for converting Docker images into Mystikos cpio archives"
     echo
-    echo "Usage: $(basename $0) [-o OUTPUT_FILENAME] [-d Dockerfile] [-i IMAGE_NAME]"
+    echo "Usage: $(basename $0) [-o file] [-d [file]] [[-i] image]"
     echo
-    echo "  -d      Build image from a Dockerfile"
-    echo "  -i      Specify an existing Docker image name to build from"
-    echo "          If neither -d nor -i are specified, will look for Dockerfile in current dir"
-    echo "  -f      Specify the output format. Options: dir, cpio. Default: 'dir'"
-    echo "  -o      Specify the file name of output file for directory"
+    echo "  -d file     Build docker image from the named file"
+    echo "              Defaults to './Dockerfile' if no option specified"
+    echo "  -i image    Specify an existing Docker image name to build from"
+    echo "              If neither -d nor -i are specified, will look for Dockerfile in current dir"
+    echo "  -f format   Specify the output format. Options: dir, cpio. Default: 'dir'"
+    echo "  -o      Specify the name of the output file or directory"
     echo "          If not specified, defaults to 'appdir'"
     echo "  -h      Print this help message"
     echo
@@ -24,7 +25,7 @@ function print_usage {
 while getopts 'hvd:i:f:o:' OPTION; do
     case "$OPTION" in
         d )
-            DOCKER_FILE="$OPTARG"
+            DOCKER_FILE=${OPTARG:-Dockerfile}
             ;;
         f )
             OUTPUT_FORMAT="$OPTARG"
@@ -50,15 +51,24 @@ while getopts 'hvd:i:f:o:' OPTION; do
     esac
 done
 
-# defaults
-IMAGE_NAME=${IMAGE_NAME:-}
+### defaults
+
+# if no options specified, assume first argument is an image name
+shift $((OPTIND-1))
+IMAGE_NAME=${IMAGE_NAME:-$@}
+
 OUTPUT_NAME=${OUTPUT_NAME:-appdir}
 DELETE_OUTPUT=${DELETE_OUTPUT:-false}
 OUTPUT_FORMAT=${OUTPUT_FORMAT:-dir}
 
+### end defaults
+
 set -e
 
-if [ -z "$IMAGE_NAME" ]; then
+# if image name is not specified and the directory contains a Dockerfile
+# or if the non-option parameter is the literal "Dockerfile"
+# then set USE_DOCKERFILE=true
+if [ -z "$IMAGE_NAME" -o "$IMAGE_NAME" == "Dockerfile" ]; then
     USE_DOCKERFILE=true
     if [ -z "$DOCKER_FILE" -a -f 'Dockerfile' ]; then
         DOCKER_FILE='./'
@@ -92,6 +102,7 @@ if [ -z $OUTPUT_NAME ]; then
     exit 1
 fi
 
+# ask before overwriting output target
 if [ -d $OUTPUT_NAME -o -f $OUTPUT_NAME ]; then
     echo "Output target '$OUTPUT_NAME' will be overwritten by this operation! Are you sure?"
     select yn in "Yes" "No"; do
@@ -102,15 +113,16 @@ if [ -d $OUTPUT_NAME -o -f $OUTPUT_NAME ]; then
     done
 fi
 
+
 # Download the docker image from dockerhub, or build it locally from a docker file.
 get_image()
 {
-    if [ $USE_DOCKERFILE ]; then
-	IMAGE_NAME=$(docker build -q $DOCKER_FILE)
-	DELETE_IMAGE=true
+    if $USE_DOCKERFILE; then
+        IMAGE_NAME=$(docker build -q $DOCKER_FILE)
+        DELETE_IMAGE=true
     else
         docker pull $IMAGE_NAME
-	DELETE_IMAGE=false
+	    DELETE_IMAGE=false
     fi
 }
 
@@ -126,7 +138,7 @@ export_image()
     docker export $TEMP_INAME -o $TEMP_FILE
     docker rm $TEMP_INAME >/dev/null
     if [ -z $DELETE_IMAGE ]; then
-	docker rmi $IMAGE_NAME
+	docker rmi -f $IMAGE_NAME
     fi
 
     # finally, create the output cpio object from the docker export
@@ -144,7 +156,7 @@ export_image()
 get_image
 export_image
 
-if [ $VERBOSE ]; then
+if $VERBOSE; then
     set +x
 fi
 
