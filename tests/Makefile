@@ -70,8 +70,8 @@ ifndef MYST_USE_OECACHE
 DIRS += curl
 endif
 
-ifdef MYST_NIGHTLY_TEST
 DIRS += ltp
+ifdef MYST_NIGHTLY_TEST
 DIRS += sockperf
 endif
 
