@@ -376,6 +376,7 @@ static int _enter_kernel(
     args.have_syscall_instruction = true;
     args.export_ramfs = options->export_ramfs;
     args.event = (uint64_t)&_thread_event;
+    args.tee_debug_mode = true;
     args.tcall = tcall;
 
     if (options->rootfs)

@@ -339,3 +339,8 @@ long myst_fstatfs_ocall(int fd, struct myst_statfs* buf)
 {
     RETURN(fstatfs(fd, (struct statfs*)buf));
 }
+
+long myst_lseek_ocall(int fd, off_t offset, int whence)
+{
+    RETURN(lseek(fd, offset, whence));
+}

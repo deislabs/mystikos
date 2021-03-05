@@ -92,3 +92,9 @@ third_party/musl/crt/musl/
 tests/msync/tests
 tests/network/appdir/
 third_party/musl/pristine/musl/
+tests/fs/hostfs/
+third_party/musl/crt/musl/
+third_party/musl/crt/musl/
+tests/msync/tests
+tests/network/appdir/
+third_party/musl/pristine/musl/

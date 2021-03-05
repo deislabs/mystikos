@@ -16,19 +16,28 @@ ifdef STRACE
 OPTS = --strace
 endif
 
-CLEAN = appdir rootfs ext2rootfs ramfs
+HOSTFS = $(CURDIR)/hostfs
+
+CLEAN = appdir rootfs ext2rootfs ramfs $(HOSTFS)
 
 include $(TOP)/rules.mak
 
-tests: program test1 test2
+tests: program test1 test2 test3
 
 test1: rootfs
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/fs
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/fs ramfs
 
 test2: ext2rootfs
 ifdef MYST_ENABLE_EXT2FS
 	$(MYST) fssig --roothash ext2rootfs > $(ROOTHASH)
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) ext2rootfs --roothash=$(ROOTHASH) /bin/fs
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) ext2rootfs --roothash=$(ROOTHASH) /bin/fs ext2fs
+endif
+
+test3: rootfs
+ifdef MYST_ENABLE_HOSTFS
+	rm -rf $(HOSTFS)
+	cp -r appdir $(HOSTFS)
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(HOSTFS) /bin/fs hostfs
 endif
 
 rootfs: appdir

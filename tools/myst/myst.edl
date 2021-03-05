@@ -339,6 +339,8 @@ enclave
             int fd,
             [out] struct myst_statfs* buf);
 
+        long myst_lseek_ocall(int fd, off_t offset, int whence);
+
         /*
         **======================================================================
         **

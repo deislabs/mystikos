@@ -17,6 +17,23 @@
 #include <myst/verity.h>
 #include <myst/thread.h>
 
+const char* myst_fstype_name(myst_fstype_t fstype)
+{
+    switch (fstype)
+    {
+        case MYST_FSTYPE_NONE:
+            return "NONE";
+        case MYST_FSTYPE_RAMFS:
+            return "RAMFS";
+        case MYST_FSTYPE_EXT2FS:
+            return "EXT2FS";
+        case MYST_FSTYPE_HOSTFS:
+            return "HOSTFS";
+    }
+
+    return "NONE";
+}
+
 int myst_remove_fd_link(myst_fs_t* fs, myst_file_t* file, int fd)
 {
     int ret = 0;

@@ -137,6 +137,33 @@ size_t __oe_get_enclave_size(void);
 
 volatile int myst_enter_ecall_lock = 0;
 
+/* return 0 if OE is in SGX debug mode (else return -1) */
+static int _test_oe_debug_mode(void)
+{
+    int ret = -1;
+    uint8_t* buf = NULL;
+    size_t buf_size;
+    oe_report_t report;
+
+    if (oe_get_report_v2(0, NULL, 0, NULL, 0, &buf, &buf_size) != OE_OK)
+        goto done;
+
+    if (oe_parse_report(buf, buf_size, &report) != OE_OK)
+        goto done;
+
+    if (!(report.identity.attributes & OE_REPORT_ATTRIBUTES_DEBUG))
+        goto done;
+
+    ret = 0;
+
+done:
+
+    if (buf)
+        oe_free_report(buf);
+
+    return ret;
+}
+
 int myst_enter_ecall(
     struct myst_options* options,
     struct myst_shm* shared_memory,
@@ -552,6 +579,12 @@ int myst_enter_ecall(
         kargs.export_ramfs = export_ramfs;
         kargs.tcall = myst_tcall;
         kargs.event = event;
+
+        /* determine whether in SGX debug mode */
+        if (_test_oe_debug_mode() == 0)
+            kargs.tee_debug_mode = true;
+        else
+            kargs.tee_debug_mode = false;
 
         if (rootfs)
             myst_strlcpy(kargs.rootfs, rootfs, sizeof(kargs.rootfs));

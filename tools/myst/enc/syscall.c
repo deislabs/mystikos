@@ -1336,6 +1336,25 @@ done:
 }
 #endif
 
+#ifdef MYST_ENABLE_HOSTFS
+static off_t _lseek(int fd, off_t offset, int whence)
+{
+    long ret = 0;
+    long retval;
+
+    if (myst_lseek_ocall(&retval, fd, offset, whence) != OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = retval;
+
+done:
+    return ret;
+}
+#endif
+
 long myst_handle_tcall(long n, long params[6])
 {
     const long a = params[0];
@@ -1543,6 +1562,10 @@ long myst_handle_tcall(long n, long params[6])
         case SYS_fstatfs:
         {
             return _fstatfs((int)a, (struct myst_statfs*)b);
+        }
+        case SYS_lseek:
+        {
+            return _lseek((int)a, b, (int)c);
         }
 #endif
         default:
