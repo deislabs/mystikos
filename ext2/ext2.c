@@ -2200,7 +2200,9 @@ static int _remove_dirent(ext2_t* ext2, const char* path)
     ECHECK(_inode_write_data(ext2, ino, &inode, buf.data, buf.size));
 
     /* update the directory inode */
-    inode.i_links_count--;
+    if (ent->file_type == EXT2_FT_DIR)
+        inode.i_links_count--;
+
     ECHECK(_write_inode(ext2, ino, &inode));
 
 done:
@@ -2497,8 +2499,11 @@ static int _add_dirent(
     /* rewrite the directory, one block at a time */
     ECHECK(_inode_write_data(ext2, ino, inode, buf.data, buf.size));
 
+    /* update the number of links if new entry is a directory */
+    if (new_ent->file_type == EXT2_FT_DIR)
+        inode->i_links_count++;
+
     /* update the inode */
-    inode->i_links_count++;
     ECHECK(_write_inode(ext2, ino, inode));
 
 done:

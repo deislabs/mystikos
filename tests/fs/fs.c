@@ -19,6 +19,8 @@
 #include <sys/vfs.h>
 #include <unistd.h>
 
+const char* fstype;
+
 const char alpha[] = "abcdefghijklmnopqrstuvwxyz";
 const char ALPHA[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
@@ -51,17 +53,19 @@ void test_readv(void)
 {
     int fd;
     char buf[sizeof(ALPHA)];
-    struct stat st;
 
-    assert((fd = open("/test_readv", O_CREAT | O_WRONLY, 0)) >= 0);
+    assert((fd = open("/test_readv", O_CREAT | O_WRONLY, 0666)) >= 0);
     assert(write(fd, alpha, sizeof(alpha)) == sizeof(alpha));
     assert(lseek(fd, 0, SEEK_CUR) == sizeof(alpha));
     assert(write(fd, ALPHA, sizeof(ALPHA)) == sizeof(ALPHA));
     assert(lseek(fd, 0, SEEK_CUR) == sizeof(alpha) + sizeof(ALPHA));
 
+    /* not applicable to hostfs */
+    if (strcmp(fstype, "ext2fs") == 0 || strcmp(fstype, "ramfs") == 0)
     {
         char fdlink[PATH_MAX];
         char target[PATH_MAX];
+        struct stat st;
 
         snprintf(fdlink, sizeof(fdlink), "/proc/self/fd/%d", fd);
         assert(stat("/proc/self/fd", &st) == 0);
@@ -74,7 +78,7 @@ void test_readv(void)
 
     assert(close(fd) == 0);
 
-    assert((fd = open("/test_readv", O_RDONLY, 0)) >= 0);
+    assert((fd = open("/test_readv", O_RDONLY, 0666)) >= 0);
     assert(lseek(fd, 0, SEEK_CUR) == 0);
     assert(read(fd, buf, sizeof(buf)) == sizeof(buf));
     assert(lseek(fd, 0, SEEK_CUR) == sizeof(alpha));
@@ -122,7 +126,7 @@ void test_writev(void)
     int fd;
     char buf[sizeof(ALPHA)];
 
-    assert((fd = open("/test_writev", O_CREAT | O_WRONLY, 0)) >= 0);
+    assert((fd = open("/test_writev", O_CREAT | O_WRONLY, 0777)) >= 0);
 
     struct iovec iov[2];
     iov[0].iov_base = (void*)alpha;
@@ -192,7 +196,7 @@ void test_mkdir()
 
     assert(_nlink("/a") == 3);
     assert(_nlink("/a/bb") == 3);
-    assert(_nlink("/a/bb/ccc") == 3);
+    assert(_nlink("/a/bb/ccc") == 2);
     assert(_nlink("/a/bb/ccc/file") == 1);
 
     _passed(__FUNCTION__);
@@ -214,16 +218,38 @@ void test_rmdir()
     _passed(__FUNCTION__);
 }
 
+typedef const struct entry
+{
+    const char* name;
+    unsigned char type;
+} entry_t;
+
+int _check_entry(
+    entry_t* entries,
+    size_t nentries,
+    const char* name,
+    unsigned char type)
+{
+    for (size_t i = 0; i < nentries; i++)
+    {
+        if (strcmp(entries[i].name, name) == 0)
+        {
+            if (type == entries[i].type)
+                return 0;
+
+            return -1;
+        }
+    }
+
+    return -1;
+}
+
 void test_readdir()
 {
     int fd;
     DIR* dir;
     struct dirent* ent;
-    const struct
-    {
-        const char* name;
-        unsigned char type;
-    } entries[] = {
+    entry_t entries[] = {
         {".", DT_DIR},
         {"..", DT_DIR},
         {"dir1", DT_DIR},
@@ -233,7 +259,6 @@ void test_readdir()
     };
     const size_t nentries = sizeof(entries) / sizeof(entries[0]);
     size_t i = 0;
-    off_t off = 0;
 
     assert(mkdir("/readdir", 0777) == 0);
     assert(mkdir("/readdir/dir1", 0777) == 0);
@@ -248,11 +273,8 @@ void test_readdir()
     while ((ent = readdir(dir)))
     {
         assert(ent->d_ino != 0);
-        assert(strcmp(ent->d_name, entries[i].name) == 0);
-        assert(ent->d_type == entries[i].type);
-        assert(ent->d_reclen == sizeof(struct dirent));
+        assert(_check_entry(entries, nentries, ent->d_name, ent->d_type) == 0);
         i++;
-        off += (off_t)sizeof(struct dirent);
     }
 
     assert(i == nentries);
@@ -327,7 +349,7 @@ static int _touch(const char* pathname, mode_t mode)
 
 void test_access()
 {
-    assert(mkdir("/access", 777) == 0);
+    assert(mkdir("/access", 0777) == 0);
     assert(_touch("/access/r", S_IRUSR) == 0);
     assert(_touch("/access/w", S_IWUSR) == 0);
     assert(_touch("/access/x", S_IXUSR) == 0);
@@ -341,8 +363,18 @@ void test_access()
     assert(access("/access/x", X_OK) == 0);
 
     assert(access("/access/r", X_OK) != 0);
-    assert(access("/access/w", R_OK) != 0);
-    assert(access("/access/x", W_OK) != 0);
+
+    /* ATTN: inconsistency between hostfs and ext2fs/ramfs2 */
+    if (0 && strcmp(fstype, "hostfs") == 0)
+    {
+        assert(access("/access/w", R_OK) == 0);
+        assert(access("/access/x", W_OK) == 0);
+    }
+    else
+    {
+        assert(access("/access/w", R_OK) != 0);
+        assert(access("/access/x", W_OK) != 0);
+    }
 
     _passed(__FUNCTION__);
 }
@@ -358,6 +390,7 @@ void test_rename(void)
 
     // if newpath - /rename/file2, already exists
     assert(_touch("/rename/file1", 0400) == 0);
+    assert(unlink("/rename/file2") == 0);
     assert(_touch("/rename/file2", 0400) == 0);
     assert(rename("/rename/file1", "/rename/file2") == 0);
     assert(access("/rename/file1", R_OK) != 0);
@@ -370,9 +403,9 @@ void test_truncate(void)
 {
     int fd;
 
-    assert(mkdir("/truncate", 777) == 0);
+    assert(mkdir("/truncate", 0777) == 0);
 
-    assert((fd = open("/truncate/alpha", O_CREAT | O_WRONLY, 0)) >= 0);
+    assert((fd = open("/truncate/alpha", O_CREAT | O_WRONLY, 0777)) >= 0);
     assert(write(fd, alpha, sizeof(alpha)) == sizeof(alpha));
     assert(close(fd) == 0);
 
@@ -409,27 +442,29 @@ void test_symlink(void)
     struct stat st2;
     DIR* dir;
 
-    assert(mkdir("/symlink", 777) == 0);
+    assert(mkdir("/symlink", 0777) == 0);
     assert(_touch("/symlink/file", 0400) == 0);
     assert(access("/symlink/file", R_OK) == 0);
     assert(symlink("/symlink/file", "/symlink/link") == 0);
+
     assert(access("/symlink/link", R_OK) == 0);
     assert(readlink("/symlink/link", target, sizeof(target)) == 13);
     assert(memcmp(target, "/symlink/file", 13) == 0);
 
-    assert(mkdir("/symlink/aaa", 777) == 0);
+    assert(mkdir("/symlink/aaa", 0777) == 0);
     assert(symlink("/symlink/ccc", "/symlink/aaa/bbb") == 0);
-    assert(mkdir("/symlink/ccc", 777) == 0);
-    assert(mkdir("/symlink/ccc/ddd", 777) == 0);
+    assert(mkdir("/symlink/ccc", 0777) == 0);
+    assert(mkdir("/symlink/ccc/ddd", 0777) == 0);
+
     assert(stat("/symlink/aaa/bbb/ddd", &st1) == 0);
     assert(stat("/symlink/ccc/ddd", &st2) == 0);
     assert(st1.st_ino == st2.st_ino);
     assert(lstat("/symlink/aaa/bbb/ddd", &st1) == 0);
 
-    assert(mkdir("/symlink/www", 777) == 0);
+    assert(mkdir("/symlink/www", 0777) == 0);
     assert(symlink("../yyy", "/symlink/www/xxx") == 0);
-    assert(mkdir("/symlink/yyy", 777) == 0);
-    assert(mkdir("/symlink/yyy/ddd", 777) == 0);
+    assert(mkdir("/symlink/yyy", 0777) == 0);
+    assert(mkdir("/symlink/yyy/ddd", 0777) == 0);
     assert(stat("/symlink/www/xxx/ddd", &st1) == 0);
     assert(stat("/symlink/yyy/ddd", &st2) == 0);
     assert(st1.st_ino == st2.st_ino);
@@ -465,8 +500,8 @@ void test_pread_pwrite(void)
     getrandom(blk2, sizeof(blk2), 0);
     getrandom(blk3, sizeof(blk3), 0);
 
-    assert(mkdir("/pread_pwrite", 777) == 0);
-    assert(_touch("/pread_pwrite/file", 0400) == 0);
+    assert(mkdir("/pread_pwrite", 0777) == 0);
+    assert(_touch("/pread_pwrite/file", 0600) == 0);
 
     assert((fd = open("/pread_pwrite/file", O_RDWR, 0)) >= 0);
 
@@ -579,7 +614,7 @@ void test_sendfile(bool test_offset)
 
     /* create the input file */
     {
-        assert((in_fd = open(in_path, O_CREAT | O_WRONLY, 0)) >= 0);
+        assert((in_fd = open(in_path, O_CREAT | O_WRONLY, 0666)) >= 0);
 
         for (size_t i = 0; i < N; i++)
         {
@@ -593,7 +628,7 @@ void test_sendfile(bool test_offset)
     /* use sendfile() to create the output file */
     {
         assert((in_fd = open(in_path, O_RDONLY, 0)) >= 0);
-        assert((out_fd = open(out_path, O_CREAT | O_WRONLY, 0)) >= 0);
+        assert((out_fd = open(out_path, O_CREAT | O_WRONLY, 00666)) >= 0);
 
         ret = sendfile(out_fd, in_fd, offset_ptr, n);
 
@@ -653,7 +688,7 @@ void test_sendfile(bool test_offset)
     _passed(__FUNCTION__);
 }
 
-void test_statfs(char* program_name)
+void test_statfs(const char* program_name)
 {
     int result;
     struct statfs stats;
@@ -668,7 +703,7 @@ void test_statfs(char* program_name)
     _passed(__FUNCTION__);
 }
 
-void test_fstatfs(char* program_name)
+void test_fstatfs(const char* program_name)
 {
     int result;
     struct statfs stats;
@@ -681,6 +716,22 @@ void test_fstatfs(char* program_name)
 
 int main(int argc, const char* argv[])
 {
+    if (argc != 2)
+    {
+        printf("Usage: %s <file-system-type>\n", argv[0]);
+        exit(1);
+    }
+
+    fstype = argv[1];
+
+    if (strcmp(fstype, "ramfs") != 0 &&
+        strcmp(fstype, "ext2fs") != 0 &&
+        strcmp(fstype, "hostfs") != 0)
+    {
+        fprintf(stderr, "unknown file system type: %s\n", fstype);
+        exit(1);
+    }
+
     test_fstatat();
     test_readv();
     test_writev();

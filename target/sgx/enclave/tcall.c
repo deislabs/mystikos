@@ -691,6 +691,7 @@ long myst_tcall(long n, long params[6])
         case SYS_readlink:
         case SYS_statfs:
         case SYS_fstatfs:
+        case SYS_lseek:
         {
             extern long myst_handle_tcall(long n, long params[6]);
             return myst_handle_tcall(n, params);
@@ -857,6 +858,7 @@ long myst_tcall(long n, long params[6])
         }
         default:
         {
+            printf("error: tcall=%ld\n", n);
             ERAISE(-EINVAL);
         }
     }

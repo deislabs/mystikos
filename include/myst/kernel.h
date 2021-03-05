@@ -83,6 +83,9 @@ typedef struct myst_kernel_args
     /* The event object for the main thread */
     uint64_t event;
 
+    /* whether this TEE is in debug mode */
+    bool tee_debug_mode;
+
     /* Callback for making target-calls */
     myst_tcall_t tcall;
 } myst_kernel_args_t;

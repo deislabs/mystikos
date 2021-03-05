@@ -194,7 +194,9 @@ static int _inode_new(
         }
 
         ECHECK(_inode_add_dirent(parent, inode, type, name));
-        parent->nlink++;
+
+        if (type == DT_DIR)
+            parent->nlink++;
     }
 
     if (inode_out)

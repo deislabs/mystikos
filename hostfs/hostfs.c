@@ -45,7 +45,7 @@ static bool _hostfs_valid(const hostfs_t* hostfs)
     return hostfs && hostfs->magic == HOSTFS_MAGIC;
 }
 
-static int _fixup_path(
+static int _to_host_path(
     hostfs_t* hostfs,
     char* buf,
     size_t size,
@@ -54,11 +54,30 @@ static int _fixup_path(
     if (myst_strlcpy(buf, hostfs->source, size) >= size)
         return -ENAMETOOLONG;
 
-    if (myst_strlcat(buf, "/", size) >= size)
-        return -ENAMETOOLONG;
+    if (path[0] != '/')
+    {
+        if (myst_strlcat(buf, "/", size) >= size)
+            return -ENAMETOOLONG;
+    }
 
     if (myst_strlcat(buf, path, size) >= size)
         return -ENAMETOOLONG;
+
+    return 0;
+}
+
+static int _to_local_path(
+    hostfs_t* hostfs,
+    char* buf,
+    size_t size,
+    const char* path)
+{
+    const size_t len = strlen(hostfs->source);
+
+    if (strncmp(hostfs->source, path, len) == 0)
+        path += len;
+
+    myst_strlcpy(buf, path, size);
 
     return 0;
 }
@@ -147,7 +166,7 @@ static int _fs_open(
 
     ECHECK(myst_realpath(pathname, (myst_path_t*)file->realpath));
 
-    ECHECK(_fixup_path(hostfs, path, sizeof(path), pathname));
+    ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
 
     long params[6] = {(long)path, flags, mode};
     ECHECK((tret = myst_tcall(SYS_open, params)));
@@ -407,7 +426,7 @@ static int _fs_access(myst_fs_t* fs, const char* pathname, int mode)
     if (!_hostfs_valid(hostfs) || !pathname)
         ERAISE(-EINVAL);
 
-    ECHECK(_fixup_path(hostfs, path, sizeof(path), pathname));
+    ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
 
     long params[6] = {(long)path, mode};
     ECHECK((tret = myst_tcall(SYS_access, params)));
@@ -435,7 +454,7 @@ static int _fs_stat(myst_fs_t* fs, const char* pathname, struct stat* statbuf)
     if (!_hostfs_valid(hostfs) || !pathname || !statbuf)
         ERAISE(-EINVAL);
 
-    ECHECK(_fixup_path(hostfs, path, sizeof(path), pathname));
+    ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
 
     long params[6] = {(long)path, (long)statbuf};
     ECHECK((tret = myst_tcall(SYS_stat, params)));
@@ -459,7 +478,7 @@ static int _fs_lstat(myst_fs_t* fs, const char* pathname, struct stat* statbuf)
     if (!_hostfs_valid(hostfs) || !pathname || !statbuf)
         ERAISE(-EINVAL);
 
-    ECHECK(_fixup_path(hostfs, path, sizeof(path), pathname));
+    ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
 
     long params[6] = {(long)path, (long)statbuf};
     ECHECK((tret = myst_tcall(SYS_lstat, params)));
@@ -505,8 +524,8 @@ static int _fs_link(myst_fs_t* fs, const char* oldpath, const char* newpath)
     if (!_hostfs_valid(hostfs) || !oldpath || !newpath)
         ERAISE(-EINVAL);
 
-    ECHECK(_fixup_path(hostfs, opath, sizeof(opath), oldpath));
-    ECHECK(_fixup_path(hostfs, npath, sizeof(npath), newpath));
+    ECHECK(_to_host_path(hostfs, opath, sizeof(opath), oldpath));
+    ECHECK(_to_host_path(hostfs, npath, sizeof(npath), newpath));
 
     long params[6] = {(long)opath, (long)npath};
     ECHECK((tret = myst_tcall(SYS_link, params)));
@@ -530,7 +549,7 @@ static int _fs_unlink(myst_fs_t* fs, const char* pathname)
     if (!_hostfs_valid(hostfs) || !pathname)
         ERAISE(-EINVAL);
 
-    ECHECK(_fixup_path(hostfs, path, sizeof(path), pathname));
+    ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
 
     long params[6] = {(long)path};
     ECHECK((tret = myst_tcall(SYS_unlink, params)));
@@ -555,8 +574,8 @@ static int _fs_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
     if (!_hostfs_valid(hostfs) || !oldpath || !newpath)
         ERAISE(-EINVAL);
 
-    ECHECK(_fixup_path(hostfs, opath, sizeof(opath), oldpath));
-    ECHECK(_fixup_path(hostfs, npath, sizeof(npath), newpath));
+    ECHECK(_to_host_path(hostfs, opath, sizeof(opath), oldpath));
+    ECHECK(_to_host_path(hostfs, npath, sizeof(npath), newpath));
 
     long params[6] = {(long)opath, (long)npath};
     ECHECK((tret = myst_tcall(SYS_rename, params)));
@@ -580,7 +599,7 @@ static int _fs_truncate(myst_fs_t* fs, const char* path, off_t length)
     if (!_hostfs_valid(hostfs) || !path || length < 0)
         ERAISE(-EINVAL);
 
-    ECHECK(_fixup_path(hostfs, hpath, sizeof(hpath), path));
+    ECHECK(_to_host_path(hostfs, hpath, sizeof(hpath), path));
 
     long params[6] = {(long)hpath, length};
     ECHECK((tret = myst_tcall(SYS_truncate, params)));
@@ -625,7 +644,7 @@ static int _fs_mkdir(myst_fs_t* fs, const char* pathname, mode_t mode)
     if (!_hostfs_valid(hostfs) || !pathname)
         ERAISE(-EINVAL);
 
-    ECHECK(_fixup_path(hostfs, path, sizeof(path), pathname));
+    ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
 
     long params[6] = {(long)path, mode};
     ECHECK((tret = myst_tcall(SYS_mkdir, params)));
@@ -649,7 +668,7 @@ static int _fs_rmdir(myst_fs_t* fs, const char* pathname)
     if (!_hostfs_valid(hostfs) || !pathname)
         ERAISE(-EINVAL);
 
-    ECHECK(_fixup_path(hostfs, path, sizeof(path), pathname));
+    ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
 
     long params[6] = {(long)path};
     ECHECK((tret = myst_tcall(SYS_rmdir, params)));
@@ -700,14 +719,23 @@ static ssize_t _fs_readlink(
     hostfs_t* hostfs = (hostfs_t*)fs;
     long tret;
     char path[PATH_MAX];
+    char target[PATH_MAX];
 
     if (!_hostfs_valid(hostfs) || !pathname || !buf || !bufsiz)
         ERAISE(-EINVAL);
 
-    ECHECK(_fixup_path(hostfs, path, sizeof(path), pathname));
+    ECHECK(_to_host_path(hostfs, path, PATH_MAX, pathname));
 
-    long params[6] = {(long)path, (long)buf, bufsiz};
+    long params[6] = {(long)path, (long)target, PATH_MAX};
     ECHECK((tret = myst_tcall(SYS_readlink, params)));
+
+    if (tret < PATH_MAX)
+        target[tret] = '\0';
+    else
+        target[PATH_MAX - 1] = '\0';
+
+    ECHECK(_to_local_path(hostfs, buf, bufsiz, target));
+    tret = strlen(buf);
 
     ret = tret;
 
@@ -721,16 +749,22 @@ static int _fs_symlink(myst_fs_t* fs, const char* target, const char* linkpath)
     int ret = 0;
     hostfs_t* hostfs = (hostfs_t*)fs;
     long tret;
-    char path[PATH_MAX];
+    char host_linkpath[PATH_MAX];
+    char host_target[PATH_MAX];
 
     if (!_hostfs_valid(hostfs) || !target || !linkpath)
         ERAISE(-EINVAL);
 
     /* Note: store target as-is (it may refer to a different file system) */
 
-    ECHECK(_fixup_path(hostfs, path, sizeof(path), linkpath));
+    ECHECK(_to_host_path(hostfs, host_linkpath, PATH_MAX, linkpath));
 
-    long params[6] = {(long)target, (long)path};
+    if (target[0] == '/')
+        ECHECK(_to_host_path(hostfs, host_target, PATH_MAX, target));
+    else
+        myst_strlcpy(host_target, target, PATH_MAX);
+
+    long params[6] = {(long)host_target, (long)host_linkpath};
     ECHECK((tret = myst_tcall(SYS_symlink, params)));
 
     ret = tret;
@@ -887,7 +921,7 @@ static int _fs_statfs(myst_fs_t* fs, const char* pathname, struct statfs* buf)
     if (!_hostfs_valid(hostfs) || !pathname || !buf)
         ERAISE(-EINVAL);
 
-    ECHECK(_fixup_path(hostfs, path, sizeof(path), pathname));
+    ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
 
     long params[6] = {(long)path, (long)buf};
     ECHECK((tret = myst_tcall(SYS_statfs, params)));

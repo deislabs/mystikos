@@ -13,6 +13,19 @@
 #include <unistd.h>
 
 #include <myst/fdops.h>
+#include <myst/defs.h>
+
+/* supported file system types */
+typedef enum myst_fstype
+{
+    MYST_FSTYPE_NONE,
+    MYST_FSTYPE_RAMFS,
+    MYST_FSTYPE_EXT2FS,
+    MYST_FSTYPE_HOSTFS,
+}
+myst_fstype_t;
+
+const char* myst_fstype_name(myst_fstype_t fstype);
 
 typedef struct myst_fs myst_fs_t;
 

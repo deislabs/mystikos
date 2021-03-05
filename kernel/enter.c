@@ -33,6 +33,7 @@
 #include <myst/thread.h>
 #include <myst/times.h>
 #include <myst/ttydev.h>
+#include <myst/hostfs.h>
 
 #define WANT_TLS_CREDENTIAL "MYST_WANT_TLS_CREDENTIAL"
 
@@ -132,21 +133,22 @@ done:
 static int _create_standard_directories(void)
 {
     int ret = 0;
+    const mode_t mode = 0777;
 
     /* create /tmp if it does not already exist */
-    if (myst_mkdirhier("/tmp", 777) != 0)
+    if (myst_mkdirhier("/tmp", mode) != 0)
     {
         myst_eprintf("cannot create the /tmp directory\n");
         ERAISE(-EINVAL);
     }
 
-    if (myst_mkdirhier("/proc/self/fd", 777) != 0)
+    if (myst_mkdirhier("/proc/self/fd", mode) != 0)
     {
         myst_eprintf("cannot create the /proc/self/fd directory\n");
         ERAISE(-EINVAL);
     }
 
-    if (myst_mkdirhier("/usr/local/etc", 777) != 0)
+    if (myst_mkdirhier("/usr/local/etc", mode) != 0)
     {
         myst_eprintf("cannot create the /usr/local/etc directory\n");
         ERAISE(-EINVAL);
@@ -179,20 +181,50 @@ done:
 }
 
 #ifdef MYST_ENABLE_EXT2FS
-static int _setup_ext2(const char* rootfs)
+static int _setup_ext2(const char* rootfs, char* err, size_t err_size)
 {
     int ret = 0;
     const char* key = NULL; /* no automatic key-release support yet */
 
+    *err = '\0';
+
     if (myst_load_fs(rootfs, key, &_fs) != 0)
     {
-        myst_eprintf("failed to load the ext2 rootfs: %s\n", rootfs);
+        snprintf(err, err_size, "cannot load or verify EXT2 image: %s", rootfs);
         ERAISE(-EINVAL);
     }
 
     if (myst_mount(_fs, rootfs, "/") != 0)
     {
-        myst_eprintf("cannot mount root file system\n");
+        snprintf(err, err_size, "cannot mount EXT2 rootfs: %s", rootfs);
+        ERAISE(-EINVAL);
+    }
+
+    if (_create_standard_directories() != 0)
+    {
+        snprintf(err, err_size, "cannot create EXT2 standard directories");
+    }
+
+done:
+    return ret;
+}
+#endif /* MYST_ENABLE_EXT2FS */
+
+#if defined(MYST_ENABLE_HOSTFS)
+static int _setup_hostfs(const char* rootfs, char* err, size_t err_size)
+{
+    int ret = 0;
+
+    if (myst_init_hostfs(&_fs) != 0)
+    {
+        snprintf(err, err_size, "cannot initialize HOSTFS file system: %s",
+            rootfs);
+        ERAISE(-EINVAL);
+    }
+
+    if (myst_mount(_fs, rootfs, "/") != 0)
+    {
+        snprintf(err, err_size, "cannot mount HOSTFS rootfs: %s", rootfs);
         ERAISE(-EINVAL);
     }
 
@@ -201,7 +233,7 @@ static int _setup_ext2(const char* rootfs)
 done:
     return ret;
 }
-#endif /* MYST_ENABLE_EXT2FS */
+#endif /* MYST_ENABLE_HOSTFS */
 
 static const char* _getenv(const char** envp, const char* varname)
 {
@@ -360,12 +392,115 @@ done:
     return ret;
 }
 
+static int _get_fstype(myst_kernel_args_t* args, myst_fstype_t* fstype)
+{
+    int ret = 0;
+
+    *fstype = MYST_FSTYPE_NONE;
+
+    /* check whether CPIO archive */
+    if (myst_is_cpio_archive(args->rootfs_data, args->rootfs_size))
+    {
+        *fstype = MYST_FSTYPE_RAMFS;
+        goto done;
+    }
+
+    /* determine whether rootfs is a directory or regular file */
+    if (args->rootfs)
+    {
+        struct stat buf;
+        long params[6] = { (long)args->rootfs, (long)&buf };
+
+        ECHECK(myst_tcall(SYS_stat, params));
+
+        if (S_ISDIR(buf.st_mode))
+            *fstype = MYST_FSTYPE_HOSTFS;
+        else
+            *fstype = MYST_FSTYPE_EXT2FS;
+    }
+
+done:
+    return ret;
+}
+
+static int _mount_rootfs(myst_kernel_args_t* args, myst_fstype_t fstype)
+{
+    int ret = 0;
+
+    switch (fstype)
+    {
+        case MYST_FSTYPE_RAMFS:
+        {
+            /* Setup the RAM file system */
+            if (_setup_ramfs() != 0)
+            {
+                myst_eprintf("failed to setup RAMFS rootfs: %s\n",
+                    args->rootfs);
+                ERAISE(-EINVAL);
+            }
+
+            break;
+        }
+#if defined(MYST_ENABLE_EXT2FS)
+        case MYST_FSTYPE_EXT2FS:
+        {
+            char err[256];
+
+            /* setup and mount the EXT2 file system */
+            if (_setup_ext2(args->rootfs, err, sizeof(err)) != 0)
+            {
+                myst_eprintf("failed to setup EXT2 rootfs: %s (%s)\n",
+                    args->rootfs, err);
+                ERAISE(-EINVAL);
+            }
+
+            break;
+        }
+#endif
+#if defined(MYST_ENABLE_HOSTFS)
+        case MYST_FSTYPE_HOSTFS:
+        {
+            char err[256];
+
+            /* disallow HOSTFS rootfs in non-debug mode */
+            if (!args->tee_debug_mode)
+            {
+                myst_eprintf(
+                    "HOSTFS as rootfs only permitted only in debug mode\n");
+                ERAISE(-EINVAL);
+            }
+
+            /* setup and mount the HOSTFS file system */
+            if (_setup_hostfs(args->rootfs, err, sizeof(err)) != 0)
+            {
+                myst_eprintf("failed to setup HOSTFS rootfs: %s (%s)\n",
+                    args->rootfs, err);
+                ERAISE(-EINVAL);
+            }
+
+            break;
+        }
+#endif
+        default:
+        {
+            myst_eprintf("unsupported rootfs type: %s\n",
+                myst_fstype_name(fstype));
+            ERAISE(-EINVAL);
+            break;
+        }
+    }
+
+done:
+    return ret;
+}
+
 int myst_enter_kernel(myst_kernel_args_t* args)
 {
     int ret = 0;
     int exit_status;
     myst_thread_t* thread = NULL;
-    bool use_cpio;
+    const char* want_tls_creds;
+    myst_fstype_t fstype;
 
 #if 0
     extern void myst_set_trace(bool flag);
@@ -434,31 +569,18 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         ERAISE(-EINVAL);
     }
 
-    /* determine whether rootfs is a CPIO archive */
-    use_cpio = myst_is_cpio_archive(args->rootfs_data, args->rootfs_size);
-
-    /* if not a CPIO archive, then use EXT2 mounting */
-    if (use_cpio)
+    /* determine the rootfs file system type (RAMFS, EXT2FS, OR HOSTFS) */
+    if (_get_fstype(args, &fstype) != 0)
     {
-        /* Setup the RAM file system */
-        if (_setup_ramfs() != 0)
-            ERAISE(-EINVAL);
+        myst_eprintf("kernel: cannot resolve rootfs type: %s\n", args->rootfs);
+        ERAISE(-EINVAL);
     }
-    else
-    {
-#ifdef MYST_ENABLE_EXT2FS
 
-        /* setup and mount the EXT2 file system */
-        if (_setup_ext2(args->rootfs) != 0)
-            ERAISE(-EINVAL);
-
-#else  /* MYST_ENABLE_EXT2FS */
-        myst_panic("ext2 not supported");
-#endif /* MYST_ENABLE_EXT2FS */
-    }
+    /* Mount the root file system */
+    ECHECK(_mount_rootfs(args, fstype));
 
     /* Generate TLS credentials if needed */
-    const char* want_tls_creds = _getenv(args->envp, WANT_TLS_CREDENTIAL);
+    want_tls_creds = _getenv(args->envp, WANT_TLS_CREDENTIAL);
     if (want_tls_creds != NULL)
     {
         if (strcmp(want_tls_creds, "1") == 0)
@@ -495,7 +617,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     }
 
     /* Unpack the CPIO from memory */
-    if (use_cpio &&
+    if (fstype == MYST_FSTYPE_RAMFS &&
         myst_cpio_mem_unpack(
             args->rootfs_data, args->rootfs_size, "/", _create_mem_file) != 0)
     {

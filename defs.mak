@@ -183,6 +183,10 @@ ifdef MYST_ENABLE_EXT2FS
 MYST_DEFINES += -DMYST_ENABLE_EXT2FS
 endif
 
+ifdef MYST_DEBUG
+MYST_DEFINES += -DMYST_DEBUG
+endif
+
 ##==============================================================================
 ##
 ## Define $(EXEC) macro in terms of $(TARGET). This macro should be used in
