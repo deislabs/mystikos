@@ -71,7 +71,7 @@ $(APPDIR)/bin/run: run.c
 	$(MUSL_GCC) -Wall -o $(APPDIR)/bin/run run.c
 
 $(APPDIR):
-	$(APPBUILDER) sagoel/libcxx_10x:0.1
+	$(APPBUILDER) mystikos/libcxx_tests_10x:1.0
 	cp $(CURDIR)/builttests_exe1.passed $(APPDIR)
 	cp $(CURDIR)/builttests_exe2.passed $(APPDIR)
 	cp $(CURDIR)/builttests_exe3.passed $(APPDIR)
