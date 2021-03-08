@@ -179,7 +179,7 @@ index 20d50f2c..c6ad4096 100644
 +    return -ENOTSUP;
 +}
 diff --git a/ldso/dynlink.c b/ldso/dynlink.c
-index afec985a..62f3687f 100644
+index afec985a..4cd45927 100644
 --- a/ldso/dynlink.c
 +++ b/ldso/dynlink.c
 @@ -27,6 +27,13 @@
@@ -196,7 +196,47 @@ index afec985a..62f3687f 100644
  #define MAXP2(a,b) (-(-(a)&-(b)))
  #define ALIGN(x,y) ((x)+(y)-1 & -(y))
  
-@@ -1098,6 +1105,7 @@ static struct dso *load_library(const char *name, struct dso *needed_by)
+@@ -1043,38 +1050,7 @@ static struct dso *load_library(const char *name, struct dso *needed_by)
+ 				fd = path_open(name, p->rpath, buf, sizeof buf);
+ 		}
+ 		if (fd == -1) {
+-			if (!sys_path) {
+-				char *prefix = 0;
+-				size_t prefix_len;
+-				if (ldso.name[0]=='/') {
+-					char *s, *t, *z;
+-					for (s=t=z=ldso.name; *s; s++)
+-						if (*s=='/') z=t, t=s;
+-					prefix_len = z-ldso.name;
+-					if (prefix_len < PATH_MAX)
+-						prefix = ldso.name;
+-				}
+-				if (!prefix) {
+-					prefix = "";
+-					prefix_len = 0;
+-				}
+-				char etc_ldso_path[prefix_len + 1
+-					+ sizeof "/etc/ld-musl-" LDSO_ARCH ".path"];
+-				snprintf(etc_ldso_path, sizeof etc_ldso_path,
+-					"%.*s/etc/ld-musl-" LDSO_ARCH ".path",
+-					(int)prefix_len, prefix);
+-				FILE *f = fopen(etc_ldso_path, "rbe");
+-				if (f) {
+-					if (getdelim(&sys_path, (size_t[1]){0}, 0, f) <= 0) {
+-						free(sys_path);
+-						sys_path = "";
+-					}
+-					fclose(f);
+-				} else if (errno != ENOENT) {
+-					sys_path = "";
+-				}
+-			}
+-			if (!sys_path) sys_path = "/lib:/usr/local/lib:/usr/lib";
++			if (!sys_path) sys_path = "/lib:/usr/local/lib:/usr/lib:/usr/lib/x86_64-linux-gnu:/lib/x86_64-linux-gnu";
+ 			fd = path_open(name, sys_path, buf, sizeof buf);
+ 		}
+ 		pathname = buf;
+@@ -1098,6 +1074,7 @@ static struct dso *load_library(const char *name, struct dso *needed_by)
  	map = noload ? 0 : map_library(fd, &temp_dso);
  	close(fd);
  	if (!map) return 0;
@@ -204,7 +244,7 @@ index afec985a..62f3687f 100644
  
  	/* Avoid the danger of getting two versions of libc mapped into the
  	 * same process when an absolute pathname was used. The symbols
-@@ -1797,6 +1805,7 @@ void __dls3(size_t *sp, size_t *auxv)
+@@ -1797,6 +1774,7 @@ void __dls3(size_t *sp, size_t *auxv)
  			dprintf(2, "%s: %s: Not a valid dynamic program\n", ldname, argv[0]);
  			_exit(1);
  		}
@@ -212,7 +252,7 @@ index afec985a..62f3687f 100644
  		close(fd);
  		ldso.name = ldname;
  		app.name = argv[0];
-@@ -1936,6 +1945,7 @@ void __dls3(size_t *sp, size_t *auxv)
+@@ -1936,6 +1914,7 @@ void __dls3(size_t *sp, size_t *auxv)
  	/* Determine if malloc was interposed by a replacement implementation
  	 * so that calloc and the memalign family can harden against the
  	 * possibility of incomplete replacement. */
@@ -220,7 +260,7 @@ index afec985a..62f3687f 100644
  	if (find_sym(head, "malloc", 1).dso != &ldso)
  		__malloc_replaced = 1;
  
-@@ -1955,7 +1965,11 @@ void __dls3(size_t *sp, size_t *auxv)
+@@ -1955,7 +1934,11 @@ void __dls3(size_t *sp, size_t *auxv)
  
  	errno = 0;
  
@@ -232,7 +272,7 @@ index afec985a..62f3687f 100644
  	for(;;);
  }
  
-@@ -2100,6 +2114,7 @@ end:
+@@ -2100,6 +2083,7 @@ end:
  		free(ctor_queue);
  	}
  	pthread_setcancelstate(cs, 0);
