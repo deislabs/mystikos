@@ -50,7 +50,7 @@ static uint64_t _time(void)
 int main(int argc, const char* argv[])
 {
     const uint64_t USEC = 1000000;
-    const uint64_t slop = 10000;
+    const uint64_t slop = 100000;
 
     printf("=== start test\n");
 
