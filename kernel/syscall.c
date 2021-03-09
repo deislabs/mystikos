@@ -2068,6 +2068,26 @@ long myst_syscall_prlimit64(
     return 0;
 }
 
+long myst_syscall_fsync(int fd)
+{
+    long ret = 0;
+    void* device = NULL;
+    void* object = NULL;
+    myst_fdtable_type_t type;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+
+    if (fd < 0)
+        ERAISE(-EBADF);
+
+    ECHECK(myst_fdtable_get_any(fdtable, fd, &type, &device, &object));
+
+    if (type != MYST_FDTABLE_TYPE_FILE)
+        ERAISE(-EROFS);
+
+done:
+    return ret;
+}
+
 long myst_syscall_ret(long ret)
 {
     if (ret < 0)
@@ -3075,7 +3095,13 @@ long myst_syscall(long n, long params[6])
             BREAK(_return(n, 0));
         }
         case SYS_fsync:
-            break;
+        {
+            int fd = (int)x1;
+
+            _strace(n, "fd=%d", fd);
+
+            BREAK(_return(n, myst_syscall_fsync(fd)));
+        }
         case SYS_fdatasync:
             break;
         case SYS_truncate:
