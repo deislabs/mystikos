@@ -2967,12 +2967,7 @@ long myst_syscall(long n, long params[6])
                     fn, child_stack, flags, arg, ptid, newtls, ctid)));
         }
         case SYS_fork:
-        {
-            _strace(n, NULL);
-
-            /* return as child but let parent hang */
-            BREAK(_return(n, 0));
-        }
+            break;
         case SYS_vfork:
             break;
         case SYS_execve:
