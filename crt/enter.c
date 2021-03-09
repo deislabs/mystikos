@@ -15,10 +15,12 @@
 #include <sys/types.h>
 #include <syslog.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #include <myst/gcov.h>
 #include <myst/libc.h>
 #include <myst/syscallext.h>
+#include <myst/syscall.h>
 
 void _dlstart_c(size_t* sp, size_t* dynv);
 
@@ -32,8 +34,16 @@ void myst_trace(const char* msg);
 
 void myst_dump_argv(int argc, const char* argv[]);
 
+static void _create_itimer_thread(void);
+
 long myst_syscall(long n, long params[6])
 {
+    static pthread_once_t _once = PTHREAD_ONCE_INIT;
+
+    /* create the itimer thread on demand (only if needed) */
+    if (n == SYS_setitimer)
+        pthread_once(&_once, _create_itimer_thread);
+
     return (*_syscall_callback)(n, params);
 }
 
@@ -144,4 +154,44 @@ void myst_enter_crt(void* stack, void* dynv, syscall_callback_t callback)
 #endif
 
     _dlstart_c((size_t*)stack, (size_t*)dynv);
+}
+
+static void* _itimer_thread(void* arg)
+{
+    (void)arg;
+
+    /* Enter the kernel on the itimer thread */
+    long params[6] = { 0 };
+    myst_syscall(SYS_myst_run_itimer, params);
+
+    return NULL;
+}
+
+// Create the itimer thread in user-space and then enter the kernel with the
+// SYS_myst_run_itimer syscall. We create a user-space thread since
+// kernel-space threads are not supported. Two complications include aligning
+// with pthread struct and having a place to land on thread exit.
+static void _create_itimer_thread(void)
+{
+    pthread_attr_t attr;
+    pthread_t thread;
+    const char* func = __FUNCTION__;
+
+    if (pthread_attr_init(&attr) != 0)
+    {
+        fprintf(stderr, "%s(): pthread_attr_init() failed\n", func);
+        abort();
+    }
+
+    if (pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED) != 0)
+    {
+        fprintf(stderr, "%s(): pthread_attr_setdetachstate() failed\n", func);
+        abort();
+    }
+
+    if (pthread_create(&thread, &attr, _itimer_thread, NULL) != 0)
+    {
+        fprintf(stderr, "%s(): pthread_create() failed\n", func);
+        abort();
+    }
 }

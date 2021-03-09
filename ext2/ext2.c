@@ -2011,9 +2011,36 @@ static int _ftruncate(ext2_t* ext2, myst_file_t* file, off_t length, bool isdir)
         ECHECK(myst_round_up(length, ext2->block_size, &first));
         first /= ext2->block_size;
 
-        /* release seleted block numbers */
+        /* release the selected block numbers */
         for (size_t i = first; i < num_blocks; i++)
             ECHECK(_inode_put_blkno(ext2, file->ino, &file->inode, i));
+
+        /* Fill the last partial block with zeros */
+        if (first > 0)
+        {
+            uint32_t blkno;
+
+            /* get the block number of the last block */
+            ECHECK(_inode_get_blkno(ext2, &file->inode, first - 1, &blkno));
+
+            if (blkno != 0)
+            {
+                size_t rlength;
+                ext2_block_t block;
+
+                ECHECK(myst_round_up(length, ext2->block_size, &rlength));
+
+                size_t size = rlength - length;
+                size_t offset = ext2->block_size - size;
+
+                if (size)
+                {
+                    ECHECK(ext2_read_block(ext2, blkno, &block));
+                    memset(block.data + offset, 0, size);
+                    ECHECK(_write_block(ext2, blkno, &block));
+                }
+            }
+        }
 
         _inode_set_size(&file->inode, (size_t)length);
         ECHECK(_write_inode(ext2, file->ino, &file->inode));
@@ -2503,7 +2530,6 @@ static int _add_dirent(
     if (new_ent->file_type == EXT2_FT_DIR)
         inode->i_links_count++;
 
-    /* update the inode */
     ECHECK(_write_inode(ext2, ino, inode));
 
 done:
