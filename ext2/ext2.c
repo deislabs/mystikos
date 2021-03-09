@@ -2968,9 +2968,11 @@ int ext2_open(
     if (S_ISLNK(inode.i_mode) && (flags & O_NOFOLLOW))
         ERAISE(-ELOOP);
 
-    /* fail if not a directory (check only for non-existent files) */
+    /* fail if not a directory */
     if ((flags & O_DIRECTORY) && !S_ISDIR(inode.i_mode))
+    {
         ERAISE(-ENOTDIR);
+    }
 
     /* Allocate and initialize the file object */
     {
