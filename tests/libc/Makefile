@@ -26,7 +26,7 @@ all: $(APPDIR) $(APPDIR)/target $(APPDIR)/bin/run $(ROOTFS) $(ROOTHASH)
 $(APPDIR):
 	rm -rf $(APPDIR)
 	cp -r $(TOP)/third_party/libc-test/libc-test $(APPDIR)
-	cp $(CURDIR)/alltests.txt $(APPDIR)
+	cp $(CURDIR)/passed.txt $(APPDIR)
 	cp $(CURDIR)/failed.txt $(APPDIR)
 
 $(APPDIR)/target:
@@ -38,7 +38,7 @@ ifdef FAILED
   STATUS=FAILED
   export TIMEOUT=10
 else
-  TEST_FILE = alltests.txt
+  TEST_FILE = passed.txt
   STATUS=PASSED
 endif
 
@@ -62,6 +62,11 @@ $(ROOTHASH): run.c
 RUN = $(RUNTEST) $(MYST_EXEC) $(OPTS) --roothash=$(ROOTHASH) $(ROOTFS)
 
 OPTS += --roothash=$(ROOTHASH)
+
+ifdef TEST
+one:
+	$(RUNTEST) $(MYST_EXEC) rootfs $(OPTS) $(TEST)
+endif
 
 tests: all
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run $(STATUS) $(TEST_FILE)

@@ -1,4 +1,3 @@
-/src/functional/tls_local_exec.exe
 /src/functional/argv.exe
 /src/functional/basename.exe
 /src/functional/clocale_mbfuncs.exe
@@ -48,6 +47,7 @@
 /src/functional/tls_align.exe
 /src/functional/tls_init_dlopen.exe
 /src/functional/tls_init.exe
+/src/functional/tls_local_exec.exe
 /src/functional/udiv.exe
 /src/functional/ungetc.exe
 /src/functional/wcsstr.exe
@@ -165,6 +165,7 @@
 /src/math/log1pf.exe
 /src/math/log1pl.exe
 /src/math/log2.exe
+/src/math/log2f.exe
 /src/math/log2l.exe
 /src/math/logb.exe
 /src/math/logbf.exe
@@ -258,6 +259,7 @@
 /src/regression/inet_pton-empty-last-field.exe
 /src/regression/iswspace-null.exe
 /src/regression/lrand48-signextend.exe
+/src/regression/lseek-large.exe
 /src/regression/malloc-0.exe
 /src/regression/mbsrtowcs-overflow.exe
 /src/regression/memmem-oob.exe
@@ -289,6 +291,7 @@
 /src/regression/sigprocmask-internal.exe
 /src/regression/sscanf-eof.exe
 /src/regression/strverscmp.exe
+/src/regression/tls_get_new-dtv.exe
 /src/regression/uselocale-0.exe
 /src/regression/wcsncpy-read-overflow.exe
 /src/regression/wcsstr-false-negative.exe
