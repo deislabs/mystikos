@@ -5,6 +5,7 @@
 #define _MYST_CLOCK_H
 
 #define NANO_IN_SECOND 1000000000
+#define MICRO_IN_SECOND 1000000
 
 struct clock_ctrl
 {

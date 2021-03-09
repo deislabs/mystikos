@@ -260,6 +260,7 @@ long myst_syscall_wait4(
 {
     long ret = 0;
     bool locked = false;
+    myst_thread_t* process = myst_find_process_thread(myst_thread_self());
 
     if (rusage)
         ERAISE(-EINVAL);
@@ -270,6 +271,20 @@ long myst_syscall_wait4(
     /* ATTN: process groups not supported yet */
     if (pid == 0 || pid < -1)
         ERAISE(-ENOTSUP);
+
+    /* If this is the only process then raise ECHILD */
+    {
+        myst_spin_lock(&myst_process_list_lock);
+
+        if (process->main.next_process_thread == NULL &&
+            process->main.prev_process_thread == NULL)
+        {
+            myst_spin_unlock(&myst_process_list_lock);
+            ERAISE(-ECHILD);
+        }
+
+        myst_spin_unlock(&myst_process_list_lock);
+    }
 
     myst_mutex_lock(&_zombies_mutex);
     locked = true;

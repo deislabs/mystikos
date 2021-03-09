@@ -25,6 +25,7 @@ enum
     SYS_myst_gcov_init = 1013,
     SYS_myst_max_threads = 1014,
     SYS_myst_poll_wake = 1015,
+    SYS_myst_run_itimer = 1016,
 
     /* Open Enclave extensions */
     SYS_myst_oe_get_report_v2,

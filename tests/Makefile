@@ -6,6 +6,8 @@ include $(TOP)/defs.mak
 DIRS =
 
 DIRS += myst
+DIRS += itimer
+DIRS += timeval
 
 ifdef MYST_ENABLE_EXT2FS
 DIRS += ext2

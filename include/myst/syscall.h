@@ -255,4 +255,13 @@ long myst_syscall_sethostname(const char* hostname, size_t len);
 
 long myst_syscall_umask(mode_t mask);
 
+long myst_syscall_run_itimer(void);
+
+long myst_syscall_setitimer(
+    int which,
+    const struct itimerval* new_value,
+    struct itimerval* old_value);
+
+int myst_syscall_getitimer(int which, struct itimerval* curr_value);
+
 #endif /* _MYST_SYSCALL_H */
