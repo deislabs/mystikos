@@ -8,10 +8,15 @@ APPDIR=$(CURDIR)/appdir
 TESTS=$(shell grep -v "^\#" tests)
 ALL=$(shell grep -v "^\#" all)
 
+ifndef ROOTFS
+ROOTFS=rootfs
+endif
+
 ifdef TEST
 SYSCALLS=/ltp/testcases/kernel/syscalls
 test:
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs $(TEST) $(NL)
+	./clean_hostfs.sh
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) $(TEST) $(NL)
 endif
 
 all: rootfs
@@ -47,7 +52,11 @@ OPTS = --strace
 endif
 
 tests:
-	$(foreach i, $(TESTS), $(RUNTEST) $(MYST_EXEC) rootfs $(i) $(OPTS) $(NL) )
+ifeq ($(ROOTFS),hostfs)
+	rm -rf hostfs
+	cp -r appdir hostfs
+endif
+	$(foreach i, $(TESTS), ( ./clean_hostfs.sh; $(RUNTEST) $(MYST_EXEC) $(ROOTFS) $(i) $(OPTS) ) $(NL) )
 
 all-tests:
 	- $(foreach i, $(ALL), $(RUNTEST) $(MYST_EXEC) rootfs $(i) $(OPTS) && echo $(i) >> ALL $(NL) )

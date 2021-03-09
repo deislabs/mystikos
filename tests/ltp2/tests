@@ -12,7 +12,7 @@
 /ltp/testcases/kernel/syscalls/dup/dup01
 /ltp/testcases/kernel/syscalls/dup/dup04
 /ltp/testcases/kernel/syscalls/dup/dup07
-/ltp/testcases/kernel/syscalls/epoll/epoll-ltp
+#/ltp/testcases/kernel/syscalls/epoll/epoll-ltp
 /ltp/testcases/kernel/syscalls/fcntl/fcntl10
 /ltp/testcases/kernel/syscalls/fcntl/fcntl27
 /ltp/testcases/kernel/syscalls/fcntl/fcntl28
