@@ -79,3 +79,7 @@ find:
 
 t:
 	make TEST=/ltp/testcases/kernel/syscalls/creat/creat01 TARGET=linux
+
+create-all:
+	find appdir/ltp/testcases/kernel/syscalls -type f -executable -print | sort > all
+
