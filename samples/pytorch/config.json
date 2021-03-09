@@ -1,0 +1,10 @@
+{
+    "Debug": 1,
+    "StackMemSize": "800k",
+    "NumUserThreads": 8,
+    "ProductID": 1,
+    "SecurityVersion": 1,
+    "UserMemSize": "1024m",
+    "ApplicationPath": "/usr/local/bin/python",
+    "ApplicationParameters": ["/app/torch_polynomial_nn.py"]
+}
