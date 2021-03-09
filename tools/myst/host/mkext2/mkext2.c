@@ -178,6 +178,26 @@ __attribute__((format(printf, 1, 2))) static void _systemf(const char* fmt, ...)
     free(cmd);
 }
 
+static void _create_zero_filled_image(const char* path, size_t size)
+{
+    FILE* is;
+    static uint8_t _block[1024];
+
+    if (size < sizeof(_block))
+        _err("image size too small: %s: %zu", path, sizeof(_block));
+
+    if (!(is = fopen(path, "wb")))
+        _err("failed to open file for write: %s", path);
+
+    if (fseek(is, size - sizeof(_block), SEEK_SET) != 0)
+        _err("failed to seek file: %s: %zu", path, size);
+
+    if (fwrite(_block, 1, sizeof(_block), is) != sizeof(_block))
+        _err("failed to write file: %s", path);
+
+    fclose(is);
+}
+
 static void _create_ext2_image(
     const char* dirname,
     const char* image,
@@ -186,8 +206,8 @@ static void _create_ext2_image(
     char loop[PATH_MAX];
     char mntdir[] = "/tmp/mystXXXXXX";
 
-    /* create a zero-filled image */
-    _systemf("/usr/bin/head -c %zu /dev/zero > %s", size, image);
+    /* create a zero-filled image with holes */
+    _create_zero_filled_image(image, size);
 
     /* format the ext2 file system */
     _systemf("/sbin/mke2fs -q %s", image);

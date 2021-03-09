@@ -14,9 +14,11 @@ endif
 
 DIRS += msgpack_c
 DIRS += python
+DIRS += python_webserver
 # temporary ban dotnet test for code coverage due to the gcov infra (malcode filename) bug
 ifndef MYST_ENABLE_GCOV
 DIRS += dotnet
+DIRS += aspnet
 # Run coreclr tests only in nightly pipeline
 ifdef RUN_CORECLR_TESTS
 DIRS += coreclr

@@ -434,6 +434,7 @@ static pair_t _pairs[] = {
     {SYS_myst_clone, "SYS_myst_clone"},
     {SYS_myst_gcov_init, "SYS_myst_gcov_init"},
     {SYS_myst_max_threads, "SYS_myst_max_threads"},
+    {SYS_myst_run_itimer, "SYS_myst_run_itimer"},
     /* Open Enclave extensions */
     {SYS_myst_oe_get_report_v2, "SYS_myst_oe_get_report_v2"},
     {SYS_myst_oe_free_report, "SYS_myst_oe_free_report"},
@@ -766,6 +767,9 @@ long myst_syscall_write(int fd, const void* buf, size_t count)
     myst_fdtable_type_t type;
     myst_fdtable_t* fdtable = myst_fdtable_current();
     myst_fdops_t* fdops;
+
+    if (!buf && count)
+        ERAISE(-EFAULT);
 
     ECHECK(myst_fdtable_get_any(fdtable, fd, &type, &device, &object));
     fdops = device;
@@ -2783,12 +2787,34 @@ long myst_syscall(long n, long params[6])
 
             BREAK(_return(n, myst_syscall_nanosleep(req, rem)));
         }
+        case SYS_myst_run_itimer:
+        {
+            _strace(n, NULL);
+            BREAK(_return(n, myst_syscall_run_itimer()));
+        }
         case SYS_getitimer:
-            break;
+        {
+            int which = (int)x1;
+            struct itimerval* curr_value = (void*)x2;
+
+            _strace(n, "which=%d curr_value=%p", which, curr_value);
+
+            BREAK(_return(n, myst_syscall_getitimer(which, curr_value)));
+        }
         case SYS_alarm:
             break;
         case SYS_setitimer:
-            break;
+        {
+            int which = (int)x1;
+            const struct itimerval* new_value = (void*)x2;
+            struct itimerval* old_value = (void*)x3;
+
+            _strace(n, "which=%d new_value=%p old_value=%p",
+                which, new_value, old_value);
+
+            BREAK(_return(
+                n, myst_syscall_setitimer(which, new_value, old_value)));
+        }
         case SYS_getpid:
         {
             _strace(n, NULL);

@@ -180,6 +180,7 @@ static int _ed_epoll_wait(
     int timeout) /* milliseconds */
 {
     int ret = 0;
+    bool locked = false;
     nfds_t nfds;
     struct pollfd buf[16];
     const size_t buflen = sizeof(buf);
@@ -188,6 +189,32 @@ static int _ed_epoll_wait(
 
     if (!epolldev || !epoll || !events || maxevents < 0)
         ERAISE(-EINVAL);
+
+    myst_spin_lock(&epoll->lock);
+    locked = true;
+
+    /* Prune the interested FDs that have been closed */
+    {
+        myst_fdtable_t* fdtable = NULL;
+        myst_fdtable_type_t type;
+        myst_fdops_t* fdops;
+        void* object;
+
+        if (!(fdtable = myst_fdtable_current()))
+            ERAISE(-ENOSYS);
+
+        for (epoll_entry_t* src = (epoll_entry_t*)epoll->list.head; src; )
+        {
+            epoll_entry_t* next = src->next;
+            if (myst_fdtable_get_any(
+                fdtable, src->fd, &type, (void**)&fdops, (void**)&object))
+            {
+                myst_list_remove(&epoll->list, (myst_list_node_t*)src);
+                free(src);
+            }
+            src = next;
+        }
+    }
 
     /* Get the number of events */
     nfds = epoll->list.size;
@@ -233,11 +260,17 @@ static int _ed_epoll_wait(
         }
     }
 
+    myst_spin_unlock(&epoll->lock);
+    locked = false;
+
     ECHECK((n = myst_syscall_poll(fds, nfds, timeout)));
 
     /* this should never happen */
     if ((size_t)n > nfds)
         ERAISE(-EINVAL);
+
+    myst_spin_lock(&epoll->lock);
+    locked = true;
 
     /* convert from poll-set back to epoll-set */
     {
@@ -288,6 +321,9 @@ done:
 
     if (fds)
         myst_buf_free(buf, fds);
+
+    if (locked)
+        myst_spin_unlock(&epoll->lock);
 
     return ret;
 }

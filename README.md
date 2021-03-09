@@ -38,7 +38,7 @@ Today, two target implementations are provided:
 The minimalist kernel of Mystikos manages essential computing resources
 inside the TEE, such as CPU/threads, memory, files, networks, etc. It handles
 most of the syscalls that a normal operating system would handle (with
-[limits](SYSCALL-LIMITATIONS.md)).  Many syscalls are handled directly by the
+[limits](doc/syscall-limitations.md)).  Many syscalls are handled directly by the
 kernel while others are delegated to the target.
 
 ![](./arch.png)
@@ -46,14 +46,56 @@ kernel while others are delegated to the target.
 
 # Installation Guide
 
-## From Binaries
+## Verify the Intel SGX DCAP Driver is Installed
 
-You can download the latest binary release [from our builds
-page](https://github.com/deislabs/mystikos/releases)
+Some distributions come with the SGX driver already installed; if it is,
+you don't need to re-install it. You can verify this by running:
 
-**TODO**: Include installation instructions. 
+```bash
+dmesg | grep -i sgx
+```
 
-## From Source
+If the output is blank, install the driver manually by downloading it from Intel.
+
+> NOTE: The script below may not refer to the latest Intel SGX DCAP driver.
+> Check [Intel's SGX Downloads page](https://01.org/intel-software-guard-extensions/downloads)
+> to see if a more recent SGX DCAP driver exists.
+
+```bash
+sudo apt -y install dkms
+wget https://download.01.org/intel-sgx/sgx-dcap/1.7/linux/distro/ubuntu18.04-server/sgx_linux_x64_driver_1.35.bin -O sgx_linux_x64_driver.bin
+chmod +x sgx_linux_x64_driver.bin
+sudo ./sgx_linux_x64_driver.bin
+```
+## Add Intel's repository & install the sgx libraries
+
+```bash
+echo 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu bionic main' | sudo tee /etc/apt/sources.list.d/intel-sgx.list
+wget -qO - https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo apt-key add -
+
+sudo apt update
+
+sudo apt -y install libsgx-enclave-common libsgx-dcap-ql libsgx-dcap-ql-dev
+```
+
+## Download Mystikos
+
+You can [download the latest build here](https://github.com/deislabs/mystikos/releases)
+then simply decompress it, add it to your path, and run it.
+
+```
+# change this to match the latest version
+LATEST='0.1.2'
+RELEASE="mystikos-${LATEST}-x86_64"
+
+# this will create the "mystikos" directory within your current working directory
+curl -sSL --ssl https://github.com/deislabs/mystikos/releases/download/v${LATEST}/${RELEASE}.tar.gz | tar -xzf -
+
+# you can use mystikos from your home directory, or any path
+export PATH="$PATH:$(pwd)/mystikos/bin"
+```
+
+## Install From Source
 
 You may also [build Mystikos from source](BUILDING.md). In our experience, this
 takes about 20 minutes. 
@@ -98,6 +140,7 @@ love your feedback and contributions, too.
 - Key features of Mystikos: [click here](doc/key-features.md)
 - Deep dive into Mystikos architecture: [coming soon]
 - How to implement support for a new TEE: [coming soon]
+- Kernel limitations: [click here](doc/kernel-limitations.md)
 - Multi-processing and multi-threading in Mystikos and limitations: [coming
   soon]
 

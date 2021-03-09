@@ -17,6 +17,8 @@
 #include <myst/panic.h>
 #include <myst/pipedev.h>
 #include <myst/round.h>
+#include <myst/process.h>
+#include <myst/syscall.h>
 
 #define MAGIC 0x9906acdc
 
@@ -150,6 +152,9 @@ static ssize_t _pd_read(
     if (!buf && count)
         ERAISE(-EINVAL);
 
+    if (pipe->mode == O_WRONLY)
+        ERAISE(-EBADF);
+
     if (count == 0)
         goto done;
 
@@ -267,6 +272,16 @@ static ssize_t _pd_write(
 
     if (!buf && count)
         ERAISE(-EINVAL);
+
+    if (pipe->mode == O_RDONLY)
+        ERAISE(-EBADF);
+
+    /* if there are no readers, then raise EPIPE */
+    if (pipe->impl->nreaders == 0)
+    {
+        myst_syscall_kill(myst_getpid(), SIGPIPE);
+        ERAISE(-EPIPE);
+    }
 
     if (count == 0)
         goto done;

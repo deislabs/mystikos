@@ -1,62 +1,163 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#
+# This program provides a convenient utility for "building" a compatible 
+# application image from pre-existing application image formats,
+# such as Docker images or QEMU VHDs.
+#
+
+function print_usage {
+    echo "$(basename $0): a useful shell script for converting Docker images into Mystikos cpio archives"
+    echo
+    echo "Usage: $(basename $0) [-o file] [-d [file]] [[-i] image]"
+    echo
+    echo "  -d file     Build docker image from the named file"
+    echo "              Defaults to './Dockerfile' if no option specified"
+    echo "  -i image    Specify an existing Docker image name to build from"
+    echo "              If neither -d nor -i are specified, will look for Dockerfile in current dir"
+    echo "  -f format   Specify the output format. Options: dir, cpio. Default: 'dir'"
+    echo "  -o      Specify the name of the output file or directory"
+    echo "          If not specified, defaults to 'appdir'"
+    echo "  -h      Print this help message"
+    echo
+}
+
+
+while getopts 'hvd:i:f:o:' OPTION; do
+    case "$OPTION" in
+        d )
+            DOCKER_FILE=${OPTARG:-Dockerfile}
+            ;;
+        f )
+            OUTPUT_FORMAT="$OPTARG"
+            ;;
+        h )
+            print_usage;
+            exit 0
+            ;;
+        i )
+            IMAGE_NAME="$OPTARG"
+            ;;
+        o )
+            OUTPUT_NAME="$OPTARG"
+            ;;
+        v )
+            VERBOSE=true;
+            set -x
+            ;;
+        * )
+            print_usage;
+            exit 1
+            ;;
+    esac
+done
+
+### defaults
+
+# if no options specified, assume first argument is an image name
+shift $((OPTIND-1))
+IMAGE_NAME=${IMAGE_NAME:-$@}
+
+OUTPUT_NAME=${OUTPUT_NAME:-appdir}
+DELETE_OUTPUT=${DELETE_OUTPUT:-false}
+OUTPUT_FORMAT=${OUTPUT_FORMAT:-dir}
+
+### end defaults
 
 set -e
-set -x
 
-IMAGE_NAME="$1"
+# if image name is not specified and the directory contains a Dockerfile
+# or if the non-option parameter is the literal "Dockerfile"
+# then set USE_DOCKERFILE=true
+if [ -z "$IMAGE_NAME" -o "$IMAGE_NAME" == "Dockerfile" ]; then
+    USE_DOCKERFILE=true
+    if [ -z "$DOCKER_FILE" -a -f 'Dockerfile' ]; then
+        DOCKER_FILE='./'
+    elif [ ! -f "$DOCKER_FILE" ]; then
+	echo "Could not find specific docker file: $DOCKER_FILE"
+	exit 1
+    fi
+else
+    USE_DOCKERFILE=false
+fi
 
-# Download the docker image from dockerhub, or build it locally
-# from a docker file.
-# If no command line option is provided, it assumes there is a local
-# docke file named exactly as "Dockerfile" in the current directory.
+case "$OUTPUT_FORMAT" in
+    dir )
+        ;;
+    cpio )
+        ;;
+    ext2 )
+        echo "EXT2 format output is not directly supported by this program.";
+        exit 1
+        ;;
+    * )
+        echo "Unsupported output format: '$OUTPUT_FORMAT'.";
+        print_usage
+        ;;
+esac
+
+if [ -z $OUTPUT_NAME ]; then
+    echo "You must specify an output file name with the -o option."
+    echo
+    print_usage
+    exit 1
+fi
+
+# ask before overwriting output target
+if [ -d $OUTPUT_NAME -o -f $OUTPUT_NAME ]; then
+    echo "Output target '$OUTPUT_NAME' will be overwritten by this operation! Are you sure?"
+    select yn in "Yes" "No"; do
+	case $yn in
+	    Yes ) DELETE_OUTPUT=true ; break ;;
+	    No  ) echo "Aborting $(basename $0)"; exit 0 ;;
+	esac
+    done
+fi
+
+
+# Download the docker image from dockerhub, or build it locally from a docker file.
 get_image()
 {
-    if [ -z $IMAGE_NAME ]; then
-        IMAGE_NAME="Dockerfile"
-    fi
-
-    if [ -f "$IMAGE_NAME" ]; then
-        DOCKER_IMG_NAME="temp-docker-image"
-        DOCKER_FILE=$IMAGE_NAME
-        IMAGE_NAME=$DOCKER_IMG_NAME
-        docker build -t $DOCKER_IMG_NAME . -f "$DOCKER_FILE"
+    if $USE_DOCKERFILE; then
+        IMAGE_NAME=$(docker build -q $DOCKER_FILE)
+        DELETE_IMAGE=true
     else
         docker pull $IMAGE_NAME
+	    DELETE_IMAGE=false
     fi
 }
 
 # export a flattened copy of the container
-# note that we have to start up the image to flatten it
-# TODO: there's probably a fancier way to do this with more time
 export_image()
 {
-    docker run -d --name temp-extract $IMAGE_NAME
-    docker stop temp-extract
+    TEMP_FILE=$(mktemp)
+    TEMP_DIR=$(mktemp -d)
 
-    docker export temp-extract -o temp-extract.tar
-    sudo chmod 777 temp-extract.tar
-    docker rm temp-extract
-
-    rm -rf appdir && mkdir appdir
-    tar xf temp-extract.tar -C appdir
-}
-
-# delete artifacts
-clean_up()
-{
-    if [ $DOCKER_IMG_NAME ]; then
-        docker rmi -f $DOCKER_IMG_NAME
+    # note that we have to start up the image to flatten it
+    TEMP_INAME=$(docker run -d $IMAGE_NAME)
+    docker stop $TEMP_INAME >/dev/null
+    docker export $TEMP_INAME -o $TEMP_FILE
+    docker rm $TEMP_INAME >/dev/null
+    if [ -z $DELETE_IMAGE ]; then
+	docker rmi -f $IMAGE_NAME
     fi
-    rm -f temp-extract.tar
+
+    # finally, create the output cpio object from the docker export
+    tar xf $TEMP_FILE -C $TEMP_DIR
+    rm -rf $OUTPUT_NAME
+
+    if [ "$OUTPUT_FORMAT" == "dir" ]; then
+        mv $TEMP_DIR $OUTPUT_NAME
+    elif [ "$OUTPUT_FORMAT" == "cpio" ]; then
+        myst mkcpio $TEMP_DIR $OUTPUT_NAME
+        rm -rf $TEMP_FILE $TEMP_DIR
+   fi
 }
 
 get_image
 export_image
-clean_up
 
-set +x
-echo ""
-echo "  Success! Required files are extracted to appdir."
-echo "  You can run applications with the following commands (after add myst to your path):"
-echo "      myst mkcpio appdir rootfs && myst exec rootfs <cmd> <cmd line options>"
-echo "  For example, myst mkcpio appdir rootfs && myst exec rootfs /bin/ls /bin"
+if $VERBOSE; then
+    set +x
+fi
+
+echo "Success! Application built at ${OUTPUT_NAME}."
