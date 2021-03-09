@@ -9,8 +9,6 @@ ifdef STRACE
 OPTS = --strace
 endif
 
-ROOTHASH=$(SUBOBJDIR)/roothash
-
 APPDIR=$(CURDIR)/appdir
 
 ROOTFS=$(CURDIR)/rootfs
@@ -21,7 +19,7 @@ ROOTFS=$(CURDIR)/rootfs
 ##
 ##==============================================================================
 
-all: $(APPDIR) $(APPDIR)/target $(APPDIR)/bin/run $(ROOTFS) $(ROOTHASH)
+all: $(APPDIR) $(APPDIR)/target $(APPDIR)/bin/run $(ROOTFS)
 
 $(APPDIR):
 	rm -rf $(APPDIR)
@@ -48,10 +46,7 @@ $(APPDIR)/bin/run: run.c
 
 $(ROOTFS): run.c
 	sudo $(MYST) mkext2 --force $(APPDIR) $(ROOTFS)
-
-$(ROOTHASH): run.c
-	mkdir -p $(SUBOBJDIR)
-	$(MYST) fssig --roothash $(ROOTFS) > $(ROOTHASH)
+	sudo truncate --size=-4096 $(ROOTFS)
 
 ##==============================================================================
 ##
@@ -59,12 +54,10 @@ $(ROOTHASH): run.c
 ##
 ##==============================================================================
 
-RUN = $(RUNTEST) $(MYST_EXEC) $(OPTS) --roothash=$(ROOTHASH) $(ROOTFS)
-
-OPTS += --roothash=$(ROOTHASH)
+RUN = $(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS)
 
 tests: all
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run $(STATUS) $(TEST_FILE)
 
 clean:
-	rm -rf $(APPDIR) $(ROOTFS) $(ROOTHASH)
+	rm -rf $(APPDIR) $(ROOTFS)

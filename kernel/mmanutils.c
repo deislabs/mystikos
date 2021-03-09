@@ -188,6 +188,10 @@ void* myst_mmap(
 
     (void)flags;
 
+    // Linux ignores fd when the MAP_ANONYMOUS flag is present
+    if (flags & MAP_ANONYMOUS)
+        fd = -1;
+
     /* check file permissions upfront */
     if (fd >= 0)
     {

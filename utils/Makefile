@@ -27,3 +27,6 @@ CFLAGS += $(GCOV_CFLAGS)
 endif
 
 include $(TOP)/rules.mak
+
+k:
+	$(MAKE) -C ../kernel
