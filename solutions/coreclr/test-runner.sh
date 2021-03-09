@@ -62,10 +62,10 @@ if [[ -f FAILED-134 ]]; then
 	cat FAILED-134
 fi
 
-if [[ -f FAILED-124 ]]; then
+if [[ -f FAILED-137 ]]; then
 	echo "****************************************"
-	echo "Timed out count: $(wc -l FAILED-124)"
-	cat FAILED-124
+	echo "Timed out and Killed count: $(wc -l FAILED-137)"
+	cat FAILED-137
 fi
 
 if [[ -f FAILED-1 ]]; then
