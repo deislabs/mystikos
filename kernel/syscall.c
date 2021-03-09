@@ -2275,10 +2275,6 @@ done:
         goto done;           \
     } while (0)
 
-void syscall_break_point()
-{
-}
-
 long myst_syscall(long n, long params[6])
 {
     long syscall_ret = 0;
@@ -3866,11 +3862,6 @@ long myst_syscall(long n, long params[6])
             struct timespec* tp = (struct timespec*)x2;
 
             _strace(n, "clk_id=%u tp=%p", clk_id, tp);
-
-            if (tp == NULL)
-            {
-                syscall_break_point();
-            }
 
             BREAK(_return(n, myst_syscall_clock_gettime(clk_id, tp)));
         }
