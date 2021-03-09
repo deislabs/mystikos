@@ -130,17 +130,47 @@ done:
     return ret;
 }
 
+static myst_fs_t* _tmpfs;
+
+static int _init_tmpfs(const char* target)
+{
+    int ret = 0;
+    static myst_fs_t* fs;
+    const mode_t mode = 0777;
+
+    if (myst_mkdirhier(target, mode) != 0)
+    {
+        myst_eprintf("cannot create %s directory\n", target);
+        ERAISE(-EINVAL);
+    }
+
+    if (myst_init_ramfs(myst_mount_resolve, &fs) != 0)
+    {
+        myst_eprintf("cannot initialize file system: %s\n", target);
+        ERAISE(-EINVAL);
+    }
+
+    if (myst_mount(fs, "/", target) != 0)
+    {
+        myst_eprintf("cannot mount %s\n", target);
+        ERAISE(-EINVAL);
+    }
+
+    if (strcmp(target, "/tmp") == 0)
+        _tmpfs = fs;
+
+done:
+    return ret;
+}
+
 static int _create_standard_directories(void)
 {
     int ret = 0;
     const mode_t mode = 0777;
 
-    /* create /tmp if it does not already exist */
-    if (myst_mkdirhier("/tmp", mode) != 0)
-    {
-        myst_eprintf("cannot create the /tmp directory\n");
-        ERAISE(-EINVAL);
-    }
+    ECHECK(_init_tmpfs("/tmp"));
+    ECHECK(_init_tmpfs("/run"));
+    ECHECK(_init_tmpfs("/proc"));
 
     if (myst_mkdirhier("/proc/self/fd", mode) != 0)
     {
@@ -253,15 +283,28 @@ static const char* _getenv(const char** envp, const char* varname)
     return ret;
 }
 
-static int _create_tls_credentials()
+static int _create_tls_credentials(myst_fs_t* fs)
 {
     int ret = -EINVAL;
     uint8_t* cert = NULL;
     size_t cert_size = 0;
     uint8_t* pkey = NULL;
     size_t pkey_size = 0;
+    const char* certificate_path = MYST_CERTIFICATE_PATH;
+    const char* private_key_path = MYST_PRIVATE_KEY_PATH;
 
-    assert(_fs != NULL);
+    assert(fs != NULL);
+
+    /* clip the /tmp prefix from certificate_path and private_key_path */
+    {
+        const char prefix[] = "/tmp";
+
+        if (strncmp(certificate_path, prefix, sizeof(prefix)-1) == 0)
+            certificate_path += sizeof(prefix) - 1;
+
+        if (strncmp(private_key_path, prefix, sizeof(prefix)-1) == 0)
+            private_key_path += sizeof(prefix) - 1;
+    }
 
     myst_file_t* file = NULL;
     int flags = O_CREAT | O_WRONLY;
@@ -271,15 +314,15 @@ static int _create_tls_credentials()
     ECHECK(myst_tcall(MYST_TCALL_GEN_CREDS, params));
 
     // Save the certificate
-    ECHECK((_fs->fs_open)(_fs, MYST_CERTIFICATE_PATH, flags, 0444, NULL, &file));
-    ECHECK((_fs->fs_write)(_fs, file, cert, cert_size) == (int64_t)cert_size);
-    ECHECK((_fs->fs_close)(_fs, file));
+    ECHECK((fs->fs_open)(fs, certificate_path, flags, 0444, NULL, &file));
+    ECHECK((fs->fs_write)(fs, file, cert, cert_size) == (int64_t)cert_size);
+    ECHECK((fs->fs_close)(fs, file));
     file = NULL;
 
     // Save the private key
-    ECHECK((_fs->fs_open)(_fs, MYST_PRIVATE_KEY_PATH, flags, 0444, NULL, &file));
-    ECHECK((_fs->fs_write)(_fs, file, pkey, pkey_size) == (int64_t)pkey_size);
-    ECHECK((_fs->fs_close)(_fs, file));
+    ECHECK((fs->fs_open)(fs, private_key_path, flags, 0444, NULL, &file));
+    ECHECK((fs->fs_write)(fs, file, pkey, pkey_size) == (int64_t)pkey_size);
+    ECHECK((fs->fs_close)(fs, file));
     file = NULL;
 
     ret = 0;
@@ -294,7 +337,7 @@ done:
 
     if (file)
     {
-        _fs->fs_close(_fs, file);
+        fs->fs_close(fs, file);
     }
 
     return ret;
@@ -584,7 +627,9 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     if (want_tls_creds != NULL)
     {
         if (strcmp(want_tls_creds, "1") == 0)
-            ECHECK(_create_tls_credentials());
+        {
+            ECHECK(_create_tls_credentials(_tmpfs));
+        }
         else if (strcmp(want_tls_creds, "0") != 0)
         {
             myst_eprintf(
@@ -725,6 +770,9 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     ret = exit_status;
 
 done:
+
+    if (ret < 0)
+        myst_eprintf("%s() failed: ret=%d\n", __FUNCTION__, ret);
 
     return ret;
 }

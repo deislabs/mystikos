@@ -161,7 +161,7 @@ struct myst_fs
     int (*fs_fstatfs)(myst_fs_t* fs, myst_file_t* file, struct statfs* buf);
 };
 
-int myst_remove_fd_link(myst_fs_t* fs, myst_file_t* file, int fd);
+int myst_remove_fd_link(int fd);
 
 int myst_load_fs(myst_mount_resolve_callback_t resolve_cb, const char* source, const char* key, myst_fs_t** fs_out);
 
