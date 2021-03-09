@@ -128,9 +128,7 @@ int myst_fdtable_cloexec(myst_fdtable_t* fdtable)
 
                     if (entry->type == MYST_FDTABLE_TYPE_FILE)
                     {
-                        myst_fs_t* fs = entry->device;
-                        myst_file_t* file = entry->object;
-                        myst_remove_fd_link(fs, file, i);
+                        myst_remove_fd_link(i);
                     }
 
                     memset(entry, 0, sizeof(myst_fdtable_entry_t));
@@ -163,9 +161,7 @@ int myst_fdtable_free(myst_fdtable_t* fdtable)
 
             if (entry->type == MYST_FDTABLE_TYPE_FILE)
             {
-                myst_fs_t* fs = entry->device;
-                myst_file_t* file = entry->object;
-                myst_remove_fd_link(fs, file, i);
+                myst_remove_fd_link(i);
             }
 
             memset(entry, 0, sizeof(myst_fdtable_entry_t));
@@ -337,9 +333,7 @@ int myst_fdtable_dup(
 
                 if (new->type == MYST_FDTABLE_TYPE_FILE)
                 {
-                    myst_fs_t* fs = new->device;
-                    myst_file_t* file = new->object;
-                    myst_remove_fd_link(fs, file, newfd);
+                    myst_remove_fd_link(newfd);
                 }
             }
         }

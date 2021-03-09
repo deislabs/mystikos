@@ -730,7 +730,7 @@ long myst_syscall_close(int fd)
     if (type == MYST_FDTABLE_TYPE_FILE)
     {
         /* why does this sometimes fail? */
-        myst_remove_fd_link(device, object, fd);
+        myst_remove_fd_link(fd);
     }
 
     myst_mman_close_notify(fd);
