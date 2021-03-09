@@ -462,6 +462,9 @@ static pair_t _pairs[] = {
     {SYS_myst_oe_result_str, "SYS_myst_oe_result_str"},
 };
 
+// The kernel should eventually use _bad_addr() to check all incoming addresses
+// from user space. This is a stop gap until the kernel is able to check
+// the access rights for a given address (memory obtained with mman and brk).
 static bool _bad_addr(const void* p)
 {
     if (p == (void*)0xffffffffffffffff)
