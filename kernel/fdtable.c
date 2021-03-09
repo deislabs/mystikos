@@ -432,7 +432,7 @@ int myst_fdtable_get_any(
         ERAISE(-EINVAL);
 
     if (!(fd >= 0 && fd < MYST_FDTABLE_SIZE))
-        ERAISE(-EINVAL);
+        ERAISE(-EBADF);
 
     myst_spin_lock(&fdtable->lock);
     {

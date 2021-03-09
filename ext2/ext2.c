@@ -3042,11 +3042,9 @@ int ext2_open(
     if (S_ISLNK(inode.i_mode) && (flags & O_NOFOLLOW))
         ERAISE(-ELOOP);
 
-    /* fail if not a directory */
+    /* fail if not a directory (check only for non-existent files) */
     if ((flags & O_DIRECTORY) && !S_ISDIR(inode.i_mode))
-    {
         ERAISE(-ENOTDIR);
-    }
 
     /* Allocate and initialize the file object */
     {
@@ -4269,6 +4267,13 @@ static ssize_t _ext2_pread(
     if (!buf && count)
         ERAISE(-EINVAL);
 
+    if (offset < 0)
+        ERAISE(-EFAULT);
+
+    /* fail for directories */
+    if (S_ISDIR(file->inode.i_mode))
+        ERAISE(-EISDIR);
+
     old_offset = file->offset;
     file->offset = offset;
 
@@ -4299,11 +4304,24 @@ static ssize_t _ext2_pwrite(
     if (!buf && count)
         ERAISE(-EINVAL);
 
+    if (offset < 0)
+        ERAISE(-EINVAL);
+
+    /* save the original offset */
     old_offset = file->offset;
-    file->offset = offset;
+
+    // When opened for append, Linux pwrite() appends data to the end of file
+    // regadless of the offset.
+    if ((file->operating & O_APPEND))
+        file->offset = _inode_get_size(&file->inode);
+    else
+        file->offset = offset;
 
     n = ext2_write(fs, file, buf, count);
+
+    /* restore the original offset */
     file->offset = old_offset;
+
     ECHECK(n);
     ret = n;
 

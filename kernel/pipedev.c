@@ -505,6 +505,11 @@ static int _pd_fcntl(
             ret = p->pipesz;
             goto done;
         }
+        case F_GETFL:
+        {
+            ret = pipe->mode | pipe->flags;
+            goto done;
+        }
         default:
         {
             ERAISE(-ENOTSUP);

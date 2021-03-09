@@ -280,6 +280,22 @@ index afec985a..4cd45927 100644
  	return p;
  }
  
+diff --git a/src/linux/epoll.c b/src/linux/epoll.c
+index deff5b10..fd66b82a 100644
+--- a/src/linux/epoll.c
++++ b/src/linux/epoll.c
+@@ -5,6 +5,11 @@
+ 
+ int epoll_create(int size)
+ {
++        if (size < 0)
++        {
++            errno = EINVAL;
++            return -1;
++        }
+ 	return epoll_create1(0);
+ }
+ 
 diff --git a/src/misc/syscall.c b/src/misc/syscall.c
 index 6f3ef656..614121c3 100644
 --- a/src/misc/syscall.c

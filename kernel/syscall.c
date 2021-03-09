@@ -462,6 +462,30 @@ static pair_t _pairs[] = {
     {SYS_myst_oe_result_str, "SYS_myst_oe_result_str"},
 };
 
+static bool _bad_addr(const void* p)
+{
+    if (p == (void*)0xffffffffffffffff)
+        return true;
+
+    return false;
+}
+
+static bool _iov_bad_addr(const struct iovec* iov, int iovcnt)
+{
+    if (iov)
+    {
+        for (int i = 0; i < iovcnt; i++)
+        {
+            const struct iovec* v = &iov[i];
+
+            if (v->iov_len && _bad_addr(v->iov_base))
+                return true;
+        }
+    }
+
+    return false;
+}
+
 static size_t _n_pairs = sizeof(_pairs) / sizeof(_pairs[0]);
 
 const char* syscall_str(long n)
@@ -784,11 +808,38 @@ long myst_syscall_pread(int fd, void* buf, size_t count, off_t offset)
 {
     long ret = 0;
     myst_fdtable_t* fdtable = myst_fdtable_current();
-    myst_fs_t* fs;
-    myst_file_t* file;
+    myst_fdtable_type_t type;
+    void* device = NULL;
+    void* object = NULL;
 
-    ECHECK(myst_fdtable_get_file(fdtable, fd, &fs, &file));
-    ret = (*fs->fs_pread)(fs, file, buf, count, offset);
+    if (!buf && count)
+        ERAISE(-EFAULT);
+
+    if (offset < 0)
+        ERAISE(-EINVAL);
+
+    ECHECK(myst_fdtable_get_any(fdtable, fd, &type, &device, &object));
+
+    switch (type)
+    {
+        case MYST_FDTABLE_TYPE_FILE:
+        {
+            myst_fs_t* fs = device;
+            myst_file_t* file = object;
+            ret = (*fs->fs_pread)(fs, file, buf, count, offset);
+            break;
+        }
+        case MYST_FDTABLE_TYPE_PIPE:
+        {
+            ret = -ESPIPE;
+            break;
+        }
+        default:
+        {
+            ret = -ENOENT;
+            break;
+        }
+    }
 
 done:
     return ret;
@@ -798,11 +849,38 @@ long myst_syscall_pwrite(int fd, const void* buf, size_t count, off_t offset)
 {
     long ret = 0;
     myst_fdtable_t* fdtable = myst_fdtable_current();
-    myst_fs_t* fs;
-    myst_file_t* file;
+    myst_fdtable_type_t type;
+    void* device = NULL;
+    void* object = NULL;
 
-    ECHECK(myst_fdtable_get_file(fdtable, fd, &fs, &file));
-    ret = (*fs->fs_pwrite)(fs, file, buf, count, offset);
+    if (!buf && count)
+        ERAISE(-EFAULT);
+
+    if (offset < 0)
+        ERAISE(-EINVAL);
+
+    ECHECK(myst_fdtable_get_any(fdtable, fd, &type, &device, &object));
+
+    switch (type)
+    {
+        case MYST_FDTABLE_TYPE_FILE:
+        {
+            myst_fs_t* fs = device;
+            myst_file_t* file = object;
+            ret = (*fs->fs_pwrite)(fs, file, buf, count, offset);
+            break;
+        }
+        case MYST_FDTABLE_TYPE_PIPE:
+        {
+            ret = -ESPIPE;
+            break;
+        }
+        default:
+        {
+            ret = -ENOENT;
+            break;
+        }
+    }
 
 done:
     return ret;
@@ -816,6 +894,9 @@ long myst_syscall_readv(int fd, const struct iovec* iov, int iovcnt)
     void* object = NULL;
     myst_fdtable_type_t type;
     myst_fdops_t* fdops;
+
+    if (_iov_bad_addr(iov, iovcnt))
+        ERAISE(-EFAULT);
 
     ECHECK(myst_fdtable_get_any(fdtable, fd, &type, &device, &object));
     fdops = device;
@@ -834,6 +915,9 @@ long myst_syscall_writev(int fd, const struct iovec* iov, int iovcnt)
     void* object = NULL;
     myst_fdtable_type_t type;
     myst_fdops_t* fdops;
+
+    if (_iov_bad_addr(iov, iovcnt))
+        ERAISE(-EFAULT);
 
     ECHECK(myst_fdtable_get_any(fdtable, fd, &type, &device, &object));
     fdops = device;
@@ -1144,14 +1228,29 @@ long myst_syscall_chdir(const char* path)
     char buf[PATH_MAX];
     char buf2[PATH_MAX];
 
+    if (_bad_addr(path))
+        ERAISE(-EFAULT);
+
     myst_spin_lock(&process_thread->main.cwd_lock);
 
     if (!path)
         ERAISE(-EINVAL);
 
+    /* filenames cannot be longer than NAME_MAX in Linux */
+    if (strlen(myst_basename(path)) > NAME_MAX)
+        ERAISE(-ENAMETOOLONG);
+
     ECHECK(myst_path_absolute_cwd(
         process_thread->main.cwd, path, buf, sizeof(buf)));
     ECHECK(myst_normalize(buf, buf2, sizeof(buf2)));
+
+    /* fail if the directory does not exist */
+    {
+        struct stat buf;
+
+        if (myst_syscall_stat(buf2, &buf) != 0 || !S_ISDIR(buf.st_mode))
+            ERAISE(-ENOENT);
+    }
 
     char* tmp = strdup(buf2);
     if (tmp == NULL)
@@ -1373,6 +1472,9 @@ long myst_syscall_pipe2(int pipefd[2], int flags)
 
     pipefd[0] = fd0;
     pipefd[1] = fd1;
+
+    if (__options.trace_syscalls)
+        myst_eprintf("pipe2(): [%d:%d]\n", fd0, fd1);
 
 done:
     return ret;
@@ -2082,6 +2184,9 @@ static ssize_t _dev_urandom_readv(const struct iovec* iov, int iovcnt)
     if (!iov && iovcnt)
         ERAISE(-EINVAL);
 
+    if (_iov_bad_addr(iov, iovcnt))
+        ERAISE(-EFAULT);
+
     for (int i = 0; i < iovcnt; i++)
     {
         if (iov[i].iov_base && iov[i].iov_len)
@@ -2166,6 +2271,10 @@ done:
         syscall_ret = (RET); \
         goto done;           \
     } while (0)
+
+void syscall_break_point()
+{
+}
 
 long myst_syscall(long n, long params[6])
 {
@@ -2859,7 +2968,12 @@ long myst_syscall(long n, long params[6])
                     fn, child_stack, flags, arg, ptid, newtls, ctid)));
         }
         case SYS_fork:
-            break;
+        {
+            _strace(n, NULL);
+
+            /* return as child but let parent hang */
+            BREAK(_return(n, 0));
+        }
         case SYS_vfork:
             break;
         case SYS_execve:
@@ -3750,6 +3864,11 @@ long myst_syscall(long n, long params[6])
 
             _strace(n, "clk_id=%u tp=%p", clk_id, tp);
 
+            if (tp == NULL)
+            {
+                syscall_break_point();
+            }
+
             BREAK(_return(n, myst_syscall_clock_gettime(clk_id, tp)));
         }
         case SYS_clock_getres:
@@ -3977,7 +4096,18 @@ long myst_syscall(long n, long params[6])
         case SYS_eventfd:
             break;
         case SYS_fallocate:
-            break;
+        {
+            int fd = (int)x1;
+            int mode = (int)x2;
+            off_t offset = (off_t)x3;
+            off_t len = (off_t)x4;
+
+            _strace(n, "fd=%d mode=%d offset=%ld len=%ld",
+                fd, mode, offset, len);
+
+            /* ATTN: treated as advisory only */
+            BREAK(_return(n, 0));
+        }
         case SYS_timerfd_settime:
             break;
         case SYS_timerfd_gettime:
@@ -4518,6 +4648,9 @@ static myst_spinlock_t _set_time_lock = MYST_SPINLOCK_INITIALIZER;
 
 long myst_syscall_clock_gettime(clockid_t clk_id, struct timespec* tp)
 {
+    if (!tp)
+        return -EFAULT;
+
     if (clk_id < 0)
     {
         // ATTN: Support Dynamic clocks

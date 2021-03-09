@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
+#include <sys/types.h>
 
 #include <myst/eraise.h>
 #include <myst/fdops.h>
@@ -20,6 +22,9 @@ static ssize_t _get_iov_size(const struct iovec* iov, int iovcnt)
         const struct iovec* v = &iov[i];
 
         if (!v->iov_base && v->iov_len)
+            ERAISE(-EINVAL);
+
+        if (v->iov_len == (size_t)-1)
             ERAISE(-EINVAL);
 
         size += v->iov_len;
