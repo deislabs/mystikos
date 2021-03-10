@@ -123,34 +123,35 @@ static long _fcntl(int fd, int cmd, long arg)
         case F_GETOWN:
         case F_SETOWN:
         {
-            break;
+            if (myst_fcntl_ocall(&retval, fd, cmd, arg) != OE_OK)
+            {
+                ret = -EINVAL;
+                goto done;
+            }
+
+            ret = retval;
+            goto done;
+        }
+        case F_SETLKW:
+        {
+            const struct flock* flock = (const struct flock*)arg;
+
+            if (myst_fcntl_setlkw_ocall(&retval, fd, flock) != OE_OK)
+            {
+                ret = -EINVAL;
+                goto done;
+            }
+
+            ret = retval;
+            goto done;
         }
         /* unsupported */
-        case F_DUPFD:
-        case F_DUPFD_CLOEXEC:
-        case F_GETLK64:
-        case F_OFD_GETLK:
-        case F_SETLK64:
-        case F_SETLKW64:
-        case F_OFD_SETLK:
-        case F_OFD_SETLKW:
-        case F_SETOWN_EX:
-        case F_GETOWN_EX:
-        case F_GETOWNER_UIDS:
         default:
         {
             ret = -ENOTSUP;
             goto done;
         }
     }
-
-    if (myst_fcntl_ocall(&retval, fd, cmd, arg) != OE_OK)
-    {
-        ret = -EINVAL;
-        goto done;
-    }
-
-    ret = retval;
 
 done:
     return ret;

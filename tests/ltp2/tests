@@ -17,6 +17,7 @@
 /ltp/testcases/kernel/syscalls/fcntl/fcntl28
 /ltp/testcases/kernel/syscalls/fcntl/fcntl29
 /ltp/testcases/kernel/syscalls/fpathconf/fpathconf01
+/ltp/testcases/kernel/syscalls/fsync/fsync02
 /ltp/testcases/kernel/syscalls/ftruncate/ftruncate01
 /ltp/testcases/kernel/syscalls/futex/futex_wait01
 /ltp/testcases/kernel/syscalls/getcwd/getcwd02

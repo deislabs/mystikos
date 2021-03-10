@@ -155,6 +155,8 @@ enclave
 
         long myst_fcntl_ocall(int fd, int cmd, long arg);
 
+        long myst_fcntl_setlkw_ocall(int fd, [in] const struct flock* arg);
+
         long myst_bind_ocall(
             int sockfd,
             [in, size=addrlen] const struct sockaddr* addr,
