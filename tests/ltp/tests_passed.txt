@@ -1,7 +1,9 @@
 /ltp/testcases/kernel/syscalls/chdir/chdir02
+/ltp/testcases/kernel/syscalls/chdir/chdir04
 /ltp/testcases/kernel/syscalls/chmod/chmod02
 /ltp/testcases/kernel/syscalls/chown/chown01
 /ltp/testcases/kernel/syscalls/close/close01
+/ltp/testcases/kernel/syscalls/close/close02
 /ltp/testcases/kernel/syscalls/close/close08
 /ltp/testcases/kernel/syscalls/dup/dup01
 /ltp/testcases/kernel/syscalls/dup/dup03
@@ -10,6 +12,7 @@
 /ltp/testcases/kernel/syscalls/dup2/dup202
 /ltp/testcases/kernel/syscalls/dup3/dup3_01
 /ltp/testcases/kernel/syscalls/dup3/dup3_02
+/ltp/testcases/kernel/syscalls/fallocate/fallocate03
 /ltp/testcases/kernel/syscalls/fcntl/fcntl10
 /ltp/testcases/kernel/syscalls/fcntl/fcntl27
 /ltp/testcases/kernel/syscalls/fcntl/fcntl28
@@ -26,7 +29,6 @@
 /ltp/testcases/kernel/syscalls/getgid/getgid01
 /ltp/testcases/kernel/syscalls/getgid/getgid03
 /ltp/testcases/kernel/syscalls/gethostname/gethostname01
-/ltp/testcases/kernel/syscalls/getitimer/getitimer03
 /ltp/testcases/kernel/syscalls/getpagesize/getpagesize01
 /ltp/testcases/kernel/syscalls/getpgid/getpgid01
 /ltp/testcases/kernel/syscalls/getpgrp/getpgrp01
@@ -53,15 +55,21 @@
 /ltp/testcases/kernel/syscalls/open/open04
 /ltp/testcases/kernel/syscalls/open/open07
 /ltp/testcases/kernel/syscalls/open/open09
+/ltp/testcases/kernel/syscalls/pathconf/pathconf01
 /ltp/testcases/kernel/syscalls/pipe/pipe06
 /ltp/testcases/kernel/syscalls/pipe/pipe08
 /ltp/testcases/kernel/syscalls/pipe/pipe10
 /ltp/testcases/kernel/syscalls/pipe2/pipe2_01
+/ltp/testcases/kernel/syscalls/pipe2/pipe2_02
 /ltp/testcases/kernel/syscalls/pread/pread01
+/ltp/testcases/kernel/syscalls/pread/pread02
+/ltp/testcases/kernel/syscalls/pread/pread03
 /ltp/testcases/kernel/syscalls/pwrite/pwrite01
+/ltp/testcases/kernel/syscalls/pwrite/pwrite04
 /ltp/testcases/kernel/syscalls/read/read04
 /ltp/testcases/kernel/syscalls/readdir/readdir01
 /ltp/testcases/kernel/syscalls/readv/readv01
+/ltp/testcases/kernel/syscalls/readv/readv02
 /ltp/testcases/kernel/syscalls/rt_sigaction/rt_sigaction01
 /ltp/testcases/kernel/syscalls/sbrk/sbrk02
 /ltp/testcases/kernel/syscalls/sched_yield/sched_yield01
@@ -75,6 +83,7 @@
 /ltp/testcases/kernel/syscalls/setitimer/setitimer01
 /ltp/testcases/kernel/syscalls/setitimer/setitimer03
 /ltp/testcases/kernel/syscalls/setpgrp/setpgrp01
+/ltp/testcases/kernel/syscalls/settimeofday/settimeofday01
 /ltp/testcases/kernel/syscalls/sigaction/sigaction02
 /ltp/testcases/kernel/syscalls/sigaltstack/sigaltstack01
 /ltp/testcases/kernel/syscalls/sigaltstack/sigaltstack02
@@ -95,6 +104,7 @@
 /ltp/testcases/kernel/syscalls/symlink/symlink05
 /ltp/testcases/kernel/syscalls/sysconf/sysconf01
 /ltp/testcases/kernel/syscalls/sysinfo/sysinfo01
+/ltp/testcases/kernel/syscalls/syslog/syslogtst
 /ltp/testcases/kernel/syscalls/time/time01
 /ltp/testcases/kernel/syscalls/time/time02
 /ltp/testcases/kernel/syscalls/times/times01
@@ -102,4 +112,5 @@
 /ltp/testcases/kernel/syscalls/truncate/truncate01
 /ltp/testcases/kernel/syscalls/uname/uname01
 /ltp/testcases/kernel/syscalls/uname/uname03
+/ltp/testcases/kernel/syscalls/wait/wait01
 /ltp/testcases/kernel/syscalls/waitpid/waitpid04

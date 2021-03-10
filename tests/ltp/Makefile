@@ -4,7 +4,7 @@ include $(TOP)/defs.mak
 APPDIR=appdir
 APPBUILDER=$(TOP)/scripts/appbuilder
 
-TEST_FILE=ltp_enabled.txt
+TEST_FILE=tests_passed.txt
 TESTS=$(shell cat $(TEST_FILE))
 
 all:
@@ -25,6 +25,11 @@ rootfs: $(APPDIR)
 
 ifdef STRACE
 OPTS = --strace
+endif
+
+ifdef TEST
+one:
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs $(TEST)
 endif
 
 tests:
