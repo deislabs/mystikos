@@ -11,7 +11,7 @@ int main(int argc, const char* argv[])
     if (strcmp(getenv("MYST_TARGET"), "sgx") == 0)
     {
         char line[1024];
-        FILE* fp = fopen("/tmp/myst.key", "r");
+        FILE* fp = fopen("tmp/myst.key", "r");
         assert(fp != NULL);
 
         int linenum = 0;

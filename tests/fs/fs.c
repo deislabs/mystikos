@@ -71,10 +71,8 @@ void test_readv(void)
         assert(stat("/proc/self/fd", &st) == 0);
         assert(lstat(fdlink, &st) == 0);
         assert(stat(fdlink, &st) == 0);
-memset(target, 0, sizeof(target));
         ssize_t n = readlink(fdlink, target, sizeof(target));
         assert(n > 0);
-printf("TARGET{%s}\n", target);
         assert(memcmp(target, "/test_readv", 11) == 0);
     }
 
