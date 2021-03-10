@@ -1,4 +1,5 @@
 .PHONY: ext2fs
+.PHONY: tests
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
@@ -21,7 +22,7 @@ $(error "bad value for FS: must be hostfs or ext2fs")
 endif
 
 # select lines from tests without '#' in the first column
-TESTS=$(shell grep -v "^\#" tests.$(FS))
+TESTS=$(shell grep -v "^\#" tests)
 
 # overlayfs directories
 LOWERDIR=$(CURDIR)/appdir
@@ -94,5 +95,7 @@ fetch:
 find:
 	find appdir/ltp/testcases/kernel/syscalls -type f -executable -print
 
-t:
-	make FS=hostfs TEST=/ltp/testcases/kernel/syscalls/readv/readv01
+sort:
+	sort tests | uniq > .tests
+	cp .tests tests
+	rm -f .tests
