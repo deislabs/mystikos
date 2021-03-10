@@ -131,8 +131,10 @@ done:
 }
 
 static myst_fs_t* _tmpfs;
+static myst_fs_t* _runfs;
+static myst_fs_t* _procfs;
 
-static int _init_tmpfs(const char* target)
+static int _init_tmpfs(const char* target, myst_fs_t** fs_out)
 {
     int ret = 0;
     static myst_fs_t* fs;
@@ -156,8 +158,7 @@ static int _init_tmpfs(const char* target)
         ERAISE(-EINVAL);
     }
 
-    if (strcmp(target, "/tmp") == 0)
-        _tmpfs = fs;
+    *fs_out = fs;
 
 done:
     return ret;
@@ -168,9 +169,9 @@ static int _create_standard_directories(void)
     int ret = 0;
     const mode_t mode = 0777;
 
-    ECHECK(_init_tmpfs("/tmp"));
-    ECHECK(_init_tmpfs("/run"));
-    ECHECK(_init_tmpfs("/proc"));
+    ECHECK(_init_tmpfs("/tmp", &_tmpfs));
+    ECHECK(_init_tmpfs("/run", &_runfs));
+    ECHECK(_init_tmpfs("/proc", &_procfs));
 
     if (myst_mkdirhier("/proc/self/fd", mode) != 0)
     {
@@ -295,15 +296,16 @@ static int _create_tls_credentials(myst_fs_t* fs)
 
     assert(fs != NULL);
 
-    /* clip the /tmp prefix from certificate_path and private_key_path */
+    /* clip the "/tmp" prefix from certificate_path and private_key_path */
     {
         const char prefix[] = "/tmp";
+        const size_t len = sizeof(prefix) - 1;
 
-        if (strncmp(certificate_path, prefix, sizeof(prefix)-1) == 0)
-            certificate_path += sizeof(prefix) - 1;
+        if (strncmp(certificate_path, prefix, len) == 0)
+            certificate_path += len;
 
-        if (strncmp(private_key_path, prefix, sizeof(prefix)-1) == 0)
-            private_key_path += sizeof(prefix) - 1;
+        if (strncmp(private_key_path, prefix, len) == 0)
+            private_key_path += len;
     }
 
     myst_file_t* file = NULL;
@@ -377,6 +379,29 @@ static int _teardown_ramfs(void)
     if ((*_fs->fs_release)(_fs) != 0)
     {
         myst_eprintf("failed to release ramfs\n");
+        return -1;
+    }
+
+    return 0;
+}
+
+static int _teardown_tmpfs(void)
+{
+    if ((*_tmpfs->fs_release)(_tmpfs) != 0)
+    {
+        myst_eprintf("failed to release tmpfs\n");
+        return -1;
+    }
+
+    if ((*_runfs->fs_release)(_runfs) != 0)
+    {
+        myst_eprintf("failed to release runfs\n");
+        return -1;
+    }
+
+    if ((*_procfs->fs_release)(_procfs) != 0)
+    {
+        myst_eprintf("failed to release procfs\n");
         return -1;
     }
 
@@ -746,6 +771,9 @@ int myst_enter_kernel(myst_kernel_args_t* args)
 
     /* unload the debugger symbols */
     myst_syscall_unload_symbols();
+
+    /* Tear down the temporary file systems */
+    _teardown_tmpfs();
 
     /* Tear down the RAM file system */
     _teardown_ramfs();
