@@ -352,8 +352,10 @@ done:
     return ret;
 }
 
-static const char* _inode_target(const inode_t* inode)
+static const char* _inode_target(inode_t* inode)
 {
+    if (inode->vcallback)
+        inode->vcallback(&inode->buf);
     return (const char*)inode->buf.data;
 }
 
@@ -1734,8 +1736,15 @@ static ssize_t _fs_readlink(
     if (!S_ISLNK(inode->mode))
         ERAISE(-EINVAL);
 
-    assert(inode->buf.data);
-    assert(inode->buf.size);
+    if (inode->vcallback)
+    {
+        inode->vcallback(&inode->buf);
+    }
+    else
+    {
+        assert(inode->buf.data);
+        assert(inode->buf.size);
+    }
 
     if (!inode->buf.data || !inode->buf.size)
         ERAISE(-EINVAL);
@@ -2135,6 +2144,7 @@ done:
 int myst_create_virtual_file(
     myst_fs_t* fs,
     const char* pathname,
+    mode_t mode,
     int (*vcallback)(myst_buf_t* buf))
 {
     int ret = 0;
@@ -2143,19 +2153,31 @@ int myst_create_virtual_file(
     if (!_ramfs_valid(ramfs))
         ERAISE(-EINVAL);
 
-    if (!pathname || !vcallback)
+    if (!pathname || !mode || !vcallback)
         ERAISE(-EINVAL);
 
     /* create an empty file */
+    if (S_ISREG(mode))
     {
         myst_file_t* file = NULL;
-        ECHECK((*fs->fs_open)(fs, pathname, O_RDONLY | O_CREAT, S_IFREG, NULL, &file));
+        ECHECK(fs->fs_open(fs, pathname, O_RDONLY | O_CREAT, S_IFREG, NULL, &file));
+        ECHECK(fs->fs_close(fs, file));
+    }
+    else if (S_ISLNK(mode))
+    {
+        /* pass empty target to symlink */
+        char target = '\0';
+        ECHECK(fs->fs_symlink(fs, &target, pathname));
+    }
+    else
+    {
+        ERAISE(-EINVAL);
     }
 
     /* inject vcallback into the inode */
     {
         inode_t* inode = NULL;
-        ECHECK(_path_to_inode(ramfs, pathname, true, NULL, &inode, NULL, NULL));
+        ECHECK(_path_to_inode(ramfs, pathname, false, NULL, &inode, NULL, NULL));
         inode->vcallback = vcallback;
     }
 

@@ -774,12 +774,6 @@ static int _setup_exe_link(const char* path)
     snprintf(buf, sizeof(buf), "/proc/%u/exe", pid);
     ECHECK(myst_syscall_symlink(target, buf));
 
-    snprintf(buf, sizeof(buf), "/proc/self/exe");
-
-    /* ATTN-88746EEE: support /proc/self for multiple processes */
-    if (access(buf, R_OK) != 0)
-        ECHECK(myst_syscall_symlink(target, buf));
-
 done:
     return ret;
 }

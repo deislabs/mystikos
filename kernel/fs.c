@@ -11,6 +11,7 @@
 #include <myst/hex.h>
 #include <myst/kernel.h>
 #include <myst/mount.h>
+#include <myst/process.h>
 #include <myst/pubkey.h>
 #include <myst/roothash.h>
 #include <myst/tcall.h>
@@ -38,11 +39,10 @@ const char* myst_fstype_name(myst_fstype_t fstype)
 int myst_remove_fd_link(int fd)
 {
     int ret = 0;
-
     char path[PATH_MAX];
     const size_t n = sizeof(path);
 
-    if (snprintf(path, n, "/proc/self/fd/%d", fd) >= (int)n)
+    if (snprintf(path, n, "/proc/%d/fd/%d", myst_getpid(), fd) >= (int)n)
         ERAISE(-ENAMETOOLONG);
 
     ECHECK(myst_syscall_unlink(path));
