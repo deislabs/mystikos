@@ -771,8 +771,5 @@ int myst_enter_kernel(myst_kernel_args_t* args)
 
 done:
 
-    if (ret < 0)
-        myst_eprintf("%s() failed: ret=%d\n", __FUNCTION__, ret);
-
     return ret;
 }
