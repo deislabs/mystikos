@@ -21,10 +21,10 @@ HOSTFS=$(CURDIR)/hostfs
 ifdef TEST
 test:
 ifeq ($(ROOTFS),hostfs)
-	- sudo umount $(HOSTFS)
-	rm -rf $(UPPERDIR) $(WORKDIR) $(HOSTFS)
-	mkdir -p $(UPPERDIR) $(WORKDIR) $(HOSTFS)
-	sudo mount -t overlay overlay -o lowerdir=$(LOWERDIR),upperdir=$(UPPERDIR),workdir=$(WORKDIR) $(HOSTFS)
+	- @ sudo umount $(HOSTFS)
+	@ rm -rf $(UPPERDIR) $(WORKDIR) $(HOSTFS)
+	@ mkdir -p $(UPPERDIR) $(WORKDIR) $(HOSTFS)
+	@ sudo mount -t overlay overlay -o lowerdir=$(LOWERDIR),upperdir=$(UPPERDIR),workdir=$(WORKDIR) $(HOSTFS)
 endif
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) $(TEST) $(NL)
 endif
