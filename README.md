@@ -115,6 +115,7 @@ Give it a try and let us know what you think!
 ## Simple Applications
 
 - A Simple "Hello World" in C: [click here](doc/user-getting-started-c.md)
+- A Simple "Hello World" in Rust: [click here](doc/user-getting-started-rust.md)
 - Packaging your "Hello World" app in Docker: [click
   here](doc/user-getting-started-docker-c++.md)
 - Introducing Enclave Configuration with a DotNet program: [click
