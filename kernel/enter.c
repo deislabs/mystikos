@@ -131,7 +131,6 @@ done:
 }
 
 static myst_fs_t* _tmpfs;
-static myst_fs_t* _runfs;
 static myst_fs_t* _procfs;
 
 static int _init_tmpfs(const char* target, myst_fs_t** fs_out)
@@ -170,7 +169,6 @@ static int _create_standard_directories(void)
     const mode_t mode = 0777;
 
     ECHECK(_init_tmpfs("/tmp", &_tmpfs));
-    ECHECK(_init_tmpfs("/run", &_runfs));
     ECHECK(_init_tmpfs("/proc", &_procfs));
 
     if (myst_mkdirhier("/proc/self/fd", mode) != 0)
@@ -390,12 +388,6 @@ static int _teardown_tmpfs(void)
     if ((*_tmpfs->fs_release)(_tmpfs) != 0)
     {
         myst_eprintf("failed to release tmpfs\n");
-        return -1;
-    }
-
-    if ((*_runfs->fs_release)(_runfs) != 0)
-    {
-        myst_eprintf("failed to release runfs\n");
         return -1;
     }
 
