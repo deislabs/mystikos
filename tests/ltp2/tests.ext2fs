@@ -12,7 +12,6 @@
 /ltp/testcases/kernel/syscalls/dup/dup01
 /ltp/testcases/kernel/syscalls/dup/dup04
 /ltp/testcases/kernel/syscalls/dup/dup07
-#/ltp/testcases/kernel/syscalls/epoll/epoll-ltp
 /ltp/testcases/kernel/syscalls/fcntl/fcntl10
 /ltp/testcases/kernel/syscalls/fcntl/fcntl27
 /ltp/testcases/kernel/syscalls/fcntl/fcntl28
@@ -27,17 +26,17 @@
 /ltp/testcases/kernel/syscalls/getgid/getgid01
 /ltp/testcases/kernel/syscalls/gethostname/gethostname01
 /ltp/testcases/kernel/syscalls/getpagesize/getpagesize01
-/ltp/testcases/kernel/syscalls/getpgid/getpgid01
 /ltp/testcases/kernel/syscalls/getpgrp/getpgrp01
 /ltp/testcases/kernel/syscalls/getppid/getppid01
 /ltp/testcases/kernel/syscalls/getrandom/getrandom01
 /ltp/testcases/kernel/syscalls/getrandom/getrandom02
 /ltp/testcases/kernel/syscalls/getrandom/getrandom03
-/ltp/testcases/kernel/syscalls/getsid/getsid01
 /ltp/testcases/kernel/syscalls/gettid/gettid01
 /ltp/testcases/kernel/syscalls/gettimeofday/gettimeofday02
 /ltp/testcases/kernel/syscalls/getuid/getuid01
 /ltp/testcases/kernel/syscalls/llseek/llseek03
+/ltp/testcases/kernel/syscalls/lseek/lseek01
+/ltp/testcases/kernel/syscalls/lseek/lseek07
 /ltp/testcases/kernel/syscalls/memcmp/memcmp01
 /ltp/testcases/kernel/syscalls/memcpy/memcpy01
 /ltp/testcases/kernel/syscalls/memmap/mem03
@@ -58,7 +57,6 @@
 /ltp/testcases/kernel/syscalls/pathconf/pathconf01
 /ltp/testcases/kernel/syscalls/pipe2/pipe2_01
 /ltp/testcases/kernel/syscalls/pipe/pipe06
-/ltp/testcases/kernel/syscalls/pipe/pipe10
 /ltp/testcases/kernel/syscalls/pread/pread01
 /ltp/testcases/kernel/syscalls/pread/pread01_64
 /ltp/testcases/kernel/syscalls/pread/pread02
@@ -87,7 +85,6 @@
 /ltp/testcases/kernel/syscalls/sigaction/sigaction02
 /ltp/testcases/kernel/syscalls/sigaltstack/sigaltstack01
 /ltp/testcases/kernel/syscalls/sigaltstack/sigaltstack02
-/ltp/testcases/kernel/syscalls/signal/signal01
 /ltp/testcases/kernel/syscalls/signal/signal02
 /ltp/testcases/kernel/syscalls/signal/signal03
 /ltp/testcases/kernel/syscalls/signal/signal04
@@ -110,6 +107,3 @@
 /ltp/testcases/kernel/syscalls/writev/writev06
 /ltp/testcases/kernel/syscalls/write/write01
 /ltp/testcases/kernel/syscalls/write/write02
-/ltp/testcases/kernel/syscalls/lseek/lseek01
-/ltp/testcases/kernel/syscalls/lseek/lseek07
-/ltp/testcases/kernel/syscalls/fsync/fsync02

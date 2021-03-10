@@ -1,6 +1,21 @@
 LTP tests
 =========
 
+running tests
+-------------
+
+To run the LTP tests against the ext2fs, do this:
+
+```
+$ make tests FS=ext2fs
+```
+
+To run the LTP tests against the hostfs, do this:
+
+```
+$ make tests FS=hostfs
+```
+
 broken tests
 ------------
 
