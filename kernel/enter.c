@@ -25,6 +25,7 @@
 #include <myst/panic.h>
 #include <myst/printf.h>
 #include <myst/process.h>
+#include <myst/procfs.h>
 #include <myst/pubkey.h>
 #include <myst/ramfs.h>
 #include <myst/signal.h>
@@ -39,7 +40,6 @@
 #define WANT_TLS_CREDENTIAL "MYST_WANT_TLS_CREDENTIAL"
 
 static myst_fs_t* _fs;
-static myst_fs_t* _procfs;
 
 long myst_tcall(long n, long params[6])
 {
@@ -267,40 +267,11 @@ static int _setup_hostfs(const char* rootfs, char* err, size_t err_size)
     }
 
     _create_standard_directories();
-}
-#endif /* MYST_ENABLE_HOSTFS */
-
-static int _setup_procfs(void)
-{
-    int ret = 0;
-
-    if (myst_init_ramfs(myst_mount_resolve, &_procfs) != 0)
-    {
-        myst_eprintf("failed initialize the proc file system\n");
-        ERAISE(-EINVAL);
-    }
-
-    if (myst_mkdirhier("/proc", 777) != 0)
-    {
-        myst_eprintf("cannot create mount point for procfs\n");
-        ERAISE(-EINVAL);
-    }
-
-    if (myst_mount(_procfs, "/", "/proc") != 0)
-    {
-        myst_eprintf("cannot mount proc file system\n");
-        ERAISE(-EINVAL);
-    }
-
-    if (myst_mkdirhier("/proc/self/fd", 777) != 0)
-    {
-        myst_eprintf("cannot create the /proc/self/fd directory\n");
-        ERAISE(-EINVAL);
-    }
 
 done:
     return ret;
 }
+#endif /* MYST_ENABLE_HOSTFS */
 
 static const char* _getenv(const char** envp, const char* varname)
 {
@@ -601,14 +572,6 @@ done:
     return ret;
 }
 
-static int _meminfo_vcallback(myst_buf_t* vbuf)
-{
-    const char alpha[] = "abcdefghijklmnopqrstuvwxyz";
-    myst_buf_clear(vbuf);
-    myst_buf_append(vbuf, alpha, sizeof(alpha));
-    return 0;
-}
-
 int myst_enter_kernel(myst_kernel_args_t* args)
 {
     int ret = 0;
@@ -693,9 +656,6 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     /* Mount the root file system */
     ECHECK(_mount_rootfs(args, fstype));
 
-    /* Setup virtual proc filesystem */
-    _setup_procfs();
-
     /* Generate TLS credentials if needed */
     want_tls_creds = _getenv(args->envp, WANT_TLS_CREDENTIAL);
     if (want_tls_creds != NULL)
@@ -728,6 +688,9 @@ int myst_enter_kernel(myst_kernel_args_t* args)
 
     thread->main.umask = MYST_DEFAULT_UMASK;
 
+    /* Setup virtual proc filesystem */
+    procfs_setup();
+
     if (args->hostname)
         ECHECK(
             myst_syscall_sethostname(args->hostname, strlen(args->hostname)));
@@ -748,8 +711,8 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         ERAISE(-EINVAL);
     }
 
-    /* Create /proc/meminfo */
-    ECHECK(myst_create_virtual_file(_procfs, "/meminfo", _meminfo_vcallback));
+    /* Create top-level proc entries */
+    create_proc_root_entries();
 
     /* Set the 'run-proc' which is called by the target to run new threads */
     ECHECK(myst_tcall_set_run_thread_function(myst_run_thread));

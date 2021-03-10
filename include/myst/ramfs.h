@@ -21,6 +21,7 @@ int myst_ramfs_set_buf(
 int myst_create_virtual_file(
     myst_fs_t* fs,
     const char* pathname,
+    mode_t mode,
     int (*vcallback)(myst_buf_t* buf));
 
 #endif /* _MYST_RAMFS_H */

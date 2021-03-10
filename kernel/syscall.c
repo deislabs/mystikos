@@ -611,7 +611,7 @@ static int _add_fd_link(myst_fs_t* fs, myst_file_t* file, int fd)
 
     ECHECK((*fs->fs_realpath)(fs, file, realpath, sizeof(realpath)));
 
-    if (snprintf(linkpath, n, "/proc/self/fd/%d", fd) >= (int)n)
+    if (snprintf(linkpath, n, "/proc/%d/fd/%d", myst_getpid(), fd) >= (int)n)
         ERAISE(-ENAMETOOLONG);
 
     ECHECK(symlink(realpath, linkpath));

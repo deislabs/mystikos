@@ -14,6 +14,7 @@
 #include <myst/cond.h>
 #include <myst/eraise.h>
 #include <myst/fdtable.h>
+#include <myst/file.h>
 #include <myst/fsgs.h>
 #include <myst/futex.h>
 #include <myst/kernel.h>
@@ -732,6 +733,18 @@ static long _syscall_clone_vfork(
         child->main.prev_process_thread = parent_main_thread;
         parent_main_thread->main.next_process_thread = child;
         myst_spin_unlock(&myst_process_list_lock);
+
+        /* Create /proc/[pid]/fd directory for new thread */
+        {
+            char fdpath[PATH_MAX];
+            const size_t n = sizeof(fdpath);
+            snprintf(fdpath, n, "/proc/%d/fd", child->pid);
+            if (myst_mkdirhier(fdpath, 777) != 0)
+            {
+                myst_eprintf("cannot create the /proc/[pid]/fd directory\n");
+                ERAISE(-EINVAL);
+            }
+        }
     }
 
     cookie = _get_cookie(child);

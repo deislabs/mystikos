@@ -66,9 +66,6 @@ ifndef MYST_SKIP_LIBCXX_TESTS
 DIRS += libcxx
 endif
 
-DIRS += tlscert
-DIRS += wake_and_kill
-
 ifndef MYST_USE_OECACHE
 DIRS += curl
 endif
@@ -83,6 +80,7 @@ include $(TOP)/rules.mak
 
 DIRS += epoll
 DIRS += oe
+DIRS += procfs
 
 ifeq ($(MYST_ENABLE_HOSTFS),1)
 DIRS += hostfs
