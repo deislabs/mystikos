@@ -12,10 +12,20 @@ ifndef ROOTFS
 ROOTFS=rootfs
 endif
 
+# overlayfs directories
+LOWERDIR=$(CURDIR)/appdir
+UPPERDIR=$(CURDIR)/upper
+WORKDIR=$(CURDIR)/work
+HOSTFS=$(CURDIR)/hostfs
+
 ifdef TEST
-SYSCALLS=/ltp/testcases/kernel/syscalls
 test:
-	./clean_hostfs.sh
+ifeq ($(ROOTFS),hostfs)
+	- sudo umount $(HOSTFS)
+	rm -rf $(UPPERDIR) $(WORKDIR) $(HOSTFS)
+	mkdir -p $(UPPERDIR) $(WORKDIR) $(HOSTFS)
+	sudo mount -t overlay overlay -o lowerdir=$(LOWERDIR),upperdir=$(UPPERDIR),workdir=$(WORKDIR) $(HOSTFS)
+endif
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) $(TEST) $(NL)
 endif
 
@@ -52,17 +62,13 @@ OPTS = --strace
 endif
 
 tests:
-ifeq ($(ROOTFS),hostfs)
-	rm -rf hostfs
-	cp -r appdir hostfs
-endif
-	$(foreach i, $(TESTS), ( ./clean_hostfs.sh; $(RUNTEST) $(MYST_EXEC) $(ROOTFS) $(i) $(OPTS) ) $(NL) )
+	$(foreach i, $(TESTS), $(MAKE) TEST=$(i) $(NL) )
 
 all-tests:
 	- $(foreach i, $(ALL), $(RUNTEST) $(MYST_EXEC) rootfs $(i) $(OPTS) && echo $(i) >> ALL $(NL) )
 
 clean:
-	sudo rm -rf $(APPDIR) rootfs appdir
+	sudo rm -rf $(APPDIR) rootfs appdir $(UPPERDIR) $(WORKDIR) $(HOSTFS)
 
 CACHEDIR=$(HOME)/.mystikos/cache/ltp
 
