@@ -333,33 +333,14 @@ static ssize_t _fs_readv(
 {
     hostfs_t* hostfs = (hostfs_t*)fs;
     ssize_t ret = 0;
-    void* buf = NULL;
-    ssize_t len;
-    long tret;
 
-    if (!_hostfs_valid(hostfs) || !_file_valid(file))
+    if (!_hostfs_valid(hostfs) || !file)
         ERAISE(-EINVAL);
 
-    ECHECK(len = myst_iov_len(iov, iovcnt));
-
-    if (len == 0)
-        goto done;
-
-    if (!(buf = calloc(len, 1)))
-        ERAISE(-ENOMEM);
-
-    long params[6] = {file->fd, (long)buf, len};
-    ECHECK((tret = myst_tcall(SYS_read, params)));
-
-    ECHECK(myst_iov_scatter(iov, iovcnt, buf, len));
-
-    ret = tret;
+    ret = myst_fdops_readv(&fs->fdops, file, iov, iovcnt);
+    ECHECK(ret);
 
 done:
-
-    if (buf)
-        free(buf);
-
     return ret;
 }
 
@@ -371,28 +352,14 @@ static ssize_t _fs_writev(
 {
     hostfs_t* hostfs = (hostfs_t*)fs;
     ssize_t ret = 0;
-    void* buf = NULL;
-    ssize_t len;
-    long tret;
 
-    if (!_hostfs_valid(hostfs) || !_file_valid(file))
+    if (!_hostfs_valid(hostfs) || !file)
         ERAISE(-EINVAL);
 
-    ECHECK(len = myst_iov_gather(iov, iovcnt, &buf));
-
-    if (len == 0)
-        goto done;
-
-    long params[6] = {file->fd, (long)buf, len};
-    ECHECK((tret = myst_tcall(SYS_write, params)));
-
-    ret = tret;
+    ret = myst_fdops_writev(&fs->fdops, file, iov, iovcnt);
+    ECHECK(ret);
 
 done:
-
-    if (buf)
-        free(buf);
-
     return ret;
 }
 

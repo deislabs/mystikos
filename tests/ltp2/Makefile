@@ -1,16 +1,27 @@
-.PHONY: tests
+.PHONY: ext2fs
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
 APPDIR=$(CURDIR)/appdir
 
-# select lines from tests without '#' in the first column
-TESTS=$(shell grep -v "^\#" tests)
-ALL=$(shell grep -v "^\#" all)
-
-ifndef ROOTFS
-ROOTFS=rootfs
+ifndef FS
+FS=ext2fs
 endif
+
+ifeq ($(FS),hostfs)
+FOUND=1
+endif
+
+ifeq ($(FS),ext2fs)
+FOUND=1
+endif
+
+ifeq ($(FOUND),)
+$(error "bad value for FS: must be hostfs or ext2fs")
+endif
+
+# select lines from tests without '#' in the first column
+TESTS=$(shell grep -v "^\#" tests.$(FS))
 
 # overlayfs directories
 LOWERDIR=$(CURDIR)/appdir
@@ -20,21 +31,24 @@ HOSTFS=$(CURDIR)/hostfs
 
 ifdef TEST
 test:
-ifeq ($(ROOTFS),hostfs)
+ifeq ($(FS),hostfs)
 	- @ sudo umount $(HOSTFS)
 	@ rm -rf $(UPPERDIR) $(WORKDIR) $(HOSTFS)
 	@ mkdir -p $(UPPERDIR) $(WORKDIR) $(HOSTFS)
 	@ sudo mount -t overlay overlay -o lowerdir=$(LOWERDIR),upperdir=$(UPPERDIR),workdir=$(WORKDIR) $(HOSTFS)
 endif
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) $(TEST) $(NL)
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
+ifeq ($(FS),hostfs)
+	- @ sudo umount $(HOSTFS)
+endif
 endif
 
-all: rootfs
+all: ext2fs
 
-rootfs: appdir
-	sudo $(MYST) mkext2 appdir rootfs
-	sudo chown $(USER).$(USER) rootfs
-	truncate --size=-4096 rootfs
+ext2fs: appdir
+	sudo $(MYST) mkext2 appdir ext2fs
+	sudo chown $(USER).$(USER) ext2fs
+	truncate --size=-4096 ext2fs
 
 URL=https://github.com/mikbras/ltp
 
@@ -64,28 +78,21 @@ endif
 tests:
 	$(foreach i, $(TESTS), $(MAKE) TEST=$(i) $(NL) )
 
-all-tests:
-	- $(foreach i, $(ALL), $(RUNTEST) $(MYST_EXEC) rootfs $(i) $(OPTS) && echo $(i) >> ALL $(NL) )
-
 clean:
-	sudo rm -rf $(APPDIR) rootfs appdir $(UPPERDIR) $(WORKDIR) $(HOSTFS)
+	sudo rm -rf $(APPDIR) ext2fs appdir $(UPPERDIR) $(WORKDIR) $(HOSTFS)
 
 CACHEDIR=$(HOME)/.mystikos/cache/ltp
 
 cache:
 	rm -rf $(CACHEDIR)
 	mkdir -p $(CACHEDIR)
-	cp ./rootfs $(CACHEDIR)/rootfs
+	cp -r ./appdir $(CACHEDIR)/appdir
 
 fetch:
-	cp $(CACHEDIR)/rootfs ./rootfs
+	cp $(CACHEDIR)/appdir ./appdir
 
 find:
 	find appdir/ltp/testcases/kernel/syscalls -type f -executable -print
 
 t:
-	make TEST=/ltp/testcases/kernel/syscalls/creat/creat01 TARGET=linux
-
-create-all:
-	find appdir/ltp/testcases/kernel/syscalls -type f -executable -print | sort > all
-
+	make FS=hostfs TEST=/ltp/testcases/kernel/syscalls/readv/readv01
