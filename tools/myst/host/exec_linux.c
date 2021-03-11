@@ -56,6 +56,7 @@ and <options> are one of:\n\
 
 struct options
 {
+    bool trace_errors;
     bool trace_syscalls;
     bool export_ramfs;
     char rootfs[PATH_MAX];
@@ -87,6 +88,13 @@ static void _get_options(
         cli_getopt(argc, argv, "--strace", NULL) == 0)
     {
         options->trace_syscalls = true;
+    }
+
+    /* Get --trace-errors option */
+    if (cli_getopt(argc, argv, "--trace-errors", NULL) == 0 ||
+        cli_getopt(argc, argv, "--etrace", NULL) == 0)
+    {
+        options->trace_errors = true;
     }
 
     /* Get --export-ramfs option */
@@ -372,6 +380,7 @@ static int _enter_kernel(
     args.crt_data = regions->libmystcrt.image_data;
     args.crt_size = regions->libmystcrt.image_size;
     args.max_threads = LONG_MAX;
+    args.trace_errors = options->trace_errors;
     args.trace_syscalls = options->trace_syscalls;
     args.have_syscall_instruction = true;
     args.export_ramfs = options->export_ramfs;

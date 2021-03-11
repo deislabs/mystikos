@@ -13,7 +13,7 @@ CFLAGS = $(OEHOST_CFLAGS) $(GCOV_CFLAGS)
 
 LDFLAGS = $(OEHOST_LDFLAGS) $(GCOV_LDFLAGS)
 
-LIBS = $(LIBDIR)/libmystutils.a
+LIBS = $(LIBDIR)/libmystutils.a $(LIBDIR)/libmysthost.a
 
 CLEAN = rootfs
 

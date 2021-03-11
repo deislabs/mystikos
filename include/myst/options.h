@@ -10,6 +10,7 @@
 
 typedef struct myst_options
 {
+    bool trace_errors;
     bool trace_syscalls;
     bool have_syscall_instruction;
     bool export_ramfs;
