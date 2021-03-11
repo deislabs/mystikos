@@ -17,6 +17,10 @@ ifeq ($(FS),ext2fs)
 FOUND=1
 endif
 
+ifeq ($(FS),ramfs)
+FOUND=1
+endif
+
 ifeq ($(FOUND),)
 $(error "bad value for FS: must be hostfs or ext2fs")
 endif
@@ -29,20 +33,6 @@ LOWERDIR=$(CURDIR)/appdir
 UPPERDIR=$(CURDIR)/upper
 WORKDIR=$(CURDIR)/work
 HOSTFS=$(CURDIR)/hostfs
-
-ifdef TEST
-test:
-ifeq ($(FS),hostfs)
-	- @ sudo umount $(HOSTFS)
-	@ rm -rf $(UPPERDIR) $(WORKDIR) $(HOSTFS)
-	@ mkdir -p $(UPPERDIR) $(WORKDIR) $(HOSTFS)
-	@ sudo mount -t overlay overlay -o lowerdir=$(LOWERDIR),upperdir=$(UPPERDIR),workdir=$(WORKDIR) $(HOSTFS)
-endif
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
-ifeq ($(FS),hostfs)
-	- @ sudo umount $(HOSTFS)
-endif
-endif
 
 all: ext2fs
 
@@ -77,7 +67,7 @@ OPTS = --strace
 endif
 
 tests:
-	$(foreach i, $(TESTS), $(MAKE) TEST=$(i) $(NL) )
+	$(foreach i, $(TESTS), $(MAKE) one TEST=$(i) $(NL) )
 
 clean:
 	sudo rm -rf $(APPDIR) ext2fs appdir $(UPPERDIR) $(WORKDIR) $(HOSTFS)
@@ -99,3 +89,50 @@ sort:
 	sort tests | uniq > .tests
 	cp .tests tests
 	rm -f .tests
+
+##==============================================================================
+##
+## one rule for ext2fs
+##
+##==============================================================================
+
+ifeq ($(FS),ext2fs)
+one:
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
+endif
+
+##==============================================================================
+##
+## one rule for hostfs
+##
+##==============================================================================
+
+ifeq ($(FS),hostfs)
+one:
+	- @ sudo umount $(HOSTFS)
+	@ rm -rf $(UPPERDIR) $(WORKDIR) $(HOSTFS)
+	@ mkdir -p $(UPPERDIR) $(WORKDIR) $(HOSTFS)
+	@ sudo mount -t overlay overlay -o lowerdir=$(LOWERDIR),upperdir=$(UPPERDIR),workdir=$(WORKDIR) $(HOSTFS)
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
+	- @ sudo umount $(HOSTFS)
+endif
+
+##==============================================================================
+##
+## one rule for ramfs
+##
+##==============================================================================
+
+ifeq ($(FS),ramfs)
+one:
+	rm -rf ramfs.appdir
+	mkdir -p $(shell dirname ramfs.appdir/$(TEST))
+	cp appdir/$(TEST) ramfs.appdir/$(TEST)
+	$(MYST) mkcpio ramfs.appdir ramfs
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
+endif
+
+t:
+	make one FS=ramfs TEST=/ltp/testcases/kernel/syscalls/llseek/llseek03
+
+	#make one FS=ramfs TEST=/ltp/testcases/kernel/syscalls/chmod/chmod02
