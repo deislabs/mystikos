@@ -749,7 +749,7 @@ static int _fs_open(
         if ((flags & O_CREAT) && (flags & O_EXCL))
             ERAISE(-EEXIST);
 
-#if 0
+        /* Check file access permissions */
         {
             const int access = flags & 0x03;
 
@@ -765,7 +765,6 @@ static int _fs_open(
             if (access == O_RDWR && !(inode->mode & S_IWUSR))
                 ERAISE(-EPERM);
         }
-#endif
 
         if ((flags & O_DIRECTORY) && !S_ISDIR(inode->mode))
             ERAISE(-ENOTDIR);
@@ -2180,7 +2179,7 @@ int myst_create_virtual_file(
     if (S_ISREG(mode))
     {
         myst_file_t* file = NULL;
-        ECHECK(fs->fs_open(fs, pathname, O_RDONLY | O_CREAT, S_IFREG, NULL, &file));
+        ECHECK(fs->fs_open(fs, pathname, O_RDONLY | O_CREAT, S_IFREG | S_IRUSR, NULL, &file));
         ECHECK(fs->fs_close(fs, file));
     }
     else if (S_ISLNK(mode))
