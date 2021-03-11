@@ -34,6 +34,7 @@
 #include <myst/times.h>
 #include <myst/ttydev.h>
 #include <myst/hostfs.h>
+#include <myst/trace.h>
 
 #define WANT_TLS_CREDENTIAL "MYST_WANT_TLS_CREDENTIAL"
 
@@ -588,11 +589,6 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     const char* want_tls_creds;
     myst_fstype_t fstype;
 
-#if 0
-    extern void myst_set_trace(bool flag);
-    myst_set_trace(true);
-#endif
-
     if (!args)
         myst_crash();
 
@@ -603,6 +599,10 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     __options.trace_syscalls = args->trace_syscalls;
     __options.have_syscall_instruction = args->have_syscall_instruction;
     __options.export_ramfs = args->export_ramfs;
+
+    /* enable error tracing if requested */
+    if (args->trace_errors)
+        myst_set_trace(true);
 
     if (__options.have_syscall_instruction)
         myst_set_gsbase(myst_get_fsbase());

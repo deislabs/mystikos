@@ -196,6 +196,7 @@ int myst_enter_ecall(
     size_t archive_size;
     const void* config_data;
     size_t config_size;
+    bool trace_errors = false;
     bool trace_syscalls = false;
     bool export_ramfs = false;
     const char* rootfs = NULL;
@@ -346,6 +347,7 @@ int myst_enter_ecall(
 
     if (options)
     {
+        trace_errors = options->trace_errors;
         trace_syscalls = options->trace_syscalls;
         export_ramfs = options->export_ramfs;
 
@@ -575,6 +577,7 @@ int myst_enter_ecall(
         kargs.crt_data = (void*)crt_data;
         kargs.crt_size = crt_size;
         kargs.max_threads = _get_num_tcs();
+        kargs.trace_errors = trace_errors;
         kargs.trace_syscalls = trace_syscalls;
         kargs.export_ramfs = export_ramfs;
         kargs.tcall = myst_tcall;
