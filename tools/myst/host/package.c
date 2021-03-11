@@ -481,6 +481,13 @@ int _exec_package(
         }
     }
 
+    /* Get --trace option */
+    if (cli_getopt(&argc, argv, "--trace-errors", NULL) == 0 ||
+        cli_getopt(&argc, argv, "--etrace", NULL) == 0)
+    {
+        options.trace_errors = true;
+    }
+
     if (!realpath(argv[0], full_app_path))
     {
         fprintf(stderr, "Invalid path %s\n", argv[0]);

@@ -76,6 +76,7 @@ typedef struct myst_kernel_args
     size_t max_threads;
 
     /* Tracing options */
+    bool trace_errors;
     bool trace_syscalls;
     bool have_syscall_instruction;
     bool export_ramfs;
