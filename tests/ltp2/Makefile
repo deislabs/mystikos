@@ -80,7 +80,7 @@ cache:
 	cp -r ./appdir $(CACHEDIR)/appdir
 
 fetch:
-	cp $(CACHEDIR)/appdir ./appdir
+	cp -r $(CACHEDIR)/appdir ./appdir
 
 find:
 	find appdir/ltp/testcases/kernel/syscalls -type f -executable -print
