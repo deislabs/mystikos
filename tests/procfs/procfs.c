@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <errno.h>
 
 int test_meminfo()
 {
@@ -65,10 +66,19 @@ int test_self_links(const char* pn)
     test_self_fd();
 }
 
+int test_readonly()
+{
+    int fd;
+    fd = open("/proc/meminfo", O_RDWR);
+    assert(fd == -1);
+    assert(errno == EPERM);
+}
+
 int main(int argc, const char* argv[])
 {
     test_meminfo();
     test_self_links(argv[0]);
+    test_readonly();
 
     printf("\n=== passed test (%s)\n", argv[0]);
     return 0;
