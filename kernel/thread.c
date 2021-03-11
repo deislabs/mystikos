@@ -23,6 +23,7 @@
 #include <myst/options.h>
 #include <myst/panic.h>
 #include <myst/printf.h>
+#include <myst/procfs.h>
 #include <myst/setjmp.h>
 #include <myst/signal.h>
 #include <myst/spinlock.h>
@@ -519,6 +520,8 @@ long myst_run_thread(uint64_t cookie, uint64_t event)
 
             free(thread->main.cwd);
             thread->main.cwd = NULL;
+
+            procfs_pid_cleanup(thread->pid);
         }
 
         myst_zombify_thread(thread);
