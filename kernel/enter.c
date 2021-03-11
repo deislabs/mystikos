@@ -134,10 +134,7 @@ done:
 
 #ifdef USE_TMPFS
 static myst_fs_t* _tmpfs;
-static myst_fs_t* _procfs;
-#endif
 
-#ifdef USE_TMPFS
 static int _init_tmpfs(const char* target, myst_fs_t** fs_out)
 {
     int ret = 0;
@@ -400,12 +397,6 @@ static int _teardown_tmpfs(void)
     if ((*_tmpfs->fs_release)(_tmpfs) != 0)
     {
         myst_eprintf("failed to release tmpfs\n");
-        return -1;
-    }
-
-    if ((*_procfs->fs_release)(_procfs) != 0)
-    {
-        myst_eprintf("failed to release procfs\n");
         return -1;
     }
 
@@ -788,6 +779,9 @@ int myst_enter_kernel(myst_kernel_args_t* args)
 #ifdef USE_TMPFS
     _teardown_tmpfs();
 #endif
+
+    /* Tear down the proc file system */
+    procfs_teardown();
 
     /* Tear down the RAM file system */
     _teardown_ramfs();

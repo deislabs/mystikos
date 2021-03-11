@@ -18,6 +18,6 @@ int create_proc_root_entries();
 
 int procfs_setup();
 
-int procfs_cleanup();
+int procfs_teardown();
 
 #endif /* _MYST_PROCFS_H */
