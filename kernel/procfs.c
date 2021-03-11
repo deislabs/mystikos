@@ -51,6 +51,17 @@ done:
     return ret;
 }
 
+int procfs_teardown()
+{
+    if ((*_procfs->fs_release)(_procfs) != 0)
+    {
+        myst_eprintf("failed to release procfs\n");
+        return -1;
+    }
+    
+    return 0;
+}
+
 static int _meminfo_vcallback(myst_buf_t* vbuf)
 {
     int ret = 0;
