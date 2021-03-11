@@ -2,15 +2,11 @@
 
 Please see [README](../README.md) for how to install Mystikos or build it from source code.
 
-This guide assumes you have Rust installed through [`rustup`](https://rustup.rs) and that you're running on a Linux machine.
-
-You'll need to install the `x86_64-unknown-linux-musl` target which you can by running:
-
-```bash
-rustup target add x86_64-unknown-linux-musl
-```
+This guide assumes you have Rust and cargo installed (which you can do using [`rustup`](https://rustup.rs)) and that you're running on a Linux machine.
 
 # Write the program
+
+We can run normal Rust binaries inside the TEE.
 
 First, we create a new project using cargo:
 
@@ -27,44 +23,32 @@ fn main() {
 }
 ```
 
-We need to slightly change how Cargo builds our Rust project from the default. We do this by making some changes in a Cargo config file which we create at `.cargo/config`:
-
-```toml
-[target.'cfg(target_env = "musl")']
-rustflags = [
-    "-C", "linker=myst-gcc", # use `myst-gcc` for linking instead of the system default linker. `myst-gcc` is a wrapper for `musl-gcc` which links to MUSL libc instead of the default glibc.
-    "-C", "target-feature=-crt-static", # Don't statically link the musl C runtime. We'll dynamically link to it.
-]
-```
-
 ## Build the program
 
 Compile the project like so:
 
 ```bash
-cargo build --release --target=x86_64-unknown-linux-musl
+cargo build --release 
 ```
 
 Next we'll move our binary into a new directory we'll create for our application:
 
 ```
 mkdir appdir
-mv ./target/x86_64-unknown-linux-musl/release/myapp appdir
+mv ./target/release/myapp appdir
 ```
 
 `appdir`, is the folder that holds the root file system including the application, the dependent libraries, and
 configurations for our execution environment
 
-We're almost done, but not quite. Our binary depends on two dynamic libraries: `musl-libc` and `libgcc` (for unwinding and backtrace support). While the TEE has `musl-libc` on it, it does not have `libgcc`, so we'll need to add it ourselves (and specifically `libgcc_s.so.1`).
+We're almost done, but not quite. Our binary depends on several dynamic libraries, two of which are not present in the execution environment: `libgcc` (for unwinding and backtrace support) and `ld`. We'll need to add it ourselves (and specifically `libgcc_s.so.1` and `ld-linux-x86-64.so.2`).
 
-Make sure to copy a version of `libgcc` into the `appdir` folder in a subfolder called `lib`. On Ubuntu, `libgcc` can be found at `/lib/x86_64-linux-gnu/libgcc_s.so.1` so you can copy it over like so:
+Make sure to copy version of these missing dynamic libraries into the `appdir` folder in a subfolder called `lib`. On Ubuntu, they can be found inside `/lib/x86_64-linux-gnu` so you can copy it over like so:
 
 ```bash
 mkdir appdir/lib
-cp /lib/x86_64-linux-gnu/libgcc_s.so.1 appdir/lib
+cp /lib/x86_64-linux-gnu/libgcc_s.so.1 /lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 appdir/lib
 ```
-
-This dependency on `libgcc` may go away in the future. Please see [rust#82521](https://github.com/rust-lang/rust/issues/82521) for more details.
 
 ## Create a CPIO archive
 
