@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 int test_meminfo()
@@ -17,8 +18,21 @@ int test_meminfo()
     fd = open("/proc/meminfo", O_RDONLY);
     assert(fd > 0);   
     assert(read(fd, buf, sizeof(buf)));
-    
+
     printf("%s\n", buf);
+}
+
+int test_self_symlink()
+{
+    char pid_path[PATH_MAX];
+    const size_t n = sizeof(pid_path);
+    snprintf(pid_path, n, "/proc/%d", getpid());
+
+    char proc_self_target[PATH_MAX];
+    readlink("/proc/self", proc_self_target, sizeof(proc_self_target));
+
+    printf("%s\n", proc_self_target);
+    assert(!strcmp(proc_self_target, pid_path));
 }
 
 int test_self_exe(const char* pn)
@@ -32,15 +46,21 @@ int test_self_exe(const char* pn)
 
 int test_self_fd()
 {
+    const char filename[] = "/file1";
+    int fd = open(filename, O_RDWR | O_CREAT | O_TRUNC, S_IRUSR);
+    assert(fd > 0);
 
+    char fd_link_path[PATH_MAX];
+    char target[PATH_MAX];
+    const size_t n = sizeof(fd_link_path);
+    snprintf(fd_link_path, n, "/proc/self/fd/%d", fd);
+    readlink(fd_link_path, target, sizeof(target));
+    assert(!strcmp(target, filename));
 }
 
 int test_self_links(const char* pn)
 {
-    char target[PATH_MAX];
-    readlink("/proc/self", target, sizeof(target));
-    printf("%s\n", target);
-
+    test_self_symlink();
     test_self_exe(pn);
     test_self_fd();
 }
