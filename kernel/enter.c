@@ -130,9 +130,12 @@ done:
     return ret;
 }
 
+#ifdef USE_TMPFS
 static myst_fs_t* _tmpfs;
 static myst_fs_t* _procfs;
+#endif
 
+#ifdef USE_TMPFS
 static int _init_tmpfs(const char* target, myst_fs_t** fs_out)
 {
     int ret = 0;
@@ -162,14 +165,33 @@ static int _init_tmpfs(const char* target, myst_fs_t** fs_out)
 done:
     return ret;
 }
+#endif
 
 static int _create_standard_directories(void)
 {
     int ret = 0;
     const mode_t mode = 0777;
 
+#ifdef USE_TMPFS
     ECHECK(_init_tmpfs("/tmp", &_tmpfs));
     ECHECK(_init_tmpfs("/proc", &_procfs));
+#endif
+
+#ifndef USE_TMPFS
+    if (myst_mkdirhier("/tmp", mode) != 0)
+    {
+        myst_eprintf("cannot create /tmp directory\n");
+        ERAISE(-EINVAL);
+    }
+#endif
+
+#ifndef USE_TMPFS
+    if (myst_mkdirhier("/proc", mode) != 0)
+    {
+        myst_eprintf("cannot create /proc directory\n");
+        ERAISE(-EINVAL);
+    }
+#endif
 
     if (myst_mkdirhier("/proc/self/fd", mode) != 0)
     {
@@ -294,6 +316,7 @@ static int _create_tls_credentials(myst_fs_t* fs)
 
     assert(fs != NULL);
 
+#ifdef USE_TMPFS
     /* clip the "/tmp" prefix from certificate_path and private_key_path */
     {
         const char prefix[] = "/tmp";
@@ -305,6 +328,7 @@ static int _create_tls_credentials(myst_fs_t* fs)
         if (strncmp(private_key_path, prefix, len) == 0)
             private_key_path += len;
     }
+#endif
 
     myst_file_t* file = NULL;
     int flags = O_CREAT | O_WRONLY;
@@ -383,6 +407,7 @@ static int _teardown_ramfs(void)
     return 0;
 }
 
+#ifdef USE_TMPFS
 static int _teardown_tmpfs(void)
 {
     if ((*_tmpfs->fs_release)(_tmpfs) != 0)
@@ -399,6 +424,7 @@ static int _teardown_tmpfs(void)
 
     return 0;
 }
+#endif
 
 static int _create_main_thread(uint64_t event, myst_thread_t** thread_out)
 {
@@ -645,7 +671,11 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     {
         if (strcmp(want_tls_creds, "1") == 0)
         {
+#ifdef USE_TMPFS
             ECHECK(_create_tls_credentials(_tmpfs));
+#else
+            ECHECK(_create_tls_credentials(_fs));
+#endif
         }
         else if (strcmp(want_tls_creds, "0") != 0)
         {
@@ -765,7 +795,9 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     myst_syscall_unload_symbols();
 
     /* Tear down the temporary file systems */
+#ifdef USE_TMPFS
     _teardown_tmpfs();
+#endif
 
     /* Tear down the RAM file system */
     _teardown_ramfs();
