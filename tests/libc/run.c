@@ -12,7 +12,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-static void _run_tests(const char* test_file, bool passed)
+static void _run_tests(const char* test_file)
 {
     FILE* file = fopen(test_file, "r");
 
@@ -40,16 +40,13 @@ static void _run_tests(const char* test_file, bool passed)
 
         r = posix_spawn(&pid, line, NULL, NULL, args, envp);
 
-        if (passed)
-        {
-            assert(r == 0);
-            assert(pid >= 0);
+        assert(r == 0);
+        assert(pid >= 0);
 
-            assert(waitpid(pid, &wstatus, WNOHANG) == 0);
-            assert(waitpid(pid, &wstatus, 0) == pid);
-            assert(WIFEXITED(wstatus));
-            assert(WEXITSTATUS(wstatus) == 0);
-        }
+        assert(waitpid(pid, &wstatus, WNOHANG) == 0);
+        assert(waitpid(pid, &wstatus, 0) == pid);
+        assert(WIFEXITED(wstatus));
+        assert(WEXITSTATUS(wstatus) == 0);
         printf("=== passed test (%s)\n", line);
     }
 
@@ -58,30 +55,15 @@ static void _run_tests(const char* test_file, bool passed)
 
 int main(int argc, const char* argv[])
 {
-    if (argc < 2)
+    if (argc < 1)
     {
         fprintf(
             stderr,
-            "Must pass in \"PASSED\" or \"FAILED\" and the file containing "
-            "test names\n");
+            "Must pass the file containing test names\n");
     }
     else
     {
-        if (strcmp(argv[1], "PASSED") == 0)
-        {
-            _run_tests(argv[2], true);
-        }
-        else if (strcmp(argv[1], "FAILED") == 0)
-        {
-            _run_tests(argv[2], false);
-        }
-        else
-        {
-            fprintf(
-                stderr,
-                "Invalid argument %s. Should be \"PASSED\" or \"FAILED\"\n",
-                argv[1]);
-        }
+        _run_tests(argv[1]);
     }
 
     printf("=== passed all tests: %s\n", argv[0]);

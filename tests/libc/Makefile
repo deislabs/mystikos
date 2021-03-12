@@ -13,6 +13,8 @@ APPDIR=$(CURDIR)/appdir
 
 ROOTFS=$(CURDIR)/rootfs
 
+TEST_FILE = tests_passed.txt
+
 ##==============================================================================
 ##
 ## all rule:
@@ -24,21 +26,11 @@ all: $(APPDIR) $(APPDIR)/target $(APPDIR)/bin/run $(ROOTFS)
 $(APPDIR):
 	rm -rf $(APPDIR)
 	cp -r $(TOP)/third_party/libc-test/libc-test $(APPDIR)
-	cp $(CURDIR)/passed.txt $(APPDIR)
-	cp $(CURDIR)/failed.txt $(APPDIR)
+	cp $(CURDIR)/$(TEST_FILE) $(APPDIR)
 
 $(APPDIR)/target:
 	sudo docker run --rm -v $(APPDIR):/appdir $(IMG) bash -c "make -j -C appdir"
 	touch $(APPDIR)/target
-
-ifdef FAILED
-  TEST_FILE = failed.txt
-  STATUS=FAILED
-  export TIMEOUT=10
-else
-  TEST_FILE = passed.txt
-  STATUS=PASSED
-endif
 
 $(APPDIR)/bin/run: run.c
 	mkdir -p $(APPDIR)/bin
@@ -62,7 +54,7 @@ one:
 endif
 
 tests: all
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run $(STATUS) $(TEST_FILE)
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run $(TEST_FILE)
 
 clean:
 	rm -rf $(APPDIR) $(ROOTFS)
