@@ -36,6 +36,7 @@
 #include "myst_u.h"
 #include "regions.h"
 #include "utils.h"
+#include "exec.h"
 
 // This is a default enclave configuration that we use when overriding the
 // unsigned configuration
@@ -43,14 +44,6 @@
 #define OE_INFO_SECTION_BEGIN
 #undef OE_INFO_SECTION_END
 #define OE_INFO_SECTION_END
-
-OE_SET_ENCLAVE_SGX(
-    1,        /* ProductID */
-    1,        /* SecurityVersion */
-    true,     /* Debug */
-    8 * 4096, /* NumHeapPages */
-    32,       /* NumStackPages */
-    16);      /* NumTCS */
 
 /* How many nanoseconds between two clock ticks */
 /* TODO: Make it configurable through json */
@@ -140,8 +133,7 @@ int exec_launch_enclave(
     uint32_t flags,
     const char* argv[],
     const char* envp[],
-    struct myst_options* options,
-    oe_sgx_enclave_properties_t* enclave_properties)
+    struct myst_options* options)
 {
     oe_result_t r;
     int retval;
@@ -150,18 +142,7 @@ int exec_launch_enclave(
     myst_buf_t envp_buf = MYST_BUF_INITIALIZER;
 
     /* Load the enclave: calls oe_region_add_regions() */
-    if (enclave_properties)
-    {
-        oe_enclave_setting_t enclave_settings = {
-            .setting_type = OE_ENCLAVE_SETTING_PROPERTY_OVERRIDE,
-            .u.enclave_properties = enclave_properties};
-        r = oe_create_myst_enclave(
-            enc_path, type, flags, &enclave_settings, 1, &_enclave);
-    }
-    else
-    {
-        r = oe_create_myst_enclave(enc_path, type, flags, NULL, 0, &_enclave);
-    }
+    r = oe_create_myst_enclave(enc_path, type, flags, NULL, 0, &_enclave);
 
     if (r != OE_OK)
         _err("failed to load enclave: result=%s", oe_result_str(r));
@@ -365,26 +346,8 @@ int exec_action(int argc, const char* argv[], const char* envp[])
 
     unlink(archive_path);
 
-    if (details->oe_num_heap_pages)
-    {
-        oe_sgx_enclave_properties_t enclave_properties =
-            oe_enclave_properties_sgx;
-        enclave_properties.header.size_settings.num_heap_pages =
-            details->oe_num_heap_pages;
-        return_status = exec_launch_enclave(
-            details->enc.path,
-            type,
-            flags,
-            argv + 3,
-            envp,
-            &options,
-            &enclave_properties);
-    }
-    else
-    {
-        return_status = exec_launch_enclave(
-            details->enc.path, type, flags, argv + 3, envp, &options, NULL);
-    }
+    return_status = exec_launch_enclave(
+        details->enc.path, type, flags, argv + 3, envp, &options);
 
     free_region_details();
 

@@ -130,8 +130,6 @@ const region_details* create_region_details_from_files(
     const char* config_path,
     size_t user_mem_size)
 {
-    bool is_enclave_signed = false;
-
     if (myst_load_file(
             rootfs_path,
             &_details.rootfs.buffer,
@@ -203,8 +201,6 @@ const region_details* create_region_details_from_files(
     size_t temp_size;
     if (elf_find_section(&enc_elf, ".mystconfig", &temp_buf, &temp_size) == 0)
     {
-        is_enclave_signed = true;
-
         // We are going to have to duplicate this buffer so we can unload
         // the enclave image
         _details.config.buffer = malloc(temp_size);
@@ -270,15 +266,6 @@ const region_details* create_region_details_from_files(
     }
 
     _details.mman_size = user_mem_size;
-
-    // Only override the setting if we are not signed.
-    // During signing this value gets baked into the enclave shared library
-    // based on configuration. It will probably be set to the same value,
-    // but to make sure future changes don't change this we will only
-    // update here is not signed.
-    if (!is_enclave_signed && (_details.oe_num_heap_pages == 0))
-        _details.oe_num_heap_pages =
-            make_oe_num_heap_pages(_details.rootfs.buffer_size);
 
     return &_details;
 }

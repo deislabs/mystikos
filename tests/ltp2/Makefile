@@ -30,6 +30,12 @@ UPPERDIR=$(CURDIR)/upper
 WORKDIR=$(CURDIR)/work
 HOSTFS=$(CURDIR)/hostfs
 
+ifdef STRACE
+OPTS = --strace
+endif
+
+OPTS += --user-mem-size=16m
+
 ifdef TEST
 test:
 ifeq ($(FS),hostfs)
@@ -72,10 +78,6 @@ clone:
 	mkdir appdir
 	git clone https://github.com/mikbras/ltp appdir/ltp -b myst
 
-ifdef STRACE
-OPTS = --strace
-endif
-
 tests:
 	$(foreach i, $(TESTS), $(MAKE) TEST=$(i) $(NL) )
 
@@ -90,7 +92,7 @@ cache:
 	cp -r ./appdir $(CACHEDIR)/appdir
 
 fetch:
-	cp $(CACHEDIR)/appdir ./appdir
+	cp -r $(CACHEDIR)/appdir ./appdir
 
 find:
 	find appdir/ltp/testcases/kernel/syscalls -type f -executable -print

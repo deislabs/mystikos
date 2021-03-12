@@ -35,9 +35,4 @@ int cli_getopt(
     const char* opt,
     const char** optarg);
 
-MYST_INLINE uint64_t make_oe_num_heap_pages(off_t rootfs_size)
-{
-    return ((rootfs_size + (50 * 1024 * 1024)) / PAGE_SIZE);
-}
-
 #endif /* _HOST_MYST_UTILS_H */

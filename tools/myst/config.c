@@ -377,8 +377,6 @@ int write_oe_config_fd(int fd, config_parsed_data_t* parsed_data)
     else
         fprintf(out_file, "Debug=1\n");
 
-    fprintf(out_file, "NumHeapPages=%ld\n", parsed_data->oe_num_heap_pages);
-
     fprintf(out_file, "NumStackPages=%ld\n", parsed_data->oe_num_stack_pages);
 
     fprintf(out_file, "NumTCS=%ld\n", parsed_data->oe_num_user_threads);

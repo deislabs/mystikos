@@ -14,7 +14,6 @@ typedef struct _config_parsed_data_t
 
     // OE settings
     unsigned char oe_debug;
-    uint64_t oe_num_heap_pages;
     uint64_t oe_num_stack_pages;
     uint64_t oe_num_user_threads;
     unsigned short oe_product_id;

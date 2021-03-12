@@ -75,10 +75,6 @@ static int dump_enclave_properties(oe_sgx_enclave_properties_t* properties)
     printf("xfrm=%#016" PRIx64 "\n", properties->config.xfrm);
 
     printf(
-        "num_heap_pages=%" PRIu64 "\n",
-        properties->header.size_settings.num_heap_pages);
-
-    printf(
         "num_stack_pages=%" PRIu64 "\n",
         properties->header.size_settings.num_stack_pages);
 
