@@ -1,0 +1,4 @@
+/src/functional/pthread_cancel.exe
+/src/functional/pthread_mutex.exe
+/src/functional/pthread_mutex_pi.exe
+/src/regression/raise-race.exe

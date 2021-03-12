@@ -15,7 +15,7 @@ rm *.output*
 while read test; do
   echo "$test"
   OUTPUT=$(2>&1 make one TEST=$test)
-  echo $OUTPUT >> op_$FILE.output
+  echo $OUTPUT >> temp_$FILE.output
   HAS_UNHANDLED_SYSCALL=$(2>&1 make one TEST=$test | grep "unhandled")
   if [ -z "$HAS_UNHANDLED_SYSCALL" ]
   then
@@ -23,18 +23,21 @@ while read test; do
     PASSED=$(echo "$OUTPUT" | grep failed)
     if [ -z "$PASSED" ]
     then
-      echo $test >> op_passed.output
+      echo $test >> temp_passed.output
     else
-      echo $test >> op_other_errors.output
+      echo $test >> temp_other_errors.output
     fi
   else
-    echo "$test: $HAS_UNHANDLED_SYSCALL" >> op_unhandled_syscalls.output
+    echo "$test: $HAS_UNHANDLED_SYSCALL" >> temp_unhandled_syscalls.output
   fi
   echo "$test"
 done <$FILE
 
-cat op_$FILE.output | grep "unhandled syscall:" > op_unhandled_syscalls.output.crosscheck
+awk '!seen[$9]++' temp_unhandled_syscalls.output | awk '{print $9}' | sort > unhandled_syscalls.txt
+cat temp_unhandled_syscalls.output > tests_unhandled_syscalls.txt
+sort temp_other_errors.output | awk '!seen[$0]++' > tests_other_errors.txt
+cat temp_passed.output > tests_passed.txt
 
 }
 
-run_tests all.txt
+run_tests tests_allrunning.txt
