@@ -62,6 +62,9 @@ DIRS += tlscert
 DIRS += wake_and_kill
 DIRS += cross_fs_symlinks
 
+# temp 
+DIRS += ltp2
+
 ifndef MYST_SKIP_LIBCXX_TESTS
 DIRS += libcxx
 endif
