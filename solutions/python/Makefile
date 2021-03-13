@@ -15,7 +15,9 @@ appdir:
 	$(APPBUILDER) Dockerfile
 
 rootfs:
-	$(MYST) mkcpio appdir rootfs
+	sudo $(MYST) mkext2 -f appdir rootfs
+	sudo truncate --size=-4096 rootfs
+
 run:
 	$(MYST_EXEC) $(OPTS) rootfs /usr/local/bin/python3 /app/hello_world.py
 
