@@ -8,6 +8,8 @@ APPNAME=HelloWorld
 #OPTS += --strace
 #endif
 
+OPTS = --user-mem-size=256m
+
 all: appdir private.pem
 
 # This will crash due to insufficient heap memory for dotnet runtime.

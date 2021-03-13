@@ -8,6 +8,8 @@ APPNAME=webapp
 #OPTS += --strace
 #endif
 
+OPTS = --user-mem-size=256m
+
 all: appdir private.pem
 
 run: appdir private.pem

@@ -9,6 +9,8 @@ ifdef STRACE
 OPTS += --strace
 endif
 
+OPTS = --user-mem-size=256m
+
 all: appdir rootfs ext2fs
 
 # docker build time ~1hr. Using prebuilt image.
