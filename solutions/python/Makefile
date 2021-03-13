@@ -7,6 +7,8 @@ ifdef STRACE
 OPTS = --strace
 endif
 
+OPTS = --user-mem-size=128m
+
 all: appdir rootfs
 
 appdir:
