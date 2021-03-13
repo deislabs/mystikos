@@ -781,11 +781,6 @@ int myst_enter_kernel(myst_kernel_args_t* args)
             thread->main.exec_crt_size = 0;
         }
 
-#if 0
-        /* unmap any mapping made by the process */
-        myst_release_process_mappings(thread->pid);
-#endif
-
         /* Free CWD */
         free(thread->main.cwd);
         thread->main.cwd = NULL;
