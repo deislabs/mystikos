@@ -15,6 +15,12 @@ appdir:
 	$(APPBUILDER) Dockerfile
 
 rootfs:
+	$(MAKE) ext2
+
+cpio:
+	$(MYST) mkcpio appdir rootfs
+
+ext2:
 	sudo $(MYST) mkext2 -f appdir rootfs
 	sudo truncate --size=-4096 rootfs
 

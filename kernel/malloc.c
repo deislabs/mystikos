@@ -11,10 +11,7 @@
 
 static void _dlmalloc_abort(void)
 {
-    myst_crash();
-
-    for (;;)
-        ;
+    myst_panic("dlmalloc failed");
 }
 
 static int _dlmalloc_sched_yield(void)

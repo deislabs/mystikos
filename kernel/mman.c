@@ -121,6 +121,7 @@
 #include <myst/round.h>
 #include <myst/spinlock.h>
 #include <myst/strings.h>
+#include <myst/panic.h>
 
 /*
 **==============================================================================
@@ -1048,6 +1049,9 @@ int myst_mman_mmap(
     _mman_lock(mman, &locked);
     int ret = _mmap(mman, addr, length, prot, flags, ptr_out);
     _mman_unlock(mman, &locked);
+
+    if (ret == -ENOMEM)
+        myst_panic("out of memory");
 
     return ret;
 }
