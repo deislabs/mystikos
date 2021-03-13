@@ -15,7 +15,7 @@ appdir:
 	$(APPBUILDER) Dockerfile
 
 rootfs:
-	$(MAKE) ext2
+	$(MAKE) cpio
 
 cpio:
 	$(MYST) mkcpio appdir rootfs
