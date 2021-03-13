@@ -16,6 +16,7 @@
 #include <myst/process.h>
 #include <myst/strings.h>
 #include <myst/round.h>
+#include <myst/panic.h>
 
 #define SCRUB
 
@@ -236,7 +237,12 @@ void* myst_mmap(
     int tflags = MYST_MAP_ANONYMOUS | MYST_MAP_PRIVATE;
 
     if ((r = myst_mman_mmap(&_mman, addr, length, prot, tflags, &ptr)) < 0)
+    {
+        if (r == -ENOMEM)
+            myst_panic("out of memory");
+
         return (void*)(long)r;
+    }
 
     if (fd >= 0 && !addr)
     {

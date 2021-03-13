@@ -1050,9 +1050,6 @@ int myst_mman_mmap(
     int ret = _mmap(mman, addr, length, prot, flags, ptr_out);
     _mman_unlock(mman, &locked);
 
-    if (ret == -ENOMEM)
-        myst_panic("out of memory");
-
     return ret;
 }
 
