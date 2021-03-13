@@ -237,9 +237,7 @@ void* myst_mmap(
     int tflags = MYST_MAP_ANONYMOUS | MYST_MAP_PRIVATE;
 
     if ((r = myst_mman_mmap(&_mman, addr, length, prot, tflags, &ptr)) < 0)
-    {
         return (void*)(long)r;
-    }
 
     if (fd >= 0 && !addr)
     {

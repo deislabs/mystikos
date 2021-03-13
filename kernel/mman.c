@@ -121,7 +121,6 @@
 #include <myst/round.h>
 #include <myst/spinlock.h>
 #include <myst/strings.h>
-#include <myst/panic.h>
 
 /*
 **==============================================================================
