@@ -238,9 +238,6 @@ void* myst_mmap(
 
     if ((r = myst_mman_mmap(&_mman, addr, length, prot, tflags, &ptr)) < 0)
     {
-        if (r == -ENOMEM)
-            myst_panic("out of memory");
-
         return (void*)(long)r;
     }
 
