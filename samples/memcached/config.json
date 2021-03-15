@@ -1,0 +1,16 @@
+{
+    // OpenEnclave specific values
+    "Debug": 1,
+    "StackMemSize": "400k",
+    "NumUserThreads": 32,
+    "ProductID": 1,
+    "SecurityVersion": 1,
+
+    // Mystikos specific values
+    "MemorySize": "1024m",
+    "ApplicationPath": "/usr/local/bin/memcached",
+    "ApplicationParameters": [],
+    "HostApplicationParameters": true,
+    "EnvironmentVariables": [],
+    "HostEnvironmentVariables": []
+}
