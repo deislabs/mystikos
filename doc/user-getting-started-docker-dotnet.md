@@ -29,14 +29,14 @@ namespace sum
     {
         static void Main(string[] args)
         {
-			long sum = 0;
-			List<long> numbers = new List<long>();
-			for (int i = 0; i < args.Length; i++)
-			{
-				numbers.Add(Int64.Parse(args[i]));
-				sum += numbers[numbers.Count - 1];
-		    }
-		    Console.WriteLine($"Hello World from C#! Sum is {sum}\n");
+            long sum = 0;
+            List<long> numbers = new List<long>();
+            for (int i = 0; i < args.Length; i++)
+            {
+                numbers.Add(Int64.Parse(args[i]));
+                sum += numbers[numbers.Count - 1];
+            }
+            Console.WriteLine($"Hello World from C#! Sum is {sum}\n");
         }
     }
 }
@@ -119,20 +119,21 @@ The dotnet runtime is also included.
 
 dotnet runtime requires more heap memory than Mystikos provides
 by default. To expand the memory, we need to sign or package the application
-with a configuration file, in which a higher limit of user heap size
-can be specified as follows:
+with a configuration file, in which a higher limit of heap size can be
+specified as follows:
 ```
 {
-	// OpenEnclave specific settings
-	"Debug": 1,
+    // OpenEnclave specific settings
+    "Debug": 1,
     "StackMemSize": "400k",
     "NumUserThreads": 8,
     "ProductID": 1,
     "SecurityVersion": 1,
 
-	// Mystikos specific settings
-    // The heap size of the user application. Increase this setting if your app experienced OOM.
-    "UserMemSize": "512m",
+    // Mystikos specific settings
+    // The heap size of the kernel and user application. Increase this setting
+    // if your app experienced OOM.
+    "MemorySize": "512m",
     // The path to the entry point application in rootfs
     "ApplicationPath": "/usr/bin/dotnet",
     // The parameters to the entry point application
@@ -141,7 +142,7 @@ can be specified as follows:
     "HostApplicationParameters": true,
 }
 ```
-You can ignore most of the settings for now except for `UserMemSize`. 512 MB is the minimum required
+You can ignore most of the settings for now except for `MemorySize`. 512 MB is the minimum required
 by dotnet runtime, and you can increase it as needed. For details of the config file, please refer to
 [signing and packaging](./sign-package.md)
 

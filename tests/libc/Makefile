@@ -9,11 +9,15 @@ ifdef STRACE
 OPTS = --strace
 endif
 
+OPTS += --memory-size=256m
+
 APPDIR=$(CURDIR)/appdir
 
 ROOTFS=$(CURDIR)/rootfs
 
 TEST_FILE = tests_passed.txt
+
+export TIMEOUT=120
 
 ##==============================================================================
 ##

@@ -36,6 +36,7 @@
 #include "myst_u.h"
 #include "regions.h"
 #include "utils.h"
+#include "exec.h"
 
 // This is a default enclave configuration that we use when overriding the
 // unsigned configuration
@@ -43,14 +44,6 @@
 #define OE_INFO_SECTION_BEGIN
 #undef OE_INFO_SECTION_END
 #define OE_INFO_SECTION_END
-
-OE_SET_ENCLAVE_SGX(
-    1,        /* ProductID */
-    1,        /* SecurityVersion */
-    true,     /* Debug */
-    8 * 4096, /* NumHeapPages */
-    32,       /* NumStackPages */
-    16);      /* NumTCS */
 
 /* How many nanoseconds between two clock ticks */
 /* TODO: Make it configurable through json */
@@ -140,8 +133,7 @@ int exec_launch_enclave(
     uint32_t flags,
     const char* argv[],
     const char* envp[],
-    struct myst_options* options,
-    oe_sgx_enclave_properties_t* enclave_properties)
+    struct myst_options* options)
 {
     oe_result_t r;
     int retval;
@@ -150,18 +142,7 @@ int exec_launch_enclave(
     myst_buf_t envp_buf = MYST_BUF_INITIALIZER;
 
     /* Load the enclave: calls oe_region_add_regions() */
-    if (enclave_properties)
-    {
-        oe_enclave_setting_t enclave_settings = {
-            .setting_type = OE_ENCLAVE_SETTING_PROPERTY_OVERRIDE,
-            .u.enclave_properties = enclave_properties};
-        r = oe_create_myst_enclave(
-            enc_path, type, flags, &enclave_settings, 1, &_enclave);
-    }
-    else
-    {
-        r = oe_create_myst_enclave(enc_path, type, flags, NULL, 0, &_enclave);
-    }
+    r = oe_create_myst_enclave(enc_path, type, flags, NULL, 0, &_enclave);
 
     if (r != OE_OK)
         _err("failed to load enclave: result=%s", oe_result_str(r));
@@ -204,33 +185,29 @@ int exec_launch_enclave(
     return retval;
 }
 
-#define USAGE_EXEC_SGX \
-    "\
+#define USAGE_FORMAT "\n\
 \n\
-Usage: %s exec-sgx <rootfs> [options] <application> <app_args...>\n\
+Usage: %s exec-sgx [options] <rootfs> <application> <args...>\n\
 \n\
 Where:\n\
-    exec-sgx      -- execute the specified <application> from within the\n\
-                     <rootfs> with the <app_arguments> within an SGX enclave\n\
-    <rootfs>      -- This is the CPIO archive (created via mkcpio) of the\n\
-                     application directory\n\
-    <application> -- the application path from within <rootfs> to run within\n\
-                     the SGX enclave\n\
-    <app_args>    -- the application arguments to pass through to\n\
-                     <application>\n\
+    exec-sgx             -- execute an application within <rootfs> in a\n\
+                            trusted SGX environment\n\
+    <rootfs>             -- the root file system containing the application\n\
+                            (CPIO or EXT2)\n\
+    <application>        -- the path of the executable program within\n\
+                            <rootfs> that will be executed\n\
+    <args>               -- arguments to passed through to the <application>\n\
 \n\
-and [options] are one or more of:\n\
-    --help                          -- this message\n\
-    --user-mem-size <size>          -- for running an unsigned binary this overrides the\n\
-                                       default user memory size for an application.\n\
-                                       The <size> format is a number that is in\n\
-                                       bytes (<size>), in kilobytes (<size>k), \n\
-                                       in megabytes (<size>m), or gigabytes (<size>g)\n\
-    --app-config-path <config.json> -- specifies the configuration json file for running an\n\
-                                       unsigned binary. The file can be the same \n\
-                                       one used for the signing process.\n\
-\n\
-"
+Options:\n\
+    --help               -- this message\n\
+    --memory-size <size> -- the memory size required by the Mystikos kernel\n\
+                            and application, where <size> may have a\n\
+                            multiplier suffix: k 1024, m 1024*1024, or\n\
+                            g 1024*1024*1024\n\
+    --app-config-path <json> -- specifies the configuration json file for\n\
+                                running an unsigned binary. The file can be\n\
+                                the same one used for the signing process.\n\
+\n"
 
 int exec_action(int argc, const char* argv[], const char* envp[])
 {
@@ -247,7 +224,7 @@ int exec_action(int argc, const char* argv[], const char* envp[])
     int return_status;
     char archive_path[PATH_MAX];
     char rootfs_path[] = "/tmp/mystXXXXXX";
-    uint64_t user_mem_size = 0;
+    uint64_t heap_size = 0;
     const char* commandline_config = NULL;
 
     assert(strcmp(argv[1], "exec") == 0 || strcmp(argv[1], "exec-sgx") == 0);
@@ -274,18 +251,29 @@ int exec_action(int argc, const char* argv[], const char* envp[])
         if (cli_getopt(&argc, argv, "--export-ramfs", NULL) == 0)
             options.export_ramfs = true;
 
-        /* Get --user-mem-size option */
-        const char* mem_size = NULL;
-        if ((cli_getopt(&argc, argv, "--user-mem-size", &mem_size) == 0) &&
-            mem_size)
+        /* Get --memory-size or --user-mem-size option */
         {
-            if ((myst_expand_size_string_to_ulong(mem_size, &user_mem_size) !=
-                 0) ||
-                (myst_round_up(user_mem_size, PAGE_SIZE, &user_mem_size) != 0))
+            const char* opt;
+            const char* arg = NULL;
+
+            if ((cli_getopt(&argc, argv, "--memory-size", &arg) == 0))
             {
-                _err("--user-mem-size <size> -- The <size> format is a number "
-                     "that is in bytes (<size>), in kilobytes (<size>k), "
-                     "in megabytes (<size>m), or gigabytes (<size>g");
+                opt = "--memory-size";
+            }
+
+            if (!arg && cli_getopt(&argc, argv, "--user-mem-size", &arg) == 0)
+            {
+                /* legacy option (kept for backwards compatibility) */
+                opt = "--user-mem-size";
+            }
+
+            if (arg)
+            {
+                if ((myst_expand_size_string_to_ulong(arg, &heap_size) != 0) ||
+                    (myst_round_up(heap_size, PAGE_SIZE, &heap_size) != 0))
+                {
+                    _err("%s <size> -- bad suffix (must be k, m, or g)\n", opt);
+                }
             }
         }
 
@@ -297,7 +285,7 @@ int exec_action(int argc, const char* argv[], const char* envp[])
         if ((cli_getopt(&argc, argv, "--help", NULL) == 0) ||
             (cli_getopt(&argc, argv, "-h", NULL) == 0))
         {
-            fprintf(stderr, USAGE_EXEC_SGX, argv[0]);
+            fprintf(stderr, USAGE_FORMAT, argv[0]);
             return 1;
         }
 
@@ -323,7 +311,7 @@ int exec_action(int argc, const char* argv[], const char* envp[])
 
     if (argc < 4)
     {
-        fprintf(stderr, USAGE_EXEC_SGX, argv[0]);
+        fprintf(stderr, USAGE_FORMAT, argv[0]);
         return 1;
     }
 
@@ -365,33 +353,15 @@ int exec_action(int argc, const char* argv[], const char* envp[])
              rootfs,
              archive_path,
              commandline_config,
-             user_mem_size)) == NULL)
+             heap_size)) == NULL)
     {
         _err("Creating region data failed.");
     }
 
     unlink(archive_path);
 
-    if (details->oe_num_heap_pages)
-    {
-        oe_sgx_enclave_properties_t enclave_properties =
-            oe_enclave_properties_sgx;
-        enclave_properties.header.size_settings.num_heap_pages =
-            details->oe_num_heap_pages;
-        return_status = exec_launch_enclave(
-            details->enc.path,
-            type,
-            flags,
-            argv + 3,
-            envp,
-            &options,
-            &enclave_properties);
-    }
-    else
-    {
-        return_status = exec_launch_enclave(
-            details->enc.path, type, flags, argv + 3, envp, &options, NULL);
-    }
+    return_status = exec_launch_enclave(
+        details->enc.path, type, flags, argv + 3, envp, &options);
 
     free_region_details();
 

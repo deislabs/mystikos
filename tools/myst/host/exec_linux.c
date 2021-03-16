@@ -30,27 +30,28 @@
 #include "exec_linux.h"
 #include "utils.h"
 
-#define USAGE_FORMAT \
-    "\
+#define USAGE_FORMAT "\n\
 \n\
-Usage: %s exec-linux <rootfs> <application> <args...> [options]\n\
+Usage: %s exec-linux [options] <rootfs> <application> <args...>\n\
 \n\
 Where:\n\
-    exec-linux   -- execute an application within the CPIO archive in a none\n\
-                    trusted environment environment (Linux)\n\
-    <rootfs>     -- this is the CPIO archive (created via mkcpio) of the\n\
-                    application directory\n\
-    <application> -- the application path from within <rootfs> to run within the SGX enclave\n\
-    <app_args>    -- the application arguments to pass through to\n\
-                     <application>\n\
+    exec-linux           -- execute an application within <rootfs> in a\n\
+                            non-trusted Linux environment\n\
+    <rootfs>             -- the root file system containing the application\n\
+                            (CPIO or EXT2)\n\
+    <application>        -- the path of the executable program within\n\
+                            <rootfs> that will be executed\n\
+    <args>               -- arguments to passed through to the <application>\n\
 \n\
-and <options> are one of:\n\
-    --help                  -- this message\n\
-    --user-mem-size <size>  -- for running an unsigned binary this overrides the\n\
-                               default user memory size for an application.\n\
-                               The <size> format is a number that is in\n\
-                               bytes (<size>), in kilobytes (<size>k),\n\
-                               in megabytes (<size>m), or gigabytes (<size>g)\n\
+Options:\n\
+    --help               -- this message\n\
+    --memory-size <size> -- the memory size required by the Mystikos kernel\n\
+                            and application, where <size> may have a\n\
+                            multiplier suffix: k 1024, m 1024*1024, or\n\
+                            g 1024*1024*1024\n\
+    --app-config-path <json> -- specifies the configuration json file for\n\
+                                running an unsigned binary. The file can be\n\
+                                the same one used for the signing process.\n\
 \n\
 "
 
@@ -80,7 +81,7 @@ static void _get_options(
     int* argc,
     const char* argv[],
     struct options* options,
-    size_t* user_mem_size,
+    size_t* heap_size,
     const char** app_config_path)
 {
     /* Get --trace-syscalls option */
@@ -109,17 +110,29 @@ static void _get_options(
             options->export_ramfs = true;
     }
 
-    // Retrieve this setting as it is used in sgx option and we just ignore it
-    // here
-    const char* mem_size = NULL;
-    if ((cli_getopt(argc, argv, "--user-mem-size", &mem_size) == 0) && mem_size)
+    /* Get --memory-size or --memory-size option */
     {
-        if ((myst_expand_size_string_to_ulong(mem_size, user_mem_size) != 0) ||
-            (myst_round_up(*user_mem_size, PAGE_SIZE, user_mem_size) != 0))
+        const char* opt;
+        const char* arg = NULL;
+
+        if ((cli_getopt(argc, argv, "--memory-size", &arg) == 0))
         {
-            _err("--user-mem-size <size> -- The <size> format is a number "
-                 "that is in bytes (<size>), in kilobytes (<size>k), "
-                 "in megabytes (<size>m), or gigabytes (<size>g");
+            opt = "--memory-size";
+        }
+
+        if (!arg && cli_getopt(argc, argv, "--user-mem-size", &arg) == 0)
+        {
+            /* legacy option (kept for backwards compatibility) */
+            opt = "--user-mem-size";
+        }
+
+        if (arg)
+        {
+            if ((myst_expand_size_string_to_ulong(arg, heap_size) != 0) ||
+                (myst_round_up(*heap_size, PAGE_SIZE, heap_size) != 0))
+            {
+                _err("%s <size> -- bad suffix (must be k, m, or g)\n", opt);
+            }
         }
     }
 
@@ -144,7 +157,7 @@ static void* _map_mmap_region(size_t length)
 static void _load_regions(
     const char* rootfs,
     const char* archive,
-    size_t user_mem_size,
+    size_t heap_size,
     const char* app_config,
     struct regions* r)
 {
@@ -224,14 +237,14 @@ static void _load_regions(
         }
     }
 
-    if (user_mem_size == 0)
+    if (heap_size == 0)
     {
         r->mman_size = DEFAULT_MMAN_SIZE;
     }
     else
     {
         /* command line parsing gave pages. convert to size */
-        r->mman_size = user_mem_size;
+        r->mman_size = heap_size;
     }
 
     if (!(r->mman_data = _map_mmap_region(r->mman_size)))
@@ -440,13 +453,13 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
     size_t num_roothashes = 0;
     char archive_path[PATH_MAX];
     char rootfs_path[] = "/tmp/mystXXXXXX";
-    size_t user_mem_size = 0;
+    size_t heap_size = 0;
     const char* app_config_path = NULL;
 
     (void)program_arg;
 
     /* Get the command-line options */
-    _get_options(&argc, argv, &options, &user_mem_size, &app_config_path);
+    _get_options(&argc, argv, &options, &heap_size, &app_config_path);
 
     /* Get --pubkey=filename options */
     get_archive_options(
@@ -498,7 +511,7 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
 
     /* Load the regions into memory */
     _load_regions(
-        rootfs_arg, archive_path, user_mem_size, app_config_path, &regions);
+        rootfs_arg, archive_path, heap_size, app_config_path, &regions);
 
     unlink(archive_path);
 

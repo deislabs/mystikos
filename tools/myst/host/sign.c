@@ -360,15 +360,6 @@ int _sign(int argc, const char* argv[])
     if (fd < 0)
         _err("Failed to create temporary file for OE configuration");
 
-    // Need to calculate the OE user memory which in our case
-    // means enclave binary, the kernel and the rootfs.
-    // We know the size of the rootfs through inspection so we add a bit
-    // to cover the other required space.
-    struct stat st;
-    stat(rootfs_file, &st);
-
-    parsed_data.oe_num_heap_pages = make_oe_num_heap_pages(st.st_size);
-
     if (write_oe_config_fd(fd, &parsed_data) != 0)
     {
         unlink(temp_oeconfig_file);
@@ -394,7 +385,7 @@ int _sign(int argc, const char* argv[])
              rootfs_file,
              archive,
              config_file,
-             parsed_data.user_pages)) == NULL)
+             parsed_data.heap_pages)) == NULL)
     {
         unlink(temp_oeconfig_file);
         _err("Creating region data failed.");

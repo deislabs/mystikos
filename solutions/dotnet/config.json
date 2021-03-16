@@ -13,7 +13,7 @@
     // Mystikos specific values
 
     // The heap size of the user application. Increase this setting if your app experienced OOM.
-    "UserMemSize": "512m",
+    "MemorySize": "512m",
     // The path to the entry point application in rootfs
     "ApplicationPath": "/app/HelloWorld",
     // The parameters to the entry point application

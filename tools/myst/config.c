@@ -201,7 +201,14 @@ static json_result_t _json_read_callback(
             // Mystikos configuration
             else if (json_match(parser, "UserMemSize") == JSON_OK)
             {
-                ret = _extract_mem_size(type, un, &parsed_data->user_pages);
+                /* legacy setting (kept for backwards compatibility) */
+                ret = _extract_mem_size(type, un, &parsed_data->heap_pages);
+                if (ret != JSON_OK)
+                    CONFIG_RAISE(ret);
+            }
+            else if (json_match(parser, "MemorySize") == JSON_OK)
+            {
+                ret = _extract_mem_size(type, un, &parsed_data->heap_pages);
                 if (ret != JSON_OK)
                     CONFIG_RAISE(ret);
             }
@@ -376,8 +383,6 @@ int write_oe_config_fd(int fd, config_parsed_data_t* parsed_data)
         fprintf(out_file, "Debug=0\n");
     else
         fprintf(out_file, "Debug=1\n");
-
-    fprintf(out_file, "NumHeapPages=%ld\n", parsed_data->oe_num_heap_pages);
 
     fprintf(out_file, "NumStackPages=%ld\n", parsed_data->oe_num_stack_pages);
 

@@ -7,6 +7,8 @@ ifdef STRACE
 OPTS = --strace
 endif
 
+OPTS = --memory-size=128m
+
 all: appdir rootfs
 
 appdir:
@@ -14,6 +16,7 @@ appdir:
 
 rootfs:
 	$(MYST) mkcpio appdir rootfs
+
 run:
 	$(MYST_EXEC) $(OPTS) rootfs /usr/local/bin/python3 /app/hello_world.py
 

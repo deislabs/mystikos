@@ -23,7 +23,7 @@ region_details _details = {0};
 
 const region_details* create_region_details_from_package(
     elf_image_t* myst_elf,
-    size_t user_pages)
+    size_t heap_pages)
 {
     char dir[PATH_MAX];
 
@@ -90,7 +90,7 @@ const region_details* create_region_details_from_package(
             (unsigned char**)&_details.config.buffer,
             &_details.config.buffer_size) == 0)
     {
-        if (user_pages == 0)
+        if (heap_pages == 0)
         {
             config_parsed_data_t parsed_data = {0};
             if (parse_config_from_buffer(
@@ -98,7 +98,7 @@ const region_details* create_region_details_from_package(
                     _details.config.buffer_size,
                     &parsed_data) == 0)
             {
-                user_pages = parsed_data.user_pages;
+                heap_pages = parsed_data.heap_pages;
                 free_config(&parsed_data);
             }
             else
@@ -110,10 +110,10 @@ const region_details* create_region_details_from_package(
 
     _details.config.status = REGION_ITEM_BORROWED;
 
-    if (user_pages == 0)
+    if (heap_pages == 0)
         _details.mman_size = DEFAULT_MMAN_SIZE;
     else
-        _details.mman_size = user_pages * PAGE_SIZE;
+        _details.mman_size = heap_pages * PAGE_SIZE;
 
     return &_details;
 }
@@ -128,10 +128,8 @@ const region_details* create_region_details_from_files(
     const char* rootfs_path,
     const char* archive_path,
     const char* config_path,
-    size_t user_mem_size)
+    size_t ram)
 {
-    bool is_enclave_signed = false;
-
     if (myst_load_file(
             rootfs_path,
             &_details.rootfs.buffer,
@@ -203,8 +201,6 @@ const region_details* create_region_details_from_files(
     size_t temp_size;
     if (elf_find_section(&enc_elf, ".mystconfig", &temp_buf, &temp_size) == 0)
     {
-        is_enclave_signed = true;
-
         // We are going to have to duplicate this buffer so we can unload
         // the enclave image
         _details.config.buffer = malloc(temp_size);
@@ -221,7 +217,7 @@ const region_details* create_region_details_from_files(
         if (parse_config_from_buffer(
                 _details.config.buffer, temp_size, &parsed_data) == 0)
         {
-            user_mem_size = parsed_data.user_pages * PAGE_SIZE;
+            ram = parsed_data.heap_pages * PAGE_SIZE;
             free_config(&parsed_data);
         }
         else
@@ -247,7 +243,7 @@ const region_details* create_region_details_from_files(
                     _details.config.buffer_size,
                     &parsed_data) == 0)
             {
-                user_mem_size = parsed_data.user_pages * PAGE_SIZE;
+                ram = parsed_data.heap_pages * PAGE_SIZE;
                 free_config(&parsed_data);
             }
             else
@@ -264,21 +260,12 @@ const region_details* create_region_details_from_files(
 
     elf_unload(&enc_elf);
 
-    if (user_mem_size == 0)
+    if (ram == 0)
     {
-        user_mem_size = DEFAULT_MMAN_SIZE;
+        ram = DEFAULT_MMAN_SIZE;
     }
 
-    _details.mman_size = user_mem_size;
-
-    // Only override the setting if we are not signed.
-    // During signing this value gets baked into the enclave shared library
-    // based on configuration. It will probably be set to the same value,
-    // but to make sure future changes don't change this we will only
-    // update here is not signed.
-    if (!is_enclave_signed && (_details.oe_num_heap_pages == 0))
-        _details.oe_num_heap_pages =
-            make_oe_num_heap_pages(_details.rootfs.buffer_size);
+    _details.mman_size = ram;
 
     return &_details;
 }

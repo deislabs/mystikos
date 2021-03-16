@@ -21,7 +21,6 @@ typedef struct _region_details_item
 typedef struct _region_details
 {
     size_t mman_size;
-    size_t oe_num_heap_pages;
     region_details_item enc;
     region_details_item crt;
     region_details_item kernel;
@@ -37,10 +36,10 @@ const region_details* create_region_details_from_files(
     const char* rootfs_path,
     const char* archive_path,
     const char* config_path,
-    size_t user_mem_size);
+    size_t ram);
 
 const region_details* create_region_details_from_package(
     elf_image_t* myst_elf,
-    size_t user_pages);
+    size_t heap_pages);
 
 void free_region_details();

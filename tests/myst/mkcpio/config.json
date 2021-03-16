@@ -10,7 +10,7 @@
     "SecurityVersion": 1,
 
     // Mystikos specific values
-    "UserMemSize": "40m",
+    "MemorySize": "40m",
     "ApplicationPath": "/bin/hello",
     "ApplicationParameters": ["Enclave-red", "Enclave-blue", "Enclave-green", "Enclave-yellow"],
     "HostApplicationParameters": false,

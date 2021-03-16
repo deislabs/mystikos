@@ -36,7 +36,7 @@ test-mem-size:
 	mkdir -p $(APPDIR)/bin
 	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/$(APPNAME) ../hello.c $(LDFLAGS)
 	$(PREFIX) $(MYST) mkcpio $(APPDIR) rootfs
-	$(MYST_EXEC) rootfs --user-mem-size 1g /bin/$(APPNAME) red green blue yellow > result
+	$(MYST_EXEC) rootfs --memory-size 1g /bin/$(APPNAME) red green blue yellow > result
 	grep -E "argv\[0]=/bin/hello" result
 	grep -E "argv\[1]=red" result
 	grep -E "argv\[2]=green" result

@@ -627,7 +627,7 @@ int _exec_package(
     }
 
     if ((details = create_region_details_from_package(
-             &myst_elf, parsed_data.user_pages)) == NULL)
+             &myst_elf, parsed_data.heap_pages)) == NULL)
     {
         fprintf(stderr, "Failed to extract all sections\n");
         goto done;
@@ -696,7 +696,7 @@ int _exec_package(
     }
 
     ret = exec_launch_enclave(
-        scratch_path, type, flags, exec_args, envp, &options, NULL);
+        scratch_path, type, flags, exec_args, envp, &options);
     if (ret != 0)
     {
         fprintf(stderr, "Enclave %s returned %d\n", scratch_path, ret);
