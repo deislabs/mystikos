@@ -605,7 +605,14 @@ static long _syscall_clone(
         child->crt_td = newtls;
         child->run_thread = myst_run_thread;
         child->thread_lock = parent->thread_lock;
-
+        {
+            char buf[BUFSIZ];
+            /* ATTN: we don't take a lock on _num_threads,
+             thread names could be duplicates */
+            snprintf(buf, sizeof(buf), "thread-%ld", _num_threads);
+            myst_set_thread_name(child, buf);
+        }
+        
         // Link up parent, child, and the previous head child of the parent,
         // if there is one, in the same thread group.
 
@@ -680,6 +687,13 @@ static long _syscall_clone_vfork(
         child->run_thread = myst_run_thread;
         child->main.thread_group_lock = MYST_SPINLOCK_INITIALIZER;
         child->thread_lock = &child->main.thread_group_lock;
+        {
+            char buf[BUFSIZ];
+            /* ATTN: we don't take a lock on _num_threads,
+             thread names could be duplicates */
+            snprintf(buf, sizeof(buf), "thread-%ld", _num_threads);
+            myst_set_thread_name(child, buf);
+        }
 
         /* Inherit parent current working directory */
         child->main.cwd_lock = MYST_SPINLOCK_INITIALIZER;
@@ -812,4 +826,24 @@ size_t myst_kill_thread_group()
     }
 
     return count;
+}
+
+int myst_set_thread_name(myst_thread_t* thread, const char* n)
+{
+    int ret = 0;
+
+    if (!thread || !n)
+        ERAISE(-EINVAL);
+
+    /* Copy atmost 15 bytes */
+    strncpy(thread->name, n, sizeof(thread->name) - 1);
+    /* Set null terminator if string pointed by n
+        longer than the 16-byte fixed buffer for thread->name */
+    if (strlen(n) >= sizeof(thread->name) - 1)
+    {
+        thread->name[sizeof(thread->name) - 1] = '\0';
+    }
+
+done:
+    return ret;
 }

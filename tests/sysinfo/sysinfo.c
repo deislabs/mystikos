@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include <sys/prctl.h>
 #include <sys/resource.h>
 #include <sys/sysinfo.h>
 #include <sys/time.h>
@@ -129,6 +130,22 @@ void test_prlimit()
     assert(ret < 0);
 }
 
+#define NEWNAME "worker"
+void test_thread_name()
+{
+    char buf[BUFSIZ];
+    assert(prctl(PR_GET_NAME, buf) == 0);
+
+    printf("%s", buf);
+
+    strcpy(buf, NEWNAME);
+    assert(prctl(PR_SET_NAME, buf) == 0);
+
+    char buf2[BUFSIZ];
+    assert(prctl(PR_GET_NAME, buf2) == 0);
+    assert(strcmp(NEWNAME, buf2) == 0);
+}
+
 int main(int argc, const char* argv[])
 {
     assert(test_uptime());
@@ -137,6 +154,7 @@ int main(int argc, const char* argv[])
 
     test_getrusage();
     test_prlimit();
+    test_thread_name();
 
     printf("\n=== passed test (%s)\n", argv[0]);
 

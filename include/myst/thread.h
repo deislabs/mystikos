@@ -187,6 +187,9 @@ struct myst_thread
     myst_spinlock_t* thread_lock;
     struct myst_thread* group_prev;
     struct myst_thread* group_next;
+
+    /* thread name */
+    char name[16];
 };
 
 MYST_INLINE bool myst_valid_thread(const myst_thread_t* thread)
@@ -294,5 +297,12 @@ int myst_get_num_threads(void);
 myst_thread_t* myst_find_thread(int tid);
 
 size_t myst_kill_thread_group();
+
+MYST_INLINE char* myst_get_thread_name(myst_thread_t* thread)
+{
+    return thread->name;
+}
+
+int myst_set_thread_name(myst_thread_t* thread, const char* n);
 
 #endif /* _MYST_THREAD_H */
