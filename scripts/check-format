@@ -6,7 +6,7 @@
 ##
 ## Synopsis:
 ##     Detect misformatted source code in the repository and exit with 1 if
-##     any are found.
+##     any are found. Else exit with 0.
 ##
 ## Usage:
 ##     check-format
