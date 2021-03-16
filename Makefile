@@ -103,10 +103,8 @@ uninstall:
 ##
 ##==============================================================================
 
-SOURCES_DIRS = $(shell  ls -d -1 */ | grep -v third_party | grep -v build )
-
 src:
-	@ echo $(foreach i, $(SOURCES_DIRS), $(shell find $(i) -name '*.[ch]'))
+	@ ./scripts/sources
 
 ##==============================================================================
 ##
