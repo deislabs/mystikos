@@ -5,6 +5,7 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #include <sys/prctl.h>
@@ -131,19 +132,35 @@ void test_prlimit()
 }
 
 #define NEWNAME "worker"
+#define NEWNAMELONG "thisisareallylongname"
 void test_thread_name()
 {
     char buf[BUFSIZ];
     assert(prctl(PR_GET_NAME, buf) == 0);
 
-    printf("%s", buf);
+    {
+        strcpy(buf, NEWNAME);
+        assert(prctl(PR_SET_NAME, buf) == 0);
 
-    strcpy(buf, NEWNAME);
-    assert(prctl(PR_SET_NAME, buf) == 0);
+        char buf2[BUFSIZ];
+        assert(prctl(PR_GET_NAME, buf2) == 0);
+        assert(strcmp(NEWNAME, buf2) == 0);
+        assert(strlen(buf2) <= 15);
+    }
 
-    char buf2[BUFSIZ];
-    assert(prctl(PR_GET_NAME, buf2) == 0);
-    assert(strcmp(NEWNAME, buf2) == 0);
+    // test thread names are atmost 16 bytes, including null byte
+    {
+        strcpy(buf, NEWNAMELONG);
+        assert(prctl(PR_SET_NAME, buf) == 0);
+
+        char buf2[BUFSIZ];
+        assert(prctl(PR_GET_NAME, buf2) == 0);
+        assert(strcmp(NEWNAMELONG, buf2) != 0);
+
+        assert(strlen(buf2) <= 15);
+        assert(strncmp(NEWNAMELONG, buf2, 15) == 0);
+        assert(buf2[15] == '\0');
+    }
 }
 
 int main(int argc, const char* argv[])
