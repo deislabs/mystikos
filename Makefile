@@ -118,6 +118,9 @@ src:
 format:
 	./scripts/code-format $(shell $(MAKE) src)
 
+check-format:
+	./scripts/code-format --check $(shell $(MAKE) src)
+
 ##==============================================================================
 ##
 ## touch:

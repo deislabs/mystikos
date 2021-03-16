@@ -1,5 +1,43 @@
 #!/bin/bash
 
+##==============================================================================
+##
+## code-format
+##
+## Synopsis:
+##     Format source files to conform to the Project coding conventions.
+##
+## Usage:
+##     code-format [options] <source_files...>
+##
+## Options:
+##     --check -- return 1 if any source file is misformatted; else return 0
+##
+##==============================================================================
+
+check=0
+
+# process options:
+for opt
+do
+
+  arg=`expr "x$opt" : 'x[^=]*=\(.*\)'`
+  case $opt in
+
+    --check)
+      check=1
+      shift
+      ;;
+
+    --*)
+      echo "$0: unknown option:  $opt"
+      exit 1
+      ;;
+
+  esac
+
+done
+
 if [ "$#" == "0" ]; then
     echo "Usage: $0 <source-file>..."
     exit 1
@@ -13,5 +51,22 @@ fi
 
 for i
 do
-    ${cf} -style=file -i ${i}
+    # if --check option present, then only check whether formatted.
+    if [ "${check}" == "1" ]; then
+
+        # make a backup copy of the file: ".<filename>.code-format"
+        tmp=${i}.code-format
+        cp ${i} ${tmp}
+        ${cf} -style=file -i ${tmp}
+
+        # Diff the file and exit with 1 if different
+        diff "${i}" "${tmp}" > /dev/null 2> /dev/null
+        if [ "$?" != "0" ]; then
+            rm -f ${tmp}
+            exit 1
+        fi
+        rm -f ${tmp}
+    else
+        ${cf} -style=file -i ${i}
+    fi
 done
