@@ -27,6 +27,10 @@ TESTS=$(shell grep -v "^\#"ramfs_tests_passed.txt)
 FOUND=1
 endif
 
+ifeq ($(FS),ramfs)
+FOUND=1
+endif
+
 ifeq ($(FOUND),)
 $(error "bad value for FS: must be hostfs or ext2fs")
 endif
@@ -117,12 +121,15 @@ endif
 
 ifeq ($(FS),hostfs)
 one:
-	- @ sudo umount $(HOSTFS)
+	@ $(MAKE) -s umount
 	@ rm -rf $(UPPERDIR) $(WORKDIR) $(HOSTFS)
 	@ mkdir -p $(UPPERDIR) $(WORKDIR) $(HOSTFS)
 	@ sudo mount -t overlay overlay -o lowerdir=$(LOWERDIR),upperdir=$(UPPERDIR),workdir=$(WORKDIR) $(HOSTFS)
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
-	- @ sudo umount $(HOSTFS)
+	@ $(MAKE) -s umount
+
+umount:
+	- @ sudo umount $(HOSTFS) 2> /dev/null
 endif
 
 ##==============================================================================
