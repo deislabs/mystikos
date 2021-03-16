@@ -77,7 +77,7 @@ on lowering the incompatibilities to enable more applications.
 | SYS_times                     | get times used by kernel and user spaces | Partial |
 | SYS_capget / SYS_capset       | get/set thread capabilities | Unsupported |
 | SYS_utime / SYS_utimes        | set access/modify time of a file | Unsupported |
-| SYS_prctl / SYS_arch_prctl    | modify behaviors of calling thread/process | Unsupported |
+| SYS_prctl / SYS_arch_prctl    | modify behaviors of calling thread/process | Partial |
 | SYS_clock_settime / SYS_clock_gettime | get/set nano resolution time from/to various system clocks | Partial |
 | SYS_adjtimex / SYS_clock_adjtime / SYS_settimeofday | Set properties/values of system clocks | Unsupported |
 | SYS_setdomainname             | set NIS domain name | Unsupported |
