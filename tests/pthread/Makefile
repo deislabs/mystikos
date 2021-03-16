@@ -22,7 +22,7 @@ COUNT = 10
 endif
 
 # Increase timeout for these tests
-export TIMEOUT=120
+export TIMEOUT=360
 
 tests:
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/pthread $(COUNT)

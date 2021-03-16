@@ -16,6 +16,7 @@
 #include <myst/process.h>
 #include <myst/strings.h>
 #include <myst/round.h>
+#include <myst/panic.h>
 
 #define SCRUB
 
@@ -176,6 +177,7 @@ done:
     return ret;
 }
 
+/* ATTN-A: fix return types for this function */
 void* myst_mmap(
     void* addr,
     size_t length,
@@ -185,6 +187,7 @@ void* myst_mmap(
     off_t offset)
 {
     void* ptr = (void*)-1;
+    int r;
 
     (void)flags;
 
@@ -233,15 +236,15 @@ void* myst_mmap(
 
     int tflags = MYST_MAP_ANONYMOUS | MYST_MAP_PRIVATE;
 
-    if (myst_mman_mmap(&_mman, addr, length, prot, tflags, &ptr) != 0)
-        return (void*)-1;
+    if ((r = myst_mman_mmap(&_mman, addr, length, prot, tflags, &ptr)) < 0)
+        return (void*)(long)r;
 
     if (fd >= 0 && !addr)
     {
         ssize_t n;
 
         if ((n = _map_file_onto_memory(fd, offset, ptr, length, flags)) < 0)
-            return (void*)-1;
+            return (void*)(long)-n;
     }
 
     void* end = (uint8_t*)ptr + length;

@@ -9,6 +9,8 @@ ifdef STRACE
 OPTS += --strace
 endif
 
+OPTS = --memory-size=256m
+
 all: appdir rootfs ext2fs
 
 # docker build time ~1hr. Using prebuilt image.
@@ -39,25 +41,25 @@ clean:
 ##################################
 run-cpio:
 	$(MYST) exec rootfs \
-	--user-mem-size $(HEAP_SIZE) \
+	--memory-size $(HEAP_SIZE) \
 	/coreclr-tests-all/Tests/Core_Root/corerun \
 	/coreclr-tests-all/JIT/Generics/Arrays/TypeParameters/Jagged/class01/class01.dll $(OPTS)
 
 run-cpio-gdb:
 	$(MYST_GDB) --args $(MYST) exec rootfs \
-	--user-mem-size $(HEAP_SIZE) \
+	--memory-size $(HEAP_SIZE) \
 	/coreclr-tests-all/Tests/Core_Root/corerun \
 	/coreclr-tests-all/JIT/Generics/Arrays/TypeParameters/Jagged/class01/class01.dll $(OPTS)
 
 run-ext2:
 	$(MYST) exec ext2fs --roothash=roothash \
-	--user-mem-size $(HEAP_SIZE) \
+	--memory-size $(HEAP_SIZE) \
 	/coreclr-tests-all/Tests/Core_Root/corerun \
 	/coreclr-tests-all/JIT/Generics/Arrays/TypeParameters/Jagged/class01/class01.dll $(OPTS)
 
 run-ext2-gdb:
 	$(MYST_GDB) --args $(MYST) exec ext2fs --roothash=roothash \
-	--user-mem-size $(HEAP_SIZE) \
+	--memory-size $(HEAP_SIZE) \
 	/coreclr-tests-all/Tests/Core_Root/corerun \
 	/coreclr-tests-all/JIT/Generics/Arrays/TypeParameters/Jagged/class01/class01.dll $(OPTS)
 

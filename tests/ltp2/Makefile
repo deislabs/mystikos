@@ -62,10 +62,6 @@ clone:
 	mkdir appdir
 	git clone https://github.com/mikbras/ltp appdir/ltp -b myst
 
-ifdef STRACE
-OPTS = --strace
-endif
-
 tests:
 	$(foreach i, $(TESTS), $(MAKE) one TEST=$(i) $(NL) )
 

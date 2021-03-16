@@ -14,14 +14,13 @@ typedef struct _config_parsed_data_t
 
     // OE settings
     unsigned char oe_debug;
-    uint64_t oe_num_heap_pages;
     uint64_t oe_num_stack_pages;
     uint64_t oe_num_user_threads;
     unsigned short oe_product_id;
     unsigned short oe_security_version;
 
     // Mystikos config values
-    uint64_t user_pages; // user_pages*4096=value-in-config
+    uint64_t heap_pages; // heap_pages*4096=value-in-config
     char* application_path;
     unsigned char allow_host_parameters;
     char** application_parameters;

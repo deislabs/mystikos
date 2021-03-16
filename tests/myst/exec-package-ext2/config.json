@@ -6,7 +6,7 @@
     "NumUserThreads": 2,
     "ProductID": 1,
     "SecurityVersion": 1,
-    "UserMemSize": "40m",
+    "MemorySize": "40m",
     "ApplicationPath": "/bin/hello",
     "ApplicationParameters": [],
     "HostApplicationParameters": false,

@@ -45,7 +45,7 @@ int main(int argc, const char* argv[])
     pthread_t cthread2;
 
     assert(pthread_create(&sthread, NULL, _server_thread_func, NULL) == 0);
-    _sleep_msec(100);
+    _sleep_msec(250);
     assert(pthread_create(&cthread1, NULL, _client_thread_func, NULL) == 0);
     assert(pthread_create(&cthread2, NULL, _client_thread_func, NULL) == 0);
 

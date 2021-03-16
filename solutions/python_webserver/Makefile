@@ -7,6 +7,8 @@ ifdef STRACE
 OPTS = --strace
 endif
 
+OPTS = --memory-size=128m
+
 all: appdir rootfs
 
 appdir:
@@ -18,7 +20,7 @@ rootfs:
 run:
 	test -f server.pid && kill -9 `cat server.pid` || true
 	$(MYST_EXEC) $(OPTS) rootfs /usr/local/bin/python3 /app/hello_server.py & echo $$! > server.pid
-	sleep 10
+	sleep 20
 	curl 127.0.0.1:8000
 	test -f server.pid && kill -9 `cat server.pid` && rm server.pid || true
 

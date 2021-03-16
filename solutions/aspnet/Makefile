@@ -8,6 +8,8 @@ APPNAME=webapp
 #OPTS += --strace
 #endif
 
+OPTS = --memory-size=256m
+
 all: appdir private.pem
 
 run: appdir private.pem
@@ -15,7 +17,7 @@ run: appdir private.pem
 	test -f server.pid && kill -9 `cat server.pid` || true
 	$(MYST) package appdir private.pem config.json
 	myst/bin/$(APPNAME) $(OPTS) & echo $$! > server.pid
-	sleep 10
+	sleep 15
 	# Request 3 times from the client to make sure the server is robust.
 	curl 127.0.0.1:5050
 	curl 127.0.0.1:5050

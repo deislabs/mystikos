@@ -90,22 +90,24 @@ $(ROOTHASH): run.c
 
 OPTS += --roothash=$(ROOTHASH)
 
+OPTS += --memory-size=1024m
+
 tests:
 	$(RUNTEST) $(MAKE) __tests
 
 __tests: test1 test2 test3
 
 test1:
-	$(MYST_EXEC) --user-mem-size 1024m $(OPTS) $(ROOTFS) /bin/run $(STATUS) $(TEST_FILE1)
+	$(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run $(STATUS) $(TEST_FILE1)
 
 test2:
 ifndef FAILED
-	$(MYST_EXEC) --user-mem-size 1024m $(OPTS) $(ROOTFS) /bin/run $(STATUS) $(TEST_FILE2)
+	$(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run $(STATUS) $(TEST_FILE2)
 endif
 
 test3:
 ifndef FAILED
-	$(MYST_EXEC) --user-mem-size 1024m $(OPTS) $(ROOTFS) /bin/run $(STATUS) $(TEST_FILE3)
+	$(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run $(STATUS) $(TEST_FILE3)
 endif
 
 myst:
