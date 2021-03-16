@@ -49,6 +49,7 @@ typedef struct ramfs
     char source[PATH_MAX]; /* source argument to myst_mount() */
     char target[PATH_MAX]; /* target argument to myst_mount() */
     myst_mount_resolve_callback_t resolve;
+    size_t ninodes;
 } ramfs_t;
 
 static bool _ramfs_valid(const ramfs_t* ramfs)
@@ -70,7 +71,7 @@ struct inode
 {
     uint64_t magic;
     uint32_t mode;    /* Type and mode */
-    size_t nlink;     /* number of hard links to this inode (excludes ".") */
+    size_t nlink;     /* number of hard links to this inode */
     size_t nopens;    /* number of times file is currently opened */
     myst_buf_t buf;   /* file or directory data */
     const void* data; /* set by myst_ramfs_set_buf() */
@@ -81,7 +82,7 @@ static bool _inode_valid(const inode_t* inode)
     return inode && inode->magic == INODE_MAGIC;
 }
 
-static void _inode_free(inode_t* inode)
+static void _inode_free(ramfs_t* ramfs, inode_t* inode)
 {
     if (inode)
     {
@@ -89,6 +90,8 @@ static void _inode_free(inode_t* inode)
             myst_buf_release(&inode->buf);
         memset(inode, 0xdd, sizeof(inode_t));
         free(inode);
+
+        ramfs->ninodes--;
     }
 }
 
@@ -142,7 +145,33 @@ static bool _inode_is_empty_dir(const inode_t* inode)
     return inode && S_ISDIR(inode->mode) && inode->buf.size == empty_size;
 }
 
+#if 0
+__attribute__((__unused__))
+static void _dump_dirents(const inode_t* inode)
+{
+    if (!S_ISDIR(inode->mode))
+        return;
+
+    printf("=== _dump_dirents()\n");
+
+    struct dirent* p = (struct dirent*)inode->buf.data;
+    struct dirent* end = (struct dirent*)(inode->buf.data + inode->buf.size);
+
+    printf("inode=%p\n", inode);
+    printf("nentries=%zu\n", (end - p));
+
+    while (p != end)
+    {
+        printf("name{%s}\n", p->d_name);
+        p++;
+    }
+
+    printf("\n");
+}
+#endif
+
 static int _inode_new(
+    ramfs_t* ramfs,
     inode_t* parent,
     const char* name,
     uint32_t mode,
@@ -173,6 +202,7 @@ static int _inode_new(
     {
         /* Add the "." entry */
         ECHECK(_inode_add_dirent(inode, inode, DT_DIR, "."));
+        inode->nlink++; /* self link */
 
         /* Add the ".." entry */
         ECHECK(_inode_add_dirent(inode, parent, DT_DIR, ".."));
@@ -194,21 +224,25 @@ static int _inode_new(
             ERAISE(-EINVAL);
         }
 
-        ECHECK(_inode_add_dirent(parent, inode, type, name));
+        /* add new inode to parent directory */
+        {
+            ECHECK(_inode_add_dirent(parent, inode, type, name));
 
-        if (type == DT_DIR)
-            parent->nlink++;
+            if (S_ISDIR(inode->mode))
+                parent->nlink++;
+        }
     }
 
     if (inode_out)
         *inode_out = inode;
 
+    ramfs->ninodes++;
     inode = NULL;
 
 done:
 
     if (inode)
-        _inode_free(inode);
+        _inode_free(ramfs, inode);
 
     return ret;
 }
@@ -229,7 +263,8 @@ static inode_t* _inode_find_child(const inode_t* inode, const char* name)
 }
 
 /* Perform a depth-first release of all inodes */
-static void _inode_release_all(inode_t* parent, inode_t* inode, uint8_t d_type)
+static void _inode_release_all(
+    ramfs_t* ramfs, inode_t* parent, inode_t* inode, uint8_t d_type)
 {
     struct dirent* ents = (struct dirent*)inode->buf.data;
     size_t nents = inode->buf.size / sizeof(struct dirent);
@@ -252,16 +287,26 @@ static void _inode_release_all(inode_t* parent, inode_t* inode, uint8_t d_type)
             assert(_inode_valid(child));
 
             if (child != inode)
-                _inode_release_all(inode, child, ent->d_type);
+                _inode_release_all(ramfs, inode, child, ent->d_type);
         }
+
+        /* remove self link */
+        inode->nlink--;
+
+        /* remove link from parent */
+        inode->nlink--;
+
+        /* reduce link in parent */
+        if (parent)
+            parent->nlink--;
+    }
+    else
+    {
+        inode->nlink--;
     }
 
-    /* If not the root inode */
-    if (parent)
-        parent->nlink--;
-
-    if (--inode->nlink == 0)
-        _inode_free(inode);
+    if (inode->nlink == 0)
+        _inode_free(ramfs, inode);
 }
 
 static int _inode_remove_dirent(inode_t* inode, const char* name)
@@ -280,6 +325,9 @@ static int _inode_remove_dirent(inode_t* inode, const char* name)
         {
             const size_t pos = i * sizeof(struct dirent);
             const size_t size = sizeof(struct dirent);
+
+            /* clear the entry */
+            memset(&ents[i], 0, sizeof(struct dirent));
 
             if (myst_buf_remove(&inode->buf, pos, size) != 0)
                 ERAISE(-ENOMEM);
@@ -578,7 +626,12 @@ static int _fs_release(myst_fs_t* fs)
     if (!_ramfs_valid(ramfs))
         ERAISE(-EINVAL);
 
-    _inode_release_all(NULL, ramfs->root, DT_DIR);
+    _inode_release_all(ramfs, NULL, ramfs->root, DT_DIR);
+
+    if (ramfs->ninodes != 0)
+        myst_panic("_ninodes != 0");
+
+    assert(ramfs->ninodes == 0);
 
     free(ramfs);
 
@@ -704,7 +757,7 @@ static int _fs_open(
         ECHECK(_path_to_inode(ramfs, dirname, true, NULL, &parent, NULL, NULL));
 
         /* Create the new file inode */
-        ECHECK(_inode_new(parent, basename, (S_IFREG | mode), &inode));
+        ECHECK(_inode_new(ramfs, parent, basename, (S_IFREG | mode), &inode));
     }
     else
     {
@@ -731,7 +784,7 @@ static int _fs_open(
 done:
 
     if (inode && is_i_new)
-        free(inode);
+        _inode_free(ramfs, inode);
 
     if (file)
         free(file);
@@ -1071,9 +1124,10 @@ static int _fs_close(myst_fs_t* fs, myst_file_t* file)
 
     file->inode->nopens--;
 
+    /* handle case where file was deleted while open */
     if (file->inode->nopens == 0 && file->inode->nlink == 0)
     {
-        _inode_free(file->inode);
+        _inode_free(ramfs, file->inode);
     }
 
     memset(file, 0xdd, sizeof(myst_file_t));
@@ -1149,12 +1203,6 @@ static int _stat(inode_t* inode, struct stat* statbuf)
     memset(&buf.st_atim, 0, sizeof(buf.st_atim)); /* ATTN: unsupported */
     memset(&buf.st_mtim, 0, sizeof(buf.st_mtim)); /* ATTN: unsupported */
     memset(&buf.st_ctim, 0, sizeof(buf.st_ctim)); /* ATTN: unsupported */
-
-    if (S_ISDIR(buf.st_mode))
-    {
-        /* add an extra link to account for the "." entry */
-        buf.st_nlink++;
-    }
 
     *statbuf = buf;
 
@@ -1263,9 +1311,6 @@ static int _fs_link(myst_fs_t* fs, const char* oldpath, const char* newpath)
     /* Add the directory entry for the newpath */
     _inode_add_dirent(new_parent, old_inode, DT_REG, new_basename);
 
-    /* Increment the new parent's link count */
-    new_parent->nlink++;
-
     /* Increment the file's link count */
     old_inode->nlink++;
 
@@ -1296,25 +1341,38 @@ static int _fs_unlink(myst_fs_t* fs, const char* pathname)
         goto done;
     }
 
-    /* pathname must not be a directory */
-    if (S_ISDIR(inode->mode))
+    /* fail if pathname is a non-empty directory */
+    if (S_ISDIR(inode->mode) && !_inode_is_empty_dir(inode))
         ERAISE(-EPERM);
 
     /* Get the parent inode */
     ECHECK(_split_path(pathname, dirname, basename));
     ECHECK(_path_to_inode(ramfs, dirname, true, NULL, &parent, NULL, NULL));
 
-    inode->nlink--;
     /* Find and remove the parent's directory entry */
-    ECHECK(_inode_remove_dirent(parent, basename));
-    parent->nlink--;
+    {
+        ECHECK(_inode_remove_dirent(parent, basename));
+
+        if (S_ISDIR(inode->mode))
+            parent->nlink--;
+    }
+
+    /* remove parent directory link to this inode */
+    inode->nlink--;
+
+    if (S_ISDIR(inode->mode))
+    {
+        /* remove self link if there are no other links */
+        if (inode->nlink == 1)
+            inode->nlink--;
+    }
 
     // Delete the inode immediately if it's a symbolic link
     // or nobody owned. The deletion is delayed to _fs_close
     // if file is still linked or opened by someone.
     if (S_ISLNK(inode->mode) || (inode->nlink == 0 && inode->nopens == 0))
     {
-        _inode_free(inode);
+        _inode_free(ramfs, inode);
     }
 
 done:
@@ -1384,23 +1442,35 @@ static int _fs_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
         ERAISE(-ENOTDIR);
 
     /* Remove the oldpath directory entry */
-    ECHECK(_inode_remove_dirent(old_parent, old_basename));
-    old_parent->nlink--;
+    {
+        ECHECK(_inode_remove_dirent(old_parent, old_basename));
+
+        if (S_ISDIR(old_inode->mode))
+            old_parent->nlink--;
+    }
 
     /* Remove the newpath directory entry if any */
     if (new_inode)
     {
         ECHECK(_inode_remove_dirent(new_parent, new_basename));
-        new_parent->nlink--;
+
+        if (S_ISDIR(new_inode->mode))
+            new_parent->nlink--;
+
+        new_inode->nlink--;
     }
 
     /* Add the newpath directory entry */
-    _inode_add_dirent(new_parent, old_inode, DT_REG, new_basename);
-    new_parent->nlink++;
+    {
+        _inode_add_dirent(new_parent, old_inode, DT_REG, new_basename);
+
+        if (S_ISDIR(old_inode->mode))
+            new_parent->nlink++;
+    }
 
     /* Dereference the new inode (if any) */
-    if (new_inode && --new_inode->nlink == 0)
-        _inode_free(new_inode);
+    if (new_inode && new_inode->nlink == 0)
+        _inode_free(ramfs, new_inode);
 
 done:
     return ret;
@@ -1490,7 +1560,7 @@ static int _fs_mkdir(myst_fs_t* fs, const char* pathname, mode_t mode)
         ERAISE(-EEXIST);
 
     /* create the directory */
-    ERAISE(_inode_new(parent, basename, (S_IFDIR | mode), NULL));
+    ERAISE(_inode_new(ramfs, parent, basename, (S_IFDIR | mode), NULL));
 
 done:
     return ret;
@@ -1531,16 +1601,21 @@ static int _fs_rmdir(myst_fs_t* fs, const char* pathname)
     ECHECK(_split_path(pathname, dirname, basename));
     ECHECK(_path_to_inode(ramfs, dirname, true, NULL, &parent, NULL, NULL));
 
-    /* Find and remove the parent's directory entry */
+    /* Find and remove the parent directory entry */
     ECHECK(_inode_remove_dirent(parent, basename));
     parent->nlink--;
 
-    /* Decrement the number of links */
+    /* remove the parent directory link to this inode */
+    assert(child->nlink > 0);
+    child->nlink--;
+
+    /* remove the self link */
+    assert(child->nlink > 0);
     child->nlink--;
 
     /* If no more links to this inode, then free it */
     if (child->nlink == 0)
-        _inode_free(child);
+        _inode_free(ramfs, child);
 
 done:
     return ret;
@@ -1562,6 +1637,10 @@ static int _fs_getdents64(
 
     if (count == 0)
         goto done;
+
+    /* in case an entry was deleted (by unlink) during this iteration */
+    if (file->offset >= file->inode->buf.size)
+        file->offset = file->inode->buf.size;
 
     for (size_t i = 0; i < n; i++)
     {
@@ -1662,7 +1741,7 @@ static int _fs_symlink(myst_fs_t* fs, const char* target, const char* linkpath)
     }
 
     /* Create the new link inode */
-    ECHECK(_inode_new(parent, basename, (S_IFLNK | 0777), &inode));
+    ECHECK(_inode_new(ramfs, parent, basename, (S_IFLNK | 0777), &inode));
 
     /* Write the target name into the link inode */
     if (myst_buf_append(&inode->buf, target, strlen(target) + 1) != 0)
@@ -1956,7 +2035,7 @@ int myst_init_ramfs(myst_mount_resolve_callback_t resolve_cb, myst_fs_t** fs_out
     if (!(ramfs = calloc(1, sizeof(ramfs_t))))
         ERAISE(-ENOMEM);
 
-    ECHECK(_inode_new(NULL, "/", (S_IFDIR | MODE_RWX), &root_inode));
+    ECHECK(_inode_new(ramfs, NULL, "/", (S_IFDIR | MODE_RWX), &root_inode));
 
     ramfs->magic = RAMFS_MAGIC;
     ramfs->base = _base;
