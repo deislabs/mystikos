@@ -1,0 +1,27 @@
+#!/bin/bash
+
+top=$(git rev-parse --show-toplevel)
+
+cd ${top}
+
+branch=$(git rev-parse --abbrev-ref HEAD)
+
+files=$(git ls-tree -r ${branch} --name-only)
+
+sources=
+
+for i in ${files}
+do
+    case $i in
+
+        *.c|*.h|*.cpp)
+            sources+="${i} "
+            ;;
+
+        *)
+            # ignore this file
+            ;;
+    esac
+done
+
+echo ${sources}
