@@ -14,6 +14,7 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
+#include <sys/prctl.h>
 #include <sys/resource.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -3557,7 +3558,35 @@ long myst_syscall(long n, long params[6])
         case SYS__sysctl:
             break;
         case SYS_prctl:
-            break;
+        {
+            int option = (int)x1;
+            long ret = 0;
+
+            _strace(n, "option=%d\n", option);
+
+            if (option == PR_GET_NAME)
+            {
+                char* arg2 = (char *)x2;
+                if (!arg2)
+                    BREAK(_return(n, -EINVAL));
+
+                strcpy(arg2, myst_get_thread_name(myst_thread_self()));
+            }
+            else if(option == PR_SET_NAME)
+            {
+                char* arg2 = (char *)x2;
+                if (!arg2)
+                    BREAK(_return(n, -EINVAL));
+
+                ret = myst_set_thread_name(myst_thread_self(), arg2);
+            }
+            else
+            {
+                ret = -EINVAL;
+            }
+
+            BREAK(_return(n, ret));
+        }
         case SYS_arch_prctl:
             break;
         case SYS_adjtimex:

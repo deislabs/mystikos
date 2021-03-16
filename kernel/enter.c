@@ -452,6 +452,7 @@ static int _create_main_thread(uint64_t event, myst_thread_t** thread_out)
     thread->target_td = myst_get_fsbase();
     thread->main.thread_group_lock = MYST_SPINLOCK_INITIALIZER;
     thread->thread_lock = &thread->main.thread_group_lock;
+    strcpy(thread->name, "main");
 
     // Initial process list is just us. All new processes will be inserted in
     // the list. Dont need to set these as they are already NULL, but being here
