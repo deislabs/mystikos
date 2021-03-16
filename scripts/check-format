@@ -1,0 +1,16 @@
+#!/bin/bash
+
+##==============================================================================
+##
+## check-format
+##
+## Synopsis:
+##     Detect misformatted source code in the repository and exit with 1 if
+##     any are found.
+##
+## Usage:
+##     check-format
+##
+##==============================================================================
+
+./scripts/code-format --check $(./scripts/sources)
