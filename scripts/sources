@@ -1,5 +1,19 @@
 #!/bin/bash
 
+##==============================================================================
+##
+## sources
+##
+## Synopsis:
+##     Compile a list of sources files (.c, .cpp, and .h) in the git repository.
+##     Does not include submodules.
+##
+## Usage:
+##     sources
+##
+##==============================================================================
+
+
 top=$(git rev-parse --show-toplevel)
 
 cd ${top}
