@@ -522,7 +522,7 @@ void test_pread_pwrite(void)
     _passed(__FUNCTION__);
 }
 
-static void test_fstatat(void)
+void test_fstatat(void)
 {
     int dirfd;
     const char path[] = "/fstatat/dir1/file1";
