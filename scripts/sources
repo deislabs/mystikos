@@ -28,6 +28,10 @@ for i in ${files}
 do
     case $i in
 
+        third_party/*)
+            # ignore these directories
+            ;;
+
         *.c|*.h|*.cpp)
             sources+="${i} "
             ;;
