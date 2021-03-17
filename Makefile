@@ -123,12 +123,6 @@ src:
 format:
 	./scripts/code-format $(shell ./scripts/sources)
 
-check-format:
-	./scripts/check-format --staged
-
-check-format-commit:
-	./scripts/check-format-commit
-
 ##==============================================================================
 ##
 ## touch:
