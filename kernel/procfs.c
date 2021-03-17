@@ -65,17 +65,13 @@ int procfs_teardown()
 int procfs_pid_cleanup(pid_t pid)
 {
     int ret = 0;
-    char pid_exe_path[PATH_MAX];
     char pid_dir_path[PATH_MAX];
 
     if (!pid)
         ERAISE(-EINVAL);
 
-    snprintf(pid_exe_path, sizeof(pid_exe_path), "/proc/%d/exe", pid);
-    ECHECK(_procfs->fs_unlink(_procfs, pid_exe_path));
-
-    snprintf(pid_dir_path, sizeof(pid_dir_path), "/proc/%d", pid);
-    ECHECK(_procfs->fs_rmdir(_procfs, pid_exe_path));
+    snprintf(pid_dir_path, sizeof(pid_dir_path), "/%d", pid);
+    ECHECK(myst_release_tree(_procfs, pid_dir_path));
 
 done:
     return ret;
