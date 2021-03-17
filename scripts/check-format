@@ -35,7 +35,7 @@ do
 done
 
 if [ "${staged}" == "1" ]; then
-    ./scripts/code-format --check $(./scripts/sources --staged)
-else
-    ./scripts/code-format --check $(./scripts/sources)
+    opts=--staged
 fi
+
+./scripts/code-format --check $(./scripts/sources ${opts})
