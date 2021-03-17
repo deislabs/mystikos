@@ -737,7 +737,7 @@ static long _syscall_clone_vfork(
         parent_main_thread->main.next_process_thread = child;
         myst_spin_unlock(&myst_process_list_lock);
 
-        /* Create /proc/[pid]/fd directory for new thread */
+        /* Create /proc/[pid]/fd directory for new process thread */
         {
             char fdpath[PATH_MAX];
             const size_t n = sizeof(fdpath);
