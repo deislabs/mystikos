@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+# Copyright (c) Open Enclave SDK contributors.
+# Licensed under the MIT License.
+
+set -o errexit
+
+exit_() {
+    echo ""
+    echo "$1"
+    echo ""
+    echo "This hook can be skipped if needed with 'git commit --no-verify'"
+    echo "See '.git/hooks/pre-commit', installed from 'scripts/pre-commit'"
+    exit 1
+}
+
+scripts=$(git rev-parse --show-toplevel)/scripts
+
+if ! "$scripts/check-format"; then
+    exit_ "Commit failed: please run 'make format' to fix the formatting"
+fi

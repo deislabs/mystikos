@@ -7,6 +7,13 @@ VERSION=$(shell cat VERSION)
 PKGNAME=mystikos-$(VERSION)-x86_64
 TARBALL=$(PKGNAME).tar.gz
 
+all:
+	$(MAKE) .git/hooks/pre-commit
+	$(MAKE) dirs
+
+.git/hooks/pre-commit:
+	cp scripts/pre-commit .git/hooks/pre-commit
+
 ##==============================================================================
 ##
 ## dirs:
