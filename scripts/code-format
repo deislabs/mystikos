@@ -70,7 +70,7 @@ do
             ret=0
             echo "misformatted: ${i}"
         fi
-        rm -f ${tmp}
+        rm -rf ${dirname}/.code-format ${tmp}
     else
         ${cf} -style=file -i ${i}
     fi
