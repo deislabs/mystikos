@@ -2186,3 +2186,57 @@ done:
 
     return ret;
 }
+
+int myst_release_tree(
+    myst_fs_t* fs,
+    const char* pathname
+)
+{
+    int ret = 0;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+    inode_t *parent, *self;
+
+    if (!_ramfs_valid(ramfs))
+        ERAISE(-EINVAL);
+
+    if (!pathname)
+        ERAISE(-EINVAL);
+
+    ECHECK(_path_to_inode(ramfs, pathname, true, &parent, &self, NULL, NULL));
+
+    if (!_inode_valid(parent) || !_inode_valid(self))
+        ERAISE(-EINVAL);
+
+    /* Release all inodes in the sub-tree under self*/
+    {
+        int type, mode = self->mode;
+        if (S_ISDIR(mode))
+            type = DT_DIR;
+        else if (S_ISREG(mode))
+            type = DT_REG;
+        else if (S_ISLNK(mode))
+            type = DT_LNK;
+        else
+        {
+            ERAISE(-EINVAL);
+        }
+
+        _inode_release_all(ramfs, parent, self, type);
+    }
+
+    /* Remove directory entry from parent */
+    {
+        char dirname[PATH_MAX];
+        char basename[PATH_MAX];
+        /* Get the parent inode */
+        ECHECK(_split_path(pathname, dirname, basename));
+        /* Find and remove the parent's directory entry */
+        {
+            ECHECK(_inode_remove_dirent(parent, basename));
+        }
+    }
+
+done:
+
+    return ret;
+}
