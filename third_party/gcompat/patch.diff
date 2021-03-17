@@ -1,0 +1,496 @@
+diff --git a/libgcompat/error.c b/libgcompat/error.c
+index c759b19..8184fc9 100644
+--- a/libgcompat/error.c
++++ b/libgcompat/error.c
+@@ -2,6 +2,7 @@
+ #include <errno.h>  /* program_invocation_name */
+ #include <stdarg.h> /* va_list, va_start, va_end */
+ #include <stdio.h>  /* fflush, fputc, fputs, stderr, stdout, vfprintf */
++#include <stdlib.h> /* exit */
+ #include <string.h> /* strerror */
+ 
+ /**
+@@ -24,4 +25,7 @@ void error(int status, int errnum, const char *format, ...)
+ 		fputs(strerror(errnum), stderr);
+ 		fputc('\n', stderr);
+ 	}
++
++  if (status)
++    exit(status);
+ }
+diff --git a/libgcompat/fts.c b/libgcompat/fts.c
+new file mode 100644
+index 0000000..9209d14
+--- /dev/null
++++ b/libgcompat/fts.c
+@@ -0,0 +1,44 @@
++#include <assert.h>
++#include <stdio.h>
++#include <stdlib.h>
++
++typedef struct _FTS FTS;
++typedef struct _FTSENT FTSENT;
++
++FTS* fts_open(
++    char* const* path_argv,
++    int options,
++    int (*compar)(const FTSENT**, const FTSENT**))
++{
++    assert("unhandled" == NULL);
++    abort();
++    return NULL;
++}
++
++int fts_close(FTS* ftsp)
++{
++    fprintf(stderr, "%s() unhandled\n", __FUNCTION__);
++    abort();
++    return 0;
++}
++
++FTSENT* fts_read(FTS* ftsp)
++{
++    assert("unhandled" == NULL);
++    abort();
++    return NULL;
++}
++
++int fts_set(FTS* ftsp, FTSENT* f, int options)
++{
++    assert("unhandled" == NULL);
++    abort();
++    return 0;
++}
++
++FTSENT* fts_children(FTS* ftsp, int options)
++{
++    assert("unhandled" == NULL);
++    abort();
++    return NULL;
++}
+\ No newline at end of file
+diff --git a/libgcompat/init.c b/libgcompat/init.c
+new file mode 100644
+index 0000000..b4b91d1
+--- /dev/null
++++ b/libgcompat/init.c
+@@ -0,0 +1,15 @@
++struct __processor_model
++{
++    unsigned int __cpu_vendor;
++    unsigned int __cpu_type;
++    unsigned int __cpu_subtype;
++    unsigned int __cpu_features[1];
++};
++
++__attribute__((weak)) struct __processor_model __cpu_model;
++
++__attribute__((weak)) __attribute__((constructor(101))) int
++__cpu_indicator_init(void)
++{
++    return 0;
++}
+diff --git a/libgcompat/locale.c b/libgcompat/locale.c
+index a7ac2c0..daa27e5 100644
+--- a/libgcompat/locale.c
++++ b/libgcompat/locale.c
+@@ -48,9 +48,3 @@ struct glibc_locale *newlocale(int mask, const char *name, locale_t base) {
+ 
+ 	return ret;
+ }
+-
+-void freelocale(struct glibc_locale *loc) {
+-	free(loc->__names[0]);
+-	__freelocale(loc->__locales[0]);
+-	free(loc);
+-}
+diff --git a/libgcompat/malloc.c b/libgcompat/malloc.c
+index 5a82bc4..12c3439 100644
+--- a/libgcompat/malloc.c
++++ b/libgcompat/malloc.c
+@@ -62,15 +62,6 @@ void *__libc_malloc(size_t size)
+ }
+ alias(__libc_malloc, __malloc);
+ 
+-void *__libc_memalign(size_t align, size_t len)
+-{
+-	void *result = NULL;
+-	if (posix_memalign(&result, align, len) != 0)
+-		return NULL;
+-	return result;
+-}
+-alias(__libc_memalign, __memalign);
+-
+ void *__libc_realloc(void *ptr, size_t size)
+ {
+ 	return realloc(ptr, size);
+diff --git a/libgcompat/pthread.c b/libgcompat/pthread.c
+index 19adceb..05f83eb 100644
+--- a/libgcompat/pthread.c
++++ b/libgcompat/pthread.c
+@@ -67,7 +67,7 @@ int pthread_yield(void)
+  */
+ cpu_set_t *__sched_cpualloc(size_t _count)
+ {
+-	return CPU_ALLOC(__count);
++	return CPU_ALLOC(_count);
+ }
+ 
+ /**
+diff --git a/libgcompat/readlink.c b/libgcompat/readlink.c
+deleted file mode 100644
+index 42501fe..0000000
+--- a/libgcompat/readlink.c
++++ /dev/null
+@@ -1,88 +0,0 @@
+-#include <dlfcn.h>
+-#include <errno.h>
+-#include <fcntl.h>
+-#include <limits.h>
+-#include <stddef.h>
+-#include <stdlib.h>
+-#include <string.h>
+-#include <unistd.h>
+-
+-#ifndef LINKER
+-#error LINKER must be defined
+-#endif
+-
+-static char exe[PATH_MAX], *linker;
+-static ssize_t (*real_readlink)(const char *, char *, size_t);
+-
+-ssize_t readlink(const char *path, char *buf, size_t len)
+-{
+-	if (real_readlink == NULL) {
+-		real_readlink = dlsym(RTLD_NEXT, "readlink");
+-		if (real_readlink == NULL) {
+-			errno = ENOSYS;
+-			return -1;
+-		}
+-	}
+-
+-	if (!strcmp(path, "/proc/self/exe")) {
+-		int fd;
+-
+-		if (exe[0] == '\0') {
+-			if (linker == NULL) {
+-				linker = realpath(LINKER, NULL);
+-				if (linker == NULL) {
+-					return -1;
+-				}
+-			}
+-			if (real_readlink(path, exe, sizeof(exe)) < 1) {
+-				goto fail;
+-			}
+-			if (!strcmp(exe, linker)) {
+-				char c;
+-				int arg = 0;
+-				ssize_t arglen;
+-
+-				fd = open("/proc/self/cmdline",
+-				          O_RDONLY | O_CLOEXEC);
+-				if (fd < 0) {
+-					goto fail;
+-				}
+-				/* Skip the --argv0/--preload ldso args.
+-				 * This number must be kept in sync with the
+-				 * argument order in loader/loader.c */
+-				while (arg < 6) {
+-					if (read(fd, &c, 1) != 1) {
+-						goto fail_close;
+-					}
+-					if (c == '\0') {
+-						++arg;
+-					}
+-				}
+-				/* Read the executable path from the cmdline. */
+-				arglen = read(fd, exe, sizeof(exe));
+-				if (arglen < 1) {
+-					goto fail_close;
+-				}
+-				close(fd);
+-				/* Ensure the path exists, fits, and has NUL. */
+-				if (exe[0] == '\0') {
+-					goto fail;
+-				}
+-				if (strnlen(exe, arglen) == (size_t) arglen) {
+-					goto fail;
+-				}
+-			}
+-		}
+-
+-		return stpncpy(buf, exe, len) - buf;
+-
+-	fail_close:
+-		close(fd);
+-	fail:
+-		exe[0] = '\0';
+-		errno = EIO;
+-		return -1;
+-	}
+-
+-	return real_readlink(path, buf, len);
+-}
+diff --git a/libgcompat/realpath.c b/libgcompat/realpath.c
+deleted file mode 100644
+index ab68cc4..0000000
+--- a/libgcompat/realpath.c
++++ /dev/null
+@@ -1,51 +0,0 @@
+-#include <dlfcn.h>
+-#include <errno.h>
+-#include <fcntl.h>
+-#include <limits.h>
+-#include <stddef.h>
+-#include <stdlib.h>
+-#include <string.h>
+-#include <unistd.h>
+-
+-#ifndef LINKER
+-#error LINKER must be defined
+-#endif
+-
+-static char *(*real_realpath)(const char *restrict, char *restrict);
+-
+-char *realpath(const char *restrict path, char *restrict resolved)
+-{
+-	if (real_realpath == NULL) {
+-		real_realpath = dlsym(RTLD_NEXT, "realpath");
+-		if (real_realpath == NULL) {
+-			errno = ENOSYS;
+-			return NULL;
+-		}
+-	}
+-
+-	if (!strcmp(path, "/proc/self/exe")) {
+-		char *fixed = resolved;
+-
+-		if (fixed == NULL) {
+-			fixed = malloc(PATH_MAX);
+-			if (fixed == NULL) {
+-				errno = ENOMEM;
+-				return NULL;
+-			}
+-		}
+-
+-		/* If passed in, the buffer is at least PATH_MAX per POSIX. */
+-		ssize_t written = readlink(path, fixed, PATH_MAX - 1);
+-		if (written == -1) {
+-			/* Free the buffer iff we allocated it. */
+-			if (fixed != resolved)
+-				free(fixed);
+-			return NULL;
+-		}
+-		fixed[written] = '\0';
+-
+-		return fixed;
+-	}
+-
+-	return real_realpath(path, resolved);
+-}
+diff --git a/libgcompat/resource.c b/libgcompat/resource.c
+deleted file mode 100644
+index 836d5e2..0000000
+--- a/libgcompat/resource.c
++++ /dev/null
+@@ -1,37 +0,0 @@
+-#include <assert.h>       /* assert */
+-#include <dlfcn.h>        /* dlsym, RTLD_NEXT */
+-#include <stdlib.h>       /* NULL */
+-#include <string.h>       /* memcpy */
+-#include <sys/resource.h> /* setrlimit, struct rlimit */
+-
+-/* Sigh.
+- * Valve compiled Steam against the glibc2.2 version of setrlimit.
+- * This broken version aliased 0 to RLIM_INFINITY.
+- *
+- * So, what you have to do is: if you want to run steam with this gcompat,
+- * ensure you compile *without* defining NO_BROKEN_SHADOW_SETRLIMIT.
+- * If you do *not* want to run steam with this gcompat, define it.
+- *
+- * The only problem with enabling this all the time is that if a binary
+- * really does need a ulimit to be 0 for any reason (such as coredumps), it
+- * very obviously won't work here.
+- */
+-#ifndef NO_BROKEN_SHADOW_SETRLIMIT
+-static int (*real_rlimit)(int, const struct rlimit *);
+-
+-int setrlimit(int resource, const struct rlimit *rlim)
+-{
+-	struct rlimit my_rlim;
+-
+-	if (real_rlimit == NULL) {
+-		real_rlimit = dlsym(RTLD_NEXT, "setrlimit");
+-		assert(real_rlimit);
+-	}
+-	memcpy(&my_rlim, rlim, sizeof(struct rlimit));
+-	if (my_rlim.rlim_cur == 0) {
+-		my_rlim.rlim_cur = my_rlim.rlim_max;
+-	}
+-
+-	return real_rlimit(resource, &my_rlim);
+-}
+-#endif
+diff --git a/libgcompat/time.c b/libgcompat/time.c
+deleted file mode 100644
+index a058edb..0000000
+--- a/libgcompat/time.c
++++ /dev/null
+@@ -1,7 +0,0 @@
+-#include <time.h>
+-
+-size_t __strftime_l(char *restrict s, size_t n, const char *restrict f,
+-		    const struct tm *restrict tm, locale_t loc)
+-{
+-	return strftime_l(s, n, f, tm, loc);
+-}
+diff --git a/libgcompat/unistd.c b/libgcompat/unistd.c
+index e40fb6e..386dc19 100644
+--- a/libgcompat/unistd.c
++++ b/libgcompat/unistd.c
+@@ -182,55 +182,4 @@ int group_member(gid_t gid)
+ 	}
+ 
+ 	return 0;
+-}
+-
+-#ifndef LOADER
+-#error LOADER must be defined
+-#endif
+-
+-static int (*real_execve)(const char *pathname, char *const argv[], char *const envp[]);
+-int execve(const char *pathname, char *const argv[], char *const envp[]) {
+-	if(real_execve == NULL) {
+-		real_execve = dlsym(RTLD_NEXT, "execve");
+-		if(real_execve == NULL) {
+-			errno = ENOSYS;
+-			return -1;
+-		}
+-	}
+-
+-	if(!strcmp(pathname, "/proc/self/exe")) {
+-		char **new_argv;
+-		char target[PATH_MAX] = "";
+-		int argc = 0, i = 0;
+-		while(argv[i++] != 0) argc++;
+-
+-		i = readlink("/proc/self/exe", target, sizeof(target));
+-		if(i < 0 || i == sizeof(target)) {
+-			errno = ENOMEM;
+-			return -1;
+-		}
+-
+-		new_argv = calloc(argc + 7, sizeof(char *));
+-		new_argv[0] = LOADER;
+-		new_argv[1] = "--argv0";
+-		new_argv[2] = argv[0];
+-		new_argv[3] = "--preload";
+-		new_argv[4] = "/lib/libgcompat.so.0";
+-		new_argv[5] = "--";
+-		new_argv[6] = target;
+-		for(int j = 1, i = 7; j < argc; ++i, ++j) {
+-			new_argv[i] = argv[j];
+-		}
+-		return execve(LINKER, new_argv, envp);
+-	}
+-	return real_execve(pathname, argv, envp);
+-}
+-
+-extern char **environ;
+-int execv(const char *pathname, char *const argv[]) {
+-	return execve(pathname, argv, environ);
+-}
+-
+-int execvp(const char *file, char *const argv[]) {
+-	return execv(file, argv);
+-}
++}
+\ No newline at end of file
+diff --git a/libgcompat/utmp.c b/libgcompat/utmp.c
+index d044fd2..19593dc 100644
+--- a/libgcompat/utmp.c
++++ b/libgcompat/utmp.c
+@@ -1,4 +1,5 @@
+ #include <stddef.h> /* NULL */
++#include <utmp.h>
+ #include <utmpx.h>   /* struct utmp */
+ 
+ /**
+diff --git a/libgcompat/wchar.c b/libgcompat/wchar.c
+index 930cc7c..394cfdb 100644
+--- a/libgcompat/wchar.c
++++ b/libgcompat/wchar.c
+@@ -1,6 +1,7 @@
+ #include <assert.h> /* assert */
+ #include <stdarg.h> /* va_list, va_start, va_end */
+ #include <stddef.h> /* size_t */
++#include <stdlib.h> /* abort */
+ #include <wchar.h>  /* wchar_t, *wprintf */
+ 
+ int __vswprintf_chk(wchar_t *s, size_t n, int flag, size_t slen,
+@@ -135,3 +136,64 @@ double wcstod_l(const wchar_t *nptr, wchar_t **endptr, locale_t loc)
+ {
+ 	return wcstod(nptr, endptr);
+ }
++
++/**
++ * Concatenate two wide-character strings, with buffer overflow checking.
++ */
++wchar_t * __wcscat_chk(wchar_t *dest, const wchar_t *src, size_t len)
++{
++    wchar_t *tmp1 = dest;
++    const wchar_t *tmp2 = src;
++    wchar_t c;
++
++    /* Move to the end of the dest. Abort if it's too short  */
++    do
++    {
++        if (len-- == 0)
++            abort();
++        c = *tmp1++;
++    }
++    while (c != L'\0');
++
++    /* Append characters in src to the dest. Abort if it's too short  */
++    do
++    {
++        if (len-- == 0)
++            abort();
++        c = *tmp2++;
++        *tmp1++ = c;
++    }
++    while (c != L'\0');
++
++    return dest;
++}
++
++/**
++ * Copy a fixed-size string of wide characters, with buffer overflow checking.
++ */
++wchar_t * __wcsncpy(wchar_t *dest, const wchar_t *src, size_t len)
++{
++    wchar_t *tmp1 = dest;
++    const wchar_t *tmp2 = src;
++    wchar_t c = *src;
++
++    for (size_t i = 0; i < len; i++)
++    {
++        /* If src has reached the null terminator, don't advance! */
++        c = (c == L'\0') ? c : *tmp2++;
++        *tmp1++ = c;
++    }
++
++    return dest;
++}
++
++/**
++ * Concatenate two wide-character strings, with buffer overflow checking.
++ */
++wchar_t* __wcsncpy_chk(wchar_t *dest, const wchar_t *src, size_t n1, size_t n2)
++{
++    if (n2 < n1)
++        abort();
++
++    return __wcsncpy(dest, src, n1);
++}
+\ No newline at end of file
