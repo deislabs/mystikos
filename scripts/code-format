@@ -67,7 +67,7 @@ do
         # Diff the file and exit with 1 if different
         diff "${i}" "${tmp}" > /dev/null 2> /dev/null
         if [ "$?" != "0" ]; then
-            ret=0
+            ret=1
             echo "misformatted: ${i}"
         fi
         rm -rf ${dirname}/.code-format ${tmp}
