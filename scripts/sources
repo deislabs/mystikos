@@ -6,14 +6,15 @@
 ##
 ## Synopsis:
 ##     Compile a list of sources files (.c, .cpp, and .h) in the git repository.
-##     Does not include submodules.
+##     Does not include submodules. Use the --staged option to generate a list
+##     of sources staged for commit.
 ##
 ## Usage:
 ##     sources
 ##
 ##==============================================================================
 
-commit=0
+staged=0
 
 # process options:
 for opt
@@ -22,8 +23,8 @@ do
   arg=`expr "x$opt" : 'x[^=]*=\(.*\)'`
   case $opt in
 
-    --commit)
-      commit=1
+    --staged)
+      staged=1
       shift
       ;;
 
@@ -42,8 +43,8 @@ cd ${top}
 
 branch=$(git rev-parse --abbrev-ref HEAD)
 
-if [ "${commit}" == "1" ]; then
-    # form a list of files to be committed
+if [ "${staged}" == "1" ]; then
+    # form a list of files that are staged for commit
     files=$(git commit --dry-run --short --untracked-files=no | cut -f3 -d" ")
 else
     # form a list of all files in repository

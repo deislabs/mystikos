@@ -16,6 +16,6 @@ exit_() {
 
 scripts=$(git rev-parse --show-toplevel)/scripts
 
-if ! "$scripts/check-format --commit"; then
+if ! $scripts/check-format --staged; then
     exit_ "Commit failed: please run 'make format' to fix the formatting"
 fi
