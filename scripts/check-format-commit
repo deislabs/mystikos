@@ -5,12 +5,12 @@
 ## check-format
 ##
 ## Synopsis:
-##     Detect misformatted source code files in the repository and exit with
-##     1 if any are found. Else exit with 0.
+##     Detect misformatted source code files in the repository that are staged
+##     for commit and exit with 1 if any are found. Else exit with 0.
 ##
 ## Usage:
 ##     check-format
 ##
 ##==============================================================================
 
-./scripts/code-format --check $(./scripts/sources)
+./scripts/code-format --check $(./scripts/sources --commit)

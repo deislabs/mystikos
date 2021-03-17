@@ -126,6 +126,9 @@ format:
 check-format:
 	./scripts/check-format
 
+check-format-commit:
+	./scripts/check-format --commit
+
 ##==============================================================================
 ##
 ## touch:
