@@ -13,4 +13,29 @@
 ##
 ##==============================================================================
 
-./scripts/code-format --check $(./scripts/sources)
+# process options:
+for opt
+do
+
+  arg=`expr "x$opt" : 'x[^=]*=\(.*\)'`
+  case $opt in
+
+    --staged)
+      staged=1
+      shift
+      ;;
+
+    --*)
+      echo "$0: unknown option:  $opt"
+      exit 1
+      ;;
+
+  esac
+
+done
+
+if [ "${staged}" == "1" ]; then
+    ./scripts/code-format --check $(./scripts/sources --staged)
+else
+    ./scripts/code-format --check $(./scripts/sources)
+fi
