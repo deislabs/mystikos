@@ -114,10 +114,10 @@ src:
 ##==============================================================================
 
 format:
-	./scripts/code-format $(shell $(MAKE) src)
+	./scripts/code-format $(shell ./scripts/sources)
 
 check-format:
-	./scripts/code-format --check $(shell $(MAKE) src)
+	./scripts/check-format
 
 ##==============================================================================
 ##
