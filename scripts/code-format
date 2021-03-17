@@ -59,7 +59,8 @@ do
         # make a backup copy of the file: ".<filename>.code-format"
         dirname=$(dirname ${i})
         basename=$(basename ${i})
-        tmp=${dirname}/.code-format.${basename}
+        mkdir -p ${dirname}/.code-format
+        tmp=${dirname}/.code-format/${basename}
         cp ${i} ${tmp}
         ${cf} -style=file -i ${tmp}
 
