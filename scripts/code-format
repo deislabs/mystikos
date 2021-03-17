@@ -55,7 +55,9 @@ do
     if [ "${check}" == "1" ]; then
 
         # make a backup copy of the file: ".<filename>.code-format"
-        tmp=${i}.code-format
+        dirname=$(dirname ${i})
+        basename=$(basename ${i})
+        tmp=${dirname}/.code-format.${basename}
         cp ${i} ${tmp}
         ${cf} -style=file -i ${tmp}
 
