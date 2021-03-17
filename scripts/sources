@@ -13,6 +13,28 @@
 ##
 ##==============================================================================
 
+commit=0
+
+# process options:
+for opt
+do
+
+  arg=`expr "x$opt" : 'x[^=]*=\(.*\)'`
+  case $opt in
+
+    --commit)
+      commit=1
+      shift
+      ;;
+
+    --*)
+      echo "$0: unknown option:  $opt"
+      exit 1
+      ;;
+
+  esac
+
+done
 
 top=$(git rev-parse --show-toplevel)
 
@@ -20,7 +42,13 @@ cd ${top}
 
 branch=$(git rev-parse --abbrev-ref HEAD)
 
-files=$(git ls-tree -r ${branch} --name-only)
+if [ "${commit}" == "1" ]; then
+    # form a list of files to be committed
+    files=$(git commit --dry-run --short --untracked-files=no | cut -f3 -d" ")
+else
+    # form a list of all files in repository
+    files=$(git ls-tree -r ${branch} --name-only)
+fi
 
 sources=
 

@@ -38,9 +38,9 @@ do
 
 done
 
+# if no source files, silent exit with zero return
 if [ "$#" == "0" ]; then
-    echo "Usage: $0 <source-file>..."
-    exit 1
+    exit 0
 fi
 
 cf=$(which clang-format-7)
