@@ -3,7 +3,6 @@
 /ltp/testcases/kernel/syscalls/chmod/chmod02
 /ltp/testcases/kernel/syscalls/chown/chown01
 /ltp/testcases/kernel/syscalls/clock_gettime/clock_gettime01
-/ltp/testcases/kernel/syscalls/clock_gettime/clock_gettime02
 /ltp/testcases/kernel/syscalls/clone/clone04
 /ltp/testcases/kernel/syscalls/close/close01
 /ltp/testcases/kernel/syscalls/close/close02
@@ -56,9 +55,7 @@
 /ltp/testcases/kernel/syscalls/getrandom/getrandom02
 /ltp/testcases/kernel/syscalls/getrandom/getrandom03
 /ltp/testcases/kernel/syscalls/gettid/gettid01
-/ltp/testcases/kernel/syscalls/gettimeofday/gettimeofday02
 /ltp/testcases/kernel/syscalls/getuid/getuid01
-/ltp/testcases/kernel/syscalls/inotify/inotify09
 /ltp/testcases/kernel/syscalls/lseek/lseek01
 /ltp/testcases/kernel/syscalls/lseek/lseek07
 /ltp/testcases/kernel/syscalls/madvise/madvise05
@@ -79,7 +76,6 @@
 /ltp/testcases/kernel/syscalls/newuname/newuname01
 /ltp/testcases/kernel/syscalls/open/open01
 /ltp/testcases/kernel/syscalls/open/open03
-/ltp/testcases/kernel/syscalls/open/open04
 /ltp/testcases/kernel/syscalls/open/open09
 /ltp/testcases/kernel/syscalls/pathconf/pathconf01
 /ltp/testcases/kernel/syscalls/pipe2/pipe2_01
@@ -99,7 +95,6 @@
 /ltp/testcases/kernel/syscalls/rmdir/rmdir01
 /ltp/testcases/kernel/syscalls/rt_sigaction/rt_sigaction01
 /ltp/testcases/kernel/syscalls/sbrk/sbrk02
-/ltp/testcases/kernel/syscalls/sched_getaffinity/sched_getaffinity01
 /ltp/testcases/kernel/syscalls/sched_yield/sched_yield01
 /ltp/testcases/kernel/syscalls/sendfile/sendfile08
 /ltp/testcases/kernel/syscalls/sendfile/sendfile08_64
@@ -118,7 +113,6 @@
 /ltp/testcases/kernel/syscalls/signal/signal03
 /ltp/testcases/kernel/syscalls/signal/signal04
 /ltp/testcases/kernel/syscalls/signal/signal05
-/ltp/testcases/kernel/syscalls/socketpair/socketpair01
 /ltp/testcases/kernel/syscalls/socketpair/socketpair02
 /ltp/testcases/kernel/syscalls/socket/socket01
 /ltp/testcases/kernel/syscalls/socket/socket02
@@ -133,7 +127,6 @@
 /ltp/testcases/kernel/syscalls/syscall/syscall01
 /ltp/testcases/kernel/syscalls/sysconf/sysconf01
 /ltp/testcases/kernel/syscalls/sysinfo/sysinfo01
-/ltp/testcases/kernel/syscalls/tgkill/tgkill01
 /ltp/testcases/kernel/syscalls/times/times01
 /ltp/testcases/kernel/syscalls/time/time01
 /ltp/testcases/kernel/syscalls/tkill/tkill01

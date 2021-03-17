@@ -7,16 +7,17 @@
 # endif
 # run using: make one TEST=/test/location
 
-# rm *.output
-
 function run_tests() {
+
+rm *.output
+
 FILE=$1
 
 while read test; do
   echo "$test"
-  OUTPUT=$(2>&1 make one TEST=$test FS=$FS )
+  OUTPUT=$(2>&1 timeout 3 make one TEST=$test FS=$FS )
   echo $OUTPUT >> temp_$FILE.output
-  HAS_UNHANDLED_SYSCALL=$(2>&1 make one TEST=$test FS=$FS | grep "unhandled")
+  HAS_UNHANDLED_SYSCALL=$(2>&1 timeout 3 make one TEST=$test FS=$FS | grep "unhandled")
   if [ -z "$HAS_UNHANDLED_SYSCALL" ]
   then
     # No unhandled syscall
@@ -24,7 +25,8 @@ while read test; do
     FAILED=$(echo "$OUTPUT" | grep TFAIL)
     BROKEN=$(echo "$OUTPUT" | grep TBROK)
     FAIL_ENCLAVE=$(echo "$OUTPUT" | grep Error)
-    if [[ $PASSED && -z $FAILED && -z $BROKEN && -z $FAIL_ENCLAVE ]]  
+    TIMED_OUT=$(echo "$OUTPUT" | grep -F '[one] Terminated')
+    if [[ $PASSED && -z $FAILED && -z $BROKEN && -z $FAIL_ENCLAVE && -z $TIMED_OUT ]]  
     then
       echo $test >> temp_passed.output
     else
@@ -33,6 +35,7 @@ while read test; do
   else
     echo "$test: $HAS_UNHANDLED_SYSCALL" >> temp_unhandled_syscalls.output
   fi
+  sudo rm -rf /tmp/myst*
 done <$FILE
 
 awk '!seen[$9]++' temp_unhandled_syscalls.output | awk '{print $9}' | sort > unhandled_syscalls.txt
@@ -42,18 +45,20 @@ cat temp_passed.output > "$FS"_tests_passed.txt
 
 }
 
+function show_stats() {
+  echo "FILESYSTEM PASSED UNHANDLED_SYSCALLS OTHER_ERRORS"
+  FS=ext2fs
+  echo "$FS $(cat "$FS"_tests_passed.txt | wc -l) $(cat "$FS"_tests_unhandled_syscalls.txt | wc -l) $(cat "$FS"_tests_other_errors.txt | wc -l) "
+  FS=hostfs
+  echo "$FS $(cat "$FS"_tests_passed.txt | wc -l) $(cat "$FS"_tests_unhandled_syscalls.txt | wc -l) $(cat "$FS"_tests_other_errors.txt | wc -l) "
+  FS=ramfs
+  echo "$FS $(cat "$FS"_tests_passed.txt | wc -l) $(cat "$FS"_tests_unhandled_syscalls.txt | wc -l) $(cat "$FS"_tests_other_errors.txt | wc -l) "
+}
+
 if [[ -z $FS ]]
 then
   FS=ext2fs
 fi
-run_tests "$FS"_tests_allrunning.txt
+run_tests tests_alltests.txt
 
-# grep -Fvx -f partial.list complete.list > remaining.list
-
-# echo "ALLRUNNING PASSED HANGING UNHANDLED_SYSCALLS OTHER_ERRORS"
-# FS=ext2fs
-# echo "$FS $(cat "$FS"_tests_allrunning.txt | wc -l) $(cat "$FS"_tests_passed.txt | wc -l)  $(cat "$FS"_tests_hanging.txt | wc -l) $(cat "$FS"_tests_unhandled_syscalls.txt | wc -l) $(cat "$FS"_tests_other_errors.txt | wc -l) "
-# FS=hostfs
-# echo "$FS $(cat "$FS"_tests_allrunning.txt | wc -l) $(cat "$FS"_tests_passed.txt | wc -l)  $(cat "$FS"_tests_hanging.txt | wc -l) $(cat "$FS"_tests_unhandled_syscalls.txt | wc -l) $(cat "$FS"_tests_other_errors.txt | wc -l) "
-# FS=ramfs
-# echo "$FS $(cat "$FS"_tests_allrunning.txt | wc -l) $(cat "$FS"_tests_passed.txt | wc -l)  $(cat "$FS"_tests_hanging.txt | wc -l) $(cat "$FS"_tests_unhandled_syscalls.txt | wc -l) $(cat "$FS"_tests_other_errors.txt | wc -l) "
+show_stats

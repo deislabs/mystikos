@@ -23,11 +23,7 @@ endif
 
 ifeq ($(FS),ramfs)
 # select lines from tests without '#' in the first column
-TESTS=$(shell grep -v "^\#"ramfs_tests_passed.txt)
-FOUND=1
-endif
-
-ifeq ($(FS),ramfs)
+TESTS=$(shell grep -v "^\#" ramfs_tests_passed.txt)
 FOUND=1
 endif
 
@@ -75,8 +71,8 @@ endif
 
 tests:
 	$(MAKE) alltests FS=hostfs  
-	# $(MAKE) alltests FS=ext2fs
-	# $(MAKE) alltests FS=ramfs
+	$(MAKE) alltests FS=ext2fs
+	$(MAKE) alltests FS=ramfs
 
 alltests:
 	$(foreach i, $(TESTS), $(MAKE) one FS=$(FS) TEST=$(i) $(NL) )

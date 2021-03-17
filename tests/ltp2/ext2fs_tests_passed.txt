@@ -141,7 +141,6 @@
 /ltp/testcases/kernel/syscalls/syscall/syscall01
 /ltp/testcases/kernel/syscalls/sysconf/sysconf01
 /ltp/testcases/kernel/syscalls/sysinfo/sysinfo01
-/ltp/testcases/kernel/syscalls/tgkill/tgkill01
 /ltp/testcases/kernel/syscalls/times/times01
 /ltp/testcases/kernel/syscalls/time/time01
 /ltp/testcases/kernel/syscalls/tkill/tkill01
