@@ -1,4 +1,0 @@
-#include <stdio.h>
-
-__attribute__((__weak__))
-FILE* stdout;

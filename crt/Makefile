@@ -5,11 +5,11 @@ TARGET = $(LIBDIR)/libmystcrt.so
 
 CFLAGS = -m64 -g -fPIC -Werror
 
-INCLUDES = -I$(INCDIR)
+INCLUDES = -I$(INCDIR) -I$(TOP)/build/musl/include
 
 DEFINES = $(MYST_DEFINES)
 
-SOURCES = $(wildcard *.c) $(wildcard glibc/*.c)
+SOURCES = $(wildcard *.c) $(wildcard $(TOP)/third_party/gcompat/gcompat/libgcompat/*.c)
 
 ifdef MYST_ENABLE_GCOV
 CFLAGS += -fprofile-arcs -ftest-coverage
