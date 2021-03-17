@@ -49,6 +49,8 @@ if [ ! -x "${cf}" ]; then
     echo "$0: cannot find clang-format-7"
 fi
 
+ret=0
+
 for i
 do
     # if --check option present, then only check whether formatted.
@@ -64,11 +66,13 @@ do
         # Diff the file and exit with 1 if different
         diff "${i}" "${tmp}" > /dev/null 2> /dev/null
         if [ "$?" != "0" ]; then
-            rm -f ${tmp}
-            exit 1
+            ret=0
+            echo "misformatted: ${i}"
         fi
         rm -f ${tmp}
     else
         ${cf} -style=file -i ${i}
     fi
 done
+
+exit "${ret}"
