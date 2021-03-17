@@ -51,28 +51,20 @@ fi
 
 ret=0
 
+cfargs=-style=file
+
 for i
 do
     # if --check option present, then only check whether formatted.
     if [ "${check}" == "1" ]; then
 
-        # make a backup copy of the file: ".<filename>.code-format"
-        dirname=$(dirname ${i})
-        basename=$(basename ${i})
-        mkdir -p ${dirname}/.code-format
-        tmp=${dirname}/.code-format/${basename}
-        cp ${i} ${tmp}
-        ${cf} -style=file -i ${tmp}
-
-        # Diff the file and exit with 1 if different
-        diff "${i}" "${tmp}" > /dev/null 2> /dev/null
+        ${cf} ${cfargs} "${i}" | diff -u "${i}" - > /dev/null
         if [ "$?" != "0" ]; then
             ret=1
             echo "misformatted: ${i}"
         fi
-        rm -rf ${dirname}/.code-format ${tmp}
     else
-        ${cf} -style=file -i ${i}
+        ${cf} ${cfargs} -i ${i}
     fi
 done
 
