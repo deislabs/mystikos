@@ -123,6 +123,9 @@ src:
 format:
 	./scripts/code-format $(shell ./scripts/sources)
 
+format-staged:
+	./scripts/code-format $(shell ./scripts/sources --staged)
+
 ##==============================================================================
 ##
 ## touch:
