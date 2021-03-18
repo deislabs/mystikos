@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include <myst/eraise.h>
+#include <myst/fsgs.h>
 #include <myst/printf.h>
 #include <myst/signal.h>
 
@@ -160,6 +161,12 @@ static long _handle_one_signal(unsigned signum, siginfo_t* siginfo)
         // ATTN: handle other signal flags, e.g., SA_NOCLDSTOP, SA_NOCLDWAIT,
         // SA_ONSTACK, SA_RESETHAND, SA_RESTART, etc.
 
+        /* save the original fsbase */
+        void* original_fsbase = myst_get_fsbase();
+
+        /* restore the user-space fsbase, which is pthread_self() */
+        myst_set_fsbase(thread->crt_td);
+
         if ((action->flags & SA_SIGINFO) != 0)
         {
             // Use a zeroed ucontext_t. Only usage in libc seems to be
@@ -172,6 +179,9 @@ static long _handle_one_signal(unsigned signum, siginfo_t* siginfo)
         {
             ((sigaction_handler_t)(action->handler))(signum);
         }
+
+        /* restore the original fsbase */
+        myst_set_fsbase(original_fsbase);
 
         thread->signal.mask = orig_mask; /* Restore to original mask */
     }
