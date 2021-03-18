@@ -1142,12 +1142,15 @@ static int _path_to_ino_recursive(
                         // Copy over rest of unresolved tokens
                         if (i + 1 != ntoks)
                         {
-                            for (size_t j = i+1; j < ntoks; j++)
+                            for (size_t j = i + 1; j < ntoks; j++)
                             {
-                                if (myst_strlcat(target_out, "/", PATH_MAX) >= PATH_MAX)
+                                if (myst_strlcat(target_out, "/", PATH_MAX) >=
+                                    PATH_MAX)
                                     ERAISE_QUIET(-ENAMETOOLONG);
 
-                                if (myst_strlcat(target_out, toks[j], PATH_MAX) >= PATH_MAX)
+                                if (myst_strlcat(
+                                        target_out, toks[j], PATH_MAX) >=
+                                    PATH_MAX)
                                     ERAISE_QUIET(-ENAMETOOLONG);
                             }
                         }
@@ -1158,7 +1161,6 @@ static int _path_to_ino_recursive(
                         *realpath = '\0';
                         current_ino = EXT2_ROOT_INO;
                     }
-
                 }
 
                 ECHECK(_path_to_ino_recursive(
@@ -1321,42 +1323,41 @@ static int _path_to_inode(
     int ret = 0;
     char realpath[PATH_MAX];
 
-    if (suffix) {
+    if (suffix)
+    {
         char target[PATH_MAX];
         *suffix = '\0';
         *fs_out = NULL;
         *target = '\0';
         ECHECK(_path_to_inode_realpath(
-                ext2,
-                path,
-                follow,
-                dir_ino_out,
-                file_ino_out,
-                dir_inode_out,
-                file_inode_out,
-                realpath,
-                target));
+            ext2,
+            path,
+            follow,
+            dir_ino_out,
+            file_ino_out,
+            dir_inode_out,
+            file_inode_out,
+            realpath,
+            target));
 
         if (*target != '\0' && ext2->resolve)
         {
             ECHECK((*ext2->resolve)(target, suffix, fs_out));
         }
     }
-    else {
-        ECHECK(
-            _path_to_inode_realpath(
-                ext2,
-                path,
-                follow,
-                dir_ino_out,
-                file_ino_out,
-                dir_inode_out,
-                file_inode_out,
-                realpath,
-                NULL)
-        );
+    else
+    {
+        ECHECK(_path_to_inode_realpath(
+            ext2,
+            path,
+            follow,
+            dir_ino_out,
+            file_ino_out,
+            dir_inode_out,
+            file_inode_out,
+            realpath,
+            NULL));
     }
-
 
 done:
     return ret;
@@ -2182,7 +2183,8 @@ static int _remove_dirent(ext2_t* ext2, const char* path)
     ECHECK(_split_path(path, dirname, filename));
 
     /* load the directory inode */
-    ECHECK(_path_to_inode(ext2, dirname, FOLLOW, NULL, &ino, NULL, &inode, NULL, NULL));
+    ECHECK(_path_to_inode(
+        ext2, dirname, FOLLOW, NULL, &ino, NULL, &inode, NULL, NULL));
 
     /* load the directory file contents */
     ECHECK(_load_file_by_inode(ext2, ino, &inode, &data, &size));
@@ -2992,7 +2994,8 @@ int ext2_open(
     if ((flags & O_NOFOLLOW))
         follow = NOFOLLOW;
 
-    r = _path_to_inode(ext2, path, follow, NULL, &ino, NULL, &inode, suffix, &tfs);
+    r = _path_to_inode(
+        ext2, path, follow, NULL, &ino, NULL, &inode, suffix, &tfs);
 
     if (tfs)
     {
@@ -3082,7 +3085,8 @@ int ext2_open(
     /* Get the realpath of this file */
     {
         char buf[PATH_MAX];
-        ECHECK(_path_to_ino_realpath(ext2, path, follow, NULL, NULL, buf, NULL));
+        ECHECK(
+            _path_to_ino_realpath(ext2, path, follow, NULL, NULL, buf, NULL));
         myst_strlcpy(file->realpath, buf, sizeof(file->realpath));
     }
 
@@ -3363,14 +3367,14 @@ int ext2_access(myst_fs_t* fs, const char* pathname, int mode)
         ERAISE(-EINVAL);
 
     /* fetch the inode */
-    ECHECK(_path_to_inode(ext2, pathname, FOLLOW, NULL, NULL, NULL, &inode, suffix, &tfs));
+    ECHECK(_path_to_inode(
+        ext2, pathname, FOLLOW, NULL, NULL, NULL, &inode, suffix, &tfs));
     if (tfs)
     {
         /* delegate operation to target filesystem */
         ECHECK((ret = tfs->fs_access(tfs, suffix, mode)));
         goto done;
     }
-
 
     if (mode == F_OK)
         goto done;
@@ -3407,7 +3411,8 @@ int ext2_link(myst_fs_t* fs, const char* oldpath, const char* newpath)
         ERAISE(-EINVAL);
 
     /* find inode for oldpath */
-    ECHECK(_path_to_inode(ext2, oldpath, FOLLOW, NULL, &ino, NULL, &inode, suffix, &tfs));
+    ECHECK(_path_to_inode(
+        ext2, oldpath, FOLLOW, NULL, &ino, NULL, &inode, suffix, &tfs));
     if (tfs)
     {
         /* delegate operation to target filesystem */
@@ -3421,7 +3426,8 @@ int ext2_link(myst_fs_t* fs, const char* oldpath, const char* newpath)
 
     /* find the parent inode of newpath */
     ECHECK(_split_path(newpath, dirname, filename));
-    ECHECK(_path_to_inode(ext2, dirname, FOLLOW, NULL, &dino, NULL, &dinode, NULL, NULL));
+    ECHECK(_path_to_inode(
+        ext2, dirname, FOLLOW, NULL, &dino, NULL, &dinode, NULL, NULL));
 
     /* initialize the new directory entry */
     _dirent_init(&ent, ino, EXT2_FT_REG_FILE, filename);
@@ -3457,7 +3463,8 @@ int ext2_unlink(myst_fs_t* fs, const char* path)
         ERAISE(-EINVAL);
 
     /* load the inode */
-    ECHECK(_path_to_inode(ext2, path, NOFOLLOW, NULL, &ino, NULL, &inode, suffix, &tfs));
+    ECHECK(_path_to_inode(
+        ext2, path, NOFOLLOW, NULL, &ino, NULL, &inode, suffix, &tfs));
     if (tfs)
     {
         /* delegate operation to target filesystem */
@@ -3505,7 +3512,8 @@ int ext2_symlink(myst_fs_t* fs, const char* target, const char* linkpath)
     ECHECK(_split_path(linkpath, dirname, filename));
 
     /* Get the inode of the parent directory */
-    ECHECK(_path_to_inode(ext2, dirname, FOLLOW, NULL, &dino, NULL, &dinode, suffix, &tfs));
+    ECHECK(_path_to_inode(
+        ext2, dirname, FOLLOW, NULL, &dino, NULL, &dinode, suffix, &tfs));
     if (tfs)
     {
         /* append filename and delegate operation to target filesystem */
@@ -3568,7 +3576,8 @@ ssize_t ext2_readlink(
     if (!_ext2_valid(ext2) || !pathname || !buf)
         ERAISE(-EINVAL);
 
-    ECHECK(_path_to_inode(ext2, pathname, NOFOLLOW, NULL, &ino, NULL, &inode, suffix, &tfs));
+    ECHECK(_path_to_inode(
+        ext2, pathname, NOFOLLOW, NULL, &ino, NULL, &inode, suffix, &tfs));
     if (tfs)
     {
         /* delegate operation to target filesystem */
@@ -3624,7 +3633,15 @@ int ext2_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
 
     /* find the oldpath inode */
     ECHECK(_path_to_inode(
-        ext2, oldpath, FOLLOW, &old_dino, &old_ino, &old_dinode, &old_inode, suffix, &tfs));
+        ext2,
+        oldpath,
+        FOLLOW,
+        &old_dino,
+        &old_ino,
+        &old_dinode,
+        &old_inode,
+        suffix,
+        &tfs));
     if (tfs)
     {
         /* delegate operation to target filesystem */
@@ -3663,7 +3680,15 @@ int ext2_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
     {
         /* newpath does not exist so find its parent directory */
         ECHECK(_path_to_inode(
-            ext2, new_dirname, FOLLOW, NULL, &new_dino, NULL, &new_dinode, NULL, NULL));
+            ext2,
+            new_dirname,
+            FOLLOW,
+            NULL,
+            &new_dino,
+            NULL,
+            &new_dinode,
+            NULL,
+            NULL));
     }
 
     /* determine the file type */
@@ -3736,8 +3761,9 @@ int ext2_stat(myst_fs_t* fs, const char* pathname, struct stat* statbuf)
 
     if (!_ext2_valid(ext2) || !pathname || !statbuf)
         ERAISE(-EINVAL);
-    
-    ECHECK(_path_to_inode(ext2, pathname, FOLLOW, NULL, &ino, NULL, &inode, suffix, &tfs));
+
+    ECHECK(_path_to_inode(
+        ext2, pathname, FOLLOW, NULL, &ino, NULL, &inode, suffix, &tfs));
     if (tfs)
     {
         /* delegate operation to target filesystem */
@@ -3762,8 +3788,9 @@ int ext2_lstat(myst_fs_t* fs, const char* pathname, struct stat* statbuf)
 
     if (!_ext2_valid(ext2) || !pathname || !statbuf)
         ERAISE(-EINVAL);
-    
-    ECHECK(_path_to_inode(ext2, pathname, NOFOLLOW, NULL, &ino, NULL, &inode, suffix, &tfs));
+
+    ECHECK(_path_to_inode(
+        ext2, pathname, NOFOLLOW, NULL, &ino, NULL, &inode, suffix, &tfs));
     if (tfs)
     {
         /* delegate operation to target filesystem */
@@ -3805,14 +3832,14 @@ int ext2_truncate(myst_fs_t* fs, const char* path, off_t length)
         ERAISE(-EINVAL);
 
     /* find the inode of the file */
-    ECHECK(_path_to_inode(ext2, path, FOLLOW, NULL, &ino, NULL, &inode, suffix, &tfs));
+    ECHECK(_path_to_inode(
+        ext2, path, FOLLOW, NULL, &ino, NULL, &inode, suffix, &tfs));
     if (tfs)
     {
         /* delegate operation to target filesystem */
         ECHECK(tfs->fs_truncate(tfs, suffix, length));
         goto done;
     }
-
 
     /* call _ftruncate() */
     {
@@ -3877,7 +3904,15 @@ int ext2_mkdir(myst_fs_t* fs, const char* path, mode_t mode)
 
     /* Fail if the directory already exists */
     if (_path_to_inode(
-            ext2, path, FOLLOW, NULL, &base_ino, NULL, &base_inode, NULL, NULL) == 0)
+            ext2,
+            path,
+            FOLLOW,
+            NULL,
+            &base_ino,
+            NULL,
+            &base_inode,
+            NULL,
+            NULL) == 0)
         ERAISE(-EEXIST);
 
     /* Create the directory inode and its one block */
@@ -3909,7 +3944,8 @@ int ext2_rmdir(myst_fs_t* fs, const char* path)
         ERAISE(-EINVAL);
 
     /* load the inode */
-    ECHECK(_path_to_inode(ext2, path, FOLLOW, NULL, &ino, NULL, &inode, suffix, &tfs));
+    ECHECK(_path_to_inode(
+        ext2, path, FOLLOW, NULL, &ino, NULL, &inode, suffix, &tfs));
     if (tfs)
     {
         /* delegate operation to target filesystem */
@@ -4508,7 +4544,8 @@ static int _ext2_statfs(myst_fs_t* fs, const char* path, struct statfs* buf)
         ERAISE(-EINVAL);
 
     /* Check if path exists */
-    ECHECK(_path_to_inode(ext2, path, FOLLOW, NULL, NULL, NULL, &inode, suffix, &tfs));
+    ECHECK(_path_to_inode(
+        ext2, path, FOLLOW, NULL, NULL, NULL, &inode, suffix, &tfs));
     if (tfs)
     {
         /* delegate operation to target filesystem */
@@ -4585,7 +4622,10 @@ static myst_fs_t _base = {
     .fs_fstatfs = _ext2_fstatfs,
 };
 
-int ext2_create(myst_blkdev_t* dev, myst_fs_t** fs_out, myst_mount_resolve_callback_t resolve_cb)
+int ext2_create(
+    myst_blkdev_t* dev,
+    myst_fs_t** fs_out,
+    myst_mount_resolve_callback_t resolve_cb)
 {
     int ret = 0;
     ext2_t* ext2 = NULL;

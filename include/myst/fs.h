@@ -5,16 +5,16 @@
 #define _MYST_FS_H
 
 #include <dirent.h>
-#include <limits.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <sys/stat.h>
 #include <sys/statfs.h>
 #include <sys/types.h>
 #include <sys/uio.h>
 #include <unistd.h>
 
-#include <myst/fdops.h>
 #include <myst/defs.h>
+#include <myst/fdops.h>
 
 /* supported file system types */
 typedef enum myst_fstype
@@ -23,8 +23,7 @@ typedef enum myst_fstype
     MYST_FSTYPE_RAMFS,
     MYST_FSTYPE_EXT2FS,
     MYST_FSTYPE_HOSTFS,
-}
-myst_fstype_t;
+} myst_fstype_t;
 
 const char* myst_fstype_name(myst_fstype_t fstype);
 
@@ -163,6 +162,10 @@ struct myst_fs
 
 int myst_remove_fd_link(int fd);
 
-int myst_load_fs(myst_mount_resolve_callback_t resolve_cb, const char* source, const char* key, myst_fs_t** fs_out);
+int myst_load_fs(
+    myst_mount_resolve_callback_t resolve_cb,
+    const char* source,
+    const char* key,
+    myst_fs_t** fs_out);
 
 #endif /* _MYST_FS_H */

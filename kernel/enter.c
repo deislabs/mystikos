@@ -16,6 +16,7 @@
 #include <myst/fs.h>
 #include <myst/fsgs.h>
 #include <myst/hex.h>
+#include <myst/hostfs.h>
 #include <myst/initfini.h>
 #include <myst/kernel.h>
 #include <myst/mmanutils.h>
@@ -32,9 +33,8 @@
 #include <myst/tee.h>
 #include <myst/thread.h>
 #include <myst/times.h>
-#include <myst/ttydev.h>
-#include <myst/hostfs.h>
 #include <myst/trace.h>
+#include <myst/ttydev.h>
 
 #define WANT_TLS_CREDENTIAL "MYST_WANT_TLS_CREDENTIAL"
 
@@ -269,8 +269,8 @@ static int _setup_hostfs(const char* rootfs, char* err, size_t err_size)
 
     if (myst_init_hostfs(&_fs) != 0)
     {
-        snprintf(err, err_size, "cannot initialize HOSTFS file system: %s",
-            rootfs);
+        snprintf(
+            err, err_size, "cannot initialize HOSTFS file system: %s", rootfs);
         ERAISE(-EINVAL);
     }
 
@@ -497,7 +497,7 @@ static int _get_fstype(myst_kernel_args_t* args, myst_fstype_t* fstype)
     if (args->rootfs)
     {
         struct stat buf;
-        long params[6] = { (long)args->rootfs, (long)&buf };
+        long params[6] = {(long)args->rootfs, (long)&buf};
 
         ECHECK(myst_tcall(SYS_stat, params));
 
@@ -522,8 +522,8 @@ static int _mount_rootfs(myst_kernel_args_t* args, myst_fstype_t fstype)
             /* Setup the RAM file system */
             if (_setup_ramfs() != 0)
             {
-                myst_eprintf("failed to setup RAMFS rootfs: %s\n",
-                    args->rootfs);
+                myst_eprintf(
+                    "failed to setup RAMFS rootfs: %s\n", args->rootfs);
                 ERAISE(-EINVAL);
             }
 
@@ -537,8 +537,10 @@ static int _mount_rootfs(myst_kernel_args_t* args, myst_fstype_t fstype)
             /* setup and mount the EXT2 file system */
             if (_setup_ext2(args->rootfs, err, sizeof(err)) != 0)
             {
-                myst_eprintf("failed to setup EXT2 rootfs: %s (%s)\n",
-                    args->rootfs, err);
+                myst_eprintf(
+                    "failed to setup EXT2 rootfs: %s (%s)\n",
+                    args->rootfs,
+                    err);
                 ERAISE(-EINVAL);
             }
 
@@ -561,8 +563,10 @@ static int _mount_rootfs(myst_kernel_args_t* args, myst_fstype_t fstype)
             /* setup and mount the HOSTFS file system */
             if (_setup_hostfs(args->rootfs, err, sizeof(err)) != 0)
             {
-                myst_eprintf("failed to setup HOSTFS rootfs: %s (%s)\n",
-                    args->rootfs, err);
+                myst_eprintf(
+                    "failed to setup HOSTFS rootfs: %s (%s)\n",
+                    args->rootfs,
+                    err);
                 ERAISE(-EINVAL);
             }
 
@@ -571,8 +575,8 @@ static int _mount_rootfs(myst_kernel_args_t* args, myst_fstype_t fstype)
 #endif
         default:
         {
-            myst_eprintf("unsupported rootfs type: %s\n",
-                myst_fstype_name(fstype));
+            myst_eprintf(
+                "unsupported rootfs type: %s\n", myst_fstype_name(fstype));
             ERAISE(-EINVAL);
             break;
         }

@@ -264,7 +264,10 @@ static inode_t* _inode_find_child(const inode_t* inode, const char* name)
 
 /* Perform a depth-first release of all inodes */
 static void _inode_release_all(
-    ramfs_t* ramfs, inode_t* parent, inode_t* inode, uint8_t d_type)
+    ramfs_t* ramfs,
+    inode_t* parent,
+    inode_t* inode,
+    uint8_t d_type)
 {
     struct dirent* ents = (struct dirent*)inode->buf.data;
     size_t nents = inode->buf.size / sizeof(struct dirent);
@@ -497,12 +500,15 @@ static int _path_to_inode_recursive(
                         // Copy over rest of unresolved tokens
                         if (i + 1 != ntoks)
                         {
-                            for (size_t j = i+1; j < ntoks; j++)
+                            for (size_t j = i + 1; j < ntoks; j++)
                             {
-                                if (myst_strlcat(target_out, "/", PATH_MAX) >= PATH_MAX)
+                                if (myst_strlcat(target_out, "/", PATH_MAX) >=
+                                    PATH_MAX)
                                     ERAISE_QUIET(-ENAMETOOLONG);
 
-                                if (myst_strlcat(target_out, toks[j], PATH_MAX) >= PATH_MAX)
+                                if (myst_strlcat(
+                                        target_out, toks[j], PATH_MAX) >=
+                                    PATH_MAX)
                                     ERAISE_QUIET(-ENAMETOOLONG);
                             }
                         }
@@ -518,7 +524,13 @@ static int _path_to_inode_recursive(
                 }
 
                 ECHECK(_path_to_inode_recursive(
-                    ramfs, target, parent, true, &parent, &p, realpath,
+                    ramfs,
+                    target,
+                    parent,
+                    true,
+                    &parent,
+                    &p,
+                    realpath,
                     target_out));
 
                 assert(target != NULL);
@@ -592,7 +604,8 @@ static int _path_to_inode(
     int ret = 0;
     char target[PATH_MAX];
 
-    if (suffix) {
+    if (suffix)
+    {
         *suffix = '\0';
         *fs_out = NULL;
         *target = '\0';
@@ -714,7 +727,8 @@ static int _fs_open(
     if (tfs)
     {
         /* delegate open operation to target filesystem */
-        ECHECK((ret = tfs->fs_open(tfs, suffix, flags, mode, fs_out, file_out)));
+        ECHECK(
+            (ret = tfs->fs_open(tfs, suffix, flags, mode, fs_out, file_out)));
         goto done;
     }
     else if (fs_out)
@@ -1288,7 +1302,8 @@ static int _fs_link(myst_fs_t* fs, const char* oldpath, const char* newpath)
         ERAISE(-EINVAL);
 
     /* Find the inode for oldpath */
-    ECHECK(_path_to_inode(ramfs, oldpath, true, NULL, &old_inode, suffix, &tfs));
+    ECHECK(
+        _path_to_inode(ramfs, oldpath, true, NULL, &old_inode, suffix, &tfs));
     if (tfs)
     {
         /* delegate operation to target filesystem */
@@ -1302,7 +1317,8 @@ static int _fs_link(myst_fs_t* fs, const char* oldpath, const char* newpath)
 
     /* Find the parent inode of newpath */
     ECHECK(_split_path(newpath, new_dirname, new_basename));
-    ECHECK(_path_to_inode(ramfs, new_dirname, true, NULL, &new_parent, NULL, NULL));
+    ECHECK(_path_to_inode(
+        ramfs, new_dirname, true, NULL, &new_parent, NULL, NULL));
 
     /* Fail if newpath already exists */
     if (_inode_find_child(new_parent, new_basename) != NULL)
@@ -1404,7 +1420,8 @@ static int _fs_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
     ECHECK(_split_path(oldpath, old_dirname, old_basename));
 
     /* Find the oldpath inode */
-    ECHECK(_path_to_inode(ramfs, oldpath, true, &old_parent, &old_inode, suffix, &tfs));
+    ECHECK(_path_to_inode(
+        ramfs, oldpath, true, &old_parent, &old_inode, suffix, &tfs));
     if (tfs)
     {
         /* append old_basename and delegate operation to target filesystem */
@@ -1421,7 +1438,8 @@ static int _fs_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
     ECHECK(_split_path(newpath, new_dirname, new_basename));
 
     /* Get the parent of newpath */
-    ECHECK(_path_to_inode(ramfs, new_dirname, true, NULL, &new_parent, NULL, NULL));
+    ECHECK(_path_to_inode(
+        ramfs, new_dirname, true, NULL, &new_parent, NULL, NULL));
 
     /* Get the newpath inode (if any) */
     new_inode = _inode_find_child(new_parent, new_basename);
@@ -1946,7 +1964,7 @@ static int _fs_statfs(myst_fs_t* fs, const char* pathname, struct statfs* buf)
     {
         // delegate operation to target filesystem.
         ECHECK((ret = tfs->fs_statfs(tfs, suffix, buf)));
-        goto done; 
+        goto done;
     }
     ECHECK(_statfs(buf));
 
@@ -1968,7 +1986,9 @@ done:
     return ret;
 }
 
-int myst_init_ramfs(myst_mount_resolve_callback_t resolve_cb, myst_fs_t** fs_out)
+int myst_init_ramfs(
+    myst_mount_resolve_callback_t resolve_cb,
+    myst_fs_t** fs_out)
 {
     int ret = 0;
     ramfs_t* ramfs = NULL;

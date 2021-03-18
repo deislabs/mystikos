@@ -4,14 +4,14 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <limits.h>
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <sys/stat.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #ifndef PAGE_SIZE
 #define PAGE_SIZE 4096
@@ -135,8 +135,7 @@ int main(int argc, const char* argv[])
     // cases in the mman implementation as possible.
     {
 #if 1
-        size_t indices[] =
-        {
+        size_t indices[] = {
             0,
             3,
             5,

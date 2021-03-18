@@ -607,7 +607,11 @@ static long _syscall_clone(
         child->thread_lock = parent->thread_lock;
         /* ATTN: we don't take a lock on _num_threads,
             thread names could be duplicates */
-        snprintf(child->name, sizeof(child->name), "thread-%ld", _num_threads % 99999999);
+        snprintf(
+            child->name,
+            sizeof(child->name),
+            "thread-%ld",
+            _num_threads % 99999999);
 
         // Link up parent, child, and the previous head child of the parent,
         // if there is one, in the same thread group.
@@ -685,7 +689,11 @@ static long _syscall_clone_vfork(
         child->thread_lock = &child->main.thread_group_lock;
         /* ATTN: we don't take a lock on _num_threads,
             thread names could be duplicates */
-        snprintf(child->name, sizeof(child->name), "thread-%ld", _num_threads % 99999999);
+        snprintf(
+            child->name,
+            sizeof(child->name),
+            "thread-%ld",
+            _num_threads % 99999999);
 
         /* Inherit parent current working directory */
         child->main.cwd_lock = MYST_SPINLOCK_INITIALIZER;

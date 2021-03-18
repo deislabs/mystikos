@@ -1,17 +1,17 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#include <assert.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/statfs.h>
 #include <sys/types.h>
-#include <assert.h>
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
-#include <fcntl.h>
 
 #define EXT2_S_MAGIC 0xEF53
 #define RAMFS_MAGIC 0x858458f6
@@ -26,7 +26,7 @@ void setup_mount()
         assert(statfs("/mnt/", &buf) == 0);
         assert(buf.f_type == RAMFS_MAGIC);
     }
-    
+
     assert(mkdir("/datadir", 0777) == 0);
 }
 
@@ -41,11 +41,15 @@ void test_dir_target(const char* rootfs_type)
         const char alpha[] = "abcdefghijklmnopqrstuvwxyz";
         char buf[BUFSIZ];
         mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
-        assert((fd = open("/mnt/datadir-slink/subdir/file1", O_CREAT|O_RDWR|O_TRUNC, mode)) > 0);
+        assert(
+            (fd = open(
+                 "/mnt/datadir-slink/subdir/file1",
+                 O_CREAT | O_RDWR | O_TRUNC,
+                 mode)) > 0);
         assert(write(fd, alpha, sizeof(alpha)) > 0);
         assert(lseek(fd, 0L, 0) == 0);
         assert(read(fd, buf, BUFSIZ) > 0);
-        assert(close(fd) == 0); 
+        assert(close(fd) == 0);
     }
 
     {
@@ -64,17 +68,21 @@ void test_dir_target(const char* rootfs_type)
             assert(buf.f_type == EXT2_S_MAGIC);
     }
 
-
     // create symlink to file1 via the directory symlink
     {
-        assert(symlink("/mnt/datadir-slink/subdir/file1", "/mnt/datadir-slink/subdir/file1-slink") == 0);
+        assert(
+            symlink(
+                "/mnt/datadir-slink/subdir/file1",
+                "/mnt/datadir-slink/subdir/file1-slink") == 0);
         int ret;
         char buf[128];
-        assert((ret = readlink("/mnt/datadir-slink/subdir/file1-slink", buf, sizeof(buf))) > 0);
+        assert(
+            (ret = readlink(
+                 "/mnt/datadir-slink/subdir/file1-slink", buf, sizeof(buf))) >
+            0);
         printf("buf{%.*s}\n", ret, buf);
 
-
-        FILE *f = fopen("/mnt/datadir-slink/subdir/file1-slink", "r");
+        FILE* f = fopen("/mnt/datadir-slink/subdir/file1-slink", "r");
         assert(f);
         fgets(buf, sizeof(buf), f);
         printf("%s\n", buf);
@@ -89,7 +97,6 @@ void test_dir_target(const char* rootfs_type)
         assert(errno == ENOENT);
         assert(rmdir("/mnt/datadir-slink/subdir") == 0);
     }
-  
 }
 
 void test_file_target()
@@ -98,11 +105,13 @@ void test_file_target()
         int fd;
         const char alpha[] = "abcdefghijklmnopqrstuvwxyz";
         mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
-        assert((fd = open("/datadir/file2", O_CREAT|O_RDWR|O_TRUNC, mode)) > 0);
+        assert(
+            (fd = open("/datadir/file2", O_CREAT | O_RDWR | O_TRUNC, mode)) >
+            0);
         assert(write(fd, alpha, sizeof(alpha)) > 0);
-        assert(close(fd) == 0); 
+        assert(close(fd) == 0);
     }
-    
+
     struct stat statbuf;
 
     assert(symlink("/datadir/file2", "/mnt/file2-slink") == 0);
@@ -115,18 +124,16 @@ void test_file_target()
         assert(ret == strlen("/datadir/file2"));
         assert(strncmp(buf, "/datadir/file2", ret) == 0);
 
-        FILE *f = fopen("/mnt/file2-slink", "r");
+        FILE* f = fopen("/mnt/file2-slink", "r");
         assert(f);
         fgets(buf, sizeof(buf), f);
         printf("%s\n", buf);
     }
 }
 
-
 int main(int argc, const char* argv[])
 {
-    if (argc != 2 && 
-            (!strcmp(argv[1], "ramfs") || !strcmp(argv[1], "ext2")))
+    if (argc != 2 && (!strcmp(argv[1], "ramfs") || !strcmp(argv[1], "ext2")))
     {
         exit(1);
     }

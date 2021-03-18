@@ -10,23 +10,22 @@
 #include <mbedtls/ssl.h>
 #include <mbedtls/ssl_cache.h>
 #include <mbedtls/x509.h>
-#include <mbedtls/x509_crt.h>
 #include <mbedtls/x509_crl.h>
+#include <mbedtls/x509_crt.h>
 #include <openenclave/enclave.h>
 
-#include <stdlib.h>
+#include <assert.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <assert.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #include <map>
-#include "tlssrv_t.h"
 #include "tlssrv.h"
+#include "tlssrv_t.h"
 
 #include "gencreds.h"
 
@@ -178,7 +177,7 @@ static int _get_cert_and_private_key(
 
     if (!crt || !pk)
         goto done;
-    
+
     if (generate_attested_credentials(
             COMMON_NAME,
             0,
@@ -201,7 +200,7 @@ static int _get_cert_and_private_key(
     {
         goto done;
     }
-    
+
     ret = 0;
 
 done:
@@ -381,7 +380,7 @@ int tlssrv_create(
 
     /* Initialize the server structure */
     {
-        if (!(srv = (tlssrv_t *)calloc(1, sizeof(tlssrv_t))))
+        if (!(srv = (tlssrv_t*)calloc(1, sizeof(tlssrv_t))))
         {
             _put_err(err, "calloc(): out of memory");
             goto done;
@@ -537,7 +536,11 @@ done:
     return ret;
 }
 
-int tlssrv_read(tlssrv_t* srv, unsigned char* data, size_t size, tlssrv_err_t* err)
+int tlssrv_read(
+    tlssrv_t* srv,
+    unsigned char* data,
+    size_t size,
+    tlssrv_err_t* err)
 {
     int ret = -1;
     int r;
@@ -649,7 +652,6 @@ void tlssrv_put_err(const tlssrv_err_t* err)
         fprintf(stderr, "error: %s\n", err->buf);
 }
 
-
 static oe_result_t verifier(
     void* arg,
     const uint8_t* mrenclave,
@@ -713,7 +715,10 @@ static oe_result_t verifier(
     }
 
     printf("\n");
-    printf("=== _verify_identity() isvprodid = %d, isvsvn=%d\n", isvprodid[0], isvsvn);
+    printf(
+        "=== _verify_identity() isvprodid = %d, isvsvn=%d\n",
+        isvprodid[0],
+        isvsvn);
     printf("\n");
 
     if (memcmp(mrsigner, SGXLKL_MRSIGNER, MRSIGNER_SIZE) == 0)
@@ -757,49 +762,62 @@ int setup_tls_server(const char* server_port)
     int rc = 1;
     oe_result_t result = OE_FAILURE;
     mbedtls_net_context listen_fd;
-    
+
     // Explicitly enabling features
-    if ((result = oe_load_module_host_resolver()) != OE_OK) {
-        printf("oe_load_module_host_resolver failed with %s\n",
+    if ((result = oe_load_module_host_resolver()) != OE_OK)
+    {
+        printf(
+            "oe_load_module_host_resolver failed with %s\n",
             oe_result_str(result));
         goto exit;
     }
 
-    if ((result = oe_load_module_host_socket_interface()) != OE_OK) {
-        printf("oe_load_module_host_socket_interface failed with %s\n",
+    if ((result = oe_load_module_host_socket_interface()) != OE_OK)
+    {
+        printf(
+            "oe_load_module_host_socket_interface failed with %s\n",
             oe_result_str(result));
         goto exit;
     }
-    
-    if ((rc = tlssrv_startup(&tlsError)) != 0) {
-        printf( " failed! tlssrv_startup returned %d\n\n", rc);
+
+    if ((rc = tlssrv_startup(&tlsError)) != 0)
+    {
+        printf(" failed! tlssrv_startup returned %d\n\n", rc);
         goto exit;
     }
 
-    if ((rc = tlssrv_create(NULL, server_port, verifier, NULL, &tlsServer, &tlsError)) != 0) {
-        printf( " failed! tlssrv_create returned %d\n\n", rc);
+    if ((rc = tlssrv_create(
+             NULL, server_port, verifier, NULL, &tlsServer, &tlsError)) != 0)
+    {
+        printf(" failed! tlssrv_create returned %d\n\n", rc);
         goto exit;
     }
 
-    printf( "\n Server in enclave: Waiting for a trusted connection\n");
-    fflush( stdout );
+    printf("\n Server in enclave: Waiting for a trusted connection\n");
+    fflush(stdout);
 
     /* Wait for a single connections */
-    if ((rc = tlssrv_accept(tlsServer, &client_fd, &tlsError)) != 0) {
-        printf( " failed! tlssrv_accept returned %d\n\n", rc);
+    if ((rc = tlssrv_accept(tlsServer, &client_fd, &tlsError)) != 0)
+    {
+        printf(" failed! tlssrv_accept returned %d\n\n", rc);
         goto exit;
     }
 
     // Allow time out
-    mbedtls_ssl_set_bio(&tlsServer->ssl, &client_fd,
-                        mbedtls_net_send, mbedtls_net_recv, mbedtls_net_recv_timeout);
-    
+    mbedtls_ssl_set_bio(
+        &tlsServer->ssl,
+        &client_fd,
+        mbedtls_net_send,
+        mbedtls_net_recv,
+        mbedtls_net_recv_timeout);
+
     rc = 0;
 
-    printf( " Remote connection established. Ready for service.\n");
+    printf(" Remote connection established. Ready for service.\n");
 
 exit:
-    if (tlsServer) {
+    if (tlsServer)
+    {
         mbedtls_net_free(&tlsServer->net);
         mbedtls_ssl_free(&tlsServer->ssl);
         mbedtls_ssl_config_free(&tlsServer->conf);

@@ -724,8 +724,7 @@ int main(int argc, const char* argv[])
 
     fstype = argv[1];
 
-    if (strcmp(fstype, "ramfs") != 0 &&
-        strcmp(fstype, "ext2fs") != 0 &&
+    if (strcmp(fstype, "ramfs") != 0 && strcmp(fstype, "ext2fs") != 0 &&
         strcmp(fstype, "hostfs") != 0)
     {
         fprintf(stderr, "unknown file system type: %s\n", fstype);

@@ -9,14 +9,14 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#include <myst/syscall.h>
 #include <myst/eraise.h>
 #include <myst/file.h>
 #include <myst/mmanutils.h>
-#include <myst/process.h>
-#include <myst/strings.h>
-#include <myst/round.h>
 #include <myst/panic.h>
+#include <myst/process.h>
+#include <myst/round.h>
+#include <myst/strings.h>
+#include <myst/syscall.h>
 
 #define SCRUB
 
@@ -330,8 +330,8 @@ static int _release_msync_mappings(void* addr, size_t length)
                     /* create the right mapping */
                     if (!(rm = _new_msync_mapping(
                               p->fd,
-                              roffset, /* offset */
-                              minhi,   /* addr */
+                              roffset,   /* offset */
+                              minhi,     /* addr */
                               rlength))) /* length */
                     {
                         ERAISE(-ENOMEM);

@@ -33,10 +33,10 @@
 
 #include "../shared.h"
 #include "archive.h"
+#include "exec.h"
 #include "myst_u.h"
 #include "regions.h"
 #include "utils.h"
-#include "exec.h"
 
 // This is a default enclave configuration that we use when overriding the
 // unsigned configuration
@@ -185,7 +185,8 @@ int exec_launch_enclave(
     return retval;
 }
 
-#define USAGE_FORMAT "\n\
+#define USAGE_FORMAT \
+    "\n\
 \n\
 Usage: %s exec-sgx [options] <rootfs> <application> <args...>\n\
 \n\
@@ -349,11 +350,8 @@ int exec_action(int argc, const char* argv[], const char* envp[])
     // If the enclave is signed that config will take precedence over
     // this version
     if ((details = create_region_details_from_files(
-             program,
-             rootfs,
-             archive_path,
-             commandline_config,
-             heap_size)) == NULL)
+             program, rootfs, archive_path, commandline_config, heap_size)) ==
+        NULL)
     {
         _err("Creating region data failed.");
     }

@@ -13,10 +13,10 @@
 #include <myst/mount.h>
 #include <myst/pubkey.h>
 #include <myst/roothash.h>
-#include <myst/tcall.h>
-#include <myst/verity.h>
-#include <myst/thread.h>
 #include <myst/syscall.h>
+#include <myst/tcall.h>
+#include <myst/thread.h>
+#include <myst/verity.h>
 
 const char* myst_fstype_name(myst_fstype_t fstype)
 {
@@ -52,7 +52,11 @@ done:
 }
 
 #ifdef MYST_ENABLE_EXT2FS
-int myst_load_fs(myst_mount_resolve_callback_t resolve_cb, const char* source, const char* key, myst_fs_t** fs_out)
+int myst_load_fs(
+    myst_mount_resolve_callback_t resolve_cb,
+    const char* source,
+    const char* key,
+    myst_fs_t** fs_out)
 {
     int ret = 0;
     myst_blkdev_t* blkdev = NULL;

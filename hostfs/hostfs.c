@@ -198,7 +198,8 @@ static int _fs_creat(
     myst_fs_t** fs_out,
     myst_file_t** file)
 {
-    return _fs_open(fs, pathname, O_CREAT | O_WRONLY | O_TRUNC, mode, fs_out, file);
+    return _fs_open(
+        fs, pathname, O_CREAT | O_WRONLY | O_TRUNC, mode, fs_out, file);
 }
 
 static off_t _fs_lseek(
