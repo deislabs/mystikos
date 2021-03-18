@@ -76,6 +76,7 @@ endif
 ifdef MYST_NIGHTLY_TEST
 DIRS += ltp
 DIRS += sockperf
+DIRS += ltp2
 endif
 
 REDEFINE_TESTS=1
