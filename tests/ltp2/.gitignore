@@ -2,3 +2,6 @@ appdir
 hostfs
 ext2fs
 upper
+ramfs
+work
+ramfs.appdir
