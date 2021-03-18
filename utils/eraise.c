@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include <myst/printf.h>
 #include <myst/eraise.h>
 #include <myst/errno.h>
 #include <myst/printf.h>

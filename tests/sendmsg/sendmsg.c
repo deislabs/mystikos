@@ -221,7 +221,7 @@ static void* _cli_thread_func(void* arg)
     }
 
     // Be nasty here. Leave the connection open.
-    //close(sock);
+    // close(sock);
 
     return NULL;
 }

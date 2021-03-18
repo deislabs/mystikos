@@ -833,9 +833,9 @@ int myst_load_fssig(const char* path, myst_fssig_t* fssig)
 }
 
 OE_SET_ENCLAVE_SGX(
-    1,        /* ProductID */
-    1,        /* SecurityVersion */
-    true,     /* Debug */
-    32,       /* NumHeapPages */
-    32,       /* NumStackPages */
-    16);      /* NumTCS */
+    1,    /* ProductID */
+    1,    /* SecurityVersion */
+    true, /* Debug */
+    32,   /* NumHeapPages */
+    32,   /* NumStackPages */
+    16);  /* NumTCS */

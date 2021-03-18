@@ -252,7 +252,7 @@ void run_server(uint16_t port, size_t num_clients)
 
                         /* Client disconnect. */
                         // Be nasty here: keep the closed sock in epoll FD list.
-                        //del_events(epfd, client->sock);
+                        // del_events(epfd, client->sock);
                         close(client->sock);
                         client->sock = -1;
 

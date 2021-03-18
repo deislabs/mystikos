@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <pthread.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,12 +16,11 @@
 #include <sys/types.h>
 #include <syslog.h>
 #include <unistd.h>
-#include <pthread.h>
 
 #include <myst/gcov.h>
 #include <myst/libc.h>
-#include <myst/syscallext.h>
 #include <myst/syscall.h>
+#include <myst/syscallext.h>
 
 void _dlstart_c(size_t* sp, size_t* dynv);
 
@@ -161,7 +161,7 @@ static void* _itimer_thread(void* arg)
     (void)arg;
 
     /* Enter the kernel on the itimer thread */
-    long params[6] = { 0 };
+    long params[6] = {0};
     myst_syscall(SYS_myst_run_itimer, params);
 
     return NULL;

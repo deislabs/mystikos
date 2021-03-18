@@ -2,15 +2,15 @@
 // Licensed under the MIT License.
 
 #include <assert.h>
-#include <stdbool.h>
+#include <errno.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/time.h>
-#include <unistd.h>
 #include <time.h>
-#include <errno.h>
+#include <unistd.h>
 
 static bool _got_sigalrm;
 
@@ -62,8 +62,8 @@ int main(int argc, const char* argv[])
 
     /* set a timer for one second */
     {
-        struct itimerval new_value = { { 0, 0 }, { 1, 0 } };
-        struct itimerval old_value = { { 1, 2 }, { 3, 4 } };
+        struct itimerval new_value = {{0, 0}, {1, 0}};
+        struct itimerval old_value = {{1, 2}, {3, 4}};
 
         if (setitimer(ITIMER_REAL, &new_value, &old_value) != 0)
         {

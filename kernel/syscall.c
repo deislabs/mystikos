@@ -2938,8 +2938,12 @@ long myst_syscall(long n, long params[6])
             const struct itimerval* new_value = (void*)x2;
             struct itimerval* old_value = (void*)x3;
 
-            _strace(n, "which=%d new_value=%p old_value=%p",
-                which, new_value, old_value);
+            _strace(
+                n,
+                "which=%d new_value=%p old_value=%p",
+                which,
+                new_value,
+                old_value);
 
             BREAK(_return(
                 n, myst_syscall_setitimer(which, new_value, old_value)));
@@ -3566,15 +3570,15 @@ long myst_syscall(long n, long params[6])
 
             if (option == PR_GET_NAME)
             {
-                char* arg2 = (char *)x2;
+                char* arg2 = (char*)x2;
                 if (!arg2)
                     BREAK(_return(n, -EINVAL));
 
                 strcpy(arg2, myst_get_thread_name(myst_thread_self()));
             }
-            else if(option == PR_SET_NAME)
+            else if (option == PR_SET_NAME)
             {
-                char* arg2 = (char *)x2;
+                char* arg2 = (char*)x2;
                 if (!arg2)
                     BREAK(_return(n, -EINVAL));
 
@@ -4146,8 +4150,8 @@ long myst_syscall(long n, long params[6])
             off_t offset = (off_t)x3;
             off_t len = (off_t)x4;
 
-            _strace(n, "fd=%d mode=%d offset=%ld len=%ld",
-                fd, mode, offset, len);
+            _strace(
+                n, "fd=%d mode=%d offset=%ld len=%ld", fd, mode, offset, len);
 
             /* ATTN: treated as advisory only */
             BREAK(_return(n, 0));

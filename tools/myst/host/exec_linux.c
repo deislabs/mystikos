@@ -30,7 +30,8 @@
 #include "exec_linux.h"
 #include "utils.h"
 
-#define USAGE_FORMAT "\n\
+#define USAGE_FORMAT \
+    "\n\
 \n\
 Usage: %s exec-linux [options] <rootfs> <application> <args...>\n\
 \n\

@@ -7,7 +7,6 @@
 #include <string.h>
 
 #include <myst/backtrace.h>
-#include <myst/syscall.h>
 #include <myst/defs.h>
 #include <myst/eraise.h>
 #include <myst/kernel.h>

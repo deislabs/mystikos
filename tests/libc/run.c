@@ -57,9 +57,7 @@ int main(int argc, const char* argv[])
 {
     if (argc < 1)
     {
-        fprintf(
-            stderr,
-            "Must pass the file containing test names\n");
+        fprintf(stderr, "Must pass the file containing test names\n");
     }
     else
     {

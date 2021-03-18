@@ -1,8 +1,8 @@
 #include <limits.h>
 #include <stdio.h>
 
-#include <myst/timeval.h>
 #include <myst/eraise.h>
+#include <myst/timeval.h>
 
 #define USEC 1000000
 

@@ -8,11 +8,39 @@
 
 // Sync with definitions in OE source tree.
 // These really should be defined in a public header of OE
-const oe_uuid_t sgx_uuid = { 0xa3, 0xa2, 0x1e, 0x87, 0x1b, 0x4d, 0x40, 0x14, 0xb7, \
-    0x0a, 0xa1, 0x25, 0xd2, 0xfb, 0xcd, 0x8c };
+const oe_uuid_t sgx_uuid = {0xa3,
+                            0xa2,
+                            0x1e,
+                            0x87,
+                            0x1b,
+                            0x4d,
+                            0x40,
+                            0x14,
+                            0xb7,
+                            0x0a,
+                            0xa1,
+                            0x25,
+                            0xd2,
+                            0xfb,
+                            0xcd,
+                            0x8c};
 
-const oe_uuid_t eeid_uuid = {0x17, 0x04, 0x94, 0xa6, 0xab, 0x23, 0x47, 0x98, 0x8c, \
-    0x38, 0x35, 0x1c, 0xb0, 0xb6, 0xaf, 0x0A };
+const oe_uuid_t eeid_uuid = {0x17,
+                             0x04,
+                             0x94,
+                             0xa6,
+                             0xab,
+                             0x23,
+                             0x47,
+                             0x98,
+                             0x8c,
+                             0x38,
+                             0x35,
+                             0x1c,
+                             0xb0,
+                             0xb6,
+                             0xaf,
+                             0x0A};
 
 static oe_result_t _generate_key_pair(
     uint8_t** public_key_out,
@@ -115,7 +143,8 @@ static oe_result_t _generate_cert_and_private_key(
         goto done;
     }
 
-    if (cert_type == 0) {
+    if (cert_type == 0)
+    {
         if ((ret = oe_generate_attestation_certificate(
                  (unsigned char*)common_name,
                  private_key,
@@ -189,8 +218,12 @@ int generate_attested_credentials(
 
     /* Generate the attested certificate and private key */
     if (_generate_cert_and_private_key(
-            common_name, cert_type, &cert, &cert_size, &private_key, &private_key_size) !=
-        OE_OK)
+            common_name,
+            cert_type,
+            &cert,
+            &cert_size,
+            &private_key,
+            &private_key_size) != OE_OK)
     {
         fprintf(stderr, "failed to generate certificate and private key\n");
         goto done;

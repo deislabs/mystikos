@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <myst/clock.h>
 #include <myst/cond.h>
 #include <myst/eraise.h>
 #include <myst/mutex.h>
@@ -14,7 +15,6 @@
 #include <myst/syscall.h>
 #include <myst/time.h>
 #include <myst/timeval.h>
-#include <myst/clock.h>
 
 /* ATTN: currently the itimer is only for the single process case */
 typedef struct itimer
@@ -24,8 +24,7 @@ typedef struct itimer
     uint64_t real_value;    /* ITIMER_REAL value */
     myst_mutex_t mutex;
     _Atomic(int) initialized;
-}
-itimer_t;
+} itimer_t;
 
 static itimer_t _it;
 

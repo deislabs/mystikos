@@ -203,11 +203,11 @@ static int _ed_epoll_wait(
         if (!(fdtable = myst_fdtable_current()))
             ERAISE(-ENOSYS);
 
-        for (epoll_entry_t* src = (epoll_entry_t*)epoll->list.head; src; )
+        for (epoll_entry_t* src = (epoll_entry_t*)epoll->list.head; src;)
         {
             epoll_entry_t* next = src->next;
             if (myst_fdtable_get_any(
-                fdtable, src->fd, &type, (void**)&fdops, (void**)&object))
+                    fdtable, src->fd, &type, (void**)&fdops, (void**)&object))
             {
                 myst_list_remove(&epoll->list, (myst_list_node_t*)src);
                 free(src);

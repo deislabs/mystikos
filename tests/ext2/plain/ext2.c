@@ -654,7 +654,8 @@ int main(int argc, const char* argv[])
         /* test open() with O_TRUNC */
         {
             char buf[1024];
-            assert(ext2_open(fs, path, O_TRUNC | O_RDWR, 0666, NULL, &file) == 0);
+            assert(
+                ext2_open(fs, path, O_TRUNC | O_RDWR, 0666, NULL, &file) == 0);
             assert(ext2_write(fs, file, "abcd", 4) == 4);
             assert(ext2_write(fs, file, "efg", 3) == 3);
             assert(ext2_write(fs, file, "hijk", 4) == 4);

@@ -19,13 +19,13 @@
 #include <limits.h>
 #include <sys/mman.h>
 
-#include <myst/printf.h>
+#include <myst/backtrace.h>
 #include <myst/crash.h>
+#include <myst/kernel.h>
 #include <myst/list.h>
 #include <myst/mmanutils.h>
-#include <myst/kernel.h>
-#include <myst/backtrace.h>
 #include <myst/panic.h>
+#include <myst/printf.h>
 
 static void _dlmalloc_abort(void)
 {

@@ -211,7 +211,10 @@ struct ext2
 **==============================================================================
 */
 
-int ext2_create(myst_blkdev_t* dev, myst_fs_t** fs, myst_mount_resolve_callback_t resolve_cb);
+int ext2_create(
+    myst_blkdev_t* dev,
+    myst_fs_t** fs,
+    myst_mount_resolve_callback_t resolve_cb);
 
 int ext2_release(myst_fs_t* fs);
 
