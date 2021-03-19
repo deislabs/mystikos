@@ -10,23 +10,26 @@ FS=ext2fs
 endif
 
 ifeq ($(FS),hostfs)
+# select lines from tests without '#' in the first column
+TESTS=$(shell grep -v "^\#" hostfs_tests_passed.txt)
 FOUND=1
 endif
 
 ifeq ($(FS),ext2fs)
+# select lines from tests without '#' in the first column
+TESTS=$(shell grep -v "^\#" ext2fs_tests_passed.txt)
 FOUND=1
 endif
 
 ifeq ($(FS),ramfs)
+# select lines from tests without '#' in the first column
+TESTS=$(shell grep -v "^\#" ramfs_tests_passed.txt)
 FOUND=1
 endif
 
 ifeq ($(FOUND),)
 $(error "bad value for FS: must be hostfs or ext2fs")
 endif
-
-# select lines from tests without '#' in the first column
-TESTS=$(shell grep -v "^\#" tests)
 
 # overlayfs directories
 LOWERDIR=$(CURDIR)/appdir
@@ -37,7 +40,7 @@ HOSTFS=$(CURDIR)/hostfs
 all: ext2fs
 
 ext2fs: appdir
-	sudo $(MYST) mkext2 appdir ext2fs
+	sudo $(MYST) mkext2 --force appdir ext2fs
 	sudo chown $(USER).$(USER) ext2fs
 	truncate --size=-4096 ext2fs
 
@@ -63,7 +66,12 @@ clone:
 	git clone https://github.com/mikbras/ltp appdir/ltp -b myst
 
 tests:
-	$(foreach i, $(TESTS), $(MAKE) one TEST=$(i) $(NL) )
+	$(MAKE) alltests FS=hostfs
+	$(MAKE) alltests FS=ext2fs
+	$(MAKE) alltests FS=ramfs
+
+alltests:
+	$(foreach i, $(TESTS), $(MAKE) one FS=$(FS) TEST=$(i) $(NL) )
 
 clean:
 	sudo rm -rf $(APPDIR) ext2fs appdir $(UPPERDIR) $(WORKDIR) $(HOSTFS)
@@ -130,8 +138,3 @@ one:
 	$(MYST) mkcpio ramfs.appdir ramfs
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
 endif
-
-t:
-	make one FS=ramfs TEST=/ltp/testcases/kernel/syscalls/llseek/llseek03
-
-	#make one FS=ramfs TEST=/ltp/testcases/kernel/syscalls/chmod/chmod02
