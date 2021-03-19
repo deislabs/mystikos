@@ -403,7 +403,7 @@ int myst_fdtable_get(
         if (entry->type != type || !(entry->object && entry->device))
         {
             myst_spin_unlock(&fdtable->lock);
-            ERAISE(-ENOENT);
+            ERAISE(-EBADF);
         }
 
         *device = entry->device;

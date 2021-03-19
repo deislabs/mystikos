@@ -55,6 +55,7 @@
 /ltp/testcases/kernel/syscalls/open/open04
 /ltp/testcases/kernel/syscalls/open/open07
 /ltp/testcases/kernel/syscalls/open/open09
+/ltp/testcases/kernel/syscalls/openat/openat01
 /ltp/testcases/kernel/syscalls/pathconf/pathconf01
 /ltp/testcases/kernel/syscalls/pipe/pipe06
 /ltp/testcases/kernel/syscalls/pipe/pipe08
@@ -83,7 +84,6 @@
 /ltp/testcases/kernel/syscalls/setitimer/setitimer01
 /ltp/testcases/kernel/syscalls/setitimer/setitimer03
 /ltp/testcases/kernel/syscalls/setpgrp/setpgrp01
-/ltp/testcases/kernel/syscalls/settimeofday/settimeofday01
 /ltp/testcases/kernel/syscalls/sigaction/sigaction02
 /ltp/testcases/kernel/syscalls/sigaltstack/sigaltstack01
 /ltp/testcases/kernel/syscalls/sigaltstack/sigaltstack02

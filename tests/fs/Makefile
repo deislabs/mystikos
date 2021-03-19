@@ -33,7 +33,7 @@ ifdef MYST_ENABLE_EXT2FS
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) ext2rootfs --roothash=$(ROOTHASH) /bin/fs ext2fs
 endif
 
-test3: rootfs
+test3: appdir
 ifdef MYST_ENABLE_HOSTFS
 	rm -rf $(HOSTFS)
 	cp -r appdir $(HOSTFS)
@@ -46,6 +46,6 @@ rootfs: appdir
 ext2rootfs: appdir
 	sudo $(MYST) mkext2 --force appdir ext2rootfs
 
-appdir: $(SUBBINDIR)/fs
+appdir: $(SUBBINDIR)/fs fs.c
 	mkdir -p appdir/bin
 	cp $(SUBBINDIR)/fs appdir/bin/fs

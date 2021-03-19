@@ -199,6 +199,9 @@ void test_mkdir()
     assert(_nlink("/a/bb/ccc") == 2);
     assert(_nlink("/a/bb/ccc/file") == 1);
 
+    assert(chdir("/a/bb/ccc") == 0);
+    assert(mkdir("/a/bb/ccc/ddd", 0700) == 0);
+
     _passed(__FUNCTION__);
 }
 
@@ -714,6 +717,40 @@ void test_fstatfs(const char* program_name)
     _passed(__FUNCTION__);
 }
 
+void test_openat(void)
+{
+    assert(mkdir("/openat", 0777) == 0);
+    assert(mkdir("/openat/dir", 0777) == 0);
+
+    /* open the directory */
+    int dirfd = open("/openat/dir", O_RDONLY);
+    assert(dirfd >= 0);
+
+    /* create a file relative the the directory */
+    {
+        int fd = openat(dirfd, "file", O_WRONLY | O_CREAT | O_TRUNC, 0666);
+        assert(fd >= 0);
+        assert(write(fd, alpha, sizeof(alpha)) == sizeof(alpha));
+        assert(close(fd) == 0);
+    }
+
+    struct stat statbuf;
+    assert(stat("/openat/dir/file", &statbuf) == 0);
+
+    /* check that the file contains the alphabet */
+    {
+        char buf[sizeof(alpha)];
+
+        int fd = openat(dirfd, "../dir/file", O_RDONLY, 0666);
+        assert(read(fd, buf, sizeof(buf)) == sizeof(buf));
+        assert(memcmp(buf, alpha, sizeof(buf)) == 0);
+    }
+
+    assert(close(dirfd) == 0);
+
+    _passed(__FUNCTION__);
+}
+
 int main(int argc, const char* argv[])
 {
     if (argc != 2)
@@ -749,6 +786,7 @@ int main(int argc, const char* argv[])
     test_sendfile(false);
     test_statfs(argv[0]);
     test_fstatfs(argv[0]);
+    test_openat();
 
     printf("=== passed all tests (%s)\n", argv[0]);
 
