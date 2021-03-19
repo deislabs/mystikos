@@ -10,6 +10,7 @@
 /ltp/testcases/kernel/syscalls/creat/creat01
 /ltp/testcases/kernel/syscalls/creat/creat03
 /ltp/testcases/kernel/syscalls/dup2/dup202
+/ltp/testcases/kernel/syscalls/dup2/dup203
 /ltp/testcases/kernel/syscalls/dup3/dup3_01
 /ltp/testcases/kernel/syscalls/dup3/dup3_02
 /ltp/testcases/kernel/syscalls/dup/dup01
@@ -53,6 +54,7 @@
 /ltp/testcases/kernel/syscalls/getrandom/getrandom01
 /ltp/testcases/kernel/syscalls/getrandom/getrandom02
 /ltp/testcases/kernel/syscalls/getrandom/getrandom03
+/ltp/testcases/kernel/syscalls/getrandom/getrandom04
 /ltp/testcases/kernel/syscalls/gettid/gettid01
 /ltp/testcases/kernel/syscalls/getuid/getuid01
 /ltp/testcases/kernel/syscalls/llseek/llseek03
@@ -122,6 +124,7 @@
 /ltp/testcases/kernel/syscalls/setpgrp/setpgrp01
 /ltp/testcases/kernel/syscalls/setsockopt/setsockopt03
 /ltp/testcases/kernel/syscalls/set_tid_address/set_tid_address01
+/ltp/testcases/kernel/syscalls/setuid/setuid01
 /ltp/testcases/kernel/syscalls/sigaction/sigaction01
 /ltp/testcases/kernel/syscalls/sigaction/sigaction02
 /ltp/testcases/kernel/syscalls/sigaltstack/sigaltstack01

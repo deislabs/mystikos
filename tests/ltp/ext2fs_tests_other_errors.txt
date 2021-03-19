@@ -1,3 +1,4 @@
+/ltp/testcases/kernel/syscalls/abort/abort01
 /ltp/testcases/kernel/syscalls/accept/accept01
 /ltp/testcases/kernel/syscalls/accept/accept02
 /ltp/testcases/kernel/syscalls/access/access01
@@ -151,7 +152,6 @@
 /ltp/testcases/kernel/syscalls/fchmod/fchmod02
 /ltp/testcases/kernel/syscalls/fchmod/fchmod03
 /ltp/testcases/kernel/syscalls/fchmod/fchmod04
-/ltp/testcases/kernel/syscalls/fchmod/fchmod05
 /ltp/testcases/kernel/syscalls/fchmod/fchmod06
 /ltp/testcases/kernel/syscalls/fchown/fchown01_16
 /ltp/testcases/kernel/syscalls/fchown/fchown02_16
@@ -168,6 +168,8 @@
 /ltp/testcases/kernel/syscalls/fcntl/fcntl06_64
 /ltp/testcases/kernel/syscalls/fcntl/fcntl07
 /ltp/testcases/kernel/syscalls/fcntl/fcntl07_64
+/ltp/testcases/kernel/syscalls/fcntl/fcntl08
+/ltp/testcases/kernel/syscalls/fcntl/fcntl08_64
 /ltp/testcases/kernel/syscalls/fcntl/fcntl09
 /ltp/testcases/kernel/syscalls/fcntl/fcntl09_64
 /ltp/testcases/kernel/syscalls/fcntl/fcntl13
@@ -208,7 +210,6 @@
 /ltp/testcases/kernel/syscalls/flock/flock04
 /ltp/testcases/kernel/syscalls/flock/flock06
 /ltp/testcases/kernel/syscalls/fork/fork05
-/ltp/testcases/kernel/syscalls/fork/fork09
 /ltp/testcases/kernel/syscalls/fork/fork13
 /ltp/testcases/kernel/syscalls/fremovexattr/fremovexattr01
 /ltp/testcases/kernel/syscalls/fremovexattr/fremovexattr02
@@ -273,7 +274,6 @@
 /ltp/testcases/kernel/syscalls/getpgid/getpgid02
 /ltp/testcases/kernel/syscalls/getpid/getpid01
 /ltp/testcases/kernel/syscalls/getpid/getpid02
-/ltp/testcases/kernel/syscalls/getrandom/getrandom04
 /ltp/testcases/kernel/syscalls/getresgid/getresgid01_16
 /ltp/testcases/kernel/syscalls/getresuid/getresuid01_16
 /ltp/testcases/kernel/syscalls/getrlimit/getrlimit01
@@ -341,8 +341,6 @@
 /ltp/testcases/kernel/syscalls/ioctl/ioctl_ns07
 /ltp/testcases/kernel/syscalls/ioctl/ioctl_sg01
 /ltp/testcases/kernel/syscalls/ioctl/test_ioctl
-/ltp/testcases/kernel/syscalls/ioperm/ioperm02
-/ltp/testcases/kernel/syscalls/iopl/iopl02
 /ltp/testcases/kernel/syscalls/ipc/msgctl/msgctl05
 /ltp/testcases/kernel/syscalls/ipc/msgctl/msgctl06
 /ltp/testcases/kernel/syscalls/ipc/msgget/msgget03
@@ -352,7 +350,6 @@
 /ltp/testcases/kernel/syscalls/ipc/msgrcv/msgrcv03
 /ltp/testcases/kernel/syscalls/ipc/semctl/semctl02
 /ltp/testcases/kernel/syscalls/ipc/semctl/semctl08
-/ltp/testcases/kernel/syscalls/ipc/semctl/semctl09
 /ltp/testcases/kernel/syscalls/ipc/semget/semget02
 /ltp/testcases/kernel/syscalls/ipc/shmctl/shmctl04
 /ltp/testcases/kernel/syscalls/ipc/shmctl/shmctl06
@@ -376,6 +373,7 @@
 /ltp/testcases/kernel/syscalls/llseek/llseek02
 /ltp/testcases/kernel/syscalls/lremovexattr/lremovexattr01
 /ltp/testcases/kernel/syscalls/lseek/lseek02
+/ltp/testcases/kernel/syscalls/lseek/lseek11
 /ltp/testcases/kernel/syscalls/lstat/lstat02
 /ltp/testcases/kernel/syscalls/lstat/lstat02_64
 /ltp/testcases/kernel/syscalls/madvise/madvise01
@@ -499,8 +497,15 @@
 /ltp/testcases/kernel/syscalls/pivot_root/pivot_root01
 /ltp/testcases/kernel/syscalls/poll/poll01
 /ltp/testcases/kernel/syscalls/poll/poll02
+/ltp/testcases/kernel/syscalls/prctl/prctl01
+/ltp/testcases/kernel/syscalls/prctl/prctl03
+/ltp/testcases/kernel/syscalls/prctl/prctl04
+/ltp/testcases/kernel/syscalls/prctl/prctl05
 /ltp/testcases/kernel/syscalls/prctl/prctl06
 /ltp/testcases/kernel/syscalls/prctl/prctl06_execve
+/ltp/testcases/kernel/syscalls/prctl/prctl07
+/ltp/testcases/kernel/syscalls/prctl/prctl08
+/ltp/testcases/kernel/syscalls/prctl/prctl09
 /ltp/testcases/kernel/syscalls/preadv/preadv03
 /ltp/testcases/kernel/syscalls/preadv/preadv03_64
 /ltp/testcases/kernel/syscalls/preadv2/preadv203
@@ -532,9 +537,11 @@
 /ltp/testcases/kernel/syscalls/readdir/readdir21
 /ltp/testcases/kernel/syscalls/readlink/readlink01
 /ltp/testcases/kernel/syscalls/readlink/readlink03
+/ltp/testcases/kernel/syscalls/readv/readv03
 /ltp/testcases/kernel/syscalls/recvmsg/recvmsg03
 /ltp/testcases/kernel/syscalls/remap_file_pages/remap_file_pages01
 /ltp/testcases/kernel/syscalls/remap_file_pages/remap_file_pages02
+/ltp/testcases/kernel/syscalls/rename/rename06
 /ltp/testcases/kernel/syscalls/rename/rename09
 /ltp/testcases/kernel/syscalls/rename/rename11
 /ltp/testcases/kernel/syscalls/rename/rename12
@@ -542,7 +549,6 @@
 /ltp/testcases/kernel/syscalls/renameat2/renameat201
 /ltp/testcases/kernel/syscalls/renameat2/renameat202
 /ltp/testcases/kernel/syscalls/rmdir/rmdir02
-/ltp/testcases/kernel/syscalls/rmdir/rmdir03
 /ltp/testcases/kernel/syscalls/rt_sigaction/rt_sigaction02
 /ltp/testcases/kernel/syscalls/rt_sigaction/rt_sigaction03
 /ltp/testcases/kernel/syscalls/rt_sigprocmask/rt_sigprocmask01
@@ -593,7 +599,6 @@
 /ltp/testcases/kernel/syscalls/set_mempolicy/set_mempolicy03
 /ltp/testcases/kernel/syscalls/set_mempolicy/set_mempolicy04
 /ltp/testcases/kernel/syscalls/set_thread_area/set_thread_area01
-/ltp/testcases/kernel/syscalls/setdomainname/setdomainname03
 /ltp/testcases/kernel/syscalls/setegid/setegid01
 /ltp/testcases/kernel/syscalls/setegid/setegid02
 /ltp/testcases/kernel/syscalls/setfsgid/setfsgid01_16
@@ -617,13 +622,11 @@
 /ltp/testcases/kernel/syscalls/setgroups/setgroups03_16
 /ltp/testcases/kernel/syscalls/setgroups/setgroups04_16
 /ltp/testcases/kernel/syscalls/sethostname/sethostname02
-/ltp/testcases/kernel/syscalls/sethostname/sethostname03
 /ltp/testcases/kernel/syscalls/setitimer/setitimer02
 /ltp/testcases/kernel/syscalls/setpgid/setpgid02
 /ltp/testcases/kernel/syscalls/setpgid/setpgid03_child
 /ltp/testcases/kernel/syscalls/setpriority/setpriority01
 /ltp/testcases/kernel/syscalls/setpriority/setpriority02
-/ltp/testcases/kernel/syscalls/setregid/setregid01
 /ltp/testcases/kernel/syscalls/setregid/setregid01_16
 /ltp/testcases/kernel/syscalls/setregid/setregid02
 /ltp/testcases/kernel/syscalls/setregid/setregid02_16
@@ -671,7 +674,6 @@
 /ltp/testcases/kernel/syscalls/setsockopt/setsockopt06
 /ltp/testcases/kernel/syscalls/setsockopt/setsockopt07
 /ltp/testcases/kernel/syscalls/settimeofday/settimeofday01
-/ltp/testcases/kernel/syscalls/setuid/setuid01
 /ltp/testcases/kernel/syscalls/setuid/setuid01_16
 /ltp/testcases/kernel/syscalls/setuid/setuid03
 /ltp/testcases/kernel/syscalls/setuid/setuid03_16
