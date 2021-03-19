@@ -1,5 +1,7 @@
 # LTP tests
 
+This suite contains LTP tests that do not use filesystem syscalls. The other tests are located [here](../ltp_fs)
+
 ## running tests
 
 To run the LTP tests against the ext2fs, do this:
@@ -24,7 +26,8 @@ The tests have been segregated into files based on their state (running/failing/
 
 ALL TESTS
 
-1. [tests_alltests.txt](tests_alltests.txt): All the tests in ltp that we have (pass + fail)
+1. [all_ltp.txt](all_ltp.txt): All the tests in ltp that we have (pass + fail)
+2. [all_without_fstests](all_without_fstests.txt): All the tests (pass + fail) that do not include the ones in the [ltp_fs](../ltp_fs) suite.
 
 PASSING
 
