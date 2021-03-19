@@ -57,12 +57,12 @@ function show_stats() {
 }
 
 FS=ext2fs
-run_tests alltests_without_fstests.txt
+run_tests all_without_fstests.txt
 
 FS=hostfs
-run_tests alltests_without_fstests.txt
+run_tests all_without_fstests.txt
 
 FS=ramfs
-run_tests alltests_without_fstests.txt
+run_tests all_without_fstests.txt
 
 show_stats
