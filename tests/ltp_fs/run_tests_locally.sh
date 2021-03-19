@@ -38,6 +38,7 @@ while read test; do
   sudo rm -rf /tmp/myst*
 done <$FILE
 
+FS="$FS"_fs
 awk '!seen[$9]++' temp_unhandled_syscalls.output | awk '{print $9}' | sort > unhandled_syscalls.txt
 cat temp_unhandled_syscalls.output > "$FS"_tests_unhandled_syscalls.txt
 sort temp_other_errors.output | awk '!seen[$0]++' > "$FS"_tests_other_errors.txt
@@ -48,17 +49,23 @@ cat temp_passed.output > "$FS"_tests_passed.txt
 function show_stats() {
   echo "FILESYSTEM PASSED UNHANDLED_SYSCALLS OTHER_ERRORS"
   FS=ext2fs
+  FS="$FS"_fs
   echo "$FS $(cat "$FS"_tests_passed.txt | wc -l) $(cat "$FS"_tests_unhandled_syscalls.txt | wc -l) $(cat "$FS"_tests_other_errors.txt | wc -l) "
   FS=hostfs
+  FS="$FS"_fs
   echo "$FS $(cat "$FS"_tests_passed.txt | wc -l) $(cat "$FS"_tests_unhandled_syscalls.txt | wc -l) $(cat "$FS"_tests_other_errors.txt | wc -l) "
   FS=ramfs
+  FS="$FS"_fs
   echo "$FS $(cat "$FS"_tests_passed.txt | wc -l) $(cat "$FS"_tests_unhandled_syscalls.txt | wc -l) $(cat "$FS"_tests_other_errors.txt | wc -l) "
 }
 
-if [[ -z $FS ]]
-then
-  FS=ext2fs
-fi
-run_tests tests_alltests.txt
+FS=ext2fs
+run_tests fstests
+
+FS=hostfs
+run_tests fstests
+
+FS=ramfs
+run_tests fstests
 
 show_stats

@@ -7,23 +7,26 @@
 # endif
 # run using: make one TEST=/test/location
 
+function run_tests() {
+
 rm *.output
 
-function run_tests() {
 FILE=$1
 
 while read test; do
   echo "$test"
-  OUTPUT=$(2>&1 make one TEST=$test)
+  OUTPUT=$(2>&1 timeout 3 make one TEST=$test FS=$FS )
   echo $OUTPUT >> temp_$FILE.output
-  HAS_UNHANDLED_SYSCALL=$(2>&1 make one TEST=$test | grep "unhandled")
+  HAS_UNHANDLED_SYSCALL=$(2>&1 timeout 3 make one TEST=$test FS=$FS | grep "unhandled")
   if [ -z "$HAS_UNHANDLED_SYSCALL" ]
   then
     # No unhandled syscall
     PASSED=$(echo "$OUTPUT" | grep TPASS) 
     FAILED=$(echo "$OUTPUT" | grep TFAIL)
     BROKEN=$(echo "$OUTPUT" | grep TBROK)
-    if [[ $PASSED && -z $FAILED && -z $BROKEN ]]  
+    FAIL_ENCLAVE=$(echo "$OUTPUT" | grep Error)
+    TIMED_OUT=$(echo "$OUTPUT" | grep -F '[one] Terminated')
+    if [[ $PASSED && -z $FAILED && -z $BROKEN && -z $FAIL_ENCLAVE && -z $TIMED_OUT ]]  
     then
       echo $test >> temp_passed.output
     else
@@ -32,16 +35,34 @@ while read test; do
   else
     echo "$test: $HAS_UNHANDLED_SYSCALL" >> temp_unhandled_syscalls.output
   fi
-  echo "$test"
+  sudo rm -rf /tmp/myst*
 done <$FILE
 
+FS="$FS"
 awk '!seen[$9]++' temp_unhandled_syscalls.output | awk '{print $9}' | sort > unhandled_syscalls.txt
-cat temp_unhandled_syscalls.output > tests_unhandled_syscalls.txt
-sort temp_other_errors.output | awk '!seen[$0]++' > tests_other_errors.txt
-cat temp_passed.output > tests_passed.txt
+cat temp_unhandled_syscalls.output > "$FS"_tests_unhandled_syscalls.txt
+sort temp_other_errors.output | awk '!seen[$0]++' > "$FS"_tests_other_errors.txt
+cat temp_passed.output > "$FS"_tests_passed.txt
 
 }
 
-run_tests tests_allrunning.txt
+function show_stats() {
+  echo "FILESYSTEM PASSED UNHANDLED_SYSCALLS OTHER_ERRORS"
+  FS=ext2fs
+  echo "$FS $(cat "$FS"_tests_passed.txt | wc -l) $(cat "$FS"_tests_unhandled_syscalls.txt | wc -l) $(cat "$FS"_tests_other_errors.txt | wc -l) "
+  FS=hostfs
+  echo "$FS $(cat "$FS"_tests_passed.txt | wc -l) $(cat "$FS"_tests_unhandled_syscalls.txt | wc -l) $(cat "$FS"_tests_other_errors.txt | wc -l) "
+  FS=ramfs
+  echo "$FS $(cat "$FS"_tests_passed.txt | wc -l) $(cat "$FS"_tests_unhandled_syscalls.txt | wc -l) $(cat "$FS"_tests_other_errors.txt | wc -l) "
+}
 
-# grep -Fvx -f partial.list complete.list > remaining.list
+FS=ext2fs
+run_tests alltests_without_fstests.txt
+
+FS=hostfs
+run_tests alltests_without_fstests.txt
+
+FS=ramfs
+run_tests alltests_without_fstests.txt
+
+show_stats

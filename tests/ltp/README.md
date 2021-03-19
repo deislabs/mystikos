@@ -1,18 +1,44 @@
-# LTP Tests
+# LTP tests
+
+## running tests
+
+To run the LTP tests against the ext2fs, do this:
+
+```bash
+make alltests FS=ext2fs
+```
+
+To run the LTP tests against the hostfs, do this:
+
+```bash
+make alltests FS=hostfs
+```
+
+To run the LTP tests against the ramfs, do this:
+
+```bash
+make alltests FS=ramfs
+```
 
 The tests have been segregated into files based on their state (running/failing/how are they failing). The following key applies -
 
 ALL TESTS
 
 1. [tests_alltests.txt](tests_alltests.txt): All the tests in ltp that we have (pass + fail)
-2. [tests_allrunning.txt](tests_allrunning.txt): All tests that run without the tests that hang ( pass + fail - hang)
 
 PASSING
 
-1. [tests_passed.txt](tests_passed.txt): All tests that pass
+1. [<fs-type>\_tests_passed.txt](ext2fs_tests_passed.txt): All tests that pass
 
 FAILING
 
-1. [tests_hanging.txt](tests_hanging.txt): All the tests that hang (do not complete)
-2. [tests_unhandled_syscalls.txt](tests_unhandled_syscalls.txt): Tests that fail due to an unimplemented syscall in mystikos.
-3. [tests_other_errors.txt](tests_other_errors.txt): Tests that fail due to errors like invalid return value, etc.
+1. [<fs-type>\_tests_unhandled_syscalls.txt](ext2fs_tests_unhandled_syscalls.txt): Tests that fail due to an unimplemented syscall in mystikos.
+2. [<fs-type>\_tests_other_errors.txt](ext2fs_tests_other_errors.txt): Tests that fail due to errors like invalid return value, etc.
+
+## broken tests
+
+/ltp/testcases/kernel/syscalls/lseek/lseek02: - mknod (pipe) not implemented
+
+/ltp/testcases/kernel/syscalls/lseek/lseek11: - added support for fsync syscall - lseek(..., SEEK_DATA) not supported
+
+/ltp/testcases/kernel/syscalls/fcntl/fcntl10: - fcntl(..., F_SETLKW, ...) not supported
