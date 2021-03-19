@@ -23,8 +23,14 @@ rootfs: $(APPDIR)
 	sudo chown $(USER).$(USER) $@
 	truncate --size=-4096 $@
 
+OPTS =
+
 ifdef STRACE
-OPTS = --strace
+OPTS += --strace
+endif
+
+ifdef ETRACE
+OPTS += --etrace
 endif
 
 ifdef TEST

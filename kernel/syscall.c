@@ -695,6 +695,63 @@ done:
     return ret;
 }
 
+long myst_syscall_openat(
+    int dirfd,
+    const char* pathname,
+    int flags,
+    mode_t mode)
+{
+    long ret = 0;
+
+    if (!pathname)
+        ERAISE(-EINVAL);
+
+    if (*pathname == '\0')
+        ERAISE(-ENOENT);
+
+    /* if pathname is absolute or AT_FDCWD */
+    if (*pathname == '/' || dirfd == AT_FDCWD)
+    {
+        ret = myst_syscall_open(pathname, flags, mode);
+    }
+    else
+    {
+        myst_fdtable_t* fdtable = myst_fdtable_current();
+        myst_fs_t* fs;
+        myst_file_t* file;
+        char dirname[PATH_MAX];
+        char filename[PATH_MAX];
+        int n;
+
+        if (dirfd < 0)
+            ERAISE(-EBADF);
+
+        /* get the file object for the dirfd */
+        ECHECK(myst_fdtable_get_file(fdtable, dirfd, &fs, &file));
+
+        /* fail if not a directory */
+        {
+            struct stat buf;
+            ERAISE((*fs->fs_fstat)(fs, file, &buf));
+
+            if (!S_ISDIR(buf.st_mode))
+                ERAISE(-ENOTDIR);
+        }
+
+        /* get the full path of dirfd */
+        ECHECK((*fs->fs_realpath)(fs, file, dirname, sizeof(dirname)));
+
+        n = snprintf(filename, sizeof(filename), "%s/%s", dirname, pathname);
+        if ((size_t)n >= sizeof(filename))
+            ERAISE(-ENAMETOOLONG);
+
+        ret = myst_syscall_open(filename, flags, mode);
+    }
+
+done:
+    return ret;
+}
+
 long myst_syscall_epoll_create1(int flags)
 {
     long ret = 0;
@@ -1056,11 +1113,43 @@ done:
     return ret;
 }
 
+static const char* _trim_trailing_slashes(
+    const char* pathname,
+    char* buf,
+    size_t size)
+{
+    size_t len = strlen(pathname);
+
+    if (len >= size)
+        return NULL;
+
+    /* remove trailing slashes from the pathname if any */
+    if ((len = strlen(pathname)) && pathname[len - 1] == '/')
+    {
+        memcpy(buf, pathname, len + 1);
+
+        for (char* p = buf + len; p != buf && p[-1] == '/'; *--p = '\0')
+            ;
+
+        pathname = buf;
+    }
+
+    return pathname;
+}
+
 long myst_syscall_mkdir(const char* pathname, mode_t mode)
 {
     long ret = 0;
     char suffix[PATH_MAX];
     myst_fs_t* fs;
+    char buf[PATH_MAX];
+
+    if (!pathname)
+        ERAISE(-EINVAL);
+
+    /* remove trailing slash from directory name if any */
+    if (!(pathname = _trim_trailing_slashes(pathname, buf, sizeof(buf))))
+        ERAISE(-ENAMETOOLONG);
 
     ECHECK(myst_mount_resolve(pathname, suffix, &fs));
     ECHECK((*fs->fs_mkdir)(fs, suffix, mode));
@@ -4050,7 +4139,25 @@ long myst_syscall(long n, long params[6])
         case SYS_migrate_pages:
             break;
         case SYS_openat:
-            break;
+        {
+            int dirfd = (int)x1;
+            const char* path = (const char*)x2;
+            int flags = (int)x3;
+            mode_t mode = (mode_t)x4;
+            long ret;
+
+            _strace(
+                n,
+                "dirfd=%d path=\"%s\" flags=0%o mode=0%o",
+                dirfd,
+                path,
+                flags,
+                mode);
+
+            ret = myst_syscall_openat(dirfd, path, flags, mode);
+
+            BREAK(_return(n, ret));
+        }
         case SYS_mkdirat:
             break;
         case SYS_mknodat:
