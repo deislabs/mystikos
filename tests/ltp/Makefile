@@ -138,6 +138,3 @@ one:
 	$(MYST) mkcpio ramfs.appdir ramfs
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
 endif
-
-t:
-	make one FS=ramfs TEST=/ltp/testcases/kernel/syscalls/llseek/llseek03
