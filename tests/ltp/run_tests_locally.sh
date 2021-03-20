@@ -56,13 +56,49 @@ function show_stats() {
   echo "$FS $(cat "$FS"_tests_passed.txt | wc -l) $(cat "$FS"_tests_unhandled_syscalls.txt | wc -l) $(cat "$FS"_tests_other_errors.txt | wc -l) "
 }
 
-FS=ext2fs
-run_tests tests_alltests.txt
+function generate_matrix() {
 
-FS=hostfs
-run_tests tests_alltests.txt
+  echo -e "## TEST MATRIX\n"
+  echo -e "| TEST | EXT2FS | HOSTFS | RAMFS |"
+  echo -e "| --- | --- | --- | --- |"
 
-FS=ramfs
-run_tests tests_alltests.txt
+  while IFS= read -r TEST
+  do
+    test_passed ramfs $TEST
+    RAMFS=$?
+    test_passed ext2fs $TEST
+    EXT2FS=$?
+    test_passed hostfs $TEST
+    HOSTFS=$?
+    echo -e "| $TEST | $EXT2FS | $HOSTFS | $RAMFS |"
 
-show_stats
+  done < "$TESTS"
+
+}
+
+function test_passed() {
+
+  fs=$1
+  test=$2
+  if [[ ! -z $(cat "$fs"_tests_passed.txt | grep $test ) ]]
+  then
+    return 1
+  else
+    return 0
+  fi
+
+}
+
+TESTS=tests_alltests.txt
+# FS=ext2fs
+# run_tests $TESTS
+
+# FS=hostfs
+# run_tests $TESTS
+
+# FS=ramfs
+# run_tests $TESTS
+
+# show_stats
+
+generate_matrix >> README.md
