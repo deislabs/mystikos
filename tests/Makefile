@@ -59,6 +59,7 @@ DIRS += tlscert
 DIRS += wake_and_kill
 DIRS += cross_fs_symlinks
 DIRS += ltp
+DIRS += shared_symbols
 
 ifndef MYST_SKIP_LIBCXX_TESTS
 DIRS += libcxx
