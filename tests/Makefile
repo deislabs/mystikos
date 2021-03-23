@@ -40,6 +40,7 @@ DIRS += gdb
 DIRS += dlopen
 DIRS += pipe
 DIRS += spawn
+DIRS += spawnfa
 DIRS += fstat
 DIRS += popen
 DIRS += system
