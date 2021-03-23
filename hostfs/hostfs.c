@@ -765,9 +765,10 @@ static int _fs_realpath(
     }
     else
     {
-        int n = snprintf(buf, size, "%s%s", hostfs->target, file->realpath);
+        if (myst_strlcpy(buf, hostfs->target, size) >= size)
+            ERAISE(-ENAMETOOLONG);
 
-        if (n < 0 || n >= (int)size)
+        if (myst_strlcat(buf, file->realpath, size) >= size)
             ERAISE(-ENAMETOOLONG);
     }
 
@@ -928,6 +929,26 @@ done:
     return ret;
 }
 
+static int _fs_futimens(
+    myst_fs_t* fs,
+    myst_file_t* file,
+    const struct timespec times[2])
+{
+    int ret = 0;
+    hostfs_t* hostfs = (hostfs_t*)fs;
+    long tret;
+
+    if (!_hostfs_valid(hostfs) || !_file_valid(file))
+        ERAISE(-EINVAL);
+
+    long params[6] = {(long)file->fd, (long)NULL, (long)times, 0};
+    ECHECK((tret = myst_tcall(SYS_utimensat, params)));
+    ret = tret;
+
+done:
+    return ret;
+}
+
 int myst_init_hostfs(myst_fs_t** fs_out)
 {
     int ret = 0;
@@ -982,6 +1003,7 @@ int myst_init_hostfs(myst_fs_t** fs_out)
         .fs_get_events = _fs_get_events,
         .fs_statfs = _fs_statfs,
         .fs_fstatfs = _fs_fstatfs,
+        .fs_futimens = _fs_futimens,
     };
     // clang-format on
 

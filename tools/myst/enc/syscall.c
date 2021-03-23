@@ -1356,6 +1356,29 @@ done:
 }
 #endif
 
+#ifdef MYST_ENABLE_HOSTFS
+static long _utimensat(
+    int dirfd,
+    const char* pathname,
+    const struct timespec times[2],
+    int flags)
+{
+    long ret = 0;
+    long retval;
+
+    if (myst_utimensat_ocall(&retval, dirfd, pathname, times, flags) != OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = retval;
+
+done:
+    return ret;
+}
+#endif
+
 long myst_handle_tcall(long n, long params[6])
 {
     const long a = params[0];
@@ -1567,6 +1590,11 @@ long myst_handle_tcall(long n, long params[6])
         case SYS_lseek:
         {
             return _lseek((int)a, b, (int)c);
+        }
+        case SYS_utimensat:
+        {
+            return _utimensat(
+                (int)a, (const char*)b, (const struct timespec*)c, (int)d);
         }
 #endif
         default:

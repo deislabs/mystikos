@@ -81,3 +81,28 @@ int myst_path_absolute(const char* path, char* buf, size_t size)
 done:
     return ret;
 }
+
+int myst_make_path(
+    char* buf,
+    size_t size,
+    const char* dirname,
+    const char* basename)
+{
+    int ret = 0;
+
+    if (!buf || !dirname || !basename)
+        ERAISE(-EINVAL);
+
+    size_t dirname_len = strlen(dirname);
+    size_t basename_len = strlen(basename);
+
+    if (dirname_len + 1 + basename_len >= size)
+        ERAISE(-ENAMETOOLONG);
+
+    memcpy(buf, dirname, dirname_len);
+    buf[dirname_len] = '/';
+    memcpy(buf + dirname_len + 1, basename, basename_len + 1);
+
+done:
+    return ret;
+}

@@ -25,3 +25,6 @@ CFLAGS += -O3
 LDFLAGS = $(DEFAULT_LDFLAGS)
 
 include $(TOP)/rules.mak
+
+k:
+	$(MAKE) -C ../kernel

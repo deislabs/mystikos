@@ -606,6 +606,7 @@ long myst_tcall(long n, long params[6])
         case SYS_statfs:
         case SYS_fstatfs:
         case SYS_lseek:
+        case SYS_utimensat:
         {
             extern long myst_handle_tcall(long n, long params[6]);
             return myst_handle_tcall(n, params);

@@ -18,6 +18,7 @@
 #include <sys/uio.h>
 #include <sys/vfs.h>
 #include <unistd.h>
+#include "../utils/utils.h"
 
 const char* fstype;
 
@@ -751,6 +752,59 @@ void test_openat(void)
     _passed(__FUNCTION__);
 }
 
+void diff_timestamps(
+    struct stat* st1,
+    struct stat* st2,
+    long* atim,
+    long* ctim,
+    long* mtim)
+{
+    long atim1 = st1->st_atim.tv_sec * 1000000 + st1->st_atim.tv_nsec / 1000;
+    long ctim1 = st1->st_ctim.tv_sec * 1000000 + st1->st_ctim.tv_nsec / 1000;
+    long mtim1 = st1->st_mtim.tv_sec * 1000000 + st1->st_mtim.tv_nsec / 1000;
+    long atim2 = st2->st_atim.tv_sec * 1000000 + st2->st_atim.tv_nsec / 1000;
+    long ctim2 = st2->st_ctim.tv_sec * 1000000 + st2->st_ctim.tv_nsec / 1000;
+    long mtim2 = st2->st_mtim.tv_sec * 1000000 + st2->st_mtim.tv_nsec / 1000;
+
+    *atim = atim2 - atim1;
+    *ctim = ctim2 - ctim1;
+    *mtim = mtim2 - mtim1;
+}
+
+static uint64_t _timestamp_sleep_msec = 250;
+
+void test_timestamps(void)
+{
+    int fd;
+    struct stat st1;
+    struct stat st2;
+    long atim;
+    long ctim;
+    long mtim;
+
+    assert(mkdir("/timestamps", 0777) == 0);
+
+    /* test write() */
+    {
+        const int flags = O_WRONLY | O_CREAT | O_TRUNC;
+        const mode_t mode = 0666;
+        assert((fd = open("/timestamps/write", flags, mode)) >= 0);
+
+        assert(fstat(fd, &st1) == 0);
+        sleep_msec(_timestamp_sleep_msec);
+        assert(write(fd, "0123456789", 10) == 10);
+        assert(fstat(fd, &st2) == 0);
+
+        diff_timestamps(&st1, &st2, &atim, &ctim, &mtim);
+        printf("atim=%ld ctim=%ld mtim=%ld\n", atim, ctim, mtim);
+        assert(atim == 0);
+        assert(ctim != 0);
+        assert(mtim != 0);
+
+        assert(close(fd) == 0);
+    }
+}
+
 int main(int argc, const char* argv[])
 {
     if (argc != 2)
@@ -768,6 +822,11 @@ int main(int argc, const char* argv[])
         exit(1);
     }
 
+    /* ext2fs only has 1 second timestamp granularity */
+    if (strcmp(fstype, "ext2fs") == 0)
+        _timestamp_sleep_msec = 1200; /* 1.2 seconds */
+
+    test_timestamps();
     test_fstatat();
     test_readv();
     test_writev();
