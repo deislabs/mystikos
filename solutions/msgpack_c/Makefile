@@ -9,7 +9,7 @@ LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 
 all: myst rootfs
 
-OPTS = --memory-size=8m
+OPTS = --memory-size=16m
 
 run:
 	@ echo -e "\n------starting msgpack-c cpp unit tests------\n"
