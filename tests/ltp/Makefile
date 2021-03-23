@@ -70,8 +70,18 @@ ext2fs: appdir
 URL=https://github.com/mikbras/ltp
 
 appdir:
+ifeq ($(IGNORE_CACHE),1)
 	$(MAKE) clone
 	$(MAKE) build
+else
+	$(MAKE) fetch-cache
+	cp -r $(BUILDDIR)/mystikos-cache/tests/ltp/appdir appdir
+endif
+
+fetch-cache: $(BUILDDIR)/mystikos-cache
+
+$(BUILDDIR)/mystikos-cache:
+	( cd $(BUILDDIR); git clone https://github.com/mikbras/mystikos-cache )
 
 build:
 	cp build.mak appdir/ltp
@@ -88,10 +98,7 @@ clone:
 	mkdir appdir
 	git clone https://github.com/mikbras/ltp appdir/ltp -b myst
 
-tests:
-	$(MAKE) tests_hostfs
-	$(MAKE) tests_ext2fs
-	$(MAKE) tests_ramfs
+tests: tests_hostfs tests_ext2fs tests_ramfs
 
 tests_hostfs:
 	$(MAKE) alltests FS=hostfs
