@@ -4,6 +4,18 @@ include $(TOP)/defs.mak
 
 APPDIR=$(CURDIR)/appdir
 
+ifdef STRACE
+OPTS += --strace
+endif
+
+ifdef ETRACE
+OPTS += --etrace
+endif
+
+ifdef TRACE
+OPTS += --etrace --strace
+endif
+
 ifndef FS
 FS=ext2fs
 endif
@@ -77,8 +89,17 @@ clone:
 	git clone https://github.com/mikbras/ltp appdir/ltp -b myst
 
 tests:
+	$(MAKE) tests_hostfs
+	$(MAKE) tests_ext2fs
+	$(MAKE) tests_ramfs
+
+tests_hostfs:
 	$(MAKE) alltests FS=hostfs
+
+tests_ext2fs:
 	$(MAKE) alltests FS=ext2fs
+
+tests_ramfs:
 	$(MAKE) alltests FS=ramfs
 
 alltests:
@@ -149,3 +170,6 @@ one:
 	$(MYST) mkcpio ramfs.appdir ramfs
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
 endif
+
+t:
+	make one TEST=/ltp/testcases/kernel/syscalls/link/link05 FS=ramfs #ETRACE=1 STRACE=1

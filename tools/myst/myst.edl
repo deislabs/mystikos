@@ -343,6 +343,12 @@ enclave
 
         long myst_lseek_ocall(int fd, off_t offset, int whence);
 
+        long myst_utimensat_ocall(
+            int dirfd,
+            [in, string] const char* pathname,
+            [in] const struct timespec times[2],
+            int flags);
+
         /*
         **======================================================================
         **

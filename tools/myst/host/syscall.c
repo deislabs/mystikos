@@ -349,3 +349,13 @@ long myst_lseek_ocall(int fd, off_t offset, int whence)
 {
     RETURN(lseek(fd, offset, whence));
 }
+
+long myst_utimensat_ocall(
+    int dirfd,
+    const char* pathname,
+    const struct timespec times[2],
+    int flags)
+{
+    /* bypass the glibc wrapper (it raises EINVAL when pathname is null */
+    RETURN(syscall(SYS_utimensat, dirfd, pathname, times, flags));
+}
