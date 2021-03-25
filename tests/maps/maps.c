@@ -15,7 +15,7 @@
 
 #include <myst/maps.h>
 
-int main()
+int main(int argc, const char* argv[])
 {
     const size_t PAGE_SIZE = 4096;
     size_t length = 8 * PAGE_SIZE;
@@ -25,7 +25,9 @@ int main()
     int r;
 
     uint8_t* addr = mmap(NULL, length, prot, flags, -1, 0);
+#if 0
     printf("addr=%p\n", addr);
+#endif
     mprotect(addr + 0 * PAGE_SIZE, PAGE_SIZE, PROT_NONE);
     mprotect(addr + 1 * PAGE_SIZE, PAGE_SIZE, PROT_READ);
     mprotect(addr + 2 * PAGE_SIZE, PAGE_SIZE, PROT_WRITE);
@@ -40,7 +42,9 @@ int main()
         exit(1);
     }
 
+#if 0
     myst_maps_dump(maps);
+#endif
 
     for (size_t i = 0; i < (length / PAGE_SIZE); i++)
     {
@@ -48,7 +52,10 @@ int main()
         struct myst_mstat ms;
 
         myst_mstat(maps, p, &ms);
+
+#if 0
         myst_mstat_dump(&ms);
+#endif
 
         assert(ms.flags == MAP_PRIVATE);
 
@@ -83,6 +90,8 @@ int main()
 
     myst_maps_free(maps);
     munmap(addr, length);
+
+    printf("=== passed all tests (%s)\n", argv[0]);
 
     return 0;
 }
