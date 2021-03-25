@@ -110,7 +110,7 @@ static int _self_vcallback(myst_buf_t* vbuf)
 
 int create_proc_root_entries()
 {
-    int ret;
+    int ret = 0;
 
     /* Create /proc/meminfo */
     ECHECK(myst_create_virtual_file(_procfs, "/meminfo", S_IFREG, _meminfo_vcallback));

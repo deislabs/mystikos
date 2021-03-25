@@ -15,7 +15,6 @@ DIRS += libc
 endif
 
 DIRS += args
-DIRS += echo
 DIRS += alpine
 DIRS += pthread
 DIRS += urandom
@@ -26,14 +25,12 @@ DIRS += shlib
 DIRS += getcwd
 DIRS += rdtsc
 DIRS += run
-DIRS += echo
 DIRS += mman
 DIRS += fs
 DIRS += mount
 DIRS += cpio
 DIRS += elf
 DIRS += strings
-DIRS += empty
 DIRS += getpid
 DIRS += json
 DIRS += conf

@@ -1,6 +1,5 @@
 TOP=$(abspath ../../..)
 include $(TOP)/defs.mak
-SUBBINDIR=$(BINDIR)
 
 PROGRAM = jsonprint
 
