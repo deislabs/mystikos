@@ -20,6 +20,7 @@
 #include <myst/mmanutils.h>
 #include <myst/mount.h>
 #include <myst/ramfs.h>
+#include <myst/region.h>
 #include <myst/reloc.h>
 #include <myst/shm.h>
 #include <myst/strings.h>
@@ -164,6 +165,46 @@ done:
     return ret;
 }
 
+typedef struct region
+{
+    void* data;
+    size_t size;
+} region_t;
+
+static int _find_region(const char* name, region_t* region)
+{
+    extern const void* __oe_get_heap_base(void);
+    const uint8_t* heap = (uint8_t*)__oe_get_heap_base();
+    myst_region_trailer_t* p = (myst_region_trailer_t*)(heap - PAGE_SIZE);
+
+    for (;;)
+    {
+        if (p->magic != MYST_REGION_MAGIC)
+        {
+            fprintf(stderr, "bad region magic number");
+            assert(0);
+        }
+
+        uint8_t* data = (uint8_t*)p - p->size;
+
+        if (strcmp(p->name, name) == 0)
+        {
+            region->data = data;
+            region->size = p->size;
+            return 0;
+        }
+
+        if (p->index == 0)
+            break;
+
+        /* advance to previous trailer */
+        p = (myst_region_trailer_t*)(data - PAGE_SIZE);
+    }
+
+    /* not found */
+    return -1;
+}
+
 int myst_enter_ecall(
     struct myst_options* options,
     struct myst_shm* shared_memory,
@@ -234,12 +275,13 @@ int myst_enter_ecall(
 
     /* Get the config region */
     {
-        oe_region_t region;
+        region_t region;
 
-        if (oe_region_get(MYST_CONFIG_REGION_ID, &region) == OE_OK)
+        if (_find_region(MYST_CONFIG_REGION_NAME, &region) == 0)
         {
-            config_data = enclave_base + region.vaddr;
+            config_data = region.data;
             config_size = region.size;
+
             if (parse_config_from_buffer(
                     config_data, config_size, &parsed_config) != 0)
             {
@@ -377,165 +419,162 @@ int myst_enter_ecall(
     void* mman_data;
     size_t mman_size;
     {
-        oe_region_t region;
+        region_t region;
 
-        if (oe_region_get(MYST_MMAN_REGION_ID, &region) != OE_OK)
+        if (_find_region(MYST_MMAN_REGION_NAME, &region) != OE_OK)
         {
             fprintf(stderr, "failed to get crt region\n");
             assert(0);
         }
 
-        mman_data = (void*)(enclave_base + region.vaddr);
+        mman_data = region.data;
         mman_size = region.size;
     }
 
     /* Get the rootfs region */
     {
-        oe_region_t region;
+        region_t region;
 
-        if (oe_region_get(MYST_ROOTFS_REGION_ID, &region) != OE_OK)
+        if (_find_region(MYST_ROOTFS_REGION_NAME, &region) != OE_OK)
         {
             fprintf(stderr, "failed to get rootfs region\n");
             assert(0);
         }
 
-        rootfs_data = enclave_base + region.vaddr;
+        rootfs_data = region.data;
         rootfs_size = region.size;
     }
 
     /* Get the archive region */
     {
-        oe_region_t region;
+        region_t region;
 
-        if (oe_region_get(MYST_ARCHIVE_REGION_ID, &region) != OE_OK)
+        if (_find_region(MYST_ARCHIVE_REGION_NAME, &region) != OE_OK)
         {
             fprintf(stderr, "failed to get archive region\n");
             assert(0);
         }
 
-        archive_data = enclave_base + region.vaddr;
+        archive_data = region.data;
         archive_size = region.size;
     }
 
     /* Get the kernel region */
     {
-        oe_region_t region;
+        region_t region;
 
-        if (oe_region_get(MYST_KERNEL_REGION_ID, &region) != OE_OK)
+        if (_find_region(MYST_KERNEL_REGION_NAME, &region) != OE_OK)
         {
             fprintf(stderr, "failed to get kernel region\n");
             assert(0);
         }
 
-        kernel_data = enclave_base + region.vaddr;
+        kernel_data = region.data;
         kernel_size = region.size;
     }
 
     /* Apply relocations to the kernel image */
     {
-        oe_region_t region;
+        region_t region;
 
-        if (oe_region_get(MYST_KERNEL_RELOC_REGION_ID, &region) != OE_OK)
+        if (_find_region(MYST_KERNEL_RELOC_REGION_NAME, &region) != OE_OK)
         {
             fprintf(stderr, "failed to get kernel region\n");
             assert(0);
         }
 
         if (myst_apply_relocations(
-                kernel_data,
-                kernel_size,
-                enclave_base + region.vaddr,
-                region.size) != 0)
+                kernel_data, kernel_size, region.data, region.size) != 0)
         {
             fprintf(stderr, "myst_apply_relocations() failed\n");
             assert(0);
         }
 
-        kernel_reloc_data = enclave_base + region.vaddr;
+        kernel_reloc_data = region.data;
         kernel_reloc_size = region.size;
     }
 
     /* Get the kernel symbol table region */
     {
-        oe_region_t region;
+        region_t region;
 
-        if (oe_region_get(MYST_KERNEL_SYMTAB_REGION_ID, &region) != OE_OK)
+        if (_find_region(MYST_KERNEL_SYMTAB_REGION_NAME, &region) != OE_OK)
         {
             fprintf(stderr, "failed to get kernel symtab region\n");
             assert(0);
         }
 
-        kernel_symtab_data = enclave_base + region.vaddr;
+        kernel_symtab_data = region.data;
         kernel_symtab_size = region.size;
     }
 
     /* Get the kernel dynamic symbol table region */
     {
-        oe_region_t region;
+        region_t region;
 
-        if (oe_region_get(MYST_KERNEL_DYNSYM_REGION_ID, &region) != OE_OK)
+        if (_find_region(MYST_KERNEL_DYNSYM_REGION_NAME, &region) != OE_OK)
         {
             fprintf(stderr, "failed to get kernel dynsym region\n");
             assert(0);
         }
 
-        kernel_dynsym_data = enclave_base + region.vaddr;
+        kernel_dynsym_data = region.data;
         kernel_dynsym_size = region.size;
     }
 
     /* Get the kernel string table region */
     {
-        oe_region_t region;
+        region_t region;
 
-        if (oe_region_get(MYST_KERNEL_STRTAB_REGION_ID, &region) != OE_OK)
+        if (_find_region(MYST_KERNEL_STRTAB_REGION_NAME, &region) != OE_OK)
         {
             fprintf(stderr, "failed to get kernel strtab region\n");
             assert(0);
         }
 
-        kernel_strtab_data = enclave_base + region.vaddr;
+        kernel_strtab_data = region.data;
         kernel_strtab_size = region.size;
     }
 
     /* Get the kernel dynamic string table region */
     {
-        oe_region_t region;
+        region_t region;
 
-        if (oe_region_get(MYST_KERNEL_DYNSTR_REGION_ID, &region) != OE_OK)
+        if (_find_region(MYST_KERNEL_DYNSTR_REGION_NAME, &region) != OE_OK)
         {
             fprintf(stderr, "failed to get kernel dynstr region\n");
             assert(0);
         }
 
-        kernel_dynstr_data = enclave_base + region.vaddr;
+        kernel_dynstr_data = region.data;
         kernel_dynstr_size = region.size;
     }
 
     /* Get the crt region */
     {
-        oe_region_t region;
+        region_t region;
 
-        if (oe_region_get(MYST_CRT_REGION_ID, &region) != OE_OK)
+        if (_find_region(MYST_CRT_REGION_NAME, &region) != OE_OK)
         {
             fprintf(stderr, "failed to get crt region\n");
             assert(0);
         }
 
-        crt_data = enclave_base + region.vaddr;
+        crt_data = region.data;
         crt_size = region.size;
     }
 
     /* Get relocations to the crt image */
     {
-        oe_region_t region;
+        region_t region;
 
-        if (oe_region_get(MYST_CRT_RELOC_REGION_ID, &region) != OE_OK)
+        if (_find_region(MYST_CRT_RELOC_REGION_NAME, &region) != OE_OK)
         {
             fprintf(stderr, "failed to get crt region\n");
             assert(0);
         }
 
-        crt_reloc_data = enclave_base + region.vaddr;
+        crt_reloc_data = region.data;
         crt_reloc_size = region.size;
     }
 

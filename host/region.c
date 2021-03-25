@@ -8,7 +8,9 @@
 
 #define MAGIC 0xdd131acc5dc846e8
 
+#ifndef PAGE_SIZE
 #define PAGE_SIZE 4096
+#endif
 
 struct myst_region_context
 {
@@ -24,6 +26,9 @@ struct myst_region_context
 
     /* start of the current region */
     uint64_t region_start;
+
+    /* current region index */
+    size_t region_index;
 };
 
 int myst_region_init(
@@ -81,12 +86,16 @@ int myst_region_open(myst_region_context_t* context)
         ERAISE(-EBUSY);
 
     context->region_start = context->vaddr;
+    context->opened = true;
 
 done:
     return ret;
 }
 
-int myst_region_close(myst_region_context_t* context, const char* name)
+int myst_region_close(
+    myst_region_context_t* context,
+    const char* name,
+    uint64_t vaddr)
 {
     int ret = 0;
 
@@ -101,11 +110,15 @@ int myst_region_close(myst_region_context_t* context, const char* name)
     if (!context->opened)
         ERAISE(-EINVAL);
 
+    /* update the virtual address */
+    context->vaddr = vaddr;
+
     /* append a region trailer */
     {
-        myst_region_trailer_t trailer;
+        __attribute__((__aligned__(PAGE_SIZE))) myst_region_trailer_t trailer;
         memset(&trailer, 0, sizeof(trailer));
         trailer.magic = MYST_REGION_MAGIC;
+        trailer.index = context->region_index++;
         strcpy(trailer.name, name);
         trailer.size = context->vaddr - context->region_start;
 
@@ -145,19 +158,9 @@ int myst_region_add_page(
     if (!context->opened)
         ERAISE(-EINVAL);
 
-    /* cross-check the virtual address */
-    if (context->vaddr != vaddr)
-    {
-        assert("unexpected!" == NULL);
-        ERAISE(-EINVAL);
-    }
-
     /* add the page */
-    ECHECK((*context->add_page)(
-        context->vaddr, page, prot, flags, context->add_page_arg));
-
-    /* update the virtual address */
-    context->vaddr += PAGE_SIZE;
+    ECHECK(
+        (*context->add_page)(vaddr, page, prot, flags, context->add_page_arg));
 
 done:
     return ret;
