@@ -509,7 +509,7 @@ static int _mount_rootfs(myst_kernel_args_t* args, myst_fstype_t fstype)
 #if defined(MYST_ENABLE_EXT2FS)
         case MYST_FSTYPE_EXT2FS:
         {
-            char err[256];
+            char err[PATH_MAX + 256];
 
             /* setup and mount the EXT2 file system */
             if (_setup_ext2(args->rootfs, err, sizeof(err)) != 0)
@@ -527,7 +527,7 @@ static int _mount_rootfs(myst_kernel_args_t* args, myst_fstype_t fstype)
 #if defined(MYST_ENABLE_HOSTFS)
         case MYST_FSTYPE_HOSTFS:
         {
-            char err[256];
+            char err[PATH_MAX + 256];
 
             /* disallow HOSTFS rootfs in non-debug mode */
             if (!args->tee_debug_mode)
