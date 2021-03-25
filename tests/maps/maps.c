@@ -15,6 +15,18 @@
 
 #include <myst/maps.h>
 
+void test_big_mapping()
+{
+    size_t length = 8UL * 1024UL * 1024UL * 1024UL;
+    const int prot = PROT_NONE;
+    const int flags = MAP_ANONYMOUS | MAP_PRIVATE;
+
+    uint8_t* addr = mmap(NULL, length, prot, flags, -1, 0);
+    assert(addr != MAP_FAILED);
+    printf("addr=%p\n", addr);
+    munmap(addr, length);
+}
+
 int main(int argc, const char* argv[])
 {
     const size_t PAGE_SIZE = 4096;
@@ -25,9 +37,7 @@ int main(int argc, const char* argv[])
     int r;
 
     uint8_t* addr = mmap(NULL, length, prot, flags, -1, 0);
-#if 0
-    printf("addr=%p\n", addr);
-#endif
+    assert(addr != MAP_FAILED);
     mprotect(addr + 0 * PAGE_SIZE, PAGE_SIZE, PROT_NONE);
     mprotect(addr + 1 * PAGE_SIZE, PAGE_SIZE, PROT_READ);
     mprotect(addr + 2 * PAGE_SIZE, PAGE_SIZE, PROT_WRITE);
@@ -90,6 +100,8 @@ int main(int argc, const char* argv[])
 
     myst_maps_free(maps);
     munmap(addr, length);
+
+    test_big_mapping();
 
     printf("=== passed all tests (%s)\n", argv[0]);
 
