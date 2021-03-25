@@ -46,6 +46,7 @@ int main()
     {
         uint8_t* p = addr + (i * PAGE_SIZE);
         struct myst_mstat ms;
+
         myst_mstat(maps, p, &ms);
         myst_mstat_dump(&ms);
 
