@@ -23,7 +23,6 @@
 #include <myst/strings.h>
 #include <myst/tcall.h>
 #include <myst/trace.h>
-#include <openenclave/bits/sgx/region.h>
 #include <openenclave/host.h>
 
 #include "../shared.h"
@@ -118,6 +117,64 @@ oe_result_t oe_debug_notify_library_unloaded(oe_debug_image_t* image)
 {
     oe_notify_debugger_library_unload(image);
     return OE_OK;
+}
+
+long myst_add_symbol_file_by_path(
+    const char* path,
+    const void* text_data,
+    size_t text_size)
+{
+    long ret = 0;
+    int fd = -1;
+    debug_image_t* di = NULL;
+    void* data = NULL;
+    bool notify = true;
+
+    if (!path || !text_data || !text_size)
+        ERAISE(-EINVAL);
+
+    /* Add new debug image to the table */
+    {
+        if (!(di = calloc(1, sizeof(debug_image_t))))
+            ERAISE(-ENOMEM);
+
+        if (myst_strlcpy(di->buf, path, sizeof(di->buf)) >= sizeof(di->buf))
+            ERAISE(-ENAMETOOLONG);
+
+        di->base.magic = OE_DEBUG_IMAGE_MAGIC;
+        di->base.version = 1;
+        di->base.path = di->buf;
+        di->base.path_length = strlen(di->base.path);
+        di->base.base_address = (uint64_t)text_data;
+        di->base.size = text_size;
+
+        if (notify)
+        {
+            printf("NOTIFY.........\n");
+            fflush(stdout);
+            /* notify gdb to load the symbols */
+            oe_debug_notify_library_loaded(&di->base);
+            di->loaded = true;
+        }
+
+        /* add to the front of the list */
+        di->next = _debug_images;
+        _debug_images = di;
+        di = NULL;
+    }
+
+done:
+
+    if (di)
+        free(di);
+
+    if (data)
+        free(data);
+
+    if (fd > 0)
+        close(fd);
+
+    return ret;
 }
 
 long myst_tcall_add_symbol_file(
@@ -253,7 +310,7 @@ long myst_tcall_unload_symbols(void)
         debug_image_t* next = p->next;
 
         oe_debug_notify_library_unloaded(&p->base);
-        unlink(p->base.path);
+        // unlink(p->base.path);
         free(p);
 
         p = next;

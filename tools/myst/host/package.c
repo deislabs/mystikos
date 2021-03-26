@@ -16,7 +16,6 @@
 #include <myst/elf.h>
 #include <myst/getopt.h>
 #include <myst/strings.h>
-#include <openenclave/bits/sgx/region.h>
 #include <openenclave/host.h>
 
 #include "../config.h"

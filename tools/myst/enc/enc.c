@@ -8,7 +8,6 @@
 #include <string.h>
 #include <sys/mount.h>
 
-#include <openenclave/bits/sgx/region.h>
 #include <openenclave/enclave.h>
 
 #include <elf.h>

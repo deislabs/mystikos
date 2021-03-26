@@ -11,7 +11,7 @@
 #include <myst/file.h>
 #include <myst/round.h>
 #include <myst/strings.h>
-#include <openenclave/bits/sgx/region.h>
+#include <openenclave/bits/sgx/sgxtypes.h>
 #include <openenclave/host.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -406,12 +406,17 @@ done:
     return ret;
 }
 
-static int _add_kernel_region(myst_region_context_t* context, uint64_t* vaddr)
+static int _add_kernel_region(
+    myst_region_context_t* context,
+    uint64_t baseaddr,
+    uint64_t* vaddr)
 {
     int ret = 0;
     const char name[] = MYST_KERNEL_REGION_NAME;
     int fd = -1;
     uint64_t r;
+    const void* image_data = (const void*)baseaddr + *vaddr;
+    size_t image_size;
 
     assert(_details.kernel.image.image_data != NULL);
     assert(_details.kernel.image.image_size != 0);
@@ -451,10 +456,18 @@ static int _add_kernel_region(myst_region_context_t* context, uint64_t* vaddr)
     ECHECK(myst_round_up(_details.kernel.image.image_size, m, &r));
     *vaddr += r;
 
+    image_size = r;
+
     if (myst_region_close(context, name, *vaddr) != 0)
         ERAISE(-EINVAL);
 
     *(vaddr) += PAGE_SIZE;
+
+    extern long myst_add_symbol_file_by_path(
+        const char* path, const void* text_data, size_t text_size);
+
+    if (baseaddr)
+        ECHECK(myst_add_symbol_file_by_path(path, image_data, image_size));
 
 done:
 
@@ -948,11 +961,12 @@ done:
     return ret;
 }
 
-struct add_page_args
-{
-    uint64_t oe_vaddr;
-    oe_region_context_t* oe_context;
-};
+oe_result_t oe_load_extra_enclave_data(
+    void* arg,
+    uint64_t vaddr,
+    const void* page,
+    uint64_t flags,
+    bool extend);
 
 static int _add_page(
     uint64_t vaddr,
@@ -961,7 +975,6 @@ static int _add_page(
     int flags,
     void* arg)
 {
-    struct add_page_args* args = (struct add_page_args*)arg;
     uint64_t oe_flags = SGX_SECINFO_REG;
     bool extend = (flags & MYST_REGION_EXTEND);
 
@@ -974,38 +987,25 @@ static int _add_page(
     if (prot & PROT_EXEC)
         oe_flags |= SGX_SECINFO_X;
 
-    if (oe_region_add_page(
-            args->oe_context, args->oe_vaddr + vaddr, page, oe_flags, extend) !=
-        OE_OK)
+    if (oe_load_extra_enclave_data(arg, vaddr, page, oe_flags, extend) != OE_OK)
     {
-        _err("oe_region_add_page() failed: vaddr=%lu", args->oe_vaddr + vaddr);
+        _err("oe_load_extra_enclave_data() failed: vaddr=%lu", vaddr);
         return -EINVAL;
     }
 
     return 0;
 }
 
-oe_result_t oe_region_add_regions(
-    oe_region_context_t* oe_context,
-    uint64_t oe_vaddr)
+oe_result_t oe_load_extra_enclave_data_hook(void* arg, uint64_t baseaddr)
 {
-    const uint64_t oe_region_id = MYST_MYSTIKOS_REGION_ID;
     myst_region_context_t* context = NULL;
     uint64_t vaddr = 0;
 
-    struct add_page_args arg;
-    arg.oe_context = oe_context;
-    arg.oe_vaddr = oe_vaddr;
-
     /* create a myst_region_context_t */
-    if (myst_region_init(_add_page, &arg, &context) != 0)
+    if (myst_region_init(_add_page, arg, &context) != 0)
         _err("myst_region_init() failed");
 
-    /* put everything in a single OE region */
-    if (oe_region_start(oe_context, oe_region_id, false, NULL) != OE_OK)
-        _err("oe_region_start() failed");
-
-    if (_add_kernel_region(context, &vaddr) != 0)
+    if (_add_kernel_region(context, baseaddr, &vaddr) != 0)
         _err("_add_kernel_region() failed");
 
     if (_add_kernel_reloc_region(context, &vaddr) != 0)
@@ -1040,9 +1040,6 @@ oe_result_t oe_region_add_regions(
 
     if (_add_config_region(context, &vaddr) != 0)
         _err("_add_config_region() failed");
-
-    if (oe_region_end(oe_context) != OE_OK)
-        _err("oe_region_end() failed");
 
     return OE_OK;
 }
