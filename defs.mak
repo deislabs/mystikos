@@ -57,6 +57,7 @@ DEFAULT_CFLAGS = -Wall -Werror -g -fPIC
 
 ifeq ($(MYST_RELEASE),1)
 OPTIMIZATION_CFLAGS += -Os
+NDEBUG=1
 endif
 
 DEFAULT_LDFLAGS =
