@@ -143,7 +143,7 @@ done:
     return ret;
 }
 
-static void _hex_to_string(char* buffer, const uint8_t* data, size_t size)
+static void _hex_to_string(char buffer[], const uint8_t* data, size_t size)
 {
     buffer[0] = '\0';
     char tmp[3];
@@ -167,8 +167,8 @@ static int _verifier_callback(myst_tee_identity_t* identity, void* arg)
     printf("\n");
     printf("=== _verify_identity()\n");
 
-    _hex_to_string(&id_str, identity->unique_id, MYST_UNIQUE_ID_SIZE);
-    _hex_to_string(&signer_str, identity->signer_id, MYST_SIGNER_ID_SIZE);
+    _hex_to_string(id_str, identity->unique_id, MYST_UNIQUE_ID_SIZE);
+    _hex_to_string(signer_str, identity->signer_id, MYST_SIGNER_ID_SIZE);
     printf("Unique ID = %s\n", id_str);
     printf("Signer ID = %s\n", signer_str);
     printf("\n");
