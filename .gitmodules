@@ -1,7 +1,7 @@
 [submodule "third_party/openenclave/openenclave"]
 	path = third_party/openenclave/openenclave
 	url = https://github.com/openenclave/openenclave.git
-	branch = mystikos
+	branch = mystikos.v2
 [submodule "third_party/musl/musl"]
 	path = third_party/musl/musl
 	url = git://git.musl-libc.org/musl
