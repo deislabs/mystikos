@@ -463,9 +463,6 @@ static int _add_kernel_region(
 
     *(vaddr) += PAGE_SIZE;
 
-    extern long myst_add_symbol_file_by_path(
-        const char* path, const void* text_data, size_t text_size);
-
     if (baseaddr)
         ECHECK(myst_add_symbol_file_by_path(path, image_data, image_size));
 

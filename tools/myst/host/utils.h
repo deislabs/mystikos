@@ -35,4 +35,9 @@ int cli_getopt(
     const char* opt,
     const char** optarg);
 
+long myst_add_symbol_file_by_path(
+    const char* path,
+    const void* text_data,
+    size_t text_size);
+
 #endif /* _HOST_MYST_UTILS_H */
