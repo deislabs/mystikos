@@ -150,4 +150,4 @@ force:
 	$(MAKE)
 
 hash:
-	echo HASH=$(HASH)
+	@echo HASH=$(HASH)
