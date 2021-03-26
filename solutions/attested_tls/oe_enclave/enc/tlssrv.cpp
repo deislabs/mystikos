@@ -716,7 +716,7 @@ static oe_result_t verifier(
 
     printf("\n");
     printf(
-        "=== _verify_identity() isvprodid = %d, isvsvn=%d\n",
+        "=== _verify_identity() isvprodid = %d, isvsvn=%lu\n",
         isvprodid[0],
         isvsvn);
     printf("\n");
