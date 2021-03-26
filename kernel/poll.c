@@ -105,8 +105,12 @@ long myst_syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
         void* object;
 
         /* get the device for this file descriptor */
-        ECHECK(myst_fdtable_get_any(
+        int res = (myst_fdtable_get_any(
             fdtable, fds[i].fd, &type, (void**)&fdops, (void**)&object));
+
+        if (res == -ENOENT)
+            continue;
+        ECHECK(res);
 
         /* get the target fd for this object (or -ENOTSUP) */
         if ((tfd = (*fdops->fd_target_fd)(fdops, object)) >= 0)
