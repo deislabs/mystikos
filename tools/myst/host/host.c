@@ -150,8 +150,6 @@ long myst_add_symbol_file_by_path(
 
         if (notify)
         {
-            printf("NOTIFY.........\n");
-            fflush(stdout);
             /* notify gdb to load the symbols */
             oe_debug_notify_library_loaded(&di->base);
             di->loaded = true;
