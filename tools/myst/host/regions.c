@@ -9,6 +9,7 @@
 #include <myst/elf.h>
 #include <myst/eraise.h>
 #include <myst/file.h>
+#include <myst/hex.h>
 #include <myst/round.h>
 #include <myst/strings.h>
 #include <openenclave/bits/sgx/sgxtypes.h>
@@ -965,41 +966,12 @@ oe_result_t oe_load_extra_enclave_data(
     uint64_t flags,
     bool extend);
 
-static int _add_page(
-    uint64_t vaddr,
-    const void* page,
-    int prot,
-    int flags,
-    void* arg)
-{
-    uint64_t oe_flags = SGX_SECINFO_REG;
-    bool extend = (flags & MYST_REGION_EXTEND);
-
-    if (prot & PROT_READ)
-        oe_flags |= SGX_SECINFO_R;
-
-    if (prot & PROT_WRITE)
-        oe_flags |= SGX_SECINFO_W;
-
-    if (prot & PROT_EXEC)
-        oe_flags |= SGX_SECINFO_X;
-
-    if (oe_load_extra_enclave_data(arg, vaddr, page, oe_flags, extend) != OE_OK)
-    {
-        _err("oe_load_extra_enclave_data() failed: vaddr=%lu", vaddr);
-        return -EINVAL;
-    }
-
-    return 0;
-}
-
-oe_result_t oe_load_extra_enclave_data_hook(void* arg, uint64_t baseaddr)
+int add_regions(void* arg, uint64_t baseaddr, myst_add_page_t add_page)
 {
     myst_region_context_t* context = NULL;
     uint64_t vaddr = 0;
 
-    /* create a myst_region_context_t */
-    if (myst_region_init(_add_page, arg, &context) != 0)
+    if (myst_region_init(add_page, arg, &context) != 0)
         _err("myst_region_init() failed");
 
     if (_add_kernel_region(context, baseaddr, &vaddr) != 0)
@@ -1038,5 +1010,8 @@ oe_result_t oe_load_extra_enclave_data_hook(void* arg, uint64_t baseaddr)
     if (_add_config_region(context, &vaddr) != 0)
         _err("_add_config_region() failed");
 
-    return OE_OK;
+    if (myst_region_release(context) != 0)
+        _err("myst_region_release() failed");
+
+    return 0;
 }

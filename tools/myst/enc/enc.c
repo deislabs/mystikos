@@ -164,44 +164,10 @@ done:
     return ret;
 }
 
-typedef struct region
-{
-    void* data;
-    size_t size;
-} region_t;
-
-static int _find_region(const char* name, region_t* region)
+static int _find_region(const char* name, myst_region_t* region)
 {
     extern const void* __oe_get_heap_base(void);
-    const uint8_t* heap = (uint8_t*)__oe_get_heap_base();
-    myst_region_trailer_t* p = (myst_region_trailer_t*)(heap - PAGE_SIZE);
-
-    for (;;)
-    {
-        if (p->magic != MYST_REGION_MAGIC)
-        {
-            fprintf(stderr, "bad region magic number");
-            assert(0);
-        }
-
-        uint8_t* data = (uint8_t*)p - p->size;
-
-        if (strcmp(p->name, name) == 0)
-        {
-            region->data = data;
-            region->size = p->size;
-            return 0;
-        }
-
-        if (p->index == 0)
-            break;
-
-        /* advance to previous trailer */
-        p = (myst_region_trailer_t*)(data - PAGE_SIZE);
-    }
-
-    /* not found */
-    return -1;
+    return myst_region_find(__oe_get_heap_base(), name, region);
 }
 
 int myst_enter_ecall(
@@ -274,7 +240,8 @@ int myst_enter_ecall(
 
     /* Get the config region */
     {
-        region_t region;
+        myst_region_t region;
+        memset(&region, 0, sizeof(region));
 
         if (_find_region(MYST_CONFIG_REGION_NAME, &region) == 0)
         {
@@ -418,7 +385,7 @@ int myst_enter_ecall(
     void* mman_data;
     size_t mman_size;
     {
-        region_t region;
+        myst_region_t region;
 
         if (_find_region(MYST_MMAN_REGION_NAME, &region) != OE_OK)
         {
@@ -432,7 +399,7 @@ int myst_enter_ecall(
 
     /* Get the rootfs region */
     {
-        region_t region;
+        myst_region_t region;
 
         if (_find_region(MYST_ROOTFS_REGION_NAME, &region) != OE_OK)
         {
@@ -446,7 +413,7 @@ int myst_enter_ecall(
 
     /* Get the archive region */
     {
-        region_t region;
+        myst_region_t region;
 
         if (_find_region(MYST_ARCHIVE_REGION_NAME, &region) != OE_OK)
         {
@@ -460,7 +427,7 @@ int myst_enter_ecall(
 
     /* Get the kernel region */
     {
-        region_t region;
+        myst_region_t region;
 
         if (_find_region(MYST_KERNEL_REGION_NAME, &region) != OE_OK)
         {
@@ -474,7 +441,7 @@ int myst_enter_ecall(
 
     /* Apply relocations to the kernel image */
     {
-        region_t region;
+        myst_region_t region;
 
         if (_find_region(MYST_KERNEL_RELOC_REGION_NAME, &region) != OE_OK)
         {
@@ -495,7 +462,7 @@ int myst_enter_ecall(
 
     /* Get the kernel symbol table region */
     {
-        region_t region;
+        myst_region_t region;
 
         if (_find_region(MYST_KERNEL_SYMTAB_REGION_NAME, &region) != OE_OK)
         {
@@ -509,7 +476,7 @@ int myst_enter_ecall(
 
     /* Get the kernel dynamic symbol table region */
     {
-        region_t region;
+        myst_region_t region;
 
         if (_find_region(MYST_KERNEL_DYNSYM_REGION_NAME, &region) != OE_OK)
         {
@@ -523,7 +490,7 @@ int myst_enter_ecall(
 
     /* Get the kernel string table region */
     {
-        region_t region;
+        myst_region_t region;
 
         if (_find_region(MYST_KERNEL_STRTAB_REGION_NAME, &region) != OE_OK)
         {
@@ -537,7 +504,7 @@ int myst_enter_ecall(
 
     /* Get the kernel dynamic string table region */
     {
-        region_t region;
+        myst_region_t region;
 
         if (_find_region(MYST_KERNEL_DYNSTR_REGION_NAME, &region) != OE_OK)
         {
@@ -551,7 +518,7 @@ int myst_enter_ecall(
 
     /* Get the crt region */
     {
-        region_t region;
+        myst_region_t region;
 
         if (_find_region(MYST_CRT_REGION_NAME, &region) != OE_OK)
         {
@@ -565,7 +532,7 @@ int myst_enter_ecall(
 
     /* Get relocations to the crt image */
     {
-        region_t region;
+        myst_region_t region;
 
         if (_find_region(MYST_CRT_RELOC_REGION_NAME, &region) != OE_OK)
         {

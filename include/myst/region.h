@@ -41,6 +41,12 @@ typedef struct myst_region_trailer
     uint8_t padding[3816];
 } myst_region_trailer_t;
 
+typedef struct myst_region
+{
+    void* data;
+    size_t size;
+} myst_region_t;
+
 MYST_STATIC_ASSERT(sizeof(myst_region_trailer_t) == 4096);
 
 typedef int (*myst_add_page_t)(
@@ -72,5 +78,10 @@ int myst_region_add_page(
     const void* page,
     int prot,   /* (PROT_READ | PROT_WRITE | PROT_EXEC | PROT_NONE) */
     int flags); /* MYST_REGION_EXTEND */
+
+int myst_region_find(
+    const void* regions_end,
+    const char* name,
+    myst_region_t* region);
 
 #endif /* _MYST_REGION_H */

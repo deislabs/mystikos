@@ -17,7 +17,9 @@
 #include <myst/elf.h>
 #include <myst/eraise.h>
 #include <myst/file.h>
+#include <myst/hex.h>
 #include <myst/kernel.h>
+#include <myst/region.h>
 #include <myst/reloc.h>
 #include <myst/round.h>
 #include <myst/strings.h>
@@ -28,6 +30,7 @@
 #include "../shared.h"
 #include "archive.h"
 #include "exec_linux.h"
+#include "regions.h"
 #include "utils.h"
 
 #define USAGE_FORMAT \
@@ -62,53 +65,38 @@ struct options
     bool trace_syscalls;
     bool export_ramfs;
     char rootfs[PATH_MAX];
+    size_t heap_size;
+    const char* app_config_path;
 };
 
-struct regions
+static void _get_options(int* argc, const char* argv[], struct options* opts)
 {
-    void* rootfs_data;
-    size_t rootfs_size;
-    void* archive_data;
-    size_t archive_size;
-    elf_image_t libmystkernel;
-    elf_image_t libmystcrt;
-    void* mman_data;
-    size_t mman_size;
-    void* app_config;
-    size_t app_config_size;
-};
+    memset(opts, 0, sizeof(struct options));
 
-static void _get_options(
-    int* argc,
-    const char* argv[],
-    struct options* options,
-    size_t* heap_size,
-    const char** app_config_path)
-{
     /* Get --trace-syscalls option */
     if (cli_getopt(argc, argv, "--trace-syscalls", NULL) == 0 ||
         cli_getopt(argc, argv, "--strace", NULL) == 0)
     {
-        options->trace_syscalls = true;
+        opts->trace_syscalls = true;
     }
 
     /* Get --trace-errors option */
     if (cli_getopt(argc, argv, "--trace-errors", NULL) == 0 ||
         cli_getopt(argc, argv, "--etrace", NULL) == 0)
     {
-        options->trace_errors = true;
+        opts->trace_errors = true;
     }
 
     /* Get --export-ramfs option */
     if (cli_getopt(argc, argv, "--export-ramfs", NULL) == 0)
-        options->export_ramfs = true;
+        opts->export_ramfs = true;
 
     /* Set export_ramfs option based on MYST_ENABLE_GCOV env variable */
     {
         const char* val;
 
         if ((val = getenv("MYST_ENABLE_GCOV")) && strcmp(val, "1") == 0)
-            options->export_ramfs = true;
+            opts->export_ramfs = true;
     }
 
     /* Get --memory-size or --memory-size option */
@@ -129,8 +117,10 @@ static void _get_options(
 
         if (arg)
         {
-            if ((myst_expand_size_string_to_ulong(arg, heap_size) != 0) ||
-                (myst_round_up(*heap_size, PAGE_SIZE, heap_size) != 0))
+            if ((myst_expand_size_string_to_ulong(arg, &opts->heap_size) !=
+                 0) ||
+                (myst_round_up(opts->heap_size, PAGE_SIZE, &opts->heap_size) !=
+                 0))
             {
                 _err("%s <size> -- bad suffix (must be k, m, or g)\n", opt);
             }
@@ -138,137 +128,7 @@ static void _get_options(
     }
 
     // get app config if present
-    cli_getopt(argc, argv, "--app-config-path", app_config_path);
-}
-
-static void* _map_mmap_region(size_t length)
-{
-    const int prot = PROT_READ | PROT_WRITE | PROT_EXEC;
-    const int flags = MAP_ANONYMOUS | MAP_PRIVATE;
-    void* addr;
-
-    assert((length % PAGE_SIZE) == 0);
-
-    if ((addr = mmap(NULL, length, prot, flags, -1, 0)) == MAP_FAILED)
-        return NULL;
-
-    return addr;
-}
-
-static void _load_regions(
-    const char* rootfs,
-    const char* archive,
-    size_t heap_size,
-    const char* app_config,
-    struct regions* r)
-{
-    char path[PATH_MAX];
-
-    if (myst_load_file(rootfs, &r->rootfs_data, &r->rootfs_size) != 0)
-        _err("failed to map file: %s", rootfs);
-
-    if (myst_load_file(archive, &r->archive_data, &r->archive_size) != 0)
-        _err("failed to map file: %s", archive);
-
-    if (app_config &&
-        (myst_load_file(app_config, &r->app_config, &r->app_config_size) != 0))
-        _err("failed to load config file: %s", app_config);
-
-    /* Load libmystcrt.so */
-    {
-        if (format_libmystcrt(path, sizeof(path)) != 0)
-            _err("cannot find libmystcrt.so");
-
-        if (elf_image_load(path, &r->libmystcrt) != 0)
-            _err("failed to load C runtime image: %s", path);
-
-        /* Add crt debugger symbols to gdb */
-        {
-            void* file_data;
-            size_t file_size;
-
-            if (myst_load_file(path, &file_data, &file_size) != 0)
-                _err("failed to load file: %s", path);
-
-            if (myst_tcall_add_symbol_file(
-                    file_data,
-                    file_size,
-                    r->libmystcrt.image_data,
-                    r->libmystcrt.image_size) != 0)
-            {
-                _err("failed to add crt debug symbols");
-            }
-
-            /* Load symbols and notify gdb */
-            myst_tcall_load_symbols();
-
-            free(file_data);
-        }
-    }
-
-    /* Load libmystcrt.so */
-    {
-        if (format_libmystkernel(path, sizeof(path)) != 0)
-            _err("cannot find libmystkernel.so");
-
-        if (elf_image_load(path, &r->libmystkernel) != 0)
-            _err("failed to load C runtime image: %s", path);
-
-        /* Add kernel debugger symbols to gdb */
-        {
-            void* file_data;
-            size_t file_size;
-
-            if (myst_load_file(path, &file_data, &file_size) != 0)
-                _err("failed to load file: %s", path);
-
-            if (myst_tcall_add_symbol_file(
-                    file_data,
-                    file_size,
-                    r->libmystkernel.image_data,
-                    r->libmystkernel.image_size) != 0)
-            {
-                _err("failed to add kernel debug symbols");
-            }
-
-            /* Load symbols and notify gdb */
-            myst_tcall_load_symbols();
-
-            free(file_data);
-        }
-    }
-
-    if (heap_size == 0)
-    {
-        r->mman_size = DEFAULT_MMAN_SIZE;
-    }
-    else
-    {
-        /* command line parsing gave pages. convert to size */
-        r->mman_size = heap_size;
-    }
-
-    if (!(r->mman_data = _map_mmap_region(r->mman_size)))
-        _err("failed to map mmap region");
-
-    /* Apply relocations to the libmystkernel.so image */
-    if (myst_apply_relocations(
-            r->libmystkernel.image_data,
-            r->libmystkernel.image_size,
-            r->libmystkernel.reloc_data,
-            r->libmystkernel.reloc_size) != 0)
-    {
-        _err("failed to apply relocations to libmystkernel.so\n");
-    }
-}
-
-static void _release_regions(struct regions* r)
-{
-    free(r->rootfs_data);
-    free(r->archive_data);
-    elf_image_free(&r->libmystcrt);
-    elf_image_free(&r->libmystkernel);
-    munmap(r->mman_data, r->mman_size);
+    cli_getopt(argc, argv, "--app-config-path", &opts->app_config_path);
 }
 
 /* the address of this is eventually passed to futex (uaddr argument) */
@@ -280,7 +140,7 @@ static int _enter_kernel(
     int envc,
     const char* envp[],
     struct options* options,
-    struct regions* regions,
+    const void* regions_end,
     long (*tcall)(long n, long params[6]),
     int* return_status,
     char* err,
@@ -288,11 +148,23 @@ static int _enter_kernel(
 {
     int ret = 0;
     myst_kernel_args_t args;
-    const elf_ehdr_t* ehdr = regions->libmystkernel.image_data;
+    const elf_ehdr_t* ehdr;
     myst_kernel_entry_t entry;
     myst_args_t env;
     const char* cwd = "/";       /* default */
     const char* hostname = NULL; // kernel has a default
+    myst_region_t config_region;
+    myst_region_t kernel_region;
+    myst_region_t kernel_reloc_region;
+    myst_region_t kernel_symtab_region;
+    myst_region_t kernel_dynsym_region;
+    myst_region_t kernel_strtab_region;
+    myst_region_t kernel_dynstr_region;
+    myst_region_t crt_region;
+    myst_region_t crt_reloc_region;
+    myst_region_t mman_region;
+    myst_region_t rootfs_region;
+    myst_region_t archive_region;
 
     if (err)
         *err = '\0';
@@ -301,10 +173,156 @@ static int _enter_kernel(
 
     memset(&env, 0, sizeof(env));
 
-    if (!argv || !envp || !options || !regions || !tcall || !return_status)
+    if (!argv || !envp || !options || !regions_end || !tcall || !return_status)
     {
         snprintf(err, err_size, "bad argument");
         ERAISE(-EINVAL);
+    }
+
+    /* find the optional config region */
+    {
+        const char name[] = MYST_CONFIG_REGION_NAME;
+
+        if (myst_region_find(regions_end, name, &config_region) != 0)
+        {
+            memset(&config_region, 0, sizeof(config_region));
+        }
+    }
+
+    /* find the kernel region */
+    {
+        const char name[] = MYST_KERNEL_REGION_NAME;
+
+        if (myst_region_find(regions_end, name, &kernel_region) != 0)
+        {
+            snprintf(err, err_size, "failed to find %s", name);
+            ERAISE(-EINVAL);
+        }
+
+        ehdr = kernel_region.data;
+    }
+
+    /* find the kernel reloc region */
+    {
+        const char name[] = MYST_KERNEL_RELOC_REGION_NAME;
+
+        if (myst_region_find(regions_end, name, &kernel_reloc_region) != 0)
+        {
+            snprintf(err, err_size, "failed to find %s", name);
+            ERAISE(-EINVAL);
+        }
+    }
+
+    /* apply relocations to the kernel image */
+    {
+        if (myst_apply_relocations(
+                kernel_region.data,
+                kernel_region.size,
+                kernel_reloc_region.data,
+                kernel_reloc_region.size) != 0)
+        {
+            fprintf(stderr, "failed to relocate kernel symbols\n");
+            assert(0);
+        }
+    }
+
+    /* find the kernel symtab region */
+    {
+        const char name[] = MYST_KERNEL_SYMTAB_REGION_NAME;
+
+        if (myst_region_find(regions_end, name, &kernel_symtab_region) != 0)
+        {
+            snprintf(err, err_size, "failed to find %s", name);
+            ERAISE(-EINVAL);
+        }
+    }
+
+    /* find the kernel dynsym region */
+    {
+        const char name[] = MYST_KERNEL_DYNSYM_REGION_NAME;
+
+        if (myst_region_find(regions_end, name, &kernel_dynsym_region) != 0)
+        {
+            snprintf(err, err_size, "failed to find %s", name);
+            ERAISE(-EINVAL);
+        }
+    }
+
+    /* find the kernel strtab region */
+    {
+        const char name[] = MYST_KERNEL_STRTAB_REGION_NAME;
+
+        if (myst_region_find(regions_end, name, &kernel_strtab_region) != 0)
+        {
+            snprintf(err, err_size, "failed to find %s", name);
+            ERAISE(-EINVAL);
+        }
+    }
+
+    /* find the kernel dynstr region */
+    {
+        const char name[] = MYST_KERNEL_DYNSTR_REGION_NAME;
+
+        if (myst_region_find(regions_end, name, &kernel_dynstr_region) != 0)
+        {
+            snprintf(err, err_size, "failed to find %s", name);
+            ERAISE(-EINVAL);
+        }
+    }
+
+    /* find the crt region */
+    {
+        const char name[] = MYST_CRT_REGION_NAME;
+
+        if (myst_region_find(regions_end, name, &crt_region) != 0)
+        {
+            snprintf(err, err_size, "failed to find %s", name);
+            ERAISE(-EINVAL);
+        }
+    }
+
+    /* find the crt reloc region */
+    {
+        const char name[] = MYST_CRT_RELOC_REGION_NAME;
+
+        if (myst_region_find(regions_end, name, &crt_reloc_region) != 0)
+        {
+            snprintf(err, err_size, "failed to find %s", name);
+            ERAISE(-EINVAL);
+        }
+    }
+
+    /* find the mman region */
+    {
+        const char name[] = MYST_MMAN_REGION_NAME;
+
+        if (myst_region_find(regions_end, name, &mman_region) != 0)
+        {
+            snprintf(err, err_size, "failed to find %s", name);
+            ERAISE(-EINVAL);
+        }
+    }
+
+    /* find the rootfs region */
+    {
+        const char name[] = MYST_ROOTFS_REGION_NAME;
+
+        if (myst_region_find(regions_end, name, &rootfs_region) != 0)
+        {
+            snprintf(err, err_size, "failed to find %s", name);
+            ERAISE(-EINVAL);
+        }
+    }
+
+    /* find the archive region */
+    {
+        const char name[] = MYST_ARCHIVE_REGION_NAME;
+
+        if (myst_region_find(regions_end, name, &archive_region) != 0)
+        {
+            snprintf(err, err_size, "failed to find %s", name);
+            ERAISE(-EINVAL);
+        }
     }
 
     if (return_status)
@@ -343,11 +361,10 @@ static int _enter_kernel(
 
     /* Extract any settings from the config, if present */
     config_parsed_data_t parsed_data = {0};
-    if (regions->app_config && regions->app_config_size)
+    if (config_region.data && config_region.size)
     {
         if (parse_config_from_buffer(
-                regions->app_config, regions->app_config_size, &parsed_data) ==
-            0)
+                config_region.data, config_region.size, &parsed_data) == 0)
         {
             /* only override if we have a cwd config item */
             if (parsed_data.cwd)
@@ -365,34 +382,34 @@ static int _enter_kernel(
     memset(&args, 0, sizeof(args));
     args.image_data = (void*)0;
     args.image_size = 0x7fffffffffffffff;
-    args.kernel_data = regions->libmystkernel.image_data;
-    args.kernel_size = regions->libmystkernel.image_size;
-    args.reloc_data = regions->libmystkernel.reloc_data;
-    args.reloc_size = regions->libmystkernel.reloc_size;
-    args.crt_reloc_data = regions->libmystcrt.reloc_data;
-    args.crt_reloc_size = regions->libmystcrt.reloc_size;
-    args.symtab_data = regions->libmystkernel.symtab_data;
-    args.symtab_size = regions->libmystkernel.symtab_size;
-    args.dynsym_data = regions->libmystkernel.dynsym_data;
-    args.dynsym_size = regions->libmystkernel.dynsym_size;
-    args.strtab_data = regions->libmystkernel.strtab_data;
-    args.strtab_size = regions->libmystkernel.strtab_size;
-    args.dynstr_data = regions->libmystkernel.dynstr_data;
-    args.dynstr_size = regions->libmystkernel.dynstr_size;
+    args.kernel_data = kernel_region.data;
+    args.kernel_size = kernel_region.size;
+    args.reloc_data = kernel_reloc_region.data;
+    args.reloc_size = kernel_reloc_region.size;
+    args.symtab_data = kernel_symtab_region.data;
+    args.symtab_size = kernel_symtab_region.size;
+    args.dynsym_data = kernel_dynsym_region.data;
+    args.dynsym_size = kernel_dynsym_region.size;
+    args.strtab_data = kernel_strtab_region.data;
+    args.strtab_size = kernel_strtab_region.size;
+    args.dynstr_data = kernel_dynstr_region.data;
+    args.dynstr_size = kernel_dynstr_region.size;
+    args.crt_data = crt_region.data;
+    args.crt_size = crt_region.size;
+    args.crt_reloc_data = crt_reloc_region.data;
+    args.crt_reloc_size = crt_reloc_region.size;
+    args.mman_data = mman_region.data;
+    args.mman_size = mman_region.size;
+    args.rootfs_data = rootfs_region.data;
+    args.rootfs_size = rootfs_region.size;
+    args.archive_data = archive_region.data;
+    args.archive_size = archive_region.size;
     args.argc = argc;
     args.argv = argv;
     args.envc = env.size;
     args.envp = env.data;
     args.cwd = cwd;
     args.hostname = hostname;
-    args.mman_data = regions->mman_data;
-    args.mman_size = regions->mman_size;
-    args.rootfs_data = regions->rootfs_data;
-    args.rootfs_size = regions->rootfs_size;
-    args.archive_data = regions->archive_data;
-    args.archive_size = regions->archive_size;
-    args.crt_data = regions->libmystcrt.image_data;
-    args.crt_size = regions->libmystcrt.image_size;
     args.max_threads = LONG_MAX;
     args.trace_errors = options->trace_errors;
     args.trace_syscalls = options->trace_syscalls;
@@ -416,7 +433,7 @@ static int _enter_kernel(
     entry = (myst_kernel_entry_t)((uint8_t*)ehdr + ehdr->e_entry);
 
     if ((uint8_t*)entry < (uint8_t*)ehdr ||
-        (uint8_t*)entry >= (uint8_t*)ehdr + regions->libmystkernel.image_size)
+        (uint8_t*)entry >= (uint8_t*)ehdr + kernel_region.size)
     {
         snprintf(err, err_size, "kernel entry point is out of bounds");
         ERAISE(-EINVAL);
@@ -425,8 +442,6 @@ static int _enter_kernel(
     *return_status = (*entry)(&args);
 
 done:
-    if (regions->app_config && regions->app_config_size)
-        free_config(&parsed_data);
 
     if (env.data)
         free(env.data);
@@ -434,18 +449,16 @@ done:
     return ret;
 }
 
-static long _tcall(long n, long params[6])
+__attribute__((__unused__)) static long _tcall(long n, long params[6])
 {
     return myst_tcall(n, params);
 }
 
 int exec_linux_action(int argc, const char* argv[], const char* envp[])
 {
-    struct options options = {.trace_syscalls = false, .export_ramfs = false};
+    struct options opts;
     const char* rootfs_arg;
     const char* program_arg;
-    struct regions regions;
-    char err[128];
     static const size_t max_pubkeys = 128;
     const char* pubkeys[max_pubkeys];
     size_t num_pubkeys = 0;
@@ -454,13 +467,15 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
     size_t num_roothashes = 0;
     char archive_path[PATH_MAX];
     char rootfs_path[] = "/tmp/mystXXXXXX";
-    size_t heap_size = 0;
-    const char* app_config_path = NULL;
+    const region_details* details;
+    void* mmap_addr = NULL;
+    size_t mmap_length = 0;
+    char err[256];
 
     (void)program_arg;
 
     /* Get the command-line options */
-    _get_options(&argc, argv, &options, &heap_size, &app_config_path);
+    _get_options(&argc, argv, &opts);
 
     /* Get --pubkey=filename options */
     get_archive_options(
@@ -486,8 +501,8 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
         pubkeys, num_pubkeys, roothashes, num_roothashes, archive_path);
 
     /* copy the rootfs path to the options */
-    if (myst_strlcpy(options.rootfs, rootfs_arg, sizeof(options.rootfs)) >=
-        sizeof(options.rootfs))
+    if (myst_strlcpy(opts.rootfs, rootfs_arg, sizeof(opts.rootfs)) >=
+        sizeof(opts.rootfs))
     {
         _err("<rootfs> command line argument is too long: %s", rootfs_arg);
     }
@@ -510,9 +525,22 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
         rootfs_arg = rootfs_path;
     }
 
-    /* Load the regions into memory */
-    _load_regions(
-        rootfs_arg, archive_path, heap_size, app_config_path, &regions);
+    /* load the regions into memory */
+    if (!(details = create_region_details_from_files(
+              program_arg,
+              rootfs_arg,
+              archive_path,
+              opts.app_config_path,
+              opts.heap_size)))
+    {
+        _err("create_region_details_from_files() failed");
+    }
+
+    /* map the regions onto a flat memory mapping */
+    if (map_regions(&mmap_addr, &mmap_length) != 0)
+    {
+        _err("map_regions() failed");
+    }
 
     unlink(archive_path);
 
@@ -533,8 +561,8 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
             argv,
             envc,
             envp,
-            &options,
-            &regions,
+            &opts,
+            mmap_addr + mmap_length,
             _tcall,
             &return_status,
             err,
@@ -543,13 +571,10 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
         _err("%s", err);
     }
 
-    /* release the regions memory */
-    _release_regions(&regions);
+    free_region_details();
 
-#if 0
     if (rootfs_arg == rootfs_path)
         unlink(rootfs_path);
-#endif
 
     return return_status;
 }
