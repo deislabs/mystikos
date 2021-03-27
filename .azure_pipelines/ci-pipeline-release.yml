@@ -75,8 +75,7 @@ jobs:
         displayName: 'Publish release source code'
         condition: eq(variables['Agent.JobStatus'], 'succeeded')
       
-      # Verify published artifact
-      # build all source files
+      # Verify published artifact, build all source files
       - script: |
           sudo rm -rf /tmp/myst*
           make -j
