@@ -155,6 +155,7 @@ static int _enter_kernel(
     const char* cwd = "/";
     const char* hostname = NULL;
     config_parsed_data_t pd;
+    const char target[] = "MYST_TARGET=linux";
 
     memset(&pd, 0, sizeof(pd));
     memset(&args, 0, sizeof(args));
@@ -207,7 +208,7 @@ static int _enter_kernel(
 
         if (init_kernel_args(
                 &args,
-                "linux",
+                target,
                 argc,
                 argv,
                 envc,

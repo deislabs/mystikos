@@ -188,6 +188,7 @@ int myst_enter_ecall(
     const uint8_t* enclave_base;
     size_t enclave_size;
     const Elf64_Ehdr* ehdr;
+    const char target[] = "MYST_TARGET=sgx";
 
     memset(&parsed_config, 0, sizeof(parsed_config));
 
@@ -365,7 +366,7 @@ int myst_enter_ecall(
 
         init_kernel_args(
             &kargs,
-            "sgx",
+            target,
             (int)args.size,
             args.data,
             (int)env.size,

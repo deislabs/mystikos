@@ -5,7 +5,7 @@
 
 int init_kernel_args(
     myst_kernel_args_t* args,
-    const char* target_name,
+    const char* target,
     int argc,
     const char* argv[],
     int envc,

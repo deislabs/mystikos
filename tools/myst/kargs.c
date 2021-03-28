@@ -14,7 +14,7 @@
 
 int init_kernel_args(
     myst_kernel_args_t* args,
-    const char* target_name,
+    const char* target,
     int argc,
     const char* argv[],
     int envc,
@@ -262,18 +262,13 @@ int init_kernel_args(
         }
 
         if (!found)
-        {
-            char buf[64];
-            snprintf(buf, sizeof(buf), "MYST_TARGET=%s", target_name);
-            myst_args_append1(&env, buf);
-        }
+            myst_args_append1(&env, target);
     }
 
     /* initialize the current working directory default */
     if (cwd)
     {
-        strcpy(args->cwd_buffer, cwd);
-        // MYST_STRLCPY(args->cwd_buffer, cwd);
+        MYST_STRLCPY(args->cwd_buffer, cwd);
         args->cwd = args->cwd_buffer;
     }
     else
