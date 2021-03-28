@@ -14,10 +14,13 @@
 
 int init_kernel_args(
     myst_kernel_args_t* args,
+    const char* target_name,
     int argc,
     const char* argv[],
     int envc,
     const char* envp[],
+    const char* cwd,
+    const char* hostname,
     const void* regions_end,
     const void* image_data,
     size_t image_size,
@@ -35,26 +38,14 @@ int init_kernel_args(
 {
     int ret;
     myst_args_t env;
-    const void* config_data = NULL;
-    size_t config_size = 0;
 
     memset(&env, 0, sizeof(env));
 
     if (args)
         memset(args, 0, sizeof(myst_kernel_args_t));
 
-    if (!args || !argv || !envp || !regions_end || !err)
+    if (!args || !argv || !envp || !cwd || !regions_end || !err)
         ERAISE(-EINVAL);
-
-    /* find the optional config region */
-    {
-        const char name[] = MYST_CONFIG_REGION_NAME;
-        myst_region_t region;
-
-        myst_region_find(regions_end, name, &region);
-        config_data = region.data;
-        config_size = region.size;
-    }
 
     /* find the kernel region */
     {
@@ -249,7 +240,7 @@ int init_kernel_args(
             ERAISE(-EINVAL);
         }
 
-        if (myst_args_append(&env, envp, envc) != 0)
+        if (myst_args_append(&env, envp, (size_t)envc) != 0)
         {
             snprintf(err, err_size, "myst_args_append() failed");
             ERAISE(-EINVAL);
@@ -259,56 +250,47 @@ int init_kernel_args(
     /* inject the MYST_TARGET environment variable */
     {
         const char val[] = "MYST_TARGET=";
+        bool found = false;
 
         for (size_t i = 0; i < env.size; i++)
         {
             if (strncmp(env.data[i], val, sizeof(val) - 1) == 0)
             {
-                snprintf(err, err_size, "environment already contains %s", val);
-                ERAISE(-EINVAL);
+                found = true;
+                break;
             }
         }
 
-        myst_args_append1(&env, "MYST_TARGET=linux");
+        if (!found)
+        {
+            char buf[64];
+            snprintf(buf, sizeof(buf), "MYST_TARGET=%s", target_name);
+            myst_args_append1(&env, buf);
+        }
     }
 
     /* initialize the current working directory default */
-    MYST_STRLCPY(args->cwd_buffer, "/");
-    args->cwd = args->cwd_buffer;
+    if (cwd)
+    {
+        strcpy(args->cwd_buffer, cwd);
+        // MYST_STRLCPY(args->cwd_buffer, cwd);
+        args->cwd = args->cwd_buffer;
+    }
+    else
+    {
+        MYST_STRLCPY(args->cwd_buffer, "/");
+    }
 
     /* initialize the hostname default */
-    MYST_STRLCPY(args->hostname_buffer, "mystikos");
-    args->hostname = args->hostname_buffer;
-
-    /* extract any configuration settings */
+    if (hostname)
     {
-        config_parsed_data_t pd;
-
-        memset(&pd, 0, sizeof(pd));
-
-        if (config_data && config_size)
-        {
-            if (parse_config_from_buffer(config_data, config_size, &pd) == 0)
-            {
-                /* set the current working directory if any */
-                if (pd.cwd)
-                    MYST_STRLCPY(args->cwd_buffer, pd.cwd);
-
-                /* set the hostname if any */
-                if (pd.hostname)
-                    MYST_STRLCPY(args->hostname_buffer, pd.hostname);
-            }
-            else
-            {
-                snprintf(err, err_size, "failed to parse config data");
-                ERAISE(-EINVAL);
-            }
-        }
+        MYST_STRLCPY(args->hostname_buffer, hostname);
+        args->hostname = args->hostname_buffer;
     }
 
     args->image_data = image_data;
     args->image_size = image_size;
-    args->argc = argc;
+    args->argc = (size_t)argc;
     args->argv = argv;
     args->envc = env.size;
     args->envp = env.data;

@@ -152,7 +152,11 @@ static int _enter_kernel(
     size_t image_size = 0x7fffffffffffffff;
     myst_kernel_args_t args;
     myst_kernel_entry_t entry;
+    const char* cwd = "/";
+    const char* hostname = NULL;
+    config_parsed_data_t pd;
 
+    memset(&pd, 0, sizeof(pd));
     memset(&args, 0, sizeof(args));
 
     if (err)
@@ -169,6 +173,31 @@ static int _enter_kernel(
         ERAISE(-EINVAL);
     }
 
+    /* extract any configuration settings */
+    {
+        const char name[] = MYST_CONFIG_REGION_NAME;
+        myst_region_t r;
+
+        if (myst_region_find(regions_end, name, &r) == 0)
+        {
+            if (parse_config_from_buffer(r.data, r.size, &pd) == 0)
+            {
+                /* set the current working directory if any */
+                if (pd.cwd)
+                    cwd = pd.cwd;
+
+                /* set the hostname if any */
+                if (pd.hostname)
+                    hostname = pd.hostname;
+            }
+            else
+            {
+                snprintf(err, err_size, "failed to parse config data");
+                ERAISE(-EINVAL);
+            }
+        }
+    }
+
     /* initialize the kernel arguments */
     {
         const bool have_syscall_instruction = true;
@@ -178,10 +207,13 @@ static int _enter_kernel(
 
         if (init_kernel_args(
                 &args,
+                "linux",
                 argc,
                 argv,
                 envc,
                 envp,
+                cwd,
+                hostname,
                 regions_end,
                 image_data,
                 image_size,
