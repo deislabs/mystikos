@@ -147,31 +147,20 @@ static int _enter_kernel(
     size_t err_size)
 {
     int ret = 0;
+    const void* image_data = NULL;
+    size_t image_size = 0x7fffffffffffffff;
     myst_kernel_args_t args;
-    const elf_ehdr_t* ehdr;
     myst_kernel_entry_t entry;
-    myst_args_t env;
-    const char* cwd = "/";       /* default */
-    const char* hostname = NULL; // kernel has a default
-    myst_region_t config_region;
-    myst_region_t kernel_region;
-    myst_region_t kernel_reloc_region;
-    myst_region_t kernel_symtab_region;
-    myst_region_t kernel_dynsym_region;
-    myst_region_t kernel_strtab_region;
-    myst_region_t kernel_dynstr_region;
-    myst_region_t crt_region;
-    myst_region_t crt_reloc_region;
-    myst_region_t mman_region;
-    myst_region_t rootfs_region;
-    myst_region_t archive_region;
+
+    memset(&args, 0, sizeof(args));
 
     if (err)
         *err = '\0';
     else
         ERAISE(-EINVAL);
 
-    memset(&env, 0, sizeof(env));
+    if (return_status)
+        *return_status = 0;
 
     if (!argv || !envp || !options || !regions_end || !tcall || !return_status)
     {
@@ -179,261 +168,45 @@ static int _enter_kernel(
         ERAISE(-EINVAL);
     }
 
-    /* find the optional config region */
+    /* initialize the kernel arguments */
     {
-        const char name[] = MYST_CONFIG_REGION_NAME;
+        const bool have_syscall_instruction = true;
+        const bool tee_debug_mode = true;
+        const size_t max_threads = LONG_MAX;
+        char terr[256];
 
-        if (myst_region_find(regions_end, name, &config_region) != 0)
+        if (init_kernel_args(
+                &args,
+                argc,
+                argv,
+                envc,
+                envp,
+                regions_end,
+                image_data,
+                image_size,
+                max_threads,
+                options->trace_errors,
+                options->trace_syscalls,
+                options->export_ramfs,
+                have_syscall_instruction,
+                tee_debug_mode,
+                (uint64_t)&_thread_event,
+                tcall,
+                options->rootfs,
+                terr,
+                sizeof(terr)) != 0)
         {
-            memset(&config_region, 0, sizeof(config_region));
-        }
-    }
-
-    /* find the kernel region */
-    {
-        const char name[] = MYST_KERNEL_REGION_NAME;
-
-        if (myst_region_find(regions_end, name, &kernel_region) != 0)
-        {
-            snprintf(err, err_size, "failed to find %s", name);
+            snprintf(err, err_size, "init_kernel_args failed: %s", terr);
             ERAISE(-EINVAL);
         }
-
-        ehdr = kernel_region.data;
-    }
-
-    /* find the kernel reloc region */
-    {
-        const char name[] = MYST_KERNEL_RELOC_REGION_NAME;
-
-        if (myst_region_find(regions_end, name, &kernel_reloc_region) != 0)
-        {
-            snprintf(err, err_size, "failed to find %s", name);
-            ERAISE(-EINVAL);
-        }
-    }
-
-    /* apply relocations to the kernel image */
-    {
-        if (myst_apply_relocations(
-                kernel_region.data,
-                kernel_region.size,
-                kernel_reloc_region.data,
-                kernel_reloc_region.size) != 0)
-        {
-            fprintf(stderr, "failed to relocate kernel symbols\n");
-            assert(0);
-        }
-    }
-
-    /* find the kernel symtab region */
-    {
-        const char name[] = MYST_KERNEL_SYMTAB_REGION_NAME;
-
-        if (myst_region_find(regions_end, name, &kernel_symtab_region) != 0)
-        {
-            snprintf(err, err_size, "failed to find %s", name);
-            ERAISE(-EINVAL);
-        }
-    }
-
-    /* find the kernel dynsym region */
-    {
-        const char name[] = MYST_KERNEL_DYNSYM_REGION_NAME;
-
-        if (myst_region_find(regions_end, name, &kernel_dynsym_region) != 0)
-        {
-            snprintf(err, err_size, "failed to find %s", name);
-            ERAISE(-EINVAL);
-        }
-    }
-
-    /* find the kernel strtab region */
-    {
-        const char name[] = MYST_KERNEL_STRTAB_REGION_NAME;
-
-        if (myst_region_find(regions_end, name, &kernel_strtab_region) != 0)
-        {
-            snprintf(err, err_size, "failed to find %s", name);
-            ERAISE(-EINVAL);
-        }
-    }
-
-    /* find the kernel dynstr region */
-    {
-        const char name[] = MYST_KERNEL_DYNSTR_REGION_NAME;
-
-        if (myst_region_find(regions_end, name, &kernel_dynstr_region) != 0)
-        {
-            snprintf(err, err_size, "failed to find %s", name);
-            ERAISE(-EINVAL);
-        }
-    }
-
-    /* find the crt region */
-    {
-        const char name[] = MYST_CRT_REGION_NAME;
-
-        if (myst_region_find(regions_end, name, &crt_region) != 0)
-        {
-            snprintf(err, err_size, "failed to find %s", name);
-            ERAISE(-EINVAL);
-        }
-    }
-
-    /* find the crt reloc region */
-    {
-        const char name[] = MYST_CRT_RELOC_REGION_NAME;
-
-        if (myst_region_find(regions_end, name, &crt_reloc_region) != 0)
-        {
-            snprintf(err, err_size, "failed to find %s", name);
-            ERAISE(-EINVAL);
-        }
-    }
-
-    /* find the mman region */
-    {
-        const char name[] = MYST_MMAN_REGION_NAME;
-
-        if (myst_region_find(regions_end, name, &mman_region) != 0)
-        {
-            snprintf(err, err_size, "failed to find %s", name);
-            ERAISE(-EINVAL);
-        }
-    }
-
-    /* find the rootfs region */
-    {
-        const char name[] = MYST_ROOTFS_REGION_NAME;
-
-        if (myst_region_find(regions_end, name, &rootfs_region) != 0)
-        {
-            snprintf(err, err_size, "failed to find %s", name);
-            ERAISE(-EINVAL);
-        }
-    }
-
-    /* find the archive region */
-    {
-        const char name[] = MYST_ARCHIVE_REGION_NAME;
-
-        if (myst_region_find(regions_end, name, &archive_region) != 0)
-        {
-            snprintf(err, err_size, "failed to find %s", name);
-            ERAISE(-EINVAL);
-        }
-    }
-
-    if (return_status)
-        *return_status = 0;
-
-    /* Make a copy of the environment variables */
-    {
-        if (myst_args_init(&env) != 0)
-        {
-            snprintf(err, err_size, "myst_args_init() failed");
-            ERAISE(-EINVAL);
-        }
-
-        if (myst_args_append(&env, envp, envc) != 0)
-        {
-            snprintf(err, err_size, "myst_args_append() failed");
-            ERAISE(-EINVAL);
-        }
-    }
-
-    /* Inject the MYST_TARGET environment variable */
-    {
-        const char val[] = "MYST_TARGET=";
-
-        for (size_t i = 0; i < env.size; i++)
-        {
-            if (strncmp(env.data[i], val, sizeof(val) - 1) == 0)
-            {
-                snprintf(err, err_size, "environment already contains %s", val);
-                ERAISE(-EINVAL);
-            }
-        }
-
-        myst_args_append1(&env, "MYST_TARGET=linux");
-    }
-
-    /* Extract any settings from the config, if present */
-    config_parsed_data_t parsed_data = {0};
-    if (config_region.data && config_region.size)
-    {
-        if (parse_config_from_buffer(
-                config_region.data, config_region.size, &parsed_data) == 0)
-        {
-            /* only override if we have a cwd config item */
-            if (parsed_data.cwd)
-                cwd = parsed_data.cwd;
-
-            if (parsed_data.hostname)
-                hostname = parsed_data.hostname;
-        }
-        else
-        {
-            _err("Failed to parse app config from");
-        }
-    }
-
-    memset(&args, 0, sizeof(args));
-    args.image_data = (void*)0;
-    args.image_size = 0x7fffffffffffffff;
-    args.kernel_data = kernel_region.data;
-    args.kernel_size = kernel_region.size;
-    args.reloc_data = kernel_reloc_region.data;
-    args.reloc_size = kernel_reloc_region.size;
-    args.symtab_data = kernel_symtab_region.data;
-    args.symtab_size = kernel_symtab_region.size;
-    args.dynsym_data = kernel_dynsym_region.data;
-    args.dynsym_size = kernel_dynsym_region.size;
-    args.strtab_data = kernel_strtab_region.data;
-    args.strtab_size = kernel_strtab_region.size;
-    args.dynstr_data = kernel_dynstr_region.data;
-    args.dynstr_size = kernel_dynstr_region.size;
-    args.crt_data = crt_region.data;
-    args.crt_size = crt_region.size;
-    args.crt_reloc_data = crt_reloc_region.data;
-    args.crt_reloc_size = crt_reloc_region.size;
-    args.mman_data = mman_region.data;
-    args.mman_size = mman_region.size;
-    args.rootfs_data = rootfs_region.data;
-    args.rootfs_size = rootfs_region.size;
-    args.archive_data = archive_region.data;
-    args.archive_size = archive_region.size;
-    args.argc = argc;
-    args.argv = argv;
-    args.envc = env.size;
-    args.envp = env.data;
-    args.cwd = cwd;
-    args.hostname = hostname;
-    args.max_threads = LONG_MAX;
-    args.trace_errors = options->trace_errors;
-    args.trace_syscalls = options->trace_syscalls;
-    args.have_syscall_instruction = true;
-    args.export_ramfs = options->export_ramfs;
-    args.event = (uint64_t)&_thread_event;
-    args.tee_debug_mode = true;
-    args.tcall = tcall;
-
-    if (options->rootfs)
-        myst_strlcpy(args.rootfs, options->rootfs, sizeof(args.rootfs));
-
-    /* Verify that the kernel is an ELF image */
-    if (!elf_valid_ehdr_ident(ehdr))
-    {
-        snprintf(err, err_size, "bad kernel image");
-        ERAISE(-EINVAL);
     }
 
     /* Resolve the the kernel entry point */
+    const elf_ehdr_t* ehdr = args.kernel_data;
     entry = (myst_kernel_entry_t)((uint8_t*)ehdr + ehdr->e_entry);
 
     if ((uint8_t*)entry < (uint8_t*)ehdr ||
-        (uint8_t*)entry >= (uint8_t*)ehdr + kernel_region.size)
+        (uint8_t*)entry >= (uint8_t*)ehdr + args.kernel_size)
     {
         snprintf(err, err_size, "kernel entry point is out of bounds");
         ERAISE(-EINVAL);
@@ -443,8 +216,8 @@ static int _enter_kernel(
 
 done:
 
-    if (env.data)
-        free(env.data);
+    if (args.envp)
+        free(args.envp);
 
     return ret;
 }

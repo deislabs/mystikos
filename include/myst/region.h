@@ -10,27 +10,22 @@
 #include <myst/defs.h>
 
 /* memory region identifiers for the myst image */
-
-#define MYST_MYSTIKOS_REGION_ID 1
-
+#define MYST_CONFIG_REGION_NAME "config"
 #define MYST_KERNEL_REGION_NAME "kernel"
 #define MYST_KERNEL_RELOC_REGION_NAME "kernel.reloc"
-#define MYST_CRT_REGION_NAME "crt"
-#define MYST_CRT_RELOC_REGION_NAME "crt.reloc"
-#define MYST_ROOTFS_REGION_NAME "rootfs"
-#define MYST_MMAN_REGION_NAME "mman"
-#define MYST_CONFIG_REGION_NAME "config"
 #define MYST_KERNEL_SYMTAB_REGION_NAME "kernel.symtab" /* .symtab section */
 #define MYST_KERNEL_STRTAB_REGION_NAME "kernel.strtab" /* .strtab section */
 #define MYST_KERNEL_DYNSYM_REGION_NAME "kernel.dynsym" /* .dynsym section */
 #define MYST_KERNEL_DYNSTR_REGION_NAME "kernel.dynstr" /* .dynstr section */
+#define MYST_CRT_REGION_NAME "crt"
+#define MYST_CRT_RELOC_REGION_NAME "crt.reloc"
+#define MYST_ROOTFS_REGION_NAME "rootfs"
+#define MYST_MMAN_REGION_NAME "mman"
 #define MYST_ARCHIVE_REGION_NAME "archive"
 
-#define MYST_REGION_EXTEND 2
-
 #define MYST_REGION_MAGIC 0x1c8093ca739f4e61
-
 #define MYST_REGION_NAME_SIZE 256
+#define MYST_REGION_EXTEND 2
 
 typedef struct myst_region_trailer
 {

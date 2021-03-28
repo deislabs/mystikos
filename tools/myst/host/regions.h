@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#ifndef _MYST_MYST_REGIONS_H
-#define _MYST_MYST_REGIONS_H
+#ifndef _MYST_MYST_HOST_REGIONS_H
+#define _MYST_MYST_HOST_REGIONS_H
 
 #include <limits.h>
 #include <myst/elf.h>
@@ -53,4 +53,4 @@ void free_region_details();
 /* map regions onto mmap mapping */
 int map_regions(void** addr, size_t* length);
 
-#endif /* _MYST_MYST_REGIONS_H */
+#endif /* _MYST_MYST_HOST_REGIONS_H */
