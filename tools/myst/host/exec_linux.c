@@ -27,6 +27,7 @@
 #include <myst/thread.h>
 
 #include "../config.h"
+#include "../kargs.h"
 #include "../shared.h"
 #include "archive.h"
 #include "exec_linux.h"

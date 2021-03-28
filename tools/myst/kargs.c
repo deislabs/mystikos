@@ -10,6 +10,7 @@
 #include <myst/strings.h>
 
 #include "config.h"
+#include "kargs.h"
 
 int init_kernel_args(
     myst_kernel_args_t* args,
