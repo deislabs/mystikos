@@ -198,12 +198,24 @@ long myst_tcall_wake_wait(
     return -ENOTSUP;
 }
 
+/* Must be overriden by enclave application */
 MYST_WEAK
 long myst_tcall_export_file(const char* path, const void* data, size_t size)
 {
     (void)path;
     (void)data;
     (void)size;
+    assert("sgx: unimplemented: implement in enclave" == NULL);
+    return -ENOTSUP;
+}
+
+/* Must be overriden by enclave application */
+MYST_WEAK
+long myst_tcall_readline(const char* prompt, char* buf, size_t count)
+{
+    (void)prompt;
+    (void)buf;
+    (void)count;
     assert("sgx: unimplemented: implement in enclave" == NULL);
     return -ENOTSUP;
 }
@@ -558,6 +570,10 @@ long myst_tcall(long n, long params[6])
         case MYST_TCALL_LOAD_FSSIG:
         {
             return myst_load_fssig((const char*)x1, (myst_fssig_t*)x2);
+        }
+        case MYST_TCALL_READLINE:
+        {
+            return myst_tcall_readline((const char*)x1, (char*)x2, (size_t)x3);
         }
         case SYS_read:
         case SYS_write:

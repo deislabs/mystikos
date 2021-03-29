@@ -487,6 +487,10 @@ int _exec_package(
         options.trace_errors = true;
     }
 
+    /* Get --shell option */
+    if (cli_getopt(&argc, argv, "--shell", NULL) == 0)
+        options.shell = true;
+
     if (!realpath(argv[0], full_app_path))
     {
         fprintf(stderr, "Invalid path %s\n", argv[0]);

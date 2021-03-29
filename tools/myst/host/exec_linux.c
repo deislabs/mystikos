@@ -65,6 +65,7 @@ struct options
     bool trace_errors;
     bool trace_syscalls;
     bool export_ramfs;
+    bool shell;
     char rootfs[PATH_MAX];
     size_t heap_size;
     const char* app_config_path;
@@ -87,6 +88,10 @@ static void _get_options(int* argc, const char* argv[], struct options* opts)
     {
         opts->trace_errors = true;
     }
+
+    /* Get --shell option */
+    if (cli_getopt(argc, argv, "--shell", NULL) == 0)
+        options->shell = true;
 
     /* Get --export-ramfs option */
     if (cli_getopt(argc, argv, "--export-ramfs", NULL) == 0)
