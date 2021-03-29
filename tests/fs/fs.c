@@ -805,6 +805,14 @@ void test_timestamps(void)
     }
 }
 
+static void shell(void)
+{
+#if 0
+    const long SYS_myst_shell = 1017;
+    syscall(SYS_myst_shell);
+#endif
+}
+
 int main(int argc, const char* argv[])
 {
     if (argc != 2)
@@ -826,6 +834,8 @@ int main(int argc, const char* argv[])
     if (strcmp(fstype, "ext2fs") == 0)
         _timestamp_sleep_msec = 1200; /* 1.2 seconds */
 
+    shell();
+
     test_timestamps();
     test_fstatat();
     test_readv();
@@ -846,6 +856,8 @@ int main(int argc, const char* argv[])
     test_statfs(argv[0]);
     test_fstatfs(argv[0]);
     test_openat();
+
+    shell();
 
     printf("=== passed all tests (%s)\n", argv[0]);
 

@@ -196,6 +196,16 @@ static long _tcall_get_tsd(uint64_t* value)
     return 0;
 }
 
+MYST_WEAK
+long myst_tcall_readline(const char* prompt, char* buf, size_t count)
+{
+    (void)prompt;
+    (void)buf;
+    (void)count;
+    assert("linux: unimplemented: implement in enclave" == NULL);
+    return -ENOTSUP;
+}
+
 long myst_tcall(long n, long params[6])
 {
     long ret = 0;
@@ -440,6 +450,10 @@ long myst_tcall(long n, long params[6])
         case MYST_TCALL_LOAD_FSSIG:
         {
             return myst_load_fssig((const char*)x1, (myst_fssig_t*)x2);
+        }
+        case MYST_TCALL_READLINE:
+        {
+            return myst_tcall_readline((const char*)x1, (char*)x2, (size_t)x3);
         }
         case SYS_ioctl:
         {
