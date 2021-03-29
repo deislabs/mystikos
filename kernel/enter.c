@@ -715,6 +715,11 @@ int myst_enter_kernel(myst_kernel_args_t* args)
 
     myst_times_start();
 
+#if defined(MYST_DEBUG) && !defined(MYST_RELEASE)
+    if (args->shell)
+        myst_shell("\nMystikos shell stage1\n");
+#endif
+
     /* Run the main program: wait for SYS_exit to perform longjmp() */
     if (myst_setjmp(&thread->jmpbuf) == 0)
     {
@@ -741,6 +746,11 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     }
     else
     {
+#if defined(MYST_DEBUG) && !defined(MYST_RELEASE)
+        if (args->shell)
+            myst_shell("\nMystikos shell stage2\n");
+#endif
+
         /* thread jumps here on SYS_exit syscall */
         exit_status = thread->exit_status;
 

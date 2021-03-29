@@ -53,6 +53,7 @@ typedef enum myst_tcall_number
     MYST_TCALL_VERIFY_SIGNATURE = 2081,
     MYST_TCALL_LOAD_FSSIG = 2082,
     MYST_TCALL_CLOCK_GETRES = 2083,
+    MYST_TCALL_READLINE = 2084,
 } myst_tcall_number_t;
 
 long myst_tcall(long n, long params[6]);
@@ -148,5 +149,7 @@ int myst_tcall_verify_signature(
     size_t signature_size);
 
 int myst_tcall_load_fssig(const char* path, myst_fssig_t* fssig);
+
+long myst_tcall_readline(const char* prompt, char* buf, size_t count);
 
 #endif /* _MYST_TCALL_H */
