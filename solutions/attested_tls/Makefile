@@ -13,8 +13,6 @@ PATH := $(PATH):$(BUILDDIR)/openenclave/bin
 export PKG_CONFIG_PATH := $(BUILDDIR)/openenclave/share/pkgconfig
 export AZDCAP_DEBUG_LOG_LEVEL := 0
 
-DNSSERVER = $(shell systemd-resolve --status | grep "DNS Servers" | cut -f2 -d:)
-
 all: myst app
 	$(MYST) mkcpio $(APPDIR) rootfs
 

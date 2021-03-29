@@ -8,21 +8,23 @@
 function print_usage {
     echo "$(basename $0): a useful shell script for converting Docker images into Mystikos cpio archives"
     echo
-    echo "Usage: $(basename $0) [-o file] [-d [file]] [[-i] image]"
+    echo "Usage: $(basename $0) [-o file] [-d [file]] [[-i] image] [-e extras] [-v]"
     echo
     echo "  -d file     Build docker image from the named file"
     echo "              Defaults to './Dockerfile' if no option specified"
     echo "  -i image    Specify an existing Docker image name to build from"
     echo "              If neither -d nor -i are specified, will look for Dockerfile in current dir"
     echo "  -f format   Specify the output format. Options: dir, cpio. Default: 'dir'"
+    echo "  -e extras   Specify the extra options while building the container image"
     echo "  -o      Specify the name of the output file or directory"
     echo "          If not specified, defaults to 'appdir'"
+    echo "  -v      Verbose"
     echo "  -h      Print this help message"
     echo
 }
 
 
-while getopts 'hvd:i:f:o:' OPTION; do
+while getopts 'hvd:i:f:o:e:' OPTION; do
     case "$OPTION" in
         d )
             DOCKER_FILE=${OPTARG:-Dockerfile}
@@ -39,6 +41,9 @@ while getopts 'hvd:i:f:o:' OPTION; do
             ;;
         o )
             OUTPUT_NAME="$OPTARG"
+            ;;
+        e )
+            EXTRA_ARGS="$OPTARG"
             ;;
         v )
             VERBOSE=true;
@@ -71,10 +76,10 @@ set -e
 if [ -z "$IMAGE_NAME" -o "$IMAGE_NAME" == "Dockerfile" ]; then
     USE_DOCKERFILE=true
     if [ -z "$DOCKER_FILE" -a -f 'Dockerfile' ]; then
-        DOCKER_FILE='./'
+        DOCKER_FILE='Dockerfile'
     elif [ ! -f "$DOCKER_FILE" ]; then
-	echo "Could not find specific docker file: $DOCKER_FILE"
-	exit 1
+        echo "Could not find specific docker file: $DOCKER_FILE"
+        exit 1
     fi
 else
     USE_DOCKERFILE=false
@@ -118,7 +123,7 @@ fi
 get_image()
 {
     if $USE_DOCKERFILE; then
-        IMAGE_NAME=$(docker build -q $DOCKER_FILE)
+        IMAGE_NAME=$(docker build -q -f $DOCKER_FILE $EXTRA_ARGS .)
         DELETE_IMAGE=true
     else
         docker pull $IMAGE_NAME
@@ -141,9 +146,13 @@ export_image()
 	docker rmi -f $IMAGE_NAME
     fi
 
-    # finally, create the output cpio object from the docker export
+    # create the 'appdir' from the docker export
     tar xf $TEMP_FILE -C $TEMP_DIR
     rm -rf $OUTPUT_NAME
+
+    # create an explicit name server
+    DNS_SERVER=$(systemd-resolve --status | grep "DNS Servers" | cut -f2 -d:)
+    echo "nameserver $DNS_SERVER" >> $TEMP_DIR/etc/resolv.conf
 
     if [ "$OUTPUT_FORMAT" == "dir" ]; then
         mv $TEMP_DIR $OUTPUT_NAME
