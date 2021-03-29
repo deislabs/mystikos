@@ -15,7 +15,11 @@ rootfs: getcwd.c
 	$(MYST) mkcpio $(APPDIR) rootfs
 
 ifdef STRACE
-OPTS = --strace
+OPTS += --strace
+endif
+
+ifdef MYST_SHELL
+OPTS += --shell
 endif
 
 tests: all
@@ -26,3 +30,6 @@ myst:
 
 clean:
 	rm -rf $(APPDIR) rootfs export ramfs
+
+t:
+	make tests MYST_SHELL=1

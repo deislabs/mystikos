@@ -61,6 +61,7 @@ struct options
     bool trace_errors;
     bool trace_syscalls;
     bool export_ramfs;
+    bool shell;
     char rootfs[PATH_MAX];
 };
 
@@ -98,6 +99,10 @@ static void _get_options(
     {
         options->trace_errors = true;
     }
+
+    /* Get --shell option */
+    if (cli_getopt(argc, argv, "--shell", NULL) == 0)
+        options->shell = true;
 
     /* Get --export-ramfs option */
     if (cli_getopt(argc, argv, "--export-ramfs", NULL) == 0)
@@ -396,6 +401,7 @@ static int _enter_kernel(
     args.max_threads = LONG_MAX;
     args.trace_errors = options->trace_errors;
     args.trace_syscalls = options->trace_syscalls;
+    args.shell = options->shell;
     args.have_syscall_instruction = true;
     args.export_ramfs = options->export_ramfs;
     args.event = (uint64_t)&_thread_event;
