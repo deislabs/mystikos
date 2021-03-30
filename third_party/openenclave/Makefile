@@ -6,7 +6,7 @@ BUILDDIR=${TOP}/build
 
 URL=https://github.com/openenclave/openenclave
 
-BRANCH=mystikos
+BRANCH=mystikos.v2
 
 # get the hash of the remote github repository (for the given branch)
 HASH=$(shell git ls-remote $(URL) -b $(BRANCH) | cut -f1 )

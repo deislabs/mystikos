@@ -141,7 +141,7 @@ int exec_launch_enclave(
     myst_buf_t argv_buf = MYST_BUF_INITIALIZER;
     myst_buf_t envp_buf = MYST_BUF_INITIALIZER;
 
-    /* Load the enclave: calls oe_region_add_regions() */
+    /* Load the enclave: calls oe_load_extra_enclave_data_hook() */
     r = oe_create_myst_enclave(enc_path, type, flags, NULL, 0, &_enclave);
 
     if (r != OE_OK)

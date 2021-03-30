@@ -15,7 +15,6 @@ DIRS += libc
 endif
 
 DIRS += args
-DIRS += echo
 DIRS += alpine
 DIRS += pthread
 DIRS += urandom
@@ -26,14 +25,12 @@ DIRS += shlib
 DIRS += getcwd
 DIRS += rdtsc
 DIRS += run
-DIRS += echo
 DIRS += mman
 DIRS += fs
 DIRS += mount
 DIRS += cpio
 DIRS += elf
 DIRS += strings
-DIRS += empty
 DIRS += getpid
 DIRS += json
 DIRS += conf
@@ -43,6 +40,7 @@ DIRS += gdb
 DIRS += dlopen
 DIRS += pipe
 DIRS += spawn
+DIRS += spawnfa
 DIRS += fstat
 DIRS += popen
 DIRS += system
@@ -62,6 +60,12 @@ DIRS += tlscert
 DIRS += wake_and_kill
 DIRS += cross_fs_symlinks
 
+ifndef MYST_SKIP_LTP_TESTS
+DIRS += ltp
+endif
+
+DIRS += shared_symbols
+
 ifndef MYST_SKIP_LIBCXX_TESTS
 DIRS += libcxx
 endif
@@ -71,7 +75,6 @@ DIRS += curl
 endif
 
 ifdef MYST_NIGHTLY_TEST
-DIRS += ltp
 DIRS += sockperf
 endif
 

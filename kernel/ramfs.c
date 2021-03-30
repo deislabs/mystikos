@@ -13,6 +13,7 @@
 #include <myst/backtrace.h>
 #include <myst/buf.h>
 #include <myst/bufu64.h>
+#include <myst/clock.h>
 #include <myst/eraise.h>
 #include <myst/fs.h>
 #include <myst/id.h>
@@ -23,6 +24,7 @@
 #include <myst/realpath.h>
 #include <myst/round.h>
 #include <myst/strings.h>
+#include <myst/syscall.h>
 #include <myst/trace.h>
 
 #define BLKSIZE 512
@@ -71,17 +73,43 @@ static bool _ramfs_valid(const ramfs_t* ramfs)
 struct inode
 {
     uint64_t magic;
-    uint32_t mode;    /* Type and mode */
-    size_t nlink;     /* number of hard links to this inode */
-    size_t nopens;    /* number of times file is currently opened */
-    myst_buf_t buf;   /* file or directory data */
-    const void* data; /* set by myst_ramfs_set_buf() */
+    uint32_t mode;         /* Type and mode */
+    struct timespec atime; /* time of last access */
+    struct timespec ctime; /* time of last metadata change */
+    struct timespec mtime; /* time of last modification */
+    size_t nlink;          /* number of hard links to this inode */
+    size_t nopens;         /* number of times file is currently opened */
+    myst_buf_t buf;        /* file or directory data */
+    const void* data;      /* set by myst_ramfs_set_buf() */
     int (*vcallback)(myst_buf_t* buf);
 };
+
+#define ACCESS 1
+#define CHANGE 2
+#define MODIFY 4
 
 static bool _inode_valid(const inode_t* inode)
 {
     return inode && inode->magic == INODE_MAGIC;
+}
+
+static void _update_timestamps(inode_t* inode, int flags)
+{
+    struct timespec ts;
+
+    assert(_inode_valid(inode));
+
+    if (myst_syscall_clock_gettime(CLOCK_REALTIME, &ts) != 0)
+        myst_panic("clock_gettime() failed");
+
+    if (flags & ACCESS)
+        inode->atime = ts;
+
+    if (flags & CHANGE)
+        inode->ctime = ts;
+
+    if (flags & MODIFY)
+        inode->mtime = ts;
 }
 
 static void _inode_free(ramfs_t* ramfs, inode_t* inode)
@@ -135,6 +163,8 @@ static int _inode_add_dirent(
         if (myst_buf_append(&dir->buf, &ent, sizeof(ent)) != 0)
             ERAISE(-ENOMEM);
     }
+
+    _update_timestamps(dir, CHANGE | MODIFY);
 
 done:
     return ret;
@@ -234,6 +264,8 @@ static int _inode_new(
                 parent->nlink++;
         }
     }
+
+    _update_timestamps(inode, ACCESS | CHANGE | MODIFY);
 
     if (inode_out)
         *inode_out = inode;
@@ -346,10 +378,13 @@ static int _inode_remove_dirent(inode_t* inode, const char* name)
         ERAISE(-ENOENT);
 
     /* Adjust d_off for entries following the deleted entry */
-    for (size_t i = index + 1; i < nents; i++)
+    for (size_t i = index + 1; i < nents - 1; i++)
     {
         ents[i].d_off -= (off_t)sizeof(struct dirent);
     }
+
+    /* update the time fields */
+    _update_timestamps(inode, CHANGE | MODIFY);
 
 done:
     return ret;
@@ -381,7 +416,7 @@ struct myst_file
     uint32_t operating; /* (O_RDONLY | O_RDWR | O_WRONLY) */
     int fdflags;        /* file descriptor flags: FD_CLOEXEC */
     char realpath[PATH_MAX];
-    myst_buf_t vbuf;    /* virtual file buffer */
+    myst_buf_t vbuf; /* virtual file buffer */
 };
 
 static bool _file_valid(const myst_file_t* file)
@@ -875,6 +910,8 @@ static off_t _fs_lseek(
 
     file->offset = (size_t)new_offset;
 
+    _update_timestamps(file->inode, ACCESS);
+
     ret = new_offset;
 
 done:
@@ -927,6 +964,8 @@ static ssize_t _fs_read(
         file->offset += n;
     }
 
+    _update_timestamps(file->inode, ACCESS);
+
     ret = (ssize_t)n;
 
 done:
@@ -976,6 +1015,8 @@ static ssize_t _fs_write(
         memcpy(_file_current(file), buf, count);
         file->offset = new_offset;
     }
+
+    _update_timestamps(file->inode, MODIFY | CHANGE);
 
     ret = (ssize_t)count;
 
@@ -1028,6 +1069,8 @@ static ssize_t _fs_pread(
         memcpy(buf, _file_at(file, (size_t)offset), n);
     }
 
+    _update_timestamps(file->inode, ACCESS);
+
     ret = (ssize_t)n;
 
 done:
@@ -1076,6 +1119,8 @@ static ssize_t _fs_pwrite(
 
         memcpy(_file_at(file, (size_t)offset), buf, count);
     }
+
+    _update_timestamps(file->inode, CHANGE | MODIFY);
 
     ret = (ssize_t)count;
 
@@ -1172,6 +1217,10 @@ static int _fs_close(myst_fs_t* fs, myst_file_t* file)
     {
         _inode_free(ramfs, file->inode);
     }
+    else
+    {
+        _update_timestamps(file->inode, ACCESS);
+    }
 
     memset(file, 0xdd, sizeof(myst_file_t));
     free(file);
@@ -1216,6 +1265,8 @@ static int _fs_access(myst_fs_t* fs, const char* pathname, int mode)
     if ((mode & X_OK) && !(inode->mode & S_IXUSR))
         ERAISE(-EACCES);
 
+    _update_timestamps(inode, ACCESS);
+
 done:
 
     return ret;
@@ -1255,9 +1306,9 @@ static int _stat(inode_t* inode, struct stat* statbuf)
     buf.st_size = (off_t)size;
     buf.st_blksize = BLKSIZE;
     buf.st_blocks = rounded / BLKSIZE;
-    memset(&buf.st_atim, 0, sizeof(buf.st_atim)); /* ATTN: unsupported */
-    memset(&buf.st_mtim, 0, sizeof(buf.st_mtim)); /* ATTN: unsupported */
-    memset(&buf.st_ctim, 0, sizeof(buf.st_ctim)); /* ATTN: unsupported */
+    buf.st_ctim = inode->ctime;
+    buf.st_mtim = inode->mtime;
+    buf.st_atim = inode->atime;
 
     *statbuf = buf;
 
@@ -1371,6 +1422,8 @@ static int _fs_link(myst_fs_t* fs, const char* oldpath, const char* newpath)
 
     /* Increment the file's link count */
     old_inode->nlink++;
+
+    _update_timestamps(old_inode, CHANGE);
 
 done:
     return ret;
@@ -1561,6 +1614,8 @@ static int _fs_truncate(myst_fs_t* fs, const char* pathname, off_t length)
     if (myst_buf_resize(&inode->buf, (size_t)length) != 0)
         ERAISE(-ENOMEM);
 
+    _update_timestamps(inode, CHANGE | MODIFY);
+
 done:
     return ret;
 }
@@ -1578,6 +1633,8 @@ static int _fs_ftruncate(myst_fs_t* fs, myst_file_t* file, off_t length)
 
     if (myst_buf_resize(&file->inode->buf, (size_t)length) != 0)
         ERAISE(-ENOMEM);
+
+    _update_timestamps(file->inode, CHANGE | MODIFY);
 
 done:
     return ret;
@@ -1766,6 +1823,8 @@ static ssize_t _fs_readlink(
     if (!inode->buf.data || !inode->buf.size)
         ERAISE(-EINVAL);
 
+    _update_timestamps(inode, ACCESS);
+
     ret = (ssize_t)myst_strlcpy(buf, (char*)inode->buf.data, bufsiz);
 
 done:
@@ -1838,9 +1897,10 @@ static int _fs_realpath(
     }
     else
     {
-        int n = snprintf(buf, size, "%s%s", ramfs->target, file->realpath);
+        if (myst_strlcpy(buf, ramfs->target, size) >= size)
+            ERAISE(-ENAMETOOLONG);
 
-        if (n < 0 || n >= (int)size)
+        if (myst_strlcat(buf, file->realpath, size) >= size)
             ERAISE(-ENAMETOOLONG);
     }
 
@@ -1864,6 +1924,7 @@ static int _fs_fcntl(myst_fs_t* fs, myst_file_t* file, int cmd, long arg)
                 ERAISE(-EINVAL);
 
             file->fdflags = FD_CLOEXEC;
+            _update_timestamps(file->inode, CHANGE);
             goto done;
         }
         case F_GETFD:
@@ -2035,6 +2096,53 @@ done:
     return ret;
 }
 
+static int _fs_futimens(
+    myst_fs_t* fs,
+    myst_file_t* file,
+    const struct timespec times[2])
+{
+    int ret = 0;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+
+    if (!_ramfs_valid(ramfs) || !_file_valid(file))
+        ERAISE(-EINVAL);
+
+    if (times)
+    {
+        switch (times[0].tv_nsec)
+        {
+            case UTIME_OMIT:
+                break;
+            case UTIME_NOW:
+                _update_timestamps(file->inode, ACCESS);
+                break;
+            default:
+                file->inode->atime = times[0];
+                break;
+        }
+
+        switch (times[1].tv_nsec)
+        {
+            case UTIME_OMIT:
+                break;
+            case UTIME_NOW:
+                _update_timestamps(file->inode, MODIFY);
+                break;
+            default:
+                file->inode->atime = times[1];
+                break;
+        }
+    }
+    else
+    {
+        /* set to current time */
+        _update_timestamps(file->inode, ACCESS | MODIFY);
+    }
+
+done:
+    return ret;
+}
+
 int myst_init_ramfs(
     myst_mount_resolve_callback_t resolve_cb,
     myst_fs_t** fs_out)
@@ -2091,6 +2199,7 @@ int myst_init_ramfs(
         .fs_get_events = _fs_get_events,
         .fs_statfs = _fs_statfs,
         .fs_fstatfs = _fs_fstatfs,
+        .fs_futimens = _fs_futimens,
     };
     // clang-format on
     inode_t* root_inode = NULL;
@@ -2179,7 +2288,8 @@ int myst_create_virtual_file(
     if (S_ISREG(mode))
     {
         myst_file_t* file = NULL;
-        ECHECK(fs->fs_open(fs, pathname, O_RDONLY | O_CREAT, S_IFREG | S_IRUSR, NULL, &file));
+        ECHECK(fs->fs_open(
+            fs, pathname, O_RDONLY | O_CREAT, S_IFREG | S_IRUSR, NULL, &file));
         ECHECK(fs->fs_close(fs, file));
     }
     else if (S_ISLNK(mode))
@@ -2196,11 +2306,63 @@ int myst_create_virtual_file(
     /* inject vcallback into the inode */
     {
         inode_t* inode = NULL;
-        ECHECK(_path_to_inode(ramfs, pathname, false, NULL, &inode, NULL, NULL));
+        ECHECK(
+            _path_to_inode(ramfs, pathname, false, NULL, &inode, NULL, NULL));
         inode->vcallback = vcallback;
     }
 
     ret = 0;
+
+done:
+
+    return ret;
+}
+
+int myst_release_tree(myst_fs_t* fs, const char* pathname)
+{
+    int ret = 0;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+    inode_t *parent, *self;
+
+    if (!_ramfs_valid(ramfs))
+        ERAISE(-EINVAL);
+
+    if (!pathname)
+        ERAISE(-EINVAL);
+
+    ECHECK(_path_to_inode(ramfs, pathname, true, &parent, &self, NULL, NULL));
+
+    if (!_inode_valid(parent) || !_inode_valid(self))
+        ERAISE(-EINVAL);
+
+    /* Release all inodes in the sub-tree under self*/
+    {
+        int type, mode = self->mode;
+        if (S_ISDIR(mode))
+            type = DT_DIR;
+        else if (S_ISREG(mode))
+            type = DT_REG;
+        else if (S_ISLNK(mode))
+            type = DT_LNK;
+        else
+        {
+            ERAISE(-EINVAL);
+        }
+
+        _inode_release_all(ramfs, parent, self, type);
+    }
+
+    /* Remove directory entry from parent */
+    {
+        char dirname[PATH_MAX];
+        char basename[PATH_MAX];
+        /* Get the parent inode */
+        ECHECK(_split_path(pathname, dirname, basename));
+        /* Find and remove the parent's directory entry */
+        {
+            ECHECK(_inode_remove_dirent(parent, basename));
+        }
+    }
 
 done:
 

@@ -3,7 +3,6 @@ include $(TOP)/defs.mak
 
 APPDIR=$(CURDIR)/appdir
 APPBUILDER=$(TOP)/scripts/appbuilder
-DNSSERVER = $(shell systemd-resolve --status | grep "DNS Servers" | cut -f2 -d:)
 
 ifdef STRACE
 OPTS = --strace
@@ -26,7 +25,6 @@ gdb: all
 
 appdir:
 	$(APPBUILDER) Dockerfile
-	echo "nameserver $(DNSSERVER)" >> $(APPDIR)/etc/resolv.conf
 
 rootfs:
 	$(BINDIR)/myst mkcpio appdir rootfs

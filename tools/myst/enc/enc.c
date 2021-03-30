@@ -8,7 +8,6 @@
 #include <string.h>
 #include <sys/mount.h>
 
-#include <openenclave/bits/sgx/region.h>
 #include <openenclave/enclave.h>
 
 #include <elf.h>
@@ -20,6 +19,7 @@
 #include <myst/mmanutils.h>
 #include <myst/mount.h>
 #include <myst/ramfs.h>
+#include <myst/region.h>
 #include <myst/reloc.h>
 #include <myst/shm.h>
 #include <myst/strings.h>
@@ -29,6 +29,7 @@
 #include <myst/trace.h>
 
 #include "../config.h"
+#include "../kargs.h"
 #include "../shared.h"
 #include "myst_t.h"
 
@@ -174,40 +175,22 @@ int myst_enter_ecall(
     uint64_t event)
 {
     int ret = -1;
-    const void* crt_data;
-    size_t crt_size;
-    const void* crt_reloc_data;
-    size_t crt_reloc_size;
-    const void* kernel_data;
-    size_t kernel_size;
-    const void* kernel_reloc_data;
-    size_t kernel_reloc_size;
-    const void* kernel_symtab_data;
-    size_t kernel_symtab_size;
-    const void* kernel_dynsym_data;
-    size_t kernel_dynsym_size;
-    const void* kernel_strtab_data;
-    size_t kernel_strtab_size;
-    const void* kernel_dynstr_data;
-    size_t kernel_dynstr_size;
-    const void* rootfs_data;
-    size_t rootfs_size;
-    const void* archive_data;
-    size_t archive_size;
-    const void* config_data;
-    size_t config_size;
     bool trace_errors = false;
     bool trace_syscalls = false;
     bool export_ramfs = false;
     const char* rootfs = NULL;
-    config_parsed_data_t parsed_config = {0};
-    unsigned char have_config = 0;
+    config_parsed_data_t parsed_config;
+    bool have_config = false;
     myst_args_t args;
     myst_args_t env;
     const char* cwd = "/";       // default to root dir
     const char* hostname = NULL; // kernel has a default
     const uint8_t* enclave_base;
     size_t enclave_size;
+    const Elf64_Ehdr* ehdr;
+    const char target[] = "MYST_TARGET=sgx";
+
+    memset(&parsed_config, 0, sizeof(parsed_config));
 
     if (__sync_fetch_and_add(&myst_enter_ecall_lock, 1) != 0)
     {
@@ -234,23 +217,22 @@ int myst_enter_ecall(
 
     /* Get the config region */
     {
-        oe_region_t region;
+        myst_region_t r;
+        extern const void* __oe_get_heap_base(void);
+        const void* regions = __oe_get_heap_base();
 
-        if (oe_region_get(MYST_CONFIG_REGION_ID, &region) == OE_OK)
+        if (myst_region_find(regions, MYST_CONFIG_REGION_NAME, &r) == 0)
         {
-            config_data = enclave_base + region.vaddr;
-            config_size = region.size;
-            if (parse_config_from_buffer(
-                    config_data, config_size, &parsed_config) != 0)
+            if (parse_config_from_buffer(r.data, r.size, &parsed_config) != 0)
             {
                 fprintf(stderr, "failed to parse configuration\n");
                 assert(0);
             }
-            have_config = 1;
+            have_config = true;
         }
     }
 
-    if (have_config == 1 && !parsed_config.allow_host_parameters)
+    if (have_config && !parsed_config.allow_host_parameters)
     {
         if (myst_args_init(&args) != 0)
             goto done;
@@ -274,7 +256,7 @@ int myst_enter_ecall(
 
     // Need to handle config to environment
     // in the mean time we will just pull from the host
-    if (have_config == 1)
+    if (have_config)
     {
         myst_args_init(&env);
 
@@ -373,227 +355,42 @@ int myst_enter_ecall(
         assert(0);
     }
 
-    /* Get the mman region */
-    void* mman_data;
-    size_t mman_size;
-    {
-        oe_region_t region;
-
-        if (oe_region_get(MYST_MMAN_REGION_ID, &region) != OE_OK)
-        {
-            fprintf(stderr, "failed to get crt region\n");
-            assert(0);
-        }
-
-        mman_data = (void*)(enclave_base + region.vaddr);
-        mman_size = region.size;
-    }
-
-    /* Get the rootfs region */
-    {
-        oe_region_t region;
-
-        if (oe_region_get(MYST_ROOTFS_REGION_ID, &region) != OE_OK)
-        {
-            fprintf(stderr, "failed to get rootfs region\n");
-            assert(0);
-        }
-
-        rootfs_data = enclave_base + region.vaddr;
-        rootfs_size = region.size;
-    }
-
-    /* Get the archive region */
-    {
-        oe_region_t region;
-
-        if (oe_region_get(MYST_ARCHIVE_REGION_ID, &region) != OE_OK)
-        {
-            fprintf(stderr, "failed to get archive region\n");
-            assert(0);
-        }
-
-        archive_data = enclave_base + region.vaddr;
-        archive_size = region.size;
-    }
-
-    /* Get the kernel region */
-    {
-        oe_region_t region;
-
-        if (oe_region_get(MYST_KERNEL_REGION_ID, &region) != OE_OK)
-        {
-            fprintf(stderr, "failed to get kernel region\n");
-            assert(0);
-        }
-
-        kernel_data = enclave_base + region.vaddr;
-        kernel_size = region.size;
-    }
-
-    /* Apply relocations to the kernel image */
-    {
-        oe_region_t region;
-
-        if (oe_region_get(MYST_KERNEL_RELOC_REGION_ID, &region) != OE_OK)
-        {
-            fprintf(stderr, "failed to get kernel region\n");
-            assert(0);
-        }
-
-        if (myst_apply_relocations(
-                kernel_data,
-                kernel_size,
-                enclave_base + region.vaddr,
-                region.size) != 0)
-        {
-            fprintf(stderr, "myst_apply_relocations() failed\n");
-            assert(0);
-        }
-
-        kernel_reloc_data = enclave_base + region.vaddr;
-        kernel_reloc_size = region.size;
-    }
-
-    /* Get the kernel symbol table region */
-    {
-        oe_region_t region;
-
-        if (oe_region_get(MYST_KERNEL_SYMTAB_REGION_ID, &region) != OE_OK)
-        {
-            fprintf(stderr, "failed to get kernel symtab region\n");
-            assert(0);
-        }
-
-        kernel_symtab_data = enclave_base + region.vaddr;
-        kernel_symtab_size = region.size;
-    }
-
-    /* Get the kernel dynamic symbol table region */
-    {
-        oe_region_t region;
-
-        if (oe_region_get(MYST_KERNEL_DYNSYM_REGION_ID, &region) != OE_OK)
-        {
-            fprintf(stderr, "failed to get kernel dynsym region\n");
-            assert(0);
-        }
-
-        kernel_dynsym_data = enclave_base + region.vaddr;
-        kernel_dynsym_size = region.size;
-    }
-
-    /* Get the kernel string table region */
-    {
-        oe_region_t region;
-
-        if (oe_region_get(MYST_KERNEL_STRTAB_REGION_ID, &region) != OE_OK)
-        {
-            fprintf(stderr, "failed to get kernel strtab region\n");
-            assert(0);
-        }
-
-        kernel_strtab_data = enclave_base + region.vaddr;
-        kernel_strtab_size = region.size;
-    }
-
-    /* Get the kernel dynamic string table region */
-    {
-        oe_region_t region;
-
-        if (oe_region_get(MYST_KERNEL_DYNSTR_REGION_ID, &region) != OE_OK)
-        {
-            fprintf(stderr, "failed to get kernel dynstr region\n");
-            assert(0);
-        }
-
-        kernel_dynstr_data = enclave_base + region.vaddr;
-        kernel_dynstr_size = region.size;
-    }
-
-    /* Get the crt region */
-    {
-        oe_region_t region;
-
-        if (oe_region_get(MYST_CRT_REGION_ID, &region) != OE_OK)
-        {
-            fprintf(stderr, "failed to get crt region\n");
-            assert(0);
-        }
-
-        crt_data = enclave_base + region.vaddr;
-        crt_size = region.size;
-    }
-
-    /* Get relocations to the crt image */
-    {
-        oe_region_t region;
-
-        if (oe_region_get(MYST_CRT_RELOC_REGION_ID, &region) != OE_OK)
-        {
-            fprintf(stderr, "failed to get crt region\n");
-            assert(0);
-        }
-
-        crt_reloc_data = enclave_base + region.vaddr;
-        crt_reloc_size = region.size;
-    }
-
     /* Enter the kernel image */
     {
         myst_kernel_args_t kargs;
-        const Elf64_Ehdr* ehdr = kernel_data;
         myst_kernel_entry_t entry;
+        extern const void* __oe_get_heap_base(void);
+        const void* regions_end = __oe_get_heap_base();
+        const bool tee_debug_mode = _test_oe_debug_mode() == 0;
+        char err[256];
 
-        memset(&kargs, 0, sizeof(kargs));
-        kargs.image_data = enclave_base;
-        kargs.image_size = enclave_size;
-        kargs.kernel_data = kernel_data;
-        kargs.kernel_size = kernel_size;
-        kargs.reloc_data = kernel_reloc_data;
-        kargs.reloc_size = kernel_reloc_size;
-        kargs.crt_reloc_data = crt_reloc_data;
-        kargs.crt_reloc_size = crt_reloc_size;
-        kargs.symtab_data = kernel_symtab_data;
-        kargs.symtab_size = kernel_symtab_size;
-        kargs.dynsym_data = kernel_dynsym_data;
-        kargs.dynsym_size = kernel_dynsym_size;
-        kargs.strtab_data = kernel_strtab_data;
-        kargs.strtab_size = kernel_strtab_size;
-        kargs.dynstr_data = kernel_dynstr_data;
-        kargs.dynstr_size = kernel_dynstr_size;
-        kargs.argc = args.size;
-        kargs.argv = args.data;
-        kargs.envc = env.size;
-        kargs.envp = env.data;
-        kargs.cwd = cwd;
-        kargs.hostname = hostname;
-        kargs.mman_data = mman_data;
-        kargs.mman_size = mman_size;
-        kargs.rootfs_data = (void*)rootfs_data;
-        kargs.rootfs_size = rootfs_size;
-        kargs.archive_data = (void*)archive_data;
-        kargs.archive_size = archive_size;
-        kargs.crt_data = (void*)crt_data;
-        kargs.crt_size = crt_size;
-        kargs.max_threads = _get_num_tcs();
-        kargs.trace_errors = trace_errors;
-        kargs.trace_syscalls = trace_syscalls;
-        kargs.export_ramfs = export_ramfs;
-        kargs.tcall = myst_tcall;
-        kargs.event = event;
+        init_kernel_args(
+            &kargs,
+            target,
+            (int)args.size,
+            args.data,
+            (int)env.size,
+            env.data,
+            cwd,
+            hostname,
+            regions_end,
+            enclave_base,   /* image_data */
+            enclave_size,   /* image_size */
+            _get_num_tcs(), /* max threads */
+            trace_errors,
+            trace_syscalls,
+            export_ramfs,
+            false, /* have_syscall_instruction */
+            tee_debug_mode,
+            event, /* thread_event */
+            myst_tcall,
+            rootfs,
+            err,
+            sizeof(err));
 
-        /* determine whether in SGX debug mode */
-        if (_test_oe_debug_mode() == 0)
-            kargs.tee_debug_mode = true;
-        else
-            kargs.tee_debug_mode = false;
-
-        if (rootfs)
-            myst_strlcpy(kargs.rootfs, rootfs, sizeof(kargs.rootfs));
-
-        /* Verify that the kernel is an ELF image */
+        /* set ehdr and verify that the kernel is an ELF image */
         {
+            ehdr = (const Elf64_Ehdr*)kargs.kernel_data;
             const uint8_t ident[] = {0x7f, 'E', 'L', 'F'};
 
             if (memcmp(ehdr->e_ident, ident, sizeof(ident)) != 0)
@@ -604,10 +401,11 @@ int myst_enter_ecall(
         }
 
         /* Resolve the the kernel entry point */
-        entry = (myst_kernel_entry_t)((uint8_t*)kernel_data + ehdr->e_entry);
+        entry =
+            (myst_kernel_entry_t)((uint8_t*)kargs.kernel_data + ehdr->e_entry);
 
-        if ((uint8_t*)entry < (uint8_t*)kernel_data ||
-            (uint8_t*)entry >= (uint8_t*)kernel_data + kernel_size)
+        if ((uint8_t*)entry < (uint8_t*)kargs.kernel_data ||
+            (uint8_t*)entry >= (uint8_t*)kargs.kernel_data + kargs.kernel_size)
         {
             fprintf(stderr, "kernel entry point is out of bounds\n");
             assert(0);

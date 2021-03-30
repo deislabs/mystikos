@@ -1,0 +1,108 @@
+variables:
+  - group: myst-pipeline
+  - name: SCRIPTS_ROOT
+    value: $(Build.SourcesDirectory)/.azure_pipelines/scripts
+
+parameters:
+- name: VERSION
+  displayName: VERSION
+  type: string
+  default: 0.0.0
+
+# main branch pipeline configuration
+trigger:
+  branches:
+    include:
+    - main
+  paths:
+    exclude:
+    - doc/*
+    - notes.txt
+
+# PR configuration
+pr:
+  branches:
+    include:
+    - main
+  paths:
+    exclude:
+    - docs/*
+
+jobs:
+  - job: ReleaseAndTest
+    displayName: 'Building Release and Testing'
+    pool: '1804DC4CCagentpool'
+
+    steps:
+      # perform cleanup before starting pipeline
+      - script: |
+          sudo rm -rf /tmp/myst*
+        displayName: 'cleanup tmpfiles'
+      # install minimum required package to run pipeline
+      - script: |
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+          sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+          sudo apt-get update
+          sudo apt-get install build-essential python3-setuptools libmbedtls-dev docker-ce -y 
+          sudo chmod 666 /var/run/docker.sock
+        displayName: 'minimum init config'
+      
+      # generate tarball for release binary and source code
+      - script: |
+          set -ex
+          VERSION=${{ parameters.VERSION }}
+          echo $VERSION > VERSION
+          echo "Creating release version $VERSION"
+          
+          make clean
+          touch mystikos-$VERSION.tar.gz
+          tar -czf mystikos-$VERSION.tar.gz --exclude=mystikos-$VERSION.tar.gz .
+          
+          make MYST_RELEASE=1 && make bindist
+
+          exit 0
+        displayName: 'Generate release v${{ parameters.VERSION }} artifact'
+        condition: eq(variables['Agent.JobStatus'], 'succeeded')
+      
+      # Verify published artifact, build all source files
+      - script: |
+          sudo rm -rf /tmp/myst*
+          make -j MYST_RELEASE=1 MYST_NIGHTLY_TEST=1
+        displayName: 'build repo source'
+        workingDirectory: $(Build.SourcesDirectory)
+
+      # run all tests
+      - script: |
+          rm -rf mystikos 
+          tar -xzf mystikos-${{ parameters.VERSION }}-x86_64.tar.gz
+          export PATH="$PATH:$(pwd)/mystikos/bin"
+          sed -i 's/BINDIR=$(BUILDDIR)\/bin/BINDIR\=$(TOP)\/mystikos\/bin/g' defs.mak
+          sed -i 's/SUBBINDIR=$(BINDIR)\/$(SUBDIR)/SUBBINDIR\=$(BUILDDIR)\/bin\/$(SUBDIR)/g' defs.mak
+          sed -i 's/MUSL_GCC=$(BUILDDIR)\/musl\/bin\/musl-gcc/MUSL_GCC\=gcc -lpthread/g' defs.mak
+          echo "MYST_DEFINES += -DNDEBUG">>defs.mak
+          make -j tests ALLTESTS=1 VERBOSE=1
+        displayName: 'run all tests'
+        continueOnError: true
+        enabled: true
+        workingDirectory: $(Build.SourcesDirectory)
+
+      # run solution tests
+      - script: |
+          export PATH="$PATH:$(pwd)/mystikos/bin"
+          make tests -C $(Build.SourcesDirectory)/solutions
+        displayName: 'run solution tests'
+        continueOnError: true
+        enabled: true
+        workingDirectory: $(Build.SourcesDirectory)
+        env:
+          # by default sql solution test will run on US EAST DB Node
+          DB_NAME: $(DB_NAME_USEAST)
+          DB_SERVER_NAME: $(DB_SERVER_NAME_USEAST)
+          MAA_URL: $(DB_MAA_URL_USEAST)
+
+      # if any previous step(s) not succeed, fail the job
+      - script: |
+          echo "Not all steps succeed."
+          exit 1
+        displayName: 'Error(s) Check'
+        condition: not(eq(variables['Agent.JobStatus'], 'succeeded'))

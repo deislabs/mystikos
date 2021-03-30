@@ -5,6 +5,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include <myst/backtrace.h>
 #include <myst/defs.h>
@@ -26,8 +27,6 @@
 **==============================================================================
 */
 
-#define USE_BUILTIN_MEMSET
-#define USE_BUILTIN_MEMCPY
 #define USE_LOOP_UNROLLING
 
 char* strdup(const char* s)
@@ -70,110 +69,95 @@ char* strncpy(char* dest, const char* src, size_t n)
 
 void* memset(void* s, int c, size_t n)
 {
-#ifdef USE_BUILTIN_MEMSET
+    uint8_t* p = (uint8_t*)s;
 
-    unsigned char* p = (unsigned char*)s;
-
-    while (n >= 1024)
+    /* if s is 8-byte aligned */
+    if (((uint64_t)p & 0x0000000000000007) == 0)
     {
-        __builtin_memset(p, c, 1024);
-        n -= 1024;
-        p += 1024;
+        uint64_t* pp = (uint64_t*)p;
+        size_t nn = n / 8;
+        uint64_t cc = ((uint64_t)c << 56) | ((uint64_t)c << 48) |
+                      ((uint64_t)c << 40) | ((uint64_t)c << 32) |
+                      ((uint64_t)c << 24) | ((uint64_t)c << 16) |
+                      ((uint64_t)c << 8) | ((uint64_t)c);
+
+#ifdef USE_LOOP_UNROLLING
+
+        /* unroll loop to factor of 8 */
+        while (nn >= 8)
+        {
+            pp[0] = cc;
+            pp[1] = cc;
+            pp[2] = cc;
+            pp[3] = cc;
+            pp[4] = cc;
+            pp[5] = cc;
+            pp[6] = cc;
+            pp[7] = cc;
+            pp += 8;
+            nn -= 8;
+        }
+
+#endif /* USE_LOOP_UNROLLING */
+
+        while (nn--)
+            *pp++ = cc;
+
+        p = (uint8_t*)pp;
+        n %= 8;
     }
 
-    while (n >= 256)
-    {
-        __builtin_memset(p, c, 256);
-        n -= 256;
-        p += 256;
-    }
-
-    while (n >= 64)
-    {
-        __builtin_memset(p, c, 64);
-        n -= 64;
-        p += 64;
-    }
-
-    while (n >= 16)
-    {
-        __builtin_memset(p, c, 16);
-        n -= 16;
-        p += 16;
-    }
-
+    /* handle remaining bytes if any */
     while (n--)
         *p++ = (uint8_t)c;
 
     return s;
-
-#else /* USE_BUILTIN_MEMSET */
-
-    unsigned char* p = (unsigned char*)s;
-
-    while (n--)
-        *p++ = (unsigned char)c;
-
-    return s;
-
-#endif /* !USE_BUILTIN_MEMSET */
 }
 
 void* memcpy(void* dest, const void* src, size_t n)
 {
-#ifdef USE_BUILTIN_MEMCPY
+    uint8_t* p = (uint8_t*)dest;
+    const uint8_t* q = (const uint8_t*)src;
 
-    unsigned char* p = (unsigned char*)dest;
-    const unsigned char* q = (const unsigned char*)src;
-
-    while (n >= 1024)
+    /* if dest and src are 8-byte aligned */
+    if (((uint64_t)p & 0x0000000000000007) == 0 &&
+        ((uint64_t)q & 0x0000000000000007) == 0)
     {
-        __builtin_memcpy(p, q, 1024);
-        n -= 1024;
-        p += 1024;
-        q += 1024;
-    }
+        uint64_t* pp = (uint64_t*)p;
+        const uint64_t* qq = (const uint64_t*)q;
+        size_t nn = n / 8;
 
-    while (n >= 256)
-    {
-        __builtin_memcpy(p, q, 256);
-        n -= 256;
-        p += 256;
-        q += 256;
-    }
+#ifdef USE_LOOP_UNROLLING
 
-    while (n >= 64)
-    {
-        __builtin_memcpy(p, q, 64);
-        n -= 64;
-        p += 64;
-        q += 64;
-    }
+        while (nn >= 8)
+        {
+            pp[0] = qq[0];
+            pp[1] = qq[1];
+            pp[2] = qq[2];
+            pp[3] = qq[3];
+            pp[4] = qq[4];
+            pp[5] = qq[5];
+            pp[6] = qq[6];
+            pp[7] = qq[7];
+            pp += 8;
+            qq += 8;
+            nn -= 8;
+        }
 
-    while (n >= 16)
-    {
-        __builtin_memcpy(p, q, 16);
-        n -= 16;
-        p += 16;
-        q += 16;
+#endif /* USE_LOOP_UNROLLING */
+
+        while (nn--)
+            *pp++ = *qq++;
+
+        n %= 8;
+        p = (uint8_t*)pp;
+        q = (const uint8_t*)qq;
     }
 
     while (n--)
         *p++ = *q++;
 
     return dest;
-
-#else /* USE_BUILTIN_MEMCPY */
-
-    unsigned char* p = (unsigned char*)dest;
-    unsigned char* q = (unsigned char*)src;
-
-    while (n--)
-        *p++ = *q++;
-
-    return dest;
-
-#endif /* !USE_BUILTIN_MEMCPY */
 }
 
 int memcmp(const void* s1, const void* s2, size_t n)
@@ -197,8 +181,8 @@ int memcmp(const void* s1, const void* s2, size_t n)
 
 void* memmove(void* dest_, const void* src_, size_t n)
 {
-    char* dest = (char*)dest_;
-    const char* src = (const char*)src_;
+    uint8_t* dest = (uint8_t*)dest_;
+    const uint8_t* src = (const uint8_t*)src_;
 
     if (dest != src && n > 0)
     {
@@ -213,7 +197,7 @@ void* memmove(void* dest_, const void* src_, size_t n)
         }
     }
 
-    return dest;
+    return dest_;
 }
 
 size_t strlen(const char* s)
@@ -681,5 +665,26 @@ struct dirent* readdir(DIR* dir)
     ret = ent;
 
 done:
+    return ret;
+}
+
+/*
+**==============================================================================
+**
+** <time.h>
+**
+**==============================================================================
+*/
+
+time_t time(time_t* tloc)
+{
+    long ret = myst_syscall_time(tloc);
+
+    if (ret < 0)
+    {
+        errno = (int)ret;
+        return (time_t)-1;
+    }
+
     return ret;
 }

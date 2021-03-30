@@ -30,6 +30,7 @@
 #include <myst/barrier.h>
 #include <myst/blkdev.h>
 #include <myst/buf.h>
+#include <myst/clock.h>
 #include <myst/cpio.h>
 #include <myst/cwd.h>
 #include <myst/epolldev.h>
@@ -695,6 +696,98 @@ done:
     return ret;
 }
 
+static long _openat(
+    int dirfd,
+    const char* pathname,
+    int flags,
+    mode_t mode,
+    myst_fs_t** fs_out,
+    myst_file_t** file_out)
+{
+    long ret = 0;
+
+    if (fs_out)
+        *fs_out = NULL;
+
+    if (file_out)
+        *file_out = NULL;
+
+    if (!pathname)
+        ERAISE(-EINVAL);
+
+    if (*pathname == '\0')
+        ERAISE(-ENOENT);
+
+    /* if pathname is absolute or AT_FDCWD */
+    if (*pathname == '/' || dirfd == AT_FDCWD)
+    {
+        if (fs_out && file_out)
+        {
+            char suffix[PATH_MAX];
+            myst_fs_t* fs;
+
+            ECHECK(myst_mount_resolve(pathname, suffix, &fs));
+            ECHECK((*fs->fs_open)(fs, suffix, flags, mode, fs_out, file_out));
+        }
+        else
+        {
+            ret = myst_syscall_open(pathname, flags, mode);
+        }
+    }
+    else
+    {
+        myst_fdtable_t* fdtable = myst_fdtable_current();
+        myst_fs_t* fs;
+        myst_file_t* file;
+        char dirname[PATH_MAX];
+        char filename[PATH_MAX];
+
+        if (dirfd < 0)
+            ERAISE(-EBADF);
+
+        /* get the file object for the dirfd */
+        ECHECK(myst_fdtable_get_file(fdtable, dirfd, &fs, &file));
+
+        /* fail if not a directory */
+        {
+            struct stat buf;
+            ERAISE((*fs->fs_fstat)(fs, file, &buf));
+
+            if (!S_ISDIR(buf.st_mode))
+                ERAISE(-ENOTDIR);
+        }
+
+        /* get the full path of dirfd */
+        ECHECK((*fs->fs_realpath)(fs, file, dirname, sizeof(dirname)));
+        ECHECK(myst_make_path(filename, sizeof(filename), dirname, pathname));
+
+        if (fs_out && file_out)
+        {
+            char suffix[PATH_MAX];
+            myst_fs_t* fs;
+
+            ECHECK(myst_mount_resolve(filename, suffix, &fs));
+            ECHECK((*fs->fs_open)(fs, suffix, flags, mode, fs_out, file_out));
+        }
+        else
+        {
+            ret = myst_syscall_open(filename, flags, mode);
+        }
+    }
+
+done:
+    return ret;
+}
+
+long myst_syscall_openat(
+    int dirfd,
+    const char* pathname,
+    int flags,
+    mode_t mode)
+{
+    return _openat(dirfd, pathname, flags, mode, NULL, NULL);
+}
+
 long myst_syscall_epoll_create1(int flags)
 {
     long ret = 0;
@@ -1031,14 +1124,10 @@ long myst_syscall_fstatat(
         myst_file_t* file;
         char dirpath[PATH_MAX];
         char path[PATH_MAX];
-        int n;
 
         ECHECK(myst_fdtable_get_file(fdtable, dirfd, &fs, &file));
         ECHECK((*fs->fs_realpath)(fs, file, dirpath, sizeof(dirpath)));
-
-        n = snprintf(path, sizeof(path), "%s/%s", dirpath, pathname);
-        if ((size_t)n >= sizeof(path))
-            ERAISE(-ENAMETOOLONG);
+        ECHECK(myst_make_path(path, sizeof(path), dirpath, pathname));
 
         if (flags & AT_SYMLINK_NOFOLLOW)
         {
@@ -1056,11 +1145,43 @@ done:
     return ret;
 }
 
+static const char* _trim_trailing_slashes(
+    const char* pathname,
+    char* buf,
+    size_t size)
+{
+    size_t len = strlen(pathname);
+
+    if (len >= size)
+        return NULL;
+
+    /* remove trailing slashes from the pathname if any */
+    if ((len = strlen(pathname)) && pathname[len - 1] == '/')
+    {
+        memcpy(buf, pathname, len + 1);
+
+        for (char* p = buf + len; p != buf && p[-1] == '/'; *--p = '\0')
+            ;
+
+        pathname = buf;
+    }
+
+    return pathname;
+}
+
 long myst_syscall_mkdir(const char* pathname, mode_t mode)
 {
     long ret = 0;
     char suffix[PATH_MAX];
     myst_fs_t* fs;
+    char buf[PATH_MAX];
+
+    if (!pathname)
+        ERAISE(-EINVAL);
+
+    /* remove trailing slash from directory name if any */
+    if (!(pathname = _trim_trailing_slashes(pathname, buf, sizeof(buf))))
+        ERAISE(-ENAMETOOLONG);
 
     ECHECK(myst_mount_resolve(pathname, suffix, &fs));
     ECHECK((*fs->fs_mkdir)(fs, suffix, mode));
@@ -2084,6 +2205,76 @@ long myst_syscall_fsync(int fd)
 
     if (type != MYST_FDTABLE_TYPE_FILE)
         ERAISE(-EROFS);
+
+done:
+    return ret;
+}
+
+long myst_syscall_utimensat(
+    int dirfd,
+    const char* pathname,
+    const struct timespec times[2],
+    int flags)
+{
+    long ret = 0;
+
+    if (pathname == NULL)
+    {
+        myst_file_t* file = NULL;
+        myst_fs_t* fs = NULL;
+        myst_fdtable_t* fdtable = myst_fdtable_current();
+
+        ECHECK(myst_fdtable_get_file(fdtable, dirfd, &fs, &file));
+        ECHECK((*fs->fs_futimens)(fs, file, times));
+    }
+    else
+    {
+        myst_fs_t* fs;
+        myst_file_t* file;
+        int oflags = (flags & ~AT_SYMLINK_NOFOLLOW);
+        long r;
+
+        /* translate AT_SYMLINK_NOFOLLOW to O_NOFOLLOW */
+        if ((flags & AT_SYMLINK_NOFOLLOW))
+            oflags |= O_NOFOLLOW;
+
+        ECHECK(_openat(dirfd, pathname, oflags, O_RDONLY, &fs, &file));
+
+        if ((r = (*fs->fs_futimens)(fs, file, times)) < 0)
+        {
+            (*fs->fs_close)(fs, file);
+            ERAISE(r);
+        }
+
+        (*fs->fs_close)(fs, file);
+    }
+
+done:
+    return ret;
+}
+
+long myst_syscall_futimesat(
+    int dirfd,
+    const char* pathname,
+    const struct timeval times[2])
+{
+    long ret = 0;
+    struct timespec buf[2];
+    struct timespec* ts = NULL;
+
+    if (times)
+    {
+        for (size_t i = 0; i < 2; i++)
+        {
+            const struct timeval* tv = &times[i];
+            buf[i].tv_sec = tv->tv_sec + (tv->tv_usec / MICRO_IN_SECOND);
+            buf[i].tv_nsec = (tv->tv_usec % MICRO_IN_SECOND) * 1000;
+        }
+
+        ts = buf;
+    }
+
+    ECHECK(myst_syscall_utimensat(dirfd, pathname, ts, 0));
 
 done:
     return ret;
@@ -4050,7 +4241,25 @@ long myst_syscall(long n, long params[6])
         case SYS_migrate_pages:
             break;
         case SYS_openat:
-            break;
+        {
+            int dirfd = (int)x1;
+            const char* path = (const char*)x2;
+            int flags = (int)x3;
+            mode_t mode = (mode_t)x4;
+            long ret;
+
+            _strace(
+                n,
+                "dirfd=%d path=\"%s\" flags=0%o mode=0%o",
+                dirfd,
+                path,
+                flags,
+                mode);
+
+            ret = myst_syscall_openat(dirfd, path, flags, mode);
+
+            BREAK(_return(n, ret));
+        }
         case SYS_mkdirat:
             break;
         case SYS_mknodat:
@@ -4058,7 +4267,17 @@ long myst_syscall(long n, long params[6])
         case SYS_fchownat:
             break;
         case SYS_futimesat:
-            break;
+        {
+            int dirfd = (int)x1;
+            const char* pathname = (const char*)x2;
+            const struct timeval* times = (const struct timeval*)x3;
+            long ret;
+
+            _strace(n, "dirfd=%d pathname=%s times=%p", dirfd, pathname, times);
+
+            ret = myst_syscall_futimesat(dirfd, pathname, times);
+            BREAK(_return(n, ret));
+        }
         case SYS_newfstatat:
         {
             int dirfd = (int)x1;
@@ -4114,7 +4333,24 @@ long myst_syscall(long n, long params[6])
         case SYS_move_pages:
             break;
         case SYS_utimensat:
-            break;
+        {
+            int dirfd = (int)x1;
+            const char* pathname = (const char*)x2;
+            const struct timespec* times = (const struct timespec*)x3;
+            int flags = (int)x4;
+            long ret;
+
+            _strace(
+                n,
+                "dirfd=%d pathname=%s times=%p flags=%o",
+                dirfd,
+                pathname,
+                times,
+                flags);
+
+            ret = myst_syscall_utimensat(dirfd, pathname, times, flags);
+            BREAK(_return(n, ret));
+        }
         case SYS_epoll_pwait:
         {
             int epfd = (int)x1;
@@ -4795,11 +5031,6 @@ long myst_syscall_tgkill(int tgid, int tid, int sig)
 
 done:
     return ret;
-}
-
-time_t time(time_t* tloc)
-{
-    return myst_syscall_time(tloc);
 }
 
 long myst_syscall_kill(int pid, int sig)

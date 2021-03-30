@@ -124,6 +124,12 @@ long myst_syscall_creat(const char* pathname, mode_t mode);
 
 long myst_syscall_open(const char* pathname, int flags, mode_t mode);
 
+long myst_syscall_openat(
+    int dirfd,
+    const char* pathname,
+    int flags,
+    mode_t mode);
+
 long myst_syscall_lseek(int fd, off_t offset, int whence);
 
 long myst_syscall_close(int fd);

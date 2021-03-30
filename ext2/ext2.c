@@ -9,6 +9,7 @@
 #include <sys/ioctl.h>
 #include <time.h>
 
+#include <myst/clock.h>
 #include <myst/eraise.h>
 #include <myst/ext2.h>
 #include <myst/hex.h>
@@ -35,8 +36,11 @@ struct ext2_dir
     struct dirent ent;
 };
 
+#define FILE_MAGIC 0x0e6fc76762264945
+
 struct myst_file
 {
+    uint64_t magic;
     ext2_ino_t ino;
     ext2_inode_t inode;
     uint64_t offset;
@@ -48,10 +52,24 @@ struct myst_file
     ext2_dir_t dir;
 };
 
-static time_t _time(void)
+static bool _file_valid(const myst_file_t* file)
 {
-    const time_t time = 1610565443;
-    return time;
+    return file != NULL && file->magic == FILE_MAGIC;
+}
+
+static void _file_clear(myst_file_t* file)
+{
+    memset(file, 0xdd, sizeof(myst_file_t));
+}
+
+static void _file_free(myst_file_t* file)
+{
+    if (file)
+    {
+        assert(_file_valid(file));
+        _file_clear(file);
+        free(file);
+    }
 }
 
 static bool _ext2_valid(const ext2_t* ext2)
@@ -102,6 +120,26 @@ static uint8_t _mode_to_file_type(uint16_t mode)
         return EXT2_FT_SYMLINK;
 
     return EXT2_FT_UNKNOWN;
+}
+
+#define ACCESS 1
+#define CHANGE 2
+#define MODIFY 4
+
+static void _update_timestamps(ext2_inode_t* inode, int flags)
+{
+    time_t t = time(NULL);
+
+    assert(t <= UINT32_MAX);
+
+    if (flags & ACCESS)
+        inode->i_atime = t;
+
+    if (flags & CHANGE)
+        inode->i_ctime = t;
+
+    if (flags & MODIFY)
+        inode->i_mtime = t;
 }
 
 static void _dirent_init(
@@ -956,6 +994,7 @@ static int _load_file_by_inode(
     {
         /* create a dummy file struct */
         myst_file_t file = {
+            .magic = FILE_MAGIC,
             .ino = ino,
             .inode = *inode,
             .offset = 0,
@@ -965,6 +1004,7 @@ static int _load_file_by_inode(
 
         /* load the data */
         ECHECK(_load_file(ext2, &file, data, size));
+        _file_clear(&file);
     }
 
 done:
@@ -987,6 +1027,7 @@ static int _load_file_by_ino(
     {
         /* create a dummy file struct */
         myst_file_t file = {
+            .magic = FILE_MAGIC,
             .ino = ino,
             .inode = inode,
             .offset = 0,
@@ -996,6 +1037,7 @@ static int _load_file_by_ino(
 
         /* load the data */
         ECHECK(_load_file(ext2, &file, data, size));
+        _file_clear(&file);
     }
 
 done:
@@ -2106,12 +2148,14 @@ static int _ftruncate(ext2_t* ext2, myst_file_t* file, off_t length, bool isdir)
         }
 
         _inode_set_size(&file->inode, (size_t)length);
+        _update_timestamps(&file->inode, CHANGE | MODIFY);
         ECHECK(_write_inode(ext2, file->ino, &file->inode));
     }
     else if (length > file_size)
     {
         /* make file larger (with a hole) */
         _inode_set_size(&file->inode, length);
+        _update_timestamps(&file->inode, CHANGE | MODIFY);
         ECHECK(_write_inode(ext2, file->ino, &file->inode));
     }
 
@@ -2129,6 +2173,7 @@ static int _inode_write_data(
 {
     int ret = 0;
     myst_file_t file = {
+        .magic = FILE_MAGIC,
         .ino = ino,
         .inode = *inode,
         .offset = 0,
@@ -2157,6 +2202,7 @@ static int _inode_write_data(
     _inode_set_size(inode, size);
 
 done:
+    _file_clear(&file);
     return ret;
 }
 
@@ -2290,9 +2336,11 @@ static int _remove_dirent(ext2_t* ext2, const char* path)
     /* rewrite the directory, one block at a time */
     ECHECK(_inode_write_data(ext2, ino, &inode, buf.data, buf.size));
 
-    /* update the directory inode */
+    /* if child was a directory, then decrement the link count */
     if (ent->file_type == EXT2_FT_DIR)
         inode.i_links_count--;
+
+    _update_timestamps(&inode, CHANGE | MODIFY);
 
     ECHECK(_write_inode(ext2, ino, &inode));
 
@@ -2327,8 +2375,7 @@ static int _create_inode(
 
     /* Initialize the inode */
     {
-        /* Uses posix_time() for EFI */
-        const uint32_t t = _time();
+        const uint32_t t = (uint32_t)time(NULL);
 
         memset(inode, 0, sizeof(ext2_inode_t));
 
@@ -2360,6 +2407,8 @@ static int _create_inode(
     /* assign an inode number */
     ECHECK(_get_ino(ext2, ino));
 
+    _update_timestamps(inode, ACCESS | CHANGE | MODIFY);
+
     /* write the inode */
     ECHECK(_write_inode(ext2, *ino, inode));
 
@@ -2384,7 +2433,7 @@ static int _create_dir_inode_and_block(
 
     /* Initialize the inode */
     {
-        const uint32_t t = _time();
+        const uint32_t t = (uint32_t)time(NULL);
 
         memset(&inode, 0, sizeof(ext2_inode_t));
 
@@ -2411,6 +2460,8 @@ static int _create_dir_inode_and_block(
 
         /* Set the number of 512 byte blocks */
         inode.i_blocks = ext2->block_size / 512;
+
+        _update_timestamps(&inode, ACCESS | CHANGE | MODIFY);
     }
 
     /* Assign an inode number */
@@ -2594,6 +2645,8 @@ static int _add_dirent(
     if (new_ent->file_type == EXT2_FT_DIR)
         inode->i_links_count++;
 
+    _update_timestamps(inode, CHANGE | MODIFY);
+
     ECHECK(_write_inode(ext2, ino, inode));
 
 done:
@@ -2632,6 +2685,7 @@ static int _inode_unlink(ext2_t* ext2, ext2_ino_t ino, ext2_inode_t* inode)
     {
         /* decrement the link count and write the inode */
         inode->i_links_count--;
+        _update_timestamps(inode, CHANGE);
         ECHECK(_write_inode(ext2, ino, inode));
     }
 
@@ -2948,6 +3002,7 @@ static int _stat(
     /* call ext2_fstat() */
     {
         myst_file_t file = {
+            .magic = FILE_MAGIC,
             .ino = *ino,
             .inode = *inode,
             .offset = 0,
@@ -2955,6 +3010,7 @@ static int _stat(
             .open_flags = O_RDONLY,
         };
         ECHECK(ext2_fstat(&ext2->base, &file, statbuf));
+        _file_clear(&file);
     }
 
 done:
@@ -2990,7 +3046,7 @@ int ext2_open(
     if (!ext2 || !path || !file_out)
         ERAISE(-EINVAL);
 
-    /* ATTN: support O_NOFOLLOW flag (applies to final component of path) */
+    /* handle O_NOFOLLOW flag (applies to final component of path) */
     if ((flags & O_NOFOLLOW))
         follow = NOFOLLOW;
 
@@ -3056,6 +3112,7 @@ int ext2_open(
         if (!(file = (myst_file_t*)calloc(1, sizeof(myst_file_t))))
             ERAISE(-ENOMEM);
 
+        file->magic = FILE_MAGIC;
         file->ino = ino;
         file->inode = inode;
         file->offset = 0;
@@ -3096,7 +3153,7 @@ int ext2_open(
 done:
 
     if (file)
-        free(file);
+        _file_free(file);
 
     if (dir_data)
         free(dir_data);
@@ -3116,7 +3173,7 @@ int64_t ext2_read(myst_fs_t* fs, myst_file_t* file, void* data, uint64_t size)
     bool eof = false;
 
     /* Check parameters */
-    if (!_ext2_valid(ext2) || !file || !data)
+    if (!_ext2_valid(ext2) || !_file_valid(file) || !data)
         ERAISE(-EINVAL);
 
     /* fail if file has been opened for write only */
@@ -3172,6 +3229,8 @@ int64_t ext2_read(myst_fs_t* fs, myst_file_t* file, void* data, uint64_t size)
         }
     }
 
+    /* ATTN.TIMESTAMPS */
+
     /* Calculate number of bytes read */
     ret = size - r;
 
@@ -3194,7 +3253,7 @@ int64_t ext2_write(
     size_t file_size;
 
     /* check parameters */
-    if (!_ext2_valid(ext2) || !file || (!data && size))
+    if (!_ext2_valid(ext2) || !_file_valid(file) || (!data && size))
         ERAISE(-EINVAL);
 
     /* check that file has been opened for write */
@@ -3275,6 +3334,8 @@ int64_t ext2_write(
     if (file->offset > file_size)
         _inode_set_size(&file->inode, _max_size(file->offset, file_size));
 
+    _update_timestamps(&file->inode, CHANGE | MODIFY);
+
     /* flush the inode to disk */
     ECHECK(_write_inode(ext2, file->ino, &file->inode));
 
@@ -3295,7 +3356,7 @@ off_t ext2_lseek(myst_fs_t* fs, myst_file_t* file, off_t offset, int whence)
     ext2_t* ext2 = (ext2_t*)fs;
     off_t new_offset;
 
-    if (!_ext2_valid(ext2) || !file)
+    if (!_ext2_valid(ext2) || !_file_valid(file))
         ERAISE(-EINVAL);
 
     switch (whence)
@@ -3336,15 +3397,17 @@ int ext2_close(myst_fs_t* fs, myst_file_t* file)
     ext2_t* ext2 = (ext2_t*)fs;
 
     /* check parameters */
-    if (!_ext2_valid(ext2) || !file)
+    if (!_ext2_valid(ext2) || !_file_valid(file))
         ERAISE(-EINVAL);
 
     /* if a diretory, then release the directory memory contents */
     if (file->dir.data)
         free(file->dir.data);
 
+    /* ATTN:TIMESTAMPS */
+
     /* release the file object */
-    free(file);
+    _file_free(file);
 
 done:
     return ret;
@@ -3438,8 +3501,7 @@ int ext2_link(myst_fs_t* fs, const char* oldpath, const char* newpath)
     /* increment link count of the inode */
     inode.i_links_count++;
 
-    /* increment the link count of the new parent directory */
-    dinode.i_links_count++;
+    _update_timestamps(&inode, CHANGE);
 
     /* write the inodes */
     ECHECK(_write_inode(ext2, ino, &inode));
@@ -3474,7 +3536,10 @@ int ext2_unlink(myst_fs_t* fs, const char* path)
 
     /* fail if inode refers to a directory */
     if (S_ISDIR(inode.i_mode))
-        ERAISE(-EISDIR);
+    {
+        ERAISE(ext2_rmdir(fs, path));
+        goto done;
+    }
 
     /* remove the directory entry for this file */
     ECHECK(_remove_dirent(ext2, path));
@@ -3707,15 +3772,20 @@ int ext2_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
     if (S_ISDIR(old_inode.i_mode))
     {
         old_dinode.i_links_count--;
+        _update_timestamps(&old_dinode, CHANGE);
         ECHECK(_write_inode(ext2, old_dino, &old_dinode));
 
         /* don't update links if directory already existed */
         if (!new_dino)
         {
             new_dinode.i_links_count++;
+            _update_timestamps(&new_dinode, CHANGE);
             ECHECK(_write_inode(ext2, new_dino, &new_dinode));
         }
     }
+
+    _update_timestamps(&old_inode, CHANGE);
+    ECHECK(_write_inode(ext2, old_ino, &old_inode));
 
     /* ATTN: update directory parent pointer ("..") */
 
@@ -3728,7 +3798,7 @@ int ext2_fstat(myst_fs_t* fs, myst_file_t* file, struct stat* statbuf)
     int64_t ret = 0;
     ext2_t* ext2 = (ext2_t*)fs;
 
-    if (!_ext2_valid(ext2) || !file || !statbuf)
+    if (!_ext2_valid(ext2) || !_file_valid(file) || !statbuf)
         ERAISE(-EINVAL);
 
     memset(statbuf, 0, sizeof(struct stat));
@@ -3809,7 +3879,7 @@ int ext2_ftruncate(myst_fs_t* fs, myst_file_t* file, off_t length)
     int ret = 0;
     ext2_t* ext2 = (ext2_t*)fs;
 
-    if (!_ext2_valid(ext2) || !file)
+    if (!_ext2_valid(ext2) || !_file_valid(file))
         ERAISE(-EINVAL);
 
     ECHECK(_ftruncate(ext2, file, length, false));
@@ -3844,6 +3914,7 @@ int ext2_truncate(myst_fs_t* fs, const char* path, off_t length)
     /* call _ftruncate() */
     {
         myst_file_t file = {
+            .magic = FILE_MAGIC,
             .ino = ino,
             .inode = inode,
             .offset = 0,
@@ -3852,6 +3923,7 @@ int ext2_truncate(myst_fs_t* fs, const char* path, off_t length)
         };
         ECHECK(_ftruncate(ext2, &file, length, false));
         inode = file.inode;
+        _file_clear(&file);
     }
 
     ret = 0;
@@ -3957,6 +4029,7 @@ int ext2_rmdir(myst_fs_t* fs, const char* path)
     if (!S_ISDIR(inode.i_mode))
         ERAISE(-ENOTDIR);
 
+    /* if directory is not empty */
     if (inode.i_links_count != 2)
         ERAISE(-EINVAL);
 
@@ -3982,6 +4055,7 @@ int ext2_rmdir(myst_fs_t* fs, const char* path)
     {
         /* create a dummy file struct */
         myst_file_t file = {
+            .magic = FILE_MAGIC,
             .ino = ino,
             .inode = inode,
             .offset = 0,
@@ -3991,6 +4065,7 @@ int ext2_rmdir(myst_fs_t* fs, const char* path)
 
         ECHECK(_ftruncate(ext2, &file, 0, true));
         inode = file.inode;
+        _file_clear(&file);
     }
 
     /* return the inode to the free list */
@@ -4161,7 +4236,7 @@ static ssize_t _ext2_readv(
     ext2_t* ext2 = (ext2_t*)fs;
     ssize_t ret = 0;
 
-    if (!_ext2_valid(ext2) || !file)
+    if (!_ext2_valid(ext2) || !_file_valid(file))
         ERAISE(-EINVAL);
 
     ret = myst_fdops_readv(&fs->fdops, file, iov, iovcnt);
@@ -4180,7 +4255,7 @@ static ssize_t _ext2_writev(
     ext2_t* ext2 = (ext2_t*)fs;
     ssize_t ret = 0;
 
-    if (!_ext2_valid(ext2) || !file)
+    if (!_ext2_valid(ext2) || !_file_valid(file))
         ERAISE(-EINVAL);
 
     ret = myst_fdops_writev(&fs->fdops, file, iov, iovcnt);
@@ -4199,7 +4274,7 @@ static int _ext2_dup(
     ext2_t* ext2 = (ext2_t*)fs;
     myst_file_t* new_file = NULL;
 
-    if (!_ext2_valid(ext2) || !file || !file_out)
+    if (!_ext2_valid(ext2) || !_file_valid(file) || !file_out)
         ERAISE(-EINVAL);
 
     /* create the new file object */
@@ -4216,7 +4291,7 @@ static int _ext2_dup(
 done:
 
     if (new_file)
-        free(new_file);
+        _file_free(new_file);
 
     return ret;
 }
@@ -4226,7 +4301,7 @@ static int _ext2_target_fd(myst_fs_t* fs, myst_file_t* file)
     int ret = 0;
     ext2_t* ext2 = (ext2_t*)fs;
 
-    if (!_ext2_valid(ext2) || !file)
+    if (!_ext2_valid(ext2) || !_file_valid(file))
         ERAISE(-EINVAL);
 
     ret = -ENOTSUP;
@@ -4240,7 +4315,7 @@ static int _ext2_get_events(myst_fs_t* fs, myst_file_t* file)
     int ret = 0;
     ext2_t* ext2 = (ext2_t*)fs;
 
-    if (!_ext2_valid(ext2) || !file)
+    if (!_ext2_valid(ext2) || !_file_valid(file))
         ERAISE(-EINVAL);
 
     ret = -ENOTSUP;
@@ -4299,7 +4374,7 @@ static ssize_t _ext2_pread(
     uint64_t old_offset;
     ssize_t n;
 
-    if (!_ext2_valid(ext2) || !file)
+    if (!_ext2_valid(ext2) || !_file_valid(file))
         ERAISE(-EINVAL);
 
     if (!buf && count)
@@ -4336,7 +4411,7 @@ static ssize_t _ext2_pwrite(
     uint64_t old_offset;
     ssize_t n;
 
-    if (!_ext2_valid(ext2) || !file)
+    if (!_ext2_valid(ext2) || !_file_valid(file))
         ERAISE(-EINVAL);
 
     if (!buf && count)
@@ -4372,7 +4447,7 @@ static int _ext2_fcntl(myst_fs_t* fs, myst_file_t* file, int cmd, long arg)
     int ret = 0;
     ext2_t* ext2 = (ext2_t*)fs;
 
-    if (!_ext2_valid(ext2) || !file)
+    if (!_ext2_valid(ext2) || !_file_valid(file))
         ERAISE(-EINVAL);
 
     switch (cmd)
@@ -4383,6 +4458,7 @@ static int _ext2_fcntl(myst_fs_t* fs, myst_file_t* file, int cmd, long arg)
                 ERAISE(-EINVAL);
 
             file->fdflags = FD_CLOEXEC;
+            /* ATTN.TIMESTAMPS */
             goto done;
         }
         case F_GETFD:
@@ -4421,7 +4497,7 @@ static int _ext2_ioctl(
 
     (void)arg;
 
-    if (!_ext2_valid(ext2) || !file)
+    if (!_ext2_valid(ext2) || !_file_valid(file))
         ERAISE(-EBADF);
 
     if (request == TIOCGWINSZ)
@@ -4443,7 +4519,7 @@ static int _ext2_realpath(
     int ret = 0;
     ext2_t* ext2 = (ext2_t*)fs;
 
-    if (!_ext2_valid(ext2) || !file || !buf || !size)
+    if (!_ext2_valid(ext2) || !_file_valid(file) || !buf || !size)
         ERAISE(-EINVAL);
 
     if (strcmp(ext2->target, "/") == 0)
@@ -4453,9 +4529,10 @@ static int _ext2_realpath(
     }
     else
     {
-        int n = snprintf(buf, size, "%s%s", ext2->target, file->realpath);
+        if (myst_strlcpy(buf, ext2->target, size) >= size)
+            ERAISE(-ENAMETOOLONG);
 
-        if (n < 0 || n >= (int)size)
+        if (myst_strlcat(buf, file->realpath, size) >= size)
             ERAISE(-ENAMETOOLONG);
     }
 
@@ -4474,7 +4551,7 @@ static int _ext2_getdents64(
     size_t n = count / sizeof(struct dirent);
     size_t bytes = 0;
 
-    if (!_ext2_valid(ext2) || !file || !dirp)
+    if (!_ext2_valid(ext2) || !_file_valid(file) || !dirp)
         ERAISE(-EINVAL);
 
     if (!(file->open_flags & O_DIRECTORY))
@@ -4563,10 +4640,66 @@ static int _ext2_fstatfs(myst_fs_t* fs, myst_file_t* file, struct statfs* buf)
     int ret = 0;
     ext2_t* ext2 = (ext2_t*)fs;
 
-    if (!_ext2_valid(ext2) || !file || !buf)
+    if (!_ext2_valid(ext2) || !_file_valid(file) || !buf)
         ERAISE(-EINVAL);
 
     ECHECK(_statfs(ext2, buf));
+
+done:
+    return ret;
+}
+
+static int _ext2_futimens(
+    myst_fs_t* fs,
+    myst_file_t* file,
+    const struct timespec times[2])
+{
+    int ret = 0;
+    ext2_t* ext2 = (ext2_t*)fs;
+
+    if (!_ext2_valid(ext2) || !_file_valid(file))
+        ERAISE(-EINVAL);
+
+    if (times)
+    {
+        switch (times[0].tv_nsec)
+        {
+            case UTIME_OMIT:
+                break;
+            case UTIME_NOW:
+                _update_timestamps(&file->inode, ACCESS);
+                break;
+            default:
+            {
+                const struct timespec* ts = &times[0];
+                uint32_t sec = ts->tv_sec + (ts->tv_nsec / NANO_IN_SECOND);
+                file->inode.i_atime = sec;
+                break;
+            }
+        }
+
+        switch (times[1].tv_nsec)
+        {
+            case UTIME_OMIT:
+                break;
+            case UTIME_NOW:
+                _update_timestamps(&file->inode, MODIFY);
+                break;
+            default:
+            {
+                const struct timespec* ts = &times[1];
+                uint32_t sec = ts->tv_sec + (ts->tv_nsec / NANO_IN_SECOND);
+                file->inode.i_mtime = sec;
+                break;
+            }
+        }
+    }
+    else
+    {
+        /* set to current time */
+        _update_timestamps(&file->inode, ACCESS | MODIFY);
+        ECHECK(_write_inode(ext2, file->ino, &file->inode));
+    }
 
 done:
     return ret;
@@ -4620,6 +4753,7 @@ static myst_fs_t _base = {
     .fs_get_events = _ext2_get_events,
     .fs_statfs = _ext2_statfs,
     .fs_fstatfs = _ext2_fstatfs,
+    .fs_futimens = _ext2_futimens,
 };
 
 int ext2_create(

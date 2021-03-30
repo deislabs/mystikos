@@ -1,5 +1,3 @@
-.PHONY: all app cpio
-
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
@@ -9,22 +7,24 @@ TESTSDIR_MYST=/tests
 CFLAGS = -fPIC
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 
-all: myst cpio
+all: myst rootfs
 
-#OPTS = --trace-syscalls
+OPTS = --memory-size=16m
 
-run: 
+run:
 	@ echo -e "\n------starting msgpack-c cpp unit tests------\n"
 	$(foreach test, $(shell ls $(TESTSDIR_HOST)), $(MYST) exec rootfs $(TESTSDIR_MYST)/$(test) $(OPTS) $(NL))
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst
 
-app: clean
+$(APPDIR):
 	$(TOP)/scripts/appbuilder Dockerfile
 
-cpio: app
-	$(MYST) mkcpio $(APPDIR) rootfs
+rootfs: appdir
+	sudo $(MYST) mkext2 $(APPDIR) rootfs
+	sudo chown $(USER).$(USER) rootfs
+	truncate --size=-4096 rootfs
 
 clean:
 	rm -rf rootfs $(APPDIR)

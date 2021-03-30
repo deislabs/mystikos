@@ -55,16 +55,19 @@ cfargs=-style=file
 
 for i
 do
-    # if --check option present, then only check whether formatted.
-    if [ "${check}" == "1" ]; then
+    # silently ignore non-existent files
+    if [ -f "${i}" ]; then
+        # if --check option present, then only check whether formatted.
+        if [ "${check}" == "1" ]; then
 
-        ${cf} ${cfargs} "${i}" | diff -u "${i}" - > /dev/null
-        if [ "$?" != "0" ]; then
-            ret=1
-            echo "misformatted: ${i}"
+            ${cf} ${cfargs} "${i}" | diff -u "${i}" - > /dev/null
+            if [ "$?" != "0" ]; then
+                ret=1
+                echo "misformatted: ${i}"
+            fi
+        else
+            ${cf} ${cfargs} -i ${i}
         fi
-    else
-        ${cf} ${cfargs} -i ${i}
     fi
 done
 

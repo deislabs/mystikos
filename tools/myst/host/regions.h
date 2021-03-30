@@ -1,8 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#ifndef _MYST_MYST_HOST_REGIONS_H
+#define _MYST_MYST_HOST_REGIONS_H
+
 #include <limits.h>
 #include <myst/elf.h>
+#include <myst/region.h>
+
+int add_regions(void* arg, uint64_t baseaddr, myst_add_page_t add_page);
 
 typedef struct _region_details_item
 {
@@ -43,3 +49,8 @@ const region_details* create_region_details_from_package(
     size_t heap_pages);
 
 void free_region_details();
+
+/* map regions onto mmap mapping */
+int map_regions(void** addr, size_t* length);
+
+#endif /* _MYST_MYST_HOST_REGIONS_H */

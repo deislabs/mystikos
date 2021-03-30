@@ -29,4 +29,10 @@ int myst_split_path(
     char* basename,
     size_t basename_size);
 
+int myst_make_path(
+    char* buf,
+    size_t size,
+    const char* dirname,
+    const char* basename);
+
 #endif /* _MYST_PATHS_H */

@@ -17,13 +17,12 @@
 #include <myst/eraise.h>
 #include <myst/fssig.h>
 #include <myst/luks.h>
-#include <myst/regions.h>
+#include <myst/region.h>
 #include <myst/sha256.h>
 #include <myst/syscallext.h>
 #include <myst/tcall.h>
 #include <myst/thread.h>
 #include <oeprivate/rsa.h>
-#include <openenclave/bits/sgx/region.h>
 #include <openenclave/edger8r/enclave.h>
 #include <openenclave/enclave.h>
 #include "gencreds.h"
@@ -606,6 +605,7 @@ long myst_tcall(long n, long params[6])
         case SYS_statfs:
         case SYS_fstatfs:
         case SYS_lseek:
+        case SYS_utimensat:
         {
             extern long myst_handle_tcall(long n, long params[6]);
             return myst_handle_tcall(n, params);
