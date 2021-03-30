@@ -5,6 +5,7 @@
 #include <sys/utsname.h>
 
 #include <myst/chars.h>
+#include <myst/debugmalloc.h>
 #include <myst/fdtable.h>
 #include <myst/id.h>
 #include <myst/kernel.h>
@@ -19,7 +20,7 @@
 #define COLOR_GREEN "\e[92m"
 #define COLOR_RESET "\e[0m"
 
-#if defined(MYST_DEBUG) && !defined(MYST_RELEASE)
+#if !defined(MYST_RELEASE)
 
 __attribute__((__unused__)) static void _dump_args(size_t argc, char** argv)
 {
@@ -46,6 +47,8 @@ static help_t _help[] = {
     {"id", "print the current UID and GID"},
     {"maxthreads", "list open file descriptors"},
     {"hostname", "print the hostname"},
+    {"mcheck", "check heap memory"},
+    {"mdump", "print out in-use heap block"},
 };
 
 static size_t _nhelp = sizeof(_help) / sizeof(_help[0]);
@@ -162,6 +165,8 @@ static void _mem_command(int argc, char** argv)
 
 void myst_shell(const char* msg)
 {
+    char** argv = NULL;
+
     if (msg)
     {
         printf(COLOR_GREEN "%s" COLOR_RESET "\n", msg);
@@ -171,7 +176,6 @@ void myst_shell(const char* msg)
     {
         char line[1024];
         long n;
-        char** argv;
         size_t argc;
 
         if ((n = myst_tcall_readline("myst$ ", line, sizeof(line))) < 0)
@@ -235,6 +239,14 @@ void myst_shell(const char* msg)
                 printf("%s\n\n", buf.nodename);
             }
         }
+        else if (strcmp(argv[0], "mcheck") == 0)
+        {
+            myst_debug_malloc_check(false);
+        }
+        else if (strcmp(argv[0], "mdump") == 0)
+        {
+            myst_debug_malloc_dump();
+        }
         else if (strcmp(argv[0], "cont") == 0)
         {
             break;
@@ -245,7 +257,11 @@ void myst_shell(const char* msg)
         }
 
         free(argv);
+        argv = NULL;
     }
+
+    if (argv)
+        free(argv);
 }
 
-#endif /* defined(MYST_DEBUG) && !defined(MYST_RELEASE) */
+#endif /* !defined(MYST_RELEASE) */
