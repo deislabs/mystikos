@@ -8,22 +8,18 @@ APPNAME=HelloWorld
 #OPTS += --strace
 #endif
 
-OPTS = --memory-size=256m
-
 all: appdir private.pem
 
-# This will crash due to insufficient heap memory for dotnet runtime.
-# Default is 64mb, and the runtime requires at least 512mb.
-# Enable after issue 146 is resolved.
-#run-unsigned:
-#	$(MYST) mkcpio appdir rootfs
-#	$(MYST_EXEC) $(OPTS) rootfs /HelloWorld/build/HelloWorld
+run-unsigned:
+	$(MYST) mkcpio appdir rootfs
+	$(MYST_EXEC) $(OPTS) --memory-size=1024m rootfs /app/HelloWorld
 
 run: appdir private.pem
 	$(MYST) package appdir private.pem config.json
 	myst/bin/$(APPNAME) $(OPTS)
 	
 gdb: appdir private.pem
+	$(MYST) package appdir private.pem config.json
 	$(MYST_GDB) --args myst/bin/$(APPNAME) $(OPTS)
 
 appdir:

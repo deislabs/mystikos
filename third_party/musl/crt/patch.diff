@@ -280,6 +280,24 @@ index afec985a..4cd45927 100644
  	return p;
  }
  
+diff --git a/src/fenv/feupdateenv.c b/src/fenv/feupdateenv.c
+index 50cef8e5..803a7f8d 100644
+--- a/src/fenv/feupdateenv.c
++++ b/src/fenv/feupdateenv.c
+@@ -7,3 +7,13 @@ int feupdateenv(const fenv_t *envp)
+ 	feraiseexcept(ex);
+ 	return 0;
+ }
++
++int feenableexcept(int excepts)
++{
++	return 0;
++}
++
++int fedisableexcept(int excepts)
++{
++	return 0;
++}
 diff --git a/src/linux/epoll.c b/src/linux/epoll.c
 index deff5b10..fd66b82a 100644
 --- a/src/linux/epoll.c
@@ -337,6 +355,17 @@ index 6f3ef656..614121c3 100644
 +
 +    return myst_syscall(n, params);
 +}
+diff --git a/src/network/res_init.c b/src/network/res_init.c
+index 5dba9dfc..9b595a19 100644
+--- a/src/network/res_init.c
++++ b/src/network/res_init.c
+@@ -4,3 +4,5 @@ int res_init()
+ {
+ 	return 0;
+ }
++
++weak_alias(res_init, __res_init);
+\ No newline at end of file
 diff --git a/src/thread/__unmapself.c b/src/thread/__unmapself.c
 index 31d94e67..e34cca2e 100644
 --- a/src/thread/__unmapself.c

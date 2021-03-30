@@ -13,7 +13,6 @@ endif
 endif
 
 DIRS += msgpack_c
-DIRS += python
 DIRS += python_webserver
 # temporary ban dotnet test for code coverage due to the gcov infra (malcode filename) bug
 ifndef MYST_ENABLE_GCOV
@@ -41,4 +40,4 @@ __run:
 tests:
 	@ $(MAKE) -s __clean 
 	@ $(MAKE) -s __build
-	@ $(MAKE) -s __run
+	@ $(MAKE) -j -s __run
