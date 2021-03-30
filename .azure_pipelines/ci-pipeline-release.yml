@@ -64,17 +64,6 @@ jobs:
         displayName: 'Generate release v${{ parameters.VERSION }} artifact'
         condition: eq(variables['Agent.JobStatus'], 'succeeded')
       
-      # publish as artifacts
-      # - publish: $(System.DefaultWorkingDirectory)/mystikos-${{ parameters.VERSION }}-x86_64.tar.gz
-      #   artifact: 'Release binary'
-      #   displayName: 'Publish release binary'
-      #   condition: eq(variables['Agent.JobStatus'], 'succeeded')
-      
-      # - publish: $(System.DefaultWorkingDirectory)/mystikos-${{ parameters.VERSION }}.tar.gz
-      #   artifact: 'Release binary code tarball'
-      #   displayName: 'Publish release source code'
-      #   condition: eq(variables['Agent.JobStatus'], 'succeeded')
-      
       # Verify published artifact, build all source files
       - script: |
           sudo rm -rf /tmp/myst*
