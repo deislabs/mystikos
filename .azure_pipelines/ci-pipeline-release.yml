@@ -90,7 +90,7 @@ jobs:
           sed -i 's/BINDIR=$(BUILDDIR)\/bin/BINDIR\=$(TOP)\/mystikos\/bin/g' defs.mak
           sed -i 's/SUBBINDIR=$(BINDIR)\/$(SUBDIR)/SUBBINDIR\=$(BUILDDIR)\/bin\/$(SUBDIR)/g' defs.mak
           sed -i 's/MUSL_GCC=$(BUILDDIR)\/musl\/bin\/musl-gcc/MUSL_GCC\=gcc -lpthread/g' defs.mak
-          echo "NDEBUG=1">>defs.mak
+          echo "MYST_DEFINES += -DNDEBUG">>defs.mak
           make -j tests ALLTESTS=1 VERBOSE=1
         displayName: 'run all tests'
         continueOnError: true
