@@ -40,6 +40,7 @@
 /ltp/testcases/kernel/syscalls/ftruncate/ftruncate01_64
 /ltp/testcases/kernel/syscalls/futex/futex_wait01
 /ltp/testcases/kernel/syscalls/futex/futex_wait04
+/ltp/testcases/kernel/syscalls/futimesat/futimesat01
 /ltp/testcases/kernel/syscalls/getcpu/getcpu01
 /ltp/testcases/kernel/syscalls/getcwd/getcwd02
 /ltp/testcases/kernel/syscalls/getdomainname/getdomainname01
@@ -57,13 +58,14 @@
 /ltp/testcases/kernel/syscalls/getrandom/getrandom04
 /ltp/testcases/kernel/syscalls/gettid/gettid01
 /ltp/testcases/kernel/syscalls/getuid/getuid01
+/ltp/testcases/kernel/syscalls/link/link02
+/ltp/testcases/kernel/syscalls/link/link03
+/ltp/testcases/kernel/syscalls/link/link05
+/ltp/testcases/kernel/syscalls/llseek/llseek02
 /ltp/testcases/kernel/syscalls/llseek/llseek03
 /ltp/testcases/kernel/syscalls/lseek/lseek01
 /ltp/testcases/kernel/syscalls/lseek/lseek07
 /ltp/testcases/kernel/syscalls/lseek/lseek11
-/ltp/testcases/kernel/syscalls/link/link02
-/ltp/testcases/kernel/syscalls/link/link03
-/ltp/testcases/kernel/syscalls/link/link05
 /ltp/testcases/kernel/syscalls/madvise/madvise05
 /ltp/testcases/kernel/syscalls/memcmp/memcmp01
 /ltp/testcases/kernel/syscalls/memcpy/memcpy01
@@ -82,6 +84,7 @@
 /ltp/testcases/kernel/syscalls/msync/msync01
 /ltp/testcases/kernel/syscalls/nanosleep/nanosleep04
 /ltp/testcases/kernel/syscalls/newuname/newuname01
+/ltp/testcases/kernel/syscalls/openat/openat01
 /ltp/testcases/kernel/syscalls/open/open01
 /ltp/testcases/kernel/syscalls/open/open03
 /ltp/testcases/kernel/syscalls/open/open07
@@ -113,7 +116,15 @@
 /ltp/testcases/kernel/syscalls/readv/readv02
 /ltp/testcases/kernel/syscalls/readv/readv03
 /ltp/testcases/kernel/syscalls/recvmsg/recvmsg02
+/ltp/testcases/kernel/syscalls/rename/rename01
+/ltp/testcases/kernel/syscalls/rename/rename02
+/ltp/testcases/kernel/syscalls/rename/rename03
+/ltp/testcases/kernel/syscalls/rename/rename04
+/ltp/testcases/kernel/syscalls/rename/rename05
 /ltp/testcases/kernel/syscalls/rename/rename06
+/ltp/testcases/kernel/syscalls/rename/rename07
+/ltp/testcases/kernel/syscalls/rename/rename10
+/ltp/testcases/kernel/syscalls/rename/rename13
 /ltp/testcases/kernel/syscalls/rmdir/rmdir01
 /ltp/testcases/kernel/syscalls/rt_sigaction/rt_sigaction01
 /ltp/testcases/kernel/syscalls/sbrk/sbrk02
@@ -157,6 +168,7 @@
 /ltp/testcases/kernel/syscalls/truncate/truncate02
 /ltp/testcases/kernel/syscalls/truncate/truncate02_64
 /ltp/testcases/kernel/syscalls/uname/uname01
+/ltp/testcases/kernel/syscalls/utime/utime04
 /ltp/testcases/kernel/syscalls/wait/wait01
 /ltp/testcases/kernel/syscalls/writev/writev01
 /ltp/testcases/kernel/syscalls/writev/writev02
