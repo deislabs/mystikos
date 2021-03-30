@@ -15,12 +15,11 @@
 #include <myst/strings.h>
 #include <myst/syscall.h>
 
-#define COLOR_RED "\e[31m"
-#define COLOR_BLUE "\e[94m"
-#define COLOR_GREEN "\e[92m"
-#define COLOR_RESET "\e[0m"
-
 #if !defined(MYST_RELEASE)
+
+#define COLOR_LIGHT_BLUE "\e[94m"
+#define COLOR_LIGHT_GREEN "\e[92m"
+#define COLOR_RESET "\e[0m"
 
 __attribute__((__unused__)) static void _dump_args(size_t argc, char** argv)
 {
@@ -101,7 +100,7 @@ static void _ls_command(int argc, char** argv)
             continue;
 
         if (ent->d_type == DT_DIR)
-            printf(COLOR_BLUE);
+            printf(COLOR_LIGHT_BLUE);
 
         printf("%s" COLOR_RESET "\n", name);
     }
@@ -169,7 +168,7 @@ void myst_shell(const char* msg)
 
     if (msg)
     {
-        printf(COLOR_GREEN "%s" COLOR_RESET "\n", msg);
+        printf(COLOR_LIGHT_GREEN "%s" COLOR_RESET "\n", msg);
     }
 
     for (;;)
