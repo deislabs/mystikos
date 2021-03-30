@@ -575,6 +575,11 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     __options.have_syscall_instruction = args->have_syscall_instruction;
     __options.export_ramfs = args->export_ramfs;
 
+#if !defined(MYST_RELEASE)
+    if (args->image_data != NULL)
+        myst_enable_debug_malloc = true;
+#endif
+
     /* enable error tracing if requested */
     if (args->trace_errors)
         myst_set_trace(true);
@@ -701,16 +706,11 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     /* Set the 'run-proc' which is called by the target to run new threads */
     ECHECK(myst_tcall_set_run_thread_function(myst_run_thread));
 
-#ifdef MYST_ENABLE_LEAK_CHECKER
-    /* print out memory statistics */
-    // myst_dump_malloc_stats();
-#endif
-
     myst_times_start();
 
-#if defined(MYST_DEBUG) && !defined(MYST_RELEASE)
+#if !defined(MYST_RELEASE)
     if (args->shell)
-        myst_shell("\nMystikos shell stage1\n");
+        myst_shell("\nMystikos shell (enter)\n");
 #endif
 
     /* Run the main program: wait for SYS_exit to perform longjmp() */
@@ -739,13 +739,13 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     }
     else
     {
-#if defined(MYST_DEBUG) && !defined(MYST_RELEASE)
-        if (args->shell)
-            myst_shell("\nMystikos shell stage2\n");
-#endif
-
         /* thread jumps here on SYS_exit syscall */
         exit_status = thread->exit_status;
+
+#if !defined(MYST_RELEASE)
+        if (args->shell)
+            myst_shell("\nMystikos shell (exit)\n");
+#endif
 
         /* release the fdtable */
         if (thread->fdtable)
@@ -805,7 +805,9 @@ int myst_enter_kernel(myst_kernel_args_t* args)
 
     /* check for memory leaks */
     if (myst_enable_debug_malloc)
-        myst_debug_malloc_check();
+    {
+        myst_debug_malloc_check(true);
+    }
 
     /* ATTN: move myst_call_atexit_functions() here */
 

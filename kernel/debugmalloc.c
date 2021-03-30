@@ -17,7 +17,7 @@
 #define BACKTRACE_MAX 16
 
 /* Flags to control runtime behavior. */
-bool myst_enable_debug_malloc = true;
+bool myst_enable_debug_malloc;
 bool myst_enable_debug_malloc_memset = true;
 
 /*
@@ -423,9 +423,7 @@ void* myst_debug_memalign(size_t alignment, size_t size)
 {
     void* ptr = NULL;
 
-    // The only difference between posix_memalign and the obsolete memalign is
-    // that posix_memalign requires alignment to be a multiple of sizeof(void*).
-    // Adjust the alignment if needed.
+    // posix_memalign requires alignment to be a multiple of sizeof(void*)
     alignment = _round_up_to_multiple(alignment, sizeof(void*));
 
     myst_debug_posix_memalign(&ptr, alignment, size);
@@ -444,7 +442,7 @@ void myst_debug_malloc_dump(void)
     _dump(true);
 }
 
-size_t myst_debug_malloc_check(void)
+size_t myst_debug_malloc_check(bool dump)
 {
     list_t* list = &_list;
     size_t count = 0;
@@ -456,7 +454,8 @@ size_t myst_debug_malloc_check(void)
 
         if (count)
         {
-            _dump(false);
+            if (dump)
+                _dump(false);
 
             for (header_t* p = list->head; p; p = p->next)
                 _check_block(p);
