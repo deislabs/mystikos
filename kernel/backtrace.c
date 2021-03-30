@@ -153,6 +153,9 @@ void myst_dump_backtrace(void** buffer, size_t size)
         if (_addr_to_func_name(addr, &name) == 0)
             myst_eprintf("%p: %s()\n", buffer[i], name);
         else
-            myst_eprintf("%p: unknown\n", buffer[i]);
+        {
+            // myst_eprintf("%p: unknown\n", buffer[i]);
+            break;
+        }
     }
 }
