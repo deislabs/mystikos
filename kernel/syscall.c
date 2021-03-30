@@ -1481,7 +1481,7 @@ done:
     return ret;
 }
 
-static char _hostname[HOST_NAME_MAX] = "TEE";
+static char _hostname[HOST_NAME_MAX] = "mystikos";
 static myst_spinlock_t _hostname_lock = MYST_SPINLOCK_INITIALIZER;
 
 long myst_syscall_uname(struct utsname* buf)
@@ -1508,6 +1508,24 @@ long myst_syscall_sethostname(const char* hostname, MYST_UNUSED size_t len)
     myst_spin_unlock(&_hostname_lock);
 
     return 0;
+}
+
+int myst_gethostname(char* name, size_t len)
+{
+    int ret = 0;
+
+    if (!name)
+        ERAISE(-EINVAL);
+
+    myst_spin_lock(&_hostname_lock);
+    size_t r = myst_strlcpy(name, _hostname, len);
+    myst_spin_unlock(&_hostname_lock);
+
+    if (r >= len)
+        ERAISE(-ENAMETOOLONG);
+
+done:
+    return ret;
 }
 
 long myst_syscall_getrandom(void* buf, size_t buflen, unsigned int flags)
