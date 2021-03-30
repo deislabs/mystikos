@@ -90,15 +90,15 @@ function test_passed() {
 }
 
 TESTS=tests_alltests.txt
-# FS=ext2fs
-# run_tests $TESTS
+FS=ext2fs
+run_tests $TESTS
 
-# FS=hostfs
-# run_tests $TESTS
+FS=hostfs
+run_tests $TESTS
 
-# FS=ramfs
-# run_tests $TESTS
+FS=ramfs
+run_tests $TESTS
 
-# show_stats
+show_stats
 
 generate_matrix >> README.md
