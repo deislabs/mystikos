@@ -527,6 +527,13 @@ static int _ed_close(myst_epolldev_t* epolldev, myst_epoll_t* epoll)
     if (!epolldev || !_valid_epoll(epoll))
         ERAISE(-EBADF);
 
+    for (epoll_entry_t* p = (epoll_entry_t*)epoll->list.head; p;)
+    {
+        epoll_entry_t* next = p->next;
+        free(p);
+        p = next;
+    }
+
     memset(epoll, 0, sizeof(myst_epoll_t));
     free(epoll);
 
