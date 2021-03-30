@@ -275,4 +275,6 @@ int myst_syscall_getitimer(int which, struct itimerval* curr_value);
 
 long myst_syscall_fsync(int fd);
 
+long myst_cancel_itimer(void);
+
 #endif /* _MYST_SYSCALL_H */
