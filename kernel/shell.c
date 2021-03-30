@@ -44,6 +44,7 @@ static help_t _help[] = {
     {"fds", "list open file descriptors"},
     {"id", "print the current UID and GID"},
     {"maxthreads", "list open file descriptors"},
+    {"hostname", "print the hostname"},
 };
 
 static size_t _nhelp = sizeof(_help) / sizeof(_help[0]);
@@ -219,6 +220,19 @@ void myst_shell(const char* msg)
             uid_t gid = MYST_DEFAULT_GID;
             printf("uid=%d gid=%d\n", uid, gid);
             printf("\n");
+        }
+        else if (strcmp(argv[0], "hostname") == 0)
+        {
+            char buf[HOST_NAME_MAX];
+
+            if (myst_gethostname(buf, sizeof(buf)) != 0)
+            {
+                myst_eprintf("%s: failed to get hostname\n", argv[0]);
+            }
+            else
+            {
+                printf("%s\n\n", buf);
+            }
         }
         else if (strcmp(argv[0], "cont") == 0)
         {
