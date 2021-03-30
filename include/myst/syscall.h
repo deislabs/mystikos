@@ -13,6 +13,7 @@
 #include <sys/syscall.h>
 #include <sys/time.h>
 #include <sys/uio.h>
+#include <sys/utsname.h>
 #include <time.h>
 
 #include <myst/defs.h>
@@ -253,11 +254,11 @@ long myst_syscall_kill(int pid, int sig);
 
 long myst_syscall_sethostname(const char* hostname, size_t len);
 
-int myst_gethostname(char* name, size_t len);
-
 long myst_syscall_kill(int pid, int sig);
 
 long myst_syscall_sendfile(int out_fd, int in_fd, off_t* offset, size_t count);
+
+long myst_syscall_uname(struct utsname* buf);
 
 long myst_syscall_sethostname(const char* hostname, size_t len);
 
