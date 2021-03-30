@@ -157,6 +157,7 @@
 /ltp/testcases/kernel/syscalls/fchown/fchown03
 /ltp/testcases/kernel/syscalls/fchown/fchown03_16
 /ltp/testcases/kernel/syscalls/fchown/fchown05_16
+/ltp/testcases/kernel/syscalls/fchownat/fchownat02
 /ltp/testcases/kernel/syscalls/fcntl/fcntl01
 /ltp/testcases/kernel/syscalls/fcntl/fcntl01_64
 /ltp/testcases/kernel/syscalls/fcntl/fcntl02
@@ -185,6 +186,8 @@
 /ltp/testcases/kernel/syscalls/fcntl/fcntl26_64
 /ltp/testcases/kernel/syscalls/fcntl/fcntl31
 /ltp/testcases/kernel/syscalls/fcntl/fcntl31_64
+/ltp/testcases/kernel/syscalls/fcntl/fcntl32
+/ltp/testcases/kernel/syscalls/fcntl/fcntl32_64
 /ltp/testcases/kernel/syscalls/fcntl/fcntl33
 /ltp/testcases/kernel/syscalls/fcntl/fcntl33_64
 /ltp/testcases/kernel/syscalls/fcntl/fcntl34
@@ -364,13 +367,15 @@
 /ltp/testcases/kernel/syscalls/lchown/lchown01_16
 /ltp/testcases/kernel/syscalls/lchown/lchown03
 /ltp/testcases/kernel/syscalls/lchown/lchown03_16
+/ltp/testcases/kernel/syscalls/link/link04
 /ltp/testcases/kernel/syscalls/link/link08
 /ltp/testcases/kernel/syscalls/linkat/linkat02
 /ltp/testcases/kernel/syscalls/listen/listen01
 /ltp/testcases/kernel/syscalls/llseek/llseek01
-/ltp/testcases/kernel/syscalls/llseek/llseek02
 /ltp/testcases/kernel/syscalls/lremovexattr/lremovexattr01
 /ltp/testcases/kernel/syscalls/lseek/lseek02
+/ltp/testcases/kernel/syscalls/lstat/lstat01
+/ltp/testcases/kernel/syscalls/lstat/lstat01_64
 /ltp/testcases/kernel/syscalls/lstat/lstat02
 /ltp/testcases/kernel/syscalls/lstat/lstat02_64
 /ltp/testcases/kernel/syscalls/madvise/madvise01
@@ -424,6 +429,7 @@
 /ltp/testcases/kernel/syscalls/modify_ldt/modify_ldt02
 /ltp/testcases/kernel/syscalls/modify_ldt/modify_ldt03
 /ltp/testcases/kernel/syscalls/mount/mount01
+/ltp/testcases/kernel/syscalls/mount/mount02
 /ltp/testcases/kernel/syscalls/mount/mount03
 /ltp/testcases/kernel/syscalls/mount/mount05
 /ltp/testcases/kernel/syscalls/mount/mount06
@@ -468,8 +474,8 @@
 /ltp/testcases/kernel/syscalls/open/open14
 /ltp/testcases/kernel/syscalls/open_tree/open_tree01
 /ltp/testcases/kernel/syscalls/open_tree/open_tree02
-/ltp/testcases/kernel/syscalls/openat/openat01
 /ltp/testcases/kernel/syscalls/openat/openat02_child
+/ltp/testcases/kernel/syscalls/openat/openat03
 /ltp/testcases/kernel/syscalls/openat2/openat201
 /ltp/testcases/kernel/syscalls/openat2/openat202
 /ltp/testcases/kernel/syscalls/openat2/openat203
@@ -537,12 +543,11 @@
 /ltp/testcases/kernel/syscalls/recvmsg/recvmsg03
 /ltp/testcases/kernel/syscalls/remap_file_pages/remap_file_pages01
 /ltp/testcases/kernel/syscalls/remap_file_pages/remap_file_pages02
+/ltp/testcases/kernel/syscalls/rename/rename08
 /ltp/testcases/kernel/syscalls/rename/rename09
 /ltp/testcases/kernel/syscalls/rename/rename11
 /ltp/testcases/kernel/syscalls/rename/rename12
 /ltp/testcases/kernel/syscalls/renameat/renameat01
-/ltp/testcases/kernel/syscalls/renameat2/renameat201
-/ltp/testcases/kernel/syscalls/renameat2/renameat202
 /ltp/testcases/kernel/syscalls/rmdir/rmdir02
 /ltp/testcases/kernel/syscalls/rt_sigaction/rt_sigaction02
 /ltp/testcases/kernel/syscalls/rt_sigaction/rt_sigaction03
@@ -584,7 +589,6 @@
 /ltp/testcases/kernel/syscalls/sendfile/sendfile07_64
 /ltp/testcases/kernel/syscalls/sendfile/sendfile09
 /ltp/testcases/kernel/syscalls/sendfile/sendfile09_64
-/ltp/testcases/kernel/syscalls/sendmmsg/sendmmsg01
 /ltp/testcases/kernel/syscalls/sendmmsg/sendmmsg02
 /ltp/testcases/kernel/syscalls/sendmsg/sendmsg01
 /ltp/testcases/kernel/syscalls/sendmsg/sendmsg03
@@ -676,6 +680,7 @@
 /ltp/testcases/kernel/syscalls/setuid/setuid04
 /ltp/testcases/kernel/syscalls/setuid/setuid04_16
 /ltp/testcases/kernel/syscalls/setxattr/setxattr01
+/ltp/testcases/kernel/syscalls/setxattr/setxattr02
 /ltp/testcases/kernel/syscalls/sgetmask/sgetmask01
 /ltp/testcases/kernel/syscalls/signal/signal06
 /ltp/testcases/kernel/syscalls/sigpending/sigpending02
@@ -700,6 +705,7 @@
 /ltp/testcases/kernel/syscalls/statfs/statfs02_64
 /ltp/testcases/kernel/syscalls/statfs/statfs03
 /ltp/testcases/kernel/syscalls/statfs/statfs03_64
+/ltp/testcases/kernel/syscalls/statvfs/statvfs02
 /ltp/testcases/kernel/syscalls/statx/statx01
 /ltp/testcases/kernel/syscalls/statx/statx04
 /ltp/testcases/kernel/syscalls/statx/statx05
@@ -754,8 +760,13 @@
 /ltp/testcases/kernel/syscalls/umount2/umount2_02
 /ltp/testcases/kernel/syscalls/umount2/umount2_03
 /ltp/testcases/kernel/syscalls/uname/uname02
+/ltp/testcases/kernel/syscalls/unlink/unlink05
+/ltp/testcases/kernel/syscalls/unlink/unlink07
+/ltp/testcases/kernel/syscalls/unlink/unlink08
+/ltp/testcases/kernel/syscalls/utime/utime01
 /ltp/testcases/kernel/syscalls/utime/utime02
 /ltp/testcases/kernel/syscalls/utime/utime05
+/ltp/testcases/kernel/syscalls/utime/utime06
 /ltp/testcases/kernel/syscalls/utimensat/utimensat01
 /ltp/testcases/kernel/syscalls/utimes/utimes01
 /ltp/testcases/kernel/syscalls/vfork/vfork02
