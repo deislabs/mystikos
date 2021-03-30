@@ -21,7 +21,7 @@ rootfs: build
 tests: test-default-hostname test-override-hostname
 
 test-default-hostname: rootfs
-	$(RUNTEST) $(MYST_EXEC) rootfs $(OPTS) /bin/test TEE
+	$(RUNTEST) $(MYST_EXEC) rootfs $(OPTS) /bin/test mystikos
 
 test-override-hostname: rootfs
 	$(RUNTEST) $(MYST_EXEC) rootfs $(OPTS) --app-config-path config1.json /bin/test test1
