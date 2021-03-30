@@ -23,7 +23,6 @@
 #include <myst/tcall.h>
 #include <myst/thread.h>
 #include <oeprivate/rsa.h>
-#include <openenclave/bits/sgx/region.h>
 #include <openenclave/edger8r/enclave.h>
 #include <openenclave/enclave.h>
 #include "gencreds.h"

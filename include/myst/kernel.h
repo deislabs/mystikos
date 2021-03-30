@@ -4,6 +4,8 @@
 #ifndef _MYST_KERNEL_H
 #define _MYST_KERNEL_H
 
+#include <limits.h>
+
 #include <myst/tcall.h>
 #include <myst/types.h>
 
@@ -46,9 +48,11 @@ typedef struct myst_kernel_args
     const char** envp;
 
     /* current working directory for app */
+    char cwd_buffer[PATH_MAX];
     const char* cwd;
 
     /* configure hostname in kernel */
+    char hostname_buffer[1024];
     const char* hostname;
 
     /* The read-write-execute memory management pages */
