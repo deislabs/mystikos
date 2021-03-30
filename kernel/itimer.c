@@ -24,6 +24,7 @@ typedef struct itimer
     uint64_t real_value;    /* ITIMER_REAL value */
     myst_mutex_t mutex;
     _Atomic(int) initialized;
+    bool cancel;
 } itimer_t;
 
 static itimer_t _it;
@@ -99,6 +100,9 @@ long myst_syscall_run_itimer(void)
             uint64_t start = _get_current_time();
             int r = myst_cond_timedwait(&_it.cond, &_it.mutex, to);
             uint64_t end = _get_current_time();
+
+            if (_it.cancel)
+                break;
 
             assert(start != 0);
             assert(end != 0);
@@ -182,6 +186,27 @@ int myst_syscall_getitimer(int which, struct itimerval* curr_value)
     myst_mutex_lock(&_it.mutex);
     myst_uint64_to_timeval(_it.real_value, &curr_value->it_value);
     myst_uint64_to_timeval(_it.real_interval, &curr_value->it_interval);
+    myst_mutex_unlock(&_it.mutex);
+
+done:
+    return ret;
+}
+
+long myst_cancel_itimer(void)
+{
+    long ret = 0;
+
+    myst_mutex_lock(&_it.mutex);
+    {
+        _it.cancel = true;
+
+        /* signal the itimer thread */
+        if (myst_cond_signal(&_it.cond) != 0)
+        {
+            myst_mutex_unlock(&_it.mutex);
+            ERAISE(-ENOSYS);
+        }
+    }
     myst_mutex_unlock(&_it.mutex);
 
 done:

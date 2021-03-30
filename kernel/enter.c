@@ -742,6 +742,9 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         /* thread jumps here on SYS_exit syscall */
         exit_status = thread->exit_status;
 
+        /* cancel the itimer if any */
+        myst_cancel_itimer();
+
 #if !defined(MYST_RELEASE)
         if (args->shell)
             myst_shell("\nMystikos shell (exit)\n");
@@ -806,7 +809,11 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     /* check for memory leaks */
     if (myst_enable_debug_malloc)
     {
-        myst_debug_malloc_check(true);
+        if (myst_debug_malloc_check(true) != 0)
+        {
+            // uncomment next line to crash on memory leaks
+            // myst_panic("memory leaks detected");
+        }
     }
 
     /* ATTN: move myst_call_atexit_functions() here */
