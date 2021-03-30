@@ -1,7 +1,9 @@
 from http.server import HTTPServer, BaseHTTPRequestHandler
+import numpy
 
 class MyWebServer(BaseHTTPRequestHandler):
     def do_GET(self):
+        a = numpy.arange(25).reshape(5, 5)
         self.send_response(200)
         self.send_header("Content-type", "text/html")
         self.end_headers()
@@ -9,6 +11,7 @@ class MyWebServer(BaseHTTPRequestHandler):
         self.wfile.write(bytes("<p>Request: %s</p>" % self.path, "utf-8"))
         self.wfile.write(bytes("<body>", "utf-8"))
         self.wfile.write(bytes("<p>Hello world from Python Web Server.</p>", "utf-8"))
+        self.wfile.write(bytes("<p>" + numpy.array2string(a) + "</p>", "utf-8"))
         self.wfile.write(bytes("</body></html>", "utf-8"))
         self.wfile.write(bytes("\n", "utf-8"))
 
