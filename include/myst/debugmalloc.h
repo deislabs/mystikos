@@ -19,7 +19,7 @@ int myst_debug_posix_memalign(void** memptr, size_t alignment, size_t size);
 
 void* myst_debug_memalign(size_t alignment, size_t size);
 
-size_t myst_debug_malloc_check(void);
+size_t myst_debug_malloc_check(bool dump);
 
 void myst_debug_malloc_dump(void);
 
