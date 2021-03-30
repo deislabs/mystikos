@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/utsname.h>
 
 #include <myst/chars.h>
 #include <myst/fdtable.h>
@@ -223,15 +224,15 @@ void myst_shell(const char* msg)
         }
         else if (strcmp(argv[0], "hostname") == 0)
         {
-            char buf[HOST_NAME_MAX];
+            struct utsname buf;
 
-            if (myst_gethostname(buf, sizeof(buf)) != 0)
+            if (myst_syscall_uname(&buf) != 0)
             {
-                myst_eprintf("%s: failed to get hostname\n", argv[0]);
+                myst_eprintf("%s: myst_syscall_uname() failed\n", argv[0]);
             }
             else
             {
-                printf("%s\n\n", buf);
+                printf("%s\n\n", buf.nodename);
             }
         }
         else if (strcmp(argv[0], "cont") == 0)
