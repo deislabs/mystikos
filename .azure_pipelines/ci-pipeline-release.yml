@@ -67,7 +67,7 @@ jobs:
       # Verify published artifact, build all source files
       - script: |
           sudo rm -rf /tmp/myst*
-          make -j MYST_NIGHTLY_TEST=1
+          make -j
         displayName: 'build repo source'
         workingDirectory: $(Build.SourcesDirectory)
 
