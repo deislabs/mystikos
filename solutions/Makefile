@@ -2,7 +2,7 @@ TOP=$(abspath ..)
 include $(TOP)/defs.mak
 
 DIRS =
-DIRS += attested_tls
+# DIRS += attested_tls
 
 ifdef DB_SERVER_NAME
 ifdef DB_NAME
