@@ -8,6 +8,7 @@
 #include <myst/atexit.h>
 #include <myst/cpio.h>
 #include <myst/crash.h>
+#include <myst/debugmalloc.h>
 #include <myst/eraise.h>
 #include <myst/errno.h>
 #include <myst/exec.h>
@@ -57,17 +58,6 @@ long myst_tcall(long n, long params[6])
         myst_set_fsbase(fs);
 
     return ret;
-}
-
-void myst_dump_malloc_stats(void)
-{
-    myst_malloc_stats_t stats;
-
-    if (myst_get_malloc_stats(&stats) == 0)
-    {
-        myst_eprintf("kernel: memory used: %zu\n", stats.usage);
-        myst_eprintf("kernel: peak memory used: %zu\n", stats.peak_usage);
-    }
 }
 
 static int _setup_tty(void)
@@ -807,17 +797,15 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     /* Put the thread on the zombie list */
     myst_zombify_thread(thread);
 
+    /* release any process mappings */
+    myst_release_process_mappings(myst_getpid());
+
     /* call functions installed with myst_atexit() */
     myst_call_atexit_functions();
 
-#ifdef MYST_ENABLE_LEAK_CHECKER
-    /* Check for memory leaks */
-    if (myst_find_leaks() != 0)
-    {
-        myst_crash();
-        myst_panic("kernel memory leaks");
-    }
-#endif
+    /* check for memory leaks */
+    if (myst_enable_debug_malloc)
+        myst_debug_malloc_check();
 
     /* ATTN: move myst_call_atexit_functions() here */
 
