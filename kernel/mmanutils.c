@@ -661,3 +661,12 @@ void myst_mman_close_notify(int fd)
         myst_spin_unlock(&_msync_mappings_lock);
     }
 }
+
+void myst_mman_stats(myst_mman_stats_t* buf)
+{
+    buf->total_size = _mman.end - _mman.start;
+    buf->brk_size = _mman.brk - _mman.start;
+    buf->map_size = _mman.end - _mman.map;
+    buf->free_size = _mman.map - _mman.brk;
+    buf->used_size = buf->brk_size + buf->map_size;
+}
