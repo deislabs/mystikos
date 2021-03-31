@@ -48,6 +48,8 @@ static help_t _help[] = {
     {"hostname", "print the hostname"},
     {"mcheck", "check heap memory"},
     {"mdump", "print out in-use heap block"},
+    {"args", "print the command line arguments"},
+    {"env", "print the environment variables"},
 };
 
 static size_t _nhelp = sizeof(_help) / sizeof(_help[0]);
@@ -152,31 +154,57 @@ static void _mem_command(int argc, char** argv)
     (void)argv;
 
     n = buf.total_size;
-    printf("total ram        =%11zu (%zumb)\n", n, n / mb);
+    printf("total ram    =%11zu (%zumb)\n", n, n / mb);
 
     n = buf.free_size;
-    printf("free ram         =%11zu (%zumb)\n", n, n / mb);
+    printf("free ram     =%11zu (%zumb)\n", n, n / mb);
 
     n = buf.used_size;
-    printf("used ram         =%11zu (%zumb)\n", n, n / mb);
+    printf("used ram     =%11zu (%zumb)\n", n, n / mb);
 
     n = buf.map_size;
-    printf("map used         =%11zu (%zumb)\n", n, n / mb);
+    printf("map used     =%11zu (%zumb)\n", n, n / mb);
 
     n = buf.brk_size;
-    printf("brk used         =%11zu (%zumb)\n", n, n / mb);
+    printf("brk used     =%11zu (%zumb)\n", n, n / mb);
 
     n = __myst_kernel_args.rootfs_size;
-    printf("cpio size        =%11zu (%zumb)\n", n, n / mb);
+    printf("cpio size    =%11zu (%zumb)\n", n, n / mb);
 
     n = __myst_kernel_args.kernel_size;
-    printf("kernel size      =%11zu (%zumb)\n", n, n / mb);
+    printf("kernel size  =%11zu (%zumb)\n", n, n / mb);
 
     n = __myst_kernel_args.crt_size;
-    printf("crt size         =%11zu (%zumb)\n", n, n / mb);
+    printf("crt size     =%11zu (%zumb)\n", n, n / mb);
 
     n = __myst_kernel_args.archive_size;
-    printf("archive size     =%11zu (%zumb)\n", n, n / mb);
+    printf("archive size =%11zu (%zumb)\n", n, n / mb);
+
+    printf("\n");
+}
+
+static void _env_command(int argc, char** argv)
+{
+    (void)argc;
+    (void)argv;
+
+    for (size_t i = 0; i < __myst_kernel_args.envc; i++)
+    {
+        printf("%s\n", __myst_kernel_args.envp[i]);
+    }
+
+    printf("\n");
+}
+
+static void _args_command(int argc, char** argv)
+{
+    (void)argc;
+    (void)argv;
+
+    for (size_t i = 0; i < __myst_kernel_args.argc; i++)
+    {
+        printf("%s\n", __myst_kernel_args.argv[i]);
+    }
 
     printf("\n");
 }
@@ -264,6 +292,14 @@ void myst_shell(const char* msg)
         else if (strcmp(argv[0], "mdump") == 0)
         {
             myst_debug_malloc_dump();
+        }
+        else if (strcmp(argv[0], "env") == 0)
+        {
+            _env_command(argc, argv);
+        }
+        else if (strcmp(argv[0], "args") == 0)
+        {
+            _args_command(argc, argv);
         }
         else if (strcmp(argv[0], "cont") == 0)
         {
