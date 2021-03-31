@@ -143,22 +143,41 @@ static void _mem_command(int argc, char** argv)
 {
     extern void dlmalloc_stats(void);
     const size_t mb = 1024 * 1024;
-    size_t total_ram = 0;
-    size_t free_ram = 0;
-    size_t used_ram;
-    size_t rootfs_size = __myst_kernel_args.rootfs_size;
+    size_t n;
+    myst_mman_stats_t buf;
+
+    myst_mman_stats(&buf);
 
     (void)argc;
     (void)argv;
 
-    myst_get_total_ram(&total_ram);
-    myst_get_free_ram(&free_ram);
-    used_ram = total_ram - free_ram;
-    dlmalloc_stats();
-    printf("total mman       =%11zu (%zumb)\n", total_ram, total_ram / mb);
-    printf("used mman        =%11zu (%zumb)\n", used_ram, used_ram / mb);
-    printf("free mman        =%11zu (%zumb)\n", free_ram, free_ram / mb);
-    printf("cpio size        =%11zu (%zumb)\n", rootfs_size, rootfs_size / mb);
+    n = buf.total_size;
+    printf("total ram        =%11zu (%zumb)\n", n, n / mb);
+
+    n = buf.free_size;
+    printf("free ram         =%11zu (%zumb)\n", n, n / mb);
+
+    n = buf.used_size;
+    printf("used ram         =%11zu (%zumb)\n", n, n / mb);
+
+    n = buf.map_size;
+    printf("map used         =%11zu (%zumb)\n", n, n / mb);
+
+    n = buf.brk_size;
+    printf("brk used         =%11zu (%zumb)\n", n, n / mb);
+
+    n = __myst_kernel_args.rootfs_size;
+    printf("cpio size        =%11zu (%zumb)\n", n, n / mb);
+
+    n = __myst_kernel_args.kernel_size;
+    printf("kernel size      =%11zu (%zumb)\n", n, n / mb);
+
+    n = __myst_kernel_args.crt_size;
+    printf("crt size         =%11zu (%zumb)\n", n, n / mb);
+
+    n = __myst_kernel_args.archive_size;
+    printf("archive size     =%11zu (%zumb)\n", n, n / mb);
+
     printf("\n");
 }
 
