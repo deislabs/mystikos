@@ -835,7 +835,6 @@ int main(int argc, const char* argv[])
         _timestamp_sleep_msec = 1200; /* 1.2 seconds */
 
     shell();
-
     test_timestamps();
     test_fstatat();
     test_readv();
@@ -856,7 +855,6 @@ int main(int argc, const char* argv[])
     test_statfs(argv[0]);
     test_fstatfs(argv[0]);
     test_openat();
-
     shell();
 
     printf("=== passed all tests (%s)\n", argv[0]);
