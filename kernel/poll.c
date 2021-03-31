@@ -33,8 +33,11 @@ long _poll_kernel(struct pollfd* fds, nfds_t nfds)
         fds[i].revents = 0;
 
         /* get the device for this file descriptor */
-        ECHECK(myst_fdtable_get_any(
-            fdtable, fds[i].fd, &type, (void**)&fdops, (void**)&object));
+        int res = myst_fdtable_get_any(
+            fdtable, fds[i].fd, &type, (void**)&fdops, (void**)&object);
+        if (res == -ENOENT)
+            continue;
+        ECHECK(res);
 
         if ((events = (*fdops->fd_get_events)(fdops, object)) >= 0)
         {
@@ -45,7 +48,7 @@ long _poll_kernel(struct pollfd* fds, nfds_t nfds)
         }
         else if (events != -ENOTSUP)
         {
-            ERAISE(-EINVAL);
+            continue;
         }
     }
 
@@ -129,7 +132,7 @@ long myst_syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
         }
         else
         {
-            ERAISE(-EINVAL);
+            continue;
         }
     }
 
