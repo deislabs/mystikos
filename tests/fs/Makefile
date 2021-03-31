@@ -13,7 +13,11 @@ LDFLAGS = -lgcov
 endif
 
 ifdef STRACE
-OPTS = --strace
+OPTS += --strace
+endif
+
+ifdef MYST_SHELL
+OPTS += --shell
 endif
 
 HOSTFS = $(CURDIR)/hostfs
