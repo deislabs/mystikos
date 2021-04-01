@@ -218,7 +218,6 @@
 /app/is_class.pass.cpp.exe
 /app/is_compound.pass.cpp.exe
 /app/is_const.pass.cpp.exe
-/app/is_constant_evaluated.pass.cpp.exe
 /app/is_constructible.pass.cpp.exe
 /app/is_convertible.pass.cpp.exe
 /app/is_convertible_fallback.pass.cpp.exe
@@ -528,7 +527,6 @@
 /app/new_array_nothrow.pass.cpp.exe
 /app/new_array_nothrow_replace.pass.cpp.exe
 /app/new_array_replace.pass.cpp.exe
-/app/new_delete_resource.pass.cpp.exe
 /app/new_delete_resource_lifetime.pass.cpp.exe
 /app/new_handler.pass.cpp.exe
 /app/new_nothrow.pass.cpp.exe

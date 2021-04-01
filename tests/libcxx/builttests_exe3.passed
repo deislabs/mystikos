@@ -136,7 +136,7 @@
 /app/push_rv.pass.cpp.exe
 /app/push_rvalue.pass.cpp.exe
 /app/put.pass.cpp.exe
-/app/put2.pass.cpp.exe
+/app/put1.pass.cpp.exe
 /app/put_bool.pass.cpp.exe
 /app/put_pointer.pass.cpp.exe
 /app/putback.pass.cpp.exe
@@ -354,6 +354,7 @@
 /app/sized_delete_array_calls_unsized_delete_array.pass.cpp.exe
 /app/sized_delete_calls_unsized_delete.pass.cpp.exe
 /app/skipws.pass.cpp.exe
+/app/sleep_for.pass.cpp.exe
 /app/sleep_for_tested_elsewhere.pass.cpp.exe
 /app/sleep_until.pass.cpp.exe
 /app/slice_array.pass.cpp.exe
@@ -495,7 +496,6 @@
 /app/try_lock.pass.cpp.exe
 /app/try_lock_for.pass.cpp.exe
 /app/try_lock_until.pass.cpp.exe
-/app/tuple.include.array.pass.cpp.exe
 /app/tuple.include.utility.pass.cpp.exe
 /app/tuple.smartptr.pass.cpp.exe
 /app/tuple.version.pass.cpp.exe
