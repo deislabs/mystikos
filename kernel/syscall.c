@@ -608,6 +608,14 @@ static int _socketaddr_to_str(
     size_t limit)
 {
     int ret = 0;
+
+    if (addr == NULL)
+    {
+        myst_assume(limit >= 5);
+        sprintf(out, "NULL");
+        goto done;
+    }
+
     const uint8_t* p = (uint8_t*)addr->sa_data;
     uint16_t port = (uint16_t)((p[0] << 8) | p[1]);
     const uint8_t ip1 = p[2];
