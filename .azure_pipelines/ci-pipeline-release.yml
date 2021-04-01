@@ -54,7 +54,7 @@ jobs:
           echo $VERSION > VERSION
           echo "Creating release version $VERSION"
           
-          make clean
+          make distclean
           touch mystikos-$VERSION.tar.gz
           tar -czf mystikos-$VERSION.tar.gz --exclude=mystikos-$VERSION.tar.gz .
           
