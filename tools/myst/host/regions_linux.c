@@ -2,7 +2,7 @@
 #include <sys/mman.h>
 
 #include <myst/errno.h>
-#include <myst/region.h>
+#include <myst/regions.h>
 #include <openenclave/bits/sgx/sgxextra.h>
 #include <openenclave/bits/sgx/sgxtypes.h>
 #include "regions.h"

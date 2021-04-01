@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#ifndef _MYST_REGION_H
-#define _MYST_REGION_H
+#ifndef _MYST_REGIONS_H
+#define _MYST_REGIONS_H
 
 #include <stdint.h>
 #include <sys/mman.h>
@@ -77,4 +77,4 @@ int myst_region_find(
     const char* name,
     myst_region_t* region);
 
-#endif /* _MYST_REGION_H */
+#endif /* _MYST_REGIONS_H */

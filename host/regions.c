@@ -4,7 +4,7 @@
 #include <string.h>
 
 #include <myst/eraise.h>
-#include <myst/region.h>
+#include <myst/regions.h>
 
 #define MAGIC 0xdd131acc5dc846e8
 

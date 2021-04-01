@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include <myst/eraise.h>
-#include <myst/region.h>
+#include <myst/regions.h>
 
 int myst_region_find(
     const void* regions_end,

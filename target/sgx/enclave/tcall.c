@@ -17,7 +17,7 @@
 #include <myst/eraise.h>
 #include <myst/fssig.h>
 #include <myst/luks.h>
-#include <myst/region.h>
+#include <myst/regions.h>
 #include <myst/sha256.h>
 #include <myst/syscallext.h>
 #include <myst/tcall.h>

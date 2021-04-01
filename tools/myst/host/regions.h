@@ -6,7 +6,7 @@
 
 #include <limits.h>
 #include <myst/elf.h>
-#include <myst/region.h>
+#include <myst/regions.h>
 
 int add_regions(void* arg, uint64_t baseaddr, myst_add_page_t add_page);
 

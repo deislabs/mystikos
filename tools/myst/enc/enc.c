@@ -19,7 +19,7 @@
 #include <myst/mmanutils.h>
 #include <myst/mount.h>
 #include <myst/ramfs.h>
-#include <myst/region.h>
+#include <myst/regions.h>
 #include <myst/reloc.h>
 #include <myst/shm.h>
 #include <myst/strings.h>

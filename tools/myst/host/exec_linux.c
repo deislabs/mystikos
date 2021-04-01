@@ -19,7 +19,7 @@
 #include <myst/file.h>
 #include <myst/hex.h>
 #include <myst/kernel.h>
-#include <myst/region.h>
+#include <myst/regions.h>
 #include <myst/reloc.h>
 #include <myst/round.h>
 #include <myst/strings.h>

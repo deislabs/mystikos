@@ -5,7 +5,7 @@
 #include <myst/elf.h>
 #include <myst/eraise.h>
 #include <myst/kernel.h>
-#include <myst/region.h>
+#include <myst/regions.h>
 #include <myst/reloc.h>
 #include <myst/strings.h>
 
