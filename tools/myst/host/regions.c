@@ -23,7 +23,22 @@
 
 region_details _details = {0};
 
+static uint64_t _baseaddr;
 static myst_buf_t _flags = MYST_BUF_INITIALIZER;
+
+static void _set_flags(uint64_t vaddr, int flags)
+{
+    /* only do this on the first pass that determines the image size */
+    if (_baseaddr == 0)
+    {
+        size_t index = vaddr / PAGE_SIZE;
+
+        if (myst_buf_resize(&_flags, index + 1) != 0)
+            _err("out of memory");
+
+        _flags.data[index] = (uint8_t)flags;
+    }
+}
 
 static int _add_page(
     myst_region_context_t* context,
@@ -31,11 +46,7 @@ static int _add_page(
     const void* page,
     int flags)
 {
-    uint8_t x = (uint8_t)flags;
-
-    if (myst_buf_append(&_flags, &x, 1) != 0)
-        _err("out of memory");
-
+    _set_flags(vaddr, flags);
     return myst_region_add_page(context, vaddr, page, flags);
 }
 
@@ -394,6 +405,7 @@ static int _add_crt_region(myst_region_context_t* context, uint64_t* vaddr)
     if (myst_region_close(context, name, *vaddr) != 0)
         ERAISE(-EINVAL);
 
+    _set_flags(*vaddr, PROT_READ | MYST_REGION_EXTEND);
     *(vaddr) += PAGE_SIZE;
 
 done:
@@ -478,6 +490,7 @@ static int _add_kernel_region(
     if (myst_region_close(context, name, *vaddr) != 0)
         ERAISE(-EINVAL);
 
+    _set_flags(*vaddr, PROT_READ | MYST_REGION_EXTEND);
     *(vaddr) += PAGE_SIZE;
 
     if (baseaddr)
@@ -530,6 +543,7 @@ static int _add_simple_region(
     if (myst_region_close(context, name, *vaddr) != 0)
         ERAISE(-EINVAL);
 
+    _set_flags(*vaddr, PROT_READ | MYST_REGION_EXTEND);
     *(vaddr) += PAGE_SIZE;
 
 done:
@@ -697,6 +711,7 @@ static int _add_mman_region(myst_region_context_t* context, uint64_t* vaddr)
     if (myst_region_close(context, name, *vaddr) != 0)
         ERAISE(-EINVAL);
 
+    _set_flags(*vaddr, PROT_READ | MYST_REGION_EXTEND);
     *(vaddr) += PAGE_SIZE;
 
 done:
@@ -715,7 +730,10 @@ int add_regions(void* arg, uint64_t baseaddr, myst_add_page_t add_page)
     myst_region_context_t* context = NULL;
     uint64_t vaddr = 0;
 
-    myst_buf_clear(&_flags);
+    _baseaddr = baseaddr;
+
+    if (baseaddr == 0)
+        myst_buf_clear(&_flags);
 
     if (myst_region_init(add_page, arg, &context) != 0)
         _err("myst_region_init() failed");
@@ -761,6 +779,9 @@ int add_regions(void* arg, uint64_t baseaddr, myst_add_page_t add_page)
 
     if (myst_region_release(context) != 0)
         _err("myst_region_release() failed");
+
+    if (baseaddr != 0)
+        myst_buf_release(&_flags);
 
     return 0;
 }
