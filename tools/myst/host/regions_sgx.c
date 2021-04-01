@@ -77,27 +77,6 @@ done:
 
 oe_result_t oe_load_extra_enclave_data_hook(void* arg, uint64_t baseaddr)
 {
-#if 1
-    if (map_regions(&__image_data, &__image_size) != 0)
-        _err("oops!");
-
-    /* make all the regions readable */
-    {
-        uint8_t* data = __image_data;
-        size_t size = __image_size;
-
-        while (size)
-        {
-            if (mprotect(data, PAGE_SIZE, PROT_READ) != 0)
-            {
-                _err("oops2");
-            }
-            data += PAGE_SIZE;
-            size -= PAGE_SIZE;
-        }
-    }
-#endif
-
     if (__image_data && __image_size)
     {
         if (_add_image_pages(arg, __image_data, __image_size) != 0)
