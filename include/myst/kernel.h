@@ -89,6 +89,10 @@ typedef struct myst_kernel_args
 
     /* Callback for making target-calls */
     myst_tcall_t tcall;
+
+    /* pointer to myst_syscall() that is set by myst_enter_kernel() */
+    long (*myst_syscall)(long n, long params[6]);
+
 } myst_kernel_args_t;
 
 typedef int (*myst_kernel_entry_t)(myst_kernel_args_t* args);

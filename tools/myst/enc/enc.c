@@ -37,6 +37,13 @@
 #define IRETFRAME_EFlags IRETFRAME_SegCs + 8
 #define IRETFRAME_Rsp IRETFRAME_EFlags + 8
 
+static myst_kernel_args_t kargs;
+
+long _exception_handler_syscall(long n, long params[6])
+{
+    return (*kargs.myst_syscall)(n, params);
+}
+
 extern volatile const oe_sgx_enclave_properties_t oe_enclave_properties_sgx;
 
 static size_t _get_num_tcs(void)
@@ -49,68 +56,115 @@ int myst_setup_clock(struct clock_ctrl*);
 /* Handle illegal SGX instructions */
 static uint64_t _vectored_handler(oe_exception_record_t* er)
 {
-    const uint16_t RDTSC_OPCODE = 0x310F;
-    const uint16_t CPUID_OPCODE = 0xA20F;
-    const uint16_t IRETQ_OPCODE = 0xCF48;
+#define RDTSC_OPCODE 0x310F
+#define CPUID_OPCODE 0xA20F
+#define IRETQ_OPCODE 0xCF48
+#define SYSCALL_OPCODE 0x050F
+
     const uint16_t opcode = *((uint16_t*)er->context->rip);
 
-    if (er->code == OE_EXCEPTION_ILLEGAL_INSTRUCTION && opcode == RDTSC_OPCODE)
+    if (er->code == OE_EXCEPTION_ILLEGAL_INSTRUCTION)
     {
-        uint32_t rax = 0;
-        uint32_t rdx = 0;
-
-        /* Ask host to execute RDTSC instruction */
-        if (myst_rdtsc_ocall(&rax, &rdx) != OE_OK)
+        switch (opcode)
         {
-            fprintf(stderr, "myst_rdtsc_ocall() failed\n");
-            assert(false);
-            return OE_EXCEPTION_CONTINUE_SEARCH;
+            case RDTSC_OPCODE:
+            {
+                uint32_t rax = 0;
+                uint32_t rdx = 0;
+
+                /* Ask host to execute RDTSC instruction */
+                if (myst_rdtsc_ocall(&rax, &rdx) != OE_OK)
+                {
+                    fprintf(stderr, "myst_rdtsc_ocall() failed\n");
+                    assert(false);
+                    return OE_EXCEPTION_CONTINUE_SEARCH;
+                }
+
+                er->context->rax = rax;
+                er->context->rdx = rdx;
+
+                /* Skip over the illegal instruction. */
+                er->context->rip += 2;
+
+                return OE_EXCEPTION_CONTINUE_EXECUTION;
+                break;
+            }
+            case CPUID_OPCODE:
+            {
+                uint32_t rax = 0xaa;
+                uint32_t rbx = 0xbb;
+                uint32_t rcx = 0xcc;
+                uint32_t rdx = 0xdd;
+
+                if (er->context->rax != 0xff)
+                {
+                    myst_cpuid_ocall(
+                        (uint32_t)er->context->rax, /* leaf */
+                        (uint32_t)er->context->rcx, /* subleaf */
+                        &rax,
+                        &rbx,
+                        &rcx,
+                        &rdx);
+                }
+
+                er->context->rax = rax;
+                er->context->rbx = rbx;
+                er->context->rcx = rcx;
+                er->context->rdx = rdx;
+
+                return OE_EXCEPTION_CONTINUE_EXECUTION;
+                break;
+            }
+            case IRETQ_OPCODE:
+            {
+                // Restore RSP, RIP, EFLAGS from the stack. CS and SS are not
+                // applicable for sgx applications, and restoring them triggers
+                // #UD.
+
+                er->context->flags =
+                    *(uint64_t*)(er->context->rsp + IRETFRAME_EFlags);
+                er->context->rip =
+                    *(uint64_t*)(er->context->rsp + IRETFRAME_Rip);
+                er->context->rsp =
+                    *(uint64_t*)(er->context->rsp + IRETFRAME_Rsp);
+
+                return OE_EXCEPTION_CONTINUE_EXECUTION;
+                break;
+            }
+            case SYSCALL_OPCODE:
+            {
+                long params[6] = {0};
+
+                // SYSCALL saves RIP (next instruction after SYSCALL) to RCX and
+                // SYSRET restors the RIP from RCX
+                er->context->rcx = er->context->rip + 2;
+                er->context->rip = er->context->rcx;
+                // SYSCALL saves RFLAGS into R11 and clears in RFLAGS every bit
+                // corresponding to a bit that is set in the IA32_FMASK MSR, for
+                // CPU operations. No need to emulate RFLAGS value here.
+                // SYSRET loads (r11 & 0x3C7FD7) | 2 to RFLAG
+                er->context->r11 = er->context->flags;
+                er->context->flags = (er->context->r11 & 0x3C7FD7) | 2;
+
+                params[0] = (long)er->context->rdi;
+                params[1] = (long)er->context->rsi;
+                params[2] = (long)er->context->rdx;
+                params[3] = (long)er->context->r10;
+                params[4] = (long)er->context->r8;
+                params[5] = (long)er->context->r9;
+
+                // syscall number is in RAX. SYSRET sets RAX.
+                er->context->rax = (uint64_t)_exception_handler_syscall(
+                    (long)er->context->rax, params);
+
+                // If the specific syscall is not supported in Mystikos, the
+                // exception handler will cause abort.
+                return OE_EXCEPTION_CONTINUE_EXECUTION;
+                break;
+            }
+            default:
+                break;
         }
-
-        er->context->rax = rax;
-        er->context->rdx = rdx;
-
-        /* Skip over the illegal instruction. */
-        er->context->rip += 2;
-
-        return OE_EXCEPTION_CONTINUE_EXECUTION;
-    }
-
-    if (er->code == OE_EXCEPTION_ILLEGAL_INSTRUCTION && opcode == CPUID_OPCODE)
-    {
-        uint32_t rax = 0xaa;
-        uint32_t rbx = 0xbb;
-        uint32_t rcx = 0xcc;
-        uint32_t rdx = 0xdd;
-
-        if (er->context->rax != 0xff)
-        {
-            myst_cpuid_ocall(
-                (uint32_t)er->context->rax, /* leaf */
-                (uint32_t)er->context->rcx, /* subleaf */
-                &rax,
-                &rbx,
-                &rcx,
-                &rdx);
-        }
-
-        er->context->rax = rax;
-        er->context->rbx = rbx;
-        er->context->rcx = rcx;
-        er->context->rdx = rdx;
-
-        return OE_EXCEPTION_CONTINUE_EXECUTION;
-    }
-    if (er->code == OE_EXCEPTION_ILLEGAL_INSTRUCTION && opcode == IRETQ_OPCODE)
-    {
-        // Restore RSP, RIP, EFLAGS from the stack. CS and SS are not
-        // applicable for sgx applications, and restoring them triggers #UD.
-
-        er->context->flags = *(uint64_t*)(er->context->rsp + IRETFRAME_EFlags);
-        er->context->rip = *(uint64_t*)(er->context->rsp + IRETFRAME_Rip);
-        er->context->rsp = *(uint64_t*)(er->context->rsp + IRETFRAME_Rsp);
-
-        return OE_EXCEPTION_CONTINUE_EXECUTION;
     }
 
     return OE_EXCEPTION_CONTINUE_SEARCH;
@@ -541,7 +595,6 @@ int myst_enter_ecall(
 
     /* Enter the kernel image */
     {
-        myst_kernel_args_t kargs;
         const Elf64_Ehdr* ehdr = kernel_data;
         myst_kernel_entry_t entry;
 
