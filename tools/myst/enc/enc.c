@@ -37,6 +37,13 @@
 #define IRETFRAME_EFlags IRETFRAME_SegCs + 8
 #define IRETFRAME_Rsp IRETFRAME_EFlags + 8
 
+static myst_kernel_args_t kargs;
+
+long myst_syscall(long n, long params[6])
+{
+    return (*kargs.myst_syscall)(n, params);
+}
+
 extern volatile const oe_sgx_enclave_properties_t oe_enclave_properties_sgx;
 
 static size_t _get_num_tcs(void)
@@ -52,6 +59,8 @@ static uint64_t _vectored_handler(oe_exception_record_t* er)
     const uint16_t RDTSC_OPCODE = 0x310F;
     const uint16_t CPUID_OPCODE = 0xA20F;
     const uint16_t IRETQ_OPCODE = 0xCF48;
+    const uint16_t SYSCALL_OPCODE = 0x050F;
+
     const uint16_t opcode = *((uint16_t*)er->context->rip);
 
     if (er->code == OE_EXCEPTION_ILLEGAL_INSTRUCTION && opcode == RDTSC_OPCODE)
@@ -110,6 +119,37 @@ static uint64_t _vectored_handler(oe_exception_record_t* er)
         er->context->rip = *(uint64_t*)(er->context->rsp + IRETFRAME_Rip);
         er->context->rsp = *(uint64_t*)(er->context->rsp + IRETFRAME_Rsp);
 
+        return OE_EXCEPTION_CONTINUE_EXECUTION;
+    }
+    if (er->code == OE_EXCEPTION_ILLEGAL_INSTRUCTION &&
+        opcode == SYSCALL_OPCODE)
+    {
+        long params[6] = {0};
+
+        // SYSCALL saves RIP (next instruction after SYSCALL) to RCX and
+        // SYSRET restors the RIP from RCX
+        er->context->rcx = er->context->rip + 2;
+        er->context->rip = er->context->rcx;
+        // SYSCALL saves RFLAGS into R11 and clears in RFLAGS every bit
+        // corresponding to a bit that is set in the IA32_FMASK MSR
+        // SYSRET loads (r11 & 0x3C7FD7) | 2 to RFLAG
+        // TODO: Apply IA32_FMASK
+        er->context->r11 = er->context->flags;
+        er->context->flags = (er->context->r11 & 0x3C7FD7) | 2;
+
+        params[0] = (long)er->context->rdi;
+        params[1] = (long)er->context->rsi;
+        params[2] = (long)er->context->rdx;
+        params[3] = (long)er->context->r10;
+        params[4] = (long)er->context->r8;
+        params[5] = (long)er->context->r9;
+
+        // syscall number is in RAX
+        er->context->rax =
+            (uint64_t)myst_syscall((long)er->context->rax, params);
+
+        // If the specific syscall is not supported in Mystikos, the exception
+        // handler will cause abort.
         return OE_EXCEPTION_CONTINUE_EXECUTION;
     }
 
@@ -541,7 +581,6 @@ int myst_enter_ecall(
 
     /* Enter the kernel image */
     {
-        myst_kernel_args_t kargs;
         const Elf64_Ehdr* ehdr = kernel_data;
         myst_kernel_entry_t entry;
 
