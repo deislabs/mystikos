@@ -1,8 +1,8 @@
 /app/acos.pass.cpp.exe
 /app/acosh.pass.cpp.exe
 /app/alloc_ctor.pass.cpp.exe
+/app/alloc_UTypes.pass.cpp.exe
 /app/allocate.pass.cpp.exe
-/app/allocator_move.pass.cpp.exe
 /app/asan_throw.pass.cpp.exe
 /app/asin.pass.cpp.exe
 /app/asinh.pass.cpp.exe
@@ -96,6 +96,7 @@
 /app/insert_iter_rvalue_db1.pass.cpp.exe
 /app/insert_iter_size_value_db1.pass.cpp.exe
 /app/insert_iter_value_db1.pass.cpp.exe
+/app/is_constant_evaluated.pass.cpp.exe
 /app/locale.category.abort.pass.cpp.exe
 /app/locale_char_pointer_cat.pass.cpp.exe
 /app/locale_facetptr.pass.cpp.exe
@@ -108,6 +109,7 @@
 /app/minus_equal_complex.pass.cpp.exe
 /app/name.pass.cpp.exe
 /app/negative_sign.pass.cpp.exe
+/app/new_delete_resource.pass.cpp.exe
 /app/norm.pass.cpp.exe
 /app/nullptr_t_assign_reentrant.pass.cpp.exe
 /app/param_ctor_init_func.pass.cpp.exe
@@ -135,7 +137,7 @@
 /app/put_time.pass.cpp.exe
 /app/put_unsigned_long.pass.cpp.exe
 /app/put_unsigned_long_long.pass.cpp.exe
-/app/put1.pass.cpp.exe
+/app/put2.pass.cpp.exe
 /app/regex_error.pass.cpp.exe
 /app/register_callback.pass.cpp.exe
 /app/rv_pair_U_V.pass.cpp.exe
@@ -145,7 +147,6 @@
 /app/set_value_const.pass.cpp.exe
 /app/sized_delete_array11.pass.cpp.exe
 /app/sized_delete11.pass.cpp.exe
-/app/sleep_for.pass.cpp.exe
 /app/special_member_generation_test.pass.cpp.exe
 /app/specializations.pass.cpp.exe
 /app/splice_after_range.pass.cpp.exe
@@ -159,6 +160,7 @@
 /app/transform.pass.cpp.exe
 /app/transform_primary.pass.cpp.exe
 /app/translate_nocase.pass.cpp.exe
+/app/tuple.include.array.pass.cpp.exe
 /app/U_V.pass.cpp.exe
 /app/use_facet.abort.pass.cpp.exe
 /app/utf_sanity_check.pass.cpp.exe

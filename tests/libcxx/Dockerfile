@@ -3,7 +3,6 @@ RUN apk add build-base
 COPY ./libcxx-tests/ /app/
 
 ENV PREFIX_DIR=/app/llvm-project/libcxx/test
-COPY builttests.txt $PREFIX_DIR
 
 WORKDIR $PREFIX_DIR
 RUN echo "Num tests = " $(find . -name \*pass.cpp | wc -l)
