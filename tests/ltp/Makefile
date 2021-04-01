@@ -145,15 +145,10 @@ endif
 
 ifeq ($(FS),hostfs)
 one:
-	@ $(MAKE) -s umount
-	@ rm -rf $(UPPERDIR) $(WORKDIR) $(HOSTFS)
-	@ mkdir -p $(UPPERDIR) $(WORKDIR) $(HOSTFS)
-	@ sudo mount -t overlay overlay -o lowerdir=$(LOWERDIR),upperdir=$(UPPERDIR),workdir=$(WORKDIR) $(HOSTFS)
+	@ rm -rf $(HOSTFS)
+	@ mkdir -p $(shell dirname $(HOSTFS)/$(TEST))
+	cp appdir/$(TEST) $(HOSTFS)/$(TEST)
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
-	@ $(MAKE) -s umount
-
-umount:
-	- @ sudo umount $(HOSTFS) 2> /dev/null
 endif
 
 ##==============================================================================
