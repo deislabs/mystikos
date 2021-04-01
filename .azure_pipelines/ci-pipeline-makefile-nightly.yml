@@ -34,7 +34,7 @@ jobs:
 
     # build all source files
     - script: |
-        make clean && make
+        make distclean && make
       displayName: 'build repo source'
       workingDirectory: $(Build.SourcesDirectory)
       env:
