@@ -22,6 +22,7 @@
 #define MYST_ROOTFS_REGION_NAME "rootfs"
 #define MYST_MMAN_REGION_NAME "mman"
 #define MYST_ARCHIVE_REGION_NAME "archive"
+#define MYST_FLAGS_REGION_NAME "flags"
 
 #define MYST_REGION_MAGIC 0x1c8093ca739f4e61
 #define MYST_REGION_NAME_SIZE 256

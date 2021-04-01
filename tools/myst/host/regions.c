@@ -32,6 +32,7 @@ static int _add_page(
     int flags)
 {
     uint8_t x = (uint8_t)flags;
+
     if (myst_buf_append(&_flags, &x, 1) != 0)
         _err("out of memory");
 
@@ -466,8 +467,6 @@ static int _add_kernel_region(
     if (myst_region_open(context) != 0)
         ERAISE(-EINVAL);
 
-    /* ATTN: register path with debugger */
-
     ECHECK(_load_kernel_pages(context, &_details.kernel.image, *vaddr));
 
     const uint64_t m = PAGE_SIZE;
@@ -492,16 +491,16 @@ done:
     return ret;
 }
 
-static int _add_crt_reloc_region(
+static int _add_simple_region(
     myst_region_context_t* context,
-    uint64_t* vaddr)
+    uint64_t* vaddr,
+    const char* name,
+    const void* data,
+    size_t size)
 {
     int ret = 0;
-    const char name[] = MYST_CRT_RELOC_REGION_NAME;
-
-    assert(_details.crt.image.reloc_data != NULL);
-    assert(_details.crt.image.reloc_size != 0);
-    assert((_details.crt.image.reloc_size % PAGE_SIZE) == 0);
+    const uint8_t* p = data;
+    size_t r = size;
 
     if (!context || !vaddr)
         ERAISE(-EINVAL);
@@ -509,21 +508,23 @@ static int _add_crt_reloc_region(
     if (myst_region_open(context) != 0)
         ERAISE(-EINVAL);
 
-    /* Add the pages */
+    while (r)
     {
-        const uint8_t* page = (const uint8_t*)_details.crt.image.reloc_data;
-        size_t npages = _details.crt.image.reloc_size / PAGE_SIZE;
+        __attribute__((__aligned__(PAGE_SIZE))) uint8_t page[PAGE_SIZE];
+        const size_t min = (r < sizeof(page)) ? r : sizeof(page);
+        int flags = PROT_READ | MYST_REGION_EXTEND;
 
-        for (size_t i = 0; i < npages; i++)
-        {
-            int flags = PROT_READ | MYST_REGION_EXTEND;
+        memcpy(page, p, min);
 
-            if (_add_page(context, *vaddr, page, flags) != 0)
-                ERAISE(-EINVAL);
+        if (min < sizeof(page))
+            memset(page + r, 0, sizeof(page) - r);
 
-            page += PAGE_SIZE;
-            (*vaddr) += PAGE_SIZE;
-        }
+        if (_add_page(context, *vaddr, page, flags) != 0)
+            ERAISE(-EINVAL);
+
+        *vaddr += sizeof(page);
+        p += min;
+        r -= min;
     }
 
     if (myst_region_close(context, name, *vaddr) != 0)
@@ -533,365 +534,119 @@ static int _add_crt_reloc_region(
 
 done:
     return ret;
+}
+
+static int _add_crt_reloc_region(
+    myst_region_context_t* context,
+    uint64_t* vaddr)
+{
+    return _add_simple_region(
+        context,
+        vaddr,
+        MYST_CRT_RELOC_REGION_NAME,
+        _details.crt.image.reloc_data,
+        _details.crt.image.reloc_size);
 }
 
 static int _add_kernel_reloc_region(
     myst_region_context_t* context,
     uint64_t* vaddr)
 {
-    int ret = 0;
-    const char name[] = MYST_KERNEL_RELOC_REGION_NAME;
-
-    assert(_details.kernel.image.reloc_data != NULL);
-    assert(_details.kernel.image.reloc_size != 0);
-    assert((_details.kernel.image.reloc_size % PAGE_SIZE) == 0);
-
-    if (!context || !vaddr)
-        ERAISE(-EINVAL);
-
-    if (myst_region_open(context) != 0)
-        ERAISE(-EINVAL);
-
-    /* Add the pages */
-    {
-        const uint8_t* page = (const uint8_t*)_details.kernel.image.reloc_data;
-        size_t npages = _details.kernel.image.reloc_size / PAGE_SIZE;
-
-        for (size_t i = 0; i < npages; i++)
-        {
-            int flags = PROT_READ | MYST_REGION_EXTEND;
-
-            if (_add_page(context, *vaddr, page, flags) != 0)
-                ERAISE(-EINVAL);
-
-            page += PAGE_SIZE;
-            (*vaddr) += PAGE_SIZE;
-        }
-    }
-
-    if (myst_region_close(context, name, *vaddr) != 0)
-        ERAISE(-EINVAL);
-
-    *(vaddr) += PAGE_SIZE;
-
-done:
-    return ret;
+    return _add_simple_region(
+        context,
+        vaddr,
+        MYST_KERNEL_RELOC_REGION_NAME,
+        _details.kernel.image.reloc_data,
+        _details.kernel.image.reloc_size);
 }
 
 static int _add_kernel_symtab_region(
     myst_region_context_t* context,
     uint64_t* vaddr)
 {
-    int ret = 0;
-    const char name[] = MYST_KERNEL_SYMTAB_REGION_NAME;
-
-    assert(_details.kernel.image.symtab_data != NULL);
-    assert(_details.kernel.image.symtab_size != 0);
-    assert((_details.kernel.image.symtab_size % PAGE_SIZE) == 0);
-
-    if (!context || !vaddr)
-        ERAISE(-EINVAL);
-
-    if (myst_region_open(context) != 0)
-        ERAISE(-EINVAL);
-
-    /* Add the pages */
-    {
-        const uint8_t* page = (const uint8_t*)_details.kernel.image.symtab_data;
-        size_t npages = _details.kernel.image.symtab_size / PAGE_SIZE;
-
-        for (size_t i = 0; i < npages; i++)
-        {
-            int flags = PROT_READ | MYST_REGION_EXTEND;
-
-            if (_add_page(context, *vaddr, page, flags) != 0)
-                ERAISE(-EINVAL);
-
-            page += PAGE_SIZE;
-            (*vaddr) += PAGE_SIZE;
-        }
-    }
-
-    if (myst_region_close(context, name, *vaddr) != 0)
-        ERAISE(-EINVAL);
-
-    *(vaddr) += PAGE_SIZE;
-
-done:
-    return ret;
+    return _add_simple_region(
+        context,
+        vaddr,
+        MYST_KERNEL_SYMTAB_REGION_NAME,
+        _details.kernel.image.symtab_data,
+        _details.kernel.image.symtab_size);
 }
 
 static int _add_kernel_dynsym_region(
     myst_region_context_t* context,
     uint64_t* vaddr)
 {
-    int ret = 0;
-    const char name[] = MYST_KERNEL_DYNSYM_REGION_NAME;
-
-    assert(_details.kernel.image.dynsym_data != NULL);
-    assert(_details.kernel.image.dynsym_size != 0);
-    assert((_details.kernel.image.dynsym_size % PAGE_SIZE) == 0);
-
-    if (!context || !vaddr)
-        ERAISE(-EINVAL);
-
-    if (myst_region_open(context) != 0)
-        ERAISE(-EINVAL);
-
-    /* Add the pages */
-    {
-        const uint8_t* page = (const uint8_t*)_details.kernel.image.dynsym_data;
-        size_t npages = _details.kernel.image.dynsym_size / PAGE_SIZE;
-
-        for (size_t i = 0; i < npages; i++)
-        {
-            int flags = PROT_READ | PROT_WRITE | PROT_EXEC | MYST_REGION_EXTEND;
-
-            if (_add_page(context, *vaddr, page, flags) != 0)
-                ERAISE(-EINVAL);
-
-            page += PAGE_SIZE;
-            (*vaddr) += PAGE_SIZE;
-        }
-    }
-
-    if (myst_region_close(context, name, *vaddr) != 0)
-        ERAISE(-EINVAL);
-
-    *(vaddr) += PAGE_SIZE;
-
-done:
-    return ret;
+    return _add_simple_region(
+        context,
+        vaddr,
+        MYST_KERNEL_DYNSYM_REGION_NAME,
+        _details.kernel.image.dynsym_data,
+        _details.kernel.image.dynsym_size);
 }
 
 static int _add_kernel_strtab_region(
     myst_region_context_t* context,
     uint64_t* vaddr)
 {
-    int ret = 0;
-    const char name[] = MYST_KERNEL_STRTAB_REGION_NAME;
-
-    assert(_details.kernel.image.strtab_data != NULL);
-    assert(_details.kernel.image.strtab_size != 0);
-    assert((_details.kernel.image.strtab_size % PAGE_SIZE) == 0);
-
-    if (!context || !vaddr)
-        ERAISE(-EINVAL);
-
-    if (myst_region_open(context) != 0)
-        ERAISE(-EINVAL);
-
-    /* Add the pages */
-    {
-        const uint8_t* page = (const uint8_t*)_details.kernel.image.strtab_data;
-        size_t npages = _details.kernel.image.strtab_size / PAGE_SIZE;
-
-        for (size_t i = 0; i < npages; i++)
-        {
-            int flags = PROT_READ | MYST_REGION_EXTEND;
-
-            if (_add_page(context, *vaddr, page, flags) != 0)
-                ERAISE(-EINVAL);
-
-            page += PAGE_SIZE;
-            (*vaddr) += PAGE_SIZE;
-        }
-    }
-
-    if (myst_region_close(context, name, *vaddr) != 0)
-        ERAISE(-EINVAL);
-
-    *(vaddr) += PAGE_SIZE;
-
-done:
-    return ret;
+    return _add_simple_region(
+        context,
+        vaddr,
+        MYST_KERNEL_STRTAB_REGION_NAME,
+        _details.kernel.image.strtab_data,
+        _details.kernel.image.strtab_size);
 }
 
 static int _add_kernel_dynstr_region(
     myst_region_context_t* context,
     uint64_t* vaddr)
 {
-    int ret = 0;
-    const char name[] = MYST_KERNEL_DYNSTR_REGION_NAME;
-
-    assert(_details.kernel.image.dynstr_data != NULL);
-    assert(_details.kernel.image.dynstr_size != 0);
-    assert((_details.kernel.image.dynstr_size % PAGE_SIZE) == 0);
-
-    if (!context || !vaddr)
-        ERAISE(-EINVAL);
-
-    if (myst_region_open(context) != 0)
-        ERAISE(-EINVAL);
-
-    /* Add the pages */
-    {
-        const uint8_t* page = (const uint8_t*)_details.kernel.image.dynstr_data;
-        size_t npages = _details.kernel.image.dynstr_size / PAGE_SIZE;
-
-        for (size_t i = 0; i < npages; i++)
-        {
-            int flags = PROT_READ | MYST_REGION_EXTEND;
-
-            if (_add_page(context, *vaddr, page, flags) != 0)
-                ERAISE(-EINVAL);
-
-            page += PAGE_SIZE;
-            (*vaddr) += PAGE_SIZE;
-        }
-    }
-
-    if (myst_region_close(context, name, *vaddr) != 0)
-        ERAISE(-EINVAL);
-
-    *(vaddr) += PAGE_SIZE;
-
-done:
-    return ret;
+    return _add_simple_region(
+        context,
+        vaddr,
+        MYST_KERNEL_DYNSTR_REGION_NAME,
+        _details.kernel.image.dynstr_data,
+        _details.kernel.image.dynstr_size);
 }
 
 static int _add_rootfs_region(myst_region_context_t* context, uint64_t* vaddr)
 {
-    int ret = 0;
-    const uint8_t* p = _details.rootfs.buffer;
-    size_t n = _details.rootfs.buffer_size;
-    size_t r = n;
-    const char name[] = MYST_ROOTFS_REGION_NAME;
-
-    if (!context || !vaddr)
-        ERAISE(-EINVAL);
-
-    assert(_details.rootfs.buffer != NULL);
-    assert(_details.rootfs.buffer_size != 0);
-
-    if (myst_region_open(context) != 0)
-        ERAISE(-EINVAL);
-
-    while (r)
-    {
-        __attribute__((__aligned__(PAGE_SIZE))) uint8_t page[PAGE_SIZE];
-        const size_t min = (r < sizeof(page)) ? r : sizeof(page);
-        int flags = PROT_READ | MYST_REGION_EXTEND;
-
-        memcpy(page, p, min);
-
-        if (min < sizeof(page))
-            memset(page + r, 0, sizeof(page) - r);
-
-        if (_add_page(context, *vaddr, page, flags) != 0)
-        {
-            ERAISE(-EINVAL);
-        }
-
-        *vaddr += sizeof(page);
-        p += min;
-        r -= min;
-    }
-
-    if (myst_region_close(context, name, *vaddr) != 0)
-        ERAISE(-EINVAL);
-
-    *(vaddr) += PAGE_SIZE;
-
-done:
-    return ret;
+    return _add_simple_region(
+        context,
+        vaddr,
+        MYST_ROOTFS_REGION_NAME,
+        _details.rootfs.buffer,
+        _details.rootfs.buffer_size);
 }
 
 static int _add_archive_region(myst_region_context_t* context, uint64_t* vaddr)
 {
-    int ret = 0;
-    const uint8_t* p = _details.archive.buffer;
-    size_t n = _details.archive.buffer_size;
-    size_t r = n;
-    const char name[] = MYST_ARCHIVE_REGION_NAME;
-
-    if (!context || !vaddr)
-        ERAISE(-EINVAL);
-
-    assert(_details.archive.buffer != NULL);
-    assert(_details.archive.buffer_size != 0);
-
-    if (myst_region_open(context) != 0)
-        ERAISE(-EINVAL);
-
-    while (r)
-    {
-        __attribute__((__aligned__(PAGE_SIZE))) uint8_t page[PAGE_SIZE];
-        const size_t min = (r < sizeof(page)) ? r : sizeof(page);
-        int flags = PROT_READ | MYST_REGION_EXTEND;
-
-        memcpy(page, p, min);
-
-        if (min < sizeof(page))
-            memset(page + r, 0, sizeof(page) - r);
-
-        if (_add_page(context, *vaddr, page, flags) != 0)
-        {
-            ERAISE(-EINVAL);
-        }
-
-        *vaddr += sizeof(page);
-        p += min;
-        r -= min;
-    }
-
-    if (myst_region_close(context, name, *vaddr) != 0)
-        ERAISE(-EINVAL);
-
-    *(vaddr) += PAGE_SIZE;
-
-done:
-    return ret;
+    return _add_simple_region(
+        context,
+        vaddr,
+        MYST_ARCHIVE_REGION_NAME,
+        _details.archive.buffer,
+        _details.archive.buffer_size);
 }
 
 static int _add_config_region(myst_region_context_t* context, uint64_t* vaddr)
 {
-    int ret = 0;
-    const uint8_t* p = (uint8_t*)_details.config.buffer;
-    size_t n = _details.config.buffer_size;
-    size_t r = n;
     const char name[] = MYST_CONFIG_REGION_NAME;
 
-    if (!context || !vaddr)
-        ERAISE(-EINVAL);
-
-    // If we have no config then we cannot add this region
     if (_details.config.buffer == NULL)
-    {
         return 0;
-    }
 
-    if (myst_region_open(context) != 0)
-        ERAISE(-EINVAL);
+    return _add_simple_region(
+        context,
+        vaddr,
+        name,
+        _details.config.buffer,
+        _details.config.buffer_size);
+}
 
-    while (r)
-    {
-        __attribute__((__aligned__(PAGE_SIZE))) uint8_t page[PAGE_SIZE];
-        const size_t min = (r < sizeof(page)) ? r : sizeof(page);
-        int flags = PROT_READ | MYST_REGION_EXTEND;
-
-        memcpy(page, p, min);
-
-        if (min < sizeof(page))
-            memset(page + r, 0, sizeof(page) - r);
-
-        if (_add_page(context, *vaddr, page, flags) != 0)
-        {
-            ERAISE(-EINVAL);
-        }
-
-        *vaddr += sizeof(page);
-        p += min;
-        r -= min;
-    }
-
-    if (myst_region_close(context, name, *vaddr) != 0)
-        ERAISE(-EINVAL);
-
-    *(vaddr) += PAGE_SIZE;
-
-done:
-    return ret;
+static int _add_flags_region(myst_region_context_t* context, uint64_t* vaddr)
+{
+    const char name[] = MYST_FLAGS_REGION_NAME;
+    return _add_simple_region(context, vaddr, name, _flags.data, _flags.size);
 }
 
 static int _add_mman_region(myst_region_context_t* context, uint64_t* vaddr)
@@ -960,6 +715,8 @@ int add_regions(void* arg, uint64_t baseaddr, myst_add_page_t add_page)
     myst_region_context_t* context = NULL;
     uint64_t vaddr = 0;
 
+    myst_buf_clear(&_flags);
+
     if (myst_region_init(add_page, arg, &context) != 0)
         _err("myst_region_init() failed");
 
@@ -998,6 +755,9 @@ int add_regions(void* arg, uint64_t baseaddr, myst_add_page_t add_page)
 
     if (_add_config_region(context, &vaddr) != 0)
         _err("_add_config_region() failed");
+
+    if (_add_flags_region(context, &vaddr) != 0)
+        _err("_add_flags_region() failed");
 
     if (myst_region_release(context) != 0)
         _err("myst_region_release() failed");
