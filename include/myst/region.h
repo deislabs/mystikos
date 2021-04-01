@@ -9,23 +9,23 @@
 
 #include <myst/defs.h>
 
-/* memory region identifiers for the myst image */
-#define MYST_CONFIG_REGION_NAME "config"
-#define MYST_KERNEL_REGION_NAME "kernel"
-#define MYST_KERNEL_RELOC_REGION_NAME "kernel.reloc"
-#define MYST_KERNEL_SYMTAB_REGION_NAME "kernel.symtab" /* .symtab section */
-#define MYST_KERNEL_STRTAB_REGION_NAME "kernel.strtab" /* .strtab section */
-#define MYST_KERNEL_DYNSYM_REGION_NAME "kernel.dynsym" /* .dynsym section */
-#define MYST_KERNEL_DYNSTR_REGION_NAME "kernel.dynstr" /* .dynstr section */
-#define MYST_CRT_REGION_NAME "crt"
-#define MYST_CRT_RELOC_REGION_NAME "crt.reloc"
-#define MYST_ROOTFS_REGION_NAME "rootfs"
-#define MYST_MMAN_REGION_NAME "mman"
-#define MYST_ARCHIVE_REGION_NAME "archive"
-
 #define MYST_REGION_MAGIC 0x1c8093ca739f4e61
 #define MYST_REGION_NAME_SIZE 256
 #define MYST_REGION_EXTEND 128
+
+/* memory region identifiers */
+#define MYST_REGION_CONFIG "config"
+#define MYST_REGION_KERNEL "kernel"
+#define MYST_REGION_KERNEL_RELOC "kernel.reloc"
+#define MYST_REGION_KERNEL_SYMTAB "kernel.symtab" /* .symtab section */
+#define MYST_REGION_KERNEL_STRTAB "kernel.strtab" /* .strtab section */
+#define MYST_REGION_KERNEL_DYNSYM "kernel.dynsym" /* .dynsym section */
+#define MYST_REGION_KERNEL_DYNSTR "kernel.dynstr" /* .dynstr section */
+#define MYST_REGION_CRT "crt"
+#define MYST_REGION_CRT_RELOC "crt.reloc"
+#define MYST_REGION_ROOTFS "rootfs"
+#define MYST_REGION_MMAN "mman"
+#define MYST_REGION_ARCHIVE "archive"
 
 typedef struct myst_region_trailer
 {

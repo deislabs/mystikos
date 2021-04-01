@@ -366,7 +366,7 @@ done:
 static int _add_crt_region(myst_region_context_t* context, uint64_t* vaddr)
 {
     int ret = 0;
-    const char name[] = MYST_CRT_REGION_NAME;
+    const char name[] = MYST_REGION_CRT;
     uint64_t r;
 
     assert(_details.crt.image.image_data != NULL);
@@ -424,7 +424,7 @@ static int _add_kernel_region(
     uint64_t* vaddr)
 {
     int ret = 0;
-    const char name[] = MYST_KERNEL_REGION_NAME;
+    const char name[] = MYST_REGION_KERNEL;
     int fd = -1;
     uint64_t r;
     const void* image_data = (const void*)baseaddr + *vaddr;
@@ -536,7 +536,7 @@ static int _add_crt_reloc_region(
     return _add_simple_region(
         context,
         vaddr,
-        MYST_CRT_RELOC_REGION_NAME,
+        MYST_REGION_CRT_RELOC,
         _details.crt.image.reloc_data,
         _details.crt.image.reloc_size);
 }
@@ -548,7 +548,7 @@ static int _add_kernel_reloc_region(
     return _add_simple_region(
         context,
         vaddr,
-        MYST_KERNEL_RELOC_REGION_NAME,
+        MYST_REGION_KERNEL_RELOC,
         _details.kernel.image.reloc_data,
         _details.kernel.image.reloc_size);
 }
@@ -560,7 +560,7 @@ static int _add_kernel_symtab_region(
     return _add_simple_region(
         context,
         vaddr,
-        MYST_KERNEL_SYMTAB_REGION_NAME,
+        MYST_REGION_KERNEL_SYMTAB,
         _details.kernel.image.symtab_data,
         _details.kernel.image.symtab_size);
 }
@@ -572,7 +572,7 @@ static int _add_kernel_dynsym_region(
     return _add_simple_region(
         context,
         vaddr,
-        MYST_KERNEL_DYNSYM_REGION_NAME,
+        MYST_REGION_KERNEL_DYNSYM,
         _details.kernel.image.dynsym_data,
         _details.kernel.image.dynsym_size);
 }
@@ -584,7 +584,7 @@ static int _add_kernel_strtab_region(
     return _add_simple_region(
         context,
         vaddr,
-        MYST_KERNEL_STRTAB_REGION_NAME,
+        MYST_REGION_KERNEL_STRTAB,
         _details.kernel.image.strtab_data,
         _details.kernel.image.strtab_size);
 }
@@ -596,7 +596,7 @@ static int _add_kernel_dynstr_region(
     return _add_simple_region(
         context,
         vaddr,
-        MYST_KERNEL_DYNSTR_REGION_NAME,
+        MYST_REGION_KERNEL_DYNSTR,
         _details.kernel.image.dynstr_data,
         _details.kernel.image.dynstr_size);
 }
@@ -606,7 +606,7 @@ static int _add_rootfs_region(myst_region_context_t* context, uint64_t* vaddr)
     return _add_simple_region(
         context,
         vaddr,
-        MYST_ROOTFS_REGION_NAME,
+        MYST_REGION_ROOTFS,
         _details.rootfs.buffer,
         _details.rootfs.buffer_size);
 }
@@ -616,14 +616,14 @@ static int _add_archive_region(myst_region_context_t* context, uint64_t* vaddr)
     return _add_simple_region(
         context,
         vaddr,
-        MYST_ARCHIVE_REGION_NAME,
+        MYST_REGION_ARCHIVE,
         _details.archive.buffer,
         _details.archive.buffer_size);
 }
 
 static int _add_config_region(myst_region_context_t* context, uint64_t* vaddr)
 {
-    const char name[] = MYST_CONFIG_REGION_NAME;
+    const char name[] = MYST_REGION_CONFIG;
 
     if (_details.config.buffer == NULL)
         return 0;
@@ -641,7 +641,7 @@ static int _add_mman_region(myst_region_context_t* context, uint64_t* vaddr)
     int ret = 0;
     __attribute__((__aligned__(PAGE_SIZE))) uint8_t page[PAGE_SIZE];
     const size_t mman_pages = _details.mman_size / PAGE_SIZE;
-    const char name[] = MYST_MMAN_REGION_NAME;
+    const char name[] = MYST_REGION_MMAN;
 
     if (!context || !vaddr)
         ERAISE(-EINVAL);

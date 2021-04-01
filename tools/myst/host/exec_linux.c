@@ -176,7 +176,7 @@ static int _enter_kernel(
 
     /* extract any configuration settings */
     {
-        const char name[] = MYST_CONFIG_REGION_NAME;
+        const char name[] = MYST_REGION_CONFIG;
         myst_region_t r;
 
         if (myst_region_find(regions_end, name, &r) == 0)

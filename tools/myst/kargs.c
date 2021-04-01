@@ -49,7 +49,7 @@ int init_kernel_args(
 
     /* find the kernel region */
     {
-        const char name[] = MYST_KERNEL_REGION_NAME;
+        const char name[] = MYST_REGION_KERNEL;
         myst_region_t region;
 
         if (myst_region_find(regions_end, name, &region) != 0)
@@ -71,7 +71,7 @@ int init_kernel_args(
 
     /* find the kernel reloc region */
     {
-        const char name[] = MYST_KERNEL_RELOC_REGION_NAME;
+        const char name[] = MYST_REGION_KERNEL_RELOC;
         myst_region_t region;
 
         if (myst_region_find(regions_end, name, &region) != 0)
@@ -99,7 +99,7 @@ int init_kernel_args(
 
     /* find the kernel symtab region */
     {
-        const char name[] = MYST_KERNEL_SYMTAB_REGION_NAME;
+        const char name[] = MYST_REGION_KERNEL_SYMTAB;
         myst_region_t region;
 
         if (myst_region_find(regions_end, name, &region) != 0)
@@ -114,7 +114,7 @@ int init_kernel_args(
 
     /* find the kernel dynsym region */
     {
-        const char name[] = MYST_KERNEL_DYNSYM_REGION_NAME;
+        const char name[] = MYST_REGION_KERNEL_DYNSYM;
         myst_region_t region;
 
         if (myst_region_find(regions_end, name, &region) != 0)
@@ -129,7 +129,7 @@ int init_kernel_args(
 
     /* find the kernel strtab region */
     {
-        const char name[] = MYST_KERNEL_STRTAB_REGION_NAME;
+        const char name[] = MYST_REGION_KERNEL_STRTAB;
         myst_region_t region;
 
         if (myst_region_find(regions_end, name, &region) != 0)
@@ -144,7 +144,7 @@ int init_kernel_args(
 
     /* find the kernel dynstr region */
     {
-        const char name[] = MYST_KERNEL_DYNSTR_REGION_NAME;
+        const char name[] = MYST_REGION_KERNEL_DYNSTR;
         myst_region_t region;
 
         if (myst_region_find(regions_end, name, &region) != 0)
@@ -159,7 +159,7 @@ int init_kernel_args(
 
     /* find the crt region */
     {
-        const char name[] = MYST_CRT_REGION_NAME;
+        const char name[] = MYST_REGION_CRT;
         myst_region_t region;
 
         if (myst_region_find(regions_end, name, &region) != 0)
@@ -174,7 +174,7 @@ int init_kernel_args(
 
     /* find the crt reloc region */
     {
-        const char name[] = MYST_CRT_RELOC_REGION_NAME;
+        const char name[] = MYST_REGION_CRT_RELOC;
         myst_region_t region;
 
         if (myst_region_find(regions_end, name, &region) != 0)
@@ -189,7 +189,7 @@ int init_kernel_args(
 
     /* find the mman region */
     {
-        const char name[] = MYST_MMAN_REGION_NAME;
+        const char name[] = MYST_REGION_MMAN;
         myst_region_t region;
 
         if (myst_region_find(regions_end, name, &region) != 0)
@@ -204,7 +204,7 @@ int init_kernel_args(
 
     /* find the rootfs region */
     {
-        const char name[] = MYST_ROOTFS_REGION_NAME;
+        const char name[] = MYST_REGION_ROOTFS;
         myst_region_t region;
 
         if (myst_region_find(regions_end, name, &region) != 0)
@@ -219,7 +219,7 @@ int init_kernel_args(
 
     /* find the archive region */
     {
-        const char name[] = MYST_ARCHIVE_REGION_NAME;
+        const char name[] = MYST_REGION_ARCHIVE;
         myst_region_t region;
 
         if (myst_region_find(regions_end, name, &region) != 0)

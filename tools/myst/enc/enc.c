@@ -221,7 +221,7 @@ int myst_enter_ecall(
         extern const void* __oe_get_heap_base(void);
         const void* regions = __oe_get_heap_base();
 
-        if (myst_region_find(regions, MYST_CONFIG_REGION_NAME, &r) == 0)
+        if (myst_region_find(regions, MYST_REGION_CONFIG, &r) == 0)
         {
             if (parse_config_from_buffer(r.data, r.size, &parsed_config) != 0)
             {
