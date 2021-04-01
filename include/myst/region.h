@@ -25,7 +25,7 @@
 
 #define MYST_REGION_MAGIC 0x1c8093ca739f4e61
 #define MYST_REGION_NAME_SIZE 256
-#define MYST_REGION_EXTEND 2
+#define MYST_REGION_EXTEND 128
 
 typedef struct myst_region_trailer
 {
@@ -45,11 +45,10 @@ typedef struct myst_region
 MYST_STATIC_ASSERT(sizeof(myst_region_trailer_t) == 4096);
 
 typedef int (*myst_add_page_t)(
+    void* arg,
     uint64_t vaddr,
     const void* page,
-    int prot,  /* (PROT_READ | PROT_WRITE | PROT_EXEC | PROT_NONE) */
-    int flags, /* MYST_REGION_EXTEND */
-    void* arg);
+    int flags); /* PROT_READ, PROT_WRITE, PROT_EXEC, MYST_REGION_EXTEND */
 
 typedef struct myst_region_context myst_region_context_t;
 
@@ -71,8 +70,7 @@ int myst_region_add_page(
     myst_region_context_t* context,
     uint64_t vaddr,
     const void* page,
-    int prot,   /* (PROT_READ | PROT_WRITE | PROT_EXEC | PROT_NONE) */
-    int flags); /* MYST_REGION_EXTEND */
+    int flags); /* PROT_READ, PROT_WRITE, PROT_EXEC, MYST_REGION_EXTEND */
 
 int myst_region_find(
     const void* regions_end,

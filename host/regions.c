@@ -123,11 +123,10 @@ int myst_region_close(
         trailer.size = context->vaddr - context->region_start;
 
         ECHECK((*context->add_page)(
+            context->add_page_arg,
             context->vaddr,
             &trailer,
-            PROT_READ,
-            MYST_REGION_EXTEND,
-            context->add_page_arg));
+            PROT_READ | MYST_REGION_EXTEND));
 
         context->vaddr += PAGE_SIZE;
     }
@@ -146,7 +145,6 @@ int myst_region_add_page(
     myst_region_context_t* context,
     uint64_t vaddr,
     const void* page,
-    int prot,
     int flags)
 {
     int ret = 0;
@@ -159,8 +157,7 @@ int myst_region_add_page(
         ERAISE(-EINVAL);
 
     /* add the page */
-    ECHECK(
-        (*context->add_page)(vaddr, page, prot, flags, context->add_page_arg));
+    ECHECK((*context->add_page)(context->add_page_arg, vaddr, page, flags));
 
 done:
     return ret;

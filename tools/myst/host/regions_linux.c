@@ -18,12 +18,7 @@ struct arg
     uint64_t vaddr;
 };
 
-static int _add_page(
-    uint64_t vaddr,
-    const void* page,
-    int prot,
-    int flags,
-    void* arg_)
+static int _add_page(void* arg_, uint64_t vaddr, const void* page, int flags)
 {
     struct arg* arg = (struct arg*)arg_;
 
@@ -33,6 +28,8 @@ static int _add_page(
     if (arg->baseaddr != 0)
     {
         void* addr = (void*)arg->baseaddr + vaddr;
+        int prot = flags & ~MYST_REGION_EXTEND;
+
         memcpy(addr, page, PAGE_SIZE);
 
         if (mprotect(addr, PAGE_SIZE, prot) != 0)

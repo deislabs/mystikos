@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <libgen.h>
 #include <limits.h>
+#include <myst/buf.h>
 #include <myst/elf.h>
 #include <myst/eraise.h>
 #include <myst/file.h>
@@ -21,6 +22,21 @@
 #include "utils.h"
 
 region_details _details = {0};
+
+static myst_buf_t _flags = MYST_BUF_INITIALIZER;
+
+static int _add_page(
+    myst_region_context_t* context,
+    uint64_t vaddr,
+    const void* page,
+    int flags)
+{
+    uint8_t x = (uint8_t)flags;
+    if (myst_buf_append(&_flags, &x, 1) != 0)
+        _err("out of memory");
+
+    return myst_region_add_page(context, vaddr, page, flags);
+}
 
 const region_details* create_region_details_from_package(
     elf_image_t* myst_elf,
@@ -303,19 +319,20 @@ static int _add_segment_pages(
     {
         const uint64_t dest_vaddr = vaddr + page_vaddr;
         const void* page = (uint8_t*)image_base + page_vaddr;
-        uint64_t prot = 0;
-        const int flags = MYST_REGION_EXTEND;
+        int flags = 0;
 
         if (segment->flags & PF_R)
-            prot |= PROT_READ;
+            flags |= PROT_READ;
 
         if (segment->flags & PF_W)
-            prot |= PROT_WRITE;
+            flags |= PROT_WRITE;
 
         if (segment->flags & PF_X)
-            prot |= PROT_EXEC;
+            flags |= PROT_EXEC;
 
-        if (myst_region_add_page(context, dest_vaddr, page, prot, flags) != 0)
+        flags |= MYST_REGION_EXTEND;
+
+        if (_add_page(context, dest_vaddr, page, flags) != 0)
         {
             ERAISE(-EINVAL);
         }
@@ -499,13 +516,10 @@ static int _add_crt_reloc_region(
 
         for (size_t i = 0; i < npages; i++)
         {
-            const int prot = PROT_READ;
-            const int flags = MYST_REGION_EXTEND;
+            int flags = PROT_READ | MYST_REGION_EXTEND;
 
-            if (myst_region_add_page(context, *vaddr, page, prot, flags) != 0)
-            {
+            if (_add_page(context, *vaddr, page, flags) != 0)
                 ERAISE(-EINVAL);
-            }
 
             page += PAGE_SIZE;
             (*vaddr) += PAGE_SIZE;
@@ -545,13 +559,10 @@ static int _add_kernel_reloc_region(
 
         for (size_t i = 0; i < npages; i++)
         {
-            const int prot = PROT_READ;
-            const int flags = MYST_REGION_EXTEND;
+            int flags = PROT_READ | MYST_REGION_EXTEND;
 
-            if (myst_region_add_page(context, *vaddr, page, prot, flags) != 0)
-            {
+            if (_add_page(context, *vaddr, page, flags) != 0)
                 ERAISE(-EINVAL);
-            }
 
             page += PAGE_SIZE;
             (*vaddr) += PAGE_SIZE;
@@ -591,13 +602,10 @@ static int _add_kernel_symtab_region(
 
         for (size_t i = 0; i < npages; i++)
         {
-            const int prot = PROT_READ;
-            const int flags = MYST_REGION_EXTEND;
+            int flags = PROT_READ | MYST_REGION_EXTEND;
 
-            if (myst_region_add_page(context, *vaddr, page, prot, flags) != 0)
-            {
+            if (_add_page(context, *vaddr, page, flags) != 0)
                 ERAISE(-EINVAL);
-            }
 
             page += PAGE_SIZE;
             (*vaddr) += PAGE_SIZE;
@@ -637,13 +645,10 @@ static int _add_kernel_dynsym_region(
 
         for (size_t i = 0; i < npages; i++)
         {
-            const int prot = PROT_READ | PROT_WRITE | PROT_EXEC;
-            const int flags = MYST_REGION_EXTEND;
+            int flags = PROT_READ | PROT_WRITE | PROT_EXEC | MYST_REGION_EXTEND;
 
-            if (myst_region_add_page(context, *vaddr, page, prot, flags) != 0)
-            {
+            if (_add_page(context, *vaddr, page, flags) != 0)
                 ERAISE(-EINVAL);
-            }
 
             page += PAGE_SIZE;
             (*vaddr) += PAGE_SIZE;
@@ -683,13 +688,10 @@ static int _add_kernel_strtab_region(
 
         for (size_t i = 0; i < npages; i++)
         {
-            const int prot = PROT_READ;
-            const int flags = MYST_REGION_EXTEND;
+            int flags = PROT_READ | MYST_REGION_EXTEND;
 
-            if (myst_region_add_page(context, *vaddr, page, prot, flags) != 0)
-            {
+            if (_add_page(context, *vaddr, page, flags) != 0)
                 ERAISE(-EINVAL);
-            }
 
             page += PAGE_SIZE;
             (*vaddr) += PAGE_SIZE;
@@ -729,13 +731,10 @@ static int _add_kernel_dynstr_region(
 
         for (size_t i = 0; i < npages; i++)
         {
-            const int prot = PROT_READ;
-            const int flags = MYST_REGION_EXTEND;
+            int flags = PROT_READ | MYST_REGION_EXTEND;
 
-            if (myst_region_add_page(context, *vaddr, page, prot, flags) != 0)
-            {
+            if (_add_page(context, *vaddr, page, flags) != 0)
                 ERAISE(-EINVAL);
-            }
 
             page += PAGE_SIZE;
             (*vaddr) += PAGE_SIZE;
@@ -771,16 +770,15 @@ static int _add_rootfs_region(myst_region_context_t* context, uint64_t* vaddr)
     while (r)
     {
         __attribute__((__aligned__(PAGE_SIZE))) uint8_t page[PAGE_SIZE];
-        const int prot = PROT_READ;
-        const int flags = MYST_REGION_EXTEND;
         const size_t min = (r < sizeof(page)) ? r : sizeof(page);
+        int flags = PROT_READ | MYST_REGION_EXTEND;
 
         memcpy(page, p, min);
 
         if (min < sizeof(page))
             memset(page + r, 0, sizeof(page) - r);
 
-        if (myst_region_add_page(context, *vaddr, page, prot, flags) != 0)
+        if (_add_page(context, *vaddr, page, flags) != 0)
         {
             ERAISE(-EINVAL);
         }
@@ -819,16 +817,15 @@ static int _add_archive_region(myst_region_context_t* context, uint64_t* vaddr)
     while (r)
     {
         __attribute__((__aligned__(PAGE_SIZE))) uint8_t page[PAGE_SIZE];
-        const int prot = PROT_READ;
-        const int flags = MYST_REGION_EXTEND;
         const size_t min = (r < sizeof(page)) ? r : sizeof(page);
+        int flags = PROT_READ | MYST_REGION_EXTEND;
 
         memcpy(page, p, min);
 
         if (min < sizeof(page))
             memset(page + r, 0, sizeof(page) - r);
 
-        if (myst_region_add_page(context, *vaddr, page, prot, flags) != 0)
+        if (_add_page(context, *vaddr, page, flags) != 0)
         {
             ERAISE(-EINVAL);
         }
@@ -870,16 +867,15 @@ static int _add_config_region(myst_region_context_t* context, uint64_t* vaddr)
     while (r)
     {
         __attribute__((__aligned__(PAGE_SIZE))) uint8_t page[PAGE_SIZE];
-        const int prot = PROT_READ;
-        const int flags = MYST_REGION_EXTEND;
         const size_t min = (r < sizeof(page)) ? r : sizeof(page);
+        int flags = PROT_READ | MYST_REGION_EXTEND;
 
         memcpy(page, p, min);
 
         if (min < sizeof(page))
             memset(page + r, 0, sizeof(page) - r);
 
-        if (myst_region_add_page(context, *vaddr, page, prot, flags) != 0)
+        if (_add_page(context, *vaddr, page, flags) != 0)
         {
             ERAISE(-EINVAL);
         }
@@ -915,36 +911,29 @@ static int _add_mman_region(myst_region_context_t* context, uint64_t* vaddr)
 
     /* Add the leading guard page */
     {
-        const int prot = PROT_NONE;
-        const int flags = MYST_REGION_EXTEND;
+        int flags = PROT_NONE | MYST_REGION_EXTEND;
 
-        if (myst_region_add_page(context, *vaddr, page, prot, flags) != 0)
-        {
+        if (_add_page(context, *vaddr, page, flags) != 0)
             ERAISE(-EINVAL);
-        }
 
         *vaddr += sizeof(page);
     }
 
     for (size_t i = 0; i < mman_pages; i++)
     {
-        const int prot = PROT_READ | PROT_WRITE | PROT_EXEC;
-        const int flags = 0;
+        int flags = PROT_READ | PROT_WRITE | PROT_EXEC;
 
-        if (myst_region_add_page(context, *vaddr, page, prot, flags) != 0)
-        {
+        if (_add_page(context, *vaddr, page, flags) != 0)
             ERAISE(-EINVAL);
-        }
 
         *vaddr += sizeof(page);
     }
 
     /* Add the trailing guard page */
     {
-        const int prot = PROT_NONE;
-        const int flags = MYST_REGION_EXTEND;
+        int flags = PROT_NONE | MYST_REGION_EXTEND;
 
-        if (myst_region_add_page(context, *vaddr, page, prot, flags) != 0)
+        if (_add_page(context, *vaddr, page, flags) != 0)
             ERAISE(-EINVAL);
 
         *vaddr += sizeof(page);

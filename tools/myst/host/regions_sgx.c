@@ -5,24 +5,22 @@
 #include "regions.h"
 #include "utils.h"
 
-static int _add_page(
-    uint64_t vaddr,
-    const void* page,
-    int prot,
-    int flags,
-    void* arg)
+static int _add_page(void* arg, uint64_t vaddr, const void* page, int flags)
 {
     uint64_t oe_flags = SGX_SECINFO_REG;
-    bool extend = (flags & MYST_REGION_EXTEND);
+    bool extend = false;
 
-    if (prot & PROT_READ)
+    if (flags & PROT_READ)
         oe_flags |= SGX_SECINFO_R;
 
-    if (prot & PROT_WRITE)
+    if (flags & PROT_WRITE)
         oe_flags |= SGX_SECINFO_W;
 
-    if (prot & PROT_EXEC)
+    if (flags & PROT_EXEC)
         oe_flags |= SGX_SECINFO_X;
+
+    if (flags & MYST_REGION_EXTEND)
+        extend = true;
 
     if (oe_load_extra_enclave_data(arg, vaddr, page, oe_flags, extend) != OE_OK)
     {
