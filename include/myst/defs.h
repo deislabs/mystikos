@@ -28,4 +28,6 @@
 
 #define MYST_UNUSED __attribute__((__unused__))
 
+#define MYST_ALIGN(ALIGNMENT) __attribute__((__aligned__(ALIGNMENT)))
+
 #endif /* _MYST_DEFS_H */
