@@ -221,13 +221,6 @@ static long _enter(void* arg_)
     const uint8_t* enclave_base;
     size_t enclave_size;
 
-    if (__sync_fetch_and_add(&myst_enter_ecall_lock, 1) != 0)
-    {
-        fprintf(stderr, "ERROR: myst_enter_ecall() can only be called once\n");
-        myst_enter_ecall_lock = 1; // stop this from wrapping
-        goto done;
-    }
-
     if (!argv_data || !argv_size || !envp_data || !envp_size)
         goto done;
 
@@ -640,7 +633,7 @@ done:
     return ret;
 }
 
-#define STACK_SIZE (132 * 1024)
+#define ENTER_STACK_SIZE (132 * 1024)
 
 int myst_enter_ecall(
     struct myst_options* options,
@@ -660,10 +653,18 @@ int myst_enter_ecall(
         .envp_size = envp_size,
         .event = event,
     };
-    MYST_ALIGN(16) static uint8_t _stack[STACK_SIZE];
+    MYST_ALIGN(16) static uint8_t _stack[ENTER_STACK_SIZE];
+
+    /* prevent this function from being called more than once */
+    if (__sync_fetch_and_add(&myst_enter_ecall_lock, 1) != 0)
+    {
+        fprintf(stderr, "ERROR: myst_enter_ecall() can only be called once\n");
+        myst_enter_ecall_lock = 1; // stop this from wrapping
+        return -1;
+    }
 
     /* avoid using the tiny TCS stack */
-    return (int)myst_switch_stack(_stack + STACK_SIZE, _enter, &arg);
+    return (int)myst_switch_stack(_stack + ENTER_STACK_SIZE, _enter, &arg);
 }
 
 long myst_run_thread_ecall(uint64_t cookie, uint64_t event)
@@ -870,10 +871,17 @@ int myst_load_fssig(const char* path, myst_fssig_t* fssig)
     return retval;
 }
 
+#define ENCLAVE_PRODUCT_ID 1
+#define ENCLAVE_SECURITY_VERSION 1
+#define ENCLAVE_DEBUG true
+#define ENCLAVE_HEAP_SIZE 32768
+#define ENCLAVE_STACK_SIZE 8192
+#define ENCLAVE_MAX_THREADS 32
+
 OE_SET_ENCLAVE_SGX(
-    1,    /* ProductID */
-    1,    /* SecurityVersion */
-    true, /* Debug */
-    32,   /* NumHeapPages */
-    2,    /* NumStackPages */
-    32);  /* NumTCS */
+    ENCLAVE_PRODUCT_ID,
+    ENCLAVE_SECURITY_VERSION,
+    ENCLAVE_DEBUG,
+    ENCLAVE_HEAP_SIZE / OE_PAGE_SIZE,
+    ENCLAVE_STACK_SIZE / OE_PAGE_SIZE,
+    ENCLAVE_MAX_THREADS);
