@@ -432,12 +432,11 @@ void test_exhaust_threads(void)
     /* Create threads until exhausted (last iteration fails with EAGAIN) */
     for (size_t i = 0; i < max_threads; i++)
     {
+        printf("create thread %zu of %zu\n", i, max_threads);
+
         pthread_attr_t attr;
         pthread_attr_init(&attr);
         pthread_attr_setstacksize(&attr, PTHREAD_STACK_MIN);
-
-        printf("create thread %zu of %zu\n", i, max_threads);
-
         int r = pthread_create(&threads[i], &attr, _exhaust_thread, (void*)i);
         pthread_attr_destroy(&attr);
 
