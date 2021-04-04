@@ -98,11 +98,10 @@ static int _pthread_create(
         break;
     }
 
+#if 0
     if (i != 0 && ret == 0)
-    {
-        printf("************ RETRY WORKED!\n");
-        assert("oops" == NULL);
-    }
+        assert("unexpected" == NULL);
+#endif
 
     return ret;
 }
