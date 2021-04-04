@@ -590,8 +590,8 @@ long myst_run_thread(uint64_t cookie, uint64_t event)
     // clang-format on
     size_t stack_size;
     const size_t stack_alignment = 16;
-    const size_t thread_stack_size = 8 * 1024;
-    const size_t process_stack_size = 64 * 1024;
+    const size_t thread_stack_size = 8192;
+    const size_t process_stack_size = 65536;
 
     if (!thread)
         ERAISE(-EINVAL);
