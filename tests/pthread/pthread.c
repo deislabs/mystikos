@@ -71,6 +71,10 @@ static int _gettid()
     return (int)syscall(SYS_gettid);
 }
 
+static void bobo()
+{
+}
+
 static void* _thread_func(void* arg)
 {
     uint64_t secs = (size_t)arg;
@@ -78,6 +82,8 @@ static void* _thread_func(void* arg)
     pid_t ppid = getppid();
     pid_t pid = getpid();
     pid_t tid = _gettid();
+
+    bobo();
 
     T(printf("_thread_func(): ppid=%d pid=%d tid=%d\n", ppid, pid, tid));
     (void)ppid;
