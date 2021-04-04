@@ -86,7 +86,7 @@ static int _pthread_create(
 {
     int ret = 0;
     size_t i;
-    const size_t retries = 1000;
+    const size_t retries = 3;
 
     for (i = 0; i < retries; i++)
     {
