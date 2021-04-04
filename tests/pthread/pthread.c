@@ -474,7 +474,7 @@ static void* _exhaust_thread(void* arg)
 {
     /* wait here until main thread clears this atomic variable */
     while (_wait)
-        sleep_msec(100);
+        sleep_msec(250);
 
     return arg;
 }

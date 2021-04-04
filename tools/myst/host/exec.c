@@ -84,21 +84,14 @@ static void* _thread_func(void* arg)
 
 long myst_create_thread_ocall(uint64_t cookie)
 {
-    long ret = 0;
     pthread_t t;
     pthread_attr_t attr;
 
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-
-    if (pthread_create(&t, &attr, _thread_func, (void*)cookie) != 0)
-    {
-        ret = -EINVAL;
-        goto done;
-    }
-
-done:
+    long ret = -pthread_create(&t, &attr, _thread_func, (void*)cookie);
     pthread_attr_destroy(&attr);
+
     return ret;
 }
 
