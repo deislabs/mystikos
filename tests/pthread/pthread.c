@@ -432,7 +432,14 @@ void test_exhaust_threads(void)
     /* Create threads until exhausted (last iteration fails with EAGAIN) */
     for (size_t i = 0; i < max_threads; i++)
     {
-        int r = pthread_create(&threads[i], NULL, _exhaust_thread, (void*)i);
+        pthread_attr_t attr;
+        pthread_attr_init(&attr);
+        pthread_attr_setstacksize(&attr, PTHREAD_STACK_MIN);
+
+        printf("create thread %zu of %zu\n", i, max_threads);
+
+        int r = pthread_create(&threads[i], &attr, _exhaust_thread, (void*)i);
+        pthread_attr_destroy(&attr);
 
         if (i + 1 == max_threads)
             assert(r == EAGAIN);
@@ -493,12 +500,15 @@ int main(int argc, const char* argv[])
 
     for (size_t i = 0; i < n; i++)
     {
+#if 0
         test_create_thread();
         test_mutexes(PTHREAD_MUTEX_NORMAL);
         test_mutexes(PTHREAD_MUTEX_RECURSIVE);
         test_timedlock();
         test_cond_signal();
         test_cond_broadcast();
+#endif
+        printf("ZZZZZZZZZZZZZZZZZZZZZZZZ\n");
         if (_get_max_threads() != LONG_MAX)
             test_exhaust_threads();
     }
