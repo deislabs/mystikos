@@ -28,7 +28,7 @@ tests:
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/pthread $(COUNT)
 
 tests-n:
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/pthread 10
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/pthread 1000
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst
