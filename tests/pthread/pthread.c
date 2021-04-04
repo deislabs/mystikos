@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <limits.h>
 #include <pthread.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -26,6 +27,47 @@
 #define T(EXPR)
 #endif
 
+__attribute__((format(printf, 3, 4))) static int _err(
+    const char* file,
+    unsigned int line,
+    const char* fmt,
+    ...)
+{
+    va_list ap;
+
+    fprintf(stderr, "%s(%u): ", file, line);
+    va_start(ap, fmt);
+    vfprintf(stderr, fmt, ap);
+    va_end(ap);
+    fprintf(stderr, "\n");
+    exit(1);
+}
+
+/* pthread_create() wrapper with retry on EAGAIN */
+static int _pthread_create(
+    pthread_t* thread,
+    const pthread_attr_t* attr,
+    void* (*start_routine)(void*),
+    void* arg)
+{
+    int ret = 0;
+    const size_t retries = 3;
+
+    for (size_t i = 0; i < retries; i++)
+    {
+        ret = pthread_create(thread, attr, start_routine, arg);
+
+        if (ret == EAGAIN)
+            continue;
+
+        break;
+    }
+
+    return ret;
+}
+
+#define PUTERR(FMT, ...) _err(__FILE__, __LINE__, FMT, ##__VA_ARGS__)
+
 static size_t _get_max_threads(void)
 {
     const long SYS_myst_max_threads = 1014;
@@ -34,7 +76,7 @@ static size_t _get_max_threads(void)
 
     if (n < 0)
     {
-        fprintf(stderr, "_get_max_threads() failed\n");
+        PUTERR("_get_max_threads() failed");
         assert(0);
     }
 
@@ -71,10 +113,6 @@ static int _gettid()
     return (int)syscall(SYS_gettid);
 }
 
-static void bobo()
-{
-}
-
 static void* _thread_func(void* arg)
 {
     uint64_t secs = (size_t)arg;
@@ -82,8 +120,6 @@ static void* _thread_func(void* arg)
     pid_t ppid = getppid();
     pid_t pid = getpid();
     pid_t tid = _gettid();
-
-    bobo();
 
     T(printf("_thread_func(): ppid=%d pid=%d tid=%d\n", ppid, pid, tid));
     (void)ppid;
@@ -103,9 +139,11 @@ void test_create_thread(void)
     /* Create threads */
     for (size_t i = 0; i < NUM_THREADS; i++)
     {
-        if (pthread_create(&threads[i], NULL, _thread_func, (void*)i) != 0)
+        int r;
+
+        if ((r = _pthread_create(&threads[i], NULL, _thread_func, (void*)i)))
         {
-            fprintf(stderr, "pthread_create() failed\n");
+            PUTERR("pthread_create() failed: %d", r);
             abort();
         }
     }
@@ -117,7 +155,7 @@ void test_create_thread(void)
 
         if (pthread_join(threads[i], &retval) != 0)
         {
-            fprintf(stderr, "pthread_join() failed\n");
+            PUTERR("pthread_join() failed");
             abort();
         }
 
@@ -184,11 +222,12 @@ void test_mutexes(int mutex_type)
     /* Create threads */
     for (size_t i = 0; i < NUM_THREADS; i++)
     {
+        int r;
         void* arg = (void*)(i + 1);
 
-        if (pthread_create(&threads[i], NULL, _test_mutex_thread, arg) != 0)
+        if ((r = _pthread_create(&threads[i], NULL, _test_mutex_thread, arg)))
         {
-            fprintf(stderr, "pthread_create() failed\n");
+            PUTERR("pthread_create() failed: %d", r);
             abort();
         }
 
@@ -209,7 +248,7 @@ void test_mutexes(int mutex_type)
 
     if (integer != _shared_integer)
     {
-        fprintf(stderr, "Expected: %ld, Got: %ld\n", integer, _shared_integer);
+        PUTERR("Expected: %ld, Got: %ld", integer, _shared_integer);
         abort();
     }
 
@@ -263,14 +302,15 @@ static void* _test_timedlock(void* arg)
 void test_timedlock(void)
 {
     pthread_t thread;
+    int r;
 
     printf("=== start test (%s)\n", __FUNCTION__);
 
     pthread_mutex_lock(&_timed_mutex);
 
-    if (pthread_create(&thread, NULL, _test_timedlock, NULL) != 0)
+    if ((r = _pthread_create(&thread, NULL, _test_timedlock, NULL)))
     {
-        fprintf(stderr, "pthread_create() failed\n");
+        PUTERR("pthread_create() failed: %d", r);
         abort();
     }
 
@@ -282,7 +322,7 @@ void test_timedlock(void)
 
     if (pthread_join(thread, NULL) != 0)
     {
-        fprintf(stderr, "pthread_create() failed\n");
+        PUTERR("pthread_join() failed");
         abort();
     }
 
@@ -335,7 +375,7 @@ void test_cond_signal(void)
 
     for (size_t i = 0; i < NUM_THREADS; i++)
     {
-        assert(pthread_create(&threads[i], NULL, _test_cond, &arg) == 0);
+        assert(_pthread_create(&threads[i], NULL, _test_cond, &arg) == 0);
     }
 
     assert(pthread_mutex_unlock(&arg.m) == 0);
@@ -389,7 +429,7 @@ void test_cond_broadcast(void)
 
     for (size_t i = 0; i < NUM_THREADS; i++)
     {
-        assert(pthread_create(&threads[i], NULL, _test_cond, &arg) == 0);
+        assert(_pthread_create(&threads[i], NULL, _test_cond, &arg) == 0);
     }
 
     assert(pthread_mutex_unlock(&arg.m) == 0);
@@ -443,7 +483,7 @@ void test_exhaust_threads(void)
         pthread_attr_t attr;
         pthread_attr_init(&attr);
         pthread_attr_setstacksize(&attr, PTHREAD_STACK_MIN);
-        int r = pthread_create(&threads[i], &attr, _exhaust_thread, (void*)i);
+        int r = _pthread_create(&threads[i], &attr, _exhaust_thread, (void*)i);
         pthread_attr_destroy(&attr);
 
         if (i + 1 == max_threads)
@@ -459,7 +499,7 @@ void test_exhaust_threads(void)
 
         if (pthread_join(threads[i], &retval) != 0)
         {
-            fprintf(stderr, "pthread_join() failed\n");
+            PUTERR("pthread_join() failed");
             abort();
         }
 
@@ -505,6 +545,7 @@ int main(int argc, const char* argv[])
 
     for (size_t i = 0; i < n; i++)
     {
+        printf("=== pass %zu\n", i);
         test_create_thread();
         test_mutexes(PTHREAD_MUTEX_NORMAL);
         test_mutexes(PTHREAD_MUTEX_RECURSIVE);

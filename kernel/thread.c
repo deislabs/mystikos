@@ -578,33 +578,29 @@ static long _run_thread(void* arg_)
 long myst_run_thread(uint64_t cookie, uint64_t event)
 {
     long ret = 0;
-    uint8_t* stack = NULL;
-    myst_thread_t* thread = (myst_thread_t*)_put_cookie(cookie);
-    // clang-format off
-    struct run_thread_arg arg =
-    {
-        .cookie = cookie,
-        .event = event,
-        .thread = thread
-    };
-    // clang-format on
+    myst_thread_t* thread;
     size_t stack_size;
     const size_t stack_alignment = 16;
-    const size_t thread_stack_size = 8192;
     const size_t process_stack_size = 65536;
+    const size_t regular_stack_size = 8192;
+    uint8_t* stack = NULL;
 
-    if (!thread)
+    /* get the thread corresponding to this cookie */
+    if (!(thread = _put_cookie(cookie)))
         ERAISE(-EINVAL);
 
+    /* the stack size is determined by the thread type (process or regular) */
     if (myst_is_process_thread(thread))
         stack_size = process_stack_size;
     else
-        stack_size = thread_stack_size;
+        stack_size = regular_stack_size;
 
     /* allocate a new stack since the OE caller stack is very small */
     if (!(stack = memalign(stack_alignment, stack_size)))
         ERAISE(-ENOMEM);
 
+    /* run the thread on the transient stack */
+    struct run_thread_arg arg = {thread, cookie, event};
     ECHECK(myst_switch_stack(stack + stack_size, _run_thread, &arg));
 
 done:
