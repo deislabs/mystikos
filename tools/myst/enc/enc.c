@@ -891,4 +891,4 @@ OE_SET_ENCLAVE_SGX(
     true, /* Debug */
     32,   /* NumHeapPages */
     32,   /* NumStackPages */
-    16);  /* NumTCS */
+    32);  /* NumTCS */
