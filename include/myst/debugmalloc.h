@@ -23,6 +23,8 @@ size_t myst_debug_malloc_check(bool dump);
 
 void myst_debug_malloc_dump(void);
 
+void myst_debug_malloc_dump_used(void);
+
 extern bool myst_enable_debug_malloc;
 
 #endif /* _MYST_DEBUGMALLOC_H */

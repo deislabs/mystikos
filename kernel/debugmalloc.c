@@ -267,7 +267,7 @@ static void _malloc_dump(size_t size, void* addrs[], int num_addrs)
     myst_dump_backtrace(addrs, num_addrs);
 }
 
-static void _dump(bool need_lock)
+static void _dump(bool dump_blocks, bool need_lock)
 {
     list_t* list = &_list;
 
@@ -288,10 +288,13 @@ static void _dump(bool need_lock)
         printf(
             "=== %s(): %zu bytes in %zu blocks\n", __FUNCTION__, bytes, blocks);
 
-        for (header_t* p = list->head; p; p = p->next)
-            _malloc_dump(p->size, p->addrs, (int)p->num_addrs);
+        if (dump_blocks)
+        {
+            for (header_t* p = list->head; p; p = p->next)
+                _malloc_dump(p->size, p->addrs, (int)p->num_addrs);
 
-        printf("\n");
+            printf("\n");
+        }
     }
 
     if (need_lock)
@@ -438,7 +441,12 @@ size_t myst_debug_malloc_usable_size(void* ptr)
 
 void myst_debug_malloc_dump(void)
 {
-    _dump(true);
+    _dump(true, true);
+}
+
+void myst_debug_malloc_dump_used(void)
+{
+    _dump(false, true);
 }
 
 size_t myst_debug_malloc_check(bool dump)
@@ -454,7 +462,7 @@ size_t myst_debug_malloc_check(bool dump)
         if (count)
         {
             if (dump)
-                _dump(false);
+                _dump(true, false);
 
             for (header_t* p = list->head; p; p = p->next)
                 _check_block(p);
