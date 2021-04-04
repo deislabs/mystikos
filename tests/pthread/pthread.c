@@ -569,6 +569,10 @@ int main(int argc, const char* argv[])
         test_cond_broadcast();
         if (_get_max_threads() != LONG_MAX)
             test_exhaust_threads();
+#if 0
+        const long SYS_myst_shell = 1017;
+        syscall(SYS_myst_shell);
+#endif
     }
 
     struct tms tms;

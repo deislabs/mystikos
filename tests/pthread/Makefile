@@ -21,8 +21,6 @@ ifdef ETRACE
 OPTS += --etrace
 endif
 
-OPTS += --memory-size=512m
-
 ifdef ALLTESTS
 COUNT = 10
 endif
@@ -34,11 +32,7 @@ tests:
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/pthread $(COUNT)
 
 tests-n:
-<<<<<<< HEAD
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/pthread 1000
-=======
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/pthread 2
->>>>>>> disable process mappings
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst

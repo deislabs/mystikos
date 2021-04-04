@@ -293,6 +293,10 @@ void myst_shell(const char* msg)
         {
             myst_debug_malloc_dump();
         }
+        else if (strcmp(argv[0], "mused") == 0)
+        {
+            myst_debug_malloc_dump_used();
+        }
         else if (strcmp(argv[0], "env") == 0)
         {
             _env_command(argc, argv);
