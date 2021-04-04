@@ -43,29 +43,6 @@ __attribute__((format(printf, 3, 4))) static int _err(
     exit(1);
 }
 
-/* pthread_create() wrapper with retry on EAGAIN */
-static int _pthread_create(
-    pthread_t* thread,
-    const pthread_attr_t* attr,
-    void* (*start_routine)(void*),
-    void* arg)
-{
-    int ret = 0;
-    const size_t retries = 3;
-
-    for (size_t i = 0; i < retries; i++)
-    {
-        ret = pthread_create(thread, attr, start_routine, arg);
-
-        if (ret == EAGAIN)
-            continue;
-
-        break;
-    }
-
-    return ret;
-}
-
 #define PUTERR(FMT, ...) _err(__FILE__, __LINE__, FMT, ##__VA_ARGS__)
 
 static size_t _get_max_threads(void)
@@ -98,6 +75,36 @@ void sleep_msec(uint64_t milliseconds)
     {
         req = &rem;
     }
+}
+
+/* pthread_create() wrapper with retry on EAGAIN */
+static int _pthread_create(
+    pthread_t* thread,
+    const pthread_attr_t* attr,
+    void* (*start_routine)(void*),
+    void* arg)
+{
+    int ret = 0;
+    size_t i;
+    const size_t retries = 1000;
+
+    for (i = 0; i < retries; i++)
+    {
+        ret = pthread_create(thread, attr, start_routine, arg);
+
+        if (ret == EAGAIN)
+            continue;
+
+        break;
+    }
+
+    if (i != 0 && ret == 0)
+    {
+        printf("************ RETRY WORKED!\n");
+        assert("oops" == NULL);
+    }
+
+    return ret;
 }
 
 /*
@@ -462,9 +469,14 @@ void test_cond_broadcast(void)
 **==============================================================================
 */
 
+static _Atomic(int) _wait;
+
 static void* _exhaust_thread(void* arg)
 {
-    sleep(1);
+    /* wait here until main thread clears this atomic variable */
+    while (_wait)
+        sleep_msec(100);
+
     return arg;
 }
 
@@ -474,6 +486,8 @@ void test_exhaust_threads(void)
     pthread_t threads[max_threads];
 
     printf("=== start test (%s)\n", __FUNCTION__);
+
+    _wait = 1;
 
     /* Create threads until exhausted (last iteration fails with EAGAIN) */
     for (size_t i = 0; i < max_threads; i++)
@@ -491,6 +505,8 @@ void test_exhaust_threads(void)
         else
             assert(r == 0);
     }
+
+    _wait = 0;
 
     /* Join threads except for the last one that failed */
     for (size_t i = 0; i < max_threads - 1; i++)
