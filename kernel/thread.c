@@ -397,16 +397,25 @@ myst_thread_t* myst_thread_self(void)
 }
 
 /* Force the caller stack to be aligned */
-__attribute__((force_align_arg_pointer)) static void _call_thread_fn(void)
+__attribute__((force_align_arg_pointer)) static long _call_thread_fn(void* arg)
 {
+    (void)arg;
     myst_thread_t* thread = myst_thread_self();
     thread->clone.fn(thread->clone.arg);
+    return 0;
 }
 
-/* The target calls this from the new thread */
-long myst_run_thread(uint64_t cookie, uint64_t event)
+struct run_thread_arg
 {
-    myst_thread_t* thread = (myst_thread_t*)_put_cookie(cookie);
+    uint64_t cookie;
+    uint64_t event;
+};
+
+/* The target calls this from the new thread */
+static long _run_thread(void* arg_)
+{
+    struct run_thread_arg* arg = arg_;
+    myst_thread_t* thread = (myst_thread_t*)_put_cookie(arg->cookie);
     myst_td_t* target_td = myst_get_fsbase();
     myst_td_t* crt_td = NULL;
     bool is_child_thread;
@@ -436,8 +445,8 @@ long myst_run_thread(uint64_t cookie, uint64_t event)
     thread->target_td = target_td;
 
     /* save the host thread event */
-    myst_assume(event != 0);
-    thread->event = event;
+    myst_assume(arg->event != 0);
+    thread->event = arg->event;
 
     /* bind this thread to the target thread-descriptor */
     myst_assume(myst_tcall_set_tsd((uint64_t)thread) == 0);
@@ -548,23 +557,44 @@ long myst_run_thread(uint64_t cookie, uint64_t event)
 
         if (is_child_thread)
         {
-            /* use the stack provided by clone() */
-            myst_jmp_buf_t env = thread->jmpbuf;
-            env.rip = (uint64_t)_call_thread_fn;
-            env.rsp = (uint64_t)thread->clone.child_stack;
-            env.rbp = (uint64_t)thread->clone.child_stack;
-            myst_jump(&env);
+            myst_switch_stack(thread->clone.child_stack, _call_thread_fn, NULL);
+            /* never returns */
+            myst_panic("unexpected return");
         }
         else
         {
-            /* use the target stack */
-            _call_thread_fn();
+            // use the caller's stack since the one passed from posix_spawn
+            // (in musl libc) is very small (1024 + PATH_MAX)
+            _call_thread_fn(NULL);
         }
 
         /* unreachable */
     }
 
     return 0;
+}
+
+#define STACK_ALIGNENT 16
+#define STACK_SIZE (64 * 1024)
+
+long myst_run_thread(uint64_t cookie, uint64_t event)
+{
+    long ret = 0;
+    uint8_t* stack = NULL;
+    struct run_thread_arg arg = {.cookie = cookie, .event = event};
+
+    /* allocate a new stack since the OE caller stack is very small */
+    if (!(stack = memalign(STACK_ALIGNENT, STACK_SIZE)))
+        ERAISE(-ENOMEM);
+
+    ECHECK(myst_switch_stack(stack + STACK_SIZE, _run_thread, &arg));
+
+done:
+
+    if (stack)
+        free(stack);
+
+    return ret;
 }
 
 static long _syscall_clone(
