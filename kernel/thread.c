@@ -99,7 +99,7 @@ pid_t myst_generate_tid(void)
 **==============================================================================
 */
 
-#define MAX_COOKIE_MAP_ENTRIES 64
+#define MAX_COOKIE_MAP_ENTRIES (1024 + 256)
 
 typedef struct cookie_map_entry
 {
