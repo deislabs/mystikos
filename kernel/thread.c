@@ -407,6 +407,7 @@ __attribute__((force_align_arg_pointer)) static long _call_thread_fn(void* arg)
 
 struct run_thread_arg
 {
+    myst_thread_t* thread;
     uint64_t cookie;
     uint64_t event;
 };
@@ -415,7 +416,7 @@ struct run_thread_arg
 static long _run_thread(void* arg_)
 {
     struct run_thread_arg* arg = arg_;
-    myst_thread_t* thread = (myst_thread_t*)_put_cookie(arg->cookie);
+    myst_thread_t* thread = arg->thread;
     myst_td_t* target_td = myst_get_fsbase();
     myst_td_t* crt_td = NULL;
     bool is_child_thread;
@@ -575,19 +576,37 @@ static long _run_thread(void* arg_)
 }
 
 #define STACK_ALIGNENT 16
-#define STACK_SIZE (64 * 1024)
+#define THREAD_STACK_SIZE (8 * 1024)
+#define PROCESS_THREAD_STACK_SIZE (64 * 1024)
 
 long myst_run_thread(uint64_t cookie, uint64_t event)
 {
     long ret = 0;
     uint8_t* stack = NULL;
-    struct run_thread_arg arg = {.cookie = cookie, .event = event};
+    myst_thread_t* thread = (myst_thread_t*)_put_cookie(cookie);
+    // clang-format off
+    struct run_thread_arg arg =
+    {
+        .cookie = cookie,
+        .event = event,
+        .thread = thread
+    };
+    // clang-format on
+    size_t stack_size;
+
+    if (!thread)
+        ERAISE(-EINVAL);
+
+    if (myst_is_process_thread(thread))
+        stack_size = PROCESS_THREAD_STACK_SIZE;
+    else
+        stack_size = THREAD_STACK_SIZE;
 
     /* allocate a new stack since the OE caller stack is very small */
-    if (!(stack = memalign(STACK_ALIGNENT, STACK_SIZE)))
+    if (!(stack = memalign(STACK_ALIGNENT, stack_size)))
         ERAISE(-ENOMEM);
 
-    ECHECK(myst_switch_stack(stack + STACK_SIZE, _run_thread, &arg));
+    ECHECK(myst_switch_stack(stack + stack_size, _run_thread, &arg));
 
 done:
 
