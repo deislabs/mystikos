@@ -500,15 +500,12 @@ int main(int argc, const char* argv[])
 
     for (size_t i = 0; i < n; i++)
     {
-#if 0
         test_create_thread();
         test_mutexes(PTHREAD_MUTEX_NORMAL);
         test_mutexes(PTHREAD_MUTEX_RECURSIVE);
         test_timedlock();
         test_cond_signal();
         test_cond_broadcast();
-#endif
-        printf("ZZZZZZZZZZZZZZZZZZZZZZZZ\n");
         if (_get_max_threads() != LONG_MAX)
             test_exhaust_threads();
     }
