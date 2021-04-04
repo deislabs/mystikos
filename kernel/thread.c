@@ -575,10 +575,6 @@ static long _run_thread(void* arg_)
     return 0;
 }
 
-#define STACK_ALIGNENT 16
-#define THREAD_STACK_SIZE (8 * 1024)
-#define PROCESS_THREAD_STACK_SIZE (64 * 1024)
-
 long myst_run_thread(uint64_t cookie, uint64_t event)
 {
     long ret = 0;
@@ -593,17 +589,20 @@ long myst_run_thread(uint64_t cookie, uint64_t event)
     };
     // clang-format on
     size_t stack_size;
+    const size_t stack_alignment = 16;
+    const size_t thread_stack_size = 8 * 1024;
+    const size_t process_stack_size = 64 * 1024;
 
     if (!thread)
         ERAISE(-EINVAL);
 
     if (myst_is_process_thread(thread))
-        stack_size = PROCESS_THREAD_STACK_SIZE;
+        stack_size = process_stack_size;
     else
-        stack_size = THREAD_STACK_SIZE;
+        stack_size = thread_stack_size;
 
     /* allocate a new stack since the OE caller stack is very small */
-    if (!(stack = memalign(STACK_ALIGNENT, stack_size)))
+    if (!(stack = memalign(stack_alignment, stack_size)))
         ERAISE(-ENOMEM);
 
     ECHECK(myst_switch_stack(stack + stack_size, _run_thread, &arg));
