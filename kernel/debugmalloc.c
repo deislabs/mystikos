@@ -340,7 +340,6 @@ void myst_debug_free(void* ptr)
         void* block = _get_block_address(ptr);
         size_t block_size = _get_block_size(ptr);
         memset(block, 0xDD, block_size);
-
         myst_free(block);
     }
 }

@@ -800,8 +800,10 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     /* Put the thread on the zombie list */
     myst_zombify_thread(thread);
 
+#if 0
     /* release any process mappings */
     myst_release_process_mappings(myst_getpid());
+#endif
 
     /* call functions installed with myst_atexit() */
     myst_call_atexit_functions();

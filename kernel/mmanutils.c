@@ -496,12 +496,13 @@ int myst_release_process_mappings(pid_t pid)
         myst_process_mapping_t* prev = NULL;
         myst_process_mapping_t* next = NULL;
 
-        for (myst_process_mapping_t* p = _mappings; p; p = next)
+        for (myst_process_mapping_t* p = _mappings; p;)
         {
             next = p->next;
 
             if (p->pid == pid)
             {
+                /* ATTN: unmapping this causes a crash in the pthread tests */
                 myst_munmap(p->addr, p->size);
 
                 if (prev)
