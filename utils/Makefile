@@ -5,7 +5,8 @@ SUBLIBDIR=$(LIBDIR)
 
 ARCHIVE = libmystutils.a
 
-SOURCES = $(wildcard *.c)
+SOURCES += $(wildcard *.c)
+SOURCES += $(wildcard *.s)
 
 INCLUDES = -I$(INCDIR) -I$(BUILDDIR)/musl/include
 INCLUDES += -I$(BUILDDIR)/openenclave/include/openenclave/3rdparty

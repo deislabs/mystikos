@@ -218,16 +218,28 @@ done:
     return ret;
 }
 
-int myst_enter_ecall(
-    struct myst_options* options,
-    struct myst_shm* shared_memory,
-    const void* argv_data,
-    size_t argv_size,
-    const void* envp_data,
-    size_t envp_size,
-    uint64_t event)
+struct enter_arg
 {
-    int ret = -1;
+    struct myst_options* options;
+    struct myst_shm* shared_memory;
+    const void* argv_data;
+    size_t argv_size;
+    const void* envp_data;
+    size_t envp_size;
+    uint64_t event;
+};
+
+static long _enter(void* arg_)
+{
+    long ret = -1;
+    struct enter_arg* arg = (struct enter_arg*)arg_;
+    struct myst_options* options = arg->options;
+    struct myst_shm* shared_memory = arg->shared_memory;
+    const void* argv_data = arg->argv_data;
+    size_t argv_size = arg->argv_size;
+    const void* envp_data = arg->envp_data;
+    size_t envp_size = arg->envp_size;
+    uint64_t event = arg->event;
     const void* crt_data;
     size_t crt_size;
     const void* crt_reloc_data;
@@ -681,6 +693,32 @@ done:
     return ret;
 }
 
+#define STACK_SIZE (132 * 1024)
+
+int myst_enter_ecall(
+    struct myst_options* options,
+    struct myst_shm* shared_memory,
+    const void* argv_data,
+    size_t argv_size,
+    const void* envp_data,
+    size_t envp_size,
+    uint64_t event)
+{
+    struct enter_arg arg = {
+        .options = options,
+        .shared_memory = shared_memory,
+        .argv_data = argv_data,
+        .argv_size = argv_size,
+        .envp_data = envp_data,
+        .envp_size = envp_size,
+        .event = event,
+    };
+    MYST_ALIGN(16) static uint8_t _stack[STACK_SIZE];
+
+    /* avoid using the tiny TCS stack */
+    return (int)myst_switch_stack(_stack + STACK_SIZE, _enter, &arg);
+}
+
 long myst_run_thread_ecall(uint64_t cookie, uint64_t event)
 {
     return myst_run_thread(cookie, event);
@@ -890,5 +928,5 @@ OE_SET_ENCLAVE_SGX(
     1,    /* SecurityVersion */
     true, /* Debug */
     32,   /* NumHeapPages */
-    32,   /* NumStackPages */
+    2,    /* NumStackPages */
     32);  /* NumTCS */
