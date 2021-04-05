@@ -576,6 +576,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     __options.export_ramfs = args->export_ramfs;
 
 #if !defined(MYST_RELEASE)
+    /* Disable debug malloc if not Linux (which sets image_data to null) */
     if (args->image_data != NULL)
         myst_enable_debug_malloc = true;
 #endif
