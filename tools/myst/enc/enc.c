@@ -243,7 +243,7 @@ static long _enter(void* arg_)
     uint64_t event = arg->event;
     bool trace_errors = false;
     bool trace_syscalls = false;
-    bool shell = false;
+    bool shell_mode = false;
     bool export_ramfs = false;
     const char* rootfs = NULL;
     config_parsed_data_t parsed_config;
@@ -391,7 +391,7 @@ static long _enter(void* arg_)
     {
         trace_errors = options->trace_errors;
         trace_syscalls = options->trace_syscalls;
-        shell = options->shell;
+        shell_mode = options->shell;
         export_ramfs = options->export_ramfs;
 
         if (strlen(options->rootfs) >= PATH_MAX)
@@ -722,19 +722,6 @@ int myst_load_fssig(const char* path, myst_fssig_t* fssig)
         memset(fssig, 0, sizeof(myst_fssig_t));
         return -EPERM;
     }
-
-    return retval;
-}
-
-long myst_tcall_readline(const char* prompt, char* buf, size_t count)
-{
-    long retval;
-
-    if (myst_readline_ocall(&retval, prompt, buf, count) != OE_OK)
-        return -EINVAL;
-
-    if (retval > (long)count)
-        return -EINVAL;
 
     return retval;
 }

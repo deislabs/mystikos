@@ -710,8 +710,8 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     myst_times_start();
 
 #if !defined(MYST_RELEASE)
-    if (args->shell)
-        myst_shell("\nMystikos shell (enter)\n");
+    if (args->shell_mode)
+        myst_start_shell("\nMystikos shell (enter)\n");
 #endif
 
     /* Run the main program: wait for SYS_exit to perform longjmp() */
@@ -747,8 +747,8 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         myst_cancel_itimer();
 
 #if !defined(MYST_RELEASE)
-        if (args->shell)
-            myst_shell("\nMystikos shell (exit)\n");
+        if (args->shell_mode)
+            myst_start_shell("\nMystikos shell (exit)\n");
 #endif
 
         /* release the fdtable */
@@ -809,8 +809,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     {
         if (myst_debug_malloc_check(true) != 0)
         {
-            // uncomment next line to crash on memory leaks
-            // myst_panic("memory leaks detected");
+            myst_eprintf("*** memory leaks detected\n");
         }
     }
 

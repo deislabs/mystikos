@@ -26,3 +26,6 @@ myst:
 
 clean:
 	rm -rf $(APPDIR) rootfs export ramfs
+
+shell: all
+	$(RUNTEST) $(MYST_EXEC) rootfs /bin/getcwd $(OPTS) --shell

@@ -293,7 +293,7 @@ pid_t myst_gettid(void);
 
 void myst_wait_on_child_processes(void);
 
-int myst_get_num_threads(void);
+size_t myst_get_num_threads(void);
 
 myst_thread_t* myst_find_thread(int tid);
 

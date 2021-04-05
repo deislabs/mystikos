@@ -4,7 +4,6 @@
 #include <string.h>
 #include <sys/utsname.h>
 
-#include <myst/chars.h>
 #include <myst/debugmalloc.h>
 #include <myst/fdtable.h>
 #include <myst/id.h>
@@ -14,12 +13,41 @@
 #include <myst/printf.h>
 #include <myst/strings.h>
 #include <myst/syscall.h>
+#include <myst/thread.h>
 
 #if !defined(MYST_RELEASE)
 
 #define COLOR_LIGHT_BLUE "\e[94m"
 #define COLOR_LIGHT_GREEN "\e[92m"
 #define COLOR_RESET "\e[0m"
+
+static long _readline(const char* prompt, char* buf, size_t count)
+{
+    size_t n = 0;
+
+    if (!prompt || !buf || count == 0)
+        return -EINVAL;
+
+    *buf = '\0';
+
+    write(STDOUT_FILENO, prompt, strlen(prompt) + 1);
+
+    while (n + 1 < count)
+    {
+        char c = '\0';
+
+        if (read(STDIN_FILENO, &c, 1) < 0)
+            return -EIO;
+
+        if (c == '\n')
+            break;
+
+        buf[n++] = c;
+        buf[n] = '\0';
+    }
+
+    return n;
+}
 
 __attribute__((__unused__)) static void _dump_args(size_t argc, char** argv)
 {
@@ -44,10 +72,12 @@ static help_t _help[] = {
     {"cont", "leave shell and ocntinue execution"},
     {"fds", "list open file descriptors"},
     {"id", "print the current UID and GID"},
-    {"maxthreads", "list open file descriptors"},
+    {"maxthreads", "print the maximum number of threads"},
+    {"nthreads", "print the number of threads"},
     {"hostname", "print the hostname"},
     {"mcheck", "check heap memory"},
-    {"mdump", "print out in-use heap block"},
+    {"mdump", "print in-use malloc'd blocks"},
+    {"mused", "print amount of malloc'd memory"},
     {"args", "print the command line arguments"},
     {"env", "print the environment variables"},
 };
@@ -209,7 +239,7 @@ static void _args_command(int argc, char** argv)
     printf("\n");
 }
 
-void myst_shell(const char* msg)
+void myst_start_shell(const char* msg)
 {
     char** argv = NULL;
 
@@ -224,9 +254,10 @@ void myst_shell(const char* msg)
         long n;
         size_t argc;
 
-        if ((n = myst_tcall_readline("myst$ ", line, sizeof(line))) < 0)
+        if ((n = _readline("myst$ ", line, sizeof(line))) < 0)
         {
-            myst_eprintf("error: readline failed!\n");
+            myst_eprintf("error: readline failed: %ld!\n", n);
+            myst_panic("readline failed\n");
             continue;
         }
 
@@ -264,6 +295,10 @@ void myst_shell(const char* msg)
         else if (strcmp(argv[0], "maxthreads") == 0)
         {
             printf("%zu\n\n", __myst_kernel_args.max_threads);
+        }
+        else if (strcmp(argv[0], "numthreads") == 0)
+        {
+            printf("%zu\n\n", myst_get_num_threads());
         }
         else if (strcmp(argv[0], "id") == 0)
         {

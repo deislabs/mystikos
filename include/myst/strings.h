@@ -37,4 +37,6 @@ ssize_t myst_memremove(void* data, size_t n, size_t pos, size_t count);
 
 ssize_t myst_memremove_u64(void* data, size_t size, size_t pos, size_t count);
 
+bool myst_isspace(char c);
+
 #endif /* _MYST_STRINGS_H */

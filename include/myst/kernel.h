@@ -92,7 +92,7 @@ typedef struct myst_kernel_args
     bool tee_debug_mode;
 
     /* true if --shell option present */
-    bool shell;
+    bool shell_mode;
 
     /* Callback for making target-calls */
     myst_tcall_t tcall;
@@ -118,6 +118,6 @@ int myst_get_malloc_stats(myst_malloc_stats_t* stats);
 
 int myst_find_leaks(void);
 
-void myst_shell(const char* msg);
+void myst_start_shell(const char* msg);
 
 #endif /* _MYST_KERNEL_H */

@@ -236,9 +236,3 @@ int myst_tcall_load_fssig(const char* path, myst_fssig_t* fssig)
     long params[6] = {(long)path, (long)fssig};
     return myst_tcall(MYST_TCALL_LOAD_FSSIG, params);
 }
-
-long myst_tcall_readline(const char* prompt, char* buf, size_t count)
-{
-    long params[6] = {(long)prompt, (long)buf, (long)count};
-    return myst_tcall(MYST_TCALL_READLINE, params);
-}
