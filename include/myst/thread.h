@@ -65,8 +65,9 @@ struct myst_thread
     /* used by myst_thread_queue_t (condition variables and mutexes) */
     struct myst_thread* qnext;
 
-    /* used by zombie-list */
-    struct myst_thread* next;
+    /* doubly-linked zombie-list */
+    struct myst_thread* znext;
+    struct myst_thread* zprev;
 
     /* the session id (see getsid() function) */
     pid_t sid;
