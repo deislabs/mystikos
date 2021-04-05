@@ -17,9 +17,7 @@ ifdef STRACE
 OPTS += --strace
 endif
 
-ifdef ETRACE
-OPTS += --etrace
-endif
+OPTS += --memory-size=512m
 
 ifdef ALLTESTS
 COUNT = 10

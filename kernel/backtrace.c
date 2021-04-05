@@ -154,7 +154,7 @@ void myst_dump_backtrace(void** buffer, size_t size)
             myst_eprintf("%p: %s()\n", buffer[i], name);
         else
         {
-            // myst_eprintf("%p: unknown\n", buffer[i]);
+            /* ignore unnknown addresses */
             break;
         }
     }

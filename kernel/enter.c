@@ -800,18 +800,6 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     /* Put the thread on the zombie list */
     myst_zombify_thread(thread);
 
-#if 0
-    /* check for memory leaks */
-    if (myst_enable_debug_malloc)
-    {
-        if (myst_debug_malloc_check(true) != 0)
-        {
-            // uncomment next line to crash on memory leaks
-            // myst_panic("memory leaks detected");
-        }
-    }
-#endif
-
     /* call functions installed with myst_atexit() */
     myst_call_atexit_functions();
 
