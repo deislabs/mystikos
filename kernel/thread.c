@@ -208,17 +208,21 @@ static myst_thread_t* _put_cookie(uint64_t cookie)
 **==============================================================================
 */
 
-static myst_thread_t* _zombies;
+#define MAX_ZOMBIES 64
+
+static myst_thread_t* _zombies_head;
+static myst_thread_t* _zombies_tail;
 static myst_mutex_t _zombies_mutex;
 static myst_cond_t _zombies_cond;
+static size_t _zombies_count;
 
 static void _free_zombies(void* arg)
 {
     (void)arg;
 
-    for (myst_thread_t* p = _zombies; p;)
+    for (myst_thread_t* p = _zombies_head; p;)
     {
-        myst_thread_t* next = p->next;
+        myst_thread_t* next = p->znext;
 
         assert(p->main.cwd == NULL);
 
@@ -228,7 +232,9 @@ static void _free_zombies(void* arg)
         p = next;
     }
 
-    _zombies = NULL;
+    _zombies_head = NULL;
+    _zombies_tail = NULL;
+    _zombies_count = 0;
 }
 
 void myst_zombify_thread(myst_thread_t* thread)
@@ -243,13 +249,48 @@ void myst_zombify_thread(myst_thread_t* thread)
             _initialized = true;
         }
 
-        thread->next = _zombies;
-        _zombies = thread;
+        thread->znext = _zombies_head;
+        thread->zprev = NULL;
+
+        if (_zombies_head)
+        {
+            _zombies_head->zprev = thread;
+            _zombies_head = thread;
+        }
+        else
+        {
+            _zombies_head = thread;
+            _zombies_tail = thread;
+        }
 
         thread->status = MYST_ZOMBIE;
 
         /* signal waiting threads */
         myst_cond_signal(&_zombies_cond);
+
+        /* if max zombie count, free the least-recently-used zombie */
+        if (_zombies_count == MAX_ZOMBIES)
+        {
+            myst_thread_t* p = _zombies_tail;
+
+            /* remove tail from the list */
+            _zombies_tail = _zombies_tail->zprev;
+            _zombies_tail->znext = NULL;
+
+            /* remove from groups list */
+            if (p->group_prev)
+                p->group_prev->group_next = p->group_next;
+
+            if (p->group_next)
+                p->group_next->group_prev = p->group_prev;
+
+            /* free the zombie */
+            free(p);
+        }
+        else
+        {
+            _zombies_count++;
+        }
     }
     myst_mutex_unlock(&_zombies_mutex);
 }
@@ -294,7 +335,7 @@ long myst_syscall_wait4(
     for (;;)
     {
         /* search the zombie list for a process thread */
-        for (myst_thread_t* p = _zombies; p; p = p->next)
+        for (myst_thread_t* p = _zombies_head; p; p = p->znext)
         {
             bool match = false;
 
