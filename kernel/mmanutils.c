@@ -502,7 +502,6 @@ int myst_release_process_mappings(pid_t pid)
 
             if (p->pid == pid)
             {
-                /* ATTN: unmapping this causes a crash in the pthread tests */
                 myst_munmap(p->addr, p->size);
 
                 if (prev)

@@ -148,6 +148,3 @@ tests:
 force:
 	rm -rf $(BUILDDIR)/include/openenclave
 	$(MAKE)
-
-hash:
-	echo $(HASH)

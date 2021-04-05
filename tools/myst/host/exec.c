@@ -234,6 +234,13 @@ int exec_action(int argc, const char* argv[], const char* envp[])
             options.trace_syscalls = true;
         }
 
+        /* Get --trace option */
+        if (cli_getopt(&argc, argv, "--trace-errors", NULL) == 0 ||
+            cli_getopt(&argc, argv, "--etrace", NULL) == 0)
+        {
+            options.trace_errors = true;
+        }
+
         /* Get --shell option */
         if (cli_getopt(&argc, argv, "--shell", NULL) == 0)
             options.shell = true;
