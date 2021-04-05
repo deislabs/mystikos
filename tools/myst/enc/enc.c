@@ -633,6 +633,7 @@ done:
     return ret;
 }
 
+/* The size of the stack for entering the kernel */
 #define ENTER_STACK_SIZE (132 * 1024)
 
 int myst_enter_ecall(
