@@ -33,6 +33,7 @@
 #include <myst/clock.h>
 #include <myst/cpio.h>
 #include <myst/cwd.h>
+#include <myst/debugmalloc.h>
 #include <myst/epolldev.h>
 #include <myst/eraise.h>
 #include <myst/errno.h>
@@ -3152,6 +3153,13 @@ long myst_syscall(long n, long params[6])
 #if defined(MYST_DEBUG) && !defined(MYST_RELEASE)
             _strace(n, NULL);
             myst_shell("\nMystikos shell (syscall)\n");
+#endif
+            BREAK(_return(n, 0));
+        }
+        case SYS_myst_memdump:
+        {
+#if defined(MYST_DEBUG) && !defined(MYST_RELEASE)
+            myst_debug_malloc_dump_used();
 #endif
             BREAK(_return(n, 0));
         }
