@@ -26,7 +26,7 @@ enum
     SYS_myst_max_threads = 1014,
     SYS_myst_poll_wake = 1015,
     SYS_myst_run_itimer = 1016,
-    SYS_myst_shell = 1017,
+    SYS_myst_start_shell = 1017,
     SYS_myst_memdump = 1018,
 
     /* Open Enclave extensions */

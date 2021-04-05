@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/syscall.h>
 #include <unistd.h>
 
 #include <myst/assume.h>
@@ -68,6 +69,7 @@ static ssize_t _td_read(
     size_t count)
 {
     ssize_t ret = 0;
+    ssize_t tret;
 
     if (!ttydev || !_valid_tty(tty))
         ERAISE(-EBADF);
@@ -78,7 +80,9 @@ static ssize_t _td_read(
     if (count == 0)
         goto done;
 
-    ERAISE(myst_tcall_read_console(tty->fd, buf, count));
+    long params[6] = {(long)tty->fd, (long)buf, (long)count};
+    ERAISE((tret = myst_tcall(SYS_read, params)));
+    ret = tret;
 
 done:
     return ret;
@@ -91,6 +95,7 @@ static ssize_t _td_write(
     size_t count)
 {
     ssize_t ret = 0;
+    ssize_t tret;
 
     if (!ttydev || !_valid_tty(tty))
         ERAISE(-EBADF);
@@ -101,7 +106,9 @@ static ssize_t _td_write(
     if (count == 0)
         goto done;
 
-    ERAISE(myst_tcall_write_console(tty->fd, buf, count));
+    long params[6] = {(long)tty->fd, (long)buf, (long)count};
+    ERAISE((tret = myst_tcall(SYS_write, params)));
+    ret = tret;
 
 done:
     return ret;

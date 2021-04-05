@@ -428,27 +428,3 @@ int main(int argc, const char* argv[], const char* envp[])
         return 1;
     }
 }
-
-long myst_tcall_readline(const char* prompt, char* buf, size_t count)
-{
-    char* lineptr = NULL;
-    size_t n;
-
-    if (!prompt || !buf)
-        return -EINVAL;
-
-    printf("%s", prompt);
-
-    if (getline(&lineptr, &n, stdin) < 0)
-        return -errno;
-
-    if (!lineptr)
-        return -ENOMEM;
-
-    return (long)snprintf(buf, count, "%s", lineptr);
-}
-
-long myst_readline_ocall(const char* prompt, char* buf, size_t count)
-{
-    return myst_tcall_readline(prompt, buf, count);
-}
