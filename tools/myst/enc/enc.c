@@ -664,7 +664,7 @@ int myst_enter_ecall(
     }
 
     /* avoid using the tiny TCS stack */
-    return (int)myst_switch_stack(_stack + ENTER_STACK_SIZE, _enter, &arg);
+    return (int)myst_call_on_stack(_stack + ENTER_STACK_SIZE, _enter, &arg);
 }
 
 long myst_run_thread_ecall(uint64_t cookie, uint64_t event)

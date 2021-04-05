@@ -599,7 +599,8 @@ static long _run_thread(void* arg_)
 
         if (is_child_thread)
         {
-            myst_switch_stack(thread->clone.child_stack, _call_thread_fn, NULL);
+            myst_call_on_stack(
+                thread->clone.child_stack, _call_thread_fn, NULL);
             /* never returns */
             myst_panic("unexpected return");
         }
@@ -642,7 +643,7 @@ long myst_run_thread(uint64_t cookie, uint64_t event)
 
     /* run the thread on the transient stack */
     struct run_thread_arg arg = {thread, cookie, event};
-    ECHECK(myst_switch_stack(stack + stack_size, _run_thread, &arg));
+    ECHECK(myst_call_on_stack(stack + stack_size, _run_thread, &arg));
 
 done:
 
