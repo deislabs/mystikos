@@ -195,9 +195,3 @@ static void _create_itimer_thread(void)
         abort();
     }
 }
-
-void shell(void)
-{
-    const long SYS_myst_shell = 1017;
-    syscall(SYS_myst_shell);
-}
