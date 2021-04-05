@@ -306,7 +306,7 @@ MYST_INLINE char* myst_get_thread_name(myst_thread_t* thread)
 
 int myst_set_thread_name(myst_thread_t* thread, const char* n);
 
-/* execute a function on the given stack */
-long myst_switch_stack(void* stack, long (*func)(void* arg), void* arg);
+/* call the given function on the given stack */
+long myst_call_on_stack(void* stack, long (*func)(void* arg), void* arg);
 
 #endif /* _MYST_THREAD_H */

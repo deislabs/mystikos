@@ -3,7 +3,7 @@
 
 //==============================================================================
 //
-// long myst_switch_stack(
+// long myst_call_on_stack(
 //     [RDI] void* stack,
 //     [RSI] long (*func)(void* arg),
 //     [RDX] void* arg);
@@ -12,9 +12,9 @@
 //
 //==============================================================================
 
-.globl myst_switch_stack
-.type myst_switch_stack, @function
-myst_switch_stack:
+.globl myst_call_on_stack
+.type myst_call_on_stack, @function
+myst_call_on_stack:
 .cfi_startproc
 
     pushq %rbp
