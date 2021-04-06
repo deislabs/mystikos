@@ -12,6 +12,7 @@
 /app/PR23141_invoke_not_constexpr.pass.cpp.exe
 /app/PR23256_constrain_UTypes_ctor.pass.cpp.exe
 /app/PR27684_contains_ref_to_incomplete_type.pass.cpp.exe
+/app/PR30202_notify_from_pthread_created_thread.pass.cpp.exe
 /app/TupleFunction.pass.cpp.exe
 /app/UTypes.pass.cpp.exe
 /app/abs.pass.cpp.exe
@@ -33,6 +34,7 @@
 /app/adjacent_difference_op.pass.cpp.exe
 /app/adjacent_find.pass.cpp.exe
 /app/adjacent_find_pred.pass.cpp.exe
+/app/adopt_lock.pass.cpp.exe
 /app/advance.pass.cpp.exe
 /app/algorithm.version.pass.cpp.exe
 /app/align.pass.cpp.exe
@@ -96,6 +98,7 @@
 /app/assign_op_init.pass.cpp.exe
 /app/assign_pair.pass.cpp.exe
 /app/assign_ptr_flag.pass.cpp.exe
+/app/assign_ptr_size_flag.pass.cpp.exe
 /app/assign_range.pass.cpp.exe
 /app/assign_rv_pair.pass.cpp.exe
 /app/assign_size_value.pass.cpp.exe
@@ -105,6 +108,9 @@
 /app/assignment.pass.cpp.exe
 /app/assignment_complex.pass.cpp.exe
 /app/assignment_scalar.pass.cpp.exe
+/app/async.pass.cpp.exe
+/app/async_race.38682.pass.cpp.exe
+/app/async_race.pass.cpp.exe
 /app/at.pass.cpp.exe
 /app/atan2_valarray_valarray.pass.cpp.exe
 /app/atan2_valarray_value.pass.cpp.exe
@@ -177,6 +183,7 @@
 /app/bind_return_type.pass.cpp.exe
 /app/binder1st.pass.cpp.exe
 /app/binder2nd.pass.cpp.exe
+/app/bit.version.pass.cpp.exe
 /app/bit_and.pass.cpp.exe
 /app/bit_not.pass.cpp.exe
 /app/bit_or.pass.cpp.exe
@@ -228,6 +235,7 @@
 /app/char_to_wide.pass.cpp.exe
 /app/char_to_wide_pointer.pass.cpp.exe
 /app/char_unshift.pass.cpp.exe
+/app/charconv.pass.cpp.exe
 /app/chart.pass.cpp.exe
 /app/check_values.pass.cpp.exe
 /app/chrono.version.pass.cpp.exe
@@ -271,7 +279,9 @@
 /app/codecvt_utf8_utf16_max_length.pass.cpp.exe
 /app/codecvt_utf8_utf16_out.pass.cpp.exe
 /app/codecvt_utf8_utf16_unshift.pass.cpp.exe
+/app/common_type.pass.cpp.exe
 /app/compare.pass.cpp.exe
+/app/compare.version.pass.cpp.exe
 /app/compare_alloc.pass.cpp.exe
 /app/compare_string_type.pass.cpp.exe
 /app/compare_sub_match.pass.cpp.exe
@@ -313,6 +323,7 @@
 /app/const_pointer_cast.pass.cpp.exe
 /app/const_void_pointer.pass.cpp.exe
 /app/constants.pass.cpp.exe
+/app/constexpr_init.pass.cpp.exe
 /app/construct.pass.cpp.exe
 /app/construct_default.pass.cpp.exe
 /app/construct_iter_iter.pass.cpp.exe
@@ -490,6 +501,8 @@
 /app/dereference.single.pass.cpp.exe
 /app/destroy.pass.cpp.exe
 /app/destruct.pass.cpp.exe
+/app/destructor.pass.cpp.exe
+/app/detach.pass.cpp.exe
 /app/detected_or.pass.cpp.exe
 /app/detected_t.pass.cpp.exe
 /app/difference.pass.cpp.exe
@@ -600,8 +613,13 @@
 /app/falsename.pass.cpp.exe
 /app/feature_macro.pass.cpp.exe
 /app/fenv_h.pass.cpp.exe
+/app/filesystem.version.pass.cpp.exe
 /app/fill.pass.cpp.exe
 /app/fill_char_type.pass.cpp.exe
 /app/fill_n.pass.cpp.exe
 /app/find.pass.cpp.exe
 /app/find0.pass.cpp.exe
+/app/find_const.pass.cpp.exe
+/app/find_end.pass.cpp.exe
+/app/find_end_pred.pass.cpp.exe
+/app/find_first_of.pass.cpp.exe

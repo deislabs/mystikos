@@ -1,8 +1,3 @@
-/app/find_const.pass.cpp.exe
-/app/find_end.pass.cpp.exe
-/app/find_end_pred.pass.cpp.exe
-/app/find_first_of.pass.cpp.exe
-/app/find_first_of_pred.pass.cpp.exe
 /app/find_if.pass.cpp.exe
 /app/find_if_not.pass.cpp.exe
 /app/find_non_const.pass.cpp.exe
@@ -42,9 +37,11 @@
 /app/generate_canonical.pass.cpp.exe
 /app/generate_n.pass.cpp.exe
 /app/generic_category.pass.cpp.exe
+/app/get.pass.cpp.exe
 /app/get_allocator.pass.cpp.exe
 /app/get_chart.pass.cpp.exe
 /app/get_const.pass.cpp.exe
+/app/get_const_rv.pass.cpp.exe
 /app/get_deleter.pass.cpp.exe
 /app/get_future.pass.cpp.exe
 /app/get_id.pass.cpp.exe
@@ -102,6 +99,7 @@
 /app/hash_map_name_lookup.pass.cpp.exe
 /app/hash_set_name_lookup.pass.cpp.exe
 /app/hash_shared_ptr.pass.cpp.exe
+/app/hash_unique_ptr.pass.cpp.exe
 /app/hash_value_tested_elswhere.pass.cpp.exe
 /app/header_deque_synop.pass.cpp.exe
 /app/header_forward_list_synop.pass.cpp.exe
@@ -206,6 +204,7 @@
 /app/iota.pass.cpp.exe
 /app/is_1.pass.cpp.exe
 /app/is_abstract.pass.cpp.exe
+/app/is_allocator.pass.cpp.exe
 /app/is_always_equal.pass.cpp.exe
 /app/is_arithmetic.pass.cpp.exe
 /app/is_array.pass.cpp.exe
@@ -293,8 +292,13 @@
 /app/is_trivial.pass.cpp.exe
 /app/is_trivially_assignable.pass.cpp.exe
 /app/is_trivially_constructible.pass.cpp.exe
+/app/is_trivially_copy_assignable.pass.cpp.exe
+/app/is_trivially_copy_constructible.pass.cpp.exe
+/app/is_trivially_copyable.pass.cpp.exe
 /app/is_trivially_default_constructible.pass.cpp.exe
 /app/is_trivially_destructible.pass.cpp.exe
+/app/is_trivially_move_assignable.pass.cpp.exe
+/app/is_trivially_move_constructible.pass.cpp.exe
 /app/is_union.pass.cpp.exe
 /app/is_unsigned.pass.cpp.exe
 /app/is_void.pass.cpp.exe
@@ -321,8 +325,11 @@
 /app/iter_iter_flg.pass.cpp.exe
 /app/iter_swap.pass.cpp.exe
 /app/iterator.pass.cpp.exe
+/app/iterator.version.pass.cpp.exe
 /app/iterators.pass.cpp.exe
 /app/iword.pass.cpp.exe
+/app/join.pass.cpp.exe
+/app/joinable.pass.cpp.exe
 /app/kill_dependency.pass.cpp.exe
 /app/knuth_b.pass.cpp.exe
 /app/launch.pass.cpp.exe
@@ -358,6 +365,7 @@
 /app/locale.version.pass.cpp.exe
 /app/locale_h.pass.cpp.exe
 /app/lock.pass.cpp.exe
+/app/lock_shared.pass.cpp.exe
 /app/lockfree.pass.cpp.exe
 /app/log.pass.cpp.exe
 /app/log10.pass.cpp.exe
@@ -394,6 +402,7 @@
 /app/make_move_iterator.pass.cpp.exe
 /app/make_ostream_joiner.pass.cpp.exe
 /app/make_pair.pass.cpp.exe
+/app/make_ready_at_thread_exit.pass.cpp.exe
 /app/make_reverse_iterator.pass.cpp.exe
 /app/make_shared.pass.cpp.exe
 /app/make_shared.volatile.pass.cpp.exe
@@ -511,6 +520,9 @@
 /app/mutex.version.pass.cpp.exe
 /app/mutex_adopt_lock.pass.cpp.exe
 /app/mutex_defer_lock.pass.cpp.exe
+/app/mutex_duration.pass.cpp.exe
+/app/mutex_time_point.pass.cpp.exe
+/app/mutex_try_to_lock.pass.cpp.exe
 /app/namespace.pass.cpp.exe
 /app/nanoseconds.pass.cpp.exe
 /app/narrow.pass.cpp.exe
@@ -543,6 +555,7 @@
 /app/non_member_swap.pass.cpp.exe
 /app/none.pass.cpp.exe
 /app/none_of.pass.cpp.exe
+/app/nonesuch.pass.cpp.exe
 /app/nonmember_swap.pass.cpp.exe
 /app/noshowbase.pass.cpp.exe
 /app/noshowpoint.pass.cpp.exe
@@ -562,6 +575,9 @@
 /app/nothing.to.do.pass.cpp.exe
 /app/nothing_to_do.pass.cpp.exe
 /app/nothrow_t.pass.cpp.exe
+/app/notify_all.pass.cpp.exe
+/app/notify_all_at_thread_exit.pass.cpp.exe
+/app/notify_one.pass.cpp.exe
 /app/nounitbuf.pass.cpp.exe
 /app/nouppercase.pass.cpp.exe
 /app/now.pass.cpp.exe
@@ -615,3 +631,6 @@
 /app/op_neq.pass.cpp.exe
 /app/op_not.pass.cpp.exe
 /app/op_or.pass.cpp.exe
+/app/op_or_eq.pass.cpp.exe
+/app/op_star.pass.cpp.exe
+/app/op_subscript.runtime.pass.cpp.exe
