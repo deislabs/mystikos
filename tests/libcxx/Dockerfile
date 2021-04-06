@@ -1,4 +1,4 @@
-FROM alpine as builder
+FROM alpine:3.13.4 as builder
 RUN apk add build-base
 COPY ./libcxx-tests/ /app/
 
@@ -21,7 +21,7 @@ RUN for dir in $(find . -type d); \
     cd $TEST_DIR ; \
     done;
 
-FROM alpine
+FROM alpine:3.13.4
 
 RUN apk add g++
 
