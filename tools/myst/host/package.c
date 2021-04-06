@@ -489,7 +489,7 @@ int _exec_package(
 
     /* Get --shell option */
     if (cli_getopt(&argc, argv, "--shell", NULL) == 0)
-        options.shell = true;
+        options.shell_mode = true;
 
     if (!realpath(argv[0], full_app_path))
     {
