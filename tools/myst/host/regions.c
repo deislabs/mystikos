@@ -6,12 +6,14 @@
 #include <errno.h>
 #include <libgen.h>
 #include <limits.h>
+#include <myst/buf.h>
 #include <myst/elf.h>
 #include <myst/eraise.h>
 #include <myst/file.h>
+#include <myst/hex.h>
 #include <myst/round.h>
 #include <myst/strings.h>
-#include <openenclave/bits/sgx/region.h>
+#include <openenclave/bits/sgx/sgxtypes.h>
 #include <openenclave/host.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -20,6 +22,15 @@
 #include "utils.h"
 
 region_details _details = {0};
+
+static int _add_page(
+    myst_region_context_t* context,
+    uint64_t vaddr,
+    const void* page,
+    int flags)
+{
+    return myst_region_add_page(context, vaddr, page, flags);
+}
 
 const region_details* create_region_details_from_package(
     elf_image_t* myst_elf,
@@ -289,7 +300,7 @@ void free_region_details()
 }
 
 static int _add_segment_pages(
-    oe_region_context_t* context,
+    myst_region_context_t* context,
     const elf_segment_t* segment,
     const void* image_base,
     uint64_t vaddr)
@@ -302,20 +313,20 @@ static int _add_segment_pages(
     {
         const uint64_t dest_vaddr = vaddr + page_vaddr;
         const void* page = (uint8_t*)image_base + page_vaddr;
-        uint64_t flags = SGX_SECINFO_REG;
-        const bool extend = true;
+        int flags = 0;
 
         if (segment->flags & PF_R)
-            flags |= SGX_SECINFO_R;
+            flags |= PROT_READ;
 
         if (segment->flags & PF_W)
-            flags |= SGX_SECINFO_W;
+            flags |= PROT_WRITE;
 
         if (segment->flags & PF_X)
-            flags |= SGX_SECINFO_X;
+            flags |= PROT_EXEC;
 
-        if (oe_region_add_page(context, dest_vaddr, page, flags, extend) !=
-            OE_OK)
+        flags |= MYST_REGION_EXTEND;
+
+        if (_add_page(context, dest_vaddr, page, flags) != 0)
         {
             ERAISE(-EINVAL);
         }
@@ -328,7 +339,7 @@ done:
 }
 
 static int _load_crt_pages(
-    oe_region_context_t* context,
+    myst_region_context_t* context,
     elf_image_t* image,
     uint64_t vaddr)
 {
@@ -352,10 +363,10 @@ done:
     return ret;
 }
 
-static int _add_crt_region(oe_region_context_t* context, uint64_t* vaddr)
+static int _add_crt_region(myst_region_context_t* context, uint64_t* vaddr)
 {
     int ret = 0;
-    const uint64_t id = MYST_CRT_REGION_ID;
+    const char name[] = MYST_REGION_CRT;
     uint64_t r;
 
     assert(_details.crt.image.image_data != NULL);
@@ -364,24 +375,26 @@ static int _add_crt_region(oe_region_context_t* context, uint64_t* vaddr)
     if (!context || !vaddr)
         ERAISE(-EINVAL);
 
-    if (oe_region_start(context, id, false, NULL) != OE_OK)
+    if (myst_region_open(context) != 0)
         ERAISE(-EINVAL);
 
     ECHECK(_load_crt_pages(context, &_details.crt.image, *vaddr));
 
-    if (oe_region_end(context) != OE_OK)
-        ERAISE(-EINVAL);
-
     const uint64_t m = PAGE_SIZE;
     ECHECK(myst_round_up(_details.crt.image.image_size, m, &r));
     *vaddr += r;
+
+    if (myst_region_close(context, name, *vaddr) != 0)
+        ERAISE(-EINVAL);
+
+    *(vaddr) += PAGE_SIZE;
 
 done:
     return ret;
 }
 
 static int _load_kernel_pages(
-    oe_region_context_t* context,
+    myst_region_context_t* context,
     elf_image_t* image,
     uint64_t vaddr)
 {
@@ -405,12 +418,17 @@ done:
     return ret;
 }
 
-static int _add_kernel_region(oe_region_context_t* context, uint64_t* vaddr)
+static int _add_kernel_region(
+    myst_region_context_t* context,
+    uint64_t baseaddr,
+    uint64_t* vaddr)
 {
     int ret = 0;
-    const uint64_t id = MYST_KERNEL_REGION_ID;
+    const char name[] = MYST_REGION_KERNEL;
     int fd = -1;
     uint64_t r;
+    const void* image_data = (const void*)baseaddr + *vaddr;
+    size_t image_size;
 
     assert(_details.kernel.image.image_data != NULL);
     assert(_details.kernel.image.image_size != 0);
@@ -439,17 +457,24 @@ static int _add_kernel_region(oe_region_context_t* context, uint64_t* vaddr)
         myst_strlcpy(path, template, sizeof(_details.kernel.path));
     }
 
-    if (oe_region_start(context, id, true, path) != OE_OK)
+    if (myst_region_open(context) != 0)
         ERAISE(-EINVAL);
 
     ECHECK(_load_kernel_pages(context, &_details.kernel.image, *vaddr));
 
-    if (oe_region_end(context) != OE_OK)
-        ERAISE(-EINVAL);
-
     const uint64_t m = PAGE_SIZE;
     ECHECK(myst_round_up(_details.kernel.image.image_size, m, &r));
     *vaddr += r;
+
+    image_size = r;
+
+    if (myst_region_close(context, name, *vaddr) != 0)
+        ERAISE(-EINVAL);
+
+    *(vaddr) += PAGE_SIZE;
+
+    if (baseaddr)
+        ECHECK(myst_add_symbol_file_by_path(path, image_data, image_size));
 
 done:
 
@@ -459,519 +484,236 @@ done:
     return ret;
 }
 
-static int _add_crt_reloc_region(oe_region_context_t* context, uint64_t* vaddr)
+static int _add_simple_region(
+    myst_region_context_t* context,
+    uint64_t* vaddr,
+    const char* name,
+    const void* data,
+    size_t size)
 {
     int ret = 0;
-    const bool is_elf = true;
-    const uint64_t id = MYST_CRT_RELOC_REGION_ID;
-
-    assert(_details.crt.image.reloc_data != NULL);
-    assert(_details.crt.image.reloc_size != 0);
-    assert((_details.crt.image.reloc_size % PAGE_SIZE) == 0);
+    const uint8_t* p = data;
+    size_t r = size;
+    __attribute__((__aligned__(PAGE_SIZE))) uint8_t page[PAGE_SIZE];
+    const int flags = PROT_READ | MYST_REGION_EXTEND;
 
     if (!context || !vaddr)
         ERAISE(-EINVAL);
 
-    if (oe_region_start(context, id, is_elf, NULL) != OE_OK)
+    if (myst_region_open(context) != 0)
         ERAISE(-EINVAL);
 
-    /* Add the pages */
+    /* copy full pages */
+    while (r >= PAGE_SIZE)
     {
-        const uint8_t* page = (const uint8_t*)_details.crt.image.reloc_data;
-        size_t npages = _details.crt.image.reloc_size / PAGE_SIZE;
+        memcpy(page, p, PAGE_SIZE);
 
-        for (size_t i = 0; i < npages; i++)
-        {
-            const bool extend = true;
+        if (_add_page(context, *vaddr, page, flags) != 0)
+            ERAISE(-EINVAL);
 
-            if (oe_region_add_page(
-                    context,
-                    *vaddr,
-                    page,
-                    SGX_SECINFO_REG | SGX_SECINFO_R,
-                    extend) != OE_OK)
-            {
-                ERAISE(-EINVAL);
-            }
-
-            page += PAGE_SIZE;
-            (*vaddr) += PAGE_SIZE;
-        }
+        *vaddr += sizeof(page);
+        p += PAGE_SIZE;
+        r -= PAGE_SIZE;
     }
 
-    if (oe_region_end(context) != OE_OK)
+    /* copy final partial page */
+    if (r)
+    {
+        memcpy(page, p, r);
+        memset(page + r, 0, sizeof(page) - r);
+
+        if (_add_page(context, *vaddr, page, flags) != 0)
+            ERAISE(-EINVAL);
+
+        *vaddr += sizeof(page);
+    }
+
+    if (myst_region_close(context, name, *vaddr) != 0)
         ERAISE(-EINVAL);
+
+    *(vaddr) += PAGE_SIZE;
 
 done:
     return ret;
+}
+
+static int _add_crt_reloc_region(
+    myst_region_context_t* context,
+    uint64_t* vaddr)
+{
+    return _add_simple_region(
+        context,
+        vaddr,
+        MYST_REGION_CRT_RELOC,
+        _details.crt.image.reloc_data,
+        _details.crt.image.reloc_size);
 }
 
 static int _add_kernel_reloc_region(
-    oe_region_context_t* context,
+    myst_region_context_t* context,
     uint64_t* vaddr)
 {
-    int ret = 0;
-    const bool is_elf = true;
-    const uint64_t id = MYST_KERNEL_RELOC_REGION_ID;
-
-    assert(_details.kernel.image.reloc_data != NULL);
-    assert(_details.kernel.image.reloc_size != 0);
-    assert((_details.kernel.image.reloc_size % PAGE_SIZE) == 0);
-
-    if (!context || !vaddr)
-        ERAISE(-EINVAL);
-
-    if (oe_region_start(context, id, is_elf, NULL) != OE_OK)
-        ERAISE(-EINVAL);
-
-    /* Add the pages */
-    {
-        const uint8_t* page = (const uint8_t*)_details.kernel.image.reloc_data;
-        size_t npages = _details.kernel.image.reloc_size / PAGE_SIZE;
-
-        for (size_t i = 0; i < npages; i++)
-        {
-            const bool extend = true;
-
-            if (oe_region_add_page(
-                    context,
-                    *vaddr,
-                    page,
-                    SGX_SECINFO_REG | SGX_SECINFO_R,
-                    extend) != OE_OK)
-            {
-                ERAISE(-EINVAL);
-            }
-
-            page += PAGE_SIZE;
-            (*vaddr) += PAGE_SIZE;
-        }
-    }
-
-    if (oe_region_end(context) != OE_OK)
-        ERAISE(-EINVAL);
-
-done:
-    return ret;
+    return _add_simple_region(
+        context,
+        vaddr,
+        MYST_REGION_KERNEL_RELOC,
+        _details.kernel.image.reloc_data,
+        _details.kernel.image.reloc_size);
 }
 
 static int _add_kernel_symtab_region(
-    oe_region_context_t* context,
+    myst_region_context_t* context,
     uint64_t* vaddr)
 {
-    int ret = 0;
-    const bool is_elf = true;
-    const uint64_t id = MYST_KERNEL_SYMTAB_REGION_ID;
-
-    assert(_details.kernel.image.symtab_data != NULL);
-    assert(_details.kernel.image.symtab_size != 0);
-    assert((_details.kernel.image.symtab_size % PAGE_SIZE) == 0);
-
-    if (!context || !vaddr)
-        ERAISE(-EINVAL);
-
-    if (oe_region_start(context, id, is_elf, NULL) != OE_OK)
-        ERAISE(-EINVAL);
-
-    /* Add the pages */
-    {
-        const uint8_t* page = (const uint8_t*)_details.kernel.image.symtab_data;
-        size_t npages = _details.kernel.image.symtab_size / PAGE_SIZE;
-
-        for (size_t i = 0; i < npages; i++)
-        {
-            const bool extend = true;
-
-            if (oe_region_add_page(
-                    context,
-                    *vaddr,
-                    page,
-                    SGX_SECINFO_REG | SGX_SECINFO_R,
-                    extend) != OE_OK)
-            {
-                ERAISE(-EINVAL);
-            }
-
-            page += PAGE_SIZE;
-            (*vaddr) += PAGE_SIZE;
-        }
-    }
-
-    if (oe_region_end(context) != OE_OK)
-        ERAISE(-EINVAL);
-
-done:
-    return ret;
+    return _add_simple_region(
+        context,
+        vaddr,
+        MYST_REGION_KERNEL_SYMTAB,
+        _details.kernel.image.symtab_data,
+        _details.kernel.image.symtab_size);
 }
 
 static int _add_kernel_dynsym_region(
-    oe_region_context_t* context,
+    myst_region_context_t* context,
     uint64_t* vaddr)
 {
-    int ret = 0;
-    const bool is_elf = true;
-    const uint64_t id = MYST_KERNEL_DYNSYM_REGION_ID;
-
-    assert(_details.kernel.image.dynsym_data != NULL);
-    assert(_details.kernel.image.dynsym_size != 0);
-    assert((_details.kernel.image.dynsym_size % PAGE_SIZE) == 0);
-
-    if (!context || !vaddr)
-        ERAISE(-EINVAL);
-
-    if (oe_region_start(context, id, is_elf, NULL) != OE_OK)
-        ERAISE(-EINVAL);
-
-    /* Add the pages */
-    {
-        const uint8_t* page = (const uint8_t*)_details.kernel.image.dynsym_data;
-        size_t npages = _details.kernel.image.dynsym_size / PAGE_SIZE;
-
-        for (size_t i = 0; i < npages; i++)
-        {
-            const bool extend = true;
-
-            if (oe_region_add_page(
-                    context,
-                    *vaddr,
-                    page,
-                    SGX_SECINFO_REG | SGX_SECINFO_R,
-                    extend) != OE_OK)
-            {
-                ERAISE(-EINVAL);
-            }
-
-            page += PAGE_SIZE;
-            (*vaddr) += PAGE_SIZE;
-        }
-    }
-
-    if (oe_region_end(context) != OE_OK)
-        ERAISE(-EINVAL);
-
-done:
-    return ret;
+    return _add_simple_region(
+        context,
+        vaddr,
+        MYST_REGION_KERNEL_DYNSYM,
+        _details.kernel.image.dynsym_data,
+        _details.kernel.image.dynsym_size);
 }
 
 static int _add_kernel_strtab_region(
-    oe_region_context_t* context,
+    myst_region_context_t* context,
     uint64_t* vaddr)
 {
-    int ret = 0;
-    const bool is_elf = true;
-    const uint64_t id = MYST_KERNEL_STRTAB_REGION_ID;
-
-    assert(_details.kernel.image.strtab_data != NULL);
-    assert(_details.kernel.image.strtab_size != 0);
-    assert((_details.kernel.image.strtab_size % PAGE_SIZE) == 0);
-
-    if (!context || !vaddr)
-        ERAISE(-EINVAL);
-
-    if (oe_region_start(context, id, is_elf, NULL) != OE_OK)
-        ERAISE(-EINVAL);
-
-    /* Add the pages */
-    {
-        const uint8_t* page = (const uint8_t*)_details.kernel.image.strtab_data;
-        size_t npages = _details.kernel.image.strtab_size / PAGE_SIZE;
-
-        for (size_t i = 0; i < npages; i++)
-        {
-            const bool extend = true;
-
-            if (oe_region_add_page(
-                    context,
-                    *vaddr,
-                    page,
-                    SGX_SECINFO_REG | SGX_SECINFO_R,
-                    extend) != OE_OK)
-            {
-                ERAISE(-EINVAL);
-            }
-
-            page += PAGE_SIZE;
-            (*vaddr) += PAGE_SIZE;
-        }
-    }
-
-    if (oe_region_end(context) != OE_OK)
-        ERAISE(-EINVAL);
-
-done:
-    return ret;
+    return _add_simple_region(
+        context,
+        vaddr,
+        MYST_REGION_KERNEL_STRTAB,
+        _details.kernel.image.strtab_data,
+        _details.kernel.image.strtab_size);
 }
 
 static int _add_kernel_dynstr_region(
-    oe_region_context_t* context,
+    myst_region_context_t* context,
     uint64_t* vaddr)
 {
-    int ret = 0;
-    const bool is_elf = true;
-    const uint64_t id = MYST_KERNEL_DYNSTR_REGION_ID;
-
-    assert(_details.kernel.image.dynstr_data != NULL);
-    assert(_details.kernel.image.dynstr_size != 0);
-    assert((_details.kernel.image.dynstr_size % PAGE_SIZE) == 0);
-
-    if (!context || !vaddr)
-        ERAISE(-EINVAL);
-
-    if (oe_region_start(context, id, is_elf, NULL) != OE_OK)
-        ERAISE(-EINVAL);
-
-    /* Add the pages */
-    {
-        const uint8_t* page = (const uint8_t*)_details.kernel.image.dynstr_data;
-        size_t npages = _details.kernel.image.dynstr_size / PAGE_SIZE;
-
-        for (size_t i = 0; i < npages; i++)
-        {
-            const bool extend = true;
-
-            if (oe_region_add_page(
-                    context,
-                    *vaddr,
-                    page,
-                    SGX_SECINFO_REG | SGX_SECINFO_R,
-                    extend) != OE_OK)
-            {
-                ERAISE(-EINVAL);
-            }
-
-            page += PAGE_SIZE;
-            (*vaddr) += PAGE_SIZE;
-        }
-    }
-
-    if (oe_region_end(context) != OE_OK)
-        ERAISE(-EINVAL);
-
-done:
-    return ret;
+    return _add_simple_region(
+        context,
+        vaddr,
+        MYST_REGION_KERNEL_DYNSTR,
+        _details.kernel.image.dynstr_data,
+        _details.kernel.image.dynstr_size);
 }
 
-static int _add_rootfs_region(oe_region_context_t* context, uint64_t* vaddr)
+static int _add_rootfs_region(myst_region_context_t* context, uint64_t* vaddr)
 {
-    int ret = 0;
-    const uint8_t* p = _details.rootfs.buffer;
-    size_t n = _details.rootfs.buffer_size;
-    size_t r = n;
-    const uint64_t id = MYST_ROOTFS_REGION_ID;
-
-    if (!context || !vaddr)
-        ERAISE(-EINVAL);
-
-    assert(_details.rootfs.buffer != NULL);
-    assert(_details.rootfs.buffer_size != 0);
-
-    if (oe_region_start(context, id, false, NULL) != OE_OK)
-        ERAISE(-EINVAL);
-
-    while (r)
-    {
-        __attribute__((__aligned__(PAGE_SIZE))) uint8_t page[PAGE_SIZE];
-        const bool extend = true;
-        const size_t min = (r < sizeof(page)) ? r : sizeof(page);
-
-        memcpy(page, p, min);
-
-        if (min < sizeof(page))
-            memset(page + r, 0, sizeof(page) - r);
-
-        if (oe_region_add_page(
-                context,
-                *vaddr,
-                page,
-                SGX_SECINFO_REG | SGX_SECINFO_R,
-                extend) != OE_OK)
-        {
-            ERAISE(-EINVAL);
-        }
-
-        *vaddr += sizeof(page);
-        p += min;
-        r -= min;
-    }
-
-    if (oe_region_end(context) != OE_OK)
-        ERAISE(-EINVAL);
-
-done:
-    return ret;
+    return _add_simple_region(
+        context,
+        vaddr,
+        MYST_REGION_ROOTFS,
+        _details.rootfs.buffer,
+        _details.rootfs.buffer_size);
 }
 
-static int _add_archive_region(oe_region_context_t* context, uint64_t* vaddr)
+static int _add_archive_region(myst_region_context_t* context, uint64_t* vaddr)
 {
-    int ret = 0;
-    const uint8_t* p = _details.archive.buffer;
-    size_t n = _details.archive.buffer_size;
-    size_t r = n;
-    const uint64_t id = MYST_ARCHIVE_REGION_ID;
-
-    if (!context || !vaddr)
-        ERAISE(-EINVAL);
-
-    assert(_details.archive.buffer != NULL);
-    assert(_details.archive.buffer_size != 0);
-
-    if (oe_region_start(context, id, false, NULL) != OE_OK)
-        ERAISE(-EINVAL);
-
-    while (r)
-    {
-        __attribute__((__aligned__(PAGE_SIZE))) uint8_t page[PAGE_SIZE];
-        const bool extend = true;
-        const size_t min = (r < sizeof(page)) ? r : sizeof(page);
-
-        memcpy(page, p, min);
-
-        if (min < sizeof(page))
-            memset(page + r, 0, sizeof(page) - r);
-
-        if (oe_region_add_page(
-                context,
-                *vaddr,
-                page,
-                SGX_SECINFO_REG | SGX_SECINFO_R,
-                extend) != OE_OK)
-        {
-            ERAISE(-EINVAL);
-        }
-
-        *vaddr += sizeof(page);
-        p += min;
-        r -= min;
-    }
-
-    if (oe_region_end(context) != OE_OK)
-        ERAISE(-EINVAL);
-
-done:
-    return ret;
+    return _add_simple_region(
+        context,
+        vaddr,
+        MYST_REGION_ARCHIVE,
+        _details.archive.buffer,
+        _details.archive.buffer_size);
 }
 
-static int _add_config_region(oe_region_context_t* context, uint64_t* vaddr)
+static int _add_config_region(myst_region_context_t* context, uint64_t* vaddr)
 {
-    int ret = 0;
-    const uint8_t* p = (uint8_t*)_details.config.buffer;
-    size_t n = _details.config.buffer_size;
-    size_t r = n;
-    const uint64_t id = MYST_CONFIG_REGION_ID;
+    const char name[] = MYST_REGION_CONFIG;
 
-    if (!context || !vaddr)
-        ERAISE(-EINVAL);
-
-    // If we have no config then we cannot add this region
     if (_details.config.buffer == NULL)
-    {
         return 0;
-    }
 
-    if (oe_region_start(context, id, false, NULL) != OE_OK)
-        ERAISE(-EINVAL);
-
-    while (r)
-    {
-        __attribute__((__aligned__(PAGE_SIZE))) uint8_t page[PAGE_SIZE];
-        const bool extend = true;
-        const size_t min = (r < sizeof(page)) ? r : sizeof(page);
-
-        memcpy(page, p, min);
-
-        if (min < sizeof(page))
-            memset(page + r, 0, sizeof(page) - r);
-
-        if (oe_region_add_page(
-                context,
-                *vaddr,
-                page,
-                SGX_SECINFO_REG | SGX_SECINFO_R,
-                extend) != OE_OK)
-        {
-            ERAISE(-EINVAL);
-        }
-
-        *vaddr += sizeof(page);
-        p += min;
-        r -= min;
-    }
-
-    if (oe_region_end(context) != OE_OK)
-        ERAISE(-EINVAL);
-
-done:
-    return ret;
+    return _add_simple_region(
+        context,
+        vaddr,
+        name,
+        _details.config.buffer,
+        _details.config.buffer_size);
 }
 
-static int _add_mman_region(oe_region_context_t* context, uint64_t* vaddr)
+static int _add_mman_region(myst_region_context_t* context, uint64_t* vaddr)
 {
     int ret = 0;
     __attribute__((__aligned__(PAGE_SIZE))) uint8_t page[PAGE_SIZE];
     const size_t mman_pages = _details.mman_size / PAGE_SIZE;
-    const uint64_t id = MYST_MMAN_REGION_ID;
+    const char name[] = MYST_REGION_MMAN;
 
     if (!context || !vaddr)
         ERAISE(-EINVAL);
 
-    if (oe_region_start(context, id, false, NULL) != OE_OK)
+    if (myst_region_open(context) != 0)
         ERAISE(-EINVAL);
 
     memset(page, 0, sizeof(page));
 
     /* Add the leading guard page */
     {
-        const bool extend = true;
+        int flags = PROT_NONE | MYST_REGION_EXTEND;
 
-        if (oe_region_add_page(
-                context, *vaddr, page, SGX_SECINFO_REG, extend) != OE_OK)
-        {
+        if (_add_page(context, *vaddr, page, flags) != 0)
             ERAISE(-EINVAL);
-        }
 
         *vaddr += sizeof(page);
     }
 
     for (size_t i = 0; i < mman_pages; i++)
     {
-        const bool extend = false;
+        int flags = PROT_READ | PROT_WRITE | PROT_EXEC;
 
-        if (oe_region_add_page(
-                context,
-                *vaddr,
-                page,
-                SGX_SECINFO_REG | SGX_SECINFO_R | SGX_SECINFO_W | SGX_SECINFO_X,
-                extend) != OE_OK)
-        {
+        if (_add_page(context, *vaddr, page, flags) != 0)
             ERAISE(-EINVAL);
-        }
 
         *vaddr += sizeof(page);
     }
 
     /* Add the trailing guard page */
     {
-        const bool extend = true;
+        int flags = PROT_NONE | MYST_REGION_EXTEND;
 
-        if (oe_region_add_page(
-                context, *vaddr, page, SGX_SECINFO_REG, extend) != OE_OK)
-        {
+        if (_add_page(context, *vaddr, page, flags) != 0)
             ERAISE(-EINVAL);
-        }
 
         *vaddr += sizeof(page);
     }
 
-    if (oe_region_end(context) != OE_OK)
+    if (myst_region_close(context, name, *vaddr) != 0)
         ERAISE(-EINVAL);
+
+    *(vaddr) += PAGE_SIZE;
 
 done:
     return ret;
 }
 
-oe_result_t oe_region_add_regions(oe_region_context_t* context, uint64_t vaddr)
+oe_result_t oe_load_extra_enclave_data(
+    void* arg,
+    uint64_t vaddr,
+    const void* page,
+    uint64_t flags,
+    bool extend);
+
+int add_regions(void* arg, uint64_t baseaddr, myst_add_page_t add_page)
 {
-    if (_add_kernel_region(context, &vaddr) != 0)
+    myst_region_context_t* context = NULL;
+    uint64_t vaddr = 0;
+
+    if (myst_region_init(add_page, arg, &context) != 0)
+        _err("myst_region_init() failed");
+
+    if (_add_kernel_region(context, baseaddr, &vaddr) != 0)
         _err("_add_kernel_region() failed");
 
     if (_add_kernel_reloc_region(context, &vaddr) != 0)
@@ -1007,5 +749,8 @@ oe_result_t oe_region_add_regions(oe_region_context_t* context, uint64_t vaddr)
     if (_add_config_region(context, &vaddr) != 0)
         _err("_add_config_region() failed");
 
-    return OE_OK;
+    if (myst_region_release(context) != 0)
+        _err("myst_region_release() failed");
+
+    return 0;
 }
