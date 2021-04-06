@@ -73,7 +73,7 @@ static help_t _help[] = {
     {"fds", "list open file descriptors"},
     {"id", "print the current UID and GID"},
     {"maxthreads", "print the maximum number of threads"},
-    {"nthreads", "print the number of threads"},
+    {"numthreads", "print the number of threads"},
     {"hostname", "print the hostname"},
     {"mcheck", "check heap memory"},
     {"mdump", "print in-use malloc'd blocks"},
