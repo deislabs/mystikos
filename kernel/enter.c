@@ -577,8 +577,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
 
 #if !defined(MYST_RELEASE)
     /* Disable debug malloc if not Linux (which sets image_data to null) */
-    if (args->image_data != NULL)
-        myst_enable_debug_malloc = true;
+    myst_enable_debug_malloc = true;
 #endif
 
     /* enable error tracing if requested */

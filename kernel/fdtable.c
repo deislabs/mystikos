@@ -481,9 +481,10 @@ static const char* _type_name(myst_fdtable_type_t type)
         case MYST_FDTABLE_TYPE_INOTIFY:
             return "inotify";
         case MYST_FDTABLE_TYPE_NONE:
-        default:
             return "none";
     }
+
+    return "none";
 }
 
 int myst_fdtable_list(const myst_fdtable_t* fdtable)
