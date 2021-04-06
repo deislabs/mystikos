@@ -1,7 +1,3 @@
-/app/op_or_eq.pass.cpp.exe
-/app/op_star.pass.cpp.exe
-/app/op_subscript.runtime.pass.cpp.exe
-/app/op_times=.pass.cpp.exe
 /app/op_times_rep.pass.cpp.exe
 /app/op_xor_eq.pass.cpp.exe
 /app/open_mode.pass.cpp.exe
@@ -9,6 +5,7 @@
 /app/open_string.pass.cpp.exe
 /app/open_wchar_pointer.pass.cpp.exe
 /app/openmode.pass.cpp.exe
+/app/operator.pass.cpp.exe
 /app/operator_==.pass.cpp.exe
 /app/operator_bool.pass.cpp.exe
 /app/operator_element_type_ptr.pass.cpp.exe
@@ -22,6 +19,7 @@
 /app/or_value_valarray.pass.cpp.exe
 /app/ostream.pass.cpp.exe
 /app/ostream.version.pass.cpp.exe
+/app/ostream_delim.pass.cpp.exe
 /app/ostream_joiner.cons.pass.cpp.exe
 /app/ostream_joiner.op.assign.pass.cpp.exe
 /app/ostream_joiner.op.postincrement.pass.cpp.exe
@@ -39,6 +37,7 @@
 /app/owner_before_weak_ptr.pass.cpp.exe
 /app/owner_less.pass.cpp.exe
 /app/owns_lock.pass.cpp.exe
+/app/pairs.by.type.pass.cpp.exe
 /app/param_assign.pass.cpp.exe
 /app/param_copy.pass.cpp.exe
 /app/param_ctor.pass.cpp.exe
@@ -144,6 +143,8 @@
 /app/quick_exit.pass.cpp.exe
 /app/quiet_NaN.pass.cpp.exe
 /app/quoted.pass.cpp.exe
+/app/race.pass.cpp.exe
+/app/race_condition.pass.cpp.exe
 /app/radix.pass.cpp.exe
 /app/random_access_iterator_tag.pass.cpp.exe
 /app/random_shuffle.cxx1z.pass.cpp.exe
@@ -184,6 +185,7 @@
 /app/real.pass.cpp.exe
 /app/real_imag.pass.cpp.exe
 /app/rebind.pass.cpp.exe
+/app/rebind_alloc.pass.cpp.exe
 /app/rebind_traits.pass.cpp.exe
 /app/ref.incomplete.pass.cpp.exe
 /app/ref_1.pass.cpp.exe
@@ -278,13 +280,16 @@
 /app/set_difference.pass.cpp.exe
 /app/set_difference_comp.pass.cpp.exe
 /app/set_exception.pass.cpp.exe
+/app/set_exception_at_thread_exit.pass.cpp.exe
 /app/set_intersection.pass.cpp.exe
 /app/set_intersection_comp.pass.cpp.exe
 /app/set_lvalue.pass.cpp.exe
+/app/set_lvalue_at_thread_exit.pass.cpp.exe
 /app/set_new_handler.pass.cpp.exe
 /app/set_one.pass.cpp.exe
 /app/set_param.pass.cpp.exe
 /app/set_rdbuf.pass.cpp.exe
+/app/set_rvalue_at_thread_exit.pass.cpp.exe
 /app/set_symmetric_difference.pass.cpp.exe
 /app/set_symmetric_difference_comp.pass.cpp.exe
 /app/set_terminate.pass.cpp.exe
@@ -292,6 +297,8 @@
 /app/set_union.pass.cpp.exe
 /app/set_union_comp.pass.cpp.exe
 /app/set_union_move.pass.cpp.exe
+/app/set_value_at_thread_exit_const.pass.cpp.exe
+/app/set_value_at_thread_exit_void.pass.cpp.exe
 /app/set_value_void.pass.cpp.exe
 /app/setbase.pass.cpp.exe
 /app/setbuf.pass.cpp.exe
@@ -387,6 +394,7 @@
 /app/stdarg_h.pass.cpp.exe
 /app/stdbool_h.pass.cpp.exe
 /app/stdint_h.pass.cpp.exe
+/app/stdio_h.pass.cpp.exe
 /app/stdlib_h.pass.cpp.exe
 /app/stod.pass.cpp.exe
 /app/stof.pass.cpp.exe
@@ -495,11 +503,14 @@
 /app/truename.pass.cpp.exe
 /app/try_lock.pass.cpp.exe
 /app/try_lock_for.pass.cpp.exe
+/app/try_lock_shared.pass.cpp.exe
 /app/try_lock_until.pass.cpp.exe
+/app/tuple.by.type.pass.cpp.exe
 /app/tuple.include.utility.pass.cpp.exe
 /app/tuple.smartptr.pass.cpp.exe
 /app/tuple.version.pass.cpp.exe
 /app/tuple_array_template_depth.pass.cpp.exe
+/app/tuple_cat.pass.cpp.exe
 /app/tuple_element.pass.cpp.exe
 /app/tuple_size.pass.cpp.exe
 /app/tuple_size_value_sfinae.pass.cpp.exe
@@ -570,9 +581,16 @@
 /app/variant.version.pass.cpp.exe
 /app/vector.pass.cpp.exe
 /app/vector_bool.pass.cpp.exe
+/app/version.pass.cpp.exe
 /app/void.pass.cpp.exe
 /app/void_pointer.pass.cpp.exe
 /app/void_t.pass.cpp.exe
+/app/wait.pass.cpp.exe
+/app/wait_for.pass.cpp.exe
+/app/wait_for_pred.pass.cpp.exe
+/app/wait_pred.pass.cpp.exe
+/app/wait_until.pass.cpp.exe
+/app/wait_until_pred.pass.cpp.exe
 /app/wcerr.pass.cpp.exe
 /app/wchar_pointer.pass.cpp.exe
 /app/wchar_t_always_noconv.pass.cpp.exe
