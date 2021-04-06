@@ -94,6 +94,9 @@ typedef struct myst_kernel_args
     /* true if --shell option present */
     bool shell_mode;
 
+    /* true if --debug-malloc option present */
+    bool debug_malloc;
+
     /* Callback for making target-calls */
     myst_tcall_t tcall;
 

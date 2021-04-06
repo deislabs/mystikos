@@ -244,6 +244,7 @@ static long _enter(void* arg_)
     bool trace_errors = false;
     bool trace_syscalls = false;
     bool shell_mode = false;
+    bool debug_malloc = false;
     bool export_ramfs = false;
     const char* rootfs = NULL;
     config_parsed_data_t parsed_config;
@@ -391,7 +392,8 @@ static long _enter(void* arg_)
     {
         trace_errors = options->trace_errors;
         trace_syscalls = options->trace_syscalls;
-        shell_mode = options->shell;
+        shell_mode = options->shell_mode;
+        debug_malloc = options->debug_malloc;
         export_ramfs = options->export_ramfs;
 
         if (strlen(options->rootfs) >= PATH_MAX)
@@ -448,6 +450,9 @@ static long _enter(void* arg_)
             rootfs,
             err,
             sizeof(err));
+
+        kargs.shell_mode = shell_mode;
+        kargs.debug_malloc = debug_malloc;
 
         /* set ehdr and verify that the kernel is an ELF image */
         {

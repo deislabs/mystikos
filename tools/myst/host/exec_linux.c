@@ -65,7 +65,8 @@ struct options
     bool trace_errors;
     bool trace_syscalls;
     bool export_ramfs;
-    bool shell;
+    bool shell_mode;
+    bool debug_malloc;
     char rootfs[PATH_MAX];
     size_t heap_size;
     const char* app_config_path;
@@ -91,7 +92,11 @@ static void _get_options(int* argc, const char* argv[], struct options* opts)
 
     /* Get --shell option */
     if (cli_getopt(argc, argv, "--shell", NULL) == 0)
-        options->shell = true;
+        opts->shell_mode = true;
+
+    /* Get --debug-malloc option */
+    if (cli_getopt(argc, argv, "--debug-malloc", NULL) == 0)
+        opts->debug_malloc = true;
 
     /* Get --export-ramfs option */
     if (cli_getopt(argc, argv, "--export-ramfs", NULL) == 0)
@@ -239,6 +244,9 @@ static int _enter_kernel(
             ERAISE(-EINVAL);
         }
     }
+
+    /* set the shell mode flag */
+    args.shell_mode = options->shell_mode;
 
     /* Resolve the the kernel entry point */
     const elf_ehdr_t* ehdr = args.kernel_data;
