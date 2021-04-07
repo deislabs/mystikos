@@ -18,16 +18,24 @@ static void _run_tests(const char* test_file, bool passed)
 
     if (!file)
     {
-        fprintf(stderr, "File %s not found \n", test_file);
+        fprintf(stderr, "ERR File %s not found \n", test_file);
     }
     char line[256];
 
     while (fgets(line, sizeof(line), file))
     {
-        line[strlen(line) - 1] = '\0';
         int r;
         pid_t pid;
         int wstatus;
+        size_t len = strlen(line);
+
+        /* ignore blank lines and comment lines */
+        if (line[0] == '\0' || line[0] == '#')
+            continue;
+
+        /* remove the trailing newline if any (the final line may have none) */
+        if (line[len - 1] == '\n')
+            line[len - 1] = '\0';
 
         printf("=== start test: %s\n", line);
 
