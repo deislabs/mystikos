@@ -245,6 +245,7 @@
 /src/math/y1.exe
 /src/math/y1f.exe
 /src/math/yn.exe
+#/src/math/ynf.exe
 /src/regression/dn_expand-empty.exe
 /src/regression/dn_expand-ptr-0.exe
 /src/regression/fgets-eof.exe
