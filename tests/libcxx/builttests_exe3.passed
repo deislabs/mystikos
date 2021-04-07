@@ -361,9 +361,9 @@
 /app/sized_delete_array_calls_unsized_delete_array.pass.cpp.exe
 /app/sized_delete_calls_unsized_delete.pass.cpp.exe
 /app/skipws.pass.cpp.exe
-/app/sleep_for.pass.cpp.exe
+#/app/sleep_for.pass.cpp.exe
 /app/sleep_for_tested_elsewhere.pass.cpp.exe
-/app/sleep_until.pass.cpp.exe
+#/app/sleep_until.pass.cpp.exe
 /app/slice_array.pass.cpp.exe
 /app/slice_array_assign.pass.cpp.exe
 /app/slice_const.pass.cpp.exe
