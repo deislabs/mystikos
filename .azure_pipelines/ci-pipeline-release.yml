@@ -16,6 +16,8 @@ jobs:
   - job: ReleaseAndTest
     displayName: 'Building Release and Testing'
     pool: '1804DC4CCagentpool'
+    workspace:
+      clean: all
 
     steps:
       # perform cleanup before starting pipeline
