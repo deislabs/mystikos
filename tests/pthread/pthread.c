@@ -197,6 +197,7 @@ void test_affinity(void)
 {
     pthread_t thread;
     int r;
+    cpu_set_t main_mask;
 
     printf("=== start test (%s)\n", __FUNCTION__);
 
@@ -222,6 +223,9 @@ void test_affinity(void)
         CPU_ZERO(&mask);
         r = sched_getaffinity(pid, sizeof(mask), &mask);
         assert(r == 0);
+
+        /* save so it can be restored below */
+        memcpy(&main_mask, &mask, sizeof(main_mask));
 
         for (size_t cpu = 0; cpu < sizeof(mask) * 8; cpu++)
         {
@@ -298,6 +302,10 @@ void test_affinity(void)
 
         printf("main thread has 1 affinity\n");
     }
+
+    /* restore the original affinity of the main thread */
+    r = sched_setaffinity(0, sizeof(main_mask), &main_mask);
+    assert(r == 0);
 
     if (pthread_join(thread, NULL) != 0)
     {
@@ -698,11 +706,8 @@ int main(int argc, const char* argv[])
     for (size_t i = 0; i < n; i++)
     {
         printf("=== pass %zu\n", i);
-#if 0
-        test_create_thread();
-#endif
         test_affinity();
-#if 0
+        test_create_thread();
         test_mutexes(PTHREAD_MUTEX_NORMAL);
         test_mutexes(PTHREAD_MUTEX_RECURSIVE);
         test_timedlock();
@@ -710,7 +715,6 @@ int main(int argc, const char* argv[])
         test_cond_broadcast();
         if (_get_max_threads() != LONG_MAX)
             test_exhaust_threads();
-#endif
     }
 
     struct tms tms;
