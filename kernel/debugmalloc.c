@@ -285,8 +285,7 @@ static void _dump(bool dump_blocks, bool need_lock)
             bytes += p->size;
         }
 
-        printf(
-            "=== %s(): %zu bytes in %zu blocks\n", __FUNCTION__, bytes, blocks);
+        printf("=== blocks in use: %zu bytes in %zu blocks\n", bytes, blocks);
 
         if (dump_blocks)
         {
