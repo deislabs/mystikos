@@ -9,24 +9,8 @@ parameters:
   type: string
   default: 0.0.0
 
-# main branch pipeline configuration
-trigger:
-  branches:
-    include:
-    - main
-  paths:
-    exclude:
-    - doc/*
-    - notes.txt
-
-# PR configuration
-pr:
-  branches:
-    include:
-    - main
-  paths:
-    exclude:
-    - docs/*
+trigger: none
+pr: none
 
 jobs:
   - job: ReleaseAndTest
