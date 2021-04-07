@@ -111,9 +111,9 @@ int tlssrv_startup(tlssrv_err_t* err)
     mbedtls_entropy_init(&_entropy);
     mbedtls_ctr_drbg_init(&_ctr_drbg);
 
-#if !defined(NDEBUG)
-    mbedtls_debug_set_threshold(DEBUG_LEVEL);
-#endif
+// #if !defined(NDEBUG)
+//     mbedtls_debug_set_threshold(DEBUG_LEVEL);
+// #endif
 
     if ((r = mbedtls_ctr_drbg_seed(
              &_ctr_drbg,
@@ -356,9 +356,9 @@ int tlssrv_create(
 
     _clear_err(err);
 
-#if !defined(NDEBUG)
-    mbedtls_debug_set_threshold(DEBUG_LEVEL);
-#endif
+// #if !defined(NDEBUG)
+//     mbedtls_debug_set_threshold(DEBUG_LEVEL);
+// #endif
 
     if (!srv_out)
     {
