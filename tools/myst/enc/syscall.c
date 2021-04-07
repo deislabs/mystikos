@@ -1388,15 +1388,21 @@ static long _sched_setaffinity(
     const cpu_set_t* mask)
 {
     long ret;
-    RETURN(myst_sched_setaffinity_ocall(
-        &ret, pid, cpusetsize, (const struct myst_cpu_set*)mask));
+    RETURN(myst_sched_setaffinity_ocall(&ret, pid, cpusetsize, (void*)mask));
 }
 
 static long _sched_getaffinity(pid_t pid, size_t cpusetsize, cpu_set_t* mask)
 {
     long ret;
-    RETURN(myst_sched_getaffinity_ocall(
-        &ret, pid, cpusetsize, (struct myst_cpu_set*)mask));
+    RETURN(myst_sched_getaffinity_ocall(&ret, pid, cpusetsize, (void*)mask));
+}
+
+struct getcpu_cache;
+
+static long _getcpu(unsigned* cpu, unsigned* node, struct getcpu_cache* tcache)
+{
+    long ret;
+    RETURN(myst_getcpu_ocall(&ret, cpu, node, (void*)tcache));
 }
 
 long myst_handle_tcall(long n, long params[6])
@@ -1616,6 +1622,7 @@ long myst_handle_tcall(long n, long params[6])
             return _utimensat(
                 (int)a, (const char*)b, (const struct timespec*)c, (int)d);
         }
+#endif
         case SYS_sched_setaffinity:
         {
             return _sched_setaffinity((pid_t)a, (size_t)b, (const cpu_set_t*)c);
@@ -1624,7 +1631,10 @@ long myst_handle_tcall(long n, long params[6])
         {
             return _sched_getaffinity((pid_t)a, (size_t)b, (cpu_set_t*)c);
         }
-#endif
+        case SYS_getcpu:
+        {
+            return _getcpu((unsigned*)a, (unsigned*)b, (struct getcpu_cache*)c);
+        }
         default:
         {
             return -ENOTSUP;

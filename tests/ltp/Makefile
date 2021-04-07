@@ -165,6 +165,3 @@ one:
 	$(MYST) mkcpio ramfs.appdir ramfs
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
 endif
-
-t:
-	make one TEST=/ltp/testcases/kernel/syscalls/link/link05 FS=ramfs #ETRACE=1 STRACE=1

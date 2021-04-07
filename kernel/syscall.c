@@ -2367,6 +2367,22 @@ done:
     return ret;
 }
 
+struct getcpu_cache;
+
+long myst_syscall_getcpu(
+    unsigned* cpu,
+    unsigned* node,
+    struct getcpu_cache* tcache)
+{
+    long ret = 0;
+
+    long params[6] = {(long)cpu, (long)node, (long)tcache};
+    ECHECK((ret = myst_tcall(SYS_getcpu, params)));
+
+done:
+    return ret;
+}
+
 long myst_syscall_ret(long ret)
 {
     if (ret < 0)
@@ -4582,18 +4598,12 @@ long myst_syscall(long n, long params[6])
             unsigned* cpu = (unsigned*)x1;
             unsigned* node = (unsigned*)x2;
             struct getcpu_cache* tcache = (struct getcpu_cache*)x3;
+            long ret;
 
             _strace(n, "cpu=%p node=%p, tcache=%p", cpu, node, tcache);
 
-            // ATTN: report the real NUMA node id and cpu id.
-            // For now, always report id 0 for them.
-            if (cpu)
-                *cpu = 0;
-
-            if (node)
-                *node = 0;
-
-            BREAK(_return(n, 0));
+            ret = myst_syscall_getcpu(cpu, node, tcache);
+            BREAK(_return(n, ret));
         }
         case SYS_process_vm_readv:
             break;

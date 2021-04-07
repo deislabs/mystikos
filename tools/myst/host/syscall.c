@@ -378,3 +378,11 @@ long myst_sched_getaffinity_ocall(
 {
     RETURN(syscall(SYS_sched_getaffinity, pid, cpusetsize, mask));
 }
+
+long myst_getcpu_ocall(
+    unsigned* cpu,
+    unsigned* node,
+    struct myst_getcpu_cache* tcache)
+{
+    RETURN(syscall(SYS_getcpu, cpu, node, tcache));
+}

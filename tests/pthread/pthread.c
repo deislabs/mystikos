@@ -198,6 +198,7 @@ void test_affinity(void)
     pthread_t thread;
     int r;
     cpu_set_t main_mask;
+    size_t max_cpu = 0;
 
     printf("=== start test (%s)\n", __FUNCTION__);
 
@@ -230,7 +231,10 @@ void test_affinity(void)
         for (size_t cpu = 0; cpu < sizeof(mask) * 8; cpu++)
         {
             if (CPU_ISSET(cpu, &mask))
+            {
+                max_cpu = n;
                 n++;
+            }
         }
 
         printf("main thread has %zu affinities\n", n);
@@ -259,6 +263,59 @@ void test_affinity(void)
             assert(!CPU_ISSET(cpu, &mask));
 
         printf("main thread has 1 affinity\n");
+    }
+
+    /* verify that the main thread is now running on CPU 0 */
+    {
+        unsigned cpu = UINT_MAX;
+        unsigned node = UINT_MAX;
+        uint64_t tcache[16];
+
+        long ret = syscall(SYS_getcpu, &cpu, &node, tcache);
+        assert(ret == 0);
+        assert(cpu == 0);
+
+        printf("main thread now running on CPU 0\n");
+    }
+
+    /* set the affinity of the main thread to the max cpu and verify */
+    {
+        cpu_set_t mask;
+        const pid_t pid = 0;
+
+        CPU_ZERO(&mask);
+        CPU_SET(max_cpu, &mask);
+        r = sched_setaffinity(pid, sizeof(mask), &mask);
+        assert(r == 0);
+
+        CPU_ZERO(&mask);
+        r = sched_getaffinity(pid, sizeof(mask), &mask);
+        assert(r == 0);
+
+        /* verify that processor zero is set */
+        assert(CPU_ISSET(max_cpu, &mask));
+
+        /* verify that no other processors are set */
+        for (size_t cpu = 0; cpu < sizeof(mask) * 8; cpu++)
+        {
+            if (cpu != max_cpu)
+                assert(!CPU_ISSET(cpu, &mask));
+        }
+
+        printf("main thread has 1 affinity\n");
+    }
+
+    /* verify that the main thread is now running on the max cpu */
+    {
+        unsigned cpu = UINT_MAX;
+        unsigned node = UINT_MAX;
+        uint64_t tcache[16];
+
+        long ret = syscall(SYS_getcpu, &cpu, &node, tcache);
+        assert(ret == 0);
+        assert(cpu == max_cpu);
+
+        printf("main thread now running on CPU %zu\n", max_cpu);
     }
 
     /* verify that the child thread has one or more affinities */
@@ -707,6 +764,7 @@ int main(int argc, const char* argv[])
     {
         printf("=== pass %zu\n", i);
         test_affinity();
+#if 0
         test_create_thread();
         test_mutexes(PTHREAD_MUTEX_NORMAL);
         test_mutexes(PTHREAD_MUTEX_RECURSIVE);
@@ -715,6 +773,7 @@ int main(int argc, const char* argv[])
         test_cond_broadcast();
         if (_get_max_threads() != LONG_MAX)
             test_exhaust_threads();
+#endif
     }
 
     struct tms tms;
