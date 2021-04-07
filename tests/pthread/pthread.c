@@ -764,7 +764,6 @@ int main(int argc, const char* argv[])
     {
         printf("=== pass %zu\n", i);
         test_affinity();
-#if 0
         test_create_thread();
         test_mutexes(PTHREAD_MUTEX_NORMAL);
         test_mutexes(PTHREAD_MUTEX_RECURSIVE);
@@ -773,7 +772,6 @@ int main(int argc, const char* argv[])
         test_cond_broadcast();
         if (_get_max_threads() != LONG_MAX)
             test_exhaust_threads();
-#endif
     }
 
     struct tms tms;
