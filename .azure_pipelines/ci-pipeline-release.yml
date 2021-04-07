@@ -24,6 +24,7 @@ jobs:
       - script: |
           sudo rm -rf /tmp/myst*
         displayName: 'cleanup tmpfiles'
+
       # install minimum required package to run pipeline
       - script: |
           curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
@@ -32,7 +33,7 @@ jobs:
           sudo apt-get install build-essential python3-setuptools libmbedtls-dev docker-ce -y 
           sudo chmod 666 /var/run/docker.sock
         displayName: 'minimum init config'
-      
+
       # generate tarball for release binary and source code
       - script: |
           set -ex
@@ -45,11 +46,10 @@ jobs:
           tar -czf mystikos-$VERSION.tar.gz --exclude=mystikos-$VERSION.tar.gz .
           
           make MYST_RELEASE=1 && make bindist
-
           exit 0
         displayName: 'Generate release v${{ parameters.VERSION }} artifact'
         condition: eq(variables['Agent.JobStatus'], 'succeeded')
-      
+
       # Verify published artifact, build all source files
       - script: |
           sudo rm -rf /tmp/myst*
@@ -64,8 +64,6 @@ jobs:
           export PATH="$PATH:$(pwd)/mystikos/bin"
           sed -i 's/BINDIR=$(BUILDDIR)\/bin/BINDIR\=$(TOP)\/mystikos\/bin/g' defs.mak
           sed -i 's/SUBBINDIR=$(BINDIR)\/$(SUBDIR)/SUBBINDIR\=$(BUILDDIR)\/bin\/$(SUBDIR)/g' defs.mak
-          sed -i 's/MUSL_GCC=$(BUILDDIR)\/musl\/bin\/musl-gcc/MUSL_GCC\=gcc -lpthread/g' defs.mak
-          echo "MYST_DEFINES += -DNDEBUG">>defs.mak
           make -j tests ALLTESTS=1 VERBOSE=1
         displayName: 'run all tests'
         continueOnError: true
@@ -92,3 +90,14 @@ jobs:
           exit 1
         displayName: 'Error(s) Check'
         condition: not(eq(variables['Agent.JobStatus'], 'succeeded'))
+
+      # publish as artifacts
+      - publish: $(System.DefaultWorkingDirectory)/mystikos-${{ parameters.VERSION }}-x86_64.tar.gz
+        artifact: 'Release binary'
+        displayName: 'Publish release binary'
+        condition: eq(variables['Agent.JobStatus'], 'succeeded')
+
+      - publish: $(System.DefaultWorkingDirectory)/mystikos-${{ parameters.VERSION }}.tar.gz
+        artifact: 'Release binary code tarball'
+        displayName: 'Publish release source code'
+        condition: eq(variables['Agent.JobStatus'], 'succeeded')
