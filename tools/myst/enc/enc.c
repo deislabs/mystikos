@@ -242,6 +242,7 @@ static long _enter(void* arg_)
     const void* envp_data = arg->envp_data;
     size_t envp_size = arg->envp_size;
     uint64_t event = arg->event;
+    pid_t target_tid = arg->target_tid;
     bool trace_errors = false;
     bool trace_syscalls = false;
     bool export_ramfs = false;
@@ -419,7 +420,6 @@ static long _enter(void* arg_)
     {
         myst_kernel_args_t kargs;
         myst_kernel_entry_t entry;
-<<<<<<< HEAD
         extern const void* __oe_get_heap_base(void);
         const void* regions_end = __oe_get_heap_base();
         const bool tee_debug_mode = _test_oe_debug_mode() == 0;
@@ -444,64 +444,13 @@ static long _enter(void* arg_)
             false, /* have_syscall_instruction */
             tee_debug_mode,
             event, /* thread_event */
+            target_tid,
             myst_tcall,
             rootfs,
             err,
             sizeof(err));
 
         /* set ehdr and verify that the kernel is an ELF image */
-=======
-
-        memset(&kargs, 0, sizeof(kargs));
-        kargs.image_data = enclave_base;
-        kargs.image_size = enclave_size;
-        kargs.kernel_data = kernel_data;
-        kargs.kernel_size = kernel_size;
-        kargs.reloc_data = kernel_reloc_data;
-        kargs.reloc_size = kernel_reloc_size;
-        kargs.crt_reloc_data = crt_reloc_data;
-        kargs.crt_reloc_size = crt_reloc_size;
-        kargs.symtab_data = kernel_symtab_data;
-        kargs.symtab_size = kernel_symtab_size;
-        kargs.dynsym_data = kernel_dynsym_data;
-        kargs.dynsym_size = kernel_dynsym_size;
-        kargs.strtab_data = kernel_strtab_data;
-        kargs.strtab_size = kernel_strtab_size;
-        kargs.dynstr_data = kernel_dynstr_data;
-        kargs.dynstr_size = kernel_dynstr_size;
-        kargs.argc = args.size;
-        kargs.argv = args.data;
-        kargs.envc = env.size;
-        kargs.envp = env.data;
-        kargs.cwd = cwd;
-        kargs.hostname = hostname;
-        kargs.mman_data = mman_data;
-        kargs.mman_size = mman_size;
-        kargs.rootfs_data = (void*)rootfs_data;
-        kargs.rootfs_size = rootfs_size;
-        kargs.archive_data = (void*)archive_data;
-        kargs.archive_size = archive_size;
-        kargs.crt_data = (void*)crt_data;
-        kargs.crt_size = crt_size;
-        kargs.max_threads = _get_num_tcs();
-        kargs.trace_errors = trace_errors;
-        kargs.trace_syscalls = trace_syscalls;
-        kargs.export_ramfs = export_ramfs;
-        kargs.tcall = myst_tcall;
-        kargs.event = event;
-        kargs.target_tid = target_tid;
-
-        /* determine whether in SGX debug mode */
-        if (_test_oe_debug_mode() == 0)
-            kargs.tee_debug_mode = true;
-        else
-            kargs.tee_debug_mode = false;
-
-        if (rootfs)
-            myst_strlcpy(kargs.rootfs, rootfs, sizeof(kargs.rootfs));
-
-        /* Verify that the kernel is an ELF image */
->>>>>>> add SYS_sched_getaffinity & SYS_sched_setaffinity
         {
             ehdr = (const Elf64_Ehdr*)kargs.kernel_data;
             const uint8_t ident[] = {0x7f, 'E', 'L', 'F'};
