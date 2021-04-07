@@ -225,6 +225,7 @@ static int _enter_kernel(
                 have_syscall_instruction,
                 tee_debug_mode,
                 (uint64_t)&_thread_event,
+                (pid_t)syscall(SYS_gettid),
                 tcall,
                 options->rootfs,
                 terr,
