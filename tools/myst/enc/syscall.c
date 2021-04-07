@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1379,6 +1380,25 @@ done:
 }
 #endif
 
+MYST_STATIC_ASSERT(sizeof(cpu_set_t) == sizeof(struct myst_cpu_set));
+
+static long _sched_setaffinity(
+    pid_t pid,
+    size_t cpusetsize,
+    const cpu_set_t* mask)
+{
+    long ret;
+    RETURN(myst_sched_setaffinity_ocall(
+        &ret, pid, cpusetsize, (const struct myst_cpu_set*)mask));
+}
+
+static long _sched_getaffinity(pid_t pid, size_t cpusetsize, cpu_set_t* mask)
+{
+    long ret;
+    RETURN(myst_sched_getaffinity_ocall(
+        &ret, pid, cpusetsize, (struct myst_cpu_set*)mask));
+}
+
 long myst_handle_tcall(long n, long params[6])
 {
     const long a = params[0];
@@ -1595,6 +1615,14 @@ long myst_handle_tcall(long n, long params[6])
         {
             return _utimensat(
                 (int)a, (const char*)b, (const struct timespec*)c, (int)d);
+        }
+        case SYS_sched_setaffinity:
+        {
+            return _sched_setaffinity((pid_t)a, (size_t)b, (const cpu_set_t*)c);
+        }
+        case SYS_sched_getaffinity:
+        {
+            return _sched_getaffinity((pid_t)a, (size_t)b, (cpu_set_t*)c);
         }
 #endif
         default:

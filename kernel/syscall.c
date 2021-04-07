@@ -2313,6 +2313,60 @@ done:
     return ret;
 }
 
+long myst_syscall_sched_setaffinity(
+    pid_t pid,
+    size_t cpusetsize,
+    const cpu_set_t* mask)
+{
+    long ret = 0;
+
+    if (pid < 0 || !mask)
+        ERAISE(-EINVAL);
+
+    if (pid != 0)
+    {
+        myst_thread_t* thread = myst_find_thread(pid);
+
+        if (!thread)
+            ERAISE(-EINVAL);
+
+        pid = thread->target_tid;
+    }
+
+    long params[6] = {(long)pid, (long)cpusetsize, (long)mask};
+    ECHECK((ret = myst_tcall(SYS_sched_setaffinity, params)));
+
+done:
+    return ret;
+}
+
+long myst_syscall_sched_getaffinity(
+    pid_t pid,
+    size_t cpusetsize,
+    cpu_set_t* mask)
+{
+    long ret = 0;
+
+    if (pid < 0 || !mask)
+        ERAISE(-EINVAL);
+
+    if (pid != 0)
+    {
+        myst_thread_t* thread = myst_find_thread(pid);
+
+        if (!thread)
+            ERAISE(-EINVAL);
+
+        pid = thread->target_tid;
+    }
+
+    long params[6] = {(long)pid, (long)cpusetsize, (long)mask};
+    ECHECK((ret = myst_tcall(SYS_sched_getaffinity, params)));
+
+done:
+    return ret;
+}
+
 long myst_syscall_ret(long ret)
 {
     if (ret < 0)
@@ -3987,33 +4041,27 @@ long myst_syscall(long n, long params[6])
         {
             pid_t pid = (pid_t)x1;
             size_t cpusetsize = (pid_t)x2;
-            cpu_set_t* mask = (cpu_set_t*)x3;
+            const cpu_set_t* mask = (const cpu_set_t*)x3;
+            long ret;
 
             _strace(
                 n, "pid=%d cpusetsize=%zu mask=%p\n", pid, cpusetsize, mask);
 
-            /* ATTN: support set affinity requests */
-
-            BREAK(_return(n, 0));
+            ret = myst_syscall_sched_setaffinity(pid, cpusetsize, mask);
+            BREAK(_return(n, ret));
         }
         case SYS_sched_getaffinity:
         {
             pid_t pid = (pid_t)x1;
             size_t cpusetsize = (pid_t)x2;
             cpu_set_t* mask = (cpu_set_t*)x3;
+            long ret;
 
             _strace(
                 n, "pid=%d cpusetsize=%zu mask=%p\n", pid, cpusetsize, mask);
 
-            // ATTN: return the cpu id from sched_setaffinity.
-            // for now, make all threads fixed to cpu 0.
-            if (mask != NULL)
-            {
-                CPU_ZERO(mask);
-                CPU_SET(0, mask);
-            }
-
-            BREAK(_return(n, cpusetsize));
+            ret = myst_syscall_sched_getaffinity(pid, cpusetsize, mask);
+            BREAK(_return(n, ret));
         }
         case SYS_set_thread_area:
         {

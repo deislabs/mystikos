@@ -1,10 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#define _GNU_SOURCE
 #include <assert.h>
 #include <errno.h>
 #include <limits.h>
 #include <pthread.h>
+#include <sched.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -169,6 +171,141 @@ void test_create_thread(void)
 
         assert((uint64_t)retval == i);
     }
+
+    printf("=== passed test (%s)\n", __FUNCTION__);
+}
+
+/*
+**==============================================================================
+**
+** test_affinity()
+**
+**==============================================================================
+*/
+
+static _Atomic(pid_t) _child_tid;
+
+static void* _affinity_thread_func(void* arg)
+{
+    _child_tid = _gettid();
+    const uint64_t msec = 500;
+    sleep_msec(msec);
+    return arg;
+}
+
+void test_affinity(void)
+{
+    pthread_t thread;
+    int r;
+
+    printf("=== start test (%s)\n", __FUNCTION__);
+
+    _child_tid = 0;
+
+    /* Create one thread */
+    if ((r = _pthread_create(&thread, NULL, _affinity_thread_func, NULL)))
+    {
+        PUTERR("pthread_create() failed: %d", r);
+        abort();
+    }
+
+    /* wait for the child to set _child_tid */
+    while (_child_tid == 0)
+        asm volatile("pause" ::: "memory");
+
+    /* get the affinity of main thread */
+    {
+        size_t n = 0;
+        pid_t pid = 0;
+        cpu_set_t mask;
+
+        CPU_ZERO(&mask);
+        r = sched_getaffinity(pid, sizeof(mask), &mask);
+        assert(r == 0);
+
+        for (size_t cpu = 0; cpu < sizeof(mask) * 8; cpu++)
+        {
+            if (CPU_ISSET(cpu, &mask))
+                n++;
+        }
+
+        printf("main thread has %zu affinities\n", n);
+        assert(n > 0);
+    }
+
+    /* set the affinity of the main thread to CPU 0 and verify */
+    {
+        cpu_set_t mask;
+        const pid_t pid = 0;
+
+        CPU_ZERO(&mask);
+        CPU_SET(0, &mask);
+        r = sched_setaffinity(pid, sizeof(mask), &mask);
+        assert(r == 0);
+
+        CPU_ZERO(&mask);
+        r = sched_getaffinity(pid, sizeof(mask), &mask);
+        assert(r == 0);
+
+        /* verify that processor zero is set */
+        assert(CPU_ISSET(0, &mask));
+
+        /* verify that no other processors are set */
+        for (size_t cpu = 1; cpu < sizeof(mask) * 8; cpu++)
+            assert(!CPU_ISSET(cpu, &mask));
+
+        printf("main thread has 1 affinity\n");
+    }
+
+    /* verify that the child thread has one or more affinities */
+    {
+        size_t n = 0;
+        cpu_set_t mask;
+
+        CPU_ZERO(&mask);
+        r = sched_getaffinity(_child_tid, sizeof(mask), &mask);
+        assert(r == 0);
+
+        for (size_t cpu = 0; cpu < sizeof(mask) * 8; cpu++)
+        {
+            if (CPU_ISSET(cpu, &mask))
+                n++;
+        }
+
+        printf("child thread has %zu affinities\n", n);
+        assert(n > 0);
+    }
+
+    /* set the affinity for the child thread to CPU 0 and verify */
+    {
+        cpu_set_t mask;
+
+        CPU_ZERO(&mask);
+        CPU_SET(0, &mask);
+        r = sched_setaffinity(_child_tid, sizeof(mask), &mask);
+        assert(r == 0);
+
+        CPU_ZERO(&mask);
+        r = sched_getaffinity(_child_tid, sizeof(mask), &mask);
+        assert(r == 0);
+
+        /* verify that processor zero is set */
+        assert(CPU_ISSET(0, &mask));
+
+        /* verify that no other processors are set */
+        for (size_t cpu = 1; cpu < sizeof(mask) * 8; cpu++)
+            assert(!CPU_ISSET(cpu, &mask));
+
+        printf("main thread has 1 affinity\n");
+    }
+
+    if (pthread_join(thread, NULL) != 0)
+    {
+        PUTERR("pthread_join() failed");
+        abort();
+    }
+
+    T(printf("joined...\n");)
 
     printf("=== passed test (%s)\n", __FUNCTION__);
 }
@@ -561,7 +698,11 @@ int main(int argc, const char* argv[])
     for (size_t i = 0; i < n; i++)
     {
         printf("=== pass %zu\n", i);
+#if 0
         test_create_thread();
+#endif
+        test_affinity();
+#if 0
         test_mutexes(PTHREAD_MUTEX_NORMAL);
         test_mutexes(PTHREAD_MUTEX_RECURSIVE);
         test_timedlock();
@@ -569,6 +710,7 @@ int main(int argc, const char* argv[])
         test_cond_broadcast();
         if (_get_max_threads() != LONG_MAX)
             test_exhaust_threads();
+#endif
     }
 
     struct tms tms;

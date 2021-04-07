@@ -68,13 +68,21 @@ static __thread int _thread_event;
 
 static void* _thread_func(void* arg)
 {
-    long r = -1;
     uint64_t cookie = (uint64_t)arg;
     uint64_t event = (uint64_t)&_thread_event;
+    pid_t target_tid = (int)syscall(SYS_gettid);
+    oe_result_t res;
+    long retval = -1;
 
-    if (myst_run_thread_ecall(_enclave, &r, cookie, event) != OE_OK || r != 0)
+    res = myst_run_thread_ecall(_enclave, &retval, cookie, event, target_tid);
+
+    if (res != OE_OK || retval != 0)
     {
-        fprintf(stderr, "myst_run_thread_ecall(): failed: retval=%ld\n", r);
+        fprintf(
+            stderr,
+            "myst_run_thread_ecall(): failed: res=%u retval=%ld\n",
+            res,
+            retval);
         fflush(stdout);
         abort();
     }
@@ -133,6 +141,7 @@ int exec_launch_enclave(
     static int _event; /* the main-thread event (used by futex: uaddr) */
     myst_buf_t argv_buf = MYST_BUF_INITIALIZER;
     myst_buf_t envp_buf = MYST_BUF_INITIALIZER;
+    pid_t target_tid = (pid_t)syscall(SYS_gettid);
 
     /* Load the enclave: calls oe_load_extra_enclave_data_hook() */
     r = oe_create_myst_enclave(enc_path, type, flags, NULL, 0, &_enclave);
@@ -161,7 +170,8 @@ int exec_launch_enclave(
         argv_buf.size,
         envp_buf.data,
         envp_buf.size,
-        (uint64_t)&_event);
+        (uint64_t)&_event,
+        target_tid);
     if (r != OE_OK)
         _err("failed to enter enclave: result=%s", oe_result_str(r));
 

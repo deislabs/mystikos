@@ -404,7 +404,10 @@ static int _teardown_tmpfs(void)
 }
 #endif
 
-static int _create_main_thread(uint64_t event, myst_thread_t** thread_out)
+static int _create_main_thread(
+    uint64_t event,
+    pid_t target_tid,
+    myst_thread_t** thread_out)
 {
     int ret = 0;
     myst_thread_t* thread = NULL;
@@ -425,6 +428,7 @@ static int _create_main_thread(uint64_t event, myst_thread_t** thread_out)
     thread->ppid = ppid;
     thread->pid = pid;
     thread->tid = pid;
+    thread->target_tid = target_tid;
     thread->event = event;
     thread->target_td = myst_get_fsbase();
     thread->main.thread_group_lock = MYST_SPINLOCK_INITIALIZER;
@@ -672,7 +676,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     }
 
     /* Create the main thread */
-    ECHECK(_create_main_thread(args->event, &thread));
+    ECHECK(_create_main_thread(args->event, args->target_tid, &thread));
     __myst_main_thread = thread;
 
     thread->main.cwd_lock = MYST_SPINLOCK_INITIALIZER;

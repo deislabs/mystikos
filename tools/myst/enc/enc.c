@@ -228,6 +228,7 @@ struct enter_arg
     const void* envp_data;
     size_t envp_size;
     uint64_t event;
+    pid_t target_tid;
 };
 
 static long _enter(void* arg_)
@@ -418,6 +419,7 @@ static long _enter(void* arg_)
     {
         myst_kernel_args_t kargs;
         myst_kernel_entry_t entry;
+<<<<<<< HEAD
         extern const void* __oe_get_heap_base(void);
         const void* regions_end = __oe_get_heap_base();
         const bool tee_debug_mode = _test_oe_debug_mode() == 0;
@@ -448,6 +450,58 @@ static long _enter(void* arg_)
             sizeof(err));
 
         /* set ehdr and verify that the kernel is an ELF image */
+=======
+
+        memset(&kargs, 0, sizeof(kargs));
+        kargs.image_data = enclave_base;
+        kargs.image_size = enclave_size;
+        kargs.kernel_data = kernel_data;
+        kargs.kernel_size = kernel_size;
+        kargs.reloc_data = kernel_reloc_data;
+        kargs.reloc_size = kernel_reloc_size;
+        kargs.crt_reloc_data = crt_reloc_data;
+        kargs.crt_reloc_size = crt_reloc_size;
+        kargs.symtab_data = kernel_symtab_data;
+        kargs.symtab_size = kernel_symtab_size;
+        kargs.dynsym_data = kernel_dynsym_data;
+        kargs.dynsym_size = kernel_dynsym_size;
+        kargs.strtab_data = kernel_strtab_data;
+        kargs.strtab_size = kernel_strtab_size;
+        kargs.dynstr_data = kernel_dynstr_data;
+        kargs.dynstr_size = kernel_dynstr_size;
+        kargs.argc = args.size;
+        kargs.argv = args.data;
+        kargs.envc = env.size;
+        kargs.envp = env.data;
+        kargs.cwd = cwd;
+        kargs.hostname = hostname;
+        kargs.mman_data = mman_data;
+        kargs.mman_size = mman_size;
+        kargs.rootfs_data = (void*)rootfs_data;
+        kargs.rootfs_size = rootfs_size;
+        kargs.archive_data = (void*)archive_data;
+        kargs.archive_size = archive_size;
+        kargs.crt_data = (void*)crt_data;
+        kargs.crt_size = crt_size;
+        kargs.max_threads = _get_num_tcs();
+        kargs.trace_errors = trace_errors;
+        kargs.trace_syscalls = trace_syscalls;
+        kargs.export_ramfs = export_ramfs;
+        kargs.tcall = myst_tcall;
+        kargs.event = event;
+        kargs.target_tid = target_tid;
+
+        /* determine whether in SGX debug mode */
+        if (_test_oe_debug_mode() == 0)
+            kargs.tee_debug_mode = true;
+        else
+            kargs.tee_debug_mode = false;
+
+        if (rootfs)
+            myst_strlcpy(kargs.rootfs, rootfs, sizeof(kargs.rootfs));
+
+        /* Verify that the kernel is an ELF image */
+>>>>>>> add SYS_sched_getaffinity & SYS_sched_setaffinity
         {
             ehdr = (const Elf64_Ehdr*)kargs.kernel_data;
             const uint8_t ident[] = {0x7f, 'E', 'L', 'F'};
@@ -495,7 +549,8 @@ int myst_enter_ecall(
     size_t argv_size,
     const void* envp_data,
     size_t envp_size,
-    uint64_t event)
+    uint64_t event,
+    pid_t target_tid)
 {
     struct enter_arg arg = {
         .options = options,
@@ -505,6 +560,7 @@ int myst_enter_ecall(
         .envp_data = envp_data,
         .envp_size = envp_size,
         .event = event,
+        .target_tid = target_tid,
     };
     MYST_ALIGN(16) static uint8_t _stack[ENTER_STACK_SIZE];
 
@@ -520,9 +576,9 @@ int myst_enter_ecall(
     return (int)myst_call_on_stack(_stack + ENTER_STACK_SIZE, _enter, &arg);
 }
 
-long myst_run_thread_ecall(uint64_t cookie, uint64_t event)
+long myst_run_thread_ecall(uint64_t cookie, uint64_t event, pid_t target_tid)
 {
-    return myst_run_thread(cookie, event);
+    return myst_run_thread(cookie, event, target_tid);
 }
 
 /* This overrides the weak version in libmystkernel.a */
@@ -727,7 +783,7 @@ int myst_load_fssig(const char* path, myst_fssig_t* fssig)
 #define ENCLAVE_PRODUCT_ID 1
 #define ENCLAVE_SECURITY_VERSION 1
 #define ENCLAVE_DEBUG true
-#define ENCLAVE_HEAP_SIZE 131072
+#define ENCLAVE_HEAP_SIZE 262144
 #define ENCLAVE_STACK_SIZE 8192
 #define ENCLAVE_MAX_THREADS 1024
 

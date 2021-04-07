@@ -79,6 +79,9 @@ typedef struct myst_kernel_args
     /* The number of threads that can be created (including the main thread) */
     size_t max_threads;
 
+    /* The tid/pid of the main thread passed from the host */
+    pid_t target_tid;
+
     /* Tracing options */
     bool trace_errors;
     bool trace_syscalls;
