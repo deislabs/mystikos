@@ -151,21 +151,28 @@ static int _enter_kernel(
     int envc,
     const char* envp[],
     struct options* options,
-    const void* regions_end,
+    const void* mmap_addr,
+    size_t mmap_length,
     long (*tcall)(long n, long params[6]),
     int* return_status,
     char* err,
     size_t err_size)
 {
     int ret = 0;
-    const void* image_data = NULL;
-    size_t image_size = 0x7fffffffffffffff;
+    const void* image_data = mmap_addr;
+    size_t image_size = mmap_length;
     myst_kernel_args_t args;
     myst_kernel_entry_t entry;
     const char* cwd = "/";
     const char* hostname = NULL;
     config_parsed_data_t pd;
     const char target[] = "MYST_TARGET=linux";
+    void* regions_end = (uint8_t*)mmap_addr + mmap_length;
+
+    printf(
+        "mmap_addr: %p mmap_end %p\n",
+        mmap_addr,
+        (uint8_t*)mmap_addr + mmap_length);
 
     memset(&pd, 0, sizeof(pd));
     memset(&args, 0, sizeof(args));
@@ -178,7 +185,7 @@ static int _enter_kernel(
     if (return_status)
         *return_status = 0;
 
-    if (!argv || !envp || !options || !regions_end || !tcall || !return_status)
+    if (!argv || !envp || !options || !mmap_addr || !tcall || !return_status)
     {
         snprintf(err, err_size, "bad argument");
         ERAISE(-EINVAL);
@@ -247,6 +254,7 @@ static int _enter_kernel(
 
     /* set the shell mode flag */
     args.shell_mode = options->shell_mode;
+    args.debug_malloc = options->debug_malloc;
 
     /* Resolve the the kernel entry point */
     const elf_ehdr_t* ehdr = args.kernel_data;
@@ -382,7 +390,8 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
             envc,
             envp,
             &opts,
-            mmap_addr + mmap_length,
+            mmap_addr,
+            mmap_length,
             _tcall,
             &return_status,
             err,

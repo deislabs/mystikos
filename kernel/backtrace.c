@@ -13,10 +13,6 @@
 
 const void* _check_address(const void* ptr)
 {
-    /* this happends on Linux where backtraces are not available */
-    if (__myst_kernel_args.image_data == NULL)
-        return NULL;
-
     const uint64_t base = (uint64_t)__myst_kernel_args.image_data;
     const uint64_t end = base + __myst_kernel_args.image_size;
 

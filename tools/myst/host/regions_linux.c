@@ -45,7 +45,7 @@ int map_regions(void** addr_out, size_t* length_out)
 {
     int ret = 0;
     void* addr = NULL;
-    size_t length;
+    size_t length = 0;
 
     if (addr_out)
         *addr_out = NULL;
