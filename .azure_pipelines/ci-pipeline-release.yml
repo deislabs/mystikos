@@ -71,11 +71,22 @@ jobs:
         displayName: 'build repo source'
         workingDirectory: $(Build.SourcesDirectory)
 
-      # run solution tests
+      # run all tests
       - script: |
+          rm -rf mystikos 
+          tar -xzf mystikos-${{ parameters.VERSION }}-x86_64.tar.gz
           export PATH="$PATH:$(pwd)/mystikos/bin"
           sed -i 's/BINDIR=$(BUILDDIR)\/bin/BINDIR\=$(TOP)\/mystikos\/bin/g' defs.mak
           sed -i 's/SUBBINDIR=$(BINDIR)\/$(SUBDIR)/SUBBINDIR\=$(BUILDDIR)\/bin\/$(SUBDIR)/g' defs.mak
+          make -j tests ALLTESTS=1 VERBOSE=1
+        displayName: 'run all tests'
+        continueOnError: true
+        enabled: true
+        workingDirectory: $(Build.SourcesDirectory)
+
+      # run solution tests
+      - script: |
+          export PATH="$PATH:$(pwd)/mystikos/bin"
           make tests -C $(Build.SourcesDirectory)/solutions
         displayName: 'run solution tests'
         continueOnError: true
