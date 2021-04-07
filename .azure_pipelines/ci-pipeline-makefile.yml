@@ -26,6 +26,8 @@ jobs:
   - job: BuildAndTest
     displayName: 'Building and Testing'
     pool: '1804DC4CCagentpool'
+    workspace:
+      clean: all
 
     steps:
       # perform cleanup before starting pipeline
@@ -43,7 +45,7 @@ jobs:
 
       # build all source files
       - script: |
-          make distclean && make -j
+          make -j
         displayName: 'build repo source'
         workingDirectory: $(Build.SourcesDirectory)
 
