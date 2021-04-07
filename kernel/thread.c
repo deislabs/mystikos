@@ -867,7 +867,7 @@ pid_t myst_gettid(void)
     return myst_thread_self()->tid;
 }
 
-int myst_get_num_threads(void)
+size_t myst_get_num_threads(void)
 {
     return _num_threads;
 }

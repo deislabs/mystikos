@@ -241,6 +241,14 @@ int exec_action(int argc, const char* argv[], const char* envp[])
             options.trace_errors = true;
         }
 
+        /* Get --debug-malloc option */
+        if (cli_getopt(&argc, argv, "--debug-malloc", NULL) == 0)
+            options.debug_malloc = true;
+
+        /* Get --shell option */
+        if (cli_getopt(&argc, argv, "--shell", NULL) == 0)
+            options.shell_mode = true;
+
         /* Get --export-ramfs option */
         if (cli_getopt(&argc, argv, "--export-ramfs", NULL) == 0)
             options.export_ramfs = true;

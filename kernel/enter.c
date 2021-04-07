@@ -8,6 +8,7 @@
 #include <myst/atexit.h>
 #include <myst/cpio.h>
 #include <myst/crash.h>
+#include <myst/debugmalloc.h>
 #include <myst/eraise.h>
 #include <myst/errno.h>
 #include <myst/exec.h>
@@ -57,17 +58,6 @@ long myst_tcall(long n, long params[6])
         myst_set_fsbase(fs);
 
     return ret;
-}
-
-void myst_dump_malloc_stats(void)
-{
-    myst_malloc_stats_t stats;
-
-    if (myst_get_malloc_stats(&stats) == 0)
-    {
-        myst_eprintf("kernel: memory used: %zu\n", stats.usage);
-        myst_eprintf("kernel: peak memory used: %zu\n", stats.peak_usage);
-    }
 }
 
 static int _setup_tty(void)
@@ -585,6 +575,12 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     __options.have_syscall_instruction = args->have_syscall_instruction;
     __options.export_ramfs = args->export_ramfs;
 
+#if !defined(MYST_RELEASE)
+    /* Disable debug malloc if not Linux (which sets image_data to null) */
+    if (args->debug_malloc && args->tee_debug_mode)
+        myst_enable_debug_malloc = true;
+#endif
+
     /* enable error tracing if requested */
     if (args->trace_errors)
         myst_set_trace(true);
@@ -711,12 +707,12 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     /* Set the 'run-proc' which is called by the target to run new threads */
     ECHECK(myst_tcall_set_run_thread_function(myst_run_thread));
 
-#ifdef MYST_ENABLE_LEAK_CHECKER
-    /* print out memory statistics */
-    // myst_dump_malloc_stats();
-#endif
-
     myst_times_start();
+
+#if !defined(MYST_RELEASE)
+    if (args->shell_mode)
+        myst_start_shell("\nMystikos shell (enter)\n");
+#endif
 
     /* Run the main program: wait for SYS_exit to perform longjmp() */
     if (myst_setjmp(&thread->jmpbuf) == 0)
@@ -746,6 +742,16 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     {
         /* thread jumps here on SYS_exit syscall */
         exit_status = thread->exit_status;
+
+        /* cancel the itimer if any */
+#if 1
+        myst_cancel_itimer();
+#endif
+
+#if !defined(MYST_RELEASE)
+        if (args->shell_mode)
+            myst_start_shell("\nMystikos shell (exit)\n");
+#endif
 
         /* release the fdtable */
         if (thread->fdtable)
@@ -800,14 +806,14 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     /* call functions installed with myst_atexit() */
     myst_call_atexit_functions();
 
-#ifdef MYST_ENABLE_LEAK_CHECKER
-    /* Check for memory leaks */
-    if (myst_find_leaks() != 0)
+    /* check for memory leaks */
+    if (myst_enable_debug_malloc)
     {
-        myst_crash();
-        myst_panic("kernel memory leaks");
+        if (myst_debug_malloc_check(true) != 0)
+        {
+            myst_eprintf("*** memory leaks detected\n");
+        }
     }
-#endif
 
     /* ATTN: move myst_call_atexit_functions() here */
 

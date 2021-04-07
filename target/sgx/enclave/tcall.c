@@ -198,6 +198,7 @@ long myst_tcall_wake_wait(
     return -ENOTSUP;
 }
 
+/* Must be overriden by enclave application */
 MYST_WEAK
 long myst_tcall_export_file(const char* path, const void* data, size_t size)
 {

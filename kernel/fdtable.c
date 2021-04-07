@@ -13,8 +13,10 @@
 #include <myst/once.h>
 #include <myst/panic.h>
 #include <myst/pipedev.h>
+#include <myst/process.h>
 #include <myst/spinlock.h>
 #include <myst/strings.h>
+#include <myst/syscall.h>
 #include <myst/thread.h>
 #include <myst/ttydev.h>
 
@@ -460,4 +462,68 @@ myst_fdtable_t* myst_fdtable_current(void)
     myst_thread_t* thread = myst_thread_self();
     myst_assume(thread->fdtable);
     return thread->fdtable;
+}
+
+static const char* _type_name(myst_fdtable_type_t type)
+{
+    switch (type)
+    {
+        case MYST_FDTABLE_TYPE_TTY:
+            return "tty";
+        case MYST_FDTABLE_TYPE_FILE:
+            return "file";
+        case MYST_FDTABLE_TYPE_PIPE:
+            return "pipe";
+        case MYST_FDTABLE_TYPE_SOCK:
+            return "sock";
+        case MYST_FDTABLE_TYPE_EPOLL:
+            return "epoll";
+        case MYST_FDTABLE_TYPE_INOTIFY:
+            return "inotify";
+        case MYST_FDTABLE_TYPE_NONE:
+            return "none";
+    }
+
+    return "none";
+}
+
+int myst_fdtable_list(const myst_fdtable_t* fdtable)
+{
+    int ret = 0;
+
+    if (!fdtable)
+        ERAISE(-EINVAL);
+
+    for (int i = 0; i < MYST_FDTABLE_SIZE; i++)
+    {
+        const myst_fdtable_entry_t* entry = &fdtable->entries[i];
+
+        if (entry->type != MYST_FDTABLE_TYPE_NONE)
+        {
+            pid_t pid = myst_getpid();
+            ssize_t m;
+
+            printf("%d: %s", i, _type_name(entry->type));
+
+            if (entry->type == MYST_FDTABLE_TYPE_FILE)
+            {
+                char linkpath[PATH_MAX];
+                const size_t n = sizeof(linkpath);
+                char buf[PATH_MAX];
+                if (snprintf(linkpath, n, "/proc/%d/fd/%d", pid, i) >= (int)n)
+                    ERAISE(-ENAMETOOLONG);
+
+                if ((m = myst_syscall_readlink(linkpath, buf, sizeof(buf))) < 0)
+                    ERAISE(-ENAMETOOLONG);
+                printf(" (%s)", buf);
+            }
+
+            printf("\n");
+        }
+    }
+
+    printf("\n");
+
+done:
+    return ret;
 }

@@ -33,6 +33,7 @@
 #include <myst/clock.h>
 #include <myst/cpio.h>
 #include <myst/cwd.h>
+#include <myst/debugmalloc.h>
 #include <myst/epolldev.h>
 #include <myst/eraise.h>
 #include <myst/errno.h>
@@ -1481,7 +1482,7 @@ done:
     return ret;
 }
 
-static char _hostname[HOST_NAME_MAX] = "TEE";
+static char _hostname[HOST_NAME_MAX] = "mystikos";
 static myst_spinlock_t _hostname_lock = MYST_SPINLOCK_INITIALIZER;
 
 long myst_syscall_uname(struct utsname* buf)
@@ -2860,11 +2861,6 @@ long myst_syscall(long n, long params[6])
             }
             else
             {
-                pid_t pid = myst_getpid();
-
-                if (myst_register_process_mapping(pid, ptr, length) != 0)
-                    myst_panic("failed to register process mapping");
-
                 ret = (long)ptr;
             }
 
@@ -3144,6 +3140,21 @@ long myst_syscall(long n, long params[6])
         {
             _strace(n, NULL);
             BREAK(_return(n, myst_syscall_run_itimer()));
+        }
+        case SYS_myst_start_shell:
+        {
+#if !defined(MYST_RELEASE)
+            _strace(n, NULL);
+            myst_start_shell("\nMystikos shell (syscall)\n");
+#endif
+            BREAK(_return(n, 0));
+        }
+        case SYS_myst_memdump:
+        {
+#if !defined(MYST_RELEASE)
+            myst_debug_malloc_dump_used();
+#endif
+            BREAK(_return(n, 0));
         }
         case SYS_getitimer:
         {
