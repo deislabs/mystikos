@@ -51,7 +51,7 @@ jobs:
 
       # run all tests
       - script: |
-          make -j tests ALLTESTS=1 VERBOSE=1 ; make clean
+          make -j tests ALLTESTS=1 VERBOSE=1 ; make clean -C $(Build.SourcesDirectory)/tests
         displayName: 'run all tests'
         continueOnError: true
         enabled: true
@@ -59,7 +59,7 @@ jobs:
 
       # run solution tests
       - script: |
-          make tests -C $(Build.SourcesDirectory)/solutions ; make clean
+          make tests -C $(Build.SourcesDirectory)/solutions ; make clean -C $(Build.SourcesDirectory)/solutions
         displayName: 'run solution tests'
         continueOnError: true
         enabled: true
