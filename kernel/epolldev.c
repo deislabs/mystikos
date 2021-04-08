@@ -527,7 +527,8 @@ static int _ed_close(myst_epolldev_t* epolldev, myst_epoll_t* epoll)
     if (!epolldev || !_valid_epoll(epoll))
         ERAISE(-EBADF);
 
-#if 1
+        /* ATTN: enabling this seems to crash the C++ tests */
+#if 0
     for (epoll_entry_t* p = (epoll_entry_t*)epoll->list.head; p;)
     {
         epoll_entry_t* next = p->next;

@@ -241,9 +241,9 @@ int exec_action(int argc, const char* argv[], const char* envp[])
             options.trace_errors = true;
         }
 
-        /* Get --debug-malloc option */
-        if (cli_getopt(&argc, argv, "--debug-malloc", NULL) == 0)
-            options.debug_malloc = true;
+        /* Get --memcheck option */
+        if (cli_getopt(&argc, argv, "--memcheck", NULL) == 0)
+            options.memcheck = true;
 
         /* Get --shell option */
         if (cli_getopt(&argc, argv, "--shell", NULL) == 0)

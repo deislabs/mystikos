@@ -576,8 +576,8 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     __options.export_ramfs = args->export_ramfs;
 
 #if !defined(MYST_RELEASE)
-    /* enabled debug malloc if options present and in TEE debug mode */
-    if (args->debug_malloc && args->tee_debug_mode)
+    /* enable memcheck if options present and in TEE debug mode */
+    if (args->memcheck && args->tee_debug_mode)
         myst_enable_debug_malloc = true;
 #endif
 
