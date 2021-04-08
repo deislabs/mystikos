@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <myst/eraise.h>
 #include <myst/file.h>
 #include <myst/fssig.h>
 #include <myst/getopt.h>
@@ -196,6 +197,10 @@ static void _create_zero_filled_image(const char* path, size_t size)
         _err("failed to write file: %s", path);
 
     fclose(is);
+
+    /* set the owner of this file to the sudo user if defined */
+    if (myst_chown_sudo_user(path) != 0)
+        _err("failed to chown to sudo user: %s", path);
 }
 
 static void _create_ext2_image(
@@ -218,6 +223,10 @@ static void _create_ext2_image(
     /* create the mount directory */
     if (!mkdtemp(mntdir))
         _err("failed to create temporary directory");
+
+    /* set the owner of this directory to the sudo user if defined */
+    if (myst_chown_sudo_user(mntdir) != 0)
+        _err("failed to chown to sudo user: %s", mntdir);
 
     /* mount the ext2 image */
     _systemf("/bin/mount %s %s", loop, mntdir);
@@ -272,6 +281,10 @@ static void _create_luks_image(
     /* create a zero-filled image */
     _systemf("/usr/bin/head -c %zu /dev/zero > %s", size, image);
 
+    /* set the owner of this file to the sudo user if defined */
+    if (myst_chown_sudo_user(image) != 0)
+        _err("failed to chown to sudo user: %s", mntdir);
+
     /* do luksFormat on image */
     _systemf(
         "/bin/echo %s | /sbin/cryptsetup luksFormat "
@@ -311,6 +324,9 @@ static void _create_luks_image(
     /* create the mount directory */
     if (!mkdtemp(mntdir))
         _err("failed to create temporary directory");
+
+    if (myst_chown_sudo_user(mntdir) != 0)
+        _err("failed to chown to sudo user: %s", mntdir);
 
     /* mount the directory */
     _systemf("/bin/mount %s %s", dmpath, mntdir);

@@ -39,4 +39,7 @@ ssize_t myst_memremove_u64(void* data, size_t size, size_t pos, size_t count);
 
 bool myst_isspace(char c);
 
+/* convert a whole string to an integer */
+int myst_str2int(const char* s, int* x);
+
 #endif /* _MYST_STRINGS_H */

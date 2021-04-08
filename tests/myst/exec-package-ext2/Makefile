@@ -14,7 +14,6 @@ all: $(PUBKEY)
 	mkdir -p $(APPDIR)/bin
 	$(MUSL_GCC) -Wall -o $(APPDIR)/bin/hello hello.c
 	sudo $(MYST) mkext2 --force --sign=$(PUBKEY):$(PRIVKEY) $(APPDIR) $(ROOTFS)
-	sudo chown $(USER).$(GROUP) $(ROOTFS)
 	$(MYST) package --pubkey=$(PUBKEY) $(PRIVKEY) config.json
 
 $(PUBKEY): $(PRIVKEY)
