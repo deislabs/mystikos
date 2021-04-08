@@ -21,6 +21,7 @@
 
 #include <myst/backtrace.h>
 #include <myst/crash.h>
+#include <myst/debugmalloc.h>
 #include <myst/kernel.h>
 #include <myst/list.h>
 #include <myst/mmanutils.h>
@@ -105,215 +106,88 @@ static int _dlmalloc_munmap(void* addr, size_t length)
 
 #define MAX_BACKTRACE_ADDRS 16
 
-#ifdef MYST_ENABLE_LEAK_CHECKER
-static myst_list_t _list;
-static myst_spinlock_t _lock = MYST_SPINLOCK_INITIALIZER;
-#endif
-
-static myst_malloc_stats_t _malloc_stats;
-
-#ifdef MYST_ENABLE_LEAK_CHECKER
-typedef struct node
+void* myst_malloc(size_t size)
 {
-    myst_list_node_t base;
-    void* ptr;
-    size_t size;
-    void* addrs[MAX_BACKTRACE_ADDRS];
-    size_t num_addrs;
-} node_t;
-#endif
-
-#ifdef MYST_ENABLE_LEAK_CHECKER
-static node_t* _new_node(void* ptr, size_t size)
-{
-    node_t* p;
-
-    if (!(p = dlmalloc(sizeof(node_t))))
-        return NULL;
-
-    p->ptr = ptr;
-    p->size = size;
-    p->num_addrs = myst_backtrace(p->addrs, MYST_COUNTOF(p->addrs));
-
-    return p;
+    return dlmalloc(size);
 }
-#endif
 
-#ifdef MYST_ENABLE_LEAK_CHECKER
-static int _add_node(void* ptr, size_t size)
+void* myst_calloc(size_t nmemb, size_t size)
 {
-    node_t* node;
-
-    if (!(node = _new_node(ptr, size)))
-        return -1;
-
-    myst_spin_lock(&_lock);
-    {
-        myst_list_append(&_list, (myst_list_node_t*)node);
-        _malloc_stats.usage += size;
-
-        if (_malloc_stats.usage > _malloc_stats.peak_usage)
-            _malloc_stats.peak_usage = _malloc_stats.usage;
-    }
-    myst_spin_unlock(&_lock);
-
-    return 0;
+    return dlcalloc(nmemb, size);
 }
-#endif
 
-#ifdef MYST_ENABLE_LEAK_CHECKER
-static int _remove_node(void* ptr)
+void* myst_realloc(void* ptr, size_t size)
 {
-    node_t* node = NULL;
-
-    myst_spin_lock(&_lock);
-    {
-        for (myst_list_node_t* p = _list.head; p; p = p->next)
-        {
-            node_t* tmp = (node_t*)p;
-
-            if (tmp->ptr == ptr)
-            {
-                node = tmp;
-                _malloc_stats.usage -= node->size;
-                myst_list_remove(&_list, p);
-                break;
-            }
-        }
-    }
-    myst_spin_unlock(&_lock);
-
-    if (node)
-    {
-        dlfree(node);
-        return 0;
-    }
-
-    return -1;
+    return dlrealloc(ptr, size);
 }
-#endif
+
+void* myst_memalign(size_t alignment, size_t size)
+{
+    return dlmemalign(alignment, size);
+}
+
+int myst_posix_memalign(void** memptr, size_t alignment, size_t size)
+{
+    return dlposix_memalign(memptr, alignment, size);
+}
+
+void myst_free(void* ptr)
+{
+    dlfree(ptr);
+}
+
+/*
+**==============================================================================
+**
+** Standard definitions
+**
+**==============================================================================
+*/
 
 void* malloc(size_t size)
 {
-    void* p = NULL;
-
-    if (!(p = dlmalloc(size)))
-        return NULL;
-
-#ifdef MYST_ENABLE_LEAK_CHECKER
-    if (_add_node(p, size) != 0)
-        myst_panic("unexpected");
-#endif
-
-    return p;
-}
-
-void* calloc(size_t nmemb, size_t size)
-{
-    void* p = NULL;
-
-    if (!(p = dlcalloc(nmemb, size)))
-        return NULL;
-
-#ifdef MYST_ENABLE_LEAK_CHECKER
-    size_t n = nmemb * size;
-    if (_add_node(p, n) != 0)
-        myst_panic("unexpected");
-#endif
-
-    return p;
-}
-
-void* realloc(void* ptr, size_t size)
-{
-    void* p = NULL;
-
-#ifdef MYST_ENABLE_LEAK_CHECKER
-    if (ptr && _remove_node(ptr) != 0)
-        myst_panic("unexpected");
-#endif
-
-    if (!(p = dlrealloc(ptr, size)))
-        return NULL;
-
-#ifdef MYST_ENABLE_LEAK_CHECKER
-    if (_add_node(p, size) != 0)
-        myst_panic("unexpected");
-#endif
-
-    return p;
-}
-
-void* memalign(size_t alignment, size_t size)
-{
-    void* p = NULL;
-
-    if (!(p = dlmemalign(alignment, size)))
-        return NULL;
-
-#ifdef MYST_ENABLE_LEAK_CHECKER
-    if (_add_node(p, size) != 0)
-        myst_panic("unexpected");
-#endif
-
-    return p;
+    if (myst_enable_debug_malloc)
+        return myst_debug_malloc(size);
+    else
+        return myst_malloc(size);
 }
 
 void free(void* ptr)
 {
-    dlfree(ptr);
-
-#ifdef MYST_ENABLE_LEAK_CHECKER
-    if (ptr && _remove_node(ptr) != 0)
-        myst_panic("unexpected");
-#endif
+    if (myst_enable_debug_malloc)
+        myst_debug_free(ptr);
+    else
+        myst_free(ptr);
 }
 
-int myst_find_leaks(void)
+void* calloc(size_t nmemb, size_t size)
 {
-#ifdef MYST_ENABLE_LEAK_CHECKER
-    int ret = 0;
-
-    for (myst_list_node_t* p = _list.head; p; p = p->next)
-    {
-        node_t* node = (node_t*)p;
-
-        myst_eprintf(
-            "*** kernel leak: ptr=%p size=%zu\n", node->ptr, node->size);
-        myst_dump_backtrace(node->addrs, node->num_addrs);
-        myst_eprintf("\n");
-        ret = -1;
-    }
-
-    if (_malloc_stats.usage != 0)
-    {
-        myst_eprintf(
-            "*** kernel: memory still in use: %zu\n", _malloc_stats.usage);
-        ret = -1;
-    }
-
-    return ret;
-#else
-    return 0;
-#endif
+    if (myst_enable_debug_malloc)
+        return myst_debug_calloc(nmemb, size);
+    else
+        return myst_calloc(nmemb, size);
 }
 
-int myst_get_malloc_stats(myst_malloc_stats_t* stats)
+void* realloc(void* ptr, size_t size)
 {
-#ifdef MYST_ENABLE_LEAK_CHECKER
-    {
-        if (!stats)
-            return -EINVAL;
+    if (myst_enable_debug_malloc)
+        return myst_debug_realloc(ptr, size);
+    else
+        return myst_realloc(ptr, size);
+}
 
-        myst_spin_lock(&_lock);
-        *stats = _malloc_stats;
-        myst_spin_unlock(&_lock);
+void* memalign(size_t alignment, size_t size)
+{
+    if (myst_enable_debug_malloc)
+        return myst_debug_memalign(alignment, size);
+    else
+        return myst_memalign(alignment, size);
+}
 
-        return 0;
-    }
-#else
-    (void)stats;
-    (void)_malloc_stats;
-    return -ENOTSUP;
-#endif
+int posix_memalign(void** memptr, size_t alignment, size_t size)
+{
+    if (myst_enable_debug_malloc)
+        return myst_debug_posix_memalign(memptr, alignment, size);
+    else
+        return myst_posix_memalign(memptr, alignment, size);
 }

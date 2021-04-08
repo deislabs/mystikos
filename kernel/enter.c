@@ -8,6 +8,7 @@
 #include <myst/atexit.h>
 #include <myst/cpio.h>
 #include <myst/crash.h>
+#include <myst/debugmalloc.h>
 #include <myst/eraise.h>
 #include <myst/errno.h>
 #include <myst/exec.h>
@@ -57,17 +58,6 @@ long myst_tcall(long n, long params[6])
         myst_set_fsbase(fs);
 
     return ret;
-}
-
-void myst_dump_malloc_stats(void)
-{
-    myst_malloc_stats_t stats;
-
-    if (myst_get_malloc_stats(&stats) == 0)
-    {
-        myst_eprintf("kernel: memory used: %zu\n", stats.usage);
-        myst_eprintf("kernel: peak memory used: %zu\n", stats.peak_usage);
-    }
 }
 
 static int _setup_tty(void)
@@ -585,6 +575,12 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     __options.have_syscall_instruction = args->have_syscall_instruction;
     __options.export_ramfs = args->export_ramfs;
 
+#if !defined(MYST_RELEASE)
+    /* enable memcheck if options present and in TEE debug mode */
+    if (args->memcheck && args->tee_debug_mode)
+        myst_enable_debug_malloc = true;
+#endif
+
     /* enable error tracing if requested */
     if (args->trace_errors)
         myst_set_trace(true);
@@ -711,11 +707,6 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     /* Set the 'run-proc' which is called by the target to run new threads */
     ECHECK(myst_tcall_set_run_thread_function(myst_run_thread));
 
-#ifdef MYST_ENABLE_LEAK_CHECKER
-    /* print out memory statistics */
-    // myst_dump_malloc_stats();
-#endif
-
     myst_times_start();
 
 #if !defined(MYST_RELEASE)
@@ -810,14 +801,12 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     /* call functions installed with myst_atexit() */
     myst_call_atexit_functions();
 
-#ifdef MYST_ENABLE_LEAK_CHECKER
-    /* Check for memory leaks */
-    if (myst_find_leaks() != 0)
+    /* check for memory leaks */
+    if (myst_enable_debug_malloc)
     {
-        myst_crash();
-        myst_panic("kernel memory leaks");
+        if (myst_debug_malloc_check(true) != 0)
+            myst_eprintf("*** memory leaks detected\n");
     }
-#endif
 
     /* ATTN: move myst_call_atexit_functions() here */
 

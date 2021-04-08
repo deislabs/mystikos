@@ -245,6 +245,10 @@ int exec_action(int argc, const char* argv[], const char* envp[])
         if (cli_getopt(&argc, argv, "--shell", NULL) == 0)
             options.shell_mode = true;
 
+        /* Get --memcheck option */
+        if (cli_getopt(&argc, argv, "--memcheck", NULL) == 0)
+            options.memcheck = true;
+
         /* Get --export-ramfs option */
         if (cli_getopt(&argc, argv, "--export-ramfs", NULL) == 0)
             options.export_ramfs = true;
