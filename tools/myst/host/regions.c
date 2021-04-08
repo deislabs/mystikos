@@ -205,7 +205,6 @@ const region_details* create_region_details_from_files(
     // unsigned path
     elf_t enc_elf = {0};
 
-    // oe_enclave_properties_sgx
     if (elf_load(_details.enc.path, &enc_elf) != 0)
         _err("failed to load enclave image: %s", _details.enc.path);
 
