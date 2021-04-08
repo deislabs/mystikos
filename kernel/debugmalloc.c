@@ -19,6 +19,7 @@
 /* Flags to control runtime behavior. */
 bool myst_enable_debug_malloc;
 bool myst_enable_debug_malloc_memset = true;
+bool myst_enable_debug_free_memset = true;
 
 /*
 **==============================================================================
@@ -316,11 +317,9 @@ void* myst_debug_malloc(size_t size)
     if (!(block = myst_malloc(block_size)))
         return NULL;
 
-    /* Fill block with 0xAA (Allocated) bytes */
+    /* fill block with 0xaa (allocated) bytes */
     if (myst_enable_debug_malloc_memset)
-    {
         memset(block, 0xAA, block_size);
-    }
 
     header_t* header = (header_t*)block;
     INIT_BLOCK(header, 0, size);
@@ -338,10 +337,12 @@ void myst_debug_free(void* ptr)
         _check_block(header);
         _list_remove(&_list, header);
 
-        /* Fill the whole block with 0xDD (Deallocated) bytes */
         void* block = _get_block_address(ptr);
-        size_t block_size = _get_block_size(ptr);
-        memset(block, 0xDD, block_size);
+
+        /* fill block with 0xdd (deallocated) bytes */
+        if (myst_enable_debug_free_memset)
+            memset(block, 0xDD, _get_block_size(ptr));
+
         myst_free(block);
     }
 }

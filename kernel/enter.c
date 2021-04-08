@@ -576,7 +576,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     __options.export_ramfs = args->export_ramfs;
 
 #if !defined(MYST_RELEASE)
-    /* Disable debug malloc if not Linux (which sets image_data to null) */
+    /* enabled debug malloc if options present and in TEE debug mode */
     if (args->debug_malloc && args->tee_debug_mode)
         myst_enable_debug_malloc = true;
 #endif
@@ -810,9 +810,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     if (myst_enable_debug_malloc)
     {
         if (myst_debug_malloc_check(true) != 0)
-        {
             myst_eprintf("*** memory leaks detected\n");
-        }
     }
 
     /* ATTN: move myst_call_atexit_functions() here */
