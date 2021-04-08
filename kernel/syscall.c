@@ -2861,6 +2861,13 @@ long myst_syscall(long n, long params[6])
             }
             else
             {
+#ifndef SHELL_PR
+                pid_t pid = myst_getpid();
+
+                if (myst_register_process_mapping(pid, ptr, length) != 0)
+                    myst_panic("failed to register process mapping");
+#endif
+
                 ret = (long)ptr;
             }
 

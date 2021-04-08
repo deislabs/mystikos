@@ -18,7 +18,7 @@ static void _run_tests(const char* test_file, bool passed)
 
     if (!file)
     {
-        fprintf(stderr, "ERR File %s not found \n", test_file);
+        fprintf(stderr, "File %s not found \n", test_file);
     }
     char line[256];
 
