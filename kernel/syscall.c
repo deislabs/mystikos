@@ -3810,11 +3810,14 @@ long myst_syscall(long n, long params[6])
 
             if (option == PR_GET_NAME)
             {
-                char* arg2 = (char*)x2;
-                if (!arg2)
+                char* buf = (char*)x2;
+                const size_t bufsize = 16; /* required buffer size */
+                const char* name = myst_get_thread_name(myst_thread_self());
+
+                if (!buf)
                     BREAK(_return(n, -EINVAL));
 
-                strcpy(arg2, myst_get_thread_name(myst_thread_self()));
+                myst_strlcpy(buf, name, bufsize);
             }
             else if (option == PR_SET_NAME)
             {

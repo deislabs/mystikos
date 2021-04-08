@@ -91,8 +91,6 @@ endif
 
 DIRS += msync
 
-DIRS = libc pthread
-
 __tests:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) tests $(NL) )
 
