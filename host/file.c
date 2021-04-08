@@ -9,6 +9,7 @@
 
 #include <myst/eraise.h>
 #include <myst/file.h>
+#include <myst/strings.h>
 
 int myst_write_file(const char* path, const void* data, size_t size)
 {
