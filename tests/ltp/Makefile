@@ -20,6 +20,12 @@ ifndef FS
 FS=ext2fs
 endif
 
+ifeq ($(TARGET),sgx)
+OPTS += --max-threads=3
+endif
+
+OPTS += --memory-size=16m
+
 ifeq ($(FS),hostfs)
 # select lines from tests without '#' in the first column
 ifndef MYST_NIGHTLY_TEST
