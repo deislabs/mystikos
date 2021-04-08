@@ -14,8 +14,7 @@ all: myst
 	$(MUSL_GCC) $(CFLAGS) -g -o $(APPDIR)/bin/cpuclocks cpuclocks.c $(LDFLAGS)
 	$(MYST) mkcpio $(APPDIR) rootfs
 
-OPTS += --memory-size=16m
-OPTS += --memcheck
+OPTS += --memory-size=32m
 
 tests:
 	$(RUNTEST) $(MYST_EXEC) rootfs /bin/clock  $(sec) $(nsec) $(OPTS)
