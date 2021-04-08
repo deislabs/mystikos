@@ -1,10 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include <myst/strings.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+
+#include <myst/eraise.h>
+#include <myst/strings.h>
 
 char* myst_strdup(const char* s)
 {
@@ -29,4 +32,22 @@ int myst_printf(const char* format, ...)
     va_end(ap);
 
     return n;
+}
+
+int myst_str2int(const char* s, int* x)
+{
+    int ret = 0;
+    char* end;
+    long tmp = strtol(s, &end, 10);
+
+    if (!end || *end)
+        ERAISE(-EINVAL);
+
+    if (tmp < INT_MIN || tmp > INT_MAX)
+        ERAISE(-ERANGE);
+
+    *x = (int)tmp;
+
+done:
+    return ret;
 }
