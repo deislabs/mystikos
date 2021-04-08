@@ -57,6 +57,13 @@ typedef struct
     uint64_t mask;
 } posix_sigaction_t;
 
+typedef struct myst_robust_list_head
+{
+    volatile void* volatile head;
+    long off;
+    volatile void* volatile pending;
+} myst_robust_list_head_t;
+
 struct myst_thread
 {
     /* MYST_THREAD_MAGIC */
@@ -188,6 +195,11 @@ struct myst_thread
     myst_spinlock_t* thread_lock;
     struct myst_thread* group_prev;
     struct myst_thread* group_next;
+
+    /* robust list (see SYS_set_robust_list & SYS_get_robust_list) */
+    struct myst_robust_list_head* robust_list_head;
+    size_t robust_list_len;
+    myst_spinlock_t robust_list_head_lock;
 
     /* thread name */
     char name[16];

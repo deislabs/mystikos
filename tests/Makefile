@@ -92,6 +92,8 @@ endif
 DIRS += msync
 DIRS += dotnet-ubuntu
 
+DIRS += robust
+
 __tests:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) tests $(NL) )
 

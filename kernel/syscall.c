@@ -2316,6 +2316,53 @@ done:
     return ret;
 }
 
+long myst_syscall_get_robust_list(
+    int pid,
+    myst_robust_list_head_t** head_ptr,
+    size_t* len_ptr)
+{
+    long ret = 0;
+    myst_thread_t* thread;
+
+    if (pid < 0)
+        ERAISE(-EINVAL);
+
+    if (pid == 0)
+        thread = myst_thread_self();
+    else if (!(thread = myst_find_thread(pid)))
+        ERAISE(-ESRCH);
+
+    myst_spin_lock(&thread->robust_list_head_lock);
+    {
+        if (head_ptr)
+            *head_ptr = thread->robust_list_head;
+
+        if (len_ptr)
+            *len_ptr = thread->robust_list_len;
+    }
+    myst_spin_unlock(&thread->robust_list_head_lock);
+
+done:
+    return ret;
+}
+
+long myst_syscall_set_robust_list(myst_robust_list_head_t* head, size_t len)
+{
+    long ret = 0;
+    myst_thread_t* thread = myst_thread_self();
+
+    if (len != sizeof(myst_robust_list_head_t))
+        ERAISE(-EINVAL);
+
+    myst_spin_lock(&thread->robust_list_head_lock);
+    thread->robust_list_head = head;
+    thread->robust_list_len = len;
+    myst_spin_unlock(&thread->robust_list_head_lock);
+
+done:
+    return ret;
+}
+
 long myst_syscall_ret(long ret)
 {
     if (ret < 0)
@@ -4431,9 +4478,28 @@ long myst_syscall(long n, long params[6])
         case SYS_unshare:
             break;
         case SYS_set_robust_list:
-            break;
+        {
+            struct myst_robust_list_head* head = (void*)x1;
+            size_t len = (size_t)x2;
+            long ret;
+
+            _strace(n, "head=%p len=%zu", head, len);
+
+            ret = myst_syscall_set_robust_list(head, len);
+            BREAK(_return(n, ret));
+        }
         case SYS_get_robust_list:
-            break;
+        {
+            int pid = (int)x1;
+            struct myst_robust_list_head** head_ptr = (void*)x2;
+            size_t* len_ptr = (size_t*)x3;
+            long ret;
+
+            _strace(n, "pid=%d head=%p len=%p", pid, head_ptr, len_ptr);
+
+            ret = myst_syscall_get_robust_list(pid, head_ptr, len_ptr);
+            BREAK(_return(n, ret));
+        }
         case SYS_splice:
             break;
         case SYS_tee:
