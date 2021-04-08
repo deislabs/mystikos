@@ -441,6 +441,14 @@ int exec_action(int argc, const char* argv[], const char* envp[])
 
                 if (!end || *end)
                     _err("bad --max-threads argument: %s", optarg);
+
+                if (max_threads > ENCLAVE_MAX_THREADS)
+                {
+                    _err(
+                        "--max-threads must be <= %zu: %s",
+                        optarg,
+                        ENCLAVE_MAX_THREADS);
+                }
             }
         }
 
