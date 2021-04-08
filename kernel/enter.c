@@ -577,7 +577,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
 
 #if !defined(MYST_RELEASE)
     /* enable memcheck if options present and in TEE debug mode */
-    if (args->memcheck && args->tee_debug_mode)
+    if (args->tee_debug_mode)
         myst_enable_debug_malloc = true;
 #endif
 
