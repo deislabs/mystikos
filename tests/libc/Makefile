@@ -42,7 +42,7 @@ $(APPDIR)/bin/run: run.c
 
 $(ROOTFS): run.c
 	sudo $(MYST) mkext2 --force $(APPDIR) $(ROOTFS)
-	sudo truncate --size=-4096 $(ROOTFS)
+	truncate --size=-4096 $(ROOTFS)
 
 ##==============================================================================
 ##
