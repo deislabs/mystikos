@@ -91,6 +91,8 @@ endif
 
 DIRS += msync
 
+DIRS += robust
+
 __tests:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) tests $(NL) )
 
