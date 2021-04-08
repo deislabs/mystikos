@@ -527,14 +527,14 @@ static int _ed_close(myst_epolldev_t* epolldev, myst_epoll_t* epoll)
     if (!epolldev || !_valid_epoll(epoll))
         ERAISE(-EBADF);
 
-//#ifdef SHELL_PR
+#ifdef SHELL_PR
     for (epoll_entry_t* p = (epoll_entry_t*)epoll->list.head; p;)
     {
         epoll_entry_t* next = p->next;
         free(p);
         p = next;
     }
-//#endif
+#endif
 
     memset(epoll, 0, sizeof(myst_epoll_t));
     free(epoll);
