@@ -744,9 +744,9 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         exit_status = thread->exit_status;
 
         /* cancel the itimer if any */
-#ifdef SHELL_PR
+//#ifdef SHELL_PR
         myst_cancel_itimer();
-#endif
+//#endif
 
 #if !defined(MYST_RELEASE)
         if (args->shell_mode)

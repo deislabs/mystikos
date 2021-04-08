@@ -51,9 +51,9 @@ char* strcpy(char* dest, const char* src)
     while (*src)
         *p++ = *src++;
 
-#ifdef SHELL_PR
+//#ifdef SHELL_PR
     *p = '\0';
-#endif
+//#endif
 
     return dest;
 }

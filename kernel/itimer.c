@@ -101,10 +101,10 @@ long myst_syscall_run_itimer(void)
             int r = myst_cond_timedwait(&_it.cond, &_it.mutex, to);
             uint64_t end = _get_current_time();
 
-#ifdef SHELL_PR
+//#ifdef SHELL_PR
             if (_it.cancel)
                 break;
-#endif
+//#endif
 
             assert(start != 0);
             assert(end != 0);
