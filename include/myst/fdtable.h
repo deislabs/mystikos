@@ -159,4 +159,6 @@ MYST_INLINE bool myst_valid_fd(int fd)
     return fd >= 0 && fd < MYST_FDTABLE_SIZE;
 }
 
+int myst_fdtable_list(const myst_fdtable_t* fdtable);
+
 #endif /* _MYST_FDTABLE_H */

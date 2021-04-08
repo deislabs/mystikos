@@ -13,6 +13,7 @@
 #include <sys/syscall.h>
 #include <sys/time.h>
 #include <sys/uio.h>
+#include <sys/utsname.h>
 #include <time.h>
 
 #include <myst/defs.h>
@@ -271,5 +272,7 @@ long myst_syscall_setitimer(
 int myst_syscall_getitimer(int which, struct itimerval* curr_value);
 
 long myst_syscall_fsync(int fd);
+
+long myst_syscall_uname(struct utsname* buf);
 
 #endif /* _MYST_SYSCALL_H */
