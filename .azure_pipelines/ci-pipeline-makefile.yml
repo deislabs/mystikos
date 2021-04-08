@@ -27,7 +27,9 @@ jobs:
     displayName: 'Building and Testing'
     pool: '1804DC4CCagentpool'
     workspace:
+      displayName: "XXX"
       clean: all
+      displayName: "YYY"
 
     steps:
       # perform cleanup before starting pipeline
