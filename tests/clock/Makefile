@@ -15,7 +15,7 @@ all: myst
 	$(MYST) mkcpio $(APPDIR) rootfs
 
 OPTS += --memory-size=16m
-OPTS += --debug-malloc
+OPTS += --memcheck
 
 tests:
 	$(RUNTEST) $(MYST_EXEC) rootfs /bin/clock  $(sec) $(nsec) $(OPTS)
