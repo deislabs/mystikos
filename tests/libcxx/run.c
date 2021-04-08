@@ -26,7 +26,6 @@ static void _run_tests(const char* test_file, bool passed)
     {
         int r;
         pid_t pid;
-        int wstatus;
         size_t len = strlen(line);
 
         /* ignore blank lines and comment lines */
@@ -46,6 +45,7 @@ static void _run_tests(const char* test_file, bool passed)
 
         if (passed)
         {
+            int wstatus = 0;
             assert(r == 0);
             assert(pid >= 0);
 
