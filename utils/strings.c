@@ -328,21 +328,3 @@ bool myst_isspace(char c)
             return false;
     }
 }
-
-int myst_str2int(const char* s, int* x)
-{
-    int ret = 0;
-    char* end;
-    long tmp = strtol(s, &end, 10);
-
-    if (!end || *end)
-        ERAISE(-EINVAL);
-
-    if (tmp < INT_MIN || tmp > INT_MAX)
-        ERAISE(-ERANGE);
-
-    *x = (int)tmp;
-
-done:
-    return ret;
-}
