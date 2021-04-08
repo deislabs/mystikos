@@ -11,6 +11,7 @@
 #define DEFAULT_MMAN_SIZE (64 * 1024 * 1024)
 
 // print error and exit process with 1
+MYST_PRINTF_FORMAT(1, 2)
 void _err(const char* fmt, ...);
 
 // sets the program file name of the process
