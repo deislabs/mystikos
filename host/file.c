@@ -88,7 +88,13 @@ int myst_chown_sudo_user(const char* path)
         found++;
     }
 
-    if (found && chown(path, uid, gid) != 0)
+    if (found != 2)
+        goto done;
+
+    if (uid == 0 || gid == 0)
+        goto done;
+
+    if (chown(path, uid, gid) != 0)
         ERAISE(-errno);
 
 done:

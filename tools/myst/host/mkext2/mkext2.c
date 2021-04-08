@@ -224,10 +224,6 @@ static void _create_ext2_image(
     if (!mkdtemp(mntdir))
         _err("failed to create temporary directory");
 
-    /* set the owner of this directory to the sudo user if defined */
-    if (myst_chown_sudo_user(mntdir) != 0)
-        _err("failed to chown to sudo user: %s", mntdir);
-
     /* mount the ext2 image */
     _systemf("/bin/mount %s %s", loop, mntdir);
 
@@ -283,7 +279,7 @@ static void _create_luks_image(
 
     /* set the owner of this file to the sudo user if defined */
     if (myst_chown_sudo_user(image) != 0)
-        _err("failed to chown to sudo user: %s", mntdir);
+        _err("failed to chown to sudo user: %s", image);
 
     /* do luksFormat on image */
     _systemf(
@@ -324,9 +320,6 @@ static void _create_luks_image(
     /* create the mount directory */
     if (!mkdtemp(mntdir))
         _err("failed to create temporary directory");
-
-    if (myst_chown_sudo_user(mntdir) != 0)
-        _err("failed to chown to sudo user: %s", mntdir);
 
     /* mount the directory */
     _systemf("/bin/mount %s %s", dmpath, mntdir);
