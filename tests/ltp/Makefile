@@ -4,6 +4,8 @@ include $(TOP)/defs.mak
 
 APPDIR=$(CURDIR)/appdir
 
+export RUNTEST=$(RUNTEST_COMMAND)
+
 ifdef STRACE
 OPTS += --strace
 endif
@@ -15,6 +17,8 @@ endif
 ifdef TRACE
 OPTS += --etrace --strace
 endif
+
+#OPTS = --memory-size=8m
 
 ifndef FS
 FS=ext2fs
@@ -185,6 +189,3 @@ one:
 	$(MYST) mkcpio ramfs.appdir ramfs
 	sudo -E $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
 endif
-
-t:
-	make one TEST=/ltp/testcases/kernel/syscalls/link/link05 FS=ramfs #ETRACE=1 STRACE=1
