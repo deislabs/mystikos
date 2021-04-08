@@ -3145,6 +3145,14 @@ long myst_syscall(long n, long params[6])
             _strace(n, NULL);
             BREAK(_return(n, myst_syscall_run_itimer()));
         }
+        case SYS_myst_start_shell:
+        {
+#if !defined(MYST_RELEASE)
+            _strace(n, NULL);
+            myst_start_shell("\nMystikos shell (syscall)\n");
+#endif
+            BREAK(_return(n, 0));
+        }
         case SYS_getitimer:
         {
             int which = (int)x1;

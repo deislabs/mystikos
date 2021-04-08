@@ -14,6 +14,7 @@ typedef struct myst_options
     bool trace_syscalls;
     bool have_syscall_instruction;
     bool export_ramfs;
+    bool shell_mode;
     char rootfs[PATH_MAX];
 } myst_options_t;
 

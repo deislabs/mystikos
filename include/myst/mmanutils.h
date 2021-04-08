@@ -42,4 +42,15 @@ int myst_msync(void* addr, size_t length, int flags);
 
 void myst_mman_close_notify(int fd);
 
+typedef struct myst_mman_stats
+{
+    size_t brk_size;
+    size_t map_size;
+    size_t free_size;
+    size_t used_size;
+    size_t total_size;
+} myst_mman_stats_t;
+
+void myst_mman_stats(myst_mman_stats_t* buf);
+
 #endif /* _MYST_MMANUTILS_H */
