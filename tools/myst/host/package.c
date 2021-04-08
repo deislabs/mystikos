@@ -469,6 +469,7 @@ int _exec_package(
     char* unpack_dir = NULL;
     int ret = -1;
     const char** exec_args = NULL;
+    const size_t max_threads = 0;
 
     /* Get options */
     {
@@ -699,7 +700,7 @@ int _exec_package(
     }
 
     ret = exec_launch_enclave(
-        scratch_path, type, flags, exec_args, envp, &options);
+        scratch_path, type, flags, exec_args, envp, &options, max_threads);
     if (ret != 0)
     {
         fprintf(stderr, "Enclave %s returned %d\n", scratch_path, ret);

@@ -736,7 +736,6 @@ int myst_load_fssig(const char* path, myst_fssig_t* fssig)
 #define ENCLAVE_DEBUG true
 #define ENCLAVE_HEAP_SIZE 131072
 #define ENCLAVE_STACK_SIZE 8192
-#define ENCLAVE_MAX_THREADS 1024
 
 OE_SET_ENCLAVE_SGX(
     ENCLAVE_PRODUCT_ID,
