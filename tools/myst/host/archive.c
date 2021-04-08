@@ -49,7 +49,7 @@ void get_archive_options(
         struct stat statbuf;
 
         if (num_pubkeys == max_pubkeys)
-            _err("too many --pubkey options (> %u)", max_pubkeys);
+            _err("too many --pubkey options (> %zu)", max_pubkeys);
 
         if (stat(pubkey, &statbuf) != 0)
             _err("no such file for --pubkey options: %s", pubkey);
@@ -62,7 +62,7 @@ void get_archive_options(
         struct stat statbuf;
 
         if (num_roothashes == max_roothashes)
-            _err("too many --roothash options (> %u)", max_roothashes);
+            _err("too many --roothash options (> %zu)", max_roothashes);
 
         if (stat(roothash, &statbuf) != 0)
             _err("no such file for --roothash options: %s", roothash);
