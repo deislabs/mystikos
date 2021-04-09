@@ -110,9 +110,9 @@ group-file:
 	echo "nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin" >> appdir/etc/group
 
 tests:
-	$(MAKE) -j __tests
-
-__tests: tests_hostfs tests_ext2fs tests_ramfs
+	$(MAKE) tests_hostfs
+	$(MAKE) tests_ext2fs
+	$(MAKE) tests_ramfs
 
 tests_hostfs:
 	$(MAKE) alltests FS=hostfs
