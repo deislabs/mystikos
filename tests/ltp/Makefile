@@ -21,6 +21,7 @@ FS=ext2fs
 endif
 
 OPTS += --max-threads=3
+OPTS += --memory-size=16m
 
 ifeq ($(FS),hostfs)
 # select lines from tests without '#' in the first column
@@ -90,9 +91,9 @@ clone:
 	git clone https://github.com/mikbras/ltp appdir/ltp -b myst
 
 tests:
-	$(MAKE) tests_hostfs
-	$(MAKE) tests_ext2fs
-	$(MAKE) tests_ramfs
+	$(MAKE) -j __tests
+
+__tests: tests_hostfs tests_ext2fs tests_ramfs
 
 tests_hostfs:
 	$(MAKE) alltests FS=hostfs
