@@ -82,7 +82,6 @@
 /ltp/testcases/kernel/syscalls/lseek/lseek11
 /ltp/testcases/kernel/syscalls/lstat/lstat01
 /ltp/testcases/kernel/syscalls/lstat/lstat01_64
-/ltp/testcases/kernel/syscalls/madvise/madvise05
 /ltp/testcases/kernel/syscalls/memcmp/memcmp01
 /ltp/testcases/kernel/syscalls/memcpy/memcpy01
 /ltp/testcases/kernel/syscalls/memmap/mem03
