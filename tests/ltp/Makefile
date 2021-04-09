@@ -21,7 +21,6 @@ FS=ext2fs
 endif
 
 OPTS += --max-threads=3
-OPTS += --memory-size=16m
 
 ifeq ($(FS),hostfs)
 # select lines from tests without '#' in the first column
