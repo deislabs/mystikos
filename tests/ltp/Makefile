@@ -91,9 +91,9 @@ clone:
 	git clone https://github.com/mikbras/ltp appdir/ltp -b myst
 
 tests:
-	$(MAKE) -j __tests
-
-__tests: tests_hostfs tests_ext2fs tests_ramfs
+	$(MAKE) tests_hostfs
+	$(MAKE) tests_ext2fs
+	$(MAKE) tests_ramfs
 
 tests_hostfs:
 	$(MAKE) alltests FS=hostfs
