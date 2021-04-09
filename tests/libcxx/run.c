@@ -44,7 +44,13 @@ static void _run_tests(const char* test_file, bool passed)
             assert(waitpid(pid, &wstatus, WNOHANG) == 0);
             assert(waitpid(pid, &wstatus, 0) == pid);
             assert(WIFEXITED(wstatus));
-            assert(WEXITSTATUS(wstatus) == 0);
+
+            if (WEXITSTATUS(wstatus) != 0)
+            {
+                fprintf(stderr, "****** libc test failed: %s\n", line);
+                fflush(stdout);
+                assert(0);
+            }
         }
         printf("=== passed test (%s)\n", line);
     }
