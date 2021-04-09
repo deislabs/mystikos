@@ -298,6 +298,18 @@ index 50cef8e5..803a7f8d 100644
 +{
 +	return 0;
 +}
+diff --git a/src/include/time.h b/src/include/time.h
+index cbabde47..4f94bc39 100644
+--- a/src/include/time.h
++++ b/src/include/time.h
+@@ -10,6 +10,6 @@ hidden char *__asctime_r(const struct tm *, char *);
+ hidden struct tm *__gmtime_r(const time_t *restrict, struct tm *restrict);
+ hidden struct tm *__localtime_r(const time_t *restrict, struct tm *restrict);
+ 
+-hidden size_t __strftime_l(char *restrict, size_t, const char *restrict, const struct tm *restrict, locale_t);
++size_t __strftime_l(char *restrict, size_t, const char *restrict, const struct tm *restrict, locale_t);
+ 
+ #endif
 diff --git a/src/linux/epoll.c b/src/linux/epoll.c
 index deff5b10..fd66b82a 100644
 --- a/src/linux/epoll.c
