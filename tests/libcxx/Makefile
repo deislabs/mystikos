@@ -73,23 +73,14 @@ tests:
 __tests: test1 test2 test3
 
 test1:
-	$(MAKE) TESTNAME=libcxx1 __test1
-
-__test1:
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run $(STATUS) $(TEST_FILE1)
+	$(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run $(STATUS) $(TEST_FILE1)
 
 test2:
-	$(MAKE) TESTNAME=libcxx2 __test2
-
-__test2:
 ifndef FAILED
 	$(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run $(STATUS) $(TEST_FILE2)
 endif
 
 test3:
-	$(MAKE) TESTNAME=libcxx3 __test3
-
-__test3:
 ifndef FAILED
 	$(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run $(STATUS) $(TEST_FILE3)
 endif
