@@ -396,7 +396,6 @@
 /app/stdint_h.pass.cpp.exe
 /app/stdio_h.pass.cpp.exe
 /app/stdlib_h.pass.cpp.exe
-/app/stod.pass.cpp.exe
 /app/stof.pass.cpp.exe
 /app/stol.pass.cpp.exe
 /app/stold.pass.cpp.exe

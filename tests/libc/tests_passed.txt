@@ -46,7 +46,6 @@
 /src/functional/tls_align_dlopen.exe
 /src/functional/tls_align.exe
 /src/functional/tls_init_dlopen.exe
-/src/functional/tls_init.exe
 /src/functional/tls_local_exec.exe
 /src/functional/udiv.exe
 /src/functional/ungetc.exe
