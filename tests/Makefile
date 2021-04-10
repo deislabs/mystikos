@@ -5,13 +5,18 @@ include $(TOP)/defs.mak
 
 DIRS =
 
+ifndef MYST_SKIP_LIBCXX_TESTS
+DIRS += libcxx
+endif
+
+DIRS += libc
+
 DIRS += myst
 DIRS += itimer
 DIRS += timeval
 
 ifdef MYST_ENABLE_EXT2FS
 DIRS += ext2
-DIRS += libc
 endif
 
 DIRS += args
@@ -66,10 +71,6 @@ endif
 
 DIRS += shared_symbols
 
-ifndef MYST_SKIP_LIBCXX_TESTS
-DIRS += libcxx
-endif
-
 ifndef MYST_USE_OECACHE
 DIRS += curl
 endif
@@ -90,18 +91,6 @@ DIRS += hostfs
 endif
 
 DIRS += msync
-
-DIRS =
-DIRS += libc libcxx
-DIRS += libc libcxx
-DIRS += libc libcxx
-DIRS += libc libcxx
-DIRS += libc libcxx
-DIRS += libc libcxx
-DIRS += libc libcxx
-DIRS += libc libcxx
-DIRS += libc libcxx
-DIRS += libc libcxx
 
 __tests:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) tests $(NL) )
