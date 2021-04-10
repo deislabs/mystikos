@@ -740,7 +740,6 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     }
     else
     {
-        myst_eprintf("******** exiting: %d\n", __LINE__);
         /* thread jumps here on SYS_exit syscall */
         exit_status = thread->exit_status;
 
@@ -756,11 +755,8 @@ int myst_enter_kernel(myst_kernel_args_t* args)
             thread->fdtable = NULL;
         }
 
-        myst_eprintf("******** exiting: %d\n", __LINE__);
         /* release signal related heap memory */
         myst_signal_free(thread);
-
-        myst_eprintf("******** exiting: %d\n", __LINE__);
 
         /* release the exec stack */
         if (thread->main.exec_stack)
@@ -769,7 +765,6 @@ int myst_enter_kernel(myst_kernel_args_t* args)
             thread->main.exec_stack = NULL;
         }
 
-        myst_eprintf("******** exiting: %d\n", __LINE__);
         /* release the exec copy of the CRT data */
         if (thread->main.exec_crt_data)
         {
@@ -780,19 +775,15 @@ int myst_enter_kernel(myst_kernel_args_t* args)
 
         /* Free CWD */
         free(thread->main.cwd);
-        myst_eprintf("******** exiting: %d\n", __LINE__);
         thread->main.cwd = NULL;
-        myst_eprintf("******** exiting: %d\n", __LINE__);
 
         /* switch back to the target thread descriptor */
         myst_set_fsbase(thread->target_td);
-        myst_eprintf("******** exiting: %d\n", __LINE__);
     }
 
     /* unload the debugger symbols */
     myst_syscall_unload_symbols();
 
-    myst_eprintf("******** exiting: %d\n", __LINE__);
     /* Tear down the temporary file systems */
 #ifdef USE_TMPFS
     _teardown_tmpfs();
@@ -801,16 +792,13 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     /* Tear down the proc file system */
     procfs_teardown();
 
-    myst_eprintf("******** exiting: %d\n", __LINE__);
     /* Tear down the RAM file system */
     _teardown_ramfs();
 
-    myst_eprintf("******** exiting: %d\n", __LINE__);
     /* Put the thread on the zombie list */
     myst_zombify_thread(thread);
 
     /* call functions installed with myst_atexit() */
-    myst_eprintf("******** exiting: %d\n", __LINE__);
     myst_call_atexit_functions();
 
     /* check for memory leaks */
@@ -820,14 +808,13 @@ int myst_enter_kernel(myst_kernel_args_t* args)
             myst_eprintf("*** memory leaks detected\n");
     }
 
-    myst_eprintf("******** exiting: %d\n", __LINE__);
-
     /* ATTN: move myst_call_atexit_functions() here */
 
     ret = exit_status;
 
 done:
 
-    myst_eprintf("******** exiting: ret=%d\n", ret);
+    myst_eprintf("kernel: exiting: ret=%d\n", ret);
+
     return ret;
 }

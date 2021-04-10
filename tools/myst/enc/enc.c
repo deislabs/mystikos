@@ -489,11 +489,13 @@ done:
         free(env.data);
 
     free_config(&parsed_config);
+
+    printf("enclave: exiting: ret=%ld\n", ret);
     return ret;
 }
 
 /* The size of the stack for entering the kernel */
-#define ENTER_STACK_SIZE (132 * 1024)
+#define ENTER_STACK_SIZE (512 * 1024)
 
 int myst_enter_ecall(
     struct myst_options* options,
@@ -504,6 +506,9 @@ int myst_enter_ecall(
     size_t envp_size,
     uint64_t event)
 {
+    /* WARNING: ecalls are invoked on a very small stack (see
+     * ENCLAVE_STACK_SIZE) */
+    int ret = 0;
     struct enter_arg arg = {
         .options = options,
         .shared_memory = shared_memory,
@@ -518,17 +523,22 @@ int myst_enter_ecall(
     /* prevent this function from being called more than once */
     if (__sync_fetch_and_add(&myst_enter_ecall_lock, 1) != 0)
     {
-        fprintf(stderr, "ERROR: myst_enter_ecall() can only be called once\n");
         myst_enter_ecall_lock = 1; // stop this from wrapping
-        return -1;
+        ret = -1;
+        goto done;
     }
 
     /* avoid using the tiny TCS stack */
-    return (int)myst_call_on_stack(_stack + ENTER_STACK_SIZE, _enter, &arg);
+    ret = (int)myst_call_on_stack(_stack + ENTER_STACK_SIZE, _enter, &arg);
+
+done:
+    return ret;
 }
 
 long myst_run_thread_ecall(uint64_t cookie, uint64_t event)
 {
+    /* WARNING: ecalls are invoked on a very small stack (see
+     * ENCLAVE_STACK_SIZE) */
     return myst_run_thread(cookie, event);
 }
 
