@@ -760,6 +760,8 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         /* release signal related heap memory */
         myst_signal_free(thread);
 
+        myst_eprintf("******** exiting: %d\n", __LINE__);
+
         /* release the exec stack */
         if (thread->main.exec_stack)
         {
@@ -803,10 +805,12 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     /* Tear down the RAM file system */
     _teardown_ramfs();
 
+    myst_eprintf("******** exiting: %d\n", __LINE__);
     /* Put the thread on the zombie list */
     myst_zombify_thread(thread);
 
     /* call functions installed with myst_atexit() */
+    myst_eprintf("******** exiting: %d\n", __LINE__);
     myst_call_atexit_functions();
 
     /* check for memory leaks */
