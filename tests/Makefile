@@ -90,6 +90,7 @@ DIRS += hostfs
 endif
 
 DIRS += msync
+DIRS += dotnet-ubuntu
 
 __tests:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) tests $(NL) )
