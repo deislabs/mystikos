@@ -326,6 +326,20 @@ index deff5b10..fd66b82a 100644
  	return epoll_create1(0);
  }
  
+diff --git a/src/misc/setrlimit.c b/src/misc/setrlimit.c
+index 7a66ab29..b6a2143b 100644
+--- a/src/misc/setrlimit.c
++++ b/src/misc/setrlimit.c
+@@ -39,7 +39,8 @@ static void do_setrlimit(void *p)
+ int setrlimit(int resource, const struct rlimit *rlim)
+ {
+ 	struct ctx c = { .res = resource, .rlim = rlim, .err = -1 };
+-	__synccall(do_setrlimit, &c);
++	// __synccall(do_setrlimit, &c);
++	do_setrlimit(&c);
+ 	if (c.err) {
+ 		if (c.err>0) errno = c.err;
+ 		return -1;
 diff --git a/src/misc/syscall.c b/src/misc/syscall.c
 index 6f3ef656..614121c3 100644
 --- a/src/misc/syscall.c
