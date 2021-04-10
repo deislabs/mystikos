@@ -343,6 +343,8 @@ int exec_launch_enclave(
     if (enc_path == tmp)
         unlink(tmp);
 
+    fprintf(stderr, "host: exiting: retval=%d\n", retval);
+    fflush(stderr);
     return retval;
 }
 
