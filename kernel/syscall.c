@@ -2124,7 +2124,10 @@ long myst_syscall_sysinfo(struct sysinfo* info)
     ECHECK(myst_get_total_ram(&totalram));
     ECHECK(myst_get_free_ram(&freeram));
 
-    memset(info, 0, sizeof(struct sysinfo));
+    // Only clear out non-reserved portion of the structure.
+    // This is to be defensive against different sizes of this
+    // structure in musl and glibc.
+    memset(info, 0, sizeof(struct sysinfo) - 256);
     info->totalram = totalram;
     info->freeram = freeram;
     info->mem_unit = 1;
@@ -3735,8 +3738,12 @@ long myst_syscall(long n, long params[6])
 
             // ATTN: Return the priority from SYS_sched_setparam.
             if (param != NULL)
-                memset(param, 0, sizeof(*param));
-
+            {
+                // Only memset the non reserved part of the structure
+                // This is to be defensive against different sizes of this
+                // struct in musl and glibc.
+                memset(param, 0, sizeof(*param) - 40);
+            }
             BREAK(_return(n, 0));
         }
         case SYS_sched_setscheduler:
