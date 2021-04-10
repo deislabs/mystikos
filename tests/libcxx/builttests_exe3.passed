@@ -502,7 +502,6 @@
 /app/truename.pass.cpp.exe
 /app/try_lock.pass.cpp.exe
 /app/try_lock_for.pass.cpp.exe
-/app/try_lock_until.pass.cpp.exe
 /app/tuple.by.type.pass.cpp.exe
 /app/tuple.include.utility.pass.cpp.exe
 /app/tuple.smartptr.pass.cpp.exe
