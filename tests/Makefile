@@ -5,11 +5,11 @@ include $(TOP)/defs.mak
 
 DIRS =
 
+DIRS += libc
+
 ifndef MYST_SKIP_LIBCXX_TESTS
 DIRS += libcxx
 endif
-
-DIRS += libc
 
 DIRS += myst
 DIRS += itimer
