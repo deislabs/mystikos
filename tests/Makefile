@@ -91,6 +91,7 @@ endif
 
 DIRS += msync
 
+DIRS =
 DIRS += libc libcxx
 DIRS += libc libcxx
 DIRS += libc libcxx
