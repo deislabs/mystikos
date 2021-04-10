@@ -92,6 +92,8 @@ endif
 DIRS += msync
 DIRS += dotnet-ubuntu
 
+DIRS = libc libcxx
+
 __tests:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) tests $(NL) )
 
