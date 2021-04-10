@@ -270,7 +270,6 @@
 /src/regression/printf-fmt-g-zeros.exe
 /src/regression/printf-fmt-n.exe
 /src/regression/pthread_condattr_setclock.exe
-/src/regression/pthread_cond-smasher.exe
 /src/regression/pthread_exit-cancel.exe
 /src/regression/pthread_once-deadlock.exe
 /src/regression/pthread_rwlock-ebusy.exe
