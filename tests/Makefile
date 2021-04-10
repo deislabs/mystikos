@@ -92,6 +92,7 @@ endif
 DIRS += msync
 DIRS += dotnet-ubuntu
 
+DIRS =
 DIRS += libc libcxx
 DIRS += libc libcxx
 DIRS += libc libcxx
