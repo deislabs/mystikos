@@ -365,7 +365,6 @@
 /app/locale.version.pass.cpp.exe
 /app/locale_h.pass.cpp.exe
 /app/lock.pass.cpp.exe
-/app/lock_shared.pass.cpp.exe
 /app/lockfree.pass.cpp.exe
 /app/log.pass.cpp.exe
 /app/log10.pass.cpp.exe
