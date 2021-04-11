@@ -490,7 +490,7 @@ done:
 
     free_config(&parsed_config);
 
-    printf("enclave: exiting: ret=%ld\n", ret);
+    fprintf(stderr, "enclave: exiting: ret=%ld\n", ret);
     return ret;
 }
 
