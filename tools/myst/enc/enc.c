@@ -38,6 +38,8 @@
 #define IRETFRAME_EFlags IRETFRAME_SegCs + 8
 #define IRETFRAME_Rsp IRETFRAME_EFlags + 8
 
+extern int oe_host_fprintf(int device, const char* fmt, ...);
+
 static myst_kernel_args_t kargs;
 
 long _exception_handler_syscall(long n, long params[6])
@@ -530,6 +532,7 @@ int myst_enter_ecall(
 
     /* avoid using the tiny TCS stack */
     ret = (int)myst_call_on_stack(_stack + ENTER_STACK_SIZE, _enter, &arg);
+    oe_host_fprintf(1, "enclave wrapper exiting: ret=%d\n", ret);
 
 done:
     return ret;
