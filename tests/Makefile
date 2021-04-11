@@ -93,6 +93,7 @@ endif
 DIRS += msync
 
 DIRS = libc libc libc libc libc
+DIRS = libcxx
 
 __tests:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) tests $(NL) )

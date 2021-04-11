@@ -814,7 +814,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
 
 done:
 
-    myst_eprintf("kernel: exiting: ret=%d\n", ret);
+    // myst_eprintf("kernel: exiting: ret=%d\n", ret);
 
     return ret;
 }
