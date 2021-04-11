@@ -327,24 +327,24 @@ int exec_launch_enclave(
         envp_buf.data,
         envp_buf.size,
         (uint64_t)&_event);
-    fprintf(stderr, "host: case 1: %u\n", r);
-    fflush(stderr);
+    // fprintf(stderr, "host: case 1: %u\n", r);
+    // fflush(stderr);
     if (r != OE_OK)
         _err("failed to enter enclave: result=%s", oe_result_str(r));
 
     /* Terminate the enclave */
     r = oe_terminate_enclave(_enclave);
-    fprintf(stderr, "host: case 2: %u\n", r);
-    fflush(stderr);
+    // fprintf(stderr, "host: case 2: %u\n", r);
+    // fflush(stderr);
     if (r != OE_OK)
         _err("failed to terminate enclave: result=%s", oe_result_str(r));
 
-    fprintf(stderr, "host: case 3: %u\n", r);
-    fflush(stderr);
+    // fprintf(stderr, "host: case 3: %u\n", r);
+    // fflush(stderr);
     shm_free_clock(&shared_memory);
 
-    fprintf(stderr, "host: case 4: %u\n", r);
-    fflush(stderr);
+    // fprintf(stderr, "host: case 4: %u\n", r);
+    // fflush(stderr);
     free(argv_buf.data);
     free(envp_buf.data);
 

@@ -532,7 +532,7 @@ int myst_enter_ecall(
 
     /* avoid using the tiny TCS stack */
     ret = (int)myst_call_on_stack(_stack + ENTER_STACK_SIZE, _enter, &arg);
-    oe_host_fprintf(1, "enclave wrapper exiting: ret=%d\n", ret);
+    // oe_host_fprintf(1, "enclave wrapper exiting: ret=%d\n", ret);
 
 done:
     return ret;
