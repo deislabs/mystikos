@@ -38,8 +38,6 @@
 #define IRETFRAME_EFlags IRETFRAME_SegCs + 8
 #define IRETFRAME_Rsp IRETFRAME_EFlags + 8
 
-extern int oe_host_fprintf(int device, const char* fmt, ...);
-
 static myst_kernel_args_t kargs;
 
 long _exception_handler_syscall(long n, long params[6])
@@ -491,12 +489,11 @@ done:
         free(env.data);
 
     free_config(&parsed_config);
-
     return ret;
 }
 
 /* The size of the stack for entering the kernel */
-#define ENTER_STACK_SIZE (512 * 1024)
+#define ENTER_STACK_SIZE (132 * 1024)
 
 int myst_enter_ecall(
     struct myst_options* options,
@@ -507,9 +504,7 @@ int myst_enter_ecall(
     size_t envp_size,
     uint64_t event)
 {
-    /* WARNING: ecalls are invoked on a very small stack (see
-     * ENCLAVE_STACK_SIZE) */
-    int ret = 0;
+    /* WARNING: this function has a very small stack */
     struct enter_arg arg = {
         .options = options,
         .shared_memory = shared_memory,
@@ -525,22 +520,16 @@ int myst_enter_ecall(
     if (__sync_fetch_and_add(&myst_enter_ecall_lock, 1) != 0)
     {
         myst_enter_ecall_lock = 1; // stop this from wrapping
-        ret = -1;
-        goto done;
+        return -1;
     }
 
     /* avoid using the tiny TCS stack */
-    ret = (int)myst_call_on_stack(_stack + ENTER_STACK_SIZE, _enter, &arg);
-    // oe_host_fprintf(1, "enclave wrapper exiting: ret=%d\n", ret);
-
-done:
-    return ret;
+    return (int)myst_call_on_stack(_stack + ENTER_STACK_SIZE, _enter, &arg);
 }
 
 long myst_run_thread_ecall(uint64_t cookie, uint64_t event)
 {
-    /* WARNING: ecalls are invoked on a very small stack (see
-     * ENCLAVE_STACK_SIZE) */
+    /* WARNING: this function has a very small stack */
     return myst_run_thread(cookie, event);
 }
 
