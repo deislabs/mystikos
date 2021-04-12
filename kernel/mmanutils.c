@@ -442,6 +442,7 @@ int myst_get_free_ram(size_t* size)
     return myst_mman_free_size(&_mman, size);
 }
 
+#ifdef ENABLE_PROCESS_MAPPINGS
 typedef struct myst_process_mapping myst_process_mapping_t;
 
 struct myst_process_mapping
@@ -454,7 +455,9 @@ struct myst_process_mapping
 
 static myst_process_mapping_t* _mappings;
 static myst_spinlock_t _mappings_lock;
+#endif /* ENABLE_PROCESS_MAPPINGS */
 
+#ifdef ENABLE_PROCESS_MAPPINGS
 /* keep track of mappings made by this process */
 int myst_register_process_mapping(pid_t pid, void* addr, size_t size)
 {
@@ -482,7 +485,9 @@ done:
 
     return ret;
 }
+#endif /* ENABLE_PROCESS_MAPPINGS */
 
+#ifdef ENABLE_PROCESS_MAPPINGS
 /* release mappings made the given process */
 int myst_release_process_mappings(pid_t pid)
 {
@@ -524,6 +529,7 @@ int myst_release_process_mappings(pid_t pid)
 done:
     return ret;
 }
+#endif /* ENABLE_PROCESS_MAPPINGS */
 
 static int _sync_file(int fd, off_t offset, const void* addr, size_t length)
 {

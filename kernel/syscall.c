@@ -2860,10 +2860,12 @@ long myst_syscall(long n, long params[6])
             }
             else
             {
+#ifdef ENABLE_PROCESS_MAPPINGS
                 pid_t pid = myst_getpid();
 
                 if (myst_register_process_mapping(pid, ptr, length) != 0)
                     myst_panic("failed to register process mapping");
+#endif /* ENABLE_PROCESS_MAPPINGS */
 
                 ret = (long)ptr;
             }

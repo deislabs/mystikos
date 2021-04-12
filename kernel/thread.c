@@ -565,8 +565,10 @@ static long _run_thread(void* arg_)
                         thread->unmapself_addr, thread->unmapself_length);
                 }
 
+#ifdef ENABLE_PROCESS_MAPPINGS
                 /* unmap any mapping made by the process */
                 myst_release_process_mappings(thread->pid);
+#endif /* ENABLE_PROCESS_MAPPINGS */
             }
 
             free(thread->main.cwd);
