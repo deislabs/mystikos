@@ -51,7 +51,7 @@ jobs:
 
       # run all tests
       - script: |
-          make -j tests ALLTESTS=1 VERBOSE=1
+          make -j tests ALLTESTS=1 VERBOSE=1; make clean -C $(Build.SourcesDirectory)/tests
         displayName: 'run all tests'
         continueOnError: true
         enabled: true
