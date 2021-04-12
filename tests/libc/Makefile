@@ -9,7 +9,7 @@ ifdef STRACE
 OPTS = --strace
 endif
 
-OPTS += --memory-size=256m
+OPTS += --memory-size=16m
 
 APPDIR=$(CURDIR)/appdir
 
@@ -57,8 +57,12 @@ one:
 	$(RUNTEST) $(MYST_EXEC) rootfs $(OPTS) $(TEST)
 endif
 
-tests: all
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run $(TEST_FILE)
+RUN_TESTS=$(TOP)/tests/utils/run_tests.sh
+INCREMENT=20
+TEST_FILE=tests_passed.txt
+
+tests:
+	$(RUNTEST) $(RUN_TESTS) $(TEST_FILE) $(INCREMENT) $(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run $(TEST_FILE)
 
 clean:
 	rm -rf $(APPDIR) $(ROOTFS)

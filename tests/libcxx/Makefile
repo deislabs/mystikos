@@ -47,6 +47,7 @@ $(APPDIR)/bin/run: run.c
 
 $(APPDIR):
 	$(APPBUILDER) mystikos/libcxx_tests_10x:1.1
+	cp $(CURDIR)/builttests_exe.passed $(APPDIR)
 	cp $(CURDIR)/builttests_exe1.passed $(APPDIR)
 	cp $(CURDIR)/builttests_exe2.passed $(APPDIR)
 	cp $(CURDIR)/builttests_exe3.passed $(APPDIR)
@@ -65,9 +66,16 @@ $(ROOTHASH): run.c
 
 OPTS += --roothash=$(ROOTHASH)
 
-OPTS += --memory-size=1024m
+OPTS += --memory-size=512m
+
+RUN_TESTS=$(TOP)/tests/utils/run_tests.sh
+TEST_FILE=builttests_exe.passed
+INCREMENT=100
 
 tests:
+	$(RUNTEST) $(RUN_TESTS) $(TEST_FILE) $(INCREMENT) $(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run $(STATUS) $(TEST_FILE)
+
+old-tests:
 	$(RUNTEST) $(MAKE) __tests
 
 __tests: test1 test2 test3
