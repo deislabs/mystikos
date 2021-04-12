@@ -334,8 +334,6 @@ int exec_launch_enclave(
 
     /* Terminate the enclave */
     r = oe_terminate_enclave(_enclave);
-    fprintf(stderr, "host: case 2: %u\n", r);
-    fflush(stderr);
     // fprintf(stderr, "host: case 2: %u\n", r);
     // fflush(stderr);
     if (r != OE_OK)
@@ -343,8 +341,6 @@ int exec_launch_enclave(
 
     // fprintf(stderr, "host: case 3: %u\n", r);
     // fflush(stderr);
-    fprintf(stderr, "host: case 3: %u\n", r);
-    fflush(stderr);
     shm_free_clock(&shared_memory);
 
     // fprintf(stderr, "host: case 4: %u\n", r);
