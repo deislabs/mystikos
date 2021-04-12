@@ -13,7 +13,7 @@ all: appdir ext2fs
 appdir:
 	$(APPBUILDER)
 
-ext2fs:
+ext2fs: appdir
 	sudo $(MYST) mkext2 appdir ext2fs
 	$(MYST) fssig --roothash ext2fs > roothash
 
