@@ -289,7 +289,6 @@
 /src/regression/sigprocmask-internal.exe
 /src/regression/sscanf-eof.exe
 /src/regression/strverscmp.exe
-/src/regression/tls_get_new-dtv.exe
 /src/regression/uselocale-0.exe
 /src/regression/wcsncpy-read-overflow.exe
 /src/regression/wcsstr-false-negative.exe
