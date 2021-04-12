@@ -92,7 +92,27 @@ endif
 
 DIRS += msync
 
-DIRS = libc libc libc libc libc
+DIRS =
+DIRS += libc
+DIRS += libc
+DIRS += libc
+DIRS += libc
+DIRS += libc
+DIRS += libc
+DIRS += libc
+DIRS += libc
+DIRS += libc
+DIRS += libc
+DIRS += libc
+DIRS += libc
+DIRS += libc
+DIRS += libc
+DIRS += libc
+DIRS += libc
+DIRS += libc
+DIRS += libc
+DIRS += libc
+DIRS += libc
 #DIRS += libcxx
 
 __tests:
