@@ -17,8 +17,6 @@ ROOTFS=$(CURDIR)/rootfs
 
 TEST_FILE = tests_passed.txt
 
-export TIMEOUT=30
-
 ##==============================================================================
 ##
 ## all rule:

@@ -1,0 +1,3 @@
+/src/functional/tls_init.exe
+/src/regression/pthread_cond-smasher.exe
+/src/regression/tls_get_new-dtv.exe

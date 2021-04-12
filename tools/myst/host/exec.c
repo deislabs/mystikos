@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#define _GNU_SOURCE
 #include <assert.h>
 #include <errno.h>
 #include <libgen.h>
@@ -12,7 +11,6 @@
 #include <myst/tcall.h>
 #include <poll.h>
 #include <pthread.h>
-#include <sched.h>
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -73,16 +71,6 @@ static void* _thread_func(void* arg)
     long r = -1;
     uint64_t cookie = (uint64_t)arg;
     uint64_t event = (uint64_t)&_thread_event;
-
-    cpu_set_t mask;
-    CPU_ZERO(&mask);
-    CPU_SET(1, &mask);
-    if (sched_setaffinity((int)syscall(SYS_gettid), sizeof(mask), &mask) != 0)
-    {
-        fprintf(stderr, "sched_setaffinity(): failed\n");
-        fflush(stdout);
-        abort();
-    }
 
     if (myst_run_thread_ecall(_enclave, &r, cookie, event) != OE_OK || r != 0)
     {
@@ -305,16 +293,6 @@ int exec_launch_enclave(
 
     /* Get clock times right before entering the enclave */
     shm_create_clock(&shared_memory, CLOCK_TICK);
-
-    cpu_set_t mask;
-    CPU_ZERO(&mask);
-    CPU_SET(3, &mask);
-    if (sched_setaffinity((int)syscall(SYS_gettid), sizeof(mask), &mask) != 0)
-    {
-        fprintf(stderr, "sched_setaffinity(): failed\n");
-        fflush(stdout);
-        abort();
-    }
 
     /* Enter the enclave and run the program */
     r = myst_enter_ecall(
