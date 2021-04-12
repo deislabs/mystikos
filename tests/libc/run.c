@@ -47,7 +47,6 @@ static void _run_tests(const char* test_file)
         assert(waitpid(pid, &wstatus, 0) == pid);
         assert(WIFEXITED(wstatus));
         assert(WEXITSTATUS(wstatus) == 0);
-
         printf("=== passed test (%s)\n", line);
     }
 
