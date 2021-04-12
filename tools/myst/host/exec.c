@@ -349,14 +349,13 @@ int exec_launch_enclave(
 
     // fprintf(stderr, "host: case 4: %u\n", r);
     // fflush(stderr);
-    fprintf(stderr, "host: case 4: %u\n", r);
     free(argv_buf.data);
     free(envp_buf.data);
 
     if (enc_path == tmp)
         unlink(tmp);
 
-    fprintf(stderr, "host: exiting: retval=%d\n", retval);
+    fprintf(stderr, "host: exiting: final\n");
     fflush(stderr);
     return retval;
 }
