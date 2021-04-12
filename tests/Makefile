@@ -91,6 +91,7 @@ endif
 
 DIRS += msync
 DIRS += dotnet-ubuntu
+DIRS += devfs
 
 DIRS += robust
 

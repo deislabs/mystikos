@@ -9,6 +9,7 @@
 #include <myst/cpio.h>
 #include <myst/crash.h>
 #include <myst/debugmalloc.h>
+#include <myst/devfs.h>
 #include <myst/eraise.h>
 #include <myst/errno.h>
 #include <myst/exec.h>
@@ -372,11 +373,11 @@ done:
     return ret;
 }
 
-static int _teardown_ramfs(void)
+static int _teardown_rootfs(void)
 {
     if ((*_fs->fs_release)(_fs) != 0)
     {
-        myst_eprintf("failed to release ramfs\n");
+        myst_eprintf("failed to release rootfs\n");
         return -1;
     }
 
@@ -706,6 +707,9 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     /* Setup virtual proc filesystem */
     procfs_setup();
 
+    /* Setup devfs */
+    devfs_setup();
+
     if (args->hostname)
         ECHECK(
             myst_syscall_sethostname(args->hostname, strlen(args->hostname)));
@@ -817,8 +821,11 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     /* Tear down the proc file system */
     procfs_teardown();
 
-    /* Tear down the RAM file system */
-    _teardown_ramfs();
+    /* Tear down the dev file system */
+    devfs_teardown();
+
+    /* Tear down the root file system */
+    _teardown_rootfs();
 
     /* Put the thread on the zombie list */
     myst_zombify_thread(thread);
