@@ -66,7 +66,7 @@ $(ROOTHASH): run.c
 
 OPTS += --roothash=$(ROOTHASH)
 
-OPTS += --memory-size=512m
+OPTS += --memory-size=1024
 
 RUN_TESTS=$(TOP)/tests/utils/run_tests.sh
 TEST_FILE=builttests_exe.passed
