@@ -34,6 +34,7 @@ int main(int argc, const char* argv[])
                 foundOE = 1;
         }
         fclose(fp);
+        assert(0);
         assert(foundOE != 0);
     }
 

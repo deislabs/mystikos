@@ -11,7 +11,7 @@ DIRS += timeval
 
 ifdef MYST_ENABLE_EXT2FS
 DIRS += ext2
-DIRS += libc libc libc
+DIRS += libc
 endif
 
 DIRS += args
@@ -67,7 +67,7 @@ endif
 DIRS += shared_symbols
 
 ifndef MYST_SKIP_LIBCXX_TESTS
-DIRS += libcxx libcxx libcxx libcxx libcxx
+DIRS += libcxx
 endif
 
 ifndef MYST_USE_OECACHE
