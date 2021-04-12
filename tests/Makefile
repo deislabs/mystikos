@@ -5,20 +5,13 @@ include $(TOP)/defs.mak
 
 DIRS =
 
-ifdef MYST_ENABLE_EXT2FS
-DIRS += libc
-endif
-
-ifndef MYST_SKIP_LIBCXX_TESTS
-DIRS += libcxx
-endif
-
 DIRS += myst
 DIRS += itimer
 DIRS += timeval
 
 ifdef MYST_ENABLE_EXT2FS
 DIRS += ext2
+DIRS += libc
 endif
 
 DIRS += args
@@ -73,6 +66,10 @@ endif
 
 DIRS += shared_symbols
 
+ifndef MYST_SKIP_LIBCXX_TESTS
+DIRS += libcxx
+endif
+
 ifndef MYST_USE_OECACHE
 DIRS += curl
 endif
@@ -93,6 +90,7 @@ DIRS += hostfs
 endif
 
 DIRS += msync
+DIRS += dotnet-ubuntu
 
 __tests:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) tests $(NL) )

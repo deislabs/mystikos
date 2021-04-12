@@ -1,8 +1,8 @@
 TOP=$(abspath ../../.. )
 include $(TOP)/defs.mak
 
-#URL=git://git.musl-libc.org/musl
-URL=https://github.com/ifduyue/musl
+URL=git://git.musl-libc.org/musl
+#URL=https://github.com/ifduyue/musl
 
 BRANCH=v1.2.0
 

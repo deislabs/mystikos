@@ -396,6 +396,7 @@
 /app/stdint_h.pass.cpp.exe
 /app/stdio_h.pass.cpp.exe
 /app/stdlib_h.pass.cpp.exe
+/app/stod.pass.cpp.exe
 /app/stof.pass.cpp.exe
 /app/stol.pass.cpp.exe
 /app/stold.pass.cpp.exe
@@ -502,6 +503,8 @@
 /app/truename.pass.cpp.exe
 /app/try_lock.pass.cpp.exe
 /app/try_lock_for.pass.cpp.exe
+/app/try_lock_shared.pass.cpp.exe
+/app/try_lock_until.pass.cpp.exe
 /app/tuple.by.type.pass.cpp.exe
 /app/tuple.include.utility.pass.cpp.exe
 /app/tuple.smartptr.pass.cpp.exe

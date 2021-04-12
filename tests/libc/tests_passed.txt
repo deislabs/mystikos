@@ -46,6 +46,7 @@
 /src/functional/tls_align_dlopen.exe
 /src/functional/tls_align.exe
 /src/functional/tls_init_dlopen.exe
+/src/functional/tls_init.exe
 /src/functional/tls_local_exec.exe
 /src/functional/udiv.exe
 /src/functional/ungetc.exe
@@ -270,6 +271,7 @@
 /src/regression/printf-fmt-g-zeros.exe
 /src/regression/printf-fmt-n.exe
 /src/regression/pthread_condattr_setclock.exe
+/src/regression/pthread_cond-smasher.exe
 /src/regression/pthread_exit-cancel.exe
 /src/regression/pthread_once-deadlock.exe
 /src/regression/pthread_rwlock-ebusy.exe
@@ -289,6 +291,7 @@
 /src/regression/sigprocmask-internal.exe
 /src/regression/sscanf-eof.exe
 /src/regression/strverscmp.exe
+/src/regression/tls_get_new-dtv.exe
 /src/regression/uselocale-0.exe
 /src/regression/wcsncpy-read-overflow.exe
 /src/regression/wcsstr-false-negative.exe
