@@ -9,7 +9,6 @@ APPDIR=$(CURDIR)/appdir
 APPBUILDER=$(TOP)/scripts/appbuilder
 
 ROOTFS=$(CURDIR)/rootfs
-ROOTHASH=$(SUBOBJDIR)/roothash
 
 LIBCXX_TESTS_DIR=llvm-project/libcxx/test/
 
@@ -33,7 +32,6 @@ all:
 	$(MAKE) $(APPDIR)
 	$(MAKE) $(APPDIR)/bin/run
 	$(MAKE) $(ROOTFS)
-	$(MAKE) $(ROOTHASH)
 
 one:
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) $(TEST)
@@ -58,15 +56,9 @@ $(APPDIR):
 
 $(ROOTFS): run.c
 	sudo $(MYST) mkext2 $(APPDIR) $(ROOTFS)
-	# run with posix spawn
+	truncate --size=-4096 $(ROOTFS)
 
-$(ROOTHASH): run.c
-	mkdir -p $(SUBOBJDIR)
-	$(MYST) fssig --roothash $(ROOTFS) > $(ROOTHASH)
-
-OPTS += --roothash=$(ROOTHASH)
-
-OPTS += --memory-size=1024
+OPTS += --memory-size=1024m
 
 RUN_TESTS=$(TOP)/tests/utils/run_tests.sh
 TEST_FILE=builttests_exe.passed
@@ -97,4 +89,4 @@ myst:
 	$(MAKE) -C $(TOP)/tools/myst
 
 clean:
-	rm -rf $(APPDIR) $(ROOTFS) $(ROOTHASH)
+	rm -rf $(APPDIR) $(ROOTFS)
