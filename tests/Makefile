@@ -95,6 +95,6 @@ __tests:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) tests $(NL) )
 
 tests:
-	@ rm -rf $(TESTDIR)
+	@ sudo rm -rf $(TESTDIR)
 	@ $(MAKE) -s __tests TARGET=sgx TESTSUFFIX=.sgx
 	@ $(MAKE) -s __tests TARGET=linux TESTSUFFIX=.linux

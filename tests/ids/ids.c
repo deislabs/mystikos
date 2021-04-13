@@ -18,12 +18,12 @@ int main(int argc, const char* argv[])
 
     errno = 0;
     assert(setuid(0xFFFFFFFF) != 0);
-    assert(errno = EPERM);
+    assert(errno = EINVAL);
     errno = 0;
 
     errno = 0;
     assert(setgid(0xFFFFFFFF) != 0);
-    assert(errno = EPERM);
+    assert(errno = EINVAL);
     errno = 0;
 
     pid_t pid = getpid();

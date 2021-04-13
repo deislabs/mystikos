@@ -11,6 +11,7 @@ int init_kernel_args(
     int envc,
     const char* envp[],
     const char* cwd,
+    myst_host_enc_id_mapping host_enc_mapping,
     const char* hostname,
     const void* regions_end,
     const void* image_data,

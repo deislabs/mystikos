@@ -98,3 +98,12 @@ third_party/musl/crt/musl/
 tests/msync/tests
 tests/network/appdir/
 third_party/musl/pristine/musl/
+tests/cross_fs_symlinks/appdir/
+tests/cross_fs_symlinks/ext2rootfs
+tests/cross_fs_symlinks/roothash
+tests/libcxx/appdir/
+tests/ltp/appdir/
+tests/ltp/ltp/
+tests/shared_symbols/appdir/bin/shared_symbols
+tests/procfs/appdir
+third_party/gcompat/gcompat/

@@ -21,7 +21,7 @@ test_ramfs_rootfs: rootfs
 test_ext2_rootfs: ext2rootfs
 ifdef MYST_ENABLE_EXT2FS
 	$(MYST) fssig --roothash ext2rootfs > $(ROOTHASH)
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) \
+	$(RUNTEST) $(MYST_EXEC) $(OPTS)  \
 	ext2rootfs --roothash=$(ROOTHASH) /bin/$(PROG) ext2
 endif
 

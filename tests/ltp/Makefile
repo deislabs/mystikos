@@ -76,16 +76,35 @@ build:
 	cp build.mak appdir/ltp
 	docker run --rm -v $(APPDIR):/appdir myst-alpine bash -c "make -j -C appdir/ltp -f build.mak"
 	sudo chown -R $(USER).$(USER) appdir
+	$(MAKE) password-file
+	$(MAKE) group-file
 
 rebuild:
 	cp build.mak appdir/ltp
 	docker run --rm -v $(APPDIR):/appdir myst-alpine bash -c "make -j -C appdir/ltp -f build.mak build"
 	sudo chown -R $(USER).$(USER) appdir
+	$(MAKE) password-file
+	$(MAKE) group-file
 
 clone:
 	rm -rf appdir
 	mkdir appdir
 	git clone https://github.com/mikbras/ltp appdir/ltp -b myst
+
+password-file:
+	mkdir -p appdir/etc
+	echo "root:x:0:0:root:/root:/bin/bash" > appdir/etc/passwd
+	echo "daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin" >> appdir/etc/passwd
+	echo "bin:x:2:2:bin:/bin:/usr/sbin/nologin" >> appdir/etc/passwd
+	echo "nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologi" >> appdir/etc/passwd
+
+group-file:
+	mkdir -p appdir/etc
+	echo "root:x:0:" > appdir/etc/group
+	echo "daemon:x:1:" >> appdir/etc/group
+	echo "bin:x:2:" >> appdir/etc/group
+	echo "nogroup:x:65534" >> appdir/etc/group
+	echo "nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin" >> appdir/etc/group
 
 tests:
 	$(MAKE) tests_hostfs
@@ -133,7 +152,7 @@ sort:
 
 ifeq ($(FS),ext2fs)
 one:
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
+	sudo -E $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
 endif
 
 ##==============================================================================
@@ -144,10 +163,11 @@ endif
 
 ifeq ($(FS),hostfs)
 one:
-	@ rm -rf $(HOSTFS)
+	@ sudo rm -rf $(HOSTFS)
 	@ mkdir -p $(shell dirname $(HOSTFS)/$(TEST))
 	cp appdir/$(TEST) $(HOSTFS)/$(TEST)
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
+	cp -r appdir/etc $(HOSTFS)/
+	sudo -E $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
 endif
 
 ##==============================================================================
@@ -158,11 +178,12 @@ endif
 
 ifeq ($(FS),ramfs)
 one:
-	rm -rf ramfs.appdir
+	sudo rm -rf ramfs.appdir
 	mkdir -p $(shell dirname ramfs.appdir/$(TEST))
 	cp appdir/$(TEST) ramfs.appdir/$(TEST)
+	cp -r appdir/etc  ramfs.appdir/
 	$(MYST) mkcpio ramfs.appdir ramfs
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
+	sudo -E $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
 endif
 
 t:

@@ -275,4 +275,28 @@ long myst_syscall_fsync(int fd);
 
 long myst_syscall_uname(struct utsname* buf);
 
+long myst_syscall_getuid();
+long myst_syscall_setuid(uid_t uid);
+
+long myst_syscall_getgid();
+long myst_syscall_setgid(gid_t gid);
+
+uid_t myst_syscall_geteuid();
+gid_t myst_syscall_getegid();
+
+long myst_syscall_setreuid(uid_t ruid, uid_t euid);
+long myst_syscall_setregid(gid_t rgid, gid_t egid);
+
+long myst_syscall_getresuid(uid_t* ruid, uid_t* euid, uid_t* savuid);
+long myst_syscall_setresuid(uid_t ruid, uid_t euid, uid_t savuid);
+
+long myst_syscall_getresgid(gid_t* rgid, gid_t* egid, gid_t* savgid);
+long myst_syscall_setresgid(uid_t rgid, uid_t egid, uid_t savgid);
+
+long myst_syscall_setfsuid(uid_t fsuid);
+long myst_syscall_setfsgid(gid_t fsgid);
+
+long myst_syscall_getgroups(int size, gid_t list[]);
+long myst_syscall_setgroups(size_t size, const gid_t* list);
+
 #endif /* _MYST_SYSCALL_H */

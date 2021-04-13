@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#define _GNU_SOURCE
+
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -194,6 +196,70 @@ static long _tcall_get_tsd(uint64_t* value)
     *value = _tsd;
 
     return 0;
+}
+
+long myst_tcall_identity(long n, long params[6], uid_t uid, gid_t gid)
+{
+    long ret = 0;
+    const long x1 = params[0];
+    const long x2 = params[1];
+    const long x3 = params[2];
+    const long x4 = params[3];
+    const long x5 = params[4];
+    const long x6 = params[5];
+    uid_t existing_uid, existing_euid, existing_savuid;
+    gid_t existing_gid, existing_egid, existing_savgid;
+
+    ret =
+        syscall(SYS_getresuid, &existing_uid, &existing_euid, &existing_savuid);
+    if (ret != 0)
+        return ret;
+
+    ret =
+        syscall(SYS_getresgid, &existing_gid, &existing_egid, &existing_savgid);
+    if (ret != 0)
+        return ret;
+
+    if (existing_egid != gid)
+    {
+        ret = syscall(SYS_setresgid, -1, gid, -1);
+        if (ret != 0)
+            return ret;
+    }
+
+    if (existing_euid != uid)
+    {
+        ret = syscall(SYS_setresuid, -1, uid, -1);
+        if (ret != 0)
+        {
+            myst_assume(
+                syscall(
+                    SYS_setresgid,
+                    existing_gid,
+                    existing_egid,
+                    existing_egid) == 0);
+            return ret;
+        }
+    }
+
+    ret = _forward_syscall(n, x1, x2, x3, x4, x5, x6);
+
+    if (existing_euid != uid)
+    {
+        myst_assume(
+            syscall(
+                SYS_setresuid, existing_uid, existing_euid, existing_euid) ==
+            0);
+    }
+    if (existing_egid != gid)
+    {
+        myst_assume(
+            syscall(
+                SYS_setresgid, existing_gid, existing_egid, existing_savgid) ==
+            0);
+    }
+
+    return ret;
 }
 
 long myst_tcall(long n, long params[6])
@@ -506,8 +572,6 @@ long myst_tcall(long n, long params[6])
         case SYS_setsockopt:
         case SYS_getsockopt:
         case SYS_fchmod:
-        case SYS_open:
-        case SYS_stat:
         case SYS_access:
         case SYS_dup:
         case SYS_pread64:
@@ -526,9 +590,20 @@ long myst_tcall(long n, long params[6])
         case SYS_statfs:
         case SYS_fstatfs:
         case SYS_lseek:
-        case SYS_utimensat:
         {
             return _forward_syscall(n, x1, x2, x3, x4, x5, x6);
+        }
+        case SYS_open:
+        {
+            return myst_tcall_identity(n, params, (uid_t)x4, (gid_t)x5);
+        }
+        case SYS_stat:
+        {
+            return myst_tcall_identity(n, params, (uid_t)x3, (gid_t)x4);
+        }
+        case SYS_utimensat:
+        {
+            return myst_tcall_identity(n, params, (uid_t)x5, (gid_t)x6);
         }
         default:
         {

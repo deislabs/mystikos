@@ -205,3 +205,51 @@ int cli_getopt(
 
     return ret;
 }
+
+int cli_get_mapping_opts(
+    int* argc,
+    const char* argv[],
+    myst_host_enc_id_mapping* mappings)
+{
+    {
+        const char* arg = NULL;
+        if (cli_getopt(argc, argv, "--enc-to-host-uid-map", &arg) == 0)
+        {
+            uid_t enc_uid, host_uid;
+            int ret = sscanf(arg, "%d:%d", &enc_uid, &host_uid);
+            if (ret != 2)
+            {
+                _err("Failed to parse --enc-to-host-uid-map "
+                     "<enc_uid>:<host_uid>");
+            }
+            mappings->enc_uid = enc_uid;
+            mappings->host_uid = host_uid;
+        }
+        else
+        {
+            mappings->enc_uid = 0;
+            mappings->host_uid = geteuid();
+        }
+    }
+    {
+        const char* arg = NULL;
+        if (cli_getopt(argc, argv, "--enc-to-host-gid-map", &arg) == 0)
+        {
+            gid_t enc_gid, host_gid;
+            int ret = sscanf(arg, "%d:%d", &enc_gid, &host_gid);
+            if (ret != 2)
+            {
+                _err("Failed to parse --enc-to-host-gid-map "
+                     "<enc_gid>:<host_gid>");
+            }
+            mappings->enc_gid = enc_gid;
+            mappings->host_gid = host_gid;
+        }
+        else
+        {
+            mappings->enc_gid = 0;
+            mappings->host_gid = getegid();
+        }
+    }
+    return 0;
+}

@@ -2,7 +2,7 @@ TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
 DIRS =
-DIRS += plain
+#DIRS += plain
 DIRS += crypt
 DIRS += verity
 

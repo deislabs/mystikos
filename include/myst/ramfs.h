@@ -4,8 +4,8 @@
 #ifndef _MYST_RAMFS_H
 #define _MYST_RAMFS_H
 
-#include <myst/fs.h>
 #include <myst/buf.h>
+#include <myst/fs.h>
 #include <stdbool.h>
 
 int myst_init_ramfs(
@@ -24,9 +24,6 @@ int myst_create_virtual_file(
     mode_t mode,
     int (*vcallback)(myst_buf_t* buf));
 
-int myst_release_tree(
-    myst_fs_t* fs,
-    const char* pathname
-);
+int myst_release_tree(myst_fs_t* fs, const char* pathname);
 
 #endif /* _MYST_RAMFS_H */

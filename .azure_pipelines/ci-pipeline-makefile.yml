@@ -70,6 +70,15 @@ jobs:
           DB_SERVER_NAME: $(DB_SERVER_NAME_USEAST)
           MAA_URL: $(DB_MAA_URL_USEAST)
           
+      - script: |
+          make clean -C $(Build.SourcesDirectory)/tests
+          make clean -C $(Build.SourcesDirectory)/solutions
+          sudo rm -rf $(Build.SourcesDirectory)/build/tests
+        displayName: 'Cleanup test directories'
+        continueOnError: true
+        enabled: true
+        workingDirectory: $(Build.SourcesDirectory)
+
       # if any previous step(s) not succeed, fail the job
       - script: |
           echo "Not all steps succeed."

@@ -58,7 +58,7 @@ int procfs_teardown()
         myst_eprintf("failed to release procfs\n");
         return -1;
     }
-    
+
     return 0;
 }
 
@@ -82,7 +82,7 @@ static int _meminfo_vcallback(myst_buf_t* vbuf)
     int ret = 0;
     size_t totalram;
     size_t freeram;
-    
+
     ECHECK(myst_get_total_ram(&totalram));
     ECHECK(myst_get_free_ram(&freeram));
 
@@ -113,10 +113,12 @@ int create_proc_root_entries()
     int ret = 0;
 
     /* Create /proc/meminfo */
-    ECHECK(myst_create_virtual_file(_procfs, "/meminfo", S_IFREG, _meminfo_vcallback));
+    ECHECK(myst_create_virtual_file(
+        _procfs, "/meminfo", S_IFREG, _meminfo_vcallback));
 
     /* Create /proc/self */
-    ECHECK(myst_create_virtual_file(_procfs, "/self", S_IFLNK, _self_vcallback));
+    ECHECK(
+        myst_create_virtual_file(_procfs, "/self", S_IFLNK, _self_vcallback));
 
 done:
     return ret;
