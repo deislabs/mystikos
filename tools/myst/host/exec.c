@@ -101,6 +101,12 @@ static void* _thread_func(void* arg)
             continue;
         }
 
+        if (result == OE_ENCLAVE_ABORTING)
+        {
+            /* ignore because enclave is in process of aborting */
+            return NULL;
+        }
+
         break;
     }
 
