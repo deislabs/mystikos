@@ -8,18 +8,31 @@
 function print_usage {
     echo "$(basename $0): a useful shell script for converting Docker images into Mystikos cpio archives"
     echo
-    echo "Usage: $(basename $0) [-o file] [-d [file]] [[-i] image] [-e extras] [-v]"
+    echo "Usage: $(basename $0) [-o file] [-i image] [-e extras] [-v] [[-d] file]"
     echo
     echo "  -d file     Build docker image from the named file"
-    echo "              Defaults to './Dockerfile' if no option specified"
     echo "  -i image    Specify an existing Docker image name to build from"
-    echo "              If neither -d nor -i are specified, will look for Dockerfile in current dir"
     echo "  -f format   Specify the output format. Options: dir, cpio. Default: 'dir'"
     echo "  -e extras   Specify the extra options while building the container image"
     echo "  -o      Specify the name of the output file or directory"
     echo "          If not specified, defaults to 'appdir'"
     echo "  -v      Verbose"
     echo "  -h      Print this help message"
+    echo
+    echo
+    echo "Sample Usage:"
+    echo
+    echo "  Build a Dockerfile without '-d' or '-o' option:"
+    echo "    $(basename $0) Dockerfile"
+    echo
+    echo "  Build Dockerfile with irregular file name"
+    echo "    $(basename $0) Dockerfile.release"
+    echo
+    echo "  Build existing image from remote registry"
+    echo "    $(basename $0) -i hello-world"
+    echo
+    echo "  Build specified Docker image with extra options in verbose"
+    echo "    $(basename $0) -d Dockerfile.debug -v -e '--build-arg USERNAME=username --build-arg PASSWORD=password'"
     echo
 }
 
@@ -47,6 +60,7 @@ while getopts 'hvd:i:f:o:e:' OPTION; do
             ;;
         v )
             VERBOSE=true;
+            QUIET=false;
             set -x
             ;;
         * )
@@ -58,29 +72,28 @@ done
 
 ### defaults
 
-# if no options specified, assume first argument is an image name
-shift $((OPTIND-1))
-IMAGE_NAME=${IMAGE_NAME:-$@}
+if [ $# -lt 1 ]; then
+        echo "Dockerfile or ImageName has not been specified"
+        exit 1
+fi
+
+# if neither '-i' nor '-d' option is specified, assume the last argument is a Dockerfile name. 
+# ImageName/URL must be specified by '-i' option. The default argument can only be a Dockerfile
+if [ -z "$DOCKER_FILE" -a -z "$IMAGE_NAME" ]; then
+    DOCKER_FILE=${@: -1}
+fi
 
 OUTPUT_NAME=${OUTPUT_NAME:-appdir}
 DELETE_OUTPUT=${DELETE_OUTPUT:-false}
 OUTPUT_FORMAT=${OUTPUT_FORMAT:-dir}
+TEMP_IMAGE_IIDFILE="/tmp/myst-intermediate-build-id"
 
 ### end defaults
 
 set -e
 
-# if image name is not specified and the directory contains a Dockerfile
-# or if the non-option parameter is the literal "Dockerfile"
-# then set USE_DOCKERFILE=true
-if [ -z "$IMAGE_NAME" -o "$IMAGE_NAME" == "Dockerfile" ]; then
+if [ ! -z "$DOCKER_FILE" ]; then
     USE_DOCKERFILE=true
-    if [ -z "$DOCKER_FILE" -a -f 'Dockerfile' ]; then
-        DOCKER_FILE='Dockerfile'
-    elif [ ! -f "$DOCKER_FILE" ]; then
-        echo "Could not find specific docker file: $DOCKER_FILE"
-        exit 1
-    fi
 else
     USE_DOCKERFILE=false
 fi
@@ -118,12 +131,23 @@ if [ -d $OUTPUT_NAME -o -f $OUTPUT_NAME ]; then
     done
 fi
 
+if $QUIET; then
+    DOCKER_BUILD_MODE="--quiet";
+fi
 
 # Download the docker image from dockerhub, or build it locally from a docker file.
 get_image()
-{
+{   
     if $USE_DOCKERFILE; then
-        IMAGE_NAME=$(docker build -q -f $DOCKER_FILE $EXTRA_ARGS .)
+        # in either quiet or none quiet mode, IMAGE id will always be exported to intermediate iidfile
+        rm -f $TEMP_IMAGE_IIDFILE
+        docker build $DOCKER_BUILD_MODE --iidfile $TEMP_IMAGE_IIDFILE -f $DOCKER_FILE $EXTRA_ARGS .
+        if [ ! -f "$TEMP_IMAGE_IIDFILE" ]; then
+            echo "failed to build from Docker Image file $TEMP_IMAGE_IIDFILE4";
+            exit 1
+        fi
+        IMAGE_NAME=$(cat $TEMP_IMAGE_IIDFILE)
+        rm -f $TEMP_IMAGE_IIDFILE
         DELETE_IMAGE=true
     else
         docker pull $IMAGE_NAME

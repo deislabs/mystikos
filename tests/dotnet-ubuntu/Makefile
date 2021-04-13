@@ -11,7 +11,7 @@ endif
 all: appdir ext2fs
 
 appdir:
-	$(APPBUILDER)
+	$(APPBUILDER) Dockerfile
 
 ext2fs: appdir
 	sudo $(MYST) mkext2 appdir ext2fs
