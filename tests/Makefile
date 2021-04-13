@@ -92,6 +92,30 @@ endif
 DIRS += msync
 DIRS += dotnet-ubuntu
 
+DIRS = libcxx
+DIRS += libcxx
+DIRS += libcxx
+DIRS += libcxx
+DIRS += libcxx
+DIRS += libcxx
+DIRS += libcxx
+DIRS += libcxx
+DIRS += libcxx
+DIRS += libcxx
+DIRS += libcxx
+
+DIRS = libc
+DIRS += libc
+DIRS += libc
+DIRS += libc
+DIRS += libc
+DIRS += libc
+DIRS += libc
+DIRS += libc
+DIRS += libc
+DIRS += libc
+DIRS += libc
+
 __tests:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) tests $(NL) )
 
