@@ -91,7 +91,7 @@ old-tests: all
 	$(RUNTEST) $(MYST_EXEC) $(OLD_OPTS) $(ROOTFS) /bin/run $(TEST_FILE)
 
 clean:
-	rm -rf $(APPDIR) $(ROOTFS) $(TEST_FILE).0*
+	rm -rf $(APPDIR) $(ROOTFS)
 
 split:
 	split --lines=50 --numeric-suffix=1 $(TEST_FILE) $(TEST_FILE).
