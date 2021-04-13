@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="160px" height="160px" viewBox="0 0 160 160" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 51.3 (57544) - http://www.bohemiancoding.com/sketch -->
+    <title>[dark] favicon</title>
+    <desc>Created with Sketch.</desc>
+    <defs>
+        <linearGradient x1="50%" y1="0%" x2="50%" y2="100%" id="linearGradient-1">
+            <stop stop-color="#8FF3BC" offset="0%"></stop>
+            <stop stop-color="#56E287" offset="100%"></stop>
+        </linearGradient>
+        <polygon id="path-2" points="0.0193498284 34.356608 0.0193498284 114.314424 58.4688205 149.681773 116.918291 114.314424 116.918291 34.356608 58.4688205 0.00944423229"></polygon>
+        <radialGradient cx="50%" cy="29.1447596%" fx="50%" fy="29.1447596%" r="50%" gradientTransform="translate(0.500000,0.291448),scale(0.991677,1.000000),rotate(90.000000),scale(1.000000,0.980340),translate(-0.500000,-0.291448)" id="radialGradient-4">
+            <stop stop-color="#FFFFFF" offset="0%"></stop>
+            <stop stop-color="#E9FCF0" stop-opacity="0.591931329" offset="29.302661%"></stop>
+            <stop stop-color="#74EBA3" offset="100%"></stop>
+        </radialGradient>
+        <rect id="path-5" x="-3.89813906" y="32.5168509" width="123.875761" height="122.84469"></rect>
+        <polygon id="path-6" points="0.0193498284 34.356608 0.0193498284 114.314424 58.4688205 149.681773 116.918291 114.314424 116.918291 34.356608 58.4688205 0.00944423229"></polygon>
+        <polygon id="path-8" points="0.0731063208 0.0413669993 0.0731063208 55.3726938 40.6757932 80.0609269 40.6757932 23.7819468"></polygon>
+        <polygon id="path-10" points="0.0731063208 -2.73660546 0.0731063208 52.4110729 40.6757932 76.7320092 40.6757932 21.0039743"></polygon>
+        <polygon id="path-12" points="0.00701010338 0.04126036 0.00701010338 55.2299493 40.348352 79.671364 40.165177 23.7206396"></polygon>
+        <polygon id="path-14" points="108.70396 0.126549335 107.760431 54.1812926 148.168827 79.3794571 148.862127 23.8059286"></polygon>
+    </defs>
+    <g id="[dark]-favicon" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="[icon]-mystikos-" transform="translate(21.034483, 5.000000)">
+            <g id="green-glow-bg">
+                <mask id="mask-3" fill="white">
+                    <use xlink:href="#path-2"></use>
+                </mask>
+                <use id="Path-22" stroke="#144A4E" stroke-width="8" fill="url(#linearGradient-1)" fill-rule="nonzero" stroke-linecap="round" stroke-linejoin="round" xlink:href="#path-2"></use>
+                <g id="Rectangle" fill-rule="nonzero" mask="url(#mask-3)">
+                    <use fill="url(#radialGradient-4)" xlink:href="#path-5"></use>
+                    <use fill="#51DE89" xlink:href="#path-5"></use>
+                </g>
+                <mask id="mask-7" fill="white">
+                    <use xlink:href="#path-6"></use>
+                </mask>
+                <use id="Path-22" stroke="#144A4E" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill-rule="nonzero" xlink:href="#path-6"></use>
+            </g>
+            <g id="box-right" transform="translate(17.904219, 64.584958)">
+                <mask id="mask-9" fill="white">
+                    <use xlink:href="#path-8"></use>
+                </mask>
+                <use id="Path-9" fill="#FFFFFF" fill-rule="nonzero" xlink:href="#path-8"></use>
+                <mask id="mask-11" fill="white">
+                    <use xlink:href="#path-10"></use>
+                </mask>
+                <g id="Path-9" fill-rule="nonzero"></g>
+            </g>
+            <g id="box-left" transform="translate(57.642768, 64.792635)">
+                <mask id="mask-13" fill="white">
+                    <use xlink:href="#path-12"></use>
+                </mask>
+                <use id="Path-9" fill="#C3EBEA" fill-rule="nonzero" transform="translate(20.177681, 39.856312) scale(-1, 1) translate(-20.177681, -39.856312) " xlink:href="#path-12"></use>
+                <g id="Group-3" mask="url(#mask-13)">
+                    <g transform="translate(-33.610192, 59.333844) rotate(1.000000) translate(33.610192, -59.333844) translate(-108.610192, -0.666156)">
+                        <mask id="mask-15" fill="white">
+                            <use xlink:href="#path-14"></use>
+                        </mask>
+                        <g id="Path-9" stroke="none" fill="none" fill-rule="nonzero" transform="translate(128.311279, 39.753003) scale(-1, 1) translate(-128.311279, -39.753003) "></g>
+                    </g>
+                </g>
+            </g>
+            <g id="box-top" transform="translate(4.325783, 3.915452)" fill-rule="nonzero">
+                <polygon id="Path-8" fill="#FFFFFF" points="0.00346621956 32.7261186 54.3352147 64.2483314 108.402738 32.4848828 54.3352147 1.20390585"></polygon>
+                <polygon id="Path-8" points="0.00346621956 31.6916358 54.3352147 63.2138486 108.402738 31.4504001 54.3352147 0.169423089"></polygon>
+            </g>
+        </g>
+    </g>
+</svg>
