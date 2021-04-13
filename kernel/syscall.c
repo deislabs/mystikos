@@ -3544,56 +3544,10 @@ long myst_syscall(long n, long params[6])
         }
         case SYS_ptrace:
             break;
-        case SYS_getuid:
-        {
-            _strace(n, NULL);
-            BREAK(_return(n, MYST_DEFAULT_UID));
-        }
         case SYS_syslog:
         {
             /* Ignore syslog for now */
             BREAK(_return(n, 0));
-        }
-        case SYS_getgid:
-        {
-            _strace(n, NULL);
-            BREAK(_return(n, MYST_DEFAULT_GID));
-        }
-        case SYS_setuid:
-        {
-            uid_t uid = (uid_t)x1;
-            long ret = 0;
-
-            _strace(n, "uid=%u", uid);
-
-            /* do not allow the UID to be changed */
-            if (uid != MYST_DEFAULT_UID)
-                ret = -EPERM;
-
-            BREAK(_return(n, ret));
-        }
-        case SYS_setgid:
-        {
-            gid_t gid = (gid_t)x1;
-            long ret = 0;
-
-            _strace(n, "gid=%u", gid);
-
-            /* do not allow the GID to be changed */
-            if (gid != MYST_DEFAULT_GID)
-                ret = -EPERM;
-
-            BREAK(_return(n, ret));
-        }
-        case SYS_geteuid:
-        {
-            _strace(n, NULL);
-            BREAK(_return(n, MYST_DEFAULT_UID));
-        }
-        case SYS_getegid:
-        {
-            _strace(n, NULL);
-            BREAK(_return(n, MYST_DEFAULT_GID));
         }
         case SYS_setpgid:
         {
@@ -3608,6 +3562,11 @@ long myst_syscall(long n, long params[6])
 
             BREAK(_return(n, ret));
         }
+        case SYS_getpgid:
+        {
+            _strace(n, NULL);
+            BREAK(_return(n, MYST_DEFAULT_GID));
+        }
         case SYS_getppid:
         {
             _strace(n, NULL);
@@ -3615,37 +3574,142 @@ long myst_syscall(long n, long params[6])
         }
         case SYS_getpgrp:
             break;
-        case SYS_setsid:
-            break;
-        case SYS_setreuid:
-            break;
-        case SYS_setregid:
-            break;
-        case SYS_getgroups:
-            break;
-        case SYS_setgroups:
-            break;
-        case SYS_setresuid:
-            break;
-        case SYS_getresuid:
-            break;
-        case SYS_setresgid:
-            break;
-        case SYS_getresgid:
-            break;
-        case SYS_getpgid:
-        {
-            _strace(n, NULL);
-            BREAK(_return(n, MYST_DEFAULT_GID));
-        }
-        case SYS_setfsuid:
-            break;
-        case SYS_setfsgid:
-            break;
         case SYS_getsid:
         {
             _strace(n, NULL);
             BREAK(_return(n, myst_getsid()));
+        }
+        case SYS_setsid:
+            break;
+        case SYS_getgroups:
+        {
+            size_t size = (size_t)x1;
+            gid_t* list = (gid_t*)x2;
+            /* return the extra groups on the thread */
+            _strace(n, NULL);
+            BREAK(_return(n, myst_syscall_getgroups(size, list)));
+        }
+        case SYS_setgroups:
+        {
+            int size = (int)x1;
+            const gid_t* list = (const gid_t*)x2;
+
+            /* return the extra groups on the thread */
+            _strace(n, NULL);
+            BREAK(_return(n, myst_syscall_setgroups(size, list)));
+        }
+        case SYS_getuid:
+        {
+            /* return the real uid of the thread */
+            _strace(n, NULL);
+            BREAK(_return(n, myst_syscall_getuid()));
+        }
+        case SYS_setuid:
+        {
+            /* Set euid and fsuid to arg1, and if euid is already set to root
+             * also set uid and savuid of the thread */
+            uid_t uid = (uid_t)x1;
+            _strace(n, "uid=%u", uid);
+
+            BREAK(_return(n, myst_syscall_setuid(uid)));
+        }
+        case SYS_getgid:
+        {
+            /* return the gid of the thread */
+            _strace(n, NULL);
+            BREAK(_return(n, myst_syscall_getgid()));
+        }
+        case SYS_setgid:
+        {
+            /* set the effective gid (euid) of the thread, unless egid is root
+             * in which case set all gids */
+            gid_t gid = (gid_t)x1;
+            _strace(n, "gid=%u", gid);
+            BREAK(_return(n, myst_syscall_setgid(gid)));
+        }
+        case SYS_geteuid:
+        {
+            /* return threads effective uid (euid) */
+            _strace(n, NULL);
+            BREAK(_return(n, myst_syscall_geteuid()));
+        }
+        case SYS_getegid:
+        {
+            /* return threads effective gid (egid) */
+            _strace(n, NULL);
+            BREAK(_return(n, myst_syscall_getegid()));
+        }
+        case SYS_setreuid:
+        {
+            /* set the real and effective uid of the thread */
+            uid_t ruid = (uid_t)x1;
+            uid_t euid = (uid_t)x2;
+            _strace(n, "Changing IDs to ruid=%u, euid=%u", ruid, euid);
+            BREAK(_return(n, myst_syscall_setreuid(ruid, euid)));
+        }
+        case SYS_setregid:
+        {
+            /* set the real and effective uid of the thread */
+            gid_t rgid = (gid_t)x1;
+            gid_t egid = (gid_t)x2;
+            _strace(n, "Changing setting to rgid=%u, egid=%u", rgid, egid);
+            BREAK(_return(n, myst_syscall_setregid(rgid, egid)));
+        }
+        case SYS_setresuid:
+        {
+            /* set the real and effective uid of the thread */
+            uid_t ruid = (uid_t)x1;
+            uid_t euid = (uid_t)x2;
+            uid_t savuid = (uid_t)x3;
+            _strace(
+                n,
+                "Changing setting to ruid=%u, euid=%u, savuid=%u",
+                ruid,
+                euid,
+                savuid);
+            BREAK(_return(n, myst_syscall_setresuid(ruid, euid, savuid)));
+        }
+        case SYS_getresuid:
+        {
+            uid_t* ruid = (uid_t*)x1;
+            uid_t* euid = (uid_t*)x2;
+            uid_t* savuid = (uid_t*)x3;
+            _strace(n, NULL);
+            BREAK(_return(n, myst_syscall_getresuid(ruid, euid, savuid)));
+        }
+        case SYS_setresgid:
+        {
+            /* set the real and effective uid of the thread */
+            gid_t rgid = (gid_t)x1;
+            gid_t egid = (gid_t)x2;
+            gid_t savgid = (gid_t)x3;
+            _strace(
+                n,
+                "Changing setting to rgid=%u, egid=%u, savgid=%u",
+                rgid,
+                egid,
+                savgid);
+            BREAK(_return(n, myst_syscall_setresgid(rgid, egid, savgid)));
+        }
+        case SYS_getresgid:
+        {
+            gid_t* rgid = (gid_t*)x1;
+            gid_t* egid = (gid_t*)x2;
+            gid_t* savgid = (gid_t*)x3;
+            _strace(n, NULL);
+            BREAK(_return(n, myst_syscall_getresgid(rgid, egid, savgid)));
+        }
+        case SYS_setfsuid:
+        {
+            uid_t fsuid = (uid_t)x1;
+            _strace(n, "fsuid=%u", fsuid);
+            BREAK(_return(n, myst_syscall_setfsuid(fsuid)));
+        }
+        case SYS_setfsgid:
+        {
+            gid_t fsgid = (gid_t)x1;
+            _strace(n, "fsgid=%u", fsgid);
+            BREAK(_return(n, myst_syscall_setfsgid(fsgid)));
         }
         case SYS_capget:
             break;

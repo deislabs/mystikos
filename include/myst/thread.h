@@ -191,6 +191,26 @@ struct myst_thread
 
     /* thread name */
     char name[16];
+
+    /* process identity */
+    uid_t uid;
+    gid_t gid;
+
+    /* effective process identity */
+    uid_t euid;
+    gid_t egid;
+
+    /* effective process identity */
+    uid_t savuid;
+    gid_t savgid;
+
+    /*  process filesystem identity */
+    uid_t fsuid;
+    gid_t fsgid;
+
+    /* supplemental groups */
+    size_t num_supgid;
+    gid_t supgid[NGROUPS_MAX];
 };
 
 MYST_INLINE bool myst_valid_thread(const myst_thread_t* thread)

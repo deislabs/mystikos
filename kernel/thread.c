@@ -224,8 +224,6 @@ static void _free_zombies(void* arg)
     {
         myst_thread_t* next = p->znext;
 
-        assert(p->main.cwd == NULL);
-
         memset(p, 0xdd, sizeof(myst_thread_t));
         free(p);
 
@@ -775,8 +773,6 @@ static long _syscall_clone_vfork(
         child->pid = myst_generate_tid();
         child->tid = child->pid;
         child->run_thread = myst_run_thread;
-        child->main.thread_group_lock = MYST_SPINLOCK_INITIALIZER;
-        child->thread_lock = &child->main.thread_group_lock;
         /* ATTN: we don't take a lock on _num_threads,
             thread names could be duplicates */
         snprintf(
@@ -784,6 +780,21 @@ static long _syscall_clone_vfork(
             sizeof(child->name),
             "thread-%ld",
             _num_threads % 99999999);
+
+        /* Inherit identity from parent process */
+        child->uid = parent->uid;
+        child->euid = parent->euid;
+        child->savuid = parent->savgid;
+        child->fsuid = parent->fsuid;
+        child->gid = parent->gid;
+        child->egid = parent->egid;
+        child->savgid = parent->savgid;
+        child->fsgid = parent->fsgid;
+        memcpy(child->supgid, parent->supgid, parent->num_supgid);
+        child->num_supgid = parent->num_supgid;
+
+        child->main.thread_group_lock = MYST_SPINLOCK_INITIALIZER;
+        child->thread_lock = &child->main.thread_group_lock;
 
         /* Inherit parent current working directory */
         child->main.cwd_lock = MYST_SPINLOCK_INITIALIZER;

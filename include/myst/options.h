@@ -6,6 +6,7 @@
 
 #include <limits.h>
 
+#include <myst/kernel.h>
 #include <myst/types.h>
 
 typedef struct myst_options
@@ -17,6 +18,8 @@ typedef struct myst_options
     bool shell_mode;
     bool memcheck;
     char rootfs[PATH_MAX];
+
+    myst_host_enc_id_mapping host_enc_id_mapping;
 } myst_options_t;
 
 extern myst_options_t __options;

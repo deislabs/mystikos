@@ -11,6 +11,7 @@
 #include <string.h>
 #include <sys/ioctl.h>
 
+#include <myst/assume.h>
 #include <myst/eraise.h>
 #include <myst/fdtable.h>
 #include <myst/fs.h>
@@ -19,6 +20,7 @@
 #include <myst/strings.h>
 #include <myst/syscall.h>
 #include <myst/tcall.h>
+#include <myst/uid_gid.h>
 
 /*
 **==============================================================================
@@ -39,6 +41,17 @@ typedef struct hostfs
     char source[PATH_MAX]; /* source argument to myst_mount() */
     char target[PATH_MAX]; /* target argument to myst_mount() */
 } hostfs_t;
+
+static bool _get_host_uid_gid(uid_t* host_uid, gid_t* host_gid)
+{
+    *host_uid = myst_enc_uid_to_host(myst_syscall_geteuid());
+    *host_gid = myst_enc_gid_to_host(myst_syscall_getegid());
+
+    if ((*host_uid < 0) || (*host_gid < 0))
+        return false;
+    else
+        return true;
+}
 
 static bool _hostfs_valid(const hostfs_t* hostfs)
 {
@@ -158,6 +171,13 @@ static int _fs_open(
     myst_file_t* file = NULL;
     char path[PATH_MAX];
     long tret;
+    uid_t host_uid;
+    gid_t host_gid;
+
+    myst_assume(hostfs->magic == HOSTFS_MAGIC);
+
+    if (!_get_host_uid_gid(&host_uid, &host_gid))
+        ERAISE(-EINVAL);
 
     if (!_hostfs_valid(hostfs) || !pathname || !file_out)
         ERAISE(-EINVAL);
@@ -169,7 +189,7 @@ static int _fs_open(
 
     ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
 
-    long params[6] = {(long)path, flags, mode};
+    long params[6] = {(long)path, flags, mode, host_uid, host_gid};
     ECHECK((tret = myst_tcall(SYS_open, params)));
 
     if (tret > MYST_FDTABLE_SIZE)
@@ -419,6 +439,13 @@ static int _fs_stat(myst_fs_t* fs, const char* pathname, struct stat* statbuf)
     hostfs_t* hostfs = (hostfs_t*)fs;
     long tret;
     char path[PATH_MAX];
+    uid_t host_uid;
+    gid_t host_gid;
+
+    myst_assume(hostfs->magic == HOSTFS_MAGIC);
+
+    if (!_get_host_uid_gid(&host_uid, &host_gid))
+        ERAISE(-EINVAL);
 
     // ATTN: special handling needed for symbolic links. Check to see if it
     // is a link, and if so, use readlink to get the name of the file.
@@ -428,7 +455,8 @@ static int _fs_stat(myst_fs_t* fs, const char* pathname, struct stat* statbuf)
 
     ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
 
-    long params[6] = {(long)path, (long)statbuf};
+    long params[6] = {
+        (long)path, (long)statbuf, (long)host_uid, (long)host_gid};
     ECHECK((tret = myst_tcall(SYS_stat, params)));
 
     if (tret != 0)
@@ -937,11 +965,19 @@ static int _fs_futimens(
     int ret = 0;
     hostfs_t* hostfs = (hostfs_t*)fs;
     long tret;
+    uid_t host_uid;
+    gid_t host_gid;
+
+    myst_assume(hostfs->magic == HOSTFS_MAGIC);
+
+    if (!_get_host_uid_gid(&host_uid, &host_gid))
+        ERAISE(-EINVAL);
 
     if (!_hostfs_valid(hostfs) || !_file_valid(file))
         ERAISE(-EINVAL);
 
-    long params[6] = {(long)file->fd, (long)NULL, (long)times, 0};
+    long params[6] = {
+        (long)file->fd, (long)NULL, (long)times, 0, host_uid, host_gid};
     ECHECK((tret = myst_tcall(SYS_utimensat, params)));
     ret = tret;
 

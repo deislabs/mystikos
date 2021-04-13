@@ -70,11 +70,15 @@ struct options
     char rootfs[PATH_MAX];
     size_t heap_size;
     const char* app_config_path;
+    myst_host_enc_id_mapping mapping;
 };
 
 static void _get_options(int* argc, const char* argv[], struct options* opts)
 {
     memset(opts, 0, sizeof(struct options));
+
+    // process ID mapping options
+    cli_get_mapping_opts(argc, argv, &opts->mapping);
 
     /* Get --trace-syscalls option */
     if (cli_getopt(argc, argv, "--trace-syscalls", NULL) == 0 ||
@@ -140,6 +144,47 @@ static void _get_options(int* argc, const char* argv[], struct options* opts)
 
     // get app config if present
     cli_getopt(argc, argv, "--app-config-path", &opts->app_config_path);
+
+    {
+        const char* arg = NULL;
+        if (cli_getopt(argc, argv, "--enc-to-host-uid-map", &arg) == 0)
+        {
+            uid_t enc_uid, host_uid;
+            int ret = sscanf(arg, "%d:%d", &enc_uid, &host_uid);
+            if (ret != 2)
+            {
+                _err("Failed to parse --enc-to-host-uid-map "
+                     "<enc_uid>:<host_uid>");
+            }
+            opts->mapping.enc_uid = enc_uid;
+            opts->mapping.host_uid = host_uid;
+        }
+        else
+        {
+            opts->mapping.enc_uid = 0;
+            opts->mapping.host_uid = geteuid();
+        }
+    }
+    {
+        const char* arg = NULL;
+        if (cli_getopt(argc, argv, "--enc-to-host-gid-map", &arg) == 0)
+        {
+            gid_t enc_gid, host_gid;
+            int ret = sscanf(arg, "%d:%d", &enc_gid, &host_gid);
+            if (ret != 2)
+            {
+                _err("Failed to parse --enc-to-host-gid-map "
+                     "<enc_gid>:<host_gid>");
+            }
+            opts->mapping.enc_gid = enc_gid;
+            opts->mapping.host_gid = host_gid;
+        }
+        else
+        {
+            opts->mapping.enc_gid = 0;
+            opts->mapping.host_gid = getegid();
+        }
+    }
 }
 
 /* the address of this is eventually passed to futex (uaddr argument) */
@@ -226,6 +271,7 @@ static int _enter_kernel(
                 envc,
                 envp,
                 cwd,
+                options->mapping,
                 hostname,
                 regions_end,
                 image_data,

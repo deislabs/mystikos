@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 #include <assert.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
 #include <stdio.h>
@@ -9,15 +10,14 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <errno.h>
 
 int test_meminfo()
 {
     int fd;
     char buf[1024];
-    
+
     fd = open("/proc/meminfo", O_RDONLY);
-    assert(fd > 0);   
+    assert(fd > 0);
     assert(read(fd, buf, sizeof(buf)));
 
     printf("%s\n", buf);
@@ -42,7 +42,7 @@ int test_self_exe(const char* pn)
     char target[PATH_MAX];
     ret = readlink("/proc/self/exe", target, sizeof(target));
     assert(ret > 0);
-    assert(!strcmp(pn,target));
+    assert(!strcmp(pn, target));
 }
 
 int test_self_fd()

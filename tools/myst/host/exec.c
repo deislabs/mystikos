@@ -227,6 +227,9 @@ int exec_action(int argc, const char* argv[], const char* envp[])
 
     /* Get options */
     {
+        // process ID mapping options
+        cli_get_mapping_opts(&argc, argv, &options.host_enc_id_mapping);
+
         /* Get --trace-syscalls option */
         if (cli_getopt(&argc, argv, "--trace-syscalls", NULL) == 0 ||
             cli_getopt(&argc, argv, "--strace", NULL) == 0)

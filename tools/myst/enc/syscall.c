@@ -11,6 +11,7 @@
 #include <unistd.h>
 
 #include <myst/iov.h>
+#include <myst/syscall.h>
 #include <myst/tcall.h>
 #include "myst_t.h"
 
@@ -851,12 +852,18 @@ done:
 }
 
 #ifdef MYST_ENABLE_HOSTFS
-static long _open(const char* pathname, int flags, mode_t mode)
+static long _open(
+    const char* pathname,
+    int flags,
+    mode_t mode,
+    uid_t uid,
+    gid_t gid)
 {
     long ret = 0;
     long retval;
 
-    if (myst_open_ocall(&retval, pathname, flags, mode) != OE_OK)
+    if ((ret = myst_open_ocall(&retval, pathname, flags, mode, uid, gid)) !=
+        OE_OK)
     {
         ret = -EINVAL;
         goto done;
@@ -870,12 +877,16 @@ done:
 #endif
 
 #ifdef MYST_ENABLE_HOSTFS
-static long _stat(const char* pathname, struct myst_stat* statbuf)
+static long _stat(
+    const char* pathname,
+    struct myst_stat* statbuf,
+    uid_t uid,
+    gid_t gid)
 {
     long ret = 0;
     long retval;
 
-    if (myst_stat_ocall(&retval, pathname, statbuf) != OE_OK)
+    if (myst_stat_ocall(&retval, pathname, statbuf, uid, gid) != OE_OK)
     {
         ret = -EINVAL;
         goto done;
@@ -1361,12 +1372,15 @@ static long _utimensat(
     int dirfd,
     const char* pathname,
     const struct timespec times[2],
-    int flags)
+    int flags,
+    uid_t uid,
+    gid_t gid)
 {
     long ret = 0;
     long retval;
 
-    if (myst_utimensat_ocall(&retval, dirfd, pathname, times, flags) != OE_OK)
+    if (myst_utimensat_ocall(
+            &retval, dirfd, pathname, times, flags, uid, gid) != OE_OK)
     {
         ret = -EINVAL;
         goto done;
@@ -1510,11 +1524,12 @@ long myst_handle_tcall(long n, long params[6])
 #ifdef MYST_ENABLE_HOSTFS
         case SYS_open:
         {
-            return _open((const char*)a, (int)b, (mode_t)c);
+            return _open((const char*)a, (int)b, (mode_t)c, (uid_t)d, (gid_t)e);
         }
         case SYS_stat:
         {
-            return _stat((const char*)a, (struct myst_stat*)b);
+            return _stat(
+                (const char*)a, (struct myst_stat*)b, (uid_t)c, (gid_t)d);
         }
         case SYS_lstat:
         {
@@ -1594,7 +1609,12 @@ long myst_handle_tcall(long n, long params[6])
         case SYS_utimensat:
         {
             return _utimensat(
-                (int)a, (const char*)b, (const struct timespec*)c, (int)d);
+                (int)a,
+                (const char*)b,
+                (const struct timespec*)c,
+                (int)d,
+                (uid_t)e,
+                (gid_t)f);
         }
 #endif
         default:

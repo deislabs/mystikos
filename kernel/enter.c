@@ -18,6 +18,7 @@
 #include <myst/fsgs.h>
 #include <myst/hex.h>
 #include <myst/hostfs.h>
+#include <myst/id.h>
 #include <myst/initfini.h>
 #include <myst/kernel.h>
 #include <myst/mmanutils.h>
@@ -37,6 +38,7 @@
 #include <myst/times.h>
 #include <myst/trace.h>
 #include <myst/ttydev.h>
+#include <myst/uid_gid.h>
 
 #define WANT_TLS_CREDENTIAL "MYST_WANT_TLS_CREDENTIAL"
 
@@ -394,7 +396,10 @@ static int _teardown_tmpfs(void)
 }
 #endif
 
-static int _create_main_thread(uint64_t event, myst_thread_t** thread_out)
+static int _create_main_thread(
+    uint64_t event,
+    const char* cwd,
+    myst_thread_t** thread_out)
 {
     int ret = 0;
     myst_thread_t* thread = NULL;
@@ -417,9 +422,25 @@ static int _create_main_thread(uint64_t event, myst_thread_t** thread_out)
     thread->tid = pid;
     thread->event = event;
     thread->target_td = myst_get_fsbase();
+    strcpy(thread->name, "main");
+
+    thread->uid = MYST_DEFAULT_UID;
+    thread->euid = MYST_DEFAULT_UID;
+    thread->savgid = MYST_DEFAULT_UID;
+    thread->fsgid = MYST_DEFAULT_UID;
+    thread->gid = MYST_DEFAULT_GID;
+    thread->egid = MYST_DEFAULT_GID;
+    thread->savgid = MYST_DEFAULT_GID;
+    thread->fsgid = MYST_DEFAULT_GID;
+
     thread->main.thread_group_lock = MYST_SPINLOCK_INITIALIZER;
     thread->thread_lock = &thread->main.thread_group_lock;
-    strcpy(thread->name, "main");
+    thread->main.umask = MYST_DEFAULT_UMASK;
+
+    thread->main.cwd_lock = MYST_SPINLOCK_INITIALIZER;
+    thread->main.cwd = strdup(cwd);
+    if (thread->main.cwd == NULL)
+        ERAISE(-ENOMEM);
 
     // Initial process list is just us. All new processes will be inserted in
     // the list. Dont need to set these as they are already NULL, but being here
@@ -464,7 +485,10 @@ static int _get_fstype(myst_kernel_args_t* args, myst_fstype_t* fstype)
     if (args->rootfs)
     {
         struct stat buf;
-        long params[6] = {(long)args->rootfs, (long)&buf};
+        long params[6] = {(long)args->rootfs,
+                          (long)&buf,
+                          (long)myst_enc_uid_to_host(myst_syscall_geteuid()),
+                          (long)myst_enc_gid_to_host(myst_syscall_getegid())};
 
         ECHECK(myst_tcall(SYS_stat, params));
 
@@ -560,6 +584,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     myst_thread_t* thread = NULL;
     const char* want_tls_creds;
     myst_fstype_t fstype;
+    int tmp_ret;
 
     if (!args)
         myst_crash();
@@ -636,10 +661,21 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         ERAISE(-EINVAL);
     }
 
+    /* Create the main thread */
+    ECHECK(_create_main_thread(args->event, args->cwd, &thread));
+    __myst_main_thread = thread;
+
+    thread->main.umask = MYST_DEFAULT_UMASK;
+
+    myst_set_host_uid_gid_mapping(args->host_enc_id_mapping);
+
     /* determine the rootfs file system type (RAMFS, EXT2FS, OR HOSTFS) */
-    if (_get_fstype(args, &fstype) != 0)
+    if ((tmp_ret = _get_fstype(args, &fstype)) != 0)
     {
-        myst_eprintf("kernel: cannot resolve rootfs type: %s\n", args->rootfs);
+        myst_eprintf(
+            "kernel: cannot resolve rootfs type: %s, return: %d\n",
+            args->rootfs,
+            tmp_ret);
         ERAISE(-EINVAL);
     }
 
@@ -666,17 +702,6 @@ int myst_enter_kernel(myst_kernel_args_t* args)
             ERAISE(-EINVAL);
         }
     }
-
-    /* Create the main thread */
-    ECHECK(_create_main_thread(args->event, &thread));
-    __myst_main_thread = thread;
-
-    thread->main.cwd_lock = MYST_SPINLOCK_INITIALIZER;
-    thread->main.cwd = strdup(args->cwd);
-    if (thread->main.cwd == NULL)
-        ERAISE(-ENOMEM);
-
-    thread->main.umask = MYST_DEFAULT_UMASK;
 
     /* Setup virtual proc filesystem */
     procfs_setup();

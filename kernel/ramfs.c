@@ -82,6 +82,8 @@ struct inode
     myst_buf_t buf;        /* file or directory data */
     const void* data;      /* set by myst_ramfs_set_buf() */
     int (*vcallback)(myst_buf_t* buf);
+    uid_t uid; /* user ID who created */
+    gid_t gid; /* group ID who created */
 };
 
 #define ACCESS 1
@@ -224,6 +226,9 @@ static int _inode_new(
     inode->magic = INODE_MAGIC;
     inode->mode = mode;
     inode->nlink = 1;
+
+    inode->gid = myst_syscall_getegid();
+    inode->uid = myst_syscall_geteuid();
 
     /* The root directory is its own parent */
     if (!parent)
@@ -1300,8 +1305,8 @@ static int _stat(inode_t* inode, struct stat* statbuf)
     buf.st_ino = (ino_t)inode;
     buf.st_mode = inode->mode;
     buf.st_nlink = inode->nlink;
-    buf.st_uid = MYST_DEFAULT_UID;
-    buf.st_gid = MYST_DEFAULT_GID;
+    buf.st_uid = inode->uid;
+    buf.st_gid = inode->gid;
     buf.st_rdev = 0;
     buf.st_size = (off_t)size;
     buf.st_blksize = BLKSIZE;

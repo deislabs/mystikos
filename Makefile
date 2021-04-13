@@ -65,7 +65,7 @@ include $(TOP)/rules.mak
 
 distclean: clean
 	rm -rf $(TOP)/third_party/musl/crt/musl
-	rm -rf $(TOP)/build
+	sudo rm -rf $(TOP)/build
 
 ##==============================================================================
 ##

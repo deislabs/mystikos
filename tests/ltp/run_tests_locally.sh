@@ -9,15 +9,15 @@
 
 function run_tests() {
 
-rm *.output
+sudo rm *.output
 
 FILE=$1
 
 while read test; do
   echo "$test"
-  OUTPUT=$(2>&1 timeout 3 make one TEST=$test FS=$FS )
+  OUTPUT=$(2>&1 sudo timeout 3 make one TEST=$test FS=$FS )
   echo $OUTPUT >> temp_$FILE.output
-  HAS_UNHANDLED_SYSCALL=$(2>&1 timeout 3 make one TEST=$test FS=$FS | grep "unhandled")
+  HAS_UNHANDLED_SYSCALL=$(2>&1 sudo timeout 3 make one TEST=$test FS=$FS | grep "unhandled")
   if [ -z "$HAS_UNHANDLED_SYSCALL" ]
   then
     # No unhandled syscall

@@ -1,6 +1,8 @@
 #define _GNU_SOURCE
 #include <errno.h>
 #include <fcntl.h>
+#include <myst/assume.h>
+#include <myst/defs.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/statfs.h>
@@ -15,6 +17,54 @@
         long ret = (long)EXPR;           \
         return (ret < 0) ? -errno : ret; \
     } while (0)
+
+#define SAVE_CALL_RESTORE_IDENTITY_RETURN(uid, gid, call)                     \
+    int ret;                                                                  \
+    int saved_errno;                                                          \
+    uid_t existing_uid, existing_euid, existing_savuid;                       \
+    gid_t existing_gid, existing_egid, existing_savgid;                       \
+                                                                              \
+    ret = syscall(                                                            \
+        SYS_getresuid, &existing_uid, &existing_euid, &existing_savuid);      \
+    if (ret != 0)                                                             \
+        return ret;                                                           \
+                                                                              \
+    ret = syscall(                                                            \
+        SYS_getresgid, &existing_gid, &existing_egid, &existing_savgid);      \
+    if (ret != 0)                                                             \
+        return ret;                                                           \
+                                                                              \
+    /* bypass the CRT wrapper as we only want to set this threads ID */       \
+    ret = syscall(SYS_setresgid, -1, gid, -1);                                \
+    if (ret != 0)                                                             \
+        return ret;                                                           \
+                                                                              \
+    ret = syscall(SYS_setresuid, -1, uid, -1);                                \
+    if (ret != 0)                                                             \
+    {                                                                         \
+        myst_assume(                                                          \
+            syscall(                                                          \
+                SYS_setresgid,                                                \
+                existing_gid,                                                 \
+                existing_egid,                                                \
+                existing_savgid) == 0);                                       \
+        return ret;                                                           \
+    }                                                                         \
+                                                                              \
+    ret = call;                                                               \
+                                                                              \
+    saved_errno = errno;                                                      \
+                                                                              \
+    myst_assume(                                                              \
+        syscall(                                                              \
+            SYS_setresgid, existing_gid, existing_egid, existing_savgid) ==   \
+        0);                                                                   \
+    myst_assume(                                                              \
+        syscall(SYS_setresuid, existing_uid, existing_euid, existing_euid) == \
+        0);                                                                   \
+                                                                              \
+    errno = saved_errno;                                                      \
+    return (ret < 0) ? -errno : ret
 
 long myst_read_ocall(int fd, void* buf, size_t count)
 {
@@ -247,14 +297,24 @@ long myst_ioctl_ocall(
     RETURN(ioctl(fd, request, argp));
 }
 
-long myst_open_ocall(const char* pathname, int flags, mode_t mode)
+long myst_open_ocall(
+    const char* pathname,
+    int flags,
+    mode_t mode,
+    uid_t uid,
+    gid_t gid)
 {
-    RETURN(open(pathname, flags, mode));
+    SAVE_CALL_RESTORE_IDENTITY_RETURN(uid, gid, open(pathname, flags, mode));
 }
 
-long myst_stat_ocall(const char* pathname, struct myst_stat* statbuf)
+long myst_stat_ocall(
+    const char* pathname,
+    struct myst_stat* statbuf,
+    uid_t uid,
+    gid_t gid)
 {
-    RETURN(stat(pathname, (struct stat*)statbuf));
+    SAVE_CALL_RESTORE_IDENTITY_RETURN(
+        uid, gid, stat(pathname, (struct stat*)statbuf));
 }
 
 long myst_lstat_ocall(const char* pathname, struct myst_stat* statbuf)
@@ -354,8 +414,11 @@ long myst_utimensat_ocall(
     int dirfd,
     const char* pathname,
     const struct timespec times[2],
-    int flags)
+    int flags,
+    uid_t uid,
+    gid_t gid)
 {
     /* bypass the glibc wrapper (it raises EINVAL when pathname is null */
-    RETURN(syscall(SYS_utimensat, dirfd, pathname, times, flags));
+    SAVE_CALL_RESTORE_IDENTITY_RETURN(
+        uid, gid, syscall(SYS_utimensat, dirfd, pathname, times, flags));
 }

@@ -435,6 +435,7 @@ static long _enter(void* arg_)
             (int)env.size,
             env.data,
             cwd,
+            options->host_enc_id_mapping,
             hostname,
             regions_end,
             enclave_base,   /* image_data */

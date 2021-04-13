@@ -9,6 +9,14 @@
 #include <myst/tcall.h>
 #include <myst/types.h>
 
+typedef struct _myst_host_enc_id_mapping
+{
+    uid_t host_uid;
+    gid_t host_gid;
+    uid_t enc_uid;
+    gid_t enc_gid;
+} myst_host_enc_id_mapping;
+
 typedef struct myst_kernel_args
 {
     /* The image that contains the kernel and crt etc. */
@@ -50,6 +58,14 @@ typedef struct myst_kernel_args
     /* current working directory for app */
     char cwd_buffer[PATH_MAX];
     const char* cwd;
+
+    /* enclave to host uid/gid identity mapping when calling out of the enclave
+       to the host. This is only done for APIs that implement identity
+       propagation. Currently we only support a single mapping which would
+       typically only map from the enclave identity (root) to whatever identity
+       of the host application.
+      */
+    myst_host_enc_id_mapping host_enc_id_mapping;
 
     /* configure hostname in kernel */
     char hostname_buffer[1024];

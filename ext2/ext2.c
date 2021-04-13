@@ -16,6 +16,8 @@
 #include <myst/paths.h>
 #include <myst/round.h>
 #include <myst/strings.h>
+#include <myst/syscall.h>
+#include <myst/thread.h>
 #include "ext2common.h"
 
 #define EXT2_S_MAGIC 0xEF53
@@ -2365,6 +2367,8 @@ static int _create_inode(
     uint32_t* ino)
 {
     int ret = 0;
+    uid_t euid;
+    gid_t egid;
 
     /* Check parameters */
     if (!_ext2_valid(ext2))
@@ -2372,6 +2376,9 @@ static int _create_inode(
 
     if (!inode || !ino)
         ERAISE(-EINVAL);
+
+    euid = myst_syscall_geteuid();
+    egid = myst_syscall_getegid();
 
     /* Initialize the inode */
     {
@@ -2383,8 +2390,8 @@ static int _create_inode(
         inode->i_mode = mode;
 
         /* Set the uid and gid to root */
-        inode->i_uid = 0;
-        inode->i_gid = 0;
+        inode->i_uid = euid;
+        inode->i_gid = egid;
 
         /* Set the size of this file */
         _inode_set_size(inode, size);
