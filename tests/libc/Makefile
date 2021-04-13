@@ -1,5 +1,3 @@
-.NOTPARALLEL:
-
 TOP = $(abspath ../..)
 include $(TOP)/defs.mak
 
@@ -9,7 +7,8 @@ ifdef STRACE
 OPTS = --strace
 endif
 
-OPTS += --memory-size=256m
+OPTS += --memory-size=8m
+OPTS += --max-threads=16
 
 APPDIR=$(CURDIR)/appdir
 
@@ -57,8 +56,38 @@ one:
 	$(RUNTEST) $(MYST_EXEC) rootfs $(OPTS) $(TEST)
 endif
 
-tests: all
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run $(TEST_FILE)
+tests:
+	$(MAKE) -j __tests
+
+__tests: tests_01 tests_02 tests_03 tests_04 tests_05 tests_06
+
+run=$(foreach i,$1, ( $(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) $(i) || /bin/false ) ; $(NL) )
+
+tests_01:
+	$(call run,$(shell cat $(TEST_FILE).01))
+
+tests_02:
+	$(call run,$(shell cat $(TEST_FILE).02))
+
+tests_03:
+	$(call run,$(shell cat $(TEST_FILE).03))
+
+tests_04:
+	$(call run,$(shell cat $(TEST_FILE).04))
+
+tests_05:
+	$(call run,$(shell cat $(TEST_FILE).05))
+
+tests_06:
+	$(call run,$(shell cat $(TEST_FILE).06))
+
+OLD_OPTS =
+
+old-tests: all
+	$(RUNTEST) $(MYST_EXEC) $(OLD_OPTS) $(ROOTFS) /bin/run $(TEST_FILE)
 
 clean:
-	rm -rf $(APPDIR) $(ROOTFS)
+	rm -rf $(APPDIR) $(ROOTFS) $(TEST_FILE).0*
+
+split:
+	split --lines=50 --numeric-suffix=1 $(TEST_FILE) $(TEST_FILE).

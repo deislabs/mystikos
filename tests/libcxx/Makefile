@@ -9,7 +9,6 @@ APPDIR=$(CURDIR)/appdir
 APPBUILDER=$(TOP)/scripts/appbuilder
 
 ROOTFS=$(CURDIR)/rootfs
-ROOTHASH=$(SUBOBJDIR)/roothash
 
 LIBCXX_TESTS_DIR=llvm-project/libcxx/test/
 
@@ -33,7 +32,9 @@ all:
 	$(MAKE) $(APPDIR)
 	$(MAKE) $(APPDIR)/bin/run
 	$(MAKE) $(ROOTFS)
-	$(MAKE) $(ROOTHASH)
+
+OPTS += --memory-size=32m
+OPTS += --max-threads=32
 
 one:
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) $(TEST)
@@ -57,36 +58,60 @@ $(APPDIR):
 
 $(ROOTFS): run.c
 	sudo $(MYST) mkext2 $(APPDIR) $(ROOTFS)
-	# run with posix spawn
+	truncate --size=-4096 $(ROOTFS)
 
-$(ROOTHASH): run.c
-	mkdir -p $(SUBOBJDIR)
-	$(MYST) fssig --roothash $(ROOTFS) > $(ROOTHASH)
-
-OPTS += --roothash=$(ROOTHASH)
-
-OPTS += --memory-size=1024m
+TEST_FILE = builttests_exe.passed
 
 tests:
-	$(RUNTEST) $(MAKE) __tests
+	$(MAKE) -j __tests
 
-__tests: test1 test2 test3
+__tests: tests_01 tests_02 tests_03 tests_04 tests_05 tests_06
+
+run=$(foreach i,$1, $(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) $(i); $(NL) )
+
+tests_01:
+	$(call run,$(shell cat $(TEST_FILE).01))
+
+tests_02:
+	$(call run,$(shell cat $(TEST_FILE).02))
+
+tests_03:
+	$(call run,$(shell cat $(TEST_FILE).03))
+
+tests_04:
+	$(call run,$(shell cat $(TEST_FILE).04))
+
+tests_05:
+	$(call run,$(shell cat $(TEST_FILE).05))
+
+tests_06:
+	$(call run,$(shell cat $(TEST_FILE).06))
+
+OLD_OPTS += --memory-size=1024m
+
+old-tests:
+	$(RUNTEST) $(MAKE) __old_tests
+
+__old_tests: test1 test2 test3
 
 test1:
-	$(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run $(STATUS) $(TEST_FILE1)
+	$(MYST_EXEC) $(OLD_OPTS) $(ROOTFS) /bin/run $(STATUS) $(TEST_FILE1)
 
 test2:
 ifndef FAILED
-	$(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run $(STATUS) $(TEST_FILE2)
+	$(MYST_EXEC) $(OLD_OPTS) $(ROOTFS) /bin/run $(STATUS) $(TEST_FILE2)
 endif
 
 test3:
 ifndef FAILED
-	$(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run $(STATUS) $(TEST_FILE3)
+	$(MYST_EXEC) $(OLD_OPTS) $(ROOTFS) /bin/run $(STATUS) $(TEST_FILE3)
 endif
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst
 
 clean:
-	rm -rf $(APPDIR) $(ROOTFS) $(ROOTHASH)
+	rm -rf $(APPDIR) $(ROOTFS)
+
+split:
+	split --lines=320 --numeric-suffix=1 $(TEST_FILE) $(TEST_FILE).
