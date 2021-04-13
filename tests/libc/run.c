@@ -22,6 +22,7 @@ static void _run_tests(const char* test_file)
     }
     char line[256];
 
+    int i = 1;
     while (fgets(line, sizeof(line), file))
     {
         line[strlen(line) - 1] = '\0';
@@ -29,7 +30,7 @@ static void _run_tests(const char* test_file)
         pid_t pid;
         int wstatus;
 
-        printf("=== start test: %s\n", line);
+        printf("=== start test %d: %s\n", i++, line);
 
         /* skip lines that begin with '#' */
         if (line[0] == '#')
