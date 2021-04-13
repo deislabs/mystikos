@@ -141,7 +141,6 @@
 /app/insert_after_init.pass.cpp.exe
 /app/insert_after_range.pass.cpp.exe
 /app/insert_after_rv.pass.cpp.exe
-/app/insert_after_size_value.pass.cpp.exe
 /app/insert_allocator_requirements.pass.cpp.exe
 /app/insert_const_lvalue.pass.cpp.exe
 /app/insert_emplace_allocator_requirements.pass.cpp.exe
@@ -256,7 +255,6 @@
 /app/is_permutation.pass.cpp.exe
 /app/is_permutation_pred.pass.cpp.exe
 /app/is_placeholder.pass.cpp.exe
-/app/is_pod.pass.cpp.exe
 /app/is_pointer.pass.cpp.exe
 /app/is_polymorphic.pass.cpp.exe
 /app/is_reference.pass.cpp.exe
@@ -318,3 +316,5 @@
 /app/kill_dependency.pass.cpp.exe
 /app/knuth_b.pass.cpp.exe
 /app/launch.pass.cpp.exe
+/app/layout.pass.cpp.exe
+/app/left.pass.cpp.exe

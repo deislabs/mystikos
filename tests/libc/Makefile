@@ -7,7 +7,7 @@ ifdef STRACE
 OPTS = --strace
 endif
 
-OPTS += --memory-size=8m
+OPTS += --memory-size=4m
 OPTS += --max-threads=16
 
 APPDIR=$(CURDIR)/appdir

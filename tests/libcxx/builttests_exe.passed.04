@@ -1,5 +1,3 @@
-/app/layout.pass.cpp.exe
-/app/left.pass.cpp.exe
 /app/left_shift.pass.cpp.exe
 /app/left_shift_eq.pass.cpp.exe
 /app/length.pass.cpp.exe
@@ -318,3 +316,5 @@
 /app/or_valarray_value.pass.cpp.exe
 /app/or_value.pass.cpp.exe
 /app/or_value_valarray.pass.cpp.exe
+/app/ostream.pass.cpp.exe
+/app/ostream.version.pass.cpp.exe

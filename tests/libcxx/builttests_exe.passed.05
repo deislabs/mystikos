@@ -1,5 +1,3 @@
-/app/ostream.pass.cpp.exe
-/app/ostream.version.pass.cpp.exe
 /app/ostream_delim.pass.cpp.exe
 /app/ostream_joiner.cons.pass.cpp.exe
 /app/ostream_joiner.op.assign.pass.cpp.exe
@@ -263,7 +261,6 @@
 /app/set_exception.pass.cpp.exe
 /app/set_exception_at_thread_exit.pass.cpp.exe
 /app/set_intersection.pass.cpp.exe
-/app/set_intersection_comp.pass.cpp.exe
 /app/set_lvalue.pass.cpp.exe
 /app/set_lvalue_at_thread_exit.pass.cpp.exe
 /app/set_new_handler.pass.cpp.exe
@@ -318,3 +315,6 @@
 /app/short.pass.cpp.exe
 /app/showbase.pass.cpp.exe
 /app/showmanyc.pass.cpp.exe
+/app/showpoint.pass.cpp.exe
+/app/showpos.pass.cpp.exe
+/app/shrink_to_fit.pass.cpp.exe

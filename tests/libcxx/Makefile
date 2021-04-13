@@ -36,8 +36,10 @@ all:
 OPTS += --memory-size=32m
 OPTS += --max-threads=32
 
+OLD_OPTS += --memory-size=1024m
+
 one:
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) $(TEST)
+	$(RUNTEST) $(MYST_EXEC) $(OLD_OPTS) $(ROOTFS) $(TEST)
 
 llvm-project: 
 	git clone -b LibOS_v10.0.1 --single-branch https://github.com/salsal97/llvm-project.git
@@ -87,8 +89,6 @@ tests_05:
 tests_06:
 	$(call run,$(shell cat $(TEST_FILE).06))
 
-OLD_OPTS += --memory-size=1024m
-
 old-tests:
 	$(RUNTEST) $(MAKE) __old_tests
 
@@ -114,4 +114,5 @@ clean:
 	rm -rf $(APPDIR) $(ROOTFS)
 
 split:
+	rm -rf *.0[0-9]
 	split --lines=320 --numeric-suffix=1 $(TEST_FILE) $(TEST_FILE).
