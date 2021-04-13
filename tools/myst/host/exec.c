@@ -100,6 +100,8 @@ static void* _thread_func(void* arg)
             _sleep_msec(100);
             continue;
         }
+
+        break;
     }
 
     if (result != OE_OK)
