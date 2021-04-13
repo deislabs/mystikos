@@ -24,7 +24,11 @@ export TIMEOUT=120
 ##
 ##==============================================================================
 
-all: $(APPDIR) $(APPDIR)/target $(APPDIR)/bin/run $(ROOTFS)
+all:
+	$(MAKE) $(APPDIR)
+	$(MAKE) $(APPDIR)/target
+	$(MAKE) $(APPDIR)/bin/run
+	$(MAKE) $(ROOTFS)
 
 $(APPDIR):
 	rm -rf $(APPDIR)
