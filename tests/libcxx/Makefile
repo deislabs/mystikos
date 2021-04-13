@@ -23,7 +23,7 @@ else
   TEST_FILE2 = builttests_exe2.passed
   TEST_FILE3 = builttests_exe3.passed
   STATUS=PASSED
-  export TIMEOUT=10
+  export TIMEOUT=60
 endif
 
 all:
