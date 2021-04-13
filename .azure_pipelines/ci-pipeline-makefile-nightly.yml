@@ -16,7 +16,7 @@ jobs:
   # 15m basic/unit tests
   # 1-4h solution tests(based on which are enabled)
   timeoutInMinutes: 300
-  pool: '1804DC4CCagentpool'
+  pool: '1804DC4v2agentpool'
   workspace:
     clean: all
 
