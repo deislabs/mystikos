@@ -30,9 +30,7 @@ jobs:
     steps:
       # perform cleanup before starting pipeline
       - script: |
-          sudo rm -rf /tmp/myst* |
-          git ls-files -o |
-          rm -rf `git ls-files -o`
+          sudo rm -rf /tmp/myst*
         displayName: 'cleanup tmpfiles'
       # install minimum required package to run pipeline
       - script: |
