@@ -19,6 +19,7 @@
 #include <myst/eraise.h>
 #include <myst/file.h>
 #include <myst/getopt.h>
+#include <myst/paths.h>
 #include <myst/round.h>
 #include <myst/strings.h>
 #include <myst/tcall.h>
@@ -189,11 +190,12 @@ long myst_tcall_add_symbol_file(
     const void* file_data,
     size_t file_size,
     const void* text_data,
-    size_t text_size)
+    size_t text_size,
+    const char* enclave_rootfs_path)
 {
     long ret = 0;
     int fd = -1;
-    char tmp[] = "/tmp/mystXXXXXX";
+    char tmp[PATH_MAX];
     debug_image_t* di = NULL;
     void* data = NULL;
     bool notify = false;
@@ -221,13 +223,29 @@ long myst_tcall_add_symbol_file(
         }
 
         notify = true;
+
+        /* Create a file containing the data */
+        {
+            sprintf(tmp, "/tmp/mystXXXXXX");
+            if ((fd = mkstemp(tmp)) < 0)
+                goto done;
+        }
+    }
+    else
+    {
+        /* Create a file containing the data */
+        char dirname[PATH_MAX];
+        char imagename[PATH_MAX];
+        myst_split_path(
+            enclave_rootfs_path, dirname, PATH_MAX, imagename, PATH_MAX);
+        sprintf(tmp, "/tmp/%s", imagename);
+
+        if ((fd = creat(tmp, 0666)) < 0)
+            goto done;
     }
 
-    /* Create a file containing the data */
+    /* Write the contents of the image to file */
     {
-        if ((fd = mkstemp(tmp)) < 0)
-            goto done;
-
         ECHECK(myst_write_file_fd(fd, file_data, file_size));
 
         close(fd);
@@ -280,10 +298,11 @@ int myst_add_symbol_file_ocall(
     const void* file_data,
     size_t file_size,
     const void* text_data,
-    size_t text_size)
+    size_t text_size,
+    const char* enclave_rootfs_path)
 {
     return (int)myst_tcall_add_symbol_file(
-        file_data, file_size, text_data, text_size);
+        file_data, file_size, text_data, text_size, enclave_rootfs_path);
 
     return 0;
 }

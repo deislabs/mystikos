@@ -657,7 +657,8 @@ long myst_tcall_add_symbol_file(
     const void* file_data,
     size_t file_size,
     const void* text,
-    size_t text_size)
+    size_t text_size,
+    const char* enclave_rootfs_path)
 {
     long ret = 0;
     int retval;
@@ -666,7 +667,12 @@ long myst_tcall_add_symbol_file(
         ERAISE(-EINVAL);
 
     if (myst_add_symbol_file_ocall(
-            &retval, file_data, file_size, text, text_size) != OE_OK)
+            &retval,
+            file_data,
+            file_size,
+            text,
+            text_size,
+            enclave_rootfs_path) != OE_OK)
     {
         ERAISE(-EINVAL);
     }
