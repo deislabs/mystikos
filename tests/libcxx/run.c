@@ -22,6 +22,7 @@ static void _run_tests(const char* test_file, bool passed)
     }
     char line[256];
 
+    int i = 1;
     while (fgets(line, sizeof(line), file))
     {
         line[strlen(line) - 1] = '\0';
@@ -29,7 +30,7 @@ static void _run_tests(const char* test_file, bool passed)
         pid_t pid;
         int wstatus;
 
-        printf("=== start test: %s\n", line);
+        printf("=== start test %d: %s\n", i++, line);
 
         char* const args[] = {(char*)line, NULL};
         char* const envp[] = {"VALUE=1", NULL};
@@ -42,7 +43,9 @@ static void _run_tests(const char* test_file, bool passed)
             assert(pid >= 0);
 
             assert(waitpid(pid, &wstatus, WNOHANG) == 0);
+            printf("++++ after 1st waitpid ++++\n");
             assert(waitpid(pid, &wstatus, 0) == pid);
+            printf("++++ after 2nd waitpid ++++\n");
             assert(WIFEXITED(wstatus));
             assert(WEXITSTATUS(wstatus) == 0);
         }

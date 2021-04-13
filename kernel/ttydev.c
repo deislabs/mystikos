@@ -69,7 +69,6 @@ static ssize_t _td_read(
     size_t count)
 {
     ssize_t ret = 0;
-    ssize_t tret;
 
     if (!ttydev || !_valid_tty(tty))
         ERAISE(-EBADF);
@@ -80,9 +79,7 @@ static ssize_t _td_read(
     if (count == 0)
         goto done;
 
-    long params[6] = {(long)tty->fd, (long)buf, (long)count};
-    ERAISE((tret = myst_tcall(SYS_read, params)));
-    ret = tret;
+    ERAISE(myst_tcall_read_console(tty->fd, buf, count));
 
 done:
     return ret;
@@ -95,7 +92,6 @@ static ssize_t _td_write(
     size_t count)
 {
     ssize_t ret = 0;
-    ssize_t tret;
 
     if (!ttydev || !_valid_tty(tty))
         ERAISE(-EBADF);
@@ -106,9 +102,7 @@ static ssize_t _td_write(
     if (count == 0)
         goto done;
 
-    long params[6] = {(long)tty->fd, (long)buf, (long)count};
-    ERAISE((tret = myst_tcall(SYS_write, params)));
-    ret = tret;
+    ERAISE(myst_tcall_write_console(tty->fd, buf, count));
 
 done:
     return ret;
