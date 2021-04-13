@@ -68,13 +68,24 @@ static __thread int _thread_event;
 
 static void* _thread_func(void* arg)
 {
-    long r = -1;
+    oe_result_t result;
+    long retval = -100;
     uint64_t cookie = (uint64_t)arg;
     uint64_t event = (uint64_t)&_thread_event;
 
-    if (myst_run_thread_ecall(_enclave, &r, cookie, event) != OE_OK || r != 0)
+    result = myst_run_thread_ecall(_enclave, &retval, cookie, event);
+
+    if (result != OE_OK)
     {
-        fprintf(stderr, "myst_run_thread_ecall(): failed: retval=%ld\n", r);
+        fprintf(stderr, "myst_run_thread_ecall(): result=%u\n", result);
+        fflush(stdout);
+        abort();
+    }
+
+    if (retval != 0)
+    {
+        fprintf(
+            stderr, "myst_run_thread_ecall(): failed: retval=%ld\n", retval);
         fflush(stdout);
         abort();
     }
