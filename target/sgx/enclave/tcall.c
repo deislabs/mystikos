@@ -130,12 +130,14 @@ long myst_tcall_add_symbol_file(
     const void* file_data,
     size_t file_size,
     const void* text,
-    size_t text_size)
+    size_t text_size,
+    const char* enclave_rootfs_path)
 {
     (void)file_data;
     (void)file_size;
     (void)text;
     (void)text_size;
+    (void)enclave_rootfs_path;
     assert("sgx: unimplemented: implement in enclave" == NULL);
     return -ENOTSUP;
 }
@@ -421,8 +423,9 @@ long myst_tcall(long n, long params[6])
             size_t file_size = (size_t)x2;
             const void* text = (const void*)x3;
             size_t text_size = (size_t)x4;
+            const char* enclave_rootfs_path = (const char*)x5;
             return myst_tcall_add_symbol_file(
-                file_data, file_size, text, text_size);
+                file_data, file_size, text, text_size, enclave_rootfs_path);
         }
         case MYST_TCALL_LOAD_SYMBOLS:
         {

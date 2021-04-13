@@ -94,7 +94,8 @@ long myst_tcall_add_symbol_file(
     const void* file_data,
     size_t file_size,
     const void* text_data,
-    size_t text_size);
+    size_t text_size,
+    const char* enclave_rootfs_path);
 
 long myst_tcall_load_symbols(void);
 

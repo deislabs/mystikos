@@ -5935,6 +5935,7 @@ long myst_syscall_add_symbol_file(
     params[1] = (long)file_size;
     params[2] = (long)text;
     params[3] = (long)text_size;
+    params[4] = (long)path;
 
     ECHECK(myst_tcall(MYST_TCALL_ADD_SYMBOL_FILE, params));
 

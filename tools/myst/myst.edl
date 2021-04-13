@@ -101,7 +101,8 @@ enclave
             [in, size=file_size] const void* file_data,
             size_t file_size,
             [user_check] const void* text_data,
-            size_t text_size);
+            size_t text_size,
+            [in, string] const char* enclave_rootfs_path);
 
         int myst_load_symbols_ocall();
 
