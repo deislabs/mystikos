@@ -66,6 +66,23 @@ static oe_enclave_t* _enclave;
 /* the address of this is eventually passed to futex (uaddr argument) */
 static __thread int _thread_event;
 
+static __inline__ void _sleep_msec(uint64_t milliseconds)
+{
+    struct timespec ts;
+    const struct timespec* req = &ts;
+    struct timespec rem = {0, 0};
+    static const uint64_t _SEC_TO_MSEC = 1000UL;
+    static const uint64_t _MSEC_TO_NSEC = 1000000UL;
+
+    ts.tv_sec = (time_t)(milliseconds / _SEC_TO_MSEC);
+    ts.tv_nsec = (long)((milliseconds % _SEC_TO_MSEC) * _MSEC_TO_NSEC);
+
+    while (nanosleep(req, &rem) != 0 && errno == EINTR)
+    {
+        req = &rem;
+    }
+}
+
 static void* _thread_func(void* arg)
 {
     oe_result_t result;
@@ -73,7 +90,17 @@ static void* _thread_func(void* arg)
     uint64_t cookie = (uint64_t)arg;
     uint64_t event = (uint64_t)&_thread_event;
 
-    result = myst_run_thread_ecall(_enclave, &retval, cookie, event);
+    for (size_t i = 0; i < 10; i++)
+    {
+        result = myst_run_thread_ecall(_enclave, &retval, cookie, event);
+
+        if (result == OE_OUT_OF_THREADS)
+        {
+            fprintf(stderr, "retry myst_run_thread_ecall()\n");
+            _sleep_msec(100);
+            continue;
+        }
+    }
 
     if (result != OE_OK)
     {
