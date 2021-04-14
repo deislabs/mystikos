@@ -41,7 +41,6 @@ static void _run_tests(const char* test_file, bool passed)
             assert(r == 0);
             assert(pid >= 0);
 
-            assert(waitpid(pid, &wstatus, WNOHANG) == 0);
             assert(waitpid(pid, &wstatus, 0) == pid);
             assert(WIFEXITED(wstatus));
             assert(WEXITSTATUS(wstatus) == 0);
