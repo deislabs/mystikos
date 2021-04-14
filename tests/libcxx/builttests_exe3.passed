@@ -585,7 +585,6 @@
 /app/void_pointer.pass.cpp.exe
 /app/void_t.pass.cpp.exe
 /app/wait.pass.cpp.exe
-/app/wait_for.pass.cpp.exe
 /app/wait_for_pred.pass.cpp.exe
 /app/wait_pred.pass.cpp.exe
 /app/wait_until.pass.cpp.exe
