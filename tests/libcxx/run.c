@@ -42,8 +42,8 @@ static void _run_tests(const char* test_file, bool passed)
             assert(r == 0);
             assert(pid >= 0);
 
-            assert(waitpid(pid, &wstatus, WNOHANG) == 0);
-            printf("++++ after 1st waitpid ++++\n");
+            //assert(waitpid(pid, &wstatus, WNOHANG) == 0);
+            //printf("++++ after 1st waitpid ++++\n");
             assert(waitpid(pid, &wstatus, 0) == pid);
             printf("++++ after 2nd waitpid ++++\n");
             assert(WIFEXITED(wstatus));
