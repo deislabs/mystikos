@@ -1,0 +1,17 @@
+{
+    "version": "0.1",
+
+    "Debug": 1,
+    "StackMemSize": "400k",
+    "NumUserThreads": 16,
+    "ProductID": 1,
+    "SecurityVersion": 1,
+
+    "MemorySize": "1g",
+    "ApplicationPath": "/app/AzureIdentityStorageExample",
+    "ApplicationParameters": [],
+    "HostApplicationParameters": false,
+    "EnvironmentVariables": [],
+    "HostEnvironmentVariables": [ "AZURE_CLIENT_ID", "AZURE_TENANT_ID", "AZURE_CLIENT_SECRET", "AZURE_SUBSCRIPTION_ID" ],
+    "CurrentWorkingDirectory": "/app"
+}
