@@ -707,9 +707,6 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     /* Setup virtual proc filesystem */
     procfs_setup();
 
-    /* Setup devfs */
-    devfs_setup();
-
     if (args->hostname)
         ECHECK(
             myst_syscall_sethostname(args->hostname, strlen(args->hostname)));
@@ -729,6 +726,9 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         myst_eprintf("failed to unpack root file system\n");
         ERAISE(-EINVAL);
     }
+
+    /* Setup devfs */
+    devfs_setup();
 
     /* Create top-level proc entries */
     create_proc_root_entries();
