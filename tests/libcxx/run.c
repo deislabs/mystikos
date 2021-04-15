@@ -21,7 +21,7 @@ static void _run_tests(const char* test_file, bool passed)
         fprintf(stderr, "File %s not found \n", test_file);
     }
     char line[256];
-
+    int i = 1;
     while (fgets(line, sizeof(line), file))
     {
         line[strlen(line) - 1] = '\0';
@@ -29,7 +29,7 @@ static void _run_tests(const char* test_file, bool passed)
         pid_t pid;
         int wstatus;
 
-        printf("=== start test: %s\n", line);
+        printf("=== start test %d: %s\n", i++, line);
 
         char* const args[] = {(char*)line, NULL};
         char* const envp[] = {"VALUE=1", NULL};
@@ -44,7 +44,11 @@ static void _run_tests(const char* test_file, bool passed)
             assert(waitpid(pid, &wstatus, WNOHANG) == 0);
             assert(waitpid(pid, &wstatus, 0) == pid);
             assert(WIFEXITED(wstatus));
-            assert(WEXITSTATUS(wstatus) == 0);
+            if ((r = WEXITSTATUS(wstatus)) != 0)
+            {
+                printf("!!! WEXITSTATUS(wstatus) = %d\n", r);
+                assert(0);
+            }
         }
         printf("=== passed test (%s)\n", line);
     }
