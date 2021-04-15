@@ -72,10 +72,6 @@ static bool _devfs_valid(const devfs_t* devfs)
 */
 
 #define INODE_MAGIC 0xcdfbdd61258a4c9d
-typedef union {
-    int (*open_vcallback)(myst_buf_t* buf);
-    int (*read_vcallback)(void* buf, size_t count);
-} vcallback_t;
 
 struct inode
 {
@@ -88,8 +84,9 @@ struct inode
     size_t nopens;         /* number of times file is currently opened */
     myst_buf_t buf;        /* file or directory data */
     const void* data;      /* set by myst_devfs_set_buf() */
-    myst_vfile_populate_time_t ptime;
-    vcallback_t vcallback;
+    int (*open_vcallback)(myst_buf_t* buf);
+    int (*read_vcallback)(void* buf, size_t count);
+    int (*write_vcallback)(const void* buf, size_t count);
 };
 
 #define ACCESS 1
@@ -400,8 +397,8 @@ done:
 
 static const char* _inode_target(inode_t* inode)
 {
-    if (inode->vcallback.open_vcallback)
-        inode->vcallback.open_vcallback(&inode->buf);
+    if (inode->open_vcallback)
+        inode->open_vcallback(&inode->buf);
     return (const char*)inode->buf.data;
 }
 
@@ -435,14 +432,14 @@ static bool _file_valid(const myst_file_t* file)
 
 static void* _file_data(const myst_file_t* file)
 {
-    return (file->inode->vcallback.open_vcallback) ? file->vbuf.data
-                                                   : file->inode->buf.data;
+    return (file->inode->open_vcallback) ? file->vbuf.data
+                                         : file->inode->buf.data;
 }
 
 static size_t _file_size(const myst_file_t* file)
 {
-    return (file->inode->vcallback.open_vcallback) ? file->vbuf.size
-                                                   : file->inode->buf.size;
+    return (file->inode->open_vcallback) ? file->vbuf.size
+                                         : file->inode->buf.size;
 }
 
 static void* _file_current(myst_file_t* file)
@@ -821,8 +818,8 @@ static int _fs_open(
         if ((flags & O_APPEND))
             file->offset = inode->buf.size;
 
-        if (inode->ptime == AT_OPEN)
-            ECHECK((*inode->vcallback.open_vcallback)(&file->vbuf));
+        if (inode->open_vcallback)
+            ECHECK((*inode->open_vcallback)(&file->vbuf));
     }
     else if (errnum == -ENOENT)
     {
@@ -956,9 +953,9 @@ static ssize_t _fs_read(
     if (!count)
         goto done;
 
-    if (file->inode->ptime == AT_READ)
+    if (file->inode->read_vcallback)
     {
-        ret = (*file->inode->vcallback.read_vcallback)(buf, count);
+        ret = (*file->inode->read_vcallback)(buf, count);
         goto done;
     }
 
@@ -1015,6 +1012,12 @@ static ssize_t _fs_write(
     if (file->access == O_RDONLY)
         ERAISE(-EBADF);
 
+    if (file->inode->write_vcallback)
+    {
+        ret = (*file->inode->write_vcallback)(buf, count);
+        goto done;
+    }
+
     /* Verify that the offset is in bounds */
     if (file->offset > _file_size(file))
         ERAISE(-EINVAL);
@@ -1068,15 +1071,15 @@ static ssize_t _fs_pread(
     if (!count)
         goto done;
 
+    if (file->inode->read_vcallback)
+    {
+        ret = (*file->inode->read_vcallback)(buf, count);
+        goto done;
+    }
+
     /* Verify that the offset is in bounds */
     if ((size_t)offset > _file_size(file))
         ERAISE(-EINVAL);
-
-    if (file->inode->ptime == AT_READ)
-    {
-        ret = (*file->inode->vcallback.read_vcallback)(buf, count);
-        goto done;
-    }
 
     /* Read count bytes from the file or directory */
     {
@@ -1125,6 +1128,12 @@ static ssize_t _fs_pwrite(
     /* Writing zero bytes is okay */
     if (!count)
         goto done;
+
+    if (file->inode->write_vcallback)
+    {
+        ret = (*file->inode->write_vcallback)(buf, count);
+        goto done;
+    }
 
     /* Verify that the offset is in bounds */
     if ((size_t)offset > _file_size(file))
@@ -1230,7 +1239,7 @@ static int _fs_close(myst_fs_t* fs, myst_file_t* file)
     assert(file->inode->nopens > 0);
 
     /* release the virtual file data on close */
-    if (file->inode->ptime == AT_OPEN)
+    if (file->inode->open_vcallback)
         myst_buf_release(&file->vbuf);
 
     file->inode->nopens--;
@@ -1306,9 +1315,9 @@ static int _stat(inode_t* inode, struct stat* statbuf)
     if (!_inode_valid(inode) || !statbuf)
         ERAISE(-EINVAL);
 
-    if (inode->ptime == AT_OPEN)
+    if (inode->open_vcallback)
     {
-        ECHECK((*inode->vcallback.open_vcallback)(&vbuf));
+        ECHECK((*inode->open_vcallback)(&vbuf));
         size = vbuf.size;
         ECHECK(myst_round_up_signed(size, BLKSIZE, &rounded));
     }
@@ -1833,9 +1842,9 @@ static ssize_t _fs_readlink(
     if (!S_ISLNK(inode->mode))
         ERAISE(-EINVAL);
 
-    if (inode->ptime == AT_OPEN)
+    if (inode->open_vcallback)
     {
-        inode->vcallback.open_vcallback(&inode->buf);
+        inode->open_vcallback(&inode->buf);
     }
     else
     {
@@ -2294,8 +2303,9 @@ int myst_devfs_create_virtual_file(
     myst_fs_t* fs,
     const char* pathname,
     mode_t mode,
-    vcallback_t vcallback,
-    myst_vfile_populate_time_t ptime)
+    int (*open_vcallback)(myst_buf_t* buf),
+    int (*read_vcallback)(void* buf, size_t count),
+    int (*write_vcallback)(const void* buf, size_t count))
 {
     int ret = 0;
     devfs_t* devfs = (devfs_t*)fs;
@@ -2303,13 +2313,13 @@ int myst_devfs_create_virtual_file(
     if (!_devfs_valid(devfs))
         ERAISE(-EINVAL);
 
-    if (!pathname || !mode || !ptime)
+    if (!pathname || !mode)
         ERAISE(-EINVAL);
 
-    if (ptime == AT_OPEN && !vcallback.open_vcallback)
-        ERAISE(-EINVAL);
-
-    if (ptime == AT_READ && !vcallback.read_vcallback)
+    /* Check if either the virtual file provides a open time callback
+        or provides both read and write callbacks */
+    if (!((!open_vcallback && read_vcallback && write_vcallback) ||
+          (open_vcallback && !read_vcallback && !write_vcallback)))
         ERAISE(-EINVAL);
 
     /* create an empty file */
@@ -2331,16 +2341,14 @@ int myst_devfs_create_virtual_file(
         ERAISE(-EINVAL);
     }
 
-    /* inject vcallback into the inode */
+    /* inject vcallbacks into the inode */
     {
         inode_t* inode = NULL;
         ECHECK(
             _path_to_inode(devfs, pathname, false, NULL, &inode, NULL, NULL));
-        if (ptime == AT_OPEN)
-            inode->vcallback.open_vcallback = vcallback.open_vcallback;
-        else if (ptime == AT_READ)
-            inode->vcallback.read_vcallback = vcallback.read_vcallback;
-        inode->ptime = ptime;
+        inode->open_vcallback = open_vcallback;
+        inode->read_vcallback = read_vcallback;
+        inode->write_vcallback = write_vcallback;
     }
 
     ret = 0;
@@ -2353,7 +2361,41 @@ done:
 /*************************************
  * callbacks
  * ***********************************/
-static int _urandom_vcallback(void* buf, size_t count)
+static int _ignore_read_cb(void* buf, size_t count)
+{
+    (void)buf;
+    (void)count;
+
+    return 0; // EOF
+}
+
+static int _ignore_write_cb(const void* buf, size_t count)
+{
+    (void)buf;
+    (void)count;
+
+    return count;
+}
+
+static int _zero_read_cb(void* buf, size_t count)
+{
+    ssize_t ret = 0;
+
+    if (!buf && count)
+        ERAISE(-EFAULT);
+
+    if (!buf && !count)
+        goto done;
+
+    memset(buf, 0, count);
+
+    ret = count;
+
+done:
+    return ret;
+}
+
+static int _urandom_read_cb(void* buf, size_t count)
 {
     ssize_t ret = 0;
 
@@ -2371,6 +2413,10 @@ static int _urandom_vcallback(void* buf, size_t count)
 done:
     return ret;
 }
+
+/*****************************
+ * devfs setup and teardown
+ * ***************************/
 
 static myst_fs_t* _devfs;
 
@@ -2397,13 +2443,14 @@ int devfs_setup()
     }
 
     /* Create standard /dev files */
-    {
-        vcallback_t vcb;
-        vcb.read_vcallback = _urandom_vcallback;
-        myst_devfs_create_virtual_file(
-            _devfs, "/urandom", S_IFREG, vcb, AT_READ);
-    }
+    myst_devfs_create_virtual_file(
+        _devfs, "/urandom", S_IFREG, NULL, _urandom_read_cb, _ignore_write_cb);
 
+    myst_devfs_create_virtual_file(
+        _devfs, "/null", S_IFREG, NULL, _ignore_read_cb, _ignore_write_cb);
+
+    myst_devfs_create_virtual_file(
+        _devfs, "/zero", S_IFREG, NULL, _zero_read_cb, _ignore_write_cb);
 done:
     return ret;
 }
