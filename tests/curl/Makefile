@@ -21,7 +21,7 @@ tests:
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /curl https://www.microsoft.com 2>&1 > /dev/null
 
 gdb: all
-	$(MYST_GDB) --args $(MYST_EXEC) $(EXEC) $(OPTS) rootfs /curl https://www.microsoft.com
+	$(MYST_GDB) --args $(MYST_EXEC) $(OPTS) rootfs /curl https://www.microsoft.com
 
 appdir:
 	$(APPBUILDER) Dockerfile
