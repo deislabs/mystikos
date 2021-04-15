@@ -20,14 +20,6 @@ ifeq ($(MYST_ENABLE_HOSTFS),1)
 DEFINES += -DMYST_ENABLE_HOSTFS
 endif
 
-ifeq ($(MYST_DEBUG),1)
-DEFINES += -DMYST_DEBUG
-endif
-
-ifeq ($(MYST_RELEASE),1)
-DEFINES += -DMYST_RELEASE
-endif
-
 WARNINGS =
 WARNINGS += -Wall
 WARNINGS += -Werror
