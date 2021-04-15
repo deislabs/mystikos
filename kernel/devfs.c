@@ -2326,8 +2326,8 @@ int myst_devfs_create_virtual_file(
     if (S_ISREG(mode))
     {
         myst_file_t* file = NULL;
-        ECHECK(fs->fs_open(
-            fs, pathname, O_RDONLY | O_CREAT, S_IFREG | S_IRUSR, NULL, &file));
+        ECHECK(
+            fs->fs_open(fs, pathname, O_RDONLY | O_CREAT, mode, NULL, &file));
         ECHECK(fs->fs_close(fs, file));
     }
     else if (S_ISLNK(mode))
@@ -2444,13 +2444,30 @@ int devfs_setup()
 
     /* Create standard /dev files */
     myst_devfs_create_virtual_file(
-        _devfs, "/urandom", S_IFREG, NULL, _urandom_read_cb, _ignore_write_cb);
+        _devfs,
+        "/urandom",
+        S_IFREG | S_IRUSR | S_IWUSR,
+        NULL,
+        _urandom_read_cb,
+        _ignore_write_cb);
 
     myst_devfs_create_virtual_file(
-        _devfs, "/null", S_IFREG, NULL, _ignore_read_cb, _ignore_write_cb);
+        _devfs,
+        "/null",
+        S_IFREG | S_IRUSR | S_IWUSR,
+        NULL,
+        _ignore_read_cb,
+        _ignore_write_cb);
 
     myst_devfs_create_virtual_file(
-        _devfs, "/zero", S_IFREG, NULL, _zero_read_cb, _ignore_write_cb);
+        _devfs,
+        "/zero",
+        S_IFREG | S_IRUSR | S_IWUSR,
+        NULL,
+        _zero_read_cb,
+        _ignore_write_cb);
+
+    _fs_symlink(_devfs, "/proc/self/fd", "/fd");
 done:
     return ret;
 }
