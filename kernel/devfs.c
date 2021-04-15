@@ -887,6 +887,10 @@ static off_t _fs_lseek(
     if (!_devfs_valid(devfs) || !_file_valid(file))
         ERAISE(-EINVAL);
 
+    /* NOP for virtual files based on read and write callbacks */
+    if (file->inode->read_vcallback || file->inode->write_vcallback)
+        goto done;
+
     switch (whence)
     {
         case SEEK_SET:
@@ -1321,6 +1325,10 @@ static int _stat(inode_t* inode, struct stat* statbuf)
         size = vbuf.size;
         ECHECK(myst_round_up_signed(size, BLKSIZE, &rounded));
     }
+    else if (inode->read_vcallback)
+    {
+        size = 0;
+    }
     else
     {
         size = inode->buf.size;
@@ -1643,6 +1651,11 @@ static int _fs_truncate(myst_fs_t* fs, const char* pathname, off_t length)
     if (S_ISDIR(inode->mode))
         ERAISE(-EISDIR);
 
+    /* truncate does not make sense for virtual files */
+    if (inode->open_vcallback || inode->read_vcallback ||
+        inode->write_vcallback)
+        ERAISE(-EINVAL);
+
     if (myst_buf_resize(&inode->buf, (size_t)length) != 0)
         ERAISE(-ENOMEM);
 
@@ -1662,6 +1675,11 @@ static int _fs_ftruncate(myst_fs_t* fs, myst_file_t* file, off_t length)
 
     if (S_ISDIR(file->inode->mode))
         ERAISE(-EISDIR);
+
+    /* truncate does not make sense for virtual files */
+    if (file->inode->open_vcallback || file->inode->read_vcallback ||
+        file->inode->write_vcallback)
+        ERAISE(-EINVAL);
 
     if (myst_buf_resize(&file->inode->buf, (size_t)length) != 0)
         ERAISE(-ENOMEM);

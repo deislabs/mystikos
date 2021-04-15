@@ -23,6 +23,12 @@ void test_urandom()
     ret = read(fd, buf, 1024);
     assert(ret == 1024);
 
+    ret = lseek(fd, 10000L, 1);
+    assert(ret == 0);
+
+    ret = ftruncate(fd, 10);
+    assert(ret == -1);
+
     struct stat statbuf;
     ret = fstat(fd, &statbuf);
     assert(ret == 0);
@@ -47,6 +53,12 @@ void test_zero()
     ret = write(fd, buf, 1024);
     assert(ret == 1024);
 
+    ret = lseek(fd, 10000L, 1);
+    assert(ret == 0);
+
+    ret = ftruncate(fd, 10);
+    assert(ret == -1);
+
     ret = close(fd);
     assert(ret == 0);
 }
@@ -64,6 +76,12 @@ void test_null()
 
     ret = write(fd, buf, 1024);
     assert(ret == 1024);
+
+    ret = lseek(fd, 10000L, 1);
+    assert(ret == 0);
+
+    ret = ftruncate(fd, 10);
+    assert(ret == -1);
 
     ret = close(fd);
     assert(ret == 0);
