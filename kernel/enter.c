@@ -646,7 +646,8 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     }
 
     /* Create the main thread */
-    ECHECK(_create_main_thread(args->event, args->cwd, args->target_tid, &thread));
+    ECHECK(
+        _create_main_thread(args->event, args->cwd, args->target_tid, &thread));
     __myst_main_thread = thread;
 
     thread->main.umask = MYST_DEFAULT_UMASK;
