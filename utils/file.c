@@ -91,7 +91,7 @@ done:
     return ret;
 }
 
-int myst_copy_file_fd(char* oldpath, int newfd)
+int myst_copy_file_fd(const char* oldpath, int newfd)
 {
     int ret = 0;
     int oldfd = -1;

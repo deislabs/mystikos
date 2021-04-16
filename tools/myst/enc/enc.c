@@ -505,6 +505,7 @@ int myst_enter_ecall(
     size_t envp_size,
     uint64_t event)
 {
+    /* WARNING: this function has a very small stack */
     struct enter_arg arg = {
         .options = options,
         .shared_memory = shared_memory,
@@ -519,7 +520,6 @@ int myst_enter_ecall(
     /* prevent this function from being called more than once */
     if (__sync_fetch_and_add(&myst_enter_ecall_lock, 1) != 0)
     {
-        fprintf(stderr, "ERROR: myst_enter_ecall() can only be called once\n");
         myst_enter_ecall_lock = 1; // stop this from wrapping
         return -1;
     }
@@ -530,6 +530,7 @@ int myst_enter_ecall(
 
 long myst_run_thread_ecall(uint64_t cookie, uint64_t event)
 {
+    /* WARNING: this function has a very small stack */
     return myst_run_thread(cookie, event);
 }
 
@@ -737,7 +738,6 @@ int myst_load_fssig(const char* path, myst_fssig_t* fssig)
 #define ENCLAVE_DEBUG true
 #define ENCLAVE_HEAP_SIZE 131072
 #define ENCLAVE_STACK_SIZE 8192
-#define ENCLAVE_MAX_THREADS 1024
 
 OE_SET_ENCLAVE_SGX(
     ENCLAVE_PRODUCT_ID,

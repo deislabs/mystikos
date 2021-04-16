@@ -9,7 +9,6 @@ APPDIR=$(CURDIR)/appdir
 APPBUILDER=$(TOP)/scripts/appbuilder
 
 ROOTFS=$(CURDIR)/rootfs
-ROOTHASH=$(SUBOBJDIR)/roothash
 
 LIBCXX_TESTS_DIR=llvm-project/libcxx/test/
 
@@ -24,19 +23,22 @@ else
   TEST_FILE2 = builttests_exe2.passed
   TEST_FILE3 = builttests_exe3.passed
   STATUS=PASSED
-  export TIMEOUT=10000
+  export TIMEOUT=60
 endif
 
 all:
-	$(MAKE) clean
 	$(MAKE) myst
 	$(MAKE) $(APPDIR)
 	$(MAKE) $(APPDIR)/bin/run
 	$(MAKE) $(ROOTFS)
-	$(MAKE) $(ROOTHASH)
+
+OPTS += --memory-size=32m
+OPTS += --max-threads=32
+
+OLD_OPTS += --memory-size=1024m
 
 one:
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) $(TEST)
+	$(RUNTEST) $(MYST_EXEC) $(OLD_OPTS) $(ROOTFS) $(TEST)
 
 llvm-project: 
 	git clone -b LibOS_v10.0.1 --single-branch https://github.com/salsal97/llvm-project.git
@@ -56,37 +58,60 @@ $(APPDIR):
 	# this call.
 
 $(ROOTFS): run.c
-	sudo $(MYST) mkext2 $(APPDIR) $(ROOTFS)
-	# run with posix spawn
+	sudo $(MYST) mkext2 --force $(APPDIR) $(ROOTFS)
+	truncate --size=-4096 $(ROOTFS)
 
-$(ROOTHASH): run.c
-	mkdir -p $(SUBOBJDIR)
-	$(MYST) fssig --roothash $(ROOTFS) > $(ROOTHASH)
-
-OPTS += --roothash=$(ROOTHASH)
-
-OPTS += --memory-size=1024m
+TEST_FILE = builttests_exe.passed
 
 tests:
-	$(RUNTEST) $(MAKE) __tests
+	$(MAKE) -j __tests
 
-__tests: test1 test2 test3
+__tests: tests_01 tests_02 tests_03 tests_04 tests_05 tests_06
+
+run=$(foreach i,$1, $(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) $(i); $(NL) )
+
+tests_01:
+	$(call run,$(shell cat $(TEST_FILE).01))
+
+tests_02:
+	$(call run,$(shell cat $(TEST_FILE).02))
+
+tests_03:
+	$(call run,$(shell cat $(TEST_FILE).03))
+
+tests_04:
+	$(call run,$(shell cat $(TEST_FILE).04))
+
+tests_05:
+	$(call run,$(shell cat $(TEST_FILE).05))
+
+tests_06:
+	$(call run,$(shell cat $(TEST_FILE).06))
+
+old-tests:
+	$(RUNTEST) $(MAKE) __old_tests
+
+__old_tests: test1 test2 test3
 
 test1:
-	$(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run $(STATUS) $(TEST_FILE1)
+	$(MYST_EXEC) $(OLD_OPTS) $(ROOTFS) /bin/run $(STATUS) $(TEST_FILE1)
 
 test2:
 ifndef FAILED
-	$(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run $(STATUS) $(TEST_FILE2)
+	$(MYST_EXEC) $(OLD_OPTS) $(ROOTFS) /bin/run $(STATUS) $(TEST_FILE2)
 endif
 
 test3:
 ifndef FAILED
-	$(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run $(STATUS) $(TEST_FILE3)
+	$(MYST_EXEC) $(OLD_OPTS) $(ROOTFS) /bin/run $(STATUS) $(TEST_FILE3)
 endif
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst
 
 clean:
-	rm -rf $(APPDIR) $(ROOTFS) $(ROOTHASH)
+	rm -rf $(APPDIR) $(ROOTFS)
+
+split:
+	rm -rf *.0[0-9]
+	split --lines=320 --numeric-suffix=1 $(TEST_FILE) $(TEST_FILE).

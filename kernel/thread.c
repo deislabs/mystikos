@@ -303,6 +303,9 @@ long myst_syscall_wait4(
     bool locked = false;
     myst_thread_t* process = myst_find_process_thread(myst_thread_self());
 
+    if (wstatus)
+        *wstatus = 0;
+
     if (rusage)
         ERAISE(-EINVAL);
 

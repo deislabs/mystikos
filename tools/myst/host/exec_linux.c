@@ -76,6 +76,7 @@ struct options
 static void _get_options(int* argc, const char* argv[], struct options* opts)
 {
     memset(opts, 0, sizeof(struct options));
+    size_t max_threads = 0;
 
     // process ID mapping options
     cli_get_mapping_opts(argc, argv, &opts->mapping);
@@ -183,6 +184,28 @@ static void _get_options(int* argc, const char* argv[], struct options* opts)
         {
             opts->mapping.enc_gid = 0;
             opts->mapping.host_gid = getegid();
+        }
+    }
+
+    /* get the --max-threads=n option */
+    {
+        const char* optarg;
+
+        if (cli_getopt(argc, argv, "--max-threads", &optarg) == 0)
+        {
+            char* end = NULL;
+            max_threads = strtoul(optarg, &end, 10);
+
+            if (!end || *end)
+                _err("bad --max-threads argument: %s", optarg);
+
+            if (max_threads > ENCLAVE_MAX_THREADS)
+            {
+                _err(
+                    "--max-threads must be <= %u: %s",
+                    ENCLAVE_MAX_THREADS,
+                    optarg);
+            }
         }
     }
 }
