@@ -2573,6 +2573,77 @@ done:
     return ret;
 }
 
+
+long myst_syscall_sched_setaffinity(
+    pid_t pid,
+    size_t cpusetsize,
+    const cpu_set_t* mask)
+{
+    long ret = 0;
+
+    if (pid < 0 || !mask)
+        ERAISE(-EINVAL);
+
+    if (pid != 0)
+    {
+        myst_thread_t* thread = myst_find_thread(pid);
+
+        if (!thread)
+            ERAISE(-EINVAL);
+
+        pid = thread->target_tid;
+    }
+
+    long params[6] = {(long)pid, (long)cpusetsize, (long)mask};
+    ECHECK((ret = myst_tcall(SYS_sched_setaffinity, params)));
+
+done:
+    return ret;
+}
+
+long myst_syscall_sched_getaffinity(
+    pid_t pid,
+    size_t cpusetsize,
+    cpu_set_t* mask)
+{
+    long ret = 0;
+
+    if (pid < 0 || !mask)
+        ERAISE(-EINVAL);
+
+    if (pid != 0)
+    {
+        myst_thread_t* thread = myst_find_thread(pid);
+
+        if (!thread)
+            ERAISE(-EINVAL);
+
+        pid = thread->target_tid;
+    }
+
+    long params[6] = {(long)pid, (long)cpusetsize, (long)mask};
+    ECHECK((ret = myst_tcall(SYS_sched_getaffinity, params)));
+
+done:
+    return ret;
+}
+
+struct getcpu_cache;
+
+long myst_syscall_getcpu(
+    unsigned* cpu,
+    unsigned* node,
+    struct getcpu_cache* tcache)
+{
+    long ret = 0;
+
+    long params[6] = {(long)cpu, (long)node, (long)tcache};
+    ECHECK((ret = myst_tcall(SYS_getcpu, params)));
+
+done:
+    return ret;
+}
+
 long myst_syscall_ret(long ret)
 {
     if (ret < 0)
@@ -4288,33 +4359,27 @@ static long _syscall(void* args_)
         {
             pid_t pid = (pid_t)x1;
             size_t cpusetsize = (pid_t)x2;
-            cpu_set_t* mask = (cpu_set_t*)x3;
+            const cpu_set_t* mask = (const cpu_set_t*)x3;
+            long ret;
 
             _strace(
                 n, "pid=%d cpusetsize=%zu mask=%p\n", pid, cpusetsize, mask);
 
-            /* ATTN: support set affinity requests */
-
-            BREAK(_return(n, 0));
+            ret = myst_syscall_sched_setaffinity(pid, cpusetsize, mask);
+            BREAK(_return(n, ret));
         }
         case SYS_sched_getaffinity:
         {
             pid_t pid = (pid_t)x1;
             size_t cpusetsize = (pid_t)x2;
             cpu_set_t* mask = (cpu_set_t*)x3;
+            long ret;
 
             _strace(
                 n, "pid=%d cpusetsize=%zu mask=%p\n", pid, cpusetsize, mask);
 
-            // ATTN: return the cpu id from sched_setaffinity.
-            // for now, make all threads fixed to cpu 0.
-            if (mask != NULL)
-            {
-                CPU_ZERO(mask);
-                CPU_SET(0, mask);
-            }
-
-            BREAK(_return(n, cpusetsize));
+            ret = myst_syscall_sched_getaffinity(pid, cpusetsize, mask);
+            BREAK(_return(n, ret));
         }
         case SYS_set_thread_area:
         {
@@ -4854,18 +4919,12 @@ static long _syscall(void* args_)
             unsigned* cpu = (unsigned*)x1;
             unsigned* node = (unsigned*)x2;
             struct getcpu_cache* tcache = (struct getcpu_cache*)x3;
+            long ret;
 
             _strace(n, "cpu=%p node=%p, tcache=%p", cpu, node, tcache);
 
-            // ATTN: report the real NUMA node id and cpu id.
-            // For now, always report id 0 for them.
-            if (cpu)
-                *cpu = 0;
-
-            if (node)
-                *node = 0;
-
-            BREAK(_return(n, 0));
+            ret = myst_syscall_getcpu(cpu, node, tcache);
+            BREAK(_return(n, ret));
         }
         case SYS_process_vm_readv:
             break;
