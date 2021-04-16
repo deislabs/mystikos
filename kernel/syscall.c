@@ -2643,6 +2643,28 @@ done:
     return ret;
 }
 
+long myst_syscall_mbind(
+    void* addr,
+    unsigned long len,
+    int mode,
+    const unsigned long* nodemask,
+    unsigned long maxnode,
+    unsigned flags)
+{
+    long ret = 0;
+
+    /* ATTN: stub implementation */
+
+    (void)addr;
+    (void)len;
+    (void)mode;
+    (void)nodemask;
+    (void)maxnode;
+    (void)flags;
+
+    return ret;
+}
+
 long myst_syscall_ret(long ret)
 {
     if (ret < 0)
@@ -4575,7 +4597,28 @@ static long _syscall(void* args_)
         case SYS_vserver:
             break;
         case SYS_mbind:
-            break;
+        {
+            void* addr = (void*)x1;
+            unsigned long len = (unsigned long)x2;
+            int mode = (int)x3;
+            const unsigned long* nodemask = (const unsigned long*)x4;
+            unsigned long maxnode = (unsigned long)x5;
+            unsigned flags = (unsigned)x6;
+
+            _strace(
+                n,
+                "addr=%p len=%lu mode=%d nodemask=%p maxnode=%lu flags=%u",
+                addr,
+                len,
+                mode,
+                nodemask,
+                maxnode,
+                flags);
+
+            long ret =
+                myst_syscall_mbind(addr, len, mode, nodemask, maxnode, flags);
+            BREAK(_return(n, ret));
+        }
         case SYS_set_mempolicy:
             break;
         case SYS_get_mempolicy:
