@@ -497,6 +497,7 @@
 /app/money_base.pass.cpp.exe
 /app/move.pass.cpp.exe
 /app/move2.pass.cpp.exe
+/app/move_alloc.pass.cpp.exe
 /app/move_assign.pass.cpp.exe
 /app/move_assign_convertible.pass.cpp.exe
 /app/move_assign_convertible_propagate_const.pass.cpp.exe

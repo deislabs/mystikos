@@ -303,15 +303,27 @@ long myst_syscall_wait4(
     bool locked = false;
     myst_thread_t* process = myst_find_process_thread(myst_thread_self());
 
+    if (wstatus)
+        *wstatus = 0;
+
     if (rusage)
+    {
+        myst_eprintf("TTTTTTTT=%u\n", __LINE__);
         ERAISE(-EINVAL);
+    }
 
     if (options & ~(WNOHANG | WUNTRACED | WCONTINUED))
+    {
+        myst_eprintf("TTTTTTTT=%u\n", __LINE__);
         ERAISE(-EINVAL);
+    }
 
     /* ATTN: process groups not supported yet */
     if (pid == 0 || pid < -1)
+    {
+        myst_eprintf("TTTTTTTT=%u\n", __LINE__);
         ERAISE(-ENOTSUP);
+    }
 
     /* If this is the only process then raise ECHILD */
     {
@@ -321,6 +333,7 @@ long myst_syscall_wait4(
             process->main.prev_process_thread == NULL)
         {
             myst_spin_unlock(&myst_process_list_lock);
+            myst_eprintf("TTTTTTTT=%u\n", __LINE__);
             ERAISE(-ECHILD);
         }
 
@@ -352,7 +365,10 @@ long myst_syscall_wait4(
             if (match)
             {
                 if (wstatus)
+                {
+                    // myst_eprintf("p->exit_status=%u\n", p->exit_status);
                     *wstatus = (p->exit_status << 8);
+                }
 
                 ret = p->pid;
                 goto done;
@@ -366,7 +382,8 @@ long myst_syscall_wait4(
         }
 
         /* wait for signal from myst_zombify_thread() */
-        myst_cond_wait(&_zombies_cond, &_zombies_mutex);
+        while (myst_cond_wait(&_zombies_cond, &_zombies_mutex) == EBUSY)
+            ;
     }
 
 done:
@@ -615,6 +632,18 @@ static long _run_thread(void* arg_)
     return 0;
 }
 
+#define GUARD_BYTE 0xaa
+
+static bool _is_guard_page_intact(const uint8_t* p)
+{
+    const uint8_t* end = p + PAGE_SIZE;
+
+    while (p != end && *p == GUARD_BYTE)
+        p++;
+
+    return p == end;
+}
+
 long myst_run_thread(uint64_t cookie, uint64_t event)
 {
     long ret = 0;
@@ -639,9 +668,18 @@ long myst_run_thread(uint64_t cookie, uint64_t event)
     if (!(stack = memalign(stack_alignment, stack_size)))
         ERAISE(-ENOMEM);
 
+    /* fill the guard page with a known character */
+    memset(stack, GUARD_BYTE, PAGE_SIZE);
+
     /* run the thread on the transient stack */
     struct run_thread_arg arg = {thread, cookie, event};
-    ECHECK(myst_call_on_stack(stack + stack_size, _run_thread, &arg));
+    ret = myst_call_on_stack(stack + stack_size, _run_thread, &arg);
+
+    /* check that the guard page */
+    if (!_is_guard_page_intact(stack))
+        myst_panic("kernel stack corruption");
+
+    ECHECK(ret);
 
 done:
 

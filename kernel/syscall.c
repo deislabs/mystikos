@@ -2570,8 +2570,17 @@ done:
         goto done;           \
     } while (0)
 
-long myst_syscall(long n, long params[6])
+struct syscall_args
 {
+    long n;
+    long* params;
+};
+
+static long _syscall(void* args_)
+{
+    struct syscall_args* args = args_;
+    long n = args->n;
+    long* params = args->params;
     long syscall_ret = 0;
     long x1 = params[0];
     long x2 = params[1];
@@ -5113,6 +5122,48 @@ done:
     myst_signal_process(thread);
 
     return syscall_ret;
+}
+
+#define GUARD_BYTE 0xaa
+
+static bool _is_guard_page_intact(const uint8_t* p)
+{
+    const uint8_t* end = p + PAGE_SIZE;
+
+    while (p != end && *p == GUARD_BYTE)
+        p++;
+
+    return p == end;
+}
+
+long myst_syscall(long n, long params[6])
+{
+    long ret = 0;
+    uint8_t* stack = NULL;
+    const size_t stack_size = (256 * 1024);
+    struct syscall_args args = {n, params};
+
+    if (!(stack = memalign(16, stack_size)))
+        ERAISE(-EINVAL);
+
+    memset(stack, 0, stack_size);
+
+    /* fill the guard page with a known character */
+    memset(stack, GUARD_BYTE, PAGE_SIZE);
+
+    /* switch from the user stack to the kernel stack */
+    ret = myst_call_on_stack(stack + stack_size, _syscall, &args);
+
+    /* check the guard page */
+    if (!_is_guard_page_intact(stack))
+        myst_panic("kernel stack corruption");
+
+done:
+
+    if (stack)
+        free(stack);
+
+    return ret;
 }
 
 /*

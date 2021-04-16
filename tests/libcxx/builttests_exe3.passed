@@ -128,7 +128,6 @@
 /app/push_front.pass.cpp.exe
 /app/push_front_const.pass.cpp.exe
 /app/push_front_exception_safety.pass.cpp.exe
-/app/push_front_rv.pass.cpp.exe
 /app/push_front_rvalue.pass.cpp.exe
 /app/push_heap.pass.cpp.exe
 /app/push_heap_comp.pass.cpp.exe
@@ -587,8 +586,6 @@
 /app/wait.pass.cpp.exe
 /app/wait_for_pred.pass.cpp.exe
 /app/wait_pred.pass.cpp.exe
-/app/wait_until.pass.cpp.exe
-/app/wait_until_pred.pass.cpp.exe
 /app/wcerr.pass.cpp.exe
 /app/wchar_pointer.pass.cpp.exe
 /app/wchar_t_always_noconv.pass.cpp.exe

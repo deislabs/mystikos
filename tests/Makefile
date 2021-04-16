@@ -94,10 +94,20 @@ DIRS += dotnet-ubuntu
 
 DIRS += robust
 
+DIRS =
+DIRS += libcxx libcxx libcxx libcxx libcxx libcxx libcxx libcxx libcxx libcxx
+DIRS += libcxx libcxx libcxx libcxx libcxx libcxx libcxx libcxx libcxx libcxx
+DIRS += libcxx libcxx libcxx libcxx libcxx libcxx libcxx libcxx libcxx libcxx
+DIRS += libcxx libcxx libcxx libcxx libcxx libcxx libcxx libcxx libcxx libcxx
+DIRS += libcxx libcxx libcxx libcxx libcxx libcxx libcxx libcxx libcxx libcxx
+DIRS += libcxx libcxx libcxx libcxx libcxx libcxx libcxx libcxx libcxx libcxx
+DIRS += libcxx libcxx libcxx libcxx libcxx libcxx libcxx libcxx libcxx libcxx
+DIRS += libcxx libcxx libcxx libcxx libcxx libcxx libcxx libcxx libcxx libcxx
+DIRS += libcxx libcxx libcxx libcxx libcxx libcxx libcxx libcxx libcxx libcxx
+DIRS += libcxx libcxx libcxx libcxx libcxx libcxx libcxx libcxx libcxx libcxx
+
 __tests:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) tests $(NL) )
 
 tests:
-	@ sudo rm -rf $(TESTDIR)
-	@ $(MAKE) -s __tests TARGET=sgx TESTSUFFIX=.sgx
-	@ $(MAKE) -s __tests TARGET=linux TESTSUFFIX=.linux
+	@ $(MAKE) __tests TARGET=sgx

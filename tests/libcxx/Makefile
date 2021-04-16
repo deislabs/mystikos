@@ -1,3 +1,4 @@
+.NOTPARALLEL:
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
@@ -28,7 +29,6 @@ else
 endif
 
 all:
-	$(MAKE) clean
 	$(MAKE) myst
 	$(MAKE) $(APPDIR)
 	$(MAKE) $(APPDIR)/bin/run
@@ -56,7 +56,7 @@ $(APPDIR):
 	# this call.
 
 $(ROOTFS): run.c
-	sudo $(MYST) mkext2 $(APPDIR) $(ROOTFS)
+	sudo $(MYST) mkext2 --force $(APPDIR) $(ROOTFS)
 	# run with posix spawn
 
 $(ROOTHASH): run.c
