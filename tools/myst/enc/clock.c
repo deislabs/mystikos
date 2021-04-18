@@ -6,7 +6,6 @@
 #include <errno.h>
 #include <myst/clock.h>
 #include <myst/syscall.h>
-#include <myst/syscallext.h>
 #include <stdio.h>
 
 static long _realtime0 = 0;

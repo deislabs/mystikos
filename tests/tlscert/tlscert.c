@@ -25,12 +25,12 @@ int main(int argc, const char* argv[])
         fclose(fp);
         assert(linenum > 1);
 
-        fp = fopen("tmp/myst.pem", "r");
+        fp = fopen("tmp/myst.crt", "r");
         assert(fp != NULL);
         int foundOE = 0;
         while (fgets(line, 1024, fp) != NULL)
         {
-            if (strstr(line, "Open Enclave SDK"))
+            if (strstr(line, "MYSTIKOS"))
                 foundOE = 1;
         }
         fclose(fp);

@@ -10,6 +10,7 @@
 #include <string.h>
 #include <sys/syscall.h>
 #include <unistd.h>
+#include "tee.h"
 #include "tlscli.h"
 
 #define TLS_CERT_PATH "./cert.der"
@@ -64,8 +65,6 @@ static int trusted_channel_init(const char* serverIP)
     size_t cert_size = 0;
     void* pkey = NULL;
     size_t pkey_size = 0;
-    const long SYS_myst_gen_creds = 1009;
-    const long SYS_myst_free_creds = 1010;
     bool enclave_mode = false;
 
     if ((rc = tlscli_startup(&tlsError)) != 0)
@@ -128,7 +127,8 @@ done:
     if (cert || pkey)
     {
         if (enclave_mode)
-            syscall(SYS_myst_free_creds, cert, cert_size, pkey, pkey_size);
+            syscall(
+                SYS_myst_free_creds, cert, cert_size, pkey, pkey_size, NULL, 0);
         else
         {
             free(cert);

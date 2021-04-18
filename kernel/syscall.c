@@ -68,6 +68,7 @@
 #include <myst/strings.h>
 #include <myst/syscall.h>
 #include <myst/tcall.h>
+#include <myst/tee.h>
 #include <myst/thread.h>
 #include <myst/times.h>
 #include <myst/trace.h>
@@ -435,6 +436,8 @@ static pair_t _pairs[] = {
     {SYS_myst_unload_symbols, "SYS_myst_unload_symbols"},
     {SYS_myst_gen_creds, "SYS_myst_gen_creds"},
     {SYS_myst_free_creds, "SYS_myst_free_creds"},
+    {SYS_myst_verify_cert, "SYS_myst_verify_cert"},
+    {SYS_myst_gen_creds_ex, "SYS_myst_gen_creds_ex"},
     {SYS_myst_clone, "SYS_myst_clone"},
     {SYS_myst_gcov_init, "SYS_myst_gcov_init"},
     {SYS_myst_max_threads, "SYS_myst_max_threads"},
@@ -2734,6 +2737,11 @@ long myst_syscall(long n, long params[6])
         {
             _strace(n, NULL);
             BREAK(_forward_syscall(MYST_TCALL_FREE_CREDS, params));
+        }
+        case SYS_myst_gen_creds_ex:
+        {
+            _strace(n, NULL);
+            BREAK(_forward_syscall(MYST_TCALL_GEN_CREDS_EX, params));
         }
         case SYS_myst_verify_cert:
         {

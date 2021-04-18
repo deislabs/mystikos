@@ -200,7 +200,6 @@ static int _cert_verify_callback(
     uint32_t* flags)
 {
     int ret = 1;
-    const long SYS_myst_verify_cert = 1011;
     (void)data;
     (void)depth;
 

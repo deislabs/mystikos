@@ -17,7 +17,6 @@
 #include <time.h>
 
 #include <myst/defs.h>
-#include <myst/syscallext.h>
 
 MYST_INLINE long myst_syscall0(long n)
 {

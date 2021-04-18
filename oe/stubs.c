@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include <myst/syscallext.h>
+#include <myst/tee.h>
 #include <openenclave/enclave.h>
 #include <stdio.h>
 #include <string.h>
