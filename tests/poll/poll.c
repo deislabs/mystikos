@@ -7,6 +7,7 @@
 #define _GNU_SOURCE
 #include <assert.h>
 #include <errno.h>
+#include <myst/tee.h>
 #include <poll.h>
 #include <pthread.h>
 #include <stdint.h>
@@ -57,7 +58,6 @@ int main(int argc, const char* argv[])
 
     /* Test SYS_myst_poll_wake system call */
     {
-        const long SYS_myst_poll_wake = 1015;
         pthread_t thread;
 
         /* create a thread that will poll forever */

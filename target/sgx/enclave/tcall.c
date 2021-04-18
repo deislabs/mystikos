@@ -19,8 +19,8 @@
 #include <myst/luks.h>
 #include <myst/regions.h>
 #include <myst/sha256.h>
-#include <myst/syscallext.h>
 #include <myst/tcall.h>
+#include <myst/tee.h>
 #include <myst/thread.h>
 #include <oeprivate/rsa.h>
 #include <openenclave/edger8r/enclave.h>
@@ -361,9 +361,24 @@ long myst_tcall(long n, long params[6])
             size_t cert_size = (size_t)x2;
             uint8_t* pkey = (uint8_t*)x3;
             size_t pkey_size = (size_t)x4;
+            uint8_t* report = (uint8_t*)x5;
+            size_t report_size = (size_t)x6;
 
-            myst_free_creds(cert, cert_size, pkey, pkey_size);
+            myst_free_creds(
+                cert, cert_size, pkey, pkey_size, report, report_size);
             return 0;
+        }
+        case MYST_TCALL_GEN_CREDS_EX:
+        {
+            uint8_t** cert = (uint8_t**)x1;
+            size_t* cert_size = (size_t*)x2;
+            uint8_t** pkey = (uint8_t**)x3;
+            size_t* pkey_size = (size_t*)x4;
+            uint8_t** report = (uint8_t**)x5;
+            size_t* report_size = (size_t*)x6;
+
+            return myst_gen_creds_ex(
+                cert, cert_size, pkey, pkey_size, report, report_size);
         }
         case MYST_TCALL_VERIFY_CERT:
         {

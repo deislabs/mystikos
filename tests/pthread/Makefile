@@ -1,7 +1,7 @@
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
-CFLAGS = -Wall -g -fPIC
+CFLAGS = -Wall -g -fPIC -I$(TOP)/include
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 
 all:

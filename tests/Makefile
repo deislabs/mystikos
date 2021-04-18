@@ -57,6 +57,7 @@ DIRS += futex
 DIRS += round
 DIRS += signal
 DIRS += tlscert
+DIRS += tlscert2
 DIRS += wake_and_kill
 DIRS += cross_fs_symlinks
 

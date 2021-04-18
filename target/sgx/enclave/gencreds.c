@@ -2,94 +2,30 @@
 // Licensed under the MIT License.
 
 #include "gencreds.h"
+#include <assert.h>
 #include <mbedtls/x509.h>
 #include <mbedtls/x509_crt.h>
+#include <myst/crypto.h>
+#include <myst/eraise.h>
+#include <myst/sha256.h>
 #include <openenclave/attestation/attester.h>
 #include <openenclave/enclave.h>
 #include <stdio.h>
 #include <string.h>
 
-static oe_result_t _generate_key_pair(
-    uint8_t** public_key_out,
-    size_t* public_key_size_out,
-    uint8_t** private_key_out,
-    size_t* private_key_size_out)
+static void _clean_free(uint8_t* buf, size_t len)
 {
-    oe_result_t result = OE_FAILURE;
-    oe_result_t ret;
-    oe_asymmetric_key_params_t params;
-    char user_data[] = "__USER_DATA__";
-    size_t user_data_size = sizeof(user_data) - 1;
-    uint8_t* public_key = NULL;
-    size_t public_key_size = 0;
-    uint8_t* private_key = NULL;
-    size_t private_key_size = 0;
-
-    *public_key_out = NULL;
-    *public_key_size_out = 0;
-    *private_key_out = NULL;
-    *private_key_size_out = 0;
-
-    memset(&params, 0, sizeof(params));
-    params.type = OE_ASYMMETRIC_KEY_EC_SECP256P1;
-    params.format = OE_ASYMMETRIC_KEY_PEM;
-    params.user_data = user_data;
-    params.user_data_size = user_data_size;
-
-    if ((ret = oe_get_public_key_by_policy(
-             OE_SEAL_POLICY_UNIQUE,
-             &params,
-             &public_key,
-             &public_key_size,
-             NULL,
-             NULL)) != OE_OK)
-    {
-        result = ret;
-        goto done;
-    }
-
-    if ((ret = oe_get_private_key_by_policy(
-             OE_SEAL_POLICY_UNIQUE,
-             &params,
-             &private_key,
-             &private_key_size,
-             NULL,
-             NULL)) != OE_OK)
-    {
-        result = ret;
-        goto done;
-    }
-
-    *private_key_out = private_key;
-    *private_key_size_out = private_key_size;
-    private_key = NULL;
-
-    *public_key_out = public_key;
-    *public_key_size_out = public_key_size;
-    public_key = NULL;
-
-    result = OE_OK;
-
-done:
-
-    if (private_key)
-        oe_free_key(private_key, private_key_size, NULL, 0);
-
-    if (public_key)
-        oe_free_key(public_key, public_key_size, NULL, 0);
-
-    return result;
+    oe_free_key(buf, len, NULL, 0);
 }
 
-static oe_result_t _generate_cert_and_private_key(
+static int _generate_cert_and_private_key(
     const char* common_name,
     uint8_t** cert_out,
     size_t* cert_size_out,
     uint8_t** private_key_out,
     size_t* private_key_size_out)
 {
-    oe_result_t result = OE_FAILURE;
-    oe_result_t ret;
+    int ret = 0;
     uint8_t* cert = NULL;
     size_t cert_size;
     uint8_t* private_key = NULL;
@@ -102,13 +38,8 @@ static oe_result_t _generate_cert_and_private_key(
     *private_key_out = NULL;
     *private_key_size_out = 0;
 
-    if ((ret = _generate_key_pair(
-             &public_key, &public_key_size, &private_key, &private_key_size)) !=
-        OE_OK)
-    {
-        result = ret;
-        goto done;
-    }
+    ECHECK(myst_generate_ec_key_pair(
+        &public_key, &public_key_size, &private_key, &private_key_size));
 
     if ((ret = oe_generate_attestation_certificate(
              (unsigned char*)common_name,
@@ -119,32 +50,24 @@ static oe_result_t _generate_cert_and_private_key(
              &cert,
              &cert_size)) != OE_OK)
     {
-        result = ret;
-        goto done;
+        ERAISE(-ret);
     }
-
-    *private_key_out = private_key;
-    *private_key_size_out = private_key_size;
-    private_key = NULL;
 
     *cert_out = cert;
     *cert_size_out = cert_size;
     cert = NULL;
 
-    result = OE_OK;
+    *private_key_out = private_key;
+    *private_key_size_out = private_key_size;
+    private_key = NULL; /* Set to NULL so private_key_out won't be freed */
 
 done:
 
-    if (private_key)
-        oe_free_key(private_key, private_key_size, NULL, 0);
+    _clean_free(private_key, private_key_size);
+    _clean_free(public_key, public_key_size);
+    free(cert);
 
-    if (public_key)
-        oe_free_key(public_key, public_key_size, NULL, 0);
-
-    if (cert)
-        oe_free_attestation_certificate(cert);
-
-    return result;
+    return ret;
 }
 
 int myst_gen_creds(
@@ -153,12 +76,12 @@ int myst_gen_creds(
     uint8_t** private_key_out,
     size_t* private_key_size_out)
 {
-    int ret = -1;
+    int ret = 0;
     uint8_t* cert = NULL;
     size_t cert_size;
     uint8_t* private_key = NULL;
     size_t private_key_size;
-    const char* common_name = "CN=Open Enclave SDK,O=OESDK TLS,C=US";
+    const char* common_name = MYST_CERT_COMMON_NAME;
 
     if (cert_out)
         *cert_out = NULL;
@@ -188,39 +111,6 @@ int myst_gen_creds(
         goto done;
     }
 
-#if DEBUG
-    /* Verify that the certificate can be parsed as DER */
-    {
-        mbedtls_x509_crt crt;
-        mbedtls_x509_crt_init(&crt);
-
-        if (mbedtls_x509_crt_parse_der(&crt, cert, cert_size) != 0)
-        {
-            mbedtls_x509_crt_free(&crt);
-            printf("TRACE:%d\n", __LINE__);
-            goto done;
-        }
-
-        mbedtls_x509_crt_free(&crt);
-    }
-
-    /* Verify that the private key can be parsed as PEM */
-    {
-        mbedtls_pk_context pk;
-        mbedtls_pk_init(&pk);
-
-        if (mbedtls_pk_parse_key(&pk, private_key, private_key_size, NULL, 0) !=
-            0)
-        {
-            mbedtls_pk_free(&pk);
-            printf("TRACE:%d\n", __LINE__);
-            goto done;
-        }
-
-        mbedtls_pk_free(&pk);
-    }
-#endif
-
     *cert_out = cert;
     cert = NULL;
     *cert_size_out = cert_size;
@@ -232,15 +122,145 @@ int myst_gen_creds(
 
 done:
 
-    if (cert)
-        oe_free_key(cert, cert_size, NULL, 0);
+    free(cert);
+    _clean_free(private_key, private_key_size);
 
-    if (private_key)
-        oe_free_key(private_key, private_key_size, NULL, 0);
+    return ret;
+}
 
-    if (cert)
-        oe_free_attestation_certificate(cert);
+int myst_gen_creds_ex(
+    uint8_t** cert_out,
+    size_t* cert_size_out,
+    uint8_t** private_key_out,
+    size_t* private_key_size_out,
+    uint8_t** report_out,
+    size_t* report_size_out)
+{
+    int ret = 0;
+    uint8_t* private_key = NULL;
+    size_t private_key_size;
+    uint8_t* public_key = NULL;
+    size_t public_key_size;
 
+    *cert_out = NULL;
+    *cert_size_out = 0;
+    *private_key_out = NULL;
+    *private_key_size_out = 0;
+    *report_out = NULL;
+    *report_size_out = 0;
+
+    ECHECK(myst_generate_ec_key_pair(
+        &public_key, &public_key_size, &private_key, &private_key_size));
+
+    ECHECK(myst_generate_x509_self_signed_cert(
+        public_key,
+        public_key_size,
+        private_key,
+        private_key_size,
+        NULL,
+        cert_out,
+        cert_size_out));
+
+    ECHECK(myst_generate_report_from_claim(
+        public_key, public_key_size, NULL, 0, report_out, report_size_out));
+
+    *private_key_out = private_key;
+    *private_key_size_out = private_key_size;
+    private_key = NULL;
+
+done:
+
+    _clean_free(public_key, public_key_size);
+
+    if (ret)
+    {
+        _clean_free(private_key, private_key_size);
+        free(*cert_out);
+        free(*report_out);
+    }
+    return ret;
+}
+
+int myst_generate_report_from_claim(
+    const uint8_t* claim_buf,
+    size_t claim_buf_size,
+    uint8_t* optional_data,
+    size_t optional_data_size,
+    uint8_t** report_buf_out,
+    size_t* report_size_out)
+{
+    int ret = 0;
+    int r = 0;
+    myst_sha256_t sha256 = {0};
+    uint8_t* tmpbuf = NULL;
+    size_t tmpbuf_size = 0;
+
+    ECHECK(myst_sha256(&sha256, claim_buf, claim_buf_size));
+
+    if ((r = oe_get_report(
+             OE_REPORT_FLAGS_REMOTE_ATTESTATION,
+             (const uint8_t*)&sha256,
+             MYST_SHA256_SIZE,
+             optional_data,
+             optional_data_size,
+             &tmpbuf,
+             &tmpbuf_size)) != OE_OK)
+        ERAISE(-r);
+
+    *report_buf_out = tmpbuf;
+    *report_size_out = tmpbuf_size;
+    tmpbuf = NULL;
+
+done:
+
+    free(tmpbuf);
+
+    return ret;
+}
+
+int myst_generate_certificate_and_report(
+    uint8_t* private_key,
+    size_t private_key_size,
+    uint8_t* public_key,
+    size_t public_key_size,
+    uint8_t* optional_data,
+    size_t optional_data_size,
+    uint8_t** cert_buf_out,
+    size_t* cert_size_out,
+    uint8_t** report_buf_out,
+    size_t* report_size_out)
+{
+    int ret = 0;
+    *report_buf_out = *cert_buf_out = NULL;
+
+    /* Generate the certificate */
+    ECHECK(myst_generate_x509_self_signed_cert(
+        public_key,
+        public_key_size,
+        private_key,
+        private_key_size,
+        NULL,
+        cert_buf_out,
+        cert_size_out));
+
+    ECHECK(myst_generate_report_from_claim(
+        public_key,
+        public_key_size,
+        optional_data,
+        optional_data_size,
+        report_buf_out,
+        report_size_out));
+
+done:
+
+    if (ret)
+    {
+        /* Clean up on failure */
+        free(*cert_buf_out);
+        free(*report_buf_out);
+        *report_buf_out = *cert_buf_out = NULL;
+        *report_size_out = *cert_size_out = 0;
+    }
     return ret;
 }
 
@@ -248,13 +268,13 @@ void myst_free_creds(
     uint8_t* cert,
     size_t cert_size,
     uint8_t* private_key,
-    size_t private_key_size)
+    size_t private_key_size,
+    uint8_t* report,
+    size_t report_size)
 {
-    if (cert)
-        oe_free_key(cert, cert_size, NULL, 0);
-
-    if (private_key)
-        oe_free_key(private_key, private_key_size, NULL, 0);
+    _clean_free(cert, cert_size);
+    _clean_free(private_key, private_key_size);
+    _clean_free(report, report_size);
 }
 
 int myst_verify_cert(

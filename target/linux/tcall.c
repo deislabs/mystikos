@@ -20,7 +20,6 @@
 #include <myst/luks.h>
 #include <myst/sha256.h>
 #include <myst/syscall.h>
-#include <myst/syscallext.h>
 #include <myst/tcall.h>
 #include <myst/thread.h>
 #include <oeprivate/rsa.h>
