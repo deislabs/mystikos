@@ -8,7 +8,7 @@ ifdef STRACE
 OPTS += --strace
 endif
 
-OPTS = --memory-size=1024m
+OPTS += --memory-size=2048m
 
 all: appdir private.pem
 
@@ -17,7 +17,7 @@ run: appdir private.pem
 	test -f server.pid && kill -9 `cat server.pid` || true
 	$(MYST) package appdir private.pem config.json
 	myst/bin/$(APPNAME) $(OPTS) & echo $$! > server.pid
-	sleep 15
+	sleep 60
 	# Request 3 times from the client to make sure the server is robust.
 	curl 127.0.0.1:5050
 	curl 127.0.0.1:5050
