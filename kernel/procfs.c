@@ -122,7 +122,7 @@ static int _self_vcallback(myst_buf_t* vbuf)
         ERAISE(-ENOMEM);
 
     myst_buf_clear(vbuf);
-    myst_buf_append(vbuf, linkpath, sizeof(linkpath));
+    myst_buf_append(vbuf, linkpath, strlen(linkpath));
 
 done:
 

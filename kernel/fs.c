@@ -40,10 +40,9 @@ int myst_remove_fd_link(int fd)
 {
     int ret = 0;
     char* path = NULL;
-    const size_t n = sizeof(path);
 
-    if (asprintf(&path, "/proc/%d/fd/%d", myst_getpid(), fd) >= (int)n)
-        ERAISE(-ENAMETOOLONG);
+    if (asprintf(&path, "/proc/%d/fd/%d", myst_getpid(), fd) < 0)
+        ERAISE(-ENOMEM);
 
     ECHECK(myst_syscall_unlink(path));
 
