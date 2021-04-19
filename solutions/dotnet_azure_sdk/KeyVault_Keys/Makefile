@@ -1,0 +1,24 @@
+TOP=$(abspath ../../..)
+include $(TOP)/defs.mak
+
+APPBUILDER=$(TOP)/scripts/appbuilder
+APPNAME=Sample1_HelloWorldAsync
+
+all: appdir private.pem
+
+run: appdir private.pem
+	$(MYST) package appdir private.pem config.json
+	myst/bin/$(APPNAME)
+
+gdb: appdir private.pem
+	$(MYST) package appdir private.pem config.json
+	$(MYST_GDB) --args myst/bin/$(APPNAME)
+
+appdir:
+	$(APPBUILDER) Dockerfile
+
+private.pem:
+	openssl genrsa -out private.pem -3 3072
+
+clean:
+	sudo rm -rf appdir rootfs build obj bin myst private.pem
