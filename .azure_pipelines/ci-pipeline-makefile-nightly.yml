@@ -17,8 +17,6 @@ jobs:
   # 1-4h solution tests(based on which are enabled)
   timeoutInMinutes: 300
   pool: '1804DC4CCagentpool'
-  workspace:
-    clean: all
 
   steps:
     # perform cleanup before starting pipeline
@@ -36,6 +34,7 @@ jobs:
 
     # build all source files
     - script: |
+        make distclean
         make -j
       displayName: 'build repo source'
       workingDirectory: $(Build.SourcesDirectory)
