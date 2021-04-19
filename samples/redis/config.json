@@ -1,0 +1,27 @@
+{
+    // OpenEnclave specific values
+
+    // Whether we are running in debug mode
+    "Debug": 1,
+    // The stack size of each ethread
+    "StackMemSize": "400k",
+    // The number of ethreads
+    "NumUserThreads": 32,
+    "ProductID": 1,
+    "SecurityVersion": 1,
+
+    // Mystikos specific values
+
+    // The heap size of the user application. Increase this setting if your app experienced OOM.
+    "MemorySize": "1024m",
+    // The path to the entry point application in rootfs
+    "ApplicationPath": "/usr/local/bin/redis-server",
+    // The parameters to the entry point application
+    "ApplicationParameters": ["/etc/redis.conf"],
+    // Whether we allow "ApplicationParameters" to be overridden by command line options of "myst"
+    "HostApplicationParameters": false,
+    // The enclave environment variables
+    "EnvironmentVariables": [],
+    // The host environment variables accessible inside the enclave.
+    "HostEnvironmentVariables": []
+}
