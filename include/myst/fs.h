@@ -174,4 +174,7 @@ int myst_load_fs(
     const char* key,
     myst_fs_t** fs_out);
 
+/* wrapper for fs->fs_realpath() that allocate the path on the heap */
+int myst_fs_realpath(myst_fs_t* fs, myst_file_t* file, char** buf);
+
 #endif /* _MYST_FS_H */

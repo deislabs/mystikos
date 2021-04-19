@@ -5,12 +5,12 @@
 #include <assert.h>
 #include <dirent.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/fcntl.h>
 #include <sys/random.h>
 #include <sys/sendfile.h>
 #include <sys/stat.h>

@@ -513,21 +513,26 @@ __attribute__((format(printf, 2, 3))) static void _strace(
 {
     if (__options.trace_syscalls)
     {
+        char empty[] = "";
+        char* buf = NULL;
+        const size_t buf_size = 1024;
         const bool isatty = myst_syscall_isatty(STDERR_FILENO) == 1;
         const char* blue = isatty ? COLOR_GREEN : "";
         const char* reset = isatty ? COLOR_RESET : "";
-        char buf[1024];
 
         if (fmt)
         {
+            if (!(buf = malloc(buf_size)))
+                myst_panic("out of memory");
+
             va_list ap;
             va_start(ap, fmt);
-            vsnprintf(buf, sizeof(buf), fmt, ap);
+            vsnprintf(buf, buf_size, fmt, ap);
             va_end(ap);
         }
         else
         {
-            *buf = '\0';
+            buf = empty;
         }
 
         myst_eprintf(
@@ -537,6 +542,9 @@ __attribute__((format(printf, 2, 3))) static void _strace(
             reset,
             buf,
             myst_gettid());
+
+        if (buf != empty)
+            free(buf);
     }
 }
 
@@ -636,21 +644,32 @@ done:
 static int _add_fd_link(myst_fs_t* fs, myst_file_t* file, int fd)
 {
     int ret = 0;
-    char realpath[PATH_MAX];
-    char linkpath[PATH_MAX];
-    const size_t n = sizeof(linkpath);
+    typedef struct _variables
+    {
+        char realpath[PATH_MAX];
+        char linkpath[PATH_MAX];
+    } variables_t;
+    variables_t* v = NULL;
+    const size_t n = sizeof(v->linkpath);
 
     if (!fs || !file)
         ERAISE(-EINVAL);
 
-    ECHECK((*fs->fs_realpath)(fs, file, realpath, sizeof(realpath)));
+    if (!(v = calloc(1, sizeof(variables_t))))
+        ERAISE(-ENOMEM);
 
-    if (snprintf(linkpath, n, "/proc/%d/fd/%d", myst_getpid(), fd) >= (int)n)
+    ECHECK((*fs->fs_realpath)(fs, file, v->realpath, sizeof(v->realpath)));
+
+    if (snprintf(v->linkpath, n, "/proc/%d/fd/%d", myst_getpid(), fd) >= (int)n)
         ERAISE(-ENAMETOOLONG);
 
-    ECHECK(symlink(realpath, linkpath));
+    ECHECK(symlink(v->realpath, v->linkpath));
 
 done:
+
+    if (v)
+        free(v);
+
     return ret;
 }
 
@@ -658,15 +677,22 @@ long myst_syscall_creat(const char* pathname, mode_t mode)
 {
     long ret = 0;
     int fd;
-    char suffix[PATH_MAX];
+    typedef struct _variables
+    {
+        char suffix[PATH_MAX];
+    } variables_t;
+    variables_t* v = NULL;
     myst_fs_t *fs, *fs_out;
     myst_file_t* file;
     myst_fdtable_t* fdtable = myst_fdtable_current();
     const myst_fdtable_type_t fdtype = MYST_FDTABLE_TYPE_FILE;
     long r;
 
-    ECHECK(myst_mount_resolve(pathname, suffix, &fs));
-    ECHECK((*fs->fs_creat)(fs, suffix, mode, &fs_out, &file));
+    if (!(v = calloc(1, sizeof(variables_t))))
+        ERAISE(-ENOMEM);
+
+    ECHECK(myst_mount_resolve(pathname, v->suffix, &fs));
+    ECHECK((*fs->fs_creat)(fs, v->suffix, mode, &fs_out, &file));
 
     if ((fd = myst_fdtable_assign(fdtable, fdtype, fs_out, file)) < 0)
     {
@@ -685,19 +711,29 @@ long myst_syscall_creat(const char* pathname, mode_t mode)
 
 done:
 
+    if (v)
+        free(v);
+
     return ret;
 }
 
 long myst_syscall_open(const char* pathname, int flags, mode_t mode)
 {
     long ret = 0;
-    char suffix[PATH_MAX];
+    typedef struct _variables
+    {
+        char suffix[PATH_MAX];
+    } variables_t;
+    variables_t* v = NULL;
     myst_fs_t *fs, *fs_out;
     myst_file_t* file;
     myst_fdtable_t* fdtable = myst_fdtable_current();
     const myst_fdtable_type_t fdtype = MYST_FDTABLE_TYPE_FILE;
     int fd;
     int r;
+
+    if (!(v = calloc(1, sizeof(variables_t))))
+        ERAISE(-ENOMEM);
 
     /* Handle /dev/urandom as a special case */
     if (strcmp(pathname, "/dev/urandom") == 0)
@@ -706,8 +742,8 @@ long myst_syscall_open(const char* pathname, int flags, mode_t mode)
         return DEV_URANDOM_FD;
     }
 
-    ECHECK(myst_mount_resolve(pathname, suffix, &fs));
-    ECHECK((*fs->fs_open)(fs, suffix, flags, mode, &fs_out, &file));
+    ECHECK(myst_mount_resolve(pathname, v->suffix, &fs));
+    ECHECK((*fs->fs_open)(fs, v->suffix, flags, mode, &fs_out, &file));
 
     if ((fd = myst_fdtable_assign(fdtable, fdtype, fs_out, file)) < 0)
     {
@@ -725,6 +761,9 @@ long myst_syscall_open(const char* pathname, int flags, mode_t mode)
     ret = fd;
 
 done:
+
+    if (v)
+        free(v);
 
     return ret;
 }
@@ -738,6 +777,14 @@ static long _openat(
     myst_file_t** file_out)
 {
     long ret = 0;
+    typedef struct _variables
+    {
+        char suffix[PATH_MAX];
+        char dirname[PATH_MAX];
+        char filename[PATH_MAX];
+        struct stat statbuf;
+    } variables_t;
+    variables_t* v = NULL;
 
     if (fs_out)
         *fs_out = NULL;
@@ -751,16 +798,19 @@ static long _openat(
     if (*pathname == '\0')
         ERAISE(-ENOENT);
 
+    if (!(v = calloc(1, sizeof(variables_t))))
+        ERAISE(-ENOMEM);
+
     /* if pathname is absolute or AT_FDCWD */
     if (*pathname == '/' || dirfd == AT_FDCWD)
     {
         if (fs_out && file_out)
         {
-            char suffix[PATH_MAX];
             myst_fs_t* fs;
 
-            ECHECK(myst_mount_resolve(pathname, suffix, &fs));
-            ECHECK((*fs->fs_open)(fs, suffix, flags, mode, fs_out, file_out));
+            ECHECK(myst_mount_resolve(pathname, v->suffix, &fs));
+            ECHECK(
+                (*fs->fs_open)(fs, v->suffix, flags, mode, fs_out, file_out));
         }
         else
         {
@@ -772,8 +822,6 @@ static long _openat(
         myst_fdtable_t* fdtable = myst_fdtable_current();
         myst_fs_t* fs;
         myst_file_t* file;
-        char dirname[PATH_MAX];
-        char filename[PATH_MAX];
 
         if (dirfd < 0)
             ERAISE(-EBADF);
@@ -783,32 +831,36 @@ static long _openat(
 
         /* fail if not a directory */
         {
-            struct stat buf;
-            ERAISE((*fs->fs_fstat)(fs, file, &buf));
+            ERAISE((*fs->fs_fstat)(fs, file, &v->statbuf));
 
-            if (!S_ISDIR(buf.st_mode))
+            if (!S_ISDIR(v->statbuf.st_mode))
                 ERAISE(-ENOTDIR);
         }
 
         /* get the full path of dirfd */
-        ECHECK((*fs->fs_realpath)(fs, file, dirname, sizeof(dirname)));
-        ECHECK(myst_make_path(filename, sizeof(filename), dirname, pathname));
+        ECHECK((*fs->fs_realpath)(fs, file, v->dirname, sizeof(v->dirname)));
+        ECHECK(myst_make_path(
+            v->filename, sizeof(v->filename), v->dirname, pathname));
 
         if (fs_out && file_out)
         {
-            char suffix[PATH_MAX];
             myst_fs_t* fs;
 
-            ECHECK(myst_mount_resolve(filename, suffix, &fs));
-            ECHECK((*fs->fs_open)(fs, suffix, flags, mode, fs_out, file_out));
+            ECHECK(myst_mount_resolve(v->filename, v->suffix, &fs));
+            ECHECK(
+                (*fs->fs_open)(fs, v->suffix, flags, mode, fs_out, file_out));
         }
         else
         {
-            ret = myst_syscall_open(filename, flags, mode);
+            ret = myst_syscall_open(v->filename, flags, mode);
         }
     }
 
 done:
+
+    if (v)
+        free(v);
+
     return ret;
 }
 
@@ -1061,26 +1113,34 @@ done:
 long myst_syscall_stat(const char* pathname, struct stat* statbuf)
 {
     long ret = 0;
-    char suffix[PATH_MAX];
+    char* suffix = NULL;
     myst_fs_t* fs;
 
-    ECHECK(myst_mount_resolve(pathname, suffix, &fs));
+    ECHECK(myst_mount_resolve2(pathname, &suffix, &fs));
     ECHECK((*fs->fs_stat)(fs, suffix, statbuf));
 
 done:
+
+    if (suffix)
+        free(suffix);
+
     return ret;
 }
 
 long myst_syscall_lstat(const char* pathname, struct stat* statbuf)
 {
     long ret = 0;
-    char suffix[PATH_MAX];
+    char* suffix = NULL;
     myst_fs_t* fs;
 
-    ECHECK(myst_mount_resolve(pathname, suffix, &fs));
+    ECHECK(myst_mount_resolve2(pathname, &suffix, &fs));
     ECHECK((*fs->fs_lstat)(fs, suffix, statbuf));
 
 done:
+
+    if (suffix)
+        free(suffix);
+
     return ret;
 }
 
@@ -1109,6 +1169,9 @@ long myst_syscall_fstatat(
     int flags)
 {
     long ret = 0;
+    char* realpath = NULL;
+    char* dirpath = NULL;
+    char* path = NULL;
 
     if (!pathname || !statbuf)
         ERAISE(-EINVAL);
@@ -1137,10 +1200,9 @@ long myst_syscall_fstatat(
             myst_fdtable_t* fdtable = myst_fdtable_current();
             myst_fs_t* fs;
             myst_file_t* file;
-            char realpath[PATH_MAX];
 
             ECHECK(myst_fdtable_get_file(fdtable, dirfd, &fs, &file));
-            ECHECK((*fs->fs_realpath)(fs, file, realpath, sizeof(realpath)));
+            ECHECK(myst_fs_realpath(fs, file, &realpath));
             ECHECK(myst_syscall_lstat(realpath, statbuf));
             goto done;
         }
@@ -1155,12 +1217,10 @@ long myst_syscall_fstatat(
         myst_fdtable_t* fdtable = myst_fdtable_current();
         myst_fs_t* fs;
         myst_file_t* file;
-        char dirpath[PATH_MAX];
-        char path[PATH_MAX];
 
         ECHECK(myst_fdtable_get_file(fdtable, dirfd, &fs, &file));
-        ECHECK((*fs->fs_realpath)(fs, file, dirpath, sizeof(dirpath)));
-        ECHECK(myst_make_path(path, sizeof(path), dirpath, pathname));
+        ECHECK(myst_fs_realpath(fs, file, &dirpath));
+        ECHECK(myst_make_path2(dirpath, pathname, &path));
 
         if (flags & AT_SYMLINK_NOFOLLOW)
         {
@@ -1175,6 +1235,16 @@ long myst_syscall_fstatat(
     }
 
 done:
+
+    if (realpath)
+        free(realpath);
+
+    if (dirpath)
+        free(dirpath);
+
+    if (path)
+        free(path);
+
     return ret;
 }
 
@@ -1205,34 +1275,48 @@ static const char* _trim_trailing_slashes(
 long myst_syscall_mkdir(const char* pathname, mode_t mode)
 {
     long ret = 0;
-    char suffix[PATH_MAX];
+    char* suffix = NULL;
     myst_fs_t* fs;
-    char buf[PATH_MAX];
+    char* buf = NULL;
 
     if (!pathname)
         ERAISE(-EINVAL);
 
+    if (!(buf = malloc(PATH_MAX)))
+        ERAISE(-ENOMEM);
+
     /* remove trailing slash from directory name if any */
-    if (!(pathname = _trim_trailing_slashes(pathname, buf, sizeof(buf))))
+    if (!(pathname = _trim_trailing_slashes(pathname, buf, PATH_MAX)))
         ERAISE(-ENAMETOOLONG);
 
-    ECHECK(myst_mount_resolve(pathname, suffix, &fs));
+    ECHECK(myst_mount_resolve2(pathname, &suffix, &fs));
     ECHECK((*fs->fs_mkdir)(fs, suffix, mode));
 
 done:
+
+    if (suffix)
+        free(suffix);
+
+    if (buf)
+        free(buf);
+
     return ret;
 }
 
 long myst_syscall_rmdir(const char* pathname)
 {
     long ret = 0;
-    char suffix[PATH_MAX];
+    char* suffix = NULL;
     myst_fs_t* fs;
 
-    ECHECK(myst_mount_resolve(pathname, suffix, &fs));
+    ECHECK(myst_mount_resolve2(pathname, &suffix, &fs));
     ECHECK((*fs->fs_rmdir)(fs, suffix));
 
 done:
+
+    if (suffix)
+        free(suffix);
+
     return ret;
 }
 
@@ -1255,13 +1339,13 @@ done:
 long myst_syscall_link(const char* oldpath, const char* newpath)
 {
     long ret = 0;
-    char old_suffix[PATH_MAX];
-    char new_suffix[PATH_MAX];
+    char* old_suffix = NULL;
+    char* new_suffix = NULL;
     myst_fs_t* old_fs;
     myst_fs_t* new_fs;
 
-    ECHECK(myst_mount_resolve(oldpath, old_suffix, &old_fs));
-    ECHECK(myst_mount_resolve(newpath, new_suffix, &new_fs));
+    ECHECK(myst_mount_resolve2(oldpath, &old_suffix, &old_fs));
+    ECHECK(myst_mount_resolve2(newpath, &new_suffix, &new_fs));
 
     if (old_fs != new_fs)
     {
@@ -1272,45 +1356,60 @@ long myst_syscall_link(const char* oldpath, const char* newpath)
     ECHECK((*old_fs->fs_link)(old_fs, old_suffix, new_suffix));
 
 done:
+
+    if (old_suffix)
+        free(old_suffix);
+
+    if (new_suffix)
+        free(new_suffix);
+
     return ret;
 }
 
 long myst_syscall_unlink(const char* pathname)
 {
     long ret = 0;
-    char suffix[PATH_MAX];
+    char* suffix = NULL;
     myst_fs_t* fs;
 
-    ECHECK(myst_mount_resolve(pathname, suffix, &fs));
+    ECHECK(myst_mount_resolve2(pathname, &suffix, &fs));
     ECHECK((*fs->fs_unlink)(fs, suffix));
 
 done:
+
+    if (suffix)
+        free(suffix);
+
     return ret;
 }
 
 long myst_syscall_access(const char* pathname, int mode)
 {
     long ret = 0;
-    char suffix[PATH_MAX];
+    char* suffix = NULL;
     myst_fs_t* fs;
 
-    ECHECK(myst_mount_resolve(pathname, suffix, &fs));
+    ECHECK(myst_mount_resolve2(pathname, &suffix, &fs));
     ECHECK((*fs->fs_access)(fs, suffix, mode));
 
 done:
+
+    if (suffix)
+        free(suffix);
+
     return ret;
 }
 
 long myst_syscall_rename(const char* oldpath, const char* newpath)
 {
     long ret = 0;
-    char old_suffix[PATH_MAX];
-    char new_suffix[PATH_MAX];
+    char* old_suffix = NULL;
+    char* new_suffix = NULL;
     myst_fs_t* old_fs;
     myst_fs_t* new_fs;
 
-    ECHECK(myst_mount_resolve(oldpath, old_suffix, &old_fs));
-    ECHECK(myst_mount_resolve(newpath, new_suffix, &new_fs));
+    ECHECK(myst_mount_resolve2(oldpath, &old_suffix, &old_fs));
+    ECHECK(myst_mount_resolve2(newpath, &new_suffix, &new_fs));
 
     if (old_fs != new_fs)
     {
@@ -1321,19 +1420,30 @@ long myst_syscall_rename(const char* oldpath, const char* newpath)
     ECHECK((*old_fs->fs_rename)(old_fs, old_suffix, new_suffix));
 
 done:
+
+    if (old_suffix)
+        free(old_suffix);
+
+    if (new_suffix)
+        free(new_suffix);
+
     return ret;
 }
 
 long myst_syscall_truncate(const char* path, off_t length)
 {
     long ret = 0;
-    char suffix[PATH_MAX];
+    char* suffix = NULL;
     myst_fs_t* fs;
 
-    ECHECK(myst_mount_resolve(path, suffix, &fs));
+    ECHECK(myst_mount_resolve2(path, &suffix, &fs));
     ERAISE((*fs->fs_truncate)(fs, suffix, length));
 
 done:
+
+    if (suffix)
+        free(suffix);
+
     return ret;
 }
 
@@ -1355,26 +1465,34 @@ done:
 long myst_syscall_readlink(const char* pathname, char* buf, size_t bufsiz)
 {
     long ret = 0;
-    char suffix[PATH_MAX];
+    char* suffix = NULL;
     myst_fs_t* fs;
 
-    ECHECK(myst_mount_resolve(pathname, suffix, &fs));
+    ECHECK(myst_mount_resolve2(pathname, &suffix, &fs));
     ERAISE((*fs->fs_readlink)(fs, suffix, buf, bufsiz));
 
 done:
+
+    if (suffix)
+        free(suffix);
+
     return ret;
 }
 
 long myst_syscall_symlink(const char* target, const char* linkpath)
 {
     long ret = 0;
-    char suffix[PATH_MAX];
+    char* suffix = NULL;
     myst_fs_t* fs;
 
-    ECHECK(myst_mount_resolve(linkpath, suffix, &fs));
+    ECHECK(myst_mount_resolve2(linkpath, &suffix, &fs));
     ERAISE((*fs->fs_symlink)(fs, target, suffix));
 
 done:
+
+    if (suffix)
+        free(suffix);
+
     return ret;
 }
 
@@ -1383,8 +1501,8 @@ long myst_syscall_chdir(const char* path)
     long ret = 0;
     myst_thread_t* thread = myst_thread_self();
     myst_thread_t* process_thread = myst_find_process_thread(thread);
-    char buf[PATH_MAX];
-    char buf2[PATH_MAX];
+    char* __buf = NULL;
+    char* __buf2 = NULL;
 
     if (_bad_addr(path))
         ERAISE(-EFAULT);
@@ -1398,25 +1516,35 @@ long myst_syscall_chdir(const char* path)
     if (strlen(myst_basename(path)) > NAME_MAX)
         ERAISE(-ENAMETOOLONG);
 
+    if (!(__buf = malloc(PATH_MAX)))
+        ERAISE(-ENOMEM);
+
+    if (!(__buf2 = malloc(PATH_MAX)))
+        ERAISE(-ENOMEM);
+
     ECHECK(myst_path_absolute_cwd(
-        process_thread->main.cwd, path, buf, sizeof(buf)));
-    ECHECK(myst_normalize(buf, buf2, sizeof(buf2)));
+        process_thread->main.cwd, path, __buf, PATH_MAX));
+    ECHECK(myst_normalize(__buf, __buf2, PATH_MAX));
 
     /* fail if the directory does not exist */
     {
         struct stat buf;
 
-        if (myst_syscall_stat(buf2, &buf) != 0 || !S_ISDIR(buf.st_mode))
+        if (myst_syscall_stat(__buf2, &buf) != 0 || !S_ISDIR(buf.st_mode))
             ERAISE(-ENOENT);
     }
 
-    char* tmp = strdup(buf2);
-    if (tmp == NULL)
-        ERAISE(-ENOMEM);
     free(process_thread->main.cwd);
-    process_thread->main.cwd = tmp;
+    process_thread->main.cwd = __buf2;
+    __buf2 = NULL;
 
 done:
+
+    if (__buf)
+        free(__buf);
+
+    if (__buf2)
+        free(__buf2);
 
     myst_spin_unlock(&process_thread->main.cwd_lock);
 
@@ -1449,15 +1577,20 @@ done:
 long myst_syscall_statfs(const char* path, struct statfs* buf)
 {
     long ret = 0;
-    char suffix[PATH_MAX];
+    char* suffix = NULL;
     myst_fs_t* fs;
 
-    ECHECK(myst_mount_resolve(path, suffix, &fs));
+    ECHECK(myst_mount_resolve2(path, &suffix, &fs));
+
     if (buf)
         memset(buf, 0, sizeof(*buf));
+
     ECHECK((*fs->fs_statfs)(fs, suffix, buf));
 
 done:
+
+    if (suffix)
+        free(suffix);
 
     return ret;
 }
@@ -2570,6 +2703,8 @@ done:
         goto done;           \
     } while (0)
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstack-usage="
 long myst_syscall(long n, long params[6])
 {
     long syscall_ret = 0;
@@ -5114,6 +5249,7 @@ done:
 
     return syscall_ret;
 }
+#pragma GCC diagnostic pop
 
 /*
 **==============================================================================

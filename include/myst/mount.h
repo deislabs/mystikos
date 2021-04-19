@@ -16,4 +16,7 @@ int myst_umount(const char* target);
 /* Use mounter to resolve this path to a target path */
 int myst_mount_resolve(const char* path, char suffix[PATH_MAX], myst_fs_t** fs);
 
+/* like myst_mount_resolve() but places suffix on the heap */
+int myst_mount_resolve2(const char* path, char** suffix, myst_fs_t** fs);
+
 #endif /* _MYST_MOUNT_H */

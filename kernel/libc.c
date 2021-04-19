@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#define _GNU_SOURCE
 #include <assert.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -407,6 +408,70 @@ int putchar(int c)
 {
     myst_console_printf(STDOUT_FILENO, "%c", c);
     return (int)c;
+}
+
+int vasprintf(char** strp, const char* fmt, va_list ap)
+{
+    int ret = 0;
+    int n;
+    char* s = NULL;
+
+    if (strp)
+        *strp = NULL;
+
+    /* determine how much memory is needed */
+    {
+        va_list ap_copy;
+        va_copy(ap_copy, ap);
+        char buf[1];
+        n = vsnprintf(buf, sizeof(buf), fmt, ap_copy);
+        va_end(ap_copy);
+
+        if (n < 0)
+        {
+            ret = -1;
+            goto done;
+        }
+    }
+
+    /* allocate the buffer */
+    if (!(s = malloc(n + 1)))
+    {
+        ret = -1;
+        goto done;
+    }
+
+    /* format the buffer */
+    if ((n = vsnprintf(s, n + 1, fmt, ap)) < 0)
+    {
+        ret = -1;
+        goto done;
+    }
+
+    if (strp)
+    {
+        *strp = s;
+        s = NULL;
+    }
+
+    ret = n;
+
+done:
+
+    if (s)
+        free(s);
+
+    return ret;
+}
+
+int asprintf(char** s, const char* fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    int ret = vasprintf(s, fmt, ap);
+    va_end(ap);
+
+    return ret;
 }
 
 /*

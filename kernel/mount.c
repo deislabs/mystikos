@@ -55,9 +55,13 @@ int myst_mount_resolve(
 {
     int ret = 0;
     size_t match_len = 0;
-    myst_path_t realpath;
     bool locked = false;
     myst_fs_t* fs = NULL;
+    typedef struct _variables
+    {
+        myst_path_t realpath;
+    } variables_t;
+    variables_t* v = NULL;
 
     if (fs_out)
         *fs_out = NULL;
@@ -65,8 +69,11 @@ int myst_mount_resolve(
     if (!path || !suffix)
         ERAISE(-EINVAL);
 
+    if (!(v = calloc(1, sizeof(variables_t))))
+        ERAISE(-ENOMEM);
+
     /* Find the real path (the absolute non-relative path). */
-    ECHECK(myst_realpath(path, &realpath));
+    ECHECK(myst_realpath(path, &v->realpath));
 
     myst_spin_lock(&_lock);
     locked = true;
@@ -81,18 +88,18 @@ int myst_mount_resolve(
         {
             if (len > match_len)
             {
-                myst_strlcpy(suffix, realpath.buf, PATH_MAX);
+                myst_strlcpy(suffix, v->realpath.buf, PATH_MAX);
                 match_len = len;
                 fs = _mount_table[i].fs;
             }
         }
         else if (
-            strncmp(mpath, realpath.buf, len) == 0 &&
-            (realpath.buf[len] == '/' || realpath.buf[len] == '\0'))
+            strncmp(mpath, v->realpath.buf, len) == 0 &&
+            (v->realpath.buf[len] == '/' || v->realpath.buf[len] == '\0'))
         {
             if (len > match_len)
             {
-                myst_strlcpy(suffix, realpath.buf + len, PATH_MAX);
+                myst_strlcpy(suffix, v->realpath.buf + len, PATH_MAX);
 
                 if (*suffix == '\0')
                     myst_strlcpy(suffix, "/", PATH_MAX);
@@ -119,6 +126,29 @@ done:
     if (locked)
         myst_spin_unlock(&_lock);
 
+    if (v)
+        free(v);
+
+    return ret;
+}
+
+int myst_mount_resolve2(const char* path, char** suffix_out, myst_fs_t** fs_out)
+{
+    int ret = 0;
+    char* suffix = NULL;
+
+    if (!(suffix = malloc(PATH_MAX)))
+        ERAISE(-ENOMEM);
+
+    ECHECK(myst_mount_resolve(path, suffix, fs_out));
+    *suffix_out = suffix;
+    suffix = NULL;
+
+done:
+
+    if (suffix)
+        free(suffix);
+
     return ret;
 }
 
@@ -126,31 +156,38 @@ int myst_mount(myst_fs_t* fs, const char* source, const char* target)
 {
     int ret = -1;
     bool locked = false;
-    myst_path_t target_buf;
-    mount_table_entry_t mount_table_entry = {0};
+    typedef struct _variables
+    {
+        myst_path_t target_buf;
+        mount_table_entry_t mount_table_entry;
+        struct stat buf;
+        char suffix[PATH_MAX];
+    } variables_t;
+    variables_t* v = NULL;
 
     if (!fs || !source || !target)
         ERAISE(-EINVAL);
 
+    if (!(v = calloc(1, sizeof(variables_t))))
+        ERAISE(-ENOMEM);
+
     /* Normalize the target path */
     {
-        ECHECK(myst_realpath(target, &target_buf));
-        target = target_buf.buf;
+        ECHECK(myst_realpath(target, &v->target_buf));
+        target = v->target_buf.buf;
     }
 
     /* Be sure the target directory exists (if not root) */
     if (strcmp(target, "/") != 0)
     {
-        struct stat buf;
-        char suffix[PATH_MAX];
         myst_fs_t* parent;
 
         /* Find the file system onto which the mount will occur */
-        ECHECK(myst_mount_resolve(target, suffix, &parent));
+        ECHECK(myst_mount_resolve(target, v->suffix, &parent));
 
-        ECHECK((*parent->fs_stat)(parent, target, &buf));
+        ECHECK((*parent->fs_stat)(parent, target, &v->buf));
 
-        if (!S_ISDIR(buf.st_mode))
+        if (!S_ISDIR(v->buf.st_mode))
             ERAISE(-ENOTDIR);
     }
 
@@ -181,26 +218,29 @@ int myst_mount(myst_fs_t* fs, const char* source, const char* target)
 
     /* Assign and initialize new mount point. */
     {
-        if (!(mount_table_entry.path = strdup(target)))
+        if (!(v->mount_table_entry.path = strdup(target)))
             ERAISE(-ENOMEM);
 
-        mount_table_entry.path_size = strlen(target) + 1;
-        mount_table_entry.fs = fs;
-        mount_table_entry.flags = 0;
+        v->mount_table_entry.path_size = strlen(target) + 1;
+        v->mount_table_entry.fs = fs;
+        v->mount_table_entry.flags = 0;
     }
 
-    _mount_table[_mount_table_size++] = mount_table_entry;
-    mount_table_entry.path = NULL;
+    _mount_table[_mount_table_size++] = v->mount_table_entry;
+    v->mount_table_entry.path = NULL;
 
     ret = 0;
 
 done:
 
-    if (mount_table_entry.path)
-        free(mount_table_entry.path);
+    if (v->mount_table_entry.path)
+        free(v->mount_table_entry.path);
 
     if (locked)
         myst_spin_unlock(&_lock);
+
+    if (v)
+        free(v);
 
     return ret;
 }
@@ -208,20 +248,27 @@ done:
 int myst_umount(const char* target)
 {
     int ret = 0;
-    myst_path_t realpath;
     bool found = false;
+    typedef struct _variables
+    {
+        myst_path_t realpath;
+    } variables_t;
+    variables_t* v = NULL;
+
+    if (!(v = calloc(1, sizeof(variables_t))))
+        ERAISE(-ENOMEM);
 
     myst_spin_lock(&_lock);
 
     /* Find the real path (the absolute non-relative path) */
-    ECHECK(myst_realpath(target, &realpath));
+    ECHECK(myst_realpath(target, &v->realpath));
 
     /* search the mount table for an entry with this name */
     for (size_t i = 0; i < _mount_table_size; i++)
     {
         mount_table_entry_t* entry = &_mount_table[i];
 
-        if (strcmp(entry->path, realpath.buf) == 0)
+        if (strcmp(entry->path, v->realpath.buf) == 0)
         {
             /* release the path */
             free(entry->path);
@@ -244,6 +291,9 @@ int myst_umount(const char* target)
 done:
 
     myst_spin_unlock(&_lock);
+
+    if (v)
+        free(v);
 
     return ret;
 }

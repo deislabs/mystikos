@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
+#include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 
@@ -18,6 +19,7 @@ static myst_fs_t* _procfs;
 int procfs_setup()
 {
     int ret = 0;
+    char* fdpath = NULL;
 
     if (myst_init_ramfs(myst_mount_resolve, &_procfs) != 0)
     {
@@ -38,9 +40,12 @@ int procfs_setup()
     }
 
     /* Create /proc/[pid]/fd directory for main thread */
-    char fdpath[PATH_MAX];
-    const size_t n = sizeof(fdpath);
-    snprintf(fdpath, n, "/proc/%d/fd", myst_getpid());
+    if (asprintf(&fdpath, "/proc/%d/fd", myst_getpid()) < 0)
+    {
+        myst_eprintf("%s(%u): out of memory\n", __FILE__, __LINE__);
+        ERAISE(-ENOMEM);
+    }
+
     if (myst_mkdirhier(fdpath, 777) != 0)
     {
         myst_eprintf("cannot create the /proc/[pid]/fd directory\n");
@@ -48,6 +53,10 @@ int procfs_setup()
     }
 
 done:
+
+    if (fdpath)
+        free(fdpath);
+
     return ret;
 }
 
@@ -65,15 +74,21 @@ int procfs_teardown()
 int procfs_pid_cleanup(pid_t pid)
 {
     int ret = 0;
-    char pid_dir_path[PATH_MAX];
+    char* pid_dir_path = NULL;
 
     if (!pid)
         ERAISE(-EINVAL);
 
-    snprintf(pid_dir_path, sizeof(pid_dir_path), "/%d", pid);
+    if (asprintf(&pid_dir_path, "/%d", pid) < 0)
+        ERAISE(-ENOMEM);
+
     ECHECK(myst_release_tree(_procfs, pid_dir_path));
 
 done:
+
+    if (pid_dir_path)
+        free(pid_dir_path);
+
     return ret;
 }
 
@@ -100,12 +115,21 @@ done:
 
 static int _self_vcallback(myst_buf_t* vbuf)
 {
-    char linkpath[PATH_MAX];
-    const size_t n = sizeof(linkpath);
-    snprintf(linkpath, n, "/proc/%d", myst_getpid());
+    int ret = 0;
+    char* linkpath = NULL;
+
+    if (asprintf(&linkpath, "/proc/%d", myst_getpid()) < 0)
+        ERAISE(-ENOMEM);
+
     myst_buf_clear(vbuf);
     myst_buf_append(vbuf, linkpath, sizeof(linkpath));
-    return 0;
+
+done:
+
+    if (linkpath)
+        free(linkpath);
+
+    return ret;
 }
 
 int create_proc_root_entries()

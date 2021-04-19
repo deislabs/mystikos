@@ -10,4 +10,6 @@ int myst_chdir(const char* path);
 
 char* myst_getcwd(char* buf, size_t size);
 
+int myst_getcwd2(char** buf);
+
 #endif /* _MYST_CWD_H */

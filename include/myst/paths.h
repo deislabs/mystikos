@@ -35,4 +35,6 @@ int myst_make_path(
     const char* dirname,
     const char* basename);
 
+int myst_make_path2(const char* dirname, const char* basename, char** path);
+
 #endif /* _MYST_PATHS_H */

@@ -2,8 +2,10 @@
 // Licensed under the MIT License.
 
 #include <errno.h>
+#include <stdlib.h>
 #include <string.h>
 
+#include <myst/cwd.h>
 #include <myst/eraise.h>
 #include <myst/paths.h>
 #include <myst/strings.h>
@@ -55,6 +57,7 @@ done:
 int myst_path_absolute(const char* path, char* buf, size_t size)
 {
     int ret = 0;
+    char* cwd = NULL;
 
     if (buf)
         *buf = '\0';
@@ -69,16 +72,15 @@ int myst_path_absolute(const char* path, char* buf, size_t size)
     }
     else
     {
-        long r;
-        char cwd[PATH_MAX];
-
-        if ((r = myst_syscall_getcwd(cwd, sizeof(cwd))) < 0)
-            ERAISE((int)r);
-
+        ECHECK(myst_getcwd2(&cwd));
         ERAISE(myst_path_absolute_cwd(cwd, path, buf, size));
     }
 
 done:
+
+    if (cwd)
+        free(cwd);
+
     return ret;
 }
 
@@ -104,5 +106,25 @@ int myst_make_path(
     memcpy(buf + dirname_len + 1, basename, basename_len + 1);
 
 done:
+    return ret;
+}
+
+int myst_make_path2(const char* dirname, const char* basename, char** path_out)
+{
+    int ret = 0;
+    char* path = NULL;
+
+    if (!(path = malloc(PATH_MAX)))
+        ERAISE(-ENOMEM);
+
+    ECHECK(myst_make_path(path, PATH_MAX, dirname, basename));
+    *path_out = path;
+    path = NULL;
+
+done:
+
+    if (path)
+        free(path);
+
     return ret;
 }

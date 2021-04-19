@@ -29,6 +29,7 @@ WARNINGS += -Wextra
 WARNINGS += -Wno-missing-field-initializers
 WARNINGS += -Wno-type-limits
 WARNINGS += -Wno-conversion
+#WARNINGS += -Wstack-usage=1024
 
 # ATTN: this optimization makes little difference for the kernel
 #USE_GC_SECTIONS=1

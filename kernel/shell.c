@@ -4,6 +4,7 @@
 #include <string.h>
 #include <sys/utsname.h>
 
+#include <myst/cwd.h>
 #include <myst/fdtable.h>
 #include <myst/id.h>
 #include <myst/kernel.h>
@@ -96,31 +97,33 @@ static void _help_command(int argc, char** argv)
 
 static void _ls_command(int argc, char** argv)
 {
-    char dirname[PATH_MAX];
+    const char* dirname;
+    char* cwd = NULL;
     DIR* dir;
     struct dirent* ent;
 
     if (argc > 2)
     {
         myst_eprintf("%s: too many arguments\n", argv[0]);
-        return;
+        goto done;
     }
 
     if (argc == 2)
     {
-        myst_strlcpy(dirname, argv[1], sizeof(dirname));
+        dirname = argv[1];
     }
     else
     {
-        memset(dirname, 'a', sizeof(dirname));
-        if (myst_syscall_getcwd(dirname, sizeof(dirname)) < 0)
+        if (myst_getcwd2(&cwd) < 0)
             myst_panic("getcwd() failed");
+
+        dirname = cwd;
     }
 
     if (!(dir = opendir(dirname)))
     {
         myst_eprintf("%s: no such directory: %s\n", argv[0], dirname);
-        return;
+        goto done;
     }
 
     while ((ent = readdir(dir)))
@@ -138,16 +141,24 @@ static void _ls_command(int argc, char** argv)
 
     printf("\n");
     closedir(dir);
+
+done:
+
+    if (cwd)
+        free(cwd);
+
+    return;
 }
 
 static void _pwd_command(void)
 {
-    char cwd[PATH_MAX];
+    char* cwd = NULL;
 
-    if (myst_syscall_getcwd(cwd, sizeof(cwd)) < 0)
+    if (myst_getcwd2(&cwd) < 0)
         myst_panic("getcwd() failed");
 
     printf("%s\n", cwd);
+    free(cwd);
 }
 
 static void _cd_command(int argc, char** argv)
@@ -241,6 +252,11 @@ static void _args_command(int argc, char** argv)
 void myst_start_shell(const char* msg)
 {
     char** argv = NULL;
+    char* line = NULL;
+    const size_t line_size = 1024;
+
+    if (!(line = malloc(line_size)))
+        myst_panic("out of memory");
 
     if (msg)
     {
@@ -249,11 +265,10 @@ void myst_start_shell(const char* msg)
 
     for (;;)
     {
-        char line[1024];
         long n;
         size_t argc;
 
-        if ((n = _readline("myst$ ", line, sizeof(line))) < 0)
+        if ((n = _readline("myst$ ", line, line_size)) < 0)
         {
             myst_eprintf("error: readline failed: %ld!\n", n);
             myst_panic("readline failed\n");
@@ -342,6 +357,9 @@ void myst_start_shell(const char* msg)
 
     if (argv)
         free(argv);
+
+    if (line)
+        free(line);
 }
 
 #endif /* !defined(MYST_RELEASE) */

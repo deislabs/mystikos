@@ -505,6 +505,7 @@ done:
 static int _mount_rootfs(myst_kernel_args_t* args, myst_fstype_t fstype)
 {
     int ret = 0;
+    char* err = NULL;
 
     switch (fstype)
     {
@@ -523,10 +524,13 @@ static int _mount_rootfs(myst_kernel_args_t* args, myst_fstype_t fstype)
 #if defined(MYST_ENABLE_EXT2FS)
         case MYST_FSTYPE_EXT2FS:
         {
-            char err[PATH_MAX + 256];
+            size_t err_size = 2 * PATH_MAX;
+
+            if (!(err = malloc(err_size)))
+                ERAISE(-EINVAL);
 
             /* setup and mount the EXT2 file system */
-            if (_setup_ext2(args->rootfs, err, sizeof(err)) != 0)
+            if (_setup_ext2(args->rootfs, err, err_size) != 0)
             {
                 myst_eprintf(
                     "failed to setup EXT2 rootfs: %s (%s)\n",
@@ -541,7 +545,10 @@ static int _mount_rootfs(myst_kernel_args_t* args, myst_fstype_t fstype)
 #if defined(MYST_ENABLE_HOSTFS)
         case MYST_FSTYPE_HOSTFS:
         {
-            char err[PATH_MAX + 256];
+            size_t err_size = 2 * PATH_MAX;
+
+            if (!(err = malloc(err_size)))
+                ERAISE(-EINVAL);
 
             /* disallow HOSTFS rootfs in non-debug mode */
             if (!args->tee_debug_mode)
@@ -552,7 +559,7 @@ static int _mount_rootfs(myst_kernel_args_t* args, myst_fstype_t fstype)
             }
 
             /* setup and mount the HOSTFS file system */
-            if (_setup_hostfs(args->rootfs, err, sizeof(err)) != 0)
+            if (_setup_hostfs(args->rootfs, err, err_size) != 0)
             {
                 myst_eprintf(
                     "failed to setup HOSTFS rootfs: %s (%s)\n",
@@ -574,6 +581,10 @@ static int _mount_rootfs(myst_kernel_args_t* args, myst_fstype_t fstype)
     }
 
 done:
+
+    if (err)
+        free(err);
+
     return ret;
 }
 
