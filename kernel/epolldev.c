@@ -190,6 +190,8 @@ static int _ed_epoll_wait(
     if (!epolldev || !epoll || !events || maxevents < 0)
         ERAISE(-EINVAL);
 
+    memset(events, 0, maxevents * sizeof(struct epoll_event));
+
     myst_spin_lock(&epoll->lock);
     locked = true;
 
@@ -290,22 +292,22 @@ static int _ed_epoll_wait(
 
                 dest = &events[nevents++];
 
-                if (src->events & POLLIN)
+                if (src->revents & POLLIN)
                     dest->events |= EPOLLIN;
 
-                if (src->events & POLLOUT)
+                if (src->revents & POLLOUT)
                     dest->events |= EPOLLOUT;
 
-                if (src->events & POLLRDHUP)
+                if (src->revents & POLLRDHUP)
                     dest->events |= EPOLLRDHUP;
 
-                if (src->events & POLLPRI)
+                if (src->revents & POLLPRI)
                     dest->events |= EPOLLPRI;
 
-                if (src->events & POLLERR)
+                if (src->revents & POLLERR)
                     dest->events |= EPOLLERR;
 
-                if (src->events & POLLHUP)
+                if (src->revents & POLLHUP)
                     dest->events |= EPOLLHUP;
 
                 dest->data = ent->event.data;

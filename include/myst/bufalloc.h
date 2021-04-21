@@ -56,7 +56,10 @@ MYST_INLINE void* myst_buf_calloc(
         return NULL;
 
     if (buf && n && n <= buflen)
+    {
+        memset(buf, 0, n);
         return buf;
+    }
     else
         return calloc(nmemb, size);
 }
