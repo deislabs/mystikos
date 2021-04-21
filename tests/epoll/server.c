@@ -278,7 +278,7 @@ void run_server(uint16_t port, size_t num_clients)
                     break;
             }
 
-            /* Handle client input. */
+            /* Handle client output */
             if (client->sock != -1 && (event->events & EPOLLOUT))
             {
                 /* Write until output is exhausted or EAGAIN encountered. */
@@ -308,7 +308,7 @@ void run_server(uint16_t port, size_t num_clients)
                             break;
                         }
                     }
-                    else if (errno == EAGAIN)
+                    else if (n == -1 && errno == EAGAIN)
                     {
                         break;
                     }

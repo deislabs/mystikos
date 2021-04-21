@@ -19,7 +19,13 @@ OPTS = --strace
 endif
 
 tests: all
+	$(MAKE) __tests
+
+__tests:
 	$(RUNTEST) $(MYST_EXEC) rootfs /bin/epoll $(OPTS)
+
+stress:
+	$(foreach i, $(shell seq 1 100), $(MAKE) __tests $(NL) )
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst
