@@ -24,7 +24,7 @@ int main(int argc, const char* argv[])
         {
             printf("%s", line);
             if (linenum == 0)
-                assert(strstr(line, "BEGIN EC PRIVATE KEY"));
+                assert(strstr(line, "BEGIN RSA PRIVATE KEY"));
             linenum++;
         }
         fclose(fp);

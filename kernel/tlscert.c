@@ -127,11 +127,11 @@ int myst_init_tls_credential_files(
         ERAISE(-EPERM);
 #endif
 
-    if (strcmp(want_tls_creds, "CERT_ONLY") == 0)
+    if (strcmp(want_tls_creds, CERT_AND_PEMKEY) == 0)
     {
         ECHECK(_create_tls_credentials(fs, false));
     }
-    else if (strcmp(want_tls_creds, "CERT_AND_REPORT") == 0)
+    else if (strcmp(want_tls_creds, CERT_PEMKEY_REPORT) == 0)
     {
         ECHECK(_create_tls_credentials(fs, true));
     }

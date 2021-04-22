@@ -21,5 +21,5 @@
     // Whether we allow "ApplicationParameters" to be overridden by command line options of "myst exec"
     "HostApplicationParameters": false,
     // The environment variables accessible inside the enclave.
-    "EnvironmentVariables": ["COMPlus_EnableDiagnostics=0", "MYST_WANT_TLS_CREDENTIAL=CERT_AND_REPORT"],
+    "EnvironmentVariables": ["COMPlus_EnableDiagnostics=0", "MYST_WANT_TEE_CREDENTIALS=CERT_PEMKEY_REPORT"],
 }
