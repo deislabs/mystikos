@@ -68,6 +68,9 @@ DIRS += shared_symbols
 
 ifndef MYST_SKIP_LIBCXX_TESTS
 DIRS += libcxx
+ifdef MYST_NIGHTLY_TEST
+DIRS += libcxx2
+endif
 endif
 
 ifndef MYST_USE_OECACHE

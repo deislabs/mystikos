@@ -28,7 +28,6 @@ else
 endif
 
 all:
-	$(MAKE) clean
 	$(MAKE) myst
 	$(MAKE) $(APPDIR)
 	$(MAKE) $(APPDIR)/bin/run
@@ -46,7 +45,7 @@ $(APPDIR)/bin/run: run.c
 	$(MUSL_GCC) -Wall -o $(APPDIR)/bin/run run.c
 
 $(APPDIR):
-	$(APPBUILDER) mystikos/libcxx_tests_10x:1.1
+	$(APPBUILDER) -i mystikos/libcxx_tests_10x:1.1
 	cp $(CURDIR)/builttests_exe1.passed $(APPDIR)
 	cp $(CURDIR)/builttests_exe2.passed $(APPDIR)
 	cp $(CURDIR)/builttests_exe3.passed $(APPDIR)
