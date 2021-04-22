@@ -28,7 +28,6 @@ else
 endif
 
 all:
-	$(MAKE) clean
 	$(MAKE) myst
 	$(MAKE) $(APPDIR)
 	$(MAKE) $(APPDIR)/bin/run
