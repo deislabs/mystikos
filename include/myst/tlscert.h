@@ -6,6 +6,10 @@
 
 #include <myst/fs.h>
 
+#define WANT_CREDENTIALS "MYST_WANT_TEE_CREDENTIALS"
+#define CERT_AND_PEMKEY "CERT_PEMKEY"
+#define CERT_PEMKEY_REPORT "CERT_PEMKEY_REPORT"
+
 int myst_init_tls_credential_files(
     const char* want_tls_creds,
     myst_fs_t* fs,

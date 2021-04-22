@@ -29,13 +29,13 @@ the malicious world.
 ## Mystikos solution
 
 Mystikos provides two environment variables, `MYST_TARGET` and
-`MYST_WANT_TLS_CREDENTIAL`, for TEE aware applications.
+`MYST_WANT_TEE_CREDENTIALS`, for TEE aware applications.
 
 `MYST_TARGET` is read only, and applications can query the variable to
 find out whether it is running outside or inside a TEE, and, when it's
 running inside a TEE, which specific TEE platform it is.
 
-When applications set `MYST_WANT_TLS_CREDENTIAL` to `1`, the Mystikos
+When applications set `MYST_WANT_TEE_CREDENTIALS` to `CERT_PEMKEY`, the Mystikos
 runtime, as part of the booting process, will generate:
 
 * a self-signed TLS certificate with root of trust from the
@@ -43,6 +43,8 @@ TEE; and
 * an ephemeral private key corresponding to the public key embedded
 in the certificate.
 
+Both credentials are then saved to a fixed location in the file system.
+Note the private key is exported in PEM format.
 With both the certificate and the private key, the application can establish
 an attested TLS channel with a peer, as long as the peer could perform
 verification on the certificate and relate it to the root of trust from
@@ -54,7 +56,7 @@ mentioned certificate and private key, one for verifying the certificate,
 for languages that support direct invocation of syscalls, such as C/C++.
 These syscalls give application the flexibility to generate or verify as
 many TLS certificates as possible at any time, without relying on
-`MYST_WANT_TLS_CREDENTIAL`.
+`MYST_WANT_TEE_CREDENTIALS`.
 
 For applications written in high level languages which allow no direct
 syscalls, FFI can be used to call into a native library that exposes such
@@ -108,7 +110,7 @@ myst mkcpio appdir rootfs && myst exec rootfs /tee
 
 The output should be: `I am in SGX`.
 
-## Write a programs that generates/verifies self-signed certificates
+## Write a program that generates/verifies self-signed certificates programmatically
 
 This example shows how to generate TLS certificate and verify it using
 system calls with C/C++. This is not interesting by itself because there
@@ -203,3 +205,107 @@ application running inside a TEE with no regard to the application identity.
 If the application does want to reject/approve based on app identity, it
 must include `myst/tee.h`, define a function similar to `_verifier`,
 and pass it to syscall `SYS_myst_verify_cert`.
+
+## Write a C# program that obtains attestation credentials statically
+
+High level languages like C# don't have direct access to syscalls as
+C/C++ do. Therefore, we introduce the environment variable
+`MYST_WANT_TEE_CREDENTIALS`, which when specified in `config.json`, instructs
+Mystikos to generate desired credentials and save them on the file system
+for applications to make use of.
+
+First we declare the desire in the config.json:
+```json
+{
+    // OpenEnclave specific values
+
+    // Whether we are running myst+OE+app in debug mode
+    "Debug": 1,
+    // The number of ethreads
+    "NumUserThreads": 32,
+    "ProductID": 1,
+    "SecurityVersion": 1,
+
+    // Mystikos specific values
+
+    // The heap size of the user application. Increase this setting if your app experienced OOM.
+    "MemorySize": "1g",
+    // The path to the entry point application in rootfs
+    "ApplicationPath": "/app/HelloWorld",
+    // The parameters to the entry point application
+    "ApplicationParameters": [],
+    // Whether we allow "ApplicationParameters" to be overridden by command line options of "myst exec"
+    "HostApplicationParameters": false,
+    // The environment variables accessible inside the enclave.
+    "EnvironmentVariables": ["COMPlus_EnableDiagnostics=0", "MYST_WANT_TEE_CREDENTIALS=CERT_PEMKEY_REPORT"],
+}
+```
+
+Note the last line `MYST_WANT_TEE_CREDENTIALS=CERT_PEMKEY_REPORT` tells
+Mystikos to generate three files for the application:
+1. a self-signed x509
+certificate with an ephemeral RSA public key
+1. a private RSA key (in PEM format) that is paired with the public key
+1. a TEE-backed report that attests to the public key (by including the
+hash of the public key in the signed report)
+
+The application can then load these credentials in the following manner:
+
+```c#
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
+
+namespace dotnet
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            string certFile = "/tmp/myst.crt";
+            string pkeyFile = "/tmp/myst.key";
+            string reportFile = "/tmp/myst.report";
+
+            // Load the certificate into an X509Certificate object.
+            X509Certificate2 cert = new X509Certificate2(File.ReadAllBytes(certFile));
+            Console.WriteLine("Subject: {0}", cert.Subject);
+
+            Console.WriteLine("Public key: {0}", cert.GetPublicKeyString());
+
+            byte[] report = File.ReadAllBytes(reportFile);
+            Console.Write("Report: ");
+            foreach(byte b in report)
+            {
+                Console.Write("{0:X2}", b);
+            }
+            Console.WriteLine();
+
+            string pem = System.IO.File.ReadAllText(pkeyFile);
+            const string header = "-----BEGIN RSA PRIVATE KEY-----";
+            const string footer = "-----END RSA PRIVATE KEY-----";
+
+            if (pem.StartsWith(header))
+            {
+                // The private key file is in PEM format. Read and parse the DER structure.
+                int endIdx = pem.IndexOf(footer, header.Length, StringComparison.Ordinal);
+                string base64 = pem.Substring(header.Length, endIdx - header.Length);
+                byte[] der = Convert.FromBase64String(base64);
+
+                // Import the private key into the cert.
+                RSA rsa = RSA.Create();
+                rsa.ImportRSAPrivateKey(der, out _);
+                cert = cert.CopyWithPrivateKey(rsa);
+                Console.WriteLine("Imported RSA private key into cert");
+            }
+
+            // At this moment, the application can send the certificate and
+            // the report to peers. The peer could validate the public key in
+            // the certificate as long as it has access to an attestation
+            // service like MAA.
+        }
+    }
+}
+```

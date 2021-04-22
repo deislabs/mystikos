@@ -40,8 +40,6 @@
 #include <myst/ttydev.h>
 #include <myst/uid_gid.h>
 
-#define WANT_TLS_CREDENTIAL "MYST_WANT_TLS_CREDENTIAL"
-
 static myst_fs_t* _fs;
 
 long myst_tcall(long n, long params[6])
@@ -621,9 +619,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
 
     /* Generate TLS credentials if needed */
     ECHECK(myst_init_tls_credential_files(
-        _getenv(args->envp, WANT_TLS_CREDENTIAL),
-        _tmpfs ? _tmpfs : _fs,
-        fstype));
+        _getenv(args->envp, WANT_CREDENTIALS), _tmpfs ? _tmpfs : _fs, fstype));
 
     /* Setup virtual proc filesystem */
     procfs_setup();

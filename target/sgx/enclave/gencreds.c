@@ -39,7 +39,11 @@ static int _generate_cert_and_private_key(
     *private_key_size_out = 0;
 
     ECHECK(myst_generate_ec_key_pair(
-        &public_key, &public_key_size, &private_key, &private_key_size));
+        &public_key,
+        &public_key_size,
+        &private_key,
+        &private_key_size,
+        MYST_PEM));
 
     if ((ret = oe_generate_attestation_certificate(
              (unsigned char*)common_name,
@@ -141,6 +145,8 @@ int myst_gen_creds_ex(
     size_t private_key_size;
     uint8_t* public_key = NULL;
     size_t public_key_size;
+    size_t buflen = 4096;
+    uint8_t derbuf[4096];
 
     *cert_out = NULL;
     *cert_size_out = 0;
@@ -149,8 +155,12 @@ int myst_gen_creds_ex(
     *report_out = NULL;
     *report_size_out = 0;
 
-    ECHECK(myst_generate_ec_key_pair(
-        &public_key, &public_key_size, &private_key, &private_key_size));
+    ECHECK(myst_generate_rsa_key_pair(
+        &public_key,
+        &public_key_size,
+        &private_key,
+        &private_key_size,
+        MYST_PEM));
 
     ECHECK(myst_generate_x509_self_signed_cert(
         public_key,
@@ -159,10 +169,24 @@ int myst_gen_creds_ex(
         private_key_size,
         NULL,
         cert_out,
-        cert_size_out));
+        cert_size_out,
+        MYST_DER));
+
+    // Convert public key from PEM to DER
+    ECHECK(myst_pem_to_der(public_key, public_key_size, derbuf, &buflen));
+    assert(buflen < 4096);
+
+#if DEBUG
+    fprintf(stderr, "==== Public key (%ld): ", buflen);
+    for (size_t i = 0; i < buflen; i++)
+    {
+        fprintf(stderr, "%02x", derbuf[i]);
+    }
+    fprintf(stderr, "\n");
+#endif
 
     ECHECK(myst_generate_report_from_claim(
-        public_key, public_key_size, NULL, 0, report_out, report_size_out));
+        derbuf, buflen, NULL, 0, report_out, report_size_out));
 
     *private_key_out = private_key;
     *private_key_size_out = private_key_size;
@@ -196,6 +220,20 @@ int myst_generate_report_from_claim(
     size_t tmpbuf_size = 0;
 
     ECHECK(myst_sha256(&sha256, claim_buf, claim_buf_size));
+
+#if DEBUG
+    fprintf(stderr, "==== Report Claim (%ld): ", claim_buf_size);
+    for (size_t i = 0; i < claim_buf_size; i++)
+    {
+        fprintf(stderr, "%02x", claim_buf[i]);
+    }
+    fprintf(stderr, "\n==== Report data (%d): ", MYST_SHA256_SIZE);
+    for (size_t i = 0; i < MYST_SHA256_SIZE; i++)
+    {
+        fprintf(stderr, "%02x", sha256.data[i]);
+    }
+    fprintf(stderr, "\n");
+#endif
 
     if ((r = oe_get_report(
              OE_REPORT_FLAGS_REMOTE_ATTESTATION,
@@ -241,7 +279,8 @@ int myst_generate_certificate_and_report(
         private_key_size,
         NULL,
         cert_buf_out,
-        cert_size_out));
+        cert_size_out,
+        MYST_DER));
 
     ECHECK(myst_generate_report_from_claim(
         public_key,
