@@ -18,14 +18,15 @@
 **
 ** The memory space has the following layout.
 **
-**     <---VADs---><---BREAK---><--UNASSIGNED--><---------MAPPED---------->
+**     <-VADs/Vector-><---BREAK---><--UNASSIGNED--><---------MAPPED------->
 **     [..................................................................]
-**     ^           ^            ^               ^                         ^
-**    BASE       START         BRK             MAP                       END
+**     ^              ^           ^               ^                       ^
+**    BASE          START         BRK             MAP                    END
 **
 ** The memory space is partitioned into four sections:
 **
 **     VADs       - VADs or virtual address descriptors: (BASE, START)
+**     ProtVector - Array tracking per page R/W/X permission
 **     BREAK      - Managed by the BRK and SBRK: [START, BRK)
 **     UNASSIGNED - Unassigned memory: [BRK, MAP)
 **     MAPPED     - Manged by the MAP, REMAP, and UNMAP: [MAP, END)
@@ -33,12 +34,12 @@
 ** The following diagram depicts the values of BASE, START, BRK, MAP, and
 ** END for a freshly initialized memory space.
 **
-**     <---VADs---><---------------UNASSIGNED----------------------------->
+**     <-VADs/Vector-><---------------UNASSIGNED-------------------------->
 **     [..................................................................]
-**     ^           ^                                                      ^
-**    BASE       START                                                   END
-**                 ^                                                      ^
-**                BRK                                                    MAP
+**     ^              ^                                                   ^
+**    BASE           START                                               END
+**                    ^                                                   ^
+**                   BRK                                                 MAP
 **
 ** The BREAK section expands by increasing the BRK value. The MAPPED section
 ** expands by decreasing the MAP value. The BRK and MAP value grow towards
@@ -52,7 +53,7 @@
 **     - The previous VAD on the linked list (see description below).
 **     - The starting address of the memory region.
 **     - The size of the memory region.
-**     - Memory projection flags (must be read-write for SGX1).
+**     - Memory R/W/X flags originally set by mmap/mremap.
 **     - Memory mapping flags (must be anonymous-private for SGX1).
 **
 ** VADs are either assigned or free. Assigned VADs are kept on a doubly-linked
@@ -111,9 +112,7 @@
 **==============================================================================
 */
 
-#include <stdio.h>
-#include <string.h>
-
+#include <assert.h>
 #include <errno.h>
 #include <myst/defs.h>
 #include <myst/fsgs.h>
@@ -121,6 +120,10 @@
 #include <myst/round.h>
 #include <myst/spinlock.h>
 #include <myst/strings.h>
+#include <myst/syscall.h>
+#include <myst/tcall.h>
+#include <stdio.h>
+#include <string.h>
 
 /*
 **==============================================================================
@@ -426,6 +429,90 @@ done:
     return addr;
 }
 
+#define _MMAN_MPROTECT_PAGES(MMAN, ADDR, LEN, PROT)            \
+    {                                                          \
+        if (myst_tcall_mprotect(ADDR, LEN, PROT))              \
+        {                                                      \
+            _mman_set_err(MMAN, "mprotect tcall failed");      \
+            ret = -EINVAL;                                     \
+            goto done;                                         \
+        }                                                      \
+        memset(                                                \
+            (MMAN)->prot_vector +                              \
+                ((uintptr_t)ADDR - (MMAN)->start) / PAGE_SIZE, \
+            PROT,                                              \
+            (LEN) / PAGE_SIZE);                                \
+    }
+
+/* set each page within the range's permission tracking as prot*/
+#define _MMAN_SET_PAGES_PROT(MMAN, ADDR, LEN, PROT)            \
+    {                                                          \
+        memset(                                                \
+            (MMAN)->prot_vector +                              \
+                ((uintptr_t)ADDR - (MMAN)->start) / PAGE_SIZE, \
+            PROT,                                              \
+            (LEN) / PAGE_SIZE);                                \
+    }
+
+/* check and get permission tracking, if insisitent, return -1*/
+static int _mman_get_prot(
+    uint8_t* prot_vector,
+    uint32_t offset,
+    uint32_t num_pages,
+    int* prot)
+{
+    uint32_t i;
+    uint8_t prot8 = prot_vector[offset];
+    uint64_t prot64;
+    uint8_t r = offset % 8;
+
+    *prot = prot8;
+
+    /* prot_vector is 64bit aligned */
+    assert((((uint64_t)prot_vector) % 8) == 0);
+    if (num_pages < 16)
+    {
+        for (i = offset + 1; i < offset + num_pages; i++)
+        {
+            if (prot_vector[i] != prot8)
+                return -1;
+        }
+    }
+    else
+    {
+        memset((void*)&prot64, prot8, 8);
+        if (r)
+        {
+            for (i = offset + 1; i < offset - r + 8; i++)
+            {
+                if (prot_vector[i] != prot8)
+                    return -1;
+            }
+        }
+        else
+        {
+            i = offset;
+        }
+        r = (offset + num_pages) % 8;
+        /* i = first 8-bytes boundary at/above offset */
+        for (; i < offset + num_pages - r; i = i + 8)
+        {
+            if (*((uint64_t*)(prot_vector + i)) != prot64)
+                return -1;
+        }
+        if (r)
+        {
+            /* 64-bit compare loop exits at i = offset + num_pages - r */
+            for (; i < offset + num_pages; i++)
+            {
+                if (prot_vector[i] != prot8)
+                    return -1;
+            }
+        }
+    }
+    return 0;
+}
+
 static int _munmap(myst_mman_t* mman, void* addr, size_t length)
 {
     int ret = -1;
@@ -471,6 +558,15 @@ static int _munmap(myst_mman_t* mman, void* addr, size_t length)
     uintptr_t start = (uintptr_t)addr;
     uintptr_t end = (uintptr_t)addr + length;
 
+    // ATTN: Current implementaiton deviates from Linux behavior
+    /* https://linux.die.net/man/3/munmap: The munmap() function shall remove
+    any mappings for those entire pages containing any part of the address space
+    of the process starting at addr and continuing for len bytes. Further
+    references to these pages shall result in the generation of a SIGSEGV signal
+    to the process. If there are no mappings in the specified address range,
+    then munmap() has no effect.
+    */
+
     /* Find the VAD that contains this address */
     if (!(vad = _list_find(mman, start)))
     {
@@ -487,7 +583,7 @@ static int _munmap(myst_mman_t* mman, void* addr, size_t length)
         goto done;
     }
 
-    /* If the unapping does not cover the entire area given by the VAD, handle
+    /* If the unmapping does not cover the entire area given by the VAD, handle
      * the excess portions. There are 4 cases below, where u's represent
      * the portion being unmapped.
      *
@@ -542,9 +638,17 @@ static int _munmap(myst_mman_t* mman, void* addr, size_t length)
         _mman_sync_top(mman);
     }
 
+    // ATTN: The region unmapped might not have PROT_WRITE permission to
+    // perform scrub efficiently. The prot_vector based implementation has
+    // complication of inconsistent prot within a VAD. Skip scrubbing for
+    // now.
+#if 0    
     /* If scrubbing is enabled, then scrub the unmapped memory */
     if (mman->scrub)
         memset(addr, 0xDD, length);
+#endif
+
+    _MMAN_MPROTECT_PAGES(mman, addr, length, MYST_PROT_NONE)
 
     if (!_mman_is_sane(mman))
     {
@@ -601,7 +705,6 @@ static int _mmap(
         goto done;
     }
 
-    /* Ignore protection for SGX-1 */
 #if 0
     {
         if (!(prot & MYST_PROT_READ))
@@ -666,6 +769,17 @@ static int _mmap(
         goto done;
     }
 
+    // ATTN: Current implementaiton deviates from Linux behavior
+    /* https://linux.die.net/man/2/mmap: If addr is not NULL, then the kernel
+    takes it as a hint about where to place the mapping; on Linux, the mapping
+    will be created at a nearby page boundary. MAP_FIXED - Don't interpret addr
+    as a hint: place the mapping at exactly that address. addr must be a
+    multiple of the page size. If the memory region specified by addr and len
+    overlaps pages of any existing mapping(s), then the overlapped part of the
+    existing mapping(s) will be discarded. If the specified address cannot be
+    used, mmap() will fail. Because requiring a fixed address for a mapping is
+    less portable, the use of this option is discouraged.
+    */
     if (addr)
     {
         myst_vad_t* vad;
@@ -748,8 +862,25 @@ done:
 
     /* Zero-fill mapped memory */
     if (ptr_out && *ptr_out)
+    {
+        /* For readonly memory, need to set w permission first to clear the
+         * memory */
+        if (myst_tcall_mprotect(*ptr_out, length, (prot | MYST_PROT_WRITE)))
+        {
+            _mman_set_err(mman, "mprotect tcall failed");
+            return -EINVAL;
+        }
         memset(*ptr_out, 0, length);
-
+        if (!(prot & MYST_PROT_WRITE))
+        {
+            if (myst_tcall_mprotect(*ptr_out, length, prot))
+            {
+                _mman_set_err(mman, "mprotect tcall failed");
+                return -EINVAL;
+            }
+        }
+        _MMAN_SET_PAGES_PROT(mman, *ptr_out, length, prot)
+    }
     return ret;
 }
 
@@ -800,7 +931,7 @@ int myst_mman_init(myst_mman_t* mman, uintptr_t base, size_t size)
         goto done;
     }
 
-    /* SIZE must be a mulitple of the page size */
+    /* SIZE must be a multiple of the page size */
     if (size % PAGE_SIZE)
     {
         _mman_set_err(mman, "bad size parameter");
@@ -820,11 +951,22 @@ int myst_mman_init(myst_mman_t* mman, uintptr_t base, size_t size)
     /* Save the size of the heap */
     mman->size = size;
 
-    /* Set the start of the heap area, which follows the VADs array */
-    mman->start = base + (num_pages * sizeof(myst_vad_t));
-
+    /* Set the start of the heap area, which follows the VADs array
+       and prot_vector */
+    mman->prot_vector = (uint8_t*)(base + (num_pages * sizeof(myst_vad_t)));
+    /* Round start up to next 8-byte multiple */
+    if (myst_round_up(
+            (uint64_t)(mman->prot_vector), 8, (uint64_t*)&mman->prot_vector) !=
+        0)
+    {
+        _mman_set_err(mman, "rounding error: mman->prot_vector");
+        ret = -EINVAL;
+        goto done;
+    }
+    mman->start = (uintptr_t)mman->prot_vector + (num_pages * sizeof(uint8_t));
     /* Round start up to next page multiple */
-    if (myst_round_up(mman->start, PAGE_SIZE, &mman->start) != 0)
+    if (myst_round_up(
+            (uint64_t)(mman->start), PAGE_SIZE, (uint64_t*)&mman->start) != 0)
     {
         _mman_set_err(mman, "rounding error: mman->start");
         ret = -EINVAL;
@@ -837,14 +979,18 @@ int myst_mman_init(myst_mman_t* mman, uintptr_t base, size_t size)
     /* Set the top of the break memory (grows positively) */
     mman->brk = mman->start;
 
-    /* Set the top of the mapped memory (grows negativey) */
+    /* Set the top of the mapped memory (grows negatively) */
     mman->map = mman->end;
+
+    /* Set the UNASSIGNED region as not accesible */
+    _MMAN_MPROTECT_PAGES(
+        mman, (void*)mman->start, mman->end - mman->start, MYST_PROT_NONE)
 
     /* Set pointer to the next available entry in the myst_vad_t array */
     mman->next_vad = (myst_vad_t*)base;
 
     /* Set pointer to the end address of the myst_vad_t array */
-    mman->end_vad = (myst_vad_t*)mman->start;
+    mman->end_vad = (myst_vad_t*)(base + (num_pages * sizeof(myst_vad_t)));
 
     /* Set the free myst_vad_t list to null */
     mman->free_vads = NULL;
@@ -919,9 +1065,21 @@ int myst_mman_sbrk(myst_mman_t* mman, ptrdiff_t increment, void** ptr_out)
     }
     else if ((uintptr_t)increment <= mman->map - mman->brk)
     {
+        uint64_t brk_old_page_aligned;
+        uint64_t brk_new_page_aligned;
         /* Increment the break value and return the old break value */
         ptr = (void*)mman->brk;
         mman->brk += (uintptr_t)increment;
+        /* increment and mman->brk check above made sure no overflow
+         * possibility*/
+        myst_round_up((uint64_t)ptr, PAGE_SIZE, &brk_old_page_aligned);
+        myst_round_up((uint64_t)(mman->brk), PAGE_SIZE, &brk_new_page_aligned);
+        if (brk_new_page_aligned > brk_old_page_aligned)
+            _MMAN_MPROTECT_PAGES(
+                mman,
+                (void*)brk_old_page_aligned,
+                brk_new_page_aligned - brk_old_page_aligned,
+                MYST_PROT_READ | MYST_PROT_WRITE)
     }
     else
     {
@@ -951,7 +1109,7 @@ done:
 ** Parameters:
 **     [IN] mman - mman structure
 **     [IN] addr - set the BREAK value to this address (must reside within
-**     the break region (beween START and BREAK value).
+**     the break region (between START and BREAK value).
 **
 ** Returns:
 **     0 if successful.
@@ -989,8 +1147,29 @@ int myst_mman_brk(myst_mman_t* mman, void* addr, void** ptr)
         goto done;
     }
 
-    /* Set the break value */
-    mman->brk = (uintptr_t)addr;
+    if ((uintptr_t)addr != mman->brk)
+    {
+        uint64_t brk_old_page_aligned;
+        uint64_t brk_new_page_aligned;
+
+        /* addr check above made sure no overflow possibility*/
+        myst_round_up((uint64_t)(mman->brk), PAGE_SIZE, &brk_old_page_aligned);
+        myst_round_up((uint64_t)addr, PAGE_SIZE, &brk_new_page_aligned);
+        if (brk_new_page_aligned > brk_old_page_aligned)
+            _MMAN_MPROTECT_PAGES(
+                mman,
+                (void*)brk_old_page_aligned,
+                brk_new_page_aligned - brk_old_page_aligned,
+                MYST_PROT_READ | MYST_PROT_WRITE)
+        else if (brk_new_page_aligned < brk_old_page_aligned)
+            _MMAN_MPROTECT_PAGES(
+                mman,
+                (void*)brk_new_page_aligned,
+                brk_old_page_aligned - brk_new_page_aligned,
+                MYST_PROT_NONE)
+        /* Set the break value */
+        mman->brk = (uintptr_t)addr;
+    }
 
     if (!_mman_is_sane(mman))
     {
@@ -1247,20 +1426,60 @@ int myst_mman_mremap(
         vad->size = (uint32_t)(new_end - vad->addr);
         new_addr = addr;
 
+// ATTN: The region truncated might not have PROT_WRITE permission to
+// perform scrub efficiently. The prot_vector based implementation has
+// complication of inconsistent prot within a VAD. Skip scrubbing for
+// now.
+#if 0
         /* If scrubbing is enabled, scrub the unmapped portion */
         if (mman->scrub)
             memset((void*)new_end, 0xDD, old_size - new_size);
+#endif
+
+        _MMAN_SET_PAGES_PROT(mman, new_end, old_size - new_size, MYST_PROT_NONE)
     }
     else if (new_size > old_size)
     {
         /* Calculate difference between new and old size */
         size_t delta = new_size - old_size;
+        int prot = 0;
+
+        /* Check prot consistence */
+        if (_mman_get_prot(
+                mman->prot_vector,
+                (start - mman->start) / PAGE_SIZE,
+                old_size / PAGE_SIZE,
+                &prot))
+        {
+            _mman_set_err(mman, "inconsistent prot");
+            ret = -EINVAL;
+            goto done;
+        }
 
         /* If there is room for this area to grow without moving it */
         if (_end(vad) == old_end && _get_right_gap(mman, vad) >= delta)
         {
             vad->size += (uint32_t)delta;
+            /* Set W permission first before zeroing */
+            if (myst_tcall_mprotect(
+                    (void*)(start + old_size), delta, (prot | MYST_PROT_WRITE)))
+            {
+                _mman_set_err(mman, "mprotect tcall failed");
+                ret = -EINVAL;
+                goto done;
+            }
             memset((void*)(start + old_size), 0, delta);
+            if (!(prot & MYST_PROT_WRITE))
+            {
+                if (myst_tcall_mprotect((void*)(start + old_size), delta, prot))
+                {
+                    _mman_set_err(mman, "mprotect tcall failed");
+                    ret = -EINVAL;
+                    goto done;
+                }
+            }
+            /* Set prot for extended region */
+            _MMAN_SET_PAGES_PROT(mman, start + old_size, delta, prot)
             new_addr = addr;
 
             /* If VAD is now contiguous with next one, coalesce them */
@@ -1280,11 +1499,30 @@ int myst_mman_mremap(
                 _mman_set_err(mman, "mapping failed");
                 ret = -ENOMEM;
             }
-
+            /* If no W permission, set W permission first before copy */
+            if (!(vad->prot & MYST_PROT_WRITE))
+            {
+                if (myst_tcall_mprotect(
+                        addr, new_size, (vad->prot | MYST_PROT_WRITE)))
+                {
+                    _mman_set_err(mman, "mprotect tcall failed");
+                    ret = -EINVAL;
+                    goto done;
+                }
+            }
             /* Copy over data from old area */
             memcpy(addr, (void*)start, old_size);
-
-            /* Ummap the old area */
+            if ((vad->prot | MYST_PROT_WRITE) != prot)
+            {
+                if (myst_tcall_mprotect(addr, new_size, prot))
+                {
+                    _mman_set_err(mman, "mprotect tcall failed");
+                    ret = -EINVAL;
+                    goto done;
+                }
+            }
+            _MMAN_SET_PAGES_PROT(mman, addr, new_size, prot)
+            /* Unmap the old area */
             if (_munmap(mman, (void*)start, old_size) != 0)
             {
                 _mman_set_err(mman, "unmapping failed");
@@ -1305,6 +1543,96 @@ int myst_mman_mremap(
         goto done;
 
     *ptr_out = new_addr;
+
+done:
+    _mman_unlock(mman, &locked);
+    return ret;
+}
+
+/*
+**
+** myst_mman_mprotect()
+**
+**     Debugging function used to check sanity (validity) of a mman structure.
+**
+** Parameters:
+**     [IN] mman - mman structure
+**     [IN] addr - starting address of the memory region
+**     [IN] len - length of the memory region in byte
+**     [IN] prot - R/W/X permission
+**
+** Returns:
+**     0 if operation succeeded
+**
+** Implementation:
+**     Invoke TCALL (for SGX target, an SGX OCALL) to execute mprotect() in the
+**     OS host. Split or merge VADs if necessary.
+**
+*/
+int myst_mman_mprotect(myst_mman_t* mman, void* addr, size_t len, int prot)
+{
+    int ret = 0;
+    uintptr_t end = 0;
+    bool locked = false;
+
+    _mman_lock(mman, &locked);
+
+    _mman_clear_err(mman);
+
+    /* Check for valid mman parameter */
+    if (!mman || mman->magic != MYST_MMAN_MAGIC || !addr)
+    {
+        _mman_set_err(mman, "invalid parameter");
+        ret = -EINVAL;
+        goto done;
+    }
+
+    if (!_mman_is_sane(mman))
+        goto done;
+
+    /* ADDR must be page aligned */
+    if ((uintptr_t)addr % PAGE_SIZE)
+    {
+        _mman_set_err(
+            mman, "bad addr parameter: must be multiple of page size");
+        ret = -EINVAL;
+        goto done;
+    }
+
+    /* len must be non-zero */
+    if (len == 0)
+    {
+        _mman_set_err(mman, "invalid len parameter: must be non-zero");
+        ret = -EINVAL;
+        goto done;
+    }
+
+    /* Round len to multiple of page size */
+    if (myst_round_up(len, PAGE_SIZE, &len) != 0)
+    {
+        _mman_set_err(mman, "rounding error: len");
+        ret = -EINVAL;
+        goto done;
+    }
+
+    if ((uintptr_t)addr < mman->start)
+    {
+        _mman_set_err(mman, "bad addr parameter: addr range out of bound");
+        ret = -EINVAL;
+        goto done;
+    }
+    if ((__builtin_add_overflow((uintptr_t)addr, len, &end)) ||
+        (end > mman->end))
+    {
+        _mman_set_err(mman, "bad addr parameter: addr range out of bound");
+        ret = -EINVAL;
+        goto done;
+    }
+
+    /* Ignore prot bits beyond MYST_PROT_READ, MYST_PROT_WRITE, MYST_PROT_EXEC*/
+    prot = prot & (MYST_PROT_READ | MYST_PROT_WRITE | MYST_PROT_EXEC);
+
+    _MMAN_MPROTECT_PAGES(mman, addr, len, prot)
 
 done:
     _mman_unlock(mman, &locked);
@@ -1529,4 +1857,63 @@ void myst_mman_dump_vads(myst_mman_t* mman)
         }
     }
     myst_spin_unlock(&mman->lock);
+}
+
+int myst_mman_get_prot(
+    myst_mman_t* mman,
+    void* addr,
+    size_t len,
+    int* prot,
+    bool* consistent)
+{
+    int ret = -EINVAL;
+    uintptr_t end = 0;
+
+    if ((!mman) || (!prot) || (!consistent) || (len == 0))
+        return ret;
+
+    myst_spin_lock(&mman->lock);
+
+    /* ADDR must be page aligned */
+    if ((uintptr_t)addr % PAGE_SIZE)
+    {
+        _mman_set_err(
+            mman, "bad addr parameter: must be multiple of page size");
+        goto done;
+    }
+    /* Round len to multiple of page size */
+    if (myst_round_up(len, PAGE_SIZE, &len) != 0)
+    {
+        _mman_set_err(mman, "rounding error: len");
+        goto done;
+    }
+
+    if ((uintptr_t)addr < mman->start)
+    {
+        _mman_set_err(mman, "bad addr parameter: addr range out of bound");
+        goto done;
+    }
+    if ((__builtin_add_overflow((uintptr_t)addr, len, &end)) ||
+        (end > mman->end))
+    {
+        _mman_set_err(mman, "bad addr parameter: addr range out of bound");
+        goto done;
+    }
+
+    if (_mman_get_prot(
+            mman->prot_vector,
+            ((uintptr_t)addr - mman->start) / PAGE_SIZE,
+            len / PAGE_SIZE,
+            prot) != 0)
+    {
+        *consistent = false;
+    }
+    else
+    {
+        *consistent = true;
+    }
+    ret = 0;
+done:
+    myst_spin_unlock(&mman->lock);
+    return ret;
 }

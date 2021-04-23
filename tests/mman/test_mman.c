@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <unistd.h>
 
 #include <myst/mman.h>
@@ -17,6 +18,12 @@
 #ifndef PAGE_SIZE
 #define PAGE_SIZE 4096
 #endif
+
+/* the test doesn't link the kernel so we provide this definition */
+int myst_tcall_mprotect(void* addr, size_t len, int prot)
+{
+    return mprotect(addr, len, prot);
+}
 
 typedef struct _page
 {
@@ -175,6 +182,41 @@ static int _mman_unmap(myst_mman_t* heap, void* address, size_t size)
     return rc;
 }
 
+/* Helper for calling myst_mman_get_prot() */
+static int _mman_get_prot(
+    myst_mman_t* heap,
+    void* address,
+    size_t size,
+    int* prot,
+    bool* consistent)
+{
+    int rc = myst_mman_get_prot(heap, address, size, prot, consistent);
+
+    if (rc != 0)
+    {
+        printf("ERROR: myst_mman_get_prot(): %s\n", heap->err);
+        assert(false);
+    }
+    return rc;
+}
+
+/* Helper for calling myst_mman_mprotect() */
+static int _mman_protect(
+    myst_mman_t* heap,
+    void* address,
+    size_t size,
+    int prot)
+{
+    int rc = myst_mman_mprotect(heap, address, size, prot);
+
+    if (rc != 0)
+    {
+        printf("ERROR: myst_mman_mprotect(): %s\n", heap->err);
+        assert(false);
+    }
+    return rc;
+}
+
 /*
 ** test_mman_1()
 **
@@ -200,7 +242,7 @@ void test_mman_1()
     assert(h.base != 0);
     assert((uintptr_t)h.next_vad == h.base);
     assert(h.end_vad == h.next_vad + npages);
-    assert(h.start == (uintptr_t)h.end_vad);
+    assert((uintptr_t)h.end_vad == h.base + npages * sizeof(myst_vad_t));
     assert(h.brk == h.start);
     assert(h.map == h.end);
     assert(_is_sorted(h.vad_list));
@@ -883,6 +925,272 @@ void test_out_of_memory()
     printf("=== passed test (%s)\n", __FUNCTION__);
 }
 
+/*
+** test_prot_vector()
+**
+**     Test prot_vector tracking of the permission prot.
+**
+*/
+void test_prot_vector()
+{
+    myst_mman_t h;
+    const size_t heap_size = 64 * 1024 * 1024;
+    int prot = MYST_PROT_READ | MYST_PROT_WRITE;
+    int prot_val = MYST_PROT_NONE;
+    int flags = MYST_MAP_ANONYMOUS | MYST_MAP_PRIVATE;
+    void *addr1, *addr2, *addr3;
+    size_t len1, len2;
+    bool consistent;
+    void* brk = NULL;
+
+    assert(_init_mman(&h, heap_size) == 0);
+    /* verify unassigned memory default permission as MYST_PROT_NONE */
+    assert(
+        (_mman_get_prot(
+            &h, (void*)h.start, (h.end - h.start), &prot_val, &consistent)) ==
+        0);
+    assert(prot_val == MYST_PROT_NONE);
+    assert(consistent == true);
+
+    /* map 16 pages as prot = MYST_PROT_READ | MYST_PROT_WRITE */
+    if (myst_mman_mmap(&h, NULL, 16 * PAGE_SIZE, prot, flags, &addr1) != 0)
+    {
+        printf("ERROR: myst_mman_mmap(): %s\n", h.err);
+        assert("myst_mman_mmap(): failed" == NULL);
+    }
+    /* verify the mapped 16 pages permission as prot */
+    assert(
+        (_mman_get_prot(&h, addr1, 16 * PAGE_SIZE, &prot_val, &consistent)) ==
+        0);
+    assert(prot_val == prot);
+    assert(consistent == true);
+
+    /* Reduce the mapping permission */
+    assert((_mman_protect(&h, addr1, 16 * PAGE_SIZE, MYST_PROT_READ)) == 0);
+    /* verify the mapped 16 pages permission as the reduced permission */
+    assert(
+        (_mman_get_prot(&h, addr1, 16 * PAGE_SIZE, &prot_val, &consistent)) ==
+        0);
+    assert(prot_val == MYST_PROT_READ);
+    assert(consistent == true);
+
+    /* Increase the mapping permission */
+    assert(
+        (_mman_protect(
+            &h, addr1, 16 * PAGE_SIZE, MYST_PROT_READ | MYST_PROT_WRITE)) == 0);
+    /* verify the mapped 16 pages permission as the increased permission */
+    assert(
+        (_mman_get_prot(&h, addr1, 16 * PAGE_SIZE, &prot_val, &consistent)) ==
+        0);
+    assert(prot_val == (MYST_PROT_READ | MYST_PROT_WRITE));
+    assert(consistent == true);
+
+    /* Increase the mapping permission */
+    assert(
+        (_mman_protect(
+            &h,
+            addr1,
+            16 * PAGE_SIZE,
+            MYST_PROT_READ | MYST_PROT_WRITE | MYST_PROT_EXEC)) == 0);
+    /* verify the mapped 16 pages permission as the increased permission */
+    assert(
+        (_mman_get_prot(&h, addr1, 16 * PAGE_SIZE, &prot_val, &consistent)) ==
+        0);
+    assert(prot_val == (MYST_PROT_READ | MYST_PROT_WRITE | MYST_PROT_EXEC));
+    assert(consistent == true);
+
+    prot = MYST_PROT_READ | MYST_PROT_WRITE | MYST_PROT_EXEC;
+
+    /* unmap the first page from the block */
+    assert(_mman_unmap(&h, addr1, PAGE_SIZE) == 0);
+    /* verified the unmapped page permission as MYST_PROT_NONE */
+    assert((_mman_get_prot(&h, addr1, PAGE_SIZE, &prot_val, &consistent)) == 0);
+    assert(prot_val == MYST_PROT_NONE);
+
+    addr1 = addr1 + PAGE_SIZE;
+
+    /* verified the remaining mapped 15 pages permission as prot */
+    assert(
+        (_mman_get_prot(&h, addr1, 15 * PAGE_SIZE, &prot_val, &consistent)) ==
+        0);
+    assert(prot_val == prot);
+    assert(consistent == true);
+
+    /* unmap a middle 2 pages from the block */
+    assert(_mman_unmap(&h, addr1 + 8 * PAGE_SIZE, 2 * PAGE_SIZE) == 0);
+
+    addr2 = addr1 + 10 * PAGE_SIZE;
+    len1 = 8 * PAGE_SIZE;
+    len2 = 5 * PAGE_SIZE;
+
+    /* verify the unmapped 2 pages permission as MYST_PROT_NONE */
+    assert(
+        (_mman_get_prot(
+            &h,
+            (addr1 + 8 * PAGE_SIZE),
+            2 * PAGE_SIZE,
+            &prot_val,
+            &consistent)) == 0);
+    assert(prot_val == MYST_PROT_NONE);
+    assert(consistent == true);
+
+    /* verify the block before the unmapped 2 pages permission as prot */
+    assert((_mman_get_prot(&h, addr1, len1, &prot_val, &consistent)) == 0);
+    assert(prot_val == prot);
+    assert(consistent == true);
+    /* verify the block after the unmapped 2 pages permission as prot */
+    assert((_mman_get_prot(&h, addr2, len2, &prot_val, &consistent)) == 0);
+    assert(prot_val == prot);
+    assert(consistent == true);
+
+    /* check prot tracking block inconsistency detection */
+    assert(
+        (_mman_get_prot(&h, addr1, 15 * PAGE_SIZE, &prot_val, &consistent)) ==
+        0);
+    assert(consistent == false);
+
+    /* remap addr1 to expand 1 page */
+    if (!(addr1 = _mman_remap(&h, addr1, len1, len1 + PAGE_SIZE)))
+    {
+        assert(0);
+    }
+    len1 = len1 + PAGE_SIZE;
+    /* verify the expanded block permission as prot */
+    assert((_mman_get_prot(&h, addr1, len1, &prot_val, &consistent)) == 0);
+    assert(prot_val == prot);
+    assert(consistent == true);
+
+    /* reallocate addr1 to to a new block */
+    if (!(addr3 = _mman_remap(&h, addr1, len1, 63 * PAGE_SIZE)))
+    {
+        assert(0);
+    }
+    /* verify the realloacted block permission as prot */
+    assert(
+        (_mman_get_prot(&h, addr3, 63 * PAGE_SIZE, &prot_val, &consistent)) ==
+        0);
+    assert(prot_val == prot);
+    assert(consistent == true);
+    /* verify the deallocated block permission as MYST_PROT_NONE */
+    assert((_mman_get_prot(&h, addr1, len1, &prot_val, &consistent)) == 0);
+    assert(prot_val == MYST_PROT_NONE);
+    assert(consistent == true);
+
+    assert(
+        (_mman_protect(
+            &h, addr3 + 10 * PAGE_SIZE, 3 * PAGE_SIZE, MYST_PROT_READ)) == 0);
+    assert(
+        (_mman_get_prot(&h, addr3, 63 * PAGE_SIZE, &prot_val, &consistent)) ==
+        0);
+    assert(consistent == false);
+
+    /* umap everything */
+    _mman_unmap(&h, addr3, 63 * PAGE_SIZE);
+    _mman_unmap(&h, addr2, len2);
+    /* verify the unassigned memory permission as MYST_PROT_NONE */
+    assert(
+        (_mman_get_prot(
+            &h, (void*)h.start, (h.end - h.start), &prot_val, &consistent)) ==
+        0);
+    assert(prot_val == MYST_PROT_NONE);
+    assert(consistent == true);
+
+    /* create 4 pages BRK region */
+    if (myst_mman_sbrk(&h, 4 * PAGE_SIZE, &brk))
+    {
+        printf("ERROR: myst_mman_sbrk(): %s\n", h.err);
+        assert("myst_mman_sbrk: failed" == NULL);
+    }
+    /* verify BRK region permission as MYST_PROT_READ | MYST_PROT_WRITE */
+    assert(
+        (_mman_get_prot(
+            &h, (void*)h.start, 4 * PAGE_SIZE, &prot_val, &consistent)) == 0);
+    assert(prot_val == (MYST_PROT_READ | MYST_PROT_WRITE));
+    assert(consistent == true);
+    /* verify the page after BRK region permission as MYST_PROT_NONE */
+    assert(
+        (_mman_get_prot(
+            &h,
+            (void*)(h.start + 4 * PAGE_SIZE),
+            PAGE_SIZE,
+            &prot_val,
+            &consistent)) == 0);
+    assert(prot_val == MYST_PROT_NONE);
+
+    /* increase BRK region by 8 byte */
+    if (myst_mman_sbrk(&h, 8, &brk))
+    {
+        printf("ERROR: myst_mman_sbrk(): %s\n", h.err);
+        assert("myst_mman_sbrk: failed" == NULL);
+    }
+    /* verify the 8 byte extra causes next Page permission to be MYST_PROT_READ
+     * | MYST_PROT_WRITE */
+    assert(
+        (_mman_get_prot(
+            &h, (void*)h.start, 5 * PAGE_SIZE, &prot_val, &consistent)) == 0);
+    assert(prot_val == (MYST_PROT_READ | MYST_PROT_WRITE));
+    assert(consistent == true);
+
+    /* shrink PRK region to 3 pages */
+    if (myst_mman_brk(&h, (void*)(h.start + 3 * PAGE_SIZE), &brk))
+    {
+        printf("ERROR: myst_mman_sbrk(): %s\n", h.err);
+        assert("myst_mman_sbrk: failed" == NULL);
+    }
+    /* verify the shrinked BRK region permission as MYST_PROT_READ |
+     * MYST_PROT_WRITE */
+    assert(
+        (_mman_get_prot(
+            &h, (void*)h.start, 3 * PAGE_SIZE, &prot_val, &consistent)) == 0);
+    assert(prot_val == (MYST_PROT_READ | MYST_PROT_WRITE));
+    assert(consistent == true);
+    /* verify the page after BRK region permission as MYST_PROT_NONE */
+    assert(
+        (_mman_get_prot(
+            &h,
+            (void*)(h.start + 4 * PAGE_SIZE),
+            PAGE_SIZE,
+            &prot_val,
+            &consistent)) == 0);
+    assert(prot_val == MYST_PROT_NONE);
+
+    /* Shrink PRK region size to 2 pages plus 8 byte */
+    if (myst_mman_brk(&h, (void*)(h.start + 2 * PAGE_SIZE + 8), &brk))
+    {
+        printf("ERROR: myst_mman_sbrk(): %s\n", h.err);
+        assert("myst_mman_sbrk: failed" == NULL);
+    }
+    /* verify the extra 8 byte cause the page permission as MYST_PROT_READ |
+     * MYST_PROT_WRITE*/
+    assert(
+        (_mman_get_prot(
+            &h,
+            (void*)(h.start + 2 * PAGE_SIZE),
+            PAGE_SIZE,
+            &prot_val,
+            &consistent)) == 0);
+    assert(prot_val == (MYST_PROT_READ | MYST_PROT_WRITE));
+
+    /* Increase PRK region size to 10 pages plus 8 byte */
+    if (myst_mman_brk(&h, (void*)(h.start + 10 * PAGE_SIZE + 8), &brk))
+    {
+        printf("ERROR: myst_mman_sbrk(): %s\n", h.err);
+        assert("myst_mman_sbrk: failed" == NULL);
+    }
+    /* verify the 10 Pages plus 8 byte BRK region cause 11 pages permission as
+     * MYST_PROT_READ | MYST_PROT_WRITE */
+    assert(
+        (_mman_get_prot(
+            &h, (void*)h.start, 11 * PAGE_SIZE, &prot_val, &consistent)) == 0);
+    assert(prot_val == (MYST_PROT_READ | MYST_PROT_WRITE));
+    assert(consistent == true);
+
+    assert(myst_mman_is_sane(&h));
+
+    _free_mman(&h);
+    printf("=== passed test (%s)\n", __FUNCTION__);
+}
+
 void test_mman(void)
 {
     test_mman_1();
@@ -897,4 +1205,5 @@ void test_mman(void)
     test_remap_4();
     test_out_of_memory();
     test_mman_randomly();
+    test_prot_vector();
 }

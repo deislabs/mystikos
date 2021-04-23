@@ -694,7 +694,7 @@ void test_exhaust_threads(void)
     {
         pthread_attr_t attr;
         pthread_attr_init(&attr);
-        pthread_attr_setstacksize(&attr, PTHREAD_STACK_MIN);
+        pthread_attr_setstacksize(&attr, 5 * 4096 /*PTHREAD_STACK_MIN*/);
         int r = _pthread_create(&threads[i], &attr, _exhaust_thread, (void*)i);
         pthread_attr_destroy(&attr);
 

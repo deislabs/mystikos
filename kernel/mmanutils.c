@@ -202,6 +202,10 @@ void* myst_mmap(
 
     (void)flags;
 
+    /* check for invalid PROT bits */
+    if (prot & (~MYST_PROT_MMAP_MASK))
+        return (void*)-1;
+
     // Linux ignores fd when the MAP_ANONYMOUS flag is present
     if (flags & MAP_ANONYMOUS)
         fd = -1;
@@ -232,15 +236,21 @@ void* myst_mmap(
     if (fd >= 0 && addr)
     {
         ssize_t n;
+        // ATTN: call mmap or mremap here so that this range refers to
+        // a mapped region.
+        // ATTN: is non-page-aligned length valid?
+        if (myst_mman_mprotect(&_mman, addr, length, prot | MYST_PROT_WRITE))
+            return (void*)-1;
         if ((n = _map_file_onto_memory(fd, offset, addr, length, flags)) < 0)
             return (void*)-1;
-
+        if (!(prot & MYST_PROT_WRITE))
+        {
+            if (myst_mman_mprotect(&_mman, addr, length, prot))
+                return (void*)-1;
+        }
         void* end = (uint8_t*)addr + length;
         assert(addr >= _mman_start && addr <= _mman_end);
         assert(end >= _mman_start && end <= _mman_end);
-
-        // ATTN: call mmap or mremap here so that this range refers to
-        // a mapped region.
 
         return addr;
     }
@@ -253,9 +263,19 @@ void* myst_mmap(
     if (fd >= 0 && !addr)
     {
         ssize_t n;
-
+        // ATTN: is non-page-aligned length valid?
+        if (!(prot & MYST_PROT_WRITE))
+        {
+            if (myst_mman_mprotect(&_mman, ptr, length, prot | MYST_PROT_WRITE))
+                return (void*)-1;
+        }
         if ((n = _map_file_onto_memory(fd, offset, ptr, length, flags)) < 0)
             return (void*)(long)-n;
+        if (!(prot & MYST_PROT_WRITE))
+        {
+            if (myst_mman_mprotect(&_mman, ptr, length, prot))
+                return (void*)-1;
+        }
     }
 
     void* end = (uint8_t*)ptr + length;
@@ -284,6 +304,24 @@ void* myst_mremap(
         return (void*)(long)r;
 
     return p;
+}
+
+int myst_mprotect(const void* addr, const size_t len, const int prot)
+{
+    if (!addr)
+        return -EINVAL;
+
+    /* check for invalid PROT bits */
+    if (prot & (~MYST_PROT_MPROTECT_MASK))
+        return -EINVAL;
+    /* PROT cannot have both PROT_GROWSDOWN and MYST_PROT_GROWSUP bits set */
+    if ((prot & MYST_PROT_GROWSDOWN) && (prot & MYST_PROT_GROWSUP))
+        return -EINVAL;
+
+    /* Current implementation for mprotect ignore bits beyond
+       PROT_READ|PROT_WRITE|PROT_EXEC
+    */
+    return (myst_mman_mprotect(&_mman, (void*)addr, len, prot));
 }
 
 MYST_UNUSED

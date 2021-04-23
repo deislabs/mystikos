@@ -3192,7 +3192,7 @@ static long _syscall(void* args_)
                 length,
                 prot);
 
-            BREAK(_return(n, 0));
+            BREAK(_return(n, (long)myst_mprotect(addr, length, prot)));
         }
         case SYS_munmap:
         {
