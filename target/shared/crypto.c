@@ -18,7 +18,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define ISSUER "MYSTIKOS"
 #define DATE_NOT_VALID_BEFORE "20210101000000"
 #define DATE_NOT_VALID_AFTER "20501231235959"
 
@@ -143,7 +142,6 @@ int _mbedtls_generate_x509_certificate_with_extension(
     size_t public_key_size,
     uint8_t* private_key,
     size_t private_key_size,
-    const char* issuer,
     const char* nbf,
     const char* exp,
     myst_cert_extension_config_t* config,
@@ -181,7 +179,7 @@ int _mbedtls_generate_x509_certificate_with_extension(
 
     ECHECK(mbedtls_x509write_crt_set_subject_name(&x509cert, subject_name));
 
-    ECHECK(mbedtls_x509write_crt_set_issuer_name(&x509cert, issuer));
+    ECHECK(mbedtls_x509write_crt_set_issuer_name(&x509cert, subject_name));
 
     ECHECK(mbedtls_mpi_read_string(&serial, 10, "1"));
 
@@ -192,17 +190,17 @@ int _mbedtls_generate_x509_certificate_with_extension(
     // Mark the issuer as non-CA
     ECHECK(mbedtls_x509write_crt_set_basic_constraints(&x509cert, 0, -1));
 
+    // Set the subjectKeyIdentifier extension for a CRT Requires that
+    // mbedtls_x509write_crt_set_subject_key() has been called before
+    ECHECK(mbedtls_x509write_crt_set_subject_key_identifier(&x509cert));
+
+    // Set the authorityKeyIdentifier extension for a CRT Requires that
+    // mbedtls_x509write_crt_set_issuer_key() has been called before.
+    ECHECK(mbedtls_x509write_crt_set_authority_key_identifier(&x509cert));
+
     // Embed custom data as extensions in the cert
     if (config)
     {
-        // Set the subjectKeyIdentifier extension for a CRT Requires that
-        // mbedtls_x509write_crt_set_subject_key() has been called before
-        ECHECK(mbedtls_x509write_crt_set_subject_key_identifier(&x509cert));
-
-        // Set the authorityKeyIdentifier extension for a CRT Requires that
-        // mbedtls_x509write_crt_set_issuer_key() has been called before.
-        ECHECK(mbedtls_x509write_crt_set_authority_key_identifier(&x509cert));
-
         ECHECK(mbedtls_x509write_crt_set_extension(
             &x509cert,
             (char*)config->ext_oid,
@@ -246,7 +244,6 @@ int _mbedtls_generate_x509_certificate_with_extension(
 
             memmove(buf, tmp + tmp_size - actual_len, (size_t)actual_len);
         }
-
         *cert_size_out = (size_t)actual_len;
         *cert_buf_out = buf;
     }
@@ -276,7 +273,6 @@ int myst_generate_x509_self_signed_cert(
         public_key_size,
         private_key,
         private_key_size,
-        ISSUER,
         DATE_NOT_VALID_BEFORE,
         DATE_NOT_VALID_AFTER,
         config,

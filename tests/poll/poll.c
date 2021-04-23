@@ -7,7 +7,6 @@
 #define _GNU_SOURCE
 #include <assert.h>
 #include <errno.h>
-#include <myst/tee.h>
 #include <poll.h>
 #include <pthread.h>
 #include <stdint.h>
@@ -55,19 +54,6 @@ int main(int argc, const char* argv[])
 {
     pthread_t sthread;
     pthread_t cthread;
-
-    /* Test SYS_myst_poll_wake system call */
-    {
-        pthread_t thread;
-
-        /* create a thread that will poll forever */
-        assert(pthread_create(&thread, NULL, _poll_forever_thread, NULL) == 0);
-
-        /* use extended syscall to break out of poll() */
-        syscall(SYS_myst_poll_wake);
-
-        pthread_join(thread, NULL);
-    }
 
     /* Test poll() with illegal parameters */
     assert(poll(NULL, 1, 0) == -1);
