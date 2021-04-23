@@ -9,9 +9,9 @@ all:
 	$(MAKE) myst
 	$(MAKE) rootfs
 
-rootfs: epoll.c server.c client.c
+rootfs: server.c
 	mkdir -p $(APPDIR)/bin
-	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/epoll epoll.c server.c client.c $(LDFLAGS)
+	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/server server.c $(LDFLAGS)
 	$(MYST) mkcpio $(APPDIR) rootfs
 
 ifdef STRACE
@@ -22,7 +22,11 @@ tests: all
 	$(MAKE) __tests
 
 __tests:
-	$(RUNTEST) $(MYST_EXEC) rootfs /bin/epoll $(OPTS)
+	$(RUNTEST) $(MYST_EXEC) rootfs /bin/server $(OPTS) &
+	sleep 2
+	$(CC) client.c -o client
+	./client
+	sleep 1
 
 stress:
 	$(foreach i, $(shell seq 1 100), $(MAKE) __tests $(NL) )

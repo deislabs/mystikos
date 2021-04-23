@@ -324,3 +324,11 @@ void run_server(uint16_t port, size_t num_clients)
     close(lsock);
     close(epfd);
 }
+
+int main(int argc, const char* argv[])
+{
+    run_server(12345, 1);
+
+    printf("=== passed test (%s)\n", argv[0]);
+    return 0;
+}

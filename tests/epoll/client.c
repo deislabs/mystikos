@@ -66,3 +66,11 @@ void run_client(uint16_t port)
 
     close(sd);
 }
+
+int main(int argc, const char* argv[])
+{
+    run_client(12345);
+
+    printf("=== passed test (%s)\n", argv[0]);
+    return 0;
+}
