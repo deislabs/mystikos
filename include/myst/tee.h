@@ -6,28 +6,15 @@
 
 #include <stdint.h>
 
-/* Extended syscalls of Mystikos */
 enum
 {
-    SYS_myst_trace = 1001,
-    SYS_myst_trace_ptr = 1002,
-    SYS_myst_dump_stack = 1003,
-    SYS_myst_dump_ehdr = 1004,
-    SYS_myst_dump_argv = 1005,
-    SYS_myst_add_symbol_file = 1006,
-    SYS_myst_load_symbols = 1007,
-    SYS_myst_unload_symbols = 1008,
+    /* Public-facing extended syscalls of Mystikos */
+    SYS_myst_max_threads = 1008,
     SYS_myst_gen_creds = 1009,
     SYS_myst_free_creds = 1010,
     SYS_myst_verify_cert = 1011,
     SYS_myst_gen_creds_ex = 1012,
     SYS_myst_free_creds_ex = 1013,
-    SYS_myst_clone = 1014,
-    SYS_myst_gcov_init = 1015,
-    SYS_myst_max_threads = 1016,
-    SYS_myst_poll_wake = 1017,
-    SYS_myst_run_itimer = 1018,
-    SYS_myst_start_shell = 1019,
 
     /* Open Enclave extensions */
     SYS_myst_oe_get_report_v2,

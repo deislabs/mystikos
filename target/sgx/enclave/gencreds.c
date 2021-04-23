@@ -172,18 +172,36 @@ int myst_gen_creds_ex(
         cert_size_out,
         MYST_DER));
 
-    // Convert public key from PEM to DER
-    ECHECK(myst_pem_to_der(public_key, public_key_size, derbuf, &buflen));
-    assert(buflen < 4096);
-
 #if DEBUG
-    fprintf(stderr, "==== Public key (%ld): ", buflen);
+    fprintf(
+        stderr,
+        "==== Public key pem(%ld): \n%s\n",
+        public_key_size,
+        public_key);
+    fprintf(stderr, "==== Public key der(%ld): ", buflen);
     for (size_t i = 0; i < buflen; i++)
     {
-        fprintf(stderr, "%02x", derbuf[i]);
+        fprintf(stderr, "%02X", derbuf[i]);
     }
     fprintf(stderr, "\n");
+
+    /* Verify that the certificate can be parsed as DER */
+    {
+        mbedtls_x509_crt crt;
+        mbedtls_x509_crt_init(&crt);
+
+        if (mbedtls_x509_crt_parse_der(&crt, *cert_out, *cert_size_out) != 0)
+        {
+            mbedtls_x509_crt_free(&crt);
+            ERAISE(-1);
+        }
+        mbedtls_x509_crt_free(&crt);
+    }
 #endif
+
+    // Convert public key from PEM to DER. We use DER to derive report data.
+    ECHECK(myst_pem_to_der(public_key, public_key_size, derbuf, &buflen));
+    assert(buflen < 4096);
 
     ECHECK(myst_generate_report_from_claim(
         derbuf, buflen, NULL, 0, report_out, report_size_out));
@@ -221,20 +239,6 @@ int myst_generate_report_from_claim(
 
     ECHECK(myst_sha256(&sha256, claim_buf, claim_buf_size));
 
-#if DEBUG
-    fprintf(stderr, "==== Report Claim (%ld): ", claim_buf_size);
-    for (size_t i = 0; i < claim_buf_size; i++)
-    {
-        fprintf(stderr, "%02x", claim_buf[i]);
-    }
-    fprintf(stderr, "\n==== Report data (%d): ", MYST_SHA256_SIZE);
-    for (size_t i = 0; i < MYST_SHA256_SIZE; i++)
-    {
-        fprintf(stderr, "%02x", sha256.data[i]);
-    }
-    fprintf(stderr, "\n");
-#endif
-
     if ((r = oe_get_report(
              OE_REPORT_FLAGS_REMOTE_ATTESTATION,
              (const uint8_t*)&sha256,
@@ -244,6 +248,28 @@ int myst_generate_report_from_claim(
              &tmpbuf,
              &tmpbuf_size)) != OE_OK)
         ERAISE(-r);
+
+#if DEBUG
+    fprintf(stderr, "==== Report Claim (%ld): ", claim_buf_size);
+    for (size_t i = 0; i < claim_buf_size; i++)
+    {
+        fprintf(stderr, "%02X", claim_buf[i]);
+    }
+
+    fprintf(stderr, "\n==== Report data (%d): ", MYST_SHA256_SIZE);
+    for (size_t i = 0; i < MYST_SHA256_SIZE; i++)
+    {
+        fprintf(stderr, "%02X", sha256.data[i]);
+    }
+    fprintf(stderr, "\n");
+
+    fprintf(stderr, "\n==== Report (%ld): ", tmpbuf_size);
+    for (size_t i = 0; i < tmpbuf_size; i++)
+    {
+        fprintf(stderr, "%02X", tmpbuf[i]);
+    }
+    fprintf(stderr, "\n");
+#endif
 
     *report_buf_out = tmpbuf;
     *report_size_out = tmpbuf_size;

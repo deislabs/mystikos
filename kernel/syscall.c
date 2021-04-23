@@ -67,6 +67,7 @@
 #include <myst/spinlock.h>
 #include <myst/strings.h>
 #include <myst/syscall.h>
+#include <myst/syscallext.h>
 #include <myst/tcall.h>
 #include <myst/tee.h>
 #include <myst/thread.h>

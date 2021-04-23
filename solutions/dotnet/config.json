@@ -6,14 +6,14 @@
     // The stack size of each ethread
     "StackMemSize": "400k",
     // The number of ethreads
-    "NumUserThreads": 8,
+    "NumUserThreads": 32,
     "ProductID": 1,
     "SecurityVersion": 1,
 
     // Mystikos specific values
 
     // The heap size of the user application. Increase this setting if your app experienced OOM.
-    "MemorySize": "512m",
+    "MemorySize": "1g",
     // The path to the entry point application in rootfs
     "ApplicationPath": "/app/HelloWorld",
     // The parameters to the entry point application
@@ -22,4 +22,6 @@
     "HostApplicationParameters": false,
     // The environment variables accessible inside the enclave.
     "EnvironmentVariables": ["COMPlus_EnableDiagnostics=0", "MYST_WANT_TEE_CREDENTIALS=CERT_PEMKEY_REPORT"],
+    // The environment variables we get from the host
+    "HostEnvironmentVariables": ["MAA_ENDPOINT"]
 }

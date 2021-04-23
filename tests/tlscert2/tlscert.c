@@ -67,6 +67,13 @@ int main(int argc, const char* argv[])
         assert(parsed_report.identity.product_id[0] == 1);
         assert(parsed_report.identity.security_version == 1);
 
+        printf("Report data: ");
+        for (size_t i = 0; i < parsed_report.report_data_size; i++)
+        {
+            printf("%02x", parsed_report.report_data[i]);
+        }
+        printf("\n");
+
         printf("Validated the report file. Report size: %ld\n", size);
     }
 

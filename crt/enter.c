@@ -20,6 +20,7 @@
 #include <myst/gcov.h>
 #include <myst/libc.h>
 #include <myst/syscall.h>
+#include <myst/syscallext.h>
 #include <myst/tee.h>
 
 void _dlstart_c(size_t* sp, size_t* dynv);
