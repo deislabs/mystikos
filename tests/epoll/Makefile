@@ -19,7 +19,7 @@ OPTS = --strace
 endif
 
 tests: all
-	$(MAKE) __tests
+	$(MAKE) stress
 
 __tests:
 	$(RUNTEST) $(MYST_EXEC) rootfs /bin/server $(OPTS) &
