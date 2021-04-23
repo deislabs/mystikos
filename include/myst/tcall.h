@@ -150,4 +150,6 @@ int myst_tcall_verify_signature(
 
 int myst_tcall_load_fssig(const char* path, myst_fssig_t* fssig);
 
+int myst_tcall_mprotect(void* addr, size_t len, int prot);
+
 #endif /* _MYST_TCALL_H */
