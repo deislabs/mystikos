@@ -94,6 +94,8 @@ DIRS += dotnet-ubuntu
 
 DIRS += robust
 
+DIRS = epoll
+
 __tests:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) tests $(NL) )
 
