@@ -13,6 +13,13 @@
 #define MYST_PROT_READ 1
 #define MYST_PROT_WRITE 2
 #define MYST_PROT_EXEC 4
+#define MYST_PROT_SEM 8
+#define MYST_PROT_GROWSUP 0x01000000
+#define MYST_PROT_GROWSDOWN 0x02000000
+#define MYST_PROT_MPROTECT_MASK                                          \
+    (MYST_PROT_READ | MYST_PROT_WRITE | MYST_PROT_EXEC | MYST_PROT_SEM | \
+     MYST_PROT_GROWSUP | MYST_PROT_GROWSDOWN)
+#define MYST_PROT_MMAP_MASK (MYST_PROT_READ | MYST_PROT_WRITE | MYST_PROT_EXEC)
 
 #define MYST_MAP_SHARED 1
 #define MYST_MAP_PRIVATE 2
@@ -66,7 +73,10 @@ typedef struct myst_mman
     /* Size of heap (a multiple of MYST_PAGE_SIZE) */
     size_t size;
 
-    /* Start of heap (immediately aft4er VADs array) */
+    /* Page permission prot vector */
+    uint8_t* prot_vector;
+
+    /* Start of heap (immediately after VADs array and prot vector) */
     uintptr_t start;
 
     /* End of heap (points to first page after end of heap) */
@@ -139,5 +149,14 @@ int myst_mman_total_size(myst_mman_t* mman, size_t* size);
 int myst_mman_free_size(myst_mman_t* mman, size_t* size);
 
 void myst_mman_dump_vads(myst_mman_t* mman);
+
+int myst_mman_mprotect(myst_mman_t* mman, void* addr, size_t len, int prot);
+
+int myst_mman_get_prot(
+    myst_mman_t* mman,
+    void* addr,
+    size_t len,
+    int* prot,
+    bool* consistent);
 
 #endif /* _MYST_INTERNAL_MMAN_H */
