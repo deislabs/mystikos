@@ -8,9 +8,7 @@ LDFLAGS += -Wl,--warn-once
 all: libgcov.a
 
 libgcov.a:
-	rm -f _gcov*.o
-	cp $(shell ./libname.sh) .
-	./redefine.sh
+	./mklibgcov.sh
 
 clean:
 	rm -f _gcov*.o libgcov.a *.gcno *.gcda
