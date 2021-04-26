@@ -494,6 +494,10 @@ int _exec_package(
     if (cli_getopt(&argc, argv, "--shell", NULL) == 0)
         options.shell_mode = true;
 
+    /* Get --memcheck option */
+    if (cli_getopt(&argc, argv, "--memcheck", NULL) == 0)
+        options.memcheck = true;
+
     if (!realpath(argv[0], full_app_path))
     {
         fprintf(stderr, "Invalid path %s\n", argv[0]);
