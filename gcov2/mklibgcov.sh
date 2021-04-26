@@ -26,7 +26,7 @@ cp "${libgcov}" ./libgcov.a
 
 ##==============================================================================
 ##
-## prefix all C symbols in libgcov.a with "gcov_" prefix
+## prefix all C symbols in libgcov.a with "myst_gcov_" prefix
 ##
 ##==============================================================================
 
