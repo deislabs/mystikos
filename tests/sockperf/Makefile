@@ -11,7 +11,7 @@ APPBUILDER=$(TOP)/scripts/appbuilder
 ROOTFS=$(CURDIR)/rootfs
 ROOTHASH=$(CURDIR)/roothash
 
-all: clean myst $(APPDIR) $(ROOTFS) $(ROOTHASH)
+all: $(ROOTFS) $(ROOTHASH)
 
 $(APPDIR):
 	$(APPBUILDER) Dockerfile
@@ -20,10 +20,10 @@ $(APPDIR):
 	# To update the image, update the dockerfile and then push a new image.
 	# Then, replace this container name with the new name.
 
-$(ROOTFS):
+$(ROOTFS): $(APPDIR)
 	sudo $(MYST) mkext2 $(APPDIR) $(ROOTFS)
 
-$(ROOTHASH):
+$(ROOTHASH): $(ROOTFS)
 	mkdir -p $(SUBOBJDIR)
 	$(MYST) fssig --roothash $(ROOTFS) > $(ROOTHASH)
 
