@@ -30,6 +30,7 @@ rootfs: build ramfs
 
 ramfs:
 	mkdir -p $(RAMFSDIR)
+	mkdir -p $(APPDIR)
 	touch $(RAMFSDIR)/ramfs-file
 	$(MYST) mkcpio $(RAMFSDIR) $(RAMFS)
 
