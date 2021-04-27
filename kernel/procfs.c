@@ -113,12 +113,19 @@ int create_proc_root_entries()
     int ret = 0;
 
     /* Create /proc/meminfo */
-    ECHECK(myst_create_virtual_file(
-        _procfs, "/meminfo", S_IFREG, _meminfo_vcallback));
+    {
+        myst_vcallback_t v_cb;
+        v_cb.open_cb = _meminfo_vcallback;
+        ECHECK(myst_create_virtual_file(
+            _procfs, "/meminfo", S_IFREG | S_IRUSR, v_cb, OPEN));
+    }
 
     /* Create /proc/self */
-    ECHECK(
-        myst_create_virtual_file(_procfs, "/self", S_IFLNK, _self_vcallback));
+    {
+        myst_vcallback_t v_cb;
+        v_cb.open_cb = _self_vcallback;
+        ECHECK(myst_create_virtual_file(_procfs, "/self", S_IFLNK, v_cb, OPEN));
+    }
 
 done:
     return ret;
