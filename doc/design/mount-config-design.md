@@ -45,7 +45,8 @@ mount: [
         "target": "<target>",
         "type": "<type>",
         "flags": [ "<flag>" ],
-        "publicKey": ["<publicKey>"]
+        "publicKey": "<publicKey>",
+        "roothash": "<roothash>"
     },
     {
         "target": "<target>",
@@ -60,7 +61,8 @@ mount: [
 | target | This is the target mount point within the TEE. |
 | type | "ext2", "hostfs", "ramfs" |
 | flags | Optional field that specified flags like "ro", "rw". At this time no flags are supported. |
-| publicKey | For ext2 filesystems this is the public key to validate integrity of an integrity protected ext2 filesystem when it is mounted |
+| publicKey | For ext2 filesystems this is the public key used to validate the signing key of the ext2 filesystem when it is mounted. This configuration is not currently supported. |
+| roothash | For ext2 filesystems this is the root hash to validate integrity of an integrity protected ext2 filesystem when it is mounted. This configuration is not currently supported. |
 | | |
 
 TODO: The source of private key for accessing an encrypted filesystem is not handled in this document at this time.
@@ -77,7 +79,7 @@ It is even possible that the source location may change with every run if the so
 The following new command line argument will be added:
 
 ```text
---mount <source>:<target>
+--mount <source>=<target>
 ```
 
 | Name | Value |

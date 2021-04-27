@@ -71,6 +71,7 @@ struct options
     size_t heap_size;
     const char* app_config_path;
     myst_host_enc_id_mapping mapping;
+    myst_mount_mapping_t mount_mappings;
 };
 
 static void _get_options(int* argc, const char* argv[], struct options* opts)
@@ -79,6 +80,9 @@ static void _get_options(int* argc, const char* argv[], struct options* opts)
 
     // process ID mapping options
     cli_get_mapping_opts(argc, argv, &opts->mapping);
+
+    // retrieve mount mapping options
+    cli_get_mount_mapping_opts(argc, argv, &opts->mount_mappings);
 
     /* Get --trace-syscalls option */
     if (cli_getopt(argc, argv, "--trace-syscalls", NULL) == 0 ||
@@ -213,6 +217,7 @@ static int _enter_kernel(
     config_parsed_data_t pd;
     const char target[] = "MYST_TARGET=linux";
     void* regions_end = (uint8_t*)mmap_addr + mmap_length;
+    bool have_config = false;
 
     memset(&pd, 0, sizeof(pd));
     memset(&args, 0, sizeof(args));
@@ -247,6 +252,14 @@ static int _enter_kernel(
                 /* set the hostname if any */
                 if (pd.hostname)
                     hostname = pd.hostname;
+
+                /* Add mount source paths to config read mount points */
+                if (!myst_merge_mount_mapping_and_config(
+                        &pd.mounts, &options->mount_mappings) ||
+                    !myst_validate_mount_config(&pd.mounts))
+                    ERAISE(-EINVAL);
+
+                have_config = true;
             }
             else
             {
@@ -272,6 +285,7 @@ static int _enter_kernel(
                 envp,
                 cwd,
                 options->mapping,
+                &pd.mounts,
                 hostname,
                 regions_end,
                 image_data,
@@ -313,6 +327,8 @@ static int _enter_kernel(
 
 done:
 
+    if (have_config)
+        free_config(&pd);
     if (args.envp)
         free(args.envp);
 
@@ -441,6 +457,8 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
     {
         _err("%s", err);
     }
+
+    free_mount_mapping_opts(&opts.mount_mappings);
 
     free_region_details();
 

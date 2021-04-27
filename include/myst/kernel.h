@@ -17,6 +17,36 @@ typedef struct _myst_host_enc_id_mapping
     gid_t enc_gid;
 } myst_host_enc_id_mapping;
 
+/* Information used for a specific automatic mount point that is mounted on
+ * start. flags, public_keys and roothash are currently not used, but are
+ * available in the configuration parser for when we start using them. Target is
+ * the mount point inside the TEE, source is the what is mounted from outside
+ * the TEE.
+ */
+typedef struct myst_mount_point_config
+{
+    char* target;
+    char* source;
+    char* fs_type;
+    char** flags;
+    size_t flags_count;
+    char* public_key;
+    char* roothash;
+} myst_mount_point_config_t;
+
+/* This is the configuration used to automatically mount drives on start-up.
+ * The configuration is passed in from the target.
+ * For TEE targets, the configuration will be measured with the exception of hte
+ * source information. The source configuration for each mount is passed in from
+ * the command line to map the source which is outside the TEE to the target
+ * path that is used in the TEE
+ * */
+typedef struct myst_mounts_config
+{
+    myst_mount_point_config_t* mounts;
+    size_t mounts_count;
+} myst_mounts_config_t;
+
 typedef struct myst_kernel_args
 {
     /* The image that contains the kernel and crt etc. */
@@ -66,6 +96,10 @@ typedef struct myst_kernel_args
        of the host application.
       */
     myst_host_enc_id_mapping host_enc_id_mapping;
+
+    /* This is only used as the kernel initialized and the lifetime is handled
+     * in the target where the pointer came from. */
+    myst_mounts_config_t* mounts;
 
     /* configure hostname in kernel */
     char hostname_buffer[1024];
