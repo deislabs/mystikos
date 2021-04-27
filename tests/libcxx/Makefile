@@ -47,7 +47,7 @@ $(APPDIR)/bin/run: run.c
 	$(MUSL_GCC) -Wall -o $(APPDIR)/bin/run run.c
 
 $(APPDIR):
-	$(APPBUILDER) mystikos/libcxx_tests_10x:2.0
+	$(APPBUILDER) -i mystikos/libcxx_tests_10x:2.0
 	cp $(CURDIR)/testsa*.passed $(APPDIR)
 	# To build a new image, modify the appbuilder script to build the image with the correct name, 
 	# and not clean it up. Then once the image is built, push it to dockerhub and update 
@@ -69,7 +69,7 @@ tests:
 	$(RUNTEST) $(MAKE) __tests
 
 __tests:
-	for i in a b c d e f g h i j k l m n o ; do \
+	for i in a b c d e f ; do \
 		$(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run testsa$$i.passed ; \
 	done
 
@@ -85,8 +85,8 @@ runall:
 
 # Splits tests into batches for easy processing 
 split: clean-tests
-	split -l 140 $(ALLTESTS) tests
-	for i in a b c d e f g h i j k l m n o ; do \
+	split -l 350 $(ALLTESTS) tests
+	for i in a b c d e f ; do \
 		grep -Fxf tests.passed testsa$$i > testsa$$i.passed ; \
 	done
 
@@ -105,5 +105,5 @@ clean-tests:
 	mv temp $(ALLTESTS)
 	comm -23 tests.passed tests.remove > temp
 	mv temp tests.passed
-	comm -23 tests.failed tests.failedubuntu > temp
+	comm -23 tests.failed tests.failedalpine > temp
 	mv temp tests.failed
