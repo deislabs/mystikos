@@ -475,6 +475,9 @@ int _exec_package(
         // process ID mapping options
         cli_get_mapping_opts(&argc, argv, &options.host_enc_id_mapping);
 
+        // retrieve mount mapping options
+        cli_get_mount_mapping_opts(&argc, argv, &options.mount_mapping);
+
         /* Get --trace-syscalls option */
         if (cli_getopt(&argc, argv, "--trace-syscalls", NULL) == 0 ||
             cli_getopt(&argc, argv, "--strace", NULL) == 0)
@@ -710,6 +713,8 @@ int _exec_package(
     }
 
 done:
+    free_mount_mapping_opts(&options.mount_mapping);
+
     if (unpack_dir)
         remove_recursive(unpack_dir);
 

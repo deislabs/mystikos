@@ -107,3 +107,11 @@ tests/ltp/ltp/
 tests/shared_symbols/appdir/bin/shared_symbols
 tests/procfs/appdir
 third_party/gcompat/gcompat/
+tests/dotnet-ubuntu/appdir/
+tests/dotnet-ubuntu/ext2fs
+tests/dotnet-ubuntu/roothash
+tests/myst/exec-signed-1/appdir/
+tests/myst/exec-signed-1/result
+tests/myst/exec-signed-2/appdir/
+tests/myst/exec-signed-2/result
+tests/robust/appdir/

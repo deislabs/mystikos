@@ -6,6 +6,7 @@
 
 #include <myst/defs.h>
 #include <myst/kernel.h>
+#include <myst/options.h>
 #include <sys/user.h>
 
 // default Mystikos RAM size
@@ -35,10 +36,17 @@ int cli_getopt(
     const char* argv[],
     const char* opt,
     const char** optarg);
+
 int cli_get_mapping_opts(
     int* argc,
     const char* argv[],
     myst_host_enc_id_mapping* mappings);
+
+int cli_get_mount_mapping_opts(
+    int* argc,
+    const char* argv[],
+    myst_mount_mapping_t* mappings);
+void free_mount_mapping_opts(myst_mount_mapping_t* mappings);
 
 long myst_add_symbol_file_by_path(
     const char* path,

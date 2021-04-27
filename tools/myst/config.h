@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 #include <myst/json.h>
+#include <myst/kernel.h>
 #include <stdio.h>
 #include <sys/types.h>
 
@@ -31,6 +32,7 @@ typedef struct _config_parsed_data_t
     size_t host_environment_variables_count;
     char* cwd;
     char* hostname;
+    myst_mounts_config_t mounts;
 
     // Internal data
     void* buffer;

@@ -61,6 +61,39 @@ long myst_tcall(long n, long params[6])
     return ret;
 }
 
+static int _process_mount_configuration(myst_mounts_config_t* mounts)
+{
+    size_t i;
+    int ret = 0;
+
+    /* TARGETS MUST VALIDATE CONFIGURATION BEFORE ENTERING KERNEL BY
+     * CALLING myst_validate_mount_config(
+     */
+
+    for (i = 0; i < mounts->mounts_count; i++)
+    {
+        ret = myst_syscall_mount(
+            mounts->mounts[i].source,
+            mounts->mounts[i].target,
+            mounts->mounts[i].fs_type,
+            0,
+            NULL);
+        if (ret != 0)
+        {
+            myst_eprintf(
+                "kernel: cannot add extra mount. source=%s, target=%s, "
+                "type: %s, return=%d\n",
+                mounts->mounts[i].source,
+                mounts->mounts[i].target,
+                mounts->mounts[i].fs_type,
+                ret);
+            ERAISE(ret);
+        }
+    }
+done:
+    return ret;
+}
+
 static int _setup_tty(void)
 {
     int ret = 0;
@@ -650,6 +683,8 @@ int myst_enter_kernel(myst_kernel_args_t* args)
 
     /* Create top-level proc entries */
     create_proc_root_entries();
+
+    ECHECK(_process_mount_configuration(args->mounts));
 
     /* Set the 'run-proc' which is called by the target to run new threads */
     ECHECK(myst_tcall_set_run_thread_function(myst_run_thread));

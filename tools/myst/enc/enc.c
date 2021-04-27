@@ -388,6 +388,12 @@ static long _enter(void* arg_)
         myst_args_append1(&env, "MYST_TARGET=sgx");
     }
 
+    /* Add mount source paths to config read mount points */
+    if (have_config && (!myst_merge_mount_mapping_and_config(
+                            &parsed_config.mounts, &options->mount_mapping) ||
+                        !myst_validate_mount_config(&parsed_config.mounts)))
+        goto done;
+
     if (options)
     {
         trace_errors = options->trace_errors;
@@ -436,6 +442,7 @@ static long _enter(void* arg_)
             env.data,
             cwd,
             options->host_enc_id_mapping,
+            &parsed_config.mounts,
             hostname,
             regions_end,
             enclave_base,   /* image_data */

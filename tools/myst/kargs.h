@@ -12,6 +12,7 @@ int init_kernel_args(
     const char* envp[],
     const char* cwd,
     myst_host_enc_id_mapping host_enc_mapping,
+    myst_mounts_config_t* mounts,
     const char* hostname,
     const void* regions_end,
     const void* image_data,

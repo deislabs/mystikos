@@ -3,6 +3,7 @@
 
 #include <memory.h>
 #include <myst/file.h>
+#include <myst/kernel.h>
 #include <myst/round.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -64,55 +65,6 @@ static json_result_t _extract_mem_size(
     *num_pages = value;
 
     ret = JSON_OK;
-done:
-    return ret;
-}
-
-static json_result_t _config_extract_array(
-    json_type_t type,
-    const json_union_t* un,
-    char*** parameters,
-    size_t* parameters_count)
-{
-    json_result_t ret = JSON_FAILED;
-
-    if ((parameters == NULL) || (parameters_count == NULL))
-        CONFIG_RAISE(JSON_BAD_PARAMETER);
-    if (type != JSON_TYPE_STRING)
-        CONFIG_RAISE(JSON_TYPE_MISMATCH);
-
-    if (*parameters == NULL)
-    {
-        *parameters_count = 1;
-        // malloc enough for null entry at end
-        *parameters = malloc((2) * sizeof(char*));
-        if (*parameters == NULL)
-        {
-            CONFIG_RAISE(JSON_OUT_OF_MEMORY);
-        }
-        else
-        {
-            (*parameters)[*parameters_count - 1] = un->string;
-            (*parameters)[*parameters_count] = NULL;
-        }
-    }
-    else
-    {
-        // realloc enough for null entry at end
-        char** tmp =
-            realloc(*parameters, (*parameters_count + 2) * sizeof(char*));
-        if (tmp == NULL)
-        {
-            CONFIG_RAISE(JSON_OUT_OF_MEMORY);
-        }
-        (*parameters_count)++;
-        *parameters = tmp;
-        (*parameters)[*parameters_count - 1] = un->string;
-        (*parameters)[*parameters_count] = NULL;
-    }
-
-    ret = JSON_OK;
-
 done:
     return ret;
 }
@@ -231,33 +183,29 @@ static json_result_t _json_read_callback(
             }
             else if (json_match(parser, "ApplicationParameters") == JSON_OK)
             {
-                ret = _config_extract_array(
-                    type,
-                    un,
-                    &parsed_data->application_parameters,
-                    &parsed_data->application_parameters_count);
-                if (ret != JSON_OK)
-                    CONFIG_RAISE(ret);
+                if (type == JSON_TYPE_STRING)
+                    parsed_data->application_parameters[parser->path[0].index] =
+                        un->string;
+                else
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
             }
             else if (json_match(parser, "EnvironmentVariables") == JSON_OK)
             {
-                ret = _config_extract_array(
-                    type,
-                    un,
-                    &parsed_data->enclave_environment_variables,
-                    &parsed_data->enclave_environment_variables_count);
-                if (ret != JSON_OK)
-                    CONFIG_RAISE(ret);
+                if (type == JSON_TYPE_STRING)
+                    parsed_data
+                        ->enclave_environment_variables[parser->path[0].index] =
+                        un->string;
+                else
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
             }
             else if (json_match(parser, "HostEnvironmentVariables") == JSON_OK)
             {
-                ret = _config_extract_array(
-                    type,
-                    un,
-                    &parsed_data->host_environment_variables,
-                    &parsed_data->host_environment_variables_count);
-                if (ret != JSON_OK)
-                    CONFIG_RAISE(ret);
+                if (type == JSON_TYPE_STRING)
+                    parsed_data
+                        ->host_environment_variables[parser->path[0].index] =
+                        un->string;
+                else
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
             }
             else if (json_match(parser, "CurrentWorkingDirectory") == JSON_OK)
             {
@@ -273,9 +221,95 @@ static json_result_t _json_read_callback(
                 else
                     CONFIG_RAISE(JSON_TYPE_MISMATCH);
             }
+            else if (json_match(parser, "Mount.Target") == JSON_OK)
+            {
+                if (type == JSON_TYPE_STRING)
+                    parsed_data->mounts.mounts[parser->path[0].index].target =
+                        un->string;
+                else
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
+            }
+            else if (json_match(parser, "Mount.Type") == JSON_OK)
+            {
+                if (type == JSON_TYPE_STRING)
+                    parsed_data->mounts.mounts[parser->path[0].index].fs_type =
+                        un->string;
+                else
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
+            }
+            else if (json_match(parser, "Mount.Flags") == JSON_OK)
+            {
+                if (type == JSON_TYPE_STRING)
+                    parsed_data->mounts.mounts[parser->path[0].index]
+                        .flags[parser->path[1].index] = un->string;
+                else
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
+            }
+            else if (json_match(parser, "Mount.PublicKey") == JSON_OK)
+            {
+                if (type == JSON_TYPE_STRING)
+                    parsed_data->mounts.mounts[parser->path[0].index]
+                        .public_key = un->string;
+                else if (type == JSON_TYPE_NULL)
+                    parsed_data->mounts.mounts[parser->path[0].index]
+                        .public_key = NULL;
+                else
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
+            }
+            else if (json_match(parser, "Mount.RootHash") == JSON_OK)
+            {
+                if (type == JSON_TYPE_STRING)
+                    parsed_data->mounts.mounts[parser->path[0].index].roothash =
+                        un->string;
+                else if (type == JSON_TYPE_NULL)
+                    parsed_data->mounts.mounts[parser->path[0].index].roothash =
+                        NULL;
+                else
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
+            }
             else
             {
                 // Ignore everything we dont understand
+            }
+
+            break;
+        }
+
+        case JSON_REASON_BEGIN_ARRAY:
+        {
+            if (json_match(parser, "ApplicationParameters") == JSON_OK)
+            {
+                parsed_data->application_parameters =
+                    calloc(parser->path[0].size + 1, sizeof(char*));
+                parsed_data->application_parameters_count =
+                    parser->path[0].size;
+            }
+            else if (json_match(parser, "EnvironmentVariables") == JSON_OK)
+            {
+                parsed_data->enclave_environment_variables =
+                    calloc(parser->path[0].size + 1, sizeof(char*));
+                parsed_data->enclave_environment_variables_count =
+                    parser->path[0].size;
+            }
+            else if (json_match(parser, "HostEnvironmentVariables") == JSON_OK)
+            {
+                parsed_data->host_environment_variables =
+                    calloc(parser->path[0].size + 1, sizeof(char*));
+                parsed_data->host_environment_variables_count =
+                    parser->path[0].size;
+            }
+            else if (json_match(parser, "Mount") == JSON_OK)
+            {
+                parsed_data->mounts.mounts = calloc(
+                    parser->path[0].size, sizeof(myst_mount_point_config_t));
+                parsed_data->mounts.mounts_count = parser->path[0].size;
+            }
+            else if (json_match(parser, "Mount.Flags") == JSON_OK)
+            {
+                parsed_data->mounts.mounts[parser->path[0].index].flags =
+                    calloc(parser->path[1].size, sizeof(char*));
+                parsed_data->mounts.mounts[parser->path[0].index].flags_count =
+                    parser->path[1].size;
             }
 
             break;
@@ -355,12 +389,24 @@ done:
 
 int free_config(config_parsed_data_t* parsed_data)
 {
+    size_t i;
     if (parsed_data->enclave_environment_variables)
         free(parsed_data->enclave_environment_variables);
     if (parsed_data->host_environment_variables)
         free(parsed_data->host_environment_variables);
     if (parsed_data->application_parameters)
         free(parsed_data->application_parameters);
+    if (parsed_data->mounts.mounts)
+    {
+        for (i = 0; i < parsed_data->mounts.mounts_count; i++)
+        {
+            if (parsed_data->mounts.mounts[i].source)
+                free(parsed_data->mounts.mounts[i].source);
+            if (parsed_data->mounts.mounts[i].flags)
+                free(parsed_data->mounts.mounts[i].flags);
+        }
+        free(parsed_data->mounts.mounts);
+    }
     if (parsed_data->buffer)
         free(parsed_data->buffer);
     memset(parsed_data, 0, sizeof(*parsed_data));
