@@ -74,8 +74,6 @@
 #include <myst/times.h>
 #include <myst/trace.h>
 
-#define DEV_URANDOM_FD MYST_FDTABLE_SIZE
-
 #define MAX_IPADDR_LEN 64
 
 #define COLOR_RED "\e[31m"
@@ -702,13 +700,6 @@ long myst_syscall_open(const char* pathname, int flags, mode_t mode)
     const myst_fdtable_type_t fdtype = MYST_FDTABLE_TYPE_FILE;
     int fd;
     int r;
-
-    /* Handle /dev/urandom as a special case */
-    if (strcmp(pathname, "/dev/urandom") == 0)
-    {
-        /* ATTN: handle relative paths to /dev/urandom */
-        return DEV_URANDOM_FD;
-    }
 
     ECHECK(myst_mount_resolve(pathname, suffix, &fs));
     ECHECK((*fs->fs_open)(fs, suffix, flags, mode, &fs_out, &file));
@@ -2459,53 +2450,6 @@ static const char* _futex_op_str(int op)
     }
 }
 
-static ssize_t _dev_urandom_read(void* buf, size_t count)
-{
-    ssize_t ret = 0;
-
-    if (!buf && count)
-        ERAISE(-EFAULT);
-
-    if (!buf && !count)
-        return 0;
-
-    if (myst_tcall_random(buf, count) != 0)
-        ERAISE(-EIO);
-
-    ret = (ssize_t)count;
-
-done:
-    return ret;
-}
-
-static ssize_t _dev_urandom_readv(const struct iovec* iov, int iovcnt)
-{
-    ssize_t ret = 0;
-    size_t nread = 0;
-
-    if (!iov && iovcnt)
-        ERAISE(-EINVAL);
-
-    if (_iov_bad_addr(iov, iovcnt))
-        ERAISE(-EFAULT);
-
-    for (int i = 0; i < iovcnt; i++)
-    {
-        if (iov[i].iov_base && iov[i].iov_len)
-        {
-            if (myst_tcall_random(iov[i].iov_base, iov[i].iov_len) != 0)
-                ERAISE(-EINVAL);
-
-            nread += iov[i].iov_len;
-        }
-    }
-
-    ret = (ssize_t)nread;
-
-done:
-    return ret;
-}
-
 void myst_dump_ramfs(void)
 {
     myst_strarr_t paths = MYST_STRARR_INITIALIZER;
@@ -2767,9 +2711,6 @@ long myst_syscall(long n, long params[6])
 
             _strace(n, "fd=%d buf=%p count=%zu", fd, buf, count);
 
-            if (fd == DEV_URANDOM_FD)
-                BREAK(_return(n, _dev_urandom_read(buf, count)));
-
             BREAK(_return(n, myst_syscall_read(fd, buf, count)));
         }
         case SYS_write:
@@ -2791,9 +2732,6 @@ long myst_syscall(long n, long params[6])
 
             _strace(
                 n, "fd=%d buf=%p count=%zu offset=%ld", fd, buf, count, offset);
-
-            if (fd == DEV_URANDOM_FD)
-                BREAK(_return(n, _dev_urandom_read(buf, count)));
 
             BREAK(_return(n, myst_syscall_pread(fd, buf, count, offset)));
         }
@@ -2827,9 +2765,6 @@ long myst_syscall(long n, long params[6])
             int fd = (int)x1;
 
             _strace(n, "fd=%d", fd);
-
-            if (fd == DEV_URANDOM_FD)
-                BREAK(_return(n, 0));
 
             BREAK(_return(n, myst_syscall_close(fd)));
         }
@@ -2880,12 +2815,6 @@ long myst_syscall(long n, long params[6])
             int whence = (int)x3;
 
             _strace(n, "fd=%d offset=%ld whence=%d", fd, offset, whence);
-
-            if (fd == DEV_URANDOM_FD)
-            {
-                /* ATTN: ignored */
-                BREAK(_return(n, 0));
-            }
 
             BREAK(_return(n, myst_syscall_lseek(fd, offset, whence)));
         }
@@ -3039,9 +2968,6 @@ long myst_syscall(long n, long params[6])
             int iovcnt = (int)x3;
 
             _strace(n, "fd=%d iov=%p iovcnt=%d", fd, iov, iovcnt);
-
-            if (fd == DEV_URANDOM_FD)
-                BREAK(_return(n, (long)_dev_urandom_readv(iov, iovcnt)));
 
             BREAK(_return(n, myst_syscall_readv(fd, iov, iovcnt)));
         }
