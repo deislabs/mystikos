@@ -69,7 +69,7 @@ function test_passed() {
 # TESTS=builttests_exe3.all
 # run_tests $TESTS
 
-TESTS=builttests_exe.failed
+TESTS=$1
 run_tests $TESTS
 
 show_stats
