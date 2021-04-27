@@ -9,6 +9,7 @@
 #include <myst/cpio.h>
 #include <myst/crash.h>
 #include <myst/debugmalloc.h>
+#include <myst/devfs.h>
 #include <myst/eraise.h>
 #include <myst/errno.h>
 #include <myst/exec.h>
@@ -644,6 +645,9 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         ERAISE(-EINVAL);
     }
 
+    /* Setup devfs */
+    devfs_setup();
+
     /* Create top-level proc entries */
     create_proc_root_entries();
 
@@ -734,6 +738,9 @@ int myst_enter_kernel(myst_kernel_args_t* args)
 
     /* Tear down the proc file system */
     procfs_teardown();
+
+    /* Tear down the dev file system */
+    devfs_teardown();
 
     /* Tear down the RAM file system */
     _teardown_ramfs();

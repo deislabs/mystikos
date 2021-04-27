@@ -94,6 +94,7 @@ DIRS += msync
 DIRS += dotnet-ubuntu
 
 DIRS += robust
+DIRS += devfs
 
 __tests:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) tests $(NL) )
