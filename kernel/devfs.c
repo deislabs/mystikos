@@ -118,6 +118,16 @@ int devfs_setup()
             _devfs, "/urandom", S_IFREG | S_IRUSR | S_IWUSR, v_cb, RW);
     }
 
+    /* /dev/random - same as /dev/urandom */
+    {
+        myst_vcallback_t v_cb;
+        v_cb.rw_callbacks.read_cb = _urandom_read_cb;
+        v_cb.rw_callbacks.write_cb = _ignore_write_cb;
+
+        myst_create_virtual_file(
+            _devfs, "/random", S_IFREG | S_IRUSR | S_IWUSR, v_cb, RW);
+    }
+
     /* /dev/null */
     {
         myst_vcallback_t v_cb;
