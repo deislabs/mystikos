@@ -16,7 +16,7 @@ RUN echo "Num directories = " && find . -type d | wc -l
 RUN for dir in $(find . -type d); \
     do cd $dir ; \
     for f in $(ls | grep pass.cpp); \
-        do g++ -I $PREFIX_DIR/support -fPIC -Wall -o $( basename ${f}.exe) $f ; \
+       do g++ -std=c++17 -I $PREFIX_DIR/support -I $PREFIX_DIR/std -pthread -fPIC -Wall -o $( basename ${f}.exe) $f >> /app/log.log ; \
         done; \
     cd $TEST_DIR ; \
     done;
@@ -29,5 +29,5 @@ COPY --from=builder /app /tmpdir
 RUN mkdir /app
 
 RUN find /tmpdir -name \*.exe -exec cp {} /app \;
-RUN find /app -name \*.exe > /alpine_passed_exe.txt
+RUN find /app -name \*.exe > /alpine_built_exe.txt
 RUN rm -rf tmpdir 
