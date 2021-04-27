@@ -12,12 +12,12 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-void test_urandom()
+void test_random(const char* path)
 {
     int ret;
     char buf[1024];
 
-    int fd = open("/dev/urandom", O_RDONLY);
+    int fd = open(path, O_RDONLY);
     assert(fd > 0);
 
     ret = read(fd, buf, 1024);
@@ -112,7 +112,8 @@ void test_fd_link()
 
 int main(int argc, const char* argv[])
 {
-    test_urandom();
+    test_random("/dev/urandom");
+    test_random("/dev/random");
     test_zero();
     test_null();
     test_fd_link();
