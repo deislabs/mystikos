@@ -822,7 +822,18 @@ int myst_exec(
     int ret = 0;
     void* stack = NULL;
     void* sp = NULL;
-    const size_t stack_size = 64 * PAGE_SIZE;
+    // ATTN: Small stack size for the primary thread of a process might not work
+    // for certain apps, especially when on-demand stack growth is not supported
+    // yet
+    /* .Net runtime set the default minimum stack size for MUSL to 1536 * 1024,
+     *  if env. variable COMPlus_DefaultStackSize is not present or set to other
+     *  value. For MUSL, it also probes the stack limit of the primary thread
+     *  using _alloca(min_stack_size) and writing to a stack variable on top of
+     *  the stack, during CoreCLR init. Set the default stack size as 1536 *
+     *  1024 plus 8 pages reserves for kernel and earlier stack frames
+     */
+    const size_t stack_size = 392 * PAGE_SIZE;
+    // const size_t stack_size = 64 * PAGE_SIZE;
     void* crt_data = NULL;
     const Elf64_Ehdr* ehdr = NULL;
     const Elf64_Phdr* phdr = NULL;
