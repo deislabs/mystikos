@@ -1,13 +1,7 @@
 /app/at.abort.pass.cpp.exe
 /app/at.const.abort.pass.cpp.exe
 /app/clear.abort.pass.cpp.exe
-/app/insert_size_value.pass.cpp.exe
 /app/locale.category.abort.pass.cpp.exe
-/app/make_ready_at_thread_exit.pass.cpp.exe
-/app/merge_comp.pass.cpp.exe
-/app/operator.pass.cpp.exe
 /app/try_lock_shared_for.pass.cpp.exe
 /app/try_lock_shared_until.pass.cpp.exe
 /app/use_facet.abort.pass.cpp.exe
-/app/wait.pass.cpp.exe
-/app/wait_for.pass.cpp.exe

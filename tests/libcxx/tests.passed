@@ -902,6 +902,7 @@
 /app/insert_range.pass.cpp.exe
 /app/insert_rv.pass.cpp.exe
 /app/insert_rvalue.pass.cpp.exe
+/app/insert_size_value.pass.cpp.exe
 /app/insert_value.pass.cpp.exe
 /app/int.pass.cpp.exe
 /app/int_error_category.pass.cpp.exe
@@ -1142,6 +1143,7 @@
 /app/make_ostream_joiner.pass.cpp.exe
 /app/make_pair.pass.cpp.exe
 /app/make_preferred.pass.cpp.exe
+/app/make_ready_at_thread_exit.pass.cpp.exe
 /app/make_reverse_iterator.pass.cpp.exe
 /app/make_shared.pass.cpp.exe
 /app/make_shared.volatile.pass.cpp.exe
@@ -1193,6 +1195,7 @@
 /app/memory_resource.version.pass.cpp.exe
 /app/memory_resource_convert.pass.cpp.exe
 /app/merge.pass.cpp.exe
+/app/merge_comp.pass.cpp.exe
 /app/merge_pred.pass.cpp.exe
 /app/message.pass.cpp.exe
 /app/messages_base.pass.cpp.exe
@@ -1397,6 +1400,7 @@
 /app/opeq.string_view.pointer.pass.cpp.exe
 /app/opeq.string_view.string.pass.cpp.exe
 /app/opeq.string_view.string_view.pass.cpp.exe
+/app/operator.pass.cpp.exe
 /app/operator_==.pass.cpp.exe
 /app/operator_bool.pass.cpp.exe
 /app/operator_element_type_ptr.pass.cpp.exe
@@ -2050,6 +2054,8 @@
 /app/void.pass.cpp.exe
 /app/void_pointer.pass.cpp.exe
 /app/void_t.pass.cpp.exe
+/app/wait.pass.cpp.exe
+/app/wait_for.pass.cpp.exe
 /app/wait_for_pred.pass.cpp.exe
 /app/wait_pred.pass.cpp.exe
 /app/wait_until.pass.cpp.exe
