@@ -83,6 +83,7 @@ int main(int argc, const char* argv[])
         printf("Error - mprotect(NONE) failed unexpectedly\n");
         assert(0);
     }
+
     data = addr[0];
     /* not expected to reach here */
     printf("ERROR - No Access PAGES: first byte readable\n");

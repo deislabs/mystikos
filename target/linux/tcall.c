@@ -304,6 +304,8 @@ long myst_tcall(long n, long params[6])
             if (fwrite(buf, 1, count, stream) != count)
                 return -EIO;
 
+            fflush(stream);
+
             return (long)count;
         }
         case MYST_TCALL_READ_CONSOLE:
