@@ -1971,6 +1971,11 @@ long myst_syscall_ioctl(int fd, unsigned long request, long arg)
     myst_fdtable_t* fdtable = myst_fdtable_current();
     myst_fdops_t* fdops;
 
+    // bz
+    if (request == FIOCLEX)
+        return 0;
+    // bz
+
     ECHECK(myst_fdtable_get_any(fdtable, fd, &type, &device, &object));
     fdops = device;
 
@@ -5010,10 +5015,18 @@ static long _syscall(void* args_)
             int flags = (int)x2;
 
             _strace(n, "cmd=%d flags=%d", cmd, flags);
-
-            myst_barrier();
-
-            BREAK(_return(n, 0));
+            // bz
+            // myst_barrier();
+            if (cmd == 0)
+            {
+                BREAK(_return(n, -ENOSYS));
+            }
+            else
+            {
+                BREAK(_return(n, -ENOSYS));
+            }
+            // BREAK(_return(n, 0));
+            // bz
         }
         case SYS_mlock2:
             break;
