@@ -102,6 +102,7 @@ DIRS += devfs
 DIRS += callonce
 DIRS += syscall_exception
 DIRS += dotnet-proc-maps
+#DIRS += mprotect
 
 __tests:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) tests $(NL) )
