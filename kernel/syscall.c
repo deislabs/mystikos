@@ -737,8 +737,8 @@ long myst_syscall_open(const char* pathname, int flags, mode_t mode)
     if (!(v = malloc(sizeof(struct vars))))
         ERAISE(-ENOMEM);
 
-    ECHECK(myst_mount_resolve(pathname, suffix, &fs));
-    ECHECK((*fs->fs_open)(fs, suffix, flags, mode, &fs_out, &file));
+    ECHECK(myst_mount_resolve(pathname, v->suffix, &fs));
+    ECHECK((*fs->fs_open)(fs, v->suffix, flags, mode, &fs_out, &file));
 
     if ((fd = myst_fdtable_assign(fdtable, fdtype, fs_out, file)) < 0)
     {
