@@ -234,6 +234,8 @@ static void _dump_inode(const ext2_t* ext2, const ext2_inode_t* inode)
     uint32_t n;
     (void)_hex_dump;
     (void)_ascii_dump;
+    (void)n;
+    (void)i;
 
     printf("=== ext2_inode_t\n");
     printf("i_mode=%u (%X)\n", inode->i_mode, inode->i_mode);

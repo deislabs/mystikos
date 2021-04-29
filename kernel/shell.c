@@ -96,9 +96,16 @@ static void _help_command(int argc, char** argv)
 
 static void _ls_command(int argc, char** argv)
 {
-    char dirname[PATH_MAX];
     DIR* dir;
     struct dirent* ent;
+    struct vars
+    {
+        char dirname[PATH_MAX];
+    };
+    struct vars* v = NULL;
+
+    if (!(v = malloc(sizeof(struct vars))))
+        myst_panic("out of memory");
 
     if (argc > 2)
     {
@@ -108,18 +115,18 @@ static void _ls_command(int argc, char** argv)
 
     if (argc == 2)
     {
-        myst_strlcpy(dirname, argv[1], sizeof(dirname));
+        myst_strlcpy(v->dirname, argv[1], sizeof(v->dirname));
     }
     else
     {
-        memset(dirname, 'a', sizeof(dirname));
-        if (myst_syscall_getcwd(dirname, sizeof(dirname)) < 0)
+        memset(v->dirname, 'a', sizeof(v->dirname));
+        if (myst_syscall_getcwd(v->dirname, sizeof(v->dirname)) < 0)
             myst_panic("getcwd() failed");
     }
 
-    if (!(dir = opendir(dirname)))
+    if (!(dir = opendir(v->dirname)))
     {
-        myst_eprintf("%s: no such directory: %s\n", argv[0], dirname);
+        myst_eprintf("%s: no such directory: %s\n", argv[0], v->dirname);
         return;
     }
 
@@ -138,16 +145,29 @@ static void _ls_command(int argc, char** argv)
 
     printf("\n");
     closedir(dir);
+
+    if (v)
+        free(v);
 }
 
 static void _pwd_command(void)
 {
-    char cwd[PATH_MAX];
+    struct vars
+    {
+        char cwd[PATH_MAX];
+    };
+    struct vars* v = NULL;
 
-    if (myst_syscall_getcwd(cwd, sizeof(cwd)) < 0)
+    if (!(v = malloc(sizeof(struct vars))))
+        myst_panic("out of memory");
+
+    if (myst_syscall_getcwd(v->cwd, sizeof(v->cwd)) < 0)
         myst_panic("getcwd() failed");
 
-    printf("%s\n", cwd);
+    printf("%s\n", v->cwd);
+
+    if (v)
+        free(v);
 }
 
 static void _cd_command(int argc, char** argv)
@@ -175,26 +195,33 @@ static void _mem_command(int argc, char** argv)
     extern void dlmalloc_stats(void);
     const size_t mb = 1024 * 1024;
     size_t n;
-    myst_mman_stats_t buf;
+    struct vars
+    {
+        myst_mman_stats_t buf;
+    };
+    struct vars* v = NULL;
 
-    myst_mman_stats(&buf);
+    if (!(v = malloc(sizeof(struct vars))))
+        myst_panic("out of memory");
+
+    myst_mman_stats(&v->buf);
 
     (void)argc;
     (void)argv;
 
-    n = buf.total_size;
+    n = v->buf.total_size;
     printf("total ram    =%11zu (%zumb)\n", n, n / mb);
 
-    n = buf.free_size;
+    n = v->buf.free_size;
     printf("free ram     =%11zu (%zumb)\n", n, n / mb);
 
-    n = buf.used_size;
+    n = v->buf.used_size;
     printf("used ram     =%11zu (%zumb)\n", n, n / mb);
 
-    n = buf.map_size;
+    n = v->buf.map_size;
     printf("map used     =%11zu (%zumb)\n", n, n / mb);
 
-    n = buf.brk_size;
+    n = v->buf.brk_size;
     printf("brk used     =%11zu (%zumb)\n", n, n / mb);
 
     n = __myst_kernel_args.rootfs_size;
@@ -210,6 +237,9 @@ static void _mem_command(int argc, char** argv)
     printf("archive size =%11zu (%zumb)\n", n, n / mb);
 
     printf("\n");
+
+    if (v)
+        free(v);
 }
 
 static void _env_command(int argc, char** argv)
@@ -241,6 +271,14 @@ static void _args_command(int argc, char** argv)
 void myst_start_shell(const char* msg)
 {
     char** argv = NULL;
+    struct vars
+    {
+        char line[1024];
+    };
+    struct vars* v = NULL;
+
+    if (!(v = malloc(sizeof(struct vars))))
+        myst_panic("out of memory");
 
     if (msg)
     {
@@ -249,11 +287,10 @@ void myst_start_shell(const char* msg)
 
     for (;;)
     {
-        char line[1024];
         long n;
         size_t argc;
 
-        if ((n = _readline("myst$ ", line, sizeof(line))) < 0)
+        if ((n = _readline("myst$ ", v->line, sizeof(v->line))) < 0)
         {
             myst_eprintf("error: readline failed: %ld!\n", n);
             myst_panic("readline failed\n");
@@ -261,7 +298,7 @@ void myst_start_shell(const char* msg)
         }
 
         /* split the string into tokens */
-        if (myst_strsplit(line, " \r\n\t", &argv, &argc) != 0)
+        if (myst_strsplit(v->line, " \r\n\t", &argv, &argc) != 0)
             myst_panic("myst_strsplit() failed");
 
         if (argc == 0)
@@ -342,6 +379,9 @@ void myst_start_shell(const char* msg)
 
     if (argv)
         free(argv);
+
+    if (v)
+        free(v);
 }
 
 #endif /* !defined(MYST_RELEASE) */

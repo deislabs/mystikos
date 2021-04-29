@@ -39,15 +39,26 @@ const char* myst_fstype_name(myst_fstype_t fstype)
 int myst_remove_fd_link(int fd)
 {
     int ret = 0;
-    char path[PATH_MAX];
-    const size_t n = sizeof(path);
+    struct vars
+    {
+        char path[PATH_MAX];
+    };
+    struct vars* v = NULL;
+    const size_t n = sizeof(v->path);
 
-    if (snprintf(path, n, "/proc/%d/fd/%d", myst_getpid(), fd) >= (int)n)
+    if (!(v = malloc(sizeof(struct vars))))
+        ERAISE(-ENOMEM);
+
+    if (snprintf(v->path, n, "/proc/%d/fd/%d", myst_getpid(), fd) >= (int)n)
         ERAISE(-ENAMETOOLONG);
 
-    ECHECK(myst_syscall_unlink(path));
+    ECHECK(myst_syscall_unlink(v->path));
 
 done:
+
+    if (v)
+        free(v);
+
     return ret;
 }
 
@@ -61,8 +72,13 @@ int myst_load_fs(
     int ret = 0;
     myst_blkdev_t* blkdev = NULL;
     myst_fs_t* fs = NULL;
-    myst_fssig_t fssig;
     int r;
+    struct vars
+    {
+        myst_fssig_t fssig;
+        uint8_t keybuf[1024];
+    };
+    struct vars* v = NULL;
 
     if (fs_out)
         *fs_out = NULL;
@@ -70,39 +86,42 @@ int myst_load_fs(
     if (!source)
         ERAISE(-EINVAL);
 
+    if (!(v = malloc(sizeof(struct vars))))
+        ERAISE(-ENOMEM);
+
     /* load the file-system signature structure */
-    if ((r = myst_tcall_load_fssig(source, &fssig)) != 0 && r != -ENOTSUP)
+    if ((r = myst_tcall_load_fssig(source, &v->fssig)) != 0 && r != -ENOTSUP)
         ERAISE(-r);
 
     /* create the bottom device (verity or raw) */
-    if (fssig.magic == MYST_FSSIG_MAGIC)
+    if (v->fssig.magic == MYST_FSSIG_MAGIC)
     {
-        if (fssig.signature_size)
+        if (v->fssig.signature_size)
         {
             ECHECK(myst_pubkey_verify(
                 __myst_kernel_args.archive_data,
                 __myst_kernel_args.archive_size,
-                fssig.root_hash,
-                sizeof(fssig.root_hash),
-                fssig.signer,
-                sizeof(fssig.signer),
-                fssig.signature,
-                fssig.signature_size));
+                v->fssig.root_hash,
+                sizeof(v->fssig.root_hash),
+                v->fssig.signer,
+                sizeof(v->fssig.signer),
+                v->fssig.signature,
+                v->fssig.signature_size));
         }
         else
         {
             ECHECK(myst_roothash_verify(
                 __myst_kernel_args.archive_data,
                 __myst_kernel_args.archive_size,
-                fssig.root_hash,
-                sizeof(fssig.root_hash)));
+                v->fssig.root_hash,
+                sizeof(v->fssig.root_hash)));
         }
 
         /* create the device stack */
         ECHECK(myst_verityblkdev_open(
             source,
-            fssig.hash_offset,
-            fssig.root_hash,
+            v->fssig.hash_offset,
+            v->fssig.root_hash,
             sizeof(myst_sha256_t),
             &blkdev));
     }
@@ -114,14 +133,14 @@ int myst_load_fs(
 
     if (key)
     {
-        uint8_t keybuf[1024];
         ssize_t keysize;
         myst_blkdev_t* tmp;
 
         /* convert key from hex-ASCII to binary */
-        ECHECK((keysize = myst_ascii_to_bin(key, keybuf, sizeof(keybuf))));
+        ECHECK(
+            (keysize = myst_ascii_to_bin(key, v->keybuf, sizeof(v->keybuf))));
 
-        ECHECK(myst_luksblkdev_open(blkdev, keybuf, keysize, &tmp));
+        ECHECK(myst_luksblkdev_open(blkdev, v->keybuf, keysize, &tmp));
         blkdev = tmp;
     }
 
@@ -132,6 +151,9 @@ int myst_load_fs(
     fs = NULL;
 
 done:
+
+    if (v)
+        free(v);
 
     if (blkdev)
         (blkdev->close)(blkdev);

@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <sys/sendfile.h>
 
 #include <myst/eraise.h>
@@ -8,9 +9,17 @@ long myst_syscall_sendfile(int out_fd, int in_fd, off_t* offset, size_t count)
     long ret = 0;
     ssize_t nwritten = 0;
     off_t original_offset = 0;
+    struct vars
+    {
+        char buf[BUFSIZ];
+    };
+    struct vars* v = NULL;
 
     if (out_fd < 0 || in_fd < 0)
         ERAISE(-EINVAL);
+
+    if (!(v = malloc(sizeof(struct vars))))
+        ERAISE(-ENOMEM);
 
     /* if offset is not null, set file offset to this value */
     if (offset)
@@ -26,12 +35,11 @@ long myst_syscall_sendfile(int out_fd, int in_fd, off_t* offset, size_t count)
     /* copy from in_fd to out_fd */
     {
         ssize_t n;
-        char buf[BUFSIZ];
         size_t r = count;
 
-        while (r > 0 && (n = read(in_fd, buf, sizeof(buf))) > 0)
+        while (r > 0 && (n = read(in_fd, v->buf, sizeof(v->buf))) > 0)
         {
-            ssize_t m = write(out_fd, buf, n);
+            ssize_t m = write(out_fd, v->buf, n);
             ECHECK(m);
 
             if (m != n)
@@ -61,5 +69,9 @@ long myst_syscall_sendfile(int out_fd, int in_fd, off_t* offset, size_t count)
     ret = nwritten;
 
 done:
+
+    if (v)
+        free(v);
+
     return ret;
 }

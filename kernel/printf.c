@@ -13,31 +13,61 @@
 
 int myst_console_printf(int fd, const char* format, ...)
 {
-    char buf[1024];
+    int ret = 0;
     va_list ap;
     int count;
+    struct vars
+    {
+        char buf[1024];
+    };
+    struct vars* v = NULL;
+
+    if (!(v = malloc(sizeof(struct vars))))
+        ERAISE(-ENOMEM);
 
     va_start(ap, format);
-    count = vsnprintf(buf, sizeof(buf), format, ap);
+    count = vsnprintf(v->buf, sizeof(v->buf), format, ap);
     va_end(ap);
 
-    if (count < 0 || (size_t)count >= sizeof(buf))
-        return -EINVAL;
+    if (count < 0 || (size_t)count >= sizeof(v->buf))
+        ERAISE(-EINVAL);
 
-    return (int)myst_tcall_write_console(fd, buf, (size_t)count);
+    ECHECK(myst_tcall_write_console(fd, v->buf, (size_t)count));
+
+done:
+
+    if (v)
+        free(v);
+
+    return ret;
 }
 
 int myst_console_vprintf(int fd, const char* format, va_list ap)
 {
-    char buf[1024];
+    int ret = 0;
     int count;
+    struct vars
+    {
+        char buf[1024];
+    };
+    struct vars* v = NULL;
 
-    count = vsnprintf(buf, sizeof(buf), format, ap);
+    if (!(v = malloc(sizeof(struct vars))))
+        ERAISE(-ENOMEM);
 
-    if (count < 0 || (size_t)count >= sizeof(buf))
+    count = vsnprintf(v->buf, sizeof(v->buf), format, ap);
+
+    if (count < 0 || (size_t)count >= sizeof(v->buf))
         return -EINVAL;
 
-    return (int)myst_tcall_write_console(fd, buf, (size_t)count);
+    ECHECK(myst_tcall_write_console(fd, v->buf, (size_t)count));
+
+done:
+
+    if (v)
+        free(v);
+
+    return ret;
 }
 
 int myst_veprintf(const char* format, va_list ap)

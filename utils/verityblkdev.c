@@ -276,16 +276,26 @@ static int _read_superblock(
     myst_verity_sb_t* sb)
 {
     int ret = 0;
-    myst_block_t block;
+    struct vars
+    {
+        myst_block_t block;
+    };
+    struct vars* v = NULL;
 
-    ECHECK(myst_read_block_device(rawblkdev, first_hash_blkno, &block, 1));
+    if (!(v = malloc(sizeof(struct vars))))
+        ERAISE(-ENOMEM);
 
-    memcpy(sb, block.data, sizeof(myst_verity_sb_t));
+    ECHECK(myst_read_block_device(rawblkdev, first_hash_blkno, &v->block, 1));
+
+    memcpy(sb, v->block.data, sizeof(myst_verity_sb_t));
 
     if (memcmp(sb->signature, "verity\0\0", 8) != 0)
         ERAISE(-EINVAL);
 
 done:
+
+    if (v)
+        free(v);
 
     return ret;
 }
@@ -358,8 +368,15 @@ static int _get_raw_block(blkdev_t* dev, size_t rawblkno, void* data)
     const size_t blkno = rawblkno / block_factor;
     const size_t offset = (rawblkno % block_factor) * MYST_BLKSIZE;
     const cache_block_t* cb;
-    block_t block;
     const uint8_t* ptr;
+    struct vars
+    {
+        block_t block;
+    };
+    struct vars* v = NULL;
+
+    if (!(v = malloc(sizeof(struct vars))))
+        ERAISE(-ENOMEM);
 
     /* first check the cache */
     if ((cb = _get_cache(dev, blkno)))
@@ -368,14 +385,18 @@ static int _get_raw_block(blkdev_t* dev, size_t rawblkno, void* data)
     }
     else
     {
-        ECHECK(_read_data_block(dev, blkno, &block));
-        ECHECK(_put_cache(dev, blkno, block.data));
-        ptr = block.data;
+        ECHECK(_read_data_block(dev, blkno, &v->block));
+        ECHECK(_put_cache(dev, blkno, v->block.data));
+        ptr = v->block.data;
     }
 
     memcpy(data, ptr + offset, MYST_BLKSIZE);
 
 done:
+
+    if (v)
+        free(v);
+
     return ret;
 }
 
@@ -386,7 +407,14 @@ static int _put_raw_block(blkdev_t* dev, size_t rawblkno, const void* data)
     const size_t blkno = rawblkno / block_factor;
     const size_t offset = (rawblkno % block_factor) * MYST_BLKSIZE;
     cache_block_t* cb;
-    block_t block;
+    struct vars
+    {
+        block_t block;
+    };
+    struct vars* v = NULL;
+
+    if (!(v = malloc(sizeof(struct vars))))
+        ERAISE(-ENOMEM);
 
     /* if the block is in the cache then update it */
     if ((cb = _get_cache(dev, blkno)))
@@ -403,16 +431,20 @@ static int _put_raw_block(blkdev_t* dev, size_t rawblkno, const void* data)
     else
     {
         /* read the data block from disk */
-        ECHECK(_read_data_block(dev, blkno, &block));
+        ECHECK(_read_data_block(dev, blkno, &v->block));
 
         /* update the data block buffer */
-        memcpy(block.data + offset, data, MYST_BLKSIZE);
+        memcpy(v->block.data + offset, data, MYST_BLKSIZE);
 
         /* add the new block to the cache */
-        ECHECK(_put_cache(dev, blkno, block.data));
+        ECHECK(_put_cache(dev, blkno, v->block.data));
     }
 
 done:
+
+    if (v)
+        free(v);
+
     return ret;
 }
 
@@ -423,17 +455,24 @@ static int _load_hash_tree(blkdev_t* dev)
     const size_t hash_size = sb->salt_size;
     const size_t num_blocks = sb->data_blocks;
     const size_t digests_per_block = sb->hash_block_size / hash_size;
-    const size_t max_levels = 32;
     const size_t blksz = sb->hash_block_size;
     struct level
     {
         size_t nnodes;
         size_t offset;
     };
-    struct level levels[max_levels];
     size_t nlevels = 0;
     size_t nchecks = 0;
     size_t total_nodes = 0;
+    struct vars
+    {
+        struct level levels[32];
+        block_t block;
+    };
+    struct vars* v = NULL;
+
+    if (!(v = malloc(sizeof(struct vars))))
+        ERAISE(-ENOMEM);
 
     /* count the number of nodes at every level of the hash tree */
     {
@@ -442,7 +481,7 @@ static int _load_hash_tree(blkdev_t* dev)
         do
         {
             n = _next_multiple(n, digests_per_block);
-            levels[nlevels++].nnodes = n;
+            v->levels[nlevels++].nnodes = n;
         } while (n > 1);
     }
 
@@ -452,15 +491,15 @@ static int _load_hash_tree(blkdev_t* dev)
 
         for (ssize_t i = (ssize_t)nlevels - 1; i >= 0; i--)
         {
-            levels[i].offset = offset;
-            offset += levels[i].nnodes;
+            v->levels[i].offset = offset;
+            offset += v->levels[i].nnodes;
         }
     }
 
     /* calculate the total number of nodes in the hash tree */
     for (size_t i = 0; i < nlevels; i++)
     {
-        total_nodes += levels[i].nnodes;
+        total_nodes += v->levels[i].nnodes;
 #if 0
         printf(
               "levels(index=%zu, nnodes=%zu offset=%zu)\n",
@@ -474,27 +513,26 @@ static int _load_hash_tree(blkdev_t* dev)
     for (size_t i = 0; i < total_nodes; i++)
     {
         size_t blkno = i + 1;
-        block_t block;
-        ECHECK(_read_hash_block(dev, blkno, &block));
-        ECHECK(myst_buf_append(&dev->hashtree, &block, blksz));
+        ECHECK(_read_hash_block(dev, blkno, &v->block));
+        ECHECK(myst_buf_append(&dev->hashtree, &v->block, blksz));
     }
 
     /* save pointer to the start of the hash leaves */
-    dev->leaves_start = dev->hashtree.data + (levels[0].offset * blksz);
+    dev->leaves_start = dev->hashtree.data + (v->levels[0].offset * blksz);
     dev->leaves_end = dev->hashtree.data + dev->hashtree.size;
 
     /* verify the hash tree from the bottom up */
     for (size_t i = 0; i < nlevels; i++)
     {
-        const size_t nnodes = levels[i].nnodes;
-        const size_t offset = levels[i].offset;
+        const size_t nnodes = v->levels[i].nnodes;
+        const size_t offset = v->levels[i].offset;
         size_t parent = 0;
         const uint8_t* htree = dev->hashtree.data;
         const uint8_t* phash = NULL;
 
         /* set pointer to current parent hash */
         if (i + 1 != nlevels)
-            phash = htree + (levels[i + 1].offset * blksz);
+            phash = htree + (v->levels[i + 1].offset * blksz);
 
         for (size_t j = 0; j < nnodes; j++)
         {
@@ -529,6 +567,9 @@ static int _load_hash_tree(blkdev_t* dev)
         ERAISE(-EIO);
 
 done:
+
+    if (v)
+        free(v);
 
     return ret;
 }
@@ -586,9 +627,13 @@ int myst_verityblkdev_open(
 {
     int ret = 0;
     blkdev_t* dev = NULL;
-    myst_verity_sb_t sb;
     size_t first_hash_blkno = hash_offset / MYST_BLKSIZE;
     int rawblkdev = -1;
+    struct vars
+    {
+        myst_verity_sb_t sb;
+    };
+    struct vars* v = NULL;
 
     if (blkdev)
         *blkdev = NULL;
@@ -597,6 +642,9 @@ int myst_verityblkdev_open(
     if (!path || !roothash || !blkdev)
         ERAISE(-EINVAL);
 
+    if (!(v = malloc(sizeof(struct vars))))
+        ERAISE(-ENOMEM);
+
     if (roothash_size > MAX_ROOTHASH_SIZE)
         ERAISE(-EINVAL);
 
@@ -604,26 +652,26 @@ int myst_verityblkdev_open(
 
     /* read the super block */
     {
-        ECHECK(_read_superblock(rawblkdev, first_hash_blkno, &sb));
+        ECHECK(_read_superblock(rawblkdev, first_hash_blkno, &v->sb));
 
         /* only "normal" mode is supported (no Chrome OS) */
-        if (sb.hash_type != 1)
+        if (v->sb.hash_type != 1)
             ERAISE(-ENOTSUP);
 
         /* only "sha256" is supported */
-        if (strcmp(sb.algorithm, "sha256") != 0)
+        if (strcmp(v->sb.algorithm, "sha256") != 0)
             ERAISE(-ENOTSUP);
 
         /* salt size (and hence hash size) must be 32 (sha256 hash size) */
-        if (sb.salt_size != 32)
+        if (v->sb.salt_size != 32)
             ERAISE(-ENOTSUP);
 
         /* only supporting data block size of 4096 */
-        if (sb.data_block_size != 4096)
+        if (v->sb.data_block_size != 4096)
             ERAISE(-ENOTSUP);
 
         /* only supporting hash block size of 4096 */
-        if (sb.hash_block_size != 4096)
+        if (v->sb.hash_block_size != 4096)
             ERAISE(-ENOTSUP);
     }
 
@@ -640,14 +688,14 @@ int myst_verityblkdev_open(
     dev->rawblkdev = rawblkdev;
     dev->max_cache_blocks = MAX_CACHE_BLOCKS;
     rawblkdev = -1;
-    memcpy(&dev->sb, &sb, sizeof(myst_verity_sb_t));
+    memcpy(&dev->sb, &v->sb, sizeof(myst_verity_sb_t));
 
     /* convert the roothash to binary */
     memcpy(dev->roothash, roothash, roothash_size);
     dev->roothash_size = roothash_size;
 
     /* fail if the root hash is not the same size as the salt */
-    if (dev->roothash_size != sb.salt_size)
+    if (dev->roothash_size != v->sb.salt_size)
         ERAISE(-EINVAL);
 
     /* load the hash tree into memory */
@@ -657,6 +705,9 @@ int myst_verityblkdev_open(
     dev = NULL;
 
 done:
+
+    if (v)
+        free(v);
 
     if (dev)
         free(dev);

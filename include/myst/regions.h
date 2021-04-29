@@ -15,6 +15,7 @@
 
 /* memory region identifiers */
 #define MYST_REGION_CONFIG "config"
+#define MYST_REGION_KERNEL_STACKS "kernel.stacks"
 #define MYST_REGION_KERNEL "kernel"
 #define MYST_REGION_KERNEL_RELOC "kernel.reloc"
 #define MYST_REGION_KERNEL_SYMTAB "kernel.symtab" /* .symtab section */
@@ -26,6 +27,7 @@
 #define MYST_REGION_ROOTFS "rootfs"
 #define MYST_REGION_MMAN "mman"
 #define MYST_REGION_ARCHIVE "archive"
+#define MYST_REGION_KERNEL_ENTER_STACK "kernel.enter.stack"
 
 typedef struct myst_region_trailer
 {

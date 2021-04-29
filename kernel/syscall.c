@@ -50,10 +50,12 @@
 #include <myst/initfini.h>
 #include <myst/inotifydev.h>
 #include <myst/kernel.h>
+#include <myst/kstack.h>
 #include <myst/libc.h>
 #include <myst/lsr.h>
 #include <myst/mmanutils.h>
 #include <myst/mount.h>
+#include <myst/once.h>
 #include <myst/options.h>
 #include <myst/panic.h>
 #include <myst/paths.h>
@@ -71,6 +73,7 @@
 #include <myst/tcall.h>
 #include <myst/tee.h>
 #include <myst/thread.h>
+#include <myst/time.h>
 #include <myst/times.h>
 #include <myst/trace.h>
 
@@ -515,21 +518,23 @@ __attribute__((format(printf, 2, 3))) static void _strace(
 {
     if (__options.trace_syscalls)
     {
+        char null_char = '\0';
+        char* buf = &null_char;
         const bool isatty = myst_syscall_isatty(STDERR_FILENO) == 1;
         const char* blue = isatty ? COLOR_GREEN : "";
         const char* reset = isatty ? COLOR_RESET : "";
-        char buf[1024];
 
         if (fmt)
         {
+            const size_t buf_size = 1024;
+
+            if (!(buf = malloc(buf_size)))
+                myst_panic("out of memory");
+
             va_list ap;
             va_start(ap, fmt);
-            vsnprintf(buf, sizeof(buf), fmt, ap);
+            vsnprintf(buf, buf_size, fmt, ap);
             va_end(ap);
-        }
-        else
-        {
-            *buf = '\0';
         }
 
         myst_eprintf(
@@ -539,6 +544,9 @@ __attribute__((format(printf, 2, 3))) static void _strace(
             reset,
             buf,
             myst_gettid());
+
+        if (buf != &null_char)
+            free(buf);
     }
 }
 
@@ -638,21 +646,32 @@ done:
 static int _add_fd_link(myst_fs_t* fs, myst_file_t* file, int fd)
 {
     int ret = 0;
-    char realpath[PATH_MAX];
-    char linkpath[PATH_MAX];
-    const size_t n = sizeof(linkpath);
+    struct vars
+    {
+        char realpath[PATH_MAX];
+        char linkpath[PATH_MAX];
+    };
+    struct vars* v = NULL;
+    const size_t n = sizeof(v->linkpath);
 
     if (!fs || !file)
         ERAISE(-EINVAL);
 
-    ECHECK((*fs->fs_realpath)(fs, file, realpath, sizeof(realpath)));
+    if (!(v = malloc(sizeof(struct vars))))
+        ERAISE(-ENOMEM);
 
-    if (snprintf(linkpath, n, "/proc/%d/fd/%d", myst_getpid(), fd) >= (int)n)
+    ECHECK((*fs->fs_realpath)(fs, file, v->realpath, sizeof(v->realpath)));
+
+    if (snprintf(v->linkpath, n, "/proc/%d/fd/%d", myst_getpid(), fd) >= (int)n)
         ERAISE(-ENAMETOOLONG);
 
-    ECHECK(symlink(realpath, linkpath));
+    ECHECK(symlink(v->realpath, v->linkpath));
 
 done:
+
+    if (v)
+        free(v);
+
     return ret;
 }
 
@@ -660,15 +679,22 @@ long myst_syscall_creat(const char* pathname, mode_t mode)
 {
     long ret = 0;
     int fd;
-    char suffix[PATH_MAX];
     myst_fs_t *fs, *fs_out;
     myst_file_t* file;
     myst_fdtable_t* fdtable = myst_fdtable_current();
     const myst_fdtable_type_t fdtype = MYST_FDTABLE_TYPE_FILE;
     long r;
+    struct vars
+    {
+        char suffix[PATH_MAX];
+    };
+    struct vars* v = NULL;
 
-    ECHECK(myst_mount_resolve(pathname, suffix, &fs));
-    ECHECK((*fs->fs_creat)(fs, suffix, mode, &fs_out, &file));
+    if (!(v = malloc(sizeof(struct vars))))
+        ERAISE(-ENOMEM);
+
+    ECHECK(myst_mount_resolve(pathname, v->suffix, &fs));
+    ECHECK((*fs->fs_creat)(fs, v->suffix, mode, &fs_out, &file));
 
     if ((fd = myst_fdtable_assign(fdtable, fdtype, fs_out, file)) < 0)
     {
@@ -687,19 +713,29 @@ long myst_syscall_creat(const char* pathname, mode_t mode)
 
 done:
 
+    if (v)
+        free(v);
+
     return ret;
 }
 
 long myst_syscall_open(const char* pathname, int flags, mode_t mode)
 {
     long ret = 0;
-    char suffix[PATH_MAX];
     myst_fs_t *fs, *fs_out;
     myst_file_t* file;
     myst_fdtable_t* fdtable = myst_fdtable_current();
     const myst_fdtable_type_t fdtype = MYST_FDTABLE_TYPE_FILE;
     int fd;
     int r;
+    struct vars
+    {
+        char suffix[PATH_MAX];
+    };
+    struct vars* v = NULL;
+
+    if (!(v = malloc(sizeof(struct vars))))
+        ERAISE(-ENOMEM);
 
     ECHECK(myst_mount_resolve(pathname, suffix, &fs));
     ECHECK((*fs->fs_open)(fs, suffix, flags, mode, &fs_out, &file));
@@ -721,6 +757,9 @@ long myst_syscall_open(const char* pathname, int flags, mode_t mode)
 
 done:
 
+    if (v)
+        free(v);
+
     return ret;
 }
 
@@ -733,6 +772,13 @@ static long _openat(
     myst_file_t** file_out)
 {
     long ret = 0;
+    struct vars
+    {
+        char suffix[PATH_MAX];
+        char dirname[PATH_MAX];
+        char filename[PATH_MAX];
+    };
+    struct vars* v = NULL;
 
     if (fs_out)
         *fs_out = NULL;
@@ -746,16 +792,19 @@ static long _openat(
     if (*pathname == '\0')
         ERAISE(-ENOENT);
 
+    if (!(v = malloc(sizeof(struct vars))))
+        ERAISE(-ENOMEM);
+
     /* if pathname is absolute or AT_FDCWD */
     if (*pathname == '/' || dirfd == AT_FDCWD)
     {
         if (fs_out && file_out)
         {
-            char suffix[PATH_MAX];
             myst_fs_t* fs;
 
-            ECHECK(myst_mount_resolve(pathname, suffix, &fs));
-            ECHECK((*fs->fs_open)(fs, suffix, flags, mode, fs_out, file_out));
+            ECHECK(myst_mount_resolve(pathname, v->suffix, &fs));
+            ECHECK(
+                (*fs->fs_open)(fs, v->suffix, flags, mode, fs_out, file_out));
         }
         else
         {
@@ -767,8 +816,6 @@ static long _openat(
         myst_fdtable_t* fdtable = myst_fdtable_current();
         myst_fs_t* fs;
         myst_file_t* file;
-        char dirname[PATH_MAX];
-        char filename[PATH_MAX];
 
         if (dirfd < 0)
             ERAISE(-EBADF);
@@ -786,24 +833,29 @@ static long _openat(
         }
 
         /* get the full path of dirfd */
-        ECHECK((*fs->fs_realpath)(fs, file, dirname, sizeof(dirname)));
-        ECHECK(myst_make_path(filename, sizeof(filename), dirname, pathname));
+        ECHECK((*fs->fs_realpath)(fs, file, v->dirname, sizeof(v->dirname)));
+        ECHECK(myst_make_path(
+            v->filename, sizeof(v->filename), v->dirname, pathname));
 
         if (fs_out && file_out)
         {
-            char suffix[PATH_MAX];
             myst_fs_t* fs;
 
-            ECHECK(myst_mount_resolve(filename, suffix, &fs));
-            ECHECK((*fs->fs_open)(fs, suffix, flags, mode, fs_out, file_out));
+            ECHECK(myst_mount_resolve(v->filename, v->suffix, &fs));
+            ECHECK(
+                (*fs->fs_open)(fs, v->suffix, flags, mode, fs_out, file_out));
         }
         else
         {
-            ret = myst_syscall_open(filename, flags, mode);
+            ret = myst_syscall_open(v->filename, flags, mode);
         }
     }
 
 done:
+
+    if (v)
+        free(v);
+
     return ret;
 }
 
@@ -1056,26 +1108,48 @@ done:
 long myst_syscall_stat(const char* pathname, struct stat* statbuf)
 {
     long ret = 0;
-    char suffix[PATH_MAX];
     myst_fs_t* fs;
+    struct vars
+    {
+        char suffix[PATH_MAX];
+    };
+    struct vars* v = NULL;
 
-    ECHECK(myst_mount_resolve(pathname, suffix, &fs));
-    ECHECK((*fs->fs_stat)(fs, suffix, statbuf));
+    if (!(v = malloc(sizeof(struct vars))))
+        ERAISE(-ENOMEM);
+
+    ECHECK(myst_mount_resolve(pathname, v->suffix, &fs));
+    ECHECK((*fs->fs_stat)(fs, v->suffix, statbuf));
 
 done:
+
+    if (v)
+        free(v);
+
     return ret;
 }
 
 long myst_syscall_lstat(const char* pathname, struct stat* statbuf)
 {
     long ret = 0;
-    char suffix[PATH_MAX];
     myst_fs_t* fs;
+    struct vars
+    {
+        char suffix[PATH_MAX];
+    };
+    struct vars* v = NULL;
 
-    ECHECK(myst_mount_resolve(pathname, suffix, &fs));
-    ECHECK((*fs->fs_lstat)(fs, suffix, statbuf));
+    if (!(v = malloc(sizeof(struct vars))))
+        ERAISE(-ENOMEM);
+
+    ECHECK(myst_mount_resolve(pathname, v->suffix, &fs));
+    ECHECK((*fs->fs_lstat)(fs, v->suffix, statbuf));
 
 done:
+
+    if (v)
+        free(v);
+
     return ret;
 }
 
@@ -1104,9 +1178,19 @@ long myst_syscall_fstatat(
     int flags)
 {
     long ret = 0;
+    struct vars
+    {
+        char realpath[PATH_MAX];
+        char dirpath[PATH_MAX];
+        char path[PATH_MAX];
+    };
+    struct vars* v = NULL;
 
     if (!pathname || !statbuf)
         ERAISE(-EINVAL);
+
+    if (!(v = malloc(sizeof(struct vars))))
+        ERAISE(-ENOMEM);
 
     /* If pathname is absolute, then ignore dirfd */
     if (*pathname == '/' || dirfd == AT_FDCWD)
@@ -1132,11 +1216,11 @@ long myst_syscall_fstatat(
             myst_fdtable_t* fdtable = myst_fdtable_current();
             myst_fs_t* fs;
             myst_file_t* file;
-            char realpath[PATH_MAX];
 
             ECHECK(myst_fdtable_get_file(fdtable, dirfd, &fs, &file));
-            ECHECK((*fs->fs_realpath)(fs, file, realpath, sizeof(realpath)));
-            ECHECK(myst_syscall_lstat(realpath, statbuf));
+            ECHECK(
+                (*fs->fs_realpath)(fs, file, v->realpath, sizeof(v->realpath)));
+            ECHECK(myst_syscall_lstat(v->realpath, statbuf));
             goto done;
         }
         else
@@ -1150,26 +1234,28 @@ long myst_syscall_fstatat(
         myst_fdtable_t* fdtable = myst_fdtable_current();
         myst_fs_t* fs;
         myst_file_t* file;
-        char dirpath[PATH_MAX];
-        char path[PATH_MAX];
 
         ECHECK(myst_fdtable_get_file(fdtable, dirfd, &fs, &file));
-        ECHECK((*fs->fs_realpath)(fs, file, dirpath, sizeof(dirpath)));
-        ECHECK(myst_make_path(path, sizeof(path), dirpath, pathname));
+        ECHECK((*fs->fs_realpath)(fs, file, v->dirpath, sizeof(v->dirpath)));
+        ECHECK(myst_make_path(v->path, sizeof(v->path), v->dirpath, pathname));
 
         if (flags & AT_SYMLINK_NOFOLLOW)
         {
-            ECHECK(myst_syscall_lstat(path, statbuf));
+            ECHECK(myst_syscall_lstat(v->path, statbuf));
             goto done;
         }
         else
         {
-            ECHECK(myst_syscall_stat(path, statbuf));
+            ECHECK(myst_syscall_stat(v->path, statbuf));
             goto done;
         }
     }
 
 done:
+
+    if (v)
+        free(v);
+
     return ret;
 }
 
@@ -1200,34 +1286,56 @@ static const char* _trim_trailing_slashes(
 long myst_syscall_mkdir(const char* pathname, mode_t mode)
 {
     long ret = 0;
-    char suffix[PATH_MAX];
     myst_fs_t* fs;
-    char buf[PATH_MAX];
+    struct vars
+    {
+        char suffix[PATH_MAX];
+        char buf[PATH_MAX];
+    };
+    struct vars* v = NULL;
 
     if (!pathname)
         ERAISE(-EINVAL);
 
+    if (!(v = malloc(sizeof(struct vars))))
+        ERAISE(-ENOMEM);
+
     /* remove trailing slash from directory name if any */
-    if (!(pathname = _trim_trailing_slashes(pathname, buf, sizeof(buf))))
+    if (!(pathname = _trim_trailing_slashes(pathname, v->buf, sizeof(v->buf))))
         ERAISE(-ENAMETOOLONG);
 
-    ECHECK(myst_mount_resolve(pathname, suffix, &fs));
-    ECHECK((*fs->fs_mkdir)(fs, suffix, mode));
+    ECHECK(myst_mount_resolve(pathname, v->suffix, &fs));
+    ECHECK((*fs->fs_mkdir)(fs, v->suffix, mode));
 
 done:
+
+    if (v)
+        free(v);
+
     return ret;
 }
 
 long myst_syscall_rmdir(const char* pathname)
 {
     long ret = 0;
-    char suffix[PATH_MAX];
     myst_fs_t* fs;
+    struct vars
+    {
+        char suffix[PATH_MAX];
+    };
+    struct vars* v = NULL;
 
-    ECHECK(myst_mount_resolve(pathname, suffix, &fs));
-    ECHECK((*fs->fs_rmdir)(fs, suffix));
+    if (!(v = malloc(sizeof(struct vars))))
+        ERAISE(-ENOMEM);
+
+    ECHECK(myst_mount_resolve(pathname, v->suffix, &fs));
+    ECHECK((*fs->fs_rmdir)(fs, v->suffix));
 
 done:
+
+    if (v)
+        free(v);
+
     return ret;
 }
 
@@ -1250,13 +1358,20 @@ done:
 long myst_syscall_link(const char* oldpath, const char* newpath)
 {
     long ret = 0;
-    char old_suffix[PATH_MAX];
-    char new_suffix[PATH_MAX];
     myst_fs_t* old_fs;
     myst_fs_t* new_fs;
+    struct vars
+    {
+        char old_suffix[PATH_MAX];
+        char new_suffix[PATH_MAX];
+    };
+    struct vars* v = NULL;
 
-    ECHECK(myst_mount_resolve(oldpath, old_suffix, &old_fs));
-    ECHECK(myst_mount_resolve(newpath, new_suffix, &new_fs));
+    if (!(v = malloc(sizeof(struct vars))))
+        ERAISE(-ENOMEM);
+
+    ECHECK(myst_mount_resolve(oldpath, v->old_suffix, &old_fs));
+    ECHECK(myst_mount_resolve(newpath, v->new_suffix, &new_fs));
 
     if (old_fs != new_fs)
     {
@@ -1264,48 +1379,81 @@ long myst_syscall_link(const char* oldpath, const char* newpath)
         ERAISE(-EXDEV);
     }
 
-    ECHECK((*old_fs->fs_link)(old_fs, old_suffix, new_suffix));
+    ECHECK((*old_fs->fs_link)(old_fs, v->old_suffix, v->new_suffix));
 
 done:
+
+    if (v)
+        free(v);
+
     return ret;
 }
 
 long myst_syscall_unlink(const char* pathname)
 {
     long ret = 0;
-    char suffix[PATH_MAX];
     myst_fs_t* fs;
+    struct vars
+    {
+        char suffix[PATH_MAX];
+    };
+    struct vars* v = NULL;
 
-    ECHECK(myst_mount_resolve(pathname, suffix, &fs));
-    ECHECK((*fs->fs_unlink)(fs, suffix));
+    if (!(v = malloc(sizeof(struct vars))))
+        ERAISE(-ENOMEM);
+
+    ECHECK(myst_mount_resolve(pathname, v->suffix, &fs));
+    ECHECK((*fs->fs_unlink)(fs, v->suffix));
 
 done:
+
+    if (v)
+        free(v);
+
     return ret;
 }
 
 long myst_syscall_access(const char* pathname, int mode)
 {
     long ret = 0;
-    char suffix[PATH_MAX];
     myst_fs_t* fs;
+    struct vars
+    {
+        char suffix[PATH_MAX];
+    };
+    struct vars* v = NULL;
 
-    ECHECK(myst_mount_resolve(pathname, suffix, &fs));
-    ECHECK((*fs->fs_access)(fs, suffix, mode));
+    if (!(v = malloc(sizeof(struct vars))))
+        ERAISE(-ENOMEM);
+
+    ECHECK(myst_mount_resolve(pathname, v->suffix, &fs));
+    ECHECK((*fs->fs_access)(fs, v->suffix, mode));
 
 done:
+
+    if (v)
+        free(v);
+
     return ret;
 }
 
 long myst_syscall_rename(const char* oldpath, const char* newpath)
 {
     long ret = 0;
-    char old_suffix[PATH_MAX];
-    char new_suffix[PATH_MAX];
     myst_fs_t* old_fs;
     myst_fs_t* new_fs;
+    struct vars
+    {
+        char old_suffix[PATH_MAX];
+        char new_suffix[PATH_MAX];
+    };
+    struct vars* v = NULL;
 
-    ECHECK(myst_mount_resolve(oldpath, old_suffix, &old_fs));
-    ECHECK(myst_mount_resolve(newpath, new_suffix, &new_fs));
+    if (!(v = malloc(sizeof(struct vars))))
+        ERAISE(-ENOMEM);
+
+    ECHECK(myst_mount_resolve(oldpath, v->old_suffix, &old_fs));
+    ECHECK(myst_mount_resolve(newpath, v->new_suffix, &new_fs));
 
     if (old_fs != new_fs)
     {
@@ -1313,22 +1461,37 @@ long myst_syscall_rename(const char* oldpath, const char* newpath)
         ERAISE(-EXDEV);
     }
 
-    ECHECK((*old_fs->fs_rename)(old_fs, old_suffix, new_suffix));
+    ECHECK((*old_fs->fs_rename)(old_fs, v->old_suffix, v->new_suffix));
 
 done:
+
+    if (v)
+        free(v);
+
     return ret;
 }
 
 long myst_syscall_truncate(const char* path, off_t length)
 {
     long ret = 0;
-    char suffix[PATH_MAX];
     myst_fs_t* fs;
+    struct vars
+    {
+        char suffix[PATH_MAX];
+    };
+    struct vars* v = NULL;
 
-    ECHECK(myst_mount_resolve(path, suffix, &fs));
-    ERAISE((*fs->fs_truncate)(fs, suffix, length));
+    if (!(v = malloc(sizeof(struct vars))))
+        ERAISE(-ENOMEM);
+
+    ECHECK(myst_mount_resolve(path, v->suffix, &fs));
+    ERAISE((*fs->fs_truncate)(fs, v->suffix, length));
 
 done:
+
+    if (v)
+        free(v);
+
     return ret;
 }
 
@@ -1350,26 +1513,48 @@ done:
 long myst_syscall_readlink(const char* pathname, char* buf, size_t bufsiz)
 {
     long ret = 0;
-    char suffix[PATH_MAX];
     myst_fs_t* fs;
+    struct vars
+    {
+        char suffix[PATH_MAX];
+    };
+    struct vars* v = NULL;
 
-    ECHECK(myst_mount_resolve(pathname, suffix, &fs));
-    ERAISE((*fs->fs_readlink)(fs, suffix, buf, bufsiz));
+    if (!(v = malloc(sizeof(struct vars))))
+        ERAISE(-ENOMEM);
+
+    ECHECK(myst_mount_resolve(pathname, v->suffix, &fs));
+    ERAISE((*fs->fs_readlink)(fs, v->suffix, buf, bufsiz));
 
 done:
+
+    if (v)
+        free(v);
+
     return ret;
 }
 
 long myst_syscall_symlink(const char* target, const char* linkpath)
 {
     long ret = 0;
-    char suffix[PATH_MAX];
     myst_fs_t* fs;
+    struct vars
+    {
+        char suffix[PATH_MAX];
+    };
+    struct vars* v = NULL;
 
-    ECHECK(myst_mount_resolve(linkpath, suffix, &fs));
-    ERAISE((*fs->fs_symlink)(fs, target, suffix));
+    if (!(v = malloc(sizeof(struct vars))))
+        ERAISE(-ENOMEM);
+
+    ECHECK(myst_mount_resolve(linkpath, v->suffix, &fs));
+    ERAISE((*fs->fs_symlink)(fs, target, v->suffix));
 
 done:
+
+    if (v)
+        free(v);
+
     return ret;
 }
 
@@ -1378,11 +1563,18 @@ long myst_syscall_chdir(const char* path)
     long ret = 0;
     myst_thread_t* thread = myst_thread_self();
     myst_thread_t* process_thread = myst_find_process_thread(thread);
-    char buf[PATH_MAX];
-    char buf2[PATH_MAX];
+    struct vars
+    {
+        char buf[PATH_MAX];
+        char buf2[PATH_MAX];
+    };
+    struct vars* v = NULL;
 
     if (_bad_addr(path))
         ERAISE(-EFAULT);
+
+    if (!(v = malloc(sizeof(struct vars))))
+        ERAISE(-ENOMEM);
 
     myst_spin_lock(&process_thread->main.cwd_lock);
 
@@ -1394,24 +1586,27 @@ long myst_syscall_chdir(const char* path)
         ERAISE(-ENAMETOOLONG);
 
     ECHECK(myst_path_absolute_cwd(
-        process_thread->main.cwd, path, buf, sizeof(buf)));
-    ECHECK(myst_normalize(buf, buf2, sizeof(buf2)));
+        process_thread->main.cwd, path, v->buf, sizeof(v->buf)));
+    ECHECK(myst_normalize(v->buf, v->buf2, sizeof(v->buf2)));
 
     /* fail if the directory does not exist */
     {
         struct stat buf;
 
-        if (myst_syscall_stat(buf2, &buf) != 0 || !S_ISDIR(buf.st_mode))
+        if (myst_syscall_stat(v->buf2, &buf) != 0 || !S_ISDIR(buf.st_mode))
             ERAISE(-ENOENT);
     }
 
-    char* tmp = strdup(buf2);
+    char* tmp = strdup(v->buf2);
     if (tmp == NULL)
         ERAISE(-ENOMEM);
     free(process_thread->main.cwd);
     process_thread->main.cwd = tmp;
 
 done:
+
+    if (v)
+        free(v);
 
     myst_spin_unlock(&process_thread->main.cwd_lock);
 
@@ -1444,15 +1639,25 @@ done:
 long myst_syscall_statfs(const char* path, struct statfs* buf)
 {
     long ret = 0;
-    char suffix[PATH_MAX];
     myst_fs_t* fs;
+    struct vars
+    {
+        char suffix[PATH_MAX];
+    };
+    struct vars* v = NULL;
 
-    ECHECK(myst_mount_resolve(path, suffix, &fs));
+    if (!(v = malloc(sizeof(struct vars))))
+        ERAISE(-ENOMEM);
+
+    ECHECK(myst_mount_resolve(path, v->suffix, &fs));
     if (buf)
         memset(buf, 0, sizeof(*buf));
-    ECHECK((*fs->fs_statfs)(fs, suffix, buf));
+    ECHECK((*fs->fs_statfs)(fs, v->suffix, buf));
 
 done:
+
+    if (v)
+        free(v);
 
     return ret;
 }
@@ -2518,8 +2723,20 @@ done:
         goto done;           \
     } while (0)
 
-long myst_syscall(long n, long params[6])
+typedef struct syscall_args
 {
+    long n;
+    long* params;
+} syscall_args_t;
+
+/* ATTN: optimize _syscall() stack usage later */
+#pragma GCC diagnostic push
+#pragma GCC optimize "-Og" // reduces stack usage across case statements
+static long _syscall(void* args_)
+{
+    syscall_args_t* args = (syscall_args_t*)args_;
+    long n = args->n;
+    long* params = args->params;
     long syscall_ret = 0;
     long x1 = params[0];
     long x2 = params[1];
@@ -3203,10 +3420,18 @@ long myst_syscall(long n, long params[6])
                 newtls,
                 ctid);
 
-            BREAK(_return(
-                n,
-                myst_syscall_clone(
-                    fn, child_stack, flags, arg, ptid, newtls, ctid)));
+            long ret = myst_syscall_clone(
+                fn, child_stack, flags, arg, ptid, newtls, ctid);
+
+            if ((flags & CLONE_VFORK))
+            {
+                // ATTN: give the thread a little time to start to avoid a
+                // syncyhronization error. This suppresses a failure in the
+                // popen test. This should be investigated later.
+                myst_sleep_msec(5);
+            }
+
+            BREAK(_return(n, ret));
         }
         case SYS_fork:
             break;
@@ -5048,6 +5273,33 @@ done:
     myst_signal_process(thread);
 
     return syscall_ret;
+}
+#pragma GCC diagnostic pop
+
+long myst_syscall(long n, long params[6])
+{
+    long ret;
+
+    // handle SYS_exit on the user stack since it never returns and is unable
+    // to relinquish the kernel stack.
+    if (n == SYS_exit)
+    {
+        syscall_args_t args = {.n = n, .params = params};
+        ret = _syscall(&args);
+    }
+    else
+    {
+        myst_kstack_t* kstack = myst_get_kstack();
+
+        if (!kstack)
+            myst_panic("no more kernel stacks");
+
+        syscall_args_t args = {.n = n, .params = params};
+        ret = myst_call_on_stack(myst_kstack_end(kstack), _syscall, &args);
+        myst_put_kstack(kstack);
+    }
+
+    return ret;
 }
 
 /*
