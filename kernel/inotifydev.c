@@ -289,15 +289,22 @@ static int _id_inotify_add_watch(
     uint32_t mask)
 {
     int ret = 0;
-    char path[PATH_MAX];
     watch_t* watch = NULL;
     bool found = false;
+    struct vars
+    {
+        char path[PATH_MAX];
+    };
+    struct vars* v = NULL;
 
     if (!dev || !_valid_inotify(obj) || !pathname)
         ERAISE(-EINVAL);
 
+    if (!(v = malloc(sizeof(struct vars))))
+        ERAISE(-ENOMEM);
+
     /* normalize the path */
-    ECHECK(myst_normalize(pathname, path, sizeof(path)));
+    ECHECK(myst_normalize(pathname, v->path, sizeof(v->path)));
 
     /* see if there's already a watch for this path */
     {
@@ -324,7 +331,7 @@ static int _id_inotify_add_watch(
         if (!(watch = calloc(1, sizeof(watch_t))))
             ERAISE(-ENOMEM);
 
-        myst_strlcpy(watch->path, path, sizeof(watch->path));
+        myst_strlcpy(watch->path, v->path, sizeof(watch->path));
         ECHECK((wd = _get_wd()));
         watch->wd = wd;
         watch->mask = mask;
@@ -338,6 +345,9 @@ static int _id_inotify_add_watch(
     }
 
 done:
+
+    if (v)
+        free(v);
 
     if (watch)
         free(watch);

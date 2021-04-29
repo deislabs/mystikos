@@ -475,6 +475,14 @@ done:
 static int _mount_rootfs(myst_kernel_args_t* args, myst_fstype_t fstype)
 {
     int ret = 0;
+    struct vars
+    {
+        char err[PATH_MAX + 256];
+    };
+    struct vars* v = NULL;
+
+    if (!(v = malloc(sizeof(struct vars))))
+        ERAISE(-ENOMEM);
 
     switch (fstype)
     {
@@ -493,15 +501,13 @@ static int _mount_rootfs(myst_kernel_args_t* args, myst_fstype_t fstype)
 #if defined(MYST_ENABLE_EXT2FS)
         case MYST_FSTYPE_EXT2FS:
         {
-            char err[PATH_MAX + 256];
-
             /* setup and mount the EXT2 file system */
-            if (_setup_ext2(args->rootfs, err, sizeof(err)) != 0)
+            if (_setup_ext2(args->rootfs, v->err, sizeof(v->err)) != 0)
             {
                 myst_eprintf(
                     "failed to setup EXT2 rootfs: %s (%s)\n",
                     args->rootfs,
-                    err);
+                    v->err);
                 ERAISE(-EINVAL);
             }
 
@@ -511,8 +517,6 @@ static int _mount_rootfs(myst_kernel_args_t* args, myst_fstype_t fstype)
 #if defined(MYST_ENABLE_HOSTFS)
         case MYST_FSTYPE_HOSTFS:
         {
-            char err[PATH_MAX + 256];
-
             /* disallow HOSTFS rootfs in non-debug mode */
             if (!args->tee_debug_mode)
             {
@@ -522,12 +526,12 @@ static int _mount_rootfs(myst_kernel_args_t* args, myst_fstype_t fstype)
             }
 
             /* setup and mount the HOSTFS file system */
-            if (_setup_hostfs(args->rootfs, err, sizeof(err)) != 0)
+            if (_setup_hostfs(args->rootfs, v->err, sizeof(v->err)) != 0)
             {
                 myst_eprintf(
                     "failed to setup HOSTFS rootfs: %s (%s)\n",
                     args->rootfs,
-                    err);
+                    v->err);
                 ERAISE(-EINVAL);
             }
 
@@ -544,6 +548,10 @@ static int _mount_rootfs(myst_kernel_args_t* args, myst_fstype_t fstype)
     }
 
 done:
+
+    if (v)
+        free(v);
+
     return ret;
 }
 
@@ -622,6 +630,9 @@ int myst_enter_kernel(myst_kernel_args_t* args)
             ERAISE(-EINVAL);
         }
     }
+
+    /* initialize the kernel stacks free list */
+    myst_init_kstacks();
 
     /* Setup the memory manager */
     if (myst_setup_mman(args->mman_data, args->mman_size) != 0)

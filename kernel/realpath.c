@@ -13,13 +13,14 @@
 int myst_realpath(const char* path, myst_path_t* resolved_path)
 {
     int ret = 0;
-    typedef struct _variables
+    struct vars
     {
         char buf[PATH_MAX];
         const char* in[PATH_MAX];
         const char* out[PATH_MAX];
-    } variables_t;
-    variables_t* v = NULL;
+        char cwd[PATH_MAX];
+    };
+    struct vars* v = NULL;
     size_t nin = 0;
     size_t nout = 0;
 
@@ -29,9 +30,10 @@ int myst_realpath(const char* path, myst_path_t* resolved_path)
     if (!path || !resolved_path)
         ERAISE(-EINVAL);
 
-    /* Allocate variables on the heap since too big for the stack. */
-    if (!(v = calloc(1, sizeof(variables_t))))
+    if (!(v = malloc(sizeof(struct vars))))
         ERAISE(-ENOMEM);
+
+    memset(v, 0, sizeof(struct vars));
 
     if (path[0] == '/')
     {
@@ -40,13 +42,12 @@ int myst_realpath(const char* path, myst_path_t* resolved_path)
     }
     else
     {
-        char cwd[PATH_MAX];
         long r;
 
-        if ((r = myst_syscall_getcwd(cwd, sizeof(cwd))) < 0)
+        if ((r = myst_syscall_getcwd(v->cwd, sizeof(v->cwd))) < 0)
             ERAISE((int)r);
 
-        if (myst_strlcpy(v->buf, cwd, sizeof(v->buf)) >= sizeof(v->buf))
+        if (myst_strlcpy(v->buf, v->cwd, sizeof(v->buf)) >= sizeof(v->buf))
             ERAISE(-ENAMETOOLONG);
 
         if (myst_strlcat(v->buf, "/", sizeof(v->buf)) >= sizeof(v->buf))

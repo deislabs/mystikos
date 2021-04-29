@@ -115,31 +115,38 @@ static ssize_t _map_file_onto_memory(
     ssize_t ret = 0;
     ssize_t bytes_read = 0;
     int flags;
+    struct vars
+    {
+        char buf[BUFSIZ];
+    };
+    struct vars* v = NULL;
 
     if (fd < 0 || !addr || !length)
         ERAISE(-EINVAL);
+
+    if (!(v = malloc(sizeof(struct vars))))
+        ERAISE(-ENOMEM);
 
     // ATTN: generate EACCES error if non-regular file or file not opened
     // for write when mmap_flags has MMAP_WRITE.
 
     /* read file onto memory */
     {
-        char buf[BUFSIZ];
         ssize_t n;
         uint8_t* p = addr;
         size_t r = length;
         size_t o = offset;
 
-        while ((n = pread(fd, buf, sizeof buf, o)) > 0)
+        while ((n = pread(fd, v->buf, sizeof v->buf, o)) > 0)
         {
             /* if copy would write past end of buffer */
             if (r < (size_t)n)
             {
-                memcpy(p, buf, r);
+                memcpy(p, v->buf, r);
                 break;
             }
 
-            memcpy(p, buf, (size_t)n);
+            memcpy(p, v->buf, (size_t)n);
             p += n;
             o += n;
             r -= (size_t)n;
@@ -174,6 +181,10 @@ static ssize_t _map_file_onto_memory(
     ret = bytes_read;
 
 done:
+
+    if (v)
+        free(v);
+
     return ret;
 }
 

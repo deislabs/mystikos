@@ -761,20 +761,31 @@ typedef struct entry_args
 static int _setup_exe_link(const char* path)
 {
     int ret = 0;
-    char buf[PATH_MAX];
-    char target[PATH_MAX];
     pid_t pid = (pid_t)myst_getpid();
+    struct vars
+    {
+        char buf[PATH_MAX];
+        char target[PATH_MAX];
+    };
+    struct vars* v = NULL;
 
-    if (myst_normalize(path, target, sizeof(target)) != 0)
+    if (!(v = malloc(sizeof(struct vars))))
+        ERAISE(-ENOMEM);
+
+    if (myst_normalize(path, v->target, sizeof(v->target)) != 0)
         ERAISE(-EINVAL);
 
-    snprintf(buf, sizeof(buf), "/proc/%u", pid);
-    ECHECK(myst_mkdirhier(buf, 0777));
+    snprintf(v->buf, sizeof(v->buf), "/proc/%u", pid);
+    ECHECK(myst_mkdirhier(v->buf, 0777));
 
-    snprintf(buf, sizeof(buf), "/proc/%u/exe", pid);
-    ECHECK(myst_syscall_symlink(target, buf));
+    snprintf(v->buf, sizeof(v->buf), "/proc/%u/exe", pid);
+    ECHECK(myst_syscall_symlink(v->target, v->buf));
 
 done:
+
+    if (v)
+        free(v);
+
     return ret;
 }
 

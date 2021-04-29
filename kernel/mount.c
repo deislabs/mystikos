@@ -55,9 +55,13 @@ int myst_mount_resolve(
 {
     int ret = 0;
     size_t match_len = 0;
-    myst_path_t realpath;
     bool locked = false;
     myst_fs_t* fs = NULL;
+    struct vars
+    {
+        myst_path_t realpath;
+    };
+    struct vars* v = NULL;
 
     if (fs_out)
         *fs_out = NULL;
@@ -65,8 +69,11 @@ int myst_mount_resolve(
     if (!path || !suffix)
         ERAISE(-EINVAL);
 
+    if (!(v = malloc(sizeof(struct vars))))
+        ERAISE(-ENOMEM);
+
     /* Find the real path (the absolute non-relative path). */
-    ECHECK(myst_realpath(path, &realpath));
+    ECHECK(myst_realpath(path, &v->realpath));
 
     myst_spin_lock(&_lock);
     locked = true;
@@ -81,18 +88,18 @@ int myst_mount_resolve(
         {
             if (len > match_len)
             {
-                myst_strlcpy(suffix, realpath.buf, PATH_MAX);
+                myst_strlcpy(suffix, v->realpath.buf, PATH_MAX);
                 match_len = len;
                 fs = _mount_table[i].fs;
             }
         }
         else if (
-            strncmp(mpath, realpath.buf, len) == 0 &&
-            (realpath.buf[len] == '/' || realpath.buf[len] == '\0'))
+            strncmp(mpath, v->realpath.buf, len) == 0 &&
+            (v->realpath.buf[len] == '/' || v->realpath.buf[len] == '\0'))
         {
             if (len > match_len)
             {
-                myst_strlcpy(suffix, realpath.buf + len, PATH_MAX);
+                myst_strlcpy(suffix, v->realpath.buf + len, PATH_MAX);
 
                 if (*suffix == '\0')
                     myst_strlcpy(suffix, "/", PATH_MAX);
@@ -116,6 +123,9 @@ int myst_mount_resolve(
 
 done:
 
+    if (v)
+        free(v);
+
     if (locked)
         myst_spin_unlock(&_lock);
 
@@ -126,27 +136,34 @@ int myst_mount(myst_fs_t* fs, const char* source, const char* target)
 {
     int ret = -1;
     bool locked = false;
-    myst_path_t target_buf;
     mount_table_entry_t mount_table_entry = {0};
+    struct vars
+    {
+        myst_path_t target_buf;
+        char suffix[PATH_MAX];
+    };
+    struct vars* v = NULL;
 
     if (!fs || !source || !target)
         ERAISE(-EINVAL);
 
+    if (!(v = malloc(sizeof(struct vars))))
+        ERAISE(-ENOMEM);
+
     /* Normalize the target path */
     {
-        ECHECK(myst_realpath(target, &target_buf));
-        target = target_buf.buf;
+        ECHECK(myst_realpath(target, &v->target_buf));
+        target = v->target_buf.buf;
     }
 
     /* Be sure the target directory exists (if not root) */
     if (strcmp(target, "/") != 0)
     {
         struct stat buf;
-        char suffix[PATH_MAX];
         myst_fs_t* parent;
 
         /* Find the file system onto which the mount will occur */
-        ECHECK(myst_mount_resolve(target, suffix, &parent));
+        ECHECK(myst_mount_resolve(target, v->suffix, &parent));
 
         ECHECK((*parent->fs_stat)(parent, target, &buf));
 
@@ -196,6 +213,9 @@ int myst_mount(myst_fs_t* fs, const char* source, const char* target)
 
 done:
 
+    if (v)
+        free(v);
+
     if (mount_table_entry.path)
         free(mount_table_entry.path);
 
@@ -208,20 +228,27 @@ done:
 int myst_umount(const char* target)
 {
     int ret = 0;
-    myst_path_t realpath;
     bool found = false;
+    struct vars
+    {
+        myst_path_t realpath;
+    };
+    struct vars* v = NULL;
+
+    if (!(v = malloc(sizeof(struct vars))))
+        ERAISE(-ENOMEM);
 
     myst_spin_lock(&_lock);
 
     /* Find the real path (the absolute non-relative path) */
-    ECHECK(myst_realpath(target, &realpath));
+    ECHECK(myst_realpath(target, &v->realpath));
 
     /* search the mount table for an entry with this name */
     for (size_t i = 0; i < _mount_table_size; i++)
     {
         mount_table_entry_t* entry = &_mount_table[i];
 
-        if (strcmp(entry->path, realpath.buf) == 0)
+        if (strcmp(entry->path, v->realpath.buf) == 0)
         {
             /* release the path */
             free(entry->path);
@@ -242,6 +269,9 @@ int myst_umount(const char* target)
         ERAISE(-ENOENT);
 
 done:
+
+    if (v)
+        free(v);
 
     myst_spin_unlock(&_lock);
 

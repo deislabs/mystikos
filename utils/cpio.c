@@ -579,11 +579,20 @@ int myst_cpio_unpack(const char* source, const char* target)
     int ret = -1;
     myst_cpio_t* cpio = NULL;
     int r;
-    myst_cpio_entry_t entry;
-    char path[MYST_CPIO_PATH_MAX];
     int fd = -1;
+    struct vars
+    {
+        myst_cpio_entry_t entry;
+        char path[MYST_CPIO_PATH_MAX];
+        char data[512];
+        char target[PATH_MAX];
+    };
+    struct vars* v = NULL;
 
     if (!source || !target)
+        GOTO(done);
+
+    if (!(v = malloc(sizeof(struct vars))))
         GOTO(done);
 
     if (!(cpio = myst_cpio_open(source, 0)))
@@ -592,43 +601,43 @@ int myst_cpio_unpack(const char* source, const char* target)
     if (access(target, R_OK) != 0 && mkdir(target, 0766) != 0)
         GOTO(done);
 
-    while ((r = myst_cpio_read_entry(cpio, &entry)) > 0)
+    while ((r = myst_cpio_read_entry(cpio, &v->entry)) > 0)
     {
-        if (strcmp(entry.name, ".") == 0)
+        if (strcmp(v->entry.name, ".") == 0)
             continue;
 
-        MYST_STRLCPY(path, target);
-        MYST_STRLCAT(path, "/");
-        MYST_STRLCAT(path, entry.name);
+        MYST_STRLCPY(v->path, target);
+        MYST_STRLCAT(v->path, "/");
+        MYST_STRLCAT(v->path, v->entry.name);
 
-        if (S_ISDIR(entry.mode))
+        if (S_ISDIR(v->entry.mode))
         {
             struct stat st;
 
-            if (stat(path, &st) == 0)
+            if (stat(v->path, &st) == 0)
             {
                 if (!S_ISDIR(st.st_mode))
                 {
-                    PRINTF("*** cpio: already exists: %s\n", path);
+                    PRINTF("*** cpio: already exists: %s\n", v->path);
                     GOTO(done);
                 }
             }
-            else if (mkdir(path, entry.mode) != 0)
+            else if (mkdir(v->path, v->entry.mode) != 0)
             {
                 GOTO(done);
             }
         }
-        else if (S_ISREG(entry.mode))
+        else if (S_ISREG(v->entry.mode))
         {
-            char data[512];
             ssize_t n;
 
-            if ((fd = open(path, O_WRONLY | O_CREAT, 0666)) < 0)
+            if ((fd = open(v->path, O_WRONLY | O_CREAT, 0666)) < 0)
                 GOTO(done);
 
-            while ((n = myst_cpio_read_data(cpio, data, sizeof(data))) > 0)
+            while ((n = myst_cpio_read_data(cpio, v->data, sizeof(v->data))) >
+                   0)
             {
-                if (write(fd, data, (size_t)n) != n)
+                if (write(fd, v->data, (size_t)n) != n)
                     GOTO(done);
             }
 
@@ -637,20 +646,19 @@ int myst_cpio_unpack(const char* source, const char* target)
 
             fd = -1;
         }
-        else if (S_ISLNK(entry.mode))
+        else if (S_ISLNK(v->entry.mode))
         {
-            char target[PATH_MAX];
             ssize_t n;
 
             /* read the target from CPIO archive */
-            n = myst_cpio_read_data(cpio, target, sizeof(target));
+            n = myst_cpio_read_data(cpio, v->target, sizeof(v->target));
             if (n < 1 || n >= (ssize_t)sizeof(target))
                 GOTO(done);
 
-            target[n] = '\0';
+            v->target[n] = '\0';
 
             /* create the symlink */
-            if (symlink(target, path) != 0)
+            if (symlink(target, v->path) != 0)
                 GOTO(done);
         }
         else
@@ -662,6 +670,9 @@ int myst_cpio_unpack(const char* source, const char* target)
     ret = 0;
 
 done:
+
+    if (v)
+        free(v);
 
     if (cpio)
         myst_cpio_close(cpio);
@@ -678,8 +689,16 @@ static int _append_file(myst_cpio_t* cpio, const char* path, const char* name)
     struct stat st;
     int fd = -1;
     ssize_t n;
+    struct vars
+    {
+        char buf[4096];
+    };
+    struct vars* v = NULL;
 
     if (!cpio || !path)
+        GOTO(done);
+
+    if (!(v = malloc(sizeof(struct vars))))
         GOTO(done);
 
     /* Stat the file to get the size and mode. */
@@ -711,14 +730,12 @@ static int _append_file(myst_cpio_t* cpio, const char* path, const char* name)
     /* Write the CPIO data. */
     if (S_ISREG(st.st_mode))
     {
-        char buf[4096];
-
         if ((fd = open(path, O_RDONLY, 444)) < 0)
             GOTO(done);
 
-        while ((n = read(fd, buf, sizeof(buf))) > 0)
+        while ((n = read(fd, v->buf, sizeof(v->buf))) > 0)
         {
-            if (myst_cpio_write_data(cpio, buf, (size_t)n) != 0)
+            if (myst_cpio_write_data(cpio, v->buf, (size_t)n) != 0)
                 GOTO(done);
         }
 
@@ -727,15 +744,14 @@ static int _append_file(myst_cpio_t* cpio, const char* path, const char* name)
     }
     else if (S_ISLNK(st.st_mode))
     {
-        char buf[PATH_MAX];
         ssize_t n;
 
-        n = readlink(path, buf, sizeof(buf));
+        n = readlink(path, v->buf, sizeof(v->buf));
 
-        if (n <= 0 || n >= (ssize_t)sizeof(buf))
+        if (n <= 0 || n >= (ssize_t)sizeof(v->buf))
             GOTO(done);
 
-        if (myst_cpio_write_data(cpio, buf, (size_t)n) != 0)
+        if (myst_cpio_write_data(cpio, v->buf, (size_t)n) != 0)
             GOTO(done);
     }
 
@@ -745,6 +761,9 @@ static int _append_file(myst_cpio_t* cpio, const char* path, const char* name)
     ret = 0;
 
 done:
+
+    if (v)
+        free(v);
 
     if (fd >= 0)
         close(fd);
@@ -883,13 +902,20 @@ int myst_cpio_next_entry(
     const uint8_t* data = (const uint8_t*)data_;
     size_t pos;
     size_t rem;
-    cpio_header_t hdr;
-    myst_cpio_entry_t entry;
     ssize_t r;
     size_t namesize;
     uint64_t file_pos;
+    struct vars
+    {
+        cpio_header_t hdr;
+        myst_cpio_entry_t entry;
+    };
+    struct vars* v = NULL;
 
     if (!data || !size || !pos_in_out || !entry_out || !file_data_out)
+        GOTO(done);
+
+    if (!(v = malloc(sizeof(struct vars))))
         GOTO(done);
 
     pos = *pos_in_out;
@@ -903,36 +929,36 @@ int myst_cpio_next_entry(
 
     /* Read the header */
     {
-        if (sizeof(hdr) > rem)
+        if (sizeof(v->hdr) > rem)
             GOTO(done);
 
-        memcpy(&hdr, &data[pos], sizeof(hdr));
-        pos += sizeof(hdr);
-        rem -= sizeof(hdr);
+        memcpy(&v->hdr, &data[pos], sizeof(v->hdr));
+        pos += sizeof(v->hdr);
+        rem -= sizeof(v->hdr);
 
-        if (!_valid_header(&hdr))
+        if (!_valid_header(&v->hdr))
             GOTO(done);
     }
 
     /* Get the file size. */
     {
-        if ((r = _get_filesize(&hdr)) < 0)
+        if ((r = _get_filesize(&v->hdr)) < 0)
             GOTO(done);
 
-        entry.size = (size_t)r;
+        v->entry.size = (size_t)r;
     }
 
     /* Get the file mode. */
     {
-        if ((r = _get_mode(&hdr)) < 0 || r >= UINT32_MAX)
+        if ((r = _get_mode(&v->hdr)) < 0 || r >= UINT32_MAX)
             GOTO(done);
 
-        entry.mode = (uint32_t)r;
+        v->entry.mode = (uint32_t)r;
     }
 
     /* Get the name size. */
     {
-        if ((r = _get_namesize(&hdr)) < 0 || r >= MYST_CPIO_PATH_MAX)
+        if ((r = _get_namesize(&v->hdr)) < 0 || r >= MYST_CPIO_PATH_MAX)
             GOTO(done);
 
         namesize = (size_t)r;
@@ -943,7 +969,7 @@ int myst_cpio_next_entry(
         if (namesize > rem)
             GOTO(done);
 
-        memcpy(&entry.name, &data[pos], namesize);
+        memcpy(&v->entry.name, &data[pos], namesize);
         pos += namesize;
         rem -= namesize;
     }
@@ -969,11 +995,11 @@ int myst_cpio_next_entry(
 
     /* Skip over the file data. */
     {
-        if (entry.size > rem)
+        if (v->entry.size > rem)
             GOTO(done);
 
-        pos += entry.size;
-        rem -= entry.size;
+        pos += v->entry.size;
+        rem -= v->entry.size;
     }
 
     /* Skip any padding after the file data. */
@@ -996,18 +1022,22 @@ int myst_cpio_next_entry(
     *pos_in_out = pos;
 
     /* Check for end-of-file. */
-    if (strcmp(entry.name, "TRAILER!!!") == 0)
+    if (strcmp(v->entry.name, "TRAILER!!!") == 0)
     {
         ret = 0;
         goto done;
     }
 
-    *entry_out = entry;
+    *entry_out = v->entry;
     *file_data_out = &data[file_pos];
 
     ret = 1;
 
 done:
+
+    if (v)
+        free(v);
+
     return ret;
 }
 
@@ -1018,58 +1048,66 @@ int myst_cpio_mem_unpack(
     myst_cpio_create_file_function_t create_file)
 {
     int ret = -1;
-    char path[MYST_CPIO_PATH_MAX];
     size_t pos = 0;
+    struct vars
+    {
+        myst_cpio_entry_t ent;
+        char path[MYST_CPIO_PATH_MAX];
+        char target[PATH_MAX];
+    };
+    struct vars* v = NULL;
+
+    if (!(v = malloc(sizeof(struct vars))))
+        ERAISE(-ENOMEM);
 
     for (;;)
     {
-        myst_cpio_entry_t ent;
         const void* file_data;
         int r;
 
         if ((r = myst_cpio_next_entry(
-                 cpio_data, cpio_size, &pos, &ent, &file_data)) == 0)
+                 cpio_data, cpio_size, &pos, &v->ent, &file_data)) == 0)
         {
             break;
         }
 
-        if (strcmp(ent.name, ".") == 0)
+        if (strcmp(v->ent.name, ".") == 0)
             continue;
 
-        MYST_STRLCPY(path, target);
-        MYST_STRLCAT(path, "/");
-        MYST_STRLCAT(path, ent.name);
+        MYST_STRLCPY(v->path, target);
+        MYST_STRLCAT(v->path, "/");
+        MYST_STRLCAT(v->path, v->ent.name);
 
-        if (S_ISDIR(ent.mode))
+        if (S_ISDIR(v->ent.mode))
         {
             struct stat st;
 
-            if (stat(path, &st) == 0)
+            if (stat(v->path, &st) == 0)
             {
                 if (!S_ISDIR(st.st_mode))
                 {
-                    PRINTF("*** cpio: already exists: %s\n", path);
+                    PRINTF("*** cpio: already exists: %s\n", v->path);
                     GOTO(done);
                 }
             }
-            else if (mkdir(path, ent.mode) != 0)
+            else if (mkdir(v->path, v->ent.mode) != 0)
             {
                 GOTO(done);
             }
         }
-        else if (S_ISREG(ent.mode))
+        else if (S_ISREG(v->ent.mode))
         {
             if (create_file)
             {
-                if ((*create_file)(path, file_data, ent.size) != 0)
+                if ((*create_file)(v->path, file_data, v->ent.size) != 0)
                     GOTO(done);
             }
             else
             {
                 int fd;
-                ssize_t n = (ssize_t)ent.size;
+                ssize_t n = (ssize_t)v->ent.size;
 
-                if ((fd = open(path, O_WRONLY | O_CREAT, 0666)) < 0)
+                if ((fd = open(v->path, O_WRONLY | O_CREAT, 0666)) < 0)
                     GOTO(done);
 
                 if (write(fd, file_data, (size_t)n) != n)
@@ -1082,23 +1120,21 @@ int myst_cpio_mem_unpack(
                 fd = -1;
             }
         }
-        else if (S_ISLNK(ent.mode))
+        else if (S_ISLNK(v->ent.mode))
         {
-            char target[PATH_MAX];
-
             /* read the target from CPIO archive */
             {
-                ssize_t n = (ssize_t)ent.size;
+                ssize_t n = (ssize_t)v->ent.size;
 
-                if (n < 1 || n >= (ssize_t)sizeof(target))
+                if (n < 1 || n >= (ssize_t)sizeof(v->target))
                     GOTO(done);
 
-                memcpy(target, file_data, ent.size);
-                target[n] = '\0';
+                memcpy(v->target, file_data, v->ent.size);
+                v->target[n] = '\0';
             }
 
             /* create the symlink */
-            if (symlink(target, path) != 0)
+            if (symlink(v->target, v->path) != 0)
                 GOTO(done);
         }
         else
@@ -1110,6 +1146,9 @@ int myst_cpio_mem_unpack(
     ret = 0;
 
 done:
+
+    if (v)
+        free(v);
 
     return ret;
 }

@@ -6,6 +6,7 @@
 
 #include <limits.h>
 
+#include <myst/kstack.h>
 #include <myst/tcall.h>
 #include <myst/types.h>
 
@@ -52,6 +53,10 @@ typedef struct myst_kernel_args
     /* The image that contains the kernel and crt etc. */
     const void* image_data;
     size_t image_size;
+
+    /* the region that contains the kernel stacks */
+    const void* kernel_stacks_data;
+    size_t kernel_stacks_size;
 
     /* The loaded kernel ELF image (ELF header start here) */
     const void* kernel_data;

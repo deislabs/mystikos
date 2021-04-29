@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 #include <errno.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <myst/eraise.h>
@@ -55,6 +56,14 @@ done:
 int myst_path_absolute(const char* path, char* buf, size_t size)
 {
     int ret = 0;
+    struct vars
+    {
+        char cwd[PATH_MAX];
+    };
+    struct vars* v = NULL;
+
+    if (!(v = malloc(sizeof(struct vars))))
+        ERAISE(-ENOMEM);
 
     if (buf)
         *buf = '\0';
@@ -70,15 +79,18 @@ int myst_path_absolute(const char* path, char* buf, size_t size)
     else
     {
         long r;
-        char cwd[PATH_MAX];
 
-        if ((r = myst_syscall_getcwd(cwd, sizeof(cwd))) < 0)
+        if ((r = myst_syscall_getcwd(v->cwd, sizeof(v->cwd))) < 0)
             ERAISE((int)r);
 
-        ERAISE(myst_path_absolute_cwd(cwd, path, buf, size));
+        ERAISE(myst_path_absolute_cwd(v->cwd, path, buf, size));
     }
 
 done:
+
+    if (v)
+        free(v);
+
     return ret;
 }
 

@@ -20,7 +20,13 @@ OPTS = --strace
 endif
 
 tests: all
+	$(MAKE) __tests
+
+__tests:
 	$(RUNTEST) $(MYST_EXEC) rootfs /bin/popen $(OPTS)
+
+stress:
+	$(foreach i, $(shell seq 1 100), $(MAKE) -s __tests TARGET=linux $(NL))
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst

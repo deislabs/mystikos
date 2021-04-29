@@ -8,6 +8,7 @@
 #include <poll.h>
 #include <stddef.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <myst/defs.h>
 #include <myst/eraise.h>
@@ -96,8 +97,17 @@ long myst_syscall_select(
 {
     long ret = 0;
     int num_ready = 0;
-    poll_fds_t fds = {0};
     int poll_timeout = -1;
+    struct vars
+    {
+        poll_fds_t fds;
+    };
+    struct vars* v = NULL;
+
+    if (!(v = malloc(sizeof(struct vars))))
+        ERAISE(-ENOMEM);
+
+    memset(&v->fds, 0, sizeof(v->fds));
 
     if (timeout)
     {
@@ -108,22 +118,22 @@ long myst_syscall_select(
     if (readfds)
     {
         const short events = POLLIN | POLLRDNORM | POLLRDBAND;
-        ECHECK(_fdset_to_fds(&fds, events, readfds, nfds));
+        ECHECK(_fdset_to_fds(&v->fds, events, readfds, nfds));
     }
 
     if (writefds)
     {
         const short events = POLLOUT | POLLWRNORM | POLLWRBAND;
-        ECHECK(_fdset_to_fds(&fds, events, writefds, nfds));
+        ECHECK(_fdset_to_fds(&v->fds, events, writefds, nfds));
     }
 
     if (exceptfds)
     {
         const short events = POLLERR | POLLHUP | POLLRDHUP;
-        ECHECK(_fdset_to_fds(&fds, events, exceptfds, nfds));
+        ECHECK(_fdset_to_fds(&v->fds, events, exceptfds, nfds));
     }
 
-    ECHECK(myst_syscall_poll(fds.data, fds.size, poll_timeout));
+    ECHECK(myst_syscall_poll(v->fds.data, v->fds.size, poll_timeout));
 
     if (readfds)
         FD_ZERO(readfds);
@@ -139,7 +149,7 @@ long myst_syscall_select(
         short events = POLLIN | POLLRDNORM | POLLRDBAND;
         int n;
 
-        if ((n = _fds_to_fdset(&fds, events, readfds)) > num_ready)
+        if ((n = _fds_to_fdset(&v->fds, events, readfds)) > num_ready)
             num_ready += n;
     }
 
@@ -148,7 +158,7 @@ long myst_syscall_select(
         short events = POLLOUT | POLLWRNORM | POLLWRBAND;
         int n;
 
-        if ((n = _fds_to_fdset(&fds, events, writefds)) > num_ready)
+        if ((n = _fds_to_fdset(&v->fds, events, writefds)) > num_ready)
             num_ready += n;
     }
 
@@ -157,13 +167,16 @@ long myst_syscall_select(
         short events = POLLERR | POLLHUP | POLLRDHUP;
         int n;
 
-        if ((n = _fds_to_fdset(&fds, events, exceptfds)) > num_ready)
+        if ((n = _fds_to_fdset(&v->fds, events, exceptfds)) > num_ready)
             num_ready += n;
     }
 
     ret = num_ready;
 
 done:
+
+    if (v)
+        free(v);
 
     return ret;
 }
