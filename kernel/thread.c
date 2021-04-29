@@ -517,6 +517,10 @@ static long _run_thread(void* arg_)
 
         /* ---------- running target thread descriptor ---------- */
 
+        /* release the kernel stack that was passed to SYS_exit if any */
+        if (thread->kstack)
+            myst_put_kstack(thread->kstack);
+
         /* Wake up any thread waiting on ctid */
         if (is_child_thread)
         {

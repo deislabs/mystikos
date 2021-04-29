@@ -2727,6 +2727,7 @@ typedef struct syscall_args
 {
     long n;
     long* params;
+    myst_kstack_t* kstack;
 } syscall_args_t;
 
 /* ATTN: optimize _syscall() stack usage later */
@@ -3460,6 +3461,9 @@ static long _syscall(void* args_)
 
             thread->exit_status = status;
 
+            /* the kstack is freed after the long-jump below */
+            thread->kstack = args->kstack;
+
             if (thread == __myst_main_thread)
             {
                 // execute fini functions with the CRT fsbase since only
@@ -3473,6 +3477,7 @@ static long _syscall(void* args_)
             }
 
             myst_longjmp(&thread->jmpbuf, 1);
+
             /* unreachable */
             break;
         }
@@ -5279,25 +5284,14 @@ done:
 long myst_syscall(long n, long params[6])
 {
     long ret;
+    myst_kstack_t* kstack;
 
-    // handle SYS_exit on the user stack since it never returns and is unable
-    // to relinquish the kernel stack.
-    if (n == SYS_exit)
-    {
-        syscall_args_t args = {.n = n, .params = params};
-        ret = _syscall(&args);
-    }
-    else
-    {
-        myst_kstack_t* kstack = myst_get_kstack();
+    if (!(kstack = myst_get_kstack()))
+        myst_panic("no more kernel stacks");
 
-        if (!kstack)
-            myst_panic("no more kernel stacks");
-
-        syscall_args_t args = {.n = n, .params = params};
-        ret = myst_call_on_stack(myst_kstack_end(kstack), _syscall, &args);
-        myst_put_kstack(kstack);
-    }
+    syscall_args_t args = {.n = n, .params = params, .kstack = kstack};
+    ret = myst_call_on_stack(myst_kstack_end(kstack), _syscall, &args);
+    myst_put_kstack(kstack);
 
     return ret;
 }

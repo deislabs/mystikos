@@ -733,6 +733,10 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     }
     else
     {
+        /* release the kernel stack that was passed to SYS_exit if any */
+        if (thread->kstack)
+            myst_put_kstack(thread->kstack);
+
         /* thread jumps here on SYS_exit syscall */
         exit_status = thread->exit_status;
 
