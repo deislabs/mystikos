@@ -52,7 +52,7 @@ jobs:
         scriptType: bash
         scriptPath: $(SCRIPTS_ROOT)/run-azure-tests.sh
         arguments:
-          $(Build.SourcesDirectory)/solutions
+          $(Build.SourcesDirectory)/solutions/dotnet_azure_sdk
         addSpnToEnvironment: true
       env:
         AZURE_KEYVAULT_URL: $(AZURE_TEST_KEYVAULT_URL)

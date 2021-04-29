@@ -13,40 +13,61 @@ namespace Azure.Security.KeyVault.Secrets.Samples
     /// </summary>
     public partial class HelloWorld
     {
-        static async Task Main()
+        static async Task<int> Main()
         {
             // Environment variable with the Key Vault endpoint.
             string keyVaultUrl = Environment.GetEnvironmentVariable("AZURE_KEYVAULT_URL");
 
             var client = new SecretClient(new Uri(keyVaultUrl), new DefaultAzureCredential());
 
-            string secretName = $"BankAccountPassword-{Guid.NewGuid()}";
+            int repeat = 0;
+            const int total = 3;
+            while (++repeat <= total)
+			{
+                Console.WriteLine("Repeat #{0}...", repeat);
+                try
+                {
+                    string secretName = $"BankAccountPassword-{Guid.NewGuid()}";
 
-            var secret = new KeyVaultSecret(secretName, "f4G34fMh8v");
-            secret.Properties.ExpiresOn = DateTimeOffset.Now.AddYears(1);
+                    var secret = new KeyVaultSecret(secretName, "f4G34fMh8v");
+                    secret.Properties.ExpiresOn = DateTimeOffset.Now.AddYears(1);
 
-            await client.SetSecretAsync(secret);
+                    await client.SetSecretAsync(secret);
 
-            KeyVaultSecret bankSecret = await client.GetSecretAsync(secretName);
-            Console.WriteLine($"Secret is returned with name {bankSecret.Name} and value {bankSecret.Value}");
+                    KeyVaultSecret bankSecret = await client.GetSecretAsync(secretName);
+                    Console.WriteLine($"Secret is returned with name {bankSecret.Name} and value {bankSecret.Value}");
 
-            bankSecret.Properties.ExpiresOn = bankSecret.Properties.ExpiresOn.Value.AddYears(1);
-            SecretProperties updatedSecret = await client.UpdateSecretPropertiesAsync(bankSecret.Properties);
-            Console.WriteLine($"Secret's updated expiry time is {updatedSecret.ExpiresOn}");
+                    bankSecret.Properties.ExpiresOn = bankSecret.Properties.ExpiresOn.Value.AddYears(1);
+                    SecretProperties updatedSecret = await client.UpdateSecretPropertiesAsync(bankSecret.Properties);
+                    Console.WriteLine($"Secret's updated expiry time is {updatedSecret.ExpiresOn}");
 
-            var secretNewValue = new KeyVaultSecret(secretName, "bhjd4DDgsa");
-            secretNewValue.Properties.ExpiresOn = DateTimeOffset.Now.AddYears(1);
+                    var secretNewValue = new KeyVaultSecret(secretName, "bhjd4DDgsa");
+                    secretNewValue.Properties.ExpiresOn = DateTimeOffset.Now.AddYears(1);
 
-            await client.SetSecretAsync(secretNewValue);
+                    await client.SetSecretAsync(secretNewValue);
 
-            DeleteSecretOperation operation = await client.StartDeleteSecretAsync(secretName);
+                    DeleteSecretOperation operation = await client.StartDeleteSecretAsync(secretName);
 
-            #region Snippet:SecretsSample1PurgeSecretAsync
-            // You only need to wait for completion if you want to purge or recover the secret.
-            await operation.WaitForCompletionAsync();
+                    #region Snippet:SecretsSample1PurgeSecretAsync
+                    // You only need to wait for completion if you want to purge or recover the secret.
+                    await operation.WaitForCompletionAsync();
 
-            await client.PurgeDeletedSecretAsync(secretName);
-            #endregion
+                    await client.PurgeDeletedSecretAsync(secretName);
+                    #endregion
+                }
+                catch (RequestFailedException ex)
+                {
+                    Console.WriteLine($"Request failed! {ex.Message} {ex.StackTrace}");
+                    return -1;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Unexpected exception! {ex.Message} {ex.StackTrace}");
+                    return -1;
+                }
+            }
+            Console.WriteLine("Success!");
+            return 0;
         }
     }
 }
