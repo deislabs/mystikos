@@ -42,34 +42,40 @@ namespace AzureIdentityStorageExample
             // Azure.ResourceManager.Storage is currently in preview.
             var storageManagementClient = new StorageManagementClient(subscriptionId, credential);
 
-            try
+            int repeat = 0; 
+            const int total = 3;
+            while (++repeat <= total)
             {
-                // Create a Resource Group
-                string resourceGroupName = await CreateResourceGroupAsync(resourcesManagementClient);
+                Console.WriteLine("Repeat #{0}...", repeat);
+                try
+                {
+                    // Create a Resource Group
+                    string resourceGroupName = await CreateResourceGroupAsync(resourcesManagementClient);
 
-                // Create a Storage account
-                string storageName = await CreateStorageAccountAsync(storageManagementClient, resourceGroupName);
+                    // Create a Storage account
+                    string storageName = await CreateStorageAccountAsync(storageManagementClient, resourceGroupName);
 
-                // Create a container and upload a blob using a storage connection string
-                await UploadBlobUsingStorageConnectionStringAsync(storageManagementClient, resourceGroupName, storageName);
+                    // Create a container and upload a blob using a storage connection string
+                    await UploadBlobUsingStorageConnectionStringAsync(storageManagementClient, resourceGroupName, storageName);
 
-                // Upload a blob using Azure.Identity.DefaultAzureCredential
-                await UploadBlobUsingDefaultAzureCredentialAsync(storageManagementClient, resourceGroupName, storageName, credential);
+                    // Upload a blob using Azure.Identity.DefaultAzureCredential
+                    await UploadBlobUsingDefaultAzureCredentialAsync(storageManagementClient, resourceGroupName, storageName, credential);
 
-                Console.WriteLine("Delete the resources...");
+                    Console.WriteLine("Delete the resources...");
 
-                // Delete the resource group
-                await DeleteResourceGroupAsync(resourcesManagementClient, resourceGroupName);
-            }
-            catch (RequestFailedException ex)
-            {
-                Console.WriteLine($"Request failed! {ex.Message} {ex.StackTrace}");
-                return -1;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Unexpected exception! {ex.Message} {ex.StackTrace}");
-                return -1;
+                    // Delete the resource group
+                    await DeleteResourceGroupAsync(resourcesManagementClient, resourceGroupName);
+                }
+                catch (RequestFailedException ex)
+                {
+                    Console.WriteLine($"Request failed! {ex.Message} {ex.StackTrace}");
+                    return -1;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Unexpected exception! {ex.Message} {ex.StackTrace}");
+                    return -1;
+                }
             }
             Console.WriteLine("Success!");
             return 0;

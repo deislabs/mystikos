@@ -3,6 +3,7 @@ include $(TOP)/defs.mak
 
 APPBUILDER=$(TOP)/scripts/appbuilder
 APPNAME=Sample1_HelloWorldAsync
+SRC = src/*.csproj src/*.cs
 
 all: appdir private.pem
 
@@ -14,7 +15,8 @@ gdb: appdir private.pem
 	$(MYST) package appdir private.pem config.json
 	$(MYST_GDB) --args myst/bin/$(APPNAME)
 
-appdir:
+appdir: $(SRC)
+	$(MAKE) clean
 	$(APPBUILDER) Dockerfile
 
 private.pem:

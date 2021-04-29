@@ -24,9 +24,6 @@ DIRS += coreclr
 endif
 endif
 
-ifdef RUN_AZURE_TESTS
-DIRS = dotnet_azure_sdk/Identity_Resource_Management_and_Storage dotnet_azure_sdk/KeyVault_Keys dotnet_azure_sdk/KeyVault_Secrets dotnet_azure_sdk/KeyVault_Certificates
-endif
 
 REDEFINE_TESTS=1
 include $(TOP)/rules.mak
