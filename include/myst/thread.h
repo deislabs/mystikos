@@ -11,6 +11,7 @@
 #include <myst/assume.h>
 #include <myst/defs.h>
 #include <myst/fdtable.h>
+#include <myst/kstack.h>
 #include <myst/setjmp.h>
 #include <myst/spinlock.h>
 #include <myst/tcall.h>
@@ -223,6 +224,9 @@ struct myst_thread
     /* supplemental groups */
     size_t num_supgid;
     gid_t supgid[NGROUPS_MAX];
+
+    // the kernel stack for the current the syscall (used only by SYS_exit)
+    myst_kstack_t* kstack;
 };
 
 MYST_INLINE bool myst_valid_thread(const myst_thread_t* thread)
