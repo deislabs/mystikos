@@ -73,6 +73,7 @@ jobs:
           make clean -C $(Build.SourcesDirectory)/tests
           make clean -C $(Build.SourcesDirectory)/solutions
           sudo rm -rf $(Build.SourcesDirectory)/build/tests
+          docker system prune -f
         displayName: 'Cleanup test directories'
         continueOnError: true
         enabled: true
