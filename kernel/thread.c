@@ -242,6 +242,23 @@ void myst_zombify_thread(myst_thread_t* thread)
     // If the thread exits normally, the cond_wait should be NULL.
     myst_cond_signal_thread(thread->signal.cond_wait, thread);
 
+    // Take the thread out of the thread group list.
+    myst_spin_lock(thread->thread_lock);
+    if (thread->group_prev)
+        thread->group_prev->group_next = thread->group_next;
+
+    if (thread->group_next)
+        thread->group_next->group_prev = thread->group_prev;
+    myst_spin_unlock(thread->thread_lock);
+
+    // Should be safe to free the thread stack now.
+    // Unmap the memory containing the thread descriptor; set by
+    // __unmapself() when it invoke SYS_unmap.
+    if (thread->unmapself_addr)
+    {
+        myst_munmap(thread->unmapself_addr, thread->unmapself_length);
+    }
+
     myst_mutex_lock(&_zombies_mutex);
     {
         static bool _initialized;
@@ -279,13 +296,6 @@ void myst_zombify_thread(myst_thread_t* thread)
             /* remove tail from the list */
             _zombies_tail = _zombies_tail->zprev;
             _zombies_tail->znext = NULL;
-
-            /* remove from groups list */
-            if (p->group_prev)
-                p->group_prev->group_next = p->group_next;
-
-            if (p->group_next)
-                p->group_next->group_prev = p->group_prev;
 
             /* free the zombie */
             free(p);
@@ -562,14 +572,6 @@ static long _run_thread(void* arg_)
                 {
                     myst_eprintf(
                         "%s(%u): myst_munmap() failed", __FILE__, __LINE__);
-                }
-
-                // unmap the memory containing the thread descriptor; set by
-                // __unmapself() when it invoke SYS_unmap.
-                if (thread->unmapself_addr)
-                {
-                    myst_munmap(
-                        thread->unmapself_addr, thread->unmapself_length);
                 }
 
                 /* unmap any mapping made by the process */
