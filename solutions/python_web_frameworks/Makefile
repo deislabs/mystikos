@@ -7,20 +7,37 @@ ifdef STRACE
 OPTS = --strace
 endif
 
-all: app 
+OPTS = --memory-size=1024m
 
-app:
-	$(APPBUILDER) -f cpio -o hello_server.cpio Dockerfile 
+all: appdir rootfs
 
-#run:
-#	test -f server.pid && kill -9 `cat server.pid` || true
-#	$(MYST_EXEC) $(OPTS) hello_server.cpio /usr/local/bin/python3 /app/flask_app.py & echo $$! > server.pid
-#	sleep 10
-#	curl 127.0.0.1:8000
-#	test -f server.pid && kill -9 `cat server.pid` && rm server.pid || true
+appdir:
+	$(APPBUILDER) Dockerfile
+
+rootfs:
+	$(MYST) mkcpio appdir rootfs
+
 run:
-	@ echo "Please see the README for instructions on how to exercise these tests"
+	test -f server.pid && kill -9 `cat server.pid` || true
+	@echo "===start flask server"
+	@$(MYST_EXEC) $(OPTS) rootfs /usr/local/bin/python3 /app/flask_app.py & echo $$! > server.pid
+	@sleep 10
+	curl 127.0.0.1:8000 -w "\n"
+	@echo "===stop flask server"
+	@test -f server.pid && kill -9 `cat server.pid` && rm server.pid || true
+	@echo "===start uwsgi server"
+	@$(MYST_EXEC) $(OPTS) rootfs /usr/local/bin/uwsgi /app/uwsgi.ini & echo $$! > server.pid
+	@sleep 10
+	curl 127.0.0.1:8000 -w "\n"
+	@test -f server.pid && kill -9 `cat server.pid` && rm server.pid || true
+	@echo "===stop flask server"
+
+server-flask:
+	$(MYST_EXEC) $(OPTS) rootfs /usr/local/bin/python3 /app/flask_app.py
+
+server-uwsgi:
+	$(MYST_EXEC) $(OPTS) rootfs /usr/local/bin/uwsgi /app/uwsgi.ini
 
 clean:
 	test -f server.pid && kill -9 `cat server.pid` || true
-	rm -rf hello_server.cpio server.pid
+	rm -rf rootfs appdir server.pid
