@@ -89,6 +89,9 @@ struct myst_thread
     /* unique thread identifier (same as pid for main thread) */
     pid_t tid;
 
+    /* the target's thread identifier for this thread */
+    pid_t target_tid;
+
     /* The exit status passed to SYS_exit */
     int exit_status;
 
@@ -108,7 +111,7 @@ struct myst_thread
     myst_td_t* target_td;
 
     /* called by target to run child theads */
-    long (*run_thread)(uint64_t cookie, uint64_t event);
+    long (*run_thread)(uint64_t cookie, uint64_t event, pid_t target_tid);
 
     /* synchronization event from myst_thread_t.run_thread() */
     uint64_t event;
@@ -321,7 +324,7 @@ MYST_INLINE myst_thread_t* myst_find_process_thread(myst_thread_t* thread)
     return t;
 }
 
-long myst_run_thread(uint64_t cookie, uint64_t event);
+long myst_run_thread(uint64_t cookie, uint64_t event, pid_t target_tid);
 
 pid_t myst_generate_tid(void);
 

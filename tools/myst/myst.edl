@@ -20,7 +20,6 @@ enclave
        long tv_nsec;
     };
 
-
     struct myst_stat
     {
         unsigned long st_dev;
@@ -68,6 +67,16 @@ enclave
         char d_name[1];
     };
 
+    struct myst_cpu_set
+    {
+        uint64_t buf[16];
+    };
+
+    struct myst_getcpu_cache
+    {
+        uint64_t blob[16];
+    };
+
     trusted
     {
         public int myst_enter_ecall(
@@ -77,9 +86,13 @@ enclave
             size_t args_size,
             [in, size=env_size] const void* env,
             size_t env_size,
-            uint64_t event);
+            uint64_t event,
+            pid_t target_tid);
 
-        public long myst_run_thread_ecall(uint64_t cookie, uint64_t event);
+        public long myst_run_thread_ecall(
+            uint64_t cookie,
+            uint64_t event,
+            pid_t target_id);
     };
 
     untrusted
@@ -389,5 +402,28 @@ enclave
         int myst_load_fssig_ocall(
             [in, string] const char* path,
             [out] myst_fssig_t* fssig);
+
+        /*
+        **======================================================================
+        **
+        ** processor
+        **
+        **======================================================================
+        */
+
+        long myst_getcpu_ocall(
+            [out] unsigned* cpu,
+            [out] unsigned* node,
+            [out] struct myst_getcpu_cache* tcache);
+
+        long myst_sched_setaffinity_ocall(
+            pid_t pid,
+            size_t cpusetsize,
+            [in] const struct myst_cpu_set* mask);
+
+        long myst_sched_getaffinity_ocall(
+            pid_t pid,
+            size_t cpusetsize,
+            [out] struct myst_cpu_set* mask);
     };
 };

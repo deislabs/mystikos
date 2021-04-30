@@ -97,7 +97,8 @@ long myst_tcall_load_symbols(void);
 
 long myst_tcall_unload_symbols(void);
 
-typedef long (*myst_run_thread_t)(uint64_t cookie, uint64_t event);
+typedef long (
+    *myst_run_thread_t)(uint64_t cookie, uint64_t event, pid_t target_tid);
 
 long myst_tcall_set_run_thread_function(myst_run_thread_t function);
 

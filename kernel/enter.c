@@ -369,6 +369,7 @@ static int _teardown_tmpfs(void)
 static int _create_main_thread(
     uint64_t event,
     const char* cwd,
+    pid_t target_tid,
     myst_thread_t** thread_out)
 {
     int ret = 0;
@@ -390,6 +391,7 @@ static int _create_main_thread(
     thread->ppid = ppid;
     thread->pid = pid;
     thread->tid = pid;
+    thread->target_tid = target_tid;
     thread->event = event;
     thread->target_td = myst_get_fsbase();
     strcpy(thread->name, "main");
@@ -644,7 +646,8 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     }
 
     /* Create the main thread */
-    ECHECK(_create_main_thread(args->event, args->cwd, &thread));
+    ECHECK(
+        _create_main_thread(args->event, args->cwd, args->target_tid, &thread));
     __myst_main_thread = thread;
 
     thread->main.umask = MYST_DEFAULT_UMASK;
