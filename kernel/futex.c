@@ -163,7 +163,6 @@ int myst_futex_wait(int* uaddr, int val, const struct timespec* to)
 {
     int ret = 0;
     futex_t* f = NULL;
-    myst_thread_t* me = myst_thread_self();
 
 #if defined(DEBUG_TRACE)
     printf("%s(): uaddr=%p\n", __FUNCTION__, uaddr);
@@ -192,12 +191,7 @@ int myst_futex_wait(int* uaddr, int val, const struct timespec* to)
             goto done;
         }
 
-        // Give termination signal handler a chance to wake up the thread.
-        me->signal.cond_wait = &f->cond;
-
         retval = myst_cond_timedwait(&f->cond, &f->mutex, to);
-
-        me->signal.cond_wait = NULL;
 
         if (retval != 0)
             ret = -retval;
