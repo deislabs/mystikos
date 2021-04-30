@@ -71,6 +71,8 @@ int myst_cond_timedwait(
             return EBUSY;
         }
 
+        // assert(self->signal.cond_wait == NULL);
+        self->signal.cond_wait = c;
         for (;;)
         {
             myst_spin_unlock(&c->lock);
@@ -96,7 +98,9 @@ int myst_cond_timedwait(
             if (ret != 0)
                 break;
         }
+        self->signal.cond_wait = NULL;
     }
+
     myst_spin_unlock(&c->lock);
     myst_mutex_lock(mutex);
 
@@ -106,6 +110,41 @@ int myst_cond_timedwait(
 int myst_cond_wait(myst_cond_t* c, myst_mutex_t* mutex)
 {
     return myst_cond_timedwait(c, mutex, NULL);
+}
+
+int myst_cond_signal_thread(myst_cond_t* c, myst_thread_t* thread)
+{
+    myst_thread_t* prev = NULL;
+    bool found = false;
+
+    if (!c)
+        return EINVAL;
+
+    myst_spin_lock(&c->lock);
+    for (myst_thread_t* t = c->queue.front; t; prev = t, t = t->qnext)
+    {
+        if (t == thread)
+        {
+            found = true;
+            if (prev != NULL)
+            {
+                prev->qnext = t->qnext;
+            }
+            else
+            {
+                c->queue.front = c->queue.front->qnext;
+                if (c->queue.front == NULL)
+                    c->queue.back = NULL;
+            }
+            break;
+        }
+    }
+    myst_spin_unlock(&c->lock);
+
+    if (found)
+        myst_tcall_wake(thread->event);
+
+    return 0;
 }
 
 int myst_cond_signal(myst_cond_t* c)

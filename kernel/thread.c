@@ -237,6 +237,11 @@ static void _free_zombies(void* arg)
 
 void myst_zombify_thread(myst_thread_t* thread)
 {
+    // If the thread was blocked on a condvar and got killed,
+    // get out of the waiting list of the condvar.
+    // If the thread exits normally, the cond_wait should be NULL.
+    myst_cond_signal_thread(thread->signal.cond_wait, thread);
+
     myst_mutex_lock(&_zombies_mutex);
     {
         static bool _initialized;
@@ -928,8 +933,7 @@ size_t myst_kill_thread_group()
             myst_spin_unlock(thread->thread_lock);
             myst_signal_deliver(t, SIGKILL, 0);
             // Wake up the thread from futex_wait if necessary.
-            if (t->signal.cond_wait)
-                myst_cond_signal(t->signal.cond_wait);
+            myst_cond_signal_thread(t->signal.cond_wait, t);
             myst_spin_lock(thread->thread_lock);
         }
     }

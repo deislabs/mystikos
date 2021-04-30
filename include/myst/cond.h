@@ -30,6 +30,8 @@ int myst_cond_timedwait(
 
 int myst_cond_signal(myst_cond_t* c);
 
+int myst_cond_signal_thread(myst_cond_t* c, myst_thread_t* thread);
+
 /* Wake up n waiters */
 int myst_cond_broadcast(myst_cond_t* c, size_t n);
 
