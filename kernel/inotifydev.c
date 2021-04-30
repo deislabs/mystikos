@@ -291,20 +291,20 @@ static int _id_inotify_add_watch(
     int ret = 0;
     watch_t* watch = NULL;
     bool found = false;
-    struct vars
+    struct locals
     {
         char path[PATH_MAX];
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
     if (!dev || !_valid_inotify(obj) || !pathname)
         ERAISE(-EINVAL);
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     /* normalize the path */
-    ECHECK(myst_normalize(pathname, v->path, sizeof(v->path)));
+    ECHECK(myst_normalize(pathname, locals->path, sizeof(locals->path)));
 
     /* see if there's already a watch for this path */
     {
@@ -331,7 +331,7 @@ static int _id_inotify_add_watch(
         if (!(watch = calloc(1, sizeof(watch_t))))
             ERAISE(-ENOMEM);
 
-        myst_strlcpy(watch->path, v->path, sizeof(watch->path));
+        myst_strlcpy(watch->path, locals->path, sizeof(watch->path));
         ECHECK((wd = _get_wd()));
         watch->wd = wd;
         watch->mask = mask;
@@ -346,8 +346,8 @@ static int _id_inotify_add_watch(
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     if (watch)
         free(watch);

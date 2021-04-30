@@ -14,17 +14,17 @@ int myst_lsr(const char* root, myst_strarr_t* paths, bool include_dirs)
     DIR* dir = NULL;
     struct dirent* ent;
     myst_strarr_t dirs = MYST_STRARR_INITIALIZER;
-    struct vars
+    struct locals
     {
         char path[PATH_MAX];
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
     /* Check parameters */
     if (!root || !paths)
         goto done;
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         goto done;
 
     /* Open the directory */
@@ -39,30 +39,30 @@ int myst_lsr(const char* root, myst_strarr_t* paths, bool include_dirs)
             continue;
         }
 
-        myst_strlcpy(v->path, root, sizeof(v->path));
+        myst_strlcpy(locals->path, root, sizeof(locals->path));
 
         if (strcmp(root, "/") != 0)
-            myst_strlcat(v->path, "/", sizeof(v->path));
+            myst_strlcat(locals->path, "/", sizeof(locals->path));
 
-        myst_strlcat(v->path, ent->d_name, sizeof(v->path));
+        myst_strlcat(locals->path, ent->d_name, sizeof(locals->path));
 
         /* Append to dirs[] array */
         if (ent->d_type & DT_DIR)
         {
-            if (myst_strarr_append(&dirs, v->path) != 0)
+            if (myst_strarr_append(&dirs, locals->path) != 0)
                 goto done;
 
             if (include_dirs)
             {
                 /* Append to paths[] array */
-                if (myst_strarr_append(paths, v->path) != 0)
+                if (myst_strarr_append(paths, locals->path) != 0)
                     goto done;
             }
         }
         else
         {
             /* Append to paths[] array */
-            if (myst_strarr_append(paths, v->path) != 0)
+            if (myst_strarr_append(paths, locals->path) != 0)
                 goto done;
         }
     }
@@ -82,8 +82,8 @@ int myst_lsr(const char* root, myst_strarr_t* paths, bool include_dirs)
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     if (dir)
         closedir(dir);

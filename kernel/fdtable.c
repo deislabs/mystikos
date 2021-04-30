@@ -490,17 +490,17 @@ static const char* _type_name(myst_fdtable_type_t type)
 int myst_fdtable_list(const myst_fdtable_t* fdtable)
 {
     int ret = 0;
-    struct vars
+    struct locals
     {
         char linkpath[PATH_MAX];
         char buf[PATH_MAX];
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
     if (!fdtable)
         ERAISE(-EINVAL);
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     for (int i = 0; i < MYST_FDTABLE_SIZE; i++)
@@ -516,19 +516,20 @@ int myst_fdtable_list(const myst_fdtable_t* fdtable)
 
             if (entry->type == MYST_FDTABLE_TYPE_FILE)
             {
-                const size_t n = sizeof(v->linkpath);
-                if (snprintf(v->linkpath, n, "/proc/%d/fd/%d", pid, i) >=
+                const size_t n = sizeof(locals->linkpath);
+                if (snprintf(locals->linkpath, n, "/proc/%d/fd/%d", pid, i) >=
                     (int)n)
                 {
                     ERAISE(-ENAMETOOLONG);
                 }
 
                 if ((m = myst_syscall_readlink(
-                         v->linkpath, v->buf, sizeof(v->buf))) < 0)
+                         locals->linkpath, locals->buf, sizeof(locals->buf))) <
+                    0)
                 {
                     ERAISE(-ENAMETOOLONG);
                 }
-                printf(" (%s)", v->buf);
+                printf(" (%s)", locals->buf);
             }
 
             printf("\n");
@@ -539,8 +540,8 @@ int myst_fdtable_list(const myst_fdtable_t* fdtable)
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }

@@ -19,13 +19,13 @@ static myst_fs_t* _procfs;
 int procfs_setup()
 {
     int ret = 0;
-    struct vars
+    struct locals
     {
         char fdpath[PATH_MAX];
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     if (myst_init_ramfs(myst_mount_resolve, &_procfs) != 0)
@@ -47,9 +47,9 @@ int procfs_setup()
     }
 
     /* Create /proc/[pid]/fd directory for main thread */
-    const size_t n = sizeof(v->fdpath);
-    snprintf(v->fdpath, n, "/proc/%d/fd", myst_getpid());
-    if (myst_mkdirhier(v->fdpath, 777) != 0)
+    const size_t n = sizeof(locals->fdpath);
+    snprintf(locals->fdpath, n, "/proc/%d/fd", myst_getpid());
+    if (myst_mkdirhier(locals->fdpath, 777) != 0)
     {
         myst_eprintf("cannot create the /proc/[pid]/fd directory\n");
         ERAISE(-EINVAL);
@@ -57,8 +57,8 @@ int procfs_setup()
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }
@@ -77,25 +77,25 @@ int procfs_teardown()
 int procfs_pid_cleanup(pid_t pid)
 {
     int ret = 0;
-    struct vars
+    struct locals
     {
         char pid_dir_path[PATH_MAX];
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     if (!pid)
         ERAISE(-EINVAL);
 
-    snprintf(v->pid_dir_path, sizeof(v->pid_dir_path), "/%d", pid);
-    ECHECK(myst_release_tree(_procfs, v->pid_dir_path));
+    snprintf(locals->pid_dir_path, sizeof(locals->pid_dir_path), "/%d", pid);
+    ECHECK(myst_release_tree(_procfs, locals->pid_dir_path));
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }
@@ -125,24 +125,24 @@ static int _self_vcallback(myst_buf_t* vbuf)
 {
     int ret = 0;
 
-    struct vars
+    struct locals
     {
         char linkpath[PATH_MAX];
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
-    const size_t n = sizeof(v->linkpath);
-    snprintf(v->linkpath, n, "/proc/%d", myst_getpid());
+    const size_t n = sizeof(locals->linkpath);
+    snprintf(locals->linkpath, n, "/proc/%d", myst_getpid());
     myst_buf_clear(vbuf);
-    myst_buf_append(vbuf, v->linkpath, sizeof(v->linkpath));
+    myst_buf_append(vbuf, locals->linkpath, sizeof(locals->linkpath));
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }

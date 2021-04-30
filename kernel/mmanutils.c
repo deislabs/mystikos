@@ -115,16 +115,16 @@ static ssize_t _map_file_onto_memory(
     ssize_t ret = 0;
     ssize_t bytes_read = 0;
     int flags;
-    struct vars
+    struct locals
     {
         char buf[BUFSIZ];
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
     if (fd < 0 || !addr || !length)
         ERAISE(-EINVAL);
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     // ATTN: generate EACCES error if non-regular file or file not opened
@@ -137,16 +137,16 @@ static ssize_t _map_file_onto_memory(
         size_t r = length;
         size_t o = offset;
 
-        while ((n = pread(fd, v->buf, sizeof v->buf, o)) > 0)
+        while ((n = pread(fd, locals->buf, sizeof locals->buf, o)) > 0)
         {
             /* if copy would write past end of buffer */
             if (r < (size_t)n)
             {
-                memcpy(p, v->buf, r);
+                memcpy(p, locals->buf, r);
                 break;
             }
 
-            memcpy(p, v->buf, (size_t)n);
+            memcpy(p, locals->buf, (size_t)n);
             p += n;
             o += n;
             r -= (size_t)n;
@@ -182,8 +182,8 @@ static ssize_t _map_file_onto_memory(
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }

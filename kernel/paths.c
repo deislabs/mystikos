@@ -56,13 +56,13 @@ done:
 int myst_path_absolute(const char* path, char* buf, size_t size)
 {
     int ret = 0;
-    struct vars
+    struct locals
     {
         char cwd[PATH_MAX];
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     if (buf)
@@ -80,16 +80,16 @@ int myst_path_absolute(const char* path, char* buf, size_t size)
     {
         long r;
 
-        if ((r = myst_syscall_getcwd(v->cwd, sizeof(v->cwd))) < 0)
+        if ((r = myst_syscall_getcwd(locals->cwd, sizeof(locals->cwd))) < 0)
             ERAISE((int)r);
 
-        ERAISE(myst_path_absolute_cwd(v->cwd, path, buf, size));
+        ERAISE(myst_path_absolute_cwd(locals->cwd, path, buf, size));
     }
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }

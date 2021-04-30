@@ -475,13 +475,13 @@ done:
 static int _mount_rootfs(myst_kernel_args_t* args, myst_fstype_t fstype)
 {
     int ret = 0;
-    struct vars
+    struct locals
     {
         char err[PATH_MAX + 256];
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     switch (fstype)
@@ -502,12 +502,13 @@ static int _mount_rootfs(myst_kernel_args_t* args, myst_fstype_t fstype)
         case MYST_FSTYPE_EXT2FS:
         {
             /* setup and mount the EXT2 file system */
-            if (_setup_ext2(args->rootfs, v->err, sizeof(v->err)) != 0)
+            if (_setup_ext2(args->rootfs, locals->err, sizeof(locals->err)) !=
+                0)
             {
                 myst_eprintf(
                     "failed to setup EXT2 rootfs: %s (%s)\n",
                     args->rootfs,
-                    v->err);
+                    locals->err);
                 ERAISE(-EINVAL);
             }
 
@@ -526,12 +527,13 @@ static int _mount_rootfs(myst_kernel_args_t* args, myst_fstype_t fstype)
             }
 
             /* setup and mount the HOSTFS file system */
-            if (_setup_hostfs(args->rootfs, v->err, sizeof(v->err)) != 0)
+            if (_setup_hostfs(args->rootfs, locals->err, sizeof(locals->err)) !=
+                0)
             {
                 myst_eprintf(
                     "failed to setup HOSTFS rootfs: %s (%s)\n",
                     args->rootfs,
-                    v->err);
+                    locals->err);
                 ERAISE(-EINVAL);
             }
 
@@ -549,8 +551,8 @@ static int _mount_rootfs(myst_kernel_args_t* args, myst_fstype_t fstype)
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }

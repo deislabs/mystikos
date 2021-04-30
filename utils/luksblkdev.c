@@ -56,27 +56,27 @@ static int _get(myst_blkdev_t* dev_, size_t blkno, void* data)
 {
     int ret = 0;
     blkdev_t* dev = (blkdev_t*)dev_;
-    struct vars
+    struct locals
     {
         uint8_t buf[LUKS_SECTOR_SIZE];
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
     if (!_luksblkdev_valid(dev) || !data)
         ERAISE(-EINVAL);
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     /* read the encrypted sector */
     myst_blkdev_t* rawdev = dev->rawdev;
-    ECHECK((*rawdev->get)(rawdev, blkno + dev->phdr.payload_offset, v->buf));
+    ECHECK((*rawdev->get)(rawdev, blkno + dev->phdr.payload_offset, locals->buf));
 
     /* decrypt the sector with the master key */
     if (myst_luks_decrypt(
         &dev->phdr,
         dev->masterkey,
-        v->buf,
+        locals->buf,
         data,
         LUKS_SECTOR_SIZE,
         blkno) != 0)
@@ -86,8 +86,8 @@ static int _get(myst_blkdev_t* dev_, size_t blkno, void* data)
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }
@@ -96,16 +96,16 @@ static int _put(myst_blkdev_t* dev_, size_t blkno, const void* data)
 {
     int ret = 0;
     blkdev_t* dev = (blkdev_t*)dev_;
-    struct vars
+    struct locals
     {
         uint8_t buf[LUKS_SECTOR_SIZE];
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
     if (!_luksblkdev_valid(dev) || !data)
         ERAISE(-EINVAL);
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     /* encrypt the sector with the master key */
@@ -113,7 +113,7 @@ static int _put(myst_blkdev_t* dev_, size_t blkno, const void* data)
         &dev->phdr,
         dev->masterkey,
         data,
-        v->buf,
+        locals->buf,
         LUKS_SECTOR_SIZE,
         blkno) != 0)
     {
@@ -122,12 +122,12 @@ static int _put(myst_blkdev_t* dev_, size_t blkno, const void* data)
 
     /* write the encrypted sector */
     myst_blkdev_t* rawdev = dev->rawdev;
-    ECHECK((*rawdev->put)(rawdev, blkno + dev->phdr.payload_offset, v->buf));
+    ECHECK((*rawdev->put)(rawdev, blkno + dev->phdr.payload_offset, locals->buf));
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }
@@ -156,39 +156,39 @@ static int _read_phdr(myst_blkdev_t* rawdev, luks_phdr_t* phdr)
 {
     int ret = 0;
     static uint8_t _magic[] = LUKS_MAGIC_INITIALIZER;
-    struct vars
+    struct locals
     {
         union {
             luks_phdr_t phdr;
             uint8_t sectors[2*LUKS_SECTOR_SIZE];
         } u;
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
     if (!rawdev)
         ERAISE(-EINVAL);
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     /* read the first two sectors of the raw devices */
-    ECHECK((rawdev->get)(rawdev, 0, &v->u.sectors[0]));
-    ECHECK((rawdev->get)(rawdev, 0, &v->u.sectors[LUKS_SECTOR_SIZE]));
+    ECHECK((rawdev->get)(rawdev, 0, &locals->u.sectors[0]));
+    ECHECK((rawdev->get)(rawdev, 0, &locals->u.sectors[LUKS_SECTOR_SIZE]));
 
     /* check the LUKS magic bytes */
-    if (memcmp(v->u.phdr.magic, _magic, LUKS_MAGIC_SIZE) != 0)
+    if (memcmp(locals->u.phdr.magic, _magic, LUKS_MAGIC_SIZE) != 0)
         ERAISE(-EINVAL);
 
     if (phdr)
     {
-        memcpy(phdr, &v->u.phdr, sizeof(luks_phdr_t));
+        memcpy(phdr, &locals->u.phdr, sizeof(luks_phdr_t));
         _fix_phdr_byte_order(phdr);
     }
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }
@@ -202,11 +202,11 @@ int myst_luksblkdev_open(
     int ret = 0;
     blkdev_t* dev = NULL;
     uint8_t* mk = NULL;
-    struct vars
+    struct locals
     {
         luks_phdr_t phdr;
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
     if (blkdev)
         *blkdev = NULL;
@@ -215,22 +215,22 @@ int myst_luksblkdev_open(
     if (!rawdev || !masterkey || !blkdev)
         ERAISE(-EINVAL);
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     /* read the LUKS phdr */
-    ECHECK(_read_phdr(rawdev, &v->phdr));
+    ECHECK(_read_phdr(rawdev, &locals->phdr));
 
     /* if masterkey size is wrong */
-    if (masterkey_bytes != v->phdr.key_bytes)
+    if (masterkey_bytes != locals->phdr.key_bytes)
         ERAISE(-EINVAL);
 
     /* allocate the master key */
-    if (!(mk = (uint8_t*)calloc(1, v->phdr.key_bytes)))
+    if (!(mk = (uint8_t*)calloc(1, locals->phdr.key_bytes)))
         ERAISE(-ENOMEM);
 
     /* clone the master key */
-    memcpy(mk, masterkey, v->phdr.key_bytes);
+    memcpy(mk, masterkey, locals->phdr.key_bytes);
 
     /* allocate the block device */
     if (!(dev = (blkdev_t*)calloc(1, sizeof(blkdev_t))))
@@ -242,7 +242,7 @@ int myst_luksblkdev_open(
     dev->base.get = _get;
     dev->rawdev = rawdev;
     dev->magic = LUKSBLKDEV_MAGIC;
-    dev->phdr = v->phdr;
+    dev->phdr = locals->phdr;
     dev->masterkey = mk;
 
     *blkdev = &dev->base;
@@ -251,8 +251,8 @@ int myst_luksblkdev_open(
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     if (dev)
         free(dev);
