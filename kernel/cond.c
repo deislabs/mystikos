@@ -255,6 +255,7 @@ int myst_cond_requeue(
         for (myst_thread_t* p = requeues.front; p; p = next)
         {
             next = p->qnext;
+            p->signal.cond_wait = c2;
             myst_thread_queue_push_back(&c2->queue, p);
         }
     }
