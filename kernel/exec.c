@@ -762,29 +762,29 @@ static int _setup_exe_link(const char* path)
 {
     int ret = 0;
     pid_t pid = (pid_t)myst_getpid();
-    struct vars
+    struct locals
     {
         char buf[PATH_MAX];
         char target[PATH_MAX];
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
-    if (myst_normalize(path, v->target, sizeof(v->target)) != 0)
+    if (myst_normalize(path, locals->target, sizeof(locals->target)) != 0)
         ERAISE(-EINVAL);
 
-    snprintf(v->buf, sizeof(v->buf), "/proc/%u", pid);
-    ECHECK(myst_mkdirhier(v->buf, 0777));
+    snprintf(locals->buf, sizeof(locals->buf), "/proc/%u", pid);
+    ECHECK(myst_mkdirhier(locals->buf, 0777));
 
-    snprintf(v->buf, sizeof(v->buf), "/proc/%u/exe", pid);
-    ECHECK(myst_syscall_symlink(v->target, v->buf));
+    snprintf(locals->buf, sizeof(locals->buf), "/proc/%u/exe", pid);
+    ECHECK(myst_syscall_symlink(locals->target, locals->buf));
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }

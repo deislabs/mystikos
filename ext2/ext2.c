@@ -190,16 +190,16 @@ static ssize_t _read(myst_blkdev_t* dev, size_t offset, void* data, size_t size)
     uint32_t rem;
     uint8_t* ptr;
     const size_t blksz = MYST_BLKSIZE;
-    struct vars
+    struct locals
     {
         uint8_t blk[MYST_BLKSIZE];
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
     if (!dev || !data)
         goto done;
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         goto done;
 
     /* calculate the block number */
@@ -226,7 +226,7 @@ static ssize_t _read(myst_blkdev_t* dev, size_t offset, void* data, size_t size)
             uint32_t off; /* offset into this block */
             uint32_t len; /* bytes to read from this block */
 
-            if (dev->get(dev, i, v->blk) != 0)
+            if (dev->get(dev, i, locals->blk) != 0)
                 goto done;
 
             /* If first block */
@@ -240,7 +240,7 @@ static ssize_t _read(myst_blkdev_t* dev, size_t offset, void* data, size_t size)
             if (len > rem)
                 len = rem;
 
-            memcpy(ptr, &v->blk[off], len);
+            memcpy(ptr, &locals->blk[off], len);
             rem -= len;
             ptr += len;
         }
@@ -250,8 +250,8 @@ static ssize_t _read(myst_blkdev_t* dev, size_t offset, void* data, size_t size)
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }
@@ -268,11 +268,11 @@ static ssize_t _write(
     uint32_t rem;
     uint8_t* ptr;
     const size_t blksz = MYST_BLKSIZE;
-    struct vars
+    struct locals
     {
         uint8_t blk[MYST_BLKSIZE];
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
     if (!dev || !data)
         goto done;
@@ -295,7 +295,7 @@ static ssize_t _write(
     }
     else
     {
-        if (!(v = malloc(sizeof(struct vars))))
+        if (!(locals = malloc(sizeof(struct locals))))
             goto done;
 
         for (i = blkno, rem = size, ptr = (uint8_t*)data; rem; i++)
@@ -304,7 +304,7 @@ static ssize_t _write(
             uint32_t len; /* bytes to write from this block */
 
             /* Fetch the block */
-            if (dev->get(dev, i, v->blk) != 0)
+            if (dev->get(dev, i, locals->blk) != 0)
                 goto done;
 
             /* If first block */
@@ -318,12 +318,12 @@ static ssize_t _write(
             if (len > rem)
                 len = rem;
 
-            memcpy(&v->blk[off], ptr, len);
+            memcpy(&locals->blk[off], ptr, len);
             rem -= len;
             ptr += len;
 
             /* Rewrite the block */
-            if (dev->put(dev, i, v->blk) != 0)
+            if (dev->put(dev, i, locals->blk) != 0)
                 goto done;
         }
     }
@@ -332,8 +332,8 @@ static ssize_t _write(
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }
@@ -621,14 +621,14 @@ done:
 static int _get_blkno(ext2_t* ext2, uint32_t* blkno)
 {
     int ret = 0;
-    struct vars
+    struct locals
     {
         ext2_block_t bitmap;
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
     uint32_t grpno;
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     /* Clear any block number */
@@ -641,16 +641,16 @@ static int _get_blkno(ext2_t* ext2, uint32_t* blkno)
 
         /* Read the bitmap */
 
-        ECHECK(ext2_read_block_bitmap(ext2, grpno, &v->bitmap));
+        ECHECK(ext2_read_block_bitmap(ext2, grpno, &locals->bitmap));
 
         /* Scan the bitmap, looking for free bit */
         {
-            const uint64_t* p = (const uint64_t*)v->bitmap.data;
+            const uint64_t* p = (const uint64_t*)locals->bitmap.data;
 
             /* skip over full long words */
             {
                 const uint64_t x = 0xffffffffffffffff;
-                size_t n = v->bitmap.size / sizeof(uint64_t);
+                size_t n = locals->bitmap.size / sizeof(uint64_t);
                 size_t i = n;
 
                 while (n > 4 && p[0] == x && p[1] == x && p[2] == x &&
@@ -669,11 +669,12 @@ static int _get_blkno(ext2_t* ext2, uint32_t* blkno)
                 lblkno = (8 * sizeof(uint64_t)) * (n - i);
             }
 
-            for (; lblkno < v->bitmap.size * 8; lblkno++)
+            for (; lblkno < locals->bitmap.size * 8; lblkno++)
             {
-                if (!ext2_test_bit(v->bitmap.data, v->bitmap.size, lblkno))
+                if (!ext2_test_bit(
+                        locals->bitmap.data, locals->bitmap.size, lblkno))
                 {
-                    _set_bit(v->bitmap.data, v->bitmap.size, lblkno);
+                    _set_bit(locals->bitmap.data, locals->bitmap.size, lblkno);
                     *blkno = _make_blkno(ext2, grpno, lblkno);
                     break;
                 }
@@ -701,12 +702,12 @@ static int _get_blkno(ext2_t* ext2, uint32_t* blkno)
     }
 
     /* Write the bitmap */
-    ECHECK(_write_block_bitmap(ext2, grpno, &v->bitmap));
+    ECHECK(_write_block_bitmap(ext2, grpno, &locals->bitmap));
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }
@@ -822,13 +823,13 @@ static int _get_ino(ext2_t* ext2, ext2_ino_t* ino)
 {
     int ret = 0;
     uint32_t grpno;
-    struct vars
+    struct locals
     {
         ext2_block_t bitmap;
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     /* Clear the node number */
@@ -840,14 +841,14 @@ static int _get_ino(ext2_t* ext2, ext2_ino_t* ino)
         uint32_t lino;
 
         /* Read the bitmap */
-        ECHECK(ext2_read_inode_bitmap(ext2, grpno, &v->bitmap));
+        ECHECK(ext2_read_inode_bitmap(ext2, grpno, &locals->bitmap));
 
         /* Scan the bitmap, looking for free bit */
-        for (lino = 0; lino < v->bitmap.size * 8; lino++)
+        for (lino = 0; lino < locals->bitmap.size * 8; lino++)
         {
-            if (!ext2_test_bit(v->bitmap.data, v->bitmap.size, lino))
+            if (!ext2_test_bit(locals->bitmap.data, locals->bitmap.size, lino))
             {
-                _set_bit(v->bitmap.data, v->bitmap.size, lino);
+                _set_bit(locals->bitmap.data, locals->bitmap.size, lino);
                 *ino = ext2_make_ino(ext2, grpno, lino);
                 break;
             }
@@ -870,12 +871,12 @@ static int _get_ino(ext2_t* ext2, ext2_ino_t* ino)
     ECHECK(_write_group(ext2, grpno));
 
     /* Write the bitmap */
-    ECHECK(_write_inode_bitmap(ext2, grpno, &v->bitmap));
+    ECHECK(_write_inode_bitmap(ext2, grpno, &locals->bitmap));
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }
@@ -885,13 +886,13 @@ static int _put_ino(ext2_t* ext2, ext2_ino_t ino)
     int ret = 0;
     uint32_t grpno;
     uint32_t lino;
-    struct vars
+    struct locals
     {
         ext2_block_t bitmap;
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     /* get the group number from the inode number */
@@ -899,16 +900,16 @@ static int _put_ino(ext2_t* ext2, ext2_ino_t ino)
         ERAISE(-EINVAL);
 
     /* read the inode bitmap for this group */
-    ECHECK(ext2_read_inode_bitmap(ext2, grpno, &v->bitmap));
+    ECHECK(ext2_read_inode_bitmap(ext2, grpno, &locals->bitmap));
 
     /* get the logical inode number from the inode number */
-    if ((lino = _ino_to_lino(ext2, ino)) >= (v->bitmap.size * 8))
+    if ((lino = _ino_to_lino(ext2, ino)) >= (locals->bitmap.size * 8))
     {
         ERAISE(-EINVAL);
     }
 
     /* clear the bitmap bit */
-    _clear_bit(v->bitmap.data, v->bitmap.size, lino);
+    _clear_bit(locals->bitmap.data, locals->bitmap.size, lino);
 
     /* update the global inode count and write the superblock */
     ext2->sb.s_free_inodes_count++;
@@ -919,12 +920,12 @@ static int _put_ino(ext2_t* ext2, ext2_ino_t ino)
     ECHECK(_write_group(ext2, grpno));
 
     /* Write the bitmap */
-    ECHECK(_write_inode_bitmap(ext2, grpno, &v->bitmap));
+    ECHECK(_write_inode_bitmap(ext2, grpno, &locals->bitmap));
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }
@@ -1067,13 +1068,13 @@ static int _load_file_by_inode(
     size_t* size)
 {
     int ret = 0;
-    struct vars
+    struct locals
     {
         myst_file_t file;
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     /* Initialize the output */
@@ -1083,23 +1084,23 @@ static int _load_file_by_inode(
     /* load the contents of the file */
     {
         /* create a dummy file struct */
-        memset(v, 0, sizeof(struct vars));
-        v->file.magic = FILE_MAGIC;
-        v->file.ino = ino;
-        v->file.inode = *inode;
-        v->file.offset = 0;
-        v->file.access = O_RDONLY;
-        v->file.open_flags = O_RDONLY;
+        memset(locals, 0, sizeof(struct locals));
+        locals->file.magic = FILE_MAGIC;
+        locals->file.ino = ino;
+        locals->file.inode = *inode;
+        locals->file.offset = 0;
+        locals->file.access = O_RDONLY;
+        locals->file.open_flags = O_RDONLY;
 
         /* load the data */
-        ECHECK(_load_file(ext2, &v->file, data, size));
-        _file_clear(&v->file);
+        ECHECK(_load_file(ext2, &locals->file, data, size));
+        _file_clear(&locals->file);
     }
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }
@@ -1111,38 +1112,38 @@ static int _load_file_by_ino(
     size_t* size)
 {
     int ret = 0;
-    struct vars
+    struct locals
     {
         ext2_inode_t inode;
         myst_file_t file;
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
-    ECHECK((ext2_read_inode(ext2, ino, &v->inode)));
+    ECHECK((ext2_read_inode(ext2, ino, &locals->inode)));
 
     /* load the contents of the file */
     {
         /* create a dummy file struct */
-        memset(&v->file, 0, sizeof(v->file));
-        v->file.magic = FILE_MAGIC;
-        v->file.ino = ino;
-        v->file.inode = v->inode;
-        v->file.offset = 0;
-        v->file.access = O_RDONLY;
-        v->file.open_flags = O_RDONLY;
+        memset(&locals->file, 0, sizeof(locals->file));
+        locals->file.magic = FILE_MAGIC;
+        locals->file.ino = ino;
+        locals->file.inode = locals->inode;
+        locals->file.offset = 0;
+        locals->file.access = O_RDONLY;
+        locals->file.open_flags = O_RDONLY;
 
         /* load the data */
-        ECHECK(_load_file(ext2, &v->file, data, size));
-        _file_clear(&v->file);
+        ECHECK(_load_file(ext2, &locals->file, data, size));
+        _file_clear(&locals->file);
     }
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }
@@ -1219,7 +1220,7 @@ static int _path_to_ino_recursive(
     char target_out[PATH_MAX])
 {
     int ret = 0;
-    struct vars
+    struct locals
     {
         char buf[EXT2_PATH_MAX];
         char target[EXT2_PATH_MAX];
@@ -1227,8 +1228,8 @@ static int _path_to_ino_recursive(
         ext2_ino_t ino;
         const char* toks[32];
     };
-    struct vars* v = NULL;
-    const uint8_t NELEMENTS = sizeof(v->toks) / sizeof(v->toks[0]);
+    struct locals* locals = NULL;
+    const uint8_t NELEMENTS = sizeof(locals->toks) / sizeof(locals->toks[0]);
     uint8_t ntoks = 0;
     char* p;
     char* save;
@@ -1237,7 +1238,7 @@ static int _path_to_ino_recursive(
     void* data = NULL;
     size_t size;
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     if (dir_ino_out)
@@ -1246,48 +1247,49 @@ static int _path_to_ino_recursive(
     if (file_ino_out)
         *file_ino_out = 0;
 
-    if (myst_strlcpy(v->buf, path, sizeof(v->buf)) >= EXT2_PATH_MAX)
+    if (myst_strlcpy(locals->buf, path, sizeof(locals->buf)) >= EXT2_PATH_MAX)
         ERAISE(-ENAMETOOLONG);
 
     if (path[0] == '/')
         current_ino = EXT2_ROOT_INO;
 
     /* split the path into components */
-    for (p = strtok_r(v->buf, "/", &save); p; p = strtok_r(NULL, "/", &save))
+    for (p = strtok_r(locals->buf, "/", &save); p;
+         p = strtok_r(NULL, "/", &save))
     {
         if (ntoks == NELEMENTS)
             ERAISE(-ENAMETOOLONG);
 
-        v->toks[ntoks++] = p;
+        locals->toks[ntoks++] = p;
     }
 
     /* load each inode along the path until found */
     for (i = 0; i < ntoks; i++)
     {
-        ECHECK(_load_dirent(ext2, current_ino, v->toks[i], &v->ent));
-        assert(v->ent.inode != 0);
-        v->ino = v->ent.inode;
+        ECHECK(_load_dirent(ext2, current_ino, locals->toks[i], &locals->ent));
+        assert(locals->ent.inode != 0);
+        locals->ino = locals->ent.inode;
 
         /* if this is a symbolic link */
-        if (v->ent.file_type == EXT2_FT_SYMLINK)
+        if (locals->ent.file_type == EXT2_FT_SYMLINK)
         {
             /* only check follow tag on final element */
             if (i + 1 != ntoks || follow == FOLLOW)
             {
                 /* load the target from the symlink */
-                ECHECK((_load_file_by_ino(ext2, v->ino, &data, &size)));
+                ECHECK((_load_file_by_ino(ext2, locals->ino, &data, &size)));
 
                 if (size >= EXT2_PATH_MAX)
                     ERAISE(-ENAMETOOLONG);
 
-                memcpy(v->target, data, size);
-                v->target[size] = '\0';
+                memcpy(locals->target, data, size);
+                locals->target[size] = '\0';
 
-                if (*v->target == '/')
+                if (*locals->target == '/')
                 {
                     if (target_out)
                     {
-                        myst_strlcpy(target_out, v->target, PATH_MAX);
+                        myst_strlcpy(target_out, locals->target, PATH_MAX);
 
                         // Copy over rest of unresolved tokens
                         if (i + 1 != ntoks)
@@ -1299,8 +1301,9 @@ static int _path_to_ino_recursive(
                                     ERAISE_QUIET(-ENAMETOOLONG);
 
                                 if (myst_strlcat(
-                                        target_out, v->toks[j], PATH_MAX) >=
-                                    PATH_MAX)
+                                        target_out,
+                                        locals->toks[j],
+                                        PATH_MAX) >= PATH_MAX)
                                     ERAISE_QUIET(-ENAMETOOLONG);
                             }
                         }
@@ -1315,11 +1318,11 @@ static int _path_to_ino_recursive(
 
                 ECHECK(_path_to_ino_recursive(
                     ext2,
-                    v->target,
+                    locals->target,
                     current_ino,
                     FOLLOW,
                     &current_ino,
-                    &v->ino,
+                    &locals->ino,
                     realpath,
                     target_out));
 
@@ -1330,11 +1333,11 @@ static int _path_to_ino_recursive(
         else
         {
             myst_strlcat(realpath, "/", PATH_MAX);
-            myst_strlcat(realpath, v->toks[i], PATH_MAX);
+            myst_strlcat(realpath, locals->toks[i], PATH_MAX);
         }
 
         previous_ino = current_ino;
-        current_ino = v->ino;
+        current_ino = locals->ino;
     }
 
     if (dir_ino_out)
@@ -1347,8 +1350,8 @@ static int _path_to_ino_recursive(
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     if (data)
         free(data);
@@ -1399,22 +1402,22 @@ static int _path_to_ino(
     ext2_ino_t* file_ino_out)
 {
     int ret = 0;
-    struct vars
+    struct locals
     {
         char realpath[PATH_MAX];
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     ECHECK(_path_to_ino_realpath(
-        ext2, path, follow, dir_ino_out, file_ino_out, v->realpath, NULL));
+        ext2, path, follow, dir_ino_out, file_ino_out, locals->realpath, NULL));
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }
@@ -1490,21 +1493,21 @@ static int _path_to_inode(
     myst_fs_t** fs_out)
 {
     int ret = 0;
-    struct vars
+    struct locals
     {
         char realpath[PATH_MAX];
         char target[PATH_MAX];
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     if (suffix)
     {
         *suffix = '\0';
         *fs_out = NULL;
-        *v->target = '\0';
+        *locals->target = '\0';
         ECHECK(_path_to_inode_realpath(
             ext2,
             path,
@@ -1513,12 +1516,12 @@ static int _path_to_inode(
             file_ino_out,
             dir_inode_out,
             file_inode_out,
-            v->realpath,
-            v->target));
+            locals->realpath,
+            locals->target));
 
-        if (*v->target != '\0' && ext2->resolve)
+        if (*locals->target != '\0' && ext2->resolve)
         {
-            ECHECK((*ext2->resolve)(v->target, suffix, fs_out));
+            ECHECK((*ext2->resolve)(locals->target, suffix, fs_out));
         }
     }
     else
@@ -1531,14 +1534,14 @@ static int _path_to_inode(
             file_ino_out,
             dir_inode_out,
             file_inode_out,
-            v->realpath,
+            locals->realpath,
             NULL));
     }
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }
@@ -1750,15 +1753,15 @@ static int _inode_add_blkno(
     size_t double_indirect_max = single_indirect_max + double_indirect_count;
     size_t triple_indirect_count = double_indirect_count * blknos_per_block;
     size_t triple_indirect_max = double_indirect_max + triple_indirect_count;
-    struct vars
+    struct locals
     {
         ext2_block_t iblock;
         ext2_block_t jblock;
         ext2_block_t kblock;
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     if (new_blkno == 0)
@@ -1780,7 +1783,7 @@ static int _inode_add_blkno(
     {
         const size_t i = index - direct_max;
         uint32_t iblkno = inode->i_block[EXT2_SINGLE_INDIRECT_BLOCK];
-        uint32_t* idata = (uint32_t*)v->iblock.data;
+        uint32_t* idata = (uint32_t*)locals->iblock.data;
 
         /* blkno-block does not exist yet */
         if (iblkno == 0)
@@ -1793,14 +1796,14 @@ static int _inode_add_blkno(
             ECHECK(_write_inode(ext2, ino, inode));
 
             /* initialize, update and write the i-blkno-block */
-            _init_block(&v->iblock, ext2->block_size);
+            _init_block(&locals->iblock, ext2->block_size);
             idata[i] = new_blkno;
-            ECHECK(_write_block(ext2, iblkno, &v->iblock));
+            ECHECK(_write_block(ext2, iblkno, &locals->iblock));
         }
         else
         {
             /* read the blkno-block */
-            ECHECK(ext2_read_block(ext2, iblkno, &v->iblock));
+            ECHECK(ext2_read_block(ext2, iblkno, &locals->iblock));
 
             /* if entry is already in use */
             if (idata[i] != 0)
@@ -1808,7 +1811,7 @@ static int _inode_add_blkno(
 
             /* update and write the i-blkno-block */
             idata[i] = new_blkno;
-            ECHECK(_write_block(ext2, iblkno, &v->iblock));
+            ECHECK(_write_block(ext2, iblkno, &locals->iblock));
         }
 
         ret = 0;
@@ -1823,8 +1826,8 @@ static int _inode_add_blkno(
         const size_t j = n % blknos_per_block;
         uint32_t iblkno = inode->i_block[EXT2_DOUBLE_INDIRECT_BLOCK];
         uint32_t jblkno = 0;
-        uint32_t* idata = (uint32_t*)v->iblock.data;
-        uint32_t* jdata = (uint32_t*)v->jblock.data;
+        uint32_t* idata = (uint32_t*)locals->iblock.data;
+        uint32_t* jdata = (uint32_t*)locals->jblock.data;
 
         assert(n >= 0 && n <= double_indirect_count);
 
@@ -1841,18 +1844,18 @@ static int _inode_add_blkno(
             ECHECK(_write_inode(ext2, ino, inode));
 
             /* write the i-blkno-block */
-            _init_block(&v->iblock, ext2->block_size);
+            _init_block(&locals->iblock, ext2->block_size);
             idata[i] = jblkno;
-            ECHECK(_write_block(ext2, iblkno, &v->iblock));
+            ECHECK(_write_block(ext2, iblkno, &locals->iblock));
 
             /* write the j-blkno-block */
-            _init_block(&v->jblock, ext2->block_size);
+            _init_block(&locals->jblock, ext2->block_size);
             jdata[j] = new_blkno;
-            ECHECK(_write_block(ext2, jblkno, &v->jblock));
+            ECHECK(_write_block(ext2, jblkno, &locals->jblock));
         }
         else /* iblkno != 0 */
         {
-            ECHECK(ext2_read_block(ext2, iblkno, &v->iblock));
+            ECHECK(ext2_read_block(ext2, iblkno, &locals->iblock));
             jblkno = idata[i];
 
             if (jblkno == 0)
@@ -1862,17 +1865,17 @@ static int _inode_add_blkno(
 
                 /* write the i-blkno-block */
                 idata[i] = jblkno;
-                ECHECK(_write_block(ext2, iblkno, &v->iblock));
+                ECHECK(_write_block(ext2, iblkno, &locals->iblock));
 
                 /* write the j-blkno-block */
-                _init_block(&v->jblock, ext2->block_size);
+                _init_block(&locals->jblock, ext2->block_size);
                 jdata[j] = new_blkno;
-                ECHECK(_write_block(ext2, jblkno, &v->jblock));
+                ECHECK(_write_block(ext2, jblkno, &locals->jblock));
             }
             else
             {
                 /* read the j-blkno-block */
-                ECHECK(ext2_read_block(ext2, jblkno, &v->jblock));
+                ECHECK(ext2_read_block(ext2, jblkno, &locals->jblock));
 
                 /* if entry is already in use */
                 if (jdata[j] != 0)
@@ -1880,7 +1883,7 @@ static int _inode_add_blkno(
 
                 /* update and write the j-blkno-block */
                 jdata[j] = new_blkno;
-                ECHECK(_write_block(ext2, jblkno, &v->jblock));
+                ECHECK(_write_block(ext2, jblkno, &locals->jblock));
             }
         }
 
@@ -1898,9 +1901,9 @@ static int _inode_add_blkno(
         uint32_t iblkno = inode->i_block[EXT2_TRIPLE_INDIRECT_BLOCK];
         uint32_t jblkno = 0;
         uint32_t kblkno = 0;
-        uint32_t* idata = (uint32_t*)v->iblock.data;
-        uint32_t* jdata = (uint32_t*)v->jblock.data;
-        uint32_t* kdata = (uint32_t*)v->kblock.data;
+        uint32_t* idata = (uint32_t*)locals->iblock.data;
+        uint32_t* jdata = (uint32_t*)locals->jblock.data;
+        uint32_t* kdata = (uint32_t*)locals->kblock.data;
 
         assert(n >= 0 && n <= double_indirect_count);
 
@@ -1920,23 +1923,23 @@ static int _inode_add_blkno(
             ECHECK(_write_inode(ext2, ino, inode));
 
             /* write the i-blkno-block */
-            _init_block(&v->iblock, ext2->block_size);
+            _init_block(&locals->iblock, ext2->block_size);
             idata[i] = jblkno;
-            ECHECK(_write_block(ext2, iblkno, &v->iblock));
+            ECHECK(_write_block(ext2, iblkno, &locals->iblock));
 
             /* write the j-blkno-block */
-            _init_block(&v->jblock, ext2->block_size);
+            _init_block(&locals->jblock, ext2->block_size);
             jdata[j] = kblkno;
-            ECHECK(_write_block(ext2, jblkno, &v->jblock));
+            ECHECK(_write_block(ext2, jblkno, &locals->jblock));
 
             /* write the k-blkno-block */
-            _init_block(&v->kblock, ext2->block_size);
+            _init_block(&locals->kblock, ext2->block_size);
             kdata[k] = new_blkno;
-            ECHECK(_write_block(ext2, kblkno, &v->kblock));
+            ECHECK(_write_block(ext2, kblkno, &locals->kblock));
         }
         else /* iblkno != 0 */
         {
-            ECHECK(ext2_read_block(ext2, iblkno, &v->iblock));
+            ECHECK(ext2_read_block(ext2, iblkno, &locals->iblock));
             jblkno = idata[i];
 
             if (jblkno == 0)
@@ -1949,22 +1952,22 @@ static int _inode_add_blkno(
 
                 /* write the j-blkno-block */
                 idata[i] = jblkno;
-                ECHECK(_write_block(ext2, iblkno, &v->iblock));
+                ECHECK(_write_block(ext2, iblkno, &locals->iblock));
 
                 /* write the j-blkno-block */
-                _init_block(&v->jblock, ext2->block_size);
+                _init_block(&locals->jblock, ext2->block_size);
                 jdata[j] = kblkno;
-                ECHECK(_write_block(ext2, jblkno, &v->jblock));
+                ECHECK(_write_block(ext2, jblkno, &locals->jblock));
 
                 /* write the k-blkno-block */
-                _init_block(&v->kblock, ext2->block_size);
+                _init_block(&locals->kblock, ext2->block_size);
                 kdata[k] = new_blkno;
-                ECHECK(_write_block(ext2, kblkno, &v->kblock));
+                ECHECK(_write_block(ext2, kblkno, &locals->kblock));
             }
             else /* jblkno != 0 */
             {
                 /* read the j-blkno-block */
-                ECHECK(ext2_read_block(ext2, jblkno, &v->jblock));
+                ECHECK(ext2_read_block(ext2, jblkno, &locals->jblock));
                 kblkno = jdata[j];
 
                 if (kblkno == 0)
@@ -1974,17 +1977,17 @@ static int _inode_add_blkno(
 
                     /* write the j-blkno-block */
                     jdata[j] = kblkno;
-                    ECHECK(_write_block(ext2, jblkno, &v->jblock));
+                    ECHECK(_write_block(ext2, jblkno, &locals->jblock));
 
                     /* write the k-blkno-block */
-                    _init_block(&v->kblock, ext2->block_size);
+                    _init_block(&locals->kblock, ext2->block_size);
                     kdata[k] = new_blkno;
-                    ECHECK(_write_block(ext2, kblkno, &v->kblock));
+                    ECHECK(_write_block(ext2, kblkno, &locals->kblock));
                 }
                 else
                 {
                     /* read the k-blkno-block */
-                    ECHECK(ext2_read_block(ext2, kblkno, &v->kblock));
+                    ECHECK(ext2_read_block(ext2, kblkno, &locals->kblock));
 
                     /* if entry is already in use */
                     if (kdata[k] != 0)
@@ -1992,7 +1995,7 @@ static int _inode_add_blkno(
 
                     /* update and write the k-blkno-block */
                     kdata[k] = new_blkno;
-                    ECHECK(_write_block(ext2, kblkno, &v->kblock));
+                    ECHECK(_write_block(ext2, kblkno, &locals->kblock));
                 }
             }
         }
@@ -2003,8 +2006,8 @@ static int _inode_add_blkno(
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }
@@ -2025,15 +2028,15 @@ static int _inode_put_blkno(
     size_t double_indirect_max = single_indirect_max + double_indirect_count;
     size_t triple_indirect_count = double_indirect_count * blknos_per_block;
     size_t triple_indirect_max = double_indirect_max + triple_indirect_count;
-    struct vars
+    struct locals
     {
         ext2_block_t iblock;
         ext2_block_t jblock;
         ext2_block_t kblock;
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     /* handle direct block numbers */
@@ -2054,13 +2057,13 @@ static int _inode_put_blkno(
     {
         const size_t i = index - direct_max;
         const uint32_t iblkno = inode->i_block[EXT2_SINGLE_INDIRECT_BLOCK];
-        uint32_t* idata = (uint32_t*)v->iblock.data;
+        uint32_t* idata = (uint32_t*)locals->iblock.data;
         uint32_t blkno;
 
         if (iblkno == 0)
             goto done;
 
-        ECHECK(ext2_read_block(ext2, iblkno, &v->iblock));
+        ECHECK(ext2_read_block(ext2, iblkno, &locals->iblock));
 
         if ((blkno = idata[i]) == 0)
             goto done;
@@ -2075,7 +2078,7 @@ static int _inode_put_blkno(
         }
         else
         {
-            ECHECK(_write_block(ext2, iblkno, &v->iblock));
+            ECHECK(_write_block(ext2, iblkno, &locals->iblock));
         }
 
         goto done;
@@ -2089,19 +2092,19 @@ static int _inode_put_blkno(
         const size_t j = n % blknos_per_block;
         uint32_t iblkno = inode->i_block[EXT2_DOUBLE_INDIRECT_BLOCK];
         uint32_t jblkno;
-        uint32_t* idata = (uint32_t*)v->iblock.data;
-        uint32_t* jdata = (uint32_t*)v->jblock.data;
+        uint32_t* idata = (uint32_t*)locals->iblock.data;
+        uint32_t* jdata = (uint32_t*)locals->jblock.data;
         uint32_t blkno;
 
         if (iblkno == 0)
             goto done;
 
-        ECHECK(ext2_read_block(ext2, iblkno, &v->iblock));
+        ECHECK(ext2_read_block(ext2, iblkno, &locals->iblock));
 
         if ((jblkno = idata[i]) == 0)
             goto done;
 
-        ECHECK(ext2_read_block(ext2, jblkno, &v->jblock));
+        ECHECK(ext2_read_block(ext2, jblkno, &locals->jblock));
 
         if ((blkno = jdata[j]) == 0)
             goto done;
@@ -2121,12 +2124,12 @@ static int _inode_put_blkno(
             }
             else
             {
-                ECHECK(_write_block(ext2, iblkno, &v->iblock));
+                ECHECK(_write_block(ext2, iblkno, &locals->iblock));
             }
         }
         else
         {
-            ECHECK(_write_block(ext2, jblkno, &v->jblock));
+            ECHECK(_write_block(ext2, jblkno, &locals->jblock));
         }
 
         goto done;
@@ -2142,25 +2145,25 @@ static int _inode_put_blkno(
         uint32_t iblkno = inode->i_block[EXT2_TRIPLE_INDIRECT_BLOCK];
         uint32_t jblkno;
         uint32_t kblkno;
-        uint32_t* idata = (uint32_t*)v->iblock.data;
-        uint32_t* jdata = (uint32_t*)v->jblock.data;
-        uint32_t* kdata = (uint32_t*)v->kblock.data;
+        uint32_t* idata = (uint32_t*)locals->iblock.data;
+        uint32_t* jdata = (uint32_t*)locals->jblock.data;
+        uint32_t* kdata = (uint32_t*)locals->kblock.data;
         uint32_t blkno;
 
         if (iblkno == 0)
             goto done;
 
-        ECHECK(ext2_read_block(ext2, iblkno, &v->iblock));
+        ECHECK(ext2_read_block(ext2, iblkno, &locals->iblock));
 
         if ((jblkno = idata[i]) == 0)
             goto done;
 
-        ECHECK(ext2_read_block(ext2, jblkno, &v->jblock));
+        ECHECK(ext2_read_block(ext2, jblkno, &locals->jblock));
 
         if ((kblkno = jdata[j]) == 0)
             goto done;
 
-        ECHECK(ext2_read_block(ext2, kblkno, &v->kblock));
+        ECHECK(ext2_read_block(ext2, kblkno, &locals->kblock));
 
         if ((blkno = kdata[k]) == 0)
             goto done;
@@ -2185,17 +2188,17 @@ static int _inode_put_blkno(
                 }
                 else
                 {
-                    ECHECK(_write_block(ext2, iblkno, &v->iblock));
+                    ECHECK(_write_block(ext2, iblkno, &locals->iblock));
                 }
             }
             else
             {
-                ECHECK(_write_block(ext2, jblkno, &v->jblock));
+                ECHECK(_write_block(ext2, jblkno, &locals->jblock));
             }
         }
         else
         {
-            ECHECK(_write_block(ext2, kblkno, &v->kblock));
+            ECHECK(_write_block(ext2, kblkno, &locals->kblock));
         }
 
         goto done;
@@ -2203,8 +2206,8 @@ static int _inode_put_blkno(
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }
@@ -2254,17 +2257,17 @@ static int _ftruncate(ext2_t* ext2, myst_file_t* file, off_t length, bool isdir)
     size_t file_size;
     size_t num_blocks;
     size_t first;
-    struct vars
+    struct locals
     {
         ext2_block_t block;
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
     /* Fail if directory */
     if (!isdir && S_ISDIR(file->inode.i_mode))
         ERAISE(-EINVAL);
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     /* get the file size */
@@ -2306,9 +2309,9 @@ static int _ftruncate(ext2_t* ext2, myst_file_t* file, off_t length, bool isdir)
 
                 if (size)
                 {
-                    ECHECK(ext2_read_block(ext2, blkno, &v->block));
-                    memset(v->block.data + offset, 0, size);
-                    ECHECK(_write_block(ext2, blkno, &v->block));
+                    ECHECK(ext2_read_block(ext2, blkno, &locals->block));
+                    memset(locals->block.data + offset, 0, size);
+                    ECHECK(_write_block(ext2, blkno, &locals->block));
                 }
             }
         }
@@ -2327,8 +2330,8 @@ static int _ftruncate(ext2_t* ext2, myst_file_t* file, off_t length, bool isdir)
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }
@@ -2341,49 +2344,49 @@ static int _inode_write_data(
     size_t size)
 {
     int ret = 0;
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
     const uint8_t* p = data;
     size_t r = size;
     bool isdir = S_ISDIR(inode->i_mode);
-    struct vars
+    struct locals
     {
         myst_file_t file;
         uint8_t buf[EXT2_MAX_BLOCK_SIZE];
     };
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
-    memset(&v->file, 0, sizeof(myst_file_t));
-    v->file.magic = FILE_MAGIC;
-    v->file.ino = ino;
-    v->file.inode = *inode;
-    v->file.offset = 0;
-    v->file.access = O_WRONLY;
-    v->file.open_flags = O_WRONLY;
+    memset(&locals->file, 0, sizeof(myst_file_t));
+    locals->file.magic = FILE_MAGIC;
+    locals->file.ino = ino;
+    locals->file.inode = *inode;
+    locals->file.offset = 0;
+    locals->file.access = O_WRONLY;
+    locals->file.open_flags = O_WRONLY;
 
     while (r)
     {
         size_t m = _min_size(r, ext2->block_size);
         ssize_t n;
 
-        memcpy(v->buf, p, m);
-        ECHECK(n = ext2_write(&ext2->base, &v->file, v->buf, m));
+        memcpy(locals->buf, p, m);
+        ECHECK(n = ext2_write(&ext2->base, &locals->file, locals->buf, m));
         p += n;
         r -= n;
     }
 
-    ECHECK(_ftruncate(ext2, &v->file, size, isdir));
+    ECHECK(_ftruncate(ext2, &locals->file, size, isdir));
 
-    memcpy(inode, &v->file.inode, sizeof(ext2_inode_t));
+    memcpy(inode, &locals->file.inode, sizeof(ext2_inode_t));
     _inode_set_size(inode, size);
 
 done:
 
-    _file_clear(&v->file);
+    _file_clear(&locals->file);
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }
@@ -2402,33 +2405,41 @@ static int _remove_dirent(ext2_t* ext2, const char* path)
     ext2_ino_t ino;
     const ext2_dirent_t* ent;
     myst_buf_t buf = MYST_BUF_INITIALIZER;
-    struct vars
+    struct locals
     {
         char dirname[EXT2_PATH_MAX];
         char filename[EXT2_PATH_MAX];
         ext2_inode_t inode;
         ext2_inode_t tinode;
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
     /* check parameters */
     if (!_ext2_valid(ext2) && !path)
         ERAISE(-EINVAL);
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
-    ECHECK(_split_path(path, v->dirname, v->filename));
+    ECHECK(_split_path(path, locals->dirname, locals->filename));
 
     /* load the directory inode */
     ECHECK(_path_to_inode(
-        ext2, v->dirname, FOLLOW, NULL, &ino, NULL, &v->inode, NULL, NULL));
+        ext2,
+        locals->dirname,
+        FOLLOW,
+        NULL,
+        &ino,
+        NULL,
+        &locals->inode,
+        NULL,
+        NULL));
 
     /* load the directory file contents */
-    ECHECK(_load_file_by_inode(ext2, ino, &v->inode, &data, &size));
+    ECHECK(_load_file_by_inode(ext2, ino, &locals->inode, &data, &size));
 
     /* find filename within this directory */
-    if (!(ent = _find_dirent(v->filename, data, size)))
+    if (!(ent = _find_dirent(locals->filename, data, size)))
         ERAISE(-ENOENT);
 
     /* disallow removal if filename refers to a non-empty directory */
@@ -2437,11 +2448,11 @@ static int _remove_dirent(ext2_t* ext2, const char* path)
         uint32_t count;
 
         /* read the inode */
-        ECHECK(ext2_read_inode(ext2, ent->inode, &v->tinode));
+        ECHECK(ext2_read_inode(ext2, ent->inode, &locals->tinode));
 
         /* load the directory file contents */
-        ECHECK(
-            _load_file_by_inode(ext2, ent->inode, &v->tinode, &tdata, &tsize));
+        ECHECK(_load_file_by_inode(
+            ext2, ent->inode, &locals->tinode, &tdata, &tsize));
 
         /* disallow removal if directory is non empty */
         ECHECK(_count_dirents(ext2, tdata, tsize, &count));
@@ -2454,7 +2465,7 @@ static int _remove_dirent(ext2_t* ext2, const char* path)
     /* convert from 'indexed' to 'linked list' directory format (if any) */
     {
         const size_t block_size = ext2->block_size;
-        const size_t file_size = _inode_get_size(&v->inode);
+        const size_t file_size = _inode_get_size(&locals->inode);
         const uint8_t* p = (const uint8_t*)data;
         const uint8_t* end = p + file_size;
         ssize_t prev = -1;
@@ -2524,20 +2535,20 @@ static int _remove_dirent(ext2_t* ext2, const char* path)
     }
 
     /* rewrite the directory, one block at a time */
-    ECHECK(_inode_write_data(ext2, ino, &v->inode, buf.data, buf.size));
+    ECHECK(_inode_write_data(ext2, ino, &locals->inode, buf.data, buf.size));
 
     /* if child was a directory, then decrement the link count */
     if (ent->file_type == EXT2_FT_DIR)
-        v->inode.i_links_count--;
+        locals->inode.i_links_count--;
 
-    _update_timestamps(&v->inode, CHANGE | MODIFY);
+    _update_timestamps(&locals->inode, CHANGE | MODIFY);
 
-    ECHECK(_write_inode(ext2, ino, &v->inode));
+    ECHECK(_write_inode(ext2, ino, &locals->inode));
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     if (data)
         free(data);
@@ -2622,53 +2633,53 @@ static int _create_dir_inode_and_block(
 {
     int ret = 0;
     uint32_t blkno;
-    struct vars
+    struct locals
     {
         ext2_inode_t inode;
         ext2_block_t block;
         ext2_dirent_t dot1;
         ext2_dirent_t dot2;
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
     /* Check parameters */
     if (!_ext2_valid(ext2) || !mode || !parent_ino || !ino)
         ERAISE(-EINVAL);
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     /* Initialize the inode */
     {
         const uint32_t t = (uint32_t)time(NULL);
 
-        memset(&v->inode, 0, sizeof(ext2_inode_t));
+        memset(&locals->inode, 0, sizeof(ext2_inode_t));
 
         /* Set the mode of the new file */
-        v->inode.i_mode = (S_IFDIR | mode);
+        locals->inode.i_mode = (S_IFDIR | mode);
 
         /* Set the uid and gid to root */
-        v->inode.i_uid = 0;
-        v->inode.i_gid = 0;
+        locals->inode.i_uid = 0;
+        locals->inode.i_gid = 0;
 
         /* Set the size of this file */
-        _inode_set_size(&v->inode, ext2->block_size);
+        _inode_set_size(&locals->inode, ext2->block_size);
 
         /* Set the access, creation, and mtime to the same value */
-        v->inode.i_atime = t;
-        v->inode.i_ctime = t;
-        v->inode.i_mtime = t;
+        locals->inode.i_atime = t;
+        locals->inode.i_ctime = t;
+        locals->inode.i_mtime = t;
 
         /* Linux-specific value */
-        v->inode.i_osd1 = 1;
+        locals->inode.i_osd1 = 1;
 
         /* The number of links is initially 2 */
-        v->inode.i_links_count = 2;
+        locals->inode.i_links_count = 2;
 
         /* Set the number of 512 byte blocks */
-        v->inode.i_blocks = ext2->block_size / 512;
+        locals->inode.i_blocks = ext2->block_size / 512;
 
-        _update_timestamps(&v->inode, ACCESS | CHANGE | MODIFY);
+        _update_timestamps(&locals->inode, ACCESS | CHANGE | MODIFY);
     }
 
     /* Assign an inode number */
@@ -2682,33 +2693,37 @@ static int _create_dir_inode_and_block(
         ext2_dirent_t* ent;
 
         /* The "." directory */
-        _dirent_init(&v->dot1, *ino, EXT2_FT_DIR, ".");
+        _dirent_init(&locals->dot1, *ino, EXT2_FT_DIR, ".");
 
         /* The ".." directory */
-        _dirent_init(&v->dot2, parent_ino, EXT2_FT_DIR, "..");
+        _dirent_init(&locals->dot2, parent_ino, EXT2_FT_DIR, "..");
 
         /* Initialize the directory entries block */
-        memset(&v->block, 0, sizeof(ext2_block_t));
-        memcpy(v->block.data, &v->dot1, v->dot1.rec_len);
-        memcpy(v->block.data + v->dot1.rec_len, &v->dot2, v->dot2.rec_len);
-        v->block.size = ext2->block_size;
+        memset(&locals->block, 0, sizeof(ext2_block_t));
+        memcpy(locals->block.data, &locals->dot1, locals->dot1.rec_len);
+        memcpy(
+            locals->block.data + locals->dot1.rec_len,
+            &locals->dot2,
+            locals->dot2.rec_len);
+        locals->block.size = ext2->block_size;
 
         /* Adjust dot2.rec_len to point to end of block */
-        ent = (ext2_dirent_t*)(v->block.data + v->dot1.rec_len);
+        ent = (ext2_dirent_t*)(locals->block.data + locals->dot1.rec_len);
 
-        ent->rec_len += ext2->block_size - (v->dot1.rec_len + v->dot2.rec_len);
+        ent->rec_len +=
+            ext2->block_size - (locals->dot1.rec_len + locals->dot2.rec_len);
 
         /* write the block */
-        ECHECK(_write_block(ext2, blkno, &v->block));
+        ECHECK(_write_block(ext2, blkno, &locals->block));
 
         /* add the block number to the inode and write inode */
-        ECHECK(_inode_add_blkno(ext2, *ino, &v->inode, 0, blkno));
+        ECHECK(_inode_add_blkno(ext2, *ino, &locals->inode, 0, blkno));
     }
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }
@@ -2908,17 +2923,17 @@ int ext2_lsr(ext2_t* ext2, const char* root, myst_strarr_t* paths)
     struct dirent* ent;
     myst_strarr_t dirs = MYST_STRARR_INITIALIZER;
     int r;
-    struct vars
+    struct locals
     {
         char path[EXT2_PATH_MAX];
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
     /* Check parameters */
     if (!ext2 || !root || !paths)
         ERAISE(-EINVAL);
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     /* Open the directory */
@@ -2930,19 +2945,19 @@ int ext2_lsr(ext2_t* ext2, const char* root, myst_strarr_t* paths)
         if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
             continue;
 
-        myst_strlcpy(v->path, root, sizeof(v->path));
+        myst_strlcpy(locals->path, root, sizeof(locals->path));
 
         if (strcmp(root, "/") != 0)
-            myst_strlcat(v->path, "/", sizeof(v->path));
+            myst_strlcat(locals->path, "/", sizeof(locals->path));
 
-        myst_strlcat(v->path, ent->d_name, sizeof(v->path));
+        myst_strlcat(locals->path, ent->d_name, sizeof(locals->path));
 
         /* Append to paths[] array */
-        ECHECK(myst_strarr_append(paths, v->path));
+        ECHECK(myst_strarr_append(paths, locals->path));
 
         /* Append to dirs[] array */
         if (ent->d_type == DT_DIR)
-            ECHECK(myst_strarr_append(&dirs, v->path));
+            ECHECK(myst_strarr_append(&dirs, locals->path));
     }
 
     if (r < 0)
@@ -2956,8 +2971,8 @@ int ext2_lsr(ext2_t* ext2, const char* root, myst_strarr_t* paths)
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     /* Close the directory */
     if (dir)
@@ -2977,14 +2992,14 @@ done:
 int ext2_check(const ext2_t* ext2)
 {
     int ret = 0;
-    struct vars
+    struct locals
     {
         ext2_block_t bitmap;
         ext2_inode_t inode;
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     /* Check the block bitmaps */
@@ -2998,9 +3013,10 @@ int ext2_check(const ext2_t* ext2)
         {
             nfree += ext2->groups[i].bg_free_blocks_count;
 
-            ECHECK(ext2_read_block_bitmap(ext2, i, &v->bitmap));
-            nused += ext2_count_bits_n(v->bitmap.data, v->bitmap.size);
-            n += v->bitmap.size * 8;
+            ECHECK(ext2_read_block_bitmap(ext2, i, &locals->bitmap));
+            nused +=
+                ext2_count_bits_n(locals->bitmap.data, locals->bitmap.size);
+            n += locals->bitmap.size * 8;
         }
 
         if (ext2->sb.s_free_blocks_count != nfree)
@@ -3028,9 +3044,10 @@ int ext2_check(const ext2_t* ext2)
         {
             nfree += ext2->groups[i].bg_free_inodes_count;
 
-            ECHECK(ext2_read_inode_bitmap(ext2, i, &v->bitmap));
-            nused += ext2_count_bits_n(v->bitmap.data, v->bitmap.size);
-            n += v->bitmap.size * 8;
+            ECHECK(ext2_read_inode_bitmap(ext2, i, &locals->bitmap));
+            nused +=
+                ext2_count_bits_n(locals->bitmap.data, locals->bitmap.size);
+            n += locals->bitmap.size * 8;
         }
 
         if (ext2->sb.s_free_inodes_count != n - nused)
@@ -3052,16 +3069,18 @@ int ext2_check(const ext2_t* ext2)
             uint32_t lino;
 
             /* Get inode bitmap for this group */
-            ECHECK(ext2_read_inode_bitmap(ext2, grpno, &v->bitmap));
+            ECHECK(ext2_read_inode_bitmap(ext2, grpno, &locals->bitmap));
 
-            nbits += ext2_count_bits_n(v->bitmap.data, v->bitmap.size);
+            nbits +=
+                ext2_count_bits_n(locals->bitmap.data, locals->bitmap.size);
 
             /* For each bit set in the bit map */
             for (lino = 0; lino < ext2->sb.s_inodes_per_group; lino++)
             {
                 ext2_ino_t ino;
 
-                if (!ext2_test_bit(v->bitmap.data, v->bitmap.size, lino))
+                if (!ext2_test_bit(
+                        locals->bitmap.data, locals->bitmap.size, lino))
                     continue;
 
                 mbits++;
@@ -3071,10 +3090,10 @@ int ext2_check(const ext2_t* ext2)
 
                 ino = ext2_make_ino(ext2, grpno, lino);
 
-                ECHECK(ext2_read_inode(ext2, ino, &v->inode));
+                ECHECK(ext2_read_inode(ext2, ino, &locals->inode));
 
                 /* Mode can never be zero */
-                if (v->inode.i_mode == 0)
+                if (locals->inode.i_mode == 0)
                     ERAISE(-EINVAL);
             }
         }
@@ -3086,8 +3105,8 @@ int ext2_check(const ext2_t* ext2)
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }
@@ -3219,36 +3238,36 @@ static int _stat(
     struct stat* statbuf)
 {
     int64_t ret = 0;
-    struct vars
+    struct locals
     {
         myst_file_t file;
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
     if (!_ext2_valid(ext2) || !ino || !inode || !statbuf)
         ERAISE(-EINVAL);
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     /* call ext2_fstat() */
     {
-        memset(&v->file, 0, sizeof(v->file));
-        v->file.magic = FILE_MAGIC;
-        v->file.ino = *ino;
-        v->file.inode = *inode;
-        v->file.offset = 0;
-        v->file.access = O_RDONLY;
-        v->file.open_flags = O_RDONLY;
+        memset(&locals->file, 0, sizeof(locals->file));
+        locals->file.magic = FILE_MAGIC;
+        locals->file.ino = *ino;
+        locals->file.inode = *inode;
+        locals->file.offset = 0;
+        locals->file.access = O_RDONLY;
+        locals->file.open_flags = O_RDONLY;
 
-        ECHECK(ext2_fstat(&ext2->base, &v->file, statbuf));
-        _file_clear(&v->file);
+        ECHECK(ext2_fstat(&ext2->base, &locals->file, statbuf));
+        _file_clear(&locals->file);
     }
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }
@@ -3270,7 +3289,7 @@ int ext2_open(
     void* dir_data = NULL;
     size_t dir_size = 0;
     myst_fs_t* tfs = NULL;
-    struct vars
+    struct locals
     {
         ext2_inode_t inode;
         ext2_dirent_t ent;
@@ -3280,7 +3299,7 @@ int ext2_open(
         char buf[PATH_MAX];
         ext2_inode_t dinode;
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
     if (file_out)
         *file_out = NULL;
@@ -3289,7 +3308,7 @@ int ext2_open(
     if (!ext2 || !path || !file_out)
         ERAISE(-EINVAL);
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     /* handle O_NOFOLLOW flag (applies to final component of path) */
@@ -3297,12 +3316,21 @@ int ext2_open(
         follow = NOFOLLOW;
 
     r = _path_to_inode(
-        ext2, path, follow, NULL, &ino, NULL, &v->inode, v->suffix, &tfs);
+        ext2,
+        path,
+        follow,
+        NULL,
+        &ino,
+        NULL,
+        &locals->inode,
+        locals->suffix,
+        &tfs);
 
     if (tfs)
     {
         /* delegate open operation to target filesystem */
-        ECHECK((*tfs->fs_open)(tfs, v->suffix, flags, mode, fs_out, file_out));
+        ECHECK((*tfs->fs_open)(
+            tfs, locals->suffix, flags, mode, fs_out, file_out));
         goto done;
     }
     else if (fs_out)
@@ -3327,25 +3355,26 @@ int ext2_open(
             ERAISE(-ENOENT);
 
         /* split the path into directory and filename components */
-        ECHECK(_split_path(path, v->dirname, v->filename));
+        ECHECK(_split_path(path, locals->dirname, locals->filename));
 
         /* load the directory inode */
-        ECHECK(_path_to_ino(ext2, v->dirname, follow, NULL, &dino));
-        ECHECK(ext2_read_inode(ext2, dino, &v->dinode));
+        ECHECK(_path_to_ino(ext2, locals->dirname, follow, NULL, &dino));
+        ECHECK(ext2_read_inode(ext2, dino, &locals->dinode));
 
         /* create a new inode */
-        ECHECK(_create_inode(ext2, 0, (S_IFREG | mode), &v->inode, &ino));
+        ECHECK(_create_inode(ext2, 0, (S_IFREG | mode), &locals->inode, &ino));
 
         /* create new entry for this file in the directory inode */
-        _dirent_init(&v->ent, ino, EXT2_FT_REG_FILE, v->filename);
-        ECHECK(_add_dirent(ext2, dino, &v->dinode, v->filename, &v->ent));
+        _dirent_init(&locals->ent, ino, EXT2_FT_REG_FILE, locals->filename);
+        ECHECK(_add_dirent(
+            ext2, dino, &locals->dinode, locals->filename, &locals->ent));
     }
 
-    if (S_ISLNK(v->inode.i_mode) && (flags & O_NOFOLLOW))
+    if (S_ISLNK(locals->inode.i_mode) && (flags & O_NOFOLLOW))
         ERAISE(-ELOOP);
 
     /* fail if not a directory */
-    if ((flags & O_DIRECTORY) && !S_ISDIR(v->inode.i_mode))
+    if ((flags & O_DIRECTORY) && !S_ISDIR(locals->inode.i_mode))
     {
         ERAISE(-ENOTDIR);
     }
@@ -3357,7 +3386,7 @@ int ext2_open(
 
         file->magic = FILE_MAGIC;
         file->ino = ino;
-        file->inode = v->inode;
+        file->inode = locals->inode;
         file->offset = 0;
         file->open_flags = flags;
         file->access = (flags & (O_RDONLY | O_RDWR | O_WRONLY));
@@ -3365,7 +3394,7 @@ int ext2_open(
     }
 
     /* truncate the file if requested and if not zero-sized */
-    if ((flags & O_TRUNC) && _inode_get_size(&v->inode) != 0)
+    if ((flags & O_TRUNC) && _inode_get_size(&locals->inode) != 0)
     {
         ECHECK(ext2_ftruncate(&ext2->base, file, 0));
     }
@@ -3385,8 +3414,8 @@ int ext2_open(
     /* Get the realpath of this file */
     {
         ECHECK(_path_to_ino_realpath(
-            ext2, path, follow, NULL, NULL, v->buf, NULL));
-        myst_strlcpy(file->realpath, v->buf, sizeof(file->realpath));
+            ext2, path, follow, NULL, NULL, locals->buf, NULL));
+        myst_strlcpy(file->realpath, locals->buf, sizeof(file->realpath));
     }
 
     *file_out = file;
@@ -3394,8 +3423,8 @@ int ext2_open(
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     if (file)
         _file_free(file);
@@ -3503,17 +3532,17 @@ int64_t ext2_write(
     uint8_t* p = (uint8_t*)data;
     uint32_t blkno = 0;
     size_t file_size;
-    struct vars
+    struct locals
     {
         ext2_block_t block;
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
     /* check parameters */
     if (!_ext2_valid(ext2) || !_file_valid(file) || (!data && size))
         ERAISE(-EINVAL);
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     /* check that file has been opened for write */
@@ -3546,12 +3575,12 @@ int64_t ext2_write(
         if (blkno == 0)
         {
             ECHECK(_get_blkno(ext2, &blkno));
-            _init_block(&v->block, ext2->block_size);
+            _init_block(&locals->block, ext2->block_size);
         }
         else
         {
             /* read the block into memory */
-            ECHECK(ext2_read_block(ext2, blkno, &v->block));
+            ECHECK(ext2_read_block(ext2, blkno, &locals->block));
             found_blkno = true;
         }
 
@@ -3566,10 +3595,10 @@ int64_t ext2_write(
             n = _min_size(r, ext2->block_size - block_offset);
 
             /* copy buffer bytes onto block */
-            memcpy(v->block.data + block_offset, p, n);
+            memcpy(locals->block.data + block_offset, p, n);
 
             /* write the block */
-            ECHECK(_write_block(ext2, blkno, &v->block));
+            ECHECK(_write_block(ext2, blkno, &locals->block));
 
             /* add the block number to the inode */
             if (!found_blkno)
@@ -3606,8 +3635,8 @@ done:
     if (blkno != 0)
         _put_blkno(ext2, blkno);
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }
@@ -3680,19 +3709,19 @@ int ext2_access(myst_fs_t* fs, const char* pathname, int mode)
     int ret = 0;
     ext2_t* ext2 = (ext2_t*)fs;
     myst_fs_t* tfs;
-    struct vars
+    struct locals
     {
         char suffix[PATH_MAX];
         ext2_inode_t inode;
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
     /* ATTN: dereference symbolic links */
 
     if (!_ext2_valid(ext2) || !pathname)
         ERAISE(-EINVAL);
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     if (mode != F_OK && !(mode & (R_OK | W_OK | X_OK)))
@@ -3700,30 +3729,38 @@ int ext2_access(myst_fs_t* fs, const char* pathname, int mode)
 
     /* fetch the inode */
     ECHECK(_path_to_inode(
-        ext2, pathname, FOLLOW, NULL, NULL, NULL, &v->inode, v->suffix, &tfs));
+        ext2,
+        pathname,
+        FOLLOW,
+        NULL,
+        NULL,
+        NULL,
+        &locals->inode,
+        locals->suffix,
+        &tfs));
     if (tfs)
     {
         /* delegate operation to target filesystem */
-        ECHECK((ret = tfs->fs_access(tfs, v->suffix, mode)));
+        ECHECK((ret = tfs->fs_access(tfs, locals->suffix, mode)));
         goto done;
     }
 
     if (mode == F_OK)
         goto done;
 
-    if ((mode & R_OK) && !(v->inode.i_mode & S_IRUSR))
+    if ((mode & R_OK) && !(locals->inode.i_mode & S_IRUSR))
         ERAISE(-EACCES);
 
-    if ((mode & W_OK) && !(v->inode.i_mode & S_IWUSR))
+    if ((mode & W_OK) && !(locals->inode.i_mode & S_IWUSR))
         ERAISE(-EACCES);
 
-    if ((mode & X_OK) && !(v->inode.i_mode & S_IXUSR))
+    if ((mode & X_OK) && !(locals->inode.i_mode & S_IXUSR))
         ERAISE(-EACCES);
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }
@@ -3735,7 +3772,7 @@ int ext2_link(myst_fs_t* fs, const char* oldpath, const char* newpath)
     ext2_ino_t dino;
     ext2_ino_t ino;
     myst_fs_t* tfs = NULL;
-    struct vars
+    struct locals
     {
         char dirname[EXT2_PATH_MAX];
         char filename[EXT2_PATH_MAX];
@@ -3744,53 +3781,70 @@ int ext2_link(myst_fs_t* fs, const char* oldpath, const char* newpath)
         ext2_inode_t dinode;
         ext2_dirent_t ent;
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
     /* check parameters */
     if (!_ext2_valid(ext2) || !oldpath || !newpath)
         ERAISE(-EINVAL);
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     /* find inode for oldpath */
     ECHECK(_path_to_inode(
-        ext2, oldpath, FOLLOW, NULL, &ino, NULL, &v->inode, v->suffix, &tfs));
+        ext2,
+        oldpath,
+        FOLLOW,
+        NULL,
+        &ino,
+        NULL,
+        &locals->inode,
+        locals->suffix,
+        &tfs));
     if (tfs)
     {
         /* delegate operation to target filesystem */
-        ECHECK((*tfs->fs_link)(tfs, v->suffix, newpath));
+        ECHECK((*tfs->fs_link)(tfs, locals->suffix, newpath));
         goto done;
     }
 
     /* oldpath must not be a directory */
-    if (S_ISDIR(v->inode.i_mode))
+    if (S_ISDIR(locals->inode.i_mode))
         ERAISE(-EISDIR);
 
     /* find the parent inode of newpath */
-    ECHECK(_split_path(newpath, v->dirname, v->filename));
+    ECHECK(_split_path(newpath, locals->dirname, locals->filename));
     ECHECK(_path_to_inode(
-        ext2, v->dirname, FOLLOW, NULL, &dino, NULL, &v->dinode, NULL, NULL));
+        ext2,
+        locals->dirname,
+        FOLLOW,
+        NULL,
+        &dino,
+        NULL,
+        &locals->dinode,
+        NULL,
+        NULL));
 
     /* initialize the new directory entry */
-    _dirent_init(&v->ent, ino, EXT2_FT_REG_FILE, v->filename);
+    _dirent_init(&locals->ent, ino, EXT2_FT_REG_FILE, locals->filename);
 
     /* add the new directory entry (might fail with -EEXIST) */
-    ECHECK(_add_dirent(ext2, dino, &v->dinode, v->filename, &v->ent));
+    ECHECK(_add_dirent(
+        ext2, dino, &locals->dinode, locals->filename, &locals->ent));
 
     /* increment link count of the inode */
-    v->inode.i_links_count++;
+    locals->inode.i_links_count++;
 
-    _update_timestamps(&v->inode, CHANGE);
+    _update_timestamps(&locals->inode, CHANGE);
 
     /* write the inodes */
-    ECHECK(_write_inode(ext2, ino, &v->inode));
-    ECHECK(_write_inode(ext2, dino, &v->dinode));
+    ECHECK(_write_inode(ext2, ino, &locals->inode));
+    ECHECK(_write_inode(ext2, dino, &locals->dinode));
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }
@@ -3801,33 +3855,41 @@ int ext2_unlink(myst_fs_t* fs, const char* path)
     ext2_t* ext2 = (ext2_t*)fs;
     ext2_ino_t ino;
     myst_fs_t* tfs = NULL;
-    struct vars
+    struct locals
     {
         char suffix[PATH_MAX];
         uint8_t blk[MYST_BLKSIZE];
         ext2_inode_t inode;
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
     /* check parameters */
     if (!_ext2_valid(ext2) || !path)
         ERAISE(-EINVAL);
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     /* load the inode */
     ECHECK(_path_to_inode(
-        ext2, path, NOFOLLOW, NULL, &ino, NULL, &v->inode, v->suffix, &tfs));
+        ext2,
+        path,
+        NOFOLLOW,
+        NULL,
+        &ino,
+        NULL,
+        &locals->inode,
+        locals->suffix,
+        &tfs));
     if (tfs)
     {
         /* delegate operation to target filesystem */
-        ECHECK((*tfs->fs_unlink)(tfs, v->suffix));
+        ECHECK((*tfs->fs_unlink)(tfs, locals->suffix));
         goto done;
     }
 
     /* fail if inode refers to a directory */
-    if (S_ISDIR(v->inode.i_mode))
+    if (S_ISDIR(locals->inode.i_mode))
     {
         ERAISE(ext2_rmdir(fs, path));
         goto done;
@@ -3837,12 +3899,12 @@ int ext2_unlink(myst_fs_t* fs, const char* path)
     ECHECK(_remove_dirent(ext2, path));
 
     /* unlink the inode */
-    ECHECK(_inode_unlink(ext2, ino, &v->inode));
+    ECHECK(_inode_unlink(ext2, ino, &locals->inode));
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }
@@ -3853,7 +3915,7 @@ int ext2_symlink(myst_fs_t* fs, const char* target, const char* linkpath)
     ext2_t* ext2 = (ext2_t*)fs;
     ext2_ino_t ino;
     ext2_ino_t dino;
-    struct vars
+    struct locals
     {
         char dirname[PATH_MAX];
         char filename[PATH_MAX];
@@ -3862,7 +3924,7 @@ int ext2_symlink(myst_fs_t* fs, const char* target, const char* linkpath)
         ext2_inode_t dinode;
         ext2_dirent_t ent;
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
     size_t target_len;
     myst_fs_t* tfs = NULL;
 
@@ -3872,42 +3934,44 @@ int ext2_symlink(myst_fs_t* fs, const char* target, const char* linkpath)
     if (!target || !linkpath)
         ERAISE(-EINVAL);
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     /* Split linkpath into directory and filename */
-    ECHECK(_split_path(linkpath, v->dirname, v->filename));
+    ECHECK(_split_path(linkpath, locals->dirname, locals->filename));
 
     /* Get the inode of the parent directory */
     ECHECK(_path_to_inode(
         ext2,
-        v->dirname,
+        locals->dirname,
         FOLLOW,
         NULL,
         &dino,
         NULL,
-        &v->dinode,
-        v->suffix,
+        &locals->dinode,
+        locals->suffix,
         &tfs));
     if (tfs)
     {
         /* append filename and delegate operation to target filesystem */
-        if (myst_strlcat(v->suffix, "/", PATH_MAX) >= PATH_MAX)
+        if (myst_strlcat(locals->suffix, "/", PATH_MAX) >= PATH_MAX)
             ERAISE_QUIET(-ENAMETOOLONG);
 
-        if (myst_strlcat(v->suffix, v->filename, PATH_MAX) >= PATH_MAX)
+        if (myst_strlcat(locals->suffix, locals->filename, PATH_MAX) >=
+            PATH_MAX)
             ERAISE_QUIET(-ENAMETOOLONG);
 
-        ECHECK((*tfs->fs_symlink)(tfs, target, v->suffix));
+        ECHECK((*tfs->fs_symlink)(tfs, target, locals->suffix));
         goto done;
     }
 
     /* create the new link inode */
-    ECHECK(_create_inode(ext2, 0, (S_IFLNK | 0777), &v->inode, &ino));
+    ECHECK(_create_inode(ext2, 0, (S_IFLNK | 0777), &locals->inode, &ino));
 
     /* create new entry for this file in the directory inode */
-    _dirent_init(&v->ent, ino, EXT2_FT_SYMLINK, v->filename);
-    ECHECK(_add_dirent(ext2, dino, &v->dinode, v->filename, &v->ent));
+    _dirent_init(&locals->ent, ino, EXT2_FT_SYMLINK, locals->filename);
+    ECHECK(_add_dirent(
+        ext2, dino, &locals->dinode, locals->filename, &locals->ent));
 
     /* get the length of the target */
     target_len = strlen(target);
@@ -3915,23 +3979,24 @@ int ext2_symlink(myst_fs_t* fs, const char* target, const char* linkpath)
     /* store targets less than 60 bytes in the inode itself */
     if (target_len < 60)
     {
-        memcpy(v->inode.i_block, target, target_len);
-        v->inode.i_size = target_len;
-        v->inode.i_blocks = 0;
+        memcpy(locals->inode.i_block, target, target_len);
+        locals->inode.i_size = target_len;
+        locals->inode.i_blocks = 0;
     }
     else
     {
         /* write the file content */
-        ECHECK(_inode_write_data(ext2, ino, &v->inode, target, strlen(target)));
+        ECHECK(_inode_write_data(
+            ext2, ino, &locals->inode, target, strlen(target)));
     }
 
     /* write the inode */
-    ECHECK(_write_inode(ext2, ino, &v->inode));
+    ECHECK(_write_inode(ext2, ino, &locals->inode));
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }
@@ -3948,17 +4013,17 @@ ssize_t ext2_readlink(
     void* data = NULL;
     size_t size;
     myst_fs_t* tfs = NULL;
-    struct vars
+    struct locals
     {
         ext2_inode_t inode;
         char suffix[EXT2_PATH_MAX];
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
     if (!_ext2_valid(ext2) || !pathname || !buf)
         ERAISE(-EINVAL);
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     ECHECK(_path_to_inode(
@@ -3968,17 +4033,17 @@ ssize_t ext2_readlink(
         NULL,
         &ino,
         NULL,
-        &v->inode,
-        v->suffix,
+        &locals->inode,
+        locals->suffix,
         &tfs));
     if (tfs)
     {
         /* delegate operation to target filesystem */
-        ECHECK(tfs->fs_readlink(tfs, v->suffix, buf, bufsiz));
+        ECHECK(tfs->fs_readlink(tfs, locals->suffix, buf, bufsiz));
         goto done;
     }
 
-    ECHECK((_load_file_by_inode(ext2, ino, &v->inode, &data, &size)));
+    ECHECK((_load_file_by_inode(ext2, ino, &locals->inode, &data, &size)));
 
     size_t min = _min_size(size, bufsiz);
     memcpy(buf, data, min);
@@ -3986,8 +4051,8 @@ ssize_t ext2_readlink(
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     if (data)
         free(data);
@@ -3999,7 +4064,7 @@ int ext2_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
 {
     int ret = 0;
     ext2_t* ext2 = (ext2_t*)fs;
-    struct vars
+    struct locals
     {
         char old_dirname[PATH_MAX];
         char old_filename[PATH_MAX];
@@ -4012,7 +4077,7 @@ int ext2_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
         ext2_inode_t new_inode;
         ext2_dirent_t ent;
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
     ext2_ino_t old_dino;
     ext2_ino_t old_ino;
     ext2_ino_t new_dino;
@@ -4027,12 +4092,12 @@ int ext2_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
     if (!_ext2_valid(ext2) || !oldpath || !newpath)
         ERAISE(-EINVAL);
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     /* Split oldpath and newpath */
-    ECHECK(_split_path(newpath, v->new_dirname, v->new_filename));
-    ECHECK(_split_path(oldpath, v->old_dirname, v->old_filename));
+    ECHECK(_split_path(newpath, locals->new_dirname, locals->new_filename));
+    ECHECK(_split_path(oldpath, locals->old_dirname, locals->old_filename));
 
     /* find the oldpath inode */
     ECHECK(_path_to_inode(
@@ -4041,14 +4106,14 @@ int ext2_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
         FOLLOW,
         &old_dino,
         &old_ino,
-        &v->old_dinode,
-        &v->old_inode,
-        v->suffix,
+        &locals->old_dinode,
+        &locals->old_inode,
+        locals->suffix,
         &tfs));
     if (tfs)
     {
         /* delegate operation to target filesystem */
-        ECHECK(tfs->fs_rename(tfs, v->suffix, newpath));
+        ECHECK(tfs->fs_rename(tfs, locals->suffix, newpath));
         goto done;
     }
 
@@ -4059,8 +4124,8 @@ int ext2_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
             FOLLOW,
             &new_dino,
             &new_ino,
-            &v->new_dinode,
-            &v->new_inode,
+            &locals->new_dinode,
+            &locals->new_inode,
             NULL,
             NULL) == 0)
     {
@@ -4069,69 +4134,74 @@ int ext2_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
             goto done;
 
         /* if oldpath is a directory, newpath must be an empty directory */
-        if (S_ISDIR(v->old_inode.i_mode))
+        if (S_ISDIR(locals->old_inode.i_mode))
         {
-            ECHECK(_inode_test_empty_directory(ext2, new_ino, &v->new_inode));
-            v->new_inode.i_links_count--;
+            ECHECK(
+                _inode_test_empty_directory(ext2, new_ino, &locals->new_inode));
+            locals->new_inode.i_links_count--;
         }
 
         /* unlink newpath */
         ECHECK(_remove_dirent(ext2, newpath));
-        ECHECK(_inode_unlink(ext2, new_ino, &v->new_inode));
+        ECHECK(_inode_unlink(ext2, new_ino, &locals->new_inode));
     }
     else
     {
         /* newpath does not exist so find its parent directory */
         ECHECK(_path_to_inode(
             ext2,
-            v->new_dirname,
+            locals->new_dirname,
             FOLLOW,
             NULL,
             &new_dino,
             NULL,
-            &v->new_dinode,
+            &locals->new_dinode,
             NULL,
             NULL));
     }
 
     /* determine the file type */
-    file_type = _mode_to_file_type(v->old_inode.i_mode);
+    file_type = _mode_to_file_type(locals->old_inode.i_mode);
 
     /* remove the oldpath directory entry */
     ECHECK(_remove_dirent(ext2, oldpath));
 
     /* initialize the new directory entry with the old inode */
-    _dirent_init(&v->ent, old_ino, file_type, v->new_filename);
+    _dirent_init(&locals->ent, old_ino, file_type, locals->new_filename);
 
     /* add the new directory entry */
-    ECHECK(
-        _add_dirent(ext2, new_dino, &v->new_dinode, v->new_filename, &v->ent));
+    ECHECK(_add_dirent(
+        ext2,
+        new_dino,
+        &locals->new_dinode,
+        locals->new_filename,
+        &locals->ent));
 
     /* if oldpath is a directory, update old directory inode */
-    if (S_ISDIR(v->old_inode.i_mode))
+    if (S_ISDIR(locals->old_inode.i_mode))
     {
-        v->old_dinode.i_links_count--;
-        _update_timestamps(&v->old_dinode, CHANGE);
-        ECHECK(_write_inode(ext2, old_dino, &v->old_dinode));
+        locals->old_dinode.i_links_count--;
+        _update_timestamps(&locals->old_dinode, CHANGE);
+        ECHECK(_write_inode(ext2, old_dino, &locals->old_dinode));
 
         /* don't update links if directory already existed */
         if (!new_dino)
         {
-            v->new_dinode.i_links_count++;
-            _update_timestamps(&v->new_dinode, CHANGE);
-            ECHECK(_write_inode(ext2, new_dino, &v->new_dinode));
+            locals->new_dinode.i_links_count++;
+            _update_timestamps(&locals->new_dinode, CHANGE);
+            ECHECK(_write_inode(ext2, new_dino, &locals->new_dinode));
         }
     }
 
-    _update_timestamps(&v->old_inode, CHANGE);
-    ECHECK(_write_inode(ext2, old_ino, &v->old_inode));
+    _update_timestamps(&locals->old_inode, CHANGE);
+    ECHECK(_write_inode(ext2, old_ino, &locals->old_inode));
 
     /* ATTN: update directory parent pointer ("..") */
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }
@@ -4169,34 +4239,42 @@ int ext2_stat(myst_fs_t* fs, const char* pathname, struct stat* statbuf)
     ext2_ino_t ino;
     ext2_t* ext2 = (ext2_t*)fs;
     myst_fs_t* tfs = NULL;
-    struct vars
+    struct locals
     {
         ext2_inode_t inode;
         char suffix[PATH_MAX];
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
     if (!_ext2_valid(ext2) || !pathname || !statbuf)
         ERAISE(-EINVAL);
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     ECHECK(_path_to_inode(
-        ext2, pathname, FOLLOW, NULL, &ino, NULL, &v->inode, v->suffix, &tfs));
+        ext2,
+        pathname,
+        FOLLOW,
+        NULL,
+        &ino,
+        NULL,
+        &locals->inode,
+        locals->suffix,
+        &tfs));
     if (tfs)
     {
         /* delegate operation to target filesystem */
-        ECHECK(tfs->fs_stat(tfs, v->suffix, statbuf));
+        ECHECK(tfs->fs_stat(tfs, locals->suffix, statbuf));
         goto done;
     }
 
-    ECHECK(_stat(ext2, &ino, &v->inode, statbuf));
+    ECHECK(_stat(ext2, &ino, &locals->inode, statbuf));
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }
@@ -4207,17 +4285,17 @@ int ext2_lstat(myst_fs_t* fs, const char* pathname, struct stat* statbuf)
     ext2_ino_t ino;
     ext2_t* ext2 = (ext2_t*)fs;
     myst_fs_t* tfs = NULL;
-    struct vars
+    struct locals
     {
         ext2_inode_t inode;
         char suffix[PATH_MAX];
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
     if (!_ext2_valid(ext2) || !pathname || !statbuf)
         ERAISE(-EINVAL);
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     ECHECK(_path_to_inode(
@@ -4227,22 +4305,22 @@ int ext2_lstat(myst_fs_t* fs, const char* pathname, struct stat* statbuf)
         NULL,
         &ino,
         NULL,
-        &v->inode,
-        v->suffix,
+        &locals->inode,
+        locals->suffix,
         &tfs));
     if (tfs)
     {
         /* delegate operation to target filesystem */
-        ECHECK(tfs->fs_lstat(tfs, v->suffix, statbuf));
+        ECHECK(tfs->fs_lstat(tfs, locals->suffix, statbuf));
         goto done;
     }
 
-    ECHECK(_stat(ext2, &ino, &v->inode, statbuf));
+    ECHECK(_stat(ext2, &ino, &locals->inode, statbuf));
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }
@@ -4267,52 +4345,60 @@ int ext2_truncate(myst_fs_t* fs, const char* path, off_t length)
     ext2_t* ext2 = (ext2_t*)fs;
     ext2_ino_t ino;
     myst_fs_t* tfs = NULL;
-    struct vars
+    struct locals
     {
         char suffix[PATH_MAX];
         ext2_inode_t inode;
         myst_file_t file;
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
     /* check parameters */
     if (!ext2 || !path)
         ERAISE(-EINVAL);
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     /* find the inode of the file */
     ECHECK(_path_to_inode(
-        ext2, path, FOLLOW, NULL, &ino, NULL, &v->inode, v->suffix, &tfs));
+        ext2,
+        path,
+        FOLLOW,
+        NULL,
+        &ino,
+        NULL,
+        &locals->inode,
+        locals->suffix,
+        &tfs));
     if (tfs)
     {
         /* delegate operation to target filesystem */
-        ECHECK(tfs->fs_truncate(tfs, v->suffix, length));
+        ECHECK(tfs->fs_truncate(tfs, locals->suffix, length));
         goto done;
     }
 
     /* call _ftruncate() */
     {
-        memset(&v->file, 0, sizeof(myst_file_t));
-        v->file.magic = FILE_MAGIC;
-        v->file.ino = ino;
-        v->file.inode = v->inode;
-        v->file.offset = 0;
-        v->file.access = O_WRONLY;
-        v->file.open_flags = O_WRONLY;
+        memset(&locals->file, 0, sizeof(myst_file_t));
+        locals->file.magic = FILE_MAGIC;
+        locals->file.ino = ino;
+        locals->file.inode = locals->inode;
+        locals->file.offset = 0;
+        locals->file.access = O_WRONLY;
+        locals->file.open_flags = O_WRONLY;
 
-        ECHECK(_ftruncate(ext2, &v->file, length, false));
-        v->inode = v->file.inode;
-        _file_clear(&v->file);
+        ECHECK(_ftruncate(ext2, &locals->file, length, false));
+        locals->inode = locals->file.inode;
+        _file_clear(&locals->file);
     }
 
     ret = 0;
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }
@@ -4321,11 +4407,11 @@ int ext2_mkdir(myst_fs_t* fs, const char* path, mode_t mode)
 {
     int ret = 0;
     ext2_t* ext2 = (ext2_t*)fs;
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
     ext2_ino_t dir_ino;
     ext2_ino_t base_ino;
     myst_fs_t* tfs = NULL;
-    struct vars
+    struct locals
     {
         char dirname[EXT2_PATH_MAX];
         char basename[EXT2_PATH_MAX];
@@ -4339,7 +4425,7 @@ int ext2_mkdir(myst_fs_t* fs, const char* path, mode_t mode)
     if (!_ext2_valid(ext2) || !path)
         ERAISE(-EINVAL);
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     /* Reject S_IFMT bits */
@@ -4347,29 +4433,30 @@ int ext2_mkdir(myst_fs_t* fs, const char* path, mode_t mode)
         ERAISE(-EINVAL);
 
     /* Split the path */
-    ECHECK(_split_path(path, v->dirname, v->basename));
+    ECHECK(_split_path(path, locals->dirname, locals->basename));
 
     /* Read inode for 'dirname' */
     ECHECK(_path_to_inode(
         ext2,
-        v->dirname,
+        locals->dirname,
         FOLLOW,
         NULL,
         &dir_ino,
         NULL,
-        &v->dir_inode,
-        v->suffix,
+        &locals->dir_inode,
+        locals->suffix,
         &tfs));
     if (tfs)
     {
         /* append basename and delegate operation to target filesystem */
-        if (myst_strlcat(v->suffix, "/", PATH_MAX) >= PATH_MAX)
+        if (myst_strlcat(locals->suffix, "/", PATH_MAX) >= PATH_MAX)
             ERAISE_QUIET(-ENAMETOOLONG);
 
-        if (myst_strlcat(v->suffix, v->basename, PATH_MAX) >= PATH_MAX)
+        if (myst_strlcat(locals->suffix, locals->basename, PATH_MAX) >=
+            PATH_MAX)
             ERAISE_QUIET(-ENAMETOOLONG);
 
-        ECHECK((*tfs->fs_mkdir)(tfs, v->suffix, mode));
+        ECHECK((*tfs->fs_mkdir)(tfs, locals->suffix, mode));
         goto done;
     }
 
@@ -4381,7 +4468,7 @@ int ext2_mkdir(myst_fs_t* fs, const char* path, mode_t mode)
             NULL,
             &base_ino,
             NULL,
-            &v->base_inode,
+            &locals->base_inode,
             NULL,
             NULL) == 0)
         ERAISE(-EEXIST);
@@ -4390,15 +4477,16 @@ int ext2_mkdir(myst_fs_t* fs, const char* path, mode_t mode)
     ECHECK(_create_dir_inode_and_block(ext2, dir_ino, mode, &base_ino));
 
     /* Initialize the new directory entry */
-    _dirent_init(&v->ent, base_ino, EXT2_FT_DIR, v->basename);
+    _dirent_init(&locals->ent, base_ino, EXT2_FT_DIR, locals->basename);
 
     /* Create new entry for this file in the directory inode */
-    ECHECK(_add_dirent(ext2, dir_ino, &v->dir_inode, v->basename, &v->ent));
+    ECHECK(_add_dirent(
+        ext2, dir_ino, &locals->dir_inode, locals->basename, &locals->ent));
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }
@@ -4411,37 +4499,45 @@ int ext2_rmdir(myst_fs_t* fs, const char* path)
     void* data = NULL;
     size_t size;
     myst_fs_t* tfs = NULL;
-    struct vars
+    struct locals
     {
         char suffix[PATH_MAX];
         ext2_inode_t inode;
         myst_file_t file;
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
     /* check parameters */
     if (!_ext2_valid(ext2) || !path)
         ERAISE(-EINVAL);
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     /* load the inode */
     ECHECK(_path_to_inode(
-        ext2, path, FOLLOW, NULL, &ino, NULL, &v->inode, v->suffix, &tfs));
+        ext2,
+        path,
+        FOLLOW,
+        NULL,
+        &ino,
+        NULL,
+        &locals->inode,
+        locals->suffix,
+        &tfs));
     if (tfs)
     {
         /* delegate operation to target filesystem */
-        ECHECK(tfs->fs_rmdir(tfs, v->suffix));
+        ECHECK(tfs->fs_rmdir(tfs, locals->suffix));
         goto done;
     }
 
     /* fail if not a directory */
-    if (!S_ISDIR(v->inode.i_mode))
+    if (!S_ISDIR(locals->inode.i_mode))
         ERAISE(-ENOTDIR);
 
     /* if directory is not empty */
-    if (v->inode.i_links_count != 2)
+    if (locals->inode.i_links_count != 2)
         ERAISE(-EINVAL);
 
     /* fail if the directory is not empty */
@@ -4449,7 +4545,7 @@ int ext2_rmdir(myst_fs_t* fs, const char* path)
         uint32_t count;
 
         /* load the directory file contents */
-        ECHECK(_load_file_by_inode(ext2, ino, &v->inode, &data, &size));
+        ECHECK(_load_file_by_inode(ext2, ino, &locals->inode, &data, &size));
 
         /* Disallow removal if directory is non empty */
         ECHECK(_count_dirents(ext2, data, size, &count));
@@ -4465,17 +4561,17 @@ int ext2_rmdir(myst_fs_t* fs, const char* path)
     /* truncate the file to zero size (to return all the blocks) */
     {
         /* create a dummy file struct */
-        memset(&v->file, 0, sizeof(myst_file_t));
-        v->file.magic = FILE_MAGIC;
-        v->file.ino = ino;
-        v->file.inode = v->inode;
-        v->file.offset = 0;
-        v->file.access = O_WRONLY;
-        v->file.open_flags = O_WRONLY;
+        memset(&locals->file, 0, sizeof(myst_file_t));
+        locals->file.magic = FILE_MAGIC;
+        locals->file.ino = ino;
+        locals->file.inode = locals->inode;
+        locals->file.offset = 0;
+        locals->file.access = O_WRONLY;
+        locals->file.open_flags = O_WRONLY;
 
-        ECHECK(_ftruncate(ext2, &v->file, 0, true));
-        v->inode = v->file.inode;
-        _file_clear(&v->file);
+        ECHECK(_ftruncate(ext2, &locals->file, 0, true));
+        locals->inode = locals->file.inode;
+        _file_clear(&locals->file);
     }
 
     /* return the inode to the free list */
@@ -4486,8 +4582,8 @@ int ext2_rmdir(myst_fs_t* fs, const char* path)
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     if (data)
         free(data);
@@ -5027,34 +5123,42 @@ static int _ext2_statfs(myst_fs_t* fs, const char* path, struct statfs* buf)
     int ret = 0;
     ext2_t* ext2 = (ext2_t*)fs;
     myst_fs_t* tfs = NULL;
-    struct vars
+    struct locals
     {
         char suffix[PATH_MAX];
         ext2_inode_t inode;
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
     if (!_ext2_valid(ext2) || !path || !buf)
         ERAISE(-EINVAL);
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     /* Check if path exists */
     ECHECK(_path_to_inode(
-        ext2, path, FOLLOW, NULL, NULL, NULL, &v->inode, v->suffix, &tfs));
+        ext2,
+        path,
+        FOLLOW,
+        NULL,
+        NULL,
+        NULL,
+        &locals->inode,
+        locals->suffix,
+        &tfs));
     if (tfs)
     {
         /* delegate operation to target filesystem */
-        ECHECK(tfs->fs_statfs(tfs, v->suffix, buf));
+        ECHECK(tfs->fs_statfs(tfs, locals->suffix, buf));
         goto done;
     }
     ECHECK(_statfs(ext2, buf));
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }

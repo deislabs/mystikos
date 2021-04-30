@@ -16,28 +16,28 @@ int myst_console_printf(int fd, const char* format, ...)
     int ret = 0;
     va_list ap;
     int count;
-    struct vars
+    struct locals
     {
         char buf[1024];
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     va_start(ap, format);
-    count = vsnprintf(v->buf, sizeof(v->buf), format, ap);
+    count = vsnprintf(locals->buf, sizeof(locals->buf), format, ap);
     va_end(ap);
 
-    if (count < 0 || (size_t)count >= sizeof(v->buf))
+    if (count < 0 || (size_t)count >= sizeof(locals->buf))
         ERAISE(-EINVAL);
 
-    ECHECK(myst_tcall_write_console(fd, v->buf, (size_t)count));
+    ECHECK(myst_tcall_write_console(fd, locals->buf, (size_t)count));
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }
@@ -46,26 +46,26 @@ int myst_console_vprintf(int fd, const char* format, va_list ap)
 {
     int ret = 0;
     int count;
-    struct vars
+    struct locals
     {
         char buf[1024];
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
-    count = vsnprintf(v->buf, sizeof(v->buf), format, ap);
+    count = vsnprintf(locals->buf, sizeof(locals->buf), format, ap);
 
-    if (count < 0 || (size_t)count >= sizeof(v->buf))
+    if (count < 0 || (size_t)count >= sizeof(locals->buf))
         return -EINVAL;
 
-    ECHECK(myst_tcall_write_console(fd, v->buf, (size_t)count));
+    ECHECK(myst_tcall_write_console(fd, locals->buf, (size_t)count));
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }

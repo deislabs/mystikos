@@ -752,16 +752,16 @@ static long _syscall_clone_vfork(
     uint64_t cookie = 0;
     myst_thread_t* parent = myst_thread_self();
     myst_thread_t* child;
-    struct vars
+    struct locals
     {
         char fdpath[PATH_MAX];
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
     if (!fn)
         ERAISE(-EINVAL);
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     /* Check whether the maximum number of threads has been reached */
@@ -848,9 +848,9 @@ static long _syscall_clone_vfork(
 
         /* Create /proc/[pid]/fd directory for new process thread */
         {
-            const size_t n = sizeof(v->fdpath);
-            snprintf(v->fdpath, n, "/proc/%d/fd", child->pid);
-            if (myst_mkdirhier(v->fdpath, 777) != 0)
+            const size_t n = sizeof(locals->fdpath);
+            snprintf(locals->fdpath, n, "/proc/%d/fd", child->pid);
+            if (myst_mkdirhier(locals->fdpath, 777) != 0)
             {
                 myst_eprintf("cannot create the /proc/[pid]/fd directory\n");
                 ERAISE(-EINVAL);
@@ -867,8 +867,8 @@ static long _syscall_clone_vfork(
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }

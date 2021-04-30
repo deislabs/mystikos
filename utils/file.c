@@ -20,11 +20,11 @@ int myst_load_file(const char* path, void** data_out, size_t* size_out)
     int fd = -1;
     void* data = NULL;
     uint8_t* p;
-    struct vars
+    struct locals
     {
         char block[512];
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
     if (data_out)
         *data_out = NULL;
@@ -35,7 +35,7 @@ int myst_load_file(const char* path, void** data_out, size_t* size_out)
     if (!path || !data_out || !size_out)
         ERAISE(-EINVAL);
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     if ((fd = open(path, O_RDONLY, 0)) < 0)
@@ -53,9 +53,9 @@ int myst_load_file(const char* path, void** data_out, size_t* size_out)
     /* Null-terminate the data */
     p[st.st_size] = '\0';
 
-    while ((n = read(fd, v->block, sizeof(v->block))) > 0)
+    while ((n = read(fd, locals->block, sizeof(locals->block))) > 0)
     {
-        memcpy(p, v->block, (size_t)n);
+        memcpy(p, locals->block, (size_t)n);
         p += n;
     }
 
@@ -65,8 +65,8 @@ int myst_load_file(const char* path, void** data_out, size_t* size_out)
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     if (fd >= 0)
         close(fd);
@@ -107,16 +107,16 @@ int myst_copy_file_fd(char* oldpath, int newfd)
     int oldfd = -1;
     ssize_t n;
     struct stat st;
-    struct vars
+    struct locals
     {
         char buf[512];
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
     if (!oldpath || newfd < 0)
         ERAISE(-EINVAL);
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     if ((oldfd = open(oldpath, O_RDONLY, 0)) < 0)
@@ -125,9 +125,9 @@ int myst_copy_file_fd(char* oldpath, int newfd)
     if (fstat(oldfd, &st) != 0)
         ERAISE(-EINVAL);
 
-    while ((n = read(oldfd, v->buf, sizeof(v->buf))) > 0)
+    while ((n = read(oldfd, locals->buf, sizeof(locals->buf))) > 0)
     {
-        ECHECK(myst_writen(newfd, v->buf, (size_t)n));
+        ECHECK(myst_writen(newfd, locals->buf, (size_t)n));
     }
 
     if (n < 0)
@@ -135,8 +135,8 @@ int myst_copy_file_fd(char* oldpath, int newfd)
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     if (oldfd >= 0)
         close(oldfd);
@@ -151,33 +151,33 @@ int myst_copy_file(const char* oldpath, const char* newpath)
     int newfd = -1;
     ssize_t n;
     mode_t mode;
-    struct vars
+    struct locals
     {
         char buf[512];
         struct stat st;
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
     if (!oldpath || !newpath)
         ERAISE(-EINVAL);
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     if ((oldfd = open(oldpath, O_RDONLY, 0)) < 0)
         ERAISE(oldfd);
 
-    if (fstat(oldfd, &v->st) != 0)
+    if (fstat(oldfd, &locals->st) != 0)
         ERAISE(-EINVAL);
 
-    mode = (v->st.st_mode & (mode_t)(~S_IFMT));
+    mode = (locals->st.st_mode & (mode_t)(~S_IFMT));
 
     if ((newfd = open(newpath, O_WRONLY | O_CREAT | O_TRUNC, mode)) < 0)
         ERAISE(newfd);
 
-    while ((n = read(oldfd, v->buf, sizeof(v->buf))) > 0)
+    while ((n = read(oldfd, locals->buf, sizeof(locals->buf))) > 0)
     {
-        ECHECK(myst_writen(newfd, v->buf, (size_t)n));
+        ECHECK(myst_writen(newfd, locals->buf, (size_t)n));
     }
 
     if (n < 0)
@@ -185,8 +185,8 @@ int myst_copy_file(const char* oldpath, const char* newpath)
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     if (oldfd >= 0)
         close(oldfd);
@@ -213,16 +213,16 @@ int myst_mkdirhier(const char* pathname, mode_t mode)
     char** toks = NULL;
     size_t ntoks;
     struct stat buf;
-    struct vars
+    struct locals
     {
         char path[PATH_MAX];
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
     if (!pathname)
         ERAISE(-EINVAL);
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     /* If the directory already exists, stop here */
@@ -231,24 +231,24 @@ int myst_mkdirhier(const char* pathname, mode_t mode)
 
     ECHECK(myst_strsplit(pathname, "/", &toks, &ntoks));
 
-    *v->path = '\0';
+    *locals->path = '\0';
 
     for (size_t i = 0; i < ntoks; i++)
     {
-        if (MYST_STRLCAT(v->path, "/") >= PATH_MAX)
+        if (MYST_STRLCAT(locals->path, "/") >= PATH_MAX)
             ERAISE(-ENAMETOOLONG);
 
-        if (MYST_STRLCAT(v->path, toks[i]) >= PATH_MAX)
+        if (MYST_STRLCAT(locals->path, toks[i]) >= PATH_MAX)
             ERAISE(-ENAMETOOLONG);
 
-        if (stat(v->path, &buf) == 0)
+        if (stat(locals->path, &buf) == 0)
         {
             if (!S_ISDIR(buf.st_mode))
                 ERAISE(-ENOTDIR);
         }
         else
         {
-            ECHECK(mkdir(v->path, mode));
+            ECHECK(mkdir(locals->path, mode));
         }
     }
 
@@ -257,8 +257,8 @@ int myst_mkdirhier(const char* pathname, mode_t mode)
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     if (toks)
         free(toks);

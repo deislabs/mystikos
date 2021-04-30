@@ -9,16 +9,16 @@ long myst_syscall_sendfile(int out_fd, int in_fd, off_t* offset, size_t count)
     long ret = 0;
     ssize_t nwritten = 0;
     off_t original_offset = 0;
-    struct vars
+    struct locals
     {
         char buf[BUFSIZ];
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
     if (out_fd < 0 || in_fd < 0)
         ERAISE(-EINVAL);
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     /* if offset is not null, set file offset to this value */
@@ -37,9 +37,9 @@ long myst_syscall_sendfile(int out_fd, int in_fd, off_t* offset, size_t count)
         ssize_t n;
         size_t r = count;
 
-        while (r > 0 && (n = read(in_fd, v->buf, sizeof(v->buf))) > 0)
+        while (r > 0 && (n = read(in_fd, locals->buf, sizeof(locals->buf))) > 0)
         {
-            ssize_t m = write(out_fd, v->buf, n);
+            ssize_t m = write(out_fd, locals->buf, n);
             ECHECK(m);
 
             if (m != n)
@@ -70,8 +70,8 @@ long myst_syscall_sendfile(int out_fd, int in_fd, off_t* offset, size_t count)
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }

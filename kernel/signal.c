@@ -132,16 +132,16 @@ static long _handle_one_signal(unsigned signum, siginfo_t* siginfo)
 {
     long ret = 0;
     ECHECK(_check_signum(signum));
-    struct vars
+    struct locals
     {
         ucontext_t context;
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
-    memset(&v->context, 0, sizeof(v->context));
+    memset(&locals->context, 0, sizeof(locals->context));
 
     myst_thread_t* thread = myst_thread_self();
 
@@ -182,7 +182,7 @@ static long _handle_one_signal(unsigned signum, siginfo_t* siginfo)
             // Use a zeroed ucontext_t. Only usage in libc seems to be
             // pthread_cancel, which we modified to avoid the dependency.
             ((sigaction_function_t)(action->handler))(
-                signum, siginfo, &v->context);
+                signum, siginfo, &locals->context);
         }
         else
         {
@@ -197,8 +197,8 @@ static long _handle_one_signal(unsigned signum, siginfo_t* siginfo)
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }

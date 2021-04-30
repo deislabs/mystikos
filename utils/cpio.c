@@ -580,19 +580,19 @@ int myst_cpio_unpack(const char* source, const char* target)
     myst_cpio_t* cpio = NULL;
     int r;
     int fd = -1;
-    struct vars
+    struct locals
     {
         myst_cpio_entry_t entry;
         char path[MYST_CPIO_PATH_MAX];
         char data[512];
         char target[PATH_MAX];
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
     if (!source || !target)
         GOTO(done);
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         GOTO(done);
 
     if (!(cpio = myst_cpio_open(source, 0)))
@@ -601,43 +601,43 @@ int myst_cpio_unpack(const char* source, const char* target)
     if (access(target, R_OK) != 0 && mkdir(target, 0766) != 0)
         GOTO(done);
 
-    while ((r = myst_cpio_read_entry(cpio, &v->entry)) > 0)
+    while ((r = myst_cpio_read_entry(cpio, &locals->entry)) > 0)
     {
-        if (strcmp(v->entry.name, ".") == 0)
+        if (strcmp(locals->entry.name, ".") == 0)
             continue;
 
-        MYST_STRLCPY(v->path, target);
-        MYST_STRLCAT(v->path, "/");
-        MYST_STRLCAT(v->path, v->entry.name);
+        MYST_STRLCPY(locals->path, target);
+        MYST_STRLCAT(locals->path, "/");
+        MYST_STRLCAT(locals->path, locals->entry.name);
 
-        if (S_ISDIR(v->entry.mode))
+        if (S_ISDIR(locals->entry.mode))
         {
             struct stat st;
 
-            if (stat(v->path, &st) == 0)
+            if (stat(locals->path, &st) == 0)
             {
                 if (!S_ISDIR(st.st_mode))
                 {
-                    PRINTF("*** cpio: already exists: %s\n", v->path);
+                    PRINTF("*** cpio: already exists: %s\n", locals->path);
                     GOTO(done);
                 }
             }
-            else if (mkdir(v->path, v->entry.mode) != 0)
+            else if (mkdir(locals->path, locals->entry.mode) != 0)
             {
                 GOTO(done);
             }
         }
-        else if (S_ISREG(v->entry.mode))
+        else if (S_ISREG(locals->entry.mode))
         {
             ssize_t n;
 
-            if ((fd = open(v->path, O_WRONLY | O_CREAT, 0666)) < 0)
+            if ((fd = open(locals->path, O_WRONLY | O_CREAT, 0666)) < 0)
                 GOTO(done);
 
-            while ((n = myst_cpio_read_data(cpio, v->data, sizeof(v->data))) >
-                   0)
+            while ((n = myst_cpio_read_data(
+                        cpio, locals->data, sizeof(locals->data))) > 0)
             {
-                if (write(fd, v->data, (size_t)n) != n)
+                if (write(fd, locals->data, (size_t)n) != n)
                     GOTO(done);
             }
 
@@ -646,19 +646,20 @@ int myst_cpio_unpack(const char* source, const char* target)
 
             fd = -1;
         }
-        else if (S_ISLNK(v->entry.mode))
+        else if (S_ISLNK(locals->entry.mode))
         {
             ssize_t n;
 
             /* read the target from CPIO archive */
-            n = myst_cpio_read_data(cpio, v->target, sizeof(v->target));
+            n = myst_cpio_read_data(
+                cpio, locals->target, sizeof(locals->target));
             if (n < 1 || n >= (ssize_t)sizeof(target))
                 GOTO(done);
 
-            v->target[n] = '\0';
+            locals->target[n] = '\0';
 
             /* create the symlink */
-            if (symlink(target, v->path) != 0)
+            if (symlink(target, locals->path) != 0)
                 GOTO(done);
         }
         else
@@ -671,8 +672,8 @@ int myst_cpio_unpack(const char* source, const char* target)
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     if (cpio)
         myst_cpio_close(cpio);
@@ -689,16 +690,16 @@ static int _append_file(myst_cpio_t* cpio, const char* path, const char* name)
     struct stat st;
     int fd = -1;
     ssize_t n;
-    struct vars
+    struct locals
     {
         char buf[4096];
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
     if (!cpio || !path)
         GOTO(done);
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         GOTO(done);
 
     /* Stat the file to get the size and mode. */
@@ -733,9 +734,9 @@ static int _append_file(myst_cpio_t* cpio, const char* path, const char* name)
         if ((fd = open(path, O_RDONLY, 444)) < 0)
             GOTO(done);
 
-        while ((n = read(fd, v->buf, sizeof(v->buf))) > 0)
+        while ((n = read(fd, locals->buf, sizeof(locals->buf))) > 0)
         {
-            if (myst_cpio_write_data(cpio, v->buf, (size_t)n) != 0)
+            if (myst_cpio_write_data(cpio, locals->buf, (size_t)n) != 0)
                 GOTO(done);
         }
 
@@ -746,12 +747,12 @@ static int _append_file(myst_cpio_t* cpio, const char* path, const char* name)
     {
         ssize_t n;
 
-        n = readlink(path, v->buf, sizeof(v->buf));
+        n = readlink(path, locals->buf, sizeof(locals->buf));
 
-        if (n <= 0 || n >= (ssize_t)sizeof(v->buf))
+        if (n <= 0 || n >= (ssize_t)sizeof(locals->buf))
             GOTO(done);
 
-        if (myst_cpio_write_data(cpio, v->buf, (size_t)n) != 0)
+        if (myst_cpio_write_data(cpio, locals->buf, (size_t)n) != 0)
             GOTO(done);
     }
 
@@ -762,8 +763,8 @@ static int _append_file(myst_cpio_t* cpio, const char* path, const char* name)
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     if (fd >= 0)
         close(fd);
@@ -905,17 +906,17 @@ int myst_cpio_next_entry(
     ssize_t r;
     size_t namesize;
     uint64_t file_pos;
-    struct vars
+    struct locals
     {
         cpio_header_t hdr;
         myst_cpio_entry_t entry;
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
     if (!data || !size || !pos_in_out || !entry_out || !file_data_out)
         GOTO(done);
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         GOTO(done);
 
     pos = *pos_in_out;
@@ -929,36 +930,36 @@ int myst_cpio_next_entry(
 
     /* Read the header */
     {
-        if (sizeof(v->hdr) > rem)
+        if (sizeof(locals->hdr) > rem)
             GOTO(done);
 
-        memcpy(&v->hdr, &data[pos], sizeof(v->hdr));
-        pos += sizeof(v->hdr);
-        rem -= sizeof(v->hdr);
+        memcpy(&locals->hdr, &data[pos], sizeof(locals->hdr));
+        pos += sizeof(locals->hdr);
+        rem -= sizeof(locals->hdr);
 
-        if (!_valid_header(&v->hdr))
+        if (!_valid_header(&locals->hdr))
             GOTO(done);
     }
 
     /* Get the file size. */
     {
-        if ((r = _get_filesize(&v->hdr)) < 0)
+        if ((r = _get_filesize(&locals->hdr)) < 0)
             GOTO(done);
 
-        v->entry.size = (size_t)r;
+        locals->entry.size = (size_t)r;
     }
 
     /* Get the file mode. */
     {
-        if ((r = _get_mode(&v->hdr)) < 0 || r >= UINT32_MAX)
+        if ((r = _get_mode(&locals->hdr)) < 0 || r >= UINT32_MAX)
             GOTO(done);
 
-        v->entry.mode = (uint32_t)r;
+        locals->entry.mode = (uint32_t)r;
     }
 
     /* Get the name size. */
     {
-        if ((r = _get_namesize(&v->hdr)) < 0 || r >= MYST_CPIO_PATH_MAX)
+        if ((r = _get_namesize(&locals->hdr)) < 0 || r >= MYST_CPIO_PATH_MAX)
             GOTO(done);
 
         namesize = (size_t)r;
@@ -969,7 +970,7 @@ int myst_cpio_next_entry(
         if (namesize > rem)
             GOTO(done);
 
-        memcpy(&v->entry.name, &data[pos], namesize);
+        memcpy(&locals->entry.name, &data[pos], namesize);
         pos += namesize;
         rem -= namesize;
     }
@@ -995,11 +996,11 @@ int myst_cpio_next_entry(
 
     /* Skip over the file data. */
     {
-        if (v->entry.size > rem)
+        if (locals->entry.size > rem)
             GOTO(done);
 
-        pos += v->entry.size;
-        rem -= v->entry.size;
+        pos += locals->entry.size;
+        rem -= locals->entry.size;
     }
 
     /* Skip any padding after the file data. */
@@ -1022,21 +1023,21 @@ int myst_cpio_next_entry(
     *pos_in_out = pos;
 
     /* Check for end-of-file. */
-    if (strcmp(v->entry.name, "TRAILER!!!") == 0)
+    if (strcmp(locals->entry.name, "TRAILER!!!") == 0)
     {
         ret = 0;
         goto done;
     }
 
-    *entry_out = v->entry;
+    *entry_out = locals->entry;
     *file_data_out = &data[file_pos];
 
     ret = 1;
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }
@@ -1049,15 +1050,15 @@ int myst_cpio_mem_unpack(
 {
     int ret = -1;
     size_t pos = 0;
-    struct vars
+    struct locals
     {
         myst_cpio_entry_t ent;
         char path[MYST_CPIO_PATH_MAX];
         char target[PATH_MAX];
     };
-    struct vars* v = NULL;
+    struct locals* locals = NULL;
 
-    if (!(v = malloc(sizeof(struct vars))))
+    if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     for (;;)
@@ -1066,48 +1067,49 @@ int myst_cpio_mem_unpack(
         int r;
 
         if ((r = myst_cpio_next_entry(
-                 cpio_data, cpio_size, &pos, &v->ent, &file_data)) == 0)
+                 cpio_data, cpio_size, &pos, &locals->ent, &file_data)) == 0)
         {
             break;
         }
 
-        if (strcmp(v->ent.name, ".") == 0)
+        if (strcmp(locals->ent.name, ".") == 0)
             continue;
 
-        MYST_STRLCPY(v->path, target);
-        MYST_STRLCAT(v->path, "/");
-        MYST_STRLCAT(v->path, v->ent.name);
+        MYST_STRLCPY(locals->path, target);
+        MYST_STRLCAT(locals->path, "/");
+        MYST_STRLCAT(locals->path, locals->ent.name);
 
-        if (S_ISDIR(v->ent.mode))
+        if (S_ISDIR(locals->ent.mode))
         {
             struct stat st;
 
-            if (stat(v->path, &st) == 0)
+            if (stat(locals->path, &st) == 0)
             {
                 if (!S_ISDIR(st.st_mode))
                 {
-                    PRINTF("*** cpio: already exists: %s\n", v->path);
+                    PRINTF("*** cpio: already exists: %s\n", locals->path);
                     GOTO(done);
                 }
             }
-            else if (mkdir(v->path, v->ent.mode) != 0)
+            else if (mkdir(locals->path, locals->ent.mode) != 0)
             {
                 GOTO(done);
             }
         }
-        else if (S_ISREG(v->ent.mode))
+        else if (S_ISREG(locals->ent.mode))
         {
             if (create_file)
             {
-                if ((*create_file)(v->path, file_data, v->ent.size) != 0)
+                if ((*create_file)(locals->path, file_data, locals->ent.size) !=
+                    0)
                     GOTO(done);
             }
             else
             {
                 int fd;
-                ssize_t n = (ssize_t)v->ent.size;
+                ssize_t n = (ssize_t)locals->ent.size;
 
-                if ((fd = open(v->path, O_WRONLY | O_CREAT, 0666)) < 0)
+                if ((fd = open(locals->path, O_WRONLY | O_CREAT, 0666)) < 0)
                     GOTO(done);
 
                 if (write(fd, file_data, (size_t)n) != n)
@@ -1120,21 +1122,21 @@ int myst_cpio_mem_unpack(
                 fd = -1;
             }
         }
-        else if (S_ISLNK(v->ent.mode))
+        else if (S_ISLNK(locals->ent.mode))
         {
             /* read the target from CPIO archive */
             {
-                ssize_t n = (ssize_t)v->ent.size;
+                ssize_t n = (ssize_t)locals->ent.size;
 
-                if (n < 1 || n >= (ssize_t)sizeof(v->target))
+                if (n < 1 || n >= (ssize_t)sizeof(locals->target))
                     GOTO(done);
 
-                memcpy(v->target, file_data, v->ent.size);
-                v->target[n] = '\0';
+                memcpy(locals->target, file_data, locals->ent.size);
+                locals->target[n] = '\0';
             }
 
             /* create the symlink */
-            if (symlink(v->target, v->path) != 0)
+            if (symlink(locals->target, locals->path) != 0)
                 GOTO(done);
         }
         else
@@ -1147,8 +1149,8 @@ int myst_cpio_mem_unpack(
 
 done:
 
-    if (v)
-        free(v);
+    if (locals)
+        free(locals);
 
     return ret;
 }
