@@ -36,6 +36,9 @@ rootfs:
 	sudo chown $(USER).$(USER) rootfs
 	truncate --size=-4096 rootfs
 
+export COMPlus_EnableDiagnostics=0
+export COMPlus_GCHeapHardLimit=0x08000000
+
 # standalone server rule:
 server:
 	$(MAKE) appdir
@@ -44,7 +47,7 @@ server:
 
 # standalone client rule:
 client:
-	curl 127.0.0.1:5050
+	time curl 127.0.0.1:5050
 
 private.pem:
 	openssl genrsa -out private.pem -3 3072

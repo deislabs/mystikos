@@ -439,6 +439,10 @@ long myst_sched_getaffinity_ocall(
     size_t cpusetsize,
     struct myst_cpu_set* mask)
 {
+    /* the syscall does not zero out the mask before setting bits */
+    if (mask)
+        memset(mask, 0, cpusetsize);
+
     RETURN(syscall(SYS_sched_getaffinity, pid, cpusetsize, mask));
 }
 

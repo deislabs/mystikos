@@ -419,11 +419,11 @@ enclave
         long myst_sched_setaffinity_ocall(
             pid_t pid,
             size_t cpusetsize,
-            [in] const struct myst_cpu_set* mask);
+            [in, size=cpusetsize] const struct myst_cpu_set* mask);
 
         long myst_sched_getaffinity_ocall(
             pid_t pid,
             size_t cpusetsize,
-            [out] struct myst_cpu_set* mask);
+            [out, size=cpusetsize] struct myst_cpu_set* mask);
     };
 };

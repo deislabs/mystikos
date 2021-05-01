@@ -84,6 +84,9 @@
 #define COLOR_GREEN "\e[32m"
 #define COLOR_RESET "\e[0m"
 
+/* ATTN: define this to force getaffinity to report a single processor */
+#define UNIPROCESSOR
+
 long myst_syscall_isatty(int fd);
 
 typedef struct _pair
@@ -2610,6 +2613,9 @@ long myst_syscall_sched_getaffinity(
     if (pid < 0 || !mask)
         ERAISE(-EINVAL);
 
+    if (mask)
+        memset(mask, 0, cpusetsize);
+
     if (pid != 0)
     {
         myst_thread_t* thread = myst_find_thread(pid);
@@ -2622,6 +2628,18 @@ long myst_syscall_sched_getaffinity(
 
     long params[6] = {(long)pid, (long)cpusetsize, (long)mask};
     ECHECK((ret = myst_tcall(SYS_sched_getaffinity, params)));
+
+#ifdef UNIPROCESSOR
+
+    /* clear all but the first CPU */
+    {
+        const size_t max_cpu_count = cpusetsize * 8;
+
+        for (int cpu = 1; cpu < (int)max_cpu_count; cpu++)
+            CPU_CLR(cpu, mask);
+    }
+
+#endif /* UNIPROCESSOR */
 
 done:
     return ret;
@@ -2638,6 +2656,16 @@ long myst_syscall_getcpu(
 
     long params[6] = {(long)cpu, (long)node, (long)tcache};
     ECHECK((ret = myst_tcall(SYS_getcpu, params)));
+
+#ifdef UNIPROCESSOR
+
+    if (cpu)
+        *cpu = 0;
+
+    if (node)
+        *node = 0;
+
+#endif /* UNIPROCESSOR */
 
 done:
     return ret;
