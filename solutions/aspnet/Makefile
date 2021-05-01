@@ -37,7 +37,7 @@ rootfs:
 	truncate --size=-4096 rootfs
 
 export COMPlus_EnableDiagnostics=0
-export COMPlus_GCHeapHardLimit=0x08000000
+export COMPlus_GCHeapHardLimit=0x10000000
 
 # standalone server rule:
 server:
