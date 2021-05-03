@@ -2742,7 +2742,7 @@ typedef struct syscall_args
 
 /* ATTN: optimize _syscall() stack usage later */
 #pragma GCC diagnostic push
-#pragma GCC optimize "-Og" // reduces stack usage across case statements
+#pragma GCC diagnostic ignored "-Wstack-usage="
 static long _syscall(void* args_)
 {
     syscall_args_t* args = (syscall_args_t*)args_;
