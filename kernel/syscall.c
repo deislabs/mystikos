@@ -2740,25 +2740,3414 @@ typedef struct syscall_args
     myst_kstack_t* kstack;
 } syscall_args_t;
 
-/* ATTN: optimize _syscall() stack usage later */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wstack-usage="
+/*
+**==============================================================================
+**
+** _syscall()
+**
+**==============================================================================
+*/
+
+struct syscall_context
+{
+    myst_thread_t* thread;
+    myst_td_t* crt_td;
+    myst_td_t* target_td;
+    myst_kstack_t* kstack;
+    bool* set_thread_area_called;
+};
+
+static long _SYS_myst_trace(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    const char* msg = (const char*)params[0];
+
+    _strace(n, "msg=%s", msg);
+
+    return _return(n, 0);
+}
+
+static long _SYS_myst_gcov_init(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    long ret = 0;
+
+    (void)params;
+
+#ifdef MYST_ENABLE_GCOV
+    {
+        libc_t* libc = (libc_t*)params[0];
+        FILE* stream = (FILE*)params[1];
+
+        _strace(n, "libc=%p stream=%p", libc, stream);
+
+        if (gcov_init_libc(libc, stream) != 0)
+            myst_panic("gcov_init_libc() failed");
+    }
+#endif
+
+    return _return(n, ret);
+}
+
+static long _SYS_myst_trace_ptr(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    printf(
+        "trace: %s: %lx %ld\n", (const char*)params[0], params[1], params[1]);
+    return _return(n, 0);
+}
+
+static long _SYS_myst_dump_stack(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    const void* stack = (void*)params[0];
+
+    _strace(n, NULL);
+
+    myst_dump_stack((void*)stack);
+    return _return(n, 0);
+}
+
+static long _SYS_myst_dump_ehdr(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    myst_dump_ehdr((void*)params[0]);
+    return _return(n, 0);
+}
+
+static long _SYS_myst_dump_argv(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int argc = (int)params[0];
+    const char** argv = (const char**)params[1];
+
+    printf("=== SYS_myst_dump_argv\n");
+
+    printf("argc=%d\n", argc);
+    printf("argv=%p\n", argv);
+
+    for (int i = 0; i < argc; i++)
+    {
+        printf("argv[%d]=%s\n", i, argv[i]);
+    }
+
+    printf("argv[argc]=%p\n", argv[argc]);
+
+    return _return(n, 0);
+}
+
+static long _SYS_myst_add_symbol_file(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    const char* path = (const char*)params[0];
+    const void* text = (const void*)params[1];
+    size_t text_size = (size_t)params[2];
+    long ret;
+
+    _strace(n, "path=\"%s\" text=%p text_size=%zu\n", path, text, text_size);
+
+    ret = myst_syscall_add_symbol_file(path, text, text_size);
+
+    return _return(n, ret);
+}
+
+static long _SYS_myst_load_symbols(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    (void)params;
+    _strace(n, NULL);
+
+    return _return(n, myst_syscall_load_symbols());
+}
+
+static long _SYS_myst_unload_symbols(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    (void)params;
+    _strace(n, NULL);
+
+    return _return(n, myst_syscall_unload_symbols());
+}
+
+static long _SYS_myst_gen_creds(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    _strace(n, NULL);
+    return _forward_syscall(MYST_TCALL_GEN_CREDS, params);
+}
+
+static long _SYS_myst_free_creds(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    _strace(n, NULL);
+    return _forward_syscall(MYST_TCALL_FREE_CREDS, params);
+}
+
+static long _SYS_myst_gen_creds_ex(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    _strace(n, NULL);
+    return _forward_syscall(MYST_TCALL_GEN_CREDS_EX, params);
+}
+
+static long _SYS_myst_verify_cert(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    _strace(n, NULL);
+    return _forward_syscall(MYST_TCALL_VERIFY_CERT, params);
+}
+
+static long _SYS_myst_max_threads(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    (void)params;
+    _strace(n, NULL);
+    return _return(n, __myst_kernel_args.max_threads);
+}
+
+static long _SYS_myst_poll_wake(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    (void)params;
+    _strace(n, NULL);
+    return _return(n, myst_tcall_poll_wake());
+}
+
+static long _SYS_read(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int fd = (int)params[0];
+    void* buf = (void*)params[1];
+    size_t count = (size_t)params[2];
+
+    _strace(n, "fd=%d buf=%p count=%zu", fd, buf, count);
+
+    return _return(n, myst_syscall_read(fd, buf, count));
+}
+
+static long _SYS_write(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int fd = (int)params[0];
+    const void* buf = (const void*)params[1];
+    size_t count = (size_t)params[2];
+
+    _strace(n, "fd=%d buf=%p count=%zu", fd, buf, count);
+
+    return _return(n, myst_syscall_write(fd, buf, count));
+}
+
+static long _SYS_pread64(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int fd = (int)params[0];
+    void* buf = (void*)params[1];
+    size_t count = (size_t)params[2];
+    off_t offset = (off_t)params[3];
+
+    _strace(n, "fd=%d buf=%p count=%zu offset=%ld", fd, buf, count, offset);
+
+    return _return(n, myst_syscall_pread(fd, buf, count, offset));
+}
+
+static long _SYS_pwrite64(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int fd = (int)params[0];
+    void* buf = (void*)params[1];
+    size_t count = (size_t)params[2];
+    off_t offset = (off_t)params[3];
+
+    _strace(n, "fd=%d buf=%p count=%zu offset=%ld", fd, buf, count, offset);
+
+    return _return(n, myst_syscall_pwrite(fd, buf, count, offset));
+}
+
+static long _SYS_open(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    const char* path = (const char*)params[0];
+    int flags = (int)params[1];
+    mode_t mode = (mode_t)params[2];
+    long ret;
+
+    _strace(n, "path=\"%s\" flags=0%o mode=0%o", path, flags, mode);
+
+    ret = myst_syscall_open(path, flags, mode);
+
+    return _return(n, ret);
+}
+
+static long _SYS_close(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int fd = (int)params[0];
+
+    _strace(n, "fd=%d", fd);
+
+    return _return(n, myst_syscall_close(fd));
+}
+
+static long _SYS_stat(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    const char* pathname = (const char*)params[0];
+    struct stat* statbuf = (struct stat*)params[1];
+
+    _strace(n, "pathname=\"%s\" statbuf=%p", pathname, statbuf);
+
+    return _return(n, myst_syscall_stat(pathname, statbuf));
+}
+
+static long _SYS_fstat(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int fd = (int)params[0];
+    void* statbuf = (void*)params[1];
+
+    _strace(n, "fd=%d statbuf=%p", fd, statbuf);
+
+    return _return(n, myst_syscall_fstat(fd, statbuf));
+}
+
+static long _SYS_lstat(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    /* ATTN: remove this! */
+    const char* pathname = (const char*)params[0];
+    struct stat* statbuf = (struct stat*)params[1];
+
+    _strace(n, "pathname=\"%s\" statbuf=%p", pathname, statbuf);
+
+    return _return(n, myst_syscall_lstat(pathname, statbuf));
+}
+
+static long _SYS_poll(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    struct pollfd* fds = (struct pollfd*)params[0];
+    nfds_t nfds = (nfds_t)params[1];
+    int timeout = (int)params[2];
+    long ret;
+
+    _strace(n, "fds=%p nfds=%ld timeout=%d", fds, nfds, timeout);
+
+    ret = myst_syscall_poll(fds, nfds, timeout);
+    return _return(n, ret);
+}
+
+static long _SYS_lseek(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int fd = (int)params[0];
+    off_t offset = (off_t)params[1];
+    int whence = (int)params[2];
+
+    _strace(n, "fd=%d offset=%ld whence=%d", fd, offset, whence);
+
+    return _return(n, myst_syscall_lseek(fd, offset, whence));
+}
+
+static long _SYS_mmap(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    void* addr = (void*)params[0];
+    size_t length = (size_t)params[1];
+    int prot = (int)params[2];
+    int flags = (int)params[3];
+    int fd = (int)params[4];
+    off_t offset = (off_t)params[5];
+    void* ptr;
+    long ret = 0;
+
+    _strace(
+        n,
+        "addr=%lx length=%zu(%lx) prot=%d flags=%d fd=%d offset=%lu",
+        (long)addr,
+        length,
+        length,
+        prot,
+        flags,
+        fd,
+        offset);
+
+    ptr = myst_mmap(addr, length, prot, flags, fd, offset);
+
+    if (ptr == MAP_FAILED || !ptr)
+    {
+        ret = -ENOMEM;
+    }
+    else
+    {
+        pid_t pid = myst_getpid();
+
+        if (myst_register_process_mapping(pid, ptr, length) != 0)
+            myst_panic("failed to register process mapping");
+
+        ret = (long)ptr;
+    }
+
+    return _return(n, ret);
+}
+
+static long _SYS_mprotect(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    const void* addr = (void*)params[0];
+    const size_t length = (size_t)params[1];
+    const int prot = (int)params[2];
+
+    _strace(
+        n,
+        "addr=%lx length=%zu(%lx) prot=%d",
+        (long)addr,
+        length,
+        length,
+        prot);
+
+    return _return(n, 0);
+}
+
+static long _SYS_munmap(long n, long params[6], struct syscall_context* context)
+{
+    void* addr = (void*)params[0];
+    size_t length = (size_t)params[1];
+
+    _strace(n, "addr=%lx length=%zu(%lx)", (long)addr, length, length);
+
+    // if the ummapped region overlaps the CRT thread descriptor, then
+    // postpone the unmap because unmapping now would invalidate the
+    // stack canary and would raise __stack_chk_fail(); this occurs
+    // when munmap() is called from __unmapself()
+    if (context->crt_td && addr && length)
+    {
+        const uint8_t* p = (const uint8_t*)context->crt_td;
+        const uint8_t* pend = p + sizeof(myst_td_t);
+        const uint8_t* q = (const uint8_t*)addr;
+        const uint8_t* qend = q + length;
+
+        if ((p >= q && p < qend) || (pend >= q && pend < qend))
+        {
+            myst_thread_t* thread = myst_thread_self();
+
+            /* unmap this later when the thread exits */
+            if (thread)
+            {
+                thread->unmapself_addr = addr;
+                thread->unmapself_length = length;
+            }
+
+            return _return(n, 0);
+        }
+    }
+
+    return _return(n, (long)myst_munmap(addr, length));
+}
+
+static long _SYS_brk(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    void* addr = (void*)params[0];
+
+    _strace(n, "addr=%lx", (long)addr);
+
+    return _return(n, myst_syscall_brk(addr));
+}
+
+static long _SYS_rt_sigaction(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int signum = (int)params[0];
+    const posix_sigaction_t* act = (const posix_sigaction_t*)params[1];
+    posix_sigaction_t* oldact = (posix_sigaction_t*)params[2];
+
+    _strace(n, "signum=%d act=%p oldact=%p", signum, act, oldact);
+
+    long ret = myst_signal_sigaction(signum, act, oldact);
+    return _return(n, ret);
+}
+
+static long _SYS_rt_sigprocmask(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int how = (int)params[0];
+    const sigset_t* set = (sigset_t*)params[1];
+    sigset_t* oldset = (sigset_t*)params[2];
+
+    _strace(n, "how=%d set=%p oldset=%p", how, set, oldset);
+
+    long ret = myst_signal_sigprocmask(how, set, oldset);
+    return _return(n, ret);
+}
+
+static long _SYS_ioctl(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int fd = (int)params[0];
+    unsigned long request = (unsigned long)params[1];
+    long arg = (long)params[2];
+    int iarg = -1;
+
+    if (request == FIONBIO && arg)
+        iarg = *(int*)arg;
+
+    _strace(n, "fd=%d request=0x%lx arg=%lx iarg=%d", fd, request, arg, iarg);
+
+    return _return(n, myst_syscall_ioctl(fd, request, arg));
+}
+
+static long _SYS_readv(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int fd = (int)params[0];
+    const struct iovec* iov = (const struct iovec*)params[1];
+    int iovcnt = (int)params[2];
+
+    _strace(n, "fd=%d iov=%p iovcnt=%d", fd, iov, iovcnt);
+
+    return _return(n, myst_syscall_readv(fd, iov, iovcnt));
+}
+
+static long _SYS_writev(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int fd = (int)params[0];
+    const struct iovec* iov = (const struct iovec*)params[1];
+    int iovcnt = (int)params[2];
+
+    _strace(n, "fd=%d iov=%p iovcnt=%d", fd, iov, iovcnt);
+
+    return _return(n, myst_syscall_writev(fd, iov, iovcnt));
+}
+
+static long _SYS_access(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    const char* pathname = (const char*)params[0];
+    int mode = (int)params[1];
+
+    _strace(n, "pathname=\"%s\" mode=%d", pathname, mode);
+
+    return _return(n, myst_syscall_access(pathname, mode));
+}
+
+static long _SYS_pipe(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int* pipefd = (int*)params[0];
+
+    _strace(n, "pipefd=%p flags=%0o", pipefd, 0);
+
+    return _return(n, myst_syscall_pipe2(pipefd, 0));
+}
+
+static long _SYS_select(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int nfds = (int)params[0];
+    fd_set* rfds = (fd_set*)params[1];
+    fd_set* wfds = (fd_set*)params[2];
+    fd_set* efds = (fd_set*)params[3];
+    struct timeval* timeout = (struct timeval*)params[4];
+    long ret;
+
+    _strace(
+        n,
+        "nfds=%d rfds=%p wfds=%p xfds=%p timeout=%p",
+        nfds,
+        rfds,
+        wfds,
+        efds,
+        timeout);
+
+    ret = myst_syscall_select(nfds, rfds, wfds, efds, timeout);
+    return _return(n, ret);
+}
+
+static long _SYS_sched_yield(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    (void)params;
+    _strace(n, NULL);
+
+    return _return(n, myst_syscall_sched_yield());
+}
+
+static long _SYS_mremap(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    void* old_address = (void*)params[0];
+    size_t old_size = (size_t)params[1];
+    size_t new_size = (size_t)params[2];
+    int flags = (int)params[3];
+    void* new_address = (void*)params[4];
+    long ret;
+
+    _strace(
+        n,
+        "old_address=%p "
+        "old_size=%zu "
+        "new_size=%zu "
+        "flags=%d "
+        "new_address=%p ",
+        old_address,
+        old_size,
+        new_size,
+        flags,
+        new_address);
+
+    ret =
+        (long)myst_mremap(old_address, old_size, new_size, flags, new_address);
+
+    return _return(n, ret);
+}
+
+static long _SYS_msync(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    void* addr = (void*)params[0];
+    size_t length = (size_t)params[1];
+    int flags = (int)params[2];
+
+    _strace(n, "addr=%p length=%zu flags=%d ", addr, length, flags);
+
+    return _return(n, myst_msync(addr, length, flags));
+}
+
+static long _SYS_madvise(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    void* addr = (void*)params[0];
+    size_t length = (size_t)params[1];
+    int advice = (int)params[2];
+
+    _strace(n, "addr=%p length=%zu advice=%d", addr, length, advice);
+
+    return _return(n, 0);
+}
+
+static long _SYS_dup(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int oldfd = (int)params[0];
+    long ret;
+
+    _strace(n, "oldfd=%d", oldfd);
+
+    ret = myst_syscall_dup(oldfd);
+    return _return(n, ret);
+}
+
+static long _SYS_dup2(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int oldfd = (int)params[0];
+    int newfd = (int)params[1];
+    long ret;
+
+    _strace(n, "oldfd=%d newfd=%d", oldfd, newfd);
+
+    ret = myst_syscall_dup2(oldfd, newfd);
+    return _return(n, ret);
+}
+
+static long _SYS_dup3(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int oldfd = (int)params[0];
+    int newfd = (int)params[1];
+    int flags = (int)params[2];
+    long ret;
+
+    _strace(n, "oldfd=%d newfd=%d flags=%o", oldfd, newfd, flags);
+
+    ret = myst_syscall_dup3(oldfd, newfd, flags);
+    return _return(n, ret);
+}
+
+static long _SYS_nanosleep(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    const struct timespec* req = (const struct timespec*)params[0];
+    struct timespec* rem = (struct timespec*)params[1];
+
+    _strace(n, "req=%p rem=%p", req, rem);
+
+    return _return(n, myst_syscall_nanosleep(req, rem));
+}
+
+static long _SYS_myst_run_itimer(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    (void)params;
+    _strace(n, NULL);
+    return _return(n, myst_syscall_run_itimer());
+}
+
+static long _SYS_myst_start_shell(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    (void)params;
+#if !defined(MYST_RELEASE)
+    _strace(n, NULL);
+    myst_start_shell("\nMystikos shell (syscall)\n");
+#endif
+    return _return(n, 0);
+}
+
+static long _SYS_getitimer(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int which = (int)params[0];
+    struct itimerval* curr_value = (void*)params[1];
+
+    _strace(n, "which=%d curr_value=%p", which, curr_value);
+
+    return _return(n, myst_syscall_getitimer(which, curr_value));
+}
+
+static long _SYS_setitimer(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int which = (int)params[0];
+    const struct itimerval* new_value = (void*)params[1];
+    struct itimerval* old_value = (void*)params[2];
+
+    _strace(
+        n, "which=%d new_value=%p old_value=%p", which, new_value, old_value);
+
+    return _return(n, myst_syscall_setitimer(which, new_value, old_value));
+}
+
+static long _SYS_getpid(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    (void)params;
+    _strace(n, NULL);
+    return _return(n, myst_getpid());
+}
+
+static long _SYS_myst_clone(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    long* args = (long*)params[0];
+    int (*fn)(void*) = (void*)args[0];
+    void* child_stack = (void*)args[1];
+    int flags = (int)args[2];
+    void* arg = (void*)args[3];
+    pid_t* ptid = (pid_t*)args[4];
+    void* newtls = (void*)args[5];
+    pid_t* ctid = (void*)args[6];
+
+    _strace(
+        n,
+        "fn=%p "
+        "child_stack=%p "
+        "flags=%x "
+        "arg=%p "
+        "ptid=%p "
+        "newtls=%p "
+        "ctid=%p",
+        fn,
+        child_stack,
+        flags,
+        arg,
+        ptid,
+        newtls,
+        ctid);
+
+    long ret =
+        myst_syscall_clone(fn, child_stack, flags, arg, ptid, newtls, ctid);
+
+    if ((flags & CLONE_VFORK))
+    {
+        // ATTN: give the thread a little time to start to avoid a
+        // syncyhronization error. This suppresses a failure in the
+        // popen test. This should be investigated later.
+        myst_sleep_msec(5);
+    }
+
+    return _return(n, ret);
+}
+
+static long _SYS_execve(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    const char* filename = (const char*)params[0];
+    char** argv = (char**)params[1];
+    char** envp = (char**)params[2];
+
+    _strace(n, "filename=%s argv=%p envp=%p", filename, argv, envp);
+
+    long ret = myst_syscall_execve(filename, argv, envp);
+    return _return(n, ret);
+}
+
+static long _SYS_exit(long n, long params[6], struct syscall_context* context)
+{
+    const int status = (int)params[0];
+    myst_thread_t* thread = myst_thread_self();
+
+    _strace(n, "status=%d", status);
+
+    if (!thread || thread->magic != MYST_THREAD_MAGIC)
+        myst_panic("unexpected");
+
+    thread->exit_status = status;
+
+    /* the kstack is freed after the long-jump below */
+    thread->kstack = context->kstack;
+
+    if (thread == __myst_main_thread)
+    {
+        // execute fini functions with the CRT fsbase since only
+        // gcov uses them and gcov calls into CRT.
+        myst_set_fsbase(context->crt_td);
+        myst_call_fini_functions();
+        myst_set_fsbase(context->target_td);
+
+        if (__options.export_ramfs)
+            myst_export_ramfs();
+    }
+
+    myst_longjmp(&thread->jmpbuf, 1);
+
+    /* unreachable */
+    return _return(n, 0);
+}
+
+static long _SYS_wait4(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    pid_t pid = (pid_t)params[0];
+    int* wstatus = (int*)params[1];
+    int options = (int)params[2];
+    struct rusage* rusage = (struct rusage*)params[3];
+    long ret;
+
+    ret = myst_syscall_wait4(pid, wstatus, options, rusage);
+    return _return(n, ret);
+}
+
+static long _SYS_kill(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int pid = (int)params[0];
+    int sig = (int)params[1];
+
+    _strace(n, "pid=%d sig=%d", pid, sig);
+
+    long ret = myst_syscall_kill(pid, sig);
+    return _return(n, ret);
+}
+
+static long _SYS_uname(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    struct utsname* buf = (struct utsname*)params[0];
+
+    return _return(n, myst_syscall_uname(buf));
+}
+
+static long _SYS_fcntl(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int fd = (int)params[0];
+    int cmd = (int)params[1];
+    long arg = (long)params[2];
+    long ret;
+
+    const char* cmdstr = _fcntl_cmdstr(cmd);
+    _strace(n, "fd=%d cmd=%d(%s) arg=0%lo", fd, cmd, cmdstr, arg);
+
+    ret = myst_syscall_fcntl(fd, cmd, arg);
+    return _return(n, ret);
+}
+
+static long _SYS_flock(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int fd = (int)params[0];
+    int cmd = (int)params[1];
+
+    _strace(n, "fd=%d cmd=%d", fd, cmd);
+
+    return _return(n, 0);
+}
+
+static long _SYS_fsync(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int fd = (int)params[0];
+
+    _strace(n, "fd=%d", fd);
+
+    return _return(n, myst_syscall_fsync(fd));
+}
+
+static long _SYS_truncate(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    const char* path = (const char*)params[0];
+    off_t length = (off_t)params[1];
+
+    _strace(n, "path=\"%s\" length=%ld", path, length);
+
+    return _return(n, myst_syscall_truncate(path, length));
+}
+
+static long _SYS_ftruncate(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int fd = (int)params[0];
+    off_t length = (off_t)params[1];
+
+    _strace(n, "fd=%d length=%ld", fd, length);
+
+    return _return(n, myst_syscall_ftruncate(fd, length));
+}
+
+static long _SYS_getcwd(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    char* buf = (char*)params[0];
+    size_t size = (size_t)params[1];
+
+    _strace(n, "buf=%p size=%zu", buf, size);
+
+    return _return(n, myst_syscall_getcwd(buf, size));
+}
+
+static long _SYS_chdir(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    const char* path = (const char*)params[0];
+
+    _strace(n, "path=\"%s\"", path);
+
+    return _return(n, myst_syscall_chdir(path));
+}
+
+static long _SYS_rename(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    const char* oldpath = (const char*)params[0];
+    const char* newpath = (const char*)params[1];
+
+    _strace(n, "oldpath=\"%s\" newpath=\"%s\"", oldpath, newpath);
+
+    return _return(n, myst_syscall_rename(oldpath, newpath));
+}
+
+static long _SYS_mkdir(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    const char* pathname = (const char*)params[0];
+    mode_t mode = (mode_t)params[1];
+
+    _strace(n, "pathname=\"%s\" mode=0%o", pathname, mode);
+
+    return _return(n, myst_syscall_mkdir(pathname, mode));
+}
+
+static long _SYS_rmdir(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    const char* pathname = (const char*)params[0];
+
+    _strace(n, "pathname=\"%s\"", pathname);
+
+    return _return(n, myst_syscall_rmdir(pathname));
+}
+
+static long _SYS_creat(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    const char* pathname = (const char*)params[0];
+    mode_t mode = (mode_t)params[1];
+
+    _strace(n, "pathname=\"%s\" mode=%x", pathname, mode);
+
+    return _return(n, myst_syscall_creat(pathname, mode));
+}
+
+static long _SYS_link(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    const char* oldpath = (const char*)params[0];
+    const char* newpath = (const char*)params[1];
+
+    _strace(n, "oldpath=\"%s\" newpath=\"%s\"", oldpath, newpath);
+
+    return _return(n, myst_syscall_link(oldpath, newpath));
+}
+
+static long _SYS_unlink(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    const char* pathname = (const char*)params[0];
+
+    _strace(n, "pathname=\"%s\"", pathname);
+
+    return _return(n, myst_syscall_unlink(pathname));
+}
+
+static long _SYS_symlink(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    const char* target = (const char*)params[0];
+    const char* linkpath = (const char*)params[1];
+
+    _strace(n, "target=\"%s\" linkpath=\"%s\"", target, linkpath);
+
+    return _return(n, myst_syscall_symlink(target, linkpath));
+}
+
+static long _SYS_readlink(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    const char* pathname = (const char*)params[0];
+    char* buf = (char*)params[1];
+    size_t bufsiz = (size_t)params[2];
+
+    _strace(n, "pathname=\"%s\" buf=%p bufsiz=%zu", pathname, buf, bufsiz);
+
+    return _return(n, myst_syscall_readlink(pathname, buf, bufsiz));
+}
+
+static long _SYS_chmod(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    const char* pathname = (const char*)params[0];
+    mode_t mode = (mode_t)params[1];
+
+    _strace(n, "pathname=\"%s\" mode=%o", pathname, mode);
+
+    return _return(n, myst_syscall_chmod(pathname, mode));
+}
+
+static long _SYS_fchmod(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int fd = (int)params[0];
+    mode_t mode = (mode_t)params[1];
+
+    _strace(n, "fd=%d mode=%o", fd, mode);
+
+    return _return(n, myst_syscall_fchmod(fd, mode));
+}
+
+static long _SYS_chown(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    const char* pathname = (const char*)params[0];
+    uid_t owner = (uid_t)params[1];
+    gid_t group = (gid_t)params[2];
+
+    _strace(n, "pathname=%s owner=%u group=%u", pathname, owner, group);
+
+    /* owner is a no-op for now since kernel executes as root */
+    return _return(n, 0);
+}
+
+static long _SYS_umask(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    mode_t mask = (mode_t)params[0];
+
+    _strace(n, "mask=%o", mask);
+
+    return _return(n, myst_syscall_umask(mask));
+}
+
+static long _SYS_gettimeofday(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    struct timeval* tv = (struct timeval*)params[0];
+    struct timezone* tz = (void*)params[1];
+
+    _strace(n, "tv=%p tz=%p", tv, tz);
+
+    long ret = myst_syscall_gettimeofday(tv, tz);
+    return _return(n, ret);
+}
+
+static long _SYS_getrusage(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int who = (int)params[0];
+    struct rusage* usage = (struct rusage*)params[1];
+
+    _strace(n, "who=%d usage=%p", who, usage);
+
+    long ret = myst_syscall_getrusage(who, usage);
+    return _return(n, ret);
+}
+
+static long _SYS_sysinfo(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    struct sysinfo* info = (struct sysinfo*)params[0];
+    _strace(n, "info=%p", info);
+    long ret = myst_syscall_sysinfo(info);
+    return _return(n, ret);
+}
+
+static long _SYS_times(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    struct tms* tm = (struct tms*)params[0];
+    _strace(n, "tm=%p", tm);
+
+    long stime = myst_times_system_time();
+    long utime = myst_times_user_time();
+    if (tm != NULL)
+    {
+        tm->tms_utime = utime;
+        tm->tms_stime = stime;
+        tm->tms_cutime = 0;
+        tm->tms_cstime = 0;
+    }
+
+    return _return(n, stime + utime);
+}
+
+static long _SYS_syslog(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    (void)params;
+    /* Ignore syslog for now */
+    return _return(n, 0);
+}
+
+static long _SYS_setpgid(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    gid_t gid = (gid_t)params[0];
+    long ret = 0;
+
+    _strace(n, "gid=%u", gid);
+
+    /* do not allow the GID to be changed */
+    if (gid != MYST_DEFAULT_GID)
+        ret = -EPERM;
+
+    return _return(n, ret);
+}
+
+static long _SYS_getpgid(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    (void)params;
+    _strace(n, NULL);
+    return _return(n, MYST_DEFAULT_GID);
+}
+
+static long _SYS_getppid(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    (void)params;
+    _strace(n, NULL);
+    return _return(n, myst_getppid());
+}
+
+static long _SYS_getsid(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    (void)params;
+    _strace(n, NULL);
+    return _return(n, myst_getsid());
+}
+
+static long _SYS_getgroups(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    size_t size = (size_t)params[0];
+    gid_t* list = (gid_t*)params[1];
+    /* return the extra groups on the thread */;
+    _strace(n, NULL);
+    return _return(n, myst_syscall_getgroups(size, list));
+}
+
+static long _SYS_setgroups(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int size = (int)params[0];
+    const gid_t* list = (const gid_t*)params[1];
+
+    /* return the extra groups on the thread */;
+    _strace(n, NULL);
+    return _return(n, myst_syscall_setgroups(size, list));
+}
+
+static long _SYS_getuid(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    (void)params;
+    /* return the real uid of the thread */;
+    _strace(n, NULL);
+    return _return(n, myst_syscall_getuid());
+}
+
+static long _SYS_setuid(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    /* Set euid and fsuid to arg1, and if euid is already set to root
+     * also set uid and savuid of the thread */
+    uid_t uid = (uid_t)params[0];
+    _strace(n, "uid=%u", uid);
+
+    return _return(n, myst_syscall_setuid(uid));
+}
+
+static long _SYS_getgid(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    (void)params;
+    /* return the gid of the thread */;
+    _strace(n, NULL);
+    return _return(n, myst_syscall_getgid());
+}
+
+static long _SYS_setgid(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    /* set the effective gid (euid) of the thread, unless egid is root
+     * in which case set all gids */
+    gid_t gid = (gid_t)params[0];
+    _strace(n, "gid=%u", gid);
+    return _return(n, myst_syscall_setgid(gid));
+}
+
+static long _SYS_geteuid(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    (void)params;
+    /* return threads effective uid (euid) */
+    _strace(n, NULL);
+    return _return(n, myst_syscall_geteuid());
+}
+
+static long _SYS_getegid(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    (void)params;
+    /* return threads effective gid (egid) */
+    _strace(n, NULL);
+    return _return(n, myst_syscall_getegid());
+}
+
+static long _SYS_setreuid(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    /* set the real and effective uid of the thread */
+    uid_t ruid = (uid_t)params[0];
+    uid_t euid = (uid_t)params[1];
+    _strace(n, "Changing IDs to ruid=%u, euid=%u", ruid, euid);
+    return _return(n, myst_syscall_setreuid(ruid, euid));
+}
+
+static long _SYS_setregid(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    /* set the real and effective uid of the thread */
+    gid_t rgid = (gid_t)params[0];
+    gid_t egid = (gid_t)params[1];
+    _strace(n, "Changing setting to rgid=%u, egid=%u", rgid, egid);
+    return _return(n, myst_syscall_setregid(rgid, egid));
+}
+
+static long _SYS_setresuid(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    /* set the real and effective uid of the thread */
+    uid_t ruid = (uid_t)params[0];
+    uid_t euid = (uid_t)params[1];
+    uid_t savuid = (uid_t)params[2];
+    _strace(
+        n,
+        "Changing setting to ruid=%u, euid=%u, savuid=%u",
+        ruid,
+        euid,
+        savuid);
+    return _return(n, myst_syscall_setresuid(ruid, euid, savuid));
+}
+
+static long _SYS_getresuid(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    uid_t* ruid = (uid_t*)params[0];
+    uid_t* euid = (uid_t*)params[1];
+    uid_t* savuid = (uid_t*)params[2];
+    _strace(n, NULL);
+    return _return(n, myst_syscall_getresuid(ruid, euid, savuid));
+}
+
+static long _SYS_setresgid(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    /* set the real and effective uid of the thread */
+    gid_t rgid = (gid_t)params[0];
+    gid_t egid = (gid_t)params[1];
+    gid_t savgid = (gid_t)params[2];
+    _strace(
+        n,
+        "Changing setting to rgid=%u, egid=%u, savgid=%u",
+        rgid,
+        egid,
+        savgid);
+    return _return(n, myst_syscall_setresgid(rgid, egid, savgid));
+}
+
+static long _SYS_getresgid(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    gid_t* rgid = (gid_t*)params[0];
+    gid_t* egid = (gid_t*)params[1];
+    gid_t* savgid = (gid_t*)params[2];
+    _strace(n, NULL);
+    return _return(n, myst_syscall_getresgid(rgid, egid, savgid));
+}
+
+static long _SYS_setfsuid(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    uid_t fsuid = (uid_t)params[0];
+    _strace(n, "fsuid=%u", fsuid);
+    return _return(n, myst_syscall_setfsuid(fsuid));
+}
+
+static long _SYS_setfsgid(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    gid_t fsgid = (gid_t)params[0];
+    _strace(n, "fsgid=%u", fsgid);
+    return _return(n, myst_syscall_setfsgid(fsgid));
+}
+
+static long _SYS_rt_sigpending(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    sigset_t* set = (sigset_t*)params[0];
+    unsigned size = (unsigned)params[1];
+    return _return(n, myst_signal_sigpending(set, size));
+}
+
+static long _SYS_sigaltstack(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    (void)params;
+    /* ATTN: support user space stack for segv handling. */
+    return _return(n, 0);
+}
+
+static long _SYS_mknod(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    const char* pathname = (const char*)params[0];
+    mode_t mode = (mode_t)params[1];
+    dev_t dev = (dev_t)params[2];
+    long ret = 0;
+
+    _strace(n, "pathname=%s mode=%d dev=%lu", pathname, mode, dev);
+
+    if (S_ISFIFO(mode))
+    {
+        /* ATTN: create a pipe here! */
+    }
+    else
+    {
+        ret = -ENOTSUP;
+    }
+
+    return _return(n, ret);
+}
+
+static long _SYS_statfs(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    const char* path = (const char*)params[0];
+    struct statfs* buf = (struct statfs*)params[1];
+
+    _strace(n, "path=%s buf=%p", path, buf);
+
+    long ret = myst_syscall_statfs(path, buf);
+
+    return _return(n, ret);
+}
+
+static long _SYS_fstatfs(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int fd = (int)params[0];
+    struct statfs* buf = (struct statfs*)params[1];
+
+    _strace(n, "fd=%d buf=%p", fd, buf);
+
+    long ret = myst_syscall_fstatfs(fd, buf);
+
+    return _return(n, ret);
+}
+
+static long _SYS_sched_setparam(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    (void)params;
+    /* ATTN: support setting thread priorities. */
+    return _return(n, 0);
+}
+
+static long _SYS_sched_getparam(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    pid_t pid = (pid_t)params[0];
+    struct sched_param* param = (struct sched_param*)params[1];
+
+    _strace(n, "pid=%d param=%p", pid, param);
+
+    // ATTN: Return the priority from SYS_sched_setparam.
+    if (param != NULL)
+    {
+        // Only memset the non reserved part of the structure
+        // This is to be defensive against different sizes of this
+        // struct in musl and glibc.
+        memset(param, 0, sizeof(*param) - 40);
+    }
+    return _return(n, 0);
+}
+
+static long _SYS_sched_setscheduler(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    (void)params;
+    // ATTN: support different schedules, FIFO, RR, BATCH, etc.
+    // The more control we have on threads inside the kernel, the more
+    // schedulers we could support.
+    return _return(n, 0);
+}
+
+static long _SYS_sched_getscheduler(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    (void)params;
+    /* ATTN: return the scheduler installed from sched_setscheduler. */
+    return _return(n, SCHED_OTHER);
+}
+
+static long _SYS_sched_get_priority_max(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    (void)params;
+    /* ATTN: support thread priorities */
+    return _return(n, 0);
+}
+
+static long _SYS_sched_get_priority_min(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    (void)params;
+    /* ATTN: support thread priorities */
+    return _return(n, 0);
+}
+
+static long _SYS_mlock(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    const void* addr = (const void*)params[0];
+    size_t len = (size_t)params[1];
+    long ret = 0;
+
+    _strace(n, "addr=%p len=%zu\n", addr, len);
+
+    if (!addr)
+        ret = -EINVAL;
+
+    // ATTN: forward the request to target.
+    // Some targets, such as sgx, probably just ignore it.
+
+    return _return(n, ret);
+}
+
+static long _SYS_prctl(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int option = (int)params[0];
+    long ret = 0;
+
+    _strace(n, "option=%d\n", option);
+
+    if (option == PR_GET_NAME)
+    {
+        char* arg2 = (char*)params[1];
+        if (!arg2)
+            return _return(n, -EINVAL);
+
+        strcpy(arg2, myst_get_thread_name(myst_thread_self()));
+    }
+    else if (option == PR_SET_NAME)
+    {
+        char* arg2 = (char*)params[1];
+        if (!arg2)
+            return _return(n, -EINVAL);
+
+        ret = myst_set_thread_name(myst_thread_self(), arg2);
+    }
+    else
+    {
+        ret = -EINVAL;
+    }
+
+    return _return(n, ret);
+}
+
+static long _SYS_mount(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    const char* source = (const char*)params[0];
+    const char* target = (const char*)params[1];
+    const char* filesystemtype = (const char*)params[2];
+    unsigned long mountflags = (unsigned long)params[3];
+    void* data = (void*)params[4];
+    long ret;
+
+    _strace(
+        n,
+        "source=%s target=%s filesystemtype=%s mountflags=%lu data=%p",
+        source,
+        target,
+        filesystemtype,
+        mountflags,
+        data);
+
+    ret = myst_syscall_mount(source, target, filesystemtype, mountflags, data);
+
+    return _return(n, ret);
+}
+
+static long _SYS_umount2(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    const char* target = (const char*)params[0];
+    int flags = (int)params[1];
+    long ret;
+
+    _strace(n, "target=%p flags=%d", target, flags);
+
+    ret = myst_syscall_umount2(target, flags);
+
+    return _return(n, ret);
+}
+
+static long _SYS_sethostname(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    const char* name = (const char*)params[0];
+    size_t len = (size_t)params[1];
+
+    _strace(n, "name=\"%s\" len=%zu", name, len);
+
+    return _return(n, myst_syscall_sethostname(name, len));
+}
+
+static long _SYS_gettid(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    (void)params;
+    _strace(n, NULL);
+    return _return(n, myst_gettid());
+}
+
+static long _SYS_tkill(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int tid = (int)params[0];
+    int sig = (int)params[1];
+
+    _strace(n, "tid=%d sig=%d", tid, sig);
+
+    myst_thread_t* thread = myst_thread_self();
+    int tgid = thread->pid;
+
+    long ret = myst_syscall_tgkill(tgid, tid, sig);
+    return _return(n, ret);
+}
+
+static long _SYS_time(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    time_t* tloc = (time_t*)params[0];
+
+    _strace(n, "tloc=%p", tloc);
+    long ret = myst_syscall_time(tloc);
+    return _return(n, ret);
+}
+
+static long _SYS_futex(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int* uaddr = (int*)params[0];
+    int futex_op = (int)params[1];
+    int val = (int)params[2];
+    long arg = (long)params[3];
+    int* uaddr2 = (int*)params[4];
+    int val3 = (int)val3;
+
+    _strace(
+        n,
+        "uaddr=0x%lx(%d) futex_op=%u(%s) val=%d",
+        (long)uaddr,
+        (uaddr ? *uaddr : -1),
+        futex_op,
+        _futex_op_str(futex_op),
+        val);
+
+    return _return(
+        n, myst_syscall_futex(uaddr, futex_op, val, arg, uaddr2, val3));
+}
+
+static long _SYS_sched_setaffinity(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    pid_t pid = (pid_t)params[0];
+    size_t cpusetsize = (pid_t)params[1];
+    cpu_set_t* mask = (cpu_set_t*)params[2];
+
+    _strace(n, "pid=%d cpusetsize=%zu mask=%p\n", pid, cpusetsize, mask);
+
+    /* ATTN: support set affinity requests */
+
+    return _return(n, 0);
+}
+
+static long _SYS_sched_getaffinity(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    pid_t pid = (pid_t)params[0];
+    size_t cpusetsize = (pid_t)params[1];
+    cpu_set_t* mask = (cpu_set_t*)params[2];
+
+    _strace(n, "pid=%d cpusetsize=%zu mask=%p\n", pid, cpusetsize, mask);
+
+    // ATTN: return the cpu id from sched_setaffinity.
+    // for now, make all threads fixed to cpu 0.
+    if (mask != NULL)
+    {
+        CPU_ZERO(mask);
+        CPU_SET(0, mask);
+    }
+
+    return _return(n, cpusetsize);
+}
+
+static long _SYS_set_thread_area(
+    long n,
+    long params[6],
+    struct syscall_context* context)
+{
+    void* tp = (void*)params[0];
+
+    _strace(n, "tp=%p", tp);
+
+    /* ---------- running target thread descriptor ---------- */
+
+#ifdef DISABLE_MULTIPLE_SET_THREAD_AREA_SYSCALLS
+    if (_set_thread_area_called)
+        myst_panic("SYS_set_thread_area called twice");
+#endif
+
+    /* get the C-runtime thread descriptor */
+    context->crt_td = (myst_td_t*)tp;
+    assert(myst_valid_td(context->crt_td));
+
+    /* set the C-runtime thread descriptor for this thread */
+    context->thread->crt_td = context->crt_td;
+
+    /* propagate the canary from the old thread descriptor */
+    (context->crt_td)->canary = context->target_td->canary;
+
+    *context->set_thread_area_called = true;
+
+    return _return(n, 0);
+}
+
+static long _SYS_epoll_create(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int size = (int)params[0];
+
+    _strace(n, "size=%d", size);
+
+    if (size <= 0)
+        return _return(n, -EINVAL);
+
+    return _return(n, myst_syscall_epoll_create1(0));
+}
+
+static long _SYS_getdents64(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    unsigned int fd = (unsigned int)params[0];
+    struct dirent* dirp = (struct dirent*)params[1];
+    unsigned int count = (unsigned int)params[2];
+
+    _strace(n, "fd=%d dirp=%p count=%u", fd, dirp, count);
+
+    return _return(n, myst_syscall_getdents64((int)fd, dirp, count));
+}
+
+static long _SYS_set_tid_address(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int* tidptr = (int*)params[0];
+
+    /* ATTN: unused */
+
+    _strace(n, "tidptr=%p *tidptr=%d", tidptr, tidptr ? *tidptr : -1);
+
+    return _return(n, myst_getpid());
+}
+
+static long _SYS_fadvise64(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int fd = (int)params[0];
+    loff_t offset = (loff_t)params[1];
+    loff_t len = (loff_t)params[2];
+    int advice = (int)params[3];
+
+    _strace(n, "fd=%d offset=%ld len=%ld advice=%d", fd, offset, len, advice);
+
+    /* ATTN: no-op */
+    return _return(n, 0);
+}
+
+static long _SYS_clock_settime(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    clockid_t clk_id = (clockid_t)params[0];
+    struct timespec* tp = (struct timespec*)params[1];
+
+    _strace(n, "clk_id=%u tp=%p", clk_id, tp);
+
+    return _return(n, myst_syscall_clock_settime(clk_id, tp));
+}
+
+static long _SYS_clock_gettime(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    clockid_t clk_id = (clockid_t)params[0];
+    struct timespec* tp = (struct timespec*)params[1];
+
+    _strace(n, "clk_id=%u tp=%p", clk_id, tp);
+
+    return _return(n, myst_syscall_clock_gettime(clk_id, tp));
+}
+
+static long _SYS_clock_getres(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    clockid_t clk_id = (clockid_t)params[0];
+    struct timespec* res = (struct timespec*)params[1];
+
+    _strace(n, "clk_id=%u tp=%p", clk_id, res);
+
+    return _return(n, myst_syscall_clock_getres(clk_id, res));
+}
+
+static long _SYS_exit_group(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int status = (int)params[0];
+    _strace(n, "status=%d", status);
+
+    myst_kill_thread_group();
+    return _return(n, 0);
+}
+
+static long _SYS_epoll_wait(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int epfd = (int)params[0];
+    struct epoll_event* events = (struct epoll_event*)params[1];
+    int maxevents = (int)params[2];
+    int timeout = (int)params[3];
+    long ret;
+
+    _strace(
+        n,
+        "edpf=%d events=%p maxevents=%d timeout=%d",
+        epfd,
+        events,
+        maxevents,
+        timeout);
+
+    ret = myst_syscall_epoll_wait(epfd, events, maxevents, timeout);
+    return _return(n, ret);
+}
+
+static long _SYS_epoll_ctl(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int epfd = (int)params[0];
+    int op = (int)params[1];
+    int fd = (int)params[2];
+    struct epoll_event* event = (struct epoll_event*)params[3];
+    long ret;
+
+    _strace(n, "edpf=%d op=%d fd=%d event=%p", epfd, op, fd, event);
+
+    ret = myst_syscall_epoll_ctl(epfd, op, fd, event);
+    return _return(n, ret);
+}
+
+static long _SYS_tgkill(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int tgid = (int)params[0];
+    int tid = (int)params[1];
+    int sig = (int)params[2];
+
+    _strace(n, "tgid=%d tid=%d sig=%d", tgid, tid, sig);
+
+    long ret = myst_syscall_tgkill(tgid, tid, sig);
+    return _return(n, ret);
+}
+
+static long _SYS_inotify_init(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    (void)params;
+    _strace(n, NULL);
+
+    long ret = myst_syscall_inotify_init1(0);
+    return _return(n, ret);
+}
+
+static long _SYS_inotify_add_watch(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int fd = (int)params[0];
+    const char* pathname = (const char*)params[1];
+    uint32_t mask = (uint32_t)params[2];
+
+    _strace(n, "fd=%d pathname=%s mask=%x", fd, pathname, mask);
+
+    long ret = myst_syscall_inotify_add_watch(fd, pathname, mask);
+    return _return(n, ret);
+}
+
+static long _SYS_inotify_rm_watch(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int fd = (int)params[0];
+    int wd = (int)params[1];
+
+    _strace(n, "fd=%d wd=%d", fd, wd);
+
+    long ret = myst_syscall_inotify_rm_watch(fd, wd);
+    return _return(n, ret);
+}
+
+static long _SYS_openat(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int dirfd = (int)params[0];
+    const char* path = (const char*)params[1];
+    int flags = (int)params[2];
+    mode_t mode = (mode_t)params[3];
+    long ret;
+
+    _strace(
+        n, "dirfd=%d path=\"%s\" flags=0%o mode=0%o", dirfd, path, flags, mode);
+
+    ret = myst_syscall_openat(dirfd, path, flags, mode);
+
+    return _return(n, ret);
+}
+
+static long _SYS_futimesat(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int dirfd = (int)params[0];
+    const char* pathname = (const char*)params[1];
+    const struct timeval* times = (const struct timeval*)params[2];
+    long ret;
+
+    _strace(n, "dirfd=%d pathname=%s times=%p", dirfd, pathname, times);
+
+    ret = myst_syscall_futimesat(dirfd, pathname, times);
+    return _return(n, ret);
+}
+
+static long _SYS_newfstatat(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int dirfd = (int)params[0];
+    const char* pathname = (const char*)params[1];
+    struct stat* statbuf = (struct stat*)params[2];
+    int flags = (int)params[3];
+    long ret;
+
+    _strace(
+        n,
+        "dirfd=%d pathname=%s statbuf=%p flags=%d",
+        dirfd,
+        pathname,
+        statbuf,
+        flags);
+
+    ret = myst_syscall_fstatat(dirfd, pathname, statbuf, flags);
+    return _return(n, ret);
+}
+
+static long _SYS_set_robust_list(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    struct myst_robust_list_head* head = (void*)params[0];
+    size_t len = (size_t)params[1];
+    long ret;
+
+    _strace(n, "head=%p len=%zu", head, len);
+
+    ret = myst_syscall_set_robust_list(head, len);
+    return _return(n, ret);
+}
+
+static long _SYS_get_robust_list(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int pid = (int)params[0];
+    struct myst_robust_list_head** head_ptr = (void*)params[1];
+    size_t* len_ptr = (size_t*)params[2];
+    long ret;
+
+    _strace(n, "pid=%d head=%p len=%p", pid, head_ptr, len_ptr);
+
+    ret = myst_syscall_get_robust_list(pid, head_ptr, len_ptr);
+    return _return(n, ret);
+}
+
+static long _SYS_utimensat(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int dirfd = (int)params[0];
+    const char* pathname = (const char*)params[1];
+    const struct timespec* times = (const struct timespec*)params[2];
+    int flags = (int)params[3];
+    long ret;
+
+    _strace(
+        n,
+        "dirfd=%d pathname=%s times=%p flags=%o",
+        dirfd,
+        pathname,
+        times,
+        flags);
+
+    ret = myst_syscall_utimensat(dirfd, pathname, times, flags);
+    return _return(n, ret);
+}
+
+static long _SYS_epoll_pwait(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int epfd = (int)params[0];
+    struct epoll_event* events = (struct epoll_event*)params[1];
+    int maxevents = (int)params[2];
+    int timeout = (int)params[3];
+    const sigset_t* sigmask = (const sigset_t*)params[4];
+    long ret;
+
+    _strace(
+        n,
+        "edpf=%d events=%p maxevents=%d timeout=%d sigmask=%p",
+        epfd,
+        events,
+        maxevents,
+        timeout,
+        sigmask);
+
+    /* ATTN: ignore sigmask */
+    ret = myst_syscall_epoll_wait(epfd, events, maxevents, timeout);
+    return _return(n, ret);
+}
+
+static long _SYS_fallocate(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int fd = (int)params[0];
+    int mode = (int)params[1];
+    off_t offset = (off_t)params[2];
+    off_t len = (off_t)params[3];
+
+    _strace(n, "fd=%d mode=%d offset=%ld len=%ld", fd, mode, offset, len);
+
+    /* ATTN: treated as advisory only */
+    return _return(n, 0);
+}
+
+static long _SYS_accept4(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    long ret = 0;
+    int sockfd = (int)params[0];
+    struct sockaddr* addr = (struct sockaddr*)params[1];
+    socklen_t* addrlen = (socklen_t*)params[2];
+    int flags = (int)params[3];
+    char addrstr[MAX_IPADDR_LEN];
+
+    ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
+
+    _strace(
+        n,
+        "sockfd=%d addr=%s addrlen=%p flags=%x",
+        sockfd,
+        addrstr,
+        addrlen,
+        flags);
+
+    ret = myst_syscall_accept4(sockfd, addr, addrlen, flags);
+
+done:
+    return _return(n, ret);
+}
+
+static long _SYS_epoll_create1(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int flags = (int)params[0];
+
+    _strace(n, "flags=%d", flags);
+    return _return(n, myst_syscall_epoll_create1(flags));
+}
+
+static long _SYS_pipe2(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int* pipefd = (int*)params[0];
+    int flags = (int)params[1];
+    long ret;
+
+    _strace(n, "pipefd=%p flags=%0o", pipefd, flags);
+    ret = myst_syscall_pipe2(pipefd, flags);
+
+    if (__options.trace_syscalls)
+        myst_eprintf("    pipefd[]=[%d:%d]\n", pipefd[0], pipefd[1]);
+
+    return _return(n, ret);
+}
+
+static long _SYS_inotify_init1(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int flags = (int)params[0];
+
+    _strace(n, "flags=%x", flags);
+
+    long ret = myst_syscall_inotify_init1(flags);
+    return _return(n, ret);
+}
+
+static long _SYS_prlimit64(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int pid = (int)params[0];
+    int resource = (int)params[1];
+    struct rlimit* new_rlim = (struct rlimit*)params[2];
+    struct rlimit* old_rlim = (struct rlimit*)params[3];
+
+    _strace(
+        n,
+        "pid=%d, resource=%d, new_rlim=%p, old_rlim=%p",
+        pid,
+        resource,
+        new_rlim,
+        old_rlim);
+
+    int ret = myst_syscall_prlimit64(pid, resource, new_rlim, old_rlim);
+    return _return(n, ret);
+}
+
+static long _SYS_getcpu(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    unsigned* cpu = (unsigned*)params[0];
+    unsigned* node = (unsigned*)params[1];
+    struct getcpu_cache* tcache = (struct getcpu_cache*)params[2];
+
+    _strace(n, "cpu=%p node=%p, tcache=%p", cpu, node, tcache);
+
+    // ATTN: report the real NUMA node id and cpu id.
+    // For now, always report id 0 for them.
+    if (cpu)
+        *cpu = 0;
+
+    if (node)
+        *node = 0;
+
+    return _return(n, 0);
+}
+
+static long _SYS_getrandom(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    void* buf = (void*)params[0];
+    size_t buflen = (size_t)params[1];
+    unsigned int flags = (unsigned int)params[2];
+
+    _strace(n, "buf=%p buflen=%zu flags=%d", buf, buflen, flags);
+
+    return _return(n, myst_syscall_getrandom(buf, buflen, flags));
+}
+
+static long _SYS_membarrier(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int cmd = (int)params[0];
+    int flags = (int)params[1];
+
+    _strace(n, "cmd=%d flags=%d", cmd, flags);
+
+    myst_barrier();
+
+    return _return(n, 0);
+}
+
+static long _SYS_bind(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    long ret = 0;
+    int sockfd = (int)params[0];
+    const struct sockaddr* addr = (const struct sockaddr*)params[1];
+    socklen_t addrlen = (socklen_t)params[2];
+    char addrstr[MAX_IPADDR_LEN];
+
+    ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
+
+    _strace(n, "sockfd=%d addr=%s addrlen=%u", sockfd, addrstr, addrlen);
+
+    ret = myst_syscall_bind(sockfd, addr, addrlen);
+
+done:
+    return _return(n, ret);
+}
+
+static long _SYS_connect(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    /* connect() and bind() have the same parameters */
+    long ret = 0;
+    int sockfd = (int)params[0];
+    const struct sockaddr* addr = (const struct sockaddr*)params[1];
+    socklen_t addrlen = (socklen_t)params[2];
+    char addrstr[MAX_IPADDR_LEN];
+
+    ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
+
+    _strace(
+        n,
+        "sockfd=%d addrlen=%u family=%u ip=%s",
+        sockfd,
+        addrlen,
+        addr->sa_family,
+        addrstr);
+
+    ret = myst_syscall_connect(sockfd, addr, addrlen);
+
+done:
+    return _return(n, ret);
+}
+
+static long _SYS_recvfrom(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    long ret = 0;
+    int sockfd = (int)params[0];
+    void* buf = (void*)params[1];
+    size_t len = (size_t)params[2];
+    int flags = (int)params[3];
+    struct sockaddr* src_addr = (struct sockaddr*)params[4];
+    socklen_t* addrlen = (socklen_t*)params[5];
+    char addrstr[MAX_IPADDR_LEN];
+
+    ECHECK(_socketaddr_to_str(src_addr, addrstr, MAX_IPADDR_LEN));
+
+    _strace(
+        n,
+        "sockfd=%d buf=%p len=%zu flags=%d src_addr=%s addrlen=%p",
+        sockfd,
+        buf,
+        len,
+        flags,
+        addrstr,
+        addrlen);
+
+#ifdef MYST_NO_RECVMSG_MITIGATION
+    ret = myst_syscall_recvfrom(sockfd, buf, len, flags, src_addr, addrlen);
+#else  /* MYST_NO_RECVMSG_WORKAROUND */
+    /* ATTN: this mitigation introduces a severe performance penalty */
+    // This mitigation works around a problem with a certain
+    // application that fails handle EGAIN. This should be removed
+    // when possible.
+    for (size_t i = 0; i < 10; i++)
+    {
+        ret = myst_syscall_recvfrom(sockfd, buf, len, flags, src_addr, addrlen);
+
+        if (ret != -EAGAIN)
+            break;
+
+        {
+            struct timespec req;
+            req.tv_sec = 0;
+            req.tv_nsec = 1000000000 / 10;
+            long args[6];
+            args[0] = (long)&req;
+            args[1] = (long)NULL;
+            _forward_syscall(SYS_nanosleep, args);
+            continue;
+        }
+    }
+#endif /* MYST_NO_RECVMSG_WORKAROUND */
+
+done:
+    return _return(n, ret);
+}
+
+static long _SYS_sendto(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    long ret = 0;
+    int sockfd = (int)params[0];
+    void* buf = (void*)params[1];
+    size_t len = (size_t)params[2];
+    int flags = (int)params[3];
+    struct sockaddr* dest_addr = (struct sockaddr*)params[4];
+    socklen_t addrlen = (socklen_t)params[5];
+    char addrstr[MAX_IPADDR_LEN];
+
+    ECHECK(_socketaddr_to_str(dest_addr, addrstr, MAX_IPADDR_LEN));
+
+    _strace(
+        n,
+        "sockfd=%d buf=%p len=%zu flags=%d dest_addr=%s addrlen=%u",
+        sockfd,
+        buf,
+        len,
+        flags,
+        addrstr,
+        addrlen);
+
+    ret = myst_syscall_sendto(sockfd, buf, len, flags, dest_addr, addrlen);
+
+done:
+    return _return(n, ret);
+}
+
+static long _SYS_socket(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int domain = (int)params[0];
+    int type = (int)params[1];
+    int protocol = (int)params[2];
+    long ret;
+
+    _strace(n, "domain=%d type=%d protocol=%d", domain, type, protocol);
+
+    ret = myst_syscall_socket(domain, type, protocol);
+    return _return(n, ret);
+}
+
+static long _SYS_accept(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    long ret = 0;
+    int sockfd = (int)params[0];
+    struct sockaddr* addr = (struct sockaddr*)params[1];
+    socklen_t* addrlen = (socklen_t*)params[2];
+    char addrstr[MAX_IPADDR_LEN];
+
+    ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
+
+    _strace(n, "sockfd=%d addr=%s addrlen=%p", sockfd, addrstr, addrlen);
+
+    ret = myst_syscall_accept4(sockfd, addr, addrlen, 0);
+
+done:
+    return _return(n, ret);
+}
+
+static long _SYS_sendmsg(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int sockfd = (int)params[0];
+    const struct msghdr* msg = (const struct msghdr*)params[1];
+    int flags = (int)params[2];
+    long ret;
+
+    _strace(n, "sockfd=%d msg=%p flags=%d", sockfd, msg, flags);
+
+    ret = myst_syscall_sendmsg(sockfd, msg, flags);
+    return _return(n, ret);
+}
+
+static long _SYS_recvmsg(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int sockfd = (int)params[0];
+    struct msghdr* msg = (struct msghdr*)params[1];
+    int flags = (int)params[2];
+    long ret;
+
+    _strace(n, "sockfd=%d msg=%p flags=%d", sockfd, msg, flags);
+
+    ret = myst_syscall_recvmsg(sockfd, msg, flags);
+    return _return(n, ret);
+}
+
+static long _SYS_shutdown(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int sockfd = (int)params[0];
+    int how = (int)params[1];
+    long ret;
+
+    _strace(n, "sockfd=%d how=%d", sockfd, how);
+
+    ret = myst_syscall_shutdown(sockfd, how);
+    return _return(n, ret);
+}
+
+static long _SYS_listen(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int sockfd = (int)params[0];
+    int backlog = (int)params[1];
+    long ret;
+
+    _strace(n, "sockfd=%d backlog=%d", sockfd, backlog);
+
+    ret = myst_syscall_listen(sockfd, backlog);
+    return _return(n, ret);
+}
+
+static long _SYS_getsockname(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    long ret = 0;
+    int sockfd = (int)params[0];
+    struct sockaddr* addr = (struct sockaddr*)params[1];
+    socklen_t* addrlen = (socklen_t*)params[2];
+    char addrstr[MAX_IPADDR_LEN];
+
+    ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
+
+    _strace(n, "sockfd=%d addr=%s addrlen=%p", sockfd, addrstr, addrlen);
+
+    ret = myst_syscall_getsockname(sockfd, addr, addrlen);
+
+done:
+    return _return(n, ret);
+}
+
+static long _SYS_getpeername(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    long ret = 0;
+    int sockfd = (int)params[0];
+    struct sockaddr* addr = (struct sockaddr*)params[1];
+    socklen_t* addrlen = (socklen_t*)params[2];
+    char addrstr[MAX_IPADDR_LEN];
+
+    ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
+
+    _strace(n, "sockfd=%d addr=%s addrlen=%p", sockfd, addrstr, addrlen);
+
+    ret = myst_syscall_getpeername(sockfd, addr, addrlen);
+
+done:
+    return _return(n, ret);
+}
+
+static long _SYS_socketpair(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int domain = (int)params[0];
+    int type = (int)params[1];
+    int protocol = (int)params[2];
+    int* sv = (int*)params[3];
+    long ret;
+
+    _strace(
+        n, "domain=%d type=%d protocol=%d sv=%p", domain, type, protocol, sv);
+
+    ret = myst_syscall_socketpair(domain, type, protocol, sv);
+    return _return(n, ret);
+}
+
+static long _SYS_setsockopt(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int sockfd = (int)params[0];
+    int level = (int)params[1];
+    int optname = (int)params[2];
+    const void* optval = (const void*)params[3];
+    socklen_t optlen = (socklen_t)params[4];
+    long ret;
+
+    _strace(
+        n,
+        "sockfd=%d level=%d optname=%d optval=%p optlen=%u",
+        sockfd,
+        level,
+        optname,
+        optval,
+        optlen);
+
+    ret = myst_syscall_setsockopt(sockfd, level, optname, optval, optlen);
+    return _return(n, ret);
+}
+
+static long _SYS_getsockopt(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int sockfd = (int)params[0];
+    int level = (int)params[1];
+    int optname = (int)params[2];
+    void* optval = (void*)params[3];
+    socklen_t* optlen = (socklen_t*)params[4];
+    long ret;
+
+    _strace(
+        n,
+        "sockfd=%d level=%d optname=%d optval=%p optlen=%p",
+        sockfd,
+        level,
+        optname,
+        optval,
+        optlen);
+
+    ret = myst_syscall_getsockopt(sockfd, level, optname, optval, optlen);
+    return _return(n, ret);
+}
+
+static long _SYS_sendfile(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    int out_fd = (int)params[0];
+    int in_fd = (int)params[1];
+    off_t* offset = (off_t*)params[2];
+    size_t count = (size_t)params[3];
+    off_t off = offset ? *offset : 0;
+
+    _strace(
+        n,
+        "out_fd=%d in_fd=%d offset=%p *offset=%ld count=%zu",
+        out_fd,
+        in_fd,
+        offset,
+        off,
+        count);
+
+    long ret = myst_syscall_sendfile(out_fd, in_fd, offset, count);
+    return _return(n, ret);
+}
+
+static long _SYS_unsupported(
+    long n,
+    long params[6],
+    MYST_UNUSED struct syscall_context* context)
+{
+    (void)n;
+    (void)params;
+
+    return LONG_MIN;
+}
+
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_mincore);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_shmget);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_shmat);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_shmctl);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_pause);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_alarm);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_fork);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_vfork);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_semget);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_semop);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_semctl);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_shmdt);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_msgget);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_msgsnd);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_msgrcv);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_msgctl);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_fdatasync);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_fchdir);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_fchown);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_lchown);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_getrlimit);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_ptrace);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_capget);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_capset);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_rt_sigtimedwait);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_rt_sigqueueinfo);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_rt_sigsuspend);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_uselib);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_personality);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_ustat);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_sysfs);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_getpriority);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_setpriority);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_sched_rr_get_interval);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_munlock);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_mlockall);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_munlockall);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_vhangup);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_modify_ldt);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_pivot_root);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS__sysctl);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_arch_prctl);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_adjtimex);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_setrlimit);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_chroot);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_sync);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_acct);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_settimeofday);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_swapon);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_swapoff);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_reboot);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_setdomainname);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_iopl);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_ioperm);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_create_module);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_init_module);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_delete_module);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_get_kernel_syms);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_query_module);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_quotactl);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_nfsservctl);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_getpmsg);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_putpmsg);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_afs_syscall);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_tuxcall);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_security);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_readahead);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_setxattr);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_lsetxattr);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_fsetxattr);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_getxattr);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_lgetxattr);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_fgetxattr);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_listxattr);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_llistxattr);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_flistxattr);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_removexattr);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_lremovexattr);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_fremovexattr);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_io_setup);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_io_destroy);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_io_getevents);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_io_submit);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_io_cancel);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_get_thread_area);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_lookup_dcookie);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_epoll_ctl_old);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_epoll_wait_old);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_remap_file_pages);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_restart_syscall);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_semtimedop);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_timer_create);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_timer_settime);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_timer_gettime);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_timer_getoverrun);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_timer_delete);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_clock_nanosleep);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_utimes);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_vserver);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_mbind);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_set_mempolicy);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_get_mempolicy);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_mq_open);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_mq_unlink);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_mq_timedsend);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_mq_timedreceive);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_mq_notify);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_mq_getsetattr);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_kexec_load);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_waitid);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_add_key);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_request_key);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_keyctl);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_ioprio_set);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_ioprio_get);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_migrate_pages);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_mkdirat);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_mknodat);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_fchownat);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_unlinkat);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_renameat);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_linkat);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_symlinkat);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_readlinkat);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_fchmodat);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_faccessat);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_pselect6);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_ppoll);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_unshare);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_splice);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_tee);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_sync_file_range);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_vmsplice);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_move_pages);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_signalfd);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_timerfd_create);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_eventfd);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_timerfd_settime);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_timerfd_gettime);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_signalfd4);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_eventfd2);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_preadv);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_pwritev);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_rt_tgsigqueueinfo);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_perf_event_open);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_recvmmsg);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_fanotify_init);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_fanotify_mark);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_name_to_handle_at);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_open_by_handle_at);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_clock_adjtime);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_syncfs);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_sendmmsg);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_setns);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_process_vm_readv);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_process_vm_writev);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_kcmp);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_finit_module);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_sched_setattr);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_sched_getattr);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_renameat2);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_seccomp);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_memfd_create);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_kexec_file_load);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_bpf);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_execveat);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_userfaultfd);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_mlock2);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_copy_file_range);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_preadv2);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_pwritev2);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_pkey_mprotect);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_pkey_alloc);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_pkey_free);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_statx);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_io_pgetevents);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_rseq);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_pidfd_send_signal);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_io_uring_setup);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_io_uring_enter);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_io_uring_register);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_open_tree);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_move_mount);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_fsopen);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_fsconfig);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_fsmount);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_fspick);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_pidfd_open);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_clone3);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_rt_sigreturn);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_clone);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_getdents);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_getpgrp);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_setsid);
+MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_utime);
+
+typedef long (
+    *syscall_t)(long n, long params[6], struct syscall_context* context);
+
+MYST_UNUSED
+static const syscall_t _syscalls[] = {
+    _SYS_read,
+    _SYS_write,
+    _SYS_open,
+    _SYS_close,
+    _SYS_stat,
+    _SYS_fstat,
+    _SYS_lstat,
+    _SYS_poll,
+    _SYS_lseek,
+    _SYS_mmap,
+    _SYS_mprotect,
+    _SYS_munmap,
+    _SYS_brk,
+    _SYS_rt_sigaction,
+    _SYS_rt_sigprocmask,
+    _SYS_rt_sigreturn,
+    _SYS_ioctl,
+    _SYS_pread64,
+    _SYS_pwrite64,
+    _SYS_readv,
+    _SYS_writev,
+    _SYS_access,
+    _SYS_pipe,
+    _SYS_select,
+    _SYS_sched_yield,
+    _SYS_mremap,
+    _SYS_msync,
+    _SYS_mincore,
+    _SYS_madvise,
+    _SYS_shmget,
+    _SYS_shmat,
+    _SYS_shmctl,
+    _SYS_dup,
+    _SYS_dup2,
+    _SYS_pause,
+    _SYS_nanosleep,
+    _SYS_getitimer,
+    _SYS_alarm,
+    _SYS_setitimer,
+    _SYS_getpid,
+    _SYS_sendfile,
+    _SYS_socket,
+    _SYS_connect,
+    _SYS_accept,
+    _SYS_sendto,
+    _SYS_recvfrom,
+    _SYS_sendmsg,
+    _SYS_recvmsg,
+    _SYS_shutdown,
+    _SYS_bind,
+    _SYS_listen,
+    _SYS_getsockname,
+    _SYS_getpeername,
+    _SYS_socketpair,
+    _SYS_setsockopt,
+    _SYS_getsockopt,
+    _SYS_clone,
+    _SYS_fork,
+    _SYS_vfork,
+    _SYS_execve,
+    _SYS_exit,
+    _SYS_wait4,
+    _SYS_kill,
+    _SYS_uname,
+    _SYS_semget,
+    _SYS_semop,
+    _SYS_semctl,
+    _SYS_shmdt,
+    _SYS_msgget,
+    _SYS_msgsnd,
+    _SYS_msgrcv,
+    _SYS_msgctl,
+    _SYS_fcntl,
+    _SYS_flock,
+    _SYS_fsync,
+    _SYS_fdatasync,
+    _SYS_truncate,
+    _SYS_ftruncate,
+    _SYS_getdents,
+    _SYS_getcwd,
+    _SYS_chdir,
+    _SYS_fchdir,
+    _SYS_rename,
+    _SYS_mkdir,
+    _SYS_rmdir,
+    _SYS_creat,
+    _SYS_link,
+    _SYS_unlink,
+    _SYS_symlink,
+    _SYS_readlink,
+    _SYS_chmod,
+    _SYS_fchmod,
+    _SYS_chown,
+    _SYS_fchown,
+    _SYS_lchown,
+    _SYS_umask,
+    _SYS_gettimeofday,
+    _SYS_getrlimit,
+    _SYS_getrusage,
+    _SYS_sysinfo,
+    _SYS_times,
+    _SYS_ptrace,
+    _SYS_getuid,
+    _SYS_syslog,
+    _SYS_getgid,
+    _SYS_setuid,
+    _SYS_setgid,
+    _SYS_geteuid,
+    _SYS_getegid,
+    _SYS_setpgid,
+    _SYS_getppid,
+    _SYS_getpgrp,
+    _SYS_setsid,
+    _SYS_setreuid,
+    _SYS_setregid,
+    _SYS_getgroups,
+    _SYS_setgroups,
+    _SYS_setresuid,
+    _SYS_getresuid,
+    _SYS_setresgid,
+    _SYS_getresgid,
+    _SYS_getpgid,
+    _SYS_setfsuid,
+    _SYS_setfsgid,
+    _SYS_getsid,
+    _SYS_capget,
+    _SYS_capset,
+    _SYS_rt_sigpending,
+    _SYS_rt_sigtimedwait,
+    _SYS_rt_sigqueueinfo,
+    _SYS_rt_sigsuspend,
+    _SYS_sigaltstack,
+    _SYS_utime,
+    _SYS_mknod,
+    _SYS_uselib,
+    _SYS_personality,
+    _SYS_ustat,
+    _SYS_statfs,
+    _SYS_fstatfs,
+    _SYS_sysfs,
+    _SYS_getpriority,
+    _SYS_setpriority,
+    _SYS_sched_setparam,
+    _SYS_sched_getparam,
+    _SYS_sched_setscheduler,
+    _SYS_sched_getscheduler,
+    _SYS_sched_get_priority_max,
+    _SYS_sched_get_priority_min,
+    _SYS_sched_rr_get_interval,
+    _SYS_mlock,
+    _SYS_munlock,
+    _SYS_mlockall,
+    _SYS_munlockall,
+    _SYS_vhangup,
+    _SYS_modify_ldt,
+    _SYS_pivot_root,
+    _SYS__sysctl,
+    _SYS_prctl,
+    _SYS_arch_prctl,
+    _SYS_adjtimex,
+    _SYS_setrlimit,
+    _SYS_chroot,
+    _SYS_sync,
+    _SYS_acct,
+    _SYS_settimeofday,
+    _SYS_mount,
+    _SYS_umount2,
+    _SYS_swapon,
+    _SYS_swapoff,
+    _SYS_reboot,
+    _SYS_sethostname,
+    _SYS_setdomainname,
+    _SYS_iopl,
+    _SYS_ioperm,
+    _SYS_create_module,
+    _SYS_init_module,
+    _SYS_delete_module,
+    _SYS_get_kernel_syms,
+    _SYS_query_module,
+    _SYS_quotactl,
+    _SYS_nfsservctl,
+    _SYS_getpmsg,
+    _SYS_putpmsg,
+    _SYS_afs_syscall,
+    _SYS_tuxcall,
+    _SYS_security,
+    _SYS_gettid,
+    _SYS_readahead,
+    _SYS_setxattr,
+    _SYS_lsetxattr,
+    _SYS_fsetxattr,
+    _SYS_getxattr,
+    _SYS_lgetxattr,
+    _SYS_fgetxattr,
+    _SYS_listxattr,
+    _SYS_llistxattr,
+    _SYS_flistxattr,
+    _SYS_removexattr,
+    _SYS_lremovexattr,
+    _SYS_fremovexattr,
+    _SYS_tkill,
+    _SYS_time,
+    _SYS_futex,
+    _SYS_sched_setaffinity,
+    _SYS_sched_getaffinity,
+    _SYS_set_thread_area,
+    _SYS_io_setup,
+    _SYS_io_destroy,
+    _SYS_io_getevents,
+    _SYS_io_submit,
+    _SYS_io_cancel,
+    _SYS_get_thread_area,
+    _SYS_lookup_dcookie,
+    _SYS_epoll_create,
+    _SYS_epoll_ctl_old,
+    _SYS_epoll_wait_old,
+    _SYS_remap_file_pages,
+    _SYS_getdents64,
+    _SYS_set_tid_address,
+    _SYS_restart_syscall,
+    _SYS_semtimedop,
+    _SYS_fadvise64,
+    _SYS_timer_create,
+    _SYS_timer_settime,
+    _SYS_timer_gettime,
+    _SYS_timer_getoverrun,
+    _SYS_timer_delete,
+    _SYS_clock_settime,
+    _SYS_clock_gettime,
+    _SYS_clock_getres,
+    _SYS_clock_nanosleep,
+    _SYS_exit_group,
+    _SYS_epoll_wait,
+    _SYS_epoll_ctl,
+    _SYS_tgkill,
+    _SYS_utimes,
+    _SYS_vserver,
+    _SYS_mbind,
+    _SYS_set_mempolicy,
+    _SYS_get_mempolicy,
+    _SYS_mq_open,
+    _SYS_mq_unlink,
+    _SYS_mq_timedsend,
+    _SYS_mq_timedreceive,
+    _SYS_mq_notify,
+    _SYS_mq_getsetattr,
+    _SYS_kexec_load,
+    _SYS_waitid,
+    _SYS_add_key,
+    _SYS_request_key,
+    _SYS_keyctl,
+    _SYS_ioprio_set,
+    _SYS_ioprio_get,
+    _SYS_inotify_init,
+    _SYS_inotify_add_watch,
+    _SYS_inotify_rm_watch,
+    _SYS_migrate_pages,
+    _SYS_openat,
+    _SYS_mkdirat,
+    _SYS_mknodat,
+    _SYS_fchownat,
+    _SYS_futimesat,
+    _SYS_newfstatat,
+    _SYS_unlinkat,
+    _SYS_renameat,
+    _SYS_linkat,
+    _SYS_symlinkat,
+    _SYS_readlinkat,
+    _SYS_fchmodat,
+    _SYS_faccessat,
+    _SYS_pselect6,
+    _SYS_ppoll,
+    _SYS_unshare,
+    _SYS_set_robust_list,
+    _SYS_get_robust_list,
+    _SYS_splice,
+    _SYS_tee,
+    _SYS_sync_file_range,
+    _SYS_vmsplice,
+    _SYS_move_pages,
+    _SYS_utimensat,
+    _SYS_epoll_pwait,
+    _SYS_signalfd,
+    _SYS_timerfd_create,
+    _SYS_eventfd,
+    _SYS_fallocate,
+    _SYS_timerfd_settime,
+    _SYS_timerfd_gettime,
+    _SYS_accept4,
+    _SYS_signalfd4,
+    _SYS_eventfd2,
+    _SYS_epoll_create1,
+    _SYS_dup3,
+    _SYS_pipe2,
+    _SYS_inotify_init1,
+    _SYS_preadv,
+    _SYS_pwritev,
+    _SYS_rt_tgsigqueueinfo,
+    _SYS_perf_event_open,
+    _SYS_recvmmsg,
+    _SYS_fanotify_init,
+    _SYS_fanotify_mark,
+    _SYS_prlimit64,
+    _SYS_name_to_handle_at,
+    _SYS_open_by_handle_at,
+    _SYS_clock_adjtime,
+    _SYS_syncfs,
+    _SYS_sendmmsg,
+    _SYS_setns,
+    _SYS_getcpu,
+    _SYS_process_vm_readv,
+    _SYS_process_vm_writev,
+    _SYS_kcmp,
+    _SYS_finit_module,
+    _SYS_sched_setattr,
+    _SYS_sched_getattr,
+    _SYS_renameat2,
+    _SYS_seccomp,
+    _SYS_getrandom,
+    _SYS_memfd_create,
+    _SYS_kexec_file_load,
+    _SYS_bpf,
+    _SYS_execveat,
+    _SYS_userfaultfd,
+    _SYS_membarrier,
+    _SYS_mlock2,
+    _SYS_copy_file_range,
+    _SYS_preadv2,
+    _SYS_pwritev2,
+    _SYS_pkey_mprotect,
+    _SYS_pkey_alloc,
+    _SYS_pkey_free,
+    _SYS_statx,
+    _SYS_io_pgetevents,
+    _SYS_rseq,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_unsupported,
+    _SYS_pidfd_send_signal,
+    _SYS_io_uring_setup,
+    _SYS_io_uring_enter,
+    _SYS_io_uring_register,
+    _SYS_open_tree,
+    _SYS_move_mount,
+    _SYS_fsopen,
+    _SYS_fsconfig,
+    _SYS_fsmount,
+    _SYS_fspick,
+    _SYS_pidfd_open,
+    _SYS_clone3,
+};
+
+static size_t _nsyscalls = MYST_COUNTOF(_syscalls);
+
 static long _syscall(void* args_)
 {
     syscall_args_t* args = (syscall_args_t*)args_;
-    long n = args->n;
+    const long n = args->n;
     long* params = args->params;
     long syscall_ret = 0;
-    long x1 = params[0];
-    long x2 = params[1];
-    long x3 = params[2];
-    long x4 = params[3];
-    long x5 = params[4];
-    long x6 = params[5];
     static bool _set_thread_area_called;
-    myst_td_t* target_td = NULL;
-    myst_td_t* crt_td = NULL;
-    myst_thread_t* thread = NULL;
+    struct syscall_context context;
+    context.set_thread_area_called = &_set_thread_area_called;
+    context.kstack = args->kstack;
 
     myst_times_enter_kernel();
 
@@ -2768,2481 +6157,95 @@ static long _syscall(void* args_)
         /* ---------- running C-runtime thread descriptor ---------- */
 
         /* get crt_td */
-        crt_td = myst_get_fsbase();
-        myst_assume(myst_valid_td(crt_td));
+        context.crt_td = myst_get_fsbase();
+        myst_assume(myst_valid_td(context.crt_td));
 
         /* get thread */
-        myst_assume(myst_tcall_get_tsd((uint64_t*)&thread) == 0);
-        myst_assume(myst_valid_thread(thread));
+        myst_assume(myst_tcall_get_tsd((uint64_t*)&context.thread) == 0);
+        myst_assume(myst_valid_thread(context.thread));
 
         /* get target_td */
-        target_td = thread->target_td;
-        myst_assume(myst_valid_td(target_td));
+        context.target_td = context.thread->target_td;
+        myst_assume(myst_valid_td(context.target_td));
 
         /* the syscall on the target thread descriptor */
-        myst_set_fsbase(target_td);
+        myst_set_fsbase(context.target_td);
     }
     else
     {
         /* ---------- running target thread descriptor ---------- */
 
         /* get target_td */
-        target_td = myst_get_fsbase();
-        myst_assume(myst_valid_td(target_td));
+        context.target_td = myst_get_fsbase();
+        myst_assume(myst_valid_td(context.target_td));
 
         /* get thread */
-        myst_assume(myst_tcall_get_tsd((uint64_t*)&thread) == 0);
-        myst_assume(myst_valid_thread(thread));
+        myst_assume(myst_tcall_get_tsd((uint64_t*)&context.thread) == 0);
+        myst_assume(myst_valid_thread(context.thread));
 
         /* crt_td is null */
     }
 
     // Process signals pending for this thread, if there is any.
-    myst_signal_process(thread);
+    myst_signal_process(context.thread);
 
     /* ---------- running target thread descriptor ---------- */
 
-    myst_assume(target_td != NULL);
-    myst_assume(thread != NULL);
+    myst_assume(context.target_td != NULL);
+    myst_assume(context.thread != NULL);
 
+    /* handle standard syscalls with jump table */
+    if ((size_t)n < _nsyscalls)
+    {
+        long ret = (*_syscalls[n])(n, params, &context);
+
+        if (ret == LONG_MIN)
+            myst_panic("unhandled syscall: %s()", syscall_str(n));
+
+        BREAK(ret);
+    }
+
+    /* handle extended syscalls */
     switch (n)
     {
-#ifdef MYST_ENABLE_GCOV
         case SYS_myst_gcov_init:
-        {
-            libc_t* libc = (libc_t*)x1;
-            FILE* stream = (FILE*)x2;
-
-            _strace(n, "libc=%p stream=%p", libc, stream);
-
-            if (gcov_init_libc(libc, stream) != 0)
-                myst_panic("gcov_init_libc() failed");
-
-            BREAK(_return(n, 0));
-        }
-#endif
+            BREAK(_SYS_myst_gcov_init(n, params, NULL));
         case SYS_myst_trace:
-        {
-            const char* msg = (const char*)x1;
-
-            _strace(n, "msg=%s", msg);
-
-            BREAK(_return(n, 0));
-        }
+            BREAK(_SYS_myst_trace(n, params, NULL));
         case SYS_myst_trace_ptr:
-        {
-            printf(
-                "trace: %s: %lx %ld\n",
-                (const char*)params[0],
-                params[1],
-                params[1]);
-            BREAK(_return(n, 0));
-        }
+            BREAK(_SYS_myst_trace_ptr(n, params, NULL));
         case SYS_myst_dump_stack:
-        {
-            const void* stack = (void*)x1;
-
-            _strace(n, NULL);
-
-            myst_dump_stack((void*)stack);
-            BREAK(_return(n, 0));
-        }
+            BREAK(_SYS_myst_dump_stack(n, params, NULL));
         case SYS_myst_dump_ehdr:
-        {
-            myst_dump_ehdr((void*)params[0]);
-            BREAK(_return(n, 0));
-        }
+            BREAK(_SYS_myst_dump_ehdr(n, params, NULL));
         case SYS_myst_dump_argv:
-        {
-            int argc = (int)x1;
-            const char** argv = (const char**)x2;
-
-            printf("=== SYS_myst_dump_argv\n");
-
-            printf("argc=%d\n", argc);
-            printf("argv=%p\n", argv);
-
-            for (int i = 0; i < argc; i++)
-            {
-                printf("argv[%d]=%s\n", i, argv[i]);
-            }
-
-            printf("argv[argc]=%p\n", argv[argc]);
-
-            BREAK(_return(n, 0));
-        }
+            BREAK(_SYS_myst_dump_argv(n, params, NULL));
         case SYS_myst_add_symbol_file:
-        {
-            const char* path = (const char*)x1;
-            const void* text = (const void*)x2;
-            size_t text_size = (size_t)x3;
-            long ret;
-
-            _strace(
-                n,
-                "path=\"%s\" text=%p text_size=%zu\n",
-                path,
-                text,
-                text_size);
-
-            ret = myst_syscall_add_symbol_file(path, text, text_size);
-
-            BREAK(_return(n, ret));
-        }
+            BREAK(_SYS_myst_add_symbol_file(n, params, NULL));
         case SYS_myst_load_symbols:
-        {
-            _strace(n, NULL);
-
-            BREAK(_return(n, myst_syscall_load_symbols()));
-        }
+            BREAK(_SYS_myst_load_symbols(n, params, NULL));
         case SYS_myst_unload_symbols:
-        {
-            _strace(n, NULL);
-
-            BREAK(_return(n, myst_syscall_unload_symbols()));
-        }
+            BREAK(_SYS_myst_unload_symbols(n, params, NULL));
         case SYS_myst_gen_creds:
-        {
-            _strace(n, NULL);
-            BREAK(_forward_syscall(MYST_TCALL_GEN_CREDS, params));
-        }
+            BREAK(_SYS_myst_gen_creds(n, params, NULL));
         case SYS_myst_free_creds:
-        {
-            _strace(n, NULL);
-            BREAK(_forward_syscall(MYST_TCALL_FREE_CREDS, params));
-        }
+            BREAK(_SYS_myst_free_creds(n, params, NULL));
         case SYS_myst_gen_creds_ex:
-        {
-            _strace(n, NULL);
-            BREAK(_forward_syscall(MYST_TCALL_GEN_CREDS_EX, params));
-        }
+            BREAK(_SYS_myst_gen_creds_ex(n, params, NULL));
         case SYS_myst_verify_cert:
-        {
-            _strace(n, NULL);
-            BREAK(_forward_syscall(MYST_TCALL_VERIFY_CERT, params));
-        }
+            BREAK(_SYS_myst_verify_cert(n, params, NULL));
         case SYS_myst_max_threads:
-        {
-            _strace(n, NULL);
-            BREAK(_return(n, __myst_kernel_args.max_threads));
-        }
+            BREAK(_SYS_myst_max_threads(n, params, NULL));
         case SYS_myst_poll_wake:
-        {
-            _strace(n, NULL);
-            BREAK(_return(n, myst_tcall_poll_wake()));
-        }
-        case SYS_read:
-        {
-            int fd = (int)x1;
-            void* buf = (void*)x2;
-            size_t count = (size_t)x3;
-
-            _strace(n, "fd=%d buf=%p count=%zu", fd, buf, count);
-
-            BREAK(_return(n, myst_syscall_read(fd, buf, count)));
-        }
-        case SYS_write:
-        {
-            int fd = (int)x1;
-            const void* buf = (const void*)x2;
-            size_t count = (size_t)x3;
-
-            _strace(n, "fd=%d buf=%p count=%zu", fd, buf, count);
-
-            BREAK(_return(n, myst_syscall_write(fd, buf, count)));
-        }
-        case SYS_pread64:
-        {
-            int fd = (int)x1;
-            void* buf = (void*)x2;
-            size_t count = (size_t)x3;
-            off_t offset = (off_t)x4;
-
-            _strace(
-                n, "fd=%d buf=%p count=%zu offset=%ld", fd, buf, count, offset);
-
-            BREAK(_return(n, myst_syscall_pread(fd, buf, count, offset)));
-        }
-        case SYS_pwrite64:
-        {
-            int fd = (int)x1;
-            void* buf = (void*)x2;
-            size_t count = (size_t)x3;
-            off_t offset = (off_t)x4;
-
-            _strace(
-                n, "fd=%d buf=%p count=%zu offset=%ld", fd, buf, count, offset);
-
-            BREAK(_return(n, myst_syscall_pwrite(fd, buf, count, offset)));
-        }
-        case SYS_open:
-        {
-            const char* path = (const char*)x1;
-            int flags = (int)x2;
-            mode_t mode = (mode_t)x3;
-            long ret;
-
-            _strace(n, "path=\"%s\" flags=0%o mode=0%o", path, flags, mode);
-
-            ret = myst_syscall_open(path, flags, mode);
-
-            BREAK(_return(n, ret));
-        }
-        case SYS_close:
-        {
-            int fd = (int)x1;
-
-            _strace(n, "fd=%d", fd);
-
-            BREAK(_return(n, myst_syscall_close(fd)));
-        }
-        case SYS_stat:
-        {
-            const char* pathname = (const char*)x1;
-            struct stat* statbuf = (struct stat*)x2;
-
-            _strace(n, "pathname=\"%s\" statbuf=%p", pathname, statbuf);
-
-            BREAK(_return(n, myst_syscall_stat(pathname, statbuf)));
-        }
-        case SYS_fstat:
-        {
-            int fd = (int)x1;
-            void* statbuf = (void*)x2;
-
-            _strace(n, "fd=%d statbuf=%p", fd, statbuf);
-
-            BREAK(_return(n, myst_syscall_fstat(fd, statbuf)));
-        }
-        case SYS_lstat:
-        {
-            /* ATTN: remove this! */
-            const char* pathname = (const char*)x1;
-            struct stat* statbuf = (struct stat*)x2;
-
-            _strace(n, "pathname=\"%s\" statbuf=%p", pathname, statbuf);
-
-            BREAK(_return(n, myst_syscall_lstat(pathname, statbuf)));
-        }
-        case SYS_poll:
-        {
-            struct pollfd* fds = (struct pollfd*)x1;
-            nfds_t nfds = (nfds_t)x2;
-            int timeout = (int)x3;
-            long ret;
-
-            _strace(n, "fds=%p nfds=%ld timeout=%d", fds, nfds, timeout);
-
-            ret = myst_syscall_poll(fds, nfds, timeout);
-            BREAK(_return(n, ret));
-        }
-        case SYS_lseek:
-        {
-            int fd = (int)x1;
-            off_t offset = (off_t)x2;
-            int whence = (int)x3;
-
-            _strace(n, "fd=%d offset=%ld whence=%d", fd, offset, whence);
-
-            BREAK(_return(n, myst_syscall_lseek(fd, offset, whence)));
-        }
-        case SYS_mmap:
-        {
-            void* addr = (void*)x1;
-            size_t length = (size_t)x2;
-            int prot = (int)x3;
-            int flags = (int)x4;
-            int fd = (int)x5;
-            off_t offset = (off_t)x6;
-            void* ptr;
-            long ret = 0;
-
-            _strace(
-                n,
-                "addr=%lx length=%zu(%lx) prot=%d flags=%d fd=%d offset=%lu",
-                (long)addr,
-                length,
-                length,
-                prot,
-                flags,
-                fd,
-                offset);
-
-            ptr = myst_mmap(addr, length, prot, flags, fd, offset);
-
-            if (ptr == MAP_FAILED || !ptr)
-            {
-                ret = -ENOMEM;
-            }
-            else
-            {
-                pid_t pid = myst_getpid();
-
-                if (myst_register_process_mapping(pid, ptr, length) != 0)
-                    myst_panic("failed to register process mapping");
-
-                ret = (long)ptr;
-            }
-
-            BREAK(_return(n, ret));
-        }
-        case SYS_mprotect:
-        {
-            const void* addr = (void*)x1;
-            const size_t length = (size_t)x2;
-            const int prot = (int)x3;
-
-            _strace(
-                n,
-                "addr=%lx length=%zu(%lx) prot=%d",
-                (long)addr,
-                length,
-                length,
-                prot);
-
-            BREAK(_return(n, 0));
-        }
-        case SYS_munmap:
-        {
-            void* addr = (void*)x1;
-            size_t length = (size_t)x2;
-
-            _strace(n, "addr=%lx length=%zu(%lx)", (long)addr, length, length);
-
-            // if the ummapped region overlaps the CRT thread descriptor, then
-            // postpone the unmap because unmapping now would invalidate the
-            // stack canary and would raise __stack_chk_fail(); this occurs
-            // when munmap() is called from __unmapself()
-            if (crt_td && addr && length)
-            {
-                const uint8_t* p = (const uint8_t*)crt_td;
-                const uint8_t* pend = p + sizeof(myst_td_t);
-                const uint8_t* q = (const uint8_t*)addr;
-                const uint8_t* qend = q + length;
-
-                if ((p >= q && p < qend) || (pend >= q && pend < qend))
-                {
-                    myst_thread_t* thread = myst_thread_self();
-
-                    /* unmap this later when the thread exits */
-                    if (thread)
-                    {
-                        thread->unmapself_addr = addr;
-                        thread->unmapself_length = length;
-                    }
-
-                    BREAK(_return(n, 0));
-                }
-            }
-
-            BREAK(_return(n, (long)myst_munmap(addr, length)));
-        }
-        case SYS_brk:
-        {
-            void* addr = (void*)x1;
-
-            _strace(n, "addr=%lx", (long)addr);
-
-            BREAK(_return(n, myst_syscall_brk(addr)));
-        }
-        case SYS_rt_sigaction:
-        {
-            int signum = (int)x1;
-            const posix_sigaction_t* act = (const posix_sigaction_t*)x2;
-            posix_sigaction_t* oldact = (posix_sigaction_t*)x3;
-
-            _strace(n, "signum=%d act=%p oldact=%p", signum, act, oldact);
-
-            long ret = myst_signal_sigaction(signum, act, oldact);
-            BREAK(_return(n, ret));
-        }
-        case SYS_rt_sigprocmask:
-        {
-            int how = (int)x1;
-            const sigset_t* set = (sigset_t*)x2;
-            sigset_t* oldset = (sigset_t*)x3;
-
-            _strace(n, "how=%d set=%p oldset=%p", how, set, oldset);
-
-            long ret = myst_signal_sigprocmask(how, set, oldset);
-            BREAK(_return(n, ret));
-        }
-        case SYS_rt_sigreturn:
-            break;
-        case SYS_ioctl:
-        {
-            int fd = (int)x1;
-            unsigned long request = (unsigned long)x2;
-            long arg = (long)x3;
-            int iarg = -1;
-
-            if (request == FIONBIO && arg)
-                iarg = *(int*)arg;
-
-            _strace(
-                n,
-                "fd=%d request=0x%lx arg=%lx iarg=%d",
-                fd,
-                request,
-                arg,
-                iarg);
-
-            BREAK(_return(n, myst_syscall_ioctl(fd, request, arg)));
-        }
-        case SYS_readv:
-        {
-            int fd = (int)x1;
-            const struct iovec* iov = (const struct iovec*)x2;
-            int iovcnt = (int)x3;
-
-            _strace(n, "fd=%d iov=%p iovcnt=%d", fd, iov, iovcnt);
-
-            BREAK(_return(n, myst_syscall_readv(fd, iov, iovcnt)));
-        }
-        case SYS_writev:
-        {
-            int fd = (int)x1;
-            const struct iovec* iov = (const struct iovec*)x2;
-            int iovcnt = (int)x3;
-
-            _strace(n, "fd=%d iov=%p iovcnt=%d", fd, iov, iovcnt);
-
-            BREAK(_return(n, myst_syscall_writev(fd, iov, iovcnt)));
-        }
-        case SYS_access:
-        {
-            const char* pathname = (const char*)x1;
-            int mode = (int)x2;
-
-            _strace(n, "pathname=\"%s\" mode=%d", pathname, mode);
-
-            BREAK(_return(n, myst_syscall_access(pathname, mode)));
-        }
-        case SYS_pipe:
-        {
-            int* pipefd = (int*)x1;
-
-            _strace(n, "pipefd=%p flags=%0o", pipefd, 0);
-
-            BREAK(_return(n, myst_syscall_pipe2(pipefd, 0)));
-        }
-        case SYS_select:
-        {
-            int nfds = (int)x1;
-            fd_set* rfds = (fd_set*)x2;
-            fd_set* wfds = (fd_set*)x3;
-            fd_set* efds = (fd_set*)x4;
-            struct timeval* timeout = (struct timeval*)x5;
-            long ret;
-
-            _strace(
-                n,
-                "nfds=%d rfds=%p wfds=%p xfds=%p timeout=%p",
-                nfds,
-                rfds,
-                wfds,
-                efds,
-                timeout);
-
-            ret = myst_syscall_select(nfds, rfds, wfds, efds, timeout);
-            BREAK(_return(n, ret));
-        }
-        case SYS_sched_yield:
-        {
-            _strace(n, NULL);
-
-            BREAK(_return(n, myst_syscall_sched_yield()));
-        }
-        case SYS_mremap:
-        {
-            void* old_address = (void*)x1;
-            size_t old_size = (size_t)x2;
-            size_t new_size = (size_t)x3;
-            int flags = (int)x4;
-            void* new_address = (void*)x5;
-            long ret;
-
-            _strace(
-                n,
-                "old_address=%p "
-                "old_size=%zu "
-                "new_size=%zu "
-                "flags=%d "
-                "new_address=%p ",
-                old_address,
-                old_size,
-                new_size,
-                flags,
-                new_address);
-
-            ret = (long)myst_mremap(
-                old_address, old_size, new_size, flags, new_address);
-
-            BREAK(_return(n, ret));
-        }
-        case SYS_msync:
-        {
-            void* addr = (void*)x1;
-            size_t length = (size_t)x2;
-            int flags = (int)x3;
-
-            _strace(n, "addr=%p length=%zu flags=%d ", addr, length, flags);
-
-            BREAK(_return(n, myst_msync(addr, length, flags)));
-        }
-        case SYS_mincore:
-            /* ATTN: hook up implementation */
-            break;
-        case SYS_madvise:
-        {
-            void* addr = (void*)x1;
-            size_t length = (size_t)x2;
-            int advice = (int)x3;
-
-            _strace(n, "addr=%p length=%zu advice=%d", addr, length, advice);
-
-            BREAK(_return(n, 0));
-        }
-        case SYS_shmget:
-            break;
-        case SYS_shmat:
-            break;
-        case SYS_shmctl:
-            break;
-        case SYS_dup:
-        {
-            int oldfd = (int)x1;
-            long ret;
-
-            _strace(n, "oldfd=%d", oldfd);
-
-            ret = myst_syscall_dup(oldfd);
-            BREAK(_return(n, ret));
-        }
-        case SYS_dup2:
-        {
-            int oldfd = (int)x1;
-            int newfd = (int)x2;
-            long ret;
-
-            _strace(n, "oldfd=%d newfd=%d", oldfd, newfd);
-
-            ret = myst_syscall_dup2(oldfd, newfd);
-            BREAK(_return(n, ret));
-        }
-        case SYS_dup3:
-        {
-            int oldfd = (int)x1;
-            int newfd = (int)x2;
-            int flags = (int)x3;
-            long ret;
-
-            _strace(n, "oldfd=%d newfd=%d flags=%o", oldfd, newfd, flags);
-
-            ret = myst_syscall_dup3(oldfd, newfd, flags);
-            BREAK(_return(n, ret));
-        }
-        case SYS_pause:
-            break;
-        case SYS_nanosleep:
-        {
-            const struct timespec* req = (const struct timespec*)x1;
-            struct timespec* rem = (struct timespec*)x2;
-
-            _strace(n, "req=%p rem=%p", req, rem);
-
-            BREAK(_return(n, myst_syscall_nanosleep(req, rem)));
-        }
+            BREAK(_SYS_myst_poll_wake(n, params, NULL));
         case SYS_myst_run_itimer:
-        {
-            _strace(n, NULL);
-            BREAK(_return(n, myst_syscall_run_itimer()));
-        }
+            BREAK(_SYS_myst_run_itimer(n, params, NULL));
         case SYS_myst_start_shell:
-        {
-#if !defined(MYST_RELEASE)
-            _strace(n, NULL);
-            myst_start_shell("\nMystikos shell (syscall)\n");
-#endif
-            BREAK(_return(n, 0));
-        }
+            BREAK(_SYS_myst_start_shell(n, params, NULL));
         case SYS_getitimer:
-        {
-            int which = (int)x1;
-            struct itimerval* curr_value = (void*)x2;
-
-            _strace(n, "which=%d curr_value=%p", which, curr_value);
-
-            BREAK(_return(n, myst_syscall_getitimer(which, curr_value)));
-        }
-        case SYS_alarm:
-            break;
-        case SYS_setitimer:
-        {
-            int which = (int)x1;
-            const struct itimerval* new_value = (void*)x2;
-            struct itimerval* old_value = (void*)x3;
-
-            _strace(
-                n,
-                "which=%d new_value=%p old_value=%p",
-                which,
-                new_value,
-                old_value);
-
-            BREAK(_return(
-                n, myst_syscall_setitimer(which, new_value, old_value)));
-        }
-        case SYS_getpid:
-        {
-            _strace(n, NULL);
-            BREAK(_return(n, myst_getpid()));
-        }
-        case SYS_clone:
-        {
-            /* unsupported: using SYS_myst_clone instead */
-            break;
-        }
+            BREAK(_SYS_getitimer(n, params, NULL));
         case SYS_myst_clone:
-        {
-            long* args = (long*)x1;
-            int (*fn)(void*) = (void*)args[0];
-            void* child_stack = (void*)args[1];
-            int flags = (int)args[2];
-            void* arg = (void*)args[3];
-            pid_t* ptid = (pid_t*)args[4];
-            void* newtls = (void*)args[5];
-            pid_t* ctid = (void*)args[6];
-
-            _strace(
-                n,
-                "fn=%p "
-                "child_stack=%p "
-                "flags=%x "
-                "arg=%p "
-                "ptid=%p "
-                "newtls=%p "
-                "ctid=%p",
-                fn,
-                child_stack,
-                flags,
-                arg,
-                ptid,
-                newtls,
-                ctid);
-
-            long ret = myst_syscall_clone(
-                fn, child_stack, flags, arg, ptid, newtls, ctid);
-
-            if ((flags & CLONE_VFORK))
-            {
-                // ATTN: give the thread a little time to start to avoid a
-                // syncyhronization error. This suppresses a failure in the
-                // popen test. This should be investigated later.
-                myst_sleep_msec(5);
-            }
-
-            BREAK(_return(n, ret));
-        }
-        case SYS_fork:
-            break;
-        case SYS_vfork:
-            break;
-        case SYS_execve:
-        {
-            const char* filename = (const char*)x1;
-            char** argv = (char**)x2;
-            char** envp = (char**)x3;
-
-            _strace(n, "filename=%s argv=%p envp=%p", filename, argv, envp);
-
-            long ret = myst_syscall_execve(filename, argv, envp);
-            BREAK(_return(n, ret));
-        }
-        case SYS_exit:
-        {
-            const int status = (int)x1;
-            myst_thread_t* thread = myst_thread_self();
-
-            _strace(n, "status=%d", status);
-
-            if (!thread || thread->magic != MYST_THREAD_MAGIC)
-                myst_panic("unexpected");
-
-            thread->exit_status = status;
-
-            /* the kstack is freed after the long-jump below */
-            thread->kstack = args->kstack;
-
-            if (thread == __myst_main_thread)
-            {
-                // execute fini functions with the CRT fsbase since only
-                // gcov uses them and gcov calls into CRT.
-                myst_set_fsbase(crt_td);
-                myst_call_fini_functions();
-                myst_set_fsbase(target_td);
-
-                if (__options.export_ramfs)
-                    myst_export_ramfs();
-            }
-
-            myst_longjmp(&thread->jmpbuf, 1);
-
-            /* unreachable */
-            break;
-        }
-        case SYS_wait4:
-        {
-            pid_t pid = (pid_t)x1;
-            int* wstatus = (int*)x2;
-            int options = (int)x3;
-            struct rusage* rusage = (struct rusage*)x4;
-            long ret;
-
-            ret = myst_syscall_wait4(pid, wstatus, options, rusage);
-            BREAK(_return(n, ret));
-        }
-        case SYS_kill:
-        {
-            int pid = (int)x1;
-            int sig = (int)x2;
-
-            _strace(n, "pid=%d sig=%d", pid, sig);
-
-            long ret = myst_syscall_kill(pid, sig);
-            BREAK(_return(n, ret));
-        }
-        case SYS_uname:
-        {
-            struct utsname* buf = (struct utsname*)x1;
-
-            BREAK(_return(n, myst_syscall_uname(buf)));
-        }
-        case SYS_semget:
-            break;
-        case SYS_semop:
-            break;
-        case SYS_semctl:
-            break;
-        case SYS_shmdt:
-            break;
-        case SYS_msgget:
-            break;
-        case SYS_msgsnd:
-            break;
-        case SYS_msgrcv:
-            break;
-        case SYS_msgctl:
-            break;
-        case SYS_fcntl:
-        {
-            int fd = (int)x1;
-            int cmd = (int)x2;
-            long arg = (long)x3;
-            long ret;
-
-            const char* cmdstr = _fcntl_cmdstr(cmd);
-            _strace(n, "fd=%d cmd=%d(%s) arg=0%lo", fd, cmd, cmdstr, arg);
-
-            ret = myst_syscall_fcntl(fd, cmd, arg);
-            BREAK(_return(n, ret));
-        }
-        case SYS_flock:
-        {
-            int fd = (int)x1;
-            int cmd = (int)x2;
-
-            _strace(n, "fd=%d cmd=%d", fd, cmd);
-
-            BREAK(_return(n, 0));
-        }
-        case SYS_fsync:
-        {
-            int fd = (int)x1;
-
-            _strace(n, "fd=%d", fd);
-
-            BREAK(_return(n, myst_syscall_fsync(fd)));
-        }
-        case SYS_fdatasync:
-            break;
-        case SYS_truncate:
-        {
-            const char* path = (const char*)x1;
-            off_t length = (off_t)x2;
-
-            _strace(n, "path=\"%s\" length=%ld", path, length);
-
-            BREAK(_return(n, myst_syscall_truncate(path, length)));
-        }
-        case SYS_ftruncate:
-        {
-            int fd = (int)x1;
-            off_t length = (off_t)x2;
-
-            _strace(n, "fd=%d length=%ld", fd, length);
-
-            BREAK(_return(n, myst_syscall_ftruncate(fd, length)));
-        }
-        case SYS_getdents:
-            break;
-        case SYS_getcwd:
-        {
-            char* buf = (char*)x1;
-            size_t size = (size_t)x2;
-
-            _strace(n, "buf=%p size=%zu", buf, size);
-
-            BREAK(_return(n, myst_syscall_getcwd(buf, size)));
-        }
-        case SYS_chdir:
-        {
-            const char* path = (const char*)x1;
-
-            _strace(n, "path=\"%s\"", path);
-
-            BREAK(_return(n, myst_syscall_chdir(path)));
-        }
-        case SYS_fchdir:
-            break;
-        case SYS_rename:
-        {
-            const char* oldpath = (const char*)x1;
-            const char* newpath = (const char*)x2;
-
-            _strace(n, "oldpath=\"%s\" newpath=\"%s\"", oldpath, newpath);
-
-            BREAK(_return(n, myst_syscall_rename(oldpath, newpath)));
-        }
-        case SYS_mkdir:
-        {
-            const char* pathname = (const char*)x1;
-            mode_t mode = (mode_t)x2;
-
-            _strace(n, "pathname=\"%s\" mode=0%o", pathname, mode);
-
-            BREAK(_return(n, myst_syscall_mkdir(pathname, mode)));
-        }
-        case SYS_rmdir:
-        {
-            const char* pathname = (const char*)x1;
-
-            _strace(n, "pathname=\"%s\"", pathname);
-
-            BREAK(_return(n, myst_syscall_rmdir(pathname)));
-        }
-        case SYS_creat:
-        {
-            const char* pathname = (const char*)x1;
-            mode_t mode = (mode_t)x2;
-
-            _strace(n, "pathname=\"%s\" mode=%x", pathname, mode);
-
-            BREAK(_return(n, myst_syscall_creat(pathname, mode)));
-        }
-        case SYS_link:
-        {
-            const char* oldpath = (const char*)x1;
-            const char* newpath = (const char*)x2;
-
-            _strace(n, "oldpath=\"%s\" newpath=\"%s\"", oldpath, newpath);
-
-            BREAK(_return(n, myst_syscall_link(oldpath, newpath)));
-        }
-        case SYS_unlink:
-        {
-            const char* pathname = (const char*)x1;
-
-            _strace(n, "pathname=\"%s\"", pathname);
-
-            BREAK(_return(n, myst_syscall_unlink(pathname)));
-        }
-        case SYS_symlink:
-        {
-            const char* target = (const char*)x1;
-            const char* linkpath = (const char*)x2;
-
-            _strace(n, "target=\"%s\" linkpath=\"%s\"", target, linkpath);
-
-            BREAK(_return(n, myst_syscall_symlink(target, linkpath)));
-        }
-        case SYS_readlink:
-        {
-            const char* pathname = (const char*)x1;
-            char* buf = (char*)x2;
-            size_t bufsiz = (size_t)x3;
-
-            _strace(
-                n, "pathname=\"%s\" buf=%p bufsiz=%zu", pathname, buf, bufsiz);
-
-            BREAK(_return(n, myst_syscall_readlink(pathname, buf, bufsiz)));
-        }
-        case SYS_chmod:
-        {
-            const char* pathname = (const char*)x1;
-            mode_t mode = (mode_t)x2;
-
-            _strace(n, "pathname=\"%s\" mode=%o", pathname, mode);
-
-            BREAK(_return(n, myst_syscall_chmod(pathname, mode)));
-        }
-        case SYS_fchmod:
-        {
-            int fd = (int)x1;
-            mode_t mode = (mode_t)x2;
-
-            _strace(n, "fd=%d mode=%o", fd, mode);
-
-            BREAK(_return(n, myst_syscall_fchmod(fd, mode)));
-        }
-        case SYS_chown:
-        {
-            const char* pathname = (const char*)x1;
-            uid_t owner = (uid_t)x2;
-            gid_t group = (gid_t)x3;
-
-            _strace(n, "pathname=%s owner=%u group=%u", pathname, owner, group);
-
-            /* owner is a no-op for now since kernel executes as root */
-            BREAK(_return(n, 0));
-        }
-        case SYS_fchown:
-            break;
-        case SYS_lchown:
-            break;
-        case SYS_umask:
-        {
-            mode_t mask = (mode_t)x1;
-
-            _strace(n, "mask=%o", mask);
-
-            BREAK(_return(n, myst_syscall_umask(mask)));
-        }
-        case SYS_gettimeofday:
-        {
-            struct timeval* tv = (struct timeval*)x1;
-            struct timezone* tz = (void*)x2;
-
-            _strace(n, "tv=%p tz=%p", tv, tz);
-
-            long ret = myst_syscall_gettimeofday(tv, tz);
-            BREAK(_return(n, ret));
-        }
-        case SYS_getrlimit:
-            break;
-        case SYS_getrusage:
-        {
-            int who = (int)x1;
-            struct rusage* usage = (struct rusage*)x2;
-
-            _strace(n, "who=%d usage=%p", who, usage);
-
-            long ret = myst_syscall_getrusage(who, usage);
-            BREAK(_return(n, ret));
-        }
-        case SYS_sysinfo:
-        {
-            struct sysinfo* info = (struct sysinfo*)x1;
-            _strace(n, "info=%p", info);
-            long ret = myst_syscall_sysinfo(info);
-            BREAK(_return(n, ret));
-        }
-        case SYS_times:
-        {
-            struct tms* tm = (struct tms*)x1;
-            _strace(n, "tm=%p", tm);
-
-            long stime = myst_times_system_time();
-            long utime = myst_times_user_time();
-            if (tm != NULL)
-            {
-                tm->tms_utime = utime;
-                tm->tms_stime = stime;
-                tm->tms_cutime = 0;
-                tm->tms_cstime = 0;
-            }
-
-            BREAK(_return(n, stime + utime));
-        }
-        case SYS_ptrace:
-            break;
-        case SYS_syslog:
-        {
-            /* Ignore syslog for now */
-            BREAK(_return(n, 0));
-        }
-        case SYS_setpgid:
-        {
-            gid_t gid = (gid_t)x1;
-            long ret = 0;
-
-            _strace(n, "gid=%u", gid);
-
-            /* do not allow the GID to be changed */
-            if (gid != MYST_DEFAULT_GID)
-                ret = -EPERM;
-
-            BREAK(_return(n, ret));
-        }
-        case SYS_getpgid:
-        {
-            _strace(n, NULL);
-            BREAK(_return(n, MYST_DEFAULT_GID));
-        }
-        case SYS_getppid:
-        {
-            _strace(n, NULL);
-            BREAK(_return(n, myst_getppid()));
-        }
-        case SYS_getpgrp:
-            break;
-        case SYS_getsid:
-        {
-            _strace(n, NULL);
-            BREAK(_return(n, myst_getsid()));
-        }
-        case SYS_setsid:
-            break;
-        case SYS_getgroups:
-        {
-            size_t size = (size_t)x1;
-            gid_t* list = (gid_t*)x2;
-            /* return the extra groups on the thread */
-            _strace(n, NULL);
-            BREAK(_return(n, myst_syscall_getgroups(size, list)));
-        }
-        case SYS_setgroups:
-        {
-            int size = (int)x1;
-            const gid_t* list = (const gid_t*)x2;
-
-            /* return the extra groups on the thread */
-            _strace(n, NULL);
-            BREAK(_return(n, myst_syscall_setgroups(size, list)));
-        }
-        case SYS_getuid:
-        {
-            /* return the real uid of the thread */
-            _strace(n, NULL);
-            BREAK(_return(n, myst_syscall_getuid()));
-        }
-        case SYS_setuid:
-        {
-            /* Set euid and fsuid to arg1, and if euid is already set to root
-             * also set uid and savuid of the thread */
-            uid_t uid = (uid_t)x1;
-            _strace(n, "uid=%u", uid);
-
-            BREAK(_return(n, myst_syscall_setuid(uid)));
-        }
-        case SYS_getgid:
-        {
-            /* return the gid of the thread */
-            _strace(n, NULL);
-            BREAK(_return(n, myst_syscall_getgid()));
-        }
-        case SYS_setgid:
-        {
-            /* set the effective gid (euid) of the thread, unless egid is root
-             * in which case set all gids */
-            gid_t gid = (gid_t)x1;
-            _strace(n, "gid=%u", gid);
-            BREAK(_return(n, myst_syscall_setgid(gid)));
-        }
-        case SYS_geteuid:
-        {
-            /* return threads effective uid (euid) */
-            _strace(n, NULL);
-            BREAK(_return(n, myst_syscall_geteuid()));
-        }
-        case SYS_getegid:
-        {
-            /* return threads effective gid (egid) */
-            _strace(n, NULL);
-            BREAK(_return(n, myst_syscall_getegid()));
-        }
-        case SYS_setreuid:
-        {
-            /* set the real and effective uid of the thread */
-            uid_t ruid = (uid_t)x1;
-            uid_t euid = (uid_t)x2;
-            _strace(n, "Changing IDs to ruid=%u, euid=%u", ruid, euid);
-            BREAK(_return(n, myst_syscall_setreuid(ruid, euid)));
-        }
-        case SYS_setregid:
-        {
-            /* set the real and effective uid of the thread */
-            gid_t rgid = (gid_t)x1;
-            gid_t egid = (gid_t)x2;
-            _strace(n, "Changing setting to rgid=%u, egid=%u", rgid, egid);
-            BREAK(_return(n, myst_syscall_setregid(rgid, egid)));
-        }
-        case SYS_setresuid:
-        {
-            /* set the real and effective uid of the thread */
-            uid_t ruid = (uid_t)x1;
-            uid_t euid = (uid_t)x2;
-            uid_t savuid = (uid_t)x3;
-            _strace(
-                n,
-                "Changing setting to ruid=%u, euid=%u, savuid=%u",
-                ruid,
-                euid,
-                savuid);
-            BREAK(_return(n, myst_syscall_setresuid(ruid, euid, savuid)));
-        }
-        case SYS_getresuid:
-        {
-            uid_t* ruid = (uid_t*)x1;
-            uid_t* euid = (uid_t*)x2;
-            uid_t* savuid = (uid_t*)x3;
-            _strace(n, NULL);
-            BREAK(_return(n, myst_syscall_getresuid(ruid, euid, savuid)));
-        }
-        case SYS_setresgid:
-        {
-            /* set the real and effective uid of the thread */
-            gid_t rgid = (gid_t)x1;
-            gid_t egid = (gid_t)x2;
-            gid_t savgid = (gid_t)x3;
-            _strace(
-                n,
-                "Changing setting to rgid=%u, egid=%u, savgid=%u",
-                rgid,
-                egid,
-                savgid);
-            BREAK(_return(n, myst_syscall_setresgid(rgid, egid, savgid)));
-        }
-        case SYS_getresgid:
-        {
-            gid_t* rgid = (gid_t*)x1;
-            gid_t* egid = (gid_t*)x2;
-            gid_t* savgid = (gid_t*)x3;
-            _strace(n, NULL);
-            BREAK(_return(n, myst_syscall_getresgid(rgid, egid, savgid)));
-        }
-        case SYS_setfsuid:
-        {
-            uid_t fsuid = (uid_t)x1;
-            _strace(n, "fsuid=%u", fsuid);
-            BREAK(_return(n, myst_syscall_setfsuid(fsuid)));
-        }
-        case SYS_setfsgid:
-        {
-            gid_t fsgid = (gid_t)x1;
-            _strace(n, "fsgid=%u", fsgid);
-            BREAK(_return(n, myst_syscall_setfsgid(fsgid)));
-        }
-        case SYS_capget:
-            break;
-        case SYS_capset:
-            break;
-        case SYS_rt_sigpending:
-        {
-            sigset_t* set = (sigset_t*)x1;
-            unsigned size = (unsigned)x2;
-            BREAK(_return(n, myst_signal_sigpending(set, size)));
-        }
-        case SYS_rt_sigtimedwait:
-            break;
-        case SYS_rt_sigqueueinfo:
-            break;
-        case SYS_rt_sigsuspend:
-            break;
-        case SYS_sigaltstack:
-        {
-            /* ATTN: support user space stack for segv handling. */
-            BREAK(_return(n, 0));
-        }
-        case SYS_utime:
-            break;
-        case SYS_mknod:
-        {
-            const char* pathname = (const char*)x1;
-            mode_t mode = (mode_t)x2;
-            dev_t dev = (dev_t)x3;
-            long ret = 0;
-
-            _strace(n, "pathname=%s mode=%d dev=%lu", pathname, mode, dev);
-
-            if (S_ISFIFO(mode))
-            {
-                /* ATTN: create a pipe here! */
-            }
-            else
-            {
-                ret = -ENOTSUP;
-            }
-
-            BREAK(_return(n, ret));
-        }
-        case SYS_uselib:
-            break;
-        case SYS_personality:
-            break;
-        case SYS_ustat:
-            break;
-        case SYS_statfs:
-        {
-            const char* path = (const char*)x1;
-            struct statfs* buf = (struct statfs*)x2;
-
-            _strace(n, "path=%s buf=%p", path, buf);
-
-            long ret = myst_syscall_statfs(path, buf);
-
-            BREAK(_return(n, ret));
-        }
-        case SYS_fstatfs:
-        {
-            int fd = (int)x1;
-            struct statfs* buf = (struct statfs*)x2;
-
-            _strace(n, "fd=%d buf=%p", fd, buf);
-
-            long ret = myst_syscall_fstatfs(fd, buf);
-
-            BREAK(_return(n, ret));
-        }
-        case SYS_sysfs:
-            break;
-        case SYS_getpriority:
-            break;
-        case SYS_setpriority:
-            break;
-        case SYS_sched_setparam:
-        {
-            /* ATTN: support setting thread priorities. */
-            BREAK(_return(n, 0));
-        }
-        case SYS_sched_getparam:
-        {
-            pid_t pid = (pid_t)x1;
-            struct sched_param* param = (struct sched_param*)x2;
-
-            _strace(n, "pid=%d param=%p", pid, param);
-
-            // ATTN: Return the priority from SYS_sched_setparam.
-            if (param != NULL)
-            {
-                // Only memset the non reserved part of the structure
-                // This is to be defensive against different sizes of this
-                // struct in musl and glibc.
-                memset(param, 0, sizeof(*param) - 40);
-            }
-            BREAK(_return(n, 0));
-        }
-        case SYS_sched_setscheduler:
-        {
-            // ATTN: support different schedules, FIFO, RR, BATCH, etc.
-            // The more control we have on threads inside the kernel, the more
-            // schedulers we could support.
-            BREAK(_return(n, 0));
-        }
-        case SYS_sched_getscheduler:
-        {
-            /* ATTN: return the scheduler installed from sched_setscheduler. */
-            BREAK(_return(n, SCHED_OTHER));
-        }
-        case SYS_sched_get_priority_max:
-        {
-            /* ATTN: support thread priorities */
-            BREAK(_return(n, 0));
-        }
-        case SYS_sched_get_priority_min:
-        {
-            /* ATTN: support thread priorities */
-            BREAK(_return(n, 0));
-        }
-        case SYS_sched_rr_get_interval:
-            break;
-        case SYS_mlock:
-        {
-            const void* addr = (const void*)x1;
-            size_t len = (size_t)x2;
-            long ret = 0;
-
-            _strace(n, "addr=%p len=%zu\n", addr, len);
-
-            if (!addr)
-                ret = -EINVAL;
-
-            // ATTN: forward the request to target.
-            // Some targets, such as sgx, probably just ignore it.
-
-            BREAK(_return(n, ret));
-        }
-        case SYS_munlock:
-            break;
-        case SYS_mlockall:
-            break;
-        case SYS_munlockall:
-            break;
-        case SYS_vhangup:
-            break;
-        case SYS_modify_ldt:
-            break;
-        case SYS_pivot_root:
-            break;
-        case SYS__sysctl:
-            break;
-        case SYS_prctl:
-        {
-            int option = (int)x1;
-            long ret = 0;
-
-            _strace(n, "option=%d\n", option);
-
-            if (option == PR_GET_NAME)
-            {
-                char* arg2 = (char*)x2;
-                if (!arg2)
-                    BREAK(_return(n, -EINVAL));
-
-                strcpy(arg2, myst_get_thread_name(myst_thread_self()));
-            }
-            else if (option == PR_SET_NAME)
-            {
-                char* arg2 = (char*)x2;
-                if (!arg2)
-                    BREAK(_return(n, -EINVAL));
-
-                ret = myst_set_thread_name(myst_thread_self(), arg2);
-            }
-            else
-            {
-                ret = -EINVAL;
-            }
-
-            BREAK(_return(n, ret));
-        }
-        case SYS_arch_prctl:
-            break;
-        case SYS_adjtimex:
-            break;
-        case SYS_setrlimit:
-            break;
-        case SYS_chroot:
-            break;
-        case SYS_sync:
-            break;
-        case SYS_acct:
-            break;
-        case SYS_settimeofday:
-            break;
-        case SYS_mount:
-        {
-            const char* source = (const char*)x1;
-            const char* target = (const char*)x2;
-            const char* filesystemtype = (const char*)x3;
-            unsigned long mountflags = (unsigned long)x4;
-            void* data = (void*)x5;
-            long ret;
-
-            _strace(
-                n,
-                "source=%s target=%s filesystemtype=%s mountflags=%lu data=%p",
-                source,
-                target,
-                filesystemtype,
-                mountflags,
-                data);
-
-            ret = myst_syscall_mount(
-                source, target, filesystemtype, mountflags, data);
-
-            BREAK(_return(n, ret));
-        }
-        case SYS_umount2:
-        {
-            const char* target = (const char*)x1;
-            int flags = (int)x2;
-            long ret;
-
-            _strace(n, "target=%p flags=%d", target, flags);
-
-            ret = myst_syscall_umount2(target, flags);
-
-            BREAK(_return(n, ret));
-        }
-        case SYS_swapon:
-            break;
-        case SYS_swapoff:
-            break;
-        case SYS_reboot:
-            break;
-        case SYS_sethostname:
-        {
-            const char* name = (const char*)x1;
-            size_t len = (size_t)x2;
-
-            _strace(n, "name=\"%s\" len=%zu", name, len);
-
-            BREAK(_return(n, myst_syscall_sethostname(name, len)));
-        }
-        case SYS_setdomainname:
-            break;
-        case SYS_iopl:
-            break;
-        case SYS_ioperm:
-            break;
-        case SYS_create_module:
-            break;
-        case SYS_init_module:
-            break;
-        case SYS_delete_module:
-            break;
-        case SYS_get_kernel_syms:
-            break;
-        case SYS_query_module:
-            break;
-        case SYS_quotactl:
-            break;
-        case SYS_nfsservctl:
-            break;
-        case SYS_getpmsg:
-            break;
-        case SYS_putpmsg:
-            break;
-        case SYS_afs_syscall:
-            break;
-        case SYS_tuxcall:
-            break;
-        case SYS_security:
-            break;
-        case SYS_gettid:
-        {
-            _strace(n, NULL);
-            BREAK(_return(n, myst_gettid()));
-        }
-        case SYS_readahead:
-            break;
-        case SYS_setxattr:
-            break;
-        case SYS_lsetxattr:
-            break;
-        case SYS_fsetxattr:
-            break;
-        case SYS_getxattr:
-            break;
-        case SYS_lgetxattr:
-            break;
-        case SYS_fgetxattr:
-            break;
-        case SYS_listxattr:
-            break;
-        case SYS_llistxattr:
-            break;
-        case SYS_flistxattr:
-            break;
-        case SYS_removexattr:
-            break;
-        case SYS_lremovexattr:
-            break;
-        case SYS_fremovexattr:
-            break;
-        case SYS_tkill:
-        {
-            int tid = (int)x1;
-            int sig = (int)x2;
-
-            _strace(n, "tid=%d sig=%d", tid, sig);
-
-            myst_thread_t* thread = myst_thread_self();
-            int tgid = thread->pid;
-
-            long ret = myst_syscall_tgkill(tgid, tid, sig);
-            BREAK(_return(n, ret));
-        }
-        case SYS_time:
-        {
-            time_t* tloc = (time_t*)x1;
-
-            _strace(n, "tloc=%p", tloc);
-            long ret = myst_syscall_time(tloc);
-            BREAK(_return(n, ret));
-        }
-        case SYS_futex:
-        {
-            int* uaddr = (int*)x1;
-            int futex_op = (int)x2;
-            int val = (int)x3;
-            long arg = (long)x4;
-            int* uaddr2 = (int*)x5;
-            int val3 = (int)val3;
-
-            _strace(
-                n,
-                "uaddr=0x%lx(%d) futex_op=%u(%s) val=%d",
-                (long)uaddr,
-                (uaddr ? *uaddr : -1),
-                futex_op,
-                _futex_op_str(futex_op),
-                val);
-
-            BREAK(_return(
-                n,
-                myst_syscall_futex(uaddr, futex_op, val, arg, uaddr2, val3)));
-        }
-        case SYS_sched_setaffinity:
-        {
-            pid_t pid = (pid_t)x1;
-            size_t cpusetsize = (pid_t)x2;
-            cpu_set_t* mask = (cpu_set_t*)x3;
-
-            _strace(
-                n, "pid=%d cpusetsize=%zu mask=%p\n", pid, cpusetsize, mask);
-
-            /* ATTN: support set affinity requests */
-
-            BREAK(_return(n, 0));
-        }
-        case SYS_sched_getaffinity:
-        {
-            pid_t pid = (pid_t)x1;
-            size_t cpusetsize = (pid_t)x2;
-            cpu_set_t* mask = (cpu_set_t*)x3;
-
-            _strace(
-                n, "pid=%d cpusetsize=%zu mask=%p\n", pid, cpusetsize, mask);
-
-            // ATTN: return the cpu id from sched_setaffinity.
-            // for now, make all threads fixed to cpu 0.
-            if (mask != NULL)
-            {
-                CPU_ZERO(mask);
-                CPU_SET(0, mask);
-            }
-
-            BREAK(_return(n, cpusetsize));
-        }
-        case SYS_set_thread_area:
-        {
-            void* tp = (void*)params[0];
-
-            _strace(n, "tp=%p", tp);
-
-            /* ---------- running target thread descriptor ---------- */
-
-#ifdef DISABLE_MULTIPLE_SET_THREAD_AREA_SYSCALLS
-            if (_set_thread_area_called)
-                myst_panic("SYS_set_thread_area called twice");
-#endif
-
-            /* get the C-runtime thread descriptor */
-            crt_td = (myst_td_t*)tp;
-            assert(myst_valid_td(crt_td));
-
-            /* set the C-runtime thread descriptor for this thread */
-            thread->crt_td = crt_td;
-
-            /* propagate the canary from the old thread descriptor */
-            crt_td->canary = target_td->canary;
-
-            _set_thread_area_called = true;
-
-            BREAK(_return(n, 0));
-        }
-        case SYS_io_setup:
-            break;
-        case SYS_io_destroy:
-            break;
-        case SYS_io_getevents:
-            break;
-        case SYS_io_submit:
-            break;
-        case SYS_io_cancel:
-            break;
-        case SYS_get_thread_area:
-            break;
-        case SYS_lookup_dcookie:
-            break;
-        case SYS_epoll_create:
-        {
-            int size = (int)x1;
-
-            _strace(n, "size=%d", size);
-
-            if (size <= 0)
-                BREAK(_return(n, -EINVAL));
-
-            BREAK(_return(n, myst_syscall_epoll_create1(0)));
-        }
-        case SYS_epoll_ctl_old:
-            break;
-        case SYS_epoll_wait_old:
-            break;
-        case SYS_remap_file_pages:
-            break;
-        case SYS_getdents64:
-        {
-            unsigned int fd = (unsigned int)x1;
-            struct dirent* dirp = (struct dirent*)x2;
-            unsigned int count = (unsigned int)x3;
-
-            _strace(n, "fd=%d dirp=%p count=%u", fd, dirp, count);
-
-            BREAK(_return(n, myst_syscall_getdents64((int)fd, dirp, count)));
-        }
-        case SYS_set_tid_address:
-        {
-            int* tidptr = (int*)params[0];
-
-            /* ATTN: unused */
-
-            _strace(n, "tidptr=%p *tidptr=%d", tidptr, tidptr ? *tidptr : -1);
-
-            BREAK(_return(n, myst_getpid()));
-        }
-        case SYS_restart_syscall:
-            break;
-        case SYS_semtimedop:
-            break;
-        case SYS_fadvise64:
-        {
-            int fd = (int)x1;
-            loff_t offset = (loff_t)x2;
-            loff_t len = (loff_t)x3;
-            int advice = (int)x4;
-
-            _strace(
-                n,
-                "fd=%d offset=%ld len=%ld advice=%d",
-                fd,
-                offset,
-                len,
-                advice);
-
-            /* ATTN: no-op */
-            BREAK(_return(n, 0));
-        }
-        case SYS_timer_create:
-            break;
-        case SYS_timer_settime:
-            break;
-        case SYS_timer_gettime:
-            break;
-        case SYS_timer_getoverrun:
-            break;
-        case SYS_timer_delete:
-            break;
-        case SYS_clock_settime:
-        {
-            clockid_t clk_id = (clockid_t)x1;
-            struct timespec* tp = (struct timespec*)x2;
-
-            _strace(n, "clk_id=%u tp=%p", clk_id, tp);
-
-            BREAK(_return(n, myst_syscall_clock_settime(clk_id, tp)));
-        }
-        case SYS_clock_gettime:
-        {
-            clockid_t clk_id = (clockid_t)x1;
-            struct timespec* tp = (struct timespec*)x2;
-
-            _strace(n, "clk_id=%u tp=%p", clk_id, tp);
-
-            BREAK(_return(n, myst_syscall_clock_gettime(clk_id, tp)));
-        }
-        case SYS_clock_getres:
-        {
-            clockid_t clk_id = (clockid_t)x1;
-            struct timespec* res = (struct timespec*)x2;
-
-            _strace(n, "clk_id=%u tp=%p", clk_id, res);
-
-            BREAK(_return(n, myst_syscall_clock_getres(clk_id, res)));
-        }
-        case SYS_clock_nanosleep:
-            break;
-        case SYS_exit_group:
-        {
-            int status = (int)x1;
-            _strace(n, "status=%d", status);
-
-            myst_kill_thread_group();
-            BREAK(_return(n, 0));
-        }
-        case SYS_epoll_wait:
-        {
-            int epfd = (int)x1;
-            struct epoll_event* events = (struct epoll_event*)x2;
-            int maxevents = (int)x3;
-            int timeout = (int)x4;
-            long ret;
-
-            _strace(
-                n,
-                "edpf=%d events=%p maxevents=%d timeout=%d",
-                epfd,
-                events,
-                maxevents,
-                timeout);
-
-            ret = myst_syscall_epoll_wait(epfd, events, maxevents, timeout);
-            BREAK(_return(n, ret));
-        }
-        case SYS_epoll_ctl:
-        {
-            int epfd = (int)x1;
-            int op = (int)x2;
-            int fd = (int)x3;
-            struct epoll_event* event = (struct epoll_event*)x4;
-            long ret;
-
-            _strace(n, "edpf=%d op=%d fd=%d event=%p", epfd, op, fd, event);
-
-            ret = myst_syscall_epoll_ctl(epfd, op, fd, event);
-            BREAK(_return(n, ret));
-        }
-        case SYS_tgkill:
-        {
-            int tgid = (int)x1;
-            int tid = (int)x2;
-            int sig = (int)x3;
-
-            _strace(n, "tgid=%d tid=%d sig=%d", tgid, tid, sig);
-
-            long ret = myst_syscall_tgkill(tgid, tid, sig);
-            BREAK(_return(n, ret));
-        }
-        case SYS_utimes:
-            break;
-        case SYS_vserver:
-            break;
-        case SYS_mbind:
-            break;
-        case SYS_set_mempolicy:
-            break;
-        case SYS_get_mempolicy:
-            break;
-        case SYS_mq_open:
-            break;
-        case SYS_mq_unlink:
-            break;
-        case SYS_mq_timedsend:
-            break;
-        case SYS_mq_timedreceive:
-            break;
-        case SYS_mq_notify:
-            break;
-        case SYS_mq_getsetattr:
-            break;
-        case SYS_kexec_load:
-            break;
-        case SYS_waitid:
-            break;
-        case SYS_add_key:
-            break;
-        case SYS_request_key:
-            break;
-        case SYS_keyctl:
-            break;
-        case SYS_ioprio_set:
-            break;
-        case SYS_ioprio_get:
-            break;
-        case SYS_inotify_init:
-        {
-            _strace(n, NULL);
-
-            long ret = myst_syscall_inotify_init1(0);
-            BREAK(_return(n, ret));
-        }
-        case SYS_inotify_add_watch:
-        {
-            int fd = (int)x1;
-            const char* pathname = (const char*)x2;
-            uint32_t mask = (uint32_t)x3;
-
-            _strace(n, "fd=%d pathname=%s mask=%x", fd, pathname, mask);
-
-            long ret = myst_syscall_inotify_add_watch(fd, pathname, mask);
-            BREAK(_return(n, ret));
-            break;
-        }
-        case SYS_inotify_rm_watch:
-        {
-            int fd = (int)x1;
-            int wd = (int)x2;
-
-            _strace(n, "fd=%d wd=%d", fd, wd);
-
-            long ret = myst_syscall_inotify_rm_watch(fd, wd);
-            BREAK(_return(n, ret));
-            break;
-        }
-        case SYS_migrate_pages:
-            break;
-        case SYS_openat:
-        {
-            int dirfd = (int)x1;
-            const char* path = (const char*)x2;
-            int flags = (int)x3;
-            mode_t mode = (mode_t)x4;
-            long ret;
-
-            _strace(
-                n,
-                "dirfd=%d path=\"%s\" flags=0%o mode=0%o",
-                dirfd,
-                path,
-                flags,
-                mode);
-
-            ret = myst_syscall_openat(dirfd, path, flags, mode);
-
-            BREAK(_return(n, ret));
-        }
-        case SYS_mkdirat:
-            break;
-        case SYS_mknodat:
-            break;
-        case SYS_fchownat:
-            break;
-        case SYS_futimesat:
-        {
-            int dirfd = (int)x1;
-            const char* pathname = (const char*)x2;
-            const struct timeval* times = (const struct timeval*)x3;
-            long ret;
-
-            _strace(n, "dirfd=%d pathname=%s times=%p", dirfd, pathname, times);
-
-            ret = myst_syscall_futimesat(dirfd, pathname, times);
-            BREAK(_return(n, ret));
-        }
-        case SYS_newfstatat:
-        {
-            int dirfd = (int)x1;
-            const char* pathname = (const char*)x2;
-            struct stat* statbuf = (struct stat*)x3;
-            int flags = (int)x4;
-            long ret;
-
-            _strace(
-                n,
-                "dirfd=%d pathname=%s statbuf=%p flags=%d",
-                dirfd,
-                pathname,
-                statbuf,
-                flags);
-
-            ret = myst_syscall_fstatat(dirfd, pathname, statbuf, flags);
-            BREAK(_return(n, ret));
-            break;
-        }
-        case SYS_unlinkat:
-            break;
-        case SYS_renameat:
-            break;
-        case SYS_linkat:
-            break;
-        case SYS_symlinkat:
-            break;
-        case SYS_readlinkat:
-            break;
-        case SYS_fchmodat:
-            break;
-        case SYS_faccessat:
-            break;
-        case SYS_pselect6:
-            break;
-        case SYS_ppoll:
-            break;
-        case SYS_unshare:
-            break;
-        case SYS_set_robust_list:
-        {
-            struct myst_robust_list_head* head = (void*)x1;
-            size_t len = (size_t)x2;
-            long ret;
-
-            _strace(n, "head=%p len=%zu", head, len);
-
-            ret = myst_syscall_set_robust_list(head, len);
-            BREAK(_return(n, ret));
-        }
-        case SYS_get_robust_list:
-        {
-            int pid = (int)x1;
-            struct myst_robust_list_head** head_ptr = (void*)x2;
-            size_t* len_ptr = (size_t*)x3;
-            long ret;
-
-            _strace(n, "pid=%d head=%p len=%p", pid, head_ptr, len_ptr);
-
-            ret = myst_syscall_get_robust_list(pid, head_ptr, len_ptr);
-            BREAK(_return(n, ret));
-        }
-        case SYS_splice:
-            break;
-        case SYS_tee:
-            break;
-        case SYS_sync_file_range:
-            break;
-        case SYS_vmsplice:
-            break;
-        case SYS_move_pages:
-            break;
-        case SYS_utimensat:
-        {
-            int dirfd = (int)x1;
-            const char* pathname = (const char*)x2;
-            const struct timespec* times = (const struct timespec*)x3;
-            int flags = (int)x4;
-            long ret;
-
-            _strace(
-                n,
-                "dirfd=%d pathname=%s times=%p flags=%o",
-                dirfd,
-                pathname,
-                times,
-                flags);
-
-            ret = myst_syscall_utimensat(dirfd, pathname, times, flags);
-            BREAK(_return(n, ret));
-        }
-        case SYS_epoll_pwait:
-        {
-            int epfd = (int)x1;
-            struct epoll_event* events = (struct epoll_event*)x2;
-            int maxevents = (int)x3;
-            int timeout = (int)x4;
-            const sigset_t* sigmask = (const sigset_t*)x5;
-            long ret;
-
-            _strace(
-                n,
-                "edpf=%d events=%p maxevents=%d timeout=%d sigmask=%p",
-                epfd,
-                events,
-                maxevents,
-                timeout,
-                sigmask);
-
-            /* ATTN: ignore sigmask */
-            ret = myst_syscall_epoll_wait(epfd, events, maxevents, timeout);
-            BREAK(_return(n, ret));
-        }
-        case SYS_signalfd:
-            break;
-        case SYS_timerfd_create:
-            break;
-        case SYS_eventfd:
-            break;
-        case SYS_fallocate:
-        {
-            int fd = (int)x1;
-            int mode = (int)x2;
-            off_t offset = (off_t)x3;
-            off_t len = (off_t)x4;
-
-            _strace(
-                n, "fd=%d mode=%d offset=%ld len=%ld", fd, mode, offset, len);
-
-            /* ATTN: treated as advisory only */
-            BREAK(_return(n, 0));
-        }
-        case SYS_timerfd_settime:
-            break;
-        case SYS_timerfd_gettime:
-            break;
-        case SYS_accept4:
-        {
-            int sockfd = (int)x1;
-            struct sockaddr* addr = (struct sockaddr*)x2;
-            socklen_t* addrlen = (socklen_t*)x3;
-            int flags = (int)x4;
-            long ret;
-            char addrstr[MAX_IPADDR_LEN];
-
-            ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
-
-            _strace(
-                n,
-                "sockfd=%d addr=%s addrlen=%p flags=%x",
-                sockfd,
-                addrstr,
-                addrlen,
-                flags);
-
-            ret = myst_syscall_accept4(sockfd, addr, addrlen, flags);
-            BREAK(_return(n, ret));
-        }
-        case SYS_signalfd4:
-            break;
-        case SYS_eventfd2:
-            break;
-        case SYS_epoll_create1:
-        {
-            int flags = (int)x1;
-
-            _strace(n, "flags=%d", flags);
-            BREAK(_return(n, myst_syscall_epoll_create1(flags)));
-        }
-        case SYS_pipe2:
-        {
-            int* pipefd = (int*)x1;
-            int flags = (int)x2;
-            long ret;
-
-            _strace(n, "pipefd=%p flags=%0o", pipefd, flags);
-            ret = myst_syscall_pipe2(pipefd, flags);
-
-            if (__options.trace_syscalls)
-                myst_eprintf("    pipefd[]=[%d:%d]\n", pipefd[0], pipefd[1]);
-
-            BREAK(_return(n, ret));
-        }
-        case SYS_inotify_init1:
-        {
-            int flags = (int)x1;
-
-            _strace(n, "flags=%x", flags);
-
-            long ret = myst_syscall_inotify_init1(flags);
-            BREAK(_return(n, ret));
-        }
-        case SYS_preadv:
-            break;
-        case SYS_pwritev:
-            break;
-        case SYS_rt_tgsigqueueinfo:
-            break;
-        case SYS_perf_event_open:
-            break;
-        case SYS_recvmmsg:
-            break;
-        case SYS_fanotify_init:
-            break;
-        case SYS_fanotify_mark:
-            break;
-        case SYS_prlimit64:
-        {
-            int pid = (int)x1;
-            int resource = (int)x2;
-            struct rlimit* new_rlim = (struct rlimit*)x3;
-            struct rlimit* old_rlim = (struct rlimit*)x4;
-
-            _strace(
-                n,
-                "pid=%d, resource=%d, new_rlim=%p, old_rlim=%p",
-                pid,
-                resource,
-                new_rlim,
-                old_rlim);
-
-            int ret = myst_syscall_prlimit64(pid, resource, new_rlim, old_rlim);
-            BREAK(_return(n, ret));
-        }
-        case SYS_name_to_handle_at:
-            break;
-        case SYS_open_by_handle_at:
-            break;
-        case SYS_clock_adjtime:
-            break;
-        case SYS_syncfs:
-            break;
-        case SYS_sendmmsg:
-            break;
-        case SYS_setns:
-            break;
-        case SYS_getcpu:
-        {
-            unsigned* cpu = (unsigned*)x1;
-            unsigned* node = (unsigned*)x2;
-            struct getcpu_cache* tcache = (struct getcpu_cache*)x3;
-
-            _strace(n, "cpu=%p node=%p, tcache=%p", cpu, node, tcache);
-
-            // ATTN: report the real NUMA node id and cpu id.
-            // For now, always report id 0 for them.
-            if (cpu)
-                *cpu = 0;
-
-            if (node)
-                *node = 0;
-
-            BREAK(_return(n, 0));
-        }
-        case SYS_process_vm_readv:
-            break;
-        case SYS_process_vm_writev:
-            break;
-        case SYS_kcmp:
-            break;
-        case SYS_finit_module:
-            break;
-        case SYS_sched_setattr:
-            break;
-        case SYS_sched_getattr:
-            break;
-        case SYS_renameat2:
-            break;
-        case SYS_seccomp:
-            break;
-        case SYS_getrandom:
-        {
-            void* buf = (void*)x1;
-            size_t buflen = (size_t)x2;
-            unsigned int flags = (unsigned int)x3;
-
-            _strace(n, "buf=%p buflen=%zu flags=%d", buf, buflen, flags);
-
-            BREAK(_return(n, myst_syscall_getrandom(buf, buflen, flags)));
-        }
-        case SYS_memfd_create:
-            break;
-        case SYS_kexec_file_load:
-            break;
-        case SYS_bpf:
-            break;
-        case SYS_execveat:
-            break;
-        case SYS_userfaultfd:
-            break;
-        case SYS_membarrier:
-        {
-            int cmd = (int)x1;
-            int flags = (int)x2;
-
-            _strace(n, "cmd=%d flags=%d", cmd, flags);
-
-            myst_barrier();
-
-            BREAK(_return(n, 0));
-        }
-        case SYS_mlock2:
-            break;
-        case SYS_copy_file_range:
-            break;
-        case SYS_preadv2:
-            break;
-        case SYS_pwritev2:
-            break;
-        case SYS_pkey_mprotect:
-            break;
-        case SYS_pkey_alloc:
-            break;
-        case SYS_pkey_free:
-            break;
-        case SYS_statx:
-            break;
-        case SYS_io_pgetevents:
-            break;
-        case SYS_rseq:
-            break;
-        case SYS_bind:
-        {
-            int sockfd = (int)x1;
-            const struct sockaddr* addr = (const struct sockaddr*)x2;
-            socklen_t addrlen = (socklen_t)x3;
-            long ret;
-            char addrstr[MAX_IPADDR_LEN];
-
-            ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
-
-            _strace(
-                n, "sockfd=%d addr=%s addrlen=%u", sockfd, addrstr, addrlen);
-
-            ret = myst_syscall_bind(sockfd, addr, addrlen);
-            BREAK(_return(n, ret));
-        }
-        case SYS_connect:
-        {
-            /* connect() and bind() have the same parameters */
-            int sockfd = (int)x1;
-            const struct sockaddr* addr = (const struct sockaddr*)x2;
-            socklen_t addrlen = (socklen_t)x3;
-            long ret;
-            char addrstr[MAX_IPADDR_LEN];
-
-            ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
-
-            _strace(
-                n,
-                "sockfd=%d addrlen=%u family=%u ip=%s",
-                sockfd,
-                addrlen,
-                addr->sa_family,
-                addrstr);
-
-            ret = myst_syscall_connect(sockfd, addr, addrlen);
-            BREAK(_return(n, ret));
-        }
-        case SYS_recvfrom:
-        {
-            int sockfd = (int)x1;
-            void* buf = (void*)x2;
-            size_t len = (size_t)x3;
-            int flags = (int)x4;
-            struct sockaddr* src_addr = (struct sockaddr*)x5;
-            socklen_t* addrlen = (socklen_t*)x6;
-            long ret = 0;
-            char addrstr[MAX_IPADDR_LEN];
-
-            ECHECK(_socketaddr_to_str(src_addr, addrstr, MAX_IPADDR_LEN));
-
-            _strace(
-                n,
-                "sockfd=%d buf=%p len=%zu flags=%d src_addr=%s addrlen=%p",
-                sockfd,
-                buf,
-                len,
-                flags,
-                addrstr,
-                addrlen);
-
-#ifdef MYST_NO_RECVMSG_MITIGATION
-            ret = myst_syscall_recvfrom(
-                sockfd, buf, len, flags, src_addr, addrlen);
-#else  /* MYST_NO_RECVMSG_WORKAROUND */
-            /* ATTN: this mitigation introduces a severe performance penalty */
-            // This mitigation works around a problem with a certain
-            // application that fails handle EGAIN. This should be removed
-            // when possible.
-            for (size_t i = 0; i < 10; i++)
-            {
-                ret = myst_syscall_recvfrom(
-                    sockfd, buf, len, flags, src_addr, addrlen);
-
-                if (ret != -EAGAIN)
-                    break;
-
-                {
-                    struct timespec req;
-                    req.tv_sec = 0;
-                    req.tv_nsec = 1000000000 / 10;
-                    long args[6];
-                    args[0] = (long)&req;
-                    args[1] = (long)NULL;
-                    _forward_syscall(SYS_nanosleep, args);
-                    continue;
-                }
-            }
-#endif /* MYST_NO_RECVMSG_WORKAROUND */
-            BREAK(_return(n, ret));
-        }
-        case SYS_sendto:
-        {
-            int sockfd = (int)x1;
-            void* buf = (void*)x2;
-            size_t len = (size_t)x3;
-            int flags = (int)x4;
-            struct sockaddr* dest_addr = (struct sockaddr*)x5;
-            socklen_t addrlen = (socklen_t)x6;
-            long ret = 0;
-            char addrstr[MAX_IPADDR_LEN];
-
-            ECHECK(_socketaddr_to_str(dest_addr, addrstr, MAX_IPADDR_LEN));
-
-            _strace(
-                n,
-                "sockfd=%d buf=%p len=%zu flags=%d dest_addr=%s addrlen=%u",
-                sockfd,
-                buf,
-                len,
-                flags,
-                addrstr,
-                addrlen);
-
-            ret = myst_syscall_sendto(
-                sockfd, buf, len, flags, dest_addr, addrlen);
-
-            BREAK(_return(n, ret));
-        }
-        case SYS_socket:
-        {
-            int domain = (int)x1;
-            int type = (int)x2;
-            int protocol = (int)x3;
-            long ret;
-
-            _strace(n, "domain=%d type=%d protocol=%d", domain, type, protocol);
-
-            ret = myst_syscall_socket(domain, type, protocol);
-            BREAK(_return(n, ret));
-        }
-        case SYS_accept:
-        {
-            int sockfd = (int)x1;
-            struct sockaddr* addr = (struct sockaddr*)x2;
-            socklen_t* addrlen = (socklen_t*)x3;
-            long ret;
-            char addrstr[MAX_IPADDR_LEN];
-
-            ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
-
-            _strace(
-                n, "sockfd=%d addr=%s addrlen=%p", sockfd, addrstr, addrlen);
-
-            ret = myst_syscall_accept4(sockfd, addr, addrlen, 0);
-            BREAK(_return(n, ret));
-        }
-        case SYS_sendmsg:
-        {
-            int sockfd = (int)x1;
-            const struct msghdr* msg = (const struct msghdr*)x2;
-            int flags = (int)x3;
-            long ret;
-
-            _strace(n, "sockfd=%d msg=%p flags=%d", sockfd, msg, flags);
-
-            ret = myst_syscall_sendmsg(sockfd, msg, flags);
-            BREAK(_return(n, ret));
-        }
-        case SYS_recvmsg:
-        {
-            int sockfd = (int)x1;
-            struct msghdr* msg = (struct msghdr*)x2;
-            int flags = (int)x3;
-            long ret;
-
-            _strace(n, "sockfd=%d msg=%p flags=%d", sockfd, msg, flags);
-
-            ret = myst_syscall_recvmsg(sockfd, msg, flags);
-            BREAK(_return(n, ret));
-        }
-        case SYS_shutdown:
-        {
-            int sockfd = (int)x1;
-            int how = (int)x2;
-            long ret;
-
-            _strace(n, "sockfd=%d how=%d", sockfd, how);
-
-            ret = myst_syscall_shutdown(sockfd, how);
-            BREAK(_return(n, ret));
-        }
-        case SYS_listen:
-        {
-            int sockfd = (int)x1;
-            int backlog = (int)x2;
-            long ret;
-
-            _strace(n, "sockfd=%d backlog=%d", sockfd, backlog);
-
-            ret = myst_syscall_listen(sockfd, backlog);
-            BREAK(_return(n, ret));
-        }
-        case SYS_getsockname:
-        {
-            int sockfd = (int)x1;
-            struct sockaddr* addr = (struct sockaddr*)x2;
-            socklen_t* addrlen = (socklen_t*)x3;
-            long ret;
-            char addrstr[MAX_IPADDR_LEN];
-
-            ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
-
-            _strace(
-                n, "sockfd=%d addr=%s addrlen=%p", sockfd, addrstr, addrlen);
-
-            ret = myst_syscall_getsockname(sockfd, addr, addrlen);
-            BREAK(_return(n, ret));
-        }
-        case SYS_getpeername:
-        {
-            int sockfd = (int)x1;
-            struct sockaddr* addr = (struct sockaddr*)x2;
-            socklen_t* addrlen = (socklen_t*)x3;
-            long ret;
-            char addrstr[MAX_IPADDR_LEN];
-
-            ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
-
-            _strace(
-                n, "sockfd=%d addr=%s addrlen=%p", sockfd, addrstr, addrlen);
-
-            ret = myst_syscall_getpeername(sockfd, addr, addrlen);
-            BREAK(_return(n, ret));
-        }
-        case SYS_socketpair:
-        {
-            int domain = (int)x1;
-            int type = (int)x2;
-            int protocol = (int)x3;
-            int* sv = (int*)x4;
-            long ret;
-
-            _strace(
-                n,
-                "domain=%d type=%d protocol=%d sv=%p",
-                domain,
-                type,
-                protocol,
-                sv);
-
-            ret = myst_syscall_socketpair(domain, type, protocol, sv);
-            BREAK(_return(n, ret));
-        }
-        case SYS_setsockopt:
-        {
-            int sockfd = (int)x1;
-            int level = (int)x2;
-            int optname = (int)x3;
-            const void* optval = (const void*)x4;
-            socklen_t optlen = (socklen_t)x5;
-            long ret;
-
-            _strace(
-                n,
-                "sockfd=%d level=%d optname=%d optval=%p optlen=%u",
-                sockfd,
-                level,
-                optname,
-                optval,
-                optlen);
-
-            ret =
-                myst_syscall_setsockopt(sockfd, level, optname, optval, optlen);
-            BREAK(_return(n, ret));
-        }
-        case SYS_getsockopt:
-        {
-            int sockfd = (int)x1;
-            int level = (int)x2;
-            int optname = (int)x3;
-            void* optval = (void*)x4;
-            socklen_t* optlen = (socklen_t*)x5;
-            long ret;
-
-            _strace(
-                n,
-                "sockfd=%d level=%d optname=%d optval=%p optlen=%p",
-                sockfd,
-                level,
-                optname,
-                optval,
-                optlen);
-
-            ret =
-                myst_syscall_getsockopt(sockfd, level, optname, optval, optlen);
-            BREAK(_return(n, ret));
-        }
-        case SYS_sendfile:
-        {
-            int out_fd = (int)x1;
-            int in_fd = (int)x2;
-            off_t* offset = (off_t*)x3;
-            size_t count = (size_t)x4;
-            off_t off = offset ? *offset : 0;
-
-            _strace(
-                n,
-                "out_fd=%d in_fd=%d offset=%p *offset=%ld count=%zu",
-                out_fd,
-                in_fd,
-                offset,
-                off,
-                count);
-
-            long ret = myst_syscall_sendfile(out_fd, in_fd, offset, count);
-            BREAK(_return(n, ret));
-            break;
-        }
+            BREAK(_SYS_myst_clone(n, params, NULL));
         /* forward Open Enclave extensions to the target */
         case SYS_myst_oe_get_report_v2:
         case SYS_myst_oe_free_report:
@@ -5272,24 +6275,21 @@ static long _syscall(void* args_)
         }
     }
 
-    myst_panic("unhandled syscall: %s()", syscall_str(n));
-
 done:
 
     /* ---------- running target thread descriptor ---------- */
 
     /* the C-runtime must execute on its own thread descriptor */
-    if (crt_td)
-        myst_set_fsbase(crt_td);
+    if (context.crt_td)
+        myst_set_fsbase(context.crt_td);
 
     myst_times_leave_kernel();
 
     // Process signals pending for this thread, if there is any.
-    myst_signal_process(thread);
+    myst_signal_process(context.thread);
 
     return syscall_ret;
 }
-#pragma GCC diagnostic pop
 
 long myst_syscall(long n, long params[6])
 {
