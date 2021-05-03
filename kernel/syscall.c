@@ -3143,7 +3143,8 @@ static long _syscall(void* args_)
 
             _strace(n, "addr=%lx", (long)addr);
 
-            BREAK(_return(n, myst_syscall_brk(addr)));
+            // BREAK(_return(n, myst_syscall_brk(addr)));
+            BREAK(_return(n, -ENOTSUP));
         }
         case SYS_rt_sigaction:
         {
