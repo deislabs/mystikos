@@ -219,3 +219,4 @@
 /ltp/testcases/kernel/syscalls/writev/writev02
 /ltp/testcases/kernel/syscalls/write/write01
 /ltp/testcases/kernel/syscalls/write/write02
+/ltp/testcases/kernel/syscalls/faccessat/faccessat01

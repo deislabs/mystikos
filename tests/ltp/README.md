@@ -199,7 +199,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/exit/exit01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/exit/exit02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/exit_group/exit_group01 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/faccessat/faccessat01 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/faccessat/faccessat01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/fadvise/posix_fadvise01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/fadvise/posix_fadvise01_64 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/fadvise/posix_fadvise02 | 0 | 0 | 0 |
