@@ -286,6 +286,43 @@ MYST_INLINE myst_thread_t* myst_thread_queue_pop_front(
     return thread;
 }
 
+/** Remove a thread from arbitrary position in the queue.
+ *  Returns the position in the queue if found. -1 otherwise.
+ */
+MYST_INLINE int myst_thread_queue_remove_thread(
+    myst_thread_queue_t* queue,
+    myst_thread_t* thread)
+{
+    int pos = 0;
+    bool found = false;
+    myst_thread_t* t = NULL;
+    myst_thread_t* prev = NULL;
+
+    for (t = queue->front; t; prev = t, pos++, t = t->qnext)
+    {
+        if (t == thread)
+        {
+            found = true;
+            if (prev != NULL)
+            {
+                prev->qnext = t->qnext;
+                if (t->qnext == NULL)
+                    queue->back = prev;
+            }
+            else
+            {
+                queue->front = queue->front->qnext;
+                if (queue->front == NULL)
+                    queue->back = NULL;
+            }
+            break;
+        }
+    }
+
+    // thread->qnext = NULL;
+    return found ? pos : -1;
+}
+
 MYST_INLINE bool myst_thread_queue_contains(
     myst_thread_queue_t* queue,
     myst_thread_t* thread)
