@@ -1446,6 +1446,75 @@ done:
     return ret;
 }
 
+long myst_syscall_faccessat(
+    int dirfd,
+    const char* pathname,
+    int mode,
+    int flags)
+{
+    long ret = 0;
+    struct locals
+    {
+        char dirname[PATH_MAX];
+        char filename[PATH_MAX];
+    };
+    struct locals* locals = NULL;
+
+    /* ATTN: support AT_ flags */
+    (void)flags;
+
+    if (!pathname)
+        ERAISE(-ENOENT);
+
+    if (*pathname == '\0')
+        ERAISE(-ENOENT);
+
+    if (!(locals = malloc(sizeof(struct locals))))
+        ERAISE(-ENOMEM);
+
+    if (*pathname == '/' || dirfd == AT_FDCWD)
+    {
+        ret = myst_syscall_access(pathname, mode);
+    }
+    else
+    {
+        myst_fdtable_t* fdtable = myst_fdtable_current();
+        myst_fs_t* fs;
+        myst_file_t* file;
+
+        if (dirfd < 0)
+            ERAISE(-EBADF);
+
+        /* get the file object for the dirfd */
+        ECHECK(myst_fdtable_get_file(fdtable, dirfd, &fs, &file));
+
+        /* fail if not a directory */
+        {
+            struct stat buf;
+            ERAISE((*fs->fs_fstat)(fs, file, &buf));
+
+            if (!S_ISDIR(buf.st_mode))
+                ERAISE(-ENOTDIR);
+        }
+
+        /* get the full path of dirfd */
+        ECHECK((*fs->fs_realpath)(
+            fs, file, locals->dirname, sizeof(locals->dirname)));
+
+        /* construct absolute path of file */
+        ECHECK(myst_make_path(
+            locals->filename,
+            sizeof(locals->filename),
+            locals->dirname,
+            pathname));
+        ret = myst_syscall_access(locals->filename, mode);
+    }
+
+done:
+
+    return ret;
+}
+
 long myst_syscall_rename(const char* oldpath, const char* newpath)
 {
     long ret = 0;
@@ -4653,7 +4722,23 @@ static long _syscall(void* args_)
         case SYS_fchmodat:
             break;
         case SYS_faccessat:
-            break;
+        {
+            int dirfd = (int)x1;
+            const char* pathname = (const char*)x2;
+            int mode = (int)x3;
+            int flags = (int)x4;
+
+            _strace(
+                n,
+                "dirfd=%d pathname=%s mode=%d flags=%d",
+                dirfd,
+                pathname,
+                mode,
+                flags);
+
+            BREAK(_return(
+                n, myst_syscall_faccessat(dirfd, pathname, mode, flags)));
+        }
         case SYS_pselect6:
             break;
         case SYS_ppoll:
