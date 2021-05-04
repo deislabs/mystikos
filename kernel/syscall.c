@@ -5696,7 +5696,6 @@ MYST_WEAK_ALIAS(_SYS_unsupported, _SYS_utime);
 typedef long (
     *syscall_t)(long n, long params[6], struct syscall_context* context);
 
-MYST_UNUSED
 static const syscall_t _syscalls[] = {
     _SYS_read,
     _SYS_write,
