@@ -10,6 +10,7 @@
 
 #include <myst/cond.h>
 #include <myst/mutex.h>
+#include <myst/printf.h>
 #include <myst/strings.h>
 #include <myst/tcall.h>
 
@@ -64,6 +65,14 @@ int myst_cond_timedwait(
         /* Add the self thread to the end of the wait queue */
         myst_thread_queue_push_back(&c->queue, self);
 
+        // assert(self->signal.cond_wait == NULL);
+        self->signal.cond_wait = c;
+        if (c->queue.front != c->queue.back &&
+            c->queue.front->status == MYST_ZOMBIE)
+        {
+            assert(0 && "Found zombie in conditional variable's waiting list");
+        }
+
         /* Unlock this mutex and get the waiter at the front of the queue */
         if (__myst_mutex_unlock(mutex, &waiter) != 0)
         {
@@ -71,8 +80,6 @@ int myst_cond_timedwait(
             return EBUSY;
         }
 
-        // assert(self->signal.cond_wait == NULL);
-        self->signal.cond_wait = c;
         for (;;)
         {
             myst_spin_unlock(&c->lock);
@@ -95,8 +102,12 @@ int myst_cond_timedwait(
             if (!myst_thread_queue_contains(&c->queue, self))
                 break;
 
+            /* Remove self from the queue on error returns such as ETIMEOUT */
             if (ret != 0)
+            {
+                myst_thread_queue_remove_thread(&c->queue, self);
                 break;
+            }
         }
         self->signal.cond_wait = NULL;
     }
@@ -114,34 +125,16 @@ int myst_cond_wait(myst_cond_t* c, myst_mutex_t* mutex)
 
 int myst_cond_signal_thread(myst_cond_t* c, myst_thread_t* thread)
 {
-    myst_thread_t* prev = NULL;
-    bool found = false;
+    int index = -1;
 
     if (!c)
         return EINVAL;
 
     myst_spin_lock(&c->lock);
-    for (myst_thread_t* t = c->queue.front; t; prev = t, t = t->qnext)
-    {
-        if (t == thread)
-        {
-            found = true;
-            if (prev != NULL)
-            {
-                prev->qnext = t->qnext;
-            }
-            else
-            {
-                c->queue.front = c->queue.front->qnext;
-                if (c->queue.front == NULL)
-                    c->queue.back = NULL;
-            }
-            break;
-        }
-    }
+    index = myst_thread_queue_remove_thread(&c->queue, thread);
     myst_spin_unlock(&c->lock);
 
-    if (found)
+    if (index >= 0)
         myst_tcall_wake(thread->event);
 
     return 0;
@@ -155,12 +148,16 @@ int myst_cond_signal(myst_cond_t* c)
         return EINVAL;
 
     myst_spin_lock(&c->lock);
-    waiter = myst_thread_queue_pop_front(&c->queue);
+    do
+    {
+        waiter = myst_thread_queue_pop_front(&c->queue);
+    } while (waiter && waiter->status == MYST_ZOMBIE);
     myst_spin_unlock(&c->lock);
 
     if (!waiter)
         return 0;
 
+    waiter->qnext = NULL;
     myst_tcall_wake(waiter->event);
     return 0;
 }
