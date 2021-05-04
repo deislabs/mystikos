@@ -30,7 +30,6 @@
 /ltp/testcases/kernel/syscalls/eventfd2/eventfd2_03: *** kernel panic: syscall.c(5019): myst_syscall(): unhandled syscall: SYS_eventfd2()
 /ltp/testcases/kernel/syscalls/exit/exit01: *** kernel panic: syscall.c(5019): myst_syscall(): unhandled syscall: SYS_fork()
 /ltp/testcases/kernel/syscalls/exit_group/exit_group01: *** kernel panic: syscall.c(5019): myst_syscall(): unhandled syscall: SYS_fork()
-/ltp/testcases/kernel/syscalls/faccessat/faccessat01: *** kernel panic: syscall.c(5019): myst_syscall(): unhandled syscall: SYS_faccessat()
 /ltp/testcases/kernel/syscalls/fanotify/fanotify02: *** kernel panic: syscall.c(5019): myst_syscall(): unhandled syscall: SYS_fanotify_init()
 /ltp/testcases/kernel/syscalls/fanotify/fanotify04: *** kernel panic: syscall.c(5019): myst_syscall(): unhandled syscall: SYS_fanotify_init()
 /ltp/testcases/kernel/syscalls/fanotify/fanotify07: *** kernel panic: syscall.c(5019): myst_syscall(): unhandled syscall: SYS_fanotify_init()
