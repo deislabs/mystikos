@@ -22,6 +22,7 @@ jobs:
     # perform cleanup before starting pipeline
     - script: |
         sudo rm -rf /tmp/myst*
+        df
       displayName: 'cleanup tmpfiles'
     # install minimum required package to run pipeline
     - script: |

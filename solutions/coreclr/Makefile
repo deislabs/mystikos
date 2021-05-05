@@ -21,7 +21,7 @@ all: appdir rootfs ext2fs
 #$(APPBUILDER) vtikoo/coreclr-tests:debug3
 appdir:
 	# pr0(~2.7k tests) tests in release
-	$(APPBUILDER) vtikoo/coreclr-tests:pr0-release
+	$(APPBUILDER) -i vtikoo/coreclr-tests:pr0-release
 
 rootfs:
 	$(MYST) mkcpio appdir rootfs
