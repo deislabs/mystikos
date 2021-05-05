@@ -8,7 +8,7 @@ ifdef STRACE
 OPTS += --strace
 endif
 
-OPTS = --memory-size=1024m
+OPTS += --memory-size=1024m
 
 all: appdir private.pem
 
@@ -17,12 +17,27 @@ run: appdir private.pem
 	test -f server.pid && kill -9 `cat server.pid` || true
 	$(MYST) package appdir private.pem config.json
 	myst/bin/$(APPNAME) $(OPTS) & echo $$! > server.pid
-	sleep 15
+	sleep 60
 	# Request 3 times from the client to make sure the server is robust.
 	curl 127.0.0.1:5050
 	curl 127.0.0.1:5050
 	curl 127.0.0.1:5050
 	test -f server.pid && kill -9 `cat server.pid` && rm server.pid || true
+
+# run the server in the foreground:
+server:
+	$(MAKE) appdir
+	$(MAKE) rootfs
+	$(MYST_EXEC) rootfs /app/webapp $(OPTS)
+
+# run the client
+client:
+	curl 127.0.0.1:5050
+
+rootfs:
+	sudo $(MYST) mkext2 appdir rootfs
+	sudo chown $(USER).$(USER) rootfs
+	truncate --size=-4096 rootfs
 
 gdb: appdir private.pem
 	$(MYST) package appdir private.pem config.json

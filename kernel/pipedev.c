@@ -661,12 +661,14 @@ static int _pd_get_events(myst_pipedev_t* pipedev, myst_pipe_t* pipe)
     {
         if (pipe->mode == O_RDONLY)
         {
-            if (pipe->impl->nbytes)
+            /* if there is anything to read, then set input event */
+            if (pipe->impl->nbytes > 0)
                 events |= POLLIN;
         }
         else if (pipe->mode == O_WRONLY)
         {
-            if (pipe->impl->nbytes)
+            /* if there is room to write more, then set output event */
+            if (pipe->impl->nbytes < pipe->impl->pipesz)
                 events |= POLLOUT;
         }
     }

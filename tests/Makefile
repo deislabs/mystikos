@@ -52,6 +52,7 @@ DIRS += poll
 DIRS += clock
 DIRS += sysinfo
 DIRS += pollpipe
+DIRS += pollpipe2
 DIRS += pipesz
 DIRS += futex
 DIRS += round
