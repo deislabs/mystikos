@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 #include <assert.h>
+#include <errno.h>
 #include <limits.h>
 #include <poll.h>
 #include <pthread.h>
@@ -43,8 +44,10 @@ static void* _reader(void* arg)
         fds.fd = pipefd[0];
         fds.events = POLLIN;
 
-        if ((n = poll(&fds, 1, 1000)) == 0)
-            continue;
+        while ((n = poll(&fds, 1, 1000)) == -1 && errno == EINTR)
+        {
+            T(printf("retry poll()\n"));
+        }
 
         assert(n == 1);
 

@@ -13,6 +13,7 @@
 #include <myst/sockdev.h>
 #include <myst/syscall.h>
 #include <myst/tcall.h>
+#include <myst/thread.h>
 
 long _poll_kernel(struct pollfd* fds, nfds_t nfds)
 {
@@ -58,7 +59,7 @@ done:
     return ret;
 }
 
-long myst_syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
+static long _syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
 {
     long ret = 0;
     myst_fdtable_t* fdtable;
@@ -70,6 +71,8 @@ long myst_syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
     size_t* kindices = NULL;    /* kernel indices */
     long tevents = 0;           /* the number of target events */
     long kevents = 0;           /* the number of kernel events */
+    static myst_spinlock_t _lock;
+    bool locked = false;
 
     /* special case: if nfds is zero */
     if (nfds == 0)
@@ -98,6 +101,9 @@ long myst_syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
 
     if (!(kindices = calloc(nfds, sizeof(size_t))))
         ERAISE(-ENOMEM);
+
+    myst_spin_lock(&_lock);
+    locked = true;
 
     /* Split fds[] into two arrays: tfds[] (target) and kfds[] (kernel) */
     for (nfds_t i = 0; i < nfds; i++)
@@ -145,6 +151,9 @@ long myst_syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
             timeout = 0;
     }
 
+    myst_spin_unlock(&_lock);
+    locked = false;
+
     /* poll for target events */
     if (tnfds && tfds)
     {
@@ -158,7 +167,11 @@ long myst_syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
     /* post-poll for kernel events (avoid if already polled above) */
     if (kevents == 0)
     {
+        myst_spin_lock(&_lock);
+        locked = true;
         ECHECK((kevents = _poll_kernel(kfds, knfds)));
+        myst_spin_unlock(&_lock);
+        locked = false;
     }
 
     /* update fds[] with the target events */
@@ -173,6 +186,9 @@ long myst_syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
 
 done:
 
+    if (locked)
+        myst_spin_unlock(&_lock);
+
     if (tfds)
         free(tfds);
 
@@ -185,5 +201,28 @@ done:
     if (kindices)
         free(kindices);
 
+    return ret;
+}
+
+long myst_syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
+{
+    long ret = 0;
+    long r;
+
+    ECHECK((r = _syscall_poll(fds, nfds, timeout)));
+
+    if (r == 0 && timeout < 0)
+    {
+        // Some applications hang when this function does not return
+        // periodically, even when there are no file-descriptor events.
+        // To avoid this hang, we return EINTR to fake interruption of poll()
+        // by a signal. Any robust application must be prepared to handle
+        // EINTR.
+        ret = -EINTR;
+    }
+    else
+        ret = r;
+
+done:
     return ret;
 }

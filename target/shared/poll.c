@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>
@@ -9,14 +10,37 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/poll.h>
+#include <syscall.h>
 #include <unistd.h>
 
 #define WAKE_MAGIC 0x617eafc2e697492c
 
-/* wake pipe */
-static int _wakefds[2];
+/* wake pipes */
+struct waker
+{
+    struct waker* next;
+    pid_t tid;
+    int pipefd[2];
+};
 
-static pthread_once_t _create_wakefds_once = PTHREAD_ONCE_INIT;
+struct waker* _wakers;
+static pthread_mutex_t _wakers_mutex = PTHREAD_MUTEX_INITIALIZER;
+static int _initialized = 0;
+
+static void _free_wakers(void)
+{
+    for (struct waker* p = _wakers; p;)
+    {
+        struct waker* next = p->next;
+        free(p);
+        p = next;
+    }
+}
+
+static pid_t _gettid(void)
+{
+    return (pid_t)syscall(SYS_gettid);
+}
 
 static int _set_nonblock(int fd)
 {
@@ -31,29 +55,97 @@ static int _set_nonblock(int fd)
     return 0;
 }
 
-static void _create_wakefds(void)
+static struct waker* _new_waker(void)
 {
-    if (pipe(_wakefds) == -1)
-        abort();
+    struct waker* ret = NULL;
+    struct waker* waker;
 
-    if (_set_nonblock(_wakefds[0]) != 0)
-        abort();
+    if (!(waker = malloc(sizeof(struct waker))))
+        goto done;
 
-    if (_set_nonblock(_wakefds[1]) != 0)
-        abort();
+    waker->next = NULL;
+    waker->tid = _gettid();
+
+    if (pipe(waker->pipefd) == -1)
+        goto done;
+
+    if (_set_nonblock(waker->pipefd[0]) != 0)
+        goto done;
+
+    if (_set_nonblock(waker->pipefd[1]) != 0)
+        goto done;
+
+    ret = waker;
+    waker = NULL;
+
+done:
+
+    if (waker)
+        free(waker);
+
+    return ret;
 }
 
 long myst_tcall_poll_wake(void)
 {
-    uint64_t x = WAKE_MAGIC;
+    /* wake up all waiters */
+    pthread_mutex_lock(&_wakers_mutex);
+    {
+        const uint64_t x = WAKE_MAGIC;
 
-    /* Create the wake pipe */
-    pthread_once(&_create_wakefds_once, _create_wakefds);
-
-    if (write(_wakefds[1], &x, sizeof(x)) != x)
-        return -EINVAL;
+        for (struct waker* p = _wakers; p; p = p->next)
+        {
+            if (write(p->pipefd[1], &x, sizeof(x)) != sizeof(x))
+            {
+                // the write may fail if  the pipe is full, but the failure
+                // may safely be ignored since the thread will be awoken under
+                // this failure condition (since the pipe is ready for read).
+            }
+        }
+    }
+    pthread_mutex_unlock(&_wakers_mutex);
 
     return 0;
+}
+
+struct waker* _get_waker(void)
+{
+    struct waker* ret = NULL;
+
+    pthread_mutex_lock(&_wakers_mutex);
+
+    /* search the wakers list */
+    for (struct waker* p = _wakers; p; p = p->next)
+    {
+        if (p->tid == _gettid())
+        {
+            ret = p;
+            goto done;
+        }
+    }
+
+    /* create a new waker for this thread */
+    {
+        struct waker* waker;
+
+        if (!(waker = _new_waker()))
+            goto done;
+
+        waker->next = _wakers;
+        _wakers = waker;
+        ret = waker;
+    }
+
+    /* install at exit handler on first call */
+    if (_initialized == 0)
+    {
+        atexit(_free_wakers);
+        _initialized = 1;
+    }
+
+done:
+    pthread_mutex_unlock(&_wakers_mutex);
+    return ret;
 }
 
 long myst_tcall_poll(struct pollfd* lfds, unsigned long nfds, int timeout)
@@ -61,11 +153,15 @@ long myst_tcall_poll(struct pollfd* lfds, unsigned long nfds, int timeout)
     long ret = 0;
     long r;
     struct pollfd* fds = NULL;
+    struct waker* waker;
 
-    /* Create the wake pipe */
-    pthread_once(&_create_wakefds_once, _create_wakefds);
+    if (!(waker = _get_waker()))
+    {
+        ret = -ENOSYS;
+        goto done;
+    }
 
-    /* Make a copy of the fds[] array and append the wake pipe */
+    /* Make a copy of the fds[] array and append the waker */
     {
         if (!(fds = calloc(nfds + 1, sizeof(struct pollfd))))
         {
@@ -76,23 +172,26 @@ long myst_tcall_poll(struct pollfd* lfds, unsigned long nfds, int timeout)
         if (lfds)
             memcpy(fds, lfds, nfds * sizeof(struct pollfd));
 
-        /* watch for reads on the read-end of the wake pipe */
-        fds[nfds].fd = _wakefds[0];
+        /* watch for reads on the read-end of the waker */
+        fds[nfds].fd = waker->pipefd[0];
         fds[nfds].events = POLLIN;
     }
 
     /* Wait for events */
     if ((r = poll((struct pollfd*)fds, nfds + 1, timeout)) < 0)
-        return -errno;
+    {
+        ret = -errno;
+        goto done;
+    }
 
-    /* Check whether there were any writes to the wake pipe */
+    /* Check whether there were any writes to the waker pipe */
     if (fds[nfds].revents & POLLIN)
     {
         uint64_t x;
         ssize_t n;
 
         /* consume all words written to the pipe */
-        while ((n = read(_wakefds[0], &x, sizeof(x))) == sizeof(x))
+        while ((n = read(waker->pipefd[0], &x, sizeof(x))) == sizeof(x))
         {
             if (x != WAKE_MAGIC)
             {
@@ -107,7 +206,7 @@ long myst_tcall_poll(struct pollfd* lfds, unsigned long nfds, int timeout)
             goto done;
         }
 
-        /* don't return a value that includes this wake descriptor */
+        /* don't return a value that includes this waker */
         r--;
     }
 
