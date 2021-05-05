@@ -297,6 +297,7 @@ static int _enter_kernel(
                 have_syscall_instruction,
                 tee_debug_mode,
                 (uint64_t)&_thread_event,
+                (pid_t)syscall(SYS_gettid),
                 tcall,
                 options->rootfs,
                 terr,
@@ -481,7 +482,7 @@ static void* _thread_func(void* arg)
     uint64_t cookie = (uint64_t)arg;
     uint64_t event = (uint64_t)&_thread_event;
 
-    if (myst_run_thread(cookie, event) != 0)
+    if (myst_run_thread(cookie, event, (pid_t)syscall(SYS_gettid)) != 0)
     {
         fprintf(stderr, "myst_run_thread() failed\n");
         exit(1);

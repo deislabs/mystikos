@@ -97,7 +97,8 @@ long myst_tcall_load_symbols(void);
 
 long myst_tcall_unload_symbols(void);
 
-typedef long (*myst_run_thread_t)(uint64_t cookie, uint64_t event);
+typedef long (
+    *myst_run_thread_t)(uint64_t cookie, uint64_t event, pid_t target_tid);
 
 long myst_tcall_set_run_thread_function(myst_run_thread_t function);
 
@@ -149,5 +150,7 @@ int myst_tcall_verify_signature(
     size_t signature_size);
 
 int myst_tcall_load_fssig(const char* path, myst_fssig_t* fssig);
+
+int myst_tcall_mprotect(void* addr, size_t len, int prot);
 
 #endif /* _MYST_TCALL_H */

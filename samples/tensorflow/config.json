@@ -6,6 +6,5 @@
     "SecurityVersion": 1,
     "UserMemSize": "1024m",
     "ApplicationPath": "/home/user/miniconda/bin/python3",
-    "ApplicationParameters": ["/app/torch_polynomial_nn.py"],
-    "EnvironmentVariables": ["OMP_NUM_THREADS=1"]
+    "ApplicationParameters": ["/app/mnist_convnet.py"]
 }

@@ -449,6 +449,7 @@ struct run_thread_arg
     myst_thread_t* thread;
     uint64_t cookie;
     uint64_t event;
+    pid_t target_tid;
 };
 
 /* The target calls this from the new thread */
@@ -466,6 +467,8 @@ static long _run_thread(void* arg_)
         myst_set_gsbase(target_td);
 
     myst_assume(myst_valid_thread(thread));
+
+    thread->target_tid = arg->target_tid;
 
     is_child_thread = thread->crt_td ? true : false;
 
@@ -619,7 +622,7 @@ static long _run_thread(void* arg_)
     return 0;
 }
 
-long myst_run_thread(uint64_t cookie, uint64_t event)
+long myst_run_thread(uint64_t cookie, uint64_t event, pid_t target_tid)
 {
     long ret = 0;
     myst_thread_t* thread;
@@ -644,7 +647,7 @@ long myst_run_thread(uint64_t cookie, uint64_t event)
         ERAISE(-ENOMEM);
 
     /* run the thread on the transient stack */
-    struct run_thread_arg arg = {thread, cookie, event};
+    struct run_thread_arg arg = {thread, cookie, event, target_tid};
     ECHECK(myst_call_on_stack(stack + stack_size, _run_thread, &arg));
 
 done:

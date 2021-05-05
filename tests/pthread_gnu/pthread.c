@@ -374,6 +374,140 @@ void test_affinity(void)
     printf("=== passed test (%s)\n", __FUNCTION__);
 }
 
+void test_affinity_gnu(void)
+{
+    pthread_t thread;
+    pthread_attr_t attr;
+    int r;
+    cpu_set_t main_mask;
+    cpu_set_t child_mask;
+    size_t max_cpu = 0;
+
+    printf("=== start test (%s)\n", __FUNCTION__);
+
+    _child_tid = 0;
+
+    /* get the affinity of main thread */
+    {
+        size_t n = 0;
+        pid_t pid = 0;
+        cpu_set_t mask;
+
+        CPU_ZERO(&mask);
+        r = sched_getaffinity(pid, sizeof(mask), &mask);
+        assert(r == 0);
+
+        /* save so it can be restored below */
+        memcpy(&main_mask, &mask, sizeof(main_mask));
+
+        /* copy to child_mask */
+        memcpy(&child_mask, &mask, sizeof(child_mask));
+
+        for (size_t cpu = 0; cpu < sizeof(mask) * 8; cpu++)
+        {
+            if (CPU_ISSET(cpu, &mask))
+            {
+                max_cpu = n;
+                n++;
+            }
+        }
+
+        printf("main thread has %zu affinities\n", max_cpu);
+        assert(n > 0);
+
+        r = pthread_attr_init(&attr);
+        assert(r == 0);
+
+        r = pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &child_mask);
+        assert(r == 0);
+
+        CPU_ZERO(&mask);
+        r = pthread_attr_getaffinity_np(&attr, sizeof(cpu_set_t), &mask);
+        assert(r == 0);
+
+        /* compare returned mask and mask set */
+        for (size_t cpu = 0; cpu < sizeof(cpu_set_t) * 8; cpu++)
+        {
+            assert(CPU_ISSET(cpu, &mask) == CPU_ISSET(cpu, &child_mask));
+        }
+
+        printf("pthread_attr_setaffinity/getaffinity_np matches\n");
+
+        /* Create one child thread with attr */
+        if ((r = _pthread_create(&thread, &attr, _affinity_thread_func, NULL)))
+        {
+            PUTERR("pthread_create() failed: %d", r);
+            abort();
+        }
+
+        /* wait for the child to set _child_tid */
+        while (_child_tid == 0)
+            asm volatile("pause" ::: "memory");
+
+        printf("pthread_create() with affinity mask succeeded\n");
+
+        r = pthread_attr_destroy(&attr);
+        assert(r == 0);
+
+        printf("pthread_attr_destroy() succeeded\n");
+    }
+
+    /* verify sched_getaffinity returned mask and mask set in pthread_create for
+     * child */
+    {
+        cpu_set_t mask;
+
+        CPU_ZERO(&mask);
+        r = sched_getaffinity(_child_tid, sizeof(mask), &mask);
+        assert(r == 0);
+
+        for (size_t cpu = 0; cpu < sizeof(cpu_set_t) * 8; cpu++)
+        {
+            assert(CPU_ISSET(cpu, &mask) == CPU_ISSET(cpu, &child_mask));
+        }
+
+        printf("sched_getaffinity() return matches affinity mask in "
+               "pthread_create()\n");
+    }
+
+    /* set the affinity for the child thread to CPU 0 and verify */
+    {
+        cpu_set_t mask;
+
+        CPU_ZERO(&mask);
+        CPU_SET(0, &mask);
+        r = sched_setaffinity(_child_tid, sizeof(mask), &mask);
+        assert(r == 0);
+
+        CPU_ZERO(&mask);
+        r = sched_getaffinity(_child_tid, sizeof(mask), &mask);
+        assert(r == 0);
+
+        /* verify that processor zero is set */
+        assert(CPU_ISSET(0, &mask));
+
+        /* verify that no other processors are set */
+        for (size_t cpu = 1; cpu < sizeof(mask) * 8; cpu++)
+            assert(!CPU_ISSET(cpu, &mask));
+
+        printf("main thread has 1 affinity\n");
+    }
+
+    /* restore the original affinity of the main thread */
+    r = sched_setaffinity(0, sizeof(main_mask), &main_mask);
+    assert(r == 0);
+
+    if (pthread_join(thread, NULL) != 0)
+    {
+        PUTERR("pthread_join() failed");
+        abort();
+    }
+
+    T(printf("joined...\n");)
+
+    printf("=== passed test (%s)\n", __FUNCTION__);
+}
+
 /*
 **==============================================================================
 **
@@ -761,6 +895,7 @@ int main(int argc, const char* argv[])
     {
         printf("=== pass %zu\n", i);
         test_affinity();
+        test_affinity_gnu();
         test_create_thread();
         test_mutexes(PTHREAD_MUTEX_NORMAL);
         test_mutexes(PTHREAD_MUTEX_RECURSIVE);

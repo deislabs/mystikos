@@ -3,6 +3,7 @@
 #include <fcntl.h>
 #include <myst/assume.h>
 #include <myst/defs.h>
+#include <sched.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/statfs.h>
@@ -421,4 +422,30 @@ long myst_utimensat_ocall(
     /* bypass the glibc wrapper (it raises EINVAL when pathname is null */
     SAVE_CALL_RESTORE_IDENTITY_RETURN(
         uid, gid, syscall(SYS_utimensat, dirfd, pathname, times, flags));
+}
+
+long myst_sched_setaffinity_ocall(
+    pid_t pid,
+    size_t cpusetsize,
+    const struct myst_cpu_set* mask)
+{
+    RETURN(syscall(SYS_sched_setaffinity, pid, cpusetsize, mask));
+}
+
+MYST_STATIC_ASSERT(sizeof(struct myst_cpu_set) == sizeof(cpu_set_t));
+
+long myst_sched_getaffinity_ocall(
+    pid_t pid,
+    size_t cpusetsize,
+    struct myst_cpu_set* mask)
+{
+    RETURN(syscall(SYS_sched_getaffinity, pid, cpusetsize, mask));
+}
+
+long myst_getcpu_ocall(
+    unsigned* cpu,
+    unsigned* node,
+    struct myst_getcpu_cache* tcache)
+{
+    RETURN(syscall(SYS_getcpu, cpu, node, tcache));
 }

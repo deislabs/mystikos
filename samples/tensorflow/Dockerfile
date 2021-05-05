@@ -34,16 +34,10 @@ RUN curl -sLo ~/miniconda.sh https://repo.continuum.io/miniconda/Miniconda3-py38
  && conda install -y python==3.8.1 \
  && conda clean -ya
 
-# No CUDA-specific steps
-ENV NO_CUDA=1
-RUN conda install -y -c pytorch \
-    cpuonly \
-    "pytorch=1.5.0=py3.8_cpu_0" \
-    "torchvision=0.6.0=py38_cpu" \
+RUN conda install -y tensorflow-mkl \
  && conda clean -ya
 
-# ADD torch_nn.py /app
-ADD torch_polynomial_nn.py /app
+ADD mnist_convnet.py /app
 
-# Set the default command to python3
-CMD ["python3"]
+CMD ["/bin/bash"]
+# CMD ["/usr/bin/python3", "/app/torch_nn.py"]
