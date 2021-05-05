@@ -172,7 +172,7 @@ export_image()
 
     # create the 'appdir' from the docker export
     tar xf $TEMP_FILE -C $TEMP_DIR
-    rm -rf $OUTPUT_NAME
+    rm -rf $OUTPUT_NAME $TEMP_FILE
 
     # create an explicit name server
     DNS_SERVER=$(systemd-resolve --status | grep "DNS Servers" | cut -f2 -d:)
@@ -182,8 +182,8 @@ export_image()
         mv $TEMP_DIR $OUTPUT_NAME
     elif [ "$OUTPUT_FORMAT" == "cpio" ]; then
         myst mkcpio $TEMP_DIR $OUTPUT_NAME
-        rm -rf $TEMP_FILE $TEMP_DIR
-   fi
+    fi
+    rm -rf $TEMP_DIR
 }
 
 get_image
