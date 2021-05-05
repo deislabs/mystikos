@@ -125,6 +125,21 @@ index 92d5c179..e94deece 100644
  }
  
  #define VDSO_USEFUL
+diff --git a/include/pthread.h b/include/pthread.h
+index 984db680..9adecf2b 100644
+--- a/include/pthread.h
++++ b/include/pthread.h
+@@ -222,6 +222,10 @@ int pthread_getattr_default_np(pthread_attr_t *);
+ int pthread_setattr_default_np(const pthread_attr_t *);
+ int pthread_tryjoin_np(pthread_t, void **);
+ int pthread_timedjoin_np(pthread_t, void **, const struct timespec *);
++int pthread_attr_setaffinity_np(pthread_attr_t *a,
++         size_t cpusetsize, const cpu_set_t *cpuset);
++int pthread_attr_getaffinity_np(pthread_attr_t *a,
++         size_t cpusetsize, cpu_set_t *cpuset);
+ #endif
+ 
+ #if _REDIR_TIME64
 diff --git a/ldso/dlstart.c b/ldso/dlstart.c
 index 20d50f2c..c6ad4096 100644
 --- a/ldso/dlstart.c
@@ -325,6 +340,19 @@ index cbabde47..4f94bc39 100644
 +size_t __strftime_l(char *restrict, size_t, const char *restrict, const struct tm *restrict, locale_t);
  
  #endif
+diff --git a/src/internal/pthread_impl.h b/src/internal/pthread_impl.h
+index 5742dfc5..e9a94c37 100644
+--- a/src/internal/pthread_impl.h
++++ b/src/internal/pthread_impl.h
+@@ -97,6 +97,8 @@ struct __timer {
+ #define _b_count __u.__vi[3]
+ #define _b_waiters2 __u.__vi[4]
+ #define _b_inst __u.__p[3]
++#define _a_cpuset __u.__s[5]
++#define _a_cpusetsize __u.__s[6]
+ 
+ #include "pthread_arch.h"
+ 
 diff --git a/src/linux/epoll.c b/src/linux/epoll.c
 index deff5b10..fd66b82a 100644
 --- a/src/linux/epoll.c
@@ -407,6 +435,61 @@ index 5dba9dfc..9b595a19 100644
 +
 +weak_alias(res_init, __res_init);
 \ No newline at end of file
+diff --git a/src/sched/affinity.c b/src/sched/affinity.c
+index 948ece41..fd7e7801 100644
+--- a/src/sched/affinity.c
++++ b/src/sched/affinity.c
+@@ -31,3 +31,49 @@ int pthread_getaffinity_np(pthread_t td, size_t size, cpu_set_t *set)
+ {
+ 	return -do_getaffinity(td->tid, size, set);
+ }
++
++int pthread_attr_setaffinity_np(pthread_attr_t *a,
++         size_t cpusetsize, const cpu_set_t *cpuset)
++{
++	if ((!cpuset) || (cpusetsize==0)) 
++	{
++		if(a->_a_cpuset) free((void*)(a->_a_cpuset));
++		a->_a_cpuset = 0;
++		a->_a_cpusetsize = 0;
++	}
++	else
++	{
++		if(cpusetsize > a->_a_cpusetsize)
++		{
++			void* attr_cpuset;
++			if(!a->_a_cpuset)
++				attr_cpuset = malloc(cpusetsize);
++			else 
++				attr_cpuset = realloc((void*)(a->_a_cpuset), cpusetsize);
++			if (!attr_cpuset)
++				return ENOMEM;
++			else
++				a->_a_cpuset = (unsigned long)attr_cpuset;
++		}
++		memcpy((void*)(a->_a_cpuset), cpuset, cpusetsize);
++		a->_a_cpusetsize = cpusetsize;
++	}
++	return 0;
++}
++
++int pthread_attr_getaffinity_np(pthread_attr_t *a,
++         size_t cpusetsize, cpu_set_t *cpuset)
++{
++	if ((!cpuset) || (cpusetsize==0)) 
++	{
++		return EINVAL;
++	}
++	else if (cpusetsize < a->_a_cpusetsize)
++	{
++		return EINVAL;
++	}
++	memset(cpuset, 0, cpusetsize);
++	if (a->_a_cpuset)
++		memcpy(cpuset, (void*)a->_a_cpuset, a->_a_cpusetsize );
++	return 0;
++}
+\ No newline at end of file
 diff --git a/src/thread/__unmapself.c b/src/thread/__unmapself.c
 index 31d94e67..e34cca2e 100644
 --- a/src/thread/__unmapself.c
@@ -432,6 +515,17 @@ index be80c8ea..afc8d160 100644
  int __clone(int (*func)(void *), void *stack, int flags, void *arg, ...)
  {
  	return -ENOSYS;
+diff --git a/src/thread/pthread_attr_destroy.c b/src/thread/pthread_attr_destroy.c
+index b5845dd0..36e56276 100644
+--- a/src/thread/pthread_attr_destroy.c
++++ b/src/thread/pthread_attr_destroy.c
+@@ -2,5 +2,6 @@
+ 
+ int pthread_attr_destroy(pthread_attr_t *a)
+ {
++	if(a->_a_cpuset) free((void*)(a->_a_cpuset));
+ 	return 0;
+ }
 diff --git a/src/thread/pthread_cancel.c b/src/thread/pthread_cancel.c
 index 2f9d5e97..e4d3d000 100644
 --- a/src/thread/pthread_cancel.c
@@ -474,6 +568,39 @@ index 2f9d5e97..e4d3d000 100644
  	__syscall(SYS_tkill, self->tid, SIGCANCEL);
  }
  
+diff --git a/src/thread/pthread_create.c b/src/thread/pthread_create.c
+index 5f491092..60e90e9a 100644
+--- a/src/thread/pthread_create.c
++++ b/src/thread/pthread_create.c
+@@ -345,13 +345,21 @@ int __pthread_create(pthread_t *restrict res, const pthread_attr_t *restrict att
+ 	 * clean up all transient resource usage before returning. */
+ 	if (ret < 0) {
+ 		ret = -EAGAIN;
+-	} else if (attr._a_sched) {
+-		ret = __syscall(SYS_sched_setscheduler,
+-			new->tid, attr._a_policy, &attr._a_prio);
+-		if (a_swap(&args->control, ret ? 3 : 0)==2)
+-			__wake(&args->control, 1, 1);
+-		if (ret)
+-			__wait(&args->control, 0, 3, 0);
++	} 
++	else {
++		if (attr._a_cpuset)
++		{
++			ret = __syscall(SYS_sched_setaffinity,
++				new->tid, attr._a_cpusetsize, attr._a_cpuset);
++		}
++		if ((ret>=0) && (attr._a_sched)) {
++			ret = __syscall(SYS_sched_setscheduler,
++				new->tid, attr._a_policy, &attr._a_prio);
++			if (a_swap(&args->control, ret ? 3 : 0)==2)
++				__wake(&args->control, 1, 1);
++			if (ret)
++				__wait(&args->control, 0, 3, 0);
++		}
+ 	}
+ 
+ 	if (ret >= 0) {
 diff --git a/src/thread/x86_64/__set_thread_area.s b/src/thread/x86_64/__set_thread_area.s
 deleted file mode 100644
 index 7347ff4d..00000000

@@ -19,10 +19,10 @@ rootfs: appdir
 	# $(MYST) mkcpio appdir rootfs
 
 run:
-	OMP_PROC_BIND=true $(MYST_EXEC) $(OPTS) --roothash=roothash ext2rootfs /app/openmp-test
+	$(MYST_EXEC) $(OPTS) --roothash=roothash ext2rootfs /home/user/miniconda/bin/python3 /app/mnist_convnet.py --app-config-path config.json
 
 gdb:
-	OMP_PROC_BIND=true $(MYST_GDB) --args $(MYST_EXEC) $(OPTS) --roothash=roothash ext2rootfs /app/openmp-test
+	$(MYST_GDB) --args $(MYST_EXEC) $(OPTS) --roothash=roothash ext2rootfs /home/user/miniconda/bin/python3 /app/mnist_convnet.py --app-config-path config.json
 
 clean:
 	rm -rf rootfs ext2rootfs appdir roothash

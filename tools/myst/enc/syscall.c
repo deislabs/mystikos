@@ -852,6 +852,23 @@ done:
     return ret;
 }
 
+static int _mprotect(void* addr, size_t len, int prot)
+{
+    int ret = 0;
+    int retval;
+
+    if (myst_mprotect_ocall(&retval, addr, len, prot) != OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = retval;
+
+done:
+    return ret;
+}
+
 #ifdef MYST_ENABLE_HOSTFS
 static long _open(
     const char* pathname,
@@ -1546,6 +1563,13 @@ long myst_handle_tcall(long n, long params[6])
         case SYS_poll:
         {
             return _poll((struct pollfd*)a, (nfds_t)b, (int)c);
+        }
+        case SYS_mprotect:
+        {
+            return _mprotect(
+                (void *)a,
+                (size_t)b,
+                (int)c);
         }
 #ifdef MYST_ENABLE_HOSTFS
         case SYS_open:

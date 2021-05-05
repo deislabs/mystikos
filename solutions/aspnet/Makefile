@@ -8,7 +8,7 @@ ifdef STRACE
 OPTS += --strace
 endif
 
-OPTS = --memory-size=1024m
+OPTS += --memory-size=2048m
 
 all: appdir private.pem
 

@@ -236,3 +236,9 @@ int myst_tcall_load_fssig(const char* path, myst_fssig_t* fssig)
     long params[6] = {(long)path, (long)fssig};
     return myst_tcall(MYST_TCALL_LOAD_FSSIG, params);
 }
+
+int myst_tcall_mprotect(void* addr, size_t len, int prot)
+{
+    long params[6] = {(long)addr, (long)len, (long)prot};
+    return myst_tcall(SYS_mprotect, params);
+}

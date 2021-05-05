@@ -185,4 +185,3 @@ one:
 	$(MYST) mkcpio ramfs.appdir ramfs
 	sudo -E $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
 endif
-

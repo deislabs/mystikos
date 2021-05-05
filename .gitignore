@@ -7,6 +7,10 @@ build/
 third_party/musl/musl/lib
 third_party/enclave-musl/musl/lib/
 **/*.signed/*
+**/appdir
+ext2rootfs
+ext2fs
+roothash
 rootfs
 samples/alpine/alpine-minirootfs.tar.gz
 tests/libc-test/srcdir/
