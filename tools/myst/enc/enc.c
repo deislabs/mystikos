@@ -39,13 +39,13 @@
 #define IRETFRAME_EFlags IRETFRAME_SegCs + 8
 #define IRETFRAME_Rsp IRETFRAME_EFlags + 8
 
-static myst_kernel_args_t kargs;
+static myst_kernel_args_t _kargs;
 
 extern const void* __oe_get_heap_base(void);
 
-long _exception_handler_syscall(long n, long params[6])
+static long _exception_handler_syscall(long n, long params[6])
 {
-    return (*kargs.myst_syscall)(n, params);
+    return (*_kargs.myst_syscall)(n, params);
 }
 
 extern volatile const oe_sgx_enclave_properties_t oe_enclave_properties_sgx;
@@ -428,14 +428,13 @@ static long _enter(void* arg_)
 
     /* Enter the kernel image */
     {
-        myst_kernel_args_t kargs;
         myst_kernel_entry_t entry;
         const void* regions_end = __oe_get_heap_base();
         const bool tee_debug_mode = _test_oe_debug_mode() == 0;
         char err[256];
 
         init_kernel_args(
-            &kargs,
+            &_kargs,
             target,
             (int)args.size,
             args.data,
@@ -460,12 +459,12 @@ static long _enter(void* arg_)
             err,
             sizeof(err));
 
-        kargs.shell_mode = shell_mode;
-        kargs.memcheck = memcheck;
+        _kargs.shell_mode = shell_mode;
+        _kargs.memcheck = memcheck;
 
         /* set ehdr and verify that the kernel is an ELF image */
         {
-            ehdr = (const Elf64_Ehdr*)kargs.kernel_data;
+            ehdr = (const Elf64_Ehdr*)_kargs.kernel_data;
             const uint8_t ident[] = {0x7f, 'E', 'L', 'F'};
 
             if (memcmp(ehdr->e_ident, ident, sizeof(ident)) != 0)
@@ -477,16 +476,17 @@ static long _enter(void* arg_)
 
         /* Resolve the the kernel entry point */
         entry =
-            (myst_kernel_entry_t)((uint8_t*)kargs.kernel_data + ehdr->e_entry);
+            (myst_kernel_entry_t)((uint8_t*)_kargs.kernel_data + ehdr->e_entry);
 
-        if ((uint8_t*)entry < (uint8_t*)kargs.kernel_data ||
-            (uint8_t*)entry >= (uint8_t*)kargs.kernel_data + kargs.kernel_size)
+        if ((uint8_t*)entry < (uint8_t*)_kargs.kernel_data ||
+            (uint8_t*)entry >=
+                (uint8_t*)_kargs.kernel_data + _kargs.kernel_size)
         {
             fprintf(stderr, "kernel entry point is out of bounds\n");
             assert(0);
         }
 
-        ret = (*entry)(&kargs);
+        ret = (*entry)(&_kargs);
     }
 
 done:
