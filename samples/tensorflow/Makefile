@@ -19,10 +19,10 @@ rootfs: appdir
 	# $(MYST) mkcpio appdir rootfs
 
 run:
-	$(MYST_EXEC) $(OPTS) --roothash=roothash ext2rootfs /usr/local/bin/python /app/torch_polynomial_nn.py --app-config-path config.json
+	$(MYST_EXEC) $(OPTS) --roothash=roothash ext2rootfs /home/user/miniconda/bin/python3 /app/mnist_convnet.py --app-config-path config.json
 
 gdb:
-	$(MYST_GDB) --args $(MYST_EXEC) $(OPTS) --roothash=roothash ext2rootfs /usr/local/bin/python /app/torch_polynomial_nn.py --app-config-path config.json
+	$(MYST_GDB) --args $(MYST_EXEC) $(OPTS) --roothash=roothash ext2rootfs /home/user/miniconda/bin/python3 /app/mnist_convnet.py --app-config-path config.json
 
 clean:
 	rm -rf rootfs ext2rootfs appdir roothash

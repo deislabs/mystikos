@@ -19,10 +19,10 @@ rootfs: appdir
 	# $(MYST) mkcpio appdir rootfs
 
 run:
-	$(MYST_EXEC) $(OPTS) --roothash=roothash ext2rootfs /app/openmp-test
+	OMP_PROC_BIND=true $(MYST_EXEC) $(OPTS) --roothash=roothash ext2rootfs /app/openmp-test
 
 gdb:
-	$(MYST_GDB) --args $(MYST_EXEC) $(OPTS) --roothash=roothash ext2rootfs /app/openmp-test
+	OMP_PROC_BIND=true $(MYST_GDB) --args $(MYST_EXEC) $(OPTS) --roothash=roothash ext2rootfs /app/openmp-test
 
 clean:
 	rm -rf rootfs ext2rootfs appdir roothash
