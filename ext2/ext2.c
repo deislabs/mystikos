@@ -4966,7 +4966,10 @@ static int _ext2_fcntl(myst_fs_t* fs, myst_file_t* file, int cmd, long arg)
             if (arg != FD_CLOEXEC && arg != 0)
                 ERAISE(-EINVAL);
 
-            file->fdflags = FD_CLOEXEC;
+            if (arg == FD_CLOEXEC)
+                file->fdflags = FD_CLOEXEC;
+            else
+                file->fdflags = 0;
             /* ATTN.TIMESTAMPS */
             goto done;
         }

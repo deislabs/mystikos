@@ -2170,7 +2170,11 @@ static int _fs_fcntl(myst_fs_t* fs, myst_file_t* file, int cmd, long arg)
             if (arg != FD_CLOEXEC && arg != 0)
                 ERAISE(-EINVAL);
 
-            file->fdflags = FD_CLOEXEC;
+            if (arg == FD_CLOEXEC)
+                file->fdflags = FD_CLOEXEC;
+            else
+                file->fdflags = 0;
+
             _update_timestamps(file->inode, CHANGE);
             goto done;
         }

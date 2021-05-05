@@ -752,6 +752,25 @@ void test_openat(void)
     _passed(__FUNCTION__);
 }
 
+void test_fcntl(void)
+{
+    assert(mkdir("/fcntl", 0777) == 0);
+    int fd;
+    assert((fd = open("/fcntl/file", O_CREAT | O_WRONLY, 0666)) >= 0);
+
+    assert(fcntl(fd, F_GETFD) == 0);
+
+    assert(fcntl(fd, F_SETFD, FD_CLOEXEC) == 0);
+    assert(fcntl(fd, F_GETFD) == FD_CLOEXEC);
+
+    assert(fcntl(fd, F_SETFD, 0) == 0);
+    assert(fcntl(fd, F_GETFD) == 0);
+
+    assert(close(fd) == 0);
+
+    _passed(__FUNCTION__);
+}
+
 void diff_timestamps(
     struct stat* st1,
     struct stat* st2,
@@ -846,6 +865,7 @@ int main(int argc, const char* argv[])
     test_statfs(argv[0]);
     test_fstatfs(argv[0]);
     test_openat();
+    test_fcntl();
 
     printf("=== passed all tests (%s)\n", argv[0]);
 
