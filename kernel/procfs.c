@@ -19,14 +19,6 @@ static myst_fs_t* _procfs;
 int procfs_setup()
 {
     int ret = 0;
-    struct locals
-    {
-        char fdpath[PATH_MAX];
-    };
-    struct locals* locals = NULL;
-
-    if (!(locals = malloc(sizeof(struct locals))))
-        ERAISE(-ENOMEM);
 
     if (myst_init_ramfs(myst_mount_resolve, &_procfs) != 0)
     {
@@ -46,19 +38,10 @@ int procfs_setup()
         ERAISE(-EINVAL);
     }
 
-    /* Create /proc/[pid]/fd directory for main thread */
-    const size_t n = sizeof(locals->fdpath);
-    snprintf(locals->fdpath, n, "/proc/%d/fd", myst_getpid());
-    if (myst_mkdirhier(locals->fdpath, 777) != 0)
-    {
-        myst_eprintf("cannot create the /proc/[pid]/fd directory\n");
-        ERAISE(-EINVAL);
-    }
+    /* Create pid specific entries for main thread */
+    procfs_pid_setup(myst_getpid());
 
 done:
-
-    if (locals)
-        free(locals);
 
     return ret;
 }
@@ -72,6 +55,49 @@ int procfs_teardown()
     }
 
     return 0;
+}
+
+int procfs_pid_setup(pid_t pid)
+{
+    int ret = 0;
+    struct locals
+    {
+        char fdpath[PATH_MAX];
+        char mapspath[PATH_MAX];
+    };
+    struct locals* locals = NULL;
+
+    if (!(locals = malloc(sizeof(struct locals))))
+        ERAISE(-ENOMEM);
+
+    /* Create /proc/[pid]/fd directory */
+    {
+        const size_t n = sizeof(locals->fdpath);
+        snprintf(locals->fdpath, n, "/proc/%d/fd", pid);
+        if (myst_mkdirhier(locals->fdpath, 777) != 0)
+        {
+            myst_eprintf("cannot create the /proc/[pid]/fd directory\n");
+            ERAISE(-EINVAL);
+        }
+    }
+
+    /* maps entry */
+    {
+        const size_t n = sizeof(locals->mapspath);
+        snprintf(locals->mapspath, n, "/%d/maps", pid);
+
+        myst_vcallback_t v_cb;
+        v_cb.open_cb = proc_pid_maps_vcallback;
+        ECHECK(myst_create_virtual_file(
+            _procfs, locals->mapspath, S_IFREG | S_IRUSR, v_cb, OPEN));
+    }
+
+done:
+
+    if (locals)
+        free(locals);
+
+    return ret;
 }
 
 int procfs_pid_cleanup(pid_t pid)

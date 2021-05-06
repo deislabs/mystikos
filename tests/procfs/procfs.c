@@ -74,11 +74,24 @@ int test_readonly()
     assert(errno == EPERM);
 }
 
+int test_maps()
+{
+    int fd;
+    char buf[1024];
+
+    fd = open("/proc/self/maps", O_RDONLY);
+    assert(fd > 0);
+    assert(read(fd, buf, sizeof(buf)));
+
+    printf("%s\n", buf);
+}
+
 int main(int argc, const char* argv[])
 {
     test_meminfo();
     test_self_links(argv[0]);
     test_readonly();
+    test_maps();
 
     printf("\n=== passed test (%s)\n", argv[0]);
     return 0;

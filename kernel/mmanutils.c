@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 #include <myst/eraise.h>
+#include <myst/fdtable.h>
 #include <myst/file.h>
 #include <myst/mmanutils.h>
 #include <myst/panic.h>
@@ -461,16 +462,27 @@ struct myst_process_mapping
     pid_t pid;
     void* addr;
     size_t size;
+    off_t offset; // file offset
+    char* pathname;
 };
 
 static myst_process_mapping_t* _mappings;
 static myst_spinlock_t _mappings_lock;
 
 /* keep track of mappings made by this process */
-int myst_register_process_mapping(pid_t pid, void* addr, size_t size)
+int myst_register_process_mapping(
+    pid_t pid,
+    void* addr,
+    size_t size,
+    int fd,
+    off_t offset)
 {
     int ret = 0;
     myst_process_mapping_t* m = NULL;
+    struct locals
+    {
+        char realpath[PATH_MAX];
+    }* locals = NULL;
 
     if (pid < 0 || !addr || (addr == (void*)-1) || !size)
         ERAISE(-EINVAL);
@@ -482,6 +494,29 @@ int myst_register_process_mapping(pid_t pid, void* addr, size_t size)
     m->addr = addr;
     m->size = size;
 
+    /* If file mapping, save pathname and file offset */
+    if (fd >= 0)
+    {
+        int ret = 0;
+        myst_file_t* file = NULL;
+        myst_fs_t* fs = NULL;
+        myst_fdtable_t* fdtable = myst_fdtable_current();
+
+        if (!(locals = malloc(sizeof(struct locals))))
+            ERAISE(-ENOMEM);
+
+        /* Get file path */
+        myst_fdtable_get_file(fdtable, fd, &fs, &file);
+        ECHECK((*fs->fs_realpath)(
+            fs, file, locals->realpath, sizeof(locals->realpath)));
+
+        /* Copy file path to mappings struct */
+        if (!(m->pathname = calloc(1, strlen(locals->realpath) + 1)))
+            ERAISE(-ENOMEM);
+        strcpy(m->pathname, locals->realpath);
+        m->offset = offset;
+    }
+
     myst_spin_lock(&_mappings_lock);
     {
         m->next = _mappings;
@@ -490,6 +525,9 @@ int myst_register_process_mapping(pid_t pid, void* addr, size_t size)
     myst_spin_unlock(&_mappings_lock);
 
 done:
+
+    if (locals)
+        free(locals);
 
     return ret;
 }
@@ -520,6 +558,8 @@ int myst_release_process_mappings(pid_t pid)
                 else
                     _mappings = next;
 
+                if (p->pathname)
+                    free(p->pathname);
                 free(p);
             }
             else
@@ -528,6 +568,49 @@ int myst_release_process_mappings(pid_t pid)
             }
 
             p = next;
+        }
+    }
+    myst_spin_unlock(&_mappings_lock);
+
+done:
+    return ret;
+}
+
+int proc_pid_maps_vcallback(myst_buf_t* vbuf)
+{
+    int ret = 0;
+    pid_t pid = myst_getpid();
+    struct locals
+    {
+        char maps_entry[PATH_MAX];
+    }* locals = NULL;
+
+    if (!(locals = malloc(sizeof(struct locals))))
+        ERAISE(-ENOMEM);
+
+    myst_buf_clear(vbuf);
+
+    myst_spin_lock(&_mappings_lock);
+    {
+        for (myst_process_mapping_t* p = _mappings; p; p = p->next)
+        {
+            if (p->pid == pid)
+            {
+                // ATTN: rwx permissions, inode number are not reported
+                // shared or private perms bit is always marked 'p',
+                // as MAP_SHARED is not supported.
+                snprintf(
+                    locals->maps_entry,
+                    sizeof(locals->maps_entry),
+                    "%08lx-%08lx ---p %08lx 00:00 0 %s\n",
+                    (long)p->addr,
+                    (long)p->addr + p->size,
+                    p->offset,
+                    p->pathname ? p->pathname : "");
+                // Insert new entry at beginning
+                myst_buf_insert(
+                    vbuf, 0, locals->maps_entry, strlen(locals->maps_entry));
+            }
         }
     }
     myst_spin_unlock(&_mappings_lock);
