@@ -40,7 +40,8 @@ int myst_register_process_mapping(
     void* addr,
     size_t size,
     int fd,
-    off_t offset);
+    off_t offset,
+    int prot);
 
 int myst_release_process_mappings(pid_t pid);
 
