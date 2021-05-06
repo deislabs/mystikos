@@ -102,8 +102,6 @@ DIRS += devfs
 DIRS += callonce
 DIRS += syscall_exception
 
-DIRS = myst
-
 __tests:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) tests $(NL) )
 
