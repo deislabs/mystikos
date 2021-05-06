@@ -167,7 +167,10 @@ static json_result_t _json_read_callback(
             else if (json_match(parser, "ApplicationPath") == JSON_OK)
             {
                 if (type == JSON_TYPE_STRING)
+                {
+                    fprintf(stderr, "TTTTTTTT5: un->string{%s}\n", un->string);
                     parsed_data->application_path = un->string;
+                }
                 else
                     CONFIG_RAISE(JSON_TYPE_MISMATCH);
             }
