@@ -197,7 +197,7 @@ int _package(int argc, const char* argv[])
         close(fd);
     }
 
-    memset(&parsed_data, 0, sizeof(parsed_data));
+    // memset(&parsed_data, 0, sizeof(parsed_data));
 
     if (parse_config_from_file(config_file, &parsed_data) != 0)
     {
