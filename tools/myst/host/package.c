@@ -423,9 +423,9 @@ int _package(int argc, const char* argv[])
             "Failed to copy final package from {%s} to {%s}",
             scratch_path2,
             scratch_path);
-        fprintf(stderr, "TTTTTTTT0: target{%s}\n", target);
-        fprintf(stderr, "TTTTTTTT2: appname{%s}\n", appname);
-        fprintf(stderr, "TTTTTTTT3: scratch_path{%s}\n", scratch_path);
+        // fprintf(stderr, "TTTTTTTT0: target{%s}\n", target);
+        // fprintf(stderr, "TTTTTTTT2: appname{%s}\n", appname);
+        // fprintf(stderr, "TTTTTTTT3: scratch_path{%s}\n", scratch_path);
         goto done;
     }
 
