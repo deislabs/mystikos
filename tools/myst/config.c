@@ -168,7 +168,8 @@ static json_result_t _json_read_callback(
             {
                 if (type == JSON_TYPE_STRING)
                 {
-                    fprintf(stderr, "TTTTTTTT5: un->string{%s}\n", un->string);
+                    // fprintf(stderr, "TTTTTTTT5: un->string{%s}\n",
+                    // un->string);
                     parsed_data->application_path = un->string;
                 }
                 else

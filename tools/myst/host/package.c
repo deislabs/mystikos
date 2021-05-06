@@ -211,7 +211,7 @@ int _package(int argc, const char* argv[])
     }
 
     target = parsed_data.application_path;
-    fprintf(stderr, "TTTTTTTT0: target{%s}\n", target);
+    // fprintf(stderr, "TTTTTTTT0: target{%s}\n", target);
     if ((target == NULL) || (target[0] != '/'))
     {
         fprintf(
@@ -233,7 +233,7 @@ int _package(int argc, const char* argv[])
         goto done;
     }
 
-    fprintf(stderr, "TTTTTTTT1: appname{%s}\n", appname);
+    // fprintf(stderr, "TTTTTTTT1: appname{%s}\n", appname);
 
     // sign the enclave and measure all regions of enclave
     const char* sign_args[] = {argv[0],
@@ -405,8 +405,8 @@ int _package(int argc, const char* argv[])
         goto done;
     }
 
-    fprintf(stderr, "TTTTTTTT2: appname{%s}\n", appname);
-    fprintf(stderr, "TTTTTTTT3: scratch_path{%s}\n", scratch_path);
+    // fprintf(stderr, "TTTTTTTT2: appname{%s}\n", appname);
+    // fprintf(stderr, "TTTTTTTT3: scratch_path{%s}\n", scratch_path);
 
     // Source filename
     if (snprintf(scratch_path2, PATH_MAX, "%s/bin/%s", tmp_dir, appname) >=
@@ -423,6 +423,9 @@ int _package(int argc, const char* argv[])
             "Failed to copy final package from {%s} to {%s}",
             scratch_path2,
             scratch_path);
+        fprintf(stderr, "TTTTTTTT0: target{%s}\n", target);
+        fprintf(stderr, "TTTTTTTT2: appname{%s}\n", appname);
+        fprintf(stderr, "TTTTTTTT3: scratch_path{%s}\n", scratch_path);
         goto done;
     }
 
