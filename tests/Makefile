@@ -101,6 +101,7 @@ DIRS += robust
 DIRS += devfs
 DIRS += callonce
 DIRS += syscall_exception
+DIRS += dotnet_proc_maps
 
 __tests:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) tests $(NL) )
