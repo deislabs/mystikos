@@ -464,6 +464,7 @@ struct myst_process_mapping
     size_t size;
     off_t offset; // file offset
     char* pathname;
+    int prot;
 };
 
 static myst_process_mapping_t* _mappings;
@@ -475,7 +476,8 @@ int myst_register_process_mapping(
     void* addr,
     size_t size,
     int fd,
-    off_t offset)
+    off_t offset,
+    int prot)
 {
     int ret = 0;
     myst_process_mapping_t* m = NULL;
@@ -494,7 +496,7 @@ int myst_register_process_mapping(
     m->addr = addr;
     m->size = size;
 
-    /* If file mapping, save pathname and file offset */
+    /* If file mapping, save pathname, file offset and prot */
     if (fd >= 0)
     {
         int ret = 0;
@@ -515,6 +517,7 @@ int myst_register_process_mapping(
             ERAISE(-ENOMEM);
         strcpy(m->pathname, locals->realpath);
         m->offset = offset;
+        m->prot = prot;
     }
 
     myst_spin_lock(&_mappings_lock);
@@ -594,19 +597,22 @@ int proc_pid_maps_vcallback(myst_buf_t* vbuf)
     {
         for (myst_process_mapping_t* p = _mappings; p; p = p->next)
         {
-            if (p->pid == pid)
+            if (p->pid == pid && p->pathname)
             {
-                // ATTN: rwx permissions, inode number are not reported
+                // ATTN: device and inode number are not reported
                 // shared or private perms bit is always marked 'p',
                 // as MAP_SHARED is not supported.
                 snprintf(
                     locals->maps_entry,
                     sizeof(locals->maps_entry),
-                    "%08lx-%08lx ---p %08lx 00:00 0 %s\n",
+                    "%08lx-%08lx %c%c%cp %08lx 00:00 0 %s\n",
                     (long)p->addr,
                     (long)p->addr + p->size,
+                    p->prot & PROT_READ ? 'r' : '-',
+                    p->prot & PROT_WRITE ? 'w' : '-',
+                    p->prot & PROT_EXEC ? 'x' : '-',
                     p->offset,
-                    p->pathname ? p->pathname : "");
+                    p->pathname);
                 // Insert new entry at beginning
                 myst_buf_insert(
                     vbuf, 0, locals->maps_entry, strlen(locals->maps_entry));
