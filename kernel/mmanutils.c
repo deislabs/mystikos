@@ -588,6 +588,9 @@ int proc_pid_maps_vcallback(myst_buf_t* vbuf)
         char maps_entry[48 + PATH_MAX];
     }* locals = NULL;
 
+    if (!vbuf)
+        ERAISE(-EINVAL);
+
     if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 

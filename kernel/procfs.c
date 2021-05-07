@@ -103,6 +103,7 @@ done:
 int procfs_pid_cleanup(pid_t pid)
 {
     int ret = 0;
+
     struct locals
     {
         char pid_dir_path[PATH_MAX];
@@ -132,6 +133,9 @@ static int _meminfo_vcallback(myst_buf_t* vbuf)
     size_t totalram;
     size_t freeram;
 
+    if (!vbuf)
+        ERAISE(-EINVAL);
+
     ECHECK(myst_get_total_ram(&totalram));
     ECHECK(myst_get_free_ram(&freeram));
 
@@ -139,9 +143,9 @@ static int _meminfo_vcallback(myst_buf_t* vbuf)
     char tmp[128];
     const size_t n = sizeof(tmp);
     snprintf(tmp, n, "MemTotal:       %lu\n", totalram);
-    myst_buf_append(vbuf, tmp, strlen(tmp));
+    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
     snprintf(tmp, n, "MemFree:        %lu\n", freeram);
-    myst_buf_append(vbuf, tmp, strlen(tmp));
+    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
 
 done:
     return ret;
@@ -150,12 +154,14 @@ done:
 static int _self_vcallback(myst_buf_t* vbuf)
 {
     int ret = 0;
-
     struct locals
     {
         char linkpath[PATH_MAX];
     };
     struct locals* locals = NULL;
+
+    if (!vbuf)
+        ERAISE(-EINVAL);
 
     if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
@@ -163,7 +169,7 @@ static int _self_vcallback(myst_buf_t* vbuf)
     const size_t n = sizeof(locals->linkpath);
     snprintf(locals->linkpath, n, "/proc/%d", myst_getpid());
     myst_buf_clear(vbuf);
-    myst_buf_append(vbuf, locals->linkpath, sizeof(locals->linkpath));
+    ECHECK(myst_buf_append(vbuf, locals->linkpath, sizeof(locals->linkpath)));
 
 done:
 
