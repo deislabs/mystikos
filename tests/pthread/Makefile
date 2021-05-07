@@ -10,7 +10,8 @@ all:
 
 rootfs: pthread.c
 	mkdir -p appdir/bin
-	$(MUSL_GCC) $(CFLAGS) -o appdir/bin/pthread pthread.c $(LDFLAGS)
+	$(MUSL_GCC) $(CFLAGS) -o appdir/bin/pthread_musl pthread.c $(LDFLAGS)
+	$(CC) $(CFLAGS) -DATTR_AFFINITY_NP -o appdir/bin/pthread_gcc pthread.c -lpthread $(LDFLAGS)
 	$(MYST) mkcpio appdir rootfs
 
 ifdef STRACE
@@ -27,10 +28,12 @@ endif
 export TIMEOUT=360
 
 tests:
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/pthread $(COUNT)
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/pthread_musl $(COUNT)
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/pthread_gcc $(COUNT)
 
 tests-n:
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/pthread 1000
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/pthread_musl 1000
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/pthread_gcc 1000
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst

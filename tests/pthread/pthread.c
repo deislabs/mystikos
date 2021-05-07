@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#define _GNU_SOURCE
 #include <assert.h>
 #include <errno.h>
 #include <limits.h>
@@ -526,6 +527,268 @@ void test_exhaust_threads(void)
 /*
 **==============================================================================
 **
+** test_affinity()
+**
+**==============================================================================
+*/
+
+static _Atomic(pid_t) _child_tid;
+
+static void* _affinity_thread_func(void* arg)
+{
+    _child_tid = _gettid();
+    const uint64_t msec = 500;
+    sleep_msec(msec);
+    return arg;
+}
+
+void test_affinity(void)
+{
+    pthread_t thread;
+    int r;
+    cpu_set_t main_mask;
+    size_t max_cpu = 0;
+    pthread_attr_t attr;
+
+    printf("=== start test (%s)\n", __FUNCTION__);
+
+    _child_tid = 0;
+
+    /* Create one thread */
+    if ((r = _pthread_create(&thread, NULL, _affinity_thread_func, NULL)))
+    {
+        PUTERR("pthread_create() failed: %d", r);
+        abort();
+    }
+
+    /* wait for the child to set _child_tid */
+    while (_child_tid == 0)
+        asm volatile("pause" ::: "memory");
+
+    /* get the affinity of main thread */
+    {
+        size_t n = 0;
+        pid_t pid = 0;
+        cpu_set_t mask;
+
+        CPU_ZERO(&mask);
+        r = sched_getaffinity(pid, sizeof(mask), &mask);
+        assert(r == 0);
+
+        /* save so it can be restored below */
+        memcpy(&main_mask, &mask, sizeof(main_mask));
+
+        for (size_t cpu = 0; cpu < sizeof(mask) * 8; cpu++)
+        {
+            if (CPU_ISSET(cpu, &mask))
+            {
+                max_cpu = n;
+                n++;
+            }
+        }
+
+        printf("main thread has %zu affinities\n", n);
+        assert(n > 0);
+    }
+
+    /* set the affinity of the main thread to CPU 0 and verify */
+    {
+        cpu_set_t mask;
+        const pid_t pid = 0;
+
+        CPU_ZERO(&mask);
+        CPU_SET(0, &mask);
+        r = sched_setaffinity(pid, sizeof(mask), &mask);
+        assert(r == 0);
+
+        CPU_ZERO(&mask);
+        r = sched_getaffinity(pid, sizeof(mask), &mask);
+        assert(r == 0);
+
+        /* verify that processor zero is set */
+        assert(CPU_ISSET(0, &mask));
+
+        /* verify that no other processors are set */
+        for (size_t cpu = 1; cpu < sizeof(mask) * 8; cpu++)
+            assert(!CPU_ISSET(cpu, &mask));
+
+        printf("main thread has 1 affinity\n");
+    }
+
+    /* verify that the main thread is now running on CPU 0 */
+    {
+        unsigned cpu = UINT_MAX;
+        unsigned node = UINT_MAX;
+        uint64_t tcache[16];
+
+        long ret = syscall(SYS_getcpu, &cpu, &node, tcache);
+        assert(ret == 0);
+        assert(cpu == 0);
+
+        printf("main thread now running on CPU 0\n");
+    }
+
+    /* set the affinity of the main thread to the max cpu and verify */
+    {
+        cpu_set_t mask;
+        const pid_t pid = 0;
+
+        CPU_ZERO(&mask);
+        CPU_SET(max_cpu, &mask);
+        r = sched_setaffinity(pid, sizeof(mask), &mask);
+        assert(r == 0);
+
+        CPU_ZERO(&mask);
+        r = sched_getaffinity(pid, sizeof(mask), &mask);
+        assert(r == 0);
+
+        /* verify that processor zero is set */
+        assert(CPU_ISSET(max_cpu, &mask));
+
+        /* verify that no other processors are set */
+        for (size_t cpu = 0; cpu < sizeof(mask) * 8; cpu++)
+        {
+            if (cpu != max_cpu)
+                assert(!CPU_ISSET(cpu, &mask));
+        }
+
+        printf("main thread has 1 affinity\n");
+    }
+
+    /* verify that the main thread is now running on the max cpu */
+    {
+        unsigned cpu = UINT_MAX;
+        unsigned node = UINT_MAX;
+        uint64_t tcache[16];
+
+        long ret = syscall(SYS_getcpu, &cpu, &node, tcache);
+        assert(ret == 0);
+        assert(cpu == max_cpu);
+
+        printf("main thread now running on CPU %zu\n", max_cpu);
+    }
+
+    /* verify that the child thread has one or more affinities */
+    {
+        size_t n = 0;
+        cpu_set_t mask;
+
+        CPU_ZERO(&mask);
+        r = sched_getaffinity(_child_tid, sizeof(mask), &mask);
+        assert(r == 0);
+
+        for (size_t cpu = 0; cpu < sizeof(mask) * 8; cpu++)
+        {
+            if (CPU_ISSET(cpu, &mask))
+                n++;
+        }
+
+        printf("child thread has %zu affinities\n", n);
+        assert(n > 0);
+    }
+
+    /* set the affinity for the child thread to CPU 0 and verify */
+    {
+        cpu_set_t mask;
+
+        CPU_ZERO(&mask);
+        CPU_SET(0, &mask);
+        r = sched_setaffinity(_child_tid, sizeof(mask), &mask);
+        assert(r == 0);
+
+        CPU_ZERO(&mask);
+        r = sched_getaffinity(_child_tid, sizeof(mask), &mask);
+        assert(r == 0);
+
+        /* verify that processor zero is set */
+        assert(CPU_ISSET(0, &mask));
+
+        /* verify that no other processors are set */
+        for (size_t cpu = 1; cpu < sizeof(mask) * 8; cpu++)
+            assert(!CPU_ISSET(cpu, &mask));
+
+        printf("main thread has 1 affinity\n");
+    }
+
+    /* restore the original affinity of the main thread */
+    r = sched_setaffinity(0, sizeof(main_mask), &main_mask);
+    assert(r == 0);
+
+    if (pthread_join(thread, NULL) != 0)
+    {
+        PUTERR("pthread_join() failed");
+        abort();
+    }
+
+    r = pthread_attr_init(&attr);
+    assert(r == 0);
+
+#ifdef ATTR_AFFINITY_NP
+    {
+        cpu_set_t mask;
+
+        /* Set child's affinity to the original main thread affinity*/
+        r = pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &main_mask);
+        assert(r == 0);
+
+        CPU_ZERO(&mask);
+        r = pthread_attr_getaffinity_np(&attr, sizeof(cpu_set_t), &mask);
+        assert(r == 0);
+
+        /* compare returned mask and mask set */
+        for (size_t cpu = 0; cpu < sizeof(cpu_set_t) * 8; cpu++)
+        {
+            assert(CPU_ISSET(cpu, &mask) == CPU_ISSET(cpu, &main_mask));
+        }
+
+        printf("pthread_attr_setaffinity/getaffinity_np matches\n");
+    }
+#endif
+
+    /* Create one child thread with attr */
+    if ((r = _pthread_create(&thread, &attr, _affinity_thread_func, NULL)))
+    {
+        PUTERR("pthread_create() with attr failed: %d", r);
+        abort();
+    }
+
+    /* wait for the child to set _child_tid */
+    while (_child_tid == 0)
+        asm volatile("pause" ::: "memory");
+
+    r = pthread_attr_destroy(&attr);
+    assert(r == 0);
+    printf("pthread_attr_destroy() succeeded\n");
+
+#ifdef ATTR_AFFINITY_NP
+    {
+        cpu_set_t mask;
+        CPU_ZERO(&mask);
+        r = sched_getaffinity(_child_tid, sizeof(mask), &mask);
+        assert(r == 0);
+
+        for (size_t cpu = 0; cpu < sizeof(cpu_set_t) * 8; cpu++)
+        {
+            assert(CPU_ISSET(cpu, &mask) == CPU_ISSET(cpu, &main_mask));
+        }
+        printf("affinity matches what's set in pthread_create(attr)\n");
+    }
+#endif
+
+    if (pthread_join(thread, NULL) != 0)
+    {
+        PUTERR("pthread_join() failed");
+        abort();
+    }
+
+    T(printf("joined...\n");)
+
+    printf("=== passed test (%s)\n", __FUNCTION__);
+}
+
+/*
+**==============================================================================
+**
 ** main()
 **
 **==============================================================================
@@ -558,6 +821,7 @@ int main(int argc, const char* argv[])
     for (size_t i = 0; i < n; i++)
     {
         printf("=== pass %zu\n", i);
+        test_affinity();
         test_create_thread();
         test_mutexes(PTHREAD_MUTEX_NORMAL);
         test_mutexes(PTHREAD_MUTEX_RECURSIVE);
