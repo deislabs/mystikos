@@ -585,7 +585,7 @@ int proc_pid_maps_vcallback(myst_buf_t* vbuf)
     pid_t pid = myst_getpid();
     struct locals
     {
-        char maps_entry[PATH_MAX];
+        char maps_entry[48 + PATH_MAX];
     }* locals = NULL;
 
     if (!(locals = malloc(sizeof(struct locals))))
@@ -614,8 +614,8 @@ int proc_pid_maps_vcallback(myst_buf_t* vbuf)
                     p->offset,
                     p->pathname);
                 // Insert new entry at beginning
-                myst_buf_insert(
-                    vbuf, 0, locals->maps_entry, strlen(locals->maps_entry));
+                ECHECK(myst_buf_insert(
+                    vbuf, 0, locals->maps_entry, strlen(locals->maps_entry)));
             }
         }
     }
