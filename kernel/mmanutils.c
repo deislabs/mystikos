@@ -508,7 +508,7 @@ int myst_register_process_mapping(
             ERAISE(-ENOMEM);
 
         /* Get file path */
-        myst_fdtable_get_file(fdtable, fd, &fs, &file);
+        ECHECK(myst_fdtable_get_file(fdtable, fd, &fs, &file));
         ECHECK((*fs->fs_realpath)(
             fs, file, locals->realpath, sizeof(locals->realpath)));
 

@@ -3079,7 +3079,14 @@ static long _syscall(void* args_)
                 pid_t pid = myst_getpid();
 
                 if (myst_register_process_mapping(
-                        pid, ptr, length, fd, offset, prot) != 0)
+                        pid,
+                        ptr,
+                        length,
+                        // Linux ignores fd when the MAP_ANONYMOUS flag is
+                        // present
+                        flags & MAP_ANONYMOUS ? -1 : fd,
+                        offset,
+                        prot) != 0)
                     myst_panic("failed to register process mapping");
 
                 ret = (long)ptr;
