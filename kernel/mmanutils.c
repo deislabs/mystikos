@@ -625,6 +625,13 @@ int proc_pid_maps_vcallback(myst_buf_t* vbuf)
     myst_spin_unlock(&_mappings_lock);
 
 done:
+
+    if (ret != 0)
+        myst_buf_release(vbuf);
+
+    if (locals)
+        free(locals);
+
     return ret;
 }
 

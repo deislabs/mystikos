@@ -39,7 +39,7 @@ int procfs_setup()
     }
 
     /* Create pid specific entries for main thread */
-    procfs_pid_setup(myst_getpid());
+    ECHECK(procfs_pid_setup(myst_getpid()));
 
 done:
 
@@ -148,6 +148,10 @@ static int _meminfo_vcallback(myst_buf_t* vbuf)
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
 
 done:
+
+    if (ret != 0)
+        myst_buf_release(vbuf);
+
     return ret;
 }
 
@@ -172,6 +176,9 @@ static int _self_vcallback(myst_buf_t* vbuf)
     ECHECK(myst_buf_append(vbuf, locals->linkpath, sizeof(locals->linkpath)));
 
 done:
+
+    if (ret != 0)
+        myst_buf_release(vbuf);
 
     if (locals)
         free(locals);
