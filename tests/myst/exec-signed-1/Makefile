@@ -21,6 +21,7 @@ exec-signed:
 	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/$(APPNAME) ../hello.c $(LDFLAGS)
 	$(PREFIX) $(MYST) mkcpio $(APPDIR) rootfs
 	$(PREFIX) $(MYST) sign rootfs private.pem config.json
+	sudo chown -R $(USER).$(USER) hello.signed
 	$(PREFIX) ./$(APPNAME).signed/bin/myst $(EXEC) $(APPNAME).signed/rootfs /bin/$(APPNAME) red green blue yellow | grep -v TESTNAME > result
 	diff result expected
 	rm -rf $(APPDIR) result rootfs private.pem public.pem $(APPNAME).signed

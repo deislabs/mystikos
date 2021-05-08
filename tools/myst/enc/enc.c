@@ -747,8 +747,14 @@ int myst_load_fssig(const char* path, myst_fssig_t* fssig)
 #define ENCLAVE_PRODUCT_ID 1
 #define ENCLAVE_SECURITY_VERSION 1
 #define ENCLAVE_DEBUG true
+
 #define ENCLAVE_HEAP_SIZE 131072
+
+#ifdef MYST_ENABLE_GCOV2
+#define ENCLAVE_STACK_SIZE 8 * 8192
+#else
 #define ENCLAVE_STACK_SIZE 8192
+#endif
 
 /* Note: there should be at least as many kernel stacks as threads */
 #define ENCLAVE_MAX_THREADS MYST_MAX_KSTACKS

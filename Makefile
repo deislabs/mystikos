@@ -29,6 +29,10 @@ ifdef MYST_ENABLE_GCOV
 DIRS += gcov
 endif
 
+ifdef MYST_ENABLE_GCOV2
+DIRS += gcov2
+endif
+
 DIRS += json
 DIRS += utils
 
@@ -63,7 +67,7 @@ include $(TOP)/rules.mak
 ##
 ##==============================================================================
 
-distclean: clean
+distclean:
 	rm -rf $(TOP)/third_party/musl/crt/musl
 	sudo rm -rf $(TOP)/build
 

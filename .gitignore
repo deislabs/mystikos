@@ -4,6 +4,10 @@ build/
 *.a
 *.pem
 
+*appdir*
+*lcov*
+*.gc*
+
 third_party/musl/musl/lib
 third_party/enclave-musl/musl/lib/
 **/*.signed/*

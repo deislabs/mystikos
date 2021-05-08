@@ -3,6 +3,7 @@
 #include <fcntl.h>
 #include <myst/assume.h>
 #include <myst/defs.h>
+#include <stdint.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/statfs.h>
@@ -304,6 +305,9 @@ long myst_open_ocall(
     uid_t uid,
     gid_t gid)
 {
+    if (uid == UINT_MAX && gid == UINT_MAX)
+        RETURN(open(pathname, flags, mode));
+
     SAVE_CALL_RESTORE_IDENTITY_RETURN(uid, gid, open(pathname, flags, mode));
 }
 

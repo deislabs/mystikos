@@ -442,7 +442,6 @@ static pair_t _pairs[] = {
     {SYS_myst_verify_cert, "SYS_myst_verify_cert"},
     {SYS_myst_gen_creds_ex, "SYS_myst_gen_creds_ex"},
     {SYS_myst_clone, "SYS_myst_clone"},
-    {SYS_myst_gcov_init, "SYS_myst_gcov_init"},
     {SYS_myst_max_threads, "SYS_myst_max_threads"},
     {SYS_myst_run_itimer, "SYS_myst_run_itimer"},
     /* Open Enclave extensions */
@@ -470,6 +469,7 @@ static pair_t _pairs[] = {
     {SYS_myst_oe_verify_attestation_certificate,
      "SYS_myst_oe_verify_attestation_certificate"},
     {SYS_myst_oe_result_str, "SYS_myst_oe_result_str"},
+    {SYS_myst_gcov, "SYS_myst_gcov"},
 };
 
 // The kernel should eventually use _bad_addr() to check all incoming addresses
@@ -2953,20 +2953,6 @@ static long _syscall(void* args_)
 
     switch (n)
     {
-#ifdef MYST_ENABLE_GCOV
-        case SYS_myst_gcov_init:
-        {
-            libc_t* libc = (libc_t*)x1;
-            FILE* stream = (FILE*)x2;
-
-            _strace(n, "libc=%p stream=%p", libc, stream);
-
-            if (gcov_init_libc(libc, stream) != 0)
-                myst_panic("gcov_init_libc() failed");
-
-            BREAK(_return(n, 0));
-        }
-#endif
         case SYS_myst_trace:
         {
             const char* msg = (const char*)x1;
@@ -3076,6 +3062,16 @@ static long _syscall(void* args_)
         {
             _strace(n, NULL);
             BREAK(_return(n, myst_tcall_poll_wake()));
+        }
+        case SYS_myst_gcov:
+        {
+            const char* func = (const char*)x1;
+            long* gcov_params = (long*)x2;
+
+            _strace(n, "func=%s gcov_params=%p", func, gcov_params);
+
+            long ret = myst_gcov(func, gcov_params);
+            BREAK(_return(n, ret));
         }
         case SYS_read:
         {

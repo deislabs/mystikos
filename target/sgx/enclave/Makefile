@@ -5,6 +5,10 @@ SUBLIBDIR=$(LIBDIR)
 
 ARCHIVE = libmysttargetsgxenclave.a
 
+ifdef MYST_ENABLE_GCOV2
+DEFINES += -DMYST_ENABLE_GCOV2
+endif
+
 SOURCES += $(wildcard *.c)
 SOURCES += ../../shared/runthread.c
 SOURCES += ../../shared/luks.c

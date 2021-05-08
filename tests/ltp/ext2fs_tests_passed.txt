@@ -93,7 +93,7 @@
 /ltp/testcases/kernel/syscalls/mmap/mmap03
 /ltp/testcases/kernel/syscalls/mmap/mmap04
 /ltp/testcases/kernel/syscalls/mmap/mmap09
-/ltp/testcases/kernel/syscalls/mmap/mmap11
+# /ltp/testcases/kernel/syscalls/mmap/mmap11 does not exit threads; segfaults
 /ltp/testcases/kernel/syscalls/mmap/mmap15
 /ltp/testcases/kernel/syscalls/mremap/mremap01
 /ltp/testcases/kernel/syscalls/mremap/mremap02

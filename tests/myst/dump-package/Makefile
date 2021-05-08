@@ -21,6 +21,7 @@ dump-package:
 	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/$(APPNAME) ../hello.c $(LDFLAGS)
 	$(PREFIX) $(VALGRIND) $(MYST) package $(APPDIR) private.pem config.json
 	$(PREFIX) $(VALGRIND) $(MYST) dump ./myst/bin/$(APPNAME)
+	sudo chown -R $(USER).$(USER) myst
 #	./myst/bin/$(APPNAME) red green blue yellow | grep -v TESTNAME > result
 #	diff result expected-args
 	rm -rf $(APPDIR) result private.pem public.pem myst/bin

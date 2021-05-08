@@ -16,20 +16,18 @@
 
 MYST_ROOT="$(realpath "$(dirname "$0")/..")"
 
-cp -r "${MYST_ROOT}"/build/obj/tools/* -t "${MYST_ROOT}"/tools
-cp -r "${MYST_ROOT}"/build/obj/kernel/* -t "${MYST_ROOT}"/kernel
-cp -r "${MYST_ROOT}"/build/obj/crt/"${MYST_ROOT}"/third_party/* -t "${MYST_ROOT}"/third_party
+cp -r "${MYST_ROOT}"/build/obj/tools/ -t "${MYST_ROOT}"/tools
+cp -r "${MYST_ROOT}"/build/obj/kernel/ -t "${MYST_ROOT}"/kernel
+cp -r "${MYST_ROOT}"/build/obj/crt/"${MYST_ROOT}"/third_party/ -t "${MYST_ROOT}"/third_party
 cp "${MYST_ROOT}"/build/obj/crt/*.gc* -t "${MYST_ROOT}"/crt
-cp "${MYST_ROOT}"/tools/myst/config.c "${MYST_ROOT}"/tools/myst/config_file.c -t "${MYST_ROOT}"/tools
-cp "${MYST_ROOT}"/tools/myst/common.c "${MYST_ROOT}"/tools/myst/kargs.c -t "${MYST_ROOT}"/tools
 
 rm $(find "${MYST_ROOT}"/build/obj/ -name "*.gc*")
 
 lcov -c -d . -o "${MYST_ROOT}"/lcov.info
 
 # change the info file to replace some instances of tools/blah with tools/myst
-rm -rf "${MYST_ROOT}"/lcov
 mkdir "${MYST_ROOT}"/lcov
 genhtml -o "${MYST_ROOT}"/lcov "${MYST_ROOT}"/lcov.info
 
 echo "Copied crt,host,kernel,target,tools,utils, gcno & gcda files"
+

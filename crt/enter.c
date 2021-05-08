@@ -48,6 +48,16 @@ long myst_syscall(long n, long params[6])
     return (*_syscall_callback)(n, params);
 }
 
+#ifdef MYST_ENABLE_GCOV2
+
+long myst_gcov(const char* func, long gcov_params[6])
+{
+    long params[6] = {(long)func, (long)gcov_params};
+    return myst_syscall(SYS_myst_gcov, params);
+}
+
+#endif
+
 void myst_load_symbols(void)
 {
     long params[6];
@@ -121,39 +131,6 @@ int __clone(int (*fn)(void*), void* child_stack, int flags, void* arg, ...)
 void myst_enter_crt(void* stack, void* dynv, syscall_callback_t callback)
 {
     _syscall_callback = callback;
-
-#ifdef MYST_ENABLE_GCOV
-    /* Pass the libc interface back to the kernel */
-    {
-        static libc_t _libc = {
-            fopen,
-            fdopen,
-            fread,
-            fwrite,
-            fseek,
-            ftell,
-            fclose,
-            setbuf,
-            open,
-            close,
-            fcntl,
-            getenv,
-            __errno_location,
-            getpid,
-            strtol,
-            access,
-            mkdir,
-            abort,
-            vfprintf,
-        };
-
-        long params[6] = {(long)&_libc, (long)stderr};
-        myst_syscall(SYS_myst_gcov_init, params);
-
-        gcov_init_libc(&_libc, stderr);
-    }
-#endif
-
     _dlstart_c((size_t*)stack, (size_t*)dynv);
 }
 

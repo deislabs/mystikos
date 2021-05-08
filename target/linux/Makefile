@@ -5,6 +5,10 @@ SUBLIBDIR=$(LIBDIR)
 
 ARCHIVE = libmysttargetlinux.a
 
+ifdef MYST_ENABLE_GCOV2
+DEFINES += -DMYST_ENABLE_GCOV2
+endif
+
 SOURCES += $(wildcard *.c)
 SOURCES += ../shared/waitwake.c
 SOURCES += ../shared/runthread.c

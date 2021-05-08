@@ -4,9 +4,11 @@
 #ifndef _MYST_GCOV_H
 #define _MYST_GCOV_H
 
+#include <errno.h>
 #include <myst/libc.h>
 #include <stdio.h>
+#include <sys/stat.h>
 
-int gcov_init_libc(libc_t* libc, FILE* stderr_stream);
+#define MYST_GCOV_STDERR ((FILE*)0x67001b41aafb4224)
 
 #endif /* _MYST_GCOV_H */

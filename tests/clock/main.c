@@ -24,6 +24,12 @@ static int test_clock_get_time(long reference)
 {
     struct timespec tp = {0};
     long tolerance = NANO_IN_SECOND * 2; // 2s
+
+#ifdef MYST_ENABLE_GCOV2
+    /* gcov slows down the app, so add another 1/2 second to the tolerance */
+    tolerance += NANO_IN_SECOND / 2;
+#endif
+
     long timestamp = 0, prev_timestamp = 0;
 
     // Check if the current time is close to the time passed from command line
@@ -31,6 +37,7 @@ static int test_clock_get_time(long reference)
     timestamp = tp.tv_sec * NANO_IN_SECOND + tp.tv_nsec;
     long diff = timestamp - reference;
     printf("Time spent on booting myst = %ld ms\n", diff / 1000000);
+    printf("diff=%zu tolerance=%zu\n", diff, tolerance);
     assert(diff > 0 && diff < tolerance);
 
     // Check if the monotonic clock goes backward

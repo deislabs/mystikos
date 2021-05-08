@@ -5,9 +5,17 @@ TARGET = $(LIBDIR)/libmystcrt.so
 
 CFLAGS = -m64 -g -fPIC -Werror
 
+ifdef MYST_ENABLE_GCOV2
+CFLAGS += -fprofile-arcs -ftest-coverage
+endif
+
 INCLUDES = -I$(INCDIR) -I$(TOP)/build/musl/include
 
 DEFINES = $(MYST_DEFINES)
+
+ifdef MYST_ENABLE_GCOV2
+DEFINES += -DMYST_ENABLE_GCOV2
+endif
 
 SOURCES = $(wildcard *.c) $(wildcard $(TOP)/third_party/gcompat/gcompat/libgcompat/*.c)
 
@@ -23,9 +31,9 @@ LDFLAGS1 += -Wl,-emyst_enter_crt
 
 LDFLAGS2 = -shared -Wl,-Bstatic -Wl,--export-dynamic -Wl,--build-id -Wl,-z,noexecstack -Wl,-z,now -Wl,--dynamic-list=$(MUSLSRC)/dynamic.list
 
-ifdef MYST_ENABLE_GCOV
-LDFLAGS2 += -L$(LIBDIR)
-LDFLAGS2 += -lgcov_musl
+ifdef MYST_ENABLE_GCOV2
+LDFLAGS2 += $(LIBDIR)/libmystgcov.a
+LDFLAGS2 += $(LIBDIR)/libmystgcovclient.a
 endif
 
 LIBCC = -lgcc

@@ -54,6 +54,7 @@ typedef enum myst_tcall_number
     MYST_TCALL_VERIFY_SIGNATURE,
     MYST_TCALL_LOAD_FSSIG,
     MYST_TCALL_CLOCK_GETRES,
+    MYST_TCALL_GCOV,
 } myst_tcall_number_t;
 
 long myst_tcall(long n, long params[6]);
@@ -151,5 +152,7 @@ int myst_tcall_verify_signature(
 int myst_tcall_load_fssig(const char* path, myst_fssig_t* fssig);
 
 int myst_tcall_mprotect(void* addr, size_t len, int prot);
+
+long myst_gcov(const char* func, long params[6]);
 
 #endif /* _MYST_TCALL_H */
