@@ -22,6 +22,7 @@ package:
 	mkdir -p $(APPDIR)/bin
 	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/$(APPNAME) ../hello.c $(LDFLAGS)
 	$(PREFIX) $(VALGRIND) $(MYST) package $(APPDIR) private.pem config.json
+	sudo chown -R $(USER).$(USER) myst
 
 run-package-with-args: package
 	./myst/bin/$(APPNAME) red green blue yellow | grep -v TESTNAME > result

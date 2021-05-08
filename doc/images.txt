@@ -1,0 +1,23 @@
+SGX ELF images:
+===============
+
+[app]
+<ccall>
+[crt]
+<syscall>          SYS_myst_gcov
+[kernel]
+<tcall>            TCALL_MYST_GCOV
+[target:enclave]
+<ocall>
+[target:host]
+
+Linux ELF images:
+=================
+
+[app]
+<ccall>
+[crt]
+<syscall>
+[kernel]
+<tcall>
+[target]

@@ -19,6 +19,7 @@ test-mkcpio:
 	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/$(APPNAME) ../hello.c $(LDFLAGS)
 	$(PREFIX) $(MYST) mkcpio $(APPDIR) rootfs
 	$(PREFIX) $(MYST) excpio rootfs $(APPDIR)2
+	sudo chown -R $(USER).$(USER) $(APPDIR) rootfs $(APPDIR)2
 	mkdir -p dir1
 	mkdir -p dir2
 	mv  $(APPDIR) dir1/

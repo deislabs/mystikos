@@ -349,7 +349,7 @@ Where <action> is one of:\n\
 \n\
 "
 
-int main(int argc, const char* argv[], const char* envp[])
+static int _main(int argc, const char* argv[], const char* envp[])
 {
     if (set_program_file(argv[0]) == NULL)
     {
@@ -427,4 +427,36 @@ int main(int argc, const char* argv[], const char* envp[])
         fprintf(stderr, USAGE, argv[0]);
         return 1;
     }
+}
+
+int main(int argc, const char* argv[], const char* envp[])
+{
+#ifdef MYST_ENABLE_GCOV2
+    const char* uid_str = getenv("SUDO_UID");
+    const char* gid_str = getenv("SUDO_GID");
+    uid_t uid = UINT_MAX;
+    gid_t gid = UINT_MAX;
+
+    /* if running as SUDO, then save the uid and gid */
+    if (uid_str && gid_str)
+    {
+        uid = atoi(uid_str);
+        gid = atoi(gid_str);
+    }
+#endif
+
+    int ec = _main(argc, argv, envp);
+
+#ifdef MYST_ENABLE_GCOV2
+    /* if running as SUDO, then restore uid and gid for gcov */
+    if (uid_str && gid_str)
+    {
+        setgid(gid);
+        setegid(gid);
+        setuid(uid);
+        seteuid(uid);
+    }
+#endif
+
+    return ec;
 }

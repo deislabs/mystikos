@@ -19,10 +19,10 @@ enum
     SYS_myst_load_symbols,
     SYS_myst_unload_symbols,
     SYS_myst_clone,
-    SYS_myst_gcov_init,
     SYS_myst_poll_wake,
     SYS_myst_run_itimer,
     SYS_myst_start_shell,
+    SYS_myst_gcov,
 };
 
 #endif /* _MYST_SYSCALLEXT_H */

@@ -242,3 +242,12 @@ int myst_tcall_mprotect(void* addr, size_t len, int prot)
     long params[6] = {(long)addr, (long)len, (long)prot};
     return myst_tcall(SYS_mprotect, params);
 }
+#ifdef MYST_ENABLE_GCOV2
+
+long myst_gcov(const char* func, long gcov_params[6])
+{
+    long params[6] = {(long)func, (long)gcov_params};
+    return myst_tcall(MYST_TCALL_GCOV, params);
+}
+
+#endif

@@ -15,10 +15,11 @@ appdir:
 
 ext2fs: appdir
 	sudo $(MYST) mkext2 appdir ext2fs
+	sudo chown $(USER).$(USER) ext2fs
 	$(MYST) fssig --roothash ext2fs > roothash
 
 clean:
-	sudo rm -fr appdir ext2fs roothash
+	rm -fr appdir ext2fs roothash
 
 tests:
 	$(RUNTEST) $(MYST_EXEC) ext2fs --roothash=roothash \

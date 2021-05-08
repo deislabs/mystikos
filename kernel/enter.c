@@ -35,6 +35,7 @@
 #include <myst/strings.h>
 #include <myst/syscall.h>
 #include <myst/thread.h>
+#include <myst/time.h>
 #include <myst/times.h>
 #include <myst/tlscert.h>
 #include <myst/trace.h>

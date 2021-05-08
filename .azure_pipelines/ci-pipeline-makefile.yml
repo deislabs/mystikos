@@ -44,7 +44,9 @@ jobs:
 
       # build all source files
       - script: |
-          make distclean
+          # remove all untracked files and directories in the git repository
+          sudo rm -rf `git ls-files --others --directory`
+          # make distclean
           make -j
         displayName: 'build repo source'
         workingDirectory: $(Build.SourcesDirectory)

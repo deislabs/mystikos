@@ -22,6 +22,7 @@ exec-signed:
 	openssl rsa -in private.pem -pubout -out public.pem
 	$(PREFIX) $(MYST) sign rootfs private.pem config.json
 	$(PREFIX) ./$(APPNAME).signed/bin/myst $(EXEC) $(APPNAME).signed/rootfs /bin/$(APPNAME) red green blue yellow | grep -v TESTNAME > result
+	sudo chown -R $(USER).$(USER) hello.signed
 	diff result expected
 	rm -rf $(APPDIR) result rootfs private.pem public.pem $(APPNAME).signed
 	@ echo "=== passed test (myst: exec-signed)"

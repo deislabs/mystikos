@@ -4,6 +4,10 @@ include $(TOP)/defs.mak
 
 PROGRAM = mystenc.so
 
+ifdef MYST_ENABLE_GCOV2
+DEFINES += -DMYST_ENABLE_GCOV2
+endif
+
 SOURCES += $(SUBOBJDIR)/myst_t.c
 SOURCES += enc.c
 SOURCES += clock.c
@@ -11,6 +15,10 @@ SOURCES += syscall.c
 SOURCES += ../config.c
 SOURCES += ../common.c
 SOURCES += ../kargs.c
+
+ifdef MYST_ENABLE_GCOV2
+SOURCES += gcov.c
+endif
 
 ifdef MYST_ENABLE_HOSTFS
 DEFINES += -DMYST_ENABLE_HOSTFS
@@ -20,11 +28,21 @@ INCLUDES = $(OEENCLAVE_INCLUDES) -I$(SUBOBJDIR) -I../
 
 CFLAGS = $(OEENCLAVE_CFLAGS)
 
+ifdef MYST_ENABLE_GCOV2
+CFLAGS += -fprofile-arcs -ftest-coverage
+endif
+
 LIBS += $(LIBDIR)/libjson.a
 LIBS += $(LIBDIR)/libmysttargetsgxenclave.a
 LIBS += $(LIBDIR)/libmystutils.a
 
+ifdef MYST_ENABLE_GCOV2
+LIBS += $(LIBDIR)/libmystgcov.a
+LIBS += $(LIBDIR)/libmystgcovclient.a
+endif
+
 LDFLAGS += $(OEENCLAVE_LDFLAGS)
+
 ifdef MYST_ENABLE_GCOV
 CFLAGS += $(GCOV_CFLAGS)
 LDFLAGS += $(GCOV_LDFLAGS)

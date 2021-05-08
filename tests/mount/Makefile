@@ -29,6 +29,7 @@ tests:
 	$(MKROOTFS) $(SUBBINDIR)/mount rootfs
 	$(MYST) excpio rootfs appdir
 	$(MYST) mkcpio datafs appdir/datafs
+	sudo chown -R $(USER).$(USER) appdir
 	mkdir -p appdir/mnt/datafs
 	$(MYST) mkcpio appdir rootfs
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/mount

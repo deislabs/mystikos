@@ -22,7 +22,7 @@ endif
 
 ifeq ($(FS),hostfs)
 # select lines from tests without '#' in the first column
-ifndef MYST_NIGHTLY_TEST
+ifdef MYST_NIGHTLY_TEST
 TESTS=$(shell grep -v "^\#" hostfs_tests_passed.txt)
 else
 TESTS=$(shell grep -v "^\#" hostfs_fs_tests_passed.txt)
@@ -32,7 +32,7 @@ endif
 
 ifeq ($(FS),ext2fs)
 # select lines from tests without '#' in the first column
-ifndef MYST_NIGHTLY_TEST
+ifdef MYST_NIGHTLY_TEST
 TESTS=$(shell grep -v "^\#" ext2fs_tests_passed.txt)
 else
 TESTS=$(shell grep -v "^\#" ext2fs_fs_tests_passed.txt)
@@ -42,7 +42,7 @@ endif
 
 ifeq ($(FS),ramfs)
 # select lines from tests without '#' in the first column
-ifndef MYST_NIGHTLY_TEST
+ifdef MYST_NIGHTLY_TEST
 TESTS=$(shell grep -v "^\#" ramfs_tests_passed.txt)
 else
 TESTS=$(shell grep -v "^\#" ramfs_fs_tests_passed.txt)
@@ -64,6 +64,7 @@ all: ext2fs
 
 ext2fs: appdir
 	sudo $(MYST) mkext2 --force appdir ext2fs
+	sudo chown $(USER).$(USER) ext2fs
 	truncate --size=-4096 ext2fs
 
 URL=https://github.com/mikbras/ltp
@@ -124,7 +125,7 @@ alltests:
 	$(foreach i, $(TESTS), $(MAKE) one FS=$(FS) TEST=$(i) $(NL) )
 
 clean:
-	sudo rm -rf $(APPDIR) ext2fs appdir $(UPPERDIR) $(WORKDIR) $(HOSTFS)
+	rm -rf $(APPDIR) ext2fs appdir $(UPPERDIR) $(WORKDIR) $(HOSTFS)
 
 CACHEDIR=$(HOME)/.mystikos/cache/ltp
 
@@ -167,6 +168,7 @@ one:
 	@ mkdir -p $(shell dirname $(HOSTFS)/$(TEST))
 	cp appdir/$(TEST) $(HOSTFS)/$(TEST)
 	cp -r appdir/etc $(HOSTFS)/
+	sudo chown -R 0.0 $(HOSTFS)
 	sudo -E $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
 endif
 
@@ -178,7 +180,7 @@ endif
 
 ifeq ($(FS),ramfs)
 one:
-	sudo rm -rf ramfs.appdir
+	rm -rf ramfs.appdir
 	mkdir -p $(shell dirname ramfs.appdir/$(TEST))
 	cp appdir/$(TEST) ramfs.appdir/$(TEST)
 	cp -r appdir/etc  ramfs.appdir/
@@ -187,4 +189,4 @@ one:
 endif
 
 t:
-	make one TEST=/ltp/testcases/kernel/syscalls/link/link05 FS=ramfs #ETRACE=1 STRACE=1
+	make one FS=ramfs TEST=/ltp/testcases/kernel/syscalls/setsockopt/setsockopt02

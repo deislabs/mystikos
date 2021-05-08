@@ -4,6 +4,10 @@ include $(TOP)/defs.mak
 
 PROGRAM = myst
 
+ifdef MYST_ENABLE_GCOV2
+DEFINES += -DMYST_ENABLE_GCOV2
+endif
+
 SOURCES =
 SOURCES += $(SUBOBJDIR)/myst_u.c
 SOURCES += $(wildcard *.c)
@@ -18,6 +22,10 @@ ifdef MYST_ENABLE_GCOV
 CFLAGS += $(GCOV_CFLAGS)
 endif
 
+ifdef MYST_ENABLE_GCOV2
+CFLAGS += -fprofile-arcs -ftest-coverage
+endif
+
 LDFLAGS = $(OEHOST_LDFLAGS)
 
 LIBS += $(OEHOST_LIBDIR)/liboehost.a
@@ -30,6 +38,10 @@ LIBS += $(LIBDIR)/libmysttargetsgxhost.a
 LIBS += $(LIBDIR)/libmystutils.a
 LIBS += $(MBEDTLS_LIBS)
 
+ifdef MYST_ENABLE_GCOV2
+LIBS += $(LIBDIR)/libmystgcovserver.a
+endif
+
 CLEAN = $(SUBOBJDIR)/myst_u.h $(SUBOBJDIR)/myst_u.c $(SUBOBJDIR)/myst_args.h
 
 include $(TOP)/rules.mak
@@ -40,6 +52,3 @@ EDGER8R_OPTS += --untrusted-dir $(SUBOBJDIR)
 
 $(SUBOBJDIR)/myst_u.c: ../myst.edl
 	$(EDGER8R) $(EDGER8R_OPTS) ../myst.edl
-
-x:
-	echo $(SUBOBJDIR)

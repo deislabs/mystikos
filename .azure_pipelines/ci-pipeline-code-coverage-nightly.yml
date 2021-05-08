@@ -1,5 +1,5 @@
 variables:
-  - group: libos-pipeline
+  - group: myst-pipeline
   - name: SCRIPTS_ROOT
     value: $(Build.SourcesDirectory)/.azure_pipelines/scripts
   - name: MYST_NIGHTLY_RUN_DASHBOARD
@@ -13,10 +13,6 @@ pr: none
 jobs:
 - job: BuildAndTest
   displayName: 'Building and Testing'
-  # nightly pipeline will have 300 min timeout, approx. time used:
-  # 1~1.5h build
-  # 1h basic/unit tests
-  # 1-2h solution tests(based on which are enabled)
   timeoutInMinutes: 300
   pool: '1804DC4CCagentpool'
 
@@ -24,6 +20,7 @@ jobs:
     # perform cleanup before starting pipeline
     - script: |
         sudo rm -rf /tmp/myst*
+        df
       displayName: 'cleanup tmpfiles'
     # install minimum required package to run pipeline
     - script: |
@@ -37,7 +34,7 @@ jobs:
 
     # build all source files
     - script: |
-        make clean && make
+        make clean && sudo rm -rf `git ls-files --others --directory` && make -j
       displayName: 'build repo source'
       workingDirectory: $(Build.SourcesDirectory)
       env:
@@ -67,22 +64,10 @@ jobs:
         DB_SERVER_NAME: $(DB_SERVER_NAME_USEAST)
         MAA_URL: $(DB_MAA_URL_USEAST)
 
-    # single out dotnet solution test due to code coverage crash
-    # but it still need to be disabled. Because dotnet sample will
-    # crash with gcov built myst runtime
-    # - script: |
-    #     make clean -C $(Build.SourcesDirectory)/solutions/dotnet
-    #     make run -C $(Build.SourcesDirectory)/solutions/dotnet
-    #     make clean -C $(Build.SourcesDirectory)/solutions/dotnet
-    #   displayName: '.NET w/o code coverage'
-    #   continueOnError: true
-    #   enabled: true
-    #   workingDirectory: $(Build.SourcesDirectory)
-
     # measure code coverage
     - script: |
         bash $(Build.SourcesDirectory)/scripts/myst_cc
-        python3 -m "lcov_cobertura" total_cov.info -o total_cov.xml
+        python3 -m "lcov_cobertura" lcov.info -o lcov.xml
       displayName: 'measure code coverage'
       workingDirectory: $(Build.SourcesDirectory)
     
@@ -100,14 +85,14 @@ jobs:
       displayName: "Publish Code Coverage Result"
       inputs:
         codeCoverageTool: 'Cobertura'
-        summaryFileLocation: $(Build.SourcesDirectory)/total_cov.xml
+        summaryFileLocation: $(Build.SourcesDirectory)/lcov.xml
         #failIfCoverageEmpty: false # Optional
     
     - task: PublishPipelineArtifact@1
       displayName: "Archive Reports(Download)"
       inputs:
-        targetPath: $(Build.SourcesDirectory)/total_cov.info
-        artifactName: total_cov.info
+        targetPath: $(Build.SourcesDirectory)/lcov.info
+        artifactName: lcov.info
 
     # if any previous step(s) not succeed, fail the job
     - script: |
