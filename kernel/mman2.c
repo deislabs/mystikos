@@ -40,7 +40,6 @@ static uint32_t* _uint32_memset(uint32_t* s, uint32_t c, size_t n)
 {
     uint32_t* p = s;
 
-#if 0
     /* unroll loop to factor of 8 */
     while (n >= 8)
     {
@@ -55,21 +54,58 @@ static uint32_t* _uint32_memset(uint32_t* s, uint32_t c, size_t n)
         p += 8;
         n -= 8;
     }
-#endif
 
     /* handle remaining bytes if any */
     while (n--)
-    {
-        assert((size_t)p < (size_t)_prots);
-        assert((size_t)p < (size_t)_bits);
         *p++ = (uint8_t)c;
-    }
 
     return s;
 }
 
+#define FAST_BITOPS
+
+MYST_INLINE size_t _min(size_t x, size_t y)
+{
+    return x < y ? x : y;
+}
+
 static size_t _skip_set_bits(size_t i)
 {
+#ifdef FAST_BITOPS
+
+    /* the number of bits before the next 64-bit alignment */
+    size_t m = i % 64;
+
+    /* if i is not aligned, then process bits up to next 64-bit alignement */
+    if (m)
+    {
+        size_t n = _min(i + m, _npages);
+
+        /* skip bits up to next 64-bit alignment */
+        while (i < n && myst_test_bit(_bits, i))
+            i++;
+
+        if (i == _npages)
+            return i;
+    }
+
+    /* i should be 64-bit aligned here */
+    assert(i % 64 == 0);
+
+    /* skip over 8 bytes at a time */
+    {
+        size_t r = _npages - i;
+
+        while (r > 64 && *((uint64_t*)&_bits[i / 8]) == 0xffffffffffffffff)
+        {
+            i += 64;
+            r -= 64;
+        }
+    }
+
+#endif
+
+    /* handle any remaining bits */
     while (i < _npages && myst_test_bit(_bits, i))
         i++;
 
@@ -167,42 +203,6 @@ int myst_mman2_mmap(
     /* calculate the number of required pages */
     size_t npages = length / PAGE_SIZE;
 
-#if 0
-    /* search for a big enough sequence of free pages */
-    {
-        size_t i;
-        size_t n = 0;
-
-        /* search bitmap for pages */
-        for (i = 0; i < _npages && n < npages; i++)
-        {
-            (myst_test_bit(_bits, i) == 0) ? n++ : (n = 0);
-        }
-
-        /* if a big enough sequence of pages was found */
-        if (n == npages)
-        {
-            const size_t lo = (i - n);
-            const size_t hi = i;
-
-            /* update the pids vector */
-            _uint32_memset(&_pids[lo], getpid(), n);
-
-            /* update the protection vector */
-            memset(&_prots[lo], (uint8_t)prot, n);
-
-            /* update the bits vector */
-            for (i = lo; i < hi; i++)
-                myst_set_bit(_bits, i);
-
-#if 0
-            printf("[%zu:%zu]\n", lo, n);
-#endif
-            *ptr = &_pages[lo];
-            goto done;
-        }
-    }
-#else
     /* search for a big enough sequence of free pages */
     {
         size_t i = 0;
@@ -238,14 +238,13 @@ int myst_mman2_mmap(
             for (i = lo; i < hi; i++)
                 myst_set_bit(_bits, i);
 
-#if 1
+#if 0
             printf("[%zu:%zu]\n", lo, npages);
 #endif
             *ptr = &_pages[lo];
             goto done;
         }
     }
-#endif
 
     ERAISE(-ENOMEM);
 
