@@ -4,6 +4,7 @@
 #ifndef _MYST_BITS_H
 #define _MYST_BITS_H
 
+#include <stdbool.h>
 #include <stddef.h>
 
 #include <myst/defs.h>

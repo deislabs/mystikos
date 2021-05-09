@@ -14,6 +14,7 @@
 #include <myst/list.h>
 #include <myst/panic.h>
 #include <myst/printf.h>
+#include <myst/process.h>
 #include <myst/spinlock.h>
 #include <myst/strings.h>
 #include <myst/syscall.h>
@@ -544,6 +545,11 @@ int symlink(const char* target, const char* linkpath)
 int close(int fd)
 {
     return (int)myst_syscall_ret(myst_syscall_close(fd));
+}
+
+pid_t getpid(void)
+{
+    return myst_getpid();
 }
 
 /*

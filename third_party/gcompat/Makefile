@@ -7,8 +7,8 @@ all: gcompat
 clean: distclean
 
 gcompat:
-	git clone $(URL) -b $(TAG)
-	(cd gcompat; git apply ../patch.diff)
+#	git clone $(URL) -b $(TAG)
+##	(cd gcompat; git apply ../patch.diff)
 
 distclean:
 	rm -rf gcompat
