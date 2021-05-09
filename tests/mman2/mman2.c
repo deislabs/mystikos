@@ -17,6 +17,8 @@
 #define PAGE_SIZE 4096
 #endif
 
+#define SIZE (128 * 1024 * 1024)
+
 struct mapping
 {
     void* addr;
@@ -26,7 +28,7 @@ struct mapping
 void test1(void)
 {
     void* data;
-    const size_t size = 128 * 1024 * 1024;
+    const size_t size = SIZE;
     struct mapping* mappings;
     const size_t max_mappings = size / PAGE_SIZE;
     size_t nmappings = 0;
@@ -218,7 +220,7 @@ void test1(void)
 void test2(void)
 {
     void* data;
-    const size_t size = 128 * 1024 * 1024;
+    const size_t size = SIZE;
     struct mapping* mappings;
     const size_t max_mappings = size / PAGE_SIZE;
     size_t nmappings = 0;
