@@ -33,4 +33,6 @@ size_t myst_mman2_get_usable_size(void);
 
 size_t myst_mman2_count_free_bits(void);
 
+size_t myst_mman2_count_used_bits(void);
+
 #endif /* _MYST_MMAN2_H */

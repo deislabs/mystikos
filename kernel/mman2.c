@@ -71,21 +71,24 @@ MYST_INLINE size_t _min(size_t x, size_t y)
 
 static size_t _skip_set_bits(size_t i)
 {
+    if (i == _npages)
+        return _npages;
 #ifdef FAST_BITOPS
 
-    /* the number of bits before the next 64-bit alignment */
-    size_t m = i % 64;
+    /* round i to the next multiple of 64 */
+    size_t m = (i + 63) / 64 * 64;
 
     /* if i is not aligned, then process bits up to next 64-bit alignement */
-    if (m)
+    if (i != m)
     {
-        size_t n = _min(i + m, _npages);
-
         /* skip bits up to next 64-bit alignment */
-        while (i < n && myst_test_bit(_bits, i))
+        while (i < m && myst_test_bit(_bits, i))
             i++;
 
         if (i == _npages)
+            return i;
+
+        if (myst_test_bit(_bits, i) == 0)
             return i;
     }
 
@@ -211,6 +214,9 @@ int myst_mman2_mmap(
         /* search the bitmap for a sequence of free bits */
         while ((i = _skip_set_bits(i)) < _npages)
         {
+            if (i + npages > _npages)
+                break;
+
             size_t r = _skip_zero_bits(i, i + npages);
 
             if (r - i == npages)
@@ -312,6 +318,19 @@ size_t myst_mman2_count_free_bits(void)
     for (size_t i = 0; i < _npages; i++)
     {
         if (!myst_test_bit(_bits, i))
+            n++;
+    }
+
+    return n;
+}
+
+size_t myst_mman2_count_used_bits(void)
+{
+    size_t n = 0;
+
+    for (size_t i = 0; i < _npages; i++)
+    {
+        if (myst_test_bit(_bits, i))
             n++;
     }
 
