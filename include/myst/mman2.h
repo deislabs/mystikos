@@ -29,4 +29,8 @@ void* myst_mman2_mremap(
 
 int myst_mman2_mprotect(void* addr, size_t len, int prot);
 
+size_t myst_mman2_get_usable_size(void);
+
+size_t myst_mman2_count_free_bits(void);
+
 #endif /* _MYST_MMAN2_H */
