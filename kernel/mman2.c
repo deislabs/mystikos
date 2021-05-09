@@ -103,8 +103,6 @@ int myst_mman2_init(void* data, size_t size)
     /* clear the overhead pages */
     memset(_data, 0, overhead_size);
 
-    assert(((_npages * PAGE_SIZE) + overhead_size) == size);
-
 #if 0
     printf("pids_size=%zu\n", pids_size);
     printf("prots_size=%zu\n", prots_size);
@@ -229,7 +227,7 @@ int myst_mman2_munmap(void* addr, size_t length)
     for (size_t i = lo; i < hi; i++)
         myst_clear_bit(_bits, i);
 
-#if 1
+#if 0
     printf("unmap: [hi=%zu lo=%zu n=%zu]\n", lo, hi, n);
 #endif
 
