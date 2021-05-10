@@ -57,6 +57,8 @@ static uint32_t* _uint32_memset(uint32_t* s, uint32_t c, size_t n)
         n -= 8;
     }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough="
     switch (n)
     {
         case 7:
@@ -74,6 +76,7 @@ static uint32_t* _uint32_memset(uint32_t* s, uint32_t c, size_t n)
         case 1:
             *p++ = c;
     }
+#pragma GCC diagnostic pop
 
     return s;
 }
