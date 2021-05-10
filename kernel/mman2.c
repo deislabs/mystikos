@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <assert.h>
 #include <errno.h>
 #include <limits.h>
@@ -17,6 +18,11 @@
 // and seven usable pages.
 #define MIN_DATA_SIZE (8 * 4096)
 #define FAST_BITOPS
+
+/* uncomment this to verify various operations */
+#if 0
+#define VERIFY
+#endif
 
 typedef struct page
 {
@@ -48,6 +54,11 @@ typedef struct mman
 static mman_t _mman;
 
 /* Layout: [pids][fds][prots][bits][pages] */
+
+MYST_INLINE uint64_t _round_up(uint64_t x, uint64_t m)
+{
+    return (x + m - 1) / m * m;
+}
 
 /* memset for uint32_t strings */
 static uint32_t* _uint32_memset(uint32_t* s, uint32_t c, size_t n)
@@ -207,12 +218,12 @@ MYST_INLINE bool _test_bit(size_t index)
 
 MYST_INLINE void _set_bit(size_t index)
 {
-    return myst_set_bit(_mman.bits, index);
+    myst_set_bit(_mman.bits, index);
 }
 
 MYST_INLINE void _clear_bit(size_t index)
 {
-    return myst_clear_bit(_mman.bits, index);
+    myst_clear_bit(_mman.bits, index);
 }
 
 static size_t _skip_set_bits(size_t i)
@@ -269,7 +280,7 @@ MYST_INLINE bool _within(const void* ptr)
     const ptrdiff_t addr = (ptrdiff_t)ptr;
     const ptrdiff_t start = (ptrdiff_t)_mman.pages;
     const ptrdiff_t end = (ptrdiff_t)(_mman.pages + _mman.npages);
-    return addr >= start && addr < end;
+    return addr >= start && addr <= end;
 }
 
 size_t myst_mman2_get_usable_size(void)
@@ -323,13 +334,13 @@ int myst_mman2_init(void* data, size_t size)
         size_t npages = size / PAGE_SIZE;
         size_t nbits;
 
-        ECHECK(myst_round_up(npages, 8, &nbits));
+        nbits = _round_up(npages, 8);
         pids_size = nbits * sizeof(uint32_t);
         fds_size = nbits * sizeof(int);
         prots_size = nbits * sizeof(uint8_t);
         bits_size = nbits / 8;
         overhead_size = pids_size + fds_size + prots_size + bits_size;
-        ECHECK(myst_round_up(overhead_size, PAGE_SIZE, &overhead_size));
+        overhead_size = _round_up(overhead_size, PAGE_SIZE);
     }
 
     /* calculate the number of usable pages (less the overhead size) */
@@ -358,23 +369,69 @@ void myst_mman2_release(void)
 MYST_INLINE void _set_bits(size_t lo, size_t hi)
 {
     size_t i = lo;
+    size_t r = (lo + 7) / 8 * 8;
+    size_t min = _min(r, hi);
 
-#if 0
-    size_t n = hi - lo;
-
-    while (n >= 4)
-    {
+    /* set bits up to the first multile of 8 */
+    for (; i < min; i++)
         _set_bit(i);
-        _set_bit(i+1);
-        _set_bit(i+2);
-        _set_bit(i+3);
-        i += 4;
-        n -= 4;
-    }
-#endif
 
+    /* set whole bytes */
+    {
+        size_t nbits = hi - min;
+
+        if (nbits)
+        {
+            uint8_t* p = &_mman.bits[i / 8];
+            size_t nbytes = nbits / 8;
+            memset(p, 0xff, nbytes);
+            i += nbytes * 8;
+        }
+    }
+
+    /* set bits after the last multile of 8 */
     for (; i < hi; i++)
         _set_bit(i);
+
+#ifdef VERIFY
+    /* verify that the bits have been set */
+    for (i = lo; i < hi; i++)
+        assert(_test_bit(i));
+#endif
+}
+
+MYST_INLINE void _clear_bits(size_t lo, size_t hi)
+{
+    size_t i = lo;
+    size_t r = (lo + 7) / 8 * 8;
+    size_t min = _min(r, hi);
+
+    /* clear bits up to the first multile of 8 */
+    for (; i < min; i++)
+        _clear_bit(i);
+
+    /* clear whole bytes */
+    {
+        size_t nbits = hi - min;
+
+        if (nbits)
+        {
+            uint8_t* p = &_mman.bits[i / 8];
+            size_t nbytes = nbits / 8;
+            memset(p, 0, nbytes);
+            i += nbytes * 8;
+        }
+    }
+
+    /* clear bits after the last multile of 8 */
+    for (; i < hi; i++)
+        _clear_bit(i);
+
+#ifdef VERIFY
+    /* verify that the bits have been cleared */
+    for (i = lo; i < hi; i++)
+        assert(!_test_bit(i));
+#endif
 }
 
 int myst_mman2_mmap(
@@ -403,7 +460,7 @@ int myst_mman2_mmap(
     (void)offset;
 
     /* round length up to the page size */
-    ECHECK(myst_round_up(length, PAGE_SIZE, &length));
+    length = _round_up(length, PAGE_SIZE);
 
     /* calculate the number of required pages */
     size_t npages = length / PAGE_SIZE;
@@ -448,8 +505,10 @@ int myst_mman2_mmap(
             /* update the process-id vector */
             _uint32_memset(&_mman.pids[lo], getpid(), npages);
 
+#if 0
             /* update the file-descriptor vector */
             _uint32_memset((uint32_t*)&_mman.fds[lo], 0, npages);
+#endif
 
             /* update the protections vector */
             memset(&_mman.prots[lo], (uint8_t)prot, npages);
@@ -489,7 +548,7 @@ int myst_mman2_munmap(void* addr, size_t length)
         ERAISE(-EINVAL);
 
     /* align length to the page boundary */
-    ECHECK(myst_round_up(length, PAGE_SIZE, &length));
+    length = _round_up(length, PAGE_SIZE);
 
     /* obtain lock */
     myst_spin_lock(&_mman.lock);
@@ -515,10 +574,18 @@ int myst_mman2_munmap(void* addr, size_t length)
     size_t n = length / PAGE_SIZE;
 
     /* update the pids vector */
+#if 0
     _uint32_memset(&_mman.pids[lo], 0, n);
+#else
+    memset(&_mman.pids[lo], 0, n * sizeof(uint32_t));
+#endif
 
     /* update the fds vector */
+#if 0
     _uint32_memset((uint32_t*)&_mman.fds[lo], 0, n);
+#else
+    memset((uint32_t*)&_mman.fds[lo], 0, n * sizeof(uint32_t));
+#endif
 
     /* update the protection vector */
     memset(&_mman.prots[lo], 0, n);
@@ -528,8 +595,7 @@ int myst_mman2_munmap(void* addr, size_t length)
         _mman.first_zero_bit = lo;
 
     /* update the bits vector */
-    for (size_t i = lo; i < hi; i++)
-        _clear_bit(i);
+    _clear_bits(lo, hi);
 
 #if 0
     printf("unmap: [hi=%zu lo=%zu n=%zu]\n", lo, hi, n);
@@ -570,7 +636,12 @@ int myst_mman2_mremap(
     if (new_size == 0 || new_size % PAGE_SIZE)
         ERAISE(-EINVAL);
 
-    if (new_address)
+    /* reject unknown flags */
+    if ((flags & ~(MREMAP_FIXED | MREMAP_MAYMOVE)))
+        ERAISE(-EINVAL);
+
+    /* ATTN: MREMAP_FIXED and new_address not supported */
+    if ((flags & MREMAP_FIXED) || new_address)
         ERAISE(-EINVAL);
 
     /* calculate the start and end addresses for this range of pages */
@@ -658,8 +729,10 @@ int myst_mman2_mremap(
                 /* update the pids vector */
                 _uint32_memset(&_mman.pids[lo], pid, npages);
 
+#if 0
                 /* update the fds vector */
                 _uint32_memset((uint32_t*)&_mman.fds[lo], 0, npages);
+#endif
 
                 /* update the protection vector */
                 memset(&_mman.prots[lo], prot, npages);
@@ -672,9 +745,8 @@ int myst_mman2_mremap(
             }
         }
 
-        /* ATTN: consider moving the mapping leftward if possible */
-
         /* cannot grow the mapping in place, so move it */
+        if ((flags & MREMAP_MAYMOVE))
         {
             void* new;
             int r;

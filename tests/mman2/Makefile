@@ -23,12 +23,12 @@ include $(TOP)/rules.mak
 tests:
 	@ $(SUBBINDIR)/$(PROGRAM)
 
-CG = valgrind --tool=cachegrind --cachegrind-out-file=cachegrind.out
+CG = /opt/valgrind/bin/valgrind --tool=cachegrind --cachegrind-out-file=cachegrind.out
 
 cg:
 	$(CG) $(SUBBINDIR)/$(PROGRAM)
 
-ANN=cg_annotate --auto=yes cachegrind.out
+ANN=/opt/valgrind/bin/cg_annotate --auto=yes cachegrind.out
 
 ann:
 	$(ANN)
