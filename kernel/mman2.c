@@ -15,6 +15,7 @@
 // the minimum possible size of the mman data (8 pages): one overhead page
 // and seven usable pages.
 #define MIN_DATA_SIZE (8 * 4096)
+#define FAST_BITOPS
 
 typedef struct page
 {
@@ -56,22 +57,23 @@ static uint32_t* _uint32_memset(uint32_t* s, uint32_t c, size_t n)
         n -= 8;
     }
 
-#if 0
-    /* unroll loop to factor of 4 */
-    while (n >= 4)
+    switch (n)
     {
-        p[0] = c;
-        p[1] = c;
-        p[2] = c;
-        p[3] = c;
-        p += 4;
-        n -= 4;
+        case 7:
+            *p++ = c;
+        case 6:
+            *p++ = c;
+        case 5:
+            *p++ = c;
+        case 4:
+            *p++ = c;
+        case 3:
+            *p++ = c;
+        case 2:
+            *p++ = c;
+        case 1:
+            *p++ = c;
     }
-#endif
-
-    /* handle remaining bytes if any */
-    while (n--)
-        *p++ = 0;
 
     return s;
 }
@@ -127,6 +129,7 @@ static uint64_t* _uint64_bzero(uint64_t* s, size_t n)
 }
 #endif
 
+/* this is faster than memset */
 MYST_UNUSED
 static __uint128_t* _uint128_bzero(__uint128_t* s, size_t n)
 {
@@ -177,8 +180,6 @@ static __uint128_t* _uint128_bzero(__uint128_t* s, size_t n)
     return s;
 }
 
-#define FAST_BITOPS
-
 MYST_INLINE size_t _min(size_t x, size_t y)
 {
     return x < y ? x : y;
@@ -208,9 +209,6 @@ static size_t _skip_set_bits(size_t i)
             return i;
     }
 
-    /* i should be 64-bit aligned here */
-    assert(i % 64 == 0);
-
     /* skip over 8 bytes at a time */
     {
         size_t r = _npages - i;
@@ -233,7 +231,7 @@ static size_t _skip_set_bits(size_t i)
 
 static size_t _skip_zero_bits(size_t i, size_t n)
 {
-    while (i < n && myst_test_bit(_bits, i) == false)
+    while (i < n && !myst_test_bit(_bits, i))
         i++;
 
     return i;
@@ -289,6 +287,28 @@ int myst_mman2_init(void* data, size_t size)
 
 done:
     return ret;
+}
+
+MYST_INLINE void _set_bits(size_t lo, size_t hi)
+{
+    size_t i = lo;
+
+#if 0
+    size_t n = hi - lo;
+
+    while (n >= 4)
+    {
+        myst_set_bit(_bits, i);
+        myst_set_bit(_bits, i+1);
+        myst_set_bit(_bits, i+2);
+        myst_set_bit(_bits, i+3);
+        i += 4;
+        n -= 4;
+    }
+#endif
+
+    for (; i < hi; i++)
+        myst_set_bit(_bits, i);
 }
 
 int myst_mman2_mmap(
@@ -361,15 +381,12 @@ int myst_mman2_mmap(
             memset(&_prots[lo], (uint8_t)prot, npages);
 
             /* update the bits vector */
-            for (i = lo; i < hi; i++)
-                myst_set_bit(_bits, i);
+            _set_bits(lo, hi);
 
 #if 0
             printf("[%zu:%zu]\n", lo, npages);
 #endif
             *ptr = &_pages[lo];
-            // memset(*ptr, 0, length);
-            //_uint64_bzero(*ptr, length / sizeof(uint64_t));
             _uint128_bzero(*ptr, length / sizeof(__uint128_t));
 
             goto done;
