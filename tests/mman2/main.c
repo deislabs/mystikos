@@ -42,7 +42,7 @@ void test1(void)
     if (!(data = memalign(PAGE_SIZE, size)))
         assert(0);
 
-    memset(data, 0, size);
+    // memset(data, 0, size);
 
     // printf("pages=%zu\n", size / PAGE_SIZE);
     assert(myst_mman2_init(data, size) == 0);
@@ -236,7 +236,7 @@ void test2(void)
     if (!(data = memalign(PAGE_SIZE, size)))
         assert(0);
 
-    memset(data, 0, size);
+    // memset(data, 0, size);
 
     assert(myst_mman2_init(data, size) == 0);
 

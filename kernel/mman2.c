@@ -28,6 +28,7 @@ static size_t _size;
 static uint32_t* _pids; /* page pid vector */
 static uint8_t* _prots; /* page protection vector */
 static uint8_t* _bits;  /* page bits */
+static size_t _first_zero_bit;
 
 /* the pages */
 static page_t* _pages; /* page vector */
@@ -55,9 +56,123 @@ static uint32_t* _uint32_memset(uint32_t* s, uint32_t c, size_t n)
         n -= 8;
     }
 
+#if 0
+    /* unroll loop to factor of 4 */
+    while (n >= 4)
+    {
+        p[0] = c;
+        p[1] = c;
+        p[2] = c;
+        p[3] = c;
+        p += 4;
+        n -= 4;
+    }
+#endif
+
     /* handle remaining bytes if any */
     while (n--)
-        *p++ = (uint8_t)c;
+        *p++ = 0;
+
+    return s;
+}
+
+#if 0
+static uint64_t* _uint64_bzero(uint64_t* s, size_t n)
+{
+    uint64_t* p = s;
+
+    while (n >= 32)
+    {
+        p[0] = 0;
+        p[1] = 0;
+        p[2] = 0;
+        p[3] = 0;
+        p[4] = 0;
+        p[5] = 0;
+        p[6] = 0;
+        p[7] = 0;
+        p[8] = 0;
+        p[9] = 0;
+        p[10] = 0;
+        p[11] = 0;
+        p[12] = 0;
+        p[13] = 0;
+        p[14] = 0;
+        p[15] = 0;
+        p[16] = 0;
+        p[17] = 0;
+        p[18] = 0;
+        p[19] = 0;
+        p[20] = 0;
+        p[21] = 0;
+        p[22] = 0;
+        p[23] = 0;
+        p[24] = 0;
+        p[25] = 0;
+        p[26] = 0;
+        p[27] = 0;
+        p[28] = 0;
+        p[29] = 0;
+        p[30] = 0;
+        p[31] = 0;
+        p += 32;
+        n -= 32;
+    }
+
+    /* handle remaining bytes if any */
+    while (n--)
+        *p++ = 0;
+
+    return s;
+}
+#endif
+
+MYST_UNUSED
+static __uint128_t* _uint128_bzero(__uint128_t* s, size_t n)
+{
+    __uint128_t* p = s;
+
+    while (n >= 32)
+    {
+        p[0] = 0;
+        p[1] = 0;
+        p[2] = 0;
+        p[3] = 0;
+        p[4] = 0;
+        p[5] = 0;
+        p[6] = 0;
+        p[7] = 0;
+        p[8] = 0;
+        p[9] = 0;
+        p[10] = 0;
+        p[11] = 0;
+        p[12] = 0;
+        p[13] = 0;
+        p[14] = 0;
+        p[15] = 0;
+        p[16] = 0;
+        p[17] = 0;
+        p[18] = 0;
+        p[19] = 0;
+        p[20] = 0;
+        p[21] = 0;
+        p[22] = 0;
+        p[23] = 0;
+        p[24] = 0;
+        p[25] = 0;
+        p[26] = 0;
+        p[27] = 0;
+        p[28] = 0;
+        p[29] = 0;
+        p[30] = 0;
+        p[31] = 0;
+        p += 32;
+        n -= 32;
+    }
+
+    /* handle remaining bytes if any */
+    while (n--)
+        *p++ = 0;
 
     return s;
 }
@@ -73,6 +188,7 @@ static size_t _skip_set_bits(size_t i)
 {
     if (i == _npages)
         return _npages;
+
 #ifdef FAST_BITOPS
 
     /* round i to the next multiple of 64 */
@@ -208,14 +324,18 @@ int myst_mman2_mmap(
 
     /* search for a big enough sequence of free pages */
     {
-        size_t i = 0;
+        size_t i = _first_zero_bit;
         bool found = false;
+        bool first_pass = true;
 
         /* search the bitmap for a sequence of free bits */
-        while ((i = _skip_set_bits(i)) < _npages)
+        while ((i = _skip_set_bits(i)) < _npages && (i + npages) <= _npages)
         {
-            if (i + npages > _npages)
-                break;
+            if (first_pass)
+            {
+                _first_zero_bit = i;
+                first_pass = false;
+            }
 
             size_t r = _skip_zero_bits(i, i + npages);
 
@@ -248,6 +368,10 @@ int myst_mman2_mmap(
             printf("[%zu:%zu]\n", lo, npages);
 #endif
             *ptr = &_pages[lo];
+            // memset(*ptr, 0, length);
+            //_uint64_bzero(*ptr, length / sizeof(uint64_t));
+            _uint128_bzero(*ptr, length / sizeof(__uint128_t));
+
             goto done;
         }
     }
@@ -293,6 +417,10 @@ int myst_mman2_munmap(void* addr, size_t length)
 
     /* update the protection vector */
     memset(&_prots[lo], 0, n);
+
+    /* update the start bit */
+    if (lo < _first_zero_bit)
+        _first_zero_bit = lo;
 
     /* update the bits vector */
     for (size_t i = lo; i < hi; i++)
