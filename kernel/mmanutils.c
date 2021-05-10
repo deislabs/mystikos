@@ -512,10 +512,9 @@ int myst_register_process_mapping(
         ECHECK((*fs->fs_realpath)(
             fs, file, locals->realpath, sizeof(locals->realpath)));
 
-        /* Copy file path to mappings struct */
-        if (!(m->pathname = calloc(1, strlen(locals->realpath) + 1)))
+        /* Copy file path, offset and prot to mappings struct */
+        if (!(m->pathname = strdup(locals->realpath)))
             ERAISE(-ENOMEM);
-        strcpy(m->pathname, locals->realpath);
         m->offset = offset;
         m->prot = prot;
     }
@@ -602,10 +601,10 @@ int proc_pid_maps_vcallback(myst_buf_t* vbuf)
         {
             if (p->pid == pid && p->pathname)
             {
-                // ATTN: device and inode number are not reported
-                // shared or private perms bit is always marked 'p',
+                // ATTN: device and inode number are not reported.
+                // Shared or private perms bit is always marked 'p',
                 // as MAP_SHARED is not supported.
-                snprintf(
+                int n = snprintf(
                     locals->maps_entry,
                     sizeof(locals->maps_entry),
                     "%08lx-%08lx %c%c%cp %08lx 00:00 0 %s\n",
@@ -616,6 +615,10 @@ int proc_pid_maps_vcallback(myst_buf_t* vbuf)
                     p->prot & PROT_EXEC ? 'x' : '-',
                     p->offset,
                     p->pathname);
+
+                if (n >= (int)sizeof(locals->maps_entry))
+                    ERAISE(-ERANGE);
+
                 // Insert new entry at beginning
                 ECHECK(myst_buf_insert(
                     vbuf, 0, locals->maps_entry, strlen(locals->maps_entry)));
