@@ -124,19 +124,6 @@ index 5a82bc4..12c3439 100644
  void *__libc_realloc(void *ptr, size_t size)
  {
  	return realloc(ptr, size);
-diff --git a/libgcompat/pthread.c b/libgcompat/pthread.c
-index 19adceb..05f83eb 100644
---- a/libgcompat/pthread.c
-+++ b/libgcompat/pthread.c
-@@ -67,7 +67,7 @@ int pthread_yield(void)
-  */
- cpu_set_t *__sched_cpualloc(size_t _count)
- {
--	return CPU_ALLOC(__count);
-+	return CPU_ALLOC(_count);
- }
- 
- /**
 diff --git a/libgcompat/readlink.c b/libgcompat/readlink.c
 deleted file mode 100644
 index 42501fe..0000000

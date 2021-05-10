@@ -1,4 +1,4 @@
-URL=https://github.com/AdelieLinux/gcompat.git
+URL=https://git.adelielinux.org/adelie/gcompat.git
 
 TAG=1.0.0
 
@@ -16,4 +16,3 @@ distclean:
 genpatch: gcompat
 	rm -f patch.diff
 	( cd gcompat; git add -A && git diff HEAD > $(CURDIR)/patch.diff )
-	
