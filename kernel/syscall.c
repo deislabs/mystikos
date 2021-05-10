@@ -1691,6 +1691,45 @@ done:
     return ret;
 }
 
+long myst_syscall_fchdir(int fd)
+{
+    long ret = 0;
+    struct locals
+    {
+        char realpath[PATH_MAX];
+    }* locals = NULL;
+    myst_thread_t* thread = myst_thread_self();
+    myst_thread_t* process_thread = myst_find_process_thread(thread);
+
+    myst_file_t* file = NULL;
+    myst_fs_t* fs = NULL;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+
+    if (!(locals = malloc(sizeof(struct locals))))
+        ERAISE(-ENOMEM);
+
+    myst_spin_lock(&process_thread->main.cwd_lock);
+
+    /* Get file path */
+    ECHECK(myst_fdtable_get_file(fdtable, fd, &fs, &file));
+    ECHECK((*fs->fs_realpath)(
+        fs, file, locals->realpath, sizeof(locals->realpath)));
+
+    char* tmp = strdup(locals->realpath);
+    if (tmp == NULL)
+        ERAISE(-ENOMEM);
+    free(process_thread->main.cwd);
+    process_thread->main.cwd = tmp;
+done:
+
+    myst_spin_unlock(&process_thread->main.cwd_lock);
+
+    if (locals)
+        free(locals);
+
+    return ret;
+}
+
 long myst_syscall_getcwd(char* buf, size_t size)
 {
     long ret = 0;
@@ -3707,7 +3746,13 @@ static long _syscall(void* args_)
             BREAK(_return(n, myst_syscall_chdir(path)));
         }
         case SYS_fchdir:
-            break;
+        {
+            int fd = (int)x1;
+
+            _strace(n, "fd=%d", fd);
+
+            BREAK(_return(n, myst_syscall_fchdir(fd)));
+        }
         case SYS_rename:
         {
             const char* oldpath = (const char*)x1;

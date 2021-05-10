@@ -33,8 +33,6 @@
 /ltp/testcases/kernel/syscalls/fanotify/fanotify07: *** kernel panic: syscall.c(5019): myst_syscall(): unhandled syscall: SYS_fanotify_init()
 /ltp/testcases/kernel/syscalls/fanotify/fanotify08: *** kernel panic: syscall.c(5019): myst_syscall(): unhandled syscall: SYS_fanotify_init()
 /ltp/testcases/kernel/syscalls/fanotify/fanotify11: *** kernel panic: syscall.c(5019): myst_syscall(): unhandled syscall: SYS_fanotify_init()
-/ltp/testcases/kernel/syscalls/fchdir/fchdir01: *** kernel panic: syscall.c(5019): myst_syscall(): unhandled syscall: SYS_fchdir()
-/ltp/testcases/kernel/syscalls/fchdir/fchdir02: *** kernel panic: syscall.c(5019): myst_syscall(): unhandled syscall: SYS_fchdir()
 /ltp/testcases/kernel/syscalls/fchmodat/fchmodat01: *** kernel panic: syscall.c(5019): myst_syscall(): unhandled syscall: SYS_fchmodat()
 /ltp/testcases/kernel/syscalls/fchownat/fchownat01: *** kernel panic: syscall.c(5019): myst_syscall(): unhandled syscall: SYS_fchownat()
 /ltp/testcases/kernel/syscalls/fchownat/fchownat02: *** kernel panic: syscall.c(5019): myst_syscall(): unhandled syscall: SYS_fchownat()

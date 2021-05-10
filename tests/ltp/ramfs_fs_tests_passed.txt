@@ -79,3 +79,6 @@
 /ltp/testcases/kernel/syscalls/write/write01
 /ltp/testcases/kernel/syscalls/write/write02
 /ltp/testcases/kernel/syscalls/faccessat/faccessat01
+/ltp/testcases/kernel/syscalls/fchdir/fchdir01
+/ltp/testcases/kernel/syscalls/fchdir/fchdir02
+/ltp/testcases/kernel/syscalls/fchdir/fchdir03

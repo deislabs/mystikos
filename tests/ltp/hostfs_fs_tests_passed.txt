@@ -106,3 +106,6 @@
 /ltp/testcases/kernel/syscalls/writev/writev01
 /ltp/testcases/kernel/syscalls/writev/writev02
 /ltp/testcases/kernel/syscalls/faccessat/faccessat01
+/ltp/testcases/kernel/syscalls/fchdir/fchdir01
+/ltp/testcases/kernel/syscalls/fchdir/fchdir02
+/ltp/testcases/kernel/syscalls/fchdir/fchdir03
