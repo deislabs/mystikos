@@ -1,4 +1,4 @@
-URL=https://github.com/AdelieLinux/gcompat.git
+URL=https://git.adelielinux.org/adelie/gcompat.git
 
 TAG=1.0.0
 
