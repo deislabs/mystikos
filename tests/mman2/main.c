@@ -211,6 +211,8 @@ void test1(void)
     assert(myst_mman2_count_used_bits() == 0);
     assert(myst_mman2_count_free_bits() == total_length / PAGE_SIZE);
 
+    myst_mman2_release();
+
     free(mappings);
     free(data);
 
@@ -321,6 +323,8 @@ void test2(void)
     assert(myst_mman2_count_used_bits() == total_length / PAGE_SIZE);
     assert(total_length == original_length);
     assert(original_free_bits == myst_mman2_count_free_bits());
+
+    myst_mman2_release();
 
     free(mappings);
     free(data);

@@ -9,6 +9,8 @@
 
 int myst_mman2_init(void* data, size_t size);
 
+void myst_mman2_release(void);
+
 int myst_mman2_mmap(
     void* addr,
     size_t length,
