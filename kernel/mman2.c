@@ -205,13 +205,14 @@ static size_t _skip_set_bits(size_t i)
     if (i == _mman.npages)
         return _mman.npages;
 
-    /* round i to the next multiple of 64 */
-    size_t m = (i + 63) / 64 * 64;
+    /* round i to the next multiple of r */
+    const size_t r = 64;
+    const size_t m = (i + r - 1) / r * r;
 
-    /* if i is not aligned, then process bits up to next 64-bit alignement */
+    /* if i is not aligned, then process bits up to next r-bit alignement */
     if (i != m)
     {
-        /* skip bits up to next 64-bit alignment */
+        /* skip bits up to next r-bit alignment */
         while (i < m && myst_test_bit(_mman.bits, i))
             i++;
 
@@ -222,7 +223,6 @@ static size_t _skip_set_bits(size_t i)
             return i;
     }
 
-#if 1
     /* skip over 8 bytes at a time */
     {
         size_t r = _mman.npages - i;
@@ -233,20 +233,6 @@ static size_t _skip_set_bits(size_t i)
             r -= 64;
         }
     }
-#endif
-
-#if 0
-    /* skip over 4 bytes at a time */
-    {
-        size_t r = _mman.npages - i;
-
-        while (r > 32 && *((uint32_t*)&_mman.bits[i / 8]) == 0xffffffff)
-        {
-            i += 32;
-            r -= 32;
-        }
-    }
-#endif
 
     /* handle any remaining bits */
     while (i < _mman.npages && myst_test_bit(_mman.bits, i))

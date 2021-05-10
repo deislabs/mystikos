@@ -332,10 +332,138 @@ void test2(void)
     printf("=== passed test (%s)\n", __FUNCTION__);
 }
 
+void test3(void)
+{
+    void* data;
+    const size_t size = SIZE;
+    struct mapping* mappings;
+    const size_t max_mappings = size / PAGE_SIZE;
+    size_t nmappings = 0;
+    size_t total_length = 0;
+    const int prot = PROT_READ | PROT_WRITE;
+    const int flags = MAP_ANONYMOUS | MAP_PRIVATE;
+
+    if (!(mappings = malloc(max_mappings * sizeof(struct mapping))))
+        assert(0);
+
+    memset(mappings, 0, max_mappings * sizeof(struct mapping));
+
+    if (!(data = memalign(PAGE_SIZE, size)))
+        assert(0);
+
+    // memset(data, 0, size);
+
+    assert(myst_mman2_init(data, size) == 0);
+
+    //==========================================================================
+    //
+    // Perform mappings:
+    //
+    //==========================================================================
+
+    for (size_t i = 0; i < max_mappings; i++)
+    {
+        const size_t length = size / 8;
+        void* ptr;
+
+        int ret = myst_mman2_mmap(NULL, length, prot, flags, -1, 0, &ptr);
+
+        if (ret == -ENOMEM)
+            break;
+
+        assert(ptr != MAP_FAILED);
+
+        mappings[nmappings].addr = ptr;
+        mappings[nmappings].length = length;
+        nmappings++;
+        total_length += length;
+    }
+
+    assert(myst_mman2_count_used_bits() == total_length / PAGE_SIZE);
+    size_t original_length = total_length;
+    size_t original_free_bits = myst_mman2_count_free_bits();
+
+    //==========================================================================
+    //
+    // Release only odd mappings:
+    //
+    //==========================================================================
+
+    for (size_t i = 0; i < nmappings; i++)
+    {
+        if (i % 2 == 0)
+            continue;
+
+        void* addr = mappings[i].addr;
+        size_t length = mappings[i].length;
+        assert(myst_mman2_munmap(addr, length) == 0);
+        total_length -= length;
+        memset(&mappings[i], 0, sizeof(struct mapping));
+        // printf("unmap index=%zu length=%zu\n", i, length);
+    }
+
+    assert(myst_mman2_count_used_bits() == total_length / PAGE_SIZE);
+
+    //==========================================================================
+    //
+    // Perform the odd mappings again
+    //
+    //==========================================================================
+
+    for (size_t i = 0; i < nmappings; i++)
+    {
+        if (i % 2 == 0)
+            continue;
+
+        const size_t length = size / 8;
+        void* ptr;
+
+        int ret = myst_mman2_mmap(NULL, length, prot, flags, -1, 0, &ptr);
+
+        if (ret == -ENOMEM)
+            break;
+
+        assert(ptr != MAP_FAILED);
+
+        mappings[i].addr = ptr;
+        mappings[i].length = length;
+        total_length += length;
+    }
+
+    assert(myst_mman2_count_used_bits() == total_length / PAGE_SIZE);
+    assert(total_length == original_length);
+    assert(original_free_bits == myst_mman2_count_free_bits());
+
+    //==========================================================================
+    //
+    // Release all mappings
+    //
+    //==========================================================================
+
+    for (size_t i = 0; i < nmappings; i++)
+    {
+        void* addr = mappings[i].addr;
+        size_t length = mappings[i].length;
+        assert(myst_mman2_munmap(addr, length) == 0);
+        total_length -= length;
+        memset(&mappings[i], 0, sizeof(struct mapping));
+    }
+
+    assert(myst_mman2_count_used_bits() == 0);
+
+    myst_mman2_release();
+
+    free(mappings);
+    free(data);
+
+    printf("=== passed test (%s)\n", __FUNCTION__);
+}
+
 int main(int argc, const char* argv[])
 {
     test1();
     test2();
+    test3();
 
     printf("=== passed all tests (%s)\n", argv[0]);
     return 0;
