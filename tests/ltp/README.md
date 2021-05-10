@@ -231,9 +231,9 @@ FAILING
 | /ltp/testcases/kernel/syscalls/fanotify/fanotify15 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/fanotify/fanotify16 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/fanotify/fanotify_child | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/fchdir/fchdir01 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/fchdir/fchdir02 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/fchdir/fchdir03 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/fchdir/fchdir01 | 1 | 1 | 1 |
+| /ltp/testcases/kernel/syscalls/fchdir/fchdir02 | 1 | 1 | 1 |
+| /ltp/testcases/kernel/syscalls/fchdir/fchdir03 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/fchmodat/fchmodat01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/fchmod/fchmod01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/fchmod/fchmod02 | 0 | 0 | 0 |

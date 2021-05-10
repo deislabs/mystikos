@@ -144,7 +144,6 @@
 /ltp/testcases/kernel/syscalls/fanotify/fanotify15
 /ltp/testcases/kernel/syscalls/fanotify/fanotify16
 /ltp/testcases/kernel/syscalls/fanotify/fanotify_child
-/ltp/testcases/kernel/syscalls/fchdir/fchdir03
 /ltp/testcases/kernel/syscalls/fchmod/fchmod01
 /ltp/testcases/kernel/syscalls/fchmod/fchmod02
 /ltp/testcases/kernel/syscalls/fchmod/fchmod03
