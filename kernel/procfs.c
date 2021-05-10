@@ -72,19 +72,22 @@ int procfs_pid_setup(pid_t pid)
 
     /* Create /proc/[pid]/fd directory */
     {
-        const size_t n = sizeof(locals->fdpath);
-        snprintf(locals->fdpath, n, "/proc/%d/fd", pid);
-        if (myst_mkdirhier(locals->fdpath, 777) != 0)
-        {
-            myst_eprintf("cannot create the /proc/[pid]/fd directory\n");
-            ERAISE(-EINVAL);
-        }
+        int n = snprintf(
+            locals->fdpath, sizeof(locals->fdpath), "/proc/%d/fd", pid);
+
+        if (n >= (int)sizeof(locals->fdpath))
+            ERAISE(-ERANGE);
+
+        ECHECK(myst_mkdirhier(locals->fdpath, 777));
     }
 
     /* maps entry */
     {
-        const size_t n = sizeof(locals->mapspath);
-        snprintf(locals->mapspath, n, "/%d/maps", pid);
+        int n = snprintf(
+            locals->mapspath, sizeof(locals->mapspath), "/%d/maps", pid);
+
+        if (n >= (int)sizeof(locals->mapspath))
+            ERAISE(-ERANGE);
 
         myst_vcallback_t v_cb;
         v_cb.open_cb = proc_pid_maps_vcallback;
