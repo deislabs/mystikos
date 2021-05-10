@@ -200,6 +200,21 @@ MYST_INLINE size_t _min(size_t x, size_t y)
     return x < y ? x : y;
 }
 
+MYST_INLINE bool _test_bit(size_t index)
+{
+    return myst_test_bit(_mman.bits, index);
+}
+
+MYST_INLINE void _set_bit(size_t index)
+{
+    return myst_set_bit(_mman.bits, index);
+}
+
+MYST_INLINE void _clear_bit(size_t index)
+{
+    return myst_clear_bit(_mman.bits, index);
+}
+
 static size_t _skip_set_bits(size_t i)
 {
     if (i == _mman.npages)
@@ -213,13 +228,13 @@ static size_t _skip_set_bits(size_t i)
     if (i != m)
     {
         /* skip bits up to next r-bit alignment */
-        while (i < m && myst_test_bit(_mman.bits, i))
+        while (i < m && _test_bit(i))
             i++;
 
         if (i == _mman.npages)
             return i;
 
-        if (myst_test_bit(_mman.bits, i) == 0)
+        if (_test_bit(i) == 0)
             return i;
     }
 
@@ -235,7 +250,7 @@ static size_t _skip_set_bits(size_t i)
     }
 
     /* handle any remaining bits */
-    while (i < _mman.npages && myst_test_bit(_mman.bits, i))
+    while (i < _mman.npages && _test_bit(i))
         i++;
 
     return i;
@@ -243,10 +258,18 @@ static size_t _skip_set_bits(size_t i)
 
 MYST_INLINE size_t _skip_zero_bits(size_t i, size_t n)
 {
-    while (i < n && !myst_test_bit(_mman.bits, i))
+    while (i < n && !_test_bit(i))
         i++;
 
     return i;
+}
+
+MYST_INLINE bool _within(const void* ptr)
+{
+    const ptrdiff_t addr = (ptrdiff_t)ptr;
+    const ptrdiff_t start = (ptrdiff_t)_mman.pages;
+    const ptrdiff_t end = (ptrdiff_t)(_mman.pages + _mman.npages);
+    return addr >= start && addr < end;
 }
 
 size_t myst_mman2_get_usable_size(void)
@@ -260,7 +283,7 @@ size_t myst_mman2_count_free_bits(void)
 
     for (size_t i = 0; i < _mman.npages; i++)
     {
-        if (!myst_test_bit(_mman.bits, i))
+        if (!_test_bit(i))
             n++;
     }
 
@@ -273,7 +296,7 @@ size_t myst_mman2_count_used_bits(void)
 
     for (size_t i = 0; i < _mman.npages; i++)
     {
-        if (myst_test_bit(_mman.bits, i))
+        if (_test_bit(i))
             n++;
     }
 
@@ -341,17 +364,17 @@ MYST_INLINE void _set_bits(size_t lo, size_t hi)
 
     while (n >= 4)
     {
-        myst_set_bit(_mman.bits, i);
-        myst_set_bit(_mman.bits, i+1);
-        myst_set_bit(_mman.bits, i+2);
-        myst_set_bit(_mman.bits, i+3);
+        _set_bit(i);
+        _set_bit(i+1);
+        _set_bit(i+2);
+        _set_bit(i+3);
         i += 4;
         n -= 4;
     }
 #endif
 
     for (; i < hi; i++)
-        myst_set_bit(_mman.bits, i);
+        _set_bit(i);
 }
 
 int myst_mman2_mmap(
@@ -477,11 +500,11 @@ int myst_mman2_munmap(void* addr, size_t length)
     page_t* end = (page_t*)((uint8_t*)addr + length);
 
     /* if the address is out of range */
-    if (!(start >= _mman.pages && start < (_mman.pages + _mman.npages)))
+    if (!_within(start))
         ERAISE(-EINVAL);
 
     /* if the ending address is out of range */
-    if (!(end >= _mman.pages && end <= (_mman.pages + _mman.npages)))
+    if (!_within(end))
         ERAISE(-EINVAL);
 
     /* find the low and high indices of the range */
@@ -506,7 +529,7 @@ int myst_mman2_munmap(void* addr, size_t length)
 
     /* update the bits vector */
     for (size_t i = lo; i < hi; i++)
-        myst_clear_bit(_mman.bits, i);
+        _clear_bit(i);
 
 #if 0
     printf("unmap: [hi=%zu lo=%zu n=%zu]\n", lo, hi, n);
@@ -517,5 +540,163 @@ done:
     if (locked)
         myst_spin_unlock(&_mman.lock);
 
+    return ret;
+}
+
+int myst_mman2_mremap(
+    void* old_address,
+    size_t old_size,
+    size_t new_size,
+    int flags,
+    void* new_address,
+    void** ptr)
+{
+    int ret = 0;
+
+    (void)flags;
+    (void)old_size;
+    (void)new_size;
+    (void)ptr;
+
+    if (ptr)
+        *ptr = MAP_FAILED;
+
+    if (!old_address || ((uint64_t)old_address % PAGE_SIZE))
+        ERAISE(-EINVAL);
+
+    if (old_size == 0 || old_size % PAGE_SIZE)
+        ERAISE(-EINVAL);
+
+    if (new_size == 0 || new_size % PAGE_SIZE)
+        ERAISE(-EINVAL);
+
+    if (new_address)
+        ERAISE(-EINVAL);
+
+    /* calculate the start and end addresses for this range of pages */
+    page_t* start = (page_t*)old_address;
+    page_t* end = (page_t*)((uint8_t*)old_address + old_size);
+
+    /* if the address is out of range */
+    if (!_within(start))
+        ERAISE(-EINVAL);
+
+    /* if the ending address is out of range */
+    if (!_within(end))
+        ERAISE(-EINVAL);
+
+    /* if the mapping is exactly the same size */
+    if (new_size == old_size)
+    {
+        *ptr = old_address;
+        goto done;
+    }
+
+    /* if shriking, then just unmap the excess pages */
+    if (new_size < old_size)
+    {
+        void* addr = (uint8_t*)old_address + new_size;
+        const size_t length = old_size - new_size;
+
+        ECHECK(myst_mman2_munmap(addr, length));
+        *ptr = old_address;
+        goto done;
+    }
+
+    /* the mapping is growing */
+    {
+        size_t npages = (new_size - old_size) / PAGE_SIZE;
+        page_t* new_end = start + npages;
+        int prot;
+        pid_t pid;
+
+        /* verify that all the pages have consistent permissions */
+        {
+            const size_t lo = start - _mman.pages;
+            const size_t hi = end - _mman.pages;
+            prot = _mman.prots[lo];
+
+            for (size_t i = lo + 1; i < hi; i++)
+            {
+                if (_mman.prots[i] != prot)
+                    ERAISE(-EPERM);
+            }
+        }
+
+        /* verify that all the pages have consistent pids */
+        {
+            const size_t lo = start - _mman.pages;
+            const size_t hi = end - _mman.pages;
+            pid = _mman.pids[lo];
+
+            for (size_t i = lo + 1; i < hi; i++)
+            {
+                if (_mman.pids[i] != (uint32_t)pid)
+                    ERAISE(-EPERM);
+            }
+        }
+
+        /* fail if the calling process does not own this mapping */
+        if (pid != getpid())
+            ERAISE(-EPERM);
+
+        /* if the new end is within the mman memory */
+        if (_within(new_end))
+        {
+            /* find the low and high indices of the range */
+            const size_t lo = end - _mman.pages;
+            const size_t hi = new_end - _mman.pages;
+            size_t i;
+
+            /* check whether the excess pages are available */
+            for (i = lo; i < hi && _test_bit(i); i++)
+                ;
+
+            /* grow mapping in place */
+            if (i == hi)
+            {
+                /* update the pids vector */
+                _uint32_memset(&_mman.pids[lo], pid, npages);
+
+                /* update the fds vector */
+                _uint32_memset((uint32_t*)&_mman.fds[lo], 0, npages);
+
+                /* update the protection vector */
+                memset(&_mman.prots[lo], prot, npages);
+
+                /* update the bits vector */
+                _set_bits(lo, hi);
+
+                *ptr = old_address;
+                goto done;
+            }
+        }
+
+        /* ATTN: consider moving the mapping leftward if possible */
+
+        /* cannot grow the mapping in place, so move it */
+        {
+            void* new;
+            int r;
+
+            /* allocate a new mapping */
+            ECHECK(myst_mman2_mmap(NULL, new_size, prot, flags, -1, 0, &new));
+
+            /* copy over the old mapping */
+            memcpy(new, old_address, old_size);
+
+            /* unmap of old mapping */
+            if ((r = myst_mman2_munmap(old_address, old_size)) != 0)
+            {
+                myst_mman2_munmap(new, new_size);
+                ERAISE(-r);
+            }
+
+            *ptr = new;
+            goto done;
+        }
+    }
+
+done:
     return ret;
 }

@@ -22,12 +22,13 @@ int myst_mman2_mmap(
 
 int myst_mman2_munmap(void* addr, size_t length);
 
-void* myst_mman2_mremap(
+int myst_mman2_mremap(
     void* old_address,
     size_t old_size,
     size_t new_size,
     int flags,
-    void* new_address);
+    void* new_address,
+    void** ptr);
 
 int myst_mman2_mprotect(void* addr, size_t len, int prot);
 
