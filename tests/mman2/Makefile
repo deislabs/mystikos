@@ -1,15 +1,17 @@
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
+CC=gcc
+
 PROGRAM = mman2
 
-SOURCES = $(wildcard *.c) ../../kernel/mman2.c
+SOURCES = main.c ../../kernel/mman2.c
 
 INCLUDES = -I$(INCDIR)
 
-CFLAGS = -g -O3 $(OEHOST_CFLAGS) $(GCOV_CFLAGS)
+CFLAGS = $(OEHOST_CFLAGS) $(GCOV_CFLAGS)
 
-LDFLAGS = -g $(OEHOST_LDFLAGS) $(GCOV_LDFLAGS)
+LDFLAGS = $(OEHOST_LDFLAGS) $(GCOV_LDFLAGS)
 
 LIBS += $(LIBDIR)/libmystutils.a
 LIBS += $(LIBDIR)/libmysthost.a
@@ -26,7 +28,7 @@ CG = valgrind --tool=cachegrind --cachegrind-out-file=cachegrind.out
 cg:
 	$(CG) $(SUBBINDIR)/$(PROGRAM)
 
-ann:
-	cg_annotate --auto=yes -I$(TOP)/kernel -I$(CURDIR) cachegrind.out
+ANN=cg_annotate --auto=yes cachegrind.out
 
-#$(CURDIR)/mman2.c $(TOP)/kernel/mman2.c
+ann:
+	$(ANN)
