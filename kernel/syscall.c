@@ -1700,26 +1700,38 @@ long myst_syscall_fchdir(int fd)
     }* locals = NULL;
     myst_thread_t* thread = myst_thread_self();
     myst_thread_t* process_thread = myst_find_process_thread(thread);
-
     myst_file_t* file = NULL;
     myst_fs_t* fs = NULL;
     myst_fdtable_t* fdtable = myst_fdtable_current();
 
+    if (fd < 0)
+        ERAISE(-EBADF);
+
     if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
-    myst_spin_lock(&process_thread->main.cwd_lock);
+    ECHECK(myst_fdtable_get_file(fdtable, fd, &fs, &file));
+
+    /* fail if the directory does not exist */
+    {
+        struct stat buf;
+
+        if (fs->fs_fstat(fs, file, &buf) != 0 || !S_ISDIR(buf.st_mode))
+            ERAISE(-ENOENT);
+    }
 
     /* Get file path */
-    ECHECK(myst_fdtable_get_file(fdtable, fd, &fs, &file));
     ECHECK((*fs->fs_realpath)(
         fs, file, locals->realpath, sizeof(locals->realpath)));
+
+    myst_spin_lock(&process_thread->main.cwd_lock);
 
     char* tmp = strdup(locals->realpath);
     if (tmp == NULL)
         ERAISE(-ENOMEM);
     free(process_thread->main.cwd);
     process_thread->main.cwd = tmp;
+
 done:
 
     myst_spin_unlock(&process_thread->main.cwd_lock);
