@@ -479,7 +479,8 @@ static long _enter(void* arg_)
             (myst_kernel_entry_t)((uint8_t*)_kargs.kernel_data + ehdr->e_entry);
 
         if ((uint8_t*)entry < (uint8_t*)_kargs.kernel_data ||
-            (uint8_t*)entry >= (uint8_t*)_kargs.kernel_data + _kargs.kernel_size)
+            (uint8_t*)entry >=
+                (uint8_t*)_kargs.kernel_data + _kargs.kernel_size)
         {
             fprintf(stderr, "kernel entry point is out of bounds\n");
             assert(0);

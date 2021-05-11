@@ -1540,10 +1540,7 @@ long myst_handle_tcall(long n, long params[6])
         }
         case SYS_mprotect:
         {
-            return _mprotect(
-                (void *)a,
-                (size_t)b,
-                (int)c);
+            return _mprotect((void*)a, (size_t)b, (int)c);
         }
 #ifdef MYST_ENABLE_HOSTFS
         case SYS_open:
