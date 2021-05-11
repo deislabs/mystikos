@@ -440,6 +440,5 @@ int myst_load_fssig_ocall(const char* path, myst_fssig_t* fssig)
 
 int myst_mprotect_ocall(void* addr, size_t len, int prot)
 {
-    //return 0;
     return mprotect(addr, len, prot);
 }
