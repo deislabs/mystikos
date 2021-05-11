@@ -765,6 +765,52 @@ done:
     return ret;
 }
 
+static long _get_absolute_path_from_dirfd(
+    int dirfd,
+    const char* filename,
+    char* abspath_out,
+    size_t size)
+{
+    long ret = 0;
+    struct locals
+    {
+        char dirname[PATH_MAX];
+    }* locals = NULL;
+
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_fs_t* fs;
+    myst_file_t* file;
+
+    if (dirfd < 0)
+        ERAISE(-EBADF);
+
+    /* get the file object for the dirfd */
+    ECHECK(myst_fdtable_get_file(fdtable, dirfd, &fs, &file));
+
+    /* fail if not a directory */
+    {
+        struct stat buf;
+        ERAISE((*fs->fs_fstat)(fs, file, &buf));
+
+        if (!S_ISDIR(buf.st_mode))
+            ERAISE(-ENOTDIR);
+    }
+
+    /* get the full path of dirfd */
+    ECHECK(
+        (*fs->fs_realpath)(fs, file, locals->dirname, sizeof(locals->dirname)));
+
+    /* construct absolute path of file */
+    ECHECK(myst_make_path(abspath_out, size, locals->dirname, filename));
+
+done:
+
+    if (locals)
+        free(locals);
+
+    return ret;
+}
+
 static long _openat(
     int dirfd,
     const char* pathname,
@@ -777,7 +823,6 @@ static long _openat(
     struct locals
     {
         char suffix[PATH_MAX];
-        char dirname[PATH_MAX];
         char filename[PATH_MAX];
     };
     struct locals* locals = NULL;
@@ -815,33 +860,8 @@ static long _openat(
     }
     else
     {
-        myst_fdtable_t* fdtable = myst_fdtable_current();
-        myst_fs_t* fs;
-        myst_file_t* file;
-
-        if (dirfd < 0)
-            ERAISE(-EBADF);
-
-        /* get the file object for the dirfd */
-        ECHECK(myst_fdtable_get_file(fdtable, dirfd, &fs, &file));
-
-        /* fail if not a directory */
-        {
-            struct stat buf;
-            ERAISE((*fs->fs_fstat)(fs, file, &buf));
-
-            if (!S_ISDIR(buf.st_mode))
-                ERAISE(-ENOTDIR);
-        }
-
-        /* get the full path of dirfd */
-        ECHECK((*fs->fs_realpath)(
-            fs, file, locals->dirname, sizeof(locals->dirname)));
-        ECHECK(myst_make_path(
-            locals->filename,
-            sizeof(locals->filename),
-            locals->dirname,
-            pathname));
+        ECHECK(_get_absolute_path_from_dirfd(
+            dirfd, pathname, locals->filename, sizeof(locals->filename)));
 
         if (fs_out && file_out)
         {
@@ -1455,8 +1475,7 @@ long myst_syscall_faccessat(
     long ret = 0;
     struct locals
     {
-        char dirname[PATH_MAX];
-        char filename[PATH_MAX];
+        char abspath[PATH_MAX];
     };
     struct locals* locals = NULL;
 
@@ -1478,39 +1497,15 @@ long myst_syscall_faccessat(
     }
     else
     {
-        myst_fdtable_t* fdtable = myst_fdtable_current();
-        myst_fs_t* fs;
-        myst_file_t* file;
-
-        if (dirfd < 0)
-            ERAISE(-EBADF);
-
-        /* get the file object for the dirfd */
-        ECHECK(myst_fdtable_get_file(fdtable, dirfd, &fs, &file));
-
-        /* fail if not a directory */
-        {
-            struct stat buf;
-            ERAISE((*fs->fs_fstat)(fs, file, &buf));
-
-            if (!S_ISDIR(buf.st_mode))
-                ERAISE(-ENOTDIR);
-        }
-
-        /* get the full path of dirfd */
-        ECHECK((*fs->fs_realpath)(
-            fs, file, locals->dirname, sizeof(locals->dirname)));
-
-        /* construct absolute path of file */
-        ECHECK(myst_make_path(
-            locals->filename,
-            sizeof(locals->filename),
-            locals->dirname,
-            pathname));
-        ret = myst_syscall_access(locals->filename, mode);
+        ECHECK(_get_absolute_path_from_dirfd(
+            dirfd, pathname, locals->abspath, sizeof(locals->abspath)));
+        ret = myst_syscall_access(locals->abspath, mode);
     }
 
 done:
+
+    if (locals)
+        free(locals);
 
     return ret;
 }
