@@ -1939,7 +1939,7 @@ static int _fs_rmdir(myst_fs_t* fs, const char* pathname)
     child->nlink--;
 
     /* If no more links to this inode, then free it */
-    if (child->nlink == 0)
+    if (child->nlink == 0 && child->nopens == 0)
         _inode_free(ramfs, child);
 
 done:
