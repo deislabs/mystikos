@@ -325,6 +325,59 @@ index cbabde47..4f94bc39 100644
 +size_t __strftime_l(char *restrict, size_t, const char *restrict, const struct tm *restrict, locale_t);
  
  #endif
+diff --git a/src/internal/pthread_impl.h b/src/internal/pthread_impl.h
+index 5742dfc5..28590c32 100644
+--- a/src/internal/pthread_impl.h
++++ b/src/internal/pthread_impl.h
+@@ -98,6 +98,48 @@ struct __timer {
+ #define _b_waiters2 __u.__vi[4]
+ #define _b_inst __u.__p[3]
+ 
++//
++// The musl libc type field and the glibc kind field are in different offsets
++// within the pthread_mutex_t structure (0 versus 16 respectively). This causes
++// failures when the PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP static initializer
++// is compiled with glibc but then run by the musl libc runtime. To overcome
++// this, we redefine _m_type to refer to fifth integer slot [4] rather than the
++// first [0]. The tables below illustrate offsets of the fields with both int
++// and long offsets within the pthread_mutex_t structure.
++//
++// Original layout:
++//
++//     int     long    field
++//     ============================
++//     [0]     [0]       _m_type[0] <== original type field position
++//     [1]     [0]       _m_lock[1]
++//     [2]     [1]       _m_waiters[2]
++//     [3]     [1]       (unused)
++//     [4]     [2]       (unused)
++//     [5]     [2]       _m_count[5]
++//     [6]     [3]       _m_prev[3]
++//     [7]     [3]       _m_prev[3]
++//     [8]     [4]       _m_next[3]
++//     [9]     [4]       _m_next[3]
++//
++// Modified layout:
++//
++//     int     long    field
++//     ============================
++//     [0]     [0]       (unused)
++//     [1]     [0]       _m_lock[1]
++//     [2]     [1]       _m_waiters[2]
++//     [3]     [1]       (unused)
++//     [4]     [2]       _m_type[4] <== new type field position
++//     [5]     [2]       _m_count[5]
++//     [6]     [3]       _m_prev[3]
++//     [7]     [3]       _m_prev[3]
++//     [8]     [4]       _m_next[3]
++//     [9]     [4]       _m_next[3]
++//
++#undef _m_type
++#define _m_type __u.__i[4]
++
+ #include "pthread_arch.h"
+ 
+ #ifndef CANARY
 diff --git a/src/linux/epoll.c b/src/linux/epoll.c
 index deff5b10..fd66b82a 100644
 --- a/src/linux/epoll.c
