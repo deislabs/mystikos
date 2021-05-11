@@ -91,7 +91,6 @@
 /ltp/testcases/kernel/syscalls/epoll_create1/epoll_create1_01
 /ltp/testcases/kernel/syscalls/epoll_ctl/epoll_ctl01
 /ltp/testcases/kernel/syscalls/epoll_ctl/epoll_ctl02
-/ltp/testcases/kernel/syscalls/epoll_wait/epoll_wait01
 /ltp/testcases/kernel/syscalls/epoll_wait/epoll_wait02
 /ltp/testcases/kernel/syscalls/epoll_wait/epoll_wait03
 /ltp/testcases/kernel/syscalls/eventfd/eventfd01
@@ -143,6 +142,7 @@
 /ltp/testcases/kernel/syscalls/fanotify/fanotify15
 /ltp/testcases/kernel/syscalls/fanotify/fanotify16
 /ltp/testcases/kernel/syscalls/fanotify/fanotify_child
+/ltp/testcases/kernel/syscalls/fchdir/fchdir03
 /ltp/testcases/kernel/syscalls/fchmod/fchmod01
 /ltp/testcases/kernel/syscalls/fchmod/fchmod02
 /ltp/testcases/kernel/syscalls/fchmod/fchmod03
@@ -409,14 +409,12 @@
 /ltp/testcases/kernel/syscalls/mknod/mknod09
 /ltp/testcases/kernel/syscalls/mknodat/mknodat02
 /ltp/testcases/kernel/syscalls/mlock/mlock02
-/ltp/testcases/kernel/syscalls/mlock/mlock03
 /ltp/testcases/kernel/syscalls/mlock2/mlock201
 /ltp/testcases/kernel/syscalls/mlock2/mlock203
 /ltp/testcases/kernel/syscalls/mmap/mmap05
 /ltp/testcases/kernel/syscalls/mmap/mmap06
 /ltp/testcases/kernel/syscalls/mmap/mmap07
 /ltp/testcases/kernel/syscalls/mmap/mmap08
-/ltp/testcases/kernel/syscalls/mmap/mmap10
 /ltp/testcases/kernel/syscalls/mmap/mmap12
 /ltp/testcases/kernel/syscalls/mmap/mmap13
 /ltp/testcases/kernel/syscalls/mmap/mmap14
@@ -497,7 +495,6 @@
 /ltp/testcases/kernel/syscalls/pipe2/pipe2_02_child
 /ltp/testcases/kernel/syscalls/pipe2/pipe2_04
 /ltp/testcases/kernel/syscalls/pivot_root/pivot_root01
-/ltp/testcases/kernel/syscalls/poll/poll01
 /ltp/testcases/kernel/syscalls/poll/poll02
 /ltp/testcases/kernel/syscalls/prctl/prctl01
 /ltp/testcases/kernel/syscalls/prctl/prctl03
@@ -583,7 +580,6 @@
 /ltp/testcases/kernel/syscalls/select/select01
 /ltp/testcases/kernel/syscalls/select/select02
 /ltp/testcases/kernel/syscalls/select/select03
-/ltp/testcases/kernel/syscalls/select/select04
 /ltp/testcases/kernel/syscalls/send/send02
 /ltp/testcases/kernel/syscalls/sendfile/sendfile03
 /ltp/testcases/kernel/syscalls/sendfile/sendfile03_64
@@ -653,7 +649,6 @@
 /ltp/testcases/kernel/syscalls/setxattr/setxattr01
 /ltp/testcases/kernel/syscalls/setxattr/setxattr02
 /ltp/testcases/kernel/syscalls/sgetmask/sgetmask01
-/ltp/testcases/kernel/syscalls/signal/signal06
 /ltp/testcases/kernel/syscalls/sigpending/sigpending02
 /ltp/testcases/kernel/syscalls/sigprocmask/sigprocmask01
 /ltp/testcases/kernel/syscalls/sigrelse/sigrelse01
@@ -740,11 +735,9 @@
 /ltp/testcases/kernel/syscalls/utime/utime06
 /ltp/testcases/kernel/syscalls/utimensat/utimensat01
 /ltp/testcases/kernel/syscalls/utimes/utimes01
-/ltp/testcases/kernel/syscalls/vfork/vfork01
 /ltp/testcases/kernel/syscalls/vfork/vfork02
 /ltp/testcases/kernel/syscalls/vhangup/vhangup01
 /ltp/testcases/kernel/syscalls/vhangup/vhangup02
-/ltp/testcases/kernel/syscalls/vmsplice/vmsplice01
 /ltp/testcases/kernel/syscalls/vmsplice/vmsplice03
 /ltp/testcases/kernel/syscalls/wait4/wait401
 /ltp/testcases/kernel/syscalls/wait4/wait402
