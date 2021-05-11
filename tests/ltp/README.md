@@ -167,7 +167,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/epoll_ctl/epoll_ctl02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/epoll/epoll-ltp | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/epoll_pwait/epoll_pwait01 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/epoll_wait/epoll_wait01 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/epoll_wait/epoll_wait01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/epoll_wait/epoll_wait02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/epoll_wait/epoll_wait03 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/eventfd2/eventfd2_01 | 0 | 0 | 0 |
@@ -233,7 +233,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/fanotify/fanotify_child | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/fchdir/fchdir01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/fchdir/fchdir02 | 1 | 1 | 1 |
-| /ltp/testcases/kernel/syscalls/fchdir/fchdir03 | 1 | 1 | 1 |
+| /ltp/testcases/kernel/syscalls/fchdir/fchdir03 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/fchmodat/fchmodat01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/fchmod/fchmod01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/fchmod/fchmod02 | 0 | 0 | 0 |
@@ -722,7 +722,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/mlockall/mlockall03 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/mlock/mlock01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/mlock/mlock02 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/mlock/mlock03 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/mlock/mlock03 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/mlock/mlock04 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/mmap/mmap001 | 1 | 1 | 0 |
 | /ltp/testcases/kernel/syscalls/mmap/mmap01 | 1 | 1 | 1 |
@@ -862,7 +862,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/pipe/pipe13 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/pivot_root/pivot_root01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/pkeys/pkey01 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/poll/poll01 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/poll/poll01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/poll/poll02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/ppoll/ppoll01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/prctl/prctl01 | 0 | 0 | 0 |
@@ -1028,7 +1028,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/select/select01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/select/select02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/select/select03 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/select/select04 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/select/select04 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/sendfile/sendfile02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/sendfile/sendfile02_64 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/sendfile/sendfile03 | 0 | 0 | 0 |
@@ -1154,7 +1154,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/setrlimit/setrlimit04 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/setrlimit/setrlimit05 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/setrlimit/setrlimit06 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/set_robust_list/set_robust_list01 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/set_robust_list/set_robust_list01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/setsid/setsid01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/setsockopt/setsockopt01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/setsockopt/setsockopt02 | 1 | 1 | 1 |
@@ -1190,7 +1190,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/signal/signal03 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/signal/signal04 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/signal/signal05 | 1 | 1 | 1 |
-| /ltp/testcases/kernel/syscalls/signal/signal06 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/signal/signal06 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/sigpending/sigpending02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/sigprocmask/sigprocmask01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/sigrelse/sigrelse01 | 0 | 0 | 0 |

@@ -12,7 +12,10 @@
 /ltp/testcases/kernel/syscalls/dup2/dup202
 /ltp/testcases/kernel/syscalls/dup3/dup3_01
 /ltp/testcases/kernel/syscalls/dup3/dup3_02
+/ltp/testcases/kernel/syscalls/epoll_wait/epoll_wait01
 /ltp/testcases/kernel/syscalls/fallocate/fallocate03
+/ltp/testcases/kernel/syscalls/fchdir/fchdir01
+/ltp/testcases/kernel/syscalls/fchdir/fchdir02
 /ltp/testcases/kernel/syscalls/fcntl/fcntl03
 /ltp/testcases/kernel/syscalls/fcntl/fcntl03_64
 /ltp/testcases/kernel/syscalls/fcntl/fcntl04
@@ -52,6 +55,7 @@
 /ltp/testcases/kernel/syscalls/open/open07
 /ltp/testcases/kernel/syscalls/open/open09
 /ltp/testcases/kernel/syscalls/openat/openat01
+/ltp/testcases/kernel/syscalls/poll/poll01
 /ltp/testcases/kernel/syscalls/pread/pread01
 /ltp/testcases/kernel/syscalls/pread/pread01_64
 /ltp/testcases/kernel/syscalls/pread/pread02
@@ -77,6 +81,7 @@
 /ltp/testcases/kernel/syscalls/rename/rename07
 /ltp/testcases/kernel/syscalls/rename/rename13
 /ltp/testcases/kernel/syscalls/rmdir/rmdir01
+/ltp/testcases/kernel/syscalls/select/select04
 /ltp/testcases/kernel/syscalls/sendfile/sendfile08
 /ltp/testcases/kernel/syscalls/sendfile/sendfile08_64
 /ltp/testcases/kernel/syscalls/stat/stat02
@@ -94,6 +99,3 @@
 /ltp/testcases/kernel/syscalls/writev/writev01
 /ltp/testcases/kernel/syscalls/writev/writev02
 /ltp/testcases/kernel/syscalls/faccessat/faccessat01
-/ltp/testcases/kernel/syscalls/fchdir/fchdir01
-/ltp/testcases/kernel/syscalls/fchdir/fchdir02
-/ltp/testcases/kernel/syscalls/fchdir/fchdir03
