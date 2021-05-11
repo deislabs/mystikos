@@ -784,6 +784,9 @@ static long _get_absolute_path_from_dirfd(
     if (dirfd < 0)
         ERAISE(-EBADF);
 
+    if (!(locals = malloc(sizeof(struct locals))))
+        ERAISE(-ENOMEM);
+
     /* get the file object for the dirfd */
     ECHECK(myst_fdtable_get_file(fdtable, dirfd, &fs, &file));
 
