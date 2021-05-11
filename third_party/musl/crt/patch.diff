@@ -298,21 +298,6 @@ index 50cef8e5..803a7f8d 100644
 +{
 +	return 0;
 +}
-diff --git a/src/include/pthread.h b/src/include/pthread.h
-index 7167d3e1..9deca8e7 100644
---- a/src/include/pthread.h
-+++ b/src/include/pthread.h
-@@ -16,8 +16,8 @@ hidden int __pthread_mutex_timedlock(pthread_mutex_t *restrict, const struct tim
- hidden int __pthread_mutex_unlock(pthread_mutex_t *);
- hidden int __private_cond_signal(pthread_cond_t *, int);
- hidden int __pthread_cond_timedwait(pthread_cond_t *restrict, pthread_mutex_t *restrict, const struct timespec *restrict);
--hidden int __pthread_key_create(pthread_key_t *, void (*)(void *));
--hidden int __pthread_key_delete(pthread_key_t);
-+int __pthread_key_create(pthread_key_t *, void (*)(void *));
-+int __pthread_key_delete(pthread_key_t);
- hidden int __pthread_rwlock_rdlock(pthread_rwlock_t *);
- hidden int __pthread_rwlock_tryrdlock(pthread_rwlock_t *);
- hidden int __pthread_rwlock_timedrdlock(pthread_rwlock_t *__restrict, const struct timespec *__restrict);
 diff --git a/src/include/time.h b/src/include/time.h
 index cbabde47..4f94bc39 100644
 --- a/src/include/time.h
@@ -474,6 +459,109 @@ index 2f9d5e97..e4d3d000 100644
  	__syscall(SYS_tkill, self->tid, SIGCANCEL);
  }
  
+diff --git a/src/thread/pthread_mutex_consistent.c b/src/thread/pthread_mutex_consistent.c
+index 27c74e5b..56bba8d8 100644
+--- a/src/thread/pthread_mutex_consistent.c
++++ b/src/thread/pthread_mutex_consistent.c
+@@ -3,6 +3,9 @@
+ 
+ int pthread_mutex_consistent(pthread_mutex_t *m)
+ {
++        extern void __fixup_recursive_mutex(pthread_mutex_t *m);
++        __fixup_recursive_mutex(m);
++
+ 	int old = m->_m_lock;
+ 	int own = old & 0x3fffffff;
+ 	if (!(m->_m_type & 4) || !own || !(old & 0x40000000))
+diff --git a/src/thread/pthread_mutex_lock.c b/src/thread/pthread_mutex_lock.c
+index 638d4b86..955f4805 100644
+--- a/src/thread/pthread_mutex_lock.c
++++ b/src/thread/pthread_mutex_lock.c
+@@ -1,7 +1,32 @@
++#include <string.h>
+ #include "pthread_impl.h"
+ 
++static unsigned char _static_recursive[] =
++{
++    0,0,0,0,
++    0,0,0,0,
++    0,0,0,0,
++    0,0,0,0,
++    1,0,0,0,
++    0,0,0,0,
++    0,0,0,0,
++    0,0,0,0,
++    0,0,0,0,
++    0,0,0,0,
++};
++
++void __fixup_recursive_mutex(pthread_mutex_t *m)
++{
++    const unsigned char* p = (const unsigned char*)m;
++
++    if (p[16] && memcmp(_static_recursive, m, sizeof(*m)) == 0)
++        m->_m_type = PTHREAD_MUTEX_RECURSIVE;
++}
++
+ int __pthread_mutex_lock(pthread_mutex_t *m)
+ {
++        __fixup_recursive_mutex(m);
++
+ 	if ((m->_m_type&15) == PTHREAD_MUTEX_NORMAL
+ 	    && !a_cas(&m->_m_lock, 0, EBUSY))
+ 		return 0;
+diff --git a/src/thread/pthread_mutex_timedlock.c b/src/thread/pthread_mutex_timedlock.c
+index 9279fc54..282413da 100644
+--- a/src/thread/pthread_mutex_timedlock.c
++++ b/src/thread/pthread_mutex_timedlock.c
+@@ -55,6 +55,9 @@ static int pthread_mutex_timedlock_pi(pthread_mutex_t *restrict m, const struct
+ 
+ int __pthread_mutex_timedlock(pthread_mutex_t *restrict m, const struct timespec *restrict at)
+ {
++        extern void __fixup_recursive_mutex(pthread_mutex_t *m);
++        __fixup_recursive_mutex(m);
++
+ 	if ((m->_m_type&15) == PTHREAD_MUTEX_NORMAL
+ 	    && !a_cas(&m->_m_lock, 0, EBUSY))
+ 		return 0;
+diff --git a/src/thread/pthread_mutex_trylock.c b/src/thread/pthread_mutex_trylock.c
+index a24e7c58..952507bf 100644
+--- a/src/thread/pthread_mutex_trylock.c
++++ b/src/thread/pthread_mutex_trylock.c
+@@ -2,6 +2,9 @@
+ 
+ int __pthread_mutex_trylock_owner(pthread_mutex_t *m)
+ {
++        extern void __fixup_recursive_mutex(pthread_mutex_t *m);
++        __fixup_recursive_mutex(m);
++
+ 	int old, own;
+ 	int type = m->_m_type;
+ 	pthread_t self = __pthread_self();
+@@ -66,6 +69,9 @@ success:
+ 
+ int __pthread_mutex_trylock(pthread_mutex_t *m)
+ {
++        extern void __fixup_recursive_mutex(pthread_mutex_t *m);
++        __fixup_recursive_mutex(m);
++
+ 	if ((m->_m_type&15) == PTHREAD_MUTEX_NORMAL)
+ 		return a_cas(&m->_m_lock, 0, EBUSY) & EBUSY;
+ 	return __pthread_mutex_trylock_owner(m);
+diff --git a/src/thread/pthread_mutex_unlock.c b/src/thread/pthread_mutex_unlock.c
+index b66423e6..e9ed9d48 100644
+--- a/src/thread/pthread_mutex_unlock.c
++++ b/src/thread/pthread_mutex_unlock.c
+@@ -2,6 +2,9 @@
+ 
+ int __pthread_mutex_unlock(pthread_mutex_t *m)
+ {
++        extern void __fixup_recursive_mutex(pthread_mutex_t *m);
++        __fixup_recursive_mutex(m);
++
+ 	pthread_t self;
+ 	int waiters = m->_m_waiters;
+ 	int cont;
 diff --git a/src/thread/x86_64/__set_thread_area.s b/src/thread/x86_64/__set_thread_area.s
 deleted file mode 100644
 index 7347ff4d..00000000
