@@ -328,7 +328,6 @@
 /src/regression/statvfs.exe
 /src/regression/strverscmp.exe
 /src/regression/syscall-sign-extend.exe
-/src/regression/tls_get_new-dtv.exe
 /src/regression/uselocale-0.exe
 /src/regression/wcsncpy-read-overflow.exe
 /src/regression/wcsstr-false-negative.exe

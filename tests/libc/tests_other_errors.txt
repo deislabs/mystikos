@@ -24,3 +24,4 @@
 /src/regression/sigreturn.exe
 /src/regression/statvfs.exe
 /src/regression/syscall-sign-extend.exe
+/src/regression/tls_get_new-dtv.exe
