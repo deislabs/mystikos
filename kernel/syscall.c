@@ -36,6 +36,7 @@
 #include <myst/epolldev.h>
 #include <myst/eraise.h>
 #include <myst/errno.h>
+#include <myst/eventfddev.h>
 #include <myst/exec.h>
 #include <myst/ext2.h>
 #include <myst/fdops.h>
@@ -1910,6 +1911,33 @@ long myst_syscall_pipe2(int pipefd[2], int flags)
 
     if (__options.trace_syscalls)
         myst_eprintf("pipe2(): [%d:%d]\n", fd0, fd1);
+
+done:
+    return ret;
+}
+
+long myst_syscall_eventfd(unsigned int initval, int flags)
+{
+    long ret = 0;
+    const myst_fdtable_type_t type = MYST_FDTABLE_TYPE_EVENTFD;
+    myst_eventfddev_t* dev = myst_eventfddev_get();
+    myst_eventfd_t* obj = NULL;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    int fd;
+
+    if (!dev)
+        ERAISE(-EINVAL);
+
+    ECHECK((*dev->eventfd)(dev, initval, flags, &obj));
+
+    if ((fd = myst_fdtable_assign(fdtable, type, dev, obj)) < 0)
+    {
+        myst_fdtable_remove(fdtable, fd);
+        (*dev->close)(dev, obj);
+        ERAISE(fd);
+    }
+
+    ret = fd;
 
 done:
     return ret;
@@ -4865,7 +4893,15 @@ static long _syscall(void* args_)
         case SYS_signalfd4:
             break;
         case SYS_eventfd2:
-            break;
+        {
+            unsigned int initval = (unsigned int)x1;
+            int flags = (int)x2;
+
+            _strace(n, "initval=%u flags=%d", initval, flags);
+
+            long ret = myst_syscall_eventfd(initval, flags);
+            BREAK(_return(n, ret));
+        }
         case SYS_epoll_create1:
         {
             int flags = (int)x1;
