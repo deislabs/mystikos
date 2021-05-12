@@ -11,6 +11,7 @@
 
 #include <myst/defs.h>
 #include <myst/epolldev.h>
+#include <myst/eventfddev.h>
 #include <myst/fs.h>
 #include <myst/inotifydev.h>
 #include <myst/pipedev.h>
@@ -29,6 +30,7 @@ typedef enum myst_fdtable_type
     MYST_FDTABLE_TYPE_SOCK,
     MYST_FDTABLE_TYPE_EPOLL,
     MYST_FDTABLE_TYPE_INOTIFY,
+    MYST_FDTABLE_TYPE_EVENTFD,
 } myst_fdtable_type_t;
 
 typedef struct myst_fdtable_entry
@@ -140,6 +142,16 @@ MYST_INLINE int myst_fdtable_get_inotify(
 {
     const myst_fdtable_type_t type = MYST_FDTABLE_TYPE_INOTIFY;
     return myst_fdtable_get(fdtable, fd, type, (void**)device, (void**)inotify);
+}
+
+MYST_INLINE int myst_fdtable_get_eventfd(
+    myst_fdtable_t* fdtable,
+    int fd,
+    myst_eventfddev_t** device,
+    myst_eventfd_t** eventfd)
+{
+    const myst_fdtable_type_t type = MYST_FDTABLE_TYPE_EVENTFD;
+    return myst_fdtable_get(fdtable, fd, type, (void**)device, (void**)eventfd);
 }
 
 int myst_fdtable_get_any(

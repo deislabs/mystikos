@@ -480,6 +480,8 @@ static const char* _type_name(myst_fdtable_type_t type)
             return "epoll";
         case MYST_FDTABLE_TYPE_INOTIFY:
             return "inotify";
+        case MYST_FDTABLE_TYPE_EVENTFD:
+            return "eventfd";
         case MYST_FDTABLE_TYPE_NONE:
             return "none";
     }
