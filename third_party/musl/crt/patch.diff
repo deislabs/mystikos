@@ -326,7 +326,7 @@ index cbabde47..4f94bc39 100644
  
  #endif
 diff --git a/src/internal/pthread_impl.h b/src/internal/pthread_impl.h
-index 5742dfc5..316a682f 100644
+index 5742dfc5..7951a659 100644
 --- a/src/internal/pthread_impl.h
 +++ b/src/internal/pthread_impl.h
 @@ -75,7 +75,7 @@ struct __timer {
@@ -379,7 +379,7 @@ index 5742dfc5..316a682f 100644
 +    // as zero.
 +
 +    /* convert PTHREAD_MUTEX_ADAPTIVE_NP (3) to PTHREAD_MUTEX_NORMAL (0) */
-+    m->__u.__i[0] | ((m->__u.__i[4] == 3) ? 0 : m->__u.__i[4]);
++    return m->__u.__i[0] | ((m->__u.__i[4] == 3) ? 0 : m->__u.__i[4]);
 +}
 +
 +static __inline__ int _m_set_type(pthread_mutex_t* m, int type)
