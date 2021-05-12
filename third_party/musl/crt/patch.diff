@@ -325,6 +325,71 @@ index cbabde47..4f94bc39 100644
 +size_t __strftime_l(char *restrict, size_t, const char *restrict, const struct tm *restrict, locale_t);
  
  #endif
+diff --git a/src/internal/pthread_impl.h b/src/internal/pthread_impl.h
+index 5742dfc5..316a682f 100644
+--- a/src/internal/pthread_impl.h
++++ b/src/internal/pthread_impl.h
+@@ -75,7 +75,7 @@ struct __timer {
+ #define _a_sched __u.__i[3*__SU+1]
+ #define _a_policy __u.__i[3*__SU+2]
+ #define _a_prio __u.__i[3*__SU+3]
+-#define _m_type __u.__i[0]
++//#define _m_type __u.__i[0]
+ #define _m_lock __u.__vi[1]
+ #define _m_waiters __u.__vi[2]
+ #define _m_prev __u.__p[3]
+@@ -98,6 +98,51 @@ struct __timer {
+ #define _b_waiters2 __u.__vi[4]
+ #define _b_inst __u.__p[3]
+ 
++static __inline__ int _m_get_type(pthread_mutex_t* m)
++{
++    // The mutex type is given by or-ing the first and fifth 32-bit words of
++    // the mutex. The type is either set statically by a structure initializer
++    // or dynamically by pthread_mutex_init(). There are three cases:
++    //
++    //     1. The mutex is statically initialized by glibc, where the fifth
++    //        word contains the mutex type and the first word is zero.
++    //     2. The mutex is statically initialized by musl libc, where the
++    //        first word contains the mutex type and the fifth word is zero.
++    //     3. The mutex is dynamically initialized during pthread_mutex_init(),
++    //        where the first word contains the type and the fifth word is zero.
++    //
++    // Static initialization examples:
++    //
++    //     1. PTHREAD_MUTEX_INITIALIZER compiled with musl libc
++    //            m->__u.__i[0] is zero
++    //            m->__u.__i[4] is zero
++    //     2. PTHREAD_MUTEX_INITIALIZER compiled with glibc
++    //            m->__u.__i[0] is zero
++    //            m->__u.__i[4] contains PTHREAD_MUTEX_NORMAL (0)
++    //     3. PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP compiled with glibc
++    //            m->__u.__i[0] is zero
++    //            m->__u.__i[4] contains PTHREAD_MUTEX_RECURSIVE (1)
++    //     4. PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP compiled with glibc
++    //            m->__u.__i[0] is zero
++    //            m->__u.__i[4] contains PTHREAD_MUTEX_ERRORCHECK (2)
++    //     5. PTHREAD_ADAPTIVE_MUTEX_INITIALIZER_NP compiled with glibc
++    //            m->__u.__i[0] is zero
++    //            m->__u.__i[4] contains PTHREAD_MUTEX_ADAPTIVE_NP (3)
++    //
++    // Note: must libc does not support PTHREAD_MUTEX_ADAPTIVE_NP.
++    //
++    // Note: that musl libc never uses the fourth and fifth words and keeps them
++    // as zero.
++
++    /* convert PTHREAD_MUTEX_ADAPTIVE_NP (3) to PTHREAD_MUTEX_NORMAL (0) */
++    m->__u.__i[0] | ((m->__u.__i[4] == 3) ? 0 : m->__u.__i[4]);
++}
++
++static __inline__ int _m_set_type(pthread_mutex_t* m, int type)
++{
++    m->__u.__i[0] = type;
++}
++
+ #include "pthread_arch.h"
+ 
+ #ifndef CANARY
 diff --git a/src/linux/epoll.c b/src/linux/epoll.c
 index deff5b10..fd66b82a 100644
 --- a/src/linux/epoll.c
@@ -432,6 +497,52 @@ index be80c8ea..afc8d160 100644
  int __clone(int (*func)(void *), void *stack, int flags, void *arg, ...)
  {
  	return -ENOSYS;
+diff --git a/src/thread/mtx_init.c b/src/thread/mtx_init.c
+index 4826f76b..b0d02ec4 100644
+--- a/src/thread/mtx_init.c
++++ b/src/thread/mtx_init.c
+@@ -3,8 +3,12 @@
+ 
+ int mtx_init(mtx_t *m, int type)
+ {
+-	*m = (mtx_t){
+-		._m_type = ((type&mtx_recursive) ? PTHREAD_MUTEX_RECURSIVE : PTHREAD_MUTEX_NORMAL),
+-	};
++	*m = (mtx_t){0};
++
++        if ((type & mtx_recursive))
++            _m_set_type((pthread_mutex_t*)m, PTHREAD_MUTEX_RECURSIVE);
++        else
++            _m_set_type((pthread_mutex_t*)m, PTHREAD_MUTEX_NORMAL);
++
+ 	return thrd_success;
+ }
+diff --git a/src/thread/mtx_lock.c b/src/thread/mtx_lock.c
+index 5c2415c1..823994fc 100644
+--- a/src/thread/mtx_lock.c
++++ b/src/thread/mtx_lock.c
+@@ -3,7 +3,7 @@
+ 
+ int mtx_lock(mtx_t *m)
+ {
+-	if (m->_m_type == PTHREAD_MUTEX_NORMAL && !a_cas(&m->_m_lock, 0, EBUSY))
++	if (_m_get_type((pthread_mutex_t*)m) == PTHREAD_MUTEX_NORMAL && !a_cas(&m->_m_lock, 0, EBUSY))
+ 		return thrd_success;
+ 	/* Calling mtx_timedlock with a null pointer is an extension.
+ 	 * It is convenient, here to avoid duplication of the logic
+diff --git a/src/thread/mtx_trylock.c b/src/thread/mtx_trylock.c
+index 40a8b8c2..e57d1183 100644
+--- a/src/thread/mtx_trylock.c
++++ b/src/thread/mtx_trylock.c
+@@ -3,7 +3,7 @@
+ 
+ int mtx_trylock(mtx_t *m)
+ {
+-	if (m->_m_type == PTHREAD_MUTEX_NORMAL)
++	if (_m_get_type((pthread_mutex_t*)m) == PTHREAD_MUTEX_NORMAL)
+ 		return (a_cas(&m->_m_lock, 0, EBUSY) & EBUSY) ? thrd_busy : thrd_success;
+ 
+ 	int ret = __pthread_mutex_trylock((pthread_mutex_t *)m);
 diff --git a/src/thread/pthread_cancel.c b/src/thread/pthread_cancel.c
 index 2f9d5e97..e4d3d000 100644
 --- a/src/thread/pthread_cancel.c
@@ -473,6 +584,143 @@ index 2f9d5e97..e4d3d000 100644
 +	__cancel();
  	__syscall(SYS_tkill, self->tid, SIGCANCEL);
  }
+ 
+diff --git a/src/thread/pthread_cond_timedwait.c b/src/thread/pthread_cond_timedwait.c
+index d1501240..0b0a919d 100644
+--- a/src/thread/pthread_cond_timedwait.c
++++ b/src/thread/pthread_cond_timedwait.c
+@@ -65,7 +65,7 @@ int __pthread_cond_timedwait(pthread_cond_t *restrict c, pthread_mutex_t *restri
+ 	int e, seq, clock = c->_c_clock, cs, shared=0, oldstate, tmp;
+ 	volatile int *fut;
+ 
+-	if ((m->_m_type&15) && (m->_m_lock&INT_MAX) != __pthread_self()->tid)
++	if ((_m_get_type(m)&15) && (m->_m_lock&INT_MAX) != __pthread_self()->tid)
+ 		return EPERM;
+ 
+ 	if (ts && ts->tv_nsec >= 1000000000UL)
+@@ -151,7 +151,7 @@ relock:
+ 	/* Unlock the barrier that's holding back the next waiter, and
+ 	 * either wake it or requeue it to the mutex. */
+ 	if (node.prev)
+-		unlock_requeue(&node.prev->barrier, &m->_m_lock, m->_m_type & 128);
++		unlock_requeue(&node.prev->barrier, &m->_m_lock, _m_get_type(m) & 128);
+ 	else
+ 		a_dec(&m->_m_waiters);
+ 
+diff --git a/src/thread/pthread_create.c b/src/thread/pthread_create.c
+index 5f491092..2dbb2de1 100644
+--- a/src/thread/pthread_create.c
++++ b/src/thread/pthread_create.c
+@@ -108,7 +108,7 @@ _Noreturn void __pthread_exit(void *result)
+ 		pthread_mutex_t *m = (void *)((char *)rp
+ 			- offsetof(pthread_mutex_t, _m_next));
+ 		int waiters = m->_m_waiters;
+-		int priv = (m->_m_type & 128) ^ 128;
++		int priv = (_m_get_type(m) & 128) ^ 128;
+ 		self->robust_list.pending = rp;
+ 		self->robust_list.head = *rp;
+ 		int cont = a_swap(&m->_m_lock, 0x40000000);
+diff --git a/src/thread/pthread_mutex_consistent.c b/src/thread/pthread_mutex_consistent.c
+index 27c74e5b..efadeec8 100644
+--- a/src/thread/pthread_mutex_consistent.c
++++ b/src/thread/pthread_mutex_consistent.c
+@@ -5,7 +5,7 @@ int pthread_mutex_consistent(pthread_mutex_t *m)
+ {
+ 	int old = m->_m_lock;
+ 	int own = old & 0x3fffffff;
+-	if (!(m->_m_type & 4) || !own || !(old & 0x40000000))
++	if (!(_m_get_type(m) & 4) || !own || !(old & 0x40000000))
+ 		return EINVAL;
+ 	if (own != __pthread_self()->tid)
+ 		return EPERM;
+diff --git a/src/thread/pthread_mutex_init.c b/src/thread/pthread_mutex_init.c
+index acf45a74..05108e52 100644
+--- a/src/thread/pthread_mutex_init.c
++++ b/src/thread/pthread_mutex_init.c
+@@ -3,6 +3,6 @@
+ int pthread_mutex_init(pthread_mutex_t *restrict m, const pthread_mutexattr_t *restrict a)
+ {
+ 	*m = (pthread_mutex_t){0};
+-	if (a) m->_m_type = a->__attr;
++	if (a) _m_set_type(m, a->__attr);
+ 	return 0;
+ }
+diff --git a/src/thread/pthread_mutex_lock.c b/src/thread/pthread_mutex_lock.c
+index 638d4b86..6562793a 100644
+--- a/src/thread/pthread_mutex_lock.c
++++ b/src/thread/pthread_mutex_lock.c
+@@ -2,7 +2,7 @@
+ 
+ int __pthread_mutex_lock(pthread_mutex_t *m)
+ {
+-	if ((m->_m_type&15) == PTHREAD_MUTEX_NORMAL
++	if ((_m_get_type(m)&15) == PTHREAD_MUTEX_NORMAL
+ 	    && !a_cas(&m->_m_lock, 0, EBUSY))
+ 		return 0;
+ 
+diff --git a/src/thread/pthread_mutex_timedlock.c b/src/thread/pthread_mutex_timedlock.c
+index 9279fc54..243cb6c7 100644
+--- a/src/thread/pthread_mutex_timedlock.c
++++ b/src/thread/pthread_mutex_timedlock.c
+@@ -20,7 +20,7 @@ static int __futex4(volatile void *addr, int op, int val, const struct timespec
+ 
+ static int pthread_mutex_timedlock_pi(pthread_mutex_t *restrict m, const struct timespec *restrict at)
+ {
+-	int type = m->_m_type;
++	int type = _m_get_type(m);
+ 	int priv = (type & 128) ^ 128;
+ 	pthread_t self = __pthread_self();
+ 	int e;
+@@ -55,11 +55,11 @@ static int pthread_mutex_timedlock_pi(pthread_mutex_t *restrict m, const struct
+ 
+ int __pthread_mutex_timedlock(pthread_mutex_t *restrict m, const struct timespec *restrict at)
+ {
+-	if ((m->_m_type&15) == PTHREAD_MUTEX_NORMAL
++	if ((_m_get_type(m)&15) == PTHREAD_MUTEX_NORMAL
+ 	    && !a_cas(&m->_m_lock, 0, EBUSY))
+ 		return 0;
+ 
+-	int type = m->_m_type;
++	int type = _m_get_type(m);
+ 	int r, t, priv = (type & 128) ^ 128;
+ 
+ 	r = __pthread_mutex_trylock(m);
+diff --git a/src/thread/pthread_mutex_trylock.c b/src/thread/pthread_mutex_trylock.c
+index a24e7c58..9bac7411 100644
+--- a/src/thread/pthread_mutex_trylock.c
++++ b/src/thread/pthread_mutex_trylock.c
+@@ -3,7 +3,7 @@
+ int __pthread_mutex_trylock_owner(pthread_mutex_t *m)
+ {
+ 	int old, own;
+-	int type = m->_m_type;
++	int type = _m_get_type(m);
+ 	pthread_t self = __pthread_self();
+ 	int tid = self->tid;
+ 
+@@ -66,7 +66,7 @@ success:
+ 
+ int __pthread_mutex_trylock(pthread_mutex_t *m)
+ {
+-	if ((m->_m_type&15) == PTHREAD_MUTEX_NORMAL)
++	if ((_m_get_type(m)&15) == PTHREAD_MUTEX_NORMAL)
+ 		return a_cas(&m->_m_lock, 0, EBUSY) & EBUSY;
+ 	return __pthread_mutex_trylock_owner(m);
+ }
+diff --git a/src/thread/pthread_mutex_unlock.c b/src/thread/pthread_mutex_unlock.c
+index b66423e6..d9dfd608 100644
+--- a/src/thread/pthread_mutex_unlock.c
++++ b/src/thread/pthread_mutex_unlock.c
+@@ -5,8 +5,8 @@ int __pthread_mutex_unlock(pthread_mutex_t *m)
+ 	pthread_t self;
+ 	int waiters = m->_m_waiters;
+ 	int cont;
+-	int type = m->_m_type & 15;
+-	int priv = (m->_m_type & 128) ^ 128;
++	int type = _m_get_type(m) & 15;
++	int priv = (_m_get_type(m) & 128) ^ 128;
+ 	int new = 0;
+ 	int old;
  
 diff --git a/src/thread/x86_64/__set_thread_area.s b/src/thread/x86_64/__set_thread_area.s
 deleted file mode 100644

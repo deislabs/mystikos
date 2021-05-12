@@ -102,6 +102,7 @@ DIRS += devfs
 DIRS += callonce
 DIRS += syscall_exception
 DIRS += dotnet-proc-maps
+DIRS += mutex
 #DIRS += mprotect
 DIRS += eventfd
 DIRS += polleventfd
