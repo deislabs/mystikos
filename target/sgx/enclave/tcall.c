@@ -585,6 +585,14 @@ long myst_tcall(long n, long params[6])
             return myst_gcov(func, gcov_params);
         }
 #endif
+        case MYST_TCALL_CPUINFO_SIZE:
+        {
+            return myst_tcall_cpuinfo_size();
+        }
+        case MYST_TCALL_GET_CPUINFO:
+        {
+            return myst_tcall_get_cpuinfo((void*)x1, (size_t)x2);
+        }
         case SYS_read:
         case SYS_write:
         case SYS_close:

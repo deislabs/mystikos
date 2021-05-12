@@ -93,6 +93,16 @@ void myst_cpuid_ocall(
     __cpuid_count(leaf, subleaf, *rax, *rbx, *rcx, *rdx);
 }
 
+int myst_cpuinfo_size_ocall()
+{
+    return myst_tcall_cpuinfo_size();
+}
+
+int myst_get_cpuinfo_ocall(char* buf, size_t size)
+{
+    return myst_tcall_get_cpuinfo(buf, size);
+}
+
 OE_EXPORT
 OE_NEVER_INLINE
 void oe_notify_debugger_library_load(oe_debug_image_t* image)
