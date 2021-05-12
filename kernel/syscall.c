@@ -1724,11 +1724,11 @@ long myst_syscall_fchdir(int fd)
     ECHECK((*fs->fs_realpath)(
         fs, file, locals->realpath, sizeof(locals->realpath)));
 
-    myst_spin_lock(&process_thread->main.cwd_lock);
-
     char* tmp = strdup(locals->realpath);
     if (tmp == NULL)
         ERAISE(-ENOMEM);
+
+    myst_spin_lock(&process_thread->main.cwd_lock);
     free(process_thread->main.cwd);
     process_thread->main.cwd = tmp;
 
