@@ -250,3 +250,15 @@ long myst_gcov(const char* func, long gcov_params[6])
     return myst_tcall(MYST_TCALL_GCOV, params);
 }
 #endif
+
+int myst_tcall_cpuinfo_size(void)
+{
+    long params[6] = {0};
+    return myst_tcall(MYST_TCALL_CPUINFO_SIZE, params);
+}
+
+int myst_tcall_get_cpuinfo(char* data, size_t size)
+{
+    long params[6] = {(long)data, (long)size};
+    return myst_tcall(MYST_TCALL_GET_CPUINFO, params);
+}

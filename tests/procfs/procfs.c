@@ -86,12 +86,26 @@ int test_maps()
     printf("%s\n", buf);
 }
 
+int test_cpuinfo()
+{
+    int fd;
+    char buf[1024];
+
+    fd = open("/proc/cpuinfo", O_RDONLY);
+    assert(fd > 0);
+    while (read(fd, buf, sizeof(buf)))
+        printf("%s", buf);
+
+    close(fd);
+}
+
 int main(int argc, const char* argv[])
 {
     test_meminfo();
     test_self_links(argv[0]);
     test_readonly();
     test_maps();
+    test_cpuinfo();
 
     printf("\n=== passed test (%s)\n", argv[0]);
     return 0;

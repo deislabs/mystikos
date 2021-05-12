@@ -744,6 +744,26 @@ int myst_load_fssig(const char* path, myst_fssig_t* fssig)
     return retval;
 }
 
+int myst_tcall_cpuinfo_size()
+{
+    int retval;
+
+    if (myst_cpuinfo_size_ocall(&retval) != OE_OK)
+        return -EINVAL;
+
+    return retval;
+}
+
+int myst_tcall_get_cpuinfo(char* buf, size_t size)
+{
+    int retval;
+
+    if (myst_get_cpuinfo_ocall(&retval, buf, size) != OE_OK)
+        return -EINVAL;
+
+    return retval;
+}
+
 #define ENCLAVE_PRODUCT_ID 1
 #define ENCLAVE_SECURITY_VERSION 1
 #define ENCLAVE_DEBUG true

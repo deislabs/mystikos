@@ -1381,19 +1381,13 @@ static int _stat(inode_t* inode, struct stat* statbuf)
     int ret = 0;
     struct stat buf;
     off_t rounded;
-    myst_buf_t vbuf = MYST_BUF_INITIALIZER;
     size_t size;
 
     if (!_inode_valid(inode) || !statbuf)
         ERAISE(-EINVAL);
 
-    if (inode->v_type == OPEN)
-    {
-        ECHECK(inode->v_cb.open_cb(&vbuf));
-        size = vbuf.size;
-        ECHECK(myst_round_up_signed(size, BLKSIZE, &rounded));
-    }
-    else if (inode->v_type == RW)
+    // Linux doesn't report size for /proc and /dev virtual files
+    if (inode->v_type)
     {
         size = 0;
     }
@@ -1421,7 +1415,6 @@ static int _stat(inode_t* inode, struct stat* statbuf)
     *statbuf = buf;
 
 done:
-    myst_buf_release(&vbuf);
     return ret;
 }
 

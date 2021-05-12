@@ -15,6 +15,7 @@
 #include <myst/procfs.h>
 
 static myst_fs_t* _procfs;
+static char* _cpuinfo_buf = NULL;
 
 int procfs_setup()
 {
@@ -53,6 +54,9 @@ int procfs_teardown()
         myst_eprintf("failed to release procfs\n");
         return -1;
     }
+
+    /* free cached cpuinfo information */
+    free(_cpuinfo_buf);
 
     return 0;
 }
@@ -189,6 +193,38 @@ done:
     return ret;
 }
 
+static int _cpuinfo_vcallback(myst_buf_t* vbuf)
+{
+    int ret = 0;
+
+    if (!vbuf)
+        ERAISE(-EINVAL);
+
+    /* On first call, fetch cpuinfo from host and cache it */
+    if (!_cpuinfo_buf)
+    {
+        int size = myst_tcall_cpuinfo_size();
+
+        if (size <= 0)
+            ERAISE(-EINVAL);
+
+        // Linux x86 arch does not null terminate /proc/cpuinfo,
+        // allocate extra byte for null termination character.
+        if (!(_cpuinfo_buf = malloc(size + 1)))
+            ERAISE(-ENOMEM);
+
+        ECHECK(myst_tcall_get_cpuinfo(_cpuinfo_buf, size));
+        _cpuinfo_buf[size] = 0;
+    }
+
+    myst_buf_clear(vbuf);
+    ECHECK(myst_buf_append(vbuf, _cpuinfo_buf, strlen(_cpuinfo_buf) + 1));
+
+done:
+
+    return ret;
+}
+
 int create_proc_root_entries()
 {
     int ret = 0;
@@ -199,6 +235,14 @@ int create_proc_root_entries()
         v_cb.open_cb = _meminfo_vcallback;
         ECHECK(myst_create_virtual_file(
             _procfs, "/meminfo", S_IFREG | S_IRUSR, v_cb, OPEN));
+    }
+
+    /* Create /proc/cpuinfo */
+    {
+        myst_vcallback_t v_cb;
+        v_cb.open_cb = _cpuinfo_vcallback;
+        ECHECK(myst_create_virtual_file(
+            _procfs, "/cpuinfo", S_IFREG | S_IRUSR, v_cb, OPEN));
     }
 
     /* Create /proc/self */

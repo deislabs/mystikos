@@ -16,6 +16,7 @@ SOURCES += ../shared/poll.c
 SOURCES += ../shared/luks.c
 SOURCES += ../shared/sha256.c
 SOURCES += ../shared/verify.c
+SOURCES += ../shared/cpuinfo.c
 
 CFLAGS = $(DEFAULT_CFLAGS)
 
