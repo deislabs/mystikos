@@ -474,33 +474,41 @@ index 27c74e5b..56bba8d8 100644
  	int own = old & 0x3fffffff;
  	if (!(m->_m_type & 4) || !own || !(old & 0x40000000))
 diff --git a/src/thread/pthread_mutex_lock.c b/src/thread/pthread_mutex_lock.c
-index 638d4b86..955f4805 100644
+index 638d4b86..735d8046 100644
 --- a/src/thread/pthread_mutex_lock.c
 +++ b/src/thread/pthread_mutex_lock.c
-@@ -1,7 +1,32 @@
+@@ -1,7 +1,40 @@
 +#include <string.h>
  #include "pthread_impl.h"
  
-+static unsigned char _static_recursive[] =
-+{
-+    0,0,0,0,
-+    0,0,0,0,
-+    0,0,0,0,
-+    0,0,0,0,
-+    1,0,0,0,
-+    0,0,0,0,
-+    0,0,0,0,
-+    0,0,0,0,
-+    0,0,0,0,
-+    0,0,0,0,
-+};
-+
 +void __fixup_recursive_mutex(pthread_mutex_t *m)
 +{
-+    const unsigned char* p = (const unsigned char*)m;
++    static pthread_spinlock_t s;
 +
-+    if (p[16] && memcmp(_static_recursive, m, sizeof(*m)) == 0)
-+        m->_m_type = PTHREAD_MUTEX_RECURSIVE;
++    pthread_spin_lock(&s);
++
++    if(m)
++    {
++        pthread_mutex_t copy = *m;
++        const unsigned int* p = (const unsigned int*)&copy;
++
++        /* layout of PTHREAD_MUTEX_RECURSIVE_INITIALIZER_NP */
++        if (p[4] == 1 &&
++            p[0] == 0 &&
++            p[1] == 0 &&
++            p[2] == 0 &&
++            p[3] == 0 &&
++            p[5] == 0 &&
++            p[6] == 0 &&
++            p[7] == 0 &&
++            p[8] == 0 &&
++            p[9] == 0)
++        {
++            m->_m_type = PTHREAD_MUTEX_RECURSIVE;
++        }
++    }
++
++    pthread_spin_unlock(&s);
 +}
 +
  int __pthread_mutex_lock(pthread_mutex_t *m)
