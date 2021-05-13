@@ -9,41 +9,46 @@
 
 function run_tests() {
 
-sudo rm *.output
+  sudo rm *.output
 
-FILE=$1
+  FILE=$1
 
-while read test; do
-  echo "$test"
-  OUTPUT=$(2>&1 sudo timeout 3 make one TEST=$test FS=$FS )
-  echo $OUTPUT >> temp_$FILE.output
-  HAS_UNHANDLED_SYSCALL=$(2>&1 sudo timeout 3 make one TEST=$test FS=$FS | grep "unhandled")
-  if [ -z "$HAS_UNHANDLED_SYSCALL" ]
-  then
-    # No unhandled syscall
-    PASSED=$(echo "$OUTPUT" | grep TPASS) 
-    FAILED=$(echo "$OUTPUT" | grep TFAIL)
-    BROKEN=$(echo "$OUTPUT" | grep TBROK)
-    FAIL_ENCLAVE=$(echo "$OUTPUT" | grep Error)
-    TIMED_OUT=$(echo "$OUTPUT" | grep -F '[one] Terminated')
-    if [[ $PASSED && -z $FAILED && -z $BROKEN && -z $FAIL_ENCLAVE && -z $TIMED_OUT ]]  
+  echo "Starting run for FS= $FS TEST_FILE= $FILE"
+
+  while read test; do
+    echo "$test"
+    OUTPUT=$(2>&1 sudo timeout 3 make one TEST=$test FS=$FS )
+    echo $OUTPUT >> temp_$FILE.output
+    HAS_UNHANDLED_SYSCALL=$(2>&1 sudo timeout 3 make one TEST=$test FS=$FS | grep "unhandled")
+    if [ -z "$HAS_UNHANDLED_SYSCALL" ]
     then
-      echo $test >> temp_passed.output
+      # No unhandled syscall
+      PASSED=$(echo "$OUTPUT" | grep TPASS) 
+      FAILED=$(echo "$OUTPUT" | grep TFAIL)
+      BROKEN=$(echo "$OUTPUT" | grep TBROK)
+      FAIL_ENCLAVE=$(echo "$OUTPUT" | grep Error)
+      TIMED_OUT=$(echo "$OUTPUT" | grep -F '[one] Terminated')
+      if [[ $PASSED && -z $FAILED && -z $BROKEN && -z $FAIL_ENCLAVE && -z $TIMED_OUT ]]  
+      then
+        echo $test >> temp_passed.output
+      else
+        echo $test >> temp_other_errors.output
+      fi
     else
-      echo $test >> temp_other_errors.output
+      failing_syscall=${HAS_UNHANDLED_SYSCALL##*:} # retain the part after the last colon, i.e the syscall name
+      echo "$test: $failing_syscall" >> temp_unhandled_syscalls.output
     fi
-  else
-    echo "$test: $HAS_UNHANDLED_SYSCALL" >> temp_unhandled_syscalls.output
-  fi
-  sudo rm -rf /tmp/myst*
-done <$FILE
+    sudo rm -rf /tmp/myst*
+  done <$FILE
 
-awk '!seen[$9]++' temp_unhandled_syscalls.output | awk '{print $9}' | sort > unhandled_syscalls.txt
-cat temp_unhandled_syscalls.output > "$FS"_tests_unhandled_syscalls.txt
-sort temp_other_errors.output | awk '!seen[$0]++' > "$FS"_tests_other_errors.txt
-cat temp_passed.output > "$FS"_tests_passed.txt
+  awk '!seen[$9]++' temp_unhandled_syscalls.output | awk '{print $9}' | sort > unhandled_syscalls.txt
+  cat temp_unhandled_syscalls.output > "$FS"_tests_unhandled_syscalls.txt
+  sort temp_other_errors.output | awk '!seen[$0]++' > "$FS"_tests_other_errors.txt
+  cat temp_passed.output > "$FS"_tests_passed.txt
 
-grep -Fxf "$FS"_tests_passed.txt fstests > "$FS"_fs_tests_passed.txt
+  grep -Fxf "$FS"_tests_passed.txt fstests > "$FS"_fs_tests_passed.txt
+  
+  echo "========================================================="
 }
 
 function show_stats() {
