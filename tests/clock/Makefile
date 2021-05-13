@@ -5,8 +5,8 @@ APPDIR = appdir
 CFLAGS = -fPIC
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 
-ifdef MYST_ENABLE_GCOV2
-CFLAGS += -DMYST_ENABLE_GCOV2
+ifdef MYST_ENABLE_GCOV
+CFLAGS += -DMYST_ENABLE_GCOV
 endif
 
 sec = $(shell date +%s)

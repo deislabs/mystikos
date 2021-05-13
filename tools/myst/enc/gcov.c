@@ -13,7 +13,7 @@
 
 #include "myst_t.h"
 
-#ifdef MYST_ENABLE_GCOV2
+#ifdef MYST_ENABLE_GCOV
 
 #define MYST_GCOV_STDERR ((FILE*)0x67001b41aafb4224)
 
@@ -514,4 +514,4 @@ long myst_gcov(const char* func, long params[6])
     return -1;
 }
 
-#endif /* MYST_ENABLE_GCOV2 */
+#endif /* MYST_ENABLE_GCOV */

@@ -4,7 +4,9 @@ variables:
     value: $(Build.SourcesDirectory)/.azure_pipelines/scripts
   - name: MYST_NIGHTLY_RUN_DASHBOARD
     value: 'https://openenclave.visualstudio.com/ACC-Services/_dashboards/dashboard/90072dae-a6fb-41f2-93ec-176f04066da6'
-
+  - name: MYST_ENABLE_GCOV
+    value: 1
+  
 # nightly pipeline will be triggered in pipeline schedule settings.
 
 trigger: none
@@ -34,11 +36,11 @@ jobs:
 
     # build all source files
     - script: |
-        make clean && sudo rm -rf `git ls-files --others --directory` && make -j
+        sudo rm -rf `git ls-files --others --directory` && make -j
       displayName: 'build repo source'
       workingDirectory: $(Build.SourcesDirectory)
       env:
-        MYST_ENABLE_GCOV: 1
+        MYST_NIGHTLY_TEST: 1
 
     # run all tests
     - script: |
@@ -48,7 +50,7 @@ jobs:
       enabled: true
       workingDirectory: $(Build.SourcesDirectory)
       env:
-        MYST_ENABLE_GCOV: 1
+        MYST_NIGHTLY_TEST: 1
 
     # run solution tests
     - script: |
@@ -58,7 +60,6 @@ jobs:
       enabled: true
       workingDirectory: $(Build.SourcesDirectory)
       env:
-        MYST_ENABLE_GCOV: 1
         # by default sql solution test will run on US EAST DB Node
         DB_NAME: $(DB_NAME_USEAST)
         DB_SERVER_NAME: $(DB_SERVER_NAME_USEAST)
@@ -87,12 +88,18 @@ jobs:
         codeCoverageTool: 'Cobertura'
         summaryFileLocation: $(Build.SourcesDirectory)/lcov.xml
         #failIfCoverageEmpty: false # Optional
-    
-    - task: PublishPipelineArtifact@1
-      displayName: "Archive Reports(Download)"
-      inputs:
-        targetPath: $(Build.SourcesDirectory)/lcov.info
-        artifactName: lcov.info
+          
+    - script: |
+        make clean -C $(Build.SourcesDirectory)/tests
+        make clean -C $(Build.SourcesDirectory)/solutions
+        sudo rm -rf $(Build.SourcesDirectory)/build/tests
+        sudo rm -rf `git ls-files --others --directory`
+        docker system prune -f
+      condition:  always()
+      displayName: 'Cleanup test directories'
+      continueOnError: true
+      enabled: true
+      workingDirectory: $(Build.SourcesDirectory)
 
     # if any previous step(s) not succeed, fail the job
     - script: |
@@ -100,6 +107,13 @@ jobs:
         exit 1
       displayName: 'Error(s) Check'
       condition: not(eq(variables['Agent.JobStatus'], 'succeeded'))
+    
+# Skip publishing artifact since it is not required at the moment
+# - task: PublishPipelineArtifact@1
+#   displayName: "Archive Reports(Download)"
+#   inputs:
+#     targetPath: $(Build.SourcesDirectory)/lcov.info
+#     artifactName: lcov.info
 
 # current ADO repo MSAzure/One does not have required plugin and 
 # SMTP service configured. Temporarily comment out all email related 

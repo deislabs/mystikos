@@ -1,18 +1,13 @@
 #!/bin/bash
 
 # This script generates the code coverage data for myst project. 
-# You must run unit tests, libc tests, and samples with MYST_ENABLE_GCOV=1 first
+# You must run tests with MYST_ENABLE_GCOV=1 to populate the required files
 # This script does these steps:
-# 1. Creates gcov_pot folder under project root folder
-# 2. Copies crt, utils, host, kernel and libc (third_party/enclave-musl/musl) *.gcno files
-# 3. Copies *.c and *.h source files
-# 4. Finds all generated ramfs/ folders under unit tests, libc tests and solutions
-# 5. For each ramfs/ folder it copies *.gcda files into gcov_pot and generates info files 1.info, 2.info, ...
-# 6. Generates consolidated total_cov.info from individual info files
-# 7. From info files it generates html code coverage report into gcov_pot/myst_cc/
-# 8. Generates myst_cc.zip file from gcov_pot/myst_cc/
-#
-# This script eventualy generates myst_cc.zip which has zipped HTML code coverage report and total_cov.info
+# 1. Creates lcov folder under project root folder
+# 2. Copies crt, kernel, tools *.gcno and *.gcda files to the same location as their *.c and *.h files
+# 3. Copies *.c and *.h source files as needed (only ones whos location is redefined in their Makefile)
+# 4. Generates lcov.info from all the files into the $MYST_ROOT folder
+# 5. From info files it generates html code coverage report into ROOT/lcov
 
 MYST_ROOT="$(realpath "$(dirname "$0")/..")"
 
@@ -27,9 +22,6 @@ rm $(find "${MYST_ROOT}"/build/obj/ -name "*.gc*")
 
 lcov -c -d . -o "${MYST_ROOT}"/lcov.info
 
-# change the info file to replace some instances of tools/blah with tools/myst
 rm -rf "${MYST_ROOT}"/lcov
 mkdir "${MYST_ROOT}"/lcov
 genhtml -o "${MYST_ROOT}"/lcov "${MYST_ROOT}"/lcov.info
-
-echo "Copied crt,host,kernel,target,tools,utils, gcno & gcda files"

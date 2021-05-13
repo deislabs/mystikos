@@ -4,8 +4,8 @@ include $(TOP)/defs.mak
 
 PROGRAM = myst
 
-ifdef MYST_ENABLE_GCOV2
-DEFINES += -DMYST_ENABLE_GCOV2
+ifdef MYST_ENABLE_GCOV
+DEFINES += -DMYST_ENABLE_GCOV
 endif
 
 SOURCES =
@@ -19,10 +19,6 @@ INCLUDES = $(OEHOST_INCLUDES) -I$(SUBOBJDIR) -I$(INCDIR) -I../
 CFLAGS = $(OEHOST_CFLAGS)
 
 ifdef MYST_ENABLE_GCOV
-CFLAGS += $(GCOV_CFLAGS)
-endif
-
-ifdef MYST_ENABLE_GCOV2
 CFLAGS += -fprofile-arcs -ftest-coverage
 endif
 
@@ -38,7 +34,7 @@ LIBS += $(LIBDIR)/libmysttargetsgxhost.a
 LIBS += $(LIBDIR)/libmystutils.a
 LIBS += $(MBEDTLS_LIBS)
 
-ifdef MYST_ENABLE_GCOV2
+ifdef MYST_ENABLE_GCOV
 LIBS += $(LIBDIR)/libmystgcovserver.a
 endif
 

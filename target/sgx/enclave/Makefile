@@ -5,8 +5,8 @@ SUBLIBDIR=$(LIBDIR)
 
 ARCHIVE = libmysttargetsgxenclave.a
 
-ifdef MYST_ENABLE_GCOV2
-DEFINES += -DMYST_ENABLE_GCOV2
+ifdef MYST_ENABLE_GCOV
+DEFINES += -DMYST_ENABLE_GCOV
 endif
 
 SOURCES += $(wildcard *.c)

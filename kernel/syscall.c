@@ -469,7 +469,9 @@ static pair_t _pairs[] = {
     {SYS_myst_oe_verify_attestation_certificate,
      "SYS_myst_oe_verify_attestation_certificate"},
     {SYS_myst_oe_result_str, "SYS_myst_oe_result_str"},
+#ifdef MYST_ENABLE_GCOV
     {SYS_myst_gcov, "SYS_myst_gcov"},
+#endif
 };
 
 // The kernel should eventually use _bad_addr() to check all incoming addresses
@@ -3063,6 +3065,7 @@ static long _syscall(void* args_)
             _strace(n, NULL);
             BREAK(_return(n, myst_tcall_poll_wake()));
         }
+#ifdef MYST_ENABLE_GCOV
         case SYS_myst_gcov:
         {
             const char* func = (const char*)x1;
@@ -3073,6 +3076,7 @@ static long _syscall(void* args_)
             long ret = myst_gcov(func, gcov_params);
             BREAK(_return(n, ret));
         }
+#endif
         case SYS_read:
         {
             int fd = (int)x1;
