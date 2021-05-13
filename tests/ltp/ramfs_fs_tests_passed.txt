@@ -14,6 +14,7 @@
 /ltp/testcases/kernel/syscalls/dup3/dup3_01
 /ltp/testcases/kernel/syscalls/dup3/dup3_02
 /ltp/testcases/kernel/syscalls/epoll_wait/epoll_wait01
+/ltp/testcases/kernel/syscalls/faccessat/faccessat01
 /ltp/testcases/kernel/syscalls/fallocate/fallocate03
 /ltp/testcases/kernel/syscalls/fchdir/fchdir01
 /ltp/testcases/kernel/syscalls/fchdir/fchdir02
@@ -83,5 +84,3 @@
 /ltp/testcases/kernel/syscalls/truncate/truncate02_64
 /ltp/testcases/kernel/syscalls/write/write01
 /ltp/testcases/kernel/syscalls/write/write02
-/ltp/testcases/kernel/syscalls/faccessat/faccessat01
-

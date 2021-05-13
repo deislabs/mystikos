@@ -418,7 +418,6 @@
 /ltp/testcases/kernel/syscalls/mmap/mmap12
 /ltp/testcases/kernel/syscalls/mmap/mmap13
 /ltp/testcases/kernel/syscalls/mmap/mmap14
-/ltp/testcases/kernel/syscalls/mmap/mmap15
 /ltp/testcases/kernel/syscalls/mmap/mmap16
 /ltp/testcases/kernel/syscalls/mmap/mmap17
 /ltp/testcases/kernel/syscalls/mmap/mmap18
@@ -576,6 +575,8 @@
 /ltp/testcases/kernel/syscalls/send/send02
 /ltp/testcases/kernel/syscalls/sendfile/sendfile03
 /ltp/testcases/kernel/syscalls/sendfile/sendfile03_64
+/ltp/testcases/kernel/syscalls/sendfile/sendfile04
+/ltp/testcases/kernel/syscalls/sendfile/sendfile04_64
 /ltp/testcases/kernel/syscalls/sendfile/sendfile07
 /ltp/testcases/kernel/syscalls/sendfile/sendfile07_64
 /ltp/testcases/kernel/syscalls/sendfile/sendfile09

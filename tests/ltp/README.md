@@ -56,7 +56,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/alarm/alarm07 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/bind/bind01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/bind/bind02 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/bind/bind03 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/bind/bind03 | 1 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/bind/bind04 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/bind/bind05 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/bind/bind06 | 0 | 0 | 0 |
@@ -739,7 +739,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/mmap/mmap12 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/mmap/mmap13 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/mmap/mmap14 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/mmap/mmap15 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/mmap/mmap15 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/mmap/mmap16 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/mmap/mmap17 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/mmap/mmap18 | 0 | 0 | 0 |
