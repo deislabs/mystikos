@@ -1,4 +1,5 @@
 /ltp/testcases/kernel/syscalls/accept4/accept4_01
+/ltp/testcases/kernel/syscalls/bind/bind03
 /ltp/testcases/kernel/syscalls/chdir/chdir04
 /ltp/testcases/kernel/syscalls/chmod/chmod02
 /ltp/testcases/kernel/syscalls/chown/chown01
@@ -16,6 +17,7 @@
 /ltp/testcases/kernel/syscalls/dup/dup04
 /ltp/testcases/kernel/syscalls/dup/dup07
 /ltp/testcases/kernel/syscalls/epoll_wait/epoll_wait01
+/ltp/testcases/kernel/syscalls/faccessat/faccessat01
 /ltp/testcases/kernel/syscalls/fallocate/fallocate03
 /ltp/testcases/kernel/syscalls/fchdir/fchdir01
 /ltp/testcases/kernel/syscalls/fchdir/fchdir02
@@ -93,6 +95,7 @@
 /ltp/testcases/kernel/syscalls/mmap/mmap04
 /ltp/testcases/kernel/syscalls/mmap/mmap09
 /ltp/testcases/kernel/syscalls/mmap/mmap11
+/ltp/testcases/kernel/syscalls/mmap/mmap15
 /ltp/testcases/kernel/syscalls/mremap/mremap01
 /ltp/testcases/kernel/syscalls/mremap/mremap02
 /ltp/testcases/kernel/syscalls/msync/msync01
@@ -216,4 +219,3 @@
 /ltp/testcases/kernel/syscalls/writev/writev02
 /ltp/testcases/kernel/syscalls/write/write01
 /ltp/testcases/kernel/syscalls/write/write02
-/ltp/testcases/kernel/syscalls/faccessat/faccessat01
