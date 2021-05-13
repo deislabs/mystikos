@@ -23,8 +23,4 @@ CFLAGS += -Wstack-usage=512
 
 LDFLAGS = $(DEFAULT_LDFLAGS)
 
-ifdef MYST_ENABLE_GCOV
-CFLAGS += $(GCOV_CFLAGS)
-endif
-
 include $(TOP)/rules.mak

@@ -20,8 +20,8 @@ ifeq ($(MYST_ENABLE_HOSTFS),1)
 DEFINES += -DMYST_ENABLE_HOSTFS
 endif
 
-ifdef MYST_ENABLE_GCOV2
-DEFINES += -DMYST_ENABLE_GCOV2
+ifdef MYST_ENABLE_GCOV
+DEFINES += -DMYST_ENABLE_GCOV
 endif
 
 WARNINGS =
@@ -57,7 +57,7 @@ CFLAGS += $(WARNINGS)
 CFLAGS += -Wno-conversion
 CFLAGS += -Wno-parentheses
 
-ifdef MYST_ENABLE_GCOV2
+ifdef MYST_ENABLE_GCOV
 CFLAGS += -fprofile-arcs -ftest-coverage
 endif
 
@@ -88,7 +88,7 @@ endif
 
 LIBS += $(LIBDIR)/libmystutils.a
 
-ifdef MYST_ENABLE_GCOV2
+ifdef MYST_ENABLE_GCOV
 LIBS += $(LIBDIR)/libmystgcov.a
 LIBS += $(LIBDIR)/libmystgcovclient.a
 endif

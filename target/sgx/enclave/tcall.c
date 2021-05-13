@@ -576,7 +576,7 @@ long myst_tcall(long n, long params[6])
         {
             return myst_load_fssig((const char*)x1, (myst_fssig_t*)x2);
         }
-#ifdef MYST_ENABLE_GCOV2
+#ifdef MYST_ENABLE_GCOV
         case MYST_TCALL_GCOV:
         {
             extern long myst_gcov(const char* func, long gcov_params[6]);

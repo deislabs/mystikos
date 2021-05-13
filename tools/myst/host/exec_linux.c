@@ -110,14 +110,6 @@ static void _get_options(int* argc, const char* argv[], struct options* opts)
     if (cli_getopt(argc, argv, "--export-ramfs", NULL) == 0)
         opts->export_ramfs = true;
 
-    /* Set export_ramfs option based on MYST_ENABLE_GCOV env variable */
-    {
-        const char* val;
-
-        if ((val = getenv("MYST_ENABLE_GCOV")) && strcmp(val, "1") == 0)
-            opts->export_ramfs = true;
-    }
-
     /* Get --memory-size or --memory-size option */
     {
         const char* opt;

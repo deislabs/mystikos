@@ -25,7 +25,7 @@ static int test_clock_get_time(long reference)
     struct timespec tp = {0};
     long tolerance = NANO_IN_SECOND * 2; // 2s
 
-#ifdef MYST_ENABLE_GCOV2
+#ifdef MYST_ENABLE_GCOV
     /* gcov slows down the app, so add another 1/2 second to the tolerance */
     tolerance += NANO_IN_SECOND / 2;
 #endif

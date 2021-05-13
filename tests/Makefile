@@ -92,7 +92,7 @@ ifeq ($(MYST_ENABLE_HOSTFS),1)
 DIRS += hostfs
 endif
 
-ifndef MYST_ENABLE_GCOV2
+ifndef MYST_ENABLE_GCOV
 DIRS += clock
 DIRS += pollpipe2
 DIRS += dotnet-proc-maps

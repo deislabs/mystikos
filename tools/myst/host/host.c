@@ -431,7 +431,7 @@ static int _main(int argc, const char* argv[], const char* envp[])
 
 int main(int argc, const char* argv[], const char* envp[])
 {
-#ifdef MYST_ENABLE_GCOV2
+#ifdef MYST_ENABLE_GCOV
     const char* uid_str = getenv("SUDO_UID");
     const char* gid_str = getenv("SUDO_GID");
     uid_t uid = UINT_MAX;
@@ -447,7 +447,7 @@ int main(int argc, const char* argv[], const char* envp[])
 
     int ec = _main(argc, argv, envp);
 
-#ifdef MYST_ENABLE_GCOV2
+#ifdef MYST_ENABLE_GCOV
     /* if running as SUDO, then restore uid and gid for gcov */
     if (uid_str && gid_str)
     {

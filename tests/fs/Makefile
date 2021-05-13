@@ -8,10 +8,6 @@ CFLAGS = -Wall -fPIC -g $(GCOV_CFLAGS)
 LDFLAGS = $(GCOV_LDFLAGS)
 ROOTHASH=$(SUBOBJDIR)/roothash
 
-ifdef MYST_ENABLE_GCOV
-LDFLAGS = -lgcov
-endif
-
 ifdef STRACE
 OPTS = --strace
 endif

@@ -23,10 +23,6 @@ ifeq ($(MYST_RELEASE),1)
 CFLAGS += -Og
 endif
 
-ifdef MYST_ENABLE_GCOV
-CFLAGS += -fprofile-arcs -ftest-coverage
-endif
-
 THISDIR=$(CURDIR)
 
 all:

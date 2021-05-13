@@ -48,7 +48,7 @@ long myst_syscall(long n, long params[6])
     return (*_syscall_callback)(n, params);
 }
 
-#ifdef MYST_ENABLE_GCOV2
+#ifdef MYST_ENABLE_GCOV
 
 long myst_gcov(const char* func, long gcov_params[6])
 {
