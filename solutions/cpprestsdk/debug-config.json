@@ -1,0 +1,14 @@
+{
+    // OpenEnclave specific values
+    "Debug": 1,
+    "ProductID": 1,
+    "SecurityVersion": 1,
+
+    // Mystikos specific values
+    "MemorySize": "1024m",
+    "ApplicationPath": "/app/casablanca/build.debug/Release/Binaries/test_runner",
+    "CurrentWorkingDirectory": "/app/casablanca/build.debug/Release/Binaries/",
+    "HostApplicationParameters": true,
+    "EnvironmentVariables": [],
+    "HostEnvironmentVariables": []
+}
