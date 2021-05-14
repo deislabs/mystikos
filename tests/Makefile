@@ -112,7 +112,6 @@ DIRS += polleventfd
 __tests:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) tests $(NL) )
 
-
 tests:
 	@ sudo rm -rf $(TESTDIR)
 	@ $(MAKE) -s __tests TARGET=sgx TESTSUFFIX=.sgx

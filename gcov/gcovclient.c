@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <myst/gcov.h>
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -12,8 +13,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-
-#define MYST_GCOV_STDERR ((FILE*)0x67001b41aafb4224)
 
 FILE* const myst_gcov_stderr = MYST_GCOV_STDERR;
 
