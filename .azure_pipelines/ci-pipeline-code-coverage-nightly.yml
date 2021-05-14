@@ -36,7 +36,7 @@ jobs:
 
     # build all source files
     - script: |
-        sudo rm -rf `git ls-files --others --directory` && make -j
+        make distclean && sudo rm -rf `git ls-files --others --directory` && make -j
       displayName: 'build repo source'
       workingDirectory: $(Build.SourcesDirectory)
       env:
