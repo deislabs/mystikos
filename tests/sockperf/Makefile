@@ -12,6 +12,7 @@ ROOTFS=$(CURDIR)/rootfs
 ROOTHASH=$(CURDIR)/roothash
 
 all: $(ROOTFS) $(ROOTHASH)
+export TIMEOUT=10000
 
 $(APPDIR):
 	$(APPBUILDER) Dockerfile
