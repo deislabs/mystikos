@@ -182,9 +182,10 @@ static int _ed_epoll_wait(
     int ret = 0;
     bool locked = false;
     nfds_t nfds;
-    struct pollfd buf[16];
-    const size_t buflen = sizeof(buf);
+    struct pollfd fds_buf[16];
     struct pollfd* fds = NULL;
+    uint64_t data_buf[16];
+    uint64_t* data = NULL;
     int n;
 
     if (!epolldev || !epoll || !events || maxevents < 0)
@@ -222,8 +223,18 @@ static int _ed_epoll_wait(
     nfds = epoll->list.size;
 
     /* allocates the fds array */
-    if (!(fds = myst_buf_calloc(buf, buflen, nfds, sizeof(struct pollfd))))
+    if (!(fds = myst_buf_calloc(
+              fds_buf, sizeof(fds_buf), nfds, sizeof(struct pollfd))))
+    {
         ERAISE(-ENOMEM);
+    }
+
+    /* allocates the data array (copy of the epoll data) */
+    if (!(data = myst_buf_calloc(
+              data_buf, sizeof(data_buf), nfds, sizeof(uint64_t))))
+    {
+        ERAISE(-ENOMEM);
+    }
 
     /* convert from epoll-set to poll-set */
     {
@@ -258,6 +269,9 @@ static int _ed_epoll_wait(
             /* ATTN: EPOLLWAKEUP not supported */
             /* ATTN: EPOLLEXCLUSIVE not supported */
 
+            /* make a copy of the epoll data to avoid relocking later */
+            data[i] = src->event.data.u64;
+
             src = src->next;
         }
     }
@@ -271,13 +285,9 @@ static int _ed_epoll_wait(
     if ((size_t)n > nfds)
         ERAISE(-EINVAL);
 
-    myst_spin_lock(&epoll->lock);
-    locked = true;
-
     /* convert from poll-set back to epoll-set */
     {
         int nevents = 0;
-        const epoll_entry_t* ent = (epoll_entry_t*)epoll->list.head;
 
         for (size_t i = 0; i < nfds; i++)
         {
@@ -310,10 +320,8 @@ static int _ed_epoll_wait(
                 if (src->revents & POLLHUP)
                     dest->events |= EPOLLHUP;
 
-                dest->data = ent->event.data;
+                dest->data.u64 = data[i];
             }
-
-            ent = ent->next;
         }
 
         ret = nevents;
@@ -322,7 +330,10 @@ static int _ed_epoll_wait(
 done:
 
     if (fds)
-        myst_buf_free(buf, fds);
+        myst_buf_free(fds_buf, fds);
+
+    if (data)
+        myst_buf_free(data_buf, data);
 
     if (locked)
         myst_spin_unlock(&epoll->lock);
