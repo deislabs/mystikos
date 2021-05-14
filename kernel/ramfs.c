@@ -1193,10 +1193,6 @@ static ssize_t _fs_pwrite(
         goto done;
     }
 
-    /* Verify that the offset is in bounds */
-    if ((size_t)offset > _file_size(file))
-        ERAISE(-EINVAL);
-
     /* Write count bytes to the file or directory */
     {
         size_t new_offset = (size_t)offset + count;
