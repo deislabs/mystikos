@@ -4,6 +4,6 @@
 #ifndef _MYST_GCOV_H
 #define _MYST_GCOV_H
 
-#define MYST_GCOV_STDERR ((FILE*)0x67001b41aafb4224)
+#define MYST_GCOV_STDERR ((FILE*)0x2222222222222222)
 
 #endif /* _MYST_GCOV_H */

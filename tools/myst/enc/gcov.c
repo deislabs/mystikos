@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <myst/gcov.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,8 +15,6 @@
 #include "myst_t.h"
 
 #ifdef MYST_ENABLE_GCOV
-
-#define MYST_GCOV_STDERR ((FILE*)0x67001b41aafb4224)
 
 #define DEFAULT_GCOV_PID 101
 
