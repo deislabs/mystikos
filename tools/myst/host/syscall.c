@@ -305,8 +305,10 @@ long myst_open_ocall(
     uid_t uid,
     gid_t gid)
 {
+#ifdef MYST_ENABLE_GCOV
     if (uid == UINT_MAX && gid == UINT_MAX)
         RETURN(open(pathname, flags, mode));
+#endif
 
     SAVE_CALL_RESTORE_IDENTITY_RETURN(uid, gid, open(pathname, flags, mode));
 }

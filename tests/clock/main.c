@@ -37,7 +37,6 @@ static int test_clock_get_time(long reference)
     timestamp = tp.tv_sec * NANO_IN_SECOND + tp.tv_nsec;
     long diff = timestamp - reference;
     printf("Time spent on booting myst = %ld ms\n", diff / 1000000);
-    printf("diff=%zu tolerance=%zu\n", diff, tolerance);
     assert(diff > 0 && diff < tolerance);
 
     // Check if the monotonic clock goes backward
