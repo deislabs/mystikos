@@ -1195,6 +1195,11 @@ static ssize_t _fs_pwrite(
 
     /* Write count bytes to the file or directory */
     {
+        // When opened for append, Linux pwrite() appends data to the end of
+        // file regadless of the offset.
+        if ((file->operating & O_APPEND))
+            offset = _file_size(file);
+
         size_t new_offset = (size_t)offset + count;
 
         if (new_offset > _file_size(file))
