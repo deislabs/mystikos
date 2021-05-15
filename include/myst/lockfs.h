@@ -6,6 +6,8 @@
 
 #include <myst/fs.h>
 
-int myst_lockfs_wrap(myst_fstype_t* fs, myst_fstype_t** lockfs);
+int myst_lockfs_init(myst_fs_t* fs, myst_fs_t** lockfs);
+
+myst_fs_t* myst_lockfs_target(myst_fs_t* fs);
 
 #endif /* _MYST_LOCKFS_H */

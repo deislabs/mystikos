@@ -30,7 +30,7 @@ static int _fs_release(myst_fs_t* fs)
     if (!_lockfs_valid(lockfs))
         ERAISE(-EINVAL);
 
-    ECHECK(ret = (*fs->fs_release)(lockfs->fs));
+    ECHECK(ret = (*lockfs->fs->fs_release)(lockfs->fs));
     free(lockfs);
 
 done:
@@ -46,7 +46,7 @@ static int _fs_mount(myst_fs_t* fs, const char* source, const char* target)
         ERAISE(-EINVAL);
 
     myst_mutex_lock(&lockfs->lock);
-    ret = (*fs->fs_mount)(lockfs->fs, source, target);
+    ret = (*lockfs->fs->fs_mount)(lockfs->fs, source, target);
     myst_mutex_unlock(&lockfs->lock);
 
 done:
@@ -67,7 +67,7 @@ static int _fs_creat(
         ERAISE(-EINVAL);
 
     myst_mutex_lock(&lockfs->lock);
-    ret = (*fs->fs_creat)(lockfs->fs, pathname, mode, fs_out, file_out);
+    ret = (*lockfs->fs->fs_creat)(lockfs->fs, pathname, mode, fs_out, file_out);
     myst_mutex_unlock(&lockfs->lock);
 
 done:
@@ -89,7 +89,8 @@ static int _fs_open(
         ERAISE(-EINVAL);
 
     myst_mutex_lock(&lockfs->lock);
-    ret = (*fs->fs_open)(lockfs->fs, pathname, flags, mode, fs_out, file_out);
+    ret = (*lockfs->fs->fs_open)(
+        lockfs->fs, pathname, flags, mode, fs_out, file_out);
     myst_mutex_unlock(&lockfs->lock);
 
 done:
@@ -109,7 +110,7 @@ static off_t _fs_lseek(
         ERAISE(-EINVAL);
 
     myst_mutex_lock(&lockfs->lock);
-    ret = (*fs->fs_lseek)(lockfs->fs, file, offset, whence);
+    ret = (*lockfs->fs->fs_lseek)(lockfs->fs, file, offset, whence);
     myst_mutex_unlock(&lockfs->lock);
 
 done:
@@ -129,7 +130,7 @@ static ssize_t _fs_read(
         ERAISE(-EINVAL);
 
     myst_mutex_lock(&lockfs->lock);
-    ret = (*fs->fs_read)(lockfs->fs, file, buf, count);
+    ret = (*lockfs->fs->fs_read)(lockfs->fs, file, buf, count);
     myst_mutex_unlock(&lockfs->lock);
 
 done:
@@ -149,7 +150,7 @@ static ssize_t _fs_write(
         ERAISE(-EINVAL);
 
     myst_mutex_lock(&lockfs->lock);
-    ret = (*fs->fs_write)(lockfs->fs, file, buf, count);
+    ret = (*lockfs->fs->fs_write)(lockfs->fs, file, buf, count);
     myst_mutex_unlock(&lockfs->lock);
 
 done:
@@ -170,7 +171,7 @@ static ssize_t _fs_pread(
         ERAISE(-EINVAL);
 
     myst_mutex_lock(&lockfs->lock);
-    ret = (*fs->fs_pread)(lockfs->fs, file, buf, count, offset);
+    ret = (*lockfs->fs->fs_pread)(lockfs->fs, file, buf, count, offset);
     myst_mutex_unlock(&lockfs->lock);
 
 done:
@@ -191,7 +192,7 @@ static ssize_t _fs_pwrite(
         ERAISE(-EINVAL);
 
     myst_mutex_lock(&lockfs->lock);
-    ret = (*fs->fs_pwrite)(lockfs->fs, file, buf, count, offset);
+    ret = (*lockfs->fs->fs_pwrite)(lockfs->fs, file, buf, count, offset);
     myst_mutex_unlock(&lockfs->lock);
 
 done:
@@ -211,7 +212,7 @@ static ssize_t _fs_readv(
         ERAISE(-EINVAL);
 
     myst_mutex_lock(&lockfs->lock);
-    ret = (*fs->fs_readv)(lockfs->fs, file, iov, iovcnt);
+    ret = (*lockfs->fs->fs_readv)(lockfs->fs, file, iov, iovcnt);
     myst_mutex_unlock(&lockfs->lock);
 
 done:
@@ -231,7 +232,7 @@ static ssize_t _fs_writev(
         ERAISE(-EINVAL);
 
     myst_mutex_lock(&lockfs->lock);
-    ret = (*fs->fs_writev)(lockfs->fs, file, iov, iovcnt);
+    ret = (*lockfs->fs->fs_writev)(lockfs->fs, file, iov, iovcnt);
     myst_mutex_unlock(&lockfs->lock);
 
 done:
@@ -247,7 +248,7 @@ static int _fs_close(myst_fs_t* fs, myst_file_t* file)
         ERAISE(-EINVAL);
 
     myst_mutex_lock(&lockfs->lock);
-    ret = (*fs->fs_close)(lockfs->fs, file);
+    ret = (*lockfs->fs->fs_close)(lockfs->fs, file);
     myst_mutex_unlock(&lockfs->lock);
 
 done:
@@ -263,7 +264,7 @@ static int _fs_access(myst_fs_t* fs, const char* pathname, int mode)
         ERAISE(-EINVAL);
 
     myst_mutex_lock(&lockfs->lock);
-    ret = (*fs->fs_access)(lockfs->fs, pathname, mode);
+    ret = (*lockfs->fs->fs_access)(lockfs->fs, pathname, mode);
     myst_mutex_unlock(&lockfs->lock);
 
 done:
@@ -279,7 +280,7 @@ static int _fs_stat(myst_fs_t* fs, const char* pathname, struct stat* statbuf)
         ERAISE(-EINVAL);
 
     myst_mutex_lock(&lockfs->lock);
-    ret = (*fs->fs_stat)(lockfs->fs, pathname, statbuf);
+    ret = (*lockfs->fs->fs_stat)(lockfs->fs, pathname, statbuf);
     myst_mutex_unlock(&lockfs->lock);
 
 done:
@@ -295,7 +296,7 @@ static int _fs_lstat(myst_fs_t* fs, const char* pathname, struct stat* statbuf)
         ERAISE(-EINVAL);
 
     myst_mutex_lock(&lockfs->lock);
-    ret = (*fs->fs_lstat)(lockfs->fs, pathname, statbuf);
+    ret = (*lockfs->fs->fs_lstat)(lockfs->fs, pathname, statbuf);
     myst_mutex_unlock(&lockfs->lock);
 
 done:
@@ -311,7 +312,7 @@ static int _fs_fstat(myst_fs_t* fs, myst_file_t* file, struct stat* statbuf)
         ERAISE(-EINVAL);
 
     myst_mutex_lock(&lockfs->lock);
-    ret = (*fs->fs_fstat)(lockfs->fs, file, statbuf);
+    ret = (*lockfs->fs->fs_fstat)(lockfs->fs, file, statbuf);
     myst_mutex_unlock(&lockfs->lock);
 
 done:
@@ -327,7 +328,7 @@ static int _fs_link(myst_fs_t* fs, const char* oldpath, const char* newpath)
         ERAISE(-EINVAL);
 
     myst_mutex_lock(&lockfs->lock);
-    ret = (*fs->fs_link)(lockfs->fs, oldpath, newpath);
+    ret = (*lockfs->fs->fs_link)(lockfs->fs, oldpath, newpath);
     myst_mutex_unlock(&lockfs->lock);
 
 done:
@@ -343,7 +344,7 @@ static int _fs_unlink(myst_fs_t* fs, const char* pathname)
         ERAISE(-EINVAL);
 
     myst_mutex_lock(&lockfs->lock);
-    ret = (*fs->fs_unlink)(lockfs->fs, pathname);
+    ret = (*lockfs->fs->fs_unlink)(lockfs->fs, pathname);
     myst_mutex_unlock(&lockfs->lock);
 
 done:
@@ -359,7 +360,7 @@ static int _fs_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
         ERAISE(-EINVAL);
 
     myst_mutex_lock(&lockfs->lock);
-    ret = (*fs->fs_rename)(lockfs->fs, oldpath, newpath);
+    ret = (*lockfs->fs->fs_rename)(lockfs->fs, oldpath, newpath);
     myst_mutex_unlock(&lockfs->lock);
 
 done:
@@ -375,7 +376,7 @@ static int _fs_truncate(myst_fs_t* fs, const char* pathname, off_t length)
         ERAISE(-EINVAL);
 
     myst_mutex_lock(&lockfs->lock);
-    ret = (*fs->fs_truncate)(lockfs->fs, pathname, length);
+    ret = (*lockfs->fs->fs_truncate)(lockfs->fs, pathname, length);
     myst_mutex_unlock(&lockfs->lock);
 
 done:
@@ -391,7 +392,7 @@ static int _fs_ftruncate(myst_fs_t* fs, myst_file_t* file, off_t length)
         ERAISE(-EINVAL);
 
     myst_mutex_lock(&lockfs->lock);
-    ret = (*fs->fs_ftruncate)(lockfs->fs, file, length);
+    ret = (*lockfs->fs->fs_ftruncate)(lockfs->fs, file, length);
     myst_mutex_unlock(&lockfs->lock);
 
 done:
@@ -407,7 +408,7 @@ static int _fs_mkdir(myst_fs_t* fs, const char* pathname, mode_t mode)
         ERAISE(-EINVAL);
 
     myst_mutex_lock(&lockfs->lock);
-    ret = (*fs->fs_mkdir)(lockfs->fs, pathname, mode);
+    ret = (*lockfs->fs->fs_mkdir)(lockfs->fs, pathname, mode);
     myst_mutex_unlock(&lockfs->lock);
 
 done:
@@ -423,7 +424,7 @@ static int _fs_rmdir(myst_fs_t* fs, const char* pathname)
         ERAISE(-EINVAL);
 
     myst_mutex_lock(&lockfs->lock);
-    ret = (*fs->fs_rmdir)(lockfs->fs, pathname);
+    ret = (*lockfs->fs->fs_rmdir)(lockfs->fs, pathname);
     myst_mutex_unlock(&lockfs->lock);
 
 done:
@@ -443,7 +444,7 @@ static int _fs_getdents64(
         ERAISE(-EINVAL);
 
     myst_mutex_lock(&lockfs->lock);
-    ret = (*fs->fs_getdents64)(lockfs->fs, file, dirp, count);
+    ret = (*lockfs->fs->fs_getdents64)(lockfs->fs, file, dirp, count);
     myst_mutex_unlock(&lockfs->lock);
 
 done:
@@ -463,7 +464,7 @@ static ssize_t _fs_readlink(
         ERAISE(-EINVAL);
 
     myst_mutex_lock(&lockfs->lock);
-    ret = (*fs->fs_readlink)(lockfs->fs, pathname, buf, bufsiz);
+    ret = (*lockfs->fs->fs_readlink)(lockfs->fs, pathname, buf, bufsiz);
     myst_mutex_unlock(&lockfs->lock);
 
 done:
@@ -479,7 +480,7 @@ static int _fs_symlink(myst_fs_t* fs, const char* target, const char* linkpath)
         ERAISE(-EINVAL);
 
     myst_mutex_lock(&lockfs->lock);
-    ret = (*fs->fs_symlink)(lockfs->fs, target, linkpath);
+    ret = (*lockfs->fs->fs_symlink)(lockfs->fs, target, linkpath);
     myst_mutex_unlock(&lockfs->lock);
 
 done:
@@ -499,7 +500,7 @@ static int _fs_realpath(
         ERAISE(-EINVAL);
 
     myst_mutex_lock(&lockfs->lock);
-    ret = (*fs->fs_realpath)(lockfs->fs, file, buf, size);
+    ret = (*lockfs->fs->fs_realpath)(lockfs->fs, file, buf, size);
     myst_mutex_unlock(&lockfs->lock);
 
 done:
@@ -515,7 +516,7 @@ static int _fs_fcntl(myst_fs_t* fs, myst_file_t* file, int cmd, long arg)
         ERAISE(-EINVAL);
 
     myst_mutex_lock(&lockfs->lock);
-    ret = (*fs->fs_fcntl)(lockfs->fs, file, cmd, arg);
+    ret = (*lockfs->fs->fs_fcntl)(lockfs->fs, file, cmd, arg);
     myst_mutex_unlock(&lockfs->lock);
 
 done:
@@ -535,7 +536,7 @@ static int _fs_ioctl(
         ERAISE(-EINVAL);
 
     myst_mutex_lock(&lockfs->lock);
-    ret = (*fs->fs_ioctl)(lockfs->fs, file, request, arg);
+    ret = (*lockfs->fs->fs_ioctl)(lockfs->fs, file, request, arg);
     myst_mutex_unlock(&lockfs->lock);
 
 done:
@@ -554,7 +555,7 @@ static int _fs_dup(
         ERAISE(-EINVAL);
 
     myst_mutex_lock(&lockfs->lock);
-    ret = (*fs->fs_dup)(lockfs->fs, file, file_out);
+    ret = (*lockfs->fs->fs_dup)(lockfs->fs, file, file_out);
     myst_mutex_unlock(&lockfs->lock);
 
 done:
@@ -570,7 +571,7 @@ static int _fs_target_fd(myst_fs_t* fs, myst_file_t* file)
         ERAISE(-EINVAL);
 
     myst_mutex_lock(&lockfs->lock);
-    ret = (*fs->fs_target_fd)(lockfs->fs, file);
+    ret = (*lockfs->fs->fs_target_fd)(lockfs->fs, file);
     myst_mutex_unlock(&lockfs->lock);
 
 done:
@@ -586,7 +587,7 @@ static int _fs_get_events(myst_fs_t* fs, myst_file_t* file)
         ERAISE(-EINVAL);
 
     myst_mutex_lock(&lockfs->lock);
-    ret = (*fs->fs_get_events)(lockfs->fs, file);
+    ret = (*lockfs->fs->fs_get_events)(lockfs->fs, file);
     myst_mutex_unlock(&lockfs->lock);
 
 done:
@@ -602,7 +603,7 @@ static int _fs_statfs(myst_fs_t* fs, const char* pathname, struct statfs* buf)
         ERAISE(-EINVAL);
 
     myst_mutex_lock(&lockfs->lock);
-    ret = (*fs->fs_statfs)(lockfs->fs, pathname, buf);
+    ret = (*lockfs->fs->fs_statfs)(lockfs->fs, pathname, buf);
     myst_mutex_unlock(&lockfs->lock);
 
 done:
@@ -618,7 +619,7 @@ static int _fs_fstatfs(myst_fs_t* fs, myst_file_t* file, struct statfs* buf)
         ERAISE(-EINVAL);
 
     myst_mutex_lock(&lockfs->lock);
-    ret = (*fs->fs_fstatfs)(lockfs->fs, file, buf);
+    ret = (*lockfs->fs->fs_fstatfs)(lockfs->fs, file, buf);
     myst_mutex_unlock(&lockfs->lock);
 
 done:
@@ -637,19 +638,18 @@ static int _fs_futimens(
         ERAISE(-EINVAL);
 
     myst_mutex_lock(&lockfs->lock);
-    ret = (*fs->fs_futimens)(lockfs->fs, file, times);
+    ret = (*lockfs->fs->fs_futimens)(lockfs->fs, file, times);
     myst_mutex_unlock(&lockfs->lock);
 
 done:
     return ret;
 }
 
-int myst_init_lockfs(myst_fs_t* fs, myst_fs_t** lockfs_out)
+int myst_lockfs_init(myst_fs_t* fs, myst_fs_t** lockfs_out)
 {
     int ret = 0;
     lockfs_t* lockfs = NULL;
-    static myst_fs_t _base =
-    {
+    static myst_fs_t _base = {
         {
             .fd_read = (void*)_fs_read,
             .fd_write = (void*)_fs_write,
@@ -717,4 +717,10 @@ int myst_init_lockfs(myst_fs_t* fs, myst_fs_t** lockfs_out)
 done:
 
     return ret;
+}
+
+myst_fs_t* myst_lockfs_target(myst_fs_t* fs)
+{
+    lockfs_t* lockfs = (lockfs_t*)fs;
+    return _lockfs_valid(lockfs) ? lockfs->fs : fs;
 }
