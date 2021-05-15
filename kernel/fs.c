@@ -10,6 +10,7 @@
 #include <myst/fssig.h>
 #include <myst/hex.h>
 #include <myst/kernel.h>
+#include <myst/lockfs.h>
 #include <myst/mount.h>
 #include <myst/process.h>
 #include <myst/pubkey.h>
@@ -73,6 +74,7 @@ int myst_load_fs(
     int ret = 0;
     myst_blkdev_t* blkdev = NULL;
     myst_fs_t* fs = NULL;
+    myst_fs_t* ext2fs = NULL;
     int r;
     struct locals
     {
@@ -147,9 +149,12 @@ int myst_load_fs(
         blkdev = tmp;
     }
 
-    ECHECK(ext2_create(blkdev, &fs, resolve_cb));
-    blkdev = NULL;
+    /* wrap ext2fs inside a lockfs */
+    ECHECK(ext2_create(blkdev, &ext2fs, resolve_cb));
+    ECHECK(myst_lockfs_init(ext2fs, &fs));
+    ext2fs = NULL;
 
+    blkdev = NULL;
     *fs_out = fs;
     fs = NULL;
 
@@ -163,6 +168,9 @@ done:
 
     if (fs)
         (fs->fs_release)(fs);
+
+    if (ext2fs)
+        (ext2fs->fs_release)(ext2fs);
 
     return ret;
 }

@@ -17,6 +17,7 @@
 #include <myst/eraise.h>
 #include <myst/fs.h>
 #include <myst/id.h>
+#include <myst/lockfs.h>
 #include <myst/panic.h>
 #include <myst/paths.h>
 #include <myst/printf.h>
@@ -2407,7 +2408,7 @@ done:
     return ret;
 }
 
-int myst_init_ramfs(
+static int _init_ramfs(
     myst_mount_resolve_callback_t resolve_cb,
     myst_fs_t** fs_out)
 {
@@ -2500,13 +2501,41 @@ done:
     return ret;
 }
 
+int myst_init_ramfs(
+    myst_mount_resolve_callback_t resolve_cb,
+    myst_fs_t** fs_out)
+{
+    int ret = 0;
+    myst_fs_t* ramfs = NULL;
+    myst_fs_t* lockfs;
+
+    /* always wrap ramfs inside lockfs */
+    ECHECK(_init_ramfs(resolve_cb, &ramfs));
+    ECHECK(myst_lockfs_init(ramfs, &lockfs));
+    ramfs = NULL;
+    *fs_out = lockfs;
+
+done:
+
+    if (ramfs)
+        (*ramfs->fs_release)(ramfs);
+
+    return ret;
+}
+
+static ramfs_t* _ramfs(myst_fs_t* fs)
+{
+    myst_fs_t* target = myst_lockfs_target(fs);
+    return target ? (ramfs_t*)target : (ramfs_t*)fs;
+}
+
 int myst_ramfs_set_buf(
     myst_fs_t* fs,
     const char* pathname,
     const void* buf,
     size_t buf_size)
 {
-    ramfs_t* ramfs = (ramfs_t*)fs;
+    ramfs_t* ramfs = _ramfs(fs);
     inode_t* inode = NULL;
     int ret = 0;
 
@@ -2541,7 +2570,7 @@ int myst_create_virtual_file(
     myst_virtual_file_type_t v_type)
 {
     int ret = 0;
-    ramfs_t* ramfs = (ramfs_t*)fs;
+    ramfs_t* ramfs = _ramfs(fs);
 
     if (!_ramfs_valid(ramfs))
         ERAISE(-EINVAL);
@@ -2604,7 +2633,7 @@ done:
 int myst_release_tree(myst_fs_t* fs, const char* pathname)
 {
     int ret = 0;
-    ramfs_t* ramfs = (ramfs_t*)fs;
+    ramfs_t* ramfs = _ramfs(fs);
     inode_t *parent, *self;
     struct locals
     {
