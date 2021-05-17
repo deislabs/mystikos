@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include <myst/eraise.h>
+#include <myst/iov.h>
 #include <myst/panic.h>
 #include <myst/sockdev.h>
 #include <myst/spinlock.h>
@@ -302,17 +303,53 @@ static int _sd_sendmsg(
     int flags)
 {
     ssize_t ret = 0;
+    void* base = NULL;
+    size_t len;
+    struct iovec iov_buf;
+    struct msghdr msg_buf;
+    const struct msghdr* msg_ptr;
 
-    if (!sd || !_valid_sock(sock))
+    if (!sd || !_valid_sock(sock) || !msg)
         ERAISE(-EINVAL);
+
+    if (msg->msg_iovlen < 0 || msg->msg_iovlen > IOV_MAX)
+        ERAISE(-EINVAL);
+
+    if (msg->msg_iovlen == 0)
+        goto done;
+
+    if (!msg->msg_iov)
+        ERAISE(-EINVAL);
+
+    // Pre-flatten the IO vector, else the target will have to use its own
+    // memory. Without this, OE heap memory is sometimes depleted by this
+    // operation.
+    if (msg->msg_iovlen != 1)
+    {
+        ERAISE((len = myst_iov_gather(msg->msg_iov, msg->msg_iovlen, &base)));
+        msg_buf = *msg;
+        iov_buf.iov_base = base;
+        iov_buf.iov_len = len;
+        msg_buf.msg_iov = &iov_buf;
+        msg_buf.msg_iovlen = 1;
+        msg_ptr = &msg_buf;
+    }
+    else
+    {
+        msg_ptr = msg;
+    }
 
     /* perform syscall */
     {
-        long params[6] = {sock->fd, (long)msg, flags};
+        long params[6] = {sock->fd, (long)msg_ptr, flags};
         ECHECK((ret = myst_tcall(SYS_sendmsg, params)));
     }
 
 done:
+
+    if (base)
+        free(base);
+
     return ret;
 }
 
