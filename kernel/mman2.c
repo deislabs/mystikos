@@ -13,6 +13,7 @@
 #include <myst/mman2.h>
 #include <myst/round.h>
 #include <myst/spinlock.h>
+#include <myst/strings.h>
 
 // the minimum possible size of the mman data (8 pages): one overhead page
 // and seven usable pages.
@@ -46,6 +47,7 @@ typedef struct mman
     /* the pages */
     page_t* pages; /* page vector */
     size_t npages; /* the number of usable pages (less overhead) */
+    page_t* end;   /* beyond last page */
 
     myst_spinlock_t lock;
 } mman_t;
@@ -61,6 +63,8 @@ MYST_INLINE uint64_t _round_up(uint64_t x, uint64_t m)
 }
 
 /* memset for uint32_t strings */
+#pragma GCC push_options
+#pragma GCC optimize "-O3"
 static uint32_t* _uint32_memset(uint32_t* s, uint32_t c, size_t n)
 {
     uint32_t* p = s;
@@ -103,57 +107,7 @@ static uint32_t* _uint32_memset(uint32_t* s, uint32_t c, size_t n)
 
     return s;
 }
-
-#if 0
-static uint64_t* _uint64_bzero(uint64_t* s, size_t n)
-{
-    uint64_t* p = s;
-
-    while (n >= 32)
-    {
-        p[0] = 0;
-        p[1] = 0;
-        p[2] = 0;
-        p[3] = 0;
-        p[4] = 0;
-        p[5] = 0;
-        p[6] = 0;
-        p[7] = 0;
-        p[8] = 0;
-        p[9] = 0;
-        p[10] = 0;
-        p[11] = 0;
-        p[12] = 0;
-        p[13] = 0;
-        p[14] = 0;
-        p[15] = 0;
-        p[16] = 0;
-        p[17] = 0;
-        p[18] = 0;
-        p[19] = 0;
-        p[20] = 0;
-        p[21] = 0;
-        p[22] = 0;
-        p[23] = 0;
-        p[24] = 0;
-        p[25] = 0;
-        p[26] = 0;
-        p[27] = 0;
-        p[28] = 0;
-        p[29] = 0;
-        p[30] = 0;
-        p[31] = 0;
-        p += 32;
-        n -= 32;
-    }
-
-    /* handle remaining bytes if any */
-    while (n--)
-        *p++ = 0;
-
-    return s;
-}
-#endif
+#pragma GCC pop_options
 
 /* this is faster than memset */
 MYST_UNUSED
@@ -206,81 +160,16 @@ static __uint128_t* _uint128_bzero(__uint128_t* s, size_t n)
     return s;
 }
 
-MYST_INLINE size_t _min(size_t x, size_t y)
-{
-    return x < y ? x : y;
-}
-
 MYST_INLINE bool _test_bit(size_t index)
 {
     return myst_test_bit(_mman.bits, index);
 }
 
-MYST_INLINE void _set_bit(size_t index)
-{
-    myst_set_bit(_mman.bits, index);
-}
-
-MYST_INLINE void _clear_bit(size_t index)
-{
-    myst_clear_bit(_mman.bits, index);
-}
-
-static size_t _skip_set_bits(size_t i)
-{
-    if (i == _mman.npages)
-        return _mman.npages;
-
-    /* round i to the next multiple of r */
-    const size_t r = 64;
-    const size_t m = (i + r - 1) / r * r;
-
-    /* if i is not aligned, then process bits up to next r-bit alignement */
-    if (i != m)
-    {
-        /* skip bits up to next r-bit alignment */
-        while (i < m && _test_bit(i))
-            i++;
-
-        if (i == _mman.npages)
-            return i;
-
-        if (_test_bit(i) == 0)
-            return i;
-    }
-
-    /* skip over 8 bytes at a time */
-    {
-        size_t r = _mman.npages - i;
-
-        while (r > 64 && *((uint64_t*)&_mman.bits[i / 8]) == 0xffffffffffffffff)
-        {
-            i += 64;
-            r -= 64;
-        }
-    }
-
-    /* handle any remaining bits */
-    while (i < _mman.npages && _test_bit(i))
-        i++;
-
-    return i;
-}
-
-MYST_INLINE size_t _skip_zero_bits(size_t i, size_t n)
-{
-    while (i < n && !_test_bit(i))
-        i++;
-
-    return i;
-}
-
 MYST_INLINE bool _within(const void* ptr)
 {
-    const ptrdiff_t addr = (ptrdiff_t)ptr;
     const ptrdiff_t start = (ptrdiff_t)_mman.pages;
     const ptrdiff_t end = (ptrdiff_t)(_mman.pages + _mman.npages);
-    return addr >= start && addr <= end;
+    return (ptrdiff_t)ptr >= start && (ptrdiff_t)ptr <= end;
 }
 
 size_t myst_mman2_get_usable_size(void)
@@ -290,28 +179,12 @@ size_t myst_mman2_get_usable_size(void)
 
 size_t myst_mman2_count_free_bits(void)
 {
-    size_t n = 0;
-
-    for (size_t i = 0; i < _mman.npages; i++)
-    {
-        if (!_test_bit(i))
-            n++;
-    }
-
-    return n;
+    return myst_count_zero_bits(_mman.bits, _mman.npages);
 }
 
 size_t myst_mman2_count_used_bits(void)
 {
-    size_t n = 0;
-
-    for (size_t i = 0; i < _mman.npages; i++)
-    {
-        if (_test_bit(i))
-            n++;
-    }
-
-    return n;
+    return myst_count_one_bits(_mman.bits, _mman.npages);
 }
 
 int myst_mman2_init(void* data, size_t size)
@@ -352,6 +225,7 @@ int myst_mman2_init(void* data, size_t size)
     _mman.prots = (uint8_t*)(_mman.data + pids_size + fds_size);
     _mman.bits = (uint8_t*)(_mman.data + pids_size + fds_size + prots_size);
     _mman.pages = (page_t*)(_mman.data + overhead_size);
+    _mman.end = _mman.pages + _mman.npages;
     assert(((_mman.npages * PAGE_SIZE) + overhead_size) == size);
 
     /* clear the overhead pages */
@@ -364,74 +238,6 @@ done:
 void myst_mman2_release(void)
 {
     memset(&_mman, 0, sizeof(_mman));
-}
-
-MYST_INLINE void _set_bits(size_t lo, size_t hi)
-{
-    size_t i = lo;
-    size_t r = (lo + 7) / 8 * 8;
-    size_t min = _min(r, hi);
-
-    /* set bits up to the first multile of 8 */
-    for (; i < min; i++)
-        _set_bit(i);
-
-    /* set whole bytes */
-    {
-        size_t nbits = hi - min;
-
-        if (nbits)
-        {
-            uint8_t* p = &_mman.bits[i / 8];
-            size_t nbytes = nbits / 8;
-            memset(p, 0xff, nbytes);
-            i += nbytes * 8;
-        }
-    }
-
-    /* set bits after the last multile of 8 */
-    for (; i < hi; i++)
-        _set_bit(i);
-
-#ifdef VERIFY
-    /* verify that the bits have been set */
-    for (i = lo; i < hi; i++)
-        assert(_test_bit(i));
-#endif
-}
-
-MYST_INLINE void _clear_bits(size_t lo, size_t hi)
-{
-    size_t i = lo;
-    size_t r = (lo + 7) / 8 * 8;
-    size_t min = _min(r, hi);
-
-    /* clear bits up to the first multile of 8 */
-    for (; i < min; i++)
-        _clear_bit(i);
-
-    /* clear whole bytes */
-    {
-        size_t nbits = hi - min;
-
-        if (nbits)
-        {
-            uint8_t* p = &_mman.bits[i / 8];
-            size_t nbytes = nbits / 8;
-            memset(p, 0, nbytes);
-            i += nbytes * 8;
-        }
-    }
-
-    /* clear bits after the last multile of 8 */
-    for (; i < hi; i++)
-        _clear_bit(i);
-
-#ifdef VERIFY
-    /* verify that the bits have been cleared */
-    for (i = lo; i < hi; i++)
-        assert(!_test_bit(i));
-#endif
 }
 
 int myst_mman2_mmap(
@@ -474,10 +280,12 @@ int myst_mman2_mmap(
         size_t i = _mman.first_zero_bit;
         bool found = false;
         bool first_pass = true;
+        uint8_t* bits = _mman.bits;
+        const size_t nbits = _mman.npages;
 
         /* search the bitmap for a sequence of free bits */
-        while ((i = _skip_set_bits(i)) < _mman.npages &&
-               (i + npages) <= _mman.npages)
+        while ((i = myst_skip_one_bits(bits, nbits, i)) < nbits &&
+               (i + npages) <= nbits)
         {
             if (first_pass)
             {
@@ -485,7 +293,7 @@ int myst_mman2_mmap(
                 first_pass = false;
             }
 
-            size_t r = _skip_zero_bits(i, i + npages);
+            size_t r = myst_skip_zero_bits(bits, nbits, i, i + npages);
 
             if (r - i == npages)
             {
@@ -514,7 +322,7 @@ int myst_mman2_mmap(
             memset(&_mman.prots[lo], (uint8_t)prot, npages);
 
             /* update the bits vector */
-            _set_bits(lo, hi);
+            myst_set_bits(bits, nbits, lo, hi);
 
             /* release the lock */
             myst_spin_unlock(&_mman.lock);
@@ -595,7 +403,7 @@ int myst_mman2_munmap(void* addr, size_t length)
         _mman.first_zero_bit = lo;
 
     /* update the bits vector */
-    _clear_bits(lo, hi);
+    myst_clear_bits(_mman.bits, _mman.npages, lo, hi);
 
 #if 0
     printf("unmap: [hi=%zu lo=%zu n=%zu]\n", lo, hi, n);
@@ -738,7 +546,7 @@ int myst_mman2_mremap(
                 memset(&_mman.prots[lo], prot, npages);
 
                 /* update the bits vector */
-                _set_bits(lo, hi);
+                myst_set_bits(_mman.bits, _mman.npages, lo, hi);
 
                 *ptr = old_address;
                 goto done;

@@ -42,4 +42,6 @@ bool myst_isspace(char c);
 /* convert a whole string to an integer */
 int myst_str2int(const char* s, int* x);
 
+void* myst_memcchr(const void* s, int c, size_t n);
+
 #endif /* _MYST_STRINGS_H */

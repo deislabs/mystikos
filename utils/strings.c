@@ -328,3 +328,52 @@ bool myst_isspace(char c)
             return false;
     }
 }
+
+#pragma GCC push_options
+#pragma GCC optimize "-O3"
+void* myst_memcchr(const void* s, int c, size_t n)
+{
+    const uint8_t* p = (uint8_t*)s;
+
+    /* while more bytes and pointer is not 16-byte aligned */
+    while (n && (((ptrdiff_t)p) & 0x000000000000000f))
+    {
+        if (*p != c)
+            return (void*)p;
+        n--;
+        p++;
+    }
+
+    /* if more than 16 bytes and p is 16-byte aligned */
+    if (n > 16 && ((ptrdiff_t)p & 0x000000000000000f) == 0)
+    {
+        const __uint128_t* pp = (__uint128_t*)p;
+        size_t nn = n / 16;
+        const __uint128_t* end = pp + nn;
+        __uint128_t cc;
+        memset(&cc, c, sizeof(cc));
+
+        while (nn > 0 && *pp == cc)
+        {
+            nn--;
+            pp++;
+        }
+
+        /* calculate the remaining words to be examined */
+        size_t r = end - pp;
+
+        p = (uint8_t*)pp;
+        n = (r * 16) + (n % 16);
+    }
+
+    while (n > 0)
+    {
+        if (*p != c)
+            return (void*)p;
+        p++;
+        n--;
+    }
+
+    return NULL;
+}
+#pragma GCC pop_options
