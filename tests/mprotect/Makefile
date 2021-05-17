@@ -15,8 +15,7 @@ rootfs: main.c
 	$(MYST) mkcpio $(APPDIR) rootfs
 
 tests: rootfs
-	$(RUNTEST) $(MYST_EXEC) rootfs /bin/mprotect_test $(OPTS) | grep -v "OE_ENCLAVE_ABORTING" > result
-	diff result expected
+	$(RUNTEST) ./exec.sh $(MYST_EXEC) rootfs /bin/mprotect_test $(OPTS)
 	@ echo "=== passed test (mprotect)"
 
 myst:
