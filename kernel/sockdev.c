@@ -336,6 +336,7 @@ static int _sd_sendmsg(
     }
     else
     {
+        /* The IO vector is already flat */
         msg_ptr = msg;
     }
 
