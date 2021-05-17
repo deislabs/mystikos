@@ -18,10 +18,10 @@ all:
 	$(MAKE) rootfs
 
 tests:
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /curl https://www.microsoft.com 2>&1 > /dev/null
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) --mount /etc/resolv.conf=/etc/resolv.conf rootfs --app-config-path config1.json /curl https://www.microsoft.com 2>&1 > /dev/null
 
 gdb: all
-	$(MYST_GDB) --args $(MYST_EXEC) $(EXEC) $(OPTS) rootfs /curl https://www.microsoft.com
+	$(MYST_GDB) --args $(MYST_EXEC) $(OPTS) --mount /etc/resolv.conf=/etc/resolv.conf rootfs --app-config-path config1.json /curl https://www.microsoft.com
 
 appdir:
 	$(APPBUILDER) Dockerfile

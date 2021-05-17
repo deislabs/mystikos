@@ -24,6 +24,18 @@
             "Type": "hostfs"
         },
         {
+            "Target": "/etc/resolv.conf",
+            "Type": "hostfs"
+        },
+        {
+            "Target": "/targetfile1",
+            "Type": "hostfs"
+        },
+        {
+            "Target": "/targetfile2",
+            "Type": "hostfs"
+        },
+        {
             "Target": "/ext2-target",
             "Type": "ext2",
             "Flags": [],
