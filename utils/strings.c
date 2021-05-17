@@ -377,3 +377,94 @@ void* myst_memcchr(const void* s, int c, size_t n)
     return NULL;
 }
 #pragma GCC pop_options
+
+#pragma GCC push_options
+#pragma GCC optimize "-O3"
+uint32_t* myst_memset_u32(uint32_t* s, uint32_t c, size_t n)
+{
+    uint32_t* p = s;
+
+    /* unroll loop to factor of 8 */
+    while (n >= 8)
+    {
+        p[0] = c;
+        p[1] = c;
+        p[2] = c;
+        p[3] = c;
+        p[4] = c;
+        p[5] = c;
+        p[6] = c;
+        p[7] = c;
+        p += 8;
+        n -= 8;
+    }
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough="
+    switch (n)
+    {
+        case 7:
+            *p++ = c;
+        case 6:
+            *p++ = c;
+        case 5:
+            *p++ = c;
+        case 4:
+            *p++ = c;
+        case 3:
+            *p++ = c;
+        case 2:
+            *p++ = c;
+        case 1:
+            *p++ = c;
+    }
+#pragma GCC diagnostic pop
+
+    return s;
+}
+#pragma GCC pop_options
+
+__attribute__((__always_inline__)) static __inline__ void _bzero_u128_16_inline(
+    __uint128_t* p)
+{
+    p[0] = 0;
+    p[1] = 0;
+    p[2] = 0;
+    p[3] = 0;
+    p[4] = 0;
+    p[5] = 0;
+    p[6] = 0;
+    p[7] = 0;
+    p[8] = 0;
+    p[9] = 0;
+    p[10] = 0;
+    p[11] = 0;
+    p[12] = 0;
+    p[13] = 0;
+    p[14] = 0;
+    p[15] = 0;
+}
+
+#pragma GCC push_options
+#pragma GCC optimize "-O3"
+__uint128_t* myst_bzero_u128(__uint128_t* s, size_t n)
+{
+    __uint128_t* p = s;
+
+    while (n >= 64)
+    {
+        _bzero_u128_16_inline(&p[0]);
+        _bzero_u128_16_inline(&p[16]);
+        _bzero_u128_16_inline(&p[32]);
+        _bzero_u128_16_inline(&p[48]);
+        p += 64;
+        n -= 64;
+    }
+
+    /* handle remaining bytes if any */
+    while (n--)
+        *p++ = 0;
+
+    return s;
+}
+#pragma GCC pop_options

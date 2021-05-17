@@ -62,104 +62,6 @@ MYST_INLINE uint64_t _round_up(uint64_t x, uint64_t m)
     return (x + m - 1) / m * m;
 }
 
-/* memset for uint32_t strings */
-#pragma GCC push_options
-#pragma GCC optimize "-O3"
-static uint32_t* _uint32_memset(uint32_t* s, uint32_t c, size_t n)
-{
-    uint32_t* p = s;
-
-    /* unroll loop to factor of 8 */
-    while (n >= 8)
-    {
-        p[0] = c;
-        p[1] = c;
-        p[2] = c;
-        p[3] = c;
-        p[4] = c;
-        p[5] = c;
-        p[6] = c;
-        p[7] = c;
-        p += 8;
-        n -= 8;
-    }
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wimplicit-fallthrough="
-    switch (n)
-    {
-        case 7:
-            *p++ = c;
-        case 6:
-            *p++ = c;
-        case 5:
-            *p++ = c;
-        case 4:
-            *p++ = c;
-        case 3:
-            *p++ = c;
-        case 2:
-            *p++ = c;
-        case 1:
-            *p++ = c;
-    }
-#pragma GCC diagnostic pop
-
-    return s;
-}
-#pragma GCC pop_options
-
-/* this is faster than memset */
-MYST_UNUSED
-static __uint128_t* _uint128_bzero(__uint128_t* s, size_t n)
-{
-    __uint128_t* p = s;
-
-    while (n >= 32)
-    {
-        p[0] = 0;
-        p[1] = 0;
-        p[2] = 0;
-        p[3] = 0;
-        p[4] = 0;
-        p[5] = 0;
-        p[6] = 0;
-        p[7] = 0;
-        p[8] = 0;
-        p[9] = 0;
-        p[10] = 0;
-        p[11] = 0;
-        p[12] = 0;
-        p[13] = 0;
-        p[14] = 0;
-        p[15] = 0;
-        p[16] = 0;
-        p[17] = 0;
-        p[18] = 0;
-        p[19] = 0;
-        p[20] = 0;
-        p[21] = 0;
-        p[22] = 0;
-        p[23] = 0;
-        p[24] = 0;
-        p[25] = 0;
-        p[26] = 0;
-        p[27] = 0;
-        p[28] = 0;
-        p[29] = 0;
-        p[30] = 0;
-        p[31] = 0;
-        p += 32;
-        n -= 32;
-    }
-
-    /* handle remaining bytes if any */
-    while (n--)
-        *p++ = 0;
-
-    return s;
-}
-
 MYST_INLINE bool _test_bit(size_t index)
 {
     return myst_test_bit(_mman.bits, index);
@@ -311,12 +213,7 @@ int myst_mman2_mmap(
             const size_t hi = i + npages;
 
             /* update the process-id vector */
-            _uint32_memset(&_mman.pids[lo], getpid(), npages);
-
-#if 0
-            /* update the file-descriptor vector */
-            _uint32_memset((uint32_t*)&_mman.fds[lo], 0, npages);
-#endif
+            myst_memset_u32(&_mman.pids[lo], getpid(), npages);
 
             /* update the protections vector */
             memset(&_mman.prots[lo], (uint8_t)prot, npages);
@@ -330,7 +227,7 @@ int myst_mman2_mmap(
 
             /* set the pointer and zero the memory */
             *ptr = &_mman.pages[lo];
-            _uint128_bzero(*ptr, length / sizeof(__uint128_t));
+            myst_bzero_u128(*ptr, length / sizeof(__uint128_t));
 
             goto done;
         }
@@ -535,12 +432,7 @@ int myst_mman2_mremap(
             if (i == hi)
             {
                 /* update the pids vector */
-                _uint32_memset(&_mman.pids[lo], pid, npages);
-
-#if 0
-                /* update the fds vector */
-                _uint32_memset((uint32_t*)&_mman.fds[lo], 0, npages);
-#endif
+                myst_memset_u32(&_mman.pids[lo], pid, npages);
 
                 /* update the protection vector */
                 memset(&_mman.prots[lo], prot, npages);

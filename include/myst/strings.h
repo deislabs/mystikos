@@ -44,4 +44,8 @@ int myst_str2int(const char* s, int* x);
 
 void* myst_memcchr(const void* s, int c, size_t n);
 
+uint32_t* myst_memset_u32(uint32_t* s, uint32_t c, size_t n);
+
+__uint128_t* myst_bzero_u128(__uint128_t* s, size_t n);
+
 #endif /* _MYST_STRINGS_H */
