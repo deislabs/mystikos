@@ -748,7 +748,7 @@ int myst_load_fssig(const char* path, myst_fssig_t* fssig)
 #define ENCLAVE_SECURITY_VERSION 1
 #define ENCLAVE_DEBUG true
 
-#define ENCLAVE_HEAP_SIZE (256 * 1024)
+#define ENCLAVE_HEAP_SIZE 131072
 
 #ifdef MYST_ENABLE_GCOV
 #define ENCLAVE_STACK_SIZE 8 * 8192

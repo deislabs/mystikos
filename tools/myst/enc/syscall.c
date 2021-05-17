@@ -1,4 +1,5 @@
 #define _GNU_SOURCE
+#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -329,8 +330,6 @@ done:
 static long _sendmsg(int sockfd, const struct msghdr* msg, int flags)
 {
     long ret = 0;
-    void* buf = NULL;
-    ssize_t len;
     long retval;
 
     if (sockfd < 0 || !msg)
@@ -339,14 +338,8 @@ static long _sendmsg(int sockfd, const struct msghdr* msg, int flags)
         goto done;
     }
 
-    /* gather all the iovec buffers into one */
-    if ((len = myst_iov_gather(msg->msg_iov, msg->msg_iovlen, &buf)) < 0)
-    {
-        ret = len;
-        goto done;
-    }
-
-    if (len > SSIZE_MAX)
+    /* The kernel pre-flattens the IO vector into a single iov[] element */
+    if (msg->msg_iovlen != 1)
     {
         ret = -EINVAL;
         goto done;
@@ -357,8 +350,8 @@ static long _sendmsg(int sockfd, const struct msghdr* msg, int flags)
             sockfd,
             msg->msg_name,
             msg->msg_namelen,
-            buf,
-            (size_t)len,
+            msg->msg_iov[0].iov_base,
+            msg->msg_iov[0].iov_len,
             msg->msg_control,
             msg->msg_controllen,
             msg->msg_flags,
@@ -375,7 +368,7 @@ static long _sendmsg(int sockfd, const struct msghdr* msg, int flags)
     }
 
     /* guard against host returning a size bigger than buffer */
-    if (retval > len)
+    if ((size_t)retval > msg->msg_iov[0].iov_len)
     {
         ret = -EINVAL;
         goto done;
@@ -384,9 +377,6 @@ static long _sendmsg(int sockfd, const struct msghdr* msg, int flags)
     ret = retval;
 
 done:
-
-    if (buf)
-        free(buf);
 
     return ret;
 }
