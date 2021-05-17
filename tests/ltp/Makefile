@@ -125,7 +125,7 @@ alltests:
 	$(foreach i, $(TESTS), $(MAKE) one FS=$(FS) TEST=$(i) $(NL) )
 
 clean:
-	rm -rf $(APPDIR) ext2fs appdir $(UPPERDIR) $(WORKDIR) $(HOSTFS)
+	sudo rm -rf $(APPDIR) ext2fs appdir $(UPPERDIR) $(WORKDIR) $(HOSTFS)
 
 CACHEDIR=$(HOME)/.mystikos/cache/ltp
 

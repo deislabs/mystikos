@@ -32,10 +32,14 @@ jobs:
         sudo apt-get install build-essential python3-setuptools python3-pip llvm-7 libmbedtls-dev docker-ce -y 
         sudo chmod 666 /var/run/docker.sock
         curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+        docker system prune -a -f
+        df
       displayName: 'minimum init config'
 
     # build all source files
     - script: |
+        # remove all untracked files and directories in the git repository
+        sudo rm -rf `git ls-files --others --directory`
         make distclean
         make -j
       displayName: 'build repo source'
@@ -94,8 +98,17 @@ jobs:
         DB_NAME: $(DB_NAME_USEAST)
         DB_SERVER_NAME: $(DB_SERVER_NAME_USEAST)
         MAA_URL: $(DB_MAA_URL_USEAST)
-        RUN_CORECLR_TESTS: 1
-    
+
+    # clean up
+    - script: |
+        make clean -C $(Build.SourcesDirectory)/tests
+        make clean -C $(Build.SourcesDirectory)/solutions
+        sudo rm -rf $(Build.SourcesDirectory)/build/tests
+        df
+      displayName: 'Cleanup test directories'
+      continueOnError: true
+      enabled: true
+
     # if any previous step(s) not succeed, fail the job
     - script: |
         echo "Not all steps succeed."
