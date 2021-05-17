@@ -20,11 +20,6 @@
 #define MIN_DATA_SIZE (8 * 4096)
 #define FAST_BITOPS
 
-/* uncomment this to verify various operations */
-#if 0
-#define VERIFY
-#endif
-
 typedef struct page
 {
     uint8_t buf[PAGE_SIZE];
@@ -47,7 +42,6 @@ typedef struct mman
     /* the pages */
     page_t* pages; /* page vector */
     size_t npages; /* the number of usable pages (less overhead) */
-    page_t* end;   /* beyond last page */
 
     myst_spinlock_t lock;
 } mman_t;
@@ -60,11 +54,6 @@ static mman_t _mman;
 MYST_INLINE uint64_t _round_up(uint64_t x, uint64_t m)
 {
     return (x + m - 1) / m * m;
-}
-
-MYST_INLINE bool _test_bit(size_t index)
-{
-    return myst_test_bit(_mman.bits, index);
 }
 
 MYST_INLINE bool _within(const void* ptr)
@@ -127,7 +116,6 @@ int myst_mman2_init(void* data, size_t size)
     _mman.prots = (uint8_t*)(_mman.data + pids_size + fds_size);
     _mman.bits = (uint8_t*)(_mman.data + pids_size + fds_size + prots_size);
     _mman.pages = (page_t*)(_mman.data + overhead_size);
-    _mman.end = _mman.pages + _mman.npages;
     assert(((_mman.npages * PAGE_SIZE) + overhead_size) == size);
 
     /* clear the overhead pages */
@@ -170,8 +158,8 @@ int myst_mman2_mmap(
     /* round length up to the page size */
     length = _round_up(length, PAGE_SIZE);
 
-    /* calculate the number of required pages */
-    size_t npages = length / PAGE_SIZE;
+    /* calculate the required number of pages */
+    size_t rpages = length / PAGE_SIZE;
 
     /* obtain lock */
     myst_spin_lock(&_mman.lock);
@@ -187,7 +175,7 @@ int myst_mman2_mmap(
 
         /* search the bitmap for a sequence of free bits */
         while ((i = myst_skip_one_bits(bits, nbits, i)) < nbits &&
-               (i + npages) <= nbits)
+               (i + rpages) <= nbits)
         {
             if (first_pass)
             {
@@ -195,9 +183,9 @@ int myst_mman2_mmap(
                 first_pass = false;
             }
 
-            size_t r = myst_skip_zero_bits(bits, nbits, i, i + npages);
+            size_t r = myst_skip_zero_bits(bits, nbits, i, i + rpages);
 
-            if (r - i == npages)
+            if (r - i == rpages)
             {
                 found = true;
                 break;
@@ -210,13 +198,13 @@ int myst_mman2_mmap(
         if (found)
         {
             const size_t lo = i;
-            const size_t hi = i + npages;
+            const size_t hi = i + rpages;
 
             /* update the process-id vector */
-            myst_memset_u32(&_mman.pids[lo], getpid(), npages);
+            myst_memset_u32(&_mman.pids[lo], getpid(), rpages);
 
             /* update the protections vector */
-            memset(&_mman.prots[lo], (uint8_t)prot, npages);
+            memset(&_mman.prots[lo], (uint8_t)prot, rpages);
 
             /* update the bits vector */
             myst_set_bits(bits, nbits, lo, hi);
@@ -425,7 +413,7 @@ int myst_mman2_mremap(
             size_t i;
 
             /* check whether the excess pages are available */
-            for (i = lo; i < hi && _test_bit(i); i++)
+            for (i = lo; i < hi && myst_test_bit(_mman.bits, i); i++)
                 ;
 
             /* grow mapping in place */
