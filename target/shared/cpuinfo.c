@@ -2,8 +2,8 @@
 // Licensed under the MIT License.
 
 #include <errno.h>
-#include <myst/tcall.h>
 #include <fcntl.h>
+#include <myst/tcall.h>
 #include <string.h>
 
 int myst_tcall_cpuinfo_size()
@@ -24,23 +24,12 @@ int myst_tcall_cpuinfo_size()
 
 int myst_tcall_get_cpuinfo(char* buf, size_t size)
 {
-    int fd, nbytes, count = 0;
-    char tmp[1024];
-    char* p = buf;
+    int fd = open("/proc/cpuinfo", O_RDONLY);
 
-    fd = open("/proc/cpuinfo", O_RDONLY);
     if (fd < 0)
         return errno;
 
-    while ((nbytes = read(fd, tmp, sizeof(tmp))))
-    {
-        count += nbytes;
-        if (count > size)
-            break;
-
-        memcpy(p, tmp, nbytes);
-        p += nbytes;
-    }
+    read(fd, buf, size);
     close(fd);
 
     return 0;
