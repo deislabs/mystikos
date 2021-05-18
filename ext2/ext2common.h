@@ -12,7 +12,7 @@ MYST_INLINE bool ext2_test_bit(
 {
     uint32_t byte = index / 8;
     uint32_t bit = index % 8;
-    return ((uint32_t)(data[byte]) & (1 << bit)) ? 1 : 0;
+    return ((uint32_t)(data[byte]) & (1 << bit));
 }
 
 extern const uint8_t ext2_count_bits_table[];

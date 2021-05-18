@@ -20,6 +20,7 @@ CFLAGS += -fdata-sections
 CFLAGS += -Wno-conversion
 CFLAGS += -Wno-parentheses
 CFLAGS += -Wstack-usage=512
+CFLAGS += -O3
 
 LDFLAGS = $(DEFAULT_LDFLAGS)
 

@@ -10,6 +10,16 @@
 #include <myst/blkdev.h>
 #include <myst/ext2.h>
 
+uid_t myst_syscall_geteuid(void)
+{
+    return geteuid();
+}
+
+gid_t myst_syscall_getegid(void)
+{
+    return getegid();
+}
+
 static void _dump_stat_buf(struct stat* buf)
 {
     printf("=== _dump_stat_buf\n");
@@ -273,8 +283,8 @@ int main(int argc, const char* argv[])
         assert(buf.st_size == sizeof(alpha));
         assert(buf.st_mode == mode);
         assert(buf.st_nlink == 1);
-        assert(buf.st_uid == 0);
-        assert(buf.st_gid == 0);
+        assert(buf.st_uid == geteuid());
+        assert(buf.st_gid == getegid());
         assert(buf.st_blksize == 1024);
         assert(buf.st_ino != 0);
         //_dump_stat_buf(&buf);
@@ -287,8 +297,8 @@ int main(int argc, const char* argv[])
         assert(buf.st_size == 0);
         assert(buf.st_mode == mode);
         assert(buf.st_nlink == 1);
-        assert(buf.st_uid == 0);
-        assert(buf.st_gid == 0);
+        assert(buf.st_uid == geteuid());
+        assert(buf.st_gid == getegid());
         assert(buf.st_blksize == 1024);
         assert(buf.st_ino != 0);
         //_dump_stat_buf(&buf);
@@ -994,6 +1004,27 @@ int main(int argc, const char* argv[])
         assert(ext2_rmdir(fs, "/lnkdir1") == 0);
         assert(ext2_rmdir(fs, "/lnkdir3/lnkdir4") == 0);
         assert(ext2_rmdir(fs, "/lnkdir3") == 0);
+    }
+
+    /* test read/write to file from different handles */
+    {
+        const char path[] = "test_read_write";
+        FILE* os = fopen(path, "w");
+        assert(os != NULL);
+
+        FILE* is = fopen(path, "r");
+        assert(is != NULL);
+
+        fprintf(os, "abcdefghijklmnopqrstuv");
+        fflush(os);
+
+        sleep(1);
+
+        int c = getc(is);
+        assert(c == 'a');
+
+        fclose(os);
+        fclose(is);
     }
 
     assert(ext2_check(__ext2) == 0);
