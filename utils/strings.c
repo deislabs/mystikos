@@ -328,3 +328,49 @@ bool myst_isspace(char c)
             return false;
     }
 }
+
+void* myst_memcchr(const void* b, int c, size_t n)
+{
+    const uint8_t* p = (uint8_t*)b;
+
+    /* while more bytes and pointer is not 16-byte aligned */
+    while (n && (((ptrdiff_t)p) & 0x000000000000000f))
+    {
+        if (*p != c)
+            return (void*)p;
+        n--;
+        p++;
+    }
+
+    /* if more than 16 bytes and p is 16-byte aligned */
+    if (n > 16 && ((ptrdiff_t)p & 0x000000000000000f) == 0)
+    {
+        const __uint128_t* p16 = (__uint128_t*)p;
+        size_t n16 = n / 16;
+        const __uint128_t* end = p16 + n16;
+        __uint128_t c16;
+        memset(&c16, c, sizeof(c16));
+
+        while (n16 > 0 && *p16 == c16)
+        {
+            n16--;
+            p16++;
+        }
+
+        /* calculate the remaining words to be examined */
+        size_t r = end - p16;
+
+        p = (uint8_t*)p16;
+        n = (r * 16) + (n % 16);
+    }
+
+    while (n > 0)
+    {
+        if (*p != c)
+            return (void*)p;
+        p++;
+        n--;
+    }
+
+    return NULL;
+}

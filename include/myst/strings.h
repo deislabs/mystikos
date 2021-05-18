@@ -42,4 +42,8 @@ bool myst_isspace(char c);
 /* convert a whole string to an integer */
 int myst_str2int(const char* s, int* x);
 
+// BSD memcchr() function: return a pointer to the first byte that is not
+// equal to c or null if not found.
+void* myst_memcchr(const void* b, int c, size_t len);
+
 #endif /* _MYST_STRINGS_H */

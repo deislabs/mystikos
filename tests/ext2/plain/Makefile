@@ -34,11 +34,14 @@ EXT2FS_SIZE=134217728
 tests:
 	mkdir -p $(SUBOBJDIR)
 	sudo $(MYST) mkext2 --force --size=$(EXT2FS_SIZE) ext2dir $(EXT2FS)
+	chown $(USER).$(USER) $(EXT2FS)
 	$(PREFIX) $(RUNTEST) $(PREFIX) $(SUBBINDIR)/ext2 $(EXT2FS)
-	rm -rf $(EXT2FS)
 
-cg:
-	$(MAKE) USE_CALLGRIND=1 tests
+cachegrind:
+	mkdir -p $(SUBOBJDIR)
+	sudo $(MYST) mkext2 --force --size=$(EXT2FS_SIZE) ext2dir $(EXT2FS)
+	chown $(USER).$(USER) $(EXT2FS)
+	$(CACHEGRIND_COMMAND) $(SUBBINDIR)/ext2 $(EXT2FS)
 
 ann:
 	cg_annotate --auto=yes -I$(TOP)/ext2 cachegrind.out

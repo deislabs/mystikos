@@ -27,7 +27,7 @@
 #define EXT2_TRIPLE_INDIRECT_BLOCK 14
 
 /* limit the stack size of the functions below */
-#pragma GCC diagnostic error "-Wstack-usage=256"
+#pragma GCC diagnostic error "-Wstack-usage=512"
 
 #if 0
 #define CHECKS
@@ -162,24 +162,9 @@ static void _dirent_init(
     ent->rec_len = _next_mult(ent->rec_len, 4);
 }
 
-static bool _zero_filled_u32(const uint32_t* s, size_t n)
+MYST_INLINE bool _zero_filled_u32(const uint32_t* s, size_t n)
 {
-    const uint32_t* p = s;
-    const uint32_t* end = s + n;
-
-    while (n > 4 && !p[0] && !p[1] && !p[2] && !p[3])
-    {
-        n -= 4;
-        p += 4;
-    }
-
-    while (n > 0 && !p[0])
-    {
-        n--;
-        p++;
-    }
-
-    return p == end;
+    return myst_memcchr(s, 0, n * sizeof(uint32_t)) == NULL;
 }
 
 static ssize_t _read(myst_blkdev_t* dev, size_t offset, void* data, size_t size)
@@ -197,9 +182,6 @@ static ssize_t _read(myst_blkdev_t* dev, size_t offset, void* data, size_t size)
     struct locals* locals = NULL;
 
     if (!dev || !data)
-        goto done;
-
-    if (!(locals = malloc(sizeof(struct locals))))
         goto done;
 
     /* calculate the block number */
@@ -225,6 +207,9 @@ static ssize_t _read(myst_blkdev_t* dev, size_t offset, void* data, size_t size)
         {
             uint32_t off; /* offset into this block */
             uint32_t len; /* bytes to read from this block */
+
+            if (!(locals = malloc(sizeof(struct locals))))
+                goto done;
 
             if (dev->get(dev, i, locals->blk) != 0)
                 goto done;
@@ -645,29 +630,15 @@ static int _get_blkno(ext2_t* ext2, uint32_t* blkno)
 
         /* Scan the bitmap, looking for free bit */
         {
-            const uint64_t* p = (const uint64_t*)locals->bitmap.data;
+            const uint8_t* p;
 
-            /* skip over full long words */
-            {
-                const uint64_t x = 0xffffffffffffffff;
-                size_t n = locals->bitmap.size / sizeof(uint64_t);
-                size_t i = n;
+            /* skip over full (0xff) bytes */
+            p = myst_memcchr(locals->bitmap.data, 0xff, locals->bitmap.size);
 
-                while (n > 4 && p[0] == x && p[1] == x && p[2] == x &&
-                       p[3] == x)
-                {
-                    p += 4;
-                    i -= 4;
-                }
+            if (!p)
+                continue;
 
-                while (i && p[0] == x)
-                {
-                    p++;
-                    i--;
-                }
-
-                lblkno = (8 * sizeof(uint64_t)) * (n - i);
-            }
+            lblkno = (p - locals->bitmap.data) * 8;
 
             for (; lblkno < locals->bitmap.size * 8; lblkno++)
             {
@@ -839,12 +810,21 @@ static int _get_ino(ext2_t* ext2, ext2_ino_t* ino)
     for (grpno = 0; grpno < ext2->group_count; grpno++)
     {
         uint32_t lino;
+        const uint8_t* p;
 
         /* Read the bitmap */
         ECHECK(ext2_read_inode_bitmap(ext2, grpno, &locals->bitmap));
 
+        /* skip over full (0xff) bytes */
+        p = myst_memcchr(locals->bitmap.data, 0xff, locals->bitmap.size);
+
+        if (p)
+            lino = (p - locals->bitmap.data) * 8;
+        else
+            lino = locals->bitmap.size * 8;
+
         /* Scan the bitmap, looking for free bit */
-        for (lino = 0; lino < locals->bitmap.size * 8; lino++)
+        for (; lino < locals->bitmap.size * 8; lino++)
         {
             if (!ext2_test_bit(locals->bitmap.data, locals->bitmap.size, lino))
             {
@@ -2391,8 +2371,6 @@ done:
     return ret;
 }
 
-static const uint8_t _zeros[EXT2_MAX_BLOCK_SIZE];
-
 /* ATTN: make this inode oriented */
 /* remove the directory entry with the given name */
 static int _remove_dirent(ext2_t* ext2, const char* path)
@@ -2493,7 +2471,7 @@ static int _remove_dirent(ext2_t* ext2, const char* path)
                 }
                 else
                 {
-                    ECHECK(myst_buf_append(&buf, _zeros, rem));
+                    ECHECK(myst_buf_resize(&buf, buf.size + rem));
                     curr = buf.size;
                     ECHECK(myst_buf_append(&buf, e, recsz));
 
@@ -2518,7 +2496,7 @@ static int _remove_dirent(ext2_t* ext2, const char* path)
             size_t rem = block_size - (buf.size % block_size);
 
             if (rem)
-                ECHECK(myst_buf_append(&buf, _zeros, rem));
+                ECHECK(myst_buf_resize(&buf, buf.size + rem));
 
             if (prev >= 0)
             {
@@ -2773,7 +2751,7 @@ static int _add_dirent(
             }
             else
             {
-                ECHECK(myst_buf_append(&buf, _zeros, rem));
+                ECHECK(myst_buf_resize(&buf, buf.size + rem));
                 curr = buf.size;
                 ECHECK(myst_buf_append(&buf, e, recsz));
 
@@ -2806,7 +2784,7 @@ static int _add_dirent(
             }
             else
             {
-                ECHECK(myst_buf_append(&buf, _zeros, rem));
+                ECHECK(myst_buf_resize(&buf, buf.size + rem));
                 curr = buf.size;
                 ECHECK(myst_buf_append(&buf, e, recsz));
 
@@ -2828,7 +2806,7 @@ static int _add_dirent(
             size_t rem = block_size - (buf.size % block_size);
 
             if (rem)
-                ECHECK(myst_buf_append(&buf, _zeros, rem));
+                ECHECK(myst_buf_resize(&buf, buf.size + rem));
 
             if (prev >= 0)
             {
@@ -3457,6 +3435,9 @@ int64_t ext2_read(myst_fs_t* fs, myst_file_t* file, void* data, uint64_t size)
     /* fail if file has been opened for write only */
     if (file->access == O_WRONLY)
         ERAISE(-EBADF);
+
+    /* refresh the inode */
+    ECHECK((ext2_read_inode(ext2, file->ino, &file->inode)));
 
     /* The index of the first block to read */
     first = file->offset / ext2->block_size;

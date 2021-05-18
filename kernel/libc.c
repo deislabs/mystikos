@@ -69,24 +69,29 @@ char* strncpy(char* dest, const char* src, size_t n)
     return dest;
 }
 
+#pragma GCC push_options
+#pragma GCC optimize "-O3"
 void* memset(void* s, int c, size_t n)
 {
     uint8_t* p = (uint8_t*)s;
 
-    /* if s is 8-byte aligned */
-    if (((uint64_t)p & 0x0000000000000007) == 0)
+    /* copy while more bytes and not 8-byte aligned */
+    while (n && (((ptrdiff_t)p) & 0x000000000000000f))
     {
-        uint64_t* pp = (uint64_t*)p;
-        size_t nn = n / 8;
-        uint64_t cc = ((uint64_t)c << 56) | ((uint64_t)c << 48) |
-                      ((uint64_t)c << 40) | ((uint64_t)c << 32) |
-                      ((uint64_t)c << 24) | ((uint64_t)c << 16) |
-                      ((uint64_t)c << 8) | ((uint64_t)c);
+        *p++ = (uint8_t)c;
+        n--;
+    }
 
-#ifdef USE_LOOP_UNROLLING
+    /* if more bytes and p is 8-byte aligned */
+    if (n > sizeof(__uint128_t) && ((ptrdiff_t)p & 0x000000000000000f) == 0)
+    {
+        __uint128_t* pp = (__uint128_t*)p;
+        size_t nn = n / sizeof(__uint128_t);
+        __uint128_t cc;
 
-        /* unroll loop to factor of 8 */
-        while (nn >= 8)
+        memset(&cc, c, sizeof(cc));
+
+        while (nn > 8)
         {
             pp[0] = cc;
             pp[1] = cc;
@@ -100,21 +105,26 @@ void* memset(void* s, int c, size_t n)
             nn -= 8;
         }
 
-#endif /* USE_LOOP_UNROLLING */
-
-        while (nn--)
+        while (nn > 0)
+        {
             *pp++ = cc;
+            nn--;
+        }
 
         p = (uint8_t*)pp;
-        n %= 8;
+        n %= sizeof(__uint128_t);
     }
 
     /* handle remaining bytes if any */
-    while (n--)
+    while (n > 0)
+    {
         *p++ = (uint8_t)c;
+        n--;
+    }
 
     return s;
 }
+#pragma GCC pop_options
 
 void* memcpy(void* dest, const void* src, size_t n)
 {
