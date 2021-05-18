@@ -32,11 +32,41 @@ MYST_INLINE void myst_clear_bit(uint8_t* data, size_t index)
 }
 
 MYST_INLINE
+uint32_t myst_count_one_bits_u32(uint32_t x)
+{
+    x = x - ((x >> 1) & 0x55555555);
+    x = (x & 0x33333333) + ((x >> 2) & 0x33333333);
+    x = (x & 0x0F0F0F0F) + ((x >> 4) & 0x0F0F0F0F);
+    x = (x & 0x00FF00FF) + ((x >> 8) & 0x00FF00FF);
+    x = (x & 0x0000FFFF) + ((x >> 16) & 0x0000FFFF);
+    return x & 0x3F;
+}
+
+MYST_INLINE
+uint32_t myst_count_zero_bits_u32(uint32_t x)
+{
+    return 32 - myst_count_one_bits_u32(x);
+}
+
+MYST_INLINE
 size_t myst_count_zero_bits(const uint8_t* bits, size_t nbits)
 {
+    size_t i = 0;
     size_t n = 0;
 
-    for (size_t i = 0; i < nbits; i++)
+    if (((ptrdiff_t)bits % 4) == 0)
+    {
+        const uint32_t* p = (const uint32_t*)bits;
+        size_t m = nbits / 32;
+
+        for (size_t j = 0; j < m; j++)
+        {
+            n += myst_count_zero_bits_u32(p[j]);
+            i += 32;
+        }
+    }
+
+    for (; i < nbits; i++)
     {
         if (!myst_test_bit(bits, i))
             n++;
@@ -48,9 +78,22 @@ size_t myst_count_zero_bits(const uint8_t* bits, size_t nbits)
 MYST_INLINE
 size_t myst_count_one_bits(const uint8_t* bits, size_t nbits)
 {
+    size_t i = 0;
     size_t n = 0;
 
-    for (size_t i = 0; i < nbits; i++)
+    if (((ptrdiff_t)bits % 4) == 0)
+    {
+        const uint32_t* p = (const uint32_t*)bits;
+        size_t m = nbits / 32;
+
+        for (size_t j = 0; j < m; j++)
+        {
+            n += myst_count_one_bits_u32(p[j]);
+            i += 32;
+        }
+    }
+
+    for (; i < nbits; i++)
     {
         if (myst_test_bit(bits, i))
             n++;
@@ -72,6 +115,7 @@ myst_skip_zero_bits(const uint8_t* bits, size_t nbits, size_t lo, size_t hi)
     return i;
 }
 
+MYST_INLINE
 size_t myst_skip_one_bits(const uint8_t* bits, size_t nbits, size_t i)
 {
     if (i == nbits)
