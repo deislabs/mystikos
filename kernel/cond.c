@@ -164,6 +164,7 @@ int myst_cond_signal(myst_cond_t* c)
 
 int myst_cond_broadcast(myst_cond_t* c, size_t n)
 {
+    size_t num_awoken = 0;
     myst_thread_queue_t waiters = {NULL, NULL};
 
     if (!c)
@@ -189,9 +190,10 @@ int myst_cond_broadcast(myst_cond_t* c, size_t n)
     {
         next = p->qnext;
         myst_tcall_wake(p->event);
+        num_awoken++;
     }
 
-    return 0;
+    return num_awoken;
 }
 
 int myst_cond_requeue(

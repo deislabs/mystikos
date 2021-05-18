@@ -14,11 +14,25 @@ rootfs: futex.c
 	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/futex futex.c $(LDFLAGS)
 	$(MYST) mkcpio $(APPDIR) rootfs
 
+OPTS =
+
 ifdef STRACE
-OPTS = --strace
+OPTS += --strace
+endif
+
+ifdef ETRACE
+OPTS += --etrace
 endif
 
 tests: all
+	$(MAKE) test1
+	$(MAKE) test2
+
+test1:
+	gcc -Wall -o futex futex.c -lpthread
+	$(RUNTEST) ./futex
+
+test2:
 	$(RUNTEST) $(MYST_EXEC) rootfs /bin/futex $(OPTS)
 
 myst:

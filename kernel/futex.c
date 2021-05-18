@@ -239,16 +239,23 @@ int myst_futex_wake(int* uaddr, int val)
             ret = -ENOSYS;
             goto done;
         }
+
+        /* return the number of threads that woke up */
+        ret = 1;
     }
     else if (val > 1)
     {
         size_t n = (val == INT_MAX) ? SIZE_MAX : (size_t)val;
+        int num_awoken;
 
-        if (myst_cond_broadcast(&f->cond, n) != 0)
+        /* myst_cond_broadcast() returns the number of threads awoken */
+        if ((num_awoken = myst_cond_broadcast(&f->cond, n)) < 0)
         {
             ret = -ENOSYS;
             goto done;
         }
+
+        ret = num_awoken;
     }
     else
     {
@@ -365,7 +372,9 @@ long myst_syscall_futex(
     }
     else if (op == FUTEX_WAKE || op == (FUTEX_WAKE | FUTEX_PRIVATE))
     {
-        ECHECK(myst_futex_wake(uaddr, val));
+        int r;
+        ECHECK((r = myst_futex_wake(uaddr, val)));
+        ret = r;
     }
     else if (op == FUTEX_REQUEUE || op == (FUTEX_REQUEUE | FUTEX_PRIVATE))
     {
