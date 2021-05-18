@@ -267,18 +267,10 @@ int myst_mman2_munmap(void* addr, size_t length)
     size_t n = length / PAGE_SIZE;
 
     /* update the pids vector */
-#if 0
-    _uint32_memset(&_mman.pids[lo], 0, n);
-#else
     memset(&_mman.pids[lo], 0, n * sizeof(uint32_t));
-#endif
 
     /* update the fds vector */
-#if 0
-    _uint32_memset((uint32_t*)&_mman.fds[lo], 0, n);
-#else
     memset((uint32_t*)&_mman.fds[lo], 0, n * sizeof(uint32_t));
-#endif
 
     /* update the protection vector */
     memset(&_mman.prots[lo], 0, n);
