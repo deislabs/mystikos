@@ -59,10 +59,11 @@ size_t myst_count_zero_bits(const uint8_t* bits, size_t nbits)
         const uint32_t* p = (const uint32_t*)bits;
         size_t m = nbits / 32;
 
-        for (size_t j = 0; j < m; j++)
+        while (m--)
         {
-            n += myst_count_zero_bits_u32(p[j]);
+            n += myst_count_zero_bits_u32(*p);
             i += 32;
+            p++;
         }
     }
 
@@ -86,10 +87,11 @@ size_t myst_count_one_bits(const uint8_t* bits, size_t nbits)
         const uint32_t* p = (const uint32_t*)bits;
         size_t m = nbits / 32;
 
-        for (size_t j = 0; j < m; j++)
+        while (m--)
         {
-            n += myst_count_one_bits_u32(p[j]);
+            n += myst_count_one_bits_u32(*p);
             i += 32;
+            p++;
         }
     }
 
