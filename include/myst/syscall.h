@@ -312,4 +312,7 @@ long myst_syscall_sched_setaffinity(
 
 long myst_syscall_getcpu(unsigned* cpu, unsigned* node);
 
+long myst_syscall_chown(const char* pathname, uid_t owner, gid_t group);
+long myst_syscall_fchown(int fd, uid_t owner, gid_t group);
+
 #endif /* _MYST_SYSCALL_H */

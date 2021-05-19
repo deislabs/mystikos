@@ -164,6 +164,15 @@ struct myst_fs
         myst_fs_t* fs,
         myst_file_t* file,
         const struct timespec times[2]);
+
+    int (*fs_chown)(myst_fs_t* fs, const char* path, uid_t owner, gid_t group);
+
+    int (
+        *fs_fchown)(myst_fs_t* fs, myst_file_t* file, uid_t owner, gid_t group);
+
+    int (*fs_chmod)(myst_fs_t* fs, const char* pathname, mode_t mode);
+
+    int (*fs_fchmod)(myst_fs_t* fs, myst_file_t* file, mode_t mode);
 };
 
 int myst_remove_fd_link(int fd);

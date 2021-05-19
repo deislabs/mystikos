@@ -645,6 +645,78 @@ done:
     return ret;
 }
 
+static int _fs_chown(
+    myst_fs_t* fs,
+    const char* pathname,
+    uid_t owner,
+    gid_t group)
+{
+    int ret = 0;
+    lockfs_t* lockfs = (lockfs_t*)fs;
+
+    if (!_lockfs_valid(lockfs))
+        ERAISE(-EINVAL);
+
+    myst_mutex_lock(&lockfs->lock);
+    ret = (*lockfs->fs->fs_chown)(lockfs->fs, pathname, owner, group);
+    myst_mutex_unlock(&lockfs->lock);
+
+done:
+    return ret;
+}
+
+static int _fs_fchown(
+    myst_fs_t* fs,
+    myst_file_t* file,
+    uid_t owner,
+    gid_t group)
+{
+    int ret = 0;
+    lockfs_t* lockfs = (lockfs_t*)fs;
+
+    if (!_lockfs_valid(lockfs))
+        ERAISE(-EINVAL);
+
+    myst_mutex_lock(&lockfs->lock);
+    ret = (*lockfs->fs->fs_fchown)(lockfs->fs, file, owner, group);
+    myst_mutex_unlock(&lockfs->lock);
+
+done:
+    return ret;
+}
+
+static int _fs_chmod(myst_fs_t* fs, const char* pathname, mode_t mode)
+{
+    int ret = 0;
+    lockfs_t* lockfs = (lockfs_t*)fs;
+
+    if (!_lockfs_valid(lockfs))
+        ERAISE(-EINVAL);
+
+    myst_mutex_lock(&lockfs->lock);
+    ret = (*lockfs->fs->fs_chmod)(lockfs->fs, pathname, mode);
+    myst_mutex_unlock(&lockfs->lock);
+
+done:
+    return ret;
+}
+
+static int _fs_fchmod(myst_fs_t* fs, myst_file_t* file, mode_t mode)
+{
+    int ret = 0;
+    lockfs_t* lockfs = (lockfs_t*)fs;
+
+    if (!_lockfs_valid(lockfs))
+        ERAISE(-EINVAL);
+
+    myst_mutex_lock(&lockfs->lock);
+    ret = (*lockfs->fs->fs_fchmod)(lockfs->fs, file, mode);
+    myst_mutex_unlock(&lockfs->lock);
+
+done:
+    return ret;
+}
+
 int myst_lockfs_init(myst_fs_t* fs, myst_fs_t** lockfs_out)
 {
     int ret = 0;
@@ -698,6 +770,10 @@ int myst_lockfs_init(myst_fs_t* fs, myst_fs_t** lockfs_out)
         .fs_statfs = _fs_statfs,
         .fs_fstatfs = _fs_fstatfs,
         .fs_futimens = _fs_futimens,
+        .fs_chown = _fs_chown,
+        .fs_fchown = _fs_fchown,
+        .fs_chmod = _fs_chmod,
+        .fs_fchmod = _fs_fchmod,
     };
 
     if (lockfs_out)

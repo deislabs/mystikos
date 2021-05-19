@@ -1958,8 +1958,29 @@ done:
 
 long myst_syscall_chmod(const char* pathname, mode_t mode)
 {
-    (void)pathname;
-    (void)mode;
+    long ret = 0;
+    myst_fs_t* fs;
+    struct locals
+    {
+        char suffix[PATH_MAX];
+    }* locals = NULL;
+
+    if (!pathname)
+        ERAISE(-EINVAL);
+
+    if (!(locals = malloc(sizeof(struct locals))))
+        ERAISE(-ENOMEM);
+
+    ECHECK(myst_mount_resolve(pathname, locals->suffix, &fs));
+
+    // TODO: check permissions for operation
+    ECHECK((*fs->fs_chmod)(fs, locals->suffix, mode));
+
+done:
+
+    if (locals)
+        free(locals);
+
     return 0;
 }
 
@@ -1986,7 +2007,9 @@ long myst_syscall_fchmod(int fd, mode_t mode)
     }
     else if (type == MYST_FDTABLE_TYPE_FILE)
     {
-        /* ignore fchmod on files */
+        myst_fs_t* fs = device;
+        // TODO: check permissions for operation
+        ECHECK((*fs->fs_fchmod)(fs, object, mode));
     }
     else
     {
@@ -3953,11 +3976,18 @@ static long _syscall(void* args_)
 
             _strace(n, "pathname=%s owner=%u group=%u", pathname, owner, group);
 
-            /* owner is a no-op for now since kernel executes as root */
-            BREAK(_return(n, 0));
+            BREAK(_return(n, myst_syscall_chown(pathname, owner, group)));
         }
         case SYS_fchown:
-            break;
+        {
+            int fd = (int)x1;
+            uid_t owner = (uid_t)x2;
+            gid_t group = (gid_t)x3;
+
+            _strace(n, "fd=%d owner=%u group=%u", fd, owner, group);
+
+            BREAK(_return(n, myst_syscall_fchown(fd, owner, group)));
+        }
         case SYS_lchown:
             break;
         case SYS_umask:

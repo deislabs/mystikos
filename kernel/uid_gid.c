@@ -6,7 +6,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <myst/eraise.h>
 #include <myst/kernel.h>
+#include <myst/mount.h>
 #include <myst/syscall.h>
 #include <myst/thread.h>
 
@@ -198,8 +200,10 @@ static long myst_valid_gid_against_group_file(gid_t gid)
     /* errors reading file return -1 */
     ret = -1;
 
+    /* TODO: check against gid in user's entry in /etc/passwd */
+
     /* get file length */
-    if (myst_syscall_stat("/etc/passwd", &file_stat) != 0)
+    if (myst_syscall_stat("/etc/group", &file_stat) != 0)
         goto done;
 
     file_length = file_stat.st_size;
@@ -209,7 +213,7 @@ static long myst_valid_gid_against_group_file(gid_t gid)
         goto done;
     buffer[file_length] = '\0';
 
-    fd = myst_syscall_open("/etc/passwd", O_RDONLY, 0);
+    fd = myst_syscall_open("/etc/group", O_RDONLY, 0);
     if (fd == -1)
         goto done;
 
@@ -779,4 +783,131 @@ long myst_syscall_setgroups(size_t size, const gid_t* list)
         return -EPERM;
 
     return 0;
+}
+
+static int _check_thread_group_membership(gid_t group)
+{
+    myst_thread_t* thread = myst_thread_self();
+    if (group == thread->egid)
+        return 1;
+
+    for (unsigned int i = 0; i < thread->num_supgid; i++)
+    {
+        if (group == thread->supgid[i])
+            return 1;
+    }
+
+    return 0;
+}
+
+long myst_syscall_chown(const char* pathname, uid_t owner, gid_t group)
+{
+    long ret;
+    myst_fs_t* fs;
+    myst_thread_t* thread = myst_thread_self();
+    struct locals
+    {
+        char suffix[PATH_MAX];
+    }* locals = NULL;
+    struct stat statbuf;
+
+    if (!pathname)
+        return -EINVAL;
+
+    if (((owner != (uid_t)-1) &&
+         (myst_valid_uid_against_passwd_file(owner) <= 0)) ||
+        ((group != (gid_t)-1) &&
+         (myst_valid_gid_against_group_file(group) <= 0)))
+    {
+        ret = -EINVAL;
+    }
+
+    if (!(locals = malloc(sizeof(struct locals))))
+        ERAISE(-ENOMEM);
+
+    ECHECK(myst_mount_resolve(pathname, locals->suffix, &fs));
+
+    /* if thread's euid is root (TODO: or has CAP_CHOWN capability) */
+    if (thread->euid == 0)
+    {
+        ECHECK((*fs->fs_chown)(fs, locals->suffix, owner, group));
+    }
+    /* non-privileged thread case */
+    else
+    {
+        /* owner should either be -1 or file is owned by the thread */
+        ECHECK((*fs->fs_stat)(fs, locals->suffix, &statbuf));
+        if (owner != -1u || statbuf.st_uid != thread->euid)
+            ERAISE(-EINVAL);
+
+        /* group should either be thread's egid or one of the supplementary gids
+         */
+        if (!_check_thread_group_membership(group))
+            ERAISE(-EINVAL);
+
+        ECHECK((*fs->fs_chown)(fs, locals->suffix, (uid_t)-1, group));
+    }
+done:
+
+    if (locals)
+        free(locals);
+
+    return ret;
+}
+
+long myst_syscall_fchown(int fd, uid_t owner, gid_t group)
+{
+    long ret;
+    myst_file_t* file = NULL;
+    myst_fs_t* fs = NULL;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_thread_t* thread = myst_thread_self();
+    struct locals
+    {
+        char suffix[PATH_MAX];
+        struct stat statbuf;
+    }* locals = NULL;
+
+    if (fd < 0)
+        return -EINVAL;
+
+    if (((owner != (uid_t)-1) &&
+         (myst_valid_uid_against_passwd_file(owner) <= 0)) ||
+        ((group != (gid_t)-1) &&
+         (myst_valid_gid_against_group_file(group) <= 0)))
+    {
+        ret = -EINVAL;
+    }
+
+    if (!(locals = malloc(sizeof(struct locals))))
+        ERAISE(-ENOMEM);
+
+    ECHECK(myst_fdtable_get_file(fdtable, fd, &fs, &file));
+
+    /* if thread's euid is root (TODO: or has CAP_CHOWN capability) */
+    if (thread->euid == 0)
+    {
+        ECHECK((*fs->fs_fchown)(fs, file, owner, group));
+    }
+    /* non-privileged thread case */
+    else
+    {
+        /* owner should either be -1 or file is owned by the thread */
+        ECHECK((*fs->fs_fstat)(fs, file, &locals->statbuf));
+        if (owner != -1u || locals->statbuf.st_uid != thread->euid)
+            ERAISE(-EINVAL);
+
+        /* group should either be thread's egid or one of the supplementary gids
+         */
+        if (!_check_thread_group_membership(group))
+            ERAISE(-EINVAL);
+
+        ECHECK((*fs->fs_fchown)(fs, file, (uid_t)-1, group));
+    }
+done:
+
+    if (locals)
+        free(locals);
+
+    return ret;
 }
