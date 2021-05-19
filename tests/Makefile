@@ -59,6 +59,7 @@ DIRS += tlscert
 DIRS += tlscert2
 DIRS += wake_and_kill
 DIRS += cross_fs_symlinks
+DIRS += openmp
 
 ifndef MYST_SKIP_LTP_TESTS
 DIRS += ltp
