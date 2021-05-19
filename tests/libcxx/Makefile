@@ -9,7 +9,6 @@ APPDIR=$(CURDIR)/appdir
 APPBUILDER=$(TOP)/scripts/appbuilder
 
 ROOTFS=$(CURDIR)/rootfs
-ROOTHASH=$(SUBOBJDIR)/roothash
 
 LIBCXX_TESTS_DIR=llvm-project/libcxx/test/
 
@@ -24,10 +23,14 @@ all:
 	$(MAKE) $(APPDIR)
 	$(MAKE) $(APPDIR)/bin/run
 	$(MAKE) $(ROOTFS)
-	$(MAKE) $(ROOTHASH)
+
+OPTS += --memory-size=32m
+OPTS += --max-threads=32
+
+OLD_OPTS += --memory-size=1024m
 
 one:
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) $(TEST)
+	$(RUNTEST) $(MYST_EXEC) $(OLD_OPTS) $(ROOTFS) $(TEST)
 
 llvm-project: 
 	git clone -b LibOS_v10.0.1 --single-branch https://github.com/salsal97/llvm-project.git
@@ -55,18 +58,22 @@ $(APPDIR):
 
 $(ROOTFS): run.c
 	sudo $(MYST) mkext2 $(APPDIR) $(ROOTFS)
-	# run with posix spawn
+	truncate --size=-4096 $(ROOTFS)
 
-$(ROOTHASH): run.c
-	mkdir -p $(SUBOBJDIR)
-	$(MYST) fssig --roothash $(ROOTFS) > $(ROOTHASH)
-
-OPTS += --roothash=$(ROOTHASH)
-
-OPTS += --memory-size=1024m
+TEST_FILE = builttests_exe.passed
 
 tests:
-	$(RUNTEST) $(MAKE) __tests
+	$(MAKE) -j __tests
+
+__tests: tests_01 tests_02 tests_03 tests_04 tests_05 tests_06
+
+run=$(foreach i,$1, $(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) $(i); $(NL) )
+
+tests_01:
+	$(call run,$(shell cat $(TEST_FILE).01))
+
+tests_02:
+	$(call run,$(shell cat $(TEST_FILE).02))
 
 __tests:
 	for i in a b c d e f ; do \

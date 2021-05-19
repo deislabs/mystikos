@@ -66,15 +66,61 @@ static oe_enclave_t* _enclave;
 /* the address of this is eventually passed to futex (uaddr argument) */
 static __thread int _thread_event;
 
+static __inline__ void _sleep_msec(uint64_t milliseconds)
+{
+    struct timespec ts;
+    const struct timespec* req = &ts;
+    struct timespec rem = {0, 0};
+    static const uint64_t _SEC_TO_MSEC = 1000UL;
+    static const uint64_t _MSEC_TO_NSEC = 1000000UL;
+
+    ts.tv_sec = (time_t)(milliseconds / _SEC_TO_MSEC);
+    ts.tv_nsec = (long)((milliseconds % _SEC_TO_MSEC) * _MSEC_TO_NSEC);
+
+    while (nanosleep(req, &rem) != 0 && errno == EINTR)
+    {
+        req = &rem;
+    }
+}
+
 static void* _thread_func(void* arg)
 {
-    long r = -1;
+    oe_result_t result;
+    long retval = -100;
     uint64_t cookie = (uint64_t)arg;
     uint64_t event = (uint64_t)&_thread_event;
 
-    if (myst_run_thread_ecall(_enclave, &r, cookie, event) != OE_OK || r != 0)
+    for (size_t i = 0; i < 10; i++)
     {
-        fprintf(stderr, "myst_run_thread_ecall(): failed: retval=%ld\n", r);
+        result = myst_run_thread_ecall(_enclave, &retval, cookie, event);
+
+        if (result == OE_OUT_OF_THREADS)
+        {
+            fprintf(stderr, "retry myst_run_thread_ecall()\n");
+            _sleep_msec(100);
+            continue;
+        }
+
+        if (result == OE_ENCLAVE_ABORTING)
+        {
+            /* ignore because enclave is in process of aborting */
+            return NULL;
+        }
+
+        break;
+    }
+
+    if (result != OE_OK)
+    {
+        fprintf(stderr, "myst_run_thread_ecall(): result=%u\n", result);
+        fflush(stdout);
+        abort();
+    }
+
+    if (retval != 0)
+    {
+        fprintf(
+            stderr, "myst_run_thread_ecall(): failed: retval=%ld\n", retval);
         fflush(stdout);
         abort();
     }
@@ -120,19 +166,162 @@ long myst_export_file_ocall(const char* path, const void* data, size_t size)
     return myst_tcall_export_file(path, data, size);
 }
 
+/* patch num_tcs in the image */
+static int _patch_enclave_image_num_tcs(
+    const char* path,
+    const size_t num_tcs,
+    char* err,
+    size_t errsz)
+{
+    int ret = 0;
+    elf_image_t img;
+    const char name[] = "oe_enclave_properties_sgx";
+    elf_sym_t sym;
+    uint32_t symaddr;
+    uint32_t symsize;
+    bool loaded = false;
+    const elf_segment_t* seg = NULL;
+
+    if (elf_image_load(path, &img) != 0)
+    {
+        snprintf(err, errsz, "cannot load enclave image: %s", path);
+        ERAISE(-EINVAL);
+    }
+
+    loaded = true;
+
+    /* find the "oe_enclave_properties_sgx" symbol */
+    if (elf_find_symbol_by_name(&img.elf, name, &sym) != 0)
+    {
+        snprintf(err, errsz, "cannot find enclave symbol: %s: %s", path, name);
+        ERAISE(-EINVAL);
+    }
+
+    /* check the size of the symbol */
+    if (sym.st_size != sizeof(oe_sgx_enclave_properties_t))
+    {
+        snprintf(err, errsz, "symbol size is wrong: %s", name);
+        ERAISE(-EINVAL);
+    }
+
+    /* save the size and address of the symbol */
+    symaddr = sym.st_value;
+    symsize = sym.st_size;
+
+    /* find the segment that contains this symbol */
+    for (size_t i = 0; i < img.num_segments; i++)
+    {
+        const elf_segment_t* p = &img.segments[i];
+        const uint64_t lo = p->vaddr;
+        const uint64_t hi = p->vaddr + p->memsz;
+
+        if (symaddr >= lo && symaddr + symsize <= hi)
+        {
+            seg = p;
+            break;
+        }
+    }
+
+    if (!seg)
+        ERAISE(-EINVAL);
+
+    /* patch the enclave image file */
+    {
+        size_t symoff = symaddr - seg->vaddr;
+        oe_sgx_enclave_properties_t* p;
+
+        p = (void*)((uint8_t*)seg->filedata + symoff);
+
+        if (p->header.size != sizeof(*p))
+        {
+            snprintf(err, errsz, "bad enclave settings (size)");
+            ERAISE(-EINVAL);
+        }
+
+        if (p->header.enclave_type != OE_ENCLAVE_TYPE_SGX)
+        {
+            snprintf(err, errsz, "bad enclave settings (type)");
+            ERAISE(-EINVAL);
+        }
+
+        /* reset the num-tcs */
+        p->header.size_settings.num_tcs = num_tcs;
+
+        /* patch the enclave image file */
+        {
+            int fd;
+            size_t offset = seg->offset + symoff;
+
+            if ((fd = open(path, O_WRONLY)) < 0)
+            {
+                snprintf(err, errsz, "cannot open enclave file: %s\n", path);
+                ERAISE(-EINVAL);
+            }
+
+            if (lseek(fd, offset, SEEK_SET) != offset)
+            {
+                snprintf(err, errsz, "cannot seek enclave file: %s\n", path);
+                ERAISE(-EINVAL);
+            }
+
+            if (write(fd, p, sizeof(*p)) != sizeof(*p))
+            {
+                snprintf(err, errsz, "cannot seek enclave file: %s\n", path);
+                ERAISE(-EINVAL);
+            }
+
+            close(fd);
+        }
+    }
+
+done:
+
+    if (loaded)
+        elf_image_free(&img);
+
+    return ret;
+}
+
 int exec_launch_enclave(
     const char* enc_path,
     oe_enclave_type_t type,
     uint32_t flags,
     const char* argv[],
     const char* envp[],
-    struct myst_options* options)
+    struct myst_options* options,
+    size_t max_threads)
 {
     oe_result_t r;
     int retval;
     static int _event; /* the main-thread event (used by futex: uaddr) */
     myst_buf_t argv_buf = MYST_BUF_INITIALIZER;
     myst_buf_t envp_buf = MYST_BUF_INITIALIZER;
+    char tmp[] = "/tmp/mystXXXXXX";
+    char err[128];
+    const size_t errsz = sizeof(err);
+
+    /* if --max-threads given, then patch the enclave image */
+    if (max_threads != 0)
+    {
+        /* copy the file */
+        {
+            int fd;
+
+            if ((fd = mkstemp(tmp)) < 0)
+                _err("cannot create temporary file: %s", tmp);
+
+            if (myst_copy_file_fd(enc_path, fd) != 0)
+                _err("cannot copy file from %s to %s", enc_path, tmp);
+
+            close(fd);
+        }
+
+        /* patch num_tcs in the image */
+        if (_patch_enclave_image_num_tcs(tmp, max_threads, err, errsz) != 0)
+            _err("failed to patch enclave image: %s", err);
+
+        enc_path = tmp;
+    }
 
     /* Load the enclave: calls oe_load_extra_enclave_data_hook() */
     r = oe_create_myst_enclave(enc_path, type, flags, NULL, 0, &_enclave);
@@ -174,6 +363,9 @@ int exec_launch_enclave(
 
     free(argv_buf.data);
     free(envp_buf.data);
+
+    if (enc_path == tmp)
+        unlink(tmp);
 
     return retval;
 }
@@ -220,6 +412,7 @@ int exec_action(int argc, const char* argv[], const char* envp[])
     char rootfs_path[] = "/tmp/mystXXXXXX";
     uint64_t heap_size = 0;
     const char* commandline_config = NULL;
+    size_t max_threads = 0;
 
     assert(strcmp(argv[1], "exec") == 0 || strcmp(argv[1], "exec-sgx") == 0);
 
@@ -288,6 +481,28 @@ int exec_action(int argc, const char* argv[], const char* envp[])
         /* Get --app-config option if it exists, otherwise we use default values
          */
         cli_getopt(&argc, argv, "--app-config-path", &commandline_config);
+
+        /* get the --max-threads=n option */
+        {
+            const char* optarg;
+
+            if (cli_getopt(&argc, argv, "--max-threads", &optarg) == 0)
+            {
+                char* end = NULL;
+                max_threads = strtoul(optarg, &end, 10);
+
+                if (!end || *end)
+                    _err("bad --max-threads argument: %s", optarg);
+
+                if (max_threads > ENCLAVE_MAX_THREADS)
+                {
+                    _err(
+                        "--max-threads must be <= %u: %s",
+                        ENCLAVE_MAX_THREADS,
+                        optarg);
+                }
+            }
+        }
 
         /* Get --help option */
         if ((cli_getopt(&argc, argv, "--help", NULL) == 0) ||
@@ -358,7 +573,7 @@ int exec_action(int argc, const char* argv[], const char* envp[])
     unlink(archive_path);
 
     return_status = exec_launch_enclave(
-        details->enc.path, type, flags, argv + 3, envp, &options);
+        details->enc.path, type, flags, argv + 3, envp, &options, max_threads);
 
     free_mount_mapping_opts(&options.mount_mapping);
 

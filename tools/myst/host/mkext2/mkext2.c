@@ -368,7 +368,7 @@ static void _append_hash_tree(
         image);
 
     if ((n = myst_ascii_to_bin(buf, root_hash->data, sizeof(*root_hash))) < 0)
-        _err("malformed root hash: %s", root_hash);
+        _err("malformed root hash: %s", buf);
 }
 
 static int _sign(
@@ -554,7 +554,7 @@ int mkext2_action(int argc, const char* argv[])
         const size_t min_len = 14;
 
         if (strlen(passphrase) < min_len)
-            _err("--passphrase option length must be >= %u", min_len);
+            _err("--passphrase option length must be >= %zu", min_len);
     }
 
     /* get the --sign option */

@@ -14,6 +14,7 @@ int exec_launch_enclave(
     uint32_t flags,
     const char* argv[],
     const char* envp[],
-    struct myst_options* options);
+    struct myst_options* options,
+    size_t max_threads);
 
 #endif /* _MYST_HOST_EXEC_H */

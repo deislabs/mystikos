@@ -510,6 +510,7 @@ int myst_enter_ecall(
     size_t envp_size,
     uint64_t event)
 {
+    /* WARNING: this function has a very small stack */
     struct enter_arg arg = {
         .options = options,
         .shared_memory = shared_memory,
@@ -542,6 +543,7 @@ int myst_enter_ecall(
 
 long myst_run_thread_ecall(uint64_t cookie, uint64_t event)
 {
+    /* WARNING: this function has a very small stack */
     return myst_run_thread(cookie, event);
 }
 
