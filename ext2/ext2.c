@@ -2637,8 +2637,8 @@ static int _create_dir_inode_and_block(
         locals->inode.i_mode = (S_IFDIR | mode);
 
         /* Set the uid and gid to root */
-        locals->inode.i_uid = 0;
-        locals->inode.i_gid = 0;
+        locals->inode.i_uid = myst_syscall_geteuid();
+        locals->inode.i_gid = myst_syscall_getegid();
 
         /* Set the size of this file */
         _inode_set_size(&locals->inode, ext2->block_size);
@@ -5217,6 +5217,199 @@ done:
     return ret;
 }
 
+static int _chown(ext2_inode_t* inode, uid_t owner, gid_t group)
+{
+    int ret = 0;
+
+    if (!inode)
+        ERAISE(-EINVAL);
+
+    if (owner != -1)
+        inode->i_uid = owner;
+
+    if (group != -1)
+        inode->i_gid = group;
+
+    /* For executables, clear set-user-ID and set-group-ID bits */
+    if (inode->i_mode & (S_IXUSR | S_IXGRP | S_IXOTH))
+    {
+        if (inode->i_mode & S_ISUID)
+            inode->i_mode &= ~S_ISUID;
+
+        /* Exclude clearing group id for non-group executables */
+        if ((inode->i_mode & S_ISGID) && (inode->i_mode & S_IXGRP))
+            inode->i_mode &= ~S_ISGID;
+    }
+
+    _update_timestamps(inode, CHANGE);
+
+done:
+    return ret;
+}
+static int _ext2_chown(
+    myst_fs_t* fs,
+    const char* pathname,
+    uid_t owner,
+    gid_t group)
+{
+    int ret = 0;
+    ext2_t* ext2 = (ext2_t*)fs;
+    struct locals
+    {
+        ext2_ino_t ino;
+        ext2_inode_t inode;
+        char suffix[PATH_MAX];
+    }* locals = NULL;
+    myst_fs_t* tfs = NULL;
+
+    if (!_ext2_valid(ext2) || !pathname)
+        ERAISE(-EINVAL);
+
+    if (!(locals = malloc(sizeof(struct locals))))
+        ERAISE(-ENOMEM);
+
+    /* Check if path exists */
+    ECHECK(_path_to_inode(
+        ext2,
+        pathname,
+        FOLLOW,
+        NULL,
+        &locals->ino,
+        NULL,
+        &locals->inode,
+        locals->suffix,
+        &tfs));
+    if (tfs)
+    {
+        /* delegate operation to target filesystem */
+        ECHECK((ret = tfs->fs_chown(tfs, locals->suffix, owner, group)));
+        goto done;
+    }
+
+    _chown(&locals->inode, owner, group);
+
+    /* persist the inode change */
+    ECHECK(_write_inode(ext2, locals->ino, &locals->inode));
+
+done:
+
+    if (locals)
+        free(locals);
+
+    return ret;
+}
+
+static int _ext2_fchown(
+    myst_fs_t* fs,
+    myst_file_t* file,
+    uid_t owner,
+    gid_t group)
+{
+    int ret = 0;
+    ext2_t* ext2 = (ext2_t*)fs;
+
+    if (!_ext2_valid(ext2) || !file)
+        ERAISE(-EINVAL);
+
+    /* refresh the inode */
+    ECHECK((ext2_read_inode(ext2, file->ino, &file->inode)));
+
+    _chown(&file->inode, owner, group);
+
+    /* persist the inode change */
+    ECHECK(_write_inode(ext2, file->ino, &file->inode));
+
+done:
+    return ret;
+}
+
+#define ALLPERMS (S_ISUID | S_ISGID | S_ISVTX | S_IRWXU | S_IRWXG | S_IRWXO)
+
+static int _chmod(ext2_inode_t* inode, mode_t mode)
+{
+    int ret = 0;
+
+    if (!inode)
+        ERAISE(-EINVAL);
+
+    inode->i_mode &= ~ALLPERMS;
+    inode->i_mode |= (mode & ALLPERMS);
+
+    _update_timestamps(inode, CHANGE);
+
+done:
+    return ret;
+}
+
+static int _ext2_chmod(myst_fs_t* fs, const char* pathname, mode_t mode)
+{
+    int ret = 0;
+    ext2_t* ext2 = (ext2_t*)fs;
+    struct locals
+    {
+        ext2_ino_t ino;
+        ext2_inode_t inode;
+        char suffix[PATH_MAX];
+    }* locals = NULL;
+    myst_fs_t* tfs = NULL;
+
+    if (!_ext2_valid(ext2) || !pathname)
+        ERAISE(-EINVAL);
+
+    if (!(locals = malloc(sizeof(struct locals))))
+        ERAISE(-ENOMEM);
+
+    /* Check if path exists */
+    ECHECK(_path_to_inode(
+        ext2,
+        pathname,
+        FOLLOW,
+        NULL,
+        &locals->ino,
+        NULL,
+        &locals->inode,
+        locals->suffix,
+        &tfs));
+    if (tfs)
+    {
+        // delegate operation to target filesystem.
+        ECHECK((ret = tfs->fs_chmod(tfs, locals->suffix, mode)));
+        goto done;
+    }
+
+    _chmod(&locals->inode, mode);
+
+    /* persist the inode change */
+    ECHECK(_write_inode(ext2, locals->ino, &locals->inode));
+
+done:
+
+    if (locals)
+        free(locals);
+
+    return ret;
+}
+
+static int _ext2_fchmod(myst_fs_t* fs, myst_file_t* file, mode_t mode)
+{
+    int ret = 0;
+    ext2_t* ext2 = (ext2_t*)fs;
+
+    if (!_ext2_valid(ext2) || !file)
+        ERAISE(-EINVAL);
+
+    /* refresh the inode */
+    ECHECK((ext2_read_inode(ext2, file->ino, &file->inode)));
+
+    _chmod(&file->inode, mode);
+
+    /* persist the inode change */
+    ECHECK(_write_inode(ext2, file->ino, &file->inode));
+
+done:
+    return ret;
+}
+
 static myst_fs_t _base = {
     {
         .fd_read = (void*)ext2_read,
@@ -5266,6 +5459,10 @@ static myst_fs_t _base = {
     .fs_statfs = _ext2_statfs,
     .fs_fstatfs = _ext2_fstatfs,
     .fs_futimens = _ext2_futimens,
+    .fs_chown = _ext2_chown,
+    .fs_fchown = _ext2_fchown,
+    .fs_chmod = _ext2_chmod,
+    .fs_fchmod = _ext2_fchmod,
 };
 
 int ext2_create(

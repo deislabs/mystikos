@@ -94,18 +94,27 @@ clone:
 
 password-file:
 	mkdir -p appdir/etc
+	# fmt for /etc/passwd:
+	# login name:pwd:uid:gid:comment:home dir: login shell
 	echo "root:x:0:0:root:/root:/bin/bash" > appdir/etc/passwd
 	echo "daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin" >> appdir/etc/passwd
 	echo "bin:x:2:2:bin:/bin:/usr/sbin/nologin" >> appdir/etc/passwd
-	echo "nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologi" >> appdir/etc/passwd
+	echo "nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin" >> appdir/etc/passwd
+	echo "user700:x:700:701:user700:/nonexistent:/bin/bash" >> appdir/etc/passwd
+	echo "user700:x:702:701:user700:/nonexistent:/bin/bash" >> appdir/etc/passwd
+	echo "user700:x:703:701:user700:/nonexistent:/bin/bash" >> appdir/etc/passwd
 
 group-file:
-	mkdir -p appdir/etc
+	mkdir -p appdir/
+	# fmt for /etc/group:
+	# group name:pwd:gid:user list
 	echo "root:x:0:" > appdir/etc/group
 	echo "daemon:x:1:" >> appdir/etc/group
 	echo "bin:x:2:" >> appdir/etc/group
-	echo "nogroup:x:65534" >> appdir/etc/group
-	echo "nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin" >> appdir/etc/group
+	echo "nogroup:x:65534:" >> appdir/etc/group
+	echo "grp701:x:701:user700" >> appdir/etc/group
+	echo "grp704:x:704:" >> appdir/etc/group
+	echo "grp705:x:705:" >> appdir/etc/group
 
 tests: tests_hostfs tests_ext2fs tests_ramfs
 

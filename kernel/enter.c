@@ -654,8 +654,6 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         _create_main_thread(args->event, args->cwd, args->target_tid, &thread));
     __myst_main_thread = thread;
 
-    thread->main.umask = MYST_DEFAULT_UMASK;
-
     myst_set_host_uid_gid_mapping(args->host_enc_id_mapping);
 
     /* determine the rootfs file system type (RAMFS, EXT2FS, OR HOSTFS) */

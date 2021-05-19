@@ -2401,6 +2401,156 @@ done:
     return ret;
 }
 
+static int _chown(inode_t* inode, uid_t owner, gid_t group)
+{
+    int ret = 0;
+
+    if (owner != -1u)
+        inode->uid = owner;
+
+    if (group != -1u)
+        inode->gid = group;
+
+    /* For executables, clear set-user-ID and set-group-ID bits */
+    if (inode->mode & (S_IXUSR | S_IXGRP | S_IXOTH))
+    {
+        if (inode->mode & S_ISUID)
+            inode->mode &= ~S_ISUID;
+
+        /* Exclude clearing group id for non-group executables */
+        if ((inode->mode & S_ISGID) && (inode->mode & S_IXGRP))
+            inode->mode &= ~S_ISGID;
+    }
+
+    return ret;
+}
+
+static int _fs_chown(
+    myst_fs_t* fs,
+    const char* pathname,
+    uid_t owner,
+    gid_t group)
+{
+    int ret = 0;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+    struct locals
+    {
+        inode_t* inode;
+        char suffix[PATH_MAX];
+    }* locals = NULL;
+    myst_fs_t* tfs = NULL;
+
+    if (!_ramfs_valid(ramfs) || !pathname)
+        ERAISE(-EINVAL);
+
+    if (!(locals = malloc(sizeof(struct locals))))
+        ERAISE(-ENOMEM);
+
+    /* Check if path exists */
+    ECHECK(_path_to_inode(
+        ramfs, pathname, true, NULL, &locals->inode, locals->suffix, &tfs));
+    if (tfs)
+    {
+        // delegate operation to target filesystem.
+        ECHECK((ret = tfs->fs_chown(tfs, locals->suffix, owner, group)));
+        goto done;
+    }
+
+    _chown(locals->inode, owner, group);
+
+done:
+
+    if (locals)
+        free(locals);
+
+    return ret;
+}
+
+int _fs_fchown(myst_fs_t* fs, myst_file_t* file, uid_t owner, gid_t group)
+{
+    int ret = 0;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+
+    if (!_ramfs_valid(ramfs) || !file)
+        ERAISE(-EINVAL);
+
+    assert(_inode_valid(file->inode));
+    _chown(file->inode, owner, group);
+
+done:
+    return ret;
+}
+
+#define ALLPERMS (S_ISUID | S_ISGID | S_ISVTX | MODE_RWX)
+
+static int _chmod(inode_t* inode, mode_t mode)
+{
+    int ret = 0;
+
+    if (!inode)
+        ERAISE(-EINVAL);
+
+    inode->mode &= ~ALLPERMS;
+    inode->mode |= (mode & ALLPERMS);
+
+    _update_timestamps(inode, CHANGE);
+
+done:
+    return ret;
+}
+
+static int _fs_chmod(myst_fs_t* fs, const char* pathname, mode_t mode)
+{
+    int ret = 0;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+    struct locals
+    {
+        inode_t* inode;
+        char suffix[PATH_MAX];
+    }* locals = NULL;
+    myst_fs_t* tfs = NULL;
+
+    if (!_ramfs_valid(ramfs) || !pathname)
+        ERAISE(-EINVAL);
+
+    if (!(locals = malloc(sizeof(struct locals))))
+        ERAISE(-ENOMEM);
+
+    /* Check if path exists */
+    ECHECK(_path_to_inode(
+        ramfs, pathname, true, NULL, &locals->inode, locals->suffix, &tfs));
+    if (tfs)
+    {
+        // delegate operation to target filesystem.
+        ECHECK((ret = tfs->fs_chmod(tfs, locals->suffix, mode)));
+        goto done;
+    }
+
+    _chmod(locals->inode, mode);
+
+done:
+
+    if (locals)
+        free(locals);
+
+    return ret;
+}
+
+static int _fs_fchmod(myst_fs_t* fs, myst_file_t* file, mode_t mode)
+{
+    int ret = 0;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+
+    if (!_ramfs_valid(ramfs) || !file)
+        ERAISE(-EINVAL);
+
+    assert(_inode_valid(file->inode));
+    _chmod(file->inode, mode);
+
+done:
+    return ret;
+}
+
 static int _init_ramfs(
     myst_mount_resolve_callback_t resolve_cb,
     myst_fs_t** fs_out)
@@ -2458,6 +2608,10 @@ static int _init_ramfs(
         .fs_statfs = _fs_statfs,
         .fs_fstatfs = _fs_fstatfs,
         .fs_futimens = _fs_futimens,
+        .fs_chown = _fs_chown,
+        .fs_fchown = _fs_fchown,
+        .fs_chmod = _fs_chmod,
+        .fs_fchmod = _fs_fchmod,
     };
     // clang-format on
     inode_t* root_inode = NULL;
