@@ -194,7 +194,7 @@ index 20d50f2c..c6ad4096 100644
 +    return -ENOTSUP;
 +}
 diff --git a/ldso/dynlink.c b/ldso/dynlink.c
-index afec985a..4cd45927 100644
+index afec985a..5435b9b5 100644
 --- a/ldso/dynlink.c
 +++ b/ldso/dynlink.c
 @@ -27,6 +27,13 @@
@@ -287,7 +287,18 @@ index afec985a..4cd45927 100644
  	for(;;);
  }
  
-@@ -2100,6 +2083,7 @@ end:
+@@ -2058,6 +2041,10 @@ void *dlopen(const char *file, int mode)
+ 	pthread_mutex_lock(&init_fini_lock);
+ 	if (!p->constructed) ctor_queue = queue_ctors(p);
+ 	pthread_mutex_unlock(&init_fini_lock);
++
++  // Update static_tls_cnt for the subsequent relocations
++  static_tls_cnt = tls_cnt;
++
+ 	if (!p->relocated && (mode & RTLD_LAZY)) {
+ 		prepare_lazy(p);
+ 		for (i=0; p->deps[i]; i++)
+@@ -2100,6 +2087,7 @@ end:
  		free(ctor_queue);
  	}
  	pthread_setcancelstate(cs, 0);
