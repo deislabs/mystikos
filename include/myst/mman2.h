@@ -32,6 +32,9 @@ int myst_mman2_mremap(
 
 int myst_mman2_mprotect(void* addr, size_t len, int prot);
 
+/* get the permissions for the given page */
+int myst_mman2_mprotect_stat(void* addr);
+
 size_t myst_mman2_get_usable_size(void);
 
 size_t myst_mman2_count_free_bits(void);

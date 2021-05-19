@@ -661,6 +661,40 @@ void test5(void)
     printf("=== passed test (%s)\n", __FUNCTION__);
 }
 
+void test6(void)
+{
+    void* data;
+    size_t length = 8 * PAGE_SIZE;
+    const size_t size = SIZE;
+    const int prot = PROT_READ | PROT_WRITE;
+    const int flags = MAP_ANONYMOUS | MAP_PRIVATE;
+    void* addr;
+
+    if (!(data = memalign(PAGE_SIZE, size)))
+        assert(0);
+
+    assert(myst_mman2_init(data, size) == 0);
+
+    /* map 8 pages */
+    int ret = myst_mman2_mmap(NULL, length, prot, flags, -1, 0, &addr);
+    assert(ret == 0);
+    assert(addr != MAP_FAILED);
+
+    /* mprotect the pages */
+    ret = myst_mman2_mprotect(addr, length, PROT_READ);
+    assert(myst_mman2_mprotect(addr, length, PROT_READ) == 0);
+    assert(myst_mman2_mprotect_stat(addr) == PROT_READ);
+    assert(myst_mman2_mprotect(addr, length, prot) == 0);
+    assert(myst_mman2_mprotect(addr, 2 * length, prot) == -ENOMEM);
+    assert(myst_mman2_munmap(addr, length) == 0);
+    assert(myst_mman2_mprotect(addr, length, prot) == -ENOMEM);
+
+    myst_mman2_release();
+    free(data);
+
+    printf("=== passed test (%s)\n", __FUNCTION__);
+}
+
 int main(int argc, const char* argv[])
 {
     test1();
@@ -668,6 +702,7 @@ int main(int argc, const char* argv[])
     test3();
     test4();
     test5();
+    test6();
 
     printf("=== passed all tests (%s)\n", argv[0]);
     return 0;

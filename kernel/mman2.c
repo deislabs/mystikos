@@ -18,7 +18,9 @@
 // the minimum possible size of the mman data (8 pages): one overhead page
 // and seven usable pages.
 #define MIN_DATA_SIZE (8 * 4096)
-#define FAST_BITOPS
+
+#define PROT_SEM 0x8
+#define PROT_SAO 0x10
 
 typedef struct page
 {
@@ -56,7 +58,14 @@ MYST_INLINE uint64_t _round_up(uint64_t x, uint64_t m)
     return (x + m - 1) / m * m;
 }
 
-MYST_INLINE bool _within(const void* ptr)
+MYST_INLINE bool _valid_start(const void* ptr)
+{
+    const ptrdiff_t start = (ptrdiff_t)_mman.pages;
+    const ptrdiff_t end = (ptrdiff_t)(_mman.pages + _mman.npages - 1);
+    return (ptrdiff_t)ptr >= start && (ptrdiff_t)ptr <= end;
+}
+
+MYST_INLINE bool _valid_end(const void* ptr)
 {
     const ptrdiff_t start = (ptrdiff_t)_mman.pages;
     const ptrdiff_t end = (ptrdiff_t)(_mman.pages + _mman.npages);
@@ -252,11 +261,11 @@ int myst_mman2_munmap(void* addr, size_t length)
     page_t* end = (page_t*)((uint8_t*)addr + length);
 
     /* if the address is out of range */
-    if (!_within(start))
+    if (!_valid_start(start))
         ERAISE(-EINVAL);
 
     /* if the ending address is out of range */
-    if (!_within(end))
+    if (!_valid_end(end))
         ERAISE(-EINVAL);
 
     /* find the low and high indices of the range */
@@ -304,11 +313,6 @@ int myst_mman2_mremap(
 {
     int ret = 0;
 
-    (void)flags;
-    (void)old_size;
-    (void)new_size;
-    (void)ptr;
-
     if (ptr)
         *ptr = MAP_FAILED;
 
@@ -334,11 +338,11 @@ int myst_mman2_mremap(
     page_t* end = (page_t*)((uint8_t*)old_address + old_size);
 
     /* if the address is out of range */
-    if (!_within(start))
+    if (!_valid_start(start))
         ERAISE(-EINVAL);
 
     /* if the ending address is out of range */
-    if (!_within(end))
+    if (!_valid_end(end))
         ERAISE(-EINVAL);
 
     /* if the mapping is exactly the same size */
@@ -397,7 +401,7 @@ int myst_mman2_mremap(
             ERAISE(-EPERM);
 
         /* if the new end is within the mman memory */
-        if (_within(new_end))
+        if (_valid_end(new_end))
         {
             /* find the low and high indices of the range */
             const size_t lo = end - _mman.pages;
@@ -448,6 +452,86 @@ int myst_mman2_mremap(
             goto done;
         }
     }
+
+done:
+    return ret;
+}
+
+int myst_mman2_mprotect(void* addr, size_t len, int prot)
+{
+    int ret = 0;
+    const int rwx = PROT_READ | PROT_WRITE | PROT_EXEC;
+    const int mask = rwx | PROT_SEM | PROT_SAO | PROT_GROWSUP;
+
+    /* address must be non-null and aligned on a page boundary */
+    if (!addr || ((ptrdiff_t)addr % PAGE_SIZE))
+        ERAISE(-EINVAL);
+
+    /* if length is zero, succeed */
+    if ((len = _round_up(len, PAGE_SIZE)) == 0)
+        goto done;
+
+    /* reject unknown protection flags */
+    if (prot & ~mask)
+        ERAISE(-EINVAL);
+
+    /* discard unsupported flags */
+    prot &= rwx;
+
+    /* calculate the start and end addresses for this mapping */
+    page_t* start = (page_t*)addr;
+    page_t* end = (page_t*)((uint8_t*)addr + len);
+
+    /* if the address is out of range */
+    if (!_valid_start(start))
+        ERAISE(-EINVAL);
+
+    /* if the ending address is out of range */
+    if (!_valid_end(end))
+        ERAISE(-EINVAL);
+
+    /* find the low and high indices of the range */
+    const size_t lo = start - _mman.pages;
+    const size_t hi = end - _mman.pages;
+
+    /* verify that all pages in this range are actually mapped */
+    {
+        size_t i;
+
+        for (i = lo; i < hi && myst_test_bit(_mman.bits, i); i++)
+            ;
+
+        if (i != hi)
+            ERAISE(-ENOMEM);
+    }
+
+    /* set the permissions */
+    size_t count = end - start;
+    memset(&_mman.prots[lo], prot, count);
+
+done:
+    return ret;
+}
+
+/* get the permissions for the given page */
+int myst_mman2_mprotect_stat(void* addr)
+{
+    int ret = 0;
+
+    /* address must be non-null and aligned on a page boundary */
+    if (!addr || ((ptrdiff_t)addr % PAGE_SIZE))
+        ERAISE(-EINVAL);
+
+    /* calculate the start addresses for this mapped page */
+    page_t* page = (page_t*)addr;
+
+    /* if the address is out of range */
+    if (!_valid_start(page))
+        ERAISE(-EINVAL);
+
+    /* set the permissions */
+    const size_t index = page - _mman.pages;
+    ret = _mman.prots[index];
 
 done:
     return ret;
