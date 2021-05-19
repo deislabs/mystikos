@@ -111,6 +111,26 @@ myst_skip_zero_bits(const uint8_t* bits, size_t nbits, size_t lo, size_t hi)
 
     (void)nbits;
 
+    /* skip zero bits up to the next multiple of 8 or until exhausted */
+    {
+        size_t i_round = (i + 7) & ((size_t)-8);
+        size_t min = (i_round < hi) ? i_round : hi;
+
+        while (i < min && !myst_test_bit(bits, i))
+            i++;
+
+        /* if non-zero bit was found */
+        if (i != min)
+            return i;
+    }
+
+    /* skip over whole bytes if i is a multiple of 8 bits */
+    if ((i % 8) == 0)
+    {
+        while (i + 8 < hi && bits[i / 8] == 0)
+            i += 8;
+    }
+
     while (i < hi && !myst_test_bit(bits, i))
         i++;
 

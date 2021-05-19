@@ -22,10 +22,40 @@ int main()
     assert(munmap(addr + length, length) == 0);
 
     /* try growing the mapping with room left on the right */
-    size_t old_size = length;
-    size_t new_size = old_size * 2;
-    uint8_t* new = mremap(addr, old_size, new_size, 0); // MREMAP_MAYMOVE);
-    assert(new != MAP_FAILED);
+    {
+        size_t old_size = length;
+        size_t new_size = old_size * 2;
+        uint8_t* new = mremap(addr, old_size, new_size, 0); // MREMAP_MAYMOVE;
+        assert(new != MAP_FAILED);
+    }
+
+    /* double unmap will work */
+    assert(munmap(addr, length * 2) == 0);
+    assert(munmap(addr, length * 2) == 0);
+
+    /* allocate 8 pages */
+    addr = mmap(NULL, length, prot, flags, -1, 0);
+    assert(addr != MAP_FAILED);
+
+    /* allocate 8 pages in the same spot */
+    addr = mmap(addr, length, prot, flags, -1, 0);
+    assert(addr != MAP_FAILED);
+
+    /* try growing the mapping with no room left on the right */
+    {
+        size_t old_size = length;
+        size_t new_size = old_size * 2;
+        uint8_t* new = mremap(addr, old_size, new_size, 0); // MREMAP_MAYMOVE;
+        assert(new == MAP_FAILED);
+    }
+
+    /* try growing the mapping with MREMAP_MAYMOVE */
+    {
+        size_t old_size = length;
+        size_t new_size = old_size * 2;
+        uint8_t* new = mremap(addr, old_size, new_size, MREMAP_MAYMOVE, NULL);
+        assert(new != MAP_FAILED);
+    }
 
     return 0;
 }
