@@ -12,10 +12,8 @@
 name: "CodeQL"
 
 on:
-  pull_request:
-    branches: [ main ]
   schedule:
-    - cron: '0 0 * * *'
+    - cron: '56 1 * * *'
 
 jobs:
   analyze:
@@ -52,3 +50,4 @@ jobs:
               
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v1
+      
