@@ -34,6 +34,7 @@ WARNINGS += -Wno-missing-field-initializers
 WARNINGS += -Wno-type-limits
 WARNINGS += -Wno-conversion
 WARNINGS += -Wstack-usage=512
+WARNINGS += -Winit-self
 
 # ATTN: this optimization makes little difference for the kernel
 #USE_GC_SECTIONS=1

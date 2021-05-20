@@ -4429,7 +4429,7 @@ static long _syscall(void* args_)
             int val = (int)x3;
             long arg = (long)x4;
             int* uaddr2 = (int*)x5;
-            int val3 = (int)val3;
+            int val3 = (int)x6;
 
             _strace(
                 n,
