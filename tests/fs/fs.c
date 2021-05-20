@@ -27,7 +27,7 @@ const char ALPHA[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 static void _passed(const char* name)
 {
-    printf("=== passed test (fs: %s)\n", name);
+    printf("=== passed test (%s)\n", name);
 }
 
 __attribute__((__unused__)) static size_t _fsize(const char* path)
@@ -824,12 +824,13 @@ void test_timestamps(void)
     }
 }
 
-static void test_pwritev_preadv()
+static void test_pwritev_preadv(const char* version)
 {
     int fd;
     int flags = O_CREAT | O_TRUNC | O_RDWR;
     const off_t off = 7;
     const off_t len = 9;
+    ssize_t nread;
 
     assert((fd = open("/pwritev_preadv", flags, 0666)) >= 0);
     assert(write(fd, alpha, sizeof(alpha)) == sizeof(alpha));
@@ -840,7 +841,14 @@ static void test_pwritev_preadv()
     iov1[1].iov_base = "LMNOP";
     iov1[1].iov_len = 5;
 
-    assert(pwritev(fd, iov1, 2, off) == len);
+    if (strcmp(version, "pwritev") == 0)
+        assert(pwritev(fd, iov1, 2, off) == len);
+    else if (strcmp(version, "pwritev2") == 0)
+        assert(pwritev2(fd, iov1, 2, off, 0) == len);
+    else if (strcmp(version, "pwritev64v2") == 0)
+        assert(pwritev64v2(fd, iov1, 2, off, 0) == len);
+    else
+        assert(0);
 
     struct iovec iov2[3];
     char buf0[3];
@@ -852,7 +860,17 @@ static void test_pwritev_preadv()
     iov2[1].iov_len = sizeof(buf1);
     iov2[2].iov_base = buf2;
     iov2[2].iov_len = sizeof(buf2);
-    ssize_t nread = preadv(fd, iov2, 3, off);
+
+    if (strcmp(version, "pwritev") == 0)
+        nread = preadv(fd, iov2, 3, off);
+    else if (strcmp(version, "pwritev2") == 0)
+        nread = preadv2(fd, iov2, 3, off, 0);
+    else if (strcmp(version, "pwritev64v2") == 0)
+        nread = preadv64v2(fd, iov2, 3, off, 0);
+    else
+        assert(0);
+
+    assert(nread == len);
 
 #if 0
     printf("nread=%zd errno=%d\n", nread, errno);
@@ -865,9 +883,9 @@ static void test_pwritev_preadv()
     assert(memcmp(buf1, "KLMNO", 5) == 0);
     assert(memcmp(buf2, "P", 1) == 0);
 
-    assert(nread == len);
-
     close(fd);
+
+    printf("=== passed test (%s: version=%s)\n", __FUNCTION__, version);
 }
 
 int main(int argc, const char* argv[])
@@ -912,7 +930,9 @@ int main(int argc, const char* argv[])
     test_fstatfs(argv[0]);
     test_openat();
     test_fcntl();
-    test_pwritev_preadv();
+    test_pwritev_preadv("pwritev");
+    test_pwritev_preadv("pwritev2");
+    test_pwritev_preadv("pwritev64v2");
 
     printf("=== passed all tests (%s)\n", argv[0]);
 
