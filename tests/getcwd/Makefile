@@ -18,6 +18,9 @@ ifdef STRACE
 OPTS = --strace
 endif
 
+OPTS += --max-threads=1
+OPTS += --memory-size=8m
+
 tests: all
 	$(RUNTEST) $(MYST_EXEC) rootfs /bin/getcwd $(OPTS)
 

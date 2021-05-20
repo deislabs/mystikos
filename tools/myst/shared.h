@@ -8,6 +8,8 @@
 #include <myst/options.h>
 #include <myst/regions.h>
 
+#define ENCLAVE_MAX_THREADS MYST_MAX_KSTACKS
+
 int myst_expand_size_string_to_ulong(const char* size_string, size_t* size);
 bool myst_merge_mount_mapping_and_config(
     myst_mounts_config_t* mounts,

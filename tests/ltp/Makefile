@@ -16,6 +16,9 @@ ifdef TRACE
 OPTS += --etrace --strace
 endif
 
+OPTS += --max-threads=3
+OPTS += --memory-size=16m
+
 ifndef FS
 FS=ext2fs
 endif

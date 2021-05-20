@@ -510,6 +510,7 @@ int myst_enter_ecall(
     size_t envp_size,
     uint64_t event)
 {
+    /* WARNING: this function has a very small stack */
     struct enter_arg arg = {
         .options = options,
         .shared_memory = shared_memory,
@@ -542,6 +543,7 @@ int myst_enter_ecall(
 
 long myst_run_thread_ecall(uint64_t cookie, uint64_t event)
 {
+    /* WARNING: this function has a very small stack */
     return myst_run_thread(cookie, event);
 }
 
@@ -775,9 +777,6 @@ int myst_tcall_get_cpuinfo(char* buf, size_t size)
 #else
 #define ENCLAVE_STACK_SIZE 8192
 #endif
-
-/* Note: there should be at least as many kernel stacks as threads */
-#define ENCLAVE_MAX_THREADS MYST_MAX_KSTACKS
 
 OE_SET_ENCLAVE_SGX(
     ENCLAVE_PRODUCT_ID,
