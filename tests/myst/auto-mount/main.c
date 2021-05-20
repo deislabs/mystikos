@@ -41,15 +41,15 @@ int test_auto_mount_single_file(int argc, const char* argv[])
     struct stat details = {0};
     assert(stat("/etc/resolv.conf", &details) == 0);
     assert(S_ISREG(details.st_mode));
-    assert(stat("/tmp/automounts/1/resolv.conf", &details) == 0);
+    assert(stat("/run/mystikos/automounts/1/resolv.conf", &details) == 0);
     assert(S_ISREG(details.st_mode));
     assert(stat("/targetfile1", &details) == 0);
     assert(S_ISREG(details.st_mode));
-    assert(stat("/tmp/automounts/2/testfile1", &details) == 0);
+    assert(stat("/run/mystikos/automounts/2/testfile1", &details) == 0);
     assert(S_ISREG(details.st_mode));
     assert(stat("/targetfile2", &details) == 0);
     assert(S_ISREG(details.st_mode));
-    assert(stat("/tmp/automounts/2/testfile2", &details) == 0);
+    assert(stat("/run/mystikos/automounts/2/testfile2", &details) == 0);
     assert(S_ISREG(details.st_mode));
 
     fp = fopen("/etc/resolv.conf", "r");

@@ -9,6 +9,7 @@
 #include <myst/cpio.h>
 #include <myst/eraise.h>
 #include <myst/ext2.h>
+#include <myst/file.h>
 #include <myst/fssig.h>
 #include <myst/hex.h>
 #include <myst/hostfs.h>
@@ -27,7 +28,7 @@
 #include <myst/verity.h>
 
 #define MOUNT_TABLE_SIZE 8
-#define AUTOMOUNT_DIR "/tmp/automounts"
+#define AUTOMOUNT_DIR "/run/mystikos/automounts"
 
 typedef struct mount_table_entry
 {
@@ -43,7 +44,6 @@ static size_t _mount_table_size = 0;
 static myst_spinlock_t _lock = MYST_SPINLOCK_INITIALIZER;
 
 static bool _installed_free_mount_table = false;
-static bool _created_automount_dir = false;
 
 static void _free_mount_table(void* arg)
 {
@@ -311,7 +311,7 @@ static const char* _find_arg(const char* args[], const char* name)
 #endif /* MYST_ENABLE_EXT2FS */
 
 #ifdef MYST_ENABLE_HOSTFS
-static bool _find_mount_source(const char* source, char path[PATH_MAX])
+static bool _find_mount_source(const char* source, const char** path)
 {
     bool found = false;
     for (size_t i = 0; i < _mount_table_size; i++)
@@ -319,7 +319,7 @@ static bool _find_mount_source(const char* source, char path[PATH_MAX])
         if (strcmp(_mount_table[i].source, source) == 0)
         {
             found = true;
-            myst_strlcpy(path, _mount_table[i].path, PATH_MAX);
+            *path = _mount_table[i].path;
             break;
         }
     }
@@ -328,14 +328,14 @@ static bool _find_mount_source(const char* source, char path[PATH_MAX])
 
 static long _new_automount_dir(char mountdir[PATH_MAX])
 {
-    long ret = -1;
+    long ret = 0;
     int mount_num = 1;
+    struct stat statbuf;
 
-    myst_strlcpy(mountdir, AUTOMOUNT_DIR, PATH_MAX);
-    if (!_created_automount_dir)
+    if (!(myst_syscall_stat(AUTOMOUNT_DIR, &statbuf) == 0 &&
+          S_ISDIR(statbuf.st_mode)))
     {
-        ECHECK(myst_syscall_mkdir(mountdir, 0x777));
-        _created_automount_dir = true;
+        ECHECK(myst_mkdirhier(AUTOMOUNT_DIR, 0x777));
     }
 
     while (1)
@@ -347,8 +347,6 @@ static long _new_automount_dir(char mountdir[PATH_MAX])
             break;
         }
     }
-
-    ret = 0;
 
 done:
 
@@ -363,7 +361,8 @@ static int _mount_single_file(
     const char* source,
     const char* target)
 {
-    int ret = -1;
+    int ret = 0;
+    const char* source_dir = NULL;
     struct locals
     {
         char sourcedir[PATH_MAX];
@@ -378,7 +377,11 @@ static int _mount_single_file(
     ECHECK(myst_split_path(
         source, locals->sourcedir, PATH_MAX, locals->sourcebase, PATH_MAX));
 
-    if (!_find_mount_source(locals->sourcedir, locals->mountpath))
+    if (_find_mount_source(locals->sourcedir, &source_dir))
+    {
+        myst_strlcpy(locals->mountpath, source_dir, PATH_MAX);
+    }
+    else
     {
         ECHECK(_new_automount_dir(locals->mountpath));
         ECHECK(myst_mount(fs, locals->sourcedir, locals->mountpath));
@@ -392,11 +395,8 @@ static int _mount_single_file(
         ERAISE(-EINVAL);
     }
 
-    myst_strlcpy(locals->mountpath + strlen(locals->mountpath), "/", PATH_MAX);
-    myst_strlcpy(
-        locals->mountpath + strlen(locals->mountpath),
-        locals->sourcebase,
-        PATH_MAX);
+    myst_strlcat(locals->mountpath, "/", PATH_MAX);
+    myst_strlcat(locals->mountpath, locals->sourcebase, PATH_MAX);
     if (myst_syscall_symlink(locals->mountpath, target) != 0)
     {
         myst_eprintf(
@@ -406,8 +406,6 @@ static int _mount_single_file(
             locals->mountpath);
         ERAISE(-EINVAL);
     }
-
-    ret = 0;
 
 done:
 
