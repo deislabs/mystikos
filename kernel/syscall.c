@@ -30,6 +30,7 @@
 #include <myst/barrier.h>
 #include <myst/blkdev.h>
 #include <myst/buf.h>
+#include <myst/bufalloc.h>
 #include <myst/clock.h>
 #include <myst/cpio.h>
 #include <myst/cwd.h>
@@ -50,6 +51,7 @@
 #include <myst/id.h>
 #include <myst/initfini.h>
 #include <myst/inotifydev.h>
+#include <myst/iov.h>
 #include <myst/kernel.h>
 #include <myst/kstack.h>
 #include <myst/libc.h>
@@ -1092,6 +1094,61 @@ long myst_syscall_pwrite(int fd, const void* buf, size_t count, off_t offset)
     }
 
 done:
+    return ret;
+}
+
+ssize_t myst_syscall_pwritev(
+    int fd,
+    const struct iovec* iov,
+    int iovcnt,
+    off_t offset)
+{
+    ssize_t ret = 0;
+    void* buf = NULL;
+    ssize_t len;
+    ssize_t nwritten;
+
+    ECHECK(len = myst_iov_gather(iov, iovcnt, &buf));
+    ECHECK(nwritten = myst_syscall_pwrite(fd, buf, len, offset));
+    ret = nwritten;
+
+done:
+
+    if (buf)
+        free(buf);
+
+    return ret;
+}
+
+ssize_t myst_syscall_preadv(
+    int fd,
+    const struct iovec* iov,
+    int iovcnt,
+    off_t offset)
+{
+    ssize_t ret = 0;
+    ssize_t len;
+    char buf[256];
+    void* ptr = NULL;
+    ssize_t nread;
+
+    ECHECK(len = myst_iov_len(iov, iovcnt));
+
+    if (len == 0)
+        goto done;
+
+    if (!(ptr = myst_buf_malloc(buf, sizeof(buf), len)))
+        ERAISE(-ENOMEM);
+
+    ECHECK(nread = myst_syscall_pread(fd, ptr, len, offset));
+    ECHECK(myst_iov_scatter(iov, iovcnt, ptr, nread));
+    ret = nread;
+
+done:
+
+    if (ptr)
+        myst_buf_free(buf, ptr);
+
     return ret;
 }
 
@@ -4990,9 +5047,41 @@ static long _syscall(void* args_)
             BREAK(_return(n, ret));
         }
         case SYS_preadv:
-            break;
+        {
+            int fd = (int)x1;
+            const struct iovec* iov = (const struct iovec*)x2;
+            int iovcnt = (int)x3;
+            off_t offset = (off_t)x4;
+
+            _strace(
+                n,
+                "fd=%d iov=%p iovcnt=%d offset=%zu",
+                fd,
+                iov,
+                iovcnt,
+                offset);
+
+            long ret = myst_syscall_preadv(fd, iov, iovcnt, offset);
+            BREAK(_return(n, ret));
+        }
         case SYS_pwritev:
-            break;
+        {
+            int fd = (int)x1;
+            const struct iovec* iov = (const struct iovec*)x2;
+            int iovcnt = (int)x3;
+            off_t offset = (off_t)x4;
+
+            _strace(
+                n,
+                "fd=%d iov=%p iovcnt=%d offset=%zu",
+                fd,
+                iov,
+                iovcnt,
+                offset);
+
+            long ret = myst_syscall_pwritev(fd, iov, iovcnt, offset);
+            BREAK(_return(n, ret));
+        }
         case SYS_rt_tgsigqueueinfo:
             break;
         case SYS_perf_event_open:

@@ -824,6 +824,52 @@ void test_timestamps(void)
     }
 }
 
+static void test_pwritev_preadv()
+{
+    int fd;
+    int flags = O_CREAT | O_TRUNC | O_RDWR;
+    const off_t off = 7;
+    const off_t len = 9;
+
+    assert((fd = open("/pwritev_preadv", flags, 0666)) >= 0);
+    assert(write(fd, alpha, sizeof(alpha)) == sizeof(alpha));
+
+    struct iovec iov1[2];
+    iov1[0].iov_base = "HIJK";
+    iov1[0].iov_len = 4;
+    iov1[1].iov_base = "LMNOP";
+    iov1[1].iov_len = 5;
+
+    assert(pwritev(fd, iov1, 2, off) == len);
+
+    struct iovec iov2[3];
+    char buf0[3];
+    char buf1[5];
+    char buf2[1];
+    iov2[0].iov_base = buf0;
+    iov2[0].iov_len = sizeof(buf0);
+    iov2[1].iov_base = buf1;
+    iov2[1].iov_len = sizeof(buf1);
+    iov2[2].iov_base = buf2;
+    iov2[2].iov_len = sizeof(buf2);
+    ssize_t nread = preadv(fd, iov2, 3, off);
+
+#if 0
+    printf("nread=%zd errno=%d\n", nread, errno);
+    printf("buf0{%.*s}\n", (int)sizeof(buf0), buf0);
+    printf("buf1{%.*s}\n", (int)sizeof(buf1), buf1);
+    printf("buf2{%.*s}\n", (int)sizeof(buf2), buf2);
+#endif
+
+    assert(memcmp(buf0, "HIJ", 3) == 0);
+    assert(memcmp(buf1, "KLMNO", 5) == 0);
+    assert(memcmp(buf2, "P", 1) == 0);
+
+    assert(nread == len);
+
+    close(fd);
+}
+
 int main(int argc, const char* argv[])
 {
     if (argc != 2)
@@ -866,6 +912,7 @@ int main(int argc, const char* argv[])
     test_fstatfs(argv[0]);
     test_openat();
     test_fcntl();
+    test_pwritev_preadv();
 
     printf("=== passed all tests (%s)\n", argv[0]);
 
