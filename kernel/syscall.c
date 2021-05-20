@@ -1097,16 +1097,21 @@ done:
     return ret;
 }
 
-ssize_t myst_syscall_pwritev(
+ssize_t myst_syscall_pwritev2(
     int fd,
     const struct iovec* iov,
     int iovcnt,
-    off_t offset)
+    off_t offset,
+    int flags)
 {
     ssize_t ret = 0;
     void* buf = NULL;
     ssize_t len;
     ssize_t nwritten;
+
+    // ATTN: all flags are ignored since they are hints and have no
+    // definitively perceptible effect.
+    (void)flags;
 
     ECHECK(len = myst_iov_gather(iov, iovcnt, &buf));
     ECHECK(nwritten = myst_syscall_pwrite(fd, buf, len, offset));
@@ -1120,17 +1125,22 @@ done:
     return ret;
 }
 
-ssize_t myst_syscall_preadv(
+ssize_t myst_syscall_preadv2(
     int fd,
     const struct iovec* iov,
     int iovcnt,
-    off_t offset)
+    off_t offset,
+    int flags)
 {
     ssize_t ret = 0;
     ssize_t len;
     char buf[256];
     void* ptr = NULL;
     ssize_t nread;
+
+    // ATTN: all flags are ignored since they are hints and have no
+    // definitively perceptible effect.
+    (void)flags;
 
     ECHECK(len = myst_iov_len(iov, iovcnt));
 
@@ -5061,7 +5071,7 @@ static long _syscall(void* args_)
                 iovcnt,
                 offset);
 
-            long ret = myst_syscall_preadv(fd, iov, iovcnt, offset);
+            long ret = myst_syscall_preadv2(fd, iov, iovcnt, offset, 0);
             BREAK(_return(n, ret));
         }
         case SYS_pwritev:
@@ -5079,7 +5089,7 @@ static long _syscall(void* args_)
                 iovcnt,
                 offset);
 
-            long ret = myst_syscall_pwritev(fd, iov, iovcnt, offset);
+            long ret = myst_syscall_pwritev2(fd, iov, iovcnt, offset, 0);
             BREAK(_return(n, ret));
         }
         case SYS_rt_tgsigqueueinfo:
@@ -5192,9 +5202,43 @@ static long _syscall(void* args_)
         case SYS_copy_file_range:
             break;
         case SYS_preadv2:
-            break;
+        {
+            int fd = (int)x1;
+            const struct iovec* iov = (const struct iovec*)x2;
+            int iovcnt = (int)x3;
+            off_t offset = (off_t)x4;
+            int flags = (int)x5;
+
+            _strace(
+                n,
+                "fd=%d iov=%p iovcnt=%d offset=%zu",
+                fd,
+                iov,
+                iovcnt,
+                offset);
+
+            long ret = myst_syscall_preadv2(fd, iov, iovcnt, offset, flags);
+            BREAK(_return(n, ret));
+        }
         case SYS_pwritev2:
-            break;
+        {
+            int fd = (int)x1;
+            const struct iovec* iov = (const struct iovec*)x2;
+            int iovcnt = (int)x3;
+            off_t offset = (off_t)x4;
+            int flags = (int)x5;
+
+            _strace(
+                n,
+                "fd=%d iov=%p iovcnt=%d offset=%zu",
+                fd,
+                iov,
+                iovcnt,
+                offset);
+
+            long ret = myst_syscall_pwritev2(fd, iov, iovcnt, offset, flags);
+            BREAK(_return(n, ret));
+        }
         case SYS_pkey_mprotect:
             break;
         case SYS_pkey_alloc:
