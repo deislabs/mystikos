@@ -1024,3 +1024,47 @@ index 00000000..5493e453
 +    (void)flag;
 +    return vfprintf(stream, format, ap);
 +}
+diff --git a/src/unistd/preadv2.c b/src/unistd/preadv2.c
+new file mode 100644
+index 00000000..b58c73ab
+--- /dev/null
++++ b/src/unistd/preadv2.c
+@@ -0,0 +1,16 @@
++#define _BSD_SOURCE
++#include <sys/uio.h>
++#include <unistd.h>
++#include "syscall.h"
++
++ssize_t preadv2(
++        int fd,
++        const struct iovec *iov,
++        int count,
++        off_t offset,
++        int flags)
++{
++	return syscall_cp(SYS_preadv2, fd, iov, count, offset, flags);
++}
++
++weak_alias(preadv2, preadv64v2);
+diff --git a/src/unistd/pwritev2.c b/src/unistd/pwritev2.c
+new file mode 100644
+index 00000000..6612ffd8
+--- /dev/null
++++ b/src/unistd/pwritev2.c
+@@ -0,0 +1,16 @@
++#define _BSD_SOURCE
++#include <sys/uio.h>
++#include <unistd.h>
++#include "syscall.h"
++
++ssize_t pwritev2(
++        int fd,
++        const struct iovec *iov,
++        int count,
++        off_t offset,
++        int flags)
++{
++	return syscall_cp(SYS_pwritev2, fd, iov, count, offset, flags);
++}
++
++weak_alias(pwritev2, pwritev64v2);
