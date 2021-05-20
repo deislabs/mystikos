@@ -7,7 +7,13 @@ URL=git://git.musl-libc.org/musl
 BRANCH=v1.2.0
 
 # get the hash of the remote github repository (for the given branch)
-HASH=$(shell git ls-remote $(URL) -b $(BRANCH) | cut -f1 )
+HASH1=$(shell git ls-remote $(URL) -b $(BRANCH) | cut -f1 )
+
+# get the hash of the patch.diff file
+HASH2=$(shell sha256sum patch.diff | cut -d' ' -f 1)
+
+# get the composite hash (github repository and patch.diff file)
+HASH=$(shell echo "$(HASH1)$(HASH2)" | sha256sum - | cut -d' ' -f 1)
 
 CACHE_DIR=$(HOME)/.mystikos/cache/musl/crt
 
