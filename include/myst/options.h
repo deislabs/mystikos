@@ -26,7 +26,7 @@ typedef struct myst_options
     size_t max_affinity_cpus;
     char rootfs[PATH_MAX];
 
-    myst_host_enc_id_mapping host_enc_id_mapping;
+    myst_host_enc_uid_gid_mappings host_enc_uid_gid_mappings;
     myst_mount_mapping_t mount_mapping;
 } myst_options_t;
 

@@ -40,7 +40,7 @@ int cli_getopt(
 int cli_get_mapping_opts(
     int* argc,
     const char* argv[],
-    myst_host_enc_id_mapping* mappings);
+    myst_host_enc_uid_gid_mappings* uid_gid_mappings);
 
 int cli_get_mount_mapping_opts(
     int* argc,

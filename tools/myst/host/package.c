@@ -473,7 +473,7 @@ int _exec_package(
     /* Get options */
     {
         // process ID mapping options
-        cli_get_mapping_opts(&argc, argv, &options.host_enc_id_mapping);
+        cli_get_mapping_opts(&argc, argv, &options.host_enc_uid_gid_mappings);
 
         // retrieve mount mapping options
         cli_get_mount_mapping_opts(&argc, argv, &options.mount_mapping);

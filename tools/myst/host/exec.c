@@ -211,6 +211,12 @@ Options:\n\
     --app-config-path <json> -- specifies the configuration json file for\n\
                                 running an unsigned binary. The file can be\n\
                                 the same one used for the signing process.\n\
+    --enc-to-host-uid-map <host-uid:enc-uid[,host-uid2:enc-uid2,...]>\n\
+                         -- comma separated list of uid mappings between\n\
+                             the host and the enclave\n\
+    --enc-to-host-gid-map <host-gid:enc-gid[,host-gid2:enc-gid2,...]>\n\
+                         -- comma separated list of gid mappings between\n\
+                             the host and the enclave\n\
 \n"
 
 int exec_action(int argc, const char* argv[], const char* envp[])
@@ -238,7 +244,7 @@ int exec_action(int argc, const char* argv[], const char* envp[])
     /* Get options */
     {
         // process ID mapping options
-        cli_get_mapping_opts(&argc, argv, &options.host_enc_id_mapping);
+        cli_get_mapping_opts(&argc, argv, &options.host_enc_uid_gid_mappings);
 
         // retrieve mount mapping options
         cli_get_mount_mapping_opts(&argc, argv, &options.mount_mapping);

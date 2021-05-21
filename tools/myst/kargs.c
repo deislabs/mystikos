@@ -44,7 +44,7 @@ int init_kernel_args(
     int envc,
     const char* envp[],
     const char* cwd,
-    myst_host_enc_id_mapping host_enc_mapping,
+    myst_host_enc_uid_gid_mappings* host_enc_uid_gid_mappings,
     myst_mounts_config_t* mounts,
     const char* hostname,
     const void* regions_end,
@@ -252,6 +252,14 @@ int init_kernel_args(
         args->hostname = args->hostname_buffer;
     }
 
+    /* Copy over host uid gid mappings */
+    {
+        memcpy(
+            &args->host_enc_uid_gid_mappings,
+            host_enc_uid_gid_mappings,
+            sizeof(myst_host_enc_uid_gid_mappings));
+    }
+
     args->image_data = image_data;
     args->image_size = image_size;
     args->argc = (size_t)argc;
@@ -268,7 +276,6 @@ int init_kernel_args(
     args->max_affinity_cpus = max_affinity_cpus;
     args->tee_debug_mode = tee_debug_mode;
     args->tcall = tcall;
-    args->host_enc_id_mapping = host_enc_mapping;
     args->mounts = mounts;
 
     if (rootfs)
