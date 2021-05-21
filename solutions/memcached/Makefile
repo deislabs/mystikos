@@ -17,7 +17,7 @@ all: myst build-package
 
 run: run-package
 
-run-package: build-package
+run-package: 
 	# Kill the server from a previous run if it wasn't shut down properly.
 	test -f $(APP_NAME).pid && kill -9 `cat $(APP_NAME).pid` || true
 	# Launch the Memcached Server
