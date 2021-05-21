@@ -57,6 +57,12 @@ Options:\n\
     --app-config-path <json> -- specifies the configuration json file for\n\
                                 running an unsigned binary. The file can be\n\
                                 the same one used for the signing process.\n\
+    --enc-to-host-uid-map <host-uid:enc-uid[,host-uid2:enc-uid2,...]>\n\
+                         -- comma separated list of uid mappings between\n\
+                             the host and the enclave\n\
+    --enc-to-host-gid-map <host-gid:enc-gid[,host-gid2:enc-gid2,...]>\n\
+                         -- comma separated list of gid mappings between\n\
+                             the host and the enclave\n\
 \n\
 "
 
@@ -71,7 +77,7 @@ struct options
     char rootfs[PATH_MAX];
     size_t heap_size;
     const char* app_config_path;
-    myst_host_enc_id_mapping mapping;
+    myst_host_enc_uid_gid_mappings host_enc_uid_gid_mappings;
     myst_mount_mapping_t mount_mappings;
 };
 
@@ -80,7 +86,7 @@ static void _get_options(int* argc, const char* argv[], struct options* opts)
     memset(opts, 0, sizeof(struct options));
 
     // process ID mapping options
-    cli_get_mapping_opts(argc, argv, &opts->mapping);
+    cli_get_mapping_opts(argc, argv, &opts->host_enc_uid_gid_mappings);
 
     // retrieve mount mapping options
     cli_get_mount_mapping_opts(argc, argv, &opts->mount_mappings);
@@ -157,47 +163,6 @@ static void _get_options(int* argc, const char* argv[], struct options* opts)
 
     // get app config if present
     cli_getopt(argc, argv, "--app-config-path", &opts->app_config_path);
-
-    {
-        const char* arg = NULL;
-        if (cli_getopt(argc, argv, "--enc-to-host-uid-map", &arg) == 0)
-        {
-            uid_t enc_uid, host_uid;
-            int ret = sscanf(arg, "%d:%d", &enc_uid, &host_uid);
-            if (ret != 2)
-            {
-                _err("Failed to parse --enc-to-host-uid-map "
-                     "<enc_uid>:<host_uid>");
-            }
-            opts->mapping.enc_uid = enc_uid;
-            opts->mapping.host_uid = host_uid;
-        }
-        else
-        {
-            opts->mapping.enc_uid = 0;
-            opts->mapping.host_uid = geteuid();
-        }
-    }
-    {
-        const char* arg = NULL;
-        if (cli_getopt(argc, argv, "--enc-to-host-gid-map", &arg) == 0)
-        {
-            gid_t enc_gid, host_gid;
-            int ret = sscanf(arg, "%d:%d", &enc_gid, &host_gid);
-            if (ret != 2)
-            {
-                _err("Failed to parse --enc-to-host-gid-map "
-                     "<enc_gid>:<host_gid>");
-            }
-            opts->mapping.enc_gid = enc_gid;
-            opts->mapping.host_gid = host_gid;
-        }
-        else
-        {
-            opts->mapping.enc_gid = 0;
-            opts->mapping.host_gid = getegid();
-        }
-    }
 }
 
 /* the address of this is eventually passed to futex (uaddr argument) */
@@ -293,7 +258,7 @@ static int _enter_kernel(
                 envc,
                 envp,
                 cwd,
-                options->mapping,
+                &options->host_enc_uid_gid_mappings,
                 &pd.mounts,
                 hostname,
                 regions_end,

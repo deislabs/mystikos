@@ -10,13 +10,26 @@
 #include <myst/types.h>
 #include <signal.h>
 
-typedef struct _myst_host_enc_id_mapping
+#define MAX_ID_MAPPINGS 4
+typedef struct _myst_host_enc_uid_mapping
 {
     uid_t host_uid;
-    gid_t host_gid;
     uid_t enc_uid;
+} myst_host_enc_uid_mapping;
+
+typedef struct _myst_host_enc_gid_mapping
+{
+    gid_t host_gid;
     gid_t enc_gid;
-} myst_host_enc_id_mapping;
+} myst_host_enc_gid_mapping;
+
+typedef struct _myst_host_enc_uid_gid_mapping
+{
+    myst_host_enc_uid_mapping uid_mappings[MAX_ID_MAPPINGS];
+    int num_uid_mappings;
+    myst_host_enc_gid_mapping gid_mappings[MAX_ID_MAPPINGS];
+    int num_gid_mappings;
+} myst_host_enc_uid_gid_mappings;
 
 /* Information used for a specific automatic mount point that is mounted on
  * start. flags, public_keys and roothash are currently not used, but are
@@ -100,7 +113,7 @@ typedef struct myst_kernel_args
        typically only map from the enclave identity (root) to whatever identity
        of the host application.
       */
-    myst_host_enc_id_mapping host_enc_id_mapping;
+    myst_host_enc_uid_gid_mappings host_enc_uid_gid_mappings;
 
     /* This is only used as the kernel initialized and the lifetime is handled
      * in the target where the pointer came from. */

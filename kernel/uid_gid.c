@@ -12,28 +12,52 @@
 #include <myst/syscall.h>
 #include <myst/thread.h>
 
-/* Currently only supports a single mapping which is typically from enclave root
- * identity to the host application identity when executed. */
-static myst_host_enc_id_mapping host_enc_id_mapping;
+/* TODO: add description of data structure */
+static myst_host_enc_uid_mapping uid_mappings[MAX_ID_MAPPINGS];
+static int num_uid_mappings;
+static myst_host_enc_gid_mapping gid_mappings[MAX_ID_MAPPINGS];
+static int num_gid_mappings;
 
-void myst_set_host_uid_gid_mapping(myst_host_enc_id_mapping id_mapping)
+void myst_set_host_uid_gid_mappings(
+    myst_host_enc_uid_gid_mappings* uid_gid_mappings)
 {
-    host_enc_id_mapping = id_mapping;
+    /* Copy over uid mappings */
+    {
+        num_uid_mappings = uid_gid_mappings->num_uid_mappings;
+        for (int i = 0; i < num_uid_mappings; i++)
+        {
+            uid_mappings[i] = uid_gid_mappings->uid_mappings[i];
+        }
+    }
+
+    /* Copy over gid mappings */
+    {
+        num_gid_mappings = uid_gid_mappings->num_gid_mappings;
+        for (int i = 0; i < num_gid_mappings; i++)
+        {
+            gid_mappings[i] = uid_gid_mappings->gid_mappings[i];
+        }
+    }
 }
 
 uid_t myst_enc_uid_to_host(uid_t euid)
 {
-    if (euid == host_enc_id_mapping.enc_uid)
-        return host_enc_id_mapping.host_uid;
-    else
-        return euid;
+    for (int i = 0; i < num_uid_mappings; i++)
+    {
+        if (euid == uid_mappings[i].enc_uid)
+            return uid_mappings[i].host_uid;
+    }
+    return euid;
 }
+
 gid_t myst_enc_gid_to_host(gid_t egid)
 {
-    if (egid == host_enc_id_mapping.enc_gid)
-        return host_enc_id_mapping.host_gid;
-    else
-        return egid;
+    for (int i = 0; i < num_gid_mappings; i++)
+    {
+        if (egid == gid_mappings[i].enc_gid)
+            return gid_mappings[i].host_gid;
+    }
+    return egid;
 }
 
 /* success return 1, fail to read file return -1, not valid user return 0 */

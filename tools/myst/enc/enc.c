@@ -544,7 +544,7 @@ static long _enter(void* arg_)
             (int)env.size,
             env.data,
             cwd,
-            options->host_enc_id_mapping,
+            &options->host_enc_uid_gid_mappings,
             &parsed_config.mounts,
             hostname,
             regions_end,
