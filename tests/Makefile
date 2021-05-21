@@ -106,7 +106,7 @@ DIRS += devfs
 DIRS += callonce
 DIRS += syscall_exception
 DIRS += mutex
-#DIRS += mprotect
+DIRS += mprotect
 DIRS += eventfd
 DIRS += polleventfd
 

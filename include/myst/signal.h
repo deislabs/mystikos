@@ -33,4 +33,6 @@ long myst_signal_sigpending(sigset_t* set, unsigned size);
 
 long myst_signal_clone(myst_thread_t* parent, myst_thread_t* child);
 
+long myst_handle_host_signal(unsigned signo, mcontext_t* mcontext);
+
 #endif /* _MYST_SIGNAL_H */

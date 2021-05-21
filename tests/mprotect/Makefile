@@ -15,8 +15,7 @@ rootfs: main.c
 	$(MYST) mkcpio $(APPDIR) rootfs
 
 tests: rootfs
-	$(RUNTEST) ./exec.sh $(MYST_EXEC) rootfs /bin/mprotect_test $(OPTS)
-	@ echo "=== passed test (mprotect)"
+	$(RUNTEST) $(MYST_EXEC) rootfs /bin/mprotect_test $(OPTS)
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst

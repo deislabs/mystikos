@@ -4,12 +4,23 @@
 #define _GNU_SOURCE
 #include <assert.h>
 #include <errno.h>
+#include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <unistd.h>
+
+static int _segv_handled = 0;
+
+void lenient_sigsegv_handler(int signum, siginfo_t* siginfo, void* context)
+{
+    ucontext_t* ucontext = (ucontext_t*)context;
+    printf("Forgiving the sigsegv exception...\n");
+    _segv_handled = 1;
+    ucontext->uc_mcontext.gregs[REG_RIP] += 3; // non-portable.
+}
 
 int main(int argc, const char* argv[])
 {
@@ -84,8 +95,19 @@ int main(int argc, const char* argv[])
         assert(0);
     }
 
+    struct sigaction act = {0};
+    act.sa_sigaction = lenient_sigsegv_handler;
+    act.sa_flags = SA_SIGINFO | SA_NODEFER;
+    if (sigaction(SIGSEGV, &act, NULL) < 0)
+    {
+        assert(0 && "Error - sigaction failed unexpectedly\n");
+    }
+
+    /* Don't crash thanks to the lenient segv handler. */
     data = addr[0];
-    /* not expected to reach here */
-    printf("ERROR - No Access PAGES: first byte readable\n");
+    assert(_segv_handled == 1);
+    printf("mprotect and sigsegv handling successful\n");
+
+    printf("\n=== passed test (%s)\n", argv[0]);
     return 0;
 }

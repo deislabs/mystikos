@@ -128,7 +128,10 @@ static long _default_signal_handler(unsigned signum)
     return 0;
 }
 
-static long _handle_one_signal(unsigned signum, siginfo_t* siginfo)
+static long _handle_one_signal(
+    unsigned signum,
+    siginfo_t* siginfo,
+    mcontext_t* mcontext)
 {
     long ret = 0;
     ECHECK(_check_signum(signum));
@@ -141,7 +144,13 @@ static long _handle_one_signal(unsigned signum, siginfo_t* siginfo)
     if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
+    // Use a zeroed ucontext_t unless the caller passed in a mconext
+    // (register states). Note we modified pthread_cancel in MUSL to
+    // avoid the dependency on mcontext.
     memset(&locals->context, 0, sizeof(locals->context));
+
+    if (mcontext != NULL)
+        locals->context.uc_mcontext = *mcontext;
 
     myst_thread_t* thread = myst_thread_self();
 
@@ -179,10 +188,11 @@ static long _handle_one_signal(unsigned signum, siginfo_t* siginfo)
 
         if ((action->flags & SA_SIGINFO) != 0)
         {
-            // Use a zeroed ucontext_t. Only usage in libc seems to be
-            // pthread_cancel, which we modified to avoid the dependency.
             ((sigaction_function_t)(action->handler))(
                 signum, siginfo, &locals->context);
+            // Copy back mcontext (register states)
+            if (mcontext != NULL)
+                *mcontext = locals->context.uc_mcontext;
         }
         else
         {
@@ -225,7 +235,7 @@ long myst_signal_process(myst_thread_t* thread)
 
         // Signal numbers are 1 based.
         unsigned signum = bitnum + 1;
-        _handle_one_signal(signum, siginfo);
+        _handle_one_signal(signum, siginfo, NULL);
     }
     return 0;
 }
@@ -297,4 +307,12 @@ long myst_signal_clone(myst_thread_t* parent, myst_thread_t* child)
 
 done:
     return ret;
+}
+
+long myst_handle_host_signal(unsigned signum, mcontext_t* mcontext)
+{
+    siginfo_t siginfo = {0};
+    siginfo.si_code = SI_KERNEL;
+    siginfo.si_signo = signum;
+    return _handle_one_signal(signum, &siginfo, mcontext);
 }
