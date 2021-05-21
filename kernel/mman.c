@@ -687,7 +687,10 @@ static int _mmap(
     }
 
     if (!_mman_is_sane(mman))
+    {
+        ret = -EINVAL;
         goto done;
+    }
 
     /* ADDR must be page aligned */
     if (addr && (uintptr_t)addr % PAGE_SIZE)
@@ -797,6 +800,12 @@ static int _mmap(
             goto done;
         }
 
+        if (!addr)
+        {
+            ret = -ENOMEM;
+            goto done;
+        }
+
         *ptr_out = addr;
         goto done;
     }
@@ -854,7 +863,16 @@ static int _mmap(
     }
 
     if (!_mman_is_sane(mman))
+    {
+        ret = -EINVAL;
         goto done;
+    }
+
+    if (!start)
+    {
+        ret = -ENOMEM;
+        goto done;
+    }
 
     *ptr_out = (void*)start;
 
