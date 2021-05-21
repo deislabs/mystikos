@@ -800,12 +800,6 @@ static int _mmap(
             goto done;
         }
 
-        if (!addr)
-        {
-            ret = -ENOMEM;
-            goto done;
-        }
-
         *ptr_out = addr;
         goto done;
     }
@@ -1516,6 +1510,7 @@ int myst_mman_mremap(
             {
                 _mman_set_err(mman, "mapping failed");
                 ret = -ENOMEM;
+                goto done;
             }
             /* If no W permission, set W permission first before copy */
             if (!(vad->prot & MYST_PROT_WRITE))
