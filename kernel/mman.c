@@ -1575,6 +1575,9 @@ int myst_mman_mprotect(myst_mman_t* mman, void* addr, size_t len, int prot)
     uintptr_t end = 0;
     bool locked = false;
 
+    if (len == 0)
+        return 0;
+
     _mman_lock(mman, &locked);
 
     _mman_clear_err(mman);
@@ -1595,14 +1598,6 @@ int myst_mman_mprotect(myst_mman_t* mman, void* addr, size_t len, int prot)
     {
         _mman_set_err(
             mman, "bad addr parameter: must be multiple of page size");
-        ret = -EINVAL;
-        goto done;
-    }
-
-    /* len must be non-zero */
-    if (len == 0)
-    {
-        _mman_set_err(mman, "invalid len parameter: must be non-zero");
         ret = -EINVAL;
         goto done;
     }
