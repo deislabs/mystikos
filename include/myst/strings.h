@@ -44,7 +44,7 @@ int myst_str2int(const char* s, int* x);
 
 void* myst_memcchr(const void* s, int c, size_t n);
 
-void* myst_memcchr_u32(const void* s, int c, size_t n);
+void* myst_memcchr_u32(const void* s, uint32_t c, size_t n);
 
 uint32_t* myst_memset_u32(uint32_t* s, uint32_t c, size_t n);
 
