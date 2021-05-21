@@ -68,9 +68,9 @@ int main(int argc, const char* argv[])
         printf("Error - mprotect() didn't reject invalid addr\n");
         assert(0);
     }
-    if (!mprotect(addr, 0, PROT_READ | PROT_WRITE))
+    if (mprotect(addr, 0, PROT_READ | PROT_WRITE))
     {
-        printf("Error - mprotect() didn't reject invalid length\n");
+        printf("Error - mprotect() didn't take 0 length\n");
         assert(0);
     }
     for (size_t i = 0; i < length; i++)
@@ -103,11 +103,14 @@ int main(int argc, const char* argv[])
         assert(0 && "Error - sigaction failed unexpectedly\n");
     }
 
-    /* Don't crash thanks to the lenient segv handler. */
-    data = addr[0];
-    assert(_segv_handled == 1);
-    printf("mprotect and sigsegv handling successful\n");
-
+    const char* target = getenv("MYST_TARGET");
+    if (target && strcmp(target, "linux") != 0)
+    {
+        /* Don't crash thanks to the lenient segv handler. */
+        data = addr[0];
+        assert(_segv_handled == 1);
+        printf("mprotect and sigsegv handling successful\n");
+    }
     printf("\n=== passed test (%s)\n", argv[0]);
     return 0;
 }
