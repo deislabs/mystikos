@@ -1,0 +1,13 @@
+diff --git a/Release/tests/functional/streams/fstreambuf_tests.cpp b/Release/tests/functional/streams/fstreambuf_tests.cpp
+index 190eb66b..39e65559 100644
+--- a/Release/tests/functional/streams/fstreambuf_tests.cpp
++++ b/Release/tests/functional/streams/fstreambuf_tests.cpp
+@@ -940,7 +940,7 @@ SUITE(file_buffer_tests)
+     }
+ #endif
+ 
+-#if !defined(_WIN32) && defined(__x86_64__)
++#if defined(_TEST_4G_CASE) && !defined(_WIN32) && defined(__x86_64__)
+ 
+     struct TidyStream
+     {

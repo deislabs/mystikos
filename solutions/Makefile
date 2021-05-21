@@ -26,6 +26,7 @@ ifdef RUN_CORECLR_TESTS
 DIRS += coreclr
 endif
 
+DIRS += cpprestsdk
 
 REDEFINE_TESTS=1
 include $(TOP)/rules.mak
