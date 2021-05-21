@@ -572,6 +572,9 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     /* args->myst_syscall() can be called from enclave exception handlers */
     args->myst_syscall = myst_syscall;
 
+    /* myst_handle_host_signal can be called from enclave exception handlers */
+    args->myst_handle_host_signal = myst_handle_host_signal;
+
     /* Save the aguments */
     __myst_kernel_args = *args;
 

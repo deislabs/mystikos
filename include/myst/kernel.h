@@ -5,10 +5,10 @@
 #define _MYST_KERNEL_H
 
 #include <limits.h>
-
 #include <myst/kstack.h>
 #include <myst/tcall.h>
 #include <myst/types.h>
+#include <signal.h>
 
 typedef struct _myst_host_enc_id_mapping
 {
@@ -157,6 +157,9 @@ typedef struct myst_kernel_args
 
     /* pointer to myst_syscall() that is set by myst_enter_kernel() */
     long (*myst_syscall)(long n, long params[6]);
+
+    /* pointer to myst_handle_host_signal(). Set by myst_enter_kernel */
+    long (*myst_handle_host_signal)(unsigned signo, mcontext_t* context);
 
 } myst_kernel_args_t;
 

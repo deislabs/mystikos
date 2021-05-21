@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#define _GNU_SOURCE
 #include <assert.h>
 #include <errno.h>
 #include <stdio.h>
@@ -28,6 +29,7 @@
 #include <myst/tcall.h>
 #include <myst/thread.h>
 #include <myst/trace.h>
+#include <signal.h>
 
 #include "../config.h"
 #include "../kargs.h"
@@ -40,12 +42,94 @@
 #define IRETFRAME_Rsp IRETFRAME_EFlags + 8
 
 static myst_kernel_args_t _kargs;
+static mcontext_t _mcontext;
 
 extern const void* __oe_get_heap_base(void);
 
 long _exception_handler_syscall(long n, long params[6])
 {
     return (*_kargs.myst_syscall)(n, params);
+}
+
+static void _oe_context_to_mcontext(oe_context_t* oe_context, mcontext_t* mc)
+{
+    memset(mc, 0, sizeof(mcontext_t));
+    mc->gregs[REG_R8] = (int64_t)(oe_context->r8);
+    mc->gregs[REG_R9] = (int64_t)(oe_context->r9);
+    mc->gregs[REG_R10] = (int64_t)(oe_context->r10);
+    mc->gregs[REG_R11] = (int64_t)(oe_context->r11);
+    mc->gregs[REG_R12] = (int64_t)(oe_context->r12);
+    mc->gregs[REG_R13] = (int64_t)(oe_context->r13);
+    mc->gregs[REG_R14] = (int64_t)(oe_context->r14);
+    mc->gregs[REG_R15] = (int64_t)(oe_context->r15);
+
+    mc->gregs[REG_RSI] = (int64_t)(oe_context->rsi);
+    mc->gregs[REG_RDI] = (int64_t)(oe_context->rdi);
+    mc->gregs[REG_RBP] = (int64_t)(oe_context->rbp);
+    mc->gregs[REG_RSP] = (int64_t)(oe_context->rsp);
+    mc->gregs[REG_RIP] = (int64_t)(oe_context->rip);
+
+    mc->gregs[REG_RAX] = (int64_t)(oe_context->rax);
+    mc->gregs[REG_RBX] = (int64_t)(oe_context->rbx);
+    mc->gregs[REG_RCX] = (int64_t)(oe_context->rcx);
+    mc->gregs[REG_RDX] = (int64_t)(oe_context->rdx);
+
+    mc->gregs[REG_EFL] = (int64_t)(oe_context->flags);
+}
+
+static void _mcontext_to_oe_context(mcontext_t* mc, oe_context_t* oe_context)
+{
+    oe_context->r8 = (uint64_t)(mc->gregs[REG_R8]);
+    oe_context->r9 = (uint64_t)(mc->gregs[REG_R9]);
+    oe_context->r10 = (uint64_t)(mc->gregs[REG_R10]);
+    oe_context->r11 = (uint64_t)(mc->gregs[REG_R11]);
+    oe_context->r12 = (uint64_t)(mc->gregs[REG_R12]);
+    oe_context->r13 = (uint64_t)(mc->gregs[REG_R13]);
+    oe_context->r14 = (uint64_t)(mc->gregs[REG_R14]);
+    oe_context->r15 = (uint64_t)(mc->gregs[REG_R15]);
+
+    oe_context->rsi = (uint64_t)(mc->gregs[REG_RSI]);
+    oe_context->rdi = (uint64_t)(mc->gregs[REG_RDI]);
+    oe_context->rbp = (uint64_t)(mc->gregs[REG_RBP]);
+    oe_context->rsp = (uint64_t)(mc->gregs[REG_RSP]);
+    oe_context->rip = (uint64_t)(mc->gregs[REG_RIP]);
+
+    oe_context->rax = (uint64_t)(mc->gregs[REG_RAX]);
+    oe_context->rbx = (uint64_t)(mc->gregs[REG_RBX]);
+    oe_context->rcx = (uint64_t)(mc->gregs[REG_RCX]);
+    oe_context->rdx = (uint64_t)(mc->gregs[REG_RDX]);
+
+    oe_context->flags = (uint64_t)(mc->gregs[REG_EFL]);
+}
+
+static uint64_t _forward_exception_as_signal_to_kernel(
+    uint32_t oe_exception_code,
+    oe_context_t* oe_context)
+{
+    _oe_context_to_mcontext(oe_context, &_mcontext);
+
+    // Kernel should be the ultimate handler of #PF, #MF, and #UD.
+    // If we are still alive after kernel handling, it means kernel
+    // wanted the execution to continue.
+    if (oe_exception_code == OE_EXCEPTION_ILLEGAL_INSTRUCTION)
+    {
+        (*_kargs.myst_handle_host_signal)(SIGILL, &_mcontext);
+        _mcontext_to_oe_context(&_mcontext, oe_context);
+        return OE_EXCEPTION_CONTINUE_EXECUTION;
+    }
+    if (oe_exception_code == OE_EXCEPTION_PAGE_FAULT)
+    {
+        (*_kargs.myst_handle_host_signal)(SIGSEGV, &_mcontext);
+        _mcontext_to_oe_context(&_mcontext, oe_context);
+        return OE_EXCEPTION_CONTINUE_EXECUTION;
+    }
+    if (oe_exception_code == OE_EXCEPTION_X87_FLOAT_POINT)
+    {
+        (*_kargs.myst_handle_host_signal)(SIGFPE, &_mcontext);
+        _mcontext_to_oe_context(&_mcontext, oe_context);
+        return OE_EXCEPTION_CONTINUE_EXECUTION;
+    }
+    return OE_EXCEPTION_CONTINUE_SEARCH;
 }
 
 extern volatile const oe_sgx_enclave_properties_t oe_enclave_properties_sgx;
@@ -174,7 +258,7 @@ static uint64_t _vectored_handler(oe_exception_record_t* er)
         }
     }
 
-    return OE_EXCEPTION_CONTINUE_SEARCH;
+    return _forward_exception_as_signal_to_kernel(er->code, er->context);
 }
 
 static bool _is_allowed_env_variable(
