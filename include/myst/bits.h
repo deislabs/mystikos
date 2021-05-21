@@ -105,11 +105,9 @@ size_t myst_count_one_bits(const uint8_t* bits, size_t nbits)
 }
 
 MYST_INLINE size_t
-myst_skip_zero_bits(const uint8_t* bits, size_t nbits, size_t lo, size_t hi)
+myst_skip_zero_bits(const uint8_t* bits, size_t lo, size_t hi)
 {
     size_t i = lo;
-
-    (void)nbits;
 
     /* skip zero bits up to the next multiple of 8 or until exhausted */
     {
@@ -138,10 +136,12 @@ myst_skip_zero_bits(const uint8_t* bits, size_t nbits, size_t lo, size_t hi)
 }
 
 MYST_INLINE
-size_t myst_skip_one_bits(const uint8_t* bits, size_t nbits, size_t i)
+size_t myst_skip_one_bits(const uint8_t* bits, size_t lo, size_t hi)
 {
-    if (i == nbits)
-        return nbits;
+    size_t i = lo;
+
+    if (i == hi)
+        return i;
 
     /* round i to the next multiple of r */
     const size_t r = 64;
@@ -154,7 +154,7 @@ size_t myst_skip_one_bits(const uint8_t* bits, size_t nbits, size_t i)
         while (i < m && myst_test_bit(bits, i))
             i++;
 
-        if (i == nbits)
+        if (i == hi)
             return i;
 
         if (myst_test_bit(bits, i) == 0)
@@ -163,7 +163,7 @@ size_t myst_skip_one_bits(const uint8_t* bits, size_t nbits, size_t i)
 
     /* skip over 8 bytes at a time */
     {
-        size_t r = nbits - i;
+        size_t r = hi - i;
 
         while (r > 64 && *((uint64_t*)&bits[i / 8]) == 0xffffffffffffffff)
         {
@@ -173,20 +173,18 @@ size_t myst_skip_one_bits(const uint8_t* bits, size_t nbits, size_t i)
     }
 
     /* handle any remaining bits */
-    while (i < nbits && myst_test_bit(bits, i))
+    while (i < hi && myst_test_bit(bits, i))
         i++;
 
     return i;
 }
 
 MYST_INLINE
-void myst_set_bits(uint8_t* bits, size_t nbits, size_t lo, size_t hi)
+void myst_set_bits(uint8_t* bits, size_t lo, size_t hi)
 {
     size_t i = lo;
     size_t r = (lo + 7) / 8 * 8;
     const size_t min = (r < hi) ? r : hi;
-
-    (void)nbits;
 
     /* set bits up to the first multile of 8 */
     for (; i < min; i++)

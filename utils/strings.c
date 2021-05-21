@@ -380,6 +380,24 @@ void* myst_memcchr(const void* s, int c, size_t n)
 
 #pragma GCC push_options
 #pragma GCC optimize "-O3"
+void* myst_memchr(const void* s, int c, size_t n)
+{
+    const uint8_t* p = (uint8_t*)s;
+
+    while (n > 0)
+    {
+        if (*p == c)
+            return (void*)p;
+        p++;
+        n--;
+    }
+
+    return NULL;
+}
+#pragma GCC pop_options
+
+#pragma GCC push_options
+#pragma GCC optimize "-O3"
 uint32_t* myst_memset_u32(uint32_t* s, uint32_t c, size_t n)
 {
     uint32_t* p = s;

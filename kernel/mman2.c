@@ -183,7 +183,7 @@ int myst_mman2_mmap(
         const size_t nbits = _mman.npages;
 
         /* search the bitmap for a sequence of free bits */
-        while ((i = myst_skip_one_bits(bits, nbits, i)) < nbits &&
+        while ((i = myst_skip_one_bits(bits, i, nbits)) < nbits &&
                (i + rpages) <= nbits)
         {
             if (first_pass)
@@ -192,7 +192,7 @@ int myst_mman2_mmap(
                 first_pass = false;
             }
 
-            size_t r = myst_skip_zero_bits(bits, nbits, i, i + rpages);
+            size_t r = myst_skip_zero_bits(bits, i, i + rpages);
 
             if (r - i == rpages)
             {
@@ -216,7 +216,7 @@ int myst_mman2_mmap(
             memset(&_mman.prots[lo], (uint8_t)prot, rpages);
 
             /* update the bits vector */
-            myst_set_bits(bits, nbits, lo, hi);
+            myst_set_bits(bits, lo, hi);
 
             /* release the lock */
             myst_spin_unlock(&_mman.lock);
@@ -246,11 +246,12 @@ int myst_mman2_munmap(void* addr, size_t length)
     bool locked = false;
 
     /* address cannot be null and must be aligned on a page boundary */
-    if (!addr || ((uint64_t)addr % PAGE_SIZE) || !length)
+    if (!addr || ((uint64_t)addr % PAGE_SIZE))
         ERAISE(-EINVAL);
 
-    /* align length to the page boundary */
-    length = _round_up(length, PAGE_SIZE);
+    /* length cannot be zero and must be aligned on a page boundary */
+    if (length == 0 || length % PAGE_SIZE)
+        ERAISE(-EINVAL);
 
     /* obtain lock */
     myst_spin_lock(&_mman.lock);
@@ -312,6 +313,8 @@ int myst_mman2_mremap(
     void** ptr)
 {
     int ret = 0;
+    const int mask = MREMAP_FIXED | MREMAP_MAYMOVE;
+    bool locked = false;
 
     if (ptr)
         *ptr = MAP_FAILED;
@@ -326,7 +329,7 @@ int myst_mman2_mremap(
         ERAISE(-EINVAL);
 
     /* reject unknown flags */
-    if ((flags & ~(MREMAP_FIXED | MREMAP_MAYMOVE)))
+    if ((flags & ~mask))
         ERAISE(-EINVAL);
 
     /* ATTN: MREMAP_FIXED and new_address not supported */
@@ -345,7 +348,7 @@ int myst_mman2_mremap(
     if (!_valid_end(end))
         ERAISE(-EINVAL);
 
-    /* if the mapping is exactly the same size */
+    /* if the mapping is the same size */
     if (new_size == old_size)
     {
         *ptr = old_address;
@@ -369,6 +372,10 @@ int myst_mman2_mremap(
         page_t* new_end = start + npages;
         int prot;
         pid_t pid;
+
+        /* lock the memory manager */
+        myst_spin_lock(&_mman.lock);
+        locked = true;
 
         /* verify that all the pages have consistent permissions */
         {
@@ -406,14 +413,9 @@ int myst_mman2_mremap(
             /* find the low and high indices of the range */
             const size_t lo = end - _mman.pages;
             const size_t hi = new_end - _mman.pages;
-            size_t i;
 
-            /* check whether the excess pages are available */
-            for (i = lo; i < hi && myst_test_bit(_mman.bits, i); i++)
-                ;
-
-            /* grow mapping in place */
-            if (i == hi)
+            /* grow mapping in place if subsequent pages are free */
+            if (myst_skip_one_bits(_mman.bits, lo, hi) == hi)
             {
                 /* update the pids vector */
                 myst_memset_u32(&_mman.pids[lo], pid, npages);
@@ -422,12 +424,19 @@ int myst_mman2_mremap(
                 memset(&_mman.prots[lo], prot, npages);
 
                 /* update the bits vector */
-                myst_set_bits(_mman.bits, _mman.npages, lo, hi);
+                myst_set_bits(_mman.bits, lo, hi);
+
+                /* zero-fill the new pages */
+                memset(end, 0, npages * PAGE_SIZE);
 
                 *ptr = old_address;
                 goto done;
             }
         }
+
+        /* unlock the memory manager */
+        myst_spin_unlock(&_mman.lock);
+        locked = false;
 
         /* cannot grow the mapping in place, so move it */
         if ((flags & MREMAP_MAYMOVE))
@@ -454,6 +463,10 @@ int myst_mman2_mremap(
     }
 
 done:
+
+    if (locked)
+        myst_spin_unlock(&_mman.lock);
+
     return ret;
 }
 
@@ -462,6 +475,7 @@ int myst_mman2_mprotect(void* addr, size_t len, int prot)
     int ret = 0;
     const int rwx = PROT_READ | PROT_WRITE | PROT_EXEC;
     const int mask = rwx | PROT_SEM | PROT_SAO | PROT_GROWSUP;
+    bool locked = false;
 
     /* address must be non-null and aligned on a page boundary */
     if (!addr || ((ptrdiff_t)addr % PAGE_SIZE))
@@ -494,22 +508,22 @@ int myst_mman2_mprotect(void* addr, size_t len, int prot)
     const size_t lo = start - _mman.pages;
     const size_t hi = end - _mman.pages;
 
+    /* lock the memory manager */
+    myst_spin_lock(&_mman.lock);
+    locked = true;
+
     /* verify that all pages in this range are actually mapped */
-    {
-        size_t i;
-
-        for (i = lo; i < hi && myst_test_bit(_mman.bits, i); i++)
-            ;
-
-        if (i != hi)
-            ERAISE(-ENOMEM);
-    }
+    if (myst_skip_one_bits(_mman.bits, lo, hi) != hi)
+        ERAISE(-ENOMEM);
 
     /* set the permissions */
-    size_t count = end - start;
-    memset(&_mman.prots[lo], prot, count);
+    memset(&_mman.prots[lo], prot, end - start);
 
 done:
+
+    if (locked)
+        myst_spin_unlock(&_mman.lock);
+
     return ret;
 }
 
@@ -523,15 +537,17 @@ int myst_mman2_mprotect_stat(void* addr)
         ERAISE(-EINVAL);
 
     /* calculate the start addresses for this mapped page */
-    page_t* page = (page_t*)addr;
+    page_t* start = (page_t*)addr;
 
     /* if the address is out of range */
-    if (!_valid_start(page))
+    if (!_valid_start(start))
         ERAISE(-EINVAL);
 
-    /* set the permissions */
-    const size_t index = page - _mman.pages;
+    /* get the permissions */
+    const size_t index = start - _mman.pages;
+    myst_spin_lock(&_mman.lock);
     ret = _mman.prots[index];
+    myst_spin_unlock(&_mman.lock);
 
 done:
     return ret;
