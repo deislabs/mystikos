@@ -150,6 +150,7 @@ int myst_mman2_mmap(
 {
     int ret = 0;
     bool locked = false;
+    const int prot_mask = PROT_NONE | PROT_READ | PROT_WRITE | PROT_EXEC;
 
     if (ptr)
         *ptr = MAP_FAILED;
@@ -158,6 +159,10 @@ int myst_mman2_mmap(
         ERAISE(-EINVAL);
 
     if (addr)
+        ERAISE(-EINVAL);
+
+    /* reject unknown protection flags */
+    if (prot & ~prot_mask)
         ERAISE(-EINVAL);
 
     (void)flags;
@@ -169,6 +174,12 @@ int myst_mman2_mmap(
 
     /* calculate the required number of pages */
     size_t rpages = length / PAGE_SIZE;
+
+    /* handle fixed mappings */
+    if (flags & MAP_FIXED)
+    {
+        /* BOOKMARK */
+    }
 
     /* obtain lock */
     myst_spin_lock(&_mman.lock);
@@ -280,7 +291,7 @@ int myst_mman2_munmap(void* addr, size_t length)
     memset(&_mman.pids[lo], 0, n * sizeof(uint32_t));
 
     /* update the fds vector */
-    memset((uint32_t*)&_mman.fds[lo], 0, n * sizeof(uint32_t));
+    memset(&_mman.fds[lo], 0, n * sizeof(uint32_t));
 
     /* update the protection vector */
     memset(&_mman.prots[lo], 0, n);

@@ -68,5 +68,15 @@ int main()
 
     assert(mprotect(addr, length, PROT_NONE) == 0);
 
+    /* perform a fixed mapping at a mapped location (expect different addr) */
+    void* addr2 = mmap(addr, length, prot, flags, -1, 0);
+    assert(addr2 != MAP_FAILED);
+    assert(addr != addr2);
+
+    /* perform a fixed mapping at a mapped location (expect same addr) */
+    void* addr3 = mmap(addr2 - 4096, length, prot, flags | MAP_FIXED, -1, 0);
+    assert(addr3 != MAP_FAILED);
+    assert(addr3 == addr2 - 4096);
+
     return 0;
 }
