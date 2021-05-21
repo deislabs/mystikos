@@ -380,13 +380,13 @@ void* myst_memcchr(const void* s, int c, size_t n)
 
 #pragma GCC push_options
 #pragma GCC optimize "-O3"
-void* myst_memchr(const void* s, int c, size_t n)
+void* myst_memcchr_u32(const void* s, uint32_t c, size_t n)
 {
-    const uint8_t* p = (uint8_t*)s;
+    const uint32_t* p = (const uint32_t*)s;
 
     while (n > 0)
     {
-        if (*p == c)
+        if (*p != c)
             return (void*)p;
         p++;
         n--;

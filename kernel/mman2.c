@@ -383,11 +383,8 @@ int myst_mman2_mremap(
             const size_t hi = end - _mman.pages;
             prot = _mman.prots[lo];
 
-            for (size_t i = lo + 1; i < hi; i++)
-            {
-                if (_mman.prots[i] != prot)
-                    ERAISE(-EPERM);
-            }
+            if (myst_memcchr(&_mman.prots[lo], prot, hi - lo) != NULL)
+                ERAISE(-EPERM);
         }
 
         /* verify that all the pages have consistent pids */
@@ -396,11 +393,8 @@ int myst_mman2_mremap(
             const size_t hi = end - _mman.pages;
             pid = _mman.pids[lo];
 
-            for (size_t i = lo + 1; i < hi; i++)
-            {
-                if (_mman.pids[i] != (uint32_t)pid)
-                    ERAISE(-EPERM);
-            }
+            if (myst_memcchr_u32(&_mman.pids[lo], pid, hi - lo) != NULL)
+                ERAISE(-EPERM);
         }
 
         /* fail if the calling process does not own this mapping */
@@ -427,7 +421,8 @@ int myst_mman2_mremap(
                 myst_set_bits(_mman.bits, lo, hi);
 
                 /* zero-fill the new pages */
-                memset(end, 0, npages * PAGE_SIZE);
+                size_t nbytes = npages * PAGE_SIZE;
+                myst_bzero_u128((void*)end, nbytes / sizeof(__uint128_t));
 
                 *ptr = old_address;
                 goto done;
