@@ -464,6 +464,13 @@ static int _fs_stat(myst_fs_t* fs, const char* pathname, struct stat* statbuf)
 
     ret = tret;
 
+    /* Map uid and gid fields of statbuf to in-enclave values */
+    if ((statbuf->st_uid = myst_host_uid_to_enc(statbuf->st_uid)) < 0)
+        ERAISE(-EINVAL);
+
+    if ((statbuf->st_gid = myst_host_gid_to_enc(statbuf->st_gid)) < 0)
+        ERAISE(-EINVAL);
+
 done:
     return ret;
 }
@@ -985,6 +992,103 @@ done:
     return ret;
 }
 
+static int _fs_chown(
+    myst_fs_t* fs,
+    const char* pathname,
+    uid_t owner,
+    gid_t group)
+{
+    int ret = 0;
+    hostfs_t* hostfs = (hostfs_t*)fs;
+    char path[PATH_MAX];
+    long tret;
+    uid_t host_uid;
+    gid_t host_gid;
+
+    myst_assume(hostfs->magic == HOSTFS_MAGIC);
+
+    if (!_get_host_uid_gid(&host_uid, &host_gid))
+        ERAISE(-EINVAL);
+
+    if (!_hostfs_valid(hostfs) || !pathname)
+        ERAISE(-EINVAL);
+
+    ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
+
+    // TODO: check if owner and group are mapped to host
+    long params[6] = {(long)path,
+                      (long)myst_enc_uid_to_host(owner),
+                      (long)myst_enc_gid_to_host(group),
+                      (long)host_uid,
+                      (long)host_gid};
+    ECHECK((tret = myst_tcall(SYS_chown, params)));
+
+    if (tret != 0)
+        ERAISE(-EINVAL);
+
+    ret = tret;
+
+done:
+    return ret;
+}
+
+static int _fs_chmod(myst_fs_t* fs, const char* pathname, mode_t mode)
+{
+    int ret = 0;
+    hostfs_t* hostfs = (hostfs_t*)fs;
+    char path[PATH_MAX];
+    long tret;
+    uid_t host_uid;
+    gid_t host_gid;
+
+    myst_assume(hostfs->magic == HOSTFS_MAGIC);
+
+    if (!_get_host_uid_gid(&host_uid, &host_gid))
+        ERAISE(-EINVAL);
+
+    if (!_hostfs_valid(hostfs) || !pathname)
+        ERAISE(-EINVAL);
+
+    ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
+
+    long params[6] = {(long)path, (long)mode, (long)host_uid, (long)host_gid};
+    ECHECK((tret = myst_tcall(SYS_chmod, params)));
+
+    if (tret != 0)
+        ERAISE(-EINVAL);
+
+    ret = tret;
+
+done:
+    return ret;
+}
+
+static int _fs_fchmod(myst_fs_t* fs, myst_file_t* file, mode_t mode)
+{
+    int ret = 0;
+    hostfs_t* hostfs = (hostfs_t*)fs;
+    long tret;
+    uid_t host_uid;
+    gid_t host_gid;
+
+    if (!_hostfs_valid(hostfs) || !_file_valid(file))
+        ERAISE(-EINVAL);
+
+    if (!_get_host_uid_gid(&host_uid, &host_gid))
+        ERAISE(-EINVAL);
+
+    long params[6] = {file->fd, (long)mode, (long)host_uid, (long)host_gid};
+    ECHECK((tret = myst_tcall(SYS_fchmod, params)));
+
+    if (tret != 0)
+        ERAISE(-EINVAL);
+
+    ret = tret;
+
+done:
+    return ret;
+}
+
 int myst_init_hostfs(myst_fs_t** fs_out)
 {
     int ret = 0;
@@ -1040,6 +1144,9 @@ int myst_init_hostfs(myst_fs_t** fs_out)
         .fs_statfs = _fs_statfs,
         .fs_fstatfs = _fs_fstatfs,
         .fs_futimens = _fs_futimens,
+        .fs_chown = _fs_chown,
+        .fs_chmod = _fs_chmod,
+        .fs_fchmod = _fs_fchmod,
     };
     // clang-format on
 

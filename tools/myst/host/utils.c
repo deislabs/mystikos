@@ -215,31 +215,37 @@ int cli_get_mapping_opts(
 {
     {
         const char* arg = NULL;
-        if (cli_getopt(argc, argv, "--enc-to-host-uid-map", &arg) == 0)
+        if (cli_getopt(argc, argv, "--host-to-enc-uid-map", &arg) == 0)
         {
             int i = 0;
             const char comma[2] = ",";
             uid_t enc_uid, host_uid;
             char* token;
+            char* arg_copy = strdup(arg);
 
-            token = strtok((char*)arg, comma);
+            token = strtok((char*)arg_copy, comma);
             while (token != NULL)
             {
-                if (i >= MAX_MAPPINGS)
-                    _err("Uid mappings exceed %d max mappings", MAX_MAPPINGS);
-                int ret = sscanf(token, "%d:%d", &enc_uid, &host_uid);
+                if (i >= MAX_ID_MAPPINGS)
+                {
+                    free(arg_copy);
+                    _err(
+                        "Uid mappings exceed %d max mappings", MAX_ID_MAPPINGS);
+                }
+                int ret = sscanf(token, "%d:%d", &host_uid, &enc_uid);
                 if (ret != 2)
                 {
-                    _err("Failed to parse --enc-to-host-uid-map "
-                         "<enc_uid>:<host_uid>");
+                    _err("Failed to parse --host-to-enc-uid-map "
+                         "<host_uid>:<enc_uid>");
                 }
                 uid_gid_mappings->uid_mappings[i].enc_uid = enc_uid;
                 uid_gid_mappings->uid_mappings[i].host_uid = host_uid;
                 i++;
 
-                strtok(NULL, comma);
+                token = strtok(NULL, comma);
             }
             uid_gid_mappings->num_uid_mappings = i;
+            free(arg_copy);
         }
         else
         {
@@ -250,32 +256,37 @@ int cli_get_mapping_opts(
     }
     {
         const char* arg = NULL;
-        if (cli_getopt(argc, argv, "--enc-to-host-gid-map", &arg) == 0)
+        if (cli_getopt(argc, argv, "--host-to-enc-gid-map", &arg) == 0)
         {
             int i = 0;
             const char comma[2] = ",";
             gid_t enc_gid, host_gid;
             char* token;
+            char* arg_copy = strdup(arg);
 
             token = strtok((char*)arg, comma);
             while (token != NULL)
             {
                 if (i >= MAX_MAPPINGS)
+                {
+                    free(arg_copy);
                     _err("Gid mappings exceed %d max mappings", MAX_MAPPINGS);
+                }
 
-                int ret = sscanf(token, "%d:%d", &enc_gid, &host_gid);
+                int ret = sscanf(token, "%d:%d", &host_gid, &enc_gid);
                 if (ret != 2)
                 {
-                    _err("Failed to parse --enc-to-host-gid-map "
-                         "<enc_gid>:<host_gid>");
+                    _err("Failed to parse --host-to-enc-gid-map "
+                         "<host_gid>:<enc_gid>");
                 }
                 uid_gid_mappings->gid_mappings[i].enc_gid = enc_gid;
                 uid_gid_mappings->gid_mappings[i].host_gid = host_gid;
                 i++;
 
-                strtok(NULL, comma);
+                token = strtok(NULL, comma);
             }
             uid_gid_mappings->num_gid_mappings = i;
+            free(arg_copy);
         }
         else
         {

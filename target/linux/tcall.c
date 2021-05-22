@@ -589,7 +589,6 @@ long myst_tcall(long n, long params[6])
         case SYS_socketpair:
         case SYS_setsockopt:
         case SYS_getsockopt:
-        case SYS_fchmod:
         case SYS_access:
         case SYS_dup:
         case SYS_pread64:
@@ -615,10 +614,13 @@ long myst_tcall(long n, long params[6])
         {
             return _forward_syscall(n, x1, x2, x3, x4, x5, x6);
         }
+        case SYS_chown:
         case SYS_open:
         {
             return myst_tcall_identity(n, params, (uid_t)x4, (gid_t)x5);
         }
+        case SYS_fchmod:
+        case SYS_chmod:
         case SYS_stat:
         {
             return myst_tcall_identity(n, params, (uid_t)x3, (gid_t)x4);

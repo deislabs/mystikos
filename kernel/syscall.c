@@ -80,6 +80,7 @@
 #include <myst/time.h>
 #include <myst/times.h>
 #include <myst/trace.h>
+#include <myst/uid_gid.h>
 
 #define MAX_IPADDR_LEN 64
 
@@ -1996,13 +1997,21 @@ long myst_syscall_fchmod(int fd, mode_t mode)
 
     if (type == MYST_FDTABLE_TYPE_SOCK)
     {
+        uid_t host_uid;
+        gid_t host_gid;
         myst_fdops_t* fdops = device;
         int target_fd = (*fdops->fd_target_fd)(fdops, object);
 
         if (target_fd < 0)
             ERAISE(-EBADF);
 
-        long params[] = {target_fd, mode};
+        if ((host_uid = myst_enc_uid_to_host(myst_syscall_geteuid())) < 0)
+            ERAISE(-EINVAL);
+
+        if ((host_gid = myst_enc_gid_to_host(myst_syscall_getegid())) < 0)
+            ERAISE(-EINVAL);
+
+        long params[] = {target_fd, mode, host_uid, host_gid};
         ret = _forward_syscall(SYS_fchmod, params);
     }
     else if (type == MYST_FDTABLE_TYPE_FILE)

@@ -644,6 +644,8 @@ long myst_tcall(long n, long params[6])
         case SYS_sched_setaffinity:
         case SYS_sched_getaffinity:
         case SYS_getcpu:
+        case SYS_chown:
+        case SYS_chmod:
         {
             extern long myst_handle_tcall(long n, long params[6]);
             return myst_handle_tcall(n, params);

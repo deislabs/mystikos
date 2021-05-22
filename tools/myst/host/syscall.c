@@ -448,3 +448,29 @@ long myst_getcpu_ocall(unsigned* cpu, unsigned* node)
     /* note tcache unused since Linux 2.6.24 so we pass null */
     RETURN(syscall(SYS_getcpu, cpu, node, NULL));
 }
+
+long myst_chown_ocall(
+    const char* pathname,
+    uid_t owner,
+    gid_t group,
+    uid_t host_euid,
+    gid_t host_egid)
+{
+    SAVE_CALL_RESTORE_IDENTITY_RETURN(
+        host_euid, host_egid, chown(pathname, owner, group));
+}
+
+long myst_chmod_ocall(
+    const char* pathname,
+    mode_t mode,
+    uid_t host_euid,
+    gid_t host_egid)
+{
+    SAVE_CALL_RESTORE_IDENTITY_RETURN(
+        host_euid, host_egid, chmod(pathname, mode));
+}
+
+long myst_fchmod_ocall(int fd, uint32_t mode, uid_t host_euid, gid_t host_egid)
+{
+    SAVE_CALL_RESTORE_IDENTITY_RETURN(host_euid, host_egid, fchmod(fd, mode));
+}
