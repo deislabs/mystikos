@@ -116,6 +116,9 @@ static uint64_t _vectored_handler(oe_exception_record_t* er)
                 er->context->rcx = rcx;
                 er->context->rdx = rdx;
 
+                /* Skip over the illegal instruction. */
+                er->context->rip += 2;
+
                 return OE_EXCEPTION_CONTINUE_EXECUTION;
                 break;
             }
