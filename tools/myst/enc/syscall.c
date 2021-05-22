@@ -750,12 +750,12 @@ done:
     return ret;
 }
 
-static long _fchmod(int fd, mode_t mode)
+static long _fchmod(int fd, mode_t mode, uid_t host_euid, gid_t host_egid)
 {
     long ret = 0;
     long retval;
 
-    if (myst_fchmod_ocall(&retval, fd, mode) != OE_OK)
+    if (myst_fchmod_ocall(&retval, fd, mode, host_euid, host_egid) != OE_OK)
     {
         ret = -EINVAL;
         goto done;
@@ -1424,6 +1424,55 @@ static long _getcpu(unsigned* cpu, unsigned* node)
     RETURN(myst_getcpu_ocall(&ret, cpu, node));
 }
 
+#ifdef MYST_ENABLE_HOSTFS
+static long _chown(
+    const char* pathname,
+    uid_t owner,
+    gid_t group,
+    uid_t host_euid,
+    gid_t host_egid)
+{
+    long ret = 0;
+    long retval;
+
+    if (myst_chown_ocall(
+            &retval, pathname, owner, group, host_euid, host_egid) != OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = retval;
+
+done:
+    return ret;
+}
+#endif
+
+#ifdef MYST_ENABLE_HOSTFS
+static long _chmod(
+    const char* pathname,
+    mode_t mode,
+    uid_t host_euid,
+    gid_t host_egid)
+{
+    long ret = 0;
+    long retval;
+
+    if (myst_chmod_ocall(&retval, pathname, mode, host_euid, host_egid) !=
+        OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = retval;
+
+done:
+    return ret;
+}
+#endif
+
 long myst_handle_tcall(long n, long params[6])
 {
     const long a = params[0];
@@ -1546,7 +1595,7 @@ long myst_handle_tcall(long n, long params[6])
         }
         case SYS_fchmod:
         {
-            return _fchmod((int)a, (mode_t)b);
+            return _fchmod((int)a, (mode_t)b, (uid_t)c, (gid_t)d);
         }
         case SYS_poll:
         {
@@ -1650,6 +1699,15 @@ long myst_handle_tcall(long n, long params[6])
                 (int)d,
                 (uid_t)e,
                 (gid_t)f);
+        }
+        case SYS_chown:
+        {
+            return _chown(
+                (const char*)a, (uid_t)b, (gid_t)c, (uid_t)d, (gid_t)e);
+        }
+        case SYS_chmod:
+        {
+            return _chmod((const char*)a, (mode_t)b, (uid_t)c, (gid_t)d);
         }
 #endif
         case SYS_sched_setaffinity:

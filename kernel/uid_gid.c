@@ -40,24 +40,44 @@ void myst_set_host_uid_gid_mappings(
     }
 }
 
-uid_t myst_enc_uid_to_host(uid_t euid)
+uid_t myst_enc_uid_to_host(uid_t uid)
 {
     for (int i = 0; i < num_uid_mappings; i++)
     {
-        if (euid == uid_mappings[i].enc_uid)
+        if (uid == uid_mappings[i].enc_uid)
             return uid_mappings[i].host_uid;
     }
-    return euid;
+    return -1;
 }
 
-gid_t myst_enc_gid_to_host(gid_t egid)
+gid_t myst_enc_gid_to_host(gid_t gid)
 {
     for (int i = 0; i < num_gid_mappings; i++)
     {
-        if (egid == gid_mappings[i].enc_gid)
+        if (gid == gid_mappings[i].enc_gid)
             return gid_mappings[i].host_gid;
     }
-    return egid;
+    return -1;
+}
+
+uid_t myst_host_uid_to_enc(uid_t uid)
+{
+    for (int i = 0; i < num_uid_mappings; i++)
+    {
+        if (uid == uid_mappings[i].host_uid)
+            return uid_mappings[i].enc_uid;
+    }
+    return -1;
+}
+
+gid_t myst_host_gid_to_enc(gid_t gid)
+{
+    for (int i = 0; i < num_gid_mappings; i++)
+    {
+        if (gid == gid_mappings[i].host_gid)
+            return gid_mappings[i].enc_gid;
+    }
+    return -1;
 }
 
 /* success return 1, fail to read file return -1, not valid user return 0 */
