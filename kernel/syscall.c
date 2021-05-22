@@ -4537,8 +4537,8 @@ static long _syscall(void* args_)
             // for now, make all threads fixed to cpu 0.
             if (mask != NULL)
             {
-                CPU_ZERO(mask);
-                CPU_SET(0, mask);
+                CPU_ZERO_S(cpusetsize, mask);
+                CPU_SET_S(0, cpusetsize, mask);
             }
 
             BREAK(_return(n, cpusetsize));
