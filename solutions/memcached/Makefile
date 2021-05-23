@@ -27,7 +27,7 @@ run-package:
 	sleep $(LAUNCH_WAIT)
 	# Launch client test app
 	@echo "\n------Run test client outside of the Enclave------\n"
-	docker run -it --network host --rm $(CLIENT_IMAGE) $(SERVICE_ADD) $(SERVICE_PORT)
+	docker run --network host --rm $(CLIENT_IMAGE) $(SERVICE_ADD) $(SERVICE_PORT)
 	# Kill the running instance of the server before exit.
 	sleep $(SHUTDOWN_WAIT)
 	test -f $(APP_NAME).pid && kill -9 `cat $(APP_NAME).pid` && rm $(APP_NAME).pid || true
@@ -41,7 +41,7 @@ run-cpio: build-cpio
 	sleep $(LAUNCH_WAIT)
 	# Launch client test app
 	@echo "\n------Run test client outside of the Enclave------\n"
-	docker run -it --network host --rm $(CLIENT_IMAGE) $(SERVICE_ADD) $(SERVICE_PORT)
+	docker run --network host --rm $(CLIENT_IMAGE) $(SERVICE_ADD) $(SERVICE_PORT)
 	# Kill the running instance of the server before exit.
 	sleep $(SHUTDOWN_WAIT)
 	test -f $(APP_NAME).pid && kill -9 `cat $(APP_NAME).pid` && rm $(APP_NAME).pid || true
