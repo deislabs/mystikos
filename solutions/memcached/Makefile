@@ -1,4 +1,4 @@
-# pre-request, python3.6+ and pymemcache package 
+# pre-request, python3.6+ and pymemcache package, or run the client directly from container
 .PHONY: all
 
 TOP=$(abspath ../..)
@@ -7,6 +7,7 @@ include $(TOP)/defs.mak
 APPBUILDER    = $(TOP)/scripts/appbuilder
 APPDIR        = appdir
 APP_NAME      = memcached
+CLIENT_IMAGE  = myst-memcached-client
 SERVICE_ADD=localhost
 SERVICE_PORT=11211
 LAUNCH_WAIT   = 10	# waiting time in seconds for service launch
@@ -21,12 +22,12 @@ run-package:
 	# Kill the server from a previous run if it wasn't shut down properly.
 	test -f $(APP_NAME).pid && kill -9 `cat $(APP_NAME).pid` || true
 	# Launch the Memcached Server
-	@echo -e "\n------starting memcached server------\n"
+	@echo "\n------starting memcached server------\n"
 	myst/bin/$(APP_NAME) -u root $(OPTS) & echo $$! > $(APP_NAME).pid
 	sleep $(LAUNCH_WAIT)
 	# Launch client test app
-	@echo "Run test client outside of the Enclave ..."
-	python3 memcached_test.py $(SERVICE_ADD) $(SERVICE_PORT)
+	@echo "\n------Run test client outside of the Enclave------\n"
+	docker run -it --network host --rm $(CLIENT_IMAGE) $(SERVICE_ADD) $(SERVICE_PORT)
 	# Kill the running instance of the server before exit.
 	sleep $(SHUTDOWN_WAIT)
 	test -f $(APP_NAME).pid && kill -9 `cat $(APP_NAME).pid` && rm $(APP_NAME).pid || true
@@ -35,12 +36,12 @@ run-cpio: build-cpio
 	# Kill the server from a previous run if it wasn't shut down properly.
 	test -f $(APP_NAME).pid && kill -9 `cat $(APP_NAME).pid` || true
 	# Launch the Memcached Server
-	@echo -e "\n------starting memcached server------\n"
+	@echo "\n------starting memcached server------\n"
 	$(MYST_EXEC) $(OPTS) rootfs /usr/local/bin/memcached -u root & echo $$! > $(APP_NAME).pid
 	sleep $(LAUNCH_WAIT)
 	# Launch client test app
-	@echo "Run test client outside of the Enclave ..."
-	python3 memcached_test.py $(SERVICE_ADD) $(SERVICE_PORT)
+	@echo "\n------Run test client outside of the Enclave------\n"
+	docker run -it --network host --rm $(CLIENT_IMAGE) $(SERVICE_ADD) $(SERVICE_PORT)
 	# Kill the running instance of the server before exit.
 	sleep $(SHUTDOWN_WAIT)
 	test -f $(APP_NAME).pid && kill -9 `cat $(APP_NAME).pid` && rm $(APP_NAME).pid || true
@@ -53,14 +54,17 @@ run-host: clean
 	docker stop memcached-myst
 
 gdb: clean build-cpio
-	@ echo -e "\n------start debugging memcached server------\n"
+	@echo "\n------start debugging memcached server------\n"
 	$(MYST_GDB) --args $(MYST_EXEC) $(OPTS) rootfs /usr/local/bin/memcached -u root
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst
 
 appdir: 
-	$(APPBUILDER) Dockerfile
+	@echo "\n------Building appdir------\n"
+	$(APPBUILDER) Dockerfile.server
+	@echo "\n------Building client client application container------\n"
+	docker build -t $(CLIENT_IMAGE) -f Dockerfile.client .
 
 build-cpio: appdir
 	$(MYST) mkcpio $(APPDIR) rootfs
