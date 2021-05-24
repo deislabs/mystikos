@@ -66,6 +66,16 @@ int main()
     addr = mmap(addr, length, prot, flags, -1, 0);
     assert(addr != MAP_FAILED);
 
+    /* allocate 8 pages afterwards */
+    void* ptr = mmap(addr + length, length, prot, flags | MAP_FIXED, -1, 0);
+    assert(ptr != MAP_FAILED);
+    assert(ptr == addr + length);
+
+    /* remap addr to make it one page longer */
+    void* ptr1 = mremap(addr, length, length + 4096, 0, NULL);
+    assert(ptr1 != MAP_FAILED);
+    assert(ptr1 == addr);
+
     assert(mprotect(addr, length, PROT_NONE) == 0);
 
     /* perform a fixed mapping at a mapped location (expect different addr) */
