@@ -3,7 +3,15 @@ include $(TOP)/defs.mak
 
 DIRS = openenclave musl mbedtls libc-test gcompat
 
-include $(TOP)/rules.mak
+.PHONY: $(DIRS)
+
+dirs: $(DIRS)
+
+$(DIRS):
+	$(MAKE) -C $@
+
+clean:
+	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) clean $(NL) )
 
 distclean:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) distclean $(NL) )

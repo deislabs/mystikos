@@ -1,5 +1,3 @@
-.NOTPARALLEL:
-
 TOP=$(abspath ..)
 include $(TOP)/defs.mak
 
@@ -78,7 +76,6 @@ DIRS += curl
 endif
 
 REDEFINE_TESTS=1
-include $(TOP)/rules.mak
 
 DIRS += epoll
 DIRS += oe
@@ -110,6 +107,13 @@ DIRS += mutex
 DIRS += eventfd
 DIRS += polleventfd
 
+.PHONY: $(DIRS)
+
+dirs: $(DIRS)
+
+$(DIRS):
+	$(MAKE) -C $@
+
 __tests:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) tests $(NL) )
 
@@ -117,3 +121,8 @@ tests:
 	@ sudo rm -rf $(TESTDIR)
 	@ $(MAKE) -s __tests TARGET=sgx TESTSUFFIX=.sgx
 	@ $(MAKE) -s __tests TARGET=linux TESTSUFFIX=.linux
+
+clean:
+	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) clean $(NL) )
+
+distclean: clean

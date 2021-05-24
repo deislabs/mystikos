@@ -28,19 +28,20 @@ endif
 
 DIRS += memcached
 
-REDEFINE_TESTS=1
-include $(TOP)/rules.mak
+.PHONY: $(DIRS)
 
-__clean:
+build: $(DIRS)
+
+$(DIRS):
+	@ $(MAKE) -C $@
+
+clean:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) clean $(NL) )
 
-__build:
-	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) $(NL) )
-
-__run:
+run:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) run $(NL) )
 
 tests:
-	@ $(MAKE) -s __clean 
-	@ $(MAKE) -s __build
-	@ $(MAKE) -j -s __run
+	@ $(MAKE) -s clean
+	@ $(MAKE) -j -s build
+	@ $(MAKE) -j -s run

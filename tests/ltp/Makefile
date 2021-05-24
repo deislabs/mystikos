@@ -107,10 +107,7 @@ group-file:
 	echo "nogroup:x:65534" >> appdir/etc/group
 	echo "nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin" >> appdir/etc/group
 
-tests:
-	$(MAKE) tests_hostfs
-	$(MAKE) tests_ext2fs
-	$(MAKE) tests_ramfs
+tests: tests_hostfs tests_ext2fs tests_ramfs
 
 tests_hostfs:
 	$(MAKE) alltests FS=hostfs
