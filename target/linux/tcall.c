@@ -595,8 +595,6 @@ long myst_tcall(long n, long params[6])
         case SYS_pwrite64:
         case SYS_link:
         case SYS_unlink:
-        case SYS_mkdir:
-        case SYS_rmdir:
         case SYS_getdents64:
         case SYS_rename:
         case SYS_truncate:
@@ -615,6 +613,7 @@ long myst_tcall(long n, long params[6])
             return _forward_syscall(n, x1, x2, x3, x4, x5, x6);
         }
         case SYS_chown:
+        case SYS_fchown:
         case SYS_open:
         {
             return myst_tcall_identity(n, params, (uid_t)x4, (gid_t)x5);
@@ -622,12 +621,17 @@ long myst_tcall(long n, long params[6])
         case SYS_fchmod:
         case SYS_chmod:
         case SYS_stat:
+        case SYS_mkdir:
         {
             return myst_tcall_identity(n, params, (uid_t)x3, (gid_t)x4);
         }
         case SYS_utimensat:
         {
             return myst_tcall_identity(n, params, (uid_t)x5, (gid_t)x6);
+        }
+        case SYS_rmdir:
+        {
+            return myst_tcall_identity(n, params, (uid_t)x2, (gid_t)x3);
         }
         default:
         {

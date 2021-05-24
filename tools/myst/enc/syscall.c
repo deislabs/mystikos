@@ -1091,7 +1091,11 @@ done:
 #endif
 
 #ifdef MYST_ENABLE_HOSTFS
-static long _mkdir(const char* pathname, mode_t mode)
+static long _mkdir(
+    const char* pathname,
+    mode_t mode,
+    uid_t host_euid,
+    gid_t host_egid)
 {
     long ret = 0;
     long retval;
@@ -1102,7 +1106,8 @@ static long _mkdir(const char* pathname, mode_t mode)
         goto done;
     }
 
-    if (myst_mkdir_ocall(&retval, pathname, mode) != OE_OK)
+    if (myst_mkdir_ocall(&retval, pathname, mode, host_euid, host_egid) !=
+        OE_OK)
     {
         ret = -EINVAL;
         goto done;
@@ -1116,7 +1121,7 @@ done:
 #endif
 
 #ifdef MYST_ENABLE_HOSTFS
-static long _rmdir(const char* pathname)
+static long _rmdir(const char* pathname, uid_t host_euid, gid_t host_egid)
 {
     long ret = 0;
     long retval;
@@ -1127,7 +1132,7 @@ static long _rmdir(const char* pathname)
         goto done;
     }
 
-    if (myst_rmdir_ocall(&retval, pathname) != OE_OK)
+    if (myst_rmdir_ocall(&retval, pathname, host_euid, host_egid) != OE_OK)
     {
         ret = -EINVAL;
         goto done;
@@ -1450,6 +1455,31 @@ done:
 #endif
 
 #ifdef MYST_ENABLE_HOSTFS
+static long _fchown(
+    int fd,
+    uid_t owner,
+    gid_t group,
+    uid_t host_euid,
+    gid_t host_egid)
+{
+    long ret = 0;
+    long retval;
+
+    if (myst_fchown_ocall(&retval, fd, owner, group, host_euid, host_egid) !=
+        OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = retval;
+
+done:
+    return ret;
+}
+#endif
+
+#ifdef MYST_ENABLE_HOSTFS
 static long _chmod(
     const char* pathname,
     mode_t mode,
@@ -1645,11 +1675,11 @@ long myst_handle_tcall(long n, long params[6])
         }
         case SYS_mkdir:
         {
-            return _mkdir((const char*)a, (mode_t)b);
+            return _mkdir((const char*)a, (mode_t)b, (uid_t)c, (gid_t)d);
         }
         case SYS_rmdir:
         {
-            return _rmdir((const char*)a);
+            return _rmdir((const char*)a, (uid_t)b, (gid_t)c);
         }
         case SYS_getdents64:
         {
@@ -1704,6 +1734,10 @@ long myst_handle_tcall(long n, long params[6])
         {
             return _chown(
                 (const char*)a, (uid_t)b, (gid_t)c, (uid_t)d, (gid_t)e);
+        }
+        case SYS_fchown:
+        {
+            return _fchown((int)a, (uid_t)b, (gid_t)c, (uid_t)d, (gid_t)e);
         }
         case SYS_chmod:
         {

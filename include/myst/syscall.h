@@ -182,6 +182,8 @@ long myst_syscall_getcwd(char* buf, size_t size);
 
 long myst_syscall_fcntl(int fd, int cmd, long arg);
 
+long myst_syscall_chmod(const char* pathname, mode_t mode);
+
 long myst_syscall_add_symbol_file(
     const char* path,
     const void* text,

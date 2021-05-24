@@ -2005,11 +2005,9 @@ long myst_syscall_fchmod(int fd, mode_t mode)
         if (target_fd < 0)
             ERAISE(-EBADF);
 
-        if ((host_uid = myst_enc_uid_to_host(myst_syscall_geteuid())) < 0)
-            ERAISE(-EINVAL);
+        ECHECK(myst_enc_uid_to_host(myst_syscall_geteuid(), &host_uid));
 
-        if ((host_gid = myst_enc_gid_to_host(myst_syscall_getegid())) < 0)
-            ERAISE(-EINVAL);
+        ECHECK(myst_enc_gid_to_host(myst_syscall_getegid(), &host_gid));
 
         long params[] = {target_fd, mode, host_uid, host_gid};
         ret = _forward_syscall(SYS_fchmod, params);

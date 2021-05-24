@@ -44,13 +44,13 @@ typedef struct hostfs
 
 static bool _get_host_uid_gid(uid_t* host_uid, gid_t* host_gid)
 {
-    *host_uid = myst_enc_uid_to_host(myst_syscall_geteuid());
-    *host_gid = myst_enc_gid_to_host(myst_syscall_getegid());
-
-    if ((*host_uid < 0) || (*host_gid < 0))
+    if (myst_enc_uid_to_host(myst_syscall_geteuid(), host_uid) < 0)
         return false;
-    else
-        return true;
+
+    if (myst_enc_gid_to_host(myst_syscall_getegid(), host_gid) < 0)
+        return false;
+
+    return true;
 }
 
 static bool _hostfs_valid(const hostfs_t* hostfs)
@@ -433,6 +433,18 @@ done:
     return ret;
 }
 
+/* Map uid and gid fields of statbuf to in-enclave values */
+static int _map_stat_to_enc_ids(struct stat* statbuf)
+{
+    int ret = 0;
+
+    ECHECK(myst_host_uid_to_enc(statbuf->st_uid, &statbuf->st_uid));
+    ECHECK(myst_host_gid_to_enc(statbuf->st_gid, &statbuf->st_gid));
+
+done:
+    return ret;
+}
+
 static int _fs_stat(myst_fs_t* fs, const char* pathname, struct stat* statbuf)
 {
     int ret = 0;
@@ -464,12 +476,7 @@ static int _fs_stat(myst_fs_t* fs, const char* pathname, struct stat* statbuf)
 
     ret = tret;
 
-    /* Map uid and gid fields of statbuf to in-enclave values */
-    if ((statbuf->st_uid = myst_host_uid_to_enc(statbuf->st_uid)) < 0)
-        ERAISE(-EINVAL);
-
-    if ((statbuf->st_gid = myst_host_gid_to_enc(statbuf->st_gid)) < 0)
-        ERAISE(-EINVAL);
+    ECHECK(_map_stat_to_enc_ids(statbuf));
 
 done:
     return ret;
@@ -495,6 +502,8 @@ static int _fs_lstat(myst_fs_t* fs, const char* pathname, struct stat* statbuf)
 
     ret = tret;
 
+    ECHECK(_map_stat_to_enc_ids(statbuf));
+
 done:
     return ret;
 }
@@ -515,6 +524,8 @@ static int _fs_fstat(myst_fs_t* fs, myst_file_t* file, struct stat* statbuf)
         ERAISE(-EINVAL);
 
     ret = tret;
+
+    ECHECK(_map_stat_to_enc_ids(statbuf));
 
 done:
     return ret;
@@ -647,13 +658,18 @@ static int _fs_mkdir(myst_fs_t* fs, const char* pathname, mode_t mode)
     hostfs_t* hostfs = (hostfs_t*)fs;
     long tret;
     char path[PATH_MAX];
+    uid_t host_uid;
+    gid_t host_gid;
 
     if (!_hostfs_valid(hostfs) || !pathname)
         ERAISE(-EINVAL);
 
     ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
 
-    long params[6] = {(long)path, mode};
+    if (!_get_host_uid_gid(&host_uid, &host_gid))
+        ERAISE(-EINVAL);
+
+    long params[6] = {(long)path, (long)mode, (long)host_uid, (long)host_gid};
     ECHECK((tret = myst_tcall(SYS_mkdir, params)));
 
     if (tret != 0)
@@ -671,13 +687,18 @@ static int _fs_rmdir(myst_fs_t* fs, const char* pathname)
     hostfs_t* hostfs = (hostfs_t*)fs;
     long tret;
     char path[PATH_MAX];
+    uid_t host_uid;
+    gid_t host_gid;
 
     if (!_hostfs_valid(hostfs) || !pathname)
         ERAISE(-EINVAL);
 
     ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
 
-    long params[6] = {(long)path};
+    if (!_get_host_uid_gid(&host_uid, &host_gid))
+        ERAISE(-EINVAL);
+
+    long params[6] = {(long)path, (long)host_uid, (long)host_gid};
     ECHECK((tret = myst_tcall(SYS_rmdir, params)));
 
     if (tret != 0)
@@ -1004,6 +1025,8 @@ static int _fs_chown(
     long tret;
     uid_t host_uid;
     gid_t host_gid;
+    uid_t host_owner = -1u;
+    gid_t host_group = -1u;
 
     myst_assume(hostfs->magic == HOSTFS_MAGIC);
 
@@ -1015,13 +1038,60 @@ static int _fs_chown(
 
     ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
 
-    // TODO: check if owner and group are mapped to host
+    if (owner != -1)
+        ECHECK(myst_enc_uid_to_host(owner, &host_owner));
+
+    if (group != -1)
+        ECHECK(myst_enc_gid_to_host(group, &host_group));
+
     long params[6] = {(long)path,
-                      (long)myst_enc_uid_to_host(owner),
-                      (long)myst_enc_gid_to_host(group),
+                      (long)host_owner,
+                      (long)host_group,
                       (long)host_uid,
                       (long)host_gid};
     ECHECK((tret = myst_tcall(SYS_chown, params)));
+
+    if (tret != 0)
+        ERAISE(-EINVAL);
+
+    ret = tret;
+
+done:
+    return ret;
+}
+
+static int _fs_fchown(
+    myst_fs_t* fs,
+    myst_file_t* file,
+    uid_t owner,
+    gid_t group)
+{
+    int ret = 0;
+    hostfs_t* hostfs = (hostfs_t*)fs;
+    long tret;
+    uid_t host_uid;
+    gid_t host_gid;
+    uid_t host_owner = -1u;
+    gid_t host_group = -1u;
+
+    if (!_hostfs_valid(hostfs) || !_file_valid(file))
+        ERAISE(-EINVAL);
+
+    if (!_get_host_uid_gid(&host_uid, &host_gid))
+        ERAISE(-EINVAL);
+
+    if (owner != -1)
+        ECHECK(myst_enc_uid_to_host(owner, &host_owner));
+
+    if (group != -1)
+        ECHECK(myst_enc_gid_to_host(group, &host_group));
+
+    long params[6] = {file->fd,
+                      (long)host_owner,
+                      (long)host_group,
+                      (long)host_uid,
+                      (long)host_gid};
+    ECHECK((tret = myst_tcall(SYS_fchown, params)));
 
     if (tret != 0)
         ERAISE(-EINVAL);
@@ -1145,6 +1215,7 @@ int myst_init_hostfs(myst_fs_t** fs_out)
         .fs_fstatfs = _fs_fstatfs,
         .fs_futimens = _fs_futimens,
         .fs_chown = _fs_chown,
+        .fs_fchown = _fs_fchown,
         .fs_chmod = _fs_chmod,
         .fs_fchmod = _fs_fchmod,
     };

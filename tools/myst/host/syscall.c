@@ -359,14 +359,19 @@ long myst_unlink_ocall(const char* pathname)
     RETURN(unlink(pathname));
 }
 
-long myst_mkdir_ocall(const char* pathname, mode_t mode)
+long myst_mkdir_ocall(
+    const char* pathname,
+    mode_t mode,
+    uid_t host_euid,
+    gid_t host_egid)
 {
-    RETURN(mkdir(pathname, mode));
+    SAVE_CALL_RESTORE_IDENTITY_RETURN(
+        host_euid, host_egid, mkdir(pathname, mode));
 }
 
-long myst_rmdir_ocall(const char* pathname)
+long myst_rmdir_ocall(const char* pathname, uid_t host_euid, gid_t host_egid)
 {
-    RETURN(rmdir(pathname));
+    SAVE_CALL_RESTORE_IDENTITY_RETURN(host_euid, host_egid, rmdir(pathname));
 }
 
 long myst_getdents64_ocall(
@@ -458,6 +463,17 @@ long myst_chown_ocall(
 {
     SAVE_CALL_RESTORE_IDENTITY_RETURN(
         host_euid, host_egid, chown(pathname, owner, group));
+}
+
+long myst_fchown_ocall(
+    int fd,
+    uid_t owner,
+    gid_t group,
+    uid_t host_euid,
+    gid_t host_egid)
+{
+    SAVE_CALL_RESTORE_IDENTITY_RETURN(
+        host_euid, host_egid, fchown(fd, owner, group));
 }
 
 long myst_chmod_ocall(

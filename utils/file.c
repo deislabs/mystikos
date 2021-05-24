@@ -249,6 +249,8 @@ int myst_mkdirhier(const char* pathname, mode_t mode)
         else
         {
             ECHECK(mkdir(locals->path, mode));
+            /* To override umask effect on hostfs */
+            ECHECK(chmod(locals->path, mode));
         }
     }
 

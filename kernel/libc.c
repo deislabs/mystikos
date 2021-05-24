@@ -545,6 +545,10 @@ int symlink(const char* target, const char* linkpath)
     return (int)myst_syscall_ret(myst_syscall_symlink(target, linkpath));
 }
 
+int chmod(const char* pathname, mode_t mode)
+{
+    return (int)myst_syscall_ret(myst_syscall_chmod(pathname, mode));
+}
 /*
 **==============================================================================
 **
