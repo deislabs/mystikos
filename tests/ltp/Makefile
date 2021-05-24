@@ -28,8 +28,8 @@ else
 TESTS=$(shell grep -v "^\#" hostfs_fs_tests_passed.txt)
 endif
 FOUND=1
-OPTS+= --host-to-enc-uid-map 0:0,65534:65534,100700:700,100702:702,100703:703
-OPTS+= --host-to-enc-gid-map 0:0,65534:65534,100701:701,100704:704,100705:705
+OPTS+= --host-to-enc-uid-map 0:0,1:1,2:2,65534:65534,100700:700,100702:702,100703:703
+OPTS+= --host-to-enc-gid-map 0:0,1:1,2:2,65534:65534,100701:701,100704:704,100705:705
 endif
 
 ifeq ($(FS),ext2fs)

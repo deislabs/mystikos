@@ -3,6 +3,8 @@
 /ltp/testcases/kernel/syscalls/chmod/chmod02
 /ltp/testcases/kernel/syscalls/chmod/chmod03
 /ltp/testcases/kernel/syscalls/chmod/chmod04
+/ltp/testcases/kernel/syscalls/chmod/chmod05
+/ltp/testcases/kernel/syscalls/chmod/chmod07
 /ltp/testcases/kernel/syscalls/chown/chown01
 /ltp/testcases/kernel/syscalls/chown/chown02
 /ltp/testcases/kernel/syscalls/chown/chown03
@@ -25,8 +27,10 @@
 /ltp/testcases/kernel/syscalls/fchdir/fchdir01
 /ltp/testcases/kernel/syscalls/fchdir/fchdir02
 /ltp/testcases/kernel/syscalls/fchmod/fchmod01
+/ltp/testcases/kernel/syscalls/fchmod/fchmod02
 /ltp/testcases/kernel/syscalls/fchmod/fchmod03
 /ltp/testcases/kernel/syscalls/fchmod/fchmod04
+/ltp/testcases/kernel/syscalls/fchmod/fchmod05
 /ltp/testcases/kernel/syscalls/fchown/fchown01
 /ltp/testcases/kernel/syscalls/fchown/fchown02
 /ltp/testcases/kernel/syscalls/fchown/fchown03

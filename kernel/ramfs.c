@@ -26,7 +26,9 @@
 #include <myst/round.h>
 #include <myst/strings.h>
 #include <myst/syscall.h>
+#include <myst/thread.h>
 #include <myst/trace.h>
+#include <myst/uid_gid.h>
 
 #define BLKSIZE 512
 
@@ -2486,12 +2488,21 @@ done:
 static int _chmod(inode_t* inode, mode_t mode)
 {
     int ret = 0;
+    myst_thread_t* self = myst_thread_self();
 
     if (!inode)
         ERAISE(-EINVAL);
 
     inode->mode &= ~ALLPERMS;
     inode->mode |= (mode & ALLPERMS);
+
+    /* If not privileged and inode not in thread's primary or supplementary
+     * groups, drop S_ISGID bit */
+    if ((inode->mode & S_ISGID) && self->euid != 0 &&
+        !check_thread_group_membership(inode->gid))
+    {
+        inode->mode &= ~S_ISGID;
+    }
 
     _update_timestamps(inode, CHANGE);
 

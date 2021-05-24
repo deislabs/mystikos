@@ -29,7 +29,6 @@
 /ltp/testcases/kernel/syscalls/cacheflush/cacheflush01
 /ltp/testcases/kernel/syscalls/capget/capget02
 /ltp/testcases/kernel/syscalls/chdir/chdir01
-/ltp/testcases/kernel/syscalls/chmod/chmod05
 /ltp/testcases/kernel/syscalls/chmod/chmod06
 /ltp/testcases/kernel/syscalls/chown/chown01_16
 /ltp/testcases/kernel/syscalls/chown/chown02_16
@@ -136,7 +135,6 @@
 /ltp/testcases/kernel/syscalls/fanotify/fanotify16
 /ltp/testcases/kernel/syscalls/fanotify/fanotify_child
 /ltp/testcases/kernel/syscalls/fchdir/fchdir03
-/ltp/testcases/kernel/syscalls/fchmod/fchmod05
 /ltp/testcases/kernel/syscalls/fchmod/fchmod06
 /ltp/testcases/kernel/syscalls/fchown/fchown01_16
 /ltp/testcases/kernel/syscalls/fchown/fchown02_16

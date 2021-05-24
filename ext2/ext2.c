@@ -18,6 +18,7 @@
 #include <myst/strings.h>
 #include <myst/syscall.h>
 #include <myst/thread.h>
+#include <myst/uid_gid.h>
 #include "ext2common.h"
 
 #define EXT2_S_MAGIC 0xEF53
@@ -5328,12 +5329,21 @@ done:
 static int _chmod(ext2_inode_t* inode, mode_t mode)
 {
     int ret = 0;
+    myst_thread_t* self = myst_thread_self();
 
     if (!inode)
         ERAISE(-EINVAL);
 
     inode->i_mode &= ~ALLPERMS;
     inode->i_mode |= (mode & ALLPERMS);
+
+    /* If not privileged and inode not in thread's primary or supplementary
+     * groups, drop S_ISGID bit */
+    if ((inode->i_mode & S_ISGID) && self->euid != 0 &&
+        !check_thread_group_membership(inode->i_gid))
+    {
+        inode->i_mode &= ~S_ISGID;
+    }
 
     _update_timestamps(inode, CHANGE);
 
