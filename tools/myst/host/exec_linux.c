@@ -57,10 +57,10 @@ Options:\n\
     --app-config-path <json> -- specifies the configuration json file for\n\
                                 running an unsigned binary. The file can be\n\
                                 the same one used for the signing process.\n\
-    --enc-to-host-uid-map <host-uid:enc-uid[,host-uid2:enc-uid2,...]>\n\
+    --host-to-enc-uid-map <host-uid:enc-uid[,host-uid2:enc-uid2,...]>\n\
                          -- comma separated list of uid mappings between\n\
                              the host and the enclave\n\
-    --enc-to-host-gid-map <host-gid:enc-gid[,host-gid2:enc-gid2,...]>\n\
+    --host-to-enc-gid-map <host-gid:enc-gid[,host-gid2:enc-gid2,...]>\n\
                          -- comma separated list of gid mappings between\n\
                              the host and the enclave\n\
 \n\
