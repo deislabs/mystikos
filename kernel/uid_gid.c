@@ -12,7 +12,6 @@
 #include <myst/syscall.h>
 #include <myst/thread.h>
 
-/* TODO: add description of data structure */
 static myst_host_enc_uid_mapping uid_mappings[MAX_ID_MAPPINGS];
 static int num_uid_mappings;
 static myst_host_enc_gid_mapping gid_mappings[MAX_ID_MAPPINGS];
@@ -892,16 +891,16 @@ long myst_syscall_chown(const char* pathname, uid_t owner, gid_t group)
         /* file should be owned by the thread */
         ECHECK((*fs->fs_stat)(fs, locals->suffix, &locals->statbuf));
         if (locals->statbuf.st_uid != thread->euid)
-            ERAISE(-EINVAL);
+            ERAISE(-EPERM);
 
         /* owner should be -1 or user ID of file */
         if (!(owner == -1u || owner != locals->statbuf.st_uid))
-            ERAISE(-EINVAL);
+            ERAISE(-EPERM);
 
         /* group should either be thread's egid or one of the supplementary gids
          */
         if (!_check_thread_group_membership(group))
-            ERAISE(-EINVAL);
+            ERAISE(-EPERM);
 
         ECHECK(fs->fs_chown(fs, locals->suffix, owner, group));
     }
@@ -954,16 +953,16 @@ long myst_syscall_fchown(int fd, uid_t owner, gid_t group)
         /* file should be owned by the thread */
         ECHECK((*fs->fs_fstat)(fs, file, &locals->statbuf));
         if (locals->statbuf.st_uid != thread->euid)
-            ERAISE(-EINVAL);
+            ERAISE(-EPERM);
 
         /* owner should be -1 or user ID of file */
         if (!(owner != -1u || owner != locals->statbuf.st_uid))
-            ERAISE(-EINVAL);
+            ERAISE(-EPERM);
 
         /* group should either be thread's egid or one of the supplementary gids
          */
         if (!_check_thread_group_membership(group))
-            ERAISE(-EINVAL);
+            ERAISE(-EPERM);
 
         ECHECK((*fs->fs_fchown)(fs, file, owner, group));
     }
