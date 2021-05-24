@@ -28,6 +28,8 @@ else
 TESTS=$(shell grep -v "^\#" hostfs_fs_tests_passed.txt)
 endif
 FOUND=1
+OPTS+= --host-to-enc-uid-map 0:0,65534:65534,100700:700,100702:702,100703:703
+OPTS+= --host-to-enc-gid-map 0:0,65534:65534,100701:701,100704:704,100705:705
 endif
 
 ifeq ($(FS),ext2fs)
@@ -79,6 +81,7 @@ build:
 	sudo chown -R $(USER).$(USER) appdir
 	$(MAKE) password-file
 	$(MAKE) group-file
+	$(MAKE) add_host_users_and_groups
 
 rebuild:
 	cp build.mak appdir/ltp
@@ -100,9 +103,9 @@ password-file:
 	echo "daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin" >> appdir/etc/passwd
 	echo "bin:x:2:2:bin:/bin:/usr/sbin/nologin" >> appdir/etc/passwd
 	echo "nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin" >> appdir/etc/passwd
-	echo "user700:x:700:701:user700:/nonexistent:/bin/bash" >> appdir/etc/passwd
-	echo "user700:x:702:701:user700:/nonexistent:/bin/bash" >> appdir/etc/passwd
-	echo "user700:x:703:701:user700:/nonexistent:/bin/bash" >> appdir/etc/passwd
+	echo "user700:x:700:701::/:/bin/bash" >> appdir/etc/passwd
+	echo "user702:x:702:701::/:/bin/bash" >> appdir/etc/passwd
+	echo "user703:x:703:701::/:/bin/bash" >> appdir/etc/passwd
 
 group-file:
 	mkdir -p appdir/
@@ -115,6 +118,22 @@ group-file:
 	echo "grp701:x:701:user700" >> appdir/etc/group
 	echo "grp704:x:704:" >> appdir/etc/group
 	echo "grp705:x:705:" >> appdir/etc/group
+
+add_host_users_and_groups:
+	sudo groupadd -g 100701 grp701
+	sudo groupadd -g 100704 grp704
+	sudo groupadd -g 100705 grp705
+	sudo useradd -g grp701 -u 100700 user700
+	sudo useradd -g grp701 -u 100702 user702
+	sudo useradd -g grp701 -u 100703 user703
+
+del_host_users_and_groups:
+	sudo userdel user700
+	sudo userdel user702
+	sudo userdel user703
+	sudo groupdel grp701
+	sudo groupdel grp704
+	sudo groupdel grp705
 
 tests: tests_hostfs tests_ext2fs tests_ramfs
 
@@ -132,6 +151,7 @@ alltests:
 
 clean:
 	sudo rm -rf $(APPDIR) ext2fs appdir $(UPPERDIR) $(WORKDIR) $(HOSTFS)
+	$(MAKE) del_host_users_and_groups
 
 CACHEDIR=$(HOME)/.mystikos/cache/ltp
 
