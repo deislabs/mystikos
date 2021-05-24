@@ -41,7 +41,7 @@ function run_tests() {
     sudo rm -rf /tmp/myst*
   done <$FILE
 
-  awk '!seen[$9]++' temp_unhandled_syscalls.output | awk '{print $9}' | sort > unhandled_syscalls.txt
+  awk '!seen[$2]++' temp_unhandled_syscalls.output | awk '{print $2}' | sort > unhandled_syscalls.txt
   cat temp_unhandled_syscalls.output > "$FS"_tests_unhandled_syscalls.txt
   sort temp_other_errors.output | awk '!seen[$0]++' > "$FS"_tests_other_errors.txt
   cat temp_passed.output > "$FS"_tests_passed.txt
