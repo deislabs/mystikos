@@ -1964,7 +1964,9 @@ long myst_syscall_chmod(const char* pathname, mode_t mode)
     struct locals
     {
         char suffix[PATH_MAX];
+        struct stat statbuf;
     }* locals = NULL;
+    myst_thread_t* self = myst_thread_self();
 
     if (!pathname)
         ERAISE(-EINVAL);
@@ -1974,7 +1976,13 @@ long myst_syscall_chmod(const char* pathname, mode_t mode)
 
     ECHECK(myst_mount_resolve(pathname, locals->suffix, &fs));
 
-    // TODO: check permissions for operation
+    /* Root or owner of file can change mode */
+    if (!self->euid == 0)
+    {
+        ECHECK(fs->fs_stat(fs, locals->suffix, &locals->statbuf));
+        if (locals->statbuf.st_uid != self->euid)
+            ERAISE(-EPERM);
+    }
     ECHECK((*fs->fs_chmod)(fs, locals->suffix, mode));
 
 done:
@@ -2015,7 +2023,17 @@ long myst_syscall_fchmod(int fd, mode_t mode)
     else if (type == MYST_FDTABLE_TYPE_FILE)
     {
         myst_fs_t* fs = device;
-        // TODO: check permissions for operation
+        myst_thread_t* self = myst_thread_self();
+        struct stat statbuf;
+
+        /* Root or owner of file can change mode */
+        if (!self->euid == 0)
+        {
+            ECHECK(fs->fs_fstat(fs, object, &statbuf));
+            if (statbuf.st_uid != self->euid)
+                ERAISE(-EPERM);
+        }
+
         ECHECK((*fs->fs_fchmod)(fs, object, mode));
     }
     else
