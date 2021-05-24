@@ -311,10 +311,14 @@ enclave
 
         long myst_mkdir_ocall(
             [in, string] const char* pathname,
-            mode_t mode);
+            mode_t mode,
+            uid_t host_euid,
+            gid_t host_egid);
 
         long myst_rmdir_ocall(
-            [in, string] const char* pathname);
+            [in, string] const char* pathname,
+            uid_t host_euid,
+            gid_t host_egid);
 
         long myst_getdents64_ocall(
             unsigned int fd,
@@ -366,6 +370,14 @@ enclave
 
         long myst_chown_ocall(
             [in, string] const char* pathname,
+            uid_t owner,
+            gid_t group,
+            uid_t host_euid,
+            gid_t host_egid
+        );
+
+        long myst_fchown_ocall(
+            int fd,
             uid_t owner,
             gid_t group,
             uid_t host_euid,

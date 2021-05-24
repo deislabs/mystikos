@@ -40,42 +40,54 @@ void myst_set_host_uid_gid_mappings(
     }
 }
 
-uid_t myst_enc_uid_to_host(uid_t uid)
+int myst_enc_uid_to_host(uid_t enc_uid, uid_t* host_uid)
 {
     for (int i = 0; i < num_uid_mappings; i++)
     {
-        if (uid == uid_mappings[i].enc_uid)
-            return uid_mappings[i].host_uid;
+        if (enc_uid == uid_mappings[i].enc_uid)
+        {
+            *host_uid = uid_mappings[i].host_uid;
+            return 0;
+        }
     }
     return -1;
 }
 
-gid_t myst_enc_gid_to_host(gid_t gid)
+int myst_enc_gid_to_host(gid_t enc_gid, gid_t* host_gid)
 {
     for (int i = 0; i < num_gid_mappings; i++)
     {
-        if (gid == gid_mappings[i].enc_gid)
-            return gid_mappings[i].host_gid;
+        if (enc_gid == gid_mappings[i].enc_gid)
+        {
+            *host_gid = gid_mappings[i].host_gid;
+            return 0;
+        }
     }
     return -1;
 }
 
-uid_t myst_host_uid_to_enc(uid_t uid)
+int myst_host_uid_to_enc(uid_t host_uid, uid_t* enc_uid)
 {
     for (int i = 0; i < num_uid_mappings; i++)
     {
-        if (uid == uid_mappings[i].host_uid)
-            return uid_mappings[i].enc_uid;
+        if (host_uid == uid_mappings[i].host_uid)
+        {
+            *enc_uid = uid_mappings[i].enc_uid;
+            return 0;
+        }
     }
     return -1;
 }
 
-gid_t myst_host_gid_to_enc(gid_t gid)
+int myst_host_gid_to_enc(gid_t host_gid, gid_t* enc_gid)
 {
     for (int i = 0; i < num_gid_mappings; i++)
     {
-        if (gid == gid_mappings[i].host_gid)
-            return gid_mappings[i].enc_gid;
+        if (host_gid == gid_mappings[i].host_gid)
+        {
+            *enc_gid = gid_mappings[i].enc_gid;
+            return 0;
+        }
     }
     return -1;
 }
@@ -243,8 +255,6 @@ static long myst_valid_gid_against_group_file(gid_t gid)
 
     /* errors reading file return -1 */
     ret = -1;
-
-    /* TODO: check against gid in user's entry in /etc/passwd */
 
     /* get file length */
     if (myst_syscall_stat("/etc/group", &file_stat) != 0)
@@ -846,14 +856,14 @@ static int _check_thread_group_membership(gid_t group)
 
 long myst_syscall_chown(const char* pathname, uid_t owner, gid_t group)
 {
-    long ret;
+    long ret = 0;
     myst_fs_t* fs;
     myst_thread_t* thread = myst_thread_self();
     struct locals
     {
         char suffix[PATH_MAX];
+        struct stat statbuf;
     }* locals = NULL;
-    struct stat statbuf;
 
     if (!pathname)
         return -EINVAL;
@@ -879,9 +889,13 @@ long myst_syscall_chown(const char* pathname, uid_t owner, gid_t group)
     /* non-privileged thread case */
     else
     {
-        /* owner should either be -1 or file is owned by the thread */
-        ECHECK((*fs->fs_stat)(fs, locals->suffix, &statbuf));
-        if (owner != -1u || statbuf.st_uid != thread->euid)
+        /* file should be owned by the thread */
+        ECHECK((*fs->fs_stat)(fs, locals->suffix, &locals->statbuf));
+        if (locals->statbuf.st_uid != thread->euid)
+            ERAISE(-EINVAL);
+
+        /* owner should be -1 or user ID of file */
+        if (!(owner == -1u || owner != locals->statbuf.st_uid))
             ERAISE(-EINVAL);
 
         /* group should either be thread's egid or one of the supplementary gids
@@ -889,8 +903,9 @@ long myst_syscall_chown(const char* pathname, uid_t owner, gid_t group)
         if (!_check_thread_group_membership(group))
             ERAISE(-EINVAL);
 
-        ECHECK((*fs->fs_chown)(fs, locals->suffix, (uid_t)-1, group));
+        ECHECK(fs->fs_chown(fs, locals->suffix, owner, group));
     }
+
 done:
 
     if (locals)
@@ -901,7 +916,7 @@ done:
 
 long myst_syscall_fchown(int fd, uid_t owner, gid_t group)
 {
-    long ret;
+    long ret = 0;
     myst_file_t* file = NULL;
     myst_fs_t* fs = NULL;
     myst_fdtable_t* fdtable = myst_fdtable_current();
@@ -936,9 +951,13 @@ long myst_syscall_fchown(int fd, uid_t owner, gid_t group)
     /* non-privileged thread case */
     else
     {
-        /* owner should either be -1 or file is owned by the thread */
+        /* file should be owned by the thread */
         ECHECK((*fs->fs_fstat)(fs, file, &locals->statbuf));
-        if (owner != -1u || locals->statbuf.st_uid != thread->euid)
+        if (locals->statbuf.st_uid != thread->euid)
+            ERAISE(-EINVAL);
+
+        /* owner should be -1 or user ID of file */
+        if (!(owner != -1u || owner != locals->statbuf.st_uid))
             ERAISE(-EINVAL);
 
         /* group should either be thread's egid or one of the supplementary gids
@@ -946,7 +965,7 @@ long myst_syscall_fchown(int fd, uid_t owner, gid_t group)
         if (!_check_thread_group_membership(group))
             ERAISE(-EINVAL);
 
-        ECHECK((*fs->fs_fchown)(fs, file, (uid_t)-1, group));
+        ECHECK((*fs->fs_fchown)(fs, file, owner, group));
     }
 done:
 

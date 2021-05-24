@@ -458,10 +458,14 @@ static int _get_fstype(myst_kernel_args_t* args, myst_fstype_t* fstype)
     if (args->rootfs)
     {
         struct stat buf;
-        long params[6] = {(long)args->rootfs,
-                          (long)&buf,
-                          (long)myst_enc_uid_to_host(myst_syscall_geteuid()),
-                          (long)myst_enc_gid_to_host(myst_syscall_getegid())};
+        uid_t host_euid;
+        gid_t host_egid;
+
+        ECHECK(myst_enc_uid_to_host(myst_syscall_geteuid(), &host_euid));
+        ECHECK(myst_enc_uid_to_host(myst_syscall_getegid(), &host_egid));
+
+        long params[6] = {
+            (long)args->rootfs, (long)&buf, (long)host_euid, (long)host_egid};
 
         ECHECK(myst_tcall(SYS_stat, params));
 

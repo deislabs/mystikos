@@ -10,7 +10,7 @@
 #include <myst/types.h>
 #include <signal.h>
 
-#define MAX_ID_MAPPINGS 4
+#define MAX_ID_MAPPINGS 8
 typedef struct _myst_host_enc_uid_mapping
 {
     uid_t host_uid;
