@@ -9,13 +9,13 @@ endif
 
 OPTS = --memory-size=512m
 
-all: appdir rootfs
+all: rootfs
+
+rootfs: appdir
+	$(MYST) mkcpio appdir rootfs
 
 appdir:
 	$(APPBUILDER) Dockerfile
-
-rootfs:
-	$(MYST) mkcpio appdir rootfs
 
 run:
 	test -f server.pid && kill -9 `cat server.pid` || true

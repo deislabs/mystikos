@@ -63,15 +63,18 @@ $(ROOTHASH): run.c
 
 OPTS += --roothash=$(ROOTHASH)
 
-OPTS += --memory-size=1024m
+OPTS += --memory-size=512m
 
 tests:
 	$(RUNTEST) $(MAKE) __tests
 
-__tests:
-	for i in a b c d e f ; do \
-		$(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run testsa$$i.passed ; \
-	done
+__TESTS=a b c d e f
+.PHONY: $(__TESTS)
+
+__tests: $(__TESTS)
+
+$(__TESTS):
+	$(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run testsa$@.passed
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst
@@ -99,8 +102,11 @@ repeat:
 	while true; do make tests >> output ; done
 
 # Use to order tests and remove flaky ones
-clean-tests: 
+clean-tests:
 	sort -o $(ALLTESTS) $(ALLTESTS)
+	sort -o tests.passed tests.passed
+	sort -o tests.failed tests.failed
+	sort -o tests.failedalpine tests.failedalpine
 	comm -23 $(ALLTESTS) tests.remove > temp
 	mv temp $(ALLTESTS)
 	comm -23 tests.passed tests.remove > temp

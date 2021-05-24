@@ -11,7 +11,7 @@ endif
 
 OPTS = --memory-size=256m
 
-all: appdir rootfs ext2fs
+all: rootfs ext2fs
 
 # docker build time ~1hr. Using prebuilt image.
 # Other docker images:
@@ -23,10 +23,10 @@ appdir:
 	# pr0(~2.7k tests) tests in release
 	$(APPBUILDER) -i vtikoo/coreclr-tests:pr0-release
 
-rootfs:
+rootfs: appdir
 	$(MYST) mkcpio appdir rootfs
 
-ext2fs:
+ext2fs: appdir
 	sudo $(MYST) mkext2 appdir ext2fs
 	$(MYST) fssig --roothash ext2fs > roothash
 
