@@ -1,6 +1,13 @@
 /ltp/testcases/kernel/syscalls/chdir/chdir04
+/ltp/testcases/kernel/syscalls/chmod/chmod01
 /ltp/testcases/kernel/syscalls/chmod/chmod02
+/ltp/testcases/kernel/syscalls/chmod/chmod03
+/ltp/testcases/kernel/syscalls/chmod/chmod04
+/ltp/testcases/kernel/syscalls/chmod/chmod07
 /ltp/testcases/kernel/syscalls/chown/chown01
+/ltp/testcases/kernel/syscalls/chown/chown02
+/ltp/testcases/kernel/syscalls/chown/chown03
+/ltp/testcases/kernel/syscalls/chown/chown05
 /ltp/testcases/kernel/syscalls/close/close01
 /ltp/testcases/kernel/syscalls/close/close02
 /ltp/testcases/kernel/syscalls/close/close08
@@ -17,6 +24,14 @@
 /ltp/testcases/kernel/syscalls/fallocate/fallocate03
 /ltp/testcases/kernel/syscalls/fchdir/fchdir01
 /ltp/testcases/kernel/syscalls/fchdir/fchdir02
+/ltp/testcases/kernel/syscalls/fchmod/fchmod01
+/ltp/testcases/kernel/syscalls/fchmod/fchmod02
+/ltp/testcases/kernel/syscalls/fchmod/fchmod03
+/ltp/testcases/kernel/syscalls/fchmod/fchmod04
+/ltp/testcases/kernel/syscalls/fchown/fchown01
+/ltp/testcases/kernel/syscalls/fchown/fchown02
+/ltp/testcases/kernel/syscalls/fchown/fchown03
+/ltp/testcases/kernel/syscalls/fchown/fchown05
 /ltp/testcases/kernel/syscalls/fcntl/fcntl03
 /ltp/testcases/kernel/syscalls/fcntl/fcntl03_64
 /ltp/testcases/kernel/syscalls/fcntl/fcntl04
@@ -50,6 +65,7 @@
 /ltp/testcases/kernel/syscalls/lseek/lseek07
 /ltp/testcases/kernel/syscalls/lstat/lstat01
 /ltp/testcases/kernel/syscalls/lstat/lstat01_64
+/ltp/testcases/kernel/syscalls/mkdir/mkdir05
 /ltp/testcases/kernel/syscalls/msync/msync01
 /ltp/testcases/kernel/syscalls/open/open01
 /ltp/testcases/kernel/syscalls/open/open03
@@ -85,6 +101,8 @@
 /ltp/testcases/kernel/syscalls/select/select04
 /ltp/testcases/kernel/syscalls/sendfile/sendfile08
 /ltp/testcases/kernel/syscalls/sendfile/sendfile08_64
+/ltp/testcases/kernel/syscalls/stat/stat01
+/ltp/testcases/kernel/syscalls/stat/stat01_64
 /ltp/testcases/kernel/syscalls/stat/stat02
 /ltp/testcases/kernel/syscalls/stat/stat02_64
 /ltp/testcases/kernel/syscalls/statfs/statfs01
