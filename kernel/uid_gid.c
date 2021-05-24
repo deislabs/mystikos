@@ -838,7 +838,7 @@ long myst_syscall_setgroups(size_t size, const gid_t* list)
     return 0;
 }
 
-static int _check_thread_group_membership(gid_t group)
+int check_thread_group_membership(gid_t group)
 {
     myst_thread_t* thread = myst_thread_self();
     if (group == thread->egid)
@@ -899,7 +899,7 @@ long myst_syscall_chown(const char* pathname, uid_t owner, gid_t group)
 
         /* group should either be thread's egid or one of the supplementary gids
          */
-        if (!_check_thread_group_membership(group))
+        if (!check_thread_group_membership(group))
             ERAISE(-EPERM);
 
         ECHECK(fs->fs_chown(fs, locals->suffix, owner, group));
@@ -961,7 +961,7 @@ long myst_syscall_fchown(int fd, uid_t owner, gid_t group)
 
         /* group should either be thread's egid or one of the supplementary gids
          */
-        if (!_check_thread_group_membership(group))
+        if (!check_thread_group_membership(group))
             ERAISE(-EPERM);
 
         ECHECK((*fs->fs_fchown)(fs, file, owner, group));
