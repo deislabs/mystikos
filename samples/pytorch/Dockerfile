@@ -38,8 +38,9 @@ RUN curl -sLo ~/miniconda.sh https://repo.continuum.io/miniconda/Miniconda3-py38
 ENV NO_CUDA=1
 RUN conda install -y -c pytorch \
     cpuonly \
-    "pytorch=1.5.0=py3.8_cpu_0" \
-    "torchvision=0.6.0=py38_cpu" \
+    "pytorch=1.7.1" \
+    "torchvision=0.8.2" \
+    "torchaudio=0.7.2" \
  && conda clean -ya
 
 COPY AlexNetImage.py /app
