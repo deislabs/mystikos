@@ -65,6 +65,13 @@ typedef struct myst_robust_list_head
     volatile void* volatile pending;
 } myst_robust_list_head_t;
 
+/* When we have more of than one signal queued we need a list of them. */
+struct siginfo_list_item
+{
+    siginfo_t* siginfo;
+    struct siginfo_list_item* next;
+};
+
 struct myst_thread
 {
     /* MYST_THREAD_MAGIC */
@@ -183,7 +190,7 @@ struct myst_thread
         myst_spinlock_t lock;
 
         /* The list of siginfo_t for pending signals */
-        siginfo_t* siginfos[NSIG - 1];
+        struct siginfo_list_item* siginfos[NSIG - 1];
     } signal;
 
     /* the parameters passed to the munmap syscall by __unmapself() */

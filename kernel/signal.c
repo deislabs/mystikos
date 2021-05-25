@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -215,19 +216,36 @@ done:
 
 long myst_signal_process(myst_thread_t* thread)
 {
+    myst_spin_lock(&thread->signal.lock);
     while (thread->signal.pending != 0)
     {
         unsigned bitnum = __builtin_ctzl(thread->signal.pending);
 
-        // Create a local copy and free the global one.
-        siginfo_t local_siginfo = {0};
-        siginfo_t* siginfo = NULL;
-        if (thread->signal.siginfos[bitnum])
+        while (thread->signal.siginfos[bitnum])
         {
-            local_siginfo = *thread->signal.siginfos[bitnum];
+            // Create a local copy and free the global one.
+            siginfo_t local_siginfo = {0};
+            siginfo_t* siginfo = NULL;
+            struct siginfo_list_item* next =
+                thread->signal.siginfos[bitnum]->next;
+
+            if (thread->signal.siginfos[bitnum]->siginfo)
+            {
+                local_siginfo = *(thread->signal.siginfos[bitnum]->siginfo);
+                siginfo = &local_siginfo;
+
+                free(thread->signal.siginfos[bitnum]->siginfo);
+            }
             free(thread->signal.siginfos[bitnum]);
-            thread->signal.siginfos[bitnum] = NULL;
-            siginfo = &local_siginfo;
+            thread->signal.siginfos[bitnum] = next;
+
+            myst_spin_unlock(&thread->signal.lock);
+
+            // Signal numbers are 1 based.
+            unsigned signum = bitnum + 1;
+            _handle_one_signal(signum, siginfo);
+
+            myst_spin_lock(&thread->signal.lock);
         }
 
         // Clear the pending bit. We are ready for the next signal.
@@ -237,6 +255,7 @@ long myst_signal_process(myst_thread_t* thread)
         unsigned signum = bitnum + 1;
         _handle_one_signal(signum, siginfo, NULL);
     }
+    myst_spin_unlock(&thread->signal.lock);
     return 0;
 }
 
@@ -246,31 +265,51 @@ long myst_signal_deliver(
     siginfo_t* siginfo)
 {
     long ret = 0;
+    struct siginfo_list_item* new_item = NULL;
+
     ECHECK(_check_signum(signum));
 
     uint64_t mask = (uint64_t)1 << (signum - 1);
 
     if (!(thread->signal.mask & mask) || signum == SIGKILL || signum == SIGSTOP)
     {
+        new_item = calloc(1, sizeof(struct siginfo_list_item));
+        if (new_item == NULL)
+        {
+            ret = -ENOMEM;
+            goto done;
+        }
+        new_item->siginfo = siginfo;
+
         // Multiple threads could be trying to deliver a signal
         // to this thread simultaneously. Protect with a lock.
         myst_spin_lock(&thread->signal.lock);
 
-        // If the signal is not blocked, wait for the same signal from a
-        // previous delivery to be handled.
-        while (thread->signal.pending & mask)
-            ;
-        thread->signal.siginfos[signum - 1] = siginfo;
+        if (thread->signal.siginfos[signum - 1] == NULL)
+        {
+            thread->signal.siginfos[signum - 1] = new_item;
+        }
+        else
+        {
+            struct siginfo_list_item* ptr = thread->signal.siginfos[signum - 1];
+            while (ptr->next != NULL)
+                ptr = ptr->next;
+            ptr->next = new_item;
+        }
         thread->signal.pending |= mask;
+        siginfo = NULL;
+        new_item = NULL;
 
         myst_spin_unlock(&thread->signal.lock);
     }
-    else
-    {
-        free(siginfo); // Free the siginfo object if not delivered.
-    }
 
 done:
+    if (siginfo)
+        free(siginfo); // Free the siginfo object if not delivered.
+
+    if (new_item)
+        free(new_item); // free if allocated and not inserted
+
     return ret;
 }
 
