@@ -20,6 +20,20 @@ gid_t myst_syscall_getegid(void)
     return getegid();
 }
 
+int check_thread_group_membership(gid_t group)
+{
+    return 1;
+}
+
+typedef struct
+{
+} myst_thread_t;
+
+myst_thread_t* myst_thread_self()
+{
+    return NULL;
+}
+
 static void _dump_stat_buf(struct stat* buf)
 {
     printf("=== _dump_stat_buf\n");
