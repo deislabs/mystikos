@@ -217,9 +217,16 @@ done:
 long myst_signal_process(myst_thread_t* thread)
 {
     myst_spin_lock(&thread->signal.lock);
-    while (thread->signal.pending != 0)
+    // Active signals are the ones that are both unblocked and pending.
+    // Note SIGKILL and SIGSTOP can never be blocked.
+    uint64_t unblocked = (~thread->signal.mask) |
+                         ((uint64_t)1 << (SIGKILL - 1)) |
+                         ((uint64_t)1 << (SIGSTOP - 1));
+    uint64_t active_signals = thread->signal.pending & unblocked;
+
+    while (active_signals != 0)
     {
-        unsigned bitnum = __builtin_ctzl(thread->signal.pending);
+        unsigned bitnum = __builtin_ctzl(active_signals);
 
         while (thread->signal.siginfos[bitnum])
         {
@@ -248,7 +255,9 @@ long myst_signal_process(myst_thread_t* thread)
             myst_spin_lock(&thread->signal.lock);
         }
 
-        // Clear the pending bit. We are ready for the next signal.
+        // Clear the bit from the active signals. We are ready for the next.
+        active_signals &= ~((uint64_t)1 << bitnum);
+        // Clear the pending bit.
         thread->signal.pending &= ~((uint64_t)1 << bitnum);
 
         // Signal numbers are 1 based.
@@ -271,7 +280,6 @@ long myst_signal_deliver(
 
     uint64_t mask = (uint64_t)1 << (signum - 1);
 
-    if (!(thread->signal.mask & mask) || signum == SIGKILL || signum == SIGSTOP)
     {
         new_item = calloc(1, sizeof(struct siginfo_list_item));
         if (new_item == NULL)

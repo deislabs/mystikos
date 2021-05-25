@@ -219,6 +219,22 @@ int test_signal_blocked(int signum, const char* test_name)
     printf("=== : Test passed (%s)\n", test_name);
 }
 
+static _Atomic(int) _dummy_cnt = 0;
+void dummy_handler(int signum)
+{
+    _dummy_cnt = 1;
+}
+
+int test_raise(int signum, const char* test_name)
+{
+    _dummy_cnt = 0;
+    signal(signum, dummy_handler);
+    raise(signum);
+    sleep(1);
+    assert(_dummy_cnt == 1);
+    printf("=== : Test passed (%s)\n", test_name);
+}
+
 int main(int argc, const char* argv[])
 {
     test_pthread_cancel("pthread_cancel");
@@ -228,6 +244,8 @@ int main(int argc, const char* argv[])
     test_signal_blocked(SIGTERM, "signal_blocked");
 
     test_signal_blocked(SIGKILL, "signal_blocked");
+
+    test_raise(35, "raise");
 
     printf("\n=== passed test (%s)\n", argv[0]);
 

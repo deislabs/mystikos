@@ -21,6 +21,7 @@
 /src/regression/pthread_create-oom.exe
 /src/regression/rlimit-open-files.exe
 /src/regression/setenv-oom.exe
+/src/regression/sigaltstack.exe
 /src/regression/sigreturn.exe
 /src/regression/statvfs.exe
 /src/regression/syscall-sign-extend.exe

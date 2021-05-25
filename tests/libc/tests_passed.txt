@@ -287,7 +287,6 @@
 /src/regression/scanf-match-literal-eof.exe
 /src/regression/scanf-nullbyte-char.exe
 /src/regression/setvbuf-unget.exe
-/src/regression/sigaltstack.exe
 /src/regression/sigprocmask-internal.exe
 /src/regression/sscanf-eof.exe
 /src/regression/strverscmp.exe
