@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <myst/atexit.h>
 #include <myst/eraise.h>
 #include <myst/fsgs.h>
 #include <myst/printf.h>
@@ -9,6 +10,125 @@
 
 /* The lock for installing signal dispositions */
 static myst_spinlock_t _lock = MYST_SPINLOCK_INITIALIZER;
+
+static myst_spinlock_t _pending_signals_lock = MYST_SPINLOCK_INITIALIZER;
+
+struct pending_signal
+{
+    int signum;
+    myst_thread_t* target;
+    siginfo_t* siginfo;
+    struct pending_signal* next;
+};
+
+static struct pending_signal* pending_signals = NULL;
+
+static void _free_pending_signals(void* arg)
+{
+    (void)arg;
+
+    for (struct pending_signal* p = pending_signals; p;)
+    {
+        struct pending_signal* next = p->next;
+
+        memset(p, 0xdd, sizeof(struct pending_signal));
+        free(p->siginfo);
+        free(p);
+
+        p = next;
+    }
+
+    pending_signals = NULL;
+}
+
+static int _add_blocked_signal_to_pending(
+    int signum,
+    myst_thread_t* target,
+    siginfo_t* siginfo)
+{
+    static bool _initialized;
+
+    if (!_initialized)
+    {
+        myst_atexit(_free_pending_signals, NULL);
+        _initialized = true;
+    }
+
+    struct pending_signal* newnode = malloc(sizeof(struct pending_signal));
+    if (newnode == NULL)
+        return -ENOMEM;
+
+    newnode->signum = signum;
+    newnode->target = target;
+    newnode->siginfo = siginfo;
+
+    myst_spin_lock(&_pending_signals_lock);
+    newnode->next = pending_signals;
+    pending_signals = newnode;
+    myst_spin_unlock(&_pending_signals_lock);
+
+    return 0;
+}
+
+static int _check_and_deliver_unblocked_signals(myst_thread_t* thread)
+{
+    struct pending_signal* tmp = NULL;
+    struct pending_signal* prev = NULL;
+    struct pending_signal* deliver_list = NULL;
+    int deliver_cnt = 0;
+
+    // Find the signals ready for delivery
+    myst_spin_lock(&_pending_signals_lock);
+    for (tmp = pending_signals; tmp;)
+    {
+        uint64_t mask = (uint64_t)1 << (tmp->signum - 1);
+        if (tmp->target == thread && !(thread->signal.mask & mask))
+        {
+            // signum is unblocked for this thread. Remove the node `tmp`
+            // from the pending signals list, and add to the local deliver
+            // list.
+            struct pending_signal* next = tmp->next;
+            tmp->next = deliver_list;
+            deliver_list = tmp;
+
+            if (!prev)
+                pending_signals = next;
+            else
+                prev->next = next;
+
+            tmp = next;
+            continue;
+        }
+
+        prev = tmp;
+        tmp = tmp->next;
+    }
+    myst_spin_unlock(&_pending_signals_lock);
+
+    // Now perform the real delivery
+    while (deliver_list)
+    {
+        struct pending_signal* tmp = deliver_list;
+        uint64_t mask = (uint64_t)1 << (tmp->signum - 1);
+        myst_thread_t* thread = tmp->target;
+        myst_spin_lock(&thread->signal.lock);
+
+        // If the signal is not blocked, wait for the same signal from a
+        // previous delivery to be handled.
+        while (thread->signal.pending & mask)
+            ;
+        thread->signal.siginfos[tmp->signum - 1] = tmp->siginfo;
+        thread->signal.pending |= mask;
+
+        myst_spin_unlock(&thread->signal.lock);
+
+        deliver_list = tmp->next;
+        free(tmp);
+        deliver_cnt++;
+    }
+
+    return deliver_cnt;
+}
 
 static int _check_signum(unsigned signum)
 {
@@ -99,6 +219,12 @@ long myst_signal_sigprocmask(int how, const sigset_t* set, sigset_t* oldset)
             thread->signal.mask |= mask;
         else if (how == SIG_UNBLOCK)
             thread->signal.mask &= ~mask;
+
+        if (how == SIG_UNBLOCK || how == SIG_SETMASK)
+        {
+            // If we potentially unblocked signals, checking the pending list.
+            _check_and_deliver_unblocked_signals(thread);
+        }
     }
 
 done:
@@ -257,7 +383,7 @@ long myst_signal_deliver(
     }
     else
     {
-        free(siginfo); // Free the siginfo object if not delivered.
+        ECHECK(_add_blocked_signal_to_pending(signum, thread, siginfo));
     }
 
 done:
