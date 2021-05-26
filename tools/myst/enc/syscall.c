@@ -908,12 +908,17 @@ done:
 #endif
 
 #ifdef MYST_ENABLE_HOSTFS
-static long _lstat(const char* pathname, struct myst_stat* statbuf)
+static long _lstat(
+    const char* pathname,
+    struct myst_stat* statbuf,
+    uid_t host_uid,
+    gid_t host_gid)
 {
     long ret = 0;
     long retval;
 
-    if (myst_lstat_ocall(&retval, pathname, statbuf) != OE_OK)
+    if (myst_lstat_ocall(&retval, pathname, statbuf, host_uid, host_gid) !=
+        OE_OK)
     {
         ret = -EINVAL;
         goto done;
@@ -1262,7 +1267,11 @@ done:
 #endif
 
 #ifdef MYST_ENABLE_HOSTFS
-static long _symlink(const char* target, const char* linkpath)
+static long _symlink(
+    const char* target,
+    const char* linkpath,
+    uid_t host_uid,
+    gid_t host_gid)
 {
     long ret = 0;
     long retval;
@@ -1273,7 +1282,8 @@ static long _symlink(const char* target, const char* linkpath)
         goto done;
     }
 
-    if (myst_symlink_ocall(&retval, target, linkpath) != OE_OK)
+    if (myst_symlink_ocall(&retval, target, linkpath, host_uid, host_gid) !=
+        OE_OK)
     {
         ret = -EINVAL;
         goto done;
@@ -1480,6 +1490,31 @@ done:
 #endif
 
 #ifdef MYST_ENABLE_HOSTFS
+static long _lchown(
+    const char* pathname,
+    uid_t owner,
+    gid_t group,
+    uid_t host_euid,
+    gid_t host_egid)
+{
+    long ret = 0;
+    long retval;
+
+    if (myst_lchown_ocall(
+            &retval, pathname, owner, group, host_euid, host_egid) != OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = retval;
+
+done:
+    return ret;
+}
+#endif
+
+#ifdef MYST_ENABLE_HOSTFS
 static long _chmod(
     const char* pathname,
     mode_t mode,
@@ -1647,7 +1682,8 @@ long myst_handle_tcall(long n, long params[6])
         }
         case SYS_lstat:
         {
-            return _lstat((const char*)a, (struct myst_stat*)b);
+            return _lstat(
+                (const char*)a, (struct myst_stat*)b, (uid_t)c, (gid_t)d);
         }
         case SYS_access:
         {
@@ -1702,7 +1738,7 @@ long myst_handle_tcall(long n, long params[6])
         }
         case SYS_symlink:
         {
-            return _symlink((const char*)a, (const char*)b);
+            return _symlink((const char*)a, (const char*)b, (uid_t)c, (gid_t)d);
         }
         case SYS_readlink:
         {
@@ -1738,6 +1774,11 @@ long myst_handle_tcall(long n, long params[6])
         case SYS_fchown:
         {
             return _fchown((int)a, (uid_t)b, (gid_t)c, (uid_t)d, (gid_t)e);
+        }
+        case SYS_lchown:
+        {
+            return _lchown(
+                (const char*)a, (uid_t)b, (gid_t)c, (uid_t)d, (gid_t)e);
         }
         case SYS_chmod:
         {

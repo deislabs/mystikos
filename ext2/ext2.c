@@ -5350,6 +5350,62 @@ done:
     return ret;
 }
 
+static int _ext2_lchown(
+    myst_fs_t* fs,
+    const char* pathname,
+    uid_t owner,
+    gid_t group)
+{
+    int ret = 0;
+    ext2_t* ext2 = (ext2_t*)fs;
+    struct locals
+    {
+        ext2_ino_t ino;
+        ext2_inode_t inode;
+        char suffix[PATH_MAX];
+    }* locals = NULL;
+    myst_fs_t* tfs = NULL;
+
+    if (!_ext2_valid(ext2) || !pathname)
+        ERAISE(-EINVAL);
+
+    if (!(locals = malloc(sizeof(struct locals))))
+        ERAISE(-ENOMEM);
+
+    /* Check if path exists */
+    ECHECK(_path_to_inode(
+        ext2,
+        pathname,
+        NOFOLLOW,
+        NULL,
+        &locals->ino,
+        NULL,
+        &locals->inode,
+        locals->suffix,
+        &tfs));
+    if (tfs)
+    {
+        /* delegate operation to target filesystem */
+        ECHECK((ret = tfs->fs_lchown(tfs, locals->suffix, owner, group)));
+        goto done;
+    }
+
+    if (!S_ISLNK(locals->inode.i_mode))
+        ERAISE(-ENOTDIR);
+
+    _chown(&locals->inode, owner, group);
+
+    /* persist the inode change */
+    ECHECK(_write_inode(ext2, locals->ino, &locals->inode));
+
+done:
+
+    if (locals)
+        free(locals);
+
+    return ret;
+}
+
 #define ALLPERMS (S_ISUID | S_ISGID | S_ISVTX | S_IRWXU | S_IRWXG | S_IRWXO)
 
 static int _chmod(ext2_inode_t* inode, mode_t mode)
@@ -5497,6 +5553,7 @@ static myst_fs_t _base = {
     .fs_futimens = _ext2_futimens,
     .fs_chown = _ext2_chown,
     .fs_fchown = _ext2_fchown,
+    .fs_lchown = _ext2_lchown,
     .fs_chmod = _ext2_chmod,
     .fs_fchmod = _ext2_fchmod,
 };

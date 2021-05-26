@@ -685,6 +685,26 @@ done:
     return ret;
 }
 
+static int _fs_lchown(
+    myst_fs_t* fs,
+    const char* pathname,
+    uid_t owner,
+    gid_t group)
+{
+    int ret = 0;
+    lockfs_t* lockfs = (lockfs_t*)fs;
+
+    if (!_lockfs_valid(lockfs))
+        ERAISE(-EINVAL);
+
+    myst_mutex_lock(&lockfs->lock);
+    ret = (*lockfs->fs->fs_lchown)(lockfs->fs, pathname, owner, group);
+    myst_mutex_unlock(&lockfs->lock);
+
+done:
+    return ret;
+}
+
 static int _fs_chmod(myst_fs_t* fs, const char* pathname, mode_t mode)
 {
     int ret = 0;
@@ -772,6 +792,7 @@ int myst_lockfs_init(myst_fs_t* fs, myst_fs_t** lockfs_out)
         .fs_futimens = _fs_futimens,
         .fs_chown = _fs_chown,
         .fs_fchown = _fs_fchown,
+        .fs_lchown = _fs_lchown,
         .fs_chmod = _fs_chmod,
         .fs_fchmod = _fs_fchmod,
     };
