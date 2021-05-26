@@ -282,7 +282,9 @@ enclave
 
         long myst_lstat_ocall(
             [in, string] const char* pathname,
-            [out] struct myst_stat* statbuf);
+            [out] struct myst_stat* statbuf,
+            uid_t host_euid,
+            gid_t host_egid);
 
         long myst_access_ocall(
             [in, string] const char* pathname,
@@ -337,7 +339,9 @@ enclave
 
         long myst_symlink_ocall(
             [in, string] const char* target,
-            [in, string] const char* linkpath);
+            [in, string] const char* linkpath,
+            uid_t host_euid,
+            gid_t host_egid);
 
         long myst_readlink_ocall(
             [in, string] const char* pathname,
@@ -378,6 +382,14 @@ enclave
 
         long myst_fchown_ocall(
             int fd,
+            uid_t owner,
+            gid_t group,
+            uid_t host_euid,
+            gid_t host_egid
+        );
+
+        long myst_lchown_ocall(
+            [in, string] const char* pathname,
             uid_t owner,
             gid_t group,
             uid_t host_euid,

@@ -775,6 +775,8 @@ static int _fs_symlink(myst_fs_t* fs, const char* target, const char* linkpath)
     long tret;
     char host_linkpath[PATH_MAX];
     char host_target[PATH_MAX];
+    uid_t host_uid;
+    gid_t host_gid;
 
     if (!_hostfs_valid(hostfs) || !target || !linkpath)
         ERAISE(-EINVAL);
@@ -783,12 +785,15 @@ static int _fs_symlink(myst_fs_t* fs, const char* target, const char* linkpath)
 
     ECHECK(_to_host_path(hostfs, host_linkpath, PATH_MAX, linkpath));
 
+    ECHECK(_get_host_uid_gid(&host_uid, &host_gid));
+
     if (target[0] == '/')
         ECHECK(_to_host_path(hostfs, host_target, PATH_MAX, target));
     else
         myst_strlcpy(host_target, target, PATH_MAX);
 
-    long params[6] = {(long)host_target, (long)host_linkpath};
+    long params[6] = {
+        (long)host_target, (long)host_linkpath, (long)host_uid, (long)host_gid};
     ECHECK((tret = myst_tcall(SYS_symlink, params)));
 
     ret = tret;
@@ -1092,6 +1097,47 @@ done:
     return ret;
 }
 
+static int _fs_lchown(
+    myst_fs_t* fs,
+    const char* pathname,
+    uid_t owner,
+    gid_t group)
+{
+    int ret = 0;
+    hostfs_t* hostfs = (hostfs_t*)fs;
+    char path[PATH_MAX];
+    long tret;
+    uid_t host_uid;
+    gid_t host_gid;
+    uid_t host_owner = -1u;
+    gid_t host_group = -1u;
+
+    myst_assume(hostfs->magic == HOSTFS_MAGIC);
+
+    ECHECK(_get_host_uid_gid(&host_uid, &host_gid));
+
+    if (!_hostfs_valid(hostfs) || !pathname)
+        ERAISE(-EINVAL);
+
+    ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
+
+    if (owner != -1)
+        ECHECK(myst_enc_uid_to_host(owner, &host_owner));
+
+    if (group != -1)
+        ECHECK(myst_enc_gid_to_host(group, &host_group));
+
+    long params[6] = {(long)path,
+                      (long)host_owner,
+                      (long)host_group,
+                      (long)host_uid,
+                      (long)host_gid};
+    ECHECK((tret = myst_tcall(SYS_lchown, params)));
+
+done:
+    return ret;
+}
+
 static int _fs_chmod(myst_fs_t* fs, const char* pathname, mode_t mode)
 {
     int ret = 0;
@@ -1194,6 +1240,7 @@ int myst_init_hostfs(myst_fs_t** fs_out)
         .fs_futimens = _fs_futimens,
         .fs_chown = _fs_chown,
         .fs_fchown = _fs_fchown,
+        .fs_lchown = _fs_lchown,
         .fs_chmod = _fs_chmod,
         .fs_fchmod = _fs_fchmod,
     };

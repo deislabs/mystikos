@@ -599,8 +599,6 @@ long myst_tcall(long n, long params[6])
         case SYS_rename:
         case SYS_truncate:
         case SYS_ftruncate:
-        case SYS_symlink:
-        case SYS_lstat:
         case SYS_readlink:
         case SYS_statfs:
         case SYS_fstatfs:
@@ -614,6 +612,7 @@ long myst_tcall(long n, long params[6])
         }
         case SYS_chown:
         case SYS_fchown:
+        case SYS_lchown:
         case SYS_open:
         {
             return myst_tcall_identity(n, params, (uid_t)x4, (gid_t)x5);
@@ -621,6 +620,8 @@ long myst_tcall(long n, long params[6])
         case SYS_fchmod:
         case SYS_chmod:
         case SYS_stat:
+        case SYS_lstat:
+        case SYS_symlink:
         case SYS_mkdir:
         {
             return myst_tcall_identity(n, params, (uid_t)x3, (gid_t)x4);

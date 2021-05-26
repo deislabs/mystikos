@@ -646,6 +646,7 @@ long myst_tcall(long n, long params[6])
         case SYS_getcpu:
         case SYS_chown:
         case SYS_fchown:
+        case SYS_lchown:
         case SYS_chmod:
         {
             extern long myst_handle_tcall(long n, long params[6]);

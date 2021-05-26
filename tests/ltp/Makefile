@@ -21,8 +21,8 @@ FS=ext2fs
 endif
 
 ifeq ($(FS),hostfs)
-OPTS+= --host-to-enc-uid-map 0:0,1:1,2:2,65534:65534,100700:700,100702:702,100703:703
-OPTS+= --host-to-enc-gid-map 0:0,1:1,2:2,65534:65534,100701:701,100704:704,100705:705
+OPTS+= --host-to-enc-uid-map 0:0,1:1,2:2,65534:65534,100700:700,100702:702,100703:703,1001000:1000
+OPTS+= --host-to-enc-gid-map 0:0,1:1,2:2,65534:65534,100701:701,100704:704,100705:705,1001000:1000
 endif
 
 # run all the tests for the nightly pipeline
@@ -88,6 +88,7 @@ password-file:
 	echo "user700:x:700:701::/:/bin/bash" >> appdir/etc/passwd
 	echo "user702:x:702:701::/:/bin/bash" >> appdir/etc/passwd
 	echo "user703:x:703:701::/:/bin/bash" >> appdir/etc/passwd
+	echo "user1000:x:1000:1000::/:/bin/bash" >> appdir/etc/passwd
 
 group-file:
 	mkdir -p appdir/
@@ -100,22 +101,27 @@ group-file:
 	echo "grp701:x:701:user700" >> appdir/etc/group
 	echo "grp704:x:704:" >> appdir/etc/group
 	echo "grp705:x:705:" >> appdir/etc/group
+	echo "grp1000:x:1000:" >> appdir/etc/group
 
 add_host_users_and_groups:
-	sudo groupadd -g 100701 grp701
-	sudo groupadd -g 100704 grp704
-	sudo groupadd -g 100705 grp705
-	sudo useradd -g grp701 -u 100700 user700
-	sudo useradd -g grp701 -u 100702 user702
-	sudo useradd -g grp701 -u 100703 user703
+	( ! grep /etc/group grp701 ) || sudo groupadd -g 100701 grp701
+	( ! grep /etc/group grp704 ) || sudo groupadd -g 100704 grp704
+	( ! grep /etc/group grp705 ) || sudo groupadd -g 100705 grp705
+	( ! grep /etc/group grp1000 ) || sudo groupadd -g 101000 grp1000
+	( ! grep /etc/passwd user700 ) || sudo useradd -g grp701 -u 100700 user700
+	( ! grep /etc/passwd user702 ) || sudo useradd -g grp701 -u 100702 user702
+	( ! grep /etc/passwd user703 ) || sudo useradd -g grp701 -u 100703 user703
+	( ! grep /etc/passwd user1000 ) || sudo useradd -g grp1000 -u 101000 user1000
 
 del_host_users_and_groups:
 	sudo userdel user700 || true
 	sudo userdel user702 || true
 	sudo userdel user703 || true
+	sudo userdel user1000 || true
 	sudo groupdel grp701 || true
 	sudo groupdel grp704 || true
 	sudo groupdel grp705 || true
+	sudo groupdel grp1000 || true
 
 tests: tests_hostfs tests_ext2fs tests_ramfs
 

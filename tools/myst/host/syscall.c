@@ -324,9 +324,14 @@ long myst_stat_ocall(
         uid, gid, stat(pathname, (struct stat*)statbuf));
 }
 
-long myst_lstat_ocall(const char* pathname, struct myst_stat* statbuf)
+long myst_lstat_ocall(
+    const char* pathname,
+    struct myst_stat* statbuf,
+    uid_t uid,
+    gid_t gid)
 {
-    RETURN(lstat(pathname, (struct stat*)statbuf));
+    SAVE_CALL_RESTORE_IDENTITY_RETURN(
+        uid, gid, lstat(pathname, (struct stat*)statbuf));
 }
 
 long myst_access_ocall(const char* pathname, int mode)
@@ -397,9 +402,13 @@ long myst_ftruncate_ocall(int fd, off_t length)
     RETURN(ftruncate(fd, length));
 }
 
-long myst_symlink_ocall(const char* target, const char* linkpath)
+long myst_symlink_ocall(
+    const char* target,
+    const char* linkpath,
+    uid_t uid,
+    gid_t gid)
 {
-    RETURN(symlink(target, linkpath));
+    SAVE_CALL_RESTORE_IDENTITY_RETURN(uid, gid, symlink(target, linkpath));
 }
 
 long myst_readlink_ocall(const char* pathname, char* buf, size_t bufsiz)
@@ -474,6 +483,17 @@ long myst_fchown_ocall(
 {
     SAVE_CALL_RESTORE_IDENTITY_RETURN(
         host_euid, host_egid, fchown(fd, owner, group));
+}
+
+long myst_lchown_ocall(
+    const char* pathname,
+    uid_t owner,
+    gid_t group,
+    uid_t host_euid,
+    gid_t host_egid)
+{
+    SAVE_CALL_RESTORE_IDENTITY_RETURN(
+        host_euid, host_egid, lchown(pathname, owner, group));
 }
 
 long myst_chmod_ocall(

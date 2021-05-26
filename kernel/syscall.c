@@ -1881,6 +1881,95 @@ done:
     return ret;
 }
 
+long myst_syscall_fchownat(
+    int dirfd,
+    const char* pathname,
+    uid_t owner,
+    gid_t group,
+    int flags)
+{
+    long ret = 0;
+    struct locals
+    {
+        char realpath[PATH_MAX];
+        char abspath[PATH_MAX];
+    };
+    struct locals* locals = NULL;
+
+    if (!pathname)
+        ERAISE(-EINVAL);
+
+    if ((flags & ~(AT_EMPTY_PATH | AT_SYMLINK_NOFOLLOW)) != 0)
+        ERAISE(-EINVAL);
+
+    if (!(locals = malloc(sizeof(struct locals))))
+        ERAISE(-ENOMEM);
+
+    /* If pathname is absolute, then ignore dirfd */
+    if (*pathname == '/' || dirfd == AT_FDCWD)
+    {
+        if (flags & AT_SYMLINK_NOFOLLOW)
+        {
+            ECHECK(myst_syscall_lchown(pathname, owner, group));
+            goto done;
+        }
+        else
+        {
+            ECHECK(myst_syscall_chown(pathname, owner, group));
+            goto done;
+        }
+    }
+    else if (*pathname == '\0')
+    {
+        if (!(flags & AT_EMPTY_PATH))
+            ERAISE(-ENOENT);
+
+        if (dirfd < 0)
+            ERAISE(-EBADF);
+
+        if (flags & AT_SYMLINK_NOFOLLOW)
+        {
+            myst_fdtable_t* fdtable = myst_fdtable_current();
+            myst_fs_t* fs;
+            myst_file_t* file;
+
+            ECHECK(myst_fdtable_get_file(fdtable, dirfd, &fs, &file));
+            ECHECK((*fs->fs_realpath)(
+                fs, file, locals->realpath, sizeof(locals->realpath)));
+            ECHECK(myst_syscall_lchown(locals->realpath, owner, group));
+            goto done;
+        }
+        else
+        {
+            ECHECK(myst_syscall_fchown(dirfd, owner, group));
+            goto done;
+        }
+    }
+    else
+    {
+        ECHECK(_get_absolute_path_from_dirfd(
+            dirfd, pathname, locals->abspath, sizeof(locals->abspath)));
+
+        if (flags & AT_SYMLINK_NOFOLLOW)
+        {
+            ECHECK(myst_syscall_lchown(locals->abspath, owner, group));
+            goto done;
+        }
+        else
+        {
+            ECHECK(myst_syscall_chown(locals->abspath, owner, group));
+            goto done;
+        }
+    }
+
+done:
+
+    if (locals)
+        free(locals);
+
+    return ret;
+}
+
 static char _hostname[HOST_NAME_MAX] = "TEE";
 static myst_spinlock_t _hostname_lock = MYST_SPINLOCK_INITIALIZER;
 
@@ -4013,8 +4102,37 @@ static long _syscall(void* args_)
 
             BREAK(_return(n, myst_syscall_fchown(fd, owner, group)));
         }
+        case SYS_fchownat:
+        {
+            int dirfd = (int)x1;
+            const char* pathname = (const char*)x2;
+            uid_t owner = (uid_t)x3;
+            gid_t group = (gid_t)x4;
+            int flags = (int)x5;
+
+            _strace(
+                n,
+                "dirfd=%d pathname=%s owner=%u group=%u flags=%d",
+                dirfd,
+                pathname,
+                owner,
+                group,
+                flags);
+
+            BREAK(_return(
+                n,
+                myst_syscall_fchownat(dirfd, pathname, owner, group, flags)));
+        }
         case SYS_lchown:
-            break;
+        {
+            const char* pathname = (const char*)x1;
+            uid_t owner = (uid_t)x2;
+            gid_t group = (gid_t)x3;
+
+            _strace(n, "pathname=%s owner=%u group=%u", pathname, owner, group);
+
+            BREAK(_return(n, myst_syscall_lchown(pathname, owner, group)));
+        }
         case SYS_umask:
         {
             mode_t mask = (mode_t)x1;
@@ -4921,8 +5039,6 @@ static long _syscall(void* args_)
         case SYS_mkdirat:
             break;
         case SYS_mknodat:
-            break;
-        case SYS_fchownat:
             break;
         case SYS_futimesat:
         {
