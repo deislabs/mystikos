@@ -250,7 +250,7 @@ long myst_signal_process(myst_thread_t* thread)
 
             // Signal numbers are 1 based.
             unsigned signum = bitnum + 1;
-            _handle_one_signal(signum, siginfo);
+            _handle_one_signal(signum, siginfo, NULL);
 
             myst_spin_lock(&thread->signal.lock);
         }
