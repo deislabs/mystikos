@@ -260,6 +260,9 @@ int _sign(int argc, const char* argv[])
     static const size_t max_roothashes = 128;
     const char* roothashes[max_roothashes];
     size_t num_roothashes = 0;
+    const char* signing_engine_key = NULL;
+    const char* signing_engine_name = NULL;
+    const char* signing_engine_path = NULL;
 
     // We are in the right operation, right?
     assert(
@@ -276,6 +279,21 @@ int _sign(int argc, const char* argv[])
             roothashes,
             max_roothashes,
             &num_roothashes);
+    }
+
+    _getopt(&argc, argv, "--signing-engine-key", &signing_engine_key);
+    _getopt(&argc, argv, "--signing-engine-name", &signing_engine_name);
+    _getopt(&argc, argv, "--signing-engine-path", &signing_engine_path);
+    if ((signing_engine_key || signing_engine_name || signing_engine_path) &&
+        (!signing_engine_key || !signing_engine_name || !signing_engine_path))
+    {
+        fprintf(
+            stderr,
+            "If using a signing engine all three parameters are required: "
+            "--signing-engine-key, "
+            "--signing-engine-name and --signing-engine-path\n");
+        fprintf(stderr, USAGE_SIGN, argv[0]);
+        return -1;
     }
 
     // validate parameters and parse the extra options and validate they exist
@@ -427,9 +445,9 @@ int _sign(int argc, const char* argv[])
             pem_file,
             NULL,
             NULL,
-            NULL,
-            NULL,
-            NULL) != 0)
+            signing_engine_name,
+            signing_engine_path,
+            signing_engine_key) != 0)
     {
         unlink(temp_oeconfig_file);
         _err("Failed to sign \"%s\"", scratch_path);

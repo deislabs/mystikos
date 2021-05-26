@@ -107,6 +107,9 @@ int _package(int argc, const char* argv[])
     static const size_t max_roothashes = 128;
     const char* roothashes[max_roothashes];
     size_t num_roothashes = 0;
+    const char* signing_engine_key = NULL;
+    const char* signing_engine_name = NULL;
+    const char* signing_engine_path = NULL;
 
     /* Get --pubkey=filename and --roothash=filename options */
     get_archive_options(
@@ -124,6 +127,21 @@ int _package(int argc, const char* argv[])
     {
         fprintf(stderr, USAGE_PACKAGE, argv[0], argv[0]);
         goto done;
+    }
+
+    cli_getopt(&argc, argv, "--signing-engine-name", &signing_engine_name);
+    cli_getopt(&argc, argv, "--signing-engine-path", &signing_engine_path);
+    cli_getopt(&argc, argv, "--signing-engine-key", &signing_engine_key);
+    if ((signing_engine_key || signing_engine_name || signing_engine_path) &&
+        (!signing_engine_key || !signing_engine_name || !signing_engine_path))
+    {
+        fprintf(
+            stderr,
+            "If using a signing engine all three parameters are required: "
+            "--signing-engine-key, "
+            "--signing-engine-name and --signing-engine-path\n");
+        fprintf(stderr, USAGE_PACKAGE, argv[0], argv[0]);
+        return -1;
     }
 
     // We are in the right operation, right?
@@ -231,21 +249,77 @@ int _package(int argc, const char* argv[])
     }
 
     // sign the enclave and measure all regions of enclave
-    const char* sign_args[] = {argv[0],
-                               "sign",
-                               rootfs_file,
-                               pem_file,
-                               config_file,
-                               "--archive",
-                               archive_file,
-                               "--outdir",
-                               tmp_dir};
-
-    // Sign and copy everything into app.signed directory
-    if (_sign(sizeof(sign_args) / sizeof(sign_args[0]), sign_args) != 0)
+    if (signing_engine_path)
     {
-        fprintf(stderr, "Failed to sign enclave file");
-        goto done;
+        // optional path option for signing engine
+        const char* sign_engine_args[] = {argv[0],
+                                          "sign",
+                                          rootfs_file,
+                                          pem_file,
+                                          config_file,
+                                          "--archive",
+                                          archive_file,
+                                          "--outdir",
+                                          tmp_dir,
+                                          "--signing-engine-name",
+                                          signing_engine_name,
+                                          "--signing-engine-key",
+                                          signing_engine_key,
+                                          "--signing-engine-path",
+                                          signing_engine_path};
+        // Sign and copy everything into app.signed directory
+        if (_sign(
+                sizeof(sign_engine_args) / sizeof(sign_engine_args[0]),
+                sign_engine_args) != 0)
+        {
+            fprintf(stderr, "Failed to sign enclave file");
+            goto done;
+        }
+    }
+    else if (signing_engine_name)
+    {
+        // none engine optional path, but still signing engine
+        const char* sign_engine_args[] = {argv[0],
+                                          "sign",
+                                          rootfs_file,
+                                          pem_file,
+                                          config_file,
+                                          "--archive",
+                                          archive_file,
+                                          "--outdir",
+                                          tmp_dir,
+                                          "--signing-engine-name",
+                                          signing_engine_name,
+                                          "--signing-engine-key",
+                                          signing_engine_key};
+        // Sign and copy everything into app.signed directory
+        if (_sign(
+                sizeof(sign_engine_args) / sizeof(sign_engine_args[0]),
+                sign_engine_args) != 0)
+        {
+            fprintf(stderr, "Failed to sign enclave file");
+            goto done;
+        }
+    }
+    else
+    {
+        // none engine option
+        const char* sign_args[] = {argv[0],
+                                   "sign",
+                                   rootfs_file,
+                                   pem_file,
+                                   config_file,
+                                   "--archive",
+                                   archive_file,
+                                   "--outdir",
+                                   tmp_dir};
+
+        // Sign and copy everything into app.signed directory
+        if (_sign(sizeof(sign_args) / sizeof(sign_args[0]), sign_args) != 0)
+        {
+            fprintf(stderr, "Failed to sign enclave file");
+            goto done;
+        }
     }
 
     // Now package everything up in a single binary
