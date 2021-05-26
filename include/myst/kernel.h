@@ -159,7 +159,7 @@ typedef struct myst_kernel_args
     long (*myst_syscall)(long n, long params[6]);
 
     /* pointer to myst_handle_host_signal(). Set by myst_enter_kernel */
-    long (*myst_handle_host_signal)(unsigned signo, mcontext_t* context);
+    long (*myst_handle_host_signal)(siginfo_t* siginfo, mcontext_t* context);
 
 } myst_kernel_args_t;
 

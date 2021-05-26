@@ -106,6 +106,7 @@ static uint64_t _forward_exception_as_signal_to_kernel(
     uint32_t oe_exception_code,
     oe_context_t* oe_context)
 {
+    siginfo_t siginfo = {0};
     _oe_context_to_mcontext(oe_context, &_mcontext);
 
     // Kernel should be the ultimate handler of #PF, #MF, and #UD.
@@ -113,22 +114,33 @@ static uint64_t _forward_exception_as_signal_to_kernel(
     // wanted the execution to continue.
     if (oe_exception_code == OE_EXCEPTION_ILLEGAL_INSTRUCTION)
     {
-        (*_kargs.myst_handle_host_signal)(SIGILL, &_mcontext);
+        siginfo.si_code = SI_KERNEL;
+        siginfo.si_signo = SIGILL;
+        (*_kargs.myst_handle_host_signal)(&siginfo, &_mcontext);
         _mcontext_to_oe_context(&_mcontext, oe_context);
         return OE_EXCEPTION_CONTINUE_EXECUTION;
     }
     if (oe_exception_code == OE_EXCEPTION_PAGE_FAULT)
     {
-        (*_kargs.myst_handle_host_signal)(SIGSEGV, &_mcontext);
+        siginfo.si_code = SI_KERNEL;
+        siginfo.si_signo = SIGSEGV;
+        // ATTN: set `si_addr` when we can reliably obtain the
+        // faulty address on icelake. Use null for now.
+        siginfo.si_addr = NULL;
+        (*_kargs.myst_handle_host_signal)(&siginfo, &_mcontext);
         _mcontext_to_oe_context(&_mcontext, oe_context);
         return OE_EXCEPTION_CONTINUE_EXECUTION;
     }
     if (oe_exception_code == OE_EXCEPTION_X87_FLOAT_POINT)
     {
-        (*_kargs.myst_handle_host_signal)(SIGFPE, &_mcontext);
+        siginfo.si_code = SI_KERNEL;
+        siginfo.si_signo = SIGFPE;
+        (*_kargs.myst_handle_host_signal)(&siginfo, &_mcontext);
         _mcontext_to_oe_context(&_mcontext, oe_context);
         return OE_EXCEPTION_CONTINUE_EXECUTION;
     }
+
+    // Delegate unhandled hardware exceptions to other vector handlers.
     return OE_EXCEPTION_CONTINUE_SEARCH;
 }
 
