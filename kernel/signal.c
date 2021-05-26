@@ -309,10 +309,7 @@ done:
     return ret;
 }
 
-long myst_handle_host_signal(unsigned signum, mcontext_t* mcontext)
+long myst_handle_host_signal(siginfo_t* siginfo, mcontext_t* mcontext)
 {
-    siginfo_t siginfo = {0};
-    siginfo.si_code = SI_KERNEL;
-    siginfo.si_signo = signum;
-    return _handle_one_signal(signum, &siginfo, mcontext);
+    return _handle_one_signal(siginfo->si_signo, siginfo, mcontext);
 }
