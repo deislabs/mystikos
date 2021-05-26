@@ -86,7 +86,7 @@ fi
 OUTPUT_NAME=${OUTPUT_NAME:-appdir}
 DELETE_OUTPUT=${DELETE_OUTPUT:-false}
 OUTPUT_FORMAT=${OUTPUT_FORMAT:-dir}
-TEMP_IMAGE_IIDFILE="/tmp/myst-intermediate-build-id"
+TEMP_IMAGE_IIDFILE=$(mktemp /tmp/myst.XXXXXX)
 
 ### end defaults
 
