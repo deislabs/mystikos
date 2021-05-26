@@ -259,10 +259,6 @@ long myst_signal_process(myst_thread_t* thread)
         active_signals &= ~((uint64_t)1 << bitnum);
         // Clear the pending bit.
         thread->signal.pending &= ~((uint64_t)1 << bitnum);
-
-        // Signal numbers are 1 based.
-        unsigned signum = bitnum + 1;
-        _handle_one_signal(signum, siginfo, NULL);
     }
     myst_spin_unlock(&thread->signal.lock);
     return 0;
