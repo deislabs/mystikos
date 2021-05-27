@@ -25,6 +25,7 @@ pr:
 jobs:
   - job: BuildAndTest
     displayName: 'Building and Testing'
+    timeoutInMinutes: 60
     pool: '1804DC4CCagentpool'
 
     steps:

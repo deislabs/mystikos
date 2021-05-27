@@ -33,6 +33,8 @@ void myst_trace_ptr(const char* msg, const void* ptr);
 
 void myst_trace(const char* msg);
 
+__attribute__((__returns_twice__)) pid_t myst_fork(void);
+
 void myst_dump_argv(int argc, const char* argv[]);
 
 static void _create_itimer_thread(void);
@@ -44,6 +46,19 @@ long myst_syscall(long n, long params[6])
     /* create the itimer thread on demand (only if needed) */
     if (n == SYS_setitimer)
         pthread_once(&_once, _create_itimer_thread);
+
+    if (n == SYS_fork)
+    {
+        /* fork is implemented in the CRT rather than the kernel.
+         * Some aspects of the implementation are easier in the CRT, some easier
+         * in the kernel. Overall it was decided it was best to be implemented
+         * here, although there is an open debate on this. The jumping to a
+         * different kernel stack will definitely make in the kernel problematic
+         * with regards to copying and fixing up the stack.
+         */
+        pid_t ret = myst_fork();
+        return ret;
+    }
 
     return (*_syscall_callback)(n, params);
 }

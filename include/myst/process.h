@@ -9,6 +9,7 @@
 #include <unistd.h>
 
 #define MYST_DEFAULT_UMASK (S_IWGRP | S_IWOTH)
+#define MYST_DEFAULT_PGID (pid_t)100
 
 MYST_INLINE pid_t myst_getsid(void)
 {

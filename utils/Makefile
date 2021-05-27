@@ -6,7 +6,7 @@ SUBLIBDIR=$(LIBDIR)
 ARCHIVE = libmystutils.a
 
 SOURCES += $(wildcard *.c)
-SOURCES += $(wildcard *.s)
+SOURCES += ../asm/callonstack.s
 
 INCLUDES = -I$(INCDIR) -I$(BUILDDIR)/musl/include
 INCLUDES += -I$(BUILDDIR)/openenclave/include/openenclave/3rdparty

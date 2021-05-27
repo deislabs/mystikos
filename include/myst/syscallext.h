@@ -24,6 +24,9 @@ enum
     SYS_myst_start_shell,
     SYS_myst_gcov,
     SYS_myst_unmap_on_exit,
+    SYS_myst_is_shared_crt,
+    SYS_myst_kill_wait_child_forks,
+    SYS_get_process_thread_stack,
 };
 
 #endif /* _MYST_SYSCALLEXT_H */

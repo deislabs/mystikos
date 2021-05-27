@@ -438,6 +438,7 @@ struct myst_file
     int fdflags;        /* file descriptor flags: FD_CLOEXEC */
     char realpath[PATH_MAX];
     myst_buf_t vbuf; /* virtual file buffer */
+    _Atomic(size_t) use_count;
 };
 
 static bool _file_valid(const myst_file_t* file)
@@ -903,6 +904,7 @@ static int _fs_open(
     file->inode = inode;
     file->access = (flags & (O_RDONLY | O_RDWR | O_WRONLY));
     file->operating = (flags & O_APPEND);
+    file->use_count = 1;
     inode->nopens++;
 
     /* Get the realpath of this file */
@@ -1302,26 +1304,28 @@ static int _fs_close(myst_fs_t* fs, myst_file_t* file)
     assert(_inode_valid(file->inode));
     assert(file->inode->nopens > 0);
 
-    /* For open-time virtual files, release the virtual file
-     data on close */
-    if (file->inode->v_type == OPEN)
-        myst_buf_release(&file->vbuf);
-
-    file->inode->nopens--;
-
-    /* handle case where file was deleted while open */
-    if (file->inode->nopens == 0 && file->inode->nlink == 0)
+    if (--file->use_count == 0)
     {
-        _inode_free(ramfs, file->inode);
-    }
-    else
-    {
-        _update_timestamps(file->inode, ACCESS);
-    }
+        /* For open-time virtual files, release the virtual file
+        data on close */
+        if (file->inode->v_type == OPEN)
+            myst_buf_release(&file->vbuf);
 
-    memset(file, 0xdd, sizeof(myst_file_t));
-    free(file);
+        file->inode->nopens--;
 
+        /* handle case where file was deleted while open */
+        if (file->inode->nopens == 0 && file->inode->nlink == 0)
+        {
+            _inode_free(ramfs, file->inode);
+        }
+        else
+        {
+            _update_timestamps(file->inode, ACCESS);
+        }
+
+        memset(file, 0xdd, sizeof(myst_file_t));
+        free(file);
+    }
 done:
     return ret;
 }
@@ -2254,33 +2258,14 @@ static int _fs_dup(
 {
     ramfs_t* ramfs = (ramfs_t*)fs;
     int ret = 0;
-    myst_file_t* new_file = NULL;
 
     if (!_ramfs_valid(ramfs) || !_file_valid(file) || !file_out)
         ERAISE(-EINVAL);
 
-    /* Create the new file object */
-    {
-        if (!(new_file = calloc(1, sizeof(myst_file_t))))
-            ERAISE(-ENOMEM);
-
-        *new_file = *file;
-        new_file->inode->nopens++;
-
-        /* file descriptor flags FD_CLOEXEC are not propagaged */
-        new_file->fdflags = 0;
-    }
-
-    *file_out = new_file;
-    new_file = NULL;
+    (*file_out) = (myst_file_t*)file;
+    (*file_out)->use_count++;
 
 done:
-
-    if (new_file)
-    {
-        memset(new_file, 0, sizeof(myst_file_t));
-        free(new_file);
-    }
 
     return ret;
 }

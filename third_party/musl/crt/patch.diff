@@ -378,6 +378,41 @@ index 1d817a2d..a36ba05e 100644
  
  weak_alias(open, open64);
 +weak_alias(open, __open_nocancel);
+diff --git a/src/exit/_Exit.c b/src/exit/_Exit.c
+index 7a6115c7..9f715d51 100644
+--- a/src/exit/_Exit.c
++++ b/src/exit/_Exit.c
+@@ -1,8 +1,10 @@
+ #include <stdlib.h>
+ #include "syscall.h"
+ 
+-_Noreturn void _Exit(int ec)
++_Noreturn void do_crt__Exit(int ec)
+ {
+ 	__syscall(SYS_exit_group, ec);
+ 	for (;;) __syscall(SYS_exit, ec);
+ }
++
++_Noreturn weak_alias(do_crt__Exit, _Exit);
+diff --git a/src/exit/exit.c b/src/exit/exit.c
+index a6869b37..a312428b 100644
+--- a/src/exit/exit.c
++++ b/src/exit/exit.c
+@@ -24,10 +24,13 @@ static void libc_exit_fini(void)
+ 
+ weak_alias(libc_exit_fini, __libc_exit_fini);
+ 
+-_Noreturn void exit(int code)
++
++_Noreturn void do_crt_exit(int code)
+ {
+ 	__funcs_on_exit();
+ 	__libc_exit_fini();
+ 	__stdio_exit();
+ 	_Exit(code);
+ }
++
++_Noreturn weak_alias(do_crt_exit, exit);
 diff --git a/src/fenv/feupdateenv.c b/src/fenv/feupdateenv.c
 index 50cef8e5..803a7f8d 100644
 --- a/src/fenv/feupdateenv.c
@@ -722,6 +757,16 @@ index 771503b2..8a8529b1 100644
  }
 -
 +weak_alias (snprintf, __snprintf);
+diff --git a/src/process/x86_64/vfork.s b/src/process/x86_64/vfork.s
+index 91144390..809463a1 100644
+--- a/src/process/x86_64/vfork.s
++++ b/src/process/x86_64/vfork.s
+@@ -1,4 +1,5 @@
+ .global vfork
++.weak vfork
+ .type vfork,@function
+ vfork:
+ 	pop %rdx
 diff --git a/src/thread/__unmapself.c b/src/thread/__unmapself.c
 index 31d94e67..f57fdf0c 100644
 --- a/src/thread/__unmapself.c

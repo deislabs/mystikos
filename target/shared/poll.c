@@ -154,6 +154,7 @@ long myst_tcall_poll(struct pollfd* lfds, unsigned long nfds, int timeout)
     long r;
     struct pollfd* fds = NULL;
     struct waker* waker;
+    int woken_by_waker = 0;
 
     if (!(waker = _get_waker()))
     {
@@ -205,7 +206,7 @@ long myst_tcall_poll(struct pollfd* lfds, unsigned long nfds, int timeout)
             ret = -EINVAL;
             goto done;
         }
-
+        woken_by_waker = 1;
         /* don't return a value that includes this waker */
         r--;
     }
@@ -216,10 +217,12 @@ long myst_tcall_poll(struct pollfd* lfds, unsigned long nfds, int timeout)
 
     ret = r;
 
+    if ((ret == 0) && woken_by_waker)
+        ret = -EINTR;
+
 done:
 
     if (fds)
         free(fds);
-
     return ret;
 }

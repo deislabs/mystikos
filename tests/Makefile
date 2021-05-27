@@ -3,6 +3,10 @@ include $(TOP)/defs.mak
 
 DIRS =
 
+ifdef MYST_PSEUDO_FORK
+DIRS += fork
+endif
+
 DIRS += myst
 DIRS += itimer
 DIRS += timeval
@@ -59,6 +63,7 @@ DIRS += tlscert2
 DIRS += wake_and_kill
 DIRS += cross_fs_symlinks
 DIRS += arch_prctl
+
 
 ifndef MYST_SKIP_LTP_TESTS
 DIRS += ltp

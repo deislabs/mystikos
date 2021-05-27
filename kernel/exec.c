@@ -1,8 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#define _GNU_SOURCE
 #include <assert.h>
 #include <limits.h>
+#include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -973,8 +975,14 @@ int myst_exec(
 
     /* The thread is responsible for freeing the stack */
     thread->main.exec_stack = stack;
+    thread->main.exec_stack_size = stack_size;
     thread->main.exec_crt_data = crt_data;
     thread->main.exec_crt_size = crt_size;
+
+    /* remove the thread clone flag CLONE_VFORK flag  as this is used to
+     * determine if we do CRT cleanup. As we are re-initializing the CRT it is
+     * safe to re-enable the cleanup. */
+    thread->clone.flags &= ~CLONE_VFORK;
 
     /* close file descriptors with FD_CLOEXEC flag */
     {
@@ -995,6 +1003,7 @@ int myst_exec(
     /* unreachable */
 
     thread->main.exec_stack = NULL;
+    thread->main.exec_stack_size = 0;
     thread->main.exec_crt_data = NULL;
     thread->main.exec_crt_size = 0;
     ERAISE(-ENOEXEC);

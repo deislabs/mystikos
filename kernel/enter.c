@@ -485,6 +485,7 @@ static int _create_main_thread(
     thread->main.thread_group_lock = MYST_SPINLOCK_INITIALIZER;
     thread->thread_lock = &thread->main.thread_group_lock;
     thread->main.umask = MYST_DEFAULT_UMASK;
+    thread->main.pgid = MYST_DEFAULT_PGID;
 
     thread->main.cwd_lock = MYST_SPINLOCK_INITIALIZER;
     thread->main.cwd = strdup(cwd);
@@ -798,20 +799,20 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     if (myst_setjmp(&thread->jmpbuf) == 0)
     {
         /* enter the C-runtime on the target thread descriptor */
-        if (myst_exec(
-                thread,
-                args->crt_data,
-                args->crt_size,
-                args->crt_reloc_data,
-                args->crt_reloc_size,
-                args->argc,
-                args->argv,
-                args->envc,
-                args->envp,
-                NULL,
-                NULL) != 0)
+        if ((tmp_ret = myst_exec(
+                 thread,
+                 args->crt_data,
+                 args->crt_size,
+                 args->crt_reloc_data,
+                 args->crt_reloc_size,
+                 args->argc,
+                 args->argv,
+                 args->envc,
+                 args->envp,
+                 NULL,
+                 NULL)) != 0)
         {
-            myst_panic("myst_exec() failed");
+            myst_panic("myst_exec() failed, ret=%d", tmp_ret);
         }
 
         /* never returns */
@@ -820,11 +821,45 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     }
     else
     {
+        /* main process thread jumps here on return or if main thread calls
+         * SYS_exit. If a non-process thread calls SYS_exit instead it will send
+         * a SIGKILL to the main thread, which also triggers the main thread
+         * calling back to here.
+         */
+
         /* release the kernel stack that was passed to SYS_exit if any */
         if (thread->kstack)
             myst_put_kstack(thread->kstack);
 
-        /* thread jumps here on SYS_exit syscall */
+        /* free all non-process threads, waiting for all other threads to
+         * shutdown at the same time. Our thread has not been marked as a zombie
+         * yet. */
+        {
+            myst_thread_t* t = thread->group_next;
+            while (t)
+            {
+                myst_thread_t* next = t->group_next;
+                if (t != thread)
+                {
+                    if (t->status != MYST_ZOMBIE)
+                    {
+                        // We still have a thread that has not shut down
+                        // properly yet
+                        myst_sleep_msec(10);
+                        continue;
+                    }
+                    if (t->group_prev)
+                        t->group_prev->group_next = t->group_next;
+                    if (t->group_next)
+                        t->group_next->group_prev = t->group_prev;
+                    myst_signal_free_siginfos(t);
+                    free(t);
+                }
+                t = next;
+            }
+        }
+
+        /* now all the threads have shutdown we can retrieve the exit status */
         exit_status = thread->exit_status;
 
         if (args->shell_mode)
@@ -839,12 +874,14 @@ int myst_enter_kernel(myst_kernel_args_t* args)
 
         /* release signal related heap memory */
         myst_signal_free(thread);
+        myst_signal_free_siginfos(thread);
 
         /* release the exec stack */
         if (thread->main.exec_stack)
         {
             free(thread->main.exec_stack);
             thread->main.exec_stack = NULL;
+            thread->main.exec_stack_size = 0;
         }
 
         /* release the exec copy of the CRT data */

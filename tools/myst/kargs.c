@@ -63,7 +63,7 @@ int init_kernel_args(
     char* err,
     size_t err_size)
 {
-    int ret;
+    int ret = 0;
     myst_args_t env;
 
     memset(&env, 0, sizeof(env));

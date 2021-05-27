@@ -1,9 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#define _GNU_SOURCE
 #include <assert.h>
 #include <linux/futex.h>
 #include <pthread.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,6 +24,7 @@
 #include <myst/regions.h>
 #include <myst/reloc.h>
 #include <myst/round.h>
+#include <myst/signal.h>
 #include <myst/strings.h>
 #include <myst/tcall.h>
 #include <myst/thread.h>
@@ -184,6 +187,28 @@ static void _get_options(int* argc, const char* argv[], struct options* opts)
     cli_getopt(argc, argv, "--app-config-path", &opts->app_config_path);
 }
 
+myst_kernel_args_t kernel_args;
+
+static void _sigaction_handler(int sig, siginfo_t* si, void* context)
+{
+    mcontext_t* mcontext = (mcontext_t*)context;
+    kernel_args.myst_handle_host_signal(si, mcontext);
+}
+
+static void _install_signal_handlers()
+{
+    struct sigaction sa;
+    sa.sa_flags = SA_SIGINFO;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_sigaction = _sigaction_handler;
+    if (sigaction(SIGSEGV, &sa, NULL) == -1)
+        _err("Failed to reguster SIGSEGV signal handler\n");
+    if (sigaction(SIGILL, &sa, NULL) == -1)
+        _err("Failed to reguster SIGILL signal handler\n");
+    if (sigaction(SIGFPE, &sa, NULL) == -1)
+        _err("Failed to reguster SIGFPE signal handler\n");
+}
+
 /* the address of this is eventually passed to futex (uaddr argument) */
 static __thread int _thread_event;
 
@@ -203,7 +228,6 @@ static int _enter_kernel(
     int ret = 0;
     const void* image_data = mmap_addr;
     size_t image_size = mmap_length;
-    myst_kernel_args_t args;
     myst_kernel_entry_t entry;
     const char* cwd = "/";
     const char* hostname = NULL;
@@ -213,7 +237,7 @@ static int _enter_kernel(
     bool have_config = false;
 
     memset(&pd, 0, sizeof(pd));
-    memset(&args, 0, sizeof(args));
+    memset(&kernel_args, 0, sizeof(kernel_args));
 
     if (err)
         *err = '\0';
@@ -267,10 +291,10 @@ static int _enter_kernel(
         const bool have_syscall_instruction = true;
         const bool tee_debug_mode = true;
         const size_t max_threads = LONG_MAX;
-        char terr[256];
+        char terr[256] = "";
 
         if (init_kernel_args(
-                &args,
+                &kernel_args,
                 target,
                 argc,
                 argv,
@@ -302,34 +326,36 @@ static int _enter_kernel(
     }
 
     /* set the shell mode flag */
-    args.shell_mode = options->shell_mode;
+    kernel_args.shell_mode = options->shell_mode;
 
     /* set whether debug symbols are needed */
-    args.debug_symbols = options->debug_symbols;
+    kernel_args.debug_symbols = options->debug_symbols;
 
-    args.memcheck = options->memcheck;
+    kernel_args.memcheck = options->memcheck;
 
-    args.report_native_tids = options->report_native_tids;
+    kernel_args.report_native_tids = options->report_native_tids;
 
     /* Resolve the the kernel entry point */
-    const elf_ehdr_t* ehdr = args.kernel_data;
+    const elf_ehdr_t* ehdr = kernel_args.kernel_data;
     entry = (myst_kernel_entry_t)((uint8_t*)ehdr + ehdr->e_entry);
 
     if ((uint8_t*)entry < (uint8_t*)ehdr ||
-        (uint8_t*)entry >= (uint8_t*)ehdr + args.kernel_size)
+        (uint8_t*)entry >= (uint8_t*)ehdr + kernel_args.kernel_size)
     {
         snprintf(err, err_size, "kernel entry point is out of bounds");
         ERAISE(-EINVAL);
     }
 
-    *return_status = (*entry)(&args);
+    _install_signal_handlers();
+
+    *return_status = (*entry)(&kernel_args);
 
 done:
 
     if (have_config)
         free_config(&pd);
-    if (args.envp)
-        free(args.envp);
+    if (kernel_args.envp)
+        free(kernel_args.envp);
 
     return ret;
 }

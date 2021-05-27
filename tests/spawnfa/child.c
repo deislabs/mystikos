@@ -7,6 +7,7 @@
 
 int main(int argc, const char* argv[], const char* envp[])
 {
-    printf("abcdefghijklmnopqrstuvwxyz");
+    if (printf("abcdefghijklmnopqrstuvwxyz") != 26)
+        assert("failed to print alphabet to stdout");
     return 99;
 }

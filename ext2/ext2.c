@@ -56,6 +56,7 @@ struct myst_file
     int fdflags;        /* file descriptor flags: FD_CLOEXEC */
     char realpath[EXT2_PATH_MAX];
     ext2_dir_t dir;
+    _Atomic(size_t) use_count;
 };
 
 static bool _file_valid(const myst_file_t* file)
@@ -3371,6 +3372,7 @@ int ext2_open(
         file->open_flags = flags;
         file->access = (flags & (O_RDONLY | O_RDWR | O_WRONLY));
         file->operating = (flags & O_APPEND);
+        file->use_count = 1;
     }
 
     /* truncate the file if requested and if not zero-sized */
@@ -3674,14 +3676,17 @@ int ext2_close(myst_fs_t* fs, myst_file_t* file)
     if (!_ext2_valid(ext2) || !_file_valid(file))
         ERAISE(-EINVAL);
 
-    /* if a diretory, then release the directory memory contents */
-    if (file->dir.data)
-        free(file->dir.data);
+    if (--file->use_count == 0)
+    {
+        /* if a diretory, then release the directory memory contents */
+        if (file->dir.data)
+            free(file->dir.data);
 
-    /* ATTN:TIMESTAMPS */
+        /* ATTN:TIMESTAMPS */
 
-    /* release the file object */
-    _file_free(file);
+        /* release the file object */
+        _file_free(file);
+    }
 
 done:
     return ret;
@@ -4767,26 +4772,14 @@ static int _ext2_dup(
 {
     int ret = 0;
     ext2_t* ext2 = (ext2_t*)fs;
-    myst_file_t* new_file = NULL;
 
     if (!_ext2_valid(ext2) || !_file_valid(file) || !file_out)
         ERAISE(-EINVAL);
 
-    /* create the new file object */
-    {
-        if (!(new_file = calloc(1, sizeof(myst_file_t))))
-            ERAISE(-ENOMEM);
-
-        *new_file = *file;
-    }
-
-    *file_out = new_file;
-    new_file = NULL;
+    *file_out = (myst_file_t*)file;
+    (*file_out)->use_count++;
 
 done:
-
-    if (new_file)
-        _file_free(new_file);
 
     return ret;
 }

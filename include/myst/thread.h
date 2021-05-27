@@ -18,6 +18,7 @@
 #include <myst/types.h>
 
 #define MYST_THREAD_MAGIC 0xc79c53d9ad134ad4
+#define MYST_MAX_MUNNAP_ON_EXIT 5
 
 typedef struct myst_thread myst_thread_t;
 
@@ -102,6 +103,9 @@ struct myst_thread
     /* The exit status passed to SYS_exit */
     int exit_status;
 
+    /* Terminating signal value */
+    unsigned terminating_signum;
+
     /* Timespec at process creation */
     struct timespec start_ts;
 
@@ -146,6 +150,7 @@ struct myst_thread
     {
         /* the stack that was created by myst_exec() */
         void* exec_stack;
+        size_t exec_stack_size;
 
         /* the copy of the CRT data made by myst_exec() */
         void* exec_crt_data;
@@ -168,6 +173,16 @@ struct myst_thread
         /* The current umask this process */
         mode_t umask;
         myst_spinlock_t umask_lock;
+
+        /* the process group ID */
+        pid_t pgid;
+
+        struct unmap_on_exit
+        {
+            void* ptr;
+            size_t size;
+        } unmap_on_exit[MYST_MAX_MUNNAP_ON_EXIT];
+        _Atomic size_t unmap_on_exit_used;
 
     } main;
 
@@ -195,10 +210,6 @@ struct myst_thread
         /* The list of siginfo_t for pending signals */
         struct siginfo_list_item* siginfos[NSIG - 1];
     } signal;
-
-    /* the parameters passed to the munmap syscall by __unmapself() */
-    void* unmapself_addr;
-    size_t unmapself_length;
 
     // linked list of threads in process
     // lock points to the one in the main thread. Use when
@@ -237,10 +248,6 @@ struct myst_thread
 
     // the kernel stack for the current the syscall (used only by SYS_exit)
     myst_kstack_t* kstack;
-
-    /* from SYS_myst_unmap_on_exit */
-    void* unmap_on_exit_addr;
-    size_t unmap_on_exit_length;
 };
 
 MYST_INLINE bool myst_valid_thread(const myst_thread_t* thread)
@@ -385,6 +392,9 @@ size_t myst_get_num_threads(void);
 myst_thread_t* myst_find_thread(int tid);
 
 size_t myst_kill_thread_group();
+
+long myst_have_child_forked_processes(myst_thread_t* process);
+long kill_child_fork_processes(myst_thread_t* process);
 
 MYST_INLINE char* myst_get_thread_name(myst_thread_t* thread)
 {

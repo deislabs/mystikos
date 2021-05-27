@@ -50,7 +50,7 @@ test_timedout()
 }
 
 if [ -z "${TIMEOUT}" ]; then
-timeout=60
+timeout=120
 else
 timeout=${TIMEOUT}
 fi

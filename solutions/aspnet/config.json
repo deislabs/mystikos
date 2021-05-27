@@ -6,6 +6,8 @@
     // The stack size of each ethread
     "ProductID": 1,
     "SecurityVersion": 1,
+    // The stack size of each ethread
+    "StackMemSize": "800k",
 
     // Mystikos specific values
 

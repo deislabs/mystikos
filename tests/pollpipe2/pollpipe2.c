@@ -68,6 +68,7 @@ static void* _reader(void* arg)
 
         printf("Thread %ld reading:  %zu\n", thread_id, i);
         ssize_t count = read(pipefd[thread_id][0], buf, sizeof(buf));
+        printf("Thread %ld after reading:  %zu\n", thread_id, i);
 
         if (count != sizeof(alphabet))
             printf("count=%zu\n", count);
@@ -116,9 +117,11 @@ int main(int argc, const char* argv[])
     assert(pthread_create(&writer, NULL, _writer, (void*)0) == 0);
 
     assert(pthread_join(writer, NULL) == 0);
-    assert(pthread_join(reader[0], NULL) == 0);
     printf("===  after join reader 0\n");
+    assert(pthread_join(reader[0], NULL) == 0);
+    printf("===  after join writer 0\n");
 
+    printf("Closing pipe 0 only\n");
     assert(close(pipefd[0][0]) == 0);
     assert(close(pipefd[0][1]) == 0);
 

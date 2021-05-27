@@ -41,7 +41,6 @@
 /ltp/testcases/kernel/syscalls/fchown/fchown03
 /ltp/testcases/kernel/syscalls/fchown/fchown05
 /ltp/testcases/kernel/syscalls/fchownat/fchownat01
-/ltp/testcases/kernel/syscalls/fchownat/fchownat02
 /ltp/testcases/kernel/syscalls/fcntl/fcntl03
 /ltp/testcases/kernel/syscalls/fcntl/fcntl03_64
 /ltp/testcases/kernel/syscalls/fcntl/fcntl04
@@ -57,6 +56,7 @@
 /ltp/testcases/kernel/syscalls/fcntl/fcntl30
 /ltp/testcases/kernel/syscalls/fcntl/fcntl30_64
 /ltp/testcases/kernel/syscalls/flock/flock01
+/ltp/testcases/kernel/syscalls/fork/fork08
 /ltp/testcases/kernel/syscalls/fpathconf/fpathconf01
 /ltp/testcases/kernel/syscalls/fsync/fsync02
 /ltp/testcases/kernel/syscalls/ftruncate/ftruncate01
@@ -90,6 +90,7 @@
 /ltp/testcases/kernel/syscalls/getresuid/getresuid01
 /ltp/testcases/kernel/syscalls/getresuid/getresuid02
 /ltp/testcases/kernel/syscalls/getresuid/getresuid03
+/ltp/testcases/kernel/syscalls/getsockname/getsockname01
 /ltp/testcases/kernel/syscalls/gettid/gettid01
 /ltp/testcases/kernel/syscalls/getuid/getuid01
 /ltp/testcases/kernel/syscalls/getuid/getuid03
@@ -116,12 +117,16 @@
 /ltp/testcases/kernel/syscalls/mmap/mmap02
 /ltp/testcases/kernel/syscalls/mmap/mmap03
 /ltp/testcases/kernel/syscalls/mmap/mmap04
+/ltp/testcases/kernel/syscalls/mmap/mmap05
 /ltp/testcases/kernel/syscalls/mmap/mmap09
 /ltp/testcases/kernel/syscalls/mmap/mmap11
 /ltp/testcases/kernel/syscalls/mmap/mmap15
+/ltp/testcases/kernel/syscalls/mprotect/mprotect04
 /ltp/testcases/kernel/syscalls/mremap/mremap01
 /ltp/testcases/kernel/syscalls/mremap/mremap02
 /ltp/testcases/kernel/syscalls/msync/msync01
+/ltp/testcases/kernel/syscalls/munmap/munmap01
+/ltp/testcases/kernel/syscalls/munmap/munmap02
 /ltp/testcases/kernel/syscalls/nanosleep/nanosleep04
 /ltp/testcases/kernel/syscalls/newuname/newuname01
 /ltp/testcases/kernel/syscalls/open/open01
@@ -142,6 +147,8 @@
 /ltp/testcases/kernel/syscalls/pread/pread02_64
 /ltp/testcases/kernel/syscalls/pread/pread03
 /ltp/testcases/kernel/syscalls/pread/pread03_64
+/ltp/testcases/kernel/syscalls/preadv/preadv01
+/ltp/testcases/kernel/syscalls/preadv/preadv01_64
 /ltp/testcases/kernel/syscalls/pwrite/pwrite01
 /ltp/testcases/kernel/syscalls/pwrite/pwrite01_64
 /ltp/testcases/kernel/syscalls/pwrite/pwrite02
@@ -150,6 +157,8 @@
 /ltp/testcases/kernel/syscalls/pwrite/pwrite03_64
 /ltp/testcases/kernel/syscalls/pwrite/pwrite04
 /ltp/testcases/kernel/syscalls/pwrite/pwrite04_64
+/ltp/testcases/kernel/syscalls/pwritev/pwritev01
+/ltp/testcases/kernel/syscalls/pwritev/pwritev01_64
 /ltp/testcases/kernel/syscalls/read/read01
 /ltp/testcases/kernel/syscalls/read/read04
 /ltp/testcases/kernel/syscalls/readdir/readdir01
@@ -165,6 +174,7 @@
 /ltp/testcases/kernel/syscalls/rename/rename13
 /ltp/testcases/kernel/syscalls/rmdir/rmdir01
 /ltp/testcases/kernel/syscalls/rt_sigaction/rt_sigaction01
+/ltp/testcases/kernel/syscalls/rt_sigprocmask/rt_sigprocmask01
 /ltp/testcases/kernel/syscalls/sbrk/sbrk02
 /ltp/testcases/kernel/syscalls/sched_yield/sched_yield01
 /ltp/testcases/kernel/syscalls/select/select04
@@ -203,6 +213,7 @@
 /ltp/testcases/kernel/syscalls/setreuid/setreuid02
 /ltp/testcases/kernel/syscalls/setreuid/setreuid03
 /ltp/testcases/kernel/syscalls/setreuid/setreuid06
+/ltp/testcases/kernel/syscalls/setsid/setsid01
 /ltp/testcases/kernel/syscalls/setsockopt/setsockopt02
 /ltp/testcases/kernel/syscalls/setsockopt/setsockopt03
 /ltp/testcases/kernel/syscalls/setsockopt/setsockopt04
@@ -216,7 +227,7 @@
 /ltp/testcases/kernel/syscalls/signal/signal03
 /ltp/testcases/kernel/syscalls/signal/signal04
 /ltp/testcases/kernel/syscalls/signal/signal05
-/ltp/testcases/kernel/syscalls/signal/signal06
+/ltp/testcases/kernel/syscalls/sigprocmask/sigprocmask01
 /ltp/testcases/kernel/syscalls/socket/socket01
 /ltp/testcases/kernel/syscalls/socket/socket02
 /ltp/testcases/kernel/syscalls/socketpair/socketpair02
@@ -242,6 +253,7 @@
 /ltp/testcases/kernel/syscalls/truncate/truncate02_64
 /ltp/testcases/kernel/syscalls/uname/uname01
 /ltp/testcases/kernel/syscalls/wait/wait01
+/ltp/testcases/kernel/syscalls/waitpid/waitpid04
 /ltp/testcases/kernel/syscalls/write/write01
 /ltp/testcases/kernel/syscalls/write/write02
 /ltp/testcases/kernel/syscalls/writev/writev01

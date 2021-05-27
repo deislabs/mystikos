@@ -164,6 +164,7 @@ static ssize_t _pd_read(
     if (!_valid_pipe(pipe))
     {
         /* cannot unlock since mutex is no longer valid */
+        _unlock(pipe);
         ERAISE(-EBADF);
     }
 
@@ -294,6 +295,7 @@ static ssize_t _pd_write(
     if (!_valid_pipe(pipe))
     {
         /* cannot unlock since mutex is no longer valid */
+        _unlock(pipe);
         ERAISE(-EBADF);
     }
 
@@ -592,6 +594,24 @@ done:
     return ret;
 }
 
+static int _pd_interrupt(myst_pipedev_t* pipedev, myst_pipe_t* pipe)
+{
+    int ret = 0;
+
+    if (!pipedev || !_valid_pipe(pipe))
+        ERAISE(-EBADF);
+
+    _lock(pipe);
+
+    /* signal any threads blocked on read or write */
+    myst_cond_signal(&pipe->impl->cond);
+
+    _unlock(pipe);
+
+done:
+    return ret;
+}
+
 static int _pd_close(myst_pipedev_t* pipedev, myst_pipe_t* pipe)
 {
     int ret = 0;
@@ -602,8 +622,10 @@ static int _pd_close(myst_pipedev_t* pipedev, myst_pipe_t* pipe)
     _lock(pipe);
 
     if (!pipe->impl->nreaders && !pipe->impl->nwriters)
+    {
+        _unlock(pipe);
         ERAISE(-EBADF);
-
+    }
     if (pipe->mode == O_RDONLY)
         pipe->impl->nreaders--;
     else if (pipe->mode == O_WRONLY)
@@ -694,6 +716,7 @@ extern myst_pipedev_t* myst_pipedev_get(void)
             .fd_ioctl = (void*)_pd_ioctl,
             .fd_dup = (void*)_pd_dup,
             .fd_close = (void*)_pd_close,
+            .fd_interrupt = (void*)_pd_interrupt,
             .fd_target_fd = (void*)_pd_target_fd,
             .fd_get_events = (void*)_pd_get_events,
         },
