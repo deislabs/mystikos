@@ -8,6 +8,9 @@
 #include <myst/printf.h>
 #include <myst/signal.h>
 
+#define MYST_SIG_UNBLOCKED(mask) \
+    (~mask) | ((uint64_t)1 << (SIGKILL - 1)) | ((uint64_t)1 << (SIGSTOP - 1));
+
 /* The lock for installing signal dispositions */
 static myst_spinlock_t _lock = MYST_SPINLOCK_INITIALIZER;
 
@@ -106,12 +109,42 @@ done:
     return ret;
 }
 
+void myst_signal_free_siginfos(myst_thread_t* thread)
+{
+    uint64_t unblocked = MYST_SIG_UNBLOCKED(thread->signal.mask);
+    uint64_t active_signals = thread->signal.pending & unblocked;
+
+    while (active_signals != 0)
+    {
+        unsigned bitnum = __builtin_ctzl(active_signals);
+
+        while (thread->signal.siginfos[bitnum])
+        {
+            struct siginfo_list_item* next =
+                thread->signal.siginfos[bitnum]->next;
+
+            if (thread->signal.siginfos[bitnum]->siginfo)
+            {
+                free(thread->signal.siginfos[bitnum]->siginfo);
+                thread->signal.siginfos[bitnum]->siginfo = NULL;
+            }
+            free(thread->signal.siginfos[bitnum]);
+            thread->signal.siginfos[bitnum] = next;
+        }
+
+        // Clear the bit from the active signals. We are ready for the next.
+        active_signals &= ~((uint64_t)1 << bitnum);
+        // Clear the pending bit.
+        thread->signal.pending &= ~((uint64_t)1 << bitnum);
+    }
+}
+
 // No/default signal disposition specified, use the default action. See
 // https://man7.org/linux/man-pages/man7/signal.7.html for details.
 static long _default_signal_handler(unsigned signum)
 {
-    if (signum == SIGCHLD || signum == SIGCONT || signum == SIGURG ||
-        signum == SIGWINCH)
+    if (signum == SIGCHLD || signum == SIGCONT || signum == SIGSTOP ||
+        signum == SIGURG || signum == SIGWINCH)
     {
         // ignore
         return 0;
@@ -120,8 +153,9 @@ static long _default_signal_handler(unsigned signum)
     myst_thread_t* thread = myst_thread_self();
 
     // A hard kill. Never returns.
-    thread->exit_status = -1;
+    thread->exit_status = 0;
     thread->status = MYST_KILLED;
+    thread->terminating_signum = signum;
     myst_longjmp(&thread->jmpbuf, 1);
 
     // Unreachable
@@ -213,14 +247,21 @@ done:
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstack-usage="
+
+int myst_signal_has_active_signals(myst_thread_t* thread)
+{
+    uint64_t unblocked = MYST_SIG_UNBLOCKED(thread->signal.mask);
+    uint64_t active_signals = thread->signal.pending & unblocked;
+    return active_signals != 0;
+}
+
 long myst_signal_process(myst_thread_t* thread)
 {
     myst_spin_lock(&thread->signal.lock);
+
     // Active signals are the ones that are both unblocked and pending.
     // Note SIGKILL and SIGSTOP can never be blocked.
-    uint64_t unblocked = (~thread->signal.mask) |
-                         ((uint64_t)1 << (SIGKILL - 1)) |
-                         ((uint64_t)1 << (SIGSTOP - 1));
+    uint64_t unblocked = MYST_SIG_UNBLOCKED(thread->signal.mask);
     uint64_t active_signals = thread->signal.pending & unblocked;
 
     while (active_signals != 0)
@@ -307,6 +348,9 @@ long myst_signal_deliver(
         myst_spin_unlock(&thread->signal.lock);
     }
 
+    /* Make sure any polls get woken up to process any outstanding events */
+    myst_tcall_poll_wake();
+
 done:
     if (siginfo)
         free(siginfo); // Free the siginfo object if not delivered.
@@ -349,6 +393,11 @@ long myst_signal_clone(myst_thread_t* parent, myst_thread_t* child)
     child->signal.mask = parent->signal.mask;
 
 done:
+    if (ret != 0)
+    {
+        free(child->signal.sigactions);
+        child->signal.sigactions = NULL;
+    }
     return ret;
 }
 

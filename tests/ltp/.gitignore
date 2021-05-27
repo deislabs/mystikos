@@ -5,3 +5,4 @@ upper
 ramfs
 work
 ramfs.appdir
+temp*.output

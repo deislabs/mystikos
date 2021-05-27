@@ -6,7 +6,10 @@ SUBBINDIR=$(LIBDIR)
 
 PROGRAM = libmystkernel.so
 
-SOURCES = $(wildcard *.[cs])
+SOURCES = $(wildcard *.c)
+SOURCES += ../asm/setjmp.s
+SOURCES += ../asm/longjmp.s
+SOURCES += ../asm/jump.s
 
 INCLUDES = -I$(INCDIR) -I$(BUILDDIR)/musl/include
 

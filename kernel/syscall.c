@@ -447,7 +447,11 @@ static pair_t _pairs[] = {
     {SYS_myst_gen_creds_ex, "SYS_myst_gen_creds_ex"},
     {SYS_myst_clone, "SYS_myst_clone"},
     {SYS_myst_max_threads, "SYS_myst_max_threads"},
+    {SYS_myst_poll_wake, "SYS_myst_poll_wake"},
+    {SYS_get_process_thread_stack, "SYS_get_process_thread_stack"},
     {SYS_myst_run_itimer, "SYS_myst_run_itimer"},
+    {SYS_myst_is_shared_crt, "SYS_myst_is_shared_crt"},
+    {SYS_myst_kill_wait_child_forks, "SYS_myst_kill_wait_child_forks"},
     /* Open Enclave extensions */
     {SYS_myst_oe_get_report_v2, "SYS_myst_oe_get_report_v2"},
     {SYS_myst_oe_free_report, "SYS_myst_oe_free_report"},
@@ -556,6 +560,26 @@ __attribute__((format(printf, 2, 3))) static void _strace(
         if (buf != &null_char)
             free(buf);
     }
+}
+
+long myst_syscall_unmap_on_exit(
+    myst_thread_t* process_thread,
+    void* ptr,
+    size_t size)
+{
+    long ret = 0;
+    int i = process_thread->main.unmap_on_exit_used++;
+    if (i >= MYST_MAX_MUNNAP_ON_EXIT)
+    {
+        process_thread->main.unmap_on_exit_used--;
+        ret = -ENOMEM;
+    }
+    else
+    {
+        process_thread->main.unmap_on_exit[i].ptr = ptr;
+        process_thread->main.unmap_on_exit[i].size = size;
+    }
+    return ret;
 }
 
 static long _forward_syscall(long n, long params[6])
@@ -2936,7 +2960,25 @@ long myst_syscall_mbind(
     (void)nodemask;
     (void)maxnode;
     (void)flags;
+    return ret;
+}
 
+long myst_syscall_get_process_thread_stack(void** stack, size_t* stack_size)
+{
+    long ret = 0;
+    myst_thread_t* self = myst_thread_self();
+
+    if (!stack || !stack_size || !self->main.exec_stack)
+        ERAISE(-EINVAL);
+
+    // can only be called from process thread
+    if (!myst_is_process_thread(self))
+        ERAISE(-EINVAL);
+
+    *stack = self->main.exec_stack;
+    *stack_size = self->main.exec_stack_size;
+
+done:
     return ret;
 }
 
@@ -3263,19 +3305,25 @@ static long _syscall(void* args_)
 #endif
         case SYS_myst_unmap_on_exit:
         {
-            void* addr = (void*)x1;
-            size_t length = (size_t)x2;
-            myst_thread_t* self = myst_thread_self();
+            void* ptr = (void*)x1;
+            size_t size = (size_t)x2;
+            myst_thread_t* process_thread = myst_find_process_thread(thread);
 
-            _strace(n, "addr=%p length=%zu", addr, length);
+            _strace(n, "ptr=%p, size=%zu", ptr, size);
 
-            myst_assume(self->unmap_on_exit_addr == NULL);
-            myst_assume(self->unmap_on_exit_length == 0);
+            BREAK(_return(
+                n, myst_syscall_unmap_on_exit(process_thread, ptr, size)));
+        }
+        case SYS_get_process_thread_stack:
+        {
+            _strace(n, NULL);
+            void** stack = (void**)x1;
+            size_t* stack_size = (size_t*)x2;
 
-            self->unmap_on_exit_addr = addr;
-            self->unmap_on_exit_length = length;
+            _strace(n, "stack=%p stack_size=%p", stack, stack_size);
 
-            BREAK(_return(n, 0));
+            long ret = myst_syscall_get_process_thread_stack(stack, stack_size);
+            BREAK(_return(n, ret));
         }
         case SYS_read:
         {
@@ -3476,16 +3524,14 @@ static long _syscall(void* args_)
 
                 if ((p >= q && p < qend) || (pend >= q && pend < qend))
                 {
-                    myst_thread_t* thread = myst_thread_self();
+                    myst_thread_t* process_thread =
+                        myst_find_process_thread(thread);
 
                     /* unmap this later when the thread exits */
-                    if (thread)
-                    {
-                        thread->unmapself_addr = addr;
-                        thread->unmapself_length = length;
-                    }
-
-                    BREAK(_return(n, 0));
+                    BREAK(_return(
+                        n,
+                        myst_syscall_unmap_on_exit(
+                            process_thread, addr, length)));
                 }
             }
 
@@ -3799,6 +3845,45 @@ static long _syscall(void* args_)
 
             BREAK(_return(n, ret));
         }
+        case SYS_myst_is_shared_crt:
+        {
+            bool* is_parent_of_fork = (bool*)x1;
+            bool* is_child_fork = (bool*)x2;
+            long ret = 0;
+            myst_thread_t* process = myst_find_process_thread(thread);
+
+            _strace(n, NULL);
+            if (!is_parent_of_fork || !is_child_fork)
+                ret = -EINVAL;
+            else
+            {
+                /* Check if we are child fork by looking at clone flag */
+                if (process->clone.flags & CLONE_VFORK)
+                    *is_child_fork = true;
+                else
+                    *is_child_fork = false;
+
+                /* Check if we have a child process which is a clone */
+                *is_parent_of_fork = myst_have_child_forked_processes(process);
+            }
+            BREAK(_return(n, ret));
+        }
+        case SYS_myst_kill_wait_child_forks:
+        {
+            long ret = 0;
+            myst_thread_t* process = myst_find_process_thread(thread);
+
+            _strace(n, NULL);
+
+            kill_child_fork_processes(process);
+
+            while (myst_have_child_forked_processes(process))
+            {
+                myst_sleep_msec(100);
+            }
+
+            BREAK(_return(n, ret));
+        }
         case SYS_fork:
             break;
         case SYS_vfork:
@@ -3818,13 +3903,14 @@ static long _syscall(void* args_)
         {
             const int status = (int)x1;
             myst_thread_t* thread = myst_thread_self();
+            myst_thread_t* process = myst_find_process_thread(thread);
 
             _strace(n, "status=%d", status);
 
             if (!thread || thread->magic != MYST_THREAD_MAGIC)
                 myst_panic("unexpected");
 
-            thread->exit_status = status;
+            process->exit_status = status;
 
             /* the kstack is freed after the long-jump below */
             thread->kstack = args->kstack;
@@ -4167,29 +4253,27 @@ static long _syscall(void* args_)
         }
         case SYS_setpgid:
         {
-            gid_t gid = (gid_t)x1;
-            long ret = 0;
-
-            _strace(n, "gid=%u", gid);
-
-            /* do not allow the GID to be changed */
-            if (gid != MYST_DEFAULT_GID)
-                ret = -EPERM;
-
-            BREAK(_return(n, ret));
+            pid_t pid = (pid_t)x1;
+            pid_t pgid = (pid_t)x2;
+            _strace(n, "pid=%u pgid=%u", pid, pgid);
+            BREAK(_return(n, myst_syscall_setpgid(pid, pgid, thread)));
         }
         case SYS_getpgid:
         {
+            pid_t pid = (pid_t)x1;
+            _strace(n, "pid=%u", pid);
+            BREAK(_return(n, myst_syscall_getpgid(pid, thread)));
+        }
+        case SYS_getpgrp:
+        {
             _strace(n, NULL);
-            BREAK(_return(n, MYST_DEFAULT_GID));
+            BREAK(_return(n, myst_syscall_getpgid(thread->pid, thread)));
         }
         case SYS_getppid:
         {
             _strace(n, NULL);
             BREAK(_return(n, myst_getppid()));
         }
-        case SYS_getpgrp:
-            break;
         case SYS_getsid:
         {
             _strace(n, NULL);
@@ -5848,6 +5932,9 @@ long myst_syscall_clock_gettime(clockid_t clk_id, struct timespec* tp)
     if (!tp)
         return -EFAULT;
 
+    /* validate parameter is writable */
+    memset(tp, 0, sizeof(*tp));
+
     if (clk_id < 0)
     {
         // ATTN: Support Dynamic clocks
@@ -5882,6 +5969,10 @@ long myst_syscall_clock_gettime(clockid_t clk_id, struct timespec* tp)
 long myst_syscall_clock_settime(clockid_t clk_id, struct timespec* tp)
 {
     long params[6] = {(long)clk_id, (long)tp};
+
+    /* validate parameter is writable */
+    memset(tp, 0, sizeof(*tp));
+
     myst_spin_lock(&_set_time_lock);
     long ret = myst_tcall(MYST_TCALL_CLOCK_SETTIME, params);
     myst_spin_unlock(&_set_time_lock);

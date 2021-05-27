@@ -178,6 +178,29 @@ done:
     return ret;
 }
 
+int myst_fdtable_interrupt(myst_fdtable_t* fdtable)
+{
+    int ret = 0;
+
+    if (!fdtable)
+        ERAISE(-EINVAL);
+
+    /* Close all objects */
+    for (int i = 0; i < MYST_FDTABLE_SIZE; i++)
+    {
+        myst_fdtable_entry_t* entry = &fdtable->entries[i];
+
+        if (entry->type == MYST_FDTABLE_TYPE_PIPE)
+        {
+            myst_fdops_t* fdops = entry->device;
+            (*fdops->fd_interrupt)(fdops, entry->object);
+        }
+    }
+
+done:
+    return ret;
+}
+
 int myst_fdtable_assign(
     myst_fdtable_t* fdtable,
     myst_fdtable_type_t type,

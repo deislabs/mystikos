@@ -9,23 +9,18 @@ all:
 	$(MAKE) myst
 	$(MAKE) rootfs
 
-rootfs: pollpipe.c
+rootfs: fork.c
 	mkdir -p $(APPDIR)/bin
-	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/pollpipe pollpipe.c $(LDFLAGS)
+	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/fork fork.c $(LDFLAGS)
 	$(MYST) mkcpio $(APPDIR) rootfs
 
-OPTS = 
-
 ifdef STRACE
-OPTS += --strace
-endif
-
-ifdef ETRACE
-OPTS += --etrace
+OPTS = --strace
 endif
 
 tests: all
-	$(RUNTEST) $(MYST_EXEC) rootfs /bin/pollpipe $(OPTS)
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/fork fork
+#	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/fork vfork
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst

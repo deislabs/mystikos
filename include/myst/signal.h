@@ -14,6 +14,7 @@ typedef void (*sigaction_function_t)(int, siginfo_t*, void*);
 int myst_signal_init(myst_thread_t* t);
 
 void myst_signal_free(myst_thread_t* t);
+void myst_signal_free_siginfos(myst_thread_t* t);
 
 long myst_signal_sigaction(
     unsigned signum,
@@ -34,5 +35,7 @@ long myst_signal_sigpending(sigset_t* set, unsigned size);
 long myst_signal_clone(myst_thread_t* parent, myst_thread_t* child);
 
 long myst_handle_host_signal(siginfo_t* siginfo, mcontext_t* mcontext);
+
+int myst_signal_has_active_signals(myst_thread_t* thread);
 
 #endif /* _MYST_SIGNAL_H */

@@ -9,40 +9,40 @@
 
 function run_tests() {
 
-  sudo rm *.output
+  sudo rm temp_other_errors.output temp_passed.output temp_unhandled_syscalls.output "temp_$FS.output"
 
   FILE=$1
 
   echo "Starting run for FS= $FS TEST_FILE= $FILE"
 
   while read test; do
-    echo "$test"
-    OUTPUT=$(2>&1 sudo timeout 3 make one TEST=$test FS=$FS )
-    echo $OUTPUT >> temp_$FILE.output
-    HAS_UNHANDLED_SYSCALL=$(2>&1 sudo timeout 3 make one TEST=$test FS=$FS | grep "unhandled")
+    echo -n "$test FS=$FS"
+    OUTPUT=$(2>&1 sudo timeout 1m make one TEST=$test FS=$FS )
+    echo "$OUTPUT" >> "temp_$FS.output"
+    HAS_UNHANDLED_SYSCALL=$(echo "$OUTPUT" | grep "unhandled")
     if [ -z "$HAS_UNHANDLED_SYSCALL" ]
     then
       # No unhandled syscall
       PASSED=$(echo "$OUTPUT" | grep TPASS) 
-      FAILED=$(echo "$OUTPUT" | grep TFAIL)
-      BROKEN=$(echo "$OUTPUT" | grep TBROK)
-      FAIL_ENCLAVE=$(echo "$OUTPUT" | grep Error)
-      TIMED_OUT=$(echo "$OUTPUT" | grep -F '[one] Terminated')
-      if [[ $PASSED && -z $FAILED && -z $BROKEN && -z $FAIL_ENCLAVE && -z $TIMED_OUT ]]  
+      MAKE_FAILED=$(echo "$OUTPUT" | grep -F 'make: *** [one]')
+      if [[ $PASSED && -z $MAKE_FAILED ]]  
       then
         echo $test >> temp_passed.output
+        echo " PASSED"
       else
         echo $test >> temp_other_errors.output
+        echo " FAILED"
       fi
     else
       failing_syscall=${HAS_UNHANDLED_SYSCALL##*:} # retain the part after the last colon, i.e the syscall name
       echo "$test: $failing_syscall" >> temp_unhandled_syscalls.output
+      echo " UNHANDLED SYSCALL: $failing_syscall"
     fi
     sudo rm -rf /tmp/myst*
   done <$FILE
 
   awk '!seen[$2]++' temp_unhandled_syscalls.output | awk '{print $2}' | sort > unhandled_syscalls.txt
-  cat temp_unhandled_syscalls.output > "$FS"_tests_unhandled_syscalls.txt
+  sed 's/:.*:/:/' temp_unhandled_syscalls.output > "$FS"_tests_unhandled_syscalls.txt
   sort temp_other_errors.output | awk '!seen[$0]++' > "$FS"_tests_other_errors.txt
   cat temp_passed.output > "$FS"_tests_passed.txt
 
@@ -106,4 +106,8 @@ run_tests $TESTS
 
 show_stats
 
+# Strip old matrix from readme first
+TRIM_LINE=$(grep -n -m 1 "## TEST MATRIX" README.md | cut -d : -f 1)
+SEARCH_STRING="$TRIM_LINE,$ d"
+sed -i "$SEARCH_STRING"  README.md
 generate_matrix >> README.md

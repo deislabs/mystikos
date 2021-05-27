@@ -40,6 +40,8 @@ struct myst_fdops
 
     int (*fd_close)(void* device, void* object);
 
+    int (*fd_interrupt)(void* device, void* object);
+
     int (*fd_target_fd)(void* device, void* object);
 
     /* returns POLLIN | POLLOUT | POLLERR */
