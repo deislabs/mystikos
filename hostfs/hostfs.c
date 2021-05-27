@@ -42,15 +42,15 @@ typedef struct hostfs
     char target[PATH_MAX]; /* target argument to myst_mount() */
 } hostfs_t;
 
-static bool _get_host_uid_gid(uid_t* host_uid, gid_t* host_gid)
+static int _get_host_uid_gid(uid_t* host_uid, gid_t* host_gid)
 {
-    if (myst_enc_uid_to_host(myst_syscall_geteuid(), host_uid) < 0)
-        return false;
+    int ret = 0;
 
-    if (myst_enc_gid_to_host(myst_syscall_getegid(), host_gid) < 0)
-        return false;
+    ECHECK(myst_enc_uid_to_host(myst_syscall_geteuid(), host_uid));
+    ECHECK(myst_enc_gid_to_host(myst_syscall_getegid(), host_gid));
 
-    return true;
+done:
+    return ret;
 }
 
 static bool _hostfs_valid(const hostfs_t* hostfs)
@@ -176,8 +176,7 @@ static int _fs_open(
 
     myst_assume(hostfs->magic == HOSTFS_MAGIC);
 
-    if (!_get_host_uid_gid(&host_uid, &host_gid))
-        ERAISE(-EINVAL);
+    ECHECK(_get_host_uid_gid(&host_uid, &host_gid));
 
     if (!_hostfs_valid(hostfs) || !pathname || !file_out)
         ERAISE(-EINVAL);
@@ -456,8 +455,7 @@ static int _fs_stat(myst_fs_t* fs, const char* pathname, struct stat* statbuf)
 
     myst_assume(hostfs->magic == HOSTFS_MAGIC);
 
-    if (!_get_host_uid_gid(&host_uid, &host_gid))
-        ERAISE(-EINVAL);
+    ECHECK(_get_host_uid_gid(&host_uid, &host_gid));
 
     // ATTN: special handling needed for symbolic links. Check to see if it
     // is a link, and if so, use readlink to get the name of the file.
@@ -666,8 +664,7 @@ static int _fs_mkdir(myst_fs_t* fs, const char* pathname, mode_t mode)
 
     ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
 
-    if (!_get_host_uid_gid(&host_uid, &host_gid))
-        ERAISE(-EINVAL);
+    ECHECK(_get_host_uid_gid(&host_uid, &host_gid));
 
     long params[6] = {(long)path, (long)mode, (long)host_uid, (long)host_gid};
     ECHECK((tret = myst_tcall(SYS_mkdir, params)));
@@ -695,8 +692,7 @@ static int _fs_rmdir(myst_fs_t* fs, const char* pathname)
 
     ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
 
-    if (!_get_host_uid_gid(&host_uid, &host_gid))
-        ERAISE(-EINVAL);
+    ECHECK(_get_host_uid_gid(&host_uid, &host_gid));
 
     long params[6] = {(long)path, (long)host_uid, (long)host_gid};
     ECHECK((tret = myst_tcall(SYS_rmdir, params)));
@@ -998,8 +994,7 @@ static int _fs_futimens(
 
     myst_assume(hostfs->magic == HOSTFS_MAGIC);
 
-    if (!_get_host_uid_gid(&host_uid, &host_gid))
-        ERAISE(-EINVAL);
+    ECHECK(_get_host_uid_gid(&host_uid, &host_gid));
 
     if (!_hostfs_valid(hostfs) || !_file_valid(file))
         ERAISE(-EINVAL);
@@ -1030,8 +1025,7 @@ static int _fs_chown(
 
     myst_assume(hostfs->magic == HOSTFS_MAGIC);
 
-    if (!_get_host_uid_gid(&host_uid, &host_gid))
-        ERAISE(-EINVAL);
+    ECHECK(_get_host_uid_gid(&host_uid, &host_gid));
 
     if (!_hostfs_valid(hostfs) || !pathname)
         ERAISE(-EINVAL);
@@ -1050,11 +1044,6 @@ static int _fs_chown(
                       (long)host_uid,
                       (long)host_gid};
     ECHECK((tret = myst_tcall(SYS_chown, params)));
-
-    if (tret != 0)
-        ERAISE(-EINVAL);
-
-    ret = tret;
 
 done:
     return ret;
@@ -1077,8 +1066,7 @@ static int _fs_fchown(
     if (!_hostfs_valid(hostfs) || !_file_valid(file))
         ERAISE(-EINVAL);
 
-    if (!_get_host_uid_gid(&host_uid, &host_gid))
-        ERAISE(-EINVAL);
+    ECHECK(_get_host_uid_gid(&host_uid, &host_gid));
 
     if (owner != -1)
         ECHECK(myst_enc_uid_to_host(owner, &host_owner));
@@ -1092,11 +1080,6 @@ static int _fs_fchown(
                       (long)host_uid,
                       (long)host_gid};
     ECHECK((tret = myst_tcall(SYS_fchown, params)));
-
-    if (tret != 0)
-        ERAISE(-EINVAL);
-
-    ret = tret;
 
 done:
     return ret;
@@ -1113,8 +1096,7 @@ static int _fs_chmod(myst_fs_t* fs, const char* pathname, mode_t mode)
 
     myst_assume(hostfs->magic == HOSTFS_MAGIC);
 
-    if (!_get_host_uid_gid(&host_uid, &host_gid))
-        ERAISE(-EINVAL);
+    ECHECK(_get_host_uid_gid(&host_uid, &host_gid));
 
     if (!_hostfs_valid(hostfs) || !pathname)
         ERAISE(-EINVAL);
@@ -1123,11 +1105,6 @@ static int _fs_chmod(myst_fs_t* fs, const char* pathname, mode_t mode)
 
     long params[6] = {(long)path, (long)mode, (long)host_uid, (long)host_gid};
     ECHECK((tret = myst_tcall(SYS_chmod, params)));
-
-    if (tret != 0)
-        ERAISE(-EINVAL);
-
-    ret = tret;
 
 done:
     return ret;
@@ -1144,16 +1121,10 @@ static int _fs_fchmod(myst_fs_t* fs, myst_file_t* file, mode_t mode)
     if (!_hostfs_valid(hostfs) || !_file_valid(file))
         ERAISE(-EINVAL);
 
-    if (!_get_host_uid_gid(&host_uid, &host_gid))
-        ERAISE(-EINVAL);
+    ECHECK(_get_host_uid_gid(&host_uid, &host_gid));
 
     long params[6] = {file->fd, (long)mode, (long)host_uid, (long)host_gid};
     ECHECK((tret = myst_tcall(SYS_fchmod, params)));
-
-    if (tret != 0)
-        ERAISE(-EINVAL);
-
-    ret = tret;
 
 done:
     return ret;

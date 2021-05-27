@@ -2407,6 +2407,9 @@ static int _chown(inode_t* inode, uid_t owner, gid_t group)
 {
     int ret = 0;
 
+    if (!inode)
+        ERAISE(-EINVAL);
+
     if (owner != -1u)
         inode->uid = owner;
 
@@ -2419,10 +2422,14 @@ static int _chown(inode_t* inode, uid_t owner, gid_t group)
         if (inode->mode & S_ISUID)
             inode->mode &= ~S_ISUID;
 
-        /* Exclude clearing group id for non-group executables */
+        /* Only clear set-group-id bit for group executables */
         if ((inode->mode & S_ISGID) && (inode->mode & S_IXGRP))
             inode->mode &= ~S_ISGID;
     }
+
+    _update_timestamps(inode, CHANGE);
+
+done:
 
     return ret;
 }
@@ -2458,7 +2465,7 @@ static int _fs_chown(
         goto done;
     }
 
-    _chown(locals->inode, owner, group);
+    ECHECK(_chown(locals->inode, owner, group));
 
 done:
 
@@ -2477,7 +2484,7 @@ int _fs_fchown(myst_fs_t* fs, myst_file_t* file, uid_t owner, gid_t group)
         ERAISE(-EINVAL);
 
     assert(_inode_valid(file->inode));
-    _chown(file->inode, owner, group);
+    ECHECK(_chown(file->inode, owner, group));
 
 done:
     return ret;
@@ -2499,7 +2506,7 @@ static int _chmod(inode_t* inode, mode_t mode)
     /* If not privileged and inode not in thread's primary or supplementary
      * groups, drop S_ISGID bit */
     if ((inode->mode & S_ISGID) && self->euid != 0 &&
-        !check_thread_group_membership(inode->gid))
+        (check_thread_group_membership(inode->gid) != 0))
     {
         inode->mode &= ~S_ISGID;
     }
@@ -2537,7 +2544,7 @@ static int _fs_chmod(myst_fs_t* fs, const char* pathname, mode_t mode)
         goto done;
     }
 
-    _chmod(locals->inode, mode);
+    ECHECK(_chmod(locals->inode, mode));
 
 done:
 
@@ -2556,7 +2563,7 @@ static int _fs_fchmod(myst_fs_t* fs, myst_file_t* file, mode_t mode)
         ERAISE(-EINVAL);
 
     assert(_inode_valid(file->inode));
-    _chmod(file->inode, mode);
+    ECHECK(_chmod(file->inode, mode));
 
 done:
     return ret;
