@@ -894,7 +894,7 @@ long myst_syscall_chown(const char* pathname, uid_t owner, gid_t group)
             ERAISE(-EPERM);
 
         /* owner should be -1 or user ID of file */
-        if (!(owner == -1u || owner != locals->statbuf.st_uid))
+        if (!(owner == -1u || owner == locals->statbuf.st_uid))
             ERAISE(-EPERM);
 
         /* group should either be thread's egid or one of the supplementary gids
@@ -956,7 +956,7 @@ long myst_syscall_fchown(int fd, uid_t owner, gid_t group)
             ERAISE(-EPERM);
 
         /* owner should be -1 or user ID of file */
-        if (!(owner != -1u || owner != locals->statbuf.st_uid))
+        if (!(owner == -1u || owner == locals->statbuf.st_uid))
             ERAISE(-EPERM);
 
         /* group should either be thread's egid or one of the supplementary gids
