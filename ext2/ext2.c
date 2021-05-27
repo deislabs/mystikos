@@ -5234,10 +5234,9 @@ static int _chown(ext2_inode_t* inode, uid_t owner, gid_t group)
     /* For executables, clear set-user-ID and set-group-ID bits */
     if (inode->i_mode & (S_IXUSR | S_IXGRP | S_IXOTH))
     {
-        if (inode->i_mode & S_ISUID)
-            inode->i_mode &= ~S_ISUID;
+        inode->i_mode &= ~S_ISUID;
 
-        /* Exclude clearing group id for non-group executables */
+        /* Only clear set-group-id bit for group executables */
         if ((inode->i_mode & S_ISGID) && (inode->i_mode & S_IXGRP))
             inode->i_mode &= ~S_ISGID;
     }
@@ -5247,6 +5246,7 @@ static int _chown(ext2_inode_t* inode, uid_t owner, gid_t group)
 done:
     return ret;
 }
+
 static int _ext2_chown(
     myst_fs_t* fs,
     const char* pathname,
@@ -5287,7 +5287,7 @@ static int _ext2_chown(
         goto done;
     }
 
-    _chown(&locals->inode, owner, group);
+    ECHECK(_chown(&locals->inode, owner, group));
 
     /* persist the inode change */
     ECHECK(_write_inode(ext2, locals->ino, &locals->inode));
@@ -5315,7 +5315,7 @@ static int _ext2_fchown(
     /* refresh the inode */
     ECHECK((ext2_read_inode(ext2, file->ino, &file->inode)));
 
-    _chown(&file->inode, owner, group);
+    ECHECK(_chown(&file->inode, owner, group));
 
     /* persist the inode change */
     ECHECK(_write_inode(ext2, file->ino, &file->inode));
@@ -5340,7 +5340,7 @@ static int _chmod(ext2_inode_t* inode, mode_t mode)
     /* If not privileged and inode not in thread's primary or supplementary
      * groups, drop S_ISGID bit */
     if ((inode->i_mode & S_ISGID) && self->euid != 0 &&
-        !check_thread_group_membership(inode->i_gid))
+        (check_thread_group_membership(inode->i_gid) != 0))
     {
         inode->i_mode &= ~S_ISGID;
     }
@@ -5387,7 +5387,7 @@ static int _ext2_chmod(myst_fs_t* fs, const char* pathname, mode_t mode)
         goto done;
     }
 
-    _chmod(&locals->inode, mode);
+    ECHECK(_chmod(&locals->inode, mode));
 
     /* persist the inode change */
     ECHECK(_write_inode(ext2, locals->ino, &locals->inode));
@@ -5411,7 +5411,7 @@ static int _ext2_fchmod(myst_fs_t* fs, myst_file_t* file, mode_t mode)
     /* refresh the inode */
     ECHECK((ext2_read_inode(ext2, file->ino, &file->inode)));
 
-    _chmod(&file->inode, mode);
+    ECHECK(_chmod(&file->inode, mode));
 
     /* persist the inode change */
     ECHECK(_write_inode(ext2, file->ino, &file->inode));

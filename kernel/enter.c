@@ -658,7 +658,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         _create_main_thread(args->event, args->cwd, args->target_tid, &thread));
     __myst_main_thread = thread;
 
-    myst_set_host_uid_gid_mappings(&args->host_enc_uid_gid_mappings);
+    myst_copy_host_uid_gid_mappings(&args->host_enc_uid_gid_mappings);
 
     /* determine the rootfs file system type (RAMFS, EXT2FS, OR HOSTFS) */
     if ((tmp_ret = _get_fstype(args, &fstype)) != 0)

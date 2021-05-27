@@ -17,81 +17,109 @@ static int num_uid_mappings;
 static myst_host_enc_gid_mapping gid_mappings[MAX_ID_MAPPINGS];
 static int num_gid_mappings;
 
-void myst_set_host_uid_gid_mappings(
+void myst_copy_host_uid_gid_mappings(
     myst_host_enc_uid_gid_mappings* uid_gid_mappings)
 {
     /* Copy over uid mappings */
     {
         num_uid_mappings = uid_gid_mappings->num_uid_mappings;
-        for (int i = 0; i < num_uid_mappings; i++)
-        {
-            uid_mappings[i] = uid_gid_mappings->uid_mappings[i];
-        }
+        memcpy(
+            uid_mappings, uid_gid_mappings->uid_mappings, sizeof(uid_mappings));
     }
 
     /* Copy over gid mappings */
     {
         num_gid_mappings = uid_gid_mappings->num_gid_mappings;
-        for (int i = 0; i < num_gid_mappings; i++)
-        {
-            gid_mappings[i] = uid_gid_mappings->gid_mappings[i];
-        }
+        memcpy(
+            gid_mappings, uid_gid_mappings->gid_mappings, sizeof(gid_mappings));
     }
 }
 
 int myst_enc_uid_to_host(uid_t enc_uid, uid_t* host_uid)
 {
+    int ret = -1;
+
+    if (!host_uid)
+        ERAISE(-EINVAL);
+
     for (int i = 0; i < num_uid_mappings; i++)
     {
         if (enc_uid == uid_mappings[i].enc_uid)
         {
             *host_uid = uid_mappings[i].host_uid;
-            return 0;
+            ret = 0;
+            goto done;
         }
     }
-    return -1;
+
+done:
+    return ret;
 }
 
 int myst_enc_gid_to_host(gid_t enc_gid, gid_t* host_gid)
 {
+    int ret = -1;
+
+    if (!host_gid)
+        ERAISE(-EINVAL);
+
     for (int i = 0; i < num_gid_mappings; i++)
     {
         if (enc_gid == gid_mappings[i].enc_gid)
         {
             *host_gid = gid_mappings[i].host_gid;
-            return 0;
+            ret = 0;
+            goto done;
         }
     }
-    return -1;
+
+done:
+    return ret;
 }
 
 int myst_host_uid_to_enc(uid_t host_uid, uid_t* enc_uid)
 {
+    int ret = -1;
+
+    if (!enc_uid)
+        ERAISE(-EINVAL);
+
     for (int i = 0; i < num_uid_mappings; i++)
     {
         if (host_uid == uid_mappings[i].host_uid)
         {
             *enc_uid = uid_mappings[i].enc_uid;
-            return 0;
+            ret = 0;
+            goto done;
         }
     }
-    return -1;
+
+done:
+    return ret;
 }
 
 int myst_host_gid_to_enc(gid_t host_gid, gid_t* enc_gid)
 {
+    int ret = -1;
+
+    if (!enc_gid)
+        ERAISE(-EINVAL);
+
     for (int i = 0; i < num_gid_mappings; i++)
     {
         if (host_gid == gid_mappings[i].host_gid)
         {
             *enc_gid = gid_mappings[i].enc_gid;
-            return 0;
+            ret = 0;
+            goto done;
         }
     }
-    return -1;
+
+done:
+    return ret;
 }
 
-/* success return 1, fail to read file return -1, not valid user return 0 */
+/* success return 0, fail to read file return -1, not valid user return -2 */
 /* username:password:UID:GID:comment:home directory:default shell */
 static long myst_valid_uid_against_passwd_file(uid_t uid)
 {
@@ -114,7 +142,7 @@ static long myst_valid_uid_against_passwd_file(uid_t uid)
     // root succeeds
     if (uid == 0)
     {
-        ret = 1;
+        ret = 0;
         goto done;
     }
 
@@ -141,7 +169,7 @@ static long myst_valid_uid_against_passwd_file(uid_t uid)
         goto done;
 
     /* Failures from now are not found errors */
-    ret = 0;
+    ret = -2;
 
     char* start_line = buffer;
     while (start_line)
@@ -205,7 +233,7 @@ static long myst_valid_uid_against_passwd_file(uid_t uid)
 
         if (uid == (uid_t)atoi(uid_str))
         {
-            ret = 1;
+            ret = 0;
             goto done;
         }
     }
@@ -225,7 +253,7 @@ done:
     return ret;
 }
 
-/* success return 1, fail to read file return -1, not valid user return 0 */
+/* success return 0, fail to read file return -1, not valid user return -2 */
 /* group name:password:GID:list of users */
 static long myst_valid_gid_against_group_file(gid_t gid)
 {
@@ -248,7 +276,7 @@ static long myst_valid_gid_against_group_file(gid_t gid)
     // root succeeds
     if (gid == 0)
     {
-        ret = 1;
+        ret = 0;
         goto done;
     }
 
@@ -275,7 +303,7 @@ static long myst_valid_gid_against_group_file(gid_t gid)
         goto done;
 
     /* Failures from now are not found errors */
-    ret = 0;
+    ret = -2;
 
     char* start_line = buffer;
     while (start_line)
@@ -318,7 +346,7 @@ static long myst_valid_gid_against_group_file(gid_t gid)
 
         if (gid == (uid_t)atoi(gid_str))
         {
-            ret = 1;
+            ret = 0;
             goto done;
         }
     }
@@ -350,7 +378,7 @@ long myst_syscall_setuid(uid_t uid)
     myst_thread_t* thread = myst_thread_self();
 
     /* EINVAL if not valid uid */
-    if (myst_valid_uid_against_passwd_file(uid) <= 0)
+    if (myst_valid_uid_against_passwd_file(uid) < 0)
     {
         ret = -EINVAL;
     }
@@ -393,7 +421,7 @@ long myst_syscall_setgid(gid_t gid)
     myst_thread_t* thread = myst_thread_self();
 
     /* EINVAL if not valid uid */
-    if (myst_valid_gid_against_group_file(gid) <= 0)
+    if (myst_valid_gid_against_group_file(gid) < 0)
     {
         ret = -EINVAL;
     }
@@ -456,9 +484,8 @@ long myst_syscall_setreuid(uid_t ruid, uid_t euid)
     /* if ruid or euid is not valid (ignoring -1) return EINVAL */
     else if (
         ((ruid != (uid_t)-1) &&
-         (myst_valid_uid_against_passwd_file(ruid) <= 0)) ||
-        ((euid != (uid_t)-1) &&
-         (myst_valid_uid_against_passwd_file(euid) <= 0)))
+         (myst_valid_uid_against_passwd_file(ruid) < 0)) ||
+        ((euid != (uid_t)-1) && (myst_valid_uid_against_passwd_file(euid) < 0)))
     {
         /* for some reason the LTP tests are expecting a different error to that
          * which is documented for the syscall itself. Instead of returning
@@ -540,8 +567,8 @@ long myst_syscall_setregid(gid_t rgid, gid_t egid)
     /* if ruid or euid is not valid (ignoring -1) return EINVAL */
     else if (
         ((rgid != (gid_t)-1) &&
-         (myst_valid_gid_against_group_file(rgid) <= 0)) ||
-        ((egid != (gid_t)-1) && (myst_valid_gid_against_group_file(egid) <= 0)))
+         (myst_valid_gid_against_group_file(rgid) < 0)) ||
+        ((egid != (gid_t)-1) && (myst_valid_gid_against_group_file(egid) < 0)))
     {
         /* for some reason the LTP tests are expecting a different error to that
          * which is documented for the syscall itself. Instead of returning
@@ -606,11 +633,11 @@ long myst_syscall_setresuid(uid_t ruid, uid_t euid, uid_t savuid)
     /* ** global ** If ruid and or euid are -1, they are not set */
     /* if ruid or euid is not valid (ignoring -1) return EINVAL */
     if (((ruid != (uid_t)-1) &&
-         (myst_valid_uid_against_passwd_file(ruid) <= 0)) ||
+         (myst_valid_uid_against_passwd_file(ruid) < 0)) ||
         ((euid != (uid_t)-1) &&
-         (myst_valid_uid_against_passwd_file(euid) <= 0)) ||
+         (myst_valid_uid_against_passwd_file(euid) < 0)) ||
         ((savuid != (uid_t)-1) &&
-         (myst_valid_uid_against_passwd_file(savuid) <= 0)))
+         (myst_valid_uid_against_passwd_file(savuid) < 0)))
     {
         ret = -EINVAL;
     }
@@ -677,11 +704,11 @@ long myst_syscall_setresgid(gid_t rgid, gid_t egid, gid_t savgid)
     /* ** global ** If rgid and or egid are -1, they are not set */
     /* if rgid or egid is not valid (ignoring -1) return EINVAL */
     if (((rgid != (gid_t)-1) &&
-         (myst_valid_gid_against_group_file(rgid) <= 0)) ||
+         (myst_valid_gid_against_group_file(rgid) < 0)) ||
         ((egid != (gid_t)-1) &&
-         (myst_valid_gid_against_group_file(egid) <= 0)) ||
+         (myst_valid_gid_against_group_file(egid) < 0)) ||
         ((savgid != (gid_t)-1) &&
-         (myst_valid_gid_against_group_file(savgid) <= 0)))
+         (myst_valid_gid_against_group_file(savgid) < 0)))
     {
         ret = -EINVAL;
     }
@@ -748,7 +775,7 @@ long myst_syscall_setfsuid(uid_t fsuid)
      * linux kernel */
 
     /* If fsuid is valid AND ... */
-    if (myst_valid_uid_against_passwd_file(fsuid) == 1)
+    if (myst_valid_uid_against_passwd_file(fsuid) == 0)
     {
         /*thread euid is root (or capability is CAO_SETUID) */
         if (thread->euid == 0)
@@ -776,7 +803,7 @@ long myst_syscall_setfsgid(gid_t fsgid)
      * in the linux kernel */
 
     /* If fsgid is valid AND ... */
-    if (myst_valid_gid_against_group_file(fsgid) == 1)
+    if (myst_valid_gid_against_group_file(fsgid) == 0)
     {
         /* thread euid is root (or capability is CAP_SETUID) */
         if (thread->euid == 0)
@@ -842,15 +869,39 @@ int check_thread_group_membership(gid_t group)
 {
     myst_thread_t* thread = myst_thread_self();
     if (group == thread->egid)
-        return 1;
+        return 0;
 
     for (unsigned int i = 0; i < thread->num_supgid; i++)
     {
         if (group == thread->supgid[i])
-            return 1;
+            return 0;
     }
 
-    return 0;
+    return -1;
+}
+
+static int _non_root_chown_checks(
+    myst_thread_t* thread,
+    uid_t owner,
+    gid_t group,
+    struct stat* statbuf)
+{
+    int ret = 0;
+
+    /* file should be owned by the thread */
+    if (statbuf->st_uid != thread->euid)
+        ERAISE(-EPERM);
+
+    /* owner should be -1 or user ID of file */
+    if (!(owner == (uid_t)-1 || owner == statbuf->st_uid))
+        ERAISE(-EPERM);
+
+    /* group should either be thread's egid or one of the supplementary gids
+     */
+    if (group != (gid_t)-1 && check_thread_group_membership(group) != 0)
+        ERAISE(-EPERM);
+done:
+    return ret;
 }
 
 long myst_syscall_chown(const char* pathname, uid_t owner, gid_t group)
@@ -868,9 +919,9 @@ long myst_syscall_chown(const char* pathname, uid_t owner, gid_t group)
         return -EINVAL;
 
     if (((owner != (uid_t)-1) &&
-         (myst_valid_uid_against_passwd_file(owner) <= 0)) ||
+         (myst_valid_uid_against_passwd_file(owner) < 0)) ||
         ((group != (gid_t)-1) &&
-         (myst_valid_gid_against_group_file(group) <= 0)))
+         (myst_valid_gid_against_group_file(group) < 0)))
     {
         ret = -EINVAL;
     }
@@ -888,20 +939,8 @@ long myst_syscall_chown(const char* pathname, uid_t owner, gid_t group)
     /* non-privileged thread case */
     else
     {
-        /* file should be owned by the thread */
         ECHECK((*fs->fs_stat)(fs, locals->suffix, &locals->statbuf));
-        if (locals->statbuf.st_uid != thread->euid)
-            ERAISE(-EPERM);
-
-        /* owner should be -1 or user ID of file */
-        if (!(owner == -1u || owner == locals->statbuf.st_uid))
-            ERAISE(-EPERM);
-
-        /* group should either be thread's egid or one of the supplementary gids
-         */
-        if (!check_thread_group_membership(group))
-            ERAISE(-EPERM);
-
+        ECHECK(_non_root_chown_checks(thread, owner, group, &locals->statbuf));
         ECHECK(fs->fs_chown(fs, locals->suffix, owner, group));
     }
 
@@ -930,9 +969,9 @@ long myst_syscall_fchown(int fd, uid_t owner, gid_t group)
         return -EINVAL;
 
     if (((owner != (uid_t)-1) &&
-         (myst_valid_uid_against_passwd_file(owner) <= 0)) ||
+         (myst_valid_uid_against_passwd_file(owner) < 0)) ||
         ((group != (gid_t)-1) &&
-         (myst_valid_gid_against_group_file(group) <= 0)))
+         (myst_valid_gid_against_group_file(group) < 0)))
     {
         ret = -EINVAL;
     }
@@ -950,20 +989,8 @@ long myst_syscall_fchown(int fd, uid_t owner, gid_t group)
     /* non-privileged thread case */
     else
     {
-        /* file should be owned by the thread */
         ECHECK((*fs->fs_fstat)(fs, file, &locals->statbuf));
-        if (locals->statbuf.st_uid != thread->euid)
-            ERAISE(-EPERM);
-
-        /* owner should be -1 or user ID of file */
-        if (!(owner == -1u || owner == locals->statbuf.st_uid))
-            ERAISE(-EPERM);
-
-        /* group should either be thread's egid or one of the supplementary gids
-         */
-        if (!check_thread_group_membership(group))
-            ERAISE(-EPERM);
-
+        ECHECK(_non_root_chown_checks(thread, owner, group, &locals->statbuf));
         ECHECK((*fs->fs_fchown)(fs, file, owner, group));
     }
 done:
