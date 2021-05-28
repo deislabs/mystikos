@@ -8,7 +8,7 @@ ifdef STRACE
 OPTS += --strace
 endif
 
-all: appdir ext2fs
+all: ext2fs
 
 appdir:
 	$(APPBUILDER) Dockerfile

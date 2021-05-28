@@ -134,6 +134,9 @@ typedef struct myst_kernel_args
     /* The number of threads that can be created (including the main thread) */
     size_t max_threads;
 
+    /* The tid/pid of the main thread passed from the host */
+    pid_t target_tid;
+
     /* Tracing options */
     bool trace_errors;
     bool trace_syscalls;
@@ -151,6 +154,10 @@ typedef struct myst_kernel_args
 
     /* true if --memcheck option present */
     bool memcheck;
+
+    // From the --max-affinity-cpus=<num> option. This setting limits the
+    // CPUs reported by sched_getaffinity().
+    size_t max_affinity_cpus;
 
     /* Callback for making target-calls */
     myst_tcall_t tcall;

@@ -67,6 +67,7 @@
 #include <myst/process.h>
 #include <myst/pubkey.h>
 #include <myst/ramfs.h>
+#include <myst/round.h>
 #include <myst/setjmp.h>
 #include <myst/signal.h>
 #include <myst/spinlock.h>
@@ -2788,6 +2789,28 @@ done:
     return ret;
 }
 
+long myst_syscall_mbind(
+    void* addr,
+    unsigned long len,
+    int mode,
+    const unsigned long* nodemask,
+    unsigned long maxnode,
+    unsigned flags)
+{
+    long ret = 0;
+
+    /* ATTN: stub implementation */
+
+    (void)addr;
+    (void)len;
+    (void)mode;
+    (void)nodemask;
+    (void)maxnode;
+    (void)flags;
+
+    return ret;
+}
+
 long myst_syscall_ret(long ret)
 {
     if (ret < 0)
@@ -4515,33 +4538,29 @@ static long _syscall(void* args_)
         {
             pid_t pid = (pid_t)x1;
             size_t cpusetsize = (pid_t)x2;
-            cpu_set_t* mask = (cpu_set_t*)x3;
+            const cpu_set_t* mask = (const cpu_set_t*)x3;
+            long ret;
 
             _strace(
                 n, "pid=%d cpusetsize=%zu mask=%p\n", pid, cpusetsize, mask);
 
-            /* ATTN: support set affinity requests */
-
-            BREAK(_return(n, 0));
+            ret = myst_syscall_sched_setaffinity(pid, cpusetsize, mask);
+            BREAK(_return(n, ret));
         }
         case SYS_sched_getaffinity:
         {
             pid_t pid = (pid_t)x1;
             size_t cpusetsize = (pid_t)x2;
             cpu_set_t* mask = (cpu_set_t*)x3;
+            long ret;
 
             _strace(
                 n, "pid=%d cpusetsize=%zu mask=%p\n", pid, cpusetsize, mask);
 
-            // ATTN: return the cpu id from sched_setaffinity.
-            // for now, make all threads fixed to cpu 0.
-            if (mask != NULL)
-            {
-                CPU_ZERO_S(cpusetsize, mask);
-                CPU_SET_S(0, cpusetsize, mask);
-            }
+            /* returns the number of bytes in the kernel affinity mask */
+            ret = myst_syscall_sched_getaffinity(pid, cpusetsize, mask);
 
-            BREAK(_return(n, cpusetsize));
+            BREAK(_return(n, ret));
         }
         case SYS_set_thread_area:
         {
@@ -4738,7 +4757,28 @@ static long _syscall(void* args_)
         case SYS_vserver:
             break;
         case SYS_mbind:
-            break;
+        {
+            void* addr = (void*)x1;
+            unsigned long len = (unsigned long)x2;
+            int mode = (int)x3;
+            const unsigned long* nodemask = (const unsigned long*)x4;
+            unsigned long maxnode = (unsigned long)x5;
+            unsigned flags = (unsigned)x6;
+
+            _strace(
+                n,
+                "addr=%p len=%lu mode=%d nodemask=%p maxnode=%lu flags=%u",
+                addr,
+                len,
+                mode,
+                nodemask,
+                maxnode,
+                flags);
+
+            long ret =
+                myst_syscall_mbind(addr, len, mode, nodemask, maxnode, flags);
+            BREAK(_return(n, ret));
+        }
         case SYS_set_mempolicy:
             break;
         case SYS_get_mempolicy:
@@ -5137,18 +5177,15 @@ static long _syscall(void* args_)
             unsigned* cpu = (unsigned*)x1;
             unsigned* node = (unsigned*)x2;
             struct getcpu_cache* tcache = (struct getcpu_cache*)x3;
+            long ret;
 
             _strace(n, "cpu=%p node=%p, tcache=%p", cpu, node, tcache);
 
-            // ATTN: report the real NUMA node id and cpu id.
-            // For now, always report id 0 for them.
-            if (cpu)
-                *cpu = 0;
+            /* unused since Linux 2.6.24 */
+            (void)tcache;
 
-            if (node)
-                *node = 0;
-
-            BREAK(_return(n, 0));
+            ret = myst_syscall_getcpu(cpu, node);
+            BREAK(_return(n, ret));
         }
         case SYS_process_vm_readv:
             break;

@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1400,6 +1401,29 @@ done:
 }
 #endif
 
+static long _sched_setaffinity(
+    pid_t pid,
+    size_t cpusetsize,
+    const cpu_set_t* mask)
+{
+    long ret;
+    RETURN(myst_sched_setaffinity_ocall(&ret, pid, cpusetsize, (void*)mask));
+}
+
+static long _sched_getaffinity(pid_t pid, size_t cpusetsize, cpu_set_t* mask)
+{
+    long ret;
+    RETURN(myst_sched_getaffinity_ocall(&ret, pid, cpusetsize, (void*)mask));
+}
+
+struct getcpu_cache;
+
+static long _getcpu(unsigned* cpu, unsigned* node)
+{
+    long ret;
+    RETURN(myst_getcpu_ocall(&ret, cpu, node));
+}
+
 long myst_handle_tcall(long n, long params[6])
 {
     const long a = params[0];
@@ -1628,6 +1652,18 @@ long myst_handle_tcall(long n, long params[6])
                 (gid_t)f);
         }
 #endif
+        case SYS_sched_setaffinity:
+        {
+            return _sched_setaffinity((pid_t)a, (size_t)b, (const cpu_set_t*)c);
+        }
+        case SYS_sched_getaffinity:
+        {
+            return _sched_getaffinity((pid_t)a, (size_t)b, (cpu_set_t*)c);
+        }
+        case SYS_getcpu:
+        {
+            return _getcpu((unsigned*)a, (unsigned*)b);
+        }
         default:
         {
             return -ENOTSUP;

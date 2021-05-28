@@ -57,6 +57,8 @@ int init_kernel_args(
     bool have_syscall_instruction,
     bool tee_debug_mode,
     uint64_t thread_event,
+    pid_t target_tid,
+    size_t max_affinity_cpus,
     long (*tcall)(long n, long params[6]),
     const char* rootfs,
     char* err,
@@ -262,6 +264,8 @@ int init_kernel_args(
     args->have_syscall_instruction = have_syscall_instruction;
     args->export_ramfs = export_ramfs;
     args->event = thread_event;
+    args->target_tid = target_tid;
+    args->max_affinity_cpus = max_affinity_cpus;
     args->tee_debug_mode = tee_debug_mode;
     args->tcall = tcall;
     args->host_enc_id_mapping = host_enc_mapping;

@@ -5,8 +5,6 @@
     "Debug": 1,
     // The stack size of each ethread
     "StackMemSize": "400k",
-    // The number of ethreads
-    "NumUserThreads": 16,
     "ProductID": 1,
     "SecurityVersion": 1,
 
@@ -21,5 +19,5 @@
     // Whether we allow "ApplicationParameters" to be overridden by command line options of "myst exec"
     "HostApplicationParameters": true,
     // The environment variables accessible inside the enclave.
-    "EnvironmentVariables": ["COMPlus_EnableDiagnostics=0"],
+    "EnvironmentVariables": ["COMPlus_EnableDiagnostics=0", "COMPlus_GCHeapHardLimit=0x10000000"],
 }
