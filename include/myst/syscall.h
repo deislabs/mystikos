@@ -4,9 +4,11 @@
 #ifndef _MYST_SYSCALL_H
 #define _MYST_SYSCALL_H
 
+#define _GNU_SOURCE
 #include <dirent.h>
 #include <fcntl.h>
 #include <poll.h>
+#include <sched.h>
 #include <stdbool.h>
 #include <sys/select.h>
 #include <sys/stat.h>
@@ -297,5 +299,17 @@ long myst_syscall_setfsgid(gid_t fsgid);
 
 long myst_syscall_getgroups(int size, gid_t list[]);
 long myst_syscall_setgroups(size_t size, const gid_t* list);
+
+long myst_syscall_sched_getaffinity(
+    pid_t pid,
+    size_t cpusetsize,
+    cpu_set_t* mask);
+
+long myst_syscall_sched_setaffinity(
+    pid_t pid,
+    size_t cpusetsize,
+    const cpu_set_t* mask);
+
+long myst_syscall_getcpu(unsigned* cpu, unsigned* node);
 
 #endif /* _MYST_SYSCALL_H */

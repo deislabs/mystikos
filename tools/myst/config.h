@@ -34,6 +34,9 @@ typedef struct _config_parsed_data_t
     char* hostname;
     myst_mounts_config_t mounts;
 
+    /* maximum number of CPUs in the kernel (for thread affinity) */
+    size_t max_affinity_cpus;
+
     // Internal data
     void* buffer;
     size_t buffer_length;

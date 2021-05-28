@@ -164,6 +164,16 @@ static json_result_t _json_read_callback(
                 if (ret != JSON_OK)
                     CONFIG_RAISE(ret);
             }
+            else if (json_match(parser, "MaxAffinityCPUs") == JSON_OK)
+            {
+                if (type != JSON_TYPE_INTEGER)
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
+
+                if (un->integer <= 0)
+                    CONFIG_RAISE(JSON_OUT_OF_BOUNDS);
+
+                parsed_data->max_affinity_cpus = (size_t)un->integer;
+            }
             else if (json_match(parser, "ApplicationPath") == JSON_OK)
             {
                 if (type == JSON_TYPE_STRING)

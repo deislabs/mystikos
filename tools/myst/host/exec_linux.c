@@ -67,6 +67,7 @@ struct options
     bool export_ramfs;
     bool shell_mode;
     bool memcheck;
+    size_t max_affinity_cpus;
     char rootfs[PATH_MAX];
     size_t heap_size;
     const char* app_config_path;
@@ -105,6 +106,22 @@ static void _get_options(int* argc, const char* argv[], struct options* opts)
     /* Get --memcheck option */
     if (cli_getopt(argc, argv, "--memcheck", NULL) == 0)
         opts->memcheck = true;
+
+    /* Get --max-affinity-cpus */
+    {
+        const char* arg = NULL;
+
+        if ((cli_getopt(argc, argv, "--max-affinity-cpus", &arg) == 0))
+        {
+            char* end = NULL;
+            size_t val = strtoull(arg, &end, 10);
+
+            if (!end || *end != '\0')
+                _err("bad --max-affinity-cpus=%s option", arg);
+
+            opts->max_affinity_cpus = val;
+        }
+    }
 
     /* Get --export-ramfs option */
     if (cli_getopt(argc, argv, "--export-ramfs", NULL) == 0)
@@ -289,6 +306,8 @@ static int _enter_kernel(
                 have_syscall_instruction,
                 tee_debug_mode,
                 (uint64_t)&_thread_event,
+                (pid_t)syscall(SYS_gettid),
+                options->max_affinity_cpus,
                 tcall,
                 options->rootfs,
                 terr,
@@ -473,7 +492,7 @@ static void* _thread_func(void* arg)
     uint64_t cookie = (uint64_t)arg;
     uint64_t event = (uint64_t)&_thread_event;
 
-    if (myst_run_thread(cookie, event) != 0)
+    if (myst_run_thread(cookie, event, (pid_t)syscall(SYS_gettid)) != 0)
     {
         fprintf(stderr, "myst_run_thread() failed\n");
         exit(1);

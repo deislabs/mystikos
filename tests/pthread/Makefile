@@ -27,9 +27,19 @@ endif
 # Increase timeout for these tests
 export TIMEOUT=360
 
+MAX_CPUS=--max-cpus=1024
+
 tests:
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/pthread_musl $(COUNT)
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/pthread_gcc $(COUNT)
+
+t:
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(MAX_CPUS) rootfs /bin/pthread_gcc $(COUNT)
+
+tn:
+	$(foreach i, $(shell seq 1 10), \
+            $(RUNTEST) $(MYST_EXEC) $(OPTS) $(MAX_CPUS) rootfs /bin/pthread_gcc $(COUNT) \
+            $(NL))
 
 tests-n:
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/pthread_musl 1000

@@ -7,7 +7,7 @@ ifdef STRACE
 OPTS = --strace
 endif
 
-OPTS = --memory-size=512m
+OPTS = --memory-size=1024m
 
 all: rootfs
 
@@ -17,13 +17,15 @@ rootfs: appdir
 appdir:
 	$(APPBUILDER) Dockerfile
 
+TIMEOUT=60s
+
 run:
 	test -f server.pid && kill -9 `cat server.pid` || true
-	$(MYST_EXEC) $(OPTS) rootfs /usr/local/bin/python3 /app/hello_server.py & echo $$! > server.pid
-	sleep 20
-	curl 127.0.0.1:8000
+	$(MYST_EXEC) $(OPTS) rootfs /usr/local/bin/python3 /app/hello_server.py > server.output & echo $$! > server.pid
+	timeout $(TIMEOUT) tail -f server.output | ./client.sh
 	test -f server.pid && kill -9 `cat server.pid` && rm server.pid || true
+	test -f client.output
 
 clean:
 	test -f server.pid && kill -9 `cat server.pid` || true
-	rm -rf rootfs appdir server.pid
+	rm -rf rootfs appdir server.output server.pid client.output

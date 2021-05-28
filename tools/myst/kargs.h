@@ -24,6 +24,8 @@ int init_kernel_args(
     bool have_syscall_instruction,
     bool tee_debug_mode,
     uint64_t thread_event,
+    pid_t target_tid,
+    size_t max_affinity_cpus,
     long (*tcall)(long n, long params[6]),
     const char* rootfs,
     char* err,

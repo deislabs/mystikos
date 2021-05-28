@@ -12,17 +12,16 @@ OPTS += --memory-size=1024m
 
 all: appdir private.pem
 
+TIMEOUT=120s
+
 run: appdir private.pem
 	# Kill the server from a previous run if it wasn't shut down properly.
 	test -f server.pid && kill -9 `cat server.pid` || true
 	$(MYST) package appdir private.pem config.json
-	myst/bin/$(APPNAME) $(OPTS) & echo $$! > server.pid
-	sleep 60
-	# Request 3 times from the client to make sure the server is robust.
-	curl 127.0.0.1:5050
-	curl 127.0.0.1:5050
-	curl 127.0.0.1:5050
+	myst/bin/$(APPNAME) $(OPTS) > server.output & echo $$! > server.pid
+	timeout $(TIMEOUT) tail -f server.output | ./client.sh
 	test -f server.pid && kill -9 `cat server.pid` && rm server.pid || true
+	test -f client.output
 
 # run the server in the foreground:
 server:
@@ -66,4 +65,4 @@ private.pem:
 
 clean:
 	test -f server.pid && kill -9 `cat server.pid` || true
-	sudo rm -fr appdir rootfs build obj bin myst private.pem server.pid
+	sudo rm -fr appdir rootfs build obj bin myst private.pem server.pid server.output client.output

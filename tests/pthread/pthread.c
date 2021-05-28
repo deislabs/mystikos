@@ -7,6 +7,8 @@
 #include <limits.h>
 #include <myst/tee.h>
 #include <pthread.h>
+#include <sched.h>
+#include <semaphore.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -493,7 +495,7 @@ void test_exhaust_threads(void)
     {
         pthread_attr_t attr;
         pthread_attr_init(&attr);
-        pthread_attr_setstacksize(&attr, 5 * 4096 /*PTHREAD_STACK_MIN*/);
+        pthread_attr_setstacksize(&attr, PTHREAD_STACK_MIN);
         int r = _pthread_create(&threads[i], &attr, _exhaust_thread, (void*)i);
         pthread_attr_destroy(&attr);
 
@@ -532,14 +534,22 @@ void test_exhaust_threads(void)
 **==============================================================================
 */
 
-static _Atomic(pid_t) _child_tid;
+static pid_t _child_tid;
+
+static sem_t _terminate_sem;
 
 static void* _affinity_thread_func(void* arg)
 {
+    sem_t* sem = (sem_t*)arg;
+
     _child_tid = _gettid();
-    const uint64_t msec = 500;
-    sleep_msec(msec);
-    return arg;
+    sem_post(sem);
+
+    /* wait for the parent thread to signal the terminate semaphore */
+    while (sem_wait(&_terminate_sem))
+        ;
+
+    return NULL;
 }
 
 void test_affinity(void)
@@ -549,21 +559,25 @@ void test_affinity(void)
     cpu_set_t main_mask;
     size_t max_cpu = 0;
     pthread_attr_t attr;
+    static sem_t sem1;
+    static sem_t sem2;
 
     printf("=== start test (%s)\n", __FUNCTION__);
 
     _child_tid = 0;
+    assert(sem_init(&sem1, 0, 0) == 0);
+    assert(sem_init(&_terminate_sem, 0, 0) == 0);
 
     /* Create one thread */
-    if ((r = _pthread_create(&thread, NULL, _affinity_thread_func, NULL)))
+    if ((r = _pthread_create(&thread, NULL, _affinity_thread_func, &sem1)))
     {
         PUTERR("pthread_create() failed: %d", r);
         abort();
     }
 
     /* wait for the child to set _child_tid */
-    while (_child_tid == 0)
-        asm volatile("pause" ::: "memory");
+    while (sem_wait(&sem1))
+        ;
 
     /* get the affinity of main thread */
     {
@@ -619,9 +633,9 @@ void test_affinity(void)
     {
         unsigned cpu = UINT_MAX;
         unsigned node = UINT_MAX;
-        uint64_t tcache[16];
 
-        long ret = syscall(SYS_getcpu, &cpu, &node, tcache);
+        /* final null argument is unused since Linux 2.6.24 */
+        long ret = syscall(SYS_getcpu, &cpu, &node, NULL);
         assert(ret == 0);
         assert(cpu == 0);
 
@@ -714,6 +728,9 @@ void test_affinity(void)
     r = sched_setaffinity(0, sizeof(main_mask), &main_mask);
     assert(r == 0);
 
+    /* terminate the child waiting on the semaphore */
+    assert(sem_post(&_terminate_sem) == 0);
+
     if (pthread_join(thread, NULL) != 0)
     {
         PUTERR("pthread_join() failed");
@@ -745,16 +762,20 @@ void test_affinity(void)
     }
 #endif
 
+    /* clear the tid */
+    _child_tid = 0;
+    assert(sem_init(&sem2, 0, 0) == 0);
+
     /* Create one child thread with attr */
-    if ((r = _pthread_create(&thread, &attr, _affinity_thread_func, NULL)))
+    if ((r = _pthread_create(&thread, &attr, _affinity_thread_func, &sem2)))
     {
         PUTERR("pthread_create() with attr failed: %d", r);
         abort();
     }
 
     /* wait for the child to set _child_tid */
-    while (_child_tid == 0)
-        asm volatile("pause" ::: "memory");
+    while (sem_wait(&sem2))
+        ;
 
     r = pthread_attr_destroy(&attr);
     assert(r == 0);
@@ -775,6 +796,9 @@ void test_affinity(void)
     }
 #endif
 
+    /* terminate the child waiting on the semaphore */
+    assert(sem_post(&_terminate_sem) == 0);
+
     if (pthread_join(thread, NULL) != 0)
     {
         PUTERR("pthread_join() failed");
@@ -782,6 +806,34 @@ void test_affinity(void)
     }
 
     T(printf("joined...\n");)
+
+    sem_destroy(&sem1);
+    sem_destroy(&sem2);
+
+    /* test against overwrites of the CPU set beyond cpusetsize */
+    {
+        assert(sizeof(cpu_set_t) == 128);
+
+        /* case 1: 8 bytes */
+        {
+            cpu_set_t mask;
+            const size_t size = 8; /* must be >= kernel affinity mask size */
+
+            CPU_ZERO(&mask);
+            memset((uint8_t*)&mask + size, 0xab, sizeof(mask) - size);
+
+            for (size_t i = 0; i < size; i++)
+                assert(((uint8_t*)&mask)[i] == 0);
+
+            for (size_t i = size; i < sizeof(mask); i++)
+                assert(((uint8_t*)&mask)[i] == 0xab);
+
+            assert(sched_getaffinity(0, size, &mask) == 0);
+
+            for (size_t i = size; i < sizeof(mask); i++)
+                assert(((uint8_t*)&mask)[i] == 0xab);
+        }
+    }
 
     printf("=== passed test (%s)\n", __FUNCTION__);
 }

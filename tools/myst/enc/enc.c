@@ -330,6 +330,7 @@ struct enter_arg
     const void* envp_data;
     size_t envp_size;
     uint64_t event;
+    pid_t target_tid;
 };
 
 static long _enter(void* arg_)
@@ -343,10 +344,12 @@ static long _enter(void* arg_)
     const void* envp_data = arg->envp_data;
     size_t envp_size = arg->envp_size;
     uint64_t event = arg->event;
+    pid_t target_tid = arg->target_tid;
     bool trace_errors = false;
     bool trace_syscalls = false;
     bool shell_mode = false;
     bool memcheck = false;
+    size_t max_affinity_cpus = 0;
     bool export_ramfs = false;
     const char* rootfs = NULL;
     config_parsed_data_t parsed_config;
@@ -501,6 +504,7 @@ static long _enter(void* arg_)
         trace_syscalls = options->trace_syscalls;
         shell_mode = options->shell_mode;
         memcheck = options->memcheck;
+        max_affinity_cpus = options->max_affinity_cpus;
         export_ramfs = options->export_ramfs;
 
         if (strlen(options->rootfs) >= PATH_MAX)
@@ -553,6 +557,8 @@ static long _enter(void* arg_)
             false, /* have_syscall_instruction */
             tee_debug_mode,
             event, /* thread_event */
+            target_tid,
+            max_affinity_cpus,
             myst_tcall,
             rootfs,
             err,
@@ -607,7 +613,8 @@ int myst_enter_ecall(
     size_t argv_size,
     const void* envp_data,
     size_t envp_size,
-    uint64_t event)
+    uint64_t event,
+    pid_t target_tid)
 {
     struct enter_arg arg = {
         .options = options,
@@ -617,6 +624,7 @@ int myst_enter_ecall(
         .envp_data = envp_data,
         .envp_size = envp_size,
         .event = event,
+        .target_tid = target_tid,
     };
 
     /* prevent this function from being called more than once */
@@ -639,9 +647,9 @@ int myst_enter_ecall(
     return (int)myst_call_on_stack(stack, _enter, &arg);
 }
 
-long myst_run_thread_ecall(uint64_t cookie, uint64_t event)
+long myst_run_thread_ecall(uint64_t cookie, uint64_t event, pid_t target_tid)
 {
-    return myst_run_thread(cookie, event);
+    return myst_run_thread(cookie, event, target_tid);
 }
 
 /* This overrides the weak version in libmystkernel.a */
@@ -867,7 +875,12 @@ int myst_tcall_get_cpuinfo(char* buf, size_t size)
 #define ENCLAVE_SECURITY_VERSION 1
 #define ENCLAVE_DEBUG true
 
-#define ENCLAVE_HEAP_SIZE 131072
+// ATTN: the thread test needs additional heap after adding affinity support.
+// the value was derived from trial and error. 132 kilobytes is the smallest
+// value that does not exhaust OE heap memory for tests/pthread. We add a small
+// value to this as a safety margin.
+#define ENCLAVE_HEAP_SIZE_MARGIN (32 * 1024)
+#define ENCLAVE_HEAP_SIZE ((132 * 1024) + ENCLAVE_HEAP_SIZE_MARGIN)
 
 #ifdef MYST_ENABLE_GCOV
 #define ENCLAVE_STACK_SIZE 8 * 8192

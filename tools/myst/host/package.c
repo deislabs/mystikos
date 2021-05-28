@@ -501,6 +501,29 @@ int _exec_package(
     if (cli_getopt(&argc, argv, "--memcheck", NULL) == 0)
         options.memcheck = true;
 
+    /* Get --max-affinity-cpus */
+    {
+        const char* arg = NULL;
+
+        if ((cli_getopt(&argc, argv, "--max-affinity-cpus", &arg) == 0))
+        {
+            char* end = NULL;
+            size_t val = strtoull(arg, &end, 10);
+
+            if (!end || *end != '\0')
+            {
+                fprintf(
+                    stderr,
+                    "%s: bad --max-affinity-cpus=%s option\n",
+                    argv[0],
+                    arg);
+                goto done;
+            }
+
+            options.max_affinity_cpus = val;
+        }
+    }
+
     if (!realpath(argv[0], full_app_path))
     {
         fprintf(stderr, "Invalid path %s\n", argv[0]);
