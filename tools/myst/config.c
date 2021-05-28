@@ -335,7 +335,7 @@ done:
     return ret;
 }
 
-int _parse_config(config_parsed_data_t* parsed_data)
+int parse_config(config_parsed_data_t* parsed_data)
 {
     int ret = -1;
     json_parser_t parser;
@@ -344,6 +344,12 @@ int _parse_config(config_parsed_data_t* parsed_data)
         malloc,
         free,
     };
+
+    /* set default settings (where settings are missing from config file) */
+    {
+        parsed_data->oe_num_user_threads = MYST_MAX_KSTACKS;
+        parsed_data->oe_num_stack_pages = 8;
+    }
 
     if ((ret = json_parser_init(
              &parser,
@@ -386,7 +392,7 @@ int parse_config_from_buffer(
     memcpy(parsed_data->buffer, config_data, config_size);
     parsed_data->buffer_length = config_size;
 
-    ret = _parse_config(parsed_data);
+    ret = parse_config(parsed_data);
 
 done:
     if (ret != 0 && parsed_data->buffer)

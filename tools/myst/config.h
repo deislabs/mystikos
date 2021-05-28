@@ -54,3 +54,5 @@ int parse_config_from_file(
 int write_oe_config_fd(int fd, config_parsed_data_t* parsed_data);
 
 int free_config(config_parsed_data_t* parsed_data);
+
+int parse_config(config_parsed_data_t* parsed_data);
