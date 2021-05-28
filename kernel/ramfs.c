@@ -534,8 +534,10 @@ static int _path_to_inode_recursive(
     {
         for (size_t i = 0; i < ntoks; i++)
         {
-            inode_t* p;
+            if (!S_ISDIR(parent->mode))
+                ERAISE_QUIET(-ENOTDIR);
 
+            inode_t* p;
             if (!(p = _inode_find_child(parent, toks[i])))
                 ERAISE_QUIET(-ENOENT);
 
@@ -2545,7 +2547,7 @@ static int _fs_lchown(
     if (!S_ISLNK(locals->inode->mode))
         ERAISE(-ENOTDIR);
 
-    _chown(locals->inode, owner, group);
+    ECHECK(_chown(locals->inode, owner, group));
 
 done:
 
