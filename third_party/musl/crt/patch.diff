@@ -306,6 +306,15 @@ index afec985a..5435b9b5 100644
  	return p;
  }
  
+diff --git a/src/fcntl/open.c b/src/fcntl/open.c
+index 1d817a2d..a36ba05e 100644
+--- a/src/fcntl/open.c
++++ b/src/fcntl/open.c
+@@ -21,3 +21,4 @@ int open(const char *filename, int flags, ...)
+ }
+ 
+ weak_alias(open, open64);
++weak_alias(open, __open_nocancel);
 diff --git a/src/fenv/feupdateenv.c b/src/fenv/feupdateenv.c
 index 50cef8e5..803a7f8d 100644
 --- a/src/fenv/feupdateenv.c
@@ -339,12 +348,31 @@ index 7167d3e1..9deca8e7 100644
  hidden int __pthread_rwlock_rdlock(pthread_rwlock_t *);
  hidden int __pthread_rwlock_tryrdlock(pthread_rwlock_t *);
  hidden int __pthread_rwlock_timedrdlock(pthread_rwlock_t *__restrict, const struct timespec *__restrict);
+diff --git a/src/include/string.h b/src/include/string.h
+index 2133b5c1..cfa2044d 100644
+--- a/src/include/string.h
++++ b/src/include/string.h
+@@ -4,8 +4,8 @@
+ #include "../../include/string.h"
+ 
+ hidden void *__memrchr(const void *, int, size_t);
+-hidden char *__stpcpy(char *, const char *);
+-hidden char *__stpncpy(char *, const char *, size_t);
++char *__stpcpy(char *, const char *);
++char *__stpncpy(char *, const char *, size_t);
+ hidden char *__strchrnul(const char *, int);
+ 
+ #endif
 diff --git a/src/include/time.h b/src/include/time.h
-index cbabde47..4f94bc39 100644
+index cbabde47..60c64312 100644
 --- a/src/include/time.h
 +++ b/src/include/time.h
-@@ -10,6 +10,6 @@ hidden char *__asctime_r(const struct tm *, char *);
- hidden struct tm *__gmtime_r(const time_t *restrict, struct tm *restrict);
+@@ -7,9 +7,9 @@ hidden int __clock_gettime(clockid_t, struct timespec *);
+ hidden int __clock_nanosleep(clockid_t, int, const struct timespec *, struct timespec *);
+ 
+ hidden char *__asctime_r(const struct tm *, char *);
+-hidden struct tm *__gmtime_r(const time_t *restrict, struct tm *restrict);
++struct tm *__gmtime_r(const time_t *restrict, struct tm *restrict);
  hidden struct tm *__localtime_r(const time_t *restrict, struct tm *restrict);
  
 -hidden size_t __strftime_l(char *restrict, size_t, const char *restrict, const struct tm *restrict, locale_t);
@@ -499,6 +527,26 @@ index 6f3ef656..614121c3 100644
 +
 +    return myst_syscall(n, params);
 +}
+diff --git a/src/network/h_errno.c b/src/network/h_errno.c
+index 4f700cea..4306ade2 100644
+--- a/src/network/h_errno.c
++++ b/src/network/h_errno.c
+@@ -1,9 +1,9 @@
+ #include <netdb.h>
+ 
+-#undef h_errno
+-int h_errno;
+-
++#undef __h_errno
++int __h_errno;
++ 
+ int *__h_errno_location(void)
+ {
+-	return &h_errno;
+-}
++	return &__h_errno;
++}
+\ No newline at end of file
 diff --git a/src/network/res_init.c b/src/network/res_init.c
 index 5dba9dfc..9b595a19 100644
 --- a/src/network/res_init.c
@@ -510,6 +558,15 @@ index 5dba9dfc..9b595a19 100644
 +
 +weak_alias(res_init, __res_init);
 \ No newline at end of file
+diff --git a/src/network/sendmmsg.c b/src/network/sendmmsg.c
+index eeae1d0a..7e13faa8 100644
+--- a/src/network/sendmmsg.c
++++ b/src/network/sendmmsg.c
+@@ -28,3 +28,4 @@ error:
+ 	return syscall_cp(SYS_sendmmsg, fd, msgvec, vlen, flags);
+ #endif
+ }
++weak_alias (sendmmsg, __sendmmsg);
 diff --git a/src/sched/affinity.c b/src/sched/affinity.c
 index 948ece41..fd7e7801 100644
 --- a/src/sched/affinity.c
@@ -565,6 +622,25 @@ index 948ece41..fd7e7801 100644
 +	return 0;
 +}
 \ No newline at end of file
+diff --git a/src/select/poll.c b/src/select/poll.c
+index c84c8a99..a5f561bd 100644
+--- a/src/select/poll.c
++++ b/src/select/poll.c
+@@ -13,3 +13,4 @@ int poll(struct pollfd *fds, nfds_t n, int timeout)
+ 		.tv_nsec = timeout%1000*1000000 }) : 0, 0, _NSIG/8);
+ #endif
+ }
++weak_alias (poll, __poll);
+diff --git a/src/stdio/snprintf.c b/src/stdio/snprintf.c
+index 771503b2..8a8529b1 100644
+--- a/src/stdio/snprintf.c
++++ b/src/stdio/snprintf.c
+@@ -10,4 +10,4 @@ int snprintf(char *restrict s, size_t n, const char *restrict fmt, ...)
+ 	va_end(ap);
+ 	return ret;
+ }
+-
++weak_alias (snprintf, __snprintf);
 diff --git a/src/thread/__unmapself.c b/src/thread/__unmapself.c
 index 31d94e67..e34cca2e 100644
 --- a/src/thread/__unmapself.c
@@ -956,6 +1032,33 @@ index 4f101716..c6091da5 100644
  __cp_end:
  	ret
  __cp_cancel:
+diff --git a/src/unistd/close.c b/src/unistd/close.c
+index 5b38e019..e80418e6 100644
+--- a/src/unistd/close.c
++++ b/src/unistd/close.c
+@@ -16,3 +16,4 @@ int close(int fd)
+ 	if (r == -EINTR) r = 0;
+ 	return __syscall_ret(r);
+ }
++weak_alias(close, __close_nocancel);
+diff --git a/src/unistd/read.c b/src/unistd/read.c
+index f3589c05..12e46040 100644
+--- a/src/unistd/read.c
++++ b/src/unistd/read.c
+@@ -5,3 +5,4 @@ ssize_t read(int fd, void *buf, size_t count)
+ {
+ 	return syscall_cp(SYS_read, fd, buf, count);
+ }
++weak_alias(read, __read_nocancel);
+diff --git a/src/unistd/write.c b/src/unistd/write.c
+index 8fd5bc5c..38bfbbd8 100644
+--- a/src/unistd/write.c
++++ b/src/unistd/write.c
+@@ -5,3 +5,4 @@ ssize_t write(int fd, const void *buf, size_t count)
+ {
+ 	return syscall_cp(SYS_write, fd, buf, count);
+ }
++weak_alias(write, __write_nocancel);
 diff --git a/src/internal/__popcountdi2.c b/src/internal/__popcountdi2.c
 new file mode 100644
 index 00000000..b4b374a1

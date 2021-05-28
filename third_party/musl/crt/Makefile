@@ -82,6 +82,8 @@ NEWFILES =
 NEWFILES += src/internal/__popcountdi2.c
 NEWFILES += src/stdio/__fprintf_chk.c
 NEWFILES += src/stdio/__vfprintf_chk.c
+NEWFILES += src/unistd/preadv2.c
+NEWFILES += src/unistd/pwritev2.c
 
 musl:
 	mkdir -p $(BUILDDIR)
