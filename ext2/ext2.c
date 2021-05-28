@@ -1205,6 +1205,7 @@ static int _path_to_ino_recursive(
     {
         char buf[EXT2_PATH_MAX];
         char target[EXT2_PATH_MAX];
+        ext2_inode_t current_inode;
         ext2_dirent_t ent;
         ext2_ino_t ino;
         const char* toks[32];
@@ -1247,6 +1248,10 @@ static int _path_to_ino_recursive(
     /* load each inode along the path until found */
     for (i = 0; i < ntoks; i++)
     {
+        ECHECK(ext2_read_inode(ext2, current_ino, &locals->current_inode));
+        if (!S_ISDIR(locals->current_inode.i_mode))
+            ERAISE(-ENOTDIR);
+
         ECHECK(_load_dirent(ext2, current_ino, locals->toks[i], &locals->ent));
         assert(locals->ent.inode != 0);
         locals->ino = locals->ent.inode;

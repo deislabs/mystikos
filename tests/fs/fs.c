@@ -908,6 +908,20 @@ static void test_ioctl()
     _passed(__FUNCTION__);
 }
 
+static void test_enotdir()
+{
+    int fd = creat("/test_enotdir", 0666);
+    assert(fd >= 0);
+    assert(close(fd) == 0);
+
+    // path has a regular file as an intermediate component
+    int ret = lchown("/test_enotdir/symlink", 0, 0);
+    assert(ret < 0);
+    assert(errno == ENOTDIR);
+
+    _passed(__FUNCTION__);
+}
+
 int main(int argc, const char* argv[])
 {
     if (argc != 2)
@@ -954,6 +968,7 @@ int main(int argc, const char* argv[])
     test_pwritev_preadv("pwritev2");
     test_pwritev_preadv("pwritev64v2");
     test_ioctl();
+    test_enotdir();
 
     printf("=== passed all tests (%s)\n", argv[0]);
 
