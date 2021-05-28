@@ -348,6 +348,7 @@
 /ltp/testcases/kernel/syscalls/kill/kill06
 /ltp/testcases/kernel/syscalls/kill/kill11
 /ltp/testcases/kernel/syscalls/lchown/lchown01_16
+/ltp/testcases/kernel/syscalls/lchown/lchown02
 /ltp/testcases/kernel/syscalls/lchown/lchown02_16
 /ltp/testcases/kernel/syscalls/lchown/lchown03
 /ltp/testcases/kernel/syscalls/lchown/lchown03_16
