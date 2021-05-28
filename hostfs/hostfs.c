@@ -486,13 +486,18 @@ static int _fs_lstat(myst_fs_t* fs, const char* pathname, struct stat* statbuf)
     hostfs_t* hostfs = (hostfs_t*)fs;
     long tret;
     char path[PATH_MAX];
+    uid_t host_uid;
+    gid_t host_gid;
 
     if (!_hostfs_valid(hostfs) || !pathname || !statbuf)
         ERAISE(-EINVAL);
 
+    ECHECK(_get_host_uid_gid(&host_uid, &host_gid));
+
     ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
 
-    long params[6] = {(long)path, (long)statbuf};
+    long params[6] = {
+        (long)path, (long)statbuf, (long)host_uid, (long)host_gid};
     ECHECK((tret = myst_tcall(SYS_lstat, params)));
 
     if (tret != 0)
