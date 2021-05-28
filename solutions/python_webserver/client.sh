@@ -5,7 +5,7 @@ rm -f client.output
 while read -r line; do
   echo $line
   if echo $line | grep -q 'launching server...'; then
-    curl 127.0.0.1:8000
+    curl 127.0.0.1:8000 || exit 1
     touch client.output
     exit 0
   fi
