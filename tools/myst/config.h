@@ -1,10 +1,29 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#ifndef _TOOLS_MYST_CONFIG_H
+#define _TOOLS_MYST_CONFIG_H
+
 #include <myst/json.h>
 #include <myst/kernel.h>
 #include <stdio.h>
 #include <sys/types.h>
+
+#ifdef MYST_ENABLE_GCOV
+#define ENCLAVE_STACK_SIZE (8 * 8192)
+#else
+#define ENCLAVE_STACK_SIZE 8192
+#endif
+
+#define ENCLAVE_HEAP_SIZE (164 * 1024)
+
+#define ENCLAVE_MAX_THREADS MYST_MAX_KSTACKS
+
+#define ENCLAVE_PRODUCT_ID 1
+
+#define ENCLAVE_SECURITY_VERSION 1
+
+#define ENCLAVE_DEBUG true
 
 typedef struct _config_parsed_data_t
 {
@@ -56,3 +75,5 @@ int write_oe_config_fd(int fd, config_parsed_data_t* parsed_data);
 int free_config(config_parsed_data_t* parsed_data);
 
 int parse_config(config_parsed_data_t* parsed_data);
+
+#endif /* _TOOLS_MYST_CONFIG_H */

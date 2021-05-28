@@ -871,26 +871,6 @@ int myst_tcall_get_cpuinfo(char* buf, size_t size)
     return retval;
 }
 
-#define ENCLAVE_PRODUCT_ID 1
-#define ENCLAVE_SECURITY_VERSION 1
-#define ENCLAVE_DEBUG true
-
-// ATTN: the thread test needs additional heap after adding affinity support.
-// the value was derived from trial and error. 132 kilobytes is the smallest
-// value that does not exhaust OE heap memory for tests/pthread. We add a small
-// value to this as a safety margin.
-#define ENCLAVE_HEAP_SIZE_MARGIN (32 * 1024)
-#define ENCLAVE_HEAP_SIZE ((132 * 1024) + ENCLAVE_HEAP_SIZE_MARGIN)
-
-#ifdef MYST_ENABLE_GCOV
-#define ENCLAVE_STACK_SIZE 8 * 8192
-#else
-#define ENCLAVE_STACK_SIZE 8192
-#endif
-
-/* Note: there should be at least as many kernel stacks as threads */
-#define ENCLAVE_MAX_THREADS MYST_MAX_KSTACKS
-
 OE_SET_ENCLAVE_SGX(
     ENCLAVE_PRODUCT_ID,
     ENCLAVE_SECURITY_VERSION,

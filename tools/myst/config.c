@@ -347,8 +347,8 @@ int parse_config(config_parsed_data_t* parsed_data)
 
     /* set default settings (where settings are missing from config file) */
     {
-        parsed_data->oe_num_user_threads = MYST_MAX_KSTACKS;
-        parsed_data->oe_num_stack_pages = 8;
+        parsed_data->oe_num_user_threads = ENCLAVE_MAX_THREADS;
+        parsed_data->oe_num_stack_pages = ENCLAVE_STACK_SIZE / PAGE_SIZE;
     }
 
     if ((ret = json_parser_init(
