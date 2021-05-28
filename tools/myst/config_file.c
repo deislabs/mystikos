@@ -24,9 +24,6 @@
         }                                                   \
     } while (0)
 
-// From the main config.c file
-int _parse_config(config_parsed_data_t* parsed_data);
-
 int parse_config_from_file(
     const char* config_path,
     config_parsed_data_t* parsed_data)
@@ -41,7 +38,7 @@ int parse_config_from_file(
         CONFIG_RAISE(JSON_FAILED);
     }
 
-    ret = _parse_config(parsed_data);
+    ret = parse_config(parsed_data);
     if (ret != JSON_OK)
     {
         CONFIG_RAISE(ret);
