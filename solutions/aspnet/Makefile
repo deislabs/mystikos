@@ -12,7 +12,7 @@ OPTS += --memory-size=1024m
 
 all: appdir private.pem
 
-TIMEOUT=120s
+TIMEOUT=180s
 
 run: appdir private.pem
 	# Kill the server from a previous run if it wasn't shut down properly.
