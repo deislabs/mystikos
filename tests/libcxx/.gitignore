@@ -4,3 +4,7 @@ appdir
 testsa*
 temp_*
 tests_*
+failed
+failedalpine
+alltests
+passed

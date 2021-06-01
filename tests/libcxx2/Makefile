@@ -69,7 +69,7 @@ tests:
 	$(RUNTEST) $(MAKE) __tests
 
 __tests:
-	for i in a b c d e f g h i j k l m n o ; do \
+	for i in a b c d e f g h i j k l m n o p ; do \
 		$(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run testsa$$i.passed ; \
 	done
 
@@ -85,9 +85,9 @@ runall:
 
 # Splits tests into batches for easy processing 
 split: clean-tests
-	split -l 140 $(ALLTESTS) tests
-	for i in a b c d e f g h i j k l m n o ; do \
-		grep -Fxf tests.passed testsa$$i > testsa$$i.passed ; \
+	split -l 140 alltests tests
+	for i in a b c d e f g h i j k l m n o p ; do \
+		grep -Fxf passed testsa$$i > testsa$$i.passed ; \
 	done
 
 # Removes all the passed tests from all the tests to give us a list of failed ones
@@ -99,11 +99,14 @@ repeat:
 	while true; do make tests >> output ; done
 
 # Use to order tests and remove flaky ones
-clean-tests: 
+clean-tests:
 	sort -o $(ALLTESTS) $(ALLTESTS)
+	sort -o passed tests.passed
+	sort -o failed tests.failed
+	sort -o failedubuntu tests.failedubuntu
 	comm -23 $(ALLTESTS) tests.remove > temp
-	mv temp $(ALLTESTS)
-	comm -23 tests.passed tests.remove > temp
-	mv temp tests.passed
-	comm -23 tests.failed tests.failedubuntu > temp
-	mv temp tests.failed
+	mv temp alltests
+	comm -23 passed tests.remove > temp
+	mv temp passed
+	comm -23 failed tests.failedubuntu > temp
+	mv temp failed

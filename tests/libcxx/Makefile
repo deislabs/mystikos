@@ -69,7 +69,7 @@ OPTS += --memory-size=512m
 tests:
 	$(RUNTEST) $(MAKE) __tests
 
-__TESTS=a b c d e f
+__TESTS=a b c d e f g
 .PHONY: $(__TESTS)
 
 __tests: $(__TESTS)
@@ -89,9 +89,9 @@ runall:
 
 # Splits tests into batches for easy processing 
 split: clean-tests
-	split -l 350 $(ALLTESTS) tests
-	for i in a b c d e f ; do \
-		grep -Fxf tests.passed testsa$$i > testsa$$i.passed ; \
+	split -l 350 alltests tests
+	for i in a b c d e f g ; do \
+		grep -Fxf passed testsa$$i > testsa$$i.passed ; \
 	done
 
 # Removes all the passed tests from all the tests to give us a list of failed ones
@@ -105,12 +105,12 @@ repeat:
 # Use to order tests and remove flaky ones
 clean-tests:
 	sort -o $(ALLTESTS) $(ALLTESTS)
-	sort -o tests.passed tests.passed
-	sort -o tests.failed tests.failed
-	sort -o tests.failedalpine tests.failedalpine
+	sort -o passed tests.passed
+	sort -o failed tests.failed
+	sort -o failedalpine tests.failedalpine
 	comm -23 $(ALLTESTS) tests.remove > temp
-	mv temp $(ALLTESTS)
-	comm -23 tests.passed tests.remove > temp
-	mv temp tests.passed
-	comm -23 tests.failed tests.failedalpine > temp
-	mv temp tests.failed
+	mv temp alltests
+	comm -23 passed tests.remove > temp
+	mv temp passed
+	comm -23 failed tests.failedalpine > temp
+	mv temp failed
