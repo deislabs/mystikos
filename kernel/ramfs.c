@@ -2152,6 +2152,19 @@ done:
     return ret;
 }
 
+static void _set_fd_flag(myst_file_t* file, long arg)
+{
+    assert(_file_valid(file));
+
+    /* Linux currently only defines a single flag, FD_CLOEXEC */
+    if (arg & FD_CLOEXEC)
+        file->fdflags = FD_CLOEXEC;
+    else
+        file->fdflags = 0;
+
+    _update_timestamps(file->inode, CHANGE);
+}
+
 static int _fs_fcntl(myst_fs_t* fs, myst_file_t* file, int cmd, long arg)
 {
     int ret = 0;
@@ -2164,15 +2177,7 @@ static int _fs_fcntl(myst_fs_t* fs, myst_file_t* file, int cmd, long arg)
     {
         case F_SETFD:
         {
-            if (arg != FD_CLOEXEC && arg != 0)
-                ERAISE(-EINVAL);
-
-            if (arg == FD_CLOEXEC)
-                file->fdflags = FD_CLOEXEC;
-            else
-                file->fdflags = 0;
-
-            _update_timestamps(file->inode, CHANGE);
+            _set_fd_flag(file, arg);
             goto done;
         }
         case F_GETFD:
@@ -2214,10 +2219,26 @@ static int _fs_ioctl(
     if (!_ramfs_valid(ramfs) || !_file_valid(file))
         ERAISE(-EBADF);
 
-    if (request == TIOCGWINSZ)
-        ERAISE(-EINVAL);
-
-    ERAISE(-ENOTSUP);
+    switch (request)
+    {
+        case TIOCGWINSZ:
+        {
+            ERAISE(-EINVAL);
+            break;
+        }
+        case FIOCLEX:
+        {
+            _set_fd_flag(file, FD_CLOEXEC);
+            break;
+        }
+        case FIONCLEX:
+        {
+            _set_fd_flag(file, 0);
+            break;
+        }
+        default:
+            ERAISE(-ENOTSUP);
+    }
 
 done:
 

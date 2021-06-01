@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/fcntl.h>
+#include <sys/ioctl.h>
 #include <sys/random.h>
 #include <sys/sendfile.h>
 #include <sys/stat.h>
@@ -888,6 +889,25 @@ static void test_pwritev_preadv(const char* version)
     printf("=== passed test (%s: version=%s)\n", __FUNCTION__, version);
 }
 
+static void test_ioctl()
+{
+    assert(mkdir("/ioctl", 0777) == 0);
+    int fd;
+    assert((fd = open("/ioctl/file", O_CREAT | O_WRONLY, 0666)) >= 0);
+
+    assert(fcntl(fd, F_GETFD) == 0);
+
+    assert(ioctl(fd, FIOCLEX, NULL) == 0);
+    assert(fcntl(fd, F_GETFD) == FD_CLOEXEC);
+
+    assert(ioctl(fd, FIONCLEX, NULL) == 0);
+    assert(fcntl(fd, F_GETFD) == 0);
+
+    assert(close(fd) == 0);
+
+    _passed(__FUNCTION__);
+}
+
 int main(int argc, const char* argv[])
 {
     if (argc != 2)
@@ -933,6 +953,7 @@ int main(int argc, const char* argv[])
     test_pwritev_preadv("pwritev");
     test_pwritev_preadv("pwritev2");
     test_pwritev_preadv("pwritev64v2");
+    test_ioctl();
 
     printf("=== passed all tests (%s)\n", argv[0]);
 
