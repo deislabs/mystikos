@@ -4,12 +4,19 @@ include $(TOP)/defs.mak
 APPDIR=$(CURDIR)/appdir
 APPBUILDER=$(TOP)/scripts/appbuilder
 
+EFFECTIVE_UID = $(shell id -u)
+EFFECTIVE_GID = $(shell id -g)
+ETC_RESOLV_UID=$(shell stat -L /etc/resolv.conf --format "%u")
+ETC_RESOLV_GID=$(shell stat -L /etc/resolv.conf --format "%g")
+OPTS += --host-to-enc-uid-map $(EFFECTIVE_UID):0,$(ETC_RESOLV_UID):$(ETC_RESOLV_UID)
+OPTS += --host-to-enc-gid-map $(EFFECTIVE_GID):0,$(ETC_RESOLV_GID):$(ETC_RESOLV_GID)
+
 ifdef STRACE
-OPTS = --strace
+OPTS += --strace
 endif
 
 ifdef EXPORT
-OPTS = --export-rootfs
+OPTS += --export-rootfs
 endif
 
 all:
