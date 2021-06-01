@@ -863,6 +863,13 @@ static int _fs_ioctl(
     if (request == TIOCGWINSZ)
         ERAISE(-EINVAL);
 
+    if (request == FIOCLEX || request == FIONCLEX)
+    {
+        long tret, params[6] = {file->fd, request, arg};
+        ECHECK((tret = myst_tcall(SYS_ioctl, params)));
+        goto done;
+    }
+
     ERAISE(-ENOTSUP);
 
 done:
