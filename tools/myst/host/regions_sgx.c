@@ -28,7 +28,7 @@ static int _add_page(void* arg, uint64_t vaddr, const void* page, int flags)
 
     if (oe_load_extra_enclave_data(arg, vaddr, page, oe_flags, extend) != OE_OK)
     {
-        _err("oe_load_extra_enclave_data() failed: vaddr=%lu", vaddr);
+        puterr("oe_load_extra_enclave_data() failed: vaddr=%lu", vaddr);
         return -EINVAL;
     }
 

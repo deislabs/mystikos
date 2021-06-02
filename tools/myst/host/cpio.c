@@ -53,7 +53,7 @@ int _mkcpio(int argc, const char* argv[])
 
     if (myst_cpio_pack(directory, cpioarchive) != 0)
     {
-        _err(
+        puterr(
             "failed to create CPIO archive from %s: %s",
             directory,
             cpioarchive);
@@ -78,7 +78,7 @@ int _excpio(int argc, const char* argv[])
 
     if (myst_cpio_unpack(cpioarchive, directory) != 0)
     {
-        _err(
+        puterr(
             "failed to extract CPIO archive to %s: %s", directory, cpioarchive);
         return 1;
     }

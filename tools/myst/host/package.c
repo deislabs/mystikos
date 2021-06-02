@@ -187,12 +187,12 @@ int _package(int argc, const char* argv[])
         const int flags = O_CREAT | O_WRONLY | O_TRUNC;
 
         if ((fd = open(rootfs_file, flags, 0666)) < 0)
-            _err("failed to create temporary file");
+            puterr("failed to create temporary file");
 
         memset(page, 0, sizeof(page));
 
         if (write(fd, page, sizeof(page)) != sizeof(page))
-            _err("failed to create file: %s", rootfs_file);
+            puterr("failed to create file: %s", rootfs_file);
 
         close(fd);
     }

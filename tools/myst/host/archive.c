@@ -24,7 +24,7 @@ static int _getopt(
     ret = myst_getopt(argc, argv, opt, optarg, err, sizeof(err));
 
     if (ret < 0)
-        _err("%s", err);
+        puterr("%s", err);
 
     return ret;
 }
@@ -49,10 +49,10 @@ void get_archive_options(
         struct stat statbuf;
 
         if (num_pubkeys == max_pubkeys)
-            _err("too many --pubkey options (> %u)", max_pubkeys);
+            puterr("too many --pubkey options (> %zu)", max_pubkeys);
 
         if (stat(pubkey, &statbuf) != 0)
-            _err("no such file for --pubkey options: %s", pubkey);
+            puterr("no such file for --pubkey options: %s", pubkey);
 
         pubkeys[num_pubkeys++] = pubkey;
     }
@@ -62,10 +62,10 @@ void get_archive_options(
         struct stat statbuf;
 
         if (num_roothashes == max_roothashes)
-            _err("too many --roothash options (> %u)", max_roothashes);
+            puterr("too many --roothash options (> %zu)", max_roothashes);
 
         if (stat(roothash, &statbuf) != 0)
-            _err("no such file for --roothash options: %s", roothash);
+            puterr("no such file for --roothash options: %s", roothash);
 
         roothashes[num_roothashes++] = roothash;
     }
@@ -88,10 +88,10 @@ void create_archive(
     int fd;
 
     if (!(dirname = mkdtemp(dir_template)))
-        _err("cannot create temporary directory");
+        puterr("cannot create temporary directory");
 
     if ((fd = mkstemp(filename)) < 0)
-        _err("cannot create temporary file");
+        puterr("cannot create temporary file");
 
     /* create the pubkeys directory */
     {
@@ -99,10 +99,10 @@ void create_archive(
         const int n = sizeof(path);
 
         if (snprintf(path, n, "%s/pubkeys", dirname) >= n)
-            _err("path too long");
+            puterr("path too long");
 
         if (mkdir(path, 0700) != 0)
-            _err("failed to create directory: %s", path);
+            puterr("failed to create directory: %s", path);
 
         /* create <dirname>/pubkeys/<pubkey> files */
         for (size_t i = 0; i < num_pubkeys; i++)
@@ -111,10 +111,10 @@ void create_archive(
             const char* basename = myst_basename(pubkey);
 
             if (snprintf(path, n, "%s/pubkeys/%s", dirname, basename) >= n)
-                _err("path too long");
+                puterr("path too long");
 
             if (myst_copy_file(pubkey, path) != 0)
-                _err("failed to copy %s to %s", pubkey, path);
+                puterr("failed to copy %s to %s", pubkey, path);
         }
     }
 
@@ -124,10 +124,10 @@ void create_archive(
         const int n = sizeof(path);
 
         if (snprintf(path, n, "%s/roothashes", dirname) >= n)
-            _err("path too long");
+            puterr("path too long");
 
         if (mkdir(path, 0700) != 0)
-            _err("failed to create directory: %s", path);
+            puterr("failed to create directory: %s", path);
 
         /* create <dirname>/roothashes/<roothash> files */
         for (size_t i = 0; i < num_roothashes; i++)
@@ -137,20 +137,20 @@ void create_archive(
 
             if (snprintf(path, n, "%s/roothashes/%s", dirname, basename) >= n)
             {
-                _err("path too long");
+                puterr("path too long");
             }
 
             if (myst_copy_file(roothash, path) != 0)
-                _err("failed to copy %s to %s", roothash, path);
+                puterr("failed to copy %s to %s", roothash, path);
         }
     }
 
     /* pack the directory into a CPIO archive */
     if (myst_cpio_pack(dirname, filename) != 0)
-        _err("failed to CPIO archive from %s", dirname);
+        puterr("failed to CPIO archive from %s", dirname);
 
     if (remove_recursive(dirname) != 0)
-        _err("failed to remove directory: %s", dirname);
+        puterr("failed to remove directory: %s", dirname);
 
     myst_strlcpy(archive_path, filename, PATH_MAX);
 }

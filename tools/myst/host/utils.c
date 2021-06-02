@@ -156,7 +156,7 @@ const int format_libmystkernel(char* path, size_t size)
     return _format_lib(path, size, "lib/libmystkernel.so");
 }
 
-__attribute__((format(printf, 1, 2))) void _err(const char* fmt, ...)
+__attribute__((format(printf, 1, 2))) void puterr(const char* fmt, ...)
 {
     va_list ap;
 
@@ -202,7 +202,7 @@ int cli_getopt(
     ret = myst_getopt(argc, argv, opt, optarg, err, sizeof(err));
 
     if (ret < 0)
-        _err("%s", err);
+        puterr("%s", err);
 
     return ret;
 }
@@ -220,8 +220,8 @@ int cli_get_mapping_opts(
             int ret = sscanf(arg, "%d:%d", &enc_uid, &host_uid);
             if (ret != 2)
             {
-                _err("Failed to parse --enc-to-host-uid-map "
-                     "<enc_uid>:<host_uid>");
+                puterr("Failed to parse --enc-to-host-uid-map "
+                       "<enc_uid>:<host_uid>");
             }
             mappings->enc_uid = enc_uid;
             mappings->host_uid = host_uid;
@@ -240,8 +240,8 @@ int cli_get_mapping_opts(
             int ret = sscanf(arg, "%d:%d", &enc_gid, &host_gid);
             if (ret != 2)
             {
-                _err("Failed to parse --enc-to-host-gid-map "
-                     "<enc_gid>:<host_gid>");
+                puterr("Failed to parse --enc-to-host-gid-map "
+                       "<enc_gid>:<host_gid>");
             }
             mappings->enc_gid = enc_gid;
             mappings->host_gid = host_gid;
@@ -273,7 +273,7 @@ int cli_get_mount_mapping_opts(
             {
                 mappings->mounts = calloc(1, sizeof(char*));
                 if (mappings->mounts == NULL)
-                    _err("Out of memory\n");
+                    puterr("Out of memory\n");
             }
             else
             {
@@ -282,7 +282,7 @@ int cli_get_mount_mapping_opts(
                     mappings->mounts_count + 1,
                     sizeof(char*));
                 if (tmp == NULL)
-                    _err("Out of memory\n");
+                    puterr("Out of memory\n");
                 mappings->mounts = tmp;
             }
             mappings->mounts[mappings->mounts_count] = strdup(arg);

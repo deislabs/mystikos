@@ -75,42 +75,42 @@ int copy_files_to_signing_directory(
     // create bin directory
     if (snprintf(scratch_path, PATH_MAX, "%s/bin", sign_dir) >= PATH_MAX)
     {
-        _err("File path to long: %s/bin", sign_dir);
+        puterr("File path to long: %s/bin", sign_dir);
     }
     if ((mkdir(scratch_path, mode) != 0) && (errno != EEXIST))
     {
-        _err("Failed to create directory \"%s\".", scratch_path);
+        puterr("Failed to create directory \"%s\".", scratch_path);
     }
 
     // create an enclave directory
     if (snprintf(scratch_path, PATH_MAX, "%s/lib", sign_dir) >= PATH_MAX)
     {
-        _err("File path to long: %s/lib", sign_dir);
+        puterr("File path to long: %s/lib", sign_dir);
     }
     if ((mkdir(scratch_path, mode) != 0) && (errno != EEXIST))
     {
-        _err("Failed to create directory \"%s\".", scratch_path);
+        puterr("Failed to create directory \"%s\".", scratch_path);
     }
     // create an enclave directory
     if (snprintf(scratch_path, PATH_MAX, "%s/lib/openenclave", sign_dir) >=
         PATH_MAX)
     {
-        _err("File path to long: %s/lib/openenclave", sign_dir);
+        puterr("File path to long: %s/lib/openenclave", sign_dir);
     }
     if ((mkdir(scratch_path, mode) != 0) && (errno != EEXIST))
     {
-        _err("Failed to create directory \"%s\".", scratch_path);
+        puterr("Failed to create directory \"%s\".", scratch_path);
     }
 
     // Copy crt into signing enc directory
     if (snprintf(scratch_path, PATH_MAX, "%s/lib/libmystcrt.so", sign_dir) >=
         PATH_MAX)
     {
-        _err("File path to long: %s/lib/libmystcrt.so", sign_dir);
+        puterr("File path to long: %s/lib/libmystcrt.so", sign_dir);
     }
     if (myst_copy_file(details->crt.path, scratch_path) != 0)
     {
-        _err(
+        puterr(
             "Failed to copy \"%s\" to \"%s\"", details->crt.path, scratch_path);
     }
 
@@ -118,57 +118,58 @@ int copy_files_to_signing_directory(
     if (snprintf(scratch_path, PATH_MAX, "%s/lib/libmystkernel.so", sign_dir) >=
         PATH_MAX)
     {
-        _err("File path to long: %s/lib/libmystkernel.so", sign_dir);
+        puterr("File path to long: %s/lib/libmystkernel.so", sign_dir);
     }
     if (myst_copy_file(details->kernel.path, scratch_path) != 0)
     {
-        _err(
+        puterr(
             "Failed to copy \"%s\" to \"%s\"", details->crt.path, scratch_path);
     }
 
     // Copy myst tool into signing directory
     if (snprintf(scratch_path, PATH_MAX, "%s/bin/myst", sign_dir) >= PATH_MAX)
     {
-        _err("File path to long: %s/bin/myst", sign_dir);
+        puterr("File path to long: %s/bin/myst", sign_dir);
     }
     if (myst_copy_file(program_file, scratch_path) != 0)
     {
-        _err("Failed to copy \"%s\" to \"%s\"", program_file, scratch_path);
+        puterr("Failed to copy \"%s\" to \"%s\"", program_file, scratch_path);
     }
     if (chmod(scratch_path, mode) != 0)
     {
-        _err("Failed to change executable permissions on \"%s\"", scratch_path);
+        puterr(
+            "Failed to change executable permissions on \"%s\"", scratch_path);
     }
 
     // Copy rootfs into signing directory
     if (snprintf(scratch_path, PATH_MAX, "%s/rootfs", sign_dir) >= PATH_MAX)
     {
-        _err("File path to long: %s/rootfs", sign_dir);
+        puterr("File path to long: %s/rootfs", sign_dir);
     }
     if (myst_copy_file(rootfs_file, scratch_path) != 0)
     {
-        _err("Failed to copy \"%s\" to \"%s\"", rootfs_file, scratch_path);
+        puterr("Failed to copy \"%s\" to \"%s\"", rootfs_file, scratch_path);
     }
 
     // Copy archive into signing directory
     if (snprintf(scratch_path, PATH_MAX, "%s/archive", sign_dir) >= PATH_MAX)
     {
-        _err("File path to long: %s/archive", sign_dir);
+        puterr("File path to long: %s/archive", sign_dir);
     }
     if (myst_copy_file(archive_file, scratch_path) != 0)
     {
-        _err("Failed to copy \"%s\" to \"%s\"", archive_file, scratch_path);
+        puterr("Failed to copy \"%s\" to \"%s\"", archive_file, scratch_path);
     }
 
     // Copy configuration into signing directory
     if (snprintf(scratch_path, PATH_MAX, "%s/config.json", sign_dir) >=
         PATH_MAX)
     {
-        _err("File path to long: %s/config.json", sign_dir);
+        puterr("File path to long: %s/config.json", sign_dir);
     }
     if (myst_copy_file(config_file, scratch_path) != 0)
     {
-        _err("Failed to copy \"%s\" to \"%s\"", config_file, scratch_path);
+        puterr("Failed to copy \"%s\" to \"%s\"", config_file, scratch_path);
     }
 
     // Copy enclave shared library to signing enclave directory
@@ -178,11 +179,11 @@ int copy_files_to_signing_directory(
             "%s/lib/openenclave/mystenc.so",
             sign_dir) >= PATH_MAX)
     {
-        _err("File path to long: %s/lib/openenclave/mystenc.so", sign_dir);
+        puterr("File path to long: %s/lib/openenclave/mystenc.so", sign_dir);
     }
     if (myst_copy_file(details->enc.path, scratch_path) != 0)
     {
-        _err(
+        puterr(
             "Failed to copy \"%s\" to \"%s\"", details->enc.path, scratch_path);
     }
 
@@ -197,7 +198,7 @@ int add_config_to_enclave(const char* sign_dir, const char* config_path)
     size_t config_size;
     if (myst_load_file(config_path, &config_data, &config_size) != 0)
     {
-        _err("Failed to load config file %s", config_path);
+        puterr("Failed to load config file %s", config_path);
     }
 
     if (snprintf(
@@ -206,21 +207,21 @@ int add_config_to_enclave(const char* sign_dir, const char* config_path)
             "%s/lib/openenclave/mystenc.so",
             sign_dir) >= PATH_MAX)
     {
-        _err("File path to long: %s/lib/openenclave/mystenc.so", sign_dir);
+        puterr("File path to long: %s/lib/openenclave/mystenc.so", sign_dir);
     }
 
     if (elf_load(scratch_path, &elf) != 0)
     {
-        _err("Failed to load ELF image %s", scratch_path);
+        puterr("Failed to load ELF image %s", scratch_path);
     }
     if (elf_add_section(
             &elf, ".mystconfig", SHT_PROGBITS, config_data, config_size) != 0)
     {
-        _err("Failed to add configuration to enclave elf image");
+        puterr("Failed to add configuration to enclave elf image");
     }
     if (myst_write_file(scratch_path, elf.data, elf.size) != 0)
     {
-        _err("File to save final signed image: %s", scratch_path);
+        puterr("File to save final signed image: %s", scratch_path);
     }
 
     elf_unload(&elf);
@@ -241,7 +242,7 @@ static int _getopt(
     ret = myst_getopt(argc, argv, opt, optarg, err, sizeof(err));
 
     if (ret < 0)
-        _err("%s", err);
+        puterr("%s", err);
 
     return ret;
 }
@@ -305,7 +306,7 @@ int _sign(int argc, const char* argv[])
     // Load the configuration file and generate oe config file
     if (parse_config_from_file(config_file, &parsed_data) != 0)
     {
-        _err(
+        puterr(
             "Failed to parse configuration file from Mystikos configuration "
             "file %s",
             config_file);
@@ -314,19 +315,19 @@ int _sign(int argc, const char* argv[])
     target = parsed_data.application_path;
     if ((target == NULL) || (target[0] != '/'))
     {
-        _err(
+        puterr(
             "target in config file must be fully qualified path within rootfs");
     }
 
     appname = strrchr(target, '/');
     if (appname == NULL)
     {
-        _err("Failed to get appname from target path");
+        puterr("Failed to get appname from target path");
     }
     appname++;
     if (*appname == '\0')
     {
-        _err("Failed to get appname from target path");
+        puterr("Failed to get appname from target path");
     }
 
     // Do we need to create our own signing directory?
@@ -334,18 +335,18 @@ int _sign(int argc, const char* argv[])
     {
         if (snprintf(sign_dir, PATH_MAX, "%s.signed", appname) >= PATH_MAX)
         {
-            _err("Signing directory path to long: %s.signed", appname);
+            puterr("Signing directory path to long: %s.signed", appname);
         }
         if (mkdir(sign_dir, 0777) != 0)
         {
-            _err("Failed to create signing directory: %s", sign_dir);
+            puterr("Failed to create signing directory: %s", sign_dir);
         }
     }
     else
     {
         if (snprintf(sign_dir, PATH_MAX, "%s", user_sign_dir) >= PATH_MAX)
         {
-            _err("Signing directory path to long: %s", sign_dir);
+            puterr("Signing directory path to long: %s", sign_dir);
         }
     }
 
@@ -353,18 +354,18 @@ int _sign(int argc, const char* argv[])
             temp_oeconfig_file, PATH_MAX, "%s/oeconfig-XXXXXX", sign_dir) >=
         PATH_MAX)
     {
-        _err("OE config file path to long: %s/oeconfig-XXXXXX", sign_dir);
+        puterr("OE config file path to long: %s/oeconfig-XXXXXX", sign_dir);
     }
 
     int fd = mkstemp(temp_oeconfig_file);
     if (fd < 0)
-        _err("Failed to create temporary file for OE configuration");
+        puterr("Failed to create temporary file for OE configuration");
 
     if (write_oe_config_fd(fd, &parsed_data) != 0)
     {
         unlink(temp_oeconfig_file);
         close(fd);
-        _err(
+        puterr(
             "Failed to generate OE configuration file from Mystikos "
             "configuration "
             "file %s",
@@ -388,7 +389,7 @@ int _sign(int argc, const char* argv[])
              parsed_data.heap_pages)) == NULL)
     {
         unlink(temp_oeconfig_file);
-        _err("Creating region data failed.");
+        puterr("Creating region data failed.");
     }
 
     if (copy_files_to_signing_directory(
@@ -400,13 +401,13 @@ int _sign(int argc, const char* argv[])
             details) != 0)
     {
         unlink(temp_oeconfig_file);
-        _err("Failed to copy files to signing directory");
+        puterr("Failed to copy files to signing directory");
     }
 
     if (add_config_to_enclave(sign_dir, config_file) != 0)
     {
         unlink(temp_oeconfig_file);
-        _err("Failed to add configuration to enclave");
+        puterr("Failed to add configuration to enclave");
     }
 
     // Initiate signing with extracted parameters
@@ -418,7 +419,7 @@ int _sign(int argc, const char* argv[])
             sign_dir) >= PATH_MAX)
     {
         unlink(temp_oeconfig_file);
-        _err("File path to long: %s/lib/openenclave/mystenc.so", sign_dir);
+        puterr("File path to long: %s/lib/openenclave/mystenc.so", sign_dir);
     }
 
     if (oesign(
@@ -432,19 +433,19 @@ int _sign(int argc, const char* argv[])
             NULL) != 0)
     {
         unlink(temp_oeconfig_file);
-        _err("Failed to sign \"%s\"", scratch_path);
+        puterr("Failed to sign \"%s\"", scratch_path);
     }
 
     // delete temporary oe config file
     if (unlink(temp_oeconfig_file) != 0)
     {
-        _err("Failed to remove temporary OE config file");
+        puterr("Failed to remove temporary OE config file");
     }
 
     // Delete the unsigned enclave file
     if (unlink(scratch_path) != 0)
     {
-        _err("Failed to delete \"%s\"", scratch_path);
+        puterr("Failed to delete \"%s\"", scratch_path);
     }
 
     if (snprintf(
@@ -453,13 +454,14 @@ int _sign(int argc, const char* argv[])
             "%s/lib/openenclave/mystenc.so.signed",
             sign_dir) >= PATH_MAX)
     {
-        _err(
+        puterr(
             "File path to long: %s/lib/openenclave/mystenc.so.signed",
             sign_dir);
     }
     if (rename(scratch_path2, scratch_path) != 0)
     {
-        _err("Failed to rename \"%s\" to \"%s\"", scratch_path2, scratch_path);
+        puterr(
+            "Failed to rename \"%s\" to \"%s\"", scratch_path2, scratch_path);
     }
 
     return 0;

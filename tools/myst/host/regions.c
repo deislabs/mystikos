@@ -46,7 +46,7 @@ const region_details* create_region_details_from_package(
             sizeof(_details.enc.path),
             "%s/lib/openenclave/mystenc.so",
             dir) >= sizeof(_details.enc.path))
-        _err("buffer overflow when forming mystenc.so path");
+        puterr("buffer overflow when forming mystenc.so path");
 
     // Load CRT
     if (elf_image_from_section(
@@ -56,7 +56,7 @@ const region_details* create_region_details_from_package(
             (const void**)&_details.crt.buffer,
             &_details.crt.buffer_size) != 0)
     {
-        _err("failed to extract CRT section from : %s", get_program_file());
+        puterr("failed to extract CRT section from : %s", get_program_file());
     }
     _details.crt.status = REGION_ITEM_BORROWED;
 
@@ -68,7 +68,8 @@ const region_details* create_region_details_from_package(
             (const void**)&_details.kernel.buffer,
             &_details.kernel.buffer_size) != 0)
     {
-        _err("failed to extract kernel section from : %s", get_program_file());
+        puterr(
+            "failed to extract kernel section from : %s", get_program_file());
     }
     _details.kernel.status = REGION_ITEM_BORROWED;
 
@@ -79,7 +80,7 @@ const region_details* create_region_details_from_package(
             (unsigned char**)&_details.rootfs.buffer,
             &_details.rootfs.buffer_size) != 0)
     {
-        _err("Failed to extract rootfs from %s.", get_program_file());
+        puterr("Failed to extract rootfs from %s.", get_program_file());
     }
     _details.rootfs.status = REGION_ITEM_BORROWED;
 
@@ -90,7 +91,7 @@ const region_details* create_region_details_from_package(
             (unsigned char**)&_details.archive.buffer,
             &_details.archive.buffer_size) != 0)
     {
-        _err("Failed to extract archive from %s.", get_program_file());
+        puterr("Failed to extract archive from %s.", get_program_file());
     }
     _details.archive.status = REGION_ITEM_BORROWED;
 
@@ -113,11 +114,11 @@ const region_details* create_region_details_from_package(
                 free_config(&parsed_data);
             }
             else
-                _err("Failed to parse config we extracted from enclave");
+                puterr("Failed to parse config we extracted from enclave");
         }
     }
     else
-        _err("Failed to extract config data from %s.", get_program_file());
+        puterr("Failed to extract config data from %s.", get_program_file());
 
     _details.config.status = REGION_ITEM_BORROWED;
 
@@ -145,7 +146,7 @@ const region_details* create_region_details_from_files(
             rootfs_path,
             &_details.rootfs.buffer,
             &_details.rootfs.buffer_size) != 0)
-        _err("failed to load rootfs: %s", rootfs_path);
+        puterr("failed to load rootfs: %s", rootfs_path);
     _details.rootfs.status = REGION_ITEM_OWNED;
 
     /* load archive file */
@@ -155,7 +156,7 @@ const region_details* create_region_details_from_files(
                 (void**)&_details.archive.buffer,
                 &_details.archive.buffer_size) != 0)
         {
-            _err("failed to load archive: %s", archive_path);
+            puterr("failed to load archive: %s", archive_path);
         }
 
         _details.archive.status = REGION_ITEM_OWNED;
@@ -163,7 +164,7 @@ const region_details* create_region_details_from_files(
 
     if (program_path[0] != '/')
     {
-        _err(
+        puterr(
             "program must be an absolute path within the rootfs: %s",
             program_path);
     }
@@ -171,33 +172,33 @@ const region_details* create_region_details_from_files(
     /* Find mystenc.so, libmystcrt.so, and libmystkernel.so */
     {
         if (format_mystenc(_details.enc.path, sizeof(_details.enc.path)) != 0)
-            _err("buffer overflow when forming mystenc.so path");
+            puterr("buffer overflow when forming mystenc.so path");
 
         if (format_libmystcrt(_details.crt.path, sizeof(_details.crt.path)) !=
             0)
-            _err("buffer overflow when forming libmystcrt.so path");
+            puterr("buffer overflow when forming libmystcrt.so path");
 
         if (format_libmystkernel(
                 _details.kernel.path, sizeof(_details.kernel.path)) != 0)
-            _err("buffer overflow when forming libmystcrt.so path");
+            puterr("buffer overflow when forming libmystcrt.so path");
 
         if (access(_details.enc.path, R_OK) != 0)
-            _err("cannot find: %s", _details.enc.path);
+            puterr("cannot find: %s", _details.enc.path);
 
         if (access(_details.crt.path, R_OK) != 0)
-            _err("cannot find: %s", _details.crt.path);
+            puterr("cannot find: %s", _details.crt.path);
 
         if (access(_details.kernel.path, R_OK) != 0)
-            _err("cannot find: %s", _details.kernel.path);
+            puterr("cannot find: %s", _details.kernel.path);
     }
 
     /* Load the C runtime and kernel ELF image into memory */
     if (elf_image_load(_details.crt.path, &_details.crt.image) != 0)
-        _err("failed to load C runtime image: %s", _details.crt.path);
+        puterr("failed to load C runtime image: %s", _details.crt.path);
     _details.crt.status = REGION_ITEM_OWNED;
 
     if (elf_image_load(_details.kernel.path, &_details.kernel.image) != 0)
-        _err("failed to load kernel image: %s", _details.kernel.path);
+        puterr("failed to load kernel image: %s", _details.kernel.path);
     _details.kernel.status = REGION_ITEM_OWNED;
 
     // We need to prioritize enclave resident config before falling back. That
@@ -206,7 +207,7 @@ const region_details* create_region_details_from_files(
     elf_t enc_elf = {0};
 
     if (elf_load(_details.enc.path, &enc_elf) != 0)
-        _err("failed to load enclave image: %s", _details.enc.path);
+        puterr("failed to load enclave image: %s", _details.enc.path);
 
     unsigned char* temp_buf;
     size_t temp_size;
@@ -216,7 +217,7 @@ const region_details* create_region_details_from_files(
         // the enclave image
         _details.config.buffer = malloc(temp_size);
         if (_details.config.buffer == NULL)
-            _err("out of memory");
+            puterr("out of memory");
         memcpy(_details.config.buffer, temp_buf, temp_size);
         _details.config.buffer_size = temp_size;
         _details.config.status = REGION_ITEM_OWNED;
@@ -233,7 +234,7 @@ const region_details* create_region_details_from_files(
         }
         else
         {
-            _err("Failed to parse configuration stored in enclave");
+            puterr("Failed to parse configuration stored in enclave");
         }
     }
     else if (config_path)
@@ -259,13 +260,13 @@ const region_details* create_region_details_from_files(
             }
             else
             {
-                _err(
+                puterr(
                     "Failed to parse config from specified config path %s",
                     config_path);
             }
         }
         else
-            _err("failed to load config: %s", config_path);
+            puterr("failed to load config: %s", config_path);
         _details.config.status = REGION_ITEM_OWNED;
     }
 
@@ -812,52 +813,52 @@ int add_regions(void* arg, uint64_t baseaddr, myst_add_page_t add_page)
     uint64_t vaddr = 0;
 
     if (myst_region_init(add_page, arg, &context) != 0)
-        _err("myst_region_init() failed");
+        puterr("myst_region_init() failed");
 
     if (_add_kernel_stacks_region(context, baseaddr, &vaddr) != 0)
-        _err("_add_kernel_stacks_region() failed");
+        puterr("_add_kernel_stacks_region() failed");
 
     if (_add_kernel_region(context, baseaddr, &vaddr) != 0)
-        _err("_add_kernel_region() failed");
+        puterr("_add_kernel_region() failed");
 
     if (_add_kernel_reloc_region(context, &vaddr) != 0)
-        _err("_add_kernel_reloc_region() failed");
+        puterr("_add_kernel_reloc_region() failed");
 
     if (_add_kernel_symtab_region(context, &vaddr) != 0)
-        _err("_add_kernel_symtab_region() failed");
+        puterr("_add_kernel_symtab_region() failed");
 
     if (_add_kernel_dynsym_region(context, &vaddr) != 0)
-        _err("_add_kernel_dynsym_region() failed");
+        puterr("_add_kernel_dynsym_region() failed");
 
     if (_add_kernel_strtab_region(context, &vaddr) != 0)
-        _err("_add_kernel_strtab_region() failed");
+        puterr("_add_kernel_strtab_region() failed");
 
     if (_add_kernel_dynstr_region(context, &vaddr) != 0)
-        _err("_add_kernel_dynstr_region() failed");
+        puterr("_add_kernel_dynstr_region() failed");
 
     if (_add_crt_region(context, &vaddr) != 0)
-        _err("_add_crt_region() failed");
+        puterr("_add_crt_region() failed");
 
     if (_add_crt_reloc_region(context, &vaddr) != 0)
-        _err("_add_crt_reloc_region() failed");
+        puterr("_add_crt_reloc_region() failed");
 
     if (_add_rootfs_region(context, &vaddr) != 0)
-        _err("_add_rootfs_region() failed");
+        puterr("_add_rootfs_region() failed");
 
     if (_add_archive_region(context, &vaddr) != 0)
-        _err("_add_archive_region() failed");
+        puterr("_add_archive_region() failed");
 
     if (_add_mman_region(context, &vaddr) != 0)
-        _err("_add_mman_region() failed");
+        puterr("_add_mman_region() failed");
 
     if (_add_config_region(context, &vaddr) != 0)
-        _err("_add_config_region() failed");
+        puterr("_add_config_region() failed");
 
     if (_add_kernel_entry_stack_region(context, baseaddr, &vaddr) != 0)
-        _err("_add_kernel_entry_stack_region() failed");
+        puterr("_add_kernel_entry_stack_region() failed");
 
     if (myst_region_release(context) != 0)
-        _err("myst_region_release() failed");
+        puterr("myst_region_release() failed");
 
     return 0;
 }

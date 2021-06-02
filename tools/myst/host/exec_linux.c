@@ -133,7 +133,7 @@ static void _get_options(int* argc, const char* argv[], struct options* opts)
                 (myst_round_up(opts->heap_size, PAGE_SIZE, &opts->heap_size) !=
                  0))
             {
-                _err("%s <size> -- bad suffix (must be k, m, or g)\n", opt);
+                puterr("%s <size> -- bad suffix (must be k, m, or g)\n", opt);
             }
         }
     }
@@ -149,8 +149,8 @@ static void _get_options(int* argc, const char* argv[], struct options* opts)
             int ret = sscanf(arg, "%d:%d", &enc_uid, &host_uid);
             if (ret != 2)
             {
-                _err("Failed to parse --enc-to-host-uid-map "
-                     "<enc_uid>:<host_uid>");
+                puterr("Failed to parse --enc-to-host-uid-map "
+                       "<enc_uid>:<host_uid>");
             }
             opts->mapping.enc_uid = enc_uid;
             opts->mapping.host_uid = host_uid;
@@ -169,8 +169,8 @@ static void _get_options(int* argc, const char* argv[], struct options* opts)
             int ret = sscanf(arg, "%d:%d", &enc_gid, &host_gid);
             if (ret != 2)
             {
-                _err("Failed to parse --enc-to-host-gid-map "
-                     "<enc_gid>:<host_gid>");
+                puterr("Failed to parse --enc-to-host-gid-map "
+                       "<enc_gid>:<host_gid>");
             }
             opts->mapping.enc_gid = enc_gid;
             opts->mapping.host_gid = host_gid;
@@ -382,7 +382,7 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
     if (myst_strlcpy(opts.rootfs, rootfs_arg, sizeof(opts.rootfs)) >=
         sizeof(opts.rootfs))
     {
-        _err("<rootfs> command line argument is too long: %s", rootfs_arg);
+        puterr("<rootfs> command line argument is too long: %s", rootfs_arg);
     }
 
     /* if not a CPIO archive, create a zero-filled file with one page */
@@ -392,12 +392,12 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
         uint8_t page[PAGE_SIZE];
 
         if ((fd = mkstemp(rootfs_path)) < 0)
-            _err("failed to create temporary file");
+            puterr("failed to create temporary file");
 
         memset(page, 0, sizeof(page));
 
         if (write(fd, page, sizeof(page)) != sizeof(page))
-            _err("failed to create file");
+            puterr("failed to create file");
 
         close(fd);
         rootfs_arg = rootfs_path;
@@ -411,13 +411,13 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
               opts.app_config_path,
               opts.heap_size)))
     {
-        _err("create_region_details_from_files() failed");
+        puterr("create_region_details_from_files() failed");
     }
 
     /* map the regions onto a flat memory mapping */
     if (map_regions(&mmap_addr, &mmap_length) != 0)
     {
-        _err("map_regions() failed");
+        puterr("map_regions() failed");
     }
 
     unlink(archive_path);
@@ -447,7 +447,7 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
             err,
             sizeof(err)) != 0)
     {
-        _err("%s", err);
+        puterr("%s", err);
     }
 
     free_mount_mapping_opts(&opts.mount_mappings);

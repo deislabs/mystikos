@@ -75,7 +75,7 @@ static int _getopt(
     ret = myst_getopt(argc, argv, opt, optarg, err, sizeof(err));
 
     if (ret < 0)
-        _err("%s", err);
+        puterr("%s", err);
 
     return ret;
 }
@@ -85,10 +85,10 @@ static void _check_regular_file(const char* path)
     struct stat st;
 
     if (stat(path, &st) != 0)
-        _err("file not found: %s", path);
+        puterr("file not found: %s", path);
 
     if (!S_ISREG(st.st_mode))
-        _err("wrong file type: %s", path);
+        puterr("wrong file type: %s", path);
 }
 
 #define MIN_PASSPHRASE_LENGTH 14
@@ -111,22 +111,22 @@ static void _execf(char* buf, size_t buf_size, const char* fmt, ...)
 
     va_start(ap, fmt);
     if (vasprintf(&cmd, fmt, ap) < 0)
-        _err("out of memory");
+        puterr("out of memory");
     va_end(ap);
 
     if (_trace)
         printf("command: %s\n", cmd);
 
     if (!(is = popen(cmd, "r")))
-        _err("popen() failed: %s", cmd);
+        puterr("popen() failed: %s", cmd);
 
     if (!fgets(buf, buf_size, is))
-        _err("popen() failed to read output: %s", cmd);
+        puterr("popen() failed to read output: %s", cmd);
 
     _rtrim(buf);
 
     if (pclose(is) != 0)
-        _err("pclose() failed: %s", cmd);
+        puterr("pclose() failed: %s", cmd);
 
     free(cmd);
 }
@@ -145,7 +145,7 @@ static void _calculate_required_image_size(const char* dirname, size_t* size)
     n = strtoul(buf, &end, 10);
 
     if (!end || *end || n == 0)
-        _err("unexpected failure when calculating image size");
+        puterr("unexpected failure when calculating image size");
 
     /* round size to next mb multiple */
     n = (n + mb - 1) / mb * mb;
@@ -167,14 +167,14 @@ __attribute__((format(printf, 1, 2))) static void _systemf(const char* fmt, ...)
 
     va_start(ap, fmt);
     if (vasprintf(&cmd, fmt, ap) < 0)
-        _err("out of memory");
+        puterr("out of memory");
     va_end(ap);
 
     if (_trace)
         printf("command: %s\n", cmd);
 
     if (system(cmd) != 0)
-        _err("failed to execute command: %s", cmd);
+        puterr("failed to execute command: %s", cmd);
 
     free(cmd);
 }
@@ -185,22 +185,22 @@ static void _create_zero_filled_image(const char* path, size_t size)
     static uint8_t _block[1024];
 
     if (size < sizeof(_block))
-        _err("image size too small: %s: %zu", path, sizeof(_block));
+        puterr("image size too small: %s: %zu", path, sizeof(_block));
 
     if (!(is = fopen(path, "wb")))
-        _err("failed to open file for write: %s", path);
+        puterr("failed to open file for write: %s", path);
 
     if (fseek(is, size - sizeof(_block), SEEK_SET) != 0)
-        _err("failed to seek file: %s: %zu", path, size);
+        puterr("failed to seek file: %s: %zu", path, size);
 
     if (fwrite(_block, 1, sizeof(_block), is) != sizeof(_block))
-        _err("failed to write file: %s", path);
+        puterr("failed to write file: %s", path);
 
     fclose(is);
 
     /* set the owner of this file to the sudo user if defined */
     if (myst_chown_sudo_user(path) != 0)
-        _err("failed to chown to sudo user: %s", path);
+        puterr("failed to chown to sudo user: %s", path);
 }
 
 static void _create_ext2_image(
@@ -222,7 +222,7 @@ static void _create_ext2_image(
 
     /* create the mount directory */
     if (!mkdtemp(mntdir))
-        _err("failed to create temporary directory");
+        puterr("failed to create temporary directory");
 
     /* mount the ext2 image */
     _systemf("/bin/mount %s %s", loop, mntdir);
@@ -268,18 +268,18 @@ static void _create_luks_image(
 
     /* check whether masterkey file exists */
     if (stat(key_file, &st) != 0)
-        _err("key file not found: %s", key_file);
+        puterr("key file not found: %s", key_file);
 
     /* check the size of the masterkey file */
     if (st.st_size != keybytes)
-        _err("master key file must be %zu bytes", keybytes);
+        puterr("master key file must be %zu bytes", keybytes);
 
     /* create a zero-filled image */
     _systemf("/usr/bin/head -c %zu /dev/zero > %s", size, image);
 
     /* set the owner of this file to the sudo user if defined */
     if (myst_chown_sudo_user(image) != 0)
-        _err("failed to chown to sudo user: %s", image);
+        puterr("failed to chown to sudo user: %s", image);
 
     /* do luksFormat on image */
     _systemf(
@@ -299,7 +299,7 @@ static void _create_luks_image(
         int fd;
 
         if ((fd = mkstemp(tmpfile)) < 0)
-            _err("failed to create temporary file name");
+            puterr("failed to create temporary file name");
 
         close(fd);
         unlink(tmpfile);
@@ -319,7 +319,7 @@ static void _create_luks_image(
 
     /* create the mount directory */
     if (!mkdtemp(mntdir))
-        _err("failed to create temporary directory");
+        puterr("failed to create temporary directory");
 
     /* mount the directory */
     _systemf("/bin/mount %s %s", dmpath, mntdir);
@@ -353,10 +353,10 @@ static void _append_hash_tree(
     ssize_t n;
 
     if (stat(image, &st) != 0)
-        _err("unexpected: image does not exist: %s", image);
+        puterr("unexpected: image does not exist: %s", image);
 
     if (st.st_size != size)
-        _err("unexpected: image size mismatch: %zu/%zu\n", st.st_size, size);
+        puterr("unexpected: image size mismatch: %zu/%zu\n", st.st_size, size);
 
     _execf(
         buf,
@@ -368,7 +368,7 @@ static void _append_hash_tree(
         image);
 
     if ((n = myst_ascii_to_bin(buf, root_hash->data, sizeof(*root_hash))) < 0)
-        _err("malformed root hash: %s", root_hash);
+        puterr("malformed root hash: %s", buf);
 }
 
 static int _sign(
@@ -400,12 +400,12 @@ static int _sign(
 
         /* load the private key */
         if (myst_load_file(privkey_path, &privkey, &privkey_size) != 0)
-            _err("failed to load private key: %s", privkey_path);
+            puterr("failed to load private key: %s", privkey_path);
 
         if (oe_rsa_private_key_read_pem(
                 &key, (const uint8_t*)privkey, privkey_size + 1) != OE_OK)
         {
-            _err("failed to read private key: %s", privkey_path);
+            puterr("failed to read private key: %s", privkey_path);
         }
 
         if (oe_rsa_private_key_sign(
@@ -416,11 +416,11 @@ static int _sign(
                 signature,
                 &signature_size) != OE_OK)
         {
-            _err("signing operation failed: %s", privkey_path);
+            puterr("signing operation failed: %s", privkey_path);
         }
 
         if (signature_size > MYST_MAX_SIGNATURE_SIZE)
-            _err("unexpected: signature is too big: %zu\n", signature_size);
+            puterr("unexpected: signature is too big: %zu\n", signature_size);
 
         oe_rsa_private_key_free(&key);
     }
@@ -434,7 +434,7 @@ static int _sign(
 
         /* load the public key */
         if (myst_load_file(pubkey_path, &pubkey, &pubkey_size) != 0)
-            _err("failed to load public key: %s", pubkey_path);
+            puterr("failed to load public key: %s", pubkey_path);
 
         if (oe_rsa_public_key_read_pem(
                 &key, (const uint8_t*)pubkey, pubkey_size + 1) != 0)
@@ -443,11 +443,11 @@ static int _sign(
         }
 
         if (oe_rsa_public_key_get_modulus(&key, modulus, &modulus_size) != 0)
-            _err("failed to get modulus from public key: %s", pubkey_path);
+            puterr("failed to get modulus from public key: %s", pubkey_path);
 
         /* compute the hash of the public key */
         if (myst_sha256(&signer_hash, modulus, modulus_size) != 0)
-            _err("unexpected: failed to compute hash");
+            puterr("unexpected: failed to compute hash");
     }
 
     if (_trace)
@@ -485,13 +485,13 @@ static int _sign(
         FILE* os;
 
         if (!(os = fopen(image, "ab")))
-            _err("cannot open file for write: %s", image);
+            puterr("cannot open file for write: %s", image);
 
         if (fseek(os, 0, SEEK_END) != 0)
-            _err("cannot seek end of file: %s", image);
+            puterr("cannot seek end of file: %s", image);
 
         if (fwrite(&fssig, 1, sizeof(fssig), os) != sizeof(fssig))
-            _err("cannot write signature: %s", image);
+            puterr("cannot write signature: %s", image);
 
         fclose(os);
     }
@@ -554,7 +554,7 @@ int mkext2_action(int argc, const char* argv[])
         const size_t min_len = 14;
 
         if (strlen(passphrase) < min_len)
-            _err("--passphrase option length must be >= %u", min_len);
+            puterr("--passphrase option length must be >= %zu", min_len);
     }
 
     /* get the --sign option */
@@ -564,7 +564,7 @@ int mkext2_action(int argc, const char* argv[])
         char* colon;
 
         if (!(colon = strchr(sign, ':')))
-            _err("malformed --sign option: missing ':' delimiter");
+            puterr("malformed --sign option: missing ':' delimiter");
 
         *colon = '\0';
         pubkey = sign;
@@ -581,10 +581,10 @@ int mkext2_action(int argc, const char* argv[])
         size = strtoul(size_opt, &end, 10);
 
         if (!end || *end)
-            _err("bad --size option argument");
+            puterr("bad --size option argument");
 
         if (size < min_size)
-            _err("--size must be at least %zu mbs", nmb);
+            puterr("--size must be at least %zu mbs", nmb);
     }
 
     if (help || argc != 4)
@@ -598,11 +598,11 @@ int mkext2_action(int argc, const char* argv[])
 
     /* verify that directory exists */
     if (stat(dirname, &st) != 0 || !S_ISDIR(st.st_mode))
-        _err("no such directory: %s", dirname);
+        puterr("no such directory: %s", dirname);
 
     /* fail if image already exists and no --force option */
     if (!force && stat(image, &st) == 0)
-        _err("%s already exists: cautiously use --force to override", image);
+        puterr("%s already exists: cautiously use --force to override", image);
 
     /* calculate the minimum required size */
     {
@@ -668,7 +668,7 @@ int fssig_action(int argc, const char* argv[])
     const char* image = argv[2];
 
     if (myst_load_fssig(image, &fssig) != 0)
-        _err("image does not have the fssig trailer: %s", image);
+        puterr("image does not have the fssig trailer: %s", image);
 
     if (roothash)
     {

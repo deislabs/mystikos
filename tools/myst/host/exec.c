@@ -138,15 +138,15 @@ int exec_launch_enclave(
     r = oe_create_myst_enclave(enc_path, type, flags, NULL, 0, &_enclave);
 
     if (r != OE_OK)
-        _err("failed to load enclave: result=%s", oe_result_str(r));
+        puterr("failed to load enclave: result=%s", oe_result_str(r));
 
     /* Serialize the argv[] strings */
     if (myst_buf_pack_strings(&argv_buf, argv, _count_args(argv)) != 0)
-        _err("failed to serialize argv stings");
+        puterr("failed to serialize argv stings");
 
     /* Serialize the argv[] strings */
     if (myst_buf_pack_strings(&envp_buf, envp, _count_args(envp)) != 0)
-        _err("failed to serialize envp stings");
+        puterr("failed to serialize envp stings");
 
     /* Get clock times right before entering the enclave */
     shm_create_clock(&shared_memory, CLOCK_TICK);
@@ -163,12 +163,12 @@ int exec_launch_enclave(
         envp_buf.size,
         (uint64_t)&_event);
     if (r != OE_OK)
-        _err("failed to enter enclave: result=%s", oe_result_str(r));
+        puterr("failed to enter enclave: result=%s", oe_result_str(r));
 
     /* Terminate the enclave */
     r = oe_terminate_enclave(_enclave);
     if (r != OE_OK)
-        _err("failed to terminate enclave: result=%s", oe_result_str(r));
+        puterr("failed to terminate enclave: result=%s", oe_result_str(r));
 
     shm_free_clock(&shared_memory);
 
@@ -280,7 +280,8 @@ int exec_action(int argc, const char* argv[], const char* envp[])
                 if ((myst_expand_size_string_to_ulong(arg, &heap_size) != 0) ||
                     (myst_round_up(heap_size, PAGE_SIZE, &heap_size) != 0))
                 {
-                    _err("%s <size> -- bad suffix (must be k, m, or g)\n", opt);
+                    puterr(
+                        "%s <size> -- bad suffix (must be k, m, or g)\n", opt);
                 }
             }
         }
@@ -324,7 +325,7 @@ int exec_action(int argc, const char* argv[], const char* envp[])
     if (myst_strlcpy(options.rootfs, rootfs, sizeof(options.rootfs)) >=
         sizeof(options.rootfs))
     {
-        _err("<rootfs> command line argument is too long: %s", rootfs);
+        puterr("<rootfs> command line argument is too long: %s", rootfs);
     }
 
     /* if not a CPIO archive, create a zero-filled file with one page */
@@ -334,12 +335,12 @@ int exec_action(int argc, const char* argv[], const char* envp[])
         uint8_t page[PAGE_SIZE];
 
         if ((fd = mkstemp(rootfs_path)) < 0)
-            _err("failed to create temporary file");
+            puterr("failed to create temporary file");
 
         memset(page, 0, sizeof(page));
 
         if (write(fd, page, sizeof(page)) != sizeof(page))
-            _err("failed to create file");
+            puterr("failed to create file");
 
         close(fd);
         rootfs = rootfs_path;
@@ -352,7 +353,7 @@ int exec_action(int argc, const char* argv[], const char* envp[])
              program, rootfs, archive_path, commandline_config, heap_size)) ==
         NULL)
     {
-        _err("Creating region data failed.");
+        puterr("Creating region data failed.");
     }
 
     unlink(archive_path);

@@ -23,7 +23,7 @@ static int _add_page(void* arg_, uint64_t vaddr, const void* page, int flags)
     struct arg* arg = (struct arg*)arg_;
 
     if (vaddr < arg->vaddr)
-        _err("_add_page() failed");
+        puterr("_add_page() failed");
 
     if (arg->baseaddr != 0)
     {
@@ -33,7 +33,7 @@ static int _add_page(void* arg_, uint64_t vaddr, const void* page, int flags)
         memcpy(addr, page, PAGE_SIZE);
 
         if (mprotect(addr, PAGE_SIZE, prot) != 0)
-            _err("failed to protect memory region");
+            puterr("failed to protect memory region");
     }
 
     arg->vaddr = vaddr + PAGE_SIZE;
@@ -80,7 +80,7 @@ int map_regions(void** addr_out, size_t* length_out)
         int flags = MAP_ANONYMOUS | MAP_PRIVATE;
 
         if ((addr = mmap(NULL, length, prot, flags, -1, 0)) == MAP_FAILED)
-            _err("failed to map %zu bytes of memory", length);
+            puterr("failed to map %zu bytes of memory", length);
     }
 
     /* map the regions onto the memory mapping */
@@ -96,7 +96,7 @@ int map_regions(void** addr_out, size_t* length_out)
         }
 
         if (arg.vaddr != length)
-            _err("unexpected mismatch in memory mapping");
+            puterr("unexpected mismatch in memory mapping");
     }
 
     *addr_out = addr;
