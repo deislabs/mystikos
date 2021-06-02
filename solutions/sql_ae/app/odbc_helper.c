@@ -418,7 +418,8 @@ static int insert_data_to_table(SQLHSTMT stmt)
         0);
     OK_CHECK(
         checkRC(rc, "Binding parameters for insert", stmt, SQL_HANDLE_STMT));
-    strcpy(data, SAMPLE_DATA);
+    *data = '\0';
+    strncat(data, SAMPLE_DATA, sizeof(data) - 1);
     sprintf(buffer, "INSERT INTO %s values (?)", table_name_gen);
     rc = SQLExecDirect(stmt, buffer, SQL_NTS);
     OK_CHECK(checkRC(rc, "Inserting data into table", stmt, SQL_HANDLE_STMT));

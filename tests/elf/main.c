@@ -34,7 +34,8 @@ static char _msg[64];
 static void _callback(const char* msg)
 {
     // printf("=== _callback(): %s\n", msg);
-    strcpy(_msg, msg);
+    *_msg = '\0';
+    strncat(_msg, msg, sizeof(_msg) - 1);
 }
 
 static int _test_image_load(const char* path)

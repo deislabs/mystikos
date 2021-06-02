@@ -139,7 +139,8 @@ void test_thread_name()
     assert(prctl(PR_GET_NAME, buf) == 0);
 
     {
-        strcpy(buf, NEWNAME);
+        *buf = '\0';
+        strncat(buf, NEWNAME, sizeof(buf) - 1);
         assert(prctl(PR_SET_NAME, buf) == 0);
 
         char buf2[BUFSIZ];
@@ -150,7 +151,8 @@ void test_thread_name()
 
     // test thread names are atmost 16 bytes, including null byte
     {
-        strcpy(buf, NEWNAMELONG);
+        *buf = '\0';
+        strncat(buf, NEWNAMELONG, sizeof(buf) - 1);
         assert(prctl(PR_SET_NAME, buf) == 0);
 
         char buf2[BUFSIZ];

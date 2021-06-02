@@ -46,18 +46,6 @@ char* strdup(const char* s)
     return p;
 }
 
-char* strcpy(char* dest, const char* src)
-{
-    char* p = dest;
-
-    while (*src)
-        *p++ = *src++;
-
-    *p = '\0';
-
-    return dest;
-}
-
 char* strncpy(char* dest, const char* src, size_t n)
 {
     size_t i;
