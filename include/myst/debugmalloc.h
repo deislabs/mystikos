@@ -21,6 +21,9 @@ void* myst_debug_memalign(size_t alignment, size_t size);
 
 size_t myst_debug_malloc_check(void);
 
+/* check integrity of all allocated blocks */
+size_t myst_memcheck(void);
+
 extern bool myst_enable_debug_malloc;
 
 #endif /* _MYST_DEBUGMALLOC_H */
