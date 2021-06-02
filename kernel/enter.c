@@ -395,7 +395,7 @@ static int _create_main_thread(
     thread->target_tid = target_tid;
     thread->event = event;
     thread->target_td = myst_get_fsbase();
-    strcpy(thread->name, "main");
+    myst_strlcpy(thread->name, "main", sizeof(thread->name));
 
     thread->uid = MYST_DEFAULT_UID;
     thread->euid = MYST_DEFAULT_UID;

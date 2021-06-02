@@ -779,7 +779,8 @@ json_result_t json_match(json_parser_t* parser, const char* pattern)
         else if (!(ptr = _malloc(parser, pattern_len + 1)))
             RAISE(JSON_OUT_OF_MEMORY);
 
-        strcpy(ptr, pattern);
+        *ptr = '\0';
+        strncat(ptr, pattern, pattern_len);
     }
 
     /* Split the pattern into tokens */

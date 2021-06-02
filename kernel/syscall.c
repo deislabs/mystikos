@@ -4404,7 +4404,9 @@ static long _syscall(void* args_)
                 if (!arg2)
                     BREAK(_return(n, -EINVAL));
 
-                strcpy(arg2, myst_get_thread_name(myst_thread_self()));
+                // ATTN: Linux requires a 16-byte buffer:
+                const size_t n = 16;
+                myst_strlcpy(arg2, myst_get_thread_name(myst_thread_self()), n);
             }
             else if (option == PR_SET_NAME)
             {

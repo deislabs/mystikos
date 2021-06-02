@@ -39,7 +39,7 @@ static int _which(const char* program, char buf[PATH_MAX])
 
         if (access(current, X_OK) == 0)
         {
-            strcpy(buf, current);
+            myst_strlcpy(buf, current, PATH_MAX);
             ret = 0;
             goto done;
         }
@@ -54,7 +54,7 @@ static int _which(const char* program, char buf[PATH_MAX])
         if (!(p = getenv("PATH")) || strlen(p) >= PATH_MAX)
             goto done;
 
-        strcpy(path, p);
+        myst_strlcpy(path, p, sizeof(path));
     }
 
     /* Search the PATH for the program */
@@ -73,7 +73,7 @@ static int _which(const char* program, char buf[PATH_MAX])
 
             if (access(current, X_OK) == 0)
             {
-                strcpy(buf, current);
+                myst_strlcpy(buf, current, PATH_MAX);
                 ret = 0;
                 goto done;
             }

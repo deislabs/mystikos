@@ -155,7 +155,8 @@ int mock_mount_resolve(
     char suffix[PATH_MAX],
     myst_fs_t** fs_out)
 {
-    strcpy(suffix, path);
+    *suffix = '\0';
+    strncat(suffix, path, PATH_MAX - 1);
     *fs_out = (myst_fs_t*)__ext2;
     return 0;
 }

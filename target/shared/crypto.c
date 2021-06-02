@@ -13,6 +13,7 @@
 #include <myst/crypto.h>
 #include <myst/eraise.h>
 #include <myst/sha256.h>
+#include <myst/strings.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -116,8 +117,10 @@ static int _mbedtls_generate_key_pair(
 
     if (format == MYST_PEM)
     {
-        strcpy((char*)*public_key_out, (const char*)buffer1);
-        strcpy((char*)*private_key_out, (const char*)buffer2);
+        myst_strlcpy(
+            (char*)*public_key_out, (const char*)buffer1, (size_t)len1);
+        myst_strlcpy(
+            (char*)*private_key_out, (const char*)buffer2, (size_t)len2);
     }
     else if (format == MYST_DER)
     {
