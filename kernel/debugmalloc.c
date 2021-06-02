@@ -431,14 +431,15 @@ size_t myst_debug_malloc_usable_size(void* ptr)
     return _get_header(ptr)->size;
 }
 
-size_t myst_debug_malloc_check(void)
+static size_t _debug_malloc_check(bool dump)
 {
     list_t* list = &_list;
     size_t count = 0;
 
     myst_spin_lock(&_spin);
     {
-        _dump();
+        if (dump)
+            _dump();
 
         for (header_t* p = list->head; p; p = p->next)
             count++;
@@ -452,4 +453,14 @@ size_t myst_debug_malloc_check(void)
     myst_spin_unlock(&_spin);
 
     return count;
+}
+
+size_t myst_debug_malloc_check(void)
+{
+    return _debug_malloc_check(true);
+}
+
+size_t myst_memcheck(void)
+{
+    return _debug_malloc_check(false);
 }
