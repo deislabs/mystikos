@@ -603,8 +603,15 @@ int _exec_package(
         fprintf(stderr, "Invalid path %s\n", argv[0]);
         goto done;
     }
+
     app_dir = full_app_path;
-    app_name = strrchr(full_app_path, '/');
+
+    if (!(app_name = strrchr(full_app_path, '/')))
+    {
+        fprintf(stderr, "Invalid path (missing slash): %s\n", full_app_path);
+        goto done;
+    }
+
     *app_name = '\0';
     app_name++;
 
