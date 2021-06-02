@@ -38,7 +38,7 @@ const region_details* create_region_details_from_package(
 {
     char dir[PATH_MAX];
 
-    strcpy(dir, get_program_file());
+    myst_strlcpy(dir, get_program_file(), sizeof(dir));
     dirname(dir);
 
     if (snprintf(

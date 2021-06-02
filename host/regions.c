@@ -5,6 +5,7 @@
 
 #include <myst/eraise.h>
 #include <myst/regions.h>
+#include <myst/strings.h>
 
 #define MAGIC 0xdd131acc5dc846e8
 
@@ -119,7 +120,7 @@ int myst_region_close(
         memset(&trailer, 0, sizeof(trailer));
         trailer.magic = MYST_REGION_MAGIC;
         trailer.index = context->region_index++;
-        strcpy(trailer.name, name);
+        myst_strlcpy(trailer.name, name, sizeof(trailer.name));
         trailer.size = context->vaddr - context->region_start;
 
         ECHECK((*context->add_page)(

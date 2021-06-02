@@ -1203,7 +1203,7 @@ int myst_init_hostfs(myst_fs_t** fs_out)
 
     hostfs->magic = HOSTFS_MAGIC;
     hostfs->base = _base;
-    strcpy(hostfs->target, "/");
+    myst_strlcpy(hostfs->target, "/", sizeof(hostfs->target));
 
     *fs_out = &hostfs->base;
     hostfs = NULL;

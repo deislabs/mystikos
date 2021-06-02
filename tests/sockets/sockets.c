@@ -67,7 +67,8 @@ static void* _srv_thread_func(void* arg)
         struct sockaddr_un addr;
         memset(&addr, 0, sizeof(addr));
         addr.sun_family = AF_UNIX;
-        strcpy(addr.sun_path, args->path);
+        *addr.sun_path = '\0';
+        strncat(addr.sun_path, args->path, sizeof(addr.sun_path) - 1);
 
         struct stat buf;
 
@@ -148,7 +149,8 @@ static void* _cli_thread_func(void* arg)
         struct sockaddr_un addr;
         memset(&addr, 0, sizeof(addr));
         addr.sun_family = AF_UNIX;
-        strcpy(addr.sun_path, args->path);
+        *addr.sun_path = '\0';
+        strncat(addr.sun_path, args->path, sizeof(addr.sun_path) - 1);
         assert(connect(sock, (struct sockaddr*)&addr, sizeof(addr)) >= 0);
     }
     else
