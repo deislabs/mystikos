@@ -204,13 +204,13 @@ static ssize_t _read(myst_blkdev_t* dev, size_t offset, void* data, size_t size)
     }
     else
     {
+        if (!(locals = malloc(sizeof(struct locals))))
+            goto done;
+
         for (i = blkno, rem = size, ptr = (uint8_t*)data; rem; i++)
         {
             uint32_t off; /* offset into this block */
             uint32_t len; /* bytes to read from this block */
-
-            if (!(locals = malloc(sizeof(struct locals))))
-                goto done;
 
             if (dev->get(dev, i, locals->blk) != 0)
                 goto done;

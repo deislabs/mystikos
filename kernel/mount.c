@@ -262,6 +262,9 @@ int myst_umount(const char* target)
 
         if (strcmp(entry->path, locals->realpath.buf) == 0)
         {
+            /* release the source */
+            free(entry->source);
+
             /* release the path */
             free(entry->path);
 
