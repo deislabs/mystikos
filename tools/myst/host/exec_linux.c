@@ -129,6 +129,13 @@ static void _get_options(int* argc, const char* argv[], struct options* opts)
         }
     }
 
+    /* Get MYST_MEMCHECK environment variable */
+    {
+        const char* env;
+        if ((env = getenv("MYST_MEMCHECK")) && strcmp(env, "1") == 0)
+            opts->memcheck = true;
+    }
+
     /* Get --export-ramfs option */
     if (cli_getopt(argc, argv, "--export-ramfs", NULL) == 0)
         opts->export_ramfs = true;

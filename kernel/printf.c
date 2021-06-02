@@ -6,6 +6,7 @@
 
 #include <myst/crash.h>
 #include <myst/eraise.h>
+#include <myst/malloc.h>
 #include <myst/panic.h>
 #include <myst/printf.h>
 #include <myst/strings.h>
@@ -22,7 +23,8 @@ int myst_console_printf(int fd, const char* format, ...)
     };
     struct locals* locals = NULL;
 
-    if (!(locals = malloc(sizeof(struct locals))))
+    /* use raw malloc since debug-malloc indirectly calls this function */
+    if (!(locals = myst_malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     va_start(ap, format);
@@ -37,7 +39,10 @@ int myst_console_printf(int fd, const char* format, ...)
 done:
 
     if (locals)
-        free(locals);
+    {
+        /* use raw free since this was allocated with raw malloc */
+        myst_free(locals);
+    }
 
     return ret;
 }
@@ -52,7 +57,8 @@ int myst_console_vprintf(int fd, const char* format, va_list ap)
     };
     struct locals* locals = NULL;
 
-    if (!(locals = malloc(sizeof(struct locals))))
+    /* use raw malloc since debug-malloc indirectly calls this function */
+    if (!(locals = myst_malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     count = vsnprintf(locals->buf, sizeof(locals->buf), format, ap);
@@ -65,7 +71,10 @@ int myst_console_vprintf(int fd, const char* format, va_list ap)
 done:
 
     if (locals)
-        free(locals);
+    {
+        /* use raw free since this was allocated with raw malloc */
+        myst_free(locals);
+    }
 
     return ret;
 }

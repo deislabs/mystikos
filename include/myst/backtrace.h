@@ -4,10 +4,17 @@
 #ifndef _MYST_BACKTRACE_H
 #define _MYST_BACKTRACE_H
 
+#include <stdbool.h>
 #include <stddef.h>
 
 size_t myst_backtrace(void** buffer, size_t size);
 
 void myst_dump_backtrace(void** buffer, size_t size);
+
+/* return true if the backtrace contains the given function */
+bool myst_backtrace_contains(
+    const void* const* buffer,
+    size_t size,
+    const char* func);
 
 #endif /* _MYST_BACKTRACE_H */

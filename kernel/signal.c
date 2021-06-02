@@ -129,29 +129,28 @@ static long _default_signal_handler(unsigned signum)
     return 0;
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstack-usage="
 static long _handle_one_signal(
     unsigned signum,
     siginfo_t* siginfo,
     mcontext_t* mcontext)
 {
     long ret = 0;
-    ECHECK(_check_signum(signum));
-    struct locals
-    {
-        ucontext_t context;
-    };
-    struct locals* locals = NULL;
+    ucontext_t context;
 
-    if (!(locals = malloc(sizeof(struct locals))))
-        ERAISE(-ENOMEM);
+    // Caution: This function should not allocate memory since the signal
+    // handler may not return due to a long jump.
+
+    ECHECK(_check_signum(signum));
 
     // Use a zeroed ucontext_t unless the caller passed in a mconext
     // (register states). Note we modified pthread_cancel in MUSL to
     // avoid the dependency on mcontext.
-    memset(&locals->context, 0, sizeof(locals->context));
+    memset(&context, 0, sizeof(context));
 
     if (mcontext != NULL)
-        locals->context.uc_mcontext = *mcontext;
+        context.uc_mcontext = *mcontext;
 
     myst_thread_t* thread = myst_thread_self();
 
@@ -190,10 +189,10 @@ static long _handle_one_signal(
         if ((action->flags & SA_SIGINFO) != 0)
         {
             ((sigaction_function_t)(action->handler))(
-                signum, siginfo, &locals->context);
+                signum, siginfo, &context);
             // Copy back mcontext (register states)
             if (mcontext != NULL)
-                *mcontext = locals->context.uc_mcontext;
+                *mcontext = context.uc_mcontext;
         }
         else
         {
@@ -208,11 +207,9 @@ static long _handle_one_signal(
 
 done:
 
-    if (locals)
-        free(locals);
-
     return ret;
 }
+#pragma GCC diagnostic pop
 
 long myst_signal_process(myst_thread_t* thread)
 {

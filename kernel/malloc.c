@@ -24,6 +24,7 @@
 #include <myst/debugmalloc.h>
 #include <myst/kernel.h>
 #include <myst/list.h>
+#include <myst/malloc.h>
 #include <myst/mmanutils.h>
 #include <myst/panic.h>
 #include <myst/printf.h>
@@ -190,4 +191,19 @@ int posix_memalign(void** memptr, size_t alignment, size_t size)
         return myst_debug_posix_memalign(memptr, alignment, size);
     else
         return myst_posix_memalign(memptr, alignment, size);
+}
+
+char* myst_strdup(const char* s)
+{
+    char* p;
+
+    if (!s)
+        return NULL;
+
+    size_t n = strlen(s);
+
+    if (!(p = myst_malloc(n + 1)))
+        return NULL;
+
+    return memcpy(p, s, n + 1);
 }

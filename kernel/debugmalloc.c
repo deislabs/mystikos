@@ -12,6 +12,7 @@
 #include <myst/defs.h>
 #include <myst/malloc.h>
 #include <myst/panic.h>
+#include <myst/printf.h>
 #include <myst/spinlock.h>
 
 #define BACKTRACE_MAX 16
@@ -76,11 +77,7 @@ struct header
     void* addrs[BACKTRACE_MAX];
     uint64_t num_addrs;
 
-    /* Option if current object is tracked */
-    int32_t session_number;
-
-    /* Padding to make header a multiple of 16 */
-    uint8_t padding[4];
+    uint64_t padding;
 
     /* Contains HEADER_MAGIC2 */
     uint64_t magic2;
@@ -264,41 +261,36 @@ MYST_INLINE bool _check_multiply_overflow(size_t x, size_t y)
 
 static void _malloc_dump(size_t size, void* addrs[], int num_addrs)
 {
-    printf("%lu bytes\n", size);
+    myst_eprintf("%lu bytes\n", size);
     myst_dump_backtrace(addrs, num_addrs);
 }
 
-static void _dump(bool dump_blocks, bool need_lock)
+static void _dump(void)
 {
     list_t* list = &_list;
+    bool found = false;
+    size_t blocks = 0;
+    size_t bytes = 0;
 
-    if (need_lock)
-        myst_spin_lock(&_spin);
-
+    /* Count bytes allocated and blocks still in use */
+    for (header_t* p = list->head; p; p = p->next)
     {
-        size_t blocks = 0;
-        size_t bytes = 0;
-
-        /* Count bytes allocated and blocks still in use */
-        for (header_t* p = list->head; p; p = p->next)
-        {
-            blocks++;
-            bytes += p->size;
-        }
-
-        printf("=== blocks in use: %zu bytes in %zu blocks\n", bytes, blocks);
-
-        if (dump_blocks)
-        {
-            for (header_t* p = list->head; p; p = p->next)
-                _malloc_dump(p->size, p->addrs, (int)p->num_addrs);
-
-            printf("\n");
-        }
+        found = true;
+        blocks++;
+        bytes += p->size;
     }
 
-    if (need_lock)
-        myst_spin_unlock(&_spin);
+    /* if any non-supressed blocks were found */
+    if (found)
+    {
+        myst_eprintf(
+            "=== blocks in use: %zu bytes in %zu blocks\n", bytes, blocks);
+
+        for (header_t* p = list->head; p; p = p->next)
+            _malloc_dump(p->size, p->addrs, (int)p->num_addrs);
+
+        myst_eprintf("\n");
+    }
 }
 
 /*
@@ -439,31 +431,20 @@ size_t myst_debug_malloc_usable_size(void* ptr)
     return _get_header(ptr)->size;
 }
 
-void myst_debug_malloc_dump(void)
-{
-    _dump(true, true);
-}
-
-void myst_debug_malloc_dump_used(void)
-{
-    _dump(false, true);
-}
-
-size_t myst_debug_malloc_check(bool dump)
+size_t myst_debug_malloc_check(void)
 {
     list_t* list = &_list;
     size_t count = 0;
 
     myst_spin_lock(&_spin);
     {
+        _dump();
+
         for (header_t* p = list->head; p; p = p->next)
             count++;
 
         if (count)
         {
-            if (dump)
-                _dump(true, false);
-
             for (header_t* p = list->head; p; p = p->next)
                 _check_block(p);
         }

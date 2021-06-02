@@ -294,6 +294,13 @@ int exec_action(int argc, const char* argv[], const char* envp[])
             }
         }
 
+        /* Get MYST_MEMCHECK environment variable */
+        {
+            const char* env;
+            if ((env = getenv("MYST_MEMCHECK")) && strcmp(env, "1") == 0)
+                options.memcheck = true;
+        }
+
         /* Get --export-ramfs option */
         if (cli_getopt(&argc, argv, "--export-ramfs", NULL) == 0)
             options.export_ramfs = true;

@@ -789,9 +789,6 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         myst_set_fsbase(thread->target_td);
     }
 
-    /* unload the debugger symbols */
-    myst_syscall_unload_symbols();
-
     /* Tear down the temporary file systems */
 #ifdef USE_TMPFS
     _teardown_tmpfs();
@@ -813,11 +810,17 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     myst_call_atexit_functions();
 
     /* check for memory leaks */
+#if !defined(MYST_RELEASE)
     if (myst_enable_debug_malloc)
     {
-        if (myst_debug_malloc_check(true) != 0)
+        /* check malloc'c memory integrity and report leaks */
+        if (myst_debug_malloc_check() != 0)
             myst_eprintf("*** memory leaks detected\n");
     }
+#endif
+
+    /* unload the debugger symbols */
+    myst_syscall_unload_symbols();
 
     /* ATTN: move myst_call_atexit_functions() here */
 
