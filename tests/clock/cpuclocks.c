@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <pthread.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -35,10 +36,20 @@ static int scan_array()
     return sum;
 }
 
+static pthread_spinlock_t _lock;
+static bool _quit_thread_func;
+
 static void* thread_func(void* arg)
 {
     while (1)
     {
+        pthread_spin_lock(&_lock);
+        bool quit = _quit_thread_func;
+        pthread_spin_unlock(&_lock);
+
+        if (quit)
+            break;
+
         scan_array();
         sleep(1);
     }
@@ -55,6 +66,8 @@ int main(int argc, char* argv[])
     clockid_t cid;
     int ret;
     struct timespec ts = {0};
+
+    pthread_spin_init(&_lock, PTHREAD_PROCESS_PRIVATE);
 
     ret = pthread_create(&thread, NULL, thread_func, NULL);
     scan_array();
@@ -87,6 +100,17 @@ int main(int argc, char* argv[])
     assert(
         ts_to_long(&process_ts) >
         ts_to_long(&child_thread_ts) + ts_to_long(&main_thread_ts));
+
+    /* prevent the thread clone structures from being leaked */
+    {
+        pthread_spin_lock(&_lock);
+        _quit_thread_func = true;
+        pthread_spin_unlock(&_lock);
+        sleep(1);
+        pthread_join(thread, NULL);
+    }
+
+    pthread_spin_destroy(&_lock);
 
     printf("=== passed test (%s)\n", argv[0]);
     exit(0);

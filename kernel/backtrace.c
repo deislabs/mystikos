@@ -4,6 +4,7 @@
 #include <elf.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <myst/backtrace.h>
 #include <myst/defs.h>
@@ -158,4 +159,24 @@ void myst_dump_backtrace(void** buffer, size_t size)
             break;
         }
     }
+}
+
+bool myst_backtrace_contains(
+    const void* const* buffer,
+    size_t size,
+    const char* func)
+{
+    for (size_t i = 0; i < size; i++)
+    {
+        const uint64_t addr = (uint64_t)buffer[i];
+        const char* name;
+
+        if (!addr)
+            break;
+
+        if (_addr_to_func_name(addr, &name) == 0 && strcmp(name, func) == 0)
+            return true;
+    }
+
+    return false;
 }

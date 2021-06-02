@@ -12,6 +12,7 @@
 #include <myst/eraise.h>
 #include <myst/fdtable.h>
 #include <myst/file.h>
+#include <myst/malloc.h>
 #include <myst/mmanutils.h>
 #include <myst/panic.h>
 #include <myst/process.h>
@@ -527,7 +528,8 @@ int myst_register_process_mapping(
     if (pid < 0 || !addr || (addr == (void*)-1) || !size)
         ERAISE(-EINVAL);
 
-    if (!(m = calloc(1, sizeof(myst_process_mapping_t))))
+    /* ATTN: use raw calloc to exclude from debug-malloc checks for now */
+    if (!(m = myst_calloc(1, sizeof(myst_process_mapping_t))))
         ERAISE(-ENOMEM);
 
     m->pid = pid;
@@ -551,7 +553,7 @@ int myst_register_process_mapping(
             fs, file, locals->realpath, sizeof(locals->realpath)));
 
         /* Copy file path, offset and prot to mappings struct */
-        if (!(m->pathname = strdup(locals->realpath)))
+        if (!(m->pathname = myst_strdup(locals->realpath)))
             ERAISE(-ENOMEM);
         m->offset = offset;
         m->prot = prot;
@@ -561,10 +563,17 @@ int myst_register_process_mapping(
     {
         m->next = _mappings;
         _mappings = m;
+        m = NULL;
     }
     myst_spin_unlock(&_mappings_lock);
 
 done:
+
+    if (m)
+    {
+        /* use raw free since allocated with raw calloc */
+        myst_free(m);
+    }
 
     if (locals)
         free(locals);
@@ -599,8 +608,13 @@ int myst_release_process_mappings(pid_t pid)
                     _mappings = next;
 
                 if (p->pathname)
-                    free(p->pathname);
-                free(p);
+                {
+                    /* use raw free since allocated with raw strdup */
+                    myst_free(p->pathname);
+                }
+
+                /* use raw free since allocated with raw calloc */
+                myst_free(p);
             }
             else
             {
