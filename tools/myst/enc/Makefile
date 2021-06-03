@@ -53,3 +53,6 @@ EDGER8R_OPTS += --trusted-dir $(SUBOBJDIR)
 
 $(SUBOBJDIR)/myst_t.c: ../myst.edl
 	$(EDGER8R) $(EDGER8R_OPTS) ../myst.edl
+
+t:
+	echo $(OEENCLAVE_LDFLAGS)

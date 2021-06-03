@@ -86,13 +86,11 @@ OEENCLAVE_INCLUDES += -I$(TOP)/include
 
 OEENCLAVE_LIBDIR = $(BUILDDIR)/openenclave/lib/openenclave/enclave
 
-OEENCLAVE_LDFLAGS = -nostdlib -nodefaultlibs -nostartfiles -Wl,--no-undefined -Wl,-Bstatic -Wl,-Bsymbolic -Wl,--export-dynamic -Wl,-pie -Wl,--build-id -Wl,-z,noexecstack -Wl,-z,now -Wl,-gc-sections -L$(OEENCLAVE_LIBDIR) -loeenclave -loecryptombedtls -lmbedtls -lmbedx509 -lmbedcrypto -loelibc -loesyscall -loecore
+OEENCLAVE_LDFLAGS = $(shell PKG_CONFIG_PATH=$(BUILDDIR)/openenclave/share/pkgconfig pkg-config oeenclave-gcc --libs)
 
-OEENCLAVE_CFLAGS_LAX = -g -nostdinc -m64 -fPIE -ftls-model=local-exec -fstack-protector-strong -fno-omit-frame-pointer -ffunction-sections -fdata-sections
+OEENCLAVE_LDFLAGS += $(shell PKG_CONFIG_PATH=$(BUILDDIR)/openenclave/share/pkgconfig pkg-config oeenclave-gcc --variable=mbedtlslibs)
 
-OEENCLAVE_CFLAGS_STRICT = -Wall -Werror -Wpointer-arith -Wconversion -Wextra -Wno-missing-field-initializers -Wno-type-limits
-
-OEENCLAVE_CFLAGS = $(OEENCLAVE_CFLAGS_LAX) $(OEENCLAVE_CFLAGS_STRICT)
+OEENCLAVE_CFLAGS = $(shell PKG_CONFIG_PATH=$(BUILDDIR)/openenclave/share/pkgconfig pkg-config oeenclave-gcc --cflags)
 
 ##==============================================================================
 ##
