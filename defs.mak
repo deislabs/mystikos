@@ -86,7 +86,7 @@ OEENCLAVE_INCLUDES += -I$(TOP)/include
 
 OEENCLAVE_LIBDIR = $(BUILDDIR)/openenclave/lib/openenclave/enclave
 
-OEENCLAVE_LDFLAGS = -nostdlib -nodefaultlibs -nostartfiles -Wl,--no-undefined -Wl,-Bstatic -Wl,-Bsymbolic -Wl,--export-dynamic -Wl,-pie -Wl,--build-id -Wl,-z,noexecstack -Wl,-z,now -Wl,-gc-sections -L$(OEENCLAVE_LIBDIR) -loeenclave -loecryptombed -lmbedtls -lmbedx509 -lmbedcrypto -loelibc -loesyscall -loecore
+OEENCLAVE_LDFLAGS = -nostdlib -nodefaultlibs -nostartfiles -Wl,--no-undefined -Wl,-Bstatic -Wl,-Bsymbolic -Wl,--export-dynamic -Wl,-pie -Wl,--build-id -Wl,-z,noexecstack -Wl,-z,now -Wl,-gc-sections -L$(OEENCLAVE_LIBDIR) -loeenclave -loecryptombedtls -lmbedtls -lmbedx509 -lmbedcrypto -loelibc -loesyscall -loecore
 
 OEENCLAVE_CFLAGS_LAX = -g -nostdinc -m64 -fPIE -ftls-model=local-exec -fstack-protector-strong -fno-omit-frame-pointer -ffunction-sections -fdata-sections
 

@@ -6,7 +6,7 @@ BUILDDIR=${TOP}/build
 
 URL=https://github.com/openenclave/openenclave
 
-BRANCH=mystikos.v2
+BRANCH=mystikos.v4
 
 # get the hash of the remote github repository (for the given branch)
 HASH=$(shell git ls-remote $(URL) -b $(BRANCH) | cut -f1 )
@@ -51,10 +51,17 @@ $(TOP)/build/bin/myst-gdb:
 FETCH_SUBMODULE = git submodule update --init --progress
 
 submodule:
-	$(FETCH_SUBMODULE) $(CURDIR)/openenclave
+	$(MAKE) .checkout_openenclave
 	( cd openenclave; $(FETCH_SUBMODULE) tools/oeedger8r-cpp )
 	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/mbedtls/mbedtls )
+	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/openssl/openssl )
 	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/snmalloc )
+	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/openssl/intel-sgx-ssl )
+	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/musl/musl )
+
+.checkout_openenclave:
+	git clone $(URL) -b $(BRANCH)
+	touch .checkout_openenclave
 
 ##==============================================================================
 ##
@@ -87,9 +94,11 @@ ifneq ($(MYST_IGNORE_ANSIBLE),1)
 	$(MAKE) __ansible
 endif
 
+export ANSIBLE_SKIP_CONFLICT_CHECK=1
+
 __ansible:
-	sudo $(OPENENCLAVE_SRC)/scripts/ansible/install-ansible.sh
-	sudo ansible-playbook $(OPENENCLAVE_SRC)/scripts/ansible/oe-contributors-acc-setup-no-driver.yml
+	sudo -H $(OPENENCLAVE_SRC)/scripts/ansible/install-ansible.sh || /bin/true
+	sudo -H ansible-playbook $(OPENENCLAVE_SRC)/scripts/ansible/oe-contributors-acc-setup-no-driver.yml
 
 configure_oe: $(OPENENCLAVE_BUILD)/Makefile
 
@@ -132,6 +141,7 @@ endif
 
 DISTCLEAN += $(BUILDDIR)
 DISTCLEAN += $(OPENENCLAVE_BUILD)
+DISTCLEAN += .checkout_openenclave openenclave
 
 clean:
 	rm -rf $(TOP)/build/openenclave
