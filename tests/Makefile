@@ -107,9 +107,6 @@ DIRS += mprotect
 DIRS += eventfd
 DIRS += polleventfd
 
-# ATTN: remove this!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-DIRS = getcwd
-
 .PHONY: $(DIRS)
 
 dirs: $(DIRS)
