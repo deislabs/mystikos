@@ -128,12 +128,12 @@ add_host_users_and_groups:
 	sudo useradd -g grp701 -u 100703 user703
 
 del_host_users_and_groups:
-	sudo userdel user700
-	sudo userdel user702
-	sudo userdel user703
-	sudo groupdel grp701
-	sudo groupdel grp704
-	sudo groupdel grp705
+	-sudo userdel user700
+	-sudo userdel user702
+	-sudo userdel user703
+	-sudo groupdel grp701
+	-sudo groupdel grp704
+	-sudo groupdel grp705
 
 tests: tests_hostfs tests_ext2fs tests_ramfs
 
