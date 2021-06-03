@@ -25,7 +25,7 @@ endif
 LDFLAGS = $(OEHOST_LDFLAGS)
 
 LIBS += $(OEHOST_LIBDIR)/liboehost.a
-LIBS += $(OEHOST_LIBDIR)/liboesignlib.a
+LIBS += $(OEHOST_LIBDIR)/liboesign.a
 LIBS += $(LIBDIR)/libjson.a
 LIBS += $(LIBDIR)/libmysthost.a
 LIBS += $(LIBDIR)/libmysttargetcommon.a
