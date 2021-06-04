@@ -38,6 +38,7 @@ jobs:
           curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
           sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
           sudo apt-get update
+          while sudo lsof /var/lib/dpkg/lock-frontend | grep dpkg; do sleep 3; done
           sudo apt-get install build-essential python3-setuptools libmbedtls-dev docker-ce -y 
           sudo chmod 666 /var/run/docker.sock
         displayName: 'minimum init config'
@@ -47,6 +48,7 @@ jobs:
           # remove all untracked files and directories in the git repository
           sudo rm -rf `git ls-files --others --directory`
           make distclean
+          make distclean -C third_party/openenclave/
           make -j
         displayName: 'build repo source'
         workingDirectory: $(Build.SourcesDirectory)

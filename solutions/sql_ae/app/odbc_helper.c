@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 #define __stdcall
+#include <assert.h>
 #include <dlfcn.h>
 #include <sql.h>
 #include <sqlext.h>
@@ -52,7 +53,7 @@ static SQLHDBC dbc = NULL;
 static size_t wchar_str_len(const wchar_t* ws)
 {
     size_t i = 0;
-    for (const int16_t* p = ws; *p != 0; p++, i++)
+    for (const int16_t* p = (int16_t*)ws; *p != 0; p++, i++)
         ;
     return i;
 }
@@ -105,7 +106,9 @@ static int checkRC(SQLRETURN rc, char* msg, SQLHANDLE h, SQLSMALLINT ht)
 //      <OBJECT_ID> := <timestamp><rand value>
 static void generate_objects_names(SQLHSTMT stmt)
 {
-    time_t _time = time(NULL);
+    struct timespec tp;
+    assert(clock_gettime(CLOCK_REALTIME, &tp) == 0);
+    long _time = tp.tv_sec * 1000000000 + tp.tv_nsec;
     srand(_time);
     int random_val = rand();
     sprintf(db_object_id, "_%ld_%d", _time, random_val);

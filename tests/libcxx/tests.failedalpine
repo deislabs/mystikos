@@ -141,6 +141,7 @@
 /app/transform_primary.pass.cpp.exe
 /app/translate_nocase.pass.cpp.exe
 /app/try_lock_until_deadlock_bug.pass.cpp.exe
+/app/tuple.include.utility.pass.cpp.exe
 /app/underflow.pass.cpp.exe
 /app/utf_sanity_check.pass.cpp.exe
 /app/wchar_t_unshift.pass.cpp.exe

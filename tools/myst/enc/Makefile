@@ -1,3 +1,4 @@
+.NOTPARALLEL:
 TOP=$(abspath ../../..)
 SUBBINDIR=$(TOP)/build/lib/openenclave
 include $(TOP)/defs.mak
