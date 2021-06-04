@@ -27,6 +27,7 @@ DIRS += coreclr
 endif
 
 DIRS += memcached
+DIRS += python_web_frameworks
 
 .PHONY: $(DIRS)
 
