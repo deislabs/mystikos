@@ -8,10 +8,13 @@ ifdef STRACE
 OPTS = --strace
 endif
 
-all: app run
+all: rootfs
 
-app:
-	$(APPBUILDER) -f cpio -o $(ROOTFS) Dockerfile 
+rootfs: appdir
+	$(MYST) mkcpio appdir $(ROOTFS)
+
+appdir:
+	$(APPBUILDER) Dockerfile
 
 run:
 	test -f server.pid && kill -9 `cat server.pid` || true
@@ -36,4 +39,4 @@ server-uwsgi:
 
 clean:
 	test -f server.pid && kill -9 `cat server.pid` || true
-	rm -rf $(ROOTFS) server.pid
+	rm -rf $(ROOTFS) appdir server.pid
