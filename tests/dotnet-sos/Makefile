@@ -41,7 +41,7 @@ run-ext2:
 	/src/hello/bin/Debug/net5.0/alpine-x64/hello.dll
 
 run-ext2-lldb:
-	/mnt/oelldb/oelldb -- $(MYST) exec ext2fs \
+	/mnt/oelldb/oelldb -- $(MYST) exec $(OPTS) ext2fs \
 	--roothash=roothash \
 	--memory-size $(HEAP_SIZE) \
 	/usr/share/dotnet/dotnet \
