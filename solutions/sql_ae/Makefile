@@ -1,3 +1,4 @@
+.NOTPARALLEL:
 .PHONY: all app
 
 TOP=$(abspath ../..)

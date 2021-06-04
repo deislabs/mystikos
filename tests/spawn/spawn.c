@@ -58,8 +58,8 @@ int test_spawn1(int argc, const char* argv[])
     return 0;
 }
 
-static volatile int sigtest1_usr1 = 0;
-static volatile int sig_handler_chld = 0;
+static _Atomic(int) sigtest1_usr1 = 0;
+static _Atomic(int) sig_handler_chld = 0;
 void test_spawn_sig_handler(int signo)
 {
     switch (signo)

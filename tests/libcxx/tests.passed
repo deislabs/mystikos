@@ -1957,7 +1957,6 @@
 /app/try_lock_shared.pass.cpp.exe
 /app/try_lock_until.pass.cpp.exe
 /app/tuple.by.type.pass.cpp.exe
-/app/tuple.include.utility.pass.cpp.exe
 /app/tuple.smartptr.pass.cpp.exe
 /app/tuple.version.pass.cpp.exe
 /app/tuple_array_template_depth.pass.cpp.exe

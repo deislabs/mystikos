@@ -8,6 +8,8 @@
 
 #define CONNSTR_MAX_LEN 2048
 
+int query_user_id();
+
 int main(int argc, char** argv)
 {
     int result = FAILURE;

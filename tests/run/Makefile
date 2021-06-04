@@ -1,3 +1,4 @@
+.NOTPARALLEL:
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
