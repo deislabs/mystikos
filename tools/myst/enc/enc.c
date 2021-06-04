@@ -153,6 +153,17 @@ static size_t _get_num_tcs(void)
 
 int myst_setup_clock(struct clock_ctrl*);
 
+static void _sanitize_xsave_area_fields(uint64_t* rbx, uint64_t* rcx)
+{
+    assert(rbx && rcx);
+    /* replace XSAVE/XRSTOR save area size with fixed large value,
+    to protect against spoofing attacks from untrusted host.
+    If host returns smaller xsave area than required, this can cause a buffer
+    overflow at context switch time.
+    We believe value of 4096 should be sufficient for forseeable future */
+    *rbx = *rcx = 4096;
+}
+
 /* Handle illegal SGX instructions */
 static uint64_t _vectored_handler(oe_exception_record_t* er)
 {
@@ -195,6 +206,8 @@ static uint64_t _vectored_handler(oe_exception_record_t* er)
                 uint32_t rbx = 0xbb;
                 uint32_t rcx = 0xcc;
                 uint32_t rdx = 0xdd;
+                bool is_xsave_subleaf_zero =
+                    (er->context->rax == 0xd && er->context->rcx == 0);
 
                 if (er->context->rax != 0xff)
                 {
@@ -211,6 +224,10 @@ static uint64_t _vectored_handler(oe_exception_record_t* er)
                 er->context->rbx = rbx;
                 er->context->rcx = rcx;
                 er->context->rdx = rdx;
+
+                if (is_xsave_subleaf_zero)
+                    _sanitize_xsave_area_fields(
+                        &er->context->rbx, &er->context->rcx);
 
                 /* Skip over the illegal instruction. */
                 er->context->rip += 2;
