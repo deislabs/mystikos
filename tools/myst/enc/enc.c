@@ -857,21 +857,21 @@ int myst_load_fssig(const char* path, myst_fssig_t* fssig)
     return retval;
 }
 
-int myst_tcall_cpuinfo_size()
+int myst_tcall_get_file_size(const char* pathname)
 {
     int retval;
 
-    if (myst_cpuinfo_size_ocall(&retval) != OE_OK)
+    if (myst_get_file_size_ocall(&retval, pathname) != OE_OK)
         return -EINVAL;
 
     return retval;
 }
 
-int myst_tcall_get_cpuinfo(char* buf, size_t size)
+int myst_tcall_read_file(const char* pathname, char* buf, size_t size)
 {
     int retval;
 
-    if (myst_get_cpuinfo_ocall(&retval, buf, size) != OE_OK)
+    if (myst_read_file_ocall(&retval, pathname, buf, size) != OE_OK)
         return -EINVAL;
 
     return retval;

@@ -94,14 +94,14 @@ void myst_cpuid_ocall(
     __cpuid_count(leaf, subleaf, *rax, *rbx, *rcx, *rdx);
 }
 
-int myst_cpuinfo_size_ocall()
+int myst_get_file_size_ocall(const char* pathname)
 {
-    return myst_tcall_cpuinfo_size();
+    return myst_tcall_get_file_size(pathname);
 }
 
-int myst_get_cpuinfo_ocall(char* buf, size_t size)
+int myst_read_file_ocall(const char* pathname, char* buf, size_t size)
 {
-    return myst_tcall_get_cpuinfo(buf, size);
+    return myst_tcall_read_file(pathname, buf, size);
 }
 
 OE_EXPORT

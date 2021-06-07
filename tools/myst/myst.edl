@@ -369,9 +369,9 @@ enclave
 
         int myst_mprotect_ocall(void* addr, size_t len, int prot);
 
-        int myst_cpuinfo_size_ocall();
+        int myst_get_file_size_ocall([in, string] const char* pathname);
 
-        int myst_get_cpuinfo_ocall([out, size=size] char* buf, size_t size);
+        int myst_read_file_ocall([in, string] const char* pathname, [out, size=size] char* buf, size_t size);
 
         long myst_chown_ocall(
             [in, string] const char* pathname,

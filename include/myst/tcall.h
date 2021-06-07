@@ -55,8 +55,8 @@ typedef enum myst_tcall_number
     MYST_TCALL_LOAD_FSSIG,
     MYST_TCALL_CLOCK_GETRES,
     MYST_TCALL_GCOV,
-    MYST_TCALL_CPUINFO_SIZE,
-    MYST_TCALL_GET_CPUINFO,
+    MYST_TCALL_GET_FILE_SIZE,
+    MYST_TCALL_READ_FILE,
 } myst_tcall_number_t;
 
 long myst_tcall(long n, long params[6]);
@@ -159,8 +159,8 @@ int myst_tcall_mprotect(void* addr, size_t len, int prot);
 
 long myst_gcov(const char* func, long params[6]);
 
-int myst_tcall_cpuinfo_size(void);
+int myst_tcall_get_file_size(const char* pathname);
 
-int myst_tcall_get_cpuinfo(char* buf, size_t size);
+int myst_tcall_read_file(const char* pathname, char* buf, size_t size);
 
 #endif /* _MYST_TCALL_H */
