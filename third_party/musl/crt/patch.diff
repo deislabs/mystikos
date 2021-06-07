@@ -211,7 +211,7 @@ index 20d50f2c..c6ad4096 100644
 +    return -ENOTSUP;
 +}
 diff --git a/ldso/dynlink.c b/ldso/dynlink.c
-index afec985a..5435b9b5 100644
+index afec985a..0ac9f0c4 100644
 --- a/ldso/dynlink.c
 +++ b/ldso/dynlink.c
 @@ -27,6 +27,13 @@
@@ -228,7 +228,53 @@ index afec985a..5435b9b5 100644
  #define MAXP2(a,b) (-(-(a)&-(b)))
  #define ALIGN(x,y) ((x)+(y)-1 & -(y))
  
-@@ -1043,38 +1050,7 @@ static struct dso *load_library(const char *name, struct dso *needed_by)
+@@ -217,6 +224,14 @@ static int search_vec(size_t *v, size_t *r, size_t key)
+ 	return 1;
+ }
+ 
++static size_t* find_dynv_value_addr_by_key(size_t *v, size_t *r, size_t key)
++{
++	for (; v[0]!=key; v+=2)
++		if (!v[0]) return 0;
++	*r = v[1];
++	return &v[1];
++}
++
+ static uint32_t sysv_hash(const char *s0)
+ {
+ 	const unsigned char *s = (void *)s0;
+@@ -895,6 +910,7 @@ static int fixup_rpath(struct dso *p, char *buf, size_t buf_size)
+ static void decode_dyn(struct dso *p)
+ {
+ 	size_t dyn[DYN_CNT];
++	size_t* dynval_ptr = 0;
+ 	decode_vec(p->dynv, dyn, DYN_CNT);
+ 	p->syms = laddr(p, dyn[DT_SYMTAB]);
+ 	p->strings = laddr(p, dyn[DT_STRTAB]);
+@@ -906,8 +922,21 @@ static void decode_dyn(struct dso *p)
+ 		p->rpath_orig = p->strings + dyn[DT_RUNPATH];
+ 	if (dyn[0]&(1<<DT_PLTGOT))
+ 		p->got = laddr(p, dyn[DT_PLTGOT]);
+-	if (search_vec(p->dynv, dyn, DT_GNU_HASH))
++	if ((dynval_ptr = find_dynv_value_addr_by_key(p->dynv, dyn, DT_GNU_HASH)))
++	{
+ 		p->ghashtab = laddr(p, *dyn);
++		// patch the address in the original dynamic section.
++		*dynval_ptr = (size_t)p->ghashtab;
++	}
++	// patch addresses for symbol and string sections too
++	if ((dynval_ptr = find_dynv_value_addr_by_key(p->dynv, dyn, DT_SYMTAB)))
++	{
++		*dynval_ptr = (size_t)p->syms;
++	}
++	if ((dynval_ptr = find_dynv_value_addr_by_key(p->dynv, dyn, DT_STRTAB)))
++	{
++		*dynval_ptr = (size_t)p->strings;
++	}
+ 	if (search_vec(p->dynv, dyn, DT_VERSYM))
+ 		p->versym = laddr(p, *dyn);
+ }
+@@ -1043,38 +1072,7 @@ static struct dso *load_library(const char *name, struct dso *needed_by)
  				fd = path_open(name, p->rpath, buf, sizeof buf);
  		}
  		if (fd == -1) {
@@ -268,7 +314,7 @@ index afec985a..5435b9b5 100644
  			fd = path_open(name, sys_path, buf, sizeof buf);
  		}
  		pathname = buf;
-@@ -1098,6 +1074,7 @@ static struct dso *load_library(const char *name, struct dso *needed_by)
+@@ -1098,6 +1096,7 @@ static struct dso *load_library(const char *name, struct dso *needed_by)
  	map = noload ? 0 : map_library(fd, &temp_dso);
  	close(fd);
  	if (!map) return 0;
@@ -276,7 +322,7 @@ index afec985a..5435b9b5 100644
  
  	/* Avoid the danger of getting two versions of libc mapped into the
  	 * same process when an absolute pathname was used. The symbols
-@@ -1797,6 +1774,7 @@ void __dls3(size_t *sp, size_t *auxv)
+@@ -1797,6 +1796,7 @@ void __dls3(size_t *sp, size_t *auxv)
  			dprintf(2, "%s: %s: Not a valid dynamic program\n", ldname, argv[0]);
  			_exit(1);
  		}
@@ -284,7 +330,7 @@ index afec985a..5435b9b5 100644
  		close(fd);
  		ldso.name = ldname;
  		app.name = argv[0];
-@@ -1936,6 +1914,7 @@ void __dls3(size_t *sp, size_t *auxv)
+@@ -1936,6 +1936,7 @@ void __dls3(size_t *sp, size_t *auxv)
  	/* Determine if malloc was interposed by a replacement implementation
  	 * so that calloc and the memalign family can harden against the
  	 * possibility of incomplete replacement. */
@@ -292,7 +338,7 @@ index afec985a..5435b9b5 100644
  	if (find_sym(head, "malloc", 1).dso != &ldso)
  		__malloc_replaced = 1;
  
-@@ -1955,7 +1934,11 @@ void __dls3(size_t *sp, size_t *auxv)
+@@ -1955,7 +1956,11 @@ void __dls3(size_t *sp, size_t *auxv)
  
  	errno = 0;
  
@@ -304,7 +350,7 @@ index afec985a..5435b9b5 100644
  	for(;;);
  }
  
-@@ -2058,6 +2041,10 @@ void *dlopen(const char *file, int mode)
+@@ -2058,6 +2063,10 @@ void *dlopen(const char *file, int mode)
  	pthread_mutex_lock(&init_fini_lock);
  	if (!p->constructed) ctor_queue = queue_ctors(p);
  	pthread_mutex_unlock(&init_fini_lock);
@@ -315,7 +361,7 @@ index afec985a..5435b9b5 100644
  	if (!p->relocated && (mode & RTLD_LAZY)) {
  		prepare_lazy(p);
  		for (i=0; p->deps[i]; i++)
-@@ -2100,6 +2087,7 @@ end:
+@@ -2100,6 +2109,7 @@ end:
  		free(ctor_queue);
  	}
  	pthread_setcancelstate(cs, 0);
