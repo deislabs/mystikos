@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -373,4 +374,20 @@ void* myst_memcchr(const void* b, int c, size_t n)
     }
 
     return NULL;
+}
+
+int myst_snprintf(char* str, size_t size, const char* format, ...)
+{
+    va_list ap;
+    int ret;
+
+    va_start(ap, format);
+    ret = vsnprintf(str, size, format, ap);
+    va_end(ap);
+
+    // check for overflow
+    if (ret >= size)
+        return -ERANGE;
+
+    return 0;
 }

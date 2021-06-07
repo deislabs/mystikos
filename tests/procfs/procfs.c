@@ -59,11 +59,28 @@ int test_self_fd()
     assert(!strcmp(target, filename));
 }
 
+int test_status()
+{
+    int fd;
+    char buf[1024];
+    printf("****\n");
+
+    fd = open("/proc/self/status", O_RDONLY);
+    assert(fd > 0);
+    while (read(fd, buf, sizeof(buf)))
+        printf("%s", buf);
+
+    close(fd);
+
+    printf("****\n");
+}
+
 int test_self_links(const char* pn)
 {
     test_self_symlink();
     test_self_exe(pn);
     test_self_fd();
+    test_status();
 }
 
 int test_readonly()

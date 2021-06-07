@@ -46,4 +46,7 @@ int myst_str2int(const char* s, int* x);
 // equal to c or null if not found.
 void* myst_memcchr(const void* b, int c, size_t len);
 
+/* returns -ERANGE if overflow detected, otherwise 0 */
+int myst_snprintf(char* str, size_t size, const char* format, ...);
+
 #endif /* _MYST_STRINGS_H */

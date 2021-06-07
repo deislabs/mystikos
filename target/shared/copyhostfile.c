@@ -6,12 +6,12 @@
 #include <myst/tcall.h>
 #include <string.h>
 
-int myst_tcall_cpuinfo_size()
+int myst_tcall_get_file_size(const char* pathname)
 {
     int fd, nbytes, size = 0;
     char buf[1024];
 
-    fd = open("/proc/cpuinfo", O_RDONLY);
+    fd = open(pathname, O_RDONLY);
     if (fd < 0)
         return errno;
 
@@ -22,9 +22,9 @@ int myst_tcall_cpuinfo_size()
     return size;
 }
 
-int myst_tcall_get_cpuinfo(char* buf, size_t size)
+int myst_tcall_read_file(const char* pathname, char* buf, size_t size)
 {
-    int fd = open("/proc/cpuinfo", O_RDONLY);
+    int fd = open(pathname, O_RDONLY);
 
     if (fd < 0)
         return errno;
