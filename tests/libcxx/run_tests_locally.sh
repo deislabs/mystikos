@@ -24,7 +24,8 @@ while read test; do
     FAILED=$(echo "$OUTPUT" | grep failed)
     FAIL_ENCLAVE=$(echo "$OUTPUT" | grep OE_ENCLAVE_ABORTING)
     TIMED_OUT=$(echo "$OUTPUT" | grep -F '[one] Terminated')
-    if [[ -z $FAILED && -z $FAIL_ENCLAVE && -z $TIMED_OUT ]]  
+    TERMINATED=$(echo "$OUTPUT" | grep -F 'terminate called')
+    if [[ -z $FAILED && -z $FAIL_ENCLAVE && -z $TIMED_OUT && -z $TERMINATED ]]  
     then
       echo $test >> temp_passed.output
     else
@@ -60,16 +61,7 @@ function test_passed() {
 
 }
 
-# TESTS=builttests_exe1.all
-# run_tests $TESTS
-
-# TESTS=builttests_exe2.all
-# run_tests $TESTS
-
-# TESTS=builttests_exe3.all
-# run_tests $TESTS
-
-TESTS=$1
+TESTS=passed
 run_tests $TESTS
 
 show_stats

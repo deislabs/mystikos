@@ -25,7 +25,8 @@ while read test; do
     FAILED=$(echo "$OUTPUT" | grep failed)
     FAIL_ENCLAVE=$(echo "$OUTPUT" | grep OE_ENCLAVE_ABORTING)
     TIMED_OUT=$(echo "$OUTPUT" | grep -F '[one] Terminated')
-    if [[ -z $FAILED && -z $FAIL_ENCLAVE && -z $TIMED_OUT ]]  
+    TERMINATED=$(echo "$OUTPUT" | grep -F 'terminate called')
+    if [[ -z $FAILED && -z $FAIL_ENCLAVE && -z $TIMED_OUT && -z $TERMINATED ]]  
     then
       echo $test >> temp_passed.output
     else
@@ -40,7 +41,7 @@ done <$FILE
 awk '!seen[$9]++' temp_unhandled_syscalls.output | awk '{print $9}' | sort > unhandled_syscalls_$FILE.txt
 cat temp_unhandled_syscalls.output > tests_unhandled_syscalls_$FILE.txt
 sort temp_other_errors.output | awk '!seen[$0]++' > tests_other_errors_$FILE.txt
-cat temp_passed.output > tests.passed
+cat temp_passed.output > tests_passed_$FILE.txt
 }
 
 function show_stats() {

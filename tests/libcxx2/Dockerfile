@@ -1,4 +1,5 @@
-FROM ubuntu:18.04 as builder
+FROM ubuntu:18.04
+
 RUN apt-get update && apt-get install -y \
     build-essential
 
@@ -23,14 +24,4 @@ RUN for dir in $(find . -type d); \
     cd $TEST_DIR ; \
     done;
 
-FROM ubuntu:18.04
-
-RUN apt-get update && apt-get install -y \
-    build-essential
-
-COPY --from=builder /app /tmpdir
-RUN mkdir /app
-
-RUN find /tmpdir -name \*.exe -exec cp {} /app \;
 RUN find /app -name \*.exe > /ubuntu_built_exe.txt
-RUN rm -rf tmpdir

@@ -6,7 +6,7 @@ testsa*
 temp_*
 tests_*
 
-failed
+libcxx_failed
 failedubuntu
 alltests
-passed
+libcxx_passed
