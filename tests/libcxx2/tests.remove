@@ -1,6 +1,3 @@
-/app/compare_string_type.pass.cpp.exe
-/app/compare_sub_match.pass.cpp.exe
-/app/inttypes_h.pass.cpp.exe
-/app/swap_array.pass.cpp.exe
-/app/swap_noexcept.pass.cpp.exe
-/app/tellp.pass.cpp.exe
+/app/llvm-project/libcxx/test/std/containers/container.adaptors/stack/stack.cons/ctor_copy.pass.cpp.exe
+/app/llvm-project/libcxx/test/std/containers/unord/unord.map/unord.map.modifiers/clear.pass.cpp.exe
+/app/llvm-project/libcxx/test/std/localization/locales/locale.convenience/conversions/conversions.string/to_bytes.pass.cpp.exe

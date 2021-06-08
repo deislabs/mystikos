@@ -33,7 +33,7 @@ one:
 llvm-project: 
 	git clone -b LibOS_v10.0.1 --single-branch https://github.com/salsal97/llvm-project.git
 
-libcxx-tests:
+libcxx-tests: llvm-project
 	mkdir libcxx-tests
 	find $(LIBCXX_TESTS_DIR) -name \*pass.cpp -exec cp --parent {}  libcxx-tests \; 
 	find $(LIBCXX_TESTS_DIR) -name \*.h -exec cp --parent {}  libcxx-tests \;
@@ -48,7 +48,7 @@ $(APPDIR)/bin/run: run.c
 	$(MUSL_GCC) -Wall -o $(APPDIR)/bin/run run.c
 
 $(APPDIR):
-	$(APPBUILDER) -i mystikos/libcxx_tests_10x:2.0
+	$(APPBUILDER) -i mystikos/libcxx_tests_10x:3.0
 	cp $(CURDIR)/testsa*.passed $(APPDIR)
 	# To build a new image, modify the appbuilder script to build the image with the correct name, 
 	# and not clean it up. Then once the image is built, push it to dockerhub and update 
@@ -69,7 +69,7 @@ OPTS += --memory-size=512m
 tests:
 	$(RUNTEST) $(MAKE) __tests
 
-__TESTS=a b c d e f g
+__TESTS=a b c d e f g h i j k l m n o 
 .PHONY: $(__TESTS)
 
 __tests: $(__TESTS)
@@ -89,8 +89,8 @@ runall:
 
 # Splits tests into batches for easy processing 
 split: clean-tests
-	split -l 350 alltests tests
-	for i in a b c d e f g ; do \
+	split -l 320 $(ALLTESTS) tests
+	for i in a b c d e f g h i j k l m n o ; do \
 		grep -Fxf libcxx_passed testsa$$i > testsa$$i.passed ; \
 	done
 
@@ -100,17 +100,17 @@ failed:
 
 # Use to find flaky tests
 repeat:
+	touch output
+	rm output
 	while true; do make tests >> output ; done
 
 # Use to order tests and remove flaky ones
 clean-tests:
 	sort -o $(ALLTESTS) $(ALLTESTS)
-	sort -o libcxx_passed tests.passed
-	sort -o libcxx_failed tests.failed
-	sort -o libcxx_failedalpine tests.failedalpine
-	comm -23 $(ALLTESTS) tests.remove > temp
-	mv temp alltests
-	comm -23 libcxx_passed tests.remove > temp
-	mv temp libcxx_passed
-	comm -23  libcxx_failed tests.failedalpine > temp
-	mv temp libcxx_failed
+	sort -o tests.passed tests.passed
+	sort -o tests.failed tests.failed
+	sort -o tests.failedalpine tests.failedalpine
+	sort -o tests.remove tests.remove
+	comm -23 $(ALLTESTS) tests.remove > alltests
+	comm -23 tests.passed tests.remove > libcxx_passed
+	comm -23 tests.failed tests.failedalpine > libcxx_failed
