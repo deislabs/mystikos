@@ -11,6 +11,9 @@ SOURCES += $(wildcard *.s)
 INCLUDES = -I$(INCDIR) -I$(BUILDDIR)/musl/include
 INCLUDES += -I$(BUILDDIR)/openenclave/include/openenclave/3rdparty
 
+# include <myst/deprecations.h> first in every source.
+INCLUDES += -include $(INCDIR)/myst/deprecations.h
+
 CFLAGS =
 CFLAGS += $(DEFAULT_CFLAGS)
 CFLAGS += $(OPTIMIZATION_CFLAGS)
