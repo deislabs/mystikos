@@ -10,6 +10,9 @@ SOURCES = $(wildcard *.[cs])
 
 INCLUDES = -I$(INCDIR) -I$(BUILDDIR)/musl/include
 
+# include <myst/deprecations.h> first in every source.
+INCLUDES += -include $(INCDIR)/myst/deprecations.h
+
 DEFINES = $(MYST_DEFINES)
 
 ifdef MYST_NO_RECVMSG_MITIGATION
@@ -22,6 +25,10 @@ endif
 
 ifdef MYST_ENABLE_GCOV
 DEFINES += -DMYST_ENABLE_GCOV
+endif
+
+ifdef MYST_RELEASE
+DEFINES += -DMYST_RELEASE
 endif
 
 WARNINGS =

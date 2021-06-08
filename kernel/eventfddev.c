@@ -198,10 +198,10 @@ static ssize_t _write(
     if (count < sizeof(uint64_t))
         ERAISE(-EINVAL);
 
+    memcpy(&value, buf, sizeof(uint64_t));
+
     if (value == UINT64_MAX)
         ERAISE(-EINVAL);
-
-    memcpy(&value, buf, sizeof(uint64_t));
 
     _lock(eventfd);
     locked = true;

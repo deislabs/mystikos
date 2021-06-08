@@ -629,7 +629,7 @@ static int _socketaddr_to_str(
     if (addr == NULL)
     {
         myst_assume(limit >= 5);
-        sprintf(out, "NULL");
+        myst_strlcpy(out, "NULL", limit);
         goto done;
     }
 
