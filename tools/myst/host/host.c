@@ -195,6 +195,8 @@ long myst_tcall_add_symbol_file(
 {
     long ret = 0;
     int fd = -1;
+    static char tmpdir[PATH_MAX] = "/tmp/mystXXXXXX";
+    static int tmpdir_init = 0;
     char tmp[PATH_MAX];
     debug_image_t* di = NULL;
     void* data = NULL;
@@ -202,6 +204,14 @@ long myst_tcall_add_symbol_file(
 
     if (!text_data || !text_size || (!file_data && file_size))
         ERAISE(-EINVAL);
+
+    if (!tmpdir_init)
+    {
+        if (!mkdtemp(tmpdir))
+            ERAISE(errno);
+        tmpdir_init = 1;
+        ECHECK(chmod(tmpdir, 0777));
+    }
 
     /* assume libmystcrt if no file data */
     if (!file_data)
@@ -226,19 +236,19 @@ long myst_tcall_add_symbol_file(
 
         /* Create a file containing the data */
         {
-            sprintf(tmp, "/tmp/mystXXXXXX");
-            if ((fd = mkstemp(tmp)) < 0)
+            sprintf(tmp, "%s/%s", tmpdir, "libmystcrt");
+            if ((fd = creat(tmp, 0666)) < 0)
                 goto done;
         }
     }
     else
     {
-        /* Create a file containing the data */
+        /* Preserve file name from enclave rootfs */
         char dirname[PATH_MAX];
         char imagename[PATH_MAX];
         myst_split_path(
             enclave_rootfs_path, dirname, PATH_MAX, imagename, PATH_MAX);
-        sprintf(tmp, "/tmp/%s", imagename);
+        sprintf(tmp, "%s/%s", tmpdir, imagename);
 
         if ((fd = creat(tmp, 0666)) < 0)
             goto done;
