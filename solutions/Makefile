@@ -14,6 +14,7 @@ endif
 
 DIRS += msgpack_c
 DIRS += python_webserver
+DIRS += python_app
 
 ifndef MYST_ENABLE_GCOV
 DIRS += dotnet
