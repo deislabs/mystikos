@@ -7,7 +7,6 @@ namespace hello
     {
         static void Main(string[] args)
         {
-            Debugger.Break();
             Console.WriteLine("Hello World!");
         }
     }
