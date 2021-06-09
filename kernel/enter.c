@@ -588,6 +588,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     __options.trace_syscalls = args->trace_syscalls;
     __options.have_syscall_instruction = args->have_syscall_instruction;
     __options.export_ramfs = args->export_ramfs;
+    __options.report_native_tids = args->report_native_tids;
 
 #if !defined(MYST_RELEASE)
     /* enable memcheck if options present and in TEE debug mode */

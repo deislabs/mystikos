@@ -881,6 +881,8 @@ long myst_syscall_clone(
 
 pid_t myst_gettid(void)
 {
+    if (__options.report_native_tids)
+        return myst_thread_self()->target_tid;
     return myst_thread_self()->tid;
 }
 

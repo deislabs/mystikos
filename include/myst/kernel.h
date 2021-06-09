@@ -5,11 +5,11 @@
 #define _MYST_KERNEL_H
 
 #include <limits.h>
-#include <signal.h>
 #include <myst/kstack.h>
 #include <myst/tcall.h>
 #include <myst/types.h>
 #include <myst/uid_gid.h>
+#include <signal.h>
 
 /* Information used for a specific automatic mount point that is mounted on
  * start. flags, public_keys and roothash are currently not used, but are
@@ -147,6 +147,9 @@ typedef struct myst_kernel_args
 
     /* true if --memcheck option present */
     bool memcheck;
+
+    /* true if --report-native-tids is present */
+    bool report_native_tids;
 
     // From the --max-affinity-cpus=<num> option. This setting limits the
     // CPUs reported by sched_getaffinity().
