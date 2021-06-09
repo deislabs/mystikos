@@ -27,10 +27,12 @@ oelldb:
 
 dotnet-sos:
 	sudo apt install -y dotnet-sdk-5.0
-	dotnet tool install -g dotnet-sos && dotnet-sos install
+	ls $(HOME)/.dotnet/tools/
+	dotnet tool install -g dotnet-sos && $(HOME)/.dotnet/tools/dotnet-sos install || true
 
 clean:
 	sudo rm -fr appdir ext2fs rootfs roothash oelldb /tmp/myst*
+	$(HOME)/.dotnet/tools/dotnet-sos uninstall
 	sudo apt remove -y dotnet-sdk-5.0
 
 tests:
