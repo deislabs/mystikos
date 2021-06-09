@@ -1,0 +1,33 @@
+DRIVER=sgx_linux_x64_driver_1.41.bin
+
+DRIVER_URL=https://download.01.org/intel-sgx/sgx-dcap/1.10.3/linux/distro/ubuntu18.04-server
+
+all:
+	sudo apt update
+	sudo apt install -y dkms
+	sudo apt install -y libssl-dev
+	sudo apt install -y gcc
+	sudo apt install -y cryptsetup-bin
+	sudo apt install -y curl
+	sudo apt install -y libcurl4-openssl-dev
+	sudo apt install -y clang-format-7
+	sudo apt install -y pkg-config
+	sudo apt install -y gdb
+	echo 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu bionic main' | sudo tee /etc/apt/sources.list.d/intel-sgx.list
+	wget -qO - https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo apt-key add -
+	echo "deb [arch=amd64] https://packages.microsoft.com/ubuntu/18.04/prod bionic main" | sudo tee /etc/apt/sources.list.d/msprod.list
+	wget -qO - https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
+	sudo apt update
+	sudo apt install -y libsgx-enclave-common libsgx-quote-ex  libsgx-dcap-ql libsgx-dcap-ql-dev az-dcap-client
+	$(MAKE) install_sgx_driver
+
+install_sgx_driver:
+	test -e /dev/sgx || $(MAKE) __install_sgx_driver
+
+__install_sgx_driver:
+	wget $(DRIVER_URL)/$(DRIVER)
+	sudo bash ./$(DRIVER)
+clean:
+	rm -f $(DRIVER)
+
+distclean: clean

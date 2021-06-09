@@ -39,6 +39,7 @@ app:	app/peer_tee_identity.h
 	docker run --rm -v $(CURDIR)/app:/app alpine.build bash -c \
     "gcc -g -o /app/client /app/client.c /app/tlscli.c -lmbedtls -lmbedx509 -lmbedcrypto $(MYST_DEFINES)"
 	sudo chown $(USER):$(GROUP) app/client
+	rm -rf appdir
 	$(TOP)/scripts/appbuilder Dockerfile
 	cp app/client $(APPDIR)/
 	# make sure the app we are running is the one we just built.

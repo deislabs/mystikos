@@ -20,6 +20,9 @@ all:
 ##
 ##==============================================================================
 
+# CAUTION: this must be run before all other targets
+DIRS += prereqs
+
 DIRS += third_party
 
 ifndef MYST_PRODUCT_BUILD

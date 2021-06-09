@@ -1,17 +1,9 @@
 # Detect C and C++ compiler options
 # if not gcc and g++, default to clang-7
-C_COMPILER=$(notdir $(CC))
-ifeq ($(C_COMPILER), gcc)
-        CXX_COMPILER=$(notdir $(CXX))
-        USE_GCC = true
-endif
-
-ifeq ($(USE_GCC),)
-        CC = clang-7
-        CXX = clang++-7
-        C_COMPILER=clang
-        CXX_COMPILER=clang++
-endif
+CC = gcc
+CXX = g++
+C_COMPILER=$(CC)
+CXX_COMPILER=$(CXX)
 
 CFLAGS=$(shell pkg-config oehost-$(C_COMPILER) --cflags)
 CXXFLAGS=$(shell pkg-config oehost-$(CXX_COMPILER) --cflags)

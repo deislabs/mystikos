@@ -28,11 +28,11 @@
 
 #include "../shared.h"
 #include "cpio.h"
-#include "debug_image.h"
 #include "dump.h"
 #include "exec.h"
 #include "exec_linux.h"
 #include "myst_u.h"
+#include "oe_debug_module.h"
 #include "package.h"
 #include "regions.h"
 #include "sign.h"
@@ -40,17 +40,15 @@
 
 _Static_assert(sizeof(struct myst_timespec) == sizeof(struct timespec), "");
 
-typedef struct debug_image debug_image_t;
-
-struct debug_image
+typedef struct debug_module
 {
-    oe_debug_image_t base;
-    debug_image_t* next;
-    char buf[PATH_MAX];
+    oe_debug_module_t base;
+    struct debug_module* next;
+    char __buf[PATH_MAX];
     bool loaded;
-};
+} debug_module_t;
 
-static debug_image_t* _debug_images;
+static debug_module_t* _debug_modules;
 
 long myst_syscall_isatty_ocall(int fd)
 {
@@ -106,27 +104,27 @@ int myst_read_file_ocall(const char* pathname, char* buf, size_t size)
 
 OE_EXPORT
 OE_NEVER_INLINE
-void oe_notify_debugger_library_load(oe_debug_image_t* image)
+void oe_notify_debugger_library_load(oe_debug_module_t* module)
 {
-    OE_UNUSED(image);
+    OE_UNUSED(module);
 }
 
 OE_EXPORT
 OE_NEVER_INLINE
-void oe_notify_debugger_library_unload(oe_debug_image_t* image)
+void oe_notify_debugger_library_unload(oe_debug_module_t* module)
 {
-    OE_UNUSED(image);
+    OE_UNUSED(module);
 }
 
-oe_result_t oe_debug_notify_library_loaded(oe_debug_image_t* image)
+oe_result_t oe_debug_notify_library_loaded(oe_debug_module_t* module)
 {
-    oe_notify_debugger_library_load(image);
+    oe_notify_debugger_library_load(module);
     return OE_OK;
 }
 
-oe_result_t oe_debug_notify_library_unloaded(oe_debug_image_t* image)
+oe_result_t oe_debug_notify_library_unloaded(oe_debug_module_t* module)
 {
-    oe_notify_debugger_library_unload(image);
+    oe_notify_debugger_library_unload(module);
     return OE_OK;
 }
 
@@ -145,17 +143,18 @@ long myst_add_symbol_file_by_path(
 
     /* Add new debug image to the table */
     {
-        if (!(di = calloc(1, sizeof(debug_image_t))))
+        if (!(di = calloc(1, sizeof(debug_module_t))))
             ERAISE(-ENOMEM);
 
-        if (myst_strlcpy(di->buf, path, sizeof(di->buf)) >= sizeof(di->buf))
+        if (myst_strlcpy(di->__buf, path, sizeof(di->__buf)) >=
+            sizeof(di->__buf))
             ERAISE(-ENAMETOOLONG);
 
-        di->base.magic = OE_DEBUG_IMAGE_MAGIC;
+        di->base.magic = OE_DEBUG_MODULE_MAGIC;
         di->base.version = 1;
-        di->base.path = di->buf;
+        di->base.path = di->__buf;
         di->base.path_length = strlen(di->base.path);
-        di->base.base_address = (uint64_t)text_data;
+        di->base.base_address = text_data;
         di->base.size = text_size;
 
         if (notify)
@@ -166,8 +165,8 @@ long myst_add_symbol_file_by_path(
         }
 
         /* add to the front of the list */
-        di->next = _debug_images;
-        _debug_images = di;
+        di->next = _debug_modules;
+        _debug_modules = di;
         di = NULL;
     }
 
@@ -260,17 +259,18 @@ long myst_tcall_add_symbol_file(
 
     /* Add new debug image to the table */
     {
-        if (!(di = calloc(1, sizeof(debug_image_t))))
+        if (!(di = calloc(1, sizeof(debug_module_t))))
             ERAISE(-ENOMEM);
 
-        if (myst_strlcpy(di->buf, tmp, sizeof(di->buf)) >= sizeof(di->buf))
+        if (myst_strlcpy(di->__buf, tmp, sizeof(di->__buf)) >=
+            sizeof(di->__buf))
             ERAISE(-ENAMETOOLONG);
 
-        di->base.magic = OE_DEBUG_IMAGE_MAGIC;
+        di->base.magic = OE_DEBUG_MODULE_MAGIC;
         di->base.version = 1;
-        di->base.path = di->buf;
+        di->base.path = di->__buf;
         di->base.path_length = strlen(di->base.path);
-        di->base.base_address = (uint64_t)text_data;
+        di->base.base_address = (const void*)text_data;
         di->base.size = text_size;
 
         if (notify)
@@ -281,8 +281,8 @@ long myst_tcall_add_symbol_file(
         }
 
         /* add to the front of the list */
-        di->next = _debug_images;
-        _debug_images = di;
+        di->next = _debug_modules;
+        _debug_modules = di;
         di = NULL;
     }
 
@@ -317,7 +317,7 @@ long myst_tcall_load_symbols(void)
 {
     int ret = 0;
 
-    for (debug_image_t* p = _debug_images; p; p = p->next)
+    for (debug_module_t* p = _debug_modules; p; p = p->next)
     {
         if (!p->loaded)
         {
@@ -338,9 +338,9 @@ long myst_tcall_unload_symbols(void)
 {
     long ret = 0;
 
-    for (debug_image_t* p = _debug_images; p;)
+    for (debug_module_t* p = _debug_modules; p;)
     {
-        debug_image_t* next = p->next;
+        debug_module_t* next = p->next;
 
         oe_debug_notify_library_unloaded(&p->base);
 

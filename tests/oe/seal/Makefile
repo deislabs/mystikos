@@ -3,7 +3,7 @@ include $(TOP)/defs.mak
 
 CFLAGS = -fPIC
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
-LDFLAGS += -L$(LIBDIR) -lopenenclave -lmbedcrypto
+LDFLAGS += -L$(LIBDIR) -lopenenclave -L$(BUILDDIR)/mbedtls/lib -lmbedcrypto
 
 INCLUDES += $(OEENCLAVE_INCLUDES)
 

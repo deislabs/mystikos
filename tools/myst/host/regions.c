@@ -853,6 +853,7 @@ int add_regions(void* arg, uint64_t baseaddr, myst_add_page_t add_page)
     if (_add_config_region(context, &vaddr) != 0)
         _err("_add_config_region() failed");
 
+    /* add the pages for the stack used to enter the kernel */
     if (_add_kernel_entry_stack_region(context, baseaddr, &vaddr) != 0)
         _err("_add_kernel_entry_stack_region() failed");
 

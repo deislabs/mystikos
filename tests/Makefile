@@ -1,7 +1,9 @@
+.NOTPARALLEL:
 TOP=$(abspath ..)
 include $(TOP)/defs.mak
 
 DIRS =
+DIRS += gdb
 
 ifdef MYST_PSEUDO_FORK
 DIRS += fork

@@ -1,6 +1,7 @@
 CFLAGS=$(shell pkg-config oeenclave-gcc --cflags)
 CXXFLAGS=$(shell pkg-config oeenclave-g++ --cflags)
 LDFLAGS=$(shell pkg-config oeenclave-g++ --libs)
+LDFLAGS+=$(shell pkg-config oeenclave-g++ --variable=mbedtlslibs)
 INCDIR=$(shell pkg-config oeenclave-gcc --variable=includedir)
 
 .PHONY: all build clean run
@@ -16,7 +17,7 @@ build:
 	$(CXX) -c $(CXXFLAGS) $(INCLUDES) -std=c++11 tlssrv.cpp
 	$(CXX) -c $(CFLAGS) $(CINCLUDES) gencreds.cpp
 	$(CC) -c $(CFLAGS) $(CINCLUDES) tlssrv_t.c
-	$(CXX) -o tlssrv_enc tlssrv.o gencreds.o tlssrv_t.o $(LDFLAGS) -lmbedtls -lmbedcrypto -loehostsock -loehostresolver -loecore -loelibc -loesyscall
+	$(CXX) -o tlssrv_enc tlssrv.o gencreds.o tlssrv_t.o $(LDFLAGS) -loehostsock -loehostresolver -loecore -loelibc -loesyscall
 
 private.pem:
 	openssl genrsa -out private.pem -3 3072
