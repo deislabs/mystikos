@@ -10,6 +10,8 @@
 #define weak_alias(old, new) \
     extern __typeof(old) new __attribute__((__weak__, __alias__(#old)))
 
+#define ENOMEM 12
+
 __thread int errno;
 
 const char* const sys_errlist[] = {};
@@ -34,7 +36,7 @@ typedef struct __mbstate_t
 size_t __mbrlen(const char* s, size_t n, mbstate_t* ps)
 {
     assert(0);
-    return 0;
+    return -1;
 }
 weak_alias(__mbrlen, mbrlen);
 
@@ -56,7 +58,7 @@ void _obstack_newchunk(struct obstack* h, int length)
 int __argz_create_sep(const char* string, int delim, char** argz, size_t* len)
 {
     assert(0);
-    return 0;
+    return ENOMEM;
 }
 weak_alias(__argz_create_sep, argz_create_sep);
 
@@ -83,7 +85,7 @@ char* clnt_spcreateerror(const char* msg)
 int __libc_mallopt(int param_number, int value)
 {
     assert(0);
-    return -1;
+    return 0;
 }
 weak_alias(__libc_mallopt, mallopt);
 
@@ -144,7 +146,7 @@ typedef struct XDR
 int xdr_enum(XDR* xdrs, int* ep)
 {
     assert(0);
-    return -1;
+    return false;
 }
 
 typedef int (*xdrproc_t)(XDR*, void*, ...);
@@ -220,5 +222,5 @@ void __explicit_bzero_chk(void* __dest, size_t __len, size_t __destlen)
 int __libc_alloca_cutoff(size_t size)
 {
     assert(0);
-    return -1;
+    return false;
 }
