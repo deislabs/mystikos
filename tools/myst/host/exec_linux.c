@@ -73,6 +73,7 @@ struct options
     bool export_ramfs;
     bool shell_mode;
     bool memcheck;
+    bool report_native_tids;
     size_t max_affinity_cpus;
     char rootfs[PATH_MAX];
     size_t heap_size;
@@ -112,6 +113,10 @@ static void _get_options(int* argc, const char* argv[], struct options* opts)
     /* Get --memcheck option */
     if (cli_getopt(argc, argv, "--memcheck", NULL) == 0)
         opts->memcheck = true;
+
+    /* Get --report-native-tids option */
+    if (cli_getopt(argc, argv, "--report-native-tids", NULL) == 0)
+        opts->report_native_tids = true;
 
     /* Get --max-affinity-cpus */
     {
@@ -294,6 +299,8 @@ static int _enter_kernel(
     args.shell_mode = options->shell_mode;
 
     args.memcheck = options->memcheck;
+
+    args.report_native_tids = options->report_native_tids;
 
     /* Resolve the the kernel entry point */
     const elf_ehdr_t* ehdr = args.kernel_data;

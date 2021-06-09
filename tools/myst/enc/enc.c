@@ -349,6 +349,7 @@ static long _enter(void* arg_)
     bool trace_syscalls = false;
     bool shell_mode = false;
     bool memcheck = false;
+    bool report_native_tids = false;
     size_t max_affinity_cpus = 0;
     bool export_ramfs = false;
     const char* rootfs = NULL;
@@ -504,6 +505,7 @@ static long _enter(void* arg_)
         trace_syscalls = options->trace_syscalls;
         shell_mode = options->shell_mode;
         memcheck = options->memcheck;
+        report_native_tids = options->report_native_tids;
         max_affinity_cpus = options->max_affinity_cpus;
         export_ramfs = options->export_ramfs;
 
@@ -566,6 +568,7 @@ static long _enter(void* arg_)
 
         _kargs.shell_mode = shell_mode;
         _kargs.memcheck = memcheck;
+        _kargs.report_native_tids = report_native_tids;
 
         /* set ehdr and verify that the kernel is an ELF image */
         {

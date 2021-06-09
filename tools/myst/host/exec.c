@@ -271,6 +271,10 @@ int exec_action(int argc, const char* argv[], const char* envp[])
         if (cli_getopt(&argc, argv, "--memcheck", NULL) == 0)
             options.memcheck = true;
 
+        /* Get --report-native-tids option */
+        if (cli_getopt(&argc, argv, "--report-native-tids", NULL) == 0)
+            options.report_native_tids = true;
+
         /* Get --max-affinity-cpus */
         {
             const char* arg = NULL;
