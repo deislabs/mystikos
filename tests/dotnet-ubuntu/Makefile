@@ -3,6 +3,7 @@ include $(TOP)/defs.mak
 
 APPBUILDER=$(TOP)/scripts/appbuilder
 HEAP_SIZE="768M"
+OPTS += --report-native-tids
 
 ifdef STRACE
 OPTS += --strace
