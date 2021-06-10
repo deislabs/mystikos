@@ -99,46 +99,6 @@ int _IO_obstack_vprintf(
 }
 weak_alias(_IO_obstack_vprintf, obstack_vprintf);
 
-int __register_printf_modifier(const wchar_t* str)
-{
-    assert(0);
-    return -1;
-}
-weak_alias(__register_printf_modifier, register_printf_modifier);
-
-struct printf_info
-{
-};
-
-typedef int printf_function(
-    FILE* __stream,
-    const struct printf_info* __info,
-    const void* const* __args);
-
-typedef int printf_arginfo_size_function(
-    const struct printf_info* __info,
-    size_t __n,
-    int* __argtypes,
-    int* __size);
-
-int __register_printf_specifier(
-    int spec,
-    printf_function converter,
-    printf_arginfo_size_function arginfo)
-{
-    assert(0);
-    return -1;
-}
-weak_alias(__register_printf_specifier, register_printf_specifier);
-
-typedef void printf_va_arg_function(void* __mem, va_list* __ap);
-int __register_printf_type(printf_va_arg_function fct)
-{
-    assert(0);
-    return -1;
-}
-weak_alias(__register_printf_type, register_printf_type);
-
 typedef struct XDR
 {
 } XDR;
@@ -222,5 +182,6 @@ void __explicit_bzero_chk(void* __dest, size_t __len, size_t __destlen)
 int __libc_alloca_cutoff(size_t size)
 {
     assert(0);
+    abort();
     return false;
 }
