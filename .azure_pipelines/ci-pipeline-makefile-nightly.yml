@@ -29,7 +29,7 @@ jobs:
         curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
         sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
         sudo apt-get update
-        sudo apt-get install build-essential python3-setuptools python3-pip llvm-7 libmbedtls-dev docker-ce -y 
+        sudo apt-get install build-essential python3-setuptools python3-pip llvm-7 libmbedtls-dev docker-ce lldb-10 -y
         sudo chmod 666 /var/run/docker.sock
         curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
         docker system prune -a -f
