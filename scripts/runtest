@@ -43,10 +43,9 @@ test_failed()
 
 test_timedout()
 {
-    local cmd;
-
-    cmd=$*
-    echo -e "${red}    timedout (${TESTNAME})${reset}"
+    local cmd=$*
+    local subtest=${cmd##*/}
+    echo -e "${red}    timedout (${TESTNAME}/${subtest})${reset}"
     echo "" >> ${TESTSUBDIR}/failed
 }
 
