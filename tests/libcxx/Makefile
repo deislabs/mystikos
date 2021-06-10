@@ -91,7 +91,7 @@ runall:
 split: clean-tests
 	split -l 350 alltests tests
 	for i in a b c d e f g ; do \
-		grep -Fxf passed testsa$$i > testsa$$i.passed ; \
+		grep -Fxf libcxx_passed testsa$$i > testsa$$i.passed ; \
 	done
 
 # Removes all the passed tests from all the tests to give us a list of failed ones
@@ -105,12 +105,12 @@ repeat:
 # Use to order tests and remove flaky ones
 clean-tests:
 	sort -o $(ALLTESTS) $(ALLTESTS)
-	sort -o passed tests.passed
-	sort -o failed tests.failed
-	sort -o failedalpine tests.failedalpine
+	sort -o libcxx_passed tests.passed
+	sort -o libcxx_failed tests.failed
+	sort -o libcxx_failedalpine tests.failedalpine
 	comm -23 $(ALLTESTS) tests.remove > temp
 	mv temp alltests
-	comm -23 passed tests.remove > temp
-	mv temp passed
-	comm -23 failed tests.failedalpine > temp
-	mv temp failed
+	comm -23 libcxx_passed tests.remove > temp
+	mv temp libcxx_passed
+	comm -23  libcxx_failed tests.failedalpine > temp
+	mv temp libcxx_failed
