@@ -27,8 +27,7 @@ def run_test(debugger):
     assert(process.GetState() == lldb.eStateStopped)
     assert(process.GetSelectedThread().GetStopReason() == lldb.eStopReasonBreakpoint)
 
-    print("\nRun clrstack at breakpoint hit: ")
-    print("=================================")
+    # Run clrstack at breakpoint hit
     ci.HandleCommand("clrstack", res)
     assert(res.Succeeded())
 
@@ -38,16 +37,13 @@ def run_test(debugger):
     assert(process.GetState() == lldb.eStateStopped)
     assert(process.GetSelectedThread().GetStopReason() == lldb.eStopReasonSignal)
 
-    print("\nRun clrstack at Debugger.Break() hit: ")
-    print("=======================================")
+    # Run clrstack at Debugger.Break() hit
     ci.HandleCommand("clrstack", res)
     assert(res.Succeeded())
 
-    print("\nPrint thread info: ")
-    print("=======================================")
+    # Print thread info
     ci.HandleCommand("clrthreads", res)
     assert(res.Succeeded())
-    print("=======================================")
 
     process.Continue()
 
