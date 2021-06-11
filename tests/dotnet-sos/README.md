@@ -3,7 +3,7 @@
 ## Prerequisites
 1. lldb:
 ```
-sudo apt install lldb-8
+sudo apt install lldb-10
 ```
 2. dotnet-sos:
 ```
