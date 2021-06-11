@@ -21,39 +21,21 @@ FS=ext2fs
 endif
 
 ifeq ($(FS),hostfs)
-# select lines from tests without '#' in the first column
-ifdef MYST_NIGHTLY_TEST
-TESTS=$(shell grep -v "^\#" hostfs_tests_passed.txt)
-else
-TESTS=$(shell grep -v "^\#" hostfs_fs_tests_passed.txt)
-endif
-FOUND=1
 OPTS+= --host-to-enc-uid-map 0:0,1:1,2:2,65534:65534,100700:700,100702:702,100703:703
 OPTS+= --host-to-enc-gid-map 0:0,1:1,2:2,65534:65534,100701:701,100704:704,100705:705
 endif
 
-ifeq ($(FS),ext2fs)
-# select lines from tests without '#' in the first column
+# run all the tests for the nightly pipeline
 ifdef MYST_NIGHTLY_TEST
-TESTS=$(shell grep -v "^\#" ext2fs_tests_passed.txt)
+TESTS=$(shell grep -v "^\#" $(FS)_tests_passed.txt)
 else
-TESTS=$(shell grep -v "^\#" ext2fs_fs_tests_passed.txt)
-endif
-FOUND=1
+# run only filesystem based tests for the PR pipeline
+TESTS=$(shell grep -v "^\#" $(FS)_fs_tests_passed.txt)
 endif
 
-ifeq ($(FS),ramfs)
-# select lines from tests without '#' in the first column
-ifdef MYST_NIGHTLY_TEST
-TESTS=$(shell grep -v "^\#" ramfs_tests_passed.txt)
-else
-TESTS=$(shell grep -v "^\#" ramfs_fs_tests_passed.txt)
-endif
-FOUND=1
-endif
-
-ifeq ($(FOUND),)
-$(error "bad value for FS: must be hostfs or ext2fs")
+# remove gcov exception tests when running code coverage
+ifdef MYST_ENABLE_GCOV
+TESTS=$(shell comm -23 $(FS)_tests_passed.txt $(FS)_tests_gcov_exceptions.txt)
 endif
 
 # overlayfs directories
