@@ -37,4 +37,7 @@ int myst_host_gid_to_enc(gid_t host_gid, gid_t* enc_gid);
 
 int check_thread_group_membership(gid_t group);
 
+long myst_valid_uid_against_passwd_file(uid_t uid);
+long myst_valid_gid_against_group_file(gid_t gid);
+
 #endif /* _MYST_UID_GID_H */

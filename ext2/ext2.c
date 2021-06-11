@@ -5395,9 +5395,6 @@ static int _ext2_lchown(
         goto done;
     }
 
-    if (!S_ISLNK(locals->inode.i_mode))
-        ERAISE(-ENOTDIR);
-
     _chown(&locals->inode, owner, group);
 
     /* persist the inode change */
