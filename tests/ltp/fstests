@@ -30,6 +30,9 @@
 /ltp/testcases/kernel/syscalls/close/close08
 /ltp/testcases/kernel/syscalls/close_range/close_range01
 /ltp/testcases/kernel/syscalls/close_range/close_range02
+/ltp/testcases/kernel/syscalls/cma/process_vm_readv02
+/ltp/testcases/kernel/syscalls/cma/process_vm_readv03
+/ltp/testcases/kernel/syscalls/cma/process_vm_writev02
 /ltp/testcases/kernel/syscalls/creat/creat01
 /ltp/testcases/kernel/syscalls/creat/creat03
 /ltp/testcases/kernel/syscalls/creat/creat04
@@ -251,6 +254,7 @@
 /ltp/testcases/kernel/syscalls/ioctl/ioctl_ns06
 /ltp/testcases/kernel/syscalls/ioctl/ioctl_ns07
 /ltp/testcases/kernel/syscalls/ioctl/ioctl_sg01
+/ltp/testcases/kernel/syscalls/ioctl/test_ioctl
 /ltp/testcases/kernel/syscalls/lchown/lchown01
 /ltp/testcases/kernel/syscalls/lchown/lchown01_16
 /ltp/testcases/kernel/syscalls/lchown/lchown02
@@ -368,9 +372,6 @@
 /ltp/testcases/kernel/syscalls/preadv2/preadv202_64
 /ltp/testcases/kernel/syscalls/preadv2/preadv203
 /ltp/testcases/kernel/syscalls/preadv2/preadv203_64
-/ltp/testcases/kernel/syscalls/cma/process_vm_readv02
-/ltp/testcases/kernel/syscalls/cma/process_vm_readv03
-/ltp/testcases/kernel/syscalls/cma/process_vm_writev02
 /ltp/testcases/kernel/syscalls/pselect/pselect01
 /ltp/testcases/kernel/syscalls/pselect/pselect01_64
 /ltp/testcases/kernel/syscalls/pselect/pselect02
@@ -488,7 +489,6 @@
 /ltp/testcases/kernel/syscalls/sync_file_range/sync_file_range01
 /ltp/testcases/kernel/syscalls/sync_file_range/sync_file_range02
 /ltp/testcases/kernel/syscalls/syncfs/syncfs01
-/ltp/testcases/kernel/syscalls/ioctl/test_ioctl
 /ltp/testcases/kernel/syscalls/timerfd/timerfd_create01
 /ltp/testcases/kernel/syscalls/truncate/truncate02
 /ltp/testcases/kernel/syscalls/truncate/truncate02_64
