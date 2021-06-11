@@ -317,5 +317,18 @@ long myst_syscall_getcpu(unsigned* cpu, unsigned* node);
 long myst_syscall_chown(const char* pathname, uid_t owner, gid_t group);
 long myst_syscall_fchown(int fd, uid_t owner, gid_t group);
 long myst_syscall_lchown(const char* pathname, uid_t owner, gid_t group);
+long myst_syscall_fchownat(
+    int dirfd,
+    const char* pathname,
+    uid_t owner,
+    gid_t group,
+    int flags);
+
+/* Used by XXXXXat() syscalls */
+long get_absolute_path_from_dirfd(
+    int dirfd,
+    const char* filename,
+    char* abspath_out,
+    size_t size);
 
 #endif /* _MYST_SYSCALL_H */

@@ -772,7 +772,7 @@ done:
     return ret;
 }
 
-static long _get_absolute_path_from_dirfd(
+long get_absolute_path_from_dirfd(
     int dirfd,
     const char* filename,
     char* abspath_out,
@@ -870,7 +870,7 @@ static long _openat(
     }
     else
     {
-        ECHECK(_get_absolute_path_from_dirfd(
+        ECHECK(get_absolute_path_from_dirfd(
             dirfd, pathname, locals->filename, sizeof(locals->filename)));
 
         if (fs_out && file_out)
@@ -1572,7 +1572,7 @@ long myst_syscall_faccessat(
     }
     else
     {
-        ECHECK(_get_absolute_path_from_dirfd(
+        ECHECK(get_absolute_path_from_dirfd(
             dirfd, pathname, locals->abspath, sizeof(locals->abspath)));
         ret = myst_syscall_access(locals->abspath, mode);
     }
@@ -1877,95 +1877,6 @@ long myst_syscall_fstatfs(int fd, struct statfs* buf)
     ECHECK((*fs->fs_fstatfs)(fs, file, buf));
 
 done:
-
-    return ret;
-}
-
-long myst_syscall_fchownat(
-    int dirfd,
-    const char* pathname,
-    uid_t owner,
-    gid_t group,
-    int flags)
-{
-    long ret = 0;
-    struct locals
-    {
-        char realpath[PATH_MAX];
-        char abspath[PATH_MAX];
-    };
-    struct locals* locals = NULL;
-
-    if (!pathname)
-        ERAISE(-EINVAL);
-
-    if ((flags & ~(AT_EMPTY_PATH | AT_SYMLINK_NOFOLLOW)) != 0)
-        ERAISE(-EINVAL);
-
-    if (!(locals = malloc(sizeof(struct locals))))
-        ERAISE(-ENOMEM);
-
-    /* If pathname is absolute, then ignore dirfd */
-    if (*pathname == '/' || dirfd == AT_FDCWD)
-    {
-        if (flags & AT_SYMLINK_NOFOLLOW)
-        {
-            ECHECK(myst_syscall_lchown(pathname, owner, group));
-            goto done;
-        }
-        else
-        {
-            ECHECK(myst_syscall_chown(pathname, owner, group));
-            goto done;
-        }
-    }
-    else if (*pathname == '\0')
-    {
-        if (!(flags & AT_EMPTY_PATH))
-            ERAISE(-ENOENT);
-
-        if (dirfd < 0)
-            ERAISE(-EBADF);
-
-        if (flags & AT_SYMLINK_NOFOLLOW)
-        {
-            myst_fdtable_t* fdtable = myst_fdtable_current();
-            myst_fs_t* fs;
-            myst_file_t* file;
-
-            ECHECK(myst_fdtable_get_file(fdtable, dirfd, &fs, &file));
-            ECHECK((*fs->fs_realpath)(
-                fs, file, locals->realpath, sizeof(locals->realpath)));
-            ECHECK(myst_syscall_lchown(locals->realpath, owner, group));
-            goto done;
-        }
-        else
-        {
-            ECHECK(myst_syscall_fchown(dirfd, owner, group));
-            goto done;
-        }
-    }
-    else
-    {
-        ECHECK(_get_absolute_path_from_dirfd(
-            dirfd, pathname, locals->abspath, sizeof(locals->abspath)));
-
-        if (flags & AT_SYMLINK_NOFOLLOW)
-        {
-            ECHECK(myst_syscall_lchown(locals->abspath, owner, group));
-            goto done;
-        }
-        else
-        {
-            ECHECK(myst_syscall_chown(locals->abspath, owner, group));
-            goto done;
-        }
-    }
-
-done:
-
-    if (locals)
-        free(locals);
 
     return ret;
 }
