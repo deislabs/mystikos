@@ -31,19 +31,14 @@ dotnet-sos:
 	&& $(HOME)/.dotnet/tools/dotnet-sos install || true
 
 clean:
-	sudo rm -fr appdir ext2fs rootfs roothash oelldb /tmp/myst*
-	$(HOME)/.dotnet/tools/dotnet-sos uninstall
-	sudo rm -rf ~/.dotnet
-	sudo apt remove -y dotnet-sdk-5.0
+	sudo rm -fr appdir ext2fs rootfs roothash oelldb stdouterr.txt /tmp/myst*
+	$(HOME)/.dotnet/tools/dotnet-sos uninstall && \
+	sudo rm -rf ~/.dotnet && \
+	sudo apt remove -y dotnet-sdk-5.0 || true
 
 tests:
-	$(MYST_LLDB) -b \
-	-o "command script import sos_test" \
-	-o "quit" \
-	-- $(MYST) exec $(OPTS) ext2fs \
-	--roothash=roothash \
-	--memory-size $(HEAP_SIZE) \
-	/app/hello
+	$(RUNTEST) ./exec.sh $(MYST_LLDB) $(MYST) $(OPTS) $(HEAP_SIZE)
+	@ echo "=== passed test (dotnet-sos)"
 
 ##################################
 #			dev targets			 #
