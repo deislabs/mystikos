@@ -48,7 +48,7 @@ jobs:
           # remove all untracked files and directories in the git repository
           sudo rm -rf `git ls-files --others --directory`
           make distclean
-          sudo rm -rf third_party/openenclave/openenclave
+          make distclean -C third_party/openenclave/
           make -j
         displayName: 'build repo source'
         workingDirectory: $(Build.SourcesDirectory)
