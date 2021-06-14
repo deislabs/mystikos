@@ -156,12 +156,15 @@ int myst_setup_clock(struct clock_ctrl*);
 static void _sanitize_xsave_area_fields(uint64_t* rbx, uint64_t* rcx)
 {
     assert(rbx && rcx);
-    /* replace XSAVE/XRSTOR save area size with fixed large value,
+    /* replace XSAVE/XRSTOR save area size with fixed large value of 4096,
     to protect against spoofing attacks from untrusted host.
     If host returns smaller xsave area than required, this can cause a buffer
     overflow at context switch time.
-    We believe value of 4096 should be sufficient for forseeable future */
-    *rbx = *rcx = 4096;
+    We believe value of 4096 should be sufficient for forseeable future. */
+    if (*rbx < 4096)
+        *rbx = 4096;
+    if (*rcx < 4096)
+        *rcx = 4096;
 }
 
 /* Handle illegal SGX instructions */
