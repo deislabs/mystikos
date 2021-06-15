@@ -5496,6 +5496,22 @@ done:
     return ret;
 }
 
+static int _ext2_fdatasync(myst_fs_t* fs, myst_file_t* file)
+{
+    int ret = 0;
+    ext2_t* ext2 = (ext2_t*)fs;
+
+    if (!_ext2_valid(ext2) || !file)
+        ERAISE(-EINVAL);
+
+    /* Changes to ext2 files are ephemeral, and are not written
+     to back to the on-disk image. So we treat fdatasync as a NOP */
+
+done:
+
+    return ret;
+}
+
 static myst_fs_t _base = {
     {
         .fd_read = (void*)ext2_read,
@@ -5550,6 +5566,7 @@ static myst_fs_t _base = {
     .fs_lchown = _ext2_lchown,
     .fs_chmod = _ext2_chmod,
     .fs_fchmod = _ext2_fchmod,
+    .fs_fdatasync = _ext2_fdatasync,
 };
 
 int ext2_create(

@@ -53,6 +53,8 @@
 /ltp/testcases/kernel/syscalls/fcntl/fcntl29_64
 /ltp/testcases/kernel/syscalls/fcntl/fcntl30
 /ltp/testcases/kernel/syscalls/fcntl/fcntl30_64
+/ltp/testcases/kernel/syscalls/fdatasync/fdatasync01
+/ltp/testcases/kernel/syscalls/fdatasync/fdatasync02
 /ltp/testcases/kernel/syscalls/flock/flock01
 /ltp/testcases/kernel/syscalls/fstat/fstat02
 /ltp/testcases/kernel/syscalls/fstat/fstat02_64

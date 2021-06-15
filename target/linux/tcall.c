@@ -593,6 +593,7 @@ long myst_tcall(long n, long params[6])
         case SYS_sched_setaffinity:
         case SYS_sched_getaffinity:
         case SYS_getcpu:
+        case SYS_fdatasync:
         {
             return _forward_syscall(n, x1, x2, x3, x4, x5, x6);
         }

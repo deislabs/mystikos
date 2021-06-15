@@ -737,6 +737,22 @@ done:
     return ret;
 }
 
+static int _fs_fdatasync(myst_fs_t* fs, myst_file_t* file)
+{
+    int ret = 0;
+    lockfs_t* lockfs = (lockfs_t*)fs;
+
+    if (!_lockfs_valid(lockfs))
+        ERAISE(-EINVAL);
+
+    myst_mutex_lock(&lockfs->lock);
+    ret = (*lockfs->fs->fs_fdatasync)(lockfs->fs, file);
+    myst_mutex_unlock(&lockfs->lock);
+
+done:
+    return ret;
+}
+
 int myst_lockfs_init(myst_fs_t* fs, myst_fs_t** lockfs_out)
 {
     int ret = 0;
@@ -795,6 +811,7 @@ int myst_lockfs_init(myst_fs_t* fs, myst_fs_t** lockfs_out)
         .fs_lchown = _fs_lchown,
         .fs_chmod = _fs_chmod,
         .fs_fchmod = _fs_fchmod,
+        .fs_fdatasync = _fs_fdatasync,
     };
 
     if (lockfs_out)

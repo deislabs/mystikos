@@ -2621,6 +2621,20 @@ done:
     return ret;
 }
 
+static int _fs_fdatasync(myst_fs_t* fs, myst_file_t* file)
+{
+    int ret = 0;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+
+    if (!_ramfs_valid(ramfs) || !file)
+        ERAISE(-EINVAL);
+
+    // ramfs being a in-memory fs, treat fdatasync as NOP
+
+done:
+    return ret;
+}
+
 static int _init_ramfs(
     myst_mount_resolve_callback_t resolve_cb,
     myst_fs_t** fs_out)
@@ -2683,6 +2697,7 @@ static int _init_ramfs(
         .fs_lchown = _fs_lchown,
         .fs_chmod = _fs_chmod,
         .fs_fchmod = _fs_fchmod,
+        .fs_fdatasync = _fs_fdatasync,
     };
     // clang-format on
     inode_t* root_inode = NULL;
@@ -2907,5 +2922,36 @@ done:
     if (locals)
         free(locals);
 
+    return ret;
+}
+
+/*
+ * Overrides for special filesystems based on ramfs.
+ * For eg: devfs, procfs
+ */
+
+static int _fdatasync_einval_override(myst_fs_t* fs, myst_file_t* file)
+{
+    (void)fs;
+    (void)file;
+
+    return -EINVAL;
+}
+
+int set_overrides_for_special_fs(myst_fs_t* fs)
+{
+    int ret = 0;
+
+    if (!fs)
+        ERAISE(-EINVAL);
+
+    ramfs_t* ramfs = _ramfs(fs);
+
+    if (!_ramfs_valid(ramfs))
+        ERAISE(-EINVAL);
+
+    ramfs->base.fs_fdatasync = _fdatasync_einval_override;
+
+done:
     return ret;
 }

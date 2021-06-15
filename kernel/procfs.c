@@ -32,6 +32,8 @@ int procfs_setup()
         ERAISE(-EINVAL);
     }
 
+    ECHECK(set_overrides_for_special_fs(_procfs));
+
     if (myst_mkdirhier("/proc", 777) != 0)
     {
         myst_eprintf("cannot create mount point for procfs\n");

@@ -2798,6 +2798,28 @@ done:
     return ret;
 }
 
+long myst_syscall_fdatasync(int fd)
+{
+    long ret = 0;
+    void* device = NULL;
+    void* object = NULL;
+    myst_fdtable_type_t type;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+
+    if (fd < 0)
+        ERAISE(-EBADF);
+
+    ECHECK(myst_fdtable_get_any(fdtable, fd, &type, &device, &object));
+
+    if (type != MYST_FDTABLE_TYPE_FILE)
+        ERAISE(-EROFS);
+
+    ECHECK(((myst_fs_t*)device)->fs_fdatasync(device, (myst_file_t*)object));
+
+done:
+    return ret;
+}
+
 long myst_syscall_utimensat(
     int dirfd,
     const char* pathname,
@@ -4011,7 +4033,13 @@ static long _syscall(void* args_)
             BREAK(_return(n, myst_syscall_fsync(fd)));
         }
         case SYS_fdatasync:
-            break;
+        {
+            int fd = (int)x1;
+
+            _strace(n, "fd=%d", fd);
+
+            BREAK(_return(n, myst_syscall_fdatasync(fd)));
+        }
         case SYS_truncate:
         {
             const char* path = (const char*)x1;

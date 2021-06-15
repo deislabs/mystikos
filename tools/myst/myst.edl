@@ -439,6 +439,8 @@ enclave
         // ATTN: If EXT2 file system support is exlcuded in certain build mode,
         // consider excluding relevant OCALL proxy code too.
 
+        long myst_fdatasync_ocall(int fd);
+
         /*
         **======================================================================
         **
