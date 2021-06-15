@@ -772,7 +772,7 @@ done:
     return ret;
 }
 
-long get_absolute_path_from_dirfd(
+long myst_get_absolute_path_from_dirfd(
     int dirfd,
     const char* filename,
     char* abspath_out,
@@ -870,7 +870,7 @@ static long _openat(
     }
     else
     {
-        ECHECK(get_absolute_path_from_dirfd(
+        ECHECK(myst_get_absolute_path_from_dirfd(
             dirfd, pathname, locals->filename, sizeof(locals->filename)));
 
         if (fs_out && file_out)
@@ -1572,7 +1572,7 @@ long myst_syscall_faccessat(
     }
     else
     {
-        ECHECK(get_absolute_path_from_dirfd(
+        ECHECK(myst_get_absolute_path_from_dirfd(
             dirfd, pathname, locals->abspath, sizeof(locals->abspath)));
         ret = myst_syscall_access(locals->abspath, mode);
     }
