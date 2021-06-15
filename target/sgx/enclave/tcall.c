@@ -634,6 +634,7 @@ long myst_tcall(long n, long params[6])
         case SYS_fchown:
         case SYS_lchown:
         case SYS_chmod:
+        case SYS_fdatasync:
         {
             extern long myst_handle_tcall(long n, long params[6]);
             return myst_handle_tcall(n, params);

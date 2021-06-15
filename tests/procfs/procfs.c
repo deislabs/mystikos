@@ -116,6 +116,18 @@ int test_cpuinfo()
     close(fd);
 }
 
+int test_fdatasync()
+{
+    int fd;
+    char buf[1024];
+
+    fd = open("/proc/cpuinfo", O_RDONLY);
+    assert(fd > 0);
+    int ret = fdatasync(fd);
+    assert(ret == -1 && errno == EINVAL);
+    close(fd);
+}
+
 int main(int argc, const char* argv[])
 {
     test_meminfo();
@@ -123,6 +135,7 @@ int main(int argc, const char* argv[])
     test_readonly();
     test_maps();
     test_cpuinfo();
+    test_fdatasync();
 
     printf("\n=== passed test (%s)\n", argv[0]);
     return 0;

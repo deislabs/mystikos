@@ -16,11 +16,14 @@
 #include <myst/eraise.h>
 #include <myst/file.h>
 #include <myst/fs.h>
+#include <myst/lockfs.h>
 #include <myst/mount.h>
 #include <myst/panic.h>
 #include <myst/printf.h>
 #include <myst/ramfs.h>
 #include <myst/tcall.h>
+
+static myst_fs_t* _devfs;
 
 /*************************************
  * callbacks
@@ -81,9 +84,6 @@ done:
 /*****************************
  * devfs setup and teardown
  * ***************************/
-
-static myst_fs_t* _devfs;
-
 int devfs_setup()
 {
     int ret = 0;
@@ -93,6 +93,8 @@ int devfs_setup()
         myst_eprintf("failed initialize the dev file system\n");
         ERAISE(-EINVAL);
     }
+
+    ECHECK(set_overrides_for_special_fs(_devfs));
 
     if (myst_mkdirhier("/dev", 777) != 0)
     {

@@ -510,3 +510,8 @@ long myst_fchmod_ocall(int fd, uint32_t mode, uid_t host_euid, gid_t host_egid)
 {
     SAVE_CALL_RESTORE_IDENTITY_RETURN(host_euid, host_egid, fchmod(fd, mode));
 }
+
+long myst_fdatasync_ocall(int fd)
+{
+    RETURN(fdatasync(fd));
+}

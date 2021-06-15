@@ -66,4 +66,6 @@ int myst_create_virtual_file(
 
 int myst_release_tree(myst_fs_t* fs, const char* pathname);
 
+int set_overrides_for_special_fs(myst_fs_t* fs);
+
 #endif /* _MYST_RAMFS_H */
