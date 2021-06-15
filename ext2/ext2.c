@@ -716,10 +716,6 @@ static ext2_group_desc_t* _read_groups(const ext2_t* ext2)
         {
             ERAISE(-ENOMEM);
         }
-
-#if 0 /* ATTN: remove this */
-        memset(groups, 0xAA, groups_size);
-#endif
     }
 
     /* Determine the block where group table starts */
@@ -3104,10 +3100,6 @@ int ext2_read_block(const ext2_t* ext2, uint32_t blkno, ext2_block_t* block)
     /* Check for null parameters */
     if (!_ext2_valid(ext2) || !block)
         ERAISE(-EINVAL);
-
-#if 0 /* ATTN: remove this */
-    memset(block, 0xAA, sizeof(ext2_block_t));
-#endif
 
     /* Is block size too big for buffer? */
     if (ext2->block_size > sizeof(block->data))
