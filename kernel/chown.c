@@ -240,7 +240,7 @@ int resolve_at_path(
     }
     else
     {
-        ECHECK(get_absolute_path_from_dirfd(
+        ECHECK(myst_get_absolute_path_from_dirfd(
             dirfd, pathname, resolved_path, resolved_path_size));
     }
 

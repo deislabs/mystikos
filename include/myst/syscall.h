@@ -325,7 +325,7 @@ long myst_syscall_fchownat(
     int flags);
 
 /* Used by XXXXXat() syscalls */
-long get_absolute_path_from_dirfd(
+long myst_get_absolute_path_from_dirfd(
     int dirfd,
     const char* filename,
     char* abspath_out,
