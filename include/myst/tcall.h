@@ -137,7 +137,7 @@ int myst_tcall_write_block_device(
     const struct myst_block* blocks,
     size_t num_blocks);
 
-int myst_tcall_read_block_device(
+ssize_t myst_tcall_read_block_device(
     int blkdev,
     uint64_t blkno,
     struct myst_block* blocks,

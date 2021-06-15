@@ -331,4 +331,6 @@ long myst_get_absolute_path_from_dirfd(
     char* abspath_out,
     size_t size);
 
+const char* myst_syscall_str(long n);
+
 #endif /* _MYST_SYSCALL_H */

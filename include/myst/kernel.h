@@ -5,11 +5,11 @@
 #define _MYST_KERNEL_H
 
 #include <limits.h>
-#include <signal.h>
 #include <myst/kstack.h>
 #include <myst/tcall.h>
 #include <myst/types.h>
 #include <myst/uid_gid.h>
+#include <signal.h>
 
 /* Information used for a specific automatic mount point that is mounted on
  * start. flags, public_keys and roothash are currently not used, but are
@@ -133,6 +133,8 @@ typedef struct myst_kernel_args
     /* Tracing options */
     bool trace_errors;
     bool trace_syscalls;
+    bool trace_syscall_times;
+
     bool have_syscall_instruction;
     bool export_ramfs;
 

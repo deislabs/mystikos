@@ -3,16 +3,33 @@ include $(TOP)/defs.mak
 
 APPBUILDER=$(TOP)/scripts/appbuilder
 
+OPTS =
+
 ifdef STRACE
-OPTS = --strace
+OPTS += --strace
 endif
 
-OPTS = --memory-size=1024m
+ifdef TTRACE
+OPTS += --ttrace
+endif
+
+OPTS += --memory-size=1024m
 
 all: rootfs
 
+USE_ROOTHASH=1
+
 rootfs: appdir
-	$(MYST) mkcpio appdir rootfs
+	sudo $(MYST) mkext2 appdir rootfs
+ifdef USE_ROOTHASH
+	$(MYST) fssig --roothash rootfs > roothash
+else
+	truncate --size=-4096 rootfs
+endif
+
+ifdef USE_ROOTHASH
+OPTS += --roothash=roothash
+endif
 
 appdir:
 	$(APPBUILDER) Dockerfile

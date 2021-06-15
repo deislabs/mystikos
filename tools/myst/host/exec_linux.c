@@ -70,6 +70,7 @@ struct options
 {
     bool trace_errors;
     bool trace_syscalls;
+    bool trace_syscall_times;
     bool export_ramfs;
     bool shell_mode;
     bool memcheck;
@@ -96,6 +97,13 @@ static void _get_options(int* argc, const char* argv[], struct options* opts)
         cli_getopt(argc, argv, "--strace", NULL) == 0)
     {
         opts->trace_syscalls = true;
+    }
+
+    /* Get --trace-syscall-times option */
+    if (cli_getopt(argc, argv, "--trace-syscall-times", NULL) == 0 ||
+        cli_getopt(argc, argv, "--ttrace", NULL) == 0)
+    {
+        opts->trace_syscall_times = true;
     }
 
     /* Get --trace-errors option */
@@ -274,6 +282,7 @@ static int _enter_kernel(
                 max_threads,
                 options->trace_errors,
                 options->trace_syscalls,
+                options->trace_syscall_times,
                 options->export_ramfs,
                 have_syscall_instruction,
                 tee_debug_mode,

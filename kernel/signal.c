@@ -211,6 +211,8 @@ done:
 }
 #pragma GCC diagnostic pop
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstack-usage="
 long myst_signal_process(myst_thread_t* thread)
 {
     myst_spin_lock(&thread->signal.lock);
@@ -260,6 +262,7 @@ long myst_signal_process(myst_thread_t* thread)
     myst_spin_unlock(&thread->signal.lock);
     return 0;
 }
+#pragma GCC diagnostic pop
 
 long myst_signal_deliver(
     myst_thread_t* thread,

@@ -20,7 +20,7 @@ int myst_write_block_device_ocall(
     return myst_write_block_device(blkdev, blkno, blocks, num_blocks);
 }
 
-int myst_read_block_device_ocall(
+ssize_t myst_read_block_device_ocall(
     int blkdev,
     uint64_t blkno,
     struct myst_block* blocks,

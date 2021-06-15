@@ -34,7 +34,11 @@ DIRS += json
 DIRS += conf
 DIRS += nbio
 DIRS += thread
+
+ifndef MYST_RELEASE
 DIRS += gdb
+endif
+
 DIRS += dlopen
 DIRS += pipe
 DIRS += spawn
@@ -106,6 +110,8 @@ DIRS += mutex
 DIRS += mprotect
 DIRS += eventfd
 DIRS += polleventfd
+
+DIRS += bigfile
 
 .PHONY: $(DIRS)
 

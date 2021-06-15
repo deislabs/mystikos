@@ -19,6 +19,7 @@ typedef struct myst_options
 {
     bool trace_errors;
     bool trace_syscalls;
+    bool trace_syscall_times;
     bool have_syscall_instruction;
     bool export_ramfs;
     bool shell_mode;

@@ -23,6 +23,9 @@ run: appdir private.pem
 	test -f server.pid && kill -9 `cat server.pid` && rm server.pid || true
 	test -f client.output
 
+export COMPlus_EnableDiagnostics=0
+export COMPlus_GCHeapHardLimit=0x10000000
+
 # run the server in the foreground:
 server:
 	$(MAKE) appdir

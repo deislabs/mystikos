@@ -6,14 +6,18 @@
 
 #include <time.h>
 
+#define MYST_MAX_SYSCALLS 3000
+
+extern long __myst_syscall_times[MYST_MAX_SYSCALLS];
+
 /* Start tracking time for current thread */
 void myst_times_start();
 
 /* Time tracking while entering the kernel from user space */
-void myst_times_enter_kernel();
+void myst_times_enter_kernel(long syscall_num);
 
 /* Time tracking while leaving the kernel to user space */
-void myst_times_leave_kernel();
+void myst_times_leave_kernel(long syscall_num);
 
 /* Return the time (in nanoseconds) spent on kernel execution */
 long myst_times_system_time();
@@ -29,6 +33,9 @@ long myst_times_thread_time();
 
 /* Return nanoseconds since startup */
 long myst_times_uptime();
+
+/* Print time spent in each syscall */
+void myst_print_syscall_times(void);
 
 /*
 

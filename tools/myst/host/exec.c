@@ -256,6 +256,13 @@ int exec_action(int argc, const char* argv[], const char* envp[])
             options.trace_syscalls = true;
         }
 
+        /* Get --trace-syscall_times option */
+        if (cli_getopt(&argc, argv, "--trace-syscall_times", NULL) == 0 ||
+            cli_getopt(&argc, argv, "--ttrace", NULL) == 0)
+        {
+            options.trace_syscall_times = true;
+        }
+
         /* Get --trace option */
         if (cli_getopt(&argc, argv, "--trace-errors", NULL) == 0 ||
             cli_getopt(&argc, argv, "--etrace", NULL) == 0)

@@ -43,6 +43,7 @@ LIBS += $(LIBDIR)/libmystgcovclient.a
 endif
 
 LDFLAGS += $(OEENCLAVE_LDFLAGS)
+LDFLAGS += -lcrypto
 
 CLEAN = $(SUBOBJDIR)/myst_t.h $(SUBOBJDIR)/myst_t.c $(SUBOBJDIR)/myst_args.h
 

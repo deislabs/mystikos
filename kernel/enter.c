@@ -42,7 +42,13 @@
 #include <myst/ttydev.h>
 #include <myst/uid_gid.h>
 
+#define COLOR_GREEN "\e[32m"
+#define COLOR_CYAN "\e[36m"
+#define COLOR_RESET "\e[0m"
+
 static myst_fs_t* _fs;
+
+extern char logo[];
 
 long myst_tcall(long n, long params[6])
 {
@@ -581,6 +587,20 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     /* myst_handle_host_signal can be called from enclave exception handlers */
     args->myst_handle_host_signal = myst_handle_host_signal;
 
+    /* turn off various options in release mode */
+#if 0
+#if defined(MYST_RELEASE)
+    args->trace_errors = false;
+    args->trace_syscalls = false;
+    args->trace_syscall_times = false;
+    args->have_syscall_instruction = false;
+    args->export_ramfs = false;
+    args->tee_debug_mode = false;
+    args->shell_mode = false;
+    args->memcheck = false;
+#endif
+#endif
+
     /* Save the aguments */
     __myst_kernel_args = *args;
 
@@ -718,6 +738,10 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         myst_start_shell("\nMystikos shell (enter)\n");
 #endif
 
+#ifdef PRINT_LOGO
+    myst_eprintf(COLOR_GREEN "%s\n" COLOR_RESET, logo);
+#endif
+
     /* Run the main program: wait for SYS_exit to perform longjmp() */
     if (myst_setjmp(&thread->jmpbuf) == 0)
     {
@@ -818,6 +842,10 @@ int myst_enter_kernel(myst_kernel_args_t* args)
             myst_eprintf("*** memory leaks detected\n");
     }
 #endif
+
+    /* print statistics about syscall times */
+    if (__myst_kernel_args.trace_syscall_times)
+        myst_print_syscall_times();
 
     /* unload the debugger symbols */
     myst_syscall_unload_symbols();

@@ -15,6 +15,8 @@
 #include <myst/printf.h>
 #include <myst/spinlock.h>
 
+#if !defined(MYST_RELEASE)
+
 #define BACKTRACE_MAX 16
 
 /* Flags to control runtime behavior. */
@@ -464,3 +466,5 @@ size_t myst_memcheck(void)
 {
     return _debug_malloc_check(false);
 }
+
+#endif /* !defined(MYST_RELEASE) */
