@@ -48,8 +48,6 @@
 
 static myst_fs_t* _fs;
 
-extern char logo[];
-
 long myst_tcall(long n, long params[6])
 {
     void* fs = NULL;
@@ -736,10 +734,6 @@ int myst_enter_kernel(myst_kernel_args_t* args)
 #if !defined(MYST_RELEASE)
     if (args->shell_mode)
         myst_start_shell("\nMystikos shell (enter)\n");
-#endif
-
-#ifdef PRINT_LOGO
-    myst_eprintf(COLOR_GREEN "%s\n" COLOR_RESET, logo);
 #endif
 
     /* Run the main program: wait for SYS_exit to perform longjmp() */
