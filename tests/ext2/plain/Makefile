@@ -37,6 +37,8 @@ tests:
 	chown $(USER).$(USER) $(EXT2FS)
 	$(PREFIX) $(RUNTEST) $(PREFIX) $(SUBBINDIR)/ext2 $(EXT2FS)
 
+cg: cachegrind
+
 cachegrind:
 	mkdir -p $(SUBOBJDIR)
 	sudo $(MYST) mkext2 --force --size=$(EXT2FS_SIZE) ext2dir $(EXT2FS)

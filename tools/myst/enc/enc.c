@@ -347,6 +347,7 @@ static long _enter(void* arg_)
     pid_t target_tid = arg->target_tid;
     bool trace_errors = false;
     bool trace_syscalls = false;
+    bool trace_syscall_times = false;
     bool shell_mode = false;
     bool memcheck = false;
     bool report_native_tids = false;
@@ -501,13 +502,17 @@ static long _enter(void* arg_)
 
     if (options)
     {
+#if !defined(MYST_RELEASE)
         trace_errors = options->trace_errors;
         trace_syscalls = options->trace_syscalls;
+        trace_syscall_times = options->trace_syscall_times;
         shell_mode = options->shell_mode;
         memcheck = options->memcheck;
-        report_native_tids = options->report_native_tids;
-        max_affinity_cpus = options->max_affinity_cpus;
         export_ramfs = options->export_ramfs;
+        max_affinity_cpus = options->max_affinity_cpus;
+#endif
+
+        report_native_tids = options->report_native_tids;
 
         if (strlen(options->rootfs) >= PATH_MAX)
         {
@@ -555,6 +560,7 @@ static long _enter(void* arg_)
             _get_num_tcs(), /* max threads */
             trace_errors,
             trace_syscalls,
+            trace_syscall_times,
             export_ramfs,
             false, /* have_syscall_instruction */
             tee_debug_mode,
@@ -807,13 +813,13 @@ int myst_tcall_close_block_device(int blkdev)
     return retval;
 }
 
-int myst_tcall_read_block_device(
+ssize_t myst_tcall_read_block_device(
     int blkdev,
     uint64_t blkno,
     struct myst_block* blocks,
     size_t num_blocks)
 {
-    int retval;
+    ssize_t retval;
 
     if (myst_read_block_device_ocall(
             &retval, blkdev, blkno, blocks, num_blocks) != OE_OK)
@@ -878,6 +884,12 @@ int myst_tcall_read_file(const char* pathname, char* buf, size_t size)
         return -EINVAL;
 
     return retval;
+}
+
+int __vfprintf_chk(FILE* stream, int flag, const char* format, va_list ap)
+{
+    (void)flag;
+    return vfprintf(stream, format, ap);
 }
 
 OE_SET_ENCLAVE_SGX(

@@ -23,6 +23,7 @@ enum
     SYS_myst_run_itimer,
     SYS_myst_start_shell,
     SYS_myst_gcov,
+    SYS_myst_unmap_on_exit,
 };
 
 #endif /* _MYST_SYSCALLEXT_H */

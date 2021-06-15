@@ -133,6 +133,8 @@ typedef struct myst_kernel_args
     /* Tracing options */
     bool trace_errors;
     bool trace_syscalls;
+    bool trace_syscall_times;
+
     bool have_syscall_instruction;
     bool export_ramfs;
 

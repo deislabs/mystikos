@@ -19,6 +19,7 @@
 #include <limits.h>
 #include <sys/mman.h>
 
+#include <myst/assume.h>
 #include <myst/backtrace.h>
 #include <myst/crash.h>
 #include <myst/debugmalloc.h>
@@ -147,50 +148,62 @@ void myst_free(void* ptr)
 
 void* malloc(size_t size)
 {
+#ifndef MYST_RELEASE
     if (myst_enable_debug_malloc)
         return myst_debug_malloc(size);
-    else
-        return myst_malloc(size);
+#endif
+
+    return myst_malloc(size);
 }
 
 void free(void* ptr)
 {
+#ifndef MYST_RELEASE
     if (myst_enable_debug_malloc)
         myst_debug_free(ptr);
-    else
-        myst_free(ptr);
+#endif
+
+    myst_free(ptr);
 }
 
 void* calloc(size_t nmemb, size_t size)
 {
+#ifndef MYST_RELEASE
     if (myst_enable_debug_malloc)
         return myst_debug_calloc(nmemb, size);
-    else
-        return myst_calloc(nmemb, size);
+#endif
+
+    return myst_calloc(nmemb, size);
 }
 
 void* realloc(void* ptr, size_t size)
 {
+#ifndef MYST_RELEASE
     if (myst_enable_debug_malloc)
         return myst_debug_realloc(ptr, size);
-    else
-        return myst_realloc(ptr, size);
+#endif
+
+    return myst_realloc(ptr, size);
 }
 
 void* memalign(size_t alignment, size_t size)
 {
+#ifndef MYST_RELEASE
     if (myst_enable_debug_malloc)
         return myst_debug_memalign(alignment, size);
-    else
-        return myst_memalign(alignment, size);
+#endif
+
+    return myst_memalign(alignment, size);
 }
 
 int posix_memalign(void** memptr, size_t alignment, size_t size)
 {
+#ifndef MYST_RELEASE
     if (myst_enable_debug_malloc)
         return myst_debug_posix_memalign(memptr, alignment, size);
-    else
-        return myst_posix_memalign(memptr, alignment, size);
+#endif
+
+    return myst_posix_memalign(memptr, alignment, size);
 }
 
 char* myst_strdup(const char* s)

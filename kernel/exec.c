@@ -789,6 +789,7 @@ done:
     return ret;
 }
 
+#if !defined(MYST_RELEASE)
 static long _add_crt_symbols(const void* text, size_t text_size)
 {
     long ret = 0;
@@ -805,6 +806,7 @@ done:
 
     return ret;
 }
+#endif
 
 int myst_exec(
     myst_thread_t* thread,
@@ -982,7 +984,9 @@ int myst_exec(
     }
 
     /* register the new CRT symbols with the debugger */
+#if !defined(MYST_RELEASE)
     ECHECK(_add_crt_symbols(crt_data, crt_size));
+#endif
 
     /* invoke the caller's callback here */
     if (callback)

@@ -1,10 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
+#include <stdlib.h>
 #include <sys/times.h>
 
 #include <myst/assume.h>
 #include <myst/clock.h>
 #include <myst/eraise.h>
+#include <myst/kernel.h>
+#include <myst/printf.h>
 #include <myst/syscall.h>
 #include <myst/thread.h>
 #include <myst/times.h>
@@ -34,9 +37,13 @@ void myst_times_start()
     myst_syscall_clock_gettime(CLOCK_MONOTONIC, &thread->start_ts);
 }
 
-void myst_times_enter_kernel()
+long __myst_syscall_times[MYST_MAX_SYSCALLS];
+
+void myst_times_enter_kernel(long syscall_num)
 {
     myst_thread_t* current = myst_thread_self();
+
+    (void)syscall_num;
 
     myst_syscall_clock_gettime(CLOCK_MONOTONIC, &current->enter_kernel_ts);
 
@@ -47,16 +54,21 @@ void myst_times_enter_kernel()
     long lapsed =
         lapsed_nsecs(current->leave_kernel_ts, current->enter_kernel_ts);
     myst_assume(lapsed >= 0);
+
     __atomic_fetch_add(&process_times.tms_utime, lapsed, __ATOMIC_SEQ_CST);
 }
 
-void myst_times_leave_kernel()
+void myst_times_leave_kernel(long syscall_num)
 {
     myst_thread_t* current = myst_thread_self();
     myst_syscall_clock_gettime(CLOCK_MONOTONIC, &current->leave_kernel_ts);
 
     long lapsed =
         lapsed_nsecs(current->enter_kernel_ts, current->leave_kernel_ts);
+
+    if (__myst_kernel_args.trace_syscall_times)
+        __myst_syscall_times[syscall_num] += lapsed;
+
     myst_assume(lapsed > 0);
     __atomic_fetch_add(&process_times.tms_stime, lapsed, __ATOMIC_SEQ_CST);
 }
@@ -119,4 +131,67 @@ long myst_times_get_cpu_clock_time(clockid_t clk_id, struct timespec* tp)
     }
 
     return 0;
+}
+
+#define COLOR_GREEN "\e[32m"
+#define COLOR_CYAN "\e[36m"
+#define COLOR_RESET "\e[0m"
+
+void myst_print_syscall_times(void)
+{
+    typedef struct times
+    {
+        long num;
+        long nsec;
+    } times_t;
+    size_t ntimes = 0;
+    struct locals
+    {
+        times_t times[MYST_MAX_SYSCALLS];
+    };
+    struct locals* locals = NULL;
+
+    if (!(locals = malloc(sizeof(struct locals))))
+        goto done;
+
+    for (size_t i = 0; i < MYST_MAX_SYSCALLS; i++)
+    {
+        if (__myst_syscall_times[i])
+        {
+            locals->times[ntimes].num = i;
+            locals->times[ntimes].nsec = __myst_syscall_times[i];
+            ntimes++;
+        }
+    }
+
+    /* sort the times in desending order */
+    for (size_t i = 0; i < ntimes - 1; i++)
+    {
+        for (size_t j = 0; j < ntimes - 1; j++)
+        {
+            if (locals->times[j].nsec < locals->times[j + 1].nsec)
+            {
+                times_t tmp = locals->times[j];
+                locals->times[j] = locals->times[j + 1];
+                locals->times[j + 1] = tmp;
+            }
+        }
+    }
+
+    myst_eprintf(COLOR_CYAN "\n");
+
+    for (size_t i = 0; i < ntimes; i++)
+    {
+        const times_t* p = &locals->times[i];
+        myst_eprintf("%12ld: %s\n", p->nsec, myst_syscall_str(p->num));
+    }
+
+    myst_eprintf("\n");
+
+    myst_eprintf(COLOR_RESET "\n");
+
+done:
+
+    if (locals)
+        free(locals);
 }

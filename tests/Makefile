@@ -34,7 +34,11 @@ DIRS += json
 DIRS += conf
 DIRS += nbio
 DIRS += thread
+
+ifndef MYST_RELEASE
 DIRS += gdb
+endif
+
 DIRS += dlopen
 DIRS += pipe
 DIRS += spawn
@@ -107,6 +111,8 @@ DIRS += mprotect
 DIRS += eventfd
 DIRS += polleventfd
 DIRS += dotnet-sos
+
+DIRS += bigfile
 
 .PHONY: $(DIRS)
 

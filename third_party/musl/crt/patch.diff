@@ -723,18 +723,38 @@ index 771503b2..8a8529b1 100644
 -
 +weak_alias (snprintf, __snprintf);
 diff --git a/src/thread/__unmapself.c b/src/thread/__unmapself.c
-index 31d94e67..e34cca2e 100644
+index 31d94e67..f57fdf0c 100644
 --- a/src/thread/__unmapself.c
 +++ b/src/thread/__unmapself.c
-@@ -6,7 +6,7 @@
- 
- static void *unmap_base;
- static size_t unmap_size;
+@@ -1,24 +1,9 @@
+-#include "pthread_impl.h"
+-#include "atomic.h"
++#include <stddef.h>
+ #include "syscall.h"
+-/* cheat and reuse CRTJMP macro from dynlink code */
+-#include "dynlink.h"
+-
+-static void *unmap_base;
+-static size_t unmap_size;
 -static char shared_stack[256];
-+static char shared_stack[4096];
+-
+-static void do_unmap()
+-{
+-	__syscall(SYS_munmap, unmap_base, unmap_size);
+-	__syscall(SYS_exit);
+-}
  
- static void do_unmap()
+ void __unmapself(void *base, size_t size)
  {
+-	char *stack = shared_stack + sizeof shared_stack;
+-	stack -= (uintptr_t)stack % 16;
+-	unmap_base = base;
+-	unmap_size = size;
+-	CRTJMP(do_unmap, stack);
++        const long SYS_myst_unmap_on_exit = 2013;
++        __syscall2(SYS_myst_unmap_on_exit, base, size);
++        __syscall0(SYS_exit);
+ }
 diff --git a/src/thread/clone.c b/src/thread/clone.c
 index be80c8ea..afc8d160 100644
 --- a/src/thread/clone.c

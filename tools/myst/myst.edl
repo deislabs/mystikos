@@ -428,7 +428,7 @@ enclave
             size_t num_blocks);
 
         /* reads from the block device */
-        int myst_read_block_device_ocall(
+        ssize_t myst_read_block_device_ocall(
             int blkdev,
             uint64_t blkno,
             [out, count=num_blocks] struct myst_block* blocks,

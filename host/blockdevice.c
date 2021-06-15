@@ -16,6 +16,7 @@ static ssize_t _readn(int fd, void* data, size_t size, off_t off)
     ssize_t ret = 0;
     unsigned char* p = (unsigned char*)data;
     size_t r = size;
+    ssize_t nread = 0;
 
     while (r)
     {
@@ -26,10 +27,12 @@ static ssize_t _readn(int fd, void* data, size_t size, off_t off)
             p += n;
             r -= n;
             off += n;
+            nread += n;
         }
         else if (n == 0)
         {
-            ERAISE(-EIO);
+            ret = nread;
+            goto done;
         }
         else
         {
@@ -37,7 +40,7 @@ static ssize_t _readn(int fd, void* data, size_t size, off_t off)
         }
     }
 
-    ret = size;
+    ret = nread;
 
 done:
     return ret;
@@ -124,21 +127,24 @@ done:
     return ret;
 }
 
-int myst_read_block_device(
+ssize_t myst_read_block_device(
     int blkdev,
     uint64_t blkno,
     struct myst_block* blocks,
     size_t num_blocks)
 {
-    int ret = 0;
+    ssize_t ret = 0;
     off_t offset = blkno * sizeof(myst_block_t);
     size_t size = num_blocks * sizeof(myst_block_t);
+    ssize_t r;
 
     if (blkdev < 0 || !blocks || num_blocks == 0)
         ERAISE(-EINVAL);
 
-    if (_readn(blkdev, blocks, size, offset) != size)
+    if ((r = _readn(blkdev, blocks, size, offset)) < 0)
         ERAISE(-EIO);
+
+    ret = r / sizeof(myst_block_t);
 
 done:
     return ret;
