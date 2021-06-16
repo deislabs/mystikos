@@ -95,6 +95,7 @@ run_test()
     #fi
 
     ${timeout} ${time} ${cmd}
+    ret=$?
 
     seconds=$(cat ${tempfile})
     rm -f ${tempfile}
