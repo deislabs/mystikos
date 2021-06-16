@@ -98,11 +98,19 @@ int myst_cond_timedwait(
             }
             myst_spin_lock(&c->lock);
 
-            /* If self is no longer in the queue, then it was selected */
+            /* If self is no longer in the queue, then it was selected by the
+             * myst_signal_xyz() calls. Break out of the loop to unblock the
+             * thread. If self is still in the queue, and ret=0, host-side might
+             * have waken the thread prematurely, potentially doing so
+             * maliciously. Stay in the loop to wait again.
+             */
             if (!myst_thread_queue_contains(&c->queue, self))
                 break;
 
-            /* Remove self from the queue on error returns such as ETIMEOUT */
+            /* Remove self from the queue on error returns such as ETIMEOUT, and
+             * break out of the loop to report error to the calling function.
+             * The calling function should check/process error condition before
+             * continuing execution. */
             if (ret < 0)
             {
                 myst_thread_queue_remove_thread(&c->queue, self);

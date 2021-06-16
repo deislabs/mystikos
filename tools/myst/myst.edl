@@ -89,26 +89,17 @@ enclave
     {
         void myst_rdtsc_ocall([out] uint32_t* rax, [out] uint32_t* rdx);
 
-        void myst_cpuid_ocall(
-            uint32_t leaf,
-            uint32_t subleaf,
-            [out] uint32_t* rax,
-            [out] uint32_t* rbx,
-            [out] uint32_t* rcx,
-            [out] uint32_t* rdx);
-
-        int myst_add_symbol_file_ocall(
-            [in, size=file_size] const void* file_data,
-            size_t file_size,
-            [user_check] const void* text_data,
-            size_t text_size,
-            [in, string] const char* enclave_rootfs_path);
-
-        int myst_load_symbols_ocall();
-
-        int myst_unload_symbols_ocall();
-
         long myst_syscall_isatty_ocall(int fd);
+
+        int myst_mprotect_ocall(void* addr, size_t len, int prot);
+
+        /*
+        **======================================================================
+        **
+        ** threading/scheduler
+        **
+        **======================================================================
+        */
 
         long myst_create_thread_ocall(uint64_t cookie);
 
@@ -123,11 +114,7 @@ enclave
             uint64_t self_event,
             [in] const struct myst_timespec* timeout);
 
-        long myst_fstat_ocall(int fd, [out] struct myst_stat* statbuf);
-
         long myst_sched_yield_ocall();
-
-        long myst_fchmod_ocall(int fd, uint32_t mode, uid_t host_euid, gid_t host_egid);
 
         long myst_poll_ocall(
             [in, out, count=nfds] struct pollfd* fds,
@@ -136,25 +123,17 @@ enclave
 
         long myst_poll_wake_ocall();
 
-        long myst_read_ocall(
-            int fd,
-            [out, size=count] void* buf,
-            size_t count);
-
-        long myst_write_ocall(
-            int fd,
-            [in, size=count] const void* buf,
-            size_t count);
-
-        long myst_close_ocall(int fd);
-
         long myst_nanosleep_ocall(
             [in] const struct timespec* req,
             [out] struct timespec* rem);
 
-        long myst_fcntl_ocall(int fd, int cmd, long arg);
-
-        long myst_fcntl_setlkw_ocall(int fd, [in] const struct flock* arg);
+        /*
+        **======================================================================
+        **
+        ** socket
+        **
+        **======================================================================
+        */
 
         long myst_bind_ocall(
             int sockfd,
@@ -257,6 +236,18 @@ enclave
             [in, out] socklen_t* optlen,
             socklen_t optval_size);
 
+        /* ATTN: If Host file system support is exclude in certain build mode,
+        *  consider excluding relevant OCALL proxy code too.
+        */
+
+        /*
+        **======================================================================
+        **
+        ** hostfs
+        **
+        **======================================================================
+        */
+
         long myst_ioctl_ocall(
             int fd,
             unsigned long request,
@@ -269,6 +260,18 @@ enclave
             mode_t mode,
             uid_t uid,
             gid_t gid);
+        
+        long myst_read_ocall(
+            int fd,
+            [out, size=count] void* buf,
+            size_t count);
+
+        long myst_write_ocall(
+            int fd,
+            [in, size=count] const void* buf,
+            size_t count);
+
+        long myst_close_ocall(int fd);
 
         long myst_stat_ocall(
             [in, string] const char* pathname,
@@ -281,6 +284,8 @@ enclave
             [out] struct myst_stat* statbuf,
             uid_t host_euid,
             gid_t host_egid);
+        
+        long myst_fstat_ocall(int fd, [out] struct myst_stat* statbuf);
 
         long myst_access_ocall(
             [in, string] const char* pathname,
@@ -362,7 +367,6 @@ enclave
             uid_t uid,
             gid_t gid);
 
-        int myst_mprotect_ocall(void* addr, size_t len, int prot);
 
         int myst_get_file_size_ocall([in, string] const char* pathname);
 
@@ -398,6 +402,39 @@ enclave
             uid_t host_euid,
             gid_t host_egid   
         );
+
+        long myst_fchmod_ocall(int fd, uint32_t mode, uid_t host_euid, gid_t host_egid);
+
+        long myst_fcntl_ocall(int fd, int cmd, long arg);
+
+        long myst_fcntl_setlkw_ocall(int fd, [in] const struct flock* arg);
+
+        /* ATTN: If debugging support is excluded in certain build mode, consider
+         * excluding relevant OCALL proxy code too. 
+         */
+
+        /*
+        **======================================================================
+        **
+        ** debugger
+        **
+        **======================================================================
+        */
+
+        int myst_add_symbol_file_ocall(
+            [in, size=file_size] const void* file_data,
+            size_t file_size,
+            [user_check] const void* text_data,
+            size_t text_size,
+            [in, string] const char* enclave_rootfs_path);
+
+        int myst_load_symbols_ocall();
+
+        int myst_unload_symbols_ocall();
+
+        /* ATTN: If EXT2 file system support is exlcuded in certain build mode,
+        *  consider excluding relevant OCALL proxy code too.
+        */
 
         /*
         **======================================================================
@@ -455,5 +492,13 @@ enclave
             pid_t pid,
             size_t cpusetsize,
             [out, size=cpusetsize] uint8_t* mask);
+
+        void myst_cpuid_ocall(
+            uint32_t leaf,
+            uint32_t subleaf,
+            [out] uint32_t* rax,
+            [out] uint32_t* rbx,
+            [out] uint32_t* rcx,
+            [out] uint32_t* rdx);
     };
 };
