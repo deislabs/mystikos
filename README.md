@@ -1,3 +1,5 @@
+![image](https://github.com/deislabs/mystikos/blob/main/art/light/logo-horizontal/logo-horizontal.svg)
+
 # Mystikos
 
 **Mystikos** is a set of tools for running applications in a hardware trusted
