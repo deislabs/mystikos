@@ -106,7 +106,7 @@ DIRS += mutex
 DIRS += mprotect
 DIRS += eventfd
 DIRS += polleventfd
-#DIRS += dotnet-sos
+DIRS += dotnet-sos
 
 .PHONY: $(DIRS)
 
