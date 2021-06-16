@@ -34,35 +34,18 @@ int test_auto_mount(int argc, const char* argv[])
 
 int test_auto_mount_single_file(int argc, const char* argv[])
 {
-    FILE* fp;
-    char* line = NULL;
-    size_t len = 0;
-    ssize_t nread = 0;
     struct stat details = {0};
-    assert(stat("/etc/resolv.conf", &details) == 0);
-    assert(S_ISREG(details.st_mode));
-    assert(stat("/run/mystikos/automounts/1/resolv.conf", &details) == 0);
-    assert(S_ISREG(details.st_mode));
     assert(stat("/targetfile1", &details) == 0);
     assert(S_ISREG(details.st_mode));
-    assert(stat("/run/mystikos/automounts/2/testfile1", &details) == 0);
+    assert(stat("/run/mystikos/automounts/1/testfile1", &details) == 0);
     assert(S_ISREG(details.st_mode));
     assert(stat("/targetfile2", &details) == 0);
     assert(S_ISREG(details.st_mode));
-    assert(stat("/run/mystikos/automounts/2/testfile2", &details) == 0);
+    assert(stat("/run/mystikos/automounts/1/testfile2", &details) == 0);
     assert(S_ISREG(details.st_mode));
 
-    fp = fopen("/etc/resolv.conf", "r");
-    assert(fp != NULL);
-    assert(
-        (nread = getline(&line, &len, fp)) != -1 &&
-        strcmp(line, "1.2.3.4\n") == 0);
-    assert((nread = getline(&line, &len, fp)) == -1);
     printf("=== passed test (%s-auto-mount-single-file)\n", argv[0]);
 
-    fclose(fp);
-    if (line)
-        free(line);
     return 0;
 }
 

@@ -9,7 +9,6 @@ EXT2FSDIR = $(SUBOBJDIR)/ext2fsdir
 EXT2FS = $(SUBOBJDIR)/ext2
 EXT2FS_SIZE=134217728
 HOSTFSDIR = $(SUBOBJDIR)/hostfsdir
-HOSTFSDIR2 = $(SUBOBJDIR)/hostfsdir2
 HOSTFSDIR3 = $(SUBOBJDIR)/hostfsdir3
 CFLAGS = -fPIC -g
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
@@ -28,8 +27,6 @@ rootfs: build ramfs
 	mkdir -p $(APPDIR)/ramfs-target
 	mkdir -p $(APPDIR)/ext2-target
 	mkdir -p $(APPDIR)/hostfs-target
-	mkdir -p $(APPDIR)/etc
-	touch $(APPDIR)/etc/resolv.conf
 	$(MYST) mkcpio $(APPDIR) $(ROOTFS)
 
 ramfs:
@@ -46,10 +43,8 @@ ext2fs:
 
 hostfs:
 	mkdir -p $(HOSTFSDIR)
-	mkdir -p $(HOSTFSDIR2)
 	mkdir -p $(HOSTFSDIR3)
 	touch $(HOSTFSDIR)/hostfs-file
-	echo "1.2.3.4" > $(HOSTFSDIR2)/resolv.conf
 	touch $(HOSTFSDIR3)/testfile1
 	touch $(HOSTFSDIR3)/testfile2
 
@@ -65,11 +60,11 @@ tests:
 
 test-auto-mount: rootfs ext2fs hostfs
 	$(RUNTEST) $(MYST_EXEC) $(ROOTFS) $(OPTS) --mount /ramfs=/ramfs-target --mount $(EXT2FS)=/ext2-target --mount $(HOSTFSDIR)=/hostfs-target \
-	--mount $(HOSTFSDIR2)/resolv.conf=/etc/resolv.conf --mount $(HOSTFSDIR3)/testfile1=/targetfile1 --mount $(HOSTFSDIR3)/testfile2=/targetfile2 --app-config-path config1.json /bin/test test1
+	--mount $(HOSTFSDIR3)/testfile1=/targetfile1 --mount $(HOSTFSDIR3)/testfile2=/targetfile2 --app-config-path config1.json /bin/test test1
 
 gdb: rootfs ext2fs hostfs
 	$(MYST_GDB) --args $(MYST_EXEC) $(ROOTFS) $(OPTS) --mount /ramfs=/ramfs-target --mount $(EXT2FS)=/ext2-target --mount $(HOSTFSDIR)=/hostfs-target \
-	--mount $(HOSTFSDIR2)/resolv.conf=/etc/resolv.conf --mount $(HOSTFSDIR3)/testfile1=/targetfile1 --mount $(HOSTFSDIR3)/testfile2=/targetfile2 --app-config-path config1.json /bin/test test1
+	--mount $(HOSTFSDIR3)/testfile1=/targetfile1 --mount $(HOSTFSDIR3)/testfile2=/targetfile2 --app-config-path config1.json /bin/test test1
 
 clean:
-	sudo rm -rf $(APPDIR) $(RAMFSDIR) $(EXT2FSDIR) $(HOSTFSDIR) $(HOSTFSDIR2) $(HOSTFSDIR3) $(RAMFS) $(EXT2FS) $(ROOTFS) sig-info config.json
+	sudo rm -rf $(APPDIR) $(RAMFSDIR) $(EXT2FSDIR) $(HOSTFSDIR) $(HOSTFSDIR3) $(RAMFS) $(EXT2FS) $(ROOTFS) sig-info config.json
