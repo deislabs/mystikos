@@ -14,28 +14,26 @@ all: appdir private.pem
 
 TIMEOUT=180s
 
-run: appdir private.pem
-	# Kill the server from a previous run if it wasn't shut down properly.
+export COMPlus_EnableDiagnostics=0
+export COMPlus_GCHeapHardLimit=0x10000000
+
+run: rootfs private.pem
 	test -f server.pid && kill -9 `cat server.pid` || true
-	$(MYST) package appdir private.pem config.json
-	myst/bin/$(APPNAME) $(OPTS) > server.output & echo $$! > server.pid
+	$(MYST_EXEC) $(OPTS) rootfs /app/webapp > server.output & echo $$! > server.pid
 	timeout $(TIMEOUT) tail -f server.output | ./client.sh
 	test -f server.pid && kill -9 `cat server.pid` && rm server.pid || true
 	test -f client.output
 
 # run the server in the foreground:
-server:
-	$(MAKE) appdir
-	$(MAKE) rootfs
+server: rootfs
 	$(MYST_EXEC) rootfs /app/webapp $(OPTS)
 
 # run the client
 client:
 	curl 127.0.0.1:5050
 
-rootfs:
+rootfs: appdir
 	sudo $(MYST) mkext2 appdir rootfs
-	sudo chown $(USER).$(USER) rootfs
 	truncate --size=-4096 rootfs
 
 gdb: appdir private.pem
@@ -44,21 +42,6 @@ gdb: appdir private.pem
 
 appdir:
 	$(APPBUILDER) Dockerfile
-
-rootfs:
-	sudo $(MYST) mkext2 appdir rootfs
-	sudo chown $(USER).$(USER) rootfs
-	truncate --size=-4096 rootfs
-
-# standalone server rule:
-server:
-	$(MAKE) appdir
-	$(MAKE) rootfs
-	$(MYST_EXEC) $(OPTS) rootfs /app/webapp
-
-# standalone client rule:
-client:
-	curl 127.0.0.1:5050
 
 private.pem:
 	openssl genrsa -out private.pem -3 3072

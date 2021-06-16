@@ -26,7 +26,7 @@ void free(void* ptr);
 
 #define CPIO_BLOCK_SIZE 512
 
-//#define TRACE
+#define TRACE
 #define PRINTF printf
 
 // clang-format off
