@@ -8,13 +8,13 @@ ifdef DB_SERVER_NAME
 ifdef DB_NAME
 ifdef MAA_URL
 DIRS += sql_ae
+DIRS += python_app
 endif
 endif
 endif
 
 DIRS += msgpack_c
 DIRS += python_webserver
-DIRS += python_app
 
 ifndef MYST_ENABLE_GCOV
 DIRS += dotnet
