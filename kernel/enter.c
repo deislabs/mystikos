@@ -586,7 +586,6 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     args->myst_handle_host_signal = myst_handle_host_signal;
 
     /* turn off various options in release mode */
-#if 0
 #if defined(MYST_RELEASE)
     args->trace_errors = false;
     args->trace_syscalls = false;
@@ -596,7 +595,6 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     args->tee_debug_mode = false;
     args->shell_mode = false;
     args->memcheck = false;
-#endif
 #endif
 
     /* Save the aguments */
