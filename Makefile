@@ -157,11 +157,11 @@ summary:
 	@ SUMMARY=1 $(RUNTEST_COMMAND) /bin/true
 
 tests:
-	@ $(MAKE) -s -C tests tests RUNTEST=$(RUNTEST_COMMAND)
+	@ $(MAKE) -C tests tests RUNTEST=$(RUNTEST_COMMAND)
 	@ $(MAKE) -s summary
 
 alltests:
-	$(MAKE) -s tests ALLTESTS=1 VERBOSE=1
+	$(MAKE) tests ALLTESTS=1
 
 
 ##==============================================================================

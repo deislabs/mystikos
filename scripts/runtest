@@ -72,27 +72,20 @@ run_test()
 
     # run the test
     if [ -z "${NOTIMEOUT}" ]; then
-        timeout="/usr/bin/timeout ${timeout}"
+        timeout_command="/usr/bin/timeout ${timeout}"
     else
-        timeout=
+        timeout_command=
     fi
 
-    output=${TESTSUBDIR}/output
-    time="/usr/bin/time -f "%e" --quiet -o ${tempfile}"
+    # save the test start time in a temporary file
+    time_command="/usr/bin/time -f "%e" --quiet -o ${tempfile}"
 
-    if [ -z "${VERBOSE}" ]; then
-        echo ${cmd} 2>&1 | tee ${output} > /dev/null
-        set -o pipefail
-        ${timeout} ${time} ${cmd} 2>&1 | tee -a ${output} > /dev/null
-        ret=$?
-        set +o pipefail
-    else
-        echo ${cmd} 2>&1 | tee ${output}
-        set -o pipefail
-        ${timeout} ${time} ${cmd} 2>&1 | tee -a ${output}
-        ret=$?
-        set +o pipefail
-    fi
+    # run the test
+    echo "runtest[start]: ${timeout_command} ${time_command} ${cmd}"
+    ${timeout_command} ${time_command} ${cmd}
+    echo "runtest[finish]: ${timeout_command} ${time_command} ${cmd}"
+    ret=$?
+
     seconds=$(cat ${tempfile})
     rm -f ${tempfile}
 
