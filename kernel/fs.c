@@ -102,6 +102,12 @@ int myst_load_fs(
     {
         if (locals->fssig.signature_size)
         {
+            /* Make sure signature_size set by the host-side does not exceed
+             * fssig.signature buffer size.
+             */
+            if (locals->fssig.signature_size > sizeof(locals->fssig.signature))
+                ERAISE(-EINVAL);
+
             ECHECK(myst_pubkey_verify(
                 __myst_kernel_args.archive_data,
                 __myst_kernel_args.archive_size,

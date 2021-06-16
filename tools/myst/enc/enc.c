@@ -513,11 +513,10 @@ static long _enter(void* arg_)
         report_native_tids = options->report_native_tids;
         max_affinity_cpus = options->max_affinity_cpus;
 
-        if (strlen(options->rootfs) >= PATH_MAX)
-        {
-            fprintf(stderr, "rootfs path too long (> %u)\n", PATH_MAX);
-            goto done;
-        }
+        /* rootfs buffer content set by the host side. Max length of the string
+         * is PATH_MAX-1. Enforce NULL terminator at the end of the buffer.
+         */
+        options->rootfs[PATH_MAX - 1] = '\0';
 
         rootfs = options->rootfs;
     }
@@ -813,7 +812,11 @@ int myst_tcall_read_block_device(
     {
         return -EINVAL;
     }
-
+    /* guard against host setting the return value greater than num_blocks */
+    if (retval > (ssize_t)num_blocks)
+    {
+        retval = -EINVAL;
+    }
     return retval;
 }
 
@@ -830,7 +833,11 @@ int myst_tcall_write_block_device(
     {
         return -EINVAL;
     }
-
+    /* guard against host setting the return value greater than num_blocks */
+    if (retval > (ssize_t)num_blocks)
+    {
+        retval = -EINVAL;
+    }
     return retval;
 }
 
