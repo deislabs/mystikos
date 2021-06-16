@@ -1,4 +1,5 @@
 /app/llvm-project/libcxx/test/std/input.output/file.streams/fstreams/fstream.assign/member_swap.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/thread/thread.condition/thread.condition.condvar/wait_for.pass.cpp.exe
+/app/llvm-project/libcxx/test/std/thread/thread.mutex/thread.lock/thread.lock.shared/thread.lock.shared.locking/try_lock_for.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/thread/thread.mutex/thread.lock/thread.lock.unique/thread.lock.unique.cons/mutex_try_to_lock.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/thread/thread.mutex/thread.mutex.requirements/thread.sharedtimedmutex.requirements/thread.sharedtimedmutex.class/try_lock_shared_for.pass.cpp.exe
