@@ -161,7 +161,7 @@ tests:
 	@ $(MAKE) -s summary
 
 alltests:
-	$(MAKE) -s tests ALLTESTS=1 VERBOSE=1
+	$(MAKE) tests ALLTESTS=1
 
 
 ##==============================================================================
