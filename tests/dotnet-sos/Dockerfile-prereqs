@@ -1,0 +1,23 @@
+FROM mcr.microsoft.com/dotnet/sdk:5.0 AS build
+
+WORKDIR /tmp
+# Install lldb-10
+RUN apt update && \
+     apt install -y lsb-release software-properties-common gnupg
+RUN wget https://apt.llvm.org/llvm.sh && \
+        chmod +x llvm.sh && \
+        ./llvm.sh 10
+
+# Install SOS debugger extension
+RUN dotnet tool install -g dotnet-sos \
+	&& /root/.dotnet/tools/dotnet-sos install
+
+# Install intel libraries to required to run enclaves
+RUN echo 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu xenial main' | tee /etc/apt/sources.list.d/intel-sgx.list && \
+    wget -qO - https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | apt-key add -
+RUN echo 'deb [arch=amd64] https://packages.microsoft.com/ubuntu/16.04/prod xenial main' | tee /etc/apt/sources.list.d/msprod.list && \
+    wget -qO - https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
+RUN mkdir -p /etc/init; echo "#!/bin/bash" > /sbin/initctl; chmod +x /sbin/initctl
+RUN apt update && apt -y install libsgx-enclave-common libsgx-dcap-ql
+
+WORKDIR /app

@@ -12,7 +12,7 @@ ifdef STRACE
 OPTS += --strace
 endif
 
-all: ext2fs oelldb dotnet-sos
+all: ext2fs oelldb
 
 appdir:
 	$(APPBUILDER) Dockerfile
@@ -25,20 +25,20 @@ ext2fs: appdir
 oelldb:
 	git clone --branch working https://github.com/vtikoo/oelldb
 
-dotnet-sos:
-	sudo apt install -y dotnet-sdk-5.0 && \
-	dotnet tool install -g dotnet-sos \
-	&& $(HOME)/.dotnet/tools/dotnet-sos install || true
-
 clean:
 	sudo rm -fr appdir ext2fs rootfs roothash oelldb stdouterr.txt /tmp/myst*
-	$(HOME)/.dotnet/tools/dotnet-sos uninstall && \
-	sudo rm -rf ~/.dotnet && \
-	sudo apt remove -y dotnet-sdk-5.0 || true
 
 tests:
-	$(RUNTEST) ./exec.sh $(MYST_LLDB) $(MYST) $(OPTS) $(HEAP_SIZE)
+	$(RUNTEST) docker run --rm \
+	--privileged --cap-add=SYS_PTRACE --security-opt seccomp=unconfined \
+	-v $(abspath .):/app/ -v $(TOP)/build:/build \
+	--device /dev/sgx:/dev/sgx \
+	vtikoo/dotnet-sos-prereqs:0.1 \
+	/app/exec.sh $(MYST_LLDB) /build/bin/myst $(EXEC) $(OPTS)
 	@ echo "=== passed test (dotnet-sos)"
+
+tests-without-docker:
+	$(RUNTEST) ./exec.sh $(MYST_LLDB) $(MYST) $(OPTS)
 
 ##################################
 #			dev targets			 #
