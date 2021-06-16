@@ -1,5 +1,6 @@
-# Mystikos
+![Mystikos](./art/light/logo-horizontal/logo-horizontal.png)
 
+## What is Mystikos?
 **Mystikos** is a set of tools for running applications in a hardware trusted
 execution environment (TEE). The current release supports **Intel &reg; SGX**
 while other TEEs may be supported in future releases. **Linux** is also a
