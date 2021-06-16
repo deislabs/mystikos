@@ -11,7 +11,6 @@
 #include <myst/cond.h>
 #include <myst/eraise.h>
 #include <myst/mutex.h>
-#include <myst/printf.h>
 #include <myst/process.h>
 #include <myst/syscall.h>
 #include <myst/time.h>
