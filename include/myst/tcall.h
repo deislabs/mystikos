@@ -79,10 +79,13 @@ long myst_tcall_write_console(int fd, const void* buf, size_t count);
 
 long myst_tcall_create_thread(uint64_t cookie);
 
+/* returns zero or -errno */
 long myst_tcall_wait(uint64_t event, const struct timespec* timeout);
 
+/* returns the number of waiters that were woken up or -errno */
 long myst_tcall_wake(uint64_t event);
 
+/* returns zero or -errno */
 long myst_tcall_wake_wait(
     uint64_t waiter_event,
     uint64_t self_event,

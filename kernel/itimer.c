@@ -11,6 +11,7 @@
 #include <myst/cond.h>
 #include <myst/eraise.h>
 #include <myst/mutex.h>
+#include <myst/printf.h>
 #include <myst/process.h>
 #include <myst/syscall.h>
 #include <myst/time.h>
@@ -109,7 +110,7 @@ long myst_syscall_run_itimer(void)
             {
                 /* no-op */
             }
-            else if (r == ETIMEDOUT)
+            else if (r == -ETIMEDOUT)
             {
                 _update_and_check_expiration(start, end);
             }

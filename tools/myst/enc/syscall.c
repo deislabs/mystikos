@@ -767,6 +767,9 @@ done:
     return ret;
 }
 
+/* The OCALL based implementaiton is only used for "target" event such as socket
+ * event. "kernel" event, or "internal" event synchronization is handled inside
+ */
 static long _poll(struct pollfd* fds, nfds_t nfds, int timeout)
 {
     long ret = 0;
@@ -819,10 +822,12 @@ static long _poll(struct pollfd* fds, nfds_t nfds, int timeout)
         goto done;
     }
 
-    /* copy back the revents field */
+    /* copy back the revents field and sanitize the value provided by the
+     * host-side to be a subset of the events mask.
+     */
     for (nfds_t i = 0; i < nfds; i++)
     {
-        fds[i].revents = copy[i].revents;
+        fds[i].revents = copy[i].revents & fds[i].events;
     }
 
     /* guard against return value that is bigger than nfds */
@@ -1422,13 +1427,32 @@ static long _sched_setaffinity(
     const cpu_set_t* mask)
 {
     long ret;
+    /* On success, the raw sched_setaffinity() system call returns the size (in
+     * bytes) of the cpumask_t data type that is used internally by the kernel
+     * to represent the CPU set bit mask.
+     */
     RETURN(myst_sched_setaffinity_ocall(&ret, pid, cpusetsize, (void*)mask));
 }
 
 static long _sched_getaffinity(pid_t pid, size_t cpusetsize, cpu_set_t* mask)
 {
     long ret;
-    RETURN(myst_sched_getaffinity_ocall(&ret, pid, cpusetsize, (void*)mask));
+    if (myst_sched_getaffinity_ocall(&ret, pid, cpusetsize, (void*)mask) !=
+        OE_OK)
+    {
+        return -EINVAL;
+    }
+    /* On success, the raw sched_getaffinity() system call returns the number of
+     * bytes placed copied into the mask buffer; this will be the minimum of
+     * cpusetsize and the size (in bytes) of the cpumask_t data type that is
+     * used internally by the kernel to represent the CPU set bit mask. Guard
+     * against host setting the return value greater than cpusetsize.
+     */
+    if (ret > (ssize_t)cpusetsize)
+    {
+        ret = -EINVAL;
+    }
+    return ret;
 }
 
 struct getcpu_cache;

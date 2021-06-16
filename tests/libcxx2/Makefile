@@ -103,6 +103,7 @@ repeat:
 # Use to order tests and remove flaky ones
 clean-tests:
 	sort -o $(ALLTESTS) $(ALLTESTS)
+<<<<<<< HEAD
 	sort -o tests.passed tests.passed
 	sort -o tests.failed tests.failed
 	sort -o tests.failedubuntu tests.failedubuntu
@@ -110,3 +111,14 @@ clean-tests:
 	comm -23 $(ALLTESTS) tests.remove > alltests
 	comm -23 tests.passed tests.remove > libcxx_passed
 	comm -23 tests.failed tests.failedubuntu > libcxx_failed
+=======
+	sort -o libcxx_passed tests.passed
+	sort -o libcxx_failed tests.failed
+	sort -o libcxx_failedubuntu tests.failedubuntu
+	comm -23 $(ALLTESTS) tests.remove > temp
+	mv temp alltests
+	comm -23 libcxx_passed tests.remove > temp
+	mv temp libcxx_passed
+	comm -23 libcxx_failed tests.failedubuntu > temp
+	mv temp libcxx_failed
+>>>>>>> myst_tcall_wake() fix

@@ -17,7 +17,7 @@
 int myst_cond_init(myst_cond_t* c)
 {
     if (!c)
-        return EINVAL;
+        return -EINVAL;
 
     memset(c, 0, sizeof(myst_cond_t));
     c->lock = 0;
@@ -28,7 +28,7 @@ int myst_cond_init(myst_cond_t* c)
 int myst_cond_destroy(myst_cond_t* c)
 {
     if (!c)
-        return EINVAL;
+        return -EINVAL;
 
     myst_spin_lock(&c->lock);
 
@@ -36,7 +36,7 @@ int myst_cond_destroy(myst_cond_t* c)
     if (c->queue.front)
     {
         myst_spin_unlock(&c->lock);
-        return EBUSY;
+        return -EBUSY;
     }
 
     myst_spin_unlock(&c->lock);
@@ -56,7 +56,7 @@ int myst_cond_timedwait(
     assert(self->magic == MYST_THREAD_MAGIC);
 
     if (!c || !mutex)
-        return EINVAL;
+        return -EINVAL;
 
     myst_spin_lock(&c->lock);
     {
@@ -77,7 +77,7 @@ int myst_cond_timedwait(
         if (__myst_mutex_unlock(mutex, &waiter) != 0)
         {
             myst_spin_unlock(&c->lock);
-            return EBUSY;
+            return -EBUSY;
         }
 
         for (;;)
@@ -98,12 +98,20 @@ int myst_cond_timedwait(
             }
             myst_spin_lock(&c->lock);
 
-            /* If self is no longer in the queue, then it was selected */
+            /* If self is no longer in the queue, then it was selected by the
+             * myst_signal_xyz() calls. Break out of the loop to unblock the
+             * thread. If self is still in the queue, and ret=0, host-side might
+             * have waken the thread prematurely, potentially doing so
+             * maliciously. Stay in the loop to wait again.
+             */
             if (!myst_thread_queue_contains(&c->queue, self))
                 break;
 
-            /* Remove self from the queue on error returns such as ETIMEOUT */
-            if (ret != 0)
+            /* Remove self from the queue on error returns such as ETIMEOUT, and
+             * break out of the loop to report error to the calling function.
+             * The calling function should check/process error condition before
+             * continuing execution. */
+            if (ret < 0)
             {
                 myst_thread_queue_remove_thread(&c->queue, self);
                 break;
@@ -128,7 +136,7 @@ int myst_cond_signal_thread(myst_cond_t* c, myst_thread_t* thread)
     int index = -1;
 
     if (!c)
-        return EINVAL;
+        return -EINVAL;
 
     myst_spin_lock(&c->lock);
     index = myst_thread_queue_remove_thread(&c->queue, thread);
@@ -145,7 +153,7 @@ int myst_cond_signal(myst_cond_t* c)
     myst_thread_t* waiter;
 
     if (!c)
-        return EINVAL;
+        return -EINVAL;
 
     myst_spin_lock(&c->lock);
     do
@@ -168,7 +176,7 @@ int myst_cond_broadcast(myst_cond_t* c, size_t n)
     myst_thread_queue_t waiters = {NULL, NULL};
 
     if (!c)
-        return EINVAL;
+        return -EINVAL;
 
     myst_spin_lock(&c->lock);
     {
@@ -206,7 +214,7 @@ int myst_cond_requeue(
     myst_thread_queue_t requeues = {NULL, NULL};
 
     if (!c1 || !c2)
-        return EINVAL;
+        return -EINVAL;
 
     /* Form two queues: wakers and requeues */
     myst_spin_lock(&c1->lock);
