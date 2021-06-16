@@ -767,9 +767,6 @@ done:
     return ret;
 }
 
-/* The OCALL based implementaiton is only used for "target" event such as socket
- * event. "kernel" event, or "internal" event synchronization is handled inside
- */
 static long _poll(struct pollfd* fds, nfds_t nfds, int timeout)
 {
     long ret = 0;
@@ -822,12 +819,10 @@ static long _poll(struct pollfd* fds, nfds_t nfds, int timeout)
         goto done;
     }
 
-    /* copy back the revents field and sanitize the value provided by the
-     * host-side to be a subset of the events mask.
-     */
+    /* copy back the revents field */
     for (nfds_t i = 0; i < nfds; i++)
     {
-        fds[i].revents = copy[i].revents & fds[i].events;
+        fds[i].revents = copy[i].revents;
     }
 
     /* guard against return value that is bigger than nfds */
@@ -913,17 +908,12 @@ done:
 #endif
 
 #ifdef MYST_ENABLE_HOSTFS
-static long _lstat(
-    const char* pathname,
-    struct myst_stat* statbuf,
-    uid_t host_uid,
-    gid_t host_gid)
+static long _lstat(const char* pathname, struct myst_stat* statbuf)
 {
     long ret = 0;
     long retval;
 
-    if (myst_lstat_ocall(&retval, pathname, statbuf, host_uid, host_gid) !=
-        OE_OK)
+    if (myst_lstat_ocall(&retval, pathname, statbuf) != OE_OK)
     {
         ret = -EINVAL;
         goto done;
@@ -1272,11 +1262,7 @@ done:
 #endif
 
 #ifdef MYST_ENABLE_HOSTFS
-static long _symlink(
-    const char* target,
-    const char* linkpath,
-    uid_t host_uid,
-    gid_t host_gid)
+static long _symlink(const char* target, const char* linkpath)
 {
     long ret = 0;
     long retval;
@@ -1287,8 +1273,7 @@ static long _symlink(
         goto done;
     }
 
-    if (myst_symlink_ocall(&retval, target, linkpath, host_uid, host_gid) !=
-        OE_OK)
+    if (myst_symlink_ocall(&retval, target, linkpath) != OE_OK)
     {
         ret = -EINVAL;
         goto done;
@@ -1427,32 +1412,13 @@ static long _sched_setaffinity(
     const cpu_set_t* mask)
 {
     long ret;
-    /* On success, the raw sched_setaffinity() system call returns the size (in
-     * bytes) of the cpumask_t data type that is used internally by the kernel
-     * to represent the CPU set bit mask.
-     */
     RETURN(myst_sched_setaffinity_ocall(&ret, pid, cpusetsize, (void*)mask));
 }
 
 static long _sched_getaffinity(pid_t pid, size_t cpusetsize, cpu_set_t* mask)
 {
     long ret;
-    if (myst_sched_getaffinity_ocall(&ret, pid, cpusetsize, (void*)mask) !=
-        OE_OK)
-    {
-        return -EINVAL;
-    }
-    /* On success, the raw sched_getaffinity() system call returns the number of
-     * bytes placed copied into the mask buffer; this will be the minimum of
-     * cpusetsize and the size (in bytes) of the cpumask_t data type that is
-     * used internally by the kernel to represent the CPU set bit mask. Guard
-     * against host setting the return value greater than cpusetsize.
-     */
-    if (ret > (ssize_t)cpusetsize)
-    {
-        ret = -EINVAL;
-    }
-    return ret;
+    RETURN(myst_sched_getaffinity_ocall(&ret, pid, cpusetsize, (void*)mask));
 }
 
 struct getcpu_cache;
@@ -1501,31 +1467,6 @@ static long _fchown(
 
     if (myst_fchown_ocall(&retval, fd, owner, group, host_euid, host_egid) !=
         OE_OK)
-    {
-        ret = -EINVAL;
-        goto done;
-    }
-
-    ret = retval;
-
-done:
-    return ret;
-}
-#endif
-
-#ifdef MYST_ENABLE_HOSTFS
-static long _lchown(
-    const char* pathname,
-    uid_t owner,
-    gid_t group,
-    uid_t host_euid,
-    gid_t host_egid)
-{
-    long ret = 0;
-    long retval;
-
-    if (myst_lchown_ocall(
-            &retval, pathname, owner, group, host_euid, host_egid) != OE_OK)
     {
         ret = -EINVAL;
         goto done;
@@ -1706,8 +1647,7 @@ long myst_handle_tcall(long n, long params[6])
         }
         case SYS_lstat:
         {
-            return _lstat(
-                (const char*)a, (struct myst_stat*)b, (uid_t)c, (gid_t)d);
+            return _lstat((const char*)a, (struct myst_stat*)b);
         }
         case SYS_access:
         {
@@ -1762,7 +1702,7 @@ long myst_handle_tcall(long n, long params[6])
         }
         case SYS_symlink:
         {
-            return _symlink((const char*)a, (const char*)b, (uid_t)c, (gid_t)d);
+            return _symlink((const char*)a, (const char*)b);
         }
         case SYS_readlink:
         {
@@ -1798,11 +1738,6 @@ long myst_handle_tcall(long n, long params[6])
         case SYS_fchown:
         {
             return _fchown((int)a, (uid_t)b, (gid_t)c, (uid_t)d, (gid_t)e);
-        }
-        case SYS_lchown:
-        {
-            return _lchown(
-                (const char*)a, (uid_t)b, (gid_t)c, (uid_t)d, (gid_t)e);
         }
         case SYS_chmod:
         {

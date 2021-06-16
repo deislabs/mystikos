@@ -32,7 +32,7 @@ one:
 llvm-project: 
 	git clone -b LibOS_v10.0.1 --single-branch https://github.com/salsal97/llvm-project.git
 
-libcxx-tests: llvm-project
+libcxx-tests:
 	mkdir libcxx-tests
 	find $(LIBCXX_TESTS_DIR) -name \*pass.cpp -exec cp --parent {}  libcxx-tests \; 
 	find $(LIBCXX_TESTS_DIR) -name \*.h -exec cp --parent {}  libcxx-tests \;
@@ -47,7 +47,7 @@ $(APPDIR)/bin/run: run.c
 	$(MUSL_GCC) -Wall -o $(APPDIR)/bin/run run.c
 
 $(APPDIR):
-	$(APPBUILDER) -i mystikos/libcxx2_tests_10x:1.0
+	$(APPBUILDER) -i mystikos/libcxx2_tests_10x:0.1
 	cp $(CURDIR)/testsa*.passed $(APPDIR)
 	# To build a new image, modify the appbuilder script to build the image with the correct name, 
 	# and not clean it up. Then once the image is built, push it to dockerhub and update 
@@ -69,7 +69,7 @@ tests:
 	$(RUNTEST) $(MAKE) __tests
 
 __tests:
-	for i in a b c d e f g h i j k l m n o p q r s t u v w ; do \
+	for i in a b c d e f g h i j k l m n o p ; do \
 		$(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run testsa$$i.passed ; \
 	done
 
@@ -85,8 +85,8 @@ runall:
 
 # Splits tests into batches for easy processing 
 split: clean-tests
-	split -l 200 $(ALLTESTS) tests
-	for i in a b c d e f g h i j k l m n o p q r s t u v w ; do \
+	split -l 140 alltests tests
+	for i in a b c d e f g h i j k l m n o p ; do \
 		grep -Fxf libcxx_passed testsa$$i > testsa$$i.passed ; \
 	done
 
@@ -96,22 +96,11 @@ failed:
 
 # Use to find flaky tests
 repeat:
-	touch output
-	rm output
-	while true; do make tests >> output ; echo "finish"; done
+	while true; do make tests >> output ; done
 
 # Use to order tests and remove flaky ones
 clean-tests:
 	sort -o $(ALLTESTS) $(ALLTESTS)
-<<<<<<< HEAD
-	sort -o tests.passed tests.passed
-	sort -o tests.failed tests.failed
-	sort -o tests.failedubuntu tests.failedubuntu
-	sort -o tests.remove tests.remove
-	comm -23 $(ALLTESTS) tests.remove > alltests
-	comm -23 tests.passed tests.remove > libcxx_passed
-	comm -23 tests.failed tests.failedubuntu > libcxx_failed
-=======
 	sort -o libcxx_passed tests.passed
 	sort -o libcxx_failed tests.failed
 	sort -o libcxx_failedubuntu tests.failedubuntu
@@ -121,4 +110,3 @@ clean-tests:
 	mv temp libcxx_passed
 	comm -23 libcxx_failed tests.failedubuntu > temp
 	mv temp libcxx_failed
->>>>>>> myst_tcall_wake() fix

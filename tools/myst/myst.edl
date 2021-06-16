@@ -101,22 +101,13 @@ enclave
             [in, size=file_size] const void* file_data,
             size_t file_size,
             [user_check] const void* text_data,
-            size_t text_size,
-            [in, string] const char* enclave_rootfs_path);
+            size_t text_size);
 
         int myst_load_symbols_ocall();
 
         int myst_unload_symbols_ocall();
 
         long myst_syscall_isatty_ocall(int fd);
-
-        /*
-        **======================================================================
-        **
-        ** threading/scheduler
-        **
-        **======================================================================
-        */
 
         long myst_create_thread_ocall(uint64_t cookie);
 
@@ -131,7 +122,16 @@ enclave
             uint64_t self_event,
             [in] const struct myst_timespec* timeout);
 
+        long myst_export_file_ocall(
+            [in, string] const char* path,
+            [in, size=size] const void* data,
+            size_t size);
+
+        long myst_fstat_ocall(int fd, [out] struct myst_stat* statbuf);
+
         long myst_sched_yield_ocall();
+
+        long myst_fchmod_ocall(int fd, uint32_t mode, uid_t host_euid, gid_t host_egid);
 
         long myst_poll_ocall(
             [in, out, count=nfds] struct pollfd* fds,
@@ -140,20 +140,25 @@ enclave
 
         long myst_poll_wake_ocall();
 
+        long myst_read_ocall(
+            int fd,
+            [out, size=count] void* buf,
+            size_t count);
+
+        long myst_write_ocall(
+            int fd,
+            [in, size=count] const void* buf,
+            size_t count);
+
+        long myst_close_ocall(int fd);
+
         long myst_nanosleep_ocall(
             [in] const struct timespec* req,
             [out] struct timespec* rem);
 
-        int myst_mprotect_ocall(void* addr, size_t len, int prot);
+        long myst_fcntl_ocall(int fd, int cmd, long arg);
 
-
-        /*
-        **======================================================================
-        **
-        ** socket
-        **
-        **======================================================================
-        */
+        long myst_fcntl_setlkw_ocall(int fd, [in] const struct flock* arg);
 
         long myst_bind_ocall(
             int sockfd,
@@ -256,18 +261,6 @@ enclave
             [in, out] socklen_t* optlen,
             socklen_t optval_size);
 
-        /* ATTN: If EXT2 file system support is disabled, can the relevant OCALL
-         * proxy code be exlcuded too?
-         */
-
-        /*
-        **======================================================================
-        **
-        ** hostfs
-        **
-        **======================================================================
-        */
-
         long myst_ioctl_ocall(
             int fd,
             unsigned long request,
@@ -280,18 +273,6 @@ enclave
             mode_t mode,
             uid_t uid,
             gid_t gid);
-        
-        long myst_read_ocall(
-            int fd,
-            [out, size=count] void* buf,
-            size_t count);
-
-        long myst_write_ocall(
-            int fd,
-            [in, size=count] const void* buf,
-            size_t count);
-
-        long myst_close_ocall(int fd);
 
         long myst_stat_ocall(
             [in, string] const char* pathname,
@@ -301,9 +282,7 @@ enclave
 
         long myst_lstat_ocall(
             [in, string] const char* pathname,
-            [out] struct myst_stat* statbuf,
-            uid_t host_euid,
-            gid_t host_egid);
+            [out] struct myst_stat* statbuf);
 
         long myst_access_ocall(
             [in, string] const char* pathname,
@@ -358,9 +337,7 @@ enclave
 
         long myst_symlink_ocall(
             [in, string] const char* target,
-            [in, string] const char* linkpath,
-            uid_t host_euid,
-            gid_t host_egid);
+            [in, string] const char* linkpath);
 
         long myst_readlink_ocall(
             [in, string] const char* pathname,
@@ -387,9 +364,9 @@ enclave
 
         int myst_mprotect_ocall(void* addr, size_t len, int prot);
 
-        int myst_get_file_size_ocall([in, string] const char* pathname);
+        int myst_cpuinfo_size_ocall();
 
-        int myst_read_file_ocall([in, string] const char* pathname, [out, size=size] char* buf, size_t size);
+        int myst_get_cpuinfo_ocall([out, size=size] char* buf, size_t size);
 
         long myst_chown_ocall(
             [in, string] const char* pathname,
@@ -407,57 +384,12 @@ enclave
             gid_t host_egid
         );
 
-        long myst_lchown_ocall(
-            [in, string] const char* pathname,
-            uid_t owner,
-            gid_t group,
-            uid_t host_euid,
-            gid_t host_egid
-        );
-
         long myst_chmod_ocall(
             [in, string] const char* pathname,
             mode_t mode,
             uid_t host_euid,
             gid_t host_egid   
         );
-
-        long myst_fchmod_ocall(int fd, uint32_t mode, uid_t host_euid, gid_t host_egid);
-
-        long myst_fcntl_ocall(int fd, int cmd, long arg);
-
-        long myst_fcntl_setlkw_ocall(int fd, [in] const struct flock* arg);
-
-        /* ATTN: If debugger suport is disabled in release mode, can the
-         * relevant OCALL proxy code be exlcuded too? 
-         */
-
-        /*
-        **======================================================================
-        **
-        ** debugger
-        **
-        **======================================================================
-        */
-
-        int myst_add_symbol_file_ocall(
-            [in, size=file_size] const void* file_data,
-            size_t file_size,
-            [user_check] const void* text_data,
-            size_t text_size);
-
-        int myst_load_symbols_ocall();
-
-        int myst_unload_symbols_ocall();
-
-        long myst_export_file_ocall(
-            [in, string] const char* path,
-            [in, size=size] const void* data,
-            size_t size);
-
-        /* ATTN: If EXT2 file system support is disabled, can the relevant OCALL
-         * proxy code be exlcuded too?
-         */
 
         /*
         **======================================================================
@@ -515,17 +447,5 @@ enclave
             pid_t pid,
             size_t cpusetsize,
             [out, size=cpusetsize] uint8_t* mask);
-
-        void myst_cpuid_ocall(
-            uint32_t leaf,
-            uint32_t subleaf,
-            [out] uint32_t* rax,
-            [out] uint32_t* rbx,
-            [out] uint32_t* rcx,
-            [out] uint32_t* rdx);
-
-        int myst_cpuinfo_size_ocall();
-
-        int myst_get_cpuinfo_ocall([out, size=size] char* buf, size_t size);
     };
 };
