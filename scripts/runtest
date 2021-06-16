@@ -94,8 +94,12 @@ run_test()
     #    set +o pipefail
     #fi
 
+    echo "=== START: ${timeout} ${time} ${cmd}"
+    #set -o pipefail
     ${timeout} ${time} ${cmd}
     ret=$?
+    #set +o pipefail
+    echo "=== FINISHED: ${timeout} ${time} ${cmd}"
 
     seconds=$(cat ${tempfile})
     rm -f ${tempfile}
