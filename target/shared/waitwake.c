@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#include <assert.h>
 #include <errno.h>
 #include <linux/futex.h>
 #include <myst/eraise.h>
@@ -28,7 +29,7 @@ long myst_tcall_wait(uint64_t event, const struct timespec* timeout)
             {
                 /* if *uaddr is still negative one, then reset to zero */
                 __sync_val_compare_and_swap(uaddr, -1, 0);
-                return ETIMEDOUT;
+                return -ETIMEDOUT;
             }
         } while (*uaddr == -1);
     }
@@ -43,9 +44,13 @@ long myst_tcall_wake(uint64_t event)
 
     if (__sync_fetch_and_add(uaddr, 1) != 0)
     {
+        /* returns the number of waiters that were woken up on success */
         ret = syscall(SYS_futex, uaddr, FUTEX_WAKE_PRIVATE, 1, NULL, NULL, 0);
 
-        if (ret != 0)
+        /* The syscall wrapper should return -1 or a positive number */
+        assert(ret >= -1);
+
+        if (ret == -1)
             ret = -errno;
     }
 
@@ -59,14 +64,12 @@ long myst_tcall_wake_wait(
 {
     long ret;
 
-    if ((ret = myst_tcall_wake(waiter_event)) != 0)
+    /* if wake fails, return the error unless it is EAGAIN */
+    if ((ret = myst_tcall_wake(waiter_event)) < 0)
     {
         if (ret != -EAGAIN)
             return ret;
     }
 
-    if ((ret = myst_tcall_wait(self_event, timeout)) != 0)
-        return ret;
-
-    return 0;
+    return myst_tcall_wait(self_event, timeout);
 }

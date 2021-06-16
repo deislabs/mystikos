@@ -17,17 +17,13 @@
 
 int myst_mutex_init(myst_mutex_t* m)
 {
-    int ret = -1;
-
     if (!m)
-        return EINVAL;
+        return -EINVAL;
 
     memset(m, 0, sizeof(myst_mutex_t));
     m->lock = 0;
 
-    ret = 0;
-
-    return ret;
+    return 0;
 }
 
 /* Caller manages the spinlock */
@@ -66,7 +62,8 @@ int __myst_mutex_trylock(myst_mutex_t* m, myst_thread_t* self)
         }
     }
 
-    return -1;
+    /* the mutex is already locked by another thread */
+    return -EBUSY;
 }
 
 int myst_mutex_lock(myst_mutex_t* mutex)
@@ -75,7 +72,7 @@ int myst_mutex_lock(myst_mutex_t* mutex)
     myst_thread_t* self = myst_thread_self();
 
     if (!m)
-        return EINVAL;
+        return -EINVAL;
 
     /* Loop until SELF obtains mutex */
     for (;;)
@@ -114,7 +111,7 @@ int myst_mutex_trylock(myst_mutex_t* mutex)
     myst_thread_t* self = myst_thread_self();
 
     if (!m)
-        return EINVAL;
+        return -EINVAL;
 
     myst_spin_lock(&m->lock);
     {
@@ -127,14 +124,14 @@ int myst_mutex_trylock(myst_mutex_t* mutex)
     }
     myst_spin_unlock(&m->lock);
 
-    return EBUSY;
+    return -EBUSY;
 }
 
 int __myst_mutex_unlock(myst_mutex_t* mutex, myst_thread_t** waiter)
 {
+    int ret = 0;
     myst_mutex_t* m = (myst_mutex_t*)mutex;
     myst_thread_t* self = myst_thread_self();
-    int ret = -1;
 
     myst_spin_lock(&m->lock);
     {
@@ -150,8 +147,11 @@ int __myst_mutex_unlock(myst_mutex_t* mutex, myst_thread_t** waiter)
                 /* Set waiter to the next thread on the queue (maybe none) */
                 *waiter = m->queue.front;
             }
-
-            ret = 0;
+        }
+        else
+        {
+            /* the caller does not own the mutex */
+            ret = -EPERM;
         }
     }
     myst_spin_unlock(&m->lock);
@@ -164,10 +164,10 @@ int myst_mutex_unlock(myst_mutex_t* m)
     myst_thread_t* waiter = NULL;
 
     if (!m)
-        return EINVAL;
+        return -EINVAL;
 
     if (__myst_mutex_unlock(m, &waiter) != 0)
-        return EPERM;
+        return -EPERM;
 
     if (waiter)
     {
@@ -180,19 +180,21 @@ int myst_mutex_unlock(myst_mutex_t* m)
 
 int myst_mutex_destroy(myst_mutex_t* mutex)
 {
+    int ret = 0;
     myst_mutex_t* m = (myst_mutex_t*)mutex;
 
     if (!m)
-        return EINVAL;
-
-    int ret = EBUSY;
+        return -EINVAL;
 
     myst_spin_lock(&m->lock);
     {
         if (myst_thread_queue_empty(&m->queue))
         {
             memset(m, 0, sizeof(myst_mutex_t));
-            ret = 0;
+        }
+        else
+        {
+            ret = -EBUSY;
         }
     }
     myst_spin_unlock(&m->lock);

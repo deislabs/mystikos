@@ -182,8 +182,6 @@ int myst_futex_wait(int* uaddr, int val, const struct timespec* to)
 
     myst_mutex_lock(&f->mutex);
     {
-        int retval;
-
         if (*uaddr != val)
         {
             myst_mutex_unlock(&f->mutex);
@@ -191,10 +189,7 @@ int myst_futex_wait(int* uaddr, int val, const struct timespec* to)
             goto done;
         }
 
-        retval = myst_cond_timedwait(&f->cond, &f->mutex, to);
-
-        if (retval != 0)
-            ret = -retval;
+        ret = myst_cond_timedwait(&f->cond, &f->mutex, to);
     }
     myst_mutex_unlock(&f->mutex);
 
