@@ -349,6 +349,7 @@ static long _enter(void* arg_)
     bool trace_syscalls = false;
     bool shell_mode = false;
     bool memcheck = false;
+    bool report_native_tids = false;
     size_t max_affinity_cpus = 0;
     bool export_ramfs = false;
     const char* rootfs = NULL;
@@ -504,6 +505,7 @@ static long _enter(void* arg_)
         trace_syscalls = options->trace_syscalls;
         shell_mode = options->shell_mode;
         memcheck = options->memcheck;
+        report_native_tids = options->report_native_tids;
         max_affinity_cpus = options->max_affinity_cpus;
         export_ramfs = options->export_ramfs;
 
@@ -566,6 +568,7 @@ static long _enter(void* arg_)
 
         _kargs.shell_mode = shell_mode;
         _kargs.memcheck = memcheck;
+        _kargs.report_native_tids = report_native_tids;
 
         /* set ehdr and verify that the kernel is an ELF image */
         {
@@ -657,7 +660,8 @@ long myst_tcall_add_symbol_file(
     const void* file_data,
     size_t file_size,
     const void* text,
-    size_t text_size)
+    size_t text_size,
+    const char* enclave_rootfs_path)
 {
     long ret = 0;
     int retval;
@@ -666,7 +670,12 @@ long myst_tcall_add_symbol_file(
         ERAISE(-EINVAL);
 
     if (myst_add_symbol_file_ocall(
-            &retval, file_data, file_size, text, text_size) != OE_OK)
+            &retval,
+            file_data,
+            file_size,
+            text,
+            text_size,
+            enclave_rootfs_path) != OE_OK)
     {
         ERAISE(-EINVAL);
     }
@@ -851,21 +860,21 @@ int myst_load_fssig(const char* path, myst_fssig_t* fssig)
     return retval;
 }
 
-int myst_tcall_cpuinfo_size()
+int myst_tcall_get_file_size(const char* pathname)
 {
     int retval;
 
-    if (myst_cpuinfo_size_ocall(&retval) != OE_OK)
+    if (myst_get_file_size_ocall(&retval, pathname) != OE_OK)
         return -EINVAL;
 
     return retval;
 }
 
-int myst_tcall_get_cpuinfo(char* buf, size_t size)
+int myst_tcall_read_file(const char* pathname, char* buf, size_t size)
 {
     int retval;
 
-    if (myst_get_cpuinfo_ocall(&retval, buf, size) != OE_OK)
+    if (myst_read_file_ocall(&retval, pathname, buf, size) != OE_OK)
         return -EINVAL;
 
     return retval;
