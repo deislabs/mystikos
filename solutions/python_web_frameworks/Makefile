@@ -17,19 +17,30 @@ appdir:
 	$(APPBUILDER) Dockerfile
 
 run:
+	$(MAKE) run1
+	$(MAKE) run2
+
+run1:
 	test -f server.pid && kill -9 `cat server.pid` || true
 	@echo "=== starting flask server ==="
-	@$(MYST_EXEC) $(OPTS) $(ROOTFS) /usr/local/bin/python3 /app/flask_app.py & echo $$! > server.pid
-	@sleep 10
-	curl 127.0.0.1:8000 -w "\n"
+	$(MYST_EXEC) $(OPTS) $(ROOTFS) /usr/local/bin/python3 /app/flask_app.py 2> server.output & echo $$! > server.pid
+	timeout 60s tail -f server.output | ./client.sh "Running on http"
+	@echo ""
 	@echo "=== stopping flask server ==="
-	@test -f server.pid && kill -9 `cat server.pid` && rm server.pid || true
+	test -f server.pid && kill -9 `cat server.pid` && rm server.pid || true
+	test -f client.output
+	@echo ""
+
+run2:
+	test -f server.pid && kill -9 `cat server.pid` || true
 	@echo "=== starting uwsgi server ==="
-	@$(MYST_EXEC) $(OPTS) $(ROOTFS) /usr/local/bin/uwsgi /app/uwsgi.ini & echo $$! > server.pid
-	@sleep 10
-	curl 127.0.0.1:8000 -w "\n"
+	$(MYST_EXEC) $(OPTS) $(ROOTFS) /usr/local/bin/uwsgi /app/uwsgi.ini 2> server.output & echo $$! > server.pid
+	timeout 60s tail -f server.output | ./client.sh "spawned uWSGI worker"
+	@echo ""
 	@echo "=== stopping flask server ==="
-	@test -f server.pid && kill -9 `cat server.pid` && rm server.pid || true
+	test -f server.pid && kill -9 `cat server.pid` && rm server.pid || true
+	test -f client.output
+	@echo ""
 
 server-flask:
 	$(MYST_EXEC) $(OPTS) $(ROOTFS) /usr/local/bin/python3 /app/flask_app.py
