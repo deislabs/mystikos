@@ -101,7 +101,8 @@ enclave
             [in, size=file_size] const void* file_data,
             size_t file_size,
             [user_check] const void* text_data,
-            size_t text_size);
+            size_t text_size,
+            [in, string] const char* enclave_rootfs_path);
 
         int myst_load_symbols_ocall();
 
@@ -282,7 +283,9 @@ enclave
 
         long myst_lstat_ocall(
             [in, string] const char* pathname,
-            [out] struct myst_stat* statbuf);
+            [out] struct myst_stat* statbuf,
+            uid_t host_euid,
+            gid_t host_egid);
 
         long myst_access_ocall(
             [in, string] const char* pathname,
@@ -337,7 +340,9 @@ enclave
 
         long myst_symlink_ocall(
             [in, string] const char* target,
-            [in, string] const char* linkpath);
+            [in, string] const char* linkpath,
+            uid_t host_euid,
+            gid_t host_egid);
 
         long myst_readlink_ocall(
             [in, string] const char* pathname,
@@ -364,9 +369,9 @@ enclave
 
         int myst_mprotect_ocall(void* addr, size_t len, int prot);
 
-        int myst_cpuinfo_size_ocall();
+        int myst_get_file_size_ocall([in, string] const char* pathname);
 
-        int myst_get_cpuinfo_ocall([out, size=size] char* buf, size_t size);
+        int myst_read_file_ocall([in, string] const char* pathname, [out, size=size] char* buf, size_t size);
 
         long myst_chown_ocall(
             [in, string] const char* pathname,
@@ -378,6 +383,14 @@ enclave
 
         long myst_fchown_ocall(
             int fd,
+            uid_t owner,
+            gid_t group,
+            uid_t host_euid,
+            gid_t host_egid
+        );
+
+        long myst_lchown_ocall(
+            [in, string] const char* pathname,
             uid_t owner,
             gid_t group,
             uid_t host_euid,
