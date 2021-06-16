@@ -24,10 +24,6 @@
             "Type": "hostfs"
         },
         {
-            "Target": "/etc/resolv.conf",
-            "Type": "hostfs"
-        },
-        {
             "Target": "/targetfile1",
             "Type": "hostfs"
         },

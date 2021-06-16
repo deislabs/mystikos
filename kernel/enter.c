@@ -95,6 +95,83 @@ done:
     return ret;
 }
 
+static int _copy_host_etc_resolv()
+{
+    int ret = 0, size, fd = -1;
+    const char* resolv_file = "/etc/resolv.conf";
+    char* buf = NULL;
+    struct stat statbuf;
+
+    if ((size = myst_tcall_get_file_size(resolv_file)) < 0)
+    {
+        myst_eprintf("kernel: failed to get file size %s\n", resolv_file);
+        ERAISE(-EINVAL);
+    }
+
+    if (!(buf = malloc(size + 1)))
+        ERAISE(-ENOMEM);
+
+    if ((myst_tcall_read_file(resolv_file, buf, size)) < 0)
+    {
+        myst_eprintf("kernel: failed to read file %s\n", resolv_file);
+        ERAISE(-EINVAL);
+    }
+    buf[size] = 0;
+
+    if (stat(resolv_file, &statbuf) == 0)
+    {
+        if ((myst_syscall_unlink(resolv_file)) < 0)
+        {
+            myst_eprintf("kernel: failed to unlink file %s\n", resolv_file);
+            ERAISE(-EINVAL);
+        }
+    }
+    else
+    {
+        if (stat("/etc", &statbuf) == -1)
+        {
+            if ((myst_mkdirhier("/etc", 0755)) != 0)
+            {
+                myst_eprintf("kernel: failed to mkdir /etc\n");
+                ERAISE(-EINVAL);
+            }
+        }
+        else if (!S_ISDIR(statbuf.st_mode))
+        {
+            if ((myst_syscall_unlink("/etc")) < 0)
+            {
+                myst_eprintf("kernel: failed to unlink file /etc\n");
+                ERAISE(-EINVAL);
+            }
+            if ((myst_mkdirhier("/etc", 0755)) != 0)
+            {
+                myst_eprintf("kernel: failed to mkdir /etc\n");
+                ERAISE(-EINVAL);
+            }
+        }
+    }
+    if ((fd = open(resolv_file, O_WRONLY | O_CREAT | O_TRUNC, 0644)) < 0)
+    {
+        myst_eprintf("kernel: failed to open file %s\n", resolv_file);
+        ERAISE(-EINVAL);
+    }
+    if ((myst_writen(fd, buf, size)) < 0)
+    {
+        myst_eprintf("kernel: failed to write to file %s\n", resolv_file);
+        ERAISE(-EINVAL);
+    }
+
+done:
+
+    if (fd != -1)
+        close(fd);
+
+    if (buf)
+        free(buf);
+
+    return ret;
+}
+
 static int _setup_tty(void)
 {
     int ret = 0;
@@ -708,6 +785,8 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     create_proc_root_entries();
 
     ECHECK(_process_mount_configuration(args->mounts));
+
+    ECHECK(_copy_host_etc_resolv());
 
     /* Set the 'run-proc' which is called by the target to run new threads */
     ECHECK(myst_tcall_set_run_thread_function(myst_run_thread));

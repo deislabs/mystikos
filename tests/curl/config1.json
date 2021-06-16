@@ -16,12 +16,5 @@
     "ApplicationParameters": [],
     "HostApplicationParameters": true,
     "EnvironmentVariables": [],
-    "HostEnvironmentVariables": [],
-
-    "Mount": [
-        {
-            "Target": "/etc/resolv.conf",
-            "Type": "hostfs"
-        }
-    ]
+    "HostEnvironmentVariables": []
 }

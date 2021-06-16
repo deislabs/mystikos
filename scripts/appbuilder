@@ -174,10 +174,6 @@ export_image()
     tar xf $TEMP_FILE -C $TEMP_DIR
     rm -rf $OUTPUT_NAME $TEMP_FILE
 
-    # create an explicit name server
-    DNS_SERVER=$(systemd-resolve --status | grep "DNS Servers" | cut -f2 -d:)
-    echo "nameserver $DNS_SERVER" >> $TEMP_DIR/etc/resolv.conf
-
     if [ "$OUTPUT_FORMAT" == "dir" ]; then
         mv $TEMP_DIR $OUTPUT_NAME
     elif [ "$OUTPUT_FORMAT" == "cpio" ]; then
