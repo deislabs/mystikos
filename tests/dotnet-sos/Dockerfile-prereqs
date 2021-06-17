@@ -12,12 +12,9 @@ RUN wget https://apt.llvm.org/llvm.sh && \
 RUN dotnet tool install -g dotnet-sos \
 	&& /root/.dotnet/tools/dotnet-sos install
 
-# Install intel libraries to required to run enclaves
+# Install intel library required to run enclaves
 RUN echo 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu xenial main' | tee /etc/apt/sources.list.d/intel-sgx.list && \
-    wget -qO - https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | apt-key add -
-RUN echo 'deb [arch=amd64] https://packages.microsoft.com/ubuntu/16.04/prod xenial main' | tee /etc/apt/sources.list.d/msprod.list && \
-    wget -qO - https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
-RUN mkdir -p /etc/init; echo "#!/bin/bash" > /sbin/initctl; chmod +x /sbin/initctl
-RUN apt update && apt -y install libsgx-enclave-common libsgx-dcap-ql
+    wget -qO - https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | apt-key add - && \
+    apt update && apt -y install libsgx-enclave-common
 
 WORKDIR /app
