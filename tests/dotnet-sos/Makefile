@@ -26,7 +26,7 @@ oelldb:
 	git clone --branch working https://github.com/vtikoo/oelldb
 
 clean:
-	sudo rm -fr appdir ext2fs rootfs roothash oelldb stdouterr.txt /tmp/myst*
+	sudo rm -fr appdir ext2fs rootfs roothash oelldb stdouterr.txt
 
 tests:
 	$(RUNTEST) docker run --rm \
