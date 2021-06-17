@@ -136,7 +136,6 @@ long myst_add_symbol_file_by_path(
     size_t text_size)
 {
     long ret = 0;
-    int fd = -1;
     debug_image_t* di = NULL;
     void* data = NULL;
     bool notify = true;
@@ -179,9 +178,6 @@ done:
 
     if (data)
         free(data);
-
-    if (fd > 0)
-        close(fd);
 
     return ret;
 }

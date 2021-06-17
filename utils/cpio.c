@@ -653,7 +653,7 @@ int myst_cpio_unpack(const char* source, const char* target)
             /* read the target from CPIO archive */
             n = myst_cpio_read_data(
                 cpio, locals->target, sizeof(locals->target));
-            if (n < 1 || n >= (ssize_t)sizeof(target))
+            if (n < 1 || n >= (ssize_t)sizeof(locals->target))
                 GOTO(done);
 
             locals->target[n] = '\0';
@@ -706,6 +706,16 @@ static int _append_file(myst_cpio_t* cpio, const char* path, const char* name)
     if (lstat(path, &st) != 0)
         GOTO(done);
 
+    if (S_ISREG(st.st_mode))
+    {
+        if ((fd = open(path, O_RDONLY, 444)) < 0)
+            GOTO(done);
+
+        /* Resolve TOC-TOU by getting the statbuf again */
+        if (fstat(fd, &st) != 0)
+            GOTO(done);
+    }
+
     /* Write the CPIO header. */
     {
         myst_cpio_entry_t ent;
@@ -731,9 +741,6 @@ static int _append_file(myst_cpio_t* cpio, const char* path, const char* name)
     /* Write the CPIO data. */
     if (S_ISREG(st.st_mode))
     {
-        if ((fd = open(path, O_RDONLY, 444)) < 0)
-            GOTO(done);
-
         while ((n = read(fd, locals->buf, sizeof(locals->buf))) > 0)
         {
             if (myst_cpio_write_data(cpio, locals->buf, (size_t)n) != 0)

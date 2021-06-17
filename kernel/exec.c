@@ -209,7 +209,7 @@ int elf_init_stack(
     if (argc <= 0 || !argv || !stack || !stack_size || !sp_out)
         goto done;
 
-    if (auxv == NULL && argc != 0)
+    if (auxv == NULL && auxc != 0)
         goto done;
 
     if (envp == NULL && envc != 0)

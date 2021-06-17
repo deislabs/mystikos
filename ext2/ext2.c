@@ -933,7 +933,7 @@ static int _write_inode(
 #endif
 
     offset = _blk_offset(group->bg_inode_table, ext2->block_size) +
-             lino * inode_size;
+             ((uint64_t)lino * (uint64_t)inode_size);
 
     /* Read the inode */
     if (_write(ext2->dev, offset, inode, inode_size) != inode_size)
@@ -1668,7 +1668,7 @@ static int _inode_get_blkno(
         uint32_t blkno;
         const uint32_t* data = (const uint32_t*)block->data;
 
-        assert(n >= 0 && n <= double_indirect_count);
+        assert(n <= double_indirect_count);
 
         if ((blkno = inode->i_block[EXT2_DOUBLE_INDIRECT_BLOCK]) == 0)
             goto done;
@@ -1694,7 +1694,7 @@ static int _inode_get_blkno(
         uint32_t blkno;
         const uint32_t* data = (const uint32_t*)block->data;
 
-        assert(n >= 0 && n <= double_indirect_count);
+        assert(n <= double_indirect_count);
 
         if ((blkno = inode->i_block[EXT2_TRIPLE_INDIRECT_BLOCK]) == 0)
             goto done;
@@ -1815,7 +1815,7 @@ static int _inode_add_blkno(
         uint32_t* idata = (uint32_t*)locals->iblock.data;
         uint32_t* jdata = (uint32_t*)locals->jblock.data;
 
-        assert(n >= 0 && n <= double_indirect_count);
+        assert(n <= double_indirect_count);
 
         if (iblkno == 0)
         {
@@ -1891,7 +1891,7 @@ static int _inode_add_blkno(
         uint32_t* jdata = (uint32_t*)locals->jblock.data;
         uint32_t* kdata = (uint32_t*)locals->kblock.data;
 
-        assert(n >= 0 && n <= double_indirect_count);
+        assert(n <= double_indirect_count);
 
         if (iblkno == 0)
         {
@@ -3149,7 +3149,7 @@ int ext2_read_inode(const ext2_t* ext2, ext2_ino_t ino, ext2_inode_t* inode)
     }
 
     offset = _blk_offset(group->bg_inode_table, ext2->block_size) +
-             lino * inode_size;
+             ((uint64_t)lino * (uint64_t)inode_size);
 
     /* Read the inode */
     if (_read(ext2->dev, offset, inode, inode_size) != inode_size)
@@ -3763,7 +3763,7 @@ int ext2_link(myst_fs_t* fs, const char* oldpath, const char* newpath)
     {
         char dirname[EXT2_PATH_MAX];
         char filename[EXT2_PATH_MAX];
-        char suffix[EXT2_PATH_MAX];
+        char suffix[PATH_MAX];
         ext2_inode_t inode;
         ext2_inode_t dinode;
         ext2_dirent_t ent;
@@ -4003,7 +4003,7 @@ ssize_t ext2_readlink(
     struct locals
     {
         ext2_inode_t inode;
-        char suffix[EXT2_PATH_MAX];
+        char suffix[PATH_MAX];
     };
     struct locals* locals = NULL;
 
