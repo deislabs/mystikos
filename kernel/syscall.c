@@ -1684,6 +1684,45 @@ done:
     return ret;
 }
 
+long myst_syscall_readlinkat(
+    int dirfd,
+    const char* pathname,
+    char* buf,
+    size_t bufsiz)
+{
+    long ret = 0;
+    struct locals
+    {
+        char abspath[PATH_MAX];
+    };
+    struct locals* locals = NULL;
+
+    if (!pathname || !buf)
+        ERAISE(-EINVAL);
+
+    if (!(locals = malloc(sizeof(struct locals))))
+        ERAISE(-ENOMEM);
+
+    /* If pathname is absolute, then ignore dirfd */
+    if (*pathname == '/' || dirfd == AT_FDCWD)
+    {
+        ret = myst_syscall_readlink(pathname, buf, bufsiz);
+    }
+    else
+    {
+        ECHECK(_get_absolute_path_from_dirfd(
+            dirfd, pathname, locals->abspath, sizeof(locals->abspath)));
+        ret = myst_syscall_readlink(locals->abspath, buf, bufsiz);
+    }
+
+done:
+
+    if (locals)
+        free(locals);
+
+    return ret;
+}
+
 long myst_syscall_symlink(const char* target, const char* linkpath)
 {
     long ret = 0;
@@ -4972,7 +5011,23 @@ static long _syscall(void* args_)
         case SYS_symlinkat:
             break;
         case SYS_readlinkat:
-            break;
+        {
+            int dirfd = (int)x1;
+            const char* pathname = (const char*)x2;
+            char* buf = (char*)x3;
+            size_t bufsiz = (size_t)x4;
+
+            _strace(
+                n,
+                "dirfd=%d pathname=%s buf=%p bufsize=%ld",
+                dirfd,
+                pathname,
+                buf,
+                bufsiz);
+
+            BREAK(_return(
+                n, myst_syscall_readlinkat(dirfd, pathname, buf, bufsiz)));
+        }
         case SYS_fchmodat:
             break;
         case SYS_faccessat:
