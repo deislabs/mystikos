@@ -35,6 +35,8 @@ int test_auto_mount(int argc, const char* argv[])
 int test_auto_mount_single_file(int argc, const char* argv[])
 {
     struct stat details = {0};
+    assert(stat("/etc/resolv.conf", &details) == 0);
+    assert(S_ISREG(details.st_mode));
     assert(stat("/targetfile1", &details) == 0);
     assert(S_ISREG(details.st_mode));
     assert(stat("/run/mystikos/automounts/1/testfile1", &details) == 0);

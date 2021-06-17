@@ -28,6 +28,8 @@ rootfs: build ramfs
 	mkdir -p $(APPDIR)/ext2-target
 	mkdir -p $(APPDIR)/hostfs-target
 	$(MYST) mkcpio $(APPDIR) $(ROOTFS)
+	sudo $(MYST) mkext2 --force $(APPDIR) ext2rootfs
+	$(MYST) fssig --roothash ext2rootfs > roothash
 
 ramfs:
 	mkdir -p $(RAMFSDIR)
@@ -56,10 +58,14 @@ update-config: ramfs ext2fs hostfs
 	rm sig-info
 
 tests:
-	$(MAKE) test-auto-mount
+	$(MAKE) test-auto-mount test-auto-mount-ext2rootfs
 
 test-auto-mount: rootfs ext2fs hostfs
 	$(RUNTEST) $(MYST_EXEC) $(ROOTFS) $(OPTS) --mount /ramfs=/ramfs-target --mount $(EXT2FS)=/ext2-target --mount $(HOSTFSDIR)=/hostfs-target \
+	--mount $(HOSTFSDIR3)/testfile1=/targetfile1 --mount $(HOSTFSDIR3)/testfile2=/targetfile2 --app-config-path config1.json /bin/test test1
+
+test-auto-mount-ext2rootfs: rootfs ext2fs hostfs
+	$(RUNTEST) $(MYST_EXEC) ext2rootfs --roothash=roothash $(OPTS) --mount /ramfs=/ramfs-target --mount $(EXT2FS)=/ext2-target --mount $(HOSTFSDIR)=/hostfs-target \
 	--mount $(HOSTFSDIR3)/testfile1=/targetfile1 --mount $(HOSTFSDIR3)/testfile2=/targetfile2 --app-config-path config1.json /bin/test test1
 
 gdb: rootfs ext2fs hostfs
