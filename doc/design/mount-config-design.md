@@ -58,7 +58,7 @@ mount: [
 
 | Name | Value |
 | -- | -- |
-| target | This is the target mount point within the TEE. |
+| target | This is the target mount point within the TEE. The target mount point needs to already exist in the target filesystem for the mount to succeed. |
 | type | "ext2", "hostfs", "ramfs" |
 | flags | Optional field that specified flags like "ro", "rw". At this time no flags are supported. |
 | publicKey | For ext2 filesystems this is the public key used to validate the signing key of the ext2 filesystem when it is mounted. This configuration is not currently supported. |
@@ -85,7 +85,7 @@ The following new command line argument will be added:
 | Name | Value |
 | -- | -- |
 | source | This is the source location of the mount in the insecure host. |
-| target | This is the mount point within the TEE. There needs to be an associated target mount configuration specified at signing for this location otherwise the mount will fail. |
+| target | This is the mount point within the TEE. There needs to be an associated target mount configuration specified at signing for this location otherwise the mount will fail. The target mount point needs to already exist in the target filesystem for the mount to succeed. |
 | | |
 
 The target location is part of the TEE measurement which specifies that the target directory is being accessed from an insecure source.
