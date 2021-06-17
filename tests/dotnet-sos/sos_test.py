@@ -2,6 +2,7 @@
 # Licensed under the MIT License.
 
 import lldb
+import os
 import sys
 
 def run_test(debugger):
@@ -9,19 +10,20 @@ def run_test(debugger):
     res = lldb.SBCommandReturnObject()
     ci = debugger.GetCommandInterpreter()
 
+    # Set managed breakpoint
+    ci.HandleCommand("bpmd hello.dll hello.Program.Main", res)
+    assert(res.Succeeded())
+
     debugger.HandleCommand("run")
 
     process = debugger.GetSelectedTarget().GetProcess()
 
-    # We hit the cpuid SIGILL pretty early in dotnet initialization
-    assert(process.GetState() == lldb.eStateStopped)
-    assert(process.GetSelectedThread().GetStopReason() == lldb.eStopReasonSignal)
-    debugger.HandleCommand("pro hand -p true -s false -n false SIGILL")
-
-    # Set managed breakpoint
-    ci.HandleCommand("bpmd hello.dll hello.Program.Main", res)
-    assert(res.Succeeded())
-    process.Continue()
+    # For sgx, we hit the cpuid SIGILL pretty early in dotnet initialization
+    if os.getenv("TARGET") == "sgx":
+        assert(process.GetState() == lldb.eStateStopped)
+        assert(process.GetSelectedThread().GetStopReason() == lldb.eStopReasonSignal)
+        debugger.HandleCommand("pro hand -p true -s false -n false SIGILL")
+        process.Continue()
 
     # Should've hit managed breakpoint
     assert(process.GetState() == lldb.eStateStopped)
