@@ -494,8 +494,8 @@ int myst_cpio_write_entry(myst_cpio_t* cpio, const myst_cpio_entry_t* entry)
     if (!cpio || cpio->fd < 0 || !entry)
         GOTO(done);
 
-    /* ATTN: Skip character files */
-    if (S_ISCHR(entry->mode))
+    /* ATTN: Skip character files and fifos */
+    if (S_ISCHR(entry->mode) || S_ISFIFO(entry->mode))
     {
         ret = 0;
         goto done;
