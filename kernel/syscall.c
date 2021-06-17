@@ -2017,7 +2017,7 @@ long myst_syscall_fchmod(int fd, mode_t mode)
 
         ECHECK(myst_enc_gid_to_host(myst_syscall_getegid(), &host_gid));
 
-        long params[] = {target_fd, mode, host_uid, host_gid};
+        long params[6] = {target_fd, mode, host_uid, host_gid};
         ret = _forward_syscall(SYS_fchmod, params);
     }
     else if (type == MYST_FDTABLE_TYPE_FILE)
@@ -2574,7 +2574,7 @@ done:
 
 long myst_syscall_sched_yield(void)
 {
-    long params[] = {0};
+    long params[6] = {0};
     return myst_tcall(SYS_sched_yield, params);
 }
 

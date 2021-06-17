@@ -46,7 +46,7 @@ ssize_t myst_fdops_readv(
     ssize_t count = 0;
     uint8_t scratch[SCRATCH_BUF_SIZE];
     void* buf = NULL;
-    size_t r;
+    ssize_t r;
 
     if (!fdops || (!iov && iovcnt) || iovcnt < 0)
         ERAISE(-EINVAL);
@@ -107,7 +107,7 @@ ssize_t myst_fdops_writev(
     ssize_t count = 0;
     uint8_t scratch[SCRATCH_BUF_SIZE];
     void* buf = NULL;
-    size_t r;
+    ssize_t r;
 
     if (!fdops || (!iov && iovcnt) || iovcnt < 0)
         ERAISE(-EINVAL);

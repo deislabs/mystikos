@@ -146,10 +146,13 @@ long myst_tcall_clock_settime(clockid_t clk_id, struct timespec* tp)
         if (new_time <= cur_time)
             return 0; // trying to set clock backward, make it no-op
 
-        if (_realtime_delta > _realtime_delta + (new_time - cur_time))
+        /* possible overflow, make it no-op */
+        if (__builtin_add_overflow(
+                _realtime_delta, (new_time - cur_time), &_realtime_delta))
+        {
             return -EINVAL; // possible overflow, make it no-op
+        }
 
-        _realtime_delta += (new_time - cur_time);
         return 0;
     }
 
