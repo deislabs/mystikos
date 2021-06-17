@@ -30,7 +30,7 @@ clean:
 
 tests:
 	$(RUNTEST) docker run --rm \
-	--privileged --cap-add=SYS_PTRACE --security-opt seccomp=unconfined \
+	--privileged --cap-add=SYS_PTRACE  \
 	-v $(abspath .):/app/ -v $(TOP)/build:/build \
 	--device /dev/sgx:/dev/sgx \
 	vtikoo/dotnet-sos-prereqs:0.1 \
@@ -38,7 +38,7 @@ tests:
 	@ echo "=== passed test (dotnet-sos)"
 
 tests-without-docker:
-	$(RUNTEST) ./exec.sh $(MYST_LLDB) $(MYST) $(OPTS)
+	$(RUNTEST) ./exec.sh $(MYST_LLDB) $(MYST) $(EXEC) $(OPTS)
 
 ##################################
 #			dev targets			 #
