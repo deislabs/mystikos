@@ -95,7 +95,7 @@ done:
     return ret;
 }
 
-static int _copy_host_etc_resolv()
+static int _copy_host_etc_files()
 {
     int ret = 0, size, fd = -1;
     const char* resolv_file = "/etc/resolv.conf";
@@ -108,7 +108,7 @@ static int _copy_host_etc_resolv()
         ERAISE(-EINVAL);
     }
 
-    if (!(buf = malloc(size + 1)))
+    if (!(buf = malloc(size)))
         ERAISE(-ENOMEM);
 
     if ((myst_tcall_read_file(resolv_file, buf, size)) < 0)
@@ -116,7 +116,6 @@ static int _copy_host_etc_resolv()
         myst_eprintf("kernel: failed to read file %s\n", resolv_file);
         ERAISE(-EINVAL);
     }
-    buf[size] = 0;
 
     if (stat(resolv_file, &statbuf) == 0)
     {
@@ -150,12 +149,12 @@ static int _copy_host_etc_resolv()
             }
         }
     }
-    if ((fd = open(resolv_file, O_WRONLY | O_CREAT | O_TRUNC, 0644)) < 0)
+    if ((fd = creat(resolv_file, 0644)) < 0)
     {
         myst_eprintf("kernel: failed to open file %s\n", resolv_file);
         ERAISE(-EINVAL);
     }
-    if ((myst_writen(fd, buf, size)) < 0)
+    if ((myst_write_file_fd(fd, buf, size)) < 0)
     {
         myst_eprintf("kernel: failed to write to file %s\n", resolv_file);
         ERAISE(-EINVAL);
@@ -786,7 +785,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
 
     ECHECK(_process_mount_configuration(args->mounts));
 
-    ECHECK(_copy_host_etc_resolv());
+    ECHECK(_copy_host_etc_files());
 
     /* Set the 'run-proc' which is called by the target to run new threads */
     ECHECK(myst_tcall_set_run_thread_function(myst_run_thread));

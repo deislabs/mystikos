@@ -36,6 +36,9 @@ endif
 __tests:
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/verity $(IMAGE)
 
+gdb:
+	$(MYST_GDB) --args $(MYST_EXEC) $(OPTS) rootfs /bin/verity $(IMAGE)
+
 clean:
 	rm -rf $(APPDIR) rootfs export ramfs $(IMAGE) $(ROOTHASH) $(PUBKEY) $(PRIVKEY)
 

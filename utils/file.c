@@ -77,27 +77,32 @@ done:
     return ret;
 }
 
-ssize_t myst_writen(int fd, const void* data, size_t size)
+int myst_write_file_fd(int fd, const void* data, size_t size)
 {
-    ssize_t ret = 0;
+    int ret = 0;
     const uint8_t* p = (const uint8_t*)data;
     size_t r = size;
+    ssize_t n;
+
+    if (fd < 0 || !data)
+        ERAISE(-EINVAL);
 
     while (r > 0)
     {
-        ssize_t n = write(fd, p, r);
-
-        if (n == 0)
+        if ((n = write(fd, p, r)) == 0)
             break;
-        else if (n < 0)
-            ERAISE(n);
+
+        if (n < 0)
+            ERAISE((int)-n);
 
         p += n;
         r -= (size_t)n;
     }
 
-done:
+    if (r != 0)
+        ERAISE(-EIO);
 
+done:
     return ret;
 }
 
@@ -127,7 +132,7 @@ int myst_copy_file_fd(char* oldpath, int newfd)
 
     while ((n = read(oldfd, locals->buf, sizeof(locals->buf))) > 0)
     {
-        ECHECK(myst_writen(newfd, locals->buf, (size_t)n));
+        ECHECK(myst_write_file_fd(newfd, locals->buf, (size_t)n));
     }
 
     if (n < 0)
@@ -177,7 +182,7 @@ int myst_copy_file(const char* oldpath, const char* newpath)
 
     while ((n = read(oldfd, locals->buf, sizeof(locals->buf))) > 0)
     {
-        ECHECK(myst_writen(newfd, locals->buf, (size_t)n));
+        ECHECK(myst_write_file_fd(newfd, locals->buf, (size_t)n));
     }
 
     if (n < 0)
