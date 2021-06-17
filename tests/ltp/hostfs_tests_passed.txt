@@ -164,6 +164,7 @@
 /ltp/testcases/kernel/syscalls/readv/readv01
 /ltp/testcases/kernel/syscalls/readv/readv02
 /ltp/testcases/kernel/syscalls/readv/readv03
+/ltp/testcases/kernel/syscalls/readlinkat/readlinkat01
 /ltp/testcases/kernel/syscalls/recvmsg/recvmsg02
 /ltp/testcases/kernel/syscalls/rename/rename01
 /ltp/testcases/kernel/syscalls/rename/rename02

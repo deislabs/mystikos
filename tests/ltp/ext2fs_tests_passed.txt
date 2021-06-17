@@ -153,6 +153,7 @@
 /ltp/testcases/kernel/syscalls/read/read01
 /ltp/testcases/kernel/syscalls/read/read04
 /ltp/testcases/kernel/syscalls/readdir/readdir01
+/ltp/testcases/kernel/syscalls/readlinkat/readlinkat01
 /ltp/testcases/kernel/syscalls/readv/readv01
 /ltp/testcases/kernel/syscalls/readv/readv02
 /ltp/testcases/kernel/syscalls/recvmsg/recvmsg02
