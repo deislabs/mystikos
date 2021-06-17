@@ -83,9 +83,9 @@ run_test()
     # run the test
     echo "runtest[start]: ${timeout_command} ${time_command} ${cmd}"
     ${timeout_command} ${time_command} ${cmd}
-    echo "runtest[finish]: ${timeout_command} ${time_command} ${cmd}"
     ret=$?
-
+    echo "runtest[finish]: ${timeout_command} ${time_command} ${cmd}"
+    
     seconds=$(cat ${tempfile})
     rm -f ${tempfile}
 
