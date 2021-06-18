@@ -30,7 +30,6 @@ clean:
 
 tests:
 	$(RUNTEST) docker run --rm \
-	--privileged --cap-add=SYS_PTRACE  \
 	-e TARGET=$(TARGET) \
 	-v $(abspath .):/app/ -v $(TOP)/build:/build \
 	--device /dev/sgx:/dev/sgx \

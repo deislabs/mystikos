@@ -14,6 +14,10 @@ def run_test(debugger):
     ci.HandleCommand("bpmd hello.dll hello.Program.Main", res)
     assert(res.Succeeded())
 
+    # The `personality` syscall is used by lldb to turn off ASLR.
+    # This syscall may not be permitted within containers.
+    # Therefore, turn off disable-aslr.
+    lldb.debugger.HandleCommand("settings set target.disable-aslr false")
     debugger.HandleCommand("run")
 
     process = debugger.GetSelectedTarget().GetProcess()
