@@ -27,24 +27,16 @@ def lookup_file_in_source_dirs(source_file):
             return s_dir+"/"+source_file
     return None
 
-def my_stop_hook(debugger, command, result, internal_dict):
-    output = ""
-    stop_reason = (debugger.GetSelectedTarget()
-                        .GetProcess()
-                        .GetSelectedThread()
-                        .GetStopReason())
-    if stop_reason == lldb.eStopReasonBreakpoint:
-        output = lldb_handle_command(debugger, "re r rip -f x")
-        m = re.search("\\s*rip\\s*=\\s*([0-9a-fA-Fx]+)\.*", output)
-        if m:
-            rip = m[1]
-            #print("oelldb -> rip = %s" % rip)
-            output = lldb_handle_command(debugger, "ip2md %s" % rip)
-            #print("oelldb -> output = %s" % output)
-            # TODO: check if this if IP lies in a JITTED frame
-            #print(f"ip2md output: {output}", file=sys.stderr)
-        else:
-            return True
+def _print_source(debugger):
+    output = lldb_handle_command(debugger, "re r rip -f x")
+    m = re.search("\\s*rip\\s*=\\s*([0-9a-fA-Fx]+)\.*", output)
+    if m:
+        rip = m[1]
+        #print("oelldb -> rip = %s" % rip)
+        output = lldb_handle_command(debugger, "ip2md %s" % rip)
+        #print("oelldb -> output = %s" % output)
+        # TODO: check if this if IP lies in a JITTED frame
+        #print(f"ip2md output: {output}", file=sys.stderr)
     else:
         return True
 
@@ -72,6 +64,20 @@ def my_stop_hook(debugger, command, result, internal_dict):
 
     return True
 
+def dotnet_source_printer_hook(debugger, command, result, internal_dict):
+    output = ""
+    stop_reason = (debugger.GetSelectedTarget()
+                        .GetProcess()
+                        .GetSelectedThread()
+                        .GetStopReason())
+    if stop_reason != lldb.eStopReasonBreakpoint:
+        return True
+    return _print_source(debugger)
+
+def print_dotnet_source(debugger, command, result, internal_dict):
+    return _print_source(debugger)
+
 def __lldb_init_module(debugger, dict):
-    debugger.HandleCommand('command script add -f code_view.my_stop_hook my_stop_hook')
-    debugger.HandleCommand('target stop-hook add -o "my_stop_hook"')
+    debugger.HandleCommand('command script add -f code_view.dotnet_source_printer_hook dotnet_source_printer_hook')
+    debugger.HandleCommand('target stop-hook add -o "dotnet_source_printer_hook"')
+    debugger.HandleCommand('command script add -f code_view.print_dotnet_source print_dotnet_source')
