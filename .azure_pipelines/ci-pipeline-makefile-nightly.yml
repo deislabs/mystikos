@@ -56,11 +56,13 @@ jobs:
         azureSubscription: "OSTC Lab"
         scriptType: bash
         scriptPath: $(SCRIPTS_ROOT)/run-azure-tests.sh
+        addSpnToEnvironment: true
         arguments:
           $(Build.SourcesDirectory)/solutions/dotnet_azure_sdk
-        addSpnToEnvironment: true
+          $(Build.SourcesDirectory)/tests/azure-sdk-for-cpp
       env:
         AZURE_KEYVAULT_URL: $(AZURE_TEST_KEYVAULT_URL)
+        STANDARD_STORAGE_CONNECTION_STRING: $(STANDARD_STORAGE_CONNECTION_STRING)
 
     # run all tests
     - script: |
