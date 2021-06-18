@@ -84,7 +84,7 @@ int myst_write_file_fd(int fd, const void* data, size_t size)
     size_t r = size;
     ssize_t n;
 
-    if (fd < 0 || !data)
+    if (fd < 0 || (!data && size > 0))
         ERAISE(-EINVAL);
 
     while (r > 0)
@@ -93,7 +93,7 @@ int myst_write_file_fd(int fd, const void* data, size_t size)
             break;
 
         if (n < 0)
-            ERAISE((int)-n);
+            ERAISE(n);
 
         p += n;
         r -= (size_t)n;
