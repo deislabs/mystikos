@@ -49,7 +49,10 @@ run-ext2:
 	/app/hello
 
 run-ext2-lldb:
-	$(MYST_LLDB) -o "command script import ignore_sigill" \
+	DOTNET_SOURCE_DIRS=$(abspath .)/hello $(MYST_LLDB) -o "command script import ignore_sigill" \
+	-o "command script import code_view" \
+	-o "bpmd hello.dll hello.Program.Main" \
+	-o "setsymbolserver -directory $(abspath .)/appdir/app" \
 	-- $(MYST) exec $(OPTS) ext2fs \
 	--roothash=roothash \
 	--memory-size $(HEAP_SIZE) \
