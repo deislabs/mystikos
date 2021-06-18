@@ -1708,9 +1708,20 @@ long myst_syscall_readlinkat(
     {
         ret = myst_syscall_readlink(pathname, buf, bufsiz);
     }
+    else if (*pathname == '\0')
+    {
+        myst_fdtable_t* fdtable = myst_fdtable_current();
+        myst_fs_t* fs;
+        myst_file_t* file;
+
+        ECHECK(myst_fdtable_get_file(fdtable, dirfd, &fs, &file));
+        ECHECK((*fs->fs_realpath)(
+            fs, file, locals->abspath, sizeof(locals->abspath)));
+        ret = myst_syscall_readlink(locals->abspath, buf, bufsiz);
+    }
     else
     {
-        ECHECK(_get_absolute_path_from_dirfd(
+        ECHECK(myst_get_absolute_path_from_dirfd(
             dirfd, pathname, locals->abspath, sizeof(locals->abspath)));
         ret = myst_syscall_readlink(locals->abspath, buf, bufsiz);
     }
