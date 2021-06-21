@@ -148,16 +148,6 @@ long myst_tcall_create_thread(uint64_t cookie)
     return -ENOTSUP;
 }
 
-MYST_WEAK
-long myst_tcall_export_file(const char* path, const void* data, size_t size)
-{
-    (void)path;
-    (void)data;
-    (void)size;
-    assert("linux: unimplemented: implement in enclave" == NULL);
-    return -ENOTSUP;
-}
-
 /* forward system call to Linux */
 static long
 _forward_syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6)
@@ -392,13 +382,6 @@ long myst_tcall(long n, long params[6])
             uint64_t self_event = (uint64_t)x2;
             const struct timespec* timeout = (const struct timespec*)x3;
             return myst_tcall_wake_wait(waiter_event, self_event, timeout);
-        }
-        case MYST_TCALL_EXPORT_FILE:
-        {
-            const char* path = (const char*)x1;
-            const void* data = (const void*)x2;
-            size_t size = (size_t)x3;
-            return myst_tcall_export_file(path, data, size);
         }
         case MYST_TCALL_SET_RUN_THREAD_FUNCTION:
         {

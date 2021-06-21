@@ -9,6 +9,8 @@ ifdef MYST_ENABLE_GCOV
 CFLAGS += -fprofile-arcs -ftest-coverage
 endif
 
+CFLAGS += $(OPTIMIZATION_CFLAGS)
+
 INCLUDES = -I$(INCDIR) -I$(TOP)/build/musl/include
 
 DEFINES = $(MYST_DEFINES)

@@ -31,6 +31,7 @@
 #include "../shared.h"
 #include "archive.h"
 #include "exec_linux.h"
+#include "process.h"
 #include "regions.h"
 #include "utils.h"
 
@@ -70,8 +71,8 @@ struct options
 {
     bool trace_errors;
     bool trace_syscalls;
-    bool export_ramfs;
     bool shell_mode;
+    bool debug_symbols;
     bool memcheck;
     bool report_native_tids;
     size_t max_affinity_cpus;
@@ -134,16 +135,22 @@ static void _get_options(int* argc, const char* argv[], struct options* opts)
         }
     }
 
+    /* determine whether debug symbols are needed */
+    {
+        int r;
+
+        if ((r = process_is_being_traced()) < 0)
+            _err("process_is_being_traced() failed: %d", r);
+
+        opts->debug_symbols = (bool)r;
+    }
+
     /* Get MYST_MEMCHECK environment variable */
     {
         const char* env;
         if ((env = getenv("MYST_MEMCHECK")) && strcmp(env, "1") == 0)
             opts->memcheck = true;
     }
-
-    /* Get --export-ramfs option */
-    if (cli_getopt(argc, argv, "--export-ramfs", NULL) == 0)
-        opts->export_ramfs = true;
 
     /* Get --memory-size or --memory-size option */
     {
@@ -279,7 +286,6 @@ static int _enter_kernel(
                 max_threads,
                 options->trace_errors,
                 options->trace_syscalls,
-                options->export_ramfs,
                 have_syscall_instruction,
                 tee_debug_mode,
                 (uint64_t)&_thread_event,
@@ -297,6 +303,9 @@ static int _enter_kernel(
 
     /* set the shell mode flag */
     args.shell_mode = options->shell_mode;
+
+    /* set whether debug symbols are needed */
+    args.debug_symbols = options->debug_symbols;
 
     args.memcheck = options->memcheck;
 

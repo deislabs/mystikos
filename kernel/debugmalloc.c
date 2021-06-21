@@ -17,10 +17,8 @@
 
 #define BACKTRACE_MAX 16
 
-/* Flags to control runtime behavior. */
-bool myst_enable_debug_malloc;
-bool myst_enable_debug_malloc_memset = true;
-bool myst_enable_debug_free_memset = true;
+#define ENABLE_MALLOC_MEMSET
+#define ENABLE_FREE_MEMSET
 
 /*
 **==============================================================================
@@ -309,9 +307,10 @@ void* myst_debug_malloc(size_t size)
     if (!(block = myst_malloc(block_size)))
         return NULL;
 
-    /* fill block with 0xaa (allocated) bytes */
-    if (myst_enable_debug_malloc_memset)
-        memset(block, 0xAA, block_size);
+        /* fill block with 0xaa (allocated) bytes */
+#ifdef ENABLE_MALLOC_MEMSET
+    memset(block, 0xAA, block_size);
+#endif
 
     header_t* header = (header_t*)block;
     INIT_BLOCK(header, 0, size);
@@ -332,8 +331,9 @@ void myst_debug_free(void* ptr)
         void* block = _get_block_address(ptr);
 
         /* fill block with 0xdd (deallocated) bytes */
-        if (myst_enable_debug_free_memset)
-            memset(block, 0xDD, _get_block_size(ptr));
+#ifdef ENABLE_FREE_MEMSET
+        memset(block, 0xDD, _get_block_size(ptr));
+#endif
 
         myst_free(block);
     }

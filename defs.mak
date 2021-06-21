@@ -2,6 +2,8 @@ ifndef TOP
 $(error "please define TOP variable")
 endif
 
+include $(TOP)/config.mak
+
 ##==============================================================================
 ##
 ## directory locations
@@ -56,7 +58,7 @@ DEFAULT_INCLUDES = -I$(INCDIR)
 DEFAULT_CFLAGS = -Wall -Werror -g -fPIC
 
 ifeq ($(MYST_RELEASE),1)
-OPTIMIZATION_CFLAGS += -Os
+OPTIMIZATION_CFLAGS += -O3
 endif
 
 DEFAULT_LDFLAGS =
@@ -156,8 +158,6 @@ EDGER8R_UNTRUSTED_OPTS =
 EDGER8R_UNTRUSTED_OPTS += --untrusted
 EDGER8R_UNTRUSTED_OPTS += --search-path $(OE_INCDIR)
 EDGER8R_UNTRUSTED_OPTS += --untrusted-dir $(SUBOBJDIR)
-
-include $(TOP)/config.mak
 
 ##==============================================================================
 ##

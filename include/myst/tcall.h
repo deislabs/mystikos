@@ -34,7 +34,6 @@ typedef enum myst_tcall_number
     MYST_TCALL_WAIT,
     MYST_TCALL_WAKE,
     MYST_TCALL_WAKE_WAIT,
-    MYST_TCALL_EXPORT_FILE,
     MYST_TCALL_SET_RUN_THREAD_FUNCTION,
     MYST_TCALL_TARGET_STAT,
     MYST_TCALL_SET_TSD,
@@ -90,8 +89,6 @@ long myst_tcall_wake_wait(
     uint64_t waiter_event,
     uint64_t self_event,
     const struct timespec* timeout);
-
-long myst_tcall_export_file(const char* path, const void* data, size_t size);
 
 long myst_tcall_add_symbol_file(
     const void* file_data,

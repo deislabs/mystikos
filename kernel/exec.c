@@ -14,6 +14,7 @@
 #include <myst/exec.h>
 #include <myst/file.h>
 #include <myst/fsgs.h>
+#include <myst/kernel.h>
 #include <myst/libc.h>
 #include <myst/mmanutils.h>
 #include <myst/panic.h>
@@ -982,7 +983,8 @@ int myst_exec(
     }
 
     /* register the new CRT symbols with the debugger */
-    ECHECK(_add_crt_symbols(crt_data, crt_size));
+    if (__myst_kernel_args.debug_symbols)
+        ECHECK(_add_crt_symbols(crt_data, crt_size));
 
     /* invoke the caller's callback here */
     if (callback)

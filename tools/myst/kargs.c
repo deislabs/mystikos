@@ -53,7 +53,6 @@ int init_kernel_args(
     size_t max_threads,
     bool trace_errors,
     bool trace_syscalls,
-    bool export_ramfs,
     bool have_syscall_instruction,
     bool tee_debug_mode,
     uint64_t thread_event,
@@ -270,7 +269,6 @@ int init_kernel_args(
     args->trace_errors = trace_errors;
     args->trace_syscalls = trace_syscalls;
     args->have_syscall_instruction = have_syscall_instruction;
-    args->export_ramfs = export_ramfs;
     args->event = thread_event;
     args->target_tid = target_tid;
     args->max_affinity_cpus = max_affinity_cpus;
