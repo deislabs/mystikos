@@ -146,17 +146,20 @@ done:
 
 void myst_dump_backtrace(void** buffer, size_t size)
 {
-    for (size_t i = 0; i < size; i++)
+    if (__myst_kernel_args.tee_debug_mode)
     {
-        const uint64_t addr = (uint64_t)buffer[i];
-        const char* name;
-
-        if (_addr_to_func_name(addr, &name) == 0)
-            myst_eprintf("%p: %s()\n", buffer[i], name);
-        else
+        for (size_t i = 0; i < size; i++)
         {
-            /* ignore unnknown addresses */
-            break;
+            const uint64_t addr = (uint64_t)buffer[i];
+            const char* name;
+
+            if (_addr_to_func_name(addr, &name) == 0)
+                myst_eprintf("%p: %s()\n", buffer[i], name);
+            else
+            {
+                /* ignore unnknown addresses */
+                break;
+            }
         }
     }
 }
