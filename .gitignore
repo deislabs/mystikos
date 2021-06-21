@@ -119,3 +119,4 @@ tests/myst/exec-signed-1/result
 tests/myst/exec-signed-2/appdir/
 tests/myst/exec-signed-2/result
 tests/robust/appdir/
+tests/arch_prctl/appdir

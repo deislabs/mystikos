@@ -2838,6 +2838,28 @@ done:
     return ret;
 }
 
+long myst_syscall_arch_prctl(int code, unsigned long* addr)
+{
+    long ret = 0;
+
+    if (code == ARCH_GET_FS)
+    {
+        unsigned long* fs = myst_get_fsbase();
+        *addr = *fs;
+    }
+    else if (code == ARCH_GET_GS)
+    {
+        unsigned long* gs = myst_get_gsbase();
+        *addr = *gs;
+    }
+    else
+    {
+        ret = -EINVAL;
+    }
+
+    return ret;
+}
+
 long myst_syscall_mbind(
     void* addr,
     unsigned long len,
@@ -5712,6 +5734,18 @@ done:
 long myst_syscall(long n, long params[6])
 {
     long ret;
+
+    /* Userspace can query fs and gs via arch_prctl,
+    handle it here, as _syscall switches thread descriptors */
+    if (n == SYS_arch_prctl)
+    {
+        int code = (int)params[0];
+        unsigned long* addr = (unsigned long*)params[1];
+
+        _strace(n, "code=%d addr=%p\n", code, addr);
+        return myst_syscall_arch_prctl(code, addr);
+    }
+
     myst_kstack_t* kstack;
 
     if (!(kstack = myst_get_kstack()))
