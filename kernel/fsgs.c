@@ -14,7 +14,6 @@ void myst_set_fsbase(void* p)
 {
     if (__options.have_syscall_instruction)
     {
-        const long ARCH_SET_FS = 0x1002;
         const long n = SYS_arch_prctl;
         myst_syscall2(n, ARCH_SET_FS, (long)p);
     }
@@ -28,7 +27,6 @@ void* myst_get_fsbase(void)
 {
     if (__options.have_syscall_instruction)
     {
-        const long ARCH_GET_FS = 0x1003;
         const long n = SYS_arch_prctl;
         void* p;
         myst_syscall2(n, ARCH_GET_FS, (long)&p);
@@ -46,7 +44,6 @@ void myst_set_gsbase(void* p)
 {
     if (__options.have_syscall_instruction)
     {
-        const long ARCH_SET_GS = 0x1001;
         const long n = SYS_arch_prctl;
         myst_syscall2(n, ARCH_SET_GS, (long)p);
     }
@@ -61,7 +58,6 @@ void* myst_get_gsbase(void)
 {
     if (__options.have_syscall_instruction)
     {
-        const long ARCH_GET_GS = 0x1004;
         const long n = SYS_arch_prctl;
         void* p;
         myst_syscall2(n, ARCH_GET_GS, (long)&p);
