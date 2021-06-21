@@ -7,7 +7,7 @@ ifdef STRACE
 OPTS = --strace
 endif
 
-all: appdir rootfs
+all: rootfs
 
 appdir:
 	$(APPBUILDER) Dockerfile
