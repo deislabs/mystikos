@@ -237,6 +237,10 @@ struct myst_thread
 
     // the kernel stack for the current the syscall (used only by SYS_exit)
     myst_kstack_t* kstack;
+
+    /* from SYS_myst_unmap_on_exit */
+    void* unmap_on_exit_addr;
+    size_t unmap_on_exit_length;
 };
 
 MYST_INLINE bool myst_valid_thread(const myst_thread_t* thread)

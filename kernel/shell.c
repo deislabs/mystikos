@@ -14,8 +14,6 @@
 #include <myst/syscall.h>
 #include <myst/thread.h>
 
-#if !defined(MYST_RELEASE)
-
 #define COLOR_LIGHT_BLUE "\e[94m"
 #define COLOR_LIGHT_GREEN "\e[92m"
 #define COLOR_RESET "\e[0m"
@@ -383,5 +381,3 @@ void myst_start_shell(const char* msg)
     if (locals)
         free(locals);
 }
-
-#endif /* !defined(MYST_RELEASE) */

@@ -77,12 +77,6 @@ long myst_tcall_wake(uint64_t event)
     return myst_tcall(MYST_TCALL_WAKE, params);
 }
 
-long myst_tcall_export_file(const char* path, const void* data, size_t size)
-{
-    long params[6] = {(long)path, (long)data, (long)size};
-    return myst_tcall(MYST_TCALL_EXPORT_FILE, params);
-}
-
 long myst_tcall_wake_wait(
     uint64_t waiter_event,
     uint64_t self_event,

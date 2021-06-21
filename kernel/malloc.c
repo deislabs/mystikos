@@ -147,7 +147,7 @@ void myst_free(void* ptr)
 
 void* malloc(size_t size)
 {
-    if (myst_enable_debug_malloc)
+    if (__myst_kernel_args.memcheck)
         return myst_debug_malloc(size);
     else
         return myst_malloc(size);
@@ -155,7 +155,7 @@ void* malloc(size_t size)
 
 void free(void* ptr)
 {
-    if (myst_enable_debug_malloc)
+    if (__myst_kernel_args.memcheck)
         myst_debug_free(ptr);
     else
         myst_free(ptr);
@@ -163,7 +163,7 @@ void free(void* ptr)
 
 void* calloc(size_t nmemb, size_t size)
 {
-    if (myst_enable_debug_malloc)
+    if (__myst_kernel_args.memcheck)
         return myst_debug_calloc(nmemb, size);
     else
         return myst_calloc(nmemb, size);
@@ -171,7 +171,7 @@ void* calloc(size_t nmemb, size_t size)
 
 void* realloc(void* ptr, size_t size)
 {
-    if (myst_enable_debug_malloc)
+    if (__myst_kernel_args.memcheck)
         return myst_debug_realloc(ptr, size);
     else
         return myst_realloc(ptr, size);
@@ -179,7 +179,7 @@ void* realloc(void* ptr, size_t size)
 
 void* memalign(size_t alignment, size_t size)
 {
-    if (myst_enable_debug_malloc)
+    if (__myst_kernel_args.memcheck)
         return myst_debug_memalign(alignment, size);
     else
         return myst_memalign(alignment, size);
@@ -187,7 +187,7 @@ void* memalign(size_t alignment, size_t size)
 
 int posix_memalign(void** memptr, size_t alignment, size_t size)
 {
-    if (myst_enable_debug_malloc)
+    if (__myst_kernel_args.memcheck)
         return myst_debug_posix_memalign(memptr, alignment, size);
     else
         return myst_posix_memalign(memptr, alignment, size);

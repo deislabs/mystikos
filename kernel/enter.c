@@ -601,14 +601,6 @@ static int _mount_rootfs(myst_kernel_args_t* args, myst_fstype_t fstype)
 #if defined(MYST_ENABLE_HOSTFS)
         case MYST_FSTYPE_HOSTFS:
         {
-            /* disallow HOSTFS rootfs in non-debug mode */
-            if (!args->tee_debug_mode)
-            {
-                myst_eprintf(
-                    "HOSTFS as rootfs only permitted only in debug mode\n");
-                ERAISE(-EINVAL);
-            }
-
             /* setup and mount the HOSTFS file system */
             if (_setup_hostfs(args->rootfs, locals->err, sizeof(locals->err)) !=
                 0)
@@ -640,6 +632,8 @@ done:
     return ret;
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstack-usage="
 int myst_enter_kernel(myst_kernel_args_t* args)
 {
     int ret = 0;
@@ -657,20 +651,25 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     /* myst_handle_host_signal can be called from enclave exception handlers */
     args->myst_handle_host_signal = myst_handle_host_signal;
 
-    /* Save the aguments */
+    /* make a copy of the input kernel aguments and reassign args */
     __myst_kernel_args = *args;
+    args = &__myst_kernel_args;
+
+    /* turn off various options when TEE is not in debug mode */
+    if (!args->tee_debug_mode)
+    {
+        args->trace_errors = false;
+        args->trace_syscalls = false;
+        args->shell_mode = false;
+        args->memcheck = false;
+        args->debug_symbols = false;
+        args->shell_mode = false;
+    }
 
     /* ATTN: it seems __options can be eliminated */
     __options.trace_syscalls = args->trace_syscalls;
     __options.have_syscall_instruction = args->have_syscall_instruction;
-    __options.export_ramfs = args->export_ramfs;
     __options.report_native_tids = args->report_native_tids;
-
-#if !defined(MYST_RELEASE)
-    /* enable memcheck if options present and in TEE debug mode */
-    if (args->memcheck && args->tee_debug_mode)
-        myst_enable_debug_malloc = true;
-#endif
 
     /* enable error tracing if requested */
     if (args->trace_errors)
@@ -792,10 +791,8 @@ int myst_enter_kernel(myst_kernel_args_t* args)
 
     myst_times_start();
 
-#if !defined(MYST_RELEASE)
     if (args->shell_mode)
         myst_start_shell("\nMystikos shell (enter)\n");
-#endif
 
     /* Run the main program: wait for SYS_exit to perform longjmp() */
     if (myst_setjmp(&thread->jmpbuf) == 0)
@@ -830,10 +827,8 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         /* thread jumps here on SYS_exit syscall */
         exit_status = thread->exit_status;
 
-#if !defined(MYST_RELEASE)
         if (args->shell_mode)
             myst_start_shell("\nMystikos shell (exit)\n");
-#endif
 
         /* release the fdtable */
         if (thread->fdtable)
@@ -889,17 +884,16 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     myst_call_atexit_functions();
 
     /* check for memory leaks */
-#if !defined(MYST_RELEASE)
-    if (myst_enable_debug_malloc)
+    if (args->memcheck)
     {
         /* check malloc'c memory integrity and report leaks */
         if (myst_debug_malloc_check() != 0)
             myst_eprintf("*** memory leaks detected\n");
     }
-#endif
 
     /* unload the debugger symbols */
-    myst_syscall_unload_symbols();
+    if (args->debug_symbols)
+        myst_syscall_unload_symbols();
 
     /* ATTN: move myst_call_atexit_functions() here */
 
@@ -909,3 +903,4 @@ done:
 
     return ret;
 }
+#pragma GCC diagnostic pop

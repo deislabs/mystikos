@@ -1,6 +1,7 @@
 .NOTPARALLEL:
 
 TOP=$(abspath $(CURDIR)/../..)
+include $(TOP)/config.mak
 
 BUILDDIR=${TOP}/build
 

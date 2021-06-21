@@ -584,6 +584,13 @@ static long _run_thread(void* arg_)
             free(thread->main.cwd);
             thread->main.cwd = NULL;
 
+            /* Passed in by SYS_myst_unmap_on_exit */
+            if (thread->unmap_on_exit_addr)
+            {
+                myst_munmap(
+                    thread->unmap_on_exit_addr, thread->unmap_on_exit_length);
+            }
+
             procfs_pid_cleanup(thread->pid);
         }
 

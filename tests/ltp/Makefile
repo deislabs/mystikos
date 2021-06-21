@@ -126,7 +126,9 @@ del_host_users_and_groups:
 tests: tests_hostfs tests_ext2fs tests_ramfs
 
 tests_hostfs:
+ifdef MYST_ENABLE_HOSTFS
 	$(MAKE) alltests FS=hostfs
+endif
 
 tests_ext2fs:
 	$(MAKE) alltests FS=ext2fs

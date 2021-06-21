@@ -114,8 +114,6 @@ myst_syscall6(long n, long x1, long x2, long x3, long x4, long x5, long x6)
 
 long myst_syscall(long n, long params[6]);
 
-const char* syscall_str(long n);
-
 void myst_set_rootfs(const char* path);
 
 long myst_syscall_ret(long r);

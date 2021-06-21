@@ -476,7 +476,10 @@ static pair_t _pairs[] = {
 #ifdef MYST_ENABLE_GCOV
     {SYS_myst_gcov, "SYS_myst_gcov"},
 #endif
+    {SYS_myst_unmap_on_exit, "SYS_myst_unmap_on_exit"},
 };
+
+static size_t _n_pairs = sizeof(_pairs) / sizeof(_pairs[0]);
 
 // The kernel should eventually use _bad_addr() to check all incoming addresses
 // from user space. This is a stop gap until the kernel is able to check
@@ -505,9 +508,7 @@ static bool _iov_bad_addr(const struct iovec* iov, int iovcnt)
     return false;
 }
 
-static size_t _n_pairs = sizeof(_pairs) / sizeof(_pairs[0]);
-
-const char* syscall_str(long n)
+static const char* _syscall_str(long n)
 {
     for (size_t i = 0; i < _n_pairs; i++)
     {
@@ -523,7 +524,7 @@ __attribute__((format(printf, 2, 3))) static void _strace(
     const char* fmt,
     ...)
 {
-    if (__options.trace_syscalls)
+    if (__myst_kernel_args.trace_syscalls)
     {
         char null_char = '\0';
         char* buf = &null_char;
@@ -547,7 +548,7 @@ __attribute__((format(printf, 2, 3))) static void _strace(
         myst_eprintf(
             "=== %s%s%s(%s): tid=%d\n",
             blue,
-            syscall_str(n),
+            _syscall_str(n),
             reset,
             buf,
             myst_gettid());
@@ -559,7 +560,7 @@ __attribute__((format(printf, 2, 3))) static void _strace(
 
 static long _forward_syscall(long n, long params[6])
 {
-    if (__options.trace_syscalls)
+    if (__myst_kernel_args.trace_syscalls)
         myst_eprintf("    [forward syscall]\n");
 
     return myst_tcall(n, params);
@@ -573,7 +574,7 @@ typedef struct fd_entry
 
 static long _return(long n, long ret)
 {
-    if (__options.trace_syscalls)
+    if (__myst_kernel_args.trace_syscalls)
     {
         const char* red = "";
         const char* reset = "";
@@ -597,7 +598,7 @@ static long _return(long n, long ret)
             myst_eprintf(
                 "    %s%s(): return=-%s(%ld)%s: tid=%d\n",
                 red,
-                syscall_str(n),
+                _syscall_str(n),
                 error_name,
                 ret,
                 reset,
@@ -608,7 +609,7 @@ static long _return(long n, long ret)
             myst_eprintf(
                 "    %s%s(): return=%ld(%lx)%s: tid=%d\n",
                 red,
-                syscall_str(n),
+                _syscall_str(n),
                 ret,
                 ret,
                 reset,
@@ -2078,7 +2079,7 @@ long myst_syscall_pipe2(int pipefd[2], int flags)
     pipefd[0] = fd0;
     pipefd[1] = fd1;
 
-    if (__options.trace_syscalls)
+    if (__myst_kernel_args.trace_syscalls)
         myst_eprintf("pipe2(): [%d:%d]\n", fd0, fd1);
 
 done:
@@ -2966,52 +2967,6 @@ void myst_dump_ramfs(void)
     myst_strarr_release(&paths);
 }
 
-int myst_export_ramfs(void)
-{
-    int ret = -1;
-    myst_strarr_t paths = MYST_STRARR_INITIALIZER;
-    void* data = NULL;
-    size_t size = 0;
-
-    if (myst_lsr("/", &paths, false) != 0)
-        goto done;
-
-    for (size_t i = 0; i < paths.size; i++)
-    {
-        const char* path = paths.data[i];
-
-        /* Skip over entries in the /proc file system */
-        if (strncmp(path, "/proc", 5) == 0)
-            continue;
-
-        if (myst_load_file(path, &data, &size) != 0)
-        {
-            myst_eprintf("Warning! failed to load %s from ramfs\n", path);
-            continue;
-        }
-
-        if (myst_tcall_export_file(path, data, size) != 0)
-        {
-            myst_eprintf("Warning! failed to export %s from ramfs\n", path);
-            continue;
-        }
-
-        free(data);
-        data = NULL;
-        size = 0;
-    }
-
-    ret = 0;
-
-done:
-    myst_strarr_release(&paths);
-
-    if (data)
-        free(data);
-
-    return ret;
-}
-
 #define BREAK(RET)           \
     do                       \
     {                        \
@@ -3148,7 +3103,7 @@ static long _syscall(void* args_)
             const char* path = (const char*)x1;
             const void* text = (const void*)x2;
             size_t text_size = (size_t)x3;
-            long ret;
+            long ret = 0;
 
             _strace(
                 n,
@@ -3157,21 +3112,32 @@ static long _syscall(void* args_)
                 text,
                 text_size);
 
-            ret = myst_syscall_add_symbol_file(path, text, text_size);
+            if (__myst_kernel_args.debug_symbols)
+                ret = myst_syscall_add_symbol_file(path, text, text_size);
 
             BREAK(_return(n, ret));
         }
         case SYS_myst_load_symbols:
         {
+            long ret = 0;
+
             _strace(n, NULL);
 
-            BREAK(_return(n, myst_syscall_load_symbols()));
+            if (__myst_kernel_args.debug_symbols)
+                ret = myst_syscall_load_symbols();
+
+            BREAK(_return(n, ret));
         }
         case SYS_myst_unload_symbols:
         {
+            long ret = 0;
+
             _strace(n, NULL);
 
-            BREAK(_return(n, myst_syscall_unload_symbols()));
+            if (__myst_kernel_args.debug_symbols)
+                ret = myst_syscall_unload_symbols();
+
+            BREAK(_return(n, ret));
         }
         case SYS_myst_gen_creds:
         {
@@ -3215,6 +3181,22 @@ static long _syscall(void* args_)
             BREAK(_return(n, ret));
         }
 #endif
+        case SYS_myst_unmap_on_exit:
+        {
+            void* addr = (void*)x1;
+            size_t length = (size_t)x2;
+            myst_thread_t* self = myst_thread_self();
+
+            _strace(n, "addr=%p length=%zu", addr, length);
+
+            myst_assume(self->unmap_on_exit_addr == NULL);
+            myst_assume(self->unmap_on_exit_length == 0);
+
+            self->unmap_on_exit_addr = addr;
+            self->unmap_on_exit_length = length;
+
+            BREAK(_return(n, 0));
+        }
         case SYS_read:
         {
             int fd = (int)x1;
@@ -3652,10 +3634,11 @@ static long _syscall(void* args_)
         }
         case SYS_myst_start_shell:
         {
-#if !defined(MYST_RELEASE)
             _strace(n, NULL);
-            myst_start_shell("\nMystikos shell (syscall)\n");
-#endif
+
+            if (__myst_kernel_args.shell_mode)
+                myst_start_shell("\nMystikos shell (syscall)\n");
+
             BREAK(_return(n, 0));
         }
         case SYS_getitimer:
@@ -3773,9 +3756,6 @@ static long _syscall(void* args_)
                 myst_set_fsbase(crt_td);
                 myst_call_fini_functions();
                 myst_set_fsbase(target_td);
-
-                if (__options.export_ramfs)
-                    myst_export_ramfs();
             }
 
             myst_longjmp(&thread->jmpbuf, 1);
@@ -5166,7 +5146,7 @@ static long _syscall(void* args_)
             _strace(n, "pipefd=%p flags=%0o", pipefd, flags);
             ret = myst_syscall_pipe2(pipefd, flags);
 
-            if (__options.trace_syscalls)
+            if (__myst_kernel_args.trace_syscalls)
                 myst_eprintf("    pipefd[]=[%d:%d]\n", pipefd[0], pipefd[1]);
 
             BREAK(_return(n, ret));
@@ -5706,11 +5686,11 @@ static long _syscall(void* args_)
         }
         default:
         {
-            myst_panic("unknown syscall: %s(): %ld", syscall_str(n), n);
+            myst_panic("unknown syscall: %s(): %ld", _syscall_str(n), n);
         }
     }
 
-    myst_panic("unhandled syscall: %s()", syscall_str(n));
+    myst_panic("unhandled syscall: %s()", _syscall_str(n));
 
 done:
 

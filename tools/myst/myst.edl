@@ -123,11 +123,6 @@ enclave
             uint64_t self_event,
             [in] const struct myst_timespec* timeout);
 
-        long myst_export_file_ocall(
-            [in, string] const char* path,
-            [in, size=size] const void* data,
-            size_t size);
-
         long myst_fstat_ocall(int fd, [out] struct myst_stat* statbuf);
 
         long myst_sched_yield_ocall();

@@ -134,13 +134,15 @@ typedef struct myst_kernel_args
     bool trace_errors;
     bool trace_syscalls;
     bool have_syscall_instruction;
-    bool export_ramfs;
 
     /* The event object for the main thread */
     uint64_t event;
 
     /* whether this TEE is in debug mode */
     bool tee_debug_mode;
+
+    /* whether debug symbols are needed */
+    bool debug_symbols;
 
     /* true if --shell option present */
     bool shell_mode;

@@ -200,16 +200,6 @@ long myst_tcall_wake_wait(
     return -ENOTSUP;
 }
 
-MYST_WEAK
-long myst_tcall_export_file(const char* path, const void* data, size_t size)
-{
-    (void)path;
-    (void)data;
-    (void)size;
-    assert("sgx: unimplemented: implement in enclave" == NULL);
-    return -ENOTSUP;
-}
-
 MYST_STATIC_ASSERT((sizeof(struct stat) % 8) == 0);
 MYST_STATIC_ASSERT(sizeof(struct stat) >= 120);
 MYST_STATIC_ASSERT(OE_OFFSETOF(struct stat, st_dev) == 0);
@@ -457,13 +447,6 @@ long myst_tcall(long n, long params[6])
             uint64_t self_event = (uint64_t)x2;
             const struct timespec* timeout = (const struct timespec*)x3;
             return myst_tcall_wake_wait(waiter_event, self_event, timeout);
-        }
-        case MYST_TCALL_EXPORT_FILE:
-        {
-            const char* path = (const char*)x1;
-            const void* data = (const void*)x2;
-            size_t size = (size_t)x3;
-            return myst_tcall_export_file(path, data, size);
         }
         case MYST_TCALL_SET_RUN_THREAD_FUNCTION:
         {

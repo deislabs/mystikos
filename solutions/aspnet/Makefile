@@ -9,6 +9,7 @@ OPTS += --strace
 endif
 
 OPTS += --memory-size=1024m
+OPTS += --max-affinity-cpus=1
 
 all: appdir private.pem
 

@@ -24,6 +24,7 @@
 #include "exec.h"
 #include "myst/file.h"
 #include "myst_args.h"
+#include "process.h"
 #include "regions.h"
 #include "sign.h"
 #include "utils.h"
@@ -600,6 +601,16 @@ int _exec_package(
 
             options.max_affinity_cpus = val;
         }
+    }
+
+    /* determine whether debug symbols are needed */
+    {
+        int r;
+
+        if ((r = process_is_being_traced()) < 0)
+            _err("process_is_being_traced() failed: %d", r);
+
+        options.debug_symbols = (bool)r;
     }
 
     if (!realpath(argv[0], full_app_path))

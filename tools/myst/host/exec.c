@@ -35,6 +35,7 @@
 #include "archive.h"
 #include "exec.h"
 #include "myst_u.h"
+#include "process.h"
 #include "regions.h"
 #include "utils.h"
 
@@ -121,11 +122,6 @@ long myst_wake_wait_ocall(
 {
     const struct timespec* ts = (const struct timespec*)timeout;
     return myst_tcall_wake_wait(waiter_event, self_event, ts);
-}
-
-long myst_export_file_ocall(const char* path, const void* data, size_t size)
-{
-    return myst_tcall_export_file(path, data, size);
 }
 
 int exec_launch_enclave(
@@ -305,10 +301,6 @@ int exec_action(int argc, const char* argv[], const char* envp[])
                 options.memcheck = true;
         }
 
-        /* Get --export-ramfs option */
-        if (cli_getopt(&argc, argv, "--export-ramfs", NULL) == 0)
-            options.export_ramfs = true;
-
         /* Get --memory-size or --user-mem-size option */
         {
             const char* opt;
@@ -357,6 +349,23 @@ int exec_action(int argc, const char* argv[], const char* envp[])
             roothashes,
             max_roothashes,
             &num_roothashes);
+
+        /* determine whether debug symbols are needed */
+        {
+            int r;
+
+            if ((r = process_is_being_traced()) < 0)
+            {
+                fprintf(
+                    stderr,
+                    "%s: process_is_being_traced() failed: %d",
+                    argv[0],
+                    r);
+                return 1;
+            }
+
+            options.debug_symbols = (bool)r;
+        }
     }
 
     if (argc < 4)

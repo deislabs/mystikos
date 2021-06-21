@@ -20,7 +20,6 @@ int init_kernel_args(
     size_t max_threads,
     bool trace_errors,
     bool trace_syscalls,
-    bool export_ramfs,
     bool have_syscall_instruction,
     bool tee_debug_mode,
     uint64_t thread_event,

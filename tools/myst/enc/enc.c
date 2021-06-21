@@ -348,10 +348,10 @@ static long _enter(void* arg_)
     bool trace_errors = false;
     bool trace_syscalls = false;
     bool shell_mode = false;
+    bool debug_symbols = false;
     bool memcheck = false;
     bool report_native_tids = false;
     size_t max_affinity_cpus = 0;
-    bool export_ramfs = false;
     const char* rootfs = NULL;
     config_parsed_data_t parsed_config;
     bool have_config = false;
@@ -363,6 +363,7 @@ static long _enter(void* arg_)
     size_t enclave_size;
     const Elf64_Ehdr* ehdr;
     const char target[] = "MYST_TARGET=sgx";
+    const bool tee_debug_mode = (_test_oe_debug_mode() == 0);
 
     memset(&parsed_config, 0, sizeof(parsed_config));
 
@@ -501,13 +502,16 @@ static long _enter(void* arg_)
 
     if (options)
     {
+        // if tee_debug_mode is false, these options are disabled by the
+        // kernel upon entry.
         trace_errors = options->trace_errors;
         trace_syscalls = options->trace_syscalls;
         shell_mode = options->shell_mode;
+        debug_symbols = options->debug_symbols;
         memcheck = options->memcheck;
+
         report_native_tids = options->report_native_tids;
         max_affinity_cpus = options->max_affinity_cpus;
-        export_ramfs = options->export_ramfs;
 
         if (strlen(options->rootfs) >= PATH_MAX)
         {
@@ -535,7 +539,6 @@ static long _enter(void* arg_)
     {
         myst_kernel_entry_t entry;
         const void* regions_end = __oe_get_heap_base();
-        const bool tee_debug_mode = _test_oe_debug_mode() == 0;
         char err[256];
 
         init_kernel_args(
@@ -555,7 +558,6 @@ static long _enter(void* arg_)
             _get_num_tcs(), /* max threads */
             trace_errors,
             trace_syscalls,
-            export_ramfs,
             false, /* have_syscall_instruction */
             tee_debug_mode,
             event, /* thread_event */
@@ -567,6 +569,7 @@ static long _enter(void* arg_)
             sizeof(err));
 
         _kargs.shell_mode = shell_mode;
+        _kargs.debug_symbols = debug_symbols;
         _kargs.memcheck = memcheck;
         _kargs.report_native_tids = report_native_tids;
 
@@ -762,16 +765,6 @@ long myst_tcall_wake_wait(
     const struct myst_timespec* to = (const struct myst_timespec*)timeout;
 
     if (myst_wake_wait_ocall(&retval, waiter_event, self_event, to) != OE_OK)
-        return -EINVAL;
-
-    return retval;
-}
-
-long myst_tcall_export_file(const char* path, const void* data, size_t size)
-{
-    long retval = -1;
-
-    if (myst_export_file_ocall(&retval, path, data, size) != OE_OK)
         return -EINVAL;
 
     return retval;
