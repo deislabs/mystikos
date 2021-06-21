@@ -2838,19 +2838,20 @@ done:
     return ret;
 }
 
-long myst_syscall_arch_prctl(int code, unsigned long* addr)
+long myst_syscall_arch_prctl(
+    int code,
+    unsigned long* addr,
+    unsigned long cached_fsbase)
 {
     long ret = 0;
 
     if (code == ARCH_GET_FS)
     {
-        unsigned long* fs = myst_get_fsbase();
-        *addr = *fs;
+        *addr = cached_fsbase;
     }
     else if (code == ARCH_GET_GS)
     {
-        unsigned long* gs = myst_get_gsbase();
-        *addr = *gs;
+        *addr = (unsigned long)myst_get_gsbase();
     }
     else
     {
@@ -4455,7 +4456,19 @@ static long _syscall(void* args_)
             BREAK(_return(n, ret));
         }
         case SYS_arch_prctl:
-            break;
+        {
+            long ret = 0;
+            int code = (int)x1;
+            unsigned long* addr = (unsigned long*)x2;
+
+            _strace(n, "code=%d addr=%p\n", code, addr);
+
+            ret = myst_syscall_arch_prctl(
+                code,
+                addr,
+                (unsigned long)(_set_thread_area_called ? crt_td : target_td));
+            BREAK(_return(n, ret));
+        }
         case SYS_adjtimex:
             break;
         case SYS_setrlimit:
@@ -5734,18 +5747,6 @@ done:
 long myst_syscall(long n, long params[6])
 {
     long ret;
-
-    /* Userspace can query fs and gs via arch_prctl,
-    handle it here, as _syscall switches thread descriptors */
-    if (n == SYS_arch_prctl)
-    {
-        int code = (int)params[0];
-        unsigned long* addr = (unsigned long*)params[1];
-
-        _strace(n, "code=%d addr=%p\n", code, addr);
-        return myst_syscall_arch_prctl(code, addr);
-    }
-
     myst_kstack_t* kstack;
 
     if (!(kstack = myst_get_kstack()))
