@@ -38,9 +38,11 @@ enclave
         struct myst_timespec st_ctim;
     };
 
-    struct myst_fsid {
+    struct myst_fsid
+    {
         int __val[2];
     };
+
     struct myst_statfs
     {
         unsigned long f_type;
@@ -236,9 +238,8 @@ enclave
             [in, out] socklen_t* optlen,
             socklen_t optval_size);
 
-        /* ATTN: If Host file system support is exclude in certain build mode,
-        *  consider excluding relevant OCALL proxy code too.
-        */
+        // ATTN: If Host file system support is exclude in certain build mode,
+        // consider excluding relevant OCALL proxy code too.
 
         /*
         **======================================================================
@@ -260,7 +261,7 @@ enclave
             mode_t mode,
             uid_t uid,
             gid_t gid);
-        
+
         long myst_read_ocall(
             int fd,
             [out, size=count] void* buf,
@@ -284,7 +285,7 @@ enclave
             [out] struct myst_stat* statbuf,
             uid_t host_euid,
             gid_t host_egid);
-        
+
         long myst_fstat_ocall(int fd, [out] struct myst_stat* statbuf);
 
         long myst_access_ocall(
@@ -370,23 +371,24 @@ enclave
 
         int myst_get_file_size_ocall([in, string] const char* pathname);
 
-        int myst_read_file_ocall([in, string] const char* pathname, [out, size=size] char* buf, size_t size);
+        int myst_read_file_ocall(
+            [in, string] const char* pathname,
+            [out, size=size] char* buf,
+            size_t size);
 
         long myst_chown_ocall(
             [in, string] const char* pathname,
             uid_t owner,
             gid_t group,
             uid_t host_euid,
-            gid_t host_egid
-        );
+            gid_t host_egid);
 
         long myst_fchown_ocall(
             int fd,
             uid_t owner,
             gid_t group,
             uid_t host_euid,
-            gid_t host_egid
-        );
+            gid_t host_egid);
 
         long myst_lchown_ocall(
             [in, string] const char* pathname,
@@ -400,18 +402,20 @@ enclave
             [in, string] const char* pathname,
             mode_t mode,
             uid_t host_euid,
-            gid_t host_egid   
-        );
+            gid_t host_egid);
 
-        long myst_fchmod_ocall(int fd, uint32_t mode, uid_t host_euid, gid_t host_egid);
+        long myst_fchmod_ocall(
+            int fd,
+            uint32_t mode,
+            uid_t host_euid,
+            gid_t host_egid);
 
         long myst_fcntl_ocall(int fd, int cmd, long arg);
 
         long myst_fcntl_setlkw_ocall(int fd, [in] const struct flock* arg);
 
-        /* ATTN: If debugging support is excluded in certain build mode, consider
-         * excluding relevant OCALL proxy code too. 
-         */
+        // ATTN: If debugging support is excluded in certain build mode,
+        // consider excluding relevant OCALL proxy code too.
 
         /*
         **======================================================================
@@ -432,9 +436,8 @@ enclave
 
         int myst_unload_symbols_ocall();
 
-        /* ATTN: If EXT2 file system support is exlcuded in certain build mode,
-        *  consider excluding relevant OCALL proxy code too.
-        */
+        // ATTN: If EXT2 file system support is exlcuded in certain build mode,
+        // consider excluding relevant OCALL proxy code too.
 
         /*
         **======================================================================
