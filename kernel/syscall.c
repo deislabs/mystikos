@@ -2845,6 +2845,9 @@ long myst_syscall_arch_prctl(
 {
     long ret = 0;
 
+    if (!addr)
+        ERAISE(-EFAULT);
+
     if (code == ARCH_GET_FS)
     {
         *addr = cached_fsbase;
@@ -2855,9 +2858,10 @@ long myst_syscall_arch_prctl(
     }
     else
     {
-        ret = -EINVAL;
+        ERAISE(-EINVAL);
     }
 
+done:
     return ret;
 }
 
