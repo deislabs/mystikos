@@ -104,14 +104,14 @@ group-file:
 	echo "grp1000:x:1000:" >> appdir/etc/group
 
 add_host_users_and_groups:
-	( ! grep /etc/group grp701 ) || sudo groupadd -g 100701 grp701
-	( ! grep /etc/group grp704 ) || sudo groupadd -g 100704 grp704
-	( ! grep /etc/group grp705 ) || sudo groupadd -g 100705 grp705
-	( ! grep /etc/group grp1000 ) || sudo groupadd -g 101000 grp1000
-	( ! grep /etc/passwd user700 ) || sudo useradd -g grp701 -u 100700 user700
-	( ! grep /etc/passwd user702 ) || sudo useradd -g grp701 -u 100702 user702
-	( ! grep /etc/passwd user703 ) || sudo useradd -g grp701 -u 100703 user703
-	( ! grep /etc/passwd user1000 ) || sudo useradd -g grp1000 -u 101000 user1000
+	sudo groupadd -f -g 100701 grp701
+	sudo groupadd -f -g 100704 grp704
+	sudo groupadd -f -g 100705 grp705
+	sudo groupadd -f -g 101000 grp1000
+	id -u user700 >/dev/null 2>&1 || sudo useradd -g grp701 -u 100700 user700
+	id -u user702 >/dev/null 2>&1 || sudo useradd -g grp701 -u 100702 user702
+	id -u user703 >/dev/null 2>&1 || sudo useradd -g grp701 -u 100703 user703
+	id -u user1000 >/dev/null 2>&1 || sudo useradd -g grp1000 -u 101000 user1000
 
 del_host_users_and_groups:
 	sudo userdel user700 || true
