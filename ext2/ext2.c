@@ -4007,7 +4007,7 @@ ssize_t ext2_readlink(
     };
     struct locals* locals = NULL;
 
-    if (!_ext2_valid(ext2) || !pathname || !buf)
+    if (!_ext2_valid(ext2) || !pathname || !buf || !bufsiz)
         ERAISE(-EINVAL);
 
     if (!(locals = malloc(sizeof(struct locals))))
@@ -4029,6 +4029,9 @@ ssize_t ext2_readlink(
         ECHECK(tfs->fs_readlink(tfs, locals->suffix, buf, bufsiz));
         goto done;
     }
+
+    if (!S_ISLNK(locals->inode.i_mode))
+        ERAISE(-EINVAL);
 
     ECHECK((_load_file_by_inode(ext2, ino, &locals->inode, &data, &size)));
 

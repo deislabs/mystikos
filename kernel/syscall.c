@@ -1697,11 +1697,8 @@ long myst_syscall_readlinkat(
     };
     struct locals* locals = NULL;
 
-    if (!pathname || !buf)
+    if (!pathname || !buf || !bufsiz)
         ERAISE(-EINVAL);
-
-    if (!(locals = malloc(sizeof(struct locals))))
-        ERAISE(-ENOMEM);
 
     /* If pathname is absolute, then ignore dirfd */
     if (*pathname == '/' || dirfd == AT_FDCWD)
@@ -1710,17 +1707,23 @@ long myst_syscall_readlinkat(
     }
     else if (*pathname == '\0')
     {
-        myst_fdtable_t* fdtable = myst_fdtable_current();
-        myst_fs_t* fs;
-        myst_file_t* file;
-
-        ECHECK(myst_fdtable_get_file(fdtable, dirfd, &fs, &file));
-        ECHECK((*fs->fs_realpath)(
-            fs, file, locals->abspath, sizeof(locals->abspath)));
-        ret = myst_syscall_readlink(locals->abspath, buf, bufsiz);
+        /*
+         * ATTN: Since Linux 2.6.39, pathname can be an empty string, in which
+         * case the call operates on the symbolic link referred to by dirfd.
+         * But dirfd should have been obtained using open with the O_PATH
+         * and O_NOFOLLOW flags. Our existing implementation of ext2_open()
+         * dosn't support the O_PATH flag. If the trailing component
+         * (i.e., basename) of pathname is a symbolic link, then the open
+         * fails, with the error ELOOP.
+         * Thus, return "No such file or directory"
+         */
+        ERAISE(-ENOENT);
     }
     else
     {
+        if (!(locals = malloc(sizeof(struct locals))))
+            ERAISE(-ENOMEM);
+
         ECHECK(myst_get_absolute_path_from_dirfd(
             dirfd, pathname, locals->abspath, sizeof(locals->abspath)));
         ret = myst_syscall_readlink(locals->abspath, buf, bufsiz);

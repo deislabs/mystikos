@@ -35,6 +35,7 @@
 /ltp/testcases/kernel/syscalls/fchown/fchown03
 /ltp/testcases/kernel/syscalls/fchown/fchown05
 /ltp/testcases/kernel/syscalls/fchownat/fchownat01
+/ltp/testcases/kernel/syscalls/fchownat/fchownat02
 /ltp/testcases/kernel/syscalls/fcntl/fcntl03
 /ltp/testcases/kernel/syscalls/fcntl/fcntl03_64
 /ltp/testcases/kernel/syscalls/fcntl/fcntl04
@@ -73,6 +74,7 @@
 /ltp/testcases/kernel/syscalls/msync/msync01
 /ltp/testcases/kernel/syscalls/open/open01
 /ltp/testcases/kernel/syscalls/open/open03
+/ltp/testcases/kernel/syscalls/open/open04
 /ltp/testcases/kernel/syscalls/open/open07
 /ltp/testcases/kernel/syscalls/open/open09
 /ltp/testcases/kernel/syscalls/openat/openat01
@@ -99,6 +101,7 @@
 /ltp/testcases/kernel/syscalls/read/read04
 /ltp/testcases/kernel/syscalls/readdir/readdir01
 /ltp/testcases/kernel/syscalls/readlinkat/readlinkat01
+/ltp/testcases/kernel/syscalls/readlinkat/readlinkat02
 /ltp/testcases/kernel/syscalls/readv/readv01
 /ltp/testcases/kernel/syscalls/readv/readv02
 /ltp/testcases/kernel/syscalls/rename/rename02
