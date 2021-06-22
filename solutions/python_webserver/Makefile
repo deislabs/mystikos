@@ -21,7 +21,7 @@ TIMEOUT=60s
 
 run:
 	test -f server.pid && kill -9 `cat server.pid` || true
-	$(MYST_EXEC) $(OPTS) rootfs /miniconda/bin/python3 /app/hello_server.py > server.output & echo $$! > server.pid
+	$(MYST_EXEC) $(OPTS) rootfs /usr/local/bin/python3 /app/hello_server.py > server.output & echo $$! > server.pid
 	timeout $(TIMEOUT) tail -f server.output | ./client.sh
 	test -f server.pid && kill -9 `cat server.pid` && rm server.pid || true
 	test -f client.output
