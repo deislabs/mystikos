@@ -827,7 +827,8 @@ static long _poll(struct pollfd* fds, nfds_t nfds, int timeout)
      */
     for (nfds_t i = 0; i < nfds; i++)
     {
-        fds[i].revents = copy[i].revents & fds[i].events;
+        const short int mask = POLLERR | POLLHUP | POLLNVAL;
+        fds[i].revents = copy[i].revents & (fds[i].events | mask);
     }
 
     /* guard against return value that is bigger than nfds */
