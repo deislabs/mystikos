@@ -516,7 +516,11 @@ static long _enter(void* arg_)
         /* rootfs buffer content set by the host side. Max length of the string
          * is PATH_MAX-1. Enforce NULL terminator at the end of the buffer.
          */
-        options->rootfs[PATH_MAX - 1] = '\0';
+        if (strnlen(options->rootfs, PATH_MAX) == PATH_MAX)
+        {
+            fprintf(stderr, "rootfs path too long (> %u)\n", PATH_MAX);
+            goto done;
+        }
 
         rootfs = options->rootfs;
     }
