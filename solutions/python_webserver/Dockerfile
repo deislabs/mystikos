@@ -7,7 +7,7 @@ RUN apt update && \
     wget -q https://repo.continuum.io/miniconda/Miniconda3-py38_4.8.2-Linux-x86_64.sh &&\
     chmod 755 Miniconda3-py38_4.8.2-Linux-x86_64.sh &&\
     ./Miniconda3-py38_4.8.2-Linux-x86_64.sh -b -p /miniconda &&\
-    /miniconda/bin/pip install numpy &&\
+    /miniconda/bin/pip install numpy==1.20.3 &&\
     /miniconda/bin/python3 --version
 
 WORKDIR /app
