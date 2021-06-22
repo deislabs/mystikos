@@ -24,7 +24,7 @@ USER user
 ENV HOME=/home/user
 RUN chmod 777 /home/user
 
-# Install Miniconda and Python 3.8
+# Install Miniconda then use conda to install Python 3.8 and flask
 ENV CONDA_AUTO_UPDATE_CONDA=false
 ENV PATH=/home/user/miniconda/bin:$PATH
 RUN curl -sLo ~/miniconda.sh https://repo.continuum.io/miniconda/Miniconda3-py38_4.8.2-Linux-x86_64.sh \
@@ -32,9 +32,10 @@ RUN curl -sLo ~/miniconda.sh https://repo.continuum.io/miniconda/Miniconda3-py38
  && ~/miniconda.sh -b -p ~/miniconda \
  && rm ~/miniconda.sh \
  && conda install -y python==3.8.1 \
+ && conda install -y flask \
  && conda clean -ya
 
-# No CUDA-specific steps
+# Install pytorch, No CUDA-specific steps
 ENV NO_CUDA=1
 RUN conda install -y -c pytorch \
     cpuonly \
@@ -43,17 +44,13 @@ RUN conda install -y -c pytorch \
     "torchaudio=0.7.2" \
  && conda clean -ya
 
-COPY AlexNetImage.py /app
-COPY imagenet_classes.txt /app
-COPY dog.jpg /app
-COPY download_pretrained_model.py /app
+ADD src /app
 
 RUN python3 download_pretrained_model.py \
     && rm /app/download_pretrained_model.py
 
 # temporary hack - return 'Linux' on platform.system()
 RUN rm /home/user/miniconda/lib/python3.8/platform.py 
-COPY platform.py /home/user/miniconda/lib/python3.8
+COPY patch/platform.py /home/user/miniconda/lib/python3.8
 
-# Set the default command to python3
-CMD ["python3"]
+CMD ["/bin/bash"]
