@@ -43,6 +43,7 @@
 /ltp/testcases/kernel/syscalls/fchown/fchown03
 /ltp/testcases/kernel/syscalls/fchown/fchown05
 /ltp/testcases/kernel/syscalls/fchownat/fchownat01
+/ltp/testcases/kernel/syscalls/fchownat/fchownat02
 /ltp/testcases/kernel/syscalls/fcntl/fcntl03
 /ltp/testcases/kernel/syscalls/fcntl/fcntl03_64
 /ltp/testcases/kernel/syscalls/fcntl/fcntl04

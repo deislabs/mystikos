@@ -142,7 +142,6 @@
 /ltp/testcases/kernel/syscalls/fchown/fchown04
 /ltp/testcases/kernel/syscalls/fchown/fchown04_16
 /ltp/testcases/kernel/syscalls/fchown/fchown05_16
-/ltp/testcases/kernel/syscalls/fchownat/fchownat02
 /ltp/testcases/kernel/syscalls/fcntl/fcntl01
 /ltp/testcases/kernel/syscalls/fcntl/fcntl01_64
 /ltp/testcases/kernel/syscalls/fcntl/fcntl02
@@ -445,7 +444,6 @@
 /ltp/testcases/kernel/syscalls/nftw/nftw6401
 /ltp/testcases/kernel/syscalls/nice/nice03
 /ltp/testcases/kernel/syscalls/open/open02
-/ltp/testcases/kernel/syscalls/open/open04
 /ltp/testcases/kernel/syscalls/open/open06
 /ltp/testcases/kernel/syscalls/open/open08
 /ltp/testcases/kernel/syscalls/open/open10
@@ -532,7 +530,6 @@
 /ltp/testcases/kernel/syscalls/readdir/readdir21
 /ltp/testcases/kernel/syscalls/readlink/readlink01
 /ltp/testcases/kernel/syscalls/readlink/readlink03
-/ltp/testcases/kernel/syscalls/readlinkat/readlinkat02
 /ltp/testcases/kernel/syscalls/readv/readv03
 /ltp/testcases/kernel/syscalls/recvmsg/recvmsg03
 /ltp/testcases/kernel/syscalls/remap_file_pages/remap_file_pages01
