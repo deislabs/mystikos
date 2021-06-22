@@ -31,16 +31,19 @@ $(ROOTHASH): $(ROOTFS)
 OPTS += --roothash=$(ROOTHASH)
 
 tests:
-	docker run --network="host" temp-image-for-server /app/sockperf server&
-	echo "Server created"
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /app/sockperf ping-pong 
+	./kill.sh
+	docker run --network="host" temp-image-for-server /app/sockperf server &
+	./wait.sh
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /app/sockperf ping-pong
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /app/sockperf under-load
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /app/sockperf throughput --msg-size=1472
+	./kill.sh
 	docker run --network="host" temp-image-for-server /app/sockperf server --tcp &
-	echo "Server created"
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /app/sockperf ping-pong --tcp 
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /app/sockperf under-load --tcp 
+	./wait.sh
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /app/sockperf ping-pong --tcp
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /app/sockperf under-load --tcp
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /app/sockperf throughput --msg-size=1472 --tcp
+	./kill.sh
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst
