@@ -599,10 +599,12 @@ static long _enter(void* arg_)
 
     if (options)
     {
+        // _trace_syscalls is used by vectored exception handler tracing,
+        // disable it if tee_debug_mode is false
+        _trace_syscalls = tee_debug_mode ? options->trace_syscalls : false;
         // if tee_debug_mode is false, these options are disabled by the
         // kernel upon entry.
         trace_errors = options->trace_errors;
-        _trace_syscalls = options->trace_syscalls;
         shell_mode = options->shell_mode;
         debug_symbols = options->debug_symbols;
         memcheck = options->memcheck;
