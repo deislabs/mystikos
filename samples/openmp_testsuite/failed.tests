@@ -1,3 +1,5 @@
+/gcc-7.5.0/libgomp/testsuite/libgomp.c/omp-parallel-if.c.exe
+/gcc-7.5.0/libgomp/testsuite/libgomp.c/lib-1.c.exe
 /gcc-7.5.0/libgomp/testsuite/libgomp.c/target-11.c.exe
 /gcc-7.5.0/libgomp/testsuite/libgomp.c/target-30.c.exe
 /gcc-7.5.0/libgomp/testsuite/libgomp.c/lock-2.c.exe
@@ -39,7 +41,6 @@
 /gcc-7.5.0/libgomp/testsuite/libgomp.c/pr52547.c.exe
 /gcc-7.5.0/libgomp/testsuite/libgomp.c/depend-6.c.exe
 /gcc-7.5.0/libgomp/testsuite/libgomp.c/pr34513.c.exe
-/gcc-7.5.0/libgomp/testsuite/libgomp.c/nqueens-1.c.exe
 /gcc-7.5.0/libgomp/testsuite/libgomp.c/shared-1.c.exe
 /gcc-7.5.0/libgomp/testsuite/libgomp.c/taskloop-4.c.exe
 /gcc-7.5.0/libgomp/testsuite/libgomp.c/pr26943-3.c.exe
@@ -50,11 +51,8 @@
 /gcc-7.5.0/libgomp/testsuite/libgomp.c/examples-4/target_data-6.c.exe
 /gcc-7.5.0/libgomp/testsuite/libgomp.c/examples-4/declare_target-5.c.exe
 /gcc-7.5.0/libgomp/testsuite/libgomp.c/examples-4/target-3.c.exe
-/gcc-7.5.0/libgomp/testsuite/libgomp.c/examples-4/task_dep-5.c.exe
 /gcc-7.5.0/libgomp/testsuite/libgomp.c/examples-4/target-4.c.exe
 /gcc-7.5.0/libgomp/testsuite/libgomp.c/examples-4/device-3.c.exe
-/gcc-7.5.0/libgomp/testsuite/libgomp.c/examples-4/target-2.c.exe
-/gcc-7.5.0/libgomp/testsuite/libgomp.c/examples-4/simd-5.c.exe
 /gcc-7.5.0/libgomp/testsuite/libgomp.c/examples-4/target-5.c.exe
 /gcc-7.5.0/libgomp/testsuite/libgomp.c/examples-4/async_target-2.c.exe
 /gcc-7.5.0/libgomp/testsuite/libgomp.c/examples-4/target-1.c.exe

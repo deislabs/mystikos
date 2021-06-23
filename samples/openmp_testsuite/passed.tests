@@ -213,6 +213,7 @@
 /gcc-7.5.0/libgomp/testsuite/libgomp.c/pr64824.c.exe
 /gcc-7.5.0/libgomp/testsuite/libgomp.c/pr89002.c.exe
 /gcc-7.5.0/libgomp/testsuite/libgomp.c/taskloop-1.c.exe
+/gcc-7.5.0/libgomp/testsuite/libgomp.c/nqueens-1.c.exe
 /gcc-7.5.0/libgomp/testsuite/libgomp.c/task-4.c.exe
 /gcc-7.5.0/libgomp/testsuite/libgomp.c/pr66199-3.c.exe
 /gcc-7.5.0/libgomp/testsuite/libgomp.c/parloops-exit-first-loop-alt.c.exe
@@ -258,6 +259,7 @@
 /gcc-7.5.0/libgomp/testsuite/libgomp.c/examples-4/simd-7.c.exe
 /gcc-7.5.0/libgomp/testsuite/libgomp.c/examples-4/target_data-4.c.exe
 /gcc-7.5.0/libgomp/testsuite/libgomp.c/examples-4/simd-6.c.exe
+/gcc-7.5.0/libgomp/testsuite/libgomp.c/examples-4/task_dep-5.c.exe
 /gcc-7.5.0/libgomp/testsuite/libgomp.c/examples-4/declare_target-1.c.exe
 /gcc-7.5.0/libgomp/testsuite/libgomp.c/examples-4/target_data-3.c.exe
 /gcc-7.5.0/libgomp/testsuite/libgomp.c/examples-4/target_update-1.c.exe
@@ -270,9 +272,11 @@
 /gcc-7.5.0/libgomp/testsuite/libgomp.c/examples-4/task_dep-1.c.exe
 /gcc-7.5.0/libgomp/testsuite/libgomp.c/examples-4/task_dep-4.c.exe
 /gcc-7.5.0/libgomp/testsuite/libgomp.c/examples-4/teams-6.c.exe
+/gcc-7.5.0/libgomp/testsuite/libgomp.c/examples-4/target-2.c.exe
 /gcc-7.5.0/libgomp/testsuite/libgomp.c/examples-4/target_update-2.c.exe
 /gcc-7.5.0/libgomp/testsuite/libgomp.c/examples-4/array_sections-3.c.exe
 /gcc-7.5.0/libgomp/testsuite/libgomp.c/examples-4/device-2.c.exe
+/gcc-7.5.0/libgomp/testsuite/libgomp.c/examples-4/simd-5.c.exe
 /gcc-7.5.0/libgomp/testsuite/libgomp.c/examples-4/simd-1.c.exe
 /gcc-7.5.0/libgomp/testsuite/libgomp.c/examples-4/teams-2.c.exe
 /gcc-7.5.0/libgomp/testsuite/libgomp.c/examples-4/target_data-1.c.exe
