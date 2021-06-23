@@ -109,8 +109,6 @@ DIRS += eventfd
 DIRS += polleventfd
 DIRS += dotnet-sos
 
-DIRS += sockperf
-
 .PHONY: $(DIRS)
 
 dirs: $(DIRS)
