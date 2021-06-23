@@ -136,13 +136,26 @@ static uint64_t _forward_exception_as_signal_to_kernel(
     }
     if (oe_exception_code == OE_EXCEPTION_X87_FLOAT_POINT)
     {
+        // ATTN: Consider implementing accurate si-code for
+        // OE_EXCEPTION_X87_FLOAT_POINT
         siginfo.si_code = SI_KERNEL;
         siginfo.si_signo = SIGFPE;
         (*_kargs.myst_handle_host_signal)(&siginfo, &_mcontext);
         _mcontext_to_oe_context(&_mcontext, oe_context);
         return OE_EXCEPTION_CONTINUE_EXECUTION;
     }
+    if (oe_exception_code == OE_EXCEPTION_DIVIDE_BY_ZERO)
+    {
+        siginfo.si_code = FPE_INTDIV;
+        siginfo.si_signo = SIGFPE;
+        (*_kargs.myst_handle_host_signal)(&siginfo, &_mcontext);
+        _mcontext_to_oe_context(&_mcontext, oe_context);
+        return OE_EXCEPTION_CONTINUE_EXECUTION;
+    }
 
+    // ATTN: Consider forwarding OE_EXCEPTION_BOUND_OUT_OF_RANGE,
+    // OE_EXCEPTION_ACCESS_VIOLATION, OE_EXCEPTION_MISALIGNMENT,
+    // OE_EXCEPTION_SIMD_FLOAT_POINT as signal.
     // Delegate unhandled hardware exceptions to other vector handlers.
     return OE_EXCEPTION_CONTINUE_SEARCH;
 }
