@@ -39,6 +39,7 @@
 /ltp/testcases/kernel/syscalls/clock_adjtime/clock_adjtime01
 /ltp/testcases/kernel/syscalls/clock_adjtime/clock_adjtime02
 /ltp/testcases/kernel/syscalls/clock_getres/clock_getres01
+/ltp/testcases/kernel/syscalls/clock_gettime/clock_gettime02
 /ltp/testcases/kernel/syscalls/clock_gettime/clock_gettime03
 /ltp/testcases/kernel/syscalls/clock_gettime/clock_gettime04
 /ltp/testcases/kernel/syscalls/clock_nanosleep/clock_nanosleep01
@@ -400,6 +401,7 @@
 /ltp/testcases/kernel/syscalls/mlock2/mlock201
 /ltp/testcases/kernel/syscalls/mlock2/mlock203
 /ltp/testcases/kernel/syscalls/mmap/mmap001
+/ltp/testcases/kernel/syscalls/mmap/mmap05
 /ltp/testcases/kernel/syscalls/mmap/mmap06
 /ltp/testcases/kernel/syscalls/mmap/mmap07
 /ltp/testcases/kernel/syscalls/mmap/mmap08
@@ -433,6 +435,7 @@
 /ltp/testcases/kernel/syscalls/move_pages/move_pages11
 /ltp/testcases/kernel/syscalls/move_pages/move_pages12
 /ltp/testcases/kernel/syscalls/mprotect/mprotect01
+/ltp/testcases/kernel/syscalls/mprotect/mprotect04
 /ltp/testcases/kernel/syscalls/mremap/mremap01
 /ltp/testcases/kernel/syscalls/mremap/mremap03
 /ltp/testcases/kernel/syscalls/mremap/mremap05
@@ -494,14 +497,8 @@
 /ltp/testcases/kernel/syscalls/prctl/prctl09
 /ltp/testcases/kernel/syscalls/pread/pread03
 /ltp/testcases/kernel/syscalls/pread/pread03_64
-/ltp/testcases/kernel/syscalls/preadv/preadv02
-/ltp/testcases/kernel/syscalls/preadv/preadv02_64
 /ltp/testcases/kernel/syscalls/preadv/preadv03
 /ltp/testcases/kernel/syscalls/preadv/preadv03_64
-/ltp/testcases/kernel/syscalls/preadv2/preadv201
-/ltp/testcases/kernel/syscalls/preadv2/preadv201_64
-/ltp/testcases/kernel/syscalls/preadv2/preadv202
-/ltp/testcases/kernel/syscalls/preadv2/preadv202_64
 /ltp/testcases/kernel/syscalls/preadv2/preadv203
 /ltp/testcases/kernel/syscalls/preadv2/preadv203_64
 /ltp/testcases/kernel/syscalls/profil/profil01
@@ -518,14 +515,8 @@
 /ltp/testcases/kernel/syscalls/ptrace/ptrace10
 /ltp/testcases/kernel/syscalls/pwrite/pwrite02
 /ltp/testcases/kernel/syscalls/pwrite/pwrite02_64
-/ltp/testcases/kernel/syscalls/pwritev/pwritev02
-/ltp/testcases/kernel/syscalls/pwritev/pwritev02_64
 /ltp/testcases/kernel/syscalls/pwritev/pwritev03
 /ltp/testcases/kernel/syscalls/pwritev/pwritev03_64
-/ltp/testcases/kernel/syscalls/pwritev2/pwritev201
-/ltp/testcases/kernel/syscalls/pwritev2/pwritev201_64
-/ltp/testcases/kernel/syscalls/pwritev2/pwritev202
-/ltp/testcases/kernel/syscalls/pwritev2/pwritev202_64
 /ltp/testcases/kernel/syscalls/quotactl/quotactl01
 /ltp/testcases/kernel/syscalls/quotactl/quotactl02
 /ltp/testcases/kernel/syscalls/quotactl/quotactl03
@@ -557,6 +548,7 @@
 /ltp/testcases/kernel/syscalls/rmdir/rmdir03
 /ltp/testcases/kernel/syscalls/rt_sigaction/rt_sigaction02
 /ltp/testcases/kernel/syscalls/rt_sigaction/rt_sigaction03
+/ltp/testcases/kernel/syscalls/rt_sigprocmask/rt_sigprocmask01
 /ltp/testcases/kernel/syscalls/rt_sigprocmask/rt_sigprocmask02
 /ltp/testcases/kernel/syscalls/rt_sigtimedwait/rt_sigtimedwait01
 /ltp/testcases/kernel/syscalls/sbrk/sbrk01
@@ -565,6 +557,7 @@
 /ltp/testcases/kernel/syscalls/sched_get_priority_max/sched_get_priority_max02
 /ltp/testcases/kernel/syscalls/sched_get_priority_min/sched_get_priority_min01
 /ltp/testcases/kernel/syscalls/sched_get_priority_min/sched_get_priority_min02
+/ltp/testcases/kernel/syscalls/sched_getaffinity/sched_getaffinity01
 /ltp/testcases/kernel/syscalls/sched_getattr/sched_getattr02
 /ltp/testcases/kernel/syscalls/sched_getparam/sched_getparam01
 /ltp/testcases/kernel/syscalls/sched_getparam/sched_getparam03
@@ -655,6 +648,8 @@
 /ltp/testcases/kernel/syscalls/setxattr/setxattr01
 /ltp/testcases/kernel/syscalls/setxattr/setxattr02
 /ltp/testcases/kernel/syscalls/sgetmask/sgetmask01
+/ltp/testcases/kernel/syscalls/sigpending/sigpending02
+/ltp/testcases/kernel/syscalls/sigprocmask/sigprocmask01
 /ltp/testcases/kernel/syscalls/sigrelse/sigrelse01
 /ltp/testcases/kernel/syscalls/sigtimedwait/sigtimedwait01
 /ltp/testcases/kernel/syscalls/sigwait/sigwait01
@@ -662,6 +657,7 @@
 /ltp/testcases/kernel/syscalls/socketcall/socketcall01
 /ltp/testcases/kernel/syscalls/socketcall/socketcall02
 /ltp/testcases/kernel/syscalls/socketcall/socketcall03
+/ltp/testcases/kernel/syscalls/socketpair/socketpair01
 /ltp/testcases/kernel/syscalls/sockioctl/sockioctl01
 /ltp/testcases/kernel/syscalls/splice/splice04
 /ltp/testcases/kernel/syscalls/splice/splice05
@@ -737,6 +733,7 @@
 /ltp/testcases/kernel/syscalls/utime/utime06
 /ltp/testcases/kernel/syscalls/utimensat/utimensat01
 /ltp/testcases/kernel/syscalls/utimes/utimes01
+/ltp/testcases/kernel/syscalls/vfork/vfork02
 /ltp/testcases/kernel/syscalls/vhangup/vhangup01
 /ltp/testcases/kernel/syscalls/vhangup/vhangup02
 /ltp/testcases/kernel/syscalls/vmsplice/vmsplice03
@@ -753,6 +750,7 @@
 /ltp/testcases/kernel/syscalls/waitpid/waitpid13
 /ltp/testcases/kernel/syscalls/write/write03
 /ltp/testcases/kernel/syscalls/write/write04
+/ltp/testcases/kernel/syscalls/write/write05
 /ltp/testcases/kernel/syscalls/writev/writev01
 /ltp/testcases/kernel/syscalls/writev/writev02
 /ltp/testcases/kernel/syscalls/writev/writev03
