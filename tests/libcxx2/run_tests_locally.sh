@@ -16,37 +16,25 @@ FILE=$1
 
 while read test; do
   echo "$test"
-  OUTPUT=$(2>&1 timeout 3 make one TEST=$test )
+  OUTPUT=$(2>&1 timeout 10 make one TEST=$test )
+  RETURN_VAL=$?
   echo $OUTPUT >> temp_$FILE.output
-  HAS_UNHANDLED_SYSCALL=$(2>&1 timeout 3 make one TEST=$test | grep "unhandled")
-  if [ -z "$HAS_UNHANDLED_SYSCALL" ]
+  if [[ "$RETURN_VAL" -eq "0" ]]
   then
-    # No unhandled syscall
-    FAILED=$(echo "$OUTPUT" | grep failed)
-    FAIL_ENCLAVE=$(echo "$OUTPUT" | grep OE_ENCLAVE_ABORTING)
-    TIMED_OUT=$(echo "$OUTPUT" | grep -F '[one] Terminated')
-    TERMINATED=$(echo "$OUTPUT" | grep -F 'terminate called')
-    if [[ -z $FAILED && -z $FAIL_ENCLAVE && -z $TIMED_OUT && -z $TERMINATED ]]  
-    then
-      echo $test >> temp_passed.output
-    else
-      echo $test >> temp_other_errors.output
-    fi
+    echo $test >> temp_passed.output
   else
-    echo "$test: $HAS_UNHANDLED_SYSCALL" >> temp_unhandled_syscalls.output
+    echo $test >> temp_failed.output
   fi
   sudo rm -rf /tmp/myst*
 done <$FILE
 
-awk '!seen[$9]++' temp_unhandled_syscalls.output | awk '{print $9}' | sort > unhandled_syscalls_$FILE.txt
-cat temp_unhandled_syscalls.output > tests_unhandled_syscalls_$FILE.txt
-sort temp_other_errors.output | awk '!seen[$0]++' > tests_other_errors_$FILE.txt
-cat temp_passed.output > tests_passed_$FILE.txt
+sort temp_failed.output | awk '!seen[$0]++' >> tests_failed_$FILE.txt
+cat temp_passed.output >> tests_passed_$FILE.txt
 }
 
 function show_stats() {
-  echo "PASSED UNHANDLED_SYSCALLS OTHER_ERRORS"
-  echo "$FS $(cat tests_passed_$FILE.txt | wc -l) $(cat tests_unhandled_syscalls_$FILE.txt | wc -l) $(cat tests_other_errors_$FILE.txt | wc -l) "
+  echo "PASSED FAILED"
+  echo "$(cat tests_passed_$FILE.txt | wc -l) $(cat tests_failed_$FILE.txt | wc -l) "
 }
 
 function test_passed() {
@@ -62,16 +50,7 @@ function test_passed() {
 
 }
 
-# TESTS=builttests_exe1.all
-# run_tests $TESTS
-
-# TESTS=builttests_exe2.all
-# run_tests $TESTS
-
-# TESTS=builttests_exe3.all
-# run_tests $TESTS
-
-TESTS=$1
+TESTS=tests.all
 run_tests $TESTS
 
 show_stats $TESTS
