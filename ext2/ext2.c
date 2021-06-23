@@ -716,8 +716,6 @@ static ext2_group_desc_t* _read_groups(const ext2_t* ext2)
         {
             ERAISE(-ENOMEM);
         }
-
-        memset(groups, 0xAA, groups_size);
     }
 
     /* Determine the block where group table starts */
@@ -1694,7 +1692,7 @@ static int _inode_get_blkno(
         uint32_t blkno;
         const uint32_t* data = (const uint32_t*)block->data;
 
-        assert(n <= double_indirect_count);
+        assert(n <= triple_indirect_max);
 
         if ((blkno = inode->i_block[EXT2_TRIPLE_INDIRECT_BLOCK]) == 0)
             goto done;
@@ -3102,8 +3100,6 @@ int ext2_read_block(const ext2_t* ext2, uint32_t blkno, ext2_block_t* block)
     /* Check for null parameters */
     if (!_ext2_valid(ext2) || !block)
         ERAISE(-EINVAL);
-
-    memset(block, 0xAA, sizeof(ext2_block_t));
 
     /* Is block size too big for buffer? */
     if (ext2->block_size > sizeof(block->data))
