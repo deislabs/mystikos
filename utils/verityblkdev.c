@@ -19,9 +19,9 @@
 
 #define MAX_ROOTHASH_SIZE 256
 
-#define MAX_CHAINS (64 * 1024)
+#define MAX_CHAINS 1024
 
-#define MAX_CACHE_BLOCKS 32
+#define MAX_CACHE_BLOCKS 256
 
 MYST_STATIC_ASSERT(sizeof(myst_verity_sb_t) == MYST_BLKSIZE);
 
@@ -43,7 +43,7 @@ typedef struct cache_block
     uint64_t blkno;
 
     /* whether block is dirty (has been written to) */
-    bool dirty;
+    uint64_t dirty;
 
     /* the data for this block */
     uint8_t data[];
@@ -376,9 +376,6 @@ static int _get_raw_block(blkdev_t* dev, size_t rawblkno, void* data)
     };
     struct locals* locals = NULL;
 
-    if (!(locals = malloc(sizeof(struct locals))))
-        ERAISE(-ENOMEM);
-
     /* first check the cache */
     if ((cb = _get_cache(dev, blkno)))
     {
@@ -386,6 +383,9 @@ static int _get_raw_block(blkdev_t* dev, size_t rawblkno, void* data)
     }
     else
     {
+        if (!(locals = malloc(sizeof(struct locals))))
+            ERAISE(-ENOMEM);
+
         ECHECK(_read_data_block(dev, blkno, &locals->block));
         ECHECK(_put_cache(dev, blkno, locals->block.data));
         ptr = locals->block.data;

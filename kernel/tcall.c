@@ -143,7 +143,7 @@ int myst_close_block_device(int blkdev)
     return myst_tcall(MYST_TCALL_CLOSE_BLOCK_DEVICE, params);
 }
 
-int myst_read_block_device(
+ssize_t myst_read_block_device(
     int blkdev,
     uint64_t blkno,
     struct myst_block* blocks,

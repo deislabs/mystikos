@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 
 typedef struct myst_block
 {
@@ -23,7 +24,7 @@ int myst_write_block_device(
     const struct myst_block* blocks,
     size_t num_blocks);
 
-int myst_read_block_device(
+ssize_t myst_read_block_device(
     int blkdev,
     uint64_t blkno,
     struct myst_block* blocks,

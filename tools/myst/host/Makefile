@@ -23,6 +23,7 @@ CFLAGS += -fprofile-arcs -ftest-coverage
 endif
 
 LDFLAGS = $(OEHOST_LDFLAGS)
+LDFLAGS += -lcrypto
 
 LIBS += $(OEHOST_LIBDIR)/liboehost.a
 LIBS += $(OEHOST_LIBDIR)/liboesignlib.a
