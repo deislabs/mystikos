@@ -2,6 +2,8 @@
 /app/llvm-project/libcxx/test/libcxx/atomics/atomics.flag/init_bool.pass.cpp.exe
 /app/llvm-project/libcxx/test/libcxx/atomics/atomics.order/memory_order.underlying_type.pass.cpp.exe
 /app/llvm-project/libcxx/test/libcxx/atomics/libcpp-has-no-threads.pass.cpp.exe
+/app/llvm-project/libcxx/test/libcxx/containers/associative/map/at.abort.pass.cpp.exe
+/app/llvm-project/libcxx/test/libcxx/containers/associative/map/at.const.abort.pass.cpp.exe
 /app/llvm-project/libcxx/test/libcxx/containers/associative/non_const_comparator.pass.cpp.exe
 /app/llvm-project/libcxx/test/libcxx/containers/associative/undef_min_max.pass.cpp.exe
 /app/llvm-project/libcxx/test/libcxx/containers/gnu_cxx/hash_map_name_lookup.pass.cpp.exe
@@ -24,6 +26,8 @@
 /app/llvm-project/libcxx/test/libcxx/containers/sequences/vector/vector.cons/construct_iter_iter.pass.cpp.exe
 /app/llvm-project/libcxx/test/libcxx/containers/sequences/vector/vector.cons/construct_iter_iter_alloc.pass.cpp.exe
 /app/llvm-project/libcxx/test/libcxx/containers/unord/non_const_comparator.pass.cpp.exe
+/app/llvm-project/libcxx/test/libcxx/containers/unord/unord.map/at.abort.pass.cpp.exe
+/app/llvm-project/libcxx/test/libcxx/containers/unord/unord.map/at.const.abort.pass.cpp.exe
 /app/llvm-project/libcxx/test/libcxx/containers/unord/unord.map/db_iterators_7.pass.cpp.exe
 /app/llvm-project/libcxx/test/libcxx/containers/unord/unord.map/db_iterators_8.pass.cpp.exe
 /app/llvm-project/libcxx/test/libcxx/containers/unord/unord.map/db_local_iterators_7.pass.cpp.exe
@@ -45,7 +49,11 @@
 /app/llvm-project/libcxx/test/libcxx/input.output/file.streams/fstreams/ifstream.members/open_wchar_pointer.pass.cpp.exe
 /app/llvm-project/libcxx/test/libcxx/input.output/file.streams/fstreams/ofstream.cons/wchar_pointer.pass.cpp.exe
 /app/llvm-project/libcxx/test/libcxx/input.output/file.streams/fstreams/ofstream.members/open_wchar_pointer.pass.cpp.exe
+/app/llvm-project/libcxx/test/libcxx/input.output/iostreams.base/ios/iostate.flags/clear.abort.pass.cpp.exe
+/app/llvm-project/libcxx/test/libcxx/iterators/failed.pass.cpp.exe
 /app/llvm-project/libcxx/test/libcxx/language.support/cxa_deleted_virtual.pass.cpp.exe
+/app/llvm-project/libcxx/test/libcxx/localization/locales/locale.category.abort.pass.cpp.exe
+/app/llvm-project/libcxx/test/libcxx/localization/locales/use_facet.abort.pass.cpp.exe
 /app/llvm-project/libcxx/test/libcxx/memory/aligned_allocation_macro.pass.cpp.exe
 /app/llvm-project/libcxx/test/libcxx/memory/is_allocator.pass.cpp.exe
 /app/llvm-project/libcxx/test/libcxx/minimal_cxx11_configuration.pass.cpp.exe
@@ -1318,8 +1326,11 @@
 /app/llvm-project/libcxx/test/std/input.output/file.streams/fstreams/fstream.cons/move.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/input.output/file.streams/fstreams/fstream.cons/path.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/input.output/file.streams/fstreams/fstream.cons/pointer.pass.cpp.exe
+/app/llvm-project/libcxx/test/std/input.output/file.streams/fstreams/fstream.cons/string.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/input.output/file.streams/fstreams/fstream.members/close.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/input.output/file.streams/fstreams/fstream.members/open_path.pass.cpp.exe
+/app/llvm-project/libcxx/test/std/input.output/file.streams/fstreams/fstream.members/open_pointer.pass.cpp.exe
+/app/llvm-project/libcxx/test/std/input.output/file.streams/fstreams/fstream.members/open_string.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/input.output/file.streams/fstreams/fstream.members/rdbuf.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/input.output/file.streams/fstreams/fstream/types.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/input.output/file.streams/fstreams/ifstream.cons/default.pass.cpp.exe
@@ -1823,6 +1834,7 @@
 /app/llvm-project/libcxx/test/std/iterators/stream.iterators/ostreambuf.iterator/ostreambuf.iter.cons/streambuf.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/iterators/stream.iterators/ostreambuf.iterator/ostreambuf.iter.ops/assign_c.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/iterators/stream.iterators/ostreambuf.iterator/ostreambuf.iter.ops/deref.pass.cpp.exe
+/app/llvm-project/libcxx/test/std/iterators/stream.iterators/ostreambuf.iterator/ostreambuf.iter.ops/failed.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/iterators/stream.iterators/ostreambuf.iterator/ostreambuf.iter.ops/increment.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/iterators/stream.iterators/ostreambuf.iterator/types.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/language.support/cstdint/cstdint.syn/cstdint.pass.cpp.exe
