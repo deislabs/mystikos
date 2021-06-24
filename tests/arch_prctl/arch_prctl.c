@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <errno.h>
+#include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <sys/syscall.h>
@@ -12,63 +13,86 @@
 #define ARCH_GET_CPUID 0x1011
 #define ARCH_SET_CPUID 0x1012
 
-struct test_case
+int arch_prctl(int code, ...)
 {
-    int code;
-    int ret;
-    int errno_val;
-} test_cases[] = {
-    {ARCH_GET_FS, 0, 0},
-    {ARCH_GET_GS, 0, 0},
-    {ARCH_SET_FS, -1, EINVAL},
-    {ARCH_SET_GS, -1, EINVAL},
-    {ARCH_GET_CPUID, -1, EINVAL},
-    {ARCH_SET_CPUID, -1, EINVAL},
-};
-int ntests = sizeof(test_cases) / sizeof(struct test_case);
+    va_list ap;
+    va_start(ap, code);
+    long arg = va_arg(ap, long);
+    va_end(ap);
 
-int arch_prctl(int code, unsigned long* addr)
-{
-    int ret;
-    ret = syscall(SYS_arch_prctl, code, addr);
-    // printf("ret= %d code= %x addr= %lx errno= %d \n", ret, code, *addr,
-    // errno);
-    return ret;
+    return syscall(SYS_arch_prctl, code, arg);
 }
 
 /* Assumes fs:0 will be a self pointer */
-long read_fs_base()
+const void* read_fs_base(void)
 {
-    long x0 = 0;
-    __asm__ volatile("mov %%fs:0, %0" : "=r"(x0));
-    // printf("fs=%lx\n", x0);
-    return x0;
+    void* p = 0;
+    __asm__ volatile("mov %%fs:0, %0" : "=r"(p));
+    return p;
 }
 
 /* Assumes gs:0 will be a self pointer */
-long read_gs_base()
+const void* read_gs_base(void)
 {
-    long x0 = 0;
-    __asm__ volatile("mov %%gs:0, %0" : "=r"(x0));
-    // printf("gs=%lx\n", x0);
-    return x0;
+    void* p = 0;
+    __asm__ volatile("mov %%gs:0, %0" : "=r"(p));
+    return p;
 }
 
 int main(int argc, const char* argv[])
 {
-    for (int i = 0; i < ntests; i++)
+    struct thread_descriptor
     {
-        struct test_case tc = test_cases[i];
-        long addr;
-        int ret = arch_prctl(tc.code, &addr);
-        assert(ret == tc.ret);
-        if (ret != 0)
-            assert(errno == tc.errno_val);
-        if (tc.code == ARCH_GET_FS)
-            assert(addr == read_fs_base());
-        if (tc.code == ARCH_GET_GS)
-            assert(addr == read_gs_base());
+        void* self;
+        uint64_t reserved1;
+        uint64_t reserved2;
+        uint64_t reserved3;
+        uint64_t reserved4;
+        uint64_t canary;
+    };
+
+    /* test ARCH_GET_FS */
+    {
+        void* addr;
+        int ret = arch_prctl(ARCH_GET_FS, &addr);
+        assert(ret == 0);
+        assert(addr == read_fs_base());
     }
+
+    /* test ARCH_GET_GS */
+    {
+        void* addr;
+        int ret = arch_prctl(ARCH_GET_GS, &addr);
+        assert(ret == 0);
+        assert(addr == read_gs_base());
+    }
+
+    /* test ARCH_SET_GS */
+    {
+        struct thread_descriptor td;
+        td.self = (void*)&td;
+        int ret = arch_prctl(ARCH_SET_GS, &td);
+        assert(ret == -1);
+        assert(errno == EINVAL);
+    }
+
+    /* test ARCH_SET_FS */
+    {
+        struct thread_descriptor td;
+        td.self = (void*)&td;
+        struct thread_descriptor* fs1 = (void*)read_fs_base();
+
+        int ret1 = arch_prctl(ARCH_SET_FS, (void*)&td);
+        assert(ret1 == 0);
+        void* fs2 = (void*)read_fs_base();
+        assert(fs1 != fs2);
+        assert(fs2 == (void*)&td);
+
+        int ret2 = arch_prctl(ARCH_SET_FS, (void*)fs1);
+        assert(ret2 == 0);
+        assert((void*)read_fs_base() == fs1);
+    }
+
     printf("=== passed test (%s)\n", argv[0]);
     return 0;
 }

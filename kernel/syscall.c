@@ -2915,10 +2915,7 @@ done:
     return ret;
 }
 
-long myst_syscall_arch_prctl(
-    int code,
-    unsigned long* addr,
-    unsigned long cached_fsbase)
+long myst_syscall_arch_prctl(int code, unsigned long* addr)
 {
     long ret = 0;
 
@@ -2927,11 +2924,22 @@ long myst_syscall_arch_prctl(
 
     if (code == ARCH_GET_FS)
     {
-        *addr = cached_fsbase;
+        *addr = (unsigned long)myst_get_fsbase();
     }
     else if (code == ARCH_GET_GS)
     {
         *addr = (unsigned long)myst_get_gsbase();
+    }
+    else if (code == ARCH_SET_FS)
+    {
+        struct myst_td* new = (struct myst_td*)addr;
+        const struct myst_td* old = myst_get_fsbase();
+        myst_set_fsbase((void*)new);
+        new->canary = old->canary;
+    }
+    else if (code == ARCH_SET_GS)
+    {
+        ERAISE(-EINVAL);
     }
     else
     {
@@ -4598,17 +4606,8 @@ static long _syscall(void* args_)
         }
         case SYS_arch_prctl:
         {
-            long ret = 0;
-            int code = (int)x1;
-            unsigned long* addr = (unsigned long*)x2;
-
-            _strace(n, "code=%d addr=%p\n", code, addr);
-
-            ret = myst_syscall_arch_prctl(
-                code,
-                addr,
-                (unsigned long)(_set_thread_area_called ? crt_td : target_td));
-            BREAK(_return(n, ret));
+            /* this is handled in myst_syscall() */
+            break;
         }
         case SYS_adjtimex:
             break;
@@ -5905,6 +5904,16 @@ long myst_syscall(long n, long params[6])
 {
     long ret;
     myst_kstack_t* kstack;
+
+    // Call myst_syscall_arch_prctl() upfront since it can only be performed
+    // on the caller's stack and before the fsbase is changed by the prologue
+    // code that follows.
+    if (n == SYS_arch_prctl)
+    {
+        int code = (int)params[0];
+        unsigned long* addr = (unsigned long*)params[1];
+        return myst_syscall_arch_prctl(code, addr);
+    }
 
     if (!(kstack = myst_get_kstack()))
         myst_panic("no more kernel stacks");
