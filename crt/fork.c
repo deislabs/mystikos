@@ -28,7 +28,16 @@
 /* ATTN: does not work for Linux yet: SYS_arch_prctl */
 static void _set_fsbase(void* p)
 {
+#if 0
     __asm__ volatile("wrfsbase %0" ::"r"(p));
+#else
+    const int ARCH_SET_FS = 0x1002;
+    if (syscall(SYS_arch_prctl, ARCH_SET_FS, p) != 0)
+    {
+        fprintf(stderr, "syscall(SYS_arch_prctl, ARCH_SET_FS, p) failed\n");
+        abort();
+    }
+#endif
 }
 
 /*
@@ -278,6 +287,7 @@ static int _child_func(void* arg)
 
     /* set the fsbase register to point to the child_td */
     args->child_pthread->tid = getpid();
+
     _set_fsbase(args->child_pthread);
 
     /* set the pid that the parent is waiting on */
