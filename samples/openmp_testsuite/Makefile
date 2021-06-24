@@ -13,16 +13,12 @@ APPDIR=$(CURDIR)/appdir
 
 ROOTFS=$(CURDIR)/rootfs
 
-EXT2FS_SIZE=2147483648
-
 TEST_FILE = passed.tests
 
 all: $(APPDIR) $(ROOTFS)
 
 $(ROOTFS):
-	sudo $(MYST) mkext2 --force --size $(EXT2FS_SIZE) $(APPDIR) $(ROOTFS)
-	sudo chown $(USER).$(USER) $(ROOTFS)
-	truncate --size=-4096 $(ROOTFS)
+	sudo $(MYST) mkcpio $(APPDIR) $(ROOTFS)
 
 $(APPDIR):
 	myst-appbuilder Dockerfile
