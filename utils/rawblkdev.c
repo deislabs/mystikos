@@ -198,6 +198,20 @@ static int _close(myst_blkdev_t* dev)
     if (impl->ephemeral)
         _release_cache(impl);
 
+    myst_list_free(&impl->lookahead);
+    myst_list_free(&_free_lookahead);
+
+#ifdef USE_LRU
+    {
+        size_t i;
+        for (i = 0; i < MAX_LRU_CHAINS; i++)
+        {
+            myst_list_free(&impl->lru[i]);
+        }
+        myst_list_free(&_free);
+    }
+#endif
+
     ECHECK(myst_close_block_device(impl->fd));
     free(impl);
 
