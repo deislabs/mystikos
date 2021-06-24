@@ -138,7 +138,7 @@ static uint64_t _forward_exception_as_signal_to_kernel(
     {
         // ATTN: Consider implementing accurate si-code for
         // OE_EXCEPTION_X87_FLOAT_POINT
-        siginfo.si_code = SI_KERNEL;
+        siginfo.si_code = FPE_FLTINV;
         siginfo.si_signo = SIGFPE;
         (*_kargs.myst_handle_host_signal)(&siginfo, &_mcontext);
         _mcontext_to_oe_context(&_mcontext, oe_context);
