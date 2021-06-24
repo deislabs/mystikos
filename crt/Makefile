@@ -16,6 +16,7 @@ MUSLSRC=$(TOP)/third_party/musl/crt/musl
 INCLUDES = -I$(INCDIR) 
 INCLUDES += -I$(TOP)/build/musl/include
 INCLUDES += -I$(MUSLSRC)/src/internal
+INCLUDES += -I$(MUSLSRC)/arch/x86_64/
 
 DEFINES = $(MYST_DEFINES)
 
