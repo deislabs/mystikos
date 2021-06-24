@@ -16,10 +16,13 @@
 #define EXT2_S_MAGIC 0xEF53
 #define RAMFS_MAGIC 0x858458f6
 
+#define MNT_CPIO_SRC "/cpio_image"
+#define MNT_TARGET "/mnt"
+
 void setup_mount()
 {
-    assert(mkdir("/mnt", 0777) == 0);
-    assert(mount("/cpio_image", "/mnt", "ramfs", 0, NULL) == 0);
+    assert(mkdir(MNT_TARGET, 0777) == 0);
+    assert(mount(MNT_CPIO_SRC, MNT_TARGET, "ramfs", 0, NULL) == 0);
 
     {
         struct statfs buf;
@@ -139,9 +142,9 @@ int main(int argc, const char* argv[])
     }
 
     setup_mount();
-
     test_dir_target(argv[1]);
     test_file_target();
+    umount(MNT_TARGET);
 
     printf("=== passed test (%s)\n", argv[0]);
     return 0;
