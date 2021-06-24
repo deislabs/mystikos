@@ -123,11 +123,28 @@ customized Dockerfile
 
 ## Debugging
 
+Mystikos currently can be run on two targets, SGX Target or Linux Target. When run on SGX Target, we have four ELF partitions, and on the Linux Target we have three ELF partitions (as shown in Fig 1). It is possible that the different ELF regions have the same function symbol repeated in them, eg: having two `main()` functions; in this case, if you set a breakpoint on `main`, GDB will consider both of them as breakpoints.
+
+![Mystikos ELF regions](myst-elf-regions.jpg) Fig 1
+
+C Call -> Call from the user application to the C-Runtime
+
+Syscall -> Calls into the kernel
+
+T Call -> Target call/calls into the target
+
+O Call -> Calls into the host (untrusted environment)
+
 1. For most applications under `tests`, we can launch the debugger with
 command `make tests GDB=1`. For example:
     ```
     cd Mystikos/tests/hello
     make && make tests GDB=1
+    ```
+    For applications that are run in [package mode](../solutions/dotnet/Makefile#23), ensure that the field `"Debug":1` is set in the `config.json` file, and the debugger can be launched using the run command:
+    
+    ```
+    myst-gdb --args myst/bin/<appname> <opts>
     ```
 
 1. Once inside the gdb window, we can set two breakpoints to examine the
