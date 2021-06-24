@@ -9,7 +9,9 @@ OPTS += --strace
 endif
 
 OPTS += --memory-size=1024m
-OPTS += --max-affinity-cpus=1
+
+# ATTN: this setting causes curl to get empty responses after two attempts
+#OPTS += --max-affinity-cpus=1
 
 all: appdir private.pem
 

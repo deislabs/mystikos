@@ -8,6 +8,13 @@ while read -r line; do
     curl 127.0.0.1:5050 || exit 1
     curl 127.0.0.1:5050 || exit 1
     curl 127.0.0.1:5050 || exit 1
+    curl 127.0.0.1:5050 || exit 1
+    curl 127.0.0.1:5050 || exit 1
+    curl 127.0.0.1:5050 || exit 1
+    curl 127.0.0.1:5050 || exit 1
+    curl 127.0.0.1:5050 || exit 1
+    curl 127.0.0.1:5050 || exit 1
+    curl 127.0.0.1:5050 || exit 1
     touch client.output
     exit 0
   fi
