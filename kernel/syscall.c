@@ -5619,10 +5619,12 @@ static long _syscall(void* args_)
             int flags = (int)x2;
 
             _strace(n, "cmd=%d flags=%d", cmd, flags);
-
-            myst_barrier();
-
-            BREAK(_return(n, 0));
+            /* membarrier syscall relies on inter-processor-interrupt and the
+             * untrusted privileged SW layer such as the hypervisor or bare
+             * metal OS to sychronize code execution across CPU cores. Not
+             * supported.
+             */
+            BREAK(_return(n, -ENOSYS));
         }
         case SYS_mlock2:
             break;
