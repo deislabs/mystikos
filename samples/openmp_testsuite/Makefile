@@ -31,7 +31,7 @@ define NL
 endef
 
 tests:
-	$(foreach i, $(TESTS), $(MYST_EXEC) rootfs $(i) $(OPTS) $(NL) )
+	$(foreach i, $(TESTS), $(MYST_EXEC) $(ROOTFS) $(i) $(OPTS) $(NL) )
 
 clean:
 	rm -rf appdir image.tar rootfs
