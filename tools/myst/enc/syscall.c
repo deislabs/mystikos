@@ -1582,6 +1582,25 @@ done:
 }
 #endif
 
+#ifdef MYST_ENABLE_HOSTFS
+static long _fsync(int fd)
+{
+    long ret = 0;
+    long retval;
+
+    if (myst_fsync_ocall(&retval, fd) != OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = retval;
+
+done:
+    return ret;
+}
+#endif
+
 long myst_handle_tcall(long n, long params[6])
 {
     const long a = params[0];
@@ -1831,6 +1850,10 @@ long myst_handle_tcall(long n, long params[6])
         case SYS_fdatasync:
         {
             return _fdatasync((int)a);
+        }
+        case SYS_fsync:
+        {
+            return _fsync((int)a);
         }
 #endif
         case SYS_sched_setaffinity:

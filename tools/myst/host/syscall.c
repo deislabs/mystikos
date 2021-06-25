@@ -515,3 +515,8 @@ long myst_fdatasync_ocall(int fd)
 {
     RETURN(fdatasync(fd));
 }
+
+long myst_fsync_ocall(int fd)
+{
+    RETURN(fsync(fd));
+}

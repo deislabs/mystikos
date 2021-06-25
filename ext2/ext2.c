@@ -5496,7 +5496,7 @@ done:
     return ret;
 }
 
-static int _ext2_fdatasync(myst_fs_t* fs, myst_file_t* file)
+static int _ext2_fsync_and_fdatasync(myst_fs_t* fs, myst_file_t* file)
 {
     int ret = 0;
     ext2_t* ext2 = (ext2_t*)fs;
@@ -5505,7 +5505,7 @@ static int _ext2_fdatasync(myst_fs_t* fs, myst_file_t* file)
         ERAISE(-EINVAL);
 
     /* Changes to ext2 files are ephemeral, and are not written
-     to back to the on-disk image. So we treat fdatasync as a NOP */
+     to back to the on-disk image. So we treat fsync and fdatasync as a NOP */
 
 done:
 
@@ -5566,7 +5566,8 @@ static myst_fs_t _base = {
     .fs_lchown = _ext2_lchown,
     .fs_chmod = _ext2_chmod,
     .fs_fchmod = _ext2_fchmod,
-    .fs_fdatasync = _ext2_fdatasync,
+    .fs_fdatasync = _ext2_fsync_and_fdatasync,
+    .fs_fsync = _ext2_fsync_and_fdatasync,
 };
 
 int ext2_create(
