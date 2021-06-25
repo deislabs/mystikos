@@ -1621,6 +1621,62 @@ done:
     return ret;
 }
 
+long myst_syscall_renameat(
+    int olddirfd,
+    const char* oldpath,
+    int newdirfd,
+    const char* newpath)
+{
+    long ret = 0;
+    const char* _oldpath;
+    const char* _newpath;
+    struct locals
+    {
+        char filename[PATH_MAX];
+    };
+    struct locals* locals1 = NULL;
+    struct locals* locals2 = NULL;
+
+    /* if pathname is absolute or AT_FDCWD */
+    if (*oldpath == '/' || olddirfd == AT_FDCWD)
+    {
+        _oldpath = oldpath;
+    }
+    else
+    {
+        if (!(locals1 = malloc(sizeof(struct locals))))
+            ERAISE(-ENOMEM);
+
+        ECHECK(myst_get_absolute_path_from_dirfd(
+            olddirfd, oldpath, locals1->filename, sizeof(locals1->filename)));
+        _oldpath = locals1->filename;
+    }
+    if (*newpath == '/' || newdirfd == AT_FDCWD)
+    {
+        _newpath = newpath;
+    }
+    else
+    {
+        if (!(locals2 = malloc(sizeof(struct locals))))
+            ERAISE(-ENOMEM);
+
+        ECHECK(myst_get_absolute_path_from_dirfd(
+            newdirfd, newpath, locals2->filename, sizeof(locals2->filename)));
+        _newpath = locals2->filename;
+    }
+    ret = myst_syscall_rename(_oldpath, _newpath);
+
+done:
+
+    if (locals1)
+        free(locals1);
+
+    if (locals2)
+        free(locals2);
+
+    return ret;
+}
+
 long myst_syscall_truncate(const char* path, off_t length)
 {
     long ret = 0;
@@ -5058,7 +5114,24 @@ static long _syscall(void* args_)
         case SYS_unlinkat:
             break;
         case SYS_renameat:
-            break;
+        {
+            int olddirfd = (int)x1;
+            const char* oldpath = (const char*)x2;
+            int newdirfd = (int)x3;
+            const char* newpath = (const char*)x4;
+
+            _strace(
+                n,
+                "olddirfd=%d oldpath=\"%s\" newdirfd=%d newpath=\"%s\"",
+                olddirfd,
+                oldpath,
+                newdirfd,
+                newpath);
+
+            BREAK(_return(
+                n,
+                myst_syscall_renameat(olddirfd, oldpath, newdirfd, newpath)));
+        }
         case SYS_linkat:
             break;
         case SYS_symlinkat:
