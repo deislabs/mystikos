@@ -404,6 +404,26 @@ void test_rename(void)
     _passed(__FUNCTION__);
 }
 
+void test_renameat(void)
+{
+    int ret = 0;
+    int olddirfd, newdirfd;
+    // Create directories and files
+    {
+        assert(mkdir("/renameat", 0777) == 0);
+        assert(mkdir("/renameat/dir1", 0777) == 0);
+        assert(_touch("/renameat/dir1/file1", 0600) == 0);
+        assert(access("/renameat/dir1/file1", R_OK) == 0);
+        assert(mkdir("/renameat/dir2", 0777) == 0);
+        assert((olddirfd = open("/renameat/dir1", O_DIRECTORY)) >= 0);
+        assert((newdirfd = open("/renameat/dir2", O_DIRECTORY)) >= 0);
+        assert((renameat(olddirfd, "file1", newdirfd, "file3")) == 0);
+        assert(access("/renameat/dir2/file3", R_OK) == 0);
+    }
+
+    _passed(__FUNCTION__);
+}
+
 void test_truncate(void)
 {
     int fd;
@@ -1002,6 +1022,7 @@ int main(int argc, const char* argv[])
     test_link();
     test_access();
     test_rename();
+    test_renameat();
     test_truncate();
     test_symlink();
     test_tmpfile();
