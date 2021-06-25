@@ -11,6 +11,8 @@ ifdef STRACE
 OPTS += --strace
 endif
 
+OPTS += --memory-size $(HEAP_SIZE)
+
 all: rootfs ext2fs
 
 # docker build time ~1hr. Using prebuilt image.
@@ -41,14 +43,14 @@ clean:
 ##################################
 
 run-ext2:
-	$(MYST) exec ext2fs --roothash=roothash \
-	--memory-size $(HEAP_SIZE) \
+	COMPlus_EnableDiagnostics=0 $(MYST_EXEC) ext2fs \
+	--roothash=roothash $(OPTS) \
 	/coreclr-tests-all/Tests/Core_Root/corerun \
 	/coreclr-tests-all/$(TEST_CASE)
 
 run-ext2-gdb:
-	$(MYST_GDB) --args $(MYST) exec ext2fs --roothash=roothash \
-	--memory-size $(HEAP_SIZE) \
+	COMPlus_EnableDiagnostics=0 $(MYST_GDB) \
+	--args $(MYST_EXEC) ext2fs --roothash=roothash $(OPTS) \
 	/coreclr-tests-all/Tests/Core_Root/corerun \
 	/coreclr-tests-all/$(TEST_CASE)
 
