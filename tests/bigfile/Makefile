@@ -8,7 +8,7 @@ LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 LIBS += $(LIBDIR)/libmystext2.a
 LIBS += $(LIBDIR)/libmystutils.a
 LIBS += $(LIBDIR)/libmysthost.a
-LDFLAGS = -lcrypto
+LIBS += $(BUILDDIR)/openssl/lib/libcrypto.a
 
 all: rootfs bigfile
 

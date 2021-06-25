@@ -1,7 +1,7 @@
 TOP = $(abspath $(CURDIR)/..)
 include $(TOP)/defs.mak
 
-DIRS = openenclave musl mbedtls libc-test gcompat
+DIRS = openenclave musl mbedtls openssl libc-test gcompat
 
 .PHONY: $(DIRS)
 

@@ -23,7 +23,6 @@ CFLAGS += -fprofile-arcs -ftest-coverage
 endif
 
 LDFLAGS = $(OEHOST_LDFLAGS)
-LDFLAGS += -lcrypto
 
 LIBS += $(OEHOST_LIBDIR)/liboehost.a
 LIBS += $(OEHOST_LIBDIR)/liboesignlib.a
@@ -34,6 +33,7 @@ LIBS += $(LIBDIR)/libmysttargetlinux.a
 LIBS += $(LIBDIR)/libmysttargetsgxhost.a
 LIBS += $(LIBDIR)/libmystutils.a
 LIBS += $(MBEDTLS_LIBS)
+LIBS += $(BUILDDIR)/openssl/lib/libcrypto.a
 
 ifdef MYST_ENABLE_GCOV
 LIBS += $(LIBDIR)/libmystgcovserver.a
