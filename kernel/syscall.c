@@ -2794,6 +2794,8 @@ long myst_syscall_fsync(int fd)
     if (type != MYST_FDTABLE_TYPE_FILE)
         ERAISE(-EROFS);
 
+    ECHECK(((myst_fs_t*)device)->fs_fsync(device, (myst_file_t*)object));
+
 done:
     return ret;
 }

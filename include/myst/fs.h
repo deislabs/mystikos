@@ -177,6 +177,8 @@ struct myst_fs
     int (*fs_fchmod)(myst_fs_t* fs, myst_file_t* file, mode_t mode);
 
     int (*fs_fdatasync)(myst_fs_t* fs, myst_file_t* file);
+
+    int (*fs_fsync)(myst_fs_t* fs, myst_file_t* file);
 };
 
 int myst_remove_fd_link(int fd);

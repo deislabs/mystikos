@@ -1205,6 +1205,23 @@ done:
     return ret;
 }
 
+static int _fs_fsync(myst_fs_t* fs, myst_file_t* file)
+{
+    int ret = 0;
+    hostfs_t* hostfs = (hostfs_t*)fs;
+    long tret;
+
+    if (!_hostfs_valid(hostfs) || !_file_valid(file))
+        ERAISE(-EINVAL);
+
+    long params[6] = {file->fd};
+    ECHECK((tret = myst_tcall(SYS_fsync, params)));
+    ret = tret;
+
+done:
+    return ret;
+}
+
 int myst_init_hostfs(myst_fs_t** fs_out)
 {
     int ret = 0;
@@ -1266,6 +1283,7 @@ int myst_init_hostfs(myst_fs_t** fs_out)
         .fs_chmod = _fs_chmod,
         .fs_fchmod = _fs_fchmod,
         .fs_fdatasync = _fs_fdatasync,
+        .fs_fsync = _fs_fsync,
     };
     // clang-format on
 

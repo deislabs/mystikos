@@ -922,6 +922,54 @@ static void test_enotdir()
     _passed(__FUNCTION__);
 }
 
+static void test_fdatasync()
+{
+    int fd = creat("/test_fdatasync", 0666);
+    assert(fd >= 0);
+    struct stat statbuf;
+    int ret = fstat(fd, &statbuf);
+    assert(ret == 0);
+    int init_size = statbuf.st_size;
+    ret = write(fd, alpha, sizeof(alpha));
+    assert(ret == sizeof(alpha));
+    ret = fdatasync(fd);
+    assert(ret == 0);
+    close(fd);
+
+    ret = stat("/test_fdatasync", &statbuf);
+    assert(ret == 0);
+    assert(init_size + sizeof(alpha) == statbuf.st_size);
+
+    _passed(__FUNCTION__);
+}
+
+static void test_fsync()
+{
+    int fd = creat("/test_fsync", 0666);
+    assert(fd >= 0);
+
+    struct stat statbuf;
+    int ret = fstat(fd, &statbuf);
+    assert(ret == 0);
+    struct timespec mtime_0 = statbuf.st_mtim;
+
+    // write should change mtime of the file
+    ret = write(fd, alpha, sizeof(alpha));
+    assert(ret == sizeof(alpha));
+
+    // call fsync to flush file and its metadata to device
+    ret = fsync(fd);
+    assert(ret == 0);
+    close(fd);
+
+    ret = stat("/test_fsync", &statbuf);
+    assert(ret == 0);
+    struct timespec mtime_1 = statbuf.st_mtim;
+    assert(mtime_0.tv_sec == mtime_1.tv_sec);
+
+    _passed(__FUNCTION__);
+}
+
 int main(int argc, const char* argv[])
 {
     if (argc != 2)
@@ -969,6 +1017,8 @@ int main(int argc, const char* argv[])
     test_pwritev_preadv("pwritev64v2");
     test_ioctl();
     test_enotdir();
+    test_fdatasync();
+    test_fsync();
 
     printf("=== passed all tests (%s)\n", argv[0]);
 

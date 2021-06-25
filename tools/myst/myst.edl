@@ -441,6 +441,8 @@ enclave
 
         long myst_fdatasync_ocall(int fd);
 
+        long myst_fsync_ocall(int fd);
+
         /*
         **======================================================================
         **
