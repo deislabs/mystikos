@@ -18,8 +18,11 @@ all: .install
 	touch .build
 
 .configure: .openssl
-	( cd openssl; ./config --prefix=$(INSTALL_PREFIX) )
+	( cd openssl; perl ./Configure linux-x86_64 --prefix=$(INSTALL_PREFIX) )
 	touch .configure
+
+old:
+	( cd openssl; ./conf --prefix=$(INSTALL_PREFIX) )
 
 .openssl:
 	git clone $(URL) -b $(BRANCH)
