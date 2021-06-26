@@ -12,6 +12,7 @@ all:
 rootfs: fork.c
 	mkdir -p $(APPDIR)/bin
 	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/fork fork.c $(LDFLAGS)
+	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/fork_child child.c $(LDFLAGS)
 	$(MYST) mkcpio $(APPDIR) rootfs
 
 ifdef STRACE
@@ -20,7 +21,6 @@ endif
 
 tests: all
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/fork fork
-#	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/fork vfork
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst
