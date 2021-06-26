@@ -466,7 +466,7 @@ int myst_fdtable_get_any(
         if (entry->type == MYST_FDTABLE_TYPE_NONE)
         {
             myst_spin_unlock(&fdtable->lock);
-            ERAISE(-ENOENT);
+            ERAISE(-EBADF);
         }
 
         *type = entry->type;
