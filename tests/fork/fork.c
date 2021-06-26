@@ -148,7 +148,7 @@ int test_fork3(int argc, const char* argv[])
     {
         int wstatus;
         _printf("*** inside parent\n");
-        _printf("Sending signal to shut down child");
+        _printf("Sending signal to shut down child\n");
         kill(pid, SIGKILL);
         _printf("Waiting for child to shutdown\n");
         if (waitpid(pid, &wstatus, 0) != pid)
@@ -181,6 +181,103 @@ int test_fork3(int argc, const char* argv[])
     return 0;
 }
 
+int test_fork4(int argc, const char* argv[])
+{
+    pid_t pid = fork();
+    int variable = 0;
+
+    if (pid < 0)
+    {
+        fprintf(stderr, "%s: fork() failed: %d\n", argv[0], pid);
+        exit(3);
+    }
+    else if (pid == 0)
+    {
+        _printf("*** inside child.. setting variable\n");
+        variable = 1;
+        _printf("Shutting down child\n");
+        exit(1);
+    }
+    else
+    {
+        int wstatus;
+        _printf("*** inside parent\n");
+        _printf("waiting for child to shut down\n");
+        if (waitpid(pid, &wstatus, 0) != pid)
+        {
+            fprintf(stderr, "waitpid on child pid did not return child pid.\n");
+            exit(1);
+        }
+        if (!WIFEXITED(wstatus))
+        {
+            fprintf(stderr, "waitpid WIFEXITED should be set.\n");
+            exit(1);
+        }
+        if (WEXITSTATUS(wstatus) != 1)
+        {
+            fprintf(
+                stderr,
+                "waitpid WEXITSTATUS should be 1 as child did exit(1).\n");
+            exit(1);
+        }
+        if (variable != 0)
+        {
+            fprintf(stderr, "Variable should not be changed.\n");
+            exit(1);
+        }
+        _printf("Shutting down parent\n");
+    }
+    return 0;
+}
+
+int test_fork5(int argc, const char* argv[])
+{
+    pid_t pid = fork();
+
+    if (pid < 0)
+    {
+        fprintf(stderr, "%s: fork() failed: %d\n", argv[0], pid);
+        exit(3);
+    }
+    else if (pid == 0)
+    {
+        _printf("*** inside child.. setting variable\n");
+        const char* path = "/bin/fork_child";
+        if (execl(path, path, NULL) != 0)
+        {
+            fprintf(stderr, "%s: execl() failed: %d\n", path, pid);
+            exit(2);
+        }
+        _printf("Shutting down child\n");
+        exit(2);
+    }
+    else
+    {
+        int wstatus;
+        _printf("*** inside parent\n");
+        _printf("waiting for child to shut down\n");
+        if (waitpid(pid, &wstatus, 0) != pid)
+        {
+            fprintf(stderr, "waitpid on child pid did not return child pid.\n");
+            exit(1);
+        }
+        if (!WIFEXITED(wstatus))
+        {
+            fprintf(stderr, "waitpid WIFEXITED should be set.\n");
+            exit(1);
+        }
+        if (WEXITSTATUS(wstatus) != 10)
+        {
+            fprintf(
+                stderr,
+                "waitpid WEXITSTATUS should be 1 as child did exit(1).\n");
+            exit(1);
+        }
+        _printf("Shutting down parent\n");
+    }
+    return 0;
+}
+
 int main(int argc, const char* argv[])
 {
     if (argc < 2)
@@ -193,6 +290,8 @@ int main(int argc, const char* argv[])
         assert(test_fork1(argc, argv) == 0);
         assert(test_fork2(argc, argv) == 0);
         assert(test_fork3(argc, argv) == 0);
+        assert(test_fork4(argc, argv) == 0);
+        assert(test_fork5(argc, argv) == 0);
     }
     return 0;
 }
