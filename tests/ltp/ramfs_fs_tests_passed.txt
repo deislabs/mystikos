@@ -120,6 +120,7 @@
 /ltp/testcases/kernel/syscalls/statvfs/statvfs01
 /ltp/testcases/kernel/syscalls/symlink/symlink04
 /ltp/testcases/kernel/syscalls/symlink/symlink05
+/ltp/testcases/kernel/syscalls/symlinkat/symlinkat01
 /ltp/testcases/kernel/syscalls/truncate/truncate02
 /ltp/testcases/kernel/syscalls/truncate/truncate02_64
 /ltp/testcases/kernel/syscalls/utime/utime01

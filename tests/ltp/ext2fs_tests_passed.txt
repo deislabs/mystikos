@@ -271,6 +271,7 @@
 /ltp/testcases/kernel/syscalls/symlink/symlink01
 /ltp/testcases/kernel/syscalls/symlink/symlink04
 /ltp/testcases/kernel/syscalls/symlink/symlink05
+/ltp/testcases/kernel/syscalls/symlinkat/symlinkat01
 /ltp/testcases/kernel/syscalls/syscall/syscall01
 /ltp/testcases/kernel/syscalls/sysconf/sysconf01
 /ltp/testcases/kernel/syscalls/sysinfo/sysinfo01

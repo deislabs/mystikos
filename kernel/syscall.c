@@ -848,6 +848,9 @@ long myst_get_absolute_path_from_dirfd(
     }* locals = NULL;
 
     myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_fdtable_type_t type;
+    void* device = NULL;
+    void* object = NULL;
     myst_fs_t* fs;
     myst_file_t* file;
 
@@ -856,6 +859,11 @@ long myst_get_absolute_path_from_dirfd(
 
     if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
+
+    /* first check dirfd is of file type, e.g. not tty */
+    ECHECK(myst_fdtable_get_any(fdtable, dirfd, &type, &device, &object));
+    if (type != MYST_FDTABLE_TYPE_FILE)
+        ERAISE(-ENOTDIR);
 
     /* get the file object for the dirfd */
     ECHECK(myst_fdtable_get_file(fdtable, dirfd, &fs, &file));
@@ -1870,6 +1878,41 @@ long myst_syscall_symlink(const char* target, const char* linkpath)
 
     ECHECK(myst_mount_resolve(linkpath, locals->suffix, &fs));
     ERAISE((*fs->fs_symlink)(fs, target, locals->suffix));
+
+done:
+
+    if (locals)
+        free(locals);
+
+    return ret;
+}
+
+long myst_syscall_symlinkat(
+    const char* target,
+    int newdirfd,
+    const char* linkpath)
+{
+    long ret = 0;
+    struct locals
+    {
+        char abspath[PATH_MAX];
+    };
+    struct locals* locals = NULL;
+
+    /* If linkpath is absolute, then ignore dirfd */
+    if (*linkpath == '/' || newdirfd == AT_FDCWD)
+    {
+        ret = myst_syscall_symlink(target, linkpath);
+    }
+    else
+    {
+        if (!(locals = malloc(sizeof(struct locals))))
+            ERAISE(-ENOMEM);
+
+        ECHECK(myst_get_absolute_path_from_dirfd(
+            newdirfd, linkpath, locals->abspath, sizeof(locals->abspath)));
+        ret = myst_syscall_symlink(target, locals->abspath);
+    }
 
 done:
 
@@ -5272,7 +5315,21 @@ static long _syscall(void* args_)
         case SYS_linkat:
             break;
         case SYS_symlinkat:
-            break;
+        {
+            const char* target = (const char*)x1;
+            int newdirfd = (int)x2;
+            const char* linkpath = (const char*)x3;
+
+            _strace(
+                n,
+                "target=%s newdirfd=%d linkpath=%s",
+                target,
+                newdirfd,
+                linkpath);
+
+            BREAK(
+                _return(n, myst_syscall_symlinkat(target, newdirfd, linkpath)));
+        }
         case SYS_readlinkat:
         {
             int dirfd = (int)x1;

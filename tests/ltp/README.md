@@ -1247,7 +1247,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/symlink/symlink03 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/symlink/symlink04 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/symlink/symlink05 | 1 | 1 | 1 |
-| /ltp/testcases/kernel/syscalls/symlinkat/symlinkat01 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/symlinkat/symlinkat01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/sync/sync01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/sync_file_range/sync_file_range01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/sync_file_range/sync_file_range02 | 0 | 0 | 0 |

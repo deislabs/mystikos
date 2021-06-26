@@ -227,7 +227,6 @@
 /ltp/testcases/kernel/syscalls/splice/splice03:  SYS_splice()
 /ltp/testcases/kernel/syscalls/statx/statx02:  SYS_statx()
 /ltp/testcases/kernel/syscalls/statx/statx03:  SYS_statx()
-/ltp/testcases/kernel/syscalls/symlinkat/symlinkat01:  SYS_symlinkat()
 /ltp/testcases/kernel/syscalls/sync_file_range/sync_file_range01:  SYS_sync_file_range()
 /ltp/testcases/kernel/syscalls/sysctl/sysctl01:  SYS__sysctl()
 /ltp/testcases/kernel/syscalls/sysctl/sysctl03:  SYS__sysctl()
