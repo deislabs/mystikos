@@ -111,31 +111,23 @@ done:
 
 void myst_signal_free_siginfos(myst_thread_t* thread)
 {
-    uint64_t unblocked = MYST_SIG_UNBLOCKED(thread->signal.mask);
-    uint64_t active_signals = thread->signal.pending & unblocked;
-
-    while (active_signals != 0)
+    for (int i = 0; i < NSIG - 1; i++)
     {
-        unsigned bitnum = __builtin_ctzl(active_signals);
-
-        while (thread->signal.siginfos[bitnum])
+        if (thread->signal.siginfos[i])
         {
-            struct siginfo_list_item* next =
-                thread->signal.siginfos[bitnum]->next;
-
-            if (thread->signal.siginfos[bitnum]->siginfo)
+            for (struct siginfo_list_item* p = thread->signal.siginfos[i]; p;)
             {
-                free(thread->signal.siginfos[bitnum]->siginfo);
-                thread->signal.siginfos[bitnum]->siginfo = NULL;
+                struct siginfo_list_item* next = p->next;
+                if (p->siginfo)
+                {
+                    free(p->siginfo);
+                    p->siginfo = NULL;
+                }
+                free(p);
+                p = next;
             }
-            free(thread->signal.siginfos[bitnum]);
-            thread->signal.siginfos[bitnum] = next;
         }
-
-        // Clear the bit from the active signals. We are ready for the next.
-        active_signals &= ~((uint64_t)1 << bitnum);
-        // Clear the pending bit.
-        thread->signal.pending &= ~((uint64_t)1 << bitnum);
+        thread->signal.siginfos[i] = NULL;
     }
 }
 
