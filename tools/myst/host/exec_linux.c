@@ -191,8 +191,9 @@ myst_kernel_args_t kernel_args;
 
 static void _sigaction_handler(int sig, siginfo_t* si, void* context)
 {
-    mcontext_t* mcontext = (mcontext_t*)context;
-    kernel_args.myst_handle_host_signal(si, mcontext);
+    ucontext_t* ucontext = (ucontext_t*)context;
+    mcontext_t mcontext = ucontext->uc_mcontext;
+    kernel_args.myst_handle_host_signal(si, &mcontext);
 }
 
 static void _install_signal_handlers()
@@ -202,11 +203,11 @@ static void _install_signal_handlers()
     sigemptyset(&sa.sa_mask);
     sa.sa_sigaction = _sigaction_handler;
     if (sigaction(SIGSEGV, &sa, NULL) == -1)
-        _err("Failed to reguster SIGSEGV signal handler\n");
+        _err("Failed to register SIGSEGV signal handler\n");
     if (sigaction(SIGILL, &sa, NULL) == -1)
-        _err("Failed to reguster SIGILL signal handler\n");
+        _err("Failed to register SIGILL signal handler\n");
     if (sigaction(SIGFPE, &sa, NULL) == -1)
-        _err("Failed to reguster SIGFPE signal handler\n");
+        _err("Failed to register SIGFPE signal handler\n");
 }
 
 /* the address of this is eventually passed to futex (uaddr argument) */
