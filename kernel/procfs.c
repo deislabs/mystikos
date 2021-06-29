@@ -40,7 +40,7 @@ int procfs_setup()
         ERAISE(-EINVAL);
     }
 
-    if (myst_mount(_procfs, "/", "/proc") != 0)
+    if (myst_mount(_procfs, "/", "/proc", false) != 0)
     {
         myst_eprintf("cannot mount proc file system\n");
         ERAISE(-EINVAL);

@@ -78,7 +78,8 @@ static int _process_mount_configuration(myst_mounts_config_t* mounts)
             mounts->mounts[i].target,
             mounts->mounts[i].fs_type,
             0,
-            NULL);
+            NULL,
+            true);
         if (ret != 0)
         {
             myst_eprintf(
@@ -255,7 +256,7 @@ static int _init_tmpfs(const char* target, myst_fs_t** fs_out)
         ERAISE(-EINVAL);
     }
 
-    if (myst_mount(fs, "/", target) != 0)
+    if (myst_mount(fs, "/", target, false) != 0)
     {
         myst_eprintf("cannot mount %s\n", target);
         ERAISE(-EINVAL);
@@ -305,7 +306,7 @@ static int _setup_ramfs(void)
         ERAISE(-EINVAL);
     }
 
-    if (myst_mount(_fs, "/", "/") != 0)
+    if (myst_mount(_fs, "/", "/", false) != 0)
     {
         myst_eprintf("cannot mount root file system\n");
         ERAISE(-EINVAL);
@@ -331,7 +332,7 @@ static int _setup_ext2(const char* rootfs, char* err, size_t err_size)
         ERAISE(-EINVAL);
     }
 
-    if (myst_mount(_fs, rootfs, "/") != 0)
+    if (myst_mount(_fs, rootfs, "/", false) != 0)
     {
         snprintf(err, err_size, "cannot mount EXT2 rootfs: %s", rootfs);
         ERAISE(-EINVAL);
@@ -359,7 +360,7 @@ static int _setup_hostfs(const char* rootfs, char* err, size_t err_size)
         ERAISE(-EINVAL);
     }
 
-    if (myst_mount(_fs, rootfs, "/") != 0)
+    if (myst_mount(_fs, rootfs, "/", false) != 0)
     {
         snprintf(err, err_size, "cannot mount HOSTFS rootfs: %s", rootfs);
         ERAISE(-EINVAL);
@@ -904,6 +905,9 @@ int myst_enter_kernel(myst_kernel_args_t* args)
 #ifdef USE_TMPFS
     _teardown_tmpfs();
 #endif
+
+    /* Tear down all auto-mounted file systems */
+    myst_teardown_auto_mounts();
 
     /* Tear down the proc file system */
     procfs_teardown();
