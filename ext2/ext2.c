@@ -4052,7 +4052,6 @@ int ext2_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
         ext2_inode_t old_inode;
         ext2_inode_t new_inode;
         ext2_dirent_t ent;
-        ext2_inode_t __inode;
     };
     struct locals* locals = NULL;
     ext2_ino_t old_dino;
