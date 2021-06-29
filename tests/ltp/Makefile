@@ -206,3 +206,6 @@ endif
 
 t:
 	make one FS=ramfs TEST=/ltp/testcases/kernel/syscalls/setsockopt/setsockopt02
+
+tt:
+	make one TEST=/ltp/testcases/kernel/syscalls/rename/rename03

@@ -1146,10 +1146,6 @@ static const ext2_dirent_t* _find_dirent(
     {
         const ext2_dirent_t* ent = (const ext2_dirent_t*)p;
 
-        /* assert if the directory is corrupted */
-        assert(ent->rec_len != 0);
-        assert(ent->name_len != 0);
-
         if (_streq(ent->name, ent->name_len, name, len))
             return ent;
 
@@ -4040,6 +4036,7 @@ done:
     return ret;
 }
 
+#if 0
 int ext2_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
 {
     int ret = 0;
@@ -4122,9 +4119,7 @@ int ext2_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
         }
 
         /* unlink newpath */
-        ECHECK(_remove_dirent(
-            ext2, new_dino, &locals->new_dinode, locals->new_filename));
-
+        ECHECK(_remove_dirent(ext2, newpath));
         ECHECK(_inode_unlink(ext2, new_ino, &locals->new_inode));
     }
     else
@@ -4146,8 +4141,7 @@ int ext2_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
     file_type = _mode_to_file_type(locals->old_inode.i_mode);
 
     /* remove the oldpath directory entry */
-    ECHECK(_remove_dirent(
-        ext2, old_dino, &locals->old_dinode, locals->old_filename));
+    ECHECK(_remove_dirent(ext2, oldpath));
 
     /* initialize the new directory entry with the old inode */
     _dirent_init(&locals->ent, old_ino, file_type, locals->new_filename);
@@ -4188,6 +4182,158 @@ done:
 
     return ret;
 }
+#else
+int ext2_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
+{
+    int ret = 0;
+    ext2_t* ext2 = (ext2_t*)fs;
+    struct locals
+    {
+        char old_dirname[PATH_MAX];
+        char old_filename[PATH_MAX];
+        char new_dirname[PATH_MAX];
+        char new_filename[PATH_MAX];
+        char suffix[PATH_MAX];
+        ext2_inode_t old_dinode;
+        ext2_inode_t new_dinode;
+        ext2_inode_t old_inode;
+        ext2_inode_t new_inode;
+        ext2_dirent_t ent;
+        ext2_inode_t __inode;
+    };
+    struct locals* locals = NULL;
+    ext2_ino_t old_dino;
+    ext2_ino_t old_ino;
+    ext2_ino_t new_dino;
+    ext2_ino_t new_ino;
+    uint8_t file_type;
+    myst_fs_t* tfs = NULL;
+
+    /* ATTN: check attempt to make subdirectory a directory of itself */
+    /* ATTN: check where newpath contains a prefix of oldpath */
+    /* ATTN: handle renaming of symbolic links */
+
+    if (!_ext2_valid(ext2) || !oldpath || !newpath)
+        ERAISE(-EINVAL);
+
+    if (!(locals = malloc(sizeof(struct locals))))
+        ERAISE(-ENOMEM);
+
+    /* Split oldpath and newpath */
+    ECHECK(_split_path(newpath, locals->new_dirname, locals->new_filename));
+    ECHECK(_split_path(oldpath, locals->old_dirname, locals->old_filename));
+
+    /* find the oldpath inode */
+    ECHECK(_path_to_inode(
+        ext2,
+        oldpath,
+        FOLLOW,
+        &old_dino,
+        &old_ino,
+        &locals->old_dinode,
+        &locals->old_inode,
+        locals->suffix,
+        &tfs));
+    if (tfs)
+    {
+        /* delegate operation to target filesystem */
+        ECHECK(tfs->fs_rename(tfs, locals->suffix, newpath));
+        goto done;
+    }
+
+    /* find the newpath inode if it exists */
+    if (_path_to_inode(
+            ext2,
+            newpath,
+            FOLLOW,
+            &new_dino,
+            &new_ino,
+            &locals->new_dinode,
+            &locals->new_inode,
+            NULL,
+            NULL) == 0)
+    {
+        /* succeed if oldpath and newpath refer to the same inode */
+        if (new_ino == old_ino)
+            goto done;
+
+        /* if oldpath is a directory, newpath must be an empty directory */
+        if (S_ISDIR(locals->old_inode.i_mode))
+        {
+            ECHECK(
+                _inode_test_empty_directory(ext2, new_ino, &locals->new_inode));
+            locals->new_inode.i_links_count--;
+        }
+
+        /* unlink newpath */
+        ECHECK(_remove_dirent(
+            ext2, new_dino, &locals->new_dinode, locals->new_filename));
+        ECHECK(_inode_unlink(ext2, new_ino, &locals->new_inode));
+    }
+    else
+    {
+        /* newpath does not exist so find its parent directory */
+        ECHECK(_path_to_inode(
+            ext2,
+            locals->new_dirname,
+            FOLLOW,
+            NULL,
+            &new_dino,
+            NULL,
+            &locals->new_dinode,
+            NULL,
+            NULL));
+    }
+
+    /* determine the file type */
+    file_type = _mode_to_file_type(locals->old_inode.i_mode);
+
+    /* remove the oldpath directory entry */
+    /* reload fresh copy of the directory inode */
+
+    /* remove the entry from the old directory */
+    ECHECK(_remove_dirent(
+        ext2, old_dino, &locals->old_dinode, locals->old_filename));
+
+    /* initialize the new directory entry with the old inode */
+    _dirent_init(&locals->ent, old_ino, file_type, locals->new_filename);
+
+    /* add the new directory entry */
+    ECHECK(_add_dirent(
+        ext2,
+        new_dino,
+        &locals->new_dinode,
+        locals->new_filename,
+        &locals->ent));
+
+    /* if oldpath is a directory, update old directory inode */
+    if (S_ISDIR(locals->old_inode.i_mode))
+    {
+        _update_timestamps(&locals->old_dinode, CHANGE);
+        ECHECK(_write_inode(ext2, old_dino, &locals->old_dinode));
+
+        /* don't update links if directory already existed */
+        if (!new_dino)
+        {
+            locals->new_dinode.i_links_count++;
+            _update_timestamps(&locals->new_dinode, CHANGE);
+            ECHECK(_write_inode(ext2, new_dino, &locals->new_dinode));
+        }
+    }
+
+    _update_timestamps(&locals->old_inode, CHANGE);
+    ECHECK(_write_inode(ext2, old_ino, &locals->old_inode));
+
+    /* ATTN: update directory parent pointer ("..") */
+
+done:
+
+    if (locals)
+        free(locals);
+
+    return ret;
+}
+#endif
 
 int ext2_fstat(myst_fs_t* fs, myst_file_t* file, struct stat* statbuf)
 {
@@ -4478,19 +4624,19 @@ int ext2_rmdir(myst_fs_t* fs, const char* path)
 {
     int ret = 0;
     ext2_t* ext2 = (ext2_t*)fs;
-    ext2_ino_t ino;
     ext2_ino_t dino;
+    ext2_ino_t ino;
     void* data = NULL;
     size_t size;
     myst_fs_t* tfs = NULL;
     struct locals
     {
         char suffix[PATH_MAX];
+        ext2_inode_t dinode;
+        ext2_inode_t inode;
+        myst_file_t file;
         char dirname[PATH_MAX];
         char filename[PATH_MAX];
-        ext2_inode_t inode;
-        ext2_inode_t dinode;
-        myst_file_t file;
     };
     struct locals* locals = NULL;
 
