@@ -9,12 +9,6 @@
 #include <myst/kernel.h>
 #include <myst/types.h>
 
-typedef struct _myst_mount_mapping
-{
-    char** mounts; /* array of source=target */
-    size_t mounts_count;
-} myst_mount_mapping_t;
-
 typedef struct myst_options
 {
     bool trace_errors;
@@ -28,7 +22,6 @@ typedef struct myst_options
     char rootfs[PATH_MAX];
 
     myst_host_enc_uid_gid_mappings host_enc_uid_gid_mappings;
-    myst_mount_mapping_t mount_mapping;
 } myst_options_t;
 
 extern myst_options_t __options;

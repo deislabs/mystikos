@@ -7,14 +7,16 @@
 #include <libgen.h>
 #include <limits.h>
 #include <malloc.h>
-#include <myst/getopt.h>
-#include <myst/strings.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
 #include <unistd.h>
+
+#include <myst/args.h>
+#include <myst/getopt.h>
+#include <myst/strings.h>
 
 #include "utils.h"
 
@@ -301,7 +303,7 @@ int cli_get_mapping_opts(
 int cli_get_mount_mapping_opts(
     int* argc,
     const char* argv[],
-    myst_mount_mapping_t* mappings)
+    myst_args_t* mounts_buff)
 {
     bool found;
 
@@ -312,40 +314,10 @@ int cli_get_mount_mapping_opts(
         found = false;
         if (cli_getopt(argc, argv, "--mount", &arg) == 0)
         {
-            if (mappings->mounts_count == 0)
-            {
-                mappings->mounts = calloc(1, sizeof(char*));
-                if (mappings->mounts == NULL)
-                    _err("Out of memory\n");
-            }
-            else
-            {
-                char** tmp = reallocarray(
-                    mappings->mounts,
-                    mappings->mounts_count + 1,
-                    sizeof(char*));
-                if (tmp == NULL)
-                    _err("Out of memory\n");
-                mappings->mounts = tmp;
-            }
-            mappings->mounts[mappings->mounts_count] = strdup(arg);
-            mappings->mounts_count++;
+            myst_args_append1(mounts_buff, arg);
             found = 1;
         }
     } while (found);
 
     return 0;
-}
-
-void free_mount_mapping_opts(myst_mount_mapping_t* mappings)
-{
-    if (mappings->mounts)
-    {
-        int i;
-        for (i = 0; i < mappings->mounts_count; i++)
-        {
-            free(mappings->mounts[i]);
-        }
-        free(mappings->mounts);
-    }
 }

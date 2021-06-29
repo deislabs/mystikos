@@ -83,10 +83,13 @@ struct options
     size_t heap_size;
     const char* app_config_path;
     myst_host_enc_uid_gid_mappings host_enc_uid_gid_mappings;
-    myst_mount_mapping_t mount_mappings;
 };
 
-static void _get_options(int* argc, const char* argv[], struct options* opts)
+static void _get_options(
+    int* argc,
+    const char* argv[],
+    myst_args_t* mount_mappings,
+    struct options* opts)
 {
     memset(opts, 0, sizeof(struct options));
 
@@ -94,7 +97,7 @@ static void _get_options(int* argc, const char* argv[], struct options* opts)
     cli_get_mapping_opts(argc, argv, &opts->host_enc_uid_gid_mappings);
 
     // retrieve mount mapping options
-    cli_get_mount_mapping_opts(argc, argv, &opts->mount_mappings);
+    cli_get_mount_mapping_opts(argc, argv, mount_mappings);
 
     /* Get --trace-syscalls option */
     if (cli_getopt(argc, argv, "--trace-syscalls", NULL) == 0 ||
@@ -218,6 +221,7 @@ static int _enter_kernel(
     const char* argv[],
     int envc,
     const char* envp[],
+    myst_args_t* mount_mappings,
     struct options* options,
     const void* mmap_addr,
     size_t mmap_length,
@@ -273,7 +277,7 @@ static int _enter_kernel(
 
                 /* Add mount source paths to config read mount points */
                 if (!myst_merge_mount_mapping_and_config(
-                        &pd.mounts, &options->mount_mappings) ||
+                        &pd.mounts, mount_mappings) ||
                     !myst_validate_mount_config(&pd.mounts))
                     ERAISE(-EINVAL);
 
@@ -383,11 +387,12 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
     void* mmap_addr = NULL;
     size_t mmap_length = 0;
     char err[256];
+    myst_args_t mount_mappings = {0};
 
     (void)program_arg;
 
     /* Get the command-line options */
-    _get_options(&argc, argv, &opts);
+    _get_options(&argc, argv, &mount_mappings, &opts);
 
     /* Get --pubkey=filename options */
     get_archive_options(
@@ -473,6 +478,7 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
             argv,
             envc,
             envp,
+            &mount_mappings,
             &opts,
             mmap_addr,
             mmap_length,
@@ -484,7 +490,7 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
         _err("%s", err);
     }
 
-    free_mount_mapping_opts(&opts.mount_mappings);
+    myst_args_release(&mount_mappings);
 
     free_region_details();
 

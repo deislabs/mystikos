@@ -1,11 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "shared.h"
+
+#include <myst/args.h>
 
 int myst_expand_size_string_to_ulong(const char* size_string, size_t* size)
 {
@@ -40,17 +41,19 @@ int myst_expand_size_string_to_ulong(const char* size_string, size_t* size)
 
 bool myst_merge_mount_mapping_and_config(
     myst_mounts_config_t* mounts,
-    myst_mount_mapping_t* mount_mapping)
+    myst_args_t* mount_mapping)
 {
     bool ret = false;
 
-    for (size_t i = 0; i < mount_mapping->mounts_count; i++)
+    for (size_t i = 0; i < mount_mapping->size; i++)
     {
         char* source;
         char* target;
         bool found = false;
-        source = strtok(mount_mapping->mounts[i], "=");
-        target = strtok(NULL, "");
+        char* save;
+
+        source = strtok_r((char*)(mount_mapping->data[i]), "=", &save);
+        target = strtok_r(NULL, "", &save);
         if (target)
         {
             for (size_t j = 0; j < mounts->mounts_count; j++)

@@ -18,6 +18,7 @@
 #include <syscall.h>
 #include <unistd.h>
 
+#include <myst/args.h>
 #include <myst/buf.h>
 #include <myst/cpio.h>
 #include <myst/eraise.h>
@@ -130,6 +131,7 @@ int exec_launch_enclave(
     uint32_t flags,
     const char* argv[],
     const char* envp[],
+    const myst_args_t* mount_mappings,
     struct myst_options* options)
 {
     oe_result_t r;
@@ -137,6 +139,7 @@ int exec_launch_enclave(
     static int _event; /* the main-thread event (used by futex: uaddr) */
     myst_buf_t argv_buf = MYST_BUF_INITIALIZER;
     myst_buf_t envp_buf = MYST_BUF_INITIALIZER;
+    myst_buf_t mount_mappings_buf = MYST_BUF_INITIALIZER;
     pid_t target_tid = (pid_t)syscall(SYS_gettid);
 
     /* Load the enclave: calls oe_load_extra_enclave_data_hook() */
@@ -153,6 +156,16 @@ int exec_launch_enclave(
     if (myst_buf_pack_strings(&envp_buf, envp, _count_args(envp)) != 0)
         _err("failed to serialize envp stings");
 
+    /* Serialize the argv[] strings */
+    if (mount_mappings->data)
+    {
+        if (myst_buf_pack_strings(
+                &mount_mappings_buf,
+                mount_mappings->data,
+                mount_mappings->size) != 0)
+            _err("failed to serialize mapping parameter stings");
+    }
+
     /* Get clock times right before entering the enclave */
     shm_create_clock(&shared_memory, CLOCK_TICK);
 
@@ -166,6 +179,8 @@ int exec_launch_enclave(
         argv_buf.size,
         envp_buf.data,
         envp_buf.size,
+        mount_mappings_buf.data,
+        mount_mappings_buf.size,
         (uint64_t)&_event,
         target_tid);
     if (r != OE_OK)
@@ -180,6 +195,7 @@ int exec_launch_enclave(
 
     free(argv_buf.data);
     free(envp_buf.data);
+    free(mount_mappings_buf.data);
 
     return retval;
 }
@@ -232,6 +248,7 @@ int exec_action(int argc, const char* argv[], const char* envp[])
     char rootfs_path[] = "/tmp/mystXXXXXX";
     uint64_t heap_size = 0;
     const char* commandline_config = NULL;
+    myst_args_t mount_mapping = {0};
 
     assert(strcmp(argv[1], "exec") == 0 || strcmp(argv[1], "exec-sgx") == 0);
 
@@ -243,7 +260,7 @@ int exec_action(int argc, const char* argv[], const char* envp[])
         cli_get_mapping_opts(&argc, argv, &options.host_enc_uid_gid_mappings);
 
         // retrieve mount mapping options
-        cli_get_mount_mapping_opts(&argc, argv, &options.mount_mapping);
+        cli_get_mount_mapping_opts(&argc, argv, &mount_mapping);
 
         /* Get --trace-syscalls option */
         if (cli_getopt(&argc, argv, "--trace-syscalls", NULL) == 0 ||
@@ -417,9 +434,14 @@ int exec_action(int argc, const char* argv[], const char* envp[])
     unlink(archive_path);
 
     return_status = exec_launch_enclave(
-        details->enc.path, type, flags, argv + 3, envp, &options);
-
-    free_mount_mapping_opts(&options.mount_mapping);
+        details->enc.path,
+        type,
+        flags,
+        argv + 3,
+        envp,
+        &mount_mapping,
+        &options);
+    myst_args_release(&mount_mapping);
 
     free_region_details();
 
