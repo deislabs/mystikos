@@ -4146,9 +4146,6 @@ int ext2_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
     file_type = _mode_to_file_type(locals->old_inode.i_mode);
 
     /* remove the oldpath directory entry */
-    /* reload fresh copy of the directory inode */
-
-    /* remove the entry from the old directory */
     ECHECK(_remove_dirent(
         ext2, old_dino, &locals->old_dinode, locals->old_filename));
 
