@@ -4,6 +4,7 @@
 #ifndef _HOST_MYST_UTILS_H
 #define _HOST_MYST_UTILS_H
 
+#include <myst/args.h>
 #include <myst/defs.h>
 #include <myst/kernel.h>
 #include <myst/options.h>
@@ -46,8 +47,7 @@ int cli_get_mapping_opts(
 int cli_get_mount_mapping_opts(
     int* argc,
     const char* argv[],
-    myst_mount_mapping_t* mappings);
-void free_mount_mapping_opts(myst_mount_mapping_t* mappings);
+    myst_args_t* mappings);
 
 long myst_add_symbol_file_by_path(
     const char* path,

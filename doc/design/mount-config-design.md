@@ -58,7 +58,7 @@ mount: [
 
 | Name | Value |
 | -- | -- |
-| target | This is the target mount point within the TEE. |
+| target | This is the target mount point within the TEE. This mount point path needs to already exist in the TEE filesystem. |
 | type | "ext2", "hostfs", "ramfs" |
 | flags | Optional field that specified flags like "ro", "rw". At this time no flags are supported. |
 | publicKey | For ext2 filesystems this is the public key used to validate the signing key of the ext2 filesystem when it is mounted. This configuration is not currently supported. |
@@ -85,7 +85,7 @@ The following new command line argument will be added:
 | Name | Value |
 | -- | -- |
 | source | This is the source location of the mount in the insecure host. |
-| target | This is the mount point within the TEE. There needs to be an associated target mount configuration specified at signing for this location otherwise the mount will fail. |
+| target | This is the mount point within the TEE. There needs to be an associated target mount configuration specified at signing for this location otherwise the mount will fail. This mount point path needs to already exist in the TEE filesystem. |
 | | |
 
 The target location is part of the TEE measurement which specifies that the target directory is being accessed from an insecure source.
@@ -103,7 +103,6 @@ Other than the specification of the rootfs during launch there is no automatic w
 ## Design
 
 During the signing of the application through sign-sgx or package-sgx commands via the myst command line tool the TEE mount configuration from the json configuration file is added to the signed application image and cannot be changed.
-
 
 On a host machine or container the application will be run either as an application in a directory with signed binaries, or via the self contained package binary.
 The new mount commandline parameter will be added to whatever command was used before, with one mount parameter option per mount point.

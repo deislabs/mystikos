@@ -130,3 +130,8 @@ tests/syscall_exception/appdir/
 tests/polleventfd/appdir/
 tests/mutex/appdir/
 tests/eventfd/appdir/
+tests/myst/auto-mount/ext2rootfs
+tests/myst/auto-mount/roothash
+tests/futex/futex
+tests/ext2/plain/test_read_write
+tests/dotnet-proc-maps/stdout.txt

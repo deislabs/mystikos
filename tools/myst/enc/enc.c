@@ -440,6 +440,8 @@ struct enter_arg
     size_t argv_size;
     const void* envp_data;
     size_t envp_size;
+    const void* mount_mappings_data;
+    size_t mount_mappings_size;
     uint64_t event;
     pid_t target_tid;
 };
@@ -605,10 +607,27 @@ static long _enter(void* arg_)
     }
 
     /* Add mount source paths to config read mount points */
-    if (have_config && (!myst_merge_mount_mapping_and_config(
-                            &parsed_config.mounts, &options->mount_mapping) ||
-                        !myst_validate_mount_config(&parsed_config.mounts)))
-        goto done;
+    {
+        myst_args_t tmp = {0};
+
+        if (myst_args_unpack(
+                &tmp, arg->mount_mappings_data, arg->mount_mappings_size) != 0)
+        {
+            fprintf(stderr, "Failed to unpack mapping parameters\n");
+            goto done;
+        }
+
+        if (have_config && (!myst_merge_mount_mapping_and_config(
+                                &parsed_config.mounts, &tmp) ||
+                            !myst_validate_mount_config(&parsed_config.mounts)))
+        {
+            fprintf(
+                stderr,
+                "Failed to merge mounting configuration with command line "
+                "mount parameters\n");
+            goto done;
+        }
+    }
 
     if (options)
     {
@@ -734,6 +753,8 @@ int myst_enter_ecall(
     size_t argv_size,
     const void* envp_data,
     size_t envp_size,
+    const void* mount_mappings,
+    size_t mount_mappings_size,
     uint64_t event,
     pid_t target_tid)
 {
@@ -744,6 +765,8 @@ int myst_enter_ecall(
         .argv_size = argv_size,
         .envp_data = envp_data,
         .envp_size = envp_size,
+        .mount_mappings_data = mount_mappings,
+        .mount_mappings_size = mount_mappings_size,
         .event = event,
         .target_tid = target_tid,
     };

@@ -4,6 +4,7 @@
 #ifndef _MYST_HOST_EXEC_H
 #define _MYST_HOST_EXEC_H
 
+#include <myst/args.h>
 #include <myst/options.h>
 
 int exec_action(int argc, const char* argv[], const char* envp[]);
@@ -14,6 +15,7 @@ int exec_launch_enclave(
     uint32_t flags,
     const char* argv[],
     const char* envp[],
+    const myst_args_t* mount_mappings,
     struct myst_options* options);
 
 #endif /* _MYST_HOST_EXEC_H */

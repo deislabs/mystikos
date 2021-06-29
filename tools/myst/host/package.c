@@ -13,6 +13,7 @@
 #include <sys/user.h>
 #include <unistd.h>
 
+#include <myst/args.h>
 #include <myst/elf.h>
 #include <myst/getopt.h>
 #include <myst/strings.h>
@@ -544,6 +545,7 @@ int _exec_package(
     char* unpack_dir = NULL;
     int ret = -1;
     const char** exec_args = NULL;
+    myst_args_t mount_mappings = {0};
 
     /* Get options */
     {
@@ -551,7 +553,7 @@ int _exec_package(
         cli_get_mapping_opts(&argc, argv, &options.host_enc_uid_gid_mappings);
 
         // retrieve mount mapping options
-        cli_get_mount_mapping_opts(&argc, argv, &options.mount_mapping);
+        cli_get_mount_mapping_opts(&argc, argv, &mount_mappings);
 
         /* Get --trace-syscalls option */
         if (cli_getopt(&argc, argv, "--trace-syscalls", NULL) == 0 ||
@@ -828,7 +830,7 @@ int _exec_package(
     }
 
     ret = exec_launch_enclave(
-        scratch_path, type, flags, exec_args, envp, &options);
+        scratch_path, type, flags, exec_args, envp, &mount_mappings, &options);
     if (ret != 0)
     {
         fprintf(stderr, "Enclave %s returned %d\n", scratch_path, ret);
@@ -836,7 +838,7 @@ int _exec_package(
     }
 
 done:
-    free_mount_mapping_opts(&options.mount_mapping);
+    myst_args_release(&mount_mappings);
 
     if (unpack_dir)
         remove_recursive(unpack_dir);
