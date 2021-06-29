@@ -8,10 +8,17 @@
 #include <myst/fs.h>
 
 /* Mount a file system onto a target path */
-int myst_mount(myst_fs_t* fs, const char* source, const char* target);
+int myst_mount(
+    myst_fs_t* fs,
+    const char* source,
+    const char* target,
+    bool is_auto);
 
 /* Unmount the file system that is mounted on target */
 int myst_umount(const char* target);
+
+/* Unmount all auto-mounted file systems */
+int myst_teardown_auto_mounts();
 
 /* Use mounter to resolve this path to a target path */
 int myst_mount_resolve(const char* path, char suffix[PATH_MAX], myst_fs_t** fs);

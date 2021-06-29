@@ -4726,7 +4726,7 @@ static long _syscall(void* args_)
                 data);
 
             ret = myst_syscall_mount(
-                source, target, filesystemtype, mountflags, data);
+                source, target, filesystemtype, mountflags, data, false);
 
             BREAK(_return(n, ret));
         }

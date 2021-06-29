@@ -37,6 +37,7 @@ typedef struct mount_table_entry
     size_t path_size;
     myst_fs_t* fs;
     uint32_t flags;
+    bool is_auto;
 } mount_table_entry_t;
 
 static mount_table_entry_t _mount_table[MOUNT_TABLE_SIZE];
@@ -141,7 +142,11 @@ done:
     return ret;
 }
 
-int myst_mount(myst_fs_t* fs, const char* source, const char* target)
+int myst_mount(
+    myst_fs_t* fs,
+    const char* source,
+    const char* target,
+    bool is_auto)
 {
     int ret = -1;
     bool locked = false;
@@ -216,6 +221,7 @@ int myst_mount(myst_fs_t* fs, const char* source, const char* target)
         mount_table_entry.path_size = strlen(target) + 1;
         mount_table_entry.fs = fs;
         mount_table_entry.flags = 0;
+        mount_table_entry.is_auto = is_auto;
     }
 
     _mount_table[_mount_table_size++] = mount_table_entry;
@@ -293,6 +299,40 @@ done:
     return ret;
 }
 
+int myst_teardown_auto_mounts()
+{
+    int ret = 0;
+
+    myst_spin_lock(&_lock);
+
+    for (size_t i = 0; i < _mount_table_size; i++)
+    {
+        mount_table_entry_t* entry = &_mount_table[i];
+
+        if (entry->is_auto)
+        {
+            /* release the source */
+            free(entry->source);
+
+            /* release the path */
+            free(entry->path);
+
+            /* release the file system */
+            ECHECK((*entry->fs->fs_release)(entry->fs));
+
+            /* remove this entry from the mount table */
+            _mount_table[i--] = _mount_table[_mount_table_size - 1];
+            _mount_table_size--;
+        }
+    }
+
+done:
+
+    myst_spin_unlock(&_lock);
+
+    return ret;
+}
+
 #ifdef MYST_ENABLE_EXT2FS
 static const char* _find_arg(const char* args[], const char* name)
 {
@@ -362,7 +402,8 @@ done:
 static int _mount_single_file(
     myst_fs_t* fs,
     const char* source,
-    const char* target)
+    const char* target,
+    bool is_auto)
 {
     int ret = 0;
     const char* source_dir = NULL;
@@ -383,11 +424,14 @@ static int _mount_single_file(
     if (_find_mount_source(locals->sourcedir, &source_dir))
     {
         myst_strlcpy(locals->mountpath, source_dir, PATH_MAX);
+
+        /* release the file system */
+        ECHECK((*fs->fs_release)(fs));
     }
     else
     {
         ECHECK(_new_automount_dir(locals->mountpath));
-        ECHECK(myst_mount(fs, locals->sourcedir, locals->mountpath));
+        ECHECK(myst_mount(fs, locals->sourcedir, locals->mountpath, is_auto));
     }
 
     /* create a symlink */
@@ -424,7 +468,8 @@ long myst_syscall_mount(
     const char* target,
     const char* filesystemtype,
     unsigned long mountflags,
-    const void* data)
+    const void* data,
+    bool is_auto)
 {
     long ret = 0;
     myst_fs_t* fs = NULL;
@@ -443,7 +488,7 @@ long myst_syscall_mount(
         ECHECK(myst_init_ramfs(myst_mount_resolve, &fs));
 
         /* perform the mount */
-        ECHECK(myst_mount(fs, source, target));
+        ECHECK(myst_mount(fs, source, target, is_auto));
         fs = NULL;
 
         /* load the rootfs */
@@ -464,12 +509,12 @@ long myst_syscall_mount(
         ECHECK((*fs->fs_stat)(fs, source, &buf));
         if (!S_ISDIR(buf.st_mode))
         {
-            ECHECK(_mount_single_file(fs, source, target));
+            ECHECK(_mount_single_file(fs, source, target, is_auto));
         }
         else
         {
             /* perform the mount */
-            ECHECK(myst_mount(fs, source, target));
+            ECHECK(myst_mount(fs, source, target, is_auto));
         }
         fs = NULL;
     }
@@ -488,7 +533,7 @@ long myst_syscall_mount(
         ECHECK(myst_load_fs(myst_mount_resolve, source, key, &fs));
 
         /* perform the mount */
-        ECHECK(myst_mount(fs, source, target));
+        ECHECK(myst_mount(fs, source, target, is_auto));
         fs = NULL;
     }
 #endif /* MYST_ENABLE_EXT2FS */

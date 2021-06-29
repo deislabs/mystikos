@@ -102,7 +102,7 @@ int devfs_setup()
         ERAISE(-EINVAL);
     }
 
-    if (myst_mount(_devfs, "/", "/dev") != 0)
+    if (myst_mount(_devfs, "/", "/dev", false) != 0)
     {
         myst_eprintf("cannot mount dev file system\n");
         ERAISE(-EINVAL);

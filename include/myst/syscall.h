@@ -249,7 +249,8 @@ long myst_syscall_mount(
     const char* target,
     const char* filesystemtype,
     unsigned long mountflags,
-    const void* data);
+    const void* data,
+    bool is_auto);
 
 long myst_syscall_umount2(const char* target, int flags);
 long myst_syscall_kill(int pid, int sig);
