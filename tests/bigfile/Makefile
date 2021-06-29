@@ -13,7 +13,7 @@ LDFLAGS = -lcrypto
 all: rootfs bigfile
 
 rootfs: appdir
-	sudo $(MYST) mkext2 --force appdir rootfs
+	$(MYST) mkext2 --force appdir rootfs
 
 truncate:
 	truncate --size=-4096 rootfs

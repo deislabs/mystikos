@@ -54,7 +54,7 @@ $(APPDIR):
 	# this call.
 
 $(ROOTFS): run.c
-	sudo $(MYST) mkext2 $(APPDIR) $(ROOTFS)
+	$(MYST) mkext2 $(APPDIR) $(ROOTFS)
 	# run with posix spawn
 
 $(ROOTHASH): run.c

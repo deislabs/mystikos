@@ -36,7 +36,7 @@ client:
 	curl 127.0.0.1:5050
 
 rootfs: appdir
-	sudo $(MYST) mkext2 appdir rootfs
+	$(MYST) mkext2 appdir rootfs
 	truncate --size=-4096 rootfs
 
 gdb: appdir private.pem

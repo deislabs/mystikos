@@ -44,8 +44,7 @@ endif
 	@echo "\n-------build end--------\n"
 
 build-ext2: appdir
-	sudo $(MYST) mkext2 appdir $(ROOTFS)
-	sudo chown $(USER).$(USER) $(ROOTFS)
+	$(MYST) mkext2 appdir $(ROOTFS)
 	$(MYST) fssig --roothash $(ROOTFS) > roothash
 
 build-package: appdir package.pem

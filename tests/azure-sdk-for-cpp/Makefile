@@ -18,7 +18,7 @@ $(APPDIR):
 	$(APPBUILDER) Dockerfile
 
 $(ROOTFS): $(APPDIR)
-	sudo $(MYST) mkext2 $(APPDIR) $(ROOTFS)
+	$(MYST) mkext2 $(APPDIR) $(ROOTFS)
 	truncate --size=-4096 $(ROOTFS)
 
 OPTS += --memory-size=256m

@@ -40,7 +40,7 @@ rootfs: appdir
 	$(MYST) mkcpio appdir rootfs
 
 ext2rootfs: appdir
-	sudo $(MYST) mkext2 --force appdir ext2rootfs
+	$(MYST) mkext2 --force appdir ext2rootfs
 
 appdir: $(SUBBINDIR)/fs fs.c
 	mkdir -p appdir/bin

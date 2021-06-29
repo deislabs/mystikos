@@ -22,7 +22,7 @@ $(APPDIR):
 	# Then, replace this container name with the new name.
 
 $(ROOTFS): $(APPDIR)
-	sudo $(MYST) mkext2 $(APPDIR) $(ROOTFS)
+	$(MYST) mkext2 $(APPDIR) $(ROOTFS)
 
 $(ROOTHASH): $(ROOTFS)
 	mkdir -p $(SUBOBJDIR)
