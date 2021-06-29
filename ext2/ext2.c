@@ -1146,6 +1146,9 @@ static const ext2_dirent_t* _find_dirent(
     {
         const ext2_dirent_t* ent = (const ext2_dirent_t*)p;
 
+        assert(ent->rec_len != 0);
+        assert(ent->name_len != 0);
+
         if (_streq(ent->name, ent->name_len, name, len))
             return ent;
 
@@ -2823,7 +2826,6 @@ static int _add_dirent(
         if (count + 1 != new_count)
             ERAISE(-EINVAL);
     }
-
     assert(_find_dirent(filename, buf.data, buf.size) != NULL);
 #endif
 
@@ -4143,6 +4145,10 @@ int ext2_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
     /* remove the oldpath directory entry */
     ECHECK(_remove_dirent(
         ext2, old_dino, &locals->old_dinode, locals->old_filename));
+
+    /* sync the inodes because _remove_dirent() changes the old inode */
+    if (new_dino == old_dino)
+        memcpy(&locals->new_dinode, &locals->old_dinode, sizeof(ext2_inode_t));
 
     /* initialize the new directory entry with the old inode */
     _dirent_init(&locals->ent, old_ino, file_type, locals->new_filename);
