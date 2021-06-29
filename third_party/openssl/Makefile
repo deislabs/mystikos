@@ -3,7 +3,7 @@ include $(TOP)/defs.mak
 
 URL=https://github.com/openssl/openssl
 
-BRANCH=OpenSSL_1_1_1-stable
+BRANCH=OpenSSL_1_1_1k
 
 INSTALL_PREFIX = $(BUILDDIR)/openssl
 
