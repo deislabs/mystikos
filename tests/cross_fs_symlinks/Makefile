@@ -35,7 +35,7 @@ rootfs: $(APPDIR)
 	$(MYST) mkcpio $(APPDIR) rootfs
 
 ext2rootfs: $(APPDIR)
-	sudo $(MYST) mkext2 --force $(APPDIR) ext2rootfs
+	$(MYST) mkext2 --force $(APPDIR) ext2rootfs
 
 clean:
 	rm -rf $(APPDIR) rootfs ramfs cpio_image ext2rootfs roothash

@@ -13,9 +13,8 @@ GROUP=$(shell id --group)
 all: $(PUBKEY)
 	mkdir -p $(APPDIR)/bin
 	$(MUSL_GCC) -Wall -o $(APPDIR)/bin/hello hello.c
-	sudo $(MYST) mkext2 --force --sign=$(PUBKEY):$(PRIVKEY) $(APPDIR) $(ROOTFS)
+	$(MYST) mkext2 --force --sign=$(PUBKEY):$(PRIVKEY) $(APPDIR) $(ROOTFS)
 	$(MYST) package --pubkey=$(PUBKEY) $(PRIVKEY) config.json
-	sudo chown -R $(USER).$(USER) myst
 
 $(PUBKEY): $(PRIVKEY)
 	openssl rsa -in $(PRIVKEY) -pubout -out $(PUBKEY)

@@ -13,10 +13,8 @@ appdir:
 	$(APPBUILDER) Dockerfile
 
 rootfs: appdir
-	sudo $(MYST) mkext2 appdir ext2rootfs
-	sudo chown $(USER).$(USER) ext2rootfs
+	$(MYST) mkext2 appdir ext2rootfs
 	$(MYST) fssig --roothash ext2rootfs > roothash
-	# $(MYST) mkcpio appdir rootfs
 
 run:
 	$(MYST_EXEC) $(OPTS) --roothash=roothash ext2rootfs /app/openmp-test

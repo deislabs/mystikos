@@ -41,7 +41,7 @@ $(APPDIR)/bin/run: run.c
 	$(MUSL_GCC) -Wall -o $(APPDIR)/bin/run run.c
 
 $(ROOTFS): run.c
-	sudo $(MYST) mkext2 --force $(APPDIR) $(ROOTFS)
+	$(MYST) mkext2 --force $(APPDIR) $(ROOTFS)
 	chown $(USER).$(USER) $(ROOTFS)
 	truncate --size=-4096 $(ROOTFS)
 
