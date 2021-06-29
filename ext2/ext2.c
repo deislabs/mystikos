@@ -1146,6 +1146,10 @@ static const ext2_dirent_t* _find_dirent(
     {
         const ext2_dirent_t* ent = (const ext2_dirent_t*)p;
 
+        /* assert if the directory is corrupted */
+        assert(ent->rec_len != 0);
+        assert(ent->name_len != 0);
+
         if (_streq(ent->name, ent->name_len, name, len))
             return ent;
 
@@ -2375,53 +2379,38 @@ done:
     return ret;
 }
 
-/* ATTN: make this inode oriented */
 /* remove the directory entry with the given name */
-static int _remove_dirent(ext2_t* ext2, const char* path)
+static int _remove_dirent(
+    ext2_t* ext2,
+    ext2_ino_t ino,
+    ext2_inode_t* inode,
+    const char* filename)
 {
     int ret = 0;
     void* data = NULL;
     size_t size = 0;
     void* tdata = NULL;
     size_t tsize = 0;
-    ext2_ino_t ino;
     const ext2_dirent_t* ent;
     myst_buf_t buf = MYST_BUF_INITIALIZER;
     struct locals
     {
-        char dirname[EXT2_PATH_MAX];
-        char filename[EXT2_PATH_MAX];
-        ext2_inode_t inode;
         ext2_inode_t tinode;
     };
     struct locals* locals = NULL;
 
     /* check parameters */
-    if (!_ext2_valid(ext2) && !path)
+    if (!_ext2_valid(ext2) && !filename)
         ERAISE(-EINVAL);
 
     if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
-    ECHECK(_split_path(path, locals->dirname, locals->filename));
-
-    /* load the directory inode */
-    ECHECK(_path_to_inode(
-        ext2,
-        locals->dirname,
-        FOLLOW,
-        NULL,
-        &ino,
-        NULL,
-        &locals->inode,
-        NULL,
-        NULL));
-
     /* load the directory file contents */
-    ECHECK(_load_file_by_inode(ext2, ino, &locals->inode, &data, &size));
+    ECHECK(_load_file_by_inode(ext2, ino, inode, &data, &size));
 
     /* find filename within this directory */
-    if (!(ent = _find_dirent(locals->filename, data, size)))
+    if (!(ent = _find_dirent(filename, data, size)))
         ERAISE(-ENOENT);
 
     /* disallow removal if filename refers to a non-empty directory */
@@ -2447,7 +2436,7 @@ static int _remove_dirent(ext2_t* ext2, const char* path)
     /* convert from 'indexed' to 'linked list' directory format (if any) */
     {
         const size_t block_size = ext2->block_size;
-        const size_t file_size = _inode_get_size(&locals->inode);
+        const size_t file_size = _inode_get_size(inode);
         const uint8_t* p = (const uint8_t*)data;
         const uint8_t* end = p + file_size;
         ssize_t prev = -1;
@@ -2517,15 +2506,15 @@ static int _remove_dirent(ext2_t* ext2, const char* path)
     }
 
     /* rewrite the directory, one block at a time */
-    ECHECK(_inode_write_data(ext2, ino, &locals->inode, buf.data, buf.size));
+    ECHECK(_inode_write_data(ext2, ino, inode, buf.data, buf.size));
 
     /* if child was a directory, then decrement the link count */
     if (ent->file_type == EXT2_FT_DIR)
-        locals->inode.i_links_count--;
+        inode->i_links_count--;
 
-    _update_timestamps(&locals->inode, CHANGE | MODIFY);
+    _update_timestamps(inode, CHANGE | MODIFY);
 
-    ECHECK(_write_inode(ext2, ino, &locals->inode));
+    ECHECK(_write_inode(ext2, ino, inode));
 
 done:
 
@@ -2721,6 +2710,14 @@ static int _add_dirent(
     void* data = NULL;
     size_t size = 0;
     myst_buf_t buf = MYST_BUF_INITIALIZER;
+    struct locals
+    {
+        ext2_inode_t inode_buf;
+    };
+    struct locals* locals = NULL;
+
+    if (!(locals = malloc(sizeof(struct locals))))
+        ERAISE(-ENOMEM);
 
     /* Load the directory file */
     ECHECK(_load_file_by_inode(ext2, ino, inode, &data, &size));
@@ -2857,6 +2854,9 @@ done:
 
     if (data)
         free(data);
+
+    if (locals)
+        free(locals);
 
     myst_buf_release(&buf);
 
@@ -3837,12 +3837,16 @@ int ext2_unlink(myst_fs_t* fs, const char* path)
     int ret = 0;
     ext2_t* ext2 = (ext2_t*)fs;
     ext2_ino_t ino;
+    ext2_ino_t dino;
     myst_fs_t* tfs = NULL;
     struct locals
     {
         char suffix[PATH_MAX];
         uint8_t blk[MYST_BLKSIZE];
         ext2_inode_t inode;
+        ext2_inode_t dinode;
+        char dirname[EXT2_PATH_MAX];
+        char filename[EXT2_PATH_MAX];
     };
     struct locals* locals = NULL;
 
@@ -3858,9 +3862,9 @@ int ext2_unlink(myst_fs_t* fs, const char* path)
         ext2,
         path,
         NOFOLLOW,
-        NULL,
+        &dino,
         &ino,
-        NULL,
+        &locals->dinode,
         &locals->inode,
         locals->suffix,
         &tfs));
@@ -3879,7 +3883,8 @@ int ext2_unlink(myst_fs_t* fs, const char* path)
     }
 
     /* remove the directory entry for this file */
-    ECHECK(_remove_dirent(ext2, path));
+    ECHECK(_split_path(path, locals->dirname, locals->filename));
+    ECHECK(_remove_dirent(ext2, dino, &locals->dinode, locals->filename));
 
     /* unlink the inode */
     ECHECK(_inode_unlink(ext2, ino, &locals->inode));
@@ -4128,7 +4133,12 @@ int ext2_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
         }
 
         /* unlink newpath */
-        ECHECK(_remove_dirent(ext2, newpath));
+        ECHECK(_remove_dirent(
+            ext2, new_dino, &locals->new_dinode, locals->new_filename));
+
+        if (new_dino == old_dino)
+            locals->old_inode = locals->new_inode;
+
         ECHECK(_inode_unlink(ext2, new_ino, &locals->new_inode));
     }
     else
@@ -4150,7 +4160,8 @@ int ext2_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
     file_type = _mode_to_file_type(locals->old_inode.i_mode);
 
     /* remove the oldpath directory entry */
-    ECHECK(_remove_dirent(ext2, oldpath));
+    ECHECK(_remove_dirent(
+        ext2, old_dino, &locals->new_dinode, locals->old_filename));
 
     /* initialize the new directory entry with the old inode */
     _dirent_init(&locals->ent, old_ino, file_type, locals->new_filename);
@@ -4482,13 +4493,17 @@ int ext2_rmdir(myst_fs_t* fs, const char* path)
     int ret = 0;
     ext2_t* ext2 = (ext2_t*)fs;
     ext2_ino_t ino;
+    ext2_ino_t dino;
     void* data = NULL;
     size_t size;
     myst_fs_t* tfs = NULL;
     struct locals
     {
         char suffix[PATH_MAX];
+        char dirname[PATH_MAX];
+        char filename[PATH_MAX];
         ext2_inode_t inode;
+        ext2_inode_t dinode;
         myst_file_t file;
     };
     struct locals* locals = NULL;
@@ -4505,9 +4520,9 @@ int ext2_rmdir(myst_fs_t* fs, const char* path)
         ext2,
         path,
         FOLLOW,
-        NULL,
+        &dino,
         &ino,
-        NULL,
+        &locals->dinode,
         &locals->inode,
         locals->suffix,
         &tfs));
@@ -4542,7 +4557,8 @@ int ext2_rmdir(myst_fs_t* fs, const char* path)
     }
 
     /* remove the directory entry for this file */
-    ECHECK(_remove_dirent(ext2, path));
+    ECHECK(_split_path(path, locals->dirname, locals->filename));
+    ECHECK(_remove_dirent(ext2, dino, &locals->dinode, locals->filename));
 
     /* truncate the file to zero size (to return all the blocks) */
     {
