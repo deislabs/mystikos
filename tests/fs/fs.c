@@ -934,12 +934,12 @@ static void test_fdatasync()
     assert(ret == sizeof(alpha));
     ret = fdatasync(fd);
     assert(ret == 0);
-    close(fd);
 
     ret = stat("/test_fdatasync", &statbuf);
     assert(ret == 0);
     assert(init_size + sizeof(alpha) == statbuf.st_size);
 
+    close(fd);
     _passed(__FUNCTION__);
 }
 
@@ -960,13 +960,13 @@ static void test_fsync()
     // call fsync to flush file and its metadata to device
     ret = fsync(fd);
     assert(ret == 0);
-    close(fd);
 
     ret = stat("/test_fsync", &statbuf);
     assert(ret == 0);
     struct timespec mtime_1 = statbuf.st_mtim;
-    assert(mtime_0.tv_sec == mtime_1.tv_sec);
+    assert(mtime_1.tv_sec >= mtime_0.tv_sec);
 
+    close(fd);
     _passed(__FUNCTION__);
 }
 
