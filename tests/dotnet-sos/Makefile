@@ -19,7 +19,7 @@ appdir:
 
 ext2fs: appdir
 	rm -rf appdir/tmp/clr-debug-pipe*
-	sudo $(MYST) mkext2 appdir ext2fs
+	$(MYST) mkext2 appdir ext2fs
 	$(MYST) fssig --roothash ext2fs > roothash
 
 oelldb:

@@ -22,8 +22,7 @@ $(APPDIR):
 	$(TOP)/scripts/appbuilder Dockerfile
 
 rootfs: appdir
-	sudo $(MYST) mkext2 $(APPDIR) rootfs
-	sudo chown $(USER).$(USER) rootfs
+	$(MYST) mkext2 $(APPDIR) rootfs
 	truncate --size=-4096 rootfs
 
 clean:

@@ -208,33 +208,12 @@ static void _create_ext2_image(
     const char* image,
     size_t size)
 {
-    char loop[PATH_MAX];
-    char mntdir[] = "/tmp/mystXXXXXX";
-
     /* create a zero-filled image with holes */
     _create_zero_filled_image(image, size);
 
-    /* format the ext2 file system */
-    _systemf("/sbin/mke2fs -q %s", image);
-
-    /* associate the image with a loopback device */
-    _execf(loop, sizeof(loop), "/sbin/losetup --show -f %s", image);
-
-    /* create the mount directory */
-    if (!mkdtemp(mntdir))
-        _err("failed to create temporary directory");
-
-    /* mount the ext2 image */
-    _systemf("/bin/mount %s %s", loop, mntdir);
-
-    /* copy the directory into the mounted ext2 file system */
-    _systemf("/bin/tar c -C %s -f - .|/bin/tar x -C %s -f -", dirname, mntdir);
-
-    /* unmount the ext2 image */
-    _systemf("/bin/umount %s", mntdir);
-
-    /* detach the loopback device */
-    _systemf("/sbin/losetup -d %s", loop);
+    // format as an EXT2 image and copy the contents of the given directory
+    // into the root directory of the image
+    _systemf("/sbin/mke2fs -q %s -d %s", image, dirname);
 }
 
 static void _create_luks_image(
@@ -539,6 +518,9 @@ int mkext2_action(int argc, const char* argv[])
     {
         luks = true;
     }
+
+    if (luks && geteuid() != 0)
+        _err("mkext2 --encrypt option requires root privileges");
 
     /* get the --force option */
     if (_getopt(&argc, argv, "--force", NULL) == 0 ||

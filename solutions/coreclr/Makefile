@@ -29,7 +29,7 @@ rootfs: appdir
 	$(MYST) mkcpio appdir rootfs
 
 ext2fs: appdir
-	sudo $(MYST) mkext2 appdir ext2fs
+	$(MYST) mkext2 appdir ext2fs
 	$(MYST) fssig --roothash ext2fs > roothash
 
 run:

@@ -28,7 +28,7 @@ rootfs: build ramfs
 	mkdir -p $(APPDIR)/ext2-target
 	mkdir -p $(APPDIR)/hostfs-target
 	$(MYST) mkcpio $(APPDIR) $(ROOTFS)
-	sudo $(MYST) mkext2 --force $(APPDIR) ext2rootfs
+	$(MYST) mkext2 --force $(APPDIR) ext2rootfs
 	$(MYST) fssig --roothash ext2rootfs > roothash
 
 ramfs:
@@ -40,7 +40,7 @@ ramfs:
 ext2fs:
 	mkdir -p $(EXT2FSDIR)
 	touch $(EXT2FSDIR)/ext2-file
-	sudo $(MYST) mkext2 --force --size=$(EXT2FS_SIZE) $(EXT2FSDIR) $(EXT2FS) 
+	$(MYST) mkext2 --force --size=$(EXT2FS_SIZE) $(EXT2FSDIR) $(EXT2FS) 
 	truncate --size=-4096 $(EXT2FS)
 
 hostfs:
