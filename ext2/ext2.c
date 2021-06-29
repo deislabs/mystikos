@@ -2710,14 +2710,6 @@ static int _add_dirent(
     void* data = NULL;
     size_t size = 0;
     myst_buf_t buf = MYST_BUF_INITIALIZER;
-    struct locals
-    {
-        ext2_inode_t inode_buf;
-    };
-    struct locals* locals = NULL;
-
-    if (!(locals = malloc(sizeof(struct locals))))
-        ERAISE(-ENOMEM);
 
     /* Load the directory file */
     ECHECK(_load_file_by_inode(ext2, ino, inode, &data, &size));
@@ -2854,9 +2846,6 @@ done:
 
     if (data)
         free(data);
-
-    if (locals)
-        free(locals);
 
     myst_buf_release(&buf);
 
@@ -4136,9 +4125,6 @@ int ext2_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
         ECHECK(_remove_dirent(
             ext2, new_dino, &locals->new_dinode, locals->new_filename));
 
-        if (new_dino == old_dino)
-            locals->old_inode = locals->new_inode;
-
         ECHECK(_inode_unlink(ext2, new_ino, &locals->new_inode));
     }
     else
@@ -4161,7 +4147,7 @@ int ext2_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
 
     /* remove the oldpath directory entry */
     ECHECK(_remove_dirent(
-        ext2, old_dino, &locals->new_dinode, locals->old_filename));
+        ext2, old_dino, &locals->old_dinode, locals->old_filename));
 
     /* initialize the new directory entry with the old inode */
     _dirent_init(&locals->ent, old_ino, file_type, locals->new_filename);
