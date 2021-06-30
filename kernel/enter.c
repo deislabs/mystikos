@@ -666,6 +666,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         args->memcheck = false;
         args->debug_symbols = false;
         args->shell_mode = false;
+        args->report_native_tids = false;
     }
 
     /* ATTN: it seems __options can be eliminated */

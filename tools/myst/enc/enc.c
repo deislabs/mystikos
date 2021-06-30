@@ -463,7 +463,7 @@ static long _enter(void* arg_)
     bool debug_symbols = false;
     bool memcheck = false;
     bool report_native_tids = false;
-    size_t max_affinity_cpus = 0;
+    size_t max_affinity_cpus = options ? options->max_affinity_cpus : 0;
     const char* rootfs = NULL;
     config_parsed_data_t parsed_config;
     bool have_config = false;
@@ -590,6 +590,12 @@ static long _enter(void* arg_)
         hostname = parsed_config.hostname;
     }
 
+    // Override max affinity if present in config
+    if (have_config && parsed_config.max_affinity_cpus)
+    {
+        max_affinity_cpus = parsed_config.max_affinity_cpus;
+    }
+
     /* Inject the MYST_TARGET environment variable */
     {
         const char val[] = "MYST_TARGET=";
@@ -636,13 +642,13 @@ static long _enter(void* arg_)
         _trace_syscalls = tee_debug_mode ? options->trace_syscalls : false;
         // if tee_debug_mode is false, these options are disabled by the
         // kernel upon entry.
-        trace_errors = options->trace_errors;
-        shell_mode = options->shell_mode;
-        debug_symbols = options->debug_symbols;
-        memcheck = options->memcheck;
+        trace_errors = tee_debug_mode ? options->trace_errors : false;
+        shell_mode = tee_debug_mode ? options->shell_mode : false;
+        debug_symbols = tee_debug_mode ? options->debug_symbols : false;
+        memcheck = tee_debug_mode ? options->memcheck : false;
 
-        report_native_tids = options->report_native_tids;
-        max_affinity_cpus = options->max_affinity_cpus;
+        report_native_tids =
+            tee_debug_mode ? options->report_native_tids : false;
 
         /* rootfs buffer content set by the host side. Max length of the string
          * is PATH_MAX-1. Enforce NULL terminator at the end of the buffer.
