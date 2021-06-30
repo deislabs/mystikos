@@ -43,7 +43,6 @@
 
 static myst_kernel_args_t _kargs;
 static mcontext_t _mcontext;
-static bool _trace_syscalls = false;
 
 extern const void* __oe_get_heap_base(void);
 
@@ -183,79 +182,10 @@ static void _sanitize_xsave_area_fields(uint64_t* rbx, uint64_t* rcx)
         *rcx = 4096;
 }
 
-#define COLOR_GREEN "\e[32m"
-#define COLOR_RESET "\e[0m"
-
 #define RDTSC_OPCODE 0x310F
 #define CPUID_OPCODE 0xA20F
 #define IRETQ_OPCODE 0xCF48
 #define SYSCALL_OPCODE 0x050F
-
-typedef struct _opcode_pair
-{
-    long opcode;
-    const char* str;
-} opcode_pair_t;
-
-static opcode_pair_t _opcode_pairs[] = {
-    {RDTSC_OPCODE, "rdtsc"},
-    {CPUID_OPCODE, "cpuid"},
-    {IRETQ_OPCODE, "iretq"},
-    {SYSCALL_OPCODE, "syscall"},
-};
-
-static size_t _n_pairs = sizeof(_opcode_pairs) / sizeof(_opcode_pairs[0]);
-const char* opcode_str(long n)
-{
-    for (size_t i = 0; i < _n_pairs; i++)
-    {
-        if (n == _opcode_pairs[i].opcode)
-            return _opcode_pairs[i].str;
-    }
-
-    return "unknown";
-}
-
-__attribute__((format(printf, 2, 3))) static void _exception_handler_strace(
-    long n,
-    const char* fmt,
-    ...)
-{
-    if (_trace_syscalls)
-    {
-        char null_char = '\0';
-        char* buf = &null_char;
-        const bool isatty = myst_tcall_isatty(STDERR_FILENO) == 1l;
-        const char* green = isatty ? COLOR_GREEN : "";
-        const char* reset = isatty ? COLOR_RESET : "";
-
-        if (fmt)
-        {
-            const size_t buf_size = 1024;
-
-            if (!(buf = malloc(buf_size)))
-            {
-                fprintf(stderr, "out of memory\n");
-                assert(0);
-            }
-            va_list ap;
-            va_start(ap, fmt);
-            vsnprintf(buf, buf_size, fmt, ap);
-            va_end(ap);
-        }
-
-        fprintf(
-            stderr,
-            "[exception handler] %s%s%s(%s)\n",
-            green,
-            opcode_str(n),
-            reset,
-            buf);
-
-        if (buf != &null_char)
-            free(buf);
-    }
-}
 
 /* Handle illegal SGX instructions */
 static uint64_t _vectored_handler(oe_exception_record_t* er)
@@ -264,7 +194,6 @@ static uint64_t _vectored_handler(oe_exception_record_t* er)
 
     if (er->code == OE_EXCEPTION_ILLEGAL_INSTRUCTION)
     {
-        _exception_handler_strace(opcode, NULL);
         switch (opcode)
         {
             case RDTSC_OPCODE:
@@ -300,11 +229,6 @@ static uint64_t _vectored_handler(oe_exception_record_t* er)
 
                 if (er->context->rax != 0xff)
                 {
-                    _exception_handler_strace(
-                        opcode,
-                        "rax= 0x%lx rcx= 0x%lx",
-                        er->context->rax,
-                        er->context->rcx);
                     myst_cpuid_ocall(
                         (uint32_t)er->context->rax, /* leaf */
                         (uint32_t)er->context->rcx, /* subleaf */
@@ -456,6 +380,7 @@ static long _enter(void* arg_)
     size_t envp_size = arg->envp_size;
     uint64_t event = arg->event;
     pid_t target_tid = arg->target_tid;
+    bool trace_syscalls = false;
     bool trace_errors = false;
     bool shell_mode = false;
     bool debug_symbols = false;
@@ -612,9 +537,7 @@ static long _enter(void* arg_)
 
     if (options)
     {
-        // _trace_syscalls is used by vectored exception handler tracing,
-        // disable it if tee_debug_mode is false
-        _trace_syscalls = tee_debug_mode ? options->trace_syscalls : false;
+        trace_syscalls = tee_debug_mode ? options->trace_syscalls : false;
         // if tee_debug_mode is false, these options are disabled by the
         // kernel upon entry.
         trace_errors = options->trace_errors;
@@ -672,7 +595,7 @@ static long _enter(void* arg_)
             enclave_size,   /* image_size */
             _get_num_tcs(), /* max threads */
             trace_errors,
-            _trace_syscalls,
+            trace_syscalls,
             false, /* have_syscall_instruction */
             tee_debug_mode,
             event, /* thread_event */
