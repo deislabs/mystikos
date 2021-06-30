@@ -5,17 +5,13 @@ APPBUILDER    = $(TOP)/scripts/appbuilder
 APP_NAME      = python3
 
 ifndef APP_MODE
-APP_MODE      = ext2
+APP_MODE      = package
 endif
 
-ifeq ($(APP_MODE),ext2)
 APP_PATH      = /home/user/miniconda/bin/python3
+PACKAGE_PATH  = myst/bin/$(APP_NAME)
 ROOTFS        = ext2rootfs
-LAUNCH_WAIT   = 60
-else
-APP_PATH      = myst/bin/$(APP_NAME)
-LAUNCH_WAIT   = 90
-endif
+TIMEOUT = 180
 
 QUERY_INTERVAL = 2
 SHUTDOWN_WAIT = 2 
@@ -33,22 +29,19 @@ appdir:
 ## Build
 ###########################################
 
-build: 
-ifeq ($(APP_MODE),package)
-	@echo "\n-------package build start--------\n"
-	$(MAKE) build-package
-else
+build:
 	@echo "\n-------ext2 build start--------\n"
 	$(MAKE) build-ext2
-endif
+	@echo "\n-------package build start--------\n"
+	$(MAKE) build-package
 	@echo "\n-------build end--------\n"
 
 build-ext2: appdir
 	$(MYST) mkext2 appdir $(ROOTFS)
 	$(MYST) fssig --roothash $(ROOTFS) > roothash
 
-build-package: appdir package.pem
-	$(MYST) package-sgx appdir package.pem config.json
+build-package: package.pem
+	$(MYST) package-sgx --roothash=roothash package.pem config.json
 
 ###########################################
 ## Run
@@ -56,31 +49,30 @@ build-package: appdir package.pem
 
 # running both service and client in one recipe
 run:
-	test -f $(APP_NAME).pid && kill -9 `cat $(APP_NAME).pid` || true
-	@echo -e "\n------starting Pytorch Inference Service($(APP_MODE) mode)------\n"
+	./kill.sh $(PACKAGE_PATH) $(APP_PATH)
+	@echo "\n------starting Pytorch Inference Service($(APP_MODE) mode)------\n"
 ifeq ($(APP_MODE),package)
-	$(APP_PATH) $(OPTS) & echo $$! > $(APP_NAME).pid
+	$(PACKAGE_PATH) $(OPTS) --rootfs=$(ROOTFS) & 
 else
-	$(MYST_EXEC) $(OPTS) --roothash=roothash $(ROOTFS) $(APP_PATH) --app-config-path config.json & echo $$! > $(APP_NAME).pid
+	$(MYST_EXEC) $(OPTS) $(ROOTFS) $(APP_PATH) --app-config-path config.json &
 endif
-	sleep $(LAUNCH_WAIT)
-	@echo -e "\nRun client outside of the Enclave ...\n"
+	./wait.sh
 	./client.sh test_samples/dog.jpg
-	sleep $(QUERY_INTERVAL)
+	@sleep $(QUERY_INTERVAL)
 	./client.sh test_samples/automotive.jpg
-	sleep $(QUERY_INTERVAL)
+	@sleep $(QUERY_INTERVAL)
 	./client.sh test_samples/strawberries.jpg
-	sleep $(SHUTDOWN_WAIT)
+	@sleep $(SHUTDOWN_WAIT)
 	@echo "\n------terminate Pytorch Inference Service------\n"
-	test -f $(APP_NAME).pid && kill -9 `cat $(APP_NAME).pid` && rm $(APP_NAME).pid || true
+	./kill.sh $(PACKAGE_PATH) $(APP_PATH)
 
 # launch inference service in enclave only, waiting for client to connect, either 
 # run a webpage, curl request or the client.sh script with predefined queries
 run-service-ext2:
-	$(MYST_EXEC) $(OPTS) --roothash=roothash $(ROOTFS) $(APP_PATH) --app-config-path config.json
+	$(MYST_EXEC) $(OPTS) $(ROOTFS) $(APP_PATH) --app-config-path config.json
 
 run-service-package:
-	$(APP_PATH) $(OPTS)
+	$(PACKAGE_PATH) $(OPTS) --rootfs=$(ROOTFS)
 
 ###########################################
 ## Debug
@@ -88,9 +80,9 @@ run-service-package:
 
 gdb:
 ifeq ($(APP_MODE),package)
-	$(MYST_GDB) --args $(MYST_EXEC) $(APP_PATH)
+	$(MYST_GDB) --args $(PACKAGE_PATH) --rootfs=$(ROOTFS)
 else
-	$(MYST_GDB) --args $(MYST_EXEC) $(OPTS) --roothash=roothash $(ROOTFS) $(APP_PATH) --app-config-path config.json
+	$(MYST_GDB) --args $(MYST_EXEC) $(OPTS) $(ROOTFS) $(APP_PATH) --app-config-path config.json
 endif
 
 ###########################################
@@ -101,4 +93,4 @@ package.pem:
 	openssl genrsa -out package.pem -3 3072
 
 clean:
-	rm -rf appdir $(APP_PATH) myst package.pem $(APP_NAME).pid $(ROOTFS) roothash
+	rm -rf appdir myst package.pem $(ROOTFS)
