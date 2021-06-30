@@ -1,3 +1,4 @@
 /app/llvm-project/libcxx/test/std/containers/container.adaptors/stack/stack.cons/ctor_copy.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/containers/unord/unord.map/unord.map.modifiers/clear.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/localization/locales/locale.convenience/conversions/conversions.string/to_bytes.pass.cpp.exe
+/app/llvm-project/libcxx/test/std/thread/thread.mutex/thread.lock/thread.lock.shared/thread.lock.shared.locking/lock.pass.cpp.exe
