@@ -26,7 +26,7 @@ jobs:
   - job: BuildAndTest
     displayName: 'Building and Testing'
     timeoutInMinutes: 60
-    pool: '1804DC4CCagentpool'
+    pool: '1804DC4v2agentpool'
 
     steps:
       # perform cleanup before starting pipeline

@@ -19,7 +19,6 @@ all: $(BUILDDIR)/include/openenclave
 
 ifdef MYST_USE_BUILD_CACHE
 CACHE_CHECK=$(wildcard $(CACHE))
-ANSIBLE_CACHE_CHECK=$(wildcard $(CACHE)/ansible.cache)
 endif
 
 $(BUILDDIR)/include/openenclave:
@@ -78,21 +77,7 @@ DEPENDENCY_TARGET = $(OPENENCLAVE_BUILD)/dependency_target
 openenclave: $(DEPENDENCY_TARGET) configure_oe install_oe
 
 $(DEPENDENCY_TARGET):
-ifeq ($(ANSIBLE_CACHE_CHECK),)
-	$(MAKE) ansible
-	mkdir -p $(CACHE)
-	touch $(CACHE)/ansible.cache
-endif
 	mkdir -p $(OPENENCLAVE_BUILD)
-
-ansible:
-ifneq ($(MYST_IGNORE_ANSIBLE),1)
-	$(MAKE) __ansible
-endif
-
-__ansible:
-	#sudo $(OPENENCLAVE_SRC)/scripts/ansible/install-ansible.sh
-	#sudo ansible-playbook $(OPENENCLAVE_SRC)/scripts/ansible/oe-contributors-acc-setup-no-driver.yml
 
 configure_oe: $(OPENENCLAVE_BUILD)/Makefile
 

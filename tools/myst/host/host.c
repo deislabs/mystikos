@@ -134,7 +134,7 @@ long myst_add_symbol_file_by_path(
     size_t text_size)
 {
     long ret = 0;
-    debug_image_t* di = NULL;
+    debug_module_t* di = NULL;
     void* data = NULL;
     bool notify = true;
 
@@ -193,7 +193,7 @@ long myst_tcall_add_symbol_file(
     static char tmpdir[PATH_MAX] = "/tmp/mystXXXXXX";
     static int tmpdir_init = 0;
     char tmp[PATH_MAX];
-    debug_image_t* di = NULL;
+    debug_module_t* di = NULL;
     void* data = NULL;
     bool notify = false;
 
