@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <myst/cond.h>
 #include <myst/eraise.h>
 #include <myst/fsgs.h>
 #include <myst/printf.h>
@@ -342,6 +343,8 @@ long myst_signal_deliver(
 
     /* Make sure any polls get woken up to process any outstanding events */
     myst_tcall_poll_wake();
+    /* Wake up futexes */
+    myst_cond_signal_thread(thread->signal.cond_wait, thread);
 
 done:
     if (siginfo)
