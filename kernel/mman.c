@@ -1082,10 +1082,20 @@ int myst_mman_sbrk(myst_mman_t* mman, ptrdiff_t increment, void** ptr_out)
         /* Increment the break value and return the old break value */
         ptr = (void*)mman->brk;
         mman->brk += (uintptr_t)increment;
-        /* increment and mman->brk check above made sure no overflow
-         * possibility*/
-        myst_round_up((uint64_t)ptr, PAGE_SIZE, &brk_old_page_aligned);
-        myst_round_up((uint64_t)(mman->brk), PAGE_SIZE, &brk_new_page_aligned);
+        /* Increment and mman->brk check above made sure no overflow
+         * possibility. GCOV won't reach the error path.
+         */
+        if (myst_round_up((uint64_t)ptr, PAGE_SIZE, &brk_old_page_aligned) != 0)
+        {
+            ret = -EINVAL;
+            goto done;
+        }
+        if (myst_round_up(
+                (uint64_t)(mman->brk), PAGE_SIZE, &brk_new_page_aligned) != 0)
+        {
+            ret = -EINVAL;
+            goto done;
+        }
         if (brk_new_page_aligned > brk_old_page_aligned)
             _MMAN_MPROTECT_PAGES(
                 mman,
@@ -1164,9 +1174,21 @@ int myst_mman_brk(myst_mman_t* mman, void* addr, void** ptr)
         uint64_t brk_old_page_aligned;
         uint64_t brk_new_page_aligned;
 
-        /* addr check above made sure no overflow possibility*/
-        myst_round_up((uint64_t)(mman->brk), PAGE_SIZE, &brk_old_page_aligned);
-        myst_round_up((uint64_t)addr, PAGE_SIZE, &brk_new_page_aligned);
+        /* Addr check above made sure no overflow possibility. GCOV won't reach
+         * the error path.
+         */
+        if (myst_round_up(
+                (uint64_t)(mman->brk), PAGE_SIZE, &brk_old_page_aligned) != 0)
+        {
+            ret = -EINVAL;
+            goto done;
+        }
+        if (myst_round_up((uint64_t)addr, PAGE_SIZE, &brk_new_page_aligned) !=
+            0)
+        {
+            ret = -EINVAL;
+            goto done;
+        }
         if (brk_new_page_aligned > brk_old_page_aligned)
             _MMAN_MPROTECT_PAGES(
                 mman,
