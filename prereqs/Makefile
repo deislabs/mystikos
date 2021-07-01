@@ -10,7 +10,7 @@ all:
 	sudo apt update
 	sudo apt install -y dkms libssl-dev cryptsetup-bin curl libcurl4-openssl-dev clang-8 clang-format-8 pkg-config python-pip
 	sudo apt install -y libsgx-enclave-common libsgx-quote-ex  libsgx-dcap-ql libsgx-dcap-ql-dev az-dcap-client
-	pip install cmake
+	sudo pip install cmake
 	sudo apt install -y docker.ce && sudo chmod 666 /var/run/docker.sock
 	test -e /dev/sgx || $(MAKE) install_sgx_driver
 
