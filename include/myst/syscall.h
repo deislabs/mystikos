@@ -328,8 +328,8 @@ long myst_syscall_fchownat(
 long myst_get_absolute_path_from_dirfd(
     int dirfd,
     const char* filename,
-    char* abspath_out,
-    size_t size);
+    int flags,
+    char** abspath_out);
 
 long myst_syscall_get_process_stack(void** stack, size_t* stack_size);
 
