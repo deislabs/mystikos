@@ -1,0 +1,7 @@
+/app/at.abort.pass.cpp.exe
+/app/at.const.abort.pass.cpp.exe
+/app/clear.abort.pass.cpp.exe
+/app/locale.category.abort.pass.cpp.exe
+/app/try_lock_shared_for.pass.cpp.exe
+/app/try_lock_shared_until.pass.cpp.exe
+/app/use_facet.abort.pass.cpp.exe

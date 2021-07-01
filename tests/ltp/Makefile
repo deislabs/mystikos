@@ -115,6 +115,7 @@ group-file:
 	echo "grp1000:x:1000:" >> appdir/etc/group
 
 add_host_users_and_groups:
+<<<<<<< HEAD
 	sudo groupadd -f -g 100701 grp701
 	sudo groupadd -f -g 100704 grp704
 	sudo groupadd -f -g 100705 grp705
@@ -123,16 +124,30 @@ add_host_users_and_groups:
 	id -u user702 >/dev/null 2>&1 || sudo useradd -g grp701 -u 100702 user702
 	id -u user703 >/dev/null 2>&1 || sudo useradd -g grp701 -u 100703 user703
 	id -u user1000 >/dev/null 2>&1 || sudo useradd -g grp1000 -u 101000 user1000
+=======
+	sudo groupadd -g 100701 grp701
+	sudo groupadd -g 100704 grp704
+	sudo groupadd -g 100705 grp705
+	sudo useradd -g grp701 -u 100700 user700
+	sudo useradd -g grp701 -u 100702 user702
+	sudo useradd -g grp701 -u 100703 user703
+>>>>>>> 60e0ba05... Build OE on VM and address review comments
 
 del_host_users_and_groups:
 	sudo userdel user700 || true
 	sudo userdel user702 || true
 	sudo userdel user703 || true
+<<<<<<< HEAD
 	sudo userdel user1000 || true
 	sudo groupdel grp701 || true
 	sudo groupdel grp704 || true
 	sudo groupdel grp705 || true
 	sudo groupdel grp1000 || true
+=======
+	sudo groupdel grp701 || true
+	sudo groupdel grp704 || true
+	sudo groupdel grp705 || true
+>>>>>>> 60e0ba05... Build OE on VM and address review comments
 
 tests: tests_hostfs tests_ext2fs tests_ramfs
 

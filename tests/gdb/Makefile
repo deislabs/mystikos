@@ -31,7 +31,6 @@ tests:
 	$(RUNTEST) $(MAKE) __tests
 
 __tests:
-	${MYST_GDB} ${GDB_CMDS} ${MYST} ${EXEC} rootfs /bin/helloworld ${OPTS}
 	${MYST_GDB} ${GDB_CMDS} ${MYST} ${EXEC} rootfs /bin/helloworld ${OPTS} 2>&1 > ${GDB_LOG_FILE} 2> /dev/null
 	@cat ${GDB_LOG_FILE} | grep -E "$(GDB_MATCH)" > /dev/null
 	@ echo "=== passed test (gdb)"

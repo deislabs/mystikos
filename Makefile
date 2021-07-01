@@ -68,6 +68,7 @@ include $(TOP)/rules.mak
 
 distclean: clean
 	rm -rf $(TOP)/third_party/musl/crt/musl
+	make distclean -C $(TOP)/third_party/openenclave
 	sudo rm -rf $(TOP)/build
 
 ##==============================================================================
