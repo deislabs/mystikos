@@ -26,7 +26,8 @@ while read test; do
     then
       echo $test >> temp_passed.output
     else
-      echo $OUTPUT | grep -o 'SYS_[a-z]\+' >> temp_unhandled_syscalls.output
+      SYSCALL=$(echo $OUTPUT | grep -o 'SYS_[a-z]\+')
+      echo "$test: $SYSCALL" >> temp_unhandled_syscalls.output
     fi
   else
     echo $test >> temp_failed.output
