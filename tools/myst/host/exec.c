@@ -234,7 +234,7 @@ Options:\n\
 int exec_action(int argc, const char* argv[], const char* envp[])
 {
     const oe_enclave_type_t type = OE_ENCLAVE_TYPE_SGX;
-    uint32_t flags = OE_ENCLAVE_FLAG_DEBUG;
+    uint32_t flags = OE_ENCLAVE_FLAG_DEBUG_AUTO;
     struct myst_options options;
     static const size_t max_pubkeys = 128;
     const char* pubkeys[max_pubkeys];

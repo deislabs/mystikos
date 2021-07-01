@@ -8,14 +8,14 @@ all:
 	echo "deb [arch=amd64] https://packages.microsoft.com/ubuntu/18.04/prod bionic main" | sudo tee /etc/apt/sources.list.d/msprod.list
 	wget -qO - https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
 	sudo apt update
-	sudo apt install -y dkms libssl-dev gcc cryptsetup-bin curl libcurl4-openssl-dev clang-format-7 pkg-config gdb
+	sudo apt install -y dkms libssl-dev cryptsetup-bin curl libcurl4-openssl-dev clang-8 clang-format-8 pkg-config python-pip docker.io
 	sudo apt install -y libsgx-enclave-common libsgx-quote-ex  libsgx-dcap-ql libsgx-dcap-ql-dev az-dcap-client
-	$(MAKE) install_sgx_driver
+	pip install cmake
+	sudo systemctl start docker
+	sudo systemctl enable docker && sudo chmod 666 /var/run/docker.sock
+	test -e /dev/sgx || $(MAKE) install_sgx_driver
 
 install_sgx_driver:
-	test -e /dev/sgx || $(MAKE) __install_sgx_driver
-
-__install_sgx_driver:
 	wget $(DRIVER_URL)/$(DRIVER)
 	sudo bash ./$(DRIVER)
 clean:

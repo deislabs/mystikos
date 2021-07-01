@@ -537,7 +537,7 @@ int _exec_package(
     elf_image_t myst_elf = {0};
     int elf_loaded = 0;
     const oe_enclave_type_t type = OE_ENCLAVE_TYPE_SGX;
-    uint32_t flags = OE_ENCLAVE_FLAG_DEBUG;
+    uint32_t flags = OE_ENCLAVE_FLAG_DEBUG_AUTO;
     struct myst_options options = {0};
     char* config_buffer = NULL;
     size_t config_size = 0;

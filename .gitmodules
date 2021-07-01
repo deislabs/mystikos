@@ -1,7 +1,0 @@
-[submodule "third_party/musl/musl"]
-	path = third_party/musl/musl
-	url = git://git.musl-libc.org/musl
-[submodule "third_party/ltp/ltp"]
-	path = third_party/ltp/ltp
-	url = https://@github.com/lsds/ltp.git
-	branch = sgx-lkl

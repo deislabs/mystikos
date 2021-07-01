@@ -24,7 +24,7 @@ endif
 
 $(BUILDDIR)/include/openenclave:
 ifeq ($(CACHE_CHECK),)
-	$(MAKE) submodule
+	test -e openenclave || $(MAKE) submodule
 	$(MAKE) openenclave
 else
 	$(MAKE) fetch_oecache
@@ -106,6 +106,7 @@ endif
 
 CMAKE_OPTS += -DHAS_QUOTE_PROVIDER=OFF
 CMAKE_OPTS += -DBUILD_TESTS=OFF
+CMAKE_OPTS += -DENABLE_REFMAN=OFF
 CMAKE_OPTS += -DCMAKE_INSTALL_PREFIX=$(OPENENCLAVE_INSTALL_PREFIX)
 
 $(OPENENCLAVE_BUILD)/Makefile:
