@@ -829,6 +829,19 @@ int myst_enter_kernel(myst_kernel_args_t* args)
          * calling back to here.
          */
 
+        /* Switch from the CRT fsbase to the kernel fsbase. This must be done
+         * before unmapping the CRT data (which contains the CRT fsbase). Else,
+         * munmap eventually calls mprotect which makes the CRT fsbase
+         * unreadable, which results in a segmentation fault the next time
+         * the fsbase's first word is read with the following instruction.
+         *
+         *      __asm__ volatile("mov %%fs:0, %0" : "=r"(p));
+         *
+         * Please do not place any code in this block before the following
+         * call to myst_set_fsbase().
+         */
+        myst_set_fsbase(thread->target_td);
+
         /* release the kernel stack that was passed to SYS_exit if any */
         if (thread->kstack)
             myst_put_kstack(thread->kstack);
@@ -897,9 +910,6 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         /* Free CWD */
         free(thread->main.cwd);
         thread->main.cwd = NULL;
-
-        /* switch back to the target thread descriptor */
-        myst_set_fsbase(thread->target_td);
     }
 
     /* Tear down the temporary file systems */
