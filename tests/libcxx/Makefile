@@ -12,7 +12,7 @@ APPBUILDER=$(TOP)/scripts/appbuilder
 ROOTFS=$(CURDIR)/rootfs
 ROOTHASH=$(SUBOBJDIR)/roothash
 
-LIBCXX_TESTS_DIR=llvm-project/libcxx/test/
+LIBCXX_TESTS_DIR=llvm-project/libcxx/
 
 # batching passed testfiles here helps to remove large heap memory requirement from 3gb 
 # to 1gb
@@ -31,24 +31,19 @@ one:
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) $(TEST)
 
 llvm-project: 
-	git clone -b LibOS_v10.0.1 --single-branch https://github.com/salsal97/llvm-project.git
+	git clone -b myst_v11.0.1 --single-branch https://github.com/salsal97/llvm-project.git
 
 libcxx-tests: llvm-project
 	mkdir libcxx-tests
 	find $(LIBCXX_TESTS_DIR) -name \*pass.cpp -exec cp --parent {}  libcxx-tests \; 
 	find $(LIBCXX_TESTS_DIR) -name \*.h -exec cp --parent {}  libcxx-tests \;
 
-	# MAKE A LIST OF ALL THE TESTS
-	find $(LIBCXX_TESTS_DIR) -name \*pass.cpp > $(ALLTESTS)
-	sed -i 's/libcxx-tests\/llvm-project\/libcxx\/test\///g' $(ALLTESTS)
-	sed -i -e 's/^/\/app\//' $(ALLTESTS)
-
 $(APPDIR)/bin/run: run.c
 	mkdir -p $(APPDIR)/bin
 	$(MUSL_GCC) -Wall -o $(APPDIR)/bin/run run.c
 
 $(APPDIR):
-	$(APPBUILDER) -i mystikos/libcxx_tests_10x:3.0
+	$(APPBUILDER) -i mystikos/libcxx_11x:0.1
 	cp $(CURDIR)/testsa*.passed $(APPDIR)
 	# To build a new image, modify the appbuilder script to build the image with the correct name, 
 	# and not clean it up. Then once the image is built, push it to dockerhub and update 
@@ -69,7 +64,7 @@ OPTS += --memory-size=512m
 tests:
 	$(RUNTEST) $(MAKE) __tests
 
-__TESTS=a b c d e f g h i j k l m n o 
+__TESTS=a b c d e f g h i j k l m n o
 .PHONY: $(__TESTS)
 
 __tests: $(__TESTS)
@@ -90,7 +85,7 @@ runall:
 # Splits tests into batches for easy processing 
 split: clean-tests
 	split -l 320 $(ALLTESTS) tests
-	for i in a b c d e f g h i j k l m n o ; do \
+	for i in $(__TESTS) ; do \
 		grep -Fxf libcxx_passed testsa$$i > testsa$$i.passed ; \
 	done
 

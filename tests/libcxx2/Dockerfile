@@ -16,12 +16,16 @@ ENV TEST_DIR=$PREFIX_DIR
 RUN echo "Num directories = " && find . -type d | wc -l
 
 # Go into every subdirectory and build cpp tests
-RUN for dir in $(find . -type d); \
+RUN CFLAGS="-I $PREFIX_DIR/support -I $PREFIX_DIR/std -I $PREFIX_DIR/../include -DTEST_HAS_SANITIZERS -D_LIBCPP_VERSION=11000" && \
+    for dir in $(find . -type d); \
     do cd $dir ; \
     for f in $(ls | grep pass.cpp); \
-        do g++ -std=c++17 -I $PREFIX_DIR/support -I $PREFIX_DIR/std -pthread -fPIC -Wall -o $( basename ${f}.exe) $f >> /app/log.log ; \
-        done; \
+       do echo "$dir/$f" ; \
+       g++ -std=c++17 $CFLAGS $LDFLAGS -pthread -fPIC -o $f.exe $f >> ~/full.log 2>&1 ; \
+       done; \
     cd $TEST_DIR ; \
     done;
+
+RUN cat ~/full.log | grep "has not been declared" | grep "test/../include/" | cut -d: -f1 | sort -u >> ~/log
 
 RUN find /app -name \*.exe > /ubuntu_built_exe.txt

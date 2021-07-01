@@ -30,24 +30,19 @@ one:
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) $(TEST)
 
 llvm-project: 
-	git clone -b LibOS_v10.0.1 --single-branch https://github.com/salsal97/llvm-project.git
+	git clone -b myst_v11.0.1 --single-branch https://github.com/salsal97/llvm-project.git
 
 libcxx-tests: llvm-project
 	mkdir libcxx-tests
 	find $(LIBCXX_TESTS_DIR) -name \*pass.cpp -exec cp --parent {}  libcxx-tests \; 
 	find $(LIBCXX_TESTS_DIR) -name \*.h -exec cp --parent {}  libcxx-tests \;
 
-	# MAKE A LIST OF ALL THE TESTS
-	find $(LIBCXX_TESTS_DIR) -name \*pass.cpp > $(ALLTESTS)
-	sed -i 's/libcxx-tests\/llvm-project\/libcxx\/test\///g' $(ALLTESTS)
-	sed -i -e 's/^/\/app\//' $(ALLTESTS)
-
 $(APPDIR)/bin/run: run.c
 	mkdir -p $(APPDIR)/bin
 	$(MUSL_GCC) -Wall -o $(APPDIR)/bin/run run.c
 
 $(APPDIR):
-	$(APPBUILDER) -i mystikos/libcxx2_tests_10x:1.0
+	$(APPBUILDER) -i mystikos/libcxx2_11x:0.1
 	cp $(CURDIR)/testsa*.passed $(APPDIR)
 	# To build a new image, modify the appbuilder script to build the image with the correct name, 
 	# and not clean it up. Then once the image is built, push it to dockerhub and update 
