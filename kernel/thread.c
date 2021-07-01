@@ -1159,6 +1159,9 @@ long myst_have_child_forked_processes(myst_thread_t* process)
 
 long kill_child_fork_processes(myst_thread_t* process)
 {
+    if (__myst_kernel_args.fork_mode != myst_fork_pseudo_kill_children)
+        return 0;
+
     myst_spin_lock(&myst_process_list_lock);
     myst_thread_t* p = process->main.prev_process_thread;
     pid_t pid = process->pid;

@@ -3,10 +3,7 @@ include $(TOP)/defs.mak
 
 DIRS =
 
-ifdef MYST_PSEUDO_FORK
 DIRS += fork
-endif
-
 DIRS += myst
 DIRS += itimer
 DIRS += timeval

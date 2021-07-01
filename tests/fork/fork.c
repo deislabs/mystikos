@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 #include <assert.h>
+#include <errno.h>
 #include <pthread.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -278,6 +279,41 @@ int test_fork5(int argc, const char* argv[])
     return 0;
 }
 
+int test_nofork1(int argc, const char* argv[])
+{
+    pid_t pid = fork();
+
+    if (pid < 0)
+    {
+        if (errno == ENOTSUP)
+        {
+            _printf("Fork not supported as expected\n");
+        }
+        else
+        {
+            _printf(
+                "%s: fork() failed with incorrect error: %d\n", argv[0], pid);
+            exit(-1);
+        }
+    }
+    else if (pid == 0)
+    {
+        _printf("*** inside child\n");
+        _printf("fork should have fail\n");
+        exit(-1);
+    }
+    else
+    {
+        int wstatus;
+        _printf("*** inside parent\n");
+        _printf("Fork should have failed\n");
+        _printf("Waiting for child to shutdown\n");
+        waitpid(pid, &wstatus, 0);
+        exit(-1);
+    }
+    return 0;
+}
+
 int main(int argc, const char* argv[])
 {
     if (argc < 2)
@@ -292,6 +328,10 @@ int main(int argc, const char* argv[])
         assert(test_fork3(argc, argv) == 0);
         assert(test_fork4(argc, argv) == 0);
         assert(test_fork5(argc, argv) == 0);
+    }
+    else if (strcmp(argv[1], "nofork") == 0)
+    {
+        assert(test_nofork1(argc, argv) == 0);
     }
     return 0;
 }

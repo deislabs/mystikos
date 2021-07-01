@@ -24,9 +24,13 @@ void exit(int code)
 {
     bool am_parent_of_fork = false;
     bool am_child_fork = false;
+    myst_fork_mode_t fork_mode = myst_fork_none;
 
-    if (syscall(SYS_myst_is_shared_crt, &am_parent_of_fork, &am_child_fork) ==
-        0)
+    if (syscall(
+            SYS_myst_get_fork_info,
+            &fork_mode,
+            &am_parent_of_fork,
+            &am_child_fork) == 0)
     {
         if (am_child_fork)
         {

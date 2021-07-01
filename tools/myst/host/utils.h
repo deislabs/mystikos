@@ -50,6 +50,11 @@ int cli_get_mount_mapping_opts(
     const char* argv[],
     myst_args_t* mappings);
 
+int get_fork_mode_opts(
+    int* argc,
+    const char* argv[],
+    myst_fork_mode_t* fork_mode);
+
 long myst_add_symbol_file_by_path(
     const char* path,
     const void* text_data,

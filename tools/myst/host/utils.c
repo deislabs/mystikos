@@ -322,3 +322,35 @@ int cli_get_mount_mapping_opts(
 
     return 0;
 }
+
+int get_fork_mode_opts(
+    int* argc,
+    const char* argv[],
+    myst_fork_mode_t* fork_mode)
+{
+    const char* arg = NULL;
+
+    if (fork_mode == 0)
+        return -1;
+
+    *fork_mode = myst_fork_none;
+
+    if (cli_getopt(argc, argv, "--fork-mode", &arg) == 0)
+    {
+        if (arg == NULL)
+            return -1;
+
+        if (strcmp(arg, "none") == 0)
+        {
+            *fork_mode = myst_fork_none;
+        }
+        else if (strcmp(arg, "pseudo_kill_children") == 0)
+        {
+            *fork_mode = myst_fork_pseudo_kill_children;
+        }
+        else
+            return -1;
+    }
+
+    return 0;
+}

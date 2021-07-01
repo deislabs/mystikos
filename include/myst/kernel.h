@@ -6,6 +6,7 @@
 
 #include <limits.h>
 #include <myst/kstack.h>
+#include <myst/syscallext.h>
 #include <myst/tcall.h>
 #include <myst/types.h>
 #include <myst/uid_gid.h>
@@ -160,6 +161,11 @@ typedef struct myst_kernel_args
     // From the --max-affinity-cpus=<num> option. This setting limits the
     // CPUs reported by sched_getaffinity().
     size_t max_affinity_cpus;
+
+    // mode the fork implementation uses.
+    // selection between a fork/exec model,
+    // or a more traditional fork model with limits
+    myst_fork_mode_t fork_mode;
 
     /* Callback for making target-calls */
     myst_tcall_t tcall;

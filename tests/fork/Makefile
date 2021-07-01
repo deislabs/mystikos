@@ -15,12 +15,15 @@ rootfs: fork.c
 	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/fork_child child.c $(LDFLAGS)
 	$(MYST) mkcpio $(APPDIR) rootfs
 
+
 ifdef STRACE
 OPTS = --strace
 endif
 
 tests: all
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/fork fork
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) --app-config-path config-kill-children.json rootfs /bin/fork fork
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) --fork-mode pseudo_kill_children rootfs /bin/fork fork
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) --app-config-path config-none.json rootfs /bin/fork nofork
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst
