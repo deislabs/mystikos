@@ -20,10 +20,16 @@ ifndef FS
 FS=ext2fs
 endif
 
-TEST_FILE_NAME_EXTENSION=
-ifdef MYST_PSEUDO_FORK
-TEST_FILE_NAME_EXTENSION=fork.
-endif
+#original ltp source
+# URL=https://github.com/linux-test-project/ltp
+# BRANCH=master
+
+URL=https://github.com/paulcallen/ltp
+BRANCH=paulcallen/revert-fork
+
+OPTS += --app-config-path config.json
+
+# *** end fork related settings ***
 
 ifeq ($(FS),hostfs)
 OPTS+= --host-to-enc-uid-map 0:0,1:1,2:2,65534:65534,100700:700,100702:702,100703:703,1001000:1000
@@ -32,15 +38,15 @@ endif
 
 # run all the tests for the nightly pipeline
 ifdef MYST_NIGHTLY_TEST
-TESTS=$(shell grep -v "^\#" $(FS)_tests_passed.$(TEST_FILE_NAME_EXTENSION)txt)
+TESTS=$(shell grep -v "^\#" $(FS)_tests_passed.txt)
 else
 # run only filesystem based tests for the PR pipeline
-TESTS=$(shell grep -v "^\#" $(FS)_fs_tests_passed.$(TEST_FILE_NAME_EXTENSION)txt)
+TESTS=$(shell grep -v "^\#" $(FS)_fs_tests_passed.txt)
 endif
 
 # remove gcov exception tests when running code coverage
 ifdef MYST_ENABLE_GCOV
-TESTS=$(shell comm -23 $(FS)_tests_passed.txt $(FS)_tests_gcov_exceptions.$(TEST_FILE_NAME_EXTENSION)txt)
+TESTS=$(shell comm -23 $(FS)_tests_passed.txt $(FS)_tests_gcov_exceptions.txt)
 endif
 
 # overlayfs directories
@@ -53,15 +59,6 @@ all: ext2fs
 
 ext2fs: appdir
 	$(MYST) mkext2 --force appdir ext2fs
-
-#URL=https://github.com/linux-test-project/ltp
-ifdef MYST_PSEUDO_FORK
-URL=https://github.com/paulcallen/ltp
-BRANCH=paulcallen/revert-fork
-else
-URL=https://github.com/mikbras/ltp
-BRANCH=myst
-endif
 
 appdir:
 	$(MAKE) clone

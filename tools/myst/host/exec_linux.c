@@ -84,6 +84,7 @@ struct options
     size_t heap_size;
     const char* app_config_path;
     myst_host_enc_uid_gid_mappings host_enc_uid_gid_mappings;
+    myst_fork_mode_t fork_mode;
 };
 
 static void _get_options(
@@ -125,6 +126,12 @@ static void _get_options(
     /* Get --report-native-tids option */
     if (cli_getopt(argc, argv, "--report-native-tids", NULL) == 0)
         opts->report_native_tids = true;
+
+    if (get_fork_mode_opts(argc, argv, &opts->fork_mode) != 0)
+        _err(
+            "%s: invalid --fork-mode option. Only \"none\" and "
+            "\"pseudo_kill_children\" are currently supported\n",
+            argv[0]);
 
     /* Get --max-affinity-cpus */
     {
@@ -241,6 +248,7 @@ static int _enter_kernel(
     const char target[] = "MYST_TARGET=linux";
     void* regions_end = (uint8_t*)mmap_addr + mmap_length;
     bool have_config = false;
+    myst_fork_mode_t fork_mode = options->fork_mode;
 
     memset(&pd, 0, sizeof(pd));
     memset(&kernel_args, 0, sizeof(kernel_args));
@@ -282,6 +290,8 @@ static int _enter_kernel(
                     !myst_validate_mount_config(&pd.mounts))
                     ERAISE(-EINVAL);
 
+                fork_mode = pd.fork_mode;
+
                 have_config = true;
             }
             else
@@ -321,6 +331,7 @@ static int _enter_kernel(
                 (uint64_t)&_thread_event,
                 (pid_t)syscall(SYS_gettid),
                 options->max_affinity_cpus,
+                fork_mode,
                 tcall,
                 options->rootfs,
                 terr,

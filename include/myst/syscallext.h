@@ -24,9 +24,18 @@ enum
     SYS_myst_start_shell,
     SYS_myst_gcov,
     SYS_myst_unmap_on_exit,
-    SYS_myst_is_shared_crt,
+    SYS_myst_get_fork_info,
     SYS_myst_kill_wait_child_forks,
     SYS_get_process_thread_stack,
 };
+
+/* Used for SYS_myst_get_fork_info parameter */
+typedef enum
+{
+    myst_fork_none = 0,
+    myst_fork_pseudo_wait_for_children,
+    myst_fork_pseudo_kill_children,
+    myst_fork_pseudo_wait_for_exit_exec
+} myst_fork_mode_t;
 
 #endif /* _MYST_SYSCALLEXT_H */

@@ -1,4 +1,3 @@
-#ifdef MYST_PSEUDO_FORK
 #define hidden __attribute__((__visibility__("hidden")))
 
 #define _GNU_SOURCE
@@ -21,6 +20,7 @@
 
 #include <pthread_impl.h>
 
+#include <myst/kernel.h>
 #include <myst/round.h>
 #include <myst/setjmp.h>
 #include <myst/syscallext.h>
@@ -314,6 +314,19 @@ myst_fork(void)
     myst_jmp_buf_t env;
     struct thread_args* args = NULL;
 
+    bool am_parent_of_fork = false;
+    bool am_child_fork = false;
+    long fork_mode = 0;
+
+    if ((syscall(
+             SYS_myst_get_fork_info,
+             &fork_mode,
+             &am_parent_of_fork,
+             &am_child_fork) != 0) ||
+        (fork_mode == myst_fork_none))
+    {
+        return -ENOTSUP;
+    }
     args = calloc(1, sizeof(struct thread_args));
     if (args == NULL)
     {
@@ -400,13 +413,3 @@ myst_fork(void)
 
     return pid;
 }
-#else
-
-#include <errno.h>
-#include <sys/types.h>
-
-pid_t myst_fork(void)
-{
-    return -ENOSYS;
-}
-#endif

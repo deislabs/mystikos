@@ -316,6 +316,16 @@ int exec_action(int argc, const char* argv[], const char* envp[])
             }
         }
 
+        if (get_fork_mode_opts(&argc, argv, &options.fork_mode) != 0)
+        {
+            fprintf(
+                stderr,
+                "%s: invalid --fork-mode option. Only \"none\" and "
+                "\"pseudo_kill_children\" are currently supported\n",
+                argv[0]);
+            return 1;
+        }
+
         /* Get MYST_MEMCHECK environment variable */
         {
             const char* env;

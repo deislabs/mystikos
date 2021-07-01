@@ -231,6 +231,26 @@ static json_result_t _json_read_callback(
                 else
                     CONFIG_RAISE(JSON_TYPE_MISMATCH);
             }
+            else if (json_match(parser, "ForkMode") == JSON_OK)
+            {
+                if (type == JSON_TYPE_STRING)
+                {
+                    if (strcmp(un->string, "none") == 0)
+                        parsed_data->fork_mode = myst_fork_none;
+                    else if (strcmp(un->string, "pseudo_kill_children") == 0)
+                        parsed_data->fork_mode = myst_fork_pseudo_kill_children;
+#if 0
+                    else if (strcmp(un->string, "pseudo_wait_for_children") == 0)
+                        parsed_data->fork_mode = myst_fork_pseudo_wait_for_children;
+                    else if (strcmp(un->string, "pseudo_wait_for_exit_exec") == 0)
+                        parsed_data->fork_mode = myst_fork_pseudo_wait_for_exit_exec;
+#endif
+                    else
+                        CONFIG_RAISE(JSON_UNKNOWN_VALUE);
+                }
+                else
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
+            }
             else if (json_match(parser, "Mount.Target") == JSON_OK)
             {
                 if (type == JSON_TYPE_STRING)

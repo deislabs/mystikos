@@ -476,6 +476,7 @@ static long _enter(void* arg_)
     const Elf64_Ehdr* ehdr;
     const char target[] = "MYST_TARGET=sgx";
     const bool tee_debug_mode = (_test_oe_debug_mode() == 0);
+    myst_fork_mode_t fork_mode = options ? options->fork_mode : myst_fork_none;
 
     memset(&parsed_config, 0, sizeof(parsed_config));
 
@@ -596,6 +597,12 @@ static long _enter(void* arg_)
         max_affinity_cpus = parsed_config.max_affinity_cpus;
     }
 
+    // record the configuration for which fork mode
+    if (have_config && parsed_config.fork_mode)
+    {
+        fork_mode = parsed_config.fork_mode;
+    }
+
     /* Inject the MYST_TARGET environment variable */
     {
         const char val[] = "MYST_TARGET=";
@@ -703,6 +710,7 @@ static long _enter(void* arg_)
             event, /* thread_event */
             target_tid,
             max_affinity_cpus,
+            fork_mode,
             myst_tcall,
             rootfs,
             err,

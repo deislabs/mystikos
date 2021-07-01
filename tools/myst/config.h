@@ -51,6 +51,7 @@ typedef struct _config_parsed_data_t
     size_t host_environment_variables_count;
     char* cwd;
     char* hostname;
+    myst_fork_mode_t fork_mode;
     myst_mounts_config_t mounts;
 
     /* maximum number of CPUs in the kernel (for thread affinity) */
