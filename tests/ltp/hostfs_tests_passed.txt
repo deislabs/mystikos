@@ -98,7 +98,6 @@
 /ltp/testcases/kernel/syscalls/getresuid/getresuid01
 /ltp/testcases/kernel/syscalls/getresuid/getresuid02
 /ltp/testcases/kernel/syscalls/getresuid/getresuid03
-/ltp/testcases/kernel/syscalls/getsockname/getsockname01
 /ltp/testcases/kernel/syscalls/gettid/gettid01
 /ltp/testcases/kernel/syscalls/getuid/getuid01
 /ltp/testcases/kernel/syscalls/getuid/getuid03
