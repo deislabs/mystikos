@@ -6,9 +6,11 @@ APPDIR = appdir
 
 all: rootfs
 
-rootfs:
-	$(APPBUILDER) Dockerfile
+rootfs: appdir
 	$(MYST) mkcpio $(APPDIR) rootfs
+
+appdir:
+	$(APPBUILDER) Dockerfile
 
 tests:
 	$(RUNTEST) $(MYST_EXEC) rootfs /app/call-once $(OPTS)

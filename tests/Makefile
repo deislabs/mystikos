@@ -114,6 +114,7 @@ DIRS += mprotect
 DIRS += eventfd
 DIRS += polleventfd
 DIRS += dotnet-sos
+DIRS += tkillself
 
 .PHONY: $(DIRS)
 
