@@ -797,56 +797,107 @@ done:
     return ret;
 }
 
+// Caller should check *abspath_out before free:
+//
+//   if (*abspath_out != pathname)
+//        free(*abspath_out)
 long myst_get_absolute_path_from_dirfd(
     int dirfd,
-    const char* filename,
-    char* abspath_out,
-    size_t size)
+    const char* pathname,
+    int flags,
+    char** abspath_out)
 {
     long ret = 0;
+    char* path_out = NULL;
     struct locals
     {
         char dirname[PATH_MAX];
     }* locals = NULL;
 
-    myst_fdtable_t* fdtable = myst_fdtable_current();
-    myst_fdtable_type_t type;
-    void* device = NULL;
-    void* object = NULL;
-    myst_fs_t* fs;
-    myst_file_t* file;
+    if (!pathname || !abspath_out)
+        ERAISE(-EINVAL);
 
-    if (dirfd < 0)
-        ERAISE(-EBADF);
-
-    if (!(locals = malloc(sizeof(struct locals))))
-        ERAISE(-ENOMEM);
-
-    /* first check dirfd is of file type, e.g. not tty */
-    ECHECK(myst_fdtable_get_any(fdtable, dirfd, &type, &device, &object));
-    if (type != MYST_FDTABLE_TYPE_FILE)
-        ERAISE(-ENOTDIR);
-
-    /* get the file object for the dirfd */
-    ECHECK(myst_fdtable_get_file(fdtable, dirfd, &fs, &file));
-
-    /* fail if not a directory */
+    /* If pathname is absolute, then ignore dirfd */
+    if (*pathname == '/' || dirfd == AT_FDCWD)
     {
-        struct stat buf;
-        ERAISE((*fs->fs_fstat)(fs, file, &buf));
+        *abspath_out = (char*)pathname;
+    }
+    else if (*pathname == '\0')
+    {
+        if (!(flags & AT_EMPTY_PATH))
+            ERAISE(-ENOENT);
 
-        if (!S_ISDIR(buf.st_mode))
+        if (dirfd < 0)
+            ERAISE(-EBADF);
+
+        if (!(path_out = malloc(PATH_MAX)))
+            ERAISE(-ENOMEM);
+
+        if (flags & AT_SYMLINK_NOFOLLOW)
+        {
+            myst_fdtable_t* fdtable = myst_fdtable_current();
+            myst_fs_t* fs;
+            myst_file_t* file;
+
+            ECHECK(myst_fdtable_get_file(fdtable, dirfd, &fs, &file));
+            ECHECK((*fs->fs_realpath)(fs, file, path_out, PATH_MAX));
+        }
+        else
+        {
+            *path_out = '\0';
+        }
+        *abspath_out = path_out;
+    }
+    else
+    {
+        if (dirfd < 0)
+            ERAISE(-EBADF);
+
+        if (!(path_out = malloc(PATH_MAX)))
+            ERAISE(-ENOMEM);
+
+        if (!(locals = malloc(sizeof(struct locals))))
+            ERAISE(-ENOMEM);
+
+        myst_fdtable_t* fdtable = myst_fdtable_current();
+        myst_fdtable_type_t type;
+        void* device = NULL;
+        void* object = NULL;
+        myst_fs_t* fs;
+        myst_file_t* file;
+
+        /* first check dirfd is of file type, e.g. not tty */
+        ECHECK(myst_fdtable_get_any(fdtable, dirfd, &type, &device, &object));
+        if (type != MYST_FDTABLE_TYPE_FILE)
             ERAISE(-ENOTDIR);
+
+        /* get the file object for the dirfd */
+        ECHECK(myst_fdtable_get_file(fdtable, dirfd, &fs, &file));
+
+        /* fail if not a directory */
+        {
+            struct stat buf;
+            ERAISE((*fs->fs_fstat)(fs, file, &buf));
+
+            if (!S_ISDIR(buf.st_mode))
+                ERAISE(-ENOTDIR);
+        }
+
+        /* get the full path of dirfd */
+        ECHECK((*fs->fs_realpath)(
+            fs, file, locals->dirname, sizeof(locals->dirname)));
+
+        /* construct absolute path of file */
+        ECHECK(myst_make_path(path_out, PATH_MAX, locals->dirname, pathname));
+        *abspath_out = path_out;
     }
 
-    /* get the full path of dirfd */
-    ECHECK(
-        (*fs->fs_realpath)(fs, file, locals->dirname, sizeof(locals->dirname)));
-
-    /* construct absolute path of file */
-    ECHECK(myst_make_path(abspath_out, size, locals->dirname, filename));
+    path_out = NULL;
 
 done:
+
+    if (path_out)
+        free(path_out);
 
     if (locals)
         free(locals);
@@ -863,10 +914,10 @@ static long _openat(
     myst_file_t** file_out)
 {
     long ret = 0;
+    char* abspath = NULL;
     struct locals
     {
         char suffix[PATH_MAX];
-        char filename[PATH_MAX];
     };
     struct locals* locals = NULL;
 
@@ -876,54 +927,30 @@ static long _openat(
     if (file_out)
         *file_out = NULL;
 
-    if (!pathname)
-        ERAISE(-EINVAL);
-
-    if (*pathname == '\0')
-        ERAISE(-ENOENT);
-
     if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
-    /* if pathname is absolute or AT_FDCWD */
-    if (*pathname == '/' || dirfd == AT_FDCWD)
+    ECHECK(myst_get_absolute_path_from_dirfd(dirfd, pathname, 0, &abspath));
+    if (fs_out && file_out)
     {
-        if (fs_out && file_out)
-        {
-            myst_fs_t* fs;
+        myst_fs_t* fs;
 
-            ECHECK(myst_mount_resolve(pathname, locals->suffix, &fs));
-            ECHECK((*fs->fs_open)(
-                fs, locals->suffix, flags, mode, fs_out, file_out));
-        }
-        else
-        {
-            ret = myst_syscall_open(pathname, flags, mode);
-        }
+        ECHECK(myst_mount_resolve(abspath, locals->suffix, &fs));
+        ECHECK(
+            (*fs->fs_open)(fs, locals->suffix, flags, mode, fs_out, file_out));
     }
     else
     {
-        ECHECK(myst_get_absolute_path_from_dirfd(
-            dirfd, pathname, locals->filename, sizeof(locals->filename)));
-
-        if (fs_out && file_out)
-        {
-            myst_fs_t* fs;
-
-            ECHECK(myst_mount_resolve(locals->filename, locals->suffix, &fs));
-            ECHECK((*fs->fs_open)(
-                fs, locals->suffix, flags, mode, fs_out, file_out));
-        }
-        else
-        {
-            ret = myst_syscall_open(locals->filename, flags, mode);
-        }
+        ret = myst_syscall_open(abspath, flags, mode);
     }
 
 done:
 
     if (locals)
         free(locals);
+
+    if (abspath != pathname)
+        free(abspath);
 
     return ret;
 }
@@ -1581,39 +1608,18 @@ long myst_syscall_faccessat(
     int flags)
 {
     long ret = 0;
-    struct locals
-    {
-        char abspath[PATH_MAX];
-    };
-    struct locals* locals = NULL;
+    char* abspath = NULL;
 
     /* ATTN: support AT_ flags */
     (void)flags;
 
-    if (!pathname)
-        ERAISE(-ENOENT);
-
-    if (*pathname == '\0')
-        ERAISE(-ENOENT);
-
-    if (!(locals = malloc(sizeof(struct locals))))
-        ERAISE(-ENOMEM);
-
-    if (*pathname == '/' || dirfd == AT_FDCWD)
-    {
-        ret = myst_syscall_access(pathname, mode);
-    }
-    else
-    {
-        ECHECK(myst_get_absolute_path_from_dirfd(
-            dirfd, pathname, locals->abspath, sizeof(locals->abspath)));
-        ret = myst_syscall_access(locals->abspath, mode);
-    }
+    ECHECK(myst_get_absolute_path_from_dirfd(dirfd, pathname, 0, &abspath));
+    ret = myst_syscall_access(abspath, mode);
 
 done:
 
-    if (locals)
-        free(locals);
+    if (abspath != pathname)
+        free(abspath);
 
     return ret;
 }
@@ -1660,51 +1666,22 @@ long myst_syscall_renameat(
     const char* newpath)
 {
     long ret = 0;
-    const char* _oldpath;
-    const char* _newpath;
-    struct locals
-    {
-        char filename[PATH_MAX];
-    };
-    struct locals* locals1 = NULL;
-    struct locals* locals2 = NULL;
+    char* old_abspath = NULL;
+    char* new_abspath = NULL;
 
-    /* if pathname is absolute or AT_FDCWD */
-    if (*oldpath == '/' || olddirfd == AT_FDCWD)
-    {
-        _oldpath = oldpath;
-    }
-    else
-    {
-        if (!(locals1 = malloc(sizeof(struct locals))))
-            ERAISE(-ENOMEM);
-
-        ECHECK(myst_get_absolute_path_from_dirfd(
-            olddirfd, oldpath, locals1->filename, sizeof(locals1->filename)));
-        _oldpath = locals1->filename;
-    }
-    if (*newpath == '/' || newdirfd == AT_FDCWD)
-    {
-        _newpath = newpath;
-    }
-    else
-    {
-        if (!(locals2 = malloc(sizeof(struct locals))))
-            ERAISE(-ENOMEM);
-
-        ECHECK(myst_get_absolute_path_from_dirfd(
-            newdirfd, newpath, locals2->filename, sizeof(locals2->filename)));
-        _newpath = locals2->filename;
-    }
-    ret = myst_syscall_rename(_oldpath, _newpath);
+    ECHECK(
+        myst_get_absolute_path_from_dirfd(olddirfd, oldpath, 0, &old_abspath));
+    ECHECK(
+        myst_get_absolute_path_from_dirfd(newdirfd, newpath, 0, &new_abspath));
+    ret = myst_syscall_rename(old_abspath, new_abspath);
 
 done:
 
-    if (locals1)
-        free(locals1);
+    if (old_abspath != oldpath)
+        free(old_abspath);
 
-    if (locals2)
-        free(locals2);
+    if (new_abspath != newpath)
+        free(new_abspath);
 
     return ret;
 }
@@ -1779,48 +1756,28 @@ long myst_syscall_readlinkat(
     size_t bufsiz)
 {
     long ret = 0;
-    struct locals
-    {
-        char abspath[PATH_MAX];
-    };
-    struct locals* locals = NULL;
+    char* abspath = NULL;
 
-    if (!pathname || !buf || !bufsiz)
+    if (!buf || !bufsiz)
         ERAISE(-EINVAL);
 
-    /* If pathname is absolute, then ignore dirfd */
-    if (*pathname == '/' || dirfd == AT_FDCWD)
-    {
-        ret = myst_syscall_readlink(pathname, buf, bufsiz);
-    }
-    else if (*pathname == '\0')
-    {
-        /*
-         * ATTN: Since Linux 2.6.39, pathname can be an empty string, in which
-         * case the call operates on the symbolic link referred to by dirfd.
-         * But dirfd should have been obtained using open with the O_PATH
-         * and O_NOFOLLOW flags. Our existing implementation of ext2_open()
-         * dosn't support the O_PATH flag. If the trailing component
-         * (i.e., basename) of pathname is a symbolic link, then the open
-         * fails, with the error ELOOP.
-         * Thus, return "No such file or directory"
-         */
-        ERAISE(-ENOENT);
-    }
-    else
-    {
-        if (!(locals = malloc(sizeof(struct locals))))
-            ERAISE(-ENOMEM);
-
-        ECHECK(myst_get_absolute_path_from_dirfd(
-            dirfd, pathname, locals->abspath, sizeof(locals->abspath)));
-        ret = myst_syscall_readlink(locals->abspath, buf, bufsiz);
-    }
+    /*
+     * ATTN: Since Linux 2.6.39, pathname can be an empty string, in which
+     * case the call operates on the symbolic link referred to by dirfd.
+     * But dirfd should have been obtained using open with the O_PATH
+     * and O_NOFOLLOW flags. Our existing implementation of ext2_open()
+     * dosn't support the O_PATH flag. If the trailing component
+     * (i.e., basename) of pathname is a symbolic link, then the open
+     * fails, with the error ELOOP.
+     * Thus, return "No such file or directory"
+     */
+    ECHECK(myst_get_absolute_path_from_dirfd(dirfd, pathname, 0, &abspath));
+    ret = myst_syscall_readlink(abspath, buf, bufsiz);
 
 done:
 
-    if (locals)
-        free(locals);
+    if (abspath != pathname)
+        free(abspath);
 
     return ret;
 }
@@ -1855,31 +1812,15 @@ long myst_syscall_symlinkat(
     const char* linkpath)
 {
     long ret = 0;
-    struct locals
-    {
-        char abspath[PATH_MAX];
-    };
-    struct locals* locals = NULL;
+    char* abspath = NULL;
 
-    /* If linkpath is absolute, then ignore dirfd */
-    if (*linkpath == '/' || newdirfd == AT_FDCWD)
-    {
-        ret = myst_syscall_symlink(target, linkpath);
-    }
-    else
-    {
-        if (!(locals = malloc(sizeof(struct locals))))
-            ERAISE(-ENOMEM);
-
-        ECHECK(myst_get_absolute_path_from_dirfd(
-            newdirfd, linkpath, locals->abspath, sizeof(locals->abspath)));
-        ret = myst_syscall_symlink(target, locals->abspath);
-    }
+    ECHECK(myst_get_absolute_path_from_dirfd(newdirfd, linkpath, 0, &abspath));
+    ret = myst_syscall_symlink(target, abspath);
 
 done:
 
-    if (locals)
-        free(locals);
+    if (abspath != linkpath)
+        free(abspath);
 
     return ret;
 }

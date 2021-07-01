@@ -201,53 +201,6 @@ done:
     return ret;
 }
 
-int resolve_at_path(
-    int dirfd,
-    const char* pathname,
-    int flags,
-    char* resolved_path,
-    size_t resolved_path_size)
-{
-    int ret = 0;
-
-    /* If pathname is absolute, then ignore dirfd */
-    if (*pathname == '/' || dirfd == AT_FDCWD)
-    {
-        myst_strlcpy(resolved_path, pathname, strlen(pathname) + 1);
-    }
-    else if (*pathname == '\0')
-    {
-        if (!(flags & AT_EMPTY_PATH))
-            ERAISE(-ENOENT);
-
-        if (dirfd < 0)
-            ERAISE(-EBADF);
-
-        if (flags & AT_SYMLINK_NOFOLLOW)
-        {
-            myst_fdtable_t* fdtable = myst_fdtable_current();
-            myst_fs_t* fs;
-            myst_file_t* file;
-
-            ECHECK(myst_fdtable_get_file(fdtable, dirfd, &fs, &file));
-            ECHECK((*fs->fs_realpath)(
-                fs, file, resolved_path, resolved_path_size));
-        }
-        else
-        {
-            *resolved_path = '\0';
-        }
-    }
-    else
-    {
-        ECHECK(myst_get_absolute_path_from_dirfd(
-            dirfd, pathname, resolved_path, resolved_path_size));
-    }
-
-done:
-    return ret;
-}
-
 long myst_syscall_fchownat(
     int dirfd,
     const char* pathname,
@@ -256,11 +209,7 @@ long myst_syscall_fchownat(
     int flags)
 {
     long ret = 0;
-    struct locals
-    {
-        char resolved_path[PATH_MAX];
-    };
-    struct locals* locals = NULL;
+    char* abspath = NULL;
 
     if (!pathname)
         ERAISE(-EINVAL);
@@ -268,17 +217,9 @@ long myst_syscall_fchownat(
     if ((flags & ~(AT_EMPTY_PATH | AT_SYMLINK_NOFOLLOW)) != 0)
         ERAISE(-EINVAL);
 
-    if (!(locals = malloc(sizeof(struct locals))))
-        ERAISE(-ENOMEM);
+    ECHECK(myst_get_absolute_path_from_dirfd(dirfd, pathname, flags, &abspath));
 
-    ECHECK(resolve_at_path(
-        dirfd,
-        pathname,
-        flags,
-        locals->resolved_path,
-        sizeof(locals->resolved_path)));
-
-    if (*locals->resolved_path == '\0')
+    if (*abspath == '\0')
     {
         ECHECK(myst_syscall_fchown(dirfd, owner, group));
     }
@@ -286,18 +227,18 @@ long myst_syscall_fchownat(
     {
         if (flags & AT_SYMLINK_NOFOLLOW)
         {
-            ECHECK(myst_syscall_lchown(locals->resolved_path, owner, group));
+            ECHECK(myst_syscall_lchown(abspath, owner, group));
         }
         else
         {
-            ECHECK(myst_syscall_chown(locals->resolved_path, owner, group));
+            ECHECK(myst_syscall_chown(abspath, owner, group));
         }
     }
 
 done:
 
-    if (locals)
-        free(locals);
+    if (abspath != pathname)
+        free(abspath);
 
     return ret;
 }
