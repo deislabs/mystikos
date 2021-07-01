@@ -2890,20 +2890,32 @@ long myst_syscall_prlimit64(
     if (pid)
         return -EINVAL;
 
-    // Only support resource NOFILE
-    if (resource != RLIMIT_NOFILE)
-        return -EINVAL;
-
-    if (old_rlim)
+    if (resource == RLIMIT_NOFILE)
     {
-        // ATTN: return currently effective RLIMIT_NOFILE settings
-        old_rlim->rlim_cur = 65536;
-        old_rlim->rlim_max = 65536;
+        if (old_rlim)
+        {
+            // ATTN: return currently effective RLIMIT_NOFILE settings
+            old_rlim->rlim_cur = 65536;
+            old_rlim->rlim_max = 65536;
+        }
+
+        if (new_rlim)
+        {
+            // ATTN: make RLIMIT_NOFILE settings effective ;
+        }
     }
-
-    if (new_rlim)
+    else if (resource == RLIMIT_STACK)
     {
-        // ATTN: make RLIMIT_NOFILE settings effective ;
+        if (old_rlim)
+        {
+            // TODO: get actual stack limits
+            old_rlim->rlim_cur = 1024 * 1024 * 1024;
+            old_rlim->rlim_max = 1024 * 1024 * 1024;
+        }
+    }
+    else
+    {
+        return -EINVAL;
     }
 
     return 0;
