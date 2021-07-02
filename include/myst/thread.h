@@ -196,7 +196,7 @@ struct myst_thread
         posix_sigaction_t* sigactions;
 
         /* The condition we were waiting on a futex */
-        void* cond_wait;
+        _Atomic bool waiting_on_event;
 
         /* The mask of blocked signals */
         uint64_t mask;
