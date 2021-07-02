@@ -11,7 +11,7 @@ endif
 all: rootfs
 
 tests:
-	$(RUNTEST) ./exec.sh $(MYST_EXEC) $(OPTS) --memory-size=1024m rootfs /app/HelloWorld
+	$(MYST_EXEC) $(OPTS) --memory-size=1024m rootfs /app/HelloWorld
 	@ echo "=== passed test (dotnet-proc-maps)"
 
 gdb: rootfs
@@ -24,4 +24,4 @@ rootfs: appdir
 	$(MYST) mkcpio appdir rootfs
 
 clean:
-	sudo rm -fr appdir rootfs HelloWorld/build HelloWorld/obj HelloWorld/bin stdout.txt
+	sudo rm -fr appdir rootfs HelloWorld/build HelloWorld/obj HelloWorld/bin
