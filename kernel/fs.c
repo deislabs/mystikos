@@ -12,6 +12,7 @@
 #include <myst/kernel.h>
 #include <myst/lockfs.h>
 #include <myst/mount.h>
+#include <myst/printf.h>
 #include <myst/process.h>
 #include <myst/pubkey.h>
 #include <myst/roothash.h>
@@ -109,8 +110,8 @@ int myst_load_fs(
                 ERAISE(-EINVAL);
 
             ECHECK(myst_pubkey_verify(
-                __myst_kernel_args.archive_data,
-                __myst_kernel_args.archive_size,
+                __myst_kernel_args.pubkeys_data,
+                __myst_kernel_args.pubkeys_size,
                 locals->fssig.root_hash,
                 sizeof(locals->fssig.root_hash),
                 locals->fssig.signer,
@@ -121,8 +122,8 @@ int myst_load_fs(
         else
         {
             ECHECK(myst_roothash_verify(
-                __myst_kernel_args.archive_data,
-                __myst_kernel_args.archive_size,
+                __myst_kernel_args.roothashes_data,
+                __myst_kernel_args.roothashes_size,
                 locals->fssig.root_hash,
                 sizeof(locals->fssig.root_hash)));
         }
@@ -137,8 +138,13 @@ int myst_load_fs(
     }
     else
     {
+#ifdef MYST_RELEASE
+        /* Fail if neither a roothash nor a public key were provided */
+        ERAISE(-EPERM);
+#else
         const bool ephemeral = true;
         ECHECK(myst_rawblkdev_open(source, ephemeral, 0, &blkdev));
+#endif
     }
 
     if (key)

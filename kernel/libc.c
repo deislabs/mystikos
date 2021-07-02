@@ -46,6 +46,16 @@ char* strdup(const char* s)
     return p;
 }
 
+size_t strnlen(const char* s, size_t maxlen)
+{
+    size_t i;
+
+    for (i = 0; *s && i < maxlen; s++)
+        ;
+
+    return i;
+}
+
 // Note: strcpy() needed when compiler optimizer replaces sprintf/snprintf with
 // strcpy
 char* strcpy(char* dest, const char* src)

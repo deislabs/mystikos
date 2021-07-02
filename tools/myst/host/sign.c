@@ -19,9 +19,10 @@
 #include <myst/types.h>
 #include <openenclave/host.h>
 #include "../config.h"
-#include "archive.h"
 #include "myst_u.h"
+#include "pubkeys.h"
 #include "regions.h"
+#include "roothash.h"
 #include "utils.h"
 
 // Pulled in from liboesign.a
@@ -64,7 +65,8 @@ int copy_files_to_signing_directory(
     const char* sign_dir,
     const char* program_file,
     const char* rootfs_file,
-    const char* archive_file,
+    const char* pubkeys_file,
+    const char* roothashes_file,
     const char* config_file,
     const region_details* details)
 {
@@ -150,14 +152,24 @@ int copy_files_to_signing_directory(
         _err("Failed to copy \"%s\" to \"%s\"", rootfs_file, scratch_path);
     }
 
-    // Copy archive into signing directory
-    if (snprintf(scratch_path, PATH_MAX, "%s/archive", sign_dir) >= PATH_MAX)
+    // Copy pubkeys into signing directory
+    if (snprintf(scratch_path, PATH_MAX, "%s/pubkeys", sign_dir) >= PATH_MAX)
     {
-        _err("File path to long: %s/archive", sign_dir);
+        _err("File path to long: %s/pubkeys", sign_dir);
     }
-    if (myst_copy_file(archive_file, scratch_path) != 0)
+    if (myst_copy_file(pubkeys_file, scratch_path) != 0)
     {
-        _err("Failed to copy \"%s\" to \"%s\"", archive_file, scratch_path);
+        _err("Failed to copy \"%s\" to \"%s\"", pubkeys_file, scratch_path);
+    }
+
+    // Copy roothashes into signing directory
+    if (snprintf(scratch_path, PATH_MAX, "%s/roothashes", sign_dir) >= PATH_MAX)
+    {
+        _err("File path to long: %s/roothashes", sign_dir);
+    }
+    if (myst_copy_file(roothashes_file, scratch_path) != 0)
+    {
+        _err("Failed to copy \"%s\" to \"%s\"", roothashes_file, scratch_path);
     }
 
     // Copy configuration into signing directory
@@ -252,34 +264,33 @@ int _sign(int argc, const char* argv[])
     const region_details* details;
     char scratch_path[PATH_MAX];
     char scratch_path2[PATH_MAX];
-    char archive_buf[PATH_MAX];
-    const char* archive = NULL;
+    char pubkeys_buf[PATH_MAX];
+    char roothashes_buf[PATH_MAX];
+    const char* pubkeys_opt = NULL;
+    const char* roothashes_opt = NULL;
     static const size_t max_pubkeys = 128;
     const char* pubkeys[max_pubkeys];
     size_t num_pubkeys = 0;
-    static const size_t max_roothashes = 128;
-    const char* roothashes[max_roothashes];
-    size_t num_roothashes = 0;
     const char* signing_engine_key = NULL;
     const char* signing_engine_name = NULL;
     const char* signing_engine_path = NULL;
+    myst_buf_t roothash_buf = MYST_BUF_INITIALIZER;
 
     // We are in the right operation, right?
     assert(
         (strcmp(argv[1], "sign") == 0) || (strcmp(argv[1], "sign-sgx") == 0));
 
-    if (_getopt(&argc, argv, "--archive", &archive) != 0)
+    if (_getopt(&argc, argv, "--pubkeys", &pubkeys_opt) != 0)
     {
-        get_archive_options(
-            &argc,
-            argv,
-            pubkeys,
-            max_pubkeys,
-            &num_pubkeys,
-            roothashes,
-            max_roothashes,
-            &num_roothashes);
+        get_pubkeys_options(&argc, argv, pubkeys, max_pubkeys, &num_pubkeys);
     }
+
+    if (_getopt(&argc, argv, "--roothashes", &roothashes_opt) != 0)
+    {
+        get_roothash_options(&argc, argv, &roothash_buf);
+    }
+
+    /* ATTN:MEB: handle roothashes here */
 
     _getopt(&argc, argv, "--signing-engine-key", &signing_engine_key);
     _getopt(&argc, argv, "--signing-engine-name", &signing_engine_name);
@@ -390,18 +401,26 @@ int _sign(int argc, const char* argv[])
     }
     close(fd);
 
-    if (!archive)
+    if (!pubkeys_opt)
     {
-        create_archive(
-            pubkeys, num_pubkeys, roothashes, num_roothashes, archive_buf);
-        archive = archive_buf;
+        create_pubkeys_file(pubkeys, num_pubkeys, pubkeys_buf);
+        pubkeys_opt = pubkeys_buf;
     }
+
+    if (!roothashes_opt)
+    {
+        create_roothashes_file(&roothash_buf, roothashes_buf);
+        roothashes_opt = roothashes_buf;
+    }
+
+    /* ATTN:MEB: handle roothashes file here */
 
     // Setup all the regions
     if ((details = create_region_details_from_files(
              target,
              rootfs_file,
-             archive,
+             pubkeys_opt,
+             roothashes_opt,
              config_file,
              parsed_data.heap_pages)) == NULL)
     {
@@ -413,7 +432,8 @@ int _sign(int argc, const char* argv[])
             sign_dir,
             program_file,
             rootfs_file,
-            archive,
+            pubkeys_opt,
+            roothashes_opt,
             config_file,
             details) != 0)
     {

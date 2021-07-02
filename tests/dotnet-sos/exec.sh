@@ -10,7 +10,6 @@ function log_and_exit()
 $1 -b -o 'command script import sos_test' \
 	-o "quit" \
 	-- $2 $3 $4 ext2fs \
-	--roothash=roothash \
 	--memory-size 768M \
 	/app/hello > stdouterr.txt 2>&1
 

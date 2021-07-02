@@ -231,8 +231,11 @@ static void _mem_command(int argc, char** argv)
     n = __myst_kernel_args.crt_size;
     printf("crt size     =%11zu (%zumb)\n", n, n / mb);
 
-    n = __myst_kernel_args.archive_size;
-    printf("archive size =%11zu (%zumb)\n", n, n / mb);
+    n = __myst_kernel_args.pubkeys_size;
+    printf("pubkeys size =%11zu (%zumb)\n", n, n / mb);
+
+    n = __myst_kernel_args.roothashes_size;
+    printf("roothashes size =%11zu (%zumb)\n", n, n / mb);
 
     printf("\n");
 

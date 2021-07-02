@@ -39,7 +39,6 @@ tests:
 cachegrind:
 	mkdir -p $(SUBOBJDIR)
 	$(MYST) mkext2 --force --size=$(EXT2FS_SIZE) ext2dir $(EXT2FS)
-	chown $(USER).$(USER) $(EXT2FS)
 	$(CACHEGRIND_COMMAND) $(SUBBINDIR)/ext2 $(EXT2FS)
 
 ann:

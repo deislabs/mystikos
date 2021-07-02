@@ -9,6 +9,10 @@
 
 #define MYST_SHA256_SIZE 32
 
+#define MYST_SHA256_ASCII_LENGTH (2 * MYST_SHA256_SIZE)
+
+#define MYST_SHA256_ASCII_SIZE (MYST_SHA256_ASCII_LENGTH + 1)
+
 typedef struct myst_sha256_ctx
 {
     uint64_t opaque[16];

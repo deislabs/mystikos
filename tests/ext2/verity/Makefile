@@ -6,7 +6,6 @@ CFLAGS = -fPIC
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 
 IMAGE=$(SUBOBJDIR)/image
-ROOTHASH=$(SUBOBJDIR)/roothash
 PUBKEY=$(SUBOBJDIR)/public.pem
 PRIVKEY=$(SUBOBJDIR)/private.pem
 
@@ -27,7 +26,7 @@ deps:
 tests: rootfs image
 	$(MAKE) __tests
 
-OPTS = --pubkey=$(PUBKEY) --roothash=$(ROOTHASH)
+OPTS = --pubkey=$(PUBKEY)
 
 ifdef STRACE
 OPTS += --strace
@@ -40,7 +39,7 @@ gdb:
 	$(MYST_GDB) --args $(MYST_EXEC) $(OPTS) rootfs /bin/verity $(IMAGE)
 
 clean:
-	rm -rf $(APPDIR) rootfs export ramfs $(IMAGE) $(ROOTHASH) $(PUBKEY) $(PRIVKEY)
+	rm -rf $(APPDIR) rootfs export ramfs $(IMAGE) $(PUBKEY) $(PRIVKEY)
 
 ##==============================================================================
 ##
@@ -62,14 +61,9 @@ image: $(IMAGE)
 $(IMAGE):
 	mkdir -p $(SUBOBJDIR)
 	$(MYST) mkext2 $(MKEXT2_OPTS) ext2dir $(IMAGE)
-	$(MYST) fssig $(IMAGE) > $(OUTFILE)
-	@ grep root_hash= $(OUTFILE) | cut -d= -f 2 > $(ROOTHASH)
 
 dump:
 	veritysetup dump --hash-offset=$(SIZE) $(IMAGE)
-
-roothash:
-	@cat $(ROOTHASH)
 
 $(PRIVKEY):
 	mkdir -p $(SUBOBJDIR)

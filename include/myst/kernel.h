@@ -112,9 +112,13 @@ typedef struct myst_kernel_args
     void* rootfs_data;
     size_t rootfs_size;
 
-    /* The CPIO archive image */
-    void* archive_data;
-    size_t archive_size;
+    /* The pubkeys region */
+    void* pubkeys_data;
+    size_t pubkeys_size;
+
+    /* The roothashes region */
+    void* roothashes_data;
+    size_t roothashes_size;
 
     /* The C runtime image */
     void* crt_data;

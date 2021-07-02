@@ -54,13 +54,10 @@ MKEXT2_OPTS += --force
 MKEXT2_OPTS += --encrypt=$(KEYFILE)
 MKEXT2_OPTS += -p=passphrase12345
 
-OUTFILE=$(SUBOBJDIR)/outfile
-
 $(IMAGE):
 	mkdir -p $(SUBOBJDIR)
 	sudo $(MYST) mkext2 $(MKEXT2_OPTS) ext2dir $(IMAGE)
-	$(MYST) fssig $(IMAGE) > $(OUTFILE)
-	@ grep root_hash= $(OUTFILE) | cut -d= -f 2 > $(ROOTHASH)
+	$(MYST) fssig --roothash $(IMAGE) > $(ROOTHASH)
 
 $(KEYFILE):
 	mkdir -p $(SUBOBJDIR)

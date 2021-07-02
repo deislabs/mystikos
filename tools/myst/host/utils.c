@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 #define _XOPEN_SOURCE 500
+#include <ctype.h>
 #include <errno.h>
 #include <ftw.h>
 #include <libgen.h>

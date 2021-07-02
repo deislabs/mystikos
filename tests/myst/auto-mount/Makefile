@@ -29,7 +29,6 @@ rootfs: build ramfs
 	mkdir -p $(APPDIR)/hostfs-target
 	$(MYST) mkcpio $(APPDIR) $(ROOTFS)
 	$(MYST) mkext2 --force $(APPDIR) ext2rootfs
-	$(MYST) fssig --roothash ext2rootfs > roothash
 
 ramfs:
 	mkdir -p $(RAMFSDIR)
@@ -41,7 +40,6 @@ ext2fs:
 	mkdir -p $(EXT2FSDIR)
 	touch $(EXT2FSDIR)/ext2-file
 	$(MYST) mkext2 --force --size=$(EXT2FS_SIZE) $(EXT2FSDIR) $(EXT2FS) 
-	truncate --size=-4096 $(EXT2FS)
 
 hostfs:
 	mkdir -p $(HOSTFSDIR)
@@ -53,9 +51,9 @@ hostfs:
 # This updates the config file with the roothash.
 # currently not in use until the processing of the roothash is updated within the kernel
 update-config: ramfs ext2fs hostfs
-	$(MYST) fssig $(EXT2FS) > sig-info
-	cat config1.json | sed 's/MOUNTEXT2ROOTHASH/$(shell grep root_hash= sig-info | cut -d= -f 2)/' > config.json
-	rm sig-info
+	$(MYST) fssig --roothash $(EXT2FS) > roothash
+	cat config1.json | sed 's/MOUNTEXT2ROOTHASH/$(shell cat roothash)/g' > config.json
+	rm -f roothash
 
 tests:
 	$(MAKE) test-auto-mount test-auto-mount-ext2rootfs
@@ -65,7 +63,7 @@ test-auto-mount: rootfs ext2fs hostfs
 	--mount $(HOSTFSDIR3)/testfile1=/targetfile1 --mount $(HOSTFSDIR3)/testfile2=/targetfile2 --app-config-path config1.json /bin/test test1
 
 test-auto-mount-ext2rootfs: rootfs ext2fs hostfs
-	$(RUNTEST) $(MYST_EXEC) ext2rootfs --roothash=roothash $(OPTS) --mount /ramfs=/ramfs-target --mount $(EXT2FS)=/ext2-target --mount $(HOSTFSDIR)=/hostfs-target \
+	$(RUNTEST) $(MYST_EXEC) ext2rootfs $(OPTS) --mount /ramfs=/ramfs-target --mount $(EXT2FS)=/ext2-target --mount $(HOSTFSDIR)=/hostfs-target \
 	--mount $(HOSTFSDIR3)/testfile1=/targetfile1 --mount $(HOSTFSDIR3)/testfile2=/targetfile2 --app-config-path config1.json /bin/test test1
 
 gdb: rootfs ext2fs hostfs

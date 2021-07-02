@@ -15,7 +15,6 @@ all: $(PUBKEY)
 	$(MUSL_GCC) -Wall -o $(APPDIR)/bin/hello hello.c
 	sudo $(MYST) mkext2 --force --sign=$(PUBKEY):$(PRIVKEY) $(APPDIR) $(ROOTFS)
 	$(MYST) package --pubkey=$(PUBKEY) $(PRIVKEY) config.json
-	sudo chown -R $(USER).$(USER) myst
 
 $(PUBKEY): $(PRIVKEY)
 	openssl rsa -in $(PRIVKEY) -pubout -out $(PUBKEY)
@@ -26,17 +25,17 @@ $(PRIVKEY): $(TMPDIR)
 $(TMPDIR):
 	mkdir -p $(TMPDIR)
 
-export MYST_ROOTFS_PATH=$(ROOTFS)
+#export MYST_ROOTFS_PATH=$(ROOTFS)
 
 tests:
 	$(RUNTEST) $(MYST) exec-sgx --pubkey=$(PUBKEY) $(ROOTFS) /bin/hello
-	$(RUNTEST) ./myst/bin/hello
+	$(RUNTEST) ./myst/bin/hello --rootfs=$(ROOTFS)
+
+dump:
+	echo MYST_ROOTFS_PATH=$(MYST_ROOTFS_PATH)
 
 clean:
 	rm -rf $(APPDIR) myst $(PRIVKEY) $(PRIVKEY) $(ROOTFS)
 
 distclean:
 	rm -rf $(SUBOBJDIR)
-
-xxx:
-	ls -l $(ROOTFS)

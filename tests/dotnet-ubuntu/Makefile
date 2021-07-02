@@ -16,30 +16,23 @@ appdir:
 
 ext2fs: appdir
 	$(MYST) mkext2 appdir ext2fs
-	$(MYST) fssig --roothash ext2fs > roothash
 
 clean:
-	rm -fr appdir ext2fs roothash
+	rm -fr appdir ext2fs
+
+OPTS += --memory-size $(HEAP_SIZE)
 
 tests:
-	$(RUNTEST) $(MYST_EXEC) ext2fs --roothash=roothash \
-	--memory-size $(HEAP_SIZE) \
-	/app/hello $(OPTS)
+	$(RUNTEST) $(MYST_EXEC) ext2fs /app/hello $(OPTS)
 
 ##############################
 # dev targets
 # ############################
 run-ext2-lldb:
-	/mnt/oelldb/oelldb -- $(MYST) exec ext2fs \
-	--roothash=roothash \
-	--memory-size $(HEAP_SIZE) \
-	/app/hello $(OPTS)
+	/mnt/oelldb/oelldb -- $(MYST) exec ext2fs /app/hello $(OPTS)
 
 run-ext2-gdb:
-	$(MYST_GDB) --args $(MYST) exec ext2fs \
-	--roothash=roothash \
-	--memory-size $(HEAP_SIZE) \
-	/app/hello $(OPTS)
+	$(MYST_GDB) --args $(MYST) exec ext2fs /app/hello $(OPTS)
 
 ct:
 	sudo rm -fr /tmp/myst*

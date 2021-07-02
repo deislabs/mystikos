@@ -32,10 +32,11 @@
 #include "../config.h"
 #include "../kargs.h"
 #include "../shared.h"
-#include "archive.h"
 #include "exec_linux.h"
 #include "process.h"
+#include "pubkeys.h"
 #include "regions.h"
+#include "roothash.h"
 #include "utils.h"
 
 #define USAGE_FORMAT \
@@ -378,16 +379,15 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
     static const size_t max_pubkeys = 128;
     const char* pubkeys[max_pubkeys];
     size_t num_pubkeys = 0;
-    static const size_t max_roothashes = 128;
-    const char* roothashes[max_roothashes];
-    size_t num_roothashes = 0;
-    char archive_path[PATH_MAX];
+    char pubkeys_path[PATH_MAX];
+    char roothashes_path[PATH_MAX];
     char rootfs_path[] = "/tmp/mystXXXXXX";
     const region_details* details;
     void* mmap_addr = NULL;
     size_t mmap_length = 0;
     char err[256];
     myst_args_t mount_mappings = {0};
+    myst_buf_t roothash_buf = MYST_BUF_INITIALIZER;
 
     (void)program_arg;
 
@@ -395,15 +395,10 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
     _get_options(&argc, argv, &mount_mappings, &opts);
 
     /* Get --pubkey=filename options */
-    get_archive_options(
-        &argc,
-        argv,
-        pubkeys,
-        max_pubkeys,
-        &num_pubkeys,
-        roothashes,
-        max_roothashes,
-        &num_roothashes);
+    get_pubkeys_options(&argc, argv, pubkeys, max_pubkeys, &num_pubkeys);
+
+    /* Get --roothash=filename options */
+    get_roothash_options(&argc, argv, &roothash_buf);
 
     /* Check usage */
     if (argc < 4)
@@ -414,8 +409,17 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
 
     rootfs_arg = argv[2];
     program_arg = argv[3];
-    create_archive(
-        pubkeys, num_pubkeys, roothashes, num_roothashes, archive_path);
+
+    if (extract_roothashes_from_ext2_images(
+            rootfs_arg, &mount_mappings, &roothash_buf) != 0)
+    {
+        _err("failed to extract roothashes from EXT2 images");
+    }
+
+    create_pubkeys_file(pubkeys, num_pubkeys, pubkeys_path);
+
+    if (create_roothashes_file(&roothash_buf, roothashes_path) != 0)
+        _err("failed to create roothashes file");
 
     /* copy the rootfs path to the options */
     if (myst_strlcpy(opts.rootfs, rootfs_arg, sizeof(opts.rootfs)) >=
@@ -446,7 +450,8 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
     if (!(details = create_region_details_from_files(
               program_arg,
               rootfs_arg,
-              archive_path,
+              pubkeys_path,
+              roothashes_path,
               opts.app_config_path,
               opts.heap_size)))
     {
@@ -459,7 +464,8 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
         _err("map_regions() failed");
     }
 
-    unlink(archive_path);
+    unlink(pubkeys_path);
+    unlink(roothashes_path);
 
     int envc = 0;
     while (envp[envc] != NULL)

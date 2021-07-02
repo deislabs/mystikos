@@ -20,13 +20,12 @@ appdir:
 ext2fs: appdir
 	rm -rf appdir/tmp/clr-debug-pipe*
 	$(MYST) mkext2 appdir ext2fs
-	$(MYST) fssig --roothash ext2fs > roothash
 
 oelldb:
 	git clone --branch working https://github.com/vtikoo/oelldb
 
 clean:
-	sudo rm -fr appdir ext2fs rootfs roothash oelldb stdouterr.txt
+	sudo rm -fr appdir ext2fs rootfs oelldb stdouterr.txt
 
 tests:
 	$(RUNTEST) docker run --rm \
@@ -44,7 +43,7 @@ tests-without-docker:
 #			dev targets			 #
 ##################################
 run-ext2:
-	$(MYST) exec ext2fs --roothash=roothash \
+	$(MYST) exec ext2fs \
 	--memory-size $(HEAP_SIZE) \
 	/app/hello
 
@@ -54,7 +53,6 @@ run-ext2-lldb:
 	-o "bpmd hello.dll hello.Program.Main" \
 	-o "setsymbolserver -directory $(abspath .)/appdir/app" \
 	-- $(MYST) exec $(OPTS) ext2fs \
-	--roothash=roothash \
 	--memory-size $(HEAP_SIZE) \
 	/app/hello
 

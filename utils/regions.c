@@ -34,6 +34,7 @@ int myst_region_find(
         {
             region->data = data;
             region->size = p->size;
+            region->file_size = p->file_size;
             return 0;
         }
 

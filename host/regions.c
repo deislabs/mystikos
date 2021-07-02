@@ -96,9 +96,11 @@ done:
 int myst_region_close(
     myst_region_context_t* context,
     const char* name,
-    uint64_t vaddr)
+    uint64_t vaddr,
+    size_t file_size)
 {
     int ret = 0;
+    size_t region_size;
 
     if (!context || context->magic != MAGIC || !name)
         ERAISE(-EINVAL);
@@ -111,6 +113,17 @@ int myst_region_close(
     if (!context->opened)
         ERAISE(-EINVAL);
 
+    /* calculate the size of the region */
+    region_size = vaddr - context->region_start;
+
+    /* the default file_size is the same as the region size */
+    if (file_size == SIZE_MAX)
+        file_size = region_size;
+
+    /* fail if file_size is larger than region size */
+    if (file_size > region_size)
+        ERAISE(-EINVAL);
+
     /* update the virtual address */
     context->vaddr = vaddr;
 
@@ -121,7 +134,8 @@ int myst_region_close(
         trailer.magic = MYST_REGION_MAGIC;
         trailer.index = context->region_index++;
         myst_strlcpy(trailer.name, name, sizeof(trailer.name));
-        trailer.size = context->vaddr - context->region_start;
+        trailer.size = region_size;
+        trailer.file_size = file_size;
 
         ECHECK((*context->add_page)(
             context->add_page_arg,

@@ -6,7 +6,6 @@ SOURCES = fs.c
 INCLUDES =
 CFLAGS = -Wall -fPIC -g $(GCOV_CFLAGS)
 LDFLAGS = $(GCOV_LDFLAGS)
-ROOTHASH=$(SUBOBJDIR)/roothash
 
 ifdef STRACE
 OPTS = --strace
@@ -25,8 +24,7 @@ test1: rootfs
 
 test2: ext2rootfs
 ifdef MYST_ENABLE_EXT2FS
-	$(MYST) fssig --roothash ext2rootfs > $(ROOTHASH)
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) ext2rootfs --roothash=$(ROOTHASH) /bin/fs ext2fs
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) ext2rootfs /bin/fs ext2fs
 endif
 
 test3: appdir

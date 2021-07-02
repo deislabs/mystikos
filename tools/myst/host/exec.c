@@ -25,19 +25,22 @@
 #include <myst/file.h>
 #include <myst/fssig.h>
 #include <myst/getopt.h>
+#include <myst/hex.h>
 #include <myst/options.h>
 #include <myst/round.h>
+#include <myst/sha256.h>
 #include <myst/shm.h>
 #include <openenclave/bits/properties.h>
 #include <openenclave/bits/sgx/sgxproperties.h>
 #include <openenclave/host.h>
 
 #include "../shared.h"
-#include "archive.h"
 #include "exec.h"
 #include "myst_u.h"
 #include "process.h"
+#include "pubkeys.h"
 #include "regions.h"
+#include "roothash.h"
 #include "utils.h"
 
 // This is a default enclave configuration that we use when overriding the
@@ -239,20 +242,22 @@ int exec_action(int argc, const char* argv[], const char* envp[])
     static const size_t max_pubkeys = 128;
     const char* pubkeys[max_pubkeys];
     size_t num_pubkeys = 0;
-    static const size_t max_roothashes = 128;
-    const char* roothashes[max_roothashes];
-    size_t num_roothashes = 0;
     const region_details* details;
     int return_status;
-    char archive_path[PATH_MAX];
+    char pubkeys_path[PATH_MAX];
+    char roothashes_path[PATH_MAX];
     char rootfs_path[] = "/tmp/mystXXXXXX";
     uint64_t heap_size = 0;
     const char* commandline_config = NULL;
     myst_args_t mount_mapping = {0};
+    myst_buf_t roothash_buf = MYST_BUF_INITIALIZER;
 
     assert(strcmp(argv[1], "exec") == 0 || strcmp(argv[1], "exec-sgx") == 0);
 
     memset(&options, 0, sizeof(options));
+
+    (void)pubkeys;
+    (void)num_pubkeys;
 
     /* Get options */
     {
@@ -356,16 +361,11 @@ int exec_action(int argc, const char* argv[], const char* envp[])
             return 1;
         }
 
-        /* Get --pubkey=filename and --roothash=filename options */
-        get_archive_options(
-            &argc,
-            argv,
-            pubkeys,
-            max_pubkeys,
-            &num_pubkeys,
-            roothashes,
-            max_roothashes,
-            &num_roothashes);
+        /* Get --pubkey=filename options */
+        get_pubkeys_options(&argc, argv, pubkeys, max_pubkeys, &num_pubkeys);
+
+        /* Get --roothash=filename options */
+        get_roothash_options(&argc, argv, &roothash_buf);
 
         /* determine whether debug symbols are needed */
         {
@@ -393,8 +393,17 @@ int exec_action(int argc, const char* argv[], const char* envp[])
 
     const char* rootfs = argv[2];
     const char* program = argv[3];
-    create_archive(
-        pubkeys, num_pubkeys, roothashes, num_roothashes, archive_path);
+
+    if (extract_roothashes_from_ext2_images(
+            rootfs, &mount_mapping, &roothash_buf) != 0)
+    {
+        _err("failed to extract roothashes from EXT2 images");
+    }
+
+    create_pubkeys_file(pubkeys, num_pubkeys, pubkeys_path);
+
+    if (create_roothashes_file(&roothash_buf, roothashes_path) != 0)
+        _err("failed to create roothashes file");
 
     /* copy the rootfs path to the options */
     if (myst_strlcpy(options.rootfs, rootfs, sizeof(options.rootfs)) >=
@@ -425,13 +434,18 @@ int exec_action(int argc, const char* argv[], const char* envp[])
     // If the enclave is signed that config will take precedence over
     // this version
     if ((details = create_region_details_from_files(
-             program, rootfs, archive_path, commandline_config, heap_size)) ==
-        NULL)
+             program,
+             rootfs,
+             pubkeys_path,
+             roothashes_path,
+             commandline_config,
+             heap_size)) == NULL)
     {
         _err("Creating region data failed.");
     }
 
-    unlink(archive_path);
+    unlink(pubkeys_path);
+    unlink(roothashes_path);
 
     return_status = exec_launch_enclave(
         details->enc.path,

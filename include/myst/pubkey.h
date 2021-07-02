@@ -7,8 +7,8 @@
 #include <stdint.h>
 
 int myst_pubkey_verify(
-    const void* cpio_data,
-    size_t cpio_size,
+    const void* pubkeys_data,
+    size_t pubkeys_size,
     const uint8_t* hash,
     size_t hash_size,
     const uint8_t* signer,

@@ -30,7 +30,7 @@ static int _find_region(
     }
 
     *data = region.data;
-    *size = region.size;
+    *size = region.file_size;
 
 done:
     return ret;
@@ -191,12 +191,21 @@ int init_kernel_args(
         err,
         err_size));
 
-    /* find the archive region */
+    /* find the pubkeys region */
     ECHECK(_find_region(
         regions_end,
-        MYST_REGION_ARCHIVE,
-        &args->archive_data,
-        &args->archive_size,
+        MYST_REGION_PUBKEYS,
+        &args->pubkeys_data,
+        &args->pubkeys_size,
+        err,
+        err_size));
+
+    /* find the roothashes region */
+    ECHECK(_find_region(
+        regions_end,
+        MYST_REGION_ROOTHASHES,
+        &args->roothashes_data,
+        &args->roothashes_size,
         err,
         err_size));
 
