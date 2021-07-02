@@ -11,7 +11,7 @@ endif
 all: rootfs
 
 tests:
-	$(RUNTEST) ./exec.sh $(MYST_EXEC) $(OPTS) --memory-size=1024m rootfs /app/HelloWorld
+	$(RUNTEST) ./exec.sh $(MYST_EXEC) $(OPTS) --app-config-path config.json rootfs /app/HelloWorld
 	@ echo "=== passed test (dotnet-proc-maps)"
 
 gdb: rootfs

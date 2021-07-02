@@ -98,8 +98,10 @@ int myst_mutex_lock(myst_mutex_t* mutex)
         myst_spin_unlock(&m->lock);
 
         /* Ask host to wait for an event on this thread */
+        self->signal.waiting_on_event = true;
         if ((r = myst_tcall_wait(self->event, NULL)) != 0)
             myst_panic("myst_tcall_wait(): %ld: %d", r, *(int*)self->event);
+        self->signal.waiting_on_event = false;
     }
 
     /* Unreachable! */
