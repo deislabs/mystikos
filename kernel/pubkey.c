@@ -4,12 +4,13 @@
 
 #include <myst/cpio.h>
 #include <myst/eraise.h>
+#include <myst/panic.h>
 #include <myst/pubkey.h>
 #include <myst/tcall.h>
 
 int myst_pubkey_verify(
-    const void* cpio_data,
-    size_t cpio_size,
+    const void* pubkeys_data,
+    size_t pubkeys_size,
     const uint8_t* hash,
     size_t hash_size,
     const uint8_t* signer,
@@ -18,10 +19,10 @@ int myst_pubkey_verify(
     size_t signature_size)
 {
     int ret = 0;
-    size_t pos = 0;
-    char* pubkey = NULL;
+    const char* p = pubkeys_data;
+    const char* end = p + pubkeys_size;
 
-    if (!cpio_data || !cpio_size)
+    if (!pubkeys_data)
         ERAISE(-EINVAL);
 
     if (!hash || !hash_size)
@@ -33,64 +34,35 @@ int myst_pubkey_verify(
     if (!signature || !signature_size)
         ERAISE(-EINVAL);
 
-    for (;;)
+    /* for each entry in the pubkeys region */
+    while (p < end)
     {
-        myst_cpio_entry_t ent;
-        const void* file_data;
-        int r;
+        size_t rem = end - p;
+        size_t len = strnlen(p, rem);
 
-        if ((r = myst_cpio_next_entry(
-                 cpio_data, cpio_size, &pos, &ent, &file_data)) == 0)
-        {
-            break;
-        }
-
-        if (r < 0)
+        if (len == rem)
             ERAISE(-EINVAL);
 
-        if (S_ISDIR(ent.mode))
+        if (myst_tcall_verify_signature(
+                p,
+                hash,
+                hash_size,
+                signer,
+                signer_size,
+                signature,
+                signature_size) == 0)
         {
-            continue;
+            /* success! */
+            goto done;
         }
-        else if (S_ISLNK(ent.mode))
-        {
-            continue;
-        }
-        else if (S_ISREG(ent.mode))
-        {
-            if (strncmp(ent.name, "pubkeys/", 7) == 0 && ent.size > 0)
-            {
-                if (!(pubkey = malloc(ent.size + 1)))
-                    ERAISE(-ENOMEM);
 
-                memcpy(pubkey, file_data, ent.size);
-                pubkey[ent.size] = '\0';
-
-                if (myst_tcall_verify_signature(
-                        pubkey,
-                        hash,
-                        hash_size,
-                        signer,
-                        signer_size,
-                        signature,
-                        signature_size) == 0)
-                {
-                    /* success! */
-                    goto done;
-                }
-
-                free(pubkey);
-                pubkey = NULL;
-            }
-        }
+        /* advance to the next public key */
+        p += len + 1;
     }
 
     ret = -EPERM;
 
 done:
-
-    if (pubkey)
-        free(pubkey);
 
     return ret;
 }

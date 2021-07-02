@@ -64,3 +64,31 @@ done:
 
     return ret;
 }
+
+int myst_bin_to_ascii(const void* data, size_t size, char* buf, size_t buf_size)
+{
+    int ret = 0;
+
+    if (!data || !buf)
+        ERAISE(-EINVAL);
+
+    if (buf_size < (2 * size + 1))
+        ERAISE(-ERANGE);
+
+    /* convert the string to ASCII */
+    {
+        char* p = buf;
+
+        *p = '\0';
+
+        for (size_t i = 0; i < size; i++)
+        {
+            snprintf(p, 3, "%02x", ((const uint8_t*)data)[i]);
+            p += 2;
+        }
+    }
+
+done:
+
+    return ret;
+}

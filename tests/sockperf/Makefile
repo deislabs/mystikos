@@ -9,9 +9,8 @@ APPDIR=$(CURDIR)/appdir
 APPBUILDER=$(TOP)/scripts/appbuilder
 
 ROOTFS=$(CURDIR)/rootfs
-ROOTHASH=$(CURDIR)/roothash
 
-all: $(ROOTFS) $(ROOTHASH)
+all: $(ROOTFS)
 export TIMEOUT=10000
 
 $(APPDIR):
@@ -23,12 +22,6 @@ $(APPDIR):
 
 $(ROOTFS): $(APPDIR)
 	$(MYST) mkext2 $(APPDIR) $(ROOTFS)
-
-$(ROOTHASH): $(ROOTFS)
-	mkdir -p $(SUBOBJDIR)
-	$(MYST) fssig --roothash $(ROOTFS) > $(ROOTHASH)
-
-OPTS += --roothash=$(ROOTHASH)
 
 tests:
 	./kill.sh
@@ -49,4 +42,4 @@ myst:
 	$(MAKE) -C $(TOP)/tools/myst
 
 clean:
-	rm -rf $(APPDIR) $(ROOTFS) $(ROOTHASH) sockperf
+	rm -rf $(APPDIR) $(ROOTFS) sockperf

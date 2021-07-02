@@ -20,13 +20,14 @@
 #include <openenclave/host.h>
 
 #include "../config.h"
-#include "archive.h"
 #include "cpio.h"
 #include "exec.h"
 #include "myst/file.h"
 #include "myst_args.h"
 #include "process.h"
+#include "pubkeys.h"
 #include "regions.h"
+#include "roothash.h"
 #include "sign.h"
 #include "utils.h"
 
@@ -99,30 +100,24 @@ int _package(int argc, const char* argv[])
     char* tmp_dir = NULL;
     char dir_template[] = "/tmp/mystXXXXXX";
     char rootfs_file[PATH_MAX];
-    char archive_file[PATH_MAX];
+    char pubkeys_file[PATH_MAX];
+    char roothashes_file[PATH_MAX];
     char scratch_path[PATH_MAX];
     char scratch_path2[PATH_MAX];
     config_parsed_data_t parsed_data = {0};
     static const size_t max_pubkeys = 128;
     const char* pubkeys[max_pubkeys];
     size_t num_pubkeys = 0;
-    static const size_t max_roothashes = 128;
-    const char* roothashes[max_roothashes];
-    size_t num_roothashes = 0;
     const char* signing_engine_key = NULL;
     const char* signing_engine_name = NULL;
     const char* signing_engine_path = NULL;
+    myst_buf_t roothash_buf = MYST_BUF_INITIALIZER;
 
-    /* Get --pubkey=filename and --roothash=filename options */
-    get_archive_options(
-        &argc,
-        argv,
-        pubkeys,
-        max_pubkeys,
-        &num_pubkeys,
-        roothashes,
-        max_roothashes,
-        &num_roothashes);
+    /* Get --pubkey=filename options */
+    get_pubkeys_options(&argc, argv, pubkeys, max_pubkeys, &num_pubkeys);
+
+    /* Get --roothash=filename options */
+    get_roothash_options(&argc, argv, &roothash_buf);
 
     if ((argc < 4) || (cli_getopt(&argc, argv, "--help", NULL) == 0) ||
         (cli_getopt(&argc, argv, "-h", NULL) == 0))
@@ -164,8 +159,12 @@ int _package(int argc, const char* argv[])
         config_file = argv[3];
     }
 
-    create_archive(
-        pubkeys, num_pubkeys, roothashes, num_roothashes, archive_file);
+    create_pubkeys_file(pubkeys, num_pubkeys, pubkeys_file);
+
+    if (create_roothashes_file(&roothash_buf, roothashes_file) != 0)
+        _err("failed to create roothashes file");
+
+    /* ATTN:MEB: create roothashes file here! */
 
     tmp_dir = mkdtemp(dir_template);
     if (tmp_dir == NULL)
@@ -259,8 +258,10 @@ int _package(int argc, const char* argv[])
                                           rootfs_file,
                                           pem_file,
                                           config_file,
-                                          "--archive",
-                                          archive_file,
+                                          "--pubkeys",
+                                          pubkeys_file,
+                                          "--roothashes",
+                                          roothashes_file,
                                           "--outdir",
                                           tmp_dir,
                                           "--signing-engine-name",
@@ -286,8 +287,10 @@ int _package(int argc, const char* argv[])
                                           rootfs_file,
                                           pem_file,
                                           config_file,
-                                          "--archive",
-                                          archive_file,
+                                          "--pubkeys",
+                                          pubkeys_file,
+                                          "--roothashes",
+                                          roothashes_file,
                                           "--outdir",
                                           tmp_dir,
                                           "--signing-engine-name",
@@ -311,8 +314,10 @@ int _package(int argc, const char* argv[])
                                    rootfs_file,
                                    pem_file,
                                    config_file,
-                                   "--archive",
-                                   archive_file,
+                                   "--pubkeys",
+                                   pubkeys_file,
+                                   "--roothashes",
+                                   roothashes_file,
                                    "--outdir",
                                    tmp_dir};
 
@@ -404,13 +409,24 @@ int _package(int argc, const char* argv[])
         goto done;
     }
 
-    // Add the archive to myst
-    if (_add_image_to_elf_section(&elf, archive_file, ".mystarchive") != 0)
+    // Add the pubkeys to myst
+    if (_add_image_to_elf_section(&elf, pubkeys_file, ".mystpubkeys") != 0)
     {
         fprintf(
             stderr,
-            "Failed to add image %s to enclave section .mystarchive",
-            archive_file);
+            "Failed to add image %s to enclave section .mystpubkeys",
+            pubkeys_file);
+        goto done;
+    }
+
+    // Add the roothashes to myst
+    if (_add_image_to_elf_section(&elf, roothashes_file, ".mystroothashes") !=
+        0)
+    {
+        fprintf(
+            stderr,
+            "Failed to add image %s to enclave section .mystroothashes",
+            roothashes_file);
         goto done;
     }
 
@@ -605,6 +621,29 @@ int _exec_package(
         }
     }
 
+    /* Get --rootfs=<path> option if any  */
+    {
+        const char* arg = NULL;
+
+        if ((cli_getopt(&argc, argv, "--rootfs", &arg) == 0))
+        {
+            if (access(arg, R_OK) != 0)
+            {
+                fprintf(stderr, "%s: bad --rootfs option: %s", argv[0], arg);
+                goto done;
+            }
+
+            if (MYST_STRLCPY(options.rootfs, arg) >= sizeof(options.rootfs))
+            {
+                fprintf(
+                    stderr,
+                    "--rootfs option is too long (> %zu)\n",
+                    sizeof(options.rootfs));
+                goto done;
+            }
+        }
+    }
+
     /* determine whether debug symbols are needed */
     {
         int r;
@@ -769,28 +808,31 @@ int _exec_package(
 
     if (_is_null_rootfs(details->rootfs.buffer, details->rootfs.buffer_size))
     {
-        char* env;
-
-        if (!(env = getenv("MYST_ROOTFS_PATH")))
+        /* if rootfs has not already been specified by --rootfs=<path> */
+        if (*options.rootfs == '\0')
         {
-            fprintf(stderr, "MYST_ROOTFS_PATH is undefined\n");
-            goto done;
-        }
+            char* env;
 
-        if (access(env, R_OK) != 0)
-        {
-            fprintf(stderr, "MYST_ROOTFS_PATH=%s not found\n", env);
-            goto done;
-        }
+            if (!(env = getenv("MYST_ROOTFS_PATH")))
+            {
+                fprintf(stderr, "MYST_ROOTFS_PATH is undefined\n");
+                goto done;
+            }
 
-        if (myst_strlcpy(options.rootfs, env, sizeof(options.rootfs)) >=
-            sizeof(options.rootfs))
-        {
-            fprintf(
-                stderr,
-                "MYST_ROOTFS_PATH is too long (> %zu)\n",
-                sizeof(options.rootfs));
-            goto done;
+            if (access(env, R_OK) != 0)
+            {
+                fprintf(stderr, "MYST_ROOTFS_PATH=%s not found\n", env);
+                goto done;
+            }
+
+            if (MYST_STRLCPY(options.rootfs, env) >= sizeof(options.rootfs))
+            {
+                fprintf(
+                    stderr,
+                    "MYST_ROOTFS_PATH is too long (> %zu)\n",
+                    sizeof(options.rootfs));
+                goto done;
+            }
         }
     }
 

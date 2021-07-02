@@ -83,16 +83,27 @@ const region_details* create_region_details_from_package(
     }
     _details.rootfs.status = REGION_ITEM_BORROWED;
 
-    // Load archive:
+    // Load pubkeys:
     if (elf_find_section(
             &myst_elf->elf,
-            ".mystarchive",
-            (unsigned char**)&_details.archive.buffer,
-            &_details.archive.buffer_size) != 0)
+            ".mystpubkeys",
+            (unsigned char**)&_details.pubkeys.buffer,
+            &_details.pubkeys.buffer_size) != 0)
     {
-        _err("Failed to extract archive from %s.", get_program_file());
+        _err("Failed to extract pubkeys from %s.", get_program_file());
     }
-    _details.archive.status = REGION_ITEM_BORROWED;
+    _details.pubkeys.status = REGION_ITEM_BORROWED;
+
+    // Load roothashes section:
+    if (elf_find_section(
+            &myst_elf->elf,
+            ".mystroothashes",
+            (unsigned char**)&_details.roothashes.buffer,
+            &_details.roothashes.buffer_size) != 0)
+    {
+        _err("Failed to extract roothashes from %s.", get_program_file());
+    }
+    _details.roothashes.status = REGION_ITEM_BORROWED;
 
     // Load config data
     if (elf_find_section(
@@ -137,7 +148,8 @@ const region_details* get_region_details(void)
 const region_details* create_region_details_from_files(
     const char* program_path,
     const char* rootfs_path,
-    const char* archive_path,
+    const char* pubkeys_path,
+    const char* roothashes_path,
     const char* config_path,
     size_t ram)
 {
@@ -148,17 +160,30 @@ const region_details* create_region_details_from_files(
         _err("failed to load rootfs: %s", rootfs_path);
     _details.rootfs.status = REGION_ITEM_OWNED;
 
-    /* load archive file */
+    /* load pubkeys file */
     {
         if (myst_load_file(
-                archive_path,
-                (void**)&_details.archive.buffer,
-                &_details.archive.buffer_size) != 0)
+                pubkeys_path,
+                (void**)&_details.pubkeys.buffer,
+                &_details.pubkeys.buffer_size) != 0)
         {
-            _err("failed to load archive: %s", archive_path);
+            _err("failed to load pubkeys: %s", pubkeys_path);
         }
 
-        _details.archive.status = REGION_ITEM_OWNED;
+        _details.pubkeys.status = REGION_ITEM_OWNED;
+    }
+
+    /* load roothashes file */
+    {
+        if (myst_load_file(
+                roothashes_path,
+                (void**)&_details.roothashes.buffer,
+                &_details.roothashes.buffer_size) != 0)
+        {
+            _err("failed to load roothashes: %s", roothashes_path);
+        }
+
+        _details.roothashes.status = REGION_ITEM_OWNED;
     }
 
     if (program_path[0] != '/')
@@ -285,8 +310,10 @@ void free_region_details()
 {
     if (_details.rootfs.status == REGION_ITEM_OWNED)
         free(_details.rootfs.buffer);
-    if (_details.archive.status == REGION_ITEM_OWNED)
-        free(_details.archive.buffer);
+    if (_details.pubkeys.status == REGION_ITEM_OWNED)
+        free(_details.pubkeys.buffer);
+    if (_details.roothashes.status == REGION_ITEM_OWNED)
+        free(_details.roothashes.buffer);
     if (_details.crt.status == REGION_ITEM_OWNED)
         elf_image_free(&_details.crt.image);
     if (_details.kernel.status == REGION_ITEM_OWNED)
@@ -384,7 +411,7 @@ static int _add_crt_region(myst_region_context_t* context, uint64_t* vaddr)
     ECHECK(myst_round_up(_details.crt.image.image_size, m, &r));
     *vaddr += r;
 
-    if (myst_region_close(context, name, *vaddr) != 0)
+    if (myst_region_close(context, name, *vaddr, SIZE_MAX) != 0)
         ERAISE(-EINVAL);
 
     *(vaddr) += PAGE_SIZE;
@@ -462,7 +489,7 @@ static int _add_kernel_stacks_region(
         }
     }
 
-    if (myst_region_close(context, name, *vaddr) != 0)
+    if (myst_region_close(context, name, *vaddr, SIZE_MAX) != 0)
         ERAISE(-EINVAL);
 
     *(vaddr) += PAGE_SIZE;
@@ -510,7 +537,7 @@ static int _add_kernel_entry_stack_region(
         *vaddr += sizeof(page);
     }
 
-    if (myst_region_close(context, name, *vaddr) != 0)
+    if (myst_region_close(context, name, *vaddr, SIZE_MAX) != 0)
         ERAISE(-EINVAL);
 
     *(vaddr) += PAGE_SIZE;
@@ -569,7 +596,7 @@ static int _add_kernel_region(
 
     image_size = r;
 
-    if (myst_region_close(context, name, *vaddr) != 0)
+    if (myst_region_close(context, name, *vaddr, SIZE_MAX) != 0)
         ERAISE(-EINVAL);
 
     *(vaddr) += PAGE_SIZE;
@@ -629,7 +656,7 @@ static int _add_simple_region(
         *vaddr += sizeof(page);
     }
 
-    if (myst_region_close(context, name, *vaddr) != 0)
+    if (myst_region_close(context, name, *vaddr, size) != 0)
         ERAISE(-EINVAL);
 
     *(vaddr) += PAGE_SIZE;
@@ -720,14 +747,24 @@ static int _add_rootfs_region(myst_region_context_t* context, uint64_t* vaddr)
         _details.rootfs.buffer_size);
 }
 
-static int _add_archive_region(myst_region_context_t* context, uint64_t* vaddr)
+static int _add_pubkeys_region(myst_region_context_t* context, uint64_t* vaddr)
 {
     return _add_simple_region(
         context,
         vaddr,
-        MYST_REGION_ARCHIVE,
-        _details.archive.buffer,
-        _details.archive.buffer_size);
+        MYST_REGION_PUBKEYS,
+        _details.pubkeys.buffer,
+        _details.pubkeys.buffer_size);
+}
+
+static int _add_roothash_region(myst_region_context_t* context, uint64_t* vaddr)
+{
+    return _add_simple_region(
+        context,
+        vaddr,
+        MYST_REGION_ROOTHASHES,
+        _details.roothashes.buffer,
+        _details.roothashes.buffer_size);
 }
 
 static int _add_config_region(myst_region_context_t* context, uint64_t* vaddr)
@@ -790,7 +827,7 @@ static int _add_mman_region(myst_region_context_t* context, uint64_t* vaddr)
         *vaddr += sizeof(page);
     }
 
-    if (myst_region_close(context, name, *vaddr) != 0)
+    if (myst_region_close(context, name, *vaddr, SIZE_MAX) != 0)
         ERAISE(-EINVAL);
 
     *(vaddr) += PAGE_SIZE;
@@ -844,8 +881,11 @@ int add_regions(void* arg, uint64_t baseaddr, myst_add_page_t add_page)
     if (_add_rootfs_region(context, &vaddr) != 0)
         _err("_add_rootfs_region() failed");
 
-    if (_add_archive_region(context, &vaddr) != 0)
-        _err("_add_archive_region() failed");
+    if (_add_pubkeys_region(context, &vaddr) != 0)
+        _err("_add_pubkeys_region() failed");
+
+    if (_add_roothash_region(context, &vaddr) != 0)
+        _err("_add_roothash_region() failed");
 
     if (_add_mman_region(context, &vaddr) != 0)
         _err("_add_mman_region() failed");

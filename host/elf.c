@@ -1575,8 +1575,11 @@ int elf_add_section(
     elf_shdr_t sh;
 
     /* Reject invalid parameters */
-    if (!_is_valid_elf64(elf) || !name || !secdata || !secsize ||
-        secsize > SSIZE_MAX)
+    if (!_is_valid_elf64(elf) || !name || secsize > SSIZE_MAX)
+        GOTO(done);
+
+    /* Allow zero-sized sections */
+    if (secdata == NULL && secsize != 0)
         GOTO(done);
 
     /* Fail if new section name is invalid */
@@ -1614,6 +1617,7 @@ int elf_add_section(
     buf.cap = elf->size;
 
     /* Insert new section at SECOFFSET */
+    if (secsize)
     {
         /* Insert the new section */
         if (myst_buf_insert(&buf, sh.sh_offset, secdata, secsize) != 0)

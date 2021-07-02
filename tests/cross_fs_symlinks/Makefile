@@ -5,7 +5,6 @@ PROG=cross_fs_symlinks
 APPDIR = appdir
 CFLAGS = -fPIC
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
-ROOTHASH=roothash
 ifdef STRACE
 OPTS = --strace
 endif
@@ -20,9 +19,7 @@ test_ramfs_rootfs: rootfs
 
 test_ext2_rootfs: ext2rootfs
 ifdef MYST_ENABLE_EXT2FS
-	$(MYST) fssig --roothash ext2rootfs > $(ROOTHASH)
-	$(RUNTEST) $(MYST_EXEC) $(OPTS)  \
-	ext2rootfs --roothash=$(ROOTHASH) /bin/$(PROG) ext2
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) ext2rootfs /bin/$(PROG) ext2
 endif
 
 $(APPDIR):
@@ -38,4 +35,4 @@ ext2rootfs: $(APPDIR)
 	$(MYST) mkext2 --force $(APPDIR) ext2rootfs
 
 clean:
-	rm -rf $(APPDIR) rootfs ramfs cpio_image ext2rootfs roothash
+	rm -rf $(APPDIR) rootfs ramfs cpio_image ext2rootfs

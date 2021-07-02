@@ -26,22 +26,25 @@
 #define MYST_REGION_CRT_RELOC "crt.reloc"
 #define MYST_REGION_ROOTFS "rootfs"
 #define MYST_REGION_MMAN "mman"
-#define MYST_REGION_ARCHIVE "archive"
+#define MYST_REGION_PUBKEYS "pubkeys"
 #define MYST_REGION_KERNEL_ENTER_STACK "kernel.enter.stack"
+#define MYST_REGION_ROOTHASHES "roothashes"
 
 typedef struct myst_region_trailer
 {
     uint64_t magic;
     char name[MYST_REGION_NAME_SIZE];
-    uint64_t size;
-    uint64_t index; /* index of this trailer [0:N] */
-    uint8_t padding[3816];
+    uint64_t size;      /* size of reqion (excluding the trailer) */
+    uint64_t file_size; /* less than or equal to size */
+    uint64_t index;     /* index of this trailer [0:N] */
+    uint8_t padding[3808];
 } myst_region_trailer_t;
 
 typedef struct myst_region
 {
     void* data;
     size_t size;
+    size_t file_size;
 } myst_region_t;
 
 MYST_STATIC_ASSERT(sizeof(myst_region_trailer_t) == 4096);
@@ -66,7 +69,8 @@ int myst_region_open(myst_region_context_t* context);
 int myst_region_close(
     myst_region_context_t* context,
     const char* name,
-    uint64_t vaddr);
+    uint64_t vaddr,
+    size_t file_size); /* pass SIZE_MAX to make the same as the region size */
 
 int myst_region_add_page(
     myst_region_context_t* context,

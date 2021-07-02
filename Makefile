@@ -66,6 +66,7 @@ include $(TOP)/rules.mak
 distclean: clean
 	rm -rf $(TOP)/third_party/musl/crt/musl
 	sudo rm -rf $(TOP)/build
+	git submodule deinit --all
 
 ##==============================================================================
 ##

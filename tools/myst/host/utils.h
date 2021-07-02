@@ -8,6 +8,7 @@
 #include <myst/defs.h>
 #include <myst/kernel.h>
 #include <myst/options.h>
+#include <myst/sha256.h>
 #include <sys/user.h>
 
 // default Mystikos RAM size
