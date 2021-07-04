@@ -343,6 +343,13 @@ long myst_signal_deliver(
     /* Make sure any polls get woken up to process any outstanding events */
     myst_tcall_poll_wake();
 
+    /* Wake up the target thread if it was waiting on a futex */
+    if (thread->signal.waiting_on_event)
+    {
+        myst_tcall_wake(thread->event);
+        thread->signal.waiting_on_event = false;
+    }
+
 done:
     if (siginfo)
         free(siginfo); // Free the siginfo object if not delivered.

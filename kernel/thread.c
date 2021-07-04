@@ -1210,14 +1210,11 @@ size_t myst_kill_thread_group()
     myst_spin_lock(process->thread_lock);
     for (t = tail; t != NULL; t = t->group_prev)
     {
-        //        if (!myst_is_process_thread(t) && t->status == MYST_RUNNING)
         if (t != thread && t->status == MYST_RUNNING)
         {
             count++;
             myst_spin_unlock(process->thread_lock);
             myst_signal_deliver(t, SIGKILL, 0);
-            // Wake up the thread from futex_wait if necessary.
-            myst_cond_signal_thread(t->signal.cond_wait, t);
             myst_spin_lock(process->thread_lock);
         }
     }

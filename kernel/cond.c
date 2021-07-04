@@ -65,8 +65,7 @@ int myst_cond_timedwait(
         /* Add the self thread to the end of the wait queue */
         myst_thread_queue_push_back(&c->queue, self);
 
-        // assert(self->signal.cond_wait == NULL);
-        self->signal.cond_wait = c;
+        self->signal.waiting_on_event = true;
         if (c->queue.front != c->queue.back &&
             c->queue.front->status == MYST_ZOMBIE)
         {
@@ -117,7 +116,7 @@ int myst_cond_timedwait(
                 break;
             }
         }
-        self->signal.cond_wait = NULL;
+        self->signal.waiting_on_event = false;
     }
 
     myst_spin_unlock(&c->lock);
@@ -262,7 +261,7 @@ int myst_cond_requeue(
         for (myst_thread_t* p = requeues.front; p; p = next)
         {
             next = p->qnext;
-            p->signal.cond_wait = c2;
+            p->signal.waiting_on_event = true;
             myst_thread_queue_push_back(&c2->queue, p);
         }
     }
