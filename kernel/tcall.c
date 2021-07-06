@@ -256,3 +256,9 @@ int myst_tcall_read_file(const char* pathname, char* data, size_t size)
     long params[6] = {(long)pathname, (long)data, (long)size};
     return myst_tcall(MYST_TCALL_READ_FILE, params);
 }
+
+int myst_tcall_read_rootfs(void* buf, size_t size, off_t offset)
+{
+    long params[6] = {(long)buf, (long)size, (long)offset};
+    return myst_tcall(MYST_TCALL_READ_ROOTFS, params);
+}

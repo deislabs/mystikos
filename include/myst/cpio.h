@@ -7,7 +7,9 @@
 #include <stdbool.h>
 #include <string.h>
 
+#include <myst/buf.h>
 #include <myst/defs.h>
+#include <myst/sha256.h>
 #include <myst/types.h>
 
 /*
@@ -61,6 +63,8 @@
 #define MYST_CPIO_MODE_IWOTH 00002
 #define MYST_CPIO_MODE_IXOTH 00001
 
+#define MYST_CPIO_DEFLATE_TRAILER_MAGIC 0xcd455c20dc0111eb
+
 typedef struct _myst_cpio myst_cpio_t;
 
 typedef struct _myst_cpio_entry
@@ -69,6 +73,21 @@ typedef struct _myst_cpio_entry
     uint32_t mode;
     char name[MYST_CPIO_PATH_MAX];
 } myst_cpio_entry_t;
+
+/* contents of a "deflated" CPIO file */
+typedef struct myst_cpio_deflated
+{
+    uint64_t offset;    /* offset into original CPIO archive */
+    uint64_t size;      /* size of file in original CPIO archive */
+    myst_sha256_t hash; /* hash of file in original CPIO archive */
+} myst_cpio_deflated_t;
+
+/* this is found unaligned at the end of a deflated CPIO archive */
+typedef struct myst_cpio_deflate_trailer
+{
+    uint64_t magic;
+    uint64_t size;
+} myst_cpio_deflate_trailer_t;
 
 myst_cpio_t* myst_cpio_open(const char* path, uint32_t flags);
 
@@ -103,6 +122,8 @@ int myst_cpio_mem_unpack(
     size_t cpio_size,
     const char* target,
     myst_cpio_create_file_function_t create_file);
+
+int myst_cpio_deflate(const char* cpio_path, myst_buf_t* buf);
 
 /* Test for CPIO magic string: "070701"; return 0 or ENOTSUP */
 int myst_cpio_test(const char* path);

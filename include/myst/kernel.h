@@ -154,6 +154,9 @@ typedef struct myst_kernel_args
     /* true if --memcheck option present */
     bool memcheck;
 
+    /* true if the CPIO archive is deflated */
+    bool cpio_deflated;
+
     /* true if --report-native-tids is present */
     bool report_native_tids;
 

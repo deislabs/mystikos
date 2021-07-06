@@ -14,9 +14,12 @@
 #include <myst/buf.h>
 #include <myst/bufu64.h>
 #include <myst/clock.h>
+#include <myst/cpio.h>
 #include <myst/eraise.h>
 #include <myst/fs.h>
+#include <myst/hex.h>
 #include <myst/id.h>
+#include <myst/kernel.h>
 #include <myst/lockfs.h>
 #include <myst/panic.h>
 #include <myst/paths.h>
@@ -84,15 +87,53 @@ struct inode
     size_t nopens;         /* number of times file is currently opened */
     myst_buf_t buf;        /* file or directory data */
     const void* data;      /* set by myst_ramfs_set_buf() */
-    uid_t uid;             /* user ID who created */
-    gid_t gid;             /* group ID who created */
-    myst_vcallback_t v_cb; /* callback(s) for virtual files */
+    myst_cpio_deflated_t cpio_deflated; /* set by myst_ramfs_set_buf() */
+    bool unresolved;
+    uid_t uid;                       /* user ID who created */
+    gid_t gid;                       /* group ID who created */
+    myst_vcallback_t v_cb;           /* callback(s) for virtual files */
     myst_virtual_file_type_t v_type; /* virtual file type */
 };
 
 #define ACCESS 1
 #define CHANGE 2
 #define MODIFY 4
+
+static int _inode_resolve(struct inode* inode)
+{
+    int ret = 0;
+    void* data = NULL;
+
+    if (!inode)
+        ERAISE(-EINVAL);
+
+    if (inode->unresolved)
+    {
+        const size_t size = inode->cpio_deflated.size;
+
+        if (size)
+        {
+            const off_t offset = inode->cpio_deflated.offset;
+
+            if (!(data = malloc(size + 1)))
+                ERAISE(-ENOMEM);
+
+            ECHECK(myst_tcall_read_rootfs(data, size, offset));
+            inode->buf.data = data;
+            inode->buf.size = size;
+            data = NULL;
+        }
+
+        inode->unresolved = false;
+    }
+
+done:
+
+    if (data)
+        free(data);
+
+    return ret;
+}
 
 static bool _inode_valid(const inode_t* inode)
 {
@@ -845,6 +886,8 @@ static int _fs_open(
         if ((flags & O_CREAT) && (flags & O_EXCL))
             ERAISE(-EEXIST);
 
+        ECHECK(_inode_resolve(inode));
+
         /* Check file access permissions */
         {
             const int access = flags & 0x03;
@@ -1452,6 +1495,7 @@ static int _fs_stat(myst_fs_t* fs, const char* pathname, struct stat* statbuf)
         ECHECK((ret = tfs->fs_stat(tfs, locals->suffix, statbuf)));
         goto done;
     }
+    ECHECK(_inode_resolve(inode));
     ERAISE(_stat(inode, statbuf));
 
 done:
@@ -1488,6 +1532,7 @@ static int _fs_lstat(myst_fs_t* fs, const char* pathname, struct stat* statbuf)
         ECHECK(tfs->fs_lstat(tfs, locals->suffix, statbuf));
         goto done;
     }
+    ECHECK(_inode_resolve(inode));
     ERAISE(_stat(inode, statbuf));
 
 done:
@@ -1791,6 +1836,8 @@ static int _fs_truncate(myst_fs_t* fs, const char* pathname, off_t length)
     /* truncate does not apply to virtual files */
     if (inode->v_type != NONE)
         ERAISE(-EINVAL);
+
+    ECHECK(_inode_resolve(inode));
 
     if (myst_buf_resize(&inode->buf, (size_t)length) != 0)
         ERAISE(-ENOMEM);
@@ -2787,9 +2834,20 @@ int myst_ramfs_set_buf(
     if (inode->buf.data != inode->data)
         myst_buf_clear(&inode->buf);
 
-    inode->data = buf;
-    inode->buf.data = (void*)buf;
-    inode->buf.size = buf_size;
+    if (__myst_kernel_args.cpio_deflated)
+    {
+        if (buf_size != sizeof(myst_cpio_deflated_t))
+            myst_panic("corrupted deflated CPIO");
+
+        memcpy(&inode->cpio_deflated, buf, buf_size);
+        inode->unresolved = true;
+    }
+    else
+    {
+        inode->data = buf;
+        inode->buf.data = (void*)buf;
+        inode->buf.size = buf_size;
+    }
 
 done:
 

@@ -509,5 +509,19 @@ enclave
             [out] uint32_t* rbx,
             [out] uint32_t* rcx,
             [out] uint32_t* rdx);
+
+        /*
+        **======================================================================
+        **
+        ** deflated CPIO support
+        **
+        **======================================================================
+        */
+
+        /* read a portion of the rootfs file */
+        int myst_read_rootfs_ocall(
+            [out, size=size] void* buf,
+            size_t size,
+            off_t offset);
     };
 };

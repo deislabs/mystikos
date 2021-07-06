@@ -462,6 +462,7 @@ static long _enter(void* arg_)
     bool shell_mode = false;
     bool debug_symbols = false;
     bool memcheck = false;
+    bool cpio_deflated = false;
     bool report_native_tids = false;
     size_t max_affinity_cpus = options ? options->max_affinity_cpus : 0;
     const char* rootfs = NULL;
@@ -646,6 +647,7 @@ static long _enter(void* arg_)
         shell_mode = tee_debug_mode ? options->shell_mode : false;
         debug_symbols = tee_debug_mode ? options->debug_symbols : false;
         memcheck = tee_debug_mode ? options->memcheck : false;
+        cpio_deflated = options->cpio_deflated;
 
         report_native_tids =
             tee_debug_mode ? options->report_native_tids : false;
@@ -711,6 +713,7 @@ static long _enter(void* arg_)
         _kargs.shell_mode = shell_mode;
         _kargs.debug_symbols = debug_symbols;
         _kargs.memcheck = memcheck;
+        _kargs.cpio_deflated = cpio_deflated;
         _kargs.report_native_tids = report_native_tids;
 
         /* set ehdr and verify that the kernel is an ELF image */
@@ -1020,6 +1023,16 @@ int myst_tcall_read_file(const char* pathname, char* buf, size_t size)
     int retval;
 
     if (myst_read_file_ocall(&retval, pathname, buf, size) != OE_OK)
+        return -EINVAL;
+
+    return retval;
+}
+
+int myst_tcall_read_rootfs(void* buf, size_t size, off_t offset)
+{
+    int retval;
+
+    if (myst_read_rootfs_ocall(&retval, buf, size, offset) != OE_OK)
         return -EINVAL;
 
     return retval;

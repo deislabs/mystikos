@@ -5,6 +5,12 @@ APPDIR = appdir
 CFLAGS = -fPIC
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 
+DEFLATE=1
+
+ifdef DEFLATE
+MKCPIO_OPTS = --deflate
+endif
+
 all:
 	$(MAKE) myst
 	$(MAKE) rootfs
@@ -12,7 +18,7 @@ all:
 rootfs: getcwd.c
 	mkdir -p $(APPDIR)/bin
 	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/getcwd getcwd.c $(LDFLAGS)
-	$(MYST) mkcpio $(APPDIR) rootfs
+	$(MYST) mkcpio $(MKCPIO_OPTS) $(APPDIR) rootfs
 
 ifdef STRACE
 OPTS = --strace

@@ -78,6 +78,7 @@ struct options
     bool shell_mode;
     bool debug_symbols;
     bool memcheck;
+    bool cpio_deflated;
     bool report_native_tids;
     size_t max_affinity_cpus;
     char rootfs[PATH_MAX];
@@ -338,6 +339,8 @@ static int _enter_kernel(
     kernel_args.debug_symbols = options->debug_symbols;
 
     kernel_args.memcheck = options->memcheck;
+
+    kernel_args.cpio_deflated = g_cpio_deflated;
 
     kernel_args.report_native_tids = options->report_native_tids;
 

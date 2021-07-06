@@ -145,6 +145,9 @@ int exec_launch_enclave(
     myst_buf_t mount_mappings_buf = MYST_BUF_INITIALIZER;
     pid_t target_tid = (pid_t)syscall(SYS_gettid);
 
+    /* Add g_cpio_deflated option (if found while creating the rootfs region) */
+    options->cpio_deflated = g_cpio_deflated;
+
     /* Load the enclave: calls oe_load_extra_enclave_data_hook() */
     r = oe_create_myst_enclave(enc_path, type, flags, NULL, 0, &_enclave);
 
@@ -519,4 +522,18 @@ int myst_load_fssig_ocall(const char* path, myst_fssig_t* fssig)
 int myst_mprotect_ocall(void* addr, size_t len, int prot)
 {
     return mprotect(addr, len, prot);
+}
+
+int myst_read_rootfs_ocall(void* buf, size_t size, off_t offset)
+{
+    if (!buf)
+        return -EINVAL;
+
+    if (fseek(g_rootfs_stream, offset, SEEK_SET) != 0)
+        return -EIO;
+
+    if (fread(buf, 1, size, g_rootfs_stream) != size)
+        return -EIO;
+
+    return 0;
 }

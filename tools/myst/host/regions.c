@@ -7,6 +7,7 @@
 #include <libgen.h>
 #include <limits.h>
 #include <myst/buf.h>
+#include <myst/cpio.h>
 #include <myst/elf.h>
 #include <myst/eraise.h>
 #include <myst/file.h>
@@ -21,7 +22,11 @@
 #include "../shared.h"
 #include "utils.h"
 
-region_details _details = {0};
+static region_details _details = {0};
+
+bool g_cpio_deflated;
+
+FILE* g_rootfs_stream;
 
 static int _add_page(
     myst_region_context_t* context,
@@ -145,6 +150,44 @@ const region_details* get_region_details(void)
     return &_details;
 }
 
+static void _load_rootfs(const char* path, void** data_out, size_t* size_out)
+{
+    uint8_t* data = NULL;
+    size_t size = 0;
+    myst_cpio_deflate_trailer_t t;
+
+    /* ATTN: don't load entire file if a deflated CPIO archive */
+    if (myst_load_file(path, (void**)&data, &size) != 0)
+        _err("failed to load rootfs: %s", path);
+
+    if (size < sizeof(t))
+        _err("bad rootfs: %s", path);
+
+    memcpy(&t, data + size - sizeof(t), sizeof(t));
+
+    if (t.magic == MYST_CPIO_DEFLATE_TRAILER_MAGIC)
+    {
+        uint8_t* p;
+
+        if (!(p = malloc(t.size)))
+            _err("out of memory");
+
+        if (!(g_rootfs_stream = fopen(path, "rb")))
+            _err("failed to open: %s", path);
+
+        memcpy(p, data + size - sizeof(t) - t.size, t.size);
+        *data_out = p;
+        *size_out = t.size;
+        free(data);
+        g_cpio_deflated = true;
+    }
+    else
+    {
+        *data_out = data;
+        *size_out = size;
+    }
+}
+
 const region_details* create_region_details_from_files(
     const char* program_path,
     const char* rootfs_path,
@@ -153,11 +196,9 @@ const region_details* create_region_details_from_files(
     const char* config_path,
     size_t ram)
 {
-    if (myst_load_file(
-            rootfs_path,
-            &_details.rootfs.buffer,
-            &_details.rootfs.buffer_size) != 0)
-        _err("failed to load rootfs: %s", rootfs_path);
+    /* load the rootfs (or deflated rootfs) */
+    _load_rootfs(
+        rootfs_path, &_details.rootfs.buffer, &_details.rootfs.buffer_size);
     _details.rootfs.status = REGION_ITEM_OWNED;
 
     /* load pubkeys file */
@@ -324,6 +365,10 @@ void free_region_details()
     /* delete the temporary file if any */
     if (strncmp(_details.kernel.path, "/tmp/myst", 10) == 0)
         unlink(_details.kernel.path);
+
+    /* close the non-deflated CPIO rootfs stream if any */
+    if (g_rootfs_stream)
+        fclose(g_rootfs_stream);
 }
 
 static int _add_segment_pages(

@@ -15,9 +15,11 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <myst/buf.h>
 #include <myst/cpio.h>
 #include <myst/eraise.h>
 #include <myst/round.h>
+#include <myst/sha256.h>
 #include <myst/strarr.h>
 #include <myst/strings.h>
 
@@ -64,11 +66,11 @@ typedef struct _cpio_header
 struct _myst_cpio
 {
     int fd;
-    cpio_header_t header;
     size_t entry_size;
     off_t eof_offset;
     off_t offset;
     bool write;
+    cpio_header_t hdr;
 };
 
 typedef struct _entry
@@ -448,6 +450,7 @@ int myst_cpio_read_entry(myst_cpio_t* cpio, myst_cpio_entry_t* entry_out)
         goto done;
     }
 
+    cpio->hdr = hdr;
     *entry_out = entry;
 
     ret = 1;
@@ -1195,6 +1198,177 @@ done:
 
     if (fd >= 0)
         close(fd);
+
+    return ret;
+}
+
+static int _pad_buf(myst_buf_t* buf, size_t m)
+{
+    size_t rsize;
+
+    /* round to the next multiple of m */
+    if (myst_round_up(buf->size, m, &rsize) != 0)
+        return -1;
+
+    /* calculate the number of padding bytes */
+    size_t n = rsize - buf->size;
+
+    /* append the padding bytes */
+    for (size_t i = 0; i < n; i++)
+    {
+        const uint8_t byte = 0;
+
+        if (myst_buf_append(buf, &byte, 1) != 0)
+            return -1;
+    }
+
+    return 0;
+}
+
+int myst_cpio_deflate(const char* cpio_path, myst_buf_t* buf)
+{
+    int ret = -1;
+    myst_cpio_t* cpio = NULL;
+    int r;
+    struct locals
+    {
+        myst_cpio_entry_t entry;
+        char path[MYST_CPIO_PATH_MAX];
+        char data[64 * 1024];
+    };
+    struct locals* locals = NULL;
+
+    if (!cpio_path || !buf)
+        GOTO(done);
+
+    if (!(locals = malloc(sizeof(struct locals))))
+        GOTO(done);
+
+    if (!(cpio = myst_cpio_open(cpio_path, 0)))
+        GOTO(done);
+
+    /* deflate regular files */
+    while ((r = myst_cpio_read_entry(cpio, &locals->entry)) > 0)
+    {
+        cpio_header_t hdr = cpio->hdr;
+        void* data = locals->data;
+        const size_t size = sizeof(locals->data);
+        const char* name = locals->entry.name;
+        const size_t namesize = strlen(name) + 1;
+
+        if (S_ISDIR(locals->entry.mode))
+        {
+            /* append the header */
+            if (myst_buf_append(buf, &hdr, sizeof(cpio_header_t)) != 0)
+                GOTO(done);
+
+            /* append the name */
+            if (myst_buf_append(buf, name, namesize) != 0)
+                GOTO(done);
+
+            /* pad to next multiple of 4 */
+            if (_pad_buf(buf, 4) != 0)
+                GOTO(done);
+        }
+        else if (S_ISREG(locals->entry.mode))
+        {
+            myst_cpio_deflated_t deflated;
+            deflated.offset = lseek(cpio->fd, 0, SEEK_CUR);
+            deflated.size = locals->entry.size;
+
+            /* compute the SHA-256 of the file */
+            {
+                myst_sha256_ctx_t ctx;
+                ssize_t n;
+
+                myst_sha256_start(&ctx);
+
+                while ((n = myst_cpio_read_data(cpio, data, size)) > 0)
+                    myst_sha256_update(&ctx, data, n);
+
+                myst_sha256_finish(&ctx, &deflated.hash);
+            }
+
+            /* update the file size in the CPIO header */
+            _uint_to_hex(hdr.filesize, sizeof(deflated));
+
+            /* append the header */
+            if (myst_buf_append(buf, &hdr, sizeof(cpio_header_t)) != 0)
+                GOTO(done);
+
+            /* append the name */
+            if (myst_buf_append(buf, name, namesize) != 0)
+                GOTO(done);
+
+            /* pad to next multiple of 4 */
+            if (_pad_buf(buf, 4) != 0)
+                GOTO(done);
+
+            /* append the new deflated data */
+            if (myst_buf_append(buf, &deflated, sizeof(deflated)) != 0)
+                GOTO(done);
+
+            /* pad to next multiple of 4 */
+            if (_pad_buf(buf, 4) != 0)
+                GOTO(done);
+        }
+        else if (S_ISLNK(locals->entry.mode))
+        {
+            /* append the header */
+            if (myst_buf_append(buf, &hdr, sizeof(cpio_header_t)) != 0)
+                GOTO(done);
+
+            /* append the name */
+            if (myst_buf_append(buf, name, namesize) != 0)
+                GOTO(done);
+
+            /* pad to next multiple of 4 */
+            if (_pad_buf(buf, 4) != 0)
+                GOTO(done);
+
+            /* append the data */
+            {
+                ssize_t n;
+
+                while ((n = myst_cpio_read_data(cpio, data, size)) > 0)
+                {
+                    if (myst_buf_append(buf, data, n) != 0)
+                        GOTO(done);
+                }
+            }
+
+            /* pad to next multiple of 4 */
+            if (_pad_buf(buf, 4) != 0)
+                GOTO(done);
+        }
+        else
+        {
+            GOTO(done);
+        }
+    }
+
+    /* append the trailer */
+    {
+        const size_t size = _trailer.size;
+
+        /* write the trailer. */
+        if (myst_buf_append(buf, &_trailer, size) != 0)
+            GOTO(done);
+
+        /* pad the trailer out to the block size boundary. */
+        if (_pad_buf(buf, CPIO_BLOCK_SIZE) != 0)
+            GOTO(done);
+    }
+
+    ret = 0;
+
+done:
+
+    if (locals)
+        free(locals);
+
+    if (cpio)
+        myst_cpio_close(cpio);
 
     return ret;
 }

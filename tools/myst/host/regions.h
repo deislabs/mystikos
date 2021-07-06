@@ -7,6 +7,8 @@
 #include <limits.h>
 #include <myst/elf.h>
 #include <myst/regions.h>
+#include <stdbool.h>
+#include <stdio.h>
 
 int add_regions(void* arg, uint64_t baseaddr, myst_add_page_t add_page);
 
@@ -54,5 +56,11 @@ void free_region_details();
 
 /* map regions onto mmap mapping */
 int map_regions(void** addr, size_t* length);
+
+/* true if the CPIO region is a deflated version of the CPIO rootfs */
+extern bool g_cpio_deflated;
+
+/* non-deflated CPIO rootfs stream (if non-null) */
+extern FILE* g_rootfs_stream;
 
 #endif /* _MYST_MYST_HOST_REGIONS_H */
