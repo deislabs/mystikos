@@ -153,7 +153,6 @@ static long _default_signal_handler(unsigned signum)
         if (process_thread->signal.waiting_on_event)
         {
             myst_tcall_wake(process_thread->event);
-            process_thread->signal.waiting_on_event = false;
         }
     }
     thread->exit_status = 0;
