@@ -12,7 +12,7 @@ OPTS = --memory-size=1024m
 all: rootfs
 
 rootfs: appdir
-	$(MYST) mkcpio --deflate appdir rootfs
+	$(MYST) mkcpio appdir rootfs
 
 appdir:
 	$(APPBUILDER) Dockerfile
