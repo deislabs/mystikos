@@ -98,7 +98,7 @@ DIRS += sockperf
 endif
 DIRS += clock
 DIRS += pollpipe2
-#DIRS += dotnet-proc-maps
+DIRS += dotnet-proc-maps
 DIRS += dotnet-ubuntu
 DIRS += openmp
 endif
