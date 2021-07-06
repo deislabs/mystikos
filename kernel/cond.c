@@ -65,7 +65,6 @@ int myst_cond_timedwait(
         /* Add the self thread to the end of the wait queue */
         myst_thread_queue_push_back(&c->queue, self);
 
-        self->signal.waiting_on_event = true;
         if (c->queue.front != c->queue.back &&
             c->queue.front->status == MYST_ZOMBIE)
         {
@@ -83,6 +82,7 @@ int myst_cond_timedwait(
         {
             myst_spin_unlock(&c->lock);
             {
+                self->signal.waiting_on_event = true;
                 if (waiter)
                 {
                     ret = (int)myst_tcall_wake_wait(
@@ -94,6 +94,7 @@ int myst_cond_timedwait(
                 {
                     ret = (int)myst_tcall_wait(self->event, timeout);
                 }
+                self->signal.waiting_on_event = false;
             }
             myst_spin_lock(&c->lock);
 
@@ -116,7 +117,6 @@ int myst_cond_timedwait(
                 break;
             }
         }
-        self->signal.waiting_on_event = false;
     }
 
     myst_spin_unlock(&c->lock);

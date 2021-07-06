@@ -1220,7 +1220,6 @@ size_t myst_kill_thread_group()
             if (t->signal.waiting_on_event)
             {
                 myst_tcall_wake(t->event);
-                t->signal.waiting_on_event = false;
             }
 
             myst_spin_lock(process->thread_lock);
@@ -1260,6 +1259,9 @@ size_t myst_kill_thread_group()
 
         if (t == NULL)
             break;
+
+        if (t->signal.waiting_on_event)
+            myst_tcall_wake(t->event);
 
         myst_sleep_msec(1);
     }
