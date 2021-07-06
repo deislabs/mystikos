@@ -115,6 +115,7 @@ DIRS += eventfd
 DIRS += polleventfd
 DIRS += dotnet-sos
 DIRS += tkillself
+DIRS += thread_abort
 
 .PHONY: $(DIRS)
 
