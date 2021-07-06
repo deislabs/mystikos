@@ -136,6 +136,7 @@
 /ltp/testcases/kernel/syscalls/utime/utime01
 /ltp/testcases/kernel/syscalls/utime/utime02
 /ltp/testcases/kernel/syscalls/utime/utime03
+/ltp/testcases/kernel/syscalls/unlinkat/unlinkat01
 /ltp/testcases/kernel/syscalls/write/write01
 /ltp/testcases/kernel/syscalls/write/write02
 /ltp/testcases/kernel/syscalls/writev/writev01

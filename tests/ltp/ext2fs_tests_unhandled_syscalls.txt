@@ -252,7 +252,6 @@
 /ltp/testcases/kernel/syscalls/timerfd/timerfd_gettime01:  SYS_timerfd_create()
 /ltp/testcases/kernel/syscalls/timerfd/timerfd_settime01:  SYS_timerfd_create()
 /ltp/testcases/kernel/syscalls/uname/uname04:  SYS_personality()
-/ltp/testcases/kernel/syscalls/unlinkat/unlinkat01:  SYS_unlinkat()
 /ltp/testcases/kernel/syscalls/unshare/unshare01:  SYS_unshare()
 /ltp/testcases/kernel/syscalls/unshare/unshare02:  SYS_unshare()
 /ltp/testcases/kernel/syscalls/userfaultfd/userfaultfd01:  SYS_userfaultfd()
