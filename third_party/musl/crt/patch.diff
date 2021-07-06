@@ -369,15 +369,6 @@ index afec985a..0ac9f0c4 100644
  	return p;
  }
  
-diff --git a/src/fcntl/open.c b/src/fcntl/open.c
-index 1d817a2d..a36ba05e 100644
---- a/src/fcntl/open.c
-+++ b/src/fcntl/open.c
-@@ -21,3 +21,4 @@ int open(const char *filename, int flags, ...)
- }
- 
- weak_alias(open, open64);
-+weak_alias(open, __open_nocancel);
 diff --git a/src/exit/_Exit.c b/src/exit/_Exit.c
 index 7a6115c7..9f715d51 100644
 --- a/src/exit/_Exit.c
@@ -413,6 +404,15 @@ index a6869b37..a312428b 100644
  }
 +
 +_Noreturn weak_alias(do_crt_exit, exit);
+diff --git a/src/fcntl/open.c b/src/fcntl/open.c
+index 1d817a2d..a36ba05e 100644
+--- a/src/fcntl/open.c
++++ b/src/fcntl/open.c
+@@ -21,3 +21,4 @@ int open(const char *filename, int flags, ...)
+ }
+ 
+ weak_alias(open, open64);
++weak_alias(open, __open_nocancel);
 diff --git a/src/fenv/feupdateenv.c b/src/fenv/feupdateenv.c
 index 50cef8e5..803a7f8d 100644
 --- a/src/fenv/feupdateenv.c
@@ -588,20 +588,6 @@ index f63c062f..50311758 100644
 +{
 +	return (double)yn(n, x);
 +}
-diff --git a/src/misc/setrlimit.c b/src/misc/setrlimit.c
-index 7a66ab29..b6a2143b 100644
---- a/src/misc/setrlimit.c
-+++ b/src/misc/setrlimit.c
-@@ -39,7 +39,8 @@ static void do_setrlimit(void *p)
- int setrlimit(int resource, const struct rlimit *rlim)
- {
- 	struct ctx c = { .res = resource, .rlim = rlim, .err = -1 };
--	__synccall(do_setrlimit, &c);
-+	// __synccall(do_setrlimit, &c);
-+	do_setrlimit(&c);
- 	if (c.err) {
- 		if (c.err>0) errno = c.err;
- 		return -1;
 diff --git a/src/misc/syscall.c b/src/misc/syscall.c
 index 6f3ef656..614121c3 100644
 --- a/src/misc/syscall.c
@@ -683,6 +669,16 @@ index eeae1d0a..7e13faa8 100644
  #endif
  }
 +weak_alias (sendmmsg, __sendmmsg);
+diff --git a/src/process/x86_64/vfork.s b/src/process/x86_64/vfork.s
+index 91144390..809463a1 100644
+--- a/src/process/x86_64/vfork.s
++++ b/src/process/x86_64/vfork.s
+@@ -1,4 +1,5 @@
+ .global vfork
++.weak vfork
+ .type vfork,@function
+ vfork:
+ 	pop %rdx
 diff --git a/src/sched/affinity.c b/src/sched/affinity.c
 index 948ece41..fd7e7801 100644
 --- a/src/sched/affinity.c
@@ -757,16 +753,6 @@ index 771503b2..8a8529b1 100644
  }
 -
 +weak_alias (snprintf, __snprintf);
-diff --git a/src/process/x86_64/vfork.s b/src/process/x86_64/vfork.s
-index 91144390..809463a1 100644
---- a/src/process/x86_64/vfork.s
-+++ b/src/process/x86_64/vfork.s
-@@ -1,4 +1,5 @@
- .global vfork
-+.weak vfork
- .type vfork,@function
- vfork:
- 	pop %rdx
 diff --git a/src/thread/__unmapself.c b/src/thread/__unmapself.c
 index 31d94e67..f57fdf0c 100644
 --- a/src/thread/__unmapself.c
