@@ -163,6 +163,8 @@ long myst_syscall_link(const char* oldpath, const char* newpath);
 
 long myst_syscall_unlink(const char* pathname);
 
+long myst_syscall_unlinkat(int dirfd, const char* pathname, int flags);
+
 long myst_syscall_access(const char* pathname, int mode);
 
 long myst_syscall_rename(const char* oldpath, const char* newpath);

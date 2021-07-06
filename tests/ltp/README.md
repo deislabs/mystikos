@@ -1323,7 +1323,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/unlink/unlink05 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/unlink/unlink07 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/unlink/unlink08 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/unlinkat/unlinkat01 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/unlinkat/unlinkat01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/unshare/unshare01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/unshare/unshare02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/userfaultfd/userfaultfd01 | 0 | 0 | 0 |

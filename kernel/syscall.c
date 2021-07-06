@@ -1638,6 +1638,36 @@ done:
     return ret;
 }
 
+long myst_syscall_unlinkat(int dirfd, const char* pathname, int flags)
+{
+    long ret = 0;
+
+    (void)flags;
+
+    if (flags & ~AT_REMOVEDIR)
+        ERAISE(-EINVAL);
+
+    char* abspath = NULL;
+
+    ECHECK(myst_get_absolute_path_from_dirfd(dirfd, pathname, 0, &abspath));
+
+    if (flags & AT_REMOVEDIR)
+    {
+        ECHECK(myst_syscall_rmdir(abspath));
+    }
+    else
+    {
+        ECHECK(myst_syscall_unlink(abspath));
+    }
+
+done:
+
+    if (abspath != pathname)
+        free(abspath);
+
+    return ret;
+}
+
 long myst_syscall_access(const char* pathname, int mode)
 {
     long ret = 0;
@@ -5254,7 +5284,15 @@ static long _syscall(void* args_)
             break;
         }
         case SYS_unlinkat:
-            break;
+        {
+            int dirfd = (int)x1;
+            const char* pathname = (const char*)x2;
+            int flags = (int)x3;
+
+            _strace(n, "dirfd=%d pathname=%s flags=%d", dirfd, pathname, flags);
+
+            BREAK(_return(n, myst_syscall_unlinkat(dirfd, pathname, flags)));
+        }
         case SYS_renameat:
         {
             int olddirfd = (int)x1;
