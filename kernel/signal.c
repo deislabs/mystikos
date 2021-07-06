@@ -348,6 +348,12 @@ long myst_signal_deliver(
         new_item = NULL;
 
         myst_spin_unlock(&thread->signal.lock);
+
+        // Wake up target if necessary
+        if (thread->signal.waiting_on_event)
+        {
+            myst_tcall_wake(thread->event);
+        }
     }
 
     /* Make sure any polls get woken up to process any outstanding events */

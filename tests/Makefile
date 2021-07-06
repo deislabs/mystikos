@@ -116,6 +116,7 @@ DIRS += polleventfd
 DIRS += dotnet-sos
 DIRS += tkillself
 DIRS += thread_abort
+DIRS += synccall
 
 .PHONY: $(DIRS)
 
