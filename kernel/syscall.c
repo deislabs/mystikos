@@ -517,6 +517,10 @@ long myst_syscall_get_fork_info(myst_thread_t* thread, myst_fork_info_t* arg)
     long ret = 0;
     myst_thread_t* process;
 
+    /* preinitialize this in case something goes wrong */
+    if (arg)
+        *arg = (myst_fork_info_t)MYST_FORK_INFO_INITIALIZER;
+
     if (!arg)
         ERAISE(-EINVAL);
 
