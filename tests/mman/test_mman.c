@@ -607,6 +607,40 @@ void test_mman_6()
 }
 
 /*
+** test_mman_7()
+**
+**     mmap with preferred address, without setting MAP_FIXED
+**
+*/
+#define PREFERRED_ADDR 0x400000
+void test_mman_7()
+{
+    myst_mman_t h;
+    size_t i;
+    const size_t n = 8;
+    const size_t npages = 1024;
+    const size_t size = npages * PAGE_SIZE;
+
+    assert(_init_mman(&h, size) == 0);
+
+    void* ptr;
+
+    /* Map N pages */
+    if (!(ptr = _mman_mmap(&h, (void*)PREFERRED_ADDR, n * PAGE_SIZE)))
+        assert(0);
+
+    /* Unmap 8 pages, 1 page at a time */
+    for (i = 0; i < n; i++)
+    {
+        void* p = (uint8_t*)ptr + (i * PAGE_SIZE);
+        assert(_mman_unmap(&h, p, PAGE_SIZE) == 0);
+    }
+
+    _free_mman(&h);
+    printf("=== passed test (%s)\n", __FUNCTION__);
+}
+
+/*
 ** test_remap_1()
 **
 **     Test remap that enlarges the allocation. Then test remap that shrinks
@@ -1199,6 +1233,7 @@ void test_mman(void)
     test_mman_4();
     test_mman_5();
     test_mman_6();
+    test_mman_7();
     test_remap_1();
     test_remap_2();
     test_remap_3();
