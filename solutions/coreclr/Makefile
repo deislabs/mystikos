@@ -36,6 +36,11 @@ run:
 clean:
 	sudo rm -fr appdir ext2fs rootfs roothash myst /tmp/myst* PASSED FAILED-*
 
+tests:
+	@ $(MAKE) -s clean
+	@ $(MAKE) -s all
+	@ $(MAKE) -s run
+
 ##################################
 #			dev targets			 #
 ##################################
