@@ -8,6 +8,10 @@ ifdef STRACE
 OPTS += --strace
 endif
 
+ifdef PERF
+OPTS += --perf
+endif
+
 OPTS += --memory-size=1024m
 
 # ATTN: this setting causes curl to get empty responses after two attempts

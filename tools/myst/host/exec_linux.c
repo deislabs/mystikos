@@ -78,6 +78,7 @@ struct options
     bool shell_mode;
     bool debug_symbols;
     bool memcheck;
+    bool perf;
     bool report_native_tids;
     size_t max_affinity_cpus;
     char rootfs[PATH_MAX];
@@ -122,6 +123,10 @@ static void _get_options(
     /* Get --memcheck option */
     if (cli_getopt(argc, argv, "--memcheck", NULL) == 0)
         opts->memcheck = true;
+
+    /* Get --perf option */
+    if (cli_getopt(argc, argv, "--perf", NULL) == 0)
+        opts->perf = true;
 
     /* Get --report-native-tids option */
     if (cli_getopt(argc, argv, "--report-native-tids", NULL) == 0)
@@ -349,6 +354,22 @@ static int _enter_kernel(
     kernel_args.debug_symbols = options->debug_symbols;
 
     kernel_args.memcheck = options->memcheck;
+
+    kernel_args.perf = options->perf;
+
+    /* pass the start time into the kernel */
+    {
+        struct timespec start_time;
+
+        if (clock_gettime(CLOCK_REALTIME, &start_time) != 0)
+        {
+            snprintf(err, err_size, "clock_gettime() failed");
+            ERAISE(-ENOSYS);
+        }
+
+        kernel_args.start_time_sec = start_time.tv_sec;
+        kernel_args.start_time_nsec = start_time.tv_nsec;
+    }
 
     kernel_args.report_native_tids = options->report_native_tids;
 

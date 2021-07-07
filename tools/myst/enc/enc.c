@@ -444,6 +444,8 @@ struct enter_arg
     size_t mount_mappings_size;
     uint64_t event;
     pid_t target_tid;
+    uint64_t start_time_sec;
+    uint64_t start_time_nsec;
 };
 
 static long _enter(void* arg_)
@@ -462,6 +464,7 @@ static long _enter(void* arg_)
     bool shell_mode = false;
     bool debug_symbols = false;
     bool memcheck = false;
+    bool perf = false;
     bool report_native_tids = false;
     size_t max_affinity_cpus = options ? options->max_affinity_cpus : 0;
     const char* rootfs = NULL;
@@ -653,6 +656,7 @@ static long _enter(void* arg_)
         shell_mode = tee_debug_mode ? options->shell_mode : false;
         debug_symbols = tee_debug_mode ? options->debug_symbols : false;
         memcheck = tee_debug_mode ? options->memcheck : false;
+        perf = tee_debug_mode ? options->perf : false;
 
         report_native_tids =
             tee_debug_mode ? options->report_native_tids : false;
@@ -719,6 +723,9 @@ static long _enter(void* arg_)
         _kargs.shell_mode = shell_mode;
         _kargs.debug_symbols = debug_symbols;
         _kargs.memcheck = memcheck;
+        _kargs.perf = perf;
+        _kargs.start_time_sec = arg->start_time_sec;
+        _kargs.start_time_nsec = arg->start_time_nsec;
         _kargs.report_native_tids = report_native_tids;
 
         /* set ehdr and verify that the kernel is an ELF image */
@@ -770,7 +777,9 @@ int myst_enter_ecall(
     const void* mount_mappings,
     size_t mount_mappings_size,
     uint64_t event,
-    pid_t target_tid)
+    pid_t target_tid,
+    uint64_t start_time_sec,
+    uint64_t start_time_nsec)
 {
     struct enter_arg arg = {
         .options = options,
@@ -783,6 +792,8 @@ int myst_enter_ecall(
         .mount_mappings_size = mount_mappings_size,
         .event = event,
         .target_tid = target_tid,
+        .start_time_sec = start_time_sec,
+        .start_time_nsec = start_time_nsec,
     };
 
     /* prevent this function from being called more than once */

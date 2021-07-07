@@ -561,6 +561,11 @@ static const char* _syscall_str(long n)
     return "unknown";
 }
 
+const char* myst_syscall_str(long n)
+{
+    return _syscall_str(n);
+}
+
 __attribute__((format(printf, 2, 3))) static void _strace(
     long n,
     const char* fmt,
@@ -3251,7 +3256,7 @@ static long _syscall(void* args_)
     myst_td_t* crt_td = NULL;
     myst_thread_t* thread = NULL;
 
-    myst_times_enter_kernel();
+    myst_times_enter_kernel(n);
 
     /* resolve the target-thread-descriptor and the crt-thread-descriptor */
     if (_set_thread_area_called)
@@ -3554,6 +3559,12 @@ static long _syscall(void* args_)
             long ret;
 
             _strace(n, "fds=%p nfds=%ld timeout=%d", fds, nfds, timeout);
+
+            if (__myst_kernel_args.trace_syscalls && fds)
+            {
+                for (nfds_t i = 0; i < nfds; i++)
+                    myst_eprintf("fd=%d\n", fds[i].fd);
+            }
 
             ret = myst_syscall_poll(fds, nfds, timeout);
             BREAK(_return(n, ret));
@@ -5806,7 +5817,7 @@ static long _syscall(void* args_)
             int protocol = (int)x3;
             long ret;
 
-            _strace(n, "domain=%d type=%d protocol=%d", domain, type, protocol);
+            _strace(n, "domain=%d type=%o protocol=%d", domain, type, protocol);
 
             ret = myst_syscall_socket(domain, type, protocol);
             BREAK(_return(n, ret));
@@ -5859,6 +5870,9 @@ static long _syscall(void* args_)
 
             _strace(n, "sockfd=%d how=%d", sockfd, how);
 
+            if (__myst_kernel_args.perf)
+                myst_print_syscall_times("SYS_shutdown", 10);
+
             ret = myst_syscall_shutdown(sockfd, how);
             BREAK(_return(n, ret));
         }
@@ -5869,6 +5883,9 @@ static long _syscall(void* args_)
             long ret;
 
             _strace(n, "sockfd=%d backlog=%d", sockfd, backlog);
+
+            if (__myst_kernel_args.perf)
+                myst_print_syscall_times("SYS_listen", 10);
 
             ret = myst_syscall_listen(sockfd, backlog);
             BREAK(_return(n, ret));
@@ -6028,7 +6045,7 @@ done:
     if (crt_td)
         myst_set_fsbase(crt_td);
 
-    myst_times_leave_kernel();
+    myst_times_leave_kernel(n);
 
     // Process signals pending for this thread, if there is any.
     myst_signal_process(thread);
