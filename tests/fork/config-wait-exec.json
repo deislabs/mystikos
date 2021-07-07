@@ -13,5 +13,5 @@
     "MemorySize": "40m",
     "ApplicationPath": "/bin/hello",
     "HostApplicationParameters": true,
-    "ForkMode":"myst_fork_pseudo_wait_for_exit_exec"
+    "ForkMode":"pseudo_wait_for_exit_exec"
 }
