@@ -4,7 +4,8 @@ include $(TOP)/defs.mak
 APPBUILDER=$(TOP)/scripts/appbuilder
 HEAP_SIZE="768M"
 
-MYST_LLDB = ./oelldb/oelldb
+MYST_LLDB = $(TOP)/build/openenclave/bin/oelldb
+MYST_LLDB_DOCKER = /build/openenclave/bin/oelldb
 
 OPTS = --report-native-tids
 
@@ -33,7 +34,7 @@ tests:
 	-v $(abspath .):/app/ -v $(TOP)/build:/build \
 	--device /dev/sgx:/dev/sgx \
 	vtikoo/dotnet-sos-prereqs:0.1 \
-	/app/exec.sh $(MYST_LLDB) /build/bin/myst $(EXEC) $(OPTS)
+	/app/exec.sh $(MYST_LLDB_DOCKER) /build/bin/myst $(EXEC) $(OPTS)
 	@ echo "=== passed test (dotnet-sos)"
 
 tests-without-docker:
@@ -52,7 +53,7 @@ run-ext2-lldb:
 	-o "command script import code_view" \
 	-o "bpmd hello.dll hello.Program.Main" \
 	-o "setsymbolserver -directory $(abspath .)/appdir/app" \
-	-- $(MYST) exec $(OPTS) ext2fs \
+	-- $(MYST_EXEC) $(OPTS) ext2fs \
 	--memory-size $(HEAP_SIZE) \
 	/app/hello
 
