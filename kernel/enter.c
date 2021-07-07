@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include <myst/atexit.h>
+#include <myst/clock.h>
 #include <myst/cpio.h>
 #include <myst/crash.h>
 #include <myst/debugmalloc.h>
@@ -634,6 +635,28 @@ done:
     return ret;
 }
 
+static void _print_boottime(void)
+{
+    struct timespec now;
+    static const char yellow[] = "\e[33m";
+    static const char reset[] = "\e[0m";
+
+    if (myst_syscall_clock_gettime(CLOCK_REALTIME, &now) == 0)
+    {
+        struct timespec start;
+        start.tv_sec = __myst_kernel_args.start_time_sec;
+        start.tv_nsec = __myst_kernel_args.start_time_nsec;
+
+        long nsec = myst_lapsed_nsecs(&start, &now);
+
+        double secs = (double)nsec / (double)NANO_IN_SECOND;
+
+        myst_eprintf("%s", yellow);
+        myst_eprintf("=== boot time: %.4lfsec", secs);
+        myst_eprintf("%s\n", reset);
+    }
+}
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstack-usage="
 int myst_enter_kernel(myst_kernel_args_t* args)
@@ -664,6 +687,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         args->trace_syscalls = false;
         args->shell_mode = false;
         args->memcheck = false;
+        args->perf = false;
         args->debug_symbols = false;
         args->shell_mode = false;
         args->report_native_tids = false;
@@ -797,6 +821,10 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     if (args->shell_mode)
         myst_start_shell("\nMystikos shell (enter)\n");
 
+    /* print how long it took to boot */
+    if (__myst_kernel_args.perf)
+        _print_boottime();
+
     /* Run the main program: wait for SYS_exit to perform longjmp() */
     if (myst_setjmp(&thread->jmpbuf) == 0)
     {
@@ -841,6 +869,9 @@ int myst_enter_kernel(myst_kernel_args_t* args)
          * call to myst_set_fsbase().
          */
         myst_set_fsbase(thread->target_td);
+
+        if (__myst_kernel_args.perf)
+            myst_print_syscall_times("kernel shutdown", SIZE_MAX);
 
         /* release the kernel stack that was passed to SYS_exit if any */
         if (thread->kstack)

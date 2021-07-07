@@ -594,6 +594,10 @@ int _exec_package(
     if (cli_getopt(&argc, argv, "--memcheck", NULL) == 0)
         options.memcheck = true;
 
+    /* Get --perf option */
+    if (cli_getopt(&argc, argv, "--perf", NULL) == 0)
+        options.perf = true;
+
     /* Get --report-native-tids option */
     if (cli_getopt(&argc, argv, "--report-native-tids", NULL) == 0)
         options.report_native_tids = true;

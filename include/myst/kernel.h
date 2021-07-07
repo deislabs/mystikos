@@ -134,6 +134,10 @@ typedef struct myst_kernel_args
     /* The tid/pid of the main thread passed from the host */
     pid_t target_tid;
 
+    /* The start time passed in from the host */
+    uint64_t start_time_sec;
+    uint64_t start_time_nsec;
+
     /* Tracing options */
     bool trace_errors;
     bool trace_syscalls;
@@ -153,6 +157,9 @@ typedef struct myst_kernel_args
 
     /* true if --memcheck option present */
     bool memcheck;
+
+    /* true if --perf option present -- print performance statistics */
+    bool perf;
 
     /* true if --report-native-tids is present */
     bool report_native_tids;
@@ -189,5 +196,7 @@ int myst_get_malloc_stats(myst_malloc_stats_t* stats);
 int myst_find_leaks(void);
 
 void myst_start_shell(const char* msg);
+
+const char* myst_syscall_str(long n);
 
 #endif /* _MYST_KERNEL_H */

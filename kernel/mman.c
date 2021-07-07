@@ -459,58 +459,13 @@ static int _mman_get_prot(
     uint8_t* prot_vector,
     uint32_t offset,
     uint32_t num_pages,
-    int* prot)
+    int* prot_out)
 {
-    uint32_t i;
-    uint8_t prot8 = prot_vector[offset];
-    uint64_t prot64;
-    uint8_t r = offset % 8;
+    const uint8_t* start = prot_vector + offset;
 
-    *prot = prot8;
+    *prot_out = start[0];
 
-    /* prot_vector is 64bit aligned */
-    assert((((uint64_t)prot_vector) % 8) == 0);
-    if (num_pages < 16)
-    {
-        for (i = offset + 1; i < offset + num_pages; i++)
-        {
-            if (prot_vector[i] != prot8)
-                return -1;
-        }
-    }
-    else
-    {
-        memset((void*)&prot64, prot8, 8);
-        if (r)
-        {
-            for (i = offset + 1; i < offset - r + 8; i++)
-            {
-                if (prot_vector[i] != prot8)
-                    return -1;
-            }
-        }
-        else
-        {
-            i = offset;
-        }
-        r = (offset + num_pages) % 8;
-        /* i = first 8-bytes boundary at/above offset */
-        for (; i < offset + num_pages - r; i = i + 8)
-        {
-            if (*((uint64_t*)(prot_vector + i)) != prot64)
-                return -1;
-        }
-        if (r)
-        {
-            /* 64-bit compare loop exits at i = offset + num_pages - r */
-            for (; i < offset + num_pages; i++)
-            {
-                if (prot_vector[i] != prot8)
-                    return -1;
-            }
-        }
-    }
-    return 0;
+    return (myst_memcchr(start + 1, start[0], num_pages - 1) == NULL) ? 0 : -1;
 }
 
 static int _munmap(myst_mman_t* mman, void* addr, size_t length)

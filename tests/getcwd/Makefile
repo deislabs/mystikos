@@ -18,6 +18,10 @@ ifdef STRACE
 OPTS = --strace
 endif
 
+ifdef PERF
+OPTS = --perf
+endif
+
 tests: all
 	$(RUNTEST) $(MYST_EXEC) rootfs /bin/getcwd $(OPTS)
 

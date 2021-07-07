@@ -144,6 +144,11 @@ int exec_launch_enclave(
     myst_buf_t envp_buf = MYST_BUF_INITIALIZER;
     myst_buf_t mount_mappings_buf = MYST_BUF_INITIALIZER;
     pid_t target_tid = (pid_t)syscall(SYS_gettid);
+    struct timespec start_time;
+
+    /* get the start time and pass it into the kernel */
+    if (clock_gettime(CLOCK_REALTIME, &start_time) != 0)
+        _err("clock_gettime() failed");
 
     /* Load the enclave: calls oe_load_extra_enclave_data_hook() */
     r = oe_create_myst_enclave(enc_path, type, flags, NULL, 0, &_enclave);
@@ -185,7 +190,9 @@ int exec_launch_enclave(
         mount_mappings_buf.data,
         mount_mappings_buf.size,
         (uint64_t)&_event,
-        target_tid);
+        target_tid,
+        start_time.tv_sec,
+        start_time.tv_nsec);
     if (r != OE_OK)
         _err("failed to enter enclave: result=%s", oe_result_str(r));
 
@@ -288,6 +295,10 @@ int exec_action(int argc, const char* argv[], const char* envp[])
         /* Get --memcheck option */
         if (cli_getopt(&argc, argv, "--memcheck", NULL) == 0)
             options.memcheck = true;
+
+        /* Get --perf option */
+        if (cli_getopt(&argc, argv, "--perf", NULL) == 0)
+            options.perf = true;
 
         /* Get --report-native-tids option */
         if (cli_getopt(&argc, argv, "--report-native-tids", NULL) == 0)
