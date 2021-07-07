@@ -755,13 +755,6 @@ static int _mmap(
             ret = -EINVAL;
             goto done;
         }
-
-        if (flags & MYST_MAP_FIXED)
-        {
-            _mman_set_err(mman, "bad flags parameter: remove MYST_MAP_FIXED");
-            ret = -EINVAL;
-            goto done;
-        }
     }
 
     /* Round LENGTH to multiple of page size */
@@ -789,21 +782,27 @@ static int _mmap(
         uintptr_t start = (uintptr_t)addr;
         uintptr_t end = (uintptr_t)addr + length;
 
-        /* Fail if [addr:length] is not already mapped */
-        if (!(vad = _list_find(mman, start)) || end > _end(vad))
+        /* Fail if [addr:length] is not already mapped and MAP_FIXED is
+         * requested.
+         */
+        if ((vad = _list_find(mman, start)) && end <= _end(vad))
+        {
+            *ptr_out = addr;
+            goto done;
+        }
+        else if (flags & MYST_MAP_FIXED)
         {
             _mman_set_err(
                 mman,
                 "bad addr parameter: "
-                "must be null or part of an existing mapping");
+                "MAP_FIXED requested, but not part of an existing mapping");
             ret = -EINVAL;
             goto done;
         }
-
-        *ptr_out = addr;
-        goto done;
     }
-    else
+    /* If non-zero addr is not part of existing mapping and MAP_FIXED is not
+     * set, treat the request as if addr is 0.
+     */
     {
         myst_vad_t* left;
         myst_vad_t* right;
@@ -1278,7 +1277,7 @@ int myst_mman_mmap(
 **
 ** Parameters:
 **     [IN] mman - mman structure
-**     [IN] addr - addresss or memory being released (must be page aligned).
+**     [IN] addr - address or memory being released (must be page aligned).
 **     [IN] length - length of memory being released (multiple of page size).
 **
 ** Returns:
@@ -1314,7 +1313,7 @@ int myst_mman_munmap(myst_mman_t* mman, void* addr, size_t length)
 **
 ** Parameters:
 **     [IN] mman - mman structure
-**     [IN] addr - addresss being remapped (must be multiple of page size)
+**     [IN] addr - address being remapped (must be multiple of page size)
 **     [IN] old_size - original size of the memory mapping
 **     [IN] new_size - new size of memory mapping (rounded up to page multiple)
 **     [IN] flags - must be MYST_MREMAP_MAYMOVE
@@ -1772,7 +1771,7 @@ bool myst_mman_is_sane(myst_mman_t* mman)
                     goto done;
                 }
 
-                /* No two elements should be contiguous due to coalescense */
+                /* No two elements should be contiguous due to coalescence */
                 if (_end(p) == next->addr)
                 {
                     _mman_set_err(mman, "contiguous VAD list elements");
