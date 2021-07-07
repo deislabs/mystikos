@@ -22,22 +22,16 @@ void do_crt_exit(int code);
  */
 void exit(int code)
 {
-    bool am_parent_of_fork = false;
-    bool am_child_fork = false;
-    myst_fork_mode_t fork_mode = myst_fork_none;
+    myst_fork_info_t arg = MYST_FORK_INFO_INITIALIZER;
 
-    if (syscall(
-            SYS_myst_get_fork_info,
-            &fork_mode,
-            &am_parent_of_fork,
-            &am_child_fork) == 0)
+    if (syscall(SYS_myst_get_fork_info, &arg) == 0)
     {
-        if (am_child_fork)
+        if (arg.is_child_fork)
         {
             // we are child fork so let parent cleanup
             _Exit(code);
         }
-        else if (am_parent_of_fork)
+        else if (arg.is_parent_of_fork)
         {
             // we have active child forked processes
             if (syscall(SYS_myst_kill_wait_child_forks) == 0)

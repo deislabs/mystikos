@@ -313,17 +313,10 @@ myst_fork(void)
     pid_t pid = 0;
     myst_jmp_buf_t env;
     struct thread_args* args = NULL;
+    myst_fork_info_t arg = MYST_FORK_INFO_INITIALIZER;
 
-    bool am_parent_of_fork = false;
-    bool am_child_fork = false;
-    long fork_mode = 0;
-
-    if ((syscall(
-             SYS_myst_get_fork_info,
-             &fork_mode,
-             &am_parent_of_fork,
-             &am_child_fork) != 0) ||
-        (fork_mode == myst_fork_none))
+    if (syscall(SYS_myst_get_fork_info, &arg) < 0 ||
+        arg.fork_mode == myst_fork_none)
     {
         return -ENOTSUP;
     }
