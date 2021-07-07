@@ -835,10 +835,28 @@ done:
     return ret;
 }
 
-// Caller should check *abspath_out before free:
+// Given a dir fd and a pathname, return a concatenated absolute path.
+// This function allocates buffer for the concatenated abspath. The
+// caller doesn't need to preallocate buffer, but should free the
+// abspath buffer after using it.
 //
-//   if (*abspath_out != pathname)
-//        free(*abspath_out)
+// Caveats:
+//
+// - Sometimes abspath is set to equal to
+//   pathname, in which case no free is needed. The caller should check
+//   *abspath_out before free:
+//   e.g.
+//       if (*abspath_out != pathname)
+//           free(*abspath_out)
+//
+// - If this function hits an error and doesn't return SUCCESS, it will
+//   free the abspath buffer by itself. Also, *abspath_out == NULL.
+//   Thus, the check above is still valid.
+//
+// - Some flags allow the pathname to be an empty string. Caller
+//   passing in those flags should check when *abspath == '\0'. If
+//   true, then the caller should apply the fd version of the syscall
+//   using dirfd.
 long myst_get_absolute_path_from_dirfd(
     int dirfd,
     const char* pathname,
