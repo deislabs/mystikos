@@ -23,7 +23,6 @@ $(APPDIR):
 
 rootfs: appdir
 	$(MYST) mkext2 $(APPDIR) rootfs
-	truncate --size=-4096 rootfs
 
 clean:
 	rm -rf rootfs $(APPDIR)
