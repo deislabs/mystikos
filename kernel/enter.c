@@ -681,6 +681,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     if (__options.have_syscall_instruction)
         myst_set_gsbase(myst_get_fsbase());
 
+    /* call global constructors within the kernel */
     myst_call_init_functions();
 
     /* Check arguments */
@@ -934,6 +935,10 @@ int myst_enter_kernel(myst_kernel_args_t* args)
 
     /* call functions installed with myst_atexit() */
     myst_call_atexit_functions();
+
+    // Call global destructors within the kernel.
+    // GCOV uses fini functions to generates .gcda files on exit.
+    myst_call_fini_functions();
 
     /* check for memory leaks */
     if (args->memcheck)

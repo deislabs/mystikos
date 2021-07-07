@@ -4011,15 +4011,7 @@ static long _syscall(void* args_)
             /* the kstack is freed after the long-jump below */
             thread->kstack = args->kstack;
 
-            if (thread == __myst_main_thread)
-            {
-                // execute fini functions with the CRT fsbase since only
-                // gcov uses them and gcov calls into CRT.
-                myst_set_fsbase(crt_td);
-                myst_call_fini_functions();
-                myst_set_fsbase(target_td);
-            }
-
+            /* jump back to myst_enter_kernel() */
             myst_longjmp(&thread->jmpbuf, 1);
 
             /* unreachable */
