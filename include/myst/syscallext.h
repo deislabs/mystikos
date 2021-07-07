@@ -38,4 +38,16 @@ typedef enum
     myst_fork_pseudo_wait_for_exit_exec
 } myst_fork_mode_t;
 
+typedef struct myst_fork_info
+{
+    myst_fork_mode_t fork_mode;
+    bool is_parent_of_fork;
+    bool is_child_fork;
+} myst_fork_info_t;
+
+#define MYST_FORK_INFO_INITIALIZER   \
+    {                                \
+        myst_fork_none, false, false \
+    }
+
 #endif /* _MYST_SYSCALLEXT_H */

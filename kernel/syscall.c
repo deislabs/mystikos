@@ -512,38 +512,37 @@ static bool _iov_bad_addr(const struct iovec* iov, int iovcnt)
     return false;
 }
 
-long myst_syscall_get_fork_info(
-    myst_thread_t* thread,
-    myst_fork_mode_t* fork_mode,
-    bool* is_parent_of_fork,
-    bool* is_child_fork)
+long myst_syscall_get_fork_info(myst_thread_t* thread, myst_fork_info_t* arg)
 {
     long ret = 0;
-    myst_thread_t* process = myst_find_process_thread(thread);
+    myst_thread_t* process;
 
-    if (!fork_mode || !is_parent_of_fork || !is_child_fork)
-        ret = -EINVAL;
+    if (!arg)
+        ERAISE(-EINVAL);
+
+    if (!(process = myst_find_process_thread(thread)))
+        ERAISE(-ENOSYS);
+
+    arg->fork_mode = __myst_kernel_args.fork_mode;
+
+    if (arg->fork_mode == myst_fork_none)
+    {
+        arg->is_child_fork = false;
+        arg->is_parent_of_fork = false;
+    }
     else
     {
-        *fork_mode = __myst_kernel_args.fork_mode;
-        if (*fork_mode == myst_fork_none)
-        {
-            *is_child_fork = false;
-            *is_parent_of_fork = false;
-        }
+        /* Check if we are child fork by looking at clone flag */
+        if (process->clone.flags & CLONE_VFORK)
+            arg->is_child_fork = true;
         else
-        {
-            /* Check if we are child fork by looking at clone flag */
-            if (process->clone.flags & CLONE_VFORK)
-                *is_child_fork = true;
-            else
-                *is_child_fork = false;
+            arg->is_child_fork = false;
 
-            /* Check if we have a child process which is a clone */
-            *is_parent_of_fork = myst_have_child_forked_processes(process);
-        }
+        /* Check if we have a child process which is a clone */
+        arg->is_parent_of_fork = myst_have_child_forked_processes(process);
     }
 
+done:
     return ret;
 }
 
@@ -3970,14 +3969,12 @@ static long _syscall(void* args_)
         }
         case SYS_myst_get_fork_info:
         {
-            myst_fork_mode_t* fork_mode = (myst_fork_mode_t*)x1;
-            bool* is_parent_of_fork = (bool*)x2;
-            bool* is_child_fork = (bool*)x3;
+            myst_fork_info_t* arg = (myst_fork_info_t*)x1;
+
             _strace(n, NULL);
-            BREAK(_return(
-                n,
-                myst_syscall_get_fork_info(
-                    thread, fork_mode, is_parent_of_fork, is_child_fork)));
+
+            long ret = myst_syscall_get_fork_info(thread, arg);
+            BREAK(_return(n, ret));
         }
         case SYS_myst_kill_wait_child_forks:
         {
