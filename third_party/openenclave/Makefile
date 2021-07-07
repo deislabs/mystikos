@@ -1,13 +1,15 @@
 .NOTPARALLEL:
 
 TOP=$(abspath $(CURDIR)/../..)
-include $(TOP)/config.mak
 
 BUILDDIR=${TOP}/build
 
 URL=https://github.com/openenclave/openenclave
+BRANCH=mystikos.v4
 
-BRANCH=mystikos.v2
+OPENENCLAVE_INSTALL_PREFIX=$(BUILDDIR)/openenclave
+OPENENCLAVE_SRC = $(CURDIR)/openenclave
+OPENENCLAVE_BUILD = $(CURDIR)/openenclave/build
 
 # get the hash of the remote github repository (for the given branch)
 HASH=$(shell git ls-remote $(URL) -b $(BRANCH) | cut -f1 )
@@ -20,13 +22,13 @@ all: $(BUILDDIR)/include/openenclave
 
 ifdef MYST_USE_BUILD_CACHE
 CACHE_CHECK=$(wildcard $(CACHE))
-ANSIBLE_CACHE_CHECK=$(wildcard $(CACHE)/ansible.cache)
 endif
 
 $(BUILDDIR)/include/openenclave:
 ifeq ($(CACHE_CHECK),)
-	$(MAKE) submodule
 	$(MAKE) openenclave
+	$(MAKE) configure_oe
+	$(MAKE) install_oe
 else
 	$(MAKE) fetch_oecache
 endif
@@ -43,54 +45,16 @@ $(TOP)/build/bin/myst-gdb:
 	rm -f $(BUILDDIR)/bin/myst-gdb
 	ln -s $(BUILDDIR)/openenclave/bin/oegdb $(BUILDDIR)/bin/myst-gdb
 
-##==============================================================================
-##
-## submodule:
-##
-##==============================================================================
-
 FETCH_SUBMODULE = git submodule update --init --progress
 
-submodule:
-	$(FETCH_SUBMODULE) $(CURDIR)/openenclave
+openenclave:
+	git clone $(URL) -b $(BRANCH)
 	( cd openenclave; $(FETCH_SUBMODULE) tools/oeedger8r-cpp )
+	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/musl/musl )
 	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/mbedtls/mbedtls )
+	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/openssl/openssl )
+	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/openssl/intel-sgx-ssl )
 	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/snmalloc )
-
-##==============================================================================
-##
-## openenclave:
-##
-##==============================================================================
-
-OPENENCLAVE_INSTALL_PREFIX=$(BUILDDIR)/openenclave
-
-OPENENCLAVE_SRC = $(CURDIR)/openenclave
-OPENENCLAVE_BUILD = $(CURDIR)/openenclave/build
-
-.PHONY: openenclave
-
-# Only install dependencies if $(OPENENCLAVE_BUILD) does not exit.
-DEPENDENCY_TARGET = $(OPENENCLAVE_BUILD)/dependency_target
-
-openenclave: $(DEPENDENCY_TARGET) configure_oe install_oe
-
-$(DEPENDENCY_TARGET):
-ifeq ($(ANSIBLE_CACHE_CHECK),)
-	$(MAKE) ansible
-	mkdir -p $(CACHE)
-	touch $(CACHE)/ansible.cache
-endif
-	mkdir -p $(OPENENCLAVE_BUILD)
-
-ansible:
-ifneq ($(MYST_IGNORE_ANSIBLE),1)
-	$(MAKE) __ansible
-endif
-
-__ansible:
-	sudo $(OPENENCLAVE_SRC)/scripts/ansible/install-ansible.sh
-	sudo ansible-playbook $(OPENENCLAVE_SRC)/scripts/ansible/oe-contributors-acc-setup-no-driver.yml
 
 configure_oe: $(OPENENCLAVE_BUILD)/Makefile
 
@@ -104,12 +68,12 @@ endif
 
 CMAKE_OPTS += -DHAS_QUOTE_PROVIDER=OFF
 CMAKE_OPTS += -DBUILD_TESTS=OFF
+CMAKE_OPTS += -DENABLE_REFMAN=OFF
 CMAKE_OPTS += -DCMAKE_INSTALL_PREFIX=$(OPENENCLAVE_INSTALL_PREFIX)
 
 $(OPENENCLAVE_BUILD)/Makefile:
 	rm -rf $(OPENENCLAVE_BUILD)
 	mkdir -p $(OPENENCLAVE_BUILD)
-	touch $(DEPENDENCY_TARGET)
 	( cd $(OPENENCLAVE_BUILD); cmake $(CMAKE_OPTS) $(OPENENCLAVE_SRC) )
 
 install_oe:
@@ -124,28 +88,9 @@ endif
 	rm -f $(TOP)/build/bin/myst-gdb
 	ln -s $(TOP)/build/openenclave/bin/oegdb $(TOP)/build/bin/myst-gdb
 
-##==============================================================================
-##
-## clean:
-## distclean:
-##
-##==============================================================================
-
-DISTCLEAN += $(BUILDDIR)
-DISTCLEAN += $(OPENENCLAVE_BUILD)
-
 clean:
 	rm -rf $(TOP)/build/openenclave
 	rm -f $(TOP)/build/bin/myst-gdb
 
 distclean: clean
-	rm -rf $(DISTCLEAN)
-
-cleandeps:
-	rm -f $(DEPENDENCY_TARGET)
-
-tests:
-
-force:
-	rm -rf $(BUILDDIR)/include/openenclave
-	$(MAKE)
+	rm -rf openenclave

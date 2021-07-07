@@ -24,4 +24,4 @@ rootfs: appdir
 	$(MYST) mkcpio appdir rootfs
 
 clean:
-	sudo rm -fr appdir rootfs HelloWorld/build HelloWorld/obj HelloWorld/bin stdout.txt
+	sudo rm -fr appdir rootfs HelloWorld/build HelloWorld/obj HelloWorld/bin

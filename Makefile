@@ -20,6 +20,9 @@ all:
 ##
 ##==============================================================================
 
+# CAUTION: this must be run before all other targets
+DIRS += prereqs
+
 DIRS += third_party
 
 ifndef MYST_PRODUCT_BUILD
@@ -66,6 +69,7 @@ include $(TOP)/rules.mak
 distclean: clean
 	rm -rf $(TOP)/third_party/musl/crt/musl
 	sudo rm -rf $(TOP)/build
+	make distclean -C $(TOP)/third_party/openenclave
 	git submodule deinit --all
 
 ##==============================================================================

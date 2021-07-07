@@ -57,15 +57,12 @@ int main(int argc, const char* argv[])
 {
     if (argc < 1)
     {
-        fprintf(
-            stderr,
-            "Must pass in the file containing test names\n");
+        fprintf(stderr, "Must pass in the file containing test names\n");
     }
     else
     {
         _run_tests(argv[1]);
     }
-
 
     printf("=== passed all tests: %s\n", argv[0]);
     return 0;
