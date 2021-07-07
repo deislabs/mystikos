@@ -22,7 +22,7 @@ all: appdir private.pem
 TIMEOUT=180s
 
 export COMPlus_EnableDiagnostics=0
-export COMPlus_GCHeapHardLimit=0x10000000
+export COMPlus_GCHeapHardLimit=0x8000000
 
 run: rootfs private.pem
 	test -f server.pid && kill -9 `cat server.pid` || true
