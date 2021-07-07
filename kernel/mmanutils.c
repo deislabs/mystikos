@@ -509,6 +509,27 @@ struct myst_process_mapping
 static myst_process_mapping_t* _mappings;
 static myst_spinlock_t _mappings_lock;
 
+/* uncomment the following line to perform memchecks on process mappings */
+//#define MEMCHECK_PROCESS_MAPPINGS
+
+static void* _calloc(size_t nmemb, size_t size)
+{
+#ifdef MEMCHECK_PROCESS_MAPPINGS
+    return calloc(nmemb, size);
+#else
+    return myst_calloc(nmemb, size);
+#endif
+}
+
+static void _free(void* ptr)
+{
+#ifdef MEMCHECK_PROCESS_MAPPINGS
+    return free(ptr);
+#else
+    return myst_free(ptr);
+#endif
+}
+
 /* keep track of mappings made by this process */
 int myst_register_process_mapping(
     pid_t pid,
@@ -529,7 +550,7 @@ int myst_register_process_mapping(
         ERAISE(-EINVAL);
 
     /* ATTN: use raw calloc to exclude from debug-malloc checks for now */
-    if (!(m = myst_calloc(1, sizeof(myst_process_mapping_t))))
+    if (!(m = _calloc(1, sizeof(myst_process_mapping_t))))
         ERAISE(-ENOMEM);
 
     m->pid = pid;
@@ -572,7 +593,7 @@ done:
     if (m)
     {
         /* use raw free since allocated with raw calloc */
-        myst_free(m);
+        _free(m);
     }
 
     if (locals)
@@ -610,11 +631,11 @@ int myst_release_process_mappings(pid_t pid)
                 if (p->pathname)
                 {
                     /* use raw free since allocated with raw strdup */
-                    myst_free(p->pathname);
+                    _free(p->pathname);
                 }
 
                 /* use raw free since allocated with raw calloc */
-                myst_free(p);
+                _free(p);
             }
             else
             {
