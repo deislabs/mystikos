@@ -19,7 +19,7 @@ OPTS = --strace
 endif
 
 tests: all
-	$(RUNTEST) $(MYST_EXEC) rootfs /bin/getcwd $(OPTS)
+	$(RUNTEST) $(MYST_EXEC) --memcheck rootfs /bin/getcwd $(OPTS)
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst
