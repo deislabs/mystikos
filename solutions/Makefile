@@ -21,12 +21,6 @@ DIRS += dotnet
 endif
 
 DIRS += aspnet
-
-# Run coreclr tests only in nightly pipeline
-ifdef RUN_CORECLR_TESTS
-DIRS += coreclr
-endif
-
 DIRS += memcached
 DIRS += python_web_frameworks
 
