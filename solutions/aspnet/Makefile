@@ -37,7 +37,6 @@ client:
 
 rootfs: appdir
 	$(MYST) mkext2 appdir rootfs
-	truncate --size=-4096 rootfs
 
 gdb: appdir private.pem
 	$(MYST) package appdir private.pem config.json
