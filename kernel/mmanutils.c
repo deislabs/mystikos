@@ -515,7 +515,7 @@ static myst_process_mapping_t* _mappings;
 static myst_spinlock_t _mappings_lock;
 
 /* uncomment the following line to perform memchecks on process mappings */
-#define MEMCHECK_PROCESS_MAPPINGS
+// #define MEMCHECK_PROCESS_MAPPINGS
 
 static void* _calloc(size_t nmemb, size_t size)
 {
