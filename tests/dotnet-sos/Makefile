@@ -13,7 +13,7 @@ ifdef STRACE
 OPTS += --strace
 endif
 
-all: ext2fs oelldb
+all: ext2fs
 
 appdir:
 	$(APPBUILDER) Dockerfile
@@ -22,11 +22,8 @@ ext2fs: appdir
 	rm -rf appdir/tmp/clr-debug-pipe*
 	$(MYST) mkext2 appdir ext2fs
 
-oelldb:
-	git clone --branch working https://github.com/vtikoo/oelldb
-
 clean:
-	sudo rm -fr appdir ext2fs rootfs oelldb stdouterr.txt
+	sudo rm -fr appdir ext2fs rootfs stdouterr.txt
 
 tests:
 	$(RUNTEST) docker run --rm \
