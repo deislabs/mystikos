@@ -155,7 +155,7 @@ static long _default_signal_handler(unsigned signum)
             myst_tcall_wake(process_thread->event);
         }
     }
-    thread->exit_status = 0;
+    thread->exit_status = 128 + signum;
     thread->status = MYST_KILLED;
     thread->terminating_signum = signum;
     myst_longjmp(&thread->jmpbuf, 1);
