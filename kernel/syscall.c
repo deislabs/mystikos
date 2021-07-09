@@ -451,6 +451,7 @@ static pair_t _pairs[] = {
     {SYS_get_process_thread_stack, "SYS_get_process_thread_stack"},
     {SYS_myst_run_itimer, "SYS_myst_run_itimer"},
     {SYS_myst_get_fork_info, "SYS_myst_get_fork_info"},
+    {SYS_fork_wait_exec_exit, "SYS_fork_wait_exec_exit"},
     {SYS_myst_kill_wait_child_forks, "SYS_myst_kill_wait_child_forks"},
     /* Open Enclave extensions */
     {SYS_myst_oe_get_report_v2, "SYS_myst_oe_get_report_v2"},
@@ -4034,6 +4035,13 @@ static long _syscall(void* args_)
             long ret = myst_syscall_get_fork_info(thread, arg);
             BREAK(_return(n, ret));
         }
+        case SYS_fork_wait_exec_exit:
+        {
+            int ret = 0;
+            _strace(n, NULL);
+            myst_futex_wait(&thread->fork_exec_futex_wait, 0, NULL);
+            BREAK(_return(n, ret));
+        }
         case SYS_myst_kill_wait_child_forks:
         {
             long ret = 0;
@@ -4080,6 +4088,13 @@ static long _syscall(void* args_)
 
             /* the kstack is freed after the long-jump below */
             thread->kstack = args->kstack;
+
+            /* If this process was created as part of a fork() and the parent is
+             * running in wait-exec mode, signal that thread for wakeup */
+            if (process->clone.flags & CLONE_VFORK)
+            {
+                myst_fork_exec_futex_wake(thread);
+            }
 
             /* jump back to myst_enter_kernel() */
             myst_longjmp(&thread->jmpbuf, 1);

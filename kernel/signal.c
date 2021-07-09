@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include <assert.h>
+#include <sched.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -143,18 +144,26 @@ static long _default_signal_handler(unsigned signum)
     }
 
     myst_thread_t* thread = myst_thread_self();
+    myst_thread_t* process_thread = myst_find_process_thread(thread);
 
     // A hard kill. Never returns.
     // For SIGABRT, throw it to the process thread.
     if (signum == SIGABRT)
     {
-        myst_thread_t* process_thread = myst_find_process_thread(thread);
         myst_signal_deliver(process_thread, signum, NULL);
         if (process_thread->signal.waiting_on_event)
         {
             myst_tcall_wake(process_thread->event);
         }
     }
+
+    /* If we were forked and fork mode is wait for exec, notify calling parent
+     */
+    if (process_thread->clone.flags & CLONE_VFORK)
+    {
+        myst_fork_exec_futex_wake(process_thread);
+    }
+
     thread->exit_status = 0;
     thread->status = MYST_KILLED;
     thread->terminating_signum = signum;

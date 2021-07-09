@@ -583,6 +583,8 @@ myst_thread_t* myst_find_thread(int tid)
     myst_thread_t* target = NULL;
     myst_thread_t* t = NULL;
 
+    myst_spin_lock(thread->thread_lock);
+
     // Search forward in the doubly linked list for a match
     for (t = thread; t != NULL; t = t->group_next)
     {
@@ -596,7 +598,6 @@ myst_thread_t* myst_find_thread(int tid)
     if (target == NULL)
     {
         // Search backward in the doubly linked list for a match
-        myst_spin_lock(thread->thread_lock);
         for (t = thread->group_prev; t != NULL; t = t->group_prev)
         {
             if (t->tid == tid)
@@ -605,10 +606,55 @@ myst_thread_t* myst_find_thread(int tid)
                 break;
             }
         }
-        myst_spin_unlock(thread->thread_lock);
     }
 
+    myst_spin_unlock(thread->thread_lock);
     return target;
+}
+
+/* Find the thread that may be waiting for the fork-exec wait and weke it */
+void myst_fork_exec_futex_wake(myst_thread_t* thread)
+{
+    pid_t pid = thread->clone.vfork_parent_pid;
+    pid_t tid = thread->clone.vfork_parent_tid;
+
+    myst_thread_t* our_process_thread =
+        myst_find_process_thread(myst_thread_self());
+    myst_thread_t* find_thread = our_process_thread;
+
+    myst_spin_lock(&myst_process_list_lock);
+    while (find_thread && find_thread->pid != pid)
+    {
+        find_thread = find_thread->main.prev_process_thread;
+    }
+    if (find_thread == NULL)
+    {
+        find_thread = our_process_thread->main.next_process_thread;
+        while (find_thread && find_thread->pid != pid)
+        {
+            find_thread = find_thread->main.next_process_thread;
+        }
+    }
+    myst_spin_unlock(&myst_process_list_lock);
+
+    if (find_thread == NULL)
+        goto done;
+
+    myst_spin_lock(find_thread->thread_lock);
+    while (find_thread && find_thread->tid != tid)
+    {
+        find_thread = find_thread->group_next;
+    }
+    myst_spin_unlock(find_thread->thread_lock);
+
+    if (find_thread)
+    {
+        __sync_val_compare_and_swap(&find_thread->fork_exec_futex_wait, 0, 1);
+        myst_futex_wake(&find_thread->fork_exec_futex_wait, 1);
+    }
+
+done:
+    return;
 }
 
 /*
@@ -1051,6 +1097,16 @@ static long _syscall_clone_vfork(
         child->clone.child_stack = child_stack;
         child->clone.flags = flags;
         child->clone.arg = arg;
+
+        /* If this is being called as part of a fork() call we may need to use
+         * these to notify the parent processes tid to wake up in fork/exec mode
+         */
+        child->clone.vfork_parent_pid = parent->pid;
+        child->clone.vfork_parent_tid = parent->tid;
+
+        /* In case we are going to be used for fork-exec scenario where we need
+         * to wait for exec or exit, reset the futex */
+        parent->fork_exec_futex_wait = 0;
 
         myst_thread_t* parent_main_thread = parent;
         if (!myst_is_process_thread(parent))

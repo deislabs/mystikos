@@ -11,6 +11,7 @@
 #include <myst/assume.h>
 #include <myst/defs.h>
 #include <myst/fdtable.h>
+#include <myst/futex.h>
 #include <myst/kstack.h>
 #include <myst/setjmp.h>
 #include <myst/spinlock.h>
@@ -143,6 +144,13 @@ struct myst_thread
         pid_t* ptid;  /* null for vfork */
         void* newtls; /* null for vfork */
         pid_t* ctid;  /* null for vfork */
+
+        /* If the clone is vfork mode, we may need to signal the parents
+         * initiation thread when an exec or exit is called from the child. */
+        /* This is necessary when pseudo fork is in wait_exec_exit mode. This
+         * also may be used for actual vfork(). */
+        pid_t vfork_parent_pid;
+        pid_t vfork_parent_tid;
     } clone;
 
     /* fields used by main thread (process thread) */
@@ -248,6 +256,10 @@ struct myst_thread
 
     // the kernel stack for the current the syscall (used only by SYS_exit)
     myst_kstack_t* kstack;
+
+    /* when fork needs to wait for child to call exec or exit, wait on this
+     * fuxtex. Child set to 1 and signals futex. */
+    int fork_exec_futex_wait;
 };
 
 MYST_INLINE bool myst_valid_thread(const myst_thread_t* thread)
@@ -390,6 +402,8 @@ void myst_wait_on_child_processes(void);
 size_t myst_get_num_threads(void);
 
 myst_thread_t* myst_find_thread(int tid);
+
+void myst_fork_exec_futex_wake(myst_thread_t* thread);
 
 size_t myst_kill_thread_group();
 

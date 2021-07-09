@@ -242,9 +242,11 @@ static json_result_t _json_read_callback(
 #if 0
                     else if (strcmp(un->string, "pseudo_wait_for_children") == 0)
                         parsed_data->fork_mode = myst_fork_pseudo_wait_for_children;
-                    else if (strcmp(un->string, "pseudo_wait_for_exit_exec") == 0)
-                        parsed_data->fork_mode = myst_fork_pseudo_wait_for_exit_exec;
 #endif
+                    else if (
+                        strcmp(un->string, "pseudo_wait_for_exit_exec") == 0)
+                        parsed_data->fork_mode =
+                            myst_fork_pseudo_wait_for_exit_exec;
                     else
                         CONFIG_RAISE(JSON_UNKNOWN_VALUE);
                 }

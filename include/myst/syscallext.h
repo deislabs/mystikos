@@ -27,6 +27,7 @@ enum
     SYS_myst_get_fork_info,
     SYS_myst_kill_wait_child_forks,
     SYS_get_process_thread_stack,
+    SYS_fork_wait_exec_exit,
 };
 
 /* Used for SYS_myst_get_fork_info parameter */
