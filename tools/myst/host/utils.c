@@ -348,6 +348,10 @@ int get_fork_mode_opts(
         {
             *fork_mode = myst_fork_pseudo_kill_children;
         }
+        else if (strcmp(arg, "pseudo_wait_for_exit_exec") == 0)
+        {
+            *fork_mode = myst_fork_pseudo_wait_for_exit_exec;
+        }
         else
             return -1;
     }

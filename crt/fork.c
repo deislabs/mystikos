@@ -385,8 +385,8 @@ myst_fork(void)
             return tmp_ret;
         }
 
-        /* wait for child to set args->pid */
         {
+            /* wait for child to set args->pid */
             struct timespec req;
             req.tv_sec = 0;
             req.tv_nsec = 1000;
@@ -394,6 +394,12 @@ myst_fork(void)
                 nanosleep(&req, NULL);
 
             pid = args->pid;
+
+            /* Wait if fork mode requires it */
+            if (arg.fork_mode == myst_fork_pseudo_wait_for_exit_exec)
+            {
+                syscall(SYS_fork_wait_exec_exit);
+            }
         }
     }
     else /* child */

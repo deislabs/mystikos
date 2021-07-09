@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include <assert.h>
 #include <errno.h>
+#include <myst/assume.h>
 #include <pthread.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -27,21 +27,16 @@ int _printf(const char* fmt, ...)
 
     va_start(ap, fmt);
     pthread_mutex_lock(&_lock);
-    fprintf(stderr, "_printf: tid=%d: ", _gettid());
+    fprintf(stderr, "tid=%d: ", _gettid());
     vfprintf(stderr, fmt, ap);
     fflush(stderr);
     pthread_mutex_unlock(&_lock);
     va_end(ap);
 }
 
-void point()
-{
-}
-
 int test_fork1(int argc, const char* argv[])
 {
     pid_t pid = fork();
-    // pid_t pid = syscall(SYS_fork);
 
     if (pid < 0)
     {
@@ -231,8 +226,10 @@ int test_fork4(int argc, const char* argv[])
     return 0;
 }
 
-int test_fork5(int argc, const char* argv[])
+/* fork: child fork calls exec */
+int test_fork_exec1(int argc, const char* argv[])
 {
+    printf("*** Starting test_fork_exec1 ***\n");
     pid_t pid = fork();
 
     if (pid < 0)
@@ -242,21 +239,20 @@ int test_fork5(int argc, const char* argv[])
     }
     else if (pid == 0)
     {
-        _printf("*** inside child.. setting variable\n");
+        _printf("*** inside child.. callingf execl\n");
         const char* path = "/bin/fork_child";
         if (execl(path, path, NULL) != 0)
         {
-            fprintf(stderr, "%s: execl() failed: %d\n", path, pid);
+            fprintf(stderr, "execl should not fail\n");
             exit(2);
         }
-        _printf("Shutting down child\n");
+        fprintf(stderr, "execl should not return\n");
         exit(2);
     }
     else
     {
         int wstatus;
         _printf("*** inside parent\n");
-        _printf("waiting for child to shut down\n");
         if (waitpid(pid, &wstatus, 0) != pid)
         {
             fprintf(stderr, "waitpid on child pid did not return child pid.\n");
@@ -275,6 +271,114 @@ int test_fork5(int argc, const char* argv[])
             exit(1);
         }
         _printf("Shutting down parent\n");
+        printf("*** Finished test_fork_exec1 ***\n");
+    }
+    return 0;
+}
+
+/* fork-wait: exit child fork without exec */
+int test_fork_exec2(int argc, const char* argv[])
+{
+    printf("*** Starting test_fork_exec2 ***\n");
+
+    pid_t pid = fork();
+
+    if (pid < 0)
+    {
+        fprintf(stderr, "%s: fork() failed: %d\n", argv[0], pid);
+        exit(3);
+    }
+    else if (pid == 0)
+    {
+        _printf("*** inside child.. sleeping\n");
+        sleep(1);
+        _printf("Shutting down child\n");
+        exit(1);
+    }
+    else
+    {
+        int wstatus;
+        _printf("*** inside parent... Child should have already gone as doing "
+                "a fork-wait and we called exit\n");
+        if (waitpid(pid, &wstatus, 0) != pid)
+        {
+            fprintf(
+                stderr,
+                "waitpid - child should have exited even though it was "
+                "sleeping.\n");
+            exit(1);
+        }
+
+        if (!WIFEXITED(wstatus))
+        {
+            fprintf(stderr, "waitpid WIFEXITED should be set.\n");
+            exit(1);
+        }
+        if (WEXITSTATUS(wstatus) != 1)
+        {
+            fprintf(
+                stderr,
+                "waitpid WEXITSTATUS should be 1 as child did exit(1).\n");
+            exit(1);
+        }
+        if (WIFSIGNALED(wstatus) != 0)
+        {
+            fprintf(stderr, "waitpid WIFSIGNALED was not sent a kill.\n");
+            exit(1);
+        }
+        _printf("Shutting down parent\n");
+        printf("*** Finished test_fork_exec2 ***\n");
+    }
+    return 0;
+}
+
+/* fork-wait: child fork crashes */
+int test_fork_exec3(int argc, const char* argv[])
+{
+    printf("*** Starting test_fork_exec3 ***\n");
+
+    pid_t pid = fork();
+
+    if (pid < 0)
+    {
+        fprintf(stderr, "%s: fork() failed: %d\n", argv[0], pid);
+        exit(3);
+    }
+    else if (pid == 0)
+    {
+        _printf("*** inside child.. crashing\n");
+        *((volatile unsigned char*)0) = 0;
+        fprintf(stderr, "child should not get here\n");
+        exit(1);
+    }
+    else
+    {
+        int wstatus;
+        _printf("*** inside parent... Child should have already gone as doing "
+                "a fork-wait and we crashed without calling exec\n");
+        if (waitpid(pid, &wstatus, WNOHANG) != pid)
+        {
+            fprintf(
+                stderr,
+                "waitpid - child should have exited because it crashed.\n");
+            exit(1);
+        }
+
+        if (!WIFSIGNALED(wstatus))
+        {
+            fprintf(stderr, "waitpid WIFSIGNALED should be set.\n");
+            exit(1);
+        }
+        if (WTERMSIG(wstatus) != SIGSEGV)
+        {
+            fprintf(
+                stderr,
+                "waitpid termination signal should be SIGSEGV, we got %d.\n",
+                WTERMSIG(wstatus));
+            exit(1);
+        }
+        _printf("Shutting down parent\n");
+        printf("*** Finished test_fork_exec3 ***\n");
     }
     return 0;
 }
@@ -323,15 +427,26 @@ int main(int argc, const char* argv[])
     }
     if (strcmp(argv[1], "fork") == 0)
     {
-        assert(test_fork1(argc, argv) == 0);
-        assert(test_fork2(argc, argv) == 0);
-        assert(test_fork3(argc, argv) == 0);
-        assert(test_fork4(argc, argv) == 0);
-        assert(test_fork5(argc, argv) == 0);
+        myst_assume(test_fork1(argc, argv) == 0);
+        myst_assume(test_fork2(argc, argv) == 0);
+        myst_assume(test_fork3(argc, argv) == 0);
+        myst_assume(test_fork4(argc, argv) == 0);
+        myst_assume(test_fork_exec1(argc, argv) == 0);
+    }
+    else if (strcmp(argv[1], "forkwait") == 0)
+    {
+        myst_assume(test_fork_exec1(argc, argv) == 0);
+        myst_assume(test_fork_exec2(argc, argv) == 0);
+        myst_assume(test_fork_exec3(argc, argv) == 0);
     }
     else if (strcmp(argv[1], "nofork") == 0)
     {
-        assert(test_nofork1(argc, argv) == 0);
+        myst_assume(test_nofork1(argc, argv) == 0);
+    }
+    else
+    {
+        fprintf(stderr, "invalid argument\n");
+        return -1;
     }
     return 0;
 }
