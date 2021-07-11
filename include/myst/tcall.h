@@ -56,6 +56,7 @@ typedef enum myst_tcall_number
     MYST_TCALL_GCOV,
     MYST_TCALL_GET_FILE_SIZE,
     MYST_TCALL_READ_FILE,
+    MYST_TCALL_FORK,
 } myst_tcall_number_t;
 
 long myst_tcall(long n, long params[6]);
@@ -162,5 +163,7 @@ long myst_gcov(const char* func, long params[6]);
 int myst_tcall_get_file_size(const char* pathname);
 
 int myst_tcall_read_file(const char* pathname, char* buf, size_t size);
+
+long myst_tcall_fork(void);
 
 #endif /* _MYST_TCALL_H */

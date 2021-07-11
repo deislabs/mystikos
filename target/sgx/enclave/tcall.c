@@ -579,6 +579,10 @@ long myst_tcall(long n, long params[6])
         {
             return myst_tcall_read_file((const char*)x1, (void*)x2, (size_t)x3);
         }
+        case MYST_TCALL_FORK:
+        {
+            return myst_tcall_fork();
+        }
         case SYS_read:
         case SYS_write:
         case SYS_close:

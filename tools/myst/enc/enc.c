@@ -49,6 +49,8 @@ extern const void* __oe_get_heap_base(void);
 
 long myst_tcall_isatty(int fd);
 
+unsigned long int oe_strtoul(const char* nptr, char** endptr, int base);
+
 long _exception_handler_syscall(long n, long params[6])
 {
     return (*_kargs.myst_syscall)(n, params);
@@ -446,8 +448,248 @@ struct enter_arg
     pid_t target_tid;
     uint64_t start_time_sec;
     uint64_t start_time_nsec;
+    bool forked;
 };
 
+static int _mprotect(void* addr, size_t len, int prot)
+{
+    int retval;
+
+    if (myst_mprotect_ocall(&retval, addr, len, prot) != OE_OK)
+        return -ENOSYS;
+
+    return retval;
+}
+
+static void* _allocate_shared_memory(size_t length)
+{
+    void* retval;
+
+    if (myst_allocate_shared_memory_ocall(&retval, length) != OE_OK)
+        return MAP_FAILED;
+
+    return retval;
+}
+
+static void* _attach_shared_memory(size_t* length)
+{
+    void* retval;
+
+    if (myst_attach_shared_memory_ocall(&retval, length) != OE_OK)
+        return MAP_FAILED;
+
+    return retval;
+}
+
+#if 0
+static int _free_shared_memory(void* addr, size_t length)
+{
+    int retval;
+
+    if (myst_free_shared_memory_ocall(&retval, addr, length) != OE_OK)
+        return -ENOSYS;
+
+    return retval;
+}
+#endif
+
+__attribute__((__unused__)) static uint64_t _checksum(const void* s, size_t n)
+{
+    const uint8_t* p = s;
+    uint64_t sum = 0;
+
+    while (n--)
+        sum += *p++;
+
+    return sum;
+}
+
+static int _export_address_space(void)
+{
+    int ret = -1;
+    const uint8_t* image_start; /* pointer to start of the image */
+    const uint8_t* image_end;   /* pointer to end of the image */
+    size_t image_size;          /* size of entire image with all regions */
+    const myst_writable_t* writables; /* the writable-page vector */
+    size_t num_writables;
+    size_t num_pages;
+    void* buf = NULL;
+
+    /* find image_start, image_size, writables, and num_pages */
+    {
+        const void* regions_end = __oe_get_heap_base();
+        myst_region_t r1;
+        myst_region_t r2;
+
+        if (myst_region_find(regions_end, MYST_REGION_START, &r1) != 0)
+            goto done;
+
+        if (myst_region_find(regions_end, MYST_REGION_WRITABLES, &r2) != 0)
+            goto done;
+
+        image_start = r1.data;
+        image_end = (uint8_t*)r2.data + r2.size;
+        image_size = (size_t)(image_end - image_start);
+        writables = r2.data;
+        num_writables = r2.file_size / sizeof(myst_writable_t);
+        num_pages = image_size / PAGE_SIZE;
+    }
+
+    /* allocate untrusted memory buffer */
+    if ((buf = _allocate_shared_memory(image_size)) == MAP_FAILED || !buf)
+    {
+        assert("_allocate_shared_memory() failed" == NULL);
+        goto done;
+    }
+
+    /* fail if the the buffer is not fully in unstrusted memory */
+    if (!oe_is_outside_enclave(buf, image_size))
+        goto done;
+
+    /* reset the protections for the mmane region to r-w-x */
+    {
+        const void* regions_end = __oe_get_heap_base();
+        myst_region_t r;
+        int prot = PROT_READ | PROT_WRITE | PROT_EXEC;
+
+        if (myst_region_find(regions_end, MYST_REGION_MMAN, &r) != 0)
+            goto done;
+
+        if (_mprotect(r.data, r.size, prot) != 0)
+        {
+            printf("*** mprotect() failed on mman\n");
+            assert("mprotect() failed on mman" == NULL);
+        }
+    }
+
+    /* copy each writable pages from trusted to untrusted memory */
+    for (size_t i = 0; i < num_writables; i++)
+    {
+        const myst_writable_t* w = &writables[i];
+
+        /* verify that the page number is in bounds */
+        if (w->page_num >= num_pages)
+        {
+            assert("assumption failed" == NULL);
+            goto done;
+        }
+
+        uint8_t* dest = (uint8_t*)buf + (w->page_num * PAGE_SIZE);
+        const uint8_t* src = image_start + (w->page_num * PAGE_SIZE);
+
+        assert(src >= image_start && src + PAGE_SIZE <= image_end);
+
+#if 0
+        printf("CPY.PAGE: %lu %o (%zu of %zu)\n", w->page_num, w->prot,
+            i, num_writables);
+#endif
+
+        memcpy(dest, src, PAGE_SIZE);
+    }
+
+    ret = 0;
+
+done:
+
+#if 0
+    if (buf)
+        _free_shared_memory(buf, image_size);
+#endif
+
+    return ret;
+}
+
+static int _import_address_space(const void* buf, size_t count)
+{
+    int ret = -1;
+    uint8_t* image_start;     /* pointer to start of the image */
+    const uint8_t* image_end; /* pointer to end of the image */
+    size_t image_size;        /* size of entire image with all regions */
+    const myst_writable_t* writables; /* the writable-page vector */
+    size_t num_writables;
+    size_t num_pages;
+
+    if (!buf || !count)
+        goto done;
+
+    /* find image_start, image_size, writables, and num_pages */
+    {
+        const void* regions_end = __oe_get_heap_base();
+        myst_region_t r1;
+        myst_region_t r2;
+
+        if (myst_region_find(regions_end, MYST_REGION_START, &r1) != 0)
+            goto done;
+
+        if (myst_region_find(regions_end, MYST_REGION_WRITABLES, &r2) != 0)
+            goto done;
+
+        image_start = r1.data;
+        image_end = (uint8_t*)r2.data + r2.size;
+        image_size = (size_t)(image_end - image_start);
+        writables = r2.data;
+        num_writables = r2.file_size / sizeof(myst_writable_t);
+        num_pages = image_size / PAGE_SIZE;
+    }
+
+    if (count != image_size)
+        goto done;
+
+    /* fail if the the buffer is not fully in unstrusted memory */
+    if (!oe_is_outside_enclave(buf, count))
+        goto done;
+
+    /* reset the protections for the mmane region to r-w-x */
+    {
+        const void* regions_end = __oe_get_heap_base();
+        myst_region_t r;
+        int prot = PROT_READ | PROT_WRITE | PROT_EXEC;
+
+        if (myst_region_find(regions_end, MYST_REGION_MMAN, &r) != 0)
+            goto done;
+
+        if (_mprotect(r.data, r.size, prot) != 0)
+        {
+            printf("*** mprotect() failed on mman\n");
+            assert("mprotect() failed on mman" == NULL);
+        }
+    }
+
+    /* copy each writable pages from trusted to untrusted memory */
+    for (size_t i = 0; i < num_writables; i++)
+    {
+        const myst_writable_t* w = &writables[i];
+
+        /* verify that the page number is in bounds */
+        if (w->page_num >= num_pages)
+        {
+            assert("assumption failed" == NULL);
+            goto done;
+        }
+
+        const size_t offset = w->page_num * PAGE_SIZE;
+        uint8_t* dest = image_start + offset;
+        const uint8_t* src = (const uint8_t*)buf + offset;
+
+        assert(dest >= image_start && dest + PAGE_SIZE <= image_end);
+
+#if 0
+        printf("SET.PAGE: %lu %o (%zu of %zu)\n", w->page_num, w->prot,
+            i, num_writables);
+#endif
+
+        memcpy(dest, src, PAGE_SIZE);
+    }
+
+    ret = 0;
+
+done:
+
+    return ret;
+}
+
+#pragma GCC push_options
+#pragma GCC optimize("-fno-stack-protector")
 static long _enter(void* arg_)
 {
     long ret = -1;
@@ -686,6 +928,24 @@ static long _enter(void* arg_)
         assert(0);
     }
 
+    /* Check whether this is a forked enclave */
+    if (arg->forked)
+    {
+        void* image_data;
+        size_t image_size;
+
+        if (!(image_data = _attach_shared_memory(&image_size)))
+            assert("_attach_shared_memory() failed" == NULL);
+
+#if 0
+        printf("image: [%p:%zu]\n", image_data, image_size);
+        printf("SET.CHECKSUM: %zu\n", _checksum(image_data, image_size));
+#endif
+
+        if (_import_address_space(image_data, image_size) != 0)
+            assert("failed to set child image" == NULL);
+    }
+
     /* Enter the kernel image */
     {
         myst_kernel_entry_t entry;
@@ -727,6 +987,7 @@ static long _enter(void* arg_)
         _kargs.start_time_sec = arg->start_time_sec;
         _kargs.start_time_nsec = arg->start_time_nsec;
         _kargs.report_native_tids = report_native_tids;
+        _kargs.forked = arg->forked;
 
         /* set ehdr and verify that the kernel is an ELF image */
         {
@@ -766,6 +1027,7 @@ done:
     free_config(&parsed_config);
     return ret;
 }
+#pragma GCC pop_options
 
 int myst_enter_ecall(
     struct myst_options* options,
@@ -779,7 +1041,8 @@ int myst_enter_ecall(
     uint64_t event,
     pid_t target_tid,
     uint64_t start_time_sec,
-    uint64_t start_time_nsec)
+    uint64_t start_time_nsec,
+    bool forked)
 {
     struct enter_arg arg = {
         .options = options,
@@ -794,6 +1057,7 @@ int myst_enter_ecall(
         .target_tid = target_tid,
         .start_time_sec = start_time_sec,
         .start_time_nsec = start_time_nsec,
+        .forked = forked,
     };
 
     /* prevent this function from being called more than once */
@@ -805,9 +1069,16 @@ int myst_enter_ecall(
 
     const void* regions = __oe_get_heap_base();
     myst_region_t reg;
+    const char* name;
+
+    /* use a different stack for entering the kernel from a forked process */
+    if (forked)
+        name = MYST_REGION_FORK_ENTER_STACK;
+    else
+        name = MYST_REGION_KERNEL_ENTER_STACK;
 
     /* find the stack for entering the kernel */
-    if (myst_region_find(regions, MYST_REGION_KERNEL_ENTER_STACK, &reg) != 0)
+    if (myst_region_find(regions, name, &reg) != 0)
         return -1;
 
     uint8_t* stack = (uint8_t*)reg.data + reg.size;
@@ -1039,6 +1310,24 @@ int myst_tcall_read_file(const char* pathname, char* buf, size_t size)
     int retval;
 
     if (myst_read_file_ocall(&retval, pathname, buf, size) != OE_OK)
+        return -EINVAL;
+
+    return retval;
+}
+
+long myst_tcall_fork(void)
+{
+    long retval;
+
+    if (_export_address_space() != 0)
+        return -ENOSYS;
+
+#if 0
+    printf("GET.CHECKSUM: %zu\n", _checksum(image_data, image_size));
+#endif
+
+    /* perform the fork */
+    if (myst_fork_ocall(&retval) != OE_OK)
         return -EINVAL;
 
     return retval;

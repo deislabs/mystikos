@@ -24,6 +24,7 @@ endif
 
 LDFLAGS = $(OEHOST_LDFLAGS)
 LDFLAGS += -lcrypto
+LDFLAGS += -lrt
 
 LIBS += $(OEHOST_LIBDIR)/liboehost.a
 LIBS += $(OEHOST_LIBDIR)/liboesign.a

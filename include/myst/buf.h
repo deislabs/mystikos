@@ -4,6 +4,7 @@
 #ifndef _MYST_BUF_H
 #define _MYST_BUF_H
 
+#include <myst/defs.h>
 #include <myst/types.h>
 #include <stdint.h>
 
@@ -28,6 +29,12 @@ int myst_buf_reserve(myst_buf_t* buf, size_t cap);
 int myst_buf_resize(myst_buf_t* buf, size_t new_size);
 
 int myst_buf_append(myst_buf_t* buf, const void* p, size_t size);
+
+MYST_INLINE
+int myst_buf_append1(myst_buf_t* buf, uint8_t x)
+{
+    return myst_buf_append(buf, &x, sizeof(uint8_t));
+}
 
 int myst_buf_insert(myst_buf_t* buf, size_t pos, const void* data, size_t size);
 

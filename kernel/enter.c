@@ -657,8 +657,12 @@ static void _print_boottime(void)
     }
 }
 
+extern myst_jmp_buf_t __myst_fork_jmpbuf;
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstack-usage="
+#pragma GCC push_options
+#pragma GCC optimize("-fno-stack-protector")
 int myst_enter_kernel(myst_kernel_args_t* args)
 {
     int ret = 0;
@@ -666,6 +670,10 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     myst_thread_t* thread = NULL;
     myst_fstype_t fstype;
     int tmp_ret;
+
+    /* if this is a forked process, then jump back to SYS_fork syscall */
+    if (args->forked)
+        myst_longjmp(&__myst_fork_jmpbuf, 1);
 
     if (!args)
         myst_crash();
@@ -991,4 +999,5 @@ done:
 
     return ret;
 }
+#pragma GCC pop_options
 #pragma GCC diagnostic pop

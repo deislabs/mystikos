@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#define _GNU_SOURCE
 #include <assert.h>
 #include <cpuid.h>
 #include <errno.h>
@@ -10,10 +11,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
 
+#include <myst/args.h>
 #include <myst/cpio.h>
 #include <myst/elf.h>
 #include <myst/eraise.h>
@@ -464,6 +468,19 @@ static int _main(int argc, const char* argv[], const char* envp[])
     }
 }
 
+myst_args_t g_fork_argv;
+myst_args_t g_fork_envp;
+
+static size_t _envp_count(const char* envp[])
+{
+    size_t n = 0;
+
+    while (*envp++)
+        n++;
+
+    return n;
+}
+
 int main(int argc, const char* argv[], const char* envp[])
 {
 #ifdef MYST_ENABLE_GCOV
@@ -480,6 +497,21 @@ int main(int argc, const char* argv[], const char* envp[])
     }
 #endif
 
+    /* save argv[] and envp[] for use in fork later */
+    {
+        if (myst_args_init(&g_fork_argv) != 0)
+            assert("out of memory" == NULL);
+
+        if (myst_args_init(&g_fork_envp) != 0)
+            assert("out of memory" == NULL);
+
+        if (myst_args_append(&g_fork_argv, argv, argc) != 0)
+            assert("out of memory" == NULL);
+
+        if (myst_args_append(&g_fork_envp, envp, _envp_count(envp)) != 0)
+            assert("out of memory" == NULL);
+    }
+
     int ec = _main(argc, argv, envp);
 
 #ifdef MYST_ENABLE_GCOV
@@ -493,5 +525,107 @@ int main(int argc, const char* argv[], const char* envp[])
     }
 #endif
 
+    myst_args_release(&g_fork_argv);
+    myst_args_release(&g_fork_envp);
+
     return ec;
+}
+
+long myst_fork_ocall(void)
+{
+    pid_t pid;
+
+    if ((pid = fork()) < 0)
+        return -errno;
+
+    if (pid == 0) /* child */
+    {
+        /* pass the "__MYST_FORKED__" environment variable */
+        if (myst_args_append1(&g_fork_envp, "__MYST_FORKED__=1") != 0)
+            assert("out of memory" == NULL);
+
+        const char* filename = g_fork_argv.data[0];
+        char* const* argv = (char* const*)g_fork_argv.data;
+        char* const* envp = (char* const*)g_fork_envp.data;
+
+        execve(filename, argv, envp);
+        /* should never return */
+        assert("execve() failed" == NULL);
+    }
+    else /* parent */
+    {
+        return (long)pid;
+    }
+
+    return 0;
+}
+
+void* myst_allocate_shared_memory_ocall(size_t length)
+{
+    const int prot = PROT_READ | PROT_WRITE;
+    const int flags = MAP_SHARED;
+    void* addr;
+    int fd;
+    const int oflag = O_CREAT | O_RDWR;
+    const int mode = S_IRUSR | S_IWUSR;
+
+    shm_unlink("/mystikos");
+
+    if ((fd = shm_open("/mystikos", oflag, mode)) < 0)
+    {
+        printf("LINE=%d\n", __LINE__);
+        fflush(stdout);
+        return MAP_FAILED;
+    }
+
+    if (ftruncate(fd, length) < 0)
+        return MAP_FAILED;
+
+    if ((addr = mmap(NULL, length, prot, flags, fd, 0)) == MAP_FAILED)
+    {
+        printf("LINE=%d\n", __LINE__);
+        fflush(stdout);
+        return MAP_FAILED;
+    }
+
+    /* ATTN: close fd? */
+
+    return addr;
+}
+
+void* myst_attach_shared_memory_ocall(size_t* length)
+{
+    const int prot = PROT_READ | PROT_WRITE;
+    const int flags = MAP_SHARED;
+    void* addr;
+    int fd;
+    const int oflag = O_RDWR;
+    const int mode = S_IRUSR | S_IWUSR;
+    struct stat statbuf;
+
+    if ((fd = shm_open("/mystikos", oflag, mode)) < 0)
+        return MAP_FAILED;
+
+    if (fstat(fd, &statbuf) != 0)
+        return MAP_FAILED;
+
+    if ((addr = mmap(NULL, statbuf.st_size, prot, flags, fd, 0)) == MAP_FAILED)
+        return MAP_FAILED;
+
+    if (length)
+        *length = statbuf.st_size;
+
+    /* ATTN: close fd? */
+
+    return addr;
+}
+
+int myst_free_shared_memory_ocall(void* addr, size_t length)
+{
+    int ret = munmap(addr, length);
+
+    if (ret != 0)
+        return -errno;
+
+    return 0;
 }

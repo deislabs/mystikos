@@ -256,3 +256,9 @@ int myst_tcall_read_file(const char* pathname, char* data, size_t size)
     long params[6] = {(long)pathname, (long)data, (long)size};
     return myst_tcall(MYST_TCALL_READ_FILE, params);
 }
+
+long myst_tcall_fork(void)
+{
+    long params[6] = {0};
+    return myst_tcall(MYST_TCALL_FORK, params);
+}

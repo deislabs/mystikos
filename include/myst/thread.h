@@ -11,6 +11,7 @@
 #include <myst/assume.h>
 #include <myst/defs.h>
 #include <myst/fdtable.h>
+#include <myst/fsgs.h>
 #include <myst/kstack.h>
 #include <myst/setjmp.h>
 #include <myst/spinlock.h>

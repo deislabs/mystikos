@@ -47,6 +47,7 @@ long myst_syscall(long n, long params[6])
     if (n == SYS_setitimer)
         pthread_once(&_once, _create_itimer_thread);
 
+#ifdef USE_PSEUDO_FORK
     if (n == SYS_fork)
     {
         /* fork is implemented in the CRT rather than the kernel.
@@ -59,6 +60,7 @@ long myst_syscall(long n, long params[6])
         pid_t ret = myst_fork();
         return ret;
     }
+#endif
 
     return (*_syscall_callback)(n, params);
 }
