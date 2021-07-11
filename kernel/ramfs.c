@@ -2292,7 +2292,9 @@ static int _fs_get_events(myst_fs_t* fs, myst_file_t* file)
     if (!_ramfs_valid(ramfs) || !_file_valid(file))
         ERAISE(-EINVAL);
 
-    ret = -ENOTSUP;
+    /* Regular files always poll TRUE for reads and writes */
+    ret |= POLLIN;
+    ret |= POLLOUT;
 
 done:
     return ret;
