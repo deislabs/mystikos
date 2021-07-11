@@ -2908,9 +2908,8 @@ long myst_syscall_prlimit64(
     {
         if (old_rlim)
         {
-            // TODO: get actual stack limits
-            old_rlim->rlim_cur = 1024 * 1024 * 1024;
-            old_rlim->rlim_max = 1024 * 1024 * 1024;
+            old_rlim->rlim_cur = MYST_PROCESS_INIT_STACK_SIZE;
+            old_rlim->rlim_max = MYST_PROCESS_MAX_STACK_SIZE;
         }
     }
     else
