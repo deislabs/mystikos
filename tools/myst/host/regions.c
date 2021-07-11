@@ -445,59 +445,6 @@ done:
     return ret;
 }
 
-static int _add_kernel_stacks_region(
-    myst_region_context_t* context,
-    uint64_t baseaddr,
-    uint64_t* vaddr)
-{
-    int ret = 0;
-    __attribute__((__aligned__(PAGE_SIZE))) uint8_t page[PAGE_SIZE];
-    const size_t num_stacks = MYST_MAX_KSTACKS;
-    const size_t num_stack_pages = MYST_KSTACK_SIZE / PAGE_SIZE;
-    const char name[] = MYST_REGION_KERNEL_STACKS;
-
-    if (!context || !vaddr)
-        ERAISE(-EINVAL);
-
-    if (myst_region_open(context) != 0)
-        ERAISE(-EINVAL);
-
-    memset(page, 0, sizeof(page));
-
-    /* add the kernel stacks */
-    for (size_t i = 0; i < num_stacks; i++)
-    {
-        /* add the guard page */
-        {
-            int flags = PROT_NONE | MYST_REGION_EXTEND;
-
-            if (_add_page(context, *vaddr, page, flags) != 0)
-                ERAISE(-EINVAL);
-
-            *vaddr += sizeof(page);
-        }
-
-        /* add the stack pages */
-        for (size_t i = 0; i < num_stack_pages - 1; i++)
-        {
-            int flags = PROT_READ | PROT_WRITE;
-
-            if (_add_page(context, *vaddr, page, flags) != 0)
-                ERAISE(-EINVAL);
-
-            *vaddr += sizeof(page);
-        }
-    }
-
-    if (myst_region_close(context, name, *vaddr, SIZE_MAX) != 0)
-        ERAISE(-EINVAL);
-
-    *(vaddr) += PAGE_SIZE;
-
-done:
-    return ret;
-}
-
 static int _add_kernel_entry_stack_region(
     myst_region_context_t* context,
     uint64_t baseaddr,
@@ -850,9 +797,6 @@ int add_regions(void* arg, uint64_t baseaddr, myst_add_page_t add_page)
 
     if (myst_region_init(add_page, arg, &context) != 0)
         _err("myst_region_init() failed");
-
-    if (_add_kernel_stacks_region(context, baseaddr, &vaddr) != 0)
-        _err("_add_kernel_stacks_region() failed");
 
     if (_add_kernel_region(context, baseaddr, &vaddr) != 0)
         _err("_add_kernel_region() failed");
