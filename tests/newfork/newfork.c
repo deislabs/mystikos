@@ -27,7 +27,7 @@ int main(int argc, const char* argv[])
             sleep(1);
         }
 
-        sleep(5);
+        sleep(2);
         printf("%s: parent exit\n", argv[0]);
         exit(0);
     }

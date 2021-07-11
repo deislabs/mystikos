@@ -19,7 +19,7 @@ OPTS += --strace
 endif
 
 #OPTS += --memory-size=1024m
-OPTS += --memory-size=32m
+OPTS += --memory-size=8m
 
 tests: all
 	$(RUNTEST) $(MYST_EXEC) rootfs /bin/newfork $(OPTS)
