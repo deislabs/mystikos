@@ -15,7 +15,6 @@
 
 /* memory region identifiers */
 #define MYST_REGION_CONFIG "config"
-#define MYST_REGION_KERNEL_STACKS "kernel.stacks"
 #define MYST_REGION_KERNEL "kernel"
 #define MYST_REGION_KERNEL_RELOC "kernel.reloc"
 #define MYST_REGION_KERNEL_SYMTAB "kernel.symtab" /* .symtab section */

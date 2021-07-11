@@ -747,9 +747,6 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         }
     }
 
-    /* initialize the kernel stacks free list */
-    myst_init_kstacks();
-
     /* Setup the memory manager */
     if (myst_setup_mman(args->mman_data, args->mman_size) != 0)
     {

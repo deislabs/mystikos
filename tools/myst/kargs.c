@@ -75,15 +75,6 @@ int init_kernel_args(
     if (!args || !argv || !envp || !cwd || !regions_end || !err)
         ERAISE(-EINVAL);
 
-    /* find the kernel stacks region */
-    ECHECK(_find_region(
-        regions_end,
-        MYST_REGION_KERNEL_STACKS,
-        (void**)&args->kernel_stacks_data,
-        &args->kernel_stacks_size,
-        err,
-        err_size));
-
     /* find the kernel region */
     ECHECK(_find_region(
         regions_end,
