@@ -49,8 +49,6 @@ extern const void* __oe_get_heap_base(void);
 
 long myst_tcall_isatty(int fd);
 
-unsigned long int oe_strtoul(const char* nptr, char** endptr, int base);
-
 long _exception_handler_syscall(long n, long params[6])
 {
     return (*_kargs.myst_syscall)(n, params);
