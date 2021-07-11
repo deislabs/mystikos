@@ -3268,10 +3268,6 @@ typedef struct syscall_args
 
 myst_jmp_buf_t __myst_fork_jmpbuf;
 
-void __set_thread_area_break()
-{
-}
-
 /* ATTN: optimize _syscall() stack usage later */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstack-usage="
@@ -4978,8 +4974,6 @@ static long _syscall(void* args_)
         case SYS_set_thread_area:
         {
             void* tp = (void*)params[0];
-
-            __set_thread_area_break();
 
             _strace(n, "tp=%p", tp);
 
