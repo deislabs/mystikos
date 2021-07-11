@@ -64,4 +64,7 @@ void myst_mman_stats(myst_mman_stats_t* buf);
 
 int proc_pid_maps_vcallback(myst_buf_t* vbuf);
 
+/* get the unassigned range between break-area and the mapped-area */
+void myst_mman_get_unused(void** addr, size_t* length);
+
 #endif /* _MYST_MMANUTILS_H */

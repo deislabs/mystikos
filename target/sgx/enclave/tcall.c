@@ -581,7 +581,7 @@ long myst_tcall(long n, long params[6])
         }
         case MYST_TCALL_FORK:
         {
-            return myst_tcall_fork();
+            return myst_tcall_fork((const void*)x1, (size_t)x2);
         }
         case SYS_read:
         case SYS_write:

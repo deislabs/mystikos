@@ -511,6 +511,11 @@ long myst_tcall(long n, long params[6])
         {
             return myst_tcall_read_file((const char*)x1, (void*)x2, (size_t)x3);
         }
+        case MYST_TCALL_FORK:
+        {
+            assert("linux: MYST_TCALL_FORK unimplmented!" == NULL);
+            return -ENOTSUP;
+        }
         case SYS_ioctl:
         {
             int fd = (int)x1;

@@ -504,16 +504,24 @@ __attribute__((__unused__)) static uint64_t _checksum(const void* s, size_t n)
     return sum;
 }
 
-static int _export_address_space(void)
+static bool _contains_page(const void* addr, size_t length, const void* page)
+{
+    const uint8_t* start = addr;
+    const uint8_t* end = addr + length;
+    const uint8_t* p = page;
+    return (p >= start && (p + PAGE_SIZE) <= end);
+}
+
+static int _export_address_space(const void* unused_addr, size_t unused_length)
 {
     int ret = -1;
     const uint8_t* image_start; /* pointer to start of the image */
-    const uint8_t* image_end;   /* pointer to end of the image */
     size_t image_size;          /* size of entire image with all regions */
     const myst_writable_t* writables; /* the writable-page vector */
     size_t num_writables;
     size_t num_pages;
     void* buf = NULL;
+    size_t num_exports = 0;
 
     /* find image_start, image_size, writables, and num_pages */
     {
@@ -528,25 +536,51 @@ static int _export_address_space(void)
             goto done;
 
         image_start = r1.data;
-        image_end = (uint8_t*)r2.data + r2.size;
-        image_size = (size_t)(image_end - image_start);
+        image_size = (size_t)((uint8_t*)r2.data + r2.size - image_start);
         writables = r2.data;
         num_writables = r2.file_size / sizeof(myst_writable_t);
         num_pages = image_size / PAGE_SIZE;
     }
 
-    /* allocate untrusted memory buffer */
-    if ((buf = _allocate_shared_memory(image_size)) == MAP_FAILED || !buf)
+    /* count the number of pages to export (exclude the unused pages) */
+    for (size_t i = 0; i < num_writables; i++)
     {
-        assert("_allocate_shared_memory() failed" == NULL);
-        goto done;
+        const myst_writable_t* w = &writables[i];
+        const void* page = image_start + (w->page_num * PAGE_SIZE);
+
+        assert(w->page_num < num_pages);
+        assert(_contains_page(image_start, image_size, page));
+
+        if (!_contains_page(unused_addr, unused_length, page))
+            num_exports++;
     }
 
-    /* fail if the the buffer is not fully in unstrusted memory */
-    if (!oe_is_outside_enclave(buf, image_size))
-        goto done;
+    /* allocate untrusted shared buffer: [num-exports][page-numbers][pages] */
+    {
+        size_t length =
+            sizeof(uint64_t) + (num_exports * sizeof(uint64_t)) + image_size;
 
-    /* reset the protections for the mmane region to r-w-x */
+        if ((buf = _allocate_shared_memory(length)) == MAP_FAILED || !buf)
+        {
+            assert("_allocate_shared_memory() failed" == NULL);
+            goto done;
+        }
+
+        /* fail if the the buffer is not fully in unstrusted memory */
+        if (!oe_is_outside_enclave(buf, length))
+            goto done;
+
+        /* initialize the number of exports */
+        *(uint64_t*)buf = num_exports;
+    }
+
+    /* set a pointer to the page_numbers[] vector */
+    uint64_t* page_numbers = (uint64_t*)buf + 1;
+
+    /* set a pointer to export pages */
+    void* pages = page_numbers + num_exports;
+
+    /* reset the protections for the mman region to r-w-x */
     {
         const void* regions_end = __oe_get_heap_base();
         myst_region_t r;
@@ -562,29 +596,38 @@ static int _export_address_space(void)
         }
     }
 
-    /* copy each writable pages from trusted to untrusted memory */
-    for (size_t i = 0; i < num_writables; i++)
+    /* copy each exportable page from trusted to untrusted memory */
     {
-        const myst_writable_t* w = &writables[i];
+        size_t n = 0;
 
-        /* verify that the page number is in bounds */
-        if (w->page_num >= num_pages)
+        for (size_t i = 0; i < num_writables; i++)
         {
-            assert("assumption failed" == NULL);
-            goto done;
-        }
+            const myst_writable_t* w = &writables[i];
+            const uint8_t* src = image_start + (w->page_num * PAGE_SIZE);
+            uint8_t* dest = (uint8_t*)pages + (w->page_num * PAGE_SIZE);
 
-        uint8_t* dest = (uint8_t*)buf + (w->page_num * PAGE_SIZE);
-        const uint8_t* src = image_start + (w->page_num * PAGE_SIZE);
+            /* ignore unused pages */
+            if (!_contains_page(unused_addr, unused_length, src))
+            {
+                /* write the page number into the shared memory buffer */
+                page_numbers[n++] = w->page_num;
 
-        assert(src >= image_start && src + PAGE_SIZE <= image_end);
-
-#if 0
-        printf("CPY.PAGE: %lu %o (%zu of %zu)\n", w->page_num, w->prot,
-            i, num_writables);
+#ifdef TRACE_EXPORT_IMPORT
+                printf(
+                    "EXPORT.PAGE: %lu %o (%zu of %zu)\n",
+                    w->page_num,
+                    w->prot,
+                    i,
+                    num_writables);
 #endif
 
-        memcpy(dest, src, PAGE_SIZE);
+                memcpy(dest, src, PAGE_SIZE);
+            }
+        }
+
+        /* sanity checks */
+        assert(n == num_exports);
+        assert(*(uint64_t*)buf == num_exports);
     }
 
     ret = 0;
@@ -592,6 +635,7 @@ static int _export_address_space(void)
 done:
 
 #if 0
+    /* ATTN: figure out how to release this (child depends on it) */
     if (buf)
         _free_shared_memory(buf, image_size);
 #endif
@@ -608,8 +652,15 @@ static int _import_address_space(const void* buf, size_t count)
     const myst_writable_t* writables; /* the writable-page vector */
     size_t num_writables;
     size_t num_pages;
+    size_t num_exports;
+    const uint64_t* page_numbers;
+    const void* pages;
 
     if (!buf || !count)
+        goto done;
+
+    /* fail if the the buffer is not fully in unstrusted memory */
+    if (!oe_is_outside_enclave(buf, count))
         goto done;
 
     /* find image_start, image_size, writables, and num_pages */
@@ -632,14 +683,34 @@ static int _import_address_space(const void* buf, size_t count)
         num_pages = image_size / PAGE_SIZE;
     }
 
-    if (count != image_size)
-        goto done;
+    /* extract the number of exported pages */
+    {
+        if (count < sizeof(uint64_t))
+            goto done;
 
-    /* fail if the the buffer is not fully in unstrusted memory */
-    if (!oe_is_outside_enclave(buf, count))
-        goto done;
+        num_exports = *(const uint64_t*)buf;
+    }
 
-    /* reset the protections for the mmane region to r-w-x */
+    /* set the page-numbers vector */
+    {
+        if (count < sizeof(uint64_t) + (num_exports * sizeof(uint64_t)))
+            goto done;
+
+        page_numbers = (const uint64_t*)buf + 1;
+    }
+
+    /* set the pointer to the pages */
+    {
+        size_t r = count - sizeof(uint64_t) - (num_exports * sizeof(uint64_t));
+        assert(r == image_size);
+
+        if (r != image_size)
+            goto done;
+
+        pages = (uint64_t*)buf + 1 + num_exports;
+    }
+
+    /* reset the protections for the mman region to r-w-x */
     {
         const void* regions_end = __oe_get_heap_base();
         myst_region_t r;
@@ -655,27 +726,19 @@ static int _import_address_space(const void* buf, size_t count)
         }
     }
 
-    /* copy each writable pages from trusted to untrusted memory */
-    for (size_t i = 0; i < num_writables; i++)
+    /* copy the exported pages from untrusted to trusted memory */
+    for (size_t i = 0; i < num_exports; i++)
     {
-        const myst_writable_t* w = &writables[i];
-
-        /* verify that the page number is in bounds */
-        if (w->page_num >= num_pages)
-        {
-            assert("assumption failed" == NULL);
-            goto done;
-        }
-
-        const size_t offset = w->page_num * PAGE_SIZE;
+        size_t page_num = page_numbers[i];
+        const size_t offset = page_num * PAGE_SIZE;
         uint8_t* dest = image_start + offset;
-        const uint8_t* src = (const uint8_t*)buf + offset;
+        const uint8_t* src = (const uint8_t*)pages + offset;
 
+        assert(page_num < num_pages);
         assert(dest >= image_start && dest + PAGE_SIZE <= image_end);
 
-#if 0
-        printf("SET.PAGE: %lu %o (%zu of %zu)\n", w->page_num, w->prot,
-            i, num_writables);
+#ifdef TRACE_EXPORT_IMPORT
+        printf("IMPORT.PAGE: %lu (%zu of %zu)\n", page_num, i, num_writables);
 #endif
 
         memcpy(dest, src, PAGE_SIZE);
@@ -1315,11 +1378,11 @@ int myst_tcall_read_file(const char* pathname, char* buf, size_t size)
     return retval;
 }
 
-long myst_tcall_fork(void)
+long myst_tcall_fork(const void* unused_addr, size_t unused_length)
 {
     long retval;
 
-    if (_export_address_space() != 0)
+    if (_export_address_space(unused_addr, unused_length) != 0)
         return -ENOSYS;
 
 #if 0

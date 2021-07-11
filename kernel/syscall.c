@@ -4055,7 +4055,10 @@ static long _syscall(void* args_)
             if (myst_setjmp(&__myst_fork_jmpbuf) == 0)
             {
                 /* parent */
-                long ret = myst_tcall_fork();
+                void* addr;
+                size_t length;
+                myst_mman_get_unused(&addr, &length);
+                long ret = myst_tcall_fork(addr, length);
                 BREAK(_return(n, ret));
             }
             else

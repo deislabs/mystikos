@@ -8,6 +8,7 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <sys/uio.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -164,6 +165,6 @@ int myst_tcall_get_file_size(const char* pathname);
 
 int myst_tcall_read_file(const char* pathname, char* buf, size_t size);
 
-long myst_tcall_fork(void);
+long myst_tcall_fork(const void* unused_addr, size_t unused_length);
 
 #endif /* _MYST_TCALL_H */
