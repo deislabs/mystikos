@@ -1,34 +1,43 @@
+#include <sys/mman.h>
+
 #include <myst/kernel.h>
 #include <myst/kstack.h>
+#include <myst/mmanutils.h>
 #include <myst/spinlock.h>
+#include <myst/thread.h>
 #include <myst/time.h>
 
-static int _initialized;
 static myst_kstack_t* _head;
 static myst_spinlock_t _lock;
 
-void myst_init_kstacks(void)
+/* allocate a new kernel stack with a protected guard page */
+static long _new_kstack(void* arg)
 {
-    myst_spin_lock(&_lock);
+    myst_kstack_t* kstack;
+
+    (void)arg;
+
+    /* allocate the kernel stack space */
     {
-        if (_initialized == 0)
-        {
-            uint8_t* p = (uint8_t*)__myst_kernel_args.kernel_stacks_data;
+        const size_t length = sizeof(myst_kstack_t);
+        const int prot = PROT_READ | PROT_WRITE;
+        const int flags = MAP_ANONYMOUS | MAP_PRIVATE;
 
-            for (size_t i = 0; i < MYST_MAX_KSTACKS; i++)
-            {
-                myst_kstack_t* kstack = (myst_kstack_t*)p;
-                kstack->u.next = _head;
-                _head = kstack;
+        kstack = myst_mmap(NULL, length, prot, flags, -1, 0);
 
-                p += MYST_KSTACK_SIZE;
-            }
-
-            _initialized = 1;
-        }
+        if (kstack == MAP_FAILED)
+            return (long)NULL;
     }
-    myst_spin_unlock(&_lock);
+
+    /* protect the guard page */
+    if (myst_mprotect(kstack->guard, PAGE_SIZE, PROT_NONE) != 0)
+        return (long)NULL;
+
+    return (long)kstack;
 }
+
+MYST_ALIGN(16)
+static uint8_t _stack[4 * PAGE_SIZE];
 
 myst_kstack_t* myst_get_kstack(void)
 {
@@ -36,8 +45,18 @@ myst_kstack_t* myst_get_kstack(void)
 
     myst_spin_lock(&_lock);
     {
-        if ((kstack = _head))
-            _head = _head->u.next;
+        if (_head)
+        {
+            /* use the first kstack on the list (likely case) */
+            if ((kstack = _head))
+                _head = _head->u.next;
+        }
+        else
+        {
+            /* allocate a new kstack (unlikely case) */
+            uint8_t* sp = _stack + sizeof(_stack);
+            kstack = (myst_kstack_t*)myst_call_on_stack(sp, _new_kstack, NULL);
+        }
     }
     myst_spin_unlock(&_lock);
 
