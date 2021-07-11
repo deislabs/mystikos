@@ -512,6 +512,14 @@ static bool _contains_page(const void* addr, size_t length, const void* page)
     return (p >= start && (p + PAGE_SIZE) <= end);
 }
 
+/* structure for referring to the exported shared memory image */
+struct exports
+{
+    uint64_t count;  /* the number of elements of pages[] */
+    uint64_t* pages; /* the page numbers of export pages */
+    void* image;     /* the image (including holdes) */
+};
+
 static int _export_address_space(const void* unused_addr, size_t unused_length)
 {
     int ret = -1;
@@ -521,7 +529,7 @@ static int _export_address_space(const void* unused_addr, size_t unused_length)
     size_t num_writables;
     size_t num_pages;
     void* buf = NULL;
-    size_t num_exports = 0;
+    struct exports exports = {0, NULL, NULL};
 
     /* find image_start, image_size, writables, and num_pages */
     {
@@ -552,13 +560,13 @@ static int _export_address_space(const void* unused_addr, size_t unused_length)
         assert(_contains_page(image_start, image_size, page));
 
         if (!_contains_page(unused_addr, unused_length, page))
-            num_exports++;
+            exports.count++;
     }
 
     /* allocate untrusted shared buffer: [num-exports][page-numbers][pages] */
     {
         size_t length =
-            sizeof(uint64_t) + (num_exports * sizeof(uint64_t)) + image_size;
+            sizeof(uint64_t) + (exports.count * sizeof(uint64_t)) + image_size;
 
         if ((buf = _allocate_shared_memory(length)) == MAP_FAILED || !buf)
         {
@@ -571,14 +579,14 @@ static int _export_address_space(const void* unused_addr, size_t unused_length)
             goto done;
 
         /* initialize the number of exports */
-        *(uint64_t*)buf = num_exports;
+        *(uint64_t*)buf = exports.count;
     }
 
     /* set a pointer to the page_numbers[] vector */
-    uint64_t* page_numbers = (uint64_t*)buf + 1;
+    exports.pages = (uint64_t*)buf + 1;
 
     /* set a pointer to export pages */
-    void* pages = page_numbers + num_exports;
+    exports.image = exports.pages + exports.count;
 
     /* reset the protections for the mman region to r-w-x */
     {
@@ -604,13 +612,13 @@ static int _export_address_space(const void* unused_addr, size_t unused_length)
         {
             const myst_writable_t* w = &writables[i];
             const uint8_t* src = image_start + (w->page_num * PAGE_SIZE);
-            uint8_t* dest = (uint8_t*)pages + (w->page_num * PAGE_SIZE);
+            uint8_t* dest = (uint8_t*)exports.image + (w->page_num * PAGE_SIZE);
 
             /* ignore unused pages */
             if (!_contains_page(unused_addr, unused_length, src))
             {
                 /* write the page number into the shared memory buffer */
-                page_numbers[n++] = w->page_num;
+                exports.pages[n++] = w->page_num;
 
 #ifdef TRACE_EXPORT_IMPORT
                 printf(
@@ -626,8 +634,8 @@ static int _export_address_space(const void* unused_addr, size_t unused_length)
         }
 
         /* sanity checks */
-        assert(n == num_exports);
-        assert(*(uint64_t*)buf == num_exports);
+        assert(n == exports.count);
+        assert(*(uint64_t*)buf == exports.count);
     }
 
     ret = 0;
@@ -652,9 +660,7 @@ static int _import_address_space(const void* buf, size_t count)
     const myst_writable_t* writables; /* the writable-page vector */
     size_t num_writables;
     size_t num_pages;
-    size_t num_exports;
-    const uint64_t* page_numbers;
-    const void* pages;
+    struct exports exports = {0, NULL, NULL};
 
     if (!buf || !count)
         goto done;
@@ -688,26 +694,27 @@ static int _import_address_space(const void* buf, size_t count)
         if (count < sizeof(uint64_t))
             goto done;
 
-        num_exports = *(const uint64_t*)buf;
+        exports.count = *(const uint64_t*)buf;
     }
 
     /* set the page-numbers vector */
     {
-        if (count < sizeof(uint64_t) + (num_exports * sizeof(uint64_t)))
+        if (count < sizeof(uint64_t) + (exports.count * sizeof(uint64_t)))
             goto done;
 
-        page_numbers = (const uint64_t*)buf + 1;
+        exports.pages = (uint64_t*)buf + 1;
     }
 
     /* set the pointer to the pages */
     {
-        size_t r = count - sizeof(uint64_t) - (num_exports * sizeof(uint64_t));
+        size_t r =
+            count - sizeof(uint64_t) - (exports.count * sizeof(uint64_t));
         assert(r == image_size);
 
         if (r != image_size)
             goto done;
 
-        pages = (uint64_t*)buf + 1 + num_exports;
+        exports.image = (uint64_t*)buf + 1 + exports.count;
     }
 
     /* reset the protections for the mman region to r-w-x */
@@ -727,12 +734,12 @@ static int _import_address_space(const void* buf, size_t count)
     }
 
     /* copy the exported pages from untrusted to trusted memory */
-    for (size_t i = 0; i < num_exports; i++)
+    for (size_t i = 0; i < exports.count; i++)
     {
-        size_t page_num = page_numbers[i];
+        size_t page_num = exports.pages[i];
         const size_t offset = page_num * PAGE_SIZE;
         uint8_t* dest = image_start + offset;
-        const uint8_t* src = (const uint8_t*)pages + offset;
+        const uint8_t* src = (const uint8_t*)exports.image + offset;
 
         assert(page_num < num_pages);
         assert(dest >= image_start && dest + PAGE_SIZE <= image_end);
