@@ -27,6 +27,7 @@ int main(int argc, const char* argv[])
             sleep(1);
         }
 
+        sleep(5);
         printf("%s: parent exit\n", argv[0]);
         exit(0);
     }
@@ -35,7 +36,10 @@ int main(int argc, const char* argv[])
         printf("%s: child\n", argv[0]);
 
         for (size_t i = 0; i < 10; i++)
+        {
             printf("%s: child: %zu\n", argv[0], i);
+            sleep(1);
+        }
 
         printf("%s: child exit\n", argv[0]);
         exit(0);
