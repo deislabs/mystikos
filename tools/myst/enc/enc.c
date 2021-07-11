@@ -512,12 +512,13 @@ static bool _contains_page(const void* addr, size_t length, const void* page)
     return (p >= start && (p + PAGE_SIZE) <= end);
 }
 
-/* structure for referring to the exported shared memory image */
+// structure for referring to the exported shared memory image, which has
+// the following layout: [count][indices][pages]
 struct exports
 {
-    uint64_t count;  /* the number of elements of pages[] */
-    uint64_t* pages; /* the page numbers of export pages */
-    void* image;     /* the image (including holdes) */
+    uint64_t count;    /* the number of elements of pages[] */
+    uint64_t* indices; /* the page numbers of export indices */
+    void* pages;       /* the image (including holdes) */
 };
 
 static int _export_address_space(const void* unused_addr, size_t unused_length)
@@ -563,10 +564,11 @@ static int _export_address_space(const void* unused_addr, size_t unused_length)
             exports.count++;
     }
 
-    /* allocate untrusted shared buffer: [num-exports][page-numbers][pages] */
+    /* allocate untrusted shared buffer: [count][indices][pages] */
     {
-        size_t length =
-            sizeof(uint64_t) + (exports.count * sizeof(uint64_t)) + image_size;
+        size_t length = sizeof(uint64_t);           /* count */
+        length += exports.count * sizeof(uint64_t); /* indices */
+        length += exports.count * PAGE_SIZE;        /* pages */
 
         if ((buf = _allocate_shared_memory(length)) == MAP_FAILED || !buf)
         {
@@ -583,10 +585,10 @@ static int _export_address_space(const void* unused_addr, size_t unused_length)
     }
 
     /* set a pointer to the page_numbers[] vector */
-    exports.pages = (uint64_t*)buf + 1;
+    exports.indices = (uint64_t*)buf + 1;
 
     /* set a pointer to export pages */
-    exports.image = exports.pages + exports.count;
+    exports.pages = exports.indices + exports.count;
 
     /* reset the protections for the mman region to r-w-x */
     {
@@ -612,13 +614,14 @@ static int _export_address_space(const void* unused_addr, size_t unused_length)
         {
             const myst_writable_t* w = &writables[i];
             const uint8_t* src = image_start + (w->page_num * PAGE_SIZE);
-            uint8_t* dest = (uint8_t*)exports.image + (w->page_num * PAGE_SIZE);
 
             /* ignore unused pages */
             if (!_contains_page(unused_addr, unused_length, src))
             {
+                uint8_t* dest = (uint8_t*)exports.pages + (n * PAGE_SIZE);
+
                 /* write the page number into the shared memory buffer */
-                exports.pages[n++] = w->page_num;
+                exports.indices[n] = w->page_num;
 
 #ifdef TRACE_EXPORT_IMPORT
                 printf(
@@ -630,6 +633,7 @@ static int _export_address_space(const void* unused_addr, size_t unused_length)
 #endif
 
                 memcpy(dest, src, PAGE_SIZE);
+                n++;
             }
         }
 
@@ -702,19 +706,19 @@ static int _import_address_space(const void* buf, size_t count)
         if (count < sizeof(uint64_t) + (exports.count * sizeof(uint64_t)))
             goto done;
 
-        exports.pages = (uint64_t*)buf + 1;
+        exports.indices = (uint64_t*)buf + 1;
     }
 
     /* set the pointer to the pages */
     {
         size_t r =
             count - sizeof(uint64_t) - (exports.count * sizeof(uint64_t));
-        assert(r == image_size);
+        assert(r == exports.count * PAGE_SIZE);
 
-        if (r != image_size)
+        if (r != exports.count * PAGE_SIZE)
             goto done;
 
-        exports.image = (uint64_t*)buf + 1 + exports.count;
+        exports.pages = (uint64_t*)buf + 1 + exports.count;
     }
 
     /* reset the protections for the mman region to r-w-x */
@@ -736,13 +740,11 @@ static int _import_address_space(const void* buf, size_t count)
     /* copy the exported pages from untrusted to trusted memory */
     for (size_t i = 0; i < exports.count; i++)
     {
-        size_t page_num = exports.pages[i];
-        const size_t offset = page_num * PAGE_SIZE;
-        uint8_t* dest = image_start + offset;
-        const uint8_t* src = (const uint8_t*)exports.image + offset;
+        size_t page_num = exports.indices[i];
+        uint8_t* dest = image_start + (page_num * PAGE_SIZE);
+        const uint8_t* src = (const uint8_t*)exports.pages + (i * PAGE_SIZE);
 
         assert(page_num < num_pages);
-        assert(dest >= image_start && dest + PAGE_SIZE <= image_end);
 
 #ifdef TRACE_EXPORT_IMPORT
         printf("IMPORT.PAGE: %lu (%zu of %zu)\n", page_num, i, num_writables);
