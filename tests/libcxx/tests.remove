@@ -1,8 +1,11 @@
 /app/llvm-project/libcxx/test/std/input.output/file.streams/fstreams/fstream.assign/member_swap.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/input.output/filesystems/class.directory_iterator/directory_iterator.members/move_assign.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/input.output/filesystems/class.path/path.member/path.modifiers/make_preferred.pass.cpp.exe
+/app/llvm-project/libcxx/test/std/input.output/filesystems/fs.op.funcs/fs.op.hard_lk_ct/hard_link_count.pass.cpp.exe
+/app/llvm-project/libcxx/test/std/thread/futures/futures.shared_future/wait_for.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/thread/thread.condition/thread.condition.condvar/wait_for.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/thread/thread.mutex/thread.lock/thread.lock.shared/thread.lock.shared.locking/try_lock_for.pass.cpp.exe
+/app/llvm-project/libcxx/test/std/thread/thread.mutex/thread.lock/thread.lock.shared/thread.lock.shared.locking/try_lock_until.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/thread/thread.mutex/thread.lock/thread.lock.unique/thread.lock.unique.cons/mutex_try_to_lock.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/thread/thread.mutex/thread.mutex.requirements/thread.shared_mutex.requirements/thread.shared_mutex.class/lock_shared.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/thread/thread.mutex/thread.mutex.requirements/thread.sharedtimedmutex.requirements/thread.sharedtimedmutex.class/try_lock_shared_for.pass.cpp.exe

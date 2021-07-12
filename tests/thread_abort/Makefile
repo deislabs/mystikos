@@ -17,8 +17,11 @@ ifdef STRACE
 OPTS = --strace
 endif
 
+__tests:
+	$(MYST_EXEC) rootfs /main $(OPTS); test "$$?" -eq "134"
+
 tests: all
-	$(RUNTEST) $(MYST_EXEC) rootfs /main $(OPTS)
+	$(RUNTEST) $(MAKE) __tests
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst

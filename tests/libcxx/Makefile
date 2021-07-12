@@ -50,7 +50,7 @@ $(APPDIR):
 $(ROOTFS): run.c
 	$(MYST) mkext2 $(APPDIR) $(ROOTFS)
 
-OPTS += --memory-size=512m
+OPTS += --memory-size=1024m
 
 tests:
 	$(RUNTEST) $(MAKE) __tests
