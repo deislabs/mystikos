@@ -91,6 +91,7 @@ endif
 ifndef MYST_ENABLE_GCOV
 ifdef MYST_NIGHTLY_TEST
 DIRS += sockperf
+DIRS += cpython-tests
 endif
 DIRS += clock
 DIRS += pollpipe2
