@@ -48,10 +48,6 @@ typedef struct myst_kernel_args
     const void* image_data;
     size_t image_size;
 
-    /* the region that contains the kernel stacks */
-    const void* kernel_stacks_data;
-    size_t kernel_stacks_size;
-
     /* The loaded kernel ELF image (ELF header start here) */
     const void* kernel_data;
     size_t kernel_size;
@@ -164,6 +160,9 @@ typedef struct myst_kernel_args
 
     /* true if --report-native-tids is present */
     bool report_native_tids;
+
+    /* true if this is a forked child process */
+    bool forked;
 
     // From the --max-affinity-cpus=<num> option. This setting limits the
     // CPUs reported by sched_getaffinity().

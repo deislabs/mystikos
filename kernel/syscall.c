@@ -3278,6 +3278,8 @@ typedef struct syscall_args
     myst_kstack_t* kstack;
 } syscall_args_t;
 
+myst_jmp_buf_t __myst_fork_jmpbuf;
+
 /* ATTN: optimize _syscall() stack usage later */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstack-usage="
@@ -4059,7 +4061,28 @@ static long _syscall(void* args_)
             BREAK(_return(n, ret));
         }
         case SYS_fork:
-            break;
+        {
+            _strace(n, NULL);
+
+            /* save the thread pointer and restore in child below */
+            myst_thread_t* self = myst_thread_self();
+
+            if (myst_setjmp(&__myst_fork_jmpbuf) == 0)
+            {
+                /* parent */
+                void* addr;
+                size_t length;
+                myst_mman_get_unused(&addr, &length);
+                long ret = myst_tcall_fork(addr, length);
+                BREAK(_return(n, ret));
+            }
+            else
+            {
+                /* child */
+                myst_assume(myst_tcall_set_tsd((uint64_t)self) == 0);
+                BREAK(_return(n, 0));
+            }
+        }
         case SYS_vfork:
             break;
         case SYS_execve:

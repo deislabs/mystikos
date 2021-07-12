@@ -83,7 +83,8 @@ enclave
             uint64_t event,
             pid_t target_tid,
             uint64_t start_time_sec,
-            uint64_t start_time_nsec);
+            uint64_t start_time_nsec,
+            bool forked);
 
         public long myst_run_thread_ecall(
             uint64_t cookie,
@@ -97,7 +98,7 @@ enclave
 
         long myst_syscall_isatty_ocall(int fd);
 
-        int myst_mprotect_ocall(void* addr, size_t len, int prot);
+        int myst_mprotect_ocall([user_check] void* addr, size_t len, int prot);
 
         /*
         **======================================================================
@@ -511,5 +512,24 @@ enclave
             [out] uint32_t* rbx,
             [out] uint32_t* rcx,
             [out] uint32_t* rdx);
+
+        /*
+        **======================================================================
+        **
+        ** fork support
+        **
+        **======================================================================
+        */
+
+        long myst_fork_ocall();
+
+        /* returns the shared memory identifier (shmid) */
+        void* myst_allocate_shared_memory_ocall(size_t length);
+
+        void* myst_attach_shared_memory_ocall([out] size_t* length);
+
+        int myst_free_shared_memory_ocall(
+            [user_check] void* addr,
+            size_t length);
     };
-};
+}

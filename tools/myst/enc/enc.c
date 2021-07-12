@@ -446,8 +446,320 @@ struct enter_arg
     pid_t target_tid;
     uint64_t start_time_sec;
     uint64_t start_time_nsec;
+    bool forked;
 };
 
+static int _mprotect(void* addr, size_t len, int prot)
+{
+    int retval;
+
+    if (myst_mprotect_ocall(&retval, addr, len, prot) != OE_OK)
+        return -ENOSYS;
+
+    return retval;
+}
+
+static void* _allocate_shared_memory(size_t length)
+{
+    void* retval;
+
+    if (myst_allocate_shared_memory_ocall(&retval, length) != OE_OK)
+        return MAP_FAILED;
+
+    return retval;
+}
+
+static void* _attach_shared_memory(size_t* length)
+{
+    void* retval;
+
+    if (myst_attach_shared_memory_ocall(&retval, length) != OE_OK)
+        return MAP_FAILED;
+
+    return retval;
+}
+
+#if 0
+static int _free_shared_memory(void* addr, size_t length)
+{
+    int retval;
+
+    if (myst_free_shared_memory_ocall(&retval, addr, length) != OE_OK)
+        return -ENOSYS;
+
+    return retval;
+}
+#endif
+
+__attribute__((__unused__)) static uint64_t _checksum(const void* s, size_t n)
+{
+    const uint8_t* p = s;
+    uint64_t sum = 0;
+
+    while (n--)
+        sum += *p++;
+
+    return sum;
+}
+
+static bool _contains_page(const void* addr, size_t length, const void* page)
+{
+    const uint8_t* start = addr;
+    const uint8_t* end = addr + length;
+    const uint8_t* p = page;
+    return (p >= start && (p + PAGE_SIZE) <= end);
+}
+
+// structure for referring to the exported shared memory image, which has
+// the following layout: [count][indices][pages]
+struct exports
+{
+    uint64_t count;    /* the number of elements of pages[] */
+    uint64_t* indices; /* the page numbers of export indices */
+    void* pages;       /* the image (including holdes) */
+};
+
+static int _export_address_space(const void* unused_addr, size_t unused_length)
+{
+    int ret = -1;
+    const uint8_t* image_start; /* pointer to start of the image */
+    size_t image_size;          /* size of entire image with all regions */
+    const myst_writable_t* writables; /* the writable-page vector */
+    size_t num_writables;
+    size_t num_pages;
+    void* buf = NULL;
+    struct exports exports = {0, NULL, NULL};
+
+    /* find image_start, image_size, writables, and num_pages */
+    {
+        const void* regions_end = __oe_get_heap_base();
+        myst_region_t r1;
+        myst_region_t r2;
+
+        if (myst_region_find(regions_end, MYST_REGION_START, &r1) != 0)
+            goto done;
+
+        if (myst_region_find(regions_end, MYST_REGION_WRITABLES, &r2) != 0)
+            goto done;
+
+        image_start = r1.data;
+        image_size = (size_t)((uint8_t*)r2.data + r2.size - image_start);
+        writables = r2.data;
+        num_writables = r2.file_size / sizeof(myst_writable_t);
+        num_pages = image_size / PAGE_SIZE;
+    }
+
+    /* count the number of pages to export (exclude the unused pages) */
+    for (size_t i = 0; i < num_writables; i++)
+    {
+        const myst_writable_t* w = &writables[i];
+        const void* page = image_start + (w->page_num * PAGE_SIZE);
+
+        assert(w->page_num < num_pages);
+        assert(_contains_page(image_start, image_size, page));
+
+        if (!_contains_page(unused_addr, unused_length, page))
+            exports.count++;
+    }
+
+    /* allocate untrusted shared buffer: [count][indices][pages] */
+    {
+        size_t length = sizeof(uint64_t);           /* count */
+        length += exports.count * sizeof(uint64_t); /* indices */
+        length += exports.count * PAGE_SIZE;        /* pages */
+
+        if ((buf = _allocate_shared_memory(length)) == MAP_FAILED || !buf)
+        {
+            assert("_allocate_shared_memory() failed" == NULL);
+            goto done;
+        }
+
+        /* fail if the the buffer is not fully in unstrusted memory */
+        if (!oe_is_outside_enclave(buf, length))
+            goto done;
+
+        /* initialize the number of exports */
+        *(uint64_t*)buf = exports.count;
+    }
+
+    /* set a pointer to the page_numbers[] vector */
+    exports.indices = (uint64_t*)buf + 1;
+
+    /* set a pointer to export pages */
+    exports.pages = exports.indices + exports.count;
+
+    /* reset the protections for the mman region to r-w-x */
+    {
+        const void* regions_end = __oe_get_heap_base();
+        myst_region_t r;
+        int prot = PROT_READ | PROT_WRITE | PROT_EXEC;
+
+        if (myst_region_find(regions_end, MYST_REGION_MMAN, &r) != 0)
+            goto done;
+
+        if (_mprotect(r.data, r.size, prot) != 0)
+        {
+            printf("*** mprotect() failed on mman\n");
+            assert("mprotect() failed on mman" == NULL);
+        }
+    }
+
+    /* copy each exportable page from trusted to untrusted memory */
+    {
+        size_t n = 0;
+
+        for (size_t i = 0; i < num_writables; i++)
+        {
+            const myst_writable_t* w = &writables[i];
+            const uint8_t* src = image_start + (w->page_num * PAGE_SIZE);
+
+            /* ignore unused pages */
+            if (!_contains_page(unused_addr, unused_length, src))
+            {
+                uint8_t* dest = (uint8_t*)exports.pages + (n * PAGE_SIZE);
+
+                /* write the page number into the shared memory buffer */
+                exports.indices[n] = w->page_num;
+
+#ifdef TRACE_EXPORT_IMPORT
+                printf(
+                    "EXPORT.PAGE: %lu %o (%zu of %zu)\n",
+                    w->page_num,
+                    w->prot,
+                    i,
+                    num_writables);
+#endif
+
+                memcpy(dest, src, PAGE_SIZE);
+                n++;
+            }
+        }
+
+        /* sanity checks */
+        assert(n == exports.count);
+        assert(*(uint64_t*)buf == exports.count);
+    }
+
+    ret = 0;
+
+done:
+
+#if 0
+    /* ATTN: figure out how to release this (child depends on it) */
+    if (buf)
+        _free_shared_memory(buf, image_size);
+#endif
+
+    return ret;
+}
+
+static int _import_address_space(const void* buf, size_t count)
+{
+    int ret = -1;
+    uint8_t* image_start;     /* pointer to start of the image */
+    const uint8_t* image_end; /* pointer to end of the image */
+    size_t image_size;        /* size of entire image with all regions */
+    const myst_writable_t* writables; /* the writable-page vector */
+    size_t num_writables;
+    size_t num_pages;
+    struct exports exports = {0, NULL, NULL};
+
+    if (!buf || !count)
+        goto done;
+
+    /* fail if the the buffer is not fully in unstrusted memory */
+    if (!oe_is_outside_enclave(buf, count))
+        goto done;
+
+    /* find image_start, image_size, writables, and num_pages */
+    {
+        const void* regions_end = __oe_get_heap_base();
+        myst_region_t r1;
+        myst_region_t r2;
+
+        if (myst_region_find(regions_end, MYST_REGION_START, &r1) != 0)
+            goto done;
+
+        if (myst_region_find(regions_end, MYST_REGION_WRITABLES, &r2) != 0)
+            goto done;
+
+        image_start = r1.data;
+        image_end = (uint8_t*)r2.data + r2.size;
+        image_size = (size_t)(image_end - image_start);
+        writables = r2.data;
+        num_writables = r2.file_size / sizeof(myst_writable_t);
+        num_pages = image_size / PAGE_SIZE;
+    }
+
+    /* extract the number of exported pages */
+    {
+        if (count < sizeof(uint64_t))
+            goto done;
+
+        exports.count = *(const uint64_t*)buf;
+    }
+
+    /* set the page-numbers vector */
+    {
+        if (count < sizeof(uint64_t) + (exports.count * sizeof(uint64_t)))
+            goto done;
+
+        exports.indices = (uint64_t*)buf + 1;
+    }
+
+    /* set the pointer to the pages */
+    {
+        size_t r =
+            count - sizeof(uint64_t) - (exports.count * sizeof(uint64_t));
+        assert(r == exports.count * PAGE_SIZE);
+
+        if (r != exports.count * PAGE_SIZE)
+            goto done;
+
+        exports.pages = (uint64_t*)buf + 1 + exports.count;
+    }
+
+    /* reset the protections for the mman region to r-w-x */
+    {
+        const void* regions_end = __oe_get_heap_base();
+        myst_region_t r;
+        int prot = PROT_READ | PROT_WRITE | PROT_EXEC;
+
+        if (myst_region_find(regions_end, MYST_REGION_MMAN, &r) != 0)
+            goto done;
+
+        if (_mprotect(r.data, r.size, prot) != 0)
+        {
+            printf("*** mprotect() failed on mman\n");
+            assert("mprotect() failed on mman" == NULL);
+        }
+    }
+
+    /* copy the exported pages from untrusted to trusted memory */
+    for (size_t i = 0; i < exports.count; i++)
+    {
+        size_t page_num = exports.indices[i];
+        uint8_t* dest = image_start + (page_num * PAGE_SIZE);
+        const uint8_t* src = (const uint8_t*)exports.pages + (i * PAGE_SIZE);
+
+        assert(page_num < num_pages);
+
+#ifdef TRACE_EXPORT_IMPORT
+        printf("IMPORT.PAGE: %lu (%zu of %zu)\n", page_num, i, num_writables);
+#endif
+
+        memcpy(dest, src, PAGE_SIZE);
+    }
+
+    ret = 0;
+
+done:
+
+    return ret;
+}
+
+#pragma GCC push_options
+#pragma GCC optimize("-fno-stack-protector")
 static long _enter(void* arg_)
 {
     long ret = -1;
@@ -686,6 +998,24 @@ static long _enter(void* arg_)
         assert(0);
     }
 
+    /* Check whether this is a forked enclave */
+    if (arg->forked)
+    {
+        void* image_data;
+        size_t image_size;
+
+        if (!(image_data = _attach_shared_memory(&image_size)))
+            assert("_attach_shared_memory() failed" == NULL);
+
+#if 0
+        printf("image: [%p:%zu]\n", image_data, image_size);
+        printf("SET.CHECKSUM: %zu\n", _checksum(image_data, image_size));
+#endif
+
+        if (_import_address_space(image_data, image_size) != 0)
+            assert("failed to set child image" == NULL);
+    }
+
     /* Enter the kernel image */
     {
         myst_kernel_entry_t entry;
@@ -727,6 +1057,7 @@ static long _enter(void* arg_)
         _kargs.start_time_sec = arg->start_time_sec;
         _kargs.start_time_nsec = arg->start_time_nsec;
         _kargs.report_native_tids = report_native_tids;
+        _kargs.forked = arg->forked;
 
         /* set ehdr and verify that the kernel is an ELF image */
         {
@@ -766,6 +1097,7 @@ done:
     free_config(&parsed_config);
     return ret;
 }
+#pragma GCC pop_options
 
 int myst_enter_ecall(
     struct myst_options* options,
@@ -779,7 +1111,8 @@ int myst_enter_ecall(
     uint64_t event,
     pid_t target_tid,
     uint64_t start_time_sec,
-    uint64_t start_time_nsec)
+    uint64_t start_time_nsec,
+    bool forked)
 {
     struct enter_arg arg = {
         .options = options,
@@ -794,6 +1127,7 @@ int myst_enter_ecall(
         .target_tid = target_tid,
         .start_time_sec = start_time_sec,
         .start_time_nsec = start_time_nsec,
+        .forked = forked,
     };
 
     /* prevent this function from being called more than once */
@@ -805,9 +1139,16 @@ int myst_enter_ecall(
 
     const void* regions = __oe_get_heap_base();
     myst_region_t reg;
+    const char* name;
+
+    /* use a different stack for entering the kernel from a forked process */
+    if (forked)
+        name = MYST_REGION_FORK_ENTER_STACK;
+    else
+        name = MYST_REGION_KERNEL_ENTER_STACK;
 
     /* find the stack for entering the kernel */
-    if (myst_region_find(regions, MYST_REGION_KERNEL_ENTER_STACK, &reg) != 0)
+    if (myst_region_find(regions, name, &reg) != 0)
         return -1;
 
     uint8_t* stack = (uint8_t*)reg.data + reg.size;
@@ -1039,6 +1380,24 @@ int myst_tcall_read_file(const char* pathname, char* buf, size_t size)
     int retval;
 
     if (myst_read_file_ocall(&retval, pathname, buf, size) != OE_OK)
+        return -EINVAL;
+
+    return retval;
+}
+
+long myst_tcall_fork(const void* unused_addr, size_t unused_length)
+{
+    long retval;
+
+    if (_export_address_space(unused_addr, unused_length) != 0)
+        return -ENOSYS;
+
+#if 0
+    printf("GET.CHECKSUM: %zu\n", _checksum(image_data, image_size));
+#endif
+
+    /* perform the fork */
+    if (myst_fork_ocall(&retval) != OE_OK)
         return -EINVAL;
 
     return retval;

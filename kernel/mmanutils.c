@@ -862,3 +862,12 @@ void myst_mman_stats(myst_mman_stats_t* buf)
     buf->free_size = _mman.map - _mman.brk;
     buf->used_size = buf->brk_size + buf->map_size;
 }
+
+void myst_mman_get_unused(void** addr, size_t* length)
+{
+    // [.....xxxxxxxxxxxxxxxx........]
+    //       ^               ^
+    //      BRK             MAP
+    *addr = (void*)_mman.brk;
+    *length = _mman.map - _mman.brk;
+}

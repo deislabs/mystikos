@@ -15,7 +15,6 @@
 
 /* memory region identifiers */
 #define MYST_REGION_CONFIG "config"
-#define MYST_REGION_KERNEL_STACKS "kernel.stacks"
 #define MYST_REGION_KERNEL "kernel"
 #define MYST_REGION_KERNEL_RELOC "kernel.reloc"
 #define MYST_REGION_KERNEL_SYMTAB "kernel.symtab" /* .symtab section */
@@ -28,7 +27,10 @@
 #define MYST_REGION_MMAN "mman"
 #define MYST_REGION_PUBKEYS "pubkeys"
 #define MYST_REGION_KERNEL_ENTER_STACK "kernel.enter.stack"
+#define MYST_REGION_FORK_ENTER_STACK "fork.enter.stack"
 #define MYST_REGION_ROOTHASHES "roothashes"
+#define MYST_REGION_START "start"         /* the first region */
+#define MYST_REGION_WRITABLES "writables" /* the final region */
 
 typedef struct myst_region_trailer
 {
@@ -46,6 +48,13 @@ typedef struct myst_region
     size_t size;
     size_t file_size;
 } myst_region_t;
+
+typedef struct myst_writable
+{
+    uint64_t page_num; /* the page number of a writable page */
+    int32_t prot;      /* the protections on this page */
+    int32_t padding;   /* unused */
+} myst_writable_t;
 
 MYST_STATIC_ASSERT(sizeof(myst_region_trailer_t) == 4096);
 
