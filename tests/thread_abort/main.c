@@ -24,7 +24,9 @@ void test_child_abort()
     printf("In main thread: before sleep...\n");
     sleep(3);
     printf("In main thread: after sleep. We should not be here...\n");
-    assert(0);
+    // this should cause the program exit with 139 (SIGSEGV) instead of expected
+    // 134
+    *(int*)0 = 0;
 }
 
 int main()
