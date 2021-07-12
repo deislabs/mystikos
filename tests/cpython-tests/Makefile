@@ -13,7 +13,7 @@ TC = test_grammar
 all: ext2fs
 
 appdir:
-	$(APPBUILDER) -i vtikoo/cpython:3.9-ubuntu
+	$(APPBUILDER) -i vtikoo/cpython:3.8-ubuntu
 
 ext2fs: appdir
 	$(MYST) mkext2 appdir ext2fs
