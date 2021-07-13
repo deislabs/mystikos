@@ -23,7 +23,21 @@
 
 #define ENCLAVE_SECURITY_VERSION 1
 
+#define ENCLAVE_EXTENDED_PRODUCT_ID \
+    {                               \
+        0                           \
+    }
+
+#define ENCLAVE_FAMILY_ID \
+    {                     \
+        0                 \
+    }
+
 #define ENCLAVE_DEBUG true
+
+#define ENCLAVE_CAPTURE_PF_GP_EXCEPTIONS true
+
+#define ENCLAVE_REQUIRE_KSS false
 
 typedef struct _config_parsed_data_t
 {

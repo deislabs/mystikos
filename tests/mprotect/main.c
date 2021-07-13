@@ -12,13 +12,18 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
+#define OFFSET 5
+
 static int _segv_handled = 0;
+static uint64_t faulting_address;
 
 void lenient_sigsegv_handler(int signum, siginfo_t* siginfo, void* context)
 {
     ucontext_t* ucontext = (ucontext_t*)context;
+    faulting_address = (uint64_t)siginfo->si_addr;
     printf("Forgiving the sigsegv exception...\n");
-    _segv_handled = 1;
+    if (siginfo->si_signo == SIGSEGV)
+        _segv_handled = 1;
     ucontext->uc_mcontext.gregs[REG_RIP] += 3; // non-portable.
 }
 
@@ -32,6 +37,7 @@ int main(int argc, const char* argv[])
     /* map 8 pages and give them different protections */
     uint8_t* addr = mmap(NULL, length, PROT_NONE, flags, -1, 0);
     assert(addr != MAP_FAILED);
+    assert(!((uint64_t)addr % PAGE_SIZE));
 
     if (mprotect(addr, length, PROT_READ))
     {
@@ -106,9 +112,25 @@ int main(int argc, const char* argv[])
     const char* target = getenv("MYST_TARGET");
     if (target && strcmp(target, "linux") != 0)
     {
+        /* Explicitly set a non-page-aligned address */
+        uint64_t expected_faulting_address = (uint64_t)addr + OFFSET;
+        uint64_t expected_faulting_address_aligned =
+            expected_faulting_address & ~(PAGE_SIZE - 1);
+
         /* Don't crash thanks to the lenient segv handler. */
-        data = addr[0];
+        data = *(uint64_t*)expected_faulting_address;
         assert(_segv_handled == 1);
+
+        /* This test only works on the icelake machine. */
+        if (expected_faulting_address == faulting_address)
+            printf("Get non-page-aligned faulting address as expected\n");
+        /* This test only works on the coffelake machine (debug mode) as
+         * the faulting address is always with lower 12-bit cleared. */
+        else if (expected_faulting_address_aligned == faulting_address)
+            printf("Get page-aligned faulting address as expected\n");
+        else
+            assert(0);
+
         printf("mprotect and sigsegv handling successful\n");
     }
     printf("\n=== passed test (%s)\n", argv[0]);
