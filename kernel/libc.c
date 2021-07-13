@@ -50,7 +50,7 @@ size_t strnlen(const char* s, size_t maxlen)
 {
     size_t i;
 
-    for (i = 0; *s && i < maxlen; s++)
+    for (i = 0; *s && i < maxlen; s++, i++)
         ;
 
     return i;
