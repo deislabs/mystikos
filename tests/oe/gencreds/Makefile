@@ -7,6 +7,10 @@ LDFLAGS += -L$(LIBDIR) -lopenenclave
 
 INCLUDES += $(OEENCLAVE_INCLUDES)
 
+ifdef MYST_ENABLE_GCOV
+CFLAGS += $(GCOV_CFLAGS)
+endif
+
 all:
 	$(MAKE) myst
 	$(MAKE) rootfs

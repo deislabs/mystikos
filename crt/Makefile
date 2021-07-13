@@ -6,7 +6,7 @@ TARGET = $(LIBDIR)/libmystcrt.so
 CFLAGS = -m64 -g -fPIC -Werror
 
 ifdef MYST_ENABLE_GCOV
-CFLAGS += -fprofile-arcs -ftest-coverage
+CFLAGS += $(GCOV_CFLAGS)
 endif
 
 CFLAGS += $(OPTIMIZATION_CFLAGS)

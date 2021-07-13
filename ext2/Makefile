@@ -18,6 +18,10 @@ CFLAGS += -fdata-sections
 CFLAGS += -Wno-conversion
 CFLAGS += -Wno-parentheses
 
+ifdef MYST_ENABLE_GCOV
+CFLAGS += $(GCOV_CFLAGS)
+endif
+
 # ATTN: enable this!
 #CFLAGS += -Wextra
 
