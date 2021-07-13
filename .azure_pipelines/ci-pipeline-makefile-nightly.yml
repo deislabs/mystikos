@@ -47,23 +47,6 @@ jobs:
       env:
         MYST_NIGHTLY_TEST: 1
 
-    # run azure-sdk-for-dotnet tests
-    - task: AzureCLI@2
-      displayName: 'run Azure SDK tests'
-      continueOnError: true
-      enabled: true
-      inputs:
-        azureSubscription: "OSTC Lab"
-        scriptType: bash
-        scriptPath: $(SCRIPTS_ROOT)/run-azure-tests.sh
-        addSpnToEnvironment: true
-        arguments:
-          $(Build.SourcesDirectory)/solutions/dotnet_azure_sdk
-          $(Build.SourcesDirectory)/tests/azure-sdk-for-cpp
-      env:
-        AZURE_KEYVAULT_URL: $(AZURE_TEST_KEYVAULT_URL)
-        STANDARD_STORAGE_CONNECTION_STRING: $(STANDARD_STORAGE_CONNECTION_STRING)
-
     # run all tests
     - script: |
         make tests ALLTESTS=1 VERBOSE=1
@@ -100,6 +83,23 @@ jobs:
         DB_NAME: $(DB_NAME_USEAST)
         DB_SERVER_NAME: $(DB_SERVER_NAME_USEAST)
         MAA_URL: $(DB_MAA_URL_USEAST)
+
+    # run azure-sdk-for -dotnet & -cpp tests
+    - task: AzureCLI@2
+      displayName: 'run Azure SDK tests'
+      continueOnError: true
+      enabled: true
+      inputs:
+        azureSubscription: "OSTC Lab"
+        scriptType: bash
+        scriptPath: $(SCRIPTS_ROOT)/run-azure-tests.sh
+        addSpnToEnvironment: true
+        arguments:
+          $(Build.SourcesDirectory)/solutions/dotnet_azure_sdk
+          $(Build.SourcesDirectory)/tests/azure-sdk-for-cpp
+      env:
+        AZURE_KEYVAULT_URL: $(AZURE_TEST_KEYVAULT_URL)
+        STANDARD_STORAGE_CONNECTION_STRING: $(STANDARD_STORAGE_CONNECTION_STRING)
 
     # clean up
     - script: |
