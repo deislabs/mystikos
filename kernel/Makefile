@@ -69,7 +69,7 @@ CFLAGS += -Wno-conversion
 CFLAGS += -Wno-parentheses
 
 ifdef MYST_ENABLE_GCOV
-CFLAGS += -fprofile-arcs -ftest-coverage
+CFLAGS += $(GCOV_CFLAGS)
 endif
 
 LDFLAGS =

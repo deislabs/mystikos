@@ -23,6 +23,10 @@ CFLAGS += -Wno-conversion
 CFLAGS += -Wno-parentheses
 CFLAGS += -O3
 
+ifdef MYST_ENABLE_GCOV
+CFLAGS += $(GCOV_CFLAGS)
+endif
+
 LDFLAGS = $(DEFAULT_LDFLAGS)
 
 include $(TOP)/rules.mak

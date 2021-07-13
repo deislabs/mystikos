@@ -9,9 +9,12 @@ SOURCES += $(wildcard $(TOP)/shared/strings.c)
 
 INCLUDES = -I$(INCDIR)
 
-CFLAGS = $(OEHOST_CFLAGS) $(GCOV_CFLAGS)
+CFLAGS = $(OEHOST_CFLAGS)
+ifdef MYST_ENABLE_GCOV
+CFLAGS += $(GCOV_CFLAGS)
+endif
 
-LDFLAGS = $(OEHOST_LDFLAGS) $(GCOV_LDFLAGS)
+LDFLAGS = $(OEHOST_LDFLAGS)
 
 LIBS = $(LIBDIR)/libmystutils.a $(LIBDIR)/libmysthost.a
 

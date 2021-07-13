@@ -7,6 +7,7 @@ ARCHIVE = libmysttargetlinux.a
 
 ifdef MYST_ENABLE_GCOV
 DEFINES += -DMYST_ENABLE_GCOV
+CFLAGS += $(GCOV_CFLAGS)
 endif
 
 SOURCES += $(wildcard *.c)

@@ -19,6 +19,10 @@ SOURCES += ../../shared/copyhostfile.c
 
 CFLAGS = $(OEENCLAVE_CFLAGS)
 
+ifdef MYST_ENABLE_GCOV
+CFLAGS += $(GCOV_CFLAGS)
+endif
+
 INCLUDES = $(OEENCLAVE_INCLUDES) -I$(INCDIR)
 
 include $(TOP)/rules.mak

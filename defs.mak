@@ -61,6 +61,10 @@ ifeq ($(MYST_RELEASE),1)
 OPTIMIZATION_CFLAGS += -O3
 endif
 
+ifdef MYST_ENABLE_GCOV
+GCOV_CFLAGS += -O0 -fprofile-arcs -ftest-coverage
+endif
+
 DEFAULT_LDFLAGS =
 
 ##==============================================================================

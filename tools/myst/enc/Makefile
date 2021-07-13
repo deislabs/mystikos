@@ -30,7 +30,7 @@ INCLUDES = $(OEENCLAVE_INCLUDES) -I$(SUBOBJDIR) -I../
 CFLAGS = $(OEENCLAVE_CFLAGS)
 
 ifdef MYST_ENABLE_GCOV
-CFLAGS += -fprofile-arcs -ftest-coverage
+CFLAGS += $(GCOV_CFLAGS)
 endif
 
 LIBS += $(LIBDIR)/libjson.a

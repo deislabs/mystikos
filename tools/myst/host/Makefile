@@ -19,7 +19,7 @@ INCLUDES = $(OEHOST_INCLUDES) -I$(SUBOBJDIR) -I$(INCDIR) -I../
 CFLAGS = $(OEHOST_CFLAGS)
 
 ifdef MYST_ENABLE_GCOV
-CFLAGS += -fprofile-arcs -ftest-coverage
+CFLAGS += $(GCOV_CFLAGS)
 endif
 
 LDFLAGS = $(OEHOST_LDFLAGS)

@@ -12,16 +12,30 @@
 MYST_ROOT="$(realpath "$(dirname "$0")/..")"
 
 cp -r "${MYST_ROOT}"/build/obj/tools/* -t "${MYST_ROOT}"/tools
+cp -r "${MYST_ROOT}"/build/obj/utils/* -t "${MYST_ROOT}"/utils
+cp -r "${MYST_ROOT}"/build/obj/hostfs/* -t "${MYST_ROOT}"/hostfs
+cp -r "${MYST_ROOT}"/build/obj/host/* -t "${MYST_ROOT}"/host
+cp -r "${MYST_ROOT}"/build/obj/ext2/* -t "${MYST_ROOT}"/ext2
 cp -r "${MYST_ROOT}"/build/obj/kernel/* -t "${MYST_ROOT}"/kernel
-cp -r "${MYST_ROOT}"/build/obj/crt/"${MYST_ROOT}"/third_party/* -t "${MYST_ROOT}"/third_party
+cp -r "${MYST_ROOT}"/build/obj/oe/* -t "${MYST_ROOT}"/oe
+cp -r "${MYST_ROOT}"/build/obj/json/* -t "${MYST_ROOT}"/json
+cp -r "${MYST_ROOT}"/build/obj/target/* -t "${MYST_ROOT}"/target
+# cp -r "${MYST_ROOT}"/build/obj/crt/"${MYST_ROOT}"/third_party/* -t "${MYST_ROOT}"/third_party
 cp "${MYST_ROOT}"/build/obj/crt/*.gc* -t "${MYST_ROOT}"/crt
 cp "${MYST_ROOT}"/tools/myst/config.c "${MYST_ROOT}"/tools/myst/config_file.c -t "${MYST_ROOT}"/tools
 cp "${MYST_ROOT}"/tools/myst/common.c "${MYST_ROOT}"/tools/myst/kargs.c -t "${MYST_ROOT}"/tools
+cp -r "${MYST_ROOT}"/build/obj/target/shared/* -t "${MYST_ROOT}"/shared
 
 rm $(find "${MYST_ROOT}"/build/obj/ -name "*.gc*")
 
-lcov -c -d . -o "${MYST_ROOT}"/lcov.info
+# remove the gcda files created in the test directories
+rm $(find "${MYST_ROOT}"/tests/ -name "*.gc*")
+
+lcov --rc lcov_branch_coverage=1 -c -d . -o "${MYST_ROOT}"/lcov.info
+lcov --list lcov.info
 
 rm -rf "${MYST_ROOT}"/lcov
 mkdir "${MYST_ROOT}"/lcov
-genhtml -o "${MYST_ROOT}"/lcov "${MYST_ROOT}"/lcov.info
+genhtml --branch-coverage -o "${MYST_ROOT}"/lcov "${MYST_ROOT}"/lcov.info
+
+python3 -m "lcov_cobertura" lcov.info -o lcov.xml

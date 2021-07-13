@@ -1,7 +1,7 @@
 TOP=$(abspath ..)
 include $(TOP)/defs.mak
 
-CFLAGS += -Wall -Werror -fprofile-arcs -ftest-coverage
+CFLAGS += -Wall -Werror $(GCOV_CFLAGS)
 
 LDFLAGS += -nostdlib
 LDFLAGS += -nodefaultlibs

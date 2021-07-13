@@ -11,6 +11,10 @@ INCLUDES = -I$(INCDIR)
 
 CFLAGS = $(OEHOST_CFLAGS)
 
+ifdef MYST_ENABLE_GCOV
+CFLAGS += $(GCOV_CFLAGS)
+endif
+
 LDFLAGS = $(OEHOST_LDFLAGS)
 
 include $(TOP)/rules.mak

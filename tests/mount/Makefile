@@ -7,9 +7,11 @@ SOURCES = mount.c
 
 INCLUDES =
 
-CFLAGS = -Wall -fPIC -g $(GCOV_CFLAGS)
+CFLAGS = -Wall -fPIC -g
 
-LDFLAGS = $(GCOV_LDFLAGS)
+ifdef MYST_ENABLE_GCOV
+CFLAGS += $(GCOV_CFLAGS)
+endif
 
 ifdef STRACE
 OPTS += --strace
