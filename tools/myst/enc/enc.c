@@ -106,13 +106,14 @@ static void _mcontext_to_oe_context(mcontext_t* mc, oe_context_t* oe_context)
 }
 
 static uint64_t _forward_exception_as_signal_to_kernel(
-    uint32_t oe_exception_code,
-    oe_context_t* oe_context)
+    oe_exception_record_t* oe_exception_record)
 {
+    uint32_t oe_exception_code = oe_exception_record->code;
+    oe_context_t* oe_context = oe_exception_record->context;
     siginfo_t siginfo = {0};
     _oe_context_to_mcontext(oe_context, &_mcontext);
 
-    // Kernel should be the ultimate handler of #PF, #MF, and #UD.
+    // Kernel should be the ultimate handler of #PF, #GP, #MF, and #UD.
     // If we are still alive after kernel handling, it means kernel
     // wanted the execution to continue.
     if (oe_exception_code == OE_EXCEPTION_ILLEGAL_INSTRUCTION)
@@ -125,10 +126,31 @@ static uint64_t _forward_exception_as_signal_to_kernel(
     }
     if (oe_exception_code == OE_EXCEPTION_PAGE_FAULT)
     {
-        siginfo.si_code = SI_KERNEL;
+        // ATTN: Use the following rule to determine the si_code, which
+        // may be different from the behavior of the Linux kernel.
+        if (oe_exception_record->error_code & OE_SGX_PAGE_FAULT_PK_FLAG)
+            siginfo.si_code = SEGV_PKUERR;
+        else if (oe_exception_record->error_code & OE_SGX_PAGE_FAULT_P_FLAG)
+            siginfo.si_code = SEGV_ACCERR;
+        else
+            siginfo.si_code = SEGV_MAPERR;
         siginfo.si_signo = SIGSEGV;
-        // ATTN: set `si_addr` when we can reliably obtain the
-        // faulty address on icelake. Use null for now.
+        // The faulting address is only avaiable on icelake. The
+        // mystikos-specific OE runtime also simulates the #PF on
+        // coffeelake when the enclave is in debug mode.
+        // Note that the si_addr in the simulated #PF always has the
+        // lower 12 bits cleared.
+        siginfo.si_addr = (void*)oe_exception_record->faulting_address;
+        (*_kargs.myst_handle_host_signal)(&siginfo, &_mcontext);
+        _mcontext_to_oe_context(&_mcontext, oe_context);
+        return OE_EXCEPTION_CONTINUE_EXECUTION;
+    }
+    if (oe_exception_code == OE_EXCEPTION_ACCESS_VIOLATION)
+    {
+        // #GP can only be delivered on icelake.
+        siginfo.si_code = SEGV_ACCERR;
+        siginfo.si_signo = SIGSEGV;
+        // `si_addr` is always null for #GP.
         siginfo.si_addr = NULL;
         (*_kargs.myst_handle_host_signal)(&siginfo, &_mcontext);
         _mcontext_to_oe_context(&_mcontext, oe_context);
@@ -381,7 +403,7 @@ static uint64_t _vectored_handler(oe_exception_record_t* er)
         }
     }
 
-    return _forward_exception_as_signal_to_kernel(er->code, er->context);
+    return _forward_exception_as_signal_to_kernel(er);
 }
 
 static bool _is_allowed_env_variable(
@@ -1051,10 +1073,14 @@ int __vfprintf_chk(FILE* stream, int flag, const char* format, va_list ap)
     return vfprintf(stream, format, ap);
 }
 
-OE_SET_ENCLAVE_SGX(
+OE_SET_ENCLAVE_SGX2(
     ENCLAVE_PRODUCT_ID,
     ENCLAVE_SECURITY_VERSION,
+    ENCLAVE_EXTENDED_PRODUCT_ID,
+    ENCLAVE_FAMILY_ID,
     ENCLAVE_DEBUG,
+    ENCLAVE_CAPTURE_PF_GP_EXCEPTIONS,
+    ENCLAVE_REQUIRE_KSS,
     ENCLAVE_HEAP_SIZE / OE_PAGE_SIZE,
     ENCLAVE_STACK_SIZE / OE_PAGE_SIZE,
     ENCLAVE_MAX_THREADS);
