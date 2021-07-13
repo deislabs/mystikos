@@ -1641,14 +1641,13 @@ done:
 
 long myst_syscall_unlinkat(int dirfd, const char* pathname, int flags)
 {
+    char* abspath = NULL;
     long ret = 0;
 
     (void)flags;
 
     if (flags & ~AT_REMOVEDIR)
         ERAISE(-EINVAL);
-
-    char* abspath = NULL;
 
     ECHECK(myst_get_absolute_path_from_dirfd(dirfd, pathname, 0, &abspath));
 
