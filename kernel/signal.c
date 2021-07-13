@@ -47,7 +47,16 @@ done:
 
 void myst_signal_free(myst_thread_t* thread)
 {
+    sigset_t block_all;
+
     assert(thread && myst_is_process_thread(thread));
+
+    // Block all signals from this point. Not that there are a couple of
+    // none-blocking signals, but that delivery scenario will ignore it because
+    // sigactions is NULL
+    memset(&block_all, -1, sizeof(block_all));
+    myst_signal_sigprocmask(SIG_BLOCK, &block_all, NULL);
+
     free(thread->signal.sigactions);
     thread->signal.sigactions = NULL;
 }
@@ -202,7 +211,13 @@ static long _handle_one_signal(
     uint64_t mask = (uint64_t)1 << (signum - 1);
 
     // Both the child and process thread should point to array of sigactions.
-    assert(thread->signal.sigactions != NULL);
+    // The only exception to this is during shutdown. All signals that can be
+    // blocked have been, but the non-blocking signals may still get through so
+    // we ignore then
+    if (thread->signal.sigactions == NULL)
+    {
+        return 0;
+    }
 
     posix_sigaction_t* action = &thread->signal.sigactions[signum - 1];
     if (action->handler == (uint64_t)SIG_DFL)
