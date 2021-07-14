@@ -4,8 +4,7 @@ This document contains instructions to build mystikos on Linux
 
 ## Building from source
 
-Mystikos *must* be built on **Ubuntu 18.04**. This is a limitation of [Open
-Enclave SDK](github.com/openenclave/openenclave). It may be compiled with or
+Mystikos *must* be built on **Ubuntu 18.04**. It may be compiled with or
 without SGX capability.
 
 ## Install the prerequisites
@@ -35,6 +34,6 @@ machine while running with the Linux target (simulation mode). Obviously you
 need an SGX-capable machine to try out the SGX target. There are multiple ways
 which you might procure an SGX-capable machine, including but not limited to:
 - buy or build an Intel NUC (TODO: include specific model number)
-- use a `DCsv2`-series VM on Azure (https://aka.ms/accgetstarted)
+- use a [`DCsv2`-series (from DC1s_v2 up to DC8_V2) VM on Azure](https://aka.ms/accgetstarted)
 - or use another cloud provider which also has SGX support
 - use your own servers

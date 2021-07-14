@@ -46,43 +46,35 @@ building. We can skip it in the final image to save space.
 
 ```docker
 # stage 1 build
-FROM alpine:3.10 AS base-image
+FROM ubuntu:18.04 AS base-image
 
-RUN apk add --no-cache build-base boost-dev
+RUN apt update && apt install -y g++ libboost-all-dev
 
 WORKDIR /app
 ADD square.cpp .
 RUN g++ square.cpp -o square
 
 # stage2 get binaries
-FROM alpine:3.10
+FROM ubuntu:18.04
 
-RUN apk add --no-cache libstdc++
+RUN apt install libstdc++
 
 COPY --from=base-image /app/square /square
 
 CMD ["/square", "1", "2", "3"]
 ```
 
-It you have an existing docker file for your application running on an
-Ubuntu-based container, some minor adjustments are needed to run it on
-an Alpine Linux based container, which happens to be compatible with
-Mystikos (they both use MUSL as C-runtime).
+The docker file uses Ubuntu:18.04 as the base image as an example. But we
+could also use other Linux distros, e.g., Alpine Linux, as the base image.
 
-For example, the base image should be changed from maybe `ubuntu:18.04`
-to `alpine:3.10`. Also instead of `apt install <package list>`, we use
-Alpine Linux's installer `apk add <package list>`. Keep in mind that not
-every package you find on Ubuntu is available on Alpine Linux, which is
-a less popular distro than Ubuntu.
-
-You can build and run the container app on Linux with the following command
+You can build and run the container app with the following command
 to make sure it's correct:
 
 `docker run $(docker build -q .)`
 
 The expected outputs, again, are "1 4 9".
 
-## Build the app folder with Mystikos
+## Build the self-contained app folder with Mystikos
 
 We use a script to take the same docker file and generate
 an app folder `appdir` for preparing the program to be run with Mystikos.
@@ -94,7 +86,7 @@ myst-appbuilder Dockerfile
 `/home`, `/bin`, etc. It also contains our application `square` under
 the root directory. The C++ runtime library `libstdc++` is also included.
 
-## Create a CPIO archive and run the program inside a SGX enclave
+## Create a CPIO archive and run the program inside an SGX enclave in debug mode
 
 These two steps are almost identical to the descriptions
 [here](./user-getting-started-c.md#create-a-cpio-archive)
@@ -105,3 +97,14 @@ myst exec-sgx rootfs /square 1 2 3
 
 The expected outputs, not surprisingly, are "1 4 9". But perhaps we have more
 confidence in the answer because we just ran the program in a TEE!
+
+To run an application with Mystikos in release or production mode, please see
+[packaging](./sign-package.md).
+
+## Further readings
+
+For more complex C++ programs that are already working with Mystikos, please see:
+
+* [The test suite for msgpack for C++](https://github.com/deislabs/mystikos/tree/main/solutions/msgpack_c)
+* [The test suite for Azure SDK for C++](https://github.com/deislabs/mystikos/tree/main/tests/azure-sdk-for-cpp)
+* [The C++ test suite for llvm project](https://github.com/deislabs/mystikos/tree/main/tests/libcxx)

@@ -1,31 +1,30 @@
 ![Mystikos](./art/light/logo-horizontal/logo-horizontal.png)
 
 ## What is Mystikos?
-**Mystikos** is a set of tools for running applications in a hardware trusted
+**Mystikos** is a runtime and a set of tools for running Linux applications
+in a hardware trusted
 execution environment (TEE). The current release supports **Intel &reg; SGX**
-while other TEEs may be supported in future releases. **Linux** is also a
-supported target, though only suitable for testing purposes as it provides
-no additional protection.
+while other TEEs may be supported in future releases.
 
 ## Goals
 
 - Enable protection of application code and data while in memory through the
-  use of HW TEEs. This should be combined with proper key management,
+  use of hardware TEEs. This should be combined with proper key management,
   attestation and hardware roots of trust, and encryption of data at rest and
   in transit to protect against other threats which are out of scope for this
   project.
-- Lift and shift applications, either native or containerized, into TEEs with
-  little or no modification.
+- Streamline the process of lift-n-shift applications, either native or
+  containerized, into TEEs, with little or no modification.
 - Allow users and application developers control over the makeup of the trusted
-  computing base (TCB), ensuring that all components running inside the TEE are
-  open source.
+  computing base (TCB), ensuring that all components of the execution environment
+  running inside the TEE are open sourced with permissive licenses.
 - Simplify re-targeting to other TEE architectures through a plugin
   architecture.
 
 ## Architecture
 
 **Mystikos** consists of the following components:
-- a C-runtime based on [musl libc](https://musl.libc.org)
+- a C-runtime based on [musl libc](https://musl.libc.org), but is glibc compatible
 - a "lib-os like" kernel
 - the kernel-target interface (TCALL)
 - a command-line interface
@@ -40,14 +39,15 @@ The minimalist kernel of Mystikos manages essential computing resources
 inside the TEE, such as CPU/threads, memory, files, networks, etc. It handles
 most of the syscalls that a normal operating system would handle (with
 [limits](doc/syscall-limitations.md)).  Many syscalls are handled directly by the
-kernel while others are delegated to the target.
+kernel while others are delegated to the target specified while launching
+Mystikos.
 
 ![](./arch.png)
 
 
 # Installation Guide
 
-## Verify the Intel SGX DCAP Driver is Installed
+## Install Intel SGX DCAP Driver if necessary
 
 Some distributions come with the SGX driver already installed; if it is,
 you don't need to re-install it. You can verify this by running:
@@ -68,15 +68,19 @@ wget https://download.01.org/intel-sgx/sgx-dcap/1.7/linux/distro/ubuntu18.04-ser
 chmod +x sgx_linux_x64_driver.bin
 sudo ./sgx_linux_x64_driver.bin
 ```
-## Add Intel's repository & install the sgx libraries
+## Add Intel and Microsoft's repositories & install the required packages
 
 ```bash
 echo 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu bionic main' | sudo tee /etc/apt/sources.list.d/intel-sgx.list
 wget -qO - https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo apt-key add -
+echo "deb [arch=amd64] https://packages.microsoft.com/ubuntu/18.04/prod bionic main" | sudo tee /etc/apt/sources.list.d/msprod.list
+wget -qO - https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
 
 sudo apt update
 
-sudo apt -y install libsgx-enclave-common libsgx-dcap-ql libsgx-dcap-ql-dev
+sudo apt -y install libsgx-enclave-common libsgx-dcap-ql libsgx-dcap-ql-dev libsgx-quote-ex az-dcap-client libmbedtls-dev
+
+curl -sSL https://get.docker.com/ | sh
 ```
 
 ## Download Mystikos
@@ -86,7 +90,7 @@ then simply decompress it, add it to your path, and run it.
 
 ```
 # change this to match the latest version
-LATEST='0.1.2'
+LATEST='0.2.0'
 RELEASE="mystikos-${LATEST}-x86_64"
 
 # this will create the "mystikos" directory within your current working directory
@@ -98,11 +102,11 @@ export PATH="$PATH:$(pwd)/mystikos/bin"
 
 ## Install From Source
 
-You may also [build Mystikos from source](BUILDING.md). In our experience, this
-takes about 20 minutes. 
+You may also [build Mystikos from source](BUILDING.md). The build process
+will install the SGX driver and SGX-related packages for you.
 
-**NOTE** that Mystikos can only be built on **Ubuntu 18.04** due to current
-limitations in [Open Enclave SDK](https://github.com/openenclave/openenclave).
+**NOTE** that Mystikos can only be built on **Ubuntu 18.04**. We are working
+on bringing Mystikos to **Ubuntu 20.04**.
 
 
 # Quick Start Docs

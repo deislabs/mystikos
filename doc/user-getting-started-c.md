@@ -19,9 +19,8 @@ Save it to a folder and call it `helloworld.c`.
 
 ## Build the program
 
-Compile `helloworld.c` with `myst-gcc`, and place it under a subfolder
-`appdir`. `myst-gcc` is a wrapper for musl-gcc which compiles C programs
-dynamically linked to MUSL libc instead of the default glibc.
+Compile `helloworld.c` with `gcc`, and place it under a subdirectory
+`appdir`.
 
 ```
 mkdir -p appdir
@@ -31,7 +30,7 @@ myst-gcc -g -o appdir/hello helloworld.c
 In most cases, we would generate many more files in `appdir`, a folder to hold
 the root file system including the application, the dependent libraries, and
 configurations. Our hello world program is so simple that it doesn't depend
-on any library other than MUSL or any configuration. So `appdir` contains
+on any library other than libc. So `appdir` contains
 a lonely `hello` executable. That's all we need to run the app inside a TEE.
 
 ## Create a CPIO archive
@@ -41,7 +40,7 @@ Now we can create a CPIO named `rootfs` out of the folder `appdir` with:
 myst mkcpio appdir rootfs
 ```
 
-## Run the program inside a SGX enclave
+## Run the program inside an SGX enclave
 
 The command to launch the program inside an SGX enclave is a little bit
 long, compared to just `./appdir/hello` on Linux.
@@ -51,7 +50,7 @@ myst exec-sgx rootfs /hello
 ```
 
 The command specifies `myst` as the driver, and asks the driver to execute
-a program in a SGX enclave in this manner:
+a program in an SGX enclave in this manner:
 
 1. Load rootfs as the root file system into the enclave
 1. Load `/hello` from the file system and execute it.
@@ -64,8 +63,8 @@ purpose. This execution mode does not capture the identity of the
 executing program in the SGX Enclave attestation data, thus is not
 suitable for production use.
 
-If you are interested in shortening the command, please see
-[packaging](./sign-package.md) as a solution.
+To run an application with Mystikos in release or production mode, please see
+[packaging](./sign-package.md).
 
 ## Further readings
 
