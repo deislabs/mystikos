@@ -112,6 +112,7 @@ int _package(int argc, const char* argv[])
     const char* signing_engine_name = NULL;
     const char* signing_engine_path = NULL;
     myst_buf_t roothash_buf = MYST_BUF_INITIALIZER;
+    bool using_ext2 = false;
 
     /* Get --pubkey=filename options */
     get_pubkeys_options(&argc, argv, pubkeys, max_pubkeys, &num_pubkeys);
@@ -200,7 +201,9 @@ int _package(int argc, const char* argv[])
     }
     else
     {
-        /* generate a dummy CPIO rootfs with one page of zero bytes */
+        // generate a dummy CPIO rootfs with zero-filled page. This indicates
+        // that the rootfs is not a CPIO archive and that the kernel should
+        // attempt to load an EXT2 instead.
         int fd;
         uint8_t page[PAGE_SIZE];
         const int flags = O_CREAT | O_WRONLY | O_TRUNC;
@@ -214,6 +217,8 @@ int _package(int argc, const char* argv[])
             _err("failed to create file: %s", rootfs_file);
 
         close(fd);
+
+        using_ext2 = true;
     }
 
     if (parse_config_from_file(config_file, &parsed_data) != 0)
@@ -225,6 +230,19 @@ int _package(int argc, const char* argv[])
             scratch_path2,
             config_file);
         goto done;
+    }
+
+    if (using_ext2)
+    {
+        /* Fail if application image would be unable to load an EXT2 image */
+        if (!(parsed_data.oe_debug || roothash_buf.size || num_pubkeys))
+        {
+            _err("When using EXT2, one of the following is required: \n"
+                 "    (1) Debug=1 option in the config file (non-secure)\n"
+                 "    (2) --roothash=<filename> option (secure)\n"
+                 "    (3) --pubkey=<pemfile> option (secure)\n"
+                 "    (4) signature struct at end of EXT2 image (secure)\n");
+        }
     }
 
     target = parsed_data.application_path;

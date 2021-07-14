@@ -83,6 +83,7 @@ int myst_load_fs(
         uint8_t keybuf[1024];
     };
     struct locals* locals = NULL;
+    bool verified = false;
 
     if (fs_out)
         *fs_out = NULL;
@@ -93,7 +94,7 @@ int myst_load_fs(
     if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
-    /* load the file-system signature structure */
+    /* load the optional file-system signature structure */
     if ((r = myst_tcall_load_fssig(source, &locals->fssig)) != 0 &&
         r != -ENOTSUP)
         ERAISE(-r);
@@ -101,6 +102,7 @@ int myst_load_fs(
     /* create the bottom device (verity or raw) */
     if (locals->fssig.magic == MYST_FSSIG_MAGIC)
     {
+        /* First try public-key verification */
         if (locals->fssig.signature_size)
         {
             /* Make sure signature_size set by the host-side does not exceed
@@ -109,42 +111,59 @@ int myst_load_fs(
             if (locals->fssig.signature_size > sizeof(locals->fssig.signature))
                 ERAISE(-EINVAL);
 
-            ECHECK(myst_pubkey_verify(
-                __myst_kernel_args.pubkeys_data,
-                __myst_kernel_args.pubkeys_size,
+            if (myst_pubkey_verify(
+                    __myst_kernel_args.pubkeys_data,
+                    __myst_kernel_args.pubkeys_size,
+                    locals->fssig.root_hash,
+                    sizeof(locals->fssig.root_hash),
+                    locals->fssig.signer,
+                    sizeof(locals->fssig.signer),
+                    locals->fssig.signature,
+                    locals->fssig.signature_size) == 0)
+            {
+                verified = true;
+            }
+        }
+
+        /* If public key verification failed, try roothash verification */
+        if (!verified)
+        {
+            if (myst_roothash_verify(
+                    __myst_kernel_args.roothashes_data,
+                    __myst_kernel_args.roothashes_size,
+                    locals->fssig.root_hash,
+                    sizeof(locals->fssig.root_hash)) == 0)
+            {
+                verified = true;
+            }
+        }
+
+        /* if either the public key or the roothash was verified */
+        if (verified)
+        {
+            /* create the device stack */
+            ECHECK(myst_verityblkdev_open(
+                source,
+                locals->fssig.hash_offset,
                 locals->fssig.root_hash,
-                sizeof(locals->fssig.root_hash),
-                locals->fssig.signer,
-                sizeof(locals->fssig.signer),
-                locals->fssig.signature,
-                locals->fssig.signature_size));
+                sizeof(myst_sha256_t),
+                &blkdev));
+        }
+    }
+
+    /* if failed to verify roothash (using one method or the other) */
+    if (!verified)
+    {
+        /* if in debug mode, allow mount in spite of verification failure */
+        if (__myst_kernel_args.tee_debug_mode)
+        {
+            const bool ephemeral = true;
+            ECHECK(myst_rawblkdev_open(source, ephemeral, 0, &blkdev));
         }
         else
         {
-            ECHECK(myst_roothash_verify(
-                __myst_kernel_args.roothashes_data,
-                __myst_kernel_args.roothashes_size,
-                locals->fssig.root_hash,
-                sizeof(locals->fssig.root_hash)));
+            ERAISE(-EPERM);
         }
-
-        /* create the device stack */
-        ECHECK(myst_verityblkdev_open(
-            source,
-            locals->fssig.hash_offset,
-            locals->fssig.root_hash,
-            sizeof(myst_sha256_t),
-            &blkdev));
-    }
-    else
-    {
-#ifdef MYST_RELEASE
-        /* Fail if neither a roothash nor a public key were provided */
-        ERAISE(-EPERM);
-#else
-        const bool ephemeral = true;
-        ECHECK(myst_rawblkdev_open(source, ephemeral, 0, &blkdev));
-#endif
     }
 
     if (key)
