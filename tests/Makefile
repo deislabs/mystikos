@@ -23,7 +23,6 @@ DIRS += hello
 DIRS += shlib
 DIRS += getcwd
 DIRS += rdtsc
-DIRS += run
 DIRS += mman
 DIRS += fs
 DIRS += mount
