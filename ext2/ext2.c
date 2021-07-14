@@ -3337,6 +3337,13 @@ int ext2_open(
         ECHECK(_add_dirent(
             ext2, dino, &locals->dinode, locals->filename, &locals->ent));
     }
+    /* If file already exists, check whether both O_CREAT and O_EXCL were passed
+     */
+    else
+    {
+        if ((flags & O_CREAT) && (flags & O_EXCL))
+            ERAISE(-EEXIST);
+    }
 
     if (S_ISLNK(locals->inode.i_mode) && (flags & O_NOFOLLOW))
         ERAISE(-ELOOP);

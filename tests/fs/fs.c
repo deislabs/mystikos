@@ -406,7 +406,6 @@ void test_rename(void)
 
 void test_renameat(void)
 {
-    int ret = 0;
     int olddirfd, newdirfd;
     // Create directories and files
     {
@@ -990,6 +989,16 @@ static void test_fsync()
     _passed(__FUNCTION__);
 }
 
+static void test_o_excl()
+{
+    int fd = open("/test_o_excl", O_CREAT | O_RDWR | O_EXCL, 0666);
+    assert(fd >= 0);
+    int fd2 = open("/test_o_excl", O_CREAT | O_RDWR | O_EXCL, 0666);
+    assert(fd2 == -1 && errno == EEXIST);
+    close(fd);
+    _passed(__FUNCTION__);
+}
+
 int main(int argc, const char* argv[])
 {
     if (argc != 2)
@@ -1040,6 +1049,7 @@ int main(int argc, const char* argv[])
     test_enotdir();
     test_fdatasync();
     test_fsync();
+    test_o_excl();
 
     printf("=== passed all tests (%s)\n", argv[0]);
 
