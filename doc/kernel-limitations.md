@@ -1,4 +1,4 @@
-# Notable Kernel limitations in the current Mystikos implementation
+# Notable system limitations in the current Mystikos implementation
 
 The first hardware TEE that Mystikos based on is Intel SGX. Therefore, Mystikos
 carries most limitations imposed by Intel SGX. However, we expect those
@@ -13,7 +13,7 @@ incompatibilities/limitations worth noting as summarized below:
 
 | Limitation                    | Description         | Potential impacts on applications |
 | ------------------------------|---------------------|---------|
-| [Multi-process limitation](#limitations-arisen-from-sgxs-single-process-model) | No forking of child processes. However `posix_spawn` is supported. | Communication and address space isolation between processes |
+| [Multi-process limitation](#limitations-arisen-from-sgxs-single-process-model) | We support forking as an experimental feature. Please see [here](design/fork.md) for details. `posix_spawn` is supported. | Communication and address space isolation between processes |
 | [Thread limitations](#limitations-arisen-from-sgx1-limitations) | Thread creation is slow and limited to a user setting. Thread scheduling is under host control. | Required Configuration / Thread starvation / D.o.S. |
 | [Memory limitations](#limitations-arisen-from-sgx1-limitations) | User stack/heap memory is limited to a user setting. Page permission enforcement is under host control. | Required Configuration / OOM / Page table manipulation |
 | [Clock limitation](#limitations-arisen-from-lack-of-access-to-time-source) | Clock ticks and resolution are controlled by host | Clock resolution / Untrusted time |
@@ -39,7 +39,8 @@ no handle to reference the other side's memory.
 On the other hand, a child process created with `fork` is supposed to
 share variables with the parent. It's significantly more challenging to
 emulating a forked child process as a thread without underlying support
-of address space separation.
+of address space separation. We ended up with `pseudo fork` that is
+described [here](design/fork.md).
 
 
 ## Limitations arisen from SGX1 limitations
@@ -53,10 +54,11 @@ of each ethread is also statically declared and allocated while creating
 the enclave. An application attempting to create more ethreads than what
 is declared will crash.
 
-A Mystikos application declares how many user threads are needed in
-config.json. A potential mitigation of the limitation is to make the setting big
-enough. The caveat is that we should ensure the stack size for each ethread
-is reasonable so we don't waste too much stack memory on unused threads.
+Mystikos solves the problem by allocating stacks for new threads on demand,
+and keeping the stacks small. The underlying OE SDK still has an upper
+limit for the number of ethreads. Currently we set the limit to 1024.
+Applications creating more than 1024 threads will get `EAGAIN` from Mystikos.
+We could increase the limit if needed.
 
 This limitation is likely to be relaxed when EDMM of SGX2 is officially
 supported in Mystikos.
@@ -153,24 +155,47 @@ Mystikos only supports three types of file system:
 
 1. **ramfs**: The default file system. Physical storage of the files are
 loaded from a CPIO archive into the protected memory of TEE at runtime.
-1. **ext2**: Can be opted in or out by users from the Mystikos runtime.
+Modifications to the files are protected by TEE and are lost when the
+application exits.
+
+1. **ext2fs**: Suitable for applications with a large container image.
 Physical storage of the files are on the host. Mystikos offers signature
 verification, encryption, and/or integrity protection on the file system.
-Host performs block-level operations on behalf of Mystikos.
+Host performs block-level operations on behalf of Mystikos. Mystikos performs
+necessary verifications when the file systems are mounted and/or files are
+read. Some verifications could be skipped under debug mode. Modifications to
+the files are protected by TEE and are lost when the application exits.
+Users who choose to encrypt their ext2fs are responsible for key distribution.
+
 1. **hostfs**: Can be opted in or out by users from the Mystikos runtime.
 Physical storage of the files are on the host. Host performs file-level
-operations on behalf of Mystikos.
-
-Mounting of a particular file system has to be explicitly specified from the
-command line or in the config file.
-
-The writes to **ramfs** and **ext2** file systems are ephemeral. That is,
-the changes are lost as soon as the Mystikos runtime exits. Only changes to
-**hostfs** are persisted. Obviously **hostfs** has the weakest
+operations on behalf of Mystikos. The user can launch a host file system
+as the rootfs under debug mode. Changes to
+**hostfs** are persisted. **hostfs** has the weakest
 security guarantee among the three and thus must be used with caution.
 
-### **Continued reading**
+Mounting of a particular file system could be explicitly specified from the
+command line, in the config file, or in the application code.
+
+Before ramfs, ext2fs, and hostfs could be consumed by Mystikos, they have
+to physically reside on an untrusted host. Currently only ext2fs offers
+an encryption option. Therefore, it's critical that **NO secret should
+be embedded in any files on those file systems** (unless it's an encrypted
+ext2fs). Instead, applications should rely on [attestation to get secrets
+at run time from relying parties](user-getting-started-tee-aware.md).
+
+## Runtime limitations
 
 Typically, the above mentioned limitations are reflected in the kernel
 implementation of system calls. Interested readers are welcome to continue on
 [Notable limitation of system call support in Mystikos](syscall-limitations.md).
+
+A Linux application could expect the Linux kernel to simulate certain virtual
+files for read/write, such as `/proc/self/exe`. Currently Mystikos only implements
+a subset of these virtual files that are commonly used. An application could
+fail if it depends on a virtual file that is not implemented yet.
+
+Some libc functions/symbols that are present in glibc but not in musl. Our CRT
+is based on musl. And we try to achieve glibc compatibility by adding those
+missing functions/symbols to musl. An application could fail to start if it
+references one of the functions/symbols that we haven't patched yet.

@@ -100,7 +100,6 @@ install:
 	$(INSTALL) $(BUILDDIR)/openenclave/bin/oegdb $(INSTDIR)/bin/myst-gdb
 	$(INSTALL) ./scripts/appbuilder $(INSTDIR)/bin/myst-appbuilder
 	$(INSTALL) include/myst/tee.h $(INSTDIR)/include/myst/tee.h
-	$(INSTALL) $(BINDIR)/../musl/bin/musl-gcc $(INSTDIR)/bin/myst-gcc
 	rm -rf $(INSTDIR)/lib/openenclave/debugger
 	cp -r $(BUILDDIR)/openenclave/lib/openenclave/debugger $(INSTDIR)/lib/openenclave/debugger
 

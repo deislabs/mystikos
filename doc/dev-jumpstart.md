@@ -7,13 +7,14 @@ This document contains an overview of the code layout and development model, to 
 Please see [README](../README.md) for how to obtain the source code.
 
 Under the root directory, we have:
-*  `third_party/musl/crt` folder that implements the libc library, using MUSL
-as a submodule;
-* `kernel` that implements the kernel library;  and
-* `target` that implement a few targets we support so far.
+*  `third_party/musl/crt` folder that implements the libc library based on
+MUSL;
+* `kernel` that implements the Mystikos kernel;
+* `target` that implements a few targets we support so far;
+* `tools` that implements `myst` command, the primary tool of Mystikos;
 * Specifically for the SGX target, folder `third_party/openenclave` provides
-enclave related functions with Open Enclave SDK as a submodule. We use a
-feature branch from the OE SDK repo.
+enclave related functions. We use a feature branch from the OpenEnclave SDK
+repo.
 
 Also under the root directory:
 
@@ -24,8 +25,6 @@ Mystikos. They are also covered by the CI/CD pipeline.
 not stable enough to be moved into `tests`.
 * The `scripts` folder contains several helper scripts for using Mystikos
 or integrating with the pipeline.
-* The `tools` folder contains a SGX enclave that bootstraps Mystikos, as
-well as the host launcher.
 
 
 ## Trying it out
@@ -41,85 +40,56 @@ consists of the following artifacts:
     * bin: the executables of Mystikos, including:
         * the main executable `myst`
         * the debugger `myst-gdb`
-    * musl, including:
-        * musl-gcc, which is used to compile the C-runtime, kernel and target
-        libraries
-    * lib, including:
+    * lib: including:
         * libmystcrt.so, the output from building `third_party/musl/crt`
         * libmystkernel.so, the output from building `kernel`
         * mysttarget*.a, the output from building target libraries
         * openenclave/mystenc.so, the output from building `tools/myst/enc`
     * openenclave, including the outputs from building OE SDK.
-    * crt-musl: the source code of C-runtime, after patching MUSL
-1. Run a simple application built with musl-gcc
-    ```
-    cd Mystikos/tests/hello
+1. Run a simple application built with gcc
+    ```bash
+    cd tests/hello
     make
     make tests
     ```
     In the 2nd step `make`, we create a temporary folder `appdir`, compile
-    `hello.c` with `musl-gcc`, and place the output executable under
+    `hello.c` with `gcc`, and place the output executable under
     `appdir/bin/hello`, finally we create a CPIO archive out of `appdir`.
 
     In the 3rd step `make tests`, we launch `myst`, giving it the CPIO
     archive, the command to run (`/bin/hello` in this case), and
-    finally, the command line arguments, e.g., "red", "green", and "blue".
+    the command line arguments, e.g., "red", "green", and "blue".
     With this step, we should see the following outputs:
     ```
     Hello world!
     I received: argv[0]={/bin/hello}, argv[1]={red}, argv[2]={green}, argv[3]={blue}
     ```
-1. Run an existing application included in Alpine Linux
+1. Run an existing application included in Ubuntu
 
-    [Alpine Linux](https://alpinelinux.org/) is a Linux distribution that uses
-    MUSL as its libc implementation. Since Mystikos provides a libc
-    interface based on MUSL, many applications included in Alpine Linux could
-    be run with Mystikos without modification.
-    ```
-    cd Mystikos/tests/alpine
-    make
-    make tests
-    ```
-    In the 2nd step, we download and extract a version of `alpine-minirootfs`,
-    put it under `appdir`, and create a CPIO archive out of `appdir`.
+    We build a self-contained application folder using `appbuilder`. The
+    output `appdir` directory contains the executables and libraries bundled in
+    an Ubuntu base image. We create a CPIO archive out of `appdir` and then
+    execute command `ls` with `myst`.
 
-    In the 3rd step, we execute command `ls` on the CPIO archive with `myst`.
+    ```bash
+    appbuilder -i ubuntu:18.04
+    myst mkcpio appdir rootfs
+    myst exec-sgx rootfs /bin/ls /
+    ```
 
 ## Advanced experiments
 
-1.  Run an application built with a docker container based on Alpine Linux with
-a default Dockerfile
+1. Run a user application based on a Linux container. The base OS could be
+Ubuntu, Redhat, Alpine, or other distros.
 
-    When an application depends on 3rd party libraries, we should use docker
-    containers that based on Alpine Linux to install the necessary packages
-    and then build the application. We provide a default dockerfile
-    `alpine/Dockerfile` under the project root for building some
-    of our tests/samples.
     ```
-    cd Mystikos/samples/goodbye
-    make
-    make run
+    cd solutions/attested_tls
+    make && make run
     ```
-    In the 2nd step, we launch a docker container with a pre-built image out
-    of `alpine/Dockerfile`, and compile the application `goodbye.c`.
-    Again, the build outputs are placed under `appdir` which is converted into
-    a CPIO archive.
-
-1. Run an application built with a docker container based on Alpine Linux with a
-customized Dockerfile
-
-    The default dockerfile `alpine/Dockerfile` includes packages such
-    as `build-base`, `mbedtls-dev`, and `curl`. For applications that depend on
-    libraries not included in the default dockerfile, we need to provide a
-    customized Dockerfile.
-    ```
-    cd Mystikos/solutions/attested_tls
-    make run
-    ```
-    During `make run`, we use a customized dockerfile
-    `solutions/attested_tls/Dockerfile` to create a docker image, and then
-    launch it to build the application. We use the script `appbuilder` to
-    automate the process.
+    During `make`, we use `appbuilder` to generated a self contained
+    application folder `appdir` from dockerfile  `solutions/attested_tls/Dockerfile`,
+    and convert that into a CPIO archive. `make run` will launch `myst` command
+    which in turn launch the application located in the CPIO archive.
 
 ## Debugging
 

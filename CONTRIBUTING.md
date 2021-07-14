@@ -14,9 +14,11 @@ submitters must accept the CLA before their contributions can be merged.
 
 ## Coding Standards
 
-**TODO**
-
-- Wrap all lines at 80 chars, where practical.
+- Use descriptive file, function, and variable names
+- Opening curly braces on a new line
+- Wrap all lines at 80 chars, where practical
+- Avoid code duplications whenever possible
+- More to come
 
 ## Pull Request Management
 

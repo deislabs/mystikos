@@ -42,7 +42,7 @@ on lowering the incompatibilities to enable more applications.
 | SYS_msgget / SYS_msgsnd / SYS_msgrcv / SYS_msgctl | System V message queue | Unsupported |
 | SYS_mq_open / SYS_mq_unlink/ SYS_mq_timedsend / SYS_mq_timedreceive / SYS_mq_notify / SYS_mq_getsetattr | Posix message queue | Unsupported |
 | SYS_semop / SYS_semctl / SYS_semget / SYS_semtimedop | System V semaphore | Unsupported |
-| SYS_fork / SYS_vfork | fork a child process  | Unsupported |
+| SYS_fork / SYS_vfork | fork a child process  | Experimental. See [here](design/fork.md) for details |
 | SYS_unshare  | unshare states between parent and child processes | Unsupported |
 | SYS_process_vm_readv / SYS_process_vm_writev | read/write memory from another process | Unsupported |
 | SYS_kcmp | check if two processes share kernel resources | Unsupported |
@@ -52,20 +52,17 @@ on lowering the incompatibilities to enable more applications.
 | SYS_sched_setscheduler / SYS_sched_getscheduler | get/set the scheduling policy and params of process | Stub only |
 | SYS_sched_setattr / SYS_sched_getattr  | get/set scheduling policy and attributes of process | Stub only |
 | SYS_sched_get_priority_max / SYS_sched_get_priority_min  | get min/max priority levels of a policy | Stub only |
-| SYS_sched_setaffinity / SYS_sched_getaffinity | get/set a process's CPU affinity mask | Stub only |
 
 ## System calls related to user/group identity or identity-based permissions
 
 
 | Syscall names        | Description             | Compatibility |
 | -------------------- |-------------------| --------------|
-| SYS_chown / SYS_fchown / SYS_lchown | change owner identity of files | Unsupported |
-| SYS_umask | change default permissions of new files |  Unsupported |
-| SYS_getpgrp / SYS_setpgrp / SYS_getpgid / SYS_setpgid / SYS_getregid / SYS_setregid / SYS_getresgid / SYS_setresgid | get/set process's group ID | Unsupported |
-| SYS_getgroups / SYS_setgroups | get/set group IDs the process belongs to | Unsupported |
-| SYS_setsid / SYS_getsid | Create-and-set or get a session ID | Unsupported |
-| SYS_setreuid / SYS_setresuid/ SYS_getresuid | get/set process's user ID | Unsupported |
-| SYS_setfsuid  / SYS_setfsgid | set process's File System user/group identity | Unsupported |
+| SYS_getpgrp / SYS_setpgrp / SYS_getpgid / SYS_setpgid / SYS_getregid / SYS_setregid / SYS_getresgid / SYS_setresgid | get/set process's group ID | Partial |
+| SYS_getgroups / SYS_setgroups | get/set group IDs the process belongs to | Partial |
+| SYS_setsid / SYS_getsid | Create-and-set or get a session ID | Partial |
+| SYS_setreuid / SYS_setresuid/ SYS_getresuid | get/set process's user ID | Partial |
+| SYS_setfsuid  / SYS_setfsgid | set process's File System user/group identity | Partial |
 
 ## System calls related to reporting or modifying resources including time
 
@@ -81,16 +78,14 @@ on lowering the incompatibilities to enable more applications.
 | SYS_clock_settime / SYS_clock_gettime | get/set nano resolution time from/to various system clocks | Partial |
 | SYS_adjtimex / SYS_clock_adjtime / SYS_settimeofday | Set properties/values of system clocks | Unsupported |
 | SYS_setdomainname             | set NIS domain name | Unsupported |
-| SYS_getcpu                    | get CPU and NUMA node of the calling  | Partial |
 | SYS_prlimit64                 | set resource limits | Partial |
 
 ##  Signal/timer related system calls
 
 | Syscall names        | Description             | Compatibility |
 | -------------------- |-------------------| --------------|
-| SYS_getitimer / SYS_setitimer  | BSD timers | Unsupported |
 | SYS_timer_create / SYS_timer_settime / SYS_timer_gettime / SYS_timer_getoverrun / SYS_timer_delete | Posix timers | Unsupported |
-| SYS_eventfd / SYS_eventfd2 / SYS_signalfd / SYS_signalfd4 / SYS_timerfd_create / SYS_timerfd_settime / SYS_timerfd_gettime              | deliver signal/timer events to a file descriptor | Unsupported |
+| SYS_eventfd / SYS_signalfd / SYS_signalfd4 / SYS_timerfd_create / SYS_timerfd_settime / SYS_timerfd_gettime              | deliver signal/timer events to a file descriptor | Unsupported |
 | SYS_rt_sigtimedwait            | synchronously wait for a signal with timeout | Unsupported |
 | SYS_rt_sigqueueinfo / SYS_rt_tgsigqueueinfo | deliver a signal with siginfo | Unhanlded |
 | SYS_rt_sigsuspend              | replace the signal mask and wait for a signal | Unsupported |
@@ -102,8 +97,7 @@ on lowering the incompatibilities to enable more applications.
 | -------------------- |-------------------| --------------|
 | SYS_fcntl | File descriptor operations | Partial |
 | SYS_mknod | Create a file system node  | Partial |
-| SYS_openat / SYS_futimesat / SYS_faccessat | File system operation relative to a directory file descriptor | Partial |
-| SYS_mkdirat / SYS_mknodat / SYS_fchownat / SYS_renameat2 / SYS_linkat / SYS_fchmodat | File system operation relative to a directory file descriptor | Unsupported |
+| SYS_mkdirat / SYS_mknodat / SYS_renameat2 / SYS_linkat / SYS_fchmodat | File system operation relative to a directory file descriptor | Unsupported |
 | SYS_lsetxattr / SYS_fsetxattr / SYS_getxattr / SYS_lgetxattr / SYS_fgetxattr / SYS_listxattr / SYS_llistxattr / SYS_flistxattr / SYS_removexattr / SYS_lremovexattr/ SYS_fremovexattr | get/set/remove extended file attributes | Unsupported |
 | SYS_inotify_add_watch | Monitor file system changes | Partial |
 | SYS_fanotify_init / SYS_fanotify_mark | Monitor file system changes | Unsupported |

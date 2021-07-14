@@ -163,10 +163,6 @@ int _verifier(myst_tee_identity_t* identity, void* ptr)
 int main()
 {
     long ret;
-    /* Extended syscalls */
-    const long SYS_myst_gen_creds = 1009;
-    const long SYS_myst_free_creds = 1010;
-    const long SYS_myst_verify_cert = 1011;
     void* cert = NULL;
     void* pkey = NULL;
     size_t cert_size = 0, pkey_size = 0;

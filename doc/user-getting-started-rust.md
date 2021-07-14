@@ -57,7 +57,7 @@ Now we can create a CPIO named `rootfs` out of the folder `appdir` with:
 myst mkcpio appdir rootfs
 ```
 
-## Run the program inside a SGX enclave
+## Run the program inside an SGX enclave
 
 The command to launch the program inside an SGX enclave is a little bit long, compared to just `./appdir/myapp` on Linux.
 
@@ -65,7 +65,7 @@ The command to launch the program inside an SGX enclave is a little bit long, co
 myst exec-sgx rootfs /myapp
 ```
 
-The command specifies `myst` as the driver, and asks the driver to execute a program in a SGX enclave in this manner:
+The command specifies `myst` as the driver, and asks the driver to execute a program in an SGX enclave in this manner:
 
 1. Load rootfs as the root file system into the enclave
 1. Load `/myapp` from the file system and execute it.
