@@ -372,9 +372,11 @@ Where <action> is one of:\n\
     exec-linux    -- execute an application within the CPIO archive in a none\n\
                      trusted environment environment (Linux)\n\
     mkcpio        -- create a CPIO archive from an application directory\n\
+    mkext2        -- create an EXT2 image from an application directory\n\
+    fssig         -- dump the file system signature of an EXT2 image\n\
     excpio        -- extract the CPIO archive into an application directory\n\
-    sign-sgx      -- sign the CPIO archive along with configuration and system\n\
-                     files into a directory for the SGX platform\n\
+    sign-sgx      -- sign the CPIO archive along with configuration and\n\
+                     system files into a directory for the SGX platform\n\
     package-sgx   -- create an executable package to run on the SGX platform\n\
                      from an application directory, package configuration and\n\
                      system files, signing and measuring all enclave resident\n\

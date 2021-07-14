@@ -17,5 +17,6 @@ DIRS += dump-package
 DIRS += cwd-config
 DIRS += hostname-config
 DIRS += auto-mount
+DIRS += package
 
 include $(TOP)/rules.mak

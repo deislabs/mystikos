@@ -591,10 +591,7 @@ static int _mount_rootfs(myst_kernel_args_t* args, myst_fstype_t fstype)
             if (_setup_ext2(args->rootfs, locals->err, sizeof(locals->err)) !=
                 0)
             {
-                myst_eprintf(
-                    "failed to setup EXT2 rootfs: %s (%s)\n",
-                    args->rootfs,
-                    locals->err);
+                myst_eprintf("kernel: %s\n", locals->err);
                 ERAISE(-EINVAL);
             }
 

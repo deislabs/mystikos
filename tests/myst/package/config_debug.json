@@ -1,0 +1,15 @@
+{
+    "version": "0.1",
+    "Debug": 1,
+    "KernelMemSize": "4m",
+    "StackMemSize": "256k",
+    "NumUserThreads": 2,
+    "ProductID": 1,
+    "SecurityVersion": 1,
+    "MemorySize": "40m",
+    "ApplicationPath": "/bin/hello",
+    "ApplicationParameters": [],
+    "HostApplicationParameters": false,
+    "EnvironmentVariables": [],
+    "HostEnvironmentVariables": []
+}
