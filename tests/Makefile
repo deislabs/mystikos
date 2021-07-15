@@ -116,8 +116,6 @@ DIRS += thread_abort
 DIRS += synccall
 DIRS += python_subprocess
 
-DIRS = ltp
-
 .PHONY: $(DIRS)
 
 dirs: $(DIRS)
