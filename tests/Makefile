@@ -89,9 +89,9 @@ DIRS += hostfs
 endif
 
 ifndef MYST_ENABLE_GCOV
-ifdef MYST_NIGHTLY_TEST
-DIRS += sockperf
-endif
+# ifdef MYST_NIGHTLY_TEST
+# DIRS += sockperf
+# endif
 DIRS += clock
 DIRS += pollpipe2
 DIRS += dotnet-proc-maps
