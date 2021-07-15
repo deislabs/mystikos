@@ -3660,7 +3660,7 @@ static long _syscall(void* args_)
                     myst_panic("failed to register process mapping");
 
 #if MYST_ENABLE_MMAN_PIDS
-                /* set ownership of these pages to pid */
+                /* set ownership this mapping to pid */
                 if (myst_mman_pids_set(ptr, length, pid) != 0)
                     myst_panic("myst_mman_pids_set()");
 #endif
@@ -3722,13 +3722,9 @@ static long _syscall(void* args_)
 #if MYST_ENABLE_MMAN_PIDS
             if (ret == 0)
             {
-                /* set ownership of these pages to nobody */
+                /* set ownership this mapping to nobody */
                 if (myst_mman_pids_set(addr, length, 0) != 0)
-                {
                     myst_panic("myst_mman_pids_set()");
-                    myst_assume(false);
-                    myst_crash();
-                }
             }
 #endif
 
@@ -3864,7 +3860,7 @@ static long _syscall(void* args_)
                 const pid_t pid = myst_getpid();
                 myst_assume(pid > 0);
 
-                /* check whether caller actually owns this memory */
+                /* fail if the calling process does not own this mapping */
                 if (myst_mman_pids_test(old_address, old_size, pid) != 0)
                     BREAK(_return(n, -EINVAL));
             }

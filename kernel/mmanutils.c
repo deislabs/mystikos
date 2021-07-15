@@ -636,15 +636,19 @@ int myst_release_process_mappings(pid_t pid)
             if (p->pid == pid)
             {
 #if MYST_ENABLE_MMAN_PIDS
-                /* if the process still owns this memory then unmap it */
+                /* if the given process still owns the whole mapping */
                 if (myst_mman_pids_test(p->addr, p->size, pid) == 0)
                 {
+                    /* unmap the whole mapping */
                     myst_munmap(p->addr, p->size);
+
+                    /* set ownership of these pages to nobody */
                     myst_mman_pids_set(p->addr, p->size, 0);
                 }
                 else
                 {
-                    /* release pages in this range owned by this process */
+                    // perform a partial unmapping: unmap all pages in this
+                    // mapping that are owned by the given process.
                     myst_mman_pids_munmap(p->addr, p->size, pid);
                 }
 #else
@@ -1012,24 +1016,23 @@ int myst_mman_pids_munmap(const void* addr, size_t length, pid_t pid)
         ERAISE(-EINVAL);
 
     /* release every page in the mapping owned by this pid */
+    /* ATTN: optimize to handle consecutive pages by the same owner */
     {
         uint8_t* p = (uint8_t*)addr;
         size_t n = length / PAGE_SIZE;
 
-        /* ATTN: optimize to handle consecutive pages by the same owner */
+        /* for each page in the mapping */
         while (n--)
         {
             /* if the process owns this page */
             if (myst_mman_pids_test(p, PAGE_SIZE, pid) == 0)
             {
-                if (myst_munmap(p, PAGE_SIZE) != 0)
+                /* unmap one page */
+                if (myst_munmap(p, PAGE_SIZE) == 0)
                 {
-                    myst_eprintf("******** %s: failed!\n", __FUNCTION__);
-                    myst_assume(false);
+                    /* clear the owner for this page */
+                    myst_mman_pids_set(p, PAGE_SIZE, 0);
                 }
-
-                /* clear the owner for this page */
-                myst_mman_pids_set(p, PAGE_SIZE, 0);
             }
             p += PAGE_SIZE;
         }
