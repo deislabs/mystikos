@@ -32,7 +32,7 @@ If the decryption key can be achieved securely within the TEE then the decryptio
 The second dilemma is that every host this runs on *can* have different disk layouts and the source of the mount may change every time.
 This is especially true in a container world where different filesystem images may be downloaded to different temporary locations that may differ with each run.
 
-When mounting file-systems into the TEE it is good to have the configuration that is secure being part fo the measured configuration of the application,
+When mounting file-systems into the TEE it is good to have the configuration that is secure being part of the measured configuration of the application,
 but keep the host specific mount information separate and specifiable from separate configuration that is passed on the command-line.
 
 ## TEE configuration
@@ -42,27 +42,27 @@ A new node will be added to the JSON configuration that is used in the signing o
 ```json
 mount: [
     {
-        "target": "<target>",
-        "type": "<type>",
-        "flags": [ "<flag>" ],
-        "publicKey": "<publicKey>",
-        "roothash": "<roothash>"
+        "Target": "<target>",
+        "Type": "<type>",
+        "Flags": [ "<flag>" ],
+        "PublicKey": "<publicKey>",
+        "Roothash": "<roothash>"
     },
     {
-        "target": "<target>",
-        "type": "<type>",
-        "flags": [ "<flag>", "<flag>" ]
+        "Target": "<target>",
+        "Type": "<type>",
+        "Flags": [ "<flag>", "<flag>" ]
     }
 ]
 ```
 
 | Name | Value |
 | -- | -- |
-| target | This is the target mount point within the TEE. This mount point path needs to already exist in the TEE filesystem. |
-| type | "ext2", "hostfs", "ramfs" |
-| flags | Optional field that specified flags like "ro", "rw". At this time no flags are supported. |
-| publicKey | For ext2 filesystems this is the public key used to validate the signing key of the ext2 filesystem when it is mounted. This configuration is not currently supported. |
-| roothash | For ext2 filesystems this is the root hash to validate integrity of an integrity protected ext2 filesystem when it is mounted. This configuration is not currently supported. |
+| Target | This is the target mount point within the TEE. This mount point path needs to already exist in the TEE filesystem. |
+| Type | "ext2", "hostfs", "ramfs" |
+| Flags | Optional field that specified flags like "ro", "rw". At this time no flags are supported. |
+| PublicKey | For ext2 filesystems this is the public key used to validate the signing key of the ext2 filesystem when it is mounted. This configuration is not currently supported. |
+| Roothash | For ext2 filesystems this is the root hash to validate integrity of an integrity protected ext2 filesystem when it is mounted. This configuration is not currently supported. |
 | | |
 
 TODO: The source of private key for accessing an encrypted filesystem is not handled in this document at this time.
