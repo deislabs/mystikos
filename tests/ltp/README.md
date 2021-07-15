@@ -701,7 +701,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/mkdir/mkdir04 | 0 | 1 | 0 |
 | /ltp/testcases/kernel/syscalls/mkdir/mkdir05 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/mkdir/mkdir09 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/mkdirat/mkdirat01 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/mkdirat/mkdirat01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/mkdirat/mkdirat02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/mknod/mknod01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/mknod/mknod02 | 0 | 0 | 0 |

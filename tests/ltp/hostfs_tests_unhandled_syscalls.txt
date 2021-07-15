@@ -129,7 +129,6 @@
 /ltp/testcases/kernel/syscalls/mincore/mincore02:  SYS_mincore()
 /ltp/testcases/kernel/syscalls/mincore/mincore03:  SYS_mincore()
 /ltp/testcases/kernel/syscalls/mincore/mincore04:  SYS_munlock()
-/ltp/testcases/kernel/syscalls/mkdirat/mkdirat01:  SYS_mkdirat()
 /ltp/testcases/kernel/syscalls/mknodat/mknodat01:  SYS_mknodat()
 /ltp/testcases/kernel/syscalls/mlock/mlock04:  SYS_munlock()
 /ltp/testcases/kernel/syscalls/mlock2/mlock202:  SYS_mlock2()
