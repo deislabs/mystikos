@@ -1,8 +1,5 @@
-/ltp/testcases/kernel/syscalls/connect/connect01
-/ltp/testcases/kernel/syscalls/getpeername/getpeername01
 /ltp/testcases/kernel/syscalls/madvise/madvise05
 /ltp/testcases/kernel/syscalls/mmap/mmap05
 /ltp/testcases/kernel/syscalls/mprotect/mprotect04
 /ltp/testcases/kernel/syscalls/munmap/munmap01
 /ltp/testcases/kernel/syscalls/munmap/munmap02
-/ltp/testcases/kernel/syscalls/sendto/sendto01

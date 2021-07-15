@@ -16,7 +16,6 @@
 /ltp/testcases/kernel/syscalls/close/close01
 /ltp/testcases/kernel/syscalls/close/close02
 /ltp/testcases/kernel/syscalls/close/close08
-/ltp/testcases/kernel/syscalls/connect/connect01
 /ltp/testcases/kernel/syscalls/creat/creat01
 /ltp/testcases/kernel/syscalls/creat/creat03
 /ltp/testcases/kernel/syscalls/dup/dup01
@@ -93,7 +92,6 @@
 /ltp/testcases/kernel/syscalls/gethostname/gethostname01
 /ltp/testcases/kernel/syscalls/getitimer/getitimer03
 /ltp/testcases/kernel/syscalls/getpagesize/getpagesize01
-/ltp/testcases/kernel/syscalls/getpeername/getpeername01
 /ltp/testcases/kernel/syscalls/getpgrp/getpgrp01
 /ltp/testcases/kernel/syscalls/getpid/getpid02
 /ltp/testcases/kernel/syscalls/getppid/getppid01
@@ -191,7 +189,6 @@
 /ltp/testcases/kernel/syscalls/sendfile/sendfile06_64
 /ltp/testcases/kernel/syscalls/sendfile/sendfile08
 /ltp/testcases/kernel/syscalls/sendfile/sendfile08_64
-/ltp/testcases/kernel/syscalls/sendto/sendto01
 /ltp/testcases/kernel/syscalls/set_robust_list/set_robust_list01
 /ltp/testcases/kernel/syscalls/set_tid_address/set_tid_address01
 /ltp/testcases/kernel/syscalls/setegid/setegid01
