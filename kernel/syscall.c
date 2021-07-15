@@ -2263,10 +2263,42 @@ long myst_syscall_fchmod(int fd, mode_t mode)
     }
     else
     {
+        // The pipe type fd is unsupported. Calling chmod on pipe
+        // is uncommon. To support pipe, pipedev needs to inherit
+        // from the myst_fs interface.
         ERAISE(-ENOTSUP);
     }
 
 done:
+    return ret;
+}
+
+long myst_syscall_fchmodat(
+    int dirfd,
+    const char* pathname,
+    mode_t mode,
+    int flags)
+{
+    long ret = 0;
+    char* abspath = NULL;
+
+    // Man page states "AT_SYMLINK_NOFOLLOW is not supported".
+    // MUSL C wrapper actually implemented this flag: the
+    // wrapper digests this flag and will always pass flags=0
+    // to syscall.
+    if (flags & AT_SYMLINK_NOFOLLOW)
+        ERAISE(-ENOTSUP);
+    else if (flags)
+        ERAISE(-EINVAL);
+
+    ECHECK(myst_get_absolute_path_from_dirfd(dirfd, pathname, 0, &abspath));
+    ret = myst_syscall_chmod(abspath, mode);
+
+done:
+
+    if (abspath && (abspath != pathname))
+        free(abspath);
+
     return ret;
 }
 
@@ -5402,7 +5434,25 @@ static long _syscall(void* args_)
                 n, myst_syscall_readlinkat(dirfd, pathname, buf, bufsiz)));
         }
         case SYS_fchmodat:
-            break;
+        {
+            int dirfd = (int)x1;
+            const char* pathname = (const char*)x2;
+            mode_t mode = (mode_t)x3;
+            int flags = (int)x4;
+            long ret;
+
+            _strace(
+                n,
+                "dirfd=%d pathname=\"%s\" mode=0%o flags=0%o",
+                dirfd,
+                pathname,
+                mode,
+                flags);
+
+            ret = myst_syscall_fchmodat(dirfd, pathname, mode, flags);
+
+            BREAK(_return(n, ret));
+        }
         case SYS_faccessat:
         {
             int dirfd = (int)x1;
