@@ -322,7 +322,10 @@ static int _td_get_events(myst_ttydev_t* ttydev, myst_tty_t* tty)
     if (!ttydev || !_valid_tty(tty))
         ERAISE(-EINVAL);
 
-    ret = -ENOTSUP;
+    if (tty->fd == STDOUT_FILENO)
+        ret |= POLLOUT;
+    else
+        ret = -ENOTSUP;
 
 done:
     return ret;
