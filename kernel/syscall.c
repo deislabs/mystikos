@@ -1541,6 +1541,29 @@ done:
     return ret;
 }
 
+long myst_syscall_mkdirat(int dirfd, const char* pathname, mode_t mode)
+{
+    char* abspath = NULL;
+    long ret = 0;
+
+    if (dirfd == AT_FDCWD)
+    {
+        ret = myst_syscall_mkdir(pathname, mode);
+    }
+    else
+    {
+        ECHECK(myst_get_absolute_path_from_dirfd(dirfd, pathname, 0, &abspath));
+        ret = myst_syscall_mkdir(abspath, mode);
+    }
+
+done:
+
+    if (abspath != pathname)
+        free(abspath);
+
+    return ret;
+}
+
 long myst_syscall_rmdir(const char* pathname)
 {
     long ret = 0;
@@ -5273,7 +5296,19 @@ static long _syscall(void* args_)
             BREAK(_return(n, ret));
         }
         case SYS_mkdirat:
-            break;
+        {
+            int dirfd = (int)x1;
+            const char* pathname = (const char*)x2;
+            mode_t mode = (mode_t)x3;
+            long ret;
+
+            _strace(
+                n, "dirfd=%d pathname=\"%s\" mode=0%o", dirfd, pathname, mode);
+
+            ret = myst_syscall_mkdirat(dirfd, pathname, mode);
+
+            BREAK(_return(n, ret));
+        }
         case SYS_mknodat:
             break;
         case SYS_futimesat:

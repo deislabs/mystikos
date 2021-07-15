@@ -97,7 +97,7 @@ on lowering the incompatibilities to enable more applications.
 | -------------------- |-------------------| --------------|
 | SYS_fcntl | File descriptor operations | Partial |
 | SYS_mknod | Create a file system node  | Partial |
-| SYS_mkdirat / SYS_mknodat / SYS_renameat2 / SYS_linkat / SYS_fchmodat | File system operation relative to a directory file descriptor | Unsupported |
+| SYS_mknodat / SYS_renameat2 / SYS_linkat / SYS_fchmodat | File system operation relative to a directory file descriptor | Unsupported |
 | SYS_lsetxattr / SYS_fsetxattr / SYS_getxattr / SYS_lgetxattr / SYS_fgetxattr / SYS_listxattr / SYS_llistxattr / SYS_flistxattr / SYS_removexattr / SYS_lremovexattr/ SYS_fremovexattr | get/set/remove extended file attributes | Unsupported |
 | SYS_inotify_add_watch | Monitor file system changes | Partial |
 | SYS_fanotify_init / SYS_fanotify_mark | Monitor file system changes | Unsupported |

@@ -155,6 +155,8 @@ long myst_syscall_fstat(int fd, struct stat* statbuf);
 
 long myst_syscall_mkdir(const char* pathname, mode_t mode);
 
+long myst_syscall_mkdirat(int dirfd, const char* pathname, mode_t mode);
+
 long myst_syscall_getdents64(int fd, struct dirent* dirp, size_t count);
 
 long myst_syscall_rmdir(const char* pathname);
