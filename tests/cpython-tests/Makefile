@@ -8,21 +8,22 @@ ifdef STRACE
 OPTS += --strace
 endif
 OPTS += --fork-mode pseudo_wait_for_exit_exec
+TESTFILE=tests.passed
 TC = test_grammar
 
 all: ext2fs
 
 appdir:
-	$(APPBUILDER) -i vtikoo/cpython:3.8-ubuntu
+	$(APPBUILDER) Dockerfile
 
 ext2fs: appdir
 	$(MYST) mkext2 appdir ext2fs
 
 clean:
-	rm -fr appdir ext2fs
+	rm -fr appdir ext2fs @test_101*
 
 tests:
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) ext2fs /cpython/python -m test -f pass-list -q
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) ext2fs /cpython/python -m test -f $(TESTFILE) -q
 
 run-single:
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) ext2fs /cpython/python -m test $(TC) -q
