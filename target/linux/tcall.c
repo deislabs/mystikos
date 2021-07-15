@@ -11,7 +11,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/resource.h>
 #include <sys/syscall.h>
+#include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -251,6 +253,16 @@ long myst_tcall_identity(long n, long params[6], uid_t uid, gid_t gid)
     }
 
     return ret;
+}
+
+static long _tcall_wait4(
+    pid_t pid,
+    int* wstatus,
+    int options,
+    struct rusage* rusage)
+{
+    long ret = wait4(pid, wstatus, options, rusage);
+    return (ret < 0) ? -errno : ret;
 }
 
 long myst_tcall(long n, long params[6])
@@ -515,6 +527,11 @@ long myst_tcall(long n, long params[6])
         {
             assert("linux: MYST_TCALL_FORK unimplmented!" == NULL);
             return -ENOTSUP;
+        }
+        case MYST_TCALL_WAIT4:
+        {
+            return _tcall_wait4(
+                (pid_t)x1, (int*)x2, (int)x3, (struct rusage*)x4);
         }
         case SYS_ioctl:
         {

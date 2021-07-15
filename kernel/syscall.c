@@ -4043,6 +4043,7 @@ static long _syscall(void* args_)
         }
         case SYS_fork:
         {
+#ifdef MYST_ENABLE_FORK
             _strace(n, NULL);
 
             /* save the thread pointer and restore in child below */
@@ -4063,6 +4064,9 @@ static long _syscall(void* args_)
                 myst_assume(myst_tcall_set_tsd((uint64_t)self) == 0);
                 BREAK(_return(n, 0));
             }
+#else
+            break;
+#endif
         }
         case SYS_vfork:
             break;
@@ -4105,10 +4109,14 @@ static long _syscall(void* args_)
             int* wstatus = (int*)x2;
             int options = (int)x3;
             struct rusage* rusage = (struct rusage*)x4;
-            long ret;
 
-            ret = myst_syscall_wait4(pid, wstatus, options, rusage);
+#ifdef MYST_ENABLE_FORK
+            long ret = myst_tcall_wait4(pid, wstatus, options, rusage);
             BREAK(_return(n, ret));
+#else
+            long ret = myst_syscall_wait4(pid, wstatus, options, rusage);
+            BREAK(_return(n, ret));
+#endif
         }
         case SYS_kill:
         {

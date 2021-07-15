@@ -13,6 +13,7 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <sys/user.h>
 #include <syscall.h>
@@ -155,6 +156,13 @@ void* oe_sgx_get_enclave_base_address_hook(void)
     return (void*)MAGIC_ENCLAVE_BASE_ADDRESS;
 }
 
+__attribute__((__unused__)) static uint64_t _time_usec(void)
+{
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return tv.tv_sec * 1000000 + tv.tv_usec;
+}
+
 int exec_launch_enclave(
     const char* enc_path,
     oe_enclave_type_t type,
@@ -179,7 +187,12 @@ int exec_launch_enclave(
         _err("clock_gettime() failed");
 
     /* Load the enclave: calls oe_load_extra_enclave_data_hook() */
+    uint64_t t1 = _time_usec();
     r = oe_create_myst_enclave(enc_path, type, flags, NULL, 0, &_enclave);
+    uint64_t t2 = _time_usec();
+    double elapsed = (double)(t2 - t1) / 1000000.0;
+    printf("ENCLAVE LOAD TIME: %3.5lf\n", elapsed);
+    fflush(stdout);
 
     if (r != OE_OK)
         _err("failed to load enclave: result=%s", oe_result_str(r));

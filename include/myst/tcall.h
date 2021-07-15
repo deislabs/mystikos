@@ -8,6 +8,7 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <sys/resource.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -57,6 +58,7 @@ typedef enum myst_tcall_number
     MYST_TCALL_GET_FILE_SIZE,
     MYST_TCALL_READ_FILE,
     MYST_TCALL_FORK,
+    MYST_TCALL_WAIT4,
 } myst_tcall_number_t;
 
 long myst_tcall(long n, long params[6]);
@@ -165,5 +167,11 @@ int myst_tcall_get_file_size(const char* pathname);
 int myst_tcall_read_file(const char* pathname, char* buf, size_t size);
 
 long myst_tcall_fork(const void* unused_addr, size_t unused_length);
+
+long myst_tcall_wait4(
+    pid_t pid,
+    int* wstatus,
+    int options,
+    struct rusage* rusage);
 
 #endif /* _MYST_TCALL_H */

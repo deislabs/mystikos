@@ -18,7 +18,8 @@ ifdef STRACE
 OPTS += --strace
 endif
 
-#OPTS += --memory-size=1g
+OPTS += --memory-size=8m
+#OPTS += --memory-size=512m
 
 tests: all
 	$(RUNTEST) $(MYST_EXEC) rootfs /bin/newfork $(OPTS)

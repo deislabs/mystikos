@@ -3,13 +3,24 @@
 
 #include <assert.h>
 #include <limits.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/wait.h>
 #include <unistd.h>
+
+static uint64_t _time_usec(void)
+{
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return tv.tv_sec * 1000000 + tv.tv_usec;
+}
 
 int main(int argc, const char* argv[])
 {
+    printf("fork\n");
+    uint64_t t1 = _time_usec();
     pid_t pid = fork();
 
     if (pid < 0) /* error */
@@ -19,30 +30,31 @@ int main(int argc, const char* argv[])
     }
     else if (pid > 0) /* parent */
     {
-        printf("%s: parent: pid=%d\n", argv[0], pid);
+        double elapsed = (double)(_time_usec() - t1) / 1000000.0;
+        printf("%s: parent: pid=%d %3.5lfsec\n", argv[0], pid, elapsed);
 
-        for (size_t i = 0; i < 10; i++)
-        {
-            printf("%s: parent: %zu\n", argv[0], i);
-            sleep(1);
-        }
+        /* wait for child to exit */
+        int wstatus;
+        assert(waitpid(pid, &wstatus, 0) == pid);
+        assert(WIFEXITED(wstatus));
+        assert(WEXITSTATUS(wstatus) == 123);
 
-        sleep(2);
         printf("%s: parent exit\n", argv[0]);
         exit(0);
     }
     else /* child */
     {
-        printf("%s: child\n", argv[0]);
+        double elapsed = (double)(_time_usec() - t1) / 1000000.0;
+        printf("%s: child: %3.5lfsec\n", argv[0], elapsed);
 
-        for (size_t i = 0; i < 10; i++)
+        for (size_t i = 0; i < 3; i++)
         {
             printf("%s: child: %zu\n", argv[0], i);
             sleep(1);
         }
 
         printf("%s: child exit\n", argv[0]);
-        exit(0);
+        exit(123);
     }
 
     return 0;

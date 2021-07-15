@@ -583,6 +583,11 @@ long myst_tcall(long n, long params[6])
         {
             return myst_tcall_fork((const void*)x1, (size_t)x2);
         }
+        case MYST_TCALL_WAIT4:
+        {
+            return myst_tcall_wait4(
+                (pid_t)x1, (int*)x2, (int)x3, (struct rusage*)x4);
+        }
         case SYS_read:
         case SYS_write:
         case SYS_close:
