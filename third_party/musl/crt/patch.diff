@@ -404,6 +404,16 @@ index a6869b37..a312428b 100644
  }
 +
 +_Noreturn weak_alias(do_crt_exit, exit);
+diff --git a/src/fcntl/fcntl.c b/src/fcntl/fcntl.c
+index d3bff5c4..78c373ab 100644
+--- a/src/fcntl/fcntl.c
++++ b/src/fcntl/fcntl.c
+@@ -46,3 +46,5 @@ int fcntl(int fd, int cmd, ...)
+ 		return syscall(SYS_fcntl, fd, cmd, arg);
+ 	}
+ }
++
++weak_alias(fcntl, fcntl64);
 diff --git a/src/fcntl/open.c b/src/fcntl/open.c
 index 1d817a2d..a36ba05e 100644
 --- a/src/fcntl/open.c
