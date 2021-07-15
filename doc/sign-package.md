@@ -116,7 +116,8 @@ EnvironmentVariables | Enclave defined environment variables
 HostEnvironmentVariables | A list of environment variables that can be imported from the insecure host
 Hostname | The default hostname exposed to application
 CurrentWorkingDirectory | The default working directory for the application
-
+ForkMode | Specify the mode used for the experimental pseudo fork feature. Refer to [doc/design/fork.md](doc/design/fork.md) for more details. The default mode is `none`, which disables the feature.
+Mount | Set if parameters for informing Mystikos to automatically mount a set of directories or ext2 disk images from the host into the TEE. Refer to [doc/design/mount-config-design.md](doc/design/mount-config-design.md) for more details. By default no extra mounts are added to the root filesystem.
 
 ---
 
@@ -136,7 +137,9 @@ myst package-sgx ./appdir private.pem config.json
 
 During the packaging process all the Mystikos executables and shared libraries are pulled together with the application directory and configuration and signed with the signing certificate. All enclave resident pieces of Mystikos and the `appdir` are all measured during the signing process and this measurement is verified while the SGX enclave is created. If there is a mismatch then the loading will fail.
 
-The result of this command is a single executable with the same name as specified in the configuration.
+In this example the appdir directory is converted to a CPIO archive before packaged into the single executable. This works for small directories, but if a lot of files reside in the appdir an ext2 may be better for performance reasons. Refer to [doc/using-ext2.md](doc/using-ext2.md) for more details.
+
+The result of this command is a single executable with the same application name as specified in the application path within the configuration.
 
 Execution is as simple as running the executable:
 
