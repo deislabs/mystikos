@@ -64,4 +64,13 @@ void myst_mman_stats(myst_mman_stats_t* buf);
 
 int proc_pid_maps_vcallback(myst_buf_t* vbuf);
 
+/* marks all pages in the mapping as owned by the given process */
+int myst_mman_pids_set(const void* addr, size_t length, pid_t pid);
+
+/* test whether all pages in the mapping are owned by the given process */
+int myst_mman_pids_test(const void* addr, size_t length, pid_t pid);
+
+/* release all pages in the mapping that are owned by the given process */
+int myst_mman_pids_munmap(const void* addr, size_t length, pid_t pid);
+
 #endif /* _MYST_MMANUTILS_H */

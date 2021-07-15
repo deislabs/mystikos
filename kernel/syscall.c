@@ -3628,8 +3628,6 @@ static long _syscall(void* args_)
             int flags = (int)x4;
             int fd = (int)x5;
             off_t offset = (off_t)x6;
-            void* ptr;
-            long ret = 0;
 
             _strace(
                 n,
@@ -3642,15 +3640,13 @@ static long _syscall(void* args_)
                 fd,
                 offset);
 
-            ptr = myst_mmap(addr, length, prot, flags, fd, offset);
+            /* this can return (void*)-errno */
+            long ret = (long)myst_mmap(addr, length, prot, flags, fd, offset);
 
-            if (ptr == MAP_FAILED || !ptr)
-            {
-                ret = -ENOMEM;
-            }
-            else
+            if (ret > 0)
             {
                 pid_t pid = myst_getpid();
+                void* ptr = (void*)ret;
 
                 if (myst_register_process_mapping(
                         pid,
@@ -3662,6 +3658,12 @@ static long _syscall(void* args_)
                         offset,
                         prot) != 0)
                     myst_panic("failed to register process mapping");
+
+#if MYST_ENABLE_MMAN_PIDS
+                /* set ownership of these pages to pid */
+                if (myst_mman_pids_set(ptr, length, pid) != 0)
+                    myst_panic("myst_mman_pids_set()");
+#endif
 
                 ret = (long)ptr;
             }
@@ -3715,7 +3717,22 @@ static long _syscall(void* args_)
                 }
             }
 
-            BREAK(_return(n, (long)myst_munmap(addr, length)));
+            long ret = (long)myst_munmap(addr, length);
+
+#if MYST_ENABLE_MMAN_PIDS
+            if (ret == 0)
+            {
+                /* set ownership of these pages to nobody */
+                if (myst_mman_pids_set(addr, length, 0) != 0)
+                {
+                    myst_panic("myst_mman_pids_set()");
+                    myst_assume(false);
+                    myst_crash();
+                }
+            }
+#endif
+
+            BREAK(_return(n, ret));
         }
         case SYS_brk:
         {
@@ -3842,6 +3859,17 @@ static long _syscall(void* args_)
             void* new_address = (void*)x5;
             long ret;
 
+#if MYST_ENABLE_MMAN_PIDS
+            {
+                const pid_t pid = myst_getpid();
+                myst_assume(pid > 0);
+
+                /* check whether caller actually owns this memory */
+                if (myst_mman_pids_test(old_address, old_size, pid) != 0)
+                    BREAK(_return(n, -EINVAL));
+            }
+#endif
+
             _strace(
                 n,
                 "old_address=%p "
@@ -3857,6 +3885,21 @@ static long _syscall(void* args_)
 
             ret = (long)myst_mremap(
                 old_address, old_size, new_size, flags, new_address);
+
+#if MYST_ENABLE_MMAN_PIDS
+            if (ret >= 0)
+            {
+                const pid_t pid = myst_getpid();
+
+                /* set ownership of old mapping to nobody */
+                if (myst_mman_pids_set(old_address, old_size, 0) != 0)
+                    myst_panic("myst_mman_pids_set()");
+
+                /* set ownership of new mapping to pid */
+                if (myst_mman_pids_set((const void*)ret, new_size, pid) != 0)
+                    myst_panic("myst_mman_pids_set()");
+            }
+#endif
 
             BREAK(_return(n, ret));
         }
