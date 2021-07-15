@@ -20,6 +20,7 @@ struct myst_sock
 {
     uint32_t magic; /* MAGIC */
     int fd;         /* the target-relative file descriptor */
+    _Atomic(size_t) active_calls;
 };
 
 MYST_INLINE bool _valid_sock(const myst_sock_t* sock)
@@ -85,7 +86,11 @@ static int _sd_socket(
     /* perform syscall */
     {
         long params[6] = {domain, type, protocol};
-        ECHECK(fd = myst_tcall(SYS_socket, params));
+
+        sock->active_calls++;
+        fd = myst_tcall(SYS_socket, params);
+        sock->active_calls--;
+        ECHECK(fd);
     }
 
     sock->fd = (int)fd;
@@ -162,7 +167,11 @@ static int _sd_connect(
     /* perform syscall */
     {
         long params[6] = {sock->fd, (long)addr, addrlen};
-        ECHECK(myst_tcall(SYS_connect, params));
+
+        sock->active_calls++;
+        ret = myst_tcall(SYS_connect, params);
+        sock->active_calls--;
+        ECHECK(ret);
     }
 
 done:
@@ -189,7 +198,11 @@ static int _sd_accept4(
     /* perform syscall */
     {
         long params[6] = {sock->fd, (long)addr, (long)addrlen, flags};
-        ECHECK((fd = myst_tcall(SYS_accept4, params)));
+
+        sock->active_calls++;
+        fd = myst_tcall(SYS_accept4, params);
+        sock->active_calls--;
+        ECHECK(fd);
     }
 
     new_sock->fd = fd;
@@ -218,7 +231,11 @@ static int _sd_bind(
     /* perform syscall */
     {
         long params[6] = {sock->fd, (long)addr, addrlen};
-        ECHECK(myst_tcall(SYS_bind, params));
+
+        sock->active_calls++;
+        ret = myst_tcall(SYS_bind, params);
+        sock->active_calls--;
+        ECHECK(ret);
     }
 
 done:
@@ -236,7 +253,11 @@ static int _sd_listen(myst_sockdev_t* sd, myst_sock_t* sock, int backlog)
     /* perform syscall */
     {
         long params[6] = {sock->fd, backlog};
-        ECHECK(myst_tcall(SYS_listen, params));
+
+        sock->active_calls++;
+        ret = myst_tcall(SYS_listen, params);
+        sock->active_calls--;
+        ECHECK(ret);
     }
 
 done:
@@ -263,7 +284,10 @@ static ssize_t _sd_sendto(
         long params[6] = {
             sock->fd, (long)buf, len, flags, (long)dest_addr, (long)addrlen};
 
-        ECHECK((ret = myst_tcall(SYS_sendto, params)));
+        sock->active_calls++;
+        ret = myst_tcall(SYS_sendto, params);
+        sock->active_calls--;
+        ECHECK(ret);
     }
 
 done:
@@ -289,7 +313,10 @@ static ssize_t _sd_recvfrom(
         long params[6] = {
             sock->fd, (long)buf, len, flags, (long)src_addr, (long)addrlen};
 
-        ECHECK((ret = myst_tcall(SYS_recvfrom, params)));
+        sock->active_calls++;
+        ret = myst_tcall(SYS_recvfrom, params);
+        sock->active_calls--;
+        ECHECK(ret);
     }
 
 done:
@@ -343,7 +370,11 @@ static int _sd_sendmsg(
     /* perform syscall */
     {
         long params[6] = {sock->fd, (long)msg_ptr, flags};
-        ECHECK((ret = myst_tcall(SYS_sendmsg, params)));
+
+        sock->active_calls++;
+        ret = myst_tcall(SYS_sendmsg, params);
+        sock->active_calls--;
+        ECHECK(ret);
     }
 
 done:
@@ -368,7 +399,11 @@ static int _sd_recvmsg(
     /* perform syscall */
     {
         long params[6] = {sock->fd, (long)msg, flags};
-        ECHECK((ret = myst_tcall(SYS_recvmsg, params)));
+
+        sock->active_calls++;
+        ret = myst_tcall(SYS_recvmsg, params);
+        sock->active_calls--;
+        ECHECK(ret);
     }
 
 done:
@@ -385,7 +420,11 @@ static int _sd_shutdown(myst_sockdev_t* sd, myst_sock_t* sock, int how)
     /* perform syscall */
     {
         long params[6] = {sock->fd, how};
-        ECHECK(myst_tcall(SYS_shutdown, params));
+
+        sock->active_calls++;
+        ret = myst_tcall(SYS_shutdown, params);
+        sock->active_calls--;
+        ECHECK(ret);
     }
 
 done:
@@ -413,7 +452,11 @@ static int _sd_getsockopt(
     /* perform syscall */
     {
         long params[6] = {sock->fd, level, optname, (long)optval, (long)optlen};
-        ECHECK(myst_tcall(SYS_getsockopt, params));
+
+        sock->active_calls++;
+        ret = myst_tcall(SYS_getsockopt, params);
+        sock->active_calls--;
+        ECHECK(ret);
     }
 
 done:
@@ -436,7 +479,11 @@ static int _sd_setsockopt(
     /* perform syscall */
     {
         long params[6] = {sock->fd, level, optname, (long)optval, (long)optlen};
-        ECHECK(myst_tcall(SYS_setsockopt, params));
+
+        sock->active_calls++;
+        ret = myst_tcall(SYS_setsockopt, params);
+        sock->active_calls--;
+        ECHECK(ret);
     }
 
 done:
@@ -457,7 +504,11 @@ static int _sd_getpeername(
     /* perform syscall */
     {
         long params[6] = {sock->fd, (long)addr, (long)addrlen};
-        ECHECK(myst_tcall(SYS_getpeername, params));
+
+        sock->active_calls++;
+        ret = myst_tcall(SYS_getpeername, params);
+        sock->active_calls--;
+        ECHECK(ret);
     }
 
 done:
@@ -478,7 +529,11 @@ static int _sd_getsockname(
     /* perform syscall */
     {
         long params[6] = {sock->fd, (long)addr, (long)addrlen};
-        ECHECK(myst_tcall(SYS_getsockname, params));
+
+        sock->active_calls++;
+        ret = myst_tcall(SYS_getsockname, params);
+        sock->active_calls--;
+        ECHECK(ret);
     }
 
 done:
@@ -499,7 +554,11 @@ static ssize_t _sd_read(
     /* perform syscall */
     {
         long params[6] = {sock->fd, (long)buf, count};
-        ECHECK((ret = myst_tcall(SYS_read, params)));
+
+        sock->active_calls++;
+        ret = myst_tcall(SYS_read, params);
+        sock->active_calls--;
+        ECHECK(ret);
     }
 
 done:
@@ -520,7 +579,11 @@ static ssize_t _sd_write(
     /* perform syscall */
     {
         long params[6] = {sock->fd, (long)buf, count};
-        ECHECK((ret = myst_tcall(SYS_write, params)));
+
+        sock->active_calls++;
+        ret = myst_tcall(SYS_write, params);
+        sock->active_calls--;
+        ECHECK(ret);
     }
 
 done:
@@ -576,7 +639,11 @@ static int _sd_fstat(
     /* perform syscall */
     {
         long params[6] = {sock->fd, (long)statbuf};
-        ECHECK(myst_tcall(SYS_fstat, params));
+
+        sock->active_calls++;
+        ret = myst_tcall(SYS_fstat, params);
+        sock->active_calls--;
+        ECHECK(ret);
     }
 
 done:
@@ -597,7 +664,10 @@ static int _sd_ioctl(
     /* perform syscall */
     {
         long params[6] = {sock->fd, request, arg};
-        ECHECK(myst_tcall(SYS_ioctl, params));
+        sock->active_calls++;
+        ret = myst_tcall(SYS_ioctl, params);
+        sock->active_calls--;
+        ECHECK(ret);
     }
 
 done:
@@ -614,7 +684,11 @@ static int _sd_fcntl(myst_sockdev_t* sd, myst_sock_t* sock, int cmd, long arg)
     /* perform syscall */
     {
         long params[6] = {sock->fd, cmd, arg};
-        ECHECK((ret = myst_tcall(SYS_fcntl, params)));
+
+        sock->active_calls++;
+        ret = myst_tcall(SYS_fcntl, params);
+        sock->active_calls--;
+        ECHECK(ret);
     }
 
 done:
@@ -664,6 +738,13 @@ static int _sd_close(myst_sockdev_t* sd, myst_sock_t* sock)
 
     if (!sd || !_valid_sock(sock))
         ERAISE(-EINVAL);
+
+    /* make sure it is shut down to make sure the socket gets unblocked */
+    if (sock->active_calls)
+    {
+        long params[6] = {sock->fd, SHUT_RDWR};
+        myst_tcall(SYS_shutdown, params);
+    }
 
     /* perform syscall */
     {
