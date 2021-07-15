@@ -15,6 +15,7 @@
 /ltp/testcases/kernel/syscalls/alarm/alarm07
 /ltp/testcases/kernel/syscalls/bind/bind01
 /ltp/testcases/kernel/syscalls/bind/bind02
+/ltp/testcases/kernel/syscalls/bind/bind03
 /ltp/testcases/kernel/syscalls/bind/bind04
 /ltp/testcases/kernel/syscalls/bind/bind05
 /ltp/testcases/kernel/syscalls/bind/bind06
