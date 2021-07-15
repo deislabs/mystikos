@@ -4,7 +4,7 @@ This is an experimental feature. By default it is disabled.
 
 This document explains the implementation of fork with Mystikos and talks about the types of scenarios that could break as a result.
 This is by no means a complete list of the types of issues that may happen, more the types of issues that have been encountered so far.
-Although there are a number scenarios where this implementation will not work, there are a number of scenarios that will.
+Although there are a number of scenarios where this implementation will not work, there are a number of scenarios that will.
 
 ## Design
 
@@ -17,7 +17,7 @@ With vfork (not currently implemented) you get a new process but you share the p
 Our fork does give the forked process its own stack and we copy the contents of the calling process' stack into this, as well as fix up the frame pointers on the new stack so the stack unwind will work.
 The kernel will duplicate kernel file descriptors and various other process state, and handle all the inheritance of process settings like signal handlers and process identity.
 
-The process clone itself is handled within the kernel, but the fork implementation is actually implemented in an overridden CRT fork implementation. The stack duplication is an example of what is done in user space, versus the clone which happens in the kernel.
+The process clone itself is handled within the kernel, but the fork implementation is actually implemented in an overridden CRT implementation. The stack duplication is an example of what is done in user space, versus the clone which happens in the kernel.
 
  With the single address space being shared between the parent and all forked children (and forks of forked children) there are a number of issues that can arise.
  The single address space causes the same global variables in the parent to be shared with the children, meaning changes made by one of the processes will affect the other.
@@ -30,11 +30,24 @@ The process clone itself is handled within the kernel, but the fork implementati
  This is achieved with the fork implementation chosen.
 
  The shared address space also causes problems for the copying of the parents stack into the child.
- The new child stack has all the frame pointers updated such that a stack walk can be achieved in the current stack, any stack variables that may point to other stack variables on the same stack will be incorrect and will point to the parents stack. One  way to achieve this is to search the space on the stack where function parameters and stack variables reside and fix them up, but this is potentially error prone and may cause fixup of other random values on the stack. Therefore these stack pointers are not currently being fixed up.
+ The new child stack has all the frame pointers updated such that a stack walk can be achieved in the current stack, any stack variables that may point to other stack variables on the same stack will be incorrect and will point to the parents stack.
+ One  way to achieve this is to search the space on the stack where function parameters and stack variables reside and fix them up, but this is potentially error prone and may cause fixup of other random values on the stack.
+ Therefore these stack pointers are not currently being fixed up.
 
- Another problem with shared address space is related to the return of the fork() command. The parent may allocate some memory that will be used in the child forked process, but when fork() returns to continue execution the parent may delete this memory, causing the child forked process to use memory after it is freed. For this reason the safest model may be to only support a strict fork/exec model where the parent waits for the child to execute a new process through one of the exec*() APIs. This mode of operation is enabled through the fork configuration.
+ Another problem with shared address space is related to the return of the fork() command.
+ The parent may allocate some memory that will be used in the child forked process, but when fork() returns to continue execution the parent may delete this memory, causing the child forked process to use memory after it is freed.
+ For this reason the safest model may be to only support a strict fork/exec model where the parent waits for the child to execute a new process through one of the exec*() APIs.
+ This mode of operation is enabled through the fork configuration.
 
-Because the pseudo fork syscall is not a real fork implementation and thus is not immune from data corruptions, the application needs to opt-in to use it. This is done with a new entry in the application config.json that is used for signing and packaging, or via the command line for non-signed testing.
+ Some of these issues _may_ be alleviated by using the pseudo_wait_for_exit_exec.
+ This flag makes the parent process block until the parent calls an exec*() function, or exits.
+ Some scenarios where this may help include:
+
+* If the child will call an exec*() function and not change any global variables.
+* If the child executes some code and return but does not change any global variables.
+
+Because the pseudo fork syscall is not a real fork implementation and thus is not immune from data corruptions, the application needs to opt-in to use it.
+This is done with a new entry in the application config.json that is used for signing and packaging, or via the command line for non-signed testing.
 
 | Name | Value |
 | -- | -- |
