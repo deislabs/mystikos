@@ -8,13 +8,25 @@
 //     [RSI] long (*func)(void* arg),
 //     [RDX] void* arg);
 //
-// Call a function on the given stack
+// Call a function on the given stack.
 //
+// GDB normally will stop stack-walking at a function if it determines that
+// the stack does not monotonically decrease at the function.
+// This could be the case for some invocations of myst_call_on_stack, if the
+// `stack` parameter is greater than RSP upon entry.
+// To support the split-stack feature, GDB however relaxes the above
+// constraint for functions named `__morestack`.
+// We leverage this GDB behavior by moving the body of myst_call_on_stack to
+// a local function name `__morestack` to which myst_call_on_stack jumps to.
 //==============================================================================
-
 .globl myst_call_on_stack
 .type myst_call_on_stack, @function
 myst_call_on_stack:
+   jmp __morestack
+.size myst_call_on_stack, .-myst_call_on_stack
+
+.type __morestack, @function
+__morestack:
 .cfi_startproc
 
     pushq %rbp
@@ -36,3 +48,4 @@ myst_call_on_stack:
     ret
 
 .cfi_endproc
+.size __morestack, .-__morestack
