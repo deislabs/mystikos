@@ -941,6 +941,22 @@ static void test_enotdir()
     _passed(__FUNCTION__);
 }
 
+static void test_fchmodat()
+{
+    assert(mkdir("/test_fchmodat", 0777) == 0);
+    int dirfd = open("/test_fchmodat", O_DIRECTORY);
+    assert(dirfd >= 0);
+    int fd = creat("/test_fchmodat/file1", 0666);
+    assert(fd >= 0);
+    assert(fchmodat(dirfd, "file1", 0666, 0) == 0);
+    assert(fchmodat(dirfd, "file1", 0666, 0x3) < 0);
+    assert(errno = EINVAL);
+    assert(close(dirfd) == 0);
+    assert(close(fd) == 0);
+
+    _passed(__FUNCTION__);
+}
+
 static void test_fdatasync()
 {
     int fd = creat("/test_fdatasync", 0666);
@@ -1047,6 +1063,7 @@ int main(int argc, const char* argv[])
     test_pwritev_preadv("pwritev64v2");
     test_ioctl();
     test_enotdir();
+    test_fchmodat();
     test_fdatasync();
     test_fsync();
     test_o_excl();
