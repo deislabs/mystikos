@@ -392,6 +392,11 @@ done:
     return ret;
 }
 
+static int _sd_interrupt(myst_sockdev_t* sd, myst_sock_t* sock)
+{
+    return _sd_shutdown(sd, sock, SHUT_RDWR);
+}
+
 static int _sd_getsockopt(
     myst_sockdev_t* sd,
     myst_sock_t* sock,
@@ -715,6 +720,7 @@ extern myst_sockdev_t* myst_sockdev_get(void)
             .fd_close = (void*)_sd_close,
             .fd_target_fd = (void*)_sd_target_fd,
             .fd_get_events = (void*)_sd_get_events,
+            .fd_interrupt = (void*)_sd_interrupt,
         },
         .sd_socket = _sd_socket,
         .sd_socketpair = _sd_socketpair,

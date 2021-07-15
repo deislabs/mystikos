@@ -190,7 +190,8 @@ int myst_fdtable_interrupt(myst_fdtable_t* fdtable)
     {
         myst_fdtable_entry_t* entry = &fdtable->entries[i];
 
-        if (entry->type == MYST_FDTABLE_TYPE_PIPE)
+        if ((entry->type == MYST_FDTABLE_TYPE_PIPE) ||
+            (entry->type == MYST_FDTABLE_TYPE_SOCK))
         {
             myst_fdops_t* fdops = entry->device;
             (*fdops->fd_interrupt)(fdops, entry->object);
