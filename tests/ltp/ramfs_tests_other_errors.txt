@@ -61,6 +61,7 @@
 /ltp/testcases/kernel/syscalls/close_range/close_range01
 /ltp/testcases/kernel/syscalls/close_range/close_range02
 /ltp/testcases/kernel/syscalls/cma/process_vm01
+/ltp/testcases/kernel/syscalls/connect/connect01
 /ltp/testcases/kernel/syscalls/connect/connect02
 /ltp/testcases/kernel/syscalls/copy_file_range/copy_file_range01
 /ltp/testcases/kernel/syscalls/copy_file_range/copy_file_range02
@@ -272,6 +273,7 @@
 /ltp/testcases/kernel/syscalls/gethostid/gethostid01
 /ltp/testcases/kernel/syscalls/getitimer/getitimer01
 /ltp/testcases/kernel/syscalls/getitimer/getitimer02
+/ltp/testcases/kernel/syscalls/getpeername/getpeername01
 /ltp/testcases/kernel/syscalls/getpgid/getpgid01
 /ltp/testcases/kernel/syscalls/getpgid/getpgid02
 /ltp/testcases/kernel/syscalls/getpid/getpid01
@@ -621,6 +623,7 @@
 /ltp/testcases/kernel/syscalls/sendmmsg/sendmmsg02
 /ltp/testcases/kernel/syscalls/sendmsg/sendmsg01
 /ltp/testcases/kernel/syscalls/sendmsg/sendmsg03
+/ltp/testcases/kernel/syscalls/sendto/sendto01
 /ltp/testcases/kernel/syscalls/sendto/sendto02
 /ltp/testcases/kernel/syscalls/sendto/sendto03
 /ltp/testcases/kernel/syscalls/set_mempolicy/set_mempolicy01
