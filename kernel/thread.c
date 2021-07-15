@@ -1306,11 +1306,14 @@ size_t myst_kill_thread_group()
         {
             if (t != process && t != thread && t->status != MYST_ZOMBIE)
             {
-                printf(
-                    "still waiting for child %d to be killed, "
-                    "waiting_on_event: %d\n",
-                    t->tid,
-                    t->signal.waiting_on_event);
+                if (myst_get_trace())
+                {
+                    printf(
+                        "still waiting for child %d to be killed, "
+                        "waiting_on_event: %d\n",
+                        t->tid,
+                        t->signal.waiting_on_event);
+                }
                 break;
             }
         }
