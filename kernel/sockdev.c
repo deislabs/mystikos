@@ -671,7 +671,7 @@ static int _sd_close(myst_sockdev_t* sd, myst_sock_t* sock)
     if (!sd || !_valid_sock(sock))
         ERAISE(-EINVAL);
 
-    /* interrupt up any nested calls */
+    /* interrupt any nested calls */
     if (sock->nesting)
         myst_interrupt_async_syscall(sock->fd);
 

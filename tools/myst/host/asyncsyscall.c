@@ -151,7 +151,7 @@ long myst_async_syscall(long num, int poll_flags, int fd, ...)
         fds[0].fd = fd;
         fds[0].events = poll_flags;
         fds[1].fd = pipefd[0];
-        fds[1].events = poll_flags;
+        fds[1].events = POLLIN;
 
         if ((r = poll(fds, 2, 0)) < 0)
         {
