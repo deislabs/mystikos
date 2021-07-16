@@ -4,18 +4,19 @@ USAGE="$0 path-to-myst exec|exec-sgx|exec-linux ext2|cpio <path-to-test-dll>"
 HEAP_SIZE="1G"
 ret_val=-1
 t0=$(date +"%s")
+TIMEOUT=60
 
 if [[ "$3" == "ext2" ]]; then
-    timeout --kill-after=30s --signal=KILL 30 \
+    timeout --kill-after="${TIMEOUT}s" --signal=KILL $TIMEOUT \
         $1 $2 ext2fs \
-        --memory-size $HEAP_SIZE --app-config-path=config.json \
+        --app-config-path=config.json \
         --roothash=roothash \
         /coreclr-tests-all/Tests/Core_Root/corerun \
         /coreclr-tests-all/$4 > /dev/null 2>&1
 elif [[ "$3" == "cpio" ]]; then
-    timeout --kill-after=30s --signal=KILL 30 \
+    timeout --kill-after="${TIMEOUT}s" --signal=KILL $TIMEOUT \
         $1 $2 rootfs \
-        --memory-size $HEAP_SIZE --app-config-path=config.json \
+        --app-config-path=config.json \
         /coreclr-tests-all/Tests/Core_Root/corerun \
         /coreclr-tests-all/$4 > /dev/null 2>&1
 else
