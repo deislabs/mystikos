@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <myst/asyncsyscall.h>
 #include <myst/eraise.h>
 #include <myst/iov.h>
 #include <myst/panic.h>
@@ -20,7 +21,16 @@ struct myst_sock
 {
     uint32_t magic; /* MAGIC */
     int fd;         /* the target-relative file descriptor */
+    _Atomic(size_t) nesting;
 };
+
+static long _interruptable_tcall(myst_sock_t* sock, long n, long params[6])
+{
+    sock->nesting++;
+    long ret = myst_tcall(n, params);
+    sock->nesting--;
+    return ret;
+}
 
 MYST_INLINE bool _valid_sock(const myst_sock_t* sock)
 {
@@ -263,7 +273,7 @@ static ssize_t _sd_sendto(
         long params[6] = {
             sock->fd, (long)buf, len, flags, (long)dest_addr, (long)addrlen};
 
-        ECHECK((ret = myst_tcall(SYS_sendto, params)));
+        ECHECK((ret = _interruptable_tcall(sock, SYS_sendto, params)));
     }
 
 done:
@@ -289,7 +299,8 @@ static ssize_t _sd_recvfrom(
         long params[6] = {
             sock->fd, (long)buf, len, flags, (long)src_addr, (long)addrlen};
 
-        ECHECK((ret = myst_tcall(SYS_recvfrom, params)));
+        long r = _interruptable_tcall(sock, SYS_recvfrom, params);
+        ERAISE(r);
     }
 
 done:
@@ -343,7 +354,7 @@ static int _sd_sendmsg(
     /* perform syscall */
     {
         long params[6] = {sock->fd, (long)msg_ptr, flags};
-        ECHECK((ret = myst_tcall(SYS_sendmsg, params)));
+        ECHECK((ret = _interruptable_tcall(sock, SYS_sendmsg, params)));
     }
 
 done:
@@ -368,7 +379,7 @@ static int _sd_recvmsg(
     /* perform syscall */
     {
         long params[6] = {sock->fd, (long)msg, flags};
-        ECHECK((ret = myst_tcall(SYS_recvmsg, params)));
+        ECHECK((ret = _interruptable_tcall(sock, SYS_recvmsg, params)));
     }
 
 done:
@@ -494,7 +505,7 @@ static ssize_t _sd_read(
     /* perform syscall */
     {
         long params[6] = {sock->fd, (long)buf, count};
-        ECHECK((ret = myst_tcall(SYS_read, params)));
+        ECHECK((ret = _interruptable_tcall(sock, SYS_read, params)));
     }
 
 done:
@@ -515,7 +526,7 @@ static ssize_t _sd_write(
     /* perform syscall */
     {
         long params[6] = {sock->fd, (long)buf, count};
-        ECHECK((ret = myst_tcall(SYS_write, params)));
+        ECHECK((ret = _interruptable_tcall(sock, SYS_write, params)));
     }
 
 done:
@@ -659,6 +670,10 @@ static int _sd_close(myst_sockdev_t* sd, myst_sock_t* sock)
 
     if (!sd || !_valid_sock(sock))
         ERAISE(-EINVAL);
+
+    /* interrupt up any nested calls */
+    if (sock->nesting)
+        myst_interrupt_async_syscall(sock->fd);
 
     /* perform syscall */
     {

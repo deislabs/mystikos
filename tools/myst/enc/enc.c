@@ -1044,6 +1044,16 @@ int myst_tcall_read_file(const char* pathname, char* buf, size_t size)
     return retval;
 }
 
+long myst_tcall_interrupt_async_syscall(int fd)
+{
+    long retval;
+
+    if (myst_interrupt_async_syscall_ocall(&retval, fd) != OE_OK)
+        return -EINVAL;
+
+    return retval;
+}
+
 /* linking with openssl crypto library creates a dependency on this */
 int __vfprintf_chk(FILE* stream, int flag, const char* format, va_list ap)
 {

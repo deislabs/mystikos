@@ -1,8 +1,7 @@
 #define _GNU_SOURCE
 #include <errno.h>
 #include <fcntl.h>
-#include <myst/assume.h>
-#include <myst/defs.h>
+#include <pthread.h>
 #include <sched.h>
 #include <stdint.h>
 #include <sys/ioctl.h>
@@ -11,6 +10,9 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
+#include <myst/assume.h>
+#include <myst/asyncsyscall.h>
+#include <myst/defs.h>
 #include "myst_u.h"
 
 #define RETURN(EXPR)                     \
@@ -68,6 +70,8 @@
     errno = saved_errno;                                                      \
     return (ret < 0) ? -errno : ret
 
+#define PIPE_MAGIC_WORD 0x77d377455afc4838
+
 long myst_read_ocall(int fd, void* buf, size_t count)
 {
     RETURN(read(fd, buf, count));
@@ -120,7 +124,8 @@ long myst_recvfrom_ocall(
     socklen_t* addrlen,
     socklen_t src_addr_size)
 {
-    RETURN(recvfrom(sockfd, buf, len, flags, src_addr, addrlen));
+    RETURN(myst_async_syscall(
+        SYS_recvfrom, sockfd, buf, len, flags, src_addr, addrlen));
 }
 
 long myst_sendto_ocall(
@@ -519,4 +524,9 @@ long myst_fdatasync_ocall(int fd)
 long myst_fsync_ocall(int fd)
 {
     RETURN(fsync(fd));
+}
+
+long myst_interrupt_async_syscall_ocall(int fd)
+{
+    return myst_interrupt_async_syscall(fd);
 }

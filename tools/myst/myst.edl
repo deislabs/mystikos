@@ -242,6 +242,8 @@ enclave
             [in, out] socklen_t* optlen,
             socklen_t optval_size);
 
+        long myst_interrupt_async_syscall_ocall(int fd);
+
         // ATTN: If Host file system support is exclude in certain build mode,
         // consider excluding relevant OCALL proxy code too.
 
