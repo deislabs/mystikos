@@ -7,6 +7,7 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -53,7 +54,7 @@ static int _is_nonblock(int fd)
     return (flags & O_NONBLOCK) ? 0 : -1;
 }
 
-static int _init_nonblocking_pipe(int pipefd[2])
+static int _init_once_nonblocking_pipe(int pipefd[2])
 {
     int ret = 0;
 
@@ -134,7 +135,7 @@ long myst_async_syscall(long num, int poll_flags, int fd, ...)
     reset_to_blocking = true;
     waker = &_wakers[fd];
 
-    if (_init_nonblocking_pipe(waker->pipefd) != 0)
+    if (_init_once_nonblocking_pipe(waker->pipefd) != 0)
     {
         ret = -ENOSYS;
         goto done;
@@ -185,14 +186,15 @@ long myst_async_syscall(long num, int poll_flags, int fd, ...)
                 {
                     if (x != PIPE_MAGIC_WORD)
                     {
-                        ret = -ENOSYS;
+                        ret = -EINTR;
                         goto done;
                     }
                 }
 
                 if (n == -1 && errno != EWOULDBLOCK)
                 {
-                    ret = -ENOSYS;
+                    abort();
+                    ret = -EINTR;
                     goto done;
                 }
 
@@ -224,7 +226,7 @@ long myst_interrupt_async_syscall(int fd)
 
     pipefd = _wakers[fd].pipefd;
 
-    if (_init_nonblocking_pipe(pipefd) != 0)
+    if (_init_once_nonblocking_pipe(pipefd) != 0)
         return -ENOSYS;
 
     if (write(pipefd[1], &x, sizeof(x)) != sizeof(x))
