@@ -21,14 +21,14 @@ struct myst_sock
 {
     uint32_t magic; /* MAGIC */
     int fd;         /* the target-relative file descriptor */
-    _Atomic(size_t) nesting;
+    _Atomic(size_t) active_calls;
 };
 
 static long _interruptable_tcall(myst_sock_t* sock, long n, long params[6])
 {
-    sock->nesting++;
+    sock->active_calls++;
     long ret = myst_tcall(n, params);
-    sock->nesting--;
+    sock->active_calls--;
     return ret;
 }
 
@@ -172,7 +172,7 @@ static int _sd_connect(
     /* perform syscall */
     {
         long params[6] = {sock->fd, (long)addr, addrlen};
-        ECHECK(myst_tcall(SYS_connect, params));
+        ECHECK(_interruptable_tcall(sock, SYS_connect, params));
     }
 
 done:
@@ -199,7 +199,7 @@ static int _sd_accept4(
     /* perform syscall */
     {
         long params[6] = {sock->fd, (long)addr, (long)addrlen, flags};
-        ECHECK((fd = myst_tcall(SYS_accept4, params)));
+        ECHECK((fd = _interruptable_tcall(sock, SYS_accept4, params)));
     }
 
     new_sock->fd = fd;
@@ -672,7 +672,7 @@ static int _sd_close(myst_sockdev_t* sd, myst_sock_t* sock)
         ERAISE(-EINVAL);
 
     /* interrupt any nested calls */
-    if (sock->nesting)
+    if (sock->active_calls)
         myst_interrupt_async_syscall(sock->fd);
 
     /* perform syscall */
