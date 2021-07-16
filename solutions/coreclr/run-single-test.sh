@@ -4,7 +4,7 @@ USAGE="$0 path-to-myst exec|exec-sgx|exec-linux ext2|cpio <path-to-test-dll>"
 HEAP_SIZE="1G"
 ret_val=-1
 t0=$(date +"%s")
-TIMEOUT=60
+TIMEOUT=30
 
 if [[ "$3" == "ext2" ]]; then
     timeout --kill-after="${TIMEOUT}s" --signal=KILL $TIMEOUT \
