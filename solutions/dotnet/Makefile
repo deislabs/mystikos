@@ -15,7 +15,7 @@ run-unsigned:
 	$(MYST_EXEC) $(OPTS) --memory-size=1024m rootfs /app/HelloWorld
 
 run: appdir private.pem
-	$(MYST) package appdir private.pem config.json
+	timeout 45m $(MYST) package appdir private.pem config.json
 	myst/bin/$(APPNAME) $(OPTS)
 	
 gdb: appdir private.pem
