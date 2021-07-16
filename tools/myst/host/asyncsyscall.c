@@ -102,7 +102,7 @@ typedef struct waker
 #define MAX_WAKERS 16384
 static waker_t _wakers[MAX_WAKERS];
 
-long myst_async_syscall(long num, int fd, ...)
+long myst_async_syscall(long num, int poll_flags, int fd, ...)
 {
     long ret = 0;
     struct pollfd fds[2];
@@ -149,9 +149,9 @@ long myst_async_syscall(long num, int fd, ...)
 
         memset(fds, 0, sizeof(fds));
         fds[0].fd = fd;
-        fds[0].events = POLLIN;
+        fds[0].events = poll_flags;
         fds[1].fd = pipefd[0];
-        fds[1].events = POLLIN;
+        fds[1].events = poll_flags;
 
         if ((r = poll(fds, 2, 0)) < 0)
         {
@@ -161,7 +161,7 @@ long myst_async_syscall(long num, int fd, ...)
 
         if (r > 0)
         {
-            if (fds[0].revents & POLLIN)
+            if (fds[0].revents & poll_flags)
             {
                 r = syscall(num, fd, x2, x3, x4, x5, x6);
 
@@ -177,7 +177,7 @@ long myst_async_syscall(long num, int fd, ...)
                     goto done;
                 }
             }
-            else if (fds[1].revents & POLLIN)
+            else if (fds[1].revents & poll_flags)
             {
                 ssize_t n;
                 uint64_t x;

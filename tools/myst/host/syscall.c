@@ -70,16 +70,14 @@
     errno = saved_errno;                                                      \
     return (ret < 0) ? -errno : ret
 
-#define PIPE_MAGIC_WORD 0x77d377455afc4838
-
 long myst_read_ocall(int fd, void* buf, size_t count)
 {
-    RETURN(read(fd, buf, count));
+    RETURN(myst_async_syscall(SYS_read, POLLIN, fd, buf, count));
 }
 
 long myst_write_ocall(int fd, const void* buf, size_t count)
 {
-    RETURN(write(fd, buf, count));
+    RETURN(myst_async_syscall(SYS_write, POLLOUT, fd, buf, count));
 }
 
 long myst_close_ocall(int fd)
@@ -125,7 +123,7 @@ long myst_recvfrom_ocall(
     socklen_t src_addr_size)
 {
     RETURN(myst_async_syscall(
-        SYS_recvfrom, sockfd, buf, len, flags, src_addr, addrlen));
+        SYS_recvfrom, POLLIN, sockfd, buf, len, flags, src_addr, addrlen));
 }
 
 long myst_sendto_ocall(
@@ -136,7 +134,8 @@ long myst_sendto_ocall(
     const struct sockaddr* dest_addr,
     socklen_t addrlen)
 {
-    RETURN(sendto(sockfd, buf, len, flags, dest_addr, addrlen));
+    RETURN(myst_async_syscall(
+        SYS_sendto, POLLOUT, sockfd, buf, len, flags, dest_addr, addrlen));
 }
 
 long myst_socket_ocall(int domain, int type, int protocol)
@@ -179,7 +178,7 @@ long myst_sendmsg_ocall(
     msg.msg_controllen = msg_controllen;
     msg.msg_flags = msg_flags;
 
-    RETURN(sendmsg(sockfd, &msg, flags));
+    RETURN(myst_async_syscall(SYS_sendmsg, POLLOUT, sockfd, &msg, flags));
 }
 
 long myst_recvmsg_ocall(
@@ -220,7 +219,8 @@ long myst_recvmsg_ocall(
     msg.msg_controllen = msg_controllen;
     msg.msg_flags = 0;
 
-    if ((retval = recvmsg(sockfd, &msg, flags)) < 0)
+    if ((retval =
+             myst_async_syscall(SYS_recvmsg, POLLIN, sockfd, &msg, flags)) < 0)
     {
         ret = -errno;
         goto done;
