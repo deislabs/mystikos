@@ -144,7 +144,7 @@ long myst_async_syscall(long num, int poll_flags, int fd, ...)
         fds[1].fd = waker->pipefd[0];
         fds[1].events = POLLIN;
 
-        if ((r = poll(fds, 2, 0)) < 0)
+        if ((r = poll(fds, 2, -1)) < 0)
         {
             ret = -ENOSYS;
             goto done;
