@@ -105,9 +105,8 @@ static waker_t _wakers[MAX_WAKERS];
 long myst_async_syscall(long num, int poll_flags, int fd, ...)
 {
     long ret = 0;
-    struct pollfd fds[2];
     bool reset_to_blocking = false;
-    int* pipefd;
+    waker_t* waker;
 
     va_list ap;
     va_start(ap, fd);
@@ -125,8 +124,6 @@ long myst_async_syscall(long num, int poll_flags, int fd, ...)
         goto done;
     }
 
-    pipefd = _wakers[fd].pipefd;
-
     if (_is_nonblock(fd) == 0)
     {
         ret = syscall(num, fd, x2, x3, x4, x5, x6);
@@ -135,8 +132,9 @@ long myst_async_syscall(long num, int poll_flags, int fd, ...)
 
     _set_nonblock(fd);
     reset_to_blocking = true;
+    waker = &_wakers[fd];
 
-    if (_init_nonblocking_pipe(pipefd) != 0)
+    if (_init_nonblocking_pipe(waker->pipefd) != 0)
     {
         ret = -ENOSYS;
         goto done;
@@ -145,12 +143,13 @@ long myst_async_syscall(long num, int poll_flags, int fd, ...)
     /* Wait for events */
     for (;;)
     {
+        struct pollfd fds[2];
         int r;
 
         memset(fds, 0, sizeof(fds));
         fds[0].fd = fd;
         fds[0].events = poll_flags;
-        fds[1].fd = pipefd[0];
+        fds[1].fd = waker->pipefd[0];
         fds[1].events = POLLIN;
 
         if ((r = poll(fds, 2, 0)) < 0)
@@ -182,7 +181,7 @@ long myst_async_syscall(long num, int poll_flags, int fd, ...)
                 ssize_t n;
                 uint64_t x;
 
-                while ((n = read(pipefd[0], &x, sizeof(x))) == sizeof(x))
+                while ((n = read(waker->pipefd[0], &x, sizeof(x))) == sizeof(x))
                 {
                     if (x != PIPE_MAGIC_WORD)
                     {
