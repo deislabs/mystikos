@@ -4157,6 +4157,13 @@ static long _syscall(void* args_)
             struct rusage* rusage = (struct rusage*)x4;
             long ret;
 
+            _strace(
+                n,
+                "pid=%d wstatus=%p options=%d rusage=%p",
+                pid,
+                wstatus,
+                options,
+                rusage);
             ret = myst_syscall_wait4(pid, wstatus, options, rusage);
             BREAK(_return(n, ret));
         }
@@ -4931,7 +4938,10 @@ static long _syscall(void* args_)
         case SYS_lsetxattr:
             break;
         case SYS_fsetxattr:
-            break;
+        {
+            _strace(n, NULL);
+            BREAK(_return(n, -ENOSYS));
+        }
         case SYS_getxattr:
             break;
         case SYS_lgetxattr:
