@@ -11,8 +11,8 @@ jobs:
   - job: BuildAndTest
     displayName: 'Building and Testing'
     # 10m build
-    # ~3h for dotnet 5 test suite
-    timeoutInMinutes: 300
+    # over 5h for dotnet 5 test suite
+    timeoutInMinutes: 360
     pool: '1804DC4CCagentpool'
 
     steps:
