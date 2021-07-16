@@ -18,6 +18,14 @@
 
 static pthread_mutex_t _mutex = PTHREAD_MUTEX_INITIALIZER;
 
+typedef struct waker
+{
+    int pipefd[2];
+} waker_t;
+
+#define MAX_WAKERS 16384
+static waker_t _wakers[MAX_WAKERS];
+
 static int _set_nonblock(int fd)
 {
     int flags;
@@ -54,37 +62,28 @@ static int _is_nonblock(int fd)
     return (flags & O_NONBLOCK) ? 0 : -1;
 }
 
-static int _init_once_nonblocking_pipe(int pipefd[2])
+static int _init_once_waker(waker_t* waker)
 {
     int ret = 0;
 
     pthread_mutex_lock(&_mutex);
 
     /* if not initialized yet */
-    if (pipefd[0] == 0 && pipefd[1] == 0)
+    if (waker->pipefd[0] == 0 && waker->pipefd[1] == 0)
     {
-        if (pipe(pipefd) < 0)
+        if (pipe(waker->pipefd) < 0)
         {
             ret = -1;
             goto done;
         }
 
-        if (_set_nonblock(pipefd[0]) != 0)
+        if (_set_nonblock(waker->pipefd[0]) != 0 ||
+            _set_nonblock(waker->pipefd[1]) != 0)
         {
-            close(pipefd[0]);
-            close(pipefd[1]);
-            pipefd[0] = 0;
-            pipefd[1] = 0;
-            ret = -1;
-            goto done;
-        }
-
-        if (_set_nonblock(pipefd[1]) != 0)
-        {
-            close(pipefd[0]);
-            close(pipefd[1]);
-            pipefd[0] = 0;
-            pipefd[1] = 0;
+            close(waker->pipefd[0]);
+            close(waker->pipefd[1]);
+            waker->pipefd[0] = 0;
+            waker->pipefd[1] = 0;
             ret = -1;
             goto done;
         }
@@ -94,14 +93,6 @@ done:
     pthread_mutex_unlock(&_mutex);
     return ret;
 }
-
-typedef struct waker
-{
-    int pipefd[2];
-} waker_t;
-
-#define MAX_WAKERS 16384
-static waker_t _wakers[MAX_WAKERS];
 
 long myst_async_syscall(long num, int poll_flags, int fd, ...)
 {
@@ -135,7 +126,7 @@ long myst_async_syscall(long num, int poll_flags, int fd, ...)
     reset_to_blocking = true;
     waker = &_wakers[fd];
 
-    if (_init_once_nonblocking_pipe(waker->pipefd) != 0)
+    if (_init_once_waker(waker) != 0)
     {
         ret = -ENOSYS;
         goto done;
@@ -216,7 +207,7 @@ done:
 long myst_interrupt_async_syscall(int fd)
 {
     const uint64_t x = PIPE_MAGIC_WORD;
-    int* pipefd;
+    waker_t* waker;
 
     if (fd >= MYST_COUNTOF(_wakers))
     {
@@ -224,12 +215,12 @@ long myst_interrupt_async_syscall(int fd)
         return -EINVAL;
     }
 
-    pipefd = _wakers[fd].pipefd;
+    waker = &_wakers[fd];
 
-    if (_init_once_nonblocking_pipe(pipefd) != 0)
+    if (_init_once_waker(waker) != 0)
         return -ENOSYS;
 
-    if (write(pipefd[1], &x, sizeof(x)) != sizeof(x))
+    if (write(waker->pipefd[1], &x, sizeof(x)) != sizeof(x))
     {
         // the write may fail if  the pipe is full, but the failure
         // may safely be ignored since the thread will be awoken under
