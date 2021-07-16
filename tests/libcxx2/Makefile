@@ -50,7 +50,7 @@ $(ROOTFS): run.c
 	$(MYST) mkext2 $(APPDIR) $(ROOTFS)
 	# run with posix spawn
 
-OPTS += --memory-size=1024m
+OPTS += --memory-size=1536m
 
 tests:
 	$(RUNTEST) $(MAKE) __tests
