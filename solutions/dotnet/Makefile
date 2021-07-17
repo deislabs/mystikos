@@ -10,8 +10,6 @@ ifdef STRACE
 OPTS += --strace
 endif
 
-#OPTS += --perf
-
 all: rootfs private.pem
 
 export MYST_ROOTFS_PATH=$(CURDIR)/rootfs
