@@ -4,22 +4,28 @@ include $(TOP)/defs.mak
 APPBUILDER=$(TOP)/scripts/appbuilder
 APPNAME=HelloWorld
 
-#ifdef STRACE
-#OPTS += --strace
-#endif
+OPTS =
 
-all: appdir private.pem
+ifdef STRACE
+OPTS += --strace
+endif
 
-run-unsigned:
-	$(MYST) mkcpio appdir rootfs
-	$(MYST_EXEC) $(OPTS) --memory-size=1024m rootfs /app/HelloWorld
+#OPTS += --perf
 
-run: appdir private.pem
-	timeout 45m $(MYST) package appdir private.pem config.json
+all: rootfs private.pem
+
+export MYST_ROOTFS_PATH=$(CURDIR)/rootfs
+
+rootfs: appdir
+	$(MYST) mkext2 appdir rootfs
+	$(MYST) fssig --roothash rootfs > roothash
+
+run: all
+	timeout 45m $(MYST) package --roothash=roothash private.pem config.json
 	myst/bin/$(APPNAME) $(OPTS)
-	
-gdb: appdir private.pem
-	$(MYST) package appdir private.pem config.json
+
+gdb: all
+	$(MYST) package --roothash=roothash private.pem config.json
 	$(MYST_GDB) --args myst/bin/$(APPNAME) $(OPTS)
 
 appdir:
@@ -29,4 +35,4 @@ private.pem:
 	openssl genrsa -out private.pem -3 3072
 
 clean:
-	sudo rm -fr appdir rootfs HelloWorld/build HelloWorld/obj HelloWorld/bin myst private.pem
+	sudo rm -rf appdir rootfs HelloWorld/build HelloWorld/obj HelloWorld/bin myst private.pem
