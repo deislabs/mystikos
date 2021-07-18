@@ -1,0 +1,2 @@
+
+    - handle fork from thread (setup thread event correctly)
