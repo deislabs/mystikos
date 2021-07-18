@@ -6,7 +6,7 @@
 
 void* start(void* arg)
 {
-    printf("=== hello thread\n");
+    printf("hello thread\n");
     sleep(1);
     return arg;
 }
@@ -21,7 +21,7 @@ int main(int argc, const char* argv[])
 
     pthread_t th;
     assert(pthread_create(&th, NULL, start, NULL) == 0);
-    pthread_join(th, NULL);
+    assert(pthread_join(th, NULL) == 0);
 
     return 123;
 }

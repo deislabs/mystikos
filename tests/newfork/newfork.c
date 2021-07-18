@@ -20,7 +20,7 @@ static uint64_t _time_usec(void)
 
 void* start(void* arg)
 {
-    printf("=== child thread\n");
+    printf("child thread\n");
     return arg;
 }
 
@@ -61,16 +61,12 @@ int main(int argc, const char* argv[])
 
         pthread_t th;
         assert(pthread_create(&th, NULL, start, NULL) == 0);
-        int r = pthread_join(th, NULL);
-        printf("pthread_join: %d\n", r);
+        assert(pthread_join(th, NULL) == 0);
 
-#if 1
         char* args[] = {"/bin/hello", NULL};
         char* env[] = {NULL};
         execve("/bin/hello", args, env);
         abort();
-#endif
-        exit(123);
     }
 
     return 0;
