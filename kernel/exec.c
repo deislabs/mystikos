@@ -962,6 +962,15 @@ int myst_exec(
     if (_setup_exe_link(argv[0]) != 0)
         ERAISE(-EIO);
 
+    /* release memory held by forked process */
+    if (__myst_kernel_args.forked)
+    {
+        if (thread->main.exec_crt_data)
+            myst_munmap(thread->main.exec_crt_data, thread->main.exec_crt_size);
+
+        /* ATTN: need to release thread->main.exec_stack when possible */
+    }
+
     /* The thread is responsible for freeing the stack */
     thread->main.exec_stack = stack;
     thread->main.exec_stack_size = stack_size;

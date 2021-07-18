@@ -53,8 +53,10 @@ int main(int argc, const char* argv[])
             sleep(1);
         }
 
-        printf("%s: child exit\n", argv[0]);
-        exit(123);
+        char* args[] = {"/bin/hello", NULL};
+        char* env[] = {NULL};
+        execve("/bin/hello", args, env);
+        abort();
     }
 
     return 0;

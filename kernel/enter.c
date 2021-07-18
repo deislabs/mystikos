@@ -673,7 +673,10 @@ int myst_enter_kernel(myst_kernel_args_t* args)
 
     /* if this is a forked process, then jump back to SYS_fork syscall */
     if (args->forked)
+    {
+        __myst_kernel_args.forked = true;
         myst_longjmp(&__myst_fork_jmpbuf, 1);
+    }
 
     if (!args)
         myst_crash();

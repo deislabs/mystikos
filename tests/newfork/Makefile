@@ -2,7 +2,7 @@ TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
 APPDIR = appdir
-CFLAGS = -fPIC
+CFLAGS = -fPIC -Wall
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 
 all:
@@ -12,13 +12,14 @@ all:
 rootfs: newfork.c
 	mkdir -p $(APPDIR)/bin
 	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/newfork newfork.c $(LDFLAGS)
+	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/hello hello.c $(LDFLAGS)
 	$(MYST) mkcpio $(APPDIR) rootfs
 
 ifdef STRACE
 OPTS += --strace
 endif
 
-OPTS += --memory-size=8m
+#OPTS += --memory-size=8m
 #OPTS += --memory-size=512m
 
 tests: all
