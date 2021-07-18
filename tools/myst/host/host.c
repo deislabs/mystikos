@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <libgen.h>
 #include <limits.h>
+#include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -531,15 +532,81 @@ int main(int argc, const char* argv[], const char* envp[])
     return ec;
 }
 
+static pthread_t _listener_thread;
+
+/* this thread listens for requests from the child process */
+void* _listener_start_routine(void* arg)
+{
+    uint64_t fds = (uint64_t)arg;
+    int reader_fd = (int)(fds >> 32);
+    int writer_fd = (int)(fds & 0x00000000ffffffff);
+    ssize_t n;
+    char buf[1024];
+
+    printf("listener: waiting for requests\n");
+    fflush(stdout);
+
+    while ((n = read(reader_fd, buf, sizeof(buf))) > 0)
+    {
+        printf("listener: read %zd bytes\n", n);
+
+        if (write(writer_fd, buf, n) != n)
+        {
+            fprintf(stderr, "*** listener: write to child failed\n");
+            fflush(stderr);
+            abort();
+        }
+
+        printf("listener: write %zd bytes\n", n);
+        fflush(stdout);
+    }
+
+    return NULL;
+}
+
 long myst_fork_ocall(void)
 {
     pid_t pid;
+    int request_pipefd[2];
+    int response_pipefd[2];
 
+    /* create pipes so parent can respond to child requests */
+    {
+        if (pipe(request_pipefd) != 0)
+            return -ENOSYS;
+
+        if (pipe(response_pipefd) != 0)
+            return -ENOSYS;
+    }
+
+    /* perform the fork */
     if ((pid = fork()) < 0)
         return -errno;
 
     if (pid == 0) /* child */
     {
+        close(request_pipefd[0]);
+        close(response_pipefd[1]);
+        const uint64_t write_fd = (uint64_t)request_pipefd[1];
+        const uint64_t read_fd = (uint64_t)response_pipefd[0];
+
+#if 1
+        /* test the listener */
+        {
+            ssize_t n;
+            char buf[64];
+
+            n = write(write_fd, "hello", 6);
+            assert(n == 6);
+
+            n = read(read_fd, buf, sizeof(buf));
+            assert(n == 6);
+
+            printf("buf{%s}\n", buf);
+            fflush(stdout);
+        }
+#endif
+
         /* pass the "__MYST_FORKED__" environment variable */
         if (myst_args_append1(&g_fork_envp, "__MYST_FORKED__=1") != 0)
             assert("out of memory" == NULL);
@@ -554,6 +621,22 @@ long myst_fork_ocall(void)
     }
     else /* parent */
     {
+        close(request_pipefd[1]);
+        close(response_pipefd[0]);
+        int read_fd = (uint64_t)request_pipefd[0];
+        int write_fd = (uint64_t)response_pipefd[1];
+        const uint64_t fds = ((uint64_t)read_fd << 32) | (uint64_t)write_fd;
+
+        /* create the listener thread in the parent */
+        if (pthread_create(
+                &_listener_thread, NULL, _listener_start_routine, (void*)fds) !=
+            0)
+        {
+            fprintf(stderr, "*** host: cannot create listener thread\n");
+            fflush(stderr);
+            abort();
+        }
+
         return (long)pid;
     }
 
