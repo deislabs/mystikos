@@ -593,12 +593,13 @@ __attribute__((format(printf, 2, 3))) static void _strace(
         }
 
         myst_eprintf(
-            "=== %s%s%s(%s): tid=%d\n",
+            "=== %s%s%s(%s): tid=%d fork=%d\n",
             blue,
             _syscall_str(n),
             reset,
             buf,
-            myst_gettid());
+            myst_gettid(),
+            __myst_kernel_args.forked);
 
         if (buf != &null_char)
             free(buf);

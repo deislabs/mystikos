@@ -3,6 +3,7 @@
 
 #include <assert.h>
 #include <limits.h>
+#include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,9 +18,14 @@ static uint64_t _time_usec(void)
     return tv.tv_sec * 1000000 + tv.tv_usec;
 }
 
+void* start(void* arg)
+{
+    printf("=== child thread\n");
+    return arg;
+}
+
 int main(int argc, const char* argv[])
 {
-    printf("fork\n");
     uint64_t t1 = _time_usec();
     pid_t pid = fork();
 
@@ -53,10 +59,18 @@ int main(int argc, const char* argv[])
             sleep(1);
         }
 
+        pthread_t th;
+        assert(pthread_create(&th, NULL, start, NULL) == 0);
+        int r = pthread_join(th, NULL);
+        printf("pthread_join: %d\n", r);
+
+#if 1
         char* args[] = {"/bin/hello", NULL};
         char* env[] = {NULL};
         execve("/bin/hello", args, env);
         abort();
+#endif
+        exit(123);
     }
 
     return 0;

@@ -187,12 +187,7 @@ int exec_launch_enclave(
         _err("clock_gettime() failed");
 
     /* Load the enclave: calls oe_load_extra_enclave_data_hook() */
-    uint64_t t1 = _time_usec();
     r = oe_create_myst_enclave(enc_path, type, flags, NULL, 0, &_enclave);
-    uint64_t t2 = _time_usec();
-    double elapsed = (double)(t2 - t1) / 1000000.0;
-    printf("ENCLAVE LOAD TIME: %3.5lf\n", elapsed);
-    fflush(stdout);
 
     if (r != OE_OK)
         _err("failed to load enclave: result=%s", oe_result_str(r));

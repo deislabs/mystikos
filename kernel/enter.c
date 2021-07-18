@@ -675,6 +675,8 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     if (args->forked)
     {
         __myst_kernel_args.forked = true;
+        __myst_main_thread->event = args->event;
+        ECHECK(myst_tcall_set_run_thread_function(myst_run_thread));
         myst_longjmp(&__myst_fork_jmpbuf, 1);
     }
 
