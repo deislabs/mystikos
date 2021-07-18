@@ -6,7 +6,7 @@
 
 void* start(void* arg)
 {
-    printf("hello thread\n");
+    printf("goodbye thread\n");
     sleep(1);
     return arg;
 }
@@ -22,11 +22,6 @@ int main(int argc, const char* argv[])
     pthread_t th;
     assert(pthread_create(&th, NULL, start, NULL) == 0);
     assert(pthread_join(th, NULL) == 0);
-
-    char* args[] = {"/bin/goodbye", NULL};
-    char* env[] = {NULL};
-    execve("/bin/goodbye", args, env);
-    abort();
 
     return 123;
 }

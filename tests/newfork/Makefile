@@ -13,6 +13,7 @@ rootfs: newfork.c hello.c
 	mkdir -p $(APPDIR)/bin
 	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/newfork newfork.c $(LDFLAGS)
 	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/hello hello.c $(LDFLAGS)
+	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/goodbye goodbye.c $(LDFLAGS)
 	$(MYST) mkcpio $(APPDIR) rootfs
 
 ifdef STRACE
