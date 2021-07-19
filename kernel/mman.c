@@ -125,6 +125,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#define MYST_PENDING_ZEROING_FLAG 0x80
+
 /*
 **==============================================================================
 **
@@ -617,6 +619,66 @@ done:
     return ret;
 }
 
+static int _mprotect_delayed_zero_fill(
+    myst_mman_t* mman,
+    void* addr,
+    size_t length,
+    int prot)
+{
+    uint32_t i;
+    uint32_t start_page_index = ((uintptr_t)addr - mman->start) / PAGE_SIZE;
+    uint32_t npages = length / PAGE_SIZE;
+    bool w_access_requested = false;
+
+    if (prot != MYST_PROT_NONE)
+    {
+        for (i = 0; i < npages; i++)
+        {
+            if (mman->prot_vector[start_page_index + i] &
+                MYST_PENDING_ZEROING_FLAG)
+            {
+                if (!w_access_requested)
+                {
+                    if (myst_tcall_mprotect(
+                            addr, length, (prot | MYST_PROT_WRITE)))
+                    {
+                        _mman_set_err(mman, "mprotect tcall failed");
+                        return -EINVAL;
+                    }
+                    w_access_requested = true;
+                }
+                memset((void*)((uintptr_t)addr + i * PAGE_SIZE), 0, PAGE_SIZE);
+            }
+        }
+
+        if ((!(prot & MYST_PROT_WRITE) && w_access_requested) ||
+            (!w_access_requested))
+        {
+            if (myst_tcall_mprotect(addr, length, prot))
+            {
+                _mman_set_err(mman, "mprotect tcall failed");
+                return -EINVAL;
+            }
+        }
+        memset(&mman->prot_vector[start_page_index], prot, npages);
+    }
+    else
+    {
+        if (myst_tcall_mprotect(addr, length, prot))
+        {
+            _mman_set_err(mman, "mprotect tcall failed");
+            return -EINVAL;
+        }
+        /* Don't clear any pending zero-fill flag */
+        for (i = 0; i < npages; i++)
+        {
+            mman->prot_vector[start_page_index + i] &=
+                MYST_PENDING_ZEROING_FLAG;
+        }
+    }
+    return 0;
+}
+
 static int _mmap(
     myst_mman_t* mman,
     void* addr,
@@ -829,23 +891,39 @@ done:
     /* Zero-fill mapped memory */
     if (ptr_out && *ptr_out)
     {
-        /* For readonly memory, need to set w permission first to clear the
-         * memory */
-        if (myst_tcall_mprotect(*ptr_out, length, (prot | MYST_PROT_WRITE)))
+        if ((prot & (MYST_PROT_READ | MYST_PROT_WRITE | MYST_PROT_EXEC)) !=
+            MYST_PROT_NONE)
         {
-            _mman_set_err(mman, "mprotect tcall failed");
-            return -EINVAL;
+            /* For readonly memory, need to set w permission first to clear the
+             * memory */
+            if (myst_tcall_mprotect(*ptr_out, length, (prot | MYST_PROT_WRITE)))
+            {
+                _mman_set_err(mman, "mprotect tcall failed");
+                return -EINVAL;
+            }
+            memset(*ptr_out, 0, length);
+            if (!(prot & MYST_PROT_WRITE))
+            {
+                if (myst_tcall_mprotect(*ptr_out, length, prot))
+                {
+                    _mman_set_err(mman, "mprotect tcall failed");
+                    return -EINVAL;
+                }
+            }
+            _MMAN_SET_PAGES_PROT(mman, *ptr_out, length, prot)
         }
-        memset(*ptr_out, 0, length);
-        if (!(prot & MYST_PROT_WRITE))
+        else
         {
             if (myst_tcall_mprotect(*ptr_out, length, prot))
             {
                 _mman_set_err(mman, "mprotect tcall failed");
                 return -EINVAL;
             }
+            /* If the mapped memory is not accessible, set flag to indicate
+             * pending zero-fill */
+            _MMAN_SET_PAGES_PROT(
+                mman, *ptr_out, length, (prot | MYST_PENDING_ZEROING_FLAG))
         }
-        _MMAN_SET_PAGES_PROT(mman, *ptr_out, length, prot)
     }
     return ret;
 }
@@ -1448,22 +1526,30 @@ int myst_mman_mremap(
         if (_end(vad) == old_end && _get_right_gap(mman, vad) >= delta)
         {
             vad->size += (uint32_t)delta;
-            /* Set W permission first before zeroing */
-            if (myst_tcall_mprotect(
-                    (void*)(start + old_size), delta, (prot | MYST_PROT_WRITE)))
+            /* If the old area is pending zero fill, the expanded area gets the
+               same treatment */
+            if (!(prot & MYST_PENDING_ZEROING_FLAG))
             {
-                _mman_set_err(mman, "mprotect tcall failed");
-                ret = -EINVAL;
-                goto done;
-            }
-            memset((void*)(start + old_size), 0, delta);
-            if (!(prot & MYST_PROT_WRITE))
-            {
-                if (myst_tcall_mprotect((void*)(start + old_size), delta, prot))
+                /* Set W permission first before zeroing */
+                if (myst_tcall_mprotect(
+                        (void*)(start + old_size),
+                        delta,
+                        (prot | MYST_PROT_WRITE)))
                 {
                     _mman_set_err(mman, "mprotect tcall failed");
                     ret = -EINVAL;
                     goto done;
+                }
+                memset((void*)(start + old_size), 0, delta);
+                if (!(prot & MYST_PROT_WRITE))
+                {
+                    if (myst_tcall_mprotect(
+                            (void*)(start + old_size), delta, prot))
+                    {
+                        _mman_set_err(mman, "mprotect tcall failed");
+                        ret = -EINVAL;
+                        goto done;
+                    }
                 }
             }
             /* Set prot for extended region */
@@ -1482,35 +1568,47 @@ int myst_mman_mremap(
         }
         else
         {
-            if (_mmap(mman, NULL, new_size, vad->prot, vad->flags, &addr) != 0)
+            if (_mmap(
+                    mman,
+                    NULL,
+                    new_size,
+                    (prot & ~MYST_PENDING_ZEROING_FLAG),
+                    vad->flags,
+                    &addr) != 0)
             {
                 _mman_set_err(mman, "mapping failed");
                 ret = -ENOMEM;
                 goto done;
             }
-            /* If no W permission, set W permission first before copy */
-            if (!(vad->prot & MYST_PROT_WRITE))
+
+            /* If the old area is pending zero fill, no need to copy from the
+             * old area */
+            if (!(prot & MYST_PENDING_ZEROING_FLAG))
             {
-                if (myst_tcall_mprotect(
-                        addr, new_size, (vad->prot | MYST_PROT_WRITE)))
+                /* If no W permission, set W permission first before copy */
+                if (!(prot & MYST_PROT_WRITE))
                 {
-                    _mman_set_err(mman, "mprotect tcall failed");
-                    ret = -EINVAL;
-                    goto done;
+                    if (myst_tcall_mprotect(
+                            addr, new_size, (vad->prot | MYST_PROT_WRITE)))
+                    {
+                        _mman_set_err(mman, "mprotect tcall failed");
+                        ret = -EINVAL;
+                        goto done;
+                    }
+                }
+                /* Copy over data from old area */
+                memcpy(addr, (void*)start, old_size);
+                if ((vad->prot | MYST_PROT_WRITE) != prot)
+                {
+                    if (myst_tcall_mprotect(addr, new_size, prot))
+                    {
+                        _mman_set_err(mman, "mprotect tcall failed");
+                        ret = -EINVAL;
+                        goto done;
+                    }
                 }
             }
-            /* Copy over data from old area */
-            memcpy(addr, (void*)start, old_size);
-            if ((vad->prot | MYST_PROT_WRITE) != prot)
-            {
-                if (myst_tcall_mprotect(addr, new_size, prot))
-                {
-                    _mman_set_err(mman, "mprotect tcall failed");
-                    ret = -EINVAL;
-                    goto done;
-                }
-            }
-            _MMAN_SET_PAGES_PROT(mman, addr, new_size, prot)
+
             /* Unmap the old area */
             if (_munmap(mman, (void*)start, old_size) != 0)
             {
@@ -1616,7 +1714,9 @@ int myst_mman_mprotect(myst_mman_t* mman, void* addr, size_t len, int prot)
     /* Ignore prot bits beyond MYST_PROT_READ, MYST_PROT_WRITE, MYST_PROT_EXEC*/
     prot = prot & (MYST_PROT_READ | MYST_PROT_WRITE | MYST_PROT_EXEC);
 
-    _MMAN_MPROTECT_PAGES(mman, addr, len, prot)
+    /* If the pages are made accessible, and have not been zero-filled,
+     * zero-fill the pages */
+    ret = _mprotect_delayed_zero_fill(mman, addr, len, prot);
 
 done:
     _mman_unlock(mman, &locked);
