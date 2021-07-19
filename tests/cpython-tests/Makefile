@@ -11,6 +11,9 @@ OPTS += --fork-mode pseudo_wait_for_exit_exec
 TESTFILE=tests.passed
 TC = test_grammar
 
+# Set timeout to 5 mins
+export TIMEOUT=300
+
 all: ext2fs
 
 appdir:
@@ -26,7 +29,7 @@ tests:
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) ext2fs /cpython/python -m test -f $(TESTFILE) -q
 
 run-single:
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) ext2fs /cpython/python -m test $(TC) -q
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) ext2fs /cpython/python -m test $(TC) -v
 
 pdb:
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) ext2fs /cpython/python -m pdb /cpython/Lib/test/test_grammar.py -v 
