@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <limits.h>
 #include <malloc.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,6 +24,23 @@
 int myst_tcall_mprotect(void* addr, size_t len, int prot)
 {
     return mprotect(addr, len, prot);
+}
+
+void __myst_panic(
+    const char* file,
+    size_t line,
+    const char* func,
+    const char* format,
+    ...)
+{
+    fprintf(stderr, "*** panic: %s(%zu): %s(): ", file, line, func);
+    va_list ap;
+    va_start(ap, format);
+    vfprintf(stderr, format, ap);
+    va_end(ap);
+    abort();
+    for (;;)
+        ;
 }
 
 typedef struct _page
@@ -768,7 +786,7 @@ void test_remap_3()
 }
 
 /*
-** test_remap_3()
+** test_remap_4()
 **
 **     Map two regions so that they are contiguous. Unmap trailing porition
 **     of combined regions.
@@ -972,10 +990,16 @@ void test_prot_vector()
     int prot = MYST_PROT_READ | MYST_PROT_WRITE;
     int prot_val = MYST_PROT_NONE;
     int flags = MYST_MAP_ANONYMOUS | MYST_MAP_PRIVATE;
-    void *addr1, *addr2, *addr3;
+    void *addr1, *addr2, *addr3, *addr4, *addr5;
     size_t len1, len2;
     bool consistent;
     void* brk = NULL;
+    uint8_t zero_page[PAGE_SIZE];
+    uint8_t ff_page[PAGE_SIZE];
+    int i;
+
+    memset(zero_page, 0, PAGE_SIZE);
+    memset(ff_page, 0xff, PAGE_SIZE);
 
     assert(_init_mman(&h, heap_size) == 0);
     /* verify unassigned memory default permission as MYST_PROT_NONE */
@@ -985,6 +1009,71 @@ void test_prot_vector()
         0);
     assert(prot_val == MYST_PROT_NONE);
     assert(consistent == true);
+
+#define MYST_PENDING_ZEROING_FLAG 0x80
+    /* reserve 16 pages as prot = MYST_PROT_NONE */
+    if (myst_mman_mmap(
+            &h, NULL, 16 * PAGE_SIZE, MYST_PROT_NONE, flags, &addr1) != 0)
+    {
+        printf("ERROR: myst_mman_mmap(): %s\n", h.err);
+        assert("myst_mman_mmap(): failed" == NULL);
+    }
+    /* verify the mapped 16 pages permission as MYST_PENDING_ZEROING_FLAG */
+    assert(
+        (_mman_get_prot(&h, addr1, 16 * PAGE_SIZE, &prot_val, &consistent)) ==
+        0);
+    assert(prot_val == MYST_PENDING_ZEROING_FLAG);
+    assert(consistent == true);
+    /* Increase the mapping permission */
+    assert(
+        (_mman_protect(
+            &h, addr1, 16 * PAGE_SIZE, (MYST_PROT_READ | MYST_PROT_WRITE))) ==
+        0);
+    /* verify the mapped 16 pages permission as the increased permission */
+    assert(
+        (_mman_get_prot(&h, addr1, 16 * PAGE_SIZE, &prot_val, &consistent)) ==
+        0);
+    assert(prot_val == (MYST_PROT_READ | MYST_PROT_WRITE));
+    assert(consistent == true);
+    /* verify the content of the pages are zero */
+    for (i = 0; i < 16; i++)
+    {
+        assert(!memcmp(addr1 + i * PAGE_SIZE, zero_page, PAGE_SIZE));
+    }
+    /* write to the pages */
+    memset(addr1, 0xDD, 16 * PAGE_SIZE);
+    /* map the allocated pages again, as MYST_PROT_NONE */
+    if (myst_mman_mmap(
+            &h, addr1, 16 * PAGE_SIZE, MYST_PROT_NONE, flags, &addr2) != 0)
+    {
+        printf("ERROR: myst_mman_mmap(): %s\n", h.err);
+        assert("myst_mman_mmap(): failed" == NULL);
+    }
+    assert(addr2 == addr1);
+    /* verify the mapped 16 pages permission as MYST_PENDING_ZEROING_FLAG */
+    assert(
+        (_mman_get_prot(&h, addr1, 16 * PAGE_SIZE, &prot_val, &consistent)) ==
+        0);
+    assert(prot_val == MYST_PENDING_ZEROING_FLAG);
+    assert(consistent == true);
+    /* mprotect(MYST_PROT_NONE), making sure the MYST_PENDING_ZEROING_FLAG
+      is not cleared */
+    assert((_mman_protect(&h, addr1, 16 * PAGE_SIZE, MYST_PROT_NONE)) == 0);
+    assert(
+        (_mman_get_prot(&h, addr1, 16 * PAGE_SIZE, &prot_val, &consistent)) ==
+        0);
+    assert(prot_val == MYST_PENDING_ZEROING_FLAG);
+    assert(consistent == true);
+
+    /* mprotect(MYST_PROT_READ), which should trigger delayed zero-fill */
+    assert((_mman_protect(&h, addr1, 16 * PAGE_SIZE, MYST_PROT_READ)) == 0);
+    /* verify the content of the pages are zero */
+    for (i = 0; i < 16; i++)
+    {
+        assert(!memcmp(addr1 + i * PAGE_SIZE, zero_page, PAGE_SIZE));
+    }
+
+    _mman_unmap(&h, addr1, 16 * PAGE_SIZE);
 
     /* map 16 pages as prot = MYST_PROT_READ | MYST_PROT_WRITE */
     if (myst_mman_mmap(&h, NULL, 16 * PAGE_SIZE, prot, flags, &addr1) != 0)
@@ -998,6 +1087,11 @@ void test_prot_vector()
         0);
     assert(prot_val == prot);
     assert(consistent == true);
+    /* verify the content of the pages are zero */
+    for (i = 0; i < 16; i++)
+    {
+        assert(!memcmp(addr1 + i * PAGE_SIZE, zero_page, PAGE_SIZE));
+    }
 
     /* Reduce the mapping permission */
     assert((_mman_protect(&h, addr1, 16 * PAGE_SIZE, MYST_PROT_READ)) == 0);
@@ -1099,7 +1193,7 @@ void test_prot_vector()
     {
         assert(0);
     }
-    /* verify the realloacted block permission as prot */
+    /* verify the reallocated block permission as prot */
     assert(
         (_mman_get_prot(&h, addr3, 63 * PAGE_SIZE, &prot_val, &consistent)) ==
         0);
@@ -1110,16 +1204,34 @@ void test_prot_vector()
     assert(prot_val == MYST_PROT_NONE);
     assert(consistent == true);
 
+    // remap reallocation/copy without W permission
+    assert((_mman_protect(&h, addr3, 63 * PAGE_SIZE, MYST_PROT_READ)) == 0);
+    /* reallocate addr3 to to a new block */
+    if (!(addr4 = _mman_remap(&h, addr3, 63 * PAGE_SIZE, 127 * PAGE_SIZE)))
+    {
+        assert(0);
+    }
     assert(
-        (_mman_protect(
-            &h, addr3 + 10 * PAGE_SIZE, 3 * PAGE_SIZE, MYST_PROT_READ)) == 0);
-    assert(
-        (_mman_get_prot(&h, addr3, 63 * PAGE_SIZE, &prot_val, &consistent)) ==
+        (_mman_get_prot(&h, addr4, 127 * PAGE_SIZE, &prot_val, &consistent)) ==
         0);
-    assert(consistent == false);
+    assert(prot_val == MYST_PROT_READ);
+    assert(consistent == true);
+
+    // remap reallocation/copy without R permission
+    assert((_mman_protect(&h, addr4, 127 * PAGE_SIZE, MYST_PROT_WRITE)) == 0);
+    /* reallocate addr4 to to a new block */
+    if (!(addr5 = _mman_remap(&h, addr4, 127 * PAGE_SIZE, 255 * PAGE_SIZE)))
+    {
+        assert(0);
+    }
+    assert(
+        (_mman_get_prot(&h, addr5, 255 * PAGE_SIZE, &prot_val, &consistent)) ==
+        0);
+    assert(prot_val == MYST_PROT_WRITE);
+    assert(consistent == true);
 
     /* umap everything */
-    _mman_unmap(&h, addr3, 63 * PAGE_SIZE);
+    _mman_unmap(&h, addr5, 255 * PAGE_SIZE);
     _mman_unmap(&h, addr2, len2);
     /* verify the unassigned memory permission as MYST_PROT_NONE */
     assert(
@@ -1128,6 +1240,56 @@ void test_prot_vector()
         0);
     assert(prot_val == MYST_PROT_NONE);
     assert(consistent == true);
+
+    // test corner case re-map
+    if (myst_mman_mmap(
+            &h, NULL, 16 * PAGE_SIZE, MYST_PROT_NONE, flags, &addr1) != 0)
+    {
+        printf("ERROR: myst_mman_mmap(): %s\n", h.err);
+        assert("myst_mman_mmap(): failed" == NULL);
+    }
+    assert(
+        (_mman_protect(
+            &h, addr1 + 4 * PAGE_SIZE, 8 * PAGE_SIZE, MYST_PROT_WRITE)) == 0);
+    memset(addr1 + 4 * PAGE_SIZE, 0xff, 8 * PAGE_SIZE);
+    assert(
+        (_mman_protect(
+            &h, addr1 + 4 * PAGE_SIZE, 8 * PAGE_SIZE, MYST_PROT_NONE)) == 0);
+    assert(
+        (_mman_get_prot(
+            &h,
+            addr1 + 4 * PAGE_SIZE,
+            8 * PAGE_SIZE,
+            &prot_val,
+            &consistent)) == 0);
+    assert(prot_val == MYST_PROT_NONE);
+    assert(consistent == true);
+    /* reallocate addr1 to to a new block */
+    if (!(addr2 = _mman_remap(&h, addr1, 16 * PAGE_SIZE, 31 * PAGE_SIZE)))
+    {
+        assert(0);
+    }
+    assert(
+        (_mman_get_prot(&h, addr2, 31 * PAGE_SIZE, &prot_val, &consistent)) ==
+        0);
+    assert(prot_val == MYST_PROT_NONE);
+    assert(consistent == true);
+    assert((_mman_protect(&h, addr2, 31 * PAGE_SIZE, MYST_PROT_READ)) == 0);
+    /* verify the content of the first 4 pages are zero */
+    for (i = 0; i < 4; i++)
+    {
+        assert(!memcmp(addr2 + i * PAGE_SIZE, zero_page, PAGE_SIZE));
+    }
+    /* verify the content of the next 8 pages are 0xff */
+    for (i = 4; i < 4 + 8; i++)
+    {
+        assert(!memcmp(addr2 + i * PAGE_SIZE, ff_page, PAGE_SIZE));
+    }
+    /* verify the rest of the pages are zero */
+    for (i = 12; i < 31; i++)
+    {
+        assert(!memcmp(addr2 + i * PAGE_SIZE, zero_page, PAGE_SIZE));
+    }
 
     /* create 4 pages BRK region */
     if (myst_mman_sbrk(&h, 4 * PAGE_SIZE, &brk))
