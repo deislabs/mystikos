@@ -1546,15 +1546,8 @@ long myst_syscall_mkdirat(int dirfd, const char* pathname, mode_t mode)
     char* abspath = NULL;
     long ret = 0;
 
-    if (dirfd == AT_FDCWD)
-    {
-        ret = myst_syscall_mkdir(pathname, mode);
-    }
-    else
-    {
-        ECHECK(myst_get_absolute_path_from_dirfd(dirfd, pathname, 0, &abspath));
-        ret = myst_syscall_mkdir(abspath, mode);
-    }
+    ECHECK(myst_get_absolute_path_from_dirfd(dirfd, pathname, 0, &abspath));
+    ECHECK(myst_syscall_mkdir(abspath, mode));
 
 done:
 
