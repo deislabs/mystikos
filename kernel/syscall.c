@@ -5581,17 +5581,21 @@ static long _syscall(void* args_)
             socklen_t* addrlen = (socklen_t*)x3;
             int flags = (int)x4;
             long ret;
-            char addrstr[MAX_IPADDR_LEN];
 
-            ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
+            if (__myst_kernel_args.trace_syscalls)
+            {
+                char addrstr[MAX_IPADDR_LEN];
 
-            _strace(
-                n,
-                "sockfd=%d addr=%s addrlen=%p flags=%x",
-                sockfd,
-                addrstr,
-                addrlen,
-                flags);
+                ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
+
+                _strace(
+                    n,
+                    "sockfd=%d addr=%s addrlen=%p flags=%x",
+                    sockfd,
+                    addrstr,
+                    addrlen,
+                    flags);
+            }
 
             ret = myst_syscall_accept4(sockfd, addr, addrlen, flags);
             BREAK(_return(n, ret));
@@ -5838,12 +5842,20 @@ static long _syscall(void* args_)
             const struct sockaddr* addr = (const struct sockaddr*)x2;
             socklen_t addrlen = (socklen_t)x3;
             long ret;
-            char addrstr[MAX_IPADDR_LEN];
 
-            ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
+            if (__myst_kernel_args.trace_syscalls)
+            {
+                char addrstr[MAX_IPADDR_LEN];
 
-            _strace(
-                n, "sockfd=%d addr=%s addrlen=%u", sockfd, addrstr, addrlen);
+                ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
+
+                _strace(
+                    n,
+                    "sockfd=%d addr=%s addrlen=%u",
+                    sockfd,
+                    addrstr,
+                    addrlen);
+            }
 
             ret = myst_syscall_bind(sockfd, addr, addrlen);
             BREAK(_return(n, ret));
@@ -5855,17 +5867,21 @@ static long _syscall(void* args_)
             const struct sockaddr* addr = (const struct sockaddr*)x2;
             socklen_t addrlen = (socklen_t)x3;
             long ret;
-            char addrstr[MAX_IPADDR_LEN];
 
-            ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
+            if (__myst_kernel_args.trace_syscalls)
+            {
+                char addrstr[MAX_IPADDR_LEN];
 
-            _strace(
-                n,
-                "sockfd=%d addrlen=%u family=%u ip=%s",
-                sockfd,
-                addrlen,
-                addr->sa_family,
-                addrstr);
+                ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
+
+                _strace(
+                    n,
+                    "sockfd=%d addrlen=%u family=%u ip=%s",
+                    sockfd,
+                    addrlen,
+                    addr->sa_family,
+                    addrstr);
+            }
 
             ret = myst_syscall_connect(sockfd, addr, addrlen);
             BREAK(_return(n, ret));
@@ -5879,19 +5895,23 @@ static long _syscall(void* args_)
             struct sockaddr* src_addr = (struct sockaddr*)x5;
             socklen_t* addrlen = (socklen_t*)x6;
             long ret = 0;
-            char addrstr[MAX_IPADDR_LEN];
 
-            ECHECK(_socketaddr_to_str(src_addr, addrstr, MAX_IPADDR_LEN));
+            if (__myst_kernel_args.trace_syscalls)
+            {
+                char addrstr[MAX_IPADDR_LEN];
 
-            _strace(
-                n,
-                "sockfd=%d buf=%p len=%zu flags=%d src_addr=%s addrlen=%p",
-                sockfd,
-                buf,
-                len,
-                flags,
-                addrstr,
-                addrlen);
+                ECHECK(_socketaddr_to_str(src_addr, addrstr, MAX_IPADDR_LEN));
+
+                _strace(
+                    n,
+                    "sockfd=%d buf=%p len=%zu flags=%d src_addr=%s addrlen=%p",
+                    sockfd,
+                    buf,
+                    len,
+                    flags,
+                    addrstr,
+                    addrlen);
+            }
 
 #ifdef MYST_NO_RECVMSG_MITIGATION
             ret = myst_syscall_recvfrom(
@@ -5932,19 +5952,23 @@ static long _syscall(void* args_)
             struct sockaddr* dest_addr = (struct sockaddr*)x5;
             socklen_t addrlen = (socklen_t)x6;
             long ret = 0;
-            char addrstr[MAX_IPADDR_LEN];
 
-            ECHECK(_socketaddr_to_str(dest_addr, addrstr, MAX_IPADDR_LEN));
+            if (__myst_kernel_args.trace_syscalls)
+            {
+                char addrstr[MAX_IPADDR_LEN];
 
-            _strace(
-                n,
-                "sockfd=%d buf=%p len=%zu flags=%d dest_addr=%s addrlen=%u",
-                sockfd,
-                buf,
-                len,
-                flags,
-                addrstr,
-                addrlen);
+                ECHECK(_socketaddr_to_str(dest_addr, addrstr, MAX_IPADDR_LEN));
+
+                _strace(
+                    n,
+                    "sockfd=%d buf=%p len=%zu flags=%d dest_addr=%s addrlen=%u",
+                    sockfd,
+                    buf,
+                    len,
+                    flags,
+                    addrstr,
+                    addrlen);
+            }
 
             ret = myst_syscall_sendto(
                 sockfd, buf, len, flags, dest_addr, addrlen);
@@ -5969,12 +5993,20 @@ static long _syscall(void* args_)
             struct sockaddr* addr = (struct sockaddr*)x2;
             socklen_t* addrlen = (socklen_t*)x3;
             long ret;
-            char addrstr[MAX_IPADDR_LEN];
 
-            ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
+            if (__myst_kernel_args.trace_syscalls)
+            {
+                char addrstr[MAX_IPADDR_LEN];
 
-            _strace(
-                n, "sockfd=%d addr=%s addrlen=%p", sockfd, addrstr, addrlen);
+                ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
+
+                _strace(
+                    n,
+                    "sockfd=%d addr=%s addrlen=%p",
+                    sockfd,
+                    addrstr,
+                    addrlen);
+            }
 
             ret = myst_syscall_accept4(sockfd, addr, addrlen, 0);
             BREAK(_return(n, ret));
@@ -6037,12 +6069,20 @@ static long _syscall(void* args_)
             struct sockaddr* addr = (struct sockaddr*)x2;
             socklen_t* addrlen = (socklen_t*)x3;
             long ret;
-            char addrstr[MAX_IPADDR_LEN];
 
-            ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
+            if (__myst_kernel_args.trace_syscalls)
+            {
+                char addrstr[MAX_IPADDR_LEN];
 
-            _strace(
-                n, "sockfd=%d addr=%s addrlen=%p", sockfd, addrstr, addrlen);
+                ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
+
+                _strace(
+                    n,
+                    "sockfd=%d addr=%s addrlen=%p",
+                    sockfd,
+                    addrstr,
+                    addrlen);
+            }
 
             ret = myst_syscall_getsockname(sockfd, addr, addrlen);
             BREAK(_return(n, ret));
@@ -6053,12 +6093,20 @@ static long _syscall(void* args_)
             struct sockaddr* addr = (struct sockaddr*)x2;
             socklen_t* addrlen = (socklen_t*)x3;
             long ret;
-            char addrstr[MAX_IPADDR_LEN];
 
-            ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
+            if (__myst_kernel_args.trace_syscalls)
+            {
+                char addrstr[MAX_IPADDR_LEN];
 
-            _strace(
-                n, "sockfd=%d addr=%s addrlen=%p", sockfd, addrstr, addrlen);
+                ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
+
+                _strace(
+                    n,
+                    "sockfd=%d addr=%s addrlen=%p",
+                    sockfd,
+                    addrstr,
+                    addrlen);
+            }
 
             ret = myst_syscall_getpeername(sockfd, addr, addrlen);
             BREAK(_return(n, ret));
