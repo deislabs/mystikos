@@ -2656,6 +2656,84 @@ done:
     return ret;
 }
 
+long myst_syscall_sendmmsg(
+    int sockfd,
+    struct mmsghdr* msgvec,
+    unsigned int vlen,
+    int flags)
+{
+    long ret = 0;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_sockdev_t* sd;
+    myst_sock_t* sock;
+    unsigned int cnt;
+
+    ECHECK(myst_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
+    if (!vlen)
+        return 0;
+    for (cnt = 0; cnt < vlen; cnt++)
+    {
+        ret = (*sd->sd_sendmsg)(sd, sock, &msgvec[cnt].msg_hdr, flags);
+        if (ret < 0)
+            break;
+        msgvec[cnt].msg_len = ret;
+    }
+    // Only return err when zero msg was sent
+    ret = cnt ? (long)cnt : ret;
+
+done:
+    return ret;
+}
+
+long myst_syscall_recvmmsg(
+    int sockfd,
+    struct mmsghdr* msgvec,
+    unsigned int vlen,
+    int flags,
+    struct timespec* timeout)
+{
+    long ret = 0;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_sockdev_t* sd;
+    myst_sock_t* sock;
+    struct timespec start;
+    struct timespec now;
+    long expire;
+    unsigned int cnt;
+
+    ECHECK(myst_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
+    if (timeout)
+    {
+        if (!is_timespec_valid(timeout))
+            ERAISE(EINVAL);
+
+        expire = get_nanos_from_timespec(timeout);
+        myst_syscall_clock_gettime(CLOCK_MONOTONIC, &start);
+    }
+    for (cnt = 0; cnt < vlen; cnt++)
+    {
+        ret = (*sd->sd_recvmsg)(
+            sd, sock, &msgvec[cnt].msg_hdr, flags & ~MSG_WAITFORONE);
+        if (ret < 0)
+            break;
+        msgvec[cnt].msg_len = ret;
+        if (cnt == 1 && flags & MSG_WAITFORONE)
+            flags |= MSG_DONTWAIT;
+        if (timeout)
+        {
+            myst_syscall_clock_gettime(CLOCK_MONOTONIC, &now);
+            long lapsed = myst_lapsed_nsecs(&start, &now);
+            if (lapsed >= expire)
+                break;
+        }
+    }
+    if (ret >= 0)
+        ret = cnt;
+
+done:
+    return ret;
+}
+
 long myst_syscall_shutdown(int sockfd, int how)
 {
     long ret = 0;
@@ -5738,7 +5816,26 @@ static long _syscall(void* args_)
         case SYS_perf_event_open:
             break;
         case SYS_recvmmsg:
-            break;
+        {
+            int sockfd = (int)x1;
+            struct mmsghdr* msgvec = (struct mmsghdr*)x2;
+            unsigned int vlen = (unsigned int)x3;
+            int flags = (int)x4;
+            struct timespec* timeout = (struct timespec*)x5;
+            long ret;
+
+            _strace(
+                n,
+                "sockfd=%d msgvec=%p vlen=%u flags=%d timeout=%p",
+                sockfd,
+                msgvec,
+                vlen,
+                flags,
+                timeout);
+
+            ret = myst_syscall_recvmmsg(sockfd, msgvec, vlen, flags, timeout);
+            BREAK(_return(n, ret));
+        }
         case SYS_fanotify_init:
             break;
         case SYS_fanotify_mark:
@@ -5770,7 +5867,24 @@ static long _syscall(void* args_)
         case SYS_syncfs:
             break;
         case SYS_sendmmsg:
-            break;
+        {
+            int sockfd = (int)x1;
+            struct mmsghdr* msgvec = (struct mmsghdr*)x2;
+            unsigned int vlen = (unsigned int)x3;
+            int flags = (int)x4;
+            long ret;
+
+            _strace(
+                n,
+                "sockfd=%d msgvec=%p vlen=%u flags=%d",
+                sockfd,
+                msgvec,
+                vlen,
+                flags);
+
+            ret = myst_syscall_sendmmsg(sockfd, msgvec, vlen, flags);
+            BREAK(_return(n, ret));
+        }
         case SYS_setns:
             break;
         case SYS_getcpu:

@@ -112,6 +112,7 @@
 /ltp/testcases/kernel/syscalls/sendfile/sendfile06_64
 /ltp/testcases/kernel/syscalls/sendfile/sendfile08
 /ltp/testcases/kernel/syscalls/sendfile/sendfile08_64
+/ltp/testcases/kernel/syscalls/sendmmsg/sendmmsg02
 /ltp/testcases/kernel/syscalls/stat/stat01
 /ltp/testcases/kernel/syscalls/stat/stat01_64
 /ltp/testcases/kernel/syscalls/stat/stat02

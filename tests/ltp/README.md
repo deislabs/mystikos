@@ -1048,7 +1048,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/sendfile/sendfile09 | 0 | 1 | 0 |
 | /ltp/testcases/kernel/syscalls/sendfile/sendfile09_64 | 0 | 1 | 0 |
 | /ltp/testcases/kernel/syscalls/sendmmsg/sendmmsg01 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/sendmmsg/sendmmsg02 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/sendmmsg/sendmmsg02 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/sendmsg/sendmsg01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/sendmsg/sendmsg02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/sendmsg/sendmsg03 | 0 | 0 | 0 |
