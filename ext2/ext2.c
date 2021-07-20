@@ -4815,7 +4815,9 @@ static int _ext2_get_events(myst_fs_t* fs, myst_file_t* file)
     if (!_ext2_valid(ext2) || !_file_valid(file))
         ERAISE(-EINVAL);
 
-    ret = -ENOTSUP;
+    /* Regular files always poll TRUE for reads and writes */
+    ret |= POLLIN;
+    ret |= POLLOUT;
 
 done:
     return ret;
