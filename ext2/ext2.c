@@ -3537,6 +3537,9 @@ int64_t ext2_write(
     if (size == 0)
         goto done;
 
+    /* refresh inode */
+    ECHECK((ext2_read_inode(ext2, file->ino, &file->inode)));
+
     /* save the file size */
     file_size = _inode_get_size(&file->inode);
 

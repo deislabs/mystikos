@@ -116,7 +116,6 @@ test_unicodedata
 test_unparse
 test_urllib2
 test_utf8_mode
-test_uu
 test_uuid
 test_venv
 test_wait3
