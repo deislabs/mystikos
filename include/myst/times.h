@@ -6,7 +6,25 @@
 
 #include <time.h>
 
+#include <myst/clock.h>
+
 long myst_lapsed_nsecs(const struct timespec* t0, const struct timespec* t1);
+
+MYST_INLINE void set_timespec_from_nanos(struct timespec* tp, long nanos)
+{
+    tp->tv_sec = nanos / NANO_IN_SECOND;
+    tp->tv_nsec = nanos % NANO_IN_SECOND;
+}
+
+MYST_INLINE long get_nanos_from_timespec(const struct timespec* tp)
+{
+    return tp->tv_sec * NANO_IN_SECOND + tp->tv_nsec;
+}
+
+MYST_INLINE bool is_timespec_valid(const struct timespec* tp)
+{
+    return tp->tv_sec >= 0 && (unsigned long)tp->tv_nsec < NANO_IN_SECOND;
+}
 
 /* Start tracking time for current thread */
 void myst_times_start();
