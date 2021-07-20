@@ -845,6 +845,13 @@ static int _fs_open(
         if ((flags & O_CREAT) && (flags & O_EXCL))
             ERAISE(-EEXIST);
 
+        /* bail out as this fs doesn't support O_TMPFILE (yet) */
+        if ((flags & O_TMPFILE) && ((flags & O_RDWR) || (flags & O_WRONLY)) &&
+            S_ISDIR(inode->mode))
+        {
+            ERAISE(-EISDIR);
+        }
+
         /* Check file access permissions */
         {
             const int access = flags & 0x03;

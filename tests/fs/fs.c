@@ -1015,6 +1015,17 @@ static void test_o_excl()
     _passed(__FUNCTION__);
 }
 
+static void test_o_tmpfile_not_supp(const char* fstype)
+{
+    int fd = open("/tmp", O_TMPFILE | O_RDWR, 0666);
+    // O_TMPFILE flag is unsupported in ramfs and ext2fs
+    if (strcmp(fstype, "hostfs") == 0)
+        assert(fd > 0);
+    else
+        assert(fd <= 0 && errno == EISDIR);
+    _passed(__FUNCTION__);
+}
+
 int main(int argc, const char* argv[])
 {
     if (argc != 2)
@@ -1067,6 +1078,7 @@ int main(int argc, const char* argv[])
     test_fdatasync();
     test_fsync();
     test_o_excl();
+    test_o_tmpfile_not_supp(argv[1]);
 
     printf("=== passed all tests (%s)\n", argv[0]);
 
