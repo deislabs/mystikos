@@ -4185,11 +4185,22 @@ int ext2_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
     /* if oldpath is a directory, update old directory inode */
     if (S_ISDIR(locals->old_inode.i_mode))
     {
-        _update_timestamps(&locals->old_dinode, CHANGE);
-        ECHECK(_write_inode(ext2, old_dino, &locals->old_dinode));
-
-        /* don't update links if directory already existed */
-        if (!new_dino)
+        if (new_dino)
+        {
+            /* If parent directory is same, use the new inode which has the new
+             * dirent recorded */
+            if (new_dino == old_dino)
+            {
+                _update_timestamps(&locals->new_dinode, CHANGE);
+                ECHECK(_write_inode(ext2, new_dino, &locals->new_dinode));
+            }
+            else
+            {
+                _update_timestamps(&locals->old_dinode, CHANGE);
+                ECHECK(_write_inode(ext2, old_dino, &locals->old_dinode));
+            }
+        }
+        else /* don't update links if directory already existed */
         {
             locals->new_dinode.i_links_count++;
             _update_timestamps(&locals->new_dinode, CHANGE);
