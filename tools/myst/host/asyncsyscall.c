@@ -7,6 +7,7 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -109,6 +110,12 @@ long myst_async_syscall(long num, int poll_flags, int fd, ...)
     long x6 = va_arg(ap, long);
     va_end(ap);
 
+    if (_is_nonblock(fd) == 0)
+    {
+        ret = syscall(num, fd, x2, x3, x4, x5, x6);
+        goto done;
+    }
+
     if (fd >= MYST_COUNTOF(_wakers))
     {
         assert("unexpected" == NULL);
@@ -116,15 +123,20 @@ long myst_async_syscall(long num, int poll_flags, int fd, ...)
         goto done;
     }
 
-    if (_is_nonblock(fd) == 0)
-    {
-        ret = syscall(num, fd, x2, x3, x4, x5, x6);
-        goto done;
-    }
-
     _set_nonblock(fd);
     reset_to_blocking = true;
     waker = &_wakers[fd];
+
+    /* Try to perform the operation up front */
+    {
+        long r = syscall(num, fd, x2, x3, x4, x5, x6);
+
+        if (r >= 0)
+        {
+            ret = r;
+            goto done;
+        }
+    }
 
     if (_init_once_waker(waker) != 0)
     {
