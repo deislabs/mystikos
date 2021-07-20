@@ -113,6 +113,7 @@ DIRS += dotnet-sos
 DIRS += tkillself
 DIRS += thread_abort
 DIRS += synccall
+DIRS += python_subprocess
 
 .PHONY: $(DIRS)
 

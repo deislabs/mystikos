@@ -173,7 +173,7 @@ static ssize_t _pd_read(
         /* block here while the pipe is empty */
         while (p->nbytes == 0)
         {
-            /* Handle non-blocking write */
+            /* Handle non-blocking read */
             if (pipe->flags & O_NONBLOCK)
             {
                 _unlock(pipe);
@@ -188,20 +188,15 @@ static ssize_t _pd_read(
                 ERAISE(-EAGAIN);
             }
 
-            /* if there are no writers, then fail */
+            /* if there are no writers, then return short count or
+             * end-of-file(0) */
             if (p->nwriters == 0)
             {
                 _unlock(pipe);
 
-                if (rem < count)
-                {
-                    /* return short count */
-                    ret = count - rem;
-                    goto done;
-                }
-
-                /* broken pipe */
-                ERAISE(-EPIPE);
+                /* rem<=count */
+                ret = count - rem;
+                goto done;
             }
 
             /* If write operation is finished */
@@ -233,7 +228,7 @@ static ssize_t _pd_read(
             ptr += n;
             p->wrsize -= n;
         }
-        else /* p->nbytes > count */
+        else /* p->nbytes > rem */
         {
             const size_t n = rem;
             memcpy(ptr, p->data, n);
@@ -290,8 +285,6 @@ static ssize_t _pd_write(
     _lock(pipe);
     p = pipe->impl;
 
-    p->wrsize += count;
-
     if (!_valid_pipe(pipe))
     {
         /* cannot unlock since mutex is no longer valid */
@@ -299,14 +292,26 @@ static ssize_t _pd_write(
         ERAISE(-EBADF);
     }
 
+    /* The writer intends to write count bytes. Update wrsize immediately to
+     * signal to the reader about the intention, so a blocking reader won't bail
+     * out prematurely due 0 wrsize, when a writer will write more to the pipe
+     * soon. If the call returns with less than count bytes writtern, the caller
+     * might invoke the call again. For example, a non-blocking write returning
+     * EAGAIN did not write any data to the pipe. The caller likely will call
+     * again indicating count bytes to write. In those cases, adjust wrsize
+     * before returning to make sure no double counting
+     * */
+    p->wrsize += count;
+
     while (rem)
     {
         /* Block here while the pipe is full */
         while (p->nbytes == p->pipesz)
         {
-            /* Handle non-blocking read */
+            /* Handle non-blocking write */
             if (pipe->flags & O_NONBLOCK)
             {
+                p->wrsize -= rem;
                 _unlock(pipe);
 
                 if (rem < count)
@@ -322,6 +327,7 @@ static ssize_t _pd_write(
             /* if there are no readers, then fail */
             if (p->nreaders == 0)
             {
+                p->wrsize -= rem;
                 _unlock(pipe);
 
                 if (rem < count)
@@ -339,6 +345,7 @@ static ssize_t _pd_write(
             if (myst_cond_wait(&p->cond, &p->mutex) != 0)
             {
                 /* unexpected */
+                p->wrsize -= rem;
                 _unlock(pipe);
                 ERAISE(-EPIPE);
             }
@@ -357,7 +364,7 @@ static ssize_t _pd_write(
             rem -= n;
             ptr += n;
         }
-        else /* nspace > r */
+        else /* nspace > rem */
         {
             const size_t n = rem;
             memcpy(p->data + p->nbytes, ptr, n);
@@ -686,12 +693,18 @@ static int _pd_get_events(myst_pipedev_t* pipedev, myst_pipe_t* pipe)
             /* if there is anything to read, then set input event */
             if (pipe->impl->nbytes > 0)
                 events |= POLLIN;
+            /* if all writers closed the pipe, then set hangup event */
+            if (pipe->impl->nwriters == 0)
+                events |= POLLHUP;
         }
         else if (pipe->mode == O_WRONLY)
         {
             /* if there is room to write more, then set output event */
             if (pipe->impl->nbytes < pipe->impl->pipesz)
                 events |= POLLOUT;
+            /* if all readers closed the pipe, then set hangup event */
+            if (pipe->impl->nreaders == 0)
+                events |= POLLHUP;
         }
     }
     _unlock(pipe);
