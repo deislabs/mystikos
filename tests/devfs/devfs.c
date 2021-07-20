@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <poll.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -32,6 +33,11 @@ void test_random(const char* path)
     struct stat statbuf;
     ret = fstat(fd, &statbuf);
     assert(ret == 0);
+
+    struct pollfd pset = {fd, POLLIN, 0};
+    ret = poll(&pset, 1, 1000);
+    assert(ret > 0);
+    assert((pset.revents & POLLIN) != 0);
 
     ret = close(fd);
     assert(ret == 0);
