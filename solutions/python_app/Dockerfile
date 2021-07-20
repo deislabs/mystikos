@@ -10,7 +10,7 @@ RUN apt update && apt install -y curl gnupg2 &&\
     chmod 755 Miniconda3-py38_4.8.2-Linux-x86_64.sh &&\
     ./Miniconda3-py38_4.8.2-Linux-x86_64.sh -b -p /miniconda &&\
     /miniconda/bin/pip install numpy==1.20.3 logzero &&\
-    /miniconda/bin/conda install -y -c miniconda pyodbc pandas==1.2.4 pycrypto pycurl pyjwt &&\
+    /miniconda/bin/conda install -y -c miniconda pyodbc pandas pycrypto pycurl pyjwt &&\
     /miniconda/bin/python3 --version
 
 WORKDIR /app

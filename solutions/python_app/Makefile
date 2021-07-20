@@ -8,16 +8,16 @@ ifdef STRACE
 OPTS = --strace
 endif
 
-all: myst/bin/$(APPNAME)
+all: rootfs
 
 appdir:
 	$(APPBUILDER) Dockerfile
 
-myst/bin/$(APPNAME): appdir private.pem
-	$(MYST) package appdir private.pem config.json
+rootfs: appdir
+	$(MYST) mkext2 appdir rootfs
 
-run: myst/bin/$(APPNAME)
-	myst/bin/$(APPNAME) $(OPTS)
+run: rootfs
+	$(MYST_EXEC) rootfs $(OPTS) --app-config-path config.json /miniconda/bin/python3 /app/app.py
 
 private.pem:
 	openssl genrsa -out private.pem -3 3072
