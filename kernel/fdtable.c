@@ -416,7 +416,7 @@ int myst_fdtable_get(
         ERAISE(-EINVAL);
 
     if (!(fd >= 0 && fd < MYST_FDTABLE_SIZE))
-        ERAISE(-EINVAL);
+        ERAISE(-EBADF);
 
     if (type == MYST_FDTABLE_TYPE_NONE)
         ERAISE(-EINVAL);
