@@ -3354,6 +3354,7 @@ int ext2_open(
         ERAISE(-ENOTDIR);
     }
 
+    /* bail out as this fs doesn't support O_TMPFILE (yet) */
     if ((flags & O_TMPFILE) && ((flags & O_RDWR) || (flags & O_WRONLY)) &&
         S_ISDIR(locals->inode.i_mode))
     {
@@ -5096,6 +5097,8 @@ static int _ext2_getdents64(
     if (count == 0)
         goto done;
 
+    /* If file was not opened with O_DIRECTORY, file->dir.data will not have
+     * been populated */
     if (file->dir.data == NULL)
     {
         /* refresh the inode */
