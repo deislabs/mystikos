@@ -28,6 +28,10 @@
 /ltp/testcases/kernel/syscalls/brk/brk02
 /ltp/testcases/kernel/syscalls/cacheflush/cacheflush01
 /ltp/testcases/kernel/syscalls/capget/capget02
+/ltp/testcases/kernel/syscalls/capset/capset01
+/ltp/testcases/kernel/syscalls/capset/capset02
+/ltp/testcases/kernel/syscalls/capset/capset03
+/ltp/testcases/kernel/syscalls/capset/capset04
 /ltp/testcases/kernel/syscalls/chdir/chdir01
 /ltp/testcases/kernel/syscalls/chmod/chmod06
 /ltp/testcases/kernel/syscalls/chown/chown01_16

@@ -56,7 +56,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/alarm/alarm07 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/bind/bind01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/bind/bind02 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/bind/bind03 | 1 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/bind/bind03 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/bind/bind04 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/bind/bind05 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/bind/bind06 | 0 | 0 | 0 |
@@ -132,7 +132,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/cma/process_vm_readv02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/cma/process_vm_readv03 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/cma/process_vm_writev02 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/connect/connect01 | 1 | 1 | 1 |
+| /ltp/testcases/kernel/syscalls/connect/connect01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/connect/connect02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/copy_file_range/copy_file_range01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/copy_file_range/copy_file_range02 | 0 | 0 | 0 |
@@ -439,7 +439,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/getitimer/getitimer02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/getitimer/getitimer03 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/getpagesize/getpagesize01 | 1 | 1 | 1 |
-| /ltp/testcases/kernel/syscalls/getpeername/getpeername01 | 1 | 1 | 1 |
+| /ltp/testcases/kernel/syscalls/getpeername/getpeername01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/getpgid/getpgid01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/getpgid/getpgid02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/getpgrp/getpgrp01 | 1 | 1 | 1 |
@@ -475,7 +475,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/getrusage/getrusage04 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/getsid/getsid01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/getsid/getsid02 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/getsockname/getsockname01 | 1 | 1 | 1 |
+| /ltp/testcases/kernel/syscalls/getsockname/getsockname01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/getsockopt/getsockopt01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/getsockopt/getsockopt02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/gettid/gettid01 | 1 | 1 | 1 |
@@ -701,7 +701,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/mkdir/mkdir04 | 0 | 1 | 0 |
 | /ltp/testcases/kernel/syscalls/mkdir/mkdir05 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/mkdir/mkdir09 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/mkdirat/mkdirat01 | 1 | 1 | 1 |
+| /ltp/testcases/kernel/syscalls/mkdirat/mkdirat01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/mkdirat/mkdirat02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/mknod/mknod01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/mknod/mknod02 | 0 | 0 | 0 |
@@ -714,7 +714,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/mknod/mknod09 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/mknodat/mknodat01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/mknodat/mknodat02 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/mlock/mlock01 | 1 | 1 | 1 |
+| /ltp/testcases/kernel/syscalls/mlock/mlock01 | 0 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/mlock/mlock02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/mlock/mlock03 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/mlock/mlock04 | 0 | 0 | 0 |
@@ -1052,7 +1052,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/sendmsg/sendmsg01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/sendmsg/sendmsg02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/sendmsg/sendmsg03 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/sendto/sendto01 | 1 | 1 | 1 |
+| /ltp/testcases/kernel/syscalls/sendto/sendto01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/sendto/sendto02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/sendto/sendto03 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/set_mempolicy/set_mempolicy01 | 0 | 0 | 0 |
@@ -1282,7 +1282,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/syslog/syslogtst | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/tee/tee01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/tee/tee02 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/tgkill/tgkill01 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/tgkill/tgkill01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/tgkill/tgkill02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/tgkill/tgkill03 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/time/time01 | 1 | 1 | 1 |
