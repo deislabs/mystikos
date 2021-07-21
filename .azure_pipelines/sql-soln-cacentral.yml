@@ -1,0 +1,14 @@
+steps:
+  # run sql solution test on Canada Central DB Node
+  - script: |
+      make clean -C $(Build.SourcesDirectory)/solutions/sql_ae
+      make -C $(Build.SourcesDirectory)/solutions/sql_ae 
+      make run -C $(Build.SourcesDirectory)/solutions/sql_ae
+    displayName: 'run sql solution on Canada Central Node'
+    continueOnError: true
+    enabled: true
+    workingDirectory: $(Build.SourcesDirectory)
+    env:
+      DB_NAME: $(DB_NAME_CANADACENTRAL)
+      DB_SERVER_NAME: $(DB_SERVER_NAME_CANADACENTRAL)
+      MAA_URL: $(DB_MAA_URL_CANADACENTRAL)
