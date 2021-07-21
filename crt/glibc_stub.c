@@ -71,7 +71,7 @@ error_t __argz_append(
     size_t buf_len)
 {
     assert(0);
-    return 0;
+    return ENOMEM;
 }
 weak_alias(__argz_append, argz_append);
 
@@ -82,7 +82,7 @@ error_t __argz_insert(
     const char* entry)
 {
     assert(0);
-    return 0;
+    return ENOMEM;
 }
 weak_alias(__argz_insert, argz_insert);
 
