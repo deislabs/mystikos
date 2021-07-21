@@ -1,8 +1,7 @@
 #define _GNU_SOURCE
 #include <errno.h>
 #include <fcntl.h>
-#include <myst/assume.h>
-#include <myst/defs.h>
+#include <pthread.h>
 #include <sched.h>
 #include <stdint.h>
 #include <sys/ioctl.h>
@@ -11,6 +10,9 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
+#include <myst/assume.h>
+#include <myst/asyncsyscall.h>
+#include <myst/defs.h>
 #include "myst_u.h"
 
 #define RETURN(EXPR)                     \
@@ -70,12 +72,12 @@
 
 long myst_read_ocall(int fd, void* buf, size_t count)
 {
-    RETURN(read(fd, buf, count));
+    RETURN(myst_async_syscall(SYS_read, POLLIN, fd, buf, count));
 }
 
 long myst_write_ocall(int fd, const void* buf, size_t count)
 {
-    RETURN(write(fd, buf, count));
+    RETURN(myst_async_syscall(SYS_write, POLLOUT, fd, buf, count));
 }
 
 long myst_close_ocall(int fd)
@@ -120,7 +122,8 @@ long myst_recvfrom_ocall(
     socklen_t* addrlen,
     socklen_t src_addr_size)
 {
-    RETURN(recvfrom(sockfd, buf, len, flags, src_addr, addrlen));
+    RETURN(myst_async_syscall(
+        SYS_recvfrom, POLLIN, sockfd, buf, len, flags, src_addr, addrlen));
 }
 
 long myst_sendto_ocall(
@@ -131,7 +134,8 @@ long myst_sendto_ocall(
     const struct sockaddr* dest_addr,
     socklen_t addrlen)
 {
-    RETURN(sendto(sockfd, buf, len, flags, dest_addr, addrlen));
+    RETURN(myst_async_syscall(
+        SYS_sendto, POLLOUT, sockfd, buf, len, flags, dest_addr, addrlen));
 }
 
 long myst_socket_ocall(int domain, int type, int protocol)
@@ -174,7 +178,7 @@ long myst_sendmsg_ocall(
     msg.msg_controllen = msg_controllen;
     msg.msg_flags = msg_flags;
 
-    RETURN(sendmsg(sockfd, &msg, flags));
+    RETURN(myst_async_syscall(SYS_sendmsg, POLLOUT, sockfd, &msg, flags));
 }
 
 long myst_recvmsg_ocall(
@@ -215,7 +219,8 @@ long myst_recvmsg_ocall(
     msg.msg_controllen = msg_controllen;
     msg.msg_flags = 0;
 
-    if ((retval = recvmsg(sockfd, &msg, flags)) < 0)
+    if ((retval =
+             myst_async_syscall(SYS_recvmsg, POLLIN, sockfd, &msg, flags)) < 0)
     {
         ret = -errno;
         goto done;
@@ -519,4 +524,9 @@ long myst_fdatasync_ocall(int fd)
 long myst_fsync_ocall(int fd)
 {
     RETURN(fsync(fd));
+}
+
+long myst_interrupt_async_syscall_ocall(int fd)
+{
+    return myst_interrupt_async_syscall(fd);
 }

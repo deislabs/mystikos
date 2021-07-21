@@ -15,6 +15,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include <myst/asyncsyscall.h>
 #include <myst/eraise.h>
 #include <myst/fssig.h>
 #include <myst/luks.h>
@@ -510,6 +511,10 @@ long myst_tcall(long n, long params[6])
         case MYST_TCALL_READ_FILE:
         {
             return myst_tcall_read_file((const char*)x1, (void*)x2, (size_t)x3);
+        }
+        case MYST_TCALL_INTERRUPT_ASYNC_SYSCALL:
+        {
+            return myst_interrupt_async_syscall((int)x1);
         }
         case SYS_ioctl:
         {

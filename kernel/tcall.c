@@ -256,3 +256,9 @@ int myst_tcall_read_file(const char* pathname, char* data, size_t size)
     long params[6] = {(long)pathname, (long)data, (long)size};
     return myst_tcall(MYST_TCALL_READ_FILE, params);
 }
+
+long myst_tcall_interrupt_async_syscall(int fd)
+{
+    long params[6] = {(long)fd};
+    return myst_tcall(MYST_TCALL_INTERRUPT_ASYNC_SYSCALL, params);
+}
