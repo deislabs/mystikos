@@ -10,6 +10,7 @@
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <sys/epoll.h>
 #include <sys/syscall.h>
 #include <sys/time.h>
 #include <time.h>
@@ -38,8 +39,30 @@ static void* _client_thread_func(void* arg)
     run_client(port);
 }
 
+static void test_epoll_on_regular_files_unsupp()
+{
+    /* epoll on regular files should fail with an EPERM */
+    int fd = creat("/tmp/file", 0666);
+    assert(fd >= 0);
+
+    int epfd = epoll_create1(EPOLL_CLOEXEC);
+    assert(epfd != -1);
+    struct epoll_event ev;
+    ev.data.fd = fd;
+    ev.events = EPOLLIN;
+    int ret = epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &ev);
+    assert(ret == -1 && errno == EPERM);
+
+    ret = unlink("/tmp/file");
+    assert(ret == 0);
+
+    printf("=== passed test (%s)\n", __FUNCTION__);
+}
+
 int main(int argc, const char* argv[])
 {
+    test_epoll_on_regular_files_unsupp();
+
     pthread_t sthread;
     pthread_t cthread1;
     pthread_t cthread2;

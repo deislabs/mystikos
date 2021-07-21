@@ -108,6 +108,17 @@ static int _ed_epoll_ctl(
     if (!myst_valid_fd(fd))
         ERAISE(-EBADF);
 
+    /* return EPERM is fd points to regular file or directory */
+    {
+        myst_fdtable_t* fdtable = myst_fdtable_current();
+        myst_file_t* file = NULL;
+        myst_fs_t* fs = NULL;
+
+        int r = myst_fdtable_get_file(fdtable, fd, &fs, &file);
+        if (r == 0 && fs && file)
+            ERAISE(-EPERM);
+    }
+
     myst_spin_lock(&epoll->lock);
     locked = true;
 
