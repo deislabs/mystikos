@@ -12,6 +12,8 @@
 
 #define ENOMEM 12
 
+typedef int error_t;
+
 __thread int errno;
 
 const char* const sys_errlist[] = {};
@@ -61,6 +63,33 @@ int __argz_create_sep(const char* string, int delim, char** argz, size_t* len)
     return ENOMEM;
 }
 weak_alias(__argz_create_sep, argz_create_sep);
+
+error_t __argz_append(
+    char** argz,
+    size_t* argz_len,
+    const char* buf,
+    size_t buf_len)
+{
+    assert(0);
+    return 0;
+}
+weak_alias(__argz_append, argz_append);
+
+error_t __argz_insert(
+    char** argz,
+    size_t* argz_len,
+    char* before,
+    const char* entry)
+{
+    assert(0);
+    return 0;
+}
+weak_alias(__argz_insert, argz_insert);
+
+void argz_stringify(char* argz, size_t len, int sep)
+{
+    assert(0);
+}
 
 struct CLIENT
 {
