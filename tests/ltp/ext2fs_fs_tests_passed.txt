@@ -21,6 +21,7 @@
 /ltp/testcases/kernel/syscalls/dup3/dup3_01
 /ltp/testcases/kernel/syscalls/dup3/dup3_02
 /ltp/testcases/kernel/syscalls/epoll/epoll-ltp
+/ltp/testcases/kernel/syscalls/epoll_ctl/epoll_ctl01
 /ltp/testcases/kernel/syscalls/epoll_wait/epoll_wait01
 /ltp/testcases/kernel/syscalls/faccessat/faccessat01
 /ltp/testcases/kernel/syscalls/fallocate/fallocate03
@@ -109,6 +110,7 @@
 /ltp/testcases/kernel/syscalls/readlinkat/readlinkat02
 /ltp/testcases/kernel/syscalls/readv/readv01
 /ltp/testcases/kernel/syscalls/readv/readv02
+/ltp/testcases/kernel/syscalls/rename/rename01
 /ltp/testcases/kernel/syscalls/rename/rename02
 /ltp/testcases/kernel/syscalls/rename/rename03
 /ltp/testcases/kernel/syscalls/rename/rename04
@@ -135,10 +137,10 @@
 /ltp/testcases/kernel/syscalls/symlinkat/symlinkat01
 /ltp/testcases/kernel/syscalls/truncate/truncate02
 /ltp/testcases/kernel/syscalls/truncate/truncate02_64
+/ltp/testcases/kernel/syscalls/unlinkat/unlinkat01
 /ltp/testcases/kernel/syscalls/utime/utime01
 /ltp/testcases/kernel/syscalls/utime/utime02
 /ltp/testcases/kernel/syscalls/utime/utime03
-/ltp/testcases/kernel/syscalls/unlinkat/unlinkat01
 /ltp/testcases/kernel/syscalls/write/write01
 /ltp/testcases/kernel/syscalls/write/write02
 /ltp/testcases/kernel/syscalls/writev/writev01

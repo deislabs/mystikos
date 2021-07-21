@@ -56,7 +56,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/alarm/alarm07 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/bind/bind01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/bind/bind02 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/bind/bind03 | 1 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/bind/bind03 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/bind/bind04 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/bind/bind05 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/bind/bind06 | 0 | 0 | 0 |
@@ -132,7 +132,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/cma/process_vm_readv02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/cma/process_vm_readv03 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/cma/process_vm_writev02 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/connect/connect01 | 1 | 1 | 1 |
+| /ltp/testcases/kernel/syscalls/connect/connect01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/connect/connect02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/copy_file_range/copy_file_range01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/copy_file_range/copy_file_range02 | 0 | 0 | 0 |
@@ -164,7 +164,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/dup3/dup3_02 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/epoll/epoll-ltp | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/epoll_create1/epoll_create1_01 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/epoll_ctl/epoll_ctl01 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/epoll_ctl/epoll_ctl01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/epoll_ctl/epoll_ctl02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/epoll_pwait/epoll_pwait01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/epoll_wait/epoll_wait01 | 1 | 1 | 1 |
@@ -439,7 +439,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/getitimer/getitimer02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/getitimer/getitimer03 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/getpagesize/getpagesize01 | 1 | 1 | 1 |
-| /ltp/testcases/kernel/syscalls/getpeername/getpeername01 | 1 | 1 | 1 |
+| /ltp/testcases/kernel/syscalls/getpeername/getpeername01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/getpgid/getpgid01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/getpgid/getpgid02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/getpgrp/getpgrp01 | 1 | 1 | 1 |
@@ -475,7 +475,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/getrusage/getrusage04 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/getsid/getsid01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/getsid/getsid02 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/getsockname/getsockname01 | 1 | 1 | 1 |
+| /ltp/testcases/kernel/syscalls/getsockname/getsockname01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/getsockopt/getsockopt01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/getsockopt/getsockopt02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/gettid/gettid01 | 1 | 1 | 1 |
@@ -714,7 +714,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/mknod/mknod09 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/mknodat/mknodat01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/mknodat/mknodat02 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/mlock/mlock01 | 1 | 1 | 1 |
+| /ltp/testcases/kernel/syscalls/mlock/mlock01 | 0 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/mlock/mlock02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/mlock/mlock03 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/mlock/mlock04 | 0 | 0 | 0 |
@@ -851,7 +851,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/pipe/pipe06 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/pipe/pipe07 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/pipe/pipe08 | 1 | 1 | 1 |
-| /ltp/testcases/kernel/syscalls/pipe/pipe09 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/pipe/pipe09 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/pipe/pipe10 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/pipe/pipe11 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/pipe/pipe12 | 0 | 0 | 0 |
@@ -964,7 +964,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/remap_file_pages/remap_file_pages02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/removexattr/removexattr01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/removexattr/removexattr02 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/rename/rename01 | 0 | 1 | 1 |
+| /ltp/testcases/kernel/syscalls/rename/rename01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/rename/rename02 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/rename/rename03 | 1 | 1 | 0 |
 | /ltp/testcases/kernel/syscalls/rename/rename04 | 1 | 1 | 0 |
@@ -1052,7 +1052,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/sendmsg/sendmsg01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/sendmsg/sendmsg02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/sendmsg/sendmsg03 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/sendto/sendto01 | 1 | 1 | 1 |
+| /ltp/testcases/kernel/syscalls/sendto/sendto01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/sendto/sendto02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/sendto/sendto03 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/set_mempolicy/set_mempolicy01 | 0 | 0 | 0 |
@@ -1282,7 +1282,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/syslog/syslogtst | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/tee/tee01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/tee/tee02 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/tgkill/tgkill01 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/tgkill/tgkill01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/tgkill/tgkill02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/tgkill/tgkill03 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/time/time01 | 1 | 1 | 1 |
