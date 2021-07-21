@@ -1,0 +1,17 @@
+steps:
+  # run azure-sdk-for -dotnet & -cpp tests
+  - task: AzureCLI@2
+    displayName: 'run Azure SDK tests'
+    continueOnError: true
+    enabled: true
+    inputs:
+      azureSubscription: "OSTC Lab"
+      scriptType: bash
+      scriptPath: $(SCRIPTS_ROOT)/run-azure-tests.sh
+      addSpnToEnvironment: true
+      arguments:
+        $(Build.SourcesDirectory)/tests/azure-sdk-for-cpp
+        $(Build.SourcesDirectory)/solutions/dotnet_azure_sdk
+    env:
+      AZURE_KEYVAULT_URL: $(AZURE_TEST_KEYVAULT_URL)
+      STANDARD_STORAGE_CONNECTION_STRING: $(STANDARD_STORAGE_CONNECTION_STRING)
