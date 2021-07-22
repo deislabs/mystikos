@@ -891,13 +891,13 @@ typedef enum mman_pids_op
     MMAN_PIDS_OP_TEST,
 } mman_pids_op_t;
 
-static int _handle_mman_pids_op(
+static long _handle_mman_pids_op(
     mman_pids_op_t op,
     const void* addr,
     size_t length,
     pid_t pid)
 {
-    int ret = 0;
+    long ret = 0;
     uint32_t* pids = __myst_kernel_args.mman_pids_data;
     size_t npids = __myst_kernel_args.mman_pids_size / sizeof(uint32_t);
     bool locked = false;
@@ -961,13 +961,18 @@ static int _handle_mman_pids_op(
         }
         case MMAN_PIDS_OP_TEST:
         {
-            /* Update the associated elements of pids[] */
+            ssize_t n = 0;
+
+            /* Test the associated elements of pids[] */
             for (size_t i = index; i < index + count; i++)
             {
                 if (pids[i] != (uint32_t)pid)
-                    ERAISE(-ENOENT);
+                    break;
+
+                n++;
             }
 
+            ret = n * PAGE_SIZE;
             break;
         }
         default:
@@ -988,10 +993,10 @@ done:
 
 int myst_mman_pids_set(const void* addr, size_t length, pid_t pid)
 {
-    return _handle_mman_pids_op(MMAN_PIDS_OP_SET, addr, length, pid);
+    return (int)_handle_mman_pids_op(MMAN_PIDS_OP_SET, addr, length, pid);
 }
 
-int myst_mman_pids_test(const void* addr, size_t length, pid_t pid)
+ssize_t myst_mman_pids_test(const void* addr, size_t length, pid_t pid)
 {
     return _handle_mman_pids_op(MMAN_PIDS_OP_TEST, addr, length, pid);
 }
@@ -1016,25 +1021,37 @@ int myst_mman_pids_munmap(const void* addr, size_t length, pid_t pid)
         ERAISE(-EINVAL);
 
     /* release every page in the mapping owned by this pid */
-    /* ATTN: optimize to handle consecutive pages by the same owner */
     {
-        uint8_t* p = (uint8_t*)addr;
-        size_t n = length / PAGE_SIZE;
+        uint8_t* ptr = (uint8_t*)addr;
+        size_t rem = length;
 
-        /* for each page in the mapping */
-        while (n--)
+        while (rem)
         {
-            /* if the process owns this page */
-            if (myst_mman_pids_test(p, PAGE_SIZE, pid) == 0)
+            ssize_t n;
+
+            /* check ownership for this mapping (returns bytes owned) */
+            if ((n = myst_mman_pids_test(ptr, rem, pid)) > 0)
             {
-                /* unmap one page */
-                if (myst_munmap(p, PAGE_SIZE) == 0)
+                /* release this mapping */
+                if (myst_munmap(ptr, n) == 0)
                 {
-                    /* clear the owner for this page */
-                    myst_mman_pids_set(p, PAGE_SIZE, 0);
+                    /* clear the owner for this mapping */
+                    myst_mman_pids_set(ptr, n, 0);
                 }
+
+                ptr += n;
+                rem -= n;
             }
-            p += PAGE_SIZE;
+            else if (n == 0)
+            {
+                ptr += PAGE_SIZE;
+                rem -= PAGE_SIZE;
+            }
+            else
+            {
+                /* code logic error! */
+                myst_panic("unexpected");
+            }
         }
     }
 
