@@ -201,6 +201,7 @@
 /ltp/testcases/kernel/syscalls/sendfile/sendfile06_64
 /ltp/testcases/kernel/syscalls/sendfile/sendfile08
 /ltp/testcases/kernel/syscalls/sendfile/sendfile08_64
+/ltp/testcases/kernel/syscalls/sendmmsg/sendmmsg02
 /ltp/testcases/kernel/syscalls/set_robust_list/set_robust_list01
 /ltp/testcases/kernel/syscalls/set_tid_address/set_tid_address01
 /ltp/testcases/kernel/syscalls/setegid/setegid01
