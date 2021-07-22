@@ -947,6 +947,7 @@ static long _handle_mman_pids_op(
             ERAISE(-ERANGE);
     }
 
+    /* ATTN: optimize to use 64bit ops */
     switch (op)
     {
         case MMAN_PIDS_OP_SET:
