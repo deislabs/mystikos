@@ -952,10 +952,17 @@ static long _handle_mman_pids_op(
     {
         case MMAN_PIDS_OP_SET:
         {
-            /* Update the associated elements of pids[] */
-            for (size_t i = index; i < index + count; i++)
+            if (pid == 0)
             {
-                pids[i] = pid;
+                memset(&pids[index], 0, count * sizeof(uint32_t));
+            }
+            else
+            {
+                /* Update the associated elements of pids[] */
+                for (size_t i = index; i < index + count; i++)
+                {
+                    pids[i] = pid;
+                }
             }
 
             break;
