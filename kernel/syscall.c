@@ -2669,8 +2669,8 @@ long myst_syscall_sendmmsg(
     unsigned int cnt;
 
     ECHECK(myst_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
-    if (!vlen)
-        return 0;
+    if (!msgvec && vlen)
+        ERAISE(EFAULT);
     for (cnt = 0; cnt < vlen; cnt++)
     {
         ret = (*sd->sd_sendmsg)(sd, sock, &msgvec[cnt].msg_hdr, flags);
@@ -2702,6 +2702,8 @@ long myst_syscall_recvmmsg(
     unsigned int cnt;
 
     ECHECK(myst_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
+    if (!msgvec && vlen)
+        ERAISE(EFAULT);
     if (timeout)
     {
         if (!is_timespec_valid(timeout))
@@ -2727,8 +2729,8 @@ long myst_syscall_recvmmsg(
                 break;
         }
     }
-    if (ret >= 0)
-        ret = cnt;
+    // Only return err when zero msg was received
+    ret = cnt ? (long)cnt : ret;
 
 done:
     return ret;
