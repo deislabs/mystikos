@@ -23,6 +23,7 @@ endif
 DIRS += aspnet
 DIRS += memcached
 DIRS += python_web_frameworks
+DIRS += nodejs
 
 .PHONY: $(DIRS)
 
