@@ -78,6 +78,7 @@
 /ltp/testcases/kernel/syscalls/ipc/semctl/semctl03:  SYS_semget()
 /ltp/testcases/kernel/syscalls/ipc/semctl/semctl04:  SYS_semget()
 /ltp/testcases/kernel/syscalls/ipc/semctl/semctl05:  SYS_semget()
+/ltp/testcases/kernel/syscalls/ipc/semctl/semctl06:  SYS_semget()
 /ltp/testcases/kernel/syscalls/ipc/semctl/semctl07:  SYS_semget()
 /ltp/testcases/kernel/syscalls/ipc/semctl/semctl09:  SYS_semget()
 /ltp/testcases/kernel/syscalls/ipc/semget/semget01:  SYS_semget()
