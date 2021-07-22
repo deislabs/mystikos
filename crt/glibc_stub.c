@@ -203,11 +203,6 @@ void* __libc_reallocarray(void* optr, size_t nmemb, size_t elem_size)
 }
 weak_alias(__libc_reallocarray, reallocarray);
 
-void __explicit_bzero_chk(void* __dest, size_t __len, size_t __destlen)
-{
-    assert(0);
-}
-
 int __libc_alloca_cutoff(size_t size)
 {
     assert(0);
