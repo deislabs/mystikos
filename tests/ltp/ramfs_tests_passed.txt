@@ -270,6 +270,8 @@
 /ltp/testcases/kernel/syscalls/utime/utime02
 /ltp/testcases/kernel/syscalls/utime/utime03
 /ltp/testcases/kernel/syscalls/unlinkat/unlinkat01
+/ltp/testcases/kernel/syscalls/vfork/vfork01
+/ltp/testcases/kernel/syscalls/vfork/vfork02
 /ltp/testcases/kernel/syscalls/wait/wait01
 /ltp/testcases/kernel/syscalls/wait/wait02
 /ltp/testcases/kernel/syscalls/waitpid/waitpid01

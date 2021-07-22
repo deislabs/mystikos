@@ -306,6 +306,26 @@ static int _child_func(void* arg)
     return 0;
 }
 
+static pthread_key_t _called_by_vfork_key;
+static pthread_once_t _called_by_vfork_key_once = PTHREAD_ONCE_INIT;
+
+static void _init_called_by_fork(void)
+{
+    pthread_key_create(&_called_by_vfork_key, NULL);
+}
+
+static uint64_t _get_called_by_vfork(void)
+{
+    pthread_once(&_called_by_vfork_key_once, _init_called_by_fork);
+    return (uint64_t)pthread_getspecific(_called_by_vfork_key);
+}
+
+static void _set_called_by_vfork(uint64_t value)
+{
+    pthread_once(&_called_by_vfork_key_once, _init_called_by_fork);
+    pthread_setspecific(_called_by_vfork_key, (void*)value);
+}
+
 __attribute__((__returns_twice__))
 __attribute__((__optimize__("-fno-stack-protector"))) pid_t
 myst_fork(void)
@@ -313,13 +333,28 @@ myst_fork(void)
     pid_t pid = 0;
     myst_jmp_buf_t env;
     struct thread_args* args = NULL;
-    myst_fork_info_t arg = MYST_FORK_INFO_INITIALIZER;
+    myst_fork_mode_t fork_mode = myst_fork_none;
 
-    if (syscall(SYS_myst_get_fork_info, &arg) < 0 ||
-        arg.fork_mode == myst_fork_none)
+    /* if called by vfork(), then use myst_fork_pseudo_wait_for_exit_exec */
+    if (_get_called_by_vfork())
     {
-        return -ENOTSUP;
+        fork_mode = myst_fork_pseudo_wait_for_exit_exec;
+        _set_called_by_vfork(0);
     }
+    else
+    {
+        myst_fork_info_t arg = MYST_FORK_INFO_INITIALIZER;
+
+        if (syscall(SYS_myst_get_fork_info, &arg) < 0)
+            return -ENOSYS;
+
+        fork_mode = arg.fork_mode;
+    }
+
+    /* fail if fork-mode is still none */
+    if (fork_mode == myst_fork_none)
+        return -ENOTSUP;
+
     args = calloc(1, sizeof(struct thread_args));
     if (args == NULL)
     {
@@ -396,7 +431,7 @@ myst_fork(void)
             pid = args->pid;
 
             /* Wait if fork mode requires it */
-            if (arg.fork_mode == myst_fork_pseudo_wait_for_exit_exec)
+            if (fork_mode == myst_fork_pseudo_wait_for_exit_exec)
             {
                 syscall(SYS_fork_wait_exec_exit);
             }
@@ -411,4 +446,40 @@ myst_fork(void)
         free(args);
 
     return pid;
+}
+
+/*
+**==============================================================================
+**
+** vfork()
+**
+** The vfork() and fork() Mystikos implementations are equivalent except
+** that vfork() suspends execution of the calling thread until the child
+** either calls exec or _exit. POSIX (The Open Group) specifies that
+** vfork() and fork() are equivalent but that the behavior is undefined
+** if the child process performs any of the following.
+**
+**     (1) modifies any data other than a variable of type pid_t used
+**         to store the return value from vfork(), or
+**     (2) returns from the function in which vfork() was called, or
+**     (3) calls any other function before successfully calling _exit()
+**         or one of the exec family of functions.
+**
+** Linux goes further by suspending execution of the calling thread
+** until the child process either calls _exit or one of the exec family of
+** functions (else parent-process data modifications would be visible to the
+** child).
+**
+** Note that unlike Linux, child modifications of the stack are not visible
+** to the parent. But any application that relies on such undefined behavior
+** is badly-behaved and non-portable.
+**
+**==============================================================================
+*/
+
+int vfork(void)
+{
+    /* fork calls _get_called_by_vfork() */
+    _set_called_by_vfork(1);
+    return fork();
 }

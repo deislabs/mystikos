@@ -1337,8 +1337,8 @@ FAILING
 | /ltp/testcases/kernel/syscalls/utime/utime06 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/utimensat/utimensat01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/utimes/utimes01 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/vfork/vfork01 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/vfork/vfork02 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/vfork/vfork01 | 1 | 1 | 1 |
+| /ltp/testcases/kernel/syscalls/vfork/vfork02 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/vhangup/vhangup01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/vhangup/vhangup02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/vmsplice/vmsplice01 | 0 | 0 | 0 |

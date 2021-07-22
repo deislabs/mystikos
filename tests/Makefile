@@ -4,6 +4,7 @@ include $(TOP)/defs.mak
 DIRS =
 
 DIRS += fork
+DIRS += vfork
 DIRS += myst
 DIRS += itimer
 DIRS += timeval
@@ -115,6 +116,7 @@ DIRS += tkillself
 DIRS += thread_abort
 DIRS += synccall
 DIRS += python_subprocess
+DIRS += python_vfork
 
 .PHONY: $(DIRS)
 
