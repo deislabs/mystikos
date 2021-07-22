@@ -1222,6 +1222,17 @@ done:
     return ret;
 }
 
+static void _fs_sync(myst_fs_t* fs)
+{
+    hostfs_t* hostfs = (hostfs_t*)fs;
+
+    if (_hostfs_valid(hostfs))
+    {
+        long params[6];
+        myst_tcall(SYS_sync, params);
+    }
+}
+
 int myst_init_hostfs(myst_fs_t** fs_out)
 {
     int ret = 0;
@@ -1284,6 +1295,7 @@ int myst_init_hostfs(myst_fs_t** fs_out)
         .fs_fchmod = _fs_fchmod,
         .fs_fdatasync = _fs_fdatasync,
         .fs_fsync = _fs_fsync,
+        .fs_sync = _fs_sync,
     };
     // clang-format on
 

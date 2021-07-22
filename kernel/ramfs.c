@@ -2644,6 +2644,12 @@ done:
     return ret;
 }
 
+static void _fs_sync(myst_fs_t* fs)
+{
+    // ramfs being a in-memory fs, treat fsync and datasync as NOP
+    (void)fs;
+}
+
 static int _init_ramfs(
     myst_mount_resolve_callback_t resolve_cb,
     myst_fs_t** fs_out)
@@ -2708,6 +2714,7 @@ static int _init_ramfs(
         .fs_fchmod = _fs_fchmod,
         .fs_fdatasync = _fs_fsync_and_fdatasync,
         .fs_fsync = _fs_fsync_and_fdatasync,
+        .fs_sync = _fs_sync,
     };
     // clang-format on
     inode_t* root_inode = NULL;

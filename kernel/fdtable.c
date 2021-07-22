@@ -570,3 +570,30 @@ done:
 
     return ret;
 }
+
+long myst_fdtable_sync(myst_fdtable_t* fdtable)
+{
+    long ret = 0;
+
+    if (!fdtable)
+        ERAISE(-EINVAL);
+
+    myst_spin_lock(&fdtable->lock);
+    {
+        for (int i = 0; i < MYST_FDTABLE_SIZE; i++)
+        {
+            const myst_fdtable_entry_t* entry = &fdtable->entries[i];
+
+            if (entry->type == MYST_FDTABLE_TYPE_FILE)
+            {
+                myst_fs_t* fs = entry->device;
+                fs->fs_sync(fs);
+            }
+        }
+    }
+    myst_spin_unlock(&fdtable->lock);
+
+done:
+
+    return ret;
+}
