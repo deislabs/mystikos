@@ -8,6 +8,13 @@ parameters:
   displayName: VERSION
   type: string
   default: 0.0.0
+- name: RELEASE_ARTIFACT
+  displayName: RELEASE_ARTIFACT
+  type: number
+  default: 0
+  values:
+  - 0
+  - 1
 
 trigger: none
 pr: none
@@ -97,3 +104,14 @@ jobs:
           exit 1
         displayName: 'Error(s) Check'
         condition: not(eq(variables['Agent.JobStatus'], 'succeeded'))
+      
+      # publish as artifacts
+      - publish: $(System.DefaultWorkingDirectory)/mystikos-${{ parameters.VERSION }}-x86_64.tar.gz
+        artifact: 'Release binary'
+        displayName: 'Publish release binary'
+        condition: and(eq(variables['Agent.JobStatus'], 'succeeded'), eq(variables['RELEASE_ARTIFACT'], '1')
+
+      - publish: $(System.DefaultWorkingDirectory)/mystikos-${{ parameters.VERSION }}.tar.gz
+        artifact: 'Release binary code tarball'
+        displayName: 'Publish release source code'
+        condition: and(eq(variables['Agent.JobStatus'], 'succeeded'), eq(variables['RELEASE_ARTIFACT'], '1')
