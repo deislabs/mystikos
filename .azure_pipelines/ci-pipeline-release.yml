@@ -22,6 +22,7 @@ pr: none
 jobs:
   - job: ReleaseAndTest
     displayName: 'Building Release and Testing'
+    timeoutInMinutes: 300
     pool: '1804DC4CCagentpool'
     workspace:
       clean: all
