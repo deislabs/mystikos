@@ -109,9 +109,9 @@ jobs:
       - publish: $(System.DefaultWorkingDirectory)/mystikos-${{ parameters.VERSION }}-x86_64.tar.gz
         artifact: 'Release binary'
         displayName: 'Publish release binary'
-        condition: and(eq(variables['Agent.JobStatus'], 'succeeded'), eq(variables['RELEASE_ARTIFACT'], '1')
+        condition: and(eq(variables['Agent.JobStatus'], 'succeeded'), eq(variables['RELEASE_ARTIFACT'], '1'))
 
       - publish: $(System.DefaultWorkingDirectory)/mystikos-${{ parameters.VERSION }}.tar.gz
         artifact: 'Release binary code tarball'
         displayName: 'Publish release source code'
-        condition: and(eq(variables['Agent.JobStatus'], 'succeeded'), eq(variables['RELEASE_ARTIFACT'], '1')
+        condition: and(eq(variables['Agent.JobStatus'], 'succeeded'), eq(variables['RELEASE_ARTIFACT'], '1'))
