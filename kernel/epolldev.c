@@ -481,15 +481,18 @@ static int _ed_fcntl(
     {
         case F_SETFD:
         {
-            if (arg != FD_CLOEXEC && arg != 0)
+            if (arg == FD_CLOEXEC)
+                epoll->flags = EPOLL_CLOEXEC;
+            else if (arg == 0)
+                epoll->flags = 0;
+            else
                 ERAISE(-EINVAL);
-
-            epoll->flags = arg;
             goto done;
         }
         case F_GETFD:
         {
-            ret = epoll->flags;
+            if (epoll->flags & EPOLL_CLOEXEC)
+                ret = FD_CLOEXEC;
             goto done;
         }
         default:
