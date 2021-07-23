@@ -5555,6 +5555,12 @@ done:
     return ret;
 }
 
+static void _ext2_sync(myst_fs_t* fs)
+{
+    // ramfs being a in-memory fs, treat fsync and datasync as NOP
+    (void)fs;
+}
+
 static myst_fs_t _base = {
     {
         .fd_read = (void*)ext2_read,
@@ -5611,6 +5617,7 @@ static myst_fs_t _base = {
     .fs_fchmod = _ext2_fchmod,
     .fs_fdatasync = _ext2_fsync_and_fdatasync,
     .fs_fsync = _ext2_fsync_and_fdatasync,
+    .fs_sync = _ext2_sync,
 };
 
 int ext2_create(

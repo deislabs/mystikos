@@ -1026,6 +1026,12 @@ static void test_o_tmpfile_not_supp(const char* fstype)
     _passed(__FUNCTION__);
 }
 
+static void test_sync()
+{
+    sync();
+    _passed(__FUNCTION__);
+}
+
 int main(int argc, const char* argv[])
 {
     if (argc != 2)
@@ -1079,6 +1085,7 @@ int main(int argc, const char* argv[])
     test_fsync();
     test_o_excl();
     test_o_tmpfile_not_supp(argv[1]);
+    test_sync();
 
     printf("=== passed all tests (%s)\n", argv[0]);
 

@@ -105,7 +105,7 @@ on lowering the incompatibilities to enable more applications.
 | SYS_memfd_create | create anonymous file descriptor | Unsupported |
 | SYS_chroot | change root directory | Unsupported |
 | SYS_statfs / SYS_fstatfs | get file system status | Partial |
-| SYS_sync / SYS_syncfs | commit filesystem caches to disk | Unsupported |
+| SYS_syncfs | commit filesystem caches to disk | Unsupported |
 
 ## System calls related to low level memory management
 
