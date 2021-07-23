@@ -10,6 +10,7 @@ endif
 OPTS += --fork-mode pseudo_wait_for_exit_exec
 TESTFILE=tests.passed
 TC = test_grammar
+FS=ext2fs
 
 # Set timeout to 10 mins
 export TIMEOUT=600
@@ -23,20 +24,29 @@ ext2fs: appdir
 	$(MYST) mkext2 appdir ext2fs
 
 clean:
-	rm -fr appdir ext2fs @test_101*
+	rm -fr appdir ext2fs @test_101* hostfs
 
 tests:
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) ext2fs /cpython/python -m test -f tests.passed -q
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) ext2fs /cpython/python -m test -f tests.passed.1 -q
+	$(RUNTEST) ./exec.sh
 
-run-single:
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) ext2fs /cpython/python -m test $(TC) -v
+#########################
+##	Dev targets
+#########################
+hostfs:
+	cp -r appdir/ hostfs/
 
-run-str:
-	$(MYST_EXEC) $(OPTS) ext2fs /cpython/python -c "$(PROG_STR)"
+run-list: $(FS)
+	$(MYST_EXEC) $(OPTS) $(FS) /cpython/python -m test -f $(TESTFILE) -q
 
-pdb:
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) ext2fs /cpython/python -m pdb /cpython/Lib/test/test_grammar.py -v 
+
+run-single: $(FS)
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) /cpython/python -m test $(TC) -q
+
+run-str: $(FS)
+	$(MYST_EXEC) $(OPTS) $(FS) /cpython/python -c "$(PROG_STR)"
+
+pdb: $(FS)
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) /cpython/python -m pdb /cpython/Lib/test/test_grammar.py -v
 
 ct:
-	rm -rf /tmp/myst*
+	rm -rf /tmp/myst* @test_101*
