@@ -5,7 +5,6 @@ test_builtin
 test_exceptions
 test_types
 test_unittest
-test___all__
 test___future__
 test__opcode
 test__osx_support
@@ -58,6 +57,7 @@ test_codeop
 test_collections
 test_colorsys
 test_compare
+test_compile
 test_complex
 test_concurrent_futures
 test_configparser
@@ -90,6 +90,8 @@ test_dictcomps
 test_dictviews
 test_difflib
 test_dis
+test_doctest
+test_doctest2
 test_docxmlrpc
 test_dtrace
 test_dynamic
@@ -133,6 +135,7 @@ test_gettext
 test_global
 test_grp
 test_hash
+test_hashlib
 test_heapq
 test_hmac
 test_html
