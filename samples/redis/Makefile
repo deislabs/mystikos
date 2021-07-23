@@ -13,6 +13,10 @@ ifdef STRACE
 OPTS += --strace
 endif
 
+ifdef PERF
+OPTS += --perf
+endif
+
 all: init package
 
 init: 
@@ -34,7 +38,7 @@ run: package
 	
 	# Launch testing client script
 	@echo "Run test client outside of the Enclave ..."
-	python3 redis_test.py $(SERVICE_ADDR) $(SERVICE_PORT)
+	bash -c "time python3 redis_test.py $(SERVICE_ADDR) $(SERVICE_PORT)"
 	
 	# Kill the running instance of the server before exit.
 	./kill.sh
@@ -51,3 +55,23 @@ private.pem:
 
 clean:
 	rm -rf rootfs $(APPDIR) myst private.pem $(APP_NAME).pid
+
+ROOTDIR=$(CURDIR)/appdir
+
+native:
+	./kill.sh
+	proot -r $(ROOTDIR) /usr/local/bin/redis-server &
+	./wait.sh $(SERVICE_PORT)
+	bash -c "time python3 redis_test.py $(SERVICE_ADDR) $(SERVICE_PORT)"
+
+ext2: rootfs
+	./kill.sh
+	@ echo -e "\n------starting Redis server------\n"
+	$(MYST_EXEC) rootfs /usr/local/bin/redis-server $(OPTS) & echo $$! > $(APP_NAME).pid
+	./wait.sh $(SERVICE_PORT)
+	@echo "Run test client outside of the Enclave ..."
+	bash -c "time python3 redis_test.py $(SERVICE_ADDR) $(SERVICE_PORT)"
+	./kill.sh
+
+rootfs:
+	$(MYST) mkext2 appdir rootfs
