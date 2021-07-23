@@ -11,16 +11,12 @@ test_c_locale_coercion
 test_calendar
 test_capi
 test_cgi
-test_check_c_globals
 test_cmd_line
 test_cmd_line_script
-test_compile
 test_compileall
 test_cprofile
 test_ctypes
 test_distutils
-test_doctest
-test_doctest2
 test_eintr
 test_embed
 test_epoll
@@ -36,7 +32,6 @@ test_genericalias
 test_glob
 test_graphlib
 test_gzip
-test_hashlib
 test_import
 test_importlib
 test_inspect
@@ -66,6 +61,7 @@ test_pydoc
 test_quopri
 test_random
 test_re
+test_readline
 test_regrtest
 test_repl
 test_resource
@@ -77,6 +73,8 @@ test_signal
 test_site
 test_smtplib
 test_socket
+test_sqlite
+test_ssl
 test_stat
 test_strptime
 test_subprocess
