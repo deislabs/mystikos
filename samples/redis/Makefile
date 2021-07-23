@@ -58,17 +58,23 @@ clean:
 
 ROOTDIR=$(CURDIR)/appdir
 
-native:
+native-server:
 	./kill.sh
-	proot -r $(ROOTDIR) /usr/local/bin/redis-server &
+	sudo chroot $(ROOTDIR) /usr/local/bin/redis-server &
+	# proot -r $(ROOTDIR) /usr/local/bin/redis-server &	# slow
 	./wait.sh $(SERVICE_PORT)
-	bash -c "time python3 redis_test.py $(SERVICE_ADDR) $(SERVICE_PORT)"
 
-ext2: rootfs
+native: native-server
+	bash -c "time python3 redis_test.py $(SERVICE_ADDR) $(SERVICE_PORT)"
+	./kill.sh
+
+ext2-server: rootfs
 	./kill.sh
 	@ echo -e "\n------starting Redis server------\n"
 	$(MYST_EXEC) rootfs /usr/local/bin/redis-server $(OPTS) & echo $$! > $(APP_NAME).pid
 	./wait.sh $(SERVICE_PORT)
+
+ext2: ext2-server
 	@echo "Run test client outside of the Enclave ..."
 	bash -c "time python3 redis_test.py $(SERVICE_ADDR) $(SERVICE_PORT)"
 	./kill.sh
