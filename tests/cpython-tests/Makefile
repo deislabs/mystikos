@@ -36,7 +36,7 @@ hostfs:
 	cp -r appdir/ hostfs/
 
 run-list: $(FS)
-	$(MYST_EXEC) $(OPTS) $(FS) /cpython/python -m test -f $(TESTFILE) -q
+	$(MYST_EXEC) $(OPTS) $(FS) /cpython/python -m test -f $(TESTFILE) --timeout 30 -q
 
 
 run-single: $(FS)
