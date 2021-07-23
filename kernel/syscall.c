@@ -3691,7 +3691,12 @@ static long _syscall(void* args_)
             /* this can return (void*)-errno */
             long ret = (long)myst_mmap(addr, length, prot, flags, fd, offset);
 
-            if (ret > 0)
+            // ATTN : always translating errors to ENOMEM is probably incorrect
+            if (ret <= 0)
+            {
+                ret = -ENOMEM;
+            }
+            else if (ret > 0)
             {
                 pid_t pid = myst_getpid();
                 void* ptr = (void*)ret;
@@ -3903,17 +3908,6 @@ static long _syscall(void* args_)
             void* new_address = (void*)x5;
             long ret;
 
-#if MYST_ENABLE_MMAN_PIDS
-            {
-                const pid_t pid = myst_getpid();
-                myst_assume(pid > 0);
-
-                /* fail if the calling process does not own this mapping */
-                if (myst_mman_pids_test(old_address, old_size, pid) != 0)
-                    BREAK(_return(n, -EINVAL));
-            }
-#endif
-
             _strace(
                 n,
                 "old_address=%p "
@@ -3926,6 +3920,18 @@ static long _syscall(void* args_)
                 new_size,
                 flags,
                 new_address);
+
+#if MYST_ENABLE_MMAN_PIDS
+            {
+                const pid_t pid = myst_getpid();
+                myst_assume(pid > 0);
+
+                /* fail if the calling process does not own this mapping */
+                if (myst_mman_pids_test(old_address, old_size, pid) !=
+                    (ssize_t)old_size)
+                    BREAK(_return(n, -EINVAL));
+            }
+#endif
 
             ret = (long)myst_mremap(
                 old_address, old_size, new_size, flags, new_address);
