@@ -976,6 +976,8 @@ void test_prot_vector()
     size_t len1, len2;
     bool consistent;
     void* brk = NULL;
+    uint8_t zero_page[PAGE_SIZE] = {0};
+    int i;
 
     assert(_init_mman(&h, heap_size) == 0);
     /* verify unassigned memory default permission as MYST_PROT_NONE */
@@ -985,6 +987,71 @@ void test_prot_vector()
         0);
     assert(prot_val == MYST_PROT_NONE);
     assert(consistent == true);
+
+#define MYST_PENDING_ZEROING_FLAG 0x80
+    /* reserve 16 pages as prot = MYST_PROT_NONE */
+    if (myst_mman_mmap(
+            &h, NULL, 16 * PAGE_SIZE, MYST_PROT_NONE, flags, &addr1) != 0)
+    {
+        printf("ERROR: myst_mman_mmap(): %s\n", h.err);
+        assert("myst_mman_mmap(): failed" == NULL);
+    }
+    /* verify the mapped 16 pages permission as MYST_PENDING_ZEROING_FLAG */
+    assert(
+        (_mman_get_prot(&h, addr1, 16 * PAGE_SIZE, &prot_val, &consistent)) ==
+        0);
+    assert(prot_val == MYST_PENDING_ZEROING_FLAG);
+    assert(consistent == true);
+    /* Increase the mapping permission */
+    assert(
+        (_mman_protect(
+            &h, addr1, 16 * PAGE_SIZE, (MYST_PROT_READ | MYST_PROT_WRITE))) ==
+        0);
+    /* verify the mapped 16 pages permission as the increased permission */
+    assert(
+        (_mman_get_prot(&h, addr1, 16 * PAGE_SIZE, &prot_val, &consistent)) ==
+        0);
+    assert(prot_val == (MYST_PROT_READ | MYST_PROT_WRITE));
+    assert(consistent == true);
+    /* verify the content of the pages are zero */
+    for (i = 0; i < 16; i++)
+    {
+        assert(!memcmp(addr1 + i * PAGE_SIZE, zero_page, PAGE_SIZE));
+    }
+    /* write to the pages */
+    memset(addr1, 0xDD, 16 * PAGE_SIZE);
+    /* map the allocated pages again, as MYST_PROT_NONE */
+    if (myst_mman_mmap(
+            &h, addr1, 16 * PAGE_SIZE, MYST_PROT_NONE, flags, &addr2) != 0)
+    {
+        printf("ERROR: myst_mman_mmap(): %s\n", h.err);
+        assert("myst_mman_mmap(): failed" == NULL);
+    }
+    assert(addr2 == addr1);
+    /* verify the mapped 16 pages permission as MYST_PENDING_ZEROING_FLAG */
+    assert(
+        (_mman_get_prot(&h, addr1, 16 * PAGE_SIZE, &prot_val, &consistent)) ==
+        0);
+    assert(prot_val == MYST_PENDING_ZEROING_FLAG);
+    assert(consistent == true);
+    /* mprotect(MYST_PROT_NONE), making sure the MYST_PENDING_ZEROING_FLAG
+      is not cleared */
+    assert((_mman_protect(&h, addr1, 16 * PAGE_SIZE, MYST_PROT_NONE)) == 0);
+    assert(
+        (_mman_get_prot(&h, addr1, 16 * PAGE_SIZE, &prot_val, &consistent)) ==
+        0);
+    assert(prot_val == MYST_PENDING_ZEROING_FLAG);
+    assert(consistent == true);
+
+    /* mprotect(MYST_PROT_READ), which should trigger delayed zero-fill */
+    assert((_mman_protect(&h, addr1, 16 * PAGE_SIZE, MYST_PROT_READ)) == 0);
+    /* verify the content of the pages are zero */
+    for (i = 0; i < 16; i++)
+    {
+        assert(!memcmp(addr1 + i * PAGE_SIZE, zero_page, PAGE_SIZE));
+    }
+
+    _mman_unmap(&h, addr1, 16 * PAGE_SIZE);
 
     /* map 16 pages as prot = MYST_PROT_READ | MYST_PROT_WRITE */
     if (myst_mman_mmap(&h, NULL, 16 * PAGE_SIZE, prot, flags, &addr1) != 0)
@@ -998,6 +1065,11 @@ void test_prot_vector()
         0);
     assert(prot_val == prot);
     assert(consistent == true);
+    /* verify the content of the pages are zero */
+    for (i = 0; i < 16; i++)
+    {
+        assert(!memcmp(addr1 + i * PAGE_SIZE, zero_page, PAGE_SIZE));
+    }
 
     /* Reduce the mapping permission */
     assert((_mman_protect(&h, addr1, 16 * PAGE_SIZE, MYST_PROT_READ)) == 0);
