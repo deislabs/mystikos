@@ -12,61 +12,46 @@
 
 void myst_set_fsbase(void* p)
 {
-    if (__options.have_syscall_instruction)
+    if (__myst_kernel_args.have_fsgsbase_instructions)
     {
-        const long n = SYS_arch_prctl;
-        myst_syscall2(n, ARCH_SET_FS, (long)p);
+        __asm__ volatile("wrfsbase %0" ::"r"(p));
+    }
+    else if (__options.have_syscall_instruction)
+    {
+        myst_syscall2(SYS_arch_prctl, ARCH_SET_FS, (long)p);
     }
     else
     {
-        __asm__ volatile("wrfsbase %0" ::"r"(p));
+        myst_panic("unsupported");
     }
 }
 
 void* myst_get_fsbase(void)
 {
-    if (__options.have_syscall_instruction)
-    {
-        const long n = SYS_arch_prctl;
-        void* p;
-        myst_syscall2(n, ARCH_GET_FS, (long)&p);
-        return p;
-    }
-    else
-    {
-        void* p;
-        __asm__ volatile("mov %%fs:0, %0" : "=r"(p));
-        return p;
-    }
+    void* p;
+    __asm__ volatile("mov %%fs:0, %0" : "=r"(p));
+    return p;
 }
 
 void myst_set_gsbase(void* p)
 {
-    if (__options.have_syscall_instruction)
+    if (__myst_kernel_args.have_fsgsbase_instructions)
     {
-        const long n = SYS_arch_prctl;
-        myst_syscall2(n, ARCH_SET_GS, (long)p);
+        __asm__ volatile("wrgsbase %0" ::"r"(p));
+    }
+    else if (__options.have_syscall_instruction)
+    {
+        myst_syscall2(SYS_arch_prctl, ARCH_SET_GS, (long)p);
     }
     else
     {
-        /* unsupported but not needed */
-        myst_panic("wrgsbase emulation is unsupported");
+        myst_panic("unsupported");
     }
 }
 
 void* myst_get_gsbase(void)
 {
-    if (__options.have_syscall_instruction)
-    {
-        const long n = SYS_arch_prctl;
-        void* p;
-        myst_syscall2(n, ARCH_GET_GS, (long)&p);
-        return p;
-    }
-    else
-    {
-        void* p;
-        __asm__ volatile("mov %%gs:0, %0" : "=r"(p));
-        return p;
-    }
+    void* p;
+    __asm__ volatile("mov %%gs:0, %0" : "=r"(p));
+    return p;
 }
