@@ -8,6 +8,13 @@ parameters:
   displayName: VERSION
   type: string
   default: 0.0.0
+- name: RELEASE_ARTIFACT
+  displayName: RELEASE_ARTIFACT
+  type: number
+  default: 0
+  values:
+  - 0
+  - 1
 
 trigger: none
 pr: none
@@ -15,6 +22,7 @@ pr: none
 jobs:
   - job: ReleaseAndTest
     displayName: 'Building Release and Testing'
+    timeoutInMinutes: 300
     pool: '1804DC4CCagentpool'
     workspace:
       clean: all
@@ -32,6 +40,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install build-essential python3-setuptools libmbedtls-dev docker-ce -y 
           sudo chmod 666 /var/run/docker.sock
+          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+          docker system prune -a -f
+          df
         displayName: 'minimum init config'
 
       # generate tarball for release binary and source code
@@ -41,21 +52,19 @@ jobs:
           echo $VERSION > VERSION
           echo "Creating release version $VERSION"
           
+          # remove all untracked files and directories in the git repository
+          sudo rm -rf `git ls-files --others --directory`
           make distclean
           touch mystikos-$VERSION.tar.gz
           tar -czf mystikos-$VERSION.tar.gz --exclude=mystikos-$VERSION.tar.gz .
           
-          make MYST_RELEASE=1 && make bindist
+          make -j MYST_RELEASE=1 && make bindist
           exit 0
         displayName: 'Generate release v${{ parameters.VERSION }} artifact'
         condition: eq(variables['Agent.JobStatus'], 'succeeded')
-
-      # Verify published artifact, build all source files
-      - script: |
-          sudo rm -rf /tmp/myst*
-          make -j MYST_RELEASE=1
-        displayName: 'build repo source'
         workingDirectory: $(Build.SourcesDirectory)
+        env:
+          MYST_NIGHTLY_TEST: 1
 
       # run all tests
       - script: |
@@ -69,6 +78,8 @@ jobs:
         continueOnError: true
         enabled: true
         workingDirectory: $(Build.SourcesDirectory)
+        env:
+          MYST_NIGHTLY_TEST: 1
 
       # run solution tests
       - script: |
@@ -84,9 +95,24 @@ jobs:
           DB_SERVER_NAME: $(DB_SERVER_NAME_USEAST)
           MAA_URL: $(DB_MAA_URL_USEAST)
 
+      - template: step-sql-soln-cacentral.yml
+      
+      - template: step-azure-sdk-tests.yml
+
       # if any previous step(s) not succeed, fail the job
       - script: |
           echo "Not all steps succeed."
           exit 1
         displayName: 'Error(s) Check'
         condition: not(eq(variables['Agent.JobStatus'], 'succeeded'))
+      
+      # publish as artifacts
+      - publish: $(System.DefaultWorkingDirectory)/mystikos-${{ parameters.VERSION }}-x86_64.tar.gz
+        artifact: 'Release binary'
+        displayName: 'Publish release binary'
+        condition: and(eq(variables['Agent.JobStatus'], 'succeeded'), eq(variables['RELEASE_ARTIFACT'], '1'))
+
+      - publish: $(System.DefaultWorkingDirectory)/mystikos-${{ parameters.VERSION }}.tar.gz
+        artifact: 'Release binary code tarball'
+        displayName: 'Publish release source code'
+        condition: and(eq(variables['Agent.JobStatus'], 'succeeded'), eq(variables['RELEASE_ARTIFACT'], '1'))

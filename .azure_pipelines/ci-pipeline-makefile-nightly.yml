@@ -57,20 +57,6 @@ jobs:
       env:
         MYST_NIGHTLY_TEST: 1
 
-    # run sql solution test on Canada Central DB Node
-    - script: |
-        make clean -C $(Build.SourcesDirectory)/solutions/sql_ae
-        make -C $(Build.SourcesDirectory)/solutions/sql_ae 
-        make run -C $(Build.SourcesDirectory)/solutions/sql_ae
-      displayName: 'run sql solution on Canada Central Node'
-      continueOnError: true
-      enabled: true
-      workingDirectory: $(Build.SourcesDirectory)
-      env:
-        DB_NAME: $(DB_NAME_CANADACENTRAL)
-        DB_SERVER_NAME: $(DB_SERVER_NAME_CANADACENTRAL)
-        MAA_URL: $(DB_MAA_URL_CANADACENTRAL)
-
     # run solution tests
     - script: |
         make tests -C $(Build.SourcesDirectory)/solutions
@@ -84,28 +70,17 @@ jobs:
         DB_SERVER_NAME: $(DB_SERVER_NAME_USEAST)
         MAA_URL: $(DB_MAA_URL_USEAST)
 
-    # run azure-sdk-for -dotnet & -cpp tests
-    - task: AzureCLI@2
-      displayName: 'run Azure SDK tests'
-      continueOnError: true
-      enabled: true
-      inputs:
-        azureSubscription: "OSTC Lab"
-        scriptType: bash
-        scriptPath: $(SCRIPTS_ROOT)/run-azure-tests.sh
-        addSpnToEnvironment: true
-        arguments:
-          $(Build.SourcesDirectory)/tests/azure-sdk-for-cpp
-          $(Build.SourcesDirectory)/solutions/dotnet_azure_sdk
-      env:
-        AZURE_KEYVAULT_URL: $(AZURE_TEST_KEYVAULT_URL)
-        STANDARD_STORAGE_CONNECTION_STRING: $(STANDARD_STORAGE_CONNECTION_STRING)
+    - template: step-sql-soln-cacentral.yml
+    
+    - template: step-azure-sdk-tests.yml
 
     # clean up
     - script: |
         make clean -C $(Build.SourcesDirectory)/tests
         make clean -C $(Build.SourcesDirectory)/solutions
         sudo rm -rf $(Build.SourcesDirectory)/build/tests
+        sudo rm -rf `git ls-files --others --directory`
+        docker system prune -f
         df
       displayName: 'Cleanup test directories'
       continueOnError: true
