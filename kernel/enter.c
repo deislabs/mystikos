@@ -675,7 +675,14 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     if (args->forked)
     {
         __myst_kernel_args.forked = true;
+        __myst_kernel_args.target_tid = args->target_tid;
         __myst_main_thread->event = args->event;
+        myst_assume(myst_tcall_set_tsd((uint64_t)__myst_main_thread) == 0);
+
+        myst_eprintf("kernel: forked pid=%u\n", __myst_kernel_args.target_tid);
+
+        /* ATTN: clean up stale threads here! */
+
         ECHECK(myst_tcall_set_run_thread_function(myst_run_thread));
         myst_longjmp(&__myst_fork_jmpbuf, 1);
     }
@@ -836,8 +843,6 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     if (__myst_kernel_args.perf)
         _print_boottime();
 
-    myst_eprintf("kernel: mman: %p %zu\n", args->mman_data, args->mman_size);
-
     /* Run the main program: wait for SYS_exit to perform longjmp() */
     if (myst_setjmp(&thread->jmpbuf) == 0)
     {
@@ -890,6 +895,8 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         if (thread->kstack)
             myst_put_kstack(thread->kstack);
 
+            /* ATTN: do not wait for child threads to exit */
+#if 0
         /* free all non-process threads, waiting for all other threads to
          * shutdown at the same time. Our thread has not been marked as a zombie
          * yet. */
@@ -917,6 +924,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
                 t = next;
             }
         }
+#endif
 
         /* now all the threads have shutdown we can retrieve the exit status */
         exit_status = thread->exit_status;

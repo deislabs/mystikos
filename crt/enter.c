@@ -39,15 +39,24 @@ void myst_dump_argv(int argc, const char* argv[]);
 
 static void _create_itimer_thread(void);
 
+static void _create_listener_thread(void);
+
 long myst_syscall(long n, long params[6])
 {
-    static pthread_once_t _once = PTHREAD_ONCE_INIT;
+    static pthread_once_t _itimer_once = PTHREAD_ONCE_INIT;
+    static pthread_once_t _listener_once = PTHREAD_ONCE_INIT;
 
     /* create the itimer thread on demand (only if needed) */
     if (n == SYS_setitimer)
-        pthread_once(&_once, _create_itimer_thread);
+        pthread_once(&_itimer_once, _create_itimer_thread);
 
-#ifndef MYST_ENABLE_FORK
+#ifdef MYST_ENABLE_FORK
+    if (n == SYS_fork)
+    {
+        /* create the listener thread on demand (only if needed) */
+        pthread_once(&_listener_once, _create_listener_thread);
+    }
+#else
     if (n == SYS_fork)
     {
         /* fork is implemented in the CRT rather than the kernel.
@@ -185,6 +194,49 @@ static void _create_itimer_thread(void)
     }
 
     if (pthread_create(&thread, &attr, _itimer_thread, NULL) != 0)
+    {
+        fprintf(stderr, "%s(): pthread_create() failed\n", func);
+        abort();
+    }
+}
+
+static void* _listener_thread(void* arg)
+{
+    (void)arg;
+
+    /* Enter the kernel on the listener thread */
+    long params[6] = {0};
+    myst_syscall(SYS_myst_run_listener, params);
+
+    return NULL;
+}
+
+/* synchronization variable between listener thread and creator */
+static int _listener_uaddr;
+
+// Create the listener thread in user-space and then enter the kernel with the
+// SYS_myst_run_listener syscall. We create a user-space thread since
+// kernel-space threads are not supported. Two complications include aligning
+// with pthread struct and having a place to land on thread exit.
+static void _create_listener_thread(void)
+{
+    pthread_attr_t attr;
+    pthread_t thread;
+    const char* func = __FUNCTION__;
+
+    if (pthread_attr_init(&attr) != 0)
+    {
+        fprintf(stderr, "%s(): pthread_attr_init() failed\n", func);
+        abort();
+    }
+
+    if (pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED) != 0)
+    {
+        fprintf(stderr, "%s(): pthread_attr_setdetachstate() failed\n", func);
+        abort();
+    }
+
+    if (pthread_create(&thread, &attr, _listener_thread, NULL) != 0)
     {
         fprintf(stderr, "%s(): pthread_create() failed\n", func);
         abort();

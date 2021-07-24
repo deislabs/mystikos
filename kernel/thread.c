@@ -1218,7 +1218,6 @@ size_t myst_kill_thread_group()
             count++;
             myst_spin_unlock(process->thread_lock);
             myst_signal_deliver(t, SIGKILL, 0);
-
             // Wake up the thread from futex_wait if necessary.
             if (t->signal.waiting_on_event)
             {
@@ -1250,11 +1249,15 @@ size_t myst_kill_thread_group()
         {
             if (t != process && t != thread && t->status != MYST_ZOMBIE)
             {
+#if 0
                 printf(
                     "still waiting for child %d to be killed, "
-                    "waiting_on_event: %d\n",
+                    "waiting_on_event: %d: target_tid=%d forked=%d\n",
                     t->tid,
-                    t->signal.waiting_on_event);
+                    t->signal.waiting_on_event,
+                    t->target_tid,
+                    __myst_kernel_args.forked);
+#endif
                 break;
             }
         }
@@ -1265,6 +1268,9 @@ size_t myst_kill_thread_group()
 
         if (t->signal.waiting_on_event)
             myst_tcall_wake(t->event);
+
+        /* ATTN:FORK: do not wait forever for threads to die */
+        break;
 
         myst_sleep_msec(1);
     }

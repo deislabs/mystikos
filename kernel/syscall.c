@@ -3930,6 +3930,11 @@ static long _syscall(void* args_)
             _strace(n, NULL);
             BREAK(_return(n, myst_syscall_run_itimer()));
         }
+        case SYS_myst_run_listener:
+        {
+            _strace(n, NULL);
+            BREAK(_return(n, myst_syscall_run_listener()));
+        }
         case SYS_myst_start_shell:
         {
             _strace(n, NULL);

@@ -39,6 +39,14 @@ int main(int argc, const char* argv[])
         double elapsed = (double)(_time_usec() - t1) / 1000000.0;
         printf("%s: parent: pid=%d %3.5lfsec\n", argv[0], pid, elapsed);
 
+#if 0
+        for (;;)
+        {
+            printf("parent...\n");
+            sleep(1);
+        }
+#endif
+
         /* wait for child to exit */
         int wstatus;
         assert(waitpid(pid, &wstatus, 0) == pid);

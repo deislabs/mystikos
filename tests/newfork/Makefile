@@ -24,6 +24,7 @@ endif
 #OPTS += --memory-size=512m
 
 tests: all
+	rm -f /tmp/myst*.socket
 	$(RUNTEST) $(MYST_EXEC) rootfs /bin/newfork $(OPTS)
 
 myst:
@@ -34,3 +35,6 @@ clean:
 
 t:
 	$(MAKE) tests STRACE=1
+
+nc:
+	nc -U $(wildcard /tmp/myst*.socket)
