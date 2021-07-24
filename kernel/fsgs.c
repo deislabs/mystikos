@@ -22,14 +22,28 @@ void myst_set_fsbase(void* p)
     }
     else
     {
-        myst_panic("unsupported");
+        /* attempt WRFSBASE emulation */
+        __asm__ volatile("wrfsbase %0" ::"r"(p));
     }
 }
 
 void* myst_get_fsbase(void)
 {
     void* p;
-    __asm__ volatile("mov %%fs:0, %0" : "=r"(p));
+
+    if (__options.have_fsgsbase_instructions)
+    {
+        __asm__ volatile("rdfsbase %0" : "=r"(p));
+    }
+    if (__options.have_syscall_instruction)
+    {
+        myst_syscall2(SYS_arch_prctl, ARCH_GET_FS, (long)&p);
+    }
+    else
+    {
+        __asm__ volatile("mov %%fs:0, %0" : "=r"(p));
+    }
+
     return p;
 }
 
@@ -45,13 +59,27 @@ void myst_set_gsbase(void* p)
     }
     else
     {
-        myst_panic("unsupported");
+        /* attempt WRGSBASE emulation */
+        __asm__ volatile("wrgsbase %0" ::"r"(p));
     }
 }
 
 void* myst_get_gsbase(void)
 {
     void* p;
-    __asm__ volatile("mov %%gs:0, %0" : "=r"(p));
+
+    if (__options.have_fsgsbase_instructions)
+    {
+        __asm__ volatile("rdgsbase %0" : "=r"(p));
+    }
+    if (__options.have_syscall_instruction)
+    {
+        myst_syscall2(SYS_arch_prctl, ARCH_GET_GS, (long)&p);
+    }
+    else
+    {
+        __asm__ volatile("mov %%gs:0, %0" : "=r"(p));
+    }
+
     return p;
 }

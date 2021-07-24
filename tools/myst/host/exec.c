@@ -36,6 +36,7 @@
 
 #include "../shared.h"
 #include "exec.h"
+#include "fsgsbase.h"
 #include "myst_u.h"
 #include "process.h"
 #include "pubkeys.h"
@@ -414,6 +415,10 @@ int exec_action(int argc, const char* argv[], const char* envp[])
 
     const char* rootfs = argv[2];
     const char* program = argv[3];
+
+    /* check whether FSGSBASE instructions are supported */
+    if (test_user_space_fsgsbase() == 0)
+        options.have_fsgsbase_instructions = true;
 
     if (extract_roothashes_from_ext2_images(
             rootfs, &mount_mapping, &roothash_buf) != 0)

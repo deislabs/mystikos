@@ -750,9 +750,8 @@ static long _enter(void* arg_)
         _kargs.start_time_nsec = arg->start_time_nsec;
         _kargs.report_native_tids = report_native_tids;
 
-        // SGX unconditionally supports the WRFSBASE/WRGSBASE instructions,
-        // either through hardware or by emulation.
-        _kargs.have_fsgsbase_instructions = true;
+        /* whether user-space FSGSBASE instructions are supported */
+        _kargs.have_fsgsbase_instructions = options->have_fsgsbase_instructions;
 
         /* set ehdr and verify that the kernel is an ELF image */
         {
