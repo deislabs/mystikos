@@ -33,6 +33,7 @@
 #include "../kargs.h"
 #include "../shared.h"
 #include "exec_linux.h"
+#include "fsgsbase.h"
 #include "process.h"
 #include "pubkeys.h"
 #include "regions.h"
@@ -229,41 +230,6 @@ static void _install_signal_handlers()
 /* the address of this is eventually passed to futex (uaddr argument) */
 static __thread int _thread_event;
 
-static int _test_cpuinfo_fsgsbase_flag(void)
-{
-    int ret = 0;
-    FILE* is = NULL;
-    char buf[4096];
-
-    if (!(is = fopen("/proc/cpuinfo", "r")))
-        ERAISE(-ENOENT);
-
-    while (fgets(buf, sizeof(buf), is))
-    {
-        if (strncmp(buf, "flags", 5) == 0)
-        {
-            const char delim[] = ": \t\n";
-            char* p = buf;
-            char* sp;
-
-            for (p = strtok_r(p, delim, &sp); p; p = strtok_r(NULL, delim, &sp))
-            {
-                if (strcmp(p, "fsgsbase") == 0)
-                    goto done;
-            }
-        }
-    }
-
-    ret = -1;
-
-done:
-
-    if (is)
-        fclose(is);
-
-    return ret;
-}
-
 static int _enter_kernel(
     int argc,
     const char* argv[],
@@ -392,8 +358,8 @@ static int _enter_kernel(
 
     kernel_args.perf = options->perf;
 
-    /* check whether WRFSBASE/WRGSBASE instructions are supported */
-    if (_test_cpuinfo_fsgsbase_flag() == 0)
+    /* check whether FSGSBASE instructions are supported */
+    if (test_user_space_fsgsbase() == 0)
         kernel_args.have_fsgsbase_instructions = true;
 
     /* pass the start time into the kernel */
