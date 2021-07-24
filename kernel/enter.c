@@ -836,6 +836,8 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     if (__myst_kernel_args.perf)
         _print_boottime();
 
+    myst_eprintf("kernel: mman: %p %zu\n", args->mman_data, args->mman_size);
+
     /* Run the main program: wait for SYS_exit to perform longjmp() */
     if (myst_setjmp(&thread->jmpbuf) == 0)
     {

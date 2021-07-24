@@ -597,7 +597,11 @@ static int _export_address_space(const void* unused_addr, size_t unused_length)
         if (myst_region_find(regions_end, MYST_REGION_MMAN, &r) != 0)
             goto done;
 
-        if (_mprotect(r.data, r.size, prot) != 0)
+        /* do not change protections on the leading and trailing guard page */
+        void* addr = r.data + PAGE_SIZE;
+        size_t len = r.size - 2 * PAGE_SIZE;
+
+        if (_mprotect(addr, len, prot) != 0)
         {
             printf("*** mprotect() failed on mman\n");
             assert("mprotect() failed on mman" == NULL);
@@ -728,7 +732,11 @@ static int _import_address_space(const void* buf, size_t count)
         if (myst_region_find(regions_end, MYST_REGION_MMAN, &r) != 0)
             goto done;
 
-        if (_mprotect(r.data, r.size, prot) != 0)
+        /* do not change protections on the leading and trailing guard page */
+        void* addr = r.data + PAGE_SIZE;
+        size_t len = r.size - 2 * PAGE_SIZE;
+
+        if (_mprotect(addr, len, prot) != 0)
         {
             printf("*** mprotect() failed on mman\n");
             assert("mprotect() failed on mman" == NULL);

@@ -592,5 +592,13 @@ int myst_load_fssig_ocall(const char* path, myst_fssig_t* fssig)
 
 int myst_mprotect_ocall(void* addr, size_t len, int prot)
 {
-    return mprotect(addr, len, prot);
+    int ret = mprotect(addr, len, prot);
+
+    if (ret != 0)
+    {
+        printf("host: mprotect(): %p %zu\n", addr, len);
+        printf("host: mprotect() failed: %s\n", strerror(errno));
+    }
+
+    return ret;
 }
