@@ -8,6 +8,7 @@
 #include <myst/fdtable.h>
 #include <myst/kernel.h>
 #include <myst/list.h>
+#include <myst/listener.h>
 #include <myst/mutex.h>
 #include <myst/panic.h>
 #include <myst/printf.h>
