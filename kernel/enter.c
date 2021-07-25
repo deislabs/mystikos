@@ -23,6 +23,7 @@
 #include <myst/id.h>
 #include <myst/initfini.h>
 #include <myst/kernel.h>
+#include <myst/listener.h>
 #include <myst/mmanutils.h>
 #include <myst/mount.h>
 #include <myst/options.h>
@@ -678,18 +679,13 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         __myst_kernel_args.target_ppid = args->target_ppid;
         __myst_kernel_args.target_pid = args->target_pid;
         __myst_main_thread->event = args->event;
+
+        /* ATTN: what if process was not forked from main thread */
         myst_assume(myst_tcall_set_tsd((uint64_t)__myst_main_thread) == 0);
 
-        extern int myst_ping_listener();
         if (myst_ping_listener() != 0)
         {
             myst_eprintf("*** myst_ping_listener() failed\n");
-        }
-
-        extern int myst_shutdown_listener();
-        if (myst_shutdown_listener() != 0)
-        {
-            myst_eprintf("*** myst_shutdown_listener() failed\n");
         }
 
         ECHECK(myst_tcall_set_run_thread_function(myst_run_thread));
@@ -898,6 +894,14 @@ int myst_enter_kernel(myst_kernel_args_t* args)
          * call to myst_set_fsbase().
          */
         myst_set_fsbase(thread->target_td);
+
+        /* Shutdown the listener thread. */
+        if (!args->forked)
+        {
+            myst_shutdown_listener();
+            /* ATTN:FORK: figure out how to remove this! */
+            myst_sleep_msec(10);
+        }
 
         if (__myst_kernel_args.perf)
             myst_print_syscall_times("kernel shutdown", SIZE_MAX);

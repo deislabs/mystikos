@@ -19,8 +19,23 @@
 /* ATTN: this will be the maximum number of forked processes */
 #define MAX_CONNECTIONS 32
 
-static const uint32_t PING = 0xc63a8940;
-static const uint32_t SHUTDOWN = 0xfd46d4bc;
+#define MAGIC 0x425e6bdeed0a46f4
+
+typedef enum message_type
+{
+    MT_NONE,
+    MT_PING = 1,
+    MT_SHUTDOWN = 2,
+} message_type_t;
+
+/* all messages begin with this struct */
+typedef struct message
+{
+    uint64_t magic;
+    uint64_t type;
+    uint64_t size;
+    uint8_t data[];
+} message_t;
 
 static void _init_sockaddr(struct sockaddr_un* addr, pid_t pid)
 {
@@ -63,7 +78,25 @@ typedef struct connection
 
 static myst_list_t _connections;
 
-int _accept_connection(int lsock, connection_t** conn_out)
+static const message_t* _get_message(const myst_buf_t* buf)
+{
+    const message_t* message;
+
+    if (buf->size < sizeof(message_t))
+        return NULL;
+
+    message = (const message_t*)buf->data;
+
+    if (message->magic != MAGIC)
+        myst_panic("corrupt listener request");
+
+    if (buf->size < sizeof(message_t) + message->size)
+        return NULL;
+
+    return message;
+}
+
+static int _accept_connection(int lsock, connection_t** conn_out)
 {
     int ret = 0;
     int sock;
@@ -119,28 +152,186 @@ static void _release_connection(connection_t* conn)
     free(conn);
 }
 
+static int _enqueue_reponse(
+    connection_t* conn,
+    message_type_t type,
+    const void* data,
+    size_t size)
+{
+    int ret = 0;
+    message_t m = {.magic = MAGIC, .type = type, .size = size};
+
+    if (myst_buf_append(&conn->output, &m, sizeof(m)) != 0)
+        ERAISE(-ENOMEM);
+
+    if (data && size)
+    {
+        if (myst_buf_append(&conn->output, data, size) != 0)
+            ERAISE(-ENOMEM);
+    }
+
+    conn->events |= EPOLLOUT;
+
+done:
+    return ret;
+}
+
+static int _handle_request(connection_t* conn, const message_t* message)
+{
+    int ret = 0;
+
+    switch (message->type)
+    {
+        case MT_PING:
+        {
+            myst_eprintf("MT_PING!!!\n");
+            ECHECK(_enqueue_reponse(conn, MT_PING, "ping", 5));
+            break;
+        }
+        case MT_SHUTDOWN:
+        {
+            myst_eprintf("MT_SHUTDOWN!!!\n");
+            break;
+        }
+    }
+
+    /* remove the request message from the input buffer */
+    myst_buf_remove(&conn->input, 0, sizeof(message_t) + message->size);
+
+done:
+    return ret;
+}
+
+static int _handle_accept(int lsock, int revents)
+{
+    int ret = 0;
+
+    if (revents & POLLIN)
+    {
+        connection_t* conn = NULL;
+
+        if (_connections.size == MAX_CONNECTIONS)
+            ERAISE(-ENOSYS);
+
+        ECHECK(_accept_connection(lsock, &conn));
+
+        /* watch input events initially */
+        conn->events = POLLIN;
+
+        /* add to the list of connections */
+        myst_list_append(&_connections, (myst_list_node_t*)conn);
+    }
+
+done:
+    return ret;
+}
+
+static int _handle_output(int sock)
+{
+    int ret = 0;
+    connection_t* conn;
+    ssize_t n;
+
+    /* find the client with this file descriptor */
+    if (!(conn = _find_connection(sock)))
+        ERAISE(-ENOENT);
+
+    /* read all client input */
+    while ((n = write(conn->sock, conn->output.data, conn->output.size)) > 0)
+    {
+        myst_buf_remove(&conn->output, 0, n);
+
+        if (conn->output.size == 0)
+            conn->events &= ~EPOLLOUT;
+    }
+
+done:
+    return ret;
+}
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstack-usage="
+static int _handle_input(int sock)
+{
+    int ret = 0;
+    ssize_t n;
+    connection_t* conn;
+    uint8_t buf[BUFSIZ];
+
+    /* find the client with this file descriptor */
+    if (!(conn = _find_connection(sock)))
+        ERAISE(-ENOENT);
+
+    /* read all client input */
+    while ((n = read(conn->sock, buf, sizeof(buf))) > 0)
+    {
+        const message_t* m;
+
+        if (myst_buf_append(&conn->input, buf, n) != 0)
+            ERAISE(-ENOMEM);
+
+        /* handle all queued messages */
+        while ((m = _get_message(&conn->input)))
+        {
+            const bool shutdown = (m->type == MT_SHUTDOWN);
+
+            _handle_request(conn, m);
+
+            if (shutdown)
+                ERAISE(-ENOSYS);
+        }
+    }
+
+    /* if client closed the connection */
+    if (n == 0)
+    {
+        myst_list_remove(&_connections, (myst_list_node_t*)conn);
+        _release_connection(conn);
+    }
+
+done:
+    return ret;
+}
+#pragma GCC diagnostic pop
+
+static int _handle_shutdown(int lsock)
+{
+    int ret = 0;
+    connection_t* p = (connection_t*)_connections.head;
+
+    if (close(lsock) != 0)
+        ERAISE(-errno);
+
+    while (p)
+    {
+        connection_t* next = p->next;
+        _release_connection(p);
+        p = next;
+    }
+
+    _connections.head = NULL;
+    _connections.tail = NULL;
+
+done:
+    return ret;
+}
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstack-usage="
 long myst_syscall_run_listener(void)
 {
     long ret = 0;
     int lsock = -1;
     connection_t* conn = NULL;
-    struct locals
-    {
-        struct sockaddr_un addr;
-        struct pollfd fds[MAX_CONNECTIONS + 1]; /* extra for listener sock */
-        uint8_t buf[BUFSIZ];
-    };
-    struct locals* locals;
+    struct sockaddr_un addr;
+    struct pollfd fds[MAX_CONNECTIONS + 1]; /* extra entry for listener */
 
-    if (!(locals = calloc(1, sizeof(struct locals))))
-        ERAISE(-ENOMEM);
-
-    _init_sockaddr(&locals->addr, __myst_kernel_args.target_pid);
+    _init_sockaddr(&addr, __myst_kernel_args.target_pid);
 
     if ((lsock = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
         ERAISE(-errno);
 
-    if (bind(lsock, (struct sockaddr*)&locals->addr, sizeof(locals->addr)) != 0)
+    if (bind(lsock, (struct sockaddr*)&addr, sizeof(addr)) != 0)
         ERAISE(-errno);
 
     if (listen(lsock, 10) != 0)
@@ -154,8 +345,8 @@ long myst_syscall_run_listener(void)
         size_t nfds = 0;
 
         /* watch input events on the listener socket */
-        locals->fds[nfds].fd = lsock;
-        locals->fds[nfds].events = POLLIN;
+        fds[nfds].fd = lsock;
+        fds[nfds].events = POLLIN;
         nfds++;
 
         /* watch events on the connections */
@@ -164,15 +355,15 @@ long myst_syscall_run_listener(void)
 
             for (; p; p = p->next)
             {
-                locals->fds[nfds].fd = p->sock;
-                locals->fds[nfds].events = p->events;
-                locals->fds[nfds].revents = 0;
+                fds[nfds].fd = p->sock;
+                fds[nfds].events = p->events;
+                fds[nfds].revents = 0;
                 nfds++;
             }
         }
 
         /* wait for events. */
-        if (poll(locals->fds, nfds, -1) <= 0)
+        if (poll(fds, nfds, -1) <= 0)
         {
             /* no events so retry */
             continue;
@@ -181,137 +372,48 @@ long myst_syscall_run_listener(void)
         /* handle the polled events */
         for (size_t i = 0; i < nfds; i++)
         {
-            struct pollfd* pollfd = &locals->fds[i];
+            struct pollfd* pollfd = &fds[i];
+            int sock = fds[i].fd;
 
             if (pollfd->revents == 0)
                 continue;
 
-            /* accept a new connection */
-            if (pollfd->fd == lsock)
+            if (pollfd->fd == lsock) /* accept connection */
             {
-                if (pollfd->revents & POLLIN)
+                if ((fds[i].revents & POLLIN))
                 {
-                    if (_connections.size == MAX_CONNECTIONS)
+                    if (_handle_accept(lsock, pollfd->revents) != 0)
                     {
-                        myst_eprintf("****** too many connections\n");
+                        myst_eprintf("****** _handle_accept() failed\n");
                         continue;
                     }
-
-                    if (_accept_connection(lsock, &conn) < 0)
-                    {
-                        myst_eprintf("****** _accept_connection() failed\n");
-                        continue;
-                    }
-
-                    /* watch input events initially */
-                    conn->events = POLLIN;
-
-                    /* add to the list of connections */
-                    myst_list_append(&_connections, (myst_list_node_t*)conn);
-                    conn = NULL;
                 }
             }
-            else if ((locals->fds[i].revents & POLLOUT)) /* client output */
+            else if ((fds[i].revents & POLLOUT)) /* handle output */
             {
-                connection_t* conn;
-                ssize_t n;
+                int r = _handle_output(sock);
 
-                /* find the client with this file descriptor */
-                if (!(conn = _find_connection(locals->fds[i].fd)))
+                if (r != 0)
                 {
-                    myst_eprintf("****** connection not found\n");
+                    myst_eprintf("****** _handle_output() failed: %d\n", r);
                     continue;
-                }
-
-                /* read all client input */
-                while ((n = write(
-                            conn->sock, conn->output.data, conn->output.size)) >
-                       0)
-                {
-                    myst_buf_remove(&conn->output, 0, n);
-
-                    if (conn->output.size == 0)
-                        conn->events &= ~EPOLLOUT;
                 }
             }
-            else if ((locals->fds[i].revents & POLLIN)) /* client input */
+            else if ((fds[i].revents & POLLIN)) /* handle input */
             {
-                ssize_t n;
-                connection_t* conn;
+                int r = _handle_input(sock);
 
-                /* find the client with this file descriptor */
-                if (!(conn = _find_connection(locals->fds[i].fd)))
+                if (r == -ENOSYS)
                 {
-                    myst_eprintf("****** connection not found\n");
-                    continue;
+                    _handle_shutdown(lsock);
+                    goto done;
                 }
 
-                /* read all client input */
-                while ((n = read(
-                            conn->sock, locals->buf, sizeof(locals->buf))) > 0)
-                {
-                    if (n >= (ssize_t)sizeof(uint32_t))
-                    {
-                        uint32_t cmd;
-                        memcpy(&cmd, locals->buf, sizeof(cmd));
-
-                        if (cmd == PING)
-                            myst_eprintf("PING LISTENER!!!\n");
-
-                        if (cmd == SHUTDOWN)
-                            goto shutdown_listener;
-                    }
-
-                    if (myst_buf_append(&conn->input, locals->buf, n) != 0)
-                        ERAISE(-ENOMEM);
-                }
-
-                if (conn->input.size)
-                {
-                    if (myst_buf_append(
-                            &conn->output,
-                            conn->input.data,
-                            conn->input.size) != 0)
-                    {
-                        ERAISE(-ENOMEM);
-                    }
-
-#if 0
-                    printf("input{%.*s}\n", (int)conn->input.size,
-                        (const char*)conn->input.data);
-#endif
-
-                    myst_buf_clear(&conn->input);
-                    conn->events |= EPOLLOUT;
-                }
-
-                if (n == 0)
-                {
-                    myst_list_remove(&_connections, (myst_list_node_t*)conn);
-                    _release_connection(conn);
-                }
+                if (r < 0)
+                    ERAISE(r);
             }
         }
     }
-
-shutdown_listener:
-{
-    connection_t* p = (connection_t*)_connections.head;
-
-    close(lsock);
-
-    while (p)
-    {
-        connection_t* next = p->next;
-        _release_connection(p);
-        p = next;
-    }
-
-    _connections.head = NULL;
-    _connections.tail = NULL;
-
-    myst_eprintf("SHUTDOWN LISTENER!!!\n");
-}
 
 done:
 
@@ -321,19 +423,23 @@ done:
     if (conn)
         free(conn);
 
-    if (locals)
-        free(locals);
-
     return ret;
 }
+#pragma GCC diagnostic pop
 
-static int _connect_to_listener(void)
+static int _connect_to_listener(bool same_process)
 {
     int ret = 0;
     struct sockaddr_un addr;
     int sock;
+    pid_t pid;
 
-    _init_sockaddr(&addr, __myst_kernel_args.target_ppid);
+    if (same_process)
+        pid = __myst_kernel_args.target_pid;
+    else
+        pid = __myst_kernel_args.target_ppid;
+
+    _init_sockaddr(&addr, pid);
 
     if ((sock = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
         ERAISE(-errno);
@@ -347,36 +453,192 @@ done:
     return ret;
 }
 
+static int _sock;
+static bool _sock_initialized;
+static myst_mutex_t _sock_lock;
+
+static int _get_listener_connection(void)
+{
+    int ret = 0;
+
+    myst_mutex_lock(&_sock_lock);
+
+    if (_sock == -1)
+        ERAISE(-ENOSYS);
+
+    if (_sock_initialized == false)
+    {
+        int sock;
+
+        ECHECK(sock = _connect_to_listener(false));
+        _sock = sock;
+        _sock_initialized = true;
+    }
+
+    ret = _sock;
+
+done:
+    myst_mutex_unlock(&_sock_lock);
+
+    return ret;
+}
+
+static ssize_t _writen(int fd, const void* data, size_t size)
+{
+    ssize_t ret = 0;
+    const uint8_t* p = (const uint8_t*)data;
+    size_t r = size;
+
+    while (r > 0)
+    {
+        ssize_t n = write(fd, p, r);
+
+        if (n <= 0)
+            ERAISE(-errno);
+
+        p += n;
+        r -= (size_t)n;
+    }
+
+done:
+
+    return ret;
+}
+
+static ssize_t _readn(int fd, void* data, size_t size)
+{
+    ssize_t ret = 0;
+    uint8_t* p = (uint8_t*)data;
+    size_t r = size;
+
+    while (r > 0)
+    {
+        ssize_t n = read(fd, p, r);
+
+        if (n <= 0)
+            ERAISE(-errno);
+
+        p += n;
+        r -= (size_t)n;
+    }
+
+done:
+
+    return ret;
+}
+
+static int _recv_response(
+    int sock,
+    message_type_t type,
+    message_t** message_out)
+{
+    int ret = 0;
+    message_t m;
+    message_t* message = NULL;
+
+    if (message_out)
+        *message_out = NULL;
+
+    if (_readn(sock, &m, sizeof(m)) != sizeof(m))
+        ERAISE(-errno);
+
+    if (m.magic != MAGIC)
+        ERAISE(-EINVAL);
+
+    if (m.type != type)
+        ERAISE(-EINVAL);
+
+    if (!(message = malloc(sizeof(m) + m.size)))
+        ERAISE(-ENOMEM);
+
+    memcpy(message, &m, sizeof(m));
+
+    if (m.size)
+    {
+        if (_readn(sock, message->data, m.size) != (ssize_t)m.size)
+            ERAISE(-errno);
+    }
+
+    *message_out = message;
+    message = NULL;
+
+done:
+
+    if (message)
+        free(message);
+
+    return ret;
+}
+
+static int _send_request(
+    int sock,
+    message_type_t type,
+    const void* data,
+    size_t size)
+{
+    int ret = 0;
+    message_t m = {.magic = MAGIC, .type = type, .size = size};
+
+    if (_writen(sock, &m, sizeof(m)) != sizeof(m))
+        ERAISE(-errno);
+
+    if (data && size)
+    {
+        if (_writen(sock, data, size) != (ssize_t)size)
+            ERAISE(-errno);
+    }
+
+done:
+    return ret;
+}
+
 int myst_ping_listener(void)
 {
     int ret = 0;
     int sock;
-    uint32_t cmd = PING;
+    message_t* message = NULL;
 
-    ECHECK(sock = _connect_to_listener());
+    ECHECK(sock = _get_listener_connection());
+    ECHECK(_send_request(sock, MT_PING, NULL, 0));
+    ECHECK(_recv_response(sock, MT_PING, &message));
 
-    if (write(sock, &cmd, sizeof(cmd)) != sizeof(cmd))
-        ERAISE(-errno);
-
-    close(sock);
+    myst_eprintf("PING OKAY!!!\n");
 
 done:
+
+    if (message)
+        free(message);
+
     return ret;
 }
 
 int myst_shutdown_listener(void)
 {
     int ret = 0;
-    int sock;
-    uint32_t cmd = SHUTDOWN;
+    int sock = -1;
+    static bool _shutdown;
+    static myst_mutex_t _lock;
 
-    ECHECK(sock = _connect_to_listener());
+    myst_mutex_lock(&_lock);
 
-    if (write(sock, &cmd, sizeof(cmd)) != sizeof(cmd))
-        ERAISE(-errno);
+    if (!_shutdown)
+    {
+        message_t m = {.magic = MAGIC, .type = MT_SHUTDOWN};
 
-    close(sock);
+        ECHECK(sock = _connect_to_listener(true));
+
+        if (write(sock, &m, sizeof(m)) != sizeof(m))
+            ERAISE(-errno);
+
+        _shutdown = true;
+    }
 
 done:
+
+    if (sock >= 0)
+        close(sock);
+
+    myst_mutex_unlock(&_lock);
+
     return ret;
 }
