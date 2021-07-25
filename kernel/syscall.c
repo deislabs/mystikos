@@ -55,6 +55,7 @@
 #include <myst/kernel.h>
 #include <myst/kstack.h>
 #include <myst/libc.h>
+#include <myst/listener.h>
 #include <myst/lsr.h>
 #include <myst/mmanutils.h>
 #include <myst/mount.h>
@@ -811,12 +812,20 @@ long myst_syscall_open(const char* pathname, int flags, mode_t mode)
         char suffix[PATH_MAX];
     };
     struct locals* locals = NULL;
+    const bool forked = __myst_kernel_args.forked;
 
     if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
-    ECHECK(myst_mount_resolve(pathname, locals->suffix, &fs));
-    ECHECK((*fs->fs_open)(fs, locals->suffix, flags, mode, &fs_out, &file));
+    if (forked)
+    {
+        ECHECK(myst_listener_open(pathname, flags, mode, &fs_out, &file));
+    }
+    else
+    {
+        ECHECK(myst_mount_resolve(pathname, locals->suffix, &fs));
+        ECHECK((*fs->fs_open)(fs, locals->suffix, flags, mode, &fs_out, &file));
+    }
 
     if ((fd = myst_fdtable_assign(fdtable, fdtype, fs_out, file)) < 0)
     {
@@ -824,7 +833,7 @@ long myst_syscall_open(const char* pathname, int flags, mode_t mode)
         ERAISE(fd);
     }
 
-    if ((r = _add_fd_link(fs_out, file, fd)) != 0)
+    if (forked && (r = _add_fd_link(fs_out, file, fd)) != 0)
     {
         myst_fdtable_remove(fdtable, fd);
         (*fs_out->fs_close)(fs_out, file);

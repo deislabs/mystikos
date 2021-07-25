@@ -208,8 +208,6 @@ static void* _listener_thread(void* arg)
     long params[6] = {0};
     myst_syscall(SYS_myst_run_listener, params);
 
-    printf("LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL!!!\n");
-
     return NULL;
 }
 
