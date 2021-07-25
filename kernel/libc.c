@@ -799,3 +799,8 @@ int poll(struct pollfd* fds, nfds_t nfds, int timeout)
 {
     return (int)myst_syscall_ret(myst_syscall_poll(fds, nfds, timeout));
 }
+
+int connect(int sockfd, const struct sockaddr* addr, socklen_t addrlen)
+{
+    return (int)myst_syscall_ret(myst_syscall_connect(sockfd, addr, addrlen));
+}

@@ -675,16 +675,27 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     if (args->forked)
     {
         __myst_kernel_args.forked = true;
-        __myst_kernel_args.target_tid = args->target_tid;
+        __myst_kernel_args.target_ppid = args->target_ppid;
+        __myst_kernel_args.target_pid = args->target_pid;
         __myst_main_thread->event = args->event;
         myst_assume(myst_tcall_set_tsd((uint64_t)__myst_main_thread) == 0);
 
-        myst_eprintf("kernel: forked pid=%u\n", __myst_kernel_args.target_tid);
+        extern int myst_ping_listener();
+        if (myst_ping_listener() != 0)
+        {
+            myst_eprintf("*** myst_ping_listener() failed\n");
+        }
 
-        /* ATTN: clean up stale threads here! */
+        extern int myst_shutdown_listener();
+        if (myst_shutdown_listener() != 0)
+        {
+            myst_eprintf("*** myst_shutdown_listener() failed\n");
+        }
 
         ECHECK(myst_tcall_set_run_thread_function(myst_run_thread));
         myst_longjmp(&__myst_fork_jmpbuf, 1);
+
+        /* ATTN: clean up stale threads here! */
     }
 
     if (!args)
@@ -776,7 +787,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
 
     /* Create the main thread */
     ECHECK(
-        _create_main_thread(args->event, args->cwd, args->target_tid, &thread));
+        _create_main_thread(args->event, args->cwd, args->target_pid, &thread));
     __myst_main_thread = thread;
 
     myst_copy_host_uid_gid_mappings(&args->host_enc_uid_gid_mappings);

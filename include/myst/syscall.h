@@ -355,4 +355,9 @@ long myst_syscall_accept4(
     socklen_t* addrlen,
     int flags);
 
+long myst_syscall_connect(
+    int sockfd,
+    const struct sockaddr* addr,
+    socklen_t addrlen);
+
 #endif /* _MYST_SYSCALL_H */

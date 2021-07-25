@@ -128,8 +128,9 @@ typedef struct myst_kernel_args
     /* The number of threads that can be created (including the main thread) */
     size_t max_threads;
 
-    /* The tid/pid of the main thread passed from the host */
-    pid_t target_tid;
+    /* The ppid and pid of the main thread passed from the host */
+    pid_t target_ppid;
+    pid_t target_pid;
 
     /* The start time passed in from the host */
     uint64_t start_time_sec;

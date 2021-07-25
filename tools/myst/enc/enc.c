@@ -443,7 +443,8 @@ struct enter_arg
     const void* mount_mappings_data;
     size_t mount_mappings_size;
     uint64_t event;
-    pid_t target_tid;
+    pid_t target_pid;
+    pid_t target_ppid;
     uint64_t start_time_sec;
     uint64_t start_time_nsec;
     bool forked;
@@ -779,7 +780,8 @@ static long _enter(void* arg_)
     const void* envp_data = arg->envp_data;
     size_t envp_size = arg->envp_size;
     uint64_t event = arg->event;
-    pid_t target_tid = arg->target_tid;
+    pid_t target_ppid = arg->target_ppid;
+    pid_t target_pid = arg->target_pid;
     bool trace_errors = false;
     bool shell_mode = false;
     bool debug_symbols = false;
@@ -1050,7 +1052,8 @@ static long _enter(void* arg_)
             false, /* have_syscall_instruction */
             tee_debug_mode,
             event, /* thread_event */
-            target_tid,
+            target_ppid,
+            target_pid,
             max_affinity_cpus,
             fork_mode,
             myst_tcall,
@@ -1117,7 +1120,8 @@ int myst_enter_ecall(
     const void* mount_mappings,
     size_t mount_mappings_size,
     uint64_t event,
-    pid_t target_tid,
+    pid_t target_ppid,
+    pid_t target_pid,
     uint64_t start_time_sec,
     uint64_t start_time_nsec,
     bool forked)
@@ -1132,7 +1136,8 @@ int myst_enter_ecall(
         .mount_mappings_data = mount_mappings,
         .mount_mappings_size = mount_mappings_size,
         .event = event,
-        .target_tid = target_tid,
+        .target_pid = target_pid,
+        .target_ppid = target_ppid,
         .start_time_sec = start_time_sec,
         .start_time_nsec = start_time_nsec,
         .forked = forked,

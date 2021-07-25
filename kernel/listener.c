@@ -1,4 +1,5 @@
 #include <netinet/in.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 
@@ -18,10 +19,11 @@
 /* ATTN: this will be the maximum number of forked processes */
 #define MAX_CONNECTIONS 32
 
-static void _init_sockaddr(struct sockaddr_un* addr)
-{
-    pid_t pid = __myst_kernel_args.target_tid;
+static const uint32_t PING = 0xc63a8940;
+static const uint32_t SHUTDOWN = 0xfd46d4bc;
 
+static void _init_sockaddr(struct sockaddr_un* addr, pid_t pid)
+{
     memset(addr, 0, sizeof(struct sockaddr_un));
     addr->sun_family = AF_UNIX;
     snprintf(addr->sun_path, sizeof(addr->sun_path), "/tmp/myst%u.socket", pid);
@@ -133,7 +135,7 @@ long myst_syscall_run_listener(void)
     if (!(locals = calloc(1, sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
-    _init_sockaddr(&locals->addr);
+    _init_sockaddr(&locals->addr, __myst_kernel_args.target_pid);
 
     if ((lsock = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
         ERAISE(-errno);
@@ -248,6 +250,18 @@ long myst_syscall_run_listener(void)
                 while ((n = read(
                             conn->sock, locals->buf, sizeof(locals->buf))) > 0)
                 {
+                    if (n >= (ssize_t)sizeof(uint32_t))
+                    {
+                        uint32_t cmd;
+                        memcpy(&cmd, locals->buf, sizeof(cmd));
+
+                        if (cmd == PING)
+                            myst_eprintf("PING LISTENER!!!\n");
+
+                        if (cmd == SHUTDOWN)
+                            goto shutdown_listener;
+                    }
+
                     if (myst_buf_append(&conn->input, locals->buf, n) != 0)
                         ERAISE(-ENOMEM);
                 }
@@ -280,6 +294,25 @@ long myst_syscall_run_listener(void)
         }
     }
 
+shutdown_listener:
+{
+    connection_t* p = (connection_t*)_connections.head;
+
+    close(lsock);
+
+    while (p)
+    {
+        connection_t* next = p->next;
+        _release_connection(p);
+        p = next;
+    }
+
+    _connections.head = NULL;
+    _connections.tail = NULL;
+
+    myst_eprintf("SHUTDOWN LISTENER!!!\n");
+}
+
 done:
 
     if (lsock > 0)
@@ -291,5 +324,59 @@ done:
     if (locals)
         free(locals);
 
+    return ret;
+}
+
+static int _connect_to_listener(void)
+{
+    int ret = 0;
+    struct sockaddr_un addr;
+    int sock;
+
+    _init_sockaddr(&addr, __myst_kernel_args.target_ppid);
+
+    if ((sock = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
+        ERAISE(-errno);
+
+    if (connect(sock, (struct sockaddr*)&addr, sizeof(addr)) != 0)
+        ERAISE(-errno);
+
+    ret = sock;
+
+done:
+    return ret;
+}
+
+int myst_ping_listener(void)
+{
+    int ret = 0;
+    int sock;
+    uint32_t cmd = PING;
+
+    ECHECK(sock = _connect_to_listener());
+
+    if (write(sock, &cmd, sizeof(cmd)) != sizeof(cmd))
+        ERAISE(-errno);
+
+    close(sock);
+
+done:
+    return ret;
+}
+
+int myst_shutdown_listener(void)
+{
+    int ret = 0;
+    int sock;
+    uint32_t cmd = SHUTDOWN;
+
+    ECHECK(sock = _connect_to_listener());
+
+    if (write(sock, &cmd, sizeof(cmd)) != sizeof(cmd))
+        ERAISE(-errno);
+
+    close(sock);
+
+done:
     return ret;
 }

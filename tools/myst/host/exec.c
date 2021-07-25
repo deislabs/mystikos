@@ -178,7 +178,8 @@ int exec_launch_enclave(
     myst_buf_t argv_buf = MYST_BUF_INITIALIZER;
     myst_buf_t envp_buf = MYST_BUF_INITIALIZER;
     myst_buf_t mount_mappings_buf = MYST_BUF_INITIALIZER;
-    pid_t target_tid = (pid_t)syscall(SYS_gettid);
+    pid_t target_ppid = getppid();
+    pid_t target_pid = getpid();
     struct timespec start_time;
     bool forked = false;
 
@@ -242,7 +243,8 @@ int exec_launch_enclave(
         mount_mappings_buf.data,
         mount_mappings_buf.size,
         (uint64_t)&_event,
-        target_tid,
+        target_ppid,
+        target_pid,
         start_time.tv_sec,
         start_time.tv_nsec,
         forked);
