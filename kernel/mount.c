@@ -17,6 +17,7 @@
 #include <myst/mount.h>
 #include <myst/paths.h>
 #include <myst/printf.h>
+#include <myst/proxyfs.h>
 #include <myst/pubkey.h>
 #include <myst/ramfs.h>
 #include <myst/realpath.h>
@@ -80,6 +81,13 @@ int myst_mount_resolve(
 
     if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
+
+    /* if process is forked, delegate operation to the root process */
+    if (myst_forked())
+    {
+        ECHECK(myst_proxy_mount_resolve(path, suffix, fs_out));
+        goto done;
+    }
 
     /* Find the real path (the absolute non-relative path). */
     ECHECK(myst_realpath(path, &locals->realpath));

@@ -683,9 +683,9 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         /* ATTN: what if process was not forked from main thread */
         myst_assume(myst_tcall_set_tsd((uint64_t)__myst_main_thread) == 0);
 
-        if (myst_ping_listener() != 0)
+        if (myst_listener_ping() != 0)
         {
-            myst_eprintf("*** myst_ping_listener() failed\n");
+            myst_eprintf("*** myst_listener_ping() failed\n");
         }
 
         ECHECK(myst_tcall_set_run_thread_function(myst_run_thread));
@@ -898,7 +898,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         /* Shutdown the listener thread. */
         if (!args->forked)
         {
-            myst_shutdown_listener();
+            myst_listener_shutdown();
             /* ATTN:FORK: figure out how to remove this! */
             myst_sleep_msec(10);
         }

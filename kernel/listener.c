@@ -22,14 +22,6 @@
 
 #define MAGIC 0x425e6bdeed0a46f4
 
-typedef enum message_type
-{
-    MT_NONE,
-    MT_PING,
-    MT_SHUTDOWN,
-    MT_OPEN,
-} message_type_t;
-
 /* all messages begin with this struct */
 typedef struct message
 {
@@ -169,21 +161,26 @@ static void _release_connection(connection_t* conn)
     free(conn);
 }
 
-static void _init_message(message_t* message, message_type_t type, size_t size)
+static void _init_message(
+    message_t* message,
+    myst_message_type_t type,
+    size_t size)
 {
     message->magic = MAGIC;
     message->type = type;
     message->size = size;
 }
 
-static int _enqueue_simple_reponse(
+static int _enqueue_response(
     connection_t* conn,
-    message_type_t type,
+    myst_message_type_t type,
     const void* data,
     size_t size)
 {
     int ret = 0;
-    message_t m = {.magic = MAGIC, .type = type, .size = size};
+    message_t m;
+
+    _init_message(&m, type, size);
 
     if (myst_buf_append(&conn->output, &m, sizeof(m)) != 0)
         ERAISE(-ENOMEM);
@@ -200,20 +197,6 @@ done:
     return ret;
 }
 
-static int _enqueue_reponse(connection_t* conn, message_t* message)
-{
-    int ret = 0;
-    const size_t size = sizeof(message_t) + message->size;
-
-    if (myst_buf_append(&conn->output, message, size) != 0)
-        ERAISE(-ENOMEM);
-
-    conn->events |= EPOLLOUT;
-
-done:
-    return ret;
-}
-
 static int _handle_request(connection_t* conn, const message_t* message)
 {
     int ret = 0;
@@ -221,35 +204,15 @@ static int _handle_request(connection_t* conn, const message_t* message)
 
     switch (message->type)
     {
-        case MT_PING:
+        case MYST_MESSAGE_PING:
         {
-            myst_eprintf("MT_PING!!!\n");
-            ECHECK(_enqueue_simple_reponse(conn, MT_PING, "ping", 5));
+            myst_eprintf("MYST_MESSAGE_PING!!!\n");
+            ECHECK(_enqueue_response(conn, MYST_MESSAGE_PING, "ping", 5));
             break;
         }
-        case MT_SHUTDOWN:
+        case MYST_MESSAGE_SHUTDOWN:
         {
-            myst_eprintf("MT_SHUTDOWN!!!\n");
-            break;
-        }
-        case MT_OPEN:
-        {
-            open_request_t* req = (open_request_t*)message;
-            open_response_t* rsp = NULL;
-            const size_t size = sizeof(open_response_t);
-
-            myst_eprintf("MT_OPEN: {%s}\n", req->pathname);
-
-            if (!(rsp = malloc(size)))
-                ERAISE(-ENOMEM);
-
-            ptr = rsp;
-            _init_message(&rsp->base, MT_OPEN, size - sizeof(message_t));
-
-            rsp->fs = (void*)111;
-            rsp->file = (void*)222;
-
-            ECHECK(_enqueue_reponse(conn, &rsp->base));
+            myst_eprintf("MYST_MESSAGE_SHUTDOWN!!!\n");
             break;
         }
     }
@@ -336,7 +299,7 @@ static int _handle_input(int sock)
         /* handle all queued messages */
         while ((m = _get_message(&conn->input)))
         {
-            const bool shutdown = (m->type == MT_SHUTDOWN);
+            const bool shutdown = (m->type == MYST_MESSAGE_SHUTDOWN);
 
             _handle_request(conn, m);
 
@@ -520,7 +483,7 @@ static int _sock;
 static bool _sock_initialized;
 static myst_mutex_t _sock_lock;
 
-static int _get_listener_connection(void)
+static int _listener_get_sock(void)
 {
     int ret = 0;
 
@@ -590,17 +553,21 @@ done:
     return ret;
 }
 
-static int _recv_simple_response(
+static int _recv_response(
     int sock,
-    message_type_t type,
-    message_t** message_out)
+    myst_message_type_t type,
+    void** response_out,
+    size_t* response_size_out)
 {
     int ret = 0;
     message_t m;
-    message_t* message = NULL;
+    void* response = NULL;
 
-    if (message_out)
-        *message_out = NULL;
+    if (response_out)
+        *response_out = NULL;
+
+    if (response_size_out)
+        *response_size_out = 0;
 
     if (_readn(sock, &m, sizeof(m)) != sizeof(m))
         ERAISE(-errno);
@@ -611,36 +578,40 @@ static int _recv_simple_response(
     if (m.type != type)
         ERAISE(-EINVAL);
 
-    if (!(message = malloc(sizeof(m) + m.size)))
-        ERAISE(-ENOMEM);
-
-    memcpy(message, &m, sizeof(m));
-
     if (m.size)
     {
-        if (_readn(sock, message->data, m.size) != (ssize_t)m.size)
-            ERAISE(-errno);
-    }
+        if (!response_out || !response_size_out)
+            ERAISE(-EINVAL);
 
-    *message_out = message;
-    message = NULL;
+        if (!(response = malloc(m.size)))
+            ERAISE(-ENOMEM);
+
+        if (_readn(sock, response, m.size) != (ssize_t)m.size)
+            ERAISE(-errno);
+
+        *response_out = response;
+        *response_size_out = m.size;
+        response = NULL;
+    }
 
 done:
 
-    if (message)
-        free(message);
+    if (response)
+        free(response);
 
     return ret;
 }
 
-static int _send_simple_request(
+static int _send_request(
     int sock,
-    message_type_t type,
+    myst_message_type_t type,
     const void* data,
     size_t size)
 {
     int ret = 0;
-    message_t m = {.magic = MAGIC, .type = type, .size = size};
+    message_t m;
+
+    _init_message(&m, type, size);
 
     if (_writen(sock, &m, sizeof(m)) != sizeof(m))
         ERAISE(-errno);
@@ -655,39 +626,28 @@ done:
     return ret;
 }
 
-static int _send_request(int sock, message_t* message)
-{
-    int ret = 0;
-    size_t size = sizeof(message_t) + message->size;
-
-    if (_writen(sock, message, size) != (ssize_t)size)
-        ERAISE(-errno);
-
-done:
-    return ret;
-}
-
-int myst_ping_listener(void)
+int myst_listener_ping(void)
 {
     int ret = 0;
     int sock;
-    message_t* message = NULL;
+    void* response = NULL;
+    size_t response_size;
 
-    ECHECK(sock = _get_listener_connection());
-    ECHECK(_send_simple_request(sock, MT_PING, NULL, 0));
-    ECHECK(_recv_simple_response(sock, MT_PING, &message));
+    ECHECK(sock = _listener_get_sock());
+    ECHECK(_send_request(sock, MYST_MESSAGE_PING, NULL, 0));
+    ECHECK(_recv_response(sock, MYST_MESSAGE_PING, &response, &response_size));
 
     myst_eprintf("PING OKAY!!!\n");
 
 done:
 
-    if (message)
-        free(message);
+    if (response)
+        free(response);
 
     return ret;
 }
 
-int myst_shutdown_listener(void)
+int myst_listener_shutdown(void)
 {
     int ret = 0;
     int sock = -1;
@@ -698,7 +658,9 @@ int myst_shutdown_listener(void)
 
     if (!_shutdown)
     {
-        message_t m = {.magic = MAGIC, .type = MT_SHUTDOWN};
+        message_t m;
+
+        _init_message(&m, MYST_MESSAGE_SHUTDOWN, 0);
 
         ECHECK(sock = _connect_to_listener(true));
 
@@ -718,57 +680,34 @@ done:
     return ret;
 }
 
-long myst_listener_open(
-    const char* pathname,
-    int flags,
-    mode_t mode,
-    myst_fs_t** fs_out,
-    myst_file_t** file_out)
+int myst_listener_call(
+    myst_message_type_t message_type,
+    const void* request,
+    size_t request_size,
+    void** response_out,
+    size_t* response_size_out)
 {
-    long ret = 0;
-    open_request_t* req = NULL;
-    open_response_t* rsp = NULL;
+    int ret = 0;
     int sock;
+    void* response = NULL;
+    size_t response_size;
 
-    if (fs_out)
-        *fs_out = NULL;
+    if (response_out)
+        *response_out = NULL;
 
-    if (file_out)
-        *file_out = NULL;
+    if (response_size_out)
+        *response_size_out = 0;
 
-    if (!pathname || !fs_out || !file_out)
+    if (message_type == MYST_MESSAGE_NONE)
         ERAISE(-EINVAL);
 
-    /* create the request structure */
-    {
-        size_t len = strlen(pathname);
-        size_t size = sizeof(open_request_t) + len + 1;
+    if (!response_out || !response_size_out)
+        ERAISE(-EINVAL);
 
-        if (!(req = malloc(size)))
-            ERAISE(-ENOMEM);
-
-        req->base.magic = MAGIC;
-        req->base.type = MT_OPEN;
-        req->base.size = size - sizeof(message_t);
-        req->flags = flags;
-        req->mode = mode;
-        myst_strlcpy(req->pathname, pathname, len + 1);
-    }
-
-    ECHECK(sock = _get_listener_connection());
-    ECHECK(_send_request(sock, &req->base));
-    ECHECK(_recv_simple_response(sock, MT_OPEN, (message_t**)&rsp));
-
-    myst_eprintf("***** fs=%lu\n", (long)rsp->fs);
-    myst_eprintf("***** file=%lu\n", (long)rsp->file);
+    ECHECK(sock = _listener_get_sock());
+    ECHECK(_send_request(sock, message_type, request, request_size));
+    ECHECK(_recv_response(sock, message_type, &response, &response_size));
 
 done:
-
-    if (req)
-        free(req);
-
-    if (rsp)
-        free(rsp);
-
     return ret;
 }

@@ -205,4 +205,9 @@ void myst_start_shell(const char* msg);
 
 const char* myst_syscall_str(long n);
 
+MYST_INLINE bool myst_forked(void)
+{
+    return __myst_kernel_args.forked;
+}
+
 #endif /* _MYST_KERNEL_H */
