@@ -636,21 +636,9 @@ int myst_release_process_mappings(pid_t pid)
             if (p->pid == pid)
             {
 #if MYST_ENABLE_MMAN_PIDS
-                /* if the given process still owns the whole mapping */
-                if (myst_mman_pids_test(p->addr, p->size, pid) == 0)
-                {
-                    /* unmap the whole mapping */
-                    myst_munmap(p->addr, p->size);
-
-                    /* set ownership of these pages to nobody */
-                    myst_mman_pids_set(p->addr, p->size, 0);
-                }
-                else
-                {
-                    // perform a partial unmapping: unmap all pages in this
-                    // mapping that are owned by the given process.
-                    myst_mman_pids_munmap(p->addr, p->size, pid);
-                }
+                /* unmap all pages in this mapping that are owned by the given
+                 * process.*/
+                myst_mman_pids_munmap(p->addr, p->size, pid);
 #else
                 myst_munmap(p->addr, p->size);
 #endif
