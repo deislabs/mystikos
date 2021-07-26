@@ -175,4 +175,6 @@ MYST_INLINE bool myst_valid_fd(int fd)
 
 int myst_fdtable_list(const myst_fdtable_t* fdtable);
 
+long myst_fdtable_sync(myst_fdtable_t* fdtable);
+
 #endif /* _MYST_FDTABLE_H */

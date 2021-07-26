@@ -128,7 +128,6 @@
 /ltp/testcases/kernel/syscalls/llistxattr/llistxattr01:  SYS_lsetxattr()
 /ltp/testcases/kernel/syscalls/llistxattr/llistxattr02:  SYS_lsetxattr()
 /ltp/testcases/kernel/syscalls/llistxattr/llistxattr03:  SYS_lsetxattr()
-/ltp/testcases/kernel/syscalls/madvise/madvise06:  SYS_sync()
 /ltp/testcases/kernel/syscalls/memfd_create/memfd_create01:  SYS_memfd_create()
 /ltp/testcases/kernel/syscalls/memfd_create/memfd_create02:  SYS_memfd_create()
 /ltp/testcases/kernel/syscalls/mincore/mincore01:  SYS_mincore()
