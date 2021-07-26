@@ -570,3 +570,36 @@ done:
 
     return ret;
 }
+
+long myst_fdtable_sync(myst_fdtable_t* fdtable)
+{
+    long ret = 0;
+    bool locked = false;
+
+    if (!fdtable)
+        ERAISE(-EINVAL);
+
+    myst_spin_lock(&fdtable->lock);
+    locked = true;
+
+    {
+        for (int i = 0; i < MYST_FDTABLE_SIZE; i++)
+        {
+            const myst_fdtable_entry_t* entry = &fdtable->entries[i];
+
+            if (entry->type == MYST_FDTABLE_TYPE_FILE)
+            {
+                myst_fs_t* fs = entry->device;
+                myst_file_t* file = entry->object;
+                ECHECK(fs->fs_fsync(fs, file));
+            }
+        }
+    }
+
+done:
+
+    if (locked)
+        myst_spin_unlock(&fdtable->lock);
+
+    return ret;
+}

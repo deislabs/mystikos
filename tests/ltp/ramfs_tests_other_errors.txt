@@ -385,6 +385,7 @@
 /ltp/testcases/kernel/syscalls/lstat/lstat02_64
 /ltp/testcases/kernel/syscalls/madvise/madvise01
 /ltp/testcases/kernel/syscalls/madvise/madvise02
+/ltp/testcases/kernel/syscalls/madvise/madvise06
 /ltp/testcases/kernel/syscalls/madvise/madvise07
 /ltp/testcases/kernel/syscalls/madvise/madvise08
 /ltp/testcases/kernel/syscalls/madvise/madvise09

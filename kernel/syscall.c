@@ -2985,6 +2985,12 @@ done:
     return ret;
 }
 
+long myst_syscall_sync(void)
+{
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    return myst_fdtable_sync(fdtable);
+}
+
 long myst_syscall_utimensat(
     int dirfd,
     const char* pathname,
@@ -4859,7 +4865,10 @@ static long _syscall(void* args_)
         case SYS_chroot:
             break;
         case SYS_sync:
-            break;
+        {
+            _strace(n, NULL);
+            BREAK(_return(n, myst_syscall_sync()));
+        }
         case SYS_acct:
             break;
         case SYS_settimeofday:
