@@ -25,7 +25,7 @@ typedef struct myst_mount_resolve_request
 
 typedef struct myst_mount_resolve_response
 {
-    long ret;
+    long retval;
     uint64_t fs_cookie;
     char suffix[];
 } myst_mount_resolve_response_t;

@@ -9,13 +9,13 @@
 #include <myst/kernel.h>
 #include <myst/list.h>
 #include <myst/listener.h>
+#include <myst/mount.h>
 #include <myst/mutex.h>
 #include <myst/panic.h>
 #include <myst/printf.h>
 #include <myst/signal.h>
 #include <myst/strings.h>
 #include <myst/syscall.h>
-#include <myst/time.h>
 
 /* ATTN: this will be the maximum number of forked processes */
 #define MAX_CONNECTIONS 32
@@ -197,6 +197,64 @@ done:
     return ret;
 }
 
+static int _handle_mount_resolve(
+    connection_t* conn,
+    const myst_mount_resolve_request_t* request)
+{
+    int ret = 0;
+    struct locals
+    {
+        char suffix[PATH_MAX];
+    };
+    struct locals* locals;
+    myst_fs_t* fs = NULL;
+    typedef myst_mount_resolve_response_t response_t;
+    response_t* response = NULL;
+    size_t response_size;
+    int retval;
+    const myst_message_type_t mt = MYST_MESSAGE_MOUNT_RESOLVE;
+
+    if (!(locals = calloc(1, sizeof(struct locals))))
+        ERAISE(-ENOMEM);
+
+    retval = myst_mount_resolve(request->path, locals->suffix, &fs);
+
+    /* enqueue the response */
+    if (retval == 0)
+    {
+        size_t len = strlen(locals->suffix);
+        response_size = sizeof(response_t) + len + 1;
+
+        if (!(response = calloc(1, response_size)))
+            ERAISE(-ENOMEM);
+
+        response->retval = retval;
+        response->fs_cookie = (uint64_t)fs;
+        memcpy(response->suffix, locals->suffix, len + 1);
+    }
+    else
+    {
+        response_size = sizeof(response_t) + 1;
+
+        if (!(response = calloc(1, response_size)))
+            ERAISE(-ENOMEM);
+
+        response->retval = retval;
+    }
+
+    ECHECK(_enqueue_response(conn, mt, response, response_size));
+
+done:
+
+    if (locals)
+        free(locals);
+
+    if (response)
+        free(response);
+
+    return 0;
+}
+
 static int _handle_request(connection_t* conn, const message_t* message)
 {
     int ret = 0;
@@ -213,6 +271,19 @@ static int _handle_request(connection_t* conn, const message_t* message)
         case MYST_MESSAGE_SHUTDOWN:
         {
             myst_eprintf("MYST_MESSAGE_SHUTDOWN!!!\n");
+            break;
+        }
+        case MYST_MESSAGE_MOUNT_RESOLVE:
+        {
+            typedef myst_mount_resolve_request_t request_t;
+            request_t* request = (request_t*)message->data;
+
+            if (message->size <= sizeof(request_t))
+                myst_panic("corrupt request");
+
+            /* ATTN: check for null termination */
+            if (_handle_mount_resolve(conn, request) != 0)
+                myst_panic("_handle_mount_resolve()");
             break;
         }
     }
@@ -553,6 +624,30 @@ done:
     return ret;
 }
 
+static int _send_request(
+    int sock,
+    myst_message_type_t type,
+    const void* data,
+    size_t size)
+{
+    int ret = 0;
+    message_t m;
+
+    _init_message(&m, type, size);
+
+    if (_writen(sock, &m, sizeof(m)) != sizeof(m))
+        ERAISE(-errno);
+
+    if (data && size)
+    {
+        if (_writen(sock, data, size) != (ssize_t)size)
+            ERAISE(-errno);
+    }
+
+done:
+    return ret;
+}
+
 static int _recv_response(
     int sock,
     myst_message_type_t type,
@@ -602,30 +697,6 @@ done:
     return ret;
 }
 
-static int _send_request(
-    int sock,
-    myst_message_type_t type,
-    const void* data,
-    size_t size)
-{
-    int ret = 0;
-    message_t m;
-
-    _init_message(&m, type, size);
-
-    if (_writen(sock, &m, sizeof(m)) != sizeof(m))
-        ERAISE(-errno);
-
-    if (data && size)
-    {
-        if (_writen(sock, data, size) != (ssize_t)size)
-            ERAISE(-errno);
-    }
-
-done:
-    return ret;
-}
-
 int myst_listener_ping(void)
 {
     int ret = 0;
@@ -658,15 +729,8 @@ int myst_listener_shutdown(void)
 
     if (!_shutdown)
     {
-        message_t m;
-
-        _init_message(&m, MYST_MESSAGE_SHUTDOWN, 0);
-
         ECHECK(sock = _connect_to_listener(true));
-
-        if (write(sock, &m, sizeof(m)) != sizeof(m))
-            ERAISE(-errno);
-
+        ECHECK(_send_request(sock, MYST_MESSAGE_SHUTDOWN, NULL, 0));
         _shutdown = true;
     }
 
@@ -707,6 +771,9 @@ int myst_listener_call(
     ECHECK(sock = _listener_get_sock());
     ECHECK(_send_request(sock, message_type, request, request_size));
     ECHECK(_recv_response(sock, message_type, &response, &response_size));
+
+    *response_out = response;
+    *response_size_out = response_size;
 
 done:
     return ret;

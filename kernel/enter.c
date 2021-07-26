@@ -684,9 +684,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         myst_assume(myst_tcall_set_tsd((uint64_t)__myst_main_thread) == 0);
 
         if (myst_listener_ping() != 0)
-        {
             myst_eprintf("*** myst_listener_ping() failed\n");
-        }
 
         ECHECK(myst_tcall_set_run_thread_function(myst_run_thread));
         myst_longjmp(&__myst_fork_jmpbuf, 1);
