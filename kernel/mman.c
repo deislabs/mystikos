@@ -583,66 +583,6 @@ done:
     return ret;
 }
 
-/* zero-fill pages that are marked for delayed zero-filling */
-__attribute__((__unused__)) static int _zero_fill_delayed(
-    myst_mman_t* mman,
-    void* addr,
-    size_t length)
-{
-    int ret = 0;
-    uint8_t* zeros;
-    size_t count;
-    uint8_t* page = addr;
-    const size_t page_index = ((uintptr_t)addr - mman->start) / PAGE_SIZE;
-
-    if (_get_zeros(addr, length, &zeros, &count) != 0)
-    {
-        _mman_set_err(mman, "_zero_fill_delayed(): _get_zeros()");
-        ret = -EINVAL;
-        goto done;
-    }
-
-    for (size_t i = 0; i < count; i++)
-    {
-        if (zeros[i])
-        {
-            int prot = mman->prot_vector[page_index + i];
-
-            prot &= (MYST_PROT_READ | MYST_PROT_WRITE | MYST_PROT_EXEC);
-
-            /* enable write for the memset() */
-            if (!(prot | MYST_PROT_WRITE))
-            {
-                const int new_prot = prot | MYST_PROT_WRITE;
-
-                if (myst_tcall_mprotect(addr, PAGE_SIZE, new_prot) != 0)
-                {
-                    _mman_set_err(mman, "_zero_fill_delayed(): mprotect()");
-                    ret = -EINVAL;
-                    goto done;
-                }
-            }
-
-            /* clear the page */
-            memset(page, 0, PAGE_SIZE);
-
-            /* restore original memory protections without write */
-            if (!(prot | MYST_PROT_WRITE))
-            {
-                _mman_set_err(mman, "_zero_fill_delayed(): mprotect()");
-                ret = -EINVAL;
-                goto done;
-            }
-        }
-
-        page += PAGE_SIZE;
-        zeros[i] = 0;
-    }
-
-done:
-    return ret;
-}
-
 #define _MMAN_MPROTECT_PAGES(MMAN, ADDR, LEN, PROT)            \
     {                                                          \
         if (myst_tcall_mprotect(ADDR, LEN, PROT))              \
