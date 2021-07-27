@@ -115,8 +115,11 @@
 #include <assert.h>
 #include <errno.h>
 #include <myst/defs.h>
+#include <myst/eraise.h>
 #include <myst/fsgs.h>
+#include <myst/kernel.h>
 #include <myst/mman.h>
+#include <myst/panic.h>
 #include <myst/round.h>
 #include <myst/spinlock.h>
 #include <myst/strings.h>
@@ -427,6 +430,217 @@ static uintptr_t _mman_find_gap(
 
 done:
     return addr;
+}
+
+/* find the start of the zeros[] vector for the given address */
+int _addr_to_zeros_vector(
+    const void* addr,
+    size_t length,
+    uint8_t** zeros_out,
+    size_t* count_out)
+{
+    int ret = 0;
+    uint8_t* zeros = __myst_kernel_args.mman_zeros_data;
+    size_t nzeros = __myst_kernel_args.mman_zeros_size;
+    size_t index;
+    size_t count;
+
+    *zeros_out = NULL;
+
+    if (count_out)
+        *count_out = 0;
+
+    /* addr must be aligned on a page boundary */
+    if ((uint64_t)addr % PAGE_SIZE)
+        ERAISE(-EINVAL);
+
+    /* round length up to the next multiple of the page boundary */
+    ECHECK(myst_round_up(length, PAGE_SIZE, &length));
+
+    // Fail if [addr:length] is not within the mmap area.
+    // Calculate the index of zeros[] vector and count.
+    {
+        const myst_kernel_args_t* kargs = &__myst_kernel_args;
+        const uint64_t addr_start = (uint64_t)addr;
+        const uint64_t addr_end;
+        /* skip past guard pages */
+        const uint64_t mman_start = (uint64_t)kargs->mman_data + PAGE_SIZE;
+        const size_t mman_end;
+
+        if (__builtin_add_overflow(addr_start, length, &addr_end))
+            ERAISE(-ERANGE);
+
+        if (__builtin_add_overflow(
+                mman_start, kargs->mman_size - 2 * PAGE_SIZE, &mman_end))
+        {
+            ERAISE(-ERANGE);
+        }
+
+        if (!(addr_start >= mman_start && addr_end <= mman_end))
+            ERAISE(-EINVAL);
+
+        index = (addr_start - mman_start) / PAGE_SIZE;
+        count = length / PAGE_SIZE;
+
+        if (index >= nzeros)
+            ERAISE(-ERANGE);
+
+        if (index + count > nzeros)
+            ERAISE(-ERANGE);
+    }
+
+    *zeros_out = &zeros[index];
+
+    if (count_out)
+        *count_out = count;
+
+done:
+    return ret;
+}
+
+static int _mprotect(
+    myst_mman_t* mman,
+    void* addr,
+    size_t length,
+    int prot,
+    bool initialize)
+{
+    int ret = 0;
+    uint8_t* zeros;
+    size_t count;
+
+    prot &= (MYST_PROT_READ | MYST_PROT_WRITE | MYST_PROT_EXEC);
+
+    if (_addr_to_zeros_vector(addr, length, &zeros, &count) != 0)
+    {
+        _mman_set_err(mman, "_mprotect(): _addr_to_zeros_vector()");
+        ret = -EINVAL;
+        goto done;
+    }
+
+    if (prot == MYST_PROT_NONE)
+    {
+        if (myst_tcall_mprotect(addr, length, MYST_PROT_NONE) != 0)
+        {
+            _mman_set_err(mman, "_mprotect(): mprotect()");
+            ret = -EINVAL;
+            goto done;
+        }
+
+        if (initialize)
+        {
+            /* zero-fill later */
+            memset(zeros, 1, count);
+        }
+    }
+    else
+    {
+        /* set write permission before zero-filling */
+        if (myst_tcall_mprotect(addr, length, prot | MYST_PROT_WRITE) != 0)
+        {
+            _mman_set_err(mman, "_mprotect(): mprotect()");
+            ret = -EINVAL;
+            goto done;
+        }
+
+        if (initialize)
+        {
+            /* zero-fill the memory */
+            memset(addr, 0, length);
+        }
+        else
+        {
+            uint8_t* page = addr;
+
+            for (size_t i = 0; i < count; i++)
+            {
+                if (zeros[i])
+                {
+                    memset(page, 0, PAGE_SIZE);
+                    zeros[i] = 0;
+                }
+
+                page += PAGE_SIZE;
+            }
+        }
+
+        /* remove write-permission if not in original prot mask */
+        if (!(prot | MYST_PROT_WRITE))
+        {
+            if (myst_tcall_mprotect(addr, length, prot) != 0)
+            {
+                _mman_set_err(mman, "_mprotect(): mprotect()");
+                ret = -EINVAL;
+                goto done;
+            }
+        }
+
+        /* clear the zeros vector for this range */
+        memset(zeros, 0, count);
+    }
+
+done:
+    return ret;
+}
+
+/* zero-fill pages that are marked for delayed zero-filling */
+__attribute__((__unused__)) static int _zero_fill_delayed(
+    myst_mman_t* mman,
+    void* addr,
+    size_t length)
+{
+    int ret = 0;
+    uint8_t* zeros;
+    size_t count;
+    uint8_t* page = addr;
+    const size_t page_index = ((uintptr_t)addr - mman->start) / PAGE_SIZE;
+
+    if (_addr_to_zeros_vector(addr, length, &zeros, &count) != 0)
+    {
+        _mman_set_err(mman, "_zero_fill_delayed(): _addr_to_zeros_vector()");
+        ret = -EINVAL;
+        goto done;
+    }
+
+    for (size_t i = 0; i < count; i++)
+    {
+        if (zeros[i])
+        {
+            int prot = mman->prot_vector[page_index + i];
+
+            prot &= (MYST_PROT_READ | MYST_PROT_WRITE | MYST_PROT_EXEC);
+
+            /* enable write for the memset() */
+            if (!(prot | MYST_PROT_WRITE))
+            {
+                const int new_prot = prot | MYST_PROT_WRITE;
+
+                if (myst_tcall_mprotect(addr, PAGE_SIZE, new_prot) != 0)
+                {
+                    _mman_set_err(mman, "_zero_fill_delayed(): mprotect()");
+                    ret = -EINVAL;
+                    goto done;
+                }
+            }
+
+            /* clear the page */
+            memset(page, 0, PAGE_SIZE);
+
+            /* restore original memory protections without write */
+            if (!(prot | MYST_PROT_WRITE))
+            {
+                _mman_set_err(mman, "_zero_fill_delayed(): mprotect()");
+                ret = -EINVAL;
+                goto done;
+            }
+        }
+
+        page += PAGE_SIZE;
+        zeros[i] = 0;
+    }
+
+done:
+    return ret;
 }
 
 #define _MMAN_MPROTECT_PAGES(MMAN, ADDR, LEN, PROT)            \
@@ -829,22 +1043,12 @@ done:
     /* Zero-fill mapped memory */
     if (ptr_out && *ptr_out)
     {
-        /* For readonly memory, need to set w permission first to clear the
-         * memory */
-        if (myst_tcall_mprotect(*ptr_out, length, (prot | MYST_PROT_WRITE)))
+        if (_mprotect(mman, *ptr_out, length, prot, true) != 0)
         {
-            _mman_set_err(mman, "mprotect tcall failed");
-            return -EINVAL;
+            ret = -EINVAL;
+            goto done;
         }
-        memset(*ptr_out, 0, length);
-        if (!(prot & MYST_PROT_WRITE))
-        {
-            if (myst_tcall_mprotect(*ptr_out, length, prot))
-            {
-                _mman_set_err(mman, "mprotect tcall failed");
-                return -EINVAL;
-            }
-        }
+
         _MMAN_SET_PAGES_PROT(mman, *ptr_out, length, prot)
     }
     return ret;
@@ -1448,24 +1652,14 @@ int myst_mman_mremap(
         if (_end(vad) == old_end && _get_right_gap(mman, vad) >= delta)
         {
             vad->size += (uint32_t)delta;
-            /* Set W permission first before zeroing */
-            if (myst_tcall_mprotect(
-                    (void*)(start + old_size), delta, (prot | MYST_PROT_WRITE)))
+
+            if (_mprotect(mman, (void*)(start + old_size), delta, prot, true) !=
+                0)
             {
-                _mman_set_err(mman, "mprotect tcall failed");
                 ret = -EINVAL;
                 goto done;
             }
-            memset((void*)(start + old_size), 0, delta);
-            if (!(prot & MYST_PROT_WRITE))
-            {
-                if (myst_tcall_mprotect((void*)(start + old_size), delta, prot))
-                {
-                    _mman_set_err(mman, "mprotect tcall failed");
-                    ret = -EINVAL;
-                    goto done;
-                }
-            }
+
             /* Set prot for extended region */
             _MMAN_SET_PAGES_PROT(mman, start + old_size, delta, prot)
             new_addr = addr;
@@ -1482,35 +1676,56 @@ int myst_mman_mremap(
         }
         else
         {
+            uint8_t* zeros;
+
             if (_mmap(mman, NULL, new_size, vad->prot, vad->flags, &addr) != 0)
             {
                 _mman_set_err(mman, "mapping failed");
                 ret = -ENOMEM;
                 goto done;
             }
-            /* If no W permission, set W permission first before copy */
-            if (!(vad->prot & MYST_PROT_WRITE))
+
+            if (_addr_to_zeros_vector((void*)start, PAGE_SIZE, &zeros, NULL) !=
+                0)
             {
-                if (myst_tcall_mprotect(
-                        addr, new_size, (vad->prot | MYST_PROT_WRITE)))
+                _mman_set_err(mman, "_addr_to_zeros_vector() failed");
+                ret = -EINVAL;
+                goto done;
+            }
+
+            // If the old area is pending zero fill, no need to copy from the
+            // old area
+            if (zeros[0])
+            {
+                /* If no W permission, set W permission first before copy */
+                if (!(prot & MYST_PROT_WRITE))
                 {
-                    _mman_set_err(mman, "mprotect tcall failed");
-                    ret = -EINVAL;
-                    goto done;
+                    if (myst_tcall_mprotect(
+                            addr, new_size, (prot | MYST_PROT_WRITE)))
+                    {
+                        _mman_set_err(mman, "mprotect tcall failed");
+                        ret = -EINVAL;
+                        goto done;
+                    }
+                }
+
+                /* Copy over data from old area */
+                memcpy(addr, (void*)start, old_size);
+
+                if ((vad->prot | MYST_PROT_WRITE) != prot)
+                {
+                    if (myst_tcall_mprotect(addr, new_size, prot))
+                    {
+                        _mman_set_err(mman, "mprotect tcall failed");
+                        ret = -EINVAL;
+                        goto done;
+                    }
                 }
             }
-            /* Copy over data from old area */
-            memcpy(addr, (void*)start, old_size);
-            if ((vad->prot | MYST_PROT_WRITE) != prot)
-            {
-                if (myst_tcall_mprotect(addr, new_size, prot))
-                {
-                    _mman_set_err(mman, "mprotect tcall failed");
-                    ret = -EINVAL;
-                    goto done;
-                }
-            }
+
+            /* ATTN:MEB: is this necessary */
             _MMAN_SET_PAGES_PROT(mman, addr, new_size, prot)
+
             /* Unmap the old area */
             if (_munmap(mman, (void*)start, old_size) != 0)
             {
@@ -1616,7 +1831,12 @@ int myst_mman_mprotect(myst_mman_t* mman, void* addr, size_t len, int prot)
     /* Ignore prot bits beyond MYST_PROT_READ, MYST_PROT_WRITE, MYST_PROT_EXEC*/
     prot = prot & (MYST_PROT_READ | MYST_PROT_WRITE | MYST_PROT_EXEC);
 
-    _MMAN_MPROTECT_PAGES(mman, addr, len, prot)
+    if (_mprotect(mman, addr, len, prot, false) != 0)
+    {
+        _mman_set_err(mman, "_mprotect() failed");
+        ret = -EINVAL;
+        goto done;
+    }
 
 done:
     _mman_unlock(mman, &locked);

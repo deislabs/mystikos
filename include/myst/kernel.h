@@ -108,6 +108,10 @@ typedef struct myst_kernel_args
     void* mman_pids_data;
     size_t mman_pids_size;
 
+    /* The zeros[] vector for the memory management pages */
+    void* mman_zeros_data;
+    size_t mman_zeros_size;
+
     /* The CPIO root file system image */
     char rootfs[PATH_MAX];
     void* rootfs_data;
