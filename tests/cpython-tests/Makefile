@@ -9,7 +9,7 @@ OPTS += --strace
 endif
 OPTS += --fork-mode pseudo_wait_for_exit_exec
 TESTFILE=tests.passed
-TC = test_grammar
+TEST = test_grammar
 FS=ext2fs
 
 # Set timeout to 10 mins
@@ -38,9 +38,8 @@ hostfs:
 run-list: $(FS)
 	$(MYST_EXEC) $(OPTS) $(FS) /cpython/python -m test -f $(TESTFILE) --timeout 30 -q
 
-
-run-single: $(FS)
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) /cpython/python -m test $(TC) -q
+one: $(FS)
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) /cpython/python -m test $(TEST) -q
 
 run-str: $(FS)
 	$(MYST_EXEC) $(OPTS) $(FS) /cpython/python -c "$(PROG_STR)"
