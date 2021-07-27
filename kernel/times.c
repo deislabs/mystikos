@@ -122,7 +122,7 @@ long myst_times_get_cpu_clock_time(clockid_t clk_id, struct timespec* tp)
         if (tid == current->tid)
         {
             long nanoseconds = myst_times_thread_time();
-            set_timespec_from_nanos(tp, nanoseconds);
+            nanos_to_timespec(tp, nanoseconds);
         }
         else
         {
@@ -132,13 +132,13 @@ long myst_times_get_cpu_clock_time(clockid_t clk_id, struct timespec* tp)
 
             long nanoseconds =
                 myst_lapsed_nsecs(&t->start_ts, &t->enter_kernel_ts);
-            set_timespec_from_nanos(tp, nanoseconds);
+            nanos_to_timespec(tp, nanoseconds);
         }
     }
     else
     {
         long nanoseconds = myst_times_process_time();
-        set_timespec_from_nanos(tp, nanoseconds);
+        nanos_to_timespec(tp, nanoseconds);
     }
 
     return 0;

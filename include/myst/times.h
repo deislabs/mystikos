@@ -10,13 +10,13 @@
 
 long myst_lapsed_nsecs(const struct timespec* t0, const struct timespec* t1);
 
-MYST_INLINE void set_timespec_from_nanos(struct timespec* tp, long nanos)
+MYST_INLINE void nanos_to_timespec(struct timespec* tp, long nanos)
 {
     tp->tv_sec = nanos / NANO_IN_SECOND;
     tp->tv_nsec = nanos % NANO_IN_SECOND;
 }
 
-MYST_INLINE long get_nanos_from_timespec(const struct timespec* tp)
+MYST_INLINE long timespec_to_nanos(const struct timespec* tp)
 {
     return tp->tv_sec * NANO_IN_SECOND + tp->tv_nsec;
 }
