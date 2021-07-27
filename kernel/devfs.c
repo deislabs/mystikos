@@ -153,6 +153,12 @@ int devfs_setup()
     /* /dev/fd symlink */
     _devfs->fs_symlink(_devfs, "/proc/self/fd", "/fd");
 
+    if (myst_mkdirhier("/dev/shm", 777) != 0)
+    {
+        myst_eprintf("cannot create /dev/shm directory \n");
+        ERAISE(-EINVAL);
+    }
+
 done:
     return ret;
 }

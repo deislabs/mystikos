@@ -13,6 +13,7 @@
 #include <myst/fdtable.h>
 #include <myst/file.h>
 #include <myst/kernel.h>
+#include <myst/list.h>
 #include <myst/malloc.h>
 #include <myst/mman.h>
 #include <myst/mmanutils.h>
@@ -44,6 +45,20 @@ typedef struct msync_mapping
 /* linked list of msync mappings */
 static msync_mapping_t* _msync_mappings;
 static myst_spinlock_t _msync_mappings_lock = MYST_SPINLOCK_INITIALIZER;
+
+/* shared mappings */
+typedef struct shared_mapping
+{
+    myst_list_node_t base;
+    char path[PATH_MAX];
+    off_t offset;
+    void* addr;
+    size_t length;
+    int nusers;
+} shared_mapping_t;
+
+static myst_list_t _shared_mappings;
+static myst_spinlock_t _shared_mappings_lock;
 
 static uint8_t* _min_ptr(uint8_t* x, uint8_t* y)
 {
@@ -261,6 +276,63 @@ void* myst_mmap(
         return addr;
     }
 
+    /* Handle shared mappings */
+    shared_mapping_t* new_sm = NULL;
+    if (fd >= 0 && (flags & MAP_SHARED))
+    {
+        // check if there is existing shared mapping
+        // if not add one
+        myst_file_t* file = NULL;
+        myst_fs_t* fs = NULL;
+        myst_fdtable_t* fdtable = myst_fdtable_current();
+        char* realpath = malloc(PATH_MAX);
+
+        if (!realpath)
+            return (void*)-1;
+
+        /* Get file path */
+        if (myst_fdtable_get_file(fdtable, fd, &fs, &file) < 0)
+        {
+            free(realpath);
+            return (void*)-1;
+        }
+        if ((*fs->fs_realpath)(fs, file, realpath, PATH_MAX) < 0)
+        {
+            free(realpath);
+            return (void*)-1;
+        }
+        myst_spin_lock(&_shared_mappings_lock);
+        shared_mapping_t* sm = (shared_mapping_t*)_shared_mappings.head;
+        while (sm)
+        {
+            if ((strcmp(realpath, sm->path) == 0) && offset == sm->offset &&
+                length == sm->length)
+            {
+                sm->nusers++;
+                myst_spin_unlock(&_shared_mappings_lock);
+                free(realpath);
+                return sm->addr;
+            }
+            sm = (shared_mapping_t*)sm->base.next;
+        }
+
+        {
+            new_sm = calloc(1, sizeof(shared_mapping_t));
+            if (!new_sm)
+            {
+                free(realpath);
+                return (void*)-1;
+            }
+            new_sm->offset = offset;
+            new_sm->length = length;
+            new_sm->nusers = 1;
+            myst_strlcpy(new_sm->path, realpath, PATH_MAX);
+            myst_list_append(&_shared_mappings, &new_sm->base);
+        }
+        myst_spin_unlock(&_shared_mappings_lock);
+        free(realpath);
+    }
+
     int tflags = 0;
 
     if (flags & MYST_MAP_FIXED)
@@ -286,6 +358,11 @@ void* myst_mmap(
         {
             if (myst_mman_mprotect(&_mman, ptr, length, prot))
                 return (void*)-1;
+        }
+
+        if (new_sm)
+        {
+            new_sm->addr = ptr;
         }
     }
 
@@ -458,6 +535,31 @@ int myst_munmap(void* addr, size_t length)
 
     /* align length to a page boundary */
     ECHECK(myst_round_up(length, PAGE_SIZE, &length));
+
+    /* Check if unmapping shared mapping */
+    myst_spin_lock(&_shared_mappings_lock);
+    {
+        shared_mapping_t* sm = (shared_mapping_t*)_shared_mappings.head;
+        while (sm)
+        {
+            if (addr == sm->addr && length == sm->length)
+            {
+                if (--sm->nusers > 0)
+                {
+                    myst_spin_unlock(&_shared_mappings_lock);
+                    goto done;
+                }
+                else // last reference to shared mapping
+                {
+                    myst_list_remove(&_shared_mappings, &sm->base);
+                    free(sm);
+                    break;
+                }
+            }
+            sm = (shared_mapping_t*)sm->base.next;
+        }
+    }
+    myst_spin_unlock(&_shared_mappings_lock);
 
     ECHECK(myst_mman_munmap(&_mman, addr, length));
 
