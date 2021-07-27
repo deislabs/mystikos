@@ -693,6 +693,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     /* ATTN: it seems __options can be eliminated */
     __options.trace_syscalls = args->trace_syscalls;
     __options.have_syscall_instruction = args->have_syscall_instruction;
+    __options.have_fsgsbase_instructions = args->have_fsgsbase_instructions;
     __options.report_native_tids = args->report_native_tids;
 
     /* enable error tracing if requested */

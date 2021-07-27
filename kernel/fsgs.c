@@ -35,7 +35,7 @@ void* myst_get_fsbase(void)
     {
         __asm__ volatile("rdfsbase %0" : "=r"(p));
     }
-    if (__options.have_syscall_instruction)
+    else if (__options.have_syscall_instruction)
     {
         myst_syscall2(SYS_arch_prctl, ARCH_GET_FS, (long)&p);
     }
@@ -72,7 +72,7 @@ void* myst_get_gsbase(void)
     {
         __asm__ volatile("rdgsbase %0" : "=r"(p));
     }
-    if (__options.have_syscall_instruction)
+    else if (__options.have_syscall_instruction)
     {
         myst_syscall2(SYS_arch_prctl, ARCH_GET_GS, (long)&p);
     }
