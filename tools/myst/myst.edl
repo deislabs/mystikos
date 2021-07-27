@@ -269,12 +269,14 @@ enclave
         long myst_read_ocall(
             int fd,
             [out, size=count] void* buf,
-            size_t count);
+            size_t count)
+            transition_using_threads;
 
         long myst_write_ocall(
             int fd,
             [in, size=count] const void* buf,
-            size_t count);
+            size_t count)
+            transition_using_threads;
 
         long myst_close_ocall(int fd);
 

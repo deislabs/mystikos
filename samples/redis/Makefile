@@ -81,3 +81,28 @@ ext2: ext2-server
 
 rootfs:
 	$(MYST) mkext2 appdir rootfs
+
+bench:
+	redis-benchmark -q -h 127.0.0.1 -p 6379 -c 5 -n 10000
+	./kill.sh
+
+bench-linux:
+	$(MAKE) linux
+	./wait.sh $(SERVICE_PORT)
+	$(MAKE) bench
+
+bench-sgx:
+	$(MAKE) sgx
+	./wait.sh $(SERVICE_PORT)
+	$(MAKE) bench
+
+b: bench-sgx
+
+linux:
+	make TARGET=linux ext2-server
+
+sgx:
+	make ext2-server
+
+kill:
+	./kill.sh

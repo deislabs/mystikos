@@ -193,6 +193,14 @@ void myst_print_syscall_times(const char* message, size_t count)
         }
     }
 
+#if 0
+    /* ignore syscalls that block and wait */
+    _syscall_times[SYS_futex].nsec = 0;
+    _syscall_times[SYS_futex].ncalls = 0;
+    _syscall_times[SYS_epoll_pwait].nsec = 0;
+    _syscall_times[SYS_epoll_pwait].ncalls = 0;
+#endif
+
     for (size_t i = 0; i < MYST_MAX_SYSCALLS; i++)
     {
         if (_syscall_times[i].nsec)

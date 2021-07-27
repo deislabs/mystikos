@@ -146,13 +146,34 @@ int exec_launch_enclave(
     myst_buf_t mount_mappings_buf = MYST_BUF_INITIALIZER;
     pid_t target_tid = (pid_t)syscall(SYS_gettid);
     struct timespec start_time;
+    oe_enclave_setting_context_switchless_t switchless_setting = {0, 0};
+    oe_enclave_setting_t settings[8];
+    size_t num_settings = 0;
 
     /* get the start time and pass it into the kernel */
     if (clock_gettime(CLOCK_REALTIME, &start_time) != 0)
         _err("clock_gettime() failed");
 
+    // Initialize the switchless setting; this applies to ocalls with the
+    // transition_using_threads attribute.
+    {
+        switchless_setting.max_enclave_workers = 0;
+        switchless_setting.max_host_workers = 4;
+
+        // clang-format off
+        oe_enclave_setting_t setting =
+        {
+            .setting_type = OE_ENCLAVE_SETTING_CONTEXT_SWITCHLESS,
+            .u.context_switchless_setting = &switchless_setting
+        };
+        // clang-format on
+
+        settings[num_settings++] = setting;
+    }
+
     /* Load the enclave: calls oe_load_extra_enclave_data_hook() */
-    r = oe_create_myst_enclave(enc_path, type, flags, NULL, 0, &_enclave);
+    r = oe_create_myst_enclave(
+        enc_path, type, flags, settings, num_settings, &_enclave);
 
     if (r != OE_OK)
         _err("failed to load enclave: result=%s", oe_result_str(r));

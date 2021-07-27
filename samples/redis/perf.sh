@@ -7,17 +7,17 @@ function benchmark() {
 
     make native-server
     echo "NATIVE>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>NATIVE" >> benchmark_data.txt
-    redis-benchmark -q -h 127.0.0.1 -p 6379 -c 5 -n 50000 >> benchmark_data.txt
+    redis-benchmark -q -h 127.0.0.1 -p 6379 -c 5 -n 10000 >> benchmark_data.txt
     ./kill.sh
 
     make ext2-server
     echo "SGX>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>SGX" >> benchmark_data.txt
-    redis-benchmark -q -h 127.0.0.1 -p 6379 -c 5 -n 50000 >> benchmark_data.txt
+    redis-benchmark -q -h 127.0.0.1 -p 6379 -c 5 -n 10000 >> benchmark_data.txt
     ./kill.sh
     
     make ext2-server TARGET=linux
     echo "LINUX>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>LINUX" >> benchmark_data.txt
-    redis-benchmark -q -h 127.0.0.1 -p 6379 -c 5 -n 50000 >> benchmark_data.txt
+    redis-benchmark -q -h 127.0.0.1 -p 6379 -c 5 -n 10000 >> benchmark_data.txt
     ./kill.sh
 
     cat benchmark_data.txt 
