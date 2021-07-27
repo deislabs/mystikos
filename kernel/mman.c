@@ -433,7 +433,7 @@ done:
 }
 
 /* find the start of the zeros[] vector for the given address */
-int _addr_to_zeros_vector(
+int _get_zeros(
     const void* addr,
     size_t length,
     uint8_t** zeros_out,
@@ -511,9 +511,9 @@ static int _mprotect(
 
     prot &= (MYST_PROT_READ | MYST_PROT_WRITE | MYST_PROT_EXEC);
 
-    if (_addr_to_zeros_vector(addr, length, &zeros, &count) != 0)
+    if (_get_zeros(addr, length, &zeros, &count) != 0)
     {
-        _mman_set_err(mman, "_mprotect(): _addr_to_zeros_vector()");
+        _mman_set_err(mman, "_mprotect(): _get_zeros()");
         ret = -EINVAL;
         goto done;
     }
@@ -595,9 +595,9 @@ __attribute__((__unused__)) static int _zero_fill_delayed(
     uint8_t* page = addr;
     const size_t page_index = ((uintptr_t)addr - mman->start) / PAGE_SIZE;
 
-    if (_addr_to_zeros_vector(addr, length, &zeros, &count) != 0)
+    if (_get_zeros(addr, length, &zeros, &count) != 0)
     {
-        _mman_set_err(mman, "_zero_fill_delayed(): _addr_to_zeros_vector()");
+        _mman_set_err(mman, "_zero_fill_delayed(): _get_zeros()");
         ret = -EINVAL;
         goto done;
     }
@@ -1685,10 +1685,9 @@ int myst_mman_mremap(
                 goto done;
             }
 
-            if (_addr_to_zeros_vector((void*)start, PAGE_SIZE, &zeros, NULL) !=
-                0)
+            if (_get_zeros((void*)start, PAGE_SIZE, &zeros, NULL) != 0)
             {
-                _mman_set_err(mman, "_addr_to_zeros_vector() failed");
+                _mman_set_err(mman, "_get_zeros() failed");
                 ret = -EINVAL;
                 goto done;
             }
