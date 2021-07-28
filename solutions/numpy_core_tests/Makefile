@@ -23,7 +23,7 @@ run: rootfs
 	$(MYST_EXEC) rootfs $(OPTS) --app-config-path config.json /usr/local/bin/python3 /app/app.py
 
 one: rootfs
-	$(MYST_EXEC) rootfs $(OPTS) --app-config-path config.json /usr/local/bin/python3 -m pytest /usr/local/lib/python3.8/site-packages/$(TEST)
+	$(MYST_EXEC) rootfs $(OPTS) --app-config-path config.json /usr/local/bin/python3 -m pytest /usr/local/lib/python3.9/site-packages/$(TEST)
 
 clean:
 	rm -rf rootfs appdir .pytest_cache
