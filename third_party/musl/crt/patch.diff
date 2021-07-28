@@ -581,6 +581,42 @@ index deff5b10..fd66b82a 100644
  	return epoll_create1(0);
  }
  
+diff --git a/src/math/frexp.c b/src/math/frexp.c
+index 27b6266e..fb5d51be 100644
+--- a/src/math/frexp.c
++++ b/src/math/frexp.c
+@@ -5,6 +5,7 @@ double frexp(double x, int *e)
+ {
+ 	union { double d; uint64_t i; } y = { x };
+ 	int ee = y.i>>52 & 0x7ff;
++	*e = 0;
+ 
+ 	if (!ee) {
+ 		if (x) {
+diff --git a/src/math/frexpf.c b/src/math/frexpf.c
+index 07870975..a4299705 100644
+--- a/src/math/frexpf.c
++++ b/src/math/frexpf.c
+@@ -5,6 +5,7 @@ float frexpf(float x, int *e)
+ {
+ 	union { float f; uint32_t i; } y = { x };
+ 	int ee = y.i>>23 & 0xff;
++	*e = 0;
+ 
+ 	if (!ee) {
+ 		if (x) {
+diff --git a/src/math/frexpl.c b/src/math/frexpl.c
+index 3c1b5537..a72f05b7 100644
+--- a/src/math/frexpl.c
++++ b/src/math/frexpl.c
+@@ -10,6 +10,7 @@ long double frexpl(long double x, int *e)
+ {
+ 	union ldshape u = {x};
+ 	int ee = u.i.se & 0x7fff;
++	*e = 0;
+ 
+ 	if (!ee) {
+ 		if (x) {
 diff --git a/src/math/jnf.c b/src/math/jnf.c
 index f63c062f..50311758 100644
 --- a/src/math/jnf.c

@@ -18,6 +18,30 @@ index c759b19..8184fc9 100644
 +  if (status)
 +    exit(status);
  }
+diff --git a/libgcompat/execinfo.c b/libgcompat/execinfo.c
+index 59441aa..936b0a9 100644
+--- a/libgcompat/execinfo.c
++++ b/libgcompat/execinfo.c
+@@ -24,17 +24,8 @@
+  */
+ int backtrace(void **array, int size)
+ {
+-	get_frame_level(array, size, 0);
+-	get_frame_level(array, size, 1);
+-	get_frame_level(array, size, 2);
+-	get_frame_level(array, size, 3);
+-	get_frame_level(array, size, 4);
+-	get_frame_level(array, size, 5);
+-	get_frame_level(array, size, 6);
+-	get_frame_level(array, size, 7);
+-	get_frame_level(array, size, 8);
+-	get_frame_level(array, size, 9);
+-	return 10;
++	/* We don't have the backtrace capability */
++	return 0;
+ }
+ 
+ /**
 diff --git a/libgcompat/fts.c b/libgcompat/fts.c
 new file mode 100644
 index 0000000..9209d14
@@ -124,7 +148,6 @@ index 5a82bc4..12c3439 100644
  void *__libc_realloc(void *ptr, size_t size)
  {
  	return realloc(ptr, size);
-
 diff --git a/libgcompat/readlink.c b/libgcompat/readlink.c
 deleted file mode 100644
 index 42501fe..0000000
