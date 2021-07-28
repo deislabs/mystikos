@@ -533,9 +533,6 @@ int myst_munmap(void* addr, size_t length)
     if (!addr || ((uint64_t)addr % PAGE_SIZE) || !length)
         ERAISE(-EINVAL);
 
-    /* align length to a page boundary */
-    ECHECK(myst_round_up(length, PAGE_SIZE, &length));
-
     /* Check if unmapping shared mapping */
     myst_spin_lock(&_shared_mappings_lock);
     {
@@ -552,6 +549,9 @@ int myst_munmap(void* addr, size_t length)
                 else // last reference to shared mapping
                 {
                     myst_list_remove(&_shared_mappings, &sm->base);
+                    // ATTN: the fd registered in  the msync mapping might've
+                    // been closed
+                    myst_msync(sm->addr, sm->length, MS_SYNC);
                     free(sm);
                     break;
                 }
@@ -560,6 +560,9 @@ int myst_munmap(void* addr, size_t length)
         }
     }
     myst_spin_unlock(&_shared_mappings_lock);
+
+    /* align length to a page boundary */
+    ECHECK(myst_round_up(length, PAGE_SIZE, &length));
 
     ECHECK(myst_mman_munmap(&_mman, addr, length));
 
