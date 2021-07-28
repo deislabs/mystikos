@@ -96,7 +96,7 @@ OEENCLAVE_LDFLAGS = $(shell PKG_CONFIG_PATH=$(BUILDDIR)/openenclave/share/pkgcon
 
 OEENCLAVE_LDFLAGS += $(shell PKG_CONFIG_PATH=$(BUILDDIR)/openenclave/share/pkgconfig pkg-config oeenclave-gcc --variable=mbedtlslibs)
 
-OEENCLAVE_CFLAGS = $(shell PKG_CONFIG_PATH=$(BUILDDIR)/openenclave/share/pkgconfig pkg-config oeenclave-gcc --cflags)
+OEENCLAVE_CFLAGS = $(shell PKG_CONFIG_PATH=$(BUILDDIR)/openenclave/share/pkgconfig pkg-config oeenclave-gcc --cflags) -g
 
 ##==============================================================================
 ##
