@@ -2938,6 +2938,30 @@ long myst_syscall_prlimit64(
             old_rlim->rlim_max = MYST_PROCESS_MAX_STACK_SIZE;
         }
     }
+    else if (resource == RLIMIT_NPROC)
+    {
+        if (old_rlim)
+        {
+            old_rlim->rlim_cur = __myst_kernel_args.max_threads;
+            old_rlim->rlim_max = __myst_kernel_args.max_threads;
+        }
+    }
+    else if (resource == RLIMIT_AS)
+    {
+        if (old_rlim)
+        {
+            old_rlim->rlim_cur = RLIM_INFINITY;
+            old_rlim->rlim_max = RLIM_INFINITY;
+        }
+    }
+    else if (resource == RLIMIT_FSIZE)
+    {
+        if (old_rlim)
+        {
+            old_rlim->rlim_cur = RLIM_INFINITY;
+            old_rlim->rlim_max = RLIM_INFINITY;
+        }
+    }
     else
     {
         return -EINVAL;
