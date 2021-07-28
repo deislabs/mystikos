@@ -153,6 +153,7 @@ static int _meminfo_vcallback(myst_buf_t* vbuf)
     int ret = 0;
     size_t totalram;
     size_t freeram;
+    size_t cached = 0;
 
     if (!vbuf)
         ERAISE(-EINVAL);
@@ -166,6 +167,8 @@ static int _meminfo_vcallback(myst_buf_t* vbuf)
     ECHECK(myst_snprintf(tmp, n, "MemTotal:       %lu\n", totalram));
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
     ECHECK(myst_snprintf(tmp, n, "MemFree:        %lu\n", freeram));
+    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+    ECHECK(myst_snprintf(tmp, n, "Cached:         %lu\n", cached));
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
 
 done:
