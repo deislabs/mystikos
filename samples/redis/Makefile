@@ -28,6 +28,7 @@ package: init $(APPDIR) private.pem
 	$(MYST) package-sgx $(APPDIR) private.pem config.json
 
 run: package
+	# This is running in ramfs mode
 	# Kill the server from a previous run if it wasn't shut down properly.
 	./kill.sh
 	
@@ -61,12 +62,17 @@ ROOTDIR=$(CURDIR)/appdir
 native-server:
 	./kill.sh
 	sudo chroot $(ROOTDIR) /usr/local/bin/redis-server &
-	# proot -r $(ROOTDIR) /usr/local/bin/redis-server &	# slow
 	./wait.sh $(SERVICE_PORT)
 
 native: native-server
 	bash -c "time python3 redis_test.py $(SERVICE_ADDR) $(SERVICE_PORT)"
 	./kill.sh
+
+ns:
+	sudo chroot $(ROOTDIR) /usr/local/bin/redis-server &
+
+ds:
+	docker run --network=host redis:6.2-alpine /usr/local/bin/redis-server &
 
 ext2-server: rootfs
 	./kill.sh
@@ -96,8 +102,6 @@ bench-sgx:
 	./wait.sh $(SERVICE_PORT)
 	$(MAKE) bench
 
-b: bench-sgx
-
 linux:
 	make TARGET=linux ext2-server
 
@@ -106,3 +110,6 @@ sgx:
 
 kill:
 	./kill.sh
+
+perf: 
+	./perf.sh 0 0 7

@@ -1,34 +1,50 @@
-
+#!/bin/bash
 
 function benchmark() {
     # sudo apt-get install -y redis-tools
+
+    NUM_CLIENT=${1:-"1"}
+    REQUESTS=${2:-"10000"}
 
     rm benchmark_data.txt
 
     make native-server
     echo "NATIVE>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>NATIVE" >> benchmark_data.txt
-    redis-benchmark -q -h 127.0.0.1 -p 6379 -c 5 -n 10000 >> benchmark_data.txt
+    redis-benchmark -q $3 -h 127.0.0.1 -p 6379 -c $NUM_CLIENT -n $REQUESTS > temp
+    OP=$(cat temp)
+    cat temp >> benchmark_data.txt
+    NAT=$(echo $OP | grep PING_BULK | grep -oP '.*(?= requests)' | tail -1 | awk 'NF>1{print $NF}')
     ./kill.sh
 
     make ext2-server
     echo "SGX>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>SGX" >> benchmark_data.txt
-    redis-benchmark -q -h 127.0.0.1 -p 6379 -c 5 -n 10000 >> benchmark_data.txt
+    redis-benchmark -q $3 -h 127.0.0.1 -p 6379 -c $NUM_CLIENT -n $REQUESTS > temp
+    OP=$(cat temp)
+    cat temp >> benchmark_data.txt
+    SG=$(echo $OP | grep PING_BULK | grep -oP '.*(?= requests)' | tail -1 | awk 'NF>1{print $NF}')
     ./kill.sh
     
     make ext2-server TARGET=linux
     echo "LINUX>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>LINUX" >> benchmark_data.txt
-    redis-benchmark -q -h 127.0.0.1 -p 6379 -c 5 -n 10000 >> benchmark_data.txt
+    set -ex
+    redis-benchmark -q $3 -h 127.0.0.1 -p 6379 -c $NUM_CLIENT -n $REQUESTS > temp
+    OP=$(cat temp)
+    cat temp >> benchmark_data.txt
+    set +ex
+    LIN=$(echo $OP | grep PING_BULK | grep -oP '.*(?= requests)' | tail -1 | awk 'NF>1{print $NF}')
     ./kill.sh
 
-    cat benchmark_data.txt 
-
-    VALS="PING_INLINE PING_BULK SET GET INCR LPUSH: RPUSH LPOP RPOP SADD HSET SPOP LPUSH LRANGE_100 LRANGE_300 LRANGE_500 LRANGE_600 MSET"
-
-    echo " "
-    for val in $VALS; do
+    if [ ! -z "$3" ]; then
+        echo "$NUM_CLIENT $REQUESTS $NAT $SG $LIN" >> perf.txt
+    else
+        cat benchmark_data.txt 
+        VALS="PING_INLINE PING_BULK SET GET INCR LPUSH: RPUSH LPOP RPOP SADD HSET SPOP LPUSH LRANGE_100 LRANGE_300 LRANGE_500 LRANGE_600 MSET"
         echo " "
-        cat benchmark_data.txt | grep -w $val
-    done
+        for val in $VALS; do
+            echo " "
+            cat benchmark_data.txt | grep -w $val
+        done
+    fi
 }
 
 function sample() {
@@ -54,4 +70,15 @@ function sample() {
     done
 }
 
-benchmark
+if [ -z $3 ]; then
+    benchmark $1 $2
+else
+    echo "Running permutations"
+    CLIENTS="1 5 10 100"
+    TRANSACTIONS="10000 25000 50000"
+    for client in $CLIENTS; do
+        for tran in $TRANSACTIONS; do
+            benchmark $client $tran "-t ping"
+        done
+    done
+fi

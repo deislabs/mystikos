@@ -145,11 +145,6 @@ long myst_socket_ocall(int domain, int type, int protocol)
     if ((ret = socket(domain, type, protocol)) < 0)
         return -errno;
 
-#if 0
-    int one = 1;
-    setsockopt(ret, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
-#endif
-
     return ret;
 }
 
@@ -160,16 +155,10 @@ long myst_accept4_ocall(
     size_t addr_size,
     int flags)
 {
-    // RETURN(accept4(sockfd, addr, addrlen, flags));
     int ret;
 
     if ((ret = accept4(sockfd, addr, addrlen, flags)) < 0)
         return -errno;
-
-#if 0
-    int one = 1;
-    setsockopt(ret, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
-#endif
 
     return ret;
 }

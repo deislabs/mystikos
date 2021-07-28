@@ -90,7 +90,7 @@ static long _tcall_clock_gettime(clockid_t clk_id, struct timespec* tp)
     // The C clock_gettime() function is much faster than the SYS_clock_gettime
     // system call. The clock_gettime() function calls into the linux-vdso.so
     // library, which executes the operation in user-space.
-    return (clock_gettime(clk_id, tp) == 0) ? 0 : -errno;
+    return syscall(SYS_clock_gettime, clk_id, tp);
 }
 
 static long _tcall_clock_settime(clockid_t clk_id, struct timespec* tp)
