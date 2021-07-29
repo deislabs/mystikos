@@ -434,7 +434,7 @@ struct myst_file
     inode_t* inode;
     size_t offset;      /* the current file offset (files) */
     uint32_t access;    /* (O_RDONLY | O_RDWR | O_WRONLY) */
-    uint32_t operating; /* (O_RDONLY | O_RDWR | O_WRONLY) */
+    uint32_t operating; /* (O_APPEND | O_DIRECT | O_NOATIME) */
     int fdflags;        /* file descriptor flags: FD_CLOEXEC */
     char realpath[PATH_MAX];
     myst_buf_t vbuf; /* virtual file buffer */
@@ -2201,6 +2201,18 @@ static int _fs_fcntl(myst_fs_t* fs, myst_file_t* file, int cmd, long arg)
         case F_GETFL:
         {
             ret = (int)(file->access | file->operating);
+            goto done;
+        }
+        case F_SETFL:
+        {
+            if (arg & O_APPEND)
+                file->operating |= O_APPEND;
+            if (arg & O_DIRECT)
+                // ATTN: implement O_DIRECT for files
+                file->operating |= O_DIRECT;
+            if (arg & O_NOATIME)
+                // ATTN: implement O_NOATIME for files
+                file->operating |= O_NOATIME;
             goto done;
         }
         case F_SETLKW:

@@ -117,6 +117,7 @@ DIRS += thread_abort
 DIRS += synccall
 DIRS += python_subprocess
 DIRS += python_vfork
+DIRS += fcntl
 
 .PHONY: $(DIRS)
 

@@ -52,7 +52,7 @@ struct myst_file
     uint64_t offset;
     int open_flags;
     uint32_t access;    /* (O_RDONLY | O_RDWR | O_WRONLY) */
-    uint32_t operating; /* (O_APPEND) */
+    uint32_t operating; /* (O_APPEND | O_DIRECT | O_NOATIME) */
     int fdflags;        /* file descriptor flags: FD_CLOEXEC */
     char realpath[EXT2_PATH_MAX];
     ext2_dir_t dir;
@@ -5001,6 +5001,18 @@ static int _ext2_fcntl(myst_fs_t* fs, myst_file_t* file, int cmd, long arg)
         case F_GETFL:
         {
             ret = (int)(file->access | file->operating);
+            goto done;
+        }
+        case F_SETFL:
+        {
+            if (arg & O_APPEND)
+                file->operating |= O_APPEND;
+            if (arg & O_DIRECT)
+                // ATTN: implement O_DIRECT for files
+                file->operating |= O_DIRECT;
+            if (arg & O_NOATIME)
+                // ATTN: implement O_NOATIME for files
+                file->operating |= O_NOATIME;
             goto done;
         }
         case F_SETLKW:
