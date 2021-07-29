@@ -4,7 +4,7 @@ all: libc-test
 
 libc-test:
 	git clone git://repo.or.cz/libc-test
-	( cd libc-test git reset --hard $(HASH) )
+	( cd libc-test; git reset --hard $(HASH) )
 
 clean:
 

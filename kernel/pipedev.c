@@ -41,7 +41,7 @@ struct myst_pipe
 {
     uint32_t magic;
     int mode;    /* O_RDONLY or O_WRONLY */
-    int flags;   /* (O_NONBLOCK | O_CLOEXEC | O_DIRECT) */
+    int flags;   /* (O_NONBLOCK | O_CLOEXEC | O_DIRECT | O_ASYNC) */
     int fdflags; /* FD_CLOEXEC */
     pipe_impl_t* impl;
 };
@@ -517,6 +517,18 @@ static int _pd_fcntl(
         case F_GETFL:
         {
             ret = pipe->mode | pipe->flags;
+            goto done;
+        }
+        case F_SETFL:
+        {
+            if (arg & O_NONBLOCK)
+                pipe->flags |= O_NONBLOCK;
+            if (arg & O_ASYNC)
+                // ATTN: implement O_ASYNC for pipes
+                pipe->flags |= O_ASYNC;
+            if (arg & O_DIRECT)
+                // ATTN: implement O_DIRECT for pipes
+                pipe->flags |= O_DIRECT;
             goto done;
         }
         default:
