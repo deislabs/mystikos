@@ -2921,8 +2921,8 @@ long myst_syscall_prlimit64(
         if (old_rlim)
         {
             // ATTN: return currently effective RLIMIT_NOFILE settings
-            old_rlim->rlim_cur = 65536;
-            old_rlim->rlim_max = 65536;
+            old_rlim->rlim_cur = MYST_FDTABLE_SIZE;
+            old_rlim->rlim_max = MYST_FDTABLE_SIZE;
         }
 
         if (new_rlim)
