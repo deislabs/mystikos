@@ -39,6 +39,10 @@
 
 #define ENCLAVE_REQUIRE_KSS false
 
+#define ENCLAVE_CREATE_ZERO_BASE_ENCLAVE false
+
+#define ENCLAVE_START_ADDRESS 0x0
+
 typedef struct _config_parsed_data_t
 {
     // The version at the start of the configuration tells the parser which
