@@ -58,7 +58,7 @@ DEFAULT_INCLUDES = -I$(INCDIR)
 DEFAULT_CFLAGS = -Wall -Werror -g -fPIC
 
 ifeq ($(MYST_RELEASE),1)
-OPTIMIZATION_CFLAGS += -O3
+OPTIMIZATION_CFLAGS += -O3 -fno-omit-frame-pointer
 endif
 
 ifdef MYST_ENABLE_GCOV
