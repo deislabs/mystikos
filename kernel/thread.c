@@ -365,10 +365,10 @@ long myst_syscall_wait4(
     int options,
     struct rusage* rusage)
 {
-    long ret = -1;
-    bool locked = false;
-    myst_thread_t* process = myst_find_process_thread(myst_thread_self());
-    myst_thread_t* p;
+    long ret = 0;
+
+    if (options & ~(WNOHANG | WUNTRACED | WCONTINUED))
+        ERAISE(-EINVAL);
 
 #ifdef TRACE
     printf(
@@ -378,10 +378,72 @@ long myst_syscall_wait4(
         ((options & WNOHANG) == WNOHANG) ? "NO HANG" : "HANG");
 #endif
 
-    if (rusage)
+    ECHECK(myst_wait(pid, wstatus, NULL, options, rusage));
+
+done:
+    return ret;
+}
+
+long myst_syscall_waitid(
+    idtype_t idtype,
+    id_t id,
+    siginfo_t* infop,
+    int options)
+{
+    long ret = 0;
+
+    if (options & ~(WEXITED | WSTOPPED | WCONTINUED | WNOHANG))
         ERAISE(-EINVAL);
 
-    if (options & ~(WNOHANG | WUNTRACED | WCONTINUED))
+#ifdef TRACE
+    printf(
+        "***waitid from process %u, idtype %d, id %d,WNOHANG=%s)\n",
+        process->pid,
+        idtype,
+        id,
+        ((options & WNOHANG) == WNOHANG) ? "NO HANG" : "HANG");
+#endif
+
+    // Convert waitid args to waitpid/wait4 args
+    int pid = 0;
+    if (idtype == P_PID)
+    {
+        pid = id;
+    }
+    else if (idtype == P_PGID)
+    {
+        pid = -id;
+    }
+    else if (idtype == P_ALL)
+    {
+        pid = -1;
+    }
+    else
+    {
+        ERAISE(-EINVAL);
+    }
+
+    ECHECK(myst_wait(pid, NULL, infop, options, NULL));
+
+    if (ret != 1)
+        ret = 0;
+
+done:
+    return ret;
+}
+long myst_wait(
+    pid_t pid,
+    int* wstatus,
+    siginfo_t* infop,
+    int options,
+    struct rusage* rusage)
+{
+    long ret = -1;
+    bool locked = false;
+    myst_thread_t* process = myst_find_process_thread(myst_thread_self());
+    myst_thread_t* p;
+
+    if (rusage)
         ERAISE(-EINVAL);
 
     /* If this is the only process then raise ECHILD */
@@ -471,6 +533,23 @@ long myst_syscall_wait4(
                         "supported): %s\n",
                         WIFCONTINUED(*wstatus) ? "true" : "false");
 #endif
+                }
+                if (infop)
+                {
+                    infop->si_pid = p->pid;
+                    infop->si_uid = p->uid;
+                    infop->si_signo = SIGCHLD;
+
+                    if (p->terminating_signum)
+                    {
+                        infop->si_code = CLD_KILLED;
+                        infop->si_status = p->terminating_signum;
+                    }
+                    else
+                    {
+                        infop->si_code = CLD_EXITED;
+                        infop->si_status = p->exit_status;
+                    }
                 }
                 ret = p->pid;
 
