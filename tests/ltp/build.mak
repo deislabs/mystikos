@@ -16,3 +16,4 @@ all:
 __build:
 	$(MAKE) -C ./lib FILTER_OUT_DIRS="$(FILTER)"
 	$(MAKE) -C ./testcases/kernel/syscalls FILTER_OUT_DIRS="$(FILTER)"
+	$(MAKE) -C ./testcases/open_posix_testsuite FILTER_OUT_DIRS="$(FILTER)"
