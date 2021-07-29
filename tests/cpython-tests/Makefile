@@ -29,23 +29,8 @@ clean:
 tests:
 	$(RUNTEST) ./exec.sh
 
-#########################
-##	Dev targets
-#########################
-hostfs:
-	cp -r appdir/ hostfs/
-
 run-list: $(FS)
 	$(MYST_EXEC) $(OPTS) $(FS) /cpython/python -m test -f $(TESTFILE) --timeout 30 -q
 
 one: $(FS)
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) /cpython/python -m test $(TEST) -q
-
-run-str: $(FS)
-	$(MYST_EXEC) $(OPTS) $(FS) /cpython/python -c "$(PROG_STR)"
-
-pdb: $(FS)
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) /cpython/python -m pdb /cpython/Lib/test/test_grammar.py -v
-
-ct:
-	rm -rf /tmp/myst* @test_101*
