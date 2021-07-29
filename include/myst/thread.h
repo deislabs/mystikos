@@ -5,6 +5,7 @@
 #define _MYST_THREAD_H
 
 #include <signal.h>
+#include <sys/resource.h>
 #include <sys/times.h>
 #include <unistd.h>
 
@@ -396,6 +397,13 @@ long myst_run_thread(uint64_t cookie, uint64_t event, pid_t target_tid);
 pid_t myst_generate_tid(void);
 
 pid_t myst_gettid(void);
+
+long myst_wait(
+    pid_t pid,
+    int* wstatus,
+    siginfo_t* infop,
+    int options,
+    struct rusage* rusage);
 
 void myst_wait_on_child_processes(void);
 

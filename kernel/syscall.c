@@ -5209,7 +5209,23 @@ static long _syscall(void* args_)
         case SYS_kexec_load:
             break;
         case SYS_waitid:
-            break;
+        {
+            idtype_t idtype = (idtype_t)x1;
+            id_t id = (id_t)x2;
+            siginfo_t* infop = (siginfo_t*)x3;
+            int options = (int)x4;
+
+            _strace(
+                n,
+                "idtype=%i id=%i infop=%p options=%x",
+                idtype,
+                id,
+                infop,
+                options);
+
+            long ret = myst_syscall_waitid(idtype, id, infop, options);
+            BREAK(_return(n, ret));
+        }
         case SYS_add_key:
             break;
         case SYS_request_key:

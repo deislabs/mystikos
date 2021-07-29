@@ -16,6 +16,7 @@
 #include <sys/time.h>
 #include <sys/uio.h>
 #include <sys/utsname.h>
+#include <sys/wait.h>
 #include <time.h>
 
 #include <myst/defs.h>
@@ -230,6 +231,12 @@ long myst_syscall_wait4(
     int* wstatus,
     int options,
     struct rusage* rusage);
+
+long myst_syscall_waitid(
+    idtype_t idtype,
+    id_t id,
+    siginfo_t* infop,
+    int options);
 
 long myst_syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout);
 
