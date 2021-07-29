@@ -26,7 +26,7 @@ WHICH_GCC = $(shell which gcc)
 CFLAGS = -g -Werror -fPIC
 
 ifeq ($(MYST_RELEASE),1)
-CFLAGS += -O3
+CFLAGS += $(OPTIMIZATION_CFLAGS)
 endif
 
 THISDIR=$(CURDIR)
