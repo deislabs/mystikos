@@ -37,6 +37,7 @@ typedef struct msync_mapping
 {
     struct msync_mapping* next;
     int fd;
+    char path[PATH_MAX];
     off_t offset;
     void* addr;
     size_t length;
@@ -113,10 +114,26 @@ static msync_mapping_t* _new_msync_mapping(
     void* addr,
     size_t length)
 {
-    msync_mapping_t* m;
+    msync_mapping_t* m = NULL;
 
     if (!(m = calloc(1, sizeof(msync_mapping_t))))
         return NULL;
+
+    myst_file_t* file = NULL;
+    myst_fs_t* fs = NULL;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+
+    /* Get file path */
+    if (myst_fdtable_get_file(fdtable, fd, &fs, &file) < 0)
+    {
+        free(m);
+        return NULL;
+    }
+    if ((*fs->fs_realpath)(fs, file, m->path, PATH_MAX) < 0)
+    {
+        free(m);
+        return NULL;
+    }
 
     m->fd = fd;
     m->offset = offset;
@@ -301,6 +318,7 @@ void* myst_mmap(
             free(realpath);
             return (void*)-1;
         }
+
         myst_spin_lock(&_shared_mappings_lock);
         shared_mapping_t* sm = (shared_mapping_t*)_shared_mappings.head;
         while (sm)
@@ -316,6 +334,7 @@ void* myst_mmap(
             sm = (shared_mapping_t*)sm->base.next;
         }
 
+        /* Create new shared mapping */
         {
             new_sm = calloc(1, sizeof(shared_mapping_t));
             if (!new_sm)
@@ -618,6 +637,7 @@ struct myst_process_mapping
     off_t offset; // file offset
     char* pathname;
     int prot;
+    int flags;
 };
 
 static myst_process_mapping_t* _mappings;
@@ -660,7 +680,8 @@ int myst_register_process_mapping(
     size_t size,
     int fd,
     off_t offset,
-    int prot)
+    int prot,
+    int flags)
 {
     int ret = 0;
     myst_process_mapping_t* m = NULL;
@@ -678,6 +699,7 @@ int myst_register_process_mapping(
     m->pid = pid;
     m->addr = addr;
     m->size = size;
+    m->flags = flags;
 
     /* If file mapping, save pathname, file offset and prot */
     if (fd >= 0)
@@ -740,13 +762,21 @@ int myst_release_process_mappings(pid_t pid)
 
             if (p->pid == pid)
             {
+                /* bypass pids check for shared mappings */
+                if (p->flags & MAP_SHARED)
+                {
+                    myst_munmap(p->addr, p->size);
+                }
+                else
+                {
 #if MYST_ENABLE_MMAN_PIDS
-                /* unmap all pages in this mapping that are owned by the given
-                 * process.*/
-                myst_mman_pids_munmap(p->addr, p->size, pid);
+                    /* unmap all pages in this mapping that are owned by the
+                     * given process.*/
+                    myst_mman_pids_munmap(p->addr, p->size, pid);
 #else
-                myst_munmap(p->addr, p->size);
+                    myst_munmap(p->addr, p->size);
 #endif
+                }
 
                 if (prev)
                     prev->next = next;
@@ -832,12 +862,16 @@ done:
     return ret;
 }
 
-static int _sync_file(int fd, off_t offset, const void* addr, size_t length)
+static int _sync_file(char* path, off_t offset, const void* addr, size_t length)
 {
     int ret = 0;
     const uint8_t* p = (const uint8_t*)addr;
     size_t r = length;
     off_t o = offset;
+
+    int fd = open(path, O_WRONLY);
+    if (fd < 0)
+        ERAISE(-EINVAL);
 
     while (r > 0)
     {
@@ -904,7 +938,7 @@ int myst_msync(void* addr, size_t length, int flags)
             if (maxlo < minhi)
             {
                 ECHECK(_sync_file(
-                    p->fd,                     /* fd */
+                    p->path,                   /* path */
                     p->offset + (maxlo - plo), /* offset */
                     maxlo,                     /* addr */
                     minhi - maxlo));           /* length */

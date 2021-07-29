@@ -43,7 +43,8 @@ int myst_register_process_mapping(
     size_t size,
     int fd,
     off_t offset,
-    int prot);
+    int prot,
+    int flags);
 
 int myst_release_process_mappings(pid_t pid);
 

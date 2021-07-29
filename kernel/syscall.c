@@ -3664,7 +3664,8 @@ static long _syscall(void* args_)
             /* this can return (void*)-errno */
             long ret = (long)myst_mmap(addr, length, prot, flags, fd, offset);
 
-            // ATTN : temporary workaround for myst_mmap()  inaccurate return value issue
+            // ATTN : temporary workaround for myst_mmap()  inaccurate return
+            // value issue
             if (ret == -1 || !ret)
             {
                 ret = -ENOMEM;
@@ -3682,7 +3683,8 @@ static long _syscall(void* args_)
                         // present
                         flags & MAP_ANONYMOUS ? -1 : fd,
                         offset,
-                        prot) != 0)
+                        prot,
+                        flags) != 0)
                     myst_panic("failed to register process mapping");
 
 #if MYST_ENABLE_MMAN_PIDS
