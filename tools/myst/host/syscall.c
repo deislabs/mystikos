@@ -3,16 +3,12 @@
 #include <fcntl.h>
 #include <myst/assume.h>
 #include <myst/defs.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
 #include <sched.h>
 #include <stdint.h>
 #include <sys/ioctl.h>
-#include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/statfs.h>
 #include <sys/syscall.h>
-#include <sys/types.h>
 #include <unistd.h>
 
 #include "myst_u.h"
@@ -140,17 +136,7 @@ long myst_sendto_ocall(
 
 long myst_socket_ocall(int domain, int type, int protocol)
 {
-    int ret;
-
-    if ((ret = socket(domain, type, protocol)) < 0)
-        return -errno;
-
-#if 0
-    int one = 1;
-    setsockopt(ret, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
-#endif
-
-    return ret;
+    RETURN(socket(domain, type, protocol));
 }
 
 long myst_accept4_ocall(
@@ -160,18 +146,7 @@ long myst_accept4_ocall(
     size_t addr_size,
     int flags)
 {
-    // RETURN(accept4(sockfd, addr, addrlen, flags));
-    int ret;
-
-    if ((ret = accept4(sockfd, addr, addrlen, flags)) < 0)
-        return -errno;
-
-#if 0
-    int one = 1;
-    setsockopt(ret, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
-#endif
-
-    return ret;
+    RETURN(accept4(sockfd, addr, addrlen, flags));
 }
 
 long myst_sendmsg_ocall(
@@ -259,6 +234,16 @@ long myst_recvmsg_ocall(
 
 done:
     return ret;
+}
+
+long myst_fdatasync_ocall(int fd)
+{
+    RETURN(fdatasync(fd));
+}
+
+long myst_fsync_ocall(int fd)
+{
+    RETURN(fsync(fd));
 }
 
 long myst_shutdown_ocall(int sockfd, int how)
@@ -534,14 +519,4 @@ long myst_chmod_ocall(
 long myst_fchmod_ocall(int fd, uint32_t mode, uid_t host_euid, gid_t host_egid)
 {
     SAVE_CALL_RESTORE_IDENTITY_RETURN(host_euid, host_egid, fchmod(fd, mode));
-}
-
-long myst_fdatasync_ocall(int fd)
-{
-    RETURN(fdatasync(fd));
-}
-
-long myst_fsync_ocall(int fd)
-{
-    RETURN(fsync(fd));
 }
