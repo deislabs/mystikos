@@ -4,7 +4,7 @@ import sys
 from redis import Redis
 
 TIMEOUT_SEC = 15
-ITERATION_NUM = 100
+ITERATION_NUM = 10000
 
 host, port = (sys.argv[1], sys.argv[2]) if len(sys.argv) == 3 else ("localhost", "6379")
 

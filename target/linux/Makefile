@@ -21,6 +21,10 @@ SOURCES += ../shared/copyhostfile.c
 
 CFLAGS = $(DEFAULT_CFLAGS)
 
+ifdef MYST_RELEASE
+CFLAGS += -O3
+endif
+
 INCLUDES = -I$(INCDIR) -I$(MBEDTLS_INCDIR) -I$(OE_INCDIR)
 
 include $(TOP)/rules.mak

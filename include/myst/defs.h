@@ -30,4 +30,7 @@
 
 #define MYST_ALIGN(ALIGNMENT) __attribute__((__aligned__(ALIGNMENT)))
 
+#define MYST_LIKELY(COND) __builtin_expect((COND), 1)
+#define MYST_UNLIKELY(COND) __builtin_expect((COND), 0)
+
 #endif /* _MYST_DEFS_H */

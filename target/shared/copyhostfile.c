@@ -29,8 +29,11 @@ int myst_tcall_read_file(const char* pathname, char* buf, size_t size)
     if (fd < 0)
         return errno;
 
-    read(fd, buf, size);
+    /* ATTN: fix this! return type not used */
+    ssize_t n = read(fd, buf, size);
     close(fd);
+
+    (void)n;
 
     return 0;
 }

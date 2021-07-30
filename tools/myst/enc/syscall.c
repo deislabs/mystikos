@@ -29,12 +29,23 @@ static long _read(int fd, void* buf, size_t count)
 {
     long ret = 0;
     long retval;
+    const size_t max_buffer_size = 8 * 1024;
 
     if (fd < 0 || (!buf && count) || count > SSIZE_MAX)
     {
         ret = -EINVAL;
         goto done;
     }
+
+    // Open Enclave uses a pre-allocated 16-kilobyte "ocall buffer" to transfer
+    // parameters to host memory. If that buffer is too small to accommodate
+    // the parameters, memory is obtained with oe_host_malloc() and later
+    // released with oe_host_free(), thereby incurring two extra ocalls.
+    // So attempting to perform one read ocall, results in three ocalls. To
+    // To avoid this overhead, we must limit the buffer size to ensure the
+    // "ocall buffer" will be sufficient.
+    if (count > max_buffer_size)
+        count = max_buffer_size;
 
     if (myst_read_ocall(&retval, fd, buf, count) != OE_OK)
     {

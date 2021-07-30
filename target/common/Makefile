@@ -13,6 +13,10 @@ ifdef MYST_ENABLE_GCOV
 CFLAGS += $(GCOV_CFLAGS)
 endif
 
+ifdef MYST_RELEASE
+CFLAGS += -O3
+endif
+
 INCLUDES = -I$(INCDIR)
 
 include $(TOP)/rules.mak
