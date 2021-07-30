@@ -2,7 +2,7 @@
     // OpenEnclave specific values
 
     // Whether we are running in debug mode
-    "Debug": 1,
+    "Debug": 0,
     // The stack size of each ethread
     "StackMemSize": "400k",
     // The number of ethreads

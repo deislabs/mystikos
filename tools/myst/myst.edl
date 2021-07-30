@@ -125,7 +125,8 @@ enclave
         long myst_poll_ocall(
             [in, out, count=nfds] struct pollfd* fds,
             unsigned long nfds,
-            int timeout);
+            int timeout)
+            transition_using_threads;
 
         long myst_poll_wake_ocall();
 
@@ -269,12 +270,14 @@ enclave
         long myst_read_ocall(
             int fd,
             [out, size=count] void* buf,
-            size_t count);
+            size_t count)
+            transition_using_threads;
 
         long myst_write_ocall(
             int fd,
             [in, size=count] const void* buf,
-            size_t count);
+            size_t count)
+            transition_using_threads;
 
         long myst_close_ocall(int fd);
 

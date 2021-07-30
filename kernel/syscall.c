@@ -3312,6 +3312,7 @@ static long _syscall(void* args_)
     syscall_args_t* args = (syscall_args_t*)args_;
     long n = args->n;
     long* params = args->params;
+
     long syscall_ret = 0;
     long x1 = params[0];
     long x2 = params[1];
@@ -3589,6 +3590,9 @@ static long _syscall(void* args_)
 
             _strace(n, "fd=%d", fd);
 
+            if (__myst_kernel_args.perf)
+                myst_print_syscall_times("SYS_close", 10);
+
             BREAK(_return(n, myst_syscall_close(fd)));
         }
         case SYS_stat:
@@ -3670,7 +3674,8 @@ static long _syscall(void* args_)
             /* this can return (void*)-errno */
             long ret = (long)myst_mmap(addr, length, prot, flags, fd, offset);
 
-            // ATTN : temporary workaround for myst_mmap()  inaccurate return value issue
+            // ATTN : temporary workaround for myst_mmap()  inaccurate return
+            // value issue
             if (ret == -1 || !ret)
             {
                 ret = -ENOMEM;
@@ -6318,8 +6323,16 @@ done:
 
 long myst_syscall(long n, long params[6])
 {
-    long ret;
+    long ret = 0;
     myst_kstack_t* kstack;
+
+    if (n == SYS_clock_gettime)
+    {
+        clockid_t clk_id = (clockid_t)params[0];
+        struct timespec* tp = (struct timespec*)params[1];
+
+        return myst_syscall_clock_gettime(clk_id, tp);
+    }
 
     // Call myst_syscall_arch_prctl() upfront since it can only be performed
     // on the caller's stack and before the fsbase is changed by the prologue
