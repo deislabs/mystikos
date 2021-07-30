@@ -15,7 +15,6 @@ DIRS += libc
 endif
 
 DIRS += args
-DIRS += alpine
 DIRS += pthread
 DIRS += urandom
 DIRS += buf
@@ -105,7 +104,6 @@ DIRS += msync
 
 DIRS += robust
 DIRS += devfs
-DIRS += callonce
 DIRS += syscall_exception
 DIRS += mutex
 DIRS += mprotect
