@@ -59,6 +59,7 @@ CFLAGS += -m64
 CFLAGS += -fPIC
 CFLAGS += -ftls-model=local-exec
 CFLAGS += -fstack-protector-strong
+CFLAGS += -fno-omit-frame-pointer
 ifdef USE_GC_SECTIONS
 CFLAGS += -ffunction-sections
 CFLAGS += -fdata-sections
