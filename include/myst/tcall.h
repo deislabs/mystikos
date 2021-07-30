@@ -159,7 +159,7 @@ int myst_tcall_mprotect(void* addr, size_t len, int prot);
 
 long myst_gcov(const char* func, long params[6]);
 
-int myst_tcall_get_file_size(const char* pathname);
+ssize_t myst_tcall_get_file_size(const char* pathname);
 
 int myst_tcall_read_file(const char* pathname, char* buf, size_t size);
 

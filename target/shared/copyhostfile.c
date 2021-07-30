@@ -5,35 +5,58 @@
 #include <fcntl.h>
 #include <myst/tcall.h>
 #include <string.h>
+#include <sys/stat.h>
 
-int myst_tcall_get_file_size(const char* pathname)
+ssize_t myst_tcall_get_file_size(const char* pathname)
 {
-    int fd, nbytes, size = 0;
-    char buf[1024];
+    struct stat statbuf;
 
-    fd = open(pathname, O_RDONLY);
-    if (fd < 0)
-        return errno;
+    if (!pathname)
+        return -EINVAL;
 
-    while ((nbytes = read(fd, buf, sizeof(buf))))
-        size += nbytes;
-    close(fd);
+    if (stat(pathname, &statbuf) != 0)
+        return -errno;
 
-    return size;
+    return (ssize_t)statbuf.st_size;
 }
 
 int myst_tcall_read_file(const char* pathname, char* buf, size_t size)
 {
-    int fd = open(pathname, O_RDONLY);
+    int ret = 0;
+    int fd = -1;
+    char* ptr = buf;
+    size_t rem = size;
 
-    if (fd < 0)
-        return errno;
+    if (!pathname || !buf)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
 
-    /* ATTN: fix this! return type not used */
-    ssize_t n = read(fd, buf, size);
-    close(fd);
+    if ((fd = open(pathname, O_RDONLY)) <= 0)
+    {
+        ret = -errno;
+        goto done;
+    }
 
-    (void)n;
+    while (rem > 0)
+    {
+        ssize_t n = read(fd, ptr, rem);
 
-    return 0;
+        if (n <= 0)
+        {
+            ret = -errno;
+            goto done;
+        }
+
+        ptr += n;
+        rem -= (size_t)n;
+    }
+
+done:
+
+    if (fd >= 0)
+        close(fd);
+
+    return ret;
 }

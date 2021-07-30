@@ -3312,7 +3312,6 @@ static long _syscall(void* args_)
     syscall_args_t* args = (syscall_args_t*)args_;
     long n = args->n;
     long* params = args->params;
-
     long syscall_ret = 0;
     long x1 = params[0];
     long x2 = params[1];
@@ -3589,9 +3588,6 @@ static long _syscall(void* args_)
             int fd = (int)x1;
 
             _strace(n, "fd=%d", fd);
-
-            if (__myst_kernel_args.perf)
-                myst_print_syscall_times("SYS_close", 10);
 
             BREAK(_return(n, myst_syscall_close(fd)));
         }
@@ -6323,14 +6319,16 @@ done:
 
 long myst_syscall(long n, long params[6])
 {
-    long ret = 0;
+    long ret;
     myst_kstack_t* kstack;
 
+    // Call myst_syscall_clock_gettime() upfront to avoid triggering the
+    // overhead of myst_times_enter_kernel() and myst_times_leave_kernel(),
+    // which also read the clock.
     if (n == SYS_clock_gettime)
     {
         clockid_t clk_id = (clockid_t)params[0];
         struct timespec* tp = (struct timespec*)params[1];
-
         return myst_syscall_clock_gettime(clk_id, tp);
     }
 

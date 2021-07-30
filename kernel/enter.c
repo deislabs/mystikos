@@ -99,7 +99,9 @@ done:
 
 static int _copy_host_etc_files()
 {
-    int ret = 0, size, fd = -1;
+    int ret = 0;
+    ssize_t size;
+    int fd = -1;
     const char* resolv_file = "/etc/resolv.conf";
     char* buf = NULL;
     struct stat statbuf;

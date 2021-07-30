@@ -221,7 +221,7 @@ static int _cpuinfo_vcallback(myst_buf_t* vbuf)
     /* On first call, fetch cpuinfo from host and cache it */
     if (!_cpuinfo_buf)
     {
-        int size = myst_tcall_get_file_size(CPUINFO_STR);
+        ssize_t size = myst_tcall_get_file_size(CPUINFO_STR);
 
         if (size <= 0)
             ERAISE(-EINVAL);
@@ -295,7 +295,7 @@ static int _status_vcallback(myst_buf_t* vbuf)
         STATUS_STR,
         locals->curr_thread->target_tid));
 
-    int size = myst_tcall_get_file_size(locals->status_path);
+    ssize_t size = myst_tcall_get_file_size(locals->status_path);
 
     if (size <= 0)
         ERAISE(-EINVAL);
