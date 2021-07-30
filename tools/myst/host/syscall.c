@@ -236,16 +236,6 @@ done:
     return ret;
 }
 
-long myst_fdatasync_ocall(int fd)
-{
-    RETURN(fdatasync(fd));
-}
-
-long myst_fsync_ocall(int fd)
-{
-    RETURN(fsync(fd));
-}
-
 long myst_shutdown_ocall(int sockfd, int how)
 {
     RETURN(shutdown(sockfd, how));
