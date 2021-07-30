@@ -18,9 +18,13 @@ MYST_INLINE void myst_set_fsbase(void* p)
     extern void __myst_set_fsbase(void* p);
 
     if (MYST_LIKELY(__myst_kernel_args.have_fsgsbase_instructions))
+    {
         __asm__ volatile("wrfsbase %0" ::"r"(p));
+    }
     else
+    {
         __myst_set_fsbase(p);
+    }
 }
 
 MYST_INLINE void* myst_get_fsbase(void)
@@ -33,8 +37,10 @@ MYST_INLINE void* myst_get_fsbase(void)
         __asm__ volatile("rdfsbase %0" : "=r"(p));
         return p;
     }
-
-    return __myst_get_fsbase();
+    else
+    {
+        return __myst_get_fsbase();
+    }
 }
 
 MYST_INLINE void myst_set_gsbase(void* p)
@@ -42,9 +48,13 @@ MYST_INLINE void myst_set_gsbase(void* p)
     extern void __myst_set_gsbase(void* p);
 
     if (MYST_LIKELY(__myst_kernel_args.have_fsgsbase_instructions))
+    {
         __asm__ volatile("wrgsbase %0" ::"r"(p));
+    }
     else
+    {
         __myst_set_gsbase(p);
+    }
 }
 
 MYST_INLINE void* myst_get_gsbase(void)
@@ -57,8 +67,10 @@ MYST_INLINE void* myst_get_gsbase(void)
         __asm__ volatile("rdgsbase %0" : "=r"(p));
         return p;
     }
-
-    return __myst_get_gsbase();
+    else
+    {
+        return __myst_get_gsbase();
+    }
 }
 
 #endif /* _MYST_FSGS_H */

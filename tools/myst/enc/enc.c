@@ -1049,7 +1049,7 @@ int myst_load_fssig(const char* path, myst_fssig_t* fssig)
     return retval;
 }
 
-int myst_tcall_get_file_size(const char* pathname)
+ssize_t myst_tcall_get_file_size(const char* pathname)
 {
     int retval;
 

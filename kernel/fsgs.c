@@ -18,25 +18,25 @@ void __myst_set_fsbase(void* p)
     }
     else
     {
-        /* attempt WRFSBASE emulation */
+        /* Attempt OE WRFSBASE emulation */
         __asm__ volatile("wrfsbase %0" ::"r"(p));
     }
 }
 
 void* __myst_get_fsbase(void)
 {
-    void* p;
-
     if (__options.have_syscall_instruction)
     {
+        void* p;
         myst_syscall2(SYS_arch_prctl, ARCH_GET_FS, (long)&p);
+        return p;
     }
     else
     {
+        void* p;
         __asm__ volatile("mov %%fs:0, %0" : "=r"(p));
+        return p;
     }
-
-    return p;
 }
 
 void __myst_set_gsbase(void* p)
@@ -47,22 +47,23 @@ void __myst_set_gsbase(void* p)
     }
     else
     {
+        /* Attempt OE WRFSBASE emulation */
         __asm__ volatile("wrgsbase %0" ::"r"(p));
     }
 }
 
 void* __myst_get_gsbase(void)
 {
-    void* p;
-
     if (__options.have_syscall_instruction)
     {
+        void* p;
         myst_syscall2(SYS_arch_prctl, ARCH_GET_GS, (long)&p);
+        return p;
     }
     else
     {
+        void* p;
         __asm__ volatile("mov %%gs:0, %0" : "=r"(p));
+        return p;
     }
-
-    return p;
 }

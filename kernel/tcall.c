@@ -245,7 +245,7 @@ long myst_gcov(const char* func, long gcov_params[6])
 }
 #endif
 
-int myst_tcall_get_file_size(const char* pathname)
+ssize_t myst_tcall_get_file_size(const char* pathname)
 {
     long params[6] = {(long)pathname};
     return myst_tcall(MYST_TCALL_GET_FILE_SIZE, params);
