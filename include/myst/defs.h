@@ -30,7 +30,6 @@
 
 #define MYST_ALIGN(ALIGNMENT) __attribute__((__aligned__(ALIGNMENT)))
 
-//
 // These macros are used to declare that a branch condition is likely, which
 // helps the optimizer produce more efficient code. For example:
 //
@@ -42,7 +41,6 @@
 //     {
 //        ...
 //     }
-//
 #define MYST_LIKELY(COND) __builtin_expect((COND), 1)
 #define MYST_UNLIKELY(COND) __builtin_expect((COND), 0)
 
