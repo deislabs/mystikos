@@ -58,7 +58,7 @@ DEFAULT_INCLUDES = -I$(INCDIR)
 DEFAULT_CFLAGS = -Wall -Werror -g -fPIC
 
 ifeq ($(MYST_RELEASE),1)
-OPTIMIZATION_CFLAGS += -O3
+OPTIMIZATION_CFLAGS += -O3 -fno-omit-frame-pointer
 endif
 
 ifdef MYST_ENABLE_GCOV
@@ -96,7 +96,7 @@ OEENCLAVE_LDFLAGS = $(shell PKG_CONFIG_PATH=$(BUILDDIR)/openenclave/share/pkgcon
 
 OEENCLAVE_LDFLAGS += $(shell PKG_CONFIG_PATH=$(BUILDDIR)/openenclave/share/pkgconfig pkg-config oeenclave-gcc --variable=mbedtlslibs)
 
-OEENCLAVE_CFLAGS = $(shell PKG_CONFIG_PATH=$(BUILDDIR)/openenclave/share/pkgconfig pkg-config oeenclave-gcc --cflags)
+OEENCLAVE_CFLAGS = $(shell PKG_CONFIG_PATH=$(BUILDDIR)/openenclave/share/pkgconfig pkg-config oeenclave-gcc --cflags) -g
 
 ##==============================================================================
 ##

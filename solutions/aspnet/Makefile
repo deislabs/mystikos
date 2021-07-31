@@ -19,14 +19,14 @@ OPTS += --memory-size=1024m
 
 all: appdir private.pem
 
-TIMEOUT=180s
+TIMEOUT=300s
 
 export COMPlus_EnableDiagnostics=0
 export COMPlus_GCHeapHardLimit=0x8000000
 
 run: rootfs private.pem
 	test -f server.pid && kill -9 `cat server.pid` || true
-	$(MYST_EXEC) $(OPTS) rootfs /app/webapp > server.output & echo $$! > server.pid
+	timeout $(TIMEOUT) $(MYST_EXEC) $(OPTS) rootfs /app/webapp > server.output & echo $$! > server.pid
 	timeout $(TIMEOUT) tail -f server.output | ./client.sh
 	test -f server.pid && kill -9 `cat server.pid` && rm server.pid || true
 	test -f client.output

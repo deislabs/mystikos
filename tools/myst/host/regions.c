@@ -783,6 +783,50 @@ done:
     return ret;
 }
 
+static int _add_mman_pids_region(
+    myst_region_context_t* context,
+    uint64_t* vaddr)
+{
+    int ret = 0;
+    __attribute__((__aligned__(PAGE_SIZE))) uint8_t page[PAGE_SIZE];
+    const size_t mman_pages = _details.mman_size / PAGE_SIZE;
+    const char name[] = MYST_REGION_MMAN_PIDS;
+
+    if (!context || !vaddr)
+        ERAISE(-EINVAL);
+
+    if (myst_region_open(context) != 0)
+        ERAISE(-EINVAL);
+
+    /* calculate the size in bytes of the pids[] vector */
+    size_t nbytes = mman_pages * sizeof(uint32_t);
+
+    /* round nbytes to the next multiple of the page size */
+    ECHECK(myst_round_up(nbytes, PAGE_SIZE, &nbytes));
+
+    /* calculate the number of pages to be added */
+    size_t npages = nbytes / PAGE_SIZE;
+
+    memset(page, 0, sizeof(page));
+
+    /* add the zero-filled pages */
+    for (size_t i = 0; i < npages; i++)
+    {
+        int flags = PROT_READ | PROT_WRITE | MYST_REGION_EXTEND;
+
+        if (_add_page(context, *vaddr, page, flags) != 0)
+            ERAISE(-EINVAL);
+
+        *vaddr += sizeof(page);
+    }
+
+    if (myst_region_close(context, name, *vaddr, SIZE_MAX) != 0)
+        ERAISE(-EINVAL);
+
+done:
+    return ret;
+}
+
 oe_result_t oe_load_extra_enclave_data(
     void* arg,
     uint64_t vaddr,
@@ -840,6 +884,10 @@ int add_regions(void* arg, uint64_t baseaddr, myst_add_page_t add_page)
     /* add the pages for the stack used to enter the kernel */
     if (_add_kernel_entry_stack_region(context, baseaddr, &vaddr) != 0)
         _err("_add_kernel_entry_stack_region() failed");
+
+    /* add a region to keep track of mman page ownership */
+    if (_add_mman_pids_region(context, &vaddr) != 0)
+        _err("_add_mman_pids_region() failed");
 
     if (myst_region_release(context) != 0)
         _err("myst_region_release() failed");

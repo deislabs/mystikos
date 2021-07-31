@@ -845,6 +845,13 @@ static int _fs_open(
         if ((flags & O_CREAT) && (flags & O_EXCL))
             ERAISE(-EEXIST);
 
+        /* bail out as this fs doesn't support O_TMPFILE (yet) */
+        if ((flags & O_TMPFILE) && ((flags & O_RDWR) || (flags & O_WRONLY)) &&
+            S_ISDIR(inode->mode))
+        {
+            ERAISE(-EISDIR);
+        }
+
         /* Check file access permissions */
         {
             const int access = flags & 0x03;
@@ -2292,7 +2299,9 @@ static int _fs_get_events(myst_fs_t* fs, myst_file_t* file)
     if (!_ramfs_valid(ramfs) || !_file_valid(file))
         ERAISE(-EINVAL);
 
-    ret = -ENOTSUP;
+    /* Regular files always poll TRUE for reads and writes */
+    ret |= POLLIN;
+    ret |= POLLOUT;
 
 done:
     return ret;

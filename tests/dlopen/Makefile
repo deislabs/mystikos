@@ -1,18 +1,19 @@
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
-IMG=myst-alpine
 APPDIR=$(CURDIR)/appdir
 
-all:
-	$(MAKE) myst
-	$(MAKE) rootfs
+all: myst rootfs
 
 rootfs: $(APPDIR)/dlopen
 	$(BINDIR)/myst mkcpio appdir rootfs
 
 $(APPDIR)/dlopen:
-	docker run --rm -v $(APPDIR):/appdir $(IMG) bash -c "make -C appdir"
+	mkdir -p $(APPDIR)
+	cp libodbc.so.2.0.0 $(APPDIR)
+	gcc -g -o $(APPDIR)/dlopen dlopen.c -ldl
+	gcc -g -fPIC -shared -o $(APPDIR)/libfoo.so foo.c -ldl
+	gcc -g -fPIC -shared -o $(APPDIR)/libbar.so bar.c -ldl
 
 ifdef STRACE
 OPTS = --strace
@@ -25,5 +26,4 @@ myst:
 	$(MAKE) -C $(TOP)/tools/myst
 
 clean:
-	$(MAKE) -C appdir clean
-	rm -rf rootfs ramfs
+	rm -rf rootfs ramfs appdir

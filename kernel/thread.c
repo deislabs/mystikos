@@ -17,6 +17,7 @@
 #include <myst/file.h>
 #include <myst/fsgs.h>
 #include <myst/futex.h>
+#include <myst/hex.h>
 #include <myst/kernel.h>
 #include <myst/lfence.h>
 #include <myst/mmanutils.h>
@@ -691,7 +692,7 @@ myst_thread_t* myst_find_thread(int tid)
     return target;
 }
 
-/* Find the thread that may be waiting for the fork-exec wait and weke it */
+/* Find the thread that may be waiting for the fork-exec wait and wake it */
 void myst_fork_exec_futex_wake(myst_thread_t* thread)
 {
     pid_t pid = thread->clone.vfork_parent_pid;
@@ -699,37 +700,43 @@ void myst_fork_exec_futex_wake(myst_thread_t* thread)
 
     myst_thread_t* our_process_thread =
         myst_find_process_thread(myst_thread_self());
-    myst_thread_t* find_thread = our_process_thread;
+    myst_thread_t* waiter = our_process_thread;
 
     myst_spin_lock(&myst_process_list_lock);
-    while (find_thread && find_thread->pid != pid)
+    while (waiter && waiter->pid != pid)
     {
-        find_thread = find_thread->main.prev_process_thread;
+        waiter = waiter->main.prev_process_thread;
     }
-    if (find_thread == NULL)
+    if (waiter == NULL)
     {
-        find_thread = our_process_thread->main.next_process_thread;
-        while (find_thread && find_thread->pid != pid)
+        waiter = our_process_thread->main.next_process_thread;
+        while (waiter && waiter->pid != pid)
         {
-            find_thread = find_thread->main.next_process_thread;
+            waiter = waiter->main.next_process_thread;
         }
     }
     myst_spin_unlock(&myst_process_list_lock);
 
-    if (find_thread == NULL)
+    if (waiter == NULL)
         goto done;
 
-    myst_spin_lock(find_thread->thread_lock);
-    while (find_thread && find_thread->tid != tid)
+    /* find the waiter */
     {
-        find_thread = find_thread->group_next;
-    }
-    myst_spin_unlock(find_thread->thread_lock);
+        myst_spinlock_t* thread_lock = waiter->thread_lock;
+        myst_spin_lock(thread_lock);
 
-    if (find_thread)
+        while (waiter && waiter->tid != tid)
+        {
+            waiter = waiter->group_next;
+        }
+
+        myst_spin_unlock(thread_lock);
+    }
+
+    if (waiter)
     {
-        __sync_val_compare_and_swap(&find_thread->fork_exec_futex_wait, 0, 1);
-        myst_futex_wake(&find_thread->fork_exec_futex_wait, 1);
+        __sync_val_compare_and_swap(&waiter->fork_exec_futex_wait, 0, 1);
+        myst_futex_wake(&waiter->fork_exec_futex_wait, 1);
     }
 
 done:

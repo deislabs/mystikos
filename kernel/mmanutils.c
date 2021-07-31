@@ -12,13 +12,17 @@
 #include <myst/eraise.h>
 #include <myst/fdtable.h>
 #include <myst/file.h>
+#include <myst/kernel.h>
 #include <myst/malloc.h>
+#include <myst/mman.h>
 #include <myst/mmanutils.h>
 #include <myst/panic.h>
+#include <myst/printf.h>
 #include <myst/process.h>
 #include <myst/round.h>
 #include <myst/strings.h>
 #include <myst/syscall.h>
+#include <myst/trace.h>
 
 #define SCRUB
 
@@ -631,7 +635,13 @@ int myst_release_process_mappings(pid_t pid)
 
             if (p->pid == pid)
             {
+#if MYST_ENABLE_MMAN_PIDS
+                /* unmap all pages in this mapping that are owned by the given
+                 * process.*/
+                myst_mman_pids_munmap(p->addr, p->size, pid);
+#else
                 myst_munmap(p->addr, p->size);
+#endif
 
                 if (prev)
                     prev->next = next;
@@ -861,4 +871,186 @@ void myst_mman_stats(myst_mman_stats_t* buf)
     buf->map_size = _mman.end - _mman.map;
     buf->free_size = _mman.map - _mman.brk;
     buf->used_size = buf->brk_size + buf->map_size;
+}
+
+typedef enum mman_pids_op
+{
+    MMAN_PIDS_OP_SET,
+    MMAN_PIDS_OP_TEST,
+} mman_pids_op_t;
+
+static long _handle_mman_pids_op(
+    mman_pids_op_t op,
+    const void* addr,
+    size_t length,
+    pid_t pid)
+{
+    long ret = 0;
+    uint32_t* pids = __myst_kernel_args.mman_pids_data;
+    size_t npids = __myst_kernel_args.mman_pids_size / sizeof(uint32_t);
+    bool locked = false;
+    size_t index;
+    size_t count;
+
+    // myst_set_trace(true);
+
+    if (!addr || pid < 0)
+        ERAISE(-EINVAL);
+
+    /* addr must be aligned on a page boundary */
+    if ((uint64_t)addr % PAGE_SIZE)
+        ERAISE(-EINVAL);
+
+    /* round length up to the next multiple of the page boundary */
+    ECHECK(myst_round_up(length, PAGE_SIZE, &length));
+
+    myst_spin_lock(&_mman.lock);
+    locked = true;
+
+    // Fail if [addr:length] is not within the mmap area.
+    // Calculate the index of pids[] and count to set.
+    {
+        const myst_kernel_args_t* kargs = &__myst_kernel_args;
+        const uint64_t addr_start = (uint64_t)addr;
+        const uint64_t addr_end;
+        const uint64_t mman_start = (uint64_t)kargs->mman_data;
+        const size_t mman_end;
+
+        if (__builtin_add_overflow(addr_start, length, &addr_end))
+            ERAISE(-ERANGE);
+
+        if (__builtin_add_overflow(mman_start, kargs->mman_size, &mman_end))
+            ERAISE(-ERANGE);
+
+        if (!(addr_start >= mman_start && addr_end <= mman_end))
+            ERAISE(-EINVAL);
+
+        index = (addr_start - mman_start) / PAGE_SIZE;
+        count = length / PAGE_SIZE;
+
+        if (index >= npids)
+            ERAISE(-ERANGE);
+
+        if (index + count > npids)
+            ERAISE(-ERANGE);
+    }
+
+    /* ATTN: optimize to use 64bit ops */
+    switch (op)
+    {
+        case MMAN_PIDS_OP_SET:
+        {
+            if (pid == 0)
+            {
+                memset(&pids[index], 0, count * sizeof(uint32_t));
+            }
+            else
+            {
+                /* Update the associated elements of pids[] */
+                for (size_t i = index; i < index + count; i++)
+                {
+                    pids[i] = pid;
+                }
+            }
+
+            break;
+        }
+        case MMAN_PIDS_OP_TEST:
+        {
+            ssize_t n = 0;
+
+            /* Test the associated elements of pids[] */
+            for (size_t i = index; i < index + count; i++)
+            {
+                if (pids[i] != (uint32_t)pid)
+                    break;
+
+                n++;
+            }
+
+            ret = n * PAGE_SIZE;
+            break;
+        }
+        default:
+        {
+            ERAISE(-EINVAL);
+            break;
+        }
+    }
+
+done:
+
+    if (locked)
+        myst_spin_unlock(&_mman.lock);
+
+    // myst_set_trace(false);
+    return ret;
+}
+
+int myst_mman_pids_set(const void* addr, size_t length, pid_t pid)
+{
+    return (int)_handle_mman_pids_op(MMAN_PIDS_OP_SET, addr, length, pid);
+}
+
+ssize_t myst_mman_pids_test(const void* addr, size_t length, pid_t pid)
+{
+    return _handle_mman_pids_op(MMAN_PIDS_OP_TEST, addr, length, pid);
+}
+
+int myst_mman_pids_munmap(const void* addr, size_t length, pid_t pid)
+{
+    int ret = 0;
+
+    if (!addr || pid < 0)
+        ERAISE(-EINVAL);
+
+    /* allowing a zero-valued pid would remove kernel mappings */
+    if (pid == 0)
+        ERAISE(-EINVAL);
+
+    /* addr must be aligned on a page boundary */
+    if ((uint64_t)addr % PAGE_SIZE)
+        ERAISE(-EINVAL);
+
+    /* the length must be a multiple of the page boundary */
+    if (length % PAGE_SIZE)
+        ERAISE(-EINVAL);
+
+    /* release every page in the mapping owned by this pid */
+    {
+        uint8_t* ptr = (uint8_t*)addr;
+        size_t rem = length;
+
+        while (rem)
+        {
+            ssize_t n;
+
+            /* check ownership for this mapping (returns bytes owned) */
+            if ((n = myst_mman_pids_test(ptr, rem, pid)) > 0)
+            {
+                /* release this mapping */
+                if (myst_munmap(ptr, n) == 0)
+                {
+                    /* clear the owner for this mapping */
+                    myst_mman_pids_set(ptr, n, 0);
+                }
+
+                ptr += n;
+                rem -= n;
+            }
+            else if (n == 0)
+            {
+                ptr += PAGE_SIZE;
+                rem -= PAGE_SIZE;
+            }
+            else
+            {
+                /* code logic error! */
+                myst_panic("unexpected");
+            }
+        }
+    }
+
+done:
+    return ret;
 }

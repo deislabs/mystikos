@@ -1,0 +1,12 @@
+{
+    "Debug": 1,
+    "ProductID": 1,
+    "SecurityVersion": 1,
+    "UserMemSize": "2048m",
+    "ApplicationPath": "/usr/local/bin/python3",
+    "ApplicationParameters": ["/app/label_image.py",
+        "--model_file", "/tmp/mobilenet_v1_1.0_224.tflite",
+        "--label_file", "/tmp/labels.txt",
+        "--image", "/tmp/grace_hopper.bmp"],
+    "EnvironmentVariables": ["PYTHONPATH=/usr/lib/python3/dist-packages"]
+}

@@ -7,6 +7,7 @@
 #define _GNU_SOURCE
 #include <assert.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <poll.h>
 #include <pthread.h>
 #include <stdint.h>
@@ -54,6 +55,24 @@ int main(int argc, const char* argv[])
 {
     pthread_t sthread;
     pthread_t cthread;
+
+    /* Test poll() on closed fd and ramfs open file */
+    {
+        int fd0 = open("/dev/null", O_RDONLY);
+        int fd1 = open("/dev/urandom", O_RDONLY);
+        struct pollfd fds[2];
+        fds[0].fd = fd0;
+        fds[0].events = POLLIN | POLLOUT | POLLPRI;
+        fds[1].fd = fd1;
+        fds[1].events = POLLIN;
+
+        close(fd0);
+        int ret = poll(fds, 2, 0);
+        close(fd1);
+        assert(ret == 2);
+        assert(fds[0].revents == POLLNVAL);
+        assert(fds[1].revents == POLLIN);
+    }
 
     /* Test poll() with illegal parameters */
     assert(poll(NULL, 1, 0) == -1);

@@ -58,6 +58,7 @@
 #include <myst/lsr.h>
 #include <myst/mmanutils.h>
 #include <myst/mount.h>
+#include <myst/msg.h>
 #include <myst/once.h>
 #include <myst/options.h>
 #include <myst/panic.h>
@@ -1541,6 +1542,22 @@ done:
     return ret;
 }
 
+long myst_syscall_mkdirat(int dirfd, const char* pathname, mode_t mode)
+{
+    char* abspath = NULL;
+    long ret = 0;
+
+    ECHECK(myst_get_absolute_path_from_dirfd(dirfd, pathname, 0, &abspath));
+    ECHECK(myst_syscall_mkdir(abspath, mode));
+
+done:
+
+    if (abspath != pathname)
+        free(abspath);
+
+    return ret;
+}
+
 long myst_syscall_rmdir(const char* pathname)
 {
     long ret = 0;
@@ -2247,10 +2264,42 @@ long myst_syscall_fchmod(int fd, mode_t mode)
     }
     else
     {
+        // The pipe type fd is unsupported. Calling chmod on pipe
+        // is uncommon. To support pipe, pipedev needs to inherit
+        // from the myst_fs interface.
         ERAISE(-ENOTSUP);
     }
 
 done:
+    return ret;
+}
+
+long myst_syscall_fchmodat(
+    int dirfd,
+    const char* pathname,
+    mode_t mode,
+    int flags)
+{
+    long ret = 0;
+    char* abspath = NULL;
+
+    // Man page states "AT_SYMLINK_NOFOLLOW is not supported".
+    // MUSL C wrapper actually implemented this flag: the
+    // wrapper digests this flag and will always pass flags=0
+    // to syscall.
+    if (flags & AT_SYMLINK_NOFOLLOW)
+        ERAISE(-ENOTSUP);
+    else if (flags)
+        ERAISE(-EINVAL);
+
+    ECHECK(myst_get_absolute_path_from_dirfd(dirfd, pathname, 0, &abspath));
+    ret = myst_syscall_chmod(abspath, mode);
+
+done:
+
+    if (abspath && (abspath != pathname))
+        free(abspath);
+
     return ret;
 }
 
@@ -2577,34 +2626,6 @@ long myst_syscall_accept4(
 
 done:
 
-    return ret;
-}
-
-long myst_syscall_sendmsg(int sockfd, const struct msghdr* msg, int flags)
-{
-    long ret = 0;
-    myst_fdtable_t* fdtable = myst_fdtable_current();
-    myst_sockdev_t* sd;
-    myst_sock_t* sock;
-
-    ECHECK(myst_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
-    ret = (*sd->sd_sendmsg)(sd, sock, msg, flags);
-
-done:
-    return ret;
-}
-
-long myst_syscall_recvmsg(int sockfd, struct msghdr* msg, int flags)
-{
-    long ret = 0;
-    myst_fdtable_t* fdtable = myst_fdtable_current();
-    myst_sockdev_t* sd;
-    myst_sock_t* sock;
-
-    ECHECK(myst_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
-    ret = (*sd->sd_recvmsg)(sd, sock, msg, flags);
-
-done:
     return ret;
 }
 
@@ -2962,6 +2983,12 @@ long myst_syscall_fdatasync(int fd)
 
 done:
     return ret;
+}
+
+long myst_syscall_sync(void)
+{
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    return myst_fdtable_sync(fdtable);
 }
 
 long myst_syscall_utimensat(
@@ -3628,8 +3655,6 @@ static long _syscall(void* args_)
             int flags = (int)x4;
             int fd = (int)x5;
             off_t offset = (off_t)x6;
-            void* ptr;
-            long ret = 0;
 
             _strace(
                 n,
@@ -3642,15 +3667,18 @@ static long _syscall(void* args_)
                 fd,
                 offset);
 
-            ptr = myst_mmap(addr, length, prot, flags, fd, offset);
+            /* this can return (void*)-errno */
+            long ret = (long)myst_mmap(addr, length, prot, flags, fd, offset);
 
-            if (ptr == MAP_FAILED || !ptr)
+            // ATTN : temporary workaround for myst_mmap()  inaccurate return value issue
+            if (ret == -1 || !ret)
             {
                 ret = -ENOMEM;
             }
-            else
+            else if (ret > 0)
             {
                 pid_t pid = myst_getpid();
+                void* ptr = (void*)ret;
 
                 if (myst_register_process_mapping(
                         pid,
@@ -3662,6 +3690,12 @@ static long _syscall(void* args_)
                         offset,
                         prot) != 0)
                     myst_panic("failed to register process mapping");
+
+#if MYST_ENABLE_MMAN_PIDS
+                /* set ownership this mapping to pid */
+                if (myst_mman_pids_set(ptr, length, pid) != 0)
+                    myst_panic("myst_mman_pids_set()");
+#endif
 
                 ret = (long)ptr;
             }
@@ -3715,7 +3749,18 @@ static long _syscall(void* args_)
                 }
             }
 
-            BREAK(_return(n, (long)myst_munmap(addr, length)));
+            long ret = (long)myst_munmap(addr, length);
+
+#if MYST_ENABLE_MMAN_PIDS
+            if (ret == 0)
+            {
+                /* set ownership this mapping to nobody */
+                if (myst_mman_pids_set(addr, length, 0) != 0)
+                    myst_panic("myst_mman_pids_set()");
+            }
+#endif
+
+            BREAK(_return(n, ret));
         }
         case SYS_brk:
         {
@@ -3855,8 +3900,35 @@ static long _syscall(void* args_)
                 flags,
                 new_address);
 
+#if MYST_ENABLE_MMAN_PIDS
+            {
+                const pid_t pid = myst_getpid();
+                myst_assume(pid > 0);
+
+                /* fail if the calling process does not own this mapping */
+                if (myst_mman_pids_test(old_address, old_size, pid) !=
+                    (ssize_t)old_size)
+                    BREAK(_return(n, -EINVAL));
+            }
+#endif
+
             ret = (long)myst_mremap(
                 old_address, old_size, new_size, flags, new_address);
+
+#if MYST_ENABLE_MMAN_PIDS
+            if (ret >= 0)
+            {
+                const pid_t pid = myst_getpid();
+
+                /* set ownership of old mapping to nobody */
+                if (myst_mman_pids_set(old_address, old_size, 0) != 0)
+                    myst_panic("myst_mman_pids_set()");
+
+                /* set ownership of new mapping to pid */
+                if (myst_mman_pids_set((const void*)ret, new_size, pid) != 0)
+                    myst_panic("myst_mman_pids_set()");
+            }
+#endif
 
             BREAK(_return(n, ret));
         }
@@ -4109,6 +4181,13 @@ static long _syscall(void* args_)
             struct rusage* rusage = (struct rusage*)x4;
             long ret;
 
+            _strace(
+                n,
+                "pid=%d wstatus=%p options=%d rusage=%p",
+                pid,
+                wstatus,
+                options,
+                rusage);
             ret = myst_syscall_wait4(pid, wstatus, options, rusage);
             BREAK(_return(n, ret));
         }
@@ -4786,7 +4865,10 @@ static long _syscall(void* args_)
         case SYS_chroot:
             break;
         case SYS_sync:
-            break;
+        {
+            _strace(n, NULL);
+            BREAK(_return(n, myst_syscall_sync()));
+        }
         case SYS_acct:
             break;
         case SYS_settimeofday:
@@ -4883,7 +4965,10 @@ static long _syscall(void* args_)
         case SYS_lsetxattr:
             break;
         case SYS_fsetxattr:
-            break;
+        {
+            _strace(n, NULL);
+            BREAK(_return(n, -ENOSYS));
+        }
         case SYS_getxattr:
             break;
         case SYS_lgetxattr:
@@ -5289,7 +5374,19 @@ static long _syscall(void* args_)
             BREAK(_return(n, ret));
         }
         case SYS_mkdirat:
-            break;
+        {
+            int dirfd = (int)x1;
+            const char* pathname = (const char*)x2;
+            mode_t mode = (mode_t)x3;
+            long ret;
+
+            _strace(
+                n, "dirfd=%d pathname=\"%s\" mode=0%o", dirfd, pathname, mode);
+
+            ret = myst_syscall_mkdirat(dirfd, pathname, mode);
+
+            BREAK(_return(n, ret));
+        }
         case SYS_mknodat:
             break;
         case SYS_futimesat:
@@ -5390,7 +5487,25 @@ static long _syscall(void* args_)
                 n, myst_syscall_readlinkat(dirfd, pathname, buf, bufsiz)));
         }
         case SYS_fchmodat:
-            break;
+        {
+            int dirfd = (int)x1;
+            const char* pathname = (const char*)x2;
+            mode_t mode = (mode_t)x3;
+            int flags = (int)x4;
+            long ret;
+
+            _strace(
+                n,
+                "dirfd=%d pathname=\"%s\" mode=0%o flags=0%o",
+                dirfd,
+                pathname,
+                mode,
+                flags);
+
+            ret = myst_syscall_fchmodat(dirfd, pathname, mode, flags);
+
+            BREAK(_return(n, ret));
+        }
         case SYS_faccessat:
         {
             int dirfd = (int)x1;
@@ -5519,17 +5634,21 @@ static long _syscall(void* args_)
             socklen_t* addrlen = (socklen_t*)x3;
             int flags = (int)x4;
             long ret;
-            char addrstr[MAX_IPADDR_LEN];
 
-            ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
+            if (__myst_kernel_args.trace_syscalls)
+            {
+                char addrstr[MAX_IPADDR_LEN];
 
-            _strace(
-                n,
-                "sockfd=%d addr=%s addrlen=%p flags=%x",
-                sockfd,
-                addrstr,
-                addrlen,
-                flags);
+                ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
+
+                _strace(
+                    n,
+                    "sockfd=%d addr=%s addrlen=%p flags=%x",
+                    sockfd,
+                    addrstr,
+                    addrlen,
+                    flags);
+            }
 
             ret = myst_syscall_accept4(sockfd, addr, addrlen, flags);
             BREAK(_return(n, ret));
@@ -5617,7 +5736,26 @@ static long _syscall(void* args_)
         case SYS_perf_event_open:
             break;
         case SYS_recvmmsg:
-            break;
+        {
+            int sockfd = (int)x1;
+            struct mmsghdr* msgvec = (struct mmsghdr*)x2;
+            unsigned int vlen = (unsigned int)x3;
+            int flags = (int)x4;
+            struct timespec* timeout = (struct timespec*)x5;
+            long ret;
+
+            _strace(
+                n,
+                "sockfd=%d msgvec=%p vlen=%u flags=%d timeout=%p",
+                sockfd,
+                msgvec,
+                vlen,
+                flags,
+                timeout);
+
+            ret = myst_syscall_recvmmsg(sockfd, msgvec, vlen, flags, timeout);
+            BREAK(_return(n, ret));
+        }
         case SYS_fanotify_init:
             break;
         case SYS_fanotify_mark:
@@ -5649,7 +5787,24 @@ static long _syscall(void* args_)
         case SYS_syncfs:
             break;
         case SYS_sendmmsg:
-            break;
+        {
+            int sockfd = (int)x1;
+            struct mmsghdr* msgvec = (struct mmsghdr*)x2;
+            unsigned int vlen = (unsigned int)x3;
+            int flags = (int)x4;
+            long ret;
+
+            _strace(
+                n,
+                "sockfd=%d msgvec=%p vlen=%u flags=%d",
+                sockfd,
+                msgvec,
+                vlen,
+                flags);
+
+            ret = myst_syscall_sendmmsg(sockfd, msgvec, vlen, flags);
+            BREAK(_return(n, ret));
+        }
         case SYS_setns:
             break;
         case SYS_getcpu:
@@ -5776,12 +5931,20 @@ static long _syscall(void* args_)
             const struct sockaddr* addr = (const struct sockaddr*)x2;
             socklen_t addrlen = (socklen_t)x3;
             long ret;
-            char addrstr[MAX_IPADDR_LEN];
 
-            ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
+            if (__myst_kernel_args.trace_syscalls)
+            {
+                char addrstr[MAX_IPADDR_LEN];
 
-            _strace(
-                n, "sockfd=%d addr=%s addrlen=%u", sockfd, addrstr, addrlen);
+                ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
+
+                _strace(
+                    n,
+                    "sockfd=%d addr=%s addrlen=%u",
+                    sockfd,
+                    addrstr,
+                    addrlen);
+            }
 
             ret = myst_syscall_bind(sockfd, addr, addrlen);
             BREAK(_return(n, ret));
@@ -5793,17 +5956,21 @@ static long _syscall(void* args_)
             const struct sockaddr* addr = (const struct sockaddr*)x2;
             socklen_t addrlen = (socklen_t)x3;
             long ret;
-            char addrstr[MAX_IPADDR_LEN];
 
-            ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
+            if (__myst_kernel_args.trace_syscalls)
+            {
+                char addrstr[MAX_IPADDR_LEN];
 
-            _strace(
-                n,
-                "sockfd=%d addrlen=%u family=%u ip=%s",
-                sockfd,
-                addrlen,
-                addr->sa_family,
-                addrstr);
+                ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
+
+                _strace(
+                    n,
+                    "sockfd=%d addrlen=%u family=%u ip=%s",
+                    sockfd,
+                    addrlen,
+                    addr->sa_family,
+                    addrstr);
+            }
 
             ret = myst_syscall_connect(sockfd, addr, addrlen);
             BREAK(_return(n, ret));
@@ -5817,19 +5984,23 @@ static long _syscall(void* args_)
             struct sockaddr* src_addr = (struct sockaddr*)x5;
             socklen_t* addrlen = (socklen_t*)x6;
             long ret = 0;
-            char addrstr[MAX_IPADDR_LEN];
 
-            ECHECK(_socketaddr_to_str(src_addr, addrstr, MAX_IPADDR_LEN));
+            if (__myst_kernel_args.trace_syscalls)
+            {
+                char addrstr[MAX_IPADDR_LEN];
 
-            _strace(
-                n,
-                "sockfd=%d buf=%p len=%zu flags=%d src_addr=%s addrlen=%p",
-                sockfd,
-                buf,
-                len,
-                flags,
-                addrstr,
-                addrlen);
+                ECHECK(_socketaddr_to_str(src_addr, addrstr, MAX_IPADDR_LEN));
+
+                _strace(
+                    n,
+                    "sockfd=%d buf=%p len=%zu flags=%d src_addr=%s addrlen=%p",
+                    sockfd,
+                    buf,
+                    len,
+                    flags,
+                    addrstr,
+                    addrlen);
+            }
 
 #ifdef MYST_NO_RECVMSG_MITIGATION
             ret = myst_syscall_recvfrom(
@@ -5870,19 +6041,23 @@ static long _syscall(void* args_)
             struct sockaddr* dest_addr = (struct sockaddr*)x5;
             socklen_t addrlen = (socklen_t)x6;
             long ret = 0;
-            char addrstr[MAX_IPADDR_LEN];
 
-            ECHECK(_socketaddr_to_str(dest_addr, addrstr, MAX_IPADDR_LEN));
+            if (__myst_kernel_args.trace_syscalls)
+            {
+                char addrstr[MAX_IPADDR_LEN];
 
-            _strace(
-                n,
-                "sockfd=%d buf=%p len=%zu flags=%d dest_addr=%s addrlen=%u",
-                sockfd,
-                buf,
-                len,
-                flags,
-                addrstr,
-                addrlen);
+                ECHECK(_socketaddr_to_str(dest_addr, addrstr, MAX_IPADDR_LEN));
+
+                _strace(
+                    n,
+                    "sockfd=%d buf=%p len=%zu flags=%d dest_addr=%s addrlen=%u",
+                    sockfd,
+                    buf,
+                    len,
+                    flags,
+                    addrstr,
+                    addrlen);
+            }
 
             ret = myst_syscall_sendto(
                 sockfd, buf, len, flags, dest_addr, addrlen);
@@ -5907,12 +6082,20 @@ static long _syscall(void* args_)
             struct sockaddr* addr = (struct sockaddr*)x2;
             socklen_t* addrlen = (socklen_t*)x3;
             long ret;
-            char addrstr[MAX_IPADDR_LEN];
 
-            ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
+            if (__myst_kernel_args.trace_syscalls)
+            {
+                char addrstr[MAX_IPADDR_LEN];
 
-            _strace(
-                n, "sockfd=%d addr=%s addrlen=%p", sockfd, addrstr, addrlen);
+                ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
+
+                _strace(
+                    n,
+                    "sockfd=%d addr=%s addrlen=%p",
+                    sockfd,
+                    addrstr,
+                    addrlen);
+            }
 
             ret = myst_syscall_accept4(sockfd, addr, addrlen, 0);
             BREAK(_return(n, ret));
@@ -5975,12 +6158,20 @@ static long _syscall(void* args_)
             struct sockaddr* addr = (struct sockaddr*)x2;
             socklen_t* addrlen = (socklen_t*)x3;
             long ret;
-            char addrstr[MAX_IPADDR_LEN];
 
-            ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
+            if (__myst_kernel_args.trace_syscalls)
+            {
+                char addrstr[MAX_IPADDR_LEN];
 
-            _strace(
-                n, "sockfd=%d addr=%s addrlen=%p", sockfd, addrstr, addrlen);
+                ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
+
+                _strace(
+                    n,
+                    "sockfd=%d addr=%s addrlen=%p",
+                    sockfd,
+                    addrstr,
+                    addrlen);
+            }
 
             ret = myst_syscall_getsockname(sockfd, addr, addrlen);
             BREAK(_return(n, ret));
@@ -5991,12 +6182,20 @@ static long _syscall(void* args_)
             struct sockaddr* addr = (struct sockaddr*)x2;
             socklen_t* addrlen = (socklen_t*)x3;
             long ret;
-            char addrstr[MAX_IPADDR_LEN];
 
-            ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
+            if (__myst_kernel_args.trace_syscalls)
+            {
+                char addrstr[MAX_IPADDR_LEN];
 
-            _strace(
-                n, "sockfd=%d addr=%s addrlen=%p", sockfd, addrstr, addrlen);
+                ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
+
+                _strace(
+                    n,
+                    "sockfd=%d addr=%s addrlen=%p",
+                    sockfd,
+                    addrstr,
+                    addrlen);
+            }
 
             ret = myst_syscall_getpeername(sockfd, addr, addrlen);
             BREAK(_return(n, ret));

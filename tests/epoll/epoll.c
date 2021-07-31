@@ -7,9 +7,11 @@
 #define _GNU_SOURCE
 #include <assert.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <sys/epoll.h>
 #include <sys/syscall.h>
 #include <sys/time.h>
 #include <time.h>
@@ -38,8 +40,48 @@ static void* _client_thread_func(void* arg)
     run_client(port);
 }
 
+static void test_epoll_on_regular_files_unsupp()
+{
+    /* epoll on regular files should fail with an EPERM */
+    int fd = creat("/tmp/file", 0666);
+    assert(fd >= 0);
+
+    int epfd = epoll_create1(EPOLL_CLOEXEC);
+    assert(epfd != -1);
+    struct epoll_event ev;
+    ev.data.fd = fd;
+    ev.events = EPOLLIN;
+    int ret = epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &ev);
+    assert(ret == -1 && errno == EPERM);
+
+    ret = unlink("/tmp/file");
+    assert(ret == 0);
+
+    printf("=== passed test (%s)\n", __FUNCTION__);
+}
+
+static void test_epoll_fcntl()
+{
+    int epfd = epoll_create1(EPOLL_CLOEXEC);
+    assert(epfd != -1);
+    // check fcntl returns appropriate flag
+    assert(fcntl(epfd, F_GETFD) & FD_CLOEXEC);
+    // clear cloexec flag
+    fcntl(epfd, F_SETFD, 0);
+    assert(!(fcntl(epfd, F_GETFD) & FD_CLOEXEC));
+    // reset cloexec flag
+    fcntl(epfd, F_SETFD, FD_CLOEXEC);
+    assert(fcntl(epfd, F_GETFD) & FD_CLOEXEC);
+    close(epfd);
+
+    printf("=== passed test (%s)\n", __FUNCTION__);
+}
+
 int main(int argc, const char* argv[])
 {
+    test_epoll_on_regular_files_unsupp();
+    test_epoll_fcntl();
+
     pthread_t sthread;
     pthread_t cthread1;
     pthread_t cthread2;

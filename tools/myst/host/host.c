@@ -383,6 +383,7 @@ Where <action> is one of:\n\
                      pieces during in the process\n\
     dump-sgx      -- dump the SGX enclave configuration along with the\n\
                      packaging configuration from an SGX packaged executable\n\
+    fsgsbase      -- tests whether the FSGSBASE instructions are supported\n\
 \n\
 "
 
@@ -458,6 +459,11 @@ static int _main(int argc, const char* argv[], const char* envp[])
     {
         extern int fssig_action(int argc, const char* argv[]);
         return fssig_action(argc, argv);
+    }
+    else if (strcmp(argv[1], "fsgsbase") == 0)
+    {
+        extern int fsgsbase_action(int argc, const char* argv[]);
+        return fsgsbase_action(argc, argv);
     }
     else
     {

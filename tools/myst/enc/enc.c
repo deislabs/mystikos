@@ -422,7 +422,7 @@ static bool _is_allowed_env_variable(
     return false;
 }
 
-const void* __oe_get_enclave_base(void);
+const void* __oe_get_enclave_start_address(void);
 size_t __oe_get_enclave_size(void);
 
 volatile int myst_enter_ecall_lock = 0;
@@ -496,8 +496,8 @@ static long _enter(void* arg_)
     myst_args_t env;
     const char* cwd = "/";       // default to root dir
     const char* hostname = NULL; // kernel has a default
-    const uint8_t* enclave_base;
-    size_t enclave_size;
+    const uint8_t* enclave_image_base;
+    size_t enclave_image_size;
     const Elf64_Ehdr* ehdr;
     const char target[] = "MYST_TARGET=sgx";
     const bool tee_debug_mode = (_test_oe_debug_mode() == 0);
@@ -512,14 +512,14 @@ static long _enter(void* arg_)
     memset(&env, 0, sizeof(env));
 
     /* Get the enclave base address */
-    if (!(enclave_base = __oe_get_enclave_base()))
+    if (!(enclave_image_base = __oe_get_enclave_start_address()))
     {
-        fprintf(stderr, "__oe_get_enclave_base() failed\n");
+        fprintf(stderr, "__oe_get_enclave_start_address() failed\n");
         assert(0);
     }
 
     /* Get the enclave size */
-    enclave_size = __oe_get_enclave_size();
+    enclave_image_size = __oe_get_enclave_size();
 
     /* Get the config region */
     {
@@ -726,9 +726,9 @@ static long _enter(void* arg_)
             &parsed_config.mounts,
             hostname,
             regions_end,
-            enclave_base,   /* image_data */
-            enclave_size,   /* image_size */
-            _get_num_tcs(), /* max threads */
+            enclave_image_base, /* image_data */
+            enclave_image_size, /* image_size */
+            _get_num_tcs(),     /* max threads */
             trace_errors,
             _trace_syscalls,
             false, /* have_syscall_instruction */
@@ -749,6 +749,9 @@ static long _enter(void* arg_)
         _kargs.start_time_sec = arg->start_time_sec;
         _kargs.start_time_nsec = arg->start_time_nsec;
         _kargs.report_native_tids = report_native_tids;
+
+        /* whether user-space FSGSBASE instructions are supported */
+        _kargs.have_fsgsbase_instructions = options->have_fsgsbase_instructions;
 
         /* set ehdr and verify that the kernel is an ELF image */
         {
@@ -1081,6 +1084,8 @@ OE_SET_ENCLAVE_SGX2(
     ENCLAVE_DEBUG,
     ENCLAVE_CAPTURE_PF_GP_EXCEPTIONS,
     ENCLAVE_REQUIRE_KSS,
+    ENCLAVE_CREATE_ZERO_BASE_ENCLAVE,
+    ENCLAVE_START_ADDRESS,
     ENCLAVE_HEAP_SIZE / OE_PAGE_SIZE,
     ENCLAVE_STACK_SIZE / OE_PAGE_SIZE,
     ENCLAVE_MAX_THREADS);

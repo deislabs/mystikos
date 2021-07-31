@@ -1,20 +1,25 @@
 TOP = $(abspath ../..)
 include $(TOP)/defs.mak
 
-ifeq (, $(shell which rustc))
- $(error "Please install rustc first!")
-endif
-
-all:
-	rustc ./hello_world.rs
+APPBUILDER=$(TOP)/scripts/appbuilder
 
 ifdef STRACE
 OPTS = --strace
 endif
 
+all: appdir rootfs
+
+appdir:
+	$(APPBUILDER) Dockerfile
+
+rootfs: appdir
+	$(MYST) mkext2 appdir ext2rootfs
+
 run:
-	$(MKROOTFS) ./hello_world rootfs
-	$(MYST_EXEC) $(OPTS) rootfs /bin/hello_world
+	$(MYST_EXEC) $(OPTS) ext2rootfs /app/hello
+
+gdb:
+	$(MYST_GDB) --args $(MYST_EXEC) $(OPTS) ext2rootfs /app/hello
 
 clean:
-	rm -rf rootfs hello_world
+	rm -rf ext2rootfs appdir

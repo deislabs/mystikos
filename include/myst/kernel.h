@@ -104,6 +104,10 @@ typedef struct myst_kernel_args
     void* mman_data;
     size_t mman_size;
 
+    /* The pids[] vector for the memory management pages */
+    void* mman_pids_data;
+    size_t mman_pids_size;
+
     /* The CPIO root file system image */
     char rootfs[PATH_MAX];
     void* rootfs_data;
@@ -138,7 +142,12 @@ typedef struct myst_kernel_args
     /* Tracing options */
     bool trace_errors;
     bool trace_syscalls;
+
+    /* Whether the target supports the SYSCALL instruction */
     bool have_syscall_instruction;
+
+    /* Whether the target supports the WRFSBASE and WRGSBASE instructions */
+    bool have_fsgsbase_instructions;
 
     /* The event object for the main thread */
     uint64_t event;

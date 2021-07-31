@@ -4,6 +4,7 @@ include $(TOP)/defs.mak
 DIRS =
 
 DIRS += fork
+DIRS += vfork
 DIRS += myst
 DIRS += itimer
 DIRS += timeval
@@ -91,6 +92,7 @@ endif
 ifndef MYST_ENABLE_GCOV
 ifdef MYST_NIGHTLY_TEST
 DIRS += sockperf
+DIRS += cpython-tests
 endif
 DIRS += clock
 DIRS += pollpipe2
@@ -113,6 +115,8 @@ DIRS += dotnet-sos
 DIRS += tkillself
 DIRS += thread_abort
 DIRS += synccall
+DIRS += python_subprocess
+DIRS += python_vfork
 
 .PHONY: $(DIRS)
 

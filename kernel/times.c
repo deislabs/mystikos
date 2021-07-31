@@ -34,12 +34,6 @@ long myst_lapsed_nsecs(const struct timespec* t0, const struct timespec* t1)
            (t1->tv_nsec - t0->tv_nsec);
 }
 
-MYST_INLINE void set_timespec_from_nanos(struct timespec* tp, long nanos)
-{
-    tp->tv_sec = nanos / NANO_IN_SECOND;
-    tp->tv_nsec = nanos % NANO_IN_SECOND;
-}
-
 static bool is_zero_tp(struct timespec* tp)
 {
     return tp->tv_sec == 0 && tp->tv_nsec == 0;
@@ -128,7 +122,7 @@ long myst_times_get_cpu_clock_time(clockid_t clk_id, struct timespec* tp)
         if (tid == current->tid)
         {
             long nanoseconds = myst_times_thread_time();
-            set_timespec_from_nanos(tp, nanoseconds);
+            nanos_to_timespec(tp, nanoseconds);
         }
         else
         {
@@ -138,13 +132,13 @@ long myst_times_get_cpu_clock_time(clockid_t clk_id, struct timespec* tp)
 
             long nanoseconds =
                 myst_lapsed_nsecs(&t->start_ts, &t->enter_kernel_ts);
-            set_timespec_from_nanos(tp, nanoseconds);
+            nanos_to_timespec(tp, nanoseconds);
         }
     }
     else
     {
         long nanoseconds = myst_times_process_time();
-        set_timespec_from_nanos(tp, nanoseconds);
+        nanos_to_timespec(tp, nanoseconds);
     }
 
     return 0;

@@ -174,6 +174,15 @@ int init_kernel_args(
         err,
         err_size));
 
+    /* find the mman-pids region */
+    ECHECK(_find_region(
+        regions_end,
+        MYST_REGION_MMAN_PIDS,
+        &args->mman_pids_data,
+        &args->mman_pids_size,
+        err,
+        err_size));
+
     /* find the rootfs region */
     ECHECK(_find_region(
         regions_end,

@@ -309,8 +309,11 @@ static int _sd_sendmsg(
     struct msghdr msg_buf;
     const struct msghdr* msg_ptr;
 
-    if (!sd || !_valid_sock(sock) || !msg)
+    if (!sd || !_valid_sock(sock))
         ERAISE(-EINVAL);
+
+    if (!msg)
+        ERAISE(-EFAULT);
 
     if (msg->msg_iovlen < 0 || msg->msg_iovlen > IOV_MAX)
         ERAISE(-EINVAL);

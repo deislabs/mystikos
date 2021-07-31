@@ -108,6 +108,17 @@ static int _ed_epoll_ctl(
     if (!myst_valid_fd(fd))
         ERAISE(-EBADF);
 
+    /* return EPERM is fd points to regular file or directory */
+    {
+        myst_fdtable_t* fdtable = myst_fdtable_current();
+        myst_file_t* file = NULL;
+        myst_fs_t* fs = NULL;
+
+        int r = myst_fdtable_get_file(fdtable, fd, &fs, &file);
+        if (r == 0 && fs && file)
+            ERAISE(-EPERM);
+    }
+
     myst_spin_lock(&epoll->lock);
     locked = true;
 
@@ -470,15 +481,18 @@ static int _ed_fcntl(
     {
         case F_SETFD:
         {
-            if (arg != FD_CLOEXEC && arg != 0)
+            if (arg == FD_CLOEXEC)
+                epoll->flags = EPOLL_CLOEXEC;
+            else if (arg == 0)
+                epoll->flags = 0;
+            else
                 ERAISE(-EINVAL);
-
-            epoll->flags = arg;
             goto done;
         }
         case F_GETFD:
         {
-            ret = epoll->flags;
+            if (epoll->flags & EPOLL_CLOEXEC)
+                ret = FD_CLOEXEC;
             goto done;
         }
         default:

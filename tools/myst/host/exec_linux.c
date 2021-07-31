@@ -33,6 +33,7 @@
 #include "../kargs.h"
 #include "../shared.h"
 #include "exec_linux.h"
+#include "fsgsbase.h"
 #include "process.h"
 #include "pubkeys.h"
 #include "regions.h"
@@ -356,6 +357,10 @@ static int _enter_kernel(
     kernel_args.memcheck = options->memcheck;
 
     kernel_args.perf = options->perf;
+
+    /* check whether FSGSBASE instructions are supported */
+    if (test_user_space_fsgsbase() == 0)
+        kernel_args.have_fsgsbase_instructions = true;
 
     /* pass the start time into the kernel */
     {

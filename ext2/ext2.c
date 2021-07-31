@@ -3354,6 +3354,13 @@ int ext2_open(
         ERAISE(-ENOTDIR);
     }
 
+    /* bail out as this fs doesn't support O_TMPFILE (yet) */
+    if ((flags & O_TMPFILE) && ((flags & O_RDWR) || (flags & O_WRONLY)) &&
+        S_ISDIR(locals->inode.i_mode))
+    {
+        ERAISE(-EISDIR);
+    }
+
     /* Allocate and initialize the file object */
     {
         if (!(file = (myst_file_t*)calloc(1, sizeof(myst_file_t))))
@@ -3386,7 +3393,6 @@ int ext2_open(
         file->dir.next = file->dir.data;
         dir_data = NULL;
     }
-
     /* Get the realpath of this file */
     {
         ECHECK(_path_to_ino_realpath(
@@ -3531,6 +3537,9 @@ int64_t ext2_write(
     /* succeed if writing zero bytes */
     if (size == 0)
         goto done;
+
+    /* refresh inode */
+    ECHECK((ext2_read_inode(ext2, file->ino, &file->inode)));
 
     /* save the file size */
     file_size = _inode_get_size(&file->inode);
@@ -4176,11 +4185,22 @@ int ext2_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
     /* if oldpath is a directory, update old directory inode */
     if (S_ISDIR(locals->old_inode.i_mode))
     {
-        _update_timestamps(&locals->old_dinode, CHANGE);
-        ECHECK(_write_inode(ext2, old_dino, &locals->old_dinode));
-
-        /* don't update links if directory already existed */
-        if (!new_dino)
+        if (new_dino)
+        {
+            /* If parent directory is same, use the new inode which has the new
+             * dirent recorded */
+            if (new_dino == old_dino)
+            {
+                _update_timestamps(&locals->new_dinode, CHANGE);
+                ECHECK(_write_inode(ext2, new_dino, &locals->new_dinode));
+            }
+            else
+            {
+                _update_timestamps(&locals->old_dinode, CHANGE);
+                ECHECK(_write_inode(ext2, old_dino, &locals->old_dinode));
+            }
+        }
+        else /* don't update links if directory already existed */
         {
             locals->new_dinode.i_links_count++;
             _update_timestamps(&locals->new_dinode, CHANGE);
@@ -4815,7 +4835,9 @@ static int _ext2_get_events(myst_fs_t* fs, myst_file_t* file)
     if (!_ext2_valid(ext2) || !_file_valid(file))
         ERAISE(-EINVAL);
 
-    ret = -ENOTSUP;
+    /* Regular files always poll TRUE for reads and writes */
+    ret |= POLLIN;
+    ret |= POLLOUT;
 
 done:
     return ret;
@@ -5080,11 +5102,23 @@ static int _ext2_getdents64(
     if (!_ext2_valid(ext2) || !_file_valid(file) || !dirp)
         ERAISE(-EINVAL);
 
-    if (!(file->open_flags & O_DIRECTORY))
+    if (!S_ISDIR(file->inode.i_mode))
         ERAISE(-ENOTDIR);
 
     if (count == 0)
         goto done;
+
+    /* If file was not opened with O_DIRECTORY, file->dir.data will not have
+     * been populated */
+    if (file->dir.data == NULL)
+    {
+        /* refresh the inode */
+        ECHECK((ext2_read_inode(ext2, file->ino, &file->inode)));
+        /* _load_file perturbs the file offset, save it */
+        int saved_offset = file->offset;
+        ECHECK(_load_file(ext2, file, &file->dir.data, &file->dir.size));
+        file->offset = saved_offset;
+    }
 
     /* set next relative to offset in case rewinddir() was called */
     file->dir.next = (uint8_t*)file->dir.data + file->offset;

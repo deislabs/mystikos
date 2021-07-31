@@ -45,10 +45,13 @@ long _poll_kernel(struct pollfd* fds, nfds_t nfds)
 
         if ((events = (*fdops->fd_get_events)(fdops, object)) >= 0)
         {
-            fds[i].revents = events;
-
-            if (events)
+            /* Only report events requested or POLLERR, POLLHUP and POLLNVAL*/
+            if (events =
+                    events & ((fds[i].events) | (POLLERR | POLLHUP | POLLNVAL)))
+            {
+                fds[i].revents = events;
                 total++;
+            }
         }
         else if (events != -ENOTSUP)
         {
@@ -74,6 +77,7 @@ static long _syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
     size_t* kindices = NULL;    /* kernel indices */
     long tevents = 0;           /* the number of target events */
     long kevents = 0;           /* the number of kernel events */
+    long nvalevents = 0;        /* the number of POLLNVAL events */
     static myst_spinlock_t _lock;
     bool locked = false;
     long has_signals = 0;
@@ -127,6 +131,13 @@ static long _syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
 
         if (res == -ENOENT)
             continue;
+        else if (res == -EBADF)
+        {
+            /* closed/invalid fd gets POLLNVAL */
+            fds[i].revents = POLLNVAL;
+            nvalevents++;
+            continue;
+        }
         ECHECK(res);
 
         /* get the target fd for this object (or -ENOTSUP) */
@@ -160,7 +171,8 @@ static long _syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
     {
         /* pre-poll for kernel events */
         ECHECK((kevents = _poll_kernel(kfds, knfds)));
-        if (kevents)
+        /* report kernel events or POLLNVAL events immediately */
+        if (kevents || nvalevents)
             break;
 
         myst_spin_unlock(&_lock);
@@ -209,7 +221,7 @@ static long _syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
         locked = true;
     }
 
-    ret = kevents + tevents;
+    ret = kevents + tevents + nvalevents;
 
     /* update fds[] with the target events */
     for (nfds_t i = 0; i < tnfds; i++)

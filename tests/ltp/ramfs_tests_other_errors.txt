@@ -385,6 +385,7 @@
 /ltp/testcases/kernel/syscalls/lstat/lstat02_64
 /ltp/testcases/kernel/syscalls/madvise/madvise01
 /ltp/testcases/kernel/syscalls/madvise/madvise02
+/ltp/testcases/kernel/syscalls/madvise/madvise06
 /ltp/testcases/kernel/syscalls/madvise/madvise07
 /ltp/testcases/kernel/syscalls/madvise/madvise08
 /ltp/testcases/kernel/syscalls/madvise/madvise09
@@ -562,6 +563,7 @@
 /ltp/testcases/kernel/syscalls/recvfrom/recvfrom01
 /ltp/testcases/kernel/syscalls/recvmsg/recvmsg01
 /ltp/testcases/kernel/syscalls/recvmsg/recvmsg03
+/ltp/testcases/kernel/syscalls/recvmmsg/recvmmsg01
 /ltp/testcases/kernel/syscalls/remap_file_pages/remap_file_pages01
 /ltp/testcases/kernel/syscalls/remap_file_pages/remap_file_pages02
 /ltp/testcases/kernel/syscalls/rename/rename03
@@ -620,7 +622,7 @@
 /ltp/testcases/kernel/syscalls/sendfile/sendfile07_64
 /ltp/testcases/kernel/syscalls/sendfile/sendfile09
 /ltp/testcases/kernel/syscalls/sendfile/sendfile09_64
-/ltp/testcases/kernel/syscalls/sendmmsg/sendmmsg02
+/ltp/testcases/kernel/syscalls/sendmmsg/sendmmsg01
 /ltp/testcases/kernel/syscalls/sendmsg/sendmsg01
 /ltp/testcases/kernel/syscalls/sendmsg/sendmsg03
 /ltp/testcases/kernel/syscalls/sendto/sendto01

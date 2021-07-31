@@ -31,8 +31,18 @@ int call_foo(const char* argv0)
 
 int main(int argc, const char* argv[])
 {
+    void* handle;
     int ret = call_foo(argv[0]);
     assert(ret == 12345);
+
+    // Test glibc compatibility with a shared library that
+    // contains rarely used glibc symbols such as argz_append.
+    if (!(handle = dlopen("/libodbc.so.2.0.0", RTLD_NOW)))
+    {
+        fprintf(stderr, "%s: dlopen() libodbc.so.2.0.0 failed\n", argv[0]);
+        return -1;
+    }
+    dlclose(handle);
 
     printf("=== passed test (%s)\n", argv[0]);
 
