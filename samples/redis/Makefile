@@ -8,40 +8,30 @@ APPDIR        = appdir
 APP_NAME      = redis-server
 SERVICE_ADDR  = localhost
 SERVICE_PORT  = 6379
+LAUNCH_WAIT   = 10	# waiting time in seconds for service launch
+SHUTDOWN_WAIT = 0  	# waiting time in seconds before service being terminated
+# OPTS += --strace
 
-ifdef STRACE
-OPTS += --strace
-endif
+all: package
 
-ifdef PERF
-OPTS += --perf
-endif
-
-all: init package
-
-init: 
-	pip3 install redis 
-
-package: init $(APPDIR) private.pem
+package: $(APPDIR) private.pem
 	cp redis.conf $(APPDIR)/etc/redis.conf
 	echo "\n\nport $(SERVICE_PORT)" >> $(APPDIR)/etc/redis.conf
 	$(MYST) package-sgx $(APPDIR) private.pem config.json
 
 run: package
 	# Kill the server from a previous run if it wasn't shut down properly.
-	./kill.sh
-	
+	test -f $(APP_NAME).pid && kill -9 `cat $(APP_NAME).pid` || true
 	# Launch the Redis Server
 	@ echo -e "\n------starting Redis server------\n"
 	myst/bin/$(APP_NAME) $(OPTS) & echo $$! > $(APP_NAME).pid
-	./wait.sh $(SERVICE_PORT)
-	
+	sleep $(LAUNCH_WAIT)
 	# Launch testing client script
 	@echo "Run test client outside of the Enclave ..."
-	bash -c "time python3 redis_test.py $(SERVICE_ADDR) $(SERVICE_PORT)"
-	
+	python3 redis_test.py $(SERVICE_ADDR) $(SERVICE_PORT)
 	# Kill the running instance of the server before exit.
-	./kill.sh
+	sleep $(SHUTDOWN_WAIT)
+	test -f $(APP_NAME).pid && kill -9 `cat $(APP_NAME).pid` && rm $(APP_NAME).pid || true
 
 gdb: clean package
 	@ echo -e "\n------start debugging Redis server------\n"
@@ -55,61 +45,3 @@ private.pem:
 
 clean:
 	rm -rf rootfs $(APPDIR) myst private.pem $(APP_NAME).pid
-
-ROOTDIR=$(CURDIR)/appdir
-
-native-server:
-	./kill.sh
-	docker run --network=host redis:6.2-alpine /usr/local/bin/redis-server &
-	# sudo chroot $(ROOTDIR) /usr/local/bin/redis-server &
-	# proot -r $(ROOTDIR) /usr/local/bin/redis-server &	# slow
-	./wait.sh $(SERVICE_PORT)
-
-native: native-server
-	bash -c "time python3 redis_test.py $(SERVICE_ADDR) $(SERVICE_PORT)"
-	./kill.sh
-
-ns:
-	sudo chroot $(ROOTDIR) /usr/local/bin/redis-server
-
-ds:
-	docker run --network=host redis:6.2-alpine /usr/local/bin/redis-server
-
-ext2-server: rootfs
-	./kill.sh
-	@ echo -e "\n------starting Redis server------\n"
-	$(MYST_EXEC) rootfs /usr/local/bin/redis-server $(OPTS) & echo $$! > $(APP_NAME).pid
-	./wait.sh $(SERVICE_PORT)
-
-ext2: ext2-server
-	@echo "Run test client outside of the Enclave ..."
-	bash -c "time python3 redis_test.py $(SERVICE_ADDR) $(SERVICE_PORT)"
-	./kill.sh
-
-rootfs:
-	$(MYST) mkext2 appdir rootfs
-
-bench:
-	redis-benchmark -q -h 127.0.0.1 -p 6379 -c 5 -n 10000
-	./kill.sh
-
-bench-linux:
-	$(MAKE) linux
-	./wait.sh $(SERVICE_PORT)
-	$(MAKE) bench
-
-bench-sgx:
-	$(MAKE) sgx
-	./wait.sh $(SERVICE_PORT)
-	$(MAKE) bench
-
-b: bench-sgx
-
-linux:
-	make TARGET=linux ext2-server
-
-sgx:
-	make ext2-server
-
-kill:
-	./kill.sh
