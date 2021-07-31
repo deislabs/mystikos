@@ -40,8 +40,8 @@ ssize_t myst_tcall_get_file_size(const char* pathname)
     }
 
     // Determine the size of a virtual file by reading it. If it is not
-    // a virtual file, then read() will return zero the first time (indicating
-    // a zero-sized file).
+    // a virtual file, then read() will return zero the first time, indicating
+    // a zero-sized file.
     for (;;)
     {
         ssize_t n = read(fd, buf, sizeof(buf));
