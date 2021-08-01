@@ -378,7 +378,7 @@ long myst_syscall_wait4(
         ((options & WNOHANG) == WNOHANG) ? "NO HANG" : "HANG");
 #endif
 
-    ECHECK(myst_wait(pid, wstatus, NULL, options, rusage));
+    ECHECK(ret = myst_wait(pid, wstatus, NULL, options, rusage));
 
 done:
     return ret;
