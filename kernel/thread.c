@@ -417,6 +417,20 @@ long myst_syscall_wait4(
                     if (p->terminating_signum)
                     {
                         *wstatus = (p->terminating_signum & 0x7f);
+#ifdef WCOREDUMP
+                        if (p->terminating_signum == SIGQUIT ||
+                            p->terminating_signum == SIGILL ||
+                            p->terminating_signum == SIGTRAP ||
+                            p->terminating_signum == SIGABRT ||
+                            p->terminating_signum == SIGFPE ||
+                            p->terminating_signum == SIGSEGV ||
+                            p->terminating_signum == SIGBUS ||
+                            p->terminating_signum == SIGXFSZ ||
+                            p->terminating_signum == SIGXCPU)
+                        {
+                            *wstatus |= 0x80;
+                        }
+#endif
                     }
                     else
                     {
