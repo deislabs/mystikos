@@ -92,16 +92,6 @@ void myst_cpuid_ocall(
     __cpuid_count(leaf, subleaf, *rax, *rbx, *rcx, *rdx);
 }
 
-int myst_get_file_size_ocall(const char* pathname)
-{
-    return myst_tcall_get_file_size(pathname);
-}
-
-int myst_read_file_ocall(const char* pathname, char* buf, size_t size)
-{
-    return myst_tcall_read_file(pathname, buf, size);
-}
-
 OE_EXPORT
 OE_NEVER_INLINE
 void oe_notify_debugger_library_load(oe_debug_module_t* module)

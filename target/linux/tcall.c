@@ -514,14 +514,6 @@ long myst_tcall(long n, long params[6])
             return myst_gcov(func, gcov_params);
         }
 #endif
-        case MYST_TCALL_GET_FILE_SIZE:
-        {
-            return myst_tcall_get_file_size((const char*)x1);
-        }
-        case MYST_TCALL_READ_FILE:
-        {
-            return myst_tcall_read_file((const char*)x1, (void*)x2, (size_t)x3);
-        }
         case SYS_ioctl:
         {
             int fd = (int)x1;

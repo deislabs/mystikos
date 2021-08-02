@@ -15,7 +15,6 @@ SOURCES += ../../shared/luks.c
 SOURCES += ../../shared/crypto.c
 SOURCES += ../../shared/sha256.c
 SOURCES += ../../shared/verify.c
-SOURCES += ../../shared/copyhostfile.c
 
 CFLAGS = $(OEENCLAVE_CFLAGS)
 

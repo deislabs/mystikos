@@ -9,6 +9,7 @@
 #include <myst/eraise.h>
 #include <myst/file.h>
 #include <myst/fs.h>
+#include <myst/hostfile.h>
 #include <myst/kernel.h>
 #include <myst/mmanutils.h>
 #include <myst/mount.h>
@@ -214,6 +215,8 @@ done:
 static int _cpuinfo_vcallback(myst_buf_t* vbuf)
 {
     int ret = 0;
+    void* buf = NULL;
+    size_t buf_size;
 
     if (!vbuf)
         ERAISE(-EINVAL);
@@ -221,24 +224,22 @@ static int _cpuinfo_vcallback(myst_buf_t* vbuf)
     /* On first call, fetch cpuinfo from host and cache it */
     if (!_cpuinfo_buf)
     {
-        ssize_t size = myst_tcall_get_file_size(CPUINFO_STR);
+        ECHECK(myst_load_host_file(CPUINFO_STR, &buf, &buf_size));
 
-        if (size <= 0)
+        if (buf_size <= 0)
             ERAISE(-EINVAL);
 
-        // Linux x86 arch does not null terminate /proc/cpuinfo,
-        // allocate extra byte for null termination character.
-        if (!(_cpuinfo_buf = malloc(size + 1)))
-            ERAISE(-ENOMEM);
-
-        ECHECK(myst_tcall_read_file(CPUINFO_STR, _cpuinfo_buf, size));
-        _cpuinfo_buf[size] = 0;
+        _cpuinfo_buf = buf;
+        buf = NULL;
     }
 
     myst_buf_clear(vbuf);
     ECHECK(myst_buf_append(vbuf, _cpuinfo_buf, strlen(_cpuinfo_buf) + 1));
 
 done:
+
+    if (buf)
+        free(buf);
 
     return ret;
 }
@@ -279,6 +280,8 @@ static int _status_vcallback(myst_buf_t* vbuf)
         char* _host_status_buf;
     };
     struct locals* locals = NULL;
+    void* buf = NULL;
+    size_t buf_size;
 
     if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
@@ -295,18 +298,16 @@ static int _status_vcallback(myst_buf_t* vbuf)
         STATUS_STR,
         locals->curr_thread->target_tid));
 
-    ssize_t size = myst_tcall_get_file_size(locals->status_path);
+    /* load the file into memory */
+    {
+        ECHECK(myst_load_host_file(locals->status_path, &buf, &buf_size));
 
-    if (size <= 0)
-        ERAISE(-EINVAL);
+        if (buf_size <= 0)
+            ERAISE(-EINVAL);
 
-    // allocate extra byte for null termination character.
-    if (!(locals->_host_status_buf = malloc(size + 1)))
-        ERAISE(-ENOMEM);
-
-    ECHECK(myst_tcall_read_file(
-        locals->status_path, locals->_host_status_buf, size));
-    locals->_host_status_buf[size] = 0;
+        locals->_host_status_buf = buf;
+        buf = NULL;
+    }
 
     myst_buf_clear(vbuf);
     char tmp[128];
@@ -367,6 +368,9 @@ done:
 
     if (locals)
         free(locals);
+
+    if (buf)
+        free(buf);
 
     return ret;
 }

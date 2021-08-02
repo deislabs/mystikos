@@ -19,6 +19,7 @@
 #include <myst/fs.h>
 #include <myst/fsgs.h>
 #include <myst/hex.h>
+#include <myst/hostfile.h>
 #include <myst/hostfs.h>
 #include <myst/id.h>
 #include <myst/initfini.h>
@@ -100,26 +101,13 @@ done:
 static int _copy_host_etc_files()
 {
     int ret = 0;
-    ssize_t size;
     int fd = -1;
     const char* resolv_file = "/etc/resolv.conf";
-    char* buf = NULL;
+    void* buf = NULL;
+    size_t buf_size;
     struct stat statbuf;
 
-    if ((size = myst_tcall_get_file_size(resolv_file)) < 0)
-    {
-        myst_eprintf("kernel: failed to get file size %s\n", resolv_file);
-        ERAISE(-EINVAL);
-    }
-
-    if (!(buf = malloc(size)))
-        ERAISE(-ENOMEM);
-
-    if ((myst_tcall_read_file(resolv_file, buf, size)) < 0)
-    {
-        myst_eprintf("kernel: failed to read file %s\n", resolv_file);
-        ERAISE(-EINVAL);
-    }
+    ECHECK(myst_load_host_file(resolv_file, &buf, &buf_size));
 
     if (stat(resolv_file, &statbuf) == 0)
     {
@@ -158,7 +146,7 @@ static int _copy_host_etc_files()
         myst_eprintf("kernel: failed to open file %s\n", resolv_file);
         ERAISE(-EINVAL);
     }
-    if ((myst_write_file_fd(fd, buf, size)) < 0)
+    if ((myst_write_file_fd(fd, buf, buf_size)) < 0)
     {
         myst_eprintf("kernel: failed to write to file %s\n", resolv_file);
         ERAISE(-EINVAL);
