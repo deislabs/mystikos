@@ -159,7 +159,8 @@ enclave
             int flags,
             [out, size=src_addr_size] struct sockaddr* src_addr,
             [in, out] socklen_t* addrlen_out,
-            socklen_t src_addr_size);
+            socklen_t src_addr_size)
+            transition_using_threads;
 
         long myst_sendto_ocall(
             int sockfd,
@@ -167,7 +168,8 @@ enclave
             size_t len,
             int flags,
             [in, size=addrlen] const struct sockaddr* dest_addr,
-            socklen_t addrlen);
+            socklen_t addrlen)
+            transition_using_threads;
 
         long myst_socket_ocall(int domain, int type, int protocol);
 
@@ -189,7 +191,8 @@ enclave
             socklen_t msg_controllen,
             int msg_flags,
             /* -- end struct msghdr -- */
-            int flags);
+            int flags)
+            transition_using_threads;
 
         long myst_recvmsg_ocall(
             int sockfd,
@@ -204,7 +207,8 @@ enclave
             [out] socklen_t* msg_controllen_out,
             [out] int* msg_flags,
             /* -- end struct msghdr -- */
-            int flags);
+            int flags)
+            transition_using_threads;
 
         long myst_shutdown_ocall(int sockfd, int how);
 
