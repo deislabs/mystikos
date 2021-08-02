@@ -1049,26 +1049,6 @@ int myst_load_fssig(const char* path, myst_fssig_t* fssig)
     return retval;
 }
 
-ssize_t myst_tcall_get_file_size(const char* pathname)
-{
-    int retval;
-
-    if (myst_get_file_size_ocall(&retval, pathname) != OE_OK)
-        return -EINVAL;
-
-    return retval;
-}
-
-int myst_tcall_read_file(const char* pathname, char* buf, size_t size)
-{
-    int retval;
-
-    if (myst_read_file_ocall(&retval, pathname, buf, size) != OE_OK)
-        return -EINVAL;
-
-    return retval;
-}
-
 /* linking with openssl crypto library creates a dependency on this */
 int __vfprintf_chk(FILE* stream, int flag, const char* format, va_list ap)
 {
