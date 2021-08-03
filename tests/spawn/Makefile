@@ -14,6 +14,7 @@ rootfs: spawn.c child.c
 	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/spawn spawn.c $(LDFLAGS)
 	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/child child.c $(LDFLAGS)
 	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/child-signal child-signal.c $(LDFLAGS)
+	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/child-crash child-crash.c $(LDFLAGS)
 	$(MYST) mkcpio $(APPDIR) rootfs
 
 ifdef STRACE
