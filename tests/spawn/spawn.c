@@ -125,11 +125,41 @@ int test_spawn_sig(int argc, const char* argv[])
     return 0;
 }
 
-int main(int argc, const char* argv[])
+int test_spawn_crash(int argc, const char* argv[], char* const envp[])
+{
+    pid_t pid;
+    char* childargv[] = {"/bin/child-crash", NULL};
+    int status;
+    printf("Run command: %s\n", childargv[0]);
+    status = posix_spawn(&pid, childargv[0], NULL, NULL, childargv, envp);
+    if (status == 0)
+    {
+        printf("Child pid: %i\n", pid);
+        if (waitpid(pid, &status, 0) != -1)
+        {
+            printf("=== passed test (%s-child-crash)\n", argv[0]);
+            return 0;
+        }
+        else
+        {
+            perror("waitpid");
+            return -1;
+        }
+    }
+    else
+    {
+        printf("posix_spawn: %s\n", strerror(status));
+        return -1;
+    }
+}
+
+int main(int argc, const char* argv[], char* const envp[])
 {
     assert(test_spawn1(argc, argv) == 0);
 
     assert(test_spawn_sig(argc, argv) == 0);
+
+    assert(test_spawn_crash(argc, argv, envp) == 0);
 
     return 0;
 }
