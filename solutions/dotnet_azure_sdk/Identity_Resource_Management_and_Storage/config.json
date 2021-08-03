@@ -2,8 +2,6 @@
     "version": "0.1",
 
     "Debug": 1,
-    "StackMemSize": "400k",
-    "NumUserThreads": 16,
     "ProductID": 1,
     "SecurityVersion": 1,
 

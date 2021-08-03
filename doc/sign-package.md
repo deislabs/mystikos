@@ -55,8 +55,6 @@ Included is a sample JSON configuration where the elements will be described nex
     "version": "0.1",
 
     "Debug": 1,
-    "StackMemSize": "256k",
-    "NumUserThreads": 2,
     "ProductID": 1,
     "SecurityVersion": 1,
 
@@ -95,8 +93,6 @@ Next we have settings specific to configuring the SGX enclave itself.
 Setting | Description
 -|-
 Debug | Enable debugging within the SGX enclave, turn off for release builds
-StackMemSize | Stack size for kernel
-NumUserThreads | Number of threads allowed within the enclave. If more threads are created than this number thread creation will fail
 ProductID | The product ID of your application. This is an integer value
 SecurityVersion | Security version of your application. This is an integer value.
 
