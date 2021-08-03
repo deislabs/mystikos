@@ -8,4 +8,6 @@
 
 int myst_init_hostfs(myst_fs_t** fs_out);
 
+bool myst_is_hostfs(const myst_fs_t* fs);
+
 #endif /* _MYST_HOSTFS_H */

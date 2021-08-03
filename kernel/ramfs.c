@@ -56,6 +56,7 @@ typedef struct ramfs
     char target[PATH_MAX]; /* target argument to myst_mount() */
     myst_mount_resolve_callback_t resolve;
     size_t ninodes;
+    myst_fs_t* lockfs;
 } ramfs_t;
 
 static bool _ramfs_valid(const ramfs_t* ramfs)
@@ -836,7 +837,10 @@ static int _fs_open(
     {
         /* i.e, path resolving has terminated,
         file resides in the current fs. */
-        *fs_out = (myst_fs_t*)ramfs;
+        if (ramfs->lockfs)
+            *fs_out = ramfs->lockfs;
+        else
+            *fs_out = (myst_fs_t*)ramfs;
     }
 
     /* If the file already exists */
@@ -2767,6 +2771,7 @@ int myst_init_ramfs(
     /* always wrap ramfs inside lockfs */
     ECHECK(_init_ramfs(resolve_cb, &ramfs));
     ECHECK(myst_lockfs_init(ramfs, &lockfs));
+    ((ramfs_t*)ramfs)->lockfs = lockfs;
     ramfs = NULL;
     *fs_out = lockfs;
 

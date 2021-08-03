@@ -201,6 +201,7 @@ struct ext2
     ext2_inode_t root_inode;
     char target[EXT2_PATH_MAX];
     myst_mount_resolve_callback_t resolve;
+    myst_fs_t* wrapper_fs;
 };
 
 /*
@@ -215,6 +216,8 @@ int ext2_create(
     myst_blkdev_t* dev,
     myst_fs_t** fs,
     myst_mount_resolve_callback_t resolve_cb);
+
+int ext2_set_wrapper_fs(myst_fs_t* fs, myst_fs_t* wrapper_fs);
 
 int ext2_release(myst_fs_t* fs);
 
