@@ -93,7 +93,7 @@ static long _tcall_clock_gettime(clockid_t clk_id, struct timespec* tp)
     //
     // Unfortunately some VMs fail when using the C clock_gettime() function.
     // This optimization is disabled for the time being.
-#if 1
+#if 0
     // ATTN: determine why this optimization fails on some VMs.
     return clock_gettime(clk_id, tp);
 #else
