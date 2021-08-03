@@ -67,7 +67,7 @@ myst:
 	$(MAKE) -C $(TOP)/tools/myst
 
 clean:
-	rm -rf $(APPDIR) $(ROOTFS) testsa*
+	rm -rf $(APPDIR) $(ROOTFS) testsa* *.sorted
 
 # Use to run passed + failed tests
 runall:
@@ -92,11 +92,11 @@ repeat:
 
 # Use to order tests and remove flaky ones
 clean-tests:
-	sort -o $(ALLTESTS) $(ALLTESTS)
-	sort -o tests.passed tests.passed
-	sort -o tests.failed tests.failed
-	sort -o tests.failedalpine tests.failedalpine
-	sort -o tests.remove tests.remove
-	comm -23 $(ALLTESTS) tests.remove > alltests
-	comm -23 tests.passed tests.remove > libcxx_passed
-	comm -23 tests.failed tests.failedalpine > libcxx_failed
+	sort -o $(ALLTESTS).sorted $(ALLTESTS)
+	sort -o tests.passed.sorted tests.passed
+	sort -o tests.failed.sorted tests.failed
+	sort -o tests.failedalpine.sorted tests.failedalpine
+	sort -o tests.remove.sorted tests.remove
+	comm -23 $(ALLTESTS).sorted tests.remove.sorted > alltests
+	comm -23 tests.passed.sorted tests.remove.sorted > libcxx_passed
+	comm -23 tests.failed.sorted tests.failedalpine.sorted > libcxx_failed
