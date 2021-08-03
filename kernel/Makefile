@@ -74,6 +74,8 @@ ifdef MYST_ENABLE_GCOV
 CFLAGS += $(GCOV_CFLAGS)
 endif
 
+#CFLAGS += -Wconversion
+
 LDFLAGS =
 LDFLAGS += -nostdlib
 LDFLAGS += -nodefaultlibs

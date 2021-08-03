@@ -103,7 +103,7 @@ static off_t _fs_lseek(
     off_t offset,
     int whence)
 {
-    int ret = 0;
+    off_t ret = 0;
     lockfs_t* lockfs = (lockfs_t*)fs;
 
     if (!_lockfs_valid(lockfs))
@@ -123,7 +123,7 @@ static ssize_t _fs_read(
     void* buf,
     size_t count)
 {
-    int ret = 0;
+    ssize_t ret = 0;
     lockfs_t* lockfs = (lockfs_t*)fs;
 
     if (!_lockfs_valid(lockfs))
@@ -143,7 +143,7 @@ static ssize_t _fs_write(
     const void* buf,
     size_t count)
 {
-    int ret = 0;
+    ssize_t ret = 0;
     lockfs_t* lockfs = (lockfs_t*)fs;
 
     if (!_lockfs_valid(lockfs))
@@ -164,7 +164,7 @@ static ssize_t _fs_pread(
     size_t count,
     off_t offset)
 {
-    int ret = 0;
+    ssize_t ret = 0;
     lockfs_t* lockfs = (lockfs_t*)fs;
 
     if (!_lockfs_valid(lockfs))
@@ -185,7 +185,7 @@ static ssize_t _fs_pwrite(
     size_t count,
     off_t offset)
 {
-    int ret = 0;
+    ssize_t ret = 0;
     lockfs_t* lockfs = (lockfs_t*)fs;
 
     if (!_lockfs_valid(lockfs))
@@ -205,7 +205,7 @@ static ssize_t _fs_readv(
     const struct iovec* iov,
     int iovcnt)
 {
-    int ret = 0;
+    ssize_t ret = 0;
     lockfs_t* lockfs = (lockfs_t*)fs;
 
     if (!_lockfs_valid(lockfs))
@@ -225,7 +225,7 @@ static ssize_t _fs_writev(
     const struct iovec* iov,
     int iovcnt)
 {
-    int ret = 0;
+    ssize_t ret = 0;
     lockfs_t* lockfs = (lockfs_t*)fs;
 
     if (!_lockfs_valid(lockfs))
@@ -457,7 +457,7 @@ static ssize_t _fs_readlink(
     char* buf,
     size_t bufsiz)
 {
-    int ret = 0;
+    ssize_t ret = 0;
     lockfs_t* lockfs = (lockfs_t*)fs;
 
     if (!_lockfs_valid(lockfs))
