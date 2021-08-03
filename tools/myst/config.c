@@ -114,22 +114,6 @@ static json_result_t _json_read_callback(
                 else
                     CONFIG_RAISE(JSON_TYPE_MISMATCH);
             }
-            else if (json_match(parser, "StackMemSize") == JSON_OK)
-            {
-                ret = _extract_mem_size(
-                    type, un, &parsed_data->oe_num_stack_pages);
-                if (ret != JSON_OK)
-                    CONFIG_RAISE(ret);
-            }
-            else if (json_match(parser, "NumUserThreads") == JSON_OK)
-            {
-                if (type == JSON_TYPE_INTEGER)
-                {
-                    parsed_data->oe_num_user_threads = (uint64_t)un->integer;
-                }
-                else
-                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
-            }
             else if (json_match(parser, "ProductID") == JSON_OK)
             {
                 if (type == JSON_TYPE_INTEGER)
@@ -367,7 +351,7 @@ int parse_config(config_parsed_data_t* parsed_data)
         free,
     };
 
-    /* set default settings (where settings are missing from config file) */
+    /* set default settings */
     {
         parsed_data->oe_num_user_threads = ENCLAVE_MAX_THREADS;
         parsed_data->oe_num_stack_pages = ENCLAVE_STACK_SIZE / PAGE_SIZE;

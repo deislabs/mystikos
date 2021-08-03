@@ -3,10 +3,6 @@
 
     // Whether we are running in debug mode
     "Debug": 1,
-    // The stack size of each ethread
-    "StackMemSize": "400k",
-    // The number of ethreads
-    "NumUserThreads": 32,
     "ProductID": 1,
     "SecurityVersion": 1,
 

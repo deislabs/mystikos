@@ -217,8 +217,6 @@ First we declare the desire in the config.json:
 
     // Whether we are running myst+OE+app in debug mode
     "Debug": 1,
-    // The number of ethreads
-    "NumUserThreads": 32,
     "ProductID": 1,
     "SecurityVersion": 1,
 
