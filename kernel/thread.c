@@ -392,7 +392,7 @@ long myst_syscall_waitid(
 {
     long ret = 0;
 
-    if (options & ~(WEXITED | WSTOPPED | WCONTINUED | WNOHANG))
+    if (options & ~(WEXITED | WSTOPPED | WCONTINUED | WNOHANG | WNOWAIT))
         ERAISE(-EINVAL);
 
 #ifdef TRACE
@@ -539,33 +539,36 @@ long myst_wait(
                 }
                 ret = p->pid;
 
-                // remove from zombie list
-                if (p->zprev == NULL)
+                if (!(options & WNOWAIT))
                 {
-                    _zombies_head = p->znext;
+                    // remove from zombie list
+                    if (p->zprev == NULL)
+                    {
+                        _zombies_head = p->znext;
+                    }
+                    else
+                    {
+                        p->zprev->znext = p->znext;
+                    }
+                    if (p->znext != NULL)
+                        p->znext->zprev = p->zprev;
+
+                    if (_zombies_tail == p)
+                        _zombies_tail = p->group_prev;
+
+                    _zombies_count--;
+
+                    // remove from process list
+                    if (p->main.prev_process_thread)
+                        p->main.prev_process_thread->main.next_process_thread =
+                            p->main.next_process_thread;
+                    if (p->main.next_process_thread)
+                        p->main.next_process_thread->main.prev_process_thread =
+                            p->main.prev_process_thread;
+
+                    // free zombie thread
+                    free(p);
                 }
-                else
-                {
-                    p->zprev->znext = p->znext;
-                }
-                if (p->znext != NULL)
-                    p->znext->zprev = p->zprev;
-
-                if (_zombies_tail == p)
-                    _zombies_tail = p->group_prev;
-
-                _zombies_count--;
-
-                // remove from process list
-                if (p->main.prev_process_thread)
-                    p->main.prev_process_thread->main.next_process_thread =
-                        p->main.next_process_thread;
-                if (p->main.next_process_thread)
-                    p->main.next_process_thread->main.prev_process_thread =
-                        p->main.prev_process_thread;
-
-                // free zombie thread
-                free(p);
 
                 goto done;
             }
