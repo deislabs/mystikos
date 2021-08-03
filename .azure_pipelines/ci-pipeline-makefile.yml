@@ -42,6 +42,7 @@ jobs:
           while sudo lsof /var/lib/dpkg/lock-frontend | grep dpkg; do sleep 3; done
           sudo apt-get install build-essential python3-setuptools libmbedtls-dev docker-ce -y
           sudo chmod 666 /var/run/docker.sock
+          sudo apt install python3-pip -y
         displayName: 'minimum init config'
 
       # build all source files
