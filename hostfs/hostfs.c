@@ -15,6 +15,7 @@
 #include <myst/eraise.h>
 #include <myst/fdtable.h>
 #include <myst/fs.h>
+#include <myst/hostfs.h>
 #include <myst/iov.h>
 #include <myst/realpath.h>
 #include <myst/strings.h>
@@ -1309,6 +1310,11 @@ done:
         free(hostfs);
 
     return ret;
+}
+
+bool myst_is_hostfs(const myst_fs_t* fs)
+{
+    return _hostfs_valid((hostfs_t*)fs);
 }
 
 #endif /* MYST_ENABLE_HOSTFS */

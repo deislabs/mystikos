@@ -3305,7 +3305,10 @@ int ext2_open(
     {
         /* i.e path was fully resolved
         the file resides in the current fs */
-        *fs_out = fs;
+        if (ext2->wrapper_fs)
+            *fs_out = ext2->wrapper_fs;
+        else
+            *fs_out = fs;
     }
 
     /* find the inode for this file (if it exists) */
@@ -5703,6 +5706,20 @@ done:
         free(ext2);
     }
 
+    return ret;
+}
+
+int ext2_set_wrapper_fs(myst_fs_t* fs, myst_fs_t* wrapper_fs)
+{
+    int ret = 0;
+    ext2_t* ext2 = (ext2_t*)fs;
+
+    if (!_ext2_valid(ext2) || !wrapper_fs)
+        ERAISE(-EINVAL);
+
+    ext2->wrapper_fs = wrapper_fs;
+
+done:
     return ret;
 }
 

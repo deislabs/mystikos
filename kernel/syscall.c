@@ -55,6 +55,7 @@
 #include <myst/kernel.h>
 #include <myst/kstack.h>
 #include <myst/libc.h>
+#include <myst/lockfs.h>
 #include <myst/lsr.h>
 #include <myst/mmanutils.h>
 #include <myst/mount.h>
@@ -818,6 +819,8 @@ long myst_syscall_open(const char* pathname, int flags, mode_t mode)
 
     ECHECK(myst_mount_resolve(pathname, locals->suffix, &fs));
     ECHECK((*fs->fs_open)(fs, locals->suffix, flags, mode, &fs_out, &file));
+
+    myst_assume(myst_is_hostfs(fs_out) || myst_is_lockfs(fs_out));
 
     if ((fd = myst_fdtable_assign(fdtable, fdtype, fs_out, file)) < 0)
     {

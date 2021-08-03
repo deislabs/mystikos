@@ -855,3 +855,8 @@ myst_fs_t* myst_lockfs_target(myst_fs_t* fs)
     lockfs_t* lockfs = (lockfs_t*)fs;
     return _lockfs_valid(lockfs) ? lockfs->fs : fs;
 }
+
+bool myst_is_lockfs(const myst_fs_t* fs)
+{
+    return _lockfs_valid((lockfs_t*)fs);
+}

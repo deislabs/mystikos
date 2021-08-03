@@ -183,6 +183,7 @@ int myst_load_fs(
     /* wrap ext2fs inside a lockfs */
     ECHECK(ext2_create(blkdev, &ext2fs, resolve_cb));
     ECHECK(myst_lockfs_init(ext2fs, &fs));
+    ECHECK(ext2_set_wrapper_fs(ext2fs, fs));
     ext2fs = NULL;
 
     blkdev = NULL;
