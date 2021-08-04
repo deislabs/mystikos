@@ -217,6 +217,7 @@ static void _cache_evict(blkdev_t* dev)
         cache_block_t* cb = dev->lru.head;
 
         assert(cb->dirty == false);
+        assert(cb->slot <= MAX_CHAINS);
 
         /* remove from the chain */
         myst_list_remove(&dev->chains[cb->slot], (myst_list_node_t*)cb);

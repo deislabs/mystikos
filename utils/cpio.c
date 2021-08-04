@@ -1107,8 +1107,11 @@ int myst_cpio_mem_unpack(
         {
             if (create_file)
             {
-                if ((*create_file)(locals->path, file_data, locals->ent.size) !=
-                    0)
+                if ((*create_file)(
+                        locals->path,
+                        file_data,
+                        locals->ent.size,
+                        locals->ent.mode) != 0)
                     GOTO(done);
             }
             else
@@ -1116,6 +1119,7 @@ int myst_cpio_mem_unpack(
                 int fd;
                 ssize_t n = (ssize_t)locals->ent.size;
 
+                // ATTN: Can we replace 0666 with locals->ent.mode?
                 if ((fd = open(locals->path, O_WRONLY | O_CREAT, 0666)) < 0)
                     GOTO(done);
 
