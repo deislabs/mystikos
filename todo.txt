@@ -6,6 +6,8 @@
 
     BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
 
+    B Need to pass credentials (uid/gid) across proxyfs.
+
     B implement multi-level fork.
 
     B Support forking from a thread.
