@@ -209,8 +209,8 @@ myst_kernel_args_t kernel_args;
 static void _sigaction_handler(int sig, siginfo_t* si, void* context)
 {
     ucontext_t* ucontext = (ucontext_t*)context;
-    mcontext_t mcontext = ucontext->uc_mcontext;
-    kernel_args.myst_handle_host_signal(si, &mcontext);
+    mcontext_t* mcontext = &ucontext->uc_mcontext;
+    kernel_args.myst_handle_host_signal(si, mcontext);
 }
 
 static void _install_signal_handlers()

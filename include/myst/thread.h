@@ -3,7 +3,7 @@
 
 #ifndef _MYST_THREAD_H
 #define _MYST_THREAD_H
-
+#define _GNU_SOURCE
 #include <signal.h>
 #include <sys/times.h>
 #include <unistd.h>
@@ -217,6 +217,9 @@ struct myst_thread
 
         /* The list of siginfo_t for pending signals */
         struct siginfo_list_item* siginfos[NSIG - 1];
+
+        /* The alternative stack for signal handlers */
+        stack_t altstack;
     } signal;
 
     // linked list of threads in process

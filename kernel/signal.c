@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 #include <assert.h>
 #include <sched.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -30,6 +31,36 @@ static void _uint64_to_sigset(uint64_t val, sigset_t* set)
 {
     uint64_t* p = (uint64_t*)set;
     *p = val;
+}
+
+struct _handler_wrapper_arg
+{
+    // A signal handler can take either 3 parameters (with sigaction_t)
+    // or just one (with signum), but not both. Only one of signum_handler
+    // and sigaction_handler is non-null.
+    sigaction_handler_t signum_handler;
+    sigaction_function_t sigaction_handler;
+    unsigned signum;
+    siginfo_t* siginfo;
+    ucontext_t* ucontext;
+};
+
+// Work around the limitation that myst_call_on_stack only allows
+// one function parameter.
+long _handler_wrapper(void* arg_)
+{
+    struct _handler_wrapper_arg* arg = arg_;
+    if (arg->sigaction_handler)
+    {
+        assert(arg->signum_handler == NULL);
+        arg->sigaction_handler(arg->signum, arg->siginfo, arg->ucontext);
+    }
+    else
+    {
+        assert(arg->signum_handler != NULL);
+        arg->signum_handler(arg->signum);
+    }
+    return 0;
 }
 
 int myst_signal_init(myst_thread_t* thread)
@@ -230,6 +261,8 @@ static long _handle_one_signal(
     }
     else
     {
+        bool use_alt_stack = false;
+        struct _handler_wrapper_arg arg = {0};
         uint64_t orig_mask = thread->signal.mask;
 
         // add mask specified in action->sa_mask
@@ -238,26 +271,47 @@ static long _handle_one_signal(
             thread->signal.mask |= mask;
 
         // ATTN: handle other signal flags, e.g., SA_NOCLDSTOP, SA_NOCLDWAIT,
-        // SA_ONSTACK, SA_RESETHAND, SA_RESTART, etc.
+        // SA_RESETHAND, SA_RESTART, etc.
 
         /* save the original fsbase */
         void* original_fsbase = myst_get_fsbase();
+        stack_t* altstack = &thread->signal.altstack;
 
         /* restore the user-space fsbase, which is pthread_self() */
         myst_set_fsbase(thread->crt_td);
 
+        use_alt_stack = (action->flags & SA_ONSTACK) &&
+                        !(altstack->ss_flags & (SS_DISABLE | SS_ONSTACK)) &&
+                        (altstack->ss_sp != 0);
+
         if ((action->flags & SA_SIGINFO) != 0)
         {
-            ((sigaction_function_t)(action->handler))(
-                signum, siginfo, &context);
-            // Copy back mcontext (register states)
-            if (mcontext != NULL)
-                *mcontext = context.uc_mcontext;
+            arg.sigaction_handler = (sigaction_function_t)(action->handler);
+            arg.signum = signum;
+            arg.siginfo = siginfo;
+            arg.ucontext = &context;
         }
         else
         {
-            ((sigaction_handler_t)(action->handler))(signum);
+            arg.signum_handler = (sigaction_handler_t)(action->handler);
+            arg.signum = signum;
         }
+
+        if (use_alt_stack)
+        {
+            uint64_t stacktop = (uint64_t)altstack->ss_sp + altstack->ss_size;
+            altstack->ss_flags |= SS_ONSTACK;
+
+            myst_call_on_stack((void*)stacktop, _handler_wrapper, &arg);
+
+            altstack->ss_flags &= ~SS_ONSTACK;
+        }
+        else
+            _handler_wrapper(&arg);
+
+        // Copy back mcontext (register states)
+        if ((action->flags & SA_SIGINFO) && mcontext != NULL)
+            *mcontext = context.uc_mcontext;
 
         /* restore the original fsbase */
         myst_set_fsbase(original_fsbase);
@@ -436,4 +490,48 @@ done:
 long myst_handle_host_signal(siginfo_t* siginfo, mcontext_t* mcontext)
 {
     return _handle_one_signal(siginfo->si_signo, siginfo, mcontext);
+}
+
+int myst_signal_altstack(const stack_t* ss, stack_t* old_ss)
+{
+    int ret = 0;
+    myst_thread_t* me = myst_thread_self();
+
+    if (old_ss != NULL)
+    {
+        *old_ss = me->signal.altstack;
+        if (old_ss->ss_sp == 0)
+            // Trying to be compatible with Linux. A never-installed
+            // alt stack means it's disabled.
+            old_ss->ss_flags |= SS_DISABLE;
+    }
+
+    if (ss != NULL)
+    {
+        // We don't support swapcontext in libc. No point
+        // to support SS_AUTODISARM which was introduced to enable it.
+        // The only flag allowed here is SS_DISABLE.
+        if (ss->ss_flags & ~(SS_DISABLE) != 0)
+            ERAISE(-EINVAL);
+
+        if (ss->ss_size < MINSIGSTKSZ)
+            ERAISE(-ENOMEM);
+
+        if (me->signal.altstack.ss_flags & SS_ONSTACK)
+            ERAISE(-EPERM);
+
+        if (ss->ss_flags & SS_DISABLE)
+        {
+            me->signal.altstack.ss_flags |= SS_DISABLE;
+            me->signal.altstack.ss_sp = NULL;
+            me->signal.altstack.ss_size = 0;
+        }
+        else
+        {
+            me->signal.altstack = *ss;
+        }
+    }
+
+done:
+    return ret;
 }
