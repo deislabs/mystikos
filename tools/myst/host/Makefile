@@ -8,6 +8,8 @@ ifdef MYST_ENABLE_GCOV
 DEFINES += -DMYST_ENABLE_GCOV
 endif
 
+DEFINES = -DUSE_ZERO_BASE_ENCLAVES
+
 SOURCES =
 SOURCES += $(SUBOBJDIR)/myst_u.c
 SOURCES += $(wildcard *.c)
@@ -25,6 +27,8 @@ endif
 LDFLAGS = $(OEHOST_LDFLAGS)
 LDFLAGS += -lcrypto
 LDFLAGS += -lrt
+# Load the host program at 1TB
+LDFLAGS += -Wl,-Ttext-segment,0x10000000000
 
 LIBS += $(OEHOST_LIBDIR)/liboehost.a
 LIBS += $(OEHOST_LIBDIR)/liboesign.a

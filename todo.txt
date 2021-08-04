@@ -1,9 +1,5 @@
     AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 
-    A inter-process pipes
-
-    A wrap inherited file descriptors (proxyfs proxypipe)
-
     A implement copy-on-demand of mman pages
 
     BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
@@ -39,3 +35,10 @@
     C restore page permissions after export
 
     C support Linux fork
+
+    XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+    X inter-process pipes
+
+    X wrap inherited file descriptors (proxyfs proxypipe)
+

@@ -5,7 +5,7 @@ TOP=$(abspath $(CURDIR)/../..)
 BUILDDIR=${TOP}/build
 
 URL=https://github.com/openenclave/openenclave
-BRANCH=mystikos.v4.fork
+BRANCH=mystikos.v5
 
 OPENENCLAVE_INSTALL_PREFIX=$(BUILDDIR)/openenclave
 OPENENCLAVE_SRC = $(CURDIR)/openenclave
