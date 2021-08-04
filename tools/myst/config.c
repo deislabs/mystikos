@@ -69,6 +69,32 @@ done:
     return ret;
 }
 
+static json_result_t _extract_start_address(
+    json_type_t type,
+    const json_union_t* un,
+    uint64_t* start_address)
+{
+    json_result_t ret = JSON_FAILED;
+    uint64_t value;
+
+    if (start_address == NULL)
+        CONFIG_RAISE(JSON_FAILED);
+
+    if (type == JSON_TYPE_INTEGER && un->integer > 0)
+        value = (uint64_t)un->integer; // number in bytes
+    else
+        CONFIG_RAISE(JSON_TYPE_MISMATCH);
+
+    if (value % PAGE_SIZE) // check if aligned to PAGE_SIZE
+        CONFIG_RAISE(JSON_REASON_VALUE);
+
+    *start_address = value;
+
+    ret = JSON_OK;
+done:
+    return ret;
+}
+
 static json_result_t _json_read_callback(
     json_parser_t* parser,
     json_reason_t reason,
@@ -148,6 +174,26 @@ static json_result_t _json_read_callback(
                 }
                 else
                     CONFIG_RAISE(JSON_TYPE_MISMATCH);
+            }
+            else if (json_match(parser, "CreateZeroBaseEnclave") == JSON_OK)
+            {
+                if ((type == JSON_TYPE_BOOLEAN) && un->boolean)
+                {
+                    parsed_data->oe_create_zero_base = true;
+                }
+                else if (type == JSON_TYPE_BOOLEAN)
+                {
+                    parsed_data->oe_create_zero_base = false;
+                }
+                else
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
+            }
+            else if (json_match(parser, "EnclaveStartAddress") == JSON_OK)
+            {
+                ret = _extract_start_address(
+                    type, un, &parsed_data->oe_start_address);
+                if (ret != JSON_OK)
+                    CONFIG_RAISE(ret);
             }
 
             // Mystikos configuration
@@ -371,6 +417,8 @@ int parse_config(config_parsed_data_t* parsed_data)
     {
         parsed_data->oe_num_user_threads = ENCLAVE_MAX_THREADS;
         parsed_data->oe_num_stack_pages = ENCLAVE_STACK_SIZE / PAGE_SIZE;
+        parsed_data->oe_create_zero_base = ENCLAVE_CREATE_ZERO_BASE_ENCLAVE;
+        parsed_data->oe_start_address = ENCLAVE_START_ADDRESS;
     }
 
     if ((ret = json_parser_init(
@@ -475,6 +523,16 @@ int write_oe_config_fd(int fd, config_parsed_data_t* parsed_data)
     fprintf(out_file, "ProductID=%d\n", parsed_data->oe_product_id);
 
     fprintf(out_file, "SecurityVersion=%d\n", parsed_data->oe_security_version);
+
+    fprintf(
+        out_file,
+        "CreateZeroBaseEnclave=%d\n",
+        parsed_data->oe_create_zero_base);
+
+    if (parsed_data->oe_create_zero_base)
+    {
+        fprintf(out_file, "StartAddress=%lu\n", parsed_data->oe_start_address);
+    }
 
     ret = 0;
 
