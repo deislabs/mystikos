@@ -4680,6 +4680,7 @@ static long _syscall(void* args_)
         {
             sigset_t* set = (sigset_t*)x1;
             unsigned size = (unsigned)x2;
+            _strace(n, "set=%p size=%d", set, size);
             BREAK(_return(n, myst_signal_sigpending(set, size)));
         }
         case SYS_rt_sigtimedwait:
@@ -4690,8 +4691,10 @@ static long _syscall(void* args_)
             break;
         case SYS_sigaltstack:
         {
-            /* ATTN: support user space stack for segv handling. */
-            BREAK(_return(n, 0));
+            const stack_t* ss = (stack_t*)x1;
+            stack_t* ss_old = (stack_t*)x2;
+            _strace(n, "altstack=%p altstack_old=%p", ss, ss_old);
+            BREAK(_return(n, myst_signal_altstack(ss, ss_old)));
         }
         case SYS_utime:
             break;

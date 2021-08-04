@@ -38,4 +38,6 @@ long myst_handle_host_signal(siginfo_t* siginfo, mcontext_t* mcontext);
 
 int myst_signal_has_active_signals(myst_thread_t* thread);
 
+int myst_signal_altstack(const stack_t* ss, stack_t* old_ss);
+
 #endif /* _MYST_SIGNAL_H */

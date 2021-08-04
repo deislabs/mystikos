@@ -1,11 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#define _GNU_SOURCE
 #include <assert.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/syscall.h>
 #include <unistd.h>
@@ -235,6 +238,55 @@ int test_raise(int signum, const char* test_name)
     printf("=== : Test passed (%s)\n", test_name);
 }
 
+static void* param_addr = NULL;
+
+bool _in_range(void* ptr, void* base, size_t len)
+{
+    return ptr >= base && ptr < base + len;
+}
+
+void _altstack_handler(int signum, siginfo_t* siginfo, void* context)
+{
+    ucontext_t* ucontext = (ucontext_t*)context;
+    param_addr = &signum;
+    ucontext->uc_mcontext.gregs[REG_RIP] += 3; // non-portable.
+}
+
+int test_altstack(const char* test_name)
+{
+    stack_t ss, ss_old;
+    struct sigaction sa = {0};
+
+    ss.ss_sp = malloc(SIGSTKSZ);
+    assert(ss.ss_sp);
+    ss.ss_size = SIGSTKSZ;
+    ss.ss_flags = 0;
+
+    assert(sigaltstack(&ss, &ss_old) == 0);
+    assert(ss_old.ss_flags & SS_DISABLE);
+
+    sa.sa_flags = SA_ONSTACK | SA_SIGINFO;
+    sa.sa_sigaction = _altstack_handler;
+    assert(sigaction(SIGSEGV, &sa, NULL) == 0);
+
+    *(int*)0 = 0; // trigger SIGSEGV
+
+    // Make sure the handler was called on the alt stack
+    assert(_in_range(param_addr, ss.ss_sp, ss.ss_size));
+
+    ss.ss_flags = SS_DISABLE;
+    assert(sigaltstack(&ss, NULL) == 0);
+
+    *(int*)0 = 0; // trigger SIGSEGV
+
+    // Make sure the handler was not called on the alt stack
+    assert(!_in_range(param_addr, ss.ss_sp, ss.ss_size));
+
+    signal(SIGSEGV, SIG_DFL); // reset the signal handler
+
+    printf("=== : Test passed (%s)\n", test_name);
+}
+
 int main(int argc, const char* argv[])
 {
     test_pthread_cancel("pthread_cancel");
@@ -246,6 +298,8 @@ int main(int argc, const char* argv[])
     test_signal_blocked(SIGKILL, "signal_blocked");
 
     test_raise(35, "raise");
+
+    test_altstack("signal alt stack");
 
     printf("\n=== passed test (%s)\n", argv[0]);
 
