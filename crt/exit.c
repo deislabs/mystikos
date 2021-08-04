@@ -20,6 +20,7 @@ void do_crt_exit(int code);
  * Note: The CRT version of exit() was made weak and this is the strong version
  * that overwrites the CRT version.
  */
+#ifndef MYST_ENABLE_FORK
 void exit(int code)
 {
     myst_fork_info_t arg = MYST_FORK_INFO_INITIALIZER;
@@ -62,14 +63,17 @@ void exit(int code)
     for (;;)
         ;
 }
+#endif
 
 /*
  * Note: The CRT version of exit() was made weak and this is the strong version
  * that overwrites the CRT version.
  */
+#ifndef MYST_ENABLE_FORK
 void _Exit(int ec)
 {
     syscall(SYS_exit_group, ec);
     for (;;)
         syscall(SYS_exit, ec);
 }
+#endif

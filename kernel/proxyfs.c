@@ -13,6 +13,7 @@
 #include <myst/lockfs.h>
 #include <myst/mutex.h>
 #include <myst/panic.h>
+#include <myst/printf.h>
 #include <myst/proxyfs.h>
 #include <myst/strings.h>
 
@@ -416,9 +417,7 @@ static ssize_t _fs_pread(
     myst_fileop_args_t args;
     memset(&args, 0, sizeof(args));
     args.pread.offset = offset;
-    long ret =
-        _fileop(fs, file, &args, NULL, 0, buf, count, MYST_MESSAGE_PREAD);
-    return ret;
+    return _fileop(fs, file, &args, NULL, 0, buf, count, MYST_MESSAGE_PREAD);
 }
 
 static ssize_t _fs_pwrite(
@@ -613,9 +612,7 @@ static int _fs_realpath(
 {
     myst_fileop_args_t args;
     memset(&args, 0, sizeof(args));
-    long ret =
-        _fileop(fs, file, &args, NULL, 0, buf, size, MYST_MESSAGE_REALPATH);
-    return ret;
+    return _fileop(fs, file, &args, NULL, 0, buf, size, MYST_MESSAGE_REALPATH);
 }
 
 static int _fs_fcntl(myst_fs_t* fs, myst_file_t* file, int cmd, long arg)

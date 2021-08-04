@@ -567,7 +567,7 @@ void* myst_allocate_shared_memory_ocall(size_t length)
     void* addr;
     int fd;
     const int oflag = O_CREAT | O_RDWR;
-    const int mode = S_IRUSR | S_IWUSR;
+    const int mode = 0666;
 
     shm_unlink("/mystikos");
 

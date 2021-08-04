@@ -21,7 +21,6 @@ endif
 OPTS += --memory-size=32m
 
 tests: all
-	rm -f /tmp/myst*.socket
 	$(RUNTEST) $(MYST_EXEC) rootfs /bin/pipes $(OPTS)
 
 myst:
