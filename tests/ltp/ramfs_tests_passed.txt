@@ -132,6 +132,9 @@
 /ltp/testcases/kernel/syscalls/mmap/mmap03
 /ltp/testcases/kernel/syscalls/mmap/mmap04
 /ltp/testcases/kernel/syscalls/mmap/mmap05
+/ltp/testcases/kernel/syscalls/mmap/mmap06
+/ltp/testcases/kernel/syscalls/mmap/mmap07
+/ltp/testcases/kernel/syscalls/mmap/mmap08
 /ltp/testcases/kernel/syscalls/mmap/mmap09
 /ltp/testcases/kernel/syscalls/mmap/mmap11
 /ltp/testcases/kernel/syscalls/mmap/mmap15

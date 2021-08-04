@@ -422,9 +422,6 @@
 /ltp/testcases/kernel/syscalls/mlock2/mlock201
 /ltp/testcases/kernel/syscalls/mlock2/mlock203
 /ltp/testcases/kernel/syscalls/mmap/mmap001
-/ltp/testcases/kernel/syscalls/mmap/mmap06
-/ltp/testcases/kernel/syscalls/mmap/mmap07
-/ltp/testcases/kernel/syscalls/mmap/mmap08
 /ltp/testcases/kernel/syscalls/mmap/mmap10
 /ltp/testcases/kernel/syscalls/mmap/mmap12
 /ltp/testcases/kernel/syscalls/mmap/mmap13

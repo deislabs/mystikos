@@ -12,7 +12,7 @@ int myst_setup_mman(void* data, size_t size);
 
 int myst_teardown_mman(void);
 
-void* myst_mmap(
+long myst_mmap(
     void* addr,
     size_t length,
     int prot,

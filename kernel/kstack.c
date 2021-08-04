@@ -23,9 +23,9 @@ static long _new_kstack(void* arg)
         const int prot = PROT_READ | PROT_WRITE;
         const int flags = MAP_ANONYMOUS | MAP_PRIVATE;
 
-        kstack = myst_mmap(NULL, length, prot, flags, -1, 0);
+        kstack = (myst_kstack_t*)myst_mmap(NULL, length, prot, flags, -1, 0);
 
-        if (kstack == MAP_FAILED)
+        if ((long)kstack < 0)
             return (long)NULL;
     }
 
