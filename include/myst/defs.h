@@ -8,6 +8,10 @@
 
 #define MYST_STATIC_ASSERT(COND) _Static_assert(COND, __FILE__)
 
+/* static assert if field is not at the same offset in both structures */
+#define MYST_CHECK_FIELD(S1, S2, F) \
+    MYST_STATIC_ASSERT(offsetof(S1, F) == offsetof(S2, F))
+
 #define MYST_INLINE static __inline__
 
 #define MYST_WEAK __attribute__((weak))

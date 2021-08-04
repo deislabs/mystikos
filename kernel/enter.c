@@ -24,6 +24,7 @@
 #include <myst/id.h>
 #include <myst/initfini.h>
 #include <myst/kernel.h>
+#include <myst/listener.h>
 #include <myst/mmanutils.h>
 #include <myst/mount.h>
 #include <myst/options.h>
@@ -644,8 +645,12 @@ static void _print_boottime(void)
     }
 }
 
+extern myst_jmp_buf_t __myst_fork_jmpbuf;
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstack-usage="
+#pragma GCC push_options
+#pragma GCC optimize("-fno-stack-protector")
 int myst_enter_kernel(myst_kernel_args_t* args)
 {
     int ret = 0;
@@ -653,6 +658,32 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     myst_thread_t* thread = NULL;
     myst_fstype_t fstype;
     int tmp_ret;
+
+    /* if this is a forked process, then jump back to SYS_fork syscall */
+    if (args->forked)
+    {
+        __myst_kernel_args.forked = true;
+        __myst_kernel_args.target_ppid = args->target_ppid;
+        __myst_kernel_args.target_pid = args->target_pid;
+        __myst_main_thread->event = args->event;
+
+#if 0
+        __myst_kernel_args.trace_syscalls = true;
+#endif
+
+        /* ATTN: what if process was not forked from main thread */
+        myst_assume(myst_tcall_set_tsd((uint64_t)__myst_main_thread) == 0);
+
+#if 0
+        if (myst_listener_ping() != 0)
+            myst_eprintf("*** myst_listener_ping() failed\n");
+#endif
+
+        ECHECK(myst_tcall_set_run_thread_function(myst_run_thread));
+        myst_longjmp(&__myst_fork_jmpbuf, 1);
+
+        /* ATTN: clean up stale threads here! */
+    }
 
     if (!args)
         myst_crash();
@@ -744,7 +775,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
 
     /* Create the main thread */
     ECHECK(
-        _create_main_thread(args->event, args->cwd, args->target_tid, &thread));
+        _create_main_thread(args->event, args->cwd, args->target_pid, &thread));
     __myst_main_thread = thread;
 
     myst_copy_host_uid_gid_mappings(&args->host_enc_uid_gid_mappings);
@@ -856,6 +887,16 @@ int myst_enter_kernel(myst_kernel_args_t* args)
          */
         myst_set_fsbase(thread->target_td);
 
+        /* Shutdown the listener thread. */
+        if (!args->forked)
+        {
+            /* ATTN: this is a no-op */
+            myst_listener_shutdown();
+
+            /* ATTN:FORK: figure out how to remove this! */
+            myst_sleep_msec(10);
+        }
+
         if (__myst_kernel_args.perf)
             myst_print_syscall_times("kernel shutdown", SIZE_MAX);
 
@@ -863,6 +904,8 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         if (thread->kstack)
             myst_put_kstack(thread->kstack);
 
+            /* ATTN: do not wait for child threads to exit */
+#if 0
         /* free all non-process threads, waiting for all other threads to
          * shutdown at the same time. Our thread has not been marked as a zombie
          * yet. */
@@ -890,6 +933,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
                 t = next;
             }
         }
+#endif
 
         /* now all the threads have shutdown we can retrieve the exit status */
         exit_status = thread->exit_status;
@@ -976,4 +1020,5 @@ done:
 
     return ret;
 }
+#pragma GCC pop_options
 #pragma GCC diagnostic pop

@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/resource.h>
 #include <sys/stat.h>
 #include <syscall.h>
 #include <unistd.h>
@@ -1636,6 +1637,40 @@ done:
     return ret;
 }
 #endif
+
+long myst_tcall_wait4(
+    pid_t pid,
+    int* wstatus,
+    int options,
+    struct rusage* rusage)
+{
+    long retval;
+
+    MYST_STATIC_ASSERT(sizeof(struct myst_rusage) <= sizeof(struct rusage));
+    MYST_CHECK_FIELD(struct myst_rusage, struct rusage, ru_utime);
+    MYST_CHECK_FIELD(struct myst_rusage, struct rusage, ru_stime);
+    MYST_CHECK_FIELD(struct myst_rusage, struct rusage, ru_maxrss);
+    MYST_CHECK_FIELD(struct myst_rusage, struct rusage, ru_ixrss);
+    MYST_CHECK_FIELD(struct myst_rusage, struct rusage, ru_idrss);
+    MYST_CHECK_FIELD(struct myst_rusage, struct rusage, ru_isrss);
+    MYST_CHECK_FIELD(struct myst_rusage, struct rusage, ru_minflt);
+    MYST_CHECK_FIELD(struct myst_rusage, struct rusage, ru_majflt);
+    MYST_CHECK_FIELD(struct myst_rusage, struct rusage, ru_nswap);
+    MYST_CHECK_FIELD(struct myst_rusage, struct rusage, ru_inblock);
+    MYST_CHECK_FIELD(struct myst_rusage, struct rusage, ru_oublock);
+    MYST_CHECK_FIELD(struct myst_rusage, struct rusage, ru_msgsnd);
+    MYST_CHECK_FIELD(struct myst_rusage, struct rusage, ru_msgrcv);
+    MYST_CHECK_FIELD(struct myst_rusage, struct rusage, ru_nsignals);
+    MYST_CHECK_FIELD(struct myst_rusage, struct rusage, ru_nvcsw);
+    MYST_CHECK_FIELD(struct myst_rusage, struct rusage, ru_nivcsw);
+
+    struct myst_rusage* mrusage = (struct myst_rusage*)rusage;
+
+    if (myst_wait4_ocall(&retval, pid, wstatus, options, mrusage) != OE_OK)
+        return -EINVAL;
+
+    return retval;
+}
 
 long myst_handle_tcall(long n, long params[6])
 {

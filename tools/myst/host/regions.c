@@ -23,12 +23,33 @@
 
 region_details _details = {0};
 
+/* the writable page vector (contains page-numbers of writable pages) */
+static myst_buf_t _writables;
+static bool _writables_ignore;
+
 static int _add_page(
     myst_region_context_t* context,
     uint64_t vaddr,
     const void* page,
     int flags)
 {
+    if (flags & PROT_WRITE && !_writables_ignore)
+    {
+        myst_writable_t w;
+
+        w.page_num = vaddr / PAGE_SIZE;
+        w.prot = flags & (PROT_READ | PROT_WRITE | PROT_EXEC);
+        w.padding = 0;
+
+#if 0
+        size_t i = _writables.size / sizeof(myst_writable_t);
+        printf("ADD.PAGE: %zu: %o (%zu)\n", w.page_num, w.prot, i);
+        fflush(stdout);
+#endif
+        if (myst_buf_append(&_writables, &w, sizeof(w)) != 0)
+            return -1;
+    }
+
     return myst_region_add_page(context, vaddr, page, flags);
 }
 
@@ -354,9 +375,7 @@ static int _add_segment_pages(
         flags |= MYST_REGION_EXTEND;
 
         if (_add_page(context, dest_vaddr, page, flags) != 0)
-        {
             ERAISE(-EINVAL);
-        }
     }
 
     ret = 0;
@@ -445,15 +464,15 @@ done:
     return ret;
 }
 
-static int _add_kernel_entry_stack_region(
+static int _add_stack_region(
     myst_region_context_t* context,
+    const char* name,
     uint64_t baseaddr,
     uint64_t* vaddr)
 {
     int ret = 0;
     __attribute__((__aligned__(PAGE_SIZE))) uint8_t page[PAGE_SIZE];
     const size_t num_stack_pages = MYST_ENTER_KSTACK_SIZE / PAGE_SIZE;
-    const char name[] = MYST_REGION_KERNEL_ENTER_STACK;
 
     if (!context || !vaddr)
         ERAISE(-EINVAL);
@@ -491,6 +510,24 @@ static int _add_kernel_entry_stack_region(
 
 done:
     return ret;
+}
+
+static int _add_kernel_enter_stack_region(
+    myst_region_context_t* context,
+    uint64_t baseaddr,
+    uint64_t* vaddr)
+{
+    const char name[] = MYST_REGION_KERNEL_ENTER_STACK;
+    return _add_stack_region(context, name, baseaddr, vaddr);
+}
+
+static int _add_fork_enter_stack_region(
+    myst_region_context_t* context,
+    uint64_t baseaddr,
+    uint64_t* vaddr)
+{
+    const char name[] = MYST_REGION_FORK_ENTER_STACK;
+    return _add_stack_region(context, name, baseaddr, vaddr);
 }
 
 static int _add_kernel_region(
@@ -827,6 +864,27 @@ done:
     return ret;
 }
 
+static int _add_start_region(myst_region_context_t* context, uint64_t* vaddr)
+{
+    uint8_t data[PAGE_SIZE];
+    memset(data, 0, sizeof(data));
+
+    return _add_simple_region(
+        context, vaddr, MYST_REGION_START, data, sizeof(data));
+}
+
+static int _add_writables_region(
+    myst_region_context_t* context,
+    uint64_t* vaddr)
+{
+    return _add_simple_region(
+        context,
+        vaddr,
+        MYST_REGION_WRITABLES,
+        _writables.data,
+        _writables.size);
+}
+
 oe_result_t oe_load_extra_enclave_data(
     void* arg,
     uint64_t vaddr,
@@ -839,8 +897,13 @@ int add_regions(void* arg, uint64_t baseaddr, myst_add_page_t add_page)
     myst_region_context_t* context = NULL;
     uint64_t vaddr = 0;
 
+    myst_buf_clear(&_writables);
+
     if (myst_region_init(add_page, arg, &context) != 0)
         _err("myst_region_init() failed");
+
+    if (_add_start_region(context, &vaddr) != 0)
+        _err("_add_start_region() failed");
 
     if (_add_kernel_region(context, baseaddr, &vaddr) != 0)
         _err("_add_kernel_region() failed");
@@ -881,9 +944,16 @@ int add_regions(void* arg, uint64_t baseaddr, myst_add_page_t add_page)
     if (_add_config_region(context, &vaddr) != 0)
         _err("_add_config_region() failed");
 
-    /* add the pages for the stack used to enter the kernel */
-    if (_add_kernel_entry_stack_region(context, baseaddr, &vaddr) != 0)
-        _err("_add_kernel_entry_stack_region() failed");
+    if (_add_kernel_enter_stack_region(context, baseaddr, &vaddr) != 0)
+        _err("_add_kernel_enter_stack_region() failed");
+
+    _writables_ignore = true;
+    if (_add_fork_enter_stack_region(context, baseaddr, &vaddr) != 0)
+        _err("_add_fork_enter_stack_region() failed");
+    _writables_ignore = false;
+
+    if (_add_writables_region(context, &vaddr) != 0)
+        _err("_add_writables_region() failed");
 
     /* add a region to keep track of mman page ownership */
     if (_add_mman_pids_region(context, &vaddr) != 0)

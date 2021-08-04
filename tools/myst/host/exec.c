@@ -13,6 +13,7 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <sys/user.h>
 #include <syscall.h>
@@ -129,6 +130,40 @@ long myst_wake_wait_ocall(
     return myst_tcall_wake_wait(waiter_event, self_event, ts);
 }
 
+/* ATTN: relying on OE internals */
+struct _oe_enclave
+{
+    uint64_t magic;
+    char* path;
+    uint64_t addr;
+    uint64_t size;
+};
+
+uint64_t get_enclave_addr(const oe_enclave_t* enclave)
+{
+    return enclave->addr;
+}
+
+uint64_t get_enclave_size(const oe_enclave_t* enclave)
+{
+    return enclave->size;
+}
+
+#define MAGIC_ENCLAVE_BASE_ADDRESS 0x7ffb40000000
+
+/* override weak version of oe_get_enclave_base_address_hook() in OE SDK */
+void* oe_sgx_get_enclave_base_address_hook(void)
+{
+    return (void*)MAGIC_ENCLAVE_BASE_ADDRESS;
+}
+
+__attribute__((__unused__)) static uint64_t _time_usec(void)
+{
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return tv.tv_sec * 1000000 + tv.tv_usec;
+}
+
 int exec_launch_enclave(
     const char* enc_path,
     oe_enclave_type_t type,
@@ -144,11 +179,13 @@ int exec_launch_enclave(
     myst_buf_t argv_buf = MYST_BUF_INITIALIZER;
     myst_buf_t envp_buf = MYST_BUF_INITIALIZER;
     myst_buf_t mount_mappings_buf = MYST_BUF_INITIALIZER;
-    pid_t target_tid = (pid_t)syscall(SYS_gettid);
+    pid_t target_ppid = getppid();
+    pid_t target_pid = getpid();
     struct timespec start_time;
     oe_enclave_setting_context_switchless_t switchless_setting = {0, 0};
     oe_enclave_setting_t settings[8];
     size_t num_settings = 0;
+    bool forked = false;
 
     /* get the start time and pass it into the kernel */
     if (clock_gettime(CLOCK_REALTIME, &start_time) != 0)
@@ -178,6 +215,14 @@ int exec_launch_enclave(
     if (r != OE_OK)
         _err("failed to load enclave: result=%s", oe_result_str(r));
 
+#if 0
+    const uint64_t addr = get_enclave_addr(_enclave);
+    printf("ENCLAVE.ADDR=%lx (%lu)\n", addr, addr);
+    fflush(stdout);
+    printf("ENCLAVE.SIZE=%lu\n", get_enclave_size(_enclave));
+    fflush(stdout);
+#endif
+
     /* Serialize the argv[] strings */
     if (myst_buf_pack_strings(&argv_buf, argv, _count_args(argv)) != 0)
         _err("failed to serialize argv stings");
@@ -199,6 +244,14 @@ int exec_launch_enclave(
     /* Get clock times right before entering the enclave */
     shm_create_clock(&shared_memory, CLOCK_TICK);
 
+    /* set the forked flag */
+    {
+        const char* val;
+
+        if ((val = getenv("__MYST_FORKED__")) && strcmp(val, "1") == 0)
+            forked = true;
+    }
+
     /* Enter the enclave and run the program */
     r = myst_enter_ecall(
         _enclave,
@@ -212,9 +265,11 @@ int exec_launch_enclave(
         mount_mappings_buf.data,
         mount_mappings_buf.size,
         (uint64_t)&_event,
-        target_tid,
+        target_ppid,
+        target_pid,
         start_time.tv_sec,
-        start_time.tv_nsec);
+        start_time.tv_nsec,
+        forked);
     if (r != OE_OK)
         _err("failed to enter enclave: result=%s", oe_result_str(r));
 
@@ -565,5 +620,13 @@ int myst_load_fssig_ocall(const char* path, myst_fssig_t* fssig)
 
 int myst_mprotect_ocall(void* addr, size_t len, int prot)
 {
-    return mprotect(addr, len, prot);
+    int ret = mprotect(addr, len, prot);
+
+    if (ret != 0)
+    {
+        printf("host: mprotect(): %p %zu\n", addr, len);
+        printf("host: mprotect() failed: %s\n", strerror(errno));
+    }
+
+    return ret;
 }

@@ -81,14 +81,36 @@ enclave
             [in, size=mount_mappings_size] const void* mount_mappings,
             size_t mount_mappings_size,
             uint64_t event,
-            pid_t target_tid,
+            pid_t target_ppid,
+            pid_t target_pid,
             uint64_t start_time_sec,
-            uint64_t start_time_nsec);
+            uint64_t start_time_nsec,
+            bool forked);
 
         public long myst_run_thread_ecall(
             uint64_t cookie,
             uint64_t event,
             pid_t target_id);
+    };
+
+    struct myst_rusage
+    {
+        struct timeval ru_utime;
+        struct timeval ru_stime;
+        long ru_maxrss;
+        long ru_ixrss;
+        long ru_idrss;
+        long ru_isrss;
+        long ru_minflt;
+        long ru_majflt;
+        long ru_nswap;
+        long ru_inblock;
+        long ru_oublock;
+        long ru_msgsnd;
+        long ru_msgrcv;
+        long ru_nsignals;
+        long ru_nvcsw;
+        long ru_nivcsw;
     };
 
     untrusted
@@ -97,7 +119,7 @@ enclave
 
         long myst_syscall_isatty_ocall(int fd);
 
-        int myst_mprotect_ocall(void* addr, size_t len, int prot);
+        int myst_mprotect_ocall([user_check] void* addr, size_t len, int prot);
 
         /*
         **======================================================================
@@ -511,5 +533,30 @@ enclave
             [out] uint32_t* rbx,
             [out] uint32_t* rcx,
             [out] uint32_t* rdx);
+
+        /*
+        **======================================================================
+        **
+        ** fork support
+        **
+        **======================================================================
+        */
+
+        long myst_fork_ocall();
+
+        long myst_wait4_ocall(
+            pid_t pid,
+            [out] int* wstatus,
+            int options,
+            [in] struct myst_rusage* rusage);
+
+        void* myst_allocate_shared_memory_ocall(size_t length);
+
+        void* myst_attach_shared_memory_ocall([out] size_t* length);
+
+        int myst_free_shared_memory_ocall(
+            [user_check] void* addr,
+            size_t length);
+
     };
-};
+}

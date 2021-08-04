@@ -244,3 +244,19 @@ long myst_gcov(const char* func, long gcov_params[6])
     return myst_tcall(MYST_TCALL_GCOV, params);
 }
 #endif
+
+long myst_tcall_fork(const void* unused_addr, size_t unused_length)
+{
+    long params[6] = {(long)unused_addr, (long)unused_length};
+    return myst_tcall(MYST_TCALL_FORK, params);
+}
+
+long myst_tcall_wait4(
+    pid_t pid,
+    int* wstatus,
+    int options,
+    struct rusage* rusage)
+{
+    long params[6] = {(long)pid, (long)wstatus, (long)options, (long)rusage};
+    return myst_tcall(MYST_TCALL_WAIT4, params);
+}

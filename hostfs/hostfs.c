@@ -125,6 +125,16 @@ static bool _file_valid(const myst_file_t* file)
 **==============================================================================
 */
 
+static uint64_t _fs_id(myst_fs_t* fs)
+{
+    hostfs_t* hostfs = (hostfs_t*)fs;
+
+    if (!_hostfs_valid(hostfs))
+        return 0;
+
+    return (uint64_t)fs;
+}
+
 static int _fs_release(myst_fs_t* fs)
 {
     int ret = 0;
@@ -1243,6 +1253,7 @@ int myst_init_hostfs(myst_fs_t** fs_out)
             .fd_get_events = (void*)_fs_get_events,
         },
         .fs_release = _fs_release,
+        .fs_id = _fs_id,
         .fs_mount = _fs_mount,
         .fs_creat = _fs_creat,
         .fs_open = _fs_open,

@@ -1054,3 +1054,12 @@ int myst_mman_pids_munmap(const void* addr, size_t length, pid_t pid)
 done:
     return ret;
 }
+
+void myst_mman_get_unused(void** addr, size_t* length)
+{
+    // [.....xxxxxxxxxxxxxxxx........]
+    //       ^               ^
+    //      BRK             MAP
+    *addr = (void*)_mman.brk;
+    *length = _mman.map - _mman.brk;
+}

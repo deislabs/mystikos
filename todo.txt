@@ -1,0 +1,41 @@
+    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+
+    A inter-process pipes
+
+    A wrap inherited file descriptors (proxyfs proxypipe)
+
+    A implement copy-on-demand of mman pages
+
+    BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+
+    B Support forking from a thread.
+
+    B keep the listener alive after root process exit.
+
+    B inter-process signals.
+
+    B fork() should return Mystikos-pid rather than host pid.
+
+    B Need myst_atfork() to release mutexes and spinlocks
+
+    CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
+
+    C Semaphores
+
+    C Reactivate listener thread (goes dormant after fork)
+
+    C Debugging of forked processes
+
+    C Support mount() from applications (in forked process)
+
+    C release inherited threads
+
+    C privacy/integrity of exported pages
+
+    C privacy/integrity of listener traffic
+
+    C cleanup unused data after exec
+
+    C restore page permissions after export
+
+    C support Linux fork

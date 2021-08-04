@@ -98,6 +98,9 @@ struct myst_thread
     /* unique thread identifier (same as pid for main thread) */
     pid_t tid;
 
+    /* the "effective pid" of the current listener request */
+    pid_t epid;
+
     /* the value returned by gettid() on the target (for this thread) */
     pid_t target_tid;
 
@@ -260,6 +263,9 @@ struct myst_thread
     /* when fork needs to wait for child to call exec or exit, wait on this
      * fuxtex. Child set to 1 and signals futex. */
     int fork_exec_futex_wait;
+
+    /* newfork: the parent process waits for the child process to set this */
+    int wait;
 };
 
 MYST_INLINE bool myst_valid_thread(const myst_thread_t* thread)

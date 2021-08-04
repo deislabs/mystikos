@@ -26,6 +26,7 @@
 #include <sys/vfs.h>
 #include <unistd.h>
 
+#include <myst/atomic.h>
 #include <myst/backtrace.h>
 #include <myst/barrier.h>
 #include <myst/blkdev.h>
@@ -55,6 +56,8 @@
 #include <myst/kernel.h>
 #include <myst/kstack.h>
 #include <myst/libc.h>
+#include <myst/listener.h>
+#include <myst/lockfs.h>
 #include <myst/lsr.h>
 #include <myst/mmanutils.h>
 #include <myst/mount.h>
@@ -595,12 +598,13 @@ __attribute__((format(printf, 2, 3))) static void _strace(
         }
 
         myst_eprintf(
-            "=== %s%s%s(%s): tid=%d\n",
+            "=== %s%s%s(%s): tid=%d forked=%d\n",
             blue,
             _syscall_str(n),
             reset,
             buf,
-            myst_gettid());
+            myst_gettid(),
+            myst_forked());
 
         if (buf != &null_char)
             free(buf);
@@ -825,6 +829,7 @@ long myst_syscall_open(const char* pathname, int flags, mode_t mode)
         ERAISE(fd);
     }
 
+    // if (!myst_forked() && (r = _add_fd_link(fs_out, file, fd)) != 0)
     if ((r = _add_fd_link(fs_out, file, fd)) != 0)
     {
         myst_fdtable_remove(fdtable, fd);
@@ -1616,7 +1621,10 @@ long myst_syscall_link(const char* oldpath, const char* newpath)
     ECHECK(myst_mount_resolve(oldpath, locals->old_suffix, &old_fs));
     ECHECK(myst_mount_resolve(newpath, locals->new_suffix, &new_fs));
 
-    if (old_fs != new_fs)
+    uint64_t old_id = (*old_fs->fs_id)(old_fs);
+    uint64_t new_id = (*new_fs->fs_id)(new_fs);
+
+    if (old_id != new_id)
     {
         /* oldpath and newpath are not on the same mounted file system */
         ERAISE(-EXDEV);
@@ -1750,7 +1758,10 @@ long myst_syscall_rename(const char* oldpath, const char* newpath)
     ECHECK(myst_mount_resolve(oldpath, locals->old_suffix, &old_fs));
     ECHECK(myst_mount_resolve(newpath, locals->new_suffix, &new_fs));
 
-    if (old_fs != new_fs)
+    const uint64_t old_id = (*old_fs->fs_id)(old_fs);
+    const uint64_t new_id = (*new_fs->fs_id)(new_fs);
+
+    if (old_id != new_id)
     {
         /* oldpath and newpath are not on the same mounted file system */
         ERAISE(-EXDEV);
@@ -3290,6 +3301,18 @@ void myst_dump_ramfs(void)
     myst_strarr_release(&paths);
 }
 
+void __myst_wait(int* uaddr, int val)
+{
+    while (*uaddr == val)
+        myst_syscall_futex(uaddr, FUTEX_WAIT | FUTEX_PRIVATE, val, 0, NULL, 0);
+}
+
+void __myst_wake(int* uaddr, int val)
+{
+    myst_atomic_exchange(uaddr, val);
+    myst_syscall_futex(uaddr, FUTEX_WAKE | FUTEX_PRIVATE, 1, 0, NULL, 0);
+}
+
 #define BREAK(RET)           \
     do                       \
     {                        \
@@ -3304,9 +3327,12 @@ typedef struct syscall_args
     myst_kstack_t* kstack;
 } syscall_args_t;
 
+myst_jmp_buf_t __myst_fork_jmpbuf;
+
 /* ATTN: optimize _syscall() stack usage later */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstack-usage="
+#pragma GCC diagnostic ignored "-Wclobbered" /* ATTN: fix this! */
 static long _syscall(void* args_)
 {
     syscall_args_t* args = (syscall_args_t*)args_;
@@ -4011,6 +4037,11 @@ static long _syscall(void* args_)
             _strace(n, NULL);
             BREAK(_return(n, myst_syscall_run_itimer()));
         }
+        case SYS_myst_run_listener:
+        {
+            _strace(n, NULL);
+            BREAK(_return(n, myst_syscall_run_listener()));
+        }
         case SYS_myst_start_shell:
         {
             _strace(n, NULL);
@@ -4131,7 +4162,61 @@ static long _syscall(void* args_)
             BREAK(_return(n, ret));
         }
         case SYS_fork:
+        {
+#ifdef MYST_ENABLE_FORK
+            _strace(n, NULL);
+
+            /* save the thread pointer and restore in child below */
+            myst_thread_t* self = myst_thread_self();
+            self->wait = 1;
+
+            if (myst_setjmp(&__myst_fork_jmpbuf) == 0)
+            {
+                /* parent */
+                void* addr;
+                size_t length;
+                myst_mman_get_unused(&addr, &length);
+                long ret = myst_tcall_fork(addr, length);
+
+                /* wait here until the child signals this address */
+                __myst_wait(&self->wait, 1);
+
+                /* give the child time to startup */
+                BREAK(_return(n, ret));
+            }
+            else
+            {
+                /* child */
+                myst_assume(myst_tcall_set_tsd((uint64_t)self) == 0);
+
+                myst_fdtable_t* fdtable = myst_fdtable_current();
+
+                if (myst_fdtable_wrap(fdtable) != 0)
+                    myst_panic("myst_fdtable_wrap() failed");
+
+                /* generate a unique process-id for the child process */
+                {
+                    if ((self->tid = myst_listener_generate_tid()) <= 0)
+                        myst_panic("myst_listener_generate_tid() failed");
+
+                    self->pid = self->tid;
+                }
+
+                /* create /proc/<pid>/fd directory */
+                char buf[64];
+                snprintf(buf, sizeof(buf), "/proc/%u/fd", self->pid);
+                myst_mkdirhier(buf, 0777);
+
+                /* wake the parent that is waiting */
+                if (myst_listener_wake((uint64_t)&self->wait) != 0)
+                    myst_panic("myst_listener_wake");
+
+                BREAK(_return(n, 0));
+            }
+#else
             break;
+#endif
+        }
         case SYS_vfork:
             break;
         case SYS_execve:
@@ -4180,7 +4265,6 @@ static long _syscall(void* args_)
             int* wstatus = (int*)x2;
             int options = (int)x3;
             struct rusage* rusage = (struct rusage*)x4;
-            long ret;
 
             _strace(
                 n,
@@ -4189,8 +4273,14 @@ static long _syscall(void* args_)
                 wstatus,
                 options,
                 rusage);
-            ret = myst_syscall_wait4(pid, wstatus, options, rusage);
+
+#ifdef MYST_ENABLE_FORK
+            long ret = myst_tcall_wait4(pid, wstatus, options, rusage);
             BREAK(_return(n, ret));
+#else
+            long ret = myst_syscall_wait4(pid, wstatus, options, rusage);
+            BREAK(_return(n, ret));
+#endif
         }
         case SYS_kill:
         {

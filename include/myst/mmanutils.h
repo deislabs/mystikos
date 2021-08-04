@@ -73,4 +73,7 @@ ssize_t myst_mman_pids_test(const void* addr, size_t length, pid_t pid);
 /* release all pages in the mapping that are owned by the given process */
 int myst_mman_pids_munmap(const void* addr, size_t length, pid_t pid);
 
+/* get the unused range between the break-area and the mapped-area */
+void myst_mman_get_unused(void** addr, size_t* length);
+
 #endif /* _MYST_MMANUTILS_H */

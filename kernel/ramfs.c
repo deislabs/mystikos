@@ -721,6 +721,16 @@ done:
 **==============================================================================
 */
 
+static uint64_t _fs_id(myst_fs_t* fs)
+{
+    ramfs_t* ramfs = (ramfs_t*)fs;
+
+    if (!_ramfs_valid(ramfs))
+        return 0;
+
+    return (uint64_t)fs;
+}
+
 static int _fs_release(myst_fs_t* fs)
 {
     int ret = 0;
@@ -2678,6 +2688,7 @@ static int _init_ramfs(
             .fd_target_fd = (void*)_fs_target_fd,
             .fd_get_events = (void*)_fs_get_events,
         },
+        .fs_id = _fs_id,
         .fs_release = _fs_release,
         .fs_mount = _fs_mount,
         .fs_creat = _fs_creat,

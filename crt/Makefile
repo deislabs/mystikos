@@ -24,6 +24,10 @@ ifdef MYST_ENABLE_GCOV
 DEFINES += -DMYST_ENABLE_GCOV
 endif
 
+ifdef MYST_ENABLE_FORK
+DEFINES += -DMYST_ENABLE_FORK
+endif
+
 SOURCES =
 SOURCES += $(wildcard *.c)
 SOURCES += $(wildcard $(TOP)/third_party/gcompat/gcompat/libgcompat/*.c)

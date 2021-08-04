@@ -22,6 +22,16 @@ static bool _lockfs_valid(const lockfs_t* lockfs)
     return lockfs && lockfs->magic == LOCKFS_MAGIC;
 }
 
+static uint64_t _fs_id(myst_fs_t* fs)
+{
+    lockfs_t* lockfs = (lockfs_t*)fs;
+
+    if (!_lockfs_valid(lockfs))
+        return 0;
+
+    return (*lockfs->fs->fs_id)(lockfs->fs);
+}
+
 static int _fs_release(myst_fs_t* fs)
 {
     int ret = 0;
@@ -787,6 +797,7 @@ int myst_lockfs_init(myst_fs_t* fs, myst_fs_t** lockfs_out)
             .fd_target_fd = (void*)_fs_target_fd,
             .fd_get_events = (void*)_fs_get_events,
         },
+        .fs_id = _fs_id,
         .fs_release = _fs_release,
         .fs_mount = _fs_mount,
         .fs_creat = _fs_creat,

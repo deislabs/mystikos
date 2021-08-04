@@ -17,11 +17,19 @@
 #include <myst/process.h>
 #include <myst/procfs.h>
 #include <myst/strings.h>
+#include <myst/thread.h>
 
 static int _status_vcallback(myst_buf_t* vbuf);
 
 static myst_fs_t* _procfs;
 static char* _cpuinfo_buf = NULL;
+
+/* Get the effective pid to be used for /proc/<pid> operations */
+static pid_t _getepid(void)
+{
+    myst_thread_t* self = myst_thread_self();
+    return self->epid ? self->epid : myst_getpid();
+}
 
 int procfs_setup()
 {
@@ -196,7 +204,7 @@ static int _self_vcallback(myst_buf_t* vbuf)
         ERAISE(-ENOMEM);
 
     const size_t n = sizeof(locals->linkpath);
-    ECHECK(myst_snprintf(locals->linkpath, n, "/proc/%d", myst_getpid()));
+    ECHECK(myst_snprintf(locals->linkpath, n, "/proc/%d", _getepid()));
     myst_buf_clear(vbuf);
     ECHECK(myst_buf_append(vbuf, locals->linkpath, sizeof(locals->linkpath)));
 

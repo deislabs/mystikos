@@ -20,6 +20,7 @@
 #include <myst/hex.h>
 #include <myst/kernel.h>
 #include <myst/lfence.h>
+#include <myst/listener.h>
 #include <myst/mmanutils.h>
 #include <myst/options.h>
 #include <myst/panic.h>
@@ -60,20 +61,27 @@ static _Atomic(size_t) _num_threads = 1;
 
 pid_t myst_generate_tid(void)
 {
-    static pid_t _tid = MIN_TID;
-    static myst_spinlock_t _lock = MYST_SPINLOCK_INITIALIZER;
-    pid_t tid;
-
-    myst_spin_lock(&_lock);
+    if (myst_forked())
     {
-        if (_tid < MIN_TID)
-            _tid = MIN_TID;
-
-        tid = _tid++;
+        return myst_listener_generate_tid();
     }
-    myst_spin_unlock(&_lock);
+    else
+    {
+        static pid_t _tid = MIN_TID;
+        static myst_spinlock_t _lock = MYST_SPINLOCK_INITIALIZER;
+        pid_t tid;
 
-    return tid;
+        myst_spin_lock(&_lock);
+        {
+            if (_tid < MIN_TID)
+                _tid = MIN_TID;
+
+            tid = _tid++;
+        }
+        myst_spin_unlock(&_lock);
+
+        return tid;
+    }
 }
 
 /*
@@ -735,6 +743,9 @@ static long _run_thread(void* arg_)
 
     myst_assume(myst_valid_thread(thread));
 
+    /* bind this thread to the target thread-descriptor */
+    myst_assume(myst_tcall_set_tsd((uint64_t)thread) == 0);
+
     thread->target_tid = arg->target_tid;
 
     is_child_thread = thread->crt_td ? true : false;
@@ -757,9 +768,6 @@ static long _run_thread(void* arg_)
     /* save the host thread event */
     myst_assume(arg->event != 0);
     thread->event = arg->event;
-
-    /* bind this thread to the target thread-descriptor */
-    myst_assume(myst_tcall_set_tsd((uint64_t)thread) == 0);
 
     /* bind thread to the C-runtime thread-descriptor */
     if (is_child_thread)
@@ -1295,7 +1303,6 @@ size_t myst_kill_thread_group()
             count++;
             myst_spin_unlock(process->thread_lock);
             myst_signal_deliver(t, SIGKILL, 0);
-
             // Wake up the thread from futex_wait if necessary.
             if (t->signal.waiting_on_event)
             {
@@ -1345,6 +1352,9 @@ size_t myst_kill_thread_group()
 
         if (t->signal.waiting_on_event)
             myst_tcall_wake(t->event);
+
+        /* ATTN:FORK: do not wait forever for threads to die */
+        break;
 
         myst_sleep_msec(1);
     }

@@ -10,10 +10,14 @@
 #include <myst/atexit.h>
 #include <myst/eraise.h>
 #include <myst/fdtable.h>
+#include <myst/kernel.h>
+#include <myst/listener.h>
 #include <myst/once.h>
 #include <myst/panic.h>
 #include <myst/pipedev.h>
 #include <myst/process.h>
+#include <myst/proxyfs.h>
+#include <myst/proxypipedev.h>
 #include <myst/spinlock.h>
 #include <myst/strings.h>
 #include <myst/syscall.h>
@@ -147,14 +151,23 @@ done:
 int myst_fdtable_free(myst_fdtable_t* fdtable)
 {
     int ret = 0;
+    int lsock = -1;
 
     if (!fdtable)
         ERAISE(-EINVAL);
+
+    if (myst_forked())
+        lsock = myst_listener_get_sock();
 
     /* Close all objects */
     for (int i = 0; i < MYST_FDTABLE_SIZE; i++)
     {
         myst_fdtable_entry_t* entry = &fdtable->entries[i];
+
+        // Do not close the listener socket yet, because it is used to
+        // close proxyfs files.
+        if (i == lsock)
+            continue;
 
         if (entry->type != MYST_FDTABLE_TYPE_NONE)
         {
@@ -168,6 +181,16 @@ int myst_fdtable_free(myst_fdtable_t* fdtable)
 
             memset(entry, 0, sizeof(myst_fdtable_entry_t));
         }
+    }
+
+    // Close the listener socket now that all of the other sockets have been
+    // closed.
+    if (lsock >= 0)
+    {
+        myst_fdtable_entry_t* entry = &fdtable->entries[lsock];
+        myst_fdops_t* fdops = entry->device;
+        (*fdops->fd_close)(fdops, entry->object);
+        memset(entry, 0, sizeof(myst_fdtable_entry_t));
     }
 
     /* Files are released by ramfs */
@@ -600,6 +623,67 @@ done:
 
     if (locked)
         myst_spin_unlock(&fdtable->lock);
+
+    return ret;
+}
+
+int myst_fdtable_wrap(myst_fdtable_t* fdtable)
+{
+    int ret = 0;
+    myst_pipe_t* pipe = NULL;
+    myst_pipedev_t* pipedev = NULL;
+    myst_file_t* file = NULL;
+    myst_fs_t* fs = NULL;
+    myst_pipe_t* new_pipe = NULL;
+
+    if (!fdtable)
+        ERAISE(-EINVAL);
+
+    for (int i = 0; i < MYST_FDTABLE_SIZE; i++)
+    {
+        myst_fdtable_entry_t* entry = &fdtable->entries[i];
+
+        if (entry->type == MYST_FDTABLE_TYPE_PIPE &&
+            !myst_is_proxypipedev((const myst_pipedev_t*)entry->object))
+        {
+            ECHECK(myst_proxypipedev_wrap((uint64_t)entry->device, &pipedev));
+            ECHECK(myst_proxypipe_wrap((uint64_t)entry->object, &pipe));
+            ECHECK((*pipedev->pd_dup)(pipedev, pipe, &new_pipe));
+
+            entry->device = pipedev;
+            pipedev = NULL;
+            entry->object = new_pipe;
+            new_pipe = NULL;
+        }
+        else if (
+            entry->type == MYST_FDTABLE_TYPE_FILE &&
+            !myst_is_proxyfs((const myst_fs_t*)entry->object))
+        {
+            ECHECK(myst_proxyfs_wrap((uint64_t)entry->device, &fs));
+            ECHECK(myst_proxyfile_wrap((uint64_t)entry->object, &file));
+            entry->device = fs;
+            fs = NULL;
+            entry->object = file;
+            file = NULL;
+        }
+    }
+
+done:
+
+    if (pipedev)
+        free(pipedev);
+
+    if (pipe)
+        free(pipe);
+
+    if (new_pipe)
+        free(new_pipe);
+
+    if (fs)
+        free(fs);
+
+    if (file)
+        free(file);
 
     return ret;
 }

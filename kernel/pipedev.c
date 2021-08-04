@@ -640,11 +640,17 @@ static int _pd_close(myst_pipedev_t* pipedev, myst_pipe_t* pipe)
 
     _lock(pipe);
 
+#if 0
+    printf("_pd_close(): tid=%d readers=%zu writers=%zu\n",
+        myst_gettid(), pipe->impl->nreaders, pipe->impl->nwriters);
+#endif
+
     if (!pipe->impl->nreaders && !pipe->impl->nwriters)
     {
         _unlock(pipe);
         ERAISE(-EBADF);
     }
+
     if (pipe->mode == O_RDONLY)
         pipe->impl->nreaders--;
     else if (pipe->mode == O_WRONLY)
@@ -673,7 +679,6 @@ static int _pd_close(myst_pipedev_t* pipedev, myst_pipe_t* pipe)
     free(pipe);
 
 done:
-
     return ret;
 }
 

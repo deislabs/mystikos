@@ -56,7 +56,8 @@ int init_kernel_args(
     bool have_syscall_instruction,
     bool tee_debug_mode,
     uint64_t thread_event,
-    pid_t target_tid,
+    pid_t target_ppid,
+    pid_t target_pid,
     size_t max_affinity_cpus,
     myst_fork_mode_t fork_mode,
     long (*tcall)(long n, long params[6]),
@@ -280,7 +281,8 @@ int init_kernel_args(
     args->trace_syscalls = trace_syscalls;
     args->have_syscall_instruction = have_syscall_instruction;
     args->event = thread_event;
-    args->target_tid = target_tid;
+    args->target_ppid = target_ppid;
+    args->target_pid = target_pid;
     args->max_affinity_cpus = max_affinity_cpus;
     args->fork_mode = fork_mode;
     args->tee_debug_mode = tee_debug_mode;

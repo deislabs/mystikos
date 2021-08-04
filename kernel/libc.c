@@ -7,6 +7,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
 #include <time.h>
 
 #include <myst/backtrace.h>
@@ -752,4 +753,54 @@ int __sched_cpucount(size_t cpusetsize, const cpu_set_t* mask)
         count += _bit_count[*p++];
 
     return count;
+}
+
+/*
+**==============================================================================
+**
+** <socket.h>
+**
+**==============================================================================
+*/
+
+int socket(int domain, int type, int protocol)
+{
+    return (int)myst_syscall_ret(myst_syscall_socket(domain, type, protocol));
+}
+
+int bind(int sockfd, const struct sockaddr* addr, socklen_t addrlen)
+{
+    return (int)myst_syscall_ret(myst_syscall_bind(sockfd, addr, addrlen));
+}
+
+int listen(int sockfd, int backlog)
+{
+    return (int)myst_syscall_ret(myst_syscall_listen(sockfd, backlog));
+}
+
+int accept(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
+{
+    return (int)myst_syscall_ret(
+        myst_syscall_accept4(sockfd, addr, addrlen, 0));
+}
+
+int fcntl(int fd, int cmd, ...)
+{
+    va_list ap;
+
+    va_start(ap, cmd);
+    long arg = va_arg(ap, long);
+    va_end(ap);
+
+    return (int)myst_syscall_ret(myst_syscall_fcntl(fd, cmd, arg));
+}
+
+int poll(struct pollfd* fds, nfds_t nfds, int timeout)
+{
+    return (int)myst_syscall_ret(myst_syscall_poll(fds, nfds, timeout));
+}
+
+int connect(int sockfd, const struct sockaddr* addr, socklen_t addrlen)
+{
+    return (int)myst_syscall_ret(myst_syscall_connect(sockfd, addr, addrlen));
 }

@@ -132,8 +132,9 @@ typedef struct myst_kernel_args
     /* The number of threads that can be created (including the main thread) */
     size_t max_threads;
 
-    /* The tid/pid of the main thread passed from the host */
-    pid_t target_tid;
+    /* The ppid and pid of the main thread passed from the host */
+    pid_t target_ppid;
+    pid_t target_pid;
 
     /* The start time passed in from the host */
     uint64_t start_time_sec;
@@ -169,6 +170,9 @@ typedef struct myst_kernel_args
 
     /* true if --report-native-tids is present */
     bool report_native_tids;
+
+    /* true if this is a forked child process */
+    bool forked;
 
     // From the --max-affinity-cpus=<num> option. This setting limits the
     // CPUs reported by sched_getaffinity().
@@ -209,5 +213,16 @@ int myst_find_leaks(void);
 void myst_start_shell(const char* msg);
 
 const char* myst_syscall_str(long n);
+
+MYST_INLINE bool myst_forked(void)
+{
+    return __myst_kernel_args.forked;
+}
+
+/* wait while val == *uaddr */
+void __myst_wait(int* uaddr, int val);
+
+/* set *uaddr to val and wake one waiter */
+void __myst_wake(int* uaddr, int val);
 
 #endif /* _MYST_KERNEL_H */

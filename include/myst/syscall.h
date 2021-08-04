@@ -271,6 +271,8 @@ long myst_syscall_umask(mode_t mask);
 
 long myst_syscall_run_itimer(void);
 
+long myst_syscall_run_listener(void);
+
 long myst_syscall_setitimer(
     int which,
     const struct itimerval* new_value,
@@ -339,5 +341,25 @@ long myst_syscall_get_process_stack(void** stack, size_t* stack_size);
 
 long myst_syscall_setpgid(pid_t pid, pid_t pgid, myst_thread_t* thread);
 long myst_syscall_getpgid(pid_t pid, myst_thread_t* thread);
+
+long myst_syscall_socket(int domain, int type, int protocol);
+
+int myst_syscall_bind(
+    int sockfd,
+    const struct sockaddr* addr,
+    socklen_t addrlen);
+
+long myst_syscall_listen(int sockfd, int backlog);
+
+long myst_syscall_accept4(
+    int sockfd,
+    struct sockaddr* addr,
+    socklen_t* addrlen,
+    int flags);
+
+long myst_syscall_connect(
+    int sockfd,
+    const struct sockaddr* addr,
+    socklen_t addrlen);
 
 #endif /* _MYST_SYSCALL_H */

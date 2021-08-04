@@ -41,6 +41,8 @@ struct myst_fs
 {
     myst_fdops_t fdops;
 
+    uint64_t (*fs_id)(myst_fs_t* fs);
+
     int (*fs_release)(myst_fs_t* fs);
 
     int (*fs_mount)(myst_fs_t* fs, const char* source, const char* target);

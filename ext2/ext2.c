@@ -5567,6 +5567,16 @@ done:
     return ret;
 }
 
+static uint64_t _fs_id(myst_fs_t* fs)
+{
+    ext2_t* ext2 = (ext2_t*)fs;
+
+    if (!_ext2_valid(ext2))
+        return 0;
+
+    return (uint64_t)fs;
+}
+
 static myst_fs_t _base = {
     {
         .fd_read = (void*)ext2_read,
@@ -5581,6 +5591,7 @@ static myst_fs_t _base = {
         .fd_target_fd = (void*)_ext2_target_fd,
         .fd_get_events = (void*)_ext2_get_events,
     },
+    .fs_id = _fs_id,
     .fs_release = ext2_release,
     .fs_mount = _ext2_mount,
     .fs_creat = _ext2_creat,

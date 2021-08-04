@@ -18,6 +18,7 @@
 #include <sys/types.h>
 #include <sys/uio.h>
 #include <sys/vfs.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #include "../utils/utils.h"
 
@@ -25,6 +26,21 @@ const char* fstype;
 
 const char alpha[] = "abcdefghijklmnopqrstuvwxyz";
 const char ALPHA[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const uint64_t BILLION = 1000000000;
+
+static uint64_t _time(void)
+{
+    struct timespec now;
+
+    clock_gettime(CLOCK_REALTIME, &now);
+
+    return (uint64_t)now.tv_sec * BILLION + (uint64_t)now.tv_nsec;
+}
+
+__attribute__((__unused__)) static void _stop(uint64_t start_time)
+{
+    printf("%5.2lfsec\n", (_time() - start_time) / (double)BILLION);
+}
 
 static void _passed(const char* name)
 {
@@ -68,7 +84,6 @@ void test_readv(void)
         char fdlink[PATH_MAX];
         char target[PATH_MAX];
         struct stat st;
-
         snprintf(fdlink, sizeof(fdlink), "/proc/self/fd/%d", fd);
         assert(stat("/proc/self/fd", &st) == 0);
         assert(lstat(fdlink, &st) == 0);
@@ -638,15 +653,17 @@ void test_sendfile(bool test_offset)
 
     /* create the input file */
     {
-        assert((in_fd = open(in_path, O_CREAT | O_WRONLY, 0666)) >= 0);
+        FILE* stream;
+
+        assert((stream = fopen(in_path, "w")));
 
         for (size_t i = 0; i < N; i++)
         {
-            assert(write(in_fd, alpha, sizeof(alpha)) == sizeof(alpha));
+            assert(fwrite(alpha, 1, sizeof(alpha), stream) == sizeof(alpha));
             n += sizeof(alpha);
         }
 
-        assert(close(in_fd) == 0);
+        assert(fclose(stream) == 0);
     }
 
     /* use sendfile() to create the output file */
@@ -681,7 +698,9 @@ void test_sendfile(bool test_offset)
 
     /* check the content of the output file */
     {
-        assert((out_fd = open(out_path, O_RDONLY, 0)) >= 0);
+        FILE* stream;
+
+        assert((stream = fopen(in_path, "r")));
         size_t m = 0;
         size_t size;
 
@@ -693,12 +712,12 @@ void test_sendfile(bool test_offset)
         for (size_t i = 0; i < size; i++)
         {
             char buf[sizeof(alpha)];
-            assert(read(out_fd, buf, sizeof(buf)) == sizeof(buf));
+            assert(fread(buf, 1, sizeof(buf), stream) == sizeof(buf));
             assert(memcmp(buf, alpha, sizeof(buf)) == 0);
             m += sizeof(alpha);
         }
 
-        assert(close(out_fd) == 0);
+        assert(fclose(stream) == 0);
 
         if (test_offset)
             assert(nn == m);
@@ -1032,27 +1051,8 @@ static void test_sync()
     _passed(__FUNCTION__);
 }
 
-int main(int argc, const char* argv[])
+static void tests(int argc, const char* argv[])
 {
-    if (argc != 2)
-    {
-        printf("Usage: %s <file-system-type>\n", argv[0]);
-        exit(1);
-    }
-
-    fstype = argv[1];
-
-    if (strcmp(fstype, "ramfs") != 0 && strcmp(fstype, "ext2fs") != 0 &&
-        strcmp(fstype, "hostfs") != 0)
-    {
-        fprintf(stderr, "unknown file system type: %s\n", fstype);
-        exit(1);
-    }
-
-    /* ext2fs only has 1 second timestamp granularity */
-    if (strcmp(fstype, "ext2fs") == 0)
-        _timestamp_sleep_msec = 1200; /* 1.2 seconds */
-
     test_timestamps();
     test_fstatat();
     test_readv();
@@ -1086,8 +1086,58 @@ int main(int argc, const char* argv[])
     test_o_excl();
     test_o_tmpfile_not_supp(argv[1]);
     test_sync();
+}
 
-    printf("=== passed all tests (%s)\n", argv[0]);
+int main(int argc, const char* argv[])
+{
+    pid_t pid;
+    bool use_fork = false;
+
+    if (argc != 2 && argc != 3)
+    {
+        printf("Usage: %s <file-system-type> [fork]\n", argv[0]);
+        exit(1);
+    }
+
+    fstype = argv[1];
+
+    if (argc == 3 && strcmp(argv[2], "fork") == 0)
+        use_fork = true;
+
+    if (strcmp(fstype, "ramfs") != 0 && strcmp(fstype, "ext2fs") != 0 &&
+        strcmp(fstype, "hostfs") != 0)
+    {
+        fprintf(stderr, "unknown file system type: %s\n", fstype);
+        exit(1);
+    }
+
+    /* ext2fs only has 1 second timestamp granularity */
+    if (strcmp(fstype, "ext2fs") == 0)
+        _timestamp_sleep_msec = 1200; /* 1.2 seconds */
+
+    if (use_fork)
+        pid = fork();
+    else
+        pid = 0;
+
+    if (pid < 0)
+    {
+        fprintf(stderr, "%s: fork() failed\n", argv[0]);
+        exit(1);
+    }
+    else if (pid == 0)
+    {
+        tests(argc, argv);
+        printf("=== passed all tests (%s)\n", argv[0]);
+        _exit(0);
+    }
+    else
+    {
+        int wstatus;
+        assert(waitpid(pid, &wstatus, 0) == pid);
+        assert(WIFEXITED(wstatus));
+        assert(WEXITSTATUS(wstatus) == 0);
+    }
 
     return 0;
 }
