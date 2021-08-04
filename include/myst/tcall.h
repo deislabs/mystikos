@@ -160,12 +160,6 @@ int myst_tcall_mprotect(void* addr, size_t len, int prot);
 
 long myst_gcov(const char* func, long params[6]);
 
-<<<<<<< HEAD
-=======
-int myst_tcall_get_file_size(const char* pathname);
-
-int myst_tcall_read_file(const char* pathname, char* buf, size_t size);
-
 long myst_tcall_fork(const void* unused_addr, size_t unused_length);
 
 long myst_tcall_wait4(
@@ -174,5 +168,4 @@ long myst_tcall_wait4(
     int options,
     struct rusage* rusage);
 
->>>>>>> newfork
 #endif /* _MYST_TCALL_H */
