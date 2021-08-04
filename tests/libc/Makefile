@@ -41,6 +41,7 @@ $(APPDIR)/bin/run: run.c
 	$(MUSL_GCC) -Wall -o $(APPDIR)/bin/run run.c
 
 $(ROOTFS): run.c
+	sudo rm -rf $(APPDIR)/core
 	$(MYST) mkext2 --force $(APPDIR) $(ROOTFS)
 
 ##==============================================================================
