@@ -730,9 +730,9 @@ FAILING
 | /ltp/testcases/kernel/syscalls/mmap/mmap03 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/mmap/mmap04 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/mmap/mmap05 | 1 | 1 | 1 |
-| /ltp/testcases/kernel/syscalls/mmap/mmap06 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/mmap/mmap07 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/mmap/mmap08 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/mmap/mmap06 | 1 | 1 | 1 |
+| /ltp/testcases/kernel/syscalls/mmap/mmap07 | 1 | 1 | 1 |
+| /ltp/testcases/kernel/syscalls/mmap/mmap08 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/mmap/mmap09 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/mmap/mmap10 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/mmap/mmap11 | 1 | 1 | 1 |

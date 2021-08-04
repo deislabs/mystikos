@@ -852,9 +852,9 @@ int myst_exec(
         const int prot = PROT_READ | PROT_WRITE | PROT_EXEC;
         const int flags = MAP_ANONYMOUS | MAP_PRIVATE;
 
-        crt_data = myst_mmap(NULL, crt_size, prot, flags, -1, 0);
+        crt_data = (void*)myst_mmap(NULL, crt_size, prot, flags, -1, 0);
 
-        if (crt_data == (void*)-1)
+        if ((long)crt_data < 0)
             ERAISE(-ENOMEM);
     }
 

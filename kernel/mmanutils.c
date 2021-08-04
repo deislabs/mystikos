@@ -127,14 +127,11 @@ static ssize_t _map_file_onto_memory(
     };
     struct locals* locals = NULL;
 
-    if (fd < 0 || !addr || !length)
+    if (fd < 0 || !addr || !length || offset % PAGE_SIZE)
         ERAISE(-EINVAL);
 
     if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
-
-    // ATTN: generate EACCES error if non-regular file or file not opened
-    // for write when mmap_flags has MMAP_WRITE.
 
     /* read file onto memory */
     {
@@ -194,8 +191,7 @@ done:
     return ret;
 }
 
-/* ATTN-A: fix return types for this function */
-void* myst_mmap(
+long myst_mmap(
     void* addr,
     size_t length,
     int prot,
@@ -203,18 +199,23 @@ void* myst_mmap(
     int fd,
     off_t offset)
 {
-    void* ptr = (void*)-1;
-    int r;
+    long ret = -1;
 
-    (void)flags;
+    /* fail if length is zero. Note that the page-alignment will
+     * be enforced by myst_mman_mprotect and myst_mman_mmap */
+    if (!length)
+        ERAISE(-EINVAL);
 
     /* check for invalid PROT bits */
     if (prot & (~MYST_PROT_MMAP_MASK))
-        return (void*)-1;
+        ERAISE(-EINVAL);
 
-    // Linux ignores fd when the MAP_ANONYMOUS flag is present
+    /* Linux ignores fd when the MAP_ANONYMOUS flag is present */
     if (flags & MAP_ANONYMOUS)
         fd = -1;
+    /* fail if fd is negative when the MAP_ANONYMOUS flag is not present */
+    else if (fd < 0)
+        ERAISE(-EBADF);
 
     /* check file permissions upfront */
     if (fd >= 0)
@@ -222,78 +223,92 @@ void* myst_mmap(
         long flags;
         struct stat buf;
 
+        // ATTN: Use EBADF and EACCES for fd validation failures. This may not
+        // conform the Linux kernel behavior.
+
         /* fail if not a regular file */
         if (myst_syscall_fstat(fd, &buf) != 0 || !S_ISREG(buf.st_mode))
-            return (void*)-1;
+            ERAISE(-EBADF);
 
         /* get the file open flags */
         if ((flags = myst_syscall_fcntl(fd, F_GETFL, 0)) < 0)
-            return (void*)-1;
+            ERAISE(-EBADF);
 
         /* if file is not open for read */
         if ((flags & O_WRONLY))
-            return (void*)-1;
+            ERAISE(-EACCES);
 
         /* MAP_SHARED & PROT_WRITE set, but fd is not open for read-write */
         if ((flags & MAP_SHARED) && (prot & PROT_WRITE) && !(flags & O_RDWR))
-            return (void*)-1;
+            ERAISE(-EACCES);
     }
 
     if (fd >= 0 && addr)
     {
-        ssize_t n;
         // ATTN: call mmap or mremap here so that this range refers to
         // a mapped region.
-        // ATTN: is non-page-aligned length valid?
-        if (myst_mman_mprotect(&_mman, addr, length, prot | MYST_PROT_WRITE))
-            return (void*)-1;
-        if ((n = _map_file_onto_memory(fd, offset, addr, length, flags)) < 0)
-            return (void*)-1;
+        // ATTN: Use the error code returned by lower-level functions. This may
+        // not conform the Linux kernel behavior.
+
+        /* rely on myst_mman_mprotect to validate the addr */
+        ECHECK(
+            myst_mman_mprotect(&_mman, addr, length, prot | MYST_PROT_WRITE));
+
+        ECHECK(_map_file_onto_memory(fd, offset, addr, length, flags));
+
         if (!(prot & MYST_PROT_WRITE))
-        {
-            if (myst_mman_mprotect(&_mman, addr, length, prot))
-                return (void*)-1;
-        }
-        void* end = (uint8_t*)addr + length;
-        assert(addr >= _mman_start && addr <= _mman_end);
-        assert(end >= _mman_start && end <= _mman_end);
+            ECHECK(myst_mman_mprotect(&_mman, addr, length, prot));
 
-        return addr;
+        ret = (long)addr;
     }
-
-    int tflags = 0;
-
-    if (flags & MYST_MAP_FIXED)
-        tflags = MYST_MAP_ANONYMOUS | MYST_MAP_PRIVATE | MYST_MAP_FIXED;
     else
-        tflags = MYST_MAP_ANONYMOUS | MYST_MAP_PRIVATE;
-
-    if ((r = myst_mman_mmap(&_mman, addr, length, prot, tflags, &ptr)) < 0)
-        return (void*)(long)r;
-
-    if (fd >= 0 && !addr)
     {
-        ssize_t n;
-        // ATTN: is non-page-aligned length valid?
-        if (!(prot & MYST_PROT_WRITE))
+        int tflags = 0;
+
+        if (flags & MYST_MAP_FIXED)
+            tflags = MYST_MAP_ANONYMOUS | MYST_MAP_PRIVATE | MYST_MAP_FIXED;
+        else
+            tflags = MYST_MAP_ANONYMOUS | MYST_MAP_PRIVATE;
+
+        ECHECK(
+            myst_mman_mmap(&_mman, addr, length, prot, tflags, (void**)&ret));
+
+        if (fd >= 0 && !addr)
         {
-            if (myst_mman_mprotect(&_mman, ptr, length, prot | MYST_PROT_WRITE))
-                return (void*)-1;
-        }
-        if ((n = _map_file_onto_memory(fd, offset, ptr, length, flags)) < 0)
-            return (void*)(long)-n;
-        if (!(prot & MYST_PROT_WRITE))
-        {
-            if (myst_mman_mprotect(&_mman, ptr, length, prot))
-                return (void*)-1;
+            // ATTN: Use the error code returned by lower-level functions. This
+            // may not conform the Linux kernel behavior.
+
+            /* rely on myst_mman_mprotect to validate the ret */
+            if (!(prot & MYST_PROT_WRITE))
+                ECHECK(myst_mman_mprotect(
+                    &_mman, (void*)ret, length, prot | MYST_PROT_WRITE));
+            else
+            {
+                /* validate the ret if the myst_mman_mprotect is not called */
+                uintptr_t end;
+
+                if ((uintptr_t)ret < _mman.start)
+                    ERAISE(-EINVAL);
+
+                if ((__builtin_add_overflow((uintptr_t)ret, length, &end)) ||
+                    (end > _mman.end))
+                    ERAISE(-EINVAL);
+            }
+
+            ECHECK(
+                _map_file_onto_memory(fd, offset, (void*)ret, length, flags));
+
+            if (!(prot & MYST_PROT_WRITE))
+                ECHECK(myst_mman_mprotect(&_mman, (void*)ret, length, prot));
         }
     }
 
-    void* end = (uint8_t*)ptr + length;
-    assert(ptr >= _mman_start && ptr <= _mman_end);
+    void* end = (void*)(ret + length);
+    assert((void*)ret >= _mman_start && (void*)ret <= _mman_end);
     assert(end >= _mman_start && end <= _mman_end);
 
-    return ptr;
+done:
+    return ret;
 }
 
 void* myst_mremap(
