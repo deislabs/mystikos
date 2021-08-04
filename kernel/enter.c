@@ -395,7 +395,8 @@ static const char* _getenv(const char** envp, const char* varname)
 static int _create_mem_file(
     const char* path,
     const void* file_data,
-    size_t file_size)
+    size_t file_size,
+    uint32_t file_mode)
 {
     int ret = 0;
     int fd = -1;
@@ -403,7 +404,7 @@ static int _create_mem_file(
     if (!path || !file_data)
         ERAISE(-EINVAL);
 
-    if ((fd = open(path, O_WRONLY | O_CREAT, 0444)) < 0)
+    if ((fd = open(path, O_WRONLY | O_CREAT, file_mode)) < 0)
     {
         myst_panic("kernel: open(): %s\n", path);
         ERAISE(-ENOENT);

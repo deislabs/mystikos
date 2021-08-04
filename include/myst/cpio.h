@@ -96,7 +96,8 @@ int myst_cpio_next_entry(
 typedef int (*myst_cpio_create_file_function_t)(
     const char* path,
     const void* file_data,
-    size_t file_size);
+    size_t file_size,
+    uint32_t mode);
 
 int myst_cpio_mem_unpack(
     const void* cpio_data,
