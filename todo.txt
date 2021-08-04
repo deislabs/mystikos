@@ -2,6 +2,8 @@
 
     A implement copy-on-demand of mman pages
 
+    A test inter-process pipes
+
     BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
 
     B Support forking from a thread.
@@ -14,17 +16,19 @@
 
     B Need myst_atfork() to release mutexes and spinlocks
 
+    B Support mount() from applications (in forked process)
+
+    B Reactivate itimer thread (goes dormant after fork)
+
     CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
+
+    C Support the Linux target
 
     C Semaphores
 
-    C Reactivate listener thread (goes dormant after fork)
+    C Support debugging of forked processes
 
-    C Debugging of forked processes
-
-    C Support mount() from applications (in forked process)
-
-    C release inherited threads
+    C release inherited threads structures
 
     C privacy/integrity of exported pages
 
@@ -34,11 +38,4 @@
 
     C restore page permissions after export
 
-    C support Linux fork
-
     XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-
-    X inter-process pipes
-
-    X wrap inherited file descriptors (proxyfs proxypipe)
-
