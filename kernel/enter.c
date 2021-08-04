@@ -75,7 +75,7 @@ static int _process_mount_configuration(myst_mounts_config_t* mounts)
 
     for (i = 0; i < mounts->mounts_count; i++)
     {
-        ret = myst_syscall_mount(
+        ret = (int)myst_syscall_mount(
             mounts->mounts[i].source,
             mounts->mounts[i].target,
             mounts->mounts[i].fs_type,
@@ -632,8 +632,8 @@ static void _print_boottime(void)
     if (myst_syscall_clock_gettime(CLOCK_REALTIME, &now) == 0)
     {
         struct timespec start;
-        start.tv_sec = __myst_kernel_args.start_time_sec;
-        start.tv_nsec = __myst_kernel_args.start_time_nsec;
+        start.tv_sec = (time_t)__myst_kernel_args.start_time_sec;
+        start.tv_nsec = (long int)__myst_kernel_args.start_time_nsec;
 
         long nsec = myst_lapsed_nsecs(&start, &now);
 

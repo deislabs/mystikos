@@ -92,8 +92,8 @@ long myst_syscall_run_itimer(void)
                     min = _it.real_value;
 
                 to = &buf;
-                to->tv_sec = min / 1000000;
-                to->tv_nsec = (min * 1000) % NANO_IN_SECOND;
+                to->tv_sec = (time_t)(min / 1000000);
+                to->tv_nsec = (time_t)((min * 1000) % NANO_IN_SECOND);
             }
 
             uint64_t start = _get_current_time();

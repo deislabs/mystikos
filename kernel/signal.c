@@ -15,7 +15,7 @@
 /* The lock for installing signal dispositions */
 static myst_spinlock_t _lock = MYST_SPINLOCK_INITIALIZER;
 
-static int _check_signum(unsigned signum)
+static int _check_signum(int signum)
 {
     return (signum <= 0 || signum >= NSIG) ? -EINVAL : 0;
 }
@@ -62,7 +62,7 @@ void myst_signal_free(myst_thread_t* thread)
 }
 
 long myst_signal_sigaction(
-    unsigned signum,
+    int signum,
     const posix_sigaction_t* new_action,
     posix_sigaction_t* old_action)
 {
@@ -143,7 +143,7 @@ void myst_signal_free_siginfos(myst_thread_t* thread)
 
 // No/default signal disposition specified, use the default action. See
 // https://man7.org/linux/man-pages/man7/signal.7.html for details.
-static long _default_signal_handler(unsigned signum)
+static long _default_signal_handler(int signum)
 {
     if (signum == SIGCHLD || signum == SIGCONT || signum == SIGSTOP ||
         signum == SIGURG || signum == SIGWINCH)
@@ -186,7 +186,7 @@ static long _default_signal_handler(unsigned signum)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstack-usage="
 static long _handle_one_signal(
-    unsigned signum,
+    int signum,
     siginfo_t* siginfo,
     mcontext_t* mcontext)
 {
@@ -292,7 +292,7 @@ long myst_signal_process(myst_thread_t* thread)
 
     while (active_signals != 0)
     {
-        unsigned bitnum = __builtin_ctzl(active_signals);
+        int bitnum = __builtin_ctzl(active_signals);
 
         while (thread->signal.siginfos[bitnum])
         {
@@ -315,7 +315,7 @@ long myst_signal_process(myst_thread_t* thread)
             myst_spin_unlock(&thread->signal.lock);
 
             // Signal numbers are 1 based.
-            unsigned signum = bitnum + 1;
+            int signum = bitnum + 1;
             _handle_one_signal(signum, siginfo, NULL);
 
             myst_spin_lock(&thread->signal.lock);
@@ -331,10 +331,7 @@ long myst_signal_process(myst_thread_t* thread)
 }
 #pragma GCC diagnostic pop
 
-long myst_signal_deliver(
-    myst_thread_t* thread,
-    unsigned signum,
-    siginfo_t* siginfo)
+long myst_signal_deliver(myst_thread_t* thread, int signum, siginfo_t* siginfo)
 {
     long ret = 0;
     struct siginfo_list_item* new_item = NULL;

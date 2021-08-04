@@ -192,7 +192,7 @@ static int _td_fcntl(myst_ttydev_t* ttydev, myst_tty_t* tty, int cmd, long arg)
             if (arg != FD_CLOEXEC && arg != 0)
                 ERAISE(-EINVAL);
 
-            tty->fdflags = arg;
+            tty->fdflags = (int)arg;
             goto done;
         }
         case F_GETFD:

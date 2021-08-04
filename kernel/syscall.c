@@ -614,7 +614,8 @@ long myst_syscall_unmap_on_exit(
     size_t size)
 {
     long ret = 0;
-    int i = process_thread->main.unmap_on_exit_used++;
+    size_t i = process_thread->main.unmap_on_exit_used++;
+
     if (i >= MYST_MAX_MUNNAP_ON_EXIT)
     {
         process_thread->main.unmap_on_exit_used--;
@@ -1242,7 +1243,7 @@ ssize_t myst_syscall_pwritev2(
     (void)flags;
 
     ECHECK(len = myst_iov_gather(iov, iovcnt, &buf));
-    ECHECK(nwritten = myst_syscall_pwrite(fd, buf, len, offset));
+    ECHECK(nwritten = myst_syscall_pwrite(fd, buf, (size_t)len, offset));
     ret = nwritten;
 
 done:
@@ -1275,11 +1276,11 @@ ssize_t myst_syscall_preadv2(
     if (len == 0)
         goto done;
 
-    if (!(ptr = myst_buf_malloc(buf, sizeof(buf), len)))
+    if (!(ptr = myst_buf_malloc(buf, sizeof(buf), (size_t)len)))
         ERAISE(-ENOMEM);
 
-    ECHECK(nread = myst_syscall_pread(fd, ptr, len, offset));
-    ECHECK(myst_iov_scatter(iov, iovcnt, ptr, nread));
+    ECHECK(nread = myst_syscall_pread(fd, ptr, (size_t)len, offset));
+    ECHECK(myst_iov_scatter(iov, iovcnt, ptr, (size_t)nread));
     ret = nread;
 
 done:
@@ -2510,7 +2511,7 @@ int myst_syscall_bind(
     const struct sockaddr* addr,
     socklen_t addrlen)
 {
-    long ret = 0;
+    int ret = 0;
     myst_fdtable_t* fdtable = myst_fdtable_current();
     myst_sockdev_t* sd;
     myst_sock_t* sock;
@@ -2839,10 +2840,10 @@ long myst_syscall_sysinfo(struct sysinfo* info)
     info->freeram = freeram;
     info->mem_unit = 1;
 
-    ECHECK((info->procs = myst_get_num_threads()));
+    ECHECK((info->procs = (uint16_t)myst_get_num_threads()));
 
     ECHECK((uptime_in_nsecs = myst_times_uptime()));
-    info->uptime = uptime_in_nsecs / NANO_IN_SECOND;
+    info->uptime = (uint64_t)(uptime_in_nsecs / NANO_IN_SECOND);
 
     // loads[3], sharedram, bufferram, totalswap,
     // freeswap, totalhigh and freehigh are not supported.
@@ -2902,9 +2903,9 @@ long myst_syscall_getrusage(int who, struct rusage* usage)
 }
 
 long myst_syscall_prlimit64(
-    int pid,
+    pid_t pid,
     int resource,
-    struct rlimit* new_rlim,
+    const struct rlimit* new_rlim,
     struct rlimit* old_rlim)
 {
     if (resource >= RLIM_NLIMITS)
@@ -3488,7 +3489,7 @@ static long _syscall(void* args_)
         case SYS_myst_max_threads:
         {
             _strace(n, NULL);
-            BREAK(_return(n, __myst_kernel_args.max_threads));
+            BREAK(_return(n, (long)__myst_kernel_args.max_threads));
         }
         case SYS_myst_poll_wake:
         {
@@ -4544,7 +4545,7 @@ static long _syscall(void* args_)
             break;
         case SYS_getgroups:
         {
-            size_t size = (size_t)x1;
+            int size = (int)x1;
             gid_t* list = (gid_t*)x2;
             /* return the extra groups on the thread */
             _strace(n, NULL);
@@ -4552,7 +4553,7 @@ static long _syscall(void* args_)
         }
         case SYS_setgroups:
         {
-            int size = (int)x1;
+            size_t size = (size_t)x1;
             const gid_t* list = (const gid_t*)x2;
 
             /* return the extra groups on the thread */
@@ -5037,7 +5038,7 @@ static long _syscall(void* args_)
         case SYS_sched_setaffinity:
         {
             pid_t pid = (pid_t)x1;
-            size_t cpusetsize = (pid_t)x2;
+            size_t cpusetsize = (size_t)x2;
             const cpu_set_t* mask = (const cpu_set_t*)x3;
             long ret;
 
@@ -5050,7 +5051,7 @@ static long _syscall(void* args_)
         case SYS_sched_getaffinity:
         {
             pid_t pid = (pid_t)x1;
-            size_t cpusetsize = (pid_t)x2;
+            size_t cpusetsize = (size_t)x2;
             cpu_set_t* mask = (cpu_set_t*)x3;
             long ret;
 
@@ -5766,10 +5767,11 @@ static long _syscall(void* args_)
             break;
         case SYS_prlimit64:
         {
-            int pid = (int)x1;
+            pid_t pid = (pid_t)x1;
             int resource = (int)x2;
-            struct rlimit* new_rlim = (struct rlimit*)x3;
+            const struct rlimit* new_rlim = (const struct rlimit*)x3;
             struct rlimit* old_rlim = (struct rlimit*)x4;
+            long ret;
 
             _strace(
                 n,
@@ -5779,7 +5781,7 @@ static long _syscall(void* args_)
                 new_rlim,
                 old_rlim);
 
-            int ret = myst_syscall_prlimit64(pid, resource, new_rlim, old_rlim);
+            ret = myst_syscall_prlimit64(pid, resource, new_rlim, old_rlim);
             BREAK(_return(n, ret));
         }
         case SYS_name_to_handle_at:

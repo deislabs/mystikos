@@ -189,7 +189,7 @@ static int _sd_accept4(
     /* perform syscall */
     {
         long params[6] = {sock->fd, (long)addr, (long)addrlen, flags};
-        ECHECK((fd = myst_tcall(SYS_accept4, params)));
+        ECHECK((fd = (int)myst_tcall(SYS_accept4, params)));
     }
 
     new_sock->fd = fd;
@@ -260,8 +260,12 @@ static ssize_t _sd_sendto(
 
     /* perform syscall */
     {
-        long params[6] = {
-            sock->fd, (long)buf, len, flags, (long)dest_addr, (long)addrlen};
+        long params[6] = {sock->fd,
+                          (long)buf,
+                          (long)len,
+                          flags,
+                          (long)dest_addr,
+                          (long)addrlen};
 
         ECHECK((ret = myst_tcall(SYS_sendto, params)));
     }
@@ -286,8 +290,12 @@ static ssize_t _sd_recvfrom(
 
     /* perform syscall */
     {
-        long params[6] = {
-            sock->fd, (long)buf, len, flags, (long)src_addr, (long)addrlen};
+        long params[6] = {sock->fd,
+                          (long)buf,
+                          (long)len,
+                          flags,
+                          (long)src_addr,
+                          (long)addrlen};
 
         ECHECK((ret = myst_tcall(SYS_recvfrom, params)));
     }
@@ -296,7 +304,7 @@ done:
     return ret;
 }
 
-static int _sd_sendmsg(
+static ssize_t _sd_sendmsg(
     myst_sockdev_t* sd,
     myst_sock_t* sock,
     const struct msghdr* msg,
@@ -304,7 +312,7 @@ static int _sd_sendmsg(
 {
     ssize_t ret = 0;
     void* base = NULL;
-    size_t len;
+    ssize_t len;
     struct iovec iov_buf;
     struct msghdr msg_buf;
     const struct msghdr* msg_ptr;
@@ -332,7 +340,7 @@ static int _sd_sendmsg(
         ERAISE((len = myst_iov_gather(msg->msg_iov, msg->msg_iovlen, &base)));
         msg_buf = *msg;
         iov_buf.iov_base = base;
-        iov_buf.iov_len = len;
+        iov_buf.iov_len = (size_t)len;
         msg_buf.msg_iov = &iov_buf;
         msg_buf.msg_iovlen = 1;
         msg_ptr = &msg_buf;
@@ -357,7 +365,7 @@ done:
     return ret;
 }
 
-static int _sd_recvmsg(
+static ssize_t _sd_recvmsg(
     myst_sockdev_t* sd,
     myst_sock_t* sock,
     struct msghdr* msg,
@@ -380,7 +388,7 @@ done:
 
 static int _sd_shutdown(myst_sockdev_t* sd, myst_sock_t* sock, int how)
 {
-    ssize_t ret = 0;
+    int ret = 0;
 
     if (!sd || !_valid_sock(sock))
         ERAISE(-EINVAL);
@@ -403,7 +411,7 @@ static int _sd_getsockopt(
     void* optval,
     socklen_t* optlen)
 {
-    ssize_t ret = 0;
+    int ret = 0;
 
     if (!sd || !_valid_sock(sock))
         ERAISE(-EINVAL);
@@ -426,7 +434,7 @@ static int _sd_setsockopt(
     const void* optval,
     socklen_t optlen)
 {
-    ssize_t ret = 0;
+    int ret = 0;
 
     if (!sd || !_valid_sock(sock))
         ERAISE(-EINVAL);
@@ -447,7 +455,7 @@ static int _sd_getpeername(
     struct sockaddr* addr,
     socklen_t* addrlen)
 {
-    ssize_t ret = 0;
+    int ret = 0;
 
     if (!sd || !_valid_sock(sock))
         ERAISE(-EINVAL);
@@ -468,7 +476,7 @@ static int _sd_getsockname(
     struct sockaddr* addr,
     socklen_t* addrlen)
 {
-    ssize_t ret = 0;
+    int ret = 0;
 
     if (!sd || !_valid_sock(sock))
         ERAISE(-EINVAL);
@@ -496,7 +504,7 @@ static ssize_t _sd_read(
 
     /* perform syscall */
     {
-        long params[6] = {sock->fd, (long)buf, count};
+        long params[6] = {sock->fd, (long)buf, (long)count};
         ECHECK((ret = myst_tcall(SYS_read, params)));
     }
 
@@ -517,7 +525,7 @@ static ssize_t _sd_write(
 
     /* perform syscall */
     {
-        long params[6] = {sock->fd, (long)buf, count};
+        long params[6] = {sock->fd, (long)buf, (long)count};
         ECHECK((ret = myst_tcall(SYS_write, params)));
     }
 
@@ -566,7 +574,7 @@ static int _sd_fstat(
     myst_sock_t* sock,
     struct stat* statbuf)
 {
-    ssize_t ret = 0;
+    int ret = 0;
 
     if (!sd || !_valid_sock(sock))
         ERAISE(-EINVAL);
@@ -587,14 +595,14 @@ static int _sd_ioctl(
     unsigned long request,
     long arg)
 {
-    ssize_t ret = 0;
+    int ret = 0;
 
     if (!sd || !_valid_sock(sock))
         ERAISE(-EINVAL);
 
     /* perform syscall */
     {
-        long params[6] = {sock->fd, request, arg};
+        long params[6] = {sock->fd, (long)request, arg};
         ECHECK(myst_tcall(SYS_ioctl, params));
     }
 
@@ -604,7 +612,7 @@ done:
 
 static int _sd_fcntl(myst_sockdev_t* sd, myst_sock_t* sock, int cmd, long arg)
 {
-    ssize_t ret = 0;
+    int ret = 0;
 
     if (!sd || !_valid_sock(sock))
         ERAISE(-EINVAL);
@@ -612,7 +620,7 @@ static int _sd_fcntl(myst_sockdev_t* sd, myst_sock_t* sock, int cmd, long arg)
     /* perform syscall */
     {
         long params[6] = {sock->fd, cmd, arg};
-        ECHECK((ret = myst_tcall(SYS_fcntl, params)));
+        ECHECK((ret = (int)myst_tcall(SYS_fcntl, params)));
     }
 
 done:
@@ -658,7 +666,7 @@ done:
 
 static int _sd_close(myst_sockdev_t* sd, myst_sock_t* sock)
 {
-    ssize_t ret = 0;
+    int ret = 0;
 
     if (!sd || !_valid_sock(sock))
         ERAISE(-EINVAL);
@@ -666,7 +674,7 @@ static int _sd_close(myst_sockdev_t* sd, myst_sock_t* sock)
     /* perform syscall */
     {
         long params[6] = {sock->fd};
-        ECHECK((ret = myst_tcall(SYS_close, params)));
+        ECHECK((ret = (int)myst_tcall(SYS_close, params)));
     }
 
     memset(sock, 0, sizeof(myst_sock_t));

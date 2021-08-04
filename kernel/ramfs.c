@@ -1216,7 +1216,7 @@ static ssize_t _fs_pwrite(
         // When opened for append, Linux pwrite() appends data to the end of
         // file regadless of the offset.
         if ((file->operating & O_APPEND))
-            offset = _file_size(file);
+            offset = (off_t)_file_size(file);
 
         size_t new_offset = (size_t)offset + count;
 
@@ -1413,7 +1413,7 @@ static int _stat(inode_t* inode, struct stat* statbuf)
     else
     {
         size = inode->buf.size;
-        ECHECK(myst_round_up_signed(size, BLKSIZE, &rounded));
+        ECHECK(myst_round_up_signed((off_t)size, BLKSIZE, &rounded));
     }
 
     memset(&buf, 0, sizeof(buf));
@@ -2452,12 +2452,13 @@ static int _chown(inode_t* inode, uid_t owner, gid_t group)
     /* For executables, clear set-user-ID and set-group-ID bits */
     if (inode->mode & (S_IXUSR | S_IXGRP | S_IXOTH))
     {
-        if (inode->mode & S_ISUID)
-            inode->mode &= ~S_ISUID;
+        if (inode->mode & (uint32_t)S_ISUID)
+            inode->mode &= ~((uint32_t)S_ISUID);
 
         /* Only clear set-group-id bit for group executables */
-        if ((inode->mode & S_ISGID) && (inode->mode & S_IXGRP))
-            inode->mode &= ~S_ISGID;
+        if ((inode->mode & (uint32_t)S_ISGID) &&
+            (inode->mode & (uint32_t)S_IXGRP))
+            inode->mode &= ~((uint32_t)S_ISGID);
     }
 
     _update_timestamps(inode, CHANGE);
@@ -2577,7 +2578,7 @@ static int _chmod(inode_t* inode, mode_t mode)
     if (!inode)
         ERAISE(-EINVAL);
 
-    inode->mode &= ~ALLPERMS;
+    inode->mode &= ~(uint32_t)ALLPERMS;
     inode->mode |= (mode & ALLPERMS);
 
     /* If not privileged and inode not in thread's primary or supplementary
@@ -2585,7 +2586,7 @@ static int _chmod(inode_t* inode, mode_t mode)
     if ((inode->mode & S_ISGID) && self->euid != 0 &&
         (check_thread_group_membership(inode->gid) != 0))
     {
-        inode->mode &= ~S_ISGID;
+        inode->mode &= ~(uint32_t)S_ISGID;
     }
 
     _update_timestamps(inode, CHANGE);
@@ -2916,21 +2917,23 @@ int myst_release_tree(myst_fs_t* fs, const char* pathname)
     if (!_inode_valid(parent) || !_inode_valid(self))
         ERAISE(-EINVAL);
 
-    /* Release all inodes in the sub-tree under self*/
+    /* Release all inodes in the sub-tree under self */
     {
-        int type, mode = self->mode;
+        uint8_t d_type;
+        uint32_t mode = self->mode;
+
         if (S_ISDIR(mode))
-            type = DT_DIR;
+            d_type = DT_DIR;
         else if (S_ISREG(mode))
-            type = DT_REG;
+            d_type = DT_REG;
         else if (S_ISLNK(mode))
-            type = DT_LNK;
+            d_type = DT_LNK;
         else
         {
             ERAISE(-EINVAL);
         }
 
-        _inode_release_all(ramfs, parent, self, type);
+        _inode_release_all(ramfs, parent, self, d_type);
     }
 
     /* Remove directory entry from parent */

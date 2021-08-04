@@ -106,7 +106,7 @@ struct myst_thread
     int exit_status;
 
     /* Terminating signal value */
-    unsigned terminating_signum;
+    int terminating_signum;
 
     /* Timespec at process creation */
     struct timespec start_ts;

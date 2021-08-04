@@ -72,13 +72,13 @@ struct myst_sockdev
         struct sockaddr* src_addr,
         socklen_t* addrlen);
 
-    int (*sd_sendmsg)(
+    ssize_t (*sd_sendmsg)(
         myst_sockdev_t* sd,
         myst_sock_t* sock,
         const struct msghdr* msg,
         int flags);
 
-    int (*sd_recvmsg)(
+    ssize_t (*sd_recvmsg)(
         myst_sockdev_t* sd,
         myst_sock_t* sock,
         struct msghdr* msg,

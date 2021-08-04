@@ -181,7 +181,7 @@ static ssize_t _pd_read(
                 if (rem < count)
                 {
                     /* return short count */
-                    ret = count - rem;
+                    ret = (ssize_t)(count - rem);
                     goto done;
                 }
 
@@ -195,7 +195,7 @@ static ssize_t _pd_read(
                 _unlock(pipe);
 
                 /* rem<=count */
-                ret = count - rem;
+                ret = (ssize_t)(count - rem);
                 goto done;
             }
 
@@ -204,7 +204,7 @@ static ssize_t _pd_read(
             {
                 _unlock(pipe);
                 /* return short count */
-                ret = count - rem;
+                ret = (ssize_t)(count - rem);
                 goto done;
             }
 
@@ -241,7 +241,7 @@ static ssize_t _pd_read(
     }
 
     _unlock(pipe);
-    ret = count;
+    ret = (ssize_t)count;
 
 done:
 
@@ -317,7 +317,7 @@ static ssize_t _pd_write(
                 if (rem < count)
                 {
                     /* return short count */
-                    ret = count - rem;
+                    ret = (ssize_t)(count - rem);
                     goto done;
                 }
 
@@ -333,7 +333,7 @@ static ssize_t _pd_write(
                 if (rem < count)
                 {
                     /* return short count */
-                    ret = count - rem;
+                    ret = (ssize_t)(count - rem);
                     goto done;
                 }
 
@@ -375,7 +375,7 @@ static ssize_t _pd_write(
     }
 
     _unlock(pipe);
-    ret = count;
+    ret = (ssize_t)count;
 
 done:
 
@@ -479,7 +479,7 @@ static int _pd_fcntl(
             if (arg != FD_CLOEXEC && arg != 0)
                 ERAISE(-EINVAL);
 
-            pipe->fdflags = arg;
+            pipe->fdflags = (int)arg;
             goto done;
         }
         case F_GETFD:
@@ -495,7 +495,7 @@ static int _pd_fcntl(
             if (arg <= 0)
                 arg = PIPE_BUF;
 
-            ECHECK(myst_round_up(arg, PIPE_BUF, &pipesz));
+            ECHECK(myst_round_up((size_t)arg, PIPE_BUF, &pipesz));
 
             if (!(data = calloc(pipesz, 1)))
                 ERAISE(-ENOMEM);
@@ -506,12 +506,12 @@ static int _pd_fcntl(
             p->data = data;
             p->pipesz = pipesz;
 
-            ret = (long)pipesz;
+            ret = (int)pipesz;
             goto done;
         }
         case F_GETPIPE_SZ:
         {
-            ret = p->pipesz;
+            ret = (int)p->pipesz;
             goto done;
         }
         case F_GETFL:

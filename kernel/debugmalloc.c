@@ -257,7 +257,7 @@ MYST_INLINE bool _check_multiply_overflow(size_t x, size_t y)
     return true;
 }
 
-static void _malloc_dump(size_t size, void* addrs[], int num_addrs)
+static void _malloc_dump(size_t size, void* addrs[], size_t num_addrs)
 {
     myst_eprintf("%lu bytes\n", size);
     myst_dump_backtrace(addrs, num_addrs);
@@ -285,7 +285,7 @@ static void _dump(void)
             "=== blocks in use: %zu bytes in %zu blocks\n", bytes, blocks);
 
         for (header_t* p = list->head; p; p = p->next)
-            _malloc_dump(p->size, p->addrs, (int)p->num_addrs);
+            _malloc_dump(p->size, p->addrs, p->num_addrs);
 
         myst_eprintf("\n");
     }

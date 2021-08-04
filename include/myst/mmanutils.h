@@ -33,9 +33,9 @@ void* myst_mremap(
 
 int myst_mprotect(const void* addr, const size_t len, const int prot);
 
-int myst_get_total_ram(size_t* size);
+ssize_t myst_get_total_ram(size_t* size);
 
-int myst_get_free_ram(size_t* size);
+ssize_t myst_get_free_ram(size_t* size);
 
 int myst_register_process_mapping(
     pid_t pid,

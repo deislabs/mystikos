@@ -28,7 +28,7 @@ static myst_fs_t* _devfs;
 /*************************************
  * callbacks
  * ***********************************/
-static int _ignore_read_cb(void* buf, size_t count)
+static ssize_t _ignore_read_cb(void* buf, size_t count)
 {
     (void)buf;
     (void)count;
@@ -36,15 +36,15 @@ static int _ignore_read_cb(void* buf, size_t count)
     return 0; // EOF
 }
 
-static int _ignore_write_cb(const void* buf, size_t count)
+static ssize_t _ignore_write_cb(const void* buf, size_t count)
 {
     (void)buf;
     (void)count;
 
-    return count;
+    return (ssize_t)count;
 }
 
-static int _zero_read_cb(void* buf, size_t count)
+static ssize_t _zero_read_cb(void* buf, size_t count)
 {
     ssize_t ret = 0;
 
@@ -56,13 +56,13 @@ static int _zero_read_cb(void* buf, size_t count)
 
     memset(buf, 0, count);
 
-    ret = count;
+    ret = (ssize_t)count;
 
 done:
     return ret;
 }
 
-static int _urandom_read_cb(void* buf, size_t count)
+static ssize_t _urandom_read_cb(void* buf, size_t count)
 {
     ssize_t ret = 0;
 

@@ -138,7 +138,7 @@ static ssize_t _map_file_onto_memory(
         ssize_t n;
         uint8_t* p = addr;
         size_t r = length;
-        size_t o = offset;
+        off_t o = offset;
 
         while ((n = pread(fd, locals->buf, sizeof locals->buf, o)) > 0)
         {
@@ -158,7 +158,7 @@ static ssize_t _map_file_onto_memory(
     }
 
     /* get the fd flags */
-    ECHECK(flags = myst_syscall_fcntl(fd, F_GETFL, 0));
+    ECHECK(flags = (int)myst_syscall_fcntl(fd, F_GETFL, 0));
 
     /* if file is writable, then create msync mappings for msync() */
     if ((mmap_flags & MAP_SHARED) && flags & (O_RDWR | O_WRONLY))
@@ -384,9 +384,9 @@ static int _release_msync_mappings(void* addr, size_t length)
             /* if there is an overlap */
             if (maxlo < minhi)
             {
-                size_t llength = maxlo - plo;
-                size_t rlength = phi - minhi;
-                size_t roffset = p->offset + (minhi - plo);
+                size_t llength = (size_t)(maxlo - plo);
+                size_t rlength = (size_t)(phi - minhi);
+                off_t roffset = p->offset + (minhi - plo);
 
                 //     .........
                 // ..........
@@ -507,12 +507,12 @@ long myst_syscall_brk(void* addr)
     return (long)ptr;
 }
 
-int myst_get_total_ram(size_t* size)
+ssize_t myst_get_total_ram(size_t* size)
 {
     return myst_mman_total_size(&_mman, size);
 }
 
-int myst_get_free_ram(size_t* size)
+ssize_t myst_get_free_ram(size_t* size)
 {
     return myst_mman_free_size(&_mman, size);
 }
@@ -713,7 +713,7 @@ int proc_pid_maps_vcallback(myst_buf_t* vbuf)
                     sizeof(locals->maps_entry),
                     "%08lx-%08lx %c%c%cp %08lx 00:00 0 %s\n",
                     (long)p->addr,
-                    (long)p->addr + p->size,
+                    (long)p->addr + (long)p->size,
                     p->prot & PROT_READ ? 'r' : '-',
                     p->prot & PROT_WRITE ? 'w' : '-',
                     p->prot & PROT_EXEC ? 'x' : '-',
@@ -756,7 +756,7 @@ static int _sync_file(int fd, off_t offset, const void* addr, size_t length)
         if (n == 0)
             break;
         else if (n < 0)
-            ERAISE(n);
+            ERAISE((int)n);
 
         p += n;
         o += n;
@@ -817,7 +817,7 @@ int myst_msync(void* addr, size_t length, int flags)
                     p->fd,                     /* fd */
                     p->offset + (maxlo - plo), /* offset */
                     maxlo,                     /* addr */
-                    minhi - maxlo));           /* length */
+                    (size_t)(minhi - maxlo))); /* length */
             }
         }
 
@@ -839,7 +839,7 @@ void myst_mman_close_notify(int fd)
     struct stat buf;
 
     /* get the file open flags */
-    if (fd < 0 || (flags = myst_syscall_fcntl(fd, F_GETFL, 0)) < 0)
+    if (fd < 0 || (flags = (int)myst_syscall_fcntl(fd, F_GETFL, 0)) < 0)
         return;
 
     /* only do this for regular files */
@@ -964,7 +964,7 @@ static long _handle_mman_pids_op(
                 /* Update the associated elements of pids[] */
                 for (size_t i = index; i < index + count; i++)
                 {
-                    pids[i] = pid;
+                    pids[i] = (uint32_t)pid;
                 }
             }
 
@@ -1044,14 +1044,14 @@ int myst_mman_pids_munmap(const void* addr, size_t length, pid_t pid)
             if ((n = myst_mman_pids_test(ptr, rem, pid)) > 0)
             {
                 /* release this mapping */
-                if (myst_munmap(ptr, n) == 0)
+                if (myst_munmap(ptr, (size_t)n) == 0)
                 {
                     /* clear the owner for this mapping */
-                    myst_mman_pids_set(ptr, n, 0);
+                    myst_mman_pids_set(ptr, (size_t)n, 0);
                 }
 
                 ptr += n;
-                rem -= n;
+                rem -= (size_t)n;
             }
             else if (n == 0)
             {

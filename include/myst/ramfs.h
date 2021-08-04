@@ -42,8 +42,8 @@ typedef union myst_vcallback {
     int (*open_cb)(myst_buf_t* buf);
     struct
     {
-        int (*read_cb)(void* buf, size_t count);
-        int (*write_cb)(const void* buf, size_t count);
+        ssize_t (*read_cb)(void* buf, size_t count);
+        ssize_t (*write_cb)(const void* buf, size_t count);
     } rw_callbacks;
 } myst_vcallback_t;
 

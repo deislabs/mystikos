@@ -186,14 +186,14 @@ void myst_print_syscall_times(const char* message, size_t count)
         if (myst_syscall_clock_gettime(CLOCK_REALTIME, &now) == 0)
         {
             struct timespec start;
-            start.tv_sec = __myst_kernel_args.start_time_sec;
-            start.tv_nsec = __myst_kernel_args.start_time_nsec;
+            start.tv_sec = (long)__myst_kernel_args.start_time_sec;
+            start.tv_nsec = (long)__myst_kernel_args.start_time_nsec;
             long nsec = myst_lapsed_nsecs(&start, &now);
             elapsed_secs = (double)nsec / (double)NANO_IN_SECOND;
         }
     }
 
-    for (size_t i = 0; i < MYST_MAX_SYSCALLS; i++)
+    for (long i = 0; i < MYST_MAX_SYSCALLS; i++)
     {
         if (_syscall_times[i].nsec)
         {
@@ -236,7 +236,7 @@ void myst_print_syscall_times(const char* message, size_t count)
             nsec_width = n;
 
         if (len > (size_t)name_width)
-            name_width = len;
+            name_width = (int)len;
     }
 
     if (ntimes > count)
@@ -246,9 +246,10 @@ void myst_print_syscall_times(const char* message, size_t count)
     for (size_t i = 0; i < ntimes; i++)
     {
         const times_t* p = &locals->times[i];
-        double percent = (p->nsec / nsecs) * 100.0;
+        double percent = ((double)p->nsec / nsecs) * 100.0;
         const char* name = myst_syscall_str(p->num);
-        double percent2 = ((p->nsec / p->ncalls) / nsecs) * 100.0;
+        double percent2 =
+            (((double)p->nsec / (double)p->ncalls) / nsecs) * 100.0;
         char buf[128];
 
         int n = snprintf(
@@ -271,16 +272,17 @@ void myst_print_syscall_times(const char* message, size_t count)
     }
 
     myst_eprintf(COLOR_YELLOW "\n");
-    _print_line(nchars);
+    _print_line((size_t)nchars);
     myst_eprintf("%s: %.4lf seconds elapsed\n", message, elapsed_secs);
-    _print_line(nchars);
+    _print_line((size_t)nchars);
 
     for (size_t i = 0; i < ntimes; i++)
     {
         const times_t* p = &locals->times[i];
-        double percent = (p->nsec / nsecs) * 100.0;
+        double percent = ((double)p->nsec / nsecs) * 100.0;
         const char* name = myst_syscall_str(p->num);
-        double percent2 = ((p->nsec / p->ncalls) / nsecs) * 100.0;
+        double percent2 =
+            (((double)p->nsec / (double)p->ncalls) / nsecs) * 100.0;
 
         myst_eprintf(
             fmt,

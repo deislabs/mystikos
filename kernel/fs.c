@@ -176,7 +176,8 @@ int myst_load_fs(
             (keysize = myst_ascii_to_bin(
                  key, locals->keybuf, sizeof(locals->keybuf))));
 
-        ECHECK(myst_luksblkdev_open(blkdev, locals->keybuf, keysize, &tmp));
+        ECHECK(myst_luksblkdev_open(
+            blkdev, locals->keybuf, (uint32_t)keysize, &tmp));
         blkdev = tmp;
     }
 

@@ -56,7 +56,7 @@ long myst_syscall_sendmmsg(
         ret = (*sd->sd_sendmsg)(sd, sock, &msgvec[cnt].msg_hdr, flags);
         if (ret < 0)
             break;
-        msgvec[cnt].msg_len = ret;
+        msgvec[cnt].msg_len = (uint32_t)ret;
     }
     // Only return err when zero msg was sent
     ret = cnt ? (long)cnt : ret;
@@ -99,7 +99,7 @@ long myst_syscall_recvmmsg(
             sd, sock, &msgvec[cnt].msg_hdr, flags & ~MSG_WAITFORONE);
         if (ret < 0)
             break;
-        msgvec[cnt].msg_len = ret;
+        msgvec[cnt].msg_len = (uint32_t)ret;
         // Turns on MSG_DONTWAIT after the first message has been
         // received.
         if (cnt == 1 && flags & MSG_WAITFORONE)

@@ -37,7 +37,7 @@ int myst_pubkey_verify(
     /* for each entry in the pubkeys region */
     while (p < end)
     {
-        size_t rem = end - p;
+        size_t rem = (size_t)(end - p);
         size_t len = strnlen(p, rem);
 
         if (len == rem)

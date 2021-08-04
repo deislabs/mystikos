@@ -31,7 +31,7 @@ static int _host_open(const char* pathname, int flags, mode_t mode)
     long params[6] = {
         (long)pathname, (long)flags, (long)mode, (long)uid, (long)gid};
 
-    ECHECK(ret = myst_tcall(SYS_open, params));
+    ECHECK(ret = (int)myst_tcall(SYS_open, params));
 
 done:
     return ret;
@@ -88,7 +88,7 @@ int myst_load_host_file(const char* path, void** data_out, size_t* size_out)
         if (n == 0)
             break;
 
-        if (myst_buf_append(&buf, locals->buf, n) != 0)
+        if (myst_buf_append(&buf, locals->buf, (size_t)n) != 0)
             ERAISE(-ENOMEM);
     }
 

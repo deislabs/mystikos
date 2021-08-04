@@ -51,5 +51,7 @@ musl/config.mak:
 
 musl:
 	git clone $(URL) -b $(BRANCH)
+	./wrap.sh musl/include/endian.h
+	./wrap.sh musl/include/sys/select.h
 
 tests:

@@ -85,9 +85,9 @@ static int _put_wd(int wd)
 
     myst_spin_lock(&_wds_lock);
     {
-        if (myst_test_bit(_wds, wd))
+        if (myst_test_bit(_wds, (size_t)wd))
         {
-            myst_clear_bit(_wds, wd);
+            myst_clear_bit(_wds, (size_t)wd);
         }
         else
         {

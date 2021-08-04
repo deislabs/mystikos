@@ -171,7 +171,7 @@ int myst_cond_signal(myst_cond_t* c)
 
 int myst_cond_broadcast(myst_cond_t* c, size_t n)
 {
-    size_t num_awoken = 0;
+    int num_awoken = 0;
     myst_thread_queue_t waiters = {NULL, NULL};
 
     if (!c)

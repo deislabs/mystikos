@@ -99,7 +99,7 @@ static int _ed_epoll_ctl(
     int fd,
     struct epoll_event* event)
 {
-    ssize_t ret = 0;
+    int ret = 0;
     bool locked = false;
 
     if (!epolldev || !_valid_epoll(epoll) || !event)
@@ -202,7 +202,7 @@ static int _ed_epoll_wait(
     if (!epolldev || !epoll || !events || maxevents < 0)
         ERAISE(-EINVAL);
 
-    memset(events, 0, maxevents * sizeof(struct epoll_event));
+    memset(events, 0, (size_t)maxevents * sizeof(struct epoll_event));
 
     myst_spin_lock(&epoll->lock);
     locked = true;
@@ -290,7 +290,7 @@ static int _ed_epoll_wait(
     myst_spin_unlock(&epoll->lock);
     locked = false;
 
-    ECHECK((n = myst_syscall_poll(fds, nfds, timeout)));
+    ECHECK((n = (int)myst_syscall_poll(fds, nfds, timeout)));
 
     /* this should never happen */
     if ((size_t)n > nfds)

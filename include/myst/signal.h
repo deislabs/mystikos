@@ -17,7 +17,7 @@ void myst_signal_free(myst_thread_t* t);
 void myst_signal_free_siginfos(myst_thread_t* t);
 
 long myst_signal_sigaction(
-    unsigned signum,
+    int signum,
     const posix_sigaction_t* new_action,
     posix_sigaction_t* old_action);
 
@@ -25,10 +25,7 @@ long myst_signal_sigprocmask(int how, const sigset_t* set, sigset_t* oldset);
 
 long myst_signal_process(myst_thread_t* thread);
 
-long myst_signal_deliver(
-    myst_thread_t* thread,
-    unsigned signum,
-    siginfo_t* siginfo);
+long myst_signal_deliver(myst_thread_t* thread, int signum, siginfo_t* siginfo);
 
 long myst_signal_sigpending(sigset_t* set, unsigned size);
 

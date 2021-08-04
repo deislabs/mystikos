@@ -246,7 +246,7 @@ static ssize_t _write(
         }
     }
 
-    ret = count;
+    ret = (ssize_t)count;
 
 done:
 
@@ -351,7 +351,7 @@ static int _fcntl(
             if (arg != FD_CLOEXEC && arg != 0)
                 ERAISE(-EINVAL);
 
-            eventfd->fdflags = arg;
+            eventfd->fdflags = (int)arg;
             goto done;
         }
         case F_GETFD:

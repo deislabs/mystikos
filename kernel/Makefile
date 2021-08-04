@@ -44,7 +44,6 @@ WARNINGS += -Wconversion
 WARNINGS += -Wextra
 WARNINGS += -Wno-missing-field-initializers
 WARNINGS += -Wno-type-limits
-WARNINGS += -Wno-conversion
 WARNINGS += -Wstack-usage=512
 WARNINGS += -Winit-self
 
@@ -67,7 +66,6 @@ endif
 CFLAGS += $(WARNINGS)
 
 # suppress conversion errors in musl lib headers
-CFLAGS += -Wno-conversion
 CFLAGS += -Wno-parentheses
 
 ifdef MYST_ENABLE_GCOV

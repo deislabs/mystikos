@@ -72,7 +72,7 @@ int myst_fdtable_clone(myst_fdtable_t* fdtable, myst_fdtable_t** fdtable_out)
                 myst_fdtable_entry_t* new_entry = &new_fdtable->entries[i];
                 myst_fdops_t* fdops = entry->device;
                 void* object;
-                long r;
+                int r;
 
                 if ((r = (*fdops->fd_dup)(fdops, entry->object, &object)) != 0)
                 {
@@ -250,7 +250,7 @@ int myst_fdtable_dup(
     bool locked = false;
     bool use_next_available_fd = false;
     bool set_cloexec = false;
-    size_t start_fd = 0;
+    int start_fd = 0;
 
     if (!fdtable)
         ERAISE(-EINVAL);
@@ -331,7 +331,7 @@ int myst_fdtable_dup(
         if (use_next_available_fd)
         {
             /* find the first free file descriptor */
-            for (size_t i = start_fd; i < MYST_COUNTOF(fdtable->entries); i++)
+            for (int i = start_fd; i < (int)MYST_COUNTOF(fdtable->entries); i++)
             {
                 myst_fdtable_entry_t* p = &fdtable->entries[i];
 

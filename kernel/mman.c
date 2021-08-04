@@ -469,15 +469,15 @@ done:
  */
 static int _mman_get_prot(
     uint8_t* prot_vector,
-    uint32_t offset,
-    uint32_t num_pages,
+    size_t offset,
+    size_t num_pages,
     int* prot_out)
 {
     const uint8_t* start = prot_vector + offset;
     const uint8_t* end = start + num_pages;
     const uint8_t* p = start;
-    const uint8_t prot = (*p & ~MYST_PENDING_ZEROING_FLAG);
-    const uint8_t protz = (*p | MYST_PENDING_ZEROING_FLAG);
+    const uint8_t prot = (*p & (uint8_t)~MYST_PENDING_ZEROING_FLAG);
+    const uint8_t protz = (*p | (uint8_t)MYST_PENDING_ZEROING_FLAG);
 
     /* set the output protection parameter */
     *prot_out = *p++;
@@ -488,12 +488,12 @@ static int _mman_get_prot(
     {
         if (*p == prot)
         {
-            if ((p = myst_memcchr(p, prot, end - p)) == NULL)
+            if ((p = myst_memcchr(p, prot, (size_t)(end - p))) == NULL)
                 return ret;
         }
         else if (*p == protz)
         {
-            if ((p = myst_memcchr(p, protz, end - p)) == NULL)
+            if ((p = myst_memcchr(p, protz, (size_t)(end - p))) == NULL)
                 return ret;
         }
         else
@@ -2023,7 +2023,7 @@ void myst_mman_set_sanity(myst_mman_t* mman, bool sanity)
 }
 
 /* return the total size of the mman region */
-int myst_mman_total_size(myst_mman_t* mman, size_t* size)
+ssize_t myst_mman_total_size(myst_mman_t* mman, size_t* size)
 {
     ssize_t ret = 0;
 
@@ -2045,7 +2045,7 @@ done:
 }
 
 /* return the amount of free space */
-int myst_mman_free_size(myst_mman_t* mman, size_t* size_out)
+ssize_t myst_mman_free_size(myst_mman_t* mman, size_t* size_out)
 {
     ssize_t ret = 0;
     size_t size;

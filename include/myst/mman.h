@@ -144,9 +144,9 @@ void myst_mman_set_sanity(myst_mman_t* heap, bool sanity);
 
 bool myst_mman_is_sane(myst_mman_t* heap);
 
-int myst_mman_total_size(myst_mman_t* mman, size_t* size);
+ssize_t myst_mman_total_size(myst_mman_t* mman, size_t* size);
 
-int myst_mman_free_size(myst_mman_t* mman, size_t* size);
+ssize_t myst_mman_free_size(myst_mman_t* mman, size_t* size);
 
 void myst_mman_dump_vads(myst_mman_t* mman);
 

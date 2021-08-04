@@ -49,7 +49,7 @@ long _poll_kernel(struct pollfd* fds, nfds_t nfds)
             if (events =
                     events & ((fds[i].events) | (POLLERR | POLLHUP | POLLNVAL)))
             {
-                fds[i].revents = events;
+                fds[i].revents = (short)events;
                 total++;
             }
         }
@@ -90,7 +90,7 @@ static long _syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
     if (nfds == 0)
     {
         long r;
-        long params[6] = {(long)NULL, nfds, timeout};
+        long params[6] = {(long)NULL, (long)nfds, timeout};
         ECHECK((r = myst_tcall(SYS_poll, params)));
         ret = r;
         goto done;
@@ -213,7 +213,7 @@ static long _syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
             break;
 
         if (original_timeout > 0)
-            timeout = original_timeout - lapsed;
+            timeout = original_timeout - (int)lapsed;
         else
             timeout = 500;
 

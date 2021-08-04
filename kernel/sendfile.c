@@ -39,14 +39,14 @@ long myst_syscall_sendfile(int out_fd, int in_fd, off_t* offset, size_t count)
 
         while (r > 0 && (n = read(in_fd, locals->buf, sizeof(locals->buf))) > 0)
         {
-            ssize_t m = write(out_fd, locals->buf, n);
+            ssize_t m = write(out_fd, locals->buf, (size_t)n);
             ECHECK(m);
 
             if (m != n)
                 ERAISE(EIO);
 
             nwritten += m;
-            r -= m;
+            r -= (size_t)m;
         }
     }
 

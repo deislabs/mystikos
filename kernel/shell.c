@@ -43,7 +43,7 @@ static long _readline(const char* prompt, char* buf, size_t count)
         buf[n] = '\0';
     }
 
-    return n;
+    return (long)n;
 }
 
 __attribute__((__unused__)) static void _dump_args(size_t argc, char** argv)
@@ -307,11 +307,11 @@ void myst_start_shell(const char* msg)
 
         if (strcmp(argv[0], "help") == 0)
         {
-            _help_command(argc, argv);
+            _help_command((int)argc, argv);
         }
         else if (strcmp(argv[0], "ls") == 0)
         {
-            _ls_command(argc, argv);
+            _ls_command((int)argc, argv);
         }
         else if (strcmp(argv[0], "pwd") == 0)
         {
@@ -319,11 +319,11 @@ void myst_start_shell(const char* msg)
         }
         else if (strcmp(argv[0], "cd") == 0)
         {
-            _cd_command(argc, argv);
+            _cd_command((int)argc, argv);
         }
         else if (strcmp(argv[0], "mem") == 0)
         {
-            _mem_command(argc, argv);
+            _mem_command((int)argc, argv);
         }
         else if (strcmp(argv[0], "fds") == 0)
         {
@@ -359,11 +359,11 @@ void myst_start_shell(const char* msg)
         }
         else if (strcmp(argv[0], "env") == 0)
         {
-            _env_command(argc, argv);
+            _env_command((int)argc, argv);
         }
         else if (strcmp(argv[0], "args") == 0)
         {
-            _args_command(argc, argv);
+            _args_command((int)argc, argv);
         }
         else if (strcmp(argv[0], "cont") == 0)
         {

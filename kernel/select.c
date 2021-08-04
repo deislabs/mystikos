@@ -1,9 +1,6 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-
 #include <errno.h>
 #include <poll.h>
 #include <stddef.h>
@@ -17,6 +14,8 @@
 #include <myst/sockdev.h>
 #include <myst/syscall.h>
 #include <myst/tcall.h>
+
+#pragma GCC diagnostic pop
 
 typedef struct _poll_fds
 {
@@ -61,7 +60,7 @@ int _fdset_to_fds(poll_fds_t* fds, short events, fd_set* set, int nfds)
 
     for (fd = 0; fd < nfds; fd++)
     {
-        if (FD_ISSET(fd, set))
+        if (FD_ISSET((uint32_t)fd, set))
             ECHECK(_update_fds(fds, fd, events));
     }
 
@@ -80,7 +79,7 @@ int _fds_to_fdset(poll_fds_t* fds, short revents, fd_set* set)
 
         if ((p->revents & revents))
         {
-            FD_SET(p->fd, set);
+            FD_SET((uint32_t)p->fd, set);
             num_ready++;
         }
     }

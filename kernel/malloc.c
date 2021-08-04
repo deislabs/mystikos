@@ -52,7 +52,7 @@ static void* _dlmalloc_mmap(
 
     if (r < 0)
     {
-        errno = -r;
+        errno = (int)-r;
         return MAP_FAILED;
     }
 
@@ -71,7 +71,7 @@ static void* _dlmalloc_mremap(
 
     if (r < 0)
     {
-        errno = -r;
+        errno = (int)-r;
         return MAP_FAILED;
     }
 
@@ -103,7 +103,11 @@ static int _dlmalloc_munmap(void* addr, size_t length)
 #define fprintf(STREAM, ...) myst_eprintf(__VA_ARGS__)
 #define USE_DL_PREFIX 0
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
 #include "../third_party/dlmalloc/malloc.c"
+#pragma GCC diagnostic pop
 
 #define MAX_BACKTRACE_ADDRS 16
 

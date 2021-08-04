@@ -156,17 +156,17 @@ long myst_valid_uid_against_passwd_file(uid_t uid)
 
     file_length = file_stat.st_size;
 
-    buffer = malloc(file_length + 1);
+    buffer = malloc((size_t)file_length + 1);
     if (buffer == NULL)
         goto done;
     buffer[file_length] = '\0';
 
-    fd = myst_syscall_open("/etc/passwd", O_RDONLY, 0);
+    fd = (int)myst_syscall_open("/etc/passwd", O_RDONLY, 0);
     if (fd == -1)
         goto done;
 
     /* read into buffer */
-    if (myst_syscall_read(fd, buffer, file_length) != file_length)
+    if (myst_syscall_read(fd, buffer, (size_t)file_length) != file_length)
         goto done;
 
     /* Failures from now are not found errors */
@@ -248,7 +248,7 @@ done:
 
     if (buffer)
     {
-        memset(buffer, 0, file_length);
+        memset(buffer, 0, (size_t)file_length);
         free(buffer);
     }
     return ret;
@@ -290,17 +290,17 @@ long myst_valid_gid_against_group_file(gid_t gid)
 
     file_length = file_stat.st_size;
 
-    buffer = malloc(file_length + 1);
+    buffer = malloc((size_t)file_length + 1);
     if (buffer == NULL)
         goto done;
     buffer[file_length] = '\0';
 
-    fd = myst_syscall_open("/etc/group", O_RDONLY, 0);
+    fd = (int)myst_syscall_open("/etc/group", O_RDONLY, 0);
     if (fd == -1)
         goto done;
 
     /* read into buffer */
-    if (myst_syscall_read(fd, buffer, file_length) != file_length)
+    if (myst_syscall_read(fd, buffer, (size_t)file_length) != file_length)
         goto done;
 
     /* Failures from now are not found errors */
@@ -361,7 +361,7 @@ done:
 
     if (buffer)
     {
-        memset(buffer, 0, file_length);
+        memset(buffer, 0, (size_t)file_length);
         free(buffer);
     }
     return ret;
@@ -464,7 +464,7 @@ gid_t myst_syscall_getegid()
 
 long myst_syscall_setreuid(uid_t ruid, uid_t euid)
 {
-    uid_t sav_uid = -1;
+    uid_t sav_uid = (uid_t)-1;
     long ret = 0;
     myst_thread_t* thread = myst_thread_self();
 
@@ -547,7 +547,7 @@ long myst_syscall_setreuid(uid_t ruid, uid_t euid)
 
 long myst_syscall_setregid(gid_t rgid, gid_t egid)
 {
-    gid_t sav_gid = -1;
+    gid_t sav_gid = (gid_t)-1;
     long ret = 0;
     myst_thread_t* thread = myst_thread_self();
 
@@ -829,7 +829,7 @@ long myst_syscall_getgroups(int size, gid_t list[])
 
     /* if size if 0 return number of supguid */
     if (size == 0)
-        return thread->num_supgid;
+        return (long)thread->num_supgid;
 
     /* validate parameters */
     if ((thread->num_supgid > (size_t)size) || (size < 0))
@@ -842,7 +842,7 @@ long myst_syscall_getgroups(int size, gid_t list[])
 
     memcpy(list, thread->supgid, thread->num_supgid * sizeof(gid_t));
 
-    return thread->num_supgid;
+    return (long)thread->num_supgid;
 }
 
 long myst_syscall_setgroups(size_t size, const gid_t* list)

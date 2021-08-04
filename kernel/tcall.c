@@ -127,20 +127,20 @@ long myst_tcall_poll_wake(void)
 
 long myst_tcall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
 {
-    long params[6] = {(long)fds, nfds, timeout};
+    long params[6] = {(long)fds, (long)nfds, timeout};
     return myst_tcall(SYS_poll, params);
 }
 
 int myst_open_block_device(const char* path, bool read_only)
 {
     long params[6] = {(long)path, read_only};
-    return myst_tcall(MYST_TCALL_OPEN_BLOCK_DEVICE, params);
+    return (int)myst_tcall(MYST_TCALL_OPEN_BLOCK_DEVICE, params);
 }
 
 int myst_close_block_device(int blkdev)
 {
     long params[6] = {blkdev};
-    return myst_tcall(MYST_TCALL_CLOSE_BLOCK_DEVICE, params);
+    return (int)myst_tcall(MYST_TCALL_CLOSE_BLOCK_DEVICE, params);
 }
 
 ssize_t myst_read_block_device(
@@ -149,7 +149,7 @@ ssize_t myst_read_block_device(
     struct myst_block* blocks,
     size_t num_blocks)
 {
-    long params[6] = {blkdev, blkno, (long)blocks, num_blocks};
+    long params[6] = {blkdev, (long)blkno, (long)blocks, (long)num_blocks};
     return myst_tcall(MYST_TCALL_READ_BLOCK_DEVICE, params);
 }
 
@@ -159,8 +159,8 @@ int myst_write_block_device(
     const struct myst_block* blocks,
     size_t num_blocks)
 {
-    long params[6] = {blkdev, blkno, (long)blocks, num_blocks};
-    return myst_tcall(MYST_TCALL_WRITE_BLOCK_DEVICE, params);
+    long params[6] = {blkdev, (long)blkno, (long)blocks, (long)num_blocks};
+    return (int)myst_tcall(MYST_TCALL_WRITE_BLOCK_DEVICE, params);
 }
 
 int myst_luks_encrypt(
@@ -171,8 +171,9 @@ int myst_luks_encrypt(
     size_t size,
     uint64_t secno)
 {
-    long params[6] = {(long)phdr, (long)key, (long)in, (long)out, size, secno};
-    return myst_tcall(MYST_TCALL_LUKS_ENCRYPT, params);
+    long params[6] = {
+        (long)phdr, (long)key, (long)in, (long)out, (long)size, (long)secno};
+    return (int)myst_tcall(MYST_TCALL_LUKS_ENCRYPT, params);
 }
 
 int myst_luks_decrypt(
@@ -183,26 +184,27 @@ int myst_luks_decrypt(
     size_t size,
     uint64_t secno)
 {
-    long params[6] = {(long)phdr, (long)key, (long)in, (long)out, size, secno};
-    return myst_tcall(MYST_TCALL_LUKS_DECRYPT, params);
+    long params[6] = {
+        (long)phdr, (long)key, (long)in, (long)out, (long)size, (long)secno};
+    return (int)myst_tcall(MYST_TCALL_LUKS_DECRYPT, params);
 }
 
 int myst_sha256_start(myst_sha256_ctx_t* ctx)
 {
     long params[6] = {(long)ctx};
-    return myst_tcall(MYST_TCALL_SHA256_START, params);
+    return (int)myst_tcall(MYST_TCALL_SHA256_START, params);
 }
 
 int myst_sha256_update(myst_sha256_ctx_t* ctx, const void* data, size_t size)
 {
-    long params[6] = {(long)ctx, (long)data, size};
-    return myst_tcall(MYST_TCALL_SHA256_UPDATE, params);
+    long params[6] = {(long)ctx, (long)data, (long)size};
+    return (int)myst_tcall(MYST_TCALL_SHA256_UPDATE, params);
 }
 
 int myst_sha256_finish(myst_sha256_ctx_t* ctx, myst_sha256_t* sha256)
 {
     long params[6] = {(long)ctx, (long)sha256};
-    return myst_tcall(MYST_TCALL_SHA256_FINISH, params);
+    return (int)myst_tcall(MYST_TCALL_SHA256_FINISH, params);
 }
 
 int myst_tcall_verify_signature(
@@ -216,25 +218,25 @@ int myst_tcall_verify_signature(
 {
     long args[7] = {(long)pem_public_key,
                     (long)hash,
-                    hash_size,
+                    (long)hash_size,
                     (long)signer,
-                    signer_size,
+                    (long)signer_size,
                     (long)signature,
-                    signature_size};
+                    (long)signature_size};
     long params[6] = {(long)args};
-    return myst_tcall(MYST_TCALL_VERIFY_SIGNATURE, params);
+    return (int)myst_tcall(MYST_TCALL_VERIFY_SIGNATURE, params);
 }
 
 int myst_tcall_load_fssig(const char* path, myst_fssig_t* fssig)
 {
     long params[6] = {(long)path, (long)fssig};
-    return myst_tcall(MYST_TCALL_LOAD_FSSIG, params);
+    return (int)myst_tcall(MYST_TCALL_LOAD_FSSIG, params);
 }
 
 int myst_tcall_mprotect(void* addr, size_t len, int prot)
 {
     long params[6] = {(long)addr, (long)len, (long)prot};
-    return myst_tcall(SYS_mprotect, params);
+    return (int)myst_tcall(SYS_mprotect, params);
 }
 
 #ifdef MYST_ENABLE_GCOV
