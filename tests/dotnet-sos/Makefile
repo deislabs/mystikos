@@ -4,7 +4,6 @@ include $(TOP)/defs.mak
 APPBUILDER=$(TOP)/scripts/appbuilder
 HEAP_SIZE="768M"
 
-MYST_LLDB = $(TOP)/build/openenclave/bin/oelldb
 MYST_LLDB_DOCKER = /build/openenclave/bin/oelldb
 
 OPTS = --report-native-tids
