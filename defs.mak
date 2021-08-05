@@ -144,6 +144,7 @@ MBEDTLS_LIBS += $(MBEDTLS_LIBDIR)/libmbedx509.a
 
 MYST_GDB=$(BUILDDIR)/bin/myst-gdb
 OEGDB=$(BUILDDIR)/openenclave/bin/oegdb
+MYST_LLDB=$(BUILDDIR)/openenclave/bin/oelldb
 
 ##==============================================================================
 ##
