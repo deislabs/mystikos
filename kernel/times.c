@@ -78,8 +78,13 @@ void myst_times_leave_kernel(long syscall_num)
         _syscall_times[syscall_num].ncalls++;
     }
 
-    myst_assume(lapsed > 0);
-    __atomic_fetch_add(&process_times.tms_stime, lapsed, __ATOMIC_SEQ_CST);
+    // Tolerate zero lapsed time since enter_kernel_ts has been observed to be
+    // equal to leave_kernel_ts on occassion on very fast syscalls (when using
+    // the VSDO version of clock_gettime() on Linux).
+    myst_assume(lapsed >= 0);
+
+    if (lapsed)
+        __atomic_fetch_add(&process_times.tms_stime, lapsed, __ATOMIC_SEQ_CST);
 }
 
 long myst_times_system_time()
