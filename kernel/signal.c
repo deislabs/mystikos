@@ -300,11 +300,15 @@ static long _handle_one_signal(
         if (use_alt_stack)
         {
             uint64_t stacktop = (uint64_t)altstack->ss_sp + altstack->ss_size;
+            // Remember this thread is already on the alt stack. We check
+            // this flag when the next signal comes in, if true we will
+            // continue on the current (alt) stack instead of starting
+            // from the top of the alt stack.
             altstack->ss_flags |= SS_ONSTACK;
 
             myst_call_on_stack((void*)stacktop, _handler_wrapper, &arg);
 
-            altstack->ss_flags &= ~SS_ONSTACK;
+            altstack->ss_flags &= ~SS_ONSTACK; // Done with the alt stack.
         }
         else
             _handler_wrapper(&arg);
@@ -514,9 +518,6 @@ int myst_signal_altstack(const stack_t* ss, stack_t* old_ss)
         if (ss->ss_flags & ~(SS_DISABLE) != 0)
             ERAISE(-EINVAL);
 
-        if (ss->ss_size < MINSIGSTKSZ)
-            ERAISE(-ENOMEM);
-
         if (me->signal.altstack.ss_flags & SS_ONSTACK)
             ERAISE(-EPERM);
 
@@ -528,6 +529,8 @@ int myst_signal_altstack(const stack_t* ss, stack_t* old_ss)
         }
         else
         {
+            if (ss->ss_size < MINSIGSTKSZ)
+                ERAISE(-ENOMEM);
             me->signal.altstack = *ss;
         }
     }
