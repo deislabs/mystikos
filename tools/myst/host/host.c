@@ -567,28 +567,26 @@ void* myst_allocate_shared_memory_ocall(size_t length)
     void* addr;
     int fd;
     const int oflag = O_CREAT | O_RDWR;
-    const int mode = 0666;
+    const int mode = S_IRUSR | S_IWUSR;
+    char name[PATH_MAX];
 
-    shm_unlink("/mystikos");
+    snprintf(name, sizeof(name), "/mystikos.%d", getuid());
 
-    if ((fd = shm_open("/mystikos", oflag, mode)) < 0)
-    {
-        printf("LINE=%d\n", __LINE__);
-        fflush(stdout);
+    shm_unlink(name);
+
+    if ((fd = shm_open(name, oflag, mode)) < 0)
         return MAP_FAILED;
-    }
+
+    if (fchmod(fd, mode) != 0)
+        return MAP_FAILED;
 
     if (ftruncate(fd, length) < 0)
         return MAP_FAILED;
 
     if ((addr = mmap(NULL, length, prot, flags, fd, 0)) == MAP_FAILED)
-    {
-        printf("LINE=%d\n", __LINE__);
-        fflush(stdout);
         return MAP_FAILED;
-    }
 
-    /* ATTN: close fd? */
+    close(fd);
 
     return addr;
 }
@@ -602,8 +600,11 @@ void* myst_attach_shared_memory_ocall(size_t* length)
     const int oflag = O_RDWR;
     const int mode = S_IRUSR | S_IWUSR;
     struct stat statbuf;
+    char name[PATH_MAX];
 
-    if ((fd = shm_open("/mystikos", oflag, mode)) < 0)
+    snprintf(name, sizeof(name), "/mystikos.%d", getuid());
+
+    if ((fd = shm_open(name, oflag, mode)) < 0)
         return MAP_FAILED;
 
     if (fstat(fd, &statbuf) != 0)
@@ -615,7 +616,7 @@ void* myst_attach_shared_memory_ocall(size_t* length)
     if (length)
         *length = statbuf.st_size;
 
-    /* ATTN: close fd? */
+    close(fd);
 
     return addr;
 }
