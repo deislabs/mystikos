@@ -29,10 +29,10 @@ tests:
 # dev targets
 # ############################
 run-ext2-lldb:
-	/mnt/oelldb/oelldb -- $(MYST) exec ext2fs /app/hello $(OPTS)
+	$(MYST_LLDB) -- $(MYST_EXEC) ext2fs /app/hello $(OPTS)
 
 run-ext2-gdb:
-	$(MYST_GDB) --args $(MYST) exec ext2fs /app/hello $(OPTS)
+	$(MYST_GDB) --args $(MYST_EXEC) ext2fs /app/hello $(OPTS)
 
 ct:
 	sudo rm -fr /tmp/myst*
