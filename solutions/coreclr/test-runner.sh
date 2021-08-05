@@ -1,8 +1,8 @@
 #!/bin/bash
 
 USAGE="$0 path-to-myst exec|exec-sgx|exec-linux ext2|cpio <test_list_file>"
-NPROCS=$(grep -c ^processor /proc/cpuinfo)
-#NPROCS=1
+#NPROCS=$(grep -c ^processor /proc/cpuinfo)
+NPROCS=1
 if [[ "$3" != "ext2" ]]; then
 	if [[ "$3" != "cpio" ]]; then
 		echo "Unsupported fs: $3"
