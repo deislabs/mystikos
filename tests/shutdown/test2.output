@@ -1,0 +1,5 @@
+hello from /bin/parent parent-wait-child-spawn-exit-with-sighup-handler
+hello from /bin/child parent-wait-child-spawn-exit-with-sighup-handler
+goodbye from /bin/parent parent-wait-child-spawn-exit-with-sighup-handler
+SIGHUP was intercepted
+goodbye from /bin/child parent-wait-child-spawn-exit-with-sighup-handler

@@ -1,7 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#define _GNU_SOURCE
 #include <assert.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -860,39 +862,16 @@ int myst_enter_kernel(myst_kernel_args_t* args)
             thread->exit_kstack = NULL;
         }
 
-        /* free all non-process threads, waiting for all other threads to
-         * shutdown at the same time. Our thread has not been marked as a zombie
-         * yet. */
+        /* Wait for all child threads to shutdown */
         {
-            myst_thread_t* t = thread->group_next;
-            while (t)
+            while (thread->group_next)
             {
-                myst_thread_t* next = t->group_next;
-                if (t != thread)
-                {
-                    if (t->status != MYST_ZOMBIE)
-                    {
-                        // We still have a thread that has not shut down
-                        // properly yet
-                        myst_sleep_msec(10);
-                        continue;
-                    }
-                    if (t->group_prev)
-                        t->group_prev->group_next = t->group_next;
-                    if (t->group_next)
-                        t->group_next->group_prev = t->group_prev;
-                    myst_signal_free_siginfos(t);
-                    free(t);
-                }
-                t = next;
+                myst_sleep_msec(10);
             }
         }
 
         /* now all the threads have shutdown we can retrieve the exit status */
         exit_status = thread->exit_status;
-
-        if (args->shell_mode)
-            myst_start_shell("\nMystikos shell (exit)\n");
 
         /* release the fdtable */
         if (thread->fdtable)
@@ -900,6 +879,59 @@ int myst_enter_kernel(myst_kernel_args_t* args)
             myst_fdtable_free(thread->fdtable);
             thread->fdtable = NULL;
         }
+
+        /* Remove ourself from /proc/<pid> so other processes know we have gone
+         * if they check */
+        procfs_pid_cleanup(thread->pid);
+
+        /* Send SIGHUP to all other active processes */
+        myst_send_sighup_all_processes(thread);
+
+        /* Put the thread on the zombie list, although no one will be doing a
+         * waitpid on this top-level process, but it will make it consistent */
+        myst_zombify_thread(thread);
+
+        /* Wait for all other processes to exit */
+        {
+            myst_spin_lock(&myst_process_list_lock);
+
+            do
+            {
+                myst_thread_t* t = thread->main.prev_process_thread;
+                while (t)
+                {
+                    if (t->status != MYST_ZOMBIE)
+                    {
+                        break;
+                    }
+                    t = t->main.prev_process_thread;
+                }
+                if (!t)
+                {
+                    // now processes right
+                    t = thread->main.next_process_thread;
+                    while (t)
+                    {
+                        if (t->status != MYST_ZOMBIE)
+                        {
+                            break;
+                        }
+                        t = t->main.next_process_thread;
+                    }
+                }
+                if (!t)
+                    break;
+
+                myst_spin_unlock(&myst_process_list_lock);
+                myst_sleep_msec(10);
+                myst_spin_lock(&myst_process_list_lock);
+
+            } while (1);
+            myst_spin_unlock(&myst_process_list_lock);
+        }
+
+        if (args->shell_mode)
+            myst_start_shell("\nMystikos shell (exit)\n");
 
         /* release signal related heap memory */
         myst_signal_free(thread);
