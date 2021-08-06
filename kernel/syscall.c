@@ -6548,7 +6548,7 @@ long myst_syscall_kill(int pid, int sig)
         siginfo->si_code = SI_USER;
         siginfo->si_signo = sig;
         siginfo->si_pid = thread->pid;
-        siginfo->si_uid = MYST_DEFAULT_UID;
+        siginfo->si_uid = thread->euid;
 
         ret = myst_signal_deliver(process_thread, sig, siginfo);
     }

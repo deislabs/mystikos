@@ -432,4 +432,10 @@ int myst_set_thread_name(myst_thread_t* thread, const char* n);
 /* call the given function on the given stack */
 long myst_call_on_stack(void* stack, long (*func)(void* arg), void* arg);
 
+/* Send SIGHUP to all other processes */
+int myst_send_sighup_all_processes(myst_thread_t* process_thread);
+
+/* Send SIGHUP to child processes of given process thread */
+int myst_send_sighup_child_processes(myst_thread_t* process_thread);
+
 #endif /* _MYST_THREAD_H */

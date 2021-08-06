@@ -1,0 +1,3 @@
+hello from /bin/parent parent-wait-child-spawn-exit-no-sighup-handler
+hello from /bin/child parent-wait-child-spawn-exit-no-sighup-handler
+goodbye from /bin/parent parent-wait-child-spawn-exit-no-sighup-handler
