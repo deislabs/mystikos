@@ -465,6 +465,24 @@ done:
     return ret;
 }
 
+int elf_image_from_buffer(elf_image_t* image, void* buffer, size_t buffer_size)
+{
+    int ret = -1;
+
+    if (!image || !buffer || !buffer_size)
+        ERAISE(-EINVAL);
+
+    memset(image, 0, sizeof(*image));
+
+    if (elf_from_buffer(buffer, buffer_size, &image->elf) != 0)
+        ERAISE(-EINVAL);
+
+    ret = _process_elf_image(image);
+
+done:
+    return ret;
+}
+
 void elf_image_free(elf_image_t* image)
 {
     if (image)

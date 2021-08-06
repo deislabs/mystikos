@@ -792,6 +792,16 @@ long myst_tcall(long n, long params[6])
             uint64_t* args = (uint64_t*)x1;
             return (long)oe_result_str((oe_result_t)args[0]);
         }
+        case SYS_myst_oe_get_enclave_start_address:
+        {
+            extern const void* __oe_get_enclave_start_address(void);
+            return (long)__oe_get_enclave_start_address();
+        }
+        case SYS_myst_oe_get_enclave_base_address:
+        {
+            extern const void* __oe_get_enclave_base_address(void);
+            return (long)__oe_get_enclave_base_address();
+        }
         default:
         {
             printf("error: tcall=%ld\n", n);

@@ -35,6 +35,8 @@ enum
     SYS_myst_oe_free_attestation_certificate,
     SYS_myst_oe_verify_attestation_certificate,
     SYS_myst_oe_result_str,
+    SYS_myst_oe_get_enclave_start_address,
+    SYS_myst_oe_get_enclave_base_address,
 };
 
 // Fixed identity property sizes

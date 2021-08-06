@@ -34,7 +34,7 @@ static int _add_page(
 }
 
 const region_details* create_region_details_from_package(
-    elf_image_t* myst_elf,
+    sections_t* sections,
     size_t heap_pages)
 {
     char dir[PATH_MAX];
@@ -49,69 +49,56 @@ const region_details* create_region_details_from_package(
             dir) >= sizeof(_details.enc.path))
         _err("buffer overflow when forming mystenc.so path");
 
-    // Load CRT
-    if (elf_image_from_section(
-            myst_elf,
-            ".libmystcrt",
-            &_details.crt.image,
-            (const void**)&_details.crt.buffer,
-            &_details.crt.buffer_size) != 0)
-    {
-        _err("failed to extract CRT section from : %s", get_program_file());
-    }
+    // Set CRT buffer
+    _details.crt.buffer = sections->libmystcrt_data;
+    _details.crt.buffer_size = sections->libmystcrt_size;
     _details.crt.status = REGION_ITEM_BORROWED;
 
-    // Load Kernel
-    if (elf_image_from_section(
-            myst_elf,
-            ".libmystkernel",
-            &_details.kernel.image,
-            (const void**)&_details.kernel.buffer,
-            &_details.kernel.buffer_size) != 0)
+    // Load the kernel image from the buffer:
+    if (elf_image_from_buffer(
+            &_details.crt.image,
+            sections->libmystcrt_data,
+            sections->libmystcrt_size) != 0)
     {
-        _err("failed to extract kernel section from : %s", get_program_file());
+        _err("failed to extract the crt section");
     }
+
+    // Set Kernel buffer
+    _details.kernel.buffer = sections->libmystkernel_data;
+    _details.kernel.buffer_size = sections->libmystkernel_size;
     _details.kernel.status = REGION_ITEM_BORROWED;
 
-    // Load ROOTFS
-    if (elf_find_section(
-            &myst_elf->elf,
-            ".mystrootfs",
-            (unsigned char**)&_details.rootfs.buffer,
-            &_details.rootfs.buffer_size) != 0)
+    // Load the kernel image from the buffer:
+    if (elf_image_from_buffer(
+            &_details.kernel.image,
+            sections->libmystkernel_data,
+            sections->libmystkernel_size) != 0)
     {
-        _err("Failed to extract rootfs from %s.", get_program_file());
+        _err("failed to extract the kernel section");
     }
+
+    // Set ROOTFS buffer
+    _details.rootfs.buffer = sections->mystrootfs_data;
+    _details.rootfs.buffer_size = sections->mystrootfs_size;
     _details.rootfs.status = REGION_ITEM_BORROWED;
 
-    // Load pubkeys:
-    if (elf_find_section(
-            &myst_elf->elf,
-            ".mystpubkeys",
-            (unsigned char**)&_details.pubkeys.buffer,
-            &_details.pubkeys.buffer_size) != 0)
-    {
-        _err("Failed to extract pubkeys from %s.", get_program_file());
-    }
+    // Set pubkeys buffer
+    _details.pubkeys.buffer = sections->mystpubkeys_data;
+    _details.pubkeys.buffer_size = sections->mystpubkeys_size;
     _details.pubkeys.status = REGION_ITEM_BORROWED;
 
-    // Load roothashes section:
-    if (elf_find_section(
-            &myst_elf->elf,
-            ".mystroothashes",
-            (unsigned char**)&_details.roothashes.buffer,
-            &_details.roothashes.buffer_size) != 0)
-    {
-        _err("Failed to extract roothashes from %s.", get_program_file());
-    }
+    // Set roothashes buffer
+    _details.roothashes.buffer = sections->mystroothashes_data;
+    _details.roothashes.buffer_size = sections->mystroothashes_size;
     _details.roothashes.status = REGION_ITEM_BORROWED;
 
+    // Set config buffer
+    _details.config.buffer = sections->mystconfig_data;
+    _details.config.buffer_size = sections->mystconfig_size;
+    _details.config.status = REGION_ITEM_BORROWED;
+
     // Load config data
-    if (elf_find_section(
-            &myst_elf->elf,
-            ".mystconfig",
-            (unsigned char**)&_details.config.buffer,
-            &_details.config.buffer_size) == 0)
+    if (_details.config.buffer && _details.config.buffer_size)
     {
         if (heap_pages == 0)
         {

@@ -403,6 +403,8 @@ int elf_image_from_section(
     const void** buffer,
     size_t* buffer_size);
 
+int elf_image_from_buffer(elf_image_t* image, void* buffer, size_t buffer_size);
+
 int elf_image_load(const char* path, elf_image_t* image);
 
 void elf_image_free(elf_image_t* image);
