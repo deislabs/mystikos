@@ -9,7 +9,7 @@
     // Mystikos specific values
 
     // The heap size of the user application. Increase this setting if your app experienced OOM.
-    "MemorySize": "256M",
+    "MemorySize": "3g",
     // The path to the entry point application in rootfs
     "ApplicationPath": "/coreclr-tests-all/Tests/Core_Root/corerun",
     // The parameters to the entry point application
@@ -17,6 +17,5 @@
     // Whether we allow "ApplicationParameters" to be overridden by command line options of "myst exec"
     "HostApplicationParameters": true,
     // The environment variables accessible inside the enclave.
-    "EnvironmentVariables": ["COMPlus_EnableDiagnostics=0",
-    "COMPlus_GCHeapHardLimit=0x0400000"]
+    "EnvironmentVariables": ["COMPlus_EnableDiagnostics=0", "COMPlus_EnableAlternateStackCheck=1"]
 }
