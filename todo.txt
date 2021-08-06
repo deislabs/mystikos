@@ -1,30 +1,49 @@
     AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 
-    A implement copy-on-demand of mman pages
-
-    A test inter-process pipes
+    A Finish inter-process pipes (need wakeup-child mechanism).
+      [Medium]
 
     BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
 
-    B Need to pass credentials (uid/gid) across proxyfs.
+    B Handle inherited sockets (proxy sockets and plain sockets).
+      [Medium]
 
-    B implement multi-level fork.
+    B Pass credentials across proxyfs (uid/gid) -- LTP
+      [Small]
 
-    B Support forking from a thread.
+    B Multi-level fork (handle orphaned children) -- LTP
+      [Large]
 
-    B keep the listener alive after root process exit.
+    B Forking from a thread
+      [Medium]
 
-    B inter-process signals.
+    B Cleanup of any stale memory objects inherited from parent process
+      [Medium]
 
-    B fork() should return Mystikos-pid rather than host pid.
+    B Inter-process signals
+      [Medium]
+
+    B Keep the listener alive after root process exit
+      [Small]
+
+    B fork() should return Mystikos-pid rather than host pid
+      [Small]
 
     B Need myst_atfork() to release mutexes and spinlocks
+      [Medium]
 
     B Support mount() from applications (in forked process)
+      [Small]
 
     B Reactivate itimer thread (goes dormant after fork)
+      [Medium]
+
+    B Privacy/integrity of listener traffic
+      [Large]
 
     CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
+
+    C Implement copy-on-write of mman pages.
 
     C Support the Linux target
 
@@ -32,14 +51,10 @@
 
     C Support debugging of forked processes
 
-    C release inherited threads structures
+    C Release inherited thread structures
 
-    C privacy/integrity of exported pages
+    C Cleanup unused data after exec
 
-    C privacy/integrity of listener traffic
-
-    C cleanup unused data after exec
-
-    C restore page permissions after export
+    C Restore page permissions after export
 
     XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
