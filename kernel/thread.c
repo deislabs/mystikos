@@ -408,11 +408,11 @@ long myst_syscall_waitid(
     int pid = 0;
     if (idtype == P_PID)
     {
-        pid = id;
+        pid = (pid_t)id;
     }
     else if (idtype == P_PGID)
     {
-        pid = -id;
+        pid = -(pid_t)id;
     }
     else if (idtype == P_ALL)
     {

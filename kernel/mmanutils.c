@@ -303,7 +303,7 @@ long myst_mmap(
         }
     }
 
-    void* end = (void*)(ret + length);
+    void* end = (void*)((size_t)ret + length);
     assert((void*)ret >= _mman_start && (void*)ret <= _mman_end);
     assert(end >= _mman_start && end <= _mman_end);
 
