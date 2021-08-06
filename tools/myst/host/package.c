@@ -28,6 +28,7 @@
 #include "pubkeys.h"
 #include "regions.h"
 #include "roothash.h"
+#include "sections.h"
 #include "sign.h"
 #include "utils.h"
 
@@ -566,20 +567,15 @@ int _exec_package(
     char* app_name = NULL;
     char scratch_path[PATH_MAX];
     const region_details* details = NULL;
-    unsigned char* buffer = NULL;
-    size_t buffer_length = 0;
-    elf_image_t myst_elf = {0};
-    int elf_loaded = 0;
     const oe_enclave_type_t type = OE_ENCLAVE_TYPE_SGX;
     uint32_t flags = OE_ENCLAVE_FLAG_DEBUG_AUTO;
     struct myst_options options = {0};
-    char* config_buffer = NULL;
-    size_t config_size = 0;
     char unpack_dir_template[] = "/tmp/mystXXXXXX";
     char* unpack_dir = NULL;
     int ret = -1;
     const char** exec_args = NULL;
     myst_args_t mount_mappings = {0};
+    sections_t sections = {0};
 
     /* Get options */
     {
@@ -734,12 +730,11 @@ int _exec_package(
     }
 
     // Load main executable so we can extract sections
-    if (elf_image_load(get_program_file(), &myst_elf) != 0)
+    if (load_sections(get_program_file(), &sections) != 0)
     {
         fprintf(stderr, "failed to load myst image: %s\n", get_program_file());
         goto done;
     }
-    elf_loaded = 1;
 
     // copy executable to unpack directory where we will run it from
     if (snprintf(scratch_path, PATH_MAX, "%s/bin/%s", unpack_dir, app_name) >=
@@ -770,38 +765,22 @@ int _exec_package(
             stderr, "File path %s/lib/openenclave/ is too long\n", unpack_dir);
         goto done;
     }
-    if (elf_find_section(&myst_elf.elf, ".mystenc", &buffer, &buffer_length) !=
-        0)
-    {
-        fprintf(
-            stderr, "Failed to extract enclave from %s\n", get_program_file());
-        goto done;
-    }
 
-    if (myst_write_file(scratch_path, buffer, buffer_length) != 0)
+    if (myst_write_file(
+            scratch_path, sections.mystenc_data, sections.mystenc_size) != 0)
     {
         fprintf(stderr, "Failed to write %s\n", scratch_path);
         goto done;
     }
-
-    if (elf_find_section(
-            &myst_elf.elf,
-            ".mystconfig",
-            (unsigned char**)&config_buffer,
-            &config_size) != 0)
-    {
-        fprintf(
-            stderr, "Failed to extract config from %s\n", get_program_file());
-        goto done;
-    }
-    elf_loaded = 1;
 
     // Need to duplicate the config buffer or we will be corrupting the image
     // data
     config_parsed_data_t parsed_data = {0};
 
     if (parse_config_from_buffer(
-            (char*)config_buffer, config_size, &parsed_data) != 0)
+            (char*)sections.mystconfig_data,
+            sections.mystconfig_size,
+            &parsed_data) != 0)
     {
         fprintf(stderr, "Failed to process configuration\n");
     }
@@ -822,7 +801,7 @@ int _exec_package(
     }
 
     if ((details = create_region_details_from_package(
-             &myst_elf, parsed_data.heap_pages)) == NULL)
+             &sections, parsed_data.heap_pages)) == NULL)
     {
         fprintf(stderr, "Failed to extract all sections\n");
         goto done;
@@ -907,8 +886,9 @@ done:
     if (unpack_dir)
         remove_recursive(unpack_dir);
 
-    if (elf_loaded)
-        elf_image_free(&myst_elf);
+#if 0
+    free_sections(&sections);
+#endif
 
     if (details)
         free_region_details();

@@ -6307,6 +6307,8 @@ static long _syscall(void* args_)
         case SYS_myst_oe_free_attestation_certificate:
         case SYS_myst_oe_verify_attestation_certificate:
         case SYS_myst_oe_result_str:
+        case SYS_myst_oe_get_enclave_start_address:
+        case SYS_myst_oe_get_enclave_base_address:
         {
             _strace(n, "forwarded");
             BREAK(_return(n, _forward_syscall(n, params)));

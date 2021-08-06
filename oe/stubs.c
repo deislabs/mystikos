@@ -268,3 +268,15 @@ const char* oe_result_string(oe_result_t result)
 
     return (const char*)syscall(SYS_myst_oe_result_str, args);
 }
+
+const void* __oe_get_enclave_start_address(void)
+{
+    uint64_t args[] = {0};
+    return (const char*)syscall(SYS_myst_oe_get_enclave_start_address, args);
+}
+
+const void* __oe_get_enclave_base_address(void)
+{
+    uint64_t args[] = {0};
+    return (const char*)syscall(SYS_myst_oe_get_enclave_base_address, args);
+}

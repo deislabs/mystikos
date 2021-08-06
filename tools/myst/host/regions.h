@@ -7,6 +7,7 @@
 #include <limits.h>
 #include <myst/elf.h>
 #include <myst/regions.h>
+#include "sections.h"
 
 int add_regions(void* arg, uint64_t baseaddr, myst_add_page_t add_page);
 
@@ -47,7 +48,7 @@ const region_details* create_region_details_from_files(
     size_t ram);
 
 const region_details* create_region_details_from_package(
-    elf_image_t* myst_elf,
+    sections_t* sections,
     size_t heap_pages);
 
 void free_region_details();
