@@ -113,7 +113,6 @@ char* clnt_spcreateerror(const char* msg)
 
 int __libc_mallopt(int param_number, int value)
 {
-    assert(0);
     return 0;
 }
 weak_alias(__libc_mallopt, mallopt);

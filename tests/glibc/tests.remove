@@ -1,0 +1,7 @@
+/glibc/build/nptl/tst-join1
+/glibc/build/nptl/tst-key3
+/glibc/build/nptl/tst-tsd5
+/glibc/build/rt/tst-aio
+/glibc/build/rt/tst-aio64
+/glibc/build/rt/tst-aio7
+/glibc/build/time/tst-clock2
