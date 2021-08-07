@@ -433,6 +433,47 @@ int putchar(int c)
     return (int)c;
 }
 
+int vasprintf(char** s_out, const char* fmt, va_list ap)
+{
+    va_list apcopy;
+    char* s;
+    int n;
+    int m;
+    char buf[1];
+
+    if (s_out)
+        *s_out = NULL;
+
+    if (!s_out || !fmt)
+        return -1;
+
+    va_copy(apcopy, ap);
+    n = vsnprintf(buf, sizeof(buf), fmt, apcopy);
+    va_end(apcopy);
+
+    if (n < 0 || !(s = malloc(n + 1)))
+        return -1;
+
+    if ((m = vsnprintf(s, n + 1, fmt, ap)) < 0)
+    {
+        free(s);
+        return -1;
+    }
+
+    *s_out = s;
+    return m;
+}
+
+int asprintf(char** s, const char* fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    int ret = vasprintf(s, fmt, ap);
+    va_end(ap);
+
+    return ret;
+}
+
 /*
 **==============================================================================
 **

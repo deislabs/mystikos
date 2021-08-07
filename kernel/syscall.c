@@ -3684,22 +3684,9 @@ static long _syscall(void* args_)
                 pid_t pid = myst_getpid();
                 void* ptr = (void*)ret;
 
-                if (myst_register_process_mapping(
-                        pid,
-                        ptr,
-                        length,
-                        // Linux ignores fd when the MAP_ANONYMOUS flag is
-                        // present
-                        flags & MAP_ANONYMOUS ? -1 : fd,
-                        offset,
-                        prot) != 0)
-                    myst_panic("failed to register process mapping");
-
-#if MYST_ENABLE_MMAN_PIDS
                 /* set ownership this mapping to pid */
                 if (myst_mman_pids_set(ptr, length, pid) != 0)
                     myst_panic("myst_mman_pids_set()");
-#endif
 
                 ret = (long)ptr;
             }
@@ -3755,14 +3742,12 @@ static long _syscall(void* args_)
 
             long ret = (long)myst_munmap(addr, length);
 
-#if MYST_ENABLE_MMAN_PIDS
             if (ret == 0)
             {
                 /* set ownership this mapping to nobody */
                 if (myst_mman_pids_set(addr, length, 0) != 0)
                     myst_panic("myst_mman_pids_set()");
             }
-#endif
 
             BREAK(_return(n, ret));
         }
@@ -3904,7 +3889,6 @@ static long _syscall(void* args_)
                 flags,
                 new_address);
 
-#if MYST_ENABLE_MMAN_PIDS
             {
                 const pid_t pid = myst_getpid();
                 myst_assume(pid > 0);
@@ -3914,12 +3898,10 @@ static long _syscall(void* args_)
                     (ssize_t)old_size)
                     BREAK(_return(n, -EINVAL));
             }
-#endif
 
             ret = (long)myst_mremap(
                 old_address, old_size, new_size, flags, new_address);
 
-#if MYST_ENABLE_MMAN_PIDS
             if (ret >= 0)
             {
                 const pid_t pid = myst_getpid();
@@ -3932,7 +3914,6 @@ static long _syscall(void* args_)
                 if (myst_mman_pids_set((const void*)ret, new_size, pid) != 0)
                     myst_panic("myst_mman_pids_set()");
             }
-#endif
 
             BREAK(_return(n, ret));
         }

@@ -275,8 +275,6 @@ myst_thread_t* myst_thread_self(void);
 
 void myst_zombify_thread(myst_thread_t* thread);
 
-extern myst_thread_t* __myst_main_thread;
-
 typedef struct myst_thread_queue
 {
     myst_thread_t* front;

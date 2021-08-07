@@ -6,7 +6,19 @@
 
 #include <myst/buf.h>
 #include <myst/mman.h>
+#include <myst/refstr.h>
 #include <sys/types.h>
+
+#define MYST_FDMAPPING_USED 0x1ca0597f
+
+/* defines a file-page to memory-page mapping */
+typedef struct myst_fdmapping
+{
+    uint32_t used;           /* whether entry is used */
+    int32_t fd;              /* fd that page is mapped to */
+    uint64_t offset;         /* offset of page within file */
+    myst_refstr_t* pathname; /* full pathname associated with fd */
+} myst_fdmapping_t;
 
 int myst_setup_mman(void* data, size_t size);
 
@@ -37,14 +49,6 @@ int myst_get_total_ram(size_t* size);
 
 int myst_get_free_ram(size_t* size);
 
-int myst_register_process_mapping(
-    pid_t pid,
-    void* addr,
-    size_t size,
-    int fd,
-    off_t offset,
-    int prot);
-
 int myst_release_process_mappings(pid_t pid);
 
 int myst_msync(void* addr, size_t length, int flags);
@@ -69,8 +73,5 @@ int myst_mman_pids_set(const void* addr, size_t length, pid_t pid);
 
 /* return the length in bytes that are owned by the given process */
 ssize_t myst_mman_pids_test(const void* addr, size_t length, pid_t pid);
-
-/* release all pages in the mapping that are owned by the given process */
-int myst_mman_pids_munmap(const void* addr, size_t length, pid_t pid);
 
 #endif /* _MYST_MMANUTILS_H */

@@ -14,7 +14,6 @@
 
 #define ITERATIONS 1000
 
-#define TRACE
 #ifdef TRACE
 #define T(EXPR) EXPR
 #else

@@ -436,25 +436,18 @@ static int _teardown_tmpfs(void)
 }
 #endif
 
-static int _create_main_thread(
+static int _init_main_thread(
+    myst_thread_t* thread,
     uint64_t event,
     const char* cwd,
-    pid_t target_tid,
-    myst_thread_t** thread_out)
+    pid_t target_tid)
 {
     int ret = 0;
-    myst_thread_t* thread = NULL;
     pid_t ppid = myst_generate_tid();
     pid_t pid = myst_generate_tid();
 
-    if (thread_out)
-        *thread_out = NULL;
-
-    if (!thread_out)
+    if (!thread)
         ERAISE(-EINVAL);
-
-    if (!(thread = calloc(1, sizeof(myst_thread_t))))
-        ERAISE(-ENOMEM);
 
     thread->magic = MYST_THREAD_MAGIC;
     thread->sid = ppid;
@@ -500,13 +493,7 @@ static int _create_main_thread(
     /* bind this thread to the target */
     myst_assume(myst_tcall_set_tsd((uint64_t)thread) == 0);
 
-    *thread_out = thread;
-    thread = NULL;
-
 done:
-
-    if (thread)
-        free(thread);
 
     return ret;
 }
@@ -645,6 +632,9 @@ static void _print_boottime(void)
     }
 }
 
+/* the main thread is the only thread that is not on the heap */
+static myst_thread_t _main_thread;
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstack-usage="
 int myst_enter_kernel(myst_kernel_args_t* args)
@@ -744,9 +734,9 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     }
 
     /* Create the main thread */
-    ECHECK(
-        _create_main_thread(args->event, args->cwd, args->target_tid, &thread));
-    __myst_main_thread = thread;
+    ECHECK(_init_main_thread(
+        &_main_thread, args->event, args->cwd, args->target_tid));
+    thread = &_main_thread;
 
     myst_copy_host_uid_gid_mappings(&args->host_enc_uid_gid_mappings);
 
@@ -946,9 +936,6 @@ int myst_enter_kernel(myst_kernel_args_t* args)
 
     /* Tear down the RAM file system */
     _teardown_ramfs();
-
-    /* Put the thread on the zombie list */
-    myst_zombify_thread(thread);
 
     /* call functions installed with myst_atexit() */
     myst_call_atexit_functions();

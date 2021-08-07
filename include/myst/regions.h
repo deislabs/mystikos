@@ -26,6 +26,7 @@
 #define MYST_REGION_ROOTFS "rootfs"
 #define MYST_REGION_MMAN "mman"
 #define MYST_REGION_MMAN_PIDS "mman.pids"
+#define MYST_REGION_FDMAPPINGS "fdmappings"
 #define MYST_REGION_PUBKEYS "pubkeys"
 #define MYST_REGION_KERNEL_ENTER_STACK "kernel.enter.stack"
 #define MYST_REGION_ROOTHASHES "roothashes"
