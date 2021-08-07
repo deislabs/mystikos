@@ -7,6 +7,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -93,14 +94,37 @@ int test_readonly()
 
 int test_maps()
 {
-    int fd;
-    char buf[1024];
+    char buf[16 * 1024];
+    void* addr;
 
-    fd = open("/proc/self/maps", O_RDONLY);
-    assert(fd > 0);
-    assert(read(fd, buf, sizeof(buf)));
+    {
+        const int prot = PROT_READ | PROT_WRITE | PROT_EXEC;
+        const int flags = MAP_PRIVATE | MAP_ANONYMOUS;
+        const size_t length = 4096 * 1024;
+        if ((addr = mmap(NULL, length, prot, flags, -1, 0)) == MAP_FAILED)
+            assert(0);
+    }
 
-    printf("%s\n", buf);
+    struct stat statbuf;
+    assert(stat("/datafile", &statbuf) == 0);
+    int fd = open("/datafile", O_RDWR);
+    assert(fd >= 0);
+
+    {
+        const int prot = PROT_READ | PROT_WRITE;
+        const int flags = MAP_PRIVATE | MAP_FIXED;
+        const size_t length = statbuf.st_size / 2;
+        if (mmap(addr, length, prot, flags, fd, 8192) == MAP_FAILED)
+            assert(0);
+    }
+
+    {
+        int fd = open("/proc/self/maps", O_RDONLY);
+        assert(fd > 0);
+        assert(read(fd, buf, sizeof(buf)));
+        printf("%s\n", buf);
+        close(fd);
+    }
 }
 
 int test_cpuinfo()
@@ -130,12 +154,16 @@ int test_fdatasync()
 
 int main(int argc, const char* argv[])
 {
+#if 0
     test_meminfo();
     test_self_links(argv[0]);
     test_readonly();
+#endif
     test_maps();
+#if 0
     test_cpuinfo();
     test_fdatasync();
+#endif
 
     printf("\n=== passed test (%s)\n", argv[0]);
     return 0;

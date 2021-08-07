@@ -9,6 +9,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
+#include <myst/atexit.h>
 #include <myst/eraise.h>
 #include <myst/fdtable.h>
 #include <myst/file.h>
@@ -16,13 +17,19 @@
 #include <myst/malloc.h>
 #include <myst/mman.h>
 #include <myst/mmanutils.h>
+#include <myst/mutex.h>
+#include <myst/once.h>
 #include <myst/panic.h>
 #include <myst/printf.h>
 #include <myst/process.h>
+#include <myst/refstr.h>
 #include <myst/round.h>
 #include <myst/strings.h>
 #include <myst/syscall.h>
 #include <myst/trace.h>
+
+MYST_PRINTF_FORMAT(2, 3)
+int asprintf(char** strp, const char* fmt, ...);
 
 #define SCRUB
 
@@ -31,28 +38,41 @@ static void* _mman_start;
 static size_t _mman_size;
 static void* _mman_end;
 
-/* msync mappings are created by mmap() and released with munmap() */
-typedef struct msync_mapping
-{
-    struct msync_mapping* next;
-    int fd;
-    off_t offset;
-    void* addr;
-    size_t length;
-} msync_mapping_t;
+/* ATTN: use _mman.lock instead */
+static myst_mutex_t _fdmappings_lock;
 
-/* linked list of msync mappings */
-static msync_mapping_t* _msync_mappings;
-static myst_spinlock_t _msync_mappings_lock = MYST_SPINLOCK_INITIALIZER;
-
-static uint8_t* _min_ptr(uint8_t* x, uint8_t* y)
+typedef struct vectors
 {
-    return (x < y) ? x : y;
+    myst_fdmapping_t* fdmappings;
+    size_t fdmappings_count;
+    uint32_t* pids;
+    size_t pids_count;
+} vectors_t;
+
+static vectors_t _get_vectors(void)
+{
+    vectors_t v;
+    v.fdmappings = __myst_kernel_args.fdmappings_data;
+    v.fdmappings_count =
+        __myst_kernel_args.fdmappings_size / sizeof(myst_fdmapping_t);
+    v.pids = __myst_kernel_args.mman_pids_data;
+    v.pids_count = __myst_kernel_args.mman_pids_size / sizeof(uint32_t);
+
+    return v;
 }
 
-static uint8_t* _max_ptr(uint8_t* x, uint8_t* y)
+static int _fd_to_pathname(int fd, char pathname[PATH_MAX])
 {
-    return (x > y) ? x : y;
+    int ret = 0;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_fs_t* fs;
+    myst_file_t* file;
+
+    ECHECK(myst_fdtable_get_file(fdtable, fd, &fs, &file));
+    ECHECK((*fs->fs_realpath)(fs, file, pathname, PATH_MAX));
+
+done:
+    return ret;
 }
 
 int myst_setup_mman(void* data, size_t size)
@@ -92,35 +112,147 @@ int myst_teardown_mman(void)
     return 0;
 }
 
-static msync_mapping_t* _new_msync_mapping(
-    int fd,
-    off_t offset,
-    void* addr,
-    size_t length)
+/* get the page index of the given address and check for bounds violations */
+static ssize_t _get_page_index(const void* addr, size_t length)
 {
-    msync_mapping_t* m;
+    ssize_t ret = 0;
+    uint64_t addr_start = (uint64_t)addr;
+    uint64_t mman_start = (uint64_t)_mman_start;
+    size_t mman_size = _mman_size;
+    const uint64_t addr_end;
+    const size_t mman_end;
 
-    if (!(m = calloc(1, sizeof(msync_mapping_t))))
-        return NULL;
+    if (!addr || !length)
+        ERAISE(-EINVAL);
 
-    m->fd = fd;
-    m->offset = offset;
-    m->addr = addr;
-    m->length = length;
+    if (((uint64_t)addr % PAGE_SIZE) || (length % PAGE_SIZE))
+        ERAISE(-EINVAL);
 
-    return m;
+    if (__builtin_add_overflow(addr_start, length, &addr_end))
+        ERAISE(-ERANGE);
+
+    if (__builtin_add_overflow(mman_start, mman_size, &mman_end))
+        ERAISE(-ERANGE);
+
+    if (!(addr_start >= mman_start && addr_end <= mman_end))
+        ERAISE(-EINVAL);
+
+    ret = (addr_start - mman_start) / PAGE_SIZE;
+
+done:
+    return ret;
+}
+
+static void _free_fdmappings_pathnames(void* arg)
+{
+    uint8_t* addr = (uint8_t*)_mman.map;
+    size_t length = ((uint8_t*)_mman.end) - addr;
+    size_t index;
+    vectors_t v = _get_vectors();
+
+    (void)arg;
+
+    myst_round_up(length, PAGE_SIZE, &length);
+    index = _get_page_index(addr, length);
+    assert(index >= 0);
+    size_t count = length / PAGE_SIZE;
+
+    for (size_t i = index; i < index + count; i++)
+    {
+        myst_fdmapping_t* p = &v.fdmappings[i];
+
+        if (p->pathname)
+        {
+            myst_refstr_unref(p->pathname);
+            p->pathname = NULL;
+        }
+    }
+}
+
+static myst_once_t _install_free_fdmappings_pathnames_once;
+
+static void _install_free_fdmappings_pathnames(void)
+{
+    myst_atexit(_free_fdmappings_pathnames, NULL);
+}
+
+static int _add_file_mapping(int fd, off_t offset, void* addr, size_t length)
+{
+    int ret = 0;
+    size_t index;
+    vectors_t v = _get_vectors();
+    struct locals
+    {
+        char pathname[PATH_MAX];
+    };
+    struct locals* locals = NULL;
+    myst_refstr_t* pathname = NULL;
+
+    myst_once(
+        &_install_free_fdmappings_pathnames_once,
+        _install_free_fdmappings_pathnames);
+
+    if (fd < 0 || offset < 0 || !addr || !length)
+        ERAISE(-EINVAL);
+
+    if (!(locals = calloc(1, sizeof(struct locals))))
+        ERAISE(-ENOMEM);
+
+    ECHECK(_fd_to_pathname(fd, locals->pathname));
+
+    /* make a reference-counted version of the pathname */
+    if (!(pathname = myst_refstr_dup(locals->pathname)))
+    {
+        assert("out of memory" == NULL);
+        ERAISE(-ENOMEM);
+    }
+
+    ECHECK(myst_round_up(length, PAGE_SIZE, &length));
+    ECHECK((index = _get_page_index(addr, length)));
+
+    myst_mutex_lock(&_fdmappings_lock);
+    {
+        const size_t count = length / PAGE_SIZE;
+        uint64_t off = offset;
+
+        for (size_t i = index; i < index + count; i++)
+        {
+            myst_fdmapping_t* p = &v.fdmappings[i];
+
+            /* ATTN: the entry might already be in use for unknown reasons */
+            if (p->used == MYST_FDMAPPING_USED)
+            {
+                myst_refstr_unref(p->pathname);
+                p->pathname = NULL;
+            }
+
+            p->used = MYST_FDMAPPING_USED;
+            p->fd = fd;
+            p->offset = off;
+            myst_refstr_ref(p->pathname = pathname);
+            off += PAGE_SIZE;
+        }
+    }
+    myst_mutex_unlock(&_fdmappings_lock);
+
+done:
+
+    if (locals)
+        free(locals);
+
+    myst_refstr_unref(pathname);
+
+    return ret;
 }
 
 static ssize_t _map_file_onto_memory(
     int fd,
     off_t offset,
     void* addr,
-    size_t length,
-    int mmap_flags)
+    size_t length)
 {
     ssize_t ret = 0;
     ssize_t bytes_read = 0;
-    int flags;
     struct locals
     {
         char buf[BUFSIZ];
@@ -157,29 +289,7 @@ static ssize_t _map_file_onto_memory(
         }
     }
 
-    /* get the fd flags */
-    ECHECK(flags = myst_syscall_fcntl(fd, F_GETFL, 0));
-
-    /* if file is writable, then create msync mappings for msync() */
-    if ((mmap_flags & MAP_SHARED) && flags & (O_RDWR | O_WRONLY))
-    {
-        myst_spin_lock(&_msync_mappings_lock);
-        {
-            msync_mapping_t* m;
-
-            /* create a new msync mapping */
-            if (!(m = _new_msync_mapping(fd, offset, addr, length)))
-            {
-                myst_spin_unlock(&_msync_mappings_lock);
-                ERAISE(-ENOMEM);
-            }
-
-            /* add the new mysnc mapping to the list */
-            m->next = _msync_mappings;
-            _msync_mappings = m;
-        }
-        myst_spin_unlock(&_msync_mappings_lock);
-    }
+    ECHECK(_add_file_mapping(fd, offset, addr, length));
 
     ret = bytes_read;
 
@@ -254,7 +364,7 @@ long myst_mmap(
         ECHECK(
             myst_mman_mprotect(&_mman, addr, length, prot | MYST_PROT_WRITE));
 
-        ECHECK(_map_file_onto_memory(fd, offset, addr, length, flags));
+        ECHECK(_map_file_onto_memory(fd, offset, addr, length));
 
         if (!(prot & MYST_PROT_WRITE))
             ECHECK(myst_mman_mprotect(&_mman, addr, length, prot));
@@ -295,8 +405,7 @@ long myst_mmap(
                     ERAISE(-EINVAL);
             }
 
-            ECHECK(
-                _map_file_onto_memory(fd, offset, (void*)ret, length, flags));
+            ECHECK(_map_file_onto_memory(fd, offset, (void*)ret, length));
 
             if (!(prot & MYST_PROT_WRITE))
                 ECHECK(myst_mman_mprotect(&_mman, (void*)ret, length, prot));
@@ -350,114 +459,36 @@ int myst_mprotect(const void* addr, const size_t len, const int prot)
     return (myst_mman_mprotect(&_mman, (void*)addr, len, prot));
 }
 
-MYST_UNUSED
-static void _dump_msync_mappings(void)
-{
-    for (msync_mapping_t* p = _msync_mappings; p; p = p->next)
-    {
-        printf("[%p][%zu][%zu]\n", p->addr, p->length, p->length / 4096);
-    }
-
-    printf("\n");
-}
-
 /* release msync mappings that are contained in the range [addr:addr+length] */
-static int _release_msync_mappings(void* addr, size_t length)
+static int _remove_file_mappings(void* addr, size_t length)
 {
     int ret = 0;
+    size_t index;
+    vectors_t v = _get_vectors();
 
-    myst_spin_lock(&_msync_mappings_lock);
+    if (!addr || !length)
+        ERAISE(-EINVAL);
+
+    ECHECK(myst_round_up(length, PAGE_SIZE, &length));
+    ECHECK((index = _get_page_index(addr, length)));
+
+    myst_mutex_lock(&_fdmappings_lock);
     {
-        msync_mapping_t* p = _msync_mappings;
-        msync_mapping_t* prev = NULL;
+        const size_t count = length / PAGE_SIZE;
 
-        while (p)
+        for (size_t i = index; i < index + count; i++)
         {
-            msync_mapping_t* next = p->next;
-            uint8_t* lo = addr;
-            uint8_t* hi = (uint8_t*)addr + length;
-            uint8_t* plo = p->addr;
-            uint8_t* phi = (uint8_t*)p->addr + p->length;
-            uint8_t* maxlo = _max_ptr(lo, plo);
-            uint8_t* minhi = _min_ptr(hi, phi);
+            myst_fdmapping_t* p = &v.fdmappings[index];
 
-            /* if there is an overlap */
-            if (maxlo < minhi)
-            {
-                size_t llength = maxlo - plo;
-                size_t rlength = phi - minhi;
-                size_t roffset = p->offset + (minhi - plo);
-
-                //     .........
-                // ..........
-                //
-                // .........
-                //     ..........
-
-                // left range:  [plo:llength]
-                // right range: [maxhi:rlength]
-
-                if (llength && rlength)
-                {
-                    // printf("case1: split\n");
-                    msync_mapping_t* rm;
-
-                    /* create the right mapping */
-                    if (!(rm = _new_msync_mapping(
-                              p->fd,
-                              roffset,   /* offset */
-                              minhi,     /* addr */
-                              rlength))) /* length */
-                    {
-                        ERAISE(-ENOMEM);
-                    }
-
-                    /* insert right mapping into list */
-                    rm->next = p->next;
-                    p->next = rm;
-
-                    /* update the left mapping length */
-                    p->length = llength;
-                    prev = rm;
-                }
-                else if (llength)
-                {
-                    // printf("case2: left\n");
-
-                    /* update the left mapping length */
-                    p->length = llength;
-                    prev = p;
-                }
-                else if (rlength)
-                {
-                    // printf("case3: right\n");
-                    p->offset = roffset;
-                    p->addr = minhi;
-                    p->length = rlength;
-                    prev = p;
-                }
-                else
-                {
-                    // printf("case4: remove\n");
-                    if (prev)
-                        prev->next = p->next;
-                    else
-                        _msync_mappings = p->next;
-
-                    free(p);
-                }
-            }
-            else
-            {
-                prev = p;
-            }
-
-            p = next;
+            /* remove this fd-mapping */
+            p->used = 0;
+            p->fd = 0;
+            p->offset = 0;
+            myst_refstr_unref(p->pathname);
+            p->pathname = NULL;
         }
     }
-    myst_spin_unlock(&_msync_mappings_lock);
-
-    goto done;
+    myst_mutex_unlock(&_fdmappings_lock);
 
 done:
     return ret;
@@ -476,7 +507,7 @@ int myst_munmap(void* addr, size_t length)
 
     ECHECK(myst_mman_munmap(&_mman, addr, length));
 
-    ECHECK(_release_msync_mappings(addr, length));
+    ECHECK(_remove_file_mappings(addr, length));
 
 #if 0
     // ATTN-2AA04DD0: fails during process cleanup for unknown reasons. When
@@ -517,168 +548,130 @@ int myst_get_free_ram(size_t* size)
     return myst_mman_free_size(&_mman, size);
 }
 
-typedef struct myst_process_mapping myst_process_mapping_t;
-
-struct myst_process_mapping
-{
-    myst_process_mapping_t* next;
-    pid_t pid;
-    void* addr;
-    size_t size;
-    off_t offset; // file offset
-    char* pathname;
-    int prot;
-};
-
-static myst_process_mapping_t* _mappings;
-static myst_spinlock_t _mappings_lock;
-
-/* uncomment the following line to perform memchecks on process mappings */
-// #define MEMCHECK_PROCESS_MAPPINGS
-
-static void* _calloc(size_t nmemb, size_t size)
-{
-#ifdef MEMCHECK_PROCESS_MAPPINGS
-    return calloc(nmemb, size);
-#else
-    return myst_calloc(nmemb, size);
-#endif
-}
-
-static void _free(void* ptr)
-{
-#ifdef MEMCHECK_PROCESS_MAPPINGS
-    return free(ptr);
-#else
-    return myst_free(ptr);
-#endif
-}
-
-static void* _strdup(const char* s)
-{
-#ifdef MEMCHECK_PROCESS_MAPPINGS
-    return strdup(s);
-#else
-    return myst_strdup(s);
-#endif
-}
-
-/* keep track of mappings made by this process */
-int myst_register_process_mapping(
-    pid_t pid,
-    void* addr,
-    size_t size,
-    int fd,
-    off_t offset,
-    int prot)
-{
-    int ret = 0;
-    myst_process_mapping_t* m = NULL;
-    struct locals
-    {
-        char realpath[PATH_MAX];
-    }* locals = NULL;
-
-    if (pid < 0 || !addr || (addr == (void*)-1) || !size)
-        ERAISE(-EINVAL);
-
-    if (!(m = _calloc(1, sizeof(myst_process_mapping_t))))
-        ERAISE(-ENOMEM);
-
-    m->pid = pid;
-    m->addr = addr;
-    m->size = size;
-
-    /* If file mapping, save pathname, file offset and prot */
-    if (fd >= 0)
-    {
-        int ret = 0;
-        myst_file_t* file = NULL;
-        myst_fs_t* fs = NULL;
-        myst_fdtable_t* fdtable = myst_fdtable_current();
-
-        if (!(locals = malloc(sizeof(struct locals))))
-            ERAISE(-ENOMEM);
-
-        /* Get file path */
-        ECHECK(myst_fdtable_get_file(fdtable, fd, &fs, &file));
-        ECHECK((*fs->fs_realpath)(
-            fs, file, locals->realpath, sizeof(locals->realpath)));
-
-        /* Copy file path, offset and prot to mappings struct */
-        if (!(m->pathname = _strdup(locals->realpath)))
-            ERAISE(-ENOMEM);
-        m->offset = offset;
-        m->prot = prot;
-    }
-
-    myst_spin_lock(&_mappings_lock);
-    {
-        m->next = _mappings;
-        _mappings = m;
-        m = NULL;
-    }
-    myst_spin_unlock(&_mappings_lock);
-
-done:
-
-    if (m)
-        _free(m);
-
-    if (locals)
-        free(locals);
-
-    return ret;
-}
-
-/* release mappings made the given process */
+/* release mappings owned by the given process */
 int myst_release_process_mappings(pid_t pid)
 {
     int ret = 0;
 
-    if (pid < 0)
+    if (pid <= 0)
         ERAISE(-EINVAL);
 
-    myst_spin_lock(&_mappings_lock);
     {
-        myst_process_mapping_t* prev = NULL;
-        myst_process_mapping_t* next = NULL;
+        uint8_t* addr = (uint8_t*)_mman.map;
+        size_t length = ((uint8_t*)_mman.end) - addr;
+        size_t index;
+        vectors_t v = _get_vectors();
 
-        for (myst_process_mapping_t* p = _mappings; p; p = next)
+        assert(v.pids_count == v.fdmappings_count);
+
+        ECHECK(myst_round_up(length, PAGE_SIZE, &length));
+        ECHECK((index = _get_page_index(addr, length)));
+        size_t count = length / PAGE_SIZE;
+
+        assert(index < v.pids_count);
+        assert(index + count <= v.pids_count);
+
+        myst_mutex_lock(&_fdmappings_lock);
         {
-            next = p->next;
-
-            if (p->pid == pid)
+            for (size_t i = index; i < index + count;)
             {
-#if MYST_ENABLE_MMAN_PIDS
-                /* unmap all pages in this mapping that are owned by the given
-                 * process.*/
-                myst_mman_pids_munmap(p->addr, p->size, pid);
-#else
-                myst_munmap(p->addr, p->size);
+                if (v.pids[i] == (uint32_t)pid)
+                {
+                    size_t n = 1;
+                    size_t len;
+
+                    myst_fdmapping_t* p = &v.fdmappings[i];
+                    myst_refstr_unref(p->pathname);
+                    p->pathname = NULL;
+
+                    /* count consecutive pages with same pid */
+                    for (size_t j = i + 1; j < index + count; j++)
+                    {
+                        if (v.pids[j] != (uint32_t)pid)
+                        {
+                            break;
+                        }
+
+                        myst_fdmapping_t* p = &v.fdmappings[j];
+                        myst_refstr_unref(p->pathname);
+                        p->pathname = NULL;
+
+                        n++;
+                    }
+
+                    len = n * PAGE_SIZE;
+
+                    if (myst_munmap(addr, len) != 0)
+                    {
+#if 0
+                        assert("myst_munmap() failed" == NULL);
+                        myst_mutex_unlock(&_fdmappings_lock);
+                        ERAISE(-EINVAL);
 #endif
+                    }
 
-                if (prev)
-                    prev->next = next;
+                    i += n;
+                    addr += len;
+                    length -= len;
+                }
                 else
-                    _mappings = next;
-
-                if (p->pathname)
-                    _free(p->pathname);
-
-                _free(p);
+                {
+                    i++;
+                    addr += PAGE_SIZE;
+                    length -= PAGE_SIZE;
+                }
             }
-            else
-            {
-                prev = p;
-            }
-
-            p = next;
         }
+        myst_mutex_unlock(&_fdmappings_lock);
     }
-    myst_spin_unlock(&_mappings_lock);
 
 done:
+    return ret;
+}
+
+static int _format_proc_maps_entry(
+    const void* addr,
+    size_t length,
+    int prot,
+    int flags,
+    size_t offset,
+    const char* pathname,
+    char** str_out)
+{
+    int ret = 0;
+    char* str = NULL;
+
+    /* unused */
+    (void)flags;
+
+    if (str_out)
+        *str_out = NULL;
+
+    // ATTN: device and inode number are not reported.
+    // Shared or private perms bit is always marked 'p',
+    // as MAP_SHARED is not supported.
+    if (asprintf(
+            &str,
+            "%08lx-%08lx %c%c%cp %08lx 00:00 0 %s\n",
+            (long)addr,
+            (long)addr + length,
+            prot & PROT_READ ? 'r' : '-',
+            prot & PROT_WRITE ? 'w' : '-',
+            prot & PROT_EXEC ? 'x' : '-',
+            offset,
+            pathname) < 0)
+    {
+        ERAISE(-ENOMEM);
+    }
+
+    *str_out = str;
+    str = NULL;
+
+done:
+
+    if (str)
+        free(str);
+
     return ret;
 }
 
@@ -688,48 +681,122 @@ int proc_pid_maps_vcallback(myst_buf_t* vbuf)
     pid_t pid = myst_getpid();
     struct locals
     {
+        char realpath[PATH_MAX];
         char maps_entry[48 + PATH_MAX];
     }* locals = NULL;
 
     if (!vbuf)
         ERAISE(-EINVAL);
 
-    if (!(locals = malloc(sizeof(struct locals))))
+    if (!(locals = calloc(1, sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     myst_buf_clear(vbuf);
 
-    myst_spin_lock(&_mappings_lock);
     {
-        for (myst_process_mapping_t* p = _mappings; p; p = p->next)
+        uint8_t* addr = (uint8_t*)_mman.map;
+        size_t length = ((uint8_t*)_mman.end) - addr;
+        size_t index;
+        vectors_t v = _get_vectors();
+
+        assert(v.pids_count == v.fdmappings_count);
+
+        ECHECK(myst_round_up(length, PAGE_SIZE, &length));
+        ECHECK((index = _get_page_index(addr, length)));
+        size_t count = length / PAGE_SIZE;
+
+        assert(index < v.pids_count);
+        assert(index + count <= v.pids_count);
+
+        myst_mutex_lock(&_fdmappings_lock);
         {
-            if (p->pid == pid && p->pathname)
+            for (size_t i = index; i < index + count;)
             {
-                // ATTN: device and inode number are not reported.
-                // Shared or private perms bit is always marked 'p',
-                // as MAP_SHARED is not supported.
-                int n = snprintf(
-                    locals->maps_entry,
-                    sizeof(locals->maps_entry),
-                    "%08lx-%08lx %c%c%cp %08lx 00:00 0 %s\n",
-                    (long)p->addr,
-                    (long)p->addr + p->size,
-                    p->prot & PROT_READ ? 'r' : '-',
-                    p->prot & PROT_WRITE ? 'w' : '-',
-                    p->prot & PROT_EXEC ? 'x' : '-',
-                    p->offset,
-                    p->pathname);
+                if (v.pids[i] == (uint32_t)pid)
+                {
+                    size_t n = 1;
+                    size_t len;
+                    int fd = v.fdmappings[i].fd;
 
-                if (n >= (int)sizeof(locals->maps_entry))
-                    ERAISE(-ERANGE);
+                    uint32_t used = v.fdmappings[i].used;
+                    uint64_t offset = v.fdmappings[i].offset;
+                    myst_refstr_t* pathname = v.fdmappings[i].pathname;
+                    int prot = 0;
+                    bool consistent = false;
+                    char* str;
+                    int flags = 0;
 
-                // Insert new entry at beginning
-                ECHECK(myst_buf_insert(
-                    vbuf, 0, locals->maps_entry, strlen(locals->maps_entry)));
+                    if (myst_mman_get_prot(
+                            &_mman, addr, PAGE_SIZE, &prot, &consistent) != 0)
+                    {
+                        assert("myst_mman_get_prot() failed\n");
+                    }
+
+                    /* count consecutive pages with same traits */
+                    for (size_t j = i + 1; j < index + count; j++)
+                    {
+                        int tmp_prot = 0;
+
+                        /* if the pid changes */
+                        if (v.pids[j] != (uint32_t)pid)
+                            break;
+
+                        if (v.fdmappings[i].used != used)
+                            break;
+
+                        /* if the fd changes */
+                        if (v.fdmappings[j].fd != fd)
+                            break;
+
+                        if (myst_mman_get_prot(
+                                &_mman,
+                                addr + (n * PAGE_SIZE),
+                                PAGE_SIZE,
+                                &tmp_prot,
+                                &consistent) != 0)
+                        {
+                            assert("myst_mman_get_prot() failed\n");
+                        }
+
+                        if (tmp_prot != prot)
+                            break;
+
+                        n++;
+                    }
+
+                    len = n * PAGE_SIZE;
+
+                    if (!used)
+                        fd = -1;
+
+                    /* format the output */
+                    if (_format_proc_maps_entry(
+                            addr,
+                            len,
+                            prot,
+                            flags,
+                            offset,
+                            (pathname ? pathname->data : ""),
+                            &str) == 0)
+                    {
+                        ECHECK(myst_buf_insert(vbuf, 0, str, strlen(str)));
+                        free(str);
+                    }
+
+                    i += n;
+                    addr += len;
+                    length -= len;
+                }
+                else
+                {
+                    i++;
+                    addr += PAGE_SIZE;
+                    length -= PAGE_SIZE;
+                }
             }
         }
+        myst_mutex_unlock(&_fdmappings_lock);
     }
-    myst_spin_unlock(&_mappings_lock);
 
 done:
 
@@ -770,6 +837,8 @@ done:
 int myst_msync(void* addr, size_t length, int flags)
 {
     int ret = 0;
+    size_t index;
+    vectors_t v = _get_vectors();
     const int mask = MS_SYNC | MS_ASYNC | MS_INVALIDATE;
 
     /* reject bad parameters and unknown flags */
@@ -780,59 +849,31 @@ int myst_msync(void* addr, size_t length, int flags)
     if ((flags & MS_SYNC) && (flags & MS_ASYNC))
         ERAISE(-EINVAL);
 
-    // Note: Asynchronous sync (MS_ASYNC) is not supported so all syncs are
-    // treated as though they were non-asynchronous (MS_SYNC). The caller will
-    // be unable to detect any difference in behavior.
+    ECHECK(myst_round_up(length, PAGE_SIZE, &length));
+    ECHECK((index = _get_page_index(addr, length)));
 
-    // Note: experimentation reveals that Linux invalidates other mappings
-    // of the same file, whether  MS_INVALIDATE is present or not (meaning
-    // that they too are updated to reflect the contents of the file with
-    // or without the MS_INVALIDATE flag).
-
-    myst_spin_lock(&_msync_mappings_lock);
+    myst_mutex_lock(&_fdmappings_lock);
     {
-        /* flush any msync mappings contained by this address range */
-        for (msync_mapping_t* p = _msync_mappings; p; p = p->next)
+        const size_t n = length / PAGE_SIZE;
+        const uint8_t* page = addr;
+
+        for (size_t i = index; i < index + n; i++)
         {
-            uint8_t* lo = addr;
-            uint8_t* hi = (uint8_t*)addr + length;
-            uint8_t* plo = p->addr;
-            uint8_t* phi = (uint8_t*)p->addr + p->length;
-            uint8_t* maxlo = _max_ptr(lo, plo);
-            uint8_t* minhi = _min_ptr(hi, phi);
+            myst_fdmapping_t* p = &v.fdmappings[i];
 
-            // [AAAAAAAAAAAAAAAAA]
-            //       [MMMMMMMMMMMMMMMMMMMMM]
-            //       ^           ^
-            //      maxlo      minhi
-            //
-            //       [AAAAAAAAAAAAAAAAA]
-            // [MMMMMMMMMMMMMMM]
-            //       ^         ^
-            //      maxlo     minhi
+            if (p->used == MYST_FDMAPPING_USED)
+                ECHECK(_sync_file(p->fd, p->offset, page, PAGE_SIZE));
 
-            if (maxlo < minhi)
-            {
-                ECHECK(_sync_file(
-                    p->fd,                     /* fd */
-                    p->offset + (maxlo - plo), /* offset */
-                    maxlo,                     /* addr */
-                    minhi - maxlo));           /* length */
-            }
+            page += PAGE_SIZE;
         }
-
-        // ATTN: currently msync() does not update other mappings of the same
-        // file. This would involve refreshing those mappings from the file
-        // blocks. This case may be rare since it would require mapping the
-        // same file to different memory regions.
     }
-    myst_spin_unlock(&_msync_mappings_lock);
+    myst_mutex_unlock(&_fdmappings_lock);
 
 done:
     return ret;
 }
 
-/* notified on close to remove msync mappings involving fd */
+/* notified on close to clear msync mappings involving fd */
 void myst_mman_close_notify(int fd)
 {
     int flags;
@@ -849,33 +890,37 @@ void myst_mman_close_notify(int fd)
     /* if file is open for write */
     if (flags & (O_RDWR | O_WRONLY))
     {
-        myst_spin_lock(&_msync_mappings_lock);
+        myst_spin_lock(&_mman.lock);
+        uint8_t* addr = (uint8_t*)_mman.map;
+        size_t length = ((uint8_t*)_mman.end) - addr;
+        myst_spin_unlock(&_mman.lock);
+
+        vectors_t v = _get_vectors();
+        size_t index = _get_page_index(addr, length);
+        myst_assume(index >= 0);
+
+        myst_mutex_lock(&_fdmappings_lock);
         {
-            msync_mapping_t* p = _msync_mappings;
-            msync_mapping_t* prev = NULL;
+            const size_t count = length / PAGE_SIZE;
+            myst_fdmapping_t* p = &v.fdmappings[index];
+            const myst_fdmapping_t* end = p + count;
+            size_t bytes_remaining = count * sizeof(myst_fdmapping_t);
 
-            while (p)
+            while (p < end)
             {
-                msync_mapping_t* next = p->next;
+                // Efficiently skip over zero-valued bytes. In-use fdmappings
+                // begin with a non-zero byte.
+                if ((p = myst_memcchr(p, '\0', bytes_remaining)) == NULL)
+                    break;
 
-                if (p->fd == fd)
-                {
-                    if (prev)
-                        prev->next = p->next;
-                    else
-                        _msync_mappings = p->next;
+                if (p->used == MYST_FDMAPPING_USED && p->fd == fd)
+                    memset(p, 0, sizeof(myst_fdmapping_t));
 
-                    free(p);
-                }
-                else
-                {
-                    prev = p;
-                }
-
-                p = next;
+                p++;
+                bytes_remaining -= sizeof(myst_fdmapping_t);
             }
         }
-        myst_spin_unlock(&_msync_mappings_lock);
+        myst_mutex_unlock(&_fdmappings_lock);
     }
 }
 
@@ -901,8 +946,7 @@ static long _handle_mman_pids_op(
     pid_t pid)
 {
     long ret = 0;
-    uint32_t* pids = __myst_kernel_args.mman_pids_data;
-    size_t npids = __myst_kernel_args.mman_pids_size / sizeof(uint32_t);
+    vectors_t v = _get_vectors();
     bool locked = false;
     size_t index;
     size_t count;
@@ -922,33 +966,17 @@ static long _handle_mman_pids_op(
     myst_spin_lock(&_mman.lock);
     locked = true;
 
-    // Fail if [addr:length] is not within the mmap area.
-    // Calculate the index of pids[] and count to set.
-    {
-        const myst_kernel_args_t* kargs = &__myst_kernel_args;
-        const uint64_t addr_start = (uint64_t)addr;
-        const uint64_t addr_end;
-        const uint64_t mman_start = (uint64_t)kargs->mman_data;
-        const size_t mman_end;
+    ECHECK((index = _get_page_index(addr, length)));
+    count = length / PAGE_SIZE;
 
-        if (__builtin_add_overflow(addr_start, length, &addr_end))
-            ERAISE(-ERANGE);
+    assert(index < v.pids_count);
+    assert(index + count <= v.pids_count);
 
-        if (__builtin_add_overflow(mman_start, kargs->mman_size, &mman_end))
-            ERAISE(-ERANGE);
+    if ((size_t)index >= v.pids_count)
+        ERAISE(-ERANGE);
 
-        if (!(addr_start >= mman_start && addr_end <= mman_end))
-            ERAISE(-EINVAL);
-
-        index = (addr_start - mman_start) / PAGE_SIZE;
-        count = length / PAGE_SIZE;
-
-        if (index >= npids)
-            ERAISE(-ERANGE);
-
-        if (index + count > npids)
-            ERAISE(-ERANGE);
-    }
+    if (index + count >= v.pids_count)
+        ERAISE(-ERANGE);
 
     /* ATTN: optimize to use 64bit ops */
     switch (op)
@@ -957,14 +985,14 @@ static long _handle_mman_pids_op(
         {
             if (pid == 0)
             {
-                memset(&pids[index], 0, count * sizeof(uint32_t));
+                memset(&v.pids[index], 0, count * sizeof(uint32_t));
             }
             else
             {
                 /* Update the associated elements of pids[] */
                 for (size_t i = index; i < index + count; i++)
                 {
-                    pids[i] = pid;
+                    v.pids[i] = pid;
                 }
             }
 
@@ -977,7 +1005,7 @@ static long _handle_mman_pids_op(
             /* Test the associated elements of pids[] */
             for (size_t i = index; i < index + count; i++)
             {
-                if (pids[i] != (uint32_t)pid)
+                if (v.pids[i] != (uint32_t)pid)
                     break;
 
                 n++;
@@ -1002,6 +1030,10 @@ done:
     return ret;
 }
 
+// This function should only be called when carrying out mmap/mremap/munmap
+// syscalls on behalf of the application. The kernel should never mark its own
+// memory pages as being owned by any process. Else, when the process exits,
+// kernel memory objects would be freed.
 int myst_mman_pids_set(const void* addr, size_t length, pid_t pid)
 {
     return (int)_handle_mman_pids_op(MMAN_PIDS_OP_SET, addr, length, pid);
@@ -1010,62 +1042,4 @@ int myst_mman_pids_set(const void* addr, size_t length, pid_t pid)
 ssize_t myst_mman_pids_test(const void* addr, size_t length, pid_t pid)
 {
     return _handle_mman_pids_op(MMAN_PIDS_OP_TEST, addr, length, pid);
-}
-
-int myst_mman_pids_munmap(const void* addr, size_t length, pid_t pid)
-{
-    int ret = 0;
-
-    if (!addr || pid < 0)
-        ERAISE(-EINVAL);
-
-    /* allowing a zero-valued pid would remove kernel mappings */
-    if (pid == 0)
-        ERAISE(-EINVAL);
-
-    /* addr must be aligned on a page boundary */
-    if ((uint64_t)addr % PAGE_SIZE)
-        ERAISE(-EINVAL);
-
-    /* the length must be a multiple of the page boundary */
-    if (length % PAGE_SIZE)
-        ERAISE(-EINVAL);
-
-    /* release every page in the mapping owned by this pid */
-    {
-        uint8_t* ptr = (uint8_t*)addr;
-        size_t rem = length;
-
-        while (rem)
-        {
-            ssize_t n;
-
-            /* check ownership for this mapping (returns bytes owned) */
-            if ((n = myst_mman_pids_test(ptr, rem, pid)) > 0)
-            {
-                /* release this mapping */
-                if (myst_munmap(ptr, n) == 0)
-                {
-                    /* clear the owner for this mapping */
-                    myst_mman_pids_set(ptr, n, 0);
-                }
-
-                ptr += n;
-                rem -= n;
-            }
-            else if (n == 0)
-            {
-                ptr += PAGE_SIZE;
-                rem -= PAGE_SIZE;
-            }
-            else
-            {
-                /* code logic error! */
-                myst_panic("unexpected");
-            }
-        }
-    }
-
-done:
-    return ret;
 }

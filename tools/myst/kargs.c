@@ -183,6 +183,15 @@ int init_kernel_args(
         err,
         err_size));
 
+    /* find the fdmappings region */
+    ECHECK(_find_region(
+        regions_end,
+        MYST_REGION_FDMAPPINGS,
+        &args->fdmappings_data,
+        &args->fdmappings_size,
+        err,
+        err_size));
+
     /* find the rootfs region */
     ECHECK(_find_region(
         regions_end,

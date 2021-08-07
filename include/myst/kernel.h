@@ -108,6 +108,10 @@ typedef struct myst_kernel_args
     void* mman_pids_data;
     size_t mman_pids_size;
 
+    /* The fdmappings[] vector for fd-mman mappings */
+    void* fdmappings_data;
+    size_t fdmappings_size;
+
     /* The CPIO root file system image */
     char rootfs[PATH_MAX];
     void* rootfs_data;

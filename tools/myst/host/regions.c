@@ -11,6 +11,7 @@
 #include <myst/eraise.h>
 #include <myst/file.h>
 #include <myst/hex.h>
+#include <myst/mmanutils.h>
 #include <myst/round.h>
 #include <myst/strings.h>
 #include <openenclave/bits/sgx/sgxtypes.h>
@@ -799,10 +800,11 @@ static int _add_mman_pids_region(
         ERAISE(-EINVAL);
 
     /* calculate the size in bytes of the pids[] vector */
-    size_t nbytes = mman_pages * sizeof(uint32_t);
+    size_t file_size = mman_pages * sizeof(uint32_t);
 
     /* round nbytes to the next multiple of the page size */
-    ECHECK(myst_round_up(nbytes, PAGE_SIZE, &nbytes));
+    size_t nbytes;
+    ECHECK(myst_round_up(file_size, PAGE_SIZE, &nbytes));
 
     /* calculate the number of pages to be added */
     size_t npages = nbytes / PAGE_SIZE;
@@ -820,8 +822,57 @@ static int _add_mman_pids_region(
         *vaddr += sizeof(page);
     }
 
-    if (myst_region_close(context, name, *vaddr, SIZE_MAX) != 0)
+    if (myst_region_close(context, name, *vaddr, file_size) != 0)
         ERAISE(-EINVAL);
+
+    *(vaddr) += PAGE_SIZE;
+
+done:
+    return ret;
+}
+
+static int _add_fdmappings_region(
+    myst_region_context_t* context,
+    uint64_t* vaddr)
+{
+    int ret = 0;
+    __attribute__((__aligned__(PAGE_SIZE))) uint8_t page[PAGE_SIZE];
+    const size_t mman_pages = _details.mman_size / PAGE_SIZE;
+    const char name[] = MYST_REGION_FDMAPPINGS;
+
+    if (!context || !vaddr)
+        ERAISE(-EINVAL);
+
+    if (myst_region_open(context) != 0)
+        ERAISE(-EINVAL);
+
+    /* calculate the size in bytes of the fdmappings[] vector */
+    size_t file_size = mman_pages * sizeof(myst_fdmapping_t);
+    size_t nbytes;
+
+    /* round nbytes to the next multiple of the page size */
+    ECHECK(myst_round_up(file_size, PAGE_SIZE, &nbytes));
+
+    /* calculate the number of pages to be added */
+    size_t npages = nbytes / PAGE_SIZE;
+
+    memset(page, 0, sizeof(page));
+
+    /* add the zero-filled pages */
+    for (size_t i = 0; i < npages; i++)
+    {
+        int flags = PROT_READ | PROT_WRITE | MYST_REGION_EXTEND;
+
+        if (_add_page(context, *vaddr, page, flags) != 0)
+            ERAISE(-EINVAL);
+
+        *vaddr += sizeof(page);
+    }
+
+    if (myst_region_close(context, name, *vaddr, file_size) != 0)
+        ERAISE(-EINVAL);
+
+    *(vaddr) += PAGE_SIZE;
 
 done:
     return ret;
@@ -868,6 +919,10 @@ int add_regions(void* arg, uint64_t baseaddr, myst_add_page_t add_page)
 
     if (_add_rootfs_region(context, &vaddr) != 0)
         _err("_add_rootfs_region() failed");
+
+    /* add a region to keep track fd-mappings to the mman region */
+    if (_add_fdmappings_region(context, &vaddr) != 0)
+        _err("_add_mman_pids_region() failed");
 
     if (_add_pubkeys_region(context, &vaddr) != 0)
         _err("_add_pubkeys_region() failed");

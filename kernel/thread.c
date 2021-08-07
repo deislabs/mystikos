@@ -38,8 +38,6 @@
 
 //#define TRACE
 
-myst_thread_t* __myst_main_thread;
-
 myst_spinlock_t myst_process_list_lock = MYST_SPINLOCK_INITIALIZER;
 
 /* The total number of threads running (including the main thread) */
@@ -779,6 +777,7 @@ myst_thread_t* myst_thread_self(void)
     myst_assume(myst_tcall_get_tsd(&value) == 0);
 
     myst_thread_t* thread = (myst_thread_t*)value;
+
     myst_assume(myst_valid_thread(thread));
 
     return thread;
