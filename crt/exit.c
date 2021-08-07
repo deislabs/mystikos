@@ -26,32 +26,28 @@ void exit(int code)
 
     if (syscall(SYS_myst_get_fork_info, &arg) == 0)
     {
-        if (arg.is_child_fork)
+        if (arg.is_parent_of_fork)
         {
-            // we are child fork so let parent cleanup
-            _Exit(code);
-        }
-        else if (arg.is_parent_of_fork)
-        {
-            // we have active child forked processes
-            if (syscall(SYS_myst_kill_wait_child_forks) == 0)
-            {
-                // child fork process now terminated.
-                // cleanup CRT as normal
-                do_crt_exit(code);
-            }
-            else
+            /* If we are a parent we need to wait for all forked childred to
+             * shutdown */
+            if (syscall(SYS_myst_kill_wait_child_forks) != 0)
             {
                 // failed so safest option is fast exit
                 _Exit(code);
             }
         }
-        else
+
+        if (arg.is_child_fork)
         {
-            // regular process with nothing to do with fork.
-            // cleanup CRT as normal
-            do_crt_exit(code);
+            // we are child fork so let parent cleanup
+            _Exit(code);
         }
+
+        /* If we are a parent of forked processes, all children are gone. */
+        /* If we are a child we dont get here. */
+        /* This means we are not a forked process and no one relies on our
+         * process memory so we can do a normal CRT cleanup */
+        do_crt_exit(code);
     }
     else
     {

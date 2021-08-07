@@ -140,8 +140,9 @@ static void _get_options(
 
     if (get_fork_mode_opts(argc, argv, &opts->fork_mode) != 0)
         _err(
-            "%s: invalid --fork-mode option. Only \"none\" and "
-            "\"pseudo_kill_children\" are currently supported\n",
+            "%s: invalid --fork-mode option. Only \"none\", "
+            "\"pseudo\" and \"pseudo_wait_for_exit_exec\" are currently "
+            "supported\n",
             argv[0]);
 
     /* Get --max-affinity-cpus */

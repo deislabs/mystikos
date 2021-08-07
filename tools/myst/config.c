@@ -221,12 +221,8 @@ static json_result_t _json_read_callback(
                 {
                     if (strcmp(un->string, "none") == 0)
                         parsed_data->fork_mode = myst_fork_none;
-                    else if (strcmp(un->string, "pseudo_kill_children") == 0)
-                        parsed_data->fork_mode = myst_fork_pseudo_kill_children;
-#if 0
-                    else if (strcmp(un->string, "pseudo_wait_for_children") == 0)
-                        parsed_data->fork_mode = myst_fork_pseudo_wait_for_children;
-#endif
+                    else if (strcmp(un->string, "pseudo") == 0)
+                        parsed_data->fork_mode = myst_fork_pseudo;
                     else if (
                         strcmp(un->string, "pseudo_wait_for_exit_exec") == 0)
                         parsed_data->fork_mode =

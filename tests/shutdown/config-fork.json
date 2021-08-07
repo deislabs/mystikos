@@ -9,7 +9,7 @@
 
     // Mystikos specific values
     "MemorySize": "40m",
-    "ApplicationPath": "/bin/hello",
+    "ApplicationPath": "//bin/parent",
     "HostApplicationParameters": true,
-    "ForkMode":"pseudo_kill_children"
+    "ForkMode":"pseudo"
 }

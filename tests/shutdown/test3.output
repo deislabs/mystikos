@@ -1,0 +1,5 @@
+hello from /bin/parent parent-wait-child-fork-exit-no-sighup-handler
+Hello from child parent-wait-child-fork-exit-no-sighup-handler
+Hello from parent parent-wait-child-fork-exit-no-sighup-handler
+goodbye from parent parent-wait-child-fork-exit-no-sighup-handler
+goodbye from /bin/parent parent-wait-child-fork-exit-no-sighup-handler

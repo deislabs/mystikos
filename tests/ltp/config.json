@@ -10,5 +10,5 @@
     // Mystikos specific values
     "MemorySize": "40m",
     "HostApplicationParameters": true,
-    "ForkMode":"pseudo_kill_children"
+    "ForkMode":"pseudo"
 }

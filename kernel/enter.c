@@ -864,6 +864,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
 
         /* Wait for all child threads to shutdown */
         {
+            myst_assume(thread->group_prev == NULL);
             while (thread->group_next)
             {
                 myst_sleep_msec(10);
@@ -889,7 +890,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
 
         /* Put the thread on the zombie list, although no one will be doing a
          * waitpid on this top-level process, but it will make it consistent */
-        myst_zombify_thread(thread);
+        //        myst_zombify_thread(thread);
 
         /* Wait for all other processes to exit */
         {

@@ -1301,16 +1301,15 @@ long myst_have_child_forked_processes(myst_thread_t* process)
 {
     pid_t pid = process->pid;
     myst_thread_t* p;
-    long ret = 0;
 
     myst_spin_lock(&myst_process_list_lock);
     p = process->main.prev_process_thread;
 
     while (p)
     {
-        if ((p->ppid == pid) && (p->clone.flags & CLONE_VFORK))
+        if ((p->ppid == pid) && (p->clone.flags & CLONE_VFORK) &&
+            p->status != MYST_ZOMBIE)
         {
-            ret = 1;
             break;
         }
         p = p->main.prev_process_thread;
@@ -1322,9 +1321,9 @@ long myst_have_child_forked_processes(myst_thread_t* process)
 
         while (p)
         {
-            if ((p->ppid == pid) && (p->clone.flags & CLONE_VFORK))
+            if ((p->ppid == pid) && (p->clone.flags & CLONE_VFORK) &&
+                p->status != MYST_ZOMBIE)
             {
-                ret = 1;
                 break;
             }
             p = p->main.next_process_thread;
@@ -1332,12 +1331,12 @@ long myst_have_child_forked_processes(myst_thread_t* process)
     }
     myst_spin_unlock(&myst_process_list_lock);
 
-    return ret;
+    return p != NULL;
 }
 
 long kill_child_fork_processes(myst_thread_t* process)
 {
-    if (__myst_kernel_args.fork_mode != myst_fork_pseudo_kill_children)
+    if (__myst_kernel_args.fork_mode == myst_fork_none)
         return 0;
 
     myst_spin_lock(&myst_process_list_lock);
@@ -1403,12 +1402,12 @@ size_t myst_kill_thread_group()
 
         /* We may have had pipes on their way to blocking since the last trigger
          * so lets do it again to be sure */
-        myst_spin_lock(&process->fdtable->lock);
         if (process->fdtable)
         {
+            myst_spin_lock(&process->fdtable->lock);
             myst_fdtable_interrupt(process->fdtable);
+            myst_spin_unlock(&process->fdtable->lock);
         }
-        myst_spin_unlock(&process->fdtable->lock);
 
         /* wait for all other threads except ours and the process thread to go
          * away */
@@ -1472,7 +1471,8 @@ int myst_send_sighup_all_processes(myst_thread_t* process_thread)
     myst_thread_t* t = process_thread->main.prev_process_thread;
     while (t)
     {
-        myst_signal_deliver(t, SIGHUP, NULL);
+        if (t->status != MYST_ZOMBIE)
+            myst_signal_deliver(t, SIGHUP, NULL);
 
         t = t->main.prev_process_thread;
     }
@@ -1481,7 +1481,8 @@ int myst_send_sighup_all_processes(myst_thread_t* process_thread)
     t = process_thread->main.next_process_thread;
     while (t)
     {
-        myst_signal_deliver(t, SIGHUP, NULL);
+        if (t->status != MYST_ZOMBIE)
+            myst_signal_deliver(t, SIGHUP, NULL);
 
         t = t->main.next_process_thread;
     }
@@ -1497,10 +1498,12 @@ int myst_send_sighup_child_processes(myst_thread_t* process_thread)
 
     myst_spin_lock(&process_thread->main.thread_group_lock);
 
+    pid_t pid = process_thread->pid;
     myst_thread_t* t = process_thread->group_next;
     while (t)
     {
-        myst_signal_deliver(t, SIGHUP, NULL);
+        if ((t->ppid == pid) && (t->status != MYST_ZOMBIE))
+            myst_signal_deliver(t, SIGHUP, NULL);
 
         t = t->main.next_process_thread;
     }

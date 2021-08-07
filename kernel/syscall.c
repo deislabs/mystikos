@@ -4116,7 +4116,7 @@ static long _syscall(void* args_)
 
             while (myst_have_child_forked_processes(process))
             {
-                myst_sleep_msec(100);
+                myst_sleep_msec(10);
             }
 
             BREAK(_return(n, ret));
