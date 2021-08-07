@@ -344,9 +344,9 @@ int get_fork_mode_opts(
         {
             *fork_mode = myst_fork_none;
         }
-        else if (strcmp(arg, "pseudo_kill_children") == 0)
+        else if (strcmp(arg, "pseudo") == 0)
         {
-            *fork_mode = myst_fork_pseudo_kill_children;
+            *fork_mode = myst_fork_pseudo;
         }
         else if (strcmp(arg, "pseudo_wait_for_exit_exec") == 0)
         {

@@ -34,8 +34,7 @@ enum
 typedef enum
 {
     myst_fork_none = 0,
-    myst_fork_pseudo_wait_for_children,
-    myst_fork_pseudo_kill_children,
+    myst_fork_pseudo,
     myst_fork_pseudo_wait_for_exit_exec
 } myst_fork_mode_t;
 

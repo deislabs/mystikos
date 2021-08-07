@@ -357,8 +357,9 @@ int exec_action(int argc, const char* argv[], const char* envp[])
         {
             fprintf(
                 stderr,
-                "%s: invalid --fork-mode option. Only \"none\" and "
-                "\"pseudo_kill_children\" are currently supported\n",
+                "%s: invalid --fork-mode option. Only \"none\", "
+                "\"pseudo\" and \"pseudo_wait_for_exit_exec\" are currently "
+                "supported\n",
                 argv[0]);
             return 1;
         }

@@ -38,8 +38,8 @@ test-wait-exec: rootfs
 
 # pseudo, killing child forks before main thread exits
 test-fork-kill-children: all
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) --app-config-path config-kill-children.json rootfs /bin/fork fork
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) --fork-mode pseudo_kill_children rootfs /bin/fork fork
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) --app-config-path config-pseudo.json rootfs /bin/fork fork
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) --fork-mode pseudo rootfs /bin/fork fork
 
 clean:
 	rm -rf $(APPDIR) rootfs
