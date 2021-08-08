@@ -914,7 +914,10 @@ void myst_mman_close_notify(int fd)
                     break;
 
                 if (p->used == MYST_FDMAPPING_USED && p->fd == fd)
+                {
+                    myst_refstr_unref(p->pathname);
                     memset(p, 0, sizeof(myst_fdmapping_t));
+                }
 
                 p++;
                 bytes_remaining -= sizeof(myst_fdmapping_t);
