@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <limits.h>
 #include <myst/mman.h>
+#include <myst/mmanutils.h>
 #include <sched.h>
 #include <signal.h>
 #include <stdarg.h>
@@ -4142,6 +4143,12 @@ static long _syscall(void* args_)
             myst_thread_t* process = myst_find_process_thread(thread);
 
             _strace(n, "status=%d", status);
+
+            {
+                size_t size;
+                myst_get_free_ram(&size);
+                myst_eprintf("=== free ram: %zu\n", size);
+            }
 
             if (!thread || thread->magic != MYST_THREAD_MAGIC)
                 myst_panic("unexpected");

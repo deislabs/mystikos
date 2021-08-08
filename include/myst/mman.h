@@ -4,7 +4,7 @@
 #ifndef _MYST_INTERNAL_MMAN_H
 #define _MYST_INTERNAL_MMAN_H
 
-#include <myst/spinlock.h>
+#include <myst/rspinlock.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -107,7 +107,7 @@ typedef struct myst_mman
     bool scrub;
 
     /* Heap locking */
-    myst_spinlock_t lock;
+    myst_rspinlock_t lock;
 
     /* Error string */
     char err[MYST_MMAN_ERROR_SIZE];
