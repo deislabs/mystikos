@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 #include <myst/assume.h>
+#include <myst/bufu64.h>
 #include <myst/defs.h>
 #include <myst/fdtable.h>
 #include <myst/futex.h>
@@ -258,8 +259,11 @@ struct myst_thread
     size_t num_supgid;
     gid_t supgid[NGROUPS_MAX];
 
-    // the kernel stack for the current the syscall (used only by SYS_exit)
-    myst_kstack_t* kstack;
+    /* the kernel stack that was allocated to handle the exit system call */
+    myst_kstack_t* exit_kstack;
+
+    /* the kernel stacks that were allocated to handle the exec system call */
+    myst_bufu64_t exec_kstacks;
 
     /* when fork needs to wait for child to call exec or exit, wait on this
      * fuxtex. Child set to 1 and signals futex. */
