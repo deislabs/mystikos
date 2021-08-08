@@ -3754,10 +3754,16 @@ static long _syscall(void* args_)
         case SYS_brk:
         {
             void* addr = (void*)x1;
+            long ret;
 
             _strace(n, "addr=%lx", (long)addr);
 
-            BREAK(_return(n, myst_syscall_brk(addr)));
+            if (__myst_kernel_args.nobrk)
+                ret = -ENOTSUP;
+            else
+                ret = myst_syscall_brk(addr);
+
+            BREAK(_return(n, ret));
         }
         case SYS_rt_sigaction:
         {

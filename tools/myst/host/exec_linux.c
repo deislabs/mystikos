@@ -79,6 +79,7 @@ struct options
     bool shell_mode;
     bool debug_symbols;
     bool memcheck;
+    bool nobrk;
     bool perf;
     bool report_native_tids;
     size_t max_affinity_cpus;
@@ -124,6 +125,10 @@ static void _get_options(
     /* Get --memcheck option */
     if (cli_getopt(argc, argv, "--memcheck", NULL) == 0)
         opts->memcheck = true;
+
+    /* Get --nobrk option */
+    if (cli_getopt(argc, argv, "--nobrk", NULL) == 0)
+        opts->nobrk = true;
 
     /* Get --perf option */
     if (cli_getopt(argc, argv, "--perf", NULL) == 0)
@@ -355,6 +360,8 @@ static int _enter_kernel(
     kernel_args.debug_symbols = options->debug_symbols;
 
     kernel_args.memcheck = options->memcheck;
+
+    kernel_args.nobrk = options->nobrk;
 
     kernel_args.perf = options->perf;
 

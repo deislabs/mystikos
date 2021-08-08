@@ -43,6 +43,7 @@ $(APPDIR)/bin/run: run.c
 $(APPDIR):
 	$(APPBUILDER) -i mystikos/libcxx_11x:0.1
 	cp $(CURDIR)/testsa*.passed $(APPDIR)
+	cp $(CURDIR)/tests.passed $(APPDIR)
 	# To build a new image, modify the appbuilder script to build the image with the correct name, 
 	# and not clean it up. Then once the image is built, push it to dockerhub and update 
 	# this call.
@@ -100,3 +101,6 @@ clean-tests:
 	comm -23 $(ALLTESTS).sorted tests.remove.sorted > alltests
 	comm -23 tests.passed.sorted tests.remove.sorted > libcxx_passed
 	comm -23 tests.failed.sorted tests.failedalpine.sorted > libcxx_failed
+
+allinone:
+	$(MYST_EXEC) $(OPTS) $(ROOTFS) --nobrk /bin/run /tests.passed
