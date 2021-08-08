@@ -286,7 +286,7 @@ static myst_vad_t* _list_find(myst_mman_t* mman, uintptr_t addr)
 /* Lock the mman and set the 'locked' parameter to true */
 MYST_INLINE void _mman_lock(myst_mman_t* mman, bool* locked)
 {
-    myst_spin_lock(&mman->lock);
+    myst_rspin_lock(&mman->lock);
     *locked = true;
 }
 
@@ -295,7 +295,7 @@ MYST_INLINE void _mman_unlock(myst_mman_t* mman, bool* locked)
 {
     if (*locked)
     {
-        myst_spin_unlock(&mman->lock);
+        myst_rspin_unlock(&mman->lock);
         *locked = false;
     }
 }
@@ -2036,9 +2036,9 @@ int myst_mman_total_size(myst_mman_t* mman, size_t* size)
         goto done;
     }
 
-    myst_spin_lock(&mman->lock);
+    myst_rspin_lock(&mman->lock);
     *size = mman->size;
-    myst_spin_unlock(&mman->lock);
+    myst_rspin_unlock(&mman->lock);
 
 done:
     return ret;
@@ -2059,7 +2059,7 @@ int myst_mman_free_size(myst_mman_t* mman, size_t* size_out)
         goto done;
     }
 
-    myst_spin_lock(&mman->lock);
+    myst_rspin_lock(&mman->lock);
     {
         /* determine the bytes between the BRK value and MAP value */
         size = mman->map - mman->brk;
@@ -2068,7 +2068,7 @@ int myst_mman_free_size(myst_mman_t* mman, size_t* size_out)
         for (myst_vad_t* p = mman->vad_list; p; p = p->next)
             size += _get_right_gap(mman, p);
     }
-    myst_spin_unlock(&mman->lock);
+    myst_rspin_unlock(&mman->lock);
 
     *size_out = size;
 
@@ -2083,7 +2083,7 @@ void myst_mman_dump_vads(myst_mman_t* mman)
 
     printf("=== myst_mman_dump_vads()\n");
 
-    myst_spin_lock(&mman->lock);
+    myst_rspin_lock(&mman->lock);
     {
         /* determine the total size of all gaps */
         for (myst_vad_t* p = mman->vad_list; p; p = p->next)
@@ -2094,7 +2094,7 @@ void myst_mman_dump_vads(myst_mman_t* mman)
             printf("VAD(range[%lx:%lx] size=%lu)\n", start, end, end - start);
         }
     }
-    myst_spin_unlock(&mman->lock);
+    myst_rspin_unlock(&mman->lock);
 }
 
 int myst_mman_get_prot(
@@ -2110,7 +2110,7 @@ int myst_mman_get_prot(
     if ((!mman) || (!prot) || (!consistent) || (len == 0))
         return ret;
 
-    myst_spin_lock(&mman->lock);
+    myst_rspin_lock(&mman->lock);
 
     /* ADDR must be page aligned */
     if ((uintptr_t)addr % PAGE_SIZE)
@@ -2152,6 +2152,6 @@ int myst_mman_get_prot(
     }
     ret = 0;
 done:
-    myst_spin_unlock(&mman->lock);
+    myst_rspin_unlock(&mman->lock);
     return ret;
 }

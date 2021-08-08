@@ -38,9 +38,6 @@ static void* _mman_start;
 static size_t _mman_size;
 static void* _mman_end;
 
-/* ATTN: use _mman.lock instead */
-static myst_mutex_t _fdmappings_lock;
-
 typedef struct vectors
 {
     myst_fdmapping_t* fdmappings;
@@ -210,7 +207,7 @@ static int _add_file_mapping(int fd, off_t offset, void* addr, size_t length)
     ECHECK(myst_round_up(length, PAGE_SIZE, &length));
     ECHECK((index = _get_page_index(addr, length)));
 
-    myst_mutex_lock(&_fdmappings_lock);
+    myst_rspin_lock(&_mman.lock);
     {
         const size_t count = length / PAGE_SIZE;
         uint64_t off = offset;
@@ -233,7 +230,7 @@ static int _add_file_mapping(int fd, off_t offset, void* addr, size_t length)
             off += PAGE_SIZE;
         }
     }
-    myst_mutex_unlock(&_fdmappings_lock);
+    myst_rspin_unlock(&_mman.lock);
 
 done:
 
@@ -472,7 +469,7 @@ static int _remove_file_mappings(void* addr, size_t length)
     ECHECK(myst_round_up(length, PAGE_SIZE, &length));
     ECHECK((index = _get_page_index(addr, length)));
 
-    myst_mutex_lock(&_fdmappings_lock);
+    myst_rspin_lock(&_mman.lock);
     {
         const size_t count = length / PAGE_SIZE;
 
@@ -488,7 +485,7 @@ static int _remove_file_mappings(void* addr, size_t length)
             p->pathname = NULL;
         }
     }
-    myst_mutex_unlock(&_fdmappings_lock);
+    myst_rspin_unlock(&_mman.lock);
 
 done:
     return ret;
@@ -571,7 +568,7 @@ int myst_release_process_mappings(pid_t pid)
         assert(index < v.pids_count);
         assert(index + count <= v.pids_count);
 
-        myst_mutex_lock(&_fdmappings_lock);
+        myst_rspin_lock(&_mman.lock);
         {
             for (size_t i = index; i < index + count;)
             {
@@ -605,7 +602,7 @@ int myst_release_process_mappings(pid_t pid)
                     {
 #if 0
                         assert("myst_munmap() failed" == NULL);
-                        myst_mutex_unlock(&_fdmappings_lock);
+                        myst_rspin_unlock(&_mman.lock);
                         ERAISE(-EINVAL);
 #endif
                     }
@@ -622,7 +619,7 @@ int myst_release_process_mappings(pid_t pid)
                 }
             }
         }
-        myst_mutex_unlock(&_fdmappings_lock);
+        myst_rspin_unlock(&_mman.lock);
     }
 
 done:
@@ -708,7 +705,7 @@ int proc_pid_maps_vcallback(myst_buf_t* vbuf)
         assert(index < v.pids_count);
         assert(index + count <= v.pids_count);
 
-        myst_mutex_lock(&_fdmappings_lock);
+        myst_rspin_lock(&_mman.lock);
         {
             for (size_t i = index; i < index + count;)
             {
@@ -795,7 +792,7 @@ int proc_pid_maps_vcallback(myst_buf_t* vbuf)
                 }
             }
         }
-        myst_mutex_unlock(&_fdmappings_lock);
+        myst_rspin_unlock(&_mman.lock);
     }
 
 done:
@@ -852,7 +849,7 @@ int myst_msync(void* addr, size_t length, int flags)
     ECHECK(myst_round_up(length, PAGE_SIZE, &length));
     ECHECK((index = _get_page_index(addr, length)));
 
-    myst_mutex_lock(&_fdmappings_lock);
+    myst_rspin_lock(&_mman.lock);
     {
         const size_t n = length / PAGE_SIZE;
         const uint8_t* page = addr;
@@ -867,7 +864,7 @@ int myst_msync(void* addr, size_t length, int flags)
             page += PAGE_SIZE;
         }
     }
-    myst_mutex_unlock(&_fdmappings_lock);
+    myst_rspin_unlock(&_mman.lock);
 
 done:
     return ret;
@@ -890,16 +887,16 @@ void myst_mman_close_notify(int fd)
     /* if file is open for write */
     if (flags & (O_RDWR | O_WRONLY))
     {
-        myst_spin_lock(&_mman.lock);
+        myst_rspin_lock(&_mman.lock);
         uint8_t* addr = (uint8_t*)_mman.map;
         size_t length = ((uint8_t*)_mman.end) - addr;
-        myst_spin_unlock(&_mman.lock);
+        myst_rspin_unlock(&_mman.lock);
 
         vectors_t v = _get_vectors();
         size_t index = _get_page_index(addr, length);
         myst_assume(index >= 0);
 
-        myst_mutex_lock(&_fdmappings_lock);
+        myst_rspin_lock(&_mman.lock);
         {
             const size_t count = length / PAGE_SIZE;
             myst_fdmapping_t* p = &v.fdmappings[index];
@@ -923,7 +920,7 @@ void myst_mman_close_notify(int fd)
                 bytes_remaining -= sizeof(myst_fdmapping_t);
             }
         }
-        myst_mutex_unlock(&_fdmappings_lock);
+        myst_rspin_unlock(&_mman.lock);
     }
 }
 
@@ -966,7 +963,7 @@ static long _handle_mman_pids_op(
     /* round length up to the next multiple of the page boundary */
     ECHECK(myst_round_up(length, PAGE_SIZE, &length));
 
-    myst_spin_lock(&_mman.lock);
+    myst_rspin_lock(&_mman.lock);
     locked = true;
 
     ECHECK((index = _get_page_index(addr, length)));
@@ -1027,7 +1024,7 @@ static long _handle_mman_pids_op(
 done:
 
     if (locked)
-        myst_spin_unlock(&_mman.lock);
+        myst_rspin_unlock(&_mman.lock);
 
     // myst_set_trace(false);
     return ret;
