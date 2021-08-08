@@ -868,9 +868,26 @@ static long _run_thread(void* arg_)
 
         /* ---------- running target thread descriptor ---------- */
 
-        /* release the kernel stack that was passed to SYS_exit if any */
-        if (thread->kstack)
-            myst_put_kstack(thread->kstack);
+        /* release the kernel stack that was passed by SYS_exit */
+        if (thread->exit_kstack)
+        {
+            myst_put_kstack(thread->exit_kstack);
+            thread->exit_kstack = NULL;
+        }
+
+        /* release the kernel stacks that were passed by SYS_execve */
+        if (thread->exec_kstacks.data)
+        {
+            myst_bufu64_t* buf = &thread->exec_kstacks;
+
+            for (size_t i = 0; i < buf->size; i++)
+            {
+                myst_kstack_t* kstack = (myst_kstack_t*)buf->data[i];
+                myst_put_kstack(kstack);
+            }
+
+            myst_bufu64_release(buf);
+        }
 
         /* Wake up any thread waiting on ctid */
         if (is_child_thread)

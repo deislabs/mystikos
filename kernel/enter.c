@@ -851,8 +851,8 @@ int myst_enter_kernel(myst_kernel_args_t* args)
             myst_print_syscall_times("kernel shutdown", SIZE_MAX);
 
         /* release the kernel stack that was passed to SYS_exit if any */
-        if (thread->kstack)
-            myst_put_kstack(thread->kstack);
+        if (thread->exit_kstack)
+            myst_put_kstack(thread->exit_kstack);
 
         /* free all non-process threads, waiting for all other threads to
          * shutdown at the same time. Our thread has not been marked as a zombie

@@ -4130,10 +4130,21 @@ static long _syscall(void* args_)
             const char* filename = (const char*)x1;
             char** argv = (char**)x2;
             char** envp = (char**)x3;
+            long ret;
 
             _strace(n, "filename=%s argv=%p envp=%p", filename, argv, envp);
 
-            long ret = myst_syscall_execve(filename, argv, envp);
+            /* the kstack is freed when the new process exits */
+            if (myst_bufu64_append1(
+                    &thread->exec_kstacks, (uint64_t)args->kstack) != 0)
+            {
+                ret = -ENOMEM;
+            }
+            else
+            {
+                ret = myst_syscall_execve(filename, argv, envp);
+            }
+
             BREAK(_return(n, ret));
         }
         case SYS_exit:
@@ -4144,11 +4155,14 @@ static long _syscall(void* args_)
 
             _strace(n, "status=%d", status);
 
+            /* uncomment to print out free space on process exit */
+#if 0
             {
                 size_t size;
                 myst_get_free_ram(&size);
                 myst_eprintf("=== exit: free ram: %zu\n", size);
             }
+#endif
 
             if (!thread || thread->magic != MYST_THREAD_MAGIC)
                 myst_panic("unexpected");
@@ -4156,7 +4170,7 @@ static long _syscall(void* args_)
             process->exit_status = status;
 
             /* the kstack is freed after the long-jump below */
-            thread->kstack = args->kstack;
+            thread->exit_kstack = args->kstack;
 
             /* If this process was created as part of a fork() and the parent is
              * running in wait-exec mode, signal that thread for wakeup */
@@ -5080,12 +5094,6 @@ static long _syscall(void* args_)
             crt_td->canary = target_td->canary;
 
             _set_thread_area_called = true;
-
-            {
-                size_t size;
-                myst_get_free_ram(&size);
-                myst_eprintf("=== start: free ram: %zu\n", size);
-            }
 
             BREAK(_return(n, 0));
         }
