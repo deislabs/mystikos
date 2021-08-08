@@ -18,6 +18,7 @@ typedef struct myst_options
     bool shell_mode;
     bool debug_symbols;
     bool memcheck;
+    bool nobrk;
     bool perf;
     bool report_native_tids;
     size_t max_affinity_cpus;

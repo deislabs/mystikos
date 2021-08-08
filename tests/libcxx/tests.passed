@@ -3336,7 +3336,6 @@
 /app/llvm-project/libcxx/test/std/thread/thread.condition/thread.condition.condvar/destructor.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/thread/thread.condition/thread.condition.condvar/notify_all.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/thread/thread.condition/thread.condition.condvar/notify_one.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/thread/thread.condition/thread.condition.condvar/wait_for.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/thread/thread.condition/thread.condition.condvar/wait_for_pred.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/thread/thread.condition/thread.condition.condvar/wait.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/thread/thread.condition/thread.condition.condvar/wait_pred.pass.cpp.exe

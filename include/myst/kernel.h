@@ -168,6 +168,9 @@ typedef struct myst_kernel_args
     /* true if --memcheck option present */
     bool memcheck;
 
+    /* true if --nobrk option is present (if so brk syscall returns -ENOTSUP */
+    bool nobrk;
+
     /* true if --perf option present -- print performance statistics */
     bool perf;
 

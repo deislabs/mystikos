@@ -486,6 +486,7 @@ static long _enter(void* arg_)
     bool shell_mode = false;
     bool debug_symbols = false;
     bool memcheck = false;
+    bool nobrk = false;
     bool perf = false;
     bool report_native_tids = false;
     size_t max_affinity_cpus = options ? options->max_affinity_cpus : 0;
@@ -678,6 +679,7 @@ static long _enter(void* arg_)
         shell_mode = tee_debug_mode ? options->shell_mode : false;
         debug_symbols = tee_debug_mode ? options->debug_symbols : false;
         memcheck = tee_debug_mode ? options->memcheck : false;
+        nobrk = options->nobrk;
         perf = tee_debug_mode ? options->perf : false;
 
         report_native_tids =
@@ -745,6 +747,7 @@ static long _enter(void* arg_)
         _kargs.shell_mode = shell_mode;
         _kargs.debug_symbols = debug_symbols;
         _kargs.memcheck = memcheck;
+        _kargs.nobrk = nobrk;
         _kargs.perf = perf;
         _kargs.start_time_sec = arg->start_time_sec;
         _kargs.start_time_nsec = arg->start_time_nsec;

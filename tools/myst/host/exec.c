@@ -318,6 +318,10 @@ int exec_action(int argc, const char* argv[], const char* envp[])
         if (cli_getopt(&argc, argv, "--memcheck", NULL) == 0)
             options.memcheck = true;
 
+        /* Get --nobrk option */
+        if (cli_getopt(&argc, argv, "--nobrk", NULL) == 0)
+            options.nobrk = true;
+
         /* Get --perf option */
         if (cli_getopt(&argc, argv, "--perf", NULL) == 0)
             options.perf = true;
