@@ -4147,7 +4147,7 @@ static long _syscall(void* args_)
             {
                 size_t size;
                 myst_get_free_ram(&size);
-                myst_eprintf("=== free ram: %zu\n", size);
+                myst_eprintf("=== exit: free ram: %zu\n", size);
             }
 
             if (!thread || thread->magic != MYST_THREAD_MAGIC)
@@ -5083,6 +5083,12 @@ static long _syscall(void* args_)
             crt_td->canary = target_td->canary;
 
             _set_thread_area_called = true;
+
+            {
+                size_t size;
+                myst_get_free_ram(&size);
+                myst_eprintf("=== start: free ram: %zu\n", size);
+            }
 
             BREAK(_return(n, 0));
         }

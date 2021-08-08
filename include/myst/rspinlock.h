@@ -6,14 +6,12 @@
 
 #include <assert.h>
 
-#include <myst/fsgs.h>
 #include <myst/spinlock.h>
 #include <myst/thread.h>
 
-#define MYST_RSPINLOCK_INITIALIZER \
-    {                              \
-        0                          \
-    }
+// clang-format off
+#define MYST_RSPINLOCK_INITIALIZER { 0 }
+// clang-format on
 
 /* recursive spinlock type */
 typedef struct myst_rspinlock
@@ -24,6 +22,13 @@ typedef struct myst_rspinlock
     myst_spinlock_t lock;
 } myst_rspinlock_t;
 
+MYST_INLINE void* __myst_rspin_self(void)
+{
+    void* self;
+    __asm__ volatile("mov %%fs:0, %0" : "=r"(self));
+    return self;
+}
+
 // CAUTION: FSBASE must not be changed while the lock is held, since the lock
 // implementation uses the FSBASE as the lock owner identity.
 MYST_INLINE void myst_rspin_lock(myst_rspinlock_t* s)
@@ -31,7 +36,7 @@ MYST_INLINE void myst_rspin_lock(myst_rspinlock_t* s)
     myst_spin_lock(&s->owner_lock);
     {
         /* if calling thread already owns the lock */
-        if (myst_get_fsbase() == s->owner)
+        if (__myst_rspin_self() == s->owner)
         {
             s->count++;
             myst_spin_unlock(&s->owner_lock);
@@ -42,14 +47,14 @@ MYST_INLINE void myst_rspin_lock(myst_rspinlock_t* s)
 
     /* wait on the lock */
     myst_spin_lock(&s->lock);
-    s->owner = myst_get_fsbase();
+    s->owner = __myst_rspin_self();
     s->count = 1;
 }
 
 MYST_INLINE void myst_rspin_unlock(myst_rspinlock_t* s)
 {
     assert(s->count > 0);
-    assert(s->owner == myst_get_fsbase());
+    assert(s->owner == __myst_rspin_self());
 
     if (--s->count == 0)
     {
