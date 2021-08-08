@@ -53,8 +53,15 @@ $(ROOTFS): run.c
 
 OPTS += --memory-size=1024m
 
+# run all tests in a single pass
+ALL_IN_ONE=1
+
 tests:
+ifdef ALL_IN_ONE
+	$(MYST_EXEC) --nobrk $(OPTS) $(ROOTFS) /bin/run /tests.passed
+else
 	$(RUNTEST) $(MAKE) __tests
+endif
 
 __TESTS=a b c d e f g h i j k l m n o
 .PHONY: $(__TESTS)
@@ -101,6 +108,3 @@ clean-tests:
 	comm -23 $(ALLTESTS).sorted tests.remove.sorted > alltests
 	comm -23 tests.passed.sorted tests.remove.sorted > libcxx_passed
 	comm -23 tests.failed.sorted tests.failedalpine.sorted > libcxx_failed
-
-allinone:
-	$(MYST_EXEC) $(OPTS) $(ROOTFS) --nobrk /bin/run /tests.passed
