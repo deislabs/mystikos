@@ -51,7 +51,7 @@ $(APPDIR):
 $(ROOTFS): run.c
 	$(MYST) mkext2 $(APPDIR) $(ROOTFS)
 
-OPTS += --memory-size=1024m
+OPTS += --memory-size=2g
 
 # run all tests in a single pass
 ALL_IN_ONE=1
