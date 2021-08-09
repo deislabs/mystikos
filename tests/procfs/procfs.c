@@ -154,16 +154,12 @@ int test_fdatasync()
 
 int main(int argc, const char* argv[])
 {
-#if 0
     test_meminfo();
     test_self_links(argv[0]);
     test_readonly();
-#endif
     test_maps();
-#if 0
     test_cpuinfo();
     test_fdatasync();
-#endif
 
     printf("\n=== passed test (%s)\n", argv[0]);
     return 0;
