@@ -4130,21 +4130,20 @@ static long _syscall(void* args_)
             const char* filename = (const char*)x1;
             char** argv = (char**)x2;
             char** envp = (char**)x3;
-            long ret;
 
             _strace(n, "filename=%s argv=%p envp=%p", filename, argv, envp);
 
-            /* the kstack is freed when the new process exits */
-            if (myst_bufu64_append1(
-                    &thread->exec_kstacks, (uint64_t)args->kstack) != 0)
+            /* free the previous kernel stack from the SYS_execve syscall */
+            if (thread->exec_kstack)
             {
-                ret = -ENOMEM;
-            }
-            else
-            {
-                ret = myst_syscall_execve(filename, argv, envp);
+                myst_put_kstack(thread->exec_kstack);
+                thread->exec_kstack = NULL;
             }
 
+            /* the kstack is freed later by SYS_set_thread_area */
+            thread->exec_kstack = args->kstack;
+
+            long ret = myst_syscall_execve(filename, argv, envp);
             BREAK(_return(n, ret));
         }
         case SYS_exit:
@@ -4160,7 +4159,8 @@ static long _syscall(void* args_)
             {
                 size_t size;
                 myst_get_free_ram(&size);
-                myst_eprintf("=== exit: free ram: %zu\n", size);
+                myst_eprintf(
+                    "=== exit: free ram: %5.3lfm\n", (double)size / 1048576.0);
             }
 #endif
 
