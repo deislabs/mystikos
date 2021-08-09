@@ -140,6 +140,30 @@ done:
     return ret;
 }
 
+ssize_t _skip_unused_fdmappings(
+    const myst_fdmapping_t* fdmappings,
+    size_t i,
+    size_t n)
+{
+    const myst_fdmapping_t* p = &fdmappings[i];
+    const myst_fdmapping_t* end = &fdmappings[n];
+    const size_t nbytes = (const uint8_t*)end - (const uint8_t*)p;
+
+    /* efficiently skip over zero-characters 128-bits at a time */
+    if ((p = myst_memcchr(p, '\0', nbytes)) == NULL)
+        return n;
+
+    return i + (p - fdmappings);
+}
+
+size_t _skip_zero_pids(const uint32_t* pids, size_t i, size_t n)
+{
+    while (i < n && pids[i] == 0)
+        i++;
+
+    return i;
+}
+
 static void _free_fdmappings_pathnames(void* arg)
 {
     uint8_t* addr = (uint8_t*)_mman.map;
@@ -153,9 +177,13 @@ static void _free_fdmappings_pathnames(void* arg)
     index = _get_page_index(addr, length);
     assert(index >= 0);
     size_t count = length / PAGE_SIZE;
+    size_t n = index + count;
 
-    for (size_t i = index; i < index + count; i++)
+    for (size_t i = index; i < n; i++)
     {
+        if ((i = _skip_unused_fdmappings(v.fdmappings, index, n)) == n)
+            break;
+
         myst_fdmapping_t* p = &v.fdmappings[i];
 
         if (p->pathname)
@@ -553,11 +581,33 @@ int myst_release_process_mappings(pid_t pid)
 
         myst_rspin_lock(&_mman.lock);
         {
-            for (size_t i = index; i < index + count;)
+            const size_t n = index + count;
+
+            for (size_t i = index; i < n;)
             {
+                /* skip over consecutive zero pids */
+                {
+                    size_t r;
+
+                    if ((r = _skip_zero_pids(v.pids, i, n)) == n)
+                    {
+                        /* there were no more non-zero pids */
+                        break;
+                    }
+
+                    /* if there were any zero pids */
+                    if (r != i)
+                    {
+                        size_t len = (r - i) * PAGE_SIZE;
+                        addr += len;
+                        length -= len;
+                        i = r;
+                    }
+                }
+
                 if (v.pids[i] == (uint32_t)pid)
                 {
-                    size_t n = 1;
+                    size_t m = 1;
                     size_t len;
 
                     myst_fdmapping_t* p = &v.fdmappings[i];
@@ -569,7 +619,7 @@ int myst_release_process_mappings(pid_t pid)
                     }
 
                     /* count consecutive pages with same pid */
-                    for (size_t j = i + 1; j < index + count; j++)
+                    for (size_t j = i + 1; j < m; j++)
                     {
                         if (v.pids[j] != (uint32_t)pid)
                         {
@@ -584,10 +634,10 @@ int myst_release_process_mappings(pid_t pid)
                             p->pathname = NULL;
                         }
 
-                        n++;
+                        m++;
                     }
 
-                    len = n * PAGE_SIZE;
+                    len = m * PAGE_SIZE;
 
                     if (myst_munmap(addr, len) != 0)
                     {
@@ -601,7 +651,7 @@ int myst_release_process_mappings(pid_t pid)
 #endif
                     }
 
-                    i += n;
+                    i += m;
                     addr += len;
                     length -= len;
                 }
