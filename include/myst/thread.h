@@ -10,7 +10,6 @@
 #include <unistd.h>
 
 #include <myst/assume.h>
-#include <myst/bufu64.h>
 #include <myst/defs.h>
 #include <myst/fdtable.h>
 #include <myst/futex.h>
