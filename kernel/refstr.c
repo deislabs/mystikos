@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -35,6 +36,9 @@ void myst_refstr_unref(myst_refstr_t* refstr)
 {
     if (refstr)
     {
+        /* assert on underflow */
+        assert(refstr->count > 0);
+
         if (--refstr->count == 0)
         {
             free(refstr);
