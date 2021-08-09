@@ -973,15 +973,9 @@ int myst_exec(
     /* if this is a nested exec, then release previous exec's CRT data */
     if (thread->main.exec_crt_data && thread->main.exec_crt_size)
     {
-        long r =
-            myst_munmap(thread->main.exec_crt_data, thread->main.exec_crt_size);
+        myst_munmap(thread->main.exec_crt_data, thread->main.exec_crt_size);
         thread->main.exec_crt_data = NULL;
         thread->main.exec_crt_size = 0;
-
-        if (r != 0)
-        {
-            myst_eprintf("%s(%u): myst_munmap() failed", __FILE__, __LINE__);
-        }
     }
 
     /* The thread is responsible for freeing the stack */
