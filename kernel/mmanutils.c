@@ -591,8 +591,10 @@ int myst_release_process_mappings(pid_t pid)
 
                     if (myst_munmap(addr, len) != 0)
                     {
-                        /* ATTN: figure out why munmap can fail here */
 #if 0
+                        // ATTN: figure out whether this can fail but if so
+                        // don't fail. Instead consider freeing one page
+                        // at a time.
                         assert("myst_munmap() failed" == NULL);
                         myst_rspin_unlock(&_mman.lock);
                         ERAISE(-EINVAL);
