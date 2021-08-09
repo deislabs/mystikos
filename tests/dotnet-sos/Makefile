@@ -29,7 +29,7 @@ tests:
 	-e TARGET=$(TARGET) \
 	-v $(abspath .):/app/ -v $(TOP)/build:/build \
 	--device /dev/sgx:/dev/sgx \
-	vtikoo/dotnet-sos-prereqs:0.1 \
+	mystikos/dotnet-sos-prereqs:20200805 \
 	/app/exec.sh $(MYST_LLDB_DOCKER) /build/bin/myst $(EXEC) $(OPTS)
 	@ echo "=== passed test (dotnet-sos)"
 
