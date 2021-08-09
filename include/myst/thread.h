@@ -415,6 +415,8 @@ size_t myst_get_num_threads(void);
 
 myst_thread_t* myst_find_thread(int tid);
 
+myst_thread_t* myst_find_process(pid_t pid);
+
 void myst_fork_exec_futex_wake(myst_thread_t* thread);
 
 size_t myst_kill_thread_group();

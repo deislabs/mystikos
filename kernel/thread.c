@@ -708,6 +708,42 @@ myst_thread_t* myst_find_thread(int tid)
     return target;
 }
 
+myst_thread_t* myst_find_process(pid_t pid)
+{
+    myst_thread_t* curr_process = myst_find_process_thread(myst_thread_self());
+    myst_thread_t* target = NULL;
+    myst_thread_t* t = NULL;
+
+    myst_spin_lock(&myst_process_list_lock);
+
+    // Search forward in the doubly linked list for a match
+    for (t = curr_process; t != NULL; t = t->main.next_process_thread)
+    {
+        if (t->tid == pid)
+        {
+            target = t;
+            break;
+        }
+    }
+
+    if (target == NULL)
+    {
+        // Search backward in the doubly linked list for a match
+        for (t = curr_process->main.prev_process_thread; t != NULL;
+             t = t->main.prev_process_thread)
+        {
+            if (t->tid == pid)
+            {
+                target = t;
+                break;
+            }
+        }
+    }
+
+    myst_spin_unlock(&myst_process_list_lock);
+    return target;
+}
+
 /* Find the thread that may be waiting for the fork-exec wait and wake it */
 void myst_fork_exec_futex_wake(myst_thread_t* thread)
 {
