@@ -576,6 +576,8 @@ int myst_release_process_mappings(pid_t pid)
 {
     int ret = 0;
 
+    assert(pid > 0);
+
     if (pid <= 0)
         ERAISE(-EINVAL);
 
