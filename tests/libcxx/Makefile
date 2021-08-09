@@ -107,3 +107,7 @@ clean-tests:
 	comm -23 $(ALLTESTS).sorted tests.remove.sorted > alltests
 	comm -23 tests.passed.sorted tests.remove.sorted > libcxx_passed
 	comm -23 tests.failed.sorted tests.failedalpine.sorted > libcxx_failed
+
+# This crasshes with memcheck enabled
+bug:
+	make one TEST=/app/llvm-project/libcxx/test/std/input.output/file.streams/fstreams/fstream.assign/member_swap.pass.cpp.exe
