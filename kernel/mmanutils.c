@@ -610,7 +610,7 @@ int myst_release_process_mappings(pid_t pid)
                         break;
                     }
 
-                    /* if there were any zero pids */
+                    /* if zero pids were skipped */
                     if (r != i)
                     {
                         size_t len = (r - i) * PAGE_SIZE;
