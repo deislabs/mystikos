@@ -518,7 +518,7 @@ static int _remove_file_mappings(void* addr, size_t length)
         {
             myst_fdmapping_t* p = &v.fdmappings[index];
 
-            /* remove this fd-mapping */
+            /* remove any fd-mapping (it is okay if it does exist) */
             p->used = 0;
             p->fd = 0;
             p->offset = 0;

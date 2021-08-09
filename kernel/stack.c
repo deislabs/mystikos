@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdio.h>
 
 #include <myst/kstack.h>
@@ -24,6 +25,8 @@ int myst_register_stack(const void* stack, size_t size)
 
     myst_spin_lock(&_lock);
     {
+        assert(_nstacks < MAX_STACKS);
+
         if (_nstacks < MAX_STACKS)
         {
             _stacks[_nstacks].stack = stack;
