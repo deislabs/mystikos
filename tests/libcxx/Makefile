@@ -110,4 +110,4 @@ clean-tests:
 
 # This crasshes with memcheck enabled
 bug:
-	make one TEST=/app/llvm-project/libcxx/test/std/input.output/file.streams/fstreams/fstream.assign/member_swap.pass.cpp.exe
+	make one TEST=/app/llvm-project/libcxx/test/libcxx/input.output/iostreams.base/ios/iostate.flags/clear.abort.pass.cpp.exe
