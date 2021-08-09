@@ -49,12 +49,10 @@ $(APPDIR):
 	# this call.
 
 $(ROOTFS): run.c
-	cp $(CURDIR)/tests.passed $(APPDIR)
 	$(MYST) mkext2 $(APPDIR) $(ROOTFS)
 
 OPTS += --memory-size=64m
 
-# run all tests in a single pass
 ALL_IN_ONE=1
 
 tests: $(ROOTFS)
@@ -109,9 +107,3 @@ clean-tests:
 	comm -23 $(ALLTESTS).sorted tests.remove.sorted > alltests
 	comm -23 tests.passed.sorted tests.remove.sorted > libcxx_passed
 	comm -23 tests.failed.sorted tests.failedalpine.sorted > libcxx_failed
-
-t:
-	make one TEST=/app/llvm-project/libcxx/test/std/input.output/filesystems/class.directory_entry/directory_entry.cons/copy_assign.pass.cpp.exe
-
-tt:
-	make one TEST=/app/llvm-project/libcxx/test/std/input.output/file.streams/fstreams/fstream.cons/pointer.pass.cpp.exe
