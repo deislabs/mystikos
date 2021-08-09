@@ -931,7 +931,7 @@ done:
     return ret;
 }
 
-/* notified on close to clear msync mappings involving fd */
+/* notified on close to clear fd-mappings involving fd */
 void myst_mman_close_notify(int fd)
 {
     int flags;
