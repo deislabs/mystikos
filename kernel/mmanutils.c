@@ -757,7 +757,7 @@ done:
     return ret;
 }
 
-int proc_pid_maps_vcallback(myst_buf_t* vbuf)
+int proc_pid_maps_vcallback(myst_buf_t* vbuf, char* entrypath)
 {
     int ret = 0;
     bool locked = false;
@@ -767,6 +767,8 @@ int proc_pid_maps_vcallback(myst_buf_t* vbuf)
         char realpath[PATH_MAX];
         char maps_entry[48 + PATH_MAX];
     }* locals = NULL;
+
+    (void)entrypath;
 
     if (!vbuf)
         ERAISE(-EINVAL);
