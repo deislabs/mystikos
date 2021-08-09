@@ -17,8 +17,10 @@
 #include <myst/process.h>
 #include <myst/procfs.h>
 #include <myst/strings.h>
+#include <myst/times.h>
 
-static int _status_vcallback(myst_buf_t* vbuf);
+static int _status_vcallback(myst_buf_t* vbuf, char* entrypath);
+static int _stat_vcallback(myst_buf_t* vbuf, char* entrypath);
 
 static myst_fs_t* _procfs;
 static char* _cpuinfo_buf = NULL;
@@ -77,6 +79,7 @@ int procfs_pid_setup(pid_t pid)
         char fdpath[PATH_MAX];
         char mapspath[PATH_MAX];
         char statuspath[PATH_MAX];
+        char statpath[PATH_MAX];
     };
     struct locals* locals = NULL;
 
@@ -111,6 +114,17 @@ int procfs_pid_setup(pid_t pid)
         v_cb.open_cb = _status_vcallback;
         ECHECK(myst_create_virtual_file(
             _procfs, locals->statuspath, S_IFREG | S_IRUSR, v_cb, OPEN));
+    }
+
+    /* stat entry */
+    {
+        ECHECK(myst_snprintf(
+            locals->statpath, sizeof(locals->statpath), "/%d/stat", pid));
+
+        myst_vcallback_t v_cb;
+        v_cb.open_cb = _stat_vcallback;
+        ECHECK(myst_create_virtual_file(
+            _procfs, locals->statpath, S_IFREG | S_IRUSR, v_cb, OPEN));
     }
 
 done:
@@ -149,12 +163,14 @@ done:
     return ret;
 }
 
-static int _meminfo_vcallback(myst_buf_t* vbuf)
+static int _meminfo_vcallback(myst_buf_t* vbuf, char* entrypath)
 {
     int ret = 0;
     size_t totalram;
     size_t freeram;
     size_t cached = 0;
+
+    (void)entrypath;
 
     if (!vbuf)
         ERAISE(-EINVAL);
@@ -180,7 +196,7 @@ done:
     return ret;
 }
 
-static int _self_vcallback(myst_buf_t* vbuf)
+static int _self_vcallback(myst_buf_t* vbuf, char* entrypath)
 {
     int ret = 0;
     struct locals
@@ -188,6 +204,8 @@ static int _self_vcallback(myst_buf_t* vbuf)
         char linkpath[PATH_MAX];
     };
     struct locals* locals = NULL;
+
+    (void)entrypath;
 
     if (!vbuf)
         ERAISE(-EINVAL);
@@ -212,11 +230,13 @@ done:
 }
 
 #define CPUINFO_STR "/proc/cpuinfo"
-static int _cpuinfo_vcallback(myst_buf_t* vbuf)
+static int _cpuinfo_vcallback(myst_buf_t* vbuf, char* entrypath)
 {
     int ret = 0;
     void* buf = NULL;
     size_t buf_size;
+
+    (void)entrypath;
 
     if (!vbuf)
         ERAISE(-EINVAL);
@@ -269,7 +289,7 @@ static int _is_process_traced(char* host_status_buf)
     return 0;
 }
 
-static int _status_vcallback(myst_buf_t* vbuf)
+static int _status_vcallback(myst_buf_t* vbuf, char* entrypath)
 {
     int ret = 0;
     struct locals
@@ -282,6 +302,8 @@ static int _status_vcallback(myst_buf_t* vbuf)
     struct locals* locals = NULL;
     void* buf = NULL;
     size_t buf_size;
+
+    (void)entrypath;
 
     if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
@@ -371,6 +393,102 @@ done:
 
     if (buf)
         free(buf);
+
+    return ret;
+}
+
+static int parse_pid(char* entrypath)
+{
+    int ret = 0;
+    char** toks = NULL;
+    size_t ntoks = 0;
+    /* Split the path into tokens */
+    ECHECK(myst_strsplit(entrypath, "/", &toks, &ntoks));
+
+    assert(ntoks >= 2);
+    ret = atoi(toks[0]);
+
+done:
+    if (toks)
+        free(toks);
+    return ret;
+}
+
+static int _stat_vcallback(myst_buf_t* vbuf, char* entrypath)
+{
+    int ret = 0;
+    struct locals
+    {
+        myst_thread_t* process_thread;
+    };
+    struct locals* locals = NULL;
+
+    if (!(locals = malloc(sizeof(struct locals))))
+        ERAISE(-ENOMEM);
+
+    if (!vbuf)
+        ERAISE(-EINVAL);
+
+    locals->process_thread = myst_find_thread(parse_pid(entrypath));
+    assert(myst_is_process_thread(locals->process_thread));
+
+    myst_buf_clear(vbuf);
+    char tmp[128];
+
+    ECHECK(myst_snprintf(
+        tmp,
+        sizeof(tmp),
+        "%d (%s) V %d %d %d ",
+        locals->process_thread->pid,
+        locals->process_thread->name,
+        // state
+        locals->process_thread->ppid,
+        locals->process_thread->main.pgid,
+        locals->process_thread->sid));
+    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+
+    // tty_nr tpgid flags minflt cminflt majflt cmajflt
+    ECHECK(myst_snprintf(tmp, sizeof(tmp), "0 0 0 0 0 0 0 "));
+    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+
+    // utime stime cutime cstime
+    ECHECK(myst_snprintf(tmp, sizeof(tmp), "0 0 0 0 "));
+    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+
+    // priority nice num_threads itrealvalue
+    ECHECK(myst_snprintf(tmp, sizeof(tmp), "0 0 0 0 "));
+    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+
+    // starttime vsize rss rsslim
+    ECHECK(myst_snprintf(
+        tmp,
+        sizeof(tmp),
+        "%llu 0 0 0 ",
+        timespec_to_nanos(&locals->process_thread->start_ts)));
+    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+
+    // startcode endcode startstack kstkesp kstkeip
+    ECHECK(myst_snprintf(tmp, sizeof(tmp), "0 0 0 0 0 "));
+    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+
+    // signal blocked sigignore sigcatch
+    ECHECK(myst_snprintf(tmp, sizeof(tmp), "0 0 0 0 "));
+    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+
+    // wchan nswap cnswap exit_signal processor rt_priority
+    // policy delayacct_blkio_ticks guest_time cguest_time
+    ECHECK(myst_snprintf(tmp, sizeof(tmp), "0 0 0 0 0 0 0 0 0 0 "));
+    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+
+    // start_data end_data start_brk arg_start arg_end
+    // env_start env_end exit_code
+    ECHECK(myst_snprintf(tmp, sizeof(tmp), "0 0 0 0 0 0 0 0\n"));
+    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+
+done:
+
+    if (locals)
+        free(locals);
 
     return ret;
 }

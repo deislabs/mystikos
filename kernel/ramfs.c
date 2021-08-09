@@ -415,7 +415,7 @@ done:
 static const char* _inode_target(inode_t* inode)
 {
     if (inode->v_type == OPEN)
-        inode->v_cb.open_cb(&inode->buf);
+        inode->v_cb.open_cb(&inode->buf, NULL);
     return (const char*)inode->buf.data;
 }
 
@@ -882,8 +882,12 @@ static int _fs_open(
         if ((flags & O_APPEND))
             file->offset = inode->buf.size;
 
+        /* Get the realpath of this file */
+        ECHECK(_path_to_inode_realpath(
+            ramfs, pathname, true, NULL, &inode, file->realpath, NULL));
+
         if (inode->v_type == OPEN)
-            ECHECK((*inode->v_cb.open_cb)(&file->vbuf));
+            ECHECK((*inode->v_cb.open_cb)(&file->vbuf, file->realpath));
     }
     else if (errnum == -ENOENT)
     {
@@ -904,6 +908,10 @@ static int _fs_open(
         /* Create the new file inode */
         ECHECK(_inode_new(
             ramfs, parent, locals->basename, (S_IFREG | mode), &inode));
+
+        /* Get the realpath of this file */
+        ECHECK(_path_to_inode_realpath(
+            ramfs, pathname, true, NULL, &inode, file->realpath, NULL));
     }
     else
     {
@@ -917,10 +925,6 @@ static int _fs_open(
     file->operating = (flags & O_APPEND);
     file->use_count = 1;
     inode->nopens++;
-
-    /* Get the realpath of this file */
-    ECHECK(_path_to_inode_realpath(
-        ramfs, pathname, true, NULL, &inode, file->realpath, NULL));
 
     assert(_file_valid(file));
 
@@ -2057,7 +2061,7 @@ static ssize_t _fs_readlink(
 
     if (inode->v_type == OPEN)
     {
-        inode->v_cb.open_cb(&inode->buf);
+        inode->v_cb.open_cb(&inode->buf, NULL);
     }
     else
     {
