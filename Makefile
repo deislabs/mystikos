@@ -9,6 +9,7 @@ TARBALL=$(PKGNAME).tar.gz
 
 all:
 	$(MAKE) .git/hooks/pre-commit
+	$(MAKE) init
 	$(MAKE) dirs
 
 .git/hooks/pre-commit:
@@ -21,7 +22,9 @@ all:
 ##==============================================================================
 
 # CAUTION: this must be run before all other targets
+ifndef MYST_BUILD
 DIRS += prereqs
+endif
 
 DIRS += third_party
 
@@ -59,6 +62,35 @@ CLEAN = $(BUILDDIR) $(TARBALL)
 
 REDEFINE_TESTS=1
 include $(TOP)/rules.mak
+
+##==============================================================================
+##
+## init:
+##
+##==============================================================================
+
+init:
+	git submodule update --init --progress
+	make init -C $(TOP)/third_party/
+
+##==============================================================================
+##
+## build:
+##
+##==============================================================================
+
+build:
+	make dirs MYST_BUILD=1
+
+##==============================================================================
+##
+## release-build:
+##
+##==============================================================================
+
+release-build:
+	make build MYST_PRODUCT_BUILD=1
+	make bindist
 
 ##==============================================================================
 ##
@@ -219,6 +251,9 @@ oelicense:
 help:
 	@ echo ""
 	@ echo "make -- build everything"
+	@ echo "make init -- initialize all submodules and their dependencies"
+	@ echo "make build -- build everything except for prereqs"
+	@ echo "make release-build -- run 'build' target with MYST_PRODUCT_BUILD set followed by 'bindist'"
 	@ echo "make clean -- remove generated binaries"
 	@ echo "make distclean -- remove build configuration and binaries"
 	@ echo "make tests -- run critical tests"

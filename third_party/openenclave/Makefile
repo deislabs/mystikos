@@ -1,4 +1,5 @@
 .NOTPARALLEL:
+.PHONY: openenclave
 
 TOP=$(abspath $(CURDIR)/../..)
 
@@ -26,7 +27,6 @@ endif
 
 $(BUILDDIR)/include/openenclave:
 ifeq ($(CACHE_CHECK),)
-	$(MAKE) openenclave
 	$(MAKE) configure_oe
 	$(MAKE) install_oe
 else
@@ -48,7 +48,6 @@ $(TOP)/build/bin/myst-gdb:
 FETCH_SUBMODULE = git submodule update --init --progress
 
 openenclave:
-	git clone $(URL) -b $(BRANCH)
 	( cd openenclave; $(FETCH_SUBMODULE) tools/oeedger8r-cpp )
 	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/musl/musl )
 	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/mbedtls/mbedtls )
@@ -93,4 +92,3 @@ clean:
 	rm -f $(TOP)/build/bin/myst-gdb
 
 distclean: clean
-	rm -rf openenclave

@@ -7,11 +7,8 @@ all: gcompat
 clean: distclean
 
 gcompat:
-	git clone $(URL) -b $(TAG)
-	(cd gcompat; git apply ../patch.diff)
 
 distclean:
-	rm -rf gcompat
 
 genpatch: gcompat
 	rm -f patch.diff

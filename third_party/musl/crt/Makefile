@@ -61,10 +61,7 @@ ifneq ($(wildcard musl),)
 	rm -f musl/config.mak
 endif
 
-distclean:
-ifneq ($(wildcard musl),)
-	rm -rf musl
-endif
+distclean: clean
 
 musl/config.mak:
 	( cd musl; ./configure --enable-debug=yes --disable-optimize )
@@ -88,6 +85,3 @@ NEWFILES += src/stdio/register_printf.c
 
 musl:
 	mkdir -p $(BUILDDIR)
-	git clone $(URL) -b $(BRANCH) musl
-	( cd musl; git apply $(PATCHDIR)/patch.diff )
-	$(foreach i, $(NEWFILES), ( cd musl; git add $(i) ); $(NL) )
