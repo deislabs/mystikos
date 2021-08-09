@@ -1129,6 +1129,7 @@ static long _syscall_clone_vfork(
     long ret = 0;
     uint64_t cookie = 0;
     myst_thread_t* parent = myst_thread_self();
+    myst_thread_t* parent_process = myst_find_process_thread(parent);
     myst_thread_t* child = NULL;
 
     if (!fn)
@@ -1179,15 +1180,15 @@ static long _syscall_clone_vfork(
 
         /* Inherit parent current working directory */
         child->main.cwd_lock = MYST_SPINLOCK_INITIALIZER;
-        child->main.cwd = strdup(parent->main.cwd);
+        child->main.cwd = strdup(parent_process->main.cwd);
         if (child->main.cwd == NULL)
             ERAISE(-ENOMEM);
 
         /* inherit the umask from the parent process */
-        child->main.umask = parent->main.umask;
+        child->main.umask = parent_process->main.umask;
 
         /* inherit process group ID */
-        child->main.pgid = parent->main.pgid;
+        child->main.pgid = parent_process->main.pgid;
 
         if (myst_fdtable_clone(parent->fdtable, &child->fdtable) != 0)
             ERAISE(-ENOMEM);
