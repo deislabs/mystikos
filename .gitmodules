@@ -1,0 +1,31 @@
+[submodule "third_party/openenclave/openenclave"]
+	path = third_party/openenclave/openenclave
+	url = https://github.com/openenclave/openenclave.git
+	branch = mystikos.v5
+[submodule "third_party/musl/musl"]
+	path = third_party/musl/musl
+	url = https://github.com/rs--/openenclave-musl.git
+	branch = mystikos-1.2.0
+[submodule "third_party/gcompat/gcompat"]
+	path = third_party/gcompat/gcompat
+	url = https://github.com/rs--/gcompat.git
+	branch = mystikos-1.0.0
+[submodule "third_party/ltp/ltp"]
+	path = third_party/ltp/ltp
+	url = https://github.com/lsds/ltp.git
+	branch = sgx-lkl
+[submodule "third_party/mbedtls/mbedtls"]
+	path = third_party/mbedtls/mbedtls
+	url = https://github.com/ARMmbed/mbedtls
+	branch = mbedtls-2.16
+[submodule "third_party/musl/crt/musl"]
+	path = third_party/musl/crt/musl
+	url = https://github.com/rs--/openenclave-musl.git
+	branch = mystikos-1.2.0
+[submodule "third_party/musl/pristine/musl"]
+	path = third_party/musl/pristine/musl
+	url = git://git.musl-libc.org/musl
+	branch = v1.2.0
+[submodule "third_party/libc-test/libc-test"]
+	path = third_party/libc-test/libc-test
+	url = git://repo.or.cz/libc-test
