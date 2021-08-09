@@ -8,3 +8,8 @@ libcxx_failed
 failedalpine
 alltests
 libcxx_passed
+tests.all.sorted
+tests.failed.sorted
+tests.failedalpine.sorted
+tests.passed.sorted
+tests.remove.sorted
