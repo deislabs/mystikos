@@ -194,7 +194,10 @@ static void _free_fdmappings_pathnames(void* arg)
     for (size_t i = index; i < n; i++)
     {
         if ((i = _skip_unused_fdmappings(v.fdmappings, i, n)) == n)
+        {
+            /* there are no more in-use fd-mappings */
             break;
+        }
 
         myst_fdmapping_t* p = &v.fdmappings[i];
 
