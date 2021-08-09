@@ -257,7 +257,10 @@ static int _add_file_mapping(int fd, off_t offset, void* addr, size_t length)
         {
             myst_fdmapping_t* p = &v.fdmappings[i];
 
-            /* ATTN: the entry might already be in use for unknown reasons */
+            // The musl libc program loader maps an ELF image onto memory and
+            // then calls mmap() on the second page of that memory to change
+            // permissions. It is unclear why mprotect() could not be used but
+            // we allow mapping over an existing file mapping for this reason.
             if (p->used == MYST_FDMAPPING_USED)
             {
                 myst_refstr_unref(p->pathname);
@@ -617,7 +620,6 @@ int myst_release_process_mappings(pid_t pid)
                     {
                         size_t len = (r - i) * PAGE_SIZE;
                         addr += len;
-                        length -= len;
                         i = r;
                     }
                 }
@@ -670,13 +672,11 @@ int myst_release_process_mappings(pid_t pid)
 
                     i += m;
                     addr += len;
-                    length -= len;
                 }
                 else
                 {
                     i++;
                     addr += PAGE_SIZE;
-                    length -= PAGE_SIZE;
                 }
             }
         }
@@ -799,7 +799,7 @@ int proc_pid_maps_vcallback(myst_buf_t* vbuf)
                         if (v.pids[j] != (uint32_t)pid)
                             break;
 
-                        if (v.fdmappings[i].used != used)
+                        if (v.fdmappings[j].used != used)
                             break;
 
                         /* if the fd changes */
