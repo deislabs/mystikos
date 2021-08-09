@@ -166,9 +166,9 @@ static void _free_fdmappings_pathnames(void* arg)
     }
 }
 
-static myst_once_t _install_free_fdmappings_pathnames_once;
+static myst_once_t _free_fdmappings_pathnames_atexit_once;
 
-static void _install_free_fdmappings_pathnames(void)
+static void _free_fdmappings_pathnames_atexit(void)
 {
     myst_atexit(_free_fdmappings_pathnames, NULL);
 }
@@ -185,24 +185,22 @@ static int _add_file_mapping(int fd, off_t offset, void* addr, size_t length)
     struct locals* locals = NULL;
     myst_refstr_t* pathname = NULL;
 
-    myst_once(
-        &_install_free_fdmappings_pathnames_once,
-        _install_free_fdmappings_pathnames);
-
     if (fd < 0 || offset < 0 || !addr || !length)
         ERAISE(-EINVAL);
 
     if (!(locals = calloc(1, sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
+    /* register the cleanup function for fd-mapping pathnames with atxit() */
+    myst_once(
+        &_free_fdmappings_pathnames_atexit_once,
+        _free_fdmappings_pathnames_atexit);
+
     ECHECK(_fd_to_pathname(fd, locals->pathname));
 
     /* make a reference-counted version of the pathname */
     if (!(pathname = myst_refstr_dup(locals->pathname)))
-    {
-        assert("out of memory" == NULL);
         ERAISE(-ENOMEM);
-    }
 
     ECHECK(myst_round_up(length, PAGE_SIZE, &length));
     ECHECK((index = _get_page_index(addr, length)));
@@ -563,8 +561,12 @@ int myst_release_process_mappings(pid_t pid)
                     size_t len;
 
                     myst_fdmapping_t* p = &v.fdmappings[i];
-                    myst_refstr_unref(p->pathname);
-                    p->pathname = NULL;
+
+                    if (p->pathname)
+                    {
+                        myst_refstr_unref(p->pathname);
+                        p->pathname = NULL;
+                    }
 
                     /* count consecutive pages with same pid */
                     for (size_t j = i + 1; j < index + count; j++)
@@ -575,8 +577,12 @@ int myst_release_process_mappings(pid_t pid)
                         }
 
                         myst_fdmapping_t* p = &v.fdmappings[j];
-                        myst_refstr_unref(p->pathname);
-                        p->pathname = NULL;
+
+                        if (p->pathname)
+                        {
+                            myst_refstr_unref(p->pathname);
+                            p->pathname = NULL;
+                        }
 
                         n++;
                     }
@@ -585,6 +591,7 @@ int myst_release_process_mappings(pid_t pid)
 
                     if (myst_munmap(addr, len) != 0)
                     {
+                        /* ATTN: figure out why munmap can fail here */
 #if 0
                         assert("myst_munmap() failed" == NULL);
                         myst_rspin_unlock(&_mman.lock);

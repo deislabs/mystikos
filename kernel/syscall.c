@@ -4140,7 +4140,7 @@ static long _syscall(void* args_)
                 thread->exec_kstack = NULL;
             }
 
-            /* the kstack is freed later by SYS_set_thread_area */
+            /* the kstack is freed later by next exec or by exit */
             thread->exec_kstack = args->kstack;
 
             long ret = myst_syscall_execve(filename, argv, envp);

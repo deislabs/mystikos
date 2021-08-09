@@ -777,7 +777,6 @@ myst_thread_t* myst_thread_self(void)
     myst_assume(myst_tcall_get_tsd(&value) == 0);
 
     myst_thread_t* thread = (myst_thread_t*)value;
-
     myst_assume(myst_valid_thread(thread));
 
     return thread;
@@ -875,8 +874,7 @@ static long _run_thread(void* arg_)
             thread->exit_kstack = NULL;
         }
 
-        // Release the kernel stack that were set by SYS_execve. It might
-        // have already been released by SYS_set_thread_area.
+        // Release the kernel stack that were set by SYS_execve.
         if (thread->exec_kstack)
         {
             myst_put_kstack(thread->exec_kstack);
