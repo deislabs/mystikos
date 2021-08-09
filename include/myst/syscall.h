@@ -347,4 +347,6 @@ long myst_syscall_get_process_stack(void** stack, size_t* stack_size);
 long myst_syscall_setpgid(pid_t pid, pid_t pgid, myst_thread_t* thread);
 long myst_syscall_getpgid(pid_t pid, myst_thread_t* thread);
 
+long myst_syscall_pause(void);
+
 #endif /* _MYST_SYSCALL_H */

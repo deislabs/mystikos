@@ -278,6 +278,12 @@ struct myst_thread
         size_t size;
     } unmap_on_exit[MYST_MAX_MUNNAP_ON_EXIT];
     _Atomic size_t unmap_on_exit_used;
+
+    // When a thread calls pause(), the calling thread waits on this futex.
+    // Another thread or process sending a signal to the waiting thread
+    // will wake it up. pause_futex=0 means futex unavailable; 1 means
+    // available.
+    int pause_futex;
 };
 
 MYST_INLINE bool myst_valid_thread(const myst_thread_t* thread)

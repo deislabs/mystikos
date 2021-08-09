@@ -1191,6 +1191,8 @@ static long _syscall_clone(
         child->clone.newtls = newtls;
         child->clone.ctid = ctid;
 
+        child->pause_futex = 0;
+
         ECHECK(_get_entry_stack(child));
     }
 
@@ -1291,6 +1293,8 @@ static long _syscall_clone_vfork(
          */
         child->clone.vfork_parent_pid = parent->pid;
         child->clone.vfork_parent_tid = parent->tid;
+
+        child->pause_futex = 0;
 
         /* In case we are going to be used for fork-exec scenario where we need
          * to wait for exec or exit, reset the futex */
