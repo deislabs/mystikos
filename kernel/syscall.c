@@ -6377,6 +6377,7 @@ long myst_syscall(long n, long params[6])
 
     syscall_args_t args = {.n = n, .params = params, .kstack = kstack};
     ret = myst_call_on_stack(myst_kstack_end(kstack), _syscall, &args);
+
     myst_put_kstack(kstack);
 
     return ret;

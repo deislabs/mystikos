@@ -468,6 +468,8 @@ struct enter_arg
     pid_t target_tid;
     uint64_t start_time_sec;
     uint64_t start_time_nsec;
+    const void* enter_stack;
+    size_t enter_stack_size;
 };
 
 static long _enter(void* arg_)
@@ -752,6 +754,8 @@ static long _enter(void* arg_)
         _kargs.start_time_sec = arg->start_time_sec;
         _kargs.start_time_nsec = arg->start_time_nsec;
         _kargs.report_native_tids = report_native_tids;
+        _kargs.enter_stack = arg->enter_stack;
+        _kargs.enter_stack_size = arg->enter_stack_size;
 
         /* whether user-space FSGSBASE instructions are supported */
         _kargs.have_fsgsbase_instructions = options->have_fsgsbase_instructions;
@@ -839,6 +843,9 @@ int myst_enter_ecall(
         return -1;
 
     uint8_t* stack = (uint8_t*)reg.data + reg.size;
+
+    arg.enter_stack = reg.data;
+    arg.enter_stack_size = reg.size;
 
     /* avoid using the tiny TCS stack */
     return (int)myst_call_on_stack(stack, _enter, &arg);
