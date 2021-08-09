@@ -962,7 +962,7 @@ int myst_exec(
     if (_setup_exe_link(argv[0]) != 0)
         ERAISE(-EIO);
 
-    /* if this is a nested exec, the release previous exec's stack */
+    /* if this is a nested exec, then release previous exec's stack */
     if (thread->main.exec_stack)
     {
         free(thread->main.exec_stack);
@@ -970,7 +970,7 @@ int myst_exec(
         thread->main.exec_stack_size = 0;
     }
 
-    /* if this is a nested exec, the release previous exec's CRT data */
+    /* if this is a nested exec, then release previous exec's CRT data */
     if (thread->main.exec_crt_data && thread->main.exec_crt_size)
     {
         long r =
