@@ -34,6 +34,7 @@
 #include <myst/pubkey.h>
 #include <myst/ramfs.h>
 #include <myst/signal.h>
+#include <myst/stack.h>
 #include <myst/strings.h>
 #include <myst/syscall.h>
 #include <myst/thread.h>
@@ -648,6 +649,8 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     if (!args)
         myst_crash();
 
+    myst_register_stack(args->enter_stack, args->enter_stack_size);
+
     /* args->myst_syscall() can be called from enclave exception handlers */
     args->myst_syscall = myst_syscall;
 
@@ -852,7 +855,10 @@ int myst_enter_kernel(myst_kernel_args_t* args)
 
         /* release the kernel stack that was passed to SYS_exit if any */
         if (thread->exit_kstack)
+        {
             myst_put_kstack(thread->exit_kstack);
+            thread->exit_kstack = NULL;
+        }
 
         /* free all non-process threads, waiting for all other threads to
          * shutdown at the same time. Our thread has not been marked as a zombie
@@ -957,6 +963,8 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         myst_syscall_unload_symbols();
 
     /* ATTN: move myst_call_atexit_functions() here */
+
+    myst_unregister_stack(args->enter_stack, args->enter_stack_size);
 
     ret = exit_status;
 

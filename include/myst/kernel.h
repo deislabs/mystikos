@@ -48,6 +48,10 @@ typedef struct myst_kernel_args
     const void* image_data;
     size_t image_size;
 
+    /* The stack used to enter the kernel */
+    const void* enter_stack;
+    size_t enter_stack_size;
+
     /* The loaded kernel ELF image (ELF header start here) */
     const void* kernel_data;
     size_t kernel_size;

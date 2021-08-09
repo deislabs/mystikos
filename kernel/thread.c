@@ -28,6 +28,7 @@
 #include <myst/setjmp.h>
 #include <myst/signal.h>
 #include <myst/spinlock.h>
+#include <myst/stack.h>
 #include <myst/strings.h>
 #include <myst/syscall.h>
 #include <myst/tcall.h>
@@ -1032,6 +1033,8 @@ long myst_run_thread(uint64_t cookie, uint64_t event, pid_t target_tid)
     if (!(stack = memalign(stack_alignment, stack_size)))
         ERAISE(-ENOMEM);
 
+    myst_register_stack(stack, stack_size);
+
     /* run the thread on the transient stack */
     struct run_thread_arg arg = {thread, cookie, event, target_tid};
     ECHECK(myst_call_on_stack(stack + stack_size, _run_thread, &arg));
@@ -1039,7 +1042,10 @@ long myst_run_thread(uint64_t cookie, uint64_t event, pid_t target_tid)
 done:
 
     if (stack)
+    {
+        myst_unregister_stack(stack, stack_size);
         free(stack);
+    }
 
     return ret;
 }
