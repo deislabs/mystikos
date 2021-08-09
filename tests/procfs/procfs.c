@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <myst/maps.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/mman.h>
@@ -92,16 +93,50 @@ int test_readonly()
     assert(errno == EPERM);
 }
 
+int static _check_maps(
+    myst_maps_t* maps,
+    int prot,
+    const char* path,
+    size_t length)
+{
+    for (myst_maps_t* p = maps; p; p = p->next)
+    {
+        if (p->prot == prot && strcmp(p->path, path) == 0)
+        {
+            if (length == 0)
+                return 0;
+
+            if (length == (p->end - p->start))
+                return 0;
+        }
+    }
+
+    /* failed */
+    return -1;
+}
+
 int test_maps()
 {
     char buf[16 * 1024];
-    void* addr;
+    void* addr1;
+    void* addr3;
+    size_t length1;
+    size_t length2;
+    size_t length3;
 
     {
         const int prot = PROT_READ | PROT_WRITE | PROT_EXEC;
         const int flags = MAP_PRIVATE | MAP_ANONYMOUS;
-        const size_t length = 4096 * 1024;
-        if ((addr = mmap(NULL, length, prot, flags, -1, 0)) == MAP_FAILED)
+        length1 = 4096 * 1024;
+        if ((addr1 = mmap(NULL, length1, prot, flags, -1, 0)) == MAP_FAILED)
+            assert(0);
+    }
+
+    {
+        const int prot = PROT_READ | PROT_WRITE | PROT_EXEC;
+        const int flags = MAP_PRIVATE | MAP_ANONYMOUS;
+        length3 = 3 * 4096;
+        if ((addr3 = mmap(NULL, length3, prot, flags, -1, 0)) == MAP_FAILED)
             assert(0);
     }
 
@@ -113,17 +148,64 @@ int test_maps()
     {
         const int prot = PROT_READ | PROT_WRITE;
         const int flags = MAP_PRIVATE | MAP_FIXED;
-        const size_t length = statbuf.st_size / 2;
-        if (mmap(addr, length, prot, flags, fd, 8192) == MAP_FAILED)
+        length2 = statbuf.st_size / 2;
+        if (mmap(addr1, length2, prot, flags, fd, 8192) == MAP_FAILED)
             assert(0);
     }
 
+    myst_maps_t* maps;
+    assert(myst_maps_load(&maps) == 0);
+    printf("================\n");
+    myst_maps_dump(maps);
+
+    int prot_rwx = PROT_READ | PROT_WRITE | PROT_EXEC;
+    int prot_rw = PROT_READ | PROT_WRITE;
+    int prot_rx = PROT_READ | PROT_EXEC;
+    int prot_r = PROT_READ;
+
+    assert(_check_maps(maps, prot_rw, "/bin/procfs", 0) == 0);
+    assert(_check_maps(maps, prot_r, "/bin/procfs", 0) == 0);
+    assert(_check_maps(maps, prot_rx, "/bin/procfs", 0) == 0);
+    assert(_check_maps(maps, prot_rw, "/datafile", 0) == 0);
+    assert(_check_maps(maps, PROT_NONE, "/nosuchfile", 0) == -1);
+    assert(_check_maps(maps, prot_rw, "/datafile", length2) == 0);
+
+    myst_maps_free(maps);
+
+    /* unmap the second page of the /datafile mapping */
     {
-        int fd = open("/proc/self/maps", O_RDONLY);
-        assert(fd > 0);
-        assert(read(fd, buf, sizeof(buf)));
-        printf("%s\n", buf);
-        close(fd);
+        const int prot = PROT_READ | PROT_WRITE;
+        const int flags = MAP_PRIVATE | MAP_ANONYMOUS;
+
+        if (munmap(addr1 + 4096, 4096) != 0)
+            assert(0);
+    }
+
+    /* verify that the /datafile mapping was split into two mappings */
+    {
+        printf("================\n");
+        myst_maps_t* maps;
+        assert(myst_maps_load(&maps) == 0);
+        myst_maps_dump(maps);
+        assert(_check_maps(maps, prot_rw, "/datafile", 4096) == 0);
+        assert(_check_maps(maps, prot_rw, "/datafile", length2 - 8192) == 0);
+        myst_maps_free(maps);
+    }
+
+    if (munmap(addr1, 4096) != 0)
+        assert(0);
+
+    if (munmap(addr1 + 8192, length2 - 8192) != 0)
+        assert(0);
+
+    {
+        printf("================\n");
+        myst_maps_t* maps;
+        assert(myst_maps_load(&maps) == 0);
+        assert(_check_maps(maps, prot_rw, "/datafile", 4096) == -1);
+        assert(_check_maps(maps, prot_rw, "/datafile", length2 - 8192) == -1);
+        myst_maps_dump(maps);
+        myst_maps_free(maps);
     }
 }
 
