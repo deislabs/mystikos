@@ -262,8 +262,8 @@ struct myst_thread
     /* the kernel stack that was allocated to handle the exit system call */
     myst_kstack_t* exit_kstack;
 
-    /* the kernel stacks that were allocated to handle the exec system call */
-    myst_bufu64_t exec_kstacks;
+    /* the kernel stack that were allocated to handle the exec system call */
+    myst_kstack_t* exec_kstack;
 
     /* when fork needs to wait for child to call exec or exit, wait on this
      * fuxtex. Child set to 1 and signals futex. */
