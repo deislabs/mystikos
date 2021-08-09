@@ -414,6 +414,25 @@ done:
     return ret;
 }
 
+static char get_process_status(myst_thread_t* process_thread)
+{
+    if (process_thread->signal.waiting_on_event)
+    {
+        return 'S';
+    }
+
+    switch (process_thread->status)
+    {
+        case MYST_ZOMBIE:
+            return 'Z';
+        default:
+            // default to running
+            return 'R';
+    }
+
+    // ATTN: Support other process states
+}
+
 static int _stat_vcallback(myst_buf_t* vbuf, char* entrypath)
 {
     int ret = 0;
@@ -438,10 +457,10 @@ static int _stat_vcallback(myst_buf_t* vbuf, char* entrypath)
     ECHECK(myst_snprintf(
         tmp,
         sizeof(tmp),
-        "%d (%s) V %d %d %d ",
+        "%d (%s) %c %d %d %d ",
         locals->process_thread->pid,
         locals->process_thread->name,
-        // state
+        get_process_status(locals->process_thread),
         locals->process_thread->ppid,
         locals->process_thread->main.pgid,
         locals->process_thread->sid));
