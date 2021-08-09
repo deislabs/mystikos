@@ -429,7 +429,7 @@ static int _stat_vcallback(myst_buf_t* vbuf, char* entrypath)
     if (!vbuf)
         ERAISE(-EINVAL);
 
-    locals->process_thread = myst_find_thread(parse_pid(entrypath));
+    locals->process_thread = myst_find_process(parse_pid(entrypath));
     assert(myst_is_process_thread(locals->process_thread));
 
     myst_buf_clear(vbuf);
