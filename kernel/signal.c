@@ -471,6 +471,14 @@ long myst_signal_deliver(
     /* Make sure any polls get woken up to process any outstanding events */
     myst_tcall_poll_wake();
 
+    if (!__sync_val_compare_and_swap(&thread->pause_futex, 0, 1))
+    {
+        ret = myst_futex_wake(&thread->pause_futex, 1);
+        // Expect ret == 1, otherwise, return error
+        if (ret == 1)
+            ret = 0;
+    }
+
 done:
     if (siginfo)
         free(siginfo); // Free the siginfo object if not delivered.

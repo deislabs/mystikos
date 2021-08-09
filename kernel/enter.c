@@ -481,6 +481,8 @@ static int _init_main_thread(
     if (thread->main.cwd == NULL)
         ERAISE(-ENOMEM);
 
+    thread->pause_futex = 0;
+
     // Initial process list is just us. All new processes will be inserted in
     // the list. Dont need to set these as they are already NULL, but being here
     // helps to track where main threads are created and torn down!

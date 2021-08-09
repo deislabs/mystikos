@@ -3986,7 +3986,12 @@ static long _syscall(void* args_)
             BREAK(_return(n, ret));
         }
         case SYS_pause:
-            break;
+        {
+            long ret;
+            _strace(n, NULL);
+            ret = myst_syscall_pause();
+            BREAK(_return(n, ret));
+        }
         case SYS_nanosleep:
         {
             const struct timespec* req = (const struct timespec*)x1;
@@ -6604,4 +6609,31 @@ long myst_syscall_unload_symbols(void)
 {
     long params[6] = {0};
     return myst_tcall(MYST_TCALL_UNLOAD_SYMBOLS, params);
+}
+
+long myst_syscall_pause(void)
+{
+    long ret = 0;
+    myst_thread_t* thread = myst_thread_self();
+    // Set futex unavilable. This is to make sure the futex which was made
+    // available by signals delivered before calling pause won't affect the
+    // current call. In other words, this calling of pause should only be woken
+    // by future signals.
+    __sync_val_compare_and_swap(&thread->pause_futex, 1, 0);
+    while (1)
+    {
+        // Is the futex available?
+        if (__sync_val_compare_and_swap(&thread->pause_futex, 1, 0))
+        {
+            ret = -EINTR;
+            break;
+        }
+
+        // Futex is not available, wait.
+        ret = myst_futex_wait(&thread->pause_futex, 0, NULL);
+        if (ret != 0 && ret != -EAGAIN)
+            ERAISE(ret);
+    }
+done:
+    return ret;
 }
