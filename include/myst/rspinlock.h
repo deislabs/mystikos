@@ -53,9 +53,6 @@ MYST_INLINE void myst_rspin_lock(myst_rspinlock_t* s)
 
 MYST_INLINE void myst_rspin_unlock(myst_rspinlock_t* s)
 {
-    assert(s->count > 0);
-    assert(s->owner == __myst_rspin_self());
-
     if (--s->count == 0)
     {
         s->owner = NULL;
