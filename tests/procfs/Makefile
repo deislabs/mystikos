@@ -2,7 +2,7 @@ TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
 APPDIR = appdir
-CFLAGS = -fPIC -g
+CFLAGS = -fPIC -g -I$(INCDIR)
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 
 ifdef STRACE
@@ -11,9 +11,10 @@ endif
 
 all: myst rootfs
 
-rootfs: procfs.c
+rootfs: procfs.c maps.c ../../host/maps.c
 	mkdir -p $(APPDIR)/bin
-	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/procfs procfs.c $(LDFLAGS)
+	gcc $(CFLAGS) -c procfs.c maps.c
+	gcc $(CFLAGS) -o $(APPDIR)/bin/procfs procfs.o maps.o $(LDFLAGS)
 	truncate --size=1m $(APPDIR)/datafile
 	$(MYST) mkcpio $(APPDIR) rootfs
 
