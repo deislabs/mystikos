@@ -145,23 +145,35 @@ ssize_t _skip_unused_fdmappings(
     size_t i,
     size_t n)
 {
-    const myst_fdmapping_t* p = &fdmappings[i];
+    const myst_fdmapping_t* start = &fdmappings[i];
+    const myst_fdmapping_t* p = start;
     const myst_fdmapping_t* end = &fdmappings[n];
-    const size_t nbytes = (const uint8_t*)end - (const uint8_t*)p;
+    const size_t nbytes = (end - p) * sizeof(myst_fdmapping_t);
+
+    // Efficiently skip over zero-characters 128-bits at a time. Note that
+    // the first bytes of an in-use fd-mapping is non-zero because the
+    // used field is MYST_FDMAPPING_USED (where all bytes are non-zero).
+    if ((p = myst_memcchr(p, '\0', nbytes)) == NULL)
+        return n;
+
+    return i + (p - start);
+}
+
+size_t _skip_zero_pids(const uint32_t* pids, size_t i, size_t n)
+{
+    const uint32_t* start = &pids[i];
+    const uint32_t* p = start;
+    const uint32_t* end = &pids[n];
+    const size_t nbytes = (end - p) * sizeof(uint32_t);
 
     /* efficiently skip over zero-characters 128-bits at a time */
     if ((p = myst_memcchr(p, '\0', nbytes)) == NULL)
         return n;
 
-    return i + (p - fdmappings);
-}
+    /* align for uint32_t (clear the 2 least-signifiant bits) */
+    p = (void*)((uintptr_t)p & 0xfffffffffffffffc);
 
-size_t _skip_zero_pids(const uint32_t* pids, size_t i, size_t n)
-{
-    while (i < n && pids[i] == 0)
-        i++;
-
-    return i;
+    return i + (p - start);
 }
 
 static void _free_fdmappings_pathnames(void* arg)
