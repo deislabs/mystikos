@@ -50,7 +50,7 @@ build-package: package.pem
 # running both service and client in one recipe
 run:
 	./kill.sh $(PACKAGE_PATH) $(APP_PATH)
-	@echo "\n------starting Pytorch Inference Service($(APP_MODE) mode)------\n"
+	@echo "\n------starting Inference Service($(APP_MODE) mode)------\n"
 ifeq ($(APP_MODE),package)
 	$(PACKAGE_PATH) $(OPTS) --rootfs=$(ROOTFS) & 
 else
@@ -63,7 +63,7 @@ endif
 	@sleep $(QUERY_INTERVAL)
 	./client.sh test_samples/strawberries.jpg
 	@sleep $(SHUTDOWN_WAIT)
-	@echo "\n------terminate Pytorch Inference Service------\n"
+	@echo "\n------terminate Inference Service------\n"
 	./kill.sh $(PACKAGE_PATH) $(APP_PATH)
 
 # launch inference service in enclave only, waiting for client to connect, either 

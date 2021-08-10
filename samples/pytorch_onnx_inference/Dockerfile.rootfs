@@ -44,6 +44,10 @@ RUN conda install -y -c pytorch \
     "torchaudio=0.7.2" \
  && conda clean -ya
 
+# Install onnxruntime
+RUN conda install -c conda-forge onnxruntime
+
+ADD test_samples /app
 ADD src /app
 
 RUN python3 download_pretrained_model.py \
