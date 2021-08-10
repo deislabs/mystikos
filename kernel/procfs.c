@@ -414,7 +414,7 @@ done:
     return ret;
 }
 
-static char get_process_status(myst_thread_t* process_thread)
+static char get_process_state(myst_thread_t* process_thread)
 {
     if (process_thread->signal.waiting_on_event)
     {
@@ -460,7 +460,7 @@ static int _stat_vcallback(myst_buf_t* vbuf, char* entrypath)
         "%d (%s) %c %d %d %d ",
         locals->process_thread->pid,
         locals->process_thread->name,
-        get_process_status(locals->process_thread),
+        get_process_state(locals->process_thread),
         locals->process_thread->ppid,
         locals->process_thread->main.pgid,
         locals->process_thread->sid));
@@ -471,6 +471,7 @@ static int _stat_vcallback(myst_buf_t* vbuf, char* entrypath)
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
 
     // utime stime cutime cstime
+    // ATTN: update utime stime once GH #688 is fixed.
     ECHECK(myst_snprintf(tmp, sizeof(tmp), "0 0 0 0 "));
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
 
@@ -491,7 +492,12 @@ static int _stat_vcallback(myst_buf_t* vbuf, char* entrypath)
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
 
     // signal blocked sigignore sigcatch
-    ECHECK(myst_snprintf(tmp, sizeof(tmp), "0 0 0 0 "));
+    ECHECK(myst_snprintf(
+        tmp,
+        sizeof(tmp),
+        "%lu %lu 0 0 ",
+        locals->process_thread->signal.pending,
+        locals->process_thread->signal.mask));
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
 
     // wchan nswap cnswap exit_signal processor rt_priority
@@ -501,7 +507,11 @@ static int _stat_vcallback(myst_buf_t* vbuf, char* entrypath)
 
     // start_data end_data start_brk arg_start arg_end
     // env_start env_end exit_code
-    ECHECK(myst_snprintf(tmp, sizeof(tmp), "0 0 0 0 0 0 0 0\n"));
+    ECHECK(myst_snprintf(
+        tmp,
+        sizeof(tmp),
+        "0 0 0 0 0 0 0 %d\n",
+        locals->process_thread->exit_status));
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
 
 done:
