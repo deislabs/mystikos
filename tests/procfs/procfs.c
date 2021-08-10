@@ -7,10 +7,13 @@
 #include <limits.h>
 #include <myst/maps.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <sys/prctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <time.h>
 #include <unistd.h>
 
 int test_meminfo()
@@ -234,6 +237,85 @@ int test_fdatasync()
     close(fd);
 }
 
+struct proc_pid_stat
+{
+    /* data */
+    pid_t pid;
+    char name[18];
+    char state;
+    unsigned long long starttime;
+};
+typedef struct proc_pid_stat proc_pid_stat_t;
+
+#define NANO_IN_SECOND 1000000000
+#define TIMESPEC_TO_NANOS(tp) tp.tv_sec* NANO_IN_SECOND + tp.tv_nsec
+
+int parse_proc_stat_file(pid_t pid, proc_pid_stat_t* statptr)
+{
+    char stat_file_name[1024];
+    snprintf(stat_file_name, sizeof(stat_file_name), "/proc/%d/stat", pid);
+    FILE* fp = fopen(stat_file_name, "r");
+    assert(fp != NULL);
+    int sscanfRet = fscanf(
+        fp,
+        "%d %s %c %*d %*d %*d %*d %*d %*u %*lu %*lu %*lu %*lu %*lu %*lu %*ld "
+        "%*ld %*ld %*ld %*ld %*ld %llu \n",
+        &statptr->pid,
+        statptr->name,
+        &statptr->state,
+        &statptr->starttime);
+
+    // printf("%d %s %c %llu\n", statptr->pid, statptr->name, statptr->state,
+    // statptr->starttime);
+    fclose(fp);
+}
+
+int test_stat()
+{
+    // change thread name
+    prctl(PR_SET_NAME, "mystikos");
+
+    // read /proc/self/stat
+    proc_pid_stat_t stat;
+    parse_proc_stat_file(getpid(), &stat);
+
+    assert(stat.pid == getpid());
+    assert(strcmp(stat.name, "(mystikos)") == 0);
+    assert(stat.state == 'R');
+}
+
+int test_stat_from_child()
+{
+    struct timespec tp;
+    assert(clock_gettime(CLOCK_MONOTONIC, &tp) == 0);
+
+    pid_t pid = fork();
+    assert(pid >= 0);
+
+    if (pid == 0) // child
+    {
+        // read /proc/[parent-pid]/stat
+        proc_pid_stat_t parent_stat;
+        parse_proc_stat_file(getppid(), &parent_stat);
+
+        assert(parent_stat.pid == getppid());
+        assert(parent_stat.state != 'Z'); // parent should not be a zombie
+
+        // read /proc/self/stat
+        proc_pid_stat_t self_stat;
+        parse_proc_stat_file(getpid(), &self_stat);
+
+        assert(self_stat.pid = getpid());
+        assert(self_stat.starttime >= TIMESPEC_TO_NANOS(tp));
+
+        exit(0);
+    }
+    else // parent
+    {
+        wait();
+    }
+}
+
 int main(int argc, const char* argv[])
 {
     test_meminfo();
@@ -242,6 +324,9 @@ int main(int argc, const char* argv[])
     test_maps();
     test_cpuinfo();
     test_fdatasync();
+    test_stat();
+    // ATTN: Enable after Paul's shutdown PR goes in
+    // test_stat_from_child();
 
     printf("\n=== passed test (%s)\n", argv[0]);
     return 0;
