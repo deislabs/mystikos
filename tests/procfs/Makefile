@@ -9,6 +9,8 @@ ifdef STRACE
 OPTS += --strace
 endif
 
+OPTS += --fork-mode pseudo_wait_for_exit_exec
+
 all: myst rootfs
 
 rootfs: procfs.c maps.c ../../host/maps.c
@@ -25,4 +27,4 @@ myst:
 	$(MAKE) -C $(TOP)/tools/myst
 
 clean:
-	rm -rf $(APPDIR) rootfs export ramfs
+	rm -rf $(APPDIR) rootfs export ramfs *.o
