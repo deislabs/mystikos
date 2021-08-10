@@ -22,6 +22,7 @@
 #include <myst/panic.h>
 #include <myst/printf.h>
 #include <myst/process.h>
+#include <myst/procfs.h>
 #include <myst/refstr.h>
 #include <myst/round.h>
 #include <myst/strings.h>
@@ -761,20 +762,26 @@ int proc_pid_maps_vcallback(myst_buf_t* vbuf, char* entrypath)
 {
     int ret = 0;
     bool locked = false;
-    pid_t pid = myst_getpid();
+    pid_t pid = 0;
     struct locals
     {
         char realpath[PATH_MAX];
         char maps_entry[48 + PATH_MAX];
+        myst_thread_t* process_thread;
     }* locals = NULL;
 
-    (void)entrypath;
-
-    if (!vbuf)
+    if (!vbuf && !entrypath)
         ERAISE(-EINVAL);
 
     if (!(locals = calloc(1, sizeof(struct locals))))
         ERAISE(-ENOMEM);
+
+    locals->process_thread = myst_procfs_path_to_process(entrypath);
+
+    if (locals->process_thread == NULL)
+        ERAISE(-EINVAL);
+
+    pid = locals->process_thread->pid;
 
     myst_buf_clear(vbuf);
 
