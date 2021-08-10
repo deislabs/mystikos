@@ -7,7 +7,6 @@ from inference_service import AlexNetInference
 app = Flask(__name__)
 alexnet = AlexNetInference()
 
-
 @app.route("/")
 def index():
     return "Hello from inside Mystikos!"
