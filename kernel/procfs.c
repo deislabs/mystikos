@@ -295,30 +295,29 @@ static int _status_vcallback(myst_buf_t* vbuf, char* entrypath)
     struct locals
     {
         char status_path[PATH_MAX];
-        myst_thread_t* curr_thread;
-        myst_thread_t* curr_process_thread;
+        myst_thread_t* process_thread;
         char* _host_status_buf;
     };
     struct locals* locals = NULL;
     void* buf = NULL;
     size_t buf_size;
 
-    (void)entrypath;
-
     if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
-    if (!vbuf)
+    if (!vbuf || !entrypath)
         ERAISE(-EINVAL);
 
-    locals->curr_thread = myst_thread_self();
-    locals->curr_process_thread = myst_find_process_thread(locals->curr_thread);
+    locals->process_thread = myst_procfs_path_to_process(entrypath);
+
+    if (locals->process_thread == NULL)
+        ERAISE(-EINVAL);
 
     ECHECK(myst_snprintf(
         locals->status_path,
         sizeof(locals->status_path),
         STATUS_STR,
-        locals->curr_thread->target_tid));
+        locals->process_thread->target_tid));
 
     /* load the file into memory */
     {
@@ -335,22 +334,22 @@ static int _status_vcallback(myst_buf_t* vbuf, char* entrypath)
     char tmp[128];
 
     ECHECK(myst_snprintf(
-        tmp, sizeof(tmp), "Name:\t%s\n", locals->curr_thread->name));
+        tmp, sizeof(tmp), "Name:\t%s\n", locals->process_thread->name));
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
     ECHECK(myst_snprintf(
         tmp,
         sizeof(tmp),
         "Umask:\t%#04o\n",
-        locals->curr_process_thread->main.umask));
+        locals->process_thread->main.umask));
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
     ECHECK(myst_snprintf(
-        tmp, sizeof(tmp), "Tgid:\t%d\n", locals->curr_thread->pid));
+        tmp, sizeof(tmp), "Tgid:\t%d\n", locals->process_thread->pid));
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
     ECHECK(myst_snprintf(
-        tmp, sizeof(tmp), "Pid:\t%d\n", locals->curr_thread->pid));
+        tmp, sizeof(tmp), "Pid:\t%d\n", locals->process_thread->pid));
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
     ECHECK(myst_snprintf(
-        tmp, sizeof(tmp), "PPid:\t%d\n", locals->curr_thread->ppid));
+        tmp, sizeof(tmp), "PPid:\t%d\n", locals->process_thread->ppid));
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
 
     /* Mystikos doesn't know about the tracer process, so we return self pid if
@@ -359,27 +358,28 @@ static int _status_vcallback(myst_buf_t* vbuf, char* entrypath)
         tmp,
         sizeof(tmp),
         "TracerPid:\t%d\n",
-        _is_process_traced(locals->_host_status_buf) ? locals->curr_thread->pid
-                                                     : 0));
+        _is_process_traced(locals->_host_status_buf)
+            ? locals->process_thread->pid
+            : 0));
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
 
     ECHECK(myst_snprintf(
         tmp,
         sizeof(tmp),
         "Uid:\t%d\t%d\t%d\t%d\n",
-        locals->curr_thread->uid,
-        locals->curr_thread->euid,
-        locals->curr_thread->savuid,
-        locals->curr_thread->fsuid));
+        locals->process_thread->uid,
+        locals->process_thread->euid,
+        locals->process_thread->savuid,
+        locals->process_thread->fsuid));
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
     ECHECK(myst_snprintf(
         tmp,
         sizeof(tmp),
         "Gid:\t%d\t%d\t%d\t%d\n",
-        locals->curr_thread->gid,
-        locals->curr_thread->egid,
-        locals->curr_thread->savgid,
-        locals->curr_thread->fsgid));
+        locals->process_thread->gid,
+        locals->process_thread->egid,
+        locals->process_thread->savgid,
+        locals->process_thread->fsgid));
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
 
     /* TODO: memory, signal, capability and cpu related fields*/
@@ -394,23 +394,6 @@ done:
     if (buf)
         free(buf);
 
-    return ret;
-}
-
-static int parse_pid(char* entrypath)
-{
-    int ret = 0;
-    char** toks = NULL;
-    size_t ntoks = 0;
-    /* Split the path into tokens */
-    ECHECK(myst_strsplit(entrypath, "/", &toks, &ntoks));
-
-    assert(ntoks >= 2);
-    ret = atoi(toks[0]);
-
-done:
-    if (toks)
-        free(toks);
     return ret;
 }
 
@@ -445,11 +428,13 @@ static int _stat_vcallback(myst_buf_t* vbuf, char* entrypath)
     if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
-    if (!vbuf)
+    if (!vbuf || !entrypath)
         ERAISE(-EINVAL);
 
-    locals->process_thread = myst_find_process(parse_pid(entrypath));
-    assert(myst_is_process_thread(locals->process_thread));
+    locals->process_thread = myst_procfs_path_to_process(entrypath);
+
+    if (locals->process_thread == NULL)
+        ERAISE(-EINVAL);
 
     myst_buf_clear(vbuf);
     char tmp[128];
@@ -550,5 +535,28 @@ int create_proc_root_entries()
     }
 
 done:
+    return ret;
+}
+
+myst_thread_t* myst_procfs_path_to_process(char* entrypath)
+{
+    myst_thread_t* ret = NULL;
+    int pid = 0;
+    char** toks = NULL;
+    size_t ntoks = 0;
+
+    if (myst_strsplit(entrypath, "/", &toks, &ntoks) != 0)
+        goto done;
+
+    /* path should atleast contain pid and leaf entry */
+    assert(ntoks >= 2);
+    pid = atoi(toks[0]);
+
+    ret = myst_find_process(pid);
+    assert(myst_is_process_thread(ret));
+
+done:
+    if (toks)
+        free(toks);
     return ret;
 }
