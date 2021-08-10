@@ -419,7 +419,7 @@ void myst_fork_exec_futex_wake(myst_thread_t* thread);
 
 size_t myst_kill_thread_group();
 
-long myst_have_child_forked_processes(myst_thread_t* process);
+bool myst_have_child_forked_processes(myst_thread_t* process);
 long kill_child_fork_processes(myst_thread_t* process);
 
 MYST_INLINE char* myst_get_thread_name(myst_thread_t* thread)
@@ -431,9 +431,6 @@ int myst_set_thread_name(myst_thread_t* thread, const char* n);
 
 /* call the given function on the given stack */
 long myst_call_on_stack(void* stack, long (*func)(void* arg), void* arg);
-
-/* Send SIGHUP to all other processes */
-int myst_send_sighup_all_processes(myst_thread_t* process_thread);
 
 /* Send SIGHUP to child processes of given process thread */
 int myst_send_sighup_child_processes(myst_thread_t* process_thread);

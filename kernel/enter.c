@@ -886,7 +886,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         procfs_pid_cleanup(thread->pid);
 
         /* Send SIGHUP to all other active processes */
-        myst_send_sighup_all_processes(thread);
+        myst_send_sighup_child_processes(thread);
 
         /* Put the thread on the zombie list, although no one will be doing a
          * waitpid on this top-level process, but it will make it consistent */

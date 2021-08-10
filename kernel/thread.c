@@ -1297,7 +1297,7 @@ size_t myst_get_num_threads(void)
     return _num_threads;
 }
 
-long myst_have_child_forked_processes(myst_thread_t* process)
+bool myst_have_child_forked_processes(myst_thread_t* process)
 {
     pid_t pid = process->pid;
     myst_thread_t* p;
@@ -1331,7 +1331,7 @@ long myst_have_child_forked_processes(myst_thread_t* process)
     }
     myst_spin_unlock(&myst_process_list_lock);
 
-    return p != NULL;
+    return p == NULL ? false : true;
 }
 
 long kill_child_fork_processes(myst_thread_t* process)
@@ -1462,16 +1462,18 @@ done:
     return ret;
 }
 
-/* Send SIGHUP to all processes but the one specified */
-int myst_send_sighup_all_processes(myst_thread_t* process_thread)
+/* Send SIGHUP to child processes */
+int myst_send_sighup_child_processes(myst_thread_t* process_thread)
 {
+    pid_t pid = process_thread->pid;
+
     myst_spin_lock(&myst_process_list_lock);
 
     // first processes left
     myst_thread_t* t = process_thread->main.prev_process_thread;
     while (t)
     {
-        if (t->status != MYST_ZOMBIE)
+        if (t->status != MYST_ZOMBIE && t->ppid == pid)
             myst_signal_deliver(t, SIGHUP, NULL);
 
         t = t->main.prev_process_thread;
@@ -1481,33 +1483,12 @@ int myst_send_sighup_all_processes(myst_thread_t* process_thread)
     t = process_thread->main.next_process_thread;
     while (t)
     {
-        if (t->status != MYST_ZOMBIE)
+        if (t->status != MYST_ZOMBIE && t->ppid == pid)
             myst_signal_deliver(t, SIGHUP, NULL);
 
         t = t->main.next_process_thread;
     }
     myst_spin_unlock(&myst_process_list_lock);
-
-    return 0;
-}
-
-/* Send SIGHUP to child processes */
-int myst_send_sighup_child_processes(myst_thread_t* process_thread)
-{
-    assert(myst_is_process_thread(process_thread));
-
-    myst_spin_lock(&process_thread->main.thread_group_lock);
-
-    pid_t pid = process_thread->pid;
-    myst_thread_t* t = process_thread->group_next;
-    while (t)
-    {
-        if ((t->ppid == pid) && (t->status != MYST_ZOMBIE))
-            myst_signal_deliver(t, SIGHUP, NULL);
-
-        t = t->main.next_process_thread;
-    }
-    myst_spin_unlock(&process_thread->main.thread_group_lock);
 
     return 0;
 }
