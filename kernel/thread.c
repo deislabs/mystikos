@@ -887,10 +887,10 @@ static long _run_thread(void* arg_)
             const int futex_op = FUTEX_WAKE | FUTEX_PRIVATE;
             myst_syscall_futex(thread->clone.ptid, futex_op, 1, 0, NULL, 0);
         }
-
-        /* Start time tracking for this thread */
-        myst_times_start();
     }
+
+    /* Start time tracking for this thread */
+    myst_times_start();
 
     /* Jump back here from exit */
     if (myst_setjmp(&thread->jmpbuf) != 0)
