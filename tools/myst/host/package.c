@@ -890,9 +890,7 @@ done:
     if (unpack_dir)
         remove_recursive(unpack_dir);
 
-#if 0
     free_sections(&sections);
-#endif
 
     if (details)
         free_region_details();
