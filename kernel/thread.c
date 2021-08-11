@@ -708,13 +708,12 @@ myst_thread_t* myst_find_thread(int tid)
     return target;
 }
 
+// Caller should hold myst_proces_list_lock!
 myst_thread_t* myst_find_process(pid_t pid)
 {
     myst_thread_t* curr_process = myst_find_process_thread(myst_thread_self());
     myst_thread_t* target = NULL;
     myst_thread_t* t = NULL;
-
-    myst_spin_lock(&myst_process_list_lock);
 
     // Search forward in the doubly linked list for a match
     for (t = curr_process; t != NULL; t = t->main.next_process_thread)
@@ -740,7 +739,6 @@ myst_thread_t* myst_find_process(pid_t pid)
         }
     }
 
-    myst_spin_unlock(&myst_process_list_lock);
     return target;
 }
 

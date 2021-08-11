@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+
 #include <unistd.h>
 
 #include <myst/atexit.h>
@@ -770,6 +771,8 @@ int proc_pid_maps_vcallback(myst_buf_t* vbuf, char* entrypath)
         myst_thread_t* process_thread;
     }* locals = NULL;
 
+    myst_spin_lock(&myst_process_list_lock);
+
     if (!vbuf && !entrypath)
         ERAISE(-EINVAL);
 
@@ -892,6 +895,8 @@ int proc_pid_maps_vcallback(myst_buf_t* vbuf, char* entrypath)
 
 done:
     _runlock(&locked);
+
+    myst_spin_unlock(&myst_process_list_lock);
 
     if (ret != 0)
         myst_buf_release(vbuf);

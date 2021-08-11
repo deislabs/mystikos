@@ -302,6 +302,8 @@ static int _status_vcallback(myst_buf_t* vbuf, char* entrypath)
     void* buf = NULL;
     size_t buf_size;
 
+    myst_spin_lock(&myst_process_list_lock);
+
     if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
@@ -385,6 +387,9 @@ static int _status_vcallback(myst_buf_t* vbuf, char* entrypath)
     /* TODO: memory, signal, capability and cpu related fields*/
 
 done:
+
+    myst_spin_unlock(&myst_process_list_lock);
+
     if (locals && locals->_host_status_buf)
         free(locals->_host_status_buf);
 
@@ -424,6 +429,8 @@ static int _stat_vcallback(myst_buf_t* vbuf, char* entrypath)
         myst_thread_t* process_thread;
     };
     struct locals* locals = NULL;
+
+    myst_spin_lock(&myst_process_list_lock);
 
     if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
@@ -500,6 +507,8 @@ static int _stat_vcallback(myst_buf_t* vbuf, char* entrypath)
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
 
 done:
+
+    myst_spin_unlock(&myst_process_list_lock);
 
     if (locals)
         free(locals);
