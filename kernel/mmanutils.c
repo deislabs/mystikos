@@ -46,6 +46,22 @@ typedef struct vectors
     size_t pids_count;
 } vectors_t;
 
+MYST_INLINE void _rlock(bool* locked)
+{
+    assert(*locked == false);
+    myst_rspin_lock(&_mman.lock);
+    *locked = true;
+}
+
+MYST_INLINE void _runlock(bool* locked)
+{
+    if (*locked)
+    {
+        myst_rspin_unlock(&_mman.lock);
+        *locked = false;
+    }
+}
+
 static vectors_t _get_vectors(void)
 {
     vectors_t v;
@@ -219,6 +235,7 @@ static void _free_fdmappings_pathnames_atexit(void)
 static int _add_file_mapping(int fd, off_t offset, void* addr, size_t length)
 {
     int ret = 0;
+    bool locked = false;
     size_t index;
     vectors_t v = _get_vectors();
     struct locals
@@ -248,7 +265,7 @@ static int _add_file_mapping(int fd, off_t offset, void* addr, size_t length)
     ECHECK(myst_round_up(length, PAGE_SIZE, &length));
     ECHECK((index = _get_page_index(addr, length)));
 
-    myst_rspin_lock(&_mman.lock);
+    _rlock(&locked);
     {
         const size_t count = length / PAGE_SIZE;
         uint64_t off = offset;
@@ -274,9 +291,11 @@ static int _add_file_mapping(int fd, off_t offset, void* addr, size_t length)
             off += PAGE_SIZE;
         }
     }
-    myst_rspin_unlock(&_mman.lock);
+    _runlock(&locked);
 
 done:
+
+    _runlock(&locked);
 
     if (locals)
         free(locals);
@@ -506,6 +525,7 @@ static int _remove_file_mappings(void* addr, size_t length)
     int ret = 0;
     size_t index;
     vectors_t v = _get_vectors();
+    bool locked = false;
 
     if (!addr || !length)
         ERAISE(-EINVAL);
@@ -513,7 +533,7 @@ static int _remove_file_mappings(void* addr, size_t length)
     ECHECK(myst_round_up(length, PAGE_SIZE, &length));
     ECHECK((index = _get_page_index(addr, length)));
 
-    myst_rspin_lock(&_mman.lock);
+    _rlock(&locked);
     {
         const size_t count = length / PAGE_SIZE;
 
@@ -529,9 +549,11 @@ static int _remove_file_mappings(void* addr, size_t length)
             p->pathname = NULL;
         }
     }
-    myst_rspin_unlock(&_mman.lock);
+    _runlock(&locked);
 
 done:
+    _runlock(&locked);
+
     return ret;
 }
 
@@ -578,6 +600,7 @@ int myst_get_free_ram(size_t* size)
 int myst_release_process_mappings(pid_t pid)
 {
     int ret = 0;
+    bool locked = false;
 
     assert(pid > 0);
 
@@ -599,7 +622,7 @@ int myst_release_process_mappings(pid_t pid)
         assert(index < v.pids_count);
         assert(index + count <= v.pids_count);
 
-        myst_rspin_lock(&_mman.lock);
+        _rlock(&locked);
         {
             const size_t n = index + count;
 
@@ -665,7 +688,6 @@ int myst_release_process_mappings(pid_t pid)
                         // don't fail. Instead consider freeing one page
                         // at a time.
                         assert("myst_munmap() failed" == NULL);
-                        myst_rspin_unlock(&_mman.lock);
                         ERAISE(-EINVAL);
 #endif
                     }
@@ -680,10 +702,12 @@ int myst_release_process_mappings(pid_t pid)
                 }
             }
         }
-        myst_rspin_unlock(&_mman.lock);
+        _runlock(&locked);
     }
 
 done:
+    _runlock(&locked);
+
     return ret;
 }
 
@@ -736,6 +760,7 @@ done:
 int proc_pid_maps_vcallback(myst_buf_t* vbuf)
 {
     int ret = 0;
+    bool locked = false;
     pid_t pid = myst_getpid();
     struct locals
     {
@@ -766,7 +791,7 @@ int proc_pid_maps_vcallback(myst_buf_t* vbuf)
         assert(index < v.pids_count);
         assert(index + count <= v.pids_count);
 
-        myst_rspin_lock(&_mman.lock);
+        _rlock(&locked);
         {
             for (size_t i = index; i < index + count;)
             {
@@ -853,10 +878,11 @@ int proc_pid_maps_vcallback(myst_buf_t* vbuf)
                 }
             }
         }
-        myst_rspin_unlock(&_mman.lock);
+        _runlock(&locked);
     }
 
 done:
+    _runlock(&locked);
 
     if (ret != 0)
         myst_buf_release(vbuf);
@@ -895,6 +921,7 @@ done:
 int myst_msync(void* addr, size_t length, int flags)
 {
     int ret = 0;
+    bool locked = false;
     size_t index;
     vectors_t v = _get_vectors();
     const int mask = MS_SYNC | MS_ASYNC | MS_INVALIDATE;
@@ -910,7 +937,7 @@ int myst_msync(void* addr, size_t length, int flags)
     ECHECK(myst_round_up(length, PAGE_SIZE, &length));
     ECHECK((index = _get_page_index(addr, length)));
 
-    myst_rspin_lock(&_mman.lock);
+    _rlock(&locked);
     {
         const size_t n = length / PAGE_SIZE;
         const uint8_t* page = addr;
@@ -925,9 +952,11 @@ int myst_msync(void* addr, size_t length, int flags)
             page += PAGE_SIZE;
         }
     }
-    myst_rspin_unlock(&_mman.lock);
+    _runlock(&locked);
 
 done:
+    _runlock(&locked);
+
     return ret;
 }
 
@@ -936,6 +965,7 @@ void myst_mman_close_notify(int fd)
 {
     int flags;
     struct stat buf;
+    bool locked = false;
 
     /* get the file open flags */
     if (fd < 0 || (flags = myst_syscall_fcntl(fd, F_GETFL, 0)) < 0)
@@ -948,16 +978,16 @@ void myst_mman_close_notify(int fd)
     /* if file is open for write */
     if (flags & (O_RDWR | O_WRONLY))
     {
-        myst_rspin_lock(&_mman.lock);
+        _rlock(&locked);
         uint8_t* addr = (uint8_t*)_mman.map;
         size_t length = ((uint8_t*)_mman.end) - addr;
-        myst_rspin_unlock(&_mman.lock);
+        _runlock(&locked);
 
         vectors_t v = _get_vectors();
         size_t index = _get_page_index(addr, length);
         myst_assume(index >= 0);
 
-        myst_rspin_lock(&_mman.lock);
+        _rlock(&locked);
         {
             const size_t count = length / PAGE_SIZE;
             myst_fdmapping_t* p = &v.fdmappings[index];
@@ -981,8 +1011,10 @@ void myst_mman_close_notify(int fd)
                 bytes_remaining -= sizeof(myst_fdmapping_t);
             }
         }
-        myst_rspin_unlock(&_mman.lock);
+        _runlock(&locked);
     }
+
+    _runlock(&locked);
 }
 
 void myst_mman_stats(myst_mman_stats_t* buf)
@@ -1024,8 +1056,7 @@ static long _handle_mman_pids_op(
     /* round length up to the next multiple of the page boundary */
     ECHECK(myst_round_up(length, PAGE_SIZE, &length));
 
-    myst_rspin_lock(&_mman.lock);
-    locked = true;
+    _rlock(&locked);
 
     ECHECK((index = _get_page_index(addr, length)));
     count = length / PAGE_SIZE;
@@ -1083,9 +1114,7 @@ static long _handle_mman_pids_op(
     }
 
 done:
-
-    if (locked)
-        myst_rspin_unlock(&_mman.lock);
+    _runlock(&locked);
 
     // myst_set_trace(false);
     return ret;
