@@ -415,6 +415,10 @@ size_t myst_get_num_threads(void);
 
 myst_thread_t* myst_find_thread(int tid);
 
+/* Caller should hold myst_process_list_lock before calling this function. And
+ * release it once its done with its use of the process thread pointer.
+ * This is done to protect from the process thread descriptor being cleaned up
+ * by some other thread.*/
 myst_thread_t* myst_find_process(pid_t pid);
 
 void myst_fork_exec_futex_wake(myst_thread_t* thread);
