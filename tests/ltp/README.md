@@ -132,7 +132,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/cma/process_vm_readv02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/cma/process_vm_readv03 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/cma/process_vm_writev02 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/connect/connect01 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/connect/connect01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/connect/connect02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/copy_file_range/copy_file_range01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/copy_file_range/copy_file_range02 | 0 | 0 | 0 |
