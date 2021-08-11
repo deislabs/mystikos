@@ -1176,7 +1176,7 @@ static int _load_dirent(
     if (!(p = _find_dirent(name, data, size)))
         ERAISE(-ENOENT);
 
-    memcpy(ent, p, sizeof(ext2_dirent_t));
+    memcpy(ent, p, _dirent_size(p));
 
 done:
 
