@@ -34,12 +34,6 @@ static void _dlmalloc_abort(void)
     myst_panic("dlmalloc failed");
 }
 
-static int _dlmalloc_sched_yield(void)
-{
-    __asm__ __volatile__("pause" : : : "memory");
-    return 0;
-}
-
 static void* _dlmalloc_mmap(
     void* addr,
     size_t length,
@@ -96,12 +90,22 @@ static int _dlmalloc_munmap(void* addr, size_t length)
 #define mmap _dlmalloc_mmap
 #define mremap _dlmalloc_mremap
 #define munmap _dlmalloc_munmap
-#define USE_LOCKS 1
+#define USE_LOCKS 2
 #define HAVE_MORECORE 0
 #define malloc_getpagesize PAGE_SIZE
 #define MORECORE_CONTIGUOUS 0
 #define fprintf(STREAM, ...) myst_eprintf(__VA_ARGS__)
 #define USE_DL_PREFIX 0
+
+/* allow dlmalloc to share the mman recursive lock */
+#define MLOCK_T uint64_t
+#define INITIAL_LOCK(lock) (0)
+#define ACQUIRE_LOCK(lock) \
+    ({                     \
+        myst_mman_lock();  \
+        0;                 \
+    })
+#define RELEASE_LOCK(lock) myst_mman_unlock()
 
 #include "../third_party/dlmalloc/malloc.c"
 

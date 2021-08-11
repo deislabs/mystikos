@@ -1133,3 +1133,13 @@ ssize_t myst_mman_pids_test(const void* addr, size_t length, pid_t pid)
 {
     return _handle_mman_pids_op(MMAN_PIDS_OP_TEST, addr, length, pid);
 }
+
+void myst_mman_lock(void)
+{
+    myst_rspin_lock(&_mman.lock);
+}
+
+void myst_mman_unlock(void)
+{
+    myst_rspin_unlock(&_mman.lock);
+}
