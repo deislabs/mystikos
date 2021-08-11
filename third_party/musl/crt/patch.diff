@@ -1080,6 +1080,18 @@ index 5f491092..51c9fafb 100644
  	}
  
  	if (ret >= 0) {
+diff --git a/src/thread/pthread_getattr_np.c b/src/thread/pthread_getattr_np.c
+index 2881831f..26167cf7 100644
+--- a/src/thread/pthread_getattr_np.c
++++ b/src/thread/pthread_getattr_np.c
+@@ -3,6 +3,7 @@
+ #include "libc.h"
+ #include <sys/mman.h>
+ 
++__attribute__((__weak__))
+ int pthread_getattr_np(pthread_t t, pthread_attr_t *a)
+ {
+ 	*a = (pthread_attr_t){0};
 diff --git a/src/thread/pthread_mutex_consistent.c b/src/thread/pthread_mutex_consistent.c
 index 27c74e5b..efadeec8 100644
 --- a/src/thread/pthread_mutex_consistent.c
