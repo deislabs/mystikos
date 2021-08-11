@@ -74,4 +74,8 @@ int myst_mman_pids_set(const void* addr, size_t length, pid_t pid);
 /* return the length in bytes that are owned by the given process */
 ssize_t myst_mman_pids_test(const void* addr, size_t length, pid_t pid);
 
+void myst_mman_lock(void);
+
+void myst_mman_unlock(void);
+
 #endif /* _MYST_MMANUTILS_H */
