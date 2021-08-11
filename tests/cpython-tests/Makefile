@@ -3,7 +3,7 @@ include $(TOP)/defs.mak
 
 APPBUILDER=$(TOP)/scripts/appbuilder
 HEAP_SIZE="4G"
-OPTS += --memory-size $(HEAP_SIZE)
+OPTS += --memory-size $(HEAP_SIZE) --nobrk
 ifdef STRACE
 OPTS += --strace
 endif
