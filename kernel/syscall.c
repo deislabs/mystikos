@@ -2532,8 +2532,17 @@ long myst_syscall_connect(
     myst_fdtable_t* fdtable = myst_fdtable_current();
     myst_sockdev_t* sd;
     myst_sock_t* sock;
+    myst_fdtable_type_t type;
 
-    ECHECK(myst_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
+    ECHECK(myst_fdtable_get_any(
+        fdtable, sockfd, &type, (void**)&sd, (void**)&sock));
+
+    if (type != MYST_FDTABLE_TYPE_SOCK)
+        ERAISE(-ENOTSOCK);
+
+    if (!myst_is_bad_addr(addr))
+        ERAISE(-EFAULT);
+
     ret = (*sd->sd_connect)(sd, sock, addr, addrlen);
 
 done:
