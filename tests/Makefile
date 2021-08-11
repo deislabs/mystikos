@@ -116,6 +116,7 @@ DIRS += synccall
 DIRS += python_subprocess
 DIRS += python_vfork
 DIRS += fcntl
+DIRS += stacksize
 
 .PHONY: $(DIRS)
 
