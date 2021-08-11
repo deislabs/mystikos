@@ -57,5 +57,9 @@ EDGER8R_OPTS += --trusted
 EDGER8R_OPTS += --search-path $(OE_INCDIR)
 EDGER8R_OPTS += --trusted-dir $(SUBOBJDIR)
 
+ifdef MYST_ENABLE_GCOV
+EDGER8R_OPTS += -DGCOV
+endif
+
 $(SUBOBJDIR)/myst_t.c: ../myst.edl
 	$(EDGER8R) $(EDGER8R_OPTS) ../myst.edl
