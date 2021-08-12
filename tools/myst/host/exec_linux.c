@@ -268,12 +268,27 @@ static void _install_signal_handlers()
     sa.sa_flags = SA_SIGINFO;
     sigemptyset(&sa.sa_mask);
     sa.sa_sigaction = _sigaction_handler;
-    if (sigaction(SIGSEGV, &sa, NULL) == -1)
-        _err("Failed to register SIGSEGV signal handler\n");
+
     if (sigaction(SIGILL, &sa, NULL) == -1)
         _err("Failed to register SIGILL signal handler\n");
     if (sigaction(SIGFPE, &sa, NULL) == -1)
         _err("Failed to register SIGFPE signal handler\n");
+
+    /* Set SIGSEGV handler to use alternate stack */
+    {
+        stack_t ss;
+        ss.ss_size = SIGSTKSZ * 4; // 8 pages
+        ss.ss_flags = 0;
+        if ((ss.ss_sp = malloc(SIGSTKSZ * 4)) == NULL)
+            _err("Failed to malloc alternate stack\n");
+
+        if (sigaltstack(&ss, NULL) == -1)
+            _err("Failed to register alternate stack\n");
+
+        sa.sa_flags |= SA_ONSTACK;
+        if (sigaction(SIGSEGV, &sa, NULL) == -1)
+            _err("Failed to register SIGSEGV signal handler\n");
+    }
 }
 
 /* the address of this is eventually passed to futex (uaddr argument) */
