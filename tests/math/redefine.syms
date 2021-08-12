@@ -1,0 +1,6 @@
+sin musl_sin
+asinh musl_asinh
+sinh musl_sinh
+cos musl_cos
+acosh musl_acosh
+tan musl_tan 

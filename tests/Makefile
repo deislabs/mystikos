@@ -117,6 +117,7 @@ DIRS += python_subprocess
 DIRS += python_vfork
 DIRS += fcntl
 DIRS += stacksize
+DIRS += math
 
 .PHONY: $(DIRS)
 
