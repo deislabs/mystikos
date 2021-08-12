@@ -880,6 +880,10 @@ int myst_enter_kernel(myst_kernel_args_t* args)
             myst_assume(thread->group_prev == NULL);
             while (thread->group_next)
             {
+                // We are currently only killing the thread group in
+                // SYS_exit_group. For threads aborted via a signal this flow is
+                // not hit. So another attempt to kill thread group.
+                myst_kill_thread_group();
                 myst_sleep_msec(10);
             }
         }
