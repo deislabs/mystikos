@@ -1227,6 +1227,10 @@ static long _syscall_clone_vfork(
             child_thread->supgid,
             parent_thread->supgid,
             parent_thread->num_supgid);
+        memcpy(
+            child_process->rlimits,
+            parent_process->rlimits,
+            sizeof(child_process->rlimits));
         child_thread->num_supgid = parent_thread->num_supgid;
 
         child_process->thread_group_lock = MYST_SPINLOCK_INITIALIZER;
