@@ -170,7 +170,7 @@ sort:
 
 ifeq ($(FS),ext2fs)
 one:
-	sudo -E $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
+	subtest=$(TEST) sudo -E $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
 endif
 
 ##==============================================================================
@@ -186,7 +186,7 @@ one:
 	cp appdir/$(TEST) $(HOSTFS)/$(TEST)
 	cp -r appdir/etc $(HOSTFS)/
 	sudo chown -R 0.0 $(HOSTFS)
-	sudo -E $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
+	subtest=$(TEST) sudo -E $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
 endif
 
 ##==============================================================================
@@ -202,7 +202,7 @@ one:
 	cp appdir/$(TEST) ramfs.appdir/$(TEST)
 	cp -r appdir/etc  ramfs.appdir/
 	$(MYST) mkcpio ramfs.appdir ramfs
-	sudo -E $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
+	subtest=$(TEST) sudo -E $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
 endif
 
 t:
