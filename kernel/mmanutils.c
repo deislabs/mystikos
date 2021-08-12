@@ -759,7 +759,7 @@ done:
     return ret;
 }
 
-int proc_pid_maps_vcallback(myst_buf_t* vbuf, char* entrypath)
+int proc_pid_maps_vcallback(myst_buf_t* vbuf, const char* entrypath)
 {
     int ret = 0;
     bool locked = false;

@@ -27,4 +27,4 @@ myst:
 	$(MAKE) -C $(TOP)/tools/myst
 
 clean:
-	rm -rf $(APPDIR) rootfs export ramfs *.o
+	rm -rf $(APPDIR) rootfs ramfs *.o

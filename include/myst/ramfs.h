@@ -39,7 +39,7 @@ typedef enum myst_virtual_file_type
 } myst_virtual_file_type_t;
 
 typedef union myst_vcallback {
-    int (*open_cb)(myst_buf_t* buf, char* entrypath);
+    int (*open_cb)(myst_buf_t* buf, const char* entrypath);
     struct
     {
         int (*read_cb)(void* buf, size_t count);
