@@ -255,6 +255,26 @@ static void _get_options(
 
 myst_kernel_args_t kernel_args;
 
+static __thread void* alt_stack;
+
+void setup_alt_stack()
+{
+    stack_t ss;
+    ss.ss_size = SIGSTKSZ * 4; // 8 pages
+    ss.ss_flags = 0;
+    if ((ss.ss_sp = alt_stack = malloc(SIGSTKSZ * 4)) == NULL)
+        _err("Failed to malloc alternate stack\n");
+
+    if (sigaltstack(&ss, NULL) == -1)
+        _err("Failed to register alternate stack\n");
+}
+
+void cleanup_alt_stack()
+{
+    if (alt_stack)
+        free(alt_stack);
+}
+
 static void _sigaction_handler(int sig, siginfo_t* si, void* context)
 {
     ucontext_t* ucontext = (ucontext_t*)context;
@@ -268,12 +288,20 @@ static void _install_signal_handlers()
     sa.sa_flags = SA_SIGINFO;
     sigemptyset(&sa.sa_mask);
     sa.sa_sigaction = _sigaction_handler;
-    if (sigaction(SIGSEGV, &sa, NULL) == -1)
-        _err("Failed to register SIGSEGV signal handler\n");
+
     if (sigaction(SIGILL, &sa, NULL) == -1)
         _err("Failed to register SIGILL signal handler\n");
     if (sigaction(SIGFPE, &sa, NULL) == -1)
         _err("Failed to register SIGFPE signal handler\n");
+
+    /* Set SIGSEGV handler to use alternate stack */
+    {
+        setup_alt_stack();
+
+        sa.sa_flags |= SA_ONSTACK;
+        if (sigaction(SIGSEGV, &sa, NULL) == -1)
+            _err("Failed to register SIGSEGV signal handler\n");
+    }
 }
 
 /* the address of this is eventually passed to futex (uaddr argument) */
@@ -469,8 +497,11 @@ static int _enter_kernel(
 
 done:
 
+    cleanup_alt_stack();
+
     if (have_config)
         free_config(&pd);
+
     if (kernel_args.envp)
         free(kernel_args.envp);
 
@@ -633,12 +664,17 @@ static void* _thread_func(void* arg)
     uint64_t cookie = (uint64_t)arg;
     uint64_t event = (uint64_t)&_thread_event;
 
+    /* Setup thread specific alt stack for handling SIGSEGV signals */
+    setup_alt_stack();
+
     if (myst_run_thread(cookie, event, (pid_t)syscall(SYS_gettid)) != 0)
     {
+        cleanup_alt_stack();
         fprintf(stderr, "myst_run_thread() failed\n");
         exit(1);
     }
 
+    cleanup_alt_stack();
     return NULL;
 }
 
