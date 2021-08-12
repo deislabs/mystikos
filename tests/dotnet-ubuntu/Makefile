@@ -23,7 +23,7 @@ clean:
 OPTS += --memory-size $(HEAP_SIZE)
 
 tests:
-	$(RUNTEST) $(MYST_EXEC) ext2fs /app/hello $(OPTS)
+	$(RUNTEST) ./exec.sh $(MYST_EXEC) $(OPTS) ext2fs /app/hello $(TARGET)
 
 ##############################
 # dev targets
