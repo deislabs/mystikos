@@ -3134,8 +3134,9 @@ long myst_syscall_get_process_thread_stack(void** stack, size_t* stack_size)
     if (!myst_is_process_thread(myst_thread_self()))
         ERAISE(-EINVAL);
 
-    *stack = self->exec_stack;
-    *stack_size = self->exec_stack_size;
+    // exclude enclosing guard pages
+    *stack = (uint8_t*)self->exec_stack + PAGE_SIZE;
+    *stack_size = self->exec_stack_size - 2 * PAGE_SIZE;
 
 done:
     return ret;
