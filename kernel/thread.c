@@ -78,6 +78,56 @@ pid_t myst_generate_tid(void)
 /*
 **==============================================================================
 **
+** Entry stack
+**
+**    Allocate and deallocate the temporary stack uesd by thread initialization
+**
+**==============================================================================
+*/
+
+#define ENTRY_STACK_ALIGNMENT 16
+#define PROCESS_ENTRY_STACK_SIZE 65536
+#define THREAD_ENTRY_STACK_SIZE 8192
+
+static long _get_entry_stack(myst_thread_t* thread)
+{
+    long ret = 0;
+    size_t stack_size;
+
+    if (myst_is_process_thread(thread))
+        stack_size = PROCESS_ENTRY_STACK_SIZE;
+    else
+        stack_size = THREAD_ENTRY_STACK_SIZE;
+
+    /* allocate a new stack since the OE caller stack is very small */
+    if (!(thread->entry_stack = memalign(ENTRY_STACK_ALIGNMENT, stack_size)))
+        ERAISE(-ENOMEM);
+    thread->entry_stack_size = stack_size;
+
+    ECHECK(myst_register_stack(thread->entry_stack, thread->entry_stack_size));
+
+done:
+    if (ret < 0)
+    {
+        free(thread->entry_stack);
+        thread->entry_stack = NULL;
+        thread->entry_stack_size = 0;
+    }
+
+    return ret;
+}
+
+static void _put_entry_stack(myst_thread_t* thread)
+{
+    myst_unregister_stack(thread->entry_stack, thread->entry_stack_size);
+    free(thread->entry_stack);
+    thread->entry_stack = NULL;
+    thread->entry_stack_size = 0;
+}
+
+/*
+**==============================================================================
+**
 ** cookie map:
 **
 **     This structure maps cookies to threads. When a thread is created, the
@@ -227,6 +277,7 @@ static void _free_zombies(void* arg)
         myst_thread_t* next = p->znext;
 
         myst_signal_free_siginfos(p);
+        _put_entry_stack(p);
         memset(p, 0xdd, sizeof(myst_thread_t));
         free(p);
 
@@ -580,6 +631,7 @@ long myst_wait(
                             p->main.prev_process_thread;
 
                     // free zombie thread
+                    _put_entry_stack(p);
                     free(p);
                 }
 
@@ -1012,6 +1064,8 @@ static long _run_thread(void* arg_)
 
             myst_signal_free_siginfos(thread);
 
+            _put_entry_stack(thread);
+
             free(thread);
         }
 
@@ -1051,40 +1105,18 @@ long myst_run_thread(uint64_t cookie, uint64_t event, pid_t target_tid)
 {
     long ret = 0;
     myst_thread_t* thread;
-    size_t stack_size;
-    const size_t stack_alignment = 16;
-    const size_t process_stack_size = 65536;
-    const size_t regular_stack_size = 8192;
-    uint8_t* stack = NULL;
 
     /* get the thread corresponding to this cookie */
     if (!(thread = _put_cookie(cookie)))
         ERAISE(-EINVAL);
 
-    /* the stack size is determined by the thread type (process or regular) */
-    if (myst_is_process_thread(thread))
-        stack_size = process_stack_size;
-    else
-        stack_size = regular_stack_size;
-
-    /* allocate a new stack since the OE caller stack is very small */
-    if (!(stack = memalign(stack_alignment, stack_size)))
-        ERAISE(-ENOMEM);
-
-    myst_register_stack(stack, stack_size);
-
     /* run the thread on the transient stack */
     struct run_thread_arg arg = {thread, cookie, event, target_tid};
-    ECHECK(myst_call_on_stack(stack + stack_size, _run_thread, &arg));
+    uint64_t stack_end =
+        (uint64_t)thread->entry_stack + thread->entry_stack_size;
+    ECHECK(myst_call_on_stack((void*)stack_end, _run_thread, &arg));
 
 done:
-
-    if (stack)
-    {
-        myst_unregister_stack(stack, stack_size);
-        free(stack);
-    }
-
     return ret;
 }
 
@@ -1160,6 +1192,8 @@ static long _syscall_clone(
         child->clone.ptid = ptid;
         child->clone.newtls = newtls;
         child->clone.ctid = ctid;
+
+        ECHECK(_get_entry_stack(child));
     }
 
     cookie = _get_cookie(child);
@@ -1283,6 +1317,8 @@ static long _syscall_clone_vfork(
 
         /* Create /proc/[pid]/fd directory for new process thread */
         ECHECK(procfs_pid_setup(child->pid));
+
+        ECHECK(_get_entry_stack(child));
     }
 
     cookie = _get_cookie(child);
