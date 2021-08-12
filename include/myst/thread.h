@@ -14,6 +14,7 @@
 #include <myst/fdtable.h>
 #include <myst/futex.h>
 #include <myst/kstack.h>
+#include <myst/limit.h>
 #include <myst/setjmp.h>
 #include <myst/spinlock.h>
 #include <myst/tcall.h>
@@ -166,6 +167,9 @@ struct myst_process
         posix_sigaction_t* sigactions;
 
     } signal;
+
+    /* rlimit values for process */
+    struct rlimit rlimits[RLIMIT_NLIMITS];
 };
 
 struct myst_thread
