@@ -13,6 +13,7 @@
 #include <sys/prctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -312,7 +313,8 @@ int test_stat_from_child()
     }
     else // parent
     {
-        wait();
+        int status;
+        wait(&status);
     }
 }
 
@@ -325,8 +327,7 @@ int main(int argc, const char* argv[])
     test_cpuinfo();
     test_fdatasync();
     test_stat();
-    // ATTN: Enable after Paul's shutdown PR goes in
-    // test_stat_from_child();
+    test_stat_from_child();
 
     printf("\n=== passed test (%s)\n", argv[0]);
     return 0;

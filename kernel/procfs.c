@@ -19,8 +19,8 @@
 #include <myst/strings.h>
 #include <myst/times.h>
 
-static int _status_vcallback(myst_buf_t* vbuf, char* entrypath);
-static int _stat_vcallback(myst_buf_t* vbuf, char* entrypath);
+static int _status_vcallback(myst_buf_t* vbuf, const char* entrypath);
+static int _stat_vcallback(myst_buf_t* vbuf, const char* entrypath);
 
 static myst_fs_t* _procfs;
 static char* _cpuinfo_buf = NULL;
@@ -76,10 +76,7 @@ int procfs_pid_setup(pid_t pid)
     int ret = 0;
     struct locals
     {
-        char fdpath[PATH_MAX];
-        char mapspath[PATH_MAX];
-        char statuspath[PATH_MAX];
-        char statpath[PATH_MAX];
+        char tmp_path[PATH_MAX];
     };
     struct locals* locals = NULL;
 
@@ -89,42 +86,42 @@ int procfs_pid_setup(pid_t pid)
     /* Create /proc/[pid]/fd directory */
     {
         ECHECK(myst_snprintf(
-            locals->fdpath, sizeof(locals->fdpath), "/proc/%d/fd", pid));
+            locals->tmp_path, sizeof(locals->tmp_path), "/proc/%d/fd", pid));
 
-        ECHECK(myst_mkdirhier(locals->fdpath, 777));
+        ECHECK(myst_mkdirhier(locals->tmp_path, 777));
     }
 
     /* maps entry */
     {
         ECHECK(myst_snprintf(
-            locals->mapspath, sizeof(locals->mapspath), "/%d/maps", pid));
+            locals->tmp_path, sizeof(locals->tmp_path), "/%d/maps", pid));
 
         myst_vcallback_t v_cb;
         v_cb.open_cb = proc_pid_maps_vcallback;
         ECHECK(myst_create_virtual_file(
-            _procfs, locals->mapspath, S_IFREG | S_IRUSR, v_cb, OPEN));
+            _procfs, locals->tmp_path, S_IFREG | S_IRUSR, v_cb, OPEN));
     }
 
     /* status entry */
     {
         ECHECK(myst_snprintf(
-            locals->statuspath, sizeof(locals->statuspath), "/%d/status", pid));
+            locals->tmp_path, sizeof(locals->tmp_path), "/%d/status", pid));
 
         myst_vcallback_t v_cb;
         v_cb.open_cb = _status_vcallback;
         ECHECK(myst_create_virtual_file(
-            _procfs, locals->statuspath, S_IFREG | S_IRUSR, v_cb, OPEN));
+            _procfs, locals->tmp_path, S_IFREG | S_IRUSR, v_cb, OPEN));
     }
 
     /* stat entry */
     {
         ECHECK(myst_snprintf(
-            locals->statpath, sizeof(locals->statpath), "/%d/stat", pid));
+            locals->tmp_path, sizeof(locals->tmp_path), "/%d/stat", pid));
 
         myst_vcallback_t v_cb;
         v_cb.open_cb = _stat_vcallback;
         ECHECK(myst_create_virtual_file(
-            _procfs, locals->statpath, S_IFREG | S_IRUSR, v_cb, OPEN));
+            _procfs, locals->tmp_path, S_IFREG | S_IRUSR, v_cb, OPEN));
     }
 
 done:
@@ -163,7 +160,7 @@ done:
     return ret;
 }
 
-static int _meminfo_vcallback(myst_buf_t* vbuf, char* entrypath)
+static int _meminfo_vcallback(myst_buf_t* vbuf, const char* entrypath)
 {
     int ret = 0;
     size_t totalram;
@@ -196,7 +193,7 @@ done:
     return ret;
 }
 
-static int _self_vcallback(myst_buf_t* vbuf, char* entrypath)
+static int _self_vcallback(myst_buf_t* vbuf, const char* entrypath)
 {
     int ret = 0;
     struct locals
@@ -230,7 +227,7 @@ done:
 }
 
 #define CPUINFO_STR "/proc/cpuinfo"
-static int _cpuinfo_vcallback(myst_buf_t* vbuf, char* entrypath)
+static int _cpuinfo_vcallback(myst_buf_t* vbuf, const char* entrypath)
 {
     int ret = 0;
     void* buf = NULL;
@@ -289,7 +286,7 @@ static int _is_process_traced(char* host_status_buf)
     return 0;
 }
 
-static int _status_vcallback(myst_buf_t* vbuf, char* entrypath)
+static int _status_vcallback(myst_buf_t* vbuf, const char* entrypath)
 {
     int ret = 0;
     struct locals
@@ -405,9 +402,7 @@ done:
 static char get_process_state(myst_thread_t* process_thread)
 {
     if (process_thread->signal.waiting_on_event)
-    {
         return 'S';
-    }
 
     switch (process_thread->status)
     {
@@ -421,7 +416,7 @@ static char get_process_state(myst_thread_t* process_thread)
     // ATTN: Support other process states
 }
 
-static int _stat_vcallback(myst_buf_t* vbuf, char* entrypath)
+static int _stat_vcallback(myst_buf_t* vbuf, const char* entrypath)
 {
     int ret = 0;
     struct locals
@@ -547,14 +542,18 @@ done:
     return ret;
 }
 
-myst_thread_t* myst_procfs_path_to_process(char* entrypath)
+myst_thread_t* myst_procfs_path_to_process(const char* entrypath)
 {
     myst_thread_t* ret = NULL;
     int pid = 0;
     char** toks = NULL;
     size_t ntoks = 0;
+    char* path_copy = strdup(entrypath);
 
-    if (myst_strsplit(entrypath, "/", &toks, &ntoks) != 0)
+    if (path_copy == NULL)
+        goto done;
+
+    if (myst_strsplit(path_copy, "/", &toks, &ntoks) != 0)
         goto done;
 
     /* path should atleast contain pid and leaf entry */
@@ -565,7 +564,12 @@ myst_thread_t* myst_procfs_path_to_process(char* entrypath)
     assert(myst_is_process_thread(ret));
 
 done:
+
+    if (path_copy)
+        free(path_copy);
+
     if (toks)
         free(toks);
+
     return ret;
 }
