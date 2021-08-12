@@ -186,15 +186,34 @@ static long _default_signal_handler(unsigned signum)
     myst_thread_t* thread = myst_thread_self();
     myst_thread_t* process_thread = myst_find_process_thread(thread);
 
-    // A hard kill. Never returns.
-    // For SIGABRT, throw it to the process thread.
-    if (signum == SIGABRT)
+    // If the main thread has not been sent signal or has not exited already
+    // forward this exception to the main thread to cause the whole process to
+    // exit with this signal
+    if ((thread != process_thread) &&
+        ((signum == SIGABRT) || (signum == SIGSEGV)))
     {
-        myst_signal_deliver(process_thread, signum, NULL);
-        if (process_thread->signal.waiting_on_event)
+        enum myst_thread_status expected = MYST_RUNNING;
+        if (__atomic_compare_exchange_n(
+                &process_thread->status,
+                &expected,
+                MYST_RUNNING,
+                false,
+                __ATOMIC_RELEASE,
+                __ATOMIC_ACQUIRE))
         {
-            myst_tcall_wake(process_thread->event);
+            myst_signal_deliver(process_thread, signum, NULL);
+            if (process_thread->signal.waiting_on_event)
+            {
+                myst_tcall_wake(process_thread->event);
+            }
         }
+    }
+    else if (thread == process_thread)
+    {
+        // Make sure all other threads are shutdown properly.
+        // This is usually initiated via a process call to exit() or _Exit().
+        // If we are here then there is a good chance it was not called
+        myst_kill_thread_group();
     }
 
     /* If we were forked and fork mode is wait for exec, notify calling parent
@@ -207,6 +226,7 @@ static long _default_signal_handler(unsigned signum)
     thread->exit_status = 128 + signum;
     thread->status = MYST_KILLED;
     thread->terminating_signum = signum;
+
     myst_longjmp(&thread->jmpbuf, 1);
 
     // Unreachable

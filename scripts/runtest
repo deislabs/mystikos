@@ -30,7 +30,8 @@ test_passed()
     local cmd=$*
     local subtest=${cmd##*/}
     echo -e "${green}    passed (${TESTNAME}/${subtest})${reset}"
-    echo "" >> ${TESTSUBDIR}/passed
+    mkdir -p "${TESTSUBDIR}/${subtest}"
+    echo "" >> "${TESTSUBDIR}/${subtest}/passed"
 }
 
 test_failed()
@@ -38,7 +39,8 @@ test_failed()
     local cmd=$*
     local subtest=${cmd##*/}
     echo -e "${red}    failed (${TESTNAME}/${subtest})${reset}"
-    echo "" >> ${TESTSUBDIR}/failed
+    mkdir -p "${TESTSUBDIR}/${subtest}"
+    echo "" >> "${TESTSUBDIR}/${subtest}/failed"
 }
 
 test_timedout()
@@ -46,7 +48,8 @@ test_timedout()
     local cmd=$*
     local subtest=${cmd##*/}
     echo -e "${red}    timedout (${TESTNAME}/${subtest})${reset}"
-    echo "" >> ${TESTSUBDIR}/failed
+    mkdir -p "${TESTSUBDIR}/${subtest}"
+    echo "" >> "${TESTSUBDIR}/${subtest}/failed"
 }
 
 if [ -z "${TIMEOUT}" ]; then
