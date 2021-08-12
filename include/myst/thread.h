@@ -267,6 +267,10 @@ struct myst_thread
     /* when fork needs to wait for child to call exec or exit, wait on this
      * fuxtex. Child set to 1 and signals futex. */
     int fork_exec_futex_wait;
+
+    /* the temporary stack that was allocated to initialize a user thread */
+    void* entry_stack;
+    size_t entry_stack_size;
 };
 
 MYST_INLINE bool myst_valid_thread(const myst_thread_t* thread)

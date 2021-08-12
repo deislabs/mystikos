@@ -97,7 +97,8 @@ enclave
 
         long myst_syscall_isatty_ocall(int fd);
 
-        int myst_mprotect_ocall(void* addr, size_t len, int prot);
+        int myst_mprotect_ocall(void* addr, size_t len, int prot)
+            transition_using_threads;
 
         /*
         **======================================================================
