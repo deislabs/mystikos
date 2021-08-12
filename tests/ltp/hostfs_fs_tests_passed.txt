@@ -95,6 +95,9 @@
 /ltp/testcases/kernel/syscalls/open/open09
 /ltp/testcases/kernel/syscalls/open/open10
 /ltp/testcases/kernel/syscalls/openat/openat01
+/ltp/testcases/kernel/syscalls/pause/pause01
+/ltp/testcases/kernel/syscalls/pause/pause02
+/ltp/testcases/kernel/syscalls/pause/pause03
 /ltp/testcases/kernel/syscalls/poll/poll01
 /ltp/testcases/kernel/syscalls/pread/pread01
 /ltp/testcases/kernel/syscalls/pread/pread01_64

@@ -166,6 +166,9 @@
 /ltp/testcases/kernel/syscalls/open/open10
 /ltp/testcases/kernel/syscalls/openat/openat01
 /ltp/testcases/kernel/syscalls/pathconf/pathconf01
+/ltp/testcases/kernel/syscalls/pause/pause01
+/ltp/testcases/kernel/syscalls/pause/pause02
+/ltp/testcases/kernel/syscalls/pause/pause03
 /ltp/testcases/kernel/syscalls/pipe/pipe01
 /ltp/testcases/kernel/syscalls/pipe/pipe03
 /ltp/testcases/kernel/syscalls/pipe/pipe04
