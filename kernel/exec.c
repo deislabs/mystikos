@@ -141,18 +141,6 @@ static uint64_t _round_up_to_multiple(uint64_t x, uint64_t m)
     return (x + m - 1) / m * m;
 }
 
-static int _check_guard(const void* s_, size_t n)
-{
-    const uint8_t* s = (const uint8_t*)s_;
-    const uint8_t* p = (const uint8_t*)s_;
-    size_t r = n;
-
-    while (r-- && *p == GUARD)
-        p++;
-
-    return ((size_t)(p - s) == n) ? 0 : -1;
-}
-
 /*
 **==============================================================================
 ** elf_init_stack()
@@ -372,11 +360,10 @@ int elf_init_stack(
         memset(&auxv_out[auxc], 0, sizeof(Elf64_auxv_t));
     }
 
-    /* Write the first guard page pattern */
-    memset(stack, GUARD, PAGE_SIZE);
-
-    /* Write the second guard page pattern */
-    memset((uint8_t*)stack + stack_size - PAGE_SIZE, GUARD, PAGE_SIZE);
+    /* Make the enclosing guard pages inaccessible */
+    ECHECK(myst_mprotect(stack, PAGE_SIZE, PROT_NONE));
+    ECHECK(myst_mprotect(
+        (uint8_t*)stack + stack_size - PAGE_SIZE, PAGE_SIZE, PROT_NONE));
 
     *sp_out = sp;
 
@@ -637,12 +624,6 @@ int elf_check_stack(const void* stack, size_t stack_size)
         goto done;
 
     if (stack_size < 2 * PAGE_SIZE)
-        goto done;
-
-    if (_check_guard(stack, PAGE_SIZE) != 0)
-        goto done;
-
-    if (_check_guard((uint8_t*)stack + stack_size - PAGE_SIZE, PAGE_SIZE) != 0)
         goto done;
 
     ret = 0;
