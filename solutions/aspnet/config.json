@@ -3,22 +3,21 @@
 
     // Whether we are running myst+OE+app in debug mode
     "Debug": 1,
-    // The stack size of each ethread
     "ProductID": 1,
     "SecurityVersion": 1,
-    // The stack size of each ethread
-    "StackMemSize": "800k",
 
     // Mystikos specific values
 
     // The heap size of the user application. Increase this setting if your app experienced OOM.
     "MemorySize": "1024m",
+    // CWD for the app
+    "CurrentWorkingDirectory": "/app",
     // The path to the entry point application in rootfs
     "ApplicationPath": "/app/webapp",
     // The parameters to the entry point application
     "ApplicationParameters": [],
-    // Whether we allow "ApplicationParameters" to be overridden by command line options of "myst exec"
-    "HostApplicationParameters": true,
+    // Whether we allow "ApplicationParameters" to be overridden by command line
+    "HostApplicationParameters": false,
     // The environment variables accessible inside the enclave.
-    "EnvironmentVariables": ["COMPlus_EnableDiagnostics=0", "COMPlus_GCHeapHardLimit=0x10000000"],
+    "EnvironmentVariables": ["COMPlus_EnableDiagnostics=0", "COMPlus_GCHeapHardLimit=0x10000000"]
 }
