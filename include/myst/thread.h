@@ -186,13 +186,6 @@ struct myst_thread
         /* the process group ID */
         pid_t pgid;
 
-        struct unmap_on_exit
-        {
-            void* ptr;
-            size_t size;
-        } unmap_on_exit[MYST_MAX_MUNNAP_ON_EXIT];
-        _Atomic size_t unmap_on_exit_used;
-
     } main;
 
     volatile _Atomic enum myst_thread_status status;
@@ -271,6 +264,20 @@ struct myst_thread
     /* the temporary stack that was allocated to initialize a user thread */
     void* entry_stack;
     size_t entry_stack_size;
+
+    /* If we have a mapping that is the thread stack then we cannot free it
+     * until we return the thread to the kernel for shutting down. There may
+     * also be unmappings to the middle of the stack, and those have to be
+     * deferred until the thread shuts down also. There are other scenarios
+     * where we find it hard to clean up a mappings safely and so they may also
+     * need to be deferred too.
+     */
+    struct unmap_on_exit
+    {
+        void* ptr;
+        size_t size;
+    } unmap_on_exit[MYST_MAX_MUNNAP_ON_EXIT];
+    _Atomic size_t unmap_on_exit_used;
 };
 
 MYST_INLINE bool myst_valid_thread(const myst_thread_t* thread)
