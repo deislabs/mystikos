@@ -306,6 +306,16 @@ static long _handle_one_signal(
             // from the top of the alt stack.
             altstack->ss_flags |= SS_ONSTACK;
 
+            // pass stack limits if using alternate stack.
+            // dotnet runtime uses the uc_stack field to detect if its running
+            // on an alternate stack.
+            if ((action->flags & SA_SIGINFO) != 0)
+            {
+                context.uc_stack.ss_sp = altstack->ss_sp;
+                context.uc_stack.ss_size = altstack->ss_size;
+                context.uc_stack.ss_flags = altstack->ss_flags;
+            }
+
             myst_call_on_stack((void*)stacktop, _handler_wrapper, &arg);
 
             altstack->ss_flags &= ~SS_ONSTACK; // Done with the alt stack.
