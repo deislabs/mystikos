@@ -609,22 +609,19 @@ __attribute__((format(printf, 2, 3))) static void _strace(
     }
 }
 
-long myst_syscall_unmap_on_exit(
-    myst_thread_t* process_thread,
-    void* ptr,
-    size_t size)
+long myst_syscall_unmap_on_exit(myst_thread_t* thread, void* ptr, size_t size)
 {
     long ret = 0;
-    int i = process_thread->main.unmap_on_exit_used++;
+    int i = thread->unmap_on_exit_used++;
     if (i >= MYST_MAX_MUNNAP_ON_EXIT)
     {
-        process_thread->main.unmap_on_exit_used--;
+        thread->unmap_on_exit_used--;
         ret = -ENOMEM;
     }
     else
     {
-        process_thread->main.unmap_on_exit[i].ptr = ptr;
-        process_thread->main.unmap_on_exit[i].size = size;
+        thread->unmap_on_exit[i].ptr = ptr;
+        thread->unmap_on_exit[i].size = size;
     }
     return ret;
 }
@@ -3521,12 +3518,10 @@ static long _syscall(void* args_)
         {
             void* ptr = (void*)x1;
             size_t size = (size_t)x2;
-            myst_thread_t* process_thread = myst_find_process_thread(thread);
 
             _strace(n, "ptr=%p, size=%zu", ptr, size);
 
-            BREAK(_return(
-                n, myst_syscall_unmap_on_exit(process_thread, ptr, size)));
+            BREAK(_return(n, myst_syscall_unmap_on_exit(thread, ptr, size)));
         }
         case SYS_get_process_thread_stack:
         {
@@ -3739,14 +3734,9 @@ static long _syscall(void* args_)
 
                 if ((p >= q && p < qend) || (pend >= q && pend < qend))
                 {
-                    myst_thread_t* process_thread =
-                        myst_find_process_thread(thread);
-
                     /* unmap this later when the thread exits */
                     BREAK(_return(
-                        n,
-                        myst_syscall_unmap_on_exit(
-                            process_thread, addr, length)));
+                        n, myst_syscall_unmap_on_exit(thread, addr, length)));
                 }
             }
 

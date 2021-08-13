@@ -1016,17 +1016,6 @@ static long _run_thread(void* arg_)
                 }
             }
 
-            {
-                size_t i = thread->main.unmap_on_exit_used;
-                while (i)
-                {
-                    myst_munmap(
-                        thread->main.unmap_on_exit[i - 1].ptr,
-                        thread->main.unmap_on_exit[i - 1].size);
-                    i--;
-                }
-            }
-
             free(thread->main.cwd);
             thread->main.cwd = NULL;
 
@@ -1048,6 +1037,19 @@ static long _run_thread(void* arg_)
         {
             myst_assume(_num_threads > 1);
             _num_threads--;
+        }
+
+        /* Free up the thread unmap-on-exit. These mappings can be on both the
+         * main thread and child threads. */
+        {
+            size_t i = thread->unmap_on_exit_used;
+            while (i)
+            {
+                myst_munmap(
+                    thread->unmap_on_exit[i - 1].ptr,
+                    thread->unmap_on_exit[i - 1].size);
+                i--;
+            }
         }
 
         /* Only free child thread as parent is zombified so parent can wait on
