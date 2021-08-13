@@ -2664,6 +2664,68 @@ done:
     return ret;
 }
 
+static int _fs_release_tree(myst_fs_t* fs, const char* pathname)
+{
+    int ret = 0;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+    inode_t *parent, *self;
+    struct locals
+    {
+        char dirname[PATH_MAX];
+        char basename[PATH_MAX];
+    };
+    struct locals* locals = NULL;
+
+    if (!_ramfs_valid(ramfs))
+        ERAISE(-EINVAL);
+
+    if (!pathname)
+        ERAISE(-EINVAL);
+
+    if (!(locals = malloc(sizeof(struct locals))))
+        ERAISE(-ENOMEM);
+
+    ECHECK(_path_to_inode(ramfs, pathname, true, &parent, &self, NULL, NULL));
+
+    if (!_inode_valid(parent) || !_inode_valid(self))
+        ERAISE(-EINVAL);
+
+    /* Release all inodes in the sub-tree under self*/
+    {
+        int type, mode = self->mode;
+        if (S_ISDIR(mode))
+            type = DT_DIR;
+        else if (S_ISREG(mode))
+            type = DT_REG;
+        else if (S_ISLNK(mode))
+            type = DT_LNK;
+        else
+        {
+            ERAISE(-EINVAL);
+        }
+
+        _inode_release_all(ramfs, parent, self, type);
+    }
+
+    /* Remove directory entry from parent */
+    {
+        /* Get the parent inode */
+        ECHECK(_split_path(pathname, locals->dirname, locals->basename));
+
+        /* Find and remove the parent's directory entry */
+        {
+            ECHECK(_inode_remove_dirent(parent, locals->basename));
+        }
+    }
+
+done:
+
+    if (locals)
+        free(locals);
+
+    return ret;
+}
+
 static int _init_ramfs(
     myst_mount_resolve_callback_t resolve_cb,
     myst_fs_t** fs_out)
@@ -2728,6 +2790,7 @@ static int _init_ramfs(
         .fs_fchmod = _fs_fchmod,
         .fs_fdatasync = _fs_fsync_and_fdatasync,
         .fs_fsync = _fs_fsync_and_fdatasync,
+        .fs_release_tree = _fs_release_tree,
     };
     // clang-format on
     inode_t* root_inode = NULL;
@@ -2890,68 +2953,6 @@ int myst_create_virtual_file(
     ret = 0;
 
 done:
-
-    return ret;
-}
-
-int myst_release_tree(myst_fs_t* fs, const char* pathname)
-{
-    int ret = 0;
-    ramfs_t* ramfs = _ramfs(fs);
-    inode_t *parent, *self;
-    struct locals
-    {
-        char dirname[PATH_MAX];
-        char basename[PATH_MAX];
-    };
-    struct locals* locals = NULL;
-
-    if (!_ramfs_valid(ramfs))
-        ERAISE(-EINVAL);
-
-    if (!pathname)
-        ERAISE(-EINVAL);
-
-    if (!(locals = malloc(sizeof(struct locals))))
-        ERAISE(-ENOMEM);
-
-    ECHECK(_path_to_inode(ramfs, pathname, true, &parent, &self, NULL, NULL));
-
-    if (!_inode_valid(parent) || !_inode_valid(self))
-        ERAISE(-EINVAL);
-
-    /* Release all inodes in the sub-tree under self*/
-    {
-        int type, mode = self->mode;
-        if (S_ISDIR(mode))
-            type = DT_DIR;
-        else if (S_ISREG(mode))
-            type = DT_REG;
-        else if (S_ISLNK(mode))
-            type = DT_LNK;
-        else
-        {
-            ERAISE(-EINVAL);
-        }
-
-        _inode_release_all(ramfs, parent, self, type);
-    }
-
-    /* Remove directory entry from parent */
-    {
-        /* Get the parent inode */
-        ECHECK(_split_path(pathname, locals->dirname, locals->basename));
-
-        /* Find and remove the parent's directory entry */
-        {
-            ECHECK(_inode_remove_dirent(parent, locals->basename));
-        }
-    }
-
-done:
-
-    if (locals)
-        free(locals);
 
     return ret;
 }

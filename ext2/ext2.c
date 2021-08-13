@@ -5570,6 +5570,21 @@ done:
     return ret;
 }
 
+static int _ext2_release_tree(myst_fs_t* fs, const char* pathname)
+{
+    int ret = 0;
+    ext2_t* ext2 = (ext2_t*)fs;
+
+    if (!_ext2_valid(ext2) || !pathname)
+        ERAISE(-EINVAL);
+
+    ret = -ENOTSUP;
+
+done:
+
+    return ret;
+}
+
 static myst_fs_t _base = {
     {
         .fd_read = (void*)ext2_read,
@@ -5626,6 +5641,7 @@ static myst_fs_t _base = {
     .fs_fchmod = _ext2_fchmod,
     .fs_fdatasync = _ext2_fsync_and_fdatasync,
     .fs_fsync = _ext2_fsync_and_fdatasync,
+    .fs_release_tree = _ext2_release_tree,
 };
 
 int ext2_create(

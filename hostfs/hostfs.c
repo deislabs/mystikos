@@ -1223,6 +1223,20 @@ done:
     return ret;
 }
 
+static int _fs_release_tree(myst_fs_t* fs, const char* pathname)
+{
+    int ret = 0;
+    hostfs_t* hostfs = (hostfs_t*)fs;
+
+    if (!_hostfs_valid(hostfs) || !pathname)
+        ERAISE(-EINVAL);
+
+    ret = -ENOTSUP;
+
+done:
+    return ret;
+}
+
 int myst_init_hostfs(myst_fs_t** fs_out)
 {
     int ret = 0;
@@ -1285,6 +1299,7 @@ int myst_init_hostfs(myst_fs_t** fs_out)
         .fs_fchmod = _fs_fchmod,
         .fs_fdatasync = _fs_fdatasync,
         .fs_fsync = _fs_fsync,
+        .fs_release_tree = _fs_release_tree,
     };
     // clang-format on
 

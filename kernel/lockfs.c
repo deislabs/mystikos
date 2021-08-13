@@ -769,6 +769,22 @@ done:
     return ret;
 }
 
+static int _fs_release_tree(myst_fs_t* fs, const char* pathname)
+{
+    int ret = 0;
+    lockfs_t* lockfs = (lockfs_t*)fs;
+
+    if (!_lockfs_valid(lockfs) || !pathname)
+        ERAISE(-EINVAL);
+
+    myst_mutex_lock(&lockfs->lock);
+    ret = (*lockfs->fs->fs_release_tree)(lockfs->fs, pathname);
+    myst_mutex_unlock(&lockfs->lock);
+
+done:
+    return ret;
+}
+
 int myst_lockfs_init(myst_fs_t* fs, myst_fs_t** lockfs_out)
 {
     int ret = 0;
@@ -829,6 +845,7 @@ int myst_lockfs_init(myst_fs_t* fs, myst_fs_t** lockfs_out)
         .fs_fchmod = _fs_fchmod,
         .fs_fdatasync = _fs_fdatasync,
         .fs_fsync = _fs_fsync,
+        .fs_release_tree = _fs_release_tree,
     };
 
     if (lockfs_out)
