@@ -80,7 +80,7 @@ pid_t myst_generate_tid(void)
 **
 ** Entry stack
 **
-**    Allocate and deallocate the temporary stack uesd by thread initialization
+**    Allocate the temporary stack uesd by thread initialization
 **
 **==============================================================================
 */
@@ -115,14 +115,6 @@ done:
     }
 
     return ret;
-}
-
-static void _put_entry_stack(myst_thread_t* thread)
-{
-    myst_unregister_stack(thread->entry_stack, thread->entry_stack_size);
-    free(thread->entry_stack);
-    thread->entry_stack = NULL;
-    thread->entry_stack_size = 0;
 }
 
 /*
@@ -277,7 +269,6 @@ static void _free_zombies(void* arg)
         myst_thread_t* next = p->znext;
 
         myst_signal_free_siginfos(p);
-        _put_entry_stack(p);
         memset(p, 0xdd, sizeof(myst_thread_t));
         free(p);
 
@@ -631,7 +622,6 @@ long myst_wait(
                             p->main.prev_process_thread;
 
                     // free zombie thread
-                    _put_entry_stack(p);
                     free(p);
                 }
 
@@ -1064,8 +1054,6 @@ static long _run_thread(void* arg_)
 
             myst_signal_free_siginfos(thread);
 
-            _put_entry_stack(thread);
-
             free(thread);
         }
 
@@ -1105,16 +1093,24 @@ long myst_run_thread(uint64_t cookie, uint64_t event, pid_t target_tid)
 {
     long ret = 0;
     myst_thread_t* thread;
-
     /* get the thread corresponding to this cookie */
     if (!(thread = _put_cookie(cookie)))
         ERAISE(-EINVAL);
 
     /* run the thread on the transient stack */
     struct run_thread_arg arg = {thread, cookie, event, target_tid};
-    uint64_t stack_end =
-        (uint64_t)thread->entry_stack + thread->entry_stack_size;
+    /* ATTN: We need to keep the entry stack for the myst_call_on_stack
+     * to return properly. However, the thread object may be freed prior
+     * to the return such that we can no longer obtain the reference
+     * of the entry stack from it. As a workaround, we keep the reference
+     * locally and release the entry stack before this function returns. */
+    void* stack = thread->entry_stack;
+    size_t stack_size = thread->entry_stack_size;
+    uint64_t stack_end = (uint64_t)stack + stack_size;
     ECHECK(myst_call_on_stack((void*)stack_end, _run_thread, &arg));
+
+    myst_unregister_stack(stack, stack_size);
+    free(stack);
 
 done:
     return ret;
