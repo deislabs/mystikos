@@ -150,7 +150,7 @@ int procfs_pid_cleanup(pid_t pid)
 
     ECHECK(myst_snprintf(
         locals->pid_dir_path, sizeof(locals->pid_dir_path), "/%d", pid));
-    ECHECK(myst_release_tree(_procfs, locals->pid_dir_path));
+    ECHECK(_procfs->fs_release_tree(_procfs, locals->pid_dir_path));
 
 done:
 
