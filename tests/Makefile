@@ -119,9 +119,9 @@ DIRS += fcntl
 DIRS += stacksize
 DIRS += math
 
-# ifdef MYST_NIGHTLY_TEST
-DIRS = glibc
-# endif
+ifdef MYST_NIGHTLY_TEST
+DIRS += glibc
+endif
 
 .PHONY: $(DIRS)
 
