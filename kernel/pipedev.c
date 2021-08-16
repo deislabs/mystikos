@@ -631,6 +631,21 @@ done:
     return ret;
 }
 
+static int _pd_remove_thread(myst_pipedev_t* pipedev, myst_pipe_t* pipe)
+{
+    int ret = 0;
+
+    if (!pipedev || !_valid_pipe(pipe))
+        ERAISE(-EBADF);
+
+    _lock(pipe);
+    myst_cond_signal_thread(&pipe->impl->cond, myst_thread_self());
+    _unlock(pipe);
+
+done:
+    return ret;
+}
+
 static int _pd_close(myst_pipedev_t* pipedev, myst_pipe_t* pipe)
 {
     int ret = 0;
@@ -744,6 +759,7 @@ extern myst_pipedev_t* myst_pipedev_get(void)
             .fd_interrupt = (void*)_pd_interrupt,
             .fd_target_fd = (void*)_pd_target_fd,
             .fd_get_events = (void*)_pd_get_events,
+            .fd_remove_thread = (void*)_pd_remove_thread,
         },
         .pd_pipe2 = _pd_pipe2,
         .pd_read = _pd_read,
