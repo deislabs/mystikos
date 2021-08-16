@@ -376,12 +376,18 @@ long myst_signal_process(myst_thread_t* thread)
     // Active signals are the ones that are both unblocked and pending.
     // Note SIGKILL and SIGSTOP can never be blocked.
     uint64_t unblocked = MYST_SIG_UNBLOCKED(thread->signal.mask);
-    uint64_t active_signals = thread->signal.pending & unblocked;
 
-    while (active_signals != 0)
+    while (1)
     {
+        /* To make this function reentrant, always check active_signals from
+        the thread field. _handle_one_signal can cause myst_signal_process to be
+        called */
+        uint64_t active_signals = thread->signal.pending & unblocked;
+        if (active_signals == 0)
+            break;
         unsigned bitnum = __builtin_ctzl(active_signals);
-
+        // Clear the pending bit.
+        thread->signal.pending &= ~((uint64_t)1 << bitnum);
         while (thread->signal.siginfos[bitnum])
         {
             // Create a local copy and free the global one.
@@ -411,8 +417,6 @@ long myst_signal_process(myst_thread_t* thread)
 
         // Clear the bit from the active signals. We are ready for the next.
         active_signals &= ~((uint64_t)1 << bitnum);
-        // Clear the pending bit.
-        thread->signal.pending &= ~((uint64_t)1 << bitnum);
     }
     myst_spin_unlock(&thread->signal.lock);
     return 0;

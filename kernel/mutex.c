@@ -11,6 +11,7 @@
 #include <myst/mutex.h>
 #include <myst/panic.h>
 #include <myst/printf.h>
+#include <myst/signal.h>
 #include <myst/strings.h>
 #include <myst/tcall.h>
 #include <myst/thread.h>
@@ -66,6 +67,34 @@ int __myst_mutex_trylock(myst_mutex_t* m, myst_thread_t* self)
     return -EBUSY;
 }
 
+#if 0
+void myst_print_thread_queue(myst_thread_queue_t* queue)
+{
+    myst_thread_t* p;
+
+    myst_eprintf("queue: %p items: ", queue);
+    for (p = queue->front; p; p = p->qnext)
+    {
+        myst_eprintf("[%u] -> ", p->tid);
+    }
+    myst_eprintf(" [NULL]\n");
+}
+void myst_print_mutex_state(myst_mutex_t* mutex, const char* msg)
+{
+    static myst_spinlock_t queue_print_lock = MYST_SPINLOCK_INITIALIZER;
+
+    myst_spin_lock(&queue_print_lock);
+    if (msg)
+        myst_eprintf("%s", msg);
+    myst_eprintf(
+        "[tid=%u] owner: %u ",
+        myst_thread_self()->tid,
+        mutex->owner ? mutex->owner->tid : 0);
+    myst_print_thread_queue(&mutex->queue);
+    myst_spin_unlock(&queue_print_lock);
+}
+#endif
+
 int myst_mutex_lock(myst_mutex_t* mutex)
 {
     myst_mutex_t* m = (myst_mutex_t*)mutex;
@@ -102,6 +131,24 @@ int myst_mutex_lock(myst_mutex_t* mutex)
         if ((r = myst_tcall_wait(self->event, NULL)) != 0)
             myst_panic("myst_tcall_wait(): %ld: %d", r, *(int*)self->event);
         self->signal.waiting_on_event = false;
+
+        if (myst_signal_has_active_signals(self))
+        {
+            myst_spin_lock(&m->lock);
+            myst_thread_queue_remove_thread(&m->queue, self);
+            /* If the signal handler function causes reentracy, the thread will
+             * never be able to acquire the mutex in __myst_mutex_trylock, as
+             * its been removed from the mutex wait queue. Especially if there
+             * is no owner of the mutex, and all threads contending for the
+             * mutex are signal handler reentrant threads, this could cause a
+             * infinite wait. So we wake the waiter at the front of the mutex
+             * queue, if there is no owner. */
+            if (!m->owner && m->queue.front &&
+                m->queue.front->signal.waiting_on_event)
+                myst_tcall_wake(m->queue.front->event);
+            myst_spin_unlock(&m->lock);
+            myst_signal_process(self);
+        }
     }
 
     /* Unreachable! */
