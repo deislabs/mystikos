@@ -224,6 +224,7 @@
 /ltp/testcases/kernel/syscalls/fork/fork07
 /ltp/testcases/kernel/syscalls/fork/fork09
 /ltp/testcases/kernel/syscalls/fork/fork10
+/ltp/testcases/kernel/syscalls/fork/fork12
 /ltp/testcases/kernel/syscalls/fork/fork13
 /ltp/testcases/kernel/syscalls/fork/fork14
 /ltp/testcases/kernel/syscalls/fremovexattr/fremovexattr01
@@ -371,6 +372,10 @@
 /ltp/testcases/kernel/syscalls/keyctl/keyctl02
 /ltp/testcases/kernel/syscalls/kill/kill02
 /ltp/testcases/kernel/syscalls/kill/kill03
+/ltp/testcases/kernel/syscalls/kill/kill06
+/ltp/testcases/kernel/syscalls/kill/kill08
+/ltp/testcases/kernel/syscalls/kill/kill09
+/ltp/testcases/kernel/syscalls/kill/kill10
 /ltp/testcases/kernel/syscalls/kill/kill11
 /ltp/testcases/kernel/syscalls/lchown/lchown01_16
 /ltp/testcases/kernel/syscalls/lchown/lchown02_16
@@ -555,6 +560,7 @@
 /ltp/testcases/kernel/syscalls/rename/rename09
 /ltp/testcases/kernel/syscalls/rename/rename11
 /ltp/testcases/kernel/syscalls/rename/rename12
+/ltp/testcases/kernel/syscalls/rename/rename14
 /ltp/testcases/kernel/syscalls/renameat/renameat01
 /ltp/testcases/kernel/syscalls/rmdir/rmdir02
 /ltp/testcases/kernel/syscalls/rt_sigaction/rt_sigaction02
