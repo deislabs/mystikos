@@ -15,10 +15,10 @@ This design document describes the process of secret provisioning
 
 1. **the user interface**: how does Mystikos allow users to specify the
 secrets they want in their applications?
-1. **the client library**: how does Mystikos provide a reference SSR
-client library and how can users plug in an alternative library.
-1. **the server library**: how does Mystikos provide a reference SSR
-server library and how can users plug in an alternative library.
+1. **the client library**: how does Mystikos provide a reference secret
+provisioning client library and how can users plug in an alternative library.
+1. **the server library**: how does Mystikos provide a reference secret
+provisioning server library and how can users plug in an alternative library.
 1. **the secret release service**: how does the secret holder use the
 server library for secure release of secrets.
 1. **the attestation model**: the evidences and the verification of
@@ -54,7 +54,7 @@ secrets: [
 ```
 
 Users are responsible for getting the dependent client library into the rootfs consumed
-by Mystikos. They are also responsible to linking with the corresponding server library
+by Mystikos. They are also responsible for linking with the corresponding server library
 in their services that release the secrets.
 
 ## Attestation models
