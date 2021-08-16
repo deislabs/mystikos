@@ -1095,8 +1095,8 @@ long myst_syscall_close(int fd)
     }
 
     myst_mman_close_notify(fd);
-    ECHECK((*fdops->fd_close)(device, object));
     ECHECK(myst_fdtable_remove(fdtable, fd));
+    ECHECK((*fdops->fd_close)(device, object));
 
 done:
     return ret;

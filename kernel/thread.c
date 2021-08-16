@@ -958,12 +958,15 @@ static long _run_thread(void* arg_)
             thread->exec_kstack = NULL;
         }
 
-        /* Wake up any thread waiting on ctid */
         if (is_child_thread)
         {
+            /* Wake up any thread waiting on ctid */
             myst_atomic_exchange(thread->clone.ctid, 0);
             const int futex_op = FUTEX_WAKE | FUTEX_PRIVATE;
             myst_syscall_futex(thread->clone.ctid, futex_op, 1, 0, NULL, 0);
+
+            /* Remove thread as a waiter on open pipes */
+            myst_fdtable_remove_thread(thread->fdtable);
         }
 
         /* Release memory objects owned by the main/process thread */
