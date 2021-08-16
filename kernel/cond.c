@@ -74,6 +74,7 @@ int myst_cond_timedwait(
         /* Unlock this mutex and get the waiter at the front of the queue */
         if (__myst_mutex_unlock(mutex, &waiter) != 0)
         {
+            myst_thread_queue_remove_thread(&c->queue, self);
             myst_spin_unlock(&c->lock);
             return -EBUSY;
         }

@@ -46,6 +46,8 @@ struct myst_fdops
 
     /* returns POLLIN | POLLOUT | POLLERR */
     int (*fd_get_events)(void* device, void* object);
+
+    int (*fd_remove_thread)(void* device, void* object);
 };
 
 ssize_t myst_fdops_readv(
