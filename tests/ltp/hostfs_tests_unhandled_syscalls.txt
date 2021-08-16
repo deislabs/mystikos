@@ -249,4 +249,3 @@
 /ltp/testcases/kernel/syscalls/vmsplice/vmsplice04:  SYS_vmsplice()
 /ltp/testcases/kernel/syscalls/waitid/waitid01:  SYS_waitid()
 /ltp/testcases/kernel/syscalls/waitid/waitid02:  SYS_waitid()
-/ltp/testcases/kernel/syscalls/waitpid/waitpid03:  SYS_pause()
