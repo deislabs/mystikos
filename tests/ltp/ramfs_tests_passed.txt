@@ -293,3 +293,4 @@
 /ltp/testcases/kernel/syscalls/waitpid/waitpid11
 /ltp/testcases/kernel/syscalls/write/write01
 /ltp/testcases/kernel/syscalls/write/write02
+/ltp/testcases/kernel/syscalls/waitpid/waitpid03
