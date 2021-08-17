@@ -11,6 +11,7 @@
 #include <myst/mutex.h>
 #include <myst/panic.h>
 #include <myst/printf.h>
+#include <myst/signal.h>
 #include <myst/strings.h>
 #include <myst/tcall.h>
 #include <myst/thread.h>
@@ -99,7 +100,16 @@ int myst_mutex_lock(myst_mutex_t* mutex)
 
         /* Ask host to wait for an event on this thread */
         self->signal.waiting_on_event = true;
-        if ((r = myst_tcall_wait(self->event, NULL)) != 0)
+        r = myst_tcall_wait(self->event, NULL);
+
+        if (r == -EINTR)
+        {
+            myst_spin_lock(&m->lock);
+            myst_thread_queue_remove_thread(&m->queue, self);
+            myst_spin_unlock(&m->lock);
+            myst_signal_process(self);
+        }
+        else if (r < 0)
             myst_panic("myst_tcall_wait(): %ld: %d", r, *(int*)self->event);
         self->signal.waiting_on_event = false;
     }

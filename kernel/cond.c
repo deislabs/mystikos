@@ -11,6 +11,7 @@
 #include <myst/cond.h>
 #include <myst/mutex.h>
 #include <myst/printf.h>
+#include <myst/signal.h>
 #include <myst/strings.h>
 #include <myst/tcall.h>
 
@@ -107,11 +108,19 @@ int myst_cond_timedwait(
             if (!myst_thread_queue_contains(&c->queue, self))
                 break;
 
+            /* If we were interrupted, process signals */
+            if (ret == -EINTR)
+            {
+                myst_thread_queue_remove_thread(&c->queue, self);
+                myst_spin_unlock(&c->lock);
+                myst_signal_process(self);
+                myst_spin_lock(&c->lock);
+            }
             /* Remove self from the queue on error returns such as ETIMEOUT, and
              * break out of the loop to report error to the calling function.
              * The calling function should check/process error condition before
              * continuing execution. */
-            if (ret < 0)
+            else if (ret < 0)
             {
                 myst_thread_queue_remove_thread(&c->queue, self);
                 break;
