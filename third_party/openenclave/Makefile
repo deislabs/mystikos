@@ -34,6 +34,7 @@ else
 endif
 
 fetch_oecache: $(TOP)/build/openenclave $(TOP)/build/bin/myst-gdb
+	$(TOP)/build/bin/myst-lldb
 
 $(TOP)/build/openenclave:
 	mkdir -p $(BUILDDIR)
@@ -44,6 +45,11 @@ $(TOP)/build/bin/myst-gdb:
 	mkdir -p $(BUILDDIR)/bin
 	rm -f $(BUILDDIR)/bin/myst-gdb
 	ln -s $(BUILDDIR)/openenclave/bin/oegdb $(BUILDDIR)/bin/myst-gdb
+
+$(TOP)/build/bin/myst-lldb:
+	mkdir -p $(BUILDDIR)/bin
+	rm -f $(BUILDDIR)/bin/myst-lldb
+	ln -s $(BUILDDIR)/openenclave/bin/oelldb $(BUILDDIR)/bin/myst-lldb
 
 FETCH_SUBMODULE = git submodule update --init --progress
 
@@ -87,10 +93,13 @@ endif
 	mkdir -p $(TOP)/build/bin
 	rm -f $(TOP)/build/bin/myst-gdb
 	ln -s $(TOP)/build/openenclave/bin/oegdb $(TOP)/build/bin/myst-gdb
+	rm -f $(TOP)/build/bin/myst-lldb
+	ln -s $(TOP)/build/openenclave/bin/oelldb $(TOP)/build/bin/myst-lldb
 
 clean:
 	rm -rf $(TOP)/build/openenclave
 	rm -f $(TOP)/build/bin/myst-gdb
+	rm -f $(TOP)/build/bin/myst-lldb
 
 distclean: clean
 	rm -rf openenclave
