@@ -118,6 +118,7 @@ DIRS += python_vfork
 DIRS += fcntl
 DIRS += stacksize
 DIRS += math
+DIRS += unhandled_syscall_enosys
 
 ifdef MYST_NIGHTLY_TEST
 DIRS += glibc

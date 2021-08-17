@@ -62,6 +62,7 @@ int init_kernel_args(
     long (*tcall)(long n, long params[6]),
     const char* rootfs,
     char* err,
+    bool unhandled_syscall_enosys,
     size_t err_size)
 {
     int ret = 0;
@@ -295,6 +296,7 @@ int init_kernel_args(
     args->tee_debug_mode = tee_debug_mode;
     args->tcall = tcall;
     args->mounts = mounts;
+    args->unhandled_syscall_enosys = unhandled_syscall_enosys;
 
     if (rootfs)
         MYST_STRLCPY(args->rootfs, rootfs);

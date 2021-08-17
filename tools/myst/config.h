@@ -75,6 +75,7 @@ typedef struct _config_parsed_data_t
     char* hostname;
     myst_fork_mode_t fork_mode;
     myst_mounts_config_t mounts;
+    bool unhandled_syscall_enosys;
 
     /* maximum number of CPUs in the kernel (for thread affinity) */
     size_t max_affinity_cpus;

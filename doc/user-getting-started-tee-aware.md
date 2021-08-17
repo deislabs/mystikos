@@ -232,6 +232,7 @@ First we declare the desire in the config.json:
     "HostApplicationParameters": false,
     // The environment variables accessible inside the enclave.
     "EnvironmentVariables": ["COMPlus_EnableDiagnostics=0", "MYST_WANT_TEE_CREDENTIALS=CERT_PEMKEY_REPORT"],
+    "UnhandledSyscallEnosys": false
 }
 ```
 

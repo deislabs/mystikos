@@ -261,6 +261,11 @@ Options:\n\
     --host-to-enc-gid-map <host-gid:enc-gid[,host-gid2:enc-gid2,...]>\n\
                          -- comma separated list of gid mappings between\n\
                              the host and the enclave\n\
+    --unhandled-syscall-enosys <true/false>\n\
+                         -- flag indicating if the app must exit when\n\
+                            it encounters an unimplemented syscall\n\
+                            'true' implies the syscall would not terminate\n\
+                            and instead return ENOSYS.\n\
 \n"
 
 int exec_action(int argc, const char* argv[], const char* envp[])
@@ -400,6 +405,35 @@ int exec_action(int argc, const char* argv[], const char* envp[])
         /* Get --app-config option if it exists, otherwise we use default values
          */
         cli_getopt(&argc, argv, "--app-config-path", &commandline_config);
+
+        /* Get option deciding how to handle unimplemented syscalls */
+        /* Get --unhandled-syscall-enosys */
+        {
+            const char* arg = NULL;
+
+            if ((cli_getopt(&argc, argv, "--unhandled-syscall-enosys", &arg) ==
+                 0))
+            {
+                if (strcmp(arg, "true") == 0)
+                {
+                    options.unhandled_syscall_enosys = true;
+                }
+                else if (strcmp(arg, "false") == 0)
+                {
+                    options.unhandled_syscall_enosys = false;
+                }
+                else
+                {
+                    fprintf(
+                        stderr,
+                        "%s: bad --unhandled-syscall-enosys=%s option. "
+                        "Must be 'true' or 'false'\n",
+                        argv[0],
+                        arg);
+                    return 1;
+                }
+            }
+        }
 
         /* Get --help option */
         if ((cli_getopt(&argc, argv, "--help", NULL) == 0) ||
