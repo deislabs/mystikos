@@ -45,21 +45,45 @@ int main(int argc, char** argv)
 
     if (SUCCESS == strcmp(conn_mode, "msi"))
     {
-        if (snprintf(
-                fullConnstr,
-                CONNSTR_MAX_LEN,
-                "Server=%s;Database=%s;"
-                "Authentication=ActiveDirectoryMsi;"
-                "Driver={ODBC Driver 17 for SQL Server};"
-                "ColumnEncryption=SGX-AAS,%s/attest/"
-                "SgxEnclave?api-version=2018-09-01-preview",
-                db_server,
-                db_name,
-                maa_url) >= CONNSTR_MAX_LEN)
+        if (db_uid == NULL)
         {
-            fprintf(stderr, "\nError: Connection string is too long.\n");
-            goto done;
+            if (snprintf(
+                    fullConnstr,
+                    CONNSTR_MAX_LEN,
+                    "Server=%s;Database=%s;"
+                    "Authentication=ActiveDirectoryMsi;"
+                    "Driver={ODBC Driver 17 for SQL Server};"
+                    "ColumnEncryption=SGX-AAS,%s/attest/"
+                    "SgxEnclave?api-version=2018-09-01-preview",
+                    db_server,
+                    db_name,
+                    maa_url) >= CONNSTR_MAX_LEN)
+            {
+                fprintf(stderr, "\nError: Connection string is too long.\n");
+                goto done;
+            }
         }
+        else
+        {
+            if (snprintf(
+                    fullConnstr,
+                    CONNSTR_MAX_LEN,
+                    "Server=%s;Database=%s;"
+                    "Authentication=ActiveDirectoryMsi;"
+                    "UID=%s;"
+                    "Driver={ODBC Driver 17 for SQL Server};"
+                    "ColumnEncryption=SGX-AAS,%s/attest/"
+                    "SgxEnclave?api-version=2018-09-01-preview",
+                    db_server,
+                    db_name,
+                    db_uid,
+                    maa_url) >= CONNSTR_MAX_LEN)
+            {
+                fprintf(stderr, "\nError: Connection string is too long.\n");
+                goto done;
+            }
+        }
+
     }
     else if (SUCCESS == strcmp(conn_mode, "classic"))
     {

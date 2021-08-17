@@ -7,11 +7,13 @@ import pycurl
 from logzero import logger
 from Crypto.Cipher import AES
 
-def test_pyodbc(server: str, database: str, driver: str, query: str):
+def test_pyodbc(server: str, database: str, uid: str, driver: str, query: str):
     connstr = "Driver=" + driver
     connstr += ";Server=" + server
     connstr += ";Database=" + database
     connstr += ";Authentication=ActiveDirectoryMsi"
+    if uid:
+        connstr += ";UID=" + uid
 
     conn = pyodbc.connect(connstr)
 
@@ -66,6 +68,7 @@ if __name__ == "__main__":
     test_pyodbc(
         server=os.getenv("DB_SERVER_NAME"),
         database=os.getenv("DB_NAME"),
+        uid = os.getenv("DB_USERID"),
         driver="{ODBC Driver 17 for SQL Server}",
         query="SELECT USER_NAME()")
 
