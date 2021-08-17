@@ -69,6 +69,11 @@ Options:\n\
     --host-to-enc-gid-map <host-gid:enc-gid[,host-gid2:enc-gid2,...]>\n\
                          -- comma separated list of gid mappings between\n\
                              the host and the enclave\n\
+    --unhandled-syscall-enosys <true/false>\n\
+                         -- flag indicating if the app must exit when\n\
+                            it encounters an unimplemented syscall\n\
+                            'true' implies the syscall would not terminate\n\
+                            and instead return ENOSYS.\n\
 \n\
 "
 
@@ -82,6 +87,7 @@ struct options
     bool nobrk;
     bool perf;
     bool report_native_tids;
+    bool unhandled_syscall_enosys;
     size_t max_affinity_cpus;
     char rootfs[PATH_MAX];
     size_t heap_size;
@@ -208,6 +214,33 @@ static void _get_options(
 
     // get app config if present
     cli_getopt(argc, argv, "--app-config-path", &opts->app_config_path);
+
+    /* Get option deciding how to handle unimplemented syscalls */
+    /* Get --unhandled-syscall-enosys */
+    {
+        const char* arg = NULL;
+
+        if ((cli_getopt(argc, argv, "--unhandled-syscall-enosys", &arg) == 0))
+        {
+            if (strcmp(arg, "true") == 0)
+            {
+                opts->unhandled_syscall_enosys = true;
+            }
+            else if (strcmp(arg, "false") == 0)
+            {
+                opts->unhandled_syscall_enosys = false;
+            }
+            else
+            {
+                fprintf(
+                    stderr,
+                    "%s: bad --unhandled-syscall-enosys=%s option. Must "
+                    "be 'true' or 'false'\n",
+                    argv[0],
+                    arg);
+            }
+        }
+    }
 }
 
 myst_kernel_args_t kernel_args;
@@ -261,6 +294,9 @@ static int _enter_kernel(
     void* regions_end = (uint8_t*)mmap_addr + mmap_length;
     bool have_config = false;
     myst_fork_mode_t fork_mode = options->fork_mode;
+    bool unhandled_syscall_enosys =
+        options ? options->unhandled_syscall_enosys
+                : false; // default terminate with myst_panic
 
     memset(&pd, 0, sizeof(pd));
     memset(&kernel_args, 0, sizeof(kernel_args));
@@ -304,6 +340,8 @@ static int _enter_kernel(
 
                 fork_mode = pd.fork_mode;
 
+                unhandled_syscall_enosys = pd.unhandled_syscall_enosys;
+
                 have_config = true;
             }
             else
@@ -312,6 +350,12 @@ static int _enter_kernel(
                 ERAISE(-EINVAL);
             }
         }
+    }
+
+    // Override unhandled syscall enosys option if present in config
+    if (have_config)
+    {
+        unhandled_syscall_enosys = pd.unhandled_syscall_enosys;
     }
 
     /* initialize the kernel arguments */
@@ -347,6 +391,7 @@ static int _enter_kernel(
                 tcall,
                 options->rootfs,
                 terr,
+                unhandled_syscall_enosys,
                 sizeof(terr)) != 0)
         {
             snprintf(err, err_size, "init_kernel_args failed: %s", terr);

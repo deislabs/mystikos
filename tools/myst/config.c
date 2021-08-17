@@ -279,6 +279,16 @@ static json_result_t _json_read_callback(
                 else
                     CONFIG_RAISE(JSON_TYPE_MISMATCH);
             }
+            else if (json_match(parser, "UnhandledSyscallEnosys") == JSON_OK)
+            {
+                if (type == JSON_TYPE_BOOLEAN)
+                    parsed_data->unhandled_syscall_enosys = un->boolean;
+                else if (type == JSON_TYPE_INTEGER)
+                    parsed_data->unhandled_syscall_enosys =
+                        (un->integer == 0) ? 0 : 1;
+                else
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
+            }
             else
             {
                 // Ignore everything we dont understand

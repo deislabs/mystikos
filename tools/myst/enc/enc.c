@@ -505,6 +505,9 @@ static long _enter(void* arg_)
     const char target[] = "MYST_TARGET=sgx";
     const bool tee_debug_mode = (_test_oe_debug_mode() == 0);
     myst_fork_mode_t fork_mode = options ? options->fork_mode : myst_fork_none;
+    bool unhandled_syscall_enosys =
+        options ? options->unhandled_syscall_enosys
+                : false; // default terminate with myst_panic
 
     memset(&parsed_config, 0, sizeof(parsed_config));
 
@@ -631,6 +634,12 @@ static long _enter(void* arg_)
         fork_mode = parsed_config.fork_mode;
     }
 
+    // record the configuration for which termination mode
+    if (have_config)
+    {
+        unhandled_syscall_enosys = parsed_config.unhandled_syscall_enosys;
+    }
+
     /* Inject the MYST_TARGET environment variable */
     {
         const char val[] = "MYST_TARGET=";
@@ -744,6 +753,7 @@ static long _enter(void* arg_)
             myst_tcall,
             rootfs,
             err,
+            unhandled_syscall_enosys,
             sizeof(err));
 
         _kargs.shell_mode = shell_mode;

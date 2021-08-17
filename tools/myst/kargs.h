@@ -29,6 +29,7 @@ int init_kernel_args(
     long (*tcall)(long n, long params[6]),
     const char* rootfs,
     char* err,
+    bool unhandled_syscall_enosys,
     size_t err_size);
 
 #endif /* _MYST_MYST_KARGS_H */

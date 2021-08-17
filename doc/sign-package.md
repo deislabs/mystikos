@@ -70,7 +70,8 @@ Included is a sample JSON configuration where the elements will be described nex
         "ENC-ENVP-1=Enclave_envp_1",
         "ENC-ENVP-2=Enclave_envp_1"
     ],
-    "HostEnvironmentVariables": ["TESTNAME"]
+    "HostEnvironmentVariables": ["TESTNAME"],
+    "UnhandledSyscallEnosys": false
 }
 ```
 
@@ -114,6 +115,7 @@ Hostname | The default hostname exposed to application
 CurrentWorkingDirectory | The default working directory for the application
 ForkMode | Specify the mode used for the experimental pseudo fork feature. Refer to [doc/design/fork.md](doc/design/fork.md) for more details. The default mode is `none`, which disables the feature.
 Mount | Set if parameters for informing Mystikos to automatically mount a set of directories or ext2 disk images from the host into the TEE. Refer to [doc/design/mount-config-design.md](doc/design/mount-config-design.md) for more details. By default no extra mounts are added to the root filesystem.
+UnhandledSyscallEnosys | This option would prevent the termination of a program using myst_panic when an unimplemented syscall is encountered in the mystikos kernel. The default value is `false`, which implies that we terminate on unhandled syscalls by default. If `true`, it will cause the syscall to return ENOSYS error.
 
 ---
 

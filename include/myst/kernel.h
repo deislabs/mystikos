@@ -199,6 +199,11 @@ typedef struct myst_kernel_args
     /* pointer to myst_handle_host_signal(). Set by myst_enter_kernel */
     long (*myst_handle_host_signal)(siginfo_t* siginfo, mcontext_t* context);
 
+    /* boolean indicating whether to terminate on unhandled syscall or return
+     * ENOSYS
+     */
+    bool unhandled_syscall_enosys;
+
 } myst_kernel_args_t;
 
 typedef int (*myst_kernel_entry_t)(myst_kernel_args_t* args);
