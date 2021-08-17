@@ -513,5 +513,14 @@ enclave
             [out] uint32_t* rbx,
             [out] uint32_t* rcx,
             [out] uint32_t* rdx);
+        
+        long myst_get_mempolicy_ocall(
+            [out] int* mode,
+            [out, size=nodemask_size] unsigned long* nodemask,
+            size_t nodemask_size,
+            unsigned long maxnode,
+            void* addr,
+            unsigned long flags
+        );
     };
 };

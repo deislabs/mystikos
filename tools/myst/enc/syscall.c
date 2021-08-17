@@ -892,6 +892,19 @@ done:
     return ret;
 }
 
+static long _get_mempolicy(
+    int* mode,
+    unsigned long* nodemask,
+    unsigned long maxnode,
+    void* addr,
+    unsigned long flags)
+{
+    long ret;
+    size_t nodemask_size = maxnode / 8;
+    RETURN(myst_get_mempolicy_ocall(
+        &ret, mode, nodemask, nodemask_size, maxnode, addr, flags));
+}
+
 #ifdef MYST_ENABLE_HOSTFS
 static long _open(
     const char* pathname,
@@ -1903,6 +1916,15 @@ long myst_handle_tcall(long n, long params[6])
         case SYS_getcpu:
         {
             return _getcpu((unsigned*)a, (unsigned*)b);
+        }
+        case SYS_get_mempolicy:
+        {
+            return _get_mempolicy(
+                (int*)a,
+                (unsigned long*)b,
+                (unsigned long)c,
+                (void*)d,
+                (unsigned long)e);
         }
         default:
         {

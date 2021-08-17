@@ -540,6 +540,10 @@ long myst_tcall(long n, long params[6])
             int timeout = (int)x3;
             return myst_tcall_poll(fds, nfds, timeout);
         }
+        case SYS_get_mempolicy:
+        {
+            return _forward_syscall(SYS_get_mempolicy, x1, x2, x3, x4, x5, 0);
+        }
         case SYS_sched_yield:
         case SYS_fstat:
         case SYS_read:

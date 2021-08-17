@@ -628,6 +628,7 @@ long myst_tcall(long n, long params[6])
         case SYS_chmod:
         case SYS_fdatasync:
         case SYS_fsync:
+        case SYS_get_mempolicy:
         {
             extern long myst_handle_tcall(long n, long params[6]);
             return myst_handle_tcall(n, params);

@@ -3126,6 +3126,57 @@ long myst_syscall_mbind(
     return ret;
 }
 
+long myst_syscall_get_mempolicy(
+    int* mode,
+    unsigned long* nodemask,
+    unsigned long maxnode,
+    void* addr,
+    unsigned long flags)
+{
+    unsigned long rounded_maxnode = 0;
+    int ROUND_UP_VAL = sizeof(unsigned long) * 8;
+    myst_round_up(maxnode, ROUND_UP_VAL, &rounded_maxnode);
+
+    unsigned long* rounded_nodemask;
+    // allocate higher buffer
+    if (rounded_maxnode > maxnode)
+    {
+        rounded_nodemask = malloc(rounded_maxnode / CHAR_BIT);
+    }
+    else
+    {
+        rounded_nodemask = nodemask;
+    }
+
+    long params[6] = {(long)mode,
+                      (long)rounded_nodemask,
+                      (long)rounded_maxnode,
+                      (long)addr,
+                      (long)flags};
+    long ret = myst_tcall(SYS_get_mempolicy, params);
+
+    // As Mystikos does not support mbind or set_mempolicy, we override nodemask
+    // returned by the target to indicate the thread is not allowed to specify a
+    // policy on any node in mbind or set_mempolicy when
+    // flags = MPOL_F_MEMS_ALLOWED
+    if (flags == 1 << 2)
+    {
+        int n = rounded_maxnode / ROUND_UP_VAL;
+        for (int i = 0; i < n; i++)
+        {
+            *(rounded_nodemask + i * ROUND_UP_VAL) = 0;
+        }
+    }
+
+    if (rounded_maxnode > maxnode)
+    {
+        memcpy(nodemask, rounded_nodemask, maxnode / CHAR_BIT);
+        free(rounded_nodemask);
+    }
+
+    return ret;
+}
+
 long myst_syscall_get_process_thread_stack(void** stack, size_t* stack_size)
 {
     long ret = 0;
@@ -5250,7 +5301,26 @@ static long _syscall(void* args_)
         case SYS_set_mempolicy:
             break;
         case SYS_get_mempolicy:
-            break;
+        {
+            int* mode = (int*)x1;
+            unsigned long* nodemask = (unsigned long*)x2;
+            unsigned long maxnode = (unsigned long)x3;
+            void* addr = (void*)x4;
+            unsigned long flags = (unsigned long)x5;
+
+            _strace(
+                n,
+                "mode=%p nodemask=%p maxnode=%lu addr=%p flags=%lu",
+                mode,
+                nodemask,
+                maxnode,
+                addr,
+                flags);
+
+            long ret = myst_syscall_get_mempolicy(
+                mode, nodemask, maxnode, addr, flags);
+            BREAK(_return(n, ret));
+        }
         case SYS_mq_open:
             break;
         case SYS_mq_unlink:

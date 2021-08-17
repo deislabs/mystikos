@@ -120,6 +120,7 @@ DIRS += fcntl
 DIRS += stacksize
 DIRS += math
 DIRS += unhandled_syscall_enosys
+DIRS += getmempolicy
 
 ifdef MYST_NIGHTLY_TEST
 DIRS += glibc

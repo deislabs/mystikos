@@ -520,3 +520,14 @@ long myst_fsync_ocall(int fd)
 {
     RETURN(fsync(fd));
 }
+
+long myst_get_mempolicy_ocall(
+    int* mode,
+    unsigned long* nodemask,
+    size_t nodemask_size,
+    unsigned long maxnode,
+    void* addr,
+    unsigned long flags)
+{
+    RETURN(syscall(SYS_get_mempolicy, mode, nodemask, maxnode, addr, flags));
+}
