@@ -1,3 +1,6 @@
+/glibc/build/nptl/tst-exec1
+/glibc/build/nptl/tst-exec2
+/glibc/build/nptl/tst-fork1
 /glibc/build/nptl/tst-join1
 /glibc/build/nptl/tst-key3
 /glibc/build/nptl/tst-tsd5

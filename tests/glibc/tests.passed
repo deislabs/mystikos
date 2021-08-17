@@ -372,13 +372,10 @@
 /glibc/build/nptl/tst-cond9
 /glibc/build/nptl/tst-detach1
 /glibc/build/nptl/tst-dlsym1
-/glibc/build/nptl/tst-exec1
-/glibc/build/nptl/tst-exec2
 /glibc/build/nptl/tst-exec3
 /glibc/build/nptl/tst-exec5
 /glibc/build/nptl/tst-fini1
 /glibc/build/nptl/tst-flock1
-/glibc/build/nptl/tst-fork1
 /glibc/build/nptl/tst-fork2
 /glibc/build/nptl/tst-getpid3
 /glibc/build/nptl/tst-initializers1
