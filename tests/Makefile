@@ -35,6 +35,7 @@ DIRS += conf
 DIRS += nbio
 DIRS += thread
 DIRS += gdb
+DIRS += lldb
 
 DIRS += dlopen
 DIRS += pipe

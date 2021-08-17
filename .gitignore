@@ -41,6 +41,8 @@ tests/libc/appdir/
 tests/thread/appdir/
 tests/gdb/appdir/
 tests/gdb/myst_gdb_out.log
+tests/lldb/appdir/
+tests/lldb/myst_lldb_out.log
 tests/dlopen/appdir/
 .gdb_history
 tests/pthread/appdir/

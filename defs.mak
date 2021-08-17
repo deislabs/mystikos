@@ -144,7 +144,15 @@ MBEDTLS_LIBS += $(MBEDTLS_LIBDIR)/libmbedx509.a
 
 MYST_GDB=$(BUILDDIR)/bin/myst-gdb
 OEGDB=$(BUILDDIR)/openenclave/bin/oegdb
-MYST_LLDB=$(BUILDDIR)/openenclave/bin/oelldb
+
+##==============================================================================
+##
+## lldb definitions
+##
+##==============================================================================
+
+MYST_LLDB=$(BUILDDIR)/bin/myst-lldb
+OELLDB=$(BUILDDIR)/openenclave/bin/oelldb
 
 ##==============================================================================
 ##
@@ -223,6 +231,19 @@ endif
 
 ##==============================================================================
 ##
+## LLDB
+##     Use "make LLDB=1" to run debugger
+##
+##==============================================================================
+
+LLDDB_COMMAND = $(BINDIR)/myst-lldb --
+
+ifdef LLDB
+__LLDB_COMMAND = $(LLDB_COMMAND)
+endif
+
+##==============================================================================
+##
 ## MEMCHECK
 ##     Use "make MEMCHECK=1" to check for memory leaks.
 ##
@@ -295,6 +316,10 @@ endif
 
 ifdef __GDB_COMMAND
 PREFIX += $(__GDB_COMMAND)
+endif
+
+ifdef __LLDB_COMMAND
+PREFIX += $(__LLDB_COMMAND)
 endif
 
 ifdef __MEMCHECK_COMMAND
