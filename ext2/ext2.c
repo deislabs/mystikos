@@ -1143,12 +1143,19 @@ static const ext2_dirent_t* _find_dirent(
     const uint8_t* end = (uint8_t*)data + size;
     size_t len = strlen(name);
 
-    while (p < end)
+    /* The end of the block might not have a full ext2_dirent structure. Make
+     * sure the fixed-length header portion is in range before accessing */
+    while (p + sizeof(ext2_dirent_t) - EXT2_PATH_MAX < end)
     {
         const ext2_dirent_t* ent = (const ext2_dirent_t*)p;
 
-        assert(ent->rec_len != 0);
-        assert(ent->name_len != 0);
+        /* The end of the block might be zero-filled */
+        if (!ent->rec_len)
+        {
+            break;
+        }
+        /* if the full ext2_dirent is not within the range, it's logic error*/
+        assert(p + sizeof(ext2_dirent_t) - EXT2_PATH_MAX + ent->name_len < end);
 
         if (_streq(ent->name, ent->name_len, name, len))
             return ent;
@@ -1551,7 +1558,9 @@ static int _count_dirents(
     if ((end - p) % ext2->block_size)
         ERAISE(-EINVAL);
 
-    while (p < end)
+    /* The end of the block might not have a full ext2_dirent structure. Make
+     * sure the fixed-length header portion is in range before accessing */
+    while (p + sizeof(ext2_dirent_t) - EXT2_PATH_MAX < end)
     {
         const ext2_dirent_t* ent = (const ext2_dirent_t*)p;
 
@@ -2211,7 +2220,9 @@ static int _check_dirents(const ext2_t* ext2, const void* data, uint32_t size)
     if ((end - p) % ext2->block_size)
         ERAISE(-EINVAL);
 
-    while (p < end)
+    /* The end of the block might not have a full ext2_dirent structure. Make
+     * sure the fixed-length header portion is in range before accessing */
+    while (p + sizeof(ext2_dirent_t) - EXT2_PATH_MAX < end)
     {
         uint32_t n;
         const ext2_dirent_t* ent = (const ext2_dirent_t*)p;
@@ -2442,13 +2453,18 @@ static int _remove_dirent(
         ssize_t prev = -1;
 
         ECHECK(myst_buf_reserve(&buf, file_size));
-
-        while (p < end)
+        /* The end of the block might not have a full ext2_dirent structure.
+         * Make sure the fixed-length header portion is in range before
+         * accessing */
+        while (p + sizeof(ext2_dirent_t) - EXT2_PATH_MAX < end)
         {
             const ext2_dirent_t* e = (const ext2_dirent_t*)p;
 
-            assert(e->rec_len != 0);
-
+            /* The end of the block might be zero-filled */
+            if (!e->rec_len)
+            {
+                break;
+            }
             /* add entry if not the one being removed */
             if (e != ent)
             {
@@ -2729,7 +2745,10 @@ static int _add_dirent(
         ECHECK(myst_buf_reserve(&buf, file_size));
 
         /* copy existing entries to buffer */
-        while (p < end)
+        /* The end of the block might not have a full ext2_dirent structure.
+         * Make sure the fixed-length header portion is in range before
+         * accessing */
+        while (p + sizeof(ext2_dirent_t) - EXT2_PATH_MAX < end)
         {
             const ext2_dirent_t* e = (const ext2_dirent_t*)p;
             size_t recsz = _dirent_size(e);
