@@ -448,14 +448,22 @@ static int _init_main_thread(
     int ret = 0;
     pid_t ppid = myst_generate_tid();
     pid_t pid = myst_generate_tid();
+    myst_process_t* process = NULL;
 
     if (!thread)
         ERAISE(-EINVAL);
 
+    process = calloc(1, sizeof(myst_process_t));
+    if (process == NULL)
+        ERAISE(-ENOMEM);
+
+    thread->process = process;
+    process->main_process_thread = thread;
+
     thread->magic = MYST_THREAD_MAGIC;
-    thread->sid = ppid;
-    thread->ppid = ppid;
-    thread->pid = pid;
+    process->sid = ppid;
+    process->ppid = ppid;
+    process->pid = pid;
     thread->tid = pid;
     thread->target_tid = target_tid;
     thread->event = event;
@@ -471,14 +479,14 @@ static int _init_main_thread(
     thread->savgid = MYST_DEFAULT_GID;
     thread->fsgid = MYST_DEFAULT_GID;
 
-    thread->main.thread_group_lock = MYST_SPINLOCK_INITIALIZER;
-    thread->thread_lock = &thread->main.thread_group_lock;
-    thread->main.umask = MYST_DEFAULT_UMASK;
-    thread->main.pgid = MYST_DEFAULT_PGID;
+    process->thread_group_lock = MYST_SPINLOCK_INITIALIZER;
+    thread->thread_lock = &process->thread_group_lock;
+    process->umask = MYST_DEFAULT_UMASK;
+    process->pgid = MYST_DEFAULT_PGID;
 
-    thread->main.cwd_lock = MYST_SPINLOCK_INITIALIZER;
-    thread->main.cwd = strdup(cwd);
-    if (thread->main.cwd == NULL)
+    process->cwd_lock = MYST_SPINLOCK_INITIALIZER;
+    process->cwd = strdup(cwd);
+    if (process->cwd == NULL)
         ERAISE(-ENOMEM);
 
     thread->pause_futex = 0;
@@ -486,14 +494,14 @@ static int _init_main_thread(
     // Initial process list is just us. All new processes will be inserted in
     // the list. Dont need to set these as they are already NULL, but being here
     // helps to track where main threads are created and torn down!
-    // thread->main.prev_process_thread = NULL;
-    // thread->main.next_process_thread = NULL;
+    // process->prev_process = NULL;
+    // process->next_process = NULL;
 
     /* allocate the new fdtable for this process */
-    ECHECK(myst_fdtable_create(&thread->fdtable));
+    ECHECK(myst_fdtable_create(&process->fdtable));
 
     /* allocate the sigactions array */
-    ECHECK(myst_signal_init(thread));
+    ECHECK(myst_signal_init(process));
 
     /* bind this thread to the target */
     myst_assume(myst_tcall_set_tsd((uint64_t)thread) == 0);
@@ -647,6 +655,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     int ret = 0;
     int exit_status;
     myst_thread_t* thread = NULL;
+    myst_process_t* process = NULL;
     myst_fstype_t fstype;
     int tmp_ret;
 
@@ -744,6 +753,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     ECHECK(_init_main_thread(
         &_main_thread, args->event, args->cwd, args->target_tid));
     thread = &_main_thread;
+    process = thread->process;
 
     myst_copy_host_uid_gid_mappings(&args->host_enc_uid_gid_mappings);
 
@@ -874,87 +884,52 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         }
 
         /* now all the threads have shutdown we can retrieve the exit status */
-        exit_status = thread->exit_status;
+        exit_status = process->exit_status;
 
         /* release the fdtable */
-        if (thread->fdtable)
+        if (process->fdtable)
         {
-            myst_fdtable_free(thread->fdtable);
-            thread->fdtable = NULL;
+            myst_fdtable_free(process->fdtable);
+            process->fdtable = NULL;
         }
 
         /* Remove ourself from /proc/<pid> so other processes know we have gone
          * if they check */
-        procfs_pid_cleanup(thread->pid);
+        procfs_pid_cleanup(process->pid);
 
         /* Send SIGHUP to all other active processes */
-        myst_send_sighup_child_processes(thread);
+        myst_send_sighup_child_processes(process);
 
         /* Wait for all other processes to exit */
-        {
-            myst_spin_lock(&myst_process_list_lock);
-
-            do
-            {
-                myst_thread_t* t = thread->main.prev_process_thread;
-                while (t)
-                {
-                    if (t->status != MYST_ZOMBIE)
-                    {
-                        break;
-                    }
-                    t = t->main.prev_process_thread;
-                }
-                if (!t)
-                {
-                    // now processes right
-                    t = thread->main.next_process_thread;
-                    while (t)
-                    {
-                        if (t->status != MYST_ZOMBIE)
-                        {
-                            break;
-                        }
-                        t = t->main.next_process_thread;
-                    }
-                }
-                if (!t)
-                    break;
-
-                myst_spin_unlock(&myst_process_list_lock);
-                myst_sleep_msec(10);
-                myst_spin_lock(&myst_process_list_lock);
-
-            } while (1);
-            myst_spin_unlock(&myst_process_list_lock);
-        }
+        while (process->prev_process || process->next_process)
+            myst_sleep_msec(10);
 
         if (args->shell_mode)
             myst_start_shell("\nMystikos shell (exit)\n");
 
         /* release signal related heap memory */
-        myst_signal_free(thread);
+        myst_signal_free(process);
         myst_signal_free_siginfos(thread);
 
         /* release the exec stack */
-        if (thread->main.exec_stack)
+        if (process->exec_stack)
         {
-            free(thread->main.exec_stack);
-            thread->main.exec_stack = NULL;
-            thread->main.exec_stack_size = 0;
+            free(process->exec_stack);
+            process->exec_stack = NULL;
+            process->exec_stack_size = 0;
         }
 
         /* release the exec copy of the CRT data */
-        if (thread->main.exec_crt_data)
+        if (process->exec_crt_data)
         {
-            myst_munmap(thread->main.exec_crt_data, thread->main.exec_crt_size);
-            thread->main.exec_crt_data = NULL;
-            thread->main.exec_crt_size = 0;
+            myst_munmap(process->exec_crt_data, process->exec_crt_size);
+            process->exec_crt_data = NULL;
+            process->exec_crt_size = 0;
         }
 
         /* Free CWD */
-        free(thread->main.cwd);
-        thread->main.cwd = NULL;
+        free(process->cwd);
+        process->cwd = NULL;
 
         /* Free up the thread unmap-on-exit. */
         {

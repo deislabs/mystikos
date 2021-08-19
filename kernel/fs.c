@@ -211,15 +211,15 @@ done:
 long myst_syscall_umask(mode_t mask)
 {
     long ret;
-    myst_thread_t* process;
+    myst_process_t* process;
 
-    if (!(process = myst_find_process_thread(myst_thread_self())))
+    if (!(process = myst_process_self()))
         ERAISE(-EINVAL);
 
-    myst_spin_lock(&process->main.umask_lock);
-    ret = process->main.umask;
-    process->main.umask = mask;
-    myst_spin_unlock(&process->main.umask_lock);
+    myst_spin_lock(&process->umask_lock);
+    ret = process->umask;
+    process->umask = mask;
+    myst_spin_unlock(&process->umask_lock);
 
 done:
     return ret;

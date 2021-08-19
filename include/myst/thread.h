@@ -23,14 +23,14 @@
 #define MYST_MAX_MUNNAP_ON_EXIT 5
 
 typedef struct myst_thread myst_thread_t;
+typedef struct myst_process myst_process_t;
 
 typedef struct myst_td myst_td_t;
 
 enum myst_thread_status
 {
     MYST_RUNNING = 0,
-    MYST_KILLED,
-    MYST_ZOMBIE,
+    MYST_KILLED
 };
 
 /* thread descriptor for libc threads (initial fields of struct pthread) */
@@ -75,18 +75,8 @@ struct siginfo_list_item
     struct siginfo_list_item* next;
 };
 
-struct myst_thread
+struct myst_process
 {
-    /* MYST_THREAD_MAGIC */
-    uint64_t magic;
-
-    /* used by myst_thread_queue_t (condition variables and mutexes) */
-    struct myst_thread* qnext;
-
-    /* doubly-linked zombie-list */
-    struct myst_thread* znext;
-    struct myst_thread* zprev;
-
     /* the session id (see getsid() function) */
     pid_t sid;
 
@@ -96,17 +86,95 @@ struct myst_thread
     /* the process identifier (inherited from main thread) */
     pid_t pid;
 
-    /* unique thread identifier (same as pid for main thread) */
-    pid_t tid;
-
-    /* the value returned by gettid() on the target (for this thread) */
-    pid_t target_tid;
-
     /* The exit status passed to SYS_exit */
     int exit_status;
 
     /* Terminating signal value */
     unsigned terminating_signum;
+
+    /* the stack that was created by myst_exec() */
+    void* exec_stack;
+    size_t exec_stack_size;
+
+    /* the copy of the CRT data made by myst_exec() */
+    void* exec_crt_data;
+    size_t exec_crt_size;
+
+    /* lock when enumerating all threads in this process
+        while enumerating over thread->group_prev/next */
+    myst_spinlock_t thread_group_lock;
+
+    /* use this lock when using */
+    /* myst_process_list_lock */
+    myst_process_t* prev_process;
+    myst_process_t* next_process;
+
+    /* process CWD. Can be set on differnet threads so need to protect it too
+     */
+    char* cwd;
+    myst_spinlock_t cwd_lock;
+
+    /* The current umask this process */
+    mode_t umask;
+    myst_spinlock_t umask_lock;
+
+    /* the process group ID */
+    pid_t pgid;
+
+    /* Pointer to the main process thread */
+    myst_thread_t* main_process_thread;
+
+    /* the file-descriptor table is inherited from process thread */
+    myst_fdtable_t* fdtable;
+
+    /* doubly-linked zombie-list */
+    struct myst_process* zombie_next;
+    struct myst_process* zombie_prev;
+
+    /* If the clone is vfork mode, we may need to signal the parents
+     * initiation thread when an exec or exit is called from the child.
+     *
+     * This is necessary when pseudo fork is in wait_exec_exit mode. This
+     * also may be used for actual vfork().
+     */
+    bool is_pseudo_fork_process;
+    pid_t vfork_parent_pid;
+    pid_t vfork_parent_tid;
+
+    /* This is a copy of the uid from the main process thread and is only needed
+     * when dealing with zombie threads because the main thread is not available
+     */
+    uid_t process_uid;
+
+    struct
+    {
+        /* process-wide protection for manipulating signals that use either mask
+         * or sigactions*/
+        myst_spinlock_t lock;
+
+        // the signal handles registered through sigaction and
+        // shared by threads in the prcoess.
+        posix_sigaction_t* sigactions;
+
+    } signal;
+};
+
+struct myst_thread
+{
+    /* MYST_THREAD_MAGIC */
+    uint64_t magic;
+
+    /* fields used by main thread (process thread) */
+    myst_process_t* process;
+
+    /* unique thread identifier (same as pid for main thread) */
+    pid_t tid;
+
+    /* thread state -- either running or killed */
+    volatile _Atomic enum myst_thread_status thread_status;
+
+    /* the value returned by gettid() on the target (for this thread) */
+    pid_t target_tid;
 
     /* Timespec at process creation */
     struct timespec start_ts;
@@ -129,11 +197,11 @@ struct myst_thread
     /* synchronization event from myst_thread_t.run_thread() */
     uint64_t event;
 
+    /* used by myst_thread_queue_t (condition variables and mutexes) */
+    struct myst_thread* qnext;
+
     /* for jumping back on exit */
     myst_jmp_buf_t jmpbuf;
-
-    /* the file-descriptor table is inherited from process thread */
-    myst_fdtable_t* fdtable;
 
     /* arguments passed in from SYS_clone */
     struct
@@ -146,68 +214,22 @@ struct myst_thread
         void* newtls; /* null for vfork */
         pid_t* ctid;  /* null for vfork */
 
-        /* If the clone is vfork mode, we may need to signal the parents
-         * initiation thread when an exec or exit is called from the child. */
-        /* This is necessary when pseudo fork is in wait_exec_exit mode. This
-         * also may be used for actual vfork(). */
-        pid_t vfork_parent_pid;
-        pid_t vfork_parent_tid;
     } clone;
-
-    /* fields used by main thread (process thread) */
-    struct
-    {
-        /* the stack that was created by myst_exec() */
-        void* exec_stack;
-        size_t exec_stack_size;
-
-        /* the copy of the CRT data made by myst_exec() */
-        void* exec_crt_data;
-        size_t exec_crt_size;
-
-        /* lock when enumerating all threads in this process
-           while enumerating over thread->group_prev/next */
-        myst_spinlock_t thread_group_lock;
-
-        /* use this lock when using */
-        /* myst_process_list_lock */
-        myst_thread_t* prev_process_thread;
-        myst_thread_t* next_process_thread;
-
-        /* process CWD. Can be set on differnt threads so need to protect it too
-         */
-        char* cwd;
-        myst_spinlock_t cwd_lock;
-
-        /* The current umask this process */
-        mode_t umask;
-        myst_spinlock_t umask_lock;
-
-        /* the process group ID */
-        pid_t pgid;
-
-    } main;
-
-    volatile _Atomic enum myst_thread_status status;
 
     /* fields used by signal handling */
     struct
     {
-        // the signal handles registered through sigaction and
-        // shared by threads in the prcoess.
-        posix_sigaction_t* sigactions;
-
         /* The condition we were waiting on a futex */
         _Atomic bool waiting_on_event;
-
-        /* The mask of blocked signals */
-        uint64_t mask;
 
         /* The pending signals */
         _Atomic uint64_t pending;
 
         /* The lock to ensure sequential delivery of signals */
         myst_spinlock_t lock;
+
+        /* The mask of blocked signals */
+        uint64_t mask;
 
         /* The list of siginfo_t for pending signals */
         struct siginfo_list_item* siginfos[NSIG - 1];
@@ -292,8 +314,13 @@ MYST_INLINE bool myst_valid_thread(const myst_thread_t* thread)
 }
 
 myst_thread_t* myst_thread_self(void);
+myst_process_t* myst_process_self(void);
 
-void myst_zombify_thread(myst_thread_t* thread);
+void myst_zombify_process(myst_process_t* process);
+MYST_INLINE bool myst_is_zombied_process(myst_process_t* process)
+{
+    return (process->main_process_thread == NULL) ? true : false;
+}
 
 typedef struct myst_thread_queue
 {
@@ -400,17 +427,12 @@ MYST_INLINE bool myst_thread_queue_empty(myst_thread_queue_t* queue)
 
 MYST_INLINE bool myst_is_process_thread(const myst_thread_t* thread)
 {
-    return thread && thread->pid == thread->tid;
+    return thread && thread == thread->process->main_process_thread;
 }
 
-MYST_INLINE myst_thread_t* myst_find_process_thread(myst_thread_t* thread)
+MYST_INLINE myst_process_t* myst_find_process(myst_thread_t* thread)
 {
-    myst_thread_t* t = NULL;
-    myst_spin_lock(thread->thread_lock);
-    for (t = thread; t != NULL && !myst_is_process_thread(t); t = t->group_prev)
-        ;
-    myst_spin_unlock(thread->thread_lock);
-    return t;
+    return thread->process;
 }
 
 long myst_run_thread(uint64_t cookie, uint64_t event, pid_t target_tid);
@@ -436,14 +458,14 @@ myst_thread_t* myst_find_thread(int tid);
  * release it once its done with its use of the process thread pointer.
  * This is done to protect from the process thread descriptor being cleaned up
  * by some other thread.*/
-myst_thread_t* myst_find_process(pid_t pid);
+myst_process_t* myst_find_process_from_pid(pid_t pid, bool include_zombies);
 
-void myst_fork_exec_futex_wake(myst_thread_t* thread);
+void myst_fork_exec_futex_wake(myst_process_t* process);
 
 size_t myst_kill_thread_group();
 
-bool myst_have_child_forked_processes(myst_thread_t* process);
-long kill_child_fork_processes(myst_thread_t* process);
+bool myst_have_child_forked_processes(myst_process_t* process);
+long kill_child_fork_processes(myst_process_t* process);
 
 MYST_INLINE char* myst_get_thread_name(myst_thread_t* thread)
 {
@@ -456,6 +478,6 @@ int myst_set_thread_name(myst_thread_t* thread, const char* n);
 long myst_call_on_stack(void* stack, long (*func)(void* arg), void* arg);
 
 /* Send SIGHUP to child processes of given process thread */
-int myst_send_sighup_child_processes(myst_thread_t* process_thread);
+int myst_send_sighup_child_processes(myst_process_t* process);
 
 #endif /* _MYST_THREAD_H */

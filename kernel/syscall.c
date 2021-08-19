@@ -516,10 +516,9 @@ static bool _iov_bad_addr(const struct iovec* iov, int iovcnt)
     return false;
 }
 
-long myst_syscall_get_fork_info(myst_thread_t* thread, myst_fork_info_t* arg)
+long myst_syscall_get_fork_info(myst_process_t* process, myst_fork_info_t* arg)
 {
     long ret = 0;
-    myst_thread_t* process;
 
     /* preinitialize this in case something goes wrong */
     if (arg)
@@ -527,9 +526,6 @@ long myst_syscall_get_fork_info(myst_thread_t* thread, myst_fork_info_t* arg)
 
     if (!arg)
         ERAISE(-EINVAL);
-
-    if (!(process = myst_find_process_thread(thread)))
-        ERAISE(-ENOSYS);
 
     arg->fork_mode = __myst_kernel_args.fork_mode;
 
@@ -541,10 +537,7 @@ long myst_syscall_get_fork_info(myst_thread_t* thread, myst_fork_info_t* arg)
     else
     {
         /* Check if we are child fork by looking at clone flag */
-        if (process->clone.flags & CLONE_VFORK)
-            arg->is_child_fork = true;
-        else
-            arg->is_child_fork = false;
+        arg->is_child_fork = process->is_pseudo_fork_process;
 
         /* Check if we have a child process which is a clone */
         arg->is_parent_of_fork = myst_have_child_forked_processes(process);
@@ -597,11 +590,12 @@ __attribute__((format(printf, 2, 3))) static void _strace(
         }
 
         myst_eprintf(
-            "=== %s%s%s(%s): tid=%d\n",
+            "=== %s%s%s(%s): pid=%d tid=%d\n",
             blue,
             _syscall_str(n),
             reset,
             buf,
+            myst_getpid(),
             myst_gettid());
 
         if (buf != &null_char)
@@ -664,23 +658,25 @@ static long _return(long n, long ret)
         if (error_name)
         {
             myst_eprintf(
-                "    %s%s(): return=-%s(%ld)%s: tid=%d\n",
+                "    %s%s(): return=-%s(%ld)%s: pid=%d tid=%d\n",
                 red,
                 _syscall_str(n),
                 error_name,
                 ret,
                 reset,
+                myst_getpid(),
                 myst_gettid());
         }
         else
         {
             myst_eprintf(
-                "    %s%s(): return=%ld(%lx)%s: tid=%d\n",
+                "    %s%s(): return=%ld(%lx)%s: pid=%d tid=%d\n",
                 red,
                 _syscall_str(n),
                 ret,
                 ret,
                 reset,
+                myst_getpid(),
                 myst_gettid());
         }
     }
@@ -1937,32 +1933,33 @@ done:
 long myst_syscall_chdir(const char* path)
 {
     long ret = 0;
-    myst_thread_t* thread = myst_thread_self();
-    myst_thread_t* process_thread = myst_find_process_thread(thread);
+    myst_process_t* process = myst_process_self();
     struct locals
     {
         char buf[PATH_MAX];
         char buf2[PATH_MAX];
     };
     struct locals* locals = NULL;
+    bool locked = false;
 
     if (_bad_addr(path))
         ERAISE(-EFAULT);
 
+    if (!path)
+        ERAISE(-EINVAL);
+
     if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
-    myst_spin_lock(&process_thread->main.cwd_lock);
-
-    if (!path)
-        ERAISE(-EINVAL);
+    myst_spin_lock(&process->cwd_lock);
+    locked = true;
 
     /* filenames cannot be longer than NAME_MAX in Linux */
     if (strlen(myst_basename(path)) > NAME_MAX)
         ERAISE(-ENAMETOOLONG);
 
     ECHECK(myst_path_absolute_cwd(
-        process_thread->main.cwd, path, locals->buf, sizeof(locals->buf)));
+        process->cwd, path, locals->buf, sizeof(locals->buf)));
     ECHECK(myst_normalize(locals->buf, locals->buf2, sizeof(locals->buf2)));
 
     /* fail if the directory does not exist */
@@ -1976,15 +1973,16 @@ long myst_syscall_chdir(const char* path)
     char* tmp = strdup(locals->buf2);
     if (tmp == NULL)
         ERAISE(-ENOMEM);
-    free(process_thread->main.cwd);
-    process_thread->main.cwd = tmp;
+    free(process->cwd);
+    process->cwd = tmp;
 
 done:
 
     if (locals)
         free(locals);
 
-    myst_spin_unlock(&process_thread->main.cwd_lock);
+    if (locked)
+        myst_spin_unlock(&process->cwd_lock);
 
     return ret;
 }
@@ -1996,8 +1994,7 @@ long myst_syscall_fchdir(int fd)
     {
         char realpath[PATH_MAX];
     }* locals = NULL;
-    myst_thread_t* thread = myst_thread_self();
-    myst_thread_t* process_thread = myst_find_process_thread(thread);
+    myst_process_t* process = myst_process_self();
     myst_file_t* file = NULL;
     myst_fs_t* fs = NULL;
     myst_fdtable_t* fdtable = myst_fdtable_current();
@@ -2026,13 +2023,12 @@ long myst_syscall_fchdir(int fd)
     if (tmp == NULL)
         ERAISE(-ENOMEM);
 
-    myst_spin_lock(&process_thread->main.cwd_lock);
-    free(process_thread->main.cwd);
-    process_thread->main.cwd = tmp;
+    myst_spin_lock(&process->cwd_lock);
+    free(process->cwd);
+    process->cwd = tmp;
+    myst_spin_unlock(&process->cwd_lock);
 
 done:
-
-    myst_spin_unlock(&process_thread->main.cwd_lock);
 
     if (locals)
         free(locals);
@@ -2043,22 +2039,21 @@ done:
 long myst_syscall_getcwd(char* buf, size_t size)
 {
     long ret = 0;
-    myst_thread_t* thread = myst_thread_self();
-    myst_thread_t* process_thread = myst_find_process_thread(thread);
+    myst_process_t* process = myst_process_self();
 
-    myst_spin_lock(&process_thread->main.cwd_lock);
+    myst_spin_lock(&process->cwd_lock);
 
     if (!buf)
         ERAISE(-EINVAL);
 
-    if (myst_strlcpy(buf, process_thread->main.cwd, size) >= size)
+    if (myst_strlcpy(buf, process->cwd, size) >= size)
         ERAISE(-ERANGE);
 
     ret = (long)buf;
 
 done:
 
-    myst_spin_unlock(&process_thread->main.cwd_lock);
+    myst_spin_unlock(&process->cwd_lock);
 
     return ret;
 }
@@ -3177,17 +3172,17 @@ long myst_syscall_mbind(
 long myst_syscall_get_process_thread_stack(void** stack, size_t* stack_size)
 {
     long ret = 0;
-    myst_thread_t* self = myst_thread_self();
+    myst_process_t* self = myst_process_self();
 
-    if (!stack || !stack_size || !self->main.exec_stack)
+    if (!stack || !stack_size || !self->exec_stack)
         ERAISE(-EINVAL);
 
     // can only be called from process thread
-    if (!myst_is_process_thread(self))
+    if (!myst_is_process_thread(myst_thread_self()))
         ERAISE(-EINVAL);
 
-    *stack = self->main.exec_stack;
-    *stack_size = self->main.exec_stack_size;
+    *stack = self->exec_stack;
+    *stack_size = self->exec_stack_size;
 
 done:
     return ret;
@@ -3333,6 +3328,7 @@ static long _syscall(void* args_)
     myst_td_t* target_td = NULL;
     myst_td_t* crt_td = NULL;
     myst_thread_t* thread = NULL;
+    myst_process_t* process = NULL;
 
     myst_times_enter_kernel(n);
 
@@ -3370,6 +3366,8 @@ static long _syscall(void* args_)
 
         /* crt_td is null */
     }
+
+    process = thread->process;
 
     // Process signals pending for this thread, if there is any.
     myst_signal_process(thread);
@@ -3439,11 +3437,7 @@ static long _syscall(void* args_)
             long ret = 0;
 
             _strace(
-                n,
-                "path=\"%s\" text=%p text_size=%zu\n",
-                path,
-                text,
-                text_size);
+                n, "path=\"%s\" text=%p text_size=%zu", path, text, text_size);
 
             if (__myst_kernel_args.debug_symbols)
                 ret = myst_syscall_add_symbol_file(path, text, text_size);
@@ -3771,7 +3765,13 @@ static long _syscall(void* args_)
             const posix_sigaction_t* act = (const posix_sigaction_t*)x2;
             posix_sigaction_t* oldact = (posix_sigaction_t*)x3;
 
-            _strace(n, "signum=%d act=%p oldact=%p", signum, act, oldact);
+            _strace(
+                n,
+                "signum=%d(%s) act=%p oldact=%p",
+                signum,
+                myst_signum_to_string(signum),
+                act,
+                oldact);
 
             long ret = myst_signal_sigaction(signum, act, oldact);
             BREAK(_return(n, ret));
@@ -4099,7 +4099,7 @@ static long _syscall(void* args_)
 
             _strace(n, NULL);
 
-            long ret = myst_syscall_get_fork_info(thread, arg);
+            long ret = myst_syscall_get_fork_info(process, arg);
             BREAK(_return(n, ret));
         }
         case SYS_fork_wait_exec_exit:
@@ -4112,7 +4112,6 @@ static long _syscall(void* args_)
         case SYS_myst_kill_wait_child_forks:
         {
             long ret = 0;
-            myst_thread_t* process = myst_find_process_thread(thread);
 
             _strace(n, NULL);
 
@@ -4153,8 +4152,6 @@ static long _syscall(void* args_)
         case SYS_exit:
         {
             const int status = (int)x1;
-            myst_thread_t* thread = myst_thread_self();
-            myst_thread_t* process = myst_find_process_thread(thread);
 
             _strace(n, "status=%d", status);
 
@@ -4178,9 +4175,9 @@ static long _syscall(void* args_)
 
             /* If this process was created as part of a fork() and the parent is
              * running in wait-exec mode, signal that thread for wakeup */
-            if (process->clone.flags & CLONE_VFORK)
+            if (process->is_pseudo_fork_process)
             {
-                myst_fork_exec_futex_wake(thread);
+                myst_fork_exec_futex_wake(process);
             }
 
             /* jump back to myst_enter_kernel() */
@@ -4212,7 +4209,8 @@ static long _syscall(void* args_)
             int pid = (int)x1;
             int sig = (int)x2;
 
-            _strace(n, "pid=%d sig=%d", pid, sig);
+            _strace(
+                n, "pid=%d sig=%d(%s)", pid, sig, myst_signum_to_string(sig));
 
             long ret = myst_syscall_kill(pid, sig);
             BREAK(_return(n, ret));
@@ -4540,7 +4538,7 @@ static long _syscall(void* args_)
         case SYS_getpgrp:
         {
             _strace(n, NULL);
-            BREAK(_return(n, myst_syscall_getpgid(thread->pid, thread)));
+            BREAK(_return(n, myst_syscall_getpgid(process->pid, thread)));
         }
         case SYS_getppid:
         {
@@ -4816,7 +4814,7 @@ static long _syscall(void* args_)
             size_t len = (size_t)x2;
             long ret = 0;
 
-            _strace(n, "addr=%p len=%zu\n", addr, len);
+            _strace(n, "addr=%p len=%zu", addr, len);
 
             if (!addr)
                 ret = -EINVAL;
@@ -4845,7 +4843,7 @@ static long _syscall(void* args_)
             int option = (int)x1;
             long ret = 0;
 
-            _strace(n, "option=%d\n", option);
+            _strace(n, "option=%d", option);
 
             if (option == PR_GET_NAME)
             {
@@ -5011,10 +5009,10 @@ static long _syscall(void* args_)
             int tid = (int)x1;
             int sig = (int)x2;
 
-            _strace(n, "tid=%d sig=%d", tid, sig);
+            _strace(
+                n, "tid=%d sig=%d(%s)", tid, sig, myst_signum_to_string(sig));
 
-            myst_thread_t* thread = myst_thread_self();
-            int tgid = thread->pid;
+            int tgid = process->pid;
 
             long ret = myst_syscall_tgkill(tgid, tid, sig);
             BREAK(_return(n, ret));
@@ -5056,8 +5054,7 @@ static long _syscall(void* args_)
             const cpu_set_t* mask = (const cpu_set_t*)x3;
             long ret;
 
-            _strace(
-                n, "pid=%d cpusetsize=%zu mask=%p\n", pid, cpusetsize, mask);
+            _strace(n, "pid=%d cpusetsize=%zu mask=%p", pid, cpusetsize, mask);
 
             ret = myst_syscall_sched_setaffinity(pid, cpusetsize, mask);
             BREAK(_return(n, ret));
@@ -5069,8 +5066,7 @@ static long _syscall(void* args_)
             cpu_set_t* mask = (cpu_set_t*)x3;
             long ret;
 
-            _strace(
-                n, "pid=%d cpusetsize=%zu mask=%p\n", pid, cpusetsize, mask);
+            _strace(n, "pid=%d cpusetsize=%zu mask=%p", pid, cpusetsize, mask);
 
             /* returns the number of bytes in the kernel affinity mask */
             ret = myst_syscall_sched_getaffinity(pid, cpusetsize, mask);
@@ -6499,7 +6495,7 @@ long myst_syscall_tgkill(int tgid, int tid, int sig)
         ERAISE(-ESRCH);
 
     // Only allow a thread to kill other threads in the same group.
-    if (tgid != thread->pid)
+    if (tgid != thread->process->pid)
         ERAISE(-EINVAL);
 
     if (!(siginfo = calloc(1, sizeof(siginfo_t))))
@@ -6517,51 +6513,33 @@ long myst_syscall_kill(int pid, int sig)
 {
     long ret = 0;
     myst_thread_t* thread = myst_thread_self();
-    myst_thread_t* process_thread = myst_find_process_thread(thread);
+    myst_process_t* process = NULL;
 
     myst_spin_lock(&myst_process_list_lock);
 
-    // If not this thread search back through list of processes
-    while ((process_thread->pid != pid) &&
-           (process_thread->main.prev_process_thread != NULL))
-    {
-        process_thread = process_thread->main.prev_process_thread;
-    }
-
-    // If still not found search forwards through processes
-    if (process_thread->pid != pid)
-    {
-        process_thread = process_thread;
-
-        while ((process_thread->pid != pid) &&
-               (process_thread->main.next_process_thread != NULL))
-        {
-            process_thread = process_thread->main.next_process_thread;
-        }
-    }
-
-    myst_spin_unlock(&myst_process_list_lock);
+    // Find process thread from pid
+    process = myst_find_process_from_pid(pid, false);
 
     // Did we finally find it?
-    if (process_thread->pid == pid)
-    {
-        // Deliver signal
-        siginfo_t* siginfo;
-
-        if (!(siginfo = calloc(1, sizeof(siginfo_t))))
-            ERAISE(-ENOMEM);
-
-        siginfo->si_code = SI_USER;
-        siginfo->si_signo = sig;
-        siginfo->si_pid = thread->pid;
-        siginfo->si_uid = thread->euid;
-
-        ret = myst_signal_deliver(process_thread, sig, siginfo);
-    }
-    else
+    if (process == NULL)
         ERAISE(-ESRCH);
 
+    // Deliver signal
+    siginfo_t* siginfo;
+
+    if (!(siginfo = calloc(1, sizeof(siginfo_t))))
+        ERAISE(-ENOMEM);
+
+    siginfo->si_code = SI_USER;
+    siginfo->si_signo = sig;
+    siginfo->si_pid = thread->process->pid;
+    siginfo->si_uid = thread->euid;
+
+    ret = myst_signal_deliver(process->main_process_thread, sig, siginfo);
+
 done:
+    myst_spin_unlock(&myst_process_list_lock);
+
     return ret;
 }
 
