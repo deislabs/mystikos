@@ -1,4 +1,6 @@
 /glibc/build/io/tst-ttyname_r
+/glibc/build/malloc/tst-trim1
+/glibc/build/malloc/tst-trim1-malloc-check
 /glibc/build/math/test-fpucw
 /glibc/build/math/test-tgmath3-sin
 /glibc/build/misc/tst-clone
@@ -10,7 +12,6 @@
 /glibc/build/nptl/tst-exec1
 /glibc/build/nptl/tst-exec2
 /glibc/build/nptl/tst-exec3
-/glibc/build/nptl/tst-fork1
 /glibc/build/nptl/tst-join1
 /glibc/build/nptl/tst-key3
 /glibc/build/nptl/tst-pt-align3

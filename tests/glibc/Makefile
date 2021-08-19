@@ -13,6 +13,10 @@ ROOTFS=$(CURDIR)/rootfs
 
 TESTS=$(shell comm -23 tests.passed tests.remove)
 
+ifdef MYST_ENABLE_GCOV
+TESTS=$(shell comm -23 tests.passed tests.removegcov)
+endif
+
 OPTS+=--app-config-path config.json
 
 all: myst

@@ -88,7 +88,6 @@
 /glibc/build/io/tst-readlinkat
 /glibc/build/io/tst-renameat
 /glibc/build/io/tst-symlinkat
-/glibc/build/io/tst-ttyname_r
 /glibc/build/libio/tst-bz24228
 /glibc/build/libio/tst-cleanup-default
 /glibc/build/libio/tst-eof
@@ -167,7 +166,6 @@
 /glibc/build/math/test-flt-eval-method-sse
 /glibc/build/math/test-fp-ilogb-constants
 /glibc/build/math/test-fp-llogb-constants
-/glibc/build/math/test-fpucw
 /glibc/build/math/test-fpucw-ieee
 /glibc/build/math/test-iseqsig-excess-precision
 /glibc/build/math/test-iszero-excess-precision
@@ -280,7 +278,6 @@
 /glibc/build/math/test-tgmath3-scalb
 /glibc/build/math/test-tgmath3-scalbln
 /glibc/build/math/test-tgmath3-scalbn
-/glibc/build/math/test-tgmath3-sin
 /glibc/build/math/test-tgmath3-sinh
 /glibc/build/math/test-tgmath3-sqrt
 /glibc/build/math/test-tgmath3-tan
@@ -297,7 +294,6 @@
 /glibc/build/misc/test-as-const-sigaltstack-offsets
 /glibc/build/misc/tst-atomic
 /glibc/build/misc/tst-atomic-long
-/glibc/build/misc/tst-clone
 /glibc/build/misc/tst-fdset
 /glibc/build/misc/tst-hsearch
 /glibc/build/misc/tst-insremque
@@ -311,7 +307,6 @@
 /glibc/build/misc/tst-syscalls
 /glibc/build/misc/tst-sysconf-iov_max
 /glibc/build/misc/tst-writev
-/glibc/build/nptl/test-as-const-pthread-pi-defines
 /glibc/build/nptl/test-as-const-unwindbuf
 /glibc/build/nptl/test-cond-printers
 /glibc/build/nptl/test-condattr-printers
@@ -326,7 +321,6 @@
 /glibc/build/nptl/tst-basic1
 /glibc/build/nptl/tst-basic2
 /glibc/build/nptl/tst-basic6
-/glibc/build/nptl/tst-basic7
 /glibc/build/nptl/tst-call-once
 /glibc/build/nptl/tst-cancel-self-canceltype
 /glibc/build/nptl/tst-cancel-self-testcancel
@@ -334,7 +328,6 @@
 /glibc/build/nptl/tst-cancel12
 /glibc/build/nptl/tst-cancel13
 /glibc/build/nptl/tst-cancel14
-/glibc/build/nptl/tst-cancel15
 /glibc/build/nptl/tst-cancel2
 /glibc/build/nptl/tst-cancel22
 /glibc/build/nptl/tst-cancel23
@@ -349,7 +342,6 @@
 /glibc/build/nptl/tst-cancelx15
 /glibc/build/nptl/tst-cancelx2
 /glibc/build/nptl/tst-cancelx3
-/glibc/build/nptl/tst-cancelx8
 /glibc/build/nptl/tst-cleanup0
 /glibc/build/nptl/tst-cleanupx0
 /glibc/build/nptl/tst-clock1
@@ -368,11 +360,9 @@
 /glibc/build/nptl/tst-cond23
 /glibc/build/nptl/tst-cond4
 /glibc/build/nptl/tst-cond5
-/glibc/build/nptl/tst-cond6
 /glibc/build/nptl/tst-cond9
 /glibc/build/nptl/tst-detach1
 /glibc/build/nptl/tst-dlsym1
-/glibc/build/nptl/tst-exec3
 /glibc/build/nptl/tst-exec5
 /glibc/build/nptl/tst-fini1
 /glibc/build/nptl/tst-flock1
@@ -385,10 +375,8 @@
 /glibc/build/nptl/tst-initializers1-gnu11
 /glibc/build/nptl/tst-initializers1-gnu89
 /glibc/build/nptl/tst-initializers1-gnu99
-/glibc/build/nptl/tst-join1
 /glibc/build/nptl/tst-join2
 /glibc/build/nptl/tst-key2
-/glibc/build/nptl/tst-key3
 /glibc/build/nptl/tst-kill2
 /glibc/build/nptl/tst-kill3
 /glibc/build/nptl/tst-memstream
@@ -407,7 +395,6 @@
 /glibc/build/nptl/tst-mutex7robust
 /glibc/build/nptl/tst-once1
 /glibc/build/nptl/tst-pt-align
-/glibc/build/nptl/tst-pt-align3
 /glibc/build/nptl/tst-pt-popen1
 /glibc/build/nptl/tst-pt-sysconf
 /glibc/build/nptl/tst-pt-tls1
@@ -416,10 +403,6 @@
 /glibc/build/nptl/tst-pthread_exit-nothreads
 /glibc/build/nptl/tst-raise1
 /glibc/build/nptl/tst-robust10
-/glibc/build/nptl/tst-robust2
-/glibc/build/nptl/tst-robust4
-/glibc/build/nptl/tst-robust5
-/glibc/build/nptl/tst-robust6
 /glibc/build/nptl/tst-robust7
 /glibc/build/nptl/tst-robust9
 /glibc/build/nptl/tst-rwlock1
@@ -432,7 +415,6 @@
 /glibc/build/nptl/tst-sem11
 /glibc/build/nptl/tst-sem12
 /glibc/build/nptl/tst-sem14
-/glibc/build/nptl/tst-sem3
 /glibc/build/nptl/tst-signal4
 /glibc/build/nptl/tst-signal5
 /glibc/build/nptl/tst-signal7
@@ -450,7 +432,6 @@
 /glibc/build/nptl/tst-tsd2
 /glibc/build/nptl/tst-tsd3
 /glibc/build/nptl/tst-tsd4
-/glibc/build/nptl/tst-tsd5
 /glibc/build/nptl/tst-tsd6
 /glibc/build/nptl/tst-unload
 /glibc/build/nptl/tst-unwind-thread
@@ -474,13 +455,9 @@
 /glibc/build/posix/tst-preadwrite
 /glibc/build/posix/tst-preadwrite64
 /glibc/build/posix/tst-vfork1
-/glibc/build/posix/wordexp-test
-/glibc/build/rt/tst-aio
 /glibc/build/rt/tst-aio2
 /glibc/build/rt/tst-aio3
 /glibc/build/rt/tst-aio5
-/glibc/build/rt/tst-aio64
-/glibc/build/rt/tst-aio7
 /glibc/build/rt/tst-aio8
 /glibc/build/setjmp/test-as-const-jmp_buf-ssp
 /glibc/build/setjmp/tst-saved_mask-1
@@ -533,7 +510,6 @@
 /glibc/build/stdlib/tst-atof2
 /glibc/build/stdlib/tst-bsearch
 /glibc/build/stdlib/tst-cxa_atexit
-/glibc/build/stdlib/tst-getrandom
 /glibc/build/stdlib/tst-limits
 /glibc/build/stdlib/tst-makecontext
 /glibc/build/stdlib/tst-putenv
@@ -578,7 +554,6 @@
 /glibc/build/support/tst-support_record_failure
 /glibc/build/support/tst-timespec
 /glibc/build/time/test_time
-/glibc/build/time/tst-clock2
 /glibc/build/time/tst-clock_gettime-clobber
 /glibc/build/time/tst-ctime
 /glibc/build/time/tst-difftime
