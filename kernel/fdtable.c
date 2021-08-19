@@ -504,9 +504,9 @@ done:
 
 myst_fdtable_t* myst_fdtable_current(void)
 {
-    myst_thread_t* thread = myst_thread_self();
-    myst_assume(thread->fdtable);
-    return thread->fdtable;
+    myst_process_t* process = myst_process_self();
+    myst_assume(process->fdtable);
+    return process->fdtable;
 }
 
 static const char* _type_name(myst_fdtable_type_t type)

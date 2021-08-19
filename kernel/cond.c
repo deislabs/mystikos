@@ -65,12 +65,6 @@ int myst_cond_timedwait(
         /* Add the self thread to the end of the wait queue */
         myst_thread_queue_push_back(&c->queue, self);
 
-        if (c->queue.front != c->queue.back &&
-            c->queue.front->status == MYST_ZOMBIE)
-        {
-            assert(0 && "Found zombie in conditional variable's waiting list");
-        }
-
         /* Unlock this mutex and get the waiter at the front of the queue */
         if (__myst_mutex_unlock(mutex, &waiter) != 0)
         {
@@ -155,10 +149,9 @@ int myst_cond_signal(myst_cond_t* c)
         return -EINVAL;
 
     myst_spin_lock(&c->lock);
-    do
-    {
-        waiter = myst_thread_queue_pop_front(&c->queue);
-    } while (waiter && waiter->status == MYST_ZOMBIE);
+
+    waiter = myst_thread_queue_pop_front(&c->queue);
+
     myst_spin_unlock(&c->lock);
 
     if (!waiter)

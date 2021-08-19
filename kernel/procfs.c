@@ -292,12 +292,12 @@ static int _status_vcallback(myst_buf_t* vbuf, const char* entrypath)
     struct locals
     {
         char status_path[PATH_MAX];
-        myst_thread_t* process_thread;
         char* _host_status_buf;
     };
     struct locals* locals = NULL;
     void* buf = NULL;
     size_t buf_size;
+    myst_process_t* process;
 
     myst_spin_lock(&myst_process_list_lock);
 
@@ -307,16 +307,16 @@ static int _status_vcallback(myst_buf_t* vbuf, const char* entrypath)
     if (!vbuf || !entrypath)
         ERAISE(-EINVAL);
 
-    locals->process_thread = myst_procfs_path_to_process(entrypath);
+    process = myst_procfs_path_to_process(entrypath);
 
-    if (locals->process_thread == NULL)
+    if (process == NULL)
         ERAISE(-EINVAL);
 
     ECHECK(myst_snprintf(
         locals->status_path,
         sizeof(locals->status_path),
         STATUS_STR,
-        locals->process_thread->target_tid));
+        process->main_process_thread->target_tid));
 
     /* load the file into memory */
     {
@@ -333,22 +333,15 @@ static int _status_vcallback(myst_buf_t* vbuf, const char* entrypath)
     char tmp[128];
 
     ECHECK(myst_snprintf(
-        tmp, sizeof(tmp), "Name:\t%s\n", locals->process_thread->name));
+        tmp, sizeof(tmp), "Name:\t%s\n", process->main_process_thread->name));
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
-    ECHECK(myst_snprintf(
-        tmp,
-        sizeof(tmp),
-        "Umask:\t%#04o\n",
-        locals->process_thread->main.umask));
+    ECHECK(myst_snprintf(tmp, sizeof(tmp), "Umask:\t%#04o\n", process->umask));
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
-    ECHECK(myst_snprintf(
-        tmp, sizeof(tmp), "Tgid:\t%d\n", locals->process_thread->pid));
+    ECHECK(myst_snprintf(tmp, sizeof(tmp), "Tgid:\t%d\n", process->pid));
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
-    ECHECK(myst_snprintf(
-        tmp, sizeof(tmp), "Pid:\t%d\n", locals->process_thread->pid));
+    ECHECK(myst_snprintf(tmp, sizeof(tmp), "Pid:\t%d\n", process->pid));
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
-    ECHECK(myst_snprintf(
-        tmp, sizeof(tmp), "PPid:\t%d\n", locals->process_thread->ppid));
+    ECHECK(myst_snprintf(tmp, sizeof(tmp), "PPid:\t%d\n", process->ppid));
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
 
     /* Mystikos doesn't know about the tracer process, so we return self pid if
@@ -357,28 +350,26 @@ static int _status_vcallback(myst_buf_t* vbuf, const char* entrypath)
         tmp,
         sizeof(tmp),
         "TracerPid:\t%d\n",
-        _is_process_traced(locals->_host_status_buf)
-            ? locals->process_thread->pid
-            : 0));
+        _is_process_traced(locals->_host_status_buf) ? process->pid : 0));
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
 
     ECHECK(myst_snprintf(
         tmp,
         sizeof(tmp),
         "Uid:\t%d\t%d\t%d\t%d\n",
-        locals->process_thread->uid,
-        locals->process_thread->euid,
-        locals->process_thread->savuid,
-        locals->process_thread->fsuid));
+        process->main_process_thread->uid,
+        process->main_process_thread->euid,
+        process->main_process_thread->savuid,
+        process->main_process_thread->fsuid));
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
     ECHECK(myst_snprintf(
         tmp,
         sizeof(tmp),
         "Gid:\t%d\t%d\t%d\t%d\n",
-        locals->process_thread->gid,
-        locals->process_thread->egid,
-        locals->process_thread->savgid,
-        locals->process_thread->fsgid));
+        process->main_process_thread->gid,
+        process->main_process_thread->egid,
+        process->main_process_thread->savgid,
+        process->main_process_thread->fsgid));
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
 
     /* TODO: memory, signal, capability and cpu related fields*/
@@ -399,43 +390,31 @@ done:
     return ret;
 }
 
-static char get_process_state(myst_thread_t* process_thread)
+static char get_process_state(myst_process_t* process)
 {
-    if (process_thread->signal.waiting_on_event)
+    if (myst_is_zombied_process(process))
+        return 'Z';
+
+    if (process->main_process_thread->signal.waiting_on_event)
         return 'S';
 
-    switch (process_thread->status)
-    {
-        case MYST_ZOMBIE:
-            return 'Z';
-        default:
-            // default to running
-            return 'R';
-    }
-
     // ATTN: Support other process states
+    return 'R';
 }
 
 static int _stat_vcallback(myst_buf_t* vbuf, const char* entrypath)
 {
     int ret = 0;
-    struct locals
-    {
-        myst_thread_t* process_thread;
-    };
-    struct locals* locals = NULL;
+    myst_process_t* process;
 
     myst_spin_lock(&myst_process_list_lock);
-
-    if (!(locals = malloc(sizeof(struct locals))))
-        ERAISE(-ENOMEM);
 
     if (!vbuf || !entrypath)
         ERAISE(-EINVAL);
 
-    locals->process_thread = myst_procfs_path_to_process(entrypath);
+    process = myst_procfs_path_to_process(entrypath);
 
-    if (locals->process_thread == NULL)
+    if (process == NULL)
         ERAISE(-EINVAL);
 
     myst_buf_clear(vbuf);
@@ -445,12 +424,12 @@ static int _stat_vcallback(myst_buf_t* vbuf, const char* entrypath)
         tmp,
         sizeof(tmp),
         "%d (%s) %c %d %d %d ",
-        locals->process_thread->pid,
-        locals->process_thread->name,
-        get_process_state(locals->process_thread),
-        locals->process_thread->ppid,
-        locals->process_thread->main.pgid,
-        locals->process_thread->sid));
+        process->pid,
+        process->main_process_thread->name,
+        get_process_state(process),
+        process->ppid,
+        process->pgid,
+        process->sid));
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
 
     // tty_nr tpgid flags minflt cminflt majflt cmajflt
@@ -471,7 +450,7 @@ static int _stat_vcallback(myst_buf_t* vbuf, const char* entrypath)
         tmp,
         sizeof(tmp),
         "%llu 0 0 0 ",
-        timespec_to_nanos(&locals->process_thread->start_ts)));
+        timespec_to_nanos(&process->main_process_thread->start_ts)));
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
 
     // startcode endcode startstack kstkesp kstkeip
@@ -483,8 +462,8 @@ static int _stat_vcallback(myst_buf_t* vbuf, const char* entrypath)
         tmp,
         sizeof(tmp),
         "%lu %lu 0 0 ",
-        locals->process_thread->signal.pending,
-        locals->process_thread->signal.mask));
+        process->main_process_thread->signal.pending,
+        process->main_process_thread->signal.mask));
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
 
     // wchan nswap cnswap exit_signal processor rt_priority
@@ -495,18 +474,12 @@ static int _stat_vcallback(myst_buf_t* vbuf, const char* entrypath)
     // start_data end_data start_brk arg_start arg_end
     // env_start env_end exit_code
     ECHECK(myst_snprintf(
-        tmp,
-        sizeof(tmp),
-        "0 0 0 0 0 0 0 %d\n",
-        locals->process_thread->exit_status));
+        tmp, sizeof(tmp), "0 0 0 0 0 0 0 %d\n", process->exit_status));
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
 
 done:
 
     myst_spin_unlock(&myst_process_list_lock);
-
-    if (locals)
-        free(locals);
 
     return ret;
 }
@@ -542,9 +515,9 @@ done:
     return ret;
 }
 
-myst_thread_t* myst_procfs_path_to_process(const char* entrypath)
+myst_process_t* myst_procfs_path_to_process(const char* entrypath)
 {
-    myst_thread_t* ret = NULL;
+    myst_process_t* ret = NULL;
     int pid = 0;
     char** toks = NULL;
     size_t ntoks = 0;
@@ -560,8 +533,7 @@ myst_thread_t* myst_procfs_path_to_process(const char* entrypath)
     assert(ntoks >= 2);
     pid = atoi(toks[0]);
 
-    ret = myst_find_process(pid);
-    assert(myst_is_process_thread(ret));
+    ret = myst_find_process_from_pid(pid, true);
 
 done:
 

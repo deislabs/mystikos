@@ -26,17 +26,17 @@
 
 MYST_INLINE pid_t myst_getsid(void)
 {
-    return myst_thread_self()->sid;
+    return myst_process_self()->sid;
 }
 
 MYST_INLINE pid_t myst_getppid(void)
 {
-    return myst_thread_self()->ppid;
+    return myst_process_self()->ppid;
 }
 
 MYST_INLINE pid_t myst_getpid(void)
 {
-    return myst_thread_self()->pid;
+    return myst_process_self()->pid;
 }
 
 #endif /* _MYST_PROCESS_H */

@@ -16,7 +16,7 @@ rootfs: signal.c
 	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/signal signal.c $(LDFLAGS)
 	$(MYST) mkcpio $(APPDIR) rootfs
 
-tests:
+tests: rootfs
 	$(RUNTEST) $(MYST_EXEC) rootfs /signal $(OPTS)
 
 myst:

@@ -768,8 +768,8 @@ int proc_pid_maps_vcallback(myst_buf_t* vbuf, const char* entrypath)
     {
         char realpath[PATH_MAX];
         char maps_entry[48 + PATH_MAX];
-        myst_thread_t* process_thread;
     }* locals = NULL;
+    myst_process_t* process;
 
     myst_spin_lock(&myst_process_list_lock);
 
@@ -779,12 +779,12 @@ int proc_pid_maps_vcallback(myst_buf_t* vbuf, const char* entrypath)
     if (!(locals = calloc(1, sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
-    locals->process_thread = myst_procfs_path_to_process(entrypath);
+    process = myst_procfs_path_to_process(entrypath);
 
-    if (locals->process_thread == NULL)
+    if (process == NULL)
         ERAISE(-EINVAL);
 
-    pid = locals->process_thread->pid;
+    pid = process->pid;
 
     myst_buf_clear(vbuf);
 

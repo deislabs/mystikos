@@ -245,90 +245,75 @@ static myst_thread_t* _put_cookie(uint64_t cookie)
 **
 ** zombie list implementation:
 **
-**     Threads are moved onto the zombie list after exiting.
-**
-**     ATTN: consider separate process-zombies list (for performance).
+**     processes are moved onto the zombie list after exiting.
+**     They are removed from the active process linked list.
+**     Lock list with myst_process_list_lock.
 **
 **==============================================================================
 */
 
-#define MAX_ZOMBIES 64
-
-static myst_thread_t* _zombies_head;
-static myst_thread_t* _zombies_tail;
-// static myst_mutex_t _zombies_mutex;
-// static myst_cond_t _zombies_cond;
-static size_t _zombies_count;
+static myst_process_t* _zombies_head;
 
 static void _free_zombies(void* arg)
 {
     (void)arg;
 
-    for (myst_thread_t* p = _zombies_head; p;)
+    for (myst_process_t* p = _zombies_head; p;)
     {
-        myst_thread_t* next = p->znext;
+        myst_process_t* next = p->zombie_next;
 
-        myst_signal_free_siginfos(p);
-        memset(p, 0xdd, sizeof(myst_thread_t));
+        memset(p, 0xdd, sizeof(myst_process_t));
         free(p);
 
         p = next;
     }
 
     _zombies_head = NULL;
-    _zombies_tail = NULL;
-    _zombies_count = 0;
 }
 
-void myst_zombify_thread(myst_thread_t* thread)
+void myst_zombify_process(myst_process_t* process)
 {
-    if (myst_is_process_thread(thread))
+    myst_spin_lock(&myst_process_list_lock);
     {
-        myst_spin_lock(&myst_process_list_lock);
+        static bool _initialized;
+
+        if (!_initialized)
         {
-            static bool _initialized;
-
-            if (!_initialized)
-            {
-                myst_atexit(_free_zombies, NULL);
-                _initialized = true;
-            }
-
-            thread->znext = _zombies_head;
-            thread->zprev = NULL;
-
-            if (_zombies_head)
-            {
-                _zombies_head->zprev = thread;
-                _zombies_head = thread;
-            }
-            else
-            {
-                _zombies_head = thread;
-                _zombies_tail = thread;
-            }
-
-            thread->status = MYST_ZOMBIE;
-
-            /* signal waiting threads */
-            /* currently not used */
-            // myst_cond_signal(&_zombies_cond);
-
-            _zombies_count++;
+            myst_atexit(_free_zombies, NULL);
+            _initialized = true;
         }
-        myst_spin_unlock(&myst_process_list_lock);
+
+        process->zombie_next = _zombies_head;
+        process->zombie_prev = NULL;
+
+        if (_zombies_head)
+        {
+            _zombies_head->zombie_prev = process;
+            _zombies_head = process;
+        }
+        else
+        {
+            _zombies_head = process;
+        }
+
+        process->main_process_thread = NULL;
+
+        // remove from process list
+        if (process->prev_process)
+            process->prev_process->next_process = process->next_process;
+        if (process->next_process)
+            process->next_process->prev_process = process->prev_process;
+        process->prev_process = NULL;
+        process->next_process = NULL;
     }
-    else
-    {
-        thread->status = MYST_ZOMBIE;
-    }
+    myst_spin_unlock(&myst_process_list_lock);
 }
 
 static bool _wait_matcher(
     MYST_UNUSED const char* type,
     pid_t pid,
-    myst_thread_t* our_process,
-    myst_thread_t* check_process)
+    myst_process_t* our_process,
+    myst_process_t* check_process)
 {
     bool match = false;
     if (pid > 0) /* wait for a specific child process */
@@ -342,7 +327,7 @@ static bool _wait_matcher(
             pid,
             check_process->pid,
             check_process->ppid,
-            check_process->main.pgid,
+            check_process->pgid,
             match ? "true" : "false");
 #endif
     }
@@ -358,7 +343,7 @@ static bool _wait_matcher(
             our_process->pid,
             check_process->pid,
             check_process->ppid,
-            check_process->main.pgid,
+            check_process->pgid,
             match ? "true" : "false");
 #endif
     }
@@ -366,17 +351,17 @@ static bool _wait_matcher(
     {
         match =
             ((check_process->ppid == our_process->pid) &&
-             (check_process->main.pgid == our_process->main.pgid));
+             (check_process->pgid == our_process->pgid));
 #ifdef TRACE
         printf(
             "matcher(%s): Wait for any process with our pgid %u: found pid=%u, "
             "ppid=%u, pgid=%u: "
             "%s\n",
             type,
-            our_process->main.pgid,
+            our_process->pgid,
             check_process->pid,
             check_process->ppid,
-            check_process->main.pgid,
+            check_process->pgid,
             match ? "true" : "false");
 #endif
     }
@@ -384,7 +369,7 @@ static bool _wait_matcher(
     {
         match =
             ((check_process->ppid == our_process->pid) &&
-             ((-pid) == check_process->main.pgid));
+             ((-pid) == check_process->pgid));
 #ifdef TRACE
         printf(
             "matcher(%s): Wait for specific pgid %u: found pid=%u, ppid=%u, "
@@ -393,7 +378,7 @@ static bool _wait_matcher(
             -pid,
             check_process->pid,
             check_process->ppid,
-            check_process->main.pgid,
+            check_process->pgid,
             match ? "true" : "false");
 #endif
     }
@@ -414,7 +399,7 @@ long myst_syscall_wait4(
 #ifdef TRACE
     printf(
         "***wait4 from process %u, wait for pid %d, WNOHANG=%s)\n",
-        process->pid,
+        myst_process_self()->pid,
         pid,
         ((options & WNOHANG) == WNOHANG) ? "NO HANG" : "HANG");
 #endif
@@ -439,7 +424,7 @@ long myst_syscall_waitid(
 #ifdef TRACE
     printf(
         "***waitid from process %u, idtype %d, id %d,WNOHANG=%s)\n",
-        process->pid,
+        myst_process_self()->pid,
         idtype,
         id,
         ((options & WNOHANG) == WNOHANG) ? "NO HANG" : "HANG");
@@ -481,24 +466,17 @@ long myst_wait(
 {
     long ret = -1;
     bool locked = false;
-    myst_thread_t* process = myst_find_process_thread(myst_thread_self());
-    myst_thread_t* p;
+    myst_process_t* process = myst_process_self();
+    myst_process_t* p;
 
     if (rusage)
         ERAISE(-EINVAL);
 
     /* If this is the only process then raise ECHILD */
+    if (process->next_process == NULL && process->prev_process == NULL &&
+        _zombies_head == NULL)
     {
-        myst_spin_lock(&myst_process_list_lock);
-
-        if (process->main.next_process_thread == NULL &&
-            process->main.prev_process_thread == NULL)
-        {
-            myst_spin_unlock(&myst_process_list_lock);
-            ERAISE(-ECHILD);
-        }
-
-        myst_spin_unlock(&myst_process_list_lock);
+        ERAISE(-ECHILD);
     }
 
     myst_spin_lock(&myst_process_list_lock);
@@ -507,10 +485,8 @@ long myst_wait(
     for (;;)
     {
         /* search the zombie list for a process thread */
-        for (p = _zombies_head; p; p = p->znext)
+        for (p = _zombies_head; p; p = p->zombie_next)
         {
-            myst_assume(myst_is_process_thread(p));
-
             if (_wait_matcher("zombie", pid, process, p))
             {
                 if (wstatus)
@@ -578,7 +554,7 @@ long myst_wait(
                 if (infop)
                 {
                     infop->si_pid = p->pid;
-                    infop->si_uid = p->uid;
+                    infop->si_uid = p->process_uid;
                     infop->si_signo = SIGCHLD;
 
                     if (p->terminating_signum)
@@ -597,31 +573,18 @@ long myst_wait(
                 if (!(options & WNOWAIT))
                 {
                     // remove from zombie list
-                    if (p->zprev == NULL)
+                    if (p->zombie_prev == NULL)
                     {
-                        _zombies_head = p->znext;
+                        _zombies_head = p->zombie_next;
                     }
                     else
                     {
-                        p->zprev->znext = p->znext;
+                        p->zombie_prev->zombie_next = p->zombie_next;
                     }
-                    if (p->znext != NULL)
-                        p->znext->zprev = p->zprev;
+                    if (p->zombie_next != NULL)
+                        p->zombie_next->zombie_prev = p->zombie_prev;
 
-                    if (_zombies_tail == p)
-                        _zombies_tail = p->zprev;
-
-                    _zombies_count--;
-
-                    // remove from process list
-                    if (p->main.prev_process_thread)
-                        p->main.prev_process_thread->main.next_process_thread =
-                            p->main.next_process_thread;
-                    if (p->main.next_process_thread)
-                        p->main.next_process_thread->main.prev_process_thread =
-                            p->main.prev_process_thread;
-
-                    // free zombie thread
+                    // free zombie process
                     free(p);
                 }
 
@@ -633,18 +596,18 @@ long myst_wait(
          * ECHILD returned */
 
         // first processes left
-        p = process->main.prev_process_thread;
+        p = process->prev_process;
         while (p && !_wait_matcher("active", pid, process, p))
         {
-            p = p->main.prev_process_thread;
+            p = p->prev_process;
         }
         if (p == NULL)
         {
             // now processes right
-            p = process->main.next_process_thread;
+            p = process->next_process;
             while (p && !_wait_matcher("active", pid, process, p))
             {
-                p = p->main.next_process_thread;
+                p = p->next_process;
             }
         }
         if (p == NULL)
@@ -670,7 +633,7 @@ long myst_wait(
             printf(
                 "Waiting for new zombification of child with our pgid=%u of "
                 "our process %u\n",
-                process->main.pgid,
+                process->pgid,
                 process->pid);
         }
         else if (pid > 0)
@@ -712,6 +675,9 @@ done:
     if (locked)
         myst_spin_unlock(&myst_process_list_lock);
 
+#ifdef TRACE
+    printf("myst_waitpid() returning %ld\n", ret);
+#endif
     return ret;
 }
 
@@ -751,87 +717,71 @@ myst_thread_t* myst_find_thread(int tid)
 }
 
 // Caller should hold myst_proces_list_lock!
-myst_thread_t* myst_find_process(pid_t pid)
+myst_process_t* myst_find_process_from_pid(pid_t pid, bool include_zombies)
 {
-    myst_thread_t* curr_process = myst_find_process_thread(myst_thread_self());
-    myst_thread_t* target = NULL;
-    myst_thread_t* t = NULL;
+    myst_process_t* curr_process = myst_process_self();
+    myst_process_t* p = NULL;
 
     // Search forward in the doubly linked list for a match
-    for (t = curr_process; t != NULL; t = t->main.next_process_thread)
-    {
-        if (t->tid == pid)
-        {
-            target = t;
-            break;
-        }
-    }
+    p = curr_process;
+    while (p && p->pid != pid)
+        p = p->next_process;
 
-    if (target == NULL)
+    if (p == NULL)
     {
         // Search backward in the doubly linked list for a match
-        for (t = curr_process->main.prev_process_thread; t != NULL;
-             t = t->main.prev_process_thread)
-        {
-            if (t->tid == pid)
-            {
-                target = t;
-                break;
-            }
-        }
+        p = curr_process->prev_process;
+        while (p && p->pid != pid)
+            p = p->prev_process;
     }
 
-    return target;
+    if ((p == NULL) && include_zombies)
+    {
+        p = _zombies_head;
+        while (p && p->pid != pid)
+            p = p->zombie_next;
+    }
+
+    return p;
 }
 
 /* Find the thread that may be waiting for the fork-exec wait and wake it */
-void myst_fork_exec_futex_wake(myst_thread_t* thread)
+void myst_fork_exec_futex_wake(myst_process_t* process)
 {
-    pid_t pid = thread->clone.vfork_parent_pid;
-    pid_t tid = thread->clone.vfork_parent_tid;
-
-    myst_thread_t* our_process_thread =
-        myst_find_process_thread(myst_thread_self());
-    myst_thread_t* waiter = our_process_thread;
+    pid_t pid = process->vfork_parent_pid;
+    pid_t tid = process->vfork_parent_tid;
+    myst_process_t* waiter_process = NULL;
+    myst_thread_t* waiter_thread = NULL;
 
     myst_spin_lock(&myst_process_list_lock);
-    while (waiter && waiter->pid != pid)
-    {
-        waiter = waiter->main.prev_process_thread;
-    }
-    if (waiter == NULL)
-    {
-        waiter = our_process_thread->main.next_process_thread;
-        while (waiter && waiter->pid != pid)
-        {
-            waiter = waiter->main.next_process_thread;
-        }
-    }
-    myst_spin_unlock(&myst_process_list_lock);
 
-    if (waiter == NULL)
+    waiter_process = myst_find_process_from_pid(pid, false);
+
+    if (waiter_process == NULL)
         goto done;
 
-    /* find the waiter */
+    /* find the waiter thread*/
     {
-        myst_spinlock_t* thread_lock = waiter->thread_lock;
-        myst_spin_lock(thread_lock);
+        myst_spin_lock(&waiter_process->thread_group_lock);
+        waiter_thread = waiter_process->main_process_thread;
 
-        while (waiter && waiter->tid != tid)
+        while (waiter_thread && waiter_thread->tid != tid)
         {
-            waiter = waiter->group_next;
+            waiter_thread = waiter_thread->group_next;
         }
 
-        myst_spin_unlock(thread_lock);
-    }
+        if (waiter_thread)
+        {
+            __sync_val_compare_and_swap(
+                &waiter_thread->fork_exec_futex_wait, 0, 1);
+            myst_futex_wake(&waiter_thread->fork_exec_futex_wait, 1);
+        }
 
-    if (waiter)
-    {
-        __sync_val_compare_and_swap(&waiter->fork_exec_futex_wait, 0, 1);
-        myst_futex_wake(&waiter->fork_exec_futex_wait, 1);
+        myst_spin_unlock(&waiter_process->thread_group_lock);
     }
 
 done:
+    myst_spin_unlock(&myst_process_list_lock);
     return;
 }
 
@@ -859,6 +809,11 @@ myst_thread_t* myst_thread_self(void)
     return thread;
 }
 
+myst_process_t* myst_process_self(void)
+{
+    return myst_thread_self()->process;
+}
+
 /* Force the caller stack to be aligned */
 __attribute__((force_align_arg_pointer)) static long _call_thread_fn(void* arg)
 {
@@ -881,6 +836,7 @@ static long _run_thread(void* arg_)
 {
     struct run_thread_arg* arg = arg_;
     myst_thread_t* thread = arg->thread;
+    myst_process_t* process = thread->process;
     myst_td_t* target_td = myst_get_fsbase();
     myst_td_t* crt_td = NULL;
     bool is_child_thread;
@@ -966,7 +922,7 @@ static long _run_thread(void* arg_)
             myst_syscall_futex(thread->clone.ctid, futex_op, 1, 0, NULL, 0);
 
             /* Remove thread as a waiter on open pipes */
-            myst_fdtable_remove_thread(thread->fdtable);
+            myst_fdtable_remove_thread(process->fdtable);
         }
 
         /* Release memory objects owned by the main/process thread */
@@ -979,28 +935,27 @@ static long _run_thread(void* arg_)
                     myst_sleep_msec(10);
                 }
             }
-            if (thread->fdtable)
+            if (process->fdtable)
             {
-                myst_fdtable_free(thread->fdtable);
-                thread->fdtable = NULL;
+                myst_fdtable_free(process->fdtable);
+                process->fdtable = NULL;
             }
 
-            myst_signal_free(thread);
-            myst_signal_free_siginfos(thread);
+            myst_signal_free(process);
 
-            if (thread->main.exec_stack)
+            if (process->exec_stack)
             {
-                free(thread->main.exec_stack);
-                thread->main.exec_stack = NULL;
-                thread->main.exec_stack_size = 0;
+                free(process->exec_stack);
+                process->exec_stack = NULL;
+                process->exec_stack_size = 0;
             }
 
-            if (thread->main.exec_crt_data)
+            if (process->exec_crt_data)
             {
-                long r = myst_munmap(
-                    thread->main.exec_crt_data, thread->main.exec_crt_size);
-                thread->main.exec_crt_data = NULL;
-                thread->main.exec_crt_size = 0;
+                long r =
+                    myst_munmap(process->exec_crt_data, process->exec_crt_size);
+                process->exec_crt_data = NULL;
+                process->exec_crt_size = 0;
 
                 if (r != 0)
                 {
@@ -1009,22 +964,22 @@ static long _run_thread(void* arg_)
                 }
             }
 
-            free(thread->main.cwd);
-            thread->main.cwd = NULL;
+            free(process->cwd);
+            process->cwd = NULL;
 
-            procfs_pid_cleanup(thread->pid);
+            procfs_pid_cleanup(process->pid);
 
             /* Send SIGHUP to all our children */
-            myst_send_sighup_child_processes(thread);
+            myst_send_sighup_child_processes(process);
 
             /* Send a SIGCHLD to the parent process */
-            myst_syscall_kill(thread->ppid, SIGCHLD);
+            myst_syscall_kill(process->ppid, SIGCHLD);
 
             /* Only need to zombify the process thread */
-            myst_zombify_thread(thread);
+            myst_zombify_process(process);
 
             /* unmap any mapping made by the process */
-            myst_release_process_mappings(thread->pid);
+            myst_release_process_mappings(process->pid);
         }
 
         {
@@ -1049,18 +1004,16 @@ static long _run_thread(void* arg_)
          * this process */
         if (is_child_thread)
         {
-            myst_thread_t* parent = myst_find_process_thread(thread);
-            myst_spin_lock(parent->thread_lock);
+            myst_spin_lock(&process->thread_group_lock);
             if (thread->group_prev)
                 thread->group_prev->group_next = thread->group_next;
             if (thread->group_next)
                 thread->group_next->group_prev = thread->group_prev;
-            myst_spin_unlock(parent->thread_lock);
-
-            myst_signal_free_siginfos(thread);
-
-            free(thread);
+            myst_spin_unlock(&process->thread_group_lock);
         }
+
+        myst_signal_free_siginfos(thread);
+        free(thread);
 
         /* Return to target, which will exit this thread */
     }
@@ -1132,8 +1085,9 @@ static long _syscall_clone(
 {
     long ret = 0;
     uint64_t cookie = 0;
-    myst_thread_t* parent = myst_thread_self();
-    myst_thread_t* child;
+    myst_thread_t* current_thread = myst_thread_self();
+    myst_process_t* current_process = myst_process_self();
+    myst_thread_t* new_thread;
 
     if (!fn)
         ERAISE(-EINVAL);
@@ -1152,54 +1106,47 @@ static long _syscall_clone(
 
     /* Create and initialize the child thread struct */
     {
-        if (!(child = calloc(1, sizeof(myst_thread_t))))
+        if (!(new_thread = calloc(1, sizeof(myst_thread_t))))
             ERAISE(-ENOMEM);
 
-        child->magic = MYST_THREAD_MAGIC;
-        child->fdtable = parent->fdtable;
-        child->sid = parent->sid;
-        child->ppid = parent->ppid;
-        child->pid = parent->pid;
-        child->crt_td = newtls;
-        child->run_thread = myst_run_thread;
-        child->thread_lock = parent->thread_lock;
+        new_thread->magic = MYST_THREAD_MAGIC;
+        new_thread->process = current_process;
+        new_thread->crt_td = newtls;
+        new_thread->run_thread = myst_run_thread;
+        new_thread->thread_lock = &current_process->thread_group_lock;
         /* ATTN: we don't take a lock on _num_threads,
             thread names could be duplicates */
         snprintf(
-            child->name,
-            sizeof(child->name),
+            new_thread->name,
+            sizeof(new_thread->name),
             "thread-%ld",
             _num_threads % 99999999);
 
         // Link up parent, child, and the previous head child of the parent,
         // if there is one, in the same thread group.
 
-        myst_spin_lock(parent->thread_lock);
-        child->group_next = parent->group_next;
-        child->group_prev = parent;
-        if (parent->group_next)
-            parent->group_next->group_prev = child;
-        parent->group_next = child;
-        myst_spin_unlock(parent->thread_lock);
-
-        // Inherit signal dispositions
-        child->signal.sigactions = parent->signal.sigactions;
+        myst_spin_lock(&current_process->thread_group_lock);
+        new_thread->group_next = current_thread->group_next;
+        new_thread->group_prev = current_thread;
+        if (current_thread->group_next)
+            current_thread->group_next->group_prev = new_thread;
+        current_thread->group_next = new_thread;
+        myst_spin_unlock(&current_process->thread_group_lock);
 
         /* save the clone() arguments */
-        child->clone.fn = fn;
-        child->clone.child_stack = child_stack;
-        child->clone.flags = flags;
-        child->clone.arg = arg;
-        child->clone.ptid = ptid;
-        child->clone.newtls = newtls;
-        child->clone.ctid = ctid;
+        new_thread->clone.fn = fn;
+        new_thread->clone.child_stack = child_stack;
+        new_thread->clone.flags = flags;
+        new_thread->clone.arg = arg;
+        new_thread->clone.ptid = ptid;
+        new_thread->clone.newtls = newtls;
+        new_thread->clone.ctid = ctid;
+        new_thread->pause_futex = 0;
 
-        child->pause_futex = 0;
-
-        ECHECK(_get_entry_stack(child));
+        ECHECK(_get_entry_stack(new_thread));
     }
 
-    cookie = _get_cookie(child);
+    cookie = _get_cookie(new_thread);
 
     if (myst_tcall_create_thread(cookie) != 0)
         ERAISE(-EINVAL);
@@ -1217,9 +1164,11 @@ static long _syscall_clone_vfork(
 {
     long ret = 0;
     uint64_t cookie = 0;
-    myst_thread_t* parent = myst_thread_self();
-    myst_thread_t* parent_process = myst_find_process_thread(parent);
-    myst_thread_t* child = NULL;
+    myst_thread_t* parent_thread = myst_thread_self();
+    myst_process_t* parent_process = myst_process_self();
+    myst_thread_t* child_thread = NULL;
+    myst_process_t* child_process = NULL;
+    bool added_to_process_list = false;
 
     if (!fn)
         ERAISE(-EINVAL);
@@ -1235,112 +1184,133 @@ static long _syscall_clone_vfork(
 
     /* Create and initialize the thread struct */
     {
-        if (!(child = calloc(1, sizeof(myst_thread_t))))
+        if (!(child_thread = calloc(1, sizeof(myst_thread_t))))
+            ERAISE(-ENOMEM);
+        if (!(child_process = calloc(1, sizeof(myst_process_t))))
             ERAISE(-ENOMEM);
 
-        child->magic = MYST_THREAD_MAGIC;
-        child->sid = parent->sid;
-        child->ppid = parent->pid;
-        child->pid = myst_generate_tid();
-        child->tid = child->pid;
-        child->run_thread = myst_run_thread;
+        child_thread->process = child_process;
+        child_process->main_process_thread = child_thread;
+
+        child_thread->magic = MYST_THREAD_MAGIC;
+        child_process->sid = parent_process->sid;
+        child_process->ppid = parent_process->pid;
+        child_process->pid = myst_generate_tid();
+        child_thread->tid = child_process->pid;
+        child_thread->run_thread = myst_run_thread;
         /* ATTN: we don't take a lock on _num_threads,
             thread names could be duplicates */
         snprintf(
-            child->name,
-            sizeof(child->name),
+            child_thread->name,
+            sizeof(child_thread->name),
             "thread-%ld",
             _num_threads % 99999999);
 
         /* Inherit identity from parent process */
-        child->uid = parent->uid;
-        child->euid = parent->euid;
-        child->savuid = parent->savgid;
-        child->fsuid = parent->fsuid;
-        child->gid = parent->gid;
-        child->egid = parent->egid;
-        child->savgid = parent->savgid;
-        child->fsgid = parent->fsgid;
-        memcpy(child->supgid, parent->supgid, parent->num_supgid);
-        child->num_supgid = parent->num_supgid;
+        child_thread->uid = parent_thread->uid;
+        child_thread->euid = parent_thread->euid;
+        child_thread->savuid = parent_thread->savgid;
+        child_thread->fsuid = parent_thread->fsuid;
+        child_thread->gid = parent_thread->gid;
+        child_thread->egid = parent_thread->egid;
+        child_thread->savgid = parent_thread->savgid;
+        child_thread->fsgid = parent_thread->fsgid;
+        memcpy(
+            child_thread->supgid,
+            parent_thread->supgid,
+            parent_thread->num_supgid);
+        child_thread->num_supgid = parent_thread->num_supgid;
 
-        child->main.thread_group_lock = MYST_SPINLOCK_INITIALIZER;
-        child->thread_lock = &child->main.thread_group_lock;
+        child_process->thread_group_lock = MYST_SPINLOCK_INITIALIZER;
+        child_thread->thread_lock = &child_process->thread_group_lock;
 
         /* Inherit parent current working directory */
-        child->main.cwd_lock = MYST_SPINLOCK_INITIALIZER;
-        child->main.cwd = strdup(parent_process->main.cwd);
-        if (child->main.cwd == NULL)
+        child_process->cwd_lock = MYST_SPINLOCK_INITIALIZER;
+        child_process->cwd = strdup(parent_process->cwd);
+        if (child_process->cwd == NULL)
             ERAISE(-ENOMEM);
 
         /* inherit the umask from the parent process */
-        child->main.umask = parent_process->main.umask;
+        child_process->umask = parent_process->umask;
 
         /* inherit process group ID */
-        child->main.pgid = parent_process->main.pgid;
+        child_process->pgid = parent_process->pgid;
 
-        if (myst_fdtable_clone(parent->fdtable, &child->fdtable) != 0)
+        if (myst_fdtable_clone(
+                parent_process->fdtable, &child_process->fdtable) != 0)
             ERAISE(-ENOMEM);
 
-        if (myst_signal_clone(parent, child) != 0)
+        if (myst_signal_clone(parent_thread, child_thread) != 0)
             ERAISE(-ENOMEM);
 
         /* save the clone() arguments */
-        child->clone.fn = fn;
-        child->clone.child_stack = child_stack;
-        child->clone.flags = flags;
-        child->clone.arg = arg;
+        child_thread->clone.fn = fn;
+        child_thread->clone.child_stack = child_stack;
+        child_thread->clone.flags = flags;
+        child_thread->clone.arg = arg;
 
         /* If this is being called as part of a fork() call we may need to use
          * these to notify the parent processes tid to wake up in fork/exec mode
          */
-        child->clone.vfork_parent_pid = parent->pid;
-        child->clone.vfork_parent_tid = parent->tid;
+        child_process->is_pseudo_fork_process = true;
+        child_process->vfork_parent_pid = parent_process->pid;
+        child_process->vfork_parent_tid = parent_thread->tid;
 
-        child->pause_futex = 0;
+        child_thread->pause_futex = 0;
 
         /* In case we are going to be used for fork-exec scenario where we need
          * to wait for exec or exit, reset the futex */
-        parent->fork_exec_futex_wait = 0;
-
-        myst_thread_t* parent_main_thread = parent;
-        if (!myst_is_process_thread(parent))
-            parent_main_thread = myst_find_process_thread(parent);
-
-        myst_assume(parent_main_thread != NULL);
+        parent_thread->fork_exec_futex_wait = 0;
 
         /* add this main process thread to the process linked list */
         myst_spin_lock(&myst_process_list_lock);
-        child->main.next_process_thread =
-            parent_main_thread->main.next_process_thread;
-        if (parent_main_thread->main.next_process_thread)
-            parent_main_thread->main.next_process_thread->main
-                .prev_process_thread = child;
-        child->main.prev_process_thread = parent_main_thread;
-        parent_main_thread->main.next_process_thread = child;
+        child_process->next_process = parent_process->next_process;
+        if (parent_process->next_process)
+            parent_process->next_process->prev_process = child_process;
+        child_process->prev_process = parent_process;
+        parent_process->next_process = child_process;
         myst_spin_unlock(&myst_process_list_lock);
+        added_to_process_list = true;
 
         /* Create /proc/[pid]/fd directory for new process thread */
-        ECHECK(procfs_pid_setup(child->pid));
+        ECHECK(procfs_pid_setup(child_process->pid));
 
-        ECHECK(_get_entry_stack(child));
+        ECHECK(_get_entry_stack(child_thread));
     }
 
-    cookie = _get_cookie(child);
+    cookie = _get_cookie(child_thread);
 
     if (myst_tcall_create_thread(cookie) != 0)
         ERAISE(-EINVAL);
 
-    ret = child->pid;
+    ret = child_process->pid;
 
-    child = NULL;
+    child_process = NULL;
+    child_thread = NULL;
 
 done:
-    if (child)
+    if (child_process)
     {
-        if (child->main.cwd)
-            free(child->main.cwd);
-        free(child);
+        if (added_to_process_list)
+        {
+            myst_spin_lock(&myst_process_list_lock);
+            if (child_process->prev_process)
+                child_process->prev_process->next_process =
+                    child_process->next_process;
+            if (child_process->next_process)
+                child_process->next_process->prev_process =
+                    child_process->prev_process;
+            myst_spin_unlock(&myst_process_list_lock);
+        }
+        if (child_process->cwd)
+            free(child_process->cwd);
+        if (child_process->fdtable)
+            myst_fdtable_free(child_process->fdtable);
+        free(child_process);
+    }
+    if (child_thread)
+    {
+        free(child_thread);
     }
     return ret;
 }
@@ -1372,67 +1342,51 @@ size_t myst_get_num_threads(void)
     return _num_threads;
 }
 
-bool myst_have_child_forked_processes(myst_thread_t* process)
+bool myst_have_child_forked_processes(myst_process_t* process)
 {
     pid_t pid = process->pid;
-    myst_thread_t* p;
+    myst_process_t* p;
 
     myst_spin_lock(&myst_process_list_lock);
-    p = process->main.prev_process_thread;
+    p = process->next_process;
 
     while (p)
     {
-        if ((p->ppid == pid) && (p->clone.flags & CLONE_VFORK) &&
-            p->status != MYST_ZOMBIE)
+        if ((p->ppid == pid) && (p->is_pseudo_fork_process))
         {
             break;
         }
-        p = p->main.prev_process_thread;
-    }
-
-    if (!p)
-    {
-        p = process->main.next_process_thread;
-
-        while (p)
-        {
-            if ((p->ppid == pid) && (p->clone.flags & CLONE_VFORK) &&
-                p->status != MYST_ZOMBIE)
-            {
-                break;
-            }
-            p = p->main.next_process_thread;
-        }
+        p = p->next_process;
     }
     myst_spin_unlock(&myst_process_list_lock);
 
     return p == NULL ? false : true;
 }
 
-long kill_child_fork_processes(myst_thread_t* process)
+long kill_child_fork_processes(myst_process_t* process)
 {
     if (__myst_kernel_args.fork_mode == myst_fork_none)
         return 0;
 
     myst_spin_lock(&myst_process_list_lock);
-    myst_thread_t* p = process->main.prev_process_thread;
+    myst_process_t* p = process->prev_process;
     pid_t pid = process->pid;
 
     /* Send signal to all children that are forks of us */
     while (p)
     {
-        if ((p->ppid == pid) && (p->clone.flags & CLONE_VFORK))
-            myst_signal_deliver(p, SIGHUP, NULL);
-        p = p->main.prev_process_thread;
+        if ((p->ppid == pid) && (p->is_pseudo_fork_process))
+            myst_signal_deliver(p->main_process_thread, SIGHUP, NULL);
+        p = p->prev_process;
     }
 
-    p = process->main.next_process_thread;
+    p = process->next_process;
 
     while (p)
     {
-        if ((p->ppid == pid) && (p->clone.flags & CLONE_VFORK))
-            myst_signal_deliver(p, SIGHUP, NULL);
-        p = p->main.next_process_thread;
+        if ((p->ppid == pid) && (p->is_pseudo_fork_process))
+            myst_signal_deliver(p->main_process_thread, SIGHUP, NULL);
+        p = p->next_process;
     }
 
     myst_spin_unlock(&myst_process_list_lock);
@@ -1446,16 +1400,16 @@ long kill_child_fork_processes(myst_thread_t* process)
 size_t myst_kill_thread_group()
 {
     myst_thread_t* thread = myst_thread_self();
-    myst_thread_t* process = myst_find_process_thread(thread);
+    myst_process_t* process = myst_process_self();
     myst_thread_t* t = NULL;
     size_t count = 0;
 
-    myst_spin_lock(process->thread_lock);
+    myst_spin_lock(&process->thread_group_lock);
 
     // Send termination signal to all running child threads.
-    for (t = process; t != NULL; t = t->group_next)
+    for (t = process->main_process_thread; t != NULL; t = t->group_next)
     {
-        if (t != thread && t->status == MYST_RUNNING)
+        if (t != thread)
         {
             count++;
             myst_signal_deliver(t, SIGKILL, 0);
@@ -1467,7 +1421,7 @@ size_t myst_kill_thread_group()
             }
         }
     }
-    myst_spin_unlock(process->thread_lock);
+    myst_spin_unlock(&process->thread_group_lock);
 
     // Wait for the child threads to exit.
     while (1)
@@ -1486,10 +1440,10 @@ size_t myst_kill_thread_group()
 
         /* wait for all other threads except ours and the process thread to go
          * away */
-        myst_spin_lock(process->thread_lock);
-        for (t = process; t != NULL; t = t->group_next)
+        myst_spin_lock(&process->thread_group_lock);
+        for (t = process->main_process_thread; t != NULL; t = t->group_next)
         {
-            if (t != process && t != thread)
+            if (t != process->main_process_thread && t != thread)
             {
                 if (myst_get_trace())
                 {
@@ -1504,7 +1458,7 @@ size_t myst_kill_thread_group()
                 break;
             }
         }
-        myst_spin_unlock(process->thread_lock);
+        myst_spin_unlock(&process->thread_group_lock);
 
         // DO NOT ACCESS CONTENTS OF THREAD!
         // it may already be freed! We are not in the lock any more
@@ -1538,30 +1492,30 @@ done:
 }
 
 /* Send SIGHUP to child processes */
-int myst_send_sighup_child_processes(myst_thread_t* process_thread)
+int myst_send_sighup_child_processes(myst_process_t* process)
 {
-    pid_t pid = process_thread->pid;
+    pid_t pid = process->pid;
 
     myst_spin_lock(&myst_process_list_lock);
 
     // first processes left
-    myst_thread_t* t = process_thread->main.prev_process_thread;
-    while (t)
+    myst_process_t* p = process->prev_process;
+    while (p)
     {
-        if (t->status != MYST_ZOMBIE && t->ppid == pid)
-            myst_signal_deliver(t, SIGHUP, NULL);
+        if (p->ppid == pid)
+            myst_signal_deliver(p->main_process_thread, SIGHUP, NULL);
 
-        t = t->main.prev_process_thread;
+        p = p->prev_process;
     }
 
     // now processes right
-    t = process_thread->main.next_process_thread;
-    while (t)
+    p = process->next_process;
+    while (p)
     {
-        if (t->status != MYST_ZOMBIE && t->ppid == pid)
-            myst_signal_deliver(t, SIGHUP, NULL);
+        if (p->ppid == pid)
+            myst_signal_deliver(p->main_process_thread, SIGHUP, NULL);
 
-        t = t->main.next_process_thread;
+        p = p->next_process;
     }
     myst_spin_unlock(&myst_process_list_lock);
 

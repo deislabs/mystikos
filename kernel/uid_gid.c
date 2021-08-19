@@ -377,6 +377,7 @@ long myst_syscall_setuid(uid_t uid)
 {
     long ret = 0;
     myst_thread_t* thread = myst_thread_self();
+    myst_process_t* process = myst_process_self();
 
     /* EINVAL if not valid uid */
     if (myst_valid_uid_against_passwd_file(uid) < 0)
@@ -391,6 +392,8 @@ long myst_syscall_setuid(uid_t uid)
         thread->euid = uid;
         thread->savuid = uid;
         thread->fsuid = uid;
+        if (myst_is_process_thread(thread))
+            process->process_uid = uid;
     }
     /* if uid does not match real uid or saved uid return EPERM (TODO:
      * or CAP_SETUID is set, but that was handled in previous clause)*/
@@ -467,6 +470,7 @@ long myst_syscall_setreuid(uid_t ruid, uid_t euid)
     uid_t sav_uid = -1;
     long ret = 0;
     myst_thread_t* thread = myst_thread_self();
+    myst_process_t* process = myst_process_self();
 
     /* thread sav_uid is set to new euid (if not -1) if ruid is being
      * set (not -1) or euid is different from thread uid */
@@ -502,7 +506,11 @@ long myst_syscall_setreuid(uid_t ruid, uid_t euid)
     else if (thread->euid == 0)
     {
         if (ruid != (uid_t)-1)
+        {
             thread->uid = ruid;
+            if (myst_is_process_thread(thread))
+                process->process_uid = ruid;
+        }
         if (euid != (uid_t)-1)
             thread->euid = euid;
     }
@@ -511,6 +519,8 @@ long myst_syscall_setreuid(uid_t ruid, uid_t euid)
     {
         thread->uid = ruid;
         thread->euid = euid;
+        if (myst_is_process_thread(thread))
+            process->process_uid = ruid;
     }
     /* else if setting one to the value of the other */
     else if (
@@ -522,7 +532,11 @@ long myst_syscall_setreuid(uid_t ruid, uid_t euid)
           ((euid == thread->uid) || (euid == thread->savuid)))))
     {
         if (ruid != (uid_t)-1)
+        {
             thread->uid = ruid;
+            if (myst_is_process_thread(thread))
+                process->process_uid = ruid;
+        }
         if (euid != (uid_t)-1)
             thread->euid = euid;
     }
@@ -630,6 +644,7 @@ long myst_syscall_setresuid(uid_t ruid, uid_t euid, uid_t savuid)
 {
     long ret = 0;
     myst_thread_t* thread = myst_thread_self();
+    myst_process_t* process = myst_process_self();
 
     /* ** global ** If ruid and or euid are -1, they are not set */
     /* if ruid or euid is not valid (ignoring -1) return EINVAL */
@@ -649,7 +664,11 @@ long myst_syscall_setresuid(uid_t ruid, uid_t euid, uid_t savuid)
     else if (thread->euid == 0)
     {
         if (ruid != (uid_t)-1)
+        {
             thread->uid = ruid;
+            if (myst_is_process_thread(thread))
+                process->process_uid = ruid;
+        }
         if (euid != (uid_t)-1)
             thread->euid = euid;
         if (savuid != (uid_t)-1)
@@ -665,7 +684,11 @@ long myst_syscall_setresuid(uid_t ruid, uid_t euid, uid_t savuid)
          (thread->euid == savuid)))
     {
         if (ruid != (uid_t)-1)
+        {
             thread->uid = ruid;
+            if (myst_is_process_thread(thread))
+                process->process_uid = ruid;
+        }
         if (euid != (uid_t)-1)
             thread->euid = euid;
         if (savuid != (uid_t)-1)

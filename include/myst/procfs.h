@@ -11,7 +11,7 @@
 int create_proc_root_entries();
 
 /* For callbacks implementing /proc/[pid]/xxx entries */
-myst_thread_t* myst_procfs_path_to_process(const char* entrypath);
+myst_process_t* myst_procfs_path_to_process(const char* entrypath);
 
 /*
 **==============================================================================

@@ -11,9 +11,9 @@ typedef void (*sigaction_handler_t)(int);
 
 typedef void (*sigaction_function_t)(int, siginfo_t*, void*);
 
-int myst_signal_init(myst_thread_t* t);
+int myst_signal_init(myst_process_t* process);
 
-void myst_signal_free(myst_thread_t* t);
+void myst_signal_free(myst_process_t* process);
 void myst_signal_free_siginfos(myst_thread_t* t);
 
 long myst_signal_sigaction(
@@ -39,5 +39,7 @@ long myst_handle_host_signal(siginfo_t* siginfo, mcontext_t* mcontext);
 int myst_signal_has_active_signals(myst_thread_t* thread);
 
 int myst_signal_altstack(const stack_t* ss, stack_t* old_ss);
+
+const char* myst_signum_to_string(unsigned signum);
 
 #endif /* _MYST_SIGNAL_H */
