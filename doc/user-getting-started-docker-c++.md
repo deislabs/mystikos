@@ -17,15 +17,15 @@ using namespace std;
 
 int main(int argc, char* argv[])
 {
-	vector<int> v;
-	for(int i = 1; i < argc; i++)
-      v.push_back(atoi(argv[i]));
+    vector<int> v;
+    for(int i = 1; i < argc; i++)
+        v.push_back(atoi(argv[i]));
 
     for_each(v.begin(), v.end(),
-      cout << boost::lambda::_1*boost::lambda::_1 << " ");
+        cout << boost::lambda::_1*boost::lambda::_1 << " ");
 
     cout << endl;
-	return 0;
+    return 0;
 }
 ```
 
@@ -40,7 +40,7 @@ The expected outputs, of course, are "1 4 9".
 
 ## Containerize the program
 
-We provide a docker file for building and running the application as follows.
+We provide a `Dockerfile` for building and running the application as follows.
 Note this is a multi-stage dockerfile as `boost-dev` is only required for
 building. We can skip it in the final image to save space.
 
