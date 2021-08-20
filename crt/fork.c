@@ -195,7 +195,7 @@ static bool _within(const void* data, size_t size, const void* ptr)
 ** <current value of rbp on entry to this function, AKA frame pointer>
 ** <local variables>
 **
-** The rpb pointers, AKA frame pointer, is currently a pointer into the parent
+** The rbp pointers, AKA frame pointer, is currently a pointer into the parent
 ** process stack and not a pointer into the new child stack.
 **
 ** This function traverses the frame pointers and fixes it up to be relative
@@ -240,6 +240,12 @@ static int _fixup_frame_pointers(
         goto done;
     }
 
+    if (!_within(parent_stack, parent_stack_size, *(void**)pbp))
+    {
+        assert("contents of parent base pointer out of range" == NULL);
+        goto done;
+    }
+
     if (!_within(child_stack, child_stack_size, cbp))
     {
         assert("child base pointer out of range" == NULL);
@@ -258,6 +264,11 @@ static int _fixup_frame_pointers(
         cbp = *(void**)cbp;
 
         if (!_within(parent_stack, parent_stack_size, pbp))
+        {
+            break;
+        }
+
+        if (!_within(parent_stack, parent_stack_size, *(void**)pbp))
         {
             break;
         }
