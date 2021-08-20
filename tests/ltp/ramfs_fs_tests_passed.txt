@@ -138,4 +138,3 @@
 /ltp/testcases/kernel/syscalls/vfork/vfork02
 /ltp/testcases/kernel/syscalls/write/write01
 /ltp/testcases/kernel/syscalls/write/write02
-/ltp/testcases/kernel/syscalls/waitpid/waitpid03
