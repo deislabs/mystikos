@@ -115,13 +115,9 @@ struct pthread* _create_child_pthread_and_copy_stack(
 
     myst_round_up(size, PAGE_SIZE, &size_rounded);
 
-    if (!(map = mmap(
-              NULL,
-              size_rounded,
-              PROT_READ | PROT_WRITE,
-              MAP_ANONYMOUS,
-              -1,
-              0)))
+    map =
+        mmap(NULL, size_rounded, PROT_READ | PROT_WRITE, MAP_ANONYMOUS, -1, 0);
+    if (map == MAP_FAILED)
         return NULL;
 
     /* [guard|stack|tls|tsd] */
