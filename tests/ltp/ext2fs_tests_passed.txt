@@ -300,6 +300,7 @@
 /ltp/testcases/kernel/syscalls/wait/wait02
 /ltp/testcases/kernel/syscalls/waitpid/waitpid01
 /ltp/testcases/kernel/syscalls/waitpid/waitpid02
+/ltp/testcases/kernel/syscalls/waitpid/waitpid03
 /ltp/testcases/kernel/syscalls/waitpid/waitpid05
 /ltp/testcases/kernel/syscalls/waitpid/waitpid09
 /ltp/testcases/kernel/syscalls/waitpid/waitpid11

@@ -757,7 +757,6 @@
 /ltp/testcases/kernel/syscalls/vmsplice/vmsplice03
 /ltp/testcases/kernel/syscalls/wait4/wait401
 /ltp/testcases/kernel/syscalls/wait4/wait402
-/ltp/testcases/kernel/syscalls/waitpid/waitpid03
 /ltp/testcases/kernel/syscalls/waitpid/waitpid04
 /ltp/testcases/kernel/syscalls/waitpid/waitpid06
 /ltp/testcases/kernel/syscalls/waitpid/waitpid07

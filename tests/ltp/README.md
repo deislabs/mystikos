@@ -1353,7 +1353,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/waitid/waitid02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/waitpid/waitpid01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/waitpid/waitpid02 | 1 | 1 | 1 |
-| /ltp/testcases/kernel/syscalls/waitpid/waitpid03 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/waitpid/waitpid03 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/waitpid/waitpid04 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/waitpid/waitpid05 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/waitpid/waitpid06 | 0 | 0 | 0 |
