@@ -37,7 +37,7 @@
 
 #define ENCLAVE_CAPTURE_PF_GP_EXCEPTIONS true
 
-#define ENCLAVE_REQUIRE_KSS false
+#define ENCLAVE_REQUIRE_KSS true
 
 #ifdef MYST_ENABLE_ZERO_BASE_ENCLAVES
 #define ENCLAVE_CREATE_ZERO_BASE_ENCLAVE true
@@ -49,6 +49,11 @@
 
 typedef struct _config_parsed_data_t
 {
+    // Augmented app configurations (automatically added,
+    // not from user config.json)
+    char* cc_rootfs_measurement_alg;
+    char* cc_rootfs_measurement;
+
     // The version at the start of the configuration tells the parser which
     // version of configuration schema we need to use for backwards
     // compatibility.

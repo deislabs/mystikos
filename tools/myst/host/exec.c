@@ -34,6 +34,7 @@
 #include <openenclave/bits/sgx/sgxproperties.h>
 #include <openenclave/host.h>
 
+#include "../config.h"
 #include "../shared.h"
 #include "exec.h"
 #include "fsgsbase.h"
@@ -129,6 +130,109 @@ long myst_wake_wait_ocall(
     return myst_tcall_wake_wait(waiter_event, self_event, ts);
 }
 
+/*
+{
++++ "cc-rootfs-measurement-alg":"sha256-flat",
++++ "cc-rootfs-measurement":"64-bytes-sha256-ascii",
+    "ApplicationPath": "/bin/hello",
+    ...
+    "HostEnvironmentVariables": ["TESTNAME"]
+}
+ */
+static int _create_augmented_app_config(
+    const char* config_buf,
+    size_t config_buf_size,
+    const uint8_t* rootfs_id_buf,
+    size_t rootfs_id_size,
+    char** augmented_app_config_buf,
+    size_t* augmented_app_config_size)
+{
+    int ret = 0;
+    const char* fixed_content =
+        "{\"cc-rootfs-measurement-alg\":\"sha256-flat\","
+        "\"cc-rootfs-measurement\":\"";
+    char* curr = NULL;
+
+    if (!rootfs_id_buf || !rootfs_id_size)
+        ERAISE(-EINVAL);
+
+    // fixed_context + roothash + \"}
+    *augmented_app_config_size =
+        strlen(fixed_content) + MYST_SHA256_ASCII_LENGTH + 2;
+    if (config_buf && config_buf_size)
+    {
+        // 2 char counted twice: -2
+        // add an extra ',':     +1
+        //                     = -1
+        *augmented_app_config_size += (config_buf_size - 1);
+    }
+
+    if ((*augmented_app_config_buf = malloc(*augmented_app_config_size)) ==
+        NULL)
+    {
+        ERAISE(-ENOMEM);
+    }
+
+    curr = *augmented_app_config_buf;
+    memcpy(curr, fixed_content, strlen(fixed_content));
+    curr += strlen(fixed_content);
+
+    ECHECK(myst_bin_to_ascii(
+        rootfs_id_buf, rootfs_id_size, curr, MYST_SHA256_ASCII_SIZE));
+    curr += MYST_SHA256_ASCII_LENGTH;
+    *curr++ = '"';
+
+    if (config_buf)
+    {
+        *curr++ = ',';
+        while (*config_buf != '{')
+        {
+            ++config_buf;
+            --config_buf_size;
+        }
+        assert(*config_buf++ == '{');
+        --config_buf_size;
+        memcpy(curr, config_buf, config_buf_size);
+        curr += config_buf_size;
+    }
+    else
+    {
+        *curr++ = '}';
+    }
+    assert(curr == *augmented_app_config_buf + *augmented_app_config_size);
+
+done:
+    return ret;
+}
+
+static int _create_config_data_setting(
+    oe_sgx_enclave_setting_config_data** config_data_setting,
+    const char* augmented_app_config_buf,
+    size_t augmented_app_config_size)
+{
+    int ret = 0;
+    oe_sgx_enclave_setting_config_data* _config_data_setting = NULL;
+
+    if ((_config_data_setting =
+             malloc(sizeof(oe_sgx_enclave_setting_config_data))) == NULL)
+        ERAISE(-ENOMEM);
+
+    ECHECK(myst_generate_config_id(
+        augmented_app_config_buf,
+        augmented_app_config_size,
+        _config_data_setting->config_id));
+    _config_data_setting->config_svn = 0;
+    _config_data_setting->ignore_if_unsupported = false;
+    *config_data_setting = _config_data_setting;
+    _config_data_setting = NULL;
+
+done:
+    if (_config_data_setting)
+        free(_config_data_setting);
+
+    return ret;
+}
+
 int exec_launch_enclave(
     const char* enc_path,
     oe_enclave_type_t type,
@@ -136,7 +240,9 @@ int exec_launch_enclave(
     const char* argv[],
     const char* envp[],
     const myst_args_t* mount_mappings,
-    struct myst_options* options)
+    struct myst_options* options,
+    const char* augmented_app_config_buf,
+    size_t augmented_app_config_size)
 {
     oe_result_t r;
     int retval;
@@ -147,6 +253,7 @@ int exec_launch_enclave(
     pid_t target_tid = (pid_t)syscall(SYS_gettid);
     struct timespec start_time;
     oe_enclave_setting_context_switchless_t switchless_setting = {0, 0};
+    oe_sgx_enclave_setting_config_data* config_data_setting = NULL;
     oe_enclave_setting_t settings[8];
     size_t num_settings = 0;
 
@@ -165,6 +272,27 @@ int exec_launch_enclave(
         {
             .setting_type = OE_ENCLAVE_SETTING_CONTEXT_SWITCHLESS,
             .u.context_switchless_setting = &switchless_setting
+        };
+        // clang-format on
+
+        settings[num_settings++] = setting;
+    }
+
+    if (options->enable_config_id)
+    {
+        if (_create_config_data_setting(
+                &config_data_setting,
+                augmented_app_config_buf,
+                augmented_app_config_size) != 0)
+        {
+            _err("failed to create enclave setting");
+        }
+
+        // clang-format off
+        oe_enclave_setting_t setting =
+        {
+            .setting_type = OE_SGX_ENCLAVE_CONFIG_DATA,
+            .u.config_data = config_data_setting
         };
         // clang-format on
 
@@ -214,7 +342,9 @@ int exec_launch_enclave(
         (uint64_t)&_event,
         target_tid,
         start_time.tv_sec,
-        start_time.tv_nsec);
+        start_time.tv_nsec,
+        augmented_app_config_buf,
+        augmented_app_config_size);
     if (r != OE_OK)
         _err("failed to enter enclave: result=%s", oe_result_str(r));
 
@@ -225,6 +355,7 @@ int exec_launch_enclave(
 
     shm_free_clock(&shared_memory);
 
+    free(config_data_setting);
     free(argv_buf.data);
     free(envp_buf.data);
     free(mount_mappings_buf.data);
@@ -261,6 +392,7 @@ Options:\n\
     --host-to-enc-gid-map <host-gid:enc-gid[,host-gid2:enc-gid2,...]>\n\
                          -- comma separated list of gid mappings between\n\
                              the host and the enclave\n\
+    --enable-config-id   -- enable configid check\n\
 \n"
 
 int exec_action(int argc, const char* argv[], const char* envp[])
@@ -273,13 +405,13 @@ int exec_action(int argc, const char* argv[], const char* envp[])
     size_t num_pubkeys = 0;
     const region_details* details;
     int return_status;
-    char pubkeys_path[PATH_MAX];
-    char roothashes_path[PATH_MAX];
     char rootfs_path[] = "/tmp/mystXXXXXX";
     uint64_t heap_size = 0;
     const char* commandline_config = NULL;
     myst_args_t mount_mapping = {0};
     myst_buf_t roothash_buf = MYST_BUF_INITIALIZER;
+    char* augmented_app_config_buf = NULL;
+    size_t augmented_app_config_size = 0;
 
     assert(strcmp(argv[1], "exec") == 0 || strcmp(argv[1], "exec-sgx") == 0);
 
@@ -397,6 +529,10 @@ int exec_action(int argc, const char* argv[], const char* envp[])
             }
         }
 
+        /* Get --enable-config-id */
+        if (cli_getopt(&argc, argv, "--enable-config-id", NULL) == 0)
+            options.enable_config_id = true;
+
         /* Get --app-config option if it exists, otherwise we use default values
          */
         cli_getopt(&argc, argv, "--app-config-path", &commandline_config);
@@ -452,11 +588,6 @@ int exec_action(int argc, const char* argv[], const char* envp[])
         _err("failed to extract roothashes from EXT2 images");
     }
 
-    create_pubkeys_file(pubkeys, num_pubkeys, pubkeys_path);
-
-    if (create_roothashes_file(&roothash_buf, roothashes_path) != 0)
-        _err("failed to create roothashes file");
-
     /* copy the rootfs path to the options */
     if (myst_strlcpy(options.rootfs, rootfs, sizeof(options.rootfs)) >=
         sizeof(options.rootfs))
@@ -481,23 +612,90 @@ int exec_action(int argc, const char* argv[], const char* envp[])
         close(fd);
         rootfs = rootfs_path;
     }
-
-    // we may  or may not have config passed in through the commandline.
-    // If the enclave is signed that config will take precedence over
-    // this version
-    if ((details = create_region_details_from_files(
-             program,
-             rootfs,
-             pubkeys_path,
-             roothashes_path,
-             commandline_config,
-             heap_size)) == NULL)
+    else if (options.enable_config_id)
     {
-        _err("Creating region data failed.");
+        _err("rootfs is not in EXT2 format. '--enable-config-id' option is "
+             "supported for EXT2 rootfs only. Please remove "
+             "'--enable-config-id' and try again.");
     }
 
-    unlink(pubkeys_path);
-    unlink(roothashes_path);
+    if (options.enable_config_id)
+    {
+        char* config_buf = NULL;
+        size_t config_buf_size = 0;
+
+        if (commandline_config)
+        {
+            if (myst_load_file(
+                    commandline_config,
+                    (void**)&config_buf,
+                    &config_buf_size) == 0)
+            {
+                // We should always use the config value if it is present,
+                // otherwise we use what is passed in to the function. If it is
+                // still zero we will eventually use the default value
+                config_parsed_data_t parsed_data = {0};
+                if (parse_config_from_buffer(
+                        config_buf, config_buf_size, &parsed_data) == 0)
+                {
+                    heap_size = parsed_data.heap_pages * PAGE_SIZE;
+                    free_config(&parsed_data);
+                }
+                else
+                {
+                    _err(
+                        "Failed to parse config from specified config path %s",
+                        commandline_config);
+                }
+            }
+            else
+                _err("failed to load config: %s", commandline_config);
+        }
+
+        if ((details = create_region_details_from_files(
+                 program, rootfs, NULL, NULL, NULL, heap_size)) == NULL)
+        {
+            _err("Creating region data failed.");
+        }
+
+        if (_create_augmented_app_config(
+                config_buf,
+                config_buf_size,
+                roothash_buf.data,
+                roothash_buf.size,
+                &augmented_app_config_buf,
+                &augmented_app_config_size) != 0)
+        {
+            _err("failed to add rootfs identity to app config");
+        }
+    }
+    else
+    {
+        char pubkeys_path[PATH_MAX];
+        char roothashes_path[PATH_MAX];
+
+        create_pubkeys_file(pubkeys, num_pubkeys, pubkeys_path);
+
+        if (create_roothashes_file(&roothash_buf, roothashes_path) != 0)
+            _err("failed to create roothashes file");
+
+        // we may  or may not have config passed in through the commandline.
+        // If the enclave is signed that config will take precedence over
+        // this version
+        if ((details = create_region_details_from_files(
+                 program,
+                 rootfs,
+                 pubkeys_path,
+                 roothashes_path,
+                 commandline_config,
+                 heap_size)) == NULL)
+        {
+            _err("Creating region data failed.");
+        }
+
+        unlink(pubkeys_path);
+        unlink(roothashes_path);
+    }
 
     return_status = exec_launch_enclave(
         details->enc.path,
@@ -506,13 +704,17 @@ int exec_action(int argc, const char* argv[], const char* envp[])
         argv + 3,
         envp,
         &mount_mapping,
-        &options);
+        &options,
+        augmented_app_config_buf,
+        augmented_app_config_size);
     myst_args_release(&mount_mapping);
 
     free_region_details();
 
     if (rootfs == rootfs_path)
         unlink(rootfs_path);
+
+    free(augmented_app_config_buf);
 
     return return_status;
 }

@@ -9,6 +9,8 @@
 #include <string.h>
 #include <sys/mount.h>
 
+#include <openenclave/attestation/attester.h>
+#include <openenclave/attestation/sgx/evidence.h>
 #include <openenclave/enclave.h>
 
 #include <elf.h>
@@ -48,6 +50,11 @@ static bool _trace_syscalls = false;
 extern const void* __oe_get_heap_base(void);
 
 long myst_tcall_isatty(int fd);
+static int _get_config_id(uint8_t* out_config_id);
+static int _check_config_id(
+    const uint8_t* config_id,
+    const uint8_t* augmented_app_config_buf,
+    size_t augmented_app_config_size);
 
 long _exception_handler_syscall(long n, long params[6])
 {
@@ -470,6 +477,8 @@ struct enter_arg
     uint64_t start_time_nsec;
     const void* enter_stack;
     size_t enter_stack_size;
+    const void* augmented_app_config_buf;
+    size_t augmented_app_config_size;
 };
 
 static long _enter(void* arg_)
@@ -524,8 +533,83 @@ static long _enter(void* arg_)
     /* Get the enclave size */
     enclave_image_size = __oe_get_enclave_size();
 
-    /* Get the config region */
+    if (options->enable_config_id)
     {
+        myst_fssig_t fssig;
+        const char* supported_alg = "sha256-flat";
+        char rootfs_roothash_ascii[MYST_SHA256_ASCII_SIZE];
+        uint8_t config_id[64];
+
+        if (!arg->augmented_app_config_buf || !arg->augmented_app_config_size)
+        {
+            fprintf(
+                stderr,
+                "Empty augmented_app_config when configid is enabled\n");
+            assert(0);
+        }
+
+        if (_get_config_id(config_id) != 0)
+        {
+            fprintf(stderr, "_get_config_id() failed\n");
+            assert(0);
+        }
+
+        if (_check_config_id(
+                config_id,
+                arg->augmented_app_config_buf,
+                arg->augmented_app_config_size) != 0)
+        {
+            fprintf(stderr, "_check_config_id() failed\n");
+            assert(0);
+        }
+
+        if (parse_config_from_buffer(
+                arg->augmented_app_config_buf,
+                arg->augmented_app_config_size,
+                &parsed_config) != 0)
+        {
+            fprintf(stderr, "failed to parse configuration\n");
+            assert(0);
+        }
+        have_config = true;
+
+        if (myst_load_fssig(options->rootfs, &fssig) != 0)
+        {
+            fprintf(stderr, "myst_load_fssig() failed\n");
+            assert(0);
+        }
+
+        if (memcmp(
+                parsed_config.cc_rootfs_measurement_alg,
+                supported_alg,
+                strlen(supported_alg)) != 0 ||
+            strlen(parsed_config.cc_rootfs_measurement_alg) !=
+                strlen(supported_alg))
+        {
+            fprintf(
+                stderr,
+                "Unsupported cc-rootfs-measurement-alg: %s\n",
+                parsed_config.cc_rootfs_measurement_alg);
+            assert(0);
+        }
+
+        if (myst_bin_to_ascii(
+                fssig.root_hash,
+                sizeof(fssig.root_hash),
+                rootfs_roothash_ascii,
+                sizeof(rootfs_roothash_ascii)) != 0 ||
+            memcmp(
+                parsed_config.cc_rootfs_measurement,
+                rootfs_roothash_ascii,
+                sizeof(rootfs_roothash_ascii)) != 0)
+        {
+            fprintf(stderr, "Failed configid check for rootfs roothash\n");
+            assert(0);
+        }
+    }
+    else
+    {
+        /* Get the config region */
         myst_region_t r;
         const void* regions = __oe_get_heap_base();
 
@@ -756,6 +840,7 @@ static long _enter(void* arg_)
         _kargs.report_native_tids = report_native_tids;
         _kargs.enter_stack = arg->enter_stack;
         _kargs.enter_stack_size = arg->enter_stack_size;
+        _kargs.enable_config_id = options->enable_config_id;
 
         /* whether user-space FSGSBASE instructions are supported */
         _kargs.have_fsgsbase_instructions = options->have_fsgsbase_instructions;
@@ -811,7 +896,9 @@ int myst_enter_ecall(
     uint64_t event,
     pid_t target_tid,
     uint64_t start_time_sec,
-    uint64_t start_time_nsec)
+    uint64_t start_time_nsec,
+    const void* augmented_app_config_buf,
+    size_t augmented_app_config_size)
 {
     struct enter_arg arg = {
         .options = options,
@@ -826,6 +913,8 @@ int myst_enter_ecall(
         .target_tid = target_tid,
         .start_time_sec = start_time_sec,
         .start_time_nsec = start_time_nsec,
+        .augmented_app_config_buf = augmented_app_config_buf,
+        .augmented_app_config_size = augmented_app_config_size,
     };
 
     /* prevent this function from being called more than once */
@@ -1064,6 +1153,63 @@ int __vfprintf_chk(FILE* stream, int flag, const char* format, va_list ap)
 {
     (void)flag;
     return vfprintf(stream, format, ap);
+}
+
+static int _get_config_id(uint8_t* out_config_id)
+{
+    int ret = 0;
+    oe_result_t res = OE_OK;
+    uint8_t* evidence_buffer = NULL;
+    size_t evidence_buffer_size;
+    oe_report_t report;
+    const sgx_report_body_t* sgx_report_body = NULL;
+
+    if (!out_config_id)
+        ERAISE(-EINVAL);
+
+    // Generate evidence based on the format selected by the attester.
+    res = oe_get_report_v2(
+        0, NULL, 0, NULL, 0, &evidence_buffer, &evidence_buffer_size);
+    if (res != OE_OK)
+    {
+        fprintf(stderr, "oe_get_report_v2 failed.(%s)", oe_result_str(res));
+        ERAISE(-(int)res);
+    }
+
+    res = oe_parse_report(evidence_buffer, evidence_buffer_size, &report);
+    if (res != OE_OK)
+    {
+        fprintf(stderr, "oe_parse_report failed.(%s)", oe_result_str(res));
+        ERAISE(-(int)res);
+    }
+
+    sgx_report_body = (sgx_report_body_t*)report.enclave_report;
+    memcpy(out_config_id, sgx_report_body->configid, 64);
+
+done:
+    if (evidence_buffer)
+        oe_free_report(evidence_buffer);
+
+    return ret;
+}
+
+static int _check_config_id(
+    const uint8_t* config_id,
+    const uint8_t* augmented_app_config_buf,
+    size_t augmented_app_config_size)
+{
+    uint8_t derived_config_id[64];
+
+    if (myst_generate_config_id(
+            augmented_app_config_buf,
+            augmented_app_config_size,
+            derived_config_id) != 0)
+    {
+        fprintf(stderr, "failed to generate config_id\n");
+        assert(0);
+    }
+
+    return memcmp(config_id, derived_config_id, 32);
 }
 
 OE_SET_ENCLAVE_SGX2(

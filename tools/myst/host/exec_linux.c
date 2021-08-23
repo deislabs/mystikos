@@ -386,6 +386,9 @@ static int _enter_kernel(
 
     kernel_args.report_native_tids = options->report_native_tids;
 
+    /* configid not supported by Linux target */
+    kernel_args.enable_config_id = false;
+
     /* Resolve the the kernel entry point */
     const elf_ehdr_t* ehdr = kernel_args.kernel_data;
     entry = (myst_kernel_entry_t)((uint8_t*)ehdr + ehdr->e_entry);

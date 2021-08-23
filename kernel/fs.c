@@ -102,8 +102,13 @@ int myst_load_fs(
     /* create the bottom device (verity or raw) */
     if (locals->fssig.magic == MYST_FSSIG_MAGIC)
     {
+        /* First check if configid is enabled, if ture
+           the ext2 roothash has been verified at the
+           beginning of _enter() */
+        verified = __myst_kernel_args.enable_config_id;
+
         /* First try public-key verification */
-        if (locals->fssig.signature_size)
+        if (!verified && locals->fssig.signature_size)
         {
             /* Make sure signature_size set by the host-side does not exceed
              * fssig.signature buffer size.

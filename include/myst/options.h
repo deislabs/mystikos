@@ -11,6 +11,7 @@
 
 typedef struct myst_options
 {
+    bool enable_config_id;
     bool trace_errors;
     bool trace_syscalls;
     bool have_syscall_instruction;

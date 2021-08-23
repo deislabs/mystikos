@@ -83,10 +83,21 @@ static json_result_t _json_read_callback(
     {
         case JSON_REASON_VALUE:
         {
-            // configuration schema version. This should be the first
-            // entry in the JSON configuration so we know how to parse
-            // everything else
-            if (json_match(parser, "version") == JSON_OK)
+            if (json_match(parser, "cc-rootfs-measurement-alg") == JSON_OK)
+            {
+                if (type == JSON_TYPE_STRING)
+                    parsed_data->cc_rootfs_measurement_alg = un->string;
+                else
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
+            }
+            else if (json_match(parser, "cc-rootfs-measurement") == JSON_OK)
+            {
+                if (type == JSON_TYPE_STRING)
+                    parsed_data->cc_rootfs_measurement = un->string;
+                else
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
+            }
+            else if (json_match(parser, "version") == JSON_OK)
             {
                 if (type == JSON_TYPE_STRING)
                 {

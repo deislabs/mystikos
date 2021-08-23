@@ -83,7 +83,9 @@ enclave
             uint64_t event,
             pid_t target_tid,
             uint64_t start_time_sec,
-            uint64_t start_time_nsec);
+            uint64_t start_time_nsec,
+            [in, size=config_size] const void* config,
+            size_t config_size);
 
         public long myst_run_thread_ecall(
             uint64_t cookie,

@@ -181,6 +181,9 @@ typedef struct myst_kernel_args
     /* true if --report-native-tids is present */
     bool report_native_tids;
 
+    /* true if --enable-config-id option present */
+    bool enable_config_id;
+
     // From the --max-affinity-cpus=<num> option. This setting limits the
     // CPUs reported by sched_getaffinity().
     size_t max_affinity_cpus;

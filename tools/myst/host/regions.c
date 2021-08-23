@@ -149,6 +149,7 @@ const region_details* create_region_details_from_files(
     _details.rootfs.status = REGION_ITEM_OWNED;
 
     /* load pubkeys file */
+    if (pubkeys_path)
     {
         if (myst_load_file(
                 pubkeys_path,
@@ -162,6 +163,7 @@ const region_details* create_region_details_from_files(
     }
 
     /* load roothashes file */
+    if (roothashes_path)
     {
         if (myst_load_file(
                 roothashes_path,

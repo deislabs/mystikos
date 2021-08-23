@@ -1,12 +1,16 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "shared.h"
 
 #include <myst/args.h>
+#include <myst/eraise.h>
+#include <myst/hex.h>
+#include <myst/sha256.h>
 
 int myst_expand_size_string_to_ulong(const char* size_string, size_t* size)
 {
@@ -185,4 +189,18 @@ bool myst_validate_mount_config(myst_mounts_config_t* mounts)
     }
 
     return true;
+}
+
+int myst_generate_config_id(
+    const char* augmented_app_config_buf,
+    size_t augmented_app_config_size,
+    uint8_t* config_id)
+{
+    int ret = 0;
+    myst_sha256_t sha256;
+    ECHECK(myst_sha256(
+        &sha256, augmented_app_config_buf, augmented_app_config_size));
+    memcpy(config_id, sha256.data, sizeof(sha256.data));
+done:
+    return ret;
 }

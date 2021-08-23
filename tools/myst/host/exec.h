@@ -16,6 +16,8 @@ int exec_launch_enclave(
     const char* argv[],
     const char* envp[],
     const myst_args_t* mount_mappings,
-    struct myst_options* options);
+    struct myst_options* options,
+    const char* augmented_app_config_buf,
+    size_t augmented_app_config_size);
 
 #endif /* _MYST_HOST_EXEC_H */
