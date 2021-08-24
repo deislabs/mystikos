@@ -542,7 +542,8 @@ long myst_signal_deliver(
         myst_spin_unlock(&thread->signal.lock);
 
         // Wake up target if necessary
-        if (thread->signal.waiting_on_event)
+        if (thread->thread_status == MYST_RUNNING &&
+            thread->signal.waiting_on_event)
         {
             myst_tcall_wake(thread->event);
         }
