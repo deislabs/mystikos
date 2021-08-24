@@ -293,18 +293,15 @@ int main(int argc, const char* argv[])
     test_pthread_cancel("pthread_cancel");
 
     test_signal_nonblocked(SIGTERM, "signal_nonblocked");
-    /*
-     */
-    /*
 
-        test_signal_blocked(SIGTERM, "signal_blocked");
+    test_signal_blocked(SIGTERM, "signal_blocked");
 
-        test_signal_blocked(SIGKILL, "signal_blocked");
+    test_signal_blocked(SIGKILL, "signal_blocked");
 
-        test_raise(35, "raise");
+    test_raise(35, "raise");
 
-        test_altstack("signal alt stack");
-    */
+    test_altstack("signal alt stack");
+
     printf("\n=== passed test (%s)\n", argv[0]);
 
     return 0;
