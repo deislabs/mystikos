@@ -931,6 +931,9 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         free(process->cwd);
         process->cwd = NULL;
 
+        free(process);
+        process = NULL;
+
         /* Free up the thread unmap-on-exit. */
         {
             size_t i = thread->unmap_on_exit_used;
