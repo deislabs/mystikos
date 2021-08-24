@@ -1,0 +1,9 @@
+{
+    "Debug": 1,
+    "ProductID": 1,
+    "SecurityVersion": 1,
+    "UserMemSize": "2048m",
+    "CurrentWorkingDirectory": "/app",
+    "ApplicationPath": "/opt/openjdk-13/bin/java",
+    "ApplicationParameters": ["-ea", "Helloworld", "red", "green", "blue"]
+}
