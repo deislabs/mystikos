@@ -413,11 +413,17 @@ static void _DumpDirectoryEntries(
     const uint8_t* p = (uint8_t*)data;
     const uint8_t* end = (uint8_t*)data + size;
 
-    while (p + sizeof(ext2_dirent_t) - EXT2_PATH_MAX < end)
+    while (p + sizeof(ext2_dirent_t) - EXT2_PATH_MAX <= end)
     {
         uint32_t n;
         const ext2_dirent_t* ent = (const ext2_dirent_t*)p;
 
+        /* The end of the block might be zero-filled */
+        if (!ent->rec_len)
+        {
+            break;
+        }
+        
         _dump_dirent(ent);
 
         n = sizeof(ext2_dirent_t) - EXT2_PATH_MAX + ent->name_len;
