@@ -6,6 +6,7 @@
 #include <linux/futex.h>
 #include <myst/eraise.h>
 #include <myst/thread.h>
+#include <myst/times.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/syscall.h>

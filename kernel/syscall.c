@@ -5036,12 +5036,17 @@ static long _syscall(void* args_)
 
             _strace(
                 n,
-                "uaddr=0x%lx(%d) futex_op=%u(%s) val=%d",
+                "uaddr=0x%lx(%d) futex_op=%u(%s) val=%d arg=%li "
+                "uaddr2=0x%lx(%d) val3=%d",
                 (long)uaddr,
                 (uaddr ? *uaddr : -1),
                 futex_op,
                 _futex_op_str(futex_op),
-                val);
+                val,
+                arg,
+                (long)uaddr2,
+                (uaddr2 ? *uaddr2 : -1),
+                val3);
 
             BREAK(_return(
                 n,
