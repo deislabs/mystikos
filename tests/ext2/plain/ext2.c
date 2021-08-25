@@ -1169,6 +1169,39 @@ int main(int argc, const char* argv[])
 
     _test_dir_entries(fs);
 
+    /* test using of file after it has been unlinked */
+    {
+        const char path[] = "/use_after_unlink";
+        myst_file_t* file;
+
+        /* open the file for write */
+        const int open_flags = O_CREAT | O_TRUNC | O_RDWR;
+        assert(ext2_open(fs, path, open_flags, 0666, NULL, &file) == 0);
+
+        /* unlink the file */
+        assert(ext2_unlink(fs, path) == 0);
+
+        /* verify that the pathname no longer exists */
+        assert(ext2_access(fs, path, F_OK) == -ENOENT);
+
+        /* write to the file */
+        assert(ext2_write(fs, file, alpha, sizeof(alpha)) == sizeof(alpha));
+
+        /* verify that the file is the newly written size */
+        struct stat statbuf;
+        assert(ext2_fstat(fs, file, &statbuf) == 0);
+        assert(statbuf.st_size == sizeof(alpha));
+
+        /* attempt to read the data back */
+        uint8_t buf[2 * sizeof(alpha)];
+        assert(ext2_lseek(fs, file, 0, SEEK_SET) == 0);
+        assert(ext2_read(fs, file, buf, sizeof(buf)) == sizeof(alpha));
+        assert(memcmp(buf, alpha, sizeof(alpha)) == 0);
+
+        /* close the file */
+        ext2_close(fs, file);
+    }
+
     assert(ext2_check(__ext2) == 0);
 
     /* -- the file system is back to its original state here -- */

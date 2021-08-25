@@ -59,6 +59,25 @@ struct myst_file
     _Atomic(size_t) use_count;
 };
 
+MYST_UNUSED
+static bool _valid_ino(const ext2_t* ext2, ext2_ino_t ino)
+{
+    return ino > 0 && ino <= ext2->sb.s_inodes_count;
+}
+
+static void _inode_ref(ext2_t* ext2, ext2_ino_t ino)
+{
+    assert(_valid_ino(ext2, ino));
+    ext2->inode_refs[ino - 1].nopens++;
+}
+
+static ext2_ino_t _inode_unref(ext2_t* ext2, ext2_ino_t ino)
+{
+    assert(_valid_ino(ext2, ino));
+    assert(ext2->inode_refs[ino - 1].nopens > 0);
+    return --ext2->inode_refs[ino - 1].nopens;
+}
+
 static bool _file_valid(const myst_file_t* file)
 {
     return file != NULL && file->magic == FILE_MAGIC;
@@ -2398,10 +2417,11 @@ static int _inode_write_data(
 
 done:
 
-    _file_clear(&locals->file);
-
     if (locals)
+    {
+        _file_clear(&locals->file);
         free(locals);
+    }
 
     return ret;
 }
@@ -2885,6 +2905,29 @@ done:
     return ret;
 }
 
+static int _inode_free(ext2_t* ext2, ext2_ino_t ino, ext2_inode_t* inode)
+{
+    int ret = 0;
+
+    assert(inode->i_links_count == 1);
+
+    size_t num_blocks = _inode_get_num_blocks(ext2, inode);
+
+    if (S_ISLNK(inode->i_mode) && inode->i_size < 60)
+        num_blocks = 0;
+
+    for (size_t i = 0; i < num_blocks; i++)
+    {
+        ECHECK(_inode_put_blkno(ext2, ino, inode, i));
+    }
+
+    /* return the inode to the free list */
+    ECHECK(_put_ino(ext2, ino));
+
+done:
+    return ret;
+}
+
 static int _inode_unlink(ext2_t* ext2, ext2_ino_t ino, ext2_inode_t* inode)
 {
     int ret = 0;
@@ -2894,18 +2937,20 @@ static int _inode_unlink(ext2_t* ext2, ext2_ino_t ino, ext2_inode_t* inode)
     /* if this is the final link */
     if (inode->i_links_count == 1)
     {
-        size_t num_blocks = _inode_get_num_blocks(ext2, inode);
+        assert(_valid_ino(ext2, ino));
 
-        if (S_ISLNK(inode->i_mode) && inode->i_size < 60)
-            num_blocks = 0;
-
-        for (size_t i = 0; i < num_blocks; i++)
+        /* if the inode is open */
+        if (ext2->inode_refs[ino - 1].nopens > 0)
         {
-            ECHECK(_inode_put_blkno(ext2, ino, inode, i));
+            /* defer the inode free until close() */
+            ext2->inode_refs[ino - 1].free = 1;
         }
-
-        /* return the inode to the free list */
-        ECHECK(_put_ino(ext2, ino));
+        else
+        {
+            /* free the inode now */
+            ECHECK(_inode_free(ext2, ino, inode));
+            ext2->inode_refs[ino - 1].free = 0;
+        }
     }
     else
     {
@@ -3430,12 +3475,16 @@ int ext2_open(
         file->dir.next = file->dir.data;
         dir_data = NULL;
     }
+
     /* Get the realpath of this file */
     {
         ECHECK(_path_to_ino_realpath(
             ext2, path, follow, NULL, NULL, locals->buf, NULL));
         myst_strlcpy(file->realpath, locals->buf, sizeof(file->realpath));
     }
+
+    /* Increment the reference count for this inode number */
+    _inode_ref(ext2, file->ino);
 
     *file_out = file;
     file = NULL;
@@ -3718,11 +3767,27 @@ int ext2_close(myst_fs_t* fs, myst_file_t* file)
 
     if (--file->use_count == 0)
     {
-        /* if a diretory, then release the directory memory contents */
+        /* if a directory, then release the directory memory contents */
         if (file->dir.data)
             free(file->dir.data);
 
         /* ATTN:TIMESTAMPS */
+
+        /* Decrement the inode reference count */
+        if (_inode_unref(ext2, file->ino) == 0)
+        {
+            /* If unlink() was called while this file was open */
+            if (ext2->inode_refs[file->ino - 1].free)
+            {
+                /* Refresh the inode */
+                ext2_inode_t inode;
+                ECHECK((ext2_read_inode(ext2, file->ino, &inode)));
+
+                /* Free the inode */
+                ECHECK(_inode_free(ext2, file->ino, &inode));
+                ext2->inode_refs[file->ino - 1].free = 0;
+            }
+        }
 
         /* release the file object */
         _file_free(file);
@@ -5163,6 +5228,7 @@ static int _ext2_getdents64(
     {
         /* refresh the inode */
         ECHECK((ext2_read_inode(ext2, file->ino, &file->inode)));
+
         /* _load_file perturbs the file offset, save it */
         int saved_offset = file->offset;
         ECHECK(_load_file(ext2, file, &file->dir.data, &file->dir.size));
@@ -5698,6 +5764,16 @@ int ext2_create(
     if (!(ext2 = (ext2_t*)calloc(1, sizeof(ext2_t))))
         ERAISE(-ENOMEM);
 
+    /* Read the superblock */
+    ECHECK(_read_super_block(dev, &ext2->sb));
+
+    /* Allocate the array of inode references */
+    if (!(ext2->inode_refs =
+              calloc(ext2->sb.s_inodes_count, sizeof(ext2_inode_ref_t))))
+    {
+        ERAISE(-ENOMEM);
+    }
+
     /* initialize the base structure */
     memcpy(&ext2->base, &_base, sizeof(myst_fs_t));
 
@@ -5706,9 +5782,6 @@ int ext2_create(
 
     /* Set the mount resolve callback */
     ext2->resolve = resolve_cb;
-
-    /* Read the superblock */
-    ECHECK(_read_super_block(ext2->dev, &ext2->sb));
 
     /* Check the superblock magic number */
     if (ext2->sb.s_magic != EXT2_S_MAGIC)
@@ -5750,6 +5823,9 @@ done:
 
     if (ext2)
     {
+        if (ext2->inode_refs)
+            free(ext2->inode_refs);
+
         if (ext2->groups)
             free(ext2->groups);
 
@@ -5783,6 +5859,9 @@ int ext2_release(myst_fs_t* fs)
 
     if (ext2->groups)
         free(ext2->groups);
+
+    if (ext2->inode_refs)
+        free(ext2->inode_refs);
 
     if (ext2->dev)
         (*ext2->dev->close)(ext2->dev);
