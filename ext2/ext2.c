@@ -1216,8 +1216,8 @@ static int _path_to_ino_recursive(
     int ret = 0;
     struct locals
     {
-        char buf[EXT2_PATH_MAX];
-        char target[EXT2_PATH_MAX];
+        char buf[PATH_MAX];
+        char target[PATH_MAX];
         ext2_inode_t current_inode;
         ext2_dirent_t ent;
         ext2_ino_t ino;
@@ -1242,7 +1242,7 @@ static int _path_to_ino_recursive(
     if (file_ino_out)
         *file_ino_out = 0;
 
-    if (myst_strlcpy(locals->buf, path, sizeof(locals->buf)) >= EXT2_PATH_MAX)
+    if (myst_strlcpy(locals->buf, path, sizeof(locals->buf)) >= PATH_MAX)
         ERAISE(-ENAMETOOLONG);
 
     if (path[0] == '/')
