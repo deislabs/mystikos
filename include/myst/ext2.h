@@ -190,6 +190,23 @@ struct ext2_dirent
     char name[EXT2_PATH_MAX];
 };
 
+// This structure keeps track of the number of times an inode has been opened
+// (nopens) and whether the inode shall be freed on the final close (free).
+// When pathnames are unlinked, there are two cases (1) there are no open files
+// referring to the inode, or (2) there are one or more open files referring to
+// the inode. In the first case, the inode and its data blocks are immediately
+// freed by the unlink operation. In the second case, the freeing of the inode
+// and its data blocks is deferred until the final file referring to that inode
+// is closed.
+typedef struct ext2_inode_ref
+{
+    /* whether to free the inode and its data blocks on close */
+    uint32_t free : 1;
+
+    /* the number of times the file has been opened */
+    uint32_t nopens : 31;
+} ext2_inode_ref_t;
+
 struct ext2
 {
     myst_fs_t base;
@@ -202,6 +219,7 @@ struct ext2
     char target[EXT2_PATH_MAX];
     myst_mount_resolve_callback_t resolve;
     myst_fs_t* wrapper_fs;
+    ext2_inode_ref_t* inode_refs;
 };
 
 /*
