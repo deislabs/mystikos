@@ -25,9 +25,6 @@ DIRS += prereqs
 
 DIRS += third_party
 
-ifndef MYST_PRODUCT_BUILD
-endif
-
 ifdef MYST_ENABLE_GCOV
 DIRS += gcov
 endif
@@ -50,7 +47,7 @@ DIRS += crt
 DIRS += oe
 DIRS += tools
 
-ifndef MYST_PRODUCT_BUILD
+ifdef MYST_WORLD
 DIRS += alpine/docker
 DIRS += tests
 endif
@@ -59,6 +56,15 @@ CLEAN = $(BUILDDIR) $(TARBALL)
 
 REDEFINE_TESTS=1
 include $(TOP)/rules.mak
+
+##==============================================================================
+##
+## world: build the whole world (third-party + Mystikos + tests)
+##
+##==============================================================================
+
+world:
+	$(MAKE) MYST_WORLD=1
 
 ##==============================================================================
 ##
@@ -159,6 +165,7 @@ summary:
 	@ SUMMARY=1 $(RUNTEST_COMMAND) /bin/true
 
 tests:
+	@ $(MAKE) world
 	@ $(MAKE) -C tests tests RUNTEST=$(RUNTEST_COMMAND)
 	@ $(MAKE) -s summary
 
