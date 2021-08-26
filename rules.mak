@@ -55,10 +55,14 @@ ifdef DIRS
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) $(NL) )
 endif
 
-clean:
+__clean:
 	sudo rm -rf $(__OBJECTS) $(__PROGRAM) $(__SHLIB) $(__ARCHIVE) $(CLEAN)
 ifdef DIRS
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) clean $(NL) )
+endif
+
+ifndef REDEFINE_CLEAN
+clean: __clean
 endif
 
 tests:
