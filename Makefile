@@ -21,7 +21,9 @@ all:
 ##==============================================================================
 
 # CAUTION: this must be run before all other targets
+ifndef MYST_IGNORE_PREREQS
 DIRS += prereqs
+endif
 
 DIRS += third_party
 
@@ -55,6 +57,7 @@ endif
 CLEAN = $(BUILDDIR) $(TARBALL)
 
 REDEFINE_TESTS=1
+REDEFINE_CLEAN=1
 include $(TOP)/rules.mak
 
 ##==============================================================================
@@ -68,6 +71,15 @@ world:
 
 ##==============================================================================
 ##
+## clean:
+##
+##==============================================================================
+
+clean:
+	$(MAKE) __clean MYST_WORLD=1
+
+##==============================================================================
+##
 ## distclean:
 ##
 ##==============================================================================
@@ -75,6 +87,8 @@ world:
 distclean: clean
 	sudo rm -rf $(TOP)/build
 	make distclean -C $(TOP)/third_party/
+	make clean -C tests
+	make clean -C solutions
 
 ##==============================================================================
 ##
@@ -165,7 +179,6 @@ summary:
 	@ SUMMARY=1 $(RUNTEST_COMMAND) /bin/true
 
 tests:
-	@ $(MAKE) world
 	@ $(MAKE) -C tests tests RUNTEST=$(RUNTEST_COMMAND)
 	@ $(MAKE) -s summary
 
