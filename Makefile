@@ -87,8 +87,6 @@ clean:
 distclean: clean
 	sudo rm -rf $(TOP)/build
 	make distclean -C $(TOP)/third_party/
-	make clean -C tests
-	make clean -C solutions
 
 ##==============================================================================
 ##
