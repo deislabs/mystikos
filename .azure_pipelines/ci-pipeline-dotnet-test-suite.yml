@@ -37,7 +37,7 @@ jobs:
           sudo rm -rf `git ls-files --others --directory`
           make distclean
           make distclean -C third_party/openenclave/
-          make -j
+          make -j world
         displayName: 'build repo source'
         workingDirectory: $(Build.SourcesDirectory)
 

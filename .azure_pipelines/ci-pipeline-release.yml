@@ -58,7 +58,7 @@ jobs:
           touch mystikos-$VERSION.tar.gz
           tar -czf mystikos-$VERSION.tar.gz --exclude=mystikos-$VERSION.tar.gz .
           
-          make -j MYST_RELEASE=1 && make bindist
+          make -j MYST_RELEASE=1 world && make bindist
           exit 0
         displayName: 'Generate release v${{ parameters.VERSION }} artifact'
         condition: eq(variables['Agent.JobStatus'], 'succeeded')
