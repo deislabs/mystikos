@@ -65,8 +65,6 @@ long myst_tcall_wait(uint64_t event, const struct timespec* timeout)
     params[0] = (long)event;
     params[1] = (long)timeout;
     long ret = myst_tcall(MYST_TCALL_WAIT, params);
-    // check for signals
-    myst_signal_process(myst_thread_self());
     return ret;
 }
 

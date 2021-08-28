@@ -54,8 +54,6 @@ int myst_fdtable_free(myst_fdtable_t* fdtable);
 
 int myst_fdtable_interrupt(myst_fdtable_t* fdtable);
 
-int myst_fdtable_remove_thread(myst_fdtable_t* fdtable);
-
 /* returns a file descriptor */
 int myst_fdtable_assign(
     myst_fdtable_t* fdtable,
