@@ -248,12 +248,9 @@ static long _default_signal_handler(unsigned signum)
     printf("%s(%u %s)\n", __FUNCTION__, signum, myst_signum_to_string(signum));
 #endif
 
-    if (signum == SIGCHLD || signum == SIGCONT || signum == SIGSTOP ||
-        signum == SIGURG || signum == SIGWINCH)
-    {
-        // ignore
-        return 0;
-    }
+    myst_assume(
+        signum != SIGCHLD && signum != SIGCONT && signum != SIGSTOP &&
+        signum != SIGURG && signum != SIGWINCH);
 
     myst_thread_t* thread = myst_thread_self();
     myst_process_t* process = myst_process_self();
@@ -353,7 +350,26 @@ static long _handle_one_signal(
     posix_sigaction_t* action = &process->signal.sigactions[signum - 1];
     if (action->handler == (uint64_t)SIG_DFL)
     {
-        ret = _default_signal_handler(signum);
+        // Some signals are ignored completely, so only call handler if it is
+        // not ignored
+        if (signum != SIGCHLD && signum != SIGCONT && signum != SIGSTOP &&
+            signum != SIGURG && signum != SIGWINCH)
+        {
+            // call the internal thread handlers if present to do any cleanup
+            // before calling the default signal handler which terminates the
+            // thread
+            myst_thread_sig_handler_t* thread_sig_handler =
+                thread->signal.thread_sig_handler;
+            while (thread_sig_handler)
+            {
+                thread_sig_handler->signal_fn(
+                    signum, thread_sig_handler->signal_fn_arg);
+                thread_sig_handler = thread_sig_handler->previous;
+            }
+
+            // call the default terminating signal handler
+            ret = _default_signal_handler(signum);
+        }
     }
     else if (action->handler == (uint64_t)SIG_IGN)
     {
