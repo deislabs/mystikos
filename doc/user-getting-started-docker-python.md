@@ -55,7 +55,7 @@ COPY ./hello.py /app
 ENTRYPOINT ["python3", "hello.py"]
 ```
 
-You can save the docker file to the same folder as `hello.py`, and build
+You can save the docker file to `Dockerfile` in the same folder as `hello.py`, and build
 and run the container app with the following command:
 
 `docker run $(docker build -q .)`

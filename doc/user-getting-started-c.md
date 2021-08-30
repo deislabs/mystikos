@@ -24,7 +24,7 @@ Compile `helloworld.c` with `gcc`, and place it under a subdirectory
 
 ```
 mkdir -p appdir
-myst-gcc -g -o appdir/hello helloworld.c
+gcc -g -o appdir/hello helloworld.c
 ```
 
 In most cases, we would generate many more files in `appdir`, a folder to hold
