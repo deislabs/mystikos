@@ -45,7 +45,7 @@ Mystikos.
 ![](./arch.png)
 
 
-# Installation Guide
+# Installation Guide for Ubuntu 18.04
 
 ## Install Intel SGX DCAP Driver if necessary
 
