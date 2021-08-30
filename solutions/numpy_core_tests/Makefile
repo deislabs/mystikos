@@ -3,8 +3,10 @@ include $(TOP)/defs.mak
 
 APPBUILDER=$(TOP)/scripts/appbuilder
 
+OPTS = --nobrk
+
 ifdef STRACE
-OPTS = --strace
+OPTS += --strace
 endif
 
 all: rootfs

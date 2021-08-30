@@ -663,7 +663,7 @@ int myst_release_process_mappings(pid_t pid)
                     }
 
                     /* count consecutive pages with same pid */
-                    for (size_t j = i + 1; j < m; j++)
+                    for (size_t j = i + 1; j < n; j++)
                     {
                         if (v.pids[j] != (uint32_t)pid)
                         {
@@ -685,14 +685,23 @@ int myst_release_process_mappings(pid_t pid)
 
                     if (myst_munmap(addr, len) != 0)
                     {
+                        /* The unmap operation is not expected to fail, even for
+                         * shared memory between a parent process and a child
+                         * process, due to fork/vfork without exec, in which
+                         * case, the shared memory should be registered as owned
+                         * by the parent process, and released as part of parent
+                         * process shutdown, with the expectation that the child
+                         * process shut downs first  */
+                        // ATTN: several tests triggered the assert
+                        // unexpectedly, roll back to original implementaiton of
+                        // ignoring the error
 #if 0
-                        // ATTN: figure out whether this can fail but if so
-                        // don't fail. Instead consider freeing one page
-                        // at a time.
                         assert("myst_munmap() failed" == NULL);
                         ERAISE(-EINVAL);
 #endif
                     }
+                    /* always clear the pid vector */
+                    myst_mman_pids_set(addr, len, 0);
 
                     i += m;
                     addr += len;
