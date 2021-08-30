@@ -27,11 +27,14 @@ endif
 $(BUILDDIR)/include/openenclave:
 ifeq ($(CACHE_CHECK),)
 	$(MAKE) openenclave
-	$(MAKE) configure_oe
-	$(MAKE) install_oe
+	$(MAKE) build
 else
 	$(MAKE) fetch_oecache
 endif
+
+build:
+	$(MAKE) configure_oe
+	$(MAKE) install_oe
 
 fetch_oecache: $(TOP)/build/openenclave $(TOP)/build/bin/myst-gdb
 

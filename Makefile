@@ -9,6 +9,7 @@ TARBALL=$(PKGNAME).tar.gz
 
 all:
 	$(MAKE) .git/hooks/pre-commit
+	$(MAKE) init
 	$(MAKE) dirs
 
 .git/hooks/pre-commit:
@@ -77,6 +78,34 @@ world:
 
 clean:
 	$(MAKE) __clean MYST_WORLD=1
+
+##==============================================================================
+##
+## init:
+##
+##==============================================================================
+
+init:
+	make init -C $(TOP)/third_party/
+
+##==============================================================================
+##
+## build:
+##
+##==============================================================================
+
+build:
+	make dirs MYST_IGNORE_PREREQS=1
+
+##==============================================================================
+##
+## release-build:
+##
+##==============================================================================
+
+release-build:
+	make build
+	make bindist
 
 ##==============================================================================
 ##
@@ -237,6 +266,9 @@ oelicense:
 help:
 	@ echo ""
 	@ echo "make -- build everything"
+	@ echo "make init -- initialize all dependencies"
+	@ echo "make build -- build everything except for prereqs"
+	@ echo "make release-build -- runs 'build' followed by 'bindist'"
 	@ echo "make clean -- remove generated binaries"
 	@ echo "make distclean -- remove build configuration and binaries"
 	@ echo "make tests -- run critical tests"

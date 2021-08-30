@@ -15,3 +15,9 @@ clean:
 
 distclean:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) distclean $(NL) )
+
+init:
+	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) $(i) $(NL) )
+
+build:
+	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) build $(NL) )
