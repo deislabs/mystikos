@@ -7,3 +7,6 @@ include $(TOP)/rules.mak
 
 distclean:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) distclean $(NL) )
+
+musl:
+	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) musl $(NL) )
