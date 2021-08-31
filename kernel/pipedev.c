@@ -196,9 +196,6 @@ static ssize_t _pd_read(
     if (count == 0)
         goto done;
 
-    if (!_valid_pipe(pipe))
-        ERAISE(-EBADF);
-
     if (pipe->mode == O_WRONLY)
         ERAISE(-EBADF);
 
@@ -229,9 +226,6 @@ static ssize_t _pd_write(
 
     if (!buf && count)
         ERAISE(-EINVAL);
-
-    if (!_valid_pipe(pipe))
-        ERAISE(-EBADF);
 
     if (pipe->mode == O_RDONLY)
         ERAISE(-EBADF);

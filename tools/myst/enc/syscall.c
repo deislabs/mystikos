@@ -1707,7 +1707,7 @@ done:
     return ret;
 }
 
-static long _epoll_ctl_ocall(
+static long _epoll_ctl(
     int epfd,
     int op,
     int fd,
@@ -1730,6 +1730,23 @@ static long _epoll_ctl_ocall(
     }
 
     if (myst_epoll_ctl_ocall(&retval, epfd, op, fd, event) != OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = retval;
+
+done:
+    return ret;
+}
+
+static long _eventfd(unsigned int initval, int flags)
+{
+    long ret = 0;
+    long retval;
+
+    if (myst_eventfd_ocall(&retval, initval, flags) != OE_OK)
     {
         ret = -EINVAL;
         goto done;
@@ -2023,8 +2040,12 @@ long myst_handle_tcall(long n, long params[6])
         }
         case SYS_epoll_ctl:
         {
-            return _epoll_ctl_ocall(
+            return _epoll_ctl(
                 (int)a, (int)b, (int)c, (const struct epoll_event*)d);
+        }
+        case SYS_eventfd:
+        {
+            return _eventfd(a, b);
         }
         default:
         {

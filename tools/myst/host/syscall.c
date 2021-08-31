@@ -6,6 +6,7 @@
 #include <sched.h>
 #include <stdint.h>
 #include <sys/epoll.h>
+#include <sys/eventfd.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/statfs.h>
@@ -548,4 +549,9 @@ long myst_epoll_ctl_ocall(
     const struct epoll_event* event)
 {
     RETURN(epoll_ctl(epfd, op, fd, (struct epoll_event*)event));
+}
+
+long myst_eventfd_ocall(unsigned int initval, int flags)
+{
+    RETURN(eventfd(initval, flags));
 }

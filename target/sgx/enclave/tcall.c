@@ -640,6 +640,7 @@ long myst_tcall(long n, long params[6])
         case SYS_epoll_create1:
         case SYS_epoll_wait:
         case SYS_epoll_ctl:
+        case SYS_eventfd:
         {
             extern long myst_handle_tcall(long n, long params[6]);
             return myst_handle_tcall(n, params);

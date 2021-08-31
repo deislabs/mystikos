@@ -8,6 +8,7 @@ enclave
     include "time.h"
     include "sys/socket.h"
     include "sys/epoll.h"
+    include "sys/eventfd.h"
     include "myst/shm.h"
     include "myst/fssig.h"
     include "myst/blockdevice.h"
@@ -148,6 +149,8 @@ enclave
             int op,
             int fd,
             [in] const struct epoll_event* event);
+
+        long myst_eventfd_ocall(unsigned int initval, int flags);
 
         /*
         **======================================================================
