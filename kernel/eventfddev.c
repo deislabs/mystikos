@@ -10,16 +10,18 @@
 
 #define MAGIC 0x9906acdc
 
+//#define USE_ASYNC_TCALL
+
 struct myst_eventfd
 {
     uint32_t magic;
     int fd;
 };
 
-MYST_INLINE long _sys_eventfd(unsigned int initval, int flags)
+MYST_INLINE long _sys_eventfd2(unsigned int initval, int flags)
 {
     long params[6] = {(long)initval, (long)flags};
-    return myst_tcall(SYS_eventfd, params);
+    return myst_tcall(SYS_eventfd2, params);
 }
 
 MYST_INLINE long _sys_read(int fd, void* buf, size_t count)
@@ -94,7 +96,7 @@ static int _eventfd_eventfd(
     }
 
     /* Create the eventfd file descriptor */
-    ECHECK(eventfd->fd = _sys_eventfd(initval, flags));
+    ECHECK(eventfd->fd = _sys_eventfd2(initval, flags));
 
     *eventfd_out = eventfd;
     eventfd = NULL;

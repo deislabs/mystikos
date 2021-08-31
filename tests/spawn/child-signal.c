@@ -23,6 +23,7 @@ int sigtest1()
 {
     assert(sigtest1_usr1 == 0);
     assert(signal(SIGUSR1, sigtest1_handler) == 0);
+
     assert(kill(getppid(), SIGUSR1) == 0);
 
     int iteration = 0;

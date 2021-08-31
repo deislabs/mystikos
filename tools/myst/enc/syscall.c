@@ -1701,6 +1701,13 @@ static long _epoll_wait(
         goto done;
     }
 
+    /* guard against possible read past end of buffer */
+    if (retval > maxevents)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
     ret = retval;
 
 done:
@@ -1741,7 +1748,7 @@ done:
     return ret;
 }
 
-static long _eventfd(unsigned int initval, int flags)
+static long _eventfd2(unsigned int initval, int flags)
 {
     long ret = 0;
     long retval;
@@ -2043,9 +2050,9 @@ long myst_handle_tcall(long n, long params[6])
             return _epoll_ctl(
                 (int)a, (int)b, (int)c, (const struct epoll_event*)d);
         }
-        case SYS_eventfd:
+        case SYS_eventfd2:
         {
-            return _eventfd(a, b);
+            return _eventfd2(a, b);
         }
         default:
         {

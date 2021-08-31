@@ -26,3 +26,6 @@ myst:
 
 clean:
 	rm -rf $(APPDIR) rootfs export ramfs
+
+t:
+	$(MAKE) TARGET=linux tests

@@ -206,4 +206,4 @@ one:
 endif
 
 t:
-	make one FS=ext2fs TEST=/ltp/testcases/kernel/syscalls/pipe/pipe04
+	make one FS=ramfs TEST=/ltp/testcases/kernel/syscalls/setsockopt/setsockopt02

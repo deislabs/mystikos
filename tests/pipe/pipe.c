@@ -126,7 +126,7 @@ static void* _write_thread(void* arg)
     return NULL;
 }
 
-__attribute__((__unused__)) static void _dump_stat_buf(struct stat* buf)
+static void _dump_stat_buf(struct stat* buf)
 {
     printf("st_dev=%lu\n", buf->st_dev);
     printf("st_ino=%lu\n", buf->st_ino);
@@ -163,10 +163,7 @@ void test_pipes(long slow_write, long slow_read)
         assert(fstat(pipefd[1], &buf1) == 0);
         assert(buf1.st_blksize == PIPE_BUF);
 
-#if 0
-        _dump_stat_buf(&buf0);
-        _dump_stat_buf(&buf1);
-#endif
+        (void)_dump_stat_buf;
     }
 
     /* Create the reader thread */
