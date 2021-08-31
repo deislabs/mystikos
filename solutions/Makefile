@@ -15,13 +15,14 @@ endif
 
 #ATTN: temporarily disable msgpack_c test, wait for a fix
 #DIRS += msgpack_c
+
 DIRS += python_webserver
 
 ifndef MYST_ENABLE_GCOV
 DIRS += dotnet
 endif
 
-DIRS += aspnet
+#DIRS += aspnet
 DIRS += memcached
 DIRS += python_web_frameworks
 DIRS += nodejs

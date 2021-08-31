@@ -5,6 +5,7 @@
 #include <myst/defs.h>
 #include <sched.h>
 #include <stdint.h>
+#include <sys/epoll.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/statfs.h>
@@ -519,4 +520,32 @@ long myst_fdatasync_ocall(int fd)
 long myst_fsync_ocall(int fd)
 {
     RETURN(fsync(fd));
+}
+
+long myst_pipe2_ocall(int pipefd[2], int flags)
+{
+    RETURN(pipe2(pipefd, flags));
+}
+
+long myst_epoll_create1_ocall(int flags)
+{
+    RETURN(epoll_create1(flags));
+}
+
+long myst_epoll_wait_ocall(
+    int epfd,
+    struct epoll_event* events,
+    size_t maxevents,
+    int timeout)
+{
+    RETURN(epoll_wait(epfd, events, maxevents, timeout));
+}
+
+long myst_epoll_ctl_ocall(
+    int epfd,
+    int op,
+    int fd,
+    const struct epoll_event* event)
+{
+    RETURN(epoll_ctl(epfd, op, fd, (struct epoll_event*)event));
 }

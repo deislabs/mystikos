@@ -571,6 +571,14 @@ long myst_tcall(long n, long params[6])
             return myst_gcov(func, gcov_params);
         }
 #endif
+        case MYST_TCALL_READ_PIPE:
+        {
+            return myst_tcall_read_pipe((int)x1, (void*)x2, (size_t)x3);
+        }
+        case MYST_TCALL_WRITE_PIPE:
+        {
+            return myst_tcall_write_pipe((int)x1, (void*)x2, (size_t)x3);
+        }
         case SYS_read:
         case SYS_write:
         case SYS_close:
@@ -628,6 +636,10 @@ long myst_tcall(long n, long params[6])
         case SYS_chmod:
         case SYS_fdatasync:
         case SYS_fsync:
+        case SYS_pipe2:
+        case SYS_epoll_create1:
+        case SYS_epoll_wait:
+        case SYS_epoll_ctl:
         {
             extern long myst_handle_tcall(long n, long params[6]);
             return myst_handle_tcall(n, params);
