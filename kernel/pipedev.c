@@ -400,7 +400,6 @@ static int _pd_interrupt(myst_pipedev_t* pipedev, myst_pipe_t* pipe)
 
 done:
     T(printf("_pd_interrupt(): done\n");)
-    myst_interrupt_async_tcall(pipe->fd);
     return ret;
 }
 
