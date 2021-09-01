@@ -938,6 +938,8 @@ int myst_enter_kernel(myst_kernel_args_t* args)
                 myst_munmap(
                     thread->unmap_on_exit[i - 1].ptr,
                     thread->unmap_on_exit[i - 1].size);
+                /* main process/thread is shuting down; skip pid vector update,
+                 * as no more pid vector reference is expected */
                 i--;
             }
         }
