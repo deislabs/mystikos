@@ -692,13 +692,11 @@ int myst_release_process_mappings(pid_t pid)
                          * by the parent process, and released as part of parent
                          * process shutdown, with the expectation that the child
                          * process shut downs first  */
-                        // ATTN: several tests triggered the assert
-                        // unexpectedly, roll back to original implementaiton of
-                        // ignoring the error
-#if 0
+
+                        // myst_eprintf("myst_munmap() %p failed, pid=%d.
+                        // len=0x%lx\n", addr, pid, len);
                         assert("myst_munmap() failed" == NULL);
                         ERAISE(-EINVAL);
-#endif
                     }
                     /* always clear the pid vector */
                     myst_mman_pids_set(addr, len, 0);
