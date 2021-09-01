@@ -505,6 +505,14 @@ long myst_tcall(long n, long params[6])
             return myst_gcov(func, gcov_params);
         }
 #endif
+        case MYST_TCALL_READ_PIPE:
+        {
+            return _forward_syscall(SYS_read, x1, x2, x3, x4, x5, x6);
+        }
+        case MYST_TCALL_WRITE_PIPE:
+        {
+            return _forward_syscall(SYS_write, x1, x2, x3, x4, x5, x6);
+        }
         case SYS_ioctl:
         {
             int fd = (int)x1;
@@ -589,6 +597,11 @@ long myst_tcall(long n, long params[6])
         case SYS_getcpu:
         case SYS_fdatasync:
         case SYS_fsync:
+        case SYS_pipe2:
+        case SYS_epoll_create1:
+        case SYS_epoll_wait:
+        case SYS_epoll_ctl:
+        case SYS_eventfd2:
         {
             return _forward_syscall(n, x1, x2, x3, x4, x5, x6);
         }

@@ -163,8 +163,6 @@ void test_pipes(long slow_write, long slow_read)
         assert(fstat(pipefd[1], &buf1) == 0);
         assert(buf1.st_blksize == PIPE_BUF);
 
-        assert(buf0.st_ino != buf1.st_ino);
-
         (void)_dump_stat_buf;
     }
 

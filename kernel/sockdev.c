@@ -696,7 +696,7 @@ static int _sd_get_events(myst_sockdev_t* sd, myst_sock_t* sock)
     if (!sd || !_valid_sock(sock))
         ERAISE(-EINVAL);
 
-    ret = sock->fd;
+    ret = -ENOTSUP;
 
 done:
     return ret;
