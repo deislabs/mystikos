@@ -12,6 +12,7 @@
 #include <myst/mutex.h>
 #include <myst/panic.h>
 #include <myst/printf.h>
+#include <myst/signal.h>
 #include <myst/strings.h>
 #include <myst/tcall.h>
 #include <myst/thread.h>
@@ -67,10 +68,61 @@ int __myst_mutex_trylock(myst_mutex_t* m, myst_thread_t* self)
     return -EBUSY;
 }
 
+typedef struct myst_mutex_thread_sig_handler
+{
+    // Used by thread signal handler infrastructure
+    myst_thread_sig_handler_t sig_handler;
+
+    // our mutex details to clean up
+    myst_mutex_t* mutex;
+
+} myst_mutex_thread_sig_handler_t;
+
+/* Our default handler just needs to remove itself from the queue and call the
+ * next in line */
+static void myst_mutex_sig_handler(
+    MYST_UNUSED unsigned signum,
+    void* _sig_handler)
+{
+    myst_mutex_thread_sig_handler_t* sig_handler =
+        (myst_mutex_thread_sig_handler_t*)_sig_handler;
+    myst_thread_t* thread = myst_thread_self();
+
+    myst_spin_lock(&sig_handler->mutex->lock);
+
+    myst_thread_queue_remove_thread(&sig_handler->mutex->queue, thread);
+
+    thread->signal.waiting_on_event = false;
+
+    if (sig_handler->mutex->queue.front != NULL)
+        myst_tcall_wake(sig_handler->mutex->queue.front->event);
+
+    myst_spin_unlock(&sig_handler->mutex->lock);
+}
+
+static void myst_mutex_sig_handler_install(
+    myst_mutex_thread_sig_handler_t* sig_handler,
+    myst_mutex_t* mutex)
+{
+    memset(sig_handler, 0, sizeof(*sig_handler));
+
+    sig_handler->mutex = mutex;
+
+    myst_thread_sig_handler_install(
+        &sig_handler->sig_handler, myst_mutex_sig_handler, sig_handler);
+}
+
+static void myst_mutex_sig_handler_uninstall(
+    myst_mutex_thread_sig_handler_t* sig_handler)
+{
+    myst_thread_sig_handler_uninstall(&sig_handler->sig_handler);
+}
+
 int myst_mutex_lock(myst_mutex_t* mutex)
 {
     myst_mutex_t* m = (myst_mutex_t*)mutex;
     myst_thread_t* self = myst_thread_self();
+    myst_mutex_thread_sig_handler_t sig_handler;
 
     if (!m)
         return -EINVAL;
@@ -103,6 +155,11 @@ int myst_mutex_lock(myst_mutex_t* mutex)
         if ((r = myst_tcall_wait(self->event, NULL)) != 0)
             myst_panic("myst_tcall_wait(): %ld: %d", r, *(int*)self->event);
         self->signal.waiting_on_event = false;
+
+        // Handle any signals
+        myst_mutex_sig_handler_install(&sig_handler, m);
+        myst_signal_process(self);
+        myst_mutex_sig_handler_uninstall(&sig_handler);
     }
 
     /* Unreachable! */

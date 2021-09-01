@@ -21,12 +21,11 @@ all:
 ##==============================================================================
 
 # CAUTION: this must be run before all other targets
+ifndef MYST_IGNORE_PREREQS
 DIRS += prereqs
+endif
 
 DIRS += third_party
-
-ifndef MYST_PRODUCT_BUILD
-endif
 
 ifdef MYST_ENABLE_GCOV
 DIRS += gcov
@@ -50,7 +49,7 @@ DIRS += crt
 DIRS += oe
 DIRS += tools
 
-ifndef MYST_PRODUCT_BUILD
+ifdef MYST_WORLD
 DIRS += alpine/docker
 DIRS += tests
 endif
@@ -58,7 +57,26 @@ endif
 CLEAN = $(BUILDDIR) $(TARBALL)
 
 REDEFINE_TESTS=1
+REDEFINE_CLEAN=1
 include $(TOP)/rules.mak
+
+##==============================================================================
+##
+## world: build the whole world (third-party + Mystikos + tests)
+##
+##==============================================================================
+
+world:
+	$(MAKE) MYST_WORLD=1
+
+##==============================================================================
+##
+## clean:
+##
+##==============================================================================
+
+clean:
+	$(MAKE) __clean MYST_WORLD=1
 
 ##==============================================================================
 ##

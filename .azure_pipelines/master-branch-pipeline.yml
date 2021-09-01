@@ -42,7 +42,7 @@ jobs:
 
       # build all source files
       - script: |
-          make
+          make world
         displayName: 'build repo source'
         workingDirectory: $(Build.SourcesDirectory)
 
