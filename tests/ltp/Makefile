@@ -205,6 +205,13 @@ one:
 	subtest=$(TEST) sudo -E $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
 endif
 
+##==============================================================================
+##
+## epoll tests:
+##
+##==============================================================================
+
+# good
 #/ltp/testcases/kernel/syscalls/epoll/epoll-ltp
 #/ltp/testcases/kernel/syscalls/epoll_create1/epoll_create1_01
 #/ltp/testcases/kernel/syscalls/epoll_ctl/epoll_ctl01
@@ -215,5 +222,5 @@ endif
 #/ltp/testcases/kernel/syscalls/epoll_wait/epoll_wait02
 #/ltp/testcases/kernel/syscalls/epoll_wait/epoll_wait03
 
-t:
-	make one FS=ramfs TEST=/ltp/testcases/kernel/syscalls/epoll_pwait/epoll_pwait01
+epoll:
+	make one FS=ramfs TEST=/ltp/testcases/kernel/syscalls/epoll_wait/epoll_wait03
