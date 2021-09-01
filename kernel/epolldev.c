@@ -75,6 +75,12 @@ MYST_INLINE long _sys_fstat(int fd, struct stat* statbuf)
     return myst_tcall(SYS_fstat, params);
 }
 
+MYST_INLINE long _sys_dup(int oldfd)
+{
+    long params[6] = {oldfd};
+    return myst_tcall(SYS_dup, params);
+}
+
 static bool _valid_epoll(const myst_epoll_t* epoll)
 {
     return epoll && epoll->magic == MAGIC;
@@ -148,7 +154,7 @@ static int _ed_epoll_ctl(
             ERAISE(-EPERM);
 
         if ((target_fd = (*fdops->fd_target_fd)(fdops, object)) < 0)
-            ERAISE(-EBADF);
+            ERAISE(-EINVAL);
     }
 
     /* delegate the request to the target */
@@ -324,6 +330,7 @@ static int _ed_dup(
     myst_epoll_t** epoll_out)
 {
     int ret = 0;
+    myst_epoll_t* new_epoll = NULL;
 
     if (epoll_out)
         *epoll_out = NULL;
@@ -331,10 +338,21 @@ static int _ed_dup(
     if (!epolldev || !_valid_epoll(epoll) || !epoll_out)
         ERAISE(-EINVAL);
 
-    /* ATTN: dup() not supported for epoll objects */
-    ERAISE(-ENOTSUP);
+    if (!(new_epoll = calloc(1, sizeof(myst_epoll_t))))
+        ERAISE(-ENOMEM);
+
+    *new_epoll = *epoll;
+
+    /* perform syscall */
+    ECHECK(new_epoll->epfd = _sys_dup(epoll->epfd));
+
+    *epoll_out = new_epoll;
+    new_epoll = NULL;
 
 done:
+
+    if (new_epoll)
+        free(new_epoll);
 
     return ret;
 }

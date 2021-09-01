@@ -172,8 +172,13 @@ int exec_launch_enclave(
     }
 
     /* Load the enclave: calls oe_load_extra_enclave_data_hook() */
+#ifndef SUPPRESS_SWITCHLESS
     r = oe_create_myst_enclave(
         enc_path, type, flags, settings, num_settings, &_enclave);
+#else
+    r = oe_create_myst_enclave(enc_path, type, flags, NULL, 0, &_enclave);
+    (void)settings;
+#endif
 
     if (r != OE_OK)
         _err("failed to load enclave: result=%s", oe_result_str(r));
