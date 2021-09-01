@@ -48,30 +48,30 @@ jobs:
       env:
         MYST_NIGHTLY_TEST: 1
 
-    # run all tests
-    - script: |
-        make tests ALLTESTS=1 VERBOSE=1
-      displayName: 'run all tests'
-      continueOnError: true
-      enabled: true
-      workingDirectory: $(Build.SourcesDirectory)
-      env:
-        MYST_NIGHTLY_TEST: 1
+    # # run all tests
+    # - script: |
+    #     make tests ALLTESTS=1 VERBOSE=1
+    #   displayName: 'run all tests'
+    #   continueOnError: true
+    #   enabled: true
+    #   workingDirectory: $(Build.SourcesDirectory)
+    #   env:
+    #     MYST_NIGHTLY_TEST: 1
 
-    # run solution tests
-    - script: |
-        make tests -C $(Build.SourcesDirectory)/solutions
-      displayName: 'run solution tests'
-      continueOnError: true
-      enabled: true
-      workingDirectory: $(Build.SourcesDirectory)
-      env:
-        # by default sql solution test will run on US EAST DB Node
-        DB_NAME: $(DB_NAME_USEAST)
-        DB_SERVER_NAME: $(DB_SERVER_NAME_USEAST)
-        MAA_URL: $(DB_MAA_URL_USEAST)
+    # # run solution tests
+    # - script: |
+    #     make tests -C $(Build.SourcesDirectory)/solutions
+    #   displayName: 'run solution tests'
+    #   continueOnError: true
+    #   enabled: true
+    #   workingDirectory: $(Build.SourcesDirectory)
+    #   env:
+    #     # by default sql solution test will run on US EAST DB Node
+    #     DB_NAME: $(DB_NAME_USEAST)
+    #     DB_SERVER_NAME: $(DB_SERVER_NAME_USEAST)
+    #     MAA_URL: $(DB_MAA_URL_USEAST)
 
-    - template: step-sql-soln-cacentral.yml
+    # - template: step-sql-soln-cacentral.yml
     
     - template: step-azure-sdk-tests.yml
 
