@@ -54,8 +54,6 @@ typedef enum myst_tcall_number
     MYST_TCALL_LOAD_FSSIG,
     MYST_TCALL_CLOCK_GETRES,
     MYST_TCALL_GCOV,
-    MYST_TCALL_READ_PIPE,
-    MYST_TCALL_WRITE_PIPE,
 } myst_tcall_number_t;
 
 long myst_tcall(long n, long params[6]);
@@ -158,9 +156,5 @@ int myst_tcall_load_fssig(const char* path, myst_fssig_t* fssig);
 int myst_tcall_mprotect(void* addr, size_t len, int prot);
 
 long myst_gcov(const char* func, long params[6]);
-
-long myst_tcall_read_pipe(int fd, void* buf, size_t count);
-
-long myst_tcall_write_pipe(int fd, const void* buf, size_t count);
 
 #endif /* _MYST_TCALL_H */

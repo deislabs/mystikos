@@ -571,14 +571,6 @@ long myst_tcall(long n, long params[6])
             return myst_gcov(func, gcov_params);
         }
 #endif
-        case MYST_TCALL_READ_PIPE:
-        {
-            return myst_tcall_read_pipe((int)x1, (void*)x2, (size_t)x3);
-        }
-        case MYST_TCALL_WRITE_PIPE:
-        {
-            return myst_tcall_write_pipe((int)x1, (void*)x2, (size_t)x3);
-        }
         case SYS_read:
         case SYS_write:
         case SYS_close:

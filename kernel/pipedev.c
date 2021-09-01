@@ -52,7 +52,7 @@ MYST_INLINE long _sys_pipe2(int pipefd[2], int flags)
     return myst_tcall(SYS_pipe2, params);
 }
 
-MYST_INLINE long _tcall_read_pipe(int fd, void* buf, size_t count)
+MYST_INLINE long _sys_read(int fd, void* buf, size_t count)
 {
 #ifdef USE_ASYNC_TCALL
     int poll_flags = POLLIN | POLLHUP;
@@ -63,7 +63,7 @@ MYST_INLINE long _tcall_read_pipe(int fd, void* buf, size_t count)
 #endif
 }
 
-MYST_INLINE long _tcall_write_pipe(int fd, const void* buf, size_t count)
+MYST_INLINE long _sys_write(int fd, const void* buf, size_t count)
 {
 #ifdef USE_ASYNC_TCALL
     return myst_async_tcall(SYS_write, POLLOUT, fd, buf, count);
@@ -201,7 +201,7 @@ static ssize_t _pd_read(
 
     /* read from the host pipe */
     T(printf("_pd_read(): fd=%d pid=%d\n", pipe->fd, myst_getpid());)
-    nread = _tcall_read_pipe(pipe->fd, buf, count);
+    nread = _sys_read(pipe->fd, buf, count);
     ECHECK(nread);
 
     ret = nread;
@@ -237,7 +237,7 @@ static ssize_t _pd_write(
         ERAISE(-EPIPE);
     }
 
-    ECHECK(nwritten = _tcall_write_pipe(pipe->fd, buf, count));
+    ECHECK(nwritten = _sys_write(pipe->fd, buf, count));
 
     ret = nwritten;
 

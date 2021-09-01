@@ -505,14 +505,6 @@ long myst_tcall(long n, long params[6])
             return myst_gcov(func, gcov_params);
         }
 #endif
-        case MYST_TCALL_READ_PIPE:
-        {
-            return _forward_syscall(SYS_read, x1, x2, x3, x4, x5, x6);
-        }
-        case MYST_TCALL_WRITE_PIPE:
-        {
-            return _forward_syscall(SYS_write, x1, x2, x3, x4, x5, x6);
-        }
         case SYS_ioctl:
         {
             int fd = (int)x1;
