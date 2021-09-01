@@ -56,20 +56,20 @@ MYST_INLINE long _tcall_read_pipe(int fd, void* buf, size_t count)
 {
 #ifdef USE_ASYNC_TCALL
     int poll_flags = POLLIN | POLLHUP;
-    return myst_async_tcall(MYST_TCALL_READ_PIPE, poll_flags, fd, buf, count);
+    return myst_async_tcall(SYS_read, poll_flags, fd, buf, count);
 #else
     long params[6] = {fd, (long)buf, count};
-    return myst_tcall(MYST_TCALL_READ_PIPE, params);
+    return myst_tcall(SYS_read, params);
 #endif
 }
 
 MYST_INLINE long _tcall_write_pipe(int fd, const void* buf, size_t count)
 {
 #ifdef USE_ASYNC_TCALL
-    return myst_async_tcall(MYST_TCALL_WRITE_PIPE, POLLOUT, fd, buf, count);
+    return myst_async_tcall(SYS_write, POLLOUT, fd, buf, count);
 #else
     long params[6] = {fd, (long)buf, count};
-    return myst_tcall(MYST_TCALL_WRITE_PIPE, params);
+    return myst_tcall(SYS_write, params);
 #endif
 }
 

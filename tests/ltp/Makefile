@@ -205,7 +205,5 @@ one:
 	subtest=$(TEST) sudo -E $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
 endif
 
-#/ltp/testcases/kernel/syscalls/eventfd/eventfd01
-
 t:
 	make one FS=ramfs TEST=/ltp/testcases/kernel/syscalls/eventfd/eventfd01

@@ -84,9 +84,6 @@ static long _write(int fd, const void* buf, size_t count)
         goto done;
     }
 
-    if (count > MAX_BUFFER_SIZE)
-        count = MAX_BUFFER_SIZE;
-
     if (myst_write_ocall(&retval, fd, buf, count) != OE_OK)
     {
         ret = -EINVAL;
@@ -270,9 +267,6 @@ static long _sendto(
         goto done;
     }
 
-    if (len > MAX_BUFFER_SIZE)
-        len = MAX_BUFFER_SIZE;
-
     if (myst_sendto_ocall(
             &retval, sockfd, buf, len, flags, dest_addr, addrlen) != OE_OK)
     {
@@ -368,9 +362,6 @@ static long _sendmsg(int sockfd, const struct msghdr* msg, int flags)
         ret = -EINVAL;
         goto done;
     }
-
-    if (msg->msg_iov[0].iov_len > MAX_BUFFER_SIZE)
-        msg->msg_iov[0].iov_len = MAX_BUFFER_SIZE;
 
     if (myst_sendmsg_ocall(
             &retval,
@@ -1056,9 +1047,6 @@ static long _pwrite64(int fd, const void* buf, size_t count, off_t offset)
         ret = -EINVAL;
         goto done;
     }
-
-    if (count > MAX_BUFFER_SIZE)
-        count = MAX_BUFFER_SIZE;
 
     if (myst_pwrite64_ocall(&retval, fd, buf, count, offset) != OE_OK)
     {
