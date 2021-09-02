@@ -76,6 +76,8 @@ jobs:
     
     - template: step-azure-sdk-tests.yml
 
+    - template: step-dotnet-test-suite.yml
+
     # measure code coverage
     - script: |
         bash $(Build.SourcesDirectory)/scripts/myst_cc

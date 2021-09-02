@@ -1,0 +1,8 @@
+steps:
+  # run dotnet 5 test suite
+  - script: |
+      make tests -C $(Build.SourcesDirectory)/solutions/coreclr
+    displayName: 'run dotnet 5 test suite'
+    continueOnError: true
+    enabled: true
+    workingDirectory: $(Build.SourcesDirectory)

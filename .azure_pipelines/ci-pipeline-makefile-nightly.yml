@@ -75,6 +75,8 @@ jobs:
     
     - template: step-azure-sdk-tests.yml
 
+    - template: step-dotnet-test-suite.yml
+
     # clean up
     - script: |
         make clean -C $(Build.SourcesDirectory)/tests
