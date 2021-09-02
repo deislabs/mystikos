@@ -25,10 +25,11 @@ export COMPlus_EnableDiagnostics=0
 export COMPlus_GCHeapHardLimit=0x8000000
 
 run: rootfs private.pem
-	test -f server.pid && kill -9 `cat server.pid` || true
-	timeout $(TIMEOUT) $(MYST_EXEC) $(OPTS) rootfs /app/webapp > server.output & echo $$! > server.pid
-	timeout $(TIMEOUT) tail -f server.output | ./client.sh
-	test -f server.pid && kill -9 `cat server.pid` && rm server.pid || true
+	./kill.sh
+	timeout $(TIMEOUT) $(MYST_EXEC) $(OPTS) rootfs /app/webapp &
+	timeout $(TIMEOUT) ./wait.sh
+	./client.sh
+	./kill.sh
 	test -f client.output
 
 # run the server in the foreground:
@@ -53,5 +54,5 @@ private.pem:
 	openssl genrsa -out private.pem -3 3072
 
 clean:
-	test -f server.pid && kill -9 `cat server.pid` || true
-	sudo rm -fr appdir rootfs build obj bin myst private.pem server.pid server.output client.output
+	./kill.sh
+	sudo rm -fr appdir rootfs build obj bin myst private.pem client.output
