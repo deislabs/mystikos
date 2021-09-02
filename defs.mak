@@ -94,7 +94,7 @@ OEENCLAVE_LIBDIR = $(BUILDDIR)/openenclave/lib/openenclave/enclave
 
 OEENCLAVE_LDFLAGS = $(shell PKG_CONFIG_PATH=$(BUILDDIR)/openenclave/share/pkgconfig pkg-config oeenclave-gcc --libs)
 
-OEENCLAVE_LDFLAGS += $(shell PKG_CONFIG_PATH=$(BUILDDIR)/openenclave/share/pkgconfig pkg-config oeenclave-gcc --variable=mbedtlslibs)
+OEENCLAVE_LDFLAGS += $(shell PKG_CONFIG_PATH=$(BUILDDIR)/openenclave/share/pkgconfig pkg-config oeenclave-gcc --variable=${MYST_OE_CRYPTO}libs)
 
 OEENCLAVE_CFLAGS = $(shell PKG_CONFIG_PATH=$(BUILDDIR)/openenclave/share/pkgconfig pkg-config oeenclave-gcc --cflags) -g
 
