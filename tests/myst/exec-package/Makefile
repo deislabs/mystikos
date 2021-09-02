@@ -5,6 +5,7 @@ APPDIR = appdir
 APPNAME = hello
 CFLAGS = -fPIC -g
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
+LDFLAGS += -L$(LIBDIR) -lopenenclave
 
 REDEFINE_TESTS=1
 
@@ -14,6 +15,7 @@ tests:
 	$(RUNTEST) $(MAKE) run-package-with-args
 	$(RUNTEST) $(MAKE) run-package-no-args
 	$(RUNTEST) $(MAKE) run-package-from-bin-dir
+	$(RUNTEST) $(MAKE) run-package-test-zerobase
 
 package:
 	rm -rf $(APPDIR) result private.pem public.pem myst
@@ -22,6 +24,15 @@ package:
 	mkdir -p $(APPDIR)/bin
 	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/$(APPNAME) ../hello.c $(LDFLAGS)
 	$(PREFIX) $(VALGRIND) $(MYST) package $(APPDIR) private.pem config.json
+	sudo chown -R $(USER).$(USER) myst
+
+package-zerobase:
+	rm -rf $(APPDIR) result private.pem public.pem myst
+	openssl genrsa -out private.pem -3 3072
+	openssl rsa -in private.pem -pubout -out public.pem
+	mkdir -p $(APPDIR)/bin
+	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/$(APPNAME) ../hello.c $(LDFLAGS)
+	$(PREFIX) $(VALGRIND) $(MYST) package $(APPDIR) private.pem config_zerobase.json
 	sudo chown -R $(USER).$(USER) myst
 
 run-package-with-args: package
@@ -41,3 +52,9 @@ run-package-from-bin-dir: package
 	diff myst/bin/result expected-args
 	rm -rf $(APPDIR) result private.pem public.pem myst/
 	@ echo "=== passed test (myst: exec-package-from-bin-dir)"
+
+run-package-test-zerobase: package-zerobase
+	./myst/bin/$(APPNAME) zero-base | grep -v TESTNAME > result
+	diff result expected-zero-base
+	rm -rf $(APPDIR) result private.pem public.pem myst
+	@ echo "=== passed test (myst: exec-package-test-zerobase)"

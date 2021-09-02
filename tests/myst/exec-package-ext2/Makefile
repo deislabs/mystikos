@@ -27,7 +27,7 @@ $(TMPDIR):
 
 #export MYST_ROOTFS_PATH=$(ROOTFS)
 
-tests:
+tests: all
 	$(RUNTEST) $(MYST) exec-sgx --pubkey=$(PUBKEY) $(ROOTFS) /bin/hello
 	$(RUNTEST) ./myst/bin/hello --rootfs=$(ROOTFS)
 
