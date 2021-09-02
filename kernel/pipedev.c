@@ -1,16 +1,19 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
 
 #include <myst/asynctcall.h>
+#include <myst/buf.h>
 #include <myst/defs.h>
 #include <myst/eraise.h>
 #include <myst/pipedev.h>
 #include <myst/printf.h>
 #include <myst/process.h>
+#include <myst/round.h>
 #include <myst/spinlock.h>
 #include <myst/syscall.h>
 
@@ -23,7 +26,53 @@
 /* Limit the number of pipes to 256 */
 #define MAX_PIPES 256
 
-static _Atomic(size_t) _num_pipes;
+#define HEADER_MAGIC 0x0112013912e54099
+#define FOOTER_MAGIC 0x66e69483d7e44981
+
+#define PACKET_SIZE 128
+
+/*
+**==============================================================================
+**
+** wire protocol:
+**
+**     [header][packets...][footer]
+**
+**==============================================================================
+*/
+
+typedef struct header
+{
+    /* Must contain HEADER_MAGIC */
+    uint64_t magic;
+
+    /* The unpadded size of the data (contained in packets that follow) */
+    uint64_t size;
+
+    /* Padding to the PACKET_SIZE boundary */
+    uint8_t padding[PACKET_SIZE - sizeof(uint64_t) - sizeof(uint64_t)];
+} header_t;
+
+/* A single data packet */
+typedef struct packet
+{
+    uint8_t data[PACKET_SIZE];
+} packet_t;
+
+// Footers are needed to keep the pipe read-enabled until the reader has
+// consumed all the data between the header and footer.
+typedef struct footer
+{
+    /* FOOTER_MAGIC */
+    uint64_t magic;
+
+    /* Padding to the PACKET_SIZE boundary */
+    uint8_t padding[PACKET_SIZE - sizeof(uint64_t)];
+} footer_t;
+
+MYST_STATIC_ASSERT(sizeof(header_t) == PACKET_SIZE);
+MYST_STATIC_ASSERT(sizeof(packet_t) == PACKET_SIZE);
+MYST_STATIC_ASSERT(sizeof(footer_t) == PACKET_SIZE);
 
 /* this structure is shared by the pipe */
 typedef struct shared
@@ -142,12 +191,6 @@ static int _pd_pipe2(myst_pipedev_t* pipedev, myst_pipe_t* pipe[2], int flags)
         wrpipe->shared = shared;
     }
 
-    if (++_num_pipes == MAX_PIPES)
-    {
-        _num_pipes--;
-        ERAISE(-EMFILE);
-    }
-
     T(printf(
           "_pd_pipe2(): pipefd[%d:%d] pid=%d\n",
           pipefd[0],
@@ -220,6 +263,7 @@ static ssize_t _pd_write(
 {
     ssize_t ret = 0;
     ssize_t nwritten;
+    myst_buf_t data = MYST_BUF_INITIALIZER;
 
     if (!pipedev || !_valid_pipe(pipe))
         ERAISE(-EBADF);
@@ -230,6 +274,9 @@ static ssize_t _pd_write(
     if (pipe->mode == O_RDONLY)
         ERAISE(-EBADF);
 
+    if (count == 0)
+        goto done;
+
     /* if there are no readers, then raise EPIPE */
     if (pipe->shared->nreaders == 0)
     {
@@ -237,11 +284,39 @@ static ssize_t _pd_write(
         ERAISE(-EPIPE);
     }
 
+    /* Format the data for the wire */
+#if 0
+    {
+        header_t header = { HEADER_MAGIC, count };
+        footer_t footer = { FOOTER_MAGIC };
+        size_t padded_count;
+        size_t size;
+
+        ECHECK(myst_round_up(count, PACKET_SIZE, &padded_count));
+        size = sizeof(header) + padded_count + sizeof(footer);
+        ECHECK(myst_buf_reserve(&data, size));
+        ECHECK(myst_buf_append(&data, &header, sizeof(header)));
+        ECHECK(myst_buf_append(&data, buf, count));
+        ECHECK(myst_buf_resize(&data, sizeof(header) + padded_count));
+        ECHECK(myst_buf_append(&data, &footer, sizeof(footer)));
+        assert(data.size == size);
+    }
+#endif
+
+    /* write the packet for this data to the host pipe */
+#if 1
     ECHECK(nwritten = _sys_write(pipe->fd, buf, count));
+    assert((size_t)nwritten == count);
+#else
+    ECHECK(nwritten = _sys_write(pipe->fd, data.data, data.size));
+#endif
 
     ret = nwritten;
 
 done:
+
+    if (data.data)
+        free(data.data);
 
     return ret;
 }
@@ -428,8 +503,6 @@ static int _pd_close(myst_pipedev_t* pipedev, myst_pipe_t* pipe)
 
     memset(pipe, 0, sizeof(myst_pipe_t));
     free(pipe);
-
-    _num_pipes--;
 
 done:
     T(printf("_pd_close(): done\n");)
