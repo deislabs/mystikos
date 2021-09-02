@@ -468,14 +468,16 @@ enclave
             int blkdev,
             uint64_t blkno,
             [in, count=num_blocks] const struct myst_block* blocks,
-            size_t num_blocks);
+            size_t num_blocks)
+            transition_using_threads;
 
         /* reads from the block device */
         ssize_t myst_read_block_device_ocall(
             int blkdev,
             uint64_t blkno,
             [out, count=num_blocks] struct myst_block* blocks,
-            size_t num_blocks);
+            size_t num_blocks)
+            transition_using_threads;
 
         /* load the file-system signature structure from the given image */
         int myst_load_fssig_ocall(
