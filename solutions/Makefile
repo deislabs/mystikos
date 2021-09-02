@@ -13,8 +13,7 @@ endif
 endif
 endif
 
-#ATTN: temporarily disable msgpack_c test, wait for a fix
-#DIRS += msgpack_c
+DIRS += msgpack_c
 DIRS += python_webserver
 
 ifndef MYST_ENABLE_GCOV
