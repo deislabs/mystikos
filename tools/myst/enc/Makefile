@@ -47,7 +47,19 @@ LIBS += $(LIBDIR)/libmystgcovclient.a
 endif
 
 LDFLAGS += $(OEENCLAVE_LDFLAGS)
-LDFLAGS += -lcrypto
+
+ifeq ($(MYST_OE_CRYPTO), openssl)
+# The following workaround can be removed once internal crypto
+# implementation is ported to use OpenSSL
+LDFLAGS += -lmbedx509
+LDFLAGS += -lmbedcrypto
+LDFLAGS += -loecore
+else ifeq ($(MYST_OE_CRYPTO), mbedtls)
+# Support OpenSSL-based sha256 implementation
+LDFLAGS += -lopensslcrypto
+else
+$(error "unsupported MYST_OE_CRYPTO: $(MYST_OE_CRYPTO)")
+endif
 
 CLEAN = $(SUBOBJDIR)/myst_t.h $(SUBOBJDIR)/myst_t.c $(SUBOBJDIR)/myst_args.h
 

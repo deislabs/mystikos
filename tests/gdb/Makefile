@@ -8,6 +8,7 @@ GDB_LOG_FILE = myst_gdb_out.log
 
 GDB_CMDS=--batch \
 	-ex "set breakpoint pending on" \
+	-ex "handle SIGILL nostop noprint" \
 	-ex "break print_hello" \
 	-ex "run" \
 	-ex "backtrace" \

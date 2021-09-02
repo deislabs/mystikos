@@ -1069,13 +1069,6 @@ int myst_load_fssig(const char* path, myst_fssig_t* fssig)
     return retval;
 }
 
-/* linking with openssl crypto library creates a dependency on this */
-int __vfprintf_chk(FILE* stream, int flag, const char* format, va_list ap)
-{
-    (void)flag;
-    return vfprintf(stream, format, ap);
-}
-
 OE_SET_ENCLAVE_SGX2(
     ENCLAVE_PRODUCT_ID,
     ENCLAVE_SECURITY_VERSION,
