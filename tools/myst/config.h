@@ -60,6 +60,8 @@ typedef struct _config_parsed_data_t
     uint64_t oe_num_user_threads;
     unsigned short oe_product_id;
     unsigned short oe_security_version;
+    bool oe_create_zero_base;
+    uint64_t oe_start_address;
 
     // Mystikos config values
     uint64_t heap_pages; // heap_pages*4096=value-in-config

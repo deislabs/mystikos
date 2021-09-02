@@ -1,0 +1,12 @@
+
+argv[0]=/bin/hello
+argv[1]=zero-base
+
+envp[0]=ENC-ENVP-1=Enclave_envp_1
+envp[1]=ENC-ENVP-2=Enclave_envp_1
+envp[3]=MYST_TARGET=sgx
+
+=== Hello World!
+
+=== enclave_start_address=0x4000000
+=== enclave_base_address=0

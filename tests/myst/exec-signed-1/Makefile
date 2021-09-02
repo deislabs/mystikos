@@ -5,6 +5,7 @@ APPDIR = appdir
 APPNAME = hello
 CFLAGS = -fPIC -g
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
+LDFLAGS += -L$(LIBDIR) -lopenenclave
 
 REDEFINE_TESTS=1
 
