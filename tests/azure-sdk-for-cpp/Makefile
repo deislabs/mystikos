@@ -34,7 +34,7 @@ tests: all
 	# Run partial test; the ones in the filter are disabled
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /azure-sdk-for-cpp/build/sdk/core/azure-core/test/ut/azure-core-test --gtest_filter=-BearerTokenAuthenticationPolicy.RefreshNearExpiry:*BodyStream.Rewind:*BodyStream.BadInput:*Pre*ondition*:CurlConnectionPool.*onnectionClose*:*ExpectThrow*
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /azure-sdk-for-cpp/build/sdk/identity/azure-identity/test/ut/azure-identity-test --gtest_filter=-*ClientSecret*:ManagedIdentityCredential* # timing problem
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /azure-sdk-for-cpp/build/sdk/storage/azure-storage-test --gtest_filter=-*ExpectThrow*:*Blob*:*ConcurrentUploadDownload:*DataLakeSasTest:*FileShare*:StoragetimeoutTest*:DataLakeDirectoryClientTest* # needs fork & STANDARD_STORAGE_CONNECTION_STRING
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /azure-sdk-for-cpp/build/sdk/storage/azure-storage-test --gtest_filter=-*ExpectThrow*:*Blob*:*ConcurrentUploadDownload:*DataLakeSasTest:*FileShare*:StoragetimeoutTest*:DataLake*ClientTest* # needs fork & STANDARD_STORAGE_CONNECTION_STRING
 
 	# FAIL OUTSIDE MYSTIKOS currently
 	# $(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /azure-sdk-for-cpp/build/sdk/core/azure-core/test/ut/azure-core-libcurl-test
