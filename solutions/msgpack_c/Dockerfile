@@ -22,7 +22,7 @@ RUN cd googletest-release-1.7.0; \
 # clone and compile msgpack repo
 RUN git clone --single-branch --branch cpp_master https://github.com/msgpack/msgpack-c.git msgpack
 RUN mkdir -p /app/msgpack/build; \
-    cd /app/msgpack/build;cmake ..;make
+    cd /app/msgpack/build;git checkout cpp-3.3.0; cmake ..;make
 RUN mkdir -p /app/tests
 # filter and copy all executable test binaries to another directory
 RUN cd /app/msgpack/build/test; \
@@ -36,5 +36,7 @@ RUN apk add --no-cache zlib-dev libgcc libstdc++
 RUN rm -rf /tests;mkdir -p /tests
 
 COPY --from=base-image /app/tests /tests
+
+COPY --from=base-image /app/msgpack/build/libmsgpackc.so* /lib/
 
 WORKDIR /app
