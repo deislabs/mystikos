@@ -94,8 +94,9 @@ static void myst_mutex_sig_handler(
 
     thread->signal.waiting_on_event = false;
 
-    if (sig_handler->mutex->queue.front != NULL)
-        myst_tcall_wake(sig_handler->mutex->queue.front->event);
+    if (myst_thread_queue_get_front(&(sig_handler->mutex->queue)) != NULL)
+        myst_tcall_wake(
+            myst_thread_queue_get_front(&(sig_handler->mutex->queue))->event);
 
     myst_spin_unlock(&sig_handler->mutex->lock);
 }

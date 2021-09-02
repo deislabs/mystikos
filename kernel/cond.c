@@ -71,8 +71,9 @@ static void myst_cond_sig_handler(
     thread->signal.waiting_on_event = false;
     myst_spin_unlock(&sig_handler->cond->lock);
 
-    if (sig_handler->cond->queue.front != NULL)
-        myst_tcall_wake(sig_handler->cond->queue.front->event);
+    if (myst_thread_queue_get_front(&(sig_handler->cond->queue)) != NULL)
+        myst_tcall_wake(
+            myst_thread_queue_get_front(&(sig_handler->cond->queue))->event);
 }
 
 static void myst_cond_sig_handler_install(
