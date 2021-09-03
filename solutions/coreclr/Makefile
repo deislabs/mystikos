@@ -35,7 +35,7 @@ build-package: package.pem
 
 run:
 	./test-runner.sh $(PACKAGE_PATH) null null 30 package pr0-256m
-	./test-runner.sh $(MYST_EXEC) config_1g.json 15 ext2 pr0-1g
+	./test-runner.sh $(MYST_EXEC) config_1g.json 30 ext2 pr0-1g
 	./test-runner.sh $(MYST_EXEC) config_2g.json 45 ext2 pr0-2g
 	./test-runner.sh $(MYST_EXEC) config_3g.json 90 ext2 pr0-3g
 	./test-runner.sh $(MYST_EXEC) config_1g.json 180 ext2 pr0-long

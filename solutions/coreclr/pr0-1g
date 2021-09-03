@@ -59,7 +59,6 @@ JIT/Performance/CodeQuality/Benchstones/BenchI/TreeSort/TreeSort/TreeSort.dll
 JIT/Performance/CodeQuality/Burgers/Burgers/Burgers.dll
 JIT/Performance/CodeQuality/Serialization/Serialize/Serialize.dll
 JIT/Regression/CLR-x86-JIT/V1-M11-Beta1/b39417/b39417/b39417.dll
-JIT/Regression/CLR-x86-JIT/V1.1-M1-Beta1/b143840/b143840/b143840.dll
 JIT/Regression/CLR-x86-JIT/V2.0-Beta2/b091942/b091942/b091942.dll
 JIT/Regression/JitBlue/GitHub_19438/GitHub_19438/GitHub_19438.dll
 JIT/jit64/opt/cse/hugeSimpleExpr1/hugeSimpleExpr1.dll
