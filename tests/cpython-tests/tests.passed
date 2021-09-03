@@ -1,3 +1,4 @@
+test_audit
 test_grammar
 test_opcodes
 test_dict
@@ -5,6 +6,7 @@ test_builtin
 test_exceptions
 test_types
 test_unittest
+test___all__
 test___future__
 test__opcode
 test__osx_support
@@ -32,6 +34,7 @@ test_buffer
 test_bufio
 test_bytes
 test_call
+test_cgi
 test_cgitb
 test_charmapcodec
 test_class
@@ -156,7 +159,6 @@ test_ipaddress
 test_isinstance
 test_iter
 test_iterlen
-test_itertools
 test_keyword
 test_keywordonlyarg
 test_kqueue
