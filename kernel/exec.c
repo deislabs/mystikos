@@ -1009,6 +1009,7 @@ int myst_exec(
         process->vfork_parent_tid = 0;
         process->vfork_parent_pid = 0;
     }
+    process->num_pseudo_children--;
 
     /* invoke the caller's callback here */
     if (callback)

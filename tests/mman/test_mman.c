@@ -12,6 +12,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
+#include <myst/kernel.h>
 #include <myst/mman.h>
 
 #define D(X)
@@ -19,6 +20,8 @@
 #ifndef PAGE_SIZE
 #define PAGE_SIZE 4096
 #endif
+
+myst_kernel_args_t __myst_kernel_args;
 
 /* the test doesn't link the kernel so we provide this definition */
 int myst_tcall_mprotect(void* addr, size_t len, int prot)

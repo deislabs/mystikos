@@ -638,11 +638,14 @@ static int _munmap(myst_mman_t* mman, void* addr, size_t length)
     // perform scrub efficiently. The prot_vector based implementation has
     // complication of inconsistent prot within a VAD. Skip scrubbing for
     // now.
-#if 0    
-    /* If scrubbing is enabled, then scrub the unmapped memory */
-    if (mman->scrub)
-        memset(addr, 0xDD, length);
-#endif
+
+    /* If memcheck is enabled mark the unmapped memory so it can be
+     * differentiated from a normal free() */
+    if (__myst_kernel_args.memcheck || mman->scrub)
+    {
+        _MMAN_MPROTECT_PAGES(mman, addr, length, MYST_PROT_WRITE)
+        memset(addr, 0xEE, length);
+    }
 
     _MMAN_MPROTECT_PAGES(mman, addr, length, MYST_PROT_NONE)
 
