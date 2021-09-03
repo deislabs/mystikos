@@ -357,10 +357,10 @@ int myst_unload_symbols_ocall(void)
 Usage: %s <action> [options] ...\n\
 \n\
 Where <action> is one of:\n\
-    exec-sgx      -- execute an application from within the CPIO\n\
-                     archive inside an SGX enclave\n\
-    exec-linux    -- execute an application within the CPIO archive in a none\n\
-                     trusted environment environment (Linux)\n\
+    exec-sgx      -- execute an application from within a root file system\n\
+                     inside an SGX enclave\n\
+    exec-linux    -- execute an application from within a root file system\n\
+                     in a untrusted environment environment (Linux)\n\
     mkcpio        -- create a CPIO archive from an application directory\n\
     mkext2        -- create an EXT2 image from an application directory\n\
     fssig         -- dump the file system signature of an EXT2 image\n\

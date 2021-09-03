@@ -265,9 +265,10 @@ oelicense:
 
 help:
 	@ echo ""
-	@ echo "make -- build everything"
+	@ echo "make -- build Mystikos except for tests"
 	@ echo "make init -- initialize all dependencies"
-	@ echo "make build -- build everything except for prereqs"
+	@ echo "make world -- build the whole world (third-party + Mystikos + tests)"
+	@ echo "make build -- build everything except for prereqs and tests"
 	@ echo "make release-build -- runs 'build' followed by 'bindist'"
 	@ echo "make clean -- remove generated binaries"
 	@ echo "make distclean -- remove build configuration and binaries"
