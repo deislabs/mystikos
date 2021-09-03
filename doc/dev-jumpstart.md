@@ -26,6 +26,23 @@ not stable enough to be moved into `tests`.
 * The `scripts` folder contains several helper scripts for using Mystikos
 or integrating with the pipeline.
 
+Other directories include:
+
+* `alpine`: contains the Docker image used by some tests
+* `art`: contains graphical resources used in documentation
+* `asm`: contains assembly code
+* `crt`: contains Mystikos's addition to musl library
+* `doc`: contains documentations
+* `docker`: contains files to build Mystikos in a container
+* `ext2`: contains EXT2 file system implementation
+* `gcov`: contains gcov-based code coverage utilities
+* `host`: contains files used by the host launcher of Mystikos
+* `hostfs`: a file system primarily used for testing/debugging
+* `include`: contains Mystikos header files
+* `json`: a json parser implementation, primarily used to parse configuration file
+* `oe`: contains extension to OpenEnclave, exposing OE APIs through syscalls
+* `prereqs`: contains prerequisite such as Intel SGX driver and other required application packages
+* `utils`: contains various utility files
 
 ## Trying it out
 

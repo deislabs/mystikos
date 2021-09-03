@@ -121,12 +121,14 @@ Give it a try and let us know what you think!
 
 - A Simple "Hello World" in C: [click here](doc/user-getting-started-c.md)
 - A Simple "Hello World" in Rust: [click here](doc/user-getting-started-rust.md)
-- Packaging your "Hello World" app in Docker: [click
+- Dockerizing your "Hello World" app: [click
   here](doc/user-getting-started-docker-c++.md)
 - Introducing Enclave Configuration with a DotNet program: [click
   here](doc/user-getting-started-docker-dotnet.md)
 - Running Python & NumPy for complex calculations: [click
   here](doc/user-getting-started-docker-python.md)
+
+You can find more sample applications under `/samples` folder.
 
 ## Enclave Aware Applications
 
@@ -144,6 +146,7 @@ We've got plans for a lot more documentation as the project grows, and we'd
 love your feedback and contributions, too.
 
 - Key features of Mystikos: [click here](doc/key-features.md)
+- General concepts of Mystikos: [click here](doc/user-getting-started.md)
 - Deep dive into Mystikos architecture: [coming soon]
 - How to implement support for a new TEE: [coming soon]
 - Kernel limitations: [click here](doc/kernel-limitations.md)
@@ -163,7 +166,6 @@ section.
 - Notable unsupported kernel features and syscalls: [coming soon]
 
 For more information, see the [Contributing Guide](CONTRIBUTING.md).
-
 
 # Licensing
 

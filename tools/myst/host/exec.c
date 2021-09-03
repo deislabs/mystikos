@@ -550,7 +550,7 @@ int exec_action(int argc, const char* argv[], const char* envp[])
         rootfs = rootfs_path;
     }
 
-    // we may  or may not have config passed in through the commandline.
+    // we may or may not have config passed in through the commandline.
     // If the enclave is signed that config will take precedence over
     // this version
     if ((details = create_region_details_from_files(
