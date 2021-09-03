@@ -45,7 +45,6 @@ int test_spawn1(int argc, const char* argv[])
 
     assert(posix_spawnattr_destroy(&attr) == 0);
 
-    assert(waitpid(pid, &wstatus, WNOHANG) == 0);
     assert(waitpid(pid, &wstatus, 0) == pid);
     assert(WIFEXITED(wstatus));
     assert(WEXITSTATUS(wstatus) == 123);

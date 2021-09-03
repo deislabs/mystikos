@@ -2879,6 +2879,12 @@ long myst_syscall_epoll_wait(
     myst_epolldev_t* ed;
     myst_epoll_t* epoll;
 
+    if (epfd < 0)
+        ERAISE(-EBADF);
+
+    if (epfd == 0)
+        ERAISE(-EINVAL);
+
     ECHECK(myst_fdtable_get_epoll(fdtable, epfd, &ed, &epoll));
 
     ret = (*ed->ed_epoll_wait)(ed, epoll, events, maxevents, timeout);

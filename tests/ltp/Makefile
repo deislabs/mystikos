@@ -205,5 +205,8 @@ one:
 	subtest=$(TEST) sudo -E $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
 endif
 
+#/ltp/testcases/kernel/syscalls/pipe/pipe04
+#/ltp/testcases/kernel/syscalls/pipe/pipe06
+
 t:
-	make one FS=ramfs TEST=/ltp/testcases/kernel/syscalls/setsockopt/setsockopt02
+	make one FS=ext2fs TEST=/ltp/testcases/kernel/syscalls/epoll_wait/epoll_wait01

@@ -4,6 +4,7 @@
 #define _GNU_SOURCE
 #include <assert.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <limits.h>
 #include <pthread.h>
 #include <stdint.h>
@@ -163,8 +164,6 @@ void test_pipes(long slow_write, long slow_read)
         assert(fstat(pipefd[1], &buf1) == 0);
         assert(buf1.st_blksize == PIPE_BUF);
 
-        assert(buf0.st_ino != buf1.st_ino);
-
         (void)_dump_stat_buf;
     }
 
@@ -197,6 +196,29 @@ void test_pipes(long slow_write, long slow_read)
     printf("=== passed test (%s: %s/%s)\n", __FUNCTION__, msg1, msg2);
 }
 
+void test_xyz(void)
+{
+    int pipefd[2];
+    char buf[4096];
+    size_t m = 0;
+
+    assert(pipe(pipefd) == 0);
+
+    const size_t pipesz = 64 * 1024;
+    assert(fcntl(pipefd[0], F_SETPIPE_SZ, pipesz) == pipesz);
+    assert(fcntl(pipefd[1], F_SETPIPE_SZ, pipesz) == pipesz);
+    assert(fcntl(pipefd[0], F_GETPIPE_SZ) == pipesz);
+    assert(fcntl(pipefd[1], F_GETPIPE_SZ) == pipesz);
+
+    for (size_t i = 0; i < 1024; i++)
+    {
+        ssize_t n = write(pipefd[1], buf, sizeof(buf));
+        assert(n == sizeof(buf));
+        m += n;
+        printf("i=%zu n=%zu m=%zu\n", i, n, m);
+    }
+}
+
 int main(int argc, const char* argv[])
 {
     /* test fast-writer/fast-reader */
@@ -210,6 +232,8 @@ int main(int argc, const char* argv[])
 
     /* test slow-writer/slow-reader */
     test_pipes(1, 1);
+
+    // test_xyz();
 
     printf("=== passed test (%s)\n", argv[0]);
 

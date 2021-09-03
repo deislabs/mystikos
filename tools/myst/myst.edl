@@ -7,6 +7,8 @@ enclave
 
     include "time.h"
     include "sys/socket.h"
+    include "sys/epoll.h"
+    include "sys/eventfd.h"
     include "myst/shm.h"
     include "myst/fssig.h"
     include "myst/blockdevice.h"
@@ -134,6 +136,22 @@ enclave
             [in] const struct timespec* req,
             [out] struct timespec* rem);
 
+        long myst_epoll_create1_ocall(int flags);
+
+        long myst_epoll_wait_ocall(
+            int epfd,
+            [in, out, count=maxevents] struct epoll_event* events,
+            size_t maxevents,
+            int timeout);
+
+        long myst_epoll_ctl_ocall(
+            int epfd,
+            int op,
+            int fd,
+            [in] const struct epoll_event* event);
+
+        long myst_eventfd_ocall(unsigned int initval, int flags);
+
         /*
         **======================================================================
         **
@@ -249,6 +267,16 @@ enclave
 
         // ATTN: If Host file system support is exclude in certain build mode,
         // consider excluding relevant OCALL proxy code too.
+
+        /*
+        **======================================================================
+        **
+        ** pipe
+        **
+        **======================================================================
+        */
+
+        long myst_pipe2_ocall([out] int pipefd[2], int flags);
 
         /*
         **======================================================================

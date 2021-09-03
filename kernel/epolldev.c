@@ -25,32 +25,60 @@
 
 typedef struct epoll_entry epoll_entry_t;
 
-struct epoll_entry
-{
-    /* these leading fields align with the same fields in myst_list_node_t */
-    epoll_entry_t* prev;
-    epoll_entry_t* next;
-    int fd;
-    struct epoll_event event;
-};
-
 struct myst_epoll
 {
     uint32_t magic; /* MAGIC */
-    int flags;      /* flags passed to epoll_create1() or set by fcntl() */
-    myst_spinlock_t lock;
-    myst_list_t list;
+    int epfd;
 };
 
-static epoll_entry_t* _find(myst_epoll_t* epoll, int fd)
+MYST_INLINE long _sys_close(int fd)
 {
-    for (epoll_entry_t* p = (epoll_entry_t*)epoll->list.head; p; p = p->next)
-    {
-        if (p->fd == fd)
-            return p;
-    }
+    long params[6] = {fd};
+    return myst_tcall(SYS_close, params);
+}
 
-    return NULL;
+MYST_INLINE long _sys_epoll_create1(int flags)
+{
+    long params[6] = {flags};
+    return myst_tcall(SYS_epoll_create1, params);
+}
+
+MYST_INLINE long _sys_epoll_ctl(
+    int epfd,
+    int op,
+    int fd,
+    struct epoll_event* event)
+{
+    long params[6] = {epfd, op, fd, (long)event};
+    return myst_tcall(SYS_epoll_ctl, params);
+}
+
+MYST_INLINE long _sys_epoll_wait(
+    int epfd,
+    struct epoll_event* events,
+    size_t maxevents,
+    int timeout)
+{
+    long params[6] = {epfd, (long)events, (long)maxevents, timeout};
+    return myst_tcall(SYS_epoll_wait, params);
+}
+
+MYST_INLINE long _sys_fcntl(int fd, int cmd, long arg)
+{
+    long params[6] = {fd, cmd, arg};
+    return myst_tcall(SYS_fcntl, params);
+}
+
+MYST_INLINE long _sys_fstat(int fd, struct stat* statbuf)
+{
+    long params[6] = {fd, (long)statbuf};
+    return myst_tcall(SYS_fstat, params);
+}
+
+MYST_INLINE long _sys_dup(int oldfd)
+{
+    long params[6] = {oldfd};
+    return myst_tcall(SYS_dup, params);
 }
 
 static bool _valid_epoll(const myst_epoll_t* epoll)
@@ -65,6 +93,7 @@ static int _ed_epoll_create1(
 {
     int ret = 0;
     myst_epoll_t* epoll = NULL;
+    int epfd;
 
     if (epoll_out)
         *epoll_out = NULL;
@@ -78,8 +107,11 @@ static int _ed_epoll_create1(
             ERAISE(-ENOMEM);
 
         epoll->magic = MAGIC;
-        epoll->flags = flags;
     }
+
+    /* delegate the operation */
+    ECHECK(epfd = _sys_epoll_create1(flags));
+    epoll->epfd = epfd;
 
     *epoll_out = epoll;
     epoll = NULL;
@@ -100,7 +132,7 @@ static int _ed_epoll_ctl(
     struct epoll_event* event)
 {
     ssize_t ret = 0;
-    bool locked = false;
+    int target_fd;
 
     if (!epolldev || !_valid_epoll(epoll) || !event)
         ERAISE(-EBADF);
@@ -108,77 +140,27 @@ static int _ed_epoll_ctl(
     if (!myst_valid_fd(fd))
         ERAISE(-EBADF);
 
-    /* return EPERM is fd points to regular file or directory */
+    /* get the target file descriptor for this file descriptor */
     {
         myst_fdtable_t* fdtable = myst_fdtable_current();
-        myst_file_t* file = NULL;
-        myst_fs_t* fs = NULL;
+        myst_fdtable_type_t type;
+        myst_fdops_t* fdops;
+        void* object;
 
-        int r = myst_fdtable_get_file(fdtable, fd, &fs, &file);
-        if (r == 0 && fs && file)
+        ECHECK(myst_fdtable_get_any(
+            fdtable, fd, &type, (void**)&fdops, (void**)&object));
+
+        if (type == MYST_FDTABLE_TYPE_FILE)
             ERAISE(-EPERM);
-    }
 
-    myst_spin_lock(&epoll->lock);
-    locked = true;
-
-    /* handle the operation */
-    switch (op)
-    {
-        case EPOLL_CTL_ADD:
-        {
-            epoll_entry_t* entry;
-
-            /* fail if entry already exists for this fd */
-            if (_find(epoll, fd))
-                ERAISE(-EEXIST);
-
-            if (!(entry = calloc(1, sizeof(epoll_entry_t))))
-                ERAISE(-ENOMEM);
-
-            /* Initialize the entry */
-            entry->fd = fd;
-            entry->event = *event;
-
-            /* add the entry to the list */
-            myst_list_append(&epoll->list, (myst_list_node_t*)entry);
-
-            break;
-        }
-        case EPOLL_CTL_MOD:
-        {
-            epoll_entry_t* entry;
-
-            /* fail if entry not found */
-            if (!(entry = _find(epoll, fd)))
-                ERAISE(-ENOENT);
-
-            /* update the event */
-            entry->event = *event;
-            break;
-        }
-        case EPOLL_CTL_DEL:
-        {
-            epoll_entry_t* entry = NULL;
-
-            /* fail if entry not found */
-            if (!(entry = _find(epoll, fd)))
-                ERAISE(-ENOENT);
-
-            myst_list_remove(&epoll->list, (myst_list_node_t*)entry);
-            free(entry);
-            break;
-        }
-        default:
-        {
+        if ((target_fd = (*fdops->fd_target_fd)(fdops, object)) < 0)
             ERAISE(-EINVAL);
-        }
     }
+
+    /* delegate the request to the target */
+    ECHECK(_sys_epoll_ctl(epoll->epfd, op, target_fd, event));
 
 done:
-
-    if (locked)
-        myst_spin_unlock(&epoll->lock);
 
     return ret;
 }
@@ -191,163 +173,15 @@ static int _ed_epoll_wait(
     int timeout) /* milliseconds */
 {
     int ret = 0;
-    bool locked = false;
-    nfds_t nfds;
-    struct pollfd fds_buf[16];
-    struct pollfd* fds = NULL;
-    uint64_t data_buf[16];
-    uint64_t* data = NULL;
     int n;
 
-    if (!epolldev || !epoll || !events || maxevents < 0)
+    if (!epolldev || !_valid_epoll(epoll) || !events || maxevents < 0)
         ERAISE(-EINVAL);
 
-    memset(events, 0, maxevents * sizeof(struct epoll_event));
-
-    myst_spin_lock(&epoll->lock);
-    locked = true;
-
-    /* Prune the interested FDs that have been closed */
-    {
-        myst_fdtable_t* fdtable = NULL;
-        myst_fdtable_type_t type;
-        myst_fdops_t* fdops;
-        void* object;
-
-        if (!(fdtable = myst_fdtable_current()))
-            ERAISE(-ENOSYS);
-
-        for (epoll_entry_t* src = (epoll_entry_t*)epoll->list.head; src;)
-        {
-            epoll_entry_t* next = src->next;
-            if (myst_fdtable_get_any(
-                    fdtable, src->fd, &type, (void**)&fdops, (void**)&object))
-            {
-                myst_list_remove(&epoll->list, (myst_list_node_t*)src);
-                free(src);
-            }
-            src = next;
-        }
-    }
-
-    /* Get the number of events */
-    nfds = epoll->list.size;
-
-    /* allocates the fds array */
-    if (!(fds = myst_buf_calloc(
-              fds_buf, sizeof(fds_buf), nfds, sizeof(struct pollfd))))
-    {
-        ERAISE(-ENOMEM);
-    }
-
-    /* allocates the data array (copy of the epoll data) */
-    if (!(data = myst_buf_calloc(
-              data_buf, sizeof(data_buf), nfds, sizeof(uint64_t))))
-    {
-        ERAISE(-ENOMEM);
-    }
-
-    /* convert from epoll-set to poll-set */
-    {
-        const epoll_entry_t* src = (epoll_entry_t*)epoll->list.head;
-
-        for (size_t i = 0; i < nfds; i++)
-        {
-            struct pollfd* dest = &fds[i];
-
-            dest->fd = src->fd;
-
-            if (src->event.events & EPOLLIN)
-                dest->events |= POLLIN;
-
-            if (src->event.events & EPOLLOUT)
-                dest->events |= POLLOUT;
-
-            if (src->event.events & EPOLLRDHUP)
-                dest->events |= POLLRDHUP;
-
-            if (src->event.events & EPOLLPRI)
-                dest->events |= POLLPRI;
-
-            if (src->event.events & EPOLLERR)
-                dest->events |= POLLERR;
-
-            if (src->event.events & EPOLLHUP)
-                dest->events |= POLLHUP;
-
-            /* ATTN: EPOLLET not supported */
-            /* ATTN: EPOLLONESHOT not supported */
-            /* ATTN: EPOLLWAKEUP not supported */
-            /* ATTN: EPOLLEXCLUSIVE not supported */
-
-            /* make a copy of the epoll data to avoid relocking later */
-            data[i] = src->event.data.u64;
-
-            src = src->next;
-        }
-    }
-
-    myst_spin_unlock(&epoll->lock);
-    locked = false;
-
-    ECHECK((n = myst_syscall_poll(fds, nfds, timeout)));
-
-    /* this should never happen */
-    if ((size_t)n > nfds)
-        ERAISE(-EINVAL);
-
-    /* convert from poll-set back to epoll-set */
-    {
-        int nevents = 0;
-
-        for (size_t i = 0; i < nfds; i++)
-        {
-            const struct pollfd* src = &fds[i];
-
-            if (src->revents)
-            {
-                struct epoll_event* dest;
-
-                if (nevents >= maxevents)
-                    break;
-
-                dest = &events[nevents++];
-
-                if (src->revents & POLLIN)
-                    dest->events |= EPOLLIN;
-
-                if (src->revents & POLLOUT)
-                    dest->events |= EPOLLOUT;
-
-                if (src->revents & POLLRDHUP)
-                    dest->events |= EPOLLRDHUP;
-
-                if (src->revents & POLLPRI)
-                    dest->events |= EPOLLPRI;
-
-                if (src->revents & POLLERR)
-                    dest->events |= EPOLLERR;
-
-                if (src->revents & POLLHUP)
-                    dest->events |= EPOLLHUP;
-
-                dest->data.u64 = data[i];
-            }
-        }
-
-        ret = nevents;
-    }
+    ECHECK(n = _sys_epoll_wait(epoll->epfd, events, maxevents, timeout));
+    ret = n;
 
 done:
-
-    if (fds)
-        myst_buf_free(fds_buf, fds);
-
-    if (data)
-        myst_buf_free(data_buf, data);
-
-    if (locked)
-        myst_spin_unlock(&epoll->lock);
 
     return ret;
 }
@@ -440,27 +274,11 @@ static int _ed_fstat(
     struct stat* statbuf)
 {
     int ret = 0;
-    struct stat buf;
 
     if (!epolldev || !_valid_epoll(epoll) || !statbuf)
         ERAISE(-EINVAL);
 
-    memset(&buf, 0, sizeof(buf));
-    buf.st_dev = 13; /* magic number for epoll device */
-    buf.st_ino = (ino_t)epoll;
-    buf.st_mode = S_IRUSR | S_IWUSR;
-    buf.st_nlink = 1;
-    buf.st_uid = MYST_DEFAULT_UID;
-    buf.st_gid = MYST_DEFAULT_GID;
-    buf.st_rdev = 0;
-    buf.st_size = 0;
-    buf.st_blksize = 4096;
-    buf.st_blocks = 0;
-    memset(&buf.st_atim, 0, sizeof(buf.st_atim));
-    memset(&buf.st_mtim, 0, sizeof(buf.st_mtim));
-    memset(&buf.st_ctim, 0, sizeof(buf.st_ctim));
-
-    *statbuf = buf;
+    ECHECK(_sys_fstat(epoll->epfd, statbuf));
 
 done:
     return ret;
@@ -473,33 +291,13 @@ static int _ed_fcntl(
     long arg)
 {
     int ret = 0;
+    long r;
 
     if (!epolldev || !_valid_epoll(epoll))
         ERAISE(-EINVAL);
 
-    switch (cmd)
-    {
-        case F_SETFD:
-        {
-            if (arg == FD_CLOEXEC)
-                epoll->flags = EPOLL_CLOEXEC;
-            else if (arg == 0)
-                epoll->flags = 0;
-            else
-                ERAISE(-EINVAL);
-            goto done;
-        }
-        case F_GETFD:
-        {
-            if (epoll->flags & EPOLL_CLOEXEC)
-                ret = FD_CLOEXEC;
-            goto done;
-        }
-        default:
-        {
-            ERAISE(-ENOTSUP);
-        }
-    }
+    ECHECK((r = _sys_fcntl(epoll->epfd, cmd, arg)));
+    ret = r;
 
 done:
     return ret;
@@ -532,6 +330,7 @@ static int _ed_dup(
     myst_epoll_t** epoll_out)
 {
     int ret = 0;
+    myst_epoll_t* new_epoll = NULL;
 
     if (epoll_out)
         *epoll_out = NULL;
@@ -539,10 +338,21 @@ static int _ed_dup(
     if (!epolldev || !_valid_epoll(epoll) || !epoll_out)
         ERAISE(-EINVAL);
 
-    /* ATTN: dup() not supported for epoll objects */
-    ERAISE(-ENOTSUP);
+    if (!(new_epoll = calloc(1, sizeof(myst_epoll_t))))
+        ERAISE(-ENOMEM);
+
+    *new_epoll = *epoll;
+
+    /* perform syscall */
+    ECHECK(new_epoll->epfd = _sys_dup(epoll->epfd));
+
+    *epoll_out = new_epoll;
+    new_epoll = NULL;
 
 done:
+
+    if (new_epoll)
+        free(new_epoll);
 
     return ret;
 }
@@ -554,14 +364,7 @@ static int _ed_close(myst_epolldev_t* epolldev, myst_epoll_t* epoll)
     if (!epolldev || !_valid_epoll(epoll))
         ERAISE(-EBADF);
 
-    /* free all of the epoll entries */
-    for (epoll_entry_t* p = (epoll_entry_t*)epoll->list.head; p;)
-    {
-        epoll_entry_t* next = p->next;
-        free(p);
-        p = next;
-    }
-
+    ECHECK(_sys_close(epoll->epfd));
     memset(epoll, 0, sizeof(myst_epoll_t));
     free(epoll);
 
