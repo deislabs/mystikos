@@ -394,7 +394,7 @@ long myst_syscall_futex(
     if (_op == FUTEX_WAIT || _op == FUTEX_WAIT_BITSET)
     {
         struct timespec* timeout = (struct timespec*)arg;
-        if (op & FUTEX_CLOCK_REALTIME)
+        if ((op & FUTEX_CLOCK_REALTIME) && timeout)
         {
             struct timespec timenow;
             myst_syscall_clock_gettime(CLOCK_REALTIME, &timenow);
