@@ -920,9 +920,6 @@ static long _run_thread(void* arg_)
             myst_atomic_exchange(thread->clone.ctid, 0);
             const int futex_op = FUTEX_WAKE | FUTEX_PRIVATE;
             myst_syscall_futex(thread->clone.ctid, futex_op, 1, 0, NULL, 0);
-
-            /* Remove thread as a waiter on open pipes */
-            myst_fdtable_remove_thread(process->fdtable);
         }
 
         /* Release memory objects owned by the main/process thread */
@@ -993,9 +990,20 @@ static long _run_thread(void* arg_)
             size_t i = thread->unmap_on_exit_used;
             while (i)
             {
-                myst_munmap(
-                    thread->unmap_on_exit[i - 1].ptr,
-                    thread->unmap_on_exit[i - 1].size);
+                if (!myst_munmap(
+                        thread->unmap_on_exit[i - 1].ptr,
+                        thread->unmap_on_exit[i - 1].size))
+                {
+                    /* App process might have invoked SYS_mmap, which marks the
+                     * memory as owned by the calling app process, and then
+                     * SYS_myst_unmap_on_exit on the memory region. Clear the
+                     * pid vector to make sure the unmapped memory is marked as
+                     * not owned by any app process */
+                    myst_mman_pids_set(
+                        thread->unmap_on_exit[i - 1].ptr,
+                        thread->unmap_on_exit[i - 1].size,
+                        0);
+                }
                 i--;
             }
         }

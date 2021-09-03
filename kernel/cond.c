@@ -11,6 +11,7 @@
 #include <myst/cond.h>
 #include <myst/mutex.h>
 #include <myst/printf.h>
+#include <myst/signal.h>
 #include <myst/strings.h>
 #include <myst/tcall.h>
 
@@ -44,6 +45,57 @@ int myst_cond_destroy(myst_cond_t* c)
     return 0;
 }
 
+typedef struct myst_cond_thread_sig_handler
+{
+    // Used by thread signal handler infrastructure
+    myst_thread_sig_handler_t sig_handler;
+
+    // our condition variable details to clean up;
+    myst_cond_t* cond;
+    myst_mutex_t* mutex;
+
+} myst_cond_thread_sig_handler_t;
+
+/* Our default handler just needs to remove itself from the queue and call the
+ * next in line */
+static void myst_cond_sig_handler(
+    MYST_UNUSED unsigned signum,
+    void* _sig_handler)
+{
+    myst_cond_thread_sig_handler_t* sig_handler =
+        (myst_cond_thread_sig_handler_t*)_sig_handler;
+    myst_thread_t* thread = myst_thread_self();
+
+    myst_spin_lock(&sig_handler->cond->lock);
+    myst_thread_queue_remove_thread(&sig_handler->cond->queue, thread);
+    thread->signal.waiting_on_event = false;
+    myst_spin_unlock(&sig_handler->cond->lock);
+
+    if (myst_thread_queue_get_front(&(sig_handler->cond->queue)) != NULL)
+        myst_tcall_wake(
+            myst_thread_queue_get_front(&(sig_handler->cond->queue))->event);
+}
+
+static void myst_cond_sig_handler_install(
+    myst_cond_thread_sig_handler_t* sig_handler,
+    myst_cond_t* cond,
+    myst_mutex_t* mutex)
+{
+    memset(sig_handler, 0, sizeof(*sig_handler));
+
+    sig_handler->mutex = mutex;
+    sig_handler->cond = cond;
+
+    myst_thread_sig_handler_install(
+        &sig_handler->sig_handler, myst_cond_sig_handler, sig_handler);
+}
+
+static void myst_cond_sig_handler_uninstall(
+    myst_cond_thread_sig_handler_t* sig_handler)
+{
+    myst_thread_sig_handler_uninstall(&sig_handler->sig_handler);
+}
+
 int myst_cond_timedwait_ops(
     myst_cond_t* c,
     myst_mutex_t* mutex,
@@ -52,6 +104,7 @@ int myst_cond_timedwait_ops(
 {
     myst_thread_t* self = myst_thread_self();
     int ret = 0;
+    myst_cond_thread_sig_handler_t sig_handler;
 
     assert(self != NULL);
     assert(self->magic == MYST_THREAD_MAGIC);
@@ -89,6 +142,12 @@ int myst_cond_timedwait_ops(
                 {
                     ret = (int)myst_tcall_wait(self->event, timeout);
                 }
+
+                // check for signals
+                myst_cond_sig_handler_install(&sig_handler, c, mutex);
+                myst_signal_process(self);
+                myst_cond_sig_handler_uninstall(&sig_handler);
+
                 self->signal.waiting_on_event = false;
             }
             myst_spin_lock(&c->lock);
@@ -168,6 +227,7 @@ int myst_cond_signal_ops(myst_cond_t* c, uint32_t bitset)
         return 0;
 
     myst_tcall_wake(waiter->event);
+
     return 0;
 }
 
@@ -264,7 +324,6 @@ int myst_cond_requeue(
         uint32_t bitset;
         while (p = myst_thread_queue_pop_front_bitset(&requeues, &bitset))
         {
-            p->signal.waiting_on_event = true;
             myst_thread_queue_push_back_bitset(&c2->queue, p, bitset);
         }
     }

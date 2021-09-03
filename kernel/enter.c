@@ -700,6 +700,15 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     if (__options.have_syscall_instruction)
         myst_set_gsbase(myst_get_fsbase());
 
+    if (!args->mman_data || !args->mman_size)
+        ERAISE(-EINVAL);
+
+    /* Setup the memory manager (required by malloc) */
+    /* ATTN: functions (e.g., myst_eprintf) depend on malloc cannot
+     * be used prior to this point */
+    if (myst_setup_mman(args->mman_data, args->mman_size) != 0)
+        ERAISE(-EINVAL);
+
     /* call global constructors within the kernel */
     myst_call_init_functions();
 
@@ -714,12 +723,6 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         if (!args->envc || !args->envp)
         {
             myst_eprintf("kernel: bad envc/envp arguments\n");
-            ERAISE(-EINVAL);
-        }
-
-        if (!args->mman_data || !args->mman_size)
-        {
-            myst_eprintf("kernel: bad mman arguments\n");
             ERAISE(-EINVAL);
         }
 
@@ -740,13 +743,6 @@ int myst_enter_kernel(myst_kernel_args_t* args)
             myst_eprintf("kernel: bad tcall argument\n");
             ERAISE(-EINVAL);
         }
-    }
-
-    /* Setup the memory manager */
-    if (myst_setup_mman(args->mman_data, args->mman_size) != 0)
-    {
-        myst_eprintf("kernel: memory manager setup failed\n");
-        ERAISE(-EINVAL);
     }
 
     /* Create the main thread */
@@ -942,6 +938,8 @@ int myst_enter_kernel(myst_kernel_args_t* args)
                 myst_munmap(
                     thread->unmap_on_exit[i - 1].ptr,
                     thread->unmap_on_exit[i - 1].size);
+                /* main process/thread is shuting down; skip pid vector update,
+                 * as no more pid vector reference is expected */
                 i--;
             }
         }

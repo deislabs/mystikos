@@ -50,6 +50,15 @@ struct myst_td
     int padding; /* unused by Open Enclave */
 };
 
+typedef void (*myst_thread_sig_handler_fn)(unsigned signum, void* arg);
+
+typedef struct myst_thread_sig_handler
+{
+    myst_thread_sig_handler_fn signal_fn;
+    void* signal_fn_arg;
+    struct myst_thread_sig_handler* previous;
+} myst_thread_sig_handler_t;
+
 bool myst_valid_td(const void* td);
 
 extern myst_spinlock_t myst_process_list_lock;
@@ -238,6 +247,15 @@ struct myst_thread
 
         /* The alternative stack for signal handlers */
         stack_t altstack;
+
+        /* If a terminating signal is generated inside the kernel this signal
+         * handler is called for the thread if present before calling the actual
+         * default terminating signal handler. A terminating signal is one which
+         * does not have a process sigaction registered by the application, or
+         * is a SIGKILL or SIGSTOP. Each default signal handler needs to call
+         * the previously registered one.
+         */
+        myst_thread_sig_handler_t* thread_sig_handler;
     } signal;
 
     // linked list of threads in process
@@ -565,5 +583,33 @@ long myst_call_on_stack(void* stack, long (*func)(void* arg), void* arg);
 
 /* Send SIGHUP to child processes of given process thread */
 int myst_send_sighup_child_processes(myst_process_t* process);
+
+/* Install a thread signal handler to do thread cleanup before the default
+ * terminating signal handler is called. Examples of this include unlocking
+ * kernel wide locks that may be held while code is executing that may generate
+ * a singal.
+ */
+MYST_INLINE void myst_thread_sig_handler_install(
+    myst_thread_sig_handler_t* sig_handler,
+    myst_thread_sig_handler_fn sig_fn,
+    void* sig_fn_arg)
+{
+    myst_thread_t* thread = myst_thread_self();
+    if (thread->signal.thread_sig_handler)
+        sig_handler->previous = thread->signal.thread_sig_handler->previous;
+    else
+        sig_handler->previous = NULL;
+    sig_handler->signal_fn = sig_fn;
+    sig_handler->signal_fn_arg = sig_fn_arg;
+    thread->signal.thread_sig_handler = sig_handler;
+}
+
+/* Uninstall this thread signal handler and restore to the previous */
+MYST_INLINE void myst_thread_sig_handler_uninstall(
+    myst_thread_sig_handler_t* sig_handler)
+{
+    myst_thread_t* thread = myst_thread_self();
+    thread->signal.thread_sig_handler = sig_handler->previous;
+}
 
 #endif /* _MYST_THREAD_H */

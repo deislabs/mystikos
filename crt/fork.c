@@ -115,6 +115,13 @@ struct pthread* _create_child_pthread_and_copy_stack(
 
     myst_round_up(size, PAGE_SIZE, &size_rounded);
 
+    /* The mmapped memory will be marked by Mystikos kernel as owned by the
+     * parent process, instead of the child process, or the kernel. During child
+     * process exit, the memory will be unmapped. The process memory management
+     * logic that unmaps memory regions still owned by the parent process at
+     * parent process exit relies specific logic during child process exit to
+     * clear the ownership indication. If any part of the relevant design
+     * changes, the implementaiton needs to be reconsidered */
     if (!(map = mmap(
               NULL,
               size_rounded,
