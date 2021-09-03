@@ -205,8 +205,18 @@ one:
 	subtest=$(TEST) sudo -E $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
 endif
 
+#good:
+#/ltp/testcases/kernel/syscalls/pipe/pipe01
+#/ltp/testcases/kernel/syscalls/pipe/pipe03
 #/ltp/testcases/kernel/syscalls/pipe/pipe04
 #/ltp/testcases/kernel/syscalls/pipe/pipe06
+#/ltp/testcases/kernel/syscalls/pipe/pipe08
+#/ltp/testcases/kernel/syscalls/pipe/pipe09
+#/ltp/testcases/kernel/syscalls/pipe/pipe10
+#/ltp/testcases/kernel/syscalls/pipe2/pipe2_01
+
+#broken:
+#/ltp/testcases/kernel/syscalls/epoll_wait/epoll_wait01
 
 t:
 	make one FS=ext2fs TEST=/ltp/testcases/kernel/syscalls/epoll_wait/epoll_wait01

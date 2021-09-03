@@ -541,11 +541,10 @@ static ssize_t _pd_write(
             ECHECK(_format_payload(&out, ptr, chunk_size));
             ECHECK(n = _sys_write(pipe->fd, out.data, out.size));
             assert((size_t)n == out.size);
+            pipe->shared->npackets += (out.size / PACKET_SIZE);
 
 #if 0
             printf("_pd_write(): %zu packets\n", (out.size / PACKET_SIZE));
-            pipe->shared->npackets += (out.size / PACKET_SIZE);
-
             printf("_pd_write(): wrote %zu of %zu\n", n, out.size);
             printf("_pd_write(): space=%zu\n", _get_available_space(pipe->fd));
 #endif
