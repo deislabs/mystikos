@@ -2,7 +2,7 @@
 
 USAGE="$0 path-to-myst null|exec-sgx|exec-linux config.json timeout ext2|cpio|package <test_list_file>"
 NPROCS=$(grep -c ^processor /proc/cpuinfo)
-NPROCS=1
+NPROCS=2
 if [[ "$5" != "package" ]]; then
 	if [[ "$5" != "ext2" ]]; then
 		if [[ "$5" != "cpio" ]]; then
