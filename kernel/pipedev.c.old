@@ -5,7 +5,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
-#include <sys/socket.h>
 
 #include <myst/asynctcall.h>
 #include <myst/buf.h>
@@ -17,7 +16,6 @@
 #include <myst/process.h>
 #include <myst/round.h>
 #include <myst/syscall.h>
-#include <myst/time.h>
 
 #define MAGIC 0x9906acdc
 
@@ -31,17 +29,18 @@
 
 /* Limit the number of pipes */
 #define MAX_PIPES 256
+
 #define HEADER_MAGIC 0x0112013912e54099
-#define TRAILER_MAGIC 0x66e69483d7e44981
+#define FOOTER_MAGIC 0x66e69483d7e44981
+
 #define PACKET_SIZE 128
-#define DEFAULT_PIPE_SIZE (64 * 1024)
 
 /*
 **==============================================================================
 **
-** payload layout:
+** wire protocol:
 **
-**     [header][packets...][trailer]
+**     [header][packets...][footer]
 **
 **==============================================================================
 */
@@ -65,19 +64,19 @@ typedef struct packet
 } packet_t;
 
 // Footers are needed to keep the pipe read-enabled until the reader has
-// consumed all the data between the header and trailer.
-typedef struct trailer
+// consumed all the data between the header and footer.
+typedef struct footer
 {
-    /* TRAILER_MAGIC */
+    /* FOOTER_MAGIC */
     uint64_t magic;
 
     /* Padding to the PACKET_SIZE boundary */
     uint8_t padding[PACKET_SIZE - sizeof(uint64_t)];
-} trailer_t;
+} footer_t;
 
 MYST_STATIC_ASSERT(sizeof(header_t) == PACKET_SIZE);
 MYST_STATIC_ASSERT(sizeof(packet_t) == PACKET_SIZE);
-MYST_STATIC_ASSERT(sizeof(trailer_t) == PACKET_SIZE);
+MYST_STATIC_ASSERT(sizeof(footer_t) == PACKET_SIZE);
 
 static _Atomic(size_t) _num_pipes;
 
@@ -112,10 +111,10 @@ MYST_INLINE long _sys_close(int fd)
     return myst_tcall(SYS_close, params);
 }
 
-MYST_INLINE int _sys_socketpair(int domain, int type, int protocol, int sv[2])
+MYST_INLINE long _sys_pipe2(int pipefd[2], int flags)
 {
-    long params[6] = {domain, type, protocol, (long)sv};
-    return myst_tcall(SYS_socketpair, params);
+    long params[6] = {(long)pipefd, flags};
+    return myst_tcall(SYS_pipe2, params);
 }
 
 MYST_INLINE long _sys_read(int fd, void* buf, size_t count)
@@ -163,34 +162,11 @@ MYST_INLINE long _sys_dup(int oldfd)
     return myst_tcall(SYS_dup, params);
 }
 
-MYST_INLINE int _sys_getsockopt(
-    int sockfd,
-    int level,
-    int optname,
-    void* optval,
-    socklen_t* optlen)
-{
-    long params[6] = {sockfd, level, optname, (long)optval, (long)optlen};
-    return myst_tcall(SYS_getsockopt, params);
-}
-
-MYST_INLINE int _sys_setsockopt(
-    int sockfd,
-    int level,
-    int optname,
-    const void* optval,
-    socklen_t optlen)
-{
-    long params[6] = {sockfd, level, optname, (long)optval, (long)optlen};
-    return myst_tcall(SYS_setsockopt, params);
-}
-
 MYST_INLINE bool _valid_pipe(const myst_pipe_t* pipe)
 {
     return pipe && pipe->magic == MAGIC;
 }
 
-#if 0
 static int _get_nonblock(int fd, bool* flag)
 {
     int ret = 0;
@@ -202,7 +178,6 @@ static int _get_nonblock(int fd, bool* flag)
 done:
     return ret;
 }
-#endif
 
 static int _pd_pipe2(myst_pipedev_t* pipedev, myst_pipe_t* pipe[2], int flags)
 {
@@ -210,10 +185,9 @@ static int _pd_pipe2(myst_pipedev_t* pipedev, myst_pipe_t* pipe[2], int flags)
     myst_pipe_t* rdpipe = NULL;
     myst_pipe_t* wrpipe = NULL;
     shared_t* shared = NULL;
-    int fds[2] = {-1, -1};
-#if 0
+    int pipefd[2] = {-1, -1};
+    int pipesz;
     bool nonblock;
-#endif
 
     if (!pipedev || !pipe || (flags & ~(O_CLOEXEC | O_DIRECT | O_NONBLOCK)))
         ERAISE(-EINVAL);
@@ -224,14 +198,19 @@ static int _pd_pipe2(myst_pipedev_t* pipedev, myst_pipe_t* pipe[2], int flags)
         ERAISE(-EMFILE);
     }
 
-    /* Create the host socket descriptors */
-    ECHECK(_sys_socketpair(AF_LOCAL, SOCK_STREAM, 0, fds));
+    /* Create the pipe descriptors on the host */
+    ECHECK(_sys_pipe2(pipefd, flags));
 
-    if (flags & O_CLOEXEC)
-    {
-        ECHECK(_sys_fcntl(fds[0], F_SETFD, FD_CLOEXEC));
-        ECHECK(_sys_fcntl(fds[1], F_SETFD, FD_CLOEXEC));
-    }
+    /* Get the size of the pipe buffer */
+    ECHECK(pipesz = _sys_fcntl(pipefd[1], F_GETPIPE_SZ, 0));
+
+#if 0
+    /* Double the pipe buffer size */
+    ECHECK(_sys_fcntl(pipefd[1], F_SETPIPE_SZ, pipesz * 2));
+#endif
+
+    /* Get the non-block flag */
+    ECHECK(_get_nonblock(pipefd[1], &nonblock));
 
     /* Create the shared structure */
     {
@@ -243,10 +222,10 @@ static int _pd_pipe2(myst_pipedev_t* pipedev, myst_pipe_t* pipe[2], int flags)
         shared->nwriters = 1;
 
         /* Set initial pipe capacity; may be updated by fcntl(F_SETPIPE_SZ) */
-        shared->pipesz = DEFAULT_PIPE_SIZE;
+        shared->pipesz = (size_t)pipesz;
 
         /* Set the non-blocking flag */
-        shared->nonblock = false;
+        shared->nonblock = (size_t)nonblock;
     }
 
     /* Create the read pipe */
@@ -255,7 +234,7 @@ static int _pd_pipe2(myst_pipedev_t* pipedev, myst_pipe_t* pipe[2], int flags)
             ERAISE(-ENOMEM);
 
         rdpipe->magic = MAGIC;
-        rdpipe->fd = fds[0];
+        rdpipe->fd = pipefd[0];
         rdpipe->mode = O_RDONLY;
         rdpipe->shared = shared;
     }
@@ -266,20 +245,23 @@ static int _pd_pipe2(myst_pipedev_t* pipedev, myst_pipe_t* pipe[2], int flags)
             ERAISE(-ENOMEM);
 
         wrpipe->magic = MAGIC;
-        wrpipe->fd = fds[1];
+        wrpipe->fd = pipefd[1];
         wrpipe->mode = O_WRONLY;
         wrpipe->shared = shared;
     }
 
     T(printf(
-          "_pd_pipe2(): fds[%d:%d] pid=%d\n", fds[0], fds[1], myst_getpid());)
+          "_pd_pipe2(): pipefd[%d:%d] pid=%d\n",
+          pipefd[0],
+          pipefd[1],
+          myst_getpid());)
 
     pipe[0] = rdpipe;
     pipe[1] = wrpipe;
     rdpipe = NULL;
     wrpipe = NULL;
-    fds[0] = -1;
-    fds[1] = -1;
+    pipefd[0] = -1;
+    pipefd[1] = -1;
 
 done:
 
@@ -289,44 +271,17 @@ done:
     if (wrpipe)
         free(wrpipe);
 
-    if (fds[0] >= 0)
-        _sys_close(fds[0]);
+    if (pipefd[0] >= 0)
+        _sys_close(pipefd[0]);
 
-    if (fds[1] >= 0)
-        _sys_close(fds[1]);
+    if (pipefd[1] >= 0)
+        _sys_close(pipefd[1]);
 
     return ret;
 }
 
-static ssize_t _read_packet(myst_pipe_t* pipe, void* packet, uint64_t magic)
-{
-    int ret = 0;
-    ssize_t n;
-
-    ECHECK(n = _sys_read(pipe->fd, packet, sizeof(packet_t)));
-
-    /* handle end-of-file */
-    if (n == 0)
-        goto done;
-
-    /* one less packet now */
-    pipe->shared->npackets--;
-
-    assert(n == sizeof(packet_t));
-
-    /* check magic number if any */
-    if (magic && *((uint64_t*)packet) != magic)
-    {
-        assert(0);
-        ERAISE(-EINVAL);
-    }
-
-    ret = n;
-
-done:
-    return ret;
-}
-
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstack-usage="
 static ssize_t _pd_read(
     myst_pipedev_t* pipedev,
     myst_pipe_t* pipe,
@@ -368,16 +323,14 @@ static ssize_t _pd_read(
                 nread += min;
                 ptr += min;
                 rem -= min;
-                ECHECK(myst_buf_remove(&pipe->inbuf, 0, min));
+                myst_buf_remove(&pipe->inbuf, 0, min);
 
-                // If the buffer is exhausted, then consume the trailer (which
-                // takes the file descriptor out of read-enabled state).
+                /* if the buffer is exhausted, then consume the footer */
                 if (pipe->inbuf.size == 0)
                 {
-                    ssize_t n;
-                    trailer_t trailer;
-
-                    ECHECK(n = _read_packet(pipe, &trailer, TRAILER_MAGIC));
+                    footer_t footer;
+                    ssize_t n = _sys_read(pipe->fd, &footer, sizeof(footer));
+                    ECHECK(n);
 
                     /* handle end-of-file */
                     if (n == 0)
@@ -385,6 +338,10 @@ static ssize_t _pd_read(
                         ret = nread;
                         goto done;
                     }
+
+                    assert(n == sizeof(footer));
+                    assert(footer.magic == FOOTER_MAGIC);
+                    pipe->shared->npackets--;
                 }
             }
 
@@ -398,20 +355,28 @@ static ssize_t _pd_read(
             /* now read from the pipe */
             {
                 ssize_t n;
-                header_t header;
+                size_t size;
 
                 /* read the header */
-                ECHECK(n = _read_packet(pipe, &header, HEADER_MAGIC));
-
-                /* handle end-of-file */
-                if (n == 0)
                 {
-                    ret = nread;
-                    goto done;
+                    header_t header;
+                    n = _sys_read(pipe->fd, &header, sizeof(header));
+                    ECHECK(n);
+
+                    /* handle end-of-file */
+                    if (n == 0)
+                    {
+                        ret = nread;
+                        goto done;
+                    }
+
+                    assert(n == sizeof(header));
+                    assert(header.magic == HEADER_MAGIC);
+                    pipe->shared->npackets--;
+                    size = header.size;
                 }
 
                 /* calculate the number of data packets */
-                size_t size = header.size;
                 size_t padded_count;
                 ECHECK(myst_round_up(size, PACKET_SIZE, &padded_count));
                 size_t npackets = padded_count / PACKET_SIZE;
@@ -421,7 +386,8 @@ static ssize_t _pd_read(
                 {
                     packet_t packet;
 
-                    ECHECK(n = _read_packet(pipe, &packet, 0));
+                    n = _sys_read(pipe->fd, &packet, sizeof(packet));
+                    ECHECK(n);
 
                     /* handle end-of-file */
                     if (n == 0)
@@ -430,9 +396,14 @@ static ssize_t _pd_read(
                         goto done;
                     }
 
+                    assert(n == sizeof(packet));
+                    pipe->shared->npackets--;
+
                     size_t min = _min(size, PACKET_SIZE);
                     assert(min != 0);
+
                     ECHECK(myst_buf_append(&pipe->inbuf, packet.data, min));
+
                     size -= min;
                 }
             }
@@ -447,23 +418,43 @@ done:
 
     return ret;
 }
+#pragma GCC diagnostic pop
+
+MYST_UNUSED
+static ssize_t _get_available_space(int fd)
+{
+    ssize_t ret = 0;
+    size_t nread = 0;
+    size_t pipesz;
+
+    if (fd < 0)
+        goto done;
+
+    ECHECK(_sys_ioctl(fd, FIONREAD, (long)&nread));
+    ECHECK(pipesz = _sys_fcntl(fd, F_GETPIPE_SZ, 0));
+    assert(pipesz >= nread);
+    ret = pipesz - nread;
+
+done:
+    return ret;
+}
 
 static int _format_payload(myst_buf_t* out, const void* buf, size_t count)
 {
     int ret = 0;
     header_t header = {HEADER_MAGIC, count};
-    trailer_t trailer = {TRAILER_MAGIC};
+    footer_t footer = {FOOTER_MAGIC};
     size_t padded_count;
     size_t size;
 
     ECHECK(myst_buf_clear(out));
     ECHECK(myst_round_up(count, PACKET_SIZE, &padded_count));
-    size = sizeof(header) + padded_count + sizeof(trailer);
+    size = sizeof(header) + padded_count + sizeof(footer);
     ECHECK(myst_buf_reserve(out, size));
     ECHECK(myst_buf_append(out, &header, sizeof(header)));
     ECHECK(myst_buf_append(out, buf, count));
     ECHECK(myst_buf_resize(out, sizeof(header) + padded_count));
-    ECHECK(myst_buf_append(out, &trailer, sizeof(trailer)));
+    ECHECK(myst_buf_append(out, &footer, sizeof(footer)));
 
     assert(out->size == size);
     assert((out->size % PACKET_SIZE) == 0);
@@ -472,6 +463,8 @@ done:
     return ret;
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstack-usage="
 static ssize_t _pd_write(
     myst_pipedev_t* pipedev,
     myst_pipe_t* pipe,
@@ -479,6 +472,7 @@ static ssize_t _pd_write(
     size_t count)
 {
     ssize_t ret = 0;
+    ssize_t nwritten = 0;
     myst_buf_t out = MYST_BUF_INITIALIZER;
     bool locked = false;
 
@@ -516,7 +510,7 @@ static ssize_t _pd_write(
         const size_t navail = pipesz - nused;
         assert((navail % PACKET_SIZE) == 0);
 
-        /* If not enough room for header, one-packet, and trailer */
+        /* If not enough room for header, one-packet, and footer */
         if (navail < (3 * PACKET_SIZE))
             ERAISE(-EAGAIN);
 
@@ -529,16 +523,39 @@ static ssize_t _pd_write(
         }
     }
 
-    /* write the payload (header + data + trailer) */
+#if 0
+    /* reduce count so that total bytes written will be less than PIPE_BUF */
+    count = _min(count, PIPE_BUF - (2 * PACKET_SIZE));
+#endif
+
+    /* write in chunks that are <= PIPE_BUF */
     {
-        ssize_t n;
-        ECHECK(_format_payload(&out, buf, count));
-        ECHECK(n = _sys_write(pipe->fd, out.data, out.size));
-        assert((size_t)n == out.size);
-        pipe->shared->npackets += (out.size / PACKET_SIZE);
+        const uint8_t* ptr = buf;
+        size_t rem = count;
+
+        while (rem > 0)
+        {
+            size_t chunk_size = _min(rem, PIPE_BUF - (2 * PACKET_SIZE));
+            ssize_t n;
+
+            ECHECK(_format_payload(&out, ptr, chunk_size));
+            ECHECK(n = _sys_write(pipe->fd, out.data, out.size));
+            assert((size_t)n == out.size);
+            pipe->shared->npackets += (out.size / PACKET_SIZE);
+
+#if 0
+            printf("_pd_write(): %zu packets\n", (out.size / PACKET_SIZE));
+            printf("_pd_write(): wrote %zu of %zu\n", n, out.size);
+            printf("_pd_write(): space=%zu\n", _get_available_space(pipe->fd));
+#endif
+
+            nwritten += chunk_size;
+            ptr += chunk_size;
+            rem -= chunk_size;
+        }
     }
 
-    ret = count;
+    ret = nwritten;
 
 done:
 
@@ -552,6 +569,7 @@ done:
 
     return ret;
 }
+#pragma GCC diagnostic pop
 
 static ssize_t _pd_readv(
     myst_pipedev_t* pipedev,
@@ -619,29 +637,22 @@ static int _pd_fcntl(
     if (!pipedev || !_valid_pipe(pipe))
         ERAISE(-EINVAL);
 
-    switch (cmd)
-    {
-        case F_SETPIPE_SZ:
-        {
-            /* ATTN: check if arg is valid */
-            pipe->shared->pipesz = arg;
-            goto done;
-        }
-        case F_GETPIPE_SZ:
-        {
-            /* ATTN: check if arg is valid */
-            ret = pipe->shared->pipesz;
-            goto done;
-        }
-    }
-
     ECHECK((r = _sys_fcntl(pipe->fd, cmd, arg)));
 
     switch (cmd)
     {
+        case F_SETPIPE_SZ:
+        {
+            pipe->shared->pipesz = arg;
+            break;
+        }
         case F_SETFL:
         {
             pipe->shared->nonblock = (arg & O_NONBLOCK);
+            break;
+        }
+        default:
+        {
             break;
         }
     }
