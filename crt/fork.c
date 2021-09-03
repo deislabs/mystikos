@@ -122,13 +122,13 @@ struct pthread* _create_child_pthread_and_copy_stack(
      * parent process exit relies specific logic during child process exit to
      * clear the ownership indication. If any part of the relevant design
      * changes, the implementaiton needs to be reconsidered */
-    if (!(map = mmap(
-              NULL,
-              size_rounded,
-              PROT_READ | PROT_WRITE,
-              MAP_ANONYMOUS,
-              -1,
-              0)))
+    if ((map = mmap(
+             NULL,
+             size_rounded,
+             PROT_READ | PROT_WRITE,
+             MAP_ANONYMOUS | MAP_PRIVATE,
+             -1,
+             0)) == MAP_FAILED)
         return NULL;
 
     /* [guard|stack|tls|tsd] */
@@ -168,6 +168,7 @@ struct thread_args
     void* child_bp;
     volatile pid_t pid;
     struct pthread* child_pthread;
+    uint64_t canary;
 
     // pthread memory and stack needs freeing on process exit
     struct mmap_info
@@ -299,16 +300,25 @@ done:
     return ret;
 }
 
+uint64_t myst_get_canary()
+{
+    return __pthread_self()->canary;
+}
+
 static int _child_func(void* arg)
 {
     struct thread_args* args = (struct thread_args*)arg;
     args->env.rsp = (uint64_t)args->child_sp;
     args->env.rbp = (uint64_t)args->child_bp;
 
+    _set_fsbase(args->child_pthread);
+
+    // set_fsbase is changing the canary from what it should be. Change it back
+    // to what we expect it to be
+    args->child_pthread->canary = args->canary;
+
     /* set the fsbase register to point to the child_td */
     args->child_pthread->tid = getpid();
-
-    _set_fsbase(args->child_pthread);
 
     /* set the pid that the parent is waiting on */
     args->pid = getpid();
@@ -346,9 +356,7 @@ static void _set_called_by_vfork(uint64_t value)
     pthread_setspecific(_called_by_vfork_key, (void*)value);
 }
 
-__attribute__((__returns_twice__))
-__attribute__((__optimize__("-fno-stack-protector"))) pid_t
-myst_fork(void)
+__attribute__((__returns_twice__)) pid_t myst_fork(void)
 {
     pid_t pid = 0;
     myst_jmp_buf_t env;
@@ -432,6 +440,7 @@ myst_fork(void)
         args->child_pthread = child_pthread;
         args->unmap_on_exit.mmap_ptr = child_pthread->map_base;
         args->unmap_on_exit.mmap_ptr_size = mmap_rounded_size;
+        args->canary = args->child_pthread->canary;
 
         if ((tmp_ret = __clone(_child_func, sp, clone_flags, args)) < 0)
         {

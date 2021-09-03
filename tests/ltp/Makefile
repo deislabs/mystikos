@@ -27,7 +27,7 @@ endif
 URL=https://github.com/paulcallen/ltp
 BRANCH=paulcallen/revert-fork
 
-OPTS += --app-config-path config.json
+OPTS += --app-config-path config.json --nobrk
 
 # *** end fork related settings ***
 

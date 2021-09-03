@@ -16,6 +16,7 @@
 /ltp/testcases/kernel/syscalls/close/close01
 /ltp/testcases/kernel/syscalls/close/close02
 /ltp/testcases/kernel/syscalls/close/close08
+/ltp/testcases/kernel/syscalls/connect/connect01
 /ltp/testcases/kernel/syscalls/creat/creat01
 /ltp/testcases/kernel/syscalls/creat/creat03
 /ltp/testcases/kernel/syscalls/creat/creat04
@@ -25,9 +26,12 @@
 /ltp/testcases/kernel/syscalls/dup/dup07
 /ltp/testcases/kernel/syscalls/dup2/dup202
 /ltp/testcases/kernel/syscalls/dup2/dup203
+/ltp/testcases/kernel/syscalls/dup2/dup204
 /ltp/testcases/kernel/syscalls/dup3/dup3_01
 /ltp/testcases/kernel/syscalls/dup3/dup3_02
+/ltp/testcases/kernel/syscalls/epoll_create1/epoll_create1_01
 /ltp/testcases/kernel/syscalls/epoll_ctl/epoll_ctl01
+/ltp/testcases/kernel/syscalls/epoll_ctl/epoll_ctl02
 /ltp/testcases/kernel/syscalls/epoll_wait/epoll_wait01
 /ltp/testcases/kernel/syscalls/eventfd2/eventfd2_01
 /ltp/testcases/kernel/syscalls/eventfd2/eventfd2_02
@@ -79,6 +83,8 @@
 /ltp/testcases/kernel/syscalls/ftruncate/ftruncate01
 /ltp/testcases/kernel/syscalls/ftruncate/ftruncate01_64
 /ltp/testcases/kernel/syscalls/futex/futex_wait01
+/ltp/testcases/kernel/syscalls/futex/futex_wait02
+/ltp/testcases/kernel/syscalls/futex/futex_wait03
 /ltp/testcases/kernel/syscalls/futex/futex_wait04
 /ltp/testcases/kernel/syscalls/futimesat/futimesat01
 /ltp/testcases/kernel/syscalls/getcpu/getcpu01
@@ -155,6 +161,7 @@
 /ltp/testcases/kernel/syscalls/msync/msync01
 /ltp/testcases/kernel/syscalls/munmap/munmap01
 /ltp/testcases/kernel/syscalls/munmap/munmap02
+/ltp/testcases/kernel/syscalls/munmap/munmap03
 /ltp/testcases/kernel/syscalls/nanosleep/nanosleep04
 /ltp/testcases/kernel/syscalls/newuname/newuname01
 /ltp/testcases/kernel/syscalls/open/open01
@@ -319,9 +326,13 @@
 /ltp/testcases/kernel/syscalls/wait/wait02
 /ltp/testcases/kernel/syscalls/waitpid/waitpid01
 /ltp/testcases/kernel/syscalls/waitpid/waitpid02
+/ltp/testcases/kernel/syscalls/waitpid/waitpid04
 /ltp/testcases/kernel/syscalls/waitpid/waitpid05
+/ltp/testcases/kernel/syscalls/waitpid/waitpid06
+/ltp/testcases/kernel/syscalls/waitpid/waitpid07
 /ltp/testcases/kernel/syscalls/waitpid/waitpid09
 /ltp/testcases/kernel/syscalls/waitpid/waitpid11
+/ltp/testcases/kernel/syscalls/waitpid/waitpid12
 /ltp/testcases/kernel/syscalls/write/write01
 /ltp/testcases/kernel/syscalls/write/write02
 /ltp/testcases/kernel/syscalls/writev/writev01

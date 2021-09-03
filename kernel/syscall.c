@@ -540,9 +540,18 @@ long myst_syscall_get_fork_info(myst_process_t* process, myst_fork_info_t* arg)
         arg->is_child_fork = process->is_pseudo_fork_process;
 
         /* Check if we have a child process which is a clone */
-        arg->is_parent_of_fork = myst_have_child_forked_processes(process);
+        arg->is_parent_of_fork = process->is_parent_of_pseudo_fork_process;
     }
-
+#if 0
+    printf(
+        "pid=%d, forkmode=%s, is_child_fork=%s, is_parent_of_fork=%s\n",
+        myst_getpid(),
+        arg->fork_mode == myst_fork_none
+            ? "none"
+            : arg->fork_mode == myst_fork_pseudo ? "pseudo" : "pseudo-wait",
+        arg->is_child_fork ? "yes" : "no",
+        arg->is_parent_of_fork ? "yes" : "no");
+#endif
 done:
     return ret;
 }
@@ -3611,6 +3620,12 @@ static long _syscall(void* args_)
                 flags,
                 fd,
                 offset);
+
+            if (process->is_pseudo_fork_process &&
+                __myst_kernel_args.fork_mode ==
+                    myst_fork_pseudo_wait_for_exit_exec)
+                myst_panic("mmap unsupported: pseudo fork process is calling "
+                           "mmap when running in pseudo_wait mode");
 
             /* this can return (void*)-errno */
             long ret = (long)myst_mmap(addr, length, prot, flags, fd, offset);

@@ -148,8 +148,10 @@ struct myst_process
      * also may be used for actual vfork().
      */
     bool is_pseudo_fork_process;
+    bool is_parent_of_pseudo_fork_process;
     pid_t vfork_parent_pid;
     pid_t vfork_parent_tid;
+    volatile _Atomic(size_t) num_pseudo_children;
 
     /* This is a copy of the uid from the main process thread and is only needed
      * when dealing with zombie threads because the main thread is not available
@@ -170,6 +172,14 @@ struct myst_process
 
     /* rlimit values for process */
     struct rlimit rlimits[RLIMIT_NLIMITS];
+
+    /* When a process gets a SIGSTOP the whole process needs to stop
+     * until a SIGCONT is received. This futex is used for all threads
+     * when they process signals on their own thread. If the futex is
+     * set then the thread will wait on the futex until the SIGCONT
+     * is received.
+     */
+    int sigstop_futex;
 };
 
 struct myst_thread
@@ -470,7 +480,7 @@ long myst_wait(
     int options,
     struct rusage* rusage);
 
-void myst_wait_on_child_processes(void);
+void myst_wait_on_child_processes(myst_process_t* process);
 
 size_t myst_get_num_threads(void);
 
