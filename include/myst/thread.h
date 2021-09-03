@@ -486,15 +486,13 @@ MYST_INLINE size_t myst_thread_queue_search_remove_bitset(
             if (prev != NULL)
             {
                 prev->_qnext = next;
-                if (next == NULL)
-                    queue->_back = prev;
             }
             else
             {
                 queue->_front = queue->_front->_qnext;
-                if (queue->_front == NULL)
-                    queue->_back = NULL;
             }
+            if (next == NULL)
+                queue->_back = prev;
 
             myst_thread_queue_push_back_bitset(matches, t, t->_bitset);
         }
