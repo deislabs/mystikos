@@ -85,7 +85,7 @@ done:
 
 static char ALPHABET[] = "abcdefghijklmnopqrstuvwxyz";
 
-const size_t N = 1024;
+const size_t N = 256;
 
 static void* _read_thread(void* arg)
 {

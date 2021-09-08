@@ -32,19 +32,35 @@
 #define MAX_PIPES 256
 #define DEFAULT_PIPE_SIZE (64 * 1024)
 
+#define BLOCK_SIZE (PIPE_BUF / 2)
+
+#define CHECK_SANITY
+
+#ifdef CHECK_SANITY
+#define SANITY(COND) assert(COND)
+#else
+#define SANITY(COND)
+#endif
+
 /*
 **==============================================================================
 **
-** Payload layout:
+** The host-sied pipes are used only for synchronization with poll() and
+** epoll(). The data is exchanged within the kernel and is not visible from
+** the host. The host-side pipes are used to manage read and write enabledment
+** states by setting the pipe size to two blocks (2 * BLOCK_SIZE) and filling
+** zero, one, or two blocks with zeros, where:
 **
-**     [header][packets...][trailer]
+**     - zero filled blocks indicates write-enablement
+**     - one filled block indicates read-write-enablement
+**     - two filled blocks indicates read-enablement
 **
+** These states and the corresponding blocks are depicted in the diagram below,
+** where the block size if BLOCK_SIZE.
 **
-** Read-write enablements states (2 half-pages)
-**
-**                              Write-Enabled   Read-Enabled    State
+**                              Read-Enabled   Write-Enabled    Macro
 **     +--------+--------+      -----------------------------------------
-**     |        |        |      Yes             No              WR_ENABLED
+**     |        |        |      No              Yes             WR_ENABLED
 **     +--------+--------+
 **
 **     +--------+--------+
@@ -52,8 +68,27 @@
 **     +--------+--------+
 **
 **     +--------+--------+
-**     |XXXXXXXX|XXXXXXXX|      No              Yes             RD_ENABLED
+**     |XXXXXXXX|XXXXXXXX|      Yes             No              RD_ENABLED
 **     +--------+--------+
+**
+** Note that writes smaller than PIPE_BUF are guaranteed to be atomic according
+** to Linux documentation (i.e., there will be no partial reads or writes).
+**
+** The state machine is depicted below where transitions are triggered by
+** reading or writing zero-blocks to the host-side pipe.
+**
+**     Operation        Number of Blocks        State           Next-State
+**     ===================================================================
+**     write            0                       WR_ENABLED      RDWR_ENABLED
+**     write            1                       RDWR_ENABLED    RD_ENABLED
+**     write            2                       RD_ENABLED      WAIT
+**     read             2                       RD_ENABLED      RDWR_ENABLED
+**     read             1                       RDWR_ENABLED    WR_ENABLED
+**     read             0                       WR_ENABLED      WAIT
+**
+** The WAIT state indicates that the reader or writer must wait for a state
+** change before proceeding, either by blocking or calling again (EAGAIN).
+**
 **
 **==============================================================================
 */
@@ -62,9 +97,9 @@ static _Atomic(size_t) _num_pipes;
 
 typedef enum state
 {
-    STATE_WR_ENABLED,
-    STATE_RDWR_ENABLED,
-    STATE_RD_ENABLED,
+    STATE_WR_ENABLED = 0,
+    STATE_RDWR_ENABLED = BLOCK_SIZE,
+    STATE_RD_ENABLED = (2 * BLOCK_SIZE),
 } state_t;
 
 /* this structure is shared by the pipe */
@@ -155,6 +190,18 @@ MYST_INLINE long _sys_poll(struct pollfd* fds, nfds_t nfds, int timeout)
     return myst_tcall(SYS_poll, params);
 }
 
+MYST_INLINE ssize_t _get_nread(int fd)
+{
+    ssize_t ret = 0;
+    size_t nread = 0;
+
+    ECHECK(_sys_ioctl(fd, FIONREAD, (long)&nread));
+    ret = (ssize_t)nread;
+
+done:
+    return ret;
+}
+
 MYST_INLINE bool _valid_pipe(const myst_pipe_t* pipe)
 {
     return pipe && pipe->magic == MAGIC;
@@ -207,6 +254,7 @@ static int _pd_pipe2(myst_pipedev_t* pipedev, myst_pipe_t* pipe[2], int flags)
 
         /* Set the state */
         shared->state = STATE_WR_ENABLED;
+        SANITY(_get_nread(fds[0]) == STATE_WR_ENABLED);
 
         /* Set the non-blocking flag */
         shared->flags = flags;
@@ -299,12 +347,7 @@ static ssize_t _pd_read(
     myst_mutex_lock(&shared->lock);
     locked = true;
 
-    if (shared->flags == O_NONBLOCK) /* handle non-blocking write */
-    {
-        /* ATTN */
-        assert(false);
-    }
-    else /* handle blocking read */
+    /* perform the read operation */
     {
         uint8_t* ptr = buf;
         size_t rem = count;
@@ -328,14 +371,18 @@ static ssize_t _pd_read(
                         if (_space(shared))
                         {
                             const size_t n = PIPE_BUF / 2;
+                            SANITY(_get_nread(pipe->fd) == STATE_RD_ENABLED);
                             ECHECK(_sys_read(pipe->fd, locals->zeros, n));
+                            SANITY(_get_nread(pipe->fd) == STATE_RDWR_ENABLED);
                             shared->state = STATE_RDWR_ENABLED;
                         }
                         else
                         {
                             const size_t n = PIPE_BUF;
+                            SANITY(_get_nread(pipe->fd) == STATE_RD_ENABLED);
                             ECHECK(_sys_read(pipe->fd, locals->zeros, n));
                             shared->state = STATE_WR_ENABLED;
+                            SANITY(_get_nread(pipe->fd) == STATE_WR_ENABLED);
                         }
                         break;
                     }
@@ -344,30 +391,52 @@ static ssize_t _pd_read(
                         if (_space(shared))
                         {
                             const size_t n = PIPE_BUF / 2;
+                            SANITY(_get_nread(pipe->fd) == STATE_RDWR_ENABLED);
                             ECHECK(_sys_read(pipe->fd, locals->zeros, n));
                             shared->state = STATE_WR_ENABLED;
+                            SANITY(_get_nread(pipe->fd) == STATE_WR_ENABLED);
                         }
                         break;
                     }
                     case STATE_WR_ENABLED:
                     {
-                        /* ATTN: what do we do here */
+                        SANITY(_get_nread(pipe->fd) == STATE_WR_ENABLED);
                         break;
                     }
                 }
             }
             else /* the buffer is empty */
             {
-                struct pollfd fds[1];
-                fds[0].fd = pipe->fd;
-                fds[0].events = POLLIN;
+                if (shared->flags == O_NONBLOCK)
+                {
+                    myst_mutex_unlock(&shared->lock);
+                    locked = false;
 
-                /* block here until pipe becomes write enabled */
-                myst_mutex_unlock(&shared->lock);
-                // printf("read.poll: rem=%zu\n", rem);
-                _sys_poll(fds, MYST_COUNTOF(fds), -1);
-                // printf("read.poll>>>>>>>>>>\n");
-                myst_mutex_lock(&shared->lock);
+                    if (nread == 0)
+                        ERAISE(-EAGAIN);
+
+                    break;
+                }
+                else
+                {
+                    struct pollfd fds[1];
+                    long poll_ret;
+
+                    fds[0].fd = pipe->fd;
+                    fds[0].events = (POLLIN | POLLHUP);
+
+                    /* block here until pipe becomes read enabled */
+                    myst_mutex_unlock(&shared->lock);
+                    ECHECK(poll_ret = _sys_poll(fds, MYST_COUNTOF(fds), -1));
+
+                    if (poll_ret != 1)
+                        ERAISE(-ENOSYS);
+
+                    if ((fds[0].revents & POLLHUP)) /* end of file */
+                        break;
+
+                    myst_mutex_lock(&shared->lock);
+                }
             }
         }
     }
@@ -433,12 +502,7 @@ static ssize_t _pd_write(
         ERAISE(-EPIPE);
     }
 
-    if (shared->flags == O_NONBLOCK) /* handle non-blocking write */
-    {
-        /* ATTN */
-        assert(false);
-    }
-    else /* handle blocking write */
+    /* perform the write operation */
     {
         const uint8_t* ptr = buf;
         size_t rem = count;
@@ -462,14 +526,18 @@ static ssize_t _pd_write(
                         if (_space(shared))
                         {
                             const size_t n = PIPE_BUF / 2;
+                            SANITY(_get_nread(pipe->fd) == STATE_WR_ENABLED);
                             ECHECK(_sys_write(pipe->fd, locals->zeros, n));
                             shared->state = STATE_RDWR_ENABLED;
+                            SANITY(_get_nread(pipe->fd) == STATE_RDWR_ENABLED);
                         }
                         else
                         {
                             const size_t n = PIPE_BUF;
+                            SANITY(_get_nread(pipe->fd) == STATE_WR_ENABLED);
                             ECHECK(_sys_write(pipe->fd, locals->zeros, n));
                             shared->state = STATE_RD_ENABLED;
+                            SANITY(_get_nread(pipe->fd) == STATE_RD_ENABLED);
                         }
                         break;
                     }
@@ -478,28 +546,52 @@ static ssize_t _pd_write(
                         if (_space(shared) == 0)
                         {
                             const size_t n = PIPE_BUF / 2;
+                            SANITY(_get_nread(pipe->fd) == STATE_RDWR_ENABLED);
                             ECHECK(_sys_write(pipe->fd, locals->zeros, n));
                             shared->state = STATE_RD_ENABLED;
+                            SANITY(_get_nread(pipe->fd) == STATE_RD_ENABLED);
                         }
                         break;
                     }
                     case STATE_RD_ENABLED:
                     {
-                        assert(false);
+                        SANITY(_get_nread(pipe->fd) == STATE_RD_ENABLED);
                         break;
                     }
                 }
             }
             else /* the buffer is full */
             {
-                struct pollfd fds[1];
-                fds[0].fd = pipe->fd;
-                fds[0].events = POLLOUT;
+                if (shared->flags == O_NONBLOCK)
+                {
+                    myst_mutex_unlock(&shared->lock);
+                    locked = false;
 
-                /* block here until pipe becomes write enabled */
-                myst_mutex_unlock(&shared->lock);
-                _sys_poll(fds, MYST_COUNTOF(fds), -1);
-                myst_mutex_lock(&shared->lock);
+                    if (nwritten == 0)
+                        ERAISE(-EAGAIN);
+
+                    break;
+                }
+                else
+                {
+                    struct pollfd fds[1];
+                    fds[0].fd = pipe->fd;
+                    fds[0].events = POLLOUT | POLLHUP;
+
+                    /* block here until pipe becomes write enabled */
+                    myst_mutex_unlock(&shared->lock);
+                    printf("*** write.poll\n");
+                    long r = _sys_poll(fds, MYST_COUNTOF(fds), -1);
+
+                    if (r == 1 && fds[0].revents & POLLHUP)
+                    {
+                        /* end of file */
+                        break;
+                    }
+
+                    printf("*** write.poll: r=%ld\n", r);
+                    myst_mutex_lock(&shared->lock);
+                }
             }
         }
     }
@@ -716,9 +808,7 @@ static int _pd_close(myst_pipedev_t* pipedev, myst_pipe_t* pipe)
         ERAISE(-EBADF);
 
     if (!pipe->shared->nreaders && !pipe->shared->nwriters)
-    {
         ERAISE(-EBADF);
-    }
 
     T(printf("_pd_close(): fd=%d pid=%d\n", pipe->fd, myst_getpid());)
     ECHECK(_sys_close(pipe->fd));
