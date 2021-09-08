@@ -15,8 +15,15 @@
 #include <myst/printf.h>
 #include <myst/process.h>
 #include <myst/round.h>
+#include <myst/spinlock.h>
 #include <myst/syscall.h>
 #include <myst/time.h>
+
+#ifdef USE_MUTEX
+typedef myst_mutex_t lock_t;
+#else
+typedef myst_spinlock_t lock_t;
+#endif
 
 #if 0
 #define T(EXPR) EXPR
@@ -47,16 +54,16 @@
 **
 ** The host-sied pipes are used only for synchronization with poll() and
 ** epoll(). The data is exchanged within the kernel and is not visible from
-** the host. The host-side pipes are used to manage read and write enabledment
-** states by setting the pipe size to two blocks (2 * BLOCK_SIZE) and filling
-** zero, one, or two blocks with zeros, where:
+** the host. The host-side pipes are used to manage read and write enablement
+** states by setting the pipe size to two blocks and filling zero, one, or two
+** blocks with zeros, where:
 **
-**     - zero filled blocks indicates write-enablement
-**     - one filled block indicates read-write-enablement
-**     - two filled blocks indicates read-enablement
+**     - zero filled blocks indicates write-enablement (empty pipe)
+**     - one filled block indicates read-write-enablement (half-full pipe)
+**     - two filled blocks indicates read-enablement (full pipe)
 **
 ** These states and the corresponding blocks are depicted in the diagram below,
-** where the block size if BLOCK_SIZE.
+** where the block size is BLOCK_SIZE.
 **
 **                              Read-Enabled   Write-Enabled    Macro
 **     +--------+--------+      -----------------------------------------
@@ -70,25 +77,6 @@
 **     +--------+--------+
 **     |XXXXXXXX|XXXXXXXX|      Yes             No              RD_ENABLED
 **     +--------+--------+
-**
-** Note that writes smaller than PIPE_BUF are guaranteed to be atomic according
-** to Linux documentation (i.e., there will be no partial reads or writes).
-**
-** The state machine is depicted below where transitions are triggered by
-** reading or writing zero-blocks to the host-side pipe.
-**
-**     Operation        Number of Blocks        State           Next-State
-**     ===================================================================
-**     write            0                       WR_ENABLED      RDWR_ENABLED
-**     write            1                       RDWR_ENABLED    RD_ENABLED
-**     write            2                       RD_ENABLED      WAIT
-**     read             2                       RD_ENABLED      RDWR_ENABLED
-**     read             1                       RDWR_ENABLED    WR_ENABLED
-**     read             0                       WR_ENABLED      WAIT
-**
-** The WAIT state indicates that the reader or writer must wait for a state
-** change before proceeding, either by blocking or calling again (EAGAIN).
-**
 **
 **==============================================================================
 */
@@ -105,7 +93,7 @@ typedef enum state
 /* this structure is shared by the pipe */
 typedef struct shared
 {
-    myst_mutex_t lock;
+    lock_t lock;
     int flags; /* O_NONBLOCK */
     size_t nreaders;
     size_t nwriters;
@@ -224,6 +212,29 @@ MYST_INLINE size_t _space(const shared_t* shared)
     return shared->pipesz - shared->buf.size;
 }
 
+MYST_INLINE void _lock(lock_t* lock, bool* locked)
+{
+#ifdef USE_MUTEX
+    myst_mutex_lock(lock);
+#else
+    myst_spin_lock(lock);
+#endif
+    *locked = true;
+}
+
+MYST_INLINE void _unlock(lock_t* lock, bool* locked)
+{
+    if (*locked)
+    {
+#ifdef USE_MUTEX
+        myst_mutex_unlock(lock);
+#else
+        myst_spin_unlock(lock);
+#endif
+        *locked = false;
+    }
+}
+
 static int _pd_pipe2(myst_pipedev_t* pipedev, myst_pipe_t* pipe[2], int flags)
 {
     int ret = 0;
@@ -337,8 +348,6 @@ static ssize_t _pd_read(
     if (!pipedev || !_valid_pipe(pipe))
         ERAISE(-EBADF);
 
-    shared = pipe->shared;
-
     if (!buf && count)
         ERAISE(-EINVAL);
 
@@ -351,8 +360,8 @@ static ssize_t _pd_read(
     if (!(locals = calloc(1, sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
-    myst_mutex_lock(&shared->lock);
-    locked = true;
+    shared = pipe->shared;
+    _lock(&shared->lock, &locked);
 
     /* perform the read operation */
     {
@@ -416,9 +425,6 @@ static ssize_t _pd_read(
             {
                 if (shared->flags == O_NONBLOCK)
                 {
-                    myst_mutex_unlock(&shared->lock);
-                    locked = false;
-
                     if (nread == 0)
                         ERAISE(-EAGAIN);
 
@@ -432,8 +438,9 @@ static ssize_t _pd_read(
                     fds[0].fd = pipe->fd;
                     fds[0].events = (POLLIN | POLLHUP);
 
+                    _unlock(&shared->lock, &locked);
+
                     /* block here until pipe becomes read enabled */
-                    myst_mutex_unlock(&shared->lock);
                     ECHECK(poll_ret = _sys_poll(fds, MYST_COUNTOF(fds), -1));
 
                     if (poll_ret != 1)
@@ -442,7 +449,7 @@ static ssize_t _pd_read(
                     if ((fds[0].revents & POLLHUP)) /* end of file */
                         break;
 
-                    myst_mutex_lock(&shared->lock);
+                    _lock(&shared->lock, &locked);
                 }
             }
 
@@ -458,8 +465,7 @@ done:
     if (locals)
         free(locals);
 
-    if (locked)
-        myst_mutex_unlock(&shared->lock);
+    _unlock(&shared->lock, &locked);
 
     T(printf("_pd_read(): ret=%zd\n", ret));
 
@@ -488,8 +494,6 @@ static ssize_t _pd_write(
     if (!pipedev || !_valid_pipe(pipe))
         ERAISE(-EBADF);
 
-    shared = pipe->shared;
-
     if (!buf && count)
         ERAISE(-EINVAL);
 
@@ -502,8 +506,8 @@ static ssize_t _pd_write(
     if (!(locals = calloc(1, sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
-    myst_mutex_lock(&shared->lock);
-    locked = true;
+    shared = pipe->shared;
+    _lock(&shared->lock, &locked);
 
     /* if there are no readers, then raise EPIPE */
     if (shared->nreaders == 0)
@@ -574,9 +578,6 @@ static ssize_t _pd_write(
             {
                 if (shared->flags == O_NONBLOCK)
                 {
-                    myst_mutex_unlock(&shared->lock);
-                    locked = false;
-
                     if (nwritten == 0)
                         ERAISE(-EAGAIN);
 
@@ -588,8 +589,9 @@ static ssize_t _pd_write(
                     fds[0].fd = pipe->fd;
                     fds[0].events = POLLOUT | POLLHUP;
 
+                    _unlock(&shared->lock, &locked);
+
                     /* block here until pipe becomes write enabled */
-                    myst_mutex_unlock(&shared->lock);
                     long r = _sys_poll(fds, MYST_COUNTOF(fds), -1);
 
                     if (r == 1 && fds[0].revents & POLLHUP)
@@ -598,7 +600,7 @@ static ssize_t _pd_write(
                         break;
                     }
 
-                    myst_mutex_lock(&shared->lock);
+                    _lock(&shared->lock, &locked);
                 }
             }
         }
@@ -608,8 +610,7 @@ static ssize_t _pd_write(
 
 done:
 
-    if (locked)
-        myst_mutex_unlock(&shared->lock);
+    _unlock(&shared->lock, &locked);
 
     if (out.data)
         free(out.data);
