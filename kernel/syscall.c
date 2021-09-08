@@ -6333,14 +6333,14 @@ static long _syscall(void* args_)
         default:
         {
             if (__myst_kernel_args.unhandled_syscall_enosys == true)
-                syscall_ret = ENOSYS;
+                syscall_ret = -ENOSYS;
             else
                 myst_panic("unknown syscall: %s(): %ld", _syscall_str(n), n);
         }
     }
 
     if (__myst_kernel_args.unhandled_syscall_enosys == true)
-        syscall_ret = ENOSYS;
+        syscall_ret = -ENOSYS;
     else
         myst_panic("unhandled syscall: %s()", _syscall_str(n));
 

@@ -217,6 +217,7 @@ endif
 
 #broken:
 #/ltp/testcases/kernel/syscalls/epoll_wait/epoll_wait01
+#/ltp/testcases/kernel/syscalls/flock/flock01
 
 t:
-	make one FS=ext2fs TEST=/ltp/testcases/kernel/syscalls/epoll_wait/epoll_wait01
+	make one FS=ext2fs TEST=/ltp/testcases/kernel/syscalls/mbind/mbind02
