@@ -1,10 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#include <assert.h>
 #include <errno.h>
-#include <myst/assume.h>
 #include <pthread.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -47,12 +48,12 @@ int _test(int argc, const char* argv[], bool enosys)
     {
         _printf("*** inside child\n");
         int ret = reboot(0);
-        if (enosys && ret != ENOSYS)
+        if (enosys && ret != -1 && errno != ENOSYS)
         {
-            _printf("Expecting ENOSYS to be returned\n");
+            _printf("Expecting ENOSYS to be returned. Ret=%d\n", ret);
             exit(EXIT_FAILURE);
         }
-        else if (enosys)
+        else if (enosys && errno == ENOSYS)
         {
             _printf("ENOSYS returned as expected\n");
         }
@@ -123,11 +124,11 @@ int main(int argc, const char* argv[])
     }
     if (strcmp(argv[1], "false") == 0)
     {
-        myst_assume(_test(argc, argv, false) == 0);
+        assert(_test(argc, argv, false) == 0);
     }
     else if (strcmp(argv[1], "true") == 0)
     {
-        myst_assume(_test(argc, argv, true) == 0);
+        assert(_test(argc, argv, true) == 0);
     }
     else
     {
