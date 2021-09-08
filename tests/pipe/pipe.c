@@ -85,7 +85,7 @@ done:
 
 static char ALPHABET[] = "abcdefghijklmnopqrstuvwxyz";
 
-const size_t N = 512;
+const size_t N = 1024;
 
 static void* _read_thread(void* arg)
 {
@@ -201,21 +201,17 @@ void test_pipes(long slow_write, long slow_read)
 
 int main(int argc, const char* argv[])
 {
-#if 1
     /* test fast-writer/fast-reader */
     test_pipes(0, 0);
 
     /* test fast-writer/slow-reader */
     test_pipes(0, 1);
-#endif
 
-#if 1
     /* test slow-writer/fast-reader */
     test_pipes(1, 0);
 
     /* test slow-writer/slow-reader */
     test_pipes(1, 1);
-#endif
 
     printf("=== passed test (%s)\n", argv[0]);
 
