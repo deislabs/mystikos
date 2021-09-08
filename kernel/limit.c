@@ -8,7 +8,6 @@
 #include <myst/limit.h>
 #include <myst/mmanutils.h>
 #include <myst/process.h>
-#include <sys/resource.h>
 
 int myst_limit_set_default(struct rlimit rlimits[])
 {
@@ -107,8 +106,10 @@ done:
 
 int myst_limit_get_rlimit(pid_t pid, int resource, struct rlimit* rlim)
 {
-    myst_thread_t* thread;
+    myst_process_t* process;
     int ret = 0;
+
+    myst_spin_lock(&myst_process_list_lock);
 
     if (!rlim)
         ERAISE(-EFAULT);
@@ -124,14 +125,15 @@ int myst_limit_get_rlimit(pid_t pid, int resource, struct rlimit* rlim)
         ERAISE(-ENOTSUP);
 
     if (pid == 0)
-        thread = myst_thread_self();
-    else if (!(thread = myst_find_process(pid)))
+        process = myst_thread_self()->process;
+    else if (!(process = myst_find_process_from_pid(pid, false)))
         ERAISE(-ESRCH);
 
-    rlim->rlim_cur = thread->main.rlimits[resource].rlim_cur;
-    rlim->rlim_max = thread->main.rlimits[resource].rlim_max;
+    rlim->rlim_cur = process->rlimits[resource].rlim_cur;
+    rlim->rlim_max = process->rlimits[resource].rlim_max;
 
 done:
+    myst_spin_unlock(&myst_process_list_lock);
     return ret;
 }
 
