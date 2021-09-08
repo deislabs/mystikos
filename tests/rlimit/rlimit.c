@@ -54,7 +54,6 @@ int main(int argc, char* argv[])
     struct sysinfo info;
     sysinfo(&info);
     int64_t limit_data = floor(info.totalram * 0.70);
-    (void)info;
     assert_rlimit(RLIMIT_DATA, "RLIMIT_DATA", limit_data, limit_data);
     assert_rlimit_gt(RLIMIT_STACK, "RLIMIT_STACK", 1000000, 1000000);
     assert_rlimit(RLIMIT_CORE, "RLIMIT_CORE", 0, 0);

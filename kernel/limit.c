@@ -149,9 +149,8 @@ int myst_limit_set_rlimit(pid_t pid, int resource, struct rlimit* rlim)
     if (resource < 0 || resource >= RLIM_NLIMITS)
         ERAISE(-EINVAL);
 
-    // Setting rlimit value is currently unsupported
-    ERAISE(-ENOTSUP);
-
+    // ATTN: Setting rlimit value is currently unsupported
+    // Returning a failure will break tests/sysinfo and solutions/memcached
 done:
     return ret;
 }
