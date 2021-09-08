@@ -508,7 +508,7 @@ static int _init_main_thread(
     myst_assume(myst_tcall_set_tsd((uint64_t)thread) == 0);
 
     /* set up default rlimit values */
-    ECHECK(myst_limit_set_default(thread->main.rlimits));
+    ECHECK(myst_limit_set_default(process->rlimits));
 
 done:
 
