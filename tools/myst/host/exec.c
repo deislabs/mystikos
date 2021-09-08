@@ -600,6 +600,7 @@ long myst_poll_ocall(struct pollfd* fds, unsigned long nfds, int timeout)
 {
     extern long myst_tcall_poll(
         struct pollfd * lfds, unsigned long nfds, int timeout);
+
     return myst_tcall_poll(fds, nfds, timeout);
 }
 

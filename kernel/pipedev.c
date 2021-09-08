@@ -18,23 +18,23 @@
 #include <myst/syscall.h>
 #include <myst/time.h>
 
-#define MAGIC 0x9906acdc
-
-#define USE_ASYNC_TCALL
-
 #if 0
 #define T(EXPR) EXPR
 #else
 #define T(EXPR)
 #endif
 
+#define MAGIC 0x9906acdc
+
+#define USE_ASYNC_TCALL
+
 /* Limit the number of pipes */
 #define MAX_PIPES 256
 #define DEFAULT_PIPE_SIZE (64 * 1024)
 
-#define BLOCK_SIZE (PIPE_BUF / 2)
+#define BLOCK_SIZE PIPE_BUF
 
-#define CHECK_SANITY
+//#define CHECK_SANITY
 
 #ifdef CHECK_SANITY
 #define SANITY(COND) assert(COND)
@@ -202,6 +202,13 @@ done:
     return ret;
 }
 
+MYST_INLINE bool _is_write_enabled(int fd)
+{
+    struct pollfd pollfd = {.fd = fd, .events = POLLOUT};
+    long r = _sys_poll(&pollfd, 1, 100);
+    return r == 1;
+}
+
 MYST_INLINE bool _valid_pipe(const myst_pipe_t* pipe)
 {
     return pipe && pipe->magic == MAGIC;
@@ -237,8 +244,8 @@ static int _pd_pipe2(myst_pipedev_t* pipedev, myst_pipe_t* pipe[2], int flags)
     /* Create the pipe descriptors on the host */
     ECHECK(_sys_pipe2(fds, flags));
 
-    /* Set the pipe buffer size to PIPE_BUF */
-    ECHECK(_sys_fcntl(fds[0], F_SETPIPE_SZ, PIPE_BUF));
+    /* Set the pipe buffer size to hold two blocks */
+    ECHECK(_sys_fcntl(fds[0], F_SETPIPE_SZ, 2 * BLOCK_SIZE));
 
     /* Create the shared structure */
     {
@@ -320,7 +327,7 @@ static ssize_t _pd_read(
     shared_t* shared;
     struct locals
     {
-        uint8_t zeros[PIPE_BUF];
+        uint8_t zeros[2 * BLOCK_SIZE];
     };
     struct locals* locals = NULL;
     bool locked = false;
@@ -368,29 +375,29 @@ static ssize_t _pd_read(
                 {
                     case STATE_RD_ENABLED:
                     {
-                        if (_space(shared))
+                        if (shared->buf.size == 0)
                         {
-                            const size_t n = PIPE_BUF / 2;
-                            SANITY(_get_nread(pipe->fd) == STATE_RD_ENABLED);
-                            ECHECK(_sys_read(pipe->fd, locals->zeros, n));
-                            SANITY(_get_nread(pipe->fd) == STATE_RDWR_ENABLED);
-                            shared->state = STATE_RDWR_ENABLED;
-                        }
-                        else
-                        {
-                            const size_t n = PIPE_BUF;
+                            const size_t n = 2 * BLOCK_SIZE;
                             SANITY(_get_nread(pipe->fd) == STATE_RD_ENABLED);
                             ECHECK(_sys_read(pipe->fd, locals->zeros, n));
                             shared->state = STATE_WR_ENABLED;
                             SANITY(_get_nread(pipe->fd) == STATE_WR_ENABLED);
                         }
+                        else
+                        {
+                            const size_t n = BLOCK_SIZE;
+                            SANITY(_get_nread(pipe->fd) == STATE_RD_ENABLED);
+                            ECHECK(_sys_read(pipe->fd, locals->zeros, n));
+                            SANITY(_get_nread(pipe->fd) == STATE_RDWR_ENABLED);
+                            shared->state = STATE_RDWR_ENABLED;
+                        }
                         break;
                     }
                     case STATE_RDWR_ENABLED:
                     {
-                        if (_space(shared))
+                        if (shared->buf.size == 0)
                         {
-                            const size_t n = PIPE_BUF / 2;
+                            const size_t n = BLOCK_SIZE;
                             SANITY(_get_nread(pipe->fd) == STATE_RDWR_ENABLED);
                             ECHECK(_sys_read(pipe->fd, locals->zeros, n));
                             shared->state = STATE_WR_ENABLED;
@@ -438,6 +445,9 @@ static ssize_t _pd_read(
                     myst_mutex_lock(&shared->lock);
                 }
             }
+
+            if (nread > 0)
+                break;
         }
     }
 
@@ -468,7 +478,7 @@ static ssize_t _pd_write(
     shared_t* shared;
     struct locals
     {
-        uint8_t zeros[PIPE_BUF];
+        uint8_t zeros[2 * BLOCK_SIZE];
     };
     struct locals* locals = NULL;
     size_t nwritten = 0;
@@ -525,7 +535,7 @@ static ssize_t _pd_write(
                     {
                         if (_space(shared))
                         {
-                            const size_t n = PIPE_BUF / 2;
+                            const size_t n = BLOCK_SIZE;
                             SANITY(_get_nread(pipe->fd) == STATE_WR_ENABLED);
                             ECHECK(_sys_write(pipe->fd, locals->zeros, n));
                             shared->state = STATE_RDWR_ENABLED;
@@ -533,7 +543,7 @@ static ssize_t _pd_write(
                         }
                         else
                         {
-                            const size_t n = PIPE_BUF;
+                            const size_t n = 2 * BLOCK_SIZE;
                             SANITY(_get_nread(pipe->fd) == STATE_WR_ENABLED);
                             ECHECK(_sys_write(pipe->fd, locals->zeros, n));
                             shared->state = STATE_RD_ENABLED;
@@ -545,7 +555,7 @@ static ssize_t _pd_write(
                     {
                         if (_space(shared) == 0)
                         {
-                            const size_t n = PIPE_BUF / 2;
+                            const size_t n = BLOCK_SIZE;
                             SANITY(_get_nread(pipe->fd) == STATE_RDWR_ENABLED);
                             ECHECK(_sys_write(pipe->fd, locals->zeros, n));
                             shared->state = STATE_RD_ENABLED;
@@ -580,7 +590,6 @@ static ssize_t _pd_write(
 
                     /* block here until pipe becomes write enabled */
                     myst_mutex_unlock(&shared->lock);
-                    printf("*** write.poll\n");
                     long r = _sys_poll(fds, MYST_COUNTOF(fds), -1);
 
                     if (r == 1 && fds[0].revents & POLLHUP)
@@ -589,7 +598,6 @@ static ssize_t _pd_write(
                         break;
                     }
 
-                    printf("*** write.poll: r=%ld\n", r);
                     myst_mutex_lock(&shared->lock);
                 }
             }
@@ -836,12 +844,15 @@ static int _pd_target_fd(myst_pipedev_t* pipedev, myst_pipe_t* pipe)
 {
     int ret = 0;
 
+    T(printf("_pd_target_fd()\n"));
+
     if (!pipedev || !_valid_pipe(pipe))
         ERAISE(-EINVAL);
 
     ret = pipe->fd;
 
 done:
+    T(printf("_pd_target_fd(): ret=%d\n", ret));
     return ret;
 }
 

@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <poll.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -199,6 +200,70 @@ void test_pipes(long slow_write, long slow_read)
     printf("=== passed test (%s: %s/%s)\n", __FUNCTION__, msg1, msg2);
 }
 
+void test_pipe_size(void)
+{
+    int fds[2];
+    ssize_t n = 0;
+    char buf[4096];
+
+    printf("=== start test (%s)\n", __FUNCTION__);
+
+    assert(pipe(fds) == 0);
+
+    /* check that fds[1] is already write enabled */
+    {
+        struct pollfd pollfd = {.fd = fds[1], .events = POLLOUT};
+        int r = poll(&pollfd, 1, 1);
+        assert(r == 1);
+    }
+
+    memset(buf, 0, sizeof(buf));
+
+    /* Get the pipe size */
+    long pipesz = (long)fcntl(fds[1], F_GETPIPE_SZ);
+
+    /* write pages to the pipe until no longer write-enabled */
+    for (;;)
+    {
+        ssize_t r = write(fds[1], buf, sizeof(buf));
+        assert(r == sizeof(buf));
+        n += r;
+
+        struct pollfd pollfd = {.fd = fds[1], .events = POLLOUT};
+        int nfds = poll(&pollfd, 1, 1);
+        assert(nfds != -1);
+
+        if (nfds == 0)
+            break;
+
+        if (n < 0)
+            break;
+    }
+
+    /* compare with the pipe obtained with fcntl() */
+    assert(n == pipesz);
+
+    /* try to read pipesz data */
+    {
+        void* data;
+
+        assert((data = malloc(pipesz)) != NULL);
+        assert(read(fds[0], data, pipesz) == pipesz);
+    }
+
+    /* check that fds[1] is write enabled */
+    {
+        struct pollfd pollfd = {.fd = fds[1], .events = POLLOUT};
+        int r = poll(&pollfd, 1, 1);
+        assert(r == 1);
+    }
+
+    close(fds[0]);
+    close(fds[1]);
+
+    printf("=== passed test (%s)\n", __FUNCTION__);
+}
+
 int main(int argc, const char* argv[])
 {
     /* test fast-writer/fast-reader */
@@ -212,6 +277,9 @@ int main(int argc, const char* argv[])
 
     /* test slow-writer/slow-reader */
     test_pipes(1, 1);
+
+    /* test whether pipe size can be determined through polling */
+    test_pipe_size();
 
     printf("=== passed test (%s)\n", argv[0]);
 

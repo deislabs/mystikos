@@ -205,16 +205,22 @@ one:
 	subtest=$(TEST) sudo -E $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
 endif
 
-#/ltp/testcases/kernel/syscalls/pipe/pipe01 (bad)
-#/ltp/testcases/kernel/syscalls/pipe/pipe03
-#/ltp/testcases/kernel/syscalls/pipe/pipe04
-#/ltp/testcases/kernel/syscalls/pipe/pipe06
-#/ltp/testcases/kernel/syscalls/pipe/pipe08
-#/ltp/testcases/kernel/syscalls/pipe/pipe09
-#/ltp/testcases/kernel/syscalls/pipe/pipe10
-#/ltp/testcases/kernel/syscalls/pipe2/pipe2_01
-#/ltp/testcases/kernel/syscalls/epoll_wait/epoll_wait01
-#/ltp/testcases/kernel/syscalls/flock/flock01
+##==============================================================================
+##
+## pipe-tests:
+##
+##==============================================================================
 
-t:
-	make one FS=ext2fs TEST=/ltp/testcases/kernel/syscalls/pipe/pipe02
+PIPE_TESTS =
+PIPE_TESTS += /ltp/testcases/kernel/syscalls/pipe/pipe01
+PIPE_TESTS += /ltp/testcases/kernel/syscalls/pipe/pipe03
+PIPE_TESTS += /ltp/testcases/kernel/syscalls/pipe/pipe04
+PIPE_TESTS += /ltp/testcases/kernel/syscalls/pipe/pipe06
+PIPE_TESTS += /ltp/testcases/kernel/syscalls/pipe/pipe08
+PIPE_TESTS += /ltp/testcases/kernel/syscalls/pipe/pipe09
+PIPE_TESTS += /ltp/testcases/kernel/syscalls/pipe/pipe10
+PIPE_TESTS += /ltp/testcases/kernel/syscalls/pipe2/pipe2_01
+PIPE_TESTS += /ltp/testcases/kernel/syscalls/epoll_wait/epoll_wait01
+
+pipe-tests:
+	$(foreach i, $(PIPE_TESTS), $(MAKE) one FS=ext2fs TEST=$i $(NL) )
