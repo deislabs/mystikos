@@ -110,27 +110,6 @@ void test_getrusage()
     assert(usage.ru_nivcsw == 0);   /* involuntary context switches */
 }
 
-void test_prlimit()
-{
-    struct rlimit rlim;
-    int ret;
-
-    ret = -1;
-    // test get and set resource limit for NOFILE resource
-    ret = getrlimit(7, &rlim);
-    assert(ret == 0 && rlim.rlim_cur && rlim.rlim_max);
-
-    ret = setrlimit(7, &rlim);
-    assert(ret == 0);
-
-    // test operations on unsupported resources
-    ret = getrlimit(0, &rlim);
-    assert(ret < 0);
-
-    ret = setrlimit(0, &rlim);
-    assert(ret < 0);
-}
-
 #define NEWNAME "worker"
 #define NEWNAMELONG "thisisareallylongname"
 void test_thread_name()
@@ -172,7 +151,6 @@ int main(int argc, const char* argv[])
     test_unsupported_fields_are_zero();
 
     test_getrusage();
-    test_prlimit();
     test_thread_name();
 
     printf("\n=== passed test (%s)\n", argv[0]);
