@@ -178,7 +178,6 @@ static int _ed_epoll_wait(
     if (!epolldev || !_valid_epoll(epoll) || !events || maxevents < 0)
         ERAISE(-EINVAL);
 
-    printf("_ed_epoll_wait(): maxevents=%d\n", maxevents);
     ECHECK(n = _sys_epoll_wait(epoll->epfd, events, maxevents, timeout));
     ret = n;
 
