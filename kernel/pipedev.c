@@ -802,19 +802,17 @@ static int _pd_close(myst_pipedev_t* pipedev, myst_pipe_t* pipe)
         /* this is the last reference to the shared pipe structure */
         _unlock(&pipe->shared->lock, &locked);
         ECHECK(myst_cond_destroy(&pipe->shared->cond));
-#if 0
         free(pipe->shared);
-#endif
+    }
+    else
+    {
+        /* signal that this end of the pipe has been closed */
+        _unlock(&pipe->shared->lock, &locked);
+        myst_cond_signal(&pipe->shared->cond);
     }
 
-    /* signal that this end of the pipe has been closed */
-    _unlock(&pipe->shared->lock, &locked);
-    myst_cond_signal(&pipe->shared->cond);
-
-#if 1
     memset(pipe, 0, sizeof(myst_pipe_t));
     free(pipe);
-#endif
 
     _num_pipes--;
 
