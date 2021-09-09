@@ -8,6 +8,7 @@
 
 #include <myst/asynctcall.h>
 #include <myst/buf.h>
+#include <myst/cond.h>
 #include <myst/defs.h>
 #include <myst/eraise.h>
 #include <myst/mutex.h>
@@ -18,12 +19,6 @@
 #include <myst/spinlock.h>
 #include <myst/syscall.h>
 #include <myst/time.h>
-
-#ifdef USE_MUTEX
-typedef myst_mutex_t lock_t;
-#else
-typedef myst_spinlock_t lock_t;
-#endif
 
 #if 0
 #define T(EXPR) EXPR
@@ -41,7 +36,7 @@ typedef myst_spinlock_t lock_t;
 
 #define BLOCK_SIZE PIPE_BUF
 
-//#define CHECK_SANITY
+#define CHECK_SANITY
 
 #ifdef CHECK_SANITY
 #define SANITY(COND) assert(COND)
@@ -93,7 +88,8 @@ typedef enum state
 /* this structure is shared by the pipe */
 typedef struct shared
 {
-    lock_t lock;
+    myst_mutex_t lock;
+    myst_cond_t cond;
     int flags; /* O_NONBLOCK */
     size_t nreaders;
     size_t nwriters;
@@ -190,13 +186,6 @@ done:
     return ret;
 }
 
-MYST_INLINE bool _is_write_enabled(int fd)
-{
-    struct pollfd pollfd = {.fd = fd, .events = POLLOUT};
-    long r = _sys_poll(&pollfd, 1, 100);
-    return r == 1;
-}
-
 MYST_INLINE bool _valid_pipe(const myst_pipe_t* pipe)
 {
     return pipe && pipe->magic == MAGIC;
@@ -212,25 +201,17 @@ MYST_INLINE size_t _space(const shared_t* shared)
     return shared->pipesz - shared->buf.size;
 }
 
-MYST_INLINE void _lock(lock_t* lock, bool* locked)
+MYST_INLINE void _lock(myst_mutex_t* lock, bool* locked)
 {
-#ifdef USE_MUTEX
     myst_mutex_lock(lock);
-#else
-    myst_spin_lock(lock);
-#endif
     *locked = true;
 }
 
-MYST_INLINE void _unlock(lock_t* lock, bool* locked)
+MYST_INLINE void _unlock(myst_mutex_t* lock, bool* locked)
 {
     if (*locked)
     {
-#ifdef USE_MUTEX
         myst_mutex_unlock(lock);
-#else
-        myst_spin_unlock(lock);
-#endif
         *locked = false;
     }
 }
@@ -276,6 +257,8 @@ static int _pd_pipe2(myst_pipedev_t* pipedev, myst_pipe_t* pipe[2], int flags)
 
         /* Set the non-blocking flag */
         shared->flags = flags;
+
+        ECHECK(myst_cond_init(&shared->cond));
     }
 
     /* Create the read pipe */
@@ -400,6 +383,9 @@ static ssize_t _pd_read(
                             SANITY(_get_nread(pipe->fd) == STATE_RDWR_ENABLED);
                             shared->state = STATE_RDWR_ENABLED;
                         }
+
+                        /* signal that pipe is now write enabled */
+                        myst_cond_signal(&shared->cond);
                         break;
                     }
                     case STATE_RDWR_ENABLED:
@@ -432,24 +418,12 @@ static ssize_t _pd_read(
                 }
                 else
                 {
-                    struct pollfd fds[1];
-                    long poll_ret;
-
-                    fds[0].fd = pipe->fd;
-                    fds[0].events = (POLLIN | POLLHUP);
-
-                    _unlock(&shared->lock, &locked);
-
-                    /* block here until pipe becomes read enabled */
-                    ECHECK(poll_ret = _sys_poll(fds, MYST_COUNTOF(fds), -1));
-
-                    if (poll_ret != 1)
-                        ERAISE(-ENOSYS);
-
-                    if ((fds[0].revents & POLLHUP)) /* end of file */
+                    /* break out if there are no writters */
+                    if (shared->nwriters == 0)
                         break;
 
-                    _lock(&shared->lock, &locked);
+                    /* block here until pipe becomes read enabled */
+                    myst_cond_wait(&shared->cond, &shared->lock);
                 }
             }
 
@@ -553,6 +527,9 @@ static ssize_t _pd_write(
                             shared->state = STATE_RD_ENABLED;
                             SANITY(_get_nread(pipe->fd) == STATE_RD_ENABLED);
                         }
+
+                        /* signal that pipe is now read enabled */
+                        myst_cond_signal(&shared->cond);
                         break;
                     }
                     case STATE_RDWR_ENABLED:
@@ -585,22 +562,12 @@ static ssize_t _pd_write(
                 }
                 else
                 {
-                    struct pollfd fds[1];
-                    fds[0].fd = pipe->fd;
-                    fds[0].events = POLLOUT | POLLHUP;
-
-                    _unlock(&shared->lock, &locked);
-
-                    /* block here until pipe becomes write enabled */
-                    long r = _sys_poll(fds, MYST_COUNTOF(fds), -1);
-
-                    if (r == 1 && fds[0].revents & POLLHUP)
-                    {
-                        /* end of file */
+                    /* break out if there are no readers */
+                    if (shared->nreaders == 0)
                         break;
-                    }
 
-                    _lock(&shared->lock, &locked);
+                    /* wait for pipe to become write enabled or closed */
+                    myst_cond_wait(&shared->cond, &shared->lock);
                 }
             }
         }
@@ -812,6 +779,7 @@ done:
 static int _pd_close(myst_pipedev_t* pipedev, myst_pipe_t* pipe)
 {
     int ret = 0;
+    bool locked = false;
 
     if (!pipedev || !_valid_pipe(pipe))
         ERAISE(-EBADF);
@@ -822,13 +790,24 @@ static int _pd_close(myst_pipedev_t* pipedev, myst_pipe_t* pipe)
     T(printf("_pd_close(): fd=%d pid=%d\n", pipe->fd, myst_getpid());)
     ECHECK(_sys_close(pipe->fd));
 
+    _lock(&pipe->shared->lock, &locked);
+
     if (pipe->mode == O_RDONLY)
         pipe->shared->nreaders--;
     else if (pipe->mode == O_WRONLY)
         pipe->shared->nwriters--;
 
     if (pipe->shared->nreaders == 0 && pipe->shared->nwriters == 0)
+    {
+        /* this is the last reference to the shared pipe structure */
+        _unlock(&pipe->shared->lock, &locked);
+        ECHECK(myst_cond_destroy(&pipe->shared->cond));
         free(pipe->shared);
+    }
+
+    /* signal that this end of the pipe has been closed */
+    _unlock(&pipe->shared->lock, &locked);
+    myst_cond_signal(&pipe->shared->cond);
 
     memset(pipe, 0, sizeof(myst_pipe_t));
     free(pipe);
@@ -836,6 +815,7 @@ static int _pd_close(myst_pipedev_t* pipedev, myst_pipe_t* pipe)
     _num_pipes--;
 
 done:
+
     T(printf("_pd_close(): done\n");)
 
     return ret;

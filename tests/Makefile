@@ -143,3 +143,11 @@ clean:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) clean $(NL) )
 
 distclean: clean
+
+pipe-tests:
+	$(MAKE) -C pipe tests
+	$(MAKE) -C pollpipe tests
+	$(MAKE) -C pollpipe2 tests
+	$(MAKE) -C spawn tests
+	$(MAKE) -C spawnfa tests
+	$(MAKE) -C ltp pipe-tests

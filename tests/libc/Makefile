@@ -11,6 +11,8 @@ endif
 
 OPTS += --memory-size=256m
 
+#OPTS += --memcheck
+
 APPDIR=$(CURDIR)/appdir
 
 ROOTFS=$(CURDIR)/rootfs

@@ -266,15 +266,12 @@ void test_pipe_size(void)
 
 int main(int argc, const char* argv[])
 {
-#if 0
     /* test fast-writer/fast-reader */
     test_pipes(0, 0);
-#endif
 
     /* test fast-writer/slow-reader */
     test_pipes(0, 1);
 
-#if 0
     /* test slow-writer/fast-reader */
     test_pipes(1, 0);
 
@@ -283,7 +280,6 @@ int main(int argc, const char* argv[])
 
     /* test whether pipe size can be determined through polling */
     test_pipe_size();
-#endif
 
     printf("=== passed test (%s)\n", argv[0]);
 
