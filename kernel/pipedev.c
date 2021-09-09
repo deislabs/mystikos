@@ -36,14 +36,6 @@
 
 #define BLOCK_SIZE PIPE_BUF
 
-//#define CHECK_SANITY
-
-#ifdef CHECK_SANITY
-#define SANITY(COND) assert(COND)
-#else
-#define SANITY(COND)
-#endif
-
 /*
 **==============================================================================
 **
@@ -80,9 +72,9 @@ static _Atomic(size_t) _num_pipes;
 
 typedef enum state
 {
-    STATE_WR_ENABLED = 0,
-    STATE_RDWR_ENABLED = BLOCK_SIZE,
-    STATE_RD_ENABLED = (2 * BLOCK_SIZE),
+    STATE_WR_ENABLED = 'E',   /* empty */
+    STATE_RDWR_ENABLED = 'H', /* half */
+    STATE_RD_ENABLED = 'F',   /* full */
 } state_t;
 
 /* this structure is shared by the pipe */
@@ -253,7 +245,6 @@ static int _pd_pipe2(myst_pipedev_t* pipedev, myst_pipe_t* pipe[2], int flags)
 
         /* Set the state */
         shared->state = STATE_WR_ENABLED;
-        SANITY(_get_nread(fds[0]) == STATE_WR_ENABLED);
 
         /* Set the non-blocking flag */
         shared->flags = flags;
@@ -370,22 +361,15 @@ static ssize_t _pd_read(
                         if (shared->buf.size == 0)
                         {
                             const size_t n = 2 * BLOCK_SIZE;
-                            SANITY(_get_nread(pipe->fd) == STATE_RD_ENABLED);
                             ECHECK(_sys_read(pipe->fd, locals->zeros, n));
                             shared->state = STATE_WR_ENABLED;
-                            SANITY(_get_nread(pipe->fd) == STATE_WR_ENABLED);
                         }
                         else
                         {
                             const size_t n = BLOCK_SIZE;
-                            SANITY(_get_nread(pipe->fd) == STATE_RD_ENABLED);
                             ECHECK(_sys_read(pipe->fd, locals->zeros, n));
-                            SANITY(_get_nread(pipe->fd) == STATE_RDWR_ENABLED);
                             shared->state = STATE_RDWR_ENABLED;
                         }
-
-                        /* signal that pipe is now write enabled */
-                        myst_cond_signal(&shared->cond);
                         break;
                     }
                     case STATE_RDWR_ENABLED:
@@ -393,19 +377,19 @@ static ssize_t _pd_read(
                         if (shared->buf.size == 0)
                         {
                             const size_t n = BLOCK_SIZE;
-                            SANITY(_get_nread(pipe->fd) == STATE_RDWR_ENABLED);
                             ECHECK(_sys_read(pipe->fd, locals->zeros, n));
                             shared->state = STATE_WR_ENABLED;
-                            SANITY(_get_nread(pipe->fd) == STATE_WR_ENABLED);
                         }
                         break;
                     }
                     case STATE_WR_ENABLED:
                     {
-                        SANITY(_get_nread(pipe->fd) == STATE_WR_ENABLED);
                         break;
                     }
                 }
+
+                /* signal that pipe is now write enabled */
+                myst_cond_signal(&shared->cond);
             }
             else /* the buffer is empty */
             {
@@ -513,22 +497,15 @@ static ssize_t _pd_write(
                         if (_space(shared))
                         {
                             const size_t n = BLOCK_SIZE;
-                            SANITY(_get_nread(pipe->fd) == STATE_WR_ENABLED);
                             ECHECK(_sys_write(pipe->fd, locals->zeros, n));
                             shared->state = STATE_RDWR_ENABLED;
-                            SANITY(_get_nread(pipe->fd) == STATE_RDWR_ENABLED);
                         }
                         else
                         {
                             const size_t n = 2 * BLOCK_SIZE;
-                            SANITY(_get_nread(pipe->fd) == STATE_WR_ENABLED);
                             ECHECK(_sys_write(pipe->fd, locals->zeros, n));
                             shared->state = STATE_RD_ENABLED;
-                            SANITY(_get_nread(pipe->fd) == STATE_RD_ENABLED);
                         }
-
-                        /* signal that pipe is now read enabled */
-                        myst_cond_signal(&shared->cond);
                         break;
                     }
                     case STATE_RDWR_ENABLED:
@@ -536,19 +513,19 @@ static ssize_t _pd_write(
                         if (_space(shared) == 0)
                         {
                             const size_t n = BLOCK_SIZE;
-                            SANITY(_get_nread(pipe->fd) == STATE_RDWR_ENABLED);
                             ECHECK(_sys_write(pipe->fd, locals->zeros, n));
                             shared->state = STATE_RD_ENABLED;
-                            SANITY(_get_nread(pipe->fd) == STATE_RD_ENABLED);
                         }
                         break;
                     }
                     case STATE_RD_ENABLED:
                     {
-                        SANITY(_get_nread(pipe->fd) == STATE_RD_ENABLED);
                         break;
                     }
                 }
+
+                /* signal that pipe is now read enabled */
+                myst_cond_signal(&shared->cond);
             }
             else /* the buffer is full */
             {
