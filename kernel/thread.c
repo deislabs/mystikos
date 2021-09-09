@@ -932,11 +932,6 @@ static long _run_thread(void* arg_)
                     myst_sleep_msec(10);
                 }
             }
-            if (process->fdtable)
-            {
-                myst_fdtable_free(process->fdtable);
-                process->fdtable = NULL;
-            }
 
             myst_signal_free(process);
 
@@ -1008,6 +1003,14 @@ static long _run_thread(void* arg_)
                 }
                 i--;
             }
+        }
+
+        /* unmapping closes fd's associated with mappings, so free fdtable
+         * after all unmaps are done */
+        if (!is_child_thread && process->fdtable)
+        {
+            myst_fdtable_free(process->fdtable);
+            process->fdtable = NULL;
         }
 
         /* Only free child thread as parent is zombified so parent can wait on

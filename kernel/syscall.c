@@ -1090,7 +1090,6 @@ long myst_syscall_close(int fd)
         myst_remove_fd_link(fd);
     }
 
-    myst_mman_close_notify(fd);
     ECHECK(myst_fdtable_remove(fdtable, fd));
     ECHECK((*fdops->fd_close)(device, object));
 

@@ -910,7 +910,6 @@ static int _fs_dup(
     ECHECK((tret = myst_tcall(SYS_dup, params)));
 
     new_file->fd = tret;
-    ret = tret;
 
     *file_out = new_file;
     new_file = NULL;
