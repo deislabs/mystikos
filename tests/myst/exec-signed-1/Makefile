@@ -7,6 +7,10 @@ CFLAGS = -fPIC -g
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 LDFLAGS += -L$(LIBDIR) -lopenenclave
 
+ifdef MYST_ENABLE_GCOV
+CFLAGS += $(GCOV_CFLAGS)
+endif
+
 REDEFINE_TESTS=1
 
 include $(TOP)/rules.mak
@@ -19,7 +23,7 @@ exec-signed:
 	openssl genrsa -out private.pem -3 3072
 	openssl rsa -in private.pem -pubout -out public.pem
 	mkdir -p $(APPDIR)/bin
-	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/$(APPNAME) ../hello.c $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $(APPDIR)/bin/$(APPNAME) ../hello.c $(LDFLAGS)
 	$(PREFIX) $(MYST) mkcpio $(APPDIR) rootfs
 	$(PREFIX) $(MYST) sign rootfs private.pem config.json
 	sudo chown -R $(USER).$(USER) hello.signed
@@ -37,7 +41,7 @@ pem:
 
 build: clean-exec-signed-1
 	mkdir -p $(APPDIR)/bin
-	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/$(APPNAME) ../hello.c $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $(APPDIR)/bin/$(APPNAME) ../hello.c $(LDFLAGS)
 
 mkcpio: build
 	$(PREFIX) $(MYST) mkcpio $(APPDIR) rootfs

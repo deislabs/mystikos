@@ -7,6 +7,10 @@ CFLAGS = -fPIC -g
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 LDFLAGS += -L$(LIBDIR) -lopenenclave
 
+ifdef MYST_ENABLE_GCOV
+CFLAGS += $(GCOV_CFLAGS)
+endif
+
 REDEFINE_TESTS=1
 
 include $(TOP)/rules.mak
@@ -17,7 +21,7 @@ tests:
 exec-signed:
 	rm -rf $(APPDIR) result rootfs private.pem public.pem $(APPNAME).signed
 	mkdir -p $(APPDIR)/bin
-	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/$(APPNAME) ../hello.c $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $(APPDIR)/bin/$(APPNAME) ../hello.c $(LDFLAGS)
 	$(PREFIX) $(MYST) mkcpio $(APPDIR) rootfs
 	openssl genrsa -out private.pem -3 3072
 	openssl rsa -in private.pem -pubout -out public.pem
