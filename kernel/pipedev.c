@@ -802,6 +802,7 @@ static int _pd_close(myst_pipedev_t* pipedev, myst_pipe_t* pipe)
         /* this is the last reference to the shared pipe structure */
         _unlock(&pipe->shared->lock, &locked);
         ECHECK(myst_cond_destroy(&pipe->shared->cond));
+        myst_buf_release(&pipe->shared->buf);
         free(pipe->shared);
     }
     else
