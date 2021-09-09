@@ -11,11 +11,15 @@
 
 #define MYST_FDMAPPING_USED 0x1ca0597f
 
-/* defines a file-page to memory-page mapping */
+/*
+defines a file-page to memory-page mapping
+The mapping entries in the fdmappings vector are populated at mmap, and cleaned
+up at munmap.
+*/
 typedef struct myst_fdmapping
 {
     uint32_t used;           /* whether entry is used */
-    int32_t fd;              /* fd that page is mapped to */
+    int32_t fd;              /* duplicated fd */
     uint64_t offset;         /* offset of page within file */
     myst_refstr_t* pathname; /* full pathname associated with fd */
 } myst_fdmapping_t;
@@ -52,8 +56,6 @@ int myst_get_free_ram(size_t* size);
 int myst_release_process_mappings(pid_t pid);
 
 int myst_msync(void* addr, size_t length, int flags);
-
-void myst_mman_close_notify(int fd);
 
 typedef struct myst_mman_stats
 {
