@@ -7,6 +7,10 @@ CFLAGS = -fPIC -g
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 LDFLAGS += -L$(LIBDIR) -lopenenclave
 
+ifdef MYST_ENABLE_GCOV
+CFLAGS += $(GCOV_CFLAGS)
+endif
+
 REDEFINE_TESTS=1
 
 CLEAN = appdir result rootfs
@@ -21,7 +25,7 @@ tests:
 test-a:
 	rm -rf $(APPDIR) result rootfs
 	mkdir -p $(APPDIR)/bin
-	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/$(APPNAME) ../hello.c $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $(APPDIR)/bin/$(APPNAME) ../hello.c $(LDFLAGS)
 	$(PREFIX) $(MYST) mkcpio $(APPDIR) rootfs
 	$(MYST_EXEC) rootfs /bin/$(APPNAME) red green blue yellow > result
 	grep -E "argv\[0]=/bin/hello" result
@@ -35,7 +39,7 @@ test-a:
 test-mem-size:
 	rm -rf $(APPDIR) result rootfs
 	mkdir -p $(APPDIR)/bin
-	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/$(APPNAME) ../hello.c $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $(APPDIR)/bin/$(APPNAME) ../hello.c $(LDFLAGS)
 	$(PREFIX) $(MYST) mkcpio $(APPDIR) rootfs
 	$(MYST_EXEC) rootfs --memory-size 1g /bin/$(APPNAME) red green blue yellow > result
 	grep -E "argv\[0]=/bin/hello" result
@@ -49,7 +53,7 @@ test-mem-size:
 test-config:
 	rm -rf $(APPDIR) result rootfs
 	mkdir -p $(APPDIR)/bin
-	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/$(APPNAME) ../hello.c $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $(APPDIR)/bin/$(APPNAME) ../hello.c $(LDFLAGS)
 	$(PREFIX) $(MYST) mkcpio $(APPDIR) rootfs
 	$(MYST_EXEC) rootfs --app-config-path config.json /bin/$(APPNAME) red green blue yellow > result
 	grep -E "argv\[0]=/bin/hello" result
@@ -65,7 +69,7 @@ clean-exec-not-signed:
 
 build: clean-exec-not-signed
 	mkdir -p $(APPDIR)/bin
-	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/$(APPNAME) ../hello.c $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $(APPDIR)/bin/$(APPNAME) ../hello.c $(LDFLAGS)
 
 mkcpio: build
 	$(PREFIX) $(MYST) mkcpio $(APPDIR) rootfs
