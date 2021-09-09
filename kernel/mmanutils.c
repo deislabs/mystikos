@@ -984,57 +984,46 @@ done:
 /* notified on close to clear fd-mappings involving fd */
 void myst_mman_close_notify(int fd)
 {
-    int flags;
     struct stat buf;
     bool locked = false;
-
-    /* get the file open flags */
-    if (fd < 0 || (flags = myst_syscall_fcntl(fd, F_GETFL, 0)) < 0)
-        return;
 
     /* only do this for regular files */
     if (myst_syscall_fstat(fd, &buf) != 0 || !S_ISREG(buf.st_mode))
         return;
 
-    /* if file is open for write */
-    if (flags & (O_RDWR | O_WRONLY))
+    _rlock(&locked);
+    uint8_t* addr = (uint8_t*)_mman.map;
+    size_t length = ((uint8_t*)_mman.end) - addr;
+    _runlock(&locked);
+
+    vectors_t v = _get_vectors();
+    size_t index = _get_page_index(addr, length);
+    myst_assume(index >= 0);
+
+    _rlock(&locked);
     {
-        _rlock(&locked);
-        uint8_t* addr = (uint8_t*)_mman.map;
-        size_t length = ((uint8_t*)_mman.end) - addr;
-        _runlock(&locked);
+        const size_t count = length / PAGE_SIZE;
+        myst_fdmapping_t* p = &v.fdmappings[index];
+        const myst_fdmapping_t* end = p + count;
+        size_t bytes_remaining = count * sizeof(myst_fdmapping_t);
 
-        vectors_t v = _get_vectors();
-        size_t index = _get_page_index(addr, length);
-        myst_assume(index >= 0);
-
-        _rlock(&locked);
+        while (p < end)
         {
-            const size_t count = length / PAGE_SIZE;
-            myst_fdmapping_t* p = &v.fdmappings[index];
-            const myst_fdmapping_t* end = p + count;
-            size_t bytes_remaining = count * sizeof(myst_fdmapping_t);
+            // Efficiently skip over zero-valued bytes. In-use fdmappings
+            // begin with a non-zero byte.
+            if ((p = myst_memcchr(p, '\0', bytes_remaining)) == NULL)
+                break;
 
-            while (p < end)
+            if (p->used == MYST_FDMAPPING_USED && p->fd == fd)
             {
-                // Efficiently skip over zero-valued bytes. In-use fdmappings
-                // begin with a non-zero byte.
-                if ((p = myst_memcchr(p, '\0', bytes_remaining)) == NULL)
-                    break;
-
-                if (p->used == MYST_FDMAPPING_USED && p->fd == fd)
-                {
-                    myst_refstr_unref(p->pathname);
-                    memset(p, 0, sizeof(myst_fdmapping_t));
-                }
-
-                p++;
-                bytes_remaining -= sizeof(myst_fdmapping_t);
+                myst_refstr_unref(p->pathname);
+                memset(p, 0, sizeof(myst_fdmapping_t));
             }
-        }
-        _runlock(&locked);
-    }
 
+            p++;
+            bytes_remaining -= sizeof(myst_fdmapping_t);
+        }
+    }
     _runlock(&locked);
 }
 
