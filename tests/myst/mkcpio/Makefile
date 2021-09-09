@@ -11,13 +11,17 @@ REDEFINE_TESTS=1
 
 include $(TOP)/rules.mak
 
+ifdef MYST_ENABLE_GCOV
+CFLAGS += $(GCOV_CFLAGS)
+endif
+
 tests:
 	$(RUNTEST) $(MAKE) test-mkcpio
 
 test-mkcpio:
 	rm -rf $(APPDIR) $(APPDIR)2 dir1 dir2 dir1.txt dir2.txt difference1.txt rootfs private.pem public.pem $(APPNAME).signed
 	mkdir -p $(APPDIR)/bin
-	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/$(APPNAME) ../hello.c $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $(APPDIR)/bin/$(APPNAME) ../hello.c $(LDFLAGS)
 	$(PREFIX) $(MYST) mkcpio $(APPDIR) rootfs
 	$(PREFIX) $(MYST) excpio rootfs $(APPDIR)2
 	sudo chown -R $(USER).$(USER) $(APPDIR) rootfs $(APPDIR)2
