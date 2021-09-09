@@ -226,4 +226,4 @@ pipe-tests:
 	$(foreach i, $(PIPE_TESTS), $(MAKE) one FS=ext2fs TEST=$i $(NL) )
 
 t:
-	$(MAKE) one FS=ext2fs STRACE=1 TEST=/ltp/testcases/kernel/syscalls/pipe/pipe09
+	$(MAKE) one FS=ext2fs TEST=/ltp/testcases/kernel/syscalls/pipe/pipe04

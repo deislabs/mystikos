@@ -36,7 +36,7 @@
 
 #define BLOCK_SIZE PIPE_BUF
 
-#define CHECK_SANITY
+//#define CHECK_SANITY
 
 #ifdef CHECK_SANITY
 #define SANITY(COND) assert(COND)
@@ -453,7 +453,6 @@ static ssize_t _pd_write(
     size_t count)
 {
     ssize_t ret = 0;
-    myst_buf_t out = MYST_BUF_INITIALIZER;
     bool locked = false;
     shared_t* shared;
     struct locals
@@ -578,9 +577,6 @@ static ssize_t _pd_write(
 done:
 
     _unlock(&shared->lock, &locked);
-
-    if (out.data)
-        free(out.data);
 
     if (locals)
         free(locals);
@@ -808,8 +804,8 @@ static int _pd_close(myst_pipedev_t* pipedev, myst_pipe_t* pipe)
     else
     {
         /* signal that this end of the pipe has been closed */
-        _unlock(&pipe->shared->lock, &locked);
         myst_cond_signal(&pipe->shared->cond);
+        _unlock(&pipe->shared->lock, &locked);
     }
 
     memset(pipe, 0, sizeof(myst_pipe_t));
