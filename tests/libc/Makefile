@@ -11,7 +11,7 @@ endif
 
 OPTS += --memory-size=256m
 
-#OPTS += --memcheck
+OPTS += --memcheck
 
 APPDIR=$(CURDIR)/appdir
 
