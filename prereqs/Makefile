@@ -4,7 +4,7 @@ DRIVER_URL=https://download.01.org/intel-sgx/sgx-dcap/1.7/linux/distro/ubuntu18.
 
 all:
 	test -e package-installed || $(MAKE) packages
-	test -e /dev/sgx || $(MAKE) install_sgx_driver
+	test -e /dev/sgx || test -e /dev/isgx || $(MAKE) install_sgx_driver
 
 package_repo:
 	echo 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu bionic main' | sudo tee /etc/apt/sources.list.d/intel-sgx.list
