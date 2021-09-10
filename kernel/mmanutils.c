@@ -1014,11 +1014,10 @@ void myst_mman_close_notify(int fd)
             if ((p = myst_memcchr(p, '\0', bytes_remaining)) == NULL)
                 break;
 
+            // /proc/[pid]/maps depends on the fdmapping vector for pathname
+            // information. Defer fdmapping cleanup to munmap.
             if (p->used == MYST_FDMAPPING_USED && p->fd == fd)
-            {
-                myst_refstr_unref(p->pathname);
-                memset(p, 0, sizeof(myst_fdmapping_t));
-            }
+                p->used = MYST_FDMAPPING_FD_CLOSED;
 
             p++;
             bytes_remaining -= sizeof(myst_fdmapping_t);

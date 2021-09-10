@@ -10,12 +10,14 @@
 #include <sys/types.h>
 
 #define MYST_FDMAPPING_USED 0x1ca0597f
+#define MYST_FDMAPPING_FD_CLOSED 0x73a840d4
 
 /* defines a file-page to memory-page mapping */
 typedef struct myst_fdmapping
 {
-    uint32_t used;           /* whether entry is used */
-    int32_t fd;              /* fd that page is mapped to */
+    uint32_t used; /* whether entry is unused, or used. Used has two substates:
+                      active fd & fd closed */
+    int32_t fd;    /* fd that page is mapped to */
     uint64_t offset;         /* offset of page within file */
     myst_refstr_t* pathname; /* full pathname associated with fd */
 } myst_fdmapping_t;
