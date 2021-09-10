@@ -17,6 +17,16 @@ void test_zerobase(void)
     printf("=== enclave_base_address=%p\n", base_address);
 }
 
+void test_disable_zerobase(void)
+{
+    const void* base_address = __oe_get_enclave_base_address();
+
+    if (base_address == 0)
+        printf("=== enclave_base_address=%p. Test failed.\n", base_address);
+    else
+        printf("=== enclave_base_address != 0x0\n");
+}
+
 int main(int argc, const char* argv[], const char* envp[])
 {
     printf("\n");
@@ -33,7 +43,9 @@ int main(int argc, const char* argv[], const char* envp[])
 
     printf("=== Hello World!\n\n");
 
-    if (strstr(argv[1], "zero-base"))
+    if (strstr(argv[1], "disable-zero-base"))
+        test_disable_zerobase();
+    else if (strstr(argv[1], "test-zero-base"))
         test_zerobase();
 
     return 0;
