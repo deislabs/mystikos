@@ -152,7 +152,8 @@ int myst_limit_set_rlimit(pid_t pid, int resource, struct rlimit* rlim)
     // ATTN: Setting rlimit value is currently unsupported
     // Returning a failure will break solutions/memcached (RLIMIT_NOFILE)
     // and tests/glibc (RLIMIT_STACK)
-    // ERAISE(-ENOTSUP);
+    if (resource != RLIMIT_NOFILE && resource != RLIMIT_STACK)
+        ERAISE(-EINVAL);
 done:
     return ret;
 }
