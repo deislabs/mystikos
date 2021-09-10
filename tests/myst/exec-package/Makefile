@@ -15,6 +15,7 @@ tests:
 	$(RUNTEST) $(MAKE) run-package-with-args
 	$(RUNTEST) $(MAKE) run-package-no-args
 	$(RUNTEST) $(MAKE) run-package-from-bin-dir
+	$(RUNTEST) $(MAKE) run-package-pf-exception
 	$(RUNTEST) $(MAKE) run-package-test-zerobase
 	$(RUNTEST) $(MAKE) run-package-test-disable-zerobase
 
@@ -62,6 +63,12 @@ run-package-from-bin-dir: package
 	diff myst/bin/result expected-args
 	rm -rf $(APPDIR) result private.pem public.pem myst/
 	@ echo "=== passed test (myst: exec-package-from-bin-dir)"
+
+run-package-pf-exception: package
+	./myst/bin/$(APPNAME) test-pf-exception | grep -v TESTNAME > result
+	diff result expected-pf-exception
+	rm -rf $(APPDIR) result private.pem public.pem myst
+	@ echo "=== passed test (myst: exec-package-pf-exception)"
 
 run-package-test-zerobase: package-zerobase
 	./myst/bin/$(APPNAME) test-zero-base | grep -v TESTNAME > result

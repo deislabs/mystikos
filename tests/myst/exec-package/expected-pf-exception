@@ -1,0 +1,11 @@
+
+argv[0]=/bin/hello
+argv[1]=test-pf-exception
+
+envp[0]=ENC-ENVP-1=Enclave_envp_1
+envp[1]=ENC-ENVP-2=Enclave_envp_1
+envp[3]=MYST_TARGET=sgx
+
+=== Hello World!
+
+Got the faulting address as expected
