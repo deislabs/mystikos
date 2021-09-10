@@ -2364,6 +2364,7 @@ baseservices/TieredCompilation/BasicTest_QuickJitOn_R2r/BasicTest_QuickJitOn_R2r
 baseservices/typeequivalence/simple/Simple/Simple.dll
 baseservices/threading/coverage/OSThreadId/osthreadid/osthreadid.dll
 baseservices/compilerservices/RuntimeWrappedException/RuntimeWrappedException/RuntimeWrappedException.dll
+readytorun/crossgen2/crossgen2smoke/crossgen2smoke.dll
 readytorun/DynamicMethodGCStress/DynamicMethodGCStress/DynamicMethodGCStress.dll
 baseservices/varargs/varargsupport/varargsupport.dll
 baseservices/varargs/varargsupport_r/varargsupport_r.dll

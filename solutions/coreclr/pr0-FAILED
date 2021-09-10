@@ -6,7 +6,6 @@ JIT/Regression/CLR-x86-JIT/V2.0-Beta2/b425314/b425314/b425314.dll, potential-han
 JIT/Regression/CLR-x86-JIT/V2.0-Beta2/b426654/b426654/b426654.dll, potential-hang, 1g
 JIT/Regression/JitBlue/Runtime_40444/Runtime_40444/Runtime_40444.dll, Error-255, 1g
 Loader/binding/tracing/BinderTracingTest.ResolutionFlow/BinderTracingTest.ResolutionFlow.dll, SIGSEGV, 3g
-readytorun/crossgen2/crossgen2smoke/crossgen2smoke.dll, System.UnauthorizedAccessException, 256m
 tracing/eventpipe/buffersize/buffersize/buffersize.dll
 tracing/eventpipe/diagnosticport/diagnosticport/diagnosticport.dll
 tracing/eventpipe/eventsourceerror/eventsourceerror/eventsourceerror.dll

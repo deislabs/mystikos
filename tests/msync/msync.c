@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 #include <assert.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
 #include <stdbool.h>
@@ -16,6 +17,11 @@
 #ifndef PAGE_SIZE
 #define PAGE_SIZE 4096
 #endif
+
+static void _passed(const char* name)
+{
+    printf("=== passed test (%s)\n", name);
+}
 
 static int _writen(int fd, const void* data, size_t size)
 {
@@ -78,7 +84,7 @@ static bool _check_page(uint8_t page[PAGE_SIZE], uint8_t byte)
     return true;
 }
 
-int main(int argc, const char* argv[])
+static void test_msync()
 {
     const size_t num_pages = 8;
     uint8_t page[PAGE_SIZE];
@@ -176,7 +182,29 @@ int main(int argc, const char* argv[])
         assert(close(fd) == 0);
     }
 
-    printf("=== passed test (%s)\n", argv[0]);
+    _passed(__FUNCTION__);
+}
 
+static void test_msync_closed_fd()
+{
+    int fd = creat("/tmp/datafile", 0666);
+    write(fd, "abcdefghijklmnopqrstuvwxyz", 27);
+    close(fd);
+
+    fd = open("/tmp/datafile", O_CLOEXEC, 0666);
+    void* p = mmap(NULL, 4096, PROT_READ, MAP_SHARED, fd, 0);
+    assert(p != MAP_FAILED);
+    close(fd);
+    int ret = msync(p, 4096, MS_SYNC | MS_INVALIDATE);
+    assert(ret == 0 && errno == 0);
+    assert(unlink("/tmp/datafile") == 0);
+    _passed(__FUNCTION__);
+}
+
+int main(int argc, const char* argv[])
+{
+    test_msync();
+    test_msync_closed_fd();
+    _passed(argv[0]);
     return 0;
 }

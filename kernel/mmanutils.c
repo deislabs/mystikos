@@ -987,8 +987,8 @@ void myst_mman_close_notify(int fd)
     struct stat buf;
     bool locked = false;
 
-    /* only do this for regular files */
-    if (myst_syscall_fstat(fd, &buf) != 0 || !S_ISREG(buf.st_mode))
+    /* only do this for valid fds & regular files */
+    if (fd < 0 || myst_syscall_fstat(fd, &buf) != 0 || !S_ISREG(buf.st_mode))
         return;
 
     _rlock(&locked);
