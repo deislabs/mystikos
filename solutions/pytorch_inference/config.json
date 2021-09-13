@@ -1,0 +1,9 @@
+{
+    "Debug": 1,
+    "ProductID": 1,
+    "SecurityVersion": 1,
+    "UserMemSize": "1024m",
+    "CurrentWorkingDirectory": "/app",
+    "ApplicationPath": "/home/user/miniconda/bin/python3",
+    "ApplicationParameters": ["/app/service_app.py"]
+}
