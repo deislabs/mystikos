@@ -222,6 +222,7 @@
 /ltp/testcases/kernel/syscalls/fork/fork05
 /ltp/testcases/kernel/syscalls/fork/fork06
 /ltp/testcases/kernel/syscalls/fork/fork07
+/ltp/testcases/kernel/syscalls/fork/fork08
 /ltp/testcases/kernel/syscalls/fork/fork09
 /ltp/testcases/kernel/syscalls/fork/fork10
 /ltp/testcases/kernel/syscalls/fork/fork12
