@@ -12,7 +12,7 @@ all:
 	$(MAKE) dirs
 
 .git/hooks/pre-commit:
-	cp scripts/pre-commit .git/hooks/pre-commit
+	cp scripts/pre-commit $(shell git rev-parse --show-superproject-working-tree)/.git/hooks/pre-commit
 
 ##==============================================================================
 ##
