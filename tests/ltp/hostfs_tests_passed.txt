@@ -71,7 +71,6 @@
 /ltp/testcases/kernel/syscalls/fork/fork02
 /ltp/testcases/kernel/syscalls/fork/fork03
 /ltp/testcases/kernel/syscalls/fork/fork04
-/ltp/testcases/kernel/syscalls/fork/fork08
 /ltp/testcases/kernel/syscalls/fork/fork11
 /ltp/testcases/kernel/syscalls/fpathconf/fpathconf01
 /ltp/testcases/kernel/syscalls/fstat/fstat02
