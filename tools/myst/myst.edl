@@ -504,7 +504,7 @@ enclave
         long myst_sched_getaffinity_ocall(
             pid_t pid,
             size_t cpusetsize,
-            [out, size=cpusetsize] uint8_t* mask);
+            [in, out, size=cpusetsize] uint8_t* mask);
 
         void myst_cpuid_ocall(
             uint32_t leaf,

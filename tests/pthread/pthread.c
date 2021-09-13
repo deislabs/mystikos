@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/syscall.h>
+#include <sys/sysinfo.h>
 #include <sys/times.h>
 #include <unistd.h>
 
@@ -30,6 +31,8 @@
 #else
 #define T(EXPR)
 #endif
+
+static int _host_nprocs = -1;
 
 __attribute__((format(printf, 3, 4))) static int _err(
     const char* file,
@@ -852,21 +855,44 @@ int main(int argc, const char* argv[])
 
     printf("=== start test (%s)\n", argv[0]);
 
-    if (argc > 2)
+    if (argc > 3)
     {
-        fprintf(stderr, "Usage: %s [<count>]\n", argv[0]);
+        fprintf(stderr, "Usage: %s [<nprocs> [<count>]]\n", argv[0]);
         exit(1);
     }
 
-    if (argc == 2)
+    if (argc == 3)
     {
         char* end = NULL;
-        n = strtoul(argv[1], &end, 0);
+        n = strtoul(argv[2], &end, 0);
 
         if (!end || *end)
         {
             fprintf(stderr, "%s: bad count argument: %s\n", argv[0], argv[1]);
             exit(1);
+        }
+    }
+
+    if (argc >= 2)
+    {
+        char* end = NULL;
+        _host_nprocs = strtoul(argv[1], &end, 0);
+
+        if (!end || *end)
+        {
+            fprintf(stderr, "%s: bad count argument: %s\n", argv[0], argv[1]);
+            exit(1);
+        }
+    }
+
+    int nprocs = get_nprocs();
+    printf("Number of processors is %d\n", nprocs);
+
+    if (_host_nprocs != -1)
+    {
+        if (_host_nprocs != nprocs)
+        {
+            PUTERR("nprocs mismatch %d != %d\n", _host_nprocs, nprocs);
         }
     }
 
