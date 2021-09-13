@@ -1,4 +1,4 @@
-# Flexible Secret provisioning with Mystikos
+# Proposal: Flexible Secret provisioning with Mystikos
 
 For confidential computing applications, we don't recommend that the
 application code to contain any secrets, as the code (either in source
@@ -10,8 +10,10 @@ The providers of the secrets could be a key vault service such as AKV,
 M-HSM, or a service run by the user in a locked down and trusted
 environment.
 
-This design document describes the process of secret provisioning
- with Mystikos in 5 aspects:
+This design document describes the process of provisioning a pre-generated
+secret into an application running with Mystikos in 5 aspects as below. How
+the secret is generated is outside the scope of this document. We will
+likely revise the design when gaps are found in a PoC.
 
 1. **the user interface**: how does Mystikos allow users to specify the
 secrets they want in their applications?
