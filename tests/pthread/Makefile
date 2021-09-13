@@ -28,22 +28,23 @@ endif
 export TIMEOUT=360
 
 MAX_CPUS=--max-cpus=1024
+NPROCS=$(shell nproc)
 
 tests:
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/pthread_musl $(COUNT)
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/pthread_gcc $(COUNT)
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/pthread_musl $(NPROCS) $(COUNT) 
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/pthread_gcc $(NPROCS) $(COUNT)
 
 t:
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(MAX_CPUS) rootfs /bin/pthread_gcc $(COUNT)
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(MAX_CPUS) rootfs /bin/pthread_gcc $(NPROCS) $(COUNT)
 
 tn:
 	$(foreach i, $(shell seq 1 10), \
-            $(RUNTEST) $(MYST_EXEC) $(OPTS) $(MAX_CPUS) rootfs /bin/pthread_gcc $(COUNT) \
+            $(RUNTEST) $(MYST_EXEC) $(OPTS) $(MAX_CPUS) rootfs /bin/pthread_gcc $(NRPOC) $(COUNT)\
             $(NL))
 
 tests-n:
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/pthread_musl 1000
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/pthread_gcc 1000
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/pthread_musl $(NPROCS) 1000
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/pthread_gcc $(NPROCS) 1000
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst
