@@ -32,8 +32,8 @@ int myst_limit_set_default(struct rlimit rlimits[])
     rlimits[RLIMIT_DATA].rlim_max = size;
 
     // RLIMIT_STACK
-    rlimits[RLIMIT_STACK].rlim_cur = MYST_PROCESS_INIT_STACK_SIZE;
-    rlimits[RLIMIT_STACK].rlim_max = MYST_PROCESS_MAX_STACK_SIZE;
+    rlimits[RLIMIT_STACK].rlim_cur = __myst_kernel_args.main_stack_size;
+    rlimits[RLIMIT_STACK].rlim_max = __myst_kernel_args.main_stack_size;
 
     // RLIMIT_CORE (no core dump)
     rlimits[RLIMIT_CORE].rlim_cur = 0;

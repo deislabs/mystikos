@@ -106,6 +106,7 @@ Finally we have the Mystikos application specific settings.
 Settings | Description
 -|-
 MemorySize | Amount of memory your application needs to run. Try not to make this just a very large number as the larger this number needs to be the slower load time will be. In this case 40 MB. Value can be bytes (just a number), Kilobytes (number with k after), or megabytes (number with m after)
+MainStackSize | Stack size of your application's main process. Its default value is 1536k (or 1.5M) bytes when this parameter is omitted in the settings. Normally, you do not need to customize this. If running an application generates a OOM error like in #612, try tuning this value, e.g. to 8M. Value can be bytes (just a number), Kilobytes (number with k after), or megabytes (number with m after)
 ApplicationPath | The executable path relative to the root of your appdir. This executable name is used to determine the final application name once packaged.
 ApplicationParameters | Enclave defined application parameters if HostApplicationParameters is set to false.
 HostApplicationParameters | This parameter specifies if application parameters can be specified on the command line or not. If true, the command line arguments are used instead of the ApplicationParameters list of parameters

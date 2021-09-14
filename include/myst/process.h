@@ -22,7 +22,6 @@
  *  32K reserves
  */
 #define MYST_PROCESS_INIT_STACK_SIZE (1568 * 1024);
-#define MYST_PROCESS_MAX_STACK_SIZE (1568 * 1024);
 
 MYST_INLINE pid_t myst_getsid(void)
 {

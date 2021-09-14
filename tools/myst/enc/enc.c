@@ -20,6 +20,7 @@
 #include <myst/kstack.h>
 #include <myst/mmanutils.h>
 #include <myst/mount.h>
+#include <myst/process.h>
 #include <myst/ramfs.h>
 #include <myst/regions.h>
 #include <myst/reloc.h>
@@ -492,6 +493,7 @@ static long _enter(void* arg_)
     bool perf = false;
     bool report_native_tids = false;
     size_t max_affinity_cpus = options ? options->max_affinity_cpus : 0;
+    size_t main_stack_size = options ? options->main_stack_size : 0;
     const char* rootfs = NULL;
     config_parsed_data_t parsed_config;
     bool have_config = false;
@@ -626,6 +628,12 @@ static long _enter(void* arg_)
     if (have_config && parsed_config.max_affinity_cpus)
     {
         max_affinity_cpus = parsed_config.max_affinity_cpus;
+    }
+
+    // Override main stack size if present in config
+    if (have_config && parsed_config.main_stack_size)
+    {
+        main_stack_size = parsed_config.main_stack_size;
     }
 
     // record the configuration for which fork mode
@@ -766,6 +774,8 @@ static long _enter(void* arg_)
         _kargs.report_native_tids = report_native_tids;
         _kargs.enter_stack = arg->enter_stack;
         _kargs.enter_stack_size = arg->enter_stack_size;
+        _kargs.main_stack_size =
+            main_stack_size ? main_stack_size : MYST_PROCESS_INIT_STACK_SIZE;
 
         /* whether user-space FSGSBASE instructions are supported */
         _kargs.have_fsgsbase_instructions = options->have_fsgsbase_instructions;
