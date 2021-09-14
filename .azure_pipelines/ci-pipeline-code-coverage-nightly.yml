@@ -32,6 +32,7 @@ jobs:
         sudo apt-get install build-essential lcov python3-setuptools python3-pip llvm-7 libmbedtls-dev docker-ce -y
         sudo chmod 666 /var/run/docker.sock
         sudo apt install python3-pip -y
+        sudo apt install lldb-10 -y
         docker system prune -a -f
         curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
         sudo pip3 install lcov_cobertura
