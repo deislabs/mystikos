@@ -825,7 +825,6 @@ int myst_exec(
     int ret = 0;
     void* stack = NULL;
     void* sp = NULL;
-    const size_t stack_size = MYST_PROCESS_INIT_STACK_SIZE;
     void* crt_data = NULL;
     const Elf64_Ehdr* ehdr = NULL;
     const Elf64_Phdr* phdr = NULL;
@@ -948,7 +947,7 @@ int myst_exec(
               argv,
               envc,
               envp,
-              stack_size,
+              __myst_kernel_args.main_stack_size,
               crt_data,
               phdr,
               ehdr->e_phnum,
@@ -959,7 +958,7 @@ int myst_exec(
         ERAISE(-ENOMEM);
     }
 
-    assert(elf_check_stack(stack, stack_size) == 0);
+    assert(elf_check_stack(stack, __myst_kernel_args.main_stack_size) == 0);
 
     /* create "/proc/<pid>/exe" which is a link to the program executable */
     if (_setup_exe_link(argv[0]) != 0)
@@ -983,7 +982,7 @@ int myst_exec(
 
     /* The thread is responsible for freeing the stack */
     process->exec_stack = stack;
-    process->exec_stack_size = stack_size;
+    process->exec_stack_size = __myst_kernel_args.main_stack_size;
     process->exec_crt_data = crt_data;
     process->exec_crt_size = crt_size;
 

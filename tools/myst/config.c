@@ -194,6 +194,14 @@ static json_result_t _json_read_callback(
                 if (ret != JSON_OK)
                     CONFIG_RAISE(ret);
             }
+            else if (json_match(parser, "MainStackSize") == JSON_OK)
+            {
+                uint64_t main_stack_pages = 0;
+                ret = _extract_mem_size(type, un, &main_stack_pages);
+                if (ret != JSON_OK)
+                    CONFIG_RAISE(ret);
+                parsed_data->main_stack_size = main_stack_pages * PAGE_SIZE;
+            }
             else if (json_match(parser, "MaxAffinityCPUs") == JSON_OK)
             {
                 if (type != JSON_TYPE_INTEGER)

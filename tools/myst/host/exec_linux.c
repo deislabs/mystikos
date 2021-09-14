@@ -21,6 +21,7 @@
 #include <myst/file.h>
 #include <myst/hex.h>
 #include <myst/kernel.h>
+#include <myst/process.h>
 #include <myst/regions.h>
 #include <myst/reloc.h>
 #include <myst/round.h>
@@ -60,6 +61,11 @@ Options:\n\
                             and application, where <size> may have a\n\
                             multiplier suffix: k 1024, m 1024*1024, or\n\
                             g 1024*1024*1024\n\
+    --main-stack-size <size>\n\
+                         -- the stack size required by the Mystikos application's\n\
+                            main thread, where <size> may have a\n\
+                            multiplier suffix: k 1024, m 1024*1024, or\n\
+                            g 1024*1024*1024\n\
     --app-config-path <json> -- specifies the configuration json file for\n\
                                 running an unsigned binary. The file can be\n\
                                 the same one used for the signing process.\n\
@@ -91,6 +97,7 @@ struct options
     size_t max_affinity_cpus;
     char rootfs[PATH_MAX];
     size_t heap_size;
+    size_t main_stack_size;
     const char* app_config_path;
     myst_host_enc_uid_gid_mappings host_enc_uid_gid_mappings;
     myst_fork_mode_t fork_mode;
@@ -212,6 +219,28 @@ static void _get_options(
         }
     }
 
+    /* Get --main-stack-size */
+    {
+        const char* opt = "--main-stack-size";
+        const char* arg = NULL;
+
+        if ((cli_getopt(argc, argv, opt, &arg) == 0))
+        {
+            if (arg)
+            {
+                if ((myst_expand_size_string_to_ulong(
+                         arg, &opts->main_stack_size) != 0) ||
+                    (myst_round_up(
+                         opts->main_stack_size,
+                         PAGE_SIZE,
+                         &opts->main_stack_size) != 0))
+                {
+                    _err("%s <size> -- bad suffix (must be k, m, or g)\n", opt);
+                }
+            }
+        }
+    }
+
     // get app config if present
     cli_getopt(argc, argv, "--app-config-path", &opts->app_config_path);
 
@@ -297,6 +326,7 @@ static int _enter_kernel(
     bool unhandled_syscall_enosys =
         options ? options->unhandled_syscall_enosys
                 : false; // default terminate with myst_panic
+    size_t main_stack_size = options->main_stack_size;
 
     memset(&pd, 0, sizeof(pd));
     memset(&kernel_args, 0, sizeof(kernel_args));
@@ -356,6 +386,12 @@ static int _enter_kernel(
     if (have_config)
     {
         unhandled_syscall_enosys = pd.unhandled_syscall_enosys;
+    }
+
+    // Override commandline main stack size if present in config.json
+    if (have_config && pd.main_stack_size)
+    {
+        main_stack_size = pd.main_stack_size;
     }
 
     /* initialize the kernel arguments */
@@ -430,6 +466,9 @@ static int _enter_kernel(
     }
 
     kernel_args.report_native_tids = options->report_native_tids;
+
+    kernel_args.main_stack_size =
+        main_stack_size ? main_stack_size : MYST_PROCESS_INIT_STACK_SIZE;
 
     /* Resolve the the kernel entry point */
     const elf_ehdr_t* ehdr = kernel_args.kernel_data;

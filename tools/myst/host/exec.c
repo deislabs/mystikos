@@ -252,6 +252,11 @@ Options:\n\
                             and application, where <size> may have a\n\
                             multiplier suffix: k 1024, m 1024*1024, or\n\
                             g 1024*1024*1024\n\
+    --main-stack-size <size>\n\
+                         -- the stack size required by the Mystikos application's\n\
+                            main thread, where <size> may have a\n\
+                            multiplier suffix: k 1024, m 1024*1024, or\n\
+                            g 1024*1024*1024\n\
     --app-config-path <json> -- specifies the configuration json file for\n\
                                 running an unsigned binary. The file can be\n\
                                 the same one used for the signing process.\n\
@@ -398,6 +403,30 @@ int exec_action(int argc, const char* argv[], const char* envp[])
                     (myst_round_up(heap_size, PAGE_SIZE, &heap_size) != 0))
                 {
                     _err("%s <size> -- bad suffix (must be k, m, or g)\n", opt);
+                }
+            }
+        }
+
+        /* Get --main-stack-size */
+        {
+            const char* opt = "--main-stack-size";
+            const char* arg = NULL;
+
+            if (cli_getopt(&argc, argv, opt, &arg) == 0)
+            {
+                if (arg)
+                {
+                    if ((myst_expand_size_string_to_ulong(
+                             arg, &options.main_stack_size) != 0) ||
+                        (myst_round_up(
+                             options.main_stack_size,
+                             PAGE_SIZE,
+                             &options.main_stack_size) != 0))
+                    {
+                        _err(
+                            "%s <size> -- bad suffix (must be k, m, or g)\n",
+                            opt);
+                    }
                 }
             }
         }
