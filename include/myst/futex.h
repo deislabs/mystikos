@@ -26,6 +26,7 @@
 #define FUTEX_BITSET_MATCH_ANY 0xffffffff
 
 int myst_futex_wait(int* uaddr, int val, const struct timespec* to);
+
 int myst_futex_wait_ops(
     int* uaddr,
     int val,
@@ -33,6 +34,7 @@ int myst_futex_wait_ops(
     uint32_t bitset);
 
 int myst_futex_wake(int* uaddr, int val);
+
 int myst_futex_wake_ops(int* uaddr, int val, uint32_t bitset);
 
 #endif /* _MYST_FUTEX_H */

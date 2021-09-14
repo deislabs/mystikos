@@ -218,8 +218,12 @@ int myst_cond_signal_ops(myst_cond_t* c, uint32_t bitset)
         return -EINVAL;
 
     myst_spin_lock(&c->lock);
-    myst_thread_queue_search_remove_bitset(&c->queue, &queue, 1, bitset);
+    int ret =
+        myst_thread_queue_search_remove_bitset(&c->queue, &queue, 1, bitset);
     myst_spin_unlock(&c->lock);
+
+    if (ret < 0)
+        return -EINVAL;
 
     waiter = myst_thread_queue_pop_front(&queue);
 
@@ -249,8 +253,12 @@ int myst_cond_broadcast_ops(myst_cond_t* c, size_t n, uint32_t bitset)
 
     myst_spin_lock(&c->lock);
     /* Select at most n waiters to be woken up */
-    myst_thread_queue_search_remove_bitset(&c->queue, &waiters, n, bitset);
+    int ret =
+        myst_thread_queue_search_remove_bitset(&c->queue, &waiters, n, bitset);
     myst_spin_unlock(&c->lock);
+
+    if (ret < 0)
+        return -EINVAL;
 
     myst_thread_t* p;
     while (p = myst_thread_queue_pop_front(&waiters))

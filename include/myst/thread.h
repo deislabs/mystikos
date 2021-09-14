@@ -208,8 +208,8 @@ struct myst_thread
     uint64_t event;
 
     /* used by myst_thread_queue_t (condition variables and mutexes) */
-    struct myst_thread* _qnext;
-    uint64_t _bitset;
+    struct myst_thread* qnext;
+    uint64_t bitset;
 
     /* for jumping back on exit */
     myst_jmp_buf_t jmpbuf;
@@ -344,15 +344,15 @@ MYST_INLINE bool myst_is_zombied_process(myst_process_t* process)
 
 typedef struct myst_thread_queue
 {
-    myst_thread_t* _front;
-    myst_thread_t* _back;
+    myst_thread_t* front;
+    myst_thread_t* back;
 } myst_thread_queue_t;
 
 MYST_INLINE size_t myst_thread_queue_size(myst_thread_queue_t* queue)
 {
     size_t n = 0;
 
-    for (myst_thread_t* p = queue->_front; p; p = p->_qnext)
+    for (myst_thread_t* p = queue->front; p; p = p->qnext)
         n++;
 
     return n;
@@ -363,15 +363,15 @@ MYST_INLINE void myst_thread_queue_push_back_bitset(
     myst_thread_t* thread,
     uint32_t bitset)
 {
-    thread->_qnext = NULL;
-    thread->_bitset = bitset;
+    thread->qnext = NULL;
+    thread->bitset = bitset;
 
-    if (queue->_back)
-        queue->_back->_qnext = thread;
+    if (queue->back)
+        queue->back->qnext = thread;
     else
-        queue->_front = thread;
+        queue->front = thread;
 
-    queue->_back = thread;
+    queue->back = thread;
 }
 
 MYST_INLINE void myst_thread_queue_push_back(
@@ -385,7 +385,7 @@ MYST_INLINE myst_thread_t* myst_thread_queue_get_front(
     myst_thread_queue_t* queue)
 {
     if (queue)
-        return queue->_front;
+        return queue->front;
 
     return NULL;
 }
@@ -394,20 +394,20 @@ MYST_INLINE myst_thread_t* myst_thread_queue_pop_front_bitset(
     myst_thread_queue_t* queue,
     uint32_t* bitset)
 {
-    myst_thread_t* thread = queue->_front;
+    myst_thread_t* thread = queue->front;
 
     if (thread)
     {
-        queue->_front = queue->_front->_qnext;
+        queue->front = queue->front->qnext;
 
-        if (!queue->_front)
-            queue->_back = NULL;
+        if (!queue->front)
+            queue->back = NULL;
 
         if (bitset)
-            *bitset = thread->_bitset;
+            *bitset = thread->bitset;
 
-        thread->_qnext = NULL;
-        thread->_bitset = 0;
+        thread->qnext = NULL;
+        thread->bitset = 0;
     }
 
     return thread;
@@ -431,22 +431,22 @@ MYST_INLINE int myst_thread_queue_remove_thread(
     myst_thread_t* t = NULL;
     myst_thread_t* prev = NULL;
 
-    for (t = queue->_front; t; prev = t, pos++, t = t->_qnext)
+    for (t = queue->front; t; prev = t, pos++, t = t->qnext)
     {
         if (t == thread)
         {
             found = true;
             if (prev != NULL)
             {
-                prev->_qnext = t->_qnext;
-                if (t->_qnext == NULL)
-                    queue->_back = prev;
+                prev->qnext = t->qnext;
+                if (t->qnext == NULL)
+                    queue->back = prev;
             }
             else
             {
-                queue->_front = queue->_front->_qnext;
-                if (queue->_front == NULL)
-                    queue->_back = NULL;
+                queue->front = queue->front->qnext;
+                if (queue->front == NULL)
+                    queue->back = NULL;
             }
             break;
         }
@@ -460,7 +460,7 @@ MYST_INLINE int myst_thread_queue_remove_thread(
  * <waiting bitset> & <passed in bitset> != 0.
  * Removed threads are placed in the `matches` queue.
  */
-MYST_INLINE size_t myst_thread_queue_search_remove_bitset(
+MYST_INLINE int myst_thread_queue_search_remove_bitset(
     myst_thread_queue_t* queue,
     myst_thread_queue_t* matches,
     size_t n,
@@ -469,7 +469,7 @@ MYST_INLINE size_t myst_thread_queue_search_remove_bitset(
     if (!queue || !matches)
         return -1;
 
-    myst_thread_t* t = queue->_front;
+    myst_thread_t* t = queue->front;
     myst_thread_t* prev = NULL;
 
     size_t num_found = 0;
@@ -479,22 +479,22 @@ MYST_INLINE size_t myst_thread_queue_search_remove_bitset(
         if (num_found >= n)
             break;
 
-        myst_thread_t* next = t->_qnext;
-        if (t->_bitset & bitset)
+        myst_thread_t* next = t->qnext;
+        if (t->bitset & bitset)
         {
             num_found++;
             if (prev != NULL)
             {
-                prev->_qnext = next;
+                prev->qnext = next;
             }
             else
             {
-                queue->_front = queue->_front->_qnext;
+                queue->front = queue->front->qnext;
             }
             if (next == NULL)
-                queue->_back = prev;
+                queue->back = prev;
 
-            myst_thread_queue_push_back_bitset(matches, t, t->_bitset);
+            myst_thread_queue_push_back_bitset(matches, t, t->bitset);
         }
         else
         {
@@ -513,7 +513,7 @@ MYST_INLINE bool myst_thread_queue_contains(
 {
     myst_thread_t* p;
 
-    for (p = queue->_front; p; p = p->_qnext)
+    for (p = queue->front; p; p = p->qnext)
     {
         if (p == thread)
             return true;
@@ -524,7 +524,7 @@ MYST_INLINE bool myst_thread_queue_contains(
 
 MYST_INLINE bool myst_thread_queue_empty(myst_thread_queue_t* queue)
 {
-    return queue->_front ? false : true;
+    return queue->front ? false : true;
 }
 
 MYST_INLINE bool myst_is_process_thread(const myst_thread_t* thread)
