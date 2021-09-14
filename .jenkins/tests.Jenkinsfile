@@ -82,7 +82,6 @@ pipeline {
                             """
                             sh "make -j world"
                         }
-
                     }
                 }
                 stage('Run all tests') {
@@ -177,6 +176,18 @@ pipeline {
                                         ${WORKSPACE}/solutions/dotnet_azure_sdk
                                 """
                             }
+                        }
+                    }
+                }
+                stage('Run dotnet 5 test suite') {
+                    when {
+                        expression { params.MYST_NIGHTLY_TEST == "1" }
+                    }
+                    steps {
+                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                            sh """
+                                make tests -C ${WORKSPACE}/solutions/coreclr
+                            """
                         }
                     }
                 }
