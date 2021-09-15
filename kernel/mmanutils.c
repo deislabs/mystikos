@@ -541,7 +541,7 @@ static int _remove_file_mappings(void* addr, size_t length)
 
         for (size_t i = index; i < index + count; i++)
         {
-            myst_fdmapping_t* p = &v.fdmappings[index];
+            myst_fdmapping_t* p = &v.fdmappings[i];
 
             /* remove any fd-mapping (it is okay if it does exist) */
             p->used = 0;
@@ -941,7 +941,7 @@ done:
 
 int myst_msync(void* addr, size_t length, int flags)
 {
-    int ret = 0;
+    int ret = 0, fd_via_path = -1;
     bool locked = false;
     size_t index;
     vectors_t v = _get_vectors();
@@ -960,15 +960,37 @@ int myst_msync(void* addr, size_t length, int flags)
 
     _rlock(&locked);
     {
+        int prot;
+        bool consistent;
         const size_t n = length / PAGE_SIZE;
-        const uint8_t* page = addr;
+        uint8_t* page = addr;
+        int prev_fd = -1;
 
         for (size_t i = index; i < index + n; i++)
         {
             myst_fdmapping_t* p = &v.fdmappings[i];
 
             if (p->used == MYST_FDMAPPING_USED)
-                ECHECK(_sync_file(p->fd, p->offset, page, PAGE_SIZE));
+            {
+                /* sync only for writable mappings */
+                ECHECK(myst_mman_get_prot(
+                    &_mman, page, PAGE_SIZE, &prot, &consistent));
+
+                if (prot & PROT_WRITE)
+                {
+                    /* fetch file handle via pathname if new fd encountered */
+                    if (prev_fd != p->fd)
+                    {
+                        prev_fd = p->fd;
+                        if (fd_via_path != -1)
+                            ECHECK(myst_syscall_close(fd_via_path));
+                        ECHECK(
+                            (fd_via_path = myst_syscall_open(
+                                 p->pathname->data, O_WRONLY, 0666)));
+                    }
+                    ECHECK(_sync_file(fd_via_path, p->offset, page, PAGE_SIZE));
+                }
+            }
 
             page += PAGE_SIZE;
         }
@@ -978,64 +1000,10 @@ int myst_msync(void* addr, size_t length, int flags)
 done:
     _runlock(&locked);
 
+    if (fd_via_path != -1)
+        myst_syscall_close(fd_via_path);
+
     return ret;
-}
-
-/* notified on close to clear fd-mappings involving fd */
-void myst_mman_close_notify(int fd)
-{
-    int flags;
-    struct stat buf;
-    bool locked = false;
-
-    /* get the file open flags */
-    if (fd < 0 || (flags = myst_syscall_fcntl(fd, F_GETFL, 0)) < 0)
-        return;
-
-    /* only do this for regular files */
-    if (myst_syscall_fstat(fd, &buf) != 0 || !S_ISREG(buf.st_mode))
-        return;
-
-    /* if file is open for write */
-    if (flags & (O_RDWR | O_WRONLY))
-    {
-        _rlock(&locked);
-        uint8_t* addr = (uint8_t*)_mman.map;
-        size_t length = ((uint8_t*)_mman.end) - addr;
-        _runlock(&locked);
-
-        vectors_t v = _get_vectors();
-        size_t index = _get_page_index(addr, length);
-        myst_assume(index >= 0);
-
-        _rlock(&locked);
-        {
-            const size_t count = length / PAGE_SIZE;
-            myst_fdmapping_t* p = &v.fdmappings[index];
-            const myst_fdmapping_t* end = p + count;
-            size_t bytes_remaining = count * sizeof(myst_fdmapping_t);
-
-            while (p < end)
-            {
-                // Efficiently skip over zero-valued bytes. In-use fdmappings
-                // begin with a non-zero byte.
-                if ((p = myst_memcchr(p, '\0', bytes_remaining)) == NULL)
-                    break;
-
-                if (p->used == MYST_FDMAPPING_USED && p->fd == fd)
-                {
-                    myst_refstr_unref(p->pathname);
-                    memset(p, 0, sizeof(myst_fdmapping_t));
-                }
-
-                p++;
-                bytes_remaining -= sizeof(myst_fdmapping_t);
-            }
-        }
-        _runlock(&locked);
-    }
-
-    _runlock(&locked);
 }
 
 void myst_mman_stats(myst_mman_stats_t* buf)
