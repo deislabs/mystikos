@@ -16,7 +16,6 @@
 #include <myst/inotifydev.h>
 #include <myst/pipedev.h>
 #include <myst/sockdev.h>
-#include <myst/spinlock.h>
 #include <myst/ttydev.h>
 
 #define MYST_FDTABLE_SIZE 1024
@@ -43,8 +42,12 @@ typedef struct myst_fdtable_entry
 typedef struct myst_fdtable
 {
     myst_fdtable_entry_t entries[MYST_FDTABLE_SIZE];
-    myst_spinlock_t lock;
+    uint64_t __lock[4];
 } myst_fdtable_t;
+
+void myst_fdtable_lock(myst_fdtable_t* fdtable);
+
+void myst_fdtable_unlock(myst_fdtable_t* fdtable);
 
 int myst_fdtable_create(myst_fdtable_t** fdtable_out);
 

@@ -17,11 +17,14 @@
 #include <myst/pipedev.h>
 #include <myst/process.h>
 #include <myst/proxyfs.h>
-#include <myst/spinlock.h>
+#include <myst/rspinlock.h>
 #include <myst/strings.h>
 #include <myst/syscall.h>
 #include <myst/thread.h>
 #include <myst/ttydev.h>
+
+MYST_STATIC_ASSERT(
+    sizeof(myst_rspinlock_t) <= sizeof(((myst_fdtable_t*)0)->__lock));
 
 int myst_fdtable_create(myst_fdtable_t** fdtable_out)
 {
@@ -64,7 +67,7 @@ int myst_fdtable_clone(myst_fdtable_t* fdtable, myst_fdtable_t** fdtable_out)
     if (!(new_fdtable = calloc(1, sizeof(myst_fdtable_t))))
         ERAISE(-ENOMEM);
 
-    myst_spin_lock(&fdtable->lock);
+    myst_fdtable_lock(fdtable);
     {
         for (int i = 0; i < MYST_FDTABLE_SIZE; i++)
         {
@@ -79,7 +82,7 @@ int myst_fdtable_clone(myst_fdtable_t* fdtable, myst_fdtable_t** fdtable_out)
 
                 if ((r = (*fdops->fd_dup)(fdops, entry->object, &object)) != 0)
                 {
-                    myst_spin_unlock(&fdtable->lock);
+                    myst_fdtable_unlock(fdtable);
                     ERAISE(r);
                 }
 
@@ -89,7 +92,7 @@ int myst_fdtable_clone(myst_fdtable_t* fdtable, myst_fdtable_t** fdtable_out)
             }
         }
     }
-    myst_spin_unlock(&fdtable->lock);
+    myst_fdtable_unlock(fdtable);
 
     *fdtable_out = new_fdtable;
     new_fdtable = NULL;
@@ -109,7 +112,7 @@ int myst_fdtable_cloexec(myst_fdtable_t* fdtable)
     if (!fdtable)
         ERAISE(-EINVAL);
 
-    myst_spin_lock(&fdtable->lock);
+    myst_fdtable_lock(fdtable);
     {
         /* close any file descriptors with FD_CLOEXEC flag */
         for (int i = 0; i < MYST_FDTABLE_SIZE; i++)
@@ -121,13 +124,11 @@ int myst_fdtable_cloexec(myst_fdtable_t* fdtable)
                 myst_fdops_t* fdops = entry->device;
 
                 // ATTN: proxyfs uses fdtable resulting in recursive lock
-                myst_spin_unlock(&fdtable->lock);
                 int r = (*fdops->fd_fcntl)(fdops, entry->object, F_GETFD, 0);
-                myst_spin_lock(&fdtable->lock);
 
                 if (r < 0)
                 {
-                    myst_spin_unlock(&fdtable->lock);
+                    myst_fdtable_unlock(fdtable);
                     ERAISE(r);
                 }
 
@@ -145,7 +146,7 @@ int myst_fdtable_cloexec(myst_fdtable_t* fdtable)
             }
         }
     }
-    myst_spin_unlock(&fdtable->lock);
+    myst_fdtable_unlock(fdtable);
 
 done:
     return ret;
@@ -238,7 +239,7 @@ int myst_fdtable_assign(
     if (!fdtable || !object)
         ERAISE(-EINVAL);
 
-    myst_spin_lock(&fdtable->lock);
+    myst_fdtable_lock(fdtable);
     {
         /* Use the first available entry */
         for (int i = 0; i < MYST_FDTABLE_SIZE; i++)
@@ -251,12 +252,12 @@ int myst_fdtable_assign(
                 entry->device = device;
                 entry->object = object;
                 ret = i;
-                myst_spin_unlock(&fdtable->lock);
+                myst_fdtable_unlock(fdtable);
                 goto done;
             }
         }
     }
-    myst_spin_unlock(&fdtable->lock);
+    myst_fdtable_unlock(fdtable);
 
     ERAISE(-EMFILE);
 
@@ -334,7 +335,7 @@ int myst_fdtable_dup(
         }
     }
 
-    myst_spin_lock(&fdtable->lock);
+    myst_fdtable_lock(fdtable);
     locked = true;
 
     {
@@ -406,7 +407,7 @@ int myst_fdtable_dup(
 done:
 
     if (locked)
-        myst_spin_unlock(&fdtable->lock);
+        myst_fdtable_unlock(fdtable);
 
     return ret;
 }
@@ -421,9 +422,9 @@ int myst_fdtable_remove(myst_fdtable_t* fdtable, int fd)
     if (fd < 0 || fd >= MYST_FDTABLE_SIZE)
         ERAISE(-EINVAL);
 
-    myst_spin_lock(&fdtable->lock);
+    myst_fdtable_lock(fdtable);
     memset(&fdtable->entries[fd], 0, sizeof(myst_fdtable_entry_t));
-    myst_spin_unlock(&fdtable->lock);
+    myst_fdtable_unlock(fdtable);
 
 done:
     return ret;
@@ -447,20 +448,20 @@ int myst_fdtable_get(
     if (type == MYST_FDTABLE_TYPE_NONE)
         ERAISE(-EINVAL);
 
-    myst_spin_lock(&fdtable->lock);
+    myst_fdtable_lock(fdtable);
     {
         myst_fdtable_entry_t* entry = &fdtable->entries[fd];
 
         if (entry->type != type || !(entry->object && entry->device))
         {
-            myst_spin_unlock(&fdtable->lock);
+            myst_fdtable_unlock(fdtable);
             ERAISE(-EBADF);
         }
 
         *device = entry->device;
         *object = entry->object;
     }
-    myst_spin_unlock(&fdtable->lock);
+    myst_fdtable_unlock(fdtable);
 
 done:
 
@@ -485,13 +486,13 @@ int myst_fdtable_get_any(
     if (!(fd >= 0 && fd < MYST_FDTABLE_SIZE))
         ERAISE(-EBADF);
 
-    myst_spin_lock(&fdtable->lock);
+    myst_fdtable_lock(fdtable);
     {
         myst_fdtable_entry_t* entry = &fdtable->entries[fd];
 
         if (entry->type == MYST_FDTABLE_TYPE_NONE)
         {
-            myst_spin_unlock(&fdtable->lock);
+            myst_fdtable_unlock(fdtable);
             ERAISE(-EBADF);
         }
 
@@ -499,7 +500,7 @@ int myst_fdtable_get_any(
         *device = entry->device;
         *object = entry->object;
     }
-    myst_spin_unlock(&fdtable->lock);
+    myst_fdtable_unlock(fdtable);
 
 done:
 
@@ -605,7 +606,7 @@ long myst_fdtable_sync(myst_fdtable_t* fdtable)
     if (!fdtable)
         ERAISE(-EINVAL);
 
-    myst_spin_lock(&fdtable->lock);
+    myst_fdtable_lock(fdtable);
     locked = true;
 
     {
@@ -625,7 +626,7 @@ long myst_fdtable_sync(myst_fdtable_t* fdtable)
 done:
 
     if (locked)
-        myst_spin_unlock(&fdtable->lock);
+        myst_fdtable_unlock(fdtable);
 
     return ret;
 }
@@ -676,4 +677,14 @@ done:
         free(file);
 
     return ret;
+}
+
+void myst_fdtable_lock(myst_fdtable_t* fdtable)
+{
+    myst_rspin_lock((myst_rspinlock_t*)fdtable->__lock);
+}
+
+void myst_fdtable_unlock(myst_fdtable_t* fdtable)
+{
+    myst_rspin_unlock((myst_rspinlock_t*)fdtable->__lock);
 }

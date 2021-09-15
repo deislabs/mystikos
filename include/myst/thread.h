@@ -13,6 +13,7 @@
 #include <myst/fdtable.h>
 #include <myst/futex.h>
 #include <myst/kstack.h>
+#include <myst/rspinlock.h>
 #include <myst/setjmp.h>
 #include <myst/spinlock.h>
 #include <myst/tcall.h>

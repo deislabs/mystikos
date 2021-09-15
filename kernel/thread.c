@@ -1322,12 +1322,12 @@ size_t myst_kill_thread_group()
 
         /* We may have had pipes on their way to blocking since the last trigger
          * so lets do it again to be sure */
-        myst_spin_lock(&process->fdtable->lock);
         if (process->fdtable)
         {
+            myst_fdtable_lock(process->fdtable);
             myst_fdtable_interrupt(process->fdtable);
+            myst_fdtable_unlock(process->fdtable);
         }
-        myst_spin_unlock(&process->fdtable->lock);
 
         myst_spin_lock(process->thread_lock);
         for (t = tail; t != NULL; t = t->group_prev)
