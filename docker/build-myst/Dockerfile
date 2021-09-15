@@ -1,13 +1,10 @@
 FROM ubuntu:18.04
 
-ADD . /src
-WORKDIR /src 
-
 COPY ./build-myst.sh /build-myst.sh
 RUN /bin/chmod 777 /build-myst.sh
 
-RUN apt-get update
-RUN apt-get -y install git
+RUN apt-get update && \
+    apt-get -y install git sudo wget
 
 RUN mkdir /tmp/git
 WORKDIR /tmp/git
@@ -15,9 +12,6 @@ RUN git clone --branch=mystikos.v5 https://github.com/openenclave/openenclave.gi
 RUN ./openenclave/scripts/ansible/install-ansible.sh 
 RUN ansible-playbook ./openenclave/scripts/ansible/oe-contributors-acc-setup-no-driver.yml
 RUN rm -rf /tmp/git
-
-WORKDIR /
-RUN apt-get -y install sudo
 
 WORKDIR /src
 

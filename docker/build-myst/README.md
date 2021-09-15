@@ -16,14 +16,13 @@ Mystikos does not have any other required dependencies over and above those.
 
 The building of the image also includes `build-myst.sh` into the image which is what gets run to do the actual build during the running of the Docker image.
 
-Currently the Mystikos source is a private repository making it a little harder to get to the source automatically.
-For now we mount the Mystikos source code into the container at run-time.
+Next, we mount the Mystikos source code into the container at run-time.
 
 We have the image from the previous command.
 Now, if we run from the current directory in the Mystikos repository, a command similar to this would be run:
 
 ```bash
-docker run  --rm  --tty --interactive  -v /../..:/src:rw image-name:latest
+docker run  --rm  --tty --interactive  --device /dev/sgx:/dev/sgx -v $PWD/../..:/src:rw image-name:latest
 ```
 
 This command uses the `-v from:to` option to mount the root of the Mystikos source into the `/src/` directory inside the container. It should be noted that this is mounted as read/write.
