@@ -18,6 +18,7 @@
 #include <myst/fsgs.h>
 #include <myst/kernel.h>
 #include <myst/libc.h>
+#include <myst/listener.h>
 #include <myst/mmanutils.h>
 #include <myst/panic.h>
 #include <myst/paths.h>

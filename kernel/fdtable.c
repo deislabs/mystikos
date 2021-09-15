@@ -17,7 +17,6 @@
 #include <myst/pipedev.h>
 #include <myst/process.h>
 #include <myst/proxyfs.h>
-#include <myst/proxypipedev.h>
 #include <myst/spinlock.h>
 #include <myst/strings.h>
 #include <myst/syscall.h>
@@ -120,7 +119,11 @@ int myst_fdtable_cloexec(myst_fdtable_t* fdtable)
             if (entry->type != MYST_FDTABLE_TYPE_NONE)
             {
                 myst_fdops_t* fdops = entry->device;
+
+                // ATTN: proxyfs uses fdtable resulting in recursive lock
+                myst_spin_unlock(&fdtable->lock);
                 int r = (*fdops->fd_fcntl)(fdops, entry->object, F_GETFD, 0);
+                myst_spin_lock(&fdtable->lock);
 
                 if (r < 0)
                 {
@@ -643,20 +646,7 @@ int myst_fdtable_wrap(myst_fdtable_t* fdtable)
     {
         myst_fdtable_entry_t* entry = &fdtable->entries[i];
 
-        if (entry->type == MYST_FDTABLE_TYPE_PIPE &&
-            !myst_is_proxypipedev((const myst_pipedev_t*)entry->object))
-        {
-            ECHECK(myst_proxypipedev_wrap((uint64_t)entry->device, &pipedev));
-            ECHECK(myst_proxypipe_wrap((uint64_t)entry->object, &pipe));
-            ECHECK((*pipedev->pd_dup)(pipedev, pipe, &new_pipe));
-
-            entry->device = pipedev;
-            pipedev = NULL;
-            entry->object = new_pipe;
-            new_pipe = NULL;
-        }
-        else if (
-            entry->type == MYST_FDTABLE_TYPE_FILE &&
+        if (entry->type == MYST_FDTABLE_TYPE_FILE &&
             !myst_is_proxyfs((const myst_fs_t*)entry->object))
         {
             ECHECK(myst_proxyfs_wrap((uint64_t)entry->device, &fs));

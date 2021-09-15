@@ -270,6 +270,7 @@ int exec_launch_enclave(
         start_time.tv_sec,
         start_time.tv_nsec,
         forked);
+
     if (r != OE_OK)
         _err("failed to enter enclave: result=%s", oe_result_str(r));
 

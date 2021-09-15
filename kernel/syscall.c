@@ -458,6 +458,7 @@ static pair_t _pairs[] = {
     {SYS_fork_wait_exec_exit, "SYS_fork_wait_exec_exit"},
     {SYS_myst_kill_wait_child_forks, "SYS_myst_kill_wait_child_forks"},
     {SYS_myst_run_listener, "SYS_myst_run_listener"},
+    {SYS_myst_fork_wait_child, "SYS_myst_fork_wait_child"},
     /* Open Enclave extensions */
     {SYS_myst_oe_get_report_v2, "SYS_myst_oe_get_report_v2"},
     {SYS_myst_oe_free_report, "SYS_myst_oe_free_report"},
@@ -4041,7 +4042,9 @@ static long _syscall(void* args_)
         case SYS_myst_run_listener:
         {
             _strace(n, NULL);
-            BREAK(_return(n, myst_syscall_run_listener()));
+
+            long ret = myst_syscall_run_listener();
+            BREAK(_return(n, ret));
         }
         case SYS_myst_start_shell:
         {
@@ -4162,14 +4165,13 @@ static long _syscall(void* args_)
 
             BREAK(_return(n, ret));
         }
+#ifdef MYST_ENABLE_FORK
         case SYS_fork:
         {
-#ifdef MYST_ENABLE_FORK
             _strace(n, NULL);
 
             /* save the thread pointer and restore in child below */
             myst_thread_t* self = myst_thread_self();
-            self->wait = 1;
 
             if (myst_setjmp(&__myst_fork_jmpbuf) == 0)
             {
@@ -4179,8 +4181,8 @@ static long _syscall(void* args_)
                 myst_mman_get_unused(&addr, &length);
                 long ret = myst_tcall_fork(addr, length);
 
-                /* wait here until the child signals this address */
-                __myst_wait(&self->wait, 1);
+                /* the parent will wait for the child to exit */
+                self->wait = 1;
 
                 /* give the child time to startup */
                 BREAK(_return(n, ret));
@@ -4214,9 +4216,24 @@ static long _syscall(void* args_)
 
                 BREAK(_return(n, 0));
             }
+        }
 #else
+        case SYS_fork:
+        {
             break;
+        }
 #endif
+        case SYS_myst_fork_wait_child:
+        {
+            myst_thread_t* self = myst_thread_self();
+
+            _strace(n, NULL);
+
+            /* wait here until the child signals this address */
+            __myst_wait(&self->wait, 1);
+
+            /* give the child time to startup */
+            BREAK(_return(n, 0));
         }
         case SYS_vfork:
             break;

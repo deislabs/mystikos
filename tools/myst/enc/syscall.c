@@ -1672,6 +1672,46 @@ long myst_tcall_wait4(
     return retval;
 }
 
+static int _pipe2(int pipefd[2], int flags)
+{
+    int ret = 0;
+    long retval;
+
+    if (!pipefd)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    if (myst_pipe2_ocall(&retval, pipefd, flags) != OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = retval;
+
+done:
+    return ret;
+}
+
+static long _eventfd2(unsigned int initval, int flags)
+{
+    long ret = 0;
+    long retval;
+
+    if (myst_eventfd_ocall(&retval, initval, flags) != OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = retval;
+
+done:
+    return ret;
+}
+
 long myst_handle_tcall(long n, long params[6])
 {
     const long a = params[0];
@@ -1938,6 +1978,14 @@ long myst_handle_tcall(long n, long params[6])
         case SYS_getcpu:
         {
             return _getcpu((unsigned*)a, (unsigned*)b);
+        }
+        case SYS_pipe2:
+        {
+            return _pipe2((int*)a, (int)b);
+        }
+        case SYS_eventfd2:
+        {
+            return _eventfd2(a, b);
         }
         default:
         {

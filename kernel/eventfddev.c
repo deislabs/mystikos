@@ -1,3 +1,4 @@
+#if 0
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
@@ -530,3 +531,4 @@ extern myst_eventfddev_t* myst_eventfddev_get(void)
 
     return &_pipdev;
 }
+#endif

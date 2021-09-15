@@ -621,7 +621,8 @@ static int _fs_fcntl(myst_fs_t* fs, myst_file_t* file, int cmd, long arg)
     memset(&args, 0, sizeof(args));
     args.fcntl.cmd = cmd;
     args.fcntl.arg = arg;
-    return _fileop(fs, file, &args, NULL, 0, NULL, 0, MYST_MESSAGE_FCNTL);
+    int ret = _fileop(fs, file, &args, NULL, 0, NULL, 0, MYST_MESSAGE_FCNTL);
+    return ret;
 }
 
 static int _fs_ioctl(

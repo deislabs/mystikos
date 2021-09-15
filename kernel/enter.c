@@ -671,6 +671,10 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         __myst_kernel_args.trace_syscalls = true;
 #endif
 
+#if 0
+        myst_set_trace(true);
+#endif
+
         /* ATTN: what if process was not forked from main thread */
         myst_assume(myst_tcall_set_tsd((uint64_t)__myst_main_thread) == 0);
 
@@ -894,7 +898,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
             myst_listener_shutdown();
 
             /* ATTN:FORK: figure out how to remove this! */
-            myst_sleep_msec(10);
+            myst_sleep_msec(1000);
         }
 
         if (__myst_kernel_args.perf)

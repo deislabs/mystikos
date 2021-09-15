@@ -156,6 +156,8 @@ enclave
             [in] const struct timespec* req,
             [out] struct timespec* rem);
 
+        long myst_eventfd_ocall(unsigned int initval, int flags);
+
         /*
         **======================================================================
         **
@@ -271,6 +273,16 @@ enclave
 
         // ATTN: If Host file system support is exclude in certain build mode,
         // consider excluding relevant OCALL proxy code too.
+
+        /*
+        **======================================================================
+        **
+        ** pipe
+        **
+        **======================================================================
+        */
+
+        long myst_pipe2_ocall([out] int pipefd[2], int flags);
 
         /*
         **======================================================================

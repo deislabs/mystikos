@@ -5,6 +5,7 @@
 #include <myst/defs.h>
 #include <sched.h>
 #include <stdint.h>
+#include <sys/eventfd.h>
 #include <sys/ioctl.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
@@ -548,4 +549,14 @@ long myst_wait4_ocall(
     MYST_CHECK_FIELD(struct myst_rusage, struct rusage, ru_nivcsw);
 
     RETURN(wait4(pid, wstatus, options, (struct rusage*)rusage));
+}
+
+long myst_pipe2_ocall(int pipefd[2], int flags)
+{
+    RETURN(pipe2(pipefd, flags));
+}
+
+long myst_eventfd_ocall(unsigned int initval, int flags)
+{
+    RETURN(eventfd(initval, flags));
 }

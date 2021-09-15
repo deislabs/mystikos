@@ -20,12 +20,6 @@ static uint64_t _time_usec(void)
     return tv.tv_sec * 1000000 + tv.tv_usec;
 }
 
-void* start(void* arg)
-{
-    printf("child thread\n");
-    return arg;
-}
-
 int main(int argc, const char* argv[])
 {
     uint64_t t1 = _time_usec();
@@ -46,33 +40,11 @@ int main(int argc, const char* argv[])
 
         /* wait for child to exit */
         int wstatus;
+        printf("%s: parent: pid=%d before waitpid\n", argv[0], pid);
         assert(waitpid(pid, &wstatus, 0) == pid);
         assert(WIFEXITED(wstatus));
         assert(WEXITSTATUS(wstatus) == 123);
-
-        /* try to access "/tmp/alpha" (created by child process) */
-        {
-            int fd;
-            char buf[1024];
-            assert(access("/tmp/alpha", F_OK) == 0);
-            assert((fd = open("/tmp/alpha", O_RDONLY)) >= 0);
-            assert(read(fd, buf, sizeof(buf)) == 27);
-            assert(close(fd) == 0);
-            assert(strcmp(buf, "abcdefghijklmnopqrstuvwxyz") == 0);
-            printf("PARENT{%s}\n", buf);
-        }
-
-        /* try to access /tmp/shared */
-        {
-            int fd;
-            char buf[1024];
-            assert(access("/tmp/shared", F_OK) == 0);
-            assert((fd = open("/tmp/shared", O_RDONLY)) >= 0);
-            assert(read(fd, buf, sizeof(buf)) == 7);
-            assert(close(fd) == 0);
-            assert(strcmp(buf, "shared") == 0);
-            printf("parent: shared{%s}\n", buf);
-        }
+        printf("%s: parent: pid=%d after waitpid\n", argv[0], pid);
 
         printf("%s: parent exit\n", argv[0]);
         exit(0);
@@ -82,14 +54,7 @@ int main(int argc, const char* argv[])
         double elapsed = (double)(_time_usec() - t1) / 1000000.0;
         printf("%s: child: %3.5lfsec\n", argv[0], elapsed);
 
-        /* write to the inherited file */
-        assert(write(fd, "shared", 7) == 7);
-        close(fd);
-
-        pthread_t th;
-        assert(pthread_create(&th, NULL, start, NULL) == 0);
-
-#if 1
+#if 0
         for (size_t i = 0; i < 3; i++)
         {
             printf("%s: child: %zu\n", argv[0], i);
@@ -97,12 +62,14 @@ int main(int argc, const char* argv[])
         }
 #endif
 
-        assert(pthread_join(th, NULL) == 0);
-
-        char* args[] = {"/bin/hello", NULL};
+#if 1
+        char* args[] = {"/bin/child", NULL};
         char* env[] = {NULL};
-        execve("/bin/hello", args, env);
+        execve("/bin/child", args, env);
         abort();
+#else
+        _exit(123);
+#endif
     }
 
     return 0;

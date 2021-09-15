@@ -137,3 +137,5 @@ tests/ext2/plain/test_read_write
 tests/dotnet-proc-maps/stdout.txt
 solutions/aspnet/client.output
 solutions/aspnet/server.output
+prereqs/package-installed
+third_party/openenclave/openenclave

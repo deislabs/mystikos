@@ -1,3 +1,4 @@
+#if 0
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
@@ -767,3 +768,4 @@ extern myst_pipedev_t* myst_pipedev_get(void)
 
     return &_pipdev;
 }
+#endif

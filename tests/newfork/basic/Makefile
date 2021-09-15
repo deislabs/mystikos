@@ -9,11 +9,10 @@ all:
 	$(MAKE) myst
 	$(MAKE) rootfs
 
-rootfs: newfork.c hello.c goodbye.c
+rootfs: parent.c child.c
 	mkdir -p $(APPDIR)/bin
-	$(CC) $(CFLAGS) -o $(APPDIR)/bin/newfork newfork.c $(LDFLAGS)
-	$(CC) $(CFLAGS) -o $(APPDIR)/bin/hello hello.c $(LDFLAGS)
-	$(CC) $(CFLAGS) -o $(APPDIR)/bin/goodbye goodbye.c $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $(APPDIR)/bin/parent parent.c $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $(APPDIR)/bin/child child.c $(LDFLAGS)
 	$(MYST) mkcpio $(APPDIR) rootfs
 
 ifdef STRACE
@@ -24,7 +23,7 @@ endif
 #OPTS += --memory-size=512m
 
 tests: all
-	$(RUNTEST) $(MYST_EXEC) rootfs /bin/newfork $(OPTS)
+	$(RUNTEST) $(MYST_EXEC) rootfs /bin/parent $(OPTS)
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst
