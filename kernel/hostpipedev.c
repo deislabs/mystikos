@@ -26,19 +26,11 @@
 
 static _Atomic(size_t) _num_pipes;
 
-/* this structure is shared by the pipe */
-typedef struct shared
-{
-    size_t nreaders;
-    size_t nwriters;
-} shared_t;
-
 struct myst_pipe
 {
     uint32_t magic; /* MAGIC */
     int fd;         /* host file descriptor */
     int mode;       /* O_RDONLY or O_WRONLY */
-    shared_t* shared;
 };
 
 MYST_INLINE long _sys_close(int fd)
@@ -102,7 +94,6 @@ static int _pd_pipe2(myst_pipedev_t* pipedev, myst_pipe_t* pipe[2], int flags)
     int ret = 0;
     myst_pipe_t* rdpipe = NULL;
     myst_pipe_t* wrpipe = NULL;
-    shared_t* shared = NULL;
     int pipefd[2] = {-1, -1};
 
     if (!pipedev || !pipe || (flags & ~(O_CLOEXEC | O_DIRECT | O_NONBLOCK)))
@@ -110,16 +101,6 @@ static int _pd_pipe2(myst_pipedev_t* pipedev, myst_pipe_t* pipe[2], int flags)
 
     /* Create the pipe descriptors on the host */
     ECHECK(_sys_pipe2(pipefd, flags));
-
-    /* Create the shared structure */
-    {
-        if (!(shared = calloc(1, sizeof(shared_t))))
-            ERAISE(-ENOMEM);
-
-        /* initially there is one read and one writer */
-        shared->nreaders = 1;
-        shared->nwriters = 1;
-    }
 
     /* Create the read pipe */
     {
@@ -129,7 +110,6 @@ static int _pd_pipe2(myst_pipedev_t* pipedev, myst_pipe_t* pipe[2], int flags)
         rdpipe->magic = MAGIC;
         rdpipe->fd = pipefd[0];
         rdpipe->mode = O_RDONLY;
-        rdpipe->shared = shared;
     }
 
     /* Create the write pipe */
@@ -140,7 +120,6 @@ static int _pd_pipe2(myst_pipedev_t* pipedev, myst_pipe_t* pipe[2], int flags)
         wrpipe->magic = MAGIC;
         wrpipe->fd = pipefd[1];
         wrpipe->mode = O_WRONLY;
-        wrpipe->shared = shared;
     }
 
     if (++_num_pipes == MAX_PIPES)
@@ -230,13 +209,6 @@ static ssize_t _pd_write(
 
     if (pipe->mode == O_RDONLY)
         ERAISE(-EBADF);
-
-    /* if there are no readers, then raise EPIPE */
-    if (pipe->shared->nreaders == 0)
-    {
-        myst_syscall_kill(myst_getpid(), SIGPIPE);
-        ERAISE(-EPIPE);
-    }
 
     ECHECK(nwritten = _tcall_write(pipe->fd, buf, count));
 
@@ -366,11 +338,6 @@ static int _pd_dup(
     /* perform syscall */
     ECHECK(new_pipe->fd = _sys_dup(pipe->fd));
 
-    if (new_pipe->mode == O_RDONLY)
-        new_pipe->shared->nreaders++;
-    else
-        new_pipe->shared->nwriters++;
-
     T(printf(
           "_pd_dup(): oldfd=%d newfd=%d pid=%d\n",
           pipe->fd,
@@ -411,21 +378,8 @@ static int _pd_close(myst_pipedev_t* pipedev, myst_pipe_t* pipe)
     if (!pipedev || !_valid_pipe(pipe))
         ERAISE(-EBADF);
 
-    if (!pipe->shared->nreaders && !pipe->shared->nwriters)
-    {
-        ERAISE(-EBADF);
-    }
-
     T(printf("_pd_close(): fd=%d pid=%d\n", pipe->fd, myst_getpid());)
     ECHECK(_sys_close(pipe->fd));
-
-    if (pipe->mode == O_RDONLY)
-        pipe->shared->nreaders--;
-    else if (pipe->mode == O_WRONLY)
-        pipe->shared->nwriters--;
-
-    if (pipe->shared->nreaders == 0 && pipe->shared->nwriters == 0)
-        free(pipe->shared);
 
     memset(pipe, 0, sizeof(myst_pipe_t));
     free(pipe);

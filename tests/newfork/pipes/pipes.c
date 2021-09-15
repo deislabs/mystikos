@@ -64,7 +64,10 @@ int main(int argc, const char* argv[])
 
         /* write messages to the parent */
         for (size_t i = 0; i < iterations; i++)
-            assert(write(pipefd[1], msg, sizeof(msg)) == sizeof(msg));
+        {
+            ssize_t n = write(pipefd[1], msg, sizeof(msg));
+            assert(n == sizeof(msg));
+        }
 
         assert(close(pipefd[1]) == 0);
 
