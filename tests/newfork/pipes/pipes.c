@@ -52,7 +52,7 @@ int main(int argc, const char* argv[])
         assert(WIFEXITED(wstatus));
         assert(WEXITSTATUS(wstatus) == 123);
 
-        printf("=== parent: exit\n");
+        printf("=== passed all tests (%s)\n", argv[0]);
         exit(0);
     }
     else /* child */

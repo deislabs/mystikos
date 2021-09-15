@@ -864,7 +864,7 @@ long myst_syscall_run_listener(void)
 
     _init_sockaddr(&addr, __myst_kernel_args.target_pid);
 
-#if 1
+#if 0
     myst_eprintf(">>> listening on %s\n", addr.sun_path);
 #endif
 

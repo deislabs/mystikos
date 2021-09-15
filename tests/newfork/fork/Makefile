@@ -9,9 +9,9 @@ all:
 	$(MAKE) myst
 	$(MAKE) rootfs
 
-rootfs: parent.c child.c
+rootfs: fork.c child.c
 	mkdir -p $(APPDIR)/bin
-	$(CC) $(CFLAGS) -o $(APPDIR)/bin/parent parent.c $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $(APPDIR)/bin/fork fork.c $(LDFLAGS)
 	$(CC) $(CFLAGS) -o $(APPDIR)/bin/child child.c $(LDFLAGS)
 	$(MYST) mkcpio $(APPDIR) rootfs
 
@@ -23,7 +23,7 @@ endif
 #OPTS += --memory-size=512m
 
 tests: all
-	$(RUNTEST) $(MYST_EXEC) rootfs /bin/parent $(OPTS)
+	$(RUNTEST) $(MYST_EXEC) rootfs /bin/fork $(OPTS)
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst
