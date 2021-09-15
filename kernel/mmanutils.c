@@ -964,31 +964,41 @@ int myst_msync(void* addr, size_t length, int flags)
         bool consistent;
         const size_t n = length / PAGE_SIZE;
         uint8_t* page = addr;
-        int prev_fd = -1;
+        char* prev_pathname = NULL;
 
         for (size_t i = index; i < index + n; i++)
         {
             myst_fdmapping_t* p = &v.fdmappings[i];
-
-            if (p->used == MYST_FDMAPPING_USED)
+            /* sync only for writable mappings */
+            ECHECK(myst_mman_get_prot(
+                &_mman, page, PAGE_SIZE, &prot, &consistent));
+            if (prot & PROT_WRITE && p->used == MYST_FDMAPPING_USED)
             {
-                /* sync only for writable mappings */
-                ECHECK(myst_mman_get_prot(
-                    &_mman, page, PAGE_SIZE, &prot, &consistent));
-
-                if (prot & PROT_WRITE)
+                if (p->fd != -1) // valid fd
                 {
-                    /* fetch file handle via pathname if new fd encountered */
-                    if (prev_fd != p->fd)
+                    // file may have been truncated, ignore failure
+                    _sync_file(p->fd, p->offset, page, PAGE_SIZE);
+                }
+                // invalidated fd, fall back on pathname
+                else
+                {
+                    /* For consecutive pages with the same pathname, reuse file
+                     * handle. New file handle is requested the first time, and
+                     * when the pathname field changes. */
+                    if (!prev_pathname ||
+                        !strcmp(prev_pathname, p->pathname->data))
                     {
-                        prev_fd = p->fd;
                         if (fd_via_path != -1)
                             ECHECK(myst_syscall_close(fd_via_path));
-                        ECHECK(
-                            (fd_via_path = myst_syscall_open(
-                                 p->pathname->data, O_WRONLY, 0666)));
+                        fd_via_path =
+                            myst_syscall_open(p->pathname->data, O_WRONLY, 0);
+                        // file may have been unlinked, ignore failure
+                        if (fd_via_path < 0)
+                            continue;
+                        prev_pathname = p->pathname->data;
                     }
-                    ECHECK(_sync_file(fd_via_path, p->offset, page, PAGE_SIZE));
+                    // file may have been truncated, ignore failure
+                    _sync_file(fd_via_path, p->offset, page, PAGE_SIZE);
                 }
             }
 
@@ -1004,6 +1014,50 @@ done:
         myst_syscall_close(fd_via_path);
 
     return ret;
+}
+
+/* notified on close to clear fd-mappings involving fd */
+void myst_mman_close_notify(int fd)
+{
+    struct stat buf;
+    bool locked = false;
+
+    /* only do this for valid fds & regular files */
+    if (fd < 0 || myst_syscall_fstat(fd, &buf) != 0 || !S_ISREG(buf.st_mode))
+        return;
+
+    _rlock(&locked);
+    uint8_t* addr = (uint8_t*)_mman.map;
+    size_t length = ((uint8_t*)_mman.end) - addr;
+    _runlock(&locked);
+
+    vectors_t v = _get_vectors();
+    size_t index = _get_page_index(addr, length);
+    myst_assume(index >= 0);
+
+    _rlock(&locked);
+    {
+        const size_t count = length / PAGE_SIZE;
+        myst_fdmapping_t* p = &v.fdmappings[index];
+        const myst_fdmapping_t* end = p + count;
+        size_t bytes_remaining = count * sizeof(myst_fdmapping_t);
+
+        while (p < end)
+        {
+            // Efficiently skip over zero-valued bytes. In-use fdmappings
+            // begin with a non-zero byte.
+            if ((p = myst_memcchr(p, '\0', bytes_remaining)) == NULL)
+                break;
+
+            // Invalidate fd in the fdmapping entry
+            if (p->used == MYST_FDMAPPING_USED && p->fd == fd)
+                p->fd = -1;
+
+            p++;
+            bytes_remaining -= sizeof(myst_fdmapping_t);
+        }
+    }
+    _runlock(&locked);
 }
 
 void myst_mman_stats(myst_mman_stats_t* buf)
