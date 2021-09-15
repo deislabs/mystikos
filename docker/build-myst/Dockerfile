@@ -11,7 +11,7 @@ RUN apt-get -y install git
 
 RUN mkdir /tmp/git
 WORKDIR /tmp/git
-RUN git clone --branch=mikbras.regions https://github.com/openenclave/openenclave.git 
+RUN git clone --branch=mystikos.v5 https://github.com/openenclave/openenclave.git 
 RUN ./openenclave/scripts/ansible/install-ansible.sh 
 RUN ansible-playbook ./openenclave/scripts/ansible/oe-contributors-acc-setup-no-driver.yml
 RUN rm -rf /tmp/git
