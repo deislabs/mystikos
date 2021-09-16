@@ -26,6 +26,7 @@ DIRS += python_webserver
 ifndef MYST_SKIP_PR_TEST
 # Do not run in PR pipeline as it takes ~15min
 DIRS += pytorch_inference
+DIRS += tensorflow_lite
 endif
 DIRS += nodejs
 DIRS += numpy_core_tests
