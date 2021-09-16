@@ -2,6 +2,11 @@ TOP=$(abspath ..)
 include $(TOP)/defs.mak
 
 DIRS =
+ifndef MYST_SKIP_PR_TEST
+# Do not run in PR pipeline as it takes ~15min
+# Also, run this first as it takes lots of space
+DIRS += pytorch_inference
+endif
 DIRS += attested_tls
 
 ifdef DB_SERVER_NAME
@@ -23,10 +28,6 @@ DIRS += aspnet
 DIRS += memcached
 DIRS += python_web_frameworks
 DIRS += python_webserver
-ifndef MYST_SKIP_PR_TEST
-# Do not run in PR pipeline as it takes ~15min
-DIRS += pytorch_inference
-endif
 DIRS += nodejs
 DIRS += numpy_core_tests
 DIRS += redis
