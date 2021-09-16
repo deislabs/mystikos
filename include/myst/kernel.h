@@ -229,7 +229,7 @@ void myst_start_shell(const char* msg);
 
 const char* myst_syscall_str(long n);
 
-MYST_INLINE bool myst_is_bad_addr(const void* ptr)
+MYST_INLINE bool myst_is_addr_within_kernel(const void* ptr)
 {
     const uint64_t base = (uint64_t)__myst_kernel_args.image_data;
     const uint64_t end = base + __myst_kernel_args.image_size;

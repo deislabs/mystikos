@@ -302,7 +302,6 @@
 /ltp/testcases/kernel/syscalls/getrusage/getrusage03_child
 /ltp/testcases/kernel/syscalls/getrusage/getrusage04
 /ltp/testcases/kernel/syscalls/getsid/getsid02
-/ltp/testcases/kernel/syscalls/getsockname/getsockname01
 /ltp/testcases/kernel/syscalls/getsockopt/getsockopt01
 /ltp/testcases/kernel/syscalls/getsockopt/getsockopt02
 /ltp/testcases/kernel/syscalls/gettimeofday/gettimeofday01

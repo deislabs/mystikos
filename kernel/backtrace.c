@@ -21,7 +21,7 @@ size_t myst_backtrace_impl(void** start_frame, void** buffer, size_t size)
 
     while (n < size)
     {
-        if (!myst_within_stack(frame) || !myst_is_bad_addr(frame[1]))
+        if (!myst_within_stack(frame) || !myst_is_addr_within_kernel(frame[1]))
             break;
 
         buffer[n++] = frame[1];
