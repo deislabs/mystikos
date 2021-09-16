@@ -66,6 +66,20 @@ build:
 	$(MAKE) group-file
 	$(MAKE) add_host_users_and_groups
 
+all-ubuntu: native-build
+	$(MYST) mkext2 --force native_appdir native_ext2fs
+
+native-build: native-clone
+	cp build.mak native_appdir/Makefile
+	$(MAKE) -C native_appdir native-all
+
+native-build-one: native-clone
+	cp -p build.mak native_appdir/Makefile
+	$(MAKE) -C native_appdir native-one TEST=$(TEST)
+
+native-run-one:
+	./native_appdir$(TEST)
+
 rebuild:
 	cp build.mak appdir/ltp
 	docker run --rm -v $(APPDIR):/appdir myst-alpine bash -c "make -j -C appdir/ltp -f build.mak build"
@@ -77,6 +91,11 @@ clone:
 	sudo rm -rf appdir
 	mkdir -p appdir
 	git clone $(URL) appdir/ltp -b $(BRANCH)
+
+native-clone:
+	sudo rm -rf native_appdir
+	mkdir -p native_appdir
+	git clone $(URL) native_appdir/ltp -b $(BRANCH)
 
 password-file:
 	mkdir -p appdir/etc
@@ -143,6 +162,9 @@ alltests:
 clean:
 	sudo rm -rf $(APPDIR) ext2fs appdir $(UPPERDIR) $(WORKDIR) $(HOSTFS)
 	$(MAKE) del_host_users_and_groups
+
+native-clean:
+	sudo rm -rf native_appdir ext2fs
 
 CACHEDIR=$(HOME)/.mystikos/cache/ltp
 
