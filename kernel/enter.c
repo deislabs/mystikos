@@ -1021,7 +1021,6 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     ret = exit_status;
 
 done:
-
     return ret;
 }
 #pragma GCC pop_options

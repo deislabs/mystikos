@@ -527,6 +527,7 @@ int main(int argc, const char* argv[], const char* envp[])
     myst_args_release(&g_fork_argv);
     myst_args_release(&g_fork_envp);
 
+    printf("*** host main(): return=%d\n", ec);
     return ec;
 }
 

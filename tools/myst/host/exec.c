@@ -274,10 +274,15 @@ int exec_launch_enclave(
     if (r != OE_OK)
         _err("failed to enter enclave: result=%s", oe_result_str(r));
 
+        /* ATTN: enclave termination crashes sometimes with fork() */
+#if 0
     /* Terminate the enclave */
     r = oe_terminate_enclave(_enclave);
     if (r != OE_OK)
+    {
         _err("failed to terminate enclave: result=%s", oe_result_str(r));
+    }
+#endif
 
     shm_free_clock(&shared_memory);
 
