@@ -2532,7 +2532,7 @@ long myst_syscall_connect(
     if (type != MYST_FDTABLE_TYPE_SOCK)
         ERAISE(-ENOTSOCK);
 
-    if (!myst_is_bad_addr(addr))
+    if (!myst_is_addr_within_kernel(addr))
         ERAISE(-EFAULT);
 
     ret = (*sd->sd_connect)(sd, sock, addr, addrlen);
@@ -2671,8 +2671,18 @@ long myst_syscall_getsockname(
     myst_fdtable_t* fdtable = myst_fdtable_current();
     myst_sockdev_t* sd;
     myst_sock_t* sock;
+    myst_fdtable_type_t type;
 
-    ECHECK(myst_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
+    if (!myst_is_addr_within_kernel(addrlen) ||
+        !myst_is_addr_within_kernel(addr))
+        ERAISE(-EFAULT);
+
+    ECHECK(myst_fdtable_get_any(
+        fdtable, sockfd, &type, (void**)&sd, (void**)&sock));
+
+    if (type != MYST_FDTABLE_TYPE_SOCK)
+        ERAISE(-ENOTSOCK);
+
     ret = (*sd->sd_getsockname)(sd, sock, addr, addrlen);
 
 done:
