@@ -22,4 +22,4 @@ gdb:
 	$(MYST_GDB) --args $(MYST_EXEC) $(OPTS) ext2rootfs /usr/local/bin/python3  --app-config-path config.json
 
 clean:
-	rm -rf ext2rootfs appdir 
+	rm -rf ext2rootfs appdir
