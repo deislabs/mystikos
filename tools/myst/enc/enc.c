@@ -1124,8 +1124,8 @@ static long _enter(void* arg_)
 
 done:
 
-    /* ATTN: this crashes in nested test with fork */
 #if 0
+    /* ATTN.FORK: this crashes in nested test with fork */
     if (args.data)
         free(args.data);
 #endif

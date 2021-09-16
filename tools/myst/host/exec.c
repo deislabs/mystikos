@@ -274,8 +274,8 @@ int exec_launch_enclave(
     if (r != OE_OK)
         _err("failed to enter enclave: result=%s", oe_result_str(r));
 
-        /* ATTN: enclave termination crashes sometimes with fork() */
 #if 0
+    /* ATTN.FORK: enclave termination crashes sometimes with fork() */
     /* Terminate the enclave */
     r = oe_terminate_enclave(_enclave);
     if (r != OE_OK)
