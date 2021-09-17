@@ -76,6 +76,7 @@ jobs:
           sed -i 's/BINDIR=$(BUILDDIR)\/bin/BINDIR\=$(TOP)\/mystikos\/bin/g' defs.mak
           sed -i 's/SUBBINDIR=$(BINDIR)\/$(SUBDIR)/SUBBINDIR\=$(BUILDDIR)\/bin\/$(SUBDIR)/g' defs.mak
           make -j tests ALLTESTS=1 VERBOSE=1
+          make -C tests clean
         displayName: 'run all tests'
         continueOnError: true
         enabled: true
