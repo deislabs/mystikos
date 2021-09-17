@@ -15,7 +15,7 @@ SHUTDOWN_WAIT = 2
 all: appdir build
 
 appdir:
-	$(APPBUILDER) -v -d Dockerfile.rootfs
+	$(APPBUILDER) -d Dockerfile.rootfs
 
 ###########################################
 ## Build

@@ -53,6 +53,7 @@ jobs:
     # run all tests
     - script: |
         make tests ALLTESTS=1 VERBOSE=1
+        make -C tests clean
       displayName: 'run all tests'
       continueOnError: true
       enabled: true
