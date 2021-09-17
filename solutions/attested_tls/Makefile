@@ -43,6 +43,7 @@ app:	app/peer_tee_identity.h
 	cp app/client $(APPDIR)/
 	# make sure the app we are running is the one we just built.
 	ls -l $(APPDIR)/client; date
+	@df -h
 
 oe_enclave:
 	make -C oe_enclave/enc

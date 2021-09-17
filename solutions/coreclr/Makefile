@@ -32,6 +32,7 @@ ext2fs: appdir
 build-package: package.pem
 	$(MYST) fssig --roothash ext2fs > roothash
 	$(MYST) package-sgx --roothash=roothash package.pem config_256m.json
+	@df -h
 
 run:
 	./test-runner.sh $(PACKAGE_PATH) null null 30 package pr0-256m

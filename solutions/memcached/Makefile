@@ -71,6 +71,7 @@ build-cpio: appdir
 
 build-package: appdir private.pem
 	$(MYST) package-sgx $(APPDIR) private.pem config.json
+	@df -h
 
 private.pem:
 	openssl genrsa -out private.pem -3 3072

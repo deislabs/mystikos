@@ -34,6 +34,7 @@ build-ext2: appdir
 
 build-package: package.pem
 	$(MYST) package-sgx --roothash=roothash package.pem config.json
+	@df -h
 
 ###########################################
 ## Run

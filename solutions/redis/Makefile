@@ -26,6 +26,7 @@ package: init $(APPDIR) private.pem
 	cp redis.conf $(APPDIR)/etc/redis.conf
 	echo "\n\nport $(SERVICE_PORT)" >> $(APPDIR)/etc/redis.conf
 	$(MYST) package-sgx $(APPDIR) private.pem config.json
+	@df -h
 
 run: package
 	# This is running in ramfs mode

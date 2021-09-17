@@ -15,6 +15,7 @@ rootfs: appdir
 
 appdir:
 	$(APPBUILDER) Dockerfile
+	@df -h
 
 run:
 	$(MAKE) run1

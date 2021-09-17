@@ -137,8 +137,6 @@ __tests:
 
 tests:
 	@ sudo rm -rf $(TESTDIR)
-	@ $(MAKE) __tests TARGET=sgx TESTSUFFIX=.sgx
-	@ $(MAKE) __tests TARGET=linux TESTSUFFIX=.linux
 
 clean:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) clean $(NL) )

@@ -15,6 +15,7 @@ appdir:
 
 rootfs: appdir
 	$(MYST) mkext2 appdir rootfs
+	@df -h
 
 run: rootfs
 	$(MYST_EXEC) rootfs $(OPTS) --app-config-path config.json /miniconda/bin/python3 /app/app.py
