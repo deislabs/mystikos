@@ -3296,7 +3296,6 @@
 /app/llvm-project/libcxx/test/std/thread/futures/futures.shared_future/get.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/thread/futures/futures.shared_future/move_assign.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/thread/futures/futures.shared_future/move_ctor.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/thread/futures/futures.shared_future/wait_for.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/thread/futures/futures.shared_future/wait.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/thread/futures/futures.shared_future/wait_until.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/thread/futures/futures.state/nothing_to_do.pass.cpp.exe

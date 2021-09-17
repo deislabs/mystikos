@@ -8,6 +8,7 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -156,5 +157,21 @@ int myst_tcall_load_fssig(const char* path, myst_fssig_t* fssig);
 int myst_tcall_mprotect(void* addr, size_t len, int prot);
 
 long myst_gcov(const char* func, long params[6]);
+
+long myst_tcall_close(int fd);
+
+long myst_tcall_fcntl(int fd, int cmd, long arg);
+
+long myst_tcall_fstat(int fd, struct stat* statbuf);
+
+long myst_tcall_dup(int oldfd);
+
+long myst_tcall_read(int fd, void* buf, size_t count);
+
+long myst_tcall_write(int fd, const void* buf, size_t count);
+
+long myst_tcall_poll(struct pollfd* fds, nfds_t nfds, int timeout);
+
+long myst_tcall_pipe2(int pipefd[2], int flags);
 
 #endif /* _MYST_TCALL_H */

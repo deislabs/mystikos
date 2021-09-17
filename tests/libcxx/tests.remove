@@ -11,3 +11,4 @@
 /app/llvm-project/libcxx/test/std/thread/thread.mutex/thread.mutex.requirements/thread.shared_mutex.requirements/thread.shared_mutex.class/lock_shared.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/thread/thread.mutex/thread.mutex.requirements/thread.sharedtimedmutex.requirements/thread.sharedtimedmutex.class/try_lock_shared_for.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/thread/thread.mutex/thread.mutex.requirements/thread.sharedtimedmutex.requirements/thread.sharedtimedmutex.class/try_lock_shared_until.pass.cpp.exe
+/app/llvm-project/libcxx/test/std/thread/futures/futures.shared_future/wait_for.pass.cpp.exe

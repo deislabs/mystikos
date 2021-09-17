@@ -25,15 +25,6 @@
 // to diagnose the issue.
 #define DOWNSIZE_OCALL_OUTPUT_LENGTHS
 
-// Open Enclave uses a pre-allocated 16-kilobyte "ocall buffer" to transfer
-// parameters to host memory. If that buffer is too small to accommodate the
-// parameters, memory is obtained with oe_host_malloc() and later released with
-// oe_host_free(), thereby incurring two extra ocalls. So attempting to perform
-// one read ocall, results in three ocalls. To avoid this overhead, we must
-// limit the buffer size to ensure the "ocall buffer" will be sufficient.
-// This buffer size is used by the read-write family of functions.
-#define MAX_BUFFER_SIZE 8192
-
 static long _read(int fd, void* buf, size_t count)
 {
     long ret = 0;
@@ -44,9 +35,6 @@ static long _read(int fd, void* buf, size_t count)
         ret = -EINVAL;
         goto done;
     }
-
-    if (count > MAX_BUFFER_SIZE)
-        count = MAX_BUFFER_SIZE;
 
     if (myst_read_ocall(&retval, fd, buf, count) != OE_OK)
     {
@@ -83,9 +71,6 @@ static long _write(int fd, const void* buf, size_t count)
         ret = -EINVAL;
         goto done;
     }
-
-    if (count > MAX_BUFFER_SIZE)
-        count = MAX_BUFFER_SIZE;
 
     if (myst_write_ocall(&retval, fd, buf, count) != OE_OK)
     {
@@ -140,6 +125,8 @@ static long _fcntl(int fd, int cmd, long arg)
         case F_SETSIG:
         case F_GETOWN:
         case F_SETOWN:
+        case F_GETPIPE_SZ:
+        case F_SETPIPE_SZ:
         {
             if (myst_fcntl_ocall(&retval, fd, cmd, arg) != OE_OK)
             {
@@ -207,9 +194,6 @@ static long _recvfrom(
 
     n = addrlen ? *addrlen : 0;
 
-    if (len > MAX_BUFFER_SIZE)
-        len = MAX_BUFFER_SIZE;
-
     if (myst_recvfrom_ocall(
             &retval, sockfd, buf, len, flags, src_addr, &n, n) != OE_OK)
     {
@@ -267,9 +251,6 @@ static long _sendto(
         ret = -EINVAL;
         goto done;
     }
-
-    if (len > MAX_BUFFER_SIZE)
-        len = MAX_BUFFER_SIZE;
 
     if (myst_sendto_ocall(
             &retval, sockfd, buf, len, flags, dest_addr, addrlen) != OE_OK)
@@ -367,9 +348,6 @@ static long _sendmsg(int sockfd, const struct msghdr* msg, int flags)
         goto done;
     }
 
-    if (msg->msg_iov[0].iov_len > MAX_BUFFER_SIZE)
-        msg->msg_iov[0].iov_len = MAX_BUFFER_SIZE;
-
     if (myst_sendmsg_ocall(
             &retval,
             sockfd,
@@ -432,9 +410,6 @@ static long _recvmsg(int sockfd, struct msghdr* msg, int flags)
         ret = -EINVAL;
         goto done;
     }
-
-    if (len > MAX_BUFFER_SIZE)
-        len = MAX_BUFFER_SIZE;
 
     if (len && !(buf = malloc((size_t)len)))
     {
@@ -1020,9 +995,6 @@ static long _pread64(int fd, void* buf, size_t count, off_t offset)
         goto done;
     }
 
-    if (count > MAX_BUFFER_SIZE)
-        count = MAX_BUFFER_SIZE;
-
     if (myst_pread64_ocall(&retval, fd, buf, count, offset) != OE_OK)
     {
         ret = -EINVAL;
@@ -1060,9 +1032,6 @@ static long _pwrite64(int fd, const void* buf, size_t count, off_t offset)
         ret = -EINVAL;
         goto done;
     }
-
-    if (count > MAX_BUFFER_SIZE)
-        count = MAX_BUFFER_SIZE;
 
     if (myst_pwrite64_ocall(&retval, fd, buf, count, offset) != OE_OK)
     {
@@ -1209,9 +1178,6 @@ static long _getdents64(
         ret = -EINVAL;
         goto done;
     }
-
-    if (count > MAX_BUFFER_SIZE)
-        count = MAX_BUFFER_SIZE;
 
     if (myst_getdents64_ocall(&retval, fd, dirp, count) != OE_OK)
     {
@@ -1643,6 +1609,139 @@ done:
 }
 #endif
 
+static int _pipe2(int pipefd[2], int flags)
+{
+    int ret = 0;
+    long retval;
+
+    if (!pipefd)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    if (myst_pipe2_ocall(&retval, pipefd, flags) != OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = retval;
+
+done:
+    return ret;
+}
+
+static long _epoll_create1(int flags)
+{
+    long ret = 0;
+    long retval;
+
+    if (myst_epoll_create1_ocall(&retval, flags) != OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = retval;
+
+done:
+    return ret;
+}
+
+static long _epoll_wait(
+    int epfd,
+    struct epoll_event* events,
+    size_t maxevents,
+    int timeout)
+{
+    long ret = 0;
+    long retval;
+
+    if (epfd < 0 || !events || maxevents == 0)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    if (myst_epoll_wait_ocall(&retval, epfd, events, maxevents, timeout) !=
+        OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    /* check for error */
+    if (retval < 0)
+    {
+        ret = retval;
+        goto done;
+    }
+
+    /* guard against possible read past end of buffer */
+    if ((size_t)retval > maxevents)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = retval;
+
+done:
+    return ret;
+}
+
+static long _epoll_ctl(
+    int epfd,
+    int op,
+    int fd,
+    const struct epoll_event* event)
+{
+    long ret = 0;
+    long retval;
+    struct epoll_event event_buf;
+
+    if (epfd < 0)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    if (!event)
+    {
+        memset(&event_buf, 0, sizeof(event_buf));
+        event = &event_buf;
+    }
+
+    if (myst_epoll_ctl_ocall(&retval, epfd, op, fd, event) != OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = retval;
+
+done:
+    return ret;
+}
+
+static long _eventfd2(unsigned int initval, int flags)
+{
+    long ret = 0;
+    long retval;
+
+    if (myst_eventfd_ocall(&retval, initval, flags) != OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = retval;
+
+done:
+    return ret;
+}
+
 long myst_handle_tcall(long n, long params[6])
 {
     const long a = params[0];
@@ -1909,6 +2008,28 @@ long myst_handle_tcall(long n, long params[6])
         case SYS_getcpu:
         {
             return _getcpu((unsigned*)a, (unsigned*)b);
+        }
+        case SYS_pipe2:
+        {
+            return _pipe2((int*)a, (int)b);
+        }
+        case SYS_epoll_create1:
+        {
+            return _epoll_create1((int)a);
+        }
+        case SYS_epoll_wait:
+        {
+            return _epoll_wait(
+                (int)a, (struct epoll_event*)b, (size_t)c, (int)d);
+        }
+        case SYS_epoll_ctl:
+        {
+            return _epoll_ctl(
+                (int)a, (int)b, (int)c, (const struct epoll_event*)d);
+        }
+        case SYS_eventfd2:
+        {
+            return _eventfd2(a, b);
         }
         default:
         {

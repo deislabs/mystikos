@@ -603,3 +603,29 @@ done:
 
     return ret;
 }
+
+ssize_t myst_fdtable_count(const myst_fdtable_t* fdtable)
+{
+    ssize_t ret = 0;
+    ssize_t count = 0;
+
+    if (!fdtable)
+        ERAISE(-EINVAL);
+
+    myst_spin_lock(&((myst_fdtable_t*)fdtable)->lock);
+    {
+        for (int i = 0; i < MYST_FDTABLE_SIZE; i++)
+        {
+            const myst_fdtable_entry_t* entry = &fdtable->entries[i];
+
+            if (entry->type == MYST_FDTABLE_TYPE_NONE)
+                count++;
+        }
+    }
+    myst_spin_unlock(&((myst_fdtable_t*)fdtable)->lock);
+
+    ret = count;
+
+done:
+    return ret;
+}

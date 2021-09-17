@@ -177,4 +177,6 @@ int myst_fdtable_list(const myst_fdtable_t* fdtable);
 
 long myst_fdtable_sync(myst_fdtable_t* fdtable);
 
+ssize_t myst_fdtable_count(const myst_fdtable_t* fdtable);
+
 #endif /* _MYST_FDTABLE_H */
