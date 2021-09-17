@@ -2308,9 +2308,14 @@ long myst_syscall_pipe2(int pipefd[2], int flags)
     myst_fdtable_t* fdtable = myst_fdtable_current();
     const myst_fdtable_type_t type = MYST_FDTABLE_TYPE_PIPE;
     myst_pipedev_t* pd = myst_pipedev_get();
+    static const ssize_t margin = 8;
 
     if (!pipefd)
         ERAISE(-EINVAL);
+
+    /* Leave a little margin so pipe2() does not exhaust the last few fds */
+    if (myst_fdtable_count(fdtable) < margin)
+        ERAISE(-EMFILE);
 
     ECHECK((*pd->pd_pipe2)(pd, pipe, flags));
 
@@ -2888,6 +2893,12 @@ long myst_syscall_epoll_wait(
     myst_fdtable_t* fdtable = myst_fdtable_current();
     myst_epolldev_t* ed;
     myst_epoll_t* epoll;
+
+    if (epfd < 0)
+        ERAISE(-EBADF);
+
+    if (epfd == 0)
+        ERAISE(-EINVAL);
 
     ECHECK(myst_fdtable_get_epoll(fdtable, epfd, &ed, &epoll));
 

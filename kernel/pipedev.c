@@ -1,66 +1,125 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include <errno.h>
-#include <fcntl.h>
-#include <limits.h>
-#include <stdbool.h>
-#include <stdlib.h>
-#include <string.h>
 #include <sys/ioctl.h>
-#include <unistd.h>
 
+#include <myst/buf.h>
 #include <myst/cond.h>
-#include <myst/defs.h>
 #include <myst/eraise.h>
-#include <myst/id.h>
-#include <myst/panic.h>
+#include <myst/mutex.h>
 #include <myst/pipedev.h>
+#include <myst/printf.h>
 #include <myst/process.h>
-#include <myst/round.h>
+#include <myst/signal.h>
+#include <myst/spinlock.h>
 #include <myst/syscall.h>
+
+//#define ENABLE_TRACE
+#ifdef ENABLE_TRACE
+#define T(EXPR) EXPR
+#else
+#define T(EXPR)
+#endif
 
 #define MAGIC 0x9906acdc
 
-#define SCRATCH_BUF_SIZE 256
+#define DEFAULT_PIPE_SIZE (64 * 1024)
 
-typedef struct pipe_impl
+#define BLOCK_SIZE PIPE_BUF
+
+/*
+**==============================================================================
+**
+** The host-side pipes are used only for synchronization with poll() and
+** epoll(). The data is exchanged within the kernel and is not visible from
+** the host. The host-side pipes are used to manage read and write enablement
+** states by setting the pipe size to two blocks and filling zero, one, or two
+** blocks with zeros, where:
+**
+**     - zero filled blocks indicates write-enablement (empty pipe)
+**     - one filled block indicates read-write-enablement (half-full pipe)
+**     - two filled blocks indicates read-enablement (full pipe)
+**
+** These states and the corresponding blocks are depicted in the diagram below,
+** where the block size is BLOCK_SIZE.
+**
+**                              Read-Enabled   Write-Enabled    Macro
+**     +--------+--------+      -----------------------------------------
+**     |        |        |      No              Yes             WR_ENABLED
+**     +--------+--------+
+**
+**     +--------+--------+
+**     |XXXXXXXX|        |      Yes             Yes             RDWR_ENABLED
+**     +--------+--------+
+**
+**     +--------+--------+
+**     |XXXXXXXX|XXXXXXXX|      Yes             No              RD_ENABLED
+**     +--------+--------+
+**
+**==============================================================================
+*/
+
+typedef enum state
 {
+    STATE_WR_ENABLED = 'E',   /* empty */
+    STATE_RDWR_ENABLED = 'H', /* half-full (or half-empty) */
+    STATE_RD_ENABLED = 'F',   /* full */
+} state_t;
+
+/* this structure is shared by the pipe */
+typedef struct shared
+{
+    myst_mutex_t lock;
     myst_cond_t cond;
-    myst_mutex_t mutex;
-    char* data; /* points to buf or heap-allocated memory */
-    size_t pipesz;
-    char buf[PIPE_BUF];
-    size_t nbytes;
+    int flags; /* O_NONBLOCK */
     size_t nreaders;
     size_t nwriters;
-    size_t wrsize; /* set by write(), decremented by read() */
-} pipe_impl_t;
+    size_t pipesz; /* capacity of pipe (F_SETPIPE_SZ/F_GETPIPE_SZ) */
+    state_t state; /* read-write enablement state */
+    myst_buf_t buf;
+} shared_t;
 
 struct myst_pipe
 {
-    uint32_t magic;
-    int mode;    /* O_RDONLY or O_WRONLY */
-    int flags;   /* (O_NONBLOCK | O_CLOEXEC | O_DIRECT | O_ASYNC) */
-    int fdflags; /* FD_CLOEXEC */
-    pipe_impl_t* impl;
+    uint32_t magic; /* MAGIC */
+    int fd;         /* host file descriptor */
+    int mode;       /* O_RDONLY or O_WRONLY */
+    shared_t* shared;
 };
+
+MYST_INLINE size_t _min(size_t x, size_t y)
+{
+    return (x < y) ? x : y;
+}
 
 MYST_INLINE bool _valid_pipe(const myst_pipe_t* pipe)
 {
-    return pipe && pipe->magic == MAGIC && pipe->impl;
+    return pipe && pipe->magic == MAGIC;
 }
 
-static void _lock(myst_pipe_t* pipe)
+MYST_INLINE size_t _nbytes(const shared_t* shared)
 {
-    myst_assume(_valid_pipe(pipe));
-    myst_mutex_lock(&pipe->impl->mutex);
+    return shared->buf.size;
 }
 
-static void _unlock(myst_pipe_t* pipe)
+MYST_INLINE size_t _space(const shared_t* shared)
 {
-    myst_assume(_valid_pipe(pipe));
-    myst_mutex_unlock(&pipe->impl->mutex);
+    return shared->pipesz - shared->buf.size;
+}
+
+MYST_INLINE void _lock(myst_mutex_t* lock, bool* locked)
+{
+    myst_mutex_lock(lock);
+    *locked = true;
+}
+
+MYST_INLINE void _unlock(myst_mutex_t* lock, bool* locked)
+{
+    if (*locked)
+    {
+        myst_mutex_unlock(lock);
+        *locked = false;
+    }
 }
 
 static int _pd_pipe2(myst_pipedev_t* pipedev, myst_pipe_t* pipe[2], int flags)
@@ -68,23 +127,37 @@ static int _pd_pipe2(myst_pipedev_t* pipedev, myst_pipe_t* pipe[2], int flags)
     int ret = 0;
     myst_pipe_t* rdpipe = NULL;
     myst_pipe_t* wrpipe = NULL;
-    pipe_impl_t* impl = NULL;
+    shared_t* shared = NULL;
+    int fds[2] = {-1, -1};
 
     if (!pipedev || !pipe || (flags & ~(O_CLOEXEC | O_DIRECT | O_NONBLOCK)))
         ERAISE(-EINVAL);
 
-    /* Create the shared pipe implementation structure */
+    /* Create the pipe descriptors on the host */
+    ECHECK(myst_tcall_pipe2(fds, flags));
+
+    /* Set the pipe buffer size to hold two blocks */
+    ECHECK(myst_tcall_fcntl(fds[0], F_SETPIPE_SZ, 2 * BLOCK_SIZE));
+
+    /* Create the shared structure */
     {
-        if (!(impl = calloc(1, sizeof(pipe_impl_t))))
+        if (!(shared = calloc(1, sizeof(shared_t))))
             ERAISE(-ENOMEM);
 
-        /* initially there is one read and one writer */
-        impl->nreaders = 1;
-        impl->nwriters = 1;
+        /* initially there is one reader and one writer */
+        shared->nreaders = 1;
+        shared->nwriters = 1;
 
-        /* setup the default pipe buffer */
-        impl->data = impl->buf;
-        impl->pipesz = PIPE_BUF;
+        /* Set initial pipe capacity; may be updated by fcntl(F_SETPIPE_SZ) */
+        shared->pipesz = DEFAULT_PIPE_SIZE;
+
+        /* Set the state */
+        shared->state = STATE_WR_ENABLED;
+
+        /* Set the non-blocking flag */
+        shared->flags = flags;
+
+        ECHECK(myst_cond_init(&shared->cond));
     }
 
     /* Create the read pipe */
@@ -93,12 +166,9 @@ static int _pd_pipe2(myst_pipedev_t* pipedev, myst_pipe_t* pipe[2], int flags)
             ERAISE(-ENOMEM);
 
         rdpipe->magic = MAGIC;
+        rdpipe->fd = fds[0];
         rdpipe->mode = O_RDONLY;
-        rdpipe->flags = flags;
-        rdpipe->impl = impl;
-
-        if (flags & O_CLOEXEC)
-            rdpipe->fdflags = FD_CLOEXEC;
+        rdpipe->shared = shared;
     }
 
     /* Create the write pipe */
@@ -107,19 +177,20 @@ static int _pd_pipe2(myst_pipedev_t* pipedev, myst_pipe_t* pipe[2], int flags)
             ERAISE(-ENOMEM);
 
         wrpipe->magic = MAGIC;
+        wrpipe->fd = fds[1];
         wrpipe->mode = O_WRONLY;
-        wrpipe->flags = flags;
-        wrpipe->impl = impl;
-
-        if (flags & O_CLOEXEC)
-            wrpipe->fdflags = FD_CLOEXEC;
+        wrpipe->shared = shared;
     }
+
+    T(printf(
+          "_pd_pipe2(): fds[%d:%d] pid=%d\n", fds[0], fds[1], myst_getpid());)
 
     pipe[0] = rdpipe;
     pipe[1] = wrpipe;
     rdpipe = NULL;
     wrpipe = NULL;
-    impl = NULL;
+    fds[0] = -1;
+    fds[1] = -1;
 
 done:
 
@@ -129,8 +200,11 @@ done:
     if (wrpipe)
         free(wrpipe);
 
-    if (impl)
-        free(impl);
+    if (fds[0] >= 0)
+        myst_tcall_close(fds[0]);
+
+    if (fds[1] >= 0)
+        myst_tcall_close(fds[1]);
 
     return ret;
 }
@@ -142,9 +216,16 @@ static ssize_t _pd_read(
     size_t count)
 {
     ssize_t ret = 0;
-    pipe_impl_t* p;
-    uint8_t* ptr = buf;
-    size_t rem = count;
+    ssize_t nread = 0;
+    shared_t* shared;
+    struct locals
+    {
+        uint8_t zeros[2 * BLOCK_SIZE];
+    };
+    struct locals* locals = NULL;
+    bool locked = false;
+
+    T(printf("=== _pd_read(): count=%zu\n", count));
 
     if (!pipedev || !_valid_pipe(pipe))
         ERAISE(-EBADF);
@@ -152,101 +233,110 @@ static ssize_t _pd_read(
     if (!buf && count)
         ERAISE(-EINVAL);
 
-    if (pipe->mode == O_WRONLY)
-        ERAISE(-EBADF);
-
     if (count == 0)
         goto done;
 
-    _lock(pipe);
-    p = pipe->impl;
-
-    if (!_valid_pipe(pipe))
-    {
-        /* cannot unlock since mutex is no longer valid */
-        _unlock(pipe);
+    if (pipe->mode == O_WRONLY)
         ERAISE(-EBADF);
-    }
 
-    while (rem)
+    if (!(locals = calloc(1, sizeof(struct locals))))
+        ERAISE(-ENOMEM);
+
+    shared = pipe->shared;
+    _lock(&shared->lock, &locked);
+
+    /* perform the read operation */
     {
-        /* block here while the pipe is empty */
-        while (p->nbytes == 0)
-        {
-            /* Handle non-blocking read */
-            if (pipe->flags & O_NONBLOCK)
-            {
-                _unlock(pipe);
+        uint8_t* ptr = buf;
+        size_t rem = count;
 
-                if (rem < count)
+        while (rem > 0)
+        {
+            size_t min = _min(rem, _nbytes(shared));
+
+            if (min) /* there is data in the buffer */
+            {
+                memcpy(ptr, shared->buf.data, min);
+                ECHECK(myst_buf_remove(&shared->buf, 0, min));
+                rem -= min;
+                ptr += min;
+                nread += min;
+
+                switch (shared->state)
                 {
-                    /* return short count */
-                    ret = count - rem;
-                    goto done;
+                    case STATE_RD_ENABLED:
+                    {
+                        if (shared->buf.size == 0)
+                        {
+                            const size_t n = 2 * BLOCK_SIZE;
+                            ECHECK(myst_tcall_read(pipe->fd, locals->zeros, n));
+                            shared->state = STATE_WR_ENABLED;
+                        }
+                        else
+                        {
+                            const size_t n = BLOCK_SIZE;
+                            ECHECK(myst_tcall_read(pipe->fd, locals->zeros, n));
+                            shared->state = STATE_RDWR_ENABLED;
+                        }
+                        break;
+                    }
+                    case STATE_RDWR_ENABLED:
+                    {
+                        if (shared->buf.size == 0)
+                        {
+                            const size_t n = BLOCK_SIZE;
+                            ECHECK(myst_tcall_read(pipe->fd, locals->zeros, n));
+                            shared->state = STATE_WR_ENABLED;
+                        }
+                        break;
+                    }
+                    case STATE_WR_ENABLED:
+                    {
+                        break;
+                    }
                 }
 
-                ERAISE(-EAGAIN);
+                /* signal that pipe is now write enabled */
+                myst_cond_signal(&shared->cond);
             }
-
-            /* if there are no writers, then return short count or
-             * end-of-file(0) */
-            if (p->nwriters == 0)
+            else /* the buffer is empty */
             {
-                _unlock(pipe);
+                if (shared->flags == O_NONBLOCK)
+                {
+                    if (nread == 0)
+                        ERAISE(-EAGAIN);
 
-                /* rem<=count */
-                ret = count - rem;
-                goto done;
+                    break;
+                }
+                else
+                {
+                    /* break out if there are no writters */
+                    if (shared->nwriters == 0)
+                        break;
+
+                    /* block here until pipe becomes read enabled */
+                    myst_cond_wait(&shared->cond, &shared->lock);
+                }
             }
 
-            /* If write operation is finished */
-            if (p->wrsize == 0 && rem < count)
-            {
-                _unlock(pipe);
-                /* return short count */
-                ret = count - rem;
-                goto done;
-            }
+            if (nread > 0)
+                break;
 
-            /* wait here for another thread to write */
-            if (myst_cond_wait(&p->cond, &p->mutex) != 0)
-            {
-                /* unexpected */
-                _unlock(pipe);
-                ERAISE(-EPIPE);
-            }
-        }
-
-        /* copy bytes from pipe to the caller buffer */
-        if (p->nbytes <= rem)
-        {
-            const size_t n = p->nbytes;
-            memcpy(ptr, p->data, n);
-            p->nbytes = 0;
-            myst_cond_signal(&p->cond);
-            rem -= n;
-            ptr += n;
-            p->wrsize -= n;
-        }
-        else /* p->nbytes > rem */
-        {
-            const size_t n = rem;
-            memcpy(ptr, p->data, n);
-            memmove(p->data, p->data + n, p->nbytes - rem);
-            p->nbytes -= n;
-            p->wrsize -= n;
-            myst_cond_signal(&p->cond);
-            break;
+            if (myst_signal_has_active_signals(myst_thread_self()))
+                ERAISE(-EINTR);
         }
     }
 
-    _unlock(pipe);
-    ret = count;
+    ret = nread;
 
 done:
 
-    if (ret > 0)
-        myst_tcall_poll_wake();
+    if (locals)
+        free(locals);
+
+    _unlock(&shared->lock, &locked);
+
+    T(printf("_pd_read(): ret=%zd\n", ret));
 
     return ret;
 }
@@ -258,10 +348,16 @@ static ssize_t _pd_write(
     size_t count)
 {
     ssize_t ret = 0;
-    pipe_impl_t* p;
-    size_t nspace;
-    const uint8_t* ptr = buf;
-    size_t rem = count;
+    bool locked = false;
+    shared_t* shared;
+    struct locals
+    {
+        uint8_t zeros[2 * BLOCK_SIZE];
+    };
+    struct locals* locals = NULL;
+    size_t nwritten = 0;
+
+    T(printf("=== _pd_write(): count=%zu\n", count));
 
     if (!pipedev || !_valid_pipe(pipe))
         ERAISE(-EBADF);
@@ -272,115 +368,119 @@ static ssize_t _pd_write(
     if (pipe->mode == O_RDONLY)
         ERAISE(-EBADF);
 
+    if (count == 0)
+        goto done;
+
+    if (!(locals = calloc(1, sizeof(struct locals))))
+        ERAISE(-ENOMEM);
+
+    shared = pipe->shared;
+    _lock(&shared->lock, &locked);
+
     /* if there are no readers, then raise EPIPE */
-    if (pipe->impl->nreaders == 0)
+    if (shared->nreaders == 0)
     {
         myst_syscall_kill(myst_getpid(), SIGPIPE);
         ERAISE(-EPIPE);
     }
 
-    if (count == 0)
-        goto done;
-
-    _lock(pipe);
-    p = pipe->impl;
-
-    if (!_valid_pipe(pipe))
+    /* perform the write operation */
     {
-        /* cannot unlock since mutex is no longer valid */
-        _unlock(pipe);
-        ERAISE(-EBADF);
-    }
+        const uint8_t* ptr = buf;
+        size_t rem = count;
 
-    /* The writer intends to write count bytes. Update wrsize immediately to
-     * signal to the reader about the intention, so a blocking reader won't bail
-     * out prematurely due 0 wrsize, when a writer will write more to the pipe
-     * soon. If the call returns with less than count bytes writtern, the caller
-     * might invoke the call again. For example, a non-blocking write returning
-     * EAGAIN did not write any data to the pipe. The caller likely will call
-     * again indicating count bytes to write. In those cases, adjust wrsize
-     * before returning to make sure no double counting
-     * */
-    p->wrsize += count;
-
-    while (rem)
-    {
-        /* Block here while the pipe is full */
-        while (p->nbytes == p->pipesz)
+        while (rem > 0)
         {
-            /* Handle non-blocking write */
-            if (pipe->flags & O_NONBLOCK)
-            {
-                p->wrsize -= rem;
-                _unlock(pipe);
+            size_t space = shared->pipesz - _nbytes(shared);
+            size_t min = _min(rem, space);
 
-                if (rem < count)
+            if (min) /* there is space in the buffer */
+            {
+                ECHECK(myst_buf_append(&shared->buf, ptr, min));
+                rem -= min;
+                ptr += min;
+                nwritten += min;
+
+                switch (shared->state)
                 {
-                    /* return short count */
-                    ret = count - rem;
-                    goto done;
+                    case STATE_WR_ENABLED:
+                    {
+                        if (_space(shared))
+                        {
+                            const size_t n = BLOCK_SIZE;
+                            ECHECK(
+                                myst_tcall_write(pipe->fd, locals->zeros, n));
+                            shared->state = STATE_RDWR_ENABLED;
+                        }
+                        else
+                        {
+                            const size_t n = 2 * BLOCK_SIZE;
+                            ECHECK(
+                                myst_tcall_write(pipe->fd, locals->zeros, n));
+                            shared->state = STATE_RD_ENABLED;
+                        }
+                        break;
+                    }
+                    case STATE_RDWR_ENABLED:
+                    {
+                        if (_space(shared) == 0)
+                        {
+                            const size_t n = BLOCK_SIZE;
+                            ECHECK(
+                                myst_tcall_write(pipe->fd, locals->zeros, n));
+                            shared->state = STATE_RD_ENABLED;
+                        }
+                        break;
+                    }
+                    case STATE_RD_ENABLED:
+                    {
+                        break;
+                    }
                 }
 
-                ERAISE(-EAGAIN);
+                /* signal that pipe is now read enabled */
+                myst_cond_signal(&shared->cond);
             }
-
-            /* if there are no readers, then fail */
-            if (p->nreaders == 0)
+            else /* the buffer is full */
             {
-                p->wrsize -= rem;
-                _unlock(pipe);
-
-                if (rem < count)
+                if (shared->flags == O_NONBLOCK)
                 {
-                    /* return short count */
-                    ret = count - rem;
-                    goto done;
+                    if (nwritten == 0)
+                        ERAISE(-EAGAIN);
+
+                    break;
                 }
+                else
+                {
+                    /* break out if there are no readers */
+                    if (shared->nreaders == 0)
+                        break;
 
-                /* broken pipe */
-                ERAISE(-EPIPE);
+                    /* wait for pipe to become write enabled or closed */
+                    myst_cond_wait(&shared->cond, &shared->lock);
+                }
             }
 
-            /* wait here for another thread to read */
-            if (myst_cond_wait(&p->cond, &p->mutex) != 0)
+            if (myst_signal_has_active_signals(myst_thread_self()))
             {
-                /* unexpected */
-                p->wrsize -= rem;
-                _unlock(pipe);
-                ERAISE(-EPIPE);
+                if (nwritten == 0)
+                    ERAISE(-EINTR);
+
+                break;
             }
-        }
-
-        /* calculate the space in the pipe buffer */
-        nspace = p->pipesz - p->nbytes;
-
-        /* copy bytes from caller buffer to pipe */
-        if (nspace <= rem)
-        {
-            const size_t n = nspace;
-            memcpy(p->data + p->nbytes, ptr, n);
-            p->nbytes += n;
-            myst_cond_signal(&p->cond);
-            rem -= n;
-            ptr += n;
-        }
-        else /* nspace > rem */
-        {
-            const size_t n = rem;
-            memcpy(p->data + p->nbytes, ptr, n);
-            p->nbytes += n;
-            myst_cond_signal(&p->cond);
-            break;
         }
     }
 
-    _unlock(pipe);
-    ret = count;
+    ret = nwritten;
 
 done:
 
-    if (ret > 0)
-        myst_tcall_poll_wake();
+    _unlock(&shared->lock, &locked);
+
+    if (locals)
+        free(locals);
+
+    T(printf("_pd_write(): ret=%ld\n", ret));
 
     return ret;
 }
@@ -429,27 +529,11 @@ static int _pd_fstat(
     struct stat* statbuf)
 {
     int ret = 0;
-    struct stat buf;
 
     if (!pipedev || !_valid_pipe(pipe) || !statbuf)
         ERAISE(-EINVAL);
 
-    memset(&buf, 0, sizeof(buf));
-    buf.st_dev = 12; /* FIFO device */
-    buf.st_ino = (ino_t)pipe;
-    buf.st_mode = S_IFIFO | O_EXCL | O_NOCTTY;
-    buf.st_nlink = 1;
-    buf.st_uid = MYST_DEFAULT_UID;
-    buf.st_gid = MYST_DEFAULT_GID;
-    buf.st_rdev = 0;
-    buf.st_size = 0;
-    buf.st_blksize = PIPE_BUF;
-    buf.st_blocks = 0;
-    memset(&buf.st_atim, 0, sizeof(buf.st_atim));
-    memset(&buf.st_mtim, 0, sizeof(buf.st_mtim));
-    memset(&buf.st_ctim, 0, sizeof(buf.st_ctim));
-
-    *statbuf = buf;
+    ECHECK(myst_tcall_fstat(pipe->fd, statbuf));
 
 done:
     return ret;
@@ -462,88 +546,44 @@ static int _pd_fcntl(
     long arg)
 {
     int ret = 0;
-    pipe_impl_t* p;
-    bool locked = false;
+    long r;
 
     if (!pipedev || !_valid_pipe(pipe))
         ERAISE(-EINVAL);
 
-    _lock(pipe);
-    locked = true;
-    p = pipe->impl;
-
     switch (cmd)
     {
-        case F_SETFD:
-        {
-            if (arg != FD_CLOEXEC && arg != 0)
-                ERAISE(-EINVAL);
-
-            pipe->fdflags = arg;
-            goto done;
-        }
-        case F_GETFD:
-        {
-            ret = pipe->fdflags;
-            goto done;
-        }
         case F_SETPIPE_SZ:
         {
-            void* data;
-            size_t pipesz;
-
-            if (arg <= 0)
+            if (arg < PIPE_BUF)
                 arg = PIPE_BUF;
 
-            ECHECK(myst_round_up(arg, PIPE_BUF, &pipesz));
+            arg = (arg + (PIPE_BUF - 1)) / PIPE_BUF * PIPE_BUF;
 
-            if (!(data = calloc(pipesz, 1)))
-                ERAISE(-ENOMEM);
-
-            if (p->data != p->buf)
-                free(p->data);
-
-            p->data = data;
-            p->pipesz = pipesz;
-
-            ret = (long)pipesz;
+            pipe->shared->pipesz = arg;
             goto done;
         }
         case F_GETPIPE_SZ:
         {
-            ret = p->pipesz;
+            ret = pipe->shared->pipesz;
             goto done;
-        }
-        case F_GETFL:
-        {
-            ret = pipe->mode | pipe->flags;
-            goto done;
-        }
-        case F_SETFL:
-        {
-            if (arg & O_NONBLOCK)
-                pipe->flags |= O_NONBLOCK;
-            if (arg & O_ASYNC)
-                // ATTN: implement O_ASYNC for pipes
-                pipe->flags |= O_ASYNC;
-            if (arg & O_DIRECT)
-                // ATTN: implement O_DIRECT for pipes
-                pipe->flags |= O_DIRECT;
-            goto done;
-        }
-        default:
-        {
-            ERAISE(-ENOTSUP);
         }
     }
 
-    /* unreachable */
-    myst_assume(false);
+    ECHECK((r = myst_tcall_fcntl(pipe->fd, cmd, arg)));
+
+    switch (cmd)
+    {
+        case F_SETFL:
+        {
+            pipe->shared->flags |= arg;
+            break;
+        }
+    }
+
+    ret = r;
 
 done:
-
-    if (locked)
-        _unlock(pipe);
 
     return ret;
 }
@@ -590,22 +630,25 @@ static int _pd_dup(
 
     *new_pipe = *pipe;
 
-    /* file descriptor flags are not propagated */
-    new_pipe->fdflags = 0;
-
-    _lock((myst_pipe_t*)new_pipe);
+    /* perform syscall */
+    ECHECK(new_pipe->fd = myst_tcall_dup(pipe->fd));
 
     if (new_pipe->mode == O_RDONLY)
-        new_pipe->impl->nreaders++;
+        new_pipe->shared->nreaders++;
     else
-        new_pipe->impl->nwriters++;
+        new_pipe->shared->nwriters++;
 
-    _unlock((myst_pipe_t*)new_pipe);
+    T(printf(
+          "_pd_dup(): oldfd=%d newfd=%d pid=%d\n",
+          pipe->fd,
+          new_pipe->fd,
+          myst_getpid());)
 
     *pipe_out = new_pipe;
     new_pipe = NULL;
 
 done:
+    T(printf("_pd_dup(): done\n");)
 
     if (new_pipe)
         free(new_pipe);
@@ -620,55 +663,58 @@ static int _pd_interrupt(myst_pipedev_t* pipedev, myst_pipe_t* pipe)
     if (!pipedev || !_valid_pipe(pipe))
         ERAISE(-EBADF);
 
+    T(printf("_pd_interrupt(): fd=%d pid=%d\n", pipe->fd, myst_getpid());)
+
     /* signal any threads blocked on read or write */
-    myst_cond_signal(&pipe->impl->cond);
+    myst_cond_signal(&pipe->shared->cond);
 
 done:
+    T(printf("_pd_interrupt(): done\n");)
     return ret;
 }
 
 static int _pd_close(myst_pipedev_t* pipedev, myst_pipe_t* pipe)
 {
     int ret = 0;
+    bool locked = false;
 
     if (!pipedev || !_valid_pipe(pipe))
         ERAISE(-EBADF);
 
-    _lock(pipe);
-
-    if (!pipe->impl->nreaders && !pipe->impl->nwriters)
-    {
-        _unlock(pipe);
+    if (!pipe->shared->nreaders && !pipe->shared->nwriters)
         ERAISE(-EBADF);
-    }
+
+    T(printf("_pd_close(): fd=%d pid=%d\n", pipe->fd, myst_getpid());)
+    ECHECK(myst_tcall_close(pipe->fd));
+
+    _lock(&pipe->shared->lock, &locked);
+
     if (pipe->mode == O_RDONLY)
-        pipe->impl->nreaders--;
+        pipe->shared->nreaders--;
     else if (pipe->mode == O_WRONLY)
-        pipe->impl->nwriters--;
+        pipe->shared->nwriters--;
 
-    /* signal any threads blocked on read or write */
-    myst_cond_signal(&pipe->impl->cond);
-
-    /* Release the pipe if no more readers or writers */
-    if (pipe->impl->nreaders == 0 && pipe->impl->nwriters == 0)
+    if (pipe->shared->nreaders == 0 && pipe->shared->nwriters == 0)
     {
-        _unlock(pipe);
-
-        if (pipe->impl->data != pipe->impl->buf)
-            free(pipe->impl->data);
-
-        memset(pipe->impl, 0, sizeof(pipe_impl_t));
-        free(pipe->impl);
+        /* this is the last reference to the shared pipe structure */
+        _unlock(&pipe->shared->lock, &locked);
+        ECHECK(myst_cond_destroy(&pipe->shared->cond));
+        myst_buf_release(&pipe->shared->buf);
+        free(pipe->shared);
     }
     else
     {
-        _unlock(pipe);
+        /* signal that this end of the pipe has been closed */
+        myst_cond_signal(&pipe->shared->cond);
+        _unlock(&pipe->shared->lock, &locked);
     }
 
     memset(pipe, 0, sizeof(myst_pipe_t));
     free(pipe);
 
 done:
+
+    T(printf("_pd_close(): done\n");)
 
     return ret;
 }
@@ -677,47 +723,26 @@ static int _pd_target_fd(myst_pipedev_t* pipedev, myst_pipe_t* pipe)
 {
     int ret = 0;
 
+    T(printf("_pd_target_fd()\n"));
+
     if (!pipedev || !_valid_pipe(pipe))
         ERAISE(-EINVAL);
 
-    ret = -ENOTSUP;
+    ret = pipe->fd;
 
 done:
+    T(printf("_pd_target_fd(): ret=%d\n", ret));
     return ret;
 }
 
 static int _pd_get_events(myst_pipedev_t* pipedev, myst_pipe_t* pipe)
 {
     int ret = 0;
-    int events = 0;
 
     if (!pipedev || !_valid_pipe(pipe))
         ERAISE(-EINVAL);
 
-    _lock(pipe);
-    {
-        if (pipe->mode == O_RDONLY)
-        {
-            /* if there is anything to read, then set input event */
-            if (pipe->impl->nbytes > 0)
-                events |= POLLIN;
-            /* if all writers closed the pipe, then set hangup event */
-            if (pipe->impl->nwriters == 0)
-                events |= POLLHUP;
-        }
-        else if (pipe->mode == O_WRONLY)
-        {
-            /* if there is room to write more, then set output event */
-            if (pipe->impl->nbytes < pipe->impl->pipesz)
-                events |= POLLOUT;
-            /* if all readers closed the pipe, then set hangup event */
-            if (pipe->impl->nreaders == 0)
-                events |= POLLHUP;
-        }
-    }
-    _unlock(pipe);
-
-    ret = events;
+    ret = -ENOTSUP;
 
 done:
     return ret;

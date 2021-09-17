@@ -277,9 +277,15 @@ done:
 
 static int _id_get_events(myst_inotifydev_t* dev, myst_inotify_t* obj)
 {
-    (void)dev;
-    (void)obj;
-    return -EINVAL;
+    int ret = 0;
+
+    if (!dev || !_valid_inotify(obj))
+        ERAISE(-EINVAL);
+
+    ret = -ENOTSUP;
+
+done:
+    return ret;
 }
 
 static int _id_inotify_add_watch(

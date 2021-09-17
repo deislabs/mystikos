@@ -172,8 +172,13 @@ int exec_launch_enclave(
     }
 
     /* Load the enclave: calls oe_load_extra_enclave_data_hook() */
+#ifndef SUPPRESS_SWITCHLESS
     r = oe_create_myst_enclave(
         enc_path, type, flags, settings, num_settings, &_enclave);
+#else
+    r = oe_create_myst_enclave(enc_path, type, flags, NULL, 0, &_enclave);
+    (void)settings;
+#endif
 
     if (r != OE_OK)
         _err("failed to load enclave: result=%s", oe_result_str(r));
@@ -614,15 +619,11 @@ long myst_sched_yield_ocall(void)
 
 long myst_poll_wake_ocall(void)
 {
-    extern long myst_tcall_poll_wake();
-
     return myst_tcall_poll_wake();
 }
 
 long myst_poll_ocall(struct pollfd* fds, unsigned long nfds, int timeout)
 {
-    extern long myst_tcall_poll(
-        struct pollfd * lfds, unsigned long nfds, int timeout);
     return myst_tcall_poll(fds, nfds, timeout);
 }
 
