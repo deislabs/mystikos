@@ -22,13 +22,13 @@ pr:
     exclude:
     - docs/*
 
+pool: '1804DC4CCagentpool'
 stages:
 - stage: red
   jobs:
   - job: BuildAndTest
     displayName: 'Building and Testing'
     timeoutInMinutes: 60
-    pool: '1804DC4CCagentpool'
 
     steps:
     - script: |
