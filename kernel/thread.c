@@ -972,11 +972,13 @@ static long _run_thread(void* arg_)
             /* Send a SIGCHLD to the parent process */
             myst_syscall_kill(process->ppid, SIGCHLD);
 
-            /* Only need to zombify the process thread */
-            myst_zombify_process(process);
-
             /* unmap any mapping made by the process */
             myst_release_process_mappings(process->pid);
+
+            /* Only need to zombify the process thread.
+            ATTN: referencing "process" after zombification is not safe,
+            parent might have cleaned it up */
+            myst_zombify_process(process);
         }
 
         {
