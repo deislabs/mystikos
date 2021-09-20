@@ -22,74 +22,90 @@ pr:
     exclude:
     - docs/*
 
-jobs:
-  - job: BuildAndTest
-    displayName: 'Building and Testing'
-    timeoutInMinutes: 60
-    pool: '1804DC4CCagentpool'
-
+stages:
+- stage: red
+  jobs:
+  - job:
     steps:
-      # perform cleanup before starting pipeline
-      - script: |
-          sudo rm -rf /tmp/myst*
-          df
-        displayName: 'cleanup tmpfiles'
-      # install minimum required package to run pipeline
-      - script: |
-          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-          sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-          sudo apt-get update
-          while sudo lsof /var/lib/dpkg/lock-frontend | grep dpkg; do sleep 3; done
-          sudo apt-get install build-essential python3-setuptools libmbedtls-dev docker-ce -y
-          sudo chmod 666 /var/run/docker.sock
-          sudo apt install python3-pip -y
-          sudo apt install lldb-10 -y
-        displayName: 'minimum init config'
+    - script: |
+      echo "red"
+      displayName: 'red'
+- stage: green
+  jobs:
+  - job:
+    steps:
+    - script: |
+      echo "green"
+      displayName: 'green'
 
-      # build all source files
-      - script: |
-          # remove all untracked files and directories in the git repository
-          sudo rm -rf `git ls-files --others --directory`
-          make distclean
-          make -j world
-        displayName: 'build repo source'
-        workingDirectory: $(Build.SourcesDirectory)
-
-      # run all tests
-      - script: |
-          make -j tests ALLTESTS=1
-        displayName: 'run all tests'
-        continueOnError: true
-        enabled: true
-        workingDirectory: $(Build.SourcesDirectory)
-
-      # run solution tests
-      - script: |
-          make tests -C $(Build.SourcesDirectory)/solutions
-        displayName: 'run solution tests'
-        continueOnError: true
-        enabled: true
-        workingDirectory: $(Build.SourcesDirectory)
-        env:
-          # by default sql solution test will run on US EAST DB Node
-          DB_NAME: $(DB_NAME_USEAST)
-          DB_SERVER_NAME: $(DB_SERVER_NAME_USEAST)
-          MAA_URL: $(DB_MAA_URL_USEAST)
-          # If set, don't run certain tests
-          MYST_SKIP_PR_TEST: 1
-          
-      - script: |
-          make clean -C $(Build.SourcesDirectory)/tests
-          make clean -C $(Build.SourcesDirectory)/solutions
-          sudo rm -rf $(Build.SourcesDirectory)/build/tests
-        displayName: 'Cleanup test directories'
-        continueOnError: true
-        enabled: true
-        workingDirectory: $(Build.SourcesDirectory)
-
-      # if any previous step(s) not succeed, fail the job
-      - script: |
-          echo "Not all steps succeed."
-          exit 1
-        displayName: 'Error(s) Check'
-        condition: not(eq(variables['Agent.JobStatus'], 'succeeded'))
+#jobs:
+#  - job: BuildAndTest
+#    displayName: 'Building and Testing'
+#    timeoutInMinutes: 60
+#    pool: '1804DC4CCagentpool'
+#
+#    steps:
+#      # perform cleanup before starting pipeline
+#      - script: |
+#          sudo rm -rf /tmp/myst*
+#          df
+#        displayName: 'cleanup tmpfiles'
+#      # install minimum required package to run pipeline
+#      - script: |
+#          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+#          sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+#          sudo apt-get update
+#          while sudo lsof /var/lib/dpkg/lock-frontend | grep dpkg; do sleep 3; done
+#          sudo apt-get install build-essential python3-setuptools libmbedtls-dev docker-ce -y
+#          sudo chmod 666 /var/run/docker.sock
+#          sudo apt install python3-pip -y
+#          sudo apt install lldb-10 -y
+#        displayName: 'minimum init config'
+#
+#      # build all source files
+#      - script: |
+#          # remove all untracked files and directories in the git repository
+#          sudo rm -rf `git ls-files --others --directory`
+#          make distclean
+#          make -j world
+#        displayName: 'build repo source'
+#        workingDirectory: $(Build.SourcesDirectory)
+#
+#      # run all tests
+#      - script: |
+#          make -j tests ALLTESTS=1
+#        displayName: 'run all tests'
+#        continueOnError: true
+#        enabled: true
+#        workingDirectory: $(Build.SourcesDirectory)
+#
+#      # run solution tests
+#      - script: |
+#          make tests -C $(Build.SourcesDirectory)/solutions
+#        displayName: 'run solution tests'
+#        continueOnError: true
+#        enabled: true
+#        workingDirectory: $(Build.SourcesDirectory)
+#        env:
+#          # by default sql solution test will run on US EAST DB Node
+#          DB_NAME: $(DB_NAME_USEAST)
+#          DB_SERVER_NAME: $(DB_SERVER_NAME_USEAST)
+#          MAA_URL: $(DB_MAA_URL_USEAST)
+#          # If set, don't run certain tests
+#          MYST_SKIP_PR_TEST: 1
+#          
+#      - script: |
+#          make clean -C $(Build.SourcesDirectory)/tests
+#          make clean -C $(Build.SourcesDirectory)/solutions
+#          sudo rm -rf $(Build.SourcesDirectory)/build/tests
+#        displayName: 'Cleanup test directories'
+#        continueOnError: true
+#        enabled: true
+#        workingDirectory: $(Build.SourcesDirectory)
+#
+#      # if any previous step(s) not succeed, fail the job
+#      - script: |
+#          echo "Not all steps succeed."
+#          exit 1
+#        displayName: 'Error(s) Check'
+#        condition: not(eq(variables['Agent.JobStatus'], 'succeeded'))
