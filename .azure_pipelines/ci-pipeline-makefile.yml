@@ -22,25 +22,36 @@ pr:
     exclude:
     - docs/*
 
-pool: '1804DC4CCagentpool'
-stages:
-- stage: red
-  jobs:
-  - job: BuildAndTest
-    displayName: 'Building and Testing'
-    timeoutInMinutes: 60
+jobs:
+- job: BuildAndTest
+  displayName: 'Building and Testing'
+  timeoutInMinutes: 60
+  pool: '1804DC4CCagentpool'
 
-    steps:
-    - script: |
-      echo "red"
-      displayName: 'red'
-- stage: green
-  jobs:
-  - job:
-    steps:
-    - script: |
-      echo "green"
-      displayName: 'green'
+  steps:
+      - script: |
+          echo hello world
+          displayName: 'RED'
+
+#pool: '1804DC4CCagentpool'
+#stages:
+#- stage: red
+#  jobs:
+#  - job: BuildAndTest
+#    displayName: 'Building and Testing'
+#    timeoutInMinutes: 60
+#
+#    steps:
+#    - script: |
+#      echo "red"
+#      displayName: 'red'
+#- stage: green
+#  jobs:
+#  - job:
+#    steps:
+#    - script: |
+#      echo "green"
+#      displayName: 'green'
 
 #jobs:
 #  - job: BuildAndTest
