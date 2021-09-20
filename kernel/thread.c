@@ -986,8 +986,8 @@ static long _run_thread(void* arg_)
             _num_threads--;
         }
 
-        /* Free up the thread unmap-on-exit. These mappings can be on both the
-         * main thread and child threads. */
+        /* Free up the thread unmap-on-exit for child threads. */
+        if (is_child_thread)
         {
             size_t i = thread->unmap_on_exit_used;
             while (i)
