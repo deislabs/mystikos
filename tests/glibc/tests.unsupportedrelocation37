@@ -1,0 +1,17 @@
+/glibc/build/elf/tst-dl-iter-static
+/glibc/build/elf/tst-dst-static
+/glibc/build/elf/tst-ifunc-isa-1-static
+/glibc/build/elf/tst-ifunc-isa-2-static
+/glibc/build/elf/tst-linkall-static
+/glibc/build/elf/tst-single_threaded-static
+/glibc/build/inet/tst-deadline
+/glibc/build/malloc/tst-interpose-static-nothread
+/glibc/build/malloc/tst-interpose-static-thread
+/glibc/build/math/test-fpucw-ieee-static
+/glibc/build/math/test-fpucw-static
+/glibc/build/misc/tst-empty
+/glibc/build/misc/tst-fd_to_filename
+/glibc/build/nptl/tst-cond11-static
+/glibc/build/nptl/tst-locale1
+/glibc/build/nptl/tst-pthread_exit-nothreads-static
+/glibc/build/nss/tst-field

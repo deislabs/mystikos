@@ -2,3 +2,5 @@
 # this limitation is not related to mystikos. 
 /glibc/build/assert/test-assert-perr
 /glibc/build/stdlib/test-dlclose-exit-race
+/glibc/build/localedata/tst-langinfo-newlocale-static
+/glibc/build/localedata/tst-langinfo-setlocale-static
