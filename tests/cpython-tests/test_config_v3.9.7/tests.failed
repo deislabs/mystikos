@@ -7,7 +7,6 @@ test_asyncore
 test_base64
 test_bz2
 test_c_locale_coercion
-test_calendar
 test_capi
 test_cmd_line
 test_cmd_line_script
@@ -17,7 +16,6 @@ test_ctypes
 test_distutils
 test_eintr
 test_embed
-test_epoll
 test_faulthandler
 test_fcntl
 test_file_eintr
@@ -26,15 +24,11 @@ test_fork1
 test_ftplib
 test_gc
 test_gdb
-test_genericalias
 test_glob
-test_graphlib
 test_gzip
 test_import
 test_importlib
-test_inspect
 test_io
-test_itertools.py
 test_json
 test_locale
 test_logging
@@ -45,17 +39,14 @@ test_os
 test_pathlib
 test_pdb
 test_peg_generator
-test_peg_parser
 test_pipes
 test_pkgutil
 test_poll
 test_poplib
 test_posix
-test_profile
 test_pty
 test_py_compile
 test_pydoc
-test_queue
 test_quopri
 test_random
 test_re
@@ -68,8 +59,6 @@ test_select
 test_selectors
 test_shutil
 test_signal
-test_site
-test_smtplib
 test_socket
 test_sqlite
 test_ssl
@@ -83,10 +72,8 @@ test_thread
 test_threading
 test_time
 test_tools
-test_trace
 test_tracemalloc
 test_unicode_file
-test_unparse
 test_uuid
 test_venv
 test_wait3
@@ -94,4 +81,3 @@ test_wait4
 test_wsgiref
 test_zipfile
 test_zipimport_support
-test_zoneinfo

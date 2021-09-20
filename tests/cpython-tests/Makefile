@@ -2,18 +2,18 @@ TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
 APPBUILDER=$(TOP)/scripts/appbuilder
-HEAP_SIZE="4G"
-OPTS += --memory-size $(HEAP_SIZE) --nobrk
+
+OPTS = --app-config-path config.json
 ifdef STRACE
 OPTS += --strace
 endif
-OPTS += --fork-mode pseudo_wait_for_exit_exec
+
 TESTFILE=tests.passed
-TEST = test_ntpath
+TEST = test_trace
 FS=ext2fs3.9
 
-# Set timeout to 20 mins (to run both the python3.8 test suite and the python3.9 test suite)
-export TIMEOUT=1200
+# Set timeout to 25 mins (to run both the python3.8 test suite and the python3.9 test suite)
+export TIMEOUT=1500
 
 all: ext2fs3.8 ext2fs3.9 
 
@@ -34,8 +34,8 @@ tests:
 	$(RUNTEST) ./exec.sh
 
 run-list: ext2fs3.8 ext2fs3.9
-	$(MYST_EXEC) $(OPTS) ext2fs3.8 /cpython/python -m test -f $(TESTFILE) --timeout 30 -q
-	$(MYST_EXEC) $(OPTS) ext2fs3.9 /cpython/python -m test -f $(TESTFILE) --timeout 30 -q
+	$(MYST_EXEC) $(OPTS) ext2fs3.8 /cpython/python -m test -f /$(TESTFILE) --timeout 90 -q
+	$(MYST_EXEC) $(OPTS) ext2fs3.9 /cpython/python -m test -f /$(TESTFILE) --timeout 90 -q
 
 one: $(FS)
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) /cpython/python -m test $(TEST) -v
