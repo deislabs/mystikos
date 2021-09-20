@@ -970,6 +970,14 @@ static long _run_thread(void* arg_)
             /* unmap any mapping made by the process */
             myst_release_process_mappings(process->pid);
 
+            /* unmapping closes fd's associated with mappings, so free fdtable
+             * after all unmaps are done */
+            if (process->fdtable)
+            {
+                myst_fdtable_free(process->fdtable);
+                process->fdtable = NULL;
+            }
+
             /* Only need to zombify the process thread.
             ATTN: referencing "process" after zombification is not safe,
             parent might have cleaned it up */
@@ -1003,14 +1011,6 @@ static long _run_thread(void* arg_)
                 }
                 i--;
             }
-        }
-
-        /* unmapping closes fd's associated with mappings, so free fdtable
-         * after all unmaps are done */
-        if (!is_child_thread && process->fdtable)
-        {
-            myst_fdtable_free(process->fdtable);
-            process->fdtable = NULL;
         }
 
         /* Only free child thread as parent is zombified so parent can wait on
