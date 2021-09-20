@@ -25,7 +25,6 @@ pr:
 stages:
 - stage: red
   jobs:
-  - job:
   - job: BuildAndTest
     displayName: 'Building and Testing'
     timeoutInMinutes: 60
