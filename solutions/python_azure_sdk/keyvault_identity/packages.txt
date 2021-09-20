@@ -1,0 +1,6 @@
+/azure-sdk-for-python/sdk/keyvault/azure-keyvault-administration
+/azure-sdk-for-python/sdk/keyvault/azure-keyvault-certificates
+/azure-sdk-for-python/sdk/keyvault/azure-keyvault-keys
+/azure-sdk-for-python/sdk/keyvault/azure-keyvault-secrets
+/azure-sdk-for-python/sdk/keyvault/azure-mgmt-keyvault
+/azure-sdk-for-python/sdk/identity/azure-identity

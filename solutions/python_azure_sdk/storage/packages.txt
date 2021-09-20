@@ -1,0 +1,5 @@
+/azure-sdk-for-python/sdk/storage/azure-storage-file-datalake
+/azure-sdk-for-python/sdk/storage/azure-storage-file-share
+/azure-sdk-for-python/sdk/storage/azure-storage-queue
+/azure-sdk-for-python/sdk/storage/azure-mgmt-storage
+/azure-sdk-for-python/sdk/storage/azure-mgmt-storagesync
