@@ -15,7 +15,11 @@ FILE=$1
 
 while read test; do
   echo "$test"
-  OUTPUT=$(2>&1 timeout 10 make one TEST=$test )
+  if [ $(cat tests.remove | grep $test ) ]
+  then
+    continue
+  fi
+  OUTPUT=$(2>&1 timeout 15 make one TEST=$test )
   RETURN_VAL=$?
   echo $OUTPUT >> temp_$FILE.output
   if [[ "$RETURN_VAL" -eq "0" ]]
@@ -55,6 +59,20 @@ function test_passed() {
     return 0
   fi
 
+}
+
+function local_runner() {
+  for test in $(cat tests.all); do
+  echo $test
+  OP=$(2>&1 timeout 30 ./$test)
+  if [ $? == 0 ]; then
+      echo $test >> alpine_passed
+  else
+      echo $test >> alpine_failed
+      echo $OP >> alpine_failedop
+      echo "$test failed"
+  fi
+  done
 }
 
 TESTS=tests.all
