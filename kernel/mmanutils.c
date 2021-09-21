@@ -526,7 +526,6 @@ int myst_mprotect(const void* addr, const size_t len, const int prot)
     return (myst_mman_mprotect(&_mman, (void*)addr, len, prot));
 }
 
-/* release msync mappings that are contained in the range [addr:addr+length] */
 typedef struct fdlist
 {
     int fd;
@@ -544,6 +543,7 @@ fdlist_t* get_tail(fdlist_t* node)
     return prev;
 }
 
+/* release msync mappings that are contained in the range [addr:addr+length] */
 static int _remove_file_mappings(void* addr, size_t length, fdlist_t** head_out)
 {
     int ret = 0;
@@ -551,7 +551,11 @@ static int _remove_file_mappings(void* addr, size_t length, fdlist_t** head_out)
     vectors_t v = _get_vectors();
     bool locked = false;
     fdlist_t* head = NULL;
-    if (!addr || !length)
+
+    if (head_out)
+        *head_out = NULL;
+
+    if (!addr || !length || !head_out)
         ERAISE(-EINVAL);
 
     ECHECK(myst_round_up(length, PAGE_SIZE, &length));
@@ -561,16 +565,26 @@ static int _remove_file_mappings(void* addr, size_t length, fdlist_t** head_out)
     {
         const size_t count = length / PAGE_SIZE;
         int prev_cleared_fd = -1;
+
         for (size_t i = index; i < index + count; i++)
         {
             /* remove any fd-mapping (it is okay if it does exist) */
             myst_fdmapping_t* p = &v.fdmappings[i];
 
-            /* close fd's for in-use mappings. close only for the first page of
-             * interval mapped with same fd */
+            /* add fd's for in-use mappings to a list. add only for the first
+             * page of
+             * interval mapped with same fd. The fd list will be closed by the
+             * caller outside the mman lock. */
             if (p->used == MYST_FDMAPPING_USED && p->fd != prev_cleared_fd)
             {
-                fdlist_t* fd_node = calloc(1, sizeof(fdlist_t));
+                fdlist_t* fd_node;
+
+                if ((fd_node = calloc(1, sizeof(fdlist_t))) == NULL)
+                {
+                    _runlock(&locked);
+                    ERAISE(-ENOMEM);
+                }
+
                 fd_node->fd = prev_cleared_fd = p->fd;
                 if (!head)
                     head = fd_node;
@@ -580,6 +594,8 @@ static int _remove_file_mappings(void* addr, size_t length, fdlist_t** head_out)
                     head = fd_node;
                 }
             }
+
+            // clear fd mapping
             p->used = 0;
             p->fd = 0;
             p->offset = 0;
@@ -594,13 +610,12 @@ static int _remove_file_mappings(void* addr, size_t length, fdlist_t** head_out)
 
 done:
 
-    if (head)
-        while (head)
-        {
-            fdlist_t* next = head->next;
-            free(head);
-            head = next;
-        }
+    while (head)
+    {
+        fdlist_t* next = head->next;
+        free(head);
+        head = next;
+    }
 
     return ret;
 }
@@ -616,11 +631,10 @@ static void _close_file_handles(fdlist_t* head)
     }
 }
 
-int myst_munmap(void* addr, size_t length)
+int __myst_munmap(void* addr, size_t length, fdlist_t** head_out)
 {
     int ret = 0;
     bool locked = false;
-    fdlist_t* head = NULL;
 
     /* address cannot be null and must be aligned on a page boundary */
     if (!addr || ((uint64_t)addr % PAGE_SIZE) || !length)
@@ -631,30 +645,23 @@ int myst_munmap(void* addr, size_t length)
 
     _rlock(&locked);
     ECHECK(myst_mman_munmap(&_mman, addr, length));
-    ECHECK(_remove_file_mappings(addr, length, &head));
+    ECHECK(_remove_file_mappings(addr, length, head_out));
     _runlock(&locked);
 
-    // close file handles outside of mman lock
-    _close_file_handles(head);
 done:
     _runlock(&locked);
     return ret;
 }
 
-int myst_munmap2(void* addr, size_t length, fdlist_t** head_out)
+int myst_munmap(void* addr, size_t length)
 {
     int ret = 0;
+    fdlist_t* head = NULL;
 
-    /* address cannot be null and must be aligned on a page boundary */
-    if (!addr || ((uint64_t)addr % PAGE_SIZE) || !length)
-        ERAISE(-EINVAL);
+    ECHECK(__myst_munmap(addr, length, &head));
 
-    /* align length to a page boundary */
-    ECHECK(myst_round_up(length, PAGE_SIZE, &length));
-
-    ECHECK(myst_mman_munmap(&_mman, addr, length));
-
-    ECHECK(_remove_file_mappings(addr, length, head_out));
+    // close file handles outside of mman lock
+    _close_file_handles(head);
 
 done:
     return ret;
@@ -767,7 +774,7 @@ int myst_release_process_mappings(pid_t pid)
                     len = m * PAGE_SIZE;
 
                     fdlist_t* unmap_fds = NULL;
-                    if (myst_munmap2(addr, len, &unmap_fds) != 0)
+                    if (__myst_munmap(addr, len, &unmap_fds) != 0)
                     {
                         /* The unmap operation is not expected to fail, even for
                          * shared memory between a parent process and a child
@@ -779,9 +786,11 @@ int myst_release_process_mappings(pid_t pid)
 
                         // myst_eprintf("myst_munmap() %p failed, pid=%d.
                         // len=0x%lx err=%s\n", addr, pid, len, _mman.err);
-                        // assert("myst_munmap() failed" == NULL);
-                        // ERAISE(-EINVAL);
+                        assert("myst_munmap() failed" == NULL);
+                        ERAISE(-EINVAL);
                     }
+
+                    // append any fds returned by munmap to catchall list
                     if (unmap_fds)
                     {
                         if (catchall)
@@ -793,6 +802,7 @@ int myst_release_process_mappings(pid_t pid)
                             catchall = tail;
                         }
                     }
+
                     /* always clear the pid vector */
                     myst_mman_pids_set(addr, len, 0);
 
