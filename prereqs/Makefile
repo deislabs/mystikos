@@ -6,6 +6,9 @@ all:
 	test -e package-installed || $(MAKE) packages
 	test -e /dev/sgx || $(MAKE) install_sgx_driver
 
+wait_dpkg:
+	while sudo lsof /var/lib/dpkg/lock-frontend | grep dpkg; do sleep 3; done
+
 package_repo:
 	echo 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu bionic main' | sudo tee /etc/apt/sources.list.d/intel-sgx.list
 	wget -qO - https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo apt-key add -
@@ -14,7 +17,9 @@ package_repo:
 	sudo apt update
 
 packages: package_repo
+	$(MAKE) wait_dpkg
 	sudo apt install -y gdb dkms libssl-dev cryptsetup-bin curl libcurl4-openssl-dev clang-10 clang-format-10 pkg-config python-pip
+	$(MAKE) wait_dpkg
 	sudo apt install -y libsgx-enclave-common libsgx-quote-ex  libsgx-dcap-ql libsgx-dcap-ql-dev az-dcap-client
 	pip install cmake && sudo ln -f -s $(HOME)/.local/bin/cmake /usr/bin/cmake
 	touch package-installed
