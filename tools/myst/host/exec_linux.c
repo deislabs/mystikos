@@ -382,10 +382,12 @@ static int _enter_kernel(
         }
     }
 
-    // Override unhandled syscall enosys option if present in config
+    // Override nobrk and unhandled syscall enosys option if present in config
     if (have_config)
     {
         unhandled_syscall_enosys = pd.unhandled_syscall_enosys;
+        if (pd.no_brk)
+            options->nobrk = true;
     }
 
     // Override commandline main stack size if present in config.json

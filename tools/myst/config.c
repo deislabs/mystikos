@@ -212,6 +212,15 @@ static json_result_t _json_read_callback(
 
                 parsed_data->max_affinity_cpus = (size_t)un->integer;
             }
+            else if (json_match(parser, "NoBrk") == JSON_OK)
+            {
+                if (type == JSON_TYPE_BOOLEAN)
+                    parsed_data->no_brk = un->boolean;
+                else if (type == JSON_TYPE_INTEGER)
+                    parsed_data->no_brk = (un->integer == 0) ? false : true;
+                else
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
+            }
             else if (json_match(parser, "ApplicationPath") == JSON_OK)
             {
                 if (type == JSON_TYPE_STRING)
