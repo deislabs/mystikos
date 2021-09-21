@@ -634,6 +634,11 @@ static long _enter(void* arg_)
         fork_mode = parsed_config.fork_mode;
     }
 
+    if (have_config && parsed_config.no_brk)
+    {
+        nobrk = options->nobrk = true;
+    }
+
     // record the configuration for which termination mode
     if (have_config)
     {
