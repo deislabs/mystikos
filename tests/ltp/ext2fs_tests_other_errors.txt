@@ -84,6 +84,7 @@
 /ltp/testcases/kernel/syscalls/dup2/dup203
 /ltp/testcases/kernel/syscalls/dup2/dup204
 /ltp/testcases/kernel/syscalls/dup2/dup205
+/ltp/testcases/kernel/syscalls/epoll/epoll-ltp
 /ltp/testcases/kernel/syscalls/epoll_create1/epoll_create1_01
 /ltp/testcases/kernel/syscalls/epoll_ctl/epoll_ctl02
 /ltp/testcases/kernel/syscalls/epoll_pwait/epoll_pwait01
