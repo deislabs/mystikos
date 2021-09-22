@@ -21,6 +21,7 @@
 #include <myst/file.h>
 #include <myst/hex.h>
 #include <myst/kernel.h>
+#include <myst/options.h>
 #include <myst/process.h>
 #include <myst/regions.h>
 #include <myst/reloc.h>
@@ -83,33 +84,15 @@ Options:\n\
 \n\
 "
 
-struct options
-{
-    bool trace_errors;
-    bool trace_syscalls;
-    bool shell_mode;
-    bool debug_symbols;
-    bool memcheck;
-    bool nobrk;
-    bool perf;
-    bool report_native_tids;
-    bool unhandled_syscall_enosys;
-    size_t max_affinity_cpus;
-    char rootfs[PATH_MAX];
-    size_t heap_size;
-    size_t main_stack_size;
-    const char* app_config_path;
-    myst_host_enc_uid_gid_mappings host_enc_uid_gid_mappings;
-    myst_fork_mode_t fork_mode;
-};
-
 static void _get_options(
     int* argc,
     const char* argv[],
     myst_args_t* mount_mappings,
-    struct options* opts)
+    struct myst_options* opts,
+    size_t* heap_size,
+    const char** app_config_path)
 {
-    memset(opts, 0, sizeof(struct options));
+    memset(opts, 0, sizeof(struct myst_options));
 
     // process ID mapping options
     cli_get_mapping_opts(argc, argv, &opts->host_enc_uid_gid_mappings);
@@ -209,10 +192,8 @@ static void _get_options(
 
         if (arg)
         {
-            if ((myst_expand_size_string_to_ulong(arg, &opts->heap_size) !=
-                 0) ||
-                (myst_round_up(opts->heap_size, PAGE_SIZE, &opts->heap_size) !=
-                 0))
+            if ((myst_expand_size_string_to_ulong(arg, heap_size) != 0) ||
+                (myst_round_up(*heap_size, PAGE_SIZE, heap_size) != 0))
             {
                 _err("%s <size> -- bad suffix (must be k, m, or g)\n", opt);
             }
@@ -242,7 +223,7 @@ static void _get_options(
     }
 
     // get app config if present
-    cli_getopt(argc, argv, "--app-config-path", &opts->app_config_path);
+    cli_getopt(argc, argv, "--app-config-path", app_config_path);
 
     /* Get option deciding how to handle unimplemented syscalls */
     /* Get --unhandled-syscall-enosys */
@@ -297,6 +278,7 @@ static void _install_signal_handlers()
 
 /* the address of this is eventually passed to futex (uaddr argument) */
 static __thread int _thread_event;
+struct myst_final_options final_options = {0};
 
 static int _enter_kernel(
     int argc,
@@ -304,7 +286,7 @@ static int _enter_kernel(
     int envc,
     const char* envp[],
     myst_args_t* mount_mappings,
-    struct options* options,
+    struct myst_options* cmdline_options,
     const void* mmap_addr,
     size_t mmap_length,
     long (*tcall)(long n, long params[6]),
@@ -316,17 +298,12 @@ static int _enter_kernel(
     const void* image_data = mmap_addr;
     size_t image_size = mmap_length;
     myst_kernel_entry_t entry;
-    const char* cwd = "/";
-    const char* hostname = NULL;
     config_parsed_data_t pd;
     const char target[] = "MYST_TARGET=linux";
     void* regions_end = (uint8_t*)mmap_addr + mmap_length;
     bool have_config = false;
-    myst_fork_mode_t fork_mode = options->fork_mode;
-    bool unhandled_syscall_enosys =
-        options ? options->unhandled_syscall_enosys
-                : false; // default terminate with myst_panic
-    size_t main_stack_size = options->main_stack_size;
+    myst_args_t args;
+    myst_args_t env;
 
     memset(&pd, 0, sizeof(pd));
     memset(&kernel_args, 0, sizeof(kernel_args));
@@ -339,9 +316,22 @@ static int _enter_kernel(
     if (return_status)
         *return_status = 0;
 
-    if (!argv || !envp || !options || !mmap_addr || !tcall || !return_status)
+    if (!argv || !envp || !cmdline_options || !mmap_addr || !tcall ||
+        !return_status)
     {
         snprintf(err, err_size, "bad argument");
+        ERAISE(-EINVAL);
+    }
+
+    if (myst_args_init(&args) != 0)
+    {
+        snprintf(err, err_size, "out of memory");
+        ERAISE(-EINVAL);
+    }
+
+    if (myst_args_init(&env) != 0)
+    {
+        snprintf(err, err_size, "out of memory");
         ERAISE(-EINVAL);
     }
 
@@ -354,24 +344,6 @@ static int _enter_kernel(
         {
             if (parse_config_from_buffer(r.data, r.size, &pd) == 0)
             {
-                /* set the current working directory if any */
-                if (pd.cwd)
-                    cwd = pd.cwd;
-
-                /* set the hostname if any */
-                if (pd.hostname)
-                    hostname = pd.hostname;
-
-                /* Add mount source paths to config read mount points */
-                if (!myst_merge_mount_mapping_and_config(
-                        &pd.mounts, mount_mappings) ||
-                    !myst_validate_mount_config(&pd.mounts))
-                    ERAISE(-EINVAL);
-
-                fork_mode = pd.fork_mode;
-
-                unhandled_syscall_enosys = pd.unhandled_syscall_enosys;
-
                 have_config = true;
             }
             else
@@ -382,18 +354,25 @@ static int _enter_kernel(
         }
     }
 
-    // Override nobrk and unhandled syscall enosys option if present in config
-    if (have_config)
-    {
-        unhandled_syscall_enosys = pd.unhandled_syscall_enosys;
-        if (pd.no_brk)
-            options->nobrk = true;
-    }
+    if (myst_args_append(&args, argv, argc) != 0)
+        ERAISE(-EINVAL);
 
-    // Override commandline main stack size if present in config.json
-    if (have_config && pd.main_stack_size)
+    if (myst_args_append(&env, envp, envc) != 0)
+        ERAISE(-EINVAL);
+
+    if (determine_final_options(
+            cmdline_options,
+            &final_options,
+            &args,
+            &env,
+            &pd,
+            have_config,
+            true,
+            target,
+            mount_mappings) != 0)
     {
-        main_stack_size = pd.main_stack_size;
+        fprintf(stderr, "Failed to determine final options\n");
+        ERAISE(-EINVAL);
     }
 
     /* initialize the kernel arguments */
@@ -406,30 +385,30 @@ static int _enter_kernel(
         if (init_kernel_args(
                 &kernel_args,
                 target,
-                argc,
-                argv,
-                envc,
-                envp,
-                cwd,
-                &options->host_enc_uid_gid_mappings,
+                final_options.args.size,
+                final_options.args.data,
+                final_options.env.size,
+                final_options.env.data,
+                final_options.cwd,
+                &final_options.base.host_enc_uid_gid_mappings,
                 &pd.mounts,
-                hostname,
+                final_options.hostname,
                 regions_end,
                 image_data,
                 image_size,
                 max_threads,
-                options->trace_errors,
-                options->trace_syscalls,
+                final_options.base.trace_errors,
+                final_options.base.trace_syscalls,
                 have_syscall_instruction,
                 tee_debug_mode,
                 (uint64_t)&_thread_event,
                 (pid_t)syscall(SYS_gettid),
-                options->max_affinity_cpus,
-                fork_mode,
+                final_options.base.max_affinity_cpus,
+                final_options.base.fork_mode,
                 tcall,
-                options->rootfs,
+                final_options.base.rootfs,
                 terr,
-                unhandled_syscall_enosys,
+                final_options.base.unhandled_syscall_enosys,
                 sizeof(terr)) != 0)
         {
             snprintf(err, err_size, "init_kernel_args failed: %s", terr);
@@ -438,16 +417,16 @@ static int _enter_kernel(
     }
 
     /* set the shell mode flag */
-    kernel_args.shell_mode = options->shell_mode;
+    kernel_args.shell_mode = final_options.base.shell_mode;
 
     /* set whether debug symbols are needed */
-    kernel_args.debug_symbols = options->debug_symbols;
+    kernel_args.debug_symbols = final_options.base.debug_symbols;
 
-    kernel_args.memcheck = options->memcheck;
+    kernel_args.memcheck = final_options.base.memcheck;
 
-    kernel_args.nobrk = options->nobrk;
+    kernel_args.nobrk = final_options.base.nobrk;
 
-    kernel_args.perf = options->perf;
+    kernel_args.perf = final_options.base.perf;
 
     /* check whether FSGSBASE instructions are supported */
     if (test_user_space_fsgsbase() == 0)
@@ -467,10 +446,11 @@ static int _enter_kernel(
         kernel_args.start_time_nsec = start_time.tv_nsec;
     }
 
-    kernel_args.report_native_tids = options->report_native_tids;
+    kernel_args.report_native_tids = final_options.base.report_native_tids;
 
-    kernel_args.main_stack_size =
-        main_stack_size ? main_stack_size : MYST_PROCESS_INIT_STACK_SIZE;
+    kernel_args.main_stack_size = final_options.base.main_stack_size
+                                      ? final_options.base.main_stack_size
+                                      : MYST_PROCESS_INIT_STACK_SIZE;
 
     /* Resolve the the kernel entry point */
     const elf_ehdr_t* ehdr = kernel_args.kernel_data;
@@ -504,7 +484,7 @@ __attribute__((__unused__)) static long _tcall(long n, long params[6])
 
 int exec_linux_action(int argc, const char* argv[], const char* envp[])
 {
-    struct options opts;
+    struct myst_options opts;
     const char* rootfs_arg;
     const char* program_arg;
     static const size_t max_pubkeys = 128;
@@ -519,11 +499,14 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
     char err[256];
     myst_args_t mount_mappings = {0};
     myst_buf_t roothash_buf = MYST_BUF_INITIALIZER;
+    size_t heap_size = 0;
+    const char* app_config_path = NULL;
 
     (void)program_arg;
 
     /* Get the command-line options */
-    _get_options(&argc, argv, &mount_mappings, &opts);
+    _get_options(
+        &argc, argv, &mount_mappings, &opts, &heap_size, &app_config_path);
 
     /* Get --pubkey=filename options */
     get_pubkeys_options(&argc, argv, pubkeys, max_pubkeys, &num_pubkeys);
@@ -583,8 +566,8 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
               rootfs_arg,
               pubkeys_path,
               roothashes_path,
-              opts.app_config_path,
-              opts.heap_size)))
+              app_config_path,
+              heap_size)))
     {
         _err("create_region_details_from_files() failed");
     }

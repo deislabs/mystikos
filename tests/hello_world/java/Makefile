@@ -3,8 +3,10 @@ include $(TOP)/defs.mak
 
 APPBUILDER=$(TOP)/scripts/appbuilder
 
+OPTS = --app-config-path config.json
+
 ifdef STRACE
-	OPTS = --strace
+	OPTS += --strace
 endif
 
 all: appdir rootfs
@@ -16,7 +18,7 @@ rootfs: appdir
 	$(MYST) mkext2 --force appdir ext2rootfs
 
 tests:
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) ext2rootfs /opt/openjdk-13/bin/java -ea Helloworld red green blue --app-config-path config.json --max-affinity-cpus=1
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) ext2rootfs /opt/openjdk-13/bin/java -ea Helloworld red green blue 
 
 clean:
 	rm -rf ext2rootfs appdir

@@ -55,8 +55,12 @@ DIRS += pipesz
 DIRS += futex
 DIRS += round
 DIRS += signal
+
+ifneq ($(TARGET),linux)
 DIRS += tlscert
 DIRS += tlscert2
+endif
+
 DIRS += wake_and_kill
 DIRS += cross_fs_symlinks
 DIRS += arch_prctl
