@@ -1065,8 +1065,6 @@ static long _handle_mman_pids_op(
     size_t index;
     size_t count;
 
-    // myst_set_trace(true);
-
     if (!addr || pid < 0)
         ERAISE(-EINVAL);
 
@@ -1137,7 +1135,6 @@ static long _handle_mman_pids_op(
 done:
     _runlock(&locked);
 
-    // myst_set_trace(false);
     return ret;
 }
 
