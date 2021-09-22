@@ -15,6 +15,9 @@
 #include <myst/strings.h>
 #include <myst/tcall.h>
 
+/* ATTN: uncommenting the next line usually hangs the hello-world Java app */
+// #define ALWAYS_USE_BITSET_PATH
+
 static int _cond_signal_bitset(myst_cond_t* c, uint32_t bitset);
 static int _cond_broadcast_bitset(myst_cond_t* c, size_t n, uint32_t bitset);
 
@@ -207,8 +210,12 @@ int myst_cond_signal(myst_cond_t* c, uint32_t bitset)
 {
     myst_thread_t* waiter;
 
+#ifdef ALWAYS_USE_BITSET_PATH
+    return _cond_signal_bitset(c, bitset);
+#else
     if (bitset != FUTEX_BITSET_MATCH_ANY)
         return _cond_signal_bitset(c, bitset);
+#endif
 
     if (!c)
         return -EINVAL;
@@ -233,8 +240,12 @@ int myst_cond_broadcast(myst_cond_t* c, size_t n, uint32_t bitset)
     size_t num_awoken = 0;
     myst_thread_queue_t waiters = {NULL, NULL};
 
+#ifdef ALWAYS_USE_BITSET_PATH
+    return _cond_broadcast_bitset(c, n, bitset);
+#else
     if (bitset != FUTEX_BITSET_MATCH_ANY)
         return _cond_broadcast_bitset(c, n, bitset);
+#endif
 
     if (!c)
         return -EINVAL;
