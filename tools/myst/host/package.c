@@ -608,9 +608,15 @@ int _exec_package(
     if (cli_getopt(&argc, argv, "--memcheck", NULL) == 0)
         options.memcheck = true;
 
-    /* Get --nobrk option */
+    /* Check --nobrk option */
     if (cli_getopt(&argc, argv, "--nobrk", NULL) == 0)
-        options.nobrk = true;
+    {
+        fprintf(
+            stderr,
+            "--nobrk not allowed for packaged applications."
+            " Can be enabled by setting NoBrk=true in config.json\n");
+        goto done;
+    }
 
     /* Get --perf option */
     if (cli_getopt(&argc, argv, "--perf", NULL) == 0)
@@ -803,6 +809,12 @@ int _exec_package(
             app_dir);
         goto done;
     }
+
+    /*
+       Enable nobrk option only when config.json sets NoBrk=true.
+       Else, default to false.
+    */
+    options.nobrk = parsed_data.no_brk ? true : false;
 
     if ((details = create_region_details_from_package(
              &sections, parsed_data.heap_pages)) == NULL)

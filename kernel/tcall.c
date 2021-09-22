@@ -242,3 +242,45 @@ long myst_gcov(const char* func, long gcov_params[6])
     return myst_tcall(MYST_TCALL_GCOV, params);
 }
 #endif
+
+long myst_tcall_close(int fd)
+{
+    long params[6] = {fd};
+    return myst_tcall(SYS_close, params);
+}
+
+long myst_tcall_fcntl(int fd, int cmd, long arg)
+{
+    long params[6] = {fd, cmd, arg};
+    return myst_tcall(SYS_fcntl, params);
+}
+
+long myst_tcall_fstat(int fd, struct stat* statbuf)
+{
+    long params[6] = {fd, (long)statbuf};
+    return myst_tcall(SYS_fstat, params);
+}
+
+long myst_tcall_dup(int oldfd)
+{
+    long params[6] = {oldfd};
+    return myst_tcall(SYS_dup, params);
+}
+
+long myst_tcall_read(int fd, void* buf, size_t count)
+{
+    long params[6] = {fd, (long)buf, count};
+    return myst_tcall(SYS_read, params);
+}
+
+long myst_tcall_write(int fd, const void* buf, size_t count)
+{
+    long params[6] = {fd, (long)buf, count};
+    return myst_tcall(SYS_write, params);
+}
+
+long myst_tcall_pipe2(int pipefd[2], int flags)
+{
+    long params[6] = {(long)pipefd, flags};
+    return myst_tcall(SYS_pipe2, params);
+}

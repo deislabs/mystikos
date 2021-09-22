@@ -972,11 +972,13 @@ static long _run_thread(void* arg_)
             /* Send a SIGCHLD to the parent process */
             myst_syscall_kill(process->ppid, SIGCHLD);
 
-            /* Only need to zombify the process thread */
-            myst_zombify_process(process);
-
             /* unmap any mapping made by the process */
             myst_release_process_mappings(process->pid);
+
+            /* Only need to zombify the process thread.
+            ATTN: referencing "process" after zombification is not safe,
+            parent might have cleaned it up */
+            myst_zombify_process(process);
         }
 
         {
@@ -984,8 +986,8 @@ static long _run_thread(void* arg_)
             _num_threads--;
         }
 
-        /* Free up the thread unmap-on-exit. These mappings can be on both the
-         * main thread and child threads. */
+        /* Free up the thread unmap-on-exit for child threads. */
+        if (is_child_thread)
         {
             size_t i = thread->unmap_on_exit_used;
             while (i)

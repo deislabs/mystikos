@@ -18,13 +18,13 @@ PREFIX=$(BUILDDIR)/musl
 
 all:
 ifeq ($(CACHE_CHECK),)
+	$(MAKE) musl
 	$(MAKE) build
 else
 	$(MAKE) fetch_cache
 endif
 
 build:
-	$(MAKE) musl
 	$(MAKE) musl/config.mak
 	( cd musl; make install )
 	$(MAKE) cache

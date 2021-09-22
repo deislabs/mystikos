@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#include <assert.h>
 #include <errno.h>
 #include <poll.h>
 #include <stddef.h>
@@ -18,66 +19,15 @@
 #include <myst/thread.h>
 #include <myst/time.h>
 
-long _poll_kernel(struct pollfd* fds, nfds_t nfds)
-{
-    long ret = 0;
-    myst_fdtable_t* fdtable;
-    long total = 0;
-
-    if (!(fdtable = myst_fdtable_current()))
-        ERAISE(-ENOSYS);
-
-    for (nfds_t i = 0; i < nfds; i++)
-    {
-        myst_fdtable_type_t type;
-        myst_fdops_t* fdops;
-        void* object;
-        int events;
-
-        fds[i].revents = 0;
-
-        /* get the device for this file descriptor */
-        int res = myst_fdtable_get_any(
-            fdtable, fds[i].fd, &type, (void**)&fdops, (void**)&object);
-        if (res == -ENOENT)
-            continue;
-        ECHECK(res);
-
-        if ((events = (*fdops->fd_get_events)(fdops, object)) >= 0)
-        {
-            /* Only report events requested or POLLERR, POLLHUP and POLLNVAL*/
-            if (events =
-                    events & ((fds[i].events) | (POLLERR | POLLHUP | POLLNVAL)))
-            {
-                fds[i].revents = events;
-                total++;
-            }
-        }
-        else if (events != -ENOTSUP)
-        {
-            continue;
-        }
-    }
-
-    ret = total;
-
-done:
-    return ret;
-}
-
 static long _syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
 {
     long ret = 0;
     myst_fdtable_t* fdtable;
     struct pollfd* tfds = NULL; /* target file descriptors */
-    struct pollfd* kfds = NULL; /* kernel file descriptors */
     nfds_t tnfds = 0;           /* number of target file descriptors */
-    nfds_t knfds = 0;           /* number of kernel file descriptors */
     size_t* tindices = NULL;    /* target indices */
-    size_t* kindices = NULL;    /* kernel indices */
     long tevents = 0;           /* the number of target events */
-    long kevents = 0;           /* the number of kernel events */
-    long nvalevents = 0;        /* the number of POLLNVAL events */
+    long ievents = 0;           /* internal events */
     static myst_spinlock_t _lock;
     bool locked = false;
     long has_signals = 0;
@@ -105,19 +55,13 @@ static long _syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
     if (!(tfds = calloc(nfds, sizeof(struct pollfd))))
         ERAISE(-ENOMEM);
 
-    if (!(kfds = calloc(nfds, sizeof(struct pollfd))))
-        ERAISE(-ENOMEM);
-
     if (!(tindices = calloc(nfds, sizeof(size_t))))
-        ERAISE(-ENOMEM);
-
-    if (!(kindices = calloc(nfds, sizeof(size_t))))
         ERAISE(-ENOMEM);
 
     myst_spin_lock(&_lock);
     locked = true;
 
-    /* Split fds[] into two arrays: tfds[] (target) and kfds[] (kernel) */
+    /* copy fds[] into arrays tfds[] array */
     for (nfds_t i = 0; i < nfds; i++)
     {
         int tfd;
@@ -131,16 +75,30 @@ static long _syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
 
         if (res == -ENOENT)
             continue;
-        else if (res == -EBADF)
+
+        if (res == -EBADF)
         {
             /* closed/invalid fd gets POLLNVAL */
             fds[i].revents = POLLNVAL;
-            nvalevents++;
+            ievents++;
             continue;
         }
+
         ECHECK(res);
 
-        /* get the target fd for this object (or -ENOTSUP) */
+        /* inject special internal events if any */
+        {
+            const int events = (*fdops->fd_get_events)(fdops, object);
+
+            if (events >= 0)
+            {
+                fds[i].revents = (fds[i].events & events);
+                ievents++;
+                continue;
+            }
+        }
+
+        /* get the target fd for this object */
         if ((tfd = (*fdops->fd_target_fd)(fdops, object)) >= 0)
         {
             tfds[tnfds].events = fds[i].events;
@@ -148,20 +106,10 @@ static long _syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
             tindices[tnfds] = i;
             tnfds++;
         }
-        else if (tfd == -ENOTSUP)
-        {
-            kfds[knfds].events = fds[i].events;
-            kfds[knfds].fd = fds[i].fd;
-            kindices[knfds] = i;
-            knfds++;
-        }
-        else
-        {
-            continue;
-        }
     }
 
     myst_syscall_clock_gettime(CLOCK_MONOTONIC, &start);
+
     if ((original_timeout > 500) || (original_timeout < 0))
         timeout = 500;
     else
@@ -169,14 +117,12 @@ static long _syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
 
     while (1)
     {
-        /* pre-poll for kernel events */
-        ECHECK((kevents = _poll_kernel(kfds, knfds)));
-        /* report kernel events or POLLNVAL events immediately */
-        if (kevents || nvalevents)
-            break;
-
         myst_spin_unlock(&_lock);
         locked = false;
+
+        /* If any internal events, do not sleep waiting for external events */
+        if (ievents)
+            timeout = 0;
 
         /* poll for target events */
         if (tnfds && tfds)
@@ -221,15 +167,12 @@ static long _syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
         locked = true;
     }
 
-    ret = kevents + tevents + nvalevents;
+    /* add target events and internal events */
+    ret = tevents + ievents;
 
     /* update fds[] with the target events */
     for (nfds_t i = 0; i < tnfds; i++)
         fds[tindices[i]].revents = tfds[i].revents;
-
-    /* update fds[] with the kernel events */
-    for (nfds_t i = 0; i < knfds; i++)
-        fds[kindices[i]].revents = kfds[i].revents;
 
 done:
 
@@ -239,14 +182,8 @@ done:
     if (tfds)
         free(tfds);
 
-    if (kfds)
-        free(kfds);
-
     if (tindices)
         free(tindices);
-
-    if (kindices)
-        free(kindices);
 
     return ret;
 }
