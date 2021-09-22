@@ -569,7 +569,7 @@ long myst_signal_deliver(
 
     if (!__sync_val_compare_and_swap(&thread->pause_futex, 0, 1))
     {
-        ret = myst_futex_wake(&thread->pause_futex, 1);
+        ret = myst_futex_wake(&thread->pause_futex, 1, FUTEX_BITSET_MATCH_ANY);
         // Expect ret == 1, otherwise, return error
         if (ret == 1)
             ret = 0;

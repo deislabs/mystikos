@@ -15,6 +15,9 @@
 #include <myst/strings.h>
 #include <myst/tcall.h>
 
+static int _cond_signal_bitset(myst_cond_t* c, uint32_t bitset);
+static int _cond_broadcast_bitset(myst_cond_t* c, size_t n, uint32_t bitset);
+
 int myst_cond_init(myst_cond_t* c)
 {
     if (!c)
@@ -98,7 +101,8 @@ static void myst_cond_sig_handler_uninstall(
 int myst_cond_timedwait(
     myst_cond_t* c,
     myst_mutex_t* mutex,
-    const struct timespec* timeout)
+    const struct timespec* timeout,
+    uint32_t bitset)
 {
     myst_thread_t* self = myst_thread_self();
     int ret = 0;
@@ -115,7 +119,7 @@ int myst_cond_timedwait(
         myst_thread_t* waiter = NULL;
 
         /* Add the self thread to the end of the wait queue */
-        myst_thread_queue_push_back(&c->queue, self);
+        myst_thread_queue_push_back_bitset(&c->queue, self, bitset);
 
         /* Unlock this mutex and get the waiter at the front of the queue */
         if (__myst_mutex_unlock(mutex, &waiter) != 0)
@@ -179,7 +183,7 @@ int myst_cond_timedwait(
 
 int myst_cond_wait(myst_cond_t* c, myst_mutex_t* mutex)
 {
-    return myst_cond_timedwait(c, mutex, NULL);
+    return myst_cond_timedwait(c, mutex, NULL, FUTEX_BITSET_MATCH_ANY);
 }
 
 int myst_cond_signal_thread(myst_cond_t* c, myst_thread_t* thread)
@@ -199,9 +203,12 @@ int myst_cond_signal_thread(myst_cond_t* c, myst_thread_t* thread)
     return 0;
 }
 
-int myst_cond_signal(myst_cond_t* c)
+int myst_cond_signal(myst_cond_t* c, uint32_t bitset)
 {
     myst_thread_t* waiter;
+
+    if (bitset != FUTEX_BITSET_MATCH_ANY)
+        return _cond_signal_bitset(c, bitset);
 
     if (!c)
         return -EINVAL;
@@ -221,10 +228,13 @@ int myst_cond_signal(myst_cond_t* c)
     return 0;
 }
 
-int myst_cond_broadcast(myst_cond_t* c, size_t n)
+int myst_cond_broadcast(myst_cond_t* c, size_t n, uint32_t bitset)
 {
     size_t num_awoken = 0;
     myst_thread_queue_t waiters = {NULL, NULL};
+
+    if (bitset != FUTEX_BITSET_MATCH_ANY)
+        return _cond_broadcast_bitset(c, n, bitset);
 
     if (!c)
         return -EINVAL;
@@ -233,11 +243,13 @@ int myst_cond_broadcast(myst_cond_t* c, size_t n)
     {
         myst_thread_t* p;
         size_t i = 0;
+        uint32_t bitset;
 
         /* Select at most n waiters to be woken up */
-        while (i < n && (p = myst_thread_queue_pop_front(&c->queue)))
+        while (i < n &&
+               (p = myst_thread_queue_pop_front_bitset(&c->queue, &bitset)))
         {
-            myst_thread_queue_push_back(&waiters, p);
+            myst_thread_queue_push_back_bitset(&waiters, p, bitset);
             i++;
         }
     }
@@ -274,22 +286,24 @@ int myst_cond_requeue(
         for (size_t i = 0; i < wake_count; i++)
         {
             myst_thread_t* p;
+            uint32_t bitset;
 
-            if (!(p = myst_thread_queue_pop_front(&c1->queue)))
+            if (!(p = myst_thread_queue_pop_front_bitset(&c1->queue, &bitset)))
                 break;
 
-            myst_thread_queue_push_back(&wakers, p);
+            myst_thread_queue_push_back_bitset(&wakers, p, bitset);
         }
 
         /* Selector threads to be required */
         for (size_t i = 0; i < requeue_count; i++)
         {
             myst_thread_t* p;
+            uint32_t bitset;
 
-            if (!(p = myst_thread_queue_pop_front(&c1->queue)))
+            if (!(p = myst_thread_queue_pop_front_bitset(&c1->queue, &bitset)))
                 break;
 
-            myst_thread_queue_push_back(&requeues, p);
+            myst_thread_queue_push_back_bitset(&requeues, p, bitset);
         }
     }
     myst_spin_unlock(&c1->lock);
@@ -313,10 +327,66 @@ int myst_cond_requeue(
         for (myst_thread_t* p = requeues.front; p; p = next)
         {
             next = p->qnext;
-            myst_thread_queue_push_back(&c2->queue, p);
+            myst_thread_queue_push_back_bitset(&c2->queue, p, p->qbitset);
         }
     }
     myst_spin_unlock(&c2->lock);
 
     return 0;
+}
+
+static int _cond_signal_bitset(myst_cond_t* c, uint32_t bitset)
+{
+    myst_thread_t* waiter;
+    myst_thread_queue_t queue = {NULL, NULL};
+
+    if (!c)
+        return -EINVAL;
+
+    myst_spin_lock(&c->lock);
+    int ret =
+        myst_thread_queue_search_remove_bitset(&c->queue, &queue, 1, bitset);
+    myst_spin_unlock(&c->lock);
+
+    if (ret < 0)
+        return -EINVAL;
+
+    waiter = myst_thread_queue_pop_front(&queue);
+
+    if (!waiter)
+        return 0;
+
+    myst_tcall_wake(waiter->event);
+
+    return 0;
+}
+
+static int _cond_broadcast_bitset(myst_cond_t* c, size_t n, uint32_t bitset)
+{
+    size_t num_awoken = 0;
+    myst_thread_queue_t waiters = {NULL, NULL};
+
+    if (!c)
+        return -EINVAL;
+
+    if (!bitset)
+        return -EINVAL;
+
+    myst_spin_lock(&c->lock);
+    /* Select at most n waiters to be woken up */
+    int ret =
+        myst_thread_queue_search_remove_bitset(&c->queue, &waiters, n, bitset);
+    myst_spin_unlock(&c->lock);
+
+    if (ret < 0)
+        return -EINVAL;
+
+    myst_thread_t* p;
+    while (p = myst_thread_queue_pop_front(&waiters))
+    {
+        myst_tcall_wake(p->event);
+        num_awoken++;
+    }
+
+    return num_awoken;
 }
