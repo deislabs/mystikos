@@ -1,0 +1,12 @@
+{
+    "version": "0.1",
+    "Debug": 1,
+    "ProductID": 1,
+    "SecurityVersion": 1,
+    "MemorySize": "256m",
+    "CurrentWorkingDirectory": "/app/flask",
+    "ApplicationPath": "/usr/local/bin/python",
+    "HostApplicationParameters": 1,
+    "ForkMode": "pseudo_wait_for_exit_exec",
+    "NoBrk": true
+}
