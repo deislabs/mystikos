@@ -1113,7 +1113,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/setpriority/setpriority02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/setregid/setregid01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/setregid/setregid01_16 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/setregid/setregid02 | 1 | 1 | 1 |
+| /ltp/testcases/kernel/syscalls/setregid/setregid02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/setregid/setregid02_16 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/setregid/setregid03 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/setregid/setregid03_16 | 0 | 0 | 0 |

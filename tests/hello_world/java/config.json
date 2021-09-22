@@ -5,5 +5,7 @@
     "UserMemSize": "2048m",
     "CurrentWorkingDirectory": "/app",
     "ApplicationPath": "/opt/openjdk-13/bin/java",
-    "ApplicationParameters": ["-ea", "Helloworld", "red", "green", "blue"]
+    "ApplicationParameters": ["-ea", "Helloworld", "red", "green", "blue"],
+
+    "MaxAffinityCPUs": 1
 }
