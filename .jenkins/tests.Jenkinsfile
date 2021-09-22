@@ -1,8 +1,24 @@
-/* A Jenkins pipeline that will handle PR and nightly tests
-*  These are the original pipelines:
+/* A Jenkins pipeline that will handle pull request tests
+*  The original pipelines:
 *  https://github.com/deislabs/mystikos/blob/main/.azure_pipelines/ci-pipeline-makefile.yml
-*  https://github.com/deislabs/mystikos/blob/main/.azure_pipelines/ci-pipeline-makefile-nightly.yml
 */
+
+APPROVED_AUTHORS = [
+    'anakrish',
+    'asvrada',
+    'bodzhang',
+    'CyanDevs',
+    'Francis-Liu',
+    'mikbras',
+    'mingweishih',
+    'RRathna',
+    'paulcallen',
+    'radhikaj',
+    'rs--',
+    'salsal97',
+    'Sahakait',
+    'vtikoo'
+]
 
 pipeline {
     agent {
@@ -12,9 +28,9 @@ pipeline {
         timeout(time: 600, unit: 'MINUTES')
     }
     parameters {
-        string(name: "BRANCH_NAME", defaultValue: "main", description: "Branch to build")
         string(name: "SCRIPTS_ROOT", defaultValue: '${WORKSPACE}/.azure_pipelines/scripts', description: "Root directory")
-        choice(name: "MYST_NIGHTLY_TEST", choices:['0','1'], description: "Enable nightly test")
+        string(name: "BRANCH_NAME", defaultValue: "", description: "Option #1: If you want to build a branch instead of a pull request, enter the branch name here")
+        string(name: "PULL_REQUEST_ID", defaultValue: "", description: "Option #2: If you want to build a pull request, enter the pull request ID number here")
     }
     environment {
         BUILD_USER = sh(
@@ -23,17 +39,46 @@ pipeline {
         )
     }
     stages {
-        stage("Build") {
+        stage('Check access') {
+            when {
+                // This step should only run for multibranch pipeline
+                expression { params.PULL_REQUEST_ID == "" }
+                expression { params.BRANCH_NAME == "" }
+            }
+            steps {
+                sh """
+                    while sudo lsof /var/lib/dpkg/lock-frontend | grep dpkg; do sleep 3; done
+                    sudo apt-get -y install jq
+                """
+                script {
+                    if ( ! env.CHANGE_ID ) {
+                        error("This does not seem to be a pull request from a multibranch pipeline. Ensure you have set either BRANCH_NAME or PULL_REQUEST_ID instead.")
+                    }
+                    PR_AUTHOR = sh(
+                        script: "curl --silent https://api.github.com/repos/deislabs/mystikos/pulls/${env.CHANGE_ID} | jq --raw-output '.user | .login'",
+                        returnStdout: true
+                    ).trim()
+                    if ( PR_AUTHOR == 'null' ) {
+                        error("No pull request author found. This is an unexpected error")
+                    }
+                    if ( ! APPROVED_AUTHORS.contains(PR_AUTHOR) ) {
+                        currentBuild.result = 'ABORTED'
+                        error("Pull request author ${PR_AUTHOR} is not in the list of authorized users. Aborting build.")
+                    } else {
+                        println("Pull request author ${PR_AUTHOR} is whitelisted. Build will continue.")
+                    }
+                }
+            }
+        }
+        stage('Build') {
             when {
                 /* Jobs must meet any of the situations below in order to build:
                     1. Is started manually, or by a scheduler
                     2. Is testing a PR to main that contains more than just documentation changes
-                    3. Has MYST_NIGHTLY_TEST set to "1"
                 */
                 anyOf {
                     triggeredBy 'UserIdCause'
                     triggeredBy 'TimerTrigger'
-                    expression { params.MYST_NIGHTLY_TEST == "1" }
                     allOf {
                         anyOf {
                             changeRequest target: 'main'
@@ -43,53 +88,73 @@ pipeline {
                         not {
                             anyOf {
                                 changeset pattern: "doc/*"
-                                changeset pattern: "*(.txt|md)\$", comparator: "REGEXP"
+                                changeset pattern: ".*(txt|md)\$", comparator: "REGEXP"
                             }
                         }
                     }
                 }
             }
             stages {
-                stage("Cleanup files") {
+                stage('Cleanup files') {
                     steps {
                         sh 'sudo rm -rf /tmp/myst*'
                         sh 'df'
                     }
                 }
+                stage('Checkout') {
+                    when {
+                        anyOf {
+                            expression { params.PULL_REQUEST_ID != "" }
+                            expression { params.BRANCH_NAME != "" }
+                        }
+                    }
+                    steps {
+                        script {
+                            if ( params.PULL_REQUEST_ID ) {
+                                checkout([$class: 'GitSCM',
+                                    branches: [[name: "pr/${PULL_REQUEST_ID}"]],
+                                    extensions: [],
+                                    userRemoteConfigs: [[
+                                        url: 'https://github.com/deislabs/mystikos',
+                                        refspec: "+refs/pull/${PULL_REQUEST_ID}/head:refs/remotes/origin/pr/${PULL_REQUEST_ID}"
+                                    ]]
+                                ])
+                            } else {
+                                checkout([$class: 'GitSCM',
+                                    branches: [[name: params.BRANCH_NAME]],
+                                    extensions: [],
+                                    userRemoteConfigs: [[url: 'https://github.com/deislabs/mystikos']]]
+                                )
+                            }
+                        }
+                    }
+                }
                 stage('Minimum init config') {
                     steps {
-                        checkout([$class: 'GitSCM',
-                            branches: [[name: BRANCH_NAME]],
-                            extensions: [],
-                            userRemoteConfigs: [[url: 'https://github.com/deislabs/mystikos']]])
                         sh """
-                           curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-                           sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu \$(lsb_release -cs) stable"
-                           sudo apt-get update
-                           while sudo lsof /var/lib/dpkg/lock-frontend | grep dpkg; do sleep 3; done
-                           sudo apt-get install build-essential python3-setuptools python3-pip llvm-7 libmbedtls-dev docker-ce azure-cli lldb-10 -y
-                           sudo usermod -aG docker \${BUILD_USER}
-                           """    
+                        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+                        sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu \$(lsb_release -cs) stable"
+                        sudo apt-get update
+                        while sudo lsof /var/lib/dpkg/lock-frontend | grep dpkg; do sleep 3; done
+                        sudo apt-get install build-essential python3-setuptools python3-pip llvm-7 libmbedtls-dev docker-ce azure-cli lldb-10 -y
+                        sudo usermod -aG docker \${BUILD_USER}
+                        """    
                     }
                 }
                 stage('Build repo source') {
                     steps {
-                        withEnv(["MYST_NIGHTLY_TEST=${params.MYST_NIGHTLY_TEST}"]) {
-                            sh """
+                        sh """
                             sudo rm -rf \$(git ls-files --others --directory)
                             docker system prune -a -f
                             make distclean
-                            """
-                            sh "make -j world"
-                        }
+                        """
+                        sh "make -j world"
                     }
                 }
                 stage('Run all tests') {
                     steps {
                         catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                            withEnv(["MYST_NIGHTLY_TEST=${params.MYST_NIGHTLY_TEST}"]) {
-                                sh "make -j tests ALLTESTS=1 VERBOSE=1"
-                            }
+                            sh "make -j tests ALLTESTS=1 VERBOSE=1"
                         }
                     }
                 }
@@ -99,11 +164,11 @@ pipeline {
                 stage('Setup access') {
                     steps {
                         withCredentials([string(credentialsId: 'Jenkins-ServicePrincipal-ID', variable: 'SERVICE_PRINCIPAL_ID'),
-                                         string(credentialsId: 'Jenkins-ServicePrincipal-Password', variable: 'SERVICE_PRINCIPAL_PASSWORD'),
-                                         string(credentialsId: 'ACC-Prod-Tenant-ID', variable: 'TENANT_ID'),
-                                         string(credentialsId: 'ACC-Prod-Subscription-ID', variable: 'AZURE_SUBSCRIPTION_ID'),
-                                         string(credentialsId: 'oe-jenkins-dev-rg', variable: 'JENKINS_RESOURCE_GROUP'),
-                                         string(credentialsId: 'mystikos-managed-identity', variable: "MYSTIKOS_MANAGED_ID")]) {
+                                        string(credentialsId: 'Jenkins-ServicePrincipal-Password', variable: 'SERVICE_PRINCIPAL_PASSWORD'),
+                                        string(credentialsId: 'ACC-Prod-Tenant-ID', variable: 'TENANT_ID'),
+                                        string(credentialsId: 'ACC-Prod-Subscription-ID', variable: 'AZURE_SUBSCRIPTION_ID'),
+                                        string(credentialsId: 'oe-jenkins-dev-rg', variable: 'JENKINS_RESOURCE_GROUP'),
+                                        string(credentialsId: 'mystikos-managed-identity', variable: "MYSTIKOS_MANAGED_ID")]) {
                             sh '''
                                 echo "deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ bionic main" | sudo tee /etc/apt/sources.list.d/azure-cli.list
                                 wget https://packages.microsoft.com/keys/microsoft.asc
@@ -123,71 +188,13 @@ pipeline {
                     steps {
                         catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
                             withCredentials([string(credentialsId: 'mystikos-sql-db-name-useast', variable: 'DB_NAME'),
-                                             string(credentialsId: 'mystikos-sql-db-server-name-useast', variable: 'DB_SERVER_NAME'),
-                                             string(credentialsId: 'mystikos-maa-url-useast', variable: 'MAA_URL'),
-                                             string(credentialsId: 'mystikos-managed-identity-objectid', variable: 'DB_USERID')]) {
-                                sh "make tests -C ${WORKSPACE}/solutions"
+                                            string(credentialsId: 'mystikos-sql-db-server-name-useast', variable: 'DB_SERVER_NAME'),
+                                            string(credentialsId: 'mystikos-maa-url-useast', variable: 'MAA_URL'),
+                                            string(credentialsId: 'mystikos-managed-identity-objectid', variable: 'DB_USERID')]) {
+                                withEnv(["MYST_SKIP_PR_TEST=1"]) {
+                                    sh "make tests -C ${WORKSPACE}/solutions"
+                                }
                             }
-                        }
-                    }
-                }
-                stage('Run SQL solution - CACENTRAL') {
-                    when {
-                        expression { params.MYST_NIGHTLY_TEST == "1" }
-                    }
-                    steps {
-                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                            withCredentials([string(credentialsId: 'mystikos-sql-db-name-canadacentral', variable: 'DB_NAME'),
-                                             string(credentialsId: 'mystikos-sql-db-server-name-canadacentral', variable: 'DB_SERVER_NAME'),
-                                             string(credentialsId: 'mystikos-maa-url-canadacentral', variable: 'MAA_URL'),
-                                             string(credentialsId: 'mystikos-managed-identity-objectid', variable: 'DB_USERID')]) {
-                                    sh """
-                                        make clean -C ${WORKSPACE}/solutions/sql_ae
-                                        make -C ${WORKSPACE}/solutions/sql_ae 
-                                        make run -C ${WORKSPACE}/solutions/sql_ae
-                                    """
-                            }
-                        }
-                    }
-                }
-                /* Azure SDK tests require a service principal that has the following access on Azure:
-                *    - contributor access to the subscription,
-                *    - access policies for the Azure Key Vault. Specifically:
-                *       - Keys: Get, List, Update, Create, Delete, Backup, Decrypt, Encrypt, Purge
-                *       - Secrets: Get, List, Set, Delete, Backup, Purge
-                *       - Certificates: Get, List, Update, Create, Delete, Backup, Purge
-                */
-                stage('Run Azure SDK tests') {
-                    when {
-                        expression { params.MYST_NIGHTLY_TEST == "1" }
-                    }
-                    steps {
-                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                            withCredentials([string(credentialsId: 'Jenkins-ServicePrincipal-ID', variable: 'servicePrincipalId'),
-                                             string(credentialsId: 'ACC-Prod-Tenant-ID', variable: 'tenantId'),
-                                             string(credentialsId: 'Jenkins-ServicePrincipal-Password', variable: 'servicePrincipalKey'),
-                                             string(credentialsId: 'mystikos-ci-keyvault-url', variable: 'AZURE_KEYVAULT_URL'),
-                                             string(credentialsId: 'mystikos-ci-keyvault-url', variable: 'AZURE_TEST_KEYVAULT_URL'),
-                                             string(credentialsId: 'ACC-Prod-Subscription-ID', variable: 'AZURE_SUBSCRIPTION_ID'),
-                                             string(credentialsId: 'mystikos-storage-mystikosciacc-connectionstring', variable: 'STANDARD_STORAGE_CONNECTION_STRING')]) {
-                                sh """
-                                    ${params.SCRIPTS_ROOT}/run-azure-tests.sh \
-                                        ${WORKSPACE}/tests/azure-sdk-for-cpp  \
-                                        ${WORKSPACE}/solutions/dotnet_azure_sdk
-                                """
-                            }
-                        }
-                    }
-                }
-                stage('Run dotnet 5 test suite') {
-                    when {
-                        expression { params.MYST_NIGHTLY_TEST == "1" }
-                    }
-                    steps {
-                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                            sh """
-                                make tests -C ${WORKSPACE}/solutions/coreclr
-                            """
                         }
                     }
                 }
