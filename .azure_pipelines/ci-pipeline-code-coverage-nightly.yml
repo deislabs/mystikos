@@ -63,7 +63,7 @@ jobs:
 
     # run solution tests
     - script: |
-        make tests -C $(Build.SourcesDirectory)/solutions
+        make tests_clean -C $(Build.SourcesDirectory)/solutions
       displayName: 'run solution tests'
       continueOnError: true
       enabled: true

@@ -35,17 +35,29 @@ DIRS += redis
 
 build: $(DIRS)
 
+# If BUILD_RUN_CLEAN is set, then build/run/clean each test
+# Otherwise, just build everything
+ifdef BUILD_RUN_CLEAN
+$(DIRS):
+	@ $(MAKE) -C $@ && $(MAKE) -C $@ run && $(MAKE) -C $@ clean
+else
 $(DIRS):
 	@ $(MAKE) -C $@
+endif
 
 clean:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) clean $(NL) )
 
-# Run each solution tests, and clean each test after its completion to free up space 
 run:
-	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) run && $(MAKE) -C $(i) clean $(NL) )
+	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) run $(NL) )
 
 tests:
 	@ $(MAKE) -s clean
 	@ $(MAKE) -j -s build
 	@ $(MAKE) -j -s run
+
+# Use in pipeline to save space
+# This will build/run/clean each solution test before moving to next test
+tests_clean:
+	@ $(MAKE) -s clean
+	@ $(MAKE) -j -s build BUILD_RUN_CLEAN=1
