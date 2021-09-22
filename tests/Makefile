@@ -126,14 +126,14 @@ DIRS += stacksize
 DIRS += math
 DIRS += unhandled_syscall_enosys
 DIRS += stack_overflow
+DIRS += sendfile
+DIRS += strtonum
 
 ifdef MYST_NIGHTLY_TEST
 DIRS += glibc
+DIRS += aspnetcore
 endif
 
-DIRS += sendfile
-
-DIRS += strtonum
 
 .PHONY: $(DIRS)
 
