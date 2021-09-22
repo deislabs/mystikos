@@ -61,8 +61,6 @@ int myst_load_host_file(const char* path, void** data_out, size_t* size_out)
     };
     struct locals* locals = NULL;
 
-    myst_set_trace(true);
-
     if (data_out)
         *data_out = NULL;
 
@@ -114,8 +112,6 @@ done:
 
     if (locals)
         free(locals);
-
-    myst_set_trace(false);
 
     return ret;
 }
