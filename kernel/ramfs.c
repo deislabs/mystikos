@@ -590,15 +590,20 @@ static int _path_to_inode_recursive(
                     }
                 }
 
-                ECHECK(_path_to_inode_recursive(
-                    ramfs,
-                    target,
-                    parent,
-                    true,
-                    &parent,
-                    &p,
-                    realpath,
-                    target_out));
+                // Ignore self-loops.
+                if (strcmp(path, target) != 0)
+                {
+                    // Recursively resolve links.
+                    ECHECK(_path_to_inode_recursive(
+                        ramfs,
+                        target,
+                        parent,
+                        true,
+                        &parent,
+                        &p,
+                        realpath,
+                        target_out));
+                }
 
                 assert(target != NULL);
             }

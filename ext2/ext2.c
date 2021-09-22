@@ -1334,15 +1334,20 @@ static int _path_to_ino_recursive(
                     }
                 }
 
-                ECHECK(_path_to_ino_recursive(
-                    ext2,
-                    locals->target,
-                    current_ino,
-                    FOLLOW,
-                    &current_ino,
-                    &locals->ino,
-                    realpath,
-                    target_out));
+                // Ignore self-loops.
+                if (strcmp(path, locals->target) != 0)
+                {
+                    // Recursively resolve links.
+                    ECHECK(_path_to_ino_recursive(
+                        ext2,
+                        locals->target,
+                        current_ino,
+                        FOLLOW,
+                        &current_ino,
+                        &locals->ino,
+                        realpath,
+                        target_out));
+                }
 
                 free(data);
                 data = NULL;
