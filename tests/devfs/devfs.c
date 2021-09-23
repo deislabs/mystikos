@@ -116,6 +116,33 @@ void test_fd_link()
     }
 }
 
+int test_dev_fd_on_dup()
+{
+    char* file_path = "/hello_world";
+    int fd = open(file_path, O_RDWR | O_CREAT | O_TRUNC, 0666);
+    assert(fd >= 0);
+
+    {
+        // Generate dev_fd path
+        char* dev_fd_str = calloc(1, PATH_MAX);
+        assert(dev_fd_str != NULL);
+        assert(asprintf(&dev_fd_str, "/dev/fd/%d", fd) >= 0);
+        int dev_fd = open(dev_fd_str, O_WRONLY, 0666);
+        assert(dev_fd >= 0);
+    }
+
+    fd = dup2(fd, 63);
+
+    {
+        // Generate dev_fd path
+        char* dev_fd_str = calloc(1, PATH_MAX);
+        assert(dev_fd_str != NULL);
+        assert(asprintf(&dev_fd_str, "/dev/fd/%d", fd) >= 0);
+        int dev_fd = open(dev_fd_str, O_WRONLY, 0666);
+        assert(dev_fd >= 0);
+    }
+}
+
 int main(int argc, const char* argv[])
 {
     test_random("/dev/urandom");
@@ -123,6 +150,8 @@ int main(int argc, const char* argv[])
     test_zero();
     test_null();
     test_fd_link();
+    test_dev_fd_on_dup();
+
     printf("\n=== passed test (%s)\n", argv[0]);
     return 0;
 }

@@ -38,6 +38,40 @@ const char* myst_fstype_name(myst_fstype_t fstype)
     return "NONE";
 }
 
+int myst_add_fd_link(myst_fs_t* fs, myst_file_t* file, int fd)
+{
+    int ret = 0;
+    struct locals
+    {
+        char realpath[PATH_MAX];
+        char linkpath[PATH_MAX];
+    };
+    struct locals* locals = NULL;
+    const size_t n = sizeof(locals->linkpath);
+
+    if (!fs || !file)
+        ERAISE(-EINVAL);
+
+    if (!(locals = malloc(sizeof(struct locals))))
+        ERAISE(-ENOMEM);
+
+    ECHECK((*fs->fs_realpath)(
+        fs, file, locals->realpath, sizeof(locals->realpath)));
+
+    if (snprintf(locals->linkpath, n, "/proc/%d/fd/%d", myst_getpid(), fd) >=
+        (int)n)
+        ERAISE(-ENAMETOOLONG);
+
+    ECHECK(symlink(locals->realpath, locals->linkpath));
+
+done:
+
+    if (locals)
+        free(locals);
+
+    return ret;
+}
+
 int myst_remove_fd_link(int fd)
 {
     int ret = 0;

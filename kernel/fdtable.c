@@ -374,6 +374,19 @@ int myst_fdtable_dup(
         new->device = old->device;
         new->object = newobj;
 
+        // add /proc/self/fd/[fd] entry only for files
+        // ATTN: update once pipes can be accessed by pathnames, GH #46
+        if (newfd != oldfd && new->type == MYST_FDTABLE_TYPE_FILE)
+        {
+            myst_fs_t* newfs = (myst_fs_t*)new->device;
+            if ((ret = myst_add_fd_link(newfs, new->object, newfd)) < 0)
+            {
+                myst_fdtable_remove(fdtable, newfd);
+                (*newfs->fs_close)(newfs, new->object);
+                ERAISE(ret);
+            }
+        }
+
         ret = newfd;
     }
 

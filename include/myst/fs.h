@@ -184,6 +184,8 @@ struct myst_fs
     int (*fs_release_tree)(myst_fs_t* fs, const char* pathname);
 };
 
+int myst_add_fd_link(myst_fs_t* fs, myst_file_t* file, int fd);
+
 int myst_remove_fd_link(int fd);
 
 int myst_load_fs(
