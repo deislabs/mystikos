@@ -11,8 +11,9 @@ pipeline {
         timeout(time: 600, unit: 'MINUTES')
     }
     parameters {
-        string(name: "BRANCH_NAME", defaultValue: "main", description: "Branch to build")
         string(name: "SCRIPTS_ROOT", defaultValue: '${WORKSPACE}/.azure_pipelines/scripts', description: "Root directory")
+        string(name: "BRANCH_NAME", defaultValue: "main", description: "Option #1: If you want to build a branch instead of a pull request, enter the branch name here")
+        string(name: "PULL_REQUEST_ID", defaultValue: "", description: "Option #2: If you want to build a pull request, enter the pull request ID number here. Will override branch builds.")
     }
     environment {
         BUILD_USER = sh(
@@ -29,12 +30,36 @@ pipeline {
                         sh 'df'
                     }
                 }
+                stage('Checkout') {
+                    when {
+                        anyOf {
+                            expression { params.PULL_REQUEST_ID != "" }
+                            expression { params.BRANCH_NAME != "" }
+                        }
+                    }
+                    steps {
+                        script {
+                            if ( params.PULL_REQUEST_ID ) {
+                                checkout([$class: 'GitSCM',
+                                    branches: [[name: "pr/${PULL_REQUEST_ID}"]],
+                                    extensions: [],
+                                    userRemoteConfigs: [[
+                                        url: 'https://github.com/deislabs/mystikos',
+                                        refspec: "+refs/pull/${PULL_REQUEST_ID}/head:refs/remotes/origin/pr/${PULL_REQUEST_ID}"
+                                    ]]
+                                ])
+                            } else {
+                                checkout([$class: 'GitSCM',
+                                    branches: [[name: params.BRANCH_NAME]],
+                                    extensions: [],
+                                    userRemoteConfigs: [[url: 'https://github.com/deislabs/mystikos']]]
+                                )
+                            }
+                        }
+                    }
+                }
                 stage('Minimum init config') {
                     steps {
-                        checkout([$class: 'GitSCM',
-                            branches: [[name: BRANCH_NAME]],
-                            extensions: [],
-                            userRemoteConfigs: [[url: 'https://github.com/deislabs/mystikos']]])
                         sh """
                            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
                            sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu \$(lsb_release -cs) stable"

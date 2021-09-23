@@ -30,7 +30,7 @@ pipeline {
     parameters {
         string(name: "SCRIPTS_ROOT", defaultValue: '${WORKSPACE}/.azure_pipelines/scripts', description: "Root directory")
         string(name: "BRANCH_NAME", defaultValue: "", description: "Option #1: If you want to build a branch instead of a pull request, enter the branch name here")
-        string(name: "PULL_REQUEST_ID", defaultValue: "", description: "Option #2: If you want to build a pull request, enter the pull request ID number here")
+        string(name: "PULL_REQUEST_ID", defaultValue: "", description: "Option #2: If you want to build a pull request, enter the pull request ID number here. Will override branch builds.")
     }
     environment {
         BUILD_USER = sh(
