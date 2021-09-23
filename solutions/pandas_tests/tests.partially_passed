@@ -1,0 +1,6 @@
+/usr/local/lib/python3.9/site-packages/pandas/tests/io/test_parquet.py
+/usr/local/lib/python3.9/site-packages/pandas/tests/io/json/test_compression.py
+/usr/local/lib/python3.9/site-packages/pandas/tests/io/json/test_pandas.py
+/usr/local/lib/python3.9/site-packages/pandas/tests/io/parser/test_network.py
+/usr/local/lib/python3.9/site-packages/pandas/tests/io/test_clipboard.py
+/usr/local/lib/python3.9/site-packages/pandas/tests/io/xml/test_xml.py
