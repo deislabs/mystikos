@@ -715,40 +715,6 @@ done:
     return ret;
 }
 
-static int _add_fd_link(myst_fs_t* fs, myst_file_t* file, int fd)
-{
-    int ret = 0;
-    struct locals
-    {
-        char realpath[PATH_MAX];
-        char linkpath[PATH_MAX];
-    };
-    struct locals* locals = NULL;
-    const size_t n = sizeof(locals->linkpath);
-
-    if (!fs || !file)
-        ERAISE(-EINVAL);
-
-    if (!(locals = malloc(sizeof(struct locals))))
-        ERAISE(-ENOMEM);
-
-    ECHECK((*fs->fs_realpath)(
-        fs, file, locals->realpath, sizeof(locals->realpath)));
-
-    if (snprintf(locals->linkpath, n, "/proc/%d/fd/%d", myst_getpid(), fd) >=
-        (int)n)
-        ERAISE(-ENAMETOOLONG);
-
-    ECHECK(symlink(locals->realpath, locals->linkpath));
-
-done:
-
-    if (locals)
-        free(locals);
-
-    return ret;
-}
-
 long myst_syscall_creat(const char* pathname, mode_t mode)
 {
     long ret = 0;
@@ -776,7 +742,7 @@ long myst_syscall_creat(const char* pathname, mode_t mode)
         ERAISE(fd);
     }
 
-    if ((r = _add_fd_link(fs_out, file, fd)) != 0)
+    if ((r = myst_add_fd_link(fs_out, file, fd)) != 0)
     {
         myst_fdtable_remove(fdtable, fd);
         (*fs_out->fs_close)(fs_out, file);
@@ -822,7 +788,7 @@ long myst_syscall_open(const char* pathname, int flags, mode_t mode)
         ERAISE(fd);
     }
 
-    if ((r = _add_fd_link(fs_out, file, fd)) != 0)
+    if ((r = myst_add_fd_link(fs_out, file, fd)) != 0)
     {
         myst_fdtable_remove(fdtable, fd);
         (*fs_out->fs_close)(fs_out, file);
