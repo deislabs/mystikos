@@ -28,6 +28,7 @@ ifndef MYST_SKIP_PR_TEST
 # Disable this as it fails pipeline, will re-enable after investigation
 #DIRS += pytorch_inference
 DIRS += tensorflow_lite
+DIRS += pandas_tests
 endif
 DIRS += nodejs
 DIRS += numpy_core_tests
