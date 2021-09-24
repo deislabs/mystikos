@@ -11,7 +11,8 @@ endif
 MPDB=$(TOP)/scripts/mpdb.py
 TESTFILE=tests.passed
 TEST = test_bz2
-FS=ext2fs3.9
+VER=3.9
+FS=ext2fs$(VER)
 
 # Set timeout to 25 mins (to run both the python3.8 test suite and the python3.9 test suite)
 export TIMEOUT=1500
@@ -48,4 +49,14 @@ one-mpdb: $(FS)
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) /cpython/python -m mpdb -m test $(TEST) -v &
 	sleep 10 && rlwrap telnet 127.0.0.1 5678
 	# Once debugger prompt is available, do
-        # (Pdb) b /cpython/Lib/test/<test file>.py:line
+	# (Pdb) b /cpython/Lib/test/<test file>.py:line
+
+one-gdb: $(FS)
+	$(RUNTEST) $(MYST_GDB) -iex "source ./appdir$(VER)/cpython/python-gdb.py" \
+           -iex "python print('\033[0;32m\n\
+type py-<tab> to see available python-gdb commands.\n\n\
+To enable python source listing, do \n\
+  sudo mkdir -p /cpython\n\
+  sudo mount --bind appdir$(VER)/cpython /cpython\n\
+before launching gdb.\033[0m\n')" \
+           --args $(MYST_EXEC) $(OPTS) $(FS) /cpython/python -m test $(TEST) -v
