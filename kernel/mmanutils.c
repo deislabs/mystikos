@@ -1145,7 +1145,7 @@ static long _handle_mman_pids_op(
 
     _rlock(&locked);
 
-    ECHECK((index = _get_page_index(addr, length)));
+    ECHECK((ssize_t)(index = _get_page_index(addr, length)));
     count = length / PAGE_SIZE;
 
     assert(index < v.pids_count);
