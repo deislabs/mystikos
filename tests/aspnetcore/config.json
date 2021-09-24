@@ -7,7 +7,7 @@
 
     // Mystikos specific values
 
-    "MemorySize": "4g",
+    "MemorySize": "2g",
     // program and args passed via cmdline
     "HostApplicationParameters": true,
     "HostEnvironmentVariables": [],
