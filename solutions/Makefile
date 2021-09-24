@@ -13,6 +13,16 @@ endif
 endif
 endif
 
+ifdef APP_ID
+ifdef CLIENT_ID
+ifdef CLIENT_SECRET
+ifdef MHSM_AAD_URL
+DIRS += mhsm_ssr
+endif
+endif
+endif
+endif
+
 DIRS += msgpack_c
 
 ifndef MYST_ENABLE_GCOV

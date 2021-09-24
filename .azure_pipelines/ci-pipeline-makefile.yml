@@ -60,7 +60,7 @@ jobs:
           make -j tests ALLTESTS=1
         displayName: 'run all tests'
         continueOnError: true
-        enabled: true
+        enabled: false
         workingDirectory: $(Build.SourcesDirectory)
         env:
           MYST_DO_CLEANUP: 1
@@ -77,9 +77,13 @@ jobs:
           DB_NAME: $(DB_NAME_USEAST)
           DB_SERVER_NAME: $(DB_SERVER_NAME_USEAST)
           MAA_URL: $(DB_MAA_URL_USEAST)
+          CLIENT_SECRET: $(MHSM_CLIENT_SECRET)
+          CLIENT_ID: $(MHSM_CLIENT_ID)
+          APP_ID: $(MHSM_APP_ID)
           # If set, don't run certain tests
           MYST_SKIP_PR_TEST: 1
           MYST_DO_CLEANUP: 1
+      - template: step-azure-sdk-tests.yml
 
       - script: |
           make clean -C $(Build.SourcesDirectory)/tests
