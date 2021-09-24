@@ -51,9 +51,10 @@ Where:\n\
     <config>    -- configuration for signing and application runtime\n\
 \n\
 and <options> are one of:\n\
-    --help                -- this message\n\
-    --pubkey=pem_file     -- trust disks signed by this key (repeatable)\n\
-    --roothash=ascii_file -- trust disks with this roothash (repeatable)\n\
+    --help                  -- this message\n\
+    --pubkey=pem_file       -- trust disks signed by this key (repeatable)\n\
+    --roothash=ascii_file   -- trust disks with this roothash (repeatable)\n\
+    --outfile=file, -o=file -- place output in this file\n\
 \n\
 "
 
@@ -114,6 +115,8 @@ int _package(int argc, const char* argv[])
     const char* signing_engine_path = NULL;
     myst_buf_t roothash_buf = MYST_BUF_INITIALIZER;
     bool using_ext2 = false;
+    const char* outfile = NULL;
+    char err[128];
 
     /* Get --pubkey=filename options */
     get_pubkeys_options(&argc, argv, pubkeys, max_pubkeys, &num_pubkeys);
@@ -126,6 +129,21 @@ int _package(int argc, const char* argv[])
     {
         fprintf(stderr, USAGE_PACKAGE, argv[0], argv[0]);
         goto done;
+    }
+
+    /* Get the --outfile=file option */
+    if (myst_getopt(&argc, argv, "--outfile", &outfile, err, sizeof(err)) < 0)
+    {
+        fprintf(stderr, "%s: %s\n", argv[0], err);
+        exit(1);
+    }
+
+    /* Get the -o=file option (the short-form of --outfile) */
+    if (!outfile &&
+        myst_getopt(&argc, argv, "-o", &outfile, err, sizeof(err)) < 0)
+    {
+        fprintf(stderr, "%s: %s\n", argv[0], err);
+        exit(1);
     }
 
     cli_getopt(&argc, argv, "--signing-engine-name", &signing_engine_name);
@@ -518,18 +536,21 @@ int _package(int argc, const char* argv[])
         goto done;
     }
 
-    if (myst_copy_file(scratch_path2, scratch_path) != 0)
+    if (!outfile)
+        outfile = scratch_path;
+
+    if (myst_copy_file(scratch_path2, outfile) != 0)
     {
         fprintf(
             stderr,
             "Failed to copy final package from %s to %s",
             scratch_path2,
-            scratch_path);
+            outfile);
         goto done;
     }
 
     /* Tell the console user that the packaged program has been created */
-    printf("Created %s\n\n", scratch_path);
+    printf("Created %s\n\n", outfile);
 
     ret = 0;
 
