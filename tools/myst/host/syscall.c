@@ -521,6 +521,7 @@ long myst_fsync_ocall(int fd)
     RETURN(fsync(fd));
 }
 
+// Extra parameter maxnode helps the edl get the size of pointer nodemask
 long myst_get_mempolicy_ocall(
     int* mode,
     unsigned long* nodemask,
@@ -529,5 +530,6 @@ long myst_get_mempolicy_ocall(
     void* addr,
     unsigned long flags)
 {
+    (void)nodemask_size;
     RETURN(syscall(SYS_get_mempolicy, mode, nodemask, maxnode, addr, flags));
 }

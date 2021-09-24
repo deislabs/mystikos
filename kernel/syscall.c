@@ -3159,7 +3159,7 @@ long myst_syscall_get_mempolicy(
     // returned by the target to indicate the thread is not allowed to specify a
     // policy on any node in mbind or set_mempolicy when
     // flags = MPOL_F_MEMS_ALLOWED
-    if (flags == 1 << 2)
+    if (flags == 1 << 2 && ret == 0)
     {
         int n = rounded_maxnode / ROUND_UP_VAL;
         for (int i = 0; i < n; i++)
