@@ -3627,6 +3627,31 @@ static long _syscall(void* args_)
                 myst_panic("mmap unsupported: pseudo fork process is calling "
                            "mmap when running in pseudo_wait mode");
 
+            if ((uintptr_t)addr % PAGE_SIZE || !length)
+                BREAK(_return(n, -EINVAL));
+
+            /* mman supports addr hint only if the mapping already exists. If
+             * addr hint is provided, process must own the existing mapping. */
+            if (addr && length)
+            {
+                pid_t pid = myst_getpid();
+
+                size_t rounded_up_length;
+                if (myst_round_up(length, PAGE_SIZE, &rounded_up_length) < 0)
+                    BREAK(_return(n, -EINVAL));
+
+                /* if calling process does not own this mapping */
+                if (myst_mman_pids_test(addr, rounded_up_length, pid) !=
+                    (ssize_t)rounded_up_length)
+                {
+                    if (flags & MAP_FIXED)
+                        BREAK(_return(n, -EINVAL));
+
+                    /* address hint failed so reset addr to null */
+                    addr = NULL;
+                }
+            }
+
             /* this can return (void*)-errno */
             long ret = (long)myst_mmap(addr, length, prot, flags, fd, offset);
 
