@@ -528,6 +528,9 @@ int _package(int argc, const char* argv[])
         goto done;
     }
 
+    /* Tell the console user that the packaged program has been created */
+    printf("Created %s\n\n", scratch_path);
+
     ret = 0;
 
 done:
