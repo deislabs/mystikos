@@ -459,6 +459,11 @@ int _sign(int argc, const char* argv[])
         _err("File path to long: %s/lib/openenclave/mystenc.so", sign_dir);
     }
 
+    // Temporarily redirect standard output to /dev/null during the call to
+    // oesign(). This suppresses the "Created <tempfile>" message, which
+    // conveys nothing useful to the user.
+    freopen("/dev/null", "a+", stdout);
+
     if (oesign(
             scratch_path,
             temp_oeconfig_file,
@@ -472,6 +477,9 @@ int _sign(int argc, const char* argv[])
         unlink(temp_oeconfig_file);
         _err("Failed to sign \"%s\"", scratch_path);
     }
+
+    /* restore standard output */
+    freopen("/dev/tty", "w", stdout);
 
     // delete temporary oe config file
     if (unlink(temp_oeconfig_file) != 0)
