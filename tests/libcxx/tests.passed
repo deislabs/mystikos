@@ -182,6 +182,7 @@
 /app/llvm-project/libcxx/test/libcxx/thread/thread.mutex/version.pass.cpp.exe
 /app/llvm-project/libcxx/test/libcxx/thread/thread.threads/thread.thread.class/thread.thread.member/native_handle.pass.cpp.exe
 /app/llvm-project/libcxx/test/libcxx/thread/thread.threads/thread.thread.class/types.pass.cpp.exe
+/app/llvm-project/libcxx/test/libcxx/thread/thread.threads/thread.thread.this/sleep_for.pass.cpp.exe
 /app/llvm-project/libcxx/test/libcxx/thread/thread.threads/version.pass.cpp.exe
 /app/llvm-project/libcxx/test/libcxx/type_traits/is_implicitly_default_constructible.pass.cpp.exe
 /app/llvm-project/libcxx/test/libcxx/utilities/any/version.pass.cpp.exe
