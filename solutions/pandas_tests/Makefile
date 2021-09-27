@@ -21,25 +21,25 @@ ifdef STRACE
 OPTS += --strace
 endif
 
-all: rootfs
+all: rootfs-all
 
 appdir:
 	$(APPBUILDER) Dockerfile
 	cp $(PYTEST_INI_FILE) appdir/
 
-rootfs: appdir
+rootfs-all: appdir
 	$(MYST) mkext2 appdir rootfs
 
-rootfs-passed: appdir
+rootfs: appdir
 	# remove test files that are known to fail partially. These are tested in target 'run'
 	# for expected failures/ errors.
 	cat tests.partially_passed | while read line; do rm -f appdir/"$$line"; done
 	$(MYST) mkext2 appdir rootfs-passed
 
-run-passed: rootfs-passed
+run-passed: rootfs
 	$(MYST_EXEC) rootfs-passed $(OPTS) $(PYTHON3) /app/app.py
 
-run: rootfs
+run: rootfs-all
 	(cat tests.partially_passed | xargs -P 8 $(MYST_EXEC) rootfs $(OPTS) \
 		$(PYTEST_CMD) $(PYTEST_OPTS) 2>&1 > result; \
 		test "$$?" -eq "123")
@@ -57,8 +57,8 @@ run-one: rootfs
 	$(MYST_EXEC) rootfs $(OPTS) $(PYTEST_CMD) $(PYTEST_OPTS) $(TEST_ROOT)/$(TEST)
 
 clean_intermediate:
-	rm -rf rootfs .pytest_cache result test_summary
+	rm -rf rootfs-all .pytest_cache result test_summary
 
 clean:
 	$(MAKE) clean_intermediate
-	rm -rf myst rootfs rootfs-passed appdir
+	rm -rf myst rootfs rootfs-all appdir .pytest_cache
