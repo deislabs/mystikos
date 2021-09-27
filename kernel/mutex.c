@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <string.h>
 
+#include <myst/cond.h>
 #include <myst/mutex.h>
 #include <myst/panic.h>
 #include <myst/printf.h>
@@ -42,7 +43,7 @@ int __myst_mutex_trylock(myst_mutex_t* m, myst_thread_t* self)
     if (m->owner == NULL)
     {
         /* If the waiters queue is empty */
-        if (m->queue.front == NULL)
+        if (myst_thread_queue_empty(&m->queue))
         {
             /* Obtain the mutex */
             m->owner = self;
@@ -51,7 +52,7 @@ int __myst_mutex_trylock(myst_mutex_t* m, myst_thread_t* self)
         }
 
         /* If this thread is at the front of the waiters queue */
-        if (m->queue.front == self)
+        if (myst_thread_queue_get_front(&m->queue) == self)
         {
             /* Remove this thread from front of the waiters queue */
             myst_thread_queue_pop_front(&m->queue);
@@ -166,7 +167,7 @@ int __myst_mutex_unlock(myst_mutex_t* mutex, myst_thread_t** waiter)
                 m->owner = NULL;
 
                 /* Set waiter to the next thread on the queue (maybe none) */
-                *waiter = m->queue.front;
+                *waiter = myst_thread_queue_get_front(&m->queue);
             }
         }
         else

@@ -18,12 +18,23 @@
 #define FUTEX_UNLOCK_PI      7
 #define FUTEX_TRYLOCK_PI     8
 #define FUTEX_WAIT_BITSET    9
+#define FUTEX_WAKE_BITSET    10
 #define FUTEX_PRIVATE        128
 #define FUTEX_CLOCK_REALTIME 256
 // clang-format on
 
+#define FUTEX_BITSET_MATCH_ANY 0xffffffff
+
 int myst_futex_wait(int* uaddr, int val, const struct timespec* to);
 
+int myst_futex_wait_ops(
+    int* uaddr,
+    int val,
+    const struct timespec* to,
+    uint32_t bitset);
+
 int myst_futex_wake(int* uaddr, int val);
+
+int myst_futex_wake_ops(int* uaddr, int val, uint32_t bitset);
 
 #endif /* _MYST_FUTEX_H */

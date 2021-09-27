@@ -5,6 +5,7 @@
 #define _MYST_THREAD_H
 #define _GNU_SOURCE
 #include <signal.h>
+#include <stdlib.h>
 #include <sys/resource.h>
 #include <sys/times.h>
 #include <unistd.h>
@@ -212,6 +213,7 @@ struct myst_thread
 
     /* used by myst_thread_queue_t (condition variables and mutexes) */
     struct myst_thread* qnext;
+    uint64_t bitset;
 
     /* for jumping back on exit */
     myst_jmp_buf_t jmpbuf;
@@ -360,11 +362,13 @@ MYST_INLINE size_t myst_thread_queue_size(myst_thread_queue_t* queue)
     return n;
 }
 
-MYST_INLINE void myst_thread_queue_push_back(
+MYST_INLINE void myst_thread_queue_push_back_bitset(
     myst_thread_queue_t* queue,
-    myst_thread_t* thread)
+    myst_thread_t* thread,
+    uint32_t bitset)
 {
     thread->qnext = NULL;
+    thread->bitset = bitset;
 
     if (queue->back)
         queue->back->qnext = thread;
@@ -374,8 +378,25 @@ MYST_INLINE void myst_thread_queue_push_back(
     queue->back = thread;
 }
 
-MYST_INLINE myst_thread_t* myst_thread_queue_pop_front(
+MYST_INLINE void myst_thread_queue_push_back(
+    myst_thread_queue_t* queue,
+    myst_thread_t* thread)
+{
+    myst_thread_queue_push_back_bitset(queue, thread, FUTEX_BITSET_MATCH_ANY);
+}
+
+MYST_INLINE myst_thread_t* myst_thread_queue_get_front(
     myst_thread_queue_t* queue)
+{
+    if (queue)
+        return queue->front;
+
+    return NULL;
+}
+
+MYST_INLINE myst_thread_t* myst_thread_queue_pop_front_bitset(
+    myst_thread_queue_t* queue,
+    uint32_t* bitset)
 {
     myst_thread_t* thread = queue->front;
 
@@ -385,9 +406,21 @@ MYST_INLINE myst_thread_t* myst_thread_queue_pop_front(
 
         if (!queue->front)
             queue->back = NULL;
+
+        if (bitset)
+            *bitset = thread->bitset;
+
+        thread->qnext = NULL;
+        thread->bitset = 0;
     }
 
     return thread;
+}
+
+MYST_INLINE myst_thread_t* myst_thread_queue_pop_front(
+    myst_thread_queue_t* queue)
+{
+    return myst_thread_queue_pop_front_bitset(queue, NULL);
 }
 
 /** Remove a thread from arbitrary position in the queue.
@@ -425,6 +458,57 @@ MYST_INLINE int myst_thread_queue_remove_thread(
 
     // thread->qnext = NULL;
     return found ? pos : -1;
+}
+
+/** Find and remove up to `n` threads from the queue such that
+ * <waiting bitset> & <passed in bitset> != 0.
+ * Removed threads are placed in the `matches` queue.
+ */
+MYST_INLINE int myst_thread_queue_search_remove_bitset(
+    myst_thread_queue_t* queue,
+    myst_thread_queue_t* matches,
+    size_t n,
+    uint32_t bitset)
+{
+    if (!queue || !matches)
+        return -1;
+
+    myst_thread_t* t = queue->front;
+    myst_thread_t* prev = NULL;
+
+    size_t num_found = 0;
+
+    while (t)
+    {
+        if (num_found >= n)
+            break;
+
+        myst_thread_t* next = t->qnext;
+        if (t->bitset & bitset)
+        {
+            num_found++;
+            if (prev != NULL)
+            {
+                prev->qnext = next;
+            }
+            else
+            {
+                queue->front = queue->front->qnext;
+            }
+            if (next == NULL)
+                queue->back = prev;
+
+            myst_thread_queue_push_back_bitset(matches, t, t->bitset);
+        }
+        else
+        {
+            prev = t;
+        }
+
+        t = next;
+    }
+
+    return num_found;
 }
 
 MYST_INLINE bool myst_thread_queue_contains(
