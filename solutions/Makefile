@@ -45,8 +45,14 @@ $(DIRS):
 clean:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) clean $(NL) )
 
+ifdef MYST_DO_CLEANUP
+remove_appdir = rm -rf $(1)/appdir $(1)/rootfs
+else
+remove_appdir =
+endif
+
 run:
-	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) run $(NL) )
+	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) run; $(call remove_appdir,$(i)) $(NL) )
 
 tests:
 	@ $(MAKE) -s clean
