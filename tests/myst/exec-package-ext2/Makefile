@@ -7,6 +7,18 @@ ROOTFS=$(TMPDIR)/rootfs
 PRIVKEY=$(TMPDIR)/private.pem
 PUBKEY=$(TMPDIR)/public.pem
 
+ifdef STRACE
+OPTS += --strace
+endif
+
+ifdef ETRACE
+OPTS += --etrace
+endif
+
+ifdef TRACE
+OPTS += --etrace --strace
+endif
+
 USER=$(shell id --user)
 GROUP=$(shell id --group)
 
@@ -28,8 +40,8 @@ $(TMPDIR):
 #export MYST_ROOTFS_PATH=$(ROOTFS)
 
 tests: all
-	$(RUNTEST) $(MYST) exec-sgx --pubkey=$(PUBKEY) $(ROOTFS) /bin/hello
-	$(RUNTEST) ./myst/bin/hello --rootfs=$(ROOTFS)
+	$(RUNTEST) $(MYST) exec-sgx $(OPTS) --pubkey=$(PUBKEY) $(ROOTFS) /bin/hello
+	$(RUNTEST) ./myst/bin/hello $(OPTS) --rootfs=$(ROOTFS)
 
 dump:
 	echo MYST_ROOTFS_PATH=$(MYST_ROOTFS_PATH)
