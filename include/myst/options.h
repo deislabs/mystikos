@@ -35,8 +35,8 @@ typedef struct myst_options
 typedef struct myst_final_options
 {
     myst_options_t base;
-    const char* __cwd;
-    const char* __hostname;
+    const char* cwd;
+    const char* hostname;
     myst_args_t args;
     myst_args_t env;
 } myst_final_options_t;
