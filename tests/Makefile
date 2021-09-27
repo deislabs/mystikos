@@ -132,7 +132,7 @@ dirs: $(DIRS)
 $(DIRS):
 	$(MAKE) -C $@
 
-ifdef MYST_REMOVE_APPDIRS
+ifdef MYST_DO_CLEANUP
 remove_appdir = rm -rf $(1)/appdir
 else
 remove_appdir =
