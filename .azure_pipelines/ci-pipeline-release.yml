@@ -82,6 +82,7 @@ jobs:
         workingDirectory: $(Build.SourcesDirectory)
         env:
           MYST_NIGHTLY_TEST: 1
+          MYST_CLEANUP: 1
 
       # run solution tests
       - script: |
@@ -96,6 +97,7 @@ jobs:
           DB_NAME: $(DB_NAME_USEAST)
           DB_SERVER_NAME: $(DB_SERVER_NAME_USEAST)
           MAA_URL: $(DB_MAA_URL_USEAST)
+          MYST_CLEANUP: 1
 
       - template: step-sql-soln-cacentral.yml
       

@@ -132,8 +132,14 @@ dirs: $(DIRS)
 $(DIRS):
 	$(MAKE) -C $@
 
+ifdef MYST_REMOVE_APPDIRS
+remove_appdir = rm -rf $(1)/appdir
+else
+remove_appdir =
+endif
+
 __tests:
-	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) tests $(NL) )
+	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) tests; $(call remove_appdir,$(i)) $(NL) )
 
 tests:
 	@ sudo rm -rf $(TESTDIR)
