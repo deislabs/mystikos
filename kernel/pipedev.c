@@ -297,7 +297,7 @@ static ssize_t _pd_read(
                 }
 
                 /* signal that pipe is now write enabled */
-                myst_cond_signal(&shared->cond);
+                myst_cond_signal(&shared->cond, FUTEX_BITSET_MATCH_ANY);
             }
             else /* the buffer is empty */
             {
@@ -439,7 +439,7 @@ static ssize_t _pd_write(
                 }
 
                 /* signal that pipe is now read enabled */
-                myst_cond_signal(&shared->cond);
+                myst_cond_signal(&shared->cond, FUTEX_BITSET_MATCH_ANY);
             }
             else /* the buffer is full */
             {
@@ -666,7 +666,7 @@ static int _pd_interrupt(myst_pipedev_t* pipedev, myst_pipe_t* pipe)
     T(printf("_pd_interrupt(): fd=%d pid=%d\n", pipe->fd, myst_getpid());)
 
     /* signal any threads blocked on read or write */
-    myst_cond_signal(&pipe->shared->cond);
+    myst_cond_signal(&pipe->shared->cond, FUTEX_BITSET_MATCH_ANY);
 
 done:
     T(printf("_pd_interrupt(): done\n");)
@@ -705,7 +705,7 @@ static int _pd_close(myst_pipedev_t* pipedev, myst_pipe_t* pipe)
     else
     {
         /* signal that this end of the pipe has been closed */
-        myst_cond_signal(&pipe->shared->cond);
+        myst_cond_signal(&pipe->shared->cond, FUTEX_BITSET_MATCH_ANY);
         _unlock(&pipe->shared->lock, &locked);
     }
 

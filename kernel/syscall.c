@@ -4049,7 +4049,8 @@ static long _syscall(void* args_)
         {
             int ret = 0;
             _strace(n, NULL);
-            myst_futex_wait(&thread->fork_exec_futex_wait, 0, NULL);
+            myst_futex_wait(
+                &thread->fork_exec_futex_wait, 0, NULL, FUTEX_BITSET_MATCH_ANY);
             BREAK(_return(n, ret));
         }
         case SYS_myst_kill_wait_child_forks:
@@ -4979,12 +4980,16 @@ static long _syscall(void* args_)
 
             _strace(
                 n,
-                "uaddr=0x%lx(%d) futex_op=%u(%s) val=%d",
+                "uaddr=0x%lx(%d) futex_op=%u(%s) val=%d arg=%li "
+                "uaddr2=0x%lx val3=%d",
                 (long)uaddr,
                 (uaddr ? *uaddr : -1),
                 futex_op,
                 _futex_op_str(futex_op),
-                val);
+                val,
+                arg,
+                (long)uaddr2,
+                val3);
 
             BREAK(_return(
                 n,
@@ -6557,7 +6562,8 @@ long myst_syscall_pause(void)
         }
 
         // Futex is not available, wait.
-        ret = myst_futex_wait(&thread->pause_futex, 0, NULL);
+        ret = myst_futex_wait(
+            &thread->pause_futex, 0, NULL, FUTEX_BITSET_MATCH_ANY);
         if (ret != 0 && ret != -EAGAIN)
             ERAISE(ret);
     }
