@@ -13,10 +13,10 @@
 // common options between sgx and linux target
 typedef struct myst_options
 {
-    bool have_syscall_instruction;
-    bool have_fsgsbase_instructions;
     bool trace_errors;
     bool trace_syscalls;
+    bool have_syscall_instruction;
+    bool have_fsgsbase_instructions;
     bool shell_mode;
     bool debug_symbols;
     bool memcheck;
@@ -28,6 +28,7 @@ typedef struct myst_options
     size_t max_affinity_cpus;
     char rootfs[PATH_MAX];
     myst_fork_mode_t fork_mode;
+
     myst_host_enc_uid_gid_mappings host_enc_uid_gid_mappings;
 } myst_options_t;
 
