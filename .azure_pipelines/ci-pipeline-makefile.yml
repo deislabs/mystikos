@@ -63,7 +63,7 @@ jobs:
         enabled: true
         workingDirectory: $(Build.SourcesDirectory)
         env:
-          MYST_CLEANUP: 1
+          MYST_REMOVE_APPDIRS: 1
 
       # run solution tests
       - script: |
@@ -79,7 +79,7 @@ jobs:
           MAA_URL: $(DB_MAA_URL_USEAST)
           # If set, don't run certain tests
           MYST_SKIP_PR_TEST: 1
-          MYST_CLEANUP: 1
+          MYST_REMOVE_APPDIRS: 1
 
       - script: |
           make clean -C $(Build.SourcesDirectory)/tests
