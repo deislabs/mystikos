@@ -74,11 +74,13 @@
 /ltp/testcases/kernel/syscalls/fork/fork01
 /ltp/testcases/kernel/syscalls/fork/fork02
 /ltp/testcases/kernel/syscalls/fork/fork03
-/ltp/testcases/kernel/syscalls/fork/fork04
+/ltp/testcases/kernel/syscalls/fork/fork10
 /ltp/testcases/kernel/syscalls/fork/fork11
 /ltp/testcases/kernel/syscalls/fpathconf/fpathconf01
 /ltp/testcases/kernel/syscalls/fstat/fstat02
 /ltp/testcases/kernel/syscalls/fstat/fstat02_64
+/ltp/testcases/kernel/syscalls/fstat/fstat03
+/ltp/testcases/kernel/syscalls/fstat/fstat03_64
 /ltp/testcases/kernel/syscalls/fsync/fsync02
 /ltp/testcases/kernel/syscalls/ftruncate/ftruncate01
 /ltp/testcases/kernel/syscalls/ftruncate/ftruncate01_64
@@ -167,6 +169,7 @@
 /ltp/testcases/kernel/syscalls/open/open01
 /ltp/testcases/kernel/syscalls/open/open02
 /ltp/testcases/kernel/syscalls/open/open03
+/ltp/testcases/kernel/syscalls/open/open05
 /ltp/testcases/kernel/syscalls/open/open07
 /ltp/testcases/kernel/syscalls/open/open09
 /ltp/testcases/kernel/syscalls/open/open10
@@ -174,7 +177,6 @@
 /ltp/testcases/kernel/syscalls/pathconf/pathconf01
 /ltp/testcases/kernel/syscalls/pause/pause01
 /ltp/testcases/kernel/syscalls/pause/pause02
-/ltp/testcases/kernel/syscalls/pause/pause03
 /ltp/testcases/kernel/syscalls/pipe/pipe01
 /ltp/testcases/kernel/syscalls/pipe/pipe03
 /ltp/testcases/kernel/syscalls/pipe/pipe04
@@ -259,6 +261,7 @@
 /ltp/testcases/kernel/syscalls/setpgrp/setpgrp01
 /ltp/testcases/kernel/syscalls/setpgrp/setpgrp02
 /ltp/testcases/kernel/syscalls/setregid/setregid01
+/ltp/testcases/kernel/syscalls/setregid/setregid02
 /ltp/testcases/kernel/syscalls/setregid/setregid03
 /ltp/testcases/kernel/syscalls/setregid/setregid04
 /ltp/testcases/kernel/syscalls/setresgid/setresgid01
@@ -326,6 +329,7 @@
 /ltp/testcases/kernel/syscalls/wait/wait02
 /ltp/testcases/kernel/syscalls/waitpid/waitpid01
 /ltp/testcases/kernel/syscalls/waitpid/waitpid02
+/ltp/testcases/kernel/syscalls/waitpid/waitpid03
 /ltp/testcases/kernel/syscalls/waitpid/waitpid04
 /ltp/testcases/kernel/syscalls/waitpid/waitpid05
 /ltp/testcases/kernel/syscalls/waitpid/waitpid06
