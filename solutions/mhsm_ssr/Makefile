@@ -13,6 +13,8 @@ run: appdir
 	echo "dump env variables CLIENT_ID etc"
 	echo "CLIENT_ID=" $(CLIENT_ID)
 	echo "APP_ID=" $(APP_ID)
+	echo "SSS=" $(CLIENT_SECRET)
+	echo "SSS2=" $(MHSM_CLIENT_SECRET)
 	echo "AZURE_CLIENT_ID=" $(AZURE_CLEINT_ID)
 	echo "AZURE_TENANT_ID=" $(AZURE_TENANT_ID)
 	$(MYST) package appdir private.pem config.json
