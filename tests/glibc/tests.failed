@@ -1680,10 +1680,12 @@
 /glibc/build/nptl/tst-cancelx6
 /glibc/build/nptl/tst-cancelx7
 /glibc/build/nptl/tst-cancelx9
+/glibc/build/nptl/tst-cleanup0
 /glibc/build/nptl/tst-cleanup1
 /glibc/build/nptl/tst-cleanup2
 /glibc/build/nptl/tst-cleanup3
 /glibc/build/nptl/tst-cleanup4
+/glibc/build/nptl/tst-cleanupx0
 /glibc/build/nptl/tst-cleanupx1
 /glibc/build/nptl/tst-cleanupx2
 /glibc/build/nptl/tst-cleanupx3
@@ -1920,6 +1922,7 @@
 /glibc/build/posix/tst-glob_lstat_compat
 /glibc/build/posix/tst-gnuglob
 /glibc/build/posix/tst-gnuglob64
+/glibc/build/posix/tst-nanosleep
 /glibc/build/posix/tst-nice
 /glibc/build/posix/tst-pathconf
 /glibc/build/posix/tst-pcre
@@ -2028,6 +2031,7 @@
 /glibc/build/stdio-common/tstscanf
 /glibc/build/stdlib/test-a64l
 /glibc/build/stdlib/test-at_quick_exit-race
+/glibc/build/stdlib/tst-atexit
 /glibc/build/stdlib/test-atexit-race
 /glibc/build/stdlib/test-bz22786
 /glibc/build/stdlib/test-canon
@@ -2038,6 +2042,7 @@
 /glibc/build/stdlib/tst-at_quick_exit
 /glibc/build/stdlib/tst-bz20544
 /glibc/build/stdlib/tst-canon-bz26341
+/glibc/build/stdlib/tst-cxa_atexit
 /glibc/build/stdlib/tst-environ
 /glibc/build/stdlib/tst-fmtmsg
 /glibc/build/stdlib/tst-makecontext-align
