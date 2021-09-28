@@ -45,6 +45,8 @@ DIRS += numpy_core_tests
 DIRS += redis
 DIRS += cpprestsdk
 
+DIRS += mhsm_ssr
+
 .PHONY: $(DIRS)
 
 build: $(DIRS)
