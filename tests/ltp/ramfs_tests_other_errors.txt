@@ -389,6 +389,7 @@
 /ltp/testcases/kernel/syscalls/membarrier/membarrier01
 /ltp/testcases/kernel/syscalls/memfd_create/memfd_create03
 /ltp/testcases/kernel/syscalls/memfd_create/memfd_create04
+/ltp/testcases/kernel/syscalls/memmap/mem03
 /ltp/testcases/kernel/syscalls/migrate_pages/migrate_pages01
 /ltp/testcases/kernel/syscalls/migrate_pages/migrate_pages02
 /ltp/testcases/kernel/syscalls/migrate_pages/migrate_pages03

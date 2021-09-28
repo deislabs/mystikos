@@ -686,7 +686,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/memfd_create/memfd_create02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/memfd_create/memfd_create03 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/memfd_create/memfd_create04 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/memmap/mem03 | 1 | 1 | 1 |
+| /ltp/testcases/kernel/syscalls/memmap/mem03 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/memset/memset01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/migrate_pages/migrate_pages01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/migrate_pages/migrate_pages02 | 0 | 0 | 0 |
