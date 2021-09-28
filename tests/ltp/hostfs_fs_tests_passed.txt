@@ -64,6 +64,8 @@
 /ltp/testcases/kernel/syscalls/flock/flock01
 /ltp/testcases/kernel/syscalls/fstat/fstat02
 /ltp/testcases/kernel/syscalls/fstat/fstat02_64
+/ltp/testcases/kernel/syscalls/fstat/fstat03
+/ltp/testcases/kernel/syscalls/fstat/fstat03_64
 /ltp/testcases/kernel/syscalls/fsync/fsync02
 /ltp/testcases/kernel/syscalls/ftruncate/ftruncate01
 /ltp/testcases/kernel/syscalls/ftruncate/ftruncate01_64
@@ -92,6 +94,7 @@
 /ltp/testcases/kernel/syscalls/open/open01
 /ltp/testcases/kernel/syscalls/open/open02
 /ltp/testcases/kernel/syscalls/open/open03
+/ltp/testcases/kernel/syscalls/open/open05
 /ltp/testcases/kernel/syscalls/open/open07
 /ltp/testcases/kernel/syscalls/open/open09
 /ltp/testcases/kernel/syscalls/open/open10

@@ -521,6 +521,8 @@
 /ltp/testcases/kernel/syscalls/ptrace/make_syscall_list.sh
 /ltp/testcases/kernel/syscalls/ptrace/ptrace03
 /ltp/testcases/kernel/syscalls/ptrace/ptrace04
+/ltp/testcases/kernel/syscalls/ptrace/ptrace08
+/ltp/testcases/kernel/syscalls/ptrace/ptrace10
 /ltp/testcases/kernel/syscalls/pwrite/pwrite02
 /ltp/testcases/kernel/syscalls/pwrite/pwrite02_64
 /ltp/testcases/kernel/syscalls/pwritev/pwritev02
@@ -642,7 +644,6 @@
 /ltp/testcases/kernel/syscalls/setpgid/setpgid02
 /ltp/testcases/kernel/syscalls/setpgid/setpgid03_child
 /ltp/testcases/kernel/syscalls/setregid/setregid01_16
-/ltp/testcases/kernel/syscalls/setregid/setregid02
 /ltp/testcases/kernel/syscalls/setregid/setregid02_16
 /ltp/testcases/kernel/syscalls/setregid/setregid03_16
 /ltp/testcases/kernel/syscalls/setregid/setregid04_16
@@ -766,6 +767,8 @@
 /ltp/testcases/kernel/syscalls/wait4/wait402
 /ltp/testcases/kernel/syscalls/waitid/waitid01
 /ltp/testcases/kernel/syscalls/waitid/waitid02
+/ltp/testcases/kernel/syscalls/waitpid/waitpid08
+/ltp/testcases/kernel/syscalls/waitpid/waitpid13
 /ltp/testcases/kernel/syscalls/write/write03
 /ltp/testcases/kernel/syscalls/write/write04
 /ltp/testcases/kernel/syscalls/write/write05

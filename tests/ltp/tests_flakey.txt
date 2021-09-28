@@ -1,6 +1,5 @@
-/ltp/testcases/kernel/syscalls/kill/kill09
-/ltp/testcases/kernel/syscalls/waitpid/waitpid03
-/ltp/testcases/kernel/syscalls/waitpid/waitpid10
 /ltp/testcases/kernel/syscalls/fchmodat/fchmodat01
 /ltp/testcases/kernel/syscalls/fork/fork04
-
+/ltp/testcases/kernel/syscalls/kill/kill09
+/ltp/testcases/kernel/syscalls/pause/pause03
+/ltp/testcases/kernel/syscalls/waitpid/waitpid10

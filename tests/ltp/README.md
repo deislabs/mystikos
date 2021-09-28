@@ -353,7 +353,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/fork/fork07 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/fork/fork08 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/fork/fork09 | 1 | 0 | 1 |
-| /ltp/testcases/kernel/syscalls/fork/fork10 | 1 | 0 | 1 |
+| /ltp/testcases/kernel/syscalls/fork/fork10 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/fork/fork11 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/fork/fork12 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/fork/fork13 | 0 | 0 | 0 |
@@ -373,8 +373,8 @@ FAILING
 | /ltp/testcases/kernel/syscalls/fspick/fspick02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/fstat/fstat02 | 0 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/fstat/fstat02_64 | 0 | 1 | 1 |
-| /ltp/testcases/kernel/syscalls/fstat/fstat03 | 1 | 0 | 1 |
-| /ltp/testcases/kernel/syscalls/fstat/fstat03_64 | 1 | 0 | 1 |
+| /ltp/testcases/kernel/syscalls/fstat/fstat03 | 1 | 1 | 1 |
+| /ltp/testcases/kernel/syscalls/fstat/fstat03_64 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/fstatat/fstatat01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/fstatfs/fstatfs01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/fstatfs/fstatfs01_64 | 0 | 0 | 0 |
@@ -806,7 +806,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/open/open02 | 0 | 1 | 0 |
 | /ltp/testcases/kernel/syscalls/open/open03 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/open/open04 | 1 | 0 | 1 |
-| /ltp/testcases/kernel/syscalls/open/open05 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/open/open05 | 0 | 1 | 0 |
 | /ltp/testcases/kernel/syscalls/open/open06 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/open/open07 | 1 | 1 | 0 |
 | /ltp/testcases/kernel/syscalls/open/open08 | 0 | 0 | 0 |
@@ -831,7 +831,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/pathconf/pathconf01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/pause/pause01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/pause/pause02 | 1 | 1 | 1 |
-| /ltp/testcases/kernel/syscalls/pause/pause03 | 1 | 1 | 1 |
+| /ltp/testcases/kernel/syscalls/pause/pause03 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/perf_event_open/perf_event_open01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/perf_event_open/perf_event_open02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/personality/personality01 | 0 | 0 | 0 |
@@ -1112,7 +1112,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/setpriority/setpriority02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/setregid/setregid01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/setregid/setregid01_16 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/setregid/setregid02 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/setregid/setregid02 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/setregid/setregid02_16 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/setregid/setregid03 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/setregid/setregid03_16 | 0 | 0 | 0 |
@@ -1352,7 +1352,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/waitid/waitid02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/waitpid/waitpid01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/waitpid/waitpid02 | 1 | 1 | 1 |
-| /ltp/testcases/kernel/syscalls/waitpid/waitpid03 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/waitpid/waitpid03 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/waitpid/waitpid04 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/waitpid/waitpid05 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/waitpid/waitpid06 | 1 | 1 | 1 |
