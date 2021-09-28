@@ -3,7 +3,11 @@ TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
 ifdef STRACE
-OPTS = --strace
+OPTS += --strace
+endif
+
+ifdef ETRACE
+OPTS += --etrace
 endif
 
 APPDIR=$(CURDIR)/appdir
@@ -111,3 +115,6 @@ clean-tests:
 # This crasshes with memcheck enabled
 bug:
 	make one TEST=/app/llvm-project/libcxx/test/libcxx/input.output/iostreams.base/ios/iostate.flags/clear.abort.pass.cpp.exe
+
+t:
+	make one TEST=/app/llvm-project/libcxx/test/std/input.output/filesystems/fs.op.funcs/fs.op.rename/rename.pass.cpp.exe

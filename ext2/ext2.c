@@ -4209,7 +4209,7 @@ int ext2_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
     ECHECK(_path_to_inode(
         ext2,
         oldpath,
-        FOLLOW,
+        NOFOLLOW,
         &old_dino,
         &old_ino,
         &locals->old_dinode,
@@ -4227,7 +4227,7 @@ int ext2_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
     if (_path_to_inode(
             ext2,
             newpath,
-            FOLLOW,
+            NOFOLLOW,
             &new_dino,
             &new_ino,
             &locals->new_dinode,
@@ -4245,6 +4245,13 @@ int ext2_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
             ECHECK(
                 _inode_test_empty_directory(ext2, new_ino, &locals->new_inode));
             locals->new_inode.i_links_count--;
+        }
+
+        /* if oldpath is a regular file, newpath cannot be a directory */
+        if (!S_ISDIR(locals->old_inode.i_mode) &&
+            S_ISDIR(locals->new_inode.i_mode))
+        {
+            ERAISE(-EISDIR);
         }
 
         /* unlink newpath */
@@ -4550,8 +4557,8 @@ int ext2_mkdir(myst_fs_t* fs, const char* path, mode_t mode)
     if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
-    /* Reject S_IFMT bits */
-    if ((mode & S_IFMT))
+    /* reject all S_IFMT bits except for O_DIRECT */
+    if ((mode & S_IFMT) && !(mode & O_DIRECT))
         ERAISE(-EINVAL);
 
     /* Split the path */

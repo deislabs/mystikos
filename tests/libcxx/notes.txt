@@ -1,0 +1,4 @@
+1. /app/llvm-project/libcxx/test/std/input.output/filesystems/fs.op.funcs/fs.op.copy/copy.pass.cpp.exe
+
+    Fails because SYS_mknod(fifo) is not implemented. The test tries to create
+    a fifo and then tries to stat that file, only to find it does not exist.

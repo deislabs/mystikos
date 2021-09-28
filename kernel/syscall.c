@@ -1503,6 +1503,7 @@ long myst_syscall_mkdir(const char* pathname, mode_t mode)
         ERAISE(-ENAMETOOLONG);
 
     ECHECK(myst_mount_resolve(pathname, locals->suffix, &fs));
+
     ECHECK((*fs->fs_mkdir)(fs, locals->suffix, mode));
 
 done:
@@ -1925,6 +1926,10 @@ long myst_syscall_chdir(const char* path)
     if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
+    /* path may not be an empty string */
+    if (*path == '\0')
+        ERAISE(-ENOENT);
+
     myst_spin_lock(&process->cwd_lock);
     locked = true;
 
@@ -2041,6 +2046,13 @@ long myst_syscall_statfs(const char* path, struct statfs* buf)
         char suffix[PATH_MAX];
     };
     struct locals* locals = NULL;
+
+    if (!path || !buf)
+        ERAISE(-EINVAL);
+
+    /* Reject empty path */
+    if (*path == '\0')
+        ERAISE(-EINVAL);
 
     if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
@@ -4698,7 +4710,7 @@ static long _syscall(void* args_)
             const char* path = (const char*)x1;
             struct statfs* buf = (struct statfs*)x2;
 
-            _strace(n, "path=%s buf=%p", path, buf);
+            _strace(n, "path=\"%s\" buf=%p", path, buf);
 
             long ret = myst_syscall_statfs(path, buf);
 

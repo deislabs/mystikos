@@ -1700,7 +1700,7 @@ static int _fs_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
 
     /* Find the oldpath inode */
     ECHECK(_path_to_inode(
-        ramfs, oldpath, true, &old_parent, &old_inode, locals->suffix, &tfs));
+        ramfs, oldpath, false, &old_parent, &old_inode, locals->suffix, &tfs));
     if (tfs)
     {
         /* append old_basename and delegate operation to target filesystem */
