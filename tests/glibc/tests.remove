@@ -22,6 +22,7 @@
 /glibc/build/nptl/tst-tsd5
 /glibc/build/posix/wordexp-test
 /glibc/build/rt/tst-aio
+/glibc/build/rt/tst-aio5
 /glibc/build/rt/tst-aio64
 /glibc/build/rt/tst-aio7
 /glibc/build/stdlib/tst-getrandom
