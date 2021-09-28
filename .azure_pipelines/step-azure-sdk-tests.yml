@@ -10,9 +10,9 @@ steps:
       scriptPath: $(SCRIPTS_ROOT)/run-azure-tests.sh
       addSpnToEnvironment: true
       arguments:
+        $(Build.SourcesDirectory)/solutions/python_azure_sdk
         $(Build.SourcesDirectory)/tests/azure-sdk-for-cpp
         $(Build.SourcesDirectory)/solutions/dotnet_azure_sdk
-        $(Build.SourcesDirectory)/solutions/python_azure_sdk
     env:
       AZURE_KEYVAULT_URL: $(AZURE_TEST_KEYVAULT_URL)
       STANDARD_STORAGE_CONNECTION_STRING: $(STANDARD_STORAGE_CONNECTION_STRING)
