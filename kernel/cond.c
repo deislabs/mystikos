@@ -290,6 +290,7 @@ int myst_cond_timedwait(
     myst_mutex_t* mutex,
     const struct timespec* timeout)
 {
+    int ret = _cond_timedwait(c, mutex, timeout);
     myst_signal_process(myst_thread_self());
-    return _cond_timedwait(c, mutex, timeout);
+    return ret;
 }
