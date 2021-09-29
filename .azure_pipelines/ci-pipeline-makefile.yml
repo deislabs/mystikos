@@ -65,6 +65,7 @@ jobs:
         env:
           MYST_DO_CLEANUP: 1
 
+      - template: step-azure-sdk-tests.yml
       # run solution tests
       - script: |
           make tests -C $(Build.SourcesDirectory)/solutions
