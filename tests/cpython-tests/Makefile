@@ -8,21 +8,25 @@ ifdef STRACE
 OPTS += --strace
 endif
 
+MPDB=$(TOP)/scripts/mpdb.py
 TESTFILE=tests.passed
-TEST = test_trace
+TEST = test_bz2
 FS=ext2fs3.9
 
 # Set timeout to 25 mins (to run both the python3.8 test suite and the python3.9 test suite)
 export TIMEOUT=1500
 
-all: ext2fs3.8 ext2fs3.9 
+all: ext2fs3.8 ext2fs3.9
 
-ext2fs3.8:
+mpdb.py:$(MPDB)
+	cp -f $(TOP)/scripts/mpdb.py mpdb.py
+
+ext2fs3.8:mpdb.py
 	rm -fr appdir3.8
-	$(APPBUILDER) -o appdir3.8 -e "--build-arg CPYTHON_VERSION=v3.8.11" Dockerfile 
+	$(APPBUILDER) -o appdir3.8 -e "--build-arg CPYTHON_VERSION=v3.8.11" Dockerfile
 	$(MYST) mkext2 appdir3.8 ext2fs3.8
 
-ext2fs3.9:
+ext2fs3.9:mpdb.py
 	rm -fr appdir3.9
 	$(APPBUILDER) -o appdir3.9 -e "--build-arg CPYTHON_VERSION=v3.9.7" Dockerfile
 	$(MYST) mkext2 appdir3.9 ext2fs3.9
@@ -39,3 +43,9 @@ run-list: ext2fs3.8 ext2fs3.9
 
 one: $(FS)
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) /cpython/python -m test $(TEST) -v
+
+one-mpdb: $(FS)
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) /cpython/python -m mpdb -m test $(TEST) -v &
+	sleep 10 && rlwrap telnet 127.0.0.1 5678
+	# Once debugger prompt is available, do
+        # (Pdb) b /cpython/Lib/test/<test file>.py:line
