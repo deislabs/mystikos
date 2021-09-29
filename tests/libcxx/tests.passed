@@ -1426,9 +1426,12 @@
 /app/llvm-project/libcxx/test/std/input.output/filesystems/fs.op.funcs/fs.op.create_directory_symlink/create_directory_symlink.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/input.output/filesystems/fs.op.funcs/fs.op.create_hard_link/create_hard_link.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/input.output/filesystems/fs.op.funcs/fs.op.create_symlink/create_symlink.pass.cpp.exe
+/app/llvm-project/libcxx/test/std/input.output/filesystems/fs.op.funcs/fs.op.current_path/current_path.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/input.output/filesystems/fs.op.funcs/fs.op.hard_lk_ct/hard_link_count.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/input.output/filesystems/fs.op.funcs/fs.op.read_symlink/read_symlink.pass.cpp.exe
+/app/llvm-project/libcxx/test/std/input.output/filesystems/fs.op.funcs/fs.op.rename/rename.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/input.output/filesystems/fs.op.funcs/fs.op.resize_file/resize_file.pass.cpp.exe
+/app/llvm-project/libcxx/test/std/input.output/filesystems/fs.op.funcs/fs.op.space/space.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/input.output/filesystems/fs.op.funcs/fs.op.status_known/status_known.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/input.output/filesystems/fs.req.macros/feature_macro.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/input.output/filesystems/fs.req.namespace/namespace.pass.cpp.exe
