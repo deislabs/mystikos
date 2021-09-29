@@ -4,6 +4,7 @@
 #ifndef _MYST_THREAD_H
 #define _MYST_THREAD_H
 #define _GNU_SOURCE
+#include <assert.h>
 #include <signal.h>
 #include <sys/resource.h>
 #include <sys/times.h>
@@ -222,6 +223,7 @@ struct myst_thread
 
     /* used by myst_thread_queue_t (condition variables and mutexes) */
     struct myst_thread* qnext;
+    struct myst_thread_queue* queue;
 
     /* for jumping back on exit */
     myst_jmp_buf_t jmpbuf;
@@ -364,7 +366,7 @@ MYST_INLINE size_t myst_thread_queue_size(myst_thread_queue_t* queue)
 {
     size_t n = 0;
 
-    for (myst_thread_t* p = queue->front; p; p = p->qnext)
+    for (const myst_thread_t* p = queue->front; p; p = p->qnext)
         n++;
 
     return n;
@@ -374,6 +376,9 @@ MYST_INLINE void myst_thread_queue_push_back(
     myst_thread_queue_t* queue,
     myst_thread_t* thread)
 {
+    myst_assume(thread->queue == NULL);
+    myst_assume(thread->qnext == NULL);
+
     thread->qnext = NULL;
 
     if (queue->back)
@@ -382,6 +387,7 @@ MYST_INLINE void myst_thread_queue_push_back(
         queue->front = thread;
 
     queue->back = thread;
+    thread->queue = queue;
 }
 
 MYST_INLINE myst_thread_t* myst_thread_queue_pop_front(
@@ -395,6 +401,9 @@ MYST_INLINE myst_thread_t* myst_thread_queue_pop_front(
 
         if (!queue->front)
             queue->back = NULL;
+
+        thread->queue = NULL;
+        thread->qnext = NULL;
     }
 
     return thread;
@@ -433,8 +442,14 @@ MYST_INLINE int myst_thread_queue_remove_thread(
         }
     }
 
-    // thread->qnext = NULL;
-    return found ? pos : -1;
+    if (found)
+    {
+        thread->queue = NULL;
+        thread->qnext = NULL;
+        return pos;
+    }
+
+    return -1;
 }
 
 MYST_INLINE bool myst_thread_queue_contains(
