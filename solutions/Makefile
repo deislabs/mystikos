@@ -37,8 +37,6 @@ DIRS += cpprestsdk
 
 .PHONY: $(DIRS)
 
-DIRS =
-
 build: $(DIRS)
 
 $(DIRS):
