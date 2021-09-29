@@ -10,7 +10,6 @@
 
 #include <myst/cond.h>
 #include <myst/mutex.h>
-#include <myst/printf.h>
 #include <myst/signal.h>
 #include <myst/strings.h>
 #include <myst/tcall.h>
@@ -179,7 +178,6 @@ int myst_cond_signal(myst_cond_t* c)
     if (!waiter)
         return 0;
 
-    waiter->qnext = NULL;
     myst_tcall_wake(waiter->event);
 
     return 0;
@@ -212,6 +210,8 @@ int myst_cond_broadcast(myst_cond_t* c, size_t n)
     for (myst_thread_t* p = waiters.front; p; p = next)
     {
         next = p->qnext;
+        p->qnext = NULL;
+        p->queue = NULL;
         myst_tcall_wake(p->event);
         num_awoken++;
     }
@@ -265,6 +265,8 @@ int myst_cond_requeue(
         for (myst_thread_t* p = wakers.front; p; p = next)
         {
             next = p->qnext;
+            p->qnext = NULL;
+            p->queue = NULL;
             myst_tcall_wake(p->event);
         }
     }
@@ -277,6 +279,8 @@ int myst_cond_requeue(
         for (myst_thread_t* p = requeues.front; p; p = next)
         {
             next = p->qnext;
+            p->qnext = NULL;
+            p->queue = NULL;
             myst_thread_queue_push_back(&c2->queue, p);
         }
     }
@@ -290,6 +294,12 @@ int myst_cond_timedwait(
     myst_mutex_t* mutex,
     const struct timespec* timeout)
 {
+    /* pre-check for signals */
     myst_signal_process(myst_thread_self());
     return _cond_timedwait(c, mutex, timeout);
+}
+
+int myst_cond_wait_no_signal_processing(myst_cond_t* c, myst_mutex_t* mutex)
+{
+    return _cond_timedwait(c, mutex, NULL);
 }

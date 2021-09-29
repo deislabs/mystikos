@@ -253,6 +253,7 @@ static ssize_t _pd_read(
         while (rem > 0)
         {
             size_t min = _min(rem, _nbytes(shared));
+            int wait_ret = 0;
 
             if (min) /* there is data in the buffer */
             {
@@ -315,14 +316,15 @@ static ssize_t _pd_read(
                         break;
 
                     /* block here until pipe becomes read enabled */
-                    myst_cond_wait(&shared->cond, &shared->lock);
+                    wait_ret = myst_cond_wait_no_signal_processing(
+                        &shared->cond, &shared->lock);
                 }
             }
 
             if (nread > 0)
                 break;
 
-            if (myst_signal_has_active_signals(myst_thread_self()))
+            if (wait_ret == -EINTR)
                 ERAISE(-EINTR);
         }
     }
@@ -393,6 +395,7 @@ static ssize_t _pd_write(
         {
             size_t space = shared->pipesz - _nbytes(shared);
             size_t min = _min(rem, space);
+            int wait_ret = 0;
 
             if (min) /* there is space in the buffer */
             {
@@ -457,11 +460,12 @@ static ssize_t _pd_write(
                         break;
 
                     /* wait for pipe to become write enabled or closed */
-                    myst_cond_wait(&shared->cond, &shared->lock);
+                    wait_ret = myst_cond_wait_no_signal_processing(
+                        &shared->cond, &shared->lock);
                 }
             }
 
-            if (myst_signal_has_active_signals(myst_thread_self()))
+            if (wait_ret == -EINTR)
             {
                 if (nwritten == 0)
                     ERAISE(-EINTR);
@@ -686,6 +690,9 @@ static int _pd_close(myst_pipedev_t* pipedev, myst_pipe_t* pipe)
 
     T(printf("_pd_close(): fd=%d pid=%d\n", pipe->fd, myst_getpid());)
     ECHECK(myst_tcall_close(pipe->fd));
+
+    /* signal any threads blocked on read or write */
+    myst_cond_signal(&pipe->shared->cond);
 
     _lock(&pipe->shared->lock, &locked);
 
