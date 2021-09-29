@@ -55,7 +55,7 @@ void test_writer(void)
 int main(int argc, const char* argv[])
 {
     test_reader();
-    // test_writer();
+    test_writer();
 
     printf("=== passed test (%s)\n", argv[0]);
 
