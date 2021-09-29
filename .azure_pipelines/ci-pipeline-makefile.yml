@@ -69,21 +69,19 @@ jobs:
       # run solution tests
       - script: |
           echo "SSS" $(MY_CLIENT_SECRET)
-          export CLIENT_SECRET=$(MY_CLIENT_SECRET)
+          export CLIENT_SECRET=$MY_CLIENT_SECRET
           make tests -C $(Build.SourcesDirectory)/solutions
         displayName: 'run solution tests'
         continueOnError: true
         enabled: true
         workingDirectory: $(Build.SourcesDirectory)
         env:
-          # by default sql solution test will run on US EAST DB Node
           DB_NAME: $(DB_NAME_USEAST)
           DB_SERVER_NAME: $(DB_SERVER_NAME_USEAST)
           MAA_URL: $(DB_MAA_URL_USEAST)
           MY_CLIENT_SECRET: $(MHSM_CLIENT_SECRET)
           CLIENT_ID: $(MHSM_CLIENT_ID)
           APP_ID: $(MHSM_APP_ID)
-          # If set, don't run certain tests
           MYST_SKIP_PR_TEST: 1
           MYST_DO_CLEANUP: 1
       - template: step-azure-sdk-tests.yml
