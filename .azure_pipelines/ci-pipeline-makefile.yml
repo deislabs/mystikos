@@ -68,8 +68,8 @@ jobs:
       - template: step-azure-sdk-tests.yml
       # run solution tests
       - script: |
-          echo "SSS" $(MHSM_CLIENT_SECRET)
-          export CLIENT_SECRET=$MHSM_CLIENT_SECRET
+          echo "SSS" $(MY_CLIENT_SECRET)
+          export CLIENT_SECRET=$(MY_CLIENT_SECRET)
           make tests -C $(Build.SourcesDirectory)/solutions
         displayName: 'run solution tests'
         continueOnError: true
@@ -80,7 +80,7 @@ jobs:
           DB_NAME: $(DB_NAME_USEAST)
           DB_SERVER_NAME: $(DB_SERVER_NAME_USEAST)
           MAA_URL: $(DB_MAA_URL_USEAST)
-          MHSM_CLIENT_SECRET: $(MHSM_CLIENT_SECRET)
+          MY_CLIENT_SECRET: $(MHSM_CLIENT_SECRET)
           CLIENT_ID: $(MHSM_CLIENT_ID)
           APP_ID: $(MHSM_APP_ID)
           # If set, don't run certain tests
