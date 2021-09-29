@@ -316,8 +316,7 @@ static ssize_t _pd_read(
                         break;
 
                     /* block here until pipe becomes read enabled */
-                    wait_ret = myst_cond_wait_no_signal_processing(
-                        &shared->cond, &shared->lock);
+                    wait_ret = __myst_cond_wait(&shared->cond, &shared->lock);
                 }
             }
 
@@ -460,8 +459,7 @@ static ssize_t _pd_write(
                         break;
 
                     /* wait for pipe to become write enabled or closed */
-                    wait_ret = myst_cond_wait_no_signal_processing(
-                        &shared->cond, &shared->lock);
+                    wait_ret = __myst_cond_wait(&shared->cond, &shared->lock);
                 }
             }
 

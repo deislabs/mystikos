@@ -21,13 +21,9 @@ int myst_cond_init(myst_cond_t* c);
 
 int myst_cond_destroy(myst_cond_t* c);
 
-int myst_cond_wait(myst_cond_t* c, myst_mutex_t* mutex);
+int __myst_cond_wait(myst_cond_t* c, myst_mutex_t* mutex);
 
-// Caution: The caller must be prepared to handle signal interruptions
-// (where the function returns -EINTR).
-int myst_cond_wait_no_signal_processing(myst_cond_t* c, myst_mutex_t* mutex);
-
-int myst_cond_timedwait(
+int __myst_cond_timedwait(
     myst_cond_t* c,
     myst_mutex_t* mutex,
     const struct timespec* timeout);

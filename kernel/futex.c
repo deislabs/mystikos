@@ -8,6 +8,7 @@
 #include <myst/cond.h>
 #include <myst/eraise.h>
 #include <myst/futex.h>
+#include <myst/signal.h>
 #include <myst/strings.h>
 #include <myst/thread.h>
 
@@ -189,9 +190,15 @@ int myst_futex_wait(int* uaddr, int val, const struct timespec* to)
             goto done;
         }
 
-        ret = myst_cond_timedwait(&f->cond, &f->mutex, to);
+        ret = __myst_cond_timedwait(&f->cond, &f->mutex, to);
     }
     myst_mutex_unlock(&f->mutex);
+
+    if (ret == -EINTR)
+    {
+        /* process any signals on this thread */
+        myst_signal_process(myst_thread_self());
+    }
 
 done:
 

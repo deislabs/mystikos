@@ -245,7 +245,7 @@ int myst_mutex_lock(myst_mutex_t* mutex)
     /* repeat as long as there is an -EINTR error */
     while ((ret = _mutex_lock(mutex)) == -EINTR)
     {
-        /* check for signals */
+        /* process any signals on this thread */
         myst_signal_process(self);
     }
 

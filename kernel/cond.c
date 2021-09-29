@@ -55,7 +55,7 @@ typedef struct myst_cond_thread_sig_handler
 
 } myst_cond_thread_sig_handler_t;
 
-static int _cond_timedwait(
+int __myst_cond_timedwait(
     myst_cond_t* c,
     myst_mutex_t* mutex,
     const struct timespec* timeout)
@@ -140,9 +140,9 @@ static int _cond_timedwait(
     return ret;
 }
 
-int myst_cond_wait(myst_cond_t* c, myst_mutex_t* mutex)
+int __myst_cond_wait(myst_cond_t* c, myst_mutex_t* mutex)
 {
-    return myst_cond_timedwait(c, mutex, NULL);
+    return __myst_cond_timedwait(c, mutex, NULL);
 }
 
 int myst_cond_signal_thread(myst_cond_t* c, myst_thread_t* thread)
@@ -287,19 +287,4 @@ int myst_cond_requeue(
     myst_spin_unlock(&c2->lock);
 
     return 0;
-}
-
-int myst_cond_timedwait(
-    myst_cond_t* c,
-    myst_mutex_t* mutex,
-    const struct timespec* timeout)
-{
-    /* pre-check for signals */
-    myst_signal_process(myst_thread_self());
-    return _cond_timedwait(c, mutex, timeout);
-}
-
-int myst_cond_wait_no_signal_processing(myst_cond_t* c, myst_mutex_t* mutex)
-{
-    return _cond_timedwait(c, mutex, NULL);
 }

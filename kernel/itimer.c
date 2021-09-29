@@ -12,6 +12,7 @@
 #include <myst/eraise.h>
 #include <myst/mutex.h>
 #include <myst/process.h>
+#include <myst/signal.h>
 #include <myst/syscall.h>
 #include <myst/time.h>
 #include <myst/timeval.h>
@@ -97,7 +98,7 @@ long myst_syscall_run_itimer(void)
             }
 
             uint64_t start = _get_current_time();
-            int r = myst_cond_timedwait(&_it.cond, &_it.mutex, to);
+            int r = __myst_cond_timedwait(&_it.cond, &_it.mutex, to);
             uint64_t end = _get_current_time();
 
             assert(start != 0);
@@ -112,6 +113,11 @@ long myst_syscall_run_itimer(void)
             else if (r == -ETIMEDOUT)
             {
                 _update_and_check_expiration(start, end);
+            }
+            else if (r == -EINTR)
+            {
+                /* process any signals on this thread */
+                myst_signal_process(myst_thread_self());
             }
         }
     }
