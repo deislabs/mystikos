@@ -131,6 +131,28 @@ endif
 
 .PHONY: $(DIRS)
 
+DIRS =
+DIRS += dotnet-ubuntu
+DIRS += dotnet-ubuntu
+DIRS += dotnet-ubuntu
+DIRS += dotnet-ubuntu
+DIRS += dotnet-ubuntu
+DIRS += dotnet-ubuntu
+DIRS += dotnet-ubuntu
+DIRS += dotnet-ubuntu
+DIRS += dotnet-ubuntu
+DIRS += dotnet-ubuntu
+DIRS += dotnet-sos
+DIRS += dotnet-sos
+DIRS += dotnet-sos
+DIRS += dotnet-sos
+DIRS += dotnet-sos
+DIRS += dotnet-sos
+DIRS += dotnet-sos
+DIRS += dotnet-sos
+DIRS += dotnet-sos
+DIRS += dotnet-sos
+
 dirs: $(DIRS)
 
 $(DIRS):
