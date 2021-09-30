@@ -164,8 +164,8 @@ void test_pipes(long slow_write, long slow_read)
     /* ATTN: test flags later */
     assert(pipe2(pipefd, 0) == 0);
 
-    assert(fcntl(pipefd[0], F_SETPIPE_SZ, 4096) == 0);
-    assert(fcntl(pipefd[1], F_SETPIPE_SZ, 4096) == 0);
+    assert(fcntl(pipefd[0], F_SETPIPE_SZ, 4096) == 4096);
+    assert(fcntl(pipefd[1], F_SETPIPE_SZ, 4096) == 4096);
 
     /* Stat the pipe */
     {
@@ -358,8 +358,8 @@ void test_multiple_readers_writers(bool slow_write, bool slow_read)
 
     /* Create the pipe */
     assert(pipe2(pipefd, 0) == 0);
-    assert(fcntl(pipefd[0], F_SETPIPE_SZ, 4096) == 0);
-    assert(fcntl(pipefd[1], F_SETPIPE_SZ, 4096) == 0);
+    assert(fcntl(pipefd[0], F_SETPIPE_SZ, 4096) == 4096);
+    assert(fcntl(pipefd[1], F_SETPIPE_SZ, 4096) == 4096);
 
     /* Create the reader threads */
     for (size_t i = 0; i < NUM_THREADS / 2; i++)
