@@ -565,6 +565,7 @@ static int _pd_fcntl(
             arg = (arg + (PIPE_BUF - 1)) / PIPE_BUF * PIPE_BUF;
 
             pipe->shared->pipesz = arg;
+            ret = arg;
             goto done;
         }
         case F_GETPIPE_SZ:
