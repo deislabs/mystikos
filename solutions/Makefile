@@ -13,6 +13,12 @@ endif
 endif
 endif
 
+# Enable this azure-specific solution only on the nightly pipeline
+# as it depends on secrets only availale on that pipeline.
+ifdef MYST_NIGHTLY_TEST
+DIRS += mhsm_ssr
+endif
+
 DIRS += msgpack_c
 
 ifndef MYST_ENABLE_GCOV

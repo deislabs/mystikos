@@ -1,0 +1,12 @@
+{
+    "version": "0.1",
+    "Debug": 1,
+    "ProductID": 1,
+    "SecurityVersion": 1,
+    "MemorySize": "500m",
+    "ApplicationPath": "/bin/test_ssr",
+    "ApplicationParameters": [],
+    "HostApplicationParameters": false,
+    "EnvironmentVariables": ["AZDCAP_DEBUG_LOG_LEVEL=0"],
+    "HostEnvironmentVariables": ["CLIENT_ID", "CLIENT_SECRET", "MHSM_AAD_URL", "APP_ID"]
+}
