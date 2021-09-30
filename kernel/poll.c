@@ -64,7 +64,7 @@ static long _syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
     /* copy fds[] into arrays tfds[] array */
     for (nfds_t i = 0; i < nfds; i++)
     {
-        int tfd;
+        int tfd = -1;
         myst_fdtable_type_t type;
         myst_fdops_t* fdops;
         void* object;
@@ -78,15 +78,14 @@ static long _syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
 
         if (res == -EBADF)
         {
-            /* closed/invalid fd gets POLLNVAL */
-            fds[i].revents = POLLNVAL;
-            ievents++;
-            continue;
+            tfd = INT_MAX;
+            res = 0;
         }
 
         ECHECK(res);
 
         /* inject special internal events if any */
+        if (tfd != INT_MAX)
         {
             const int events = (*fdops->fd_get_events)(fdops, object);
 
@@ -99,7 +98,8 @@ static long _syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
         }
 
         /* get the target fd for this object */
-        if ((tfd = (*fdops->fd_target_fd)(fdops, object)) >= 0)
+        if (tfd == INT_MAX ||
+            (tfd = (*fdops->fd_target_fd)(fdops, object)) >= 0)
         {
             tfds[tnfds].events = fds[i].events;
             tfds[tnfds].fd = tfd;
