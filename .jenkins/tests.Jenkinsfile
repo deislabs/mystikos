@@ -9,6 +9,7 @@ APPROVED_AUTHORS = [
     'bodzhang',
     'CyanDevs',
     'Francis-Liu',
+    'jxyang',
     'mikbras',
     'mingweishih',
     'RRathna',
