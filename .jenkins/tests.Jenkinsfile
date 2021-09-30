@@ -48,7 +48,7 @@ pipeline {
             steps {
                 sh """
                     while sudo lsof /var/lib/dpkg/lock-frontend | grep dpkg; do sleep 3; done
-                    sudo apt-get -y install jq
+                    sudo apt-get -y --option Acquire::Retries=5 install jq
                 """
                 script {
                     if ( ! env.CHANGE_ID ) {
@@ -132,6 +132,7 @@ pipeline {
                 stage('Minimum init config') {
                     steps {
                         sh """
+                        echo 'APT::Acquire::Retries "5";' | sudo tee /etc/apt/apt.conf.d/80-retries
                         curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
                         sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu \$(lsb_release -cs) stable"
                         sudo apt-get update
