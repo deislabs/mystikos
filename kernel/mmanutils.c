@@ -1055,23 +1055,24 @@ int myst_msync(void* addr, size_t length, int flags)
     size_t index;
     vectors_t v = _get_vectors();
     const int mask = MS_SYNC | MS_ASYNC | MS_INVALIDATE;
+    size_t rounded_up_length;
 
     /* reject bad parameters and unknown flags */
-    if (!addr || !length || (flags & ~mask))
+    if (!addr || ((uint64_t)addr % PAGE_SIZE) || !length || (flags & ~mask))
         ERAISE(-EINVAL);
 
     /* fail if both MS_SYNC and MS_ASYNC are both present */
     if ((flags & MS_SYNC) && (flags & MS_ASYNC))
         ERAISE(-EINVAL);
 
-    ECHECK(myst_round_up(length, PAGE_SIZE, &length));
-    ECHECK((index = _get_page_index(addr, length)));
+    ECHECK(myst_round_up(length, PAGE_SIZE, &rounded_up_length));
+    ECHECK((index = _get_page_index(addr, rounded_up_length)));
 
     _rlock(&locked);
     {
         int prot;
         bool consistent;
-        const size_t n = length / PAGE_SIZE;
+        const size_t n = rounded_up_length / PAGE_SIZE;
         uint8_t* page = addr;
 
         for (size_t i = index; i < index + n; i++)
@@ -1083,10 +1084,15 @@ int myst_msync(void* addr, size_t length, int flags)
                 ECHECK(myst_mman_get_prot(
                     &_mman, page, PAGE_SIZE, &prot, &consistent));
                 if (prot & PROT_WRITE)
-                    ECHECK(_sync_file(p->fd, p->offset, page, PAGE_SIZE));
+                    ECHECK(_sync_file(
+                        p->fd,
+                        p->offset,
+                        page,
+                        length > PAGE_SIZE ? PAGE_SIZE : length));
             }
 
             page += PAGE_SIZE;
+            length -= PAGE_SIZE;
         }
     }
     _runlock(&locked);
