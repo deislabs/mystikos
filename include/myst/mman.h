@@ -43,7 +43,7 @@ typedef struct myst_vad
     uintptr_t addr;
 
     /* Size of this memory region in bytes */
-    uint32_t size;
+    uint64_t size;
 
     /* Protection flags for this region MYST_PROT_???? */
     uint16_t prot;
@@ -52,7 +52,7 @@ typedef struct myst_vad
     uint16_t flags;
 } myst_vad_t;
 
-_Static_assert(sizeof(myst_vad_t) == 32, "");
+_Static_assert(sizeof(myst_vad_t) == 40, "");
 
 #define MYST_MMAN_MAGIC 0xcc8e1732ebd80b0b
 

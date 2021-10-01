@@ -337,7 +337,7 @@ static myst_vad_t* _mman_new_vad(
         goto done;
 
     vad->addr = addr;
-    vad->size = (uint32_t)size;
+    vad->size = size;
     vad->prot = (uint16_t)prot;
     vad->flags = (uint16_t)flags;
 
@@ -601,14 +601,14 @@ static int _munmap(myst_mman_t* mman, void* addr, size_t length)
         /* Case2: [uuuu............] */
 
         vad->addr += length;
-        vad->size -= (uint32_t)length;
+        vad->size -= length;
         _mman_sync_top(mman);
     }
     else if (_end(vad) == end)
     {
         /* Case3: [............uuuu] */
 
-        vad->size -= (uint32_t)length;
+        vad->size -= length;
     }
     else
     {
@@ -617,7 +617,7 @@ static int _munmap(myst_mman_t* mman, void* addr, size_t length)
         size_t vad_end = _end(vad);
 
         /* Adjust the left portion */
-        vad->size = (uint32_t)(start - vad->addr);
+        vad->size = start - vad->addr;
 
         myst_vad_t* right;
 
@@ -927,7 +927,7 @@ static int _mmap(
         {
             /* Coalesce with LEFT neighbor */
 
-            left->size += (uint32_t)length;
+            left->size += length;
 
             /* Coalesce with RIGHT neighbor (and release right neighbor) */
             if (right && (start + length == right->addr))
@@ -942,7 +942,7 @@ static int _mmap(
             /* Coalesce with RIGHT neighbor */
 
             right->addr = start;
-            right->size += (uint32_t)length;
+            right->size += length;
             _mman_sync_top(mman);
         }
         else
@@ -1580,7 +1580,7 @@ int myst_mman_mremap(
             _mman_sync_top(mman);
         }
 
-        vad->size = (uint32_t)(new_end - vad->addr);
+        vad->size = new_end - vad->addr;
         new_addr = addr;
 
 // ATTN: The region truncated might not have PROT_WRITE permission to
@@ -1633,7 +1633,7 @@ int myst_mman_mremap(
         /* If there is room for this area to grow without moving it */
         if (_end(vad) == old_end && _get_right_gap(mman, vad) >= delta)
         {
-            vad->size += (uint32_t)delta;
+            vad->size += delta;
             /* If the old area is pending zero fill, the expanded area gets the
              * same treatment. In case part of the old area is pending zero
              * fill, prot should have been set to MYST_PROT_NONE, and the
