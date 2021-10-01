@@ -75,6 +75,7 @@ jobs:
         CLIENT_SECRET: $(MHSM_CLIENT_SECRET)
         CLIENT_ID: $(MHSM_CLIENT_ID)
         APP_ID: $(MHSM_APP_ID)
+        SSR_PKEY: $(MHSM_SSR_PKEY)
         MYST_DO_CLEANUP: 1
         MYST_NIGHTLY_TEST: 1
 

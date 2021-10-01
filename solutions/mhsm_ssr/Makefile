@@ -2,6 +2,7 @@ TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 APPBUILDER=$(TOP)/scripts/appbuilder
 APPNAME=test_ssr
+PKEY_FILE=p.pem
 
 all: appdir
 
@@ -9,15 +10,18 @@ appdir:
 	g++ -g -o $(APPNAME) test_ssr.c -ldl
 	$(APPBUILDER) Dockerfile
 
-run: appdir
-	echo "$(SSR_PRIVATE_KEY)" > private.pem
-	$(MYST) package appdir private.pem config.json
-	rm private.pem
+$(PKEY_FILE):
+	./gen_pkey.sh $(PKEY_FILE)
+
+run: appdir $(PKEY_FILE)
+	$(MYST) package appdir p.pem config.json
+	rm -rf $(PKEY_FILE)
 	./myst/bin/$(APPNAME)
 
-gdb: appdir
-	$(MYST) package appdir private.pem config.json
+gdb: appdir $(PKEY_FILE)
+	$(MYST) package appdir p.pem config.json
+	rm -rf $(PKEY_FILE)
 	$(MYST_GDB) --args ./myst/bin/$(APPNAME)
 
 clean:
-	rm -rf appdir myst *.o $(APPNAME)
+	rm -rf appdir myst *.o $(APPNAME) $(PKEY_FILE)
