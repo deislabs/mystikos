@@ -15,6 +15,7 @@ rootfs: appdir
 
 appdir:
 	$(APPBUILDER) Dockerfile
+	$(SQUASH-APPDIR) appdir
 
 run:
 	$(MAKE) run1

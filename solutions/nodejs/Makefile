@@ -16,6 +16,7 @@ rootfs: appdir
 
 appdir:
 	$(APPBUILDER) Dockerfile
+	$(SQUASH-APPDIR) appdir
 
 TIMEOUT=60s
 

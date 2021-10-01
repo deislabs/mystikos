@@ -19,6 +19,7 @@ gdb: rootfs
 
 appdir:
 	$(APPBUILDER) Dockerfile
+	$(SQUASH-APPDIR) appdir
 
 rootfs: appdir
 	$(MYST) mkcpio appdir rootfs

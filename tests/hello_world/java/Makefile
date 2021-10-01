@@ -13,6 +13,7 @@ all: appdir rootfs
 
 appdir:
 	$(APPBUILDER) Dockerfile
+	$(SQUASH-APPDIR) appdir
 
 rootfs: appdir
 	$(MYST) mkext2 --force appdir ext2rootfs

@@ -17,6 +17,7 @@ all: ext2fs runner-image
 
 appdir:
 	$(APPBUILDER) Dockerfile
+	$(SQUASH-APPDIR) appdir
 
 ext2fs: appdir
 	rm -rf appdir/tmp/clr-debug-pipe*

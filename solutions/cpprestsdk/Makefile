@@ -20,6 +20,7 @@ run:
 
 $(APPDIR):
 	$(APPBUILDER) -v -d Dockerfile
+	$(SQUASH-APPDIR) $(APPDIR)
 
 cpio: $(APPDIR)
 	$(MYST) mkcpio $(APPDIR) rootfs

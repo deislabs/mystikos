@@ -26,6 +26,7 @@ all: rootfs
 appdir:
 	$(APPBUILDER) Dockerfile
 	cp $(PYTEST_INI_FILE) appdir/
+	$(SQUASH-APPDIR) appdir
 
 rootfs: appdir
 	$(MYST) mkext2 appdir rootfs

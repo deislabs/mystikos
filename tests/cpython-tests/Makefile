@@ -25,11 +25,13 @@ mpdb.py:$(MPDB)
 ext2fs3.8:mpdb.py
 	rm -fr appdir3.8
 	$(APPBUILDER) -o appdir3.8 -e "--build-arg CPYTHON_VERSION=v3.8.11" Dockerfile
+	$(SQUASH-APPDIR) appdir3.8
 	$(MYST) mkext2 appdir3.8 ext2fs3.8
 
 ext2fs3.9:mpdb.py
 	rm -fr appdir3.9
 	$(APPBUILDER) -o appdir3.9 -e "--build-arg CPYTHON_VERSION=v3.9.7" Dockerfile
+	$(SQUASH-APPDIR) appdir3.9
 	$(MYST) mkext2 appdir3.9 ext2fs3.9
 
 clean:

@@ -24,6 +24,7 @@ gdb: appdir private.pem
 
 appdir:
 	$(APPBUILDER) Dockerfile
+	$(SQUASH-APPDIR) appdir
 
 private.pem:
 	openssl genrsa -out private.pem -3 3072

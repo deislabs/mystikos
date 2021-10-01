@@ -11,6 +11,7 @@ all: ext2fs
 
 appdir:
 	$(APPBUILDER) Dockerfile
+	$(SQUASH-APPDIR) appdir
 
 ext2fs: appdir
 	$(MYST) mkext2 appdir ext2fs
