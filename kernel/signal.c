@@ -64,14 +64,29 @@ long _handler_wrapper(void* arg_)
     return 0;
 }
 
+/* Called to make sure we have a clean sigactions structure.
+ * This is called from the main process creation where there will be no
+ * handlers, so a clean structure needed. It is called from clone for creating a
+ * new process, where we will need to allocate a new structure for the new
+ * process. The clone will then copy the parent process handlers across. It is
+ * called from exec in order to make sure we have a structure and it is cleaned
+ * out as the new exec-ed process has no handlers by default.
+ */
 int myst_signal_init(myst_process_t* process)
 {
     int ret = 0;
 
-    process->signal.sigactions = calloc(NSIG, sizeof(posix_sigaction_t));
+    if (!process->signal.sigactions)
+    {
+        process->signal.sigactions = calloc(NSIG, sizeof(posix_sigaction_t));
 
-    if (process->signal.sigactions == NULL)
-        ERAISE(-ENOMEM);
+        if (process->signal.sigactions == NULL)
+            ERAISE(-ENOMEM);
+    }
+    else
+    {
+        memset(process->signal.sigactions, 0, NSIG * sizeof(posix_sigaction_t));
+    }
 
 done:
     return ret;

@@ -41,5 +41,9 @@ test-fork-kill-children: all
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) --app-config-path config-pseudo.json rootfs /bin/fork fork
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) --fork-mode pseudo rootfs /bin/fork fork
 
+# pseudo, wait for exec or exit to be called
+test-wait-exec-sighandler: rootfs
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) --app-config-path config-wait-exec.json rootfs /bin/fork forkwait_sighandler
+
 clean:
 	rm -rf $(APPDIR) rootfs
