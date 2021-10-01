@@ -2284,8 +2284,9 @@ long myst_syscall_pipe2(int pipefd[2], int flags)
     myst_pipedev_t* pd = myst_pipedev_get();
     static const ssize_t margin = 8;
 
+    /* Linux raises EFAULT when pipefd is null */
     if (!pipefd)
-        ERAISE(-EINVAL);
+        ERAISE(-EFAULT);
 
     /* Leave a little margin so pipe2() does not exhaust the last few fds */
     if (myst_fdtable_count(fdtable) < margin)
