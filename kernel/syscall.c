@@ -3727,24 +3727,27 @@ static long _syscall(void* args_)
             if ((uintptr_t)addr % PAGE_SIZE || !length)
                 BREAK(_return(n, -EINVAL));
 
-            /* mman supports addr hint only if the mapping already exists. If
-             * addr hint is provided, process must own the existing mapping. */
+            /* mman supports non-null addr if - existing mapping, MAP_FIXED
+             * passed in flags and process must own the existing mapping. */
             if (addr && length)
             {
-                pid_t pid = myst_getpid();
-
-                size_t rounded_up_length;
-                if (myst_round_up(length, PAGE_SIZE, &rounded_up_length) < 0)
-                    BREAK(_return(n, -EINVAL));
-
-                /* if calling process does not own this mapping */
-                if (myst_mman_pids_test(addr, rounded_up_length, pid) !=
-                    (ssize_t)rounded_up_length)
+                if (flags & MAP_FIXED)
                 {
-                    if (flags & MAP_FIXED)
+                    pid_t pid = myst_getpid();
+
+                    size_t rounded_up_length;
+                    if (myst_round_up(length, PAGE_SIZE, &rounded_up_length) <
+                        0)
                         BREAK(_return(n, -EINVAL));
 
-                    /* address hint failed so reset addr to null */
+                    /* if calling process does not own this mapping */
+                    if (myst_mman_pids_test(addr, rounded_up_length, pid) !=
+                        (ssize_t)rounded_up_length)
+                        BREAK(_return(n, -EINVAL));
+                }
+                else
+                {
+                    /* address hint is unsupported */
                     addr = NULL;
                 }
             }

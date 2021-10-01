@@ -871,7 +871,7 @@ static int _mmap(
         goto done;
     }
 
-    // ATTN: Current implementaiton deviates from Linux behavior
+    // ATTN: Current implementation deviates from Linux behavior
     /* https://linux.die.net/man/2/mmap: If addr is not NULL, then the kernel
     takes it as a hint about where to place the mapping; on Linux, the mapping
     will be created at a nearby page boundary. MAP_FIXED - Don't interpret addr
