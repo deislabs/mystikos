@@ -11,6 +11,7 @@ endif
 MPDB=$(TOP)/scripts/mpdb.py
 TESTFILE=tests.passed
 TEST = test_bz2
+TESTCASE = test_capi.CAPITest.test_negative_refcount
 VER=3.9
 FS=ext2fs$(VER)
 
@@ -60,3 +61,6 @@ To enable python source listing, do \n\
   sudo mount --bind appdir$(VER)/cpython /cpython\n\
 before launching gdb.\033[0m\n')" \
            --args $(MYST_EXEC) $(OPTS) $(FS) /cpython/python -m test $(TEST) -v
+
+testcase: $(FS)
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) /cpython/python -m unittest Lib.test.$(TESTCASE) -v

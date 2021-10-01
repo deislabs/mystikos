@@ -26,6 +26,7 @@
 #include <myst/reloc.h>
 #include <myst/round.h>
 #include <myst/setjmp.h>
+#include <myst/signal.h>
 #include <myst/spinlock.h>
 #include <myst/strings.h>
 #include <myst/syscall.h>
@@ -848,6 +849,9 @@ int myst_exec(
         ERAISE(-EINVAL);
 
     process = thread->process;
+
+    /* reset sigactions */
+    myst_signal_init(process);
 
     /* allocate and zero-fill the new CRT image */
     {
