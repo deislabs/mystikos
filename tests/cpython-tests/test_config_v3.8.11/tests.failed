@@ -33,7 +33,6 @@ test_json
 test_locale
 test_logging
 test_mailbox
-test_mmap
 test_openpty
 test_os
 test_pathlib
