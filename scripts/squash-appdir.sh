@@ -22,8 +22,8 @@ if [ "${appdir}" == "/" ]; then
     exit 1
 fi
 
-# Remove files with these extensions: .c, .h, .o, .a
-rm -rf `find ${appdir} -name '*.[choa]'`
+# Remove files with these extensions: .c, .h, .o
+rm -rf `find ${appdir} -name '*.[cho]'`
 
 # Remove C++ files
 rm -rf `find ${appdir} -name '*.cpp'`
