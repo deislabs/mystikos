@@ -126,6 +126,10 @@ static void _get_options(
     if (cli_getopt(argc, argv, "--nobrk", NULL) == 0)
         opts->nobrk = true;
 
+    /* Get --exec-stack option */
+    if (cli_getopt(argc, argv, "--exec-stack", NULL) == 0)
+        opts->exec_stack = true;
+
     /* Get --perf option */
     if (cli_getopt(argc, argv, "--perf", NULL) == 0)
         opts->perf = true;
@@ -425,6 +429,8 @@ static int _enter_kernel(
     kernel_args.memcheck = final_options.base.memcheck;
 
     kernel_args.nobrk = final_options.base.nobrk;
+
+    kernel_args.exec_stack = final_options.base.exec_stack;
 
     kernel_args.perf = final_options.base.perf;
 

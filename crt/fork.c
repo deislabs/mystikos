@@ -43,7 +43,7 @@ static void _set_fsbase(void* p)
 /*
 **==============================================================================
 **
-** _get_current_stack()
+** myst_get_current_stack()
 **
 ** the main thread stack of all processes are created in the kernel, and all
 ** other process threads created by pthread_create are done in the CRT itself.
@@ -53,7 +53,7 @@ static void _set_fsbase(void* p)
 **
 **==============================================================================
 */
-static void _get_current_stack(void** stack, size_t* stack_size)
+void myst_get_current_stack(void** stack, size_t* stack_size)
 {
     struct pthread* self = __pthread_self();
 
@@ -404,7 +404,7 @@ __attribute__((__returns_twice__)) pid_t myst_fork(void)
         size_t stack_size;
         size_t parent_stack_size;
 
-        _get_current_stack(&parent_stack, &parent_stack_size);
+        myst_get_current_stack(&parent_stack, &parent_stack_size);
 
         if (!(child_pthread = _create_child_pthread_and_copy_stack(
                   parent_stack, parent_stack_size)))

@@ -78,6 +78,7 @@ typedef struct _config_parsed_data_t
     myst_fork_mode_t fork_mode;
     myst_mounts_config_t mounts;
     bool no_brk;
+    bool exec_stack;
     bool unhandled_syscall_enosys;
 
     size_t main_stack_size;

@@ -456,6 +456,7 @@ static pair_t _pairs[] = {
     {SYS_myst_get_fork_info, "SYS_myst_get_fork_info"},
     {SYS_fork_wait_exec_exit, "SYS_fork_wait_exec_exit"},
     {SYS_myst_kill_wait_child_forks, "SYS_myst_kill_wait_child_forks"},
+    {SYS_myst_get_exec_stack_option, "SYS_myst_get_exec_stack_option"},
     /* Open Enclave extensions */
     {SYS_myst_oe_get_report_v2, "SYS_myst_oe_get_report_v2"},
     {SYS_myst_oe_free_report, "SYS_myst_oe_free_report"},
@@ -3469,6 +3470,11 @@ static long _syscall(void* args_)
             _strace(n, "ptr=%p, size=%zu", ptr, size);
 
             BREAK(_return(n, myst_syscall_unmap_on_exit(thread, ptr, size)));
+        }
+        case SYS_myst_get_exec_stack_option:
+        {
+            _strace(n, NULL);
+            BREAK(_return(n, __myst_kernel_args.exec_stack));
         }
         case SYS_get_process_thread_stack:
         {

@@ -175,6 +175,9 @@ typedef struct myst_kernel_args
     /* true if --nobrk option is present (if so brk syscall returns -ENOTSUP */
     bool nobrk;
 
+    /* true if --exec_stack option is present -- allows trampolines. */
+    bool exec_stack;
+
     /* true if --perf option present -- print performance statistics */
     bool perf;
 

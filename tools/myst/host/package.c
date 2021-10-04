@@ -642,6 +642,17 @@ int _exec_package(
         goto done;
     }
 
+    /* Check --exec-stack option */
+    if (cli_getopt(&argc, argv, "--exec-stack", NULL) == 0)
+    {
+        fprintf(
+            stderr,
+            "--exec-stack not allowed for packaged applications."
+            " Can be enabled by setting ExecStack=true in "
+            "config.json\n");
+        goto done;
+    }
+
     /* Get --perf option */
     if (cli_getopt(&argc, argv, "--perf", NULL) == 0)
         options.perf = true;
@@ -839,6 +850,7 @@ int _exec_package(
        Else, default to false.
     */
     options.nobrk = parsed_data.no_brk ? true : false;
+    options.exec_stack = parsed_data.exec_stack ? true : false;
 
     if ((details = create_region_details_from_package(
              &sections, parsed_data.heap_pages)) == NULL)

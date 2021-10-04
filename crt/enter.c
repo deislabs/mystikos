@@ -188,3 +188,9 @@ static void _create_itimer_thread(void)
         abort();
     }
 }
+
+bool myst_get_exec_stack_option()
+{
+    long params[6] = {0};
+    return myst_syscall(SYS_myst_get_exec_stack_option, params);
+}
