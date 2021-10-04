@@ -46,8 +46,10 @@ one: $(FS)
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) /cpython/python -m test $(TEST) -v
 
 one-mpdb: $(FS)
+	killall myst 2> /dev/null || echo ""
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) /cpython/python -m mpdb -m test $(TEST) -v &
-	sleep 10 && rlwrap telnet 127.0.0.1 5678
+	sleep 15 # Increase this value in Makefile if connection fails
+	rlwrap telnet 127.0.0.1 5678
 	# Once debugger prompt is available, do
 	# (Pdb) b /cpython/Lib/test/<test file>.py:line
 
