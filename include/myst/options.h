@@ -21,6 +21,7 @@ typedef struct myst_options
     bool debug_symbols;
     bool memcheck;
     bool nobrk;
+    bool exec_stack;
     bool perf;
     bool report_native_tids;
     bool unhandled_syscall_enosys;

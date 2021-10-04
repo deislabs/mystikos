@@ -598,6 +598,7 @@ static long _enter(void* arg_)
         _kargs.debug_symbols = final_options.base.debug_symbols;
         _kargs.memcheck = final_options.base.memcheck;
         _kargs.nobrk = final_options.base.nobrk;
+        _kargs.exec_stack = final_options.base.exec_stack;
         _kargs.perf = final_options.base.perf;
         _kargs.start_time_sec = arg->start_time_sec;
         _kargs.start_time_nsec = arg->start_time_nsec;

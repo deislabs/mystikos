@@ -221,6 +221,15 @@ static json_result_t _json_read_callback(
                 else
                     CONFIG_RAISE(JSON_TYPE_MISMATCH);
             }
+            else if (json_match(parser, "ExecStack") == JSON_OK)
+            {
+                if (type == JSON_TYPE_BOOLEAN)
+                    parsed_data->exec_stack = un->boolean;
+                else if (type == JSON_TYPE_INTEGER)
+                    parsed_data->exec_stack = (un->integer == 0) ? false : true;
+                else
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
+            }
             else if (json_match(parser, "ApplicationPath") == JSON_OK)
             {
                 if (type == JSON_TYPE_STRING)
