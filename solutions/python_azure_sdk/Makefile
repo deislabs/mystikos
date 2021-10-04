@@ -12,13 +12,13 @@ endif
 all: rootfs
 
 appdir-keyvault_identity:
-	$(APPBUILDER) -d Dockerfile -v -e '--build-arg TAG=azure-mgmt-keyvault_9.1.0 --build-arg PACKAGES=keyvault_identity/packages.txt' -o keyvault_identity/appdir
+	$(APPBUILDER) -i mystikos/azure-python-sdk-keyvault-identity:azure-mgmt-keyvault_9.1.0 -v -o keyvault_identity/appdir
 
 appdir-storage:
-	$(APPBUILDER) -d Dockerfile -v -e '--build-arg TAG=azure-mgmt-storage_19.0.0 --build-arg PACKAGES=storage/packages.txt' -o storage/appdir
+	$(APPBUILDER) -i mystikos/azure-python-sdk-storage:azure-mgmt-storage_19.0.0 -v -o storage/appdir
 
 appdir-storage-blob:
-	$(APPBUILDER) -d Dockerfile -v -e '--build-arg TAG=azure-storage-blob_12.8.1 --build-arg PACKAGES=storage-blob/packages.txt' -o storage-blob/appdir
+	$(APPBUILDER) -i mystikos/azure-python-sdk-storage-blob:azure-storage-blob_12.8.1 -v -o storage-blob/appdir
 
 rootfs-keyvault_identity: appdir-keyvault_identity
 	$(MYST) mkext2 keyvault_identity/appdir keyvault_identity/rootfs
