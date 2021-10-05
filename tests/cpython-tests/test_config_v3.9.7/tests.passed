@@ -1,11 +1,3 @@
-test_audit
-test_grammar
-test_opcodes
-test_dict
-test_builtin
-test_exceptions
-test_types
-test_unittest
 test___all__
 test___future__
 test__opcode
@@ -20,6 +12,7 @@ test_asdl_parser
 test_ast
 test_atexit
 test_audioop
+test_audit
 test_augassign
 test_baseexception
 test_bdb
@@ -32,7 +25,9 @@ test_bisect
 test_bool
 test_buffer
 test_bufio
+test_builtin
 test_bytes
+test_bz2
 test_calendar
 test_call
 test_cgi
@@ -72,6 +67,7 @@ test_contextlib_async
 test_copy
 test_copyreg
 test_coroutines
+test_cprofile
 test_crashers
 test_crypt
 test_csv
@@ -89,6 +85,7 @@ test_deque
 test_descr
 test_descrtut
 test_devpoll
+test_dict
 test_dict_version
 test_dictcomps
 test_dictviews
@@ -109,8 +106,10 @@ test_epoll
 test_errno
 test_exception_hierarchy
 test_exception_variations
+test_exceptions
 test_extcall
 test_file
+test_file_eintr
 test_filecmp
 test_fileinput
 test_finalization
@@ -139,6 +138,7 @@ test_getopt
 test_getpass
 test_gettext
 test_global
+test_grammar
 test_graphlib
 test_grp
 test_hash
@@ -165,6 +165,7 @@ test_isinstance
 test_iter
 test_iterlen
 test_itertools
+test_json
 test_keyword
 test_keywordonlyarg
 test_kqueue
@@ -200,6 +201,7 @@ test_nis
 test_nntplib
 test_ntpath
 test_numeric_tower
+test_opcodes
 test_operator
 test_optparse
 test_ordered_dict
@@ -228,6 +230,7 @@ test_pwd
 test_pyclbr
 test_pyexpat
 test_queue
+test_quopri
 test_raise
 test_range
 test_reprlib
@@ -245,8 +248,8 @@ test_shelve
 test_shlex
 test_site
 test_slice
-test_smtplib
 test_smtpd
+test_smtplib
 test_smtpnet
 test_sndhdr
 test_socketserver
@@ -286,14 +289,16 @@ test_timeout
 test_tix
 test_tk
 test_tokenize
+test_tools
+test_trace
 test_traceback
 test_ttk_guionly
 test_ttk_textonly
 test_tuple
 test_turtle
-test_trace
 test_type_comments
 test_typechecks
+test_types
 test_typing
 test_ucn
 test_unary
@@ -301,6 +306,7 @@ test_unicode
 test_unicode_file_functions
 test_unicode_identifiers
 test_unicodedata
+test_unittest
 test_univnewlines
 test_unpack
 test_unpack_ex
@@ -338,5 +344,6 @@ test_yield_from
 test_zipapp
 test_zipfile64
 test_zipimport
+test_zipimport_support
 test_zlib
 test_zoneinfo
