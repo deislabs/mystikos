@@ -355,6 +355,10 @@ static ssize_t _pd_read(
             }
             else /* the buffer is empty */
             {
+                /* break out if there are no writers */
+                if (shared->nwriters == 0)
+                    break;
+
                 if ((pipe->fl_flags & O_NONBLOCK))
                 {
                     if (nread == 0)
@@ -364,10 +368,6 @@ static ssize_t _pd_read(
                 }
                 else
                 {
-                    /* break out if there are no writters */
-                    if (shared->nwriters == 0)
-                        break;
-
                     /* block here until pipe becomes read enabled */
                     wait_ret = myst_cond_wait_no_signal_processing(
                         &shared->cond, &shared->lock);
@@ -669,7 +669,10 @@ static int _pd_fcntl(
 
             /* propagate this to the host file descriptor */
             ECHECK((r = myst_tcall_fcntl(pipe->fd, cmd, arg)));
-            pipe->fl_flags = arg;
+
+            /* preserve existing FL_IGNORE flags, and override FL_FLAGS from
+             * fcntl(F_SETFL) return */
+            pipe->fl_flags = (pipe->fl_flags & FL_IGNORE) | arg;
             break;
         }
         default:
@@ -709,9 +712,17 @@ static int _pd_ioctl(
         myst_getppid()));
 
     if (request == TIOCGWINSZ)
+    {
         ERAISE(-EINVAL);
-
-    ERAISE(-ENOTSUP);
+    }
+    else if (request == FIONBIO)
+    {
+        ECHECK(_pd_fcntl(pipedev, pipe, F_SETFL, pipe->fl_flags | O_NONBLOCK));
+    }
+    else
+    {
+        ERAISE(-ENOTSUP);
+    }
 
 done:
 
