@@ -66,3 +66,13 @@ before launching gdb.\033[0m\n')" \
 
 testcase: $(FS)
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) /cpython/python -m unittest Lib.test.$(TESTCASE) -v
+
+testcase-gdb: $(FS)
+	$(RUNTEST) $(MYST_GDB) -iex "source ./appdir$(VER)/cpython/python-gdb.py" \
+           -iex "python print('\033[0;32m\n\
+type py-<tab> to see available python-gdb commands.\n\n\
+To enable python source listing, do \n\
+  sudo mkdir -p /cpython\n\
+  sudo mount --bind appdir$(VER)/cpython /cpython\n\
+before launching gdb.\033[0m\n')" \
+           --args $(MYST_EXEC) $(OPTS) $(FS) /cpython/python -m unittest Lib.test.$(TESTCASE) -v
