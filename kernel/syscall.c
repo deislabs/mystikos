@@ -3503,11 +3503,11 @@ static long _syscall(void* args_)
 
             long rrr = _return(n, myst_syscall_read(fd, buf, count));
 
-            for (long i = 0; i < rrr; i++)
-            {
-                printf("%u ", ((uint8_t*)(buf))[i]);
-            }
-            printf("\n");
+            // for (long i = 0; i < rrr; i++)
+            // {
+            //     printf("%u ", ((uint8_t*)(buf))[i]);
+            // }
+            // printf("\n");
 
             BREAK(rrr);
         }
