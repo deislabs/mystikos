@@ -1647,3 +1647,30 @@ index 00000000..6612ffd8
 +}
 +
 +weak_alias(pwritev2, pwritev64v2);
+diff --git a/src/multibyte/wcsnrtombs.c b/src/multibyte/wcsnrtombs.c
+index 676932b5..6e513741 100644
+--- a/src/multibyte/wcsnrtombs.c
++++ b/src/multibyte/wcsnrtombs.c
+@@ -2,6 +2,7 @@
+ 
+ size_t wcsnrtombs(char *restrict dst, const wchar_t **restrict wcs, size_t wn, size_t n, mbstate_t *restrict st)
+ {
++#ifdef MYST_ENABLE_WCSNRTOMBS
+ 	size_t l, cnt=0, n2;
+ 	char *s, buf[256];
+ 	const wchar_t *ws = *wcs;
+@@ -40,4 +41,14 @@ size_t wcsnrtombs(char *restrict dst, const wchar_t **restrict wcs, size_t wn, s
+ 	}
+ 	if (dst) *wcs = ws;
+ 	return cnt;
++#else
++    /* Temporarily disable the insecure wcsnrtombs, which
++     * will be patched in MUSL 1.2.2. */
++    (void)dst;
++    (void)wcs;
++    (void)wn;
++    (void)n;
++    (void)st;
++    return 0;
++#endif
+ }
