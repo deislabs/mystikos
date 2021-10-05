@@ -25,7 +25,7 @@ def main():
     host = '127.0.0.1'
     client_socket = socket.create_server((host, port),
                                          family=socket.AF_INET,
-                                         reuse_port=True)
+                                         reuse_port=False)
 
     client_socket.listen(1)
     connection, address = client_socket.accept()
