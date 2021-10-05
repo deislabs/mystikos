@@ -3137,19 +3137,10 @@ long myst_syscall_get_mempolicy(
     int ROUND_UP_VAL = sizeof(unsigned long) * 8;
     myst_round_up(maxnode, ROUND_UP_VAL, &rounded_maxnode);
 
-    unsigned long* rounded_nodemask;
-    // allocate higher buffer
-    if (rounded_maxnode > maxnode)
-    {
-        rounded_nodemask = malloc(rounded_maxnode / CHAR_BIT);
-    }
-    else
-    {
-        rounded_nodemask = nodemask;
-    }
+    memset(nodemask, 0, rounded_maxnode);
 
     long params[6] = {(long)mode,
-                      (long)rounded_nodemask,
+                      (long)nodemask,
                       (long)rounded_maxnode,
                       (long)addr,
                       (long)flags};
@@ -3164,14 +3155,8 @@ long myst_syscall_get_mempolicy(
         int n = rounded_maxnode / ROUND_UP_VAL;
         for (int i = 0; i < n; i++)
         {
-            *(rounded_nodemask + i * ROUND_UP_VAL) = 0;
+            *(nodemask + i * ROUND_UP_VAL) = 0;
         }
-    }
-
-    if (rounded_maxnode > maxnode)
-    {
-        memcpy(nodemask, rounded_nodemask, maxnode / CHAR_BIT);
-        free(rounded_nodemask);
     }
 
     return ret;

@@ -516,7 +516,7 @@ enclave
         
         long myst_get_mempolicy_ocall(
             [out] int* mode,
-            [out, size=nodemask_size] unsigned long* nodemask,
+            [in, out, size=nodemask_size] unsigned long* nodemask,
             size_t nodemask_size,
             unsigned long maxnode,
             void* addr,
