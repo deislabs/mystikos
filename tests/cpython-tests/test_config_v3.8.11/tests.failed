@@ -24,7 +24,6 @@ test_glob
 test_gzip
 test_import
 test_importlib
-test_io
 test_json
 test_locale
 test_logging
