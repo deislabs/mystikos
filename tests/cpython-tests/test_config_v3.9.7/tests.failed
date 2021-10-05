@@ -5,7 +5,6 @@ test_asyncio
 test_asyncore
 test_base64
 test_c_locale_coercion
-test_capi
 test_cmd_line
 test_cmd_line_script
 test_compileall
@@ -59,7 +58,6 @@ test_stat
 test_strptime
 test_subprocess
 test_support
-test_sys
 test_tarfile
 test_tempfile
 test_thread

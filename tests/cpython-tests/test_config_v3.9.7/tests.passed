@@ -30,6 +30,7 @@ test_bytes
 test_bz2
 test_calendar
 test_call
+test_capi
 test_cgi
 test_cgitb
 test_charmapcodec
@@ -274,6 +275,7 @@ test_super
 test_symbol
 test_symtable
 test_syntax
+test_sys
 test_sys_setprofile
 test_sys_settrace
 test_sysconfig
