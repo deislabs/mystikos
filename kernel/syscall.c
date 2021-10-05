@@ -1035,14 +1035,25 @@ done:
 long myst_syscall_lseek(int fd, off_t offset, int whence)
 {
     long ret = 0;
-    myst_fs_t* fs;
-    myst_file_t* file;
-    const myst_fdtable_type_t type = MYST_FDTABLE_TYPE_FILE;
+    myst_fdtable_type_t type;
+    void* device = NULL;
+    void* object = NULL;
     myst_fdtable_t* fdtable = myst_fdtable_current();
 
-    ECHECK(myst_fdtable_get(fdtable, fd, type, (void**)&fs, (void**)&file));
+    ECHECK(myst_fdtable_get_any(fdtable, fd, &type, &device, &object));
 
-    ret = ((*fs->fs_lseek)(fs, file, offset, whence));
+    if (type == MYST_FDTABLE_TYPE_FILE)
+    {
+        myst_fs_t* fs = (myst_fs_t*)device;
+        myst_file_t* file = (myst_file_t*)object;
+        ret = ((*fs->fs_lseek)(fs, file, offset, whence));
+    }
+    else
+    {
+        /* Linux returns ESPIPE for non-seekable resources - pipes and sockets
+         */
+        ERAISE(-ESPIPE);
+    }
 
 done:
     return ret;
