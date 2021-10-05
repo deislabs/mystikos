@@ -109,6 +109,103 @@ successfully launched it in a TEE.
 To run an application with Mystikos in release or production mode, please see
 [packaging](./sign-package.md).
 
+## Debug your Python application
+
+For security reasons, Mystikos does not expose `stdin` to the enclave. To facilitate debugging,
+Mystikos provides `mpdb.py` which wraps Python's debugger `pdb` and routes communication
+with the debugger over a socket.
+
+To debug your Python application, first download `mpdb.py`:
+``` bash
+wget https://raw.githubusercontent.com/deislabs/mystikos/main/scripts/mpdb.py
+```
+
+Then, change the Dockerfile to copy `mpdb.py` to your container.
+```docker
+FROM python:3.9-slim
+RUN pip3 install numpy
+
+WORKDIR /app
+COPY ./hello.py /app
+
+# Copy debugger wrapper.
+COPY ./mpdb.py /app
+
+ENTRYPOINT ["python3", "hello.py"]
+```
+
+As before, build the self-contained app folder and the cpio archive
+```
+myst-appbuilder Dockerfile
+myst mkcpio appdir rootfs
+```
+
+To debug, when launching your application using Mystikos, add `-m mpdb` command line argument to python.
+This instructs python to load the `mpdb` wrapper module first. The `mpdb` module waits opens a port
+and waits for connections. Specify `&` at the end of the command to run it in the background so that the
+same terminal window can be used to connect to `mpdb`.
+```bash
+myst exec-sgx --memory-size 256m rootfs /usr/local/bin/python3 -m mpdb /app/hello.py &
+
+MYSTIKOS_PDB_PORT environment variable not set. Defaulting to port 5678
+Mystikos pdb waiting for connections at port 5678
+```
+
+Connect to `mpdb` using telnet. The `rlwrap` program is used to wrap `telnet` and provide command history.
+```bash
+rlwrap telnet localhost 5678
+
+Trying 127.0.0.1...
+Connected to localhost.
+Escape character is '^]'.
+> /app/hello.py(1)<module>()
+-> import numpy as np
+(Pdb)
+```
+
+At `(Pdb)` prompt, regular Pdb commands (e.g.: next, step, continue, print etc) can be used:
+```bash
+(Pdb) n
+> /app/hello.py(2)<module>()
+-> a = np.arange(100).reshape(10, 10)
+  1  	import numpy as np
+  2  ->	a = np.arange(100).reshape(10, 10)
+  3  	print(a)
+  4  	print("Welcome to Python and numpy!")
+[EOF]
+(Pdb) n
+> /app/hello.py(3)<module>()
+-> print(a)
+  1  	import numpy as np
+  2  	a = np.arange(100).reshape(10, 10)
+  3  ->	print(a)
+  4  	print("Welcome to Python and numpy!")
+[EOF]
+(Pdb) p a
+array([[ 0,  1,  2,  3,  4,  5,  6,  7,  8,  9],
+       [10, 11, 12, 13, 14, 15, 16, 17, 18, 19],
+       [20, 21, 22, 23, 24, 25, 26, 27, 28, 29],
+       [30, 31, 32, 33, 34, 35, 36, 37, 38, 39],
+       [40, 41, 42, 43, 44, 45, 46, 47, 48, 49],
+       [50, 51, 52, 53, 54, 55, 56, 57, 58, 59],
+       [60, 61, 62, 63, 64, 65, 66, 67, 68, 69],
+       [70, 71, 72, 73, 74, 75, 76, 77, 78, 79],
+       [80, 81, 82, 83, 84, 85, 86, 87, 88, 89],
+       [90, 91, 92, 93, 94, 95, 96, 97, 98, 99]])
+(Pdb)
+```
+
+For the list of available commands, refer to [`Pdb documentation`](https://docs.python.org/3/library/pdb.html#debugger-commands).
+
+To quit debugging, type `q` to detach from `mpdb`. Then kill the `myst` process if it is still running.
+```bash
+(Pdb) q
+Connection closed by foreign host.
+
+killall myst
+```
+
+
 ## Further readings
 
 For more complex Python programs that are already working with Mystikos, please see:
