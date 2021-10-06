@@ -106,15 +106,16 @@
 /app/llvm-project/libcxx/test/std/localization/locales/locale.convenience/conversions/conversions.character/tolower.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/localization/locales/locale.convenience/conversions/conversions.character/toupper.pass.cpp.exe
 
-# same istream operator >> problems
+# same istream operator ">>" problems
 /app/llvm-project/libcxx/test/std/numerics/complex.number/complex.ops/stream_input.pass.cpp.exe
 
+# complex number operations fail
 /app/llvm-project/libcxx/test/std/numerics/complex.number/complex.transcendentals/acos.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/numerics/complex.number/complex.transcendentals/asinh.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/numerics/complex.number/complex.transcendentals/atanh.pass.cpp.exe
-
 /app/llvm-project/libcxx/test/std/numerics/complex.number/complex.value.ops/proj.pass.cpp.exe
 
+# Another version of operator">>" overloading glitch
 /app/llvm-project/libcxx/test/std/numerics/rand/rand.adapt/rand.adapt.disc/io.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/numerics/rand/rand.adapt/rand.adapt.ibits/io.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/numerics/rand/rand.adapt/rand.adapt.shuf/io.pass.cpp.exe
@@ -138,6 +139,8 @@
 /app/llvm-project/libcxx/test/std/numerics/rand/rand.dis/rand.dist.uni/rand.dist.uni.real/io.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/numerics/rand/rand.eng/rand.eng.mers/io.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/numerics/rand/rand.eng/rand.eng.sub/io.pass.cpp.exe
+
+# exception handling not supported in mystikos
 /app/llvm-project/libcxx/test/std/re/re.alg/re.alg.match/inverted_character_classes.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/re/re.alg/re.alg.replace/test1.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/re/re.alg/re.alg.replace/test2.pass.cpp.exe
@@ -174,6 +177,8 @@
 /app/llvm-project/libcxx/test/std/re/re.traits/isctype.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/re/re.traits/value.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/strings/string.conversions/to_string.pass.cpp.exe
+
+# occasional futex retry and threading issues
 /app/llvm-project/libcxx/test/std/thread/futures/futures.async/async_race.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/thread/futures/futures.promise/set_rvalue.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/thread/futures/futures.promise/set_value_const.pass.cpp.exe
