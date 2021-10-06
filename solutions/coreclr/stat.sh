@@ -35,7 +35,7 @@ if [[ -f FAILED-1 ]]; then
 	cat FAILED-1
 fi
 
-if [ "$(( pass_count*100/NUM_TESTS ))" -lt "95" ]; then
-	echo "Failed to pass at least 95% - Pass percentage: $(( $pass_count*100/$NUM_TESTS ))%"
+if [ "$(( pass_count*100/NUM_TESTS ))" -lt "99" ]; then
+	echo "Failed to pass at least 99% - Pass percentage: $(( $pass_count*100/$NUM_TESTS ))%"
 	exit 1
 fi
