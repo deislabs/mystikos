@@ -3501,15 +3501,7 @@ static long _syscall(void* args_)
 
             _strace(n, "fd=%d buf=%p count=%zu", fd, buf, count);
 
-            long rrr = _return(n, myst_syscall_read(fd, buf, count));
-
-            // for (long i = 0; i < rrr; i++)
-            // {
-            //     printf("%u ", ((uint8_t*)(buf))[i]);
-            // }
-            // printf("\n");
-
-            BREAK(rrr);
+            BREAK(_return(n, myst_syscall_read(fd, buf, count)));
         }
         case SYS_write:
         {

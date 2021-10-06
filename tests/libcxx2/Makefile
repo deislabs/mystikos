@@ -60,7 +60,7 @@ tests:
 
 __tests:
 	for i in a b c d e f ; do \
-		$(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run testsa$$i.passed ; \
+		$(MYST_EXEC) --nobrk $(OPTS) $(ROOTFS) /bin/run testsa$$i.passed ; \
 	done
 
 myst:
