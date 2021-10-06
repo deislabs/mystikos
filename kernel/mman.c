@@ -634,17 +634,15 @@ static int _munmap(myst_mman_t* mman, void* addr, size_t length)
         _mman_sync_top(mman);
     }
 
-    // ATTN: The region unmapped might not have PROT_WRITE permission to
-    // perform scrub efficiently. The prot_vector based implementation has
-    // complication of inconsistent prot within a VAD. Skip scrubbing for
-    // now.
-
-    /* If memcheck is enabled mark the unmapped memory so it can be
-     * differentiated from a normal free() */
+    /* If memcheck or scrub is enabled enabled mark the unmapped memory so it
+     * can be differentiated from a normal free() */
     if (__myst_kernel_args.memcheck || mman->scrub)
     {
-        _MMAN_MPROTECT_PAGES(mman, addr, length, MYST_PROT_WRITE)
-        memset(addr, 0xEE, length);
+        /* The region unmapped might not have PROT_WRITE permission */
+        if (!myst_tcall_mprotect(addr, length, MYST_PROT_WRITE))
+        {
+            memset(addr, 0xEE, length);
+        }
     }
 
     _MMAN_MPROTECT_PAGES(mman, addr, length, MYST_PROT_NONE)
@@ -1583,17 +1581,19 @@ int myst_mman_mremap(
         vad->size = new_end - vad->addr;
         new_addr = addr;
 
-// ATTN: The region truncated might not have PROT_WRITE permission to
-// perform scrub efficiently. The prot_vector based implementation has
-// complication of inconsistent prot within a VAD. Skip scrubbing for
-// now.
-#if 0
-        /* If scrubbing is enabled, scrub the unmapped portion */
-        if (mman->scrub)
-            memset((void*)new_end, 0xDD, old_size - new_size);
-#endif
-
-        _MMAN_SET_PAGES_PROT(mman, new_end, old_size - new_size, MYST_PROT_NONE)
+        /* If memcheck or scrub is enabled, mark the unmapped memory so it can
+         * be differentiated from a normal free() */
+        if (__myst_kernel_args.memcheck || mman->scrub)
+        {
+            /* The region truncated might not have PROT_WRITE permission */
+            if (!myst_tcall_mprotect(
+                    (void*)new_end, old_size - new_size, MYST_PROT_WRITE))
+            {
+                memset((void*)new_end, 0xEE, old_size - new_size);
+            }
+        }
+        _MMAN_MPROTECT_PAGES(
+            mman, (void*)new_end, old_size - new_size, MYST_PROT_NONE)
     }
     else if (new_size > old_size)
     {

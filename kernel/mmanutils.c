@@ -33,7 +33,10 @@
 MYST_PRINTF_FORMAT(2, 3)
 int asprintf(char** strp, const char* fmt, ...);
 
-#define SCRUB
+/* Scrubbing the unmapped memory (marking with a fixed pattern) has significant
+ * performance impact in SGX mode, if the EPC is small. Scrubbing should not be
+ * enabled unless the performance impact is not a concern */
+//#define SCRUB
 
 static myst_mman_t _mman;
 static void* _mman_start;
