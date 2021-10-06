@@ -13,6 +13,7 @@ int init_kernel_args(
     const char* cwd,
     myst_host_enc_uid_gid_mappings* host_enc_uid_gid_mappings,
     myst_mounts_config_t* mounts,
+    myst_wanted_secrets_t* wanted_secrets,
     const char* hostname,
     const void* regions_end,
     const void* image_data,

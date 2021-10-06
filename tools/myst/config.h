@@ -77,6 +77,7 @@ typedef struct _config_parsed_data_t
     char* hostname;
     myst_fork_mode_t fork_mode;
     myst_mounts_config_t mounts;
+    myst_wanted_secrets_t wanted_secrets;
     bool no_brk;
     bool exec_stack;
     bool unhandled_syscall_enosys;

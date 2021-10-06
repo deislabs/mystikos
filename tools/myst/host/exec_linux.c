@@ -396,6 +396,7 @@ static int _enter_kernel(
                 final_options.cwd,
                 &final_options.base.host_enc_uid_gid_mappings,
                 &pd.mounts,
+                NULL, /* No secret release for Linux target */
                 final_options.hostname,
                 regions_end,
                 image_data,

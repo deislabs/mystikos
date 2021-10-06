@@ -42,6 +42,22 @@ typedef struct myst_mounts_config
     size_t mounts_count;
 } myst_mounts_config_t;
 
+typedef struct _wanted_secret
+{
+    const char* id;
+    const char* srs_addr;
+    const char* srs_api_ver;
+    const char* local_path;
+    const char* clientlib;
+    unsigned int verbose;
+} myst_wanted_secret_t;
+
+typedef struct _myst_wanted_secrets_config
+{
+    myst_wanted_secret_t* secrets;
+    size_t secrets_count;
+} myst_wanted_secrets_t;
+
 typedef struct myst_kernel_args
 {
     /* The image that contains the kernel and crt etc. */
@@ -209,6 +225,9 @@ typedef struct myst_kernel_args
      * ENOSYS
      */
     bool unhandled_syscall_enosys;
+
+    /* List of secrets we want the kernel to retrieve on behalf of the app */
+    myst_wanted_secrets_t* wanted_secrets;
 
 } myst_kernel_args_t;
 

@@ -7,7 +7,7 @@ PKEY_FILE=p.pem
 all: appdir
 
 appdir:
-	g++ -g -o $(APPNAME) test_ssr.c -ldl
+	g++ -g -o $(APPNAME) test_ssr.c -ldl -I$(TOP)/include
 	$(APPBUILDER) Dockerfile
 
 $(PKEY_FILE):

@@ -17,6 +17,7 @@ endif
 # as it depends on secrets only availale on that pipeline.
 ifdef MYST_NIGHTLY_TEST
 DIRS += mhsm_ssr
+DIRS += pytorch_inference
 endif
 
 DIRS += msgpack_c
@@ -33,7 +34,6 @@ DIRS += python_webserver
 ifndef MYST_SKIP_PR_TEST
 # Do not run in PR pipeline as it takes ~15min
 # Disable this as it fails pipeline, will re-enable after investigation
-#DIRS += pytorch_inference
 DIRS += tensorflow_lite
 DIRS += pandas_tests
 endif

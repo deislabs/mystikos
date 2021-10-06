@@ -5,6 +5,7 @@
 #define _MYST_EXEC_H
 
 #include <elf.h>
+#include <myst/kernel.h>
 #include <myst/thread.h>
 
 void myst_dump_stack(void* stack);
@@ -21,6 +22,7 @@ int myst_exec(
     const char* argv[],
     size_t envc,
     const char* envp[],
+    myst_wanted_secrets_t* wanted_secrets,
     void (*callback)(void*),
     void* callback_arg);
 

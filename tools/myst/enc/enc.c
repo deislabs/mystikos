@@ -440,6 +440,32 @@ done:
     return ret;
 }
 
+static bool _validate_wanted_secrets(myst_wanted_secrets_t* secrets)
+{
+    if (secrets != NULL)
+    {
+        for (size_t i = 0; i < secrets->secrets_count; i++)
+        {
+            myst_wanted_secret_t* tmp = &secrets->secrets[i];
+            if (tmp->id == NULL || tmp->srs_addr == NULL ||
+                tmp->local_path == NULL || tmp->clientlib == NULL)
+            {
+                fprintf(
+                    stderr,
+                    "Warning: incomplete entries for wanted secret "
+                    "{id: %s, Srs Address: %s, Local Path: %s, ClientLib: %s}. "
+                    "All wanted secrets are ignored.\n",
+                    tmp->id,
+                    tmp->srs_addr,
+                    tmp->local_path,
+                    tmp->clientlib);
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 struct enter_arg
 {
     struct myst_options* options;
@@ -480,6 +506,7 @@ static long _enter(void* arg_)
     myst_args_t mount_mappings;
     myst_args_t args;
     myst_args_t env;
+    myst_wanted_secrets_t* wanted_secrets = NULL;
 
     memset(&parsed_config, 0, sizeof(parsed_config));
     memset(&mount_mappings, 0, sizeof(mount_mappings));
@@ -522,6 +549,13 @@ static long _enter(void* arg_)
             arg->mount_mappings_data,
             arg->mount_mappings_size) != 0)
         goto done;
+
+    if (have_config)
+    {
+        wanted_secrets = &parsed_config.wanted_secrets;
+        if (!_validate_wanted_secrets(wanted_secrets))
+            wanted_secrets = NULL;
+    }
 
     if (determine_final_options(
             host_options,
@@ -571,6 +605,7 @@ static long _enter(void* arg_)
                 final_options.cwd,
                 &final_options.base.host_enc_uid_gid_mappings,
                 &parsed_config.mounts,
+                wanted_secrets,
                 final_options.hostname,
                 regions_end,
                 enclave_image_base, /* image_data */

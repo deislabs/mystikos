@@ -5,5 +5,15 @@
     "UserMemSize": "1024m",
     "CurrentWorkingDirectory": "/app",
     "ApplicationPath": "/home/user/miniconda/bin/python3",
-    "ApplicationParameters": ["/app/service_app.py"]
+    "ApplicationParameters": ["/app/service_app.py"],
+    "HostEnvironmentVariables": ["CLIENT_ID", "CLIENT_SECRET", "MHSM_AAD_URL", "APP_ID"],
+    "Secret": [
+        {
+            "ID": "MyCustomKeyGA",
+            "SrsAddress": "https://cvmmhsm.managedhsm.azure.net",
+            "SrsApiVersion": "7.3-preview",
+            "LocalPath": "/mykey",
+            "ClientLib": "libmhsm_ssr.so"
+        }
+    ]
 }

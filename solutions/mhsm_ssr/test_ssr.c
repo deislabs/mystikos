@@ -1,15 +1,18 @@
 #include <assert.h>
 #include <dlfcn.h>
+#include <myst/ssr.h>
 #include <stdio.h>
-#include "ssr.h"
 
 #define MHSM_SERVER "https://cvmmhsm.managedhsm.azure.net"
 #define MHSM_API_VERSION "7.3-preview"
 
 int main(int argc, char** argv)
 {
-    int ret = 0;
+    int ret = -1;
     ReleasedSecret secret = {0};
+    unsigned char secret_from_file[1024];
+    FILE* file = NULL;
+    unsigned actual_secret_len = 0;
 
     void* handle = dlopen("libmhsm_ssr.so", RTLD_NOW);
     assert(handle);
@@ -51,23 +54,34 @@ int main(int argc, char** argv)
         goto done;
     }
 
-    /* Dump the secret. It's OK, this is a mock secret. */
     printf(
         "The secret we get is {ID: %s, category: %s, type: %s, length: %zu}\n",
         secret.id,
         secret.category,
         secret.type,
         secret.length);
+
+    /* Compare with the secret we retrieved through config file via the runtime
+     */
+    file = fopen("/mykey", "rb");
+    actual_secret_len =
+        fread(secret_from_file, 1, sizeof(secret_from_file), file);
+    assert(
+        actual_secret_len == secret.length && "The two secrets doesn't match");
     for (size_t i = 0; i < secret.length; i++)
     {
-        printf("%02X", secret.data[i]);
+        assert(
+            secret.data[i] == secret_from_file[i] &&
+            "The two secrets doesn't match");
     }
-    printf("\n");
+
+    ret = 0;
+    printf("====== SSR passed =======\n");
 
 done:
     free_fn(&secret);
 
     terminate_fn();
 
-    return 0;
+    return ret;
 }
