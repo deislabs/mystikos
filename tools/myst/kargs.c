@@ -46,6 +46,7 @@ int init_kernel_args(
     const char* cwd,
     myst_host_enc_uid_gid_mappings* host_enc_uid_gid_mappings,
     myst_mounts_config_t* mounts,
+    myst_wanted_secrets_t* wanted_secrets,
     const char* hostname,
     const void* regions_end,
     const void* image_data,
@@ -296,6 +297,7 @@ int init_kernel_args(
     args->tee_debug_mode = tee_debug_mode;
     args->tcall = tcall;
     args->mounts = mounts;
+    args->wanted_secrets = wanted_secrets;
     args->unhandled_syscall_enosys = unhandled_syscall_enosys;
 
     if (rootfs)

@@ -834,6 +834,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
                  args->argv,
                  args->envc,
                  args->envp,
+                 args->wanted_secrets,
                  NULL,
                  NULL)) != 0)
         {

@@ -750,7 +750,11 @@ done:
 
 typedef long (*syscall_callback_t)(long n, long params[6]);
 
-typedef void (*enter_t)(void* stack, void* dynv, syscall_callback_t callback);
+typedef void (*enter_t)(
+    void* stack,
+    void* dynv,
+    syscall_callback_t callback,
+    myst_wanted_secrets_t* secrets);
 
 typedef struct entry_args
 {
@@ -820,6 +824,7 @@ int myst_exec(
     const char* argv[],
     size_t envc,
     const char* envp[],
+    myst_wanted_secrets_t* wanted_secrets,
     void (*callback)(void*), /* used to release caller-allocated parameters */
     void* callback_arg)
 {
@@ -1020,7 +1025,7 @@ int myst_exec(
         (*callback)(callback_arg);
 
     /* enter the C-runtime on the target thread descriptor */
-    (*enter)(sp, dynv, myst_syscall);
+    (*enter)(sp, dynv, myst_syscall, wanted_secrets);
     /* unreachable */
 
     process->exec_stack = NULL;

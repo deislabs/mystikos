@@ -2490,6 +2490,7 @@ long myst_syscall_execve(
             (const char**)argv,
             _count_args((const char* const*)envp),
             (const char**)envp,
+            NULL, /* wanted secrets */
             free,
             argv) != 0)
     {
