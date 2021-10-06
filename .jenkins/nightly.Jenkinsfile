@@ -172,7 +172,8 @@ pipeline {
                                 sh """
                                     ${params.SCRIPTS_ROOT}/run-azure-tests.sh \
                                         ${WORKSPACE}/tests/azure-sdk-for-cpp  \
-                                        ${WORKSPACE}/solutions/dotnet_azure_sdk
+                                        ${WORKSPACE}/solutions/dotnet_azure_sdk \
+                                        ${WORKSPACE}/solutions/python_azure_sdk
                                 """
                             }
                         }
