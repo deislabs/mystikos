@@ -1,8 +1,13 @@
+.NOTPARALLEL:
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
 ifdef STRACE
-OPTS = --strace
+OPTS += --strace
+endif
+
+ifdef ETRACE
+OPTS += --etrace
 endif
 
 APPDIR=$(CURDIR)/appdir
@@ -25,7 +30,7 @@ all:
 	$(MAKE) $(ROOTFS)
 
 one:
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) $(TEST)
+	$(RUNTEST) $(MYST_EXEC) --nobrk $(OPTS) $(ROOTFS) $(TEST)
 
 llvm-project: 
 	git clone -b myst_v11.0.1 --single-branch https://github.com/salsal97/llvm-project.git
@@ -42,13 +47,11 @@ $(APPDIR)/bin/run: run.c
 $(APPDIR):
 	$(APPBUILDER) -i mystikos/libcxx2_11x:0.1
 	cp $(CURDIR)/testsa*.passed $(APPDIR)
-	# To build a new image, modify the appbuilder script to build the image with the correct name, 
-	# and not clean it up. Then once the image is built, push it to dockerhub and update 
-	# this call.
+# To build a new image, push the new container to dockerhub and update 
+# this call.
 
 $(ROOTFS): run.c
 	$(MYST) mkext2 $(APPDIR) $(ROOTFS)
-	# run with posix spawn
 
 OPTS += --memory-size=1536m
 
@@ -56,7 +59,7 @@ tests:
 	$(RUNTEST) $(MAKE) __tests
 
 __tests:
-	for i in a b c d e f g h i j k l m n o p q r s t u v w ; do \
+	for i in a b c d e f ; do \
 		$(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run testsa$$i.passed ; \
 	done
 
@@ -72,8 +75,8 @@ runall:
 
 # Splits tests into batches for easy processing 
 split: clean-tests
-	split -l 200 $(ALLTESTS) tests
-	for i in a b c d e f g h i j k l m n o p q r s t u v w ; do \
+	split -l 900 $(ALLTESTS) tests
+	for i in a b c d e f ; do \
 		grep -Fxf libcxx_passed testsa$$i > testsa$$i.passed ; \
 	done
 

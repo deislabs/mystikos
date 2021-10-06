@@ -29,7 +29,7 @@ all:
 	$(MAKE) $(ROOTFS)
 
 one:
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) $(TEST)
+	$(RUNTEST) $(MYST_EXEC) --nobrk $(OPTS) $(ROOTFS) $(TEST)
 
 llvm-project: 
 	git clone -b myst_v11.0.1 --single-branch https://github.com/salsal97/llvm-project.git
@@ -46,16 +46,13 @@ $(APPDIR)/bin/run: run.c
 $(APPDIR):
 	$(APPBUILDER) -i mystikos/libcxx_11x:0.1
 	cp $(CURDIR)/tests.passed $(APPDIR)
-	# To build a new image, modify the appbuilder script to build the image with the correct name, 
-	# and not clean it up. Then once the image is built, push it to dockerhub and update 
-	# this call.
+# To build a new image, push the new container to dockerhub and update 
+# this call.
 
 $(ROOTFS): run.c
 	$(MYST) mkext2 $(APPDIR) $(ROOTFS)
 
 OPTS += --memory-size=64m
-
-ALL_IN_ONE=1
 
 tests: $(ROOTFS)
 	$(MYST_EXEC) --nobrk $(OPTS) $(ROOTFS) /bin/run /tests.passed
@@ -64,7 +61,7 @@ myst:
 	$(MAKE) -C $(TOP)/tools/myst
 
 clean:
-	rm -rf $(APPDIR) $(ROOTFS) *.sorted
+	rm -rf $(APPDIR) $(ROOTFS)
 
 # Use to run passed + failed tests
 runall:
@@ -77,6 +74,3 @@ failed:
 # This crasshes with memcheck enabled
 bug:
 	make one TEST=/app/llvm-project/libcxx/test/libcxx/input.output/iostreams.base/ios/iostate.flags/clear.abort.pass.cpp.exe
-
-t:
-	make one TEST=/app/llvm-project/libcxx/test/std/input.output/filesystems/fs.op.funcs/fs.op.rename/rename.pass.cpp.exe
