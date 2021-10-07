@@ -174,4 +174,6 @@ long myst_tcall_poll(struct pollfd* fds, nfds_t nfds, int timeout);
 
 long myst_tcall_pipe2(int pipefd[2], int flags);
 
+long myst_tcall_nanosleep(const struct timespec* req, struct timespec* rem);
+
 #endif /* _MYST_TCALL_H */

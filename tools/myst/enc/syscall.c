@@ -1742,6 +1742,23 @@ done:
     return ret;
 }
 
+static long _tkill(int tid, int sig)
+{
+    long ret = 0;
+    long retval;
+
+    if (myst_tkill_ocall(&retval, tid, sig) != OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = retval;
+
+done:
+    return ret;
+}
+
 long myst_handle_tcall(long n, long params[6])
 {
     const long a = params[0];
@@ -2030,6 +2047,10 @@ long myst_handle_tcall(long n, long params[6])
         case SYS_eventfd2:
         {
             return _eventfd2(a, b);
+        }
+        case SYS_tkill:
+        {
+            return _tkill((int)a, (int)b);
         }
         default:
         {

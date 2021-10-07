@@ -17,6 +17,7 @@ SOURCES += ../shared/poll.c
 SOURCES += ../shared/luks.c
 SOURCES += ../shared/sha256.c
 SOURCES += ../shared/verify.c
+SOURCES += ../shared/nanosleep.c
 
 CFLAGS = $(DEFAULT_CFLAGS)
 

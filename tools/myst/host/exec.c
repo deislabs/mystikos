@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#define _GNU_SOURCE
 #include <assert.h>
 #include <errno.h>
 #include <libgen.h>
@@ -11,6 +12,7 @@
 #include <myst/tcall.h>
 #include <poll.h>
 #include <pthread.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -80,7 +82,16 @@ static void* _thread_func(void* arg)
     oe_result_t res;
     long retval = -1;
 
+    /* block SIGUSR2 when inside the enclave */
+    sigset_t set;
+    sigemptyset(&set);
+    sigaddset(&set, SIGUSR2);
+    sigprocmask(SIG_BLOCK, &set, NULL);
+
     res = myst_run_thread_ecall(_enclave, &retval, cookie, event, target_tid);
+
+    /* unblock SIGUSR2 when outside the enclave */
+    sigprocmask(SIG_UNBLOCK, &set, NULL);
 
     if (res != OE_OK || retval != 0)
     {
@@ -129,6 +140,12 @@ long myst_wake_wait_ocall(
     return myst_tcall_wake_wait(waiter_event, self_event, ts);
 }
 
+static void _sigusr2_sighandler(int sig)
+{
+    /* no-op */
+    (void)sig;
+}
+
 int exec_launch_enclave(
     const char* enc_path,
     oe_enclave_type_t type,
@@ -149,6 +166,7 @@ int exec_launch_enclave(
     oe_enclave_setting_context_switchless_t switchless_setting = {0, 0};
     oe_enclave_setting_t settings[8];
     size_t num_settings = 0;
+    sighandler_t old_sighandler;
 
     /* get the start time and pass it into the kernel */
     if (clock_gettime(CLOCK_REALTIME, &start_time) != 0)
@@ -204,6 +222,15 @@ int exec_launch_enclave(
     /* Get clock times right before entering the enclave */
     shm_create_clock(&shared_memory, CLOCK_TICK);
 
+    /* Set a SIGUSR2 handler */
+    old_sighandler = sigset(SIGUSR2, _sigusr2_sighandler);
+
+    /* block SIGUSR2 when inside the enclave */
+    sigset_t set;
+    sigemptyset(&set);
+    sigaddset(&set, SIGUSR2);
+    sigprocmask(SIG_BLOCK, &set, NULL);
+
     /* Enter the enclave and run the program */
     r = myst_enter_ecall(
         _enclave,
@@ -222,6 +249,12 @@ int exec_launch_enclave(
         start_time.tv_nsec);
     if (r != OE_OK)
         _err("failed to enter enclave: result=%s", oe_result_str(r));
+
+    /* unblock SIGUSR2 when outside the enclave */
+    sigprocmask(SIG_UNBLOCK, &set, NULL);
+
+    /* restore the old SIGUSR2 handler */
+    sigset(SIGUSR2, old_sighandler);
 
     /* Terminate the enclave */
     r = oe_terminate_enclave(_enclave);

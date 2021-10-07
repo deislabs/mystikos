@@ -555,4 +555,6 @@ MYST_INLINE void myst_thread_sig_handler_uninstall(
     thread->signal.thread_sig_handler = sig_handler->previous;
 }
 
+int myst_interrupt_thread(myst_thread_t* thread);
+
 #endif /* _MYST_THREAD_H */

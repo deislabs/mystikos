@@ -486,6 +486,7 @@ static pair_t _pairs[] = {
     {SYS_myst_gcov, "SYS_myst_gcov"},
 #endif
     {SYS_myst_unmap_on_exit, "SYS_myst_unmap_on_exit"},
+    {SYS_myst_interrupt_thread, "SYS_myst_interrupt_thread"},
 };
 
 static size_t _n_pairs = sizeof(_pairs) / sizeof(_pairs[0]);
@@ -3142,6 +3143,20 @@ done:
     return ret;
 }
 
+long myst_syscall_interrupt_thread(int tid)
+{
+    long ret = 0;
+    myst_thread_t* thread;
+
+    if (!(thread = myst_find_thread(tid)))
+        ERAISE(-ESRCH);
+
+    ECHECK(myst_interrupt_thread(thread));
+
+done:
+    return ret;
+}
+
 long myst_syscall_ret(long ret)
 {
     if (ret < 0)
@@ -4065,6 +4080,15 @@ static long _syscall(void* args_)
             _strace(n, NULL);
 
             long ret = myst_syscall_get_fork_info(process, arg);
+            BREAK(_return(n, ret));
+        }
+        case SYS_myst_interrupt_thread:
+        {
+            int tid = (int)x1;
+
+            _strace(n, "tid=%d\n", tid);
+
+            long ret = myst_syscall_interrupt_thread(tid);
             BREAK(_return(n, ret));
         }
         case SYS_fork_wait_exec_exit:

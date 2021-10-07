@@ -84,6 +84,12 @@ Options:\n\
 \n\
 "
 
+static void _sigusr2_sighandler(int sig)
+{
+    /* no-op */
+    (void)sig;
+}
+
 static void _get_options(
     int* argc,
     const char* argv[],
@@ -507,6 +513,7 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
     myst_buf_t roothash_buf = MYST_BUF_INITIALIZER;
     size_t heap_size = 0;
     const char* app_config_path = NULL;
+    sighandler_t old_sighandler;
 
     (void)program_arg;
 
@@ -598,6 +605,15 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
     argc -= 3;
     argv += 3;
 
+    /* Set a SIGUSR2 handler */
+    old_sighandler = sigset(SIGUSR2, _sigusr2_sighandler);
+
+    /* block SIGUSR2 when inside the enclave */
+    sigset_t set;
+    sigemptyset(&set);
+    sigaddset(&set, SIGUSR2);
+    sigprocmask(SIG_BLOCK, &set, NULL);
+
     /* Enter the kernel image */
     if (_enter_kernel(
             argc,
@@ -615,6 +631,12 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
     {
         _err("%s", err);
     }
+
+    /* block SIGUSR2 when outside the enclave */
+    sigprocmask(SIG_UNBLOCK, &set, NULL);
+
+    /* restore the old SIGUSR2 handler */
+    sigset(SIGUSR2, old_sighandler);
 
     myst_args_release(&mount_mappings);
 
@@ -639,11 +661,20 @@ static void* _thread_func(void* arg)
     uint64_t cookie = (uint64_t)arg;
     uint64_t event = (uint64_t)&_thread_event;
 
+    /* block SIGUSR2 when inside the enclave */
+    sigset_t set;
+    sigemptyset(&set);
+    sigaddset(&set, SIGUSR2);
+    sigprocmask(SIG_BLOCK, &set, NULL);
+
     if (myst_run_thread(cookie, event, (pid_t)syscall(SYS_gettid)) != 0)
     {
         fprintf(stderr, "myst_run_thread() failed\n");
         exit(1);
     }
+
+    /* unblock SIGUSR2 when outside the enclave */
+    sigprocmask(SIG_UNBLOCK, &set, NULL);
 
     return NULL;
 }

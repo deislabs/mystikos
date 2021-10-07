@@ -12,6 +12,7 @@
 #include <myst/atexit.h>
 #include <myst/atomic.h>
 #include <myst/cond.h>
+#include <myst/config.h>
 #include <myst/eraise.h>
 #include <myst/fdtable.h>
 #include <myst/file.h>
@@ -1512,8 +1513,23 @@ size_t myst_kill_thread_group()
     // Wait for the child threads to exit.
     while (1)
     {
+#ifdef MYST_INTERRUPT_POLL_WITH_SIGNAL
+        /* Interrupt threads blocked in syscalls on the target */
+        myst_spin_lock(&process->thread_group_lock);
+        {
+            for (t = process->main_process_thread; t; t = t->group_next)
+            {
+                if (t != process->main_process_thread && t != thread)
+                    myst_interrupt_thread(t);
+            }
+        }
+        myst_spin_unlock(&process->thread_group_lock);
+#endif
+
+#ifdef MYST_INTERRUPT_POLL_WITH_PIPE
         // Wake up any polls that may be waiting in the host
         myst_tcall_poll_wake();
+#endif
 
         /* We may have had pipes on their way to blocking since the last trigger
          * so lets do it again to be sure */
@@ -1650,4 +1666,19 @@ void myst_wait_on_child_processes(myst_process_t* process)
         myst_sleep_msec(10);
 
     } while (1);
+}
+
+int myst_interrupt_thread(myst_thread_t* thread)
+{
+    long ret = 0;
+
+    if (!thread)
+        ERAISE(-EINVAL);
+
+    /* Ask target to send a SIGUSR2 to the given thread */
+    long params[6] = {thread->target_tid, SIGUSR2};
+    myst_tcall(SYS_tkill, params);
+
+done:
+    return ret;
 }
