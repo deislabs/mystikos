@@ -736,6 +736,13 @@ static int _socketaddr_to_str(
         goto done;
     }
 
+    if (addr && !myst_is_addr_within_kernel(addr))
+    {
+        myst_assume(limit >= 6);
+        myst_strlcpy(out, "INVAL", limit);
+        ERAISE(-EFAULT);
+    }
+
     const uint8_t* p = (uint8_t*)addr->sa_data;
     uint16_t port = (uint16_t)((p[0] << 8) | p[1]);
     const uint8_t ip1 = p[2];
@@ -2575,6 +2582,13 @@ long myst_syscall_recvfrom(
     myst_sockdev_t* sd;
     myst_sock_t* sock;
 
+    if (!buf && len)
+        ERAISE(-EFAULT);
+
+    if ((buf && !myst_is_addr_within_kernel(buf)) ||
+        (src_addr && !myst_is_addr_within_kernel(src_addr)))
+        ERAISE(-EFAULT);
+
     ECHECK(myst_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
     ret = (*sd->sd_recvfrom)(sd, sock, buf, len, flags, src_addr, addrlen);
 
@@ -2594,6 +2608,13 @@ long myst_syscall_sendto(
     myst_fdtable_t* fdtable = myst_fdtable_current();
     myst_sockdev_t* sd;
     myst_sock_t* sock;
+
+    if (!buf && len)
+        ERAISE(-EFAULT);
+
+    if ((buf && !myst_is_addr_within_kernel(buf)) ||
+        (dest_addr && !myst_is_addr_within_kernel(dest_addr)))
+        ERAISE(-EFAULT);
 
     ECHECK(myst_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
     ret = (*sd->sd_sendto)(sd, sock, buf, len, flags, dest_addr, addrlen);
@@ -3542,10 +3563,17 @@ static long _syscall(void* args_)
             int fd = (int)x1;
             const void* buf = (const void*)x2;
             size_t count = (size_t)x3;
+            long ret;
 
             _strace(n, "fd=%d buf=%p count=%zu", fd, buf, count);
 
-            BREAK(_return(n, myst_syscall_write(fd, buf, count)));
+            if (!buf && count)
+                ret = -EINVAL;
+            else if (buf && !myst_is_addr_within_kernel(buf))
+                ret = -EFAULT;
+            else
+                ret = myst_syscall_write(fd, buf, count);
+            BREAK(_return(n, ret));
         }
         case SYS_pread64:
         {
@@ -5696,7 +5724,7 @@ static long _syscall(void* args_)
             {
                 char addrstr[MAX_IPADDR_LEN];
 
-                ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
+                _socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN);
 
                 _strace(
                     n,
@@ -6002,7 +6030,7 @@ static long _syscall(void* args_)
             {
                 char addrstr[MAX_IPADDR_LEN];
 
-                ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
+                _socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN);
 
                 _strace(
                     n,
@@ -6027,7 +6055,7 @@ static long _syscall(void* args_)
             {
                 char addrstr[MAX_IPADDR_LEN];
 
-                ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
+                _socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN);
 
                 _strace(
                     n,
@@ -6055,7 +6083,7 @@ static long _syscall(void* args_)
             {
                 char addrstr[MAX_IPADDR_LEN];
 
-                ECHECK(_socketaddr_to_str(src_addr, addrstr, MAX_IPADDR_LEN));
+                _socketaddr_to_str(src_addr, addrstr, MAX_IPADDR_LEN);
 
                 _strace(
                     n,
@@ -6112,7 +6140,9 @@ static long _syscall(void* args_)
             {
                 char addrstr[MAX_IPADDR_LEN];
 
-                ECHECK(_socketaddr_to_str(dest_addr, addrstr, MAX_IPADDR_LEN));
+                // Normal validation happens at lower level, but we need to do
+                // this here so logging does not break a test
+                _socketaddr_to_str(dest_addr, addrstr, MAX_IPADDR_LEN);
 
                 _strace(
                     n,
@@ -6160,7 +6190,7 @@ static long _syscall(void* args_)
             {
                 char addrstr[MAX_IPADDR_LEN];
 
-                ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
+                _socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN);
 
                 _strace(
                     n,
@@ -6240,7 +6270,7 @@ static long _syscall(void* args_)
             {
                 char addrstr[MAX_IPADDR_LEN];
 
-                ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
+                _socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN);
 
                 _strace(
                     n,
@@ -6264,7 +6294,7 @@ static long _syscall(void* args_)
             {
                 char addrstr[MAX_IPADDR_LEN];
 
-                ECHECK(_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN));
+                _socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN);
 
                 _strace(
                     n,
