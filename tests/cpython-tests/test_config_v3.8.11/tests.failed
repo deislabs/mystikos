@@ -1,6 +1,5 @@
 test__locale
 test_asyncgen
-test_asynchat
 test_asyncio
 test_asyncore
 test_base64

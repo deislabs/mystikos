@@ -4,14 +4,22 @@ include $(TOP)/defs.mak
 APPBUILDER=$(TOP)/scripts/appbuilder
 
 OPTS = --app-config-path config.json
-ifdef STRACE
-OPTS += --strace
+ifdef TRACE
+	OPTS += --strace --etrace
+else
+	ifdef STRACE
+		OPTS += --strace
+	endif
+	ifdef ETRACE
+		OPTS += --etrace
+	endif
 endif
 
 MPDB=$(TOP)/scripts/mpdb.py
 TESTFILE=tests.passed
 TEST = test_bz2
-TESTCASE = test_capi.CAPITest.test_negative_refcount
+TESTCASE = test_asynchat.TestAsynchat
+#TESTCASE = test_asynchat.TestAsynchat.test_close_when_done
 VER=3.9
 FS=ext2fs$(VER)
 
@@ -26,12 +34,12 @@ mpdb.py:$(MPDB)
 ext2fs3.8:mpdb.py
 	rm -fr appdir3.8
 	$(APPBUILDER) -o appdir3.8 -e "--build-arg CPYTHON_VERSION=v3.8.11" Dockerfile
-	$(MYST) mkext2 appdir3.8 ext2fs3.8
+	$(MYST) mkext2 -f appdir3.8 ext2fs3.8
 
 ext2fs3.9:mpdb.py
 	rm -fr appdir3.9
 	$(APPBUILDER) -o appdir3.9 -e "--build-arg CPYTHON_VERSION=v3.9.7" Dockerfile
-	$(MYST) mkext2 appdir3.9 ext2fs3.9
+	$(MYST) mkext2 -f appdir3.9 ext2fs3.9
 
 clean:
 	rm -fr appdir* ext2fs* @test_101* hostfs

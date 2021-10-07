@@ -3833,12 +3833,14 @@ static long _syscall(void* args_)
 
             _strace(
                 n,
-                "nfds=%d rfds=%p wfds=%p xfds=%p timeout=%p",
+                "nfds=%d rfds=%p wfds=%p xfds=%p timeout=%p(sec=%ld, usec=%ld)",
                 nfds,
                 rfds,
                 wfds,
                 efds,
-                timeout);
+                timeout,
+                timeout ? timeout->tv_sec : 0,
+                timeout ? timeout->tv_usec : 0);
 
             ret = myst_syscall_select(nfds, rfds, wfds, efds, timeout);
             BREAK(_return(n, ret));
@@ -3973,7 +3975,13 @@ static long _syscall(void* args_)
             const struct timespec* req = (const struct timespec*)x1;
             struct timespec* rem = (struct timespec*)x2;
 
-            _strace(n, "req=%p rem=%p", req, rem);
+            _strace(
+                n,
+                "req=%p(sec=%ld, nsec=%ld) rem=%p",
+                req,
+                req ? req->tv_sec : 0,
+                req ? req->tv_nsec : 0,
+                rem);
 
             BREAK(_return(n, myst_syscall_nanosleep(req, rem)));
         }
@@ -5009,15 +5017,32 @@ static long _syscall(void* args_)
             long arg = (long)x4;
             int* uaddr2 = (int*)x5;
             int val3 = (int)x6;
-
-            _strace(
-                n,
-                "uaddr=0x%lx(%d) futex_op=%u(%s) val=%d",
-                (long)uaddr,
-                (uaddr ? *uaddr : -1),
-                futex_op,
-                _futex_op_str(futex_op),
-                val);
+            int futex_op2 = futex_op & ~FUTEX_PRIVATE;
+            if (futex_op2 == FUTEX_WAIT || futex_op2 == FUTEX_WAIT_BITSET)
+            {
+                const struct timespec* timeout = (const struct timespec*)x4;
+                _strace(
+                    n,
+                    "uaddr=0x%lx(%d) futex_op=%u(%s) val=%d, "
+                    "timeout=%p(sec=%ld, nsec=%ld)",
+                    (long)uaddr,
+                    (uaddr ? *uaddr : -1),
+                    futex_op,
+                    _futex_op_str(futex_op),
+                    val,
+                    timeout,
+                    timeout ? timeout->tv_sec : 0,
+                    timeout ? timeout->tv_nsec : 0);
+            }
+            else
+                _strace(
+                    n,
+                    "uaddr=0x%lx(%d) futex_op=%u(%s) val=%d",
+                    (long)uaddr,
+                    (uaddr ? *uaddr : -1),
+                    futex_op,
+                    _futex_op_str(futex_op),
+                    val);
 
             BREAK(_return(
                 n,
@@ -5386,8 +5411,14 @@ static long _syscall(void* args_)
             const char* pathname = (const char*)x2;
             const struct timeval* times = (const struct timeval*)x3;
             long ret;
-
-            _strace(n, "dirfd=%d pathname=%s times=%p", dirfd, pathname, times);
+            _strace(
+                n,
+                "dirfd=%d pathname=%s times=%p(sec=%ld, usec=%ld)",
+                dirfd,
+                pathname,
+                times,
+                times ? times->tv_sec : 0,
+                times ? times->tv_usec : 0);
 
             ret = myst_syscall_futimesat(dirfd, pathname, times);
             BREAK(_return(n, ret));
@@ -5737,12 +5768,15 @@ static long _syscall(void* args_)
 
             _strace(
                 n,
-                "sockfd=%d msgvec=%p vlen=%u flags=%d timeout=%p",
+                "sockfd=%d msgvec=%p vlen=%u flags=%d timeout=%p(sec=%ld, "
+                "nsec=%ld)",
                 sockfd,
                 msgvec,
                 vlen,
                 flags,
-                timeout);
+                timeout,
+                timeout ? timeout->tv_sec : 0,
+                timeout ? timeout->tv_nsec : 0);
 
             ret = myst_syscall_recvmmsg(sockfd, msgvec, vlen, flags, timeout);
             BREAK(_return(n, ret));
@@ -5793,7 +5827,15 @@ static long _syscall(void* args_)
                 vlen,
                 flags);
 
-            ret = myst_syscall_sendmmsg(sockfd, msgvec, vlen, flags);
+            /* Note: We send in MSG_NOSIGNAL so it does not generate a SIGPIPE
+             * in the host. We get an EPIPE error back if the socket got closed,
+             * and then we will generate the signal ourselves if needed. */
+            ret = myst_syscall_sendmmsg(
+                sockfd, msgvec, vlen, flags | MSG_NOSIGNAL);
+            if (ret == -EPIPE && !(flags & MSG_NOSIGNAL))
+            {
+                myst_signal_deliver(thread, SIGPIPE, NULL);
+            }
             BREAK(_return(n, ret));
         }
         case SYS_setns:
@@ -6050,8 +6092,15 @@ static long _syscall(void* args_)
                     addrlen);
             }
 
+            /* Note: We send in MSG_NOSIGNAL so it does not generate a SIGPIPE
+             * in the host. We get an EPIPE error back if the socket got closed,
+             * and then we will generate the signal ourselves if needed. */
             ret = myst_syscall_sendto(
-                sockfd, buf, len, flags, dest_addr, addrlen);
+                sockfd, buf, len, flags | MSG_NOSIGNAL, dest_addr, addrlen);
+            if (ret == -EPIPE && !(flags & MSG_NOSIGNAL))
+            {
+                myst_signal_deliver(thread, SIGPIPE, NULL);
+            }
 
             BREAK(_return(n, ret));
         }
@@ -6100,7 +6149,11 @@ static long _syscall(void* args_)
 
             _strace(n, "sockfd=%d msg=%p flags=%d", sockfd, msg, flags);
 
-            ret = myst_syscall_sendmsg(sockfd, msg, flags);
+            ret = myst_syscall_sendmsg(sockfd, msg, flags | MSG_NOSIGNAL);
+            if (ret == -EPIPE && !(flags & MSG_NOSIGNAL))
+            {
+                myst_signal_deliver(thread, SIGPIPE, NULL);
+            }
             BREAK(_return(n, ret));
         }
         case SYS_recvmsg:
@@ -6273,7 +6326,6 @@ static long _syscall(void* args_)
 
             long ret = myst_syscall_sendfile(out_fd, in_fd, offset, count);
             BREAK(_return(n, ret));
-            break;
         }
         /* forward Open Enclave extensions to the target */
         case SYS_myst_oe_get_report_v2:
