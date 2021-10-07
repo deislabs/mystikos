@@ -4,19 +4,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include <errno.h>
-#include <poll.h>
-#include <stddef.h>
-#include <stdlib.h>
-#include <string.h>
+#include <sys/select.h>
 
-#include <myst/defs.h>
 #include <myst/eraise.h>
-#include <myst/fdops.h>
-#include <myst/fdtable.h>
-#include <myst/sockdev.h>
 #include <myst/syscall.h>
-#include <myst/tcall.h>
+
+#define POLLIN_SET (POLLRDNORM | POLLRDBAND | POLLIN | POLLHUP | POLLERR)
+#define POLLOUT_SET (POLLWRBAND | POLLWRNORM | POLLOUT | POLLERR)
+#define POLLEX_SET (POLLPRI | POLLERR | POLLHUP | POLLRDHUP)
 
 typedef struct _poll_fds
 {
@@ -34,7 +29,7 @@ int _update_fds(poll_fds_t* fds, int fd, short events)
     {
         if (fds->data[i].fd == fd)
         {
-            fds->data[i].events = events;
+            fds->data[i].events |= events;
             /* success */
             goto done;
         }
@@ -117,37 +112,30 @@ long myst_syscall_select(
 
     if (readfds)
     {
-        const short events = POLLIN | POLLRDNORM | POLLRDBAND;
+        const short events = POLLIN_SET;
         ECHECK(_fdset_to_fds(&locals->fds, events, readfds, nfds));
     }
 
     if (writefds)
     {
-        const short events = POLLOUT | POLLWRNORM | POLLWRBAND;
+        const short events = POLLOUT_SET;
         ECHECK(_fdset_to_fds(&locals->fds, events, writefds, nfds));
     }
 
     if (exceptfds)
     {
-        const short events = POLLERR | POLLHUP | POLLRDHUP;
+        const short events = POLLEX_SET;
         ECHECK(_fdset_to_fds(&locals->fds, events, exceptfds, nfds));
     }
 
     ECHECK(myst_syscall_poll(locals->fds.data, locals->fds.size, poll_timeout));
 
     if (readfds)
-        FD_ZERO(readfds);
-
-    if (writefds)
-        FD_ZERO(writefds);
-
-    if (exceptfds)
-        FD_ZERO(exceptfds);
-
-    if (readfds)
     {
-        short events = POLLIN | POLLRDNORM | POLLRDBAND;
+        short events = POLLIN_SET;
         int n;
+
+        FD_ZERO(readfds);
 
         if ((n = _fds_to_fdset(&locals->fds, events, readfds)) > num_ready)
             num_ready += n;
@@ -155,8 +143,10 @@ long myst_syscall_select(
 
     if (writefds)
     {
-        short events = POLLOUT | POLLWRNORM | POLLWRBAND;
+        short events = POLLOUT_SET;
         int n;
+
+        FD_ZERO(writefds);
 
         if ((n = _fds_to_fdset(&locals->fds, events, writefds)) > num_ready)
             num_ready += n;
@@ -164,8 +154,10 @@ long myst_syscall_select(
 
     if (exceptfds)
     {
-        short events = POLLERR | POLLHUP | POLLRDHUP;
+        short events = POLLEX_SET;
         int n;
+
+        FD_ZERO(exceptfds);
 
         if ((n = _fds_to_fdset(&locals->fds, events, exceptfds)) > num_ready)
             num_ready += n;
