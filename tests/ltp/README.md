@@ -54,7 +54,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/alarm/alarm05 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/alarm/alarm06 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/alarm/alarm07 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/bind/bind01 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/bind/bind01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/bind/bind02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/bind/bind03 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/bind/bind04 | 0 | 0 | 0 |
@@ -645,7 +645,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/link/link08 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/linkat/linkat01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/linkat/linkat02 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/listen/listen01 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/listen/listen01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/listxattr/listxattr01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/listxattr/listxattr02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/listxattr/listxattr03 | 0 | 0 | 0 |
@@ -846,7 +846,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/pipe/pipe02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/pipe/pipe03 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/pipe/pipe04 | 1 | 1 | 1 |
-| /ltp/testcases/kernel/syscalls/pipe/pipe05 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/pipe/pipe05 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/pipe/pipe06 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/pipe/pipe07 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/pipe/pipe08 | 1 | 1 | 1 |
@@ -1157,7 +1157,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/setrlimit/setrlimit05 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/setrlimit/setrlimit06 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/setsid/setsid01 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/setsockopt/setsockopt01 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/setsockopt/setsockopt01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/setsockopt/setsockopt02 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/setsockopt/setsockopt03 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/setsockopt/setsockopt04 | 1 | 1 | 1 |

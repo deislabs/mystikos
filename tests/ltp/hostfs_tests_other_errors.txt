@@ -13,7 +13,6 @@
 /ltp/testcases/kernel/syscalls/alarm/alarm05
 /ltp/testcases/kernel/syscalls/alarm/alarm06
 /ltp/testcases/kernel/syscalls/alarm/alarm07
-/ltp/testcases/kernel/syscalls/bind/bind01
 /ltp/testcases/kernel/syscalls/bind/bind02
 /ltp/testcases/kernel/syscalls/bind/bind03
 /ltp/testcases/kernel/syscalls/bind/bind04
@@ -365,7 +364,6 @@
 /ltp/testcases/kernel/syscalls/link/link07
 /ltp/testcases/kernel/syscalls/link/link08
 /ltp/testcases/kernel/syscalls/linkat/linkat02
-/ltp/testcases/kernel/syscalls/listen/listen01
 /ltp/testcases/kernel/syscalls/llseek/llseek01
 /ltp/testcases/kernel/syscalls/lremovexattr/lremovexattr01
 /ltp/testcases/kernel/syscalls/lseek/lseek02
@@ -472,7 +470,6 @@
 /ltp/testcases/kernel/syscalls/pidfd_send_signal/pidfd_send_signal02
 /ltp/testcases/kernel/syscalls/pidfd_send_signal/pidfd_send_signal03
 /ltp/testcases/kernel/syscalls/pipe/pipe02
-/ltp/testcases/kernel/syscalls/pipe/pipe05
 /ltp/testcases/kernel/syscalls/pipe/pipe07
 /ltp/testcases/kernel/syscalls/pipe/pipe11
 /ltp/testcases/kernel/syscalls/pipe/pipe12
@@ -586,8 +583,6 @@
 /ltp/testcases/kernel/syscalls/sendmmsg/sendmmsg01
 /ltp/testcases/kernel/syscalls/sendmsg/sendmsg01
 /ltp/testcases/kernel/syscalls/sendmsg/sendmsg03
-/ltp/testcases/kernel/syscalls/sendto/sendto01
-/ltp/testcases/kernel/syscalls/sendto/sendto02
 /ltp/testcases/kernel/syscalls/sendto/sendto03
 /ltp/testcases/kernel/syscalls/set_mempolicy/set_mempolicy01
 /ltp/testcases/kernel/syscalls/set_mempolicy/set_mempolicy02
@@ -646,7 +641,6 @@
 /ltp/testcases/kernel/syscalls/setrlimit/setrlimit04
 /ltp/testcases/kernel/syscalls/setrlimit/setrlimit05
 /ltp/testcases/kernel/syscalls/setrlimit/setrlimit06
-/ltp/testcases/kernel/syscalls/setsockopt/setsockopt01
 /ltp/testcases/kernel/syscalls/setsockopt/setsockopt05
 /ltp/testcases/kernel/syscalls/setsockopt/setsockopt06
 /ltp/testcases/kernel/syscalls/setsockopt/setsockopt07

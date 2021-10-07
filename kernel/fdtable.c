@@ -76,7 +76,7 @@ int myst_fdtable_clone(myst_fdtable_t* fdtable, myst_fdtable_t** fdtable_out)
                 int fdflags = 0;
 
                 /* Save the file descriptor flags (for pipes only) */
-                if (entry->type == MYST_FDTABLE_TYPE_PIPE)
+                if (entry->type != MYST_FDTABLE_TYPE_NONE)
                 {
                     fdflags =
                         (*fdops->fd_fcntl)(fdops, entry->object, F_GETFD, 0);
@@ -90,7 +90,7 @@ int myst_fdtable_clone(myst_fdtable_t* fdtable, myst_fdtable_t** fdtable_out)
                 }
 
                 /* Propagate the file descriptor flags (for pipes only) */
-                if (entry->type == MYST_FDTABLE_TYPE_PIPE && fdflags >= 0)
+                if (entry->type != MYST_FDTABLE_TYPE_NONE && fdflags >= 0)
                     (*fdops->fd_fcntl)(fdops, object, F_SETFD, fdflags);
 
                 new_entry->type = entry->type;
@@ -454,8 +454,14 @@ int myst_fdtable_get(
 
         if (entry->type != type || !(entry->object && entry->device))
         {
+            myst_fdtable_type_t actual_type = entry->type;
             myst_spin_unlock(&fdtable->lock);
-            ERAISE(-EBADF);
+            if ((type == MYST_FDTABLE_TYPE_SOCK) &&
+                (actual_type != MYST_FDTABLE_TYPE_SOCK) &&
+                (actual_type != MYST_FDTABLE_TYPE_NONE))
+                ERAISE(-ENOTSOCK);
+            else
+                ERAISE(-EBADF);
         }
 
         *device = entry->device;

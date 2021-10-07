@@ -7,6 +7,7 @@
 #include <sys/select.h>
 
 #include <myst/eraise.h>
+#include <myst/kernel.h>
 #include <myst/syscall.h>
 
 #define POLLIN_SET (POLLRDNORM | POLLRDBAND | POLLIN | POLLHUP | POLLERR)
@@ -103,9 +104,14 @@ long myst_syscall_select(
         ERAISE(-ENOMEM);
 
     memset(&locals->fds, 0, sizeof(locals->fds));
+    if (nfds < 0)
+        ERAISE(-EINVAL);
 
     if (timeout)
     {
+        if (!myst_is_addr_within_kernel(timeout))
+            ERAISE(-EFAULT);
+
         poll_timeout = (int)timeout->tv_sec * 1000;
         poll_timeout += (int)(timeout->tv_usec / 1000);
     }
@@ -113,18 +119,24 @@ long myst_syscall_select(
     if (readfds)
     {
         const short events = POLLIN_SET;
+        if (!myst_is_addr_within_kernel(readfds))
+            ERAISE(-EFAULT);
         ECHECK(_fdset_to_fds(&locals->fds, events, readfds, nfds));
     }
 
     if (writefds)
     {
         const short events = POLLOUT_SET;
+        if (!myst_is_addr_within_kernel(writefds))
+            ERAISE(-EFAULT);
         ECHECK(_fdset_to_fds(&locals->fds, events, writefds, nfds));
     }
 
     if (exceptfds)
     {
         const short events = POLLEX_SET;
+        if (!myst_is_addr_within_kernel(exceptfds))
+            ERAISE(-EFAULT);
         ECHECK(_fdset_to_fds(&locals->fds, events, exceptfds, nfds));
     }
 

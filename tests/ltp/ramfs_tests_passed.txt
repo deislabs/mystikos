@@ -1,5 +1,6 @@
 /ltp/testcases/kernel/syscalls/accept/accept02
 /ltp/testcases/kernel/syscalls/accept4/accept4_01
+/ltp/testcases/kernel/syscalls/bind/bind01
 /ltp/testcases/kernel/syscalls/chdir/chdir04
 /ltp/testcases/kernel/syscalls/chmod/chmod01
 /ltp/testcases/kernel/syscalls/chmod/chmod02
@@ -129,6 +130,7 @@
 /ltp/testcases/kernel/syscalls/link/link02
 /ltp/testcases/kernel/syscalls/link/link03
 /ltp/testcases/kernel/syscalls/link/link05
+/ltp/testcases/kernel/syscalls/listen/listen01
 /ltp/testcases/kernel/syscalls/llseek/llseek02
 /ltp/testcases/kernel/syscalls/lseek/lseek01
 /ltp/testcases/kernel/syscalls/lseek/lseek07
@@ -169,6 +171,7 @@
 /ltp/testcases/kernel/syscalls/pipe/pipe01
 /ltp/testcases/kernel/syscalls/pipe/pipe03
 /ltp/testcases/kernel/syscalls/pipe/pipe04
+/ltp/testcases/kernel/syscalls/pipe/pipe05
 /ltp/testcases/kernel/syscalls/pipe/pipe06
 /ltp/testcases/kernel/syscalls/pipe/pipe08
 /ltp/testcases/kernel/syscalls/pipe/pipe09
@@ -212,6 +215,7 @@
 /ltp/testcases/kernel/syscalls/sendfile/sendfile08
 /ltp/testcases/kernel/syscalls/sendfile/sendfile08_64
 /ltp/testcases/kernel/syscalls/sendmmsg/sendmmsg02
+/ltp/testcases/kernel/syscalls/sendto/sendto02
 /ltp/testcases/kernel/syscalls/set_robust_list/set_robust_list01
 /ltp/testcases/kernel/syscalls/set_tid_address/set_tid_address01
 /ltp/testcases/kernel/syscalls/setegid/setegid01
@@ -249,6 +253,7 @@
 /ltp/testcases/kernel/syscalls/setreuid/setreuid02
 /ltp/testcases/kernel/syscalls/setreuid/setreuid03
 /ltp/testcases/kernel/syscalls/setreuid/setreuid06
+/ltp/testcases/kernel/syscalls/setsockopt/setsockopt01
 /ltp/testcases/kernel/syscalls/setsockopt/setsockopt02
 /ltp/testcases/kernel/syscalls/setsockopt/setsockopt03
 /ltp/testcases/kernel/syscalls/setsockopt/setsockopt04
