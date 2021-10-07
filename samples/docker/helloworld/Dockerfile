@@ -1,12 +1,18 @@
 FROM ubuntu:18.04
 ARG PSW_VERSION
+ARG MYST_RELEASE_VERSION
 
-ADD mystikos.tar.gz /
 ADD rootfs /
-RUN if [ -z "$PSW_VERSION" ]; then echo "Please set PSW_VERSION (e.g. 2.11)." >&2; exit 1; fi
+RUN if [ -z "$PSW_VERSION" ]; then echo "Please set PSW_VERSION (e.g. 2.15.100)." >&2; exit 1; fi
+RUN if [ -z "$MYST_RELEASE_VERSION" ]; then echo "Please set MYST_RELEASE_VERSION (e.g. 0.5.0)." >&2; exit 1; fi
+
 RUN apt-get update && apt-get install -y \
     wget \
     gnupg
+
+# Get the mystikos release tarball
+RUN wget https://github.com/deislabs/mystikos/releases/download/v${MYST_RELEASE_VERSION}/mystikos-${MYST_RELEASE_VERSION}-x86_64.tar.gz \
+    && tar -xvf mystikos-${MYST_RELEASE_VERSION}-x86_64.tar.gz
 
 # Use the APT preference file to pin sgx packages to specific versions
 # Reference https://manpages.debian.org/buster/apt/apt_preferences.5.en.html
