@@ -1,27 +1,31 @@
 # Mystikos Support for Python
 
-Python3.8, 3.9 are recommended.
+### Python version
+Python 3.8, 3.9 are recommended.
 
-Ubuntu 18.04 (bionic) python3 executable is no-pie, which is currently not supported by Mystikos. So instead of `ubuntu:18.04`, please use `python:3.6-slim-buster` as Dockerfile base image.
+### Base OS version
+Note that the combination of Ubuntu 18.04 (bionic) + python3 is not supported by Mystikos. Since bionic python3 executable is no-PIE while Mystikos requires PIE.
+Please use Debian based `python:3.9-slim` as OS base image in your Dockerfile.
 ```Dockerfile
 FROM python:3.9-slim
 ```
 
-By default, Mystikos has been tested against latest version.
+### Third-party Library Versions
+When validating Mystikos against third-party libraries, our tests ran with the latest stable version of these libraries.
 
 ## Standard Library
-| Package | Supported | Known Limitations & Caveats | Sample |
+| Package | Supported | Known Limitations & Caveats | Sample/Tests |
 | :---: | :---: | :--- | :--- |
 | subprocess | Yes | TBD | [tests/cpython-tests](https://github.com/deislabs/mystikos/tree/main/tests/cpython-tests) |
 
 ## CPython
-| Supported | Known Limitations & Caveats | Sample |
+| Supported | Known Limitations & Caveats | Sample/Tests |
 | :---: | :--- | :--- |
-| Paritial | TBD | [tests/cpython-tests](https://github.com/deislabs/mystikos/tree/main/tests/cpython-tests) |
+| Paritial | We are in-progress of testing it full functionalities. | [tests/cpython-tests](https://github.com/deislabs/mystikos/tree/main/tests/cpython-tests) |
 
 
 ## NumPy
-| Supported | Known Limitations & Caveats | Sample |
+| Supported | Known Limitations & Caveats | Sample/Tests |
 | :---: | :--- | :--- |
 | Yes | Not supporting tests based on mmap, rng. | [solutions/numpy_core_tests](https://github.com/deislabs/mystikos/tree/main/solutions/numpy_core_tests) |
 
@@ -34,20 +38,20 @@ By default, Mystikos has been tested against latest version.
 ## TensorFlow Lite
 | Supported | Known Limitations & Caveats | Sample |
 | :---: | :--- | :--- |
-| Paritial | numpy installed with python3-tflite-runtime is broken. Remove it to use pip-intalled version | [solutions/tensorflow_lite](https://github.com/deislabs/mystikos/tree/main/solutions/tensorflow_lite) |
+| Limited | numpy installed with python3-tflite-runtime is broken.<br>Remove it to use pip-intalled version | [solutions/tensorflow_lite](https://github.com/deislabs/mystikos/tree/main/solutions/tensorflow_lite) |
 
 ## PyTorch
-| Supported | Known Limitations & Caveats | Sample |
+| Supported | Known Limitations & Caveats | Sample/Tests |
 | :---: | :--- | :--- |
-| Paritial | TBD | [solutions/pytorch_inference](https://github.com/deislabs/mystikos/tree/main/solutions/pytorch_inference) |
+| Limited | We have only tested limited samples.<br>More thorough testing is in progress. | [solutions/pytorch_inference](https://github.com/deislabs/mystikos/tree/main/solutions/pytorch_inference) |
 
 
 ## Flask
-| Supported | Known Limitations & Caveats | Sample |
+| Supported | Known Limitations & Caveats | Sample/Tests |
 | :---: | :--- | :--- |
 | Yes | In nginx.conf, set master_process off to avoid using syscall SYS_rt_sigsuspend() which is not hanlded by Mystikos yet<br>`master_process off;`<br>The following pytest would fail for now because of issue #503.<br>`test_instance_config.py::test_egg_installed_paths` | [solutions/python_flask_tests](https://github.com/deislabs/mystikos/tree/main/solutions/python_flask_tests) |
 
 ## Azure SDK for Python
-| Supported | Known Limitations & Caveats | Sample |
+| Supported | Packages that | Sample/Tests |
 | :---: | :--- | :--- |
-| Yes | - | [solutions/python_azure_sdk](https://github.com/deislabs/mystikos/tree/main/solutions/python_azure_sdk) |
+| Yes | The following packages have been verified:<br> - azure-keyvault-administration<br> - azure-keyvault-certificates<br> - azure-keyvault-keys<br> - azure-keyvault-secrets<br> - azure-mgmt-keyvault<br> - azure-identity<br> - azure-storage-file-datalake<br> - azure-storage-file-share<br> - azure-storage-queue<br> - azure-mgmt-storage<br> - azure-mgmt-storagesync<br> - azure-storage-blob | [solutions/python_azure_sdk](https://github.com/deislabs/mystikos/tree/main/solutions/python_azure_sdk) |
