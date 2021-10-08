@@ -23,4 +23,7 @@ def evaluate_sample():
 
 
 if __name__ == "__main__":
+    print("the secret obtained through ssr: ");
+    with open("/mykey", 'rb') as fin:
+        print(fin.read())
     app.run(debug=True, host="0.0.0.0", port="8000", use_reloader=False)

@@ -26,27 +26,37 @@ void exit(int code)
 
     if (syscall(SYS_myst_get_fork_info, &arg) == 0)
     {
-        if (arg.is_parent_of_fork)
+        if (arg.is_parent_of_fork || arg.is_child_fork)
         {
-            /* If we are a parent we need to wait for all forked childred to
-             * shutdown */
-            if (syscall(SYS_myst_kill_wait_child_forks) != 0)
-            {
-                // failed so safest option is fast exit
-                _Exit(code);
-            }
-        }
+            /* processes dealing with pseudo fork cannot cleanup safely.
+             * A parent of a forked process cannot do cleanup either as a child
+             * may have registered a cleanup function but all memory to do with
+             * children are already unloaded so could cause a crash. As a result
+             * the parent must wait for the children to shutdown as well as not
+             * do crt cleanup. Children cannot because they are sharing the CRT
+             * with the parent and the parent already has a lot of state set up
+             * for them. If the child shuts down the crt the parent will crash
+             * as well as any siblings.
+             */
 
-        if (arg.is_child_fork)
-        {
-            // we are child fork so let parent cleanup
+            /* Because we are not going to do CRT cleanup we do need to make
+             * sure files are flushed before they completely shutdown. This
+             * would normally happen in the CRT cleanup code. */
+            fflush(NULL);
+
+            if (arg.is_parent_of_fork)
+            {
+                if (syscall(SYS_myst_kill_wait_child_forks) != 0)
+                {
+                    // failed so safest option is fast exit
+                    _Exit(code);
+                }
+            }
             _Exit(code);
         }
 
-        /* If we are a parent of forked processes, all children are gone. */
-        /* If we are a child we dont get here. */
-        /* This means we are not a forked process and no one relies on our
-         * process memory so we can do a normal CRT cleanup */
+        /* We are not a child pseudo-forked child, nor the parent of one we
+         * can do normal shutdown */
         do_crt_exit(code);
     }
     else

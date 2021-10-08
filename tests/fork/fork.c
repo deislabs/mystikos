@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <myst/assume.h>
 #include <pthread.h>
+#include <signal.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -241,7 +242,7 @@ int test_fork_exec1(int argc, const char* argv[])
     {
         _printf("*** inside child.. callingf execl\n");
         const char* path = "/bin/fork_child";
-        if (execl(path, path, NULL) != 0)
+        if (execl(path, path, "just_return", NULL) != 0)
         {
             fprintf(stderr, "execl should not fail\n");
             exit(2);
@@ -418,6 +419,89 @@ int test_nofork1(int argc, const char* argv[])
     return 0;
 }
 
+/* Test that after a fork/exec the sighandler is reset */
+static _Atomic(int) clear_sig_usr1 = 0;
+
+void test_clear_sig_handler(int signo)
+{
+    switch (signo)
+    {
+        case SIGUSR1:
+            clear_sig_usr1 = 1;
+            break;
+        default:
+            exit(20);
+    }
+}
+
+int test_forkexec_sighandler(int argc, const char* argv[])
+{
+    printf("*** Starting test_forkexec_sighandler ***\n");
+
+    if (signal(SIGUSR1, test_clear_sig_handler) == SIG_ERR)
+    {
+        fprintf(stderr, "failed to set sighandler on child.\n");
+        exit(1);
+    }
+
+    pid_t pid = fork();
+
+    if (pid < 0)
+    {
+        fprintf(stderr, "%s: fork() failed: %d\n", argv[0], pid);
+        exit(3);
+    }
+    else if (pid == 0)
+    {
+        _printf("*** inside child.. calling execl\n");
+        const char* path = "/bin/fork_child";
+        if (execl(path, path, "kill_usr1", NULL) != 0)
+        {
+            fprintf(stderr, "execl should not fail\n");
+            exit(2);
+        }
+        fprintf(stderr, "execl should not return\n");
+        exit(2);
+    }
+    else
+    {
+        int wstatus;
+        _printf("*** inside parent... wait for child to shutdown\n");
+        if (waitpid(pid, &wstatus, 0) != pid)
+        {
+            fprintf(
+                stderr,
+                "waitpid - child should have exited because it crashed.\n");
+            exit(1);
+        }
+
+        /* Child should get a SIGUSR1 unless theexec  child inherited the
+         * sighandlers */
+        if (!WIFSIGNALED(wstatus))
+        {
+            fprintf(stderr, "waitpid WIFSIGNALED should be set.\n");
+            exit(1);
+        }
+        if (WTERMSIG(wstatus) != SIGUSR1)
+        {
+            fprintf(
+                stderr,
+                "waitpid termination signal should be SIGUSR1, we got %d.\n",
+                WTERMSIG(wstatus));
+            exit(1);
+        }
+        if (clear_sig_usr1 != 0)
+        {
+            fprintf(
+                stderr, "there should be no calls on the signal handler.\n");
+            exit(1);
+        }
+        _printf("Shutting down parent\n");
+        printf("*** Finished test_forkexec_sighandler ***\n");
+    }
+    return 0;
+}
+
 int main(int argc, const char* argv[])
 {
     if (argc < 2)
@@ -442,6 +526,10 @@ int main(int argc, const char* argv[])
     else if (strcmp(argv[1], "nofork") == 0)
     {
         myst_assume(test_nofork1(argc, argv) == 0);
+    }
+    else if (strcmp(argv[1], "forkwait_sighandler") == 0)
+    {
+        myst_assume(test_forkexec_sighandler(argc, argv) == 0);
     }
     else
     {

@@ -208,3 +208,15 @@ int __libc_alloca_cutoff(size_t size)
     abort();
     return false;
 }
+
+void _ITM_deregisterTMCloneTable()
+{
+    assert(0);
+    abort();
+}
+
+void _ITM_registerTMCloneTable()
+{
+    assert(0);
+    abort();
+}

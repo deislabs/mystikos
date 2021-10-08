@@ -86,7 +86,6 @@ The following new command line argument will be added:
 | -- | -- |
 | source | This is the source location of the mount in the insecure host. |
 | target | This is the mount point within the TEE. There needs to be an associated target mount configuration specified at signing for this location otherwise the mount will fail. This mount point path needs to already exist in the TEE filesystem. |
-| | |
 
 The target location is part of the TEE measurement which specifies that the target directory is being accessed from an insecure source.
 This command line argument provides the mapping between the two.

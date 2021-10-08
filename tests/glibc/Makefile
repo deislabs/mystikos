@@ -51,16 +51,14 @@ $(APPDIR)/bin/run: run.c
 $(ROOTFS): run.c
 	$(MYST) mkext2 $(APPDIR) $(ROOTFS)
 
-OPTS += --memory-size=32m
-
 one:
-	$(MYST_EXEC) --nobrk $(OPTS) $(ROOTFS) $(TEST) $(NL)
+	$(MYST_EXEC) $(OPTS) $(ROOTFS) $(TEST) $(NL)
 
 tests:
 ifndef POSIX_SPAWN
-	$(foreach i, $(TESTS), $(RUNTEST) $(MYST_EXEC) --nobrk $(OPTS) $(ROOTFS) $(i) $(NL) )
+	$(foreach i, $(TESTS), $(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) $(i) $(NL) )
 else
-	$(MYST_EXEC) --nobrk $(OPTS) $(ROOTFS) /bin/run /tests.passed
+	$(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run /tests.passed
 endif
 
 myst:

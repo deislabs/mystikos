@@ -44,7 +44,8 @@
 
 static myst_kernel_args_t _kargs;
 static mcontext_t _mcontext;
-static bool _trace_syscalls = false;
+
+struct myst_final_options final_options = {0};
 
 extern const void* __oe_get_heap_base(void);
 
@@ -244,7 +245,7 @@ __attribute__((format(printf, 2, 3))) static void _exception_handler_strace(
     const char* fmt,
     ...)
 {
-    if (_trace_syscalls)
+    if (final_options.base.trace_syscalls)
     {
         char null_char = '\0';
         char* buf = &null_char;
@@ -407,22 +408,6 @@ static uint64_t _vectored_handler(oe_exception_record_t* er)
     return _forward_exception_as_signal_to_kernel(er);
 }
 
-static bool _is_allowed_env_variable(
-    const config_parsed_data_t* config,
-    const char* env)
-{
-    for (size_t i = 0; i < config->host_environment_variables_count; i++)
-    {
-        const char* allowed = config->host_environment_variables[i];
-        size_t len = strlen(allowed);
-
-        if (strncmp(env, allowed, len) == 0 && env[len] == '=')
-            return true;
-    }
-
-    return false;
-}
-
 const void* __oe_get_enclave_start_address(void);
 size_t __oe_get_enclave_size(void);
 
@@ -455,6 +440,32 @@ done:
     return ret;
 }
 
+static bool _validate_wanted_secrets(myst_wanted_secrets_t* secrets)
+{
+    if (secrets != NULL)
+    {
+        for (size_t i = 0; i < secrets->secrets_count; i++)
+        {
+            myst_wanted_secret_t* tmp = &secrets->secrets[i];
+            if (tmp->id == NULL || tmp->srs_addr == NULL ||
+                tmp->local_path == NULL || tmp->clientlib == NULL)
+            {
+                fprintf(
+                    stderr,
+                    "Warning: incomplete entries for wanted secret "
+                    "{id: %s, Srs Address: %s, Local Path: %s, ClientLib: %s}. "
+                    "All wanted secrets are ignored.\n",
+                    tmp->id,
+                    tmp->srs_addr,
+                    tmp->local_path,
+                    tmp->clientlib);
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 struct enter_arg
 {
     struct myst_options* options;
@@ -477,7 +488,7 @@ static long _enter(void* arg_)
 {
     long ret = -1;
     struct enter_arg* arg = (struct enter_arg*)arg_;
-    struct myst_options* options = arg->options;
+    struct myst_options* host_options = arg->options;
     struct myst_shm* shared_memory = arg->shared_memory;
     const void* argv_data = arg->argv_data;
     size_t argv_size = arg->argv_size;
@@ -485,39 +496,23 @@ static long _enter(void* arg_)
     size_t envp_size = arg->envp_size;
     uint64_t event = arg->event;
     pid_t target_tid = arg->target_tid;
-    bool trace_errors = false;
-    bool shell_mode = false;
-    bool debug_symbols = false;
-    bool memcheck = false;
-    bool nobrk = false;
-    bool perf = false;
-    bool report_native_tids = false;
-    size_t max_affinity_cpus = options ? options->max_affinity_cpus : 0;
-    size_t main_stack_size = options ? options->main_stack_size : 0;
-    const char* rootfs = NULL;
     config_parsed_data_t parsed_config;
     bool have_config = false;
-    myst_args_t args;
-    myst_args_t env;
-    const char* cwd = "/";       // default to root dir
-    const char* hostname = NULL; // kernel has a default
     const uint8_t* enclave_image_base;
     size_t enclave_image_size;
     const Elf64_Ehdr* ehdr;
     const char target[] = "MYST_TARGET=sgx";
     const bool tee_debug_mode = (_test_oe_debug_mode() == 0);
-    myst_fork_mode_t fork_mode = options ? options->fork_mode : myst_fork_none;
-    bool unhandled_syscall_enosys =
-        options ? options->unhandled_syscall_enosys
-                : false; // default terminate with myst_panic
+    myst_args_t mount_mappings;
+    myst_args_t args;
+    myst_args_t env;
+    myst_wanted_secrets_t* wanted_secrets = NULL;
 
     memset(&parsed_config, 0, sizeof(parsed_config));
+    memset(&mount_mappings, 0, sizeof(mount_mappings));
 
     if (!argv_data || !argv_size || !envp_data || !envp_size)
         goto done;
-
-    memset(&args, 0, sizeof(args));
-    memset(&env, 0, sizeof(env));
 
     /* Get the enclave base address */
     if (!(enclave_image_base = __oe_get_enclave_start_address()))
@@ -545,181 +540,41 @@ static long _enter(void* arg_)
         }
     }
 
-    if (have_config && !parsed_config.allow_host_parameters)
-    {
-        if (myst_args_init(&args) != 0)
-            goto done;
+    if (myst_args_unpack(&args, argv_data, argv_size) != 0)
+        goto done;
+    if (myst_args_unpack(&env, envp_data, envp_size) != 0)
+        goto done;
+    if (myst_args_unpack(
+            &mount_mappings,
+            arg->mount_mappings_data,
+            arg->mount_mappings_size) != 0)
+        goto done;
 
-        if (myst_args_append1(&args, parsed_config.application_path) != 0)
-            goto done;
-
-        if (myst_args_append(
-                &args,
-                (const char**)parsed_config.application_parameters,
-                parsed_config.application_parameters_count) != 0)
-        {
-            goto done;
-        }
-    }
-    else
-    {
-        if (myst_args_unpack(&args, argv_data, argv_size) != 0)
-            goto done;
-    }
-
-    // Need to handle config to environment
-    // in the mean time we will just pull from the host
     if (have_config)
     {
-        myst_args_init(&env);
-
-        // append all enclave-side environment variables first
-        if (myst_args_append(
-                &env,
-                (const char**)parsed_config.enclave_environment_variables,
-                parsed_config.enclave_environment_variables_count) != 0)
-        {
-            goto done;
-        }
-
-        // now include host-side environment variables that are allowed
-        if (parsed_config.host_environment_variables &&
-            parsed_config.host_environment_variables_count)
-        {
-            myst_args_t tmp;
-
-            if (myst_args_unpack(&tmp, envp_data, envp_size) != 0)
-                goto done;
-
-            for (size_t i = 0; i < tmp.size; i++)
-            {
-                if (_is_allowed_env_variable(&parsed_config, tmp.data[i]))
-                {
-                    if (myst_args_append1(&env, tmp.data[i]) != 0)
-                    {
-                        free(tmp.data);
-                        goto done;
-                    }
-                }
-            }
-
-            free(tmp.data);
-        }
+        wanted_secrets = &parsed_config.wanted_secrets;
+        if (!_validate_wanted_secrets(wanted_secrets))
+            wanted_secrets = NULL;
     }
-    else
+
+    if (determine_final_options(
+            host_options,
+            &final_options,
+            &args,
+            &env,
+            &parsed_config,
+            have_config,
+            tee_debug_mode,
+            target,
+            &mount_mappings) != 0)
     {
-        if (myst_args_unpack(&env, envp_data, envp_size) != 0)
-            goto done;
+        fprintf(stderr, "Failed to determine final options\n");
+        assert(0);
     }
 
-    // Override current working directory if present in config
-    if (have_config && parsed_config.cwd)
-    {
-        cwd = parsed_config.cwd;
-    }
-
-    // Override current working directory if present in config
-    if (have_config && parsed_config.hostname)
-    {
-        hostname = parsed_config.hostname;
-    }
-
-    // Override max affinity if present in config
-    if (have_config && parsed_config.max_affinity_cpus)
-    {
-        max_affinity_cpus = parsed_config.max_affinity_cpus;
-    }
-
-    // Override main stack size if present in config
-    if (have_config && parsed_config.main_stack_size)
-    {
-        main_stack_size = parsed_config.main_stack_size;
-    }
-
-    // record the configuration for which fork mode
-    if (have_config && parsed_config.fork_mode)
-    {
-        fork_mode = parsed_config.fork_mode;
-    }
-
-    if (have_config && parsed_config.no_brk)
-    {
-        nobrk = options->nobrk = true;
-    }
-
-    // record the configuration for which termination mode
-    if (have_config)
-    {
-        unhandled_syscall_enosys = parsed_config.unhandled_syscall_enosys;
-    }
-
-    /* Inject the MYST_TARGET environment variable */
-    {
-        const char val[] = "MYST_TARGET=";
-
-        for (size_t i = 0; i < env.size; i++)
-        {
-            if (strncmp(env.data[i], val, sizeof(val) - 1) == 0)
-            {
-                fprintf(stderr, "environment already contains %s", val);
-                goto done;
-            }
-        }
-
-        myst_args_append1(&env, "MYST_TARGET=sgx");
-    }
-
-    /* Add mount source paths to config read mount points */
-    {
-        myst_args_t tmp = {0};
-
-        if (myst_args_unpack(
-                &tmp, arg->mount_mappings_data, arg->mount_mappings_size) != 0)
-        {
-            fprintf(stderr, "Failed to unpack mapping parameters\n");
-            goto done;
-        }
-
-        if (have_config && (!myst_merge_mount_mapping_and_config(
-                                &parsed_config.mounts, &tmp) ||
-                            !myst_validate_mount_config(&parsed_config.mounts)))
-        {
-            fprintf(
-                stderr,
-                "Failed to merge mounting configuration with command line "
-                "mount parameters\n");
-            goto done;
-        }
-    }
-
-    if (options)
-    {
-        // _trace_syscalls is used by vectored exception handler tracing,
-        // disable it if tee_debug_mode is false
-        _trace_syscalls = tee_debug_mode ? options->trace_syscalls : false;
-        // if tee_debug_mode is false, these options are disabled by the
-        // kernel upon entry.
-        trace_errors = tee_debug_mode ? options->trace_errors : false;
-        shell_mode = tee_debug_mode ? options->shell_mode : false;
-        debug_symbols = tee_debug_mode ? options->debug_symbols : false;
-        memcheck = tee_debug_mode ? options->memcheck : false;
-        nobrk = options->nobrk;
-        perf = tee_debug_mode ? options->perf : false;
-
-        report_native_tids =
-            tee_debug_mode ? options->report_native_tids : false;
-
-        /* rootfs buffer content set by the host side. Max length of the string
-         * is PATH_MAX-1. Enforce NULL terminator at the end of the buffer.
-         */
-        if (strnlen(options->rootfs, PATH_MAX) == PATH_MAX)
-        {
-            fprintf(stderr, "rootfs path too long (> %u)\n", PATH_MAX);
-            goto done;
-        }
-
-        rootfs = options->rootfs;
-    }
+    myst_args_release(&args);
+    myst_args_release(&env);
+    myst_args_release(&mount_mappings);
 
     /* Setup the vectored exception handler */
     if (oe_add_vectored_exception_handler(true, _vectored_handler) != OE_OK)
@@ -740,50 +595,58 @@ static long _enter(void* arg_)
         const void* regions_end = __oe_get_heap_base();
         char err[256];
 
-        init_kernel_args(
-            &_kargs,
-            target,
-            (int)args.size,
-            args.data,
-            (int)env.size,
-            env.data,
-            cwd,
-            &options->host_enc_uid_gid_mappings,
-            &parsed_config.mounts,
-            hostname,
-            regions_end,
-            enclave_image_base, /* image_data */
-            enclave_image_size, /* image_size */
-            _get_num_tcs(),     /* max threads */
-            trace_errors,
-            _trace_syscalls,
-            false, /* have_syscall_instruction */
-            tee_debug_mode,
-            event, /* thread_event */
-            target_tid,
-            max_affinity_cpus,
-            fork_mode,
-            myst_tcall,
-            rootfs,
-            err,
-            unhandled_syscall_enosys,
-            sizeof(err));
+        if (init_kernel_args(
+                &_kargs,
+                target,
+                (int)final_options.args.size,
+                final_options.args.data,
+                (int)final_options.env.size,
+                final_options.env.data,
+                final_options.cwd,
+                &final_options.base.host_enc_uid_gid_mappings,
+                &parsed_config.mounts,
+                wanted_secrets,
+                final_options.hostname,
+                regions_end,
+                enclave_image_base, /* image_data */
+                enclave_image_size, /* image_size */
+                _get_num_tcs(),     /* max threads */
+                final_options.base.trace_errors,
+                final_options.base.trace_syscalls,
+                false, /* have_syscall_instruction */
+                tee_debug_mode,
+                event, /* thread_event */
+                target_tid,
+                final_options.base.max_affinity_cpus,
+                final_options.base.fork_mode,
+                myst_tcall,
+                final_options.base.rootfs,
+                err,
+                final_options.base.unhandled_syscall_enosys,
+                sizeof(err)) != 0)
+        {
+            fprintf(stderr, "init_kernel_args() failed\n");
+            assert(0);
+        }
 
-        _kargs.shell_mode = shell_mode;
-        _kargs.debug_symbols = debug_symbols;
-        _kargs.memcheck = memcheck;
-        _kargs.nobrk = nobrk;
-        _kargs.perf = perf;
+        _kargs.shell_mode = final_options.base.shell_mode;
+        _kargs.debug_symbols = final_options.base.debug_symbols;
+        _kargs.memcheck = final_options.base.memcheck;
+        _kargs.nobrk = final_options.base.nobrk;
+        _kargs.exec_stack = final_options.base.exec_stack;
+        _kargs.perf = final_options.base.perf;
         _kargs.start_time_sec = arg->start_time_sec;
         _kargs.start_time_nsec = arg->start_time_nsec;
-        _kargs.report_native_tids = report_native_tids;
+        _kargs.report_native_tids = final_options.base.report_native_tids;
         _kargs.enter_stack = arg->enter_stack;
         _kargs.enter_stack_size = arg->enter_stack_size;
-        _kargs.main_stack_size =
-            main_stack_size ? main_stack_size : MYST_PROCESS_INIT_STACK_SIZE;
+        _kargs.main_stack_size = final_options.base.main_stack_size
+                                     ? final_options.base.main_stack_size
+                                     : MYST_PROCESS_INIT_STACK_SIZE;
 
         /* whether user-space FSGSBASE instructions are supported */
-        _kargs.have_fsgsbase_instructions = options->have_fsgsbase_instructions;
+        _kargs.have_fsgsbase_instructions =
+            final_options.base.have_fsgsbase_instructions;
 
         /* set ehdr and verify that the kernel is an ELF image */
         {
@@ -814,11 +677,10 @@ static long _enter(void* arg_)
 
 done:
 
-    if (args.data)
-        free(args.data);
-
-    if (env.data)
-        free(env.data);
+    if (final_options.args.data)
+        free(final_options.args.data);
+    if (final_options.env.data)
+        free(final_options.env.data);
 
     free_config(&parsed_config);
     return ret;

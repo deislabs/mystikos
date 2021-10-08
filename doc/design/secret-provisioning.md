@@ -11,158 +11,162 @@ M-HSM, or a service run by the user in a locked down and trusted
 environment.
 
 This design document describes the process of provisioning a pre-generated
-secret into an application running with Mystikos in 5 aspects as below. How
-the secret is generated is outside the scope of this document. We will
+secret into an application running with Mystikos in 4 components as below.
+How the secret is generated is outside the scope of this document. We will
 likely revise the design when gaps are found in a PoC.
 
-1. **the user interface**: how does Mystikos allow users to specify the
-secrets they want in their applications?
-1. **the client library**: how does Mystikos provide a reference secret
-provisioning client library and how can users plug in an alternative library.
-1. **the server library**: how does Mystikos provide a reference secret
-provisioning server library and how can users plug in an alternative library.
-1. **the secret release service**: how does the secret holder use the
-server library for secure release of secrets.
-1. **the attestation model**: the evidences and the verification of
-such evidences agreed by both the client and the server.
+1. **the user interface**
+1. **the client library**
+1. **the server library**
+1. **the Secret Release Service (SRS)**
+
+Users are responsible for:
+
+1. Run their own Secret Release Service, or utilize an existing key vault service
+such as Azure Managed HSM;
+1. Develop/choose a pair of client lib and server lib that satisfies the security
+requirements. We provide reference implementation of these libraries that can be
+reused/customized for secret provisioning. We also provide a client library
+for Azure Managed HSM service;
+1. While creating self-contained appdir and rootfs for the application with
+`myst-appbuilder`, ensure the client library (and whatever libraries it depends on)
+are placed on a default library path, "/lib/" for example;
+1. Link SRS service with the server lib (not required if using Azure Managed HSM);
+1. Config Mystikos application (see "The user interface" section).
+
+Mystikos is responsible for:
+
+1. Perform secret provisioning during boot time if the `secrets` section is present
+in config.json;
+1. If secret provisioning is successful, write the secret to the file at `LocalPath`.
+The application can access the secret by reading the file;
+1. If secret provisioning failed, the Mystikos runtime still boots up and launches
+the application, but reports a failure to the uer.
 
 ## The user interface
 
 Users who wish to provision secrets to their applications running with
-Mystikos can add the following section to config.json:
+Mystikos should add the following section to config.json:
 
 ```json
 secrets: [
     # Secret 1
     {
-        "Name": <name of the secret>,
-        "AttestationModel": <a number between 1 to 3. See attestation models below>
-        "HolderURL": <URL to the secret release service>,
-        "Kid": <identifier of the key>,
-        "LocalPath": <Path to the file that will store the secret after its retrieval>,
-        "ClientLibPath": <Path to the client library>
+        "ID": <ID of the secret>,
+        "SrsAddress": <Address to the Secret Release Service>,
+        "SrsApiVersion": <Optional. API Version of the SRS>,
+        "LocalPath": <Path of the file that stores the secret after its retrieval>,
+        "ClientLib": <Name of the client library>,
+        "Verbose": <Optional. Verboseness of the client library>
     },
     # Secret 2
     {
-        "Name": <name of the secret>,
-        "AttestationModel": <a number between 1 to 3. See attestation models below>
-        "HolderURL": <URL to the secret release service>,
-        "Kid": <identifier of the key>,
-        "LocalPath": <Path to the file that will store the secret after its retrieval>,
-        "ClientLibPath": <Path to the client library>
+        "ID": <ID of the secret>,
+        "SrsAddress": <Address to the Secret Release Service>,
+        "SrsApiVersion": <Optional. API Version of the SRS>,
+        "LocalPath": <Path of the file that stores the secret after its retrieval>,
+        "ClientLib": <Name of the client library>,
+        "Verbose": <Optional. Verboseness of the client library>
     },
     ...
 ]
 ```
 
-Users are responsible for getting the dependent client library into the rootfs consumed
-by Mystikos. They are also responsible for linking with the corresponding server library
-in their services that release the secrets.
-
-## Attestation models
-
-At present, we consider 3 attestation models, from 1 to 3, that can be adopted by the
-client library while it generates attestation evidences, and by the server library
-when it verifies such evidences. Higher number indicates more abstraction in the
-attestation model.
-
-* **model 1**: The client generates a key pair, and an attestation report which
-includes the hash of the public key. The public key (but not the private key)
-and the attestation report are sent to the server. The server will verify the report's
-validity, verify the public key hash, and consider the TEE identity while
-deciding whether to release the secret or not.
-
-* **model 2**: The client generates a self-signed x509 certificate with
-an embedded attestation report which includes the hash of the public key.
-The certificate is sent to the server. The server will verify the
-report's validity, verify the public key hash, and consider the TEE
-identity while deciding whether to release the secret or not.
-
-* **model 3**: The client generates attestation evidences necessary to obtain
-a token from an attestation service, such as MAA. The token is sent to the
-server. The server will verify the validity of the token, and verify various
-claims within the token, including but not limited to public key and TEE
-identity, while deciding whether to release the secret or not.
-
-The reference implementation will use SGX report for attestation purposes. This
-does not limit users from providing their own client/server libraries that
-take advantage of attestation capabilities provided by other TEE platforms such
-as AMD SNP.
-
 ## The client library
 
-Mystikos will provide a reference implementation of the client library
-that exposes the following APIs to be called by Mystikos runtime while
-performing secret provisioning:
+We will provide: 1) a reference implementation of the client library;
+and 2) a client library for MHSM that exposes the following APIs:
 
-* `generate_attestation_evidence_with_keys` (for attestation model 1)
-* `generate_x509_cert_with_attestation_extension` (for attestation model 2)
-* `generate_attestation_service_token` (for attestation model 3)
-* `unwrap_secret` (for all attestation models)
+```c
 
-A client library could choose to implement only 1 or 2 `generate_xxx` functions
-for the specific attestation models supported on the server side. For example,
-the client library we provide for Azure M-HSM only implements
-`generate_attestation_service_token` (attestation model 3)
-because that's the only model M-HSM service supports.
+typedef struct _releasedSecret
+{
+    uint32_t schemaVersion; /* schema version of this structure */
+    char* id;               /* ID of the secret */
+    char* category;         /* key/cert/etc. */
+    char* type;             /* RSA/EC/AES/etc. */
+    char* description;      /* optional desc. from the secret service */
+    uint8_t* data;          /* the secret as a binary blob */
+    size_t length;          /* the length of the blob */
+} ReleasedSecret;
 
-The reference implementation provided by Mystikos will support all 3
-attestation models relying on the extended syscalls offered by Mystikos
-runtime. However, it only supports the minimum requirement for
-a secret provisioning process. Any additional security enhancements, such as
-using nonce or signing and verifying the response from the server could be
-implemented in custom client/server libraries as long as the enhancement
-is agreed on by both the client and the server, and the implementation
-fulfills the same set of APIs.
+/// Set the verbose level of the client library
+int ssr_client_set_verbose(unsigned level);
 
-Users can plug in their own client library by including the library in rootfs
-and providing the corresponding `ClientLibPath` in config.json.
+/// Initialize the client library
+int ssr_client_init(void);
+
+/// Retrieve a secret from the SRS service, given the
+/// secret ID, the service address, the API version
+/// of the service.
+///
+/// If successful, the function returns 0 and the secret
+/// is written into the structure **secret**. Returns
+/// an error code otherwise.
+int ssr_client_get_secret(
+    const char* srs_addr,
+    const char* api_version,
+    const char* id,
+    ReleasedSecret* secret);
+
+/// Free the contents of the release secret, but not the
+/// **secret** pointer itself.
+void ssr_client_free_secret(ReleasedSecret* secret);
+
+/// Tear down the client library.
+void ssr_client_terminate(void);
+```
+
+Users can plug in their own client library, provided the library implements
+the above API surface, by including the library in a default library path
+of rootfs and specifying the corresponding `ClientLibrary` in config.json.
 
 The client library is expected to be written in C/C++.
 
 ## The server library
 
-Mystikos will provide a reference implementation of the server library
-that exposes the following APIs to be called by the service that releases the
-secrets:
+We will provide a reference implementation of the server library
+that exposes the following APIs to be called by the reference
+implementation of the SRS service:
 
-* `verify_attestation_evidence_with_key` (for attestation model 1)
-* `verify_x509_cert_with_attestation_extension` (for attestation model 2)
-* `verify_attestation_service_token` (for attestation model 3)
-* `wrap_secret` (for all attestation models)
+```c
 
-A server library could choose implement only 1 or 2 `verify_xxx` functions above for the
-attestation models it supports. In `wrap_secret`, our reference implementation
-just encrypts the secret with the public key. A more complex implementation could add
-signing, the allowed operations on the released secret, or include the original request
-parameters in the response as long as the corresponding client library implements
-`unwrap_secret` accordingly.
+/// Set the verbose level of the server library
+int ssr_server_set_verbose(unsigned level);
 
-How does the server lib verify the attestation report is a contract between the
-client lib and the server lib. For the attestation report generated by our reference
-client lib implementation, the SGX report can be verified using either:
+/// Initialize the server library
+int ssr_server_init(void);
 
-1. Open Enclave host verify library;
-1. the extended syscalls of Mystikos if the secret release service runs inside
-Mystikos;
-1. the MAA service.
+/// Validate credentials from the client. If valid,
+/// wrap the secret with a key agreed on by both the client
+/// lib and the server lib. The wrapped secret is written
+/// into the **wrapped_secret_blob**, with its length
+/// written into **wrapped_secret_blob_size**.
+int ssr_server_validate_and_release_secret(
+    const uint8_t* credential,
+    size_t credential_size,
+    uint64_t nonce,
+    uint8_t **wrapped_secret_blob,
+    size_t * wrapped_secret_blob_size);
 
-We will probably implement the simplest one in the reference implementation.
+/// Tear down the server library.
+void ssr_server_terminate(void);
+```
 
-The server library is preferably to be written in C/C++ if it depends on the OE library
-or the Mystikos extended syscalls.
+How does the server lib verify the credential and wrap the secret is a
+contract between the client lib and the server lib.
 
-## The Secret Release Web Service
+## The Secret Release Service
 
-The Secret Release Web Service (SRWS) could be run in a trusted environment.
+The Secret Release Service (SRS) could be run in a trusted environment.
 We recommend, but don't mandate, it to be run in a TEE. That is, we encourage
-users to run SRWS with Mystikos. But you could run it on a plain Linux or Windows
+users to run SRS with Mystikos. But you could run it on a plain Linux or Windows
 server as long as you have confidence in the measures that safeguard the server.
 
-For testing purpose, Mystikos will provide a simple web service that links with
+For testing purpose, we will provide a simple web service that links with
 the reference implementation of the server library and performs secret release.
 
-The Secret Release Web Service can be implemented in any programming language.
+The Secret Release Service can be implemented in any programming language.
 
 ## Putting everything together
 

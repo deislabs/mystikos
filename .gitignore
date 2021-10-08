@@ -3,6 +3,7 @@ build/
 *.o
 *.a
 *.pem
+*.swp
 
 *appdir*
 *lcov*

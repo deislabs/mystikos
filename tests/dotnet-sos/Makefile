@@ -5,6 +5,7 @@ APPBUILDER=$(TOP)/scripts/appbuilder
 HEAP_SIZE="768M"
 
 MYST_LLDB_DOCKER = /build/openenclave/bin/oelldb
+TEST_RUNNER_IMG = mystikos/dotnet-sos-prereqs:20200805
 
 OPTS = --report-native-tids
 
@@ -12,7 +13,7 @@ ifdef STRACE
 OPTS += --strace
 endif
 
-all: ext2fs
+all: ext2fs runner-image
 
 appdir:
 	$(APPBUILDER) Dockerfile
@@ -20,6 +21,9 @@ appdir:
 ext2fs: appdir
 	rm -rf appdir/tmp/clr-debug-pipe*
 	$(MYST) mkext2 appdir ext2fs
+
+runner-image:
+	docker pull $(TEST_RUNNER_IMG)
 
 clean:
 	sudo rm -fr appdir ext2fs rootfs stdouterr.txt
@@ -29,7 +33,7 @@ tests:
 	-e TARGET=$(TARGET) \
 	-v $(abspath .):/app/ -v $(TOP)/build:/build \
 	--device /dev/sgx:/dev/sgx \
-	mystikos/dotnet-sos-prereqs:20200805 \
+	$(TEST_RUNNER_IMG) \
 	/app/exec.sh $(MYST_LLDB_DOCKER) /build/bin/myst $(EXEC) $(OPTS)
 	@ echo "=== passed test (dotnet-sos)"
 

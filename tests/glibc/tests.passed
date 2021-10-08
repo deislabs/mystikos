@@ -342,8 +342,6 @@
 /glibc/build/nptl/tst-cancelx15
 /glibc/build/nptl/tst-cancelx2
 /glibc/build/nptl/tst-cancelx3
-/glibc/build/nptl/tst-cleanup0
-/glibc/build/nptl/tst-cleanupx0
 /glibc/build/nptl/tst-clock1
 /glibc/build/nptl/tst-cnd-basic
 /glibc/build/nptl/tst-cnd-broadcast
@@ -451,13 +449,11 @@
 /glibc/build/posix/tst-glob_symlinks
 /glibc/build/posix/tst-mmap
 /glibc/build/posix/tst-mmap-offset
-/glibc/build/posix/tst-nanosleep
 /glibc/build/posix/tst-preadwrite
 /glibc/build/posix/tst-preadwrite64
 /glibc/build/posix/tst-vfork1
 /glibc/build/rt/tst-aio2
 /glibc/build/rt/tst-aio3
-/glibc/build/rt/tst-aio5
 /glibc/build/rt/tst-aio8
 /glibc/build/setjmp/test-as-const-jmp_buf-ssp
 /glibc/build/setjmp/tst-saved_mask-1
@@ -505,11 +501,9 @@
 /glibc/build/stdlib/testmb
 /glibc/build/stdlib/testmb2
 /glibc/build/stdlib/testrand
-/glibc/build/stdlib/tst-atexit
 /glibc/build/stdlib/tst-atof1
 /glibc/build/stdlib/tst-atof2
 /glibc/build/stdlib/tst-bsearch
-/glibc/build/stdlib/tst-cxa_atexit
 /glibc/build/stdlib/tst-limits
 /glibc/build/stdlib/tst-makecontext
 /glibc/build/stdlib/tst-putenv

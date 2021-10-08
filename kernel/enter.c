@@ -491,6 +491,7 @@ static int _init_main_thread(
         ERAISE(-ENOMEM);
 
     thread->pause_futex = 0;
+    process->sigstop_futex = 0;
 
     // Initial process list is just us. All new processes will be inserted in
     // the list. Dont need to set these as they are already NULL, but being here
@@ -833,6 +834,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
                  args->argv,
                  args->envc,
                  args->envp,
+                 args->wanted_secrets,
                  NULL,
                  NULL)) != 0)
         {

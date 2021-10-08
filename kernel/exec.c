@@ -26,6 +26,7 @@
 #include <myst/reloc.h>
 #include <myst/round.h>
 #include <myst/setjmp.h>
+#include <myst/signal.h>
 #include <myst/spinlock.h>
 #include <myst/strings.h>
 #include <myst/syscall.h>
@@ -749,7 +750,11 @@ done:
 
 typedef long (*syscall_callback_t)(long n, long params[6]);
 
-typedef void (*enter_t)(void* stack, void* dynv, syscall_callback_t callback);
+typedef void (*enter_t)(
+    void* stack,
+    void* dynv,
+    syscall_callback_t callback,
+    myst_wanted_secrets_t* secrets);
 
 typedef struct entry_args
 {
@@ -819,6 +824,7 @@ int myst_exec(
     const char* argv[],
     size_t envc,
     const char* envp[],
+    myst_wanted_secrets_t* wanted_secrets,
     void (*callback)(void*), /* used to release caller-allocated parameters */
     void* callback_arg)
 {
@@ -848,6 +854,9 @@ int myst_exec(
         ERAISE(-EINVAL);
 
     process = thread->process;
+
+    /* reset sigactions */
+    myst_signal_init(process);
 
     /* allocate and zero-fill the new CRT image */
     {
@@ -1009,13 +1018,14 @@ int myst_exec(
         process->vfork_parent_tid = 0;
         process->vfork_parent_pid = 0;
     }
+    process->num_pseudo_children--;
 
     /* invoke the caller's callback here */
     if (callback)
         (*callback)(callback_arg);
 
     /* enter the C-runtime on the target thread descriptor */
-    (*enter)(sp, dynv, myst_syscall);
+    (*enter)(sp, dynv, myst_syscall, wanted_secrets);
     /* unreachable */
 
     process->exec_stack = NULL;

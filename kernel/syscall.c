@@ -456,6 +456,7 @@ static pair_t _pairs[] = {
     {SYS_myst_get_fork_info, "SYS_myst_get_fork_info"},
     {SYS_fork_wait_exec_exit, "SYS_fork_wait_exec_exit"},
     {SYS_myst_kill_wait_child_forks, "SYS_myst_kill_wait_child_forks"},
+    {SYS_myst_get_exec_stack_option, "SYS_myst_get_exec_stack_option"},
     /* Open Enclave extensions */
     {SYS_myst_oe_get_report_v2, "SYS_myst_oe_get_report_v2"},
     {SYS_myst_oe_free_report, "SYS_myst_oe_free_report"},
@@ -540,9 +541,18 @@ long myst_syscall_get_fork_info(myst_process_t* process, myst_fork_info_t* arg)
         arg->is_child_fork = process->is_pseudo_fork_process;
 
         /* Check if we have a child process which is a clone */
-        arg->is_parent_of_fork = myst_have_child_forked_processes(process);
+        arg->is_parent_of_fork = process->is_parent_of_pseudo_fork_process;
     }
-
+#if 0
+    printf(
+        "pid=%d, forkmode=%s, is_child_fork=%s, is_parent_of_fork=%s\n",
+        myst_getpid(),
+        arg->fork_mode == myst_fork_none
+            ? "none"
+            : arg->fork_mode == myst_fork_pseudo ? "pseudo" : "pseudo-wait",
+        arg->is_child_fork ? "yes" : "no",
+        arg->is_parent_of_fork ? "yes" : "no");
+#endif
 done:
     return ret;
 }
@@ -561,6 +571,34 @@ static const char* _syscall_str(long n)
 const char* myst_syscall_str(long n)
 {
     return _syscall_str(n);
+}
+
+struct timespec_buf
+{
+    char data[72];
+};
+
+/* format a timespec structure */
+static const char* _format_timespec(
+    struct timespec_buf* buf,
+    const struct timespec* ts)
+{
+    if (ts)
+    {
+        snprintf(
+            buf->data,
+            sizeof(buf->data),
+            "%p(sec=%ld nsec=%ld)",
+            ts,
+            ts->tv_sec,
+            ts->tv_nsec);
+    }
+    else
+    {
+        snprintf(buf->data, sizeof(buf->data), "%p", ts);
+    }
+
+    return buf->data;
 }
 
 __attribute__((format(printf, 2, 3))) static void _strace(
@@ -1025,14 +1063,25 @@ done:
 long myst_syscall_lseek(int fd, off_t offset, int whence)
 {
     long ret = 0;
-    myst_fs_t* fs;
-    myst_file_t* file;
-    const myst_fdtable_type_t type = MYST_FDTABLE_TYPE_FILE;
+    myst_fdtable_type_t type;
+    void* device = NULL;
+    void* object = NULL;
     myst_fdtable_t* fdtable = myst_fdtable_current();
 
-    ECHECK(myst_fdtable_get(fdtable, fd, type, (void**)&fs, (void**)&file));
+    ECHECK(myst_fdtable_get_any(fdtable, fd, &type, &device, &object));
 
-    ret = ((*fs->fs_lseek)(fs, file, offset, whence));
+    if (type == MYST_FDTABLE_TYPE_FILE)
+    {
+        myst_fs_t* fs = (myst_fs_t*)device;
+        myst_file_t* file = (myst_file_t*)object;
+        ret = ((*fs->fs_lseek)(fs, file, offset, whence));
+    }
+    else
+    {
+        /* Linux returns ESPIPE for non-seekable resources - pipes and sockets
+         */
+        ERAISE(-ESPIPE);
+    }
 
 done:
     return ret;
@@ -2275,8 +2324,9 @@ long myst_syscall_pipe2(int pipefd[2], int flags)
     myst_pipedev_t* pd = myst_pipedev_get();
     static const ssize_t margin = 8;
 
+    /* Linux raises EFAULT when pipefd is null */
     if (!pipefd)
-        ERAISE(-EINVAL);
+        ERAISE(-EFAULT);
 
     /* Leave a little margin so pipe2() does not exhaust the last few fds */
     if (myst_fdtable_count(fdtable) < margin)
@@ -2440,6 +2490,7 @@ long myst_syscall_execve(
             (const char**)argv,
             _count_args((const char* const*)envp),
             (const char**)envp,
+            NULL, /* wanted secrets */
             free,
             argv) != 0)
     {
@@ -3460,6 +3511,11 @@ static long _syscall(void* args_)
 
             BREAK(_return(n, myst_syscall_unmap_on_exit(thread, ptr, size)));
         }
+        case SYS_myst_get_exec_stack_option:
+        {
+            _strace(n, NULL);
+            BREAK(_return(n, __myst_kernel_args.exec_stack));
+        }
         case SYS_get_process_thread_stack:
         {
             _strace(n, NULL);
@@ -3611,6 +3667,12 @@ static long _syscall(void* args_)
                 flags,
                 fd,
                 offset);
+
+            if (process->is_pseudo_fork_process &&
+                __myst_kernel_args.fork_mode ==
+                    myst_fork_pseudo_wait_for_exit_exec)
+                myst_panic("mmap unsupported: pseudo fork process is calling "
+                           "mmap when running in pseudo_wait mode");
 
             /* this can return (void*)-errno */
             long ret = (long)myst_mmap(addr, length, prot, flags, fd, offset);
@@ -3800,12 +3862,14 @@ static long _syscall(void* args_)
 
             _strace(
                 n,
-                "nfds=%d rfds=%p wfds=%p xfds=%p timeout=%p",
+                "nfds=%d rfds=%p wfds=%p xfds=%p timeout=%p(sec=%ld, usec=%ld)",
                 nfds,
                 rfds,
                 wfds,
                 efds,
-                timeout);
+                timeout,
+                timeout ? timeout->tv_sec : 0,
+                timeout ? timeout->tv_usec : 0);
 
             ret = myst_syscall_select(nfds, rfds, wfds, efds, timeout);
             BREAK(_return(n, ret));
@@ -3939,8 +4003,9 @@ static long _syscall(void* args_)
         {
             const struct timespec* req = (const struct timespec*)x1;
             struct timespec* rem = (struct timespec*)x2;
+            struct timespec_buf buf;
 
-            _strace(n, "req=%p rem=%p", req, rem);
+            _strace(n, "req=%s rem=%p", _format_timespec(&buf, req), rem);
 
             BREAK(_return(n, myst_syscall_nanosleep(req, rem)));
         }
@@ -4049,7 +4114,8 @@ static long _syscall(void* args_)
         {
             int ret = 0;
             _strace(n, NULL);
-            myst_futex_wait(&thread->fork_exec_futex_wait, 0, NULL);
+            myst_futex_wait(
+                &thread->fork_exec_futex_wait, 0, NULL, FUTEX_BITSET_MATCH_ANY);
             BREAK(_return(n, ret));
         }
         case SYS_myst_kill_wait_child_forks:
@@ -4976,15 +5042,41 @@ static long _syscall(void* args_)
             long arg = (long)x4;
             int* uaddr2 = (int*)x5;
             int val3 = (int)x6;
+            int futex_op2 = futex_op & ~FUTEX_PRIVATE;
 
-            _strace(
-                n,
-                "uaddr=0x%lx(%d) futex_op=%u(%s) val=%d",
-                (long)uaddr,
-                (uaddr ? *uaddr : -1),
-                futex_op,
-                _futex_op_str(futex_op),
-                val);
+            if (futex_op2 == FUTEX_WAIT || futex_op2 == FUTEX_WAIT_BITSET)
+            {
+                const struct timespec* timeout = (const struct timespec*)x4;
+                struct timespec_buf buf;
+
+                _strace(
+                    n,
+                    "uaddr=0x%lx(%d) futex_op=%u(%s) val=%d, "
+                    "timeout=%s uaddr2=0x%lx val3=%d",
+                    (long)uaddr,
+                    (uaddr ? *uaddr : -1),
+                    futex_op,
+                    _futex_op_str(futex_op),
+                    val,
+                    _format_timespec(&buf, timeout),
+                    (long)uaddr2,
+                    val3);
+            }
+            else
+            {
+                _strace(
+                    n,
+                    "uaddr=0x%lx(%d) futex_op=%u(%s) val=%d arg=%li "
+                    "uaddr2=0x%lx val3=%d",
+                    (long)uaddr,
+                    (uaddr ? *uaddr : -1),
+                    futex_op,
+                    _futex_op_str(futex_op),
+                    val,
+                    arg,
+                    (long)uaddr2,
+                    val3);
+            }
 
             BREAK(_return(
                 n,
@@ -5130,8 +5222,9 @@ static long _syscall(void* args_)
         {
             clockid_t clk_id = (clockid_t)x1;
             struct timespec* tp = (struct timespec*)x2;
+            struct timespec_buf buf;
 
-            _strace(n, "clk_id=%u tp=%p", clk_id, tp);
+            _strace(n, "clk_id=%u tp=%s", clk_id, _format_timespec(&buf, tp));
 
             BREAK(_return(n, myst_syscall_clock_settime(clk_id, tp)));
         }
@@ -5353,8 +5446,14 @@ static long _syscall(void* args_)
             const char* pathname = (const char*)x2;
             const struct timeval* times = (const struct timeval*)x3;
             long ret;
-
-            _strace(n, "dirfd=%d pathname=%s times=%p", dirfd, pathname, times);
+            _strace(
+                n,
+                "dirfd=%d pathname=%s times=%p(sec=%ld, usec=%ld)",
+                dirfd,
+                pathname,
+                times,
+                times ? times->tv_sec : 0,
+                times ? times->tv_usec : 0);
 
             ret = myst_syscall_futimesat(dirfd, pathname, times);
             BREAK(_return(n, ret));
@@ -5701,15 +5800,16 @@ static long _syscall(void* args_)
             int flags = (int)x4;
             struct timespec* timeout = (struct timespec*)x5;
             long ret;
+            struct timespec_buf buf;
 
             _strace(
                 n,
-                "sockfd=%d msgvec=%p vlen=%u flags=%d timeout=%p",
+                "sockfd=%d msgvec=%p vlen=%u flags=%d timeout=%s",
                 sockfd,
                 msgvec,
                 vlen,
                 flags,
-                timeout);
+                _format_timespec(&buf, timeout));
 
             ret = myst_syscall_recvmmsg(sockfd, msgvec, vlen, flags, timeout);
             BREAK(_return(n, ret));
@@ -5760,7 +5860,15 @@ static long _syscall(void* args_)
                 vlen,
                 flags);
 
-            ret = myst_syscall_sendmmsg(sockfd, msgvec, vlen, flags);
+            /* Note: We send in MSG_NOSIGNAL so it does not generate a SIGPIPE
+             * in the host. We get an EPIPE error back if the socket got closed,
+             * and then we will generate the signal ourselves if needed. */
+            ret = myst_syscall_sendmmsg(
+                sockfd, msgvec, vlen, flags | MSG_NOSIGNAL);
+            if (ret == -EPIPE && !(flags & MSG_NOSIGNAL))
+            {
+                myst_signal_deliver(thread, SIGPIPE, NULL);
+            }
             BREAK(_return(n, ret));
         }
         case SYS_setns:
@@ -6017,8 +6125,15 @@ static long _syscall(void* args_)
                     addrlen);
             }
 
+            /* Note: We send in MSG_NOSIGNAL so it does not generate a SIGPIPE
+             * in the host. We get an EPIPE error back if the socket got closed,
+             * and then we will generate the signal ourselves if needed. */
             ret = myst_syscall_sendto(
-                sockfd, buf, len, flags, dest_addr, addrlen);
+                sockfd, buf, len, flags | MSG_NOSIGNAL, dest_addr, addrlen);
+            if (ret == -EPIPE && !(flags & MSG_NOSIGNAL))
+            {
+                myst_signal_deliver(thread, SIGPIPE, NULL);
+            }
 
             BREAK(_return(n, ret));
         }
@@ -6067,7 +6182,11 @@ static long _syscall(void* args_)
 
             _strace(n, "sockfd=%d msg=%p flags=%d", sockfd, msg, flags);
 
-            ret = myst_syscall_sendmsg(sockfd, msg, flags);
+            ret = myst_syscall_sendmsg(sockfd, msg, flags | MSG_NOSIGNAL);
+            if (ret == -EPIPE && !(flags & MSG_NOSIGNAL))
+            {
+                myst_signal_deliver(thread, SIGPIPE, NULL);
+            }
             BREAK(_return(n, ret));
         }
         case SYS_recvmsg:
@@ -6240,7 +6359,6 @@ static long _syscall(void* args_)
 
             long ret = myst_syscall_sendfile(out_fd, in_fd, offset, count);
             BREAK(_return(n, ret));
-            break;
         }
         /* forward Open Enclave extensions to the target */
         case SYS_myst_oe_get_report_v2:
@@ -6557,7 +6675,8 @@ long myst_syscall_pause(void)
         }
 
         // Futex is not available, wait.
-        ret = myst_futex_wait(&thread->pause_futex, 0, NULL);
+        ret = myst_futex_wait(
+            &thread->pause_futex, 0, NULL, FUTEX_BITSET_MATCH_ANY);
         if (ret != 0 && ret != -EAGAIN)
             ERAISE(ret);
     }

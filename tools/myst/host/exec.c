@@ -337,6 +337,10 @@ int exec_action(int argc, const char* argv[], const char* envp[])
         if (cli_getopt(&argc, argv, "--nobrk", NULL) == 0)
             options.nobrk = true;
 
+        /* Get --exec-stack option */
+        if (cli_getopt(&argc, argv, "--exec-stack", NULL) == 0)
+            options.exec_stack = true;
+
         /* Get --perf option */
         if (cli_getopt(&argc, argv, "--perf", NULL) == 0)
             options.perf = true;
@@ -550,7 +554,7 @@ int exec_action(int argc, const char* argv[], const char* envp[])
         rootfs = rootfs_path;
     }
 
-    // we may  or may not have config passed in through the commandline.
+    // we may or may not have config passed in through the commandline.
     // If the enclave is signed that config will take precedence over
     // this version
     if ((details = create_region_details_from_files(

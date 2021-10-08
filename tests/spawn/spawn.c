@@ -152,6 +152,56 @@ int test_spawn_crash(int argc, const char* argv[], char* const envp[])
     }
 }
 
+/* This test makes sure the child does not have the parent signal handler still
+ * registered */
+
+static _Atomic(int) clear_sig_usr1 = 0;
+
+void test_spawn_clear_sig_handler(int signo)
+{
+    switch (signo)
+    {
+        case SIGUSR1:
+            clear_sig_usr1 = 1;
+            break;
+        default:
+            assert(0);
+    }
+}
+
+int test_spawn_clear_sighandler(int argc, const char* argv[])
+{
+    int r;
+    pid_t pid = 0;
+    char* const child_argv[] = {"/bin/child-signal", "clear_sighandler", NULL};
+    char* const child_envp[] = {"X=1", "Y=1", NULL};
+    int wstatus;
+
+    assert(clear_sig_usr1 == 0);
+    assert(signal(SIGUSR1, test_spawn_sig_handler) != SIG_ERR);
+
+    r = posix_spawn(&pid, child_argv[0], NULL, NULL, child_argv, child_envp);
+
+    if (r != 0)
+    {
+        printf("r=%d\n", r);
+        assert(0);
+    }
+
+    // Wait for child to exit. It should exit with a signal as there should be
+    // no signal handler installed in the child
+    assert(waitpid(pid, &wstatus, 0) == pid);
+    assert(WIFSIGNALED(wstatus));
+    assert(WTERMSIG(wstatus) == SIGUSR1);
+
+    // validate our sighandler did not get called
+    assert(clear_sig_usr1 == 0);
+
+    printf("=== passed test (%s-clear_sighandler)\n", argv[0]);
+
+    return 0;
+}
+
 int main(int argc, const char* argv[], char* const envp[])
 {
     assert(test_spawn1(argc, argv) == 0);
@@ -159,6 +209,8 @@ int main(int argc, const char* argv[], char* const envp[])
     assert(test_spawn_sig(argc, argv) == 0);
 
     assert(test_spawn_crash(argc, argv, envp) == 0);
+
+    assert(test_spawn_clear_sighandler(argc, argv) == 0);
 
     return 0;
 }

@@ -20,6 +20,7 @@ SOURCES += syscall.c
 SOURCES += ../config.c
 SOURCES += ../common.c
 SOURCES += ../kargs.c
+SOURCES += ../options.c
 
 ifdef MYST_ENABLE_GCOV
 SOURCES += gcov.c

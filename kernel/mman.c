@@ -337,7 +337,7 @@ static myst_vad_t* _mman_new_vad(
         goto done;
 
     vad->addr = addr;
-    vad->size = (uint32_t)size;
+    vad->size = size;
     vad->prot = (uint16_t)prot;
     vad->flags = (uint16_t)flags;
 
@@ -601,14 +601,14 @@ static int _munmap(myst_mman_t* mman, void* addr, size_t length)
         /* Case2: [uuuu............] */
 
         vad->addr += length;
-        vad->size -= (uint32_t)length;
+        vad->size -= length;
         _mman_sync_top(mman);
     }
     else if (_end(vad) == end)
     {
         /* Case3: [............uuuu] */
 
-        vad->size -= (uint32_t)length;
+        vad->size -= length;
     }
     else
     {
@@ -617,7 +617,7 @@ static int _munmap(myst_mman_t* mman, void* addr, size_t length)
         size_t vad_end = _end(vad);
 
         /* Adjust the left portion */
-        vad->size = (uint32_t)(start - vad->addr);
+        vad->size = start - vad->addr;
 
         myst_vad_t* right;
 
@@ -634,15 +634,16 @@ static int _munmap(myst_mman_t* mman, void* addr, size_t length)
         _mman_sync_top(mman);
     }
 
-    // ATTN: The region unmapped might not have PROT_WRITE permission to
-    // perform scrub efficiently. The prot_vector based implementation has
-    // complication of inconsistent prot within a VAD. Skip scrubbing for
-    // now.
-#if 0    
-    /* If scrubbing is enabled, then scrub the unmapped memory */
-    if (mman->scrub)
-        memset(addr, 0xDD, length);
-#endif
+    /* If memcheck or scrub is enabled enabled mark the unmapped memory so it
+     * can be differentiated from a normal free() */
+    if (__myst_kernel_args.memcheck || mman->scrub)
+    {
+        /* The region unmapped might not have PROT_WRITE permission */
+        if (!myst_tcall_mprotect(addr, length, MYST_PROT_WRITE))
+        {
+            memset(addr, 0xEE, length);
+        }
+    }
 
     _MMAN_MPROTECT_PAGES(mman, addr, length, MYST_PROT_NONE)
 
@@ -924,7 +925,7 @@ static int _mmap(
         {
             /* Coalesce with LEFT neighbor */
 
-            left->size += (uint32_t)length;
+            left->size += length;
 
             /* Coalesce with RIGHT neighbor (and release right neighbor) */
             if (right && (start + length == right->addr))
@@ -939,7 +940,7 @@ static int _mmap(
             /* Coalesce with RIGHT neighbor */
 
             right->addr = start;
-            right->size += (uint32_t)length;
+            right->size += length;
             _mman_sync_top(mman);
         }
         else
@@ -1577,20 +1578,22 @@ int myst_mman_mremap(
             _mman_sync_top(mman);
         }
 
-        vad->size = (uint32_t)(new_end - vad->addr);
+        vad->size = new_end - vad->addr;
         new_addr = addr;
 
-// ATTN: The region truncated might not have PROT_WRITE permission to
-// perform scrub efficiently. The prot_vector based implementation has
-// complication of inconsistent prot within a VAD. Skip scrubbing for
-// now.
-#if 0
-        /* If scrubbing is enabled, scrub the unmapped portion */
-        if (mman->scrub)
-            memset((void*)new_end, 0xDD, old_size - new_size);
-#endif
-
-        _MMAN_SET_PAGES_PROT(mman, new_end, old_size - new_size, MYST_PROT_NONE)
+        /* If memcheck or scrub is enabled, mark the unmapped memory so it can
+         * be differentiated from a normal free() */
+        if (__myst_kernel_args.memcheck || mman->scrub)
+        {
+            /* The region truncated might not have PROT_WRITE permission */
+            if (!myst_tcall_mprotect(
+                    (void*)new_end, old_size - new_size, MYST_PROT_WRITE))
+            {
+                memset((void*)new_end, 0xEE, old_size - new_size);
+            }
+        }
+        _MMAN_MPROTECT_PAGES(
+            mman, (void*)new_end, old_size - new_size, MYST_PROT_NONE)
     }
     else if (new_size > old_size)
     {
@@ -1630,7 +1633,7 @@ int myst_mman_mremap(
         /* If there is room for this area to grow without moving it */
         if (_end(vad) == old_end && _get_right_gap(mman, vad) >= delta)
         {
-            vad->size += (uint32_t)delta;
+            vad->size += delta;
             /* If the old area is pending zero fill, the expanded area gets the
              * same treatment. In case part of the old area is pending zero
              * fill, prot should have been set to MYST_PROT_NONE, and the

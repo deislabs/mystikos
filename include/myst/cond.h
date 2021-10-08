@@ -23,17 +23,22 @@ int myst_cond_destroy(myst_cond_t* c);
 
 int myst_cond_wait(myst_cond_t* c, myst_mutex_t* mutex);
 
+// Caution: The caller must be prepared to handle signal interruptions
+// (where the function returns -EINTR).
+int myst_cond_wait_no_signal_processing(myst_cond_t* c, myst_mutex_t* mutex);
+
 int myst_cond_timedwait(
     myst_cond_t* c,
     myst_mutex_t* mutex,
-    const struct timespec* timeout);
+    const struct timespec* timeout,
+    uint32_t bitset);
 
-int myst_cond_signal(myst_cond_t* c);
+int myst_cond_signal(myst_cond_t* c, uint32_t bitset);
 
 int myst_cond_signal_thread(myst_cond_t* c, myst_thread_t* thread);
 
 /* Wake up n waiters */
-int myst_cond_broadcast(myst_cond_t* c, size_t n);
+int myst_cond_broadcast(myst_cond_t* c, size_t n, uint32_t bitset);
 
 int myst_cond_requeue(
     myst_cond_t* c1,

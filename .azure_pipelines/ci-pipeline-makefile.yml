@@ -25,7 +25,7 @@ pr:
 jobs:
   - job: BuildAndTest
     displayName: 'Building and Testing'
-    timeoutInMinutes: 60
+    timeoutInMinutes: 90
     pool: '1804DC4CCagentpool'
 
     steps:
@@ -62,6 +62,8 @@ jobs:
         continueOnError: true
         enabled: true
         workingDirectory: $(Build.SourcesDirectory)
+        env:
+          MYST_DO_CLEANUP: 1
 
       # run solution tests
       - script: |
@@ -77,7 +79,8 @@ jobs:
           MAA_URL: $(DB_MAA_URL_USEAST)
           # If set, don't run certain tests
           MYST_SKIP_PR_TEST: 1
-          
+          MYST_DO_CLEANUP: 1
+
       - script: |
           make clean -C $(Build.SourcesDirectory)/tests
           make clean -C $(Build.SourcesDirectory)/solutions

@@ -3,6 +3,7 @@
 
 #define _GNU_SOURCE
 #include <assert.h>
+#include <dlfcn.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -18,10 +19,14 @@
 #include <unistd.h>
 
 #include <myst/gcov.h>
+#include <myst/kernel.h>
 #include <myst/libc.h>
+#include <myst/ssr.h>
 #include <myst/syscall.h>
 #include <myst/syscallext.h>
 #include <myst/tee.h>
+
+static myst_wanted_secrets_t* _wanted_secrets;
 
 void _dlstart_c(size_t* sp, size_t* dynv);
 
@@ -38,6 +43,15 @@ __attribute__((__returns_twice__)) pid_t myst_fork(void);
 void myst_dump_argv(int argc, const char* argv[]);
 
 static void _create_itimer_thread(void);
+
+static int myst_retrieve_wanted_secrets(void);
+
+int myst_pre_launch_hook()
+{
+    int ret = 0;
+    myst_retrieve_wanted_secrets();
+    return ret;
+}
 
 long myst_syscall(long n, long params[6])
 {
@@ -143,9 +157,14 @@ int __clone(int (*fn)(void*), void* child_stack, int flags, void* arg, ...)
     return myst_syscall(SYS_myst_clone, params);
 }
 
-void myst_enter_crt(void* stack, void* dynv, syscall_callback_t callback)
+void myst_enter_crt(
+    void* stack,
+    void* dynv,
+    syscall_callback_t callback,
+    myst_wanted_secrets_t* wanted_secrets)
 {
     _syscall_callback = callback;
+    _wanted_secrets = wanted_secrets;
     _dlstart_c((size_t*)stack, (size_t*)dynv);
 }
 
@@ -187,4 +206,151 @@ static void _create_itimer_thread(void)
         fprintf(stderr, "%s(): pthread_create() failed\n", func);
         abort();
     }
+}
+
+bool myst_get_exec_stack_option()
+{
+    long params[6] = {0};
+    return myst_syscall(SYS_myst_get_exec_stack_option, params);
+}
+
+int myst_retrieve_wanted_secrets()
+{
+    int ret = -1;
+    FILE* file = NULL;
+    void* handle = NULL;
+
+    if (_wanted_secrets == NULL || _wanted_secrets->secrets_count == 0)
+        return 0;
+
+    for (size_t i = 0; i < _wanted_secrets->secrets_count; i++)
+    {
+        // ATTN: group secrets from the same Secret Release Service so we can
+        // retrieve them in one operation. No need to repeat initialization
+        // and tear down of the client library.
+
+        ReleasedSecret release_secret = {0};
+        myst_wanted_secret_t* tmp = &_wanted_secrets->secrets[i];
+        int r = 0;
+        SSR_CLIENT_SET_VERBOSE_FN verbose_fn = NULL;
+        SSR_CLIENT_INIT_FN init_fn = NULL;
+        SSR_CLIENT_GET_SECRET_FN get_fn = NULL;
+        SSR_CLIENT_FREE_SECRET_FN free_fn = NULL;
+        SSR_CLIENT_TERMINATE_FN terminate_fn = NULL;
+
+        // The required fields should have been validated in the kernel.
+
+        handle = dlopen(tmp->clientlib, RTLD_NOW);
+        if (handle == NULL)
+        {
+            fprintf(
+                stderr,
+                "SSR: the provided library %s for secret "
+                "release is not found. Did you include it and its "
+                "dependent libraries in your appplication folder?\n",
+                tmp->clientlib);
+            goto done;
+        }
+
+        /* Get all the function pointers */
+        verbose_fn = (SSR_CLIENT_SET_VERBOSE_FN)dlsym(
+            handle, SSR_CLIENT_SET_VERBOSE_FN_NAME);
+        init_fn = (SSR_CLIENT_INIT_FN)dlsym(handle, SSR_CLIENT_INIT_FN_NAME);
+        get_fn = (SSR_CLIENT_GET_SECRET_FN)dlsym(
+            handle, SSR_CLIENT_GET_SECRET_FN_NAME);
+        free_fn = (SSR_CLIENT_FREE_SECRET_FN)dlsym(
+            handle, SSR_CLIENT_FREE_SECRET_FN_NAME);
+        terminate_fn = (SSR_CLIENT_TERMINATE_FN)dlsym(
+            handle, SSR_CLIENT_TERMINATE_FN_NAME);
+
+        if (verbose_fn == NULL || init_fn == NULL || get_fn == NULL ||
+            free_fn == NULL || terminate_fn == NULL)
+        {
+            fprintf(
+                stderr,
+                "SSR: the provided library %s for secret "
+                "release does not implement all required APIs.\n",
+                tmp->clientlib);
+            goto done;
+        }
+
+        if ((r = verbose_fn(tmp->verbose)) != 0)
+        {
+            fprintf(
+                stderr,
+                "SSR: failed to set verbose level with the "
+                "provided library %s for secret release. Error "
+                "code %d.\n",
+                tmp->clientlib,
+                r);
+            goto done;
+        }
+
+        if ((r = init_fn()) != 0)
+        {
+            fprintf(
+                stderr,
+                "SSR: failed to initialize with the "
+                "provided library %s for secret release. Error "
+                "code %d.\n",
+                tmp->clientlib,
+                r);
+            goto done;
+        }
+
+        if (r = get_fn(
+                    tmp->srs_addr,
+                    tmp->srs_api_ver,
+                    tmp->id,
+                    &release_secret) != 0)
+        {
+            fprintf(
+                stderr,
+                "SSR: failed to retrieve the secret %s with the "
+                "provided library %s for secret release. Error "
+                "code %d.\n",
+                tmp->id,
+                tmp->clientlib,
+                r);
+            goto done;
+        }
+
+        terminate_fn();
+
+        /* Save the released secret to the specified file */
+        file = fopen(tmp->local_path, "w+");
+        if (file == NULL)
+        {
+            fprintf(
+                stderr,
+                "SSR: failed to open file %s for write.\n",
+                tmp->local_path);
+            goto done;
+        }
+
+        r = fwrite(release_secret.data, 1, release_secret.length, file);
+        if (r != release_secret.length)
+        {
+            fprintf(
+                stderr,
+                "SSR: failed to write secret to file %s.\n",
+                tmp->local_path);
+            goto done;
+        }
+
+        free_fn(&release_secret);
+        dlclose(handle);
+        handle = NULL;
+    }
+    ret = 0;
+
+done:
+
+    if (file)
+        fclose(file);
+
+    if (handle)
+        dlclose(handle);
+
+    return ret;
 }

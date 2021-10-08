@@ -147,6 +147,7 @@ install:
 	$(INSTALL) $(BUILDDIR)/openenclave/bin/oegdb $(INSTDIR)/bin/myst-gdb
 	$(INSTALL) ./scripts/appbuilder $(INSTDIR)/bin/myst-appbuilder
 	$(INSTALL) include/myst/tee.h $(INSTDIR)/include/myst/tee.h
+	$(INSTALL) include/myst/ssr.h $(INSTDIR)/include/myst/ssr.h
 	rm -rf $(INSTDIR)/lib/openenclave/debugger
 	cp -r $(BUILDDIR)/openenclave/lib/openenclave/debugger $(INSTDIR)/lib/openenclave/debugger
 
@@ -265,9 +266,10 @@ oelicense:
 
 help:
 	@ echo ""
-	@ echo "make -- build everything"
+	@ echo "make -- build Mystikos except for tests"
 	@ echo "make init -- initialize all dependencies"
-	@ echo "make build -- build everything except for prereqs"
+	@ echo "make world -- build the whole world (third-party + Mystikos + tests)"
+	@ echo "make build -- build everything except for prereqs and tests"
 	@ echo "make release-build -- runs 'build' followed by 'bindist'"
 	@ echo "make clean -- remove generated binaries"
 	@ echo "make distclean -- remove build configuration and binaries"

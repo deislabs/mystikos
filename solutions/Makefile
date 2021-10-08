@@ -24,13 +24,14 @@ DIRS += coreclr-p1
 #DIRS += memcached
 #DIRS += python_web_frameworks
 #DIRS += python_webserver
-ifndef MYST_SKIP_PR_TEST
+#ifndef MYST_SKIP_PR_TEST
 # Do not run in PR pipeline as it takes ~15min
 # Disable this as it fails pipeline, will re-enable after investigation
 #DIRS += pytorch_inference
 #DIRS += tensorflow_lite
 #DIRS += pandas_tests
-endif
+
+#endif
 #DIRS += nodejs
 #DIRS += numpy_core_tests
 #DIRS += redis
@@ -46,8 +47,14 @@ $(DIRS):
 clean:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) clean $(NL) )
 
+ifdef MYST_DO_CLEANUP
+remove_appdir = rm -rf $(1)/appdir $(1)/rootfs
+else
+remove_appdir =
+endif
+
 run:
-	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) run $(NL) )
+	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) run; $(call remove_appdir,$(i)) $(NL) )
 
 tests:
 	@ $(MAKE) -s clean

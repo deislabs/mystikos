@@ -55,8 +55,12 @@ DIRS += pipesz
 DIRS += futex
 DIRS += round
 DIRS += signal
+
+ifneq ($(TARGET),linux)
 DIRS += tlscert
 DIRS += tlscert2
+endif
+
 DIRS += wake_and_kill
 DIRS += cross_fs_symlinks
 DIRS += arch_prctl
@@ -132,8 +136,14 @@ dirs: $(DIRS)
 $(DIRS):
 	$(MAKE) -C $@
 
+ifdef MYST_DO_CLEANUP
+remove_appdir = rm -rf $(1)/appdir
+else
+remove_appdir =
+endif
+
 __tests:
-	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) tests $(NL) )
+	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) tests; $(call remove_appdir,$(i)) $(NL) )
 
 tests:
 	@ sudo rm -rf $(TESTDIR)

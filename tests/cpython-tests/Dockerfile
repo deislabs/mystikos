@@ -18,3 +18,6 @@ COPY ./test_config_$CPYTHON_VERSION /tests.* /
 RUN ln -sf /bin/bash /bin/sh
 
 RUN cp /usr/bin/lsb_release /bin/
+
+# Copy Mystikos pdb
+COPY ./mpdb.py /cpython/mpdb.py

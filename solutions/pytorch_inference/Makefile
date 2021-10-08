@@ -61,7 +61,7 @@ run:
 ###########################################
 
 package.pem:
-	openssl genrsa -out package.pem -3 3072
+	./gen_pkey.sh package.pem
 
 clean:
 	rm -rf appdir myst package.pem $(ROOTFS)

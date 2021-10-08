@@ -11,9 +11,10 @@ pipeline {
         timeout(time: 600, unit: 'MINUTES')
     }
     parameters {
+        string(name: "BRANCH_NAME", defaultValue: "main", description: "Enter your pull request's source branch here (ex. main)")
+        string(name: "REPOSITORY_NAME", defaultValue: "deislabs/mystikos", description: "Enter the name of the repository that your branch exists on (ex. deislabs/mystikos)")
+        string(name: "PULL_REQUEST_ID", defaultValue: "", description: "If you are building a pull request, enter the pull request ID number here. (ex. 789)")
         string(name: "SCRIPTS_ROOT", defaultValue: '${WORKSPACE}/.azure_pipelines/scripts', description: "Root directory")
-        string(name: "BRANCH_NAME", defaultValue: "main", description: "Option #1: If you want to build a branch instead of a pull request, enter the branch name here")
-        string(name: "PULL_REQUEST_ID", defaultValue: "", description: "Option #2: If you want to build a pull request, enter the pull request ID number here. Will override branch builds.")
     }
     environment {
         BUILD_USER = sh(
@@ -123,8 +124,15 @@ pipeline {
                             withCredentials([string(credentialsId: 'mystikos-sql-db-name-useast', variable: 'DB_NAME'),
                                              string(credentialsId: 'mystikos-sql-db-server-name-useast', variable: 'DB_SERVER_NAME'),
                                              string(credentialsId: 'mystikos-maa-url-useast', variable: 'MAA_URL'),
-                                             string(credentialsId: 'mystikos-managed-identity-objectid', variable: 'DB_USERID')]) {
-                                sh "make tests -C ${WORKSPACE}/solutions"
+                                             string(credentialsId: 'mystikos-managed-identity-objectid', variable: 'DB_USERID'),
+                                             string(credentialsId: 'mystikos-mhsm-client-secret', variable: 'CLIENT_SECRET'),
+                                             string(credentialsId: 'mystikos-mhsm-client-id', variable: 'CLIENT_ID'),
+                                             string(credentialsId: 'mystikos-mhsm-app-id', variable: 'APP_ID'),
+                                             string(credentialsId: 'mystikos-mhsm-ssr-pkey', variable: 'SSR_PKEY')
+                            ]) {
+                                withEnv(["MYST_NIGHTLY_TEST=1"]) {
+                                    sh "make tests -C ${WORKSPACE}/solutions"
+                                }
                             }
                         }
                     }
@@ -165,7 +173,8 @@ pipeline {
                                 sh """
                                     ${params.SCRIPTS_ROOT}/run-azure-tests.sh \
                                         ${WORKSPACE}/tests/azure-sdk-for-cpp  \
-                                        ${WORKSPACE}/solutions/dotnet_azure_sdk
+                                        ${WORKSPACE}/solutions/dotnet_azure_sdk \
+                                        ${WORKSPACE}/solutions/python_azure_sdk
                                 """
                             }
                         }

@@ -17,6 +17,11 @@ function run_tests() {
 
   while read test; do
     echo -n "$test FS=$FS"
+    if [ $(grep $test tests_flakey.txt) ]
+    then
+      echo " SKIPPED: flakey"
+      continue
+    fi
     OUTPUT=$(2>&1 sudo timeout 1m make one TEST=$test FS=$FS )
     echo "$OUTPUT" >> "temp_$FS.output"
     HAS_UNHANDLED_SYSCALL=$(echo "$OUTPUT" | grep "unhandled")

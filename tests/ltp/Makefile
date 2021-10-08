@@ -162,6 +162,10 @@ sort:
 	cp .tests tests
 	rm -f .tests
 
+# prevent tests with the same name exactly from running in parallel
+FLOCK_TIMEOUT = 60
+FLOCK = flock -w $(FLOCK_TIMEOUT) ./appdir/$(TEST)
+
 ##==============================================================================
 ##
 ## one rule for ext2fs
@@ -170,7 +174,7 @@ sort:
 
 ifeq ($(FS),ext2fs)
 one:
-	subtest=$(TEST) sudo -E $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
+	sudo -E $(FLOCK) $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
 endif
 
 ##==============================================================================
@@ -186,7 +190,7 @@ one:
 	cp appdir/$(TEST) $(HOSTFS)/$(TEST)
 	cp -r appdir/etc $(HOSTFS)/
 	sudo chown -R 0.0 $(HOSTFS)
-	subtest=$(TEST) sudo -E $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
+	sudo -E $(FLOCK) $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
 endif
 
 ##==============================================================================
@@ -202,7 +206,7 @@ one:
 	cp appdir/$(TEST) ramfs.appdir/$(TEST)
 	cp -r appdir/etc  ramfs.appdir/
 	$(MYST) mkcpio ramfs.appdir ramfs
-	subtest=$(TEST) sudo -E $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
+	sudo -E $(FLOCK) $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
 endif
 
 ##==============================================================================

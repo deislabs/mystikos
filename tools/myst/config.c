@@ -221,6 +221,15 @@ static json_result_t _json_read_callback(
                 else
                     CONFIG_RAISE(JSON_TYPE_MISMATCH);
             }
+            else if (json_match(parser, "ExecStack") == JSON_OK)
+            {
+                if (type == JSON_TYPE_BOOLEAN)
+                    parsed_data->exec_stack = un->boolean;
+                else if (type == JSON_TYPE_INTEGER)
+                    parsed_data->exec_stack = (un->integer == 0) ? false : true;
+                else
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
+            }
             else if (json_match(parser, "ApplicationPath") == JSON_OK)
             {
                 if (type == JSON_TYPE_STRING)
@@ -352,6 +361,60 @@ static json_result_t _json_read_callback(
                 else
                     CONFIG_RAISE(JSON_TYPE_MISMATCH);
             }
+            else if (json_match(parser, "Secret.ID") == JSON_OK)
+            {
+                if (type == JSON_TYPE_STRING)
+                    parsed_data->wanted_secrets.secrets[parser->path[0].index]
+                        .id = un->string;
+                else
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
+            }
+            else if (json_match(parser, "Secret.SrsAddress") == JSON_OK)
+            {
+                if (type == JSON_TYPE_STRING)
+                    parsed_data->wanted_secrets.secrets[parser->path[0].index]
+                        .srs_addr = un->string;
+                else
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
+            }
+            else if (json_match(parser, "Secret.SrsApiVersion") == JSON_OK)
+            {
+                if (type == JSON_TYPE_STRING)
+                    parsed_data->wanted_secrets.secrets[parser->path[0].index]
+                        .srs_api_ver = un->string;
+                else if (type == JSON_TYPE_NULL)
+                    parsed_data->wanted_secrets.secrets[parser->path[0].index]
+                        .srs_api_ver = NULL;
+                else
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
+            }
+            else if (json_match(parser, "Secret.LocalPath") == JSON_OK)
+            {
+                if (type == JSON_TYPE_STRING)
+                    parsed_data->wanted_secrets.secrets[parser->path[0].index]
+                        .local_path = un->string;
+                else
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
+            }
+            else if (json_match(parser, "Secret.ClientLib") == JSON_OK)
+            {
+                if (type == JSON_TYPE_STRING)
+                    parsed_data->wanted_secrets.secrets[parser->path[0].index]
+                        .clientlib = un->string;
+                else
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
+            }
+            else if (json_match(parser, "Secret.Verbose") == JSON_OK)
+            {
+                if (type == JSON_TYPE_BOOLEAN)
+                    parsed_data->wanted_secrets.secrets[parser->path[0].index]
+                        .verbose = un->boolean;
+                else if (type == JSON_TYPE_INTEGER && un->integer)
+                    parsed_data->wanted_secrets.secrets[parser->path[0].index]
+                        .verbose = un->integer;
+                else
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
+            }
             else
             {
                 // Ignore everything we dont understand
@@ -395,6 +458,13 @@ static json_result_t _json_read_callback(
                     calloc(parser->path[1].size, sizeof(char*));
                 parsed_data->mounts.mounts[parser->path[0].index].flags_count =
                     parser->path[1].size;
+            }
+            else if (json_match(parser, "Secret") == JSON_OK)
+            {
+                parsed_data->wanted_secrets.secrets =
+                    calloc(parser->path[0].size, sizeof(myst_wanted_secret_t));
+                parsed_data->wanted_secrets.secrets_count =
+                    parser->path[0].size;
             }
 
             break;
@@ -500,6 +570,8 @@ int free_config(config_parsed_data_t* parsed_data)
         }
         free(parsed_data->mounts.mounts);
     }
+    free(parsed_data->wanted_secrets.secrets);
+
     if (parsed_data->buffer)
         free(parsed_data->buffer);
     memset(parsed_data, 0, sizeof(*parsed_data));

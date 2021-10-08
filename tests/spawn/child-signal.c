@@ -41,13 +41,25 @@ int sigtest1()
     return 0;
 }
 
+int clear_sighandler()
+{
+    assert(kill(getpid(), SIGUSR1) == 0);
+
+    return 0;
+}
+
 int main(int argc, const char* argv[], const char* envp[])
 {
-    if ((argc = 2) && (strcmp(argv[1], "sigtest1") == 0))
+    if ((argc == 2) && (strcmp(argv[1], "sigtest1") == 0))
     {
         assert(sigtest1() == 0);
     }
+    else if ((argc == 2) && (strcmp(argv[1], "clear_sighandler") == 0))
+    {
+        assert(clear_sighandler() == 0);
+    }
     else
+
     {
         assert(0);
     }

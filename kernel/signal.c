@@ -8,7 +8,9 @@
 #include <myst/eraise.h>
 #include <myst/fsgs.h>
 #include <myst/printf.h>
+#include <myst/process.h>
 #include <myst/signal.h>
+#include <myst/time.h>
 
 //#define TRACE
 
@@ -62,14 +64,29 @@ long _handler_wrapper(void* arg_)
     return 0;
 }
 
+/* Called to make sure we have a clean sigactions structure.
+ * This is called from the main process creation where there will be no
+ * handlers, so a clean structure needed. It is called from clone for creating a
+ * new process, where we will need to allocate a new structure for the new
+ * process. The clone will then copy the parent process handlers across. It is
+ * called from exec in order to make sure we have a structure and it is cleaned
+ * out as the new exec-ed process has no handlers by default.
+ */
 int myst_signal_init(myst_process_t* process)
 {
     int ret = 0;
 
-    process->signal.sigactions = calloc(NSIG, sizeof(posix_sigaction_t));
+    if (!process->signal.sigactions)
+    {
+        process->signal.sigactions = calloc(NSIG, sizeof(posix_sigaction_t));
 
-    if (process->signal.sigactions == NULL)
-        ERAISE(-ENOMEM);
+        if (process->signal.sigactions == NULL)
+            ERAISE(-ENOMEM);
+    }
+    else
+    {
+        memset(process->signal.sigactions, 0, NSIG * sizeof(posix_sigaction_t));
+    }
 
 done:
     return ret;
@@ -244,9 +261,13 @@ const char* myst_signum_to_string(unsigned signum)
 // https://man7.org/linux/man-pages/man7/signal.7.html for details.
 static long _default_signal_handler(unsigned signum)
 {
-#if TRACE
-    printf("%s(%u %s)\n", __FUNCTION__, signum, myst_signum_to_string(signum));
-#endif
+    if (__myst_kernel_args.trace_syscalls || __myst_kernel_args.trace_errors)
+        myst_eprintf(
+            "*** Terminating signal %u (%s): pid=%d tid=%d\n",
+            signum,
+            myst_signum_to_string(signum),
+            myst_getpid(),
+            myst_gettid());
 
     myst_assume(
         signum != SIGCHLD && signum != SIGCONT && signum != SIGSTOP &&
@@ -316,8 +337,14 @@ static long _handle_one_signal(
     long ret = 0;
     ucontext_t context;
 
-#if TRACE
-    printf("%s(%u %s)\n", __FUNCTION__, signum, myst_signum_to_string(signum));
+#ifdef TRACE
+    printf(
+        "%s(%u %s) pid=%d tid=%d\n",
+        __FUNCTION__,
+        signum,
+        myst_signum_to_string(signum),
+        myst_getpid(),
+        myst_gettid());
 #endif
 
     // Caution: This function should not allocate memory since the signal
@@ -455,6 +482,29 @@ done:
 }
 #pragma GCC diagnostic pop
 
+void _myst_sigstop_block(myst_process_t* process)
+{
+    __sync_val_compare_and_swap(&process->sigstop_futex, 0, 1);
+}
+
+void _myst_sigstop_unblock(myst_process_t* process)
+{
+    if (__sync_val_compare_and_swap(&process->sigstop_futex, 1, 0) == 1)
+        myst_futex_wake(&process->sigstop_futex, INT_MAX, FUTEX_BITSET_MATCH_ANY);
+}
+
+void _myst_sigstop_wait(void)
+{
+    myst_process_t* process = myst_process_self();
+
+    while (process->sigstop_futex == 1)
+    {
+        long ret = myst_futex_wait(&process->sigstop_futex, 1, NULL, FUTEX_BITSET_MATCH_ANY);
+        if ((ret < 0) && (ret != -EAGAIN))
+            break;
+    }
+}
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstack-usage="
 
@@ -467,6 +517,9 @@ int myst_signal_has_active_signals(myst_thread_t* thread)
 
 long myst_signal_process(myst_thread_t* thread)
 {
+    /* If we are waiting due to sigstop then block now */
+    _myst_sigstop_wait();
+
     myst_spin_lock(&thread->signal.lock);
 
     // Active signals are the ones that are both unblocked and pending.
@@ -523,7 +576,34 @@ long myst_signal_deliver(
     long ret = 0;
     struct siginfo_list_item* new_item = NULL;
 
+#ifdef TRACE
+    printf(
+        "%s(%u %s) from: pid=%d tid=%d to: pid=%d tid=%d\n",
+        __FUNCTION__,
+        signum,
+        myst_signum_to_string(signum),
+        myst_getpid(),
+        myst_getpid(),
+        thread->process->pid,
+        thread->tid);
+#endif
+
     ECHECK(_check_signum(signum));
+
+    /* SIGSTOP and SIGCONT may be sent from another process but they need to be
+     * processed when they are being delivered, not when a thread is processing
+     * it */
+    if (signum == SIGSTOP)
+    {
+        /* set the SIGSTOP block for the process */
+        _myst_sigstop_block(thread->process);
+        return 0;
+    }
+    else if (signum == SIGCONT)
+    {
+        /* release the SIGSTOP block for the process */
+        _myst_sigstop_unblock(thread->process);
+    }
 
     uint64_t mask = (uint64_t)1 << (signum - 1);
 
@@ -569,7 +649,7 @@ long myst_signal_deliver(
 
     if (!__sync_val_compare_and_swap(&thread->pause_futex, 0, 1))
     {
-        ret = myst_futex_wake(&thread->pause_futex, 1);
+        ret = myst_futex_wake(&thread->pause_futex, 1, FUTEX_BITSET_MATCH_ANY);
         // Expect ret == 1, otherwise, return error
         if (ret == 1)
             ret = 0;

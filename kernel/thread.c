@@ -398,10 +398,11 @@ long myst_syscall_wait4(
 
 #ifdef TRACE
     printf(
-        "***wait4 from process %u, wait for pid %d, WNOHANG=%s)\n",
+        "***wait4 from process %u, wait for pid %d, WNOHANG=%s, WUNTRACED=%s\n",
         myst_process_self()->pid,
         pid,
-        ((options & WNOHANG) == WNOHANG) ? "NO HANG" : "HANG");
+        ((options & WNOHANG) == WNOHANG) ? "true" : "false",
+        ((options & WUNTRACED) == WUNTRACED) ? "true" : "false");
 #endif
 
     ECHECK(ret = myst_wait(pid, wstatus, NULL, options, rusage));
@@ -457,6 +458,44 @@ long myst_syscall_waitid(
 done:
     return ret;
 }
+
+/* not making static or compile out without trace so it can be used by the
+ * debugger to dump the status */
+void _myst_dump_wstatus(int wstatus, const char* process_type)
+{
+    printf("*** WSTATUS DETAILS FOR %s PROCESS: %d\n", process_type, wstatus);
+    printf(
+        "    WIFEXITED (exited through exit(), _exit() or "
+        "return from main): %s\n",
+        WIFEXITED(wstatus) ? "true" : "false");
+    printf(
+        "    WEXITSTATUS (return code via exit(), _exit() or "
+        "return from main): %u\n",
+        WEXITSTATUS(wstatus));
+    printf(
+        "    WIFSIGNALED (exited via signal): %s\n",
+        WIFSIGNALED(wstatus) ? "true" : "false");
+    printf("    WTERMSIG (signal code to terminate): %u\n", WTERMSIG(wstatus));
+    printf(
+        "    WCOREDUMP (signaled and dumped core, not "
+        "supported): %s\n",
+        WCOREDUMP(wstatus) ? "true" : "false");
+    printf(
+        "    WIFSTOPPED (signaled to stop): "
+        "%s\n",
+        WIFSTOPPED(wstatus) ? "true" : "false");
+    if (WIFSTOPPED(wstatus))
+        printf(
+            "    WSTOPSIG (signal code to stop, not "
+            "supported): "
+            "%u\n",
+            WSTOPSIG(wstatus));
+    printf(
+        "    WIFCONTINUED (signaled to resumed after stop, not "
+        "supported): %s\n",
+        WIFCONTINUED(wstatus) ? "true" : "false");
+}
+
 long myst_wait(
     pid_t pid,
     int* wstatus,
@@ -516,39 +555,7 @@ long myst_wait(
                         *wstatus = ((p->exit_status & 0xff) << 8);
                     }
 #ifdef TRACE
-                    printf("*** WSTATUS DETAILS: %d\n", *wstatus);
-                    printf(
-                        "    WIFEXITED (exited through exit(), _exit() or "
-                        "return from main): %s\n",
-                        WIFEXITED(*wstatus) ? "true" : "false");
-                    printf(
-                        "    WEXITSTATUS (return code via exit(), _exit() or "
-                        "return from main): %u\n",
-                        WEXITSTATUS(*wstatus));
-                    printf(
-                        "    WIFSIGNALED (exited via signal): %s\n",
-                        WIFSIGNALED(*wstatus) ? "true" : "false");
-                    printf(
-                        "    WTERMSIG (signal code to terminate): %u\n",
-                        WTERMSIG(*wstatus));
-                    printf(
-                        "    WCOREDUMP (signaled and dumped core, not "
-                        "supported): %s\n",
-                        WCOREDUMP(*wstatus) ? "true" : "false");
-                    printf(
-                        "    WIFSTOPPED (signaled to stop, not supported): "
-                        "%s\n",
-                        WIFSTOPPED(*wstatus) ? "true" : "false");
-                    if (WIFSTOPPED(*wstatus))
-                        printf(
-                            "    WSTOPSIG (signal code to stop, not "
-                            "supported): "
-                            "%u\n",
-                            WSTOPSIG(*wstatus));
-                    printf(
-                        "    WIFCONTINUED (signaled to resumed after stop, not "
-                        "supported): %s\n",
-                        WIFCONTINUED(*wstatus) ? "true" : "false");
+                    _myst_dump_wstatus(*wstatus, "ZOMBIE");
 #endif
                 }
                 if (infop)
@@ -587,6 +594,49 @@ long myst_wait(
                     // free zombie process
                     free(p);
                 }
+
+                goto done;
+            }
+        }
+
+        if (options & WUNTRACED)
+        {
+            /* If we have a match and it is sleeping we can return */
+            p = process->prev_process;
+            while (p && !_wait_matcher("stopped", pid, process, p) &&
+                   (p->sigstop_futex == 0))
+            {
+                p = p->prev_process;
+            }
+            if (p == NULL)
+            {
+                // now processes right
+                p = process->next_process;
+                while (p && !_wait_matcher("stopped", pid, process, p) &&
+                       (p->sigstop_futex == 0))
+                {
+                    p = p->next_process;
+                }
+            }
+            if (p != NULL && p->sigstop_futex == 1)
+            {
+                if (wstatus)
+                {
+                    *wstatus = (SIGSTOP << 8) + 0x7F;
+
+#ifdef TRACE
+                    _myst_dump_wstatus(*wstatus, "STOPPED");
+#endif
+                }
+                if (infop)
+                {
+                    infop->si_pid = p->pid;
+                    infop->si_uid = p->process_uid;
+                    infop->si_signo = SIGSTOP;
+                    infop->si_code = CLD_STOPPED;
+                    infop->si_status = 0;
+                }
+                ret = p->pid;
 
                 goto done;
             }
@@ -774,7 +824,10 @@ void myst_fork_exec_futex_wake(myst_process_t* process)
         {
             __sync_val_compare_and_swap(
                 &waiter_thread->fork_exec_futex_wait, 0, 1);
-            myst_futex_wake(&waiter_thread->fork_exec_futex_wait, 1);
+            myst_futex_wake(
+                &waiter_thread->fork_exec_futex_wait,
+                1,
+                FUTEX_BITSET_MATCH_ANY);
         }
 
         myst_spin_unlock(&waiter_process->thread_group_lock);
@@ -859,9 +912,6 @@ static long _run_thread(void* arg_)
 
         /* propagate the canary */
         crt_td->canary = target_td->canary;
-
-        /* generate a thread id for this new thread */
-        thread->tid = myst_generate_tid();
     }
 
     /* set the target into the thread */
@@ -935,6 +985,9 @@ static long _run_thread(void* arg_)
 
             myst_signal_free(process);
 
+            /* Send SIGHUP to all our children */
+            myst_send_sighup_child_processes(process);
+
             if (process->exec_stack)
             {
                 free(process->exec_stack);
@@ -961,11 +1014,11 @@ static long _run_thread(void* arg_)
 
             procfs_pid_cleanup(process->pid);
 
-            /* Send SIGHUP to all our children */
-            myst_send_sighup_child_processes(process);
-
             /* Send a SIGCHLD to the parent process */
             myst_syscall_kill(process->ppid, SIGCHLD);
+
+            /* Wait for any children to go away before proceeding */
+            myst_wait_on_child_processes(process);
 
             /* unmap any mapping made by the process */
             myst_release_process_mappings(process->pid);
@@ -1157,6 +1210,10 @@ static long _syscall_clone(
         new_thread->pause_futex = 0;
 
         ECHECK(_get_entry_stack(new_thread));
+
+        /* generate a thread id for this new thread and return on success*/
+        new_thread->tid = myst_generate_tid();
+        ret = new_thread->tid;
     }
 
     cookie = _get_cookie(new_thread);
@@ -1211,6 +1268,7 @@ static long _syscall_clone_vfork(
         child_process->pid = myst_generate_tid();
         child_thread->tid = child_process->pid;
         child_thread->run_thread = myst_run_thread;
+
         /* ATTN: we don't take a lock on _num_threads,
             thread names could be duplicates */
         snprintf(
@@ -1273,6 +1331,12 @@ static long _syscall_clone_vfork(
         child_process->vfork_parent_pid = parent_process->pid;
         child_process->vfork_parent_tid = parent_thread->tid;
 
+        /* Once we are a parent of a fork the shutdown of our process in the CRT
+         * must change to not call any cleanup functions */
+        parent_process->is_parent_of_pseudo_fork_process = true;
+
+        /* Futexes for thread pausing and stopping processes, then resuming */
+        child_process->sigstop_futex = 0;
         child_thread->pause_futex = 0;
 
         /* In case we are going to be used for fork-exec scenario where we need
@@ -1301,6 +1365,8 @@ static long _syscall_clone_vfork(
         ERAISE(-EINVAL);
 
     ret = child_process->pid;
+
+    parent_process->num_pseudo_children++;
 
     child_process = NULL;
     child_thread = NULL;
@@ -1364,6 +1430,9 @@ bool myst_have_child_forked_processes(myst_process_t* process)
     pid_t pid = process->pid;
     myst_process_t* p;
 
+    if (!process->is_parent_of_pseudo_fork_process)
+        return false;
+
     myst_spin_lock(&myst_process_list_lock);
     p = process->next_process;
 
@@ -1384,6 +1453,9 @@ long kill_child_fork_processes(myst_process_t* process)
 {
     if (__myst_kernel_args.fork_mode == myst_fork_none)
         return 0;
+
+    if (!process->is_parent_of_pseudo_fork_process)
+        return false;
 
     myst_spin_lock(&myst_process_list_lock);
     myst_process_t* p = process->prev_process;
@@ -1537,4 +1609,48 @@ int myst_send_sighup_child_processes(myst_process_t* process)
     myst_spin_unlock(&myst_process_list_lock);
 
     return 0;
+}
+
+void myst_wait_on_child_processes(myst_process_t* process)
+{
+    pid_t pid = process->pid;
+    myst_process_t* p;
+
+    do
+    {
+        myst_spin_lock(&myst_process_list_lock);
+
+        // first processes left
+        p = process->prev_process;
+        while (p)
+        {
+            if (p->ppid == pid)
+                break;
+
+            p = p->prev_process;
+        }
+
+        if (p == NULL)
+        {
+            // now processes right
+            p = process->next_process;
+            while (p)
+            {
+                if (p->ppid == pid)
+                    break;
+
+                p = p->next_process;
+            }
+        }
+
+        myst_spin_unlock(&myst_process_list_lock);
+
+        if (p == NULL)
+            break;
+
+        myst_eprintf("process %d waiting for child %d\n", process->pid, p->pid);
+
+        myst_sleep_msec(10);
+
+    } while (1);
 }
