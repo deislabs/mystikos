@@ -1,0 +1,64 @@
+/coreclr-tests-all/JIT/Regression/CLR-x86-JIT/V1-M09/b16102/b16102/b16102.dll
+<ExitCode 0 with no error message>
+/coreclr-tests-all/JIT/Directed/forceinlining/PositiveCases/PositiveCases.dll
+FAIL -- Unexpected inlining result in: Finally block
+/coreclr-tests-all/JIT/Directed/forceinlining/AttributeConflict/AttributeConflict.dll
+This test confirms the behavior when a method has conflicting attribution.
+We expect that A1, A3, and A4 will not be inlined. They are too complex or marked with NoInlining (which trumps AgressiveInlining).
+We also confirm that A2 (marked with AgressiveInlining) is properly inlined in spite of its complexity.
+FAIL
+/coreclr-tests-all/JIT/jit64/regress/vsw/102754/test1/test1.dll
+1118464
+/coreclr-tests-all/appdir/coreclr-tests-all/baseservices/mono/runningmono/runningmono.dll [remove]
+Managed assembly not found: No such file or directory
+/coreclr-tests-all/JIT/Directed/lifetime/lifetime2/lifetime2.dll
+B.F
+
+testcase f1-1
+
+testcase f1-2
+f1-2 failed
+/coreclr-tests-all/JIT/CheckProjects/CheckProjects/CheckProjects.dll
+CORE_ROOT must be set
+/coreclr-tests-all/JIT/Performance/CodeQuality/Roslyn/CscBench/CscBench.dll
+This test requires CORE_ROOT to be set
+/coreclr-tests-all/Interop/DllImportAttribute/DllImportPath/DllImportPathTest/DllImportPathTest.dll
+System.ArgumentException: The directory specified, 'RelativeNative', is not a subdirectory of '/'. (Parameter 'path')
+   at System.IO.DirectoryInfo.CreateSubdirectory(String path) in /build/runtime/src/libraries/System.IO.FileSystem/src/System/IO/DirectoryInfo.cs:line 90
+   at Test.TestNativeLibraryProbingOnRelativePath() in /build/runtime/src/tests/Interop/DllImportAttribute/DllImportPath/DllImportPathTest.cs:line 89
+   at Test.Main(String[] args) in /build/runtime/src/tests/Interop/DllImportAttribute/DllImportPath/DllImportPathTest.cs:line 176
+/coreclr-tests-all/Interop/COM/Reflection/Reflection/Reflection.dll
+Scenario: ReflectionLoad
+Caught unexpected exception: System.IO.FileNotFoundException: Could not load file or assembly '/NETServer.dll'. The system cannot find the path specified.
+
+File name: '/NETServer.dll'
+   at System.Runtime.Loader.AssemblyLoadContext.LoadFromPath(IntPtr ptrNativeAssemblyLoadContext, String ilPath, String niPath, ObjectHandleOnStack retAssembly)
+   at System.Runtime.Loader.AssemblyLoadContext.LoadFromAssemblyPath(String assemblyPath)
+   at System.Reflection.Assembly.LoadFrom(String assemblyFile)
+   at Reflection.ReflectionLoad() in /build/runtime/src/tests/Interop/COM/Reflection/Reflection.cs:line 22
+ReflectionLoad Failed
+Scenario: TypeIsComObject
+Scenario: ActivateCOMType
+/coreclr-tests-all/Interop/ExecInDefAppDom/ExecInDefAppDom/ExecInDefAppDom.dll
+Bad HRESULT: expected 80070002 actual 80004005
+Bad HRESULT: expected 80131522 actual 80004005
+Bad HRESULT: expected 80131513 actual 80004005
+Bad HRESULT: expected 80131513 actual 80004005
+Bad HRESULT: expected 0 actual 80004005
+Bad HRESULT: expected 0 actual 80004005
+Bad HRESULT: expected 80131500 actual 80004005
+Bad HRESULT: expected 0 actual 80004005
+Bad HRESULT: expected 0 actual 80004005
+Bad HRESULT: expected 80131537 actual 80004005
+Bad HRESULT: expected 0 actual 80004005
+/coreclr-tests-all/baseservices/exceptions/regressions/V1/SEH/VJ/ExternalException/ExternalException.dll
+Done
+<displays 'Done' and hangs indefinitely>
+/coreclr-tests-all/Loader/binding/tracing/BinderTracingTest.Basic/BinderTracingTest.Basic.dll
+[05:21:12] Running LoadFile...
+[05:21:13] Running LoadBytes...
+[05:21:13] Running LoadFromStream...
+[05:21:13] Running LoadFromAssemblyPath...
+[05:21:13] Launching process for LoadFromAssemblyName...
+Makefile:37: recipe for target 'run-ext2' failed
+make: *** [run-ext2] Aborted (core dumped)
