@@ -573,6 +573,34 @@ const char* myst_syscall_str(long n)
     return _syscall_str(n);
 }
 
+struct timespec_buf
+{
+    char data[72];
+};
+
+/* format a timespec structure */
+static const char* _format_timespec(
+    struct timespec_buf* buf,
+    const struct timespec* ts)
+{
+    if (ts)
+    {
+        snprintf(
+            buf->data,
+            sizeof(buf->data),
+            "%p(sec=%ld nsec=%ld)",
+            ts,
+            ts->tv_sec,
+            ts->tv_nsec);
+    }
+    else
+    {
+        snprintf(buf->data, sizeof(buf->data), "%p", ts);
+    }
+
+    return buf->data;
+}
+
 __attribute__((format(printf, 2, 3))) static void _strace(
     long n,
     const char* fmt,
@@ -3974,14 +4002,9 @@ static long _syscall(void* args_)
         {
             const struct timespec* req = (const struct timespec*)x1;
             struct timespec* rem = (struct timespec*)x2;
+            struct timespec_buf buf;
 
-            _strace(
-                n,
-                "req=%p(sec=%ld, nsec=%ld) rem=%p",
-                req,
-                req ? req->tv_sec : 0,
-                req ? req->tv_nsec : 0,
-                rem);
+            _strace(n, "req=%s rem=%p", _format_timespec(&buf, req), rem);
 
             BREAK(_return(n, myst_syscall_nanosleep(req, rem)));
         }
@@ -4090,7 +4113,8 @@ static long _syscall(void* args_)
         {
             int ret = 0;
             _strace(n, NULL);
-            myst_futex_wait(&thread->fork_exec_futex_wait, 0, NULL);
+            myst_futex_wait(
+                &thread->fork_exec_futex_wait, 0, NULL, FUTEX_BITSET_MATCH_ANY);
             BREAK(_return(n, ret));
         }
         case SYS_myst_kill_wait_child_forks:
@@ -5018,31 +5042,40 @@ static long _syscall(void* args_)
             int* uaddr2 = (int*)x5;
             int val3 = (int)x6;
             int futex_op2 = futex_op & ~FUTEX_PRIVATE;
+
             if (futex_op2 == FUTEX_WAIT || futex_op2 == FUTEX_WAIT_BITSET)
             {
                 const struct timespec* timeout = (const struct timespec*)x4;
+                struct timespec_buf buf;
+
                 _strace(
                     n,
                     "uaddr=0x%lx(%d) futex_op=%u(%s) val=%d, "
-                    "timeout=%p(sec=%ld, nsec=%ld)",
+                    "timeout=%s uaddr2=0x%lx val3=%d",
                     (long)uaddr,
                     (uaddr ? *uaddr : -1),
                     futex_op,
                     _futex_op_str(futex_op),
                     val,
-                    timeout,
-                    timeout ? timeout->tv_sec : 0,
-                    timeout ? timeout->tv_nsec : 0);
+                    _format_timespec(&buf, timeout),
+                    (long)uaddr2,
+                    val3);
             }
             else
+            {
                 _strace(
                     n,
-                    "uaddr=0x%lx(%d) futex_op=%u(%s) val=%d",
+                    "uaddr=0x%lx(%d) futex_op=%u(%s) val=%d arg=%li "
+                    "uaddr2=0x%lx val3=%d",
                     (long)uaddr,
                     (uaddr ? *uaddr : -1),
                     futex_op,
                     _futex_op_str(futex_op),
-                    val);
+                    val,
+                    arg,
+                    (long)uaddr2,
+                    val3);
+            }
 
             BREAK(_return(
                 n,
@@ -5188,8 +5221,9 @@ static long _syscall(void* args_)
         {
             clockid_t clk_id = (clockid_t)x1;
             struct timespec* tp = (struct timespec*)x2;
+            struct timespec_buf buf;
 
-            _strace(n, "clk_id=%u tp=%p", clk_id, tp);
+            _strace(n, "clk_id=%u tp=%s", clk_id, _format_timespec(&buf, tp));
 
             BREAK(_return(n, myst_syscall_clock_settime(clk_id, tp)));
         }
@@ -5765,18 +5799,16 @@ static long _syscall(void* args_)
             int flags = (int)x4;
             struct timespec* timeout = (struct timespec*)x5;
             long ret;
+            struct timespec_buf buf;
 
             _strace(
                 n,
-                "sockfd=%d msgvec=%p vlen=%u flags=%d timeout=%p(sec=%ld, "
-                "nsec=%ld)",
+                "sockfd=%d msgvec=%p vlen=%u flags=%d timeout=%s",
                 sockfd,
                 msgvec,
                 vlen,
                 flags,
-                timeout,
-                timeout ? timeout->tv_sec : 0,
-                timeout ? timeout->tv_nsec : 0);
+                _format_timespec(&buf, timeout));
 
             ret = myst_syscall_recvmmsg(sockfd, msgvec, vlen, flags, timeout);
             BREAK(_return(n, ret));
@@ -6642,7 +6674,8 @@ long myst_syscall_pause(void)
         }
 
         // Futex is not available, wait.
-        ret = myst_futex_wait(&thread->pause_futex, 0, NULL);
+        ret = myst_futex_wait(
+            &thread->pause_futex, 0, NULL, FUTEX_BITSET_MATCH_ANY);
         if (ret != 0 && ret != -EAGAIN)
             ERAISE(ret);
     }

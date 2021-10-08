@@ -9,7 +9,17 @@
 #include <myst/eraise.h>
 #include <myst/futex.h>
 #include <myst/strings.h>
+#include <myst/syscall.h>
 #include <myst/thread.h>
+#include <myst/times.h>
+
+static long _syscall_futex_bitset_or_clock_realtime(
+    int* uaddr,
+    int op,
+    int val,
+    long arg,
+    int* uaddr2,
+    int val3);
 
 /*
 **==============================================================================
@@ -159,7 +169,11 @@ done:
 #endif
 }
 
-int myst_futex_wait(int* uaddr, int val, const struct timespec* to)
+int myst_futex_wait(
+    int* uaddr,
+    int val,
+    const struct timespec* to,
+    const uint32_t bitset)
 {
     int ret = 0;
     futex_t* f = NULL;
@@ -189,7 +203,7 @@ int myst_futex_wait(int* uaddr, int val, const struct timespec* to)
             goto done;
         }
 
-        ret = myst_cond_timedwait(&f->cond, &f->mutex, to);
+        ret = myst_cond_timedwait(&f->cond, &f->mutex, to, bitset);
     }
     myst_mutex_unlock(&f->mutex);
 
@@ -201,7 +215,7 @@ done:
     return ret;
 }
 
-int myst_futex_wake(int* uaddr, int val)
+int myst_futex_wake(int* uaddr, int val, uint32_t bitset)
 {
     int ret = 0;
     futex_t* f = NULL;
@@ -229,7 +243,7 @@ int myst_futex_wake(int* uaddr, int val)
 
     if (val == 1)
     {
-        if (myst_cond_signal(&f->cond) != 0)
+        if (myst_cond_signal(&f->cond, bitset) != 0)
         {
             ret = -ENOSYS;
             goto done;
@@ -244,7 +258,7 @@ int myst_futex_wake(int* uaddr, int val)
         int num_awoken;
 
         /* myst_cond_broadcast() returns the number of threads awoken */
-        if ((num_awoken = myst_cond_broadcast(&f->cond, n)) < 0)
+        if ((num_awoken = myst_cond_broadcast(&f->cond, n, bitset)) < 0)
         {
             ret = -ENOSYS;
             goto done;
@@ -359,19 +373,84 @@ long myst_syscall_futex(
 {
     long ret = 0;
 
-    (void)val3;
+    if ((op & (FUTEX_CLOCK_REALTIME | FUTEX_WAIT_BITSET) | FUTEX_WAKE_BITSET))
+    {
+        return _syscall_futex_bitset_or_clock_realtime(
+            uaddr, op, val, arg, uaddr2, val3);
+    }
 
     if (op == FUTEX_WAIT || op == (FUTEX_WAIT | FUTEX_PRIVATE))
     {
-        ECHECK(myst_futex_wait(uaddr, val, (const struct timespec*)arg));
+        ECHECK(myst_futex_wait(
+            uaddr, val, (const struct timespec*)arg, FUTEX_BITSET_MATCH_ANY));
     }
     else if (op == FUTEX_WAKE || op == (FUTEX_WAKE | FUTEX_PRIVATE))
     {
         int r;
-        ECHECK((r = myst_futex_wake(uaddr, val)));
+        ECHECK((r = myst_futex_wake(uaddr, val, FUTEX_BITSET_MATCH_ANY)));
         ret = r;
     }
     else if (op == FUTEX_REQUEUE || op == (FUTEX_REQUEUE | FUTEX_PRIVATE))
+    {
+        ECHECK(_futex_requeue(uaddr, op, val, (int)arg, uaddr2));
+    }
+    else
+    {
+        ERAISE(-ENOTSUP);
+    }
+
+done:
+    return ret;
+}
+
+static long _syscall_futex_bitset_or_clock_realtime(
+    int* uaddr,
+    int op,
+    int val,
+    long arg,
+    int* uaddr2,
+    int val3)
+{
+    long ret = 0;
+    uint32_t bitset = FUTEX_BITSET_MATCH_ANY;
+    int _op = op & ~(FUTEX_CLOCK_REALTIME | FUTEX_PRIVATE);
+
+    if (op & FUTEX_CLOCK_REALTIME)
+    {
+        if (!((_op == FUTEX_WAIT_BITSET) ||
+              (_op == FUTEX_WAIT))) // || (op | FUTEX_WAIT_REQUEUE_PI)
+            ERAISE(-ENOSYS);
+    }
+
+    if (_op == FUTEX_WAIT_BITSET || _op == FUTEX_WAKE_BITSET)
+    {
+        if (!val3)
+            ERAISE(-EINVAL);
+        bitset = val3;
+    }
+
+    if (_op == FUTEX_WAIT || _op == FUTEX_WAIT_BITSET)
+    {
+        struct timespec* timeout = (struct timespec*)arg;
+        if ((op & FUTEX_CLOCK_REALTIME) && timeout)
+        {
+            struct timespec timenow;
+            myst_syscall_clock_gettime(CLOCK_REALTIME, &timenow);
+            long int absolute_timeout_ns =
+                timespec_to_nanos(timeout) - timespec_to_nanos(&timenow);
+            absolute_timeout_ns =
+                (absolute_timeout_ns < 0) ? 0 : absolute_timeout_ns;
+            nanos_to_timespec(timeout, absolute_timeout_ns);
+        }
+        ECHECK(myst_futex_wait(uaddr, val, timeout, bitset));
+    }
+    else if (_op == FUTEX_WAKE || _op == FUTEX_WAKE_BITSET)
+    {
+        int r;
+        ECHECK((r = myst_futex_wake(uaddr, val, bitset)));
+        ret = r;
+    }
+    else if (_op == FUTEX_REQUEUE)
     {
         ECHECK(_futex_requeue(uaddr, op, val, (int)arg, uaddr2));
     }

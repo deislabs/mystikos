@@ -97,7 +97,8 @@ long myst_syscall_run_itimer(void)
             }
 
             uint64_t start = _get_current_time();
-            int r = myst_cond_timedwait(&_it.cond, &_it.mutex, to);
+            int r = myst_cond_timedwait(
+                &_it.cond, &_it.mutex, to, FUTEX_BITSET_MATCH_ANY);
             uint64_t end = _get_current_time();
 
             assert(start != 0);
@@ -156,7 +157,7 @@ long myst_syscall_setitimer(
         _it.real_value = value;
 
         /* signal the itimer thread */
-        if (myst_cond_signal(&_it.cond) != 0)
+        if (myst_cond_signal(&_it.cond, FUTEX_BITSET_MATCH_ANY) != 0)
         {
             myst_mutex_unlock(&_it.mutex);
             ERAISE(-ENOSYS);

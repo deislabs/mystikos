@@ -24,19 +24,24 @@ ifdef ETRACE
 OPTS += --etrace
 endif
 
+OPTS += --user-mem-size=16m
+
 tests: all
 	$(MAKE) test1
 	$(MAKE) test2
 
 test1:
 	gcc -Wall -o futex futex.c -lpthread
-	$(RUNTEST) ./futex
+	$(RUNTEST) ./futex $(COUNT)
 
 test2:
-	$(RUNTEST) $(MYST_EXEC) rootfs /bin/futex $(OPTS)
+	$(RUNTEST) $(MYST_EXEC) rootfs /bin/futex $(OPTS) $(COUNT)
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst
 
 clean:
-	rm -rf $(APPDIR) rootfs export ramfs
+	rm -rf $(APPDIR) rootfs export ramfs futex
+
+stress:
+	$(MAKE) COUNT=100 test2

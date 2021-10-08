@@ -824,7 +824,10 @@ void myst_fork_exec_futex_wake(myst_process_t* process)
         {
             __sync_val_compare_and_swap(
                 &waiter_thread->fork_exec_futex_wait, 0, 1);
-            myst_futex_wake(&waiter_thread->fork_exec_futex_wait, 1);
+            myst_futex_wake(
+                &waiter_thread->fork_exec_futex_wait,
+                1,
+                FUTEX_BITSET_MATCH_ANY);
         }
 
         myst_spin_unlock(&waiter_process->thread_group_lock);
