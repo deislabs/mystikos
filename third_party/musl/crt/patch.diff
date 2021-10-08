@@ -226,7 +226,7 @@ index 20d50f2c..17cd6ac3 100644
 +{
 +}
 diff --git a/ldso/dynlink.c b/ldso/dynlink.c
-index afec985a..264f6322 100644
+index afec985a..d45e267e 100644
 --- a/ldso/dynlink.c
 +++ b/ldso/dynlink.c
 @@ -3,6 +3,7 @@
@@ -237,7 +237,7 @@ index afec985a..264f6322 100644
  #include <stddef.h>
  #include <string.h>
  #include <unistd.h>
-@@ -27,12 +28,23 @@
+@@ -27,12 +28,30 @@
  
  static void error(const char *, ...);
  
@@ -250,6 +250,13 @@ index afec985a..264f6322 100644
 +bool myst_get_exec_stack_option();
 +void myst_get_current_stack();
 +
++/* Allow Mystikos to perform tasks right before the app is launched. */
++__attribute__((__weak__))
++int myst_pre_launch_hook()
++{
++    return -ENOTSUP;
++}
++
  #define MAXP2(a,b) (-(-(a)&-(b)))
  #define ALIGN(x,y) ((x)+(y)-1 & -(y))
  
@@ -261,7 +268,7 @@ index afec985a..264f6322 100644
  struct debug {
  	int ver;
  	void *head;
-@@ -217,6 +229,14 @@ static int search_vec(size_t *v, size_t *r, size_t key)
+@@ -217,6 +236,14 @@ static int search_vec(size_t *v, size_t *r, size_t key)
  	return 1;
  }
  
@@ -276,7 +283,7 @@ index afec985a..264f6322 100644
  static uint32_t sysv_hash(const char *s0)
  {
  	const unsigned char *s = (void *)s0;
-@@ -658,6 +678,25 @@ static void *map_library(int fd, struct dso *dso)
+@@ -658,6 +685,25 @@ static void *map_library(int fd, struct dso *dso)
  					ph->p_memsz < DEFAULT_STACK_MAX ?
  					ph->p_memsz : DEFAULT_STACK_MAX;
  			}
@@ -302,7 +309,7 @@ index afec985a..264f6322 100644
  		}
  		if (ph->p_type != PT_LOAD) continue;
  		nsegs++;
-@@ -895,6 +934,7 @@ static int fixup_rpath(struct dso *p, char *buf, size_t buf_size)
+@@ -895,6 +941,7 @@ static int fixup_rpath(struct dso *p, char *buf, size_t buf_size)
  static void decode_dyn(struct dso *p)
  {
  	size_t dyn[DYN_CNT];
@@ -310,7 +317,7 @@ index afec985a..264f6322 100644
  	decode_vec(p->dynv, dyn, DYN_CNT);
  	p->syms = laddr(p, dyn[DT_SYMTAB]);
  	p->strings = laddr(p, dyn[DT_STRTAB]);
-@@ -906,8 +946,21 @@ static void decode_dyn(struct dso *p)
+@@ -906,8 +953,21 @@ static void decode_dyn(struct dso *p)
  		p->rpath_orig = p->strings + dyn[DT_RUNPATH];
  	if (dyn[0]&(1<<DT_PLTGOT))
  		p->got = laddr(p, dyn[DT_PLTGOT]);
@@ -333,7 +340,7 @@ index afec985a..264f6322 100644
  	if (search_vec(p->dynv, dyn, DT_VERSYM))
  		p->versym = laddr(p, *dyn);
  }
-@@ -1043,38 +1096,7 @@ static struct dso *load_library(const char *name, struct dso *needed_by)
+@@ -1043,38 +1103,7 @@ static struct dso *load_library(const char *name, struct dso *needed_by)
  				fd = path_open(name, p->rpath, buf, sizeof buf);
  		}
  		if (fd == -1) {
@@ -373,7 +380,7 @@ index afec985a..264f6322 100644
  			fd = path_open(name, sys_path, buf, sizeof buf);
  		}
  		pathname = buf;
-@@ -1098,6 +1120,7 @@ static struct dso *load_library(const char *name, struct dso *needed_by)
+@@ -1098,6 +1127,7 @@ static struct dso *load_library(const char *name, struct dso *needed_by)
  	map = noload ? 0 : map_library(fd, &temp_dso);
  	close(fd);
  	if (!map) return 0;
@@ -381,7 +388,7 @@ index afec985a..264f6322 100644
  
  	/* Avoid the danger of getting two versions of libc mapped into the
  	 * same process when an absolute pathname was used. The symbols
-@@ -1797,6 +1820,7 @@ void __dls3(size_t *sp, size_t *auxv)
+@@ -1797,6 +1827,7 @@ void __dls3(size_t *sp, size_t *auxv)
  			dprintf(2, "%s: %s: Not a valid dynamic program\n", ldname, argv[0]);
  			_exit(1);
  		}
@@ -389,7 +396,7 @@ index afec985a..264f6322 100644
  		close(fd);
  		ldso.name = ldname;
  		app.name = argv[0];
-@@ -1936,6 +1960,7 @@ void __dls3(size_t *sp, size_t *auxv)
+@@ -1936,6 +1967,7 @@ void __dls3(size_t *sp, size_t *auxv)
  	/* Determine if malloc was interposed by a replacement implementation
  	 * so that calloc and the memalign family can harden against the
  	 * possibility of incomplete replacement. */
@@ -397,19 +404,21 @@ index afec985a..264f6322 100644
  	if (find_sym(head, "malloc", 1).dso != &ldso)
  		__malloc_replaced = 1;
  
-@@ -1955,7 +1980,11 @@ void __dls3(size_t *sp, size_t *auxv)
+@@ -1955,7 +1987,13 @@ void __dls3(size_t *sp, size_t *auxv)
  
  	errno = 0;
  
-+        myst_trace("entering program");
-+        myst_load_symbols();
++  myst_trace("entering program");
++  myst_load_symbols();
++
++  myst_pre_launch_hook();
 +
  	CRTJMP((void *)aux[AT_ENTRY], argv-1);
 +
  	for(;;);
  }
  
-@@ -2058,6 +2087,10 @@ void *dlopen(const char *file, int mode)
+@@ -2058,6 +2096,10 @@ void *dlopen(const char *file, int mode)
  	pthread_mutex_lock(&init_fini_lock);
  	if (!p->constructed) ctor_queue = queue_ctors(p);
  	pthread_mutex_unlock(&init_fini_lock);
@@ -420,7 +429,7 @@ index afec985a..264f6322 100644
  	if (!p->relocated && (mode & RTLD_LAZY)) {
  		prepare_lazy(p);
  		for (i=0; p->deps[i]; i++)
-@@ -2100,6 +2133,7 @@ end:
+@@ -2100,6 +2142,7 @@ end:
  		free(ctor_queue);
  	}
  	pthread_setcancelstate(cs, 0);
@@ -748,6 +757,33 @@ index 6f3ef656..614121c3 100644
 +
 +    return myst_syscall(n, params);
 +}
+diff --git a/src/multibyte/wcsnrtombs.c b/src/multibyte/wcsnrtombs.c
+index 676932b5..6e513741 100644
+--- a/src/multibyte/wcsnrtombs.c
++++ b/src/multibyte/wcsnrtombs.c
+@@ -2,6 +2,7 @@
+ 
+ size_t wcsnrtombs(char *restrict dst, const wchar_t **restrict wcs, size_t wn, size_t n, mbstate_t *restrict st)
+ {
++#ifdef MYST_ENABLE_WCSNRTOMBS
+ 	size_t l, cnt=0, n2;
+ 	char *s, buf[256];
+ 	const wchar_t *ws = *wcs;
+@@ -40,4 +41,14 @@ size_t wcsnrtombs(char *restrict dst, const wchar_t **restrict wcs, size_t wn, s
+ 	}
+ 	if (dst) *wcs = ws;
+ 	return cnt;
++#else
++    /* Temporarily disable the insecure wcsnrtombs, which
++     * will be patched in MUSL 1.2.2. */
++    (void)dst;
++    (void)wcs;
++    (void)wn;
++    (void)n;
++    (void)st;
++    return 0;
++#endif
+ }
 diff --git a/src/network/h_errno.c b/src/network/h_errno.c
 index 4f700cea..4306ade2 100644
 --- a/src/network/h_errno.c
@@ -1706,30 +1742,3 @@ index 00000000..6612ffd8
 +}
 +
 +weak_alias(pwritev2, pwritev64v2);
-diff --git a/src/multibyte/wcsnrtombs.c b/src/multibyte/wcsnrtombs.c
-index 676932b5..6e513741 100644
---- a/src/multibyte/wcsnrtombs.c
-+++ b/src/multibyte/wcsnrtombs.c
-@@ -2,6 +2,7 @@
- 
- size_t wcsnrtombs(char *restrict dst, const wchar_t **restrict wcs, size_t wn, size_t n, mbstate_t *restrict st)
- {
-+#ifdef MYST_ENABLE_WCSNRTOMBS
- 	size_t l, cnt=0, n2;
- 	char *s, buf[256];
- 	const wchar_t *ws = *wcs;
-@@ -40,4 +41,14 @@ size_t wcsnrtombs(char *restrict dst, const wchar_t **restrict wcs, size_t wn, s
- 	}
- 	if (dst) *wcs = ws;
- 	return cnt;
-+#else
-+    /* Temporarily disable the insecure wcsnrtombs, which
-+     * will be patched in MUSL 1.2.2. */
-+    (void)dst;
-+    (void)wcs;
-+    (void)wn;
-+    (void)n;
-+    (void)st;
-+    return 0;
-+#endif
- }
