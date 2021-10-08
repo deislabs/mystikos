@@ -105,9 +105,13 @@ group-file:
 	echo "grp1000:x:1000:" >> appdir/etc/group
 
 add_host_users_and_groups:
+	while sudo lsof /etc/group; do sleep 3; done
 	sudo groupadd -f -g 100701 grp701
+	while sudo lsof /etc/group; do sleep 3; done
 	sudo groupadd -f -g 100704 grp704
+	while sudo lsof /etc/group; do sleep 3; done
 	sudo groupadd -f -g 100705 grp705
+	while sudo lsof /etc/group; do sleep 3; done
 	sudo groupadd -f -g 101000 grp1000
 	id -u user700 >/dev/null 2>&1 || sudo useradd -g grp701 -u 100700 user700
 	id -u user702 >/dev/null 2>&1 || sudo useradd -g grp701 -u 100702 user702
