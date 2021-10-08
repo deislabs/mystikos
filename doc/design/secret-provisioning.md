@@ -53,19 +53,19 @@ secrets: [
     # Secret 1
     {
         "ID": <ID of the secret>,
-        "SrsURL": <URL to the Secret Release Service>,
+        "SrsAddress": <Address to the Secret Release Service>,
         "SrsApiVersion": <Optional. API Version of the SRS>,
         "LocalPath": <Path of the file that stores the secret after its retrieval>,
-        "ClientLibrary": <Name of the client library>,
+        "ClientLib": <Name of the client library>,
         "Verbose": <Optional. Verboseness of the client library>
     },
     # Secret 2
     {
         "ID": <ID of the secret>,
-        "SrsURL": <URL to the Secret Release Service>,
+        "SrsAddress": <Address to the Secret Release Service>,
         "SrsApiVersion": <Optional. API Version of the SRS>,
         "LocalPath": <Path of the file that stores the secret after its retrieval>,
-        "ClientLibrary": <Name of the client library>,
+        "ClientLib": <Name of the client library>,
         "Verbose": <Optional. Verboseness of the client library>
     },
     ...
