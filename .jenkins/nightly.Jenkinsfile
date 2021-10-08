@@ -11,9 +11,10 @@ pipeline {
         timeout(time: 600, unit: 'MINUTES')
     }
     parameters {
+        string(name: "BRANCH_NAME", defaultValue: "main", description: "Enter your pull request's source branch here (ex. main)")
+        string(name: "REPOSITORY_NAME", defaultValue: "deislabs/mystikos", description: "Enter the name of the repository that your branch exists on (ex. deislabs/mystikos)")
+        string(name: "PULL_REQUEST_ID", defaultValue: "", description: "If you are building a pull request, enter the pull request ID number here. (ex. 789)")
         string(name: "SCRIPTS_ROOT", defaultValue: '${WORKSPACE}/.azure_pipelines/scripts', description: "Root directory")
-        string(name: "BRANCH_NAME", defaultValue: "main", description: "Option #1: If you want to build a branch instead of a pull request, enter the branch name here")
-        string(name: "PULL_REQUEST_ID", defaultValue: "", description: "Option #2: If you want to build a pull request, enter the pull request ID number here. Will override branch builds.")
     }
     environment {
         BUILD_USER = sh(
