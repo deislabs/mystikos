@@ -490,7 +490,7 @@ void _myst_sigstop_block(myst_process_t* process)
 void _myst_sigstop_unblock(myst_process_t* process)
 {
     if (__sync_val_compare_and_swap(&process->sigstop_futex, 1, 0) == 1)
-        myst_futex_wake(&process->sigstop_futex, INT_MAX);
+        myst_futex_wake(&process->sigstop_futex, INT_MAX, FUTEX_BITSET_MATCH_ANY);
 }
 
 void _myst_sigstop_wait(void)
@@ -499,7 +499,7 @@ void _myst_sigstop_wait(void)
 
     while (process->sigstop_futex == 1)
     {
-        long ret = myst_futex_wait(&process->sigstop_futex, 1, NULL);
+        long ret = myst_futex_wait(&process->sigstop_futex, 1, NULL, FUTEX_BITSET_MATCH_ANY);
         if ((ret < 0) && (ret != -EAGAIN))
             break;
     }
@@ -649,7 +649,7 @@ long myst_signal_deliver(
 
     if (!__sync_val_compare_and_swap(&thread->pause_futex, 0, 1))
     {
-        ret = myst_futex_wake(&thread->pause_futex, 1);
+        ret = myst_futex_wake(&thread->pause_futex, 1, FUTEX_BITSET_MATCH_ANY);
         // Expect ret == 1, otherwise, return error
         if (ret == 1)
             ret = 0;
