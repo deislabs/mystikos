@@ -31,7 +31,7 @@ ext2fs: appdir
 
 build-package: package.pem
 	$(MYST) fssig --roothash ext2fs > roothash
-	$(MYST) package-sgx --roothash=roothash package.pem config_256m.json
+	$(MYST) package-sgx --roothash=roothash package.pem config_3g.json
 
 run-with-args:
 	./test-runner.sh $(MYST_EXEC) config_1g.json 30 ext2 pr1-1g-arg1 0
@@ -90,10 +90,11 @@ run-with-args:
 	./run-single-test.sh $(MYST_EXEC) config_256m.json 30 ext2 Loader/regressions/polyrec/Polyrec/Polyrec.dll "4 50"
 
 run:
-	./test-runner.sh $(PACKAGE_PATH) null null 60 package pr1-256m	# Contains 1 test that runs for 55 seconds
-	$(MAKE) run-with-args
-	./test-runner.sh $(MYST_EXEC) config_3g.json 120 ext2 pr1-3g-passed
-	./stat.sh
+	#./test-runner.sh $(PACKAGE_PATH) null null 60 package pr1-256m	# Contains 1 test that runs for 55 seconds
+	#$(MAKE) run-with-args
+	#./test-runner.sh $(MYST_EXEC) config_3g.json 120 ext2 pr1-3g-passed
+	#./stat.sh
+	./test-runner.sh $(PACKAGE_PATH) null null 480 package pr1-FAILED-137
 
 package.pem:
 	openssl genrsa -out package.pem -3 3072

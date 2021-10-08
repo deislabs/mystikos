@@ -2,38 +2,39 @@ TOP=$(abspath ..)
 include $(TOP)/defs.mak
 
 DIRS =
-DIRS += attested_tls
+DIRS += coreclr-p1
+#DIRS += attested_tls
 
-ifdef DB_SERVER_NAME
-ifdef DB_NAME
-ifdef MAA_URL
-DIRS += sql_ae
-DIRS += python_app
-endif
-endif
-endif
+#ifdef DB_SERVER_NAME
+#ifdef DB_NAME
+#ifdef MAA_URL
+#DIRS += sql_ae
+#DIRS += python_app
+#endif
+#endif
+#endif
 
-DIRS += msgpack_c
+#DIRS += msgpack_c
 
-ifndef MYST_ENABLE_GCOV
-DIRS += dotnet
-endif
+#ifndef MYST_ENABLE_GCOV
+#DIRS += dotnet
+#endif
 
-DIRS += aspnet
-DIRS += memcached
-DIRS += python_web_frameworks
-DIRS += python_webserver
+#DIRS += aspnet
+#DIRS += memcached
+#DIRS += python_web_frameworks
+#DIRS += python_webserver
 ifndef MYST_SKIP_PR_TEST
 # Do not run in PR pipeline as it takes ~15min
 # Disable this as it fails pipeline, will re-enable after investigation
 #DIRS += pytorch_inference
-DIRS += tensorflow_lite
-DIRS += pandas_tests
+#DIRS += tensorflow_lite
+#DIRS += pandas_tests
 endif
-DIRS += nodejs
-DIRS += numpy_core_tests
-DIRS += redis
-DIRS += cpprestsdk
+#DIRS += nodejs
+#DIRS += numpy_core_tests
+#DIRS += redis
+#IRS += cpprestsdk
 
 .PHONY: $(DIRS)
 
