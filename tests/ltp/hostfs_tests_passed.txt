@@ -188,6 +188,7 @@
 /ltp/testcases/kernel/syscalls/pipe/pipe09
 /ltp/testcases/kernel/syscalls/pipe/pipe10
 /ltp/testcases/kernel/syscalls/pipe2/pipe2_01
+/ltp/testcases/kernel/syscalls/pipe2/pipe2_04
 /ltp/testcases/kernel/syscalls/poll/poll01
 /ltp/testcases/kernel/syscalls/pread/pread01
 /ltp/testcases/kernel/syscalls/pread/pread01_64
@@ -216,6 +217,7 @@
 /ltp/testcases/kernel/syscalls/readv/readv01
 /ltp/testcases/kernel/syscalls/readv/readv02
 /ltp/testcases/kernel/syscalls/readv/readv03
+/ltp/testcases/kernel/syscalls/recv/recv01
 /ltp/testcases/kernel/syscalls/recvmsg/recvmsg02
 /ltp/testcases/kernel/syscalls/rename/rename01
 /ltp/testcases/kernel/syscalls/rename/rename02
@@ -241,6 +243,7 @@
 /ltp/testcases/kernel/syscalls/sendfile/sendfile09
 /ltp/testcases/kernel/syscalls/sendfile/sendfile09_64
 /ltp/testcases/kernel/syscalls/sendmmsg/sendmmsg02
+/ltp/testcases/kernel/syscalls/sendto/sendto02
 /ltp/testcases/kernel/syscalls/set_robust_list/set_robust_list01
 /ltp/testcases/kernel/syscalls/set_tid_address/set_tid_address01
 /ltp/testcases/kernel/syscalls/setegid/setegid01

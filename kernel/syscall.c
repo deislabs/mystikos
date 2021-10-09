@@ -583,7 +583,7 @@ static const char* _format_timespec(
     struct timespec_buf* buf,
     const struct timespec* ts)
 {
-    if (ts)
+    if (ts && myst_is_addr_within_kernel(ts))
     {
         snprintf(
             buf->data,
@@ -3663,7 +3663,7 @@ static long _syscall(void* args_)
                     myst_eprintf("fd=%d\n", fds[i].fd);
             }
 
-            ret = myst_syscall_poll(fds, nfds, timeout);
+            ret = myst_syscall_poll(fds, nfds, timeout, false);
             BREAK(_return(n, ret));
         }
         case SYS_lseek:
@@ -3888,16 +3888,26 @@ static long _syscall(void* args_)
             struct timeval* timeout = (struct timeval*)x5;
             long ret;
 
-            _strace(
-                n,
-                "nfds=%d rfds=%p wfds=%p xfds=%p timeout=%p(sec=%ld, usec=%ld)",
-                nfds,
-                rfds,
-                wfds,
-                efds,
-                timeout,
-                timeout ? timeout->tv_sec : 0,
-                timeout ? timeout->tv_usec : 0);
+            if (__myst_kernel_args.trace_syscalls)
+            {
+                struct timeval* _timeout = timeout;
+                if (timeout && !myst_is_addr_within_kernel(timeout))
+                {
+                    _timeout = NULL;
+                }
+
+                _strace(
+                    n,
+                    "nfds=%d rfds=%p wfds=%p xfds=%p timeout=%p(sec=%ld, "
+                    "usec=%ld)",
+                    nfds,
+                    rfds,
+                    wfds,
+                    efds,
+                    timeout,
+                    _timeout ? timeout->tv_sec : 0,
+                    _timeout ? timeout->tv_usec : 0);
+            }
 
             ret = myst_syscall_select(nfds, rfds, wfds, efds, timeout);
             BREAK(_return(n, ret));
@@ -5474,14 +5484,22 @@ static long _syscall(void* args_)
             const char* pathname = (const char*)x2;
             const struct timeval* times = (const struct timeval*)x3;
             long ret;
-            _strace(
-                n,
-                "dirfd=%d pathname=%s times=%p(sec=%ld, usec=%ld)",
-                dirfd,
-                pathname,
-                times,
-                times ? times->tv_sec : 0,
-                times ? times->tv_usec : 0);
+            if (__myst_kernel_args.trace_syscalls)
+            {
+                const struct timeval* _times = times;
+                if (times && !myst_is_addr_within_kernel(times))
+                {
+                    _times = NULL;
+                }
+                _strace(
+                    n,
+                    "dirfd=%d pathname=%s times=%p(sec=%ld, usec=%ld)",
+                    dirfd,
+                    pathname,
+                    times,
+                    _times ? times->tv_sec : 0,
+                    _times ? times->tv_usec : 0);
+            }
 
             ret = myst_syscall_futimesat(dirfd, pathname, times);
             BREAK(_return(n, ret));
@@ -6577,6 +6595,12 @@ long myst_syscall_time(time_t* tloc)
 long myst_syscall_clock_getres(clockid_t clk_id, struct timespec* res)
 {
     long params[6] = {(long)clk_id, (long)res};
+
+    if (res && !myst_is_addr_within_kernel(res))
+        return -EFAULT;
+    else if (res == NULL)
+        return -EINVAL;
+
     long ret = myst_tcall(MYST_TCALL_CLOCK_GETRES, params);
     return ret;
 }

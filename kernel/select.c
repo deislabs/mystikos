@@ -10,9 +10,10 @@
 #include <myst/kernel.h>
 #include <myst/syscall.h>
 
-#define POLLIN_SET (POLLRDNORM | POLLRDBAND | POLLIN | POLLHUP | POLLERR)
-#define POLLOUT_SET (POLLWRBAND | POLLWRNORM | POLLOUT | POLLERR)
-#define POLLEX_SET (POLLPRI | POLLERR | POLLHUP | POLLRDHUP)
+#define POLLIN_SET \
+    (POLLRDNORM | POLLRDBAND | POLLIN | POLLHUP | POLLERR | POLLNVAL)
+#define POLLOUT_SET (POLLWRBAND | POLLWRNORM | POLLOUT | POLLERR | POLLNVAL)
+#define POLLEX_SET (POLLPRI | POLLERR | POLLHUP | POLLRDHUP | POLLNVAL)
 
 typedef struct _poll_fds
 {
@@ -74,6 +75,8 @@ int _fds_to_fdset(poll_fds_t* fds, short revents, fd_set* set)
     {
         const struct pollfd* p = &fds->data[i];
 
+        if (p->revents & POLLNVAL)
+            return -EBADF;
         if ((p->revents & revents))
         {
             FD_SET(p->fd, set);
@@ -140,39 +143,50 @@ long myst_syscall_select(
         ECHECK(_fdset_to_fds(&locals->fds, events, exceptfds, nfds));
     }
 
-    ECHECK(myst_syscall_poll(locals->fds.data, locals->fds.size, poll_timeout));
+    // The fail_badf flag is needed specifically for select because error
+    // handling on sockets work differently from most other handles. We need
+    // select fail early in this case otherwise the poll loop gets in an
+    // infinite loop
+    ECHECK(myst_syscall_poll(
+        locals->fds.data, locals->fds.size, poll_timeout, true));
 
     if (readfds)
     {
-        short events = POLLIN_SET;
+        short events = POLLIN_SET | POLLNVAL;
         int n;
 
         FD_ZERO(readfds);
 
-        if ((n = _fds_to_fdset(&locals->fds, events, readfds)) > num_ready)
+        if ((n = _fds_to_fdset(&locals->fds, events, readfds)) >= num_ready)
             num_ready += n;
+        else
+            ECHECK(n);
     }
 
     if (writefds)
     {
-        short events = POLLOUT_SET;
+        short events = POLLOUT_SET | POLLNVAL;
         int n;
 
         FD_ZERO(writefds);
 
-        if ((n = _fds_to_fdset(&locals->fds, events, writefds)) > num_ready)
+        if ((n = _fds_to_fdset(&locals->fds, events, writefds)) >= num_ready)
             num_ready += n;
+        else
+            ECHECK(n);
     }
 
     if (exceptfds)
     {
-        short events = POLLEX_SET;
+        short events = POLLEX_SET | POLLNVAL;
         int n;
 
         FD_ZERO(exceptfds);
 
-        if ((n = _fds_to_fdset(&locals->fds, events, exceptfds)) > num_ready)
+        if ((n = _fds_to_fdset(&locals->fds, events, exceptfds)) >= num_ready)
             num_ready += n;
+        else
+            ECHECK(n);
     }
 
     ret = num_ready;

@@ -483,7 +483,6 @@
 /ltp/testcases/kernel/syscalls/pipe/pipe13
 /ltp/testcases/kernel/syscalls/pipe2/pipe2_02
 /ltp/testcases/kernel/syscalls/pipe2/pipe2_02_child
-/ltp/testcases/kernel/syscalls/pipe2/pipe2_04
 /ltp/testcases/kernel/syscalls/poll/poll02
 /ltp/testcases/kernel/syscalls/prctl/prctl01
 /ltp/testcases/kernel/syscalls/prctl/prctl03
@@ -533,7 +532,6 @@
 /ltp/testcases/kernel/syscalls/readdir/readdir21
 /ltp/testcases/kernel/syscalls/readlink/readlink03
 /ltp/testcases/kernel/syscalls/readv/readv03
-/ltp/testcases/kernel/syscalls/recv/recv01
 /ltp/testcases/kernel/syscalls/recvfrom/recvfrom01
 /ltp/testcases/kernel/syscalls/recvmmsg/recvmmsg01
 /ltp/testcases/kernel/syscalls/recvmsg/recvmsg01
