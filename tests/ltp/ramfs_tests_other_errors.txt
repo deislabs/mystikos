@@ -489,7 +489,6 @@
 /ltp/testcases/kernel/syscalls/pipe/pipe13
 /ltp/testcases/kernel/syscalls/pipe2/pipe2_02
 /ltp/testcases/kernel/syscalls/pipe2/pipe2_02_child
-/ltp/testcases/kernel/syscalls/pipe2/pipe2_04
 /ltp/testcases/kernel/syscalls/poll/poll02
 /ltp/testcases/kernel/syscalls/prctl/prctl01
 /ltp/testcases/kernel/syscalls/prctl/prctl03
@@ -544,7 +543,6 @@
 /ltp/testcases/kernel/syscalls/readlink/readlink03
 /ltp/testcases/kernel/syscalls/readv/readv02
 /ltp/testcases/kernel/syscalls/readv/readv03
-/ltp/testcases/kernel/syscalls/recv/recv01
 /ltp/testcases/kernel/syscalls/recvfrom/recvfrom01
 /ltp/testcases/kernel/syscalls/recvmmsg/recvmmsg01
 /ltp/testcases/kernel/syscalls/recvmsg/recvmsg01
@@ -611,6 +609,7 @@
 /ltp/testcases/kernel/syscalls/sendmmsg/sendmmsg01
 /ltp/testcases/kernel/syscalls/sendmsg/sendmsg01
 /ltp/testcases/kernel/syscalls/sendmsg/sendmsg03
+/ltp/testcases/kernel/syscalls/sendto/sendto03
 /ltp/testcases/kernel/syscalls/set_mempolicy/set_mempolicy01
 /ltp/testcases/kernel/syscalls/set_mempolicy/set_mempolicy02
 /ltp/testcases/kernel/syscalls/set_mempolicy/set_mempolicy03

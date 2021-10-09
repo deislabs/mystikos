@@ -858,7 +858,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/pipe2/pipe2_01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/pipe2/pipe2_02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/pipe2/pipe2_02_child | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/pipe2/pipe2_04 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/pipe2/pipe2_04 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/pivot_root/pivot_root01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/pkeys/pkey01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/poll/poll01 | 1 | 1 | 1 |
@@ -953,7 +953,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/realpath/realpath01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/reboot/reboot01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/reboot/reboot02 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/recv/recv01 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/recv/recv01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/recvfrom/recvfrom01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/recvmmsg/recvmmsg01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/recvmsg/recvmsg01 | 0 | 0 | 0 |
@@ -1052,7 +1052,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/sendmsg/sendmsg02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/sendmsg/sendmsg03 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/sendto/sendto01 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/sendto/sendto02 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/sendto/sendto02 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/sendto/sendto03 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/set_mempolicy/set_mempolicy01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/set_mempolicy/set_mempolicy02 | 0 | 0 | 0 |

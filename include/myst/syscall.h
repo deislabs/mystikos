@@ -242,7 +242,11 @@ long myst_syscall_waitid(
     siginfo_t* infop,
     int options);
 
-long myst_syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout);
+long myst_syscall_poll(
+    struct pollfd* fds,
+    nfds_t nfds,
+    int timeout,
+    bool fail_badf);
 
 long myst_syscall_select(
     int nfds,

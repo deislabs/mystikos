@@ -19,7 +19,11 @@
 #include <myst/thread.h>
 #include <myst/time.h>
 
-static long _syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
+static long _syscall_poll(
+    struct pollfd* fds,
+    nfds_t nfds,
+    int timeout,
+    bool fail_badf)
 {
     long ret = 0;
     myst_fdtable_t* fdtable;
@@ -76,10 +80,20 @@ static long _syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
         if (res == -ENOENT)
             continue;
 
+        // If we cannot find anything for this device we have two paths
         if (res == -EBADF)
         {
-            tfd = INT_MAX;
-            res = 0;
+            // If it is called from SYS_select then we need to return an error
+            // immediately, rather than letting the poll handle the errors; if
+            // we dont we get stuck in a loop because sockets handle bad
+            // descriptors differently than most other handles.
+            if (fail_badf)
+                ECHECK(-EBADF);
+            else
+            {
+                tfd = INT_MAX;
+                res = 0;
+            }
         }
 
         ECHECK(res);
@@ -135,8 +149,14 @@ static long _syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
         }
 
         ECHECK(tevents);
+
         if (tevents > 0)
             break;
+
+        if (ievents > 0)
+        {
+            break;
+        }
 
         has_signals = myst_signal_has_active_signals(myst_thread_self());
         if (has_signals)
@@ -188,12 +208,16 @@ done:
     return ret;
 }
 
-long myst_syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
+long myst_syscall_poll(
+    struct pollfd* fds,
+    nfds_t nfds,
+    int timeout,
+    bool fail_badf)
 {
     long ret = 0;
     long r;
 
-    ECHECK((r = _syscall_poll(fds, nfds, timeout)));
+    ECHECK((r = _syscall_poll(fds, nfds, timeout, fail_badf)));
 
     if (r == 0 && timeout < 0)
     {

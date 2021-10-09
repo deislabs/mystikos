@@ -31,9 +31,7 @@ test_os
 test_pathlib
 test_pdb
 test_peg_generator
-test_pipes
 test_pkgutil
-test_poll
 test_poplib
 test_posix
 test_pty
@@ -46,7 +44,6 @@ test_regrtest
 test_repl
 test_resource
 test_runpy
-test_select
 test_selectors
 test_shutil
 test_signal

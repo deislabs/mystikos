@@ -456,6 +456,10 @@ int myst_fdtable_get(
         {
             myst_fdtable_type_t actual_type = entry->type;
             myst_spin_unlock(&fdtable->lock);
+
+            // If the client gave us a handle that is not a socket we need to
+            // return ENOTSOCK. If the socket has been closed or not used then
+            // we return EBADF
             if ((type == MYST_FDTABLE_TYPE_SOCK) &&
                 (actual_type != MYST_FDTABLE_TYPE_SOCK) &&
                 (actual_type != MYST_FDTABLE_TYPE_NONE))
