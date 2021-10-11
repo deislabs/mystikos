@@ -158,20 +158,16 @@ index 984db680..9adecf2b 100644
  
  #if _REDIR_TIME64
 diff --git a/ldso/dlstart.c b/ldso/dlstart.c
-index 20d50f2c..17cd6ac3 100644
+index 20d50f2c..c6ad4096 100644
 --- a/ldso/dlstart.c
 +++ b/ldso/dlstart.c
-@@ -1,4 +1,9 @@
-+#include <elf.h>
-+#include <errno.h>
+@@ -1,4 +1,5 @@
  #include <stddef.h>
-+#include <stdbool.h>
-+#include <syscall.h>
-+#include <sys/mman.h>
++#include <errno.h>
  #include "dynlink.h"
  #include "libc.h"
  
-@@ -124,7 +129,6 @@ hidden void _dlstart_c(size_t *sp, size_t *dynv)
+@@ -124,7 +125,6 @@ hidden void _dlstart_c(size_t *sp, size_t *dynv)
  			local_cnt = dynv[i+1];
  		for (i=0; i<local_cnt; i++) got[i] += base;
  	}
@@ -179,7 +175,7 @@ index 20d50f2c..17cd6ac3 100644
  	rel = (void *)(base+dyn[DT_REL]);
  	rel_size = dyn[DT_RELSZ];
  	for (; rel_size; rel+=2, rel_size-=2*sizeof(size_t)) {
-@@ -146,3 +150,45 @@ hidden void _dlstart_c(size_t *sp, size_t *dynv)
+@@ -146,3 +146,34 @@ hidden void _dlstart_c(size_t *sp, size_t *dynv)
  	GETFUNCSYM(&dls2, __dls2, base+dyn[DT_PLTGOT]);
  	dls2((void *)base, sp);
  }
@@ -214,30 +210,11 @@ index 20d50f2c..17cd6ac3 100644
 +{
 +    return -ENOTSUP;
 +}
-+
-+__attribute__((__weak__))
-+bool myst_get_exec_stack_option()
-+{
-+    return false;
-+}
-+
-+__attribute__((__weak__))
-+void myst_get_current_stack(void** stack, size_t* stack_size)
-+{
-+}
 diff --git a/ldso/dynlink.c b/ldso/dynlink.c
-index afec985a..d45e267e 100644
+index afec985a..0ac9f0c4 100644
 --- a/ldso/dynlink.c
 +++ b/ldso/dynlink.c
-@@ -3,6 +3,7 @@
- #include <stdio.h>
- #include <stdlib.h>
- #include <stdarg.h>
-+#include <stdbool.h>
- #include <stddef.h>
- #include <string.h>
- #include <unistd.h>
-@@ -27,12 +28,30 @@
+@@ -27,6 +27,13 @@
  
  static void error(const char *, ...);
  
@@ -247,28 +224,11 @@ index afec985a..d45e267e 100644
 +    const char* path,
 +    const void* text,
 +    size_t text_size);
-+bool myst_get_exec_stack_option();
-+void myst_get_current_stack();
-+
-+/* Allow Mystikos to perform tasks right before the app is launched. */
-+__attribute__((__weak__))
-+int myst_pre_launch_hook()
-+{
-+    return -ENOTSUP;
-+}
 +
  #define MAXP2(a,b) (-(-(a)&-(b)))
  #define ALIGN(x,y) ((x)+(y)-1 & -(y))
  
- #define container_of(p,t,m) ((t*)((char *)(p)-offsetof(t,m)))
- #define countof(a) ((sizeof (a))/(sizeof (a)[0]))
- 
-+#define SYS_mprotect 10
-+
- struct debug {
- 	int ver;
- 	void *head;
-@@ -217,6 +236,14 @@ static int search_vec(size_t *v, size_t *r, size_t key)
+@@ -217,6 +224,14 @@ static int search_vec(size_t *v, size_t *r, size_t key)
  	return 1;
  }
  
@@ -283,33 +243,7 @@ index afec985a..d45e267e 100644
  static uint32_t sysv_hash(const char *s0)
  {
  	const unsigned char *s = (void *)s0;
-@@ -658,6 +685,25 @@ static void *map_library(int fd, struct dso *dso)
- 					ph->p_memsz < DEFAULT_STACK_MAX ?
- 					ph->p_memsz : DEFAULT_STACK_MAX;
- 			}
-+			if (myst_get_exec_stack_option()) {
-+				int prot_flags = 0;
-+				if (ph->p_flags & PF_X)
-+					prot_flags |= PROT_EXEC;
-+				
-+				if (ph->p_flags & PF_W)
-+					prot_flags |= PROT_WRITE;
-+				
-+				if (ph->p_flags & PF_R)
-+					prot_flags |= PROT_READ;
-+				
-+				void *stack_p = 0;
-+				size_t *stack_size = 0;
-+				myst_get_current_stack(&stack_p, &stack_size);
-+				if (stack_p && stack_size)
-+				{
-+					syscall(SYS_mprotect, stack_p, stack_size, prot_flags);
-+				}
-+			}
- 		}
- 		if (ph->p_type != PT_LOAD) continue;
- 		nsegs++;
-@@ -895,6 +941,7 @@ static int fixup_rpath(struct dso *p, char *buf, size_t buf_size)
+@@ -895,6 +910,7 @@ static int fixup_rpath(struct dso *p, char *buf, size_t buf_size)
  static void decode_dyn(struct dso *p)
  {
  	size_t dyn[DYN_CNT];
@@ -317,7 +251,7 @@ index afec985a..d45e267e 100644
  	decode_vec(p->dynv, dyn, DYN_CNT);
  	p->syms = laddr(p, dyn[DT_SYMTAB]);
  	p->strings = laddr(p, dyn[DT_STRTAB]);
-@@ -906,8 +953,21 @@ static void decode_dyn(struct dso *p)
+@@ -906,8 +922,21 @@ static void decode_dyn(struct dso *p)
  		p->rpath_orig = p->strings + dyn[DT_RUNPATH];
  	if (dyn[0]&(1<<DT_PLTGOT))
  		p->got = laddr(p, dyn[DT_PLTGOT]);
@@ -340,7 +274,7 @@ index afec985a..d45e267e 100644
  	if (search_vec(p->dynv, dyn, DT_VERSYM))
  		p->versym = laddr(p, *dyn);
  }
-@@ -1043,38 +1103,7 @@ static struct dso *load_library(const char *name, struct dso *needed_by)
+@@ -1043,38 +1072,7 @@ static struct dso *load_library(const char *name, struct dso *needed_by)
  				fd = path_open(name, p->rpath, buf, sizeof buf);
  		}
  		if (fd == -1) {
@@ -380,7 +314,7 @@ index afec985a..d45e267e 100644
  			fd = path_open(name, sys_path, buf, sizeof buf);
  		}
  		pathname = buf;
-@@ -1098,6 +1127,7 @@ static struct dso *load_library(const char *name, struct dso *needed_by)
+@@ -1098,6 +1096,7 @@ static struct dso *load_library(const char *name, struct dso *needed_by)
  	map = noload ? 0 : map_library(fd, &temp_dso);
  	close(fd);
  	if (!map) return 0;
@@ -388,7 +322,7 @@ index afec985a..d45e267e 100644
  
  	/* Avoid the danger of getting two versions of libc mapped into the
  	 * same process when an absolute pathname was used. The symbols
-@@ -1797,6 +1827,7 @@ void __dls3(size_t *sp, size_t *auxv)
+@@ -1797,6 +1796,7 @@ void __dls3(size_t *sp, size_t *auxv)
  			dprintf(2, "%s: %s: Not a valid dynamic program\n", ldname, argv[0]);
  			_exit(1);
  		}
@@ -396,7 +330,7 @@ index afec985a..d45e267e 100644
  		close(fd);
  		ldso.name = ldname;
  		app.name = argv[0];
-@@ -1936,6 +1967,7 @@ void __dls3(size_t *sp, size_t *auxv)
+@@ -1936,6 +1936,7 @@ void __dls3(size_t *sp, size_t *auxv)
  	/* Determine if malloc was interposed by a replacement implementation
  	 * so that calloc and the memalign family can harden against the
  	 * possibility of incomplete replacement. */
@@ -404,21 +338,19 @@ index afec985a..d45e267e 100644
  	if (find_sym(head, "malloc", 1).dso != &ldso)
  		__malloc_replaced = 1;
  
-@@ -1955,7 +1987,13 @@ void __dls3(size_t *sp, size_t *auxv)
+@@ -1955,7 +1956,11 @@ void __dls3(size_t *sp, size_t *auxv)
  
  	errno = 0;
  
-+  myst_trace("entering program");
-+  myst_load_symbols();
-+
-+  myst_pre_launch_hook();
++        myst_trace("entering program");
++        myst_load_symbols();
 +
  	CRTJMP((void *)aux[AT_ENTRY], argv-1);
 +
  	for(;;);
  }
  
-@@ -2058,6 +2096,10 @@ void *dlopen(const char *file, int mode)
+@@ -2058,6 +2063,10 @@ void *dlopen(const char *file, int mode)
  	pthread_mutex_lock(&init_fini_lock);
  	if (!p->constructed) ctor_queue = queue_ctors(p);
  	pthread_mutex_unlock(&init_fini_lock);
@@ -429,7 +361,7 @@ index afec985a..d45e267e 100644
  	if (!p->relocated && (mode & RTLD_LAZY)) {
  		prepare_lazy(p);
  		for (i=0; p->deps[i]; i++)
-@@ -2100,6 +2142,7 @@ end:
+@@ -2100,6 +2109,7 @@ end:
  		free(ctor_queue);
  	}
  	pthread_setcancelstate(cs, 0);
@@ -662,6 +594,28 @@ index deff5b10..fd66b82a 100644
  	return epoll_create1(0);
  }
  
+diff --git a/src/locale/c_locale.c b/src/locale/c_locale.c
+index 77ccf587..57554998 100644
+--- a/src/locale/c_locale.c
++++ b/src/locale/c_locale.c
+@@ -3,13 +3,17 @@
+ 
+ static const uint32_t empty_mo[] = { 0x950412de, 0, -1, -1, -1 };
+ 
++__attribute__((section(".locale")))
+ const struct __locale_map __c_dot_utf8 = {
+ 	.map = empty_mo,
+ 	.map_size = sizeof empty_mo,
+ 	.name = "C.UTF-8"
+ };
+ 
++__attribute__((section(".locale")))
+ const struct __locale_struct __c_locale = { 0 };
++
++__attribute__((section(".locale")))
+ const struct __locale_struct __c_dot_utf8_locale = {
+ 	.cat[LC_CTYPE] = &__c_dot_utf8
+ };
 diff --git a/src/math/frexp.c b/src/math/frexp.c
 index 27b6266e..fb5d51be 100644
 --- a/src/math/frexp.c
