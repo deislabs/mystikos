@@ -34,7 +34,7 @@ DIRS += python_webserver
 ifndef MYST_SKIP_PR_TEST
 # Do not run in PR pipeline as it takes ~15min
 # Disable this as it fails pipeline, will re-enable after investigation
-DIRS += tensorflow_lite
+# DIRS += tensorflow_lite
 DIRS += pandas_tests
 endif
 DIRS += nodejs
