@@ -662,6 +662,27 @@ index deff5b10..fd66b82a 100644
  	return epoll_create1(0);
  }
  
+diff --git a/src/locale/newlocale.c b/src/locale/newlocale.c
+index d20a8489..51b85f20 100644
+--- a/src/locale/newlocale.c
++++ b/src/locale/newlocale.c
+@@ -19,7 +19,9 @@ int __loc_is_allocated(locale_t loc)
+ 		&& loc != &default_locale && loc != &default_ctype_locale;
+ }
+ 
+-locale_t __newlocale(int mask, const char *name, locale_t loc)
++// libstdc++ uses __newlocale which needs to be wrapped by gcompat layer.
++// Hence, distinguish the musl implementation of __newlocale with _musl suffix.
++locale_t __newlocale_musl(int mask, const char *name, locale_t loc)
+ {
+ 	struct __locale_struct tmp;
+ 
+@@ -54,5 +56,3 @@ locale_t __newlocale(int mask, const char *name, locale_t loc)
+ 
+ 	return loc;
+ }
+-
+-weak_alias(__newlocale, newlocale);
 diff --git a/src/math/frexp.c b/src/math/frexp.c
 index 27b6266e..fb5d51be 100644
 --- a/src/math/frexp.c
