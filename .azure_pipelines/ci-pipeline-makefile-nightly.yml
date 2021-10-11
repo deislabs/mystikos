@@ -79,6 +79,13 @@ jobs:
         MYST_DO_CLEANUP: 1
         MYST_NIGHTLY_TEST: 1
 
+    # Mini-clean up before running azure tests.
+    - script: |
+        make clean -C $(Build.SourcesDirectory)/tests
+        make clean -C $(Build.SourcesDirectory)/solutions
+        docker system prune -f
+        df
+
     - template: step-sql-soln-cacentral.yml
     
     - template: step-azure-sdk-tests.yml
