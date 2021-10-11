@@ -115,19 +115,52 @@ index 0000000..b4b91d1
 +    return 0;
 +}
 diff --git a/libgcompat/locale.c b/libgcompat/locale.c
-index a7ac2c0..daa27e5 100644
+index a7ac2c0..6d45ba4 100644
 --- a/libgcompat/locale.c
 +++ b/libgcompat/locale.c
-@@ -48,9 +48,3 @@ struct glibc_locale *newlocale(int mask, const char *name, locale_t base) {
+@@ -4,7 +4,6 @@
+ #include <stdint.h>
+ #include "internal.h"
  
- 	return ret;
+-void *__newlocale(int, const char *, void *);
+ void __freelocale(void *);
+ 
+ struct glibc_locale {
+@@ -31,13 +30,15 @@ bool _is_valid_locale(const char *candidate) {
+ 	return false;
  }
--
+ 
+-struct glibc_locale *newlocale(int mask, const char *name, locale_t base) {
++locale_t __newlocale_musl(int mask, const char *name, locale_t loc);
++
++locale_t __newlocale(int mask, const char *name, locale_t base) {
+ 	GCOMPAT__assert_with_reason(_is_valid_locale(name),
+ 			"locale %s not supported\n", name);
+ 	struct glibc_locale *ret = malloc(sizeof(struct glibc_locale));
+ 	if(ret == NULL) return NULL;
+ 
+-	ret->__locales[0] = __newlocale(mask, name, base);
++	ret->__locales[0] = __newlocale_musl(mask, name, base);
+ 	for(int l = 1; l < 13; l++) ret->__locales[l] = ret->__locales[0];
+ 	ret->__ctype_b = *__ctype_b_loc();
+ 	ret->__ctype_tolower = *__ctype_tolower_loc();
+@@ -46,11 +47,10 @@ struct glibc_locale *newlocale(int mask, const char *name, locale_t base) {
+ 	ret->__names[0] = strdup("C");
+ 	for(int i = 1; i < 13; i++) ret->__names[i] = ret->__names[0];
+ 
+-	return ret;
++	return (locale_t) ret;
+ }
+ 
 -void freelocale(struct glibc_locale *loc) {
 -	free(loc->__names[0]);
 -	__freelocale(loc->__locales[0]);
 -	free(loc);
 -}
++#define weak_alias(old, new) \
++	extern __typeof(old) new __attribute__((__weak__, __alias__(#old)))
++
++weak_alias(__newlocale, newlocale);
 diff --git a/libgcompat/malloc.c b/libgcompat/malloc.c
 index 5a82bc4..12c3439 100644
 --- a/libgcompat/malloc.c
