@@ -7,7 +7,7 @@
 #include <myst/types.h>
 #include <sys/types.h>
 
-/* Internal myst-specific syscalls */
+/* Internal myst-specific syscalls (must be prefixed with "SYS_myst_") */
 enum
 {
     SYS_myst_trace = 2000,
@@ -29,6 +29,7 @@ enum
     SYS_get_process_thread_stack,
     SYS_fork_wait_exec_exit,
     SYS_myst_get_exec_stack_option,
+    SYS_myst_interrupt_thread,
 };
 
 /* Used for SYS_myst_get_fork_info parameter */

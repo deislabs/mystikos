@@ -653,4 +653,6 @@ MYST_INLINE int myst_thread_queue_search_remove_bitset(
     return num_found;
 }
 
+int myst_interrupt_thread(myst_thread_t* thread);
+
 #endif /* _MYST_THREAD_H */

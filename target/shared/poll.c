@@ -1,6 +1,18 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#include <myst/config.h>
+
+/*
+**==============================================================================
+**
+** Version 1
+**
+**==============================================================================
+*/
+
+#if MYST_INTERRUPT_POLL_WITH_PIPE
+
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -226,3 +238,47 @@ done:
         free(fds);
     return ret;
 }
+
+#endif /* MYST_INTERRUPT_POLL_WITH_PIPE */
+
+/*
+**==============================================================================
+**
+** Version 2
+**
+**==============================================================================
+*/
+
+#ifndef MYST_INTERRUPT_POLL_WITH_PIPE
+
+#define _GNU_SOURCE
+#include <errno.h>
+#include <poll.h>
+#include <signal.h>
+
+#include <myst/tcall.h>
+
+long myst_tcall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
+{
+    long ret;
+    sigset_t sigmask;
+    struct timespec ts;
+
+    ts.tv_sec = timeout / 1000;
+    ts.tv_nsec = (timeout % 1000) * 1000000;
+
+    /* Temporarily unblock SIGUSR2 (use sigmask without SIGUSR2) */
+    sigemptyset(&sigmask);
+
+    if ((ret = ppoll(fds, nfds, &ts, &sigmask)) < 0)
+        ret = -errno;
+
+    return ret;
+}
+
+long myst_tcall_poll_wake(void)
+{
+    return 0;
+}
+
+#endif /* MYST_INTERRUPT_POLL_WITH_PIPE */

@@ -548,7 +548,6 @@ long myst_tcall(long n, long params[6])
         case SYS_readv:
         case SYS_writev:
         case SYS_select:
-        case SYS_nanosleep:
         case SYS_fcntl:
         case SYS_gettimeofday:
         case SYS_sethostname:
@@ -591,11 +590,32 @@ long myst_tcall(long n, long params[6])
         case SYS_fsync:
         case SYS_pipe2:
         case SYS_epoll_create1:
-        case SYS_epoll_wait:
         case SYS_epoll_ctl:
         case SYS_eventfd2:
         {
             return _forward_syscall(n, x1, x2, x3, x4, x5, x6);
+        }
+        case SYS_tkill:
+        {
+            extern int myst_kill_thread(pid_t tid, int sig);
+            return myst_kill_thread((pid_t)x1, (int)x2);
+        }
+        case SYS_epoll_wait:
+        {
+            sigset_t sigmask;
+
+            /* Temporarily unblock SIGUSR2 (use sigmask without SIGUSR2) */
+            sigemptyset(&sigmask);
+
+            return _forward_syscall(
+                SYS_epoll_pwait, x1, x2, x3, x4, (long)&sigmask, NSIG / 8);
+        }
+        case SYS_nanosleep:
+        {
+            const struct timespec* req = (const struct timespec*)x1;
+            struct timespec* rem = (struct timespec*)x2;
+
+            return myst_tcall_nanosleep(req, rem);
         }
         case SYS_chown:
         case SYS_fchown:

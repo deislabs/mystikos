@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <myst/config.h>
 #include <myst/eraise.h>
 #include <myst/fsgs.h>
 #include <myst/printf.h>
@@ -644,8 +645,15 @@ long myst_signal_deliver(
         }
     }
 
+#ifdef MYST_INTERRUPT_POLL_WITH_SIGNAL
+    /* Wake up the thread if blocked in the target */
+    myst_interrupt_thread(thread);
+#endif
+
+#ifdef MYST_INTERRUPT_POLL_WITH_PIPE
     /* Make sure any polls get woken up to process any outstanding events */
     myst_tcall_poll_wake();
+#endif
 
     if (!__sync_val_compare_and_swap(&thread->pause_futex, 0, 1))
     {

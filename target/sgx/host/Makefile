@@ -6,6 +6,7 @@ SUBLIBDIR=$(LIBDIR)
 ARCHIVE = libmysttargetsgxhost.a
 
 SOURCES += ../../shared/waitwake.c
+SOURCES += ../../shared/nanosleep.c
 SOURCES += ../../shared/poll.c
 
 CFLAGS = $(DEFAULT_CFLAGS)

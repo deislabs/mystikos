@@ -47,3 +47,6 @@ test-wait-exec-sighandler: rootfs
 
 clean:
 	rm -rf $(APPDIR) rootfs
+
+t:
+	$(MAKE) tests TARGET=linux
