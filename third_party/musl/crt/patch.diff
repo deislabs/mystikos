@@ -226,7 +226,7 @@ index 20d50f2c..17cd6ac3 100644
 +{
 +}
 diff --git a/ldso/dynlink.c b/ldso/dynlink.c
-index afec985a..d45e267e 100644
+index afec985a..4d4cd2a3 100644
 --- a/ldso/dynlink.c
 +++ b/ldso/dynlink.c
 @@ -3,6 +3,7 @@
@@ -437,6 +437,15 @@ index afec985a..d45e267e 100644
  	return p;
  }
  
+@@ -2302,7 +2345,7 @@ static void error(const char *fmt, ...)
+ {
+ 	va_list ap;
+ 	va_start(ap, fmt);
+-	if (!runtime) {
++	if (!runtime || getenv("REPORT_MUSL_LOADER_ERROR")) {
+ 		vdprintf(2, fmt, ap);
+ 		dprintf(2, "\n");
+ 		ldso_fail = 1;
 diff --git a/src/conf/confstr.c b/src/conf/confstr.c
 index 02cb1aa2..07e76f19 100644
 --- a/src/conf/confstr.c
@@ -554,11 +563,17 @@ index 2133b5c1..cfa2044d 100644
  
  #endif
 diff --git a/src/include/time.h b/src/include/time.h
-index cbabde47..60c64312 100644
+index cbabde47..e78515e4 100644
 --- a/src/include/time.h
 +++ b/src/include/time.h
-@@ -7,9 +7,9 @@ hidden int __clock_gettime(clockid_t, struct timespec *);
- hidden int __clock_nanosleep(clockid_t, int, const struct timespec *, struct timespec *);
+@@ -3,13 +3,13 @@
+ 
+ #include "../../include/time.h"
+ 
+-hidden int __clock_gettime(clockid_t, struct timespec *);
+-hidden int __clock_nanosleep(clockid_t, int, const struct timespec *, struct timespec *);
++int __clock_gettime(clockid_t, struct timespec *);
++int __clock_nanosleep(clockid_t, int, const struct timespec *, struct timespec *);
  
  hidden char *__asctime_r(const struct tm *, char *);
 -hidden struct tm *__gmtime_r(const time_t *restrict, struct tm *restrict);
