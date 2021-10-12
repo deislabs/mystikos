@@ -1,0 +1,35 @@
+JIT/Directed/forceinlining/PositiveCases/PositiveCases.dll, FAIL -- Unexpected inlining result in: Finally block; exit code 0;
+JIT/Directed/forceinlining/AttributeConflict/AttributeConflict.dll, test FAIL; exit code 0;
+JIT/Directed/lifetime/lifetime2/lifetime2.dll, testcase f1-2 failed, exit code 255
+baseservices/mono/runningmono/runningmono.dll, test finishes with exitcode 1, expected 100
+Interop/DllImportAttribute/DllImportPath/DllImportPathTest/DllImportPathTest.dll, System.ArgumentException: The directory specified, 'RelativeNative', is not a subdirectory of '/'. (Parameter 'path'), Exit code 101
+Interop/ExecInDefAppDom/ExecInDefAppDom/ExecInDefAppDom.dll, Bad HRESULT: expected 80070002 actual 80004005
+JIT/Regression/CLR-x86-EJIT/V1-M12-Beta2/b26323/b26323/b26323.dll, Unhandled exception. System.InvalidProgramException: Vararg calling convention not supported.
+JIT/Regression/CLR-x86-JIT/V1-M09.5-PDC/b16423/b16423/b16423.dll, Unhandled exception. System.InvalidProgramException: Vararg calling convention not supported.
+JIT/Regression/CLR-x86-JIT/V1-M11-Beta1/b41391/b41391/b41391.dll, Unhandled exception. System.InvalidProgramException: Vararg calling convention not supported.
+JIT/Regression/CLR-x86-JIT/V1-M12-Beta2/b31746/b31746/b31746.dll, Unhandled exception. System.InvalidProgramException: Vararg calling convention not supported.
+JIT/Regression/CLR-x86-JIT/V1-M12-Beta2/b37646/b37646/b37646.dll, Unhandled exception. System.InvalidProgramException: Vararg calling convention not supported.
+JIT/Directed/PREFIX/unaligned/1/arglist_Target_64BIT/arglist_Target_64BIT.dll, Unhandled exception. System.InvalidProgramException: Vararg calling convention not supported.
+JIT/Directed/PREFIX/unaligned/2/arglist_Target_64BIT/arglist_Target_64BIT.dll, Unhandled exception. System.InvalidProgramException: Vararg calling convention not supported.
+JIT/Directed/PREFIX/unaligned/4/arglist_Target_64BIT/arglist_Target_64BIT.dll, Unhandled exception. System.InvalidProgramException: Vararg calling convention not supported.
+JIT/Directed/PREFIX/volatile/1/arglist_Target_64BIT/arglist_Target_64BIT.dll, Unhandled exception. System.InvalidProgramException: Vararg calling convention not supported.
+JIT/Directed/arglist/vararg_TargetUnix/vararg_TargetUnix.dll, Unhandled exception. System.InvalidProgramException: Vararg calling convention not supported.
+JIT/Methodical/Coverage/arglist_pos/arglist_pos.dll, Unhandled exception. System.InvalidProgramException: Vararg calling convention not supported.
+JIT/Methodical/refany/_il_dbgseq/_il_dbgseq.dll, Unhandled exception. System.InvalidProgramException: Vararg calling convention not supported.
+JIT/Methodical/refany/_il_relseq/_il_relseq.dll, Unhandled exception. System.InvalidProgramException: Vararg calling convention not supported.
+JIT/jit64/mcc/interop/mcc_i00/mcc_i00.dll, Unhandled exception. System.InvalidProgramException: Vararg calling convention not supported.
+JIT/Regression/CLR-x86-JIT/V1-M12-Beta2/b41852/b41852/b41852.dll, Unhandled exception. System.InvalidProgramException: Vararg calling convention not supported.
+Interop/DllImportAttribute/DllImportPath/DllImportPathTest/DllImportPathTest.dll, set CWD to test folder, System.DllNotFoundException: Unable to load shared library 'MovedNativeLib'
+GC/LargeMemory/API/gc/getgeneration/getgeneration.dll 2048; output on both native and mystikos - 1 \n getGeneration failed \n 0 \n getGenerationWR failed \n Test failed; exit code 0
+GC/LargeMemory/Allocation/finalizertest/finalizertest.dll 2048; output on both native and mystikos - 0 2147483648 \n allocateInFinalizerTest failed \n ressurectionTest passed \n Test failed; exit code 0
+GC/LargeMemory/API/gc/collect/collect.dll 2048, test fails with 20g, <20s, output : collectLargeObject 0 failed \n Finalized \n Finalized \n collectLargeObject 2 passed \n Test failed
+profiler/unittest/getappdomainstaticaddress/getappdomainstaticaddress.dll, test fails with output - Test failed number of failures=0 successes=30 collectibleCount=0 nonCollectibleCount=3969;
+readytorun/coreroot_determinism/coreroot_determinism/coreroot_determinism.dll - 1 / 1 (100%, 1 failed): timed out in 600555 msecs: corerun Tests/Core_Root/crossgen2/crossgen2.dll @profiler/unittest/getappdomainstaticaddress/seed1/CPAOT-ret.out/System.Private.CoreLib.dll.rsp
+readytorun/determinism/crossgen2determinism/crossgen2determinism.dll - Unhandled exception. System.IO.FileNotFoundException: Could not find file '/crossgen2smoke1.ildll'
+readytorun/tests/mainv1/mainv1.dll, requiresa generated file 'test.ni.dll' - is generated file as part of mainv1.sh:185 ($CORE_ROOT/crossgen -readytorun -platform_assemblies_paths $CORE_ROOT:`pwd` -out test.ni.dll test.dll)
+readytorun/tests/mainv2/mainv2.dll, requiresa generated file 'test.ni.dll' - is generated file as part of mainv2.sh:185 ($CORE_ROOT/crossgen -readytorun -platform_assemblies_paths $CORE_ROOT:`pwd` -out test.ni.dll test.dll)
+baseservices/exceptions/stackoverflow/stackoverflowtester/stackoverflowtester.dll, segmentation fault [native fails with exit code 0]
+profiler/eventpipe/eventpipe/eventpipe.dll, incoorect test checking - fails despite "PROFILER TEST PASSES" stdout
+tracing/tracecontrol/tracecontrol/tracecontrol.dll, test fails with error : Unhandled exception. System.Exception: Values for 'traceFiles.Length == 1' are not equal! Left='0' Right='1'
+Regressions/coreclr/GitHub_22888/test22888/test22888.dll, Failed to get resource stream from the test assembly, exitcode 101
+JIT/superpmi/superpmicollect/superpmicollect.dll, SuperPMI collection and playback - FAILED, exitcode 101
