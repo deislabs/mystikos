@@ -1513,7 +1513,6 @@ size_t myst_kill_thread_group()
     // Wait for the child threads to exit.
     while (1)
     {
-#undef MYST_INTERRUPT_POLL_WITH_SIGNAL
 #ifdef MYST_INTERRUPT_POLL_WITH_SIGNAL
         /* Interrupt threads blocked in syscalls on the target */
         myst_spin_lock(&process->thread_group_lock);
@@ -1676,9 +1675,7 @@ int myst_interrupt_thread(myst_thread_t* thread)
     if (!thread)
         ERAISE(-EINVAL);
 
-    /* Ask target to send a SIGUSR2 to the given thread */
-    long params[6] = {thread->target_tid, SIGUSR2};
-    myst_tcall(SYS_tkill, params);
+    ECHECK(myst_tcall_interrupt_thread(thread->target_tid));
 
 done:
     return ret;

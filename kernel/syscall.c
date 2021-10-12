@@ -3979,7 +3979,8 @@ static long _syscall(void* args_)
 
             _strace(n, "req=%p rem=%p", req, rem);
 
-            BREAK(_return(n, myst_syscall_nanosleep(req, rem)));
+            long ret = myst_syscall_nanosleep(req, rem);
+            BREAK(_return(n, ret));
         }
         case SYS_myst_run_itimer:
         {

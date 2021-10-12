@@ -4,6 +4,7 @@
 #include <myst/assume.h>
 #include <myst/defs.h>
 #include <myst/eraise.h>
+#include <myst/interrupt.h>
 #include <myst/tcall.h>
 #include <myst/times.h>
 #include <sched.h>
@@ -542,12 +543,23 @@ long myst_epoll_wait_ocall(
     size_t maxevents,
     int timeout)
 {
-    sigset_t sigmask;
+    long ret = 0;
+
+    ECHECK(myst_register_interruptable_thread());
 
     /* Temporarily unblock SIGUSR2 (use sigmask without SIGUSR2) */
+    sigset_t sigmask;
     sigemptyset(&sigmask);
 
-    RETURN(epoll_pwait(epfd, events, maxevents, timeout, &sigmask));
+    ret = epoll_pwait(epfd, events, maxevents, timeout, &sigmask);
+
+    if (ret < 0)
+        ret = -errno;
+
+    myst_unregister_interruptable_thread();
+
+done:
+    return ret;
 }
 
 long myst_epoll_ctl_ocall(

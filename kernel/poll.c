@@ -138,6 +138,9 @@ static long _syscall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
         if (tevents > 0)
             break;
 
+        if (ievents > 0)
+            break;
+
         has_signals = myst_signal_has_active_signals(myst_thread_self());
         if (has_signals)
         {

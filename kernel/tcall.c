@@ -284,3 +284,9 @@ long myst_tcall_pipe2(int pipefd[2], int flags)
     long params[6] = {(long)pipefd, flags};
     return myst_tcall(SYS_pipe2, params);
 }
+
+long myst_tcall_interrupt_thread(pid_t tid)
+{
+    long params[6] = {(long)tid};
+    return myst_tcall(MYST_TCALL_INTERRUPT_THREAD, params);
+}

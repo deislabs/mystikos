@@ -256,6 +256,8 @@ done:
 #include <poll.h>
 #include <signal.h>
 
+#include <myst/eraise.h>
+#include <myst/interrupt.h>
 #include <myst/tcall.h>
 
 long myst_tcall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
@@ -263,6 +265,10 @@ long myst_tcall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
     long ret;
     sigset_t sigmask;
     struct timespec ts;
+    bool registered = false;
+
+    ECHECK(myst_register_interruptable_thread());
+    registered = true;
 
     ts.tv_sec = timeout / 1000;
     ts.tv_nsec = (timeout % 1000) * 1000000;
@@ -272,6 +278,11 @@ long myst_tcall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
 
     if ((ret = ppoll(fds, nfds, &ts, &sigmask)) < 0)
         ret = -errno;
+
+done:
+
+    if (registered)
+        myst_unregister_interruptable_thread();
 
     return ret;
 }

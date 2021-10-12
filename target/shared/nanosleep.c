@@ -1,8 +1,11 @@
 #define _GNU_SOURCE
 #include <poll.h>
 #include <signal.h>
+#include <string.h>
+#include <sys/syscall.h>
 
 #include <myst/eraise.h>
+#include <myst/interrupt.h>
 #include <myst/tcall.h>
 #include <myst/times.h>
 
@@ -13,6 +16,7 @@ long myst_tcall_nanosleep(const struct timespec* req, struct timespec* rem)
     struct timespec ts0;
     struct timespec ts1;
     int err;
+    bool registered = false;
 
     /* check req parameter for nullness */
     if (!req)
@@ -21,6 +25,17 @@ long myst_tcall_nanosleep(const struct timespec* req, struct timespec* rem)
     /* check the req parameter (as required by nanosleep manual page) */
     if (req->tv_sec < 0 || !(req->tv_nsec >= 0 && req->tv_nsec <= 999999999))
         ERAISE(-EINVAL);
+
+    /* check to see if the thread has been interrupted (may return -EINTR) */
+    {
+        long r = myst_register_interruptable_thread();
+
+        if (rem && r == -EINTR)
+            *rem = *req;
+
+        ECHECK(r);
+        registered = true;
+    }
 
     /* get the start time if needed */
     if (rem && clock_gettime(CLOCK_REALTIME, &ts0) != 0)
@@ -57,13 +72,28 @@ long myst_tcall_nanosleep(const struct timespec* req, struct timespec* rem)
             const long delta = nanos1 - nanos0;
 
             if (delta < nanos)
+            {
                 nanos_to_timespec(rem, nanos - delta);
+            }
+            else
+            {
+                rem->tv_sec = 0;
+                rem->tv_nsec = 0;
+            }
         }
+    }
+    else if (rem)
+    {
+        rem->tv_sec = 0;
+        rem->tv_nsec = 0;
     }
 
     ret = -err;
 
 done:
+
+    if (registered)
+        myst_unregister_interruptable_thread();
 
     return ret;
 }

@@ -39,7 +39,7 @@ static __inline__ int64_t ts2nano(const struct timespec* tp)
 static void* _test_nanosleep_thread(void* arg_)
 {
     struct test_nanosleep_arg* arg = (struct test_nanosleep_arg*)arg_;
-    static time_t sec = 1;
+    static time_t sec = 3;
     struct timespec req = {.tv_sec = sec, .tv_nsec = 0};
     struct timespec ts0;
     struct timespec ts1;
@@ -47,7 +47,7 @@ static void* _test_nanosleep_thread(void* arg_)
     /* unblock the parent thread that is waiting on the tid */
     arg->tid = syscall(SYS_gettid);
 
-    printf("=== thread sleeping...\n");
+    printf("=== thread %d sleeping...\n", arg->tid);
 
     /* get the start time */
     clock_gettime(CLOCK_REALTIME, &ts0);
@@ -104,10 +104,13 @@ static void _test_nanosleep(void)
     while (arg.tid == 0)
         __asm__ __volatile__("pause" : : : "memory");
 
+    sleep_msec(10);
+
     /* interrupt the thread multiple times */
     for (size_t i = 0; i < num_interruptions; i++)
     {
         sleep_msec(10);
+        printf("=== thread %d interrupting...\n", arg.tid);
         syscall(SYS_myst_interrupt_thread, arg.tid);
     }
 
@@ -166,6 +169,7 @@ static void* _test_epoll_wait_thread(void* arg_)
         }
         else
         {
+            printf("eeeeeeeeeeeeeeeeeeeeeee=%d: %s\n", errno, strerror(errno));
             assert(0);
         }
     }
