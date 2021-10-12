@@ -1152,7 +1152,16 @@ long myst_syscall_write(int fd, const void* buf, size_t count)
     ECHECK(myst_fdtable_get_any(fdtable, fd, &type, &device, &object));
     fdops = device;
 
-    ret = (*fdops->fd_write)(device, object, buf, count);
+    if (type == MYST_FDTABLE_TYPE_SOCK)
+    {
+        myst_sockdev_t* sockdev = (myst_sockdev_t*)fdops;
+        ret = sockdev->sd_sendto(
+            sockdev, object, buf, count, MSG_NOSIGNAL, NULL, 0);
+        if (ret == -EPIPE)
+            myst_signal_deliver(myst_thread_self(), SIGPIPE, NULL);
+    }
+    else
+        ret = (*fdops->fd_write)(device, object, buf, count);
 
 done:
     return ret;

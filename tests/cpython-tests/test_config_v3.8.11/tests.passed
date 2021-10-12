@@ -123,6 +123,7 @@ test_fractions
 test_frame
 test_frozen
 test_fstring
+test_ftplib
 test_funcattrs
 test_functools
 test_future
@@ -220,6 +221,7 @@ test_platform
 test_plistlib
 test_poll
 test_popen
+test_poplib
 test_positional_only_arg
 test_posixpath
 test_pow

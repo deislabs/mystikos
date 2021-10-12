@@ -15,7 +15,6 @@ test_faulthandler
 test_fcntl
 test_fileio
 test_fork1
-test_ftplib
 test_gc
 test_gdb
 test_glob
@@ -31,7 +30,6 @@ test_os
 test_pathlib
 test_pdb
 test_pkgutil
-test_poplib
 test_posix
 test_pty
 test_py_compile
