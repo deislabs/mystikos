@@ -3,6 +3,7 @@
 
 #define _GNU_SOURCE
 #include <assert.h>
+#include <errno.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include <signal.h>
@@ -288,6 +289,19 @@ int test_altstack(const char* test_name)
     printf("=== : Test passed (%s)\n", test_name);
 }
 
+void test_sig_zero()
+{
+    // check process existence via signal 0
+    int ret = kill(getpid(), 0);
+    assert(ret == 0);
+
+    // check for non-existent process
+    ret = kill(1000, 0);
+    assert(ret == -1 && errno == ESRCH);
+
+    printf("=== : Test passed (%s)\n", __FUNCTION__);
+}
+
 int main(int argc, const char* argv[])
 {
     test_pthread_cancel("pthread_cancel");
@@ -301,6 +315,8 @@ int main(int argc, const char* argv[])
     test_raise(35, "raise");
 
     test_altstack("signal alt stack");
+
+    test_sig_zero();
 
     printf("\n=== passed test (%s)\n", argv[0]);
 
