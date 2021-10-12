@@ -6558,6 +6558,10 @@ long myst_syscall_kill(int pid, int sig)
     if (process == NULL)
         ERAISE(-ESRCH);
 
+    // sig 0 is jus a process existence check, no signal to be sent
+    if (sig == 0)
+        goto done;
+
     // Deliver signal
     siginfo_t* siginfo;
 
