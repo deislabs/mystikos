@@ -85,6 +85,9 @@ jobs:
         make clean -C $(Build.SourcesDirectory)/solutions
         docker system prune -f
         df
+      displayName: 'Midterm clean up'
+      continueOnError: true
+      enabled: true
 
     - template: step-sql-soln-cacentral.yml
     
