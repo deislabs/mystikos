@@ -245,6 +245,7 @@ static long _sendto(
 {
     long ret = 0;
     long retval;
+    oe_result_t oeret;
 
     if (sockfd < 0 || (!buf && len) || len > SSIZE_MAX)
     {
@@ -252,10 +253,13 @@ static long _sendto(
         goto done;
     }
 
-    if (myst_sendto_ocall(
-            &retval, sockfd, buf, len, flags, dest_addr, addrlen) != OE_OK)
+    if ((oeret = myst_sendto_ocall(
+             &retval, sockfd, buf, len, flags, dest_addr, addrlen)) != OE_OK)
     {
-        ret = -EINVAL;
+        if (oeret == OE_OUT_OF_MEMORY)
+            ret = -ENOMEM;
+        else
+            ret = -EINVAL;
         goto done;
     }
 
@@ -334,6 +338,7 @@ static long _sendmsg(int sockfd, const struct msghdr* msg, int flags)
 {
     long ret = 0;
     long retval;
+    oe_result_t oeret;
 
     if (sockfd < 0 || !msg)
     {
@@ -348,19 +353,22 @@ static long _sendmsg(int sockfd, const struct msghdr* msg, int flags)
         goto done;
     }
 
-    if (myst_sendmsg_ocall(
-            &retval,
-            sockfd,
-            msg->msg_name,
-            msg->msg_namelen,
-            msg->msg_iov[0].iov_base,
-            msg->msg_iov[0].iov_len,
-            msg->msg_control,
-            msg->msg_controllen,
-            msg->msg_flags,
-            flags) != OE_OK)
+    if ((oeret = myst_sendmsg_ocall(
+             &retval,
+             sockfd,
+             msg->msg_name,
+             msg->msg_namelen,
+             msg->msg_iov[0].iov_base,
+             msg->msg_iov[0].iov_len,
+             msg->msg_control,
+             msg->msg_controllen,
+             msg->msg_flags,
+             flags)) != OE_OK)
     {
-        ret = -EINVAL;
+        if (oeret == OE_OUT_OF_MEMORY)
+            ret = -ENOMEM;
+        else
+            ret = -EINVAL;
         goto done;
     }
 
