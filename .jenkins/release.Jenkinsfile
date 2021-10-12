@@ -7,7 +7,7 @@ pipeline {
         label 'ACC-1804-DC4'
     }
     options {
-        timeout(time: 300, unit: 'MINUTES')
+        timeout(time: 480, unit: 'MINUTES')
     }
     parameters {
         string(name: "BRANCH_NAME", defaultValue: "main", description: "Branch to build")
@@ -164,7 +164,7 @@ pipeline {
                 }
             }
         }
-        stage('Run dotnet 5 test suite') {
+        stage('Run dotnet 5 P0 test suite') {
             when {
                 expression { params.MYST_NIGHTLY_TEST == "1" }
             }
@@ -172,6 +172,18 @@ pipeline {
                 catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
                     sh """
                         make tests -C ${WORKSPACE}/solutions/coreclr
+                    """
+                }
+            }
+        }
+        stage('Run dotnet 5 P1 test suite') {
+            when {
+                expression { params.MYST_NIGHTLY_TEST == "1" }
+            }
+            steps {
+                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                    sh """
+                        make tests -C ${WORKSPACE}/solutions/coreclr-p1
                     """
                 }
             }

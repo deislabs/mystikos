@@ -190,6 +190,15 @@ pipeline {
                         }
                     }
                 }
+                stage('Run dotnet 5 p1 test suite') {
+                    steps {
+                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                            sh """
+                                make tests -C ${WORKSPACE}/solutions/coreclr-p1
+                            """
+                        }
+                    }
+                }
                 stage('Cleanup') {
                     steps {
                         cleanWs()

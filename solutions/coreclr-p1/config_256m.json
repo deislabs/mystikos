@@ -1,0 +1,26 @@
+{
+    // OpenEnclave specific values
+
+    // Whether we are running myst+OE+app in debug mode
+    "Debug": 1,
+    "ProductID": 1,
+    "SecurityVersion": 1,
+
+    // Mystikos specific values
+
+    // The heap size of the user application. Increase this setting if your app experienced OOM.
+    "NoBrk": true,
+    "MemorySize": "256M",
+    // The path to the entry point application in rootfs
+    "ApplicationPath": "/coreclr-tests-all/Tests/Core_Root/corerun",
+    // The parameters to the entry point application
+    "ApplicationParameters": [],
+    // Whether we allow "ApplicationParameters" to be overridden by command line options of "myst exec"
+    "HostApplicationParameters": true,
+    // The environment variables accessible inside the enclave.
+    "EnvironmentVariables":
+        ["COMPlus_EnableDiagnostics=0",
+        "COMPlus_EnableAlternateStackCheck=1",
+        "COMPlus_GCHeapHardLimit=0x0400000",
+        "CORE_ROOT=/coreclr-tests-all/Tests/Core_Root"]
+}
