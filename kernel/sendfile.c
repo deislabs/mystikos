@@ -67,8 +67,9 @@ long myst_syscall_sendfile(int out_fd, int in_fd, off_t* offset, size_t count)
 
             ECHECK_ERRNO(m);
 
-            if (m != n)
-                ERAISE(-EIO);
+            /* If end of file */
+            if (m == 0)
+                break;
 
             nwritten += m;
             r -= m;
