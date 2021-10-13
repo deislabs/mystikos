@@ -1,0 +1,28 @@
+diff --git a/src/libraries/tests.proj b/src/libraries/tests.proj
+index 28cee277be5..3d6675c37b2 100644
+--- a/src/libraries/tests.proj
++++ b/src/libraries/tests.proj
+@@ -30,8 +30,22 @@
+     <ProjectExclusions Include="$(MSBuildThisFileDirectory)System.Net.WebSockets.Client\tests\System.Net.WebSockets.Client.Tests.csproj" />
+   </ItemGroup>
+ 
++  <!-- For Mystikos testing propose, ignore general tests and only run certain tests -->
+   <ItemGroup>
+-    <ProjectReference Include="$(MSBuildThisFileDirectory)*\tests\**\*.Tests.csproj"
++    <!-- To run all: <ProjectInclusion Include="$(MSBuildThisFileDirectory)*\tests\**\*.Tests.csproj" /> -->
++    <ProjectInclusions Include="$(MSBuildThisFileDirectory)Native\tests\**\*.Tests.csproj" />
++    <ProjectInclusions Include="$(MSBuildThisFileDirectory)System.Collections.Concurrent\tests\**\*.Tests.csproj" />
++    <ProjectInclusions Include="$(MSBuildThisFileDirectory)System.IO*\tests\**\*.Tests.csproj" />
++    <ProjectInclusions Include="$(MSBuildThisFileDirectory)System.Memory\tests\**\*.Tests.csproj" />
++    <ProjectInclusions Include="$(MSBuildThisFileDirectory)System.Net.*\tests\**\*.Tests.csproj" />
++    <ProjectInclusions Include="$(MSBuildThisFileDirectory)System.Numerics.*\tests\**\*.Tests.csproj" />
++    <ProjectInclusions Include="$(MSBuildThisFileDirectory)System.Reflection*\tests\**\*.Tests.csproj" />
++    <ProjectInclusions Include="$(MSBuildThisFileDirectory)System.Security.*\tests\**\*.Tests.csproj" />
++    <ProjectInclusions Include="$(MSBuildThisFileDirectory)System.Threading*\tests\**\*.Tests.csproj" />
++  </ItemGroup>
++
++  <ItemGroup>
++    <ProjectReference Include="@(ProjectInclusions)"
+                       Exclude="@(ProjectExclusions)"
+                       Condition="'$(TestAssemblies)' == 'true'" />
+     <ProjectReference Include="$(MSBuildThisFileDirectory)pkg\test\testPackages.proj"
