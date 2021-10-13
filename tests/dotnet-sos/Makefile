@@ -39,12 +39,7 @@ else
 endif
 
 tests:
-	$(RUNTEST) docker run --rm \
-	-e TARGET=$(TARGET) \
-	-v $(abspath .):/app/ -v $(TOP)/build:/build \
-        $(DOCKER_SGX_DRIVER_OPTIONS) \
-	$(TEST_RUNNER_IMG) \
-	/app/exec.sh $(MYST_LLDB_DOCKER) /build/bin/myst $(EXEC) $(OPTS)
+	$(RUNTEST) docker run --rm -e TARGET=$(TARGET) -v $(abspath .):/app/ -v $(TOP)/build:/build $(DOCKER_SGX_DRIVER_OPTIONS) $(TEST_RUNNER_IMG) /app/exec.sh $(MYST_LLDB_DOCKER) /build/bin/myst $(EXEC) $(OPTS)
 	@ echo "=== passed test (dotnet-sos)"
 
 tests-without-docker:

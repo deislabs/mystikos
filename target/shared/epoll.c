@@ -16,7 +16,7 @@ long myst_tcall_epoll_wait(
 #if (MYST_INTERRUPT_EPOLL_WITH_SIGNAL == 1)
     sigset_t sigmask;
 
-    /* Temporarily unblock SIGUSR2 (use sigmask without SIGUSR2) */
+    /* Temporarily unblock signals */
     sigemptyset(&sigmask);
 
     long ret = epoll_pwait(epfd, events, maxevents, timeout, &sigmask);
@@ -24,12 +24,14 @@ long myst_tcall_epoll_wait(
     if (ret < 0)
         ret = -errno;
 
+#ifdef MYST_TRACE_THREAD_INTERRUPTIONS
     if (ret == -EINTR)
     {
         pid_t tid = (pid_t)syscall(SYS_gettid);
         printf(">>>>>>>> epoll_wait() interrupted: tid=%d\n", tid);
         fflush(stdout);
     }
+#endif
 
     return ret;
 #elif (MYST_INTERRUPT_EPOLL_WITH_SIGNAL == -1)

@@ -30,18 +30,20 @@ long myst_tcall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
     ts.tv_sec = timeout / 1000;
     ts.tv_nsec = (timeout % 1000) * 1000000;
 
-    /* Temporarily unblock SIGUSR2 (use sigmask without SIGUSR2) */
+    /* Temporarily unblock signals */
     sigemptyset(&sigmask);
 
     if ((ret = ppoll(fds, nfds, &ts, &sigmask)) < 0)
         ret = -errno;
 
+#ifdef MYST_TRACE_THREAD_INTERRUPTIONS
     if (ret == -EINTR)
     {
         pid_t tid = (pid_t)syscall(SYS_gettid);
         printf(">>>>>>>> poll() interrupted: tid=%d\n", tid);
         fflush(stdout);
     }
+#endif
 
     return ret;
 }

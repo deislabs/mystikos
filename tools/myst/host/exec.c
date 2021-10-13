@@ -32,6 +32,7 @@
 #include <myst/round.h>
 #include <myst/sha256.h>
 #include <myst/shm.h>
+#include <myst/thread.h>
 #include <openenclave/bits/properties.h>
 #include <openenclave/bits/sgx/sgxproperties.h>
 #include <openenclave/host.h>
@@ -86,17 +87,17 @@ static void* _thread_func(void* arg)
     oe_result_t res;
     long retval = -1;
 
-    /* block SIGUSR2 when inside the enclave */
+    /* block MYST_INTERRUPT_THREAD_SIGNAL when inside the enclave */
     sigset_t set;
     sigemptyset(&set);
-    sigaddset(&set, SIGUSR2);
+    sigaddset(&set, MYST_INTERRUPT_THREAD_SIGNAL);
     sigprocmask(SIG_BLOCK, &set, NULL);
 
     myst_register_thread();
     res = myst_run_thread_ecall(_enclave, &retval, cookie, event, target_tid);
     myst_unregister_thread();
 
-    /* unblock SIGUSR2 when outside the enclave */
+    /* unblock MYST_INTERRUPT_THREAD_SIGNAL when outside the enclave */
     sigprocmask(SIG_UNBLOCK, &set, NULL);
 
     if (res != OE_OK || retval != 0)
@@ -228,13 +229,13 @@ int exec_launch_enclave(
     /* Get clock times right before entering the enclave */
     shm_create_clock(&shared_memory, CLOCK_TICK);
 
-    /* Set a SIGUSR2 handler */
-    old_sighandler = sigset(SIGUSR2, _sigusr2_sighandler);
+    /* Set a MYST_INTERRUPT_THREAD_SIGNAL handler */
+    old_sighandler = sigset(MYST_INTERRUPT_THREAD_SIGNAL, _sigusr2_sighandler);
 
-    /* block SIGUSR2 when inside the enclave */
+    /* block MYST_INTERRUPT_THREAD_SIGNAL when inside the enclave */
     sigset_t set;
     sigemptyset(&set);
-    sigaddset(&set, SIGUSR2);
+    sigaddset(&set, MYST_INTERRUPT_THREAD_SIGNAL);
     sigprocmask(SIG_BLOCK, &set, NULL);
 
     myst_register_thread();
@@ -260,11 +261,11 @@ int exec_launch_enclave(
 
     myst_unregister_thread();
 
-    /* unblock SIGUSR2 when outside the enclave */
+    /* unblock MYST_INTERRUPT_THREAD_SIGNAL when outside the enclave */
     sigprocmask(SIG_UNBLOCK, &set, NULL);
 
-    /* restore the old SIGUSR2 handler */
-    sigset(SIGUSR2, old_sighandler);
+    /* restore the old MYST_INTERRUPT_THREAD_SIGNAL handler */
+    sigset(MYST_INTERRUPT_THREAD_SIGNAL, old_sighandler);
 
     /* Terminate the enclave */
     r = oe_terminate_enclave(_enclave);

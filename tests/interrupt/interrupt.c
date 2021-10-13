@@ -3,7 +3,6 @@
 
 #include <assert.h>
 #include <errno.h>
-#include <myst/syscallext.h>
 #include <poll.h>
 #include <pthread.h>
 #include <stdint.h>
@@ -12,6 +11,9 @@
 #include <sys/epoll.h>
 #include <syscall.h>
 #include <unistd.h>
+
+#include <myst/config.h>
+#include <myst/syscallext.h>
 
 #include "../utils/utils.h"
 
@@ -24,6 +26,8 @@
 **
 **==============================================================================
 */
+
+#if (MYST_INTERRUPT_NANOSLEEP_WITH_SIGNAL == 1)
 
 struct test_nanosleep_arg
 {
@@ -120,6 +124,8 @@ static void _test_nanosleep(void)
     printf("=== passed test (%s)\n", __FUNCTION__);
 }
 
+#endif
+
 /*
 **==============================================================================
 **
@@ -127,6 +133,8 @@ static void _test_nanosleep(void)
 **
 **==============================================================================
 */
+
+#if (MYST_INTERRUPT_EPOLL_WITH_SIGNAL == 1)
 
 struct test_epoll_wait_arg
 {
@@ -207,6 +215,8 @@ static void _test_epoll_wait(void)
     printf("=== passed test (%s)\n", __FUNCTION__);
 }
 
+#endif
+
 /*
 **==============================================================================
 **
@@ -214,6 +224,8 @@ static void _test_epoll_wait(void)
 **
 **==============================================================================
 */
+
+#if (MYST_INTERRUPT_POLL_WITH_SIGNAL == 1)
 
 struct test_poll_arg
 {
@@ -285,6 +297,8 @@ static void _test_poll(void)
     printf("=== passed test (%s)\n", __FUNCTION__);
 }
 
+#endif
+
 /*
 **==============================================================================
 **
@@ -295,9 +309,17 @@ static void _test_poll(void)
 
 int main(int argc, const char* argv[])
 {
+#if (MYST_INTERRUPT_NANOSLEEP_WITH_SIGNAL == 1)
     _test_nanosleep();
+#endif
+
+#if (MYST_INTERRUPT_EPOLL_WITH_SIGNAL == 1)
     _test_epoll_wait();
+#endif
+
+#if (MYST_INTERRUPT_POLL_WITH_SIGNAL == 1)
     _test_poll();
+#endif
 
     printf("=== passed all tests (%s)\n", argv[0]);
 

@@ -33,7 +33,7 @@ long myst_tcall_nanosleep(const struct timespec* req, struct timespec* rem)
     {
         sigset_t sigmask;
 
-        /* Temporarily unblock SIGUSR2 (use sigmask without SIGUSR2) */
+        /* Temporarily unblock signals */
         sigemptyset(&sigmask);
 
         if ((retval = ppoll(NULL, 0, req, &sigmask)) >= 0)
@@ -66,12 +66,14 @@ long myst_tcall_nanosleep(const struct timespec* req, struct timespec* rem)
 
     ret = -err;
 
+#ifdef MYST_TRACE_THREAD_INTERRUPTIONS
     if (ret == -EINTR)
     {
         pid_t tid = (pid_t)syscall(SYS_gettid);
         printf(">>>>>>>> nanosleep() interrupted: tid=%d\n", tid);
         fflush(stdout);
     }
+#endif
 
 done:
 
