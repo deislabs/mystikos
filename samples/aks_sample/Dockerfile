@@ -2,7 +2,9 @@ FROM ubuntu:18.04
 ARG PSW_VERSION
 ARG MYST_RELEASE_VERSION
 
-ADD rootfs /
+ADD appdir/bin/hello /appdir/bin/hello
+ADD config.json config.json
+
 RUN if [ -z "$PSW_VERSION" ]; then echo "Please set PSW_VERSION (e.g. 2.15.100)." >&2; exit 1; fi
 RUN if [ -z "$MYST_RELEASE_VERSION" ]; then echo "Please set MYST_RELEASE_VERSION (e.g. 0.5.0)." >&2; exit 1; fi
 
@@ -35,5 +37,8 @@ RUN apt-get update && apt-get install -y \
     libsgx-quote-ex \
     az-dcap-client
 
+RUN openssl genrsa -out private.pem -3 3072
+RUN ./mystikos/bin/myst package-sgx appdir private.pem config.json
+
 WORKDIR /
-CMD [ "/mystikos/bin/myst", "exec-sgx", "/rootfs", "/bin/hello", "red", "green", "blue" ]
+CMD [ "./myst/bin/hello", "red", "green", "blue" ]
