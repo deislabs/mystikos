@@ -28,11 +28,16 @@ runner-image:
 clean:
 	sudo rm -fr appdir ext2fs rootfs stdouterr.txt
 
+DEV_SGX_ISDIR=$(shell file /dev/sgx | grep -q directory && echo "1")
+
+ifdef DEV_SGX_ISDIR
 DOCKER_SGX_DRIVER_OPTIONS =
 DOCKER_SGX_DRIVER_OPTIONS += -v /dev/sgx:/dev/sgx
 DOCKER_SGX_DRIVER_OPTIONS += --device /dev/sgx_enclave:/dev/sgx_enclave
 DOCKER_SGX_DRIVER_OPTIONS += --device /dev/sgx_provision:/dev/sgx_provision
-#DOCKER_SGX_DRIVER_OPTIONS += --device /dev/sgx:/dev/sgx
+else
+DOCKER_SGX_DRIVER_OPTIONS += --device /dev/sgx:/dev/sgx
+endif
 
 tests:
 	$(RUNTEST) docker run --rm \
@@ -65,3 +70,6 @@ run-ext2-lldb:
 
 ct:
 	sudo rm -fr /tmp/myst*
+
+t:
+	echo ${DEV_SGX_ISDIR}
