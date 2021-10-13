@@ -130,8 +130,6 @@ ifdef MYST_NIGHTLY_TEST
 DIRS += glibc
 endif
 
-DIRS = dotnet-sos
-
 .PHONY: $(DIRS)
 
 dirs: $(DIRS)
