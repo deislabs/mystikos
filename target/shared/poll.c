@@ -1,29 +1,57 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include <myst/config.h>
-
-/*
-**==============================================================================
-**
-** Version 1
-**
-**==============================================================================
-*/
-
-#if MYST_INTERRUPT_POLL_WITH_PIPE
-
+#define _GNU_SOURCE
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <poll.h>
 #include <pthread.h>
+#include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/poll.h>
+#include <sys/syscall.h>
 #include <syscall.h>
 #include <unistd.h>
+
+#include <myst/config.h>
+#include <myst/tcall.h>
+
+#if (MYST_INTERRUPT_POLL_WITH_SIGNAL == 1)
+
+long myst_tcall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
+{
+    long ret;
+    sigset_t sigmask;
+    struct timespec ts;
+
+    ts.tv_sec = timeout / 1000;
+    ts.tv_nsec = (timeout % 1000) * 1000000;
+
+    /* Temporarily unblock SIGUSR2 (use sigmask without SIGUSR2) */
+    sigemptyset(&sigmask);
+
+    if ((ret = ppoll(fds, nfds, &ts, &sigmask)) < 0)
+        ret = -errno;
+
+    if (ret == -EINTR)
+    {
+        pid_t tid = (pid_t)syscall(SYS_gettid);
+        printf(">>>>>>>> poll() interrupted: tid=%d\n", tid);
+        fflush(stdout);
+    }
+
+    return ret;
+}
+
+long myst_tcall_poll_wake(void)
+{
+    return 0;
+}
+
+#elif (MYST_INTERRUPT_POLL_WITH_SIGNAL == -1)
 
 #define WAKE_MAGIC 0x617eafc2e697492c
 
@@ -239,46 +267,6 @@ done:
     return ret;
 }
 
-#endif /* MYST_INTERRUPT_POLL_WITH_PIPE */
-
-/*
-**==============================================================================
-**
-** Version 2
-**
-**==============================================================================
-*/
-
-#ifndef MYST_INTERRUPT_POLL_WITH_PIPE
-
-#define _GNU_SOURCE
-#include <errno.h>
-#include <poll.h>
-#include <signal.h>
-
-#include <myst/tcall.h>
-
-long myst_tcall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
-{
-    long ret;
-    sigset_t sigmask;
-    struct timespec ts;
-
-    ts.tv_sec = timeout / 1000;
-    ts.tv_nsec = (timeout % 1000) * 1000000;
-
-    /* Temporarily unblock SIGUSR2 (use sigmask without SIGUSR2) */
-    sigemptyset(&sigmask);
-
-    if ((ret = ppoll(fds, nfds, &ts, &sigmask)) < 0)
-        ret = -errno;
-
-    return ret;
-}
-
-long myst_tcall_poll_wake(void)
-{
-    return 0;
-}
-
-#endif /* MYST_INTERRUPT_POLL_WITH_PIPE */
+#else
+#error "MYST_INTERRUPT_POLL_WITH_SIGNAL undefined"
+#endif

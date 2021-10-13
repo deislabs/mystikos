@@ -683,3 +683,8 @@ int myst_mprotect_ocall(void* addr, size_t len, int prot)
 {
     return mprotect(addr, len, prot);
 }
+
+long myst_interrupt_thread_ocall(pid_t tid)
+{
+    return myst_tcall_interrupt_thread(tid);
+}

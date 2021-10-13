@@ -1,13 +1,16 @@
 #define _GNU_SOURCE
 #include <poll.h>
 #include <signal.h>
+#include <sys/syscall.h>
 
+#include <myst/config.h>
 #include <myst/eraise.h>
 #include <myst/tcall.h>
 #include <myst/times.h>
 
 long myst_tcall_nanosleep(const struct timespec* req, struct timespec* rem)
 {
+#if (MYST_INTERRUPT_NANOSLEEP_WITH_SIGNAL == 1)
     long ret = 0;
     int retval;
     struct timespec ts0;
@@ -63,7 +66,22 @@ long myst_tcall_nanosleep(const struct timespec* req, struct timespec* rem)
 
     ret = -err;
 
+    if (ret == -EINTR)
+    {
+        pid_t tid = (pid_t)syscall(SYS_gettid);
+        printf(">>>>>>>> nanosleep() interrupted: tid=%d\n", tid);
+        fflush(stdout);
+    }
+
 done:
 
     return ret;
+#elif (MYST_INTERRUPT_NANOSLEEP_WITH_SIGNAL == -1)
+    if (nanosleep(req, rem) < 0)
+        return -errno;
+
+    return 0;
+#else
+#error "MYST_INTERRUPT_NANOSLEEP_WITH_SIGNAL undefined"
+#endif
 }

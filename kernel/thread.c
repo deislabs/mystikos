@@ -1516,7 +1516,7 @@ size_t myst_kill_thread_group()
     // Wait for the child threads to exit.
     while (1)
     {
-#ifdef MYST_INTERRUPT_POLL_WITH_SIGNAL
+#if (MYST_INTERRUPT_WITH_SIGNAL == 1)
         /* Interrupt threads blocked in syscalls on the target */
         myst_spin_lock(&process->thread_group_lock);
         {
@@ -1527,11 +1527,11 @@ size_t myst_kill_thread_group()
             }
         }
         myst_spin_unlock(&process->thread_group_lock);
-#endif
-
-#ifdef MYST_INTERRUPT_POLL_WITH_PIPE
+#elif (MYST_INTERRUPT_WITH_SIGNAL == -1)
         // Wake up any polls that may be waiting in the host
         myst_tcall_poll_wake();
+#else
+#error "MYST_INTERRUPT_WITH_SIGNAL undefined"
 #endif
 
         /* We may have had pipes on their way to blocking since the last trigger
@@ -1678,9 +1678,7 @@ int myst_interrupt_thread(myst_thread_t* thread)
     if (!thread)
         ERAISE(-EINVAL);
 
-    /* Ask target to send a SIGUSR2 to the given thread */
-    long params[6] = {thread->target_tid, SIGUSR2};
-    myst_tcall(SYS_tkill, params);
+    ECHECK(myst_tcall_interrupt_thread(thread->target_tid));
 
 done:
     return ret;

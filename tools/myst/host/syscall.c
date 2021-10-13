@@ -542,12 +542,7 @@ long myst_epoll_wait_ocall(
     size_t maxevents,
     int timeout)
 {
-    sigset_t sigmask;
-
-    /* Temporarily unblock SIGUSR2 (use sigmask without SIGUSR2) */
-    sigemptyset(&sigmask);
-
-    RETURN(epoll_pwait(epfd, events, maxevents, timeout, &sigmask));
+    return myst_tcall_epoll_wait(epfd, events, maxevents, timeout);
 }
 
 long myst_epoll_ctl_ocall(
@@ -562,10 +557,4 @@ long myst_epoll_ctl_ocall(
 long myst_eventfd_ocall(unsigned int initval, int flags)
 {
     RETURN(eventfd(initval, flags));
-}
-
-long myst_tkill_ocall(int tid, int sig)
-{
-    extern int myst_kill_thread(pid_t tid, int sig);
-    return myst_kill_thread(tid, sig);
 }

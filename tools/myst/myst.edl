@@ -152,6 +152,8 @@ enclave
 
         long myst_eventfd_ocall(unsigned int initval, int flags);
 
+        long myst_interrupt_thread_ocall(pid_t tid);
+
         /*
         **======================================================================
         **
@@ -541,15 +543,5 @@ enclave
             [out] uint32_t* rbx,
             [out] uint32_t* rcx,
             [out] uint32_t* rdx);
-
-        /*
-        **======================================================================
-        **
-        ** signals
-        **
-        **======================================================================
-        */
-
-        long myst_tkill_ocall(int tid, int sig);
     };
 };

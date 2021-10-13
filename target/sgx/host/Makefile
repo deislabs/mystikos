@@ -8,6 +8,8 @@ ARCHIVE = libmysttargetsgxhost.a
 SOURCES += ../../shared/waitwake.c
 SOURCES += ../../shared/nanosleep.c
 SOURCES += ../../shared/poll.c
+SOURCES += ../../shared/epoll.c
+SOURCES += ../../shared/interrupt.c
 
 CFLAGS = $(DEFAULT_CFLAGS)
 

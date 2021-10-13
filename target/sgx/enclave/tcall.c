@@ -571,6 +571,10 @@ long myst_tcall(long n, long params[6])
             return myst_gcov(func, gcov_params);
         }
 #endif
+        case MYST_TCALL_INTERRUPT_THREAD:
+        {
+            return myst_tcall_interrupt_thread((pid_t)x1);
+        }
         case SYS_read:
         case SYS_write:
         case SYS_close:

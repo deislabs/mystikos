@@ -505,6 +505,10 @@ long myst_tcall(long n, long params[6])
             return myst_gcov(func, gcov_params);
         }
 #endif
+        case MYST_TCALL_INTERRUPT_THREAD:
+        {
+            return myst_tcall_interrupt_thread((pid_t)x1);
+        }
         case SYS_ioctl:
         {
             int fd = (int)x1;
@@ -602,13 +606,11 @@ long myst_tcall(long n, long params[6])
         }
         case SYS_epoll_wait:
         {
-            sigset_t sigmask;
-
-            /* Temporarily unblock SIGUSR2 (use sigmask without SIGUSR2) */
-            sigemptyset(&sigmask);
-
-            return _forward_syscall(
-                SYS_epoll_pwait, x1, x2, x3, x4, (long)&sigmask, NSIG / 8);
+            return myst_tcall_epoll_wait(
+                (int)x1,                 /* epfd */
+                (struct epoll_event*)x2, /* events */
+                (size_t)x3,              /* maxevents */
+                (int)x4);                /* timeout */
         }
         case SYS_nanosleep:
         {
