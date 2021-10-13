@@ -414,8 +414,12 @@ long myst_mmap(
         if ((flags = myst_syscall_fcntl(fd, F_GETFL, 0)) < 0)
             ERAISE(-EBADF);
 
+        /* operation not allowed on fd opened with O_PATH*/
+        if (flags & O_PATH)
+            ERAISE(-EBADF);
+
         /* if file is not open for read */
-        if ((flags & O_WRONLY))
+        if (flags & O_WRONLY)
             ERAISE(-EACCES);
 
         /* MAP_SHARED & PROT_WRITE set, but fd is not open for read-write */

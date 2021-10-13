@@ -817,11 +817,22 @@ long myst_syscall_open(const char* pathname, int flags, mode_t mode)
     struct locals
     {
         char suffix[PATH_MAX];
+        struct stat statbuf;
     };
     struct locals* locals = NULL;
 
     if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
+
+    if (flags & O_NOFOLLOW)
+    {
+        /* check if path is a link, if so O_PATH should be passed */
+        if (ret = myst_syscall_lstat(pathname, &locals->statbuf) < 0)
+            ERAISE(ret);
+
+        if (S_ISLNK(locals->statbuf.st_mode) && !(flags & O_PATH))
+            ERAISE(-ELOOP);
+    }
 
     ECHECK(myst_mount_resolve(pathname, locals->suffix, &fs));
     ECHECK((*fs->fs_open)(fs, locals->suffix, flags, mode, &fs_out, &file));
@@ -1438,14 +1449,17 @@ long myst_syscall_fstatat(
     };
     struct locals* locals = NULL;
 
-    if (!pathname || !statbuf)
+    if ((!pathname || *pathname == '\0') && !(flags & AT_EMPTY_PATH))
+        ERAISE(-ENOENT);
+
+    if (!statbuf)
         ERAISE(-EINVAL);
 
     if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     /* If pathname is absolute, then ignore dirfd */
-    if (*pathname == '/' || dirfd == AT_FDCWD)
+    if ((pathname && *pathname == '/') || dirfd == AT_FDCWD)
     {
         if (flags & AT_SYMLINK_NOFOLLOW)
         {
@@ -1458,7 +1472,7 @@ long myst_syscall_fstatat(
             goto done;
         }
     }
-    else if (*pathname == '\0')
+    else if (!pathname || *pathname == '\0')
     {
         if (!(flags & AT_EMPTY_PATH))
             ERAISE(-EINVAL);
@@ -1486,21 +1500,31 @@ long myst_syscall_fstatat(
         myst_fdtable_t* fdtable = myst_fdtable_current();
         myst_fs_t* fs;
         myst_file_t* file;
+        const char* finalpath;
 
         ECHECK(myst_fdtable_get_file(fdtable, dirfd, &fs, &file));
         ECHECK((*fs->fs_realpath)(
             fs, file, locals->dirpath, sizeof(locals->dirpath)));
-        ECHECK(myst_make_path(
-            locals->path, sizeof(locals->path), locals->dirpath, pathname));
+
+        if (pathname && (flags & AT_EMPTY_PATH))
+        {
+            finalpath = locals->dirpath;
+        }
+        else
+        {
+            ECHECK(myst_make_path(
+                locals->path, sizeof(locals->path), locals->dirpath, pathname));
+            finalpath = locals->path;
+        }
 
         if (flags & AT_SYMLINK_NOFOLLOW)
         {
-            ECHECK(myst_syscall_lstat(locals->path, statbuf));
+            ECHECK(myst_syscall_lstat(finalpath, statbuf));
             goto done;
         }
         else
         {
-            ECHECK(myst_syscall_stat(locals->path, statbuf));
+            ECHECK(myst_syscall_stat(finalpath, statbuf));
             goto done;
         }
     }
