@@ -52,7 +52,7 @@ struct myst_file_shared
     ext2_inode_t inode;
     uint64_t offset;
     int open_flags;
-    uint32_t access;    /* (O_RDONLY | O_RDWR | O_WRONLY) */
+    uint32_t access;    /* (O_RDONLY | O_RDWR | O_WRONLY | O_PATH) */
     uint32_t operating; /* (O_APPEND | O_DIRECT | O_NOATIME | O_NONBLOCK) */
     char realpath[PATH_MAX];
     ext2_dir_t dir;
@@ -3504,7 +3504,9 @@ int ext2_open(
         file->shared->inode = locals->inode;
         file->shared->offset = 0;
         file->shared->open_flags = flags;
-        file->shared->access = (flags & (O_RDONLY | O_RDWR | O_WRONLY));
+        file->shared->access = (flags & O_PATH)
+                           ? O_PATH
+                           : (flags & (O_RDONLY | O_RDWR | O_WRONLY));
         file->shared->operating = (flags & (O_APPEND | O_NONBLOCK));
         file->shared->use_count = 1;
     }
@@ -3581,7 +3583,7 @@ int64_t ext2_read(myst_fs_t* fs, myst_file_t* file, void* data, uint64_t size)
         ERAISE(-EINVAL);
 
     /* fail if file has been opened for write only */
-    if (file->shared->access == O_WRONLY)
+    if (file->shared->access == O_WRONLY || file->shared->access == O_PATH)
         ERAISE(-EBADF);
 
     /* refresh the inode */
@@ -3680,7 +3682,7 @@ int64_t ext2_write(
         ERAISE(-ENOMEM);
 
     /* check that file has been opened for write */
-    if (file->shared->access == O_RDONLY)
+    if (file->shared->access == O_RDONLY || file->shared->access == O_PATH)
         ERAISE(-EBADF);
 
     /* succeed if writing zero bytes */
@@ -3791,6 +3793,9 @@ off_t ext2_lseek(myst_fs_t* fs, myst_file_t* file, off_t offset, int whence)
 
     if (!_ext2_valid(ext2) || !_file_valid(file))
         ERAISE(-EINVAL);
+
+    if (file->shared->access == O_PATH)
+        ERAISE(-EBADF);
 
     switch (whence)
     {
@@ -4535,6 +4540,9 @@ int ext2_ftruncate(myst_fs_t* fs, myst_file_t* file, off_t length)
     if (!_ext2_valid(ext2) || !_file_valid(file))
         ERAISE(-EINVAL);
 
+    if (file->shared->access == O_PATH)
+        ERAISE(-EBADF);
+
     ECHECK(_ftruncate(ext2, file, length, false));
 
 done:
@@ -5244,6 +5252,9 @@ static int _ext2_ioctl(
     if (!_ext2_valid(ext2) || !_file_valid(file))
         ERAISE(-EBADF);
 
+    if (file->shared->access == O_PATH)
+        ERAISE(-EBADF);
+
     switch (request)
     {
         case TIOCGWINSZ:
@@ -5327,6 +5338,9 @@ static int _ext2_getdents64(
 
     if (!_ext2_valid(ext2) || !_file_valid(file) || !dirp)
         ERAISE(-EINVAL);
+
+    if (file->shared->access == O_PATH)
+        ERAISE(-EBADF);
 
     if (!S_ISDIR(file->shared->inode.i_mode))
         ERAISE(-ENOTDIR);
@@ -5610,6 +5624,9 @@ static int _ext2_fchown(
     if (!_ext2_valid(ext2) || !file)
         ERAISE(-EINVAL);
 
+    if (file->shared->access == O_PATH)
+        ERAISE(-EBADF);
+
     /* refresh the inode */
     ECHECK((ext2_read_inode(ext2, file->shared->ino, &file->shared->inode)));
 
@@ -5759,6 +5776,9 @@ static int _ext2_fchmod(myst_fs_t* fs, myst_file_t* file, mode_t mode)
     if (!_ext2_valid(ext2) || !file)
         ERAISE(-EINVAL);
 
+    if (file->shared->access == O_PATH)
+        ERAISE(-EBADF);
+
     /* refresh the inode */
     ECHECK((ext2_read_inode(ext2, file->shared->ino, &file->shared->inode)));
 
@@ -5778,6 +5798,9 @@ static int _ext2_fsync_and_fdatasync(myst_fs_t* fs, myst_file_t* file)
 
     if (!_ext2_valid(ext2) || !file)
         ERAISE(-EINVAL);
+
+    if (file->shared->access == O_PATH)
+        ERAISE(-EBADF);
 
     /* Changes to ext2 files are ephemeral, and are not written
      to back to the on-disk image. So we treat fsync and fdatasync as a NOP */

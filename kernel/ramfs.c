@@ -882,7 +882,7 @@ static int _fs_open(
 
         /* Check file access permissions */
         {
-            const int access = flags & 0x03;
+            const int access = (flags & O_PATH) ? O_PATH : flags & 0x03;
 
             if (access == O_RDONLY && !(inode->mode & S_IRUSR))
                 ERAISE(-EPERM);
@@ -948,7 +948,8 @@ static int _fs_open(
     /* Initialize the file */
     file->shared->magic = FILE_MAGIC;
     file->shared->inode = inode;
-    file->shared->access = (flags & (O_RDONLY | O_RDWR | O_WRONLY));
+    file->shared->access =
+        (flags & O_PATH) ? O_PATH : (flags & (O_RDONLY | O_RDWR | O_WRONLY));
     file->shared->operating = (flags & (O_APPEND | O_NONBLOCK));
     file->shared->use_count = 1;
     inode->nopens++;
@@ -989,6 +990,9 @@ static off_t _fs_lseek(
 
     if (!_ramfs_valid(ramfs) || !_file_valid(file))
         ERAISE(-EINVAL);
+
+    if (file->shared->access == O_PATH)
+        ERAISE(-EBADF);
 
     /* NOP for read and write callbacks based virtual files */
     if (_is_virtual_inode(file->shared->inode))
@@ -1054,7 +1058,7 @@ static ssize_t _fs_read(
         ERAISE(-EINVAL);
 
     /* fail if file has been opened for write only */
-    if (file->shared->access == O_WRONLY)
+    if (file->shared->access == O_WRONLY || file->shared->access == O_PATH)
         ERAISE(-EBADF);
 
     /* reading zero bytes is okay */
@@ -1118,7 +1122,7 @@ static ssize_t _fs_write(
         goto done;
 
     /* fail if file has been opened for read only */
-    if (file->shared->access == O_RDONLY)
+    if (file->shared->access == O_RDONLY || file->shared->access == O_PATH)
         ERAISE(-EBADF);
 
     /* If write-time virtual file, write to buf via callback */
@@ -1875,6 +1879,9 @@ static int _fs_ftruncate(myst_fs_t* fs, myst_file_t* file, off_t length)
     if (S_ISDIR(file->shared->inode->mode))
         ERAISE(-EISDIR);
 
+    if (file->shared->access == O_PATH)
+        ERAISE(-EBADF);
+
     /* truncate does not apply to virtual files */
     if (_is_virtual_inode(file->shared->inode))
         ERAISE(-EINVAL);
@@ -2030,6 +2037,9 @@ static int _fs_getdents64(
 
     if (!_ramfs_valid(ramfs) || !_file_valid(file) || !dirp)
         ERAISE(-EINVAL);
+
+    if (file->shared->access == O_PATH)
+        ERAISE(-EBADF);
 
     if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
@@ -2297,6 +2307,9 @@ static int _fs_ioctl(
     (void)arg;
 
     if (!_ramfs_valid(ramfs) || !_file_valid(file))
+        ERAISE(-EBADF);
+
+    if (file->shared->access == O_PATH)
         ERAISE(-EBADF);
 
     switch (request)
@@ -2610,6 +2623,9 @@ int _fs_fchown(myst_fs_t* fs, myst_file_t* file, uid_t owner, gid_t group)
     if (!_ramfs_valid(ramfs) || !file)
         ERAISE(-EINVAL);
 
+    if (file->shared->access == O_PATH)
+        ERAISE(-EBADF);
+
     assert(_inode_valid(file->shared->inode));
     ECHECK(_chown(file->shared->inode, owner, group));
 
@@ -2733,6 +2749,9 @@ static int _fs_fchmod(myst_fs_t* fs, myst_file_t* file, mode_t mode)
     if (!_ramfs_valid(ramfs) || !file)
         ERAISE(-EINVAL);
 
+    if (file->shared->access == O_PATH)
+        ERAISE(-EBADF);
+
     assert(_inode_valid(file->shared->inode));
     ECHECK(_chmod(file->shared->inode, mode));
 
@@ -2747,6 +2766,9 @@ static int _fs_fsync_and_fdatasync(myst_fs_t* fs, myst_file_t* file)
 
     if (!_ramfs_valid(ramfs) || !file)
         ERAISE(-EINVAL);
+
+    if (file->shared->access == O_PATH)
+        ERAISE(-EBADF);
 
     // ramfs being a in-memory fs, treat fsync and datasync as NOP
 

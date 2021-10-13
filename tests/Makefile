@@ -128,6 +128,7 @@ DIRS += unhandled_syscall_enosys
 DIRS += stack_overflow
 DIRS += sendfile
 DIRS += strtonum
+DIRS += fsflags
 
 ifdef MYST_NIGHTLY_TEST
 DIRS += glibc
