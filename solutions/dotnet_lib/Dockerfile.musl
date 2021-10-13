@@ -1,0 +1,25 @@
+FROM mcr.microsoft.com/dotnet-buildtools/prereqs:alpine-3.9-WithNode-0fc54a3-20190918214015 as builder
+
+# This dockerfile builds the dotnet library tests with musl lib on Alpine
+
+WORKDIR /build
+RUN git clone --depth 1 --single-branch --branch v5.0.11 https://github.com/dotnet/runtime.git
+WORKDIR /build/runtime/
+
+# Build clr+libs+libs.tests in Release
+RUN ./build.sh -subset clr+libs+libs.tests \
+    -c Release -rc Release -lc Release \
+    /p:RuntimeOS=linux-musl /p:OutputRid=linux-musl-x64
+
+# Step 2. Extract built artifacts
+# https://hub.docker.com/_/microsoft-dotnet-runtime/
+FROM mcr.microsoft.com/dotnet/runtime:5.0.11-alpine3.13-amd64
+
+RUN apk add icu
+
+WORKDIR /dotnet-lib-release
+# We need correct version of SDK + runtime to run a test
+# We will use the dotnet binary + runtime under ./artifacts/bin/testhost/net5.0-Linux-Release-x64/
+COPY --from=builder /build/runtime/artifacts/bin/ ./
+
+COPY --from=builder /build/runtime/.dotnet/sdk/5.0.401 /dotnet-lib-release/testhost/net5.0-Linux-Release-x64/sdk/5.0.401

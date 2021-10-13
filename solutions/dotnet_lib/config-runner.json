@@ -1,0 +1,11 @@
+
+{
+    "Debug": 1,
+    "ProductID": 1,
+    "SecurityVersion": 1,
+    "UserMemSize": "4g",
+    "CurrentWorkingDirectory": "/",
+    "HostApplicationParameters": 1,
+    "EnvironmentVariables": ["DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=0"],
+    "NoBrk": 1
+}
