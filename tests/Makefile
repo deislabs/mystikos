@@ -130,6 +130,8 @@ ifdef MYST_NIGHTLY_TEST
 DIRS += glibc
 endif
 
+DIRS += sendfile
+
 .PHONY: $(DIRS)
 
 dirs: $(DIRS)

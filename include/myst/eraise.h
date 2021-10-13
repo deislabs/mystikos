@@ -48,6 +48,18 @@
         goto done;           \
     } while (0)
 
+#define ECHECK_ERRNO(EXPR)                                           \
+    do                                                               \
+    {                                                                \
+        typeof(EXPR) _r_ = EXPR;                                     \
+        if (_r_ < 0)                                                 \
+        {                                                            \
+            ret = -errno;                                            \
+            myst_eraise(__FILE__, __LINE__, __FUNCTION__, (int)ret); \
+            goto done;                                               \
+        }                                                            \
+    } while (0)
+
 void myst_eraise(const char* file, uint32_t line, const char* func, int errnum);
 
 #endif /* _MYST_ERAISE_H */
