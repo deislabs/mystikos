@@ -38,7 +38,7 @@ long myst_tcall_epoll_wait(
     if (ret < 0)
         return -errno;
 
-    retur ret;
+    return ret;
 #else
 #error "MYST_INTERRUPT_EPOLL_WITH_SIGNAL undefined"
 #endif
