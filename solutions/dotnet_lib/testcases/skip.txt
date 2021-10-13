@@ -1,0 +1,36 @@
+# Following test DLLs could crash/hang forever when run
+Invariant.Tests/net5.0-Release/Invariant.Tests.dll
+System.IO.MemoryMappedFiles.Tests/net5.0-Unix-Release/System.IO.MemoryMappedFiles.Tests.dll
+System.Net.Security.Tests/net5.0-Unix-Release/System.Net.Security.Tests.dll
+System.Net.Sockets.Tests/net5.0-Unix-Release/System.Net.Sockets.Tests.dll
+System.Reflection.Tests/net5.0-Release/System.Reflection.Tests.dll
+
+# Following test DLLs are considered not unit test by custom runner
+Microsoft.Extensions.HostFactoryResolver.Tests/net5.0-Release/Microsoft.Extensions.HostFactoryResolver.Tests.dll
+Microsoft.Extensions.Hosting.Functional.Tests/net5.0-Release/Microsoft.Extensions.Hosting.Functional.Tests.dll
+Microsoft.Win32.Primitives.Tests/net5.0-Unix-Release/Microsoft.Win32.Primitives.Tests.dll
+Microsoft.XmlSerializer.Generator.Tests/net5.0-Release/Microsoft.XmlSerializer.Generator.Tests.dll
+System.Console.Manual.Tests/net5.0-Release/System.Console.Manual.Tests.dll
+System.Globalization.CalendarsWithConfigSwitch.Tests/net5.0-Release/System.Globalization.CalendarsWithConfigSwitch.Tests.dll
+System.IO.FileSystem.Manual.Tests/net5.0-Release/System.IO.FileSystem.Manual.Tests.dll
+System.IO.FileSystem.Primitives.Tests/net5.0-Release/System.IO.FileSystem.Primitives.Tests.dll
+System.Linq.Parallel.Tests/net5.0-Release/System.Linq.Parallel.Tests.dll
+System.Net.NameResolution.Pal.Tests/net5.0-Unix-Release/System.Net.NameResolution.Pal.Tests.dll
+System.Net.WebSockets.Client.Tests/net5.0-Release/System.Net.WebSockets.Client.Tests.dll
+System.Reflection.DispatchProxy.Tests/net5.0-Release/System.Reflection.DispatchProxy.Tests.dll
+System.Runtime.Serialization.Json.ReflectionOnly.Tests/net5.0-Release/System.Runtime.Serialization.Json.ReflectionOnly.Tests.dll
+System.Runtime.Serialization.Json.Tests/net5.0-Release/System.Runtime.Serialization.Json.Tests.dll
+System.Runtime.Serialization.Xml.ReflectionOnly.Tests/net5.0-Release/System.Runtime.Serialization.Xml.ReflectionOnly.Tests.dll
+System.Runtime.Serialization.Xml.Tests/net5.0-Release/System.Runtime.Serialization.Xml.Tests.dll
+System.Security.SecureString.Tests/net5.0-Release/System.Security.SecureString.Tests.dll
+System.Text.Encoding.CodePages.Tests/net5.0-Release/System.Text.Encoding.CodePages.Tests.dll
+System.Text.Encoding.Extensions.Tests/net5.0-Release/System.Text.Encoding.Extensions.Tests.dll
+System.Threading.Thread.Tests/net5.0-Release/System.Threading.Thread.Tests.dll
+System.Utf8String.Experimental.Tests/net5.0-Release/System.Utf8String.Experimental.Tests.dll
+System.Xml.Linq.Axes.Tests/net5.0-Release/System.Xml.Linq.Axes.Tests.dll
+System.Xml.XmlSchema.XmlSchemaValidatorApi.Tests/net5.0-Release/System.Xml.XmlSchema.XmlSchemaValidatorApi.Tests.dll
+System.Xml.XmlSchemaSet.Tests/net5.0-Release/System.Xml.XmlSchemaSet.Tests.dll
+System.Xml.XmlSerializer.ReflectionOnly.Tests/net5.0-Release/System.Xml.XmlSerializer.ReflectionOnly.Tests.dll
+System.Xml.XmlSerializer.Tests/net5.0-Release/System.Xml.XmlSerializer.Tests.dll
+System.Xml.Xsl.XslTransformApi.Tests/net5.0-Release/System.Xml.Xsl.XslTransformApi.Tests.dll
+XsltCompiler.Tests/net5.0-Release/XsltCompiler.Tests.dll
