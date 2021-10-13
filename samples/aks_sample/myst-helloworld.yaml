@@ -1,0 +1,27 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: myst-helloworld
+spec:
+  template:
+    metadata:
+      labels:
+        app: myst-helloworld
+    spec:
+      containers:
+      - name: myst-helloworld
+        image: mystikos/myst-helloworld:0.1
+        volumeMounts:
+        - name: var-run-aesmd
+          mountPath: /var/run/aesmd
+        resources:
+          limits:
+            kubernetes.azure.com/sgx_epc_mem_in_MiB: 10
+          requests:
+            kubernetes.azure.com/sgx_epc_mem_in_MiB: 10
+      volumes:
+      - name: var-run-aesmd
+        hostPath:
+          path: /var/run/aesmd
+      restartPolicy: "Never"
+  backoffLimit: 0
