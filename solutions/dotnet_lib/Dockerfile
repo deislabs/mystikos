@@ -20,11 +20,9 @@ RUN ./build.sh -subset clr+libs+libs.tests \
     /p:RuntimeOS=linux-musl \
     /p:OutputRid=linux-musl-x64
 
-# Apply patch to ignore certain tests
-COPY diff.patch ./
-RUN git apply diff.patch && rm diff.patch
+COPY tests.proj ./src/libraries/tests.proj
 
 # Run tests
-RUN ./build.sh -subset libs.tests -test -testnobuild \
-    /p:RuntimeOS=linux-musl \
-    /p:OutputRid=linux-musl-x64
+# RUN ./build.sh -subset libs.tests -test -testnobuild \
+#     /p:RuntimeOS=linux-musl \
+#     /p:OutputRid=linux-musl-x64

@@ -1,0 +1,9 @@
+{
+    "Debug": 1,
+    "ProductID": 1,
+    "SecurityVersion": 1,
+    "UserMemSize": "2048m",
+    "CurrentWorkingDirectory": "/build/runtime",
+    "ApplicationPath": "/build/runtime/build.sh",
+    "ApplicationParameters": ["-subset", "libs.tests", "-test",  "-testnobuild", "/p:RuntimeOS=linux-musl", "/p:OutputRid=linux-musl-x64"]
+}
