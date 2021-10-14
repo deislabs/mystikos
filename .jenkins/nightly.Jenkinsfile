@@ -128,6 +128,7 @@ pipeline {
                                              string(credentialsId: 'mystikos-mhsm-client-secret', variable: 'CLIENT_SECRET'),
                                              string(credentialsId: 'mystikos-mhsm-client-id', variable: 'CLIENT_ID'),
                                              string(credentialsId: 'mystikos-mhsm-app-id', variable: 'APP_ID'),
+                                             string(credentialsId: 'mystikos-mhsm-aad-url', variable: 'MHSM_AAD_URL'),
                                              string(credentialsId: 'mystikos-mhsm-ssr-pkey', variable: 'SSR_PKEY')
                             ]) {
                                 withEnv(["MYST_NIGHTLY_TEST=1"]) {
