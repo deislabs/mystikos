@@ -67,12 +67,16 @@ long myst_syscall_sendfile(int out_fd, int in_fd, off_t* offset, size_t count)
 
             ECHECK_ERRNO(m);
 
-            /* If end of file */
-            if (m == 0)
-                break;
-
             nwritten += m;
             r -= m;
+
+            /* If only part of the data is written */
+            if (m < n)
+            {
+                /* rewind in_fd by n-m bytes (since they were not written) */
+                lseek(in_fd, -(n - m), SEEK_CUR);
+                break;
+            }
         }
     }
 
