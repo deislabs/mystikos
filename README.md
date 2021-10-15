@@ -90,7 +90,7 @@ then simply decompress it, add it to your path, and run it.
 
 ```
 # change this to match the latest version
-LATEST='0.2.0'
+LATEST='0.5.0'
 RELEASE="mystikos-${LATEST}-x86_64"
 
 # this will create the "mystikos" directory within your current working directory
