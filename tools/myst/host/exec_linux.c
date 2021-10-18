@@ -84,6 +84,12 @@ Options:\n\
 \n\
 "
 
+static void _interrupt_thread_signal_handler(int sig)
+{
+    /* no-op */
+    (void)sig;
+}
+
 static void _get_options(
     int* argc,
     const char* argv[],
@@ -539,6 +545,7 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
     myst_buf_t roothash_buf = MYST_BUF_INITIALIZER;
     size_t heap_size = 0;
     const char* app_config_path = NULL;
+    sighandler_t old_sighandler;
 
     (void)program_arg;
 
@@ -630,6 +637,16 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
     argc -= 3;
     argv += 3;
 
+    /* Set a MYST_INTERRUPT_THREAD_SIGNAL handler */
+    old_sighandler =
+        sigset(MYST_INTERRUPT_THREAD_SIGNAL, _interrupt_thread_signal_handler);
+
+    /* block MYST_INTERRUPT_THREAD_SIGNAL when inside the enclave */
+    sigset_t set;
+    sigemptyset(&set);
+    sigaddset(&set, MYST_INTERRUPT_THREAD_SIGNAL);
+    sigprocmask(SIG_BLOCK, &set, NULL);
+
     /* Enter the kernel image */
     if (_enter_kernel(
             argc,
@@ -647,6 +664,12 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
     {
         _err("%s", err);
     }
+
+    /* block MYST_INTERRUPT_THREAD_SIGNAL when outside the enclave */
+    sigprocmask(SIG_UNBLOCK, &set, NULL);
+
+    /* restore the old MYST_INTERRUPT_THREAD_SIGNAL handler */
+    sigset(MYST_INTERRUPT_THREAD_SIGNAL, old_sighandler);
 
     myst_args_release(&mount_mappings);
 
@@ -674,6 +697,12 @@ static void* _thread_func(void* arg)
     /* Setup thread specific alt stack for handling SIGSEGV signals */
     setup_alt_stack();
 
+    /* block MYST_INTERRUPT_THREAD_SIGNAL when inside the enclave */
+    sigset_t set;
+    sigemptyset(&set);
+    sigaddset(&set, MYST_INTERRUPT_THREAD_SIGNAL);
+    sigprocmask(SIG_BLOCK, &set, NULL);
+
     if (myst_run_thread(cookie, event, (pid_t)syscall(SYS_gettid)) != 0)
     {
         cleanup_alt_stack();
@@ -682,6 +711,10 @@ static void* _thread_func(void* arg)
     }
 
     cleanup_alt_stack();
+
+    /* unblock MYST_INTERRUPT_THREAD_SIGNAL when outside the enclave */
+    sigprocmask(SIG_UNBLOCK, &set, NULL);
+
     return NULL;
 }
 

@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <myst/config.h>
 #include <myst/eraise.h>
 #include <myst/fsgs.h>
 #include <myst/printf.h>
@@ -490,7 +491,8 @@ void _myst_sigstop_block(myst_process_t* process)
 void _myst_sigstop_unblock(myst_process_t* process)
 {
     if (__sync_val_compare_and_swap(&process->sigstop_futex, 1, 0) == 1)
-        myst_futex_wake(&process->sigstop_futex, INT_MAX, FUTEX_BITSET_MATCH_ANY);
+        myst_futex_wake(
+            &process->sigstop_futex, INT_MAX, FUTEX_BITSET_MATCH_ANY);
 }
 
 void _myst_sigstop_wait(void)
@@ -499,7 +501,8 @@ void _myst_sigstop_wait(void)
 
     while (process->sigstop_futex == 1)
     {
-        long ret = myst_futex_wait(&process->sigstop_futex, 1, NULL, FUTEX_BITSET_MATCH_ANY);
+        long ret = myst_futex_wait(
+            &process->sigstop_futex, 1, NULL, FUTEX_BITSET_MATCH_ANY);
         if ((ret < 0) && (ret != -EAGAIN))
             break;
     }
@@ -644,8 +647,15 @@ long myst_signal_deliver(
         }
     }
 
+#if (MYST_INTERRUPT_WITH_SIGNAL == 1)
+    /* Wake up the thread if blocked in the target */
+    myst_interrupt_thread(thread);
+#elif (MYST_INTERRUPT_WITH_SIGNAL == -1)
     /* Make sure any polls get woken up to process any outstanding events */
     myst_tcall_poll_wake();
+#else
+#error "MYST_INTERRUPT_WITH_SIGNAL undefined"
+#endif
 
     if (!__sync_val_compare_and_swap(&thread->pause_futex, 0, 1))
     {

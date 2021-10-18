@@ -12,6 +12,7 @@
 #include <myst/atexit.h>
 #include <myst/atomic.h>
 #include <myst/cond.h>
+#include <myst/config.h>
 #include <myst/eraise.h>
 #include <myst/fdtable.h>
 #include <myst/file.h>
@@ -712,7 +713,7 @@ long myst_wait(
 #endif
         myst_spin_unlock(&myst_process_list_lock);
         locked = false;
-        myst_sleep_msec(100);
+        myst_sleep_msec(100, true);
         myst_spin_lock(&myst_process_list_lock);
         locked = true;
 
@@ -979,7 +980,7 @@ static long _run_thread(void* arg_)
             {
                 while (thread->group_next || thread->group_prev)
                 {
-                    myst_sleep_msec(10);
+                    myst_sleep_msec(10, false);
                 }
             }
 
@@ -1515,8 +1516,23 @@ size_t myst_kill_thread_group()
     // Wait for the child threads to exit.
     while (1)
     {
+#if (MYST_INTERRUPT_WITH_SIGNAL == 1)
+        /* Interrupt threads blocked in syscalls on the target */
+        myst_spin_lock(&process->thread_group_lock);
+        {
+            for (t = process->main_process_thread; t; t = t->group_next)
+            {
+                if (t != process->main_process_thread && t != thread)
+                    myst_interrupt_thread(t);
+            }
+        }
+        myst_spin_unlock(&process->thread_group_lock);
+#elif (MYST_INTERRUPT_WITH_SIGNAL == -1)
         // Wake up any polls that may be waiting in the host
         myst_tcall_poll_wake();
+#else
+#error "MYST_INTERRUPT_WITH_SIGNAL undefined"
+#endif
 
         /* We may have had pipes on their way to blocking since the last trigger
          * so lets do it again to be sure */
@@ -1554,7 +1570,7 @@ size_t myst_kill_thread_group()
         if (t == NULL)
             break;
 
-        myst_sleep_msec(10);
+        myst_sleep_msec(10, false);
     }
 
     return count;
@@ -1650,7 +1666,20 @@ void myst_wait_on_child_processes(myst_process_t* process)
 
         myst_eprintf("process %d waiting for child %d\n", process->pid, p->pid);
 
-        myst_sleep_msec(10);
+        myst_sleep_msec(10, false);
 
     } while (1);
+}
+
+int myst_interrupt_thread(myst_thread_t* thread)
+{
+    long ret = 0;
+
+    if (!thread)
+        ERAISE(-EINVAL);
+
+    ECHECK(myst_tcall_interrupt_thread(thread->target_tid));
+
+done:
+    return ret;
 }

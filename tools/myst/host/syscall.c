@@ -3,6 +3,7 @@
 #include <fcntl.h>
 #include <myst/assume.h>
 #include <myst/defs.h>
+#include <myst/tcall.h>
 #include <sched.h>
 #include <stdint.h>
 #include <sys/epoll.h>
@@ -87,7 +88,7 @@ long myst_close_ocall(int fd)
 
 long myst_nanosleep_ocall(const struct timespec* req, struct timespec* rem)
 {
-    RETURN(nanosleep(req, rem));
+    return myst_tcall_nanosleep(req, rem);
 }
 
 long myst_fcntl_ocall(int fd, int cmd, long arg)
@@ -539,7 +540,7 @@ long myst_epoll_wait_ocall(
     size_t maxevents,
     int timeout)
 {
-    RETURN(epoll_wait(epfd, events, maxevents, timeout));
+    return myst_tcall_epoll_wait(epfd, events, maxevents, timeout);
 }
 
 long myst_epoll_ctl_ocall(

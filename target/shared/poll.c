@@ -1,17 +1,59 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#define _GNU_SOURCE
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <poll.h>
 #include <pthread.h>
+#include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/poll.h>
+#include <sys/syscall.h>
 #include <syscall.h>
 #include <unistd.h>
+
+#include <myst/config.h>
+#include <myst/tcall.h>
+
+#if (MYST_INTERRUPT_POLL_WITH_SIGNAL == 1)
+
+long myst_tcall_poll(struct pollfd* fds, nfds_t nfds, int timeout)
+{
+    long ret;
+    sigset_t sigmask;
+    struct timespec ts;
+
+    ts.tv_sec = timeout / 1000;
+    ts.tv_nsec = (timeout % 1000) * 1000000;
+
+    /* Temporarily unblock signals */
+    sigemptyset(&sigmask);
+
+    if ((ret = ppoll(fds, nfds, &ts, &sigmask)) < 0)
+        ret = -errno;
+
+#ifdef MYST_TRACE_THREAD_INTERRUPTIONS
+    if (ret == -EINTR)
+    {
+        pid_t tid = (pid_t)syscall(SYS_gettid);
+        printf(">>>>>>>> poll() interrupted: tid=%d\n", tid);
+        fflush(stdout);
+    }
+#endif
+
+    return ret;
+}
+
+long myst_tcall_poll_wake(void)
+{
+    return 0;
+}
+
+#elif (MYST_INTERRUPT_POLL_WITH_SIGNAL == -1)
 
 #define WAKE_MAGIC 0x617eafc2e697492c
 
@@ -226,3 +268,7 @@ done:
         free(fds);
     return ret;
 }
+
+#else
+#error "MYST_INTERRUPT_POLL_WITH_SIGNAL undefined"
+#endif
