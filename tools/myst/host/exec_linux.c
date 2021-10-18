@@ -665,7 +665,7 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
         _err("%s", err);
     }
 
-    /* block MYST_INTERRUPT_THREAD_SIGNAL when outside the enclave */
+    /* unblock MYST_INTERRUPT_THREAD_SIGNAL when outside the enclave */
     sigprocmask(SIG_UNBLOCK, &set, NULL);
 
     /* restore the old MYST_INTERRUPT_THREAD_SIGNAL handler */
