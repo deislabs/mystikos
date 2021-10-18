@@ -6,15 +6,6 @@
 /app/llvm-project/libcxx/test/libcxx/containers/sequences/list/list.ops/db_splice_pos_list_iter_iter.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/containers/sequences/deque/deque.modifiers/insert_iter_iter.pass.cpp.exe
 
-# fails to read decimal in string buffer stream correctly 
-/app/llvm-project/libcxx/test/std/depr/depr.str.strstreams/depr.istrstream/depr.istrstream.cons/ccp.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/depr/depr.str.strstreams/depr.istrstream/depr.istrstream.cons/ccp_size.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/depr/depr.str.strstreams/depr.istrstream/depr.istrstream.cons/cp.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/depr/depr.str.strstreams/depr.istrstream/depr.istrstream.cons/cp_size.pass.cpp.exe
-# similar, trouble with ">>" operator
-/app/llvm-project/libcxx/test/std/depr/depr.str.strstreams/depr.strstream/depr.strstream.cons/cp_size_mode.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/depr/depr.str.strstreams/depr.strstream/depr.strstream.cons/default.pass.cpp.exe
-
 # Wrong error info. Expecting "Unknown error -1" || "Unknown error", got "No error information"
 /app/llvm-project/libcxx/test/std/diagnostics/syserr/syserr.errcat/syserr.errcat.objects/generic_category.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/diagnostics/syserr/syserr.errcat/syserr.errcat.objects/system_category.pass.cpp.exe
@@ -44,139 +35,15 @@
 /app/llvm-project/libcxx/test/std/input.output/file.streams/fstreams/ofstream.members/open_pointer.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/input.output/file.streams/fstreams/ofstream.members/open_string.pass.cpp.exe
 
-# istream extraction operator fails >> to give the correct char output
-/app/llvm-project/libcxx/test/std/input.output/iostream.format/input.streams/istream.formatted/istream_extractors/chart.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/input.output/iostream.format/input.streams/istream.formatted/istream_extractors/signed_char.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/input.output/iostream.format/input.streams/istream.formatted/istream_extractors/signed_char_pointer.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/input.output/iostream.format/input.streams/istream.formatted/istream_extractors/unsigned_char.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/input.output/iostream.format/input.streams/istream.formatted/istream_extractors/unsigned_char_pointer.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/input.output/iostream.format/input.streams/istream.formatted/istream_extractors/wchar_t_pointer.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/input.output/iostream.format/quoted.manip/quoted.pass.cpp.exe
-# Extraction fails string to integer >>
-/app/llvm-project/libcxx/test/std/input.output/string.streams/istringstream/istringstream.assign/member_swap.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/input.output/string.streams/istringstream/istringstream.assign/move.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/input.output/string.streams/istringstream/istringstream.assign/nonmember_swap.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/input.output/string.streams/istringstream/istringstream.cons/move.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/input.output/string.streams/istringstream/istringstream.cons/string.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/input.output/string.streams/istringstream/istringstream.members/str.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/input.output/string.streams/stringstream.cons/move.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/input.output/string.streams/stringstream.cons/stringstream.assign/member_swap.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/input.output/string.streams/stringstream.cons/stringstream.assign/move.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/input.output/string.streams/stringstream.cons/stringstream.assign/nonmember_swap.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/input.output/string.streams/stringstream.members/str.pass.cpp.exe
-
-# istream iterator does not tokenize the correct token in the stream
-/app/llvm-project/libcxx/test/std/iterators/stream.iterators/istream.iterator/istream.iterator.cons/istream.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/iterators/stream.iterators/istream.iterator/istream.iterator.ops/arrow.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/iterators/stream.iterators/istream.iterator/istream.iterator.ops/dereference.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/iterators/stream.iterators/istream.iterator/istream.iterator.ops/equal.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/iterators/stream.iterators/istream.iterator/istream.iterator.ops/post_increment.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/iterators/stream.iterators/istream.iterator/istream.iterator.ops/pre_increment.pass.cpp.exe
-
-# special characters are not recognized (I think thats whats going on here)
-/app/llvm-project/libcxx/test/std/localization/locale.categories/category.ctype/facet.ctype.special/facet.ctype.char.members/is_1.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/localization/locale.categories/category.ctype/facet.ctype.special/facet.ctype.char.members/is_many.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/localization/locale.categories/category.ctype/facet.ctype.special/facet.ctype.char.members/scan_is.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/localization/locale.categories/category.ctype/facet.ctype.special/facet.ctype.char.members/scan_not.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/localization/locale.categories/category.ctype/facet.ctype.special/facet.ctype.char.members/tolower_1.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/localization/locale.categories/category.ctype/facet.ctype.special/facet.ctype.char.members/tolower_many.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/localization/locale.categories/category.ctype/facet.ctype.special/facet.ctype.char.members/toupper_1.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/localization/locale.categories/category.ctype/facet.ctype.special/facet.ctype.char.members/toupper_many.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/localization/locale.categories/category.ctype/facet.ctype.special/facet.ctype.char.statics/classic_table.pass.cpp.exe
-
 # small isolated failures (not a big group)
 /app/llvm-project/libcxx/test/std/localization/locale.categories/category.ctype/locale.codecvt/locale.codecvt.members/wchar_t_encoding.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/localization/locale.categories/category.ctype/locale.codecvt/locale.codecvt.members/wchar_t_max_length.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/localization/locale.categories/category.ctype/locale.ctype.byname/mask.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/localization/locale.categories/category.numeric/locale.num.get/facet.num.get.members/test_min_max.pass.cpp.exe
-
-# local classifications failed on first step
-/app/llvm-project/libcxx/test/std/localization/locales/locale.convenience/classification/isalnum.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/localization/locales/locale.convenience/classification/isalpha.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/localization/locales/locale.convenience/classification/iscntrl.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/localization/locales/locale.convenience/classification/isdigit.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/localization/locales/locale.convenience/classification/isgraph.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/localization/locales/locale.convenience/classification/islower.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/localization/locales/locale.convenience/classification/isprint.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/localization/locales/locale.convenience/classification/ispunct.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/localization/locales/locale.convenience/classification/isspace.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/localization/locales/locale.convenience/classification/isupper.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/localization/locales/locale.convenience/classification/isxdigit.pass.cpp.exe
-#similar, with conversions
-/app/llvm-project/libcxx/test/std/localization/locales/locale.convenience/conversions/conversions.character/tolower.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/localization/locales/locale.convenience/conversions/conversions.character/toupper.pass.cpp.exe
-
-# same istream operator ">>" problems
-/app/llvm-project/libcxx/test/std/numerics/complex.number/complex.ops/stream_input.pass.cpp.exe
 
 # complex number operations fail
 /app/llvm-project/libcxx/test/std/numerics/complex.number/complex.transcendentals/acos.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/numerics/complex.number/complex.transcendentals/asinh.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/numerics/complex.number/complex.transcendentals/atanh.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/numerics/complex.number/complex.value.ops/proj.pass.cpp.exe
-
-# Another version of operator">>" overloading glitch
-/app/llvm-project/libcxx/test/std/numerics/rand/rand.adapt/rand.adapt.disc/io.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/numerics/rand/rand.adapt/rand.adapt.ibits/io.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/numerics/rand/rand.adapt/rand.adapt.shuf/io.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/numerics/rand/rand.dis/rand.dist.bern/rand.dist.bern.bernoulli/io.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/numerics/rand/rand.dis/rand.dist.bern/rand.dist.bern.bin/io.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/numerics/rand/rand.dis/rand.dist.bern/rand.dist.bern.geo/io.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/numerics/rand/rand.dis/rand.dist.bern/rand.dist.bern.negbin/io.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/numerics/rand/rand.dis/rand.dist.norm/rand.dist.norm.cauchy/io.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/numerics/rand/rand.dis/rand.dist.norm/rand.dist.norm.chisq/io.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/numerics/rand/rand.dis/rand.dist.norm/rand.dist.norm.f/io.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/numerics/rand/rand.dis/rand.dist.norm/rand.dist.norm.lognormal/io.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/numerics/rand/rand.dis/rand.dist.norm/rand.dist.norm.normal/io.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/numerics/rand/rand.dis/rand.dist.norm/rand.dist.norm.t/io.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/numerics/rand/rand.dis/rand.dist.pois/rand.dist.pois.exp/io.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/numerics/rand/rand.dis/rand.dist.pois/rand.dist.pois.extreme/io.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/numerics/rand/rand.dis/rand.dist.pois/rand.dist.pois.gamma/io.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/numerics/rand/rand.dis/rand.dist.pois/rand.dist.pois.poisson/io.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/numerics/rand/rand.dis/rand.dist.pois/rand.dist.pois.weibull/io.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/numerics/rand/rand.dis/rand.dist.samp/rand.dist.samp.plinear/io.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/numerics/rand/rand.dis/rand.dist.uni/rand.dist.uni.int/io.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/numerics/rand/rand.dis/rand.dist.uni/rand.dist.uni.real/io.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/numerics/rand/rand.eng/rand.eng.mers/io.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/numerics/rand/rand.eng/rand.eng.sub/io.pass.cpp.exe
-
-# exception handling not supported in mystikos
-/app/llvm-project/libcxx/test/std/re/re.alg/re.alg.match/inverted_character_classes.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/re/re.alg/re.alg.replace/test1.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/re/re.alg/re.alg.replace/test2.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/re/re.alg/re.alg.replace/test3.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/re/re.alg/re.alg.replace/test4.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/re/re.alg/re.alg.replace/test5.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/re/re.alg/re.alg.replace/test6.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/re/re.alg/re.alg.search/backup.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/re/re.alg/re.alg.search/invert_neg_word_search.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/re/re.iter/re.regiter/re.regiter.cnstr/cnstr.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/re/re.iter/re.regiter/re.regiter.deref/deref.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/re/re.iter/re.regiter/re.regiter.incr/post.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/re/re.iter/re.tokiter/re.tokiter.cnstr/array.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/re/re.iter/re.tokiter/re.tokiter.cnstr/init.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/re/re.iter/re.tokiter/re.tokiter.cnstr/int.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/re/re.iter/re.tokiter/re.tokiter.cnstr/vector.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/re/re.iter/re.tokiter/re.tokiter.comp/equal.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/re/re.iter/re.tokiter/re.tokiter.deref/deref.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/re/re.iter/re.tokiter/re.tokiter.incr/post.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/re/re.regex/re.regex.construct/awk_oct.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/re/re.regex/re.regex.construct/bad_backref.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/re/re.regex/re.regex.construct/il_flg.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/re/re.regex/re.regex.construct/iter_iter.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/re/re.regex/re.regex.construct/iter_iter_flg.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/re/re.regex/re.regex.construct/ptr.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/re/re.regex/re.regex.construct/ptr_flg.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/re/re.regex/re.regex.construct/ptr_size_flg.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/re/re.regex/re.regex.construct/string.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/re/re.regex/re.regex.construct/string_flg.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/re/re.results/re.results.form/form1.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/re/re.results/re.results.form/form2.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/re/re.results/re.results.form/form3.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/re/re.results/re.results.form/form4.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/re/re.traits/isctype.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/re/re.traits/value.pass.cpp.exe
-/app/llvm-project/libcxx/test/std/strings/string.conversions/to_string.pass.cpp.exe
 
 # occasional futex retry and threading issues
 /app/llvm-project/libcxx/test/std/thread/futures/futures.async/async_race.pass.cpp.exe
