@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#define _GNU_SOURCE
 #include <assert.h>
 #include <errno.h>
 #include <libgen.h>
@@ -11,6 +12,7 @@
 #include <myst/tcall.h>
 #include <poll.h>
 #include <pthread.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -30,6 +32,7 @@
 #include <myst/round.h>
 #include <myst/sha256.h>
 #include <myst/shm.h>
+#include <myst/thread.h>
 #include <openenclave/bits/properties.h>
 #include <openenclave/bits/sgx/sgxproperties.h>
 #include <openenclave/host.h>
@@ -80,7 +83,16 @@ static void* _thread_func(void* arg)
     oe_result_t res;
     long retval = -1;
 
+    /* block MYST_INTERRUPT_THREAD_SIGNAL when inside the enclave */
+    sigset_t set;
+    sigemptyset(&set);
+    sigaddset(&set, MYST_INTERRUPT_THREAD_SIGNAL);
+    sigprocmask(SIG_BLOCK, &set, NULL);
+
     res = myst_run_thread_ecall(_enclave, &retval, cookie, event, target_tid);
+
+    /* unblock MYST_INTERRUPT_THREAD_SIGNAL when outside the enclave */
+    sigprocmask(SIG_UNBLOCK, &set, NULL);
 
     if (res != OE_OK || retval != 0)
     {
@@ -129,6 +141,12 @@ long myst_wake_wait_ocall(
     return myst_tcall_wake_wait(waiter_event, self_event, ts);
 }
 
+static void _interrupt_thread_signal_handler(int sig)
+{
+    /* no-op */
+    (void)sig;
+}
+
 int exec_launch_enclave(
     const char* enc_path,
     oe_enclave_type_t type,
@@ -149,6 +167,7 @@ int exec_launch_enclave(
     oe_enclave_setting_context_switchless_t switchless_setting = {0, 0};
     oe_enclave_setting_t settings[8];
     size_t num_settings = 0;
+    sighandler_t old_sighandler;
 
     /* get the start time and pass it into the kernel */
     if (clock_gettime(CLOCK_REALTIME, &start_time) != 0)
@@ -204,6 +223,16 @@ int exec_launch_enclave(
     /* Get clock times right before entering the enclave */
     shm_create_clock(&shared_memory, CLOCK_TICK);
 
+    /* Set a MYST_INTERRUPT_THREAD_SIGNAL handler */
+    old_sighandler =
+        sigset(MYST_INTERRUPT_THREAD_SIGNAL, _interrupt_thread_signal_handler);
+
+    /* block MYST_INTERRUPT_THREAD_SIGNAL when inside the enclave */
+    sigset_t set;
+    sigemptyset(&set);
+    sigaddset(&set, MYST_INTERRUPT_THREAD_SIGNAL);
+    sigprocmask(SIG_BLOCK, &set, NULL);
+
     /* Enter the enclave and run the program */
     r = myst_enter_ecall(
         _enclave,
@@ -222,6 +251,12 @@ int exec_launch_enclave(
         start_time.tv_nsec);
     if (r != OE_OK)
         _err("failed to enter enclave: result=%s", oe_result_str(r));
+
+    /* unblock MYST_INTERRUPT_THREAD_SIGNAL when outside the enclave */
+    sigprocmask(SIG_UNBLOCK, &set, NULL);
+
+    /* restore the old MYST_INTERRUPT_THREAD_SIGNAL handler */
+    sigset(MYST_INTERRUPT_THREAD_SIGNAL, old_sighandler);
 
     /* Terminate the enclave */
     r = oe_terminate_enclave(_enclave);
@@ -639,4 +674,9 @@ int myst_load_fssig_ocall(const char* path, myst_fssig_t* fssig)
 int myst_mprotect_ocall(void* addr, size_t len, int prot)
 {
     return mprotect(addr, len, prot);
+}
+
+long myst_interrupt_thread_ocall(pid_t tid)
+{
+    return myst_tcall_interrupt_thread(tid);
 }

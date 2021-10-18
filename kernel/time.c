@@ -1,11 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#include <myst/signal.h>
 #include <myst/syscall.h>
 #include <myst/tcall.h>
 #include <myst/time.h>
 
-void myst_sleep_msec(uint64_t milliseconds)
+void myst_sleep_msec(uint64_t milliseconds, bool process_signals)
 {
     struct timespec ts;
     const struct timespec* req = &ts;
@@ -19,5 +20,9 @@ void myst_sleep_msec(uint64_t milliseconds)
     params[0] = (long)req;
     params[1] = (long)NULL;
 
-    myst_tcall(SYS_nanosleep, params);
+    while (myst_tcall(SYS_nanosleep, params) == -EINTR)
+    {
+        if (process_signals)
+            myst_signal_process(myst_thread_self());
+    }
 }

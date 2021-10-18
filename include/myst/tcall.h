@@ -8,6 +8,7 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <sys/epoll.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
@@ -55,6 +56,7 @@ typedef enum myst_tcall_number
     MYST_TCALL_LOAD_FSSIG,
     MYST_TCALL_CLOCK_GETRES,
     MYST_TCALL_GCOV,
+    MYST_TCALL_INTERRUPT_THREAD,
 } myst_tcall_number_t;
 
 long myst_tcall(long n, long params[6]);
@@ -173,5 +175,15 @@ long myst_tcall_write(int fd, const void* buf, size_t count);
 long myst_tcall_poll(struct pollfd* fds, nfds_t nfds, int timeout);
 
 long myst_tcall_pipe2(int pipefd[2], int flags);
+
+long myst_tcall_nanosleep(const struct timespec* req, struct timespec* rem);
+
+long myst_tcall_epoll_wait(
+    int epfd,
+    struct epoll_event* events,
+    size_t maxevents,
+    int timeout);
+
+long myst_tcall_interrupt_thread(pid_t tid);
 
 #endif /* _MYST_TCALL_H */

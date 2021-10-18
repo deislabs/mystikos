@@ -14,9 +14,12 @@ SOURCES += $(wildcard *.c)
 SOURCES += ../shared/waitwake.c
 SOURCES += ../shared/runthread.c
 SOURCES += ../shared/poll.c
+SOURCES += ../shared/epoll.c
 SOURCES += ../shared/luks.c
 SOURCES += ../shared/sha256.c
 SOURCES += ../shared/verify.c
+SOURCES += ../shared/nanosleep.c
+SOURCES += ../shared/interrupt.c
 
 CFLAGS = $(DEFAULT_CFLAGS)
 

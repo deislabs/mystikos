@@ -881,7 +881,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
             myst_assume(thread->group_prev == NULL);
             while (thread->group_next)
             {
-                myst_sleep_msec(10);
+                myst_sleep_msec(10, false);
             }
         }
 
@@ -904,7 +904,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
 
         /* Wait for all other processes to exit */
         while (process->prev_process || process->next_process)
-            myst_sleep_msec(10);
+            myst_sleep_msec(10, false);
 
         if (args->shell_mode)
             myst_start_shell("\nMystikos shell (exit)\n");

@@ -505,6 +505,10 @@ long myst_tcall(long n, long params[6])
             return myst_gcov(func, gcov_params);
         }
 #endif
+        case MYST_TCALL_INTERRUPT_THREAD:
+        {
+            return myst_tcall_interrupt_thread((pid_t)x1);
+        }
         case SYS_ioctl:
         {
             int fd = (int)x1;
@@ -548,7 +552,6 @@ long myst_tcall(long n, long params[6])
         case SYS_readv:
         case SYS_writev:
         case SYS_select:
-        case SYS_nanosleep:
         case SYS_fcntl:
         case SYS_gettimeofday:
         case SYS_sethostname:
@@ -591,11 +594,25 @@ long myst_tcall(long n, long params[6])
         case SYS_fsync:
         case SYS_pipe2:
         case SYS_epoll_create1:
-        case SYS_epoll_wait:
         case SYS_epoll_ctl:
         case SYS_eventfd2:
         {
             return _forward_syscall(n, x1, x2, x3, x4, x5, x6);
+        }
+        case SYS_epoll_wait:
+        {
+            return myst_tcall_epoll_wait(
+                (int)x1,                 /* epfd */
+                (struct epoll_event*)x2, /* events */
+                (size_t)x3,              /* maxevents */
+                (int)x4);                /* timeout */
+        }
+        case SYS_nanosleep:
+        {
+            const struct timespec* req = (const struct timespec*)x1;
+            struct timespec* rem = (struct timespec*)x2;
+
+            return myst_tcall_nanosleep(req, rem);
         }
         case SYS_chown:
         case SYS_fchown:
