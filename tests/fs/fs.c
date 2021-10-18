@@ -1032,6 +1032,19 @@ static void test_sync()
     _passed(__FUNCTION__);
 }
 
+static void test_mkfifo(void)
+{
+    const char path[] = "/tmp/myfifo";
+    struct stat statbuf;
+
+    assert(mkfifo(path, 0666) == 0);
+    assert(stat(path, &statbuf) == 0);
+    assert(S_ISFIFO(statbuf.st_mode));
+    assert(unlink(path) == 0);
+
+    _passed(__FUNCTION__);
+}
+
 int main(int argc, const char* argv[])
 {
     if (argc != 2)
@@ -1086,6 +1099,7 @@ int main(int argc, const char* argv[])
     test_o_excl();
     test_o_tmpfile_not_supp(argv[1]);
     test_sync();
+    test_mkfifo();
 
     printf("=== passed all tests (%s)\n", argv[0]);
 

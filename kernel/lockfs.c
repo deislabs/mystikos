@@ -785,6 +785,21 @@ done:
     return ret;
 }
 
+static int _fs_mkfifo(myst_fs_t* fs, const char* pathname, mode_t mode)
+{
+    int ret = 0;
+    lockfs_t* lockfs = (lockfs_t*)fs;
+
+    if (!_lockfs_valid(lockfs))
+        ERAISE(-EINVAL);
+
+    myst_mutex_lock(&lockfs->lock);
+    ret = (*lockfs->fs->fs_mkfifo)(lockfs->fs, pathname, mode);
+    myst_mutex_unlock(&lockfs->lock);
+
+done:
+    return ret;
+}
 int myst_lockfs_init(myst_fs_t* fs, myst_fs_t** lockfs_out)
 {
     int ret = 0;
@@ -846,6 +861,7 @@ int myst_lockfs_init(myst_fs_t* fs, myst_fs_t** lockfs_out)
         .fs_fdatasync = _fs_fdatasync,
         .fs_fsync = _fs_fsync,
         .fs_release_tree = _fs_release_tree,
+        .fs_mkfifo = _fs_mkfifo,
     };
 
     if (lockfs_out)

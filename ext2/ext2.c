@@ -5722,10 +5722,6 @@ int ext2_mkfifo(myst_fs_t* fs, const char* path, mode_t mode)
     if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
-    /* reject all S_IFMT bits except for O_DIRECT */
-    if ((mode & S_IFMT) && !(mode & O_DIRECT))
-        ERAISE(-EINVAL);
-
     /* Split the path */
     ECHECK(_split_path(path, locals->dirname, locals->basename));
 

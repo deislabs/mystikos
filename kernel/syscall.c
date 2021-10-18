@@ -1570,6 +1570,35 @@ done:
     return ret;
 }
 
+long myst_syscall_mkfifo(const char* pathname, mode_t mode)
+{
+    long ret = 0;
+    myst_fs_t* fs;
+    struct locals
+    {
+        char suffix[PATH_MAX];
+        char buf[PATH_MAX];
+    };
+    struct locals* locals = NULL;
+
+    if (!pathname)
+        ERAISE(-EINVAL);
+
+    if (!(locals = malloc(sizeof(struct locals))))
+        ERAISE(-ENOMEM);
+
+    ECHECK(myst_mount_resolve(pathname, locals->suffix, &fs));
+
+    ECHECK((*fs->fs_mkfifo)(fs, locals->suffix, mode));
+
+done:
+
+    if (locals)
+        free(locals);
+
+    return ret;
+}
+
 long myst_syscall_mkdirat(int dirfd, const char* pathname, mode_t mode)
 {
     char* abspath = NULL;
@@ -4816,7 +4845,7 @@ static long _syscall(void* args_)
 
             if (S_ISFIFO(mode))
             {
-                /* ATTN: create a pipe here! */
+                ret = myst_syscall_mkfifo(pathname, mode);
             }
             else
             {

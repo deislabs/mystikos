@@ -144,7 +144,7 @@ static int _split_path(
 static int _inode_add_dirent(
     inode_t* dir,
     inode_t* inode,
-    uint8_t type, /* DT_REG or DT_DIR */
+    uint8_t type, /* DT_REG, DT_DIR, DT_LNK, or DT_FIFO */
     const char* name)
 {
     int ret = 0;
@@ -160,7 +160,7 @@ static int _inode_add_dirent(
     if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
-    if (type != DT_REG && type != DT_DIR && type != DT_LNK)
+    if (type != DT_REG && type != DT_DIR && type != DT_LNK && type != DT_FIFO)
         ERAISE(-EINVAL);
 
     /* Append the new directory entry */
@@ -273,6 +273,8 @@ static int _inode_new(
             type = DT_REG;
         else if (S_ISLNK(mode))
             type = DT_LNK;
+        else if (S_ISFIFO(mode))
+            type = DT_FIFO;
         else
         {
             ERAISE(-EINVAL);
@@ -2704,6 +2706,8 @@ static int _fs_release_tree(myst_fs_t* fs, const char* pathname)
             type = DT_REG;
         else if (S_ISLNK(mode))
             type = DT_LNK;
+        else if (S_ISFIFO(mode))
+            type = DT_FIFO;
         else
         {
             ERAISE(-EINVAL);
