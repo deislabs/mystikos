@@ -357,6 +357,8 @@ JIT/HardwareIntrinsics/X86/Popcnt/Popcnt_ro/Popcnt_ro.dll
 JIT/HardwareIntrinsics/X86/Regression/GitHub_17435/GitHub_17435/GitHub_17435.dll
 JIT/HardwareIntrinsics/X86/Regression/GitHub_17957/GitHub_17957_ro/GitHub_17957_ro.dll
 JIT/HardwareIntrinsics/X86/Regression/GitHub_17957/GitHub_17957_r/GitHub_17957_r.dll
+JIT/HardwareIntrinsics/X86/Regression/GitHub_21666/GitHub_21666_r/GitHub_21666_r.dll
+JIT/HardwareIntrinsics/X86/Regression/GitHub_21666/GitHub_21666_ro/GitHub_21666_ro.dll
 JIT/HardwareIntrinsics/X86/Regression/GitHub_21899/GitHub_21899_ro/GitHub_21899_ro.dll
 JIT/HardwareIntrinsics/X86/Regression/GitHub_21855/GitHub_21855_r/GitHub_21855_r.dll
 JIT/HardwareIntrinsics/X86/Regression/GitHub_21855/GitHub_21855_ro/GitHub_21855_ro.dll
