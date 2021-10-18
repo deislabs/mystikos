@@ -355,6 +355,6 @@ long myst_syscall_getpgid(pid_t pid, myst_thread_t* thread);
 
 long myst_syscall_pause(void);
 
-long myst_syscall_interrupt_thread(pid_t tid);
+long myst_syscall_interrupt_thread(int tid);
 
 #endif /* _MYST_SYSCALL_H */
