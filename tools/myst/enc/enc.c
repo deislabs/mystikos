@@ -946,6 +946,23 @@ int myst_load_fssig(const char* path, myst_fssig_t* fssig)
     return retval;
 }
 
+long myst_tcall_mkfifo(
+    const char* pathname,
+    mode_t mode,
+    uid_t host_euid,
+    gid_t host_egid)
+{
+    long retval = 0;
+
+    if (myst_mkfifo_ocall(&retval, pathname, mode, host_euid, host_egid) !=
+        OE_OK)
+    {
+        return -ENOSYS;
+    }
+
+    return retval;
+}
+
 OE_SET_ENCLAVE_SGX2(
     ENCLAVE_PRODUCT_ID,
     ENCLAVE_SECURITY_VERSION,

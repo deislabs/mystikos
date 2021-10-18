@@ -505,6 +505,19 @@ long myst_tcall(long n, long params[6])
             return myst_gcov(func, gcov_params);
         }
 #endif
+        case MYST_TCALL_MKFIFO:
+        {
+            const char* pathname = (const char*)x1;
+            mode_t mode = (mode_t)x2;
+            MYST_UNUSED uid_t host_euid = (uid_t)x3; /* ATTN: ignored */
+            MYST_UNUSED uid_t host_egid = (uid_t)x4; /* ATTN: ignored */
+            int ret;
+
+            if ((ret = mkfifo(pathname, mode)) < 0)
+                ret = -errno;
+
+            return ret;
+        }
         case SYS_ioctl:
         {
             int fd = (int)x1;

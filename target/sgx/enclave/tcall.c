@@ -571,6 +571,14 @@ long myst_tcall(long n, long params[6])
             return myst_gcov(func, gcov_params);
         }
 #endif
+        case MYST_TCALL_MKFIFO:
+        {
+            const char* pathname = (const char*)x1;
+            mode_t mode = (mode_t)x2;
+            uid_t host_euid = (uid_t)x3;
+            uid_t host_egid = (uid_t)x4;
+            return myst_tcall_mkfifo(pathname, mode, host_euid, host_egid);
+        }
         case SYS_read:
         case SYS_write:
         case SYS_close:

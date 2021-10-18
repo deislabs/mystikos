@@ -5697,6 +5697,87 @@ done:
     return ret;
 }
 
+int ext2_mkfifo(myst_fs_t* fs, const char* path, mode_t mode)
+{
+    int ret = 0;
+    ext2_t* ext2 = (ext2_t*)fs;
+    struct locals* locals = NULL;
+    ext2_ino_t dino;
+    ext2_ino_t ino;
+    myst_fs_t* tfs = NULL;
+    struct locals
+    {
+        char dirname[EXT2_PATH_MAX];
+        char basename[EXT2_PATH_MAX];
+        char suffix[PATH_MAX];
+        ext2_inode_t dinode;
+        ext2_inode_t inode;
+        ext2_dirent_t ent;
+    };
+
+    /* Check parameters */
+    if (!_ext2_valid(ext2) || !path)
+        ERAISE(-EINVAL);
+
+    if (!(locals = malloc(sizeof(struct locals))))
+        ERAISE(-ENOMEM);
+
+    /* reject all S_IFMT bits except for O_DIRECT */
+    if ((mode & S_IFMT) && !(mode & O_DIRECT))
+        ERAISE(-EINVAL);
+
+    /* Split the path */
+    ECHECK(_split_path(path, locals->dirname, locals->basename));
+
+    /* Read inode for 'dirname' */
+    ECHECK(_path_to_inode(
+        ext2,
+        locals->dirname,
+        FOLLOW,
+        NULL,
+        &dino,
+        NULL,
+        &locals->dinode,
+        locals->suffix,
+        &tfs));
+    if (tfs)
+    {
+        /* append basename and delegate operation to target filesystem */
+        if (myst_strlcat(locals->suffix, "/", PATH_MAX) >= PATH_MAX)
+            ERAISE_QUIET(-ENAMETOOLONG);
+
+        if (myst_strlcat(locals->suffix, locals->basename, PATH_MAX) >=
+            PATH_MAX)
+            ERAISE_QUIET(-ENAMETOOLONG);
+
+        ECHECK((*tfs->fs_mkfifo)(tfs, locals->suffix, mode));
+        goto done;
+    }
+
+    /* Fail if the FIFO already exists */
+    if (_path_to_inode(
+            ext2, path, FOLLOW, NULL, &ino, NULL, &locals->inode, NULL, NULL) ==
+        0)
+        ERAISE(-EEXIST);
+
+    /* create the new FIFO inode */
+    ECHECK(_create_inode(ext2, 0, (S_IFIFO | mode), &locals->inode, &ino));
+
+    /* create new entry for this file in the directory inode */
+    _dirent_init(&locals->ent, ino, EXT2_FT_FIFO, locals->basename);
+
+    /* create new entry for this file in the directory inode */
+    ECHECK(_add_dirent(
+        ext2, dino, &locals->dinode, locals->basename, &locals->ent));
+
+done:
+
+    if (locals)
+        free(locals);
+
+    return ret;
+}
+
 static myst_fs_t _base = {
     {
         .fd_read = (void*)ext2_read,
@@ -5754,6 +5835,7 @@ static myst_fs_t _base = {
     .fs_fdatasync = _ext2_fsync_and_fdatasync,
     .fs_fsync = _ext2_fsync_and_fdatasync,
     .fs_release_tree = _ext2_release_tree,
+    .fs_mkfifo = ext2_mkfifo,
 };
 
 int ext2_create(

@@ -2731,6 +2731,62 @@ done:
     return ret;
 }
 
+static int _fs_mkfifo(myst_fs_t* fs, const char* pathname, mode_t mode)
+{
+    int ret = 0;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+    struct locals
+    {
+        char dirname[PATH_MAX];
+        char basename[PATH_MAX];
+        char suffix[PATH_MAX];
+    };
+    struct locals* locals = NULL;
+    inode_t* parent;
+    myst_fs_t* tfs = NULL;
+
+    if (!_ramfs_valid(ramfs) || !pathname)
+        ERAISE(-EINVAL);
+
+    if (!(locals = malloc(sizeof(struct locals))))
+        ERAISE(-ENOMEM);
+
+    ECHECK(_split_path(pathname, locals->dirname, locals->basename));
+    ECHECK(_path_to_inode(
+        ramfs, locals->dirname, true, NULL, &parent, locals->suffix, &tfs));
+    if (tfs)
+    {
+        /* append basename and delegate operation to target filesystem */
+        if (myst_strlcat(locals->suffix, "/", PATH_MAX) >= PATH_MAX)
+            ERAISE_QUIET(-ENAMETOOLONG);
+
+        if (myst_strlcat(locals->suffix, locals->basename, PATH_MAX) >=
+            PATH_MAX)
+            ERAISE_QUIET(-ENAMETOOLONG);
+
+        ECHECK((*tfs->fs_mkfifo)(tfs, locals->suffix, mode));
+        goto done;
+    }
+
+    /* The parent must be a directory */
+    if (!S_ISDIR(parent->mode))
+        ERAISE(-ENOTDIR);
+
+    /* Check whether the pathname already exists */
+    if (_inode_find_child(parent, locals->basename) != NULL)
+        ERAISE(-EEXIST);
+
+    /* create the FIFO inode */
+    ERAISE(_inode_new(ramfs, parent, locals->basename, (S_IFIFO | mode), NULL));
+
+done:
+
+    if (locals)
+        free(locals);
+
+    return ret;
+}
+
 static int _init_ramfs(
     myst_mount_resolve_callback_t resolve_cb,
     myst_fs_t** fs_out)
@@ -2796,6 +2852,7 @@ static int _init_ramfs(
         .fs_fdatasync = _fs_fsync_and_fdatasync,
         .fs_fsync = _fs_fsync_and_fdatasync,
         .fs_release_tree = _fs_release_tree,
+        .fs_mkfifo = _fs_mkfifo,
     };
     // clang-format on
     inode_t* root_inode = NULL;

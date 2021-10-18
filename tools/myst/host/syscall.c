@@ -1,8 +1,11 @@
 #define _GNU_SOURCE
+#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <myst/assume.h>
 #include <myst/defs.h>
+#include <myst/eraise.h>
+#include <myst/id.h>
 #include <sched.h>
 #include <stdint.h>
 #include <sys/epoll.h>

@@ -182,6 +182,8 @@ struct myst_fs
 
     /* Recursively remove directory tree pointed at by pathname */
     int (*fs_release_tree)(myst_fs_t* fs, const char* pathname);
+
+    int (*fs_mkfifo)(myst_fs_t* fs, const char* pathname, mode_t mode);
 };
 
 int myst_add_fd_link(myst_fs_t* fs, myst_file_t* file, int fd);

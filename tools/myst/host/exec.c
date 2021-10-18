@@ -26,6 +26,7 @@
 #include <myst/fssig.h>
 #include <myst/getopt.h>
 #include <myst/hex.h>
+#include <myst/id.h>
 #include <myst/options.h>
 #include <myst/round.h>
 #include <myst/sha256.h>
@@ -639,4 +640,29 @@ int myst_load_fssig_ocall(const char* path, myst_fssig_t* fssig)
 int myst_mprotect_ocall(void* addr, size_t len, int prot)
 {
     return mprotect(addr, len, prot);
+}
+
+long myst_mkfifo_ocall(
+    const char* pathname,
+    mode_t mode,
+    uid_t host_euid,
+    gid_t host_egid)
+{
+    long ret = 0;
+    myst_resuid_t resuid = MYST_RESUID_INITIALIZER;
+    myst_resgid_t resgid = MYST_RESGID_INITIALIZER;
+
+    if (!pathname)
+        ERAISE(-EINVAL);
+
+    ECHECK(myst_change_identity(host_euid, host_egid, &resuid, &resgid));
+
+    if (mkfifo(pathname, mode) < 0)
+        ERAISE(-errno);
+
+done:
+
+    myst_restore_identity(&resuid, &resgid);
+
+    return ret;
 }

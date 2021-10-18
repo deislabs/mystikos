@@ -446,6 +446,12 @@ enclave
 
         long myst_fcntl_setlkw_ocall(int fd, [in] const struct flock* arg);
 
+        long myst_mkfifo_ocall(
+            [in, string] const char *pathname,
+            mode_t mode,
+            uid_t host_euid,
+            gid_t host_egid);
+
         // ATTN: If debugging support is excluded in certain build mode,
         // consider excluding relevant OCALL proxy code too.
 

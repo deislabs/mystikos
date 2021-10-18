@@ -1236,6 +1236,34 @@ done:
     return ret;
 }
 
+static int _fs_mkfifo(myst_fs_t* fs, const char* pathname, mode_t mode)
+{
+    int ret = 0;
+    hostfs_t* hostfs = (hostfs_t*)fs;
+    long tret;
+    char path[PATH_MAX];
+    uid_t host_uid;
+    gid_t host_gid;
+
+    if (!_hostfs_valid(hostfs) || !pathname)
+        ERAISE(-EINVAL);
+
+    ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
+
+    ECHECK(_get_host_uid_gid(&host_uid, &host_gid));
+
+    long params[6] = {(long)path, (long)mode, (long)host_uid, (long)host_gid};
+    ECHECK((tret = myst_tcall(MYST_TCALL_MKFIFO, params)));
+
+    if (tret != 0)
+        ERAISE(-EINVAL);
+
+    ret = tret;
+
+done:
+    return ret;
+}
+
 int myst_init_hostfs(myst_fs_t** fs_out)
 {
     int ret = 0;
@@ -1299,6 +1327,7 @@ int myst_init_hostfs(myst_fs_t** fs_out)
         .fs_fdatasync = _fs_fdatasync,
         .fs_fsync = _fs_fsync,
         .fs_release_tree = _fs_release_tree,
+        .fs_mkfifo = _fs_mkfifo,
     };
     // clang-format on
 
