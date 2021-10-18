@@ -18,7 +18,7 @@ package_repo:
 
 packages: package_repo
 	$(MAKE) wait_dpkg
-	sudo apt install -y gdb dkms libssl-dev cryptsetup-bin curl libcurl4-openssl-dev clang-10 clang-format-10 pkg-config python-pip
+	sudo apt install -y gdb dkms libssl-dev cryptsetup-bin curl libcurl4-openssl-dev clang-10 clang-format-10 pkg-config python3-pip
 	$(MAKE) wait_dpkg
 	sudo apt install -y libsgx-enclave-common libsgx-quote-ex  libsgx-dcap-ql libsgx-dcap-ql-dev az-dcap-client
 	pip install cmake && sudo ln -f -s $(HOME)/.local/bin/cmake /usr/bin/cmake

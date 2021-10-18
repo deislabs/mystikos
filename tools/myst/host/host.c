@@ -221,7 +221,11 @@ long myst_tcall_add_symbol_file(
 
         /* Create a file containing the data */
         {
-            sprintf(tmp, "%s/%s", tmpdir, "libmystcrt");
+            if (snprintf(tmp, PATH_MAX, "%s/%s", tmpdir, "libmystcrt") >=
+                PATH_MAX)
+            {
+                ERAISE(-ENAMETOOLONG);
+            }
             if ((fd = creat(tmp, 0666)) < 0)
                 goto done;
         }
@@ -233,7 +237,10 @@ long myst_tcall_add_symbol_file(
         char imagename[PATH_MAX];
         myst_split_path(
             enclave_rootfs_path, dirname, PATH_MAX, imagename, PATH_MAX);
-        sprintf(tmp, "%s/%s", tmpdir, imagename);
+        if (snprintf(tmp, PATH_MAX, "%s/%s", tmpdir, imagename) >= PATH_MAX)
+        {
+            ERAISE(-ENAMETOOLONG);
+        }
 
         if ((fd = creat(tmp, 0666)) < 0)
             goto done;
