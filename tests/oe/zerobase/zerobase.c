@@ -11,7 +11,7 @@
 extern const void* __oe_get_enclave_start_address(void);
 extern const void* __oe_get_enclave_base_address(void);
 
-#define ENCLAVE_START_ADDRESS 0x000000800000 /* fixed at 8mb */
+#define ENCLAVE_START_ADDRESS 0x000100000000 /* fixed at 4gb */
 #define ENCLAVE_BASE_ADDRESS 0x0
 
 void test_zerobase(void)
