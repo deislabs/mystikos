@@ -3,9 +3,9 @@ include $(TOP)/defs.mak
 
 APPBUILDER=$(TOP)/scripts/appbuilder
 
-#ifdef STRACE
-#OPTS += --strace
-#endif
+ifdef STRACE
+OPTS += --strace
+endif
 
 build: rootfs
 

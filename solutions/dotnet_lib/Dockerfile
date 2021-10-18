@@ -20,7 +20,8 @@ RUN ./build.sh -subset clr+libs+libs.tests \
     /p:RuntimeOS=linux-musl \
     /p:OutputRid=linux-musl-x64
 
-COPY tests.proj ./src/libraries/tests.proj
+# Run only subset of tests
+# COPY tests.proj ./src/libraries/tests.proj
 
 # Run tests
 # RUN ./build.sh -subset libs.tests -test -testnobuild \

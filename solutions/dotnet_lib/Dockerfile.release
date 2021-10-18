@@ -1,0 +1,17 @@
+FROM mcr.microsoft.com/dotnet-buildtools/prereqs:alpine-3.9-WithNode-0fc54a3-20190918214015 as builder
+ 
+WORKDIR /build
+RUN git clone --depth 1 --single-branch --branch v5.0.10 https://github.com/dotnet/runtime.git
+WORKDIR /build/runtime/
+
+# Build clr+libs+clr.tests in debug
+RUN ./build.sh -subset clr+libs+libs.tests \
+    -c Release -rc Release -lc Release \
+    /p:RuntimeOS=linux-musl \
+    /p:OutputRid=linux-musl-x64
+
+# Run only subset of tests
+# COPY tests.proj ./src/libraries/tests.proj
+
+# Run tests
+# RUN ./build.sh -subset libs.tests -test -testnobuild -c Release -rc Release -lc Release /p:RuntimeOS=linux-musl /p:OutputRid=linux-musl-x64
