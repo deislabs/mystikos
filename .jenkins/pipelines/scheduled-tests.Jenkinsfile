@@ -69,9 +69,9 @@ pipeline {
         }
         stage('Run all tests') {
             steps {
-                sh """
-                   ${JENKINS_SCRIPTS}/global/make-tests.sh
-                   """
+                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                    sh "${JENKINS_SCRIPTS}/global/make-tests.sh"
+                }
             }
         }
         stage('Setup Solutions Access') {
