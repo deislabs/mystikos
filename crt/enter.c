@@ -329,6 +329,8 @@ int myst_retrieve_wanted_secrets()
         }
 
         r = fwrite(release_secret.data, 1, release_secret.length, file);
+        fclose(file);
+        file = NULL;
         if (r != release_secret.length)
         {
             fprintf(
