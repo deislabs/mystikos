@@ -1,3 +1,4 @@
+.NOTPARALLEL:
 .PHONY: tests
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
@@ -212,7 +213,7 @@ one:
 	cp appdir/$(TEST) $(HOSTFS)/$(TEST)
 	cp -r appdir/etc $(HOSTFS)/
 	sudo chown -R 0.0 $(HOSTFS)
-	sudo -E $(FLOCK) $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
+	sudo -E $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
 endif
 
 ##==============================================================================
@@ -228,7 +229,7 @@ one:
 	cp appdir/$(TEST) ramfs.appdir/$(TEST)
 	cp -r appdir/etc  ramfs.appdir/
 	$(MYST) mkcpio ramfs.appdir ramfs
-	sudo -E $(FLOCK) $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
+	sudo -E $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
 endif
 
 ##==============================================================================
