@@ -138,6 +138,7 @@
 /ltp/testcases/kernel/syscalls/madvise/madvise05
 /ltp/testcases/kernel/syscalls/memcmp/memcmp01
 /ltp/testcases/kernel/syscalls/memcpy/memcpy01
+/ltp/testcases/kernel/syscalls/memmap/mem03
 /ltp/testcases/kernel/syscalls/memset/memset01
 /ltp/testcases/kernel/syscalls/mkdir/mkdir05
 /ltp/testcases/kernel/syscalls/mkdirat/mkdirat01
@@ -216,6 +217,7 @@
 /ltp/testcases/kernel/syscalls/rename/rename02
 /ltp/testcases/kernel/syscalls/rename/rename03
 /ltp/testcases/kernel/syscalls/rename/rename04
+/ltp/testcases/kernel/syscalls/rename/rename05
 /ltp/testcases/kernel/syscalls/rename/rename07
 /ltp/testcases/kernel/syscalls/rename/rename13
 /ltp/testcases/kernel/syscalls/rmdir/rmdir01
@@ -227,6 +229,8 @@
 /ltp/testcases/kernel/syscalls/sendfile/sendfile02_64
 /ltp/testcases/kernel/syscalls/sendfile/sendfile06
 /ltp/testcases/kernel/syscalls/sendfile/sendfile06_64
+/ltp/testcases/kernel/syscalls/sendfile/sendfile07
+/ltp/testcases/kernel/syscalls/sendfile/sendfile07_64
 /ltp/testcases/kernel/syscalls/sendfile/sendfile08
 /ltp/testcases/kernel/syscalls/sendfile/sendfile08_64
 /ltp/testcases/kernel/syscalls/sendmmsg/sendmmsg02

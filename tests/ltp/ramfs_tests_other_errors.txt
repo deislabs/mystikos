@@ -42,7 +42,6 @@
 /ltp/testcases/kernel/syscalls/clock_gettime/clock_gettime03
 /ltp/testcases/kernel/syscalls/clock_gettime/clock_gettime04
 /ltp/testcases/kernel/syscalls/clock_nanosleep/clock_nanosleep01
-/ltp/testcases/kernel/syscalls/clock_nanosleep/clock_nanosleep02
 /ltp/testcases/kernel/syscalls/clock_nanosleep/clock_nanosleep03
 /ltp/testcases/kernel/syscalls/clock_settime/clock_settime01
 /ltp/testcases/kernel/syscalls/clock_settime/clock_settime02
@@ -389,7 +388,6 @@
 /ltp/testcases/kernel/syscalls/membarrier/membarrier01
 /ltp/testcases/kernel/syscalls/memfd_create/memfd_create03
 /ltp/testcases/kernel/syscalls/memfd_create/memfd_create04
-/ltp/testcases/kernel/syscalls/memmap/mem03
 /ltp/testcases/kernel/syscalls/migrate_pages/migrate_pages01
 /ltp/testcases/kernel/syscalls/migrate_pages/migrate_pages02
 /ltp/testcases/kernel/syscalls/migrate_pages/migrate_pages03
@@ -513,8 +511,6 @@
 /ltp/testcases/kernel/syscalls/preadv2/preadv203
 /ltp/testcases/kernel/syscalls/preadv2/preadv203_64
 /ltp/testcases/kernel/syscalls/profil/profil01
-/ltp/testcases/kernel/syscalls/pselect/pselect01
-/ltp/testcases/kernel/syscalls/pselect/pselect01_64
 /ltp/testcases/kernel/syscalls/ptrace/make_syscall_list.sh
 /ltp/testcases/kernel/syscalls/ptrace/ptrace03
 /ltp/testcases/kernel/syscalls/ptrace/ptrace04
@@ -549,7 +545,6 @@
 /ltp/testcases/kernel/syscalls/recvmsg/recvmsg01
 /ltp/testcases/kernel/syscalls/recvmsg/recvmsg03
 /ltp/testcases/kernel/syscalls/remap_file_pages/remap_file_pages01
-/ltp/testcases/kernel/syscalls/remap_file_pages/remap_file_pages02
 /ltp/testcases/kernel/syscalls/rename/rename03
 /ltp/testcases/kernel/syscalls/rename/rename04
 /ltp/testcases/kernel/syscalls/rename/rename05
@@ -594,17 +589,11 @@
 /ltp/testcases/kernel/syscalls/sched_setscheduler/sched_setscheduler03
 /ltp/testcases/kernel/syscalls/select/select01
 /ltp/testcases/kernel/syscalls/select/select02
-/ltp/testcases/kernel/syscalls/select/select03
-/ltp/testcases/kernel/syscalls/send/send01
 /ltp/testcases/kernel/syscalls/send/send02
 /ltp/testcases/kernel/syscalls/sendfile/sendfile03
 /ltp/testcases/kernel/syscalls/sendfile/sendfile03_64
 /ltp/testcases/kernel/syscalls/sendfile/sendfile04
 /ltp/testcases/kernel/syscalls/sendfile/sendfile04_64
-/ltp/testcases/kernel/syscalls/sendfile/sendfile05
-/ltp/testcases/kernel/syscalls/sendfile/sendfile05_64
-/ltp/testcases/kernel/syscalls/sendfile/sendfile07
-/ltp/testcases/kernel/syscalls/sendfile/sendfile07_64
 /ltp/testcases/kernel/syscalls/sendfile/sendfile09
 /ltp/testcases/kernel/syscalls/sendfile/sendfile09_64
 /ltp/testcases/kernel/syscalls/sendmmsg/sendmmsg01
@@ -751,6 +740,8 @@
 /ltp/testcases/kernel/syscalls/unlink/unlink05
 /ltp/testcases/kernel/syscalls/unlink/unlink07
 /ltp/testcases/kernel/syscalls/unlink/unlink08
+/ltp/testcases/kernel/syscalls/unshare/unshare01
+/ltp/testcases/kernel/syscalls/unshare/unshare02
 /ltp/testcases/kernel/syscalls/utime/utime04
 /ltp/testcases/kernel/syscalls/utime/utime05
 /ltp/testcases/kernel/syscalls/utime/utime06
