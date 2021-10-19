@@ -2,17 +2,24 @@
     "Debug": 1,
     "ProductID": 1,
     "SecurityVersion": 1,
-    "UserMemSize": "1024m",
+    "UserMemSize": "2g",
     "CurrentWorkingDirectory": "/app",
     "ApplicationPath": "/usr/local/bin/python3",
     "ApplicationParameters": ["/app/service_app.py"],
     "HostEnvironmentVariables": ["CLIENT_ID", "CLIENT_SECRET", "MHSM_AAD_URL", "APP_ID"],
     "Secret": [
         {
-            "ID": "MyCustomKeyGA",
+            "ID": "PytorchModelKey",
             "SrsAddress": "https://cvmmhsm.managedhsm.azure.net",
             "SrsApiVersion": "7.3-preview",
-            "LocalPath": "/mykey",
+            "LocalPath": "/model.key",
+            "ClientLib": "libmhsm_ssr.so"
+        },
+        {
+            "ID": "PytorchDataKey",
+            "SrsAddress": "https://cvmmhsm.managedhsm.azure.net",
+            "SrsApiVersion": "7.3-preview",
+            "LocalPath": "/image.key",
             "ClientLib": "libmhsm_ssr.so"
         }
     ]

@@ -33,6 +33,13 @@ run:
 	@sleep $(QUERY_INTERVAL)
 	./client.sh test_samples/strawberries.jpg
 
+	@sleep $(QUERY_INTERVAL)
+	./client.sh test_samples/dog.jpg.encrypted
+	@sleep $(QUERY_INTERVAL)
+	./client.sh test_samples/automotive.jpg.encrypted
+	@sleep $(QUERY_INTERVAL)
+	./client.sh test_samples/strawberries.jpg.encrypted
+
 	@sleep $(SHUTDOWN_WAIT)
 	@echo "\n------Terminating Pytorch Inference Service------\n"
 	./kill.sh $(PACKAGE) $(APP_PATH)
