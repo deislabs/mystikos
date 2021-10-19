@@ -39,8 +39,12 @@ static int scan_array()
 static pthread_spinlock_t _lock;
 static bool _quit_thread_func;
 
+static _Atomic(bool) _thread_started;
+
 static void* thread_func(void* arg)
 {
+    _thread_started = true;
+
     while (1)
     {
         pthread_spin_lock(&_lock);
@@ -70,6 +74,11 @@ int main(int argc, char* argv[])
     pthread_spin_init(&_lock, PTHREAD_PROCESS_PRIVATE);
 
     ret = pthread_create(&thread, NULL, thread_func, NULL);
+
+    /* wait for _thread_func() to be called */
+    while (!_thread_started)
+        __asm__ __volatile__("pause" : : : "memory");
+
     scan_array();
     assert(read_clock("main's thread time", CLOCK_THREAD_CPUTIME_ID, &ts) == 0);
 
