@@ -10,7 +10,7 @@ endif
 build: rootfs
 
 appdir:
-	$(APPBUILDER) Dockerfile
+	$(APPBUILDER) Dockerfile.release
 
 rootfs: appdir
 	$(MYST) mkext2 appdir rootfs

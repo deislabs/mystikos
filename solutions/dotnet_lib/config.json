@@ -7,5 +7,6 @@
     "ApplicationPath": "/bin/bash",
     "ApplicationParameters": ["/build/runtime/build.sh", "-subset", "libs.tests", "-test",  "-testnobuild",
         "/p:RuntimeOS=linux-musl", "/p:OutputRid=linux-musl-x64"],
-    "ForkMode": "pseudo"
+    "ForkMode": "pseudo",
+    "NoBrk": 1
 }
