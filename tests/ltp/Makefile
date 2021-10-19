@@ -147,7 +147,7 @@ del_host_users_and_groups:
 	sudo groupdel grp705 || true
 	sudo groupdel grp1000 || true
 
-tests: tests_hostfs tests_ext2fs tests_ramfs test_serialize
+tests: tests_hostfs tests_ext2fs tests_ramfs tests_serialize
 
 tests_hostfs:
 ifdef MYST_ENABLE_HOSTFS
@@ -263,7 +263,7 @@ t:
 
 TEST_ACCEPT4_01=/ltp/testcases/kernel/syscalls/accept4/accept4_01
 
-test_serialize:
+tests_serialize:
 	$(MAKE) one FS=ramfs TEST=$(TEST_ACCEPT4_01)
 	$(MAKE) one FS=ext2fs TEST=$(TEST_ACCEPT4_01)
 	$(MAKE) one FS=hostfs TEST=$(TEST_ACCEPT4_01)
