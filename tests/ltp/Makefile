@@ -148,7 +148,7 @@ del_host_users_and_groups:
 	sudo groupdel grp705 || true
 	sudo groupdel grp1000 || true
 
-tests: tests_hostfs tests_ext2fs tests_ramfs tests_serialize
+tests: tests_hostfs tests_ext2fs tests_ramfs
 
 tests_hostfs:
 ifdef MYST_ENABLE_HOSTFS
@@ -189,6 +189,10 @@ sort:
 	cp .tests tests
 	rm -f .tests
 
+# prevent tests with the same name exactly from running in parallel
+FLOCK_TIMEOUT = 60
+FLOCK = flock -w $(FLOCK_TIMEOUT) ./appdir/$(TEST)
+
 ##==============================================================================
 ##
 ## one rule for ext2fs
@@ -197,7 +201,7 @@ sort:
 
 ifeq ($(FS),ext2fs)
 one:
-	sudo -E $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
+	sudo -E $(FLOCK) $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
 endif
 
 ##==============================================================================
@@ -213,7 +217,7 @@ one:
 	cp appdir/$(TEST) $(HOSTFS)/$(TEST)
 	cp -r appdir/etc $(HOSTFS)/
 	sudo chown -R 0.0 $(HOSTFS)
-	sudo -E $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
+	sudo -E $(FLOCK) $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
 endif
 
 ##==============================================================================
@@ -229,7 +233,7 @@ one:
 	cp appdir/$(TEST) ramfs.appdir/$(TEST)
 	cp -r appdir/etc  ramfs.appdir/
 	$(MYST) mkcpio ramfs.appdir ramfs
-	sudo -E $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
+	sudo -E $(FLOCK) $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
 endif
 
 ##==============================================================================
@@ -254,17 +258,3 @@ pipe-tests:
 
 t:
 	$(MAKE) FS=ext2fs one TEST=/ltp/testcases/kernel/syscalls/accept4/accept4_01
-
-##==============================================================================
-##
-## This test cannot be run in parallel since it attempts to listen on port
-## 33333 and gets an "address in use" error.
-##
-##==============================================================================
-
-TEST_ACCEPT4_01=/ltp/testcases/kernel/syscalls/accept4/accept4_01
-
-tests_serialize:
-	$(MAKE) one FS=ramfs TEST=$(TEST_ACCEPT4_01)
-	$(MAKE) one FS=ext2fs TEST=$(TEST_ACCEPT4_01)
-	$(MAKE) one FS=hostfs TEST=$(TEST_ACCEPT4_01)
