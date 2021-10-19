@@ -1570,7 +1570,7 @@ size_t myst_kill_thread_group()
         if (t == NULL)
             break;
 
-        myst_sleep_msec(10, false);
+        myst_sleep_msec(10, true);
     }
 
     return count;
