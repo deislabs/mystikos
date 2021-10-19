@@ -1,5 +1,4 @@
 /ltp/testcases/kernel/syscalls/accept/accept02
-/ltp/testcases/kernel/syscalls/accept4/accept4_01
 /ltp/testcases/kernel/syscalls/bind/bind01
 /ltp/testcases/kernel/syscalls/chdir/chdir04
 /ltp/testcases/kernel/syscalls/chmod/chmod01
