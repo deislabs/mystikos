@@ -189,9 +189,6 @@ sort:
 	cp .tests tests
 	rm -f .tests
 
-FLOCK_TIMEOUT = 60
-FLOCK = $(CURDIR)/flock.sh -w $(FLOCK_TIMEOUT) ./appdir/$(TEST)
-
 ##==============================================================================
 ##
 ## one rule for ext2fs
@@ -200,7 +197,7 @@ FLOCK = $(CURDIR)/flock.sh -w $(FLOCK_TIMEOUT) ./appdir/$(TEST)
 
 ifeq ($(FS),ext2fs)
 one:
-	sudo -E $(FLOCK) $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
+	sudo -E $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
 endif
 
 ##==============================================================================
@@ -216,7 +213,7 @@ one:
 	cp appdir/$(TEST) $(HOSTFS)/$(TEST)
 	cp -r appdir/etc $(HOSTFS)/
 	sudo chown -R 0.0 $(HOSTFS)
-	sudo -E $(FLOCK) $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
+	sudo -E $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
 endif
 
 ##==============================================================================
@@ -232,7 +229,7 @@ one:
 	cp appdir/$(TEST) ramfs.appdir/$(TEST)
 	cp -r appdir/etc  ramfs.appdir/
 	$(MYST) mkcpio ramfs.appdir ramfs
-	sudo -E $(FLOCK) $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
+	sudo -E $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
 endif
 
 ##==============================================================================
