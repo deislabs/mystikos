@@ -6189,34 +6189,8 @@ static long _syscall(void* args_)
                     addrlen);
             }
 
-#ifdef MYST_NO_RECVMSG_MITIGATION
             ret = myst_syscall_recvfrom(
                 sockfd, buf, len, flags, src_addr, addrlen);
-#else  /* MYST_NO_RECVMSG_WORKAROUND */
-            /* ATTN: this mitigation introduces a severe performance penalty */
-            // This mitigation works around a problem with a certain
-            // application that fails handle EGAIN. This should be removed
-            // when possible.
-            for (size_t i = 0; i < 10; i++)
-            {
-                ret = myst_syscall_recvfrom(
-                    sockfd, buf, len, flags, src_addr, addrlen);
-
-                if (ret != -EAGAIN)
-                    break;
-
-                {
-                    struct timespec req;
-                    req.tv_sec = 0;
-                    req.tv_nsec = 1000000000 / 10;
-                    long args[6];
-                    args[0] = (long)&req;
-                    args[1] = (long)NULL;
-                    _forward_syscall(SYS_nanosleep, args);
-                    continue;
-                }
-            }
-#endif /* MYST_NO_RECVMSG_WORKAROUND */
             BREAK(_return(n, ret));
         }
         case SYS_sendto:
