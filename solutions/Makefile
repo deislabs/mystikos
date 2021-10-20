@@ -17,7 +17,7 @@ endif
 # as it depends on secrets only availale on that pipeline.
 ifdef MYST_NIGHTLY_TEST
 DIRS += mhsm_ssr
-DIRS += pytorch_inference
+DIRS += confidential_ml
 endif
 
 DIRS += msgpack_c
