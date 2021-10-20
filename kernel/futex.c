@@ -373,7 +373,7 @@ long myst_syscall_futex(
 {
     long ret = 0;
 
-    if ((op & (FUTEX_CLOCK_REALTIME | FUTEX_WAIT_BITSET) | FUTEX_WAKE_BITSET))
+    if ((op & (FUTEX_CLOCK_REALTIME | FUTEX_WAIT_BITSET | FUTEX_WAKE_BITSET)))
     {
         return _syscall_futex_bitset_or_clock_realtime(
             uaddr, op, val, arg, uaddr2, val3);
