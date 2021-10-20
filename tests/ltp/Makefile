@@ -1,4 +1,4 @@
-.NOTPARALLEL:
+#.NOTPARALLEL:
 .PHONY: tests
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
@@ -189,6 +189,9 @@ sort:
 	cp .tests tests
 	rm -f .tests
 
+FLOCK_TIMEOUT = 60
+FLOCK = flock -w $(FLOCK_TIMEOUT) ./appdir/$(TEST)
+
 ##==============================================================================
 ##
 ## one rule for ext2fs
@@ -197,7 +200,8 @@ sort:
 
 ifeq ($(FS),ext2fs)
 one:
-	sudo -E $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
+	ulimit -Sn unlimited && ulimit -Sl unlimited
+	sudo -E $(FLOCK) $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
 endif
 
 ##==============================================================================
@@ -208,12 +212,13 @@ endif
 
 ifeq ($(FS),hostfs)
 one:
+	ulimit -Sn unlimited && ulimit -Sl unlimited
 	@ sudo rm -rf $(HOSTFS)
 	@ mkdir -p $(shell dirname $(HOSTFS)/$(TEST))
 	cp appdir/$(TEST) $(HOSTFS)/$(TEST)
 	cp -r appdir/etc $(HOSTFS)/
 	sudo chown -R 0.0 $(HOSTFS)
-	sudo -E $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
+	sudo -E $(FLOCK) $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
 endif
 
 ##==============================================================================
@@ -224,12 +229,13 @@ endif
 
 ifeq ($(FS),ramfs)
 one:
+	ulimit -Sn unlimited && ulimit -Sl unlimited
 	sudo rm -rf ramfs.appdir
 	mkdir -p $(shell dirname ramfs.appdir/$(TEST))
 	cp appdir/$(TEST) ramfs.appdir/$(TEST)
 	cp -r appdir/etc  ramfs.appdir/
 	$(MYST) mkcpio ramfs.appdir ramfs
-	sudo -E $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
+	sudo -E $(FLOCK) $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
 endif
 
 ##==============================================================================
