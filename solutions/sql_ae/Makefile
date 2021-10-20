@@ -8,6 +8,10 @@ APPDIR = appdir
 CFLAGS = -fPIC
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 
+ifdef STRACE
+OPTS = --strace
+endif
+
 all: myst app
 	$(MYST) mkcpio $(APPDIR) rootfs
 
