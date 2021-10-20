@@ -1015,9 +1015,6 @@ static long _run_thread(void* arg_)
 
             procfs_pid_cleanup(process->pid);
 
-            /* Send a SIGCHLD to the parent process */
-            myst_syscall_kill(process->ppid, SIGCHLD);
-
             /* Wait for any children to go away before proceeding */
             myst_wait_on_child_processes(process);
 
@@ -1031,6 +1028,9 @@ static long _run_thread(void* arg_)
                 myst_fdtable_free(process->fdtable);
                 process->fdtable = NULL;
             }
+
+            /* Send a SIGCHLD to the parent process */
+            myst_syscall_kill(process->ppid, SIGCHLD);
 
             /* Only need to zombify the process thread.
             ATTN: referencing "process" after zombification is not safe,
