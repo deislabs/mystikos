@@ -272,40 +272,69 @@ static void _free_zombies(void* arg)
     _zombies_head = NULL;
 }
 
+void send_sigchld_to_parent(myst_process_t* process)
+{
+    // Find process thread from pid
+    myst_process_t* parent = myst_find_process_from_pid(process->ppid, false);
+
+    if (parent == NULL) // should not happen
+        return;
+
+    siginfo_t* siginfo;
+
+    if (!(siginfo = calloc(1, sizeof(siginfo_t))))
+        return;
+
+    siginfo->si_code = SI_USER;
+    siginfo->si_signo = SIGCHLD;
+    siginfo->si_pid = process->pid;
+    siginfo->si_uid = process->main_process_thread->euid;
+
+    myst_signal_deliver(parent->main_process_thread, SIGCHLD, siginfo);
+}
+
 void myst_zombify_process(myst_process_t* process)
+{
+    static bool _initialized;
+
+    if (!_initialized)
+    {
+        myst_atexit(_free_zombies, NULL);
+        _initialized = true;
+    }
+
+    process->zombie_next = _zombies_head;
+    process->zombie_prev = NULL;
+
+    if (_zombies_head)
+    {
+        _zombies_head->zombie_prev = process;
+        _zombies_head = process;
+    }
+    else
+    {
+        _zombies_head = process;
+    }
+
+    process->main_process_thread = NULL;
+
+    // remove from process list
+    if (process->prev_process)
+        process->prev_process->next_process = process->next_process;
+    if (process->next_process)
+        process->next_process->prev_process = process->prev_process;
+    process->prev_process = NULL;
+    process->next_process = NULL;
+}
+
+/* Send SIGCHLD to parent and zombify process atomically. This way wait() calls
+ * from parent are ensured to be serialized. */
+void myst_send_sigchld_and_zombify_process(myst_process_t* process)
 {
     myst_spin_lock(&myst_process_list_lock);
     {
-        static bool _initialized;
-
-        if (!_initialized)
-        {
-            myst_atexit(_free_zombies, NULL);
-            _initialized = true;
-        }
-
-        process->zombie_next = _zombies_head;
-        process->zombie_prev = NULL;
-
-        if (_zombies_head)
-        {
-            _zombies_head->zombie_prev = process;
-            _zombies_head = process;
-        }
-        else
-        {
-            _zombies_head = process;
-        }
-
-        process->main_process_thread = NULL;
-
-        // remove from process list
-        if (process->prev_process)
-            process->prev_process->next_process = process->next_process;
-        if (process->next_process)
-            process->next_process->prev_process = process->prev_process;
-        process->prev_process = NULL;
-        process->next_process = NULL;
+        send_sigchld_to_parent(process);
+        myst_zombify_process(process);
     }
     myst_spin_unlock(&myst_process_list_lock);
 }
@@ -1035,7 +1064,7 @@ static long _run_thread(void* arg_)
             /* Only need to zombify the process thread.
             ATTN: referencing "process" after zombification is not safe,
             parent might have cleaned it up */
-            myst_zombify_process(process);
+            myst_send_sigchld_and_zombify_process(process);
         }
 
         {
