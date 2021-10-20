@@ -190,11 +190,7 @@ sort:
 	rm -f .tests
 
 FLOCK_TIMEOUT = 60
-FLOCK = flock -w $(FLOCK_TIMEOUT) ./appdir/$(TEST)
-
-# Extend ulimits to avoid flock "Resource temporarily unavailable"
-extend_ulimits:
-	sudo ulimit -Sn unlimited && ulimit -Sl unlimited
+FLOCK = $(CURDIR)/flock.sh -w $(FLOCK_TIMEOUT) ./appdir/$(TEST)
 
 ##==============================================================================
 ##
@@ -204,7 +200,6 @@ extend_ulimits:
 
 ifeq ($(FS),ext2fs)
 one:
-	$(MAKE) extend_ulimits
 	sudo -E $(FLOCK) $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
 endif
 
@@ -216,7 +211,6 @@ endif
 
 ifeq ($(FS),hostfs)
 one:
-	$(MAKE) extend_ulimits
 	@ sudo rm -rf $(HOSTFS)
 	@ mkdir -p $(shell dirname $(HOSTFS)/$(TEST))
 	cp appdir/$(TEST) $(HOSTFS)/$(TEST)
@@ -233,7 +227,6 @@ endif
 
 ifeq ($(FS),ramfs)
 one:
-	$(MAKE) extend_ulimits
 	sudo rm -rf ramfs.appdir
 	mkdir -p $(shell dirname ramfs.appdir/$(TEST))
 	cp appdir/$(TEST) ramfs.appdir/$(TEST)
