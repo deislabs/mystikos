@@ -1,4 +1,4 @@
-#.NOTPARALLEL:
+.NOTPARALLEL:
 .PHONY: tests
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
