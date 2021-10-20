@@ -1070,6 +1070,8 @@
 /app/llvm-project/libcxx/test/std/diagnostics/syserr/syserr.errcat/syserr.errcat.nonvirtuals/eq.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/diagnostics/syserr/syserr.errcat/syserr.errcat.nonvirtuals/lt.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/diagnostics/syserr/syserr.errcat/syserr.errcat.nonvirtuals/neq.pass.cpp.exe
+/app/llvm-project/libcxx/test/std/diagnostics/syserr/syserr.errcat/syserr.errcat.objects/generic_category.pass.cpp.exe
+/app/llvm-project/libcxx/test/std/diagnostics/syserr/syserr.errcat/syserr.errcat.objects/system_category.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/diagnostics/syserr/syserr.errcat/syserr.errcat.overview/error_category.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/diagnostics/syserr/syserr.errcat/syserr.errcat.virtuals/default_error_condition.pass.cpp.exe
 /app/llvm-project/libcxx/test/std/diagnostics/syserr/syserr.errcat/syserr.errcat.virtuals/equivalent_error_code_int.pass.cpp.exe
