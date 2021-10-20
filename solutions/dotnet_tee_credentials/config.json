@@ -19,5 +19,5 @@
     // The environment variables accessible inside the enclave.
     "EnvironmentVariables": ["COMPlus_EnableDiagnostics=0", "MYST_WANT_TEE_CREDENTIALS=CERT_PEMKEY_REPORT"],
     // The environment variables we get from the host
-    "HostEnvironmentVariables": ["MAA_ENDPOINT"]
+    "HostEnvironmentVariables": ["MAA_SHARED_URL"]
 }

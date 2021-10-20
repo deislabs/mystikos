@@ -113,6 +113,7 @@ pipeline {
                     withCredentials([string(credentialsId: 'mystikos-sql-db-name-useast', variable: 'DB_NAME'),
                                         string(credentialsId: 'mystikos-sql-db-server-name-useast', variable: 'DB_SERVER_NAME'),
                                         string(credentialsId: 'mystikos-maa-url-useast', variable: 'MAA_URL'),
+                                        string(credentialsId: 'mystikos-maa-url-uscentral', variable: 'MAA_SHARED_URL'),
                                         string(credentialsId: 'mystikos-managed-identity-objectid', variable: 'DB_USERID')]) {
                         sh """
                             export PATH="\${PATH}:\$(pwd)/mystikos/bin"

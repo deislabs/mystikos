@@ -23,7 +23,7 @@ endif
 DIRS += msgpack_c
 
 ifndef MYST_ENABLE_GCOV
-DIRS += dotnet
+DIRS += dotnet_tee_credentials
 endif
 
 DIRS += aspnet

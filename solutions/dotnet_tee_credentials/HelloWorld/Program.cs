@@ -138,7 +138,7 @@ namespace dotnet
                 Console.WriteLine("Verified private key and public key match. Key size: {0}", publicParams.Modulus.Length*8);
             }
 
-            var maa_endpoint = Environment.GetEnvironmentVariable("MAA_ENDPOINT");
+            var maa_endpoint = Environment.GetEnvironmentVariable("MAA_SHARED_URL");
             if (maa_endpoint != null)
             {
                 // Build request and test with MAA
