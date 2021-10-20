@@ -132,8 +132,6 @@ endif
 
 DIRS += sendfile
 
-DIRS = ltp
-
 .PHONY: $(DIRS)
 
 dirs: $(DIRS)
