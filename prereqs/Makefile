@@ -1,6 +1,7 @@
 DRIVER=sgx_linux_x64_driver_1.35.bin
 
 DRIVER_URL=https://download.01.org/intel-sgx/sgx-dcap/1.7/linux/distro/ubuntu18.04-server
+UBUNTU_RELEASE=$(shell lsb_release -c | awk '{print $$2}')
 
 all:
 	test -e package-installed || $(MAKE) packages
@@ -18,7 +19,13 @@ package_repo:
 
 packages: package_repo
 	$(MAKE) wait_dpkg
-	sudo apt install -y gdb dkms libssl-dev cryptsetup-bin curl libcurl4-openssl-dev clang-10 clang-format-10 pkg-config python3-pip python-pip
+	sudo apt install -y gdb dkms libssl-dev cryptsetup-bin curl libcurl4-openssl-dev clang-10 clang-format-10 pkg-config
+ifeq ("$(UBUNTU_RELEASE)", "focal")
+	sudo apt install -y python3-pip
+	if [ ! -f /usr/bin/pip ]; then sudo ln -s /usr/bin/pip3 /usr/bin/pip; fi
+else
+	sudo apt install -y python-pip
+endif
 	$(MAKE) wait_dpkg
 	sudo apt install -y libsgx-enclave-common libsgx-quote-ex  libsgx-dcap-ql libsgx-dcap-ql-dev az-dcap-client
 	pip install cmake && sudo ln -f -s $(HOME)/.local/bin/cmake /usr/bin/cmake
