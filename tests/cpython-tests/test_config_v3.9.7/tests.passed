@@ -15,6 +15,7 @@ test_atexit
 test_audioop
 test_audit
 test_augassign
+test_base64
 test_baseexception
 test_bdb
 test_bigaddrspace
@@ -39,6 +40,7 @@ test_class
 test_clinic
 test_cmath
 test_cmd
+test_cmd_line_script
 test_code
 test_code_module
 test_codeccallbacks
@@ -130,6 +132,8 @@ test_future
 test_future3
 test_future4
 test_future5
+test_gzip
+test_gc
 test_generator_stop
 test_generators
 test_genericalias
@@ -212,6 +216,7 @@ test_ordered_dict
 test_ossaudiodev
 test_osx_env
 test_parser
+test_pdb
 test_peepholer
 test_peg_parser
 test_pickle
@@ -235,11 +240,13 @@ test_pstats
 test_pulldom
 test_pwd
 test_pyclbr
+test_py_compile
 test_pyexpat
 test_queue
 test_quopri
 test_raise
 test_range
+test_repl
 test_reprlib
 test_richcmp
 test_rlcompleter

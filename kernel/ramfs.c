@@ -2228,6 +2228,7 @@ static int _fs_fcntl(myst_fs_t* fs, myst_file_t* file, int cmd, long arg)
                 file->operating |= O_NOATIME;
             goto done;
         }
+        case F_SETLK:
         case F_SETLKW:
         {
             /* ATTN: silently ignoring locking for now */
