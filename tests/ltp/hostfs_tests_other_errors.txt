@@ -472,6 +472,7 @@
 /ltp/testcases/kernel/syscalls/pipe/pipe13
 /ltp/testcases/kernel/syscalls/pipe2/pipe2_02
 /ltp/testcases/kernel/syscalls/pipe2/pipe2_02_child
+/ltp/testcases/kernel/syscalls/poll/poll02
 /ltp/testcases/kernel/syscalls/prctl/prctl01
 /ltp/testcases/kernel/syscalls/prctl/prctl03
 /ltp/testcases/kernel/syscalls/prctl/prctl04
@@ -564,6 +565,8 @@
 /ltp/testcases/kernel/syscalls/sendfile/sendfile03_64
 /ltp/testcases/kernel/syscalls/sendfile/sendfile04
 /ltp/testcases/kernel/syscalls/sendfile/sendfile04_64
+/ltp/testcases/kernel/syscalls/sendfile/sendfile05
+/ltp/testcases/kernel/syscalls/sendfile/sendfile05_64
 /ltp/testcases/kernel/syscalls/sendmmsg/sendmmsg01
 /ltp/testcases/kernel/syscalls/sendmsg/sendmsg01
 /ltp/testcases/kernel/syscalls/sendmsg/sendmsg03
