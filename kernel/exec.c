@@ -654,7 +654,11 @@ void* elf_make_stack(
     /* Assume that the stack is aligned on a page boundary */
     myst_assume((stack_size % PAGE_SIZE) == 0);
 
-    if (!(stack = memalign(PAGE_SIZE, stack_size)))
+    const int prot = PROT_READ | PROT_WRITE;
+    const int flags = MAP_ANONYMOUS | MAP_PRIVATE;
+
+    stack = (void*)myst_mmap(NULL, stack_size, prot, flags, -1, 0);
+    if ((long)stack < 0)
         goto done;
 
     memset(stack, 0, stack_size);
@@ -724,7 +728,7 @@ void* elf_make_stack(
 done:
 
     if (stack)
-        free(stack);
+        myst_munmap(stack, stack_size);
 
     return ret;
 }
@@ -957,7 +961,7 @@ int myst_exec(
     /* if this is a nested exec, then release previous exec's stack */
     if (process->exec_stack)
     {
-        free(process->exec_stack);
+        myst_munmap(process->exec_stack, process->exec_stack_size);
         process->exec_stack = NULL;
         process->exec_stack_size = 0;
     }

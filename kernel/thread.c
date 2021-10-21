@@ -1020,7 +1020,7 @@ static long _run_thread(void* arg_)
 
             if (process->exec_stack)
             {
-                free(process->exec_stack);
+                myst_munmap(process->exec_stack, process->exec_stack_size);
                 process->exec_stack = NULL;
                 process->exec_stack_size = 0;
             }
