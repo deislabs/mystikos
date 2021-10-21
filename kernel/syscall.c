@@ -2645,6 +2645,32 @@ done:
     return ret;
 }
 
+long myst_syscall_setsid()
+{
+    long ret = -EPERM;
+    myst_process_t* self = myst_process_self();
+
+    /*
+     * If the caller is already a group leader or part of a process group
+     * whose leader is the caller's parent process,
+     * a new session cannot be created.
+     */
+    if (self->pid == self->pgid || self->pgid == self->ppid)
+        goto done;
+
+    /*
+     * The calling process is the leader of the new session and
+     * the process group leader of the new process group. It
+     * has no controlling terminal.
+     */
+    self->sid = self->pid;
+    self->pgid = self->pid;
+    ret = self->sid;
+
+done:
+    return ret;
+}
+
 long myst_syscall_socket(int domain, int type, int protocol)
 {
     long ret = 0;
@@ -4678,7 +4704,10 @@ static long _syscall(void* args_)
             BREAK(_return(n, myst_getsid()));
         }
         case SYS_setsid:
-            break;
+        {
+            _strace(n, NULL);
+            BREAK(_return(n, myst_syscall_setsid()));
+        }
         case SYS_getgroups:
         {
             size_t size = (size_t)x1;

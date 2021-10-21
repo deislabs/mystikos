@@ -32,7 +32,6 @@ test_pydoc
 test_random
 test_re
 test_readline
-test_regrtest
 test_resource
 test_runpy
 test_selectors
