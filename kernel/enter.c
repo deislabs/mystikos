@@ -916,7 +916,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         /* release the exec stack */
         if (process->exec_stack)
         {
-            free(process->exec_stack);
+            myst_munmap(process->exec_stack, process->exec_stack_size);
             process->exec_stack = NULL;
             process->exec_stack_size = 0;
         }
