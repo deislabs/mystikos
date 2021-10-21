@@ -115,7 +115,7 @@ index 0000000..b4b91d1
 +    return 0;
 +}
 diff --git a/libgcompat/locale.c b/libgcompat/locale.c
-index a7ac2c0..6d45ba4 100644
+index a7ac2c0..ec1c831 100644
 --- a/libgcompat/locale.c
 +++ b/libgcompat/locale.c
 @@ -4,7 +4,6 @@
@@ -126,7 +126,19 @@ index a7ac2c0..6d45ba4 100644
  void __freelocale(void *);
  
  struct glibc_locale {
-@@ -31,13 +30,15 @@ bool _is_valid_locale(const char *candidate) {
+@@ -22,22 +21,25 @@ const unsigned short **__ctype_b_loc(void);
+ const int32_t **__ctype_tolower_loc(void);
+ const int32_t **__ctype_toupper_loc(void);
+ 
+-const char *__gcompat_valid_locales[] = {"C", "POSIX"};
++const char *__gcompat_valid_locales[] = {"C", "POSIX", "C.UTF-8"};
+ 
+ bool _is_valid_locale(const char *candidate) {
+-	for(int i = 0; i < sizeof __gcompat_valid_locales; i++) {
++	size_t len = sizeof(__gcompat_valid_locales) / sizeof(char*);
++	for(int i = 0; i < len; i++) {
+ 		if(strcmp(candidate, __gcompat_valid_locales[i]) == 0) return true;
+ 	}
  	return false;
  }
  
@@ -144,7 +156,7 @@ index a7ac2c0..6d45ba4 100644
  	for(int l = 1; l < 13; l++) ret->__locales[l] = ret->__locales[0];
  	ret->__ctype_b = *__ctype_b_loc();
  	ret->__ctype_tolower = *__ctype_tolower_loc();
-@@ -46,11 +47,10 @@ struct glibc_locale *newlocale(int mask, const char *name, locale_t base) {
+@@ -46,11 +48,10 @@ struct glibc_locale *newlocale(int mask, const char *name, locale_t base) {
  	ret->__names[0] = strdup("C");
  	for(int i = 1; i < 13; i++) ret->__names[i] = ret->__names[0];
  
