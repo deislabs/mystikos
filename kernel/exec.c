@@ -10,6 +10,7 @@
 #include <string.h>
 #include <sys/mman.h>
 
+#include <myst/args.h>
 #include <myst/atexit.h>
 #include <myst/cpio.h>
 #include <myst/eraise.h>
@@ -823,6 +824,13 @@ int myst_exec(
     enter_t enter;
     char* envp_buf[] = {NULL};
     myst_process_t* process = NULL;
+    char* hashbang_buff = NULL;
+    size_t hashbang_buff_length = 0;
+    long hashbang_file = -1;
+    myst_args_t new_argv;
+
+    if (myst_args_init(&new_argv) != 0)
+        ERAISE(ENOMEM);
 
     if (!envp)
         envp = (const char**)envp_buf;
@@ -936,9 +944,104 @@ int myst_exec(
     if (!dynv)
         ERAISE(-EINVAL);
 
+    /* Now we need to determine if this has a #! at the start of the file.
+     * Lets start with allocating a buffer that is big enough for a file path,
+     * plus hashbang and null terminator. We may need to reallocate if it is not
+     * long enough.
+     */
+    hashbang_buff_length = PATH_MAX + 3 + 1;
+    hashbang_buff = malloc(hashbang_buff_length);
+    if (hashbang_buff == NULL)
+        ERAISE(-ENOMEM);
+
+    hashbang_file = myst_syscall_open(argv[0], O_RDONLY, 0);
+    ECHECK(hashbang_file);
+
+    ret = myst_syscall_read(hashbang_file, hashbang_buff, hashbang_buff_length);
+    ECHECK(ret);
+
+    if ((ret >= 2) && (strncmp(hashbang_buff, "#!", 2) == 0))
+    {
+        char* start_string = NULL;
+        char* cursor = hashbang_buff + 2; // starts after hashbang
+
+        do
+        {
+            if (cursor == (hashbang_buff + hashbang_buff_length - 1))
+            {
+                /* We have reached the end of the buffer (with space for a null
+                 * terminator) */
+                /* ATTN: support longer hashbang string */
+                myst_panic("script hashbang path is too long");
+                ERAISE(-ENAMETOOLONG);
+            }
+            else if (cursor - hashbang_buff >= ret)
+            {
+                /* got to end of read buffer */
+                if (start_string)
+                {
+                    cursor[0] = '\0';
+                    if (myst_args_append1(&new_argv, start_string) != 0)
+                        ERAISE(-ENOMEM);
+                }
+                break;
+            }
+            else if (start_string != NULL && cursor[0] == '\n')
+            {
+                /* end of line with a pointer to string. Add string to args and
+                 * break out */
+                cursor[0] = '\0';
+                if (myst_args_append1(&new_argv, start_string) != 0)
+                    ERAISE(-ENOMEM);
+                break;
+            }
+            else if (start_string == NULL && cursor[0] == '\n')
+            {
+                /* We are parsing white space and hit end of line. Nothing to do
+                 * but exit */
+                break;
+            }
+            else if (
+                start_string != NULL && (cursor[0] == ' ' || cursor[0] == '\t'))
+            {
+                /* have the start of a string and hit end of string. Add it and
+                 * continue  */
+                cursor[0] = '\0';
+                if (myst_args_append1(&new_argv, start_string) != 0)
+                    ERAISE(-ENOMEM);
+                start_string = NULL;
+            }
+            else if (
+                start_string == NULL && cursor[0] != ' ' && cursor[0] != '\t')
+            {
+                /* Start of string so remember so we can add it later */
+                start_string = cursor;
+            }
+            cursor++;
+
+        } while (1);
+
+        if (new_argv.size == 0)
+            /* We dont have even one string after the hashbang */
+            ERAISE(-EINVAL);
+
+        /* Now we need to add the argv list that was passed in to the end of the
+         * args */
+        if (myst_args_append(&new_argv, argv, argc) != 0)
+            ERAISE(-ENOMEM);
+    }
+    else
+    {
+        if (myst_args_append(&new_argv, argv, argc) != 0)
+            ERAISE(-ENOMEM);
+    }
+
+    myst_syscall_close(hashbang_file);
+    hashbang_file = -1;
+
     if (!(stack = elf_make_stack(
-              argc,
-              argv,
+              new_argv.size,
+              new_argv.data,
               envc,
               envp,
               __myst_kernel_args.main_stack_size,
@@ -955,8 +1058,12 @@ int myst_exec(
     assert(elf_check_stack(stack, __myst_kernel_args.main_stack_size) == 0);
 
     /* create "/proc/<pid>/exe" which is a link to the program executable */
-    if (_setup_exe_link(argv[0]) != 0)
+    if (_setup_exe_link(new_argv.data[0]) != 0)
         ERAISE(-EIO);
+
+    myst_args_release(&new_argv);
+    free(hashbang_buff);
+    hashbang_buff = NULL;
 
     /* if this is a nested exec, then release previous exec's stack */
     if (process->exec_stack)
@@ -1026,6 +1133,13 @@ done:
 
     if (crt_data)
         myst_munmap(crt_data, crt_size);
+    if (hashbang_buff)
+        free(hashbang_buff);
+
+    if (hashbang_file != -1)
+        myst_syscall_close(hashbang_file);
+
+    myst_args_release(&new_argv);
 
     return ret;
 }
