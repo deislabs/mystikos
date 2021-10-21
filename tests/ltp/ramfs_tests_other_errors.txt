@@ -594,6 +594,8 @@
 /ltp/testcases/kernel/syscalls/sendfile/sendfile03_64
 /ltp/testcases/kernel/syscalls/sendfile/sendfile04
 /ltp/testcases/kernel/syscalls/sendfile/sendfile04_64
+/ltp/testcases/kernel/syscalls/sendfile/sendfile05
+/ltp/testcases/kernel/syscalls/sendfile/sendfile05_64
 /ltp/testcases/kernel/syscalls/sendfile/sendfile09
 /ltp/testcases/kernel/syscalls/sendfile/sendfile09_64
 /ltp/testcases/kernel/syscalls/sendmmsg/sendmmsg01

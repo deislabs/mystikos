@@ -862,7 +862,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/pivot_root/pivot_root01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/pkeys/pkey01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/poll/poll01 | 1 | 1 | 1 |
-| /ltp/testcases/kernel/syscalls/poll/poll02 | 0 | 1 | 0 |
+| /ltp/testcases/kernel/syscalls/poll/poll02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/ppoll/ppoll01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/prctl/prctl01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/prctl/prctl02 | 0 | 0 | 0 |
@@ -1036,8 +1036,8 @@ FAILING
 | /ltp/testcases/kernel/syscalls/sendfile/sendfile03_64 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/sendfile/sendfile04 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/sendfile/sendfile04_64 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/sendfile/sendfile05 | 0 | 1 | 1 |
-| /ltp/testcases/kernel/syscalls/sendfile/sendfile05_64 | 0 | 1 | 1 |
+| /ltp/testcases/kernel/syscalls/sendfile/sendfile05 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/sendfile/sendfile05_64 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/sendfile/sendfile06 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/sendfile/sendfile06_64 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/sendfile/sendfile07 | 1 | 1 | 1 |
