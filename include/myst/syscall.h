@@ -301,6 +301,8 @@ long myst_syscall_setuid(uid_t uid);
 long myst_syscall_getgid();
 long myst_syscall_setgid(gid_t gid);
 
+long myst_syscall_setsid();
+
 uid_t myst_syscall_geteuid();
 gid_t myst_syscall_getegid();
 
