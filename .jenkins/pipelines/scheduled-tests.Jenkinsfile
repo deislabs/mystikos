@@ -14,16 +14,18 @@ pipeline {
         string(name: "REPOSITORY", defaultValue: "deislabs")
         string(name: "BRANCH", defaultValue: "main", description: "Branch to build")
         choice(name: "TEST_CONFIG", choices:['Nightly', 'Code Coverage'], description: "Test configuration to execute")
+        choice(name: "PACKAGE_BINARIES", choices:['false', 'true'], description: "True - create Debian package and install; False - use built binaries without packaging")
     }
     environment {
-        MYST_SCRIPTS =    "${WORKSPACE}/scripts"
-        JENKINS_SCRIPTS = "${WORKSPACE}/.jenkins/scripts"
+        MYST_SCRIPTS =      "${WORKSPACE}/scripts"
+        JENKINS_SCRIPTS =   "${WORKSPACE}/.jenkins/scripts"
+        MYST_NIGHTLY_TEST = 1
+        MYST_ENABLE_GCOV =  1
+        PATH =              "${params.PACKAGE_BINARIES == 'true' ? "${PATH}:/opt/mystikos/bin" : "${PATH}"}"
         BUILD_USER = sh(
             returnStdout: true,
             script: 'echo \${USER}'
         )
-        MYST_NIGHTLY_TEST = 1
-        MYST_ENABLE_GCOV = 1
     }
     stages {
         stage("Cleanup files") {
@@ -60,10 +62,30 @@ pipeline {
                    """
             }
         }
+        stage('Build and install Mystikos Package') {
+            when {
+                expression { params.PACKAGE_BINARIES == 'true' }
+            }
+            steps {
+                sh """
+                   ${JENKINS_SCRIPTS}/global/package-install.sh
+                   """
+            }
+        }
         stage('Build repo source') {
             steps {
                 sh """
                    ${JENKINS_SCRIPTS}/global/make-world.sh
+                   """
+            }
+        }
+        stage('Remove built binaries') {
+            when {
+                expression { params.PACKAGE_BINARIES == 'true' }
+            }
+            steps {
+                sh """
+                   rm -rf build/bindist/opt
                    """
             }
         }
