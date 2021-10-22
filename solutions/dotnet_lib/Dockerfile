@@ -1,29 +1,24 @@
 FROM mcr.microsoft.com/dotnet-buildtools/prereqs:alpine-3.9-WithNode-0fc54a3-20190918214015 as builder
- 
+
 WORKDIR /build
-RUN git clone --depth 1 --single-branch --branch v5.0.10 https://github.com/dotnet/runtime.git
+RUN git clone --depth 1 --single-branch --branch v5.0.11 https://github.com/dotnet/runtime.git
 WORKDIR /build/runtime/
- 
-# Include keep native symbols commit
-RUN git fetch origin main \
-    # Checkout tagged runtime branch
-    && git checkout v5.0.10 \
-    # Include -keepnativesymbols commit
-    && git cherry-pick -n 2f1694ea116cc9819644382861690f17f1c8517b
- 
-# Build clr+libs+clr.tests in debug
+
+# Build clr+libs+libs.tests in Release
 RUN ./build.sh -subset clr+libs+libs.tests \
-    # dotnet build by default creates stripped binaries
-    # with separate files with debug symbols. oe-gdb doesn't
-    # support that - https://github.com/openenclave/openenclave/issues/3789
-    -keepnativesymbols true \
-    /p:RuntimeOS=linux-musl \
-    /p:OutputRid=linux-musl-x64
+    -c Release -rc Release -lc Release \
+    /p:RuntimeOS=linux-musl /p:OutputRid=linux-musl-x64
 
-# Run only subset of tests
-# COPY tests.proj ./src/libraries/tests.proj
-
-# Run tests
+# To run all library tests
 # RUN ./build.sh -subset libs.tests -test -testnobuild \
-#     /p:RuntimeOS=linux-musl \
-#     /p:OutputRid=linux-musl-x64
+#     -c Release -rc Release -lc Release \
+#     /p:RuntimeOS=linux-musl /p:OutputRid=linux-musl-x64
+
+# https://hub.docker.com/_/microsoft-dotnet-runtime/
+FROM mcr.microsoft.com/dotnet/runtime:5.0.11-alpine3.13
+WORKDIR /dotnet-lib-release
+COPY --from=builder /build/runtime/ ./
+
+# Grab the correct .NET runtime so we can run the tests
+# More info: we need correct version of SDK + runtime to run a test, 
+RUN cp -r ./artifacts/bin/testhost/net5.0-Linux-Release-x64/shared/Microsoft.NETCore.App/5.0.11/ ./.dotnet/shared/Microsoft.NETCore.App/

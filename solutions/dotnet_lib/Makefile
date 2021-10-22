@@ -10,7 +10,7 @@ endif
 build: rootfs
 
 appdir:
-	$(APPBUILDER) Dockerfile.release
+	$(APPBUILDER) -i hullcritical/dotnet-library-test:release-ubuntu
 
 rootfs: appdir
 	$(MYST) mkext2 appdir rootfs
