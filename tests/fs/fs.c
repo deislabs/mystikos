@@ -1032,6 +1032,29 @@ static void test_sync()
     _passed(__FUNCTION__);
 }
 
+static void test_append(void)
+{
+    int fd;
+
+    assert((fd = open("/test_append", O_CREAT | O_WRONLY, 0666)) >= 0);
+    assert(write(fd, alpha, sizeof(alpha)) == sizeof(alpha));
+    close(fd);
+
+    assert((fd = open("/test_append", O_WRONLY | O_APPEND, 0666)) >= 0);
+    assert(lseek(fd, 0, SEEK_CUR) == 0);
+    assert(write(fd, alpha, 3) == 3);
+    assert(lseek(fd, 0, SEEK_CUR) == sizeof(alpha) + 3);
+
+    lseek(fd, 0, SEEK_SET);
+    assert(write(fd, alpha, 3) == 3);
+    assert(lseek(fd, 0, SEEK_CUR) == sizeof(alpha) + 3 + 3);
+    close(fd);
+
+    struct stat buf;
+    assert(stat("/test_append", &buf) == 0);
+    assert(buf.st_size == sizeof(alpha) + 3 + 3);
+}
+
 int main(int argc, const char* argv[])
 {
     if (argc != 2)
@@ -1086,6 +1109,7 @@ int main(int argc, const char* argv[])
     test_o_excl();
     test_o_tmpfile_not_supp(argv[1]);
     test_sync();
+    test_append();
 
     printf("=== passed all tests (%s)\n", argv[0]);
 
