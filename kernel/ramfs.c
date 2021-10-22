@@ -884,9 +884,6 @@ static int _fs_open(
         if ((flags & O_TRUNC))
             myst_buf_clear(&inode->buf);
 
-        if ((flags & O_APPEND))
-            file->offset = inode->buf.size;
-
         /* Get the realpath of this file */
         ECHECK(_path_to_inode_realpath(
             ramfs, pathname, true, NULL, &inode, file->realpath, NULL));
@@ -1100,6 +1097,10 @@ static ssize_t _fs_write(
         ret = file->inode->v_cb.rw_callbacks.write_cb(buf, count);
         goto done;
     }
+
+    /* append always writes to the end of the file */
+    if ((file->operating & O_APPEND))
+        file->offset = _file_size(file);
 
     /* Verify that the offset is in bounds */
     if (file->offset > _file_size(file))

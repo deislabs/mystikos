@@ -3635,6 +3635,10 @@ int64_t ext2_write(
     /* save the file size */
     file_size = _inode_get_size(&file->inode);
 
+    /* append always writes to the end of the file */
+    if ((file->operating & O_APPEND))
+        file->offset = file_size;
+
     /* get the index of the first block to written */
     first = file->offset / ext2->block_size;
 
