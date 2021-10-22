@@ -19,7 +19,9 @@ ifndef SUBLIBDIR
 SUBLIBDIR=$(LIBDIR)/$(SUBDIR)
 endif
 
+ifndef BINDIR
 BINDIR=$(BUILDDIR)/bin
+endif
 ifndef SUBBINDIR
 SUBBINDIR=$(BINDIR)/$(SUBDIR)
 endif

@@ -6,9 +6,12 @@ include $(TOP)/defs.mak
 VERSION=$(shell cat VERSION)
 PKGNAME=mystikos-$(VERSION)-x86_64
 TARBALL=$(PKGNAME).tar.gz
+DEBIAN_PACKAGE=$(PKGNAME).deb
 
 all:
+ifndef MYST_IGNORE_PREREQS
 	$(MAKE) .git/hooks/pre-commit
+endif
 	$(MAKE) init
 	$(MAKE) dirs
 
@@ -232,11 +235,17 @@ sub:
 ##==============================================================================
 
 bindist:
-	@ rm -rf $(BUILDDIR)/bindist
+	@ rm -rf $(BUILDDIR)/bindist $(PKGNAME)
 	@ $(MAKE) install DESTDIR=$(BUILDDIR)/bindist
 	@ ( cd $(BUILDDIR)/bindist/opt; tar zcf $(TARBALL) mystikos )
-	@ cp $(BUILDDIR)/bindist/opt/$(TARBALL) .
-	@ echo "=== Created $(TARBALL)"
+	@ mv $(BUILDDIR)/bindist/opt/$(TARBALL) .
+	@ echo "Created tarball: $(TARBALL)"
+	@ mkdir -p $(PKGNAME)/DEBIAN
+	@ ( cp -r $(BUILDDIR)/bindist/opt $(PKGNAME); cp package/control $(PKGNAME)/DEBIAN )
+	@ echo "Version: $(VERSION)" >> $(PKGNAME)/DEBIAN/control
+	@ dpkg-deb --build --root-owner-group $(PKGNAME)
+	@ echo "Created Debian package: $(DEBIAN_PACKAGE)"
+	@ rm -rf $(PKGNAME)
 
 ##==============================================================================
 ##
