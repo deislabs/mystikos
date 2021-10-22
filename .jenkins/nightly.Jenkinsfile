@@ -46,7 +46,7 @@ pipeline {
                                     extensions: [],
                                     userRemoteConfigs: [[
                                         url: 'https://github.com/deislabs/mystikos',
-                                        refspec: "+refs/pull/${PULL_REQUEST_ID}/head:refs/remotes/origin/pr/${PULL_REQUEST_ID}"
+                                        refspec: "+refs/pull/${PULL_REQUEST_ID}/merge:refs/remotes/origin/pr/${PULL_REQUEST_ID}"
                                     ]]
                                 ])
                             } else {
