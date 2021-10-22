@@ -800,6 +800,81 @@ done:
     return ret;
 }
 
+static int _get_interpreter(
+    char* hashbang_buff,
+    size_t hashbang_buff_length,
+    ssize_t num_bytes_read,
+    myst_args_t* new_argv)
+{
+    int ret = 0;
+    char* start_string = NULL;
+    char* cursor = hashbang_buff + 2; // starts after hashbang
+
+    do
+    {
+        if (cursor == (hashbang_buff + hashbang_buff_length - 1))
+        {
+            /* We have reached the end of the buffer (with space for a null
+             * terminator) */
+            /* ATTN: support longer hashbang string */
+            myst_panic("script hashbang path is too long");
+            ERAISE(-ENAMETOOLONG);
+        }
+        else if (cursor - hashbang_buff >= num_bytes_read)
+        {
+            /* got to end of read buffer */
+            if (start_string)
+            {
+                cursor[0] = '\0';
+                if (myst_args_append1(new_argv, start_string) != 0)
+                    ERAISE(-ENOMEM);
+            }
+            break;
+        }
+        else if (start_string != NULL && cursor[0] == '\n')
+        {
+            /* end of line with a pointer to string. Add string to args and
+             * break out */
+            cursor[0] = '\0';
+            if (myst_args_append1(new_argv, start_string) != 0)
+                ERAISE(-ENOMEM);
+            break;
+        }
+        else if (start_string == NULL && cursor[0] == '\n')
+        {
+            /* We are parsing white space and hit end of line. Nothing to do
+             * but exit */
+            break;
+        }
+        else if (
+            start_string != NULL && (cursor[0] == ' ' || cursor[0] == '\t'))
+        {
+            /* have the start of a string and hit end of string. Add it and
+             * continue  */
+            cursor[0] = '\0';
+            if (myst_args_append1(new_argv, start_string) != 0)
+                ERAISE(-ENOMEM);
+            start_string = NULL;
+        }
+        else if (start_string == NULL && cursor[0] != ' ' && cursor[0] != '\t')
+        {
+            /* Start of string so remember so we can add it later */
+            start_string = cursor;
+        }
+        cursor++;
+
+    } while (1);
+
+    if (new_argv->size == 0)
+    {
+        /* We dont have even one string after the hashbang */
+        ERAISE(-EINVAL);
+    }
+
+done:
+    return ret;
+}
+
 int myst_exec(
     myst_thread_t* thread,
     const void* crt_data_in,
@@ -828,6 +903,7 @@ int myst_exec(
     size_t hashbang_buff_length = 0;
     long hashbang_file = -1;
     myst_args_t new_argv;
+    size_t num_bytes_read;
 
     if (myst_args_init(&new_argv) != 0)
         ERAISE(ENOMEM);
@@ -957,84 +1033,18 @@ int myst_exec(
     hashbang_file = myst_syscall_open(argv[0], O_RDONLY, 0);
     ECHECK(hashbang_file);
 
-    ret = myst_syscall_read(hashbang_file, hashbang_buff, hashbang_buff_length);
-    ECHECK(ret);
+    ECHECK(
+        num_bytes_read = myst_syscall_read(
+            hashbang_file, hashbang_buff, hashbang_buff_length));
 
-    if ((ret >= 2) && (strncmp(hashbang_buff, "#!", 2) == 0))
+    if ((num_bytes_read >= 2) && (strncmp(hashbang_buff, "#!", 2) == 0))
     {
-        char* start_string = NULL;
-        char* cursor = hashbang_buff + 2; // starts after hashbang
-
-        do
-        {
-            if (cursor == (hashbang_buff + hashbang_buff_length - 1))
-            {
-                /* We have reached the end of the buffer (with space for a null
-                 * terminator) */
-                /* ATTN: support longer hashbang string */
-                myst_panic("script hashbang path is too long");
-                ERAISE(-ENAMETOOLONG);
-            }
-            else if (cursor - hashbang_buff >= ret)
-            {
-                /* got to end of read buffer */
-                if (start_string)
-                {
-                    cursor[0] = '\0';
-                    if (myst_args_append1(&new_argv, start_string) != 0)
-                        ERAISE(-ENOMEM);
-                }
-                break;
-            }
-            else if (start_string != NULL && cursor[0] == '\n')
-            {
-                /* end of line with a pointer to string. Add string to args and
-                 * break out */
-                cursor[0] = '\0';
-                if (myst_args_append1(&new_argv, start_string) != 0)
-                    ERAISE(-ENOMEM);
-                break;
-            }
-            else if (start_string == NULL && cursor[0] == '\n')
-            {
-                /* We are parsing white space and hit end of line. Nothing to do
-                 * but exit */
-                break;
-            }
-            else if (
-                start_string != NULL && (cursor[0] == ' ' || cursor[0] == '\t'))
-            {
-                /* have the start of a string and hit end of string. Add it and
-                 * continue  */
-                cursor[0] = '\0';
-                if (myst_args_append1(&new_argv, start_string) != 0)
-                    ERAISE(-ENOMEM);
-                start_string = NULL;
-            }
-            else if (
-                start_string == NULL && cursor[0] != ' ' && cursor[0] != '\t')
-            {
-                /* Start of string so remember so we can add it later */
-                start_string = cursor;
-            }
-            cursor++;
-
-        } while (1);
-
-        if (new_argv.size == 0)
-            /* We dont have even one string after the hashbang */
-            ERAISE(-EINVAL);
-
-        /* Now we need to add the argv list that was passed in to the end of the
-         * args */
-        if (myst_args_append(&new_argv, argv, argc) != 0)
-            ERAISE(-ENOMEM);
+        ECHECK(_get_interpreter(
+            hashbang_buff, hashbang_buff_length, num_bytes_read, &new_argv));
     }
-    else
-    {
-        if (myst_args_append(&new_argv, argv, argc) != 0)
-            ERAISE(-ENOMEM);
-    }
+
+    if (myst_args_append(&new_argv, argv, argc) != 0)
+        ERAISE(-ENOMEM);
 
     myst_syscall_close(hashbang_file);
     hashbang_file = -1;
@@ -1133,6 +1143,7 @@ done:
 
     if (crt_data)
         myst_munmap(crt_data, crt_size);
+
     if (hashbang_buff)
         free(hashbang_buff);
 
