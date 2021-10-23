@@ -37,11 +37,11 @@ build:
 	@echo "\n-------build end--------\n"
 
 build-ext2: appdir
-	$(MYST) mkext2 appdir $(ROOTFS)
-	$(MYST) fssig --roothash $(ROOTFS) > roothash
+	@myst mkext2 appdir $(ROOTFS)
+	@myst fssig --roothash $(ROOTFS) > roothash
 
 build-package: package.pem
-	$(MYST) package-sgx --roothash=roothash package.pem config.json
+	@myst package-sgx --roothash=roothash package.pem config.json
 
 ###########################################
 ## Run
@@ -69,7 +69,7 @@ endif
 # launch inference service in enclave only, waiting for client to connect, either 
 # run a webpage, curl request or the client.sh script with predefined queries
 run-service-ext2:
-	$(MYST_EXEC) $(OPTS) $(ROOTFS) $(APP_PATH) --app-config-path config.json
+	@myst exec-sgx $(OPTS) $(ROOTFS) $(APP_PATH) --app-config-path config.json
 
 run-service-package:
 	$(PACKAGE_PATH) $(OPTS) --rootfs=$(ROOTFS)
@@ -82,7 +82,7 @@ gdb:
 ifeq ($(APP_MODE),package)
 	$(MYST_GDB) --args $(PACKAGE_PATH) --rootfs=$(ROOTFS)
 else
-	$(MYST_GDB) --args $(MYST_EXEC) $(OPTS) $(ROOTFS) $(APP_PATH) --app-config-path config.json
+	$(MYST_GDB) --args @myst exec-sgx $(OPTS) $(ROOTFS) $(APP_PATH) --app-config-path config.json
 endif
 
 ###########################################
