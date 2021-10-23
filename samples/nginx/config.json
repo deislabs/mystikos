@@ -1,8 +1,0 @@
-{
-    "Debug": 1,
-    "ProductID": 1,
-    "SecurityVersion": 1,
-    "MemorySize": "128m",
-    "CurrentWorkingDirectory": "/",
-    "ApplicationPath": "/usr/sbin/nginx"
-}
