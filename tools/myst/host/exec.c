@@ -60,6 +60,22 @@
 
 static struct myst_shm shared_memory = {0};
 
+/* wait for so many milliseconds */
+static void _sleep_msec(uint64_t msec)
+{
+    struct timespec ts;
+    const struct timespec* req = &ts;
+    struct timespec rem = {0, 0};
+    static const uint64_t _SEC_TO_MSEC = 1000UL;
+    static const uint64_t _MSEC_TO_NSEC = 1000000UL;
+
+    ts.tv_sec = (time_t)(msec / _SEC_TO_MSEC);
+    ts.tv_nsec = (long)((msec % _SEC_TO_MSEC) * _MSEC_TO_NSEC);
+
+    while (nanosleep(req, &rem) != 0 && errno == EINTR)
+        req = &rem;
+}
+
 static size_t _count_args(const char* args[])
 {
     size_t n = 0;
@@ -74,6 +90,9 @@ static oe_enclave_t* _enclave;
 
 /* the address of this is eventually passed to futex (uaddr argument) */
 static __thread int _thread_event;
+
+/* the number of enclave threads (excluding the main thread) */
+static _Atomic(size_t) _num_child_enclave_threads;
 
 static void* _thread_func(void* arg)
 {
@@ -105,6 +124,7 @@ static void* _thread_func(void* arg)
         abort();
     }
 
+    _num_child_enclave_threads--;
     return NULL;
 }
 
@@ -117,6 +137,9 @@ long myst_create_thread_ocall(uint64_t cookie)
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
     long ret = -pthread_create(&t, &attr, _thread_func, (void*)cookie);
     pthread_attr_destroy(&attr);
+
+    if (ret == 0)
+        _num_child_enclave_threads++;
 
     return ret;
 }
@@ -145,6 +168,38 @@ static void _interrupt_thread_signal_handler(int sig)
 {
     /* no-op */
     (void)sig;
+}
+
+/* Wait for child enclave threads to exit or fail trying */
+static void _wait_on_child_threads(void)
+{
+    uint64_t msec_per_sec = 1000;
+    uint64_t msec = 1;
+    const size_t max_retries = 5;
+    size_t num_retries = 0;
+
+    while (_num_child_enclave_threads)
+    {
+        if (msec < msec_per_sec)
+        {
+            _sleep_msec(msec);
+            msec *= 2;
+        }
+        else
+        {
+            if (num_retries == max_retries)
+            {
+                fprintf(stderr, "myst: child threads failed to exit\n");
+                fflush(stdout);
+                abort();
+            }
+
+            fprintf(stderr, "myst: waiting for child threads to exit\n");
+            fflush(stdout);
+            _sleep_msec(msec_per_sec);
+            num_retries++;
+        }
+    }
 }
 
 int exec_launch_enclave(
@@ -257,6 +312,11 @@ int exec_launch_enclave(
 
     /* restore the old MYST_INTERRUPT_THREAD_SIGNAL handler */
     sigset(MYST_INTERRUPT_THREAD_SIGNAL, old_sighandler);
+
+    // Wait for child enclave threads to exit before attempting to terminate
+    // the enclave. Otherwise, oe_query_enclave_instance() may fail during
+    // termination.
+    _wait_on_child_threads();
 
     /* Terminate the enclave */
     r = oe_terminate_enclave(_enclave);
