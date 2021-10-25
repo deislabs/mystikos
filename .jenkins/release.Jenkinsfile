@@ -212,4 +212,13 @@ pipeline {
             }
         }
     }
+    post {
+        always {
+            emailext(
+                subject: "Jenkins: ${env.JOB_NAME} [#${env.BUILD_NUMBER}] status is ${currentBuild.currentResult}",
+                body: "See build log for details: ${env.BUILD_URL}", 
+                recipientProviders: [[$class: 'DevelopersRecipientProvider'], [$class: 'RequesterRecipientProvider']]
+            )
+        }
+    }
 }
