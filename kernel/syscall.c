@@ -4269,6 +4269,11 @@ static long _syscall(void* args_)
             thread->exec_kstack = args->kstack;
 
             long ret = myst_syscall_execve(filename, argv, envp);
+            /* myst_syscall_execve() only returns on failure */
+            /* when myst_syscall_execve() returns on failure, kstack will be
+             * freed by syscall framework. Set thread->exec_kstack to NULL to
+             * avoid double free by the next SYS_execve syscall */
+            thread->exec_kstack = NULL;
             BREAK(_return(n, ret));
         }
         case SYS_exit:
