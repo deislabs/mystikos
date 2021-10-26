@@ -96,7 +96,13 @@ pipeline {
                     withCredentials([string(credentialsId: 'mystikos-sql-db-name-useast', variable: 'DB_NAME'),
                                      string(credentialsId: 'mystikos-sql-db-server-name-useast', variable: 'DB_SERVER_NAME'),
                                      string(credentialsId: 'mystikos-maa-url-useast', variable: 'MAA_URL'),
-                                     string(credentialsId: 'mystikos-managed-identity-objectid', variable: 'DB_USERID')]) {
+                                     string(credentialsId: 'mystikos-managed-identity-objectid', variable: 'DB_USERID'),
+                                     string(credentialsId: 'mystikos-mhsm-client-secret', variable: 'CLIENT_SECRET'),
+                                     string(credentialsId: 'mystikos-mhsm-client-id', variable: 'CLIENT_ID'),
+                                     string(credentialsId: 'mystikos-mhsm-app-id', variable: 'APP_ID'),
+                                     string(credentialsId: 'mystikos-mhsm-aad-url', variable: 'MHSM_AAD_URL'),
+                                     string(credentialsId: 'mystikos-mhsm-ssr-pkey', variable: 'SSR_PKEY')
+                    ]) {
                         sh "make tests -C ${WORKSPACE}/solutions"
                     }
                 }
