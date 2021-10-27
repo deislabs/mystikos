@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <net/if.h>
 #include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -716,6 +717,14 @@ static long _ioctl(int fd, unsigned long request, void* argp)
                 argp_size = sizeof(int);
             break;
         }
+        case SIOCGIFINDEX:
+        case SIOCGIFNAME:
+        {
+            if (argp)
+                argp_size = sizeof(struct ifreq);
+            break;
+        }
+
         default:
         {
             /* unsupported ioctl */
