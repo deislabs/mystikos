@@ -3,6 +3,7 @@
 #include <fcntl.h>
 #include <myst/assume.h>
 #include <myst/defs.h>
+#include <myst/syscall.h>
 #include <myst/tcall.h>
 #include <sched.h>
 #include <stdint.h>
@@ -73,12 +74,14 @@
 
 long myst_read_ocall(int fd, void* buf, size_t count)
 {
-    RETURN(read(fd, buf, count));
+    return myst_interruptible_syscall(
+        SYS_read, fd, POLLIN, true, fd, buf, count);
 }
 
 long myst_write_ocall(int fd, const void* buf, size_t count)
 {
-    RETURN(write(fd, buf, count));
+    return myst_interruptible_syscall(
+        SYS_write, fd, POLLOUT, true, fd, buf, count);
 }
 
 long myst_close_ocall(int fd)
@@ -111,7 +114,8 @@ long myst_connect_ocall(
     const struct sockaddr* addr,
     socklen_t addrlen)
 {
-    RETURN(connect(sockfd, addr, addrlen));
+    return myst_interruptible_syscall(
+        SYS_connect, sockfd, POLLOUT, true, sockfd, addr, addrlen);
 }
 
 long myst_recvfrom_ocall(
@@ -123,7 +127,23 @@ long myst_recvfrom_ocall(
     socklen_t* addrlen,
     socklen_t src_addr_size)
 {
-    RETURN(recvfrom(sockfd, buf, len, flags, src_addr, addrlen));
+    bool retry = true;
+
+    /* Don't retry EAGAIN|EINPPROGRESS if these flags are present */
+    if ((flags & (MSG_ERRQUEUE | MSG_DONTWAIT)))
+        retry = false;
+
+    return myst_interruptible_syscall(
+        SYS_recvfrom,
+        sockfd,
+        POLLIN,
+        retry,
+        sockfd,
+        buf,
+        len,
+        flags,
+        src_addr,
+        addrlen);
 }
 
 long myst_sendto_ocall(
@@ -134,7 +154,23 @@ long myst_sendto_ocall(
     const struct sockaddr* dest_addr,
     socklen_t addrlen)
 {
-    RETURN(sendto(sockfd, buf, len, flags, dest_addr, addrlen));
+    bool retry = true;
+
+    /* Don't retry EAGAIN|EINPPROGRESS if this flag is present */
+    if ((flags & MSG_DONTWAIT))
+        retry = false;
+
+    return myst_interruptible_syscall(
+        SYS_sendto,
+        sockfd,
+        POLLOUT,
+        retry,
+        sockfd,
+        buf,
+        len,
+        flags,
+        dest_addr,
+        addrlen);
 }
 
 long myst_socket_ocall(int domain, int type, int protocol)
@@ -149,7 +185,8 @@ long myst_accept4_ocall(
     size_t addr_size,
     int flags)
 {
-    RETURN(accept4(sockfd, addr, addrlen, flags));
+    return myst_interruptible_syscall(
+        SYS_accept4, sockfd, POLLIN, true, sockfd, addr, addrlen, flags);
 }
 
 long myst_sendmsg_ocall(
@@ -165,6 +202,11 @@ long myst_sendmsg_ocall(
 {
     struct msghdr msg;
     struct iovec iov;
+    bool retry = true;
+
+    /* Don't retry EAGAIN|EINPPROGRESS if this flag is present */
+    if ((flags & MSG_DONTWAIT))
+        retry = false;
 
     /* initialize the msghdr structure */
     msg.msg_name = (void*)msg_name;
@@ -177,7 +219,8 @@ long myst_sendmsg_ocall(
     msg.msg_controllen = msg_controllen;
     msg.msg_flags = msg_flags;
 
-    RETURN(sendmsg(sockfd, &msg, flags));
+    return myst_interruptible_syscall(
+        SYS_sendmsg, sockfd, POLLOUT, retry, sockfd, &msg, flags);
 }
 
 long myst_recvmsg_ocall(
@@ -197,6 +240,11 @@ long myst_recvmsg_ocall(
     long retval;
     struct msghdr msg;
     struct iovec iov;
+    bool retry = true;
+
+    /* Don't retry EAGAIN|EINPPROGRESS if these flags are present */
+    if ((flags & (MSG_ERRQUEUE | MSG_DONTWAIT)))
+        retry = false;
 
     if (msg_namelen_out)
         *msg_namelen_out = 0;
@@ -218,7 +266,8 @@ long myst_recvmsg_ocall(
     msg.msg_controllen = msg_controllen;
     msg.msg_flags = 0;
 
-    if ((retval = recvmsg(sockfd, &msg, flags)) < 0)
+    if ((retval = myst_interruptible_syscall(
+             SYS_recvmsg, sockfd, POLLIN, retry, sockfd, &msg, flags)) < 0)
     {
         ret = -errno;
         goto done;

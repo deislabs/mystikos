@@ -546,8 +546,6 @@ long myst_tcall(long n, long params[6])
         }
         case SYS_sched_yield:
         case SYS_fstat:
-        case SYS_read:
-        case SYS_write:
         case SYS_close:
         case SYS_readv:
         case SYS_writev:
@@ -556,15 +554,9 @@ long myst_tcall(long n, long params[6])
         case SYS_gettimeofday:
         case SYS_sethostname:
         case SYS_bind:
-        case SYS_connect:
-        case SYS_recvfrom:
         case SYS_sendfile:
         case SYS_socket:
         case SYS_accept:
-        case SYS_accept4:
-        case SYS_sendto:
-        case SYS_sendmsg:
-        case SYS_recvmsg:
         case SYS_shutdown:
         case SYS_listen:
         case SYS_getsockname:
@@ -637,6 +629,130 @@ long myst_tcall(long n, long params[6])
         case SYS_rmdir:
         {
             return myst_tcall_identity(n, params, (uid_t)x2, (gid_t)x3);
+        }
+        case SYS_read:
+        {
+            int fd = (int)x1;
+            void* buf = (void*)x2;
+            size_t count = (size_t)x3;
+
+            return myst_interruptible_syscall(
+                SYS_read, fd, POLLIN, true, fd, buf, count);
+        }
+        case SYS_write:
+        {
+            int fd = (int)x1;
+            const void* buf = (void*)x2;
+            size_t count = (size_t)x3;
+
+            return myst_interruptible_syscall(
+                SYS_write, fd, POLLOUT, true, fd, buf, count);
+        }
+        case SYS_connect:
+        {
+            int sockfd = (int)x1;
+            const struct sockaddr* addr = (const struct sockaddr*)x2;
+            socklen_t addrlen = (socklen_t)x3;
+
+            return myst_interruptible_syscall(
+                SYS_connect, sockfd, POLLOUT, true, sockfd, addr, addrlen);
+        }
+        case SYS_recvfrom:
+        {
+            int sockfd = (int)x1;
+            void* buf = (void*)x2;
+            size_t len = (size_t)x3;
+            int flags = (int)x4;
+            struct sockaddr* src_addr = (struct sockaddr*)x5;
+            socklen_t* addrlen = (socklen_t*)x6;
+            bool retry = true;
+
+            /* Don't retry EAGAIN|EINPPROGRESS if these flags are present */
+            if ((flags & (MSG_ERRQUEUE | MSG_DONTWAIT)))
+                retry = false;
+
+            return myst_interruptible_syscall(
+                SYS_recvfrom,
+                sockfd,
+                POLLIN,
+                retry,
+                sockfd,
+                buf,
+                len,
+                flags,
+                src_addr,
+                addrlen);
+        }
+        case SYS_sendto:
+        {
+            int sockfd = (int)x1;
+            const void* buf = (const void*)x2;
+            size_t len = (size_t)x3;
+            int flags = (int)x4;
+            const struct sockaddr* dest_addr = (const struct sockaddr*)x5;
+            socklen_t addrlen = (socklen_t)x6;
+            bool retry = true;
+
+            /* Don't retry EAGAIN|EINPPROGRESS if this flag is present */
+            if ((flags & MSG_DONTWAIT))
+                retry = false;
+
+            return myst_interruptible_syscall(
+                SYS_sendto,
+                sockfd,
+                POLLOUT,
+                retry,
+                sockfd,
+                buf,
+                len,
+                flags,
+                dest_addr,
+                addrlen);
+        }
+        case SYS_accept4:
+        {
+            int sockfd = (int)x1;
+            struct sockaddr* addr = (struct sockaddr*)x2;
+            socklen_t* addrlen = (socklen_t*)x3;
+            int flags = (int)x4;
+
+            return myst_interruptible_syscall(
+                SYS_accept4,
+                sockfd,
+                POLLIN,
+                true,
+                sockfd,
+                addr,
+                addrlen,
+                flags);
+        }
+        case SYS_sendmsg:
+        {
+            int sockfd = (int)x1;
+            const struct msghdr* msg = (const struct msghdr*)x2;
+            int flags = (int)x3;
+            bool retry = true;
+
+            /* Don't retry EAGAIN|EINPPROGRESS if this flag is present */
+            if ((flags & MSG_DONTWAIT))
+                retry = false;
+
+            return myst_interruptible_syscall(
+                SYS_sendmsg, sockfd, POLLOUT, retry, sockfd, msg, flags);
+        }
+        case SYS_recvmsg:
+        {
+            int sockfd = (int)x1;
+            struct msghdr* msg = (struct msghdr*)x2;
+            int flags = (int)x3;
+            bool retry = true;
+
+            /* Don't retry EAGAIN|EINPPROGRESS if these flags are present */
+            if ((flags & (MSG_ERRQUEUE | MSG_DONTWAIT)))
+                retry = false;
+
+            return myst_interruptible_syscall(
+                SYS_recvmsg, sockfd, POLLIN, retry, sockfd, msg, flags);
         }
         default:
         {
