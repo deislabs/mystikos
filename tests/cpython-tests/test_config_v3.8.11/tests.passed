@@ -62,7 +62,6 @@ test_colorsys
 test_compare
 test_compile
 test_complex
-test_concurrent_futures
 test_configparser
 test_contains
 test_context
@@ -136,7 +135,6 @@ test_gc
 test_gzip
 test_generator_stop
 test_generators
-test_genericalias
 test_genericclass
 test_genericpath
 test_genexps
@@ -146,7 +144,6 @@ test_getpass
 test_gettext
 test_global
 test_grammar
-test_graphlib
 test_grp
 test_hash
 test_hashlib
@@ -167,7 +164,6 @@ test_inspect
 test_int
 test_int_literal
 test_io
-test_ioctl
 test_ipaddress
 test_isinstance
 test_iter
@@ -199,10 +195,6 @@ test_module
 test_modulefinder
 test_msilib
 test_multibytecodec
-test_multiprocessing_fork
-test_multiprocessing_forkserver
-test_multiprocessing_main_handling
-test_multiprocessing_spawn
 test_named_expressions
 test_netrc
 test_nis
@@ -245,7 +237,6 @@ test_queue
 test_quopri
 test_raise
 test_range
-test_regrtest
 test_repl
 test_reprlib
 test_richcmp
@@ -341,7 +332,6 @@ test_utf8source
 test_uu
 test_warnings
 test_wave
-test_weakref
 test_weakset
 test_webbrowser
 test_winconsoleio

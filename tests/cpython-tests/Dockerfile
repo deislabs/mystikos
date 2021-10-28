@@ -13,11 +13,16 @@ RUN ./configure --with-pydebug && make -j -s
 WORKDIR /
 
 #Copy test lists
-COPY ./test_config_$CPYTHON_VERSION /tests.* /
+COPY ./test_config_$CPYTHON_VERSION/tests.* /
 
+#workaround - Mystikos does not support Ubunut's default shell dash
 RUN ln -sf /bin/bash /bin/sh
 
-RUN cp /usr/bin/lsb_release /bin/
+#workaround - lsb-core package installation doe snot create /bin/lsb_release symbolic link
+RUN ln -sf /usr/bin/lsb_release /bin/lsb_release
+
+#workaround - lsb_release invokes /usr/bin/python3. Ubuntu's default python executable is not PIE, not supported in Mystikos
+RUN ln -sf /cpython/python /usr/bin/python3
 
 # Copy Mystikos pdb
 COPY ./mpdb.py /cpython/mpdb.py
