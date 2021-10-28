@@ -157,6 +157,19 @@ index 984db680..9adecf2b 100644
  #endif
  
  #if _REDIR_TIME64
+diff --git a/include/sys/ioctl.h b/include/sys/ioctl.h
+index c2ce3b48..30de25bb 100644
+--- a/include/sys/ioctl.h
++++ b/include/sys/ioctl.h
+@@ -117,7 +117,7 @@ struct winsize {
+ #define SIOCDEVPRIVATE     0x89F0
+ #define SIOCPROTOPRIVATE   0x89E0
+ 
+-int ioctl (int, int, ...);
++int ioctl (int, unsigned long, ...);
+ 
+ #ifdef __cplusplus
+ }
 diff --git a/ldso/dlstart.c b/ldso/dlstart.c
 index 20d50f2c..17cd6ac3 100644
 --- a/ldso/dlstart.c
@@ -777,6 +790,19 @@ index f63c062f..50311758 100644
 +{
 +	return (double)yn(n, x);
 +}
+diff --git a/src/misc/ioctl.c b/src/misc/ioctl.c
+index 89477511..bff57fbc 100644
+--- a/src/misc/ioctl.c
++++ b/src/misc/ioctl.c
+@@ -112,7 +112,7 @@ static void convert_ioctl_struct(const struct ioctl_compat_map *map, char *old,
+ 	else memcpy(new+new_offset, old+old_offset, old_size-old_offset);
+ }
+ 
+-int ioctl(int fd, int req, ...)
++int ioctl(int fd, unsigned long req, ...)
+ {
+ 	void *arg;
+ 	va_list ap;
 diff --git a/src/misc/syscall.c b/src/misc/syscall.c
 index 6f3ef656..614121c3 100644
 --- a/src/misc/syscall.c
