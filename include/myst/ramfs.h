@@ -7,14 +7,14 @@
 #include <myst/buf.h>
 #include <myst/fs.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 /* Virtual files in ramfs
 
-Loosely defined a virtual file is one whose contents
-are generated on-the-fly.
+Loosely defined a virtual file whose open/close/read/write operations
+have to be customized. Some examples:
 
-ramfs supports two types of virtual files:
-- OPEN: files whose contents are generated at open()
+- Customized OPEN: for files whose contents are generated at open()
     Useful where the file contents can be populated once.
     `myst_file_t.vbuf` field is used to store the buffer. Instead of the inode
     buffer, the file level buffer was used to ensure some protection against
@@ -23,28 +23,25 @@ ramfs supports two types of virtual files:
     The buffer is released on close().
 
 
-- RW: files for which read and write operations are stateless.
+- Customized stateless Read/Write: for files for which read and write
+   operations
+    are stateless, such as /dev/urandom.
     Useful where the file is unbounded, or has special behavior on
     reads and writes.
     Read and write file operations on these files operate directly
     on the user provided buffer.
 
+- Customized stateful Read/Write: for files for which read and write operations
+    are stateful, such as PTY master and slaves. Read and write
+    operations on these files are applied on the file-level buffers.
 */
 
-typedef enum myst_virtual_file_type
+typedef struct _vcallback
 {
-    NONE,
-    OPEN,
-    RW,
-} myst_virtual_file_type_t;
-
-typedef union myst_vcallback {
-    int (*open_cb)(myst_buf_t* buf, const char* entrypath);
-    struct
-    {
-        int (*read_cb)(void* buf, size_t count);
-        int (*write_cb)(const void* buf, size_t count);
-    } rw_callbacks;
+    int (*open_cb)(myst_file_t* self, myst_buf_t* buf, const char* entrypath);
+    int (*close_cb)(myst_file_t* self);
+    int (*read_cb)(myst_file_t* self, void* buf, size_t count);
+    int (*write_cb)(myst_file_t* self, const void* buf, size_t count);
 } myst_vcallback_t;
 
 int myst_init_ramfs(
@@ -61,8 +58,14 @@ int myst_create_virtual_file(
     myst_fs_t* fs,
     const char* pathname,
     mode_t mode,
-    myst_vcallback_t v_cb,
-    myst_virtual_file_type_t v_type);
+    myst_vcallback_t v_cb);
+
+int myst_read_virtual_file(myst_file_t* file, void* buf, size_t buf_size);
+
+int myst_write_virtual_file(
+    myst_file_t* file,
+    const void* buf,
+    size_t buf_size);
 
 int set_overrides_for_special_fs(myst_fs_t* fs);
 

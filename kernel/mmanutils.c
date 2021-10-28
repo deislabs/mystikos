@@ -876,8 +876,12 @@ done:
     return ret;
 }
 
-int proc_pid_maps_vcallback(myst_buf_t* vbuf, const char* entrypath)
+int proc_pid_maps_vcallback(
+    myst_file_t* self,
+    myst_buf_t* vbuf,
+    const char* entrypath)
 {
+    (void)self;
     int ret = 0;
     bool locked = false;
     pid_t pid = 0;
