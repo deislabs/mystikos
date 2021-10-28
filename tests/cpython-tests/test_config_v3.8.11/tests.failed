@@ -5,6 +5,7 @@ test_asyncore
 test_c_locale_coercion
 test_cmd_line
 test_compileall
+test_concurrent_futures
 test_ctypes
 test_distutils
 test_eintr
@@ -17,9 +18,14 @@ test_gdb
 test_glob
 test_import
 test_importlib
+test_ioctl
 test_locale
 test_logging
 test_mailbox
+test_multiprocessing_fork
+test_multiprocessing_forkserver
+test_multiprocessing_main_handling
+test_multiprocessing_spawn
 test_openpty
 test_os
 test_pathlib
@@ -30,6 +36,7 @@ test_pydoc
 test_random
 test_re
 test_readline
+test_regrtest
 test_resource
 test_runpy
 test_selectors
@@ -53,5 +60,6 @@ test_uuid
 test_venv
 test_wait3
 test_wait4
+test_weakref
 test_wsgiref
 test_zipfile
