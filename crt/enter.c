@@ -157,6 +157,12 @@ int __clone(int (*fn)(void*), void* child_stack, int flags, void* arg, ...)
     return myst_syscall(SYS_myst_clone, params);
 }
 
+int allow_ld_preload(void)
+{
+    /* Allow LD_PRELOAD in musl libc */
+    return 1;
+}
+
 void myst_enter_crt(
     void* stack,
     void* dynv,
