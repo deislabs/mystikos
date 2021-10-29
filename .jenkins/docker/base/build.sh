@@ -15,8 +15,8 @@ usage() {
     echo "Create a base Docker image for Mystikos" 1>&2
     echo "  -m     Mystikos release version (Example: 0.5.0)"
     echo "           See https://github.com/deislabs/mystikos/releases for release versions"
-    echo "  -o     Open Enclave Base Docker Image tag (Examples: latest, 0.17.2)"
-    echo "           See https://github.com/openenclave/openenclave/releases for release versions"
+    echo "  -o     Open Enclave Base Docker Image tag (Examples: latest, SGX-2.15.100)"
+    echo "           See https://hub.docker.com/repository/docker/oeciteam/openenclave-base-ubuntu-18.04 for release versions"
     echo ""
     echo "Options:" 1>&2
     echo "  -u     Ubuntu release version [Default: 18.04]" 1>&2
@@ -79,7 +79,6 @@ wget \
 set -x
 DOCKER_BUILDKIT=1 docker build \
   --build-arg UBUNTU_VERSION="${UBUNTU_VERSION}" \
-  --build-arg UBUNTU_CODENAME="${UBUNTU_CODENAME}" \
   --build-arg OPENENCLAVE_BASE_IMAGE_TAG="${OPENENCLAVE_BASE_IMAGE_TAG}" \
   --build-arg MYSTIKOS_TARBALL="mystikos-${MYSTIKOS_RELEASE_VERSION}-x86_64.tar.gz" \
   --no-cache \
