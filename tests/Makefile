@@ -165,3 +165,11 @@ pipe-tests:
 	$(MAKE) -C spawn tests
 	$(MAKE) -C spawnfa tests
 	$(MAKE) -C ltp pipe-tests
+
+pipe-build:
+	$(MAKE) -C pipe
+	$(MAKE) -C pollpipe
+	$(MAKE) -C pollpipe2
+	$(MAKE) -C spawn
+	$(MAKE) -C spawnfa
+	$(MAKE) -C ltp

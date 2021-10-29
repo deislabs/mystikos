@@ -5855,7 +5855,7 @@ static long _syscall(void* args_)
 
                 _strace(
                     n,
-                    "sockfd=%d addr=%s addrlen=%p flags=%x",
+                    "sockfd=%d addr=%s addrlen=%p flags=0%o",
                     sockfd,
                     addrstr,
                     addrlen,

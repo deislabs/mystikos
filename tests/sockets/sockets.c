@@ -5,6 +5,7 @@
 // Licensed under the MIT License.
 
 #include <assert.h>
+#include <fcntl.h>
 #include <netinet/in.h>
 #include <pthread.h>
 #include <stdbool.h>

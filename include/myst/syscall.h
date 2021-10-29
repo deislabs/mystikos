@@ -359,4 +359,12 @@ long myst_syscall_pause(void);
 
 long myst_syscall_interrupt_thread(int tid);
 
+/* interruptible by myst_syscall_interrupt_thread() */
+long myst_interruptible_syscall(
+    long n,       /* syscall number */
+    int fd,       /* file descriptor to be interrupted */
+    short events, /* events passed to ppoll() (POLLIN, POLLOUT) */
+    bool retry,   /* whether to retry the operation on EAGAIN/EINPROGRESS */
+    ...);
+
 #endif /* _MYST_SYSCALL_H */

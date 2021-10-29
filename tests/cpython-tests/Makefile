@@ -18,8 +18,7 @@ endif
 MPDB=$(TOP)/scripts/mpdb.py
 TESTFILE=tests.passed
 TEST = test_bz2
-TESTCASE = test_asynchat.TestAsynchat
-#TESTCASE = test_asynchat.TestAsynchat.test_close_when_done
+TESTCASE = test_socket.LinuxKernelCryptoAPI.test_aead_aes_gcm
 VER=3.9
 FS=ext2fs$(VER)
 

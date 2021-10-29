@@ -5,6 +5,7 @@
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
 
 #include <myst/eraise.h>
 #include <myst/iov.h>
@@ -20,6 +21,7 @@ struct myst_sock
 {
     uint32_t magic; /* MAGIC */
     int fd;         /* the target-relative file descriptor */
+    bool nonblock;
 };
 
 MYST_INLINE bool _valid_sock(const myst_sock_t* sock)
@@ -88,6 +90,9 @@ static int _sd_socket(
         ECHECK(fd = myst_tcall(SYS_socket, params));
     }
 
+    if (type & SOCK_NONBLOCK)
+        sock->nonblock = true;
+
     sock->fd = (int)fd;
     *sock_out = sock;
     sock = NULL;
@@ -127,6 +132,12 @@ static int _sd_socketpair(
         ECHECK(myst_tcall(SYS_socketpair, params));
     }
 
+    if (type & SOCK_NONBLOCK)
+    {
+        sock0->nonblock = true;
+        sock1->nonblock = true;
+    }
+
     sock0->magic = MAGIC;
     sock0->fd = sv[0];
     pair[0] = sock0;
@@ -159,11 +170,10 @@ static int _sd_connect(
     if (!sd || !_valid_sock(sock))
         ERAISE(-EINVAL);
 
-    /* perform syscall */
-    {
-        long params[6] = {sock->fd, (long)addr, addrlen};
-        ECHECK(myst_tcall(SYS_connect, params));
-    }
+    if (sock->nonblock)
+        ECHECK(myst_tcall_connect(sock->fd, addr, addrlen));
+    else
+        ECHECK(myst_tcall_connect_block(sock->fd, addr, addrlen));
 
 done:
     return ret;
@@ -186,11 +196,17 @@ static int _sd_accept4(
 
     ECHECK(_new_sock(&new_sock));
 
-    /* perform syscall */
+    if (sock->nonblock)
     {
-        long params[6] = {sock->fd, (long)addr, (long)addrlen, flags};
-        ECHECK((fd = myst_tcall(SYS_accept4, params)));
+        ECHECK(fd = myst_tcall_accept4(sock->fd, addr, addrlen, flags));
     }
+    else
+    {
+        ECHECK(fd = myst_tcall_accept4_block(sock->fd, addr, addrlen, flags));
+    }
+
+    if (flags & SOCK_NONBLOCK)
+        new_sock->nonblock = true;
 
     new_sock->fd = fd;
     *new_sock_out = new_sock;
@@ -258,12 +274,17 @@ static ssize_t _sd_sendto(
     if (!sd || !_valid_sock(sock))
         ERAISE(-EINVAL);
 
-    /* perform syscall */
+    if (sock->nonblock)
     {
-        long params[6] = {
-            sock->fd, (long)buf, len, flags, (long)dest_addr, (long)addrlen};
-
-        ECHECK((ret = myst_tcall(SYS_sendto, params)));
+        ECHECK(
+            ret = myst_tcall_sendto(
+                sock->fd, buf, len, flags, dest_addr, addrlen));
+    }
+    else
+    {
+        ECHECK(
+            ret = myst_tcall_sendto_block(
+                sock->fd, buf, len, flags, dest_addr, addrlen));
     }
 
 done:
@@ -284,12 +305,17 @@ static ssize_t _sd_recvfrom(
     if (!sd || !_valid_sock(sock))
         ERAISE(-EINVAL);
 
-    /* perform syscall */
+    if (sock->nonblock)
     {
-        long params[6] = {
-            sock->fd, (long)buf, len, flags, (long)src_addr, (long)addrlen};
-
-        ECHECK((ret = myst_tcall(SYS_recvfrom, params)));
+        ECHECK(
+            ret = myst_tcall_recvfrom(
+                sock->fd, buf, len, flags, src_addr, addrlen));
+    }
+    else
+    {
+        ECHECK(
+            ret = myst_tcall_recvfrom_block(
+                sock->fd, buf, len, flags, src_addr, addrlen));
     }
 
 done:
@@ -343,11 +369,10 @@ static int _sd_sendmsg(
         msg_ptr = msg;
     }
 
-    /* perform syscall */
-    {
-        long params[6] = {sock->fd, (long)msg_ptr, flags};
-        ECHECK((ret = myst_tcall(SYS_sendmsg, params)));
-    }
+    if (sock->nonblock)
+        ECHECK(ret = myst_tcall_sendmsg(sock->fd, msg_ptr, flags));
+    else
+        ECHECK(ret = myst_tcall_sendmsg_block(sock->fd, msg_ptr, flags));
 
 done:
 
@@ -368,11 +393,10 @@ static int _sd_recvmsg(
     if (!sd || !_valid_sock(sock))
         ERAISE(-EINVAL);
 
-    /* perform syscall */
-    {
-        long params[6] = {sock->fd, (long)msg, flags};
-        ECHECK((ret = myst_tcall(SYS_recvmsg, params)));
-    }
+    if (sock->nonblock)
+        ECHECK(ret = myst_tcall_recvmsg(sock->fd, msg, flags));
+    else
+        ECHECK(ret = myst_tcall_recvmsg_block(sock->fd, msg, flags));
 
 done:
     return ret;
@@ -494,11 +518,10 @@ static ssize_t _sd_read(
     if (!sd || !_valid_sock(sock))
         ERAISE(-EINVAL);
 
-    /* perform syscall */
-    {
-        long params[6] = {sock->fd, (long)buf, count};
-        ECHECK((ret = myst_tcall(SYS_read, params)));
-    }
+    if (sock->nonblock)
+        ECHECK(ret = myst_tcall_read(sock->fd, buf, count));
+    else
+        ECHECK(ret = myst_tcall_read_block(sock->fd, buf, count));
 
 done:
     return ret;
@@ -515,11 +538,10 @@ static ssize_t _sd_write(
     if (!sd || !_valid_sock(sock))
         ERAISE(-EINVAL);
 
-    /* perform syscall */
-    {
-        long params[6] = {sock->fd, (long)buf, count};
-        ECHECK((ret = myst_tcall(SYS_write, params)));
-    }
+    if (sock->nonblock)
+        ECHECK(ret = myst_tcall_write_block(sock->fd, buf, count));
+    else
+        ECHECK(ret = myst_tcall_write(sock->fd, buf, count));
 
 done:
     return ret;
@@ -592,6 +614,17 @@ static int _sd_ioctl(
     if (!sd || !_valid_sock(sock))
         ERAISE(-EINVAL);
 
+    if (request == FIONBIO)
+    {
+        int* val = (int*)arg;
+
+        if (!val)
+            ERAISE(-EINVAL);
+
+        sock->nonblock = (bool)*val;
+        goto done;
+    }
+
     /* perform syscall */
     {
         long params[6] = {sock->fd, request, arg};
@@ -609,10 +642,32 @@ static int _sd_fcntl(myst_sockdev_t* sd, myst_sock_t* sock, int cmd, long arg)
     if (!sd || !_valid_sock(sock))
         ERAISE(-EINVAL);
 
+    if (cmd == F_SETFL)
+    {
+        if ((arg & O_NONBLOCK))
+        {
+            sock->nonblock = true;
+        }
+        else
+        {
+            sock->nonblock = false;
+            /* target sockets are always non-blocking */
+            arg |= O_NONBLOCK;
+        }
+    }
+
     /* perform syscall */
     {
         long params[6] = {sock->fd, cmd, arg};
         ECHECK((ret = myst_tcall(SYS_fcntl, params)));
+    }
+
+    if (cmd == F_GETFL)
+    {
+        if (sock->nonblock)
+            ret |= O_NONBLOCK;
+        else
+            ret &= ~O_NONBLOCK;
     }
 
 done:
