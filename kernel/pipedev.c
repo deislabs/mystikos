@@ -262,6 +262,22 @@ done:
     return ret;
 }
 
+static ssize_t _read(int fd, void* buf, size_t count, bool nonblock)
+{
+    if (nonblock)
+        return myst_tcall_read(fd, buf, count);
+    else
+        return myst_tcall_read_block(fd, buf, count);
+}
+
+static ssize_t _write(int fd, const void* buf, size_t count, bool nonblock)
+{
+    if (nonblock)
+        return myst_tcall_write(fd, buf, count);
+    else
+        return myst_tcall_write_block(fd, buf, count);
+}
+
 static ssize_t _pd_read(
     myst_pipedev_t* pipedev,
     myst_pipe_t* pipe,
@@ -310,6 +326,8 @@ static ssize_t _pd_read(
 
             if (min) /* there is data in the buffer */
             {
+                const bool nonblock = (pipe->fl_flags & O_NONBLOCK);
+
                 memcpy(ptr, shared->buf.data, min);
                 ECHECK(myst_buf_remove(&shared->buf, 0, min));
                 rem -= min;
@@ -323,13 +341,13 @@ static ssize_t _pd_read(
                         if (shared->buf.size == 0)
                         {
                             const size_t n = 2 * BLOCK_SIZE;
-                            ECHECK(myst_tcall_read(pipe->fd, locals->zeros, n));
+                            ECHECK(_read(pipe->fd, locals->zeros, n, nonblock));
                             shared->state = STATE_WR_ENABLED;
                         }
                         else
                         {
                             const size_t n = BLOCK_SIZE;
-                            ECHECK(myst_tcall_read(pipe->fd, locals->zeros, n));
+                            ECHECK(_read(pipe->fd, locals->zeros, n, nonblock));
                             shared->state = STATE_RDWR_ENABLED;
                         }
                         break;
@@ -339,7 +357,7 @@ static ssize_t _pd_read(
                         if (shared->buf.size == 0)
                         {
                             const size_t n = BLOCK_SIZE;
-                            ECHECK(myst_tcall_read(pipe->fd, locals->zeros, n));
+                            ECHECK(_read(pipe->fd, locals->zeros, n, nonblock));
                             shared->state = STATE_WR_ENABLED;
                         }
                         break;
@@ -452,6 +470,8 @@ static ssize_t _pd_write(
 
             if (min) /* there is space in the buffer */
             {
+                const bool nonblock = (pipe->fl_flags & O_NONBLOCK);
+
                 ECHECK(myst_buf_append(&shared->buf, ptr, min));
                 rem -= min;
                 ptr += min;
@@ -465,14 +485,14 @@ static ssize_t _pd_write(
                         {
                             const size_t n = BLOCK_SIZE;
                             ECHECK(
-                                myst_tcall_write(pipe->fd, locals->zeros, n));
+                                _write(pipe->fd, locals->zeros, n, nonblock));
                             shared->state = STATE_RDWR_ENABLED;
                         }
                         else
                         {
                             const size_t n = 2 * BLOCK_SIZE;
                             ECHECK(
-                                myst_tcall_write(pipe->fd, locals->zeros, n));
+                                _write(pipe->fd, locals->zeros, n, nonblock));
                             shared->state = STATE_RD_ENABLED;
                         }
                         break;
@@ -483,7 +503,7 @@ static ssize_t _pd_write(
                         {
                             const size_t n = BLOCK_SIZE;
                             ECHECK(
-                                myst_tcall_write(pipe->fd, locals->zeros, n));
+                                _write(pipe->fd, locals->zeros, n, nonblock));
                             shared->state = STATE_RD_ENABLED;
                         }
                         break;
@@ -667,12 +687,18 @@ static int _pd_fcntl(
                 ERAISE(-EINVAL);
             }
 
-            /* propagate this to the host file descriptor */
-            ECHECK((r = myst_tcall_fcntl(pipe->fd, cmd, arg)));
+            /* propagate this and O_NONBLOCK to the host file descriptor */
+            ECHECK((r = myst_tcall_fcntl(pipe->fd, cmd, arg | O_NONBLOCK)));
 
             /* preserve existing FL_IGNORE flags, and override FL_FLAGS from
              * fcntl(F_SETFL) return */
             pipe->fl_flags = (pipe->fl_flags & FL_IGNORE) | arg;
+
+            if ((arg & O_NONBLOCK))
+                pipe->fl_flags |= O_NONBLOCK;
+            else
+                pipe->fl_flags &= ~O_NONBLOCK;
+
             break;
         }
         default:
@@ -717,7 +743,15 @@ static int _pd_ioctl(
     }
     else if (request == FIONBIO)
     {
-        ECHECK(_pd_fcntl(pipedev, pipe, F_SETFL, pipe->fl_flags | O_NONBLOCK));
+        int* val = (int*)arg;
+
+        if (!val)
+            ERAISE(-EINVAL);
+
+        if (*val)
+            pipe->fl_flags |= O_NONBLOCK;
+        else
+            pipe->fl_flags &= ~O_NONBLOCK;
     }
     else
     {

@@ -18,6 +18,10 @@ ifdef STRACE
 OPTS = --strace
 endif
 
+ifdef ETRACE
+OPTS = --etrace
+endif
+
 UDSPATH=$(OBJDIR)/uds1
 
 tests: all

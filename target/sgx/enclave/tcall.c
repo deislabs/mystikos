@@ -637,6 +637,14 @@ long myst_tcall(long n, long params[6])
         case SYS_epoll_wait:
         case SYS_epoll_ctl:
         case SYS_eventfd2:
+        case MYST_TCALL_ACCEPT4_BLOCK:
+        case MYST_TCALL_CONNECT_BLOCK:
+        case MYST_TCALL_READ_BLOCK:
+        case MYST_TCALL_WRITE_BLOCK:
+        case MYST_TCALL_SENDTO_BLOCK:
+        case MYST_TCALL_RECVFROM_BLOCK:
+        case MYST_TCALL_SENDMSG_BLOCK:
+        case MYST_TCALL_RECVMSG_BLOCK:
         {
             extern long myst_handle_tcall(long n, long params[6]);
             return myst_handle_tcall(n, params);

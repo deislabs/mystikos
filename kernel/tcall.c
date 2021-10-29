@@ -290,3 +290,148 @@ long myst_tcall_interrupt_thread(pid_t tid)
     long params[6] = {tid};
     return myst_tcall(MYST_TCALL_INTERRUPT_THREAD, params);
 }
+
+int myst_tcall_accept4(
+    int sockfd,
+    struct sockaddr* addr,
+    socklen_t* addrlen,
+    int flags)
+{
+    long params[6] = {sockfd, (long)addr, (long)addrlen, flags};
+    return myst_tcall(SYS_accept4, params);
+}
+
+int myst_tcall_connect(
+    int sockfd,
+    const struct sockaddr* addr,
+    socklen_t addrlen)
+{
+    long params[6] = {sockfd, (long)addr, (long)addrlen};
+    return myst_tcall(SYS_connect, params);
+}
+
+ssize_t myst_tcall_sendto(
+    int sockfd,
+    const void* buf,
+    size_t len,
+    int flags,
+    const struct sockaddr* dest_addr,
+    socklen_t addrlen)
+{
+    long params[6] = {(long)sockfd,
+                      (long)buf,
+                      (long)len,
+                      (long)flags,
+                      (long)dest_addr,
+                      (long)addrlen};
+    return myst_tcall(SYS_sendto, params);
+}
+
+ssize_t myst_tcall_recvfrom(
+    int sockfd,
+    void* buf,
+    size_t len,
+    int flags,
+    struct sockaddr* src_addr,
+    socklen_t* addrlen)
+{
+    long params[6] = {(long)sockfd,
+                      (long)buf,
+                      (long)len,
+                      (long)flags,
+                      (long)src_addr,
+                      (long)addrlen};
+    return myst_tcall(SYS_recvfrom, params);
+}
+
+ssize_t myst_tcall_sendmsg(int sockfd, const struct msghdr* msg, int flags)
+{
+    long params[6] = {(long)sockfd, (long)msg, (long)flags};
+    return myst_tcall(SYS_sendmsg, params);
+}
+
+ssize_t myst_tcall_recvmsg(int sockfd, struct msghdr* msg, int flags)
+{
+    long params[6] = {(long)sockfd, (long)msg, (long)flags};
+    return myst_tcall(SYS_recvmsg, params);
+}
+
+long myst_tcall_read_block(int fd, void* buf, size_t count)
+{
+    long params[6] = {fd, (long)buf, count};
+    return myst_tcall(MYST_TCALL_READ_BLOCK, params);
+}
+
+long myst_tcall_write_block(int fd, const void* buf, size_t count)
+{
+    long params[6] = {fd, (long)buf, count};
+    return myst_tcall(MYST_TCALL_WRITE_BLOCK, params);
+}
+
+int myst_tcall_accept4_block(
+    int sockfd,
+    struct sockaddr* addr,
+    socklen_t* addrlen,
+    int flags)
+{
+    long params[6] = {sockfd, (long)addr, (long)addrlen, flags};
+    return myst_tcall(MYST_TCALL_ACCEPT4_BLOCK, params);
+}
+
+int myst_tcall_connect_block(
+    int sockfd,
+    const struct sockaddr* addr,
+    socklen_t addrlen)
+{
+    long params[6] = {sockfd, (long)addr, (long)addrlen};
+    return myst_tcall(MYST_TCALL_CONNECT_BLOCK, params);
+}
+
+ssize_t myst_tcall_sendto_block(
+    int sockfd,
+    const void* buf,
+    size_t len,
+    int flags,
+    const struct sockaddr* dest_addr,
+    socklen_t addrlen)
+{
+    long params[6] = {(long)sockfd,
+                      (long)buf,
+                      (long)len,
+                      (long)flags,
+                      (long)dest_addr,
+                      (long)addrlen};
+    return myst_tcall(MYST_TCALL_SENDTO_BLOCK, params);
+}
+
+ssize_t myst_tcall_recvfrom_block(
+    int sockfd,
+    void* buf,
+    size_t len,
+    int flags,
+    struct sockaddr* src_addr,
+    socklen_t* addrlen)
+{
+    long params[6] = {(long)sockfd,
+                      (long)buf,
+                      (long)len,
+                      (long)flags,
+                      (long)src_addr,
+                      (long)addrlen};
+    return myst_tcall(MYST_TCALL_RECVFROM_BLOCK, params);
+}
+
+ssize_t myst_tcall_sendmsg_block(
+    int sockfd,
+    const struct msghdr* msg,
+    int flags)
+{
+    long params[6] = {(long)sockfd, (long)msg, (long)flags};
+    return myst_tcall(MYST_TCALL_SENDMSG_BLOCK, params);
+}
+
+ssize_t myst_tcall_recvmsg_block(int sockfd, struct msghdr* msg, int flags)
+{
+    long params[6] = {(long)sockfd, (long)msg, (long)flags};
+    return myst_tcall(MYST_TCALL_RECVMSG_BLOCK, params);
+}
