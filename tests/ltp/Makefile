@@ -251,6 +251,3 @@ PIPE_TESTS += /ltp/testcases/kernel/syscalls/epoll_wait/epoll_wait01
 
 pipe-tests:
 	$(foreach i, $(PIPE_TESTS), $(MAKE) one FS=ext2fs TEST=$i $(NL) )
-
-tt:
-	$(MAKE) one TEST=/ltp/testcases/kernel/syscalls/connect/connect01
