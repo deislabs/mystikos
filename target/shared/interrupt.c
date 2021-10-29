@@ -209,15 +209,22 @@ int myst_tcall_connect_block(
     int ret = 0;
     int r;
 
-    /* check whether socket is already connected */
+    /* check whether socket is already connected (for SOCK_STREAM only) */
     {
-        struct pollfd fds[1];
-        fds[0].fd = sockfd;
-        fds[0].events = POLLOUT;
-        fds[0].revents = 0;
+        int type = 0;
+        socklen_t optlen = sizeof(type);
 
-        if (poll(fds, 1, 0) == 1 && !(fds[0].revents & POLLHUP))
-            ERAISE(-EISCONN);
+        if (getsockopt(sockfd, SOL_SOCKET, SO_TYPE, &type, &optlen) == 0 &&
+            type == SOCK_STREAM)
+        {
+            struct pollfd fds[1];
+            fds[0].fd = sockfd;
+            fds[0].events = POLLOUT;
+            fds[0].revents = 0;
+
+            if (poll(fds, 1, 0) == 1 && !(fds[0].revents & POLLHUP))
+                ERAISE(-EISCONN);
+        }
     }
 
     /* perform the interruptible syscall */
