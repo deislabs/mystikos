@@ -367,4 +367,18 @@ long myst_interruptible_syscall(
     bool retry,   /* whether to retry the operation on EAGAIN/EINPROGRESS */
     ...);
 
+/* get the syscall name for the given syscall number */
+const char* myst_syscall_name(long num);
+
+/* get the syscall number for the given syscall name */
+long myst_syscall_num(const char* name);
+
+typedef struct myst_syscall_pair
+{
+    short num;
+    const char* name;
+} myst_syscall_pair_t;
+
+const myst_syscall_pair_t* myst_syscall_pairs(void);
+
 #endif /* _MYST_SYSCALL_H */

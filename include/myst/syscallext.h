@@ -8,29 +8,29 @@
 #include <sys/types.h>
 
 /* Internal myst-specific syscalls */
-enum
+typedef enum
 {
     SYS_myst_trace = 2000,
-    SYS_myst_trace_ptr,
-    SYS_myst_dump_stack,
-    SYS_myst_dump_ehdr,
-    SYS_myst_dump_argv,
-    SYS_myst_add_symbol_file,
-    SYS_myst_load_symbols,
-    SYS_myst_unload_symbols,
-    SYS_myst_clone,
-    SYS_myst_poll_wake,
-    SYS_myst_run_itimer,
-    SYS_myst_start_shell,
-    SYS_myst_gcov,
-    SYS_myst_unmap_on_exit,
-    SYS_myst_get_fork_info,
-    SYS_myst_kill_wait_child_forks,
-    SYS_get_process_thread_stack,
-    SYS_fork_wait_exec_exit,
-    SYS_myst_get_exec_stack_option,
-    SYS_myst_interrupt_thread,
-};
+    SYS_myst_trace_ptr = 2001,
+    SYS_myst_dump_stack = 2002,
+    SYS_myst_dump_ehdr = 2003,
+    SYS_myst_dump_argv = 2004,
+    SYS_myst_add_symbol_file = 2005,
+    SYS_myst_load_symbols = 2006,
+    SYS_myst_unload_symbols = 2007,
+    SYS_myst_clone = 2008,
+    SYS_myst_poll_wake = 2009,
+    SYS_myst_run_itimer = 2010,
+    SYS_myst_start_shell = 2011,
+    SYS_myst_gcov = 2012,
+    SYS_myst_unmap_on_exit = 2013,
+    SYS_myst_get_fork_info = 2014,
+    SYS_myst_kill_wait_child_forks = 2015,
+    SYS_myst_get_process_thread_stack = 2016,
+    SYS_myst_fork_wait_exec_exit = 2017,
+    SYS_myst_get_exec_stack_option = 2018,
+    SYS_myst_interrupt_thread = 2019,
+} myst_syscall_t;
 
 /* Used for SYS_myst_get_fork_info parameter */
 typedef enum
