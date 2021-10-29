@@ -73,6 +73,11 @@ long myst_interruptible_syscall(long n, int fd, short events, bool retry, ...)
                     syscall_ret = read((int)a, (void*)b, (size_t)c);
                     break;
                 }
+                case SYS_write:
+                {
+                    syscall_ret = write((int)a, (void*)b, (size_t)c);
+                    break;
+                }
                 case SYS_sendmsg:
                 {
                     syscall_ret = sendmsg((int)a, (void*)b, (int)c);
