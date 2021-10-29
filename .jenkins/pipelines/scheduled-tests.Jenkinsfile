@@ -22,6 +22,9 @@ pipeline {
         MYST_NIGHTLY_TEST = 1
         MYST_ENABLE_GCOV =  1
         PATH =              "${params.PACKAGE_BINARIES == 'true' ? "${PATH}:/opt/mystikos/bin" : "${PATH}"}"
+        GDB_BIN =           "${params.PACKAGE_BINARIES == 'true' ? "/opt/mystikos/bin/myst-gdb" : ""}"
+        LLDDB_BIN =         "${params.PACKAGE_BINARIES == 'true' ? "/opt/mystikos/bin/myst-lldb" : ""}"
+        MYST_BIN =          "${params.PACKAGE_BINARIES == 'true' ? "/opt/mystikos/bin/myst" : ""}"
         BUILD_USER = sh(
             returnStdout: true,
             script: 'echo \${USER}'
