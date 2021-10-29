@@ -21,7 +21,7 @@ int main(int argc, const char* argv[])
     size_t size2;
 
     /* Get the stack and stack size with an extended syscall */
-    assert(syscall(SYS_get_process_thread_stack, &stack1, &size1) == 0);
+    assert(syscall(SYS_myst_get_process_thread_stack, &stack1, &size1) == 0);
 
     /* Get the stack and stack size with the pthread interface */
     {
