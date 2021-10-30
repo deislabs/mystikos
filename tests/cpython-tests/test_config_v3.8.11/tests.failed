@@ -1,5 +1,4 @@
 test__locale
-test_asyncgen
 test_asyncio
 test_asyncore
 test_c_locale_coercion
