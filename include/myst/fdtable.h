@@ -19,7 +19,7 @@
 #include <myst/spinlock.h>
 #include <myst/ttydev.h>
 
-#define MYST_FDTABLE_SIZE 1024
+#define MYST_FDTABLE_SIZE 2048
 
 typedef enum myst_fdtable_type
 {
