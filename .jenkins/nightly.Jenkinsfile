@@ -15,6 +15,7 @@ pipeline {
         string(name: "REPOSITORY_NAME", defaultValue: "deislabs/mystikos", description: "Enter the name of the repository that your branch exists on (ex. deislabs/mystikos)")
         string(name: "PULL_REQUEST_ID", defaultValue: "", description: "If you are building a pull request, enter the pull request ID number here. (ex. 789)")
         string(name: "SCRIPTS_ROOT", defaultValue: '${WORKSPACE}/.azure_pipelines/scripts', description: "Root directory")
+        booleanParam(name: "FULL_TESTS", defaultValue: false, description: "Run all tests?")
     }
     environment {
         BUILD_USER = sh(
@@ -191,6 +192,11 @@ pipeline {
                     }
                 }
                 stage('Run dotnet 5 p1 test suite') {
+                    when {
+                        expression {
+                            return params.FULL_TESTS
+                        }
+                    }
                     steps {
                         catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
                             sh """
