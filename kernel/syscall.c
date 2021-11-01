@@ -70,6 +70,7 @@
 #include <myst/process.h>
 #include <myst/pubkey.h>
 #include <myst/ramfs.h>
+#include <myst/realpath.h>
 #include <myst/round.h>
 #include <myst/setjmp.h>
 #include <myst/signal.h>
@@ -2087,10 +2088,22 @@ long myst_syscall_execve(
     long ret = 0;
     const char** argv = NULL;
     myst_thread_t* current_thread = myst_thread_self();
+    myst_path_t* resolved_path = NULL;
 
-    /* ATTN: the filename should be resolved if not an absolute path */
-    if (!filename || filename[0] != '/')
+    if (!filename)
         ERAISE(-EINVAL);
+
+    // Resolve relative path
+    if (filename[0] != '/')
+    {
+        if (!(resolved_path = (myst_path_t*)malloc(sizeof(myst_path_t))))
+            ERAISE(-ENOMEM);
+
+        if (ret = myst_realpath(filename, resolved_path))
+            ERAISE(ret);
+
+        filename = resolved_path->buf;
+    }
 
     /* Make a copy of argv_in[] and inject filename into argv[0] */
     {
@@ -2125,6 +2138,13 @@ long myst_syscall_execve(
     }
 
 done:
+    if (resolved_path)
+    {
+        filename = NULL;
+        free(resolved_path);
+        resolved_path = NULL;
+    }
+
     return ret;
 }
 

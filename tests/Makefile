@@ -50,6 +50,7 @@ DIRS += sockets
 DIRS += sendmsg
 DIRS += poll
 DIRS += sysinfo
+DIRS += sys_execve
 DIRS += pollpipe
 DIRS += pipesz
 DIRS += futex
