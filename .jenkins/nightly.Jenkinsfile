@@ -216,19 +216,21 @@ pipeline {
     post {
         always {
             withCredentials([string(credentialsId: 'mystikos-report', variable: 'MYSTIKOS_REPORT')]) {
-                // Notify the build requestor only for manual builds (of branches other than main)
-                if ( params.PULL_REQUEST_ID || params.BRANCH_NAME != 'main' ) {
-                    emailext(
-                        subject: "Jenkins: ${env.JOB_NAME} [#${env.BUILD_NUMBER}] status is ${currentBuild.currentResult}",
-                        body: "See build log for details: ${env.BUILD_URL}", 
-                        recipientProviders: [[$class: 'RequesterRecipientProvider']]
-                    )
-                } else {
-                    emailext(
-                        subject: "Jenkins: ${env.JOB_NAME} [#${env.BUILD_NUMBER}] status is ${currentBuild.currentResult}",
-                        body: "See build log for details: ${env.BUILD_URL}", 
-                        to: MYSTIKOS_REPORT
-                    )
+                script {
+                    // Notify the build requestor only for manual builds (of branches other than main)
+                    if ( params.REPOSITORY_NAME == 'deislabs' && params.BRANCH_NAME == 'main' ) {
+                        emailext(
+                            subject: "Jenkins: ${env.JOB_NAME} [#${env.BUILD_NUMBER}] status is ${currentBuild.currentResult}",
+                            body: "See build log for details: ${env.BUILD_URL}", 
+                            to: MYSTIKOS_REPORT
+                        )
+                    } else {
+                        emailext(
+                            subject: "Jenkins: ${env.JOB_NAME} [#${env.BUILD_NUMBER}] status is ${currentBuild.currentResult}",
+                            body: "See build log for details: ${env.BUILD_URL}", 
+                            recipientProviders: [[$class: 'RequesterRecipientProvider']]
+                        )
+                    }
                 }
             }
         }
