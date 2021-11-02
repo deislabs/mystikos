@@ -110,7 +110,8 @@ enclave
         **======================================================================
         */
 
-        long myst_create_thread_ocall(uint64_t cookie);
+        long myst_create_thread_ocall(uint64_t cookie)
+            transition_using_threads;
 
         long myst_wait_ocall(
             uint64_t event,
