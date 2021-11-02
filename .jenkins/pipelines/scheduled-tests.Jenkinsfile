@@ -203,11 +203,22 @@ pipeline {
     }
     post {
         always {
-            emailext(
-                subject: "Jenkins: ${env.JOB_NAME} [#${env.BUILD_NUMBER}] status is ${currentBuild.currentResult}",
-                body: "See build log for details: ${env.BUILD_URL}", 
-                recipientProviders: [[$class: 'DevelopersRecipientProvider'], [$class: 'RequesterRecipientProvider']]
-            )
+            withCredentials([string(credentialsId: 'mystikos-report', variable: 'MYSTIKOS_REPORT')]) {
+                // Notify the build requestor only for manual builds
+                if ( params.BRANCH != 'main' ) {
+                    emailext(
+                        subject: "Jenkins: ${env.JOB_NAME} [#${env.BUILD_NUMBER}] status is ${currentBuild.currentResult}",
+                        body: "See build log for details: ${env.BUILD_URL}", 
+                        recipientProviders: [[$class: 'RequesterRecipientProvider']]
+                    )
+                } else {
+                    emailext(
+                        subject: "Jenkins: ${env.JOB_NAME} [#${env.BUILD_NUMBER}] status is ${currentBuild.currentResult}",
+                        body: "See build log for details: ${env.BUILD_URL}", 
+                        to: MYSTIKOS_REPORT
+                    )
+                }
+            }
         }
     }
 }
