@@ -522,7 +522,7 @@ static long _recvmsg(
         int iovlen = msg->msg_iovlen;
 
         /* scatter the single buffer onto multiple iovec buffers */
-        if ((r = myst_iov_scatter(iov, iovlen, buf, (size_t)len)) < 0)
+        if ((r = myst_iov_scatter(iov, iovlen, buf, (size_t)retval)) < 0)
         {
             ret = r;
             goto done;
