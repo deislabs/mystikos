@@ -8,7 +8,7 @@
 #include <stdint.h>
 
 // clang-format off
-#define BUFU64_INITIALIZER { NULL, 0, 0 }
+#define MYST_BUFU64_INITIALIZER { NULL, 0, 0 }
 // clang-format on
 
 typedef struct myst_bufu64

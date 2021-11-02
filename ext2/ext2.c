@@ -15,6 +15,7 @@
 #include <myst/hex.h>
 #include <myst/paths.h>
 #include <myst/round.h>
+#include <myst/strarr.h>
 #include <myst/strings.h>
 #include <myst/syscall.h>
 #include <myst/thread.h>
@@ -1241,11 +1242,9 @@ static int _path_to_ino_recursive(
         ext2_inode_t current_inode;
         ext2_dirent_t ent;
         ext2_ino_t ino;
-        const char* toks[32];
     };
     struct locals* locals = NULL;
-    const uint8_t NELEMENTS = sizeof(locals->toks) / sizeof(locals->toks[0]);
-    uint8_t ntoks = 0;
+    myst_strarr_t toks = MYST_STRARR_INITIALIZER;
     char* p;
     char* save;
     uint8_t i;
@@ -1272,20 +1271,18 @@ static int _path_to_ino_recursive(
     for (p = strtok_r(locals->buf, "/", &save); p;
          p = strtok_r(NULL, "/", &save))
     {
-        if (ntoks == NELEMENTS)
-            ERAISE(-ENAMETOOLONG);
-
-        locals->toks[ntoks++] = p;
+        if (myst_strarr_append(&toks, p) != 0)
+            ERAISE(-ENOMEM);
     }
 
     /* load each inode along the path until found */
-    for (i = 0; i < ntoks; i++)
+    for (i = 0; i < toks.size; i++)
     {
         ECHECK(ext2_read_inode(ext2, current_ino, &locals->current_inode));
         if (!S_ISDIR(locals->current_inode.i_mode))
             ERAISE(-ENOTDIR);
 
-        ECHECK(_load_dirent(ext2, current_ino, locals->toks[i], &locals->ent));
+        ECHECK(_load_dirent(ext2, current_ino, toks.data[i], &locals->ent));
         assert(locals->ent.inode != 0);
         locals->ino = locals->ent.inode;
 
@@ -1293,7 +1290,7 @@ static int _path_to_ino_recursive(
         if (locals->ent.file_type == EXT2_FT_SYMLINK)
         {
             /* only check follow tag on final element */
-            if (i + 1 != ntoks || follow == FOLLOW)
+            if (i + 1 != toks.size || follow == FOLLOW)
             {
                 /* load the target from the symlink */
                 ECHECK((_load_file_by_ino(ext2, locals->ino, &data, &size)));
@@ -1311,18 +1308,17 @@ static int _path_to_ino_recursive(
                         myst_strlcpy(target_out, locals->target, PATH_MAX);
 
                         // Copy over rest of unresolved tokens
-                        if (i + 1 != ntoks)
+                        if (i + 1 != toks.size)
                         {
-                            for (size_t j = i + 1; j < ntoks; j++)
+                            for (size_t j = i + 1; j < toks.size; j++)
                             {
                                 if (myst_strlcat(target_out, "/", PATH_MAX) >=
                                     PATH_MAX)
                                     ERAISE_QUIET(-ENAMETOOLONG);
 
                                 if (myst_strlcat(
-                                        target_out,
-                                        locals->toks[j],
-                                        PATH_MAX) >= PATH_MAX)
+                                        target_out, toks.data[j], PATH_MAX) >=
+                                    PATH_MAX)
                                     ERAISE_QUIET(-ENAMETOOLONG);
                             }
                         }
@@ -1357,7 +1353,7 @@ static int _path_to_ino_recursive(
         else
         {
             myst_strlcat(realpath, "/", PATH_MAX);
-            myst_strlcat(realpath, locals->toks[i], PATH_MAX);
+            myst_strlcat(realpath, toks.data[i], PATH_MAX);
         }
 
         previous_ino = current_ino;
@@ -1373,6 +1369,9 @@ static int _path_to_ino_recursive(
     ret = 0;
 
 done:
+
+    if (toks.data)
+        free(toks.data);
 
     if (locals)
         free(locals);
