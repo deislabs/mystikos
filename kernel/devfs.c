@@ -179,7 +179,7 @@ static int _read_slave_pty_cb(myst_file_t* file, void* buf, size_t count)
             goto done;
         }
     }
-    ERAISE(-EINVAL); /* can't find the paired slave PTY device */
+    ERAISE(-EINVAL); /* can't find the paired master PTY device */
 
 done:
     return ret;
