@@ -1335,6 +1335,10 @@ static int _fs_close(myst_fs_t* fs, myst_file_t* file)
 
     if (--file->use_count == 0)
     {
+        /* If a virtual file has a close-callback, call it */
+        if (file->inode->v_cb.close_cb)
+            file->inode->v_cb.close_cb(file);
+
         /* For open-time virtual files, release the virtual file
         data on close */
         if (file->inode->v_cb.open_cb)
@@ -2970,7 +2974,10 @@ done:
     return ret;
 }
 
-int myst_read_virtual_file(myst_file_t* file, void* buf, size_t buf_size)
+int myst_read_stateful_virtual_file(
+    myst_file_t* file,
+    void* buf,
+    size_t buf_size)
 {
     int ret = 0;
     size_t len = buf_size;
@@ -2989,7 +2996,10 @@ int myst_read_virtual_file(myst_file_t* file, void* buf, size_t buf_size)
     return ret;
 }
 
-int myst_write_virtual_file(myst_file_t* file, const void* buf, size_t buf_size)
+int myst_write_stateful_virtual_file(
+    myst_file_t* file,
+    const void* buf,
+    size_t buf_size)
 {
     int ret = 0;
     myst_spin_lock(&file->vbuf_lock);

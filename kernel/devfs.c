@@ -157,7 +157,7 @@ static int _read_master_pty_cb(myst_file_t* file, void* buf, size_t count)
     {
         if (tmp->file_master == file)
         {
-            ret = myst_read_virtual_file(tmp->file_slave, buf, count);
+            ret = myst_read_stateful_virtual_file(tmp->file_slave, buf, count);
             goto done;
         }
     }
@@ -175,7 +175,7 @@ static int _read_slave_pty_cb(myst_file_t* file, void* buf, size_t count)
     {
         if (tmp->file_slave == file)
         {
-            ret = myst_read_virtual_file(tmp->file_master, buf, count);
+            ret = myst_read_stateful_virtual_file(tmp->file_master, buf, count);
             goto done;
         }
     }
@@ -187,7 +187,7 @@ done:
 
 static int _write_pty_cb(myst_file_t* file, const void* buf, size_t count)
 {
-    return myst_write_virtual_file(file, buf, count);
+    return myst_write_stateful_virtual_file(file, buf, count);
 }
 
 static int _open_master_pty_cb(
