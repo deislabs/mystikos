@@ -63,6 +63,26 @@ typedef struct myst_crt_args
     myst_wanted_secrets_t* wanted_secrets;
 } myst_crt_args_t;
 
+typedef struct _myst_strace_config
+{
+    /* Is tracing enabled or not */
+    bool trace_syscalls;
+
+    /* Should failing syscalls be traced or not*/
+    bool trace_failing;
+
+    /* Is filtering enabled or not */
+    bool filter;
+
+    /*
+        If filter is enabled, should the given syscall be traced or not.
+        Note: ausyscall --dump shows that maximum syscall value on Ubuntu 18.04
+              is 332 statx.
+              MYST_MAX_SYSCALLS value is much higher (3000).
+    */
+    bool trace[MYST_MAX_SYSCALLS];
+} myst_strace_config_t;
+
 typedef struct myst_kernel_args
 {
     /* The image that contains the kernel and crt etc. */
@@ -170,7 +190,7 @@ typedef struct myst_kernel_args
 
     /* Tracing options */
     bool trace_errors;
-    bool trace_syscalls;
+    myst_strace_config_t strace_config;
 
     /* Whether the target supports the SYSCALL instruction */
     bool have_syscall_instruction;

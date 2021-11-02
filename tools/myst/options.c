@@ -75,7 +75,7 @@ long determine_final_options(
         // Some options should not be enabled unless running in debug mode
         if (tee_debug_mode)
         {
-            final_opts->base.trace_syscalls = cmdline_opts->trace_syscalls;
+            final_opts->base.strace_config = cmdline_opts->strace_config;
             final_opts->base.trace_errors = cmdline_opts->trace_errors;
             final_opts->base.shell_mode = cmdline_opts->shell_mode;
             final_opts->base.debug_symbols = cmdline_opts->debug_symbols;
@@ -86,7 +86,10 @@ long determine_final_options(
         }
         else
         {
-            final_opts->base.trace_syscalls = false;
+            memset(
+                &final_opts->base.strace_config,
+                0,
+                sizeof(final_opts->base.strace_config));
             final_opts->base.trace_errors = false;
             final_opts->base.shell_mode = false;
             final_opts->base.debug_symbols = false;
