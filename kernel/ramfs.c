@@ -2287,11 +2287,15 @@ static int _fs_ioctl(
         }
         case TIOCSPTLCK:
         {
+            if (!devfs_is_pty_pts_device(file))
+                ERAISE(-ENOTTY);
             // NOP. The PTY slave is always ready to serve.
             break;
         }
         case TIOCGPTN:
         {
+            if (!devfs_is_pty_pts_device(file))
+                ERAISE(-ENOTTY);
             int* id = (int*)arg;
             ret = devfs_get_pts_id(file, id);
             break;
