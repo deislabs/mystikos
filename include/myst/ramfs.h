@@ -60,9 +60,12 @@ int myst_create_virtual_file(
     mode_t mode,
     myst_vcallback_t v_cb);
 
-int myst_read_virtual_file(myst_file_t* file, void* buf, size_t buf_size);
+int myst_read_stateful_virtual_file(
+    myst_file_t* file,
+    void* buf,
+    size_t buf_size);
 
-int myst_write_virtual_file(
+int myst_write_stateful_virtual_file(
     myst_file_t* file,
     const void* buf,
     size_t buf_size);
