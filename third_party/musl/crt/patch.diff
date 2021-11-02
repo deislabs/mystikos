@@ -623,7 +623,7 @@ index cbabde47..e78515e4 100644
  
  #endif
 diff --git a/src/internal/pthread_impl.h b/src/internal/pthread_impl.h
-index 5742dfc5..fe718786 100644
+index 5742dfc5..ad326d00 100644
 --- a/src/internal/pthread_impl.h
 +++ b/src/internal/pthread_impl.h
 @@ -75,7 +75,9 @@ struct __timer {
@@ -699,6 +699,15 @@ index 5742dfc5..fe718786 100644
  #include "pthread_arch.h"
  
  #ifndef CANARY
+@@ -179,7 +236,7 @@ extern hidden volatile int __thread_list_lock;
+ extern hidden unsigned __default_stacksize;
+ extern hidden unsigned __default_guardsize;
+ 
+-#define DEFAULT_STACK_SIZE 131072
++#define DEFAULT_STACK_SIZE 8388608
+ #define DEFAULT_GUARD_SIZE 8192
+ 
+ #define DEFAULT_STACK_MAX (8<<20)
 diff --git a/src/linux/epoll.c b/src/linux/epoll.c
 index deff5b10..fd66b82a 100644
 --- a/src/linux/epoll.c
