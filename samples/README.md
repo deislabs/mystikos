@@ -5,7 +5,7 @@
 Follow the [installation guide](../README.md#installation-guide-for-ubuntu-1804) to set up prerequsites for the samples.
 
 [Download the Mystikos package from GitHub and set up the path](../README.md#download-mystikos) as described in the documentation or
-[build Mystikos from source and install the package](../README.md#BUILDING.md).
+[build Mystikos from source and install the package](../BUILDING.md).
 
 ## Common SGX Sample Information
 
@@ -20,7 +20,7 @@ It is recommended that you understand the developer workflow for Mystikos by rea
 ## SGX execution targets
 
 The samples below demonstate how to run Mystikos samples using the SGX execution target. To learn more about the SGX execution target, please refer to 
-the [documentation for the targets](./doc/user-getting-started.md#understand-mystikos-execution-targets).
+the [documentation for the targets](../doc/user-getting-started.md#understand-mystikos-execution-targets).
 
 ## Samples
 
