@@ -163,14 +163,14 @@ int mock_mount_resolve(
 
 static void _rand_name(char buf[PATH_MAX])
 {
-    size_t len = random() % EXT2_PATH_MAX;
+    size_t len = random() % EXT2_FILENAME_MAX;
 
     if (len == 0)
         len++;
 
     const char chars[] = "abcdefghijklmnopqrstuvwxyz0123456789";
 
-    assert(len <= EXT2_PATH_MAX);
+    assert(len <= EXT2_FILENAME_MAX);
 
     for (size_t i = 0; i < len; i++)
     {
