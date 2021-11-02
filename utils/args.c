@@ -3,10 +3,12 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <myst/args.h>
 #include <myst/buf.h>
 #include <myst/bufu64.h>
+#include <myst/errno.h>
 
 #define CAP 16
 
@@ -259,4 +261,22 @@ void myst_args_dump(myst_args_t* self)
 
     printf("data[%zu]=%s\n", self->size, self->data[self->size]);
     printf("\n");
+}
+
+/* looks at the first n chars and returns pos if found, else returns -ENOENT */
+int myst_args_find(myst_args_t* self, const char* data, size_t n)
+{
+    if (!self || !data)
+        return -1;
+
+    size_t i = 0;
+    for (i = 0; i < self->size; i++)
+    {
+        if (self->data[i] && strncmp(self->data[i], data, n) == 0)
+        {
+            return i;
+        }
+    }
+
+    return -ENOENT;
 }

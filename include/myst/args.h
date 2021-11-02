@@ -52,4 +52,7 @@ int myst_args_unpack(
 
 void myst_args_dump(myst_args_t* self);
 
+/* looks at the first n chars and returns pos if found, else returns -ENOENT */
+int myst_args_find(myst_args_t* self, const char* data, size_t n);
+
 #endif /* _MYST_ARGS_H */

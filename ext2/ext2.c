@@ -1370,8 +1370,7 @@ static int _path_to_ino_recursive(
 
 done:
 
-    if (toks.data)
-        free(toks.data);
+    myst_strarr_release(&toks);
 
     if (locals)
         free(locals);
