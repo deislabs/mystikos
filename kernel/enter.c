@@ -3,10 +3,12 @@
 
 #define _GNU_SOURCE
 #include <assert.h>
+#include <ctype.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include <myst/appenv.h>
 #include <myst/atexit.h>
 #include <myst/clock.h>
 #include <myst/cpio.h>
@@ -663,6 +665,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     myst_process_t* process = NULL;
     myst_fstype_t fstype;
     int tmp_ret;
+    int create_appenv_ret;
 
     if (!args)
         myst_crash();
@@ -820,6 +823,13 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     if (__myst_kernel_args.perf)
         _print_boottime();
 
+    if ((create_appenv_ret = myst_create_appenv(args)) < 0 &&
+        create_appenv_ret != -ENOENT)
+    {
+        myst_eprintf("myst_create_appenv() failed");
+        ERAISE(create_appenv_ret);
+    }
+
     /* Run the main program: wait for SYS_exit to perform longjmp() */
     if (myst_setjmp(&thread->jmpbuf) == 0)
     {
@@ -937,6 +947,11 @@ int myst_enter_kernel(myst_kernel_args_t* args)
 
         free(process);
         process = NULL;
+
+        if (create_appenv_ret == 0)
+        {
+            myst_appenv_free(args);
+        }
 
         /* Free up the thread unmap-on-exit. */
         {
