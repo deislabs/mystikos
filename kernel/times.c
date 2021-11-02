@@ -13,8 +13,6 @@
 #include <myst/thread.h>
 #include <myst/times.h>
 
-#define MYST_MAX_SYSCALLS 3000
-
 /* Time spent by the main thread and its children */
 struct tms process_times;
 

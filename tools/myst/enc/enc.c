@@ -245,7 +245,7 @@ __attribute__((format(printf, 2, 3))) static void _exception_handler_strace(
     const char* fmt,
     ...)
 {
-    if (final_options.base.trace_syscalls)
+    if (final_options.base.strace_config.trace_syscalls)
     {
         char null_char = '\0';
         char* buf = &null_char;
@@ -612,7 +612,7 @@ static long _enter(void* arg_)
                 enclave_image_size, /* image_size */
                 _get_num_tcs(),     /* max threads */
                 final_options.base.trace_errors,
-                final_options.base.trace_syscalls,
+                &final_options.base.strace_config,
                 false, /* have_syscall_instruction */
                 tee_debug_mode,
                 event, /* thread_event */

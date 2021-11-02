@@ -16,7 +16,6 @@ typedef struct myst_options
     bool have_syscall_instruction;
     bool have_fsgsbase_instructions;
     bool trace_errors;
-    bool trace_syscalls;
     bool shell_mode;
     bool debug_symbols;
     bool memcheck;
@@ -31,6 +30,7 @@ typedef struct myst_options
     char rootfs[PATH_MAX];
     myst_fork_mode_t fork_mode;
     myst_host_enc_uid_gid_mappings host_enc_uid_gid_mappings;
+    myst_strace_config_t strace_config;
 } myst_options_t;
 
 typedef struct myst_final_options

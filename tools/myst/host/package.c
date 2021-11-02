@@ -30,6 +30,7 @@
 #include "roothash.h"
 #include "sections.h"
 #include "sign.h"
+#include "strace.h"
 #include "utils.h"
 
 _Static_assert(PAGE_SIZE == 4096, "");
@@ -613,7 +614,12 @@ int _exec_package(
         if (cli_getopt(&argc, argv, "--trace-syscalls", NULL) == 0 ||
             cli_getopt(&argc, argv, "--strace", NULL) == 0)
         {
-            options.trace_syscalls = true;
+            options.strace_config.trace_syscalls = true;
+        }
+
+        if (myst_parse_strace_config(&argc, argv, &options.strace_config) == 0)
+        {
+            options.strace_config.trace_syscalls = true;
         }
     }
 

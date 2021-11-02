@@ -40,6 +40,7 @@
 #include "pubkeys.h"
 #include "regions.h"
 #include "roothash.h"
+#include "strace.h"
 #include "utils.h"
 
 #define USAGE_FORMAT \
@@ -110,7 +111,12 @@ static void _get_options(
     if (cli_getopt(argc, argv, "--trace-syscalls", NULL) == 0 ||
         cli_getopt(argc, argv, "--strace", NULL) == 0)
     {
-        opts->trace_syscalls = true;
+        opts->strace_config.trace_syscalls = true;
+    }
+
+    if (myst_parse_strace_config(argc, argv, &opts->strace_config) == 0)
+    {
+        opts->strace_config.trace_syscalls = true;
     }
 
     /* Get --trace-errors option */
@@ -459,7 +465,7 @@ static int _enter_kernel(
                 image_size,
                 max_threads,
                 final_options.base.trace_errors,
-                final_options.base.trace_syscalls,
+                &final_options.base.strace_config,
                 have_syscall_instruction,
                 tee_debug_mode,
                 (uint64_t)&_thread_event,
