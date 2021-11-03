@@ -117,11 +117,11 @@ int main(int argc, const char* argv[])
         assert(close(fd) == 0);
     }
 
-    /* test unsupported ioctl(FIONBIO) */
+    /* test ioctl(FIONBIO) */
     {
         assert((fd = open(filename, O_RDONLY, 0)) >= 0);
         int val = 1;
-        assert(ioctl(fd, FIONBIO, &val) == -1 && errno == ENOTSUP);
+        assert(ioctl(fd, FIONBIO, &val) == 0);
         assert(close(fd) == 0);
     }
 

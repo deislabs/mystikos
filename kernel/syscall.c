@@ -1854,7 +1854,7 @@ done:
     if (locals)
         free(locals);
 
-    return 0;
+    return ret;
 }
 
 long myst_syscall_fchmod(int fd, mode_t mode)

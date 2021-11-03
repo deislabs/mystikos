@@ -333,7 +333,7 @@ int myst_fdtable_dup(
         int r;
 
         if (old->type == MYST_FDTABLE_TYPE_NONE)
-            ERAISE(-ENOENT);
+            ERAISE(-EBADF);
 
         if (newfd == oldfd) /* dup2() */
         {

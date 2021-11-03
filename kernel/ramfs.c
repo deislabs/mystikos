@@ -442,7 +442,7 @@ struct myst_file
     inode_t* inode;
     size_t offset;      /* the current file offset (files) */
     uint32_t access;    /* (O_RDONLY | O_RDWR | O_WRONLY) */
-    uint32_t operating; /* (O_APPEND | O_DIRECT | O_NOATIME) */
+    uint32_t operating; /* (O_APPEND | O_DIRECT | O_NOATIME | O_NONBLOCK) */
     int fdflags;        /* file descriptor flags: FD_CLOEXEC */
     char realpath[PATH_MAX];
     myst_buf_t vbuf;           /* virtual file buffer */
@@ -932,7 +932,7 @@ static int _fs_open(
     file->magic = FILE_MAGIC;
     file->inode = inode;
     file->access = (flags & (O_RDONLY | O_RDWR | O_WRONLY));
-    file->operating = (flags & O_APPEND);
+    file->operating = (flags & (O_APPEND | O_NONBLOCK));
     file->use_count = 1;
     inode->nopens++;
 
@@ -996,7 +996,8 @@ static off_t _fs_lseek(
         }
     }
 
-    /* ATTN: support seeking beyond the end of file */
+    /* ATTN: support seeking beyond the end of file, deficiency compared with
+     * EXT2FS support */
 
     /* Check whether new offset if out of range */
     if (new_offset < 0 || new_offset > (off_t)_file_size(file))
@@ -1046,9 +1047,9 @@ static ssize_t _fs_read(
         goto done;
     }
 
-    /* Verify that the offset is in bounds */
-    if (file->offset > _file_size(file))
-        ERAISE(-EINVAL);
+    /* If offset is beyond end of file, return 0 */
+    if (file->offset >= _file_size(file))
+        goto done;
 
     /* Read count bytes from the file or directory */
     {
@@ -2233,6 +2234,8 @@ static int _fs_fcntl(myst_fs_t* fs, myst_file_t* file, int cmd, long arg)
         {
             if (arg & O_APPEND)
                 file->operating |= O_APPEND;
+            if (arg & O_NONBLOCK)
+                file->operating |= O_NONBLOCK;
             if (arg & O_DIRECT)
                 // ATTN: implement O_DIRECT for files
                 file->operating |= O_DIRECT;
@@ -2287,6 +2290,20 @@ static int _fs_ioctl(
         case FIONCLEX:
         {
             _set_fd_flag(file, 0);
+            break;
+        }
+        case FIONBIO:
+        {
+            int* val = (int*)arg;
+
+            if (!val)
+                ERAISE(-EINVAL);
+
+            if (*val)
+                file->operating |= O_NONBLOCK;
+            else
+                file->operating &= ~O_NONBLOCK;
+
             break;
         }
         case TIOCSPTLCK:
