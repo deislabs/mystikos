@@ -5800,15 +5800,25 @@ static long _syscall(void* args_)
             {
                 char addrstr[MAX_IPADDR_LEN];
 
-                _socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN);
-
-                _strace(
-                    n,
-                    "sockfd=%d addrlen=%u family=%u ip=%s",
-                    sockfd,
-                    addrlen,
-                    addr->sa_family,
-                    addrstr);
+                if (_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN) == 0)
+                {
+                    _strace(
+                        n,
+                        "sockfd=%d addrlen=%u family=%u ip=%s",
+                        sockfd,
+                        addrlen,
+                        addr->sa_family,
+                        addrstr);
+                }
+                else
+                {
+                    _strace(
+                        n,
+                        "sockfd=%d addrlen=%u family=<bad> ip=%s",
+                        sockfd,
+                        addrlen,
+                        addrstr);
+                }
             }
 
             ret = myst_syscall_connect(sockfd, addr, addrlen);
@@ -5929,7 +5939,38 @@ static long _syscall(void* args_)
             int flags = (int)x3;
             long ret;
 
-            _strace(n, "sockfd=%d msg=%p flags=%d", sockfd, msg, flags);
+            if (msg && myst_is_addr_within_kernel(msg))
+                if (msg->msg_iov && myst_is_addr_within_kernel(msg->msg_iov))
+                    _strace(
+                        n,
+                        "sockfd=%d msg=%p flags=%d(0x%x) (msg_iov=%p "
+                        "msg_iovlen=%d total-iov-length=%zd)",
+                        sockfd,
+                        msg,
+                        flags,
+                        flags,
+                        msg->msg_iov,
+                        msg->msg_iovlen,
+                        myst_iov_len(msg->msg_iov, msg->msg_iovlen));
+                else
+                    _strace(
+                        n,
+                        "sockfd=%d msg=%p flags=%d(0x%x) (msg_iov=%p "
+                        "iov-lengh=%d)",
+                        sockfd,
+                        msg,
+                        flags,
+                        flags,
+                        msg->msg_iov,
+                        msg->msg_iovlen);
+            else
+                _strace(
+                    n,
+                    "sockfd=%d msg=%p flags=%d(%x)",
+                    sockfd,
+                    msg,
+                    flags,
+                    flags);
 
             ret = myst_syscall_sendmsg(sockfd, msg, flags | MSG_NOSIGNAL);
             if (ret == -EPIPE && !(flags & MSG_NOSIGNAL))
