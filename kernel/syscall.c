@@ -2089,20 +2089,20 @@ long myst_syscall_execve(
     const char** argv = NULL;
     myst_thread_t* current_thread = myst_thread_self();
     myst_path_t* resolved_path = NULL;
+    const char* resolved_filename = filename;
 
-    if (!filename)
+    if (!resolved_filename)
         ERAISE(-EINVAL);
 
     // Resolve relative path
-    if (filename[0] != '/')
+    if (resolved_filename[0] != '/')
     {
         if (!(resolved_path = (myst_path_t*)malloc(sizeof(myst_path_t))))
             ERAISE(-ENOMEM);
 
-        if (ret = myst_realpath(filename, resolved_path))
-            ERAISE(ret);
+        ECHECK(myst_realpath(resolved_filename, resolved_path));
 
-        filename = resolved_path->buf;
+        resolved_filename = resolved_path->buf;
     }
 
     /* Make a copy of argv_in[] and inject filename into argv[0] */
@@ -2115,7 +2115,7 @@ long myst_syscall_execve(
         for (size_t i = 0; i < argc; i++)
             argv[i] = argv_in[i];
 
-        argv[0] = filename;
+        argv[0] = resolved_filename;
         argv[argc] = NULL;
     }
 
@@ -2140,7 +2140,7 @@ long myst_syscall_execve(
 done:
     if (resolved_path)
     {
-        filename = NULL;
+        resolved_filename = NULL;
         free(resolved_path);
         resolved_path = NULL;
     }
