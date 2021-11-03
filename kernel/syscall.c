@@ -2134,7 +2134,7 @@ long myst_syscall_execve(
             free,
             argv) != 0)
     {
-        return -ENOENT;
+        ECHECK(-ENOENT);
     }
 
 done:
@@ -2143,6 +2143,10 @@ done:
         resolved_filename = NULL;
         free(resolved_path);
         resolved_path = NULL;
+    }
+    if (argv)
+    {
+        free(argv);
     }
 
     return ret;
