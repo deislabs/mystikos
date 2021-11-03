@@ -23,7 +23,7 @@ static int _status_vcallback(
     myst_file_t* file,
     myst_buf_t* vbuf,
     const char* entrypath);
-static int _stat_vcallback(
+static int _pid_stat_vcallback(
     myst_file_t* file,
     myst_buf_t* vbuf,
     const char* entrypath);
@@ -125,7 +125,7 @@ int procfs_pid_setup(pid_t pid)
             locals->tmp_path, sizeof(locals->tmp_path), "/%d/stat", pid));
 
         myst_vcallback_t v_cb = {0};
-        v_cb.open_cb = _stat_vcallback;
+        v_cb.open_cb = _pid_stat_vcallback;
         ECHECK(myst_create_virtual_file(
             _procfs, locals->tmp_path, S_IFREG | S_IRUSR, v_cb));
     }
@@ -279,6 +279,49 @@ done:
     return ret;
 }
 
+static int _stat_vcallback(
+    myst_file_t* self,
+    myst_buf_t* vbuf,
+    const char* entrypath)
+{
+    (void)self;
+    int ret = 0;
+
+    (void)entrypath;
+
+    if (!vbuf)
+        ERAISE(-EINVAL);
+
+    myst_buf_clear(vbuf);
+    char tmp[128];
+    const size_t n = sizeof(tmp);
+    ECHECK(myst_snprintf(tmp, n, "cpu  0 0 0 0 0 0 0 0 0 0\n"));
+    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+    ECHECK(myst_snprintf(tmp, n, "intr 0\n"));
+    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+    ECHECK(myst_snprintf(tmp, n, "nctxt 0\n"));
+    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+    ECHECK(myst_snprintf(
+        tmp, n, "btime %llu\n", __myst_kernel_args.start_time_sec));
+    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+    ECHECK(myst_snprintf(tmp, n, "processes 1\n"));
+    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+    ECHECK(
+        myst_snprintf(tmp, n, "procs_running %llu\n", myst_get_num_threads()));
+    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+    ECHECK(myst_snprintf(tmp, n, "procs_blocked 0\n"));
+    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+    ECHECK(myst_snprintf(tmp, n, "softirq 0 0 0 0 0 0 0 0 0 0 0\n"));
+    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+
+done:
+
+    if (ret != 0)
+        myst_buf_release(vbuf);
+
+    return ret;
+}
+
 #define STATUS_STR "/proc/%d/status"
 
 static int _is_process_traced(char* host_status_buf)
@@ -424,7 +467,7 @@ static char get_process_state(myst_process_t* process)
     return 'R';
 }
 
-static int _stat_vcallback(
+static int _pid_stat_vcallback(
     myst_file_t* file,
     myst_buf_t* vbuf,
     const char* entrypath)
@@ -535,6 +578,14 @@ int create_proc_root_entries()
         myst_vcallback_t v_cb = {0};
         v_cb.open_cb = _self_vcallback;
         ECHECK(myst_create_virtual_file(_procfs, "/self", S_IFLNK, v_cb));
+    }
+
+    /* Create /proc/stat */
+    {
+        myst_vcallback_t v_cb = {0};
+        v_cb.open_cb = _stat_vcallback;
+        ECHECK(myst_create_virtual_file(
+            _procfs, "/stat", S_IFREG | S_IRUSR, v_cb));
     }
 
 done:
