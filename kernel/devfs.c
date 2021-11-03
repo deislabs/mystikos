@@ -135,7 +135,7 @@ static int _close_pty_file_cb(myst_file_t* file)
     {
         if (tmp->file_master == file || tmp->file_slave == file)
         {
-            if (tmp == _pty_pairs)
+            if (prev)
                 prev->next = tmp->next;
             else
                 _pty_pairs = _pty_pairs->next;
