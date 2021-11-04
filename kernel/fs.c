@@ -252,7 +252,7 @@ long myst_syscall_umask(mode_t mask)
 
     myst_spin_lock(&process->umask_lock);
     ret = process->umask;
-    process->umask = mask;
+    process->umask = (mask & 0777);
     myst_spin_unlock(&process->umask_lock);
 
 done:

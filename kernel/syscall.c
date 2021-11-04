@@ -3290,9 +3290,21 @@ static long _syscall(void* args_)
             const char* path = (const char*)x1;
             int flags = (int)x2;
             mode_t mode = (mode_t)x3;
+            myst_process_t* process = myst_process_self();
             long ret;
 
-            _strace(n, "path=\"%s\" flags=0%o mode=0%o", path, flags, mode);
+            _strace(
+                n,
+                "path=\"%s\" flags=0%o mode=0%o umask=0%o",
+                path,
+                flags,
+                mode,
+                process->umask);
+
+            /* Apply umask */
+            /* ATTN: Implementaiton need to be updated if directory ACL is
+             * supported */
+            mode = mode & (~(process->umask));
 
             ret = myst_syscall_open(path, flags, mode);
 
@@ -4109,8 +4121,19 @@ static long _syscall(void* args_)
         {
             const char* pathname = (const char*)x1;
             mode_t mode = (mode_t)x2;
+            myst_process_t* process = myst_process_self();
 
-            _strace(n, "pathname=\"%s\" mode=0%o", pathname, mode);
+            _strace(
+                n,
+                "pathname=\"%s\" mode=0%o umask=0%o",
+                pathname,
+                mode,
+                process->umask);
+
+            /* Apply umask */
+            /* ATTN: Implementaiton need to be updated if directory ACL is
+             * supported */
+            mode = mode & (~(process->umask));
 
             BREAK(_return(n, myst_syscall_mkdir(pathname, mode)));
         }
@@ -4126,8 +4149,19 @@ static long _syscall(void* args_)
         {
             const char* pathname = (const char*)x1;
             mode_t mode = (mode_t)x2;
+            myst_process_t* process = myst_process_self();
 
-            _strace(n, "pathname=\"%s\" mode=%x", pathname, mode);
+            _strace(
+                n,
+                "pathname=\"%s\" mode=0%o umask=0%o",
+                pathname,
+                mode,
+                process->umask);
+
+            /* Apply umask */
+            /* ATTN: Implementaiton need to be updated if directory ACL is
+             * supported */
+            mode = mode & (~(process->umask));
 
             BREAK(_return(n, myst_syscall_creat(pathname, mode)));
         }
@@ -5180,15 +5214,22 @@ static long _syscall(void* args_)
             const char* path = (const char*)x2;
             int flags = (int)x3;
             mode_t mode = (mode_t)x4;
+            myst_process_t* process = myst_process_self();
             long ret;
 
             _strace(
                 n,
-                "dirfd=%d path=\"%s\" flags=0%o mode=0%o",
+                "dirfd=%d path=\"%s\" flags=0%o mode=0%o umask=0%o",
                 dirfd,
                 path,
                 flags,
-                mode);
+                mode,
+                process->umask);
+
+            /* Apply umask */
+            /* ATTN: Implementaiton need to be updated if directory ACL is
+             * supported */
+            mode = mode & (~(process->umask));
 
             ret = myst_syscall_openat(dirfd, path, flags, mode);
 
@@ -5202,7 +5243,17 @@ static long _syscall(void* args_)
             long ret;
 
             _strace(
-                n, "dirfd=%d pathname=\"%s\" mode=0%o", dirfd, pathname, mode);
+                n,
+                "dirfd=%d pathname=\"%s\" mode=0%o umask=0%o",
+                dirfd,
+                pathname,
+                mode,
+                process->umask);
+
+            /* Apply umask */
+            /* ATTN: Implementaiton need to be updated if directory ACL is
+             * supported */
+            mode = mode & (~(process->umask));
 
             ret = myst_syscall_mkdirat(dirfd, pathname, mode);
 
