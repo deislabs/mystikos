@@ -5,7 +5,7 @@
 
 pipeline {
     agent {
-        label 'ACC-1804-DC2'
+        label 'Jenkins-Shared-DC2'
     }
     options {
         timeout(time: 300, unit: 'MINUTES')
@@ -13,7 +13,7 @@ pipeline {
     parameters {
         string(name: "REPOSITORY", defaultValue: "deislabs")
         string(name: "BRANCH", defaultValue: "main", description: "Branch to build")
-        choice(name: "REGION", choices:['useast', 'canadacentral'], description: "Azure region for SQL test")
+        choice(name: "REGION", choices:['useast', 'canadacentral'], description: "Azure region for solutions test")
     }
     stages {
         stage('Run Tests') {
@@ -21,7 +21,7 @@ pipeline {
                 stage("Run Unit Tests") {
                     steps {
                     catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                        build job: "Standalone-Pipelines/Unit-Test-Pipeline",
+                        build job: "Standalone-Pipelines/Unit-Tests-Pipeline",
                         parameters: [
                             string(name: "REPOSITORY", value: REPOSITORY),
                             string(name: "BRANCH", value: BRANCH),
@@ -30,10 +30,10 @@ pipeline {
                         ]
                     }}
                 }
-                stage("Run SQL Tests") {
+                stage("Run Solutions Tests") {
                     steps {
                     catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                        build job: "Standalone-Pipelines/SQL-Test-Pipeline",
+                        build job: "Standalone-Pipelines/Solutions-Tests-Pipeline",
                         parameters: [
                             string(name: "REPOSITORY", value: REPOSITORY),
                             string(name: "BRANCH", value: BRANCH),
@@ -46,7 +46,7 @@ pipeline {
                 stage("Run DotNet Tests") {
                     steps {
                     catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                        build job: "Standalone-Pipelines/DotNet-Test-Pipeline",
+                        build job: "Standalone-Pipelines/DotNet-Tests-Pipeline",
                         parameters: [
                             string(name: "REPOSITORY", value: REPOSITORY),
                             string(name: "BRANCH", value: BRANCH),
@@ -58,7 +58,7 @@ pipeline {
                 stage("Run Azure SDK Tests") {
                     steps {
                     catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                        build job: "Standalone-Pipelines/Azure-SDK-Test-Pipeline",
+                        build job: "Standalone-Pipelines/Azure-SDK-Tests-Pipeline",
                         parameters: [
                             string(name: "REPOSITORY", value: REPOSITORY),
                             string(name: "BRANCH", value: BRANCH),
@@ -69,13 +69,24 @@ pipeline {
                 }
             }
         }
-        stage('Measure and report code coverage') {
+        stage('Measure code coverage') {
             steps {
                 build job: "Standalone-Pipelines/Measure-Code-Coverage",
                 parameters: [
                     string(name: "REPOSITORY", value: REPOSITORY),
                     string(name: "BRANCH", value: BRANCH),
                     string(name: "COMMIT_ID", value: GIT_COMMIT[0..7])
+                ]
+            }
+        }
+        stage('Report code coverage') {
+            steps {
+                build job: "Standalone-Pipelines/Report-Code-Coverage",
+                parameters: [
+                    string(name: "REPOSITORY", value: REPOSITORY),
+                    string(name: "BRANCH", value: BRANCH),
+                    string(name: "COMMIT_ID", value: GIT_COMMIT[0..7]),
+                    string(name: "BUILD_URL", value: BUILD_URL)
                 ]
             }
         }

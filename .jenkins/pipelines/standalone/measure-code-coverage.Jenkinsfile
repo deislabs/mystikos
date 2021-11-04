@@ -1,6 +1,6 @@
 pipeline {
     agent {
-        label 'ACC-1804-DC4'
+        label 'Jenkins-Shared-DC2'
     }
     options {
         timeout(time: 30, unit: 'MINUTES')
@@ -22,7 +22,7 @@ pipeline {
         )
     }
     stages {
-        stage('Measure and report code coverage') {
+        stage('Measure code coverage') {
             steps {
                 script {
                     LCOV_DIR="mystikos-cc-${COMMIT_ID}"
@@ -30,7 +30,7 @@ pipeline {
 
                 azureDownload(
                     downloadType: 'container',
-                    containerName: 'mystikos-build-resources',
+                    containerName: 'mystikos-code-coverage',
                     includeFilesPattern: "${LCOV_PREFIX}-*",
                     storageCredentialId: 'mystikosreleaseblobcontainer'
                 )
@@ -48,14 +48,16 @@ pipeline {
                    ${JENKINS_SCRIPTS}/global/wait-dpkg.sh
                    ${JENKINS_SCRIPTS}/code-coverage/init-install.sh
 
-                   lcov -a ${LCOV_PREFIX}-dotnet.info -a ${LCOV_PREFIX}-sdk.info -a ${LCOV_PREFIX}-sql.info -a ${LCOV_PREFIX}-unit.info -o lcov.info
+                   lcov -a ${LCOV_PREFIX}-dotnet.info -a ${LCOV_PREFIX}-sdk.info -a ${LCOV_PREFIX}-solutions.info -a ${LCOV_PREFIX}-unit.info -o lcov.info
                    lcov --list lcov.info | tee -a code-coverage-report
 
                    ${MYST_SCRIPTS}/myst_cc_report
 
+                   rm -rf ${LCOV_DIR}
                    mkdir ${LCOV_DIR}
                    mv lcov* ${LCOV_DIR}
                    tar -zcvf ${LCOV_DIR}.tar.gz ${LCOV_DIR}
+                   cp ${LCOV_DIR}/lcov.info ${LCOV_PREFIX}.info
                    """
 
                 azureUpload(
@@ -63,6 +65,13 @@ pipeline {
                     storageType: 'container',
                     uploadZips: true,
                     filesPath: "${LCOV_DIR}.tar.gz",
+                    storageCredentialId: 'mystikosreleaseblobcontainer'
+                )
+                azureUpload(
+                    containerName: 'mystikos-code-coverage',
+                    storageType: 'container',
+                    uploadZips: true,
+                    filesPath: "${LCOV_PREFIX}.info",
                     storageCredentialId: 'mystikosreleaseblobcontainer'
                 )
             }

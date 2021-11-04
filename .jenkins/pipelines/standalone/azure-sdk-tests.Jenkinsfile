@@ -113,7 +113,7 @@ pipeline {
                    """
 
                 azureUpload(
-                    containerName: 'mystikos-build-resources',
+                    containerName: 'mystikos-code-coverage',
                     storageType: 'container',
                     uploadZips: true,
                     filesPath: "${LCOV_INFO}",

@@ -8,7 +8,7 @@ pipeline {
     parameters {
         string(name: "REPOSITORY", defaultValue: "deislabs")
         string(name: "BRANCH", defaultValue: "main", description: "Branch to build")
-        choice(name: "REGION", choices:['useast', 'canadacentral'], description: "Azure region for SQL test")
+        choice(name: "REGION", choices:['useast', 'canadacentral'], description: "Azure region for solution tests")
         choice(name: "TEST_CONFIG", choices:['None','Nightly', 'Code Coverage'], description: "Test configuration to execute")
         string(name: "COMMIT_SYNC", description: "optional - used to sync outputs of parallel jobs")
     }
@@ -17,7 +17,7 @@ pipeline {
         JENKINS_SCRIPTS =   "${WORKSPACE}/.jenkins/scripts"
         MYST_NIGHTLY_TEST = "${TEST_CONFIG == 'Nightly' || TEST_CONFIG == 'Code Coverage' ? 1 : ''}"
         MYST_ENABLE_GCOV =  "${TEST_CONFIG == 'Code Coverage' ? 1 : ''}"
-        TEST_TYPE =         "sql"
+        TEST_TYPE =         "solutions"
         LCOV_INFO =         "lcov-${GIT_COMMIT[0..7]}-${TEST_TYPE}.info"
         BUILD_USER = sh(
             returnStdout: true,
@@ -83,7 +83,7 @@ pipeline {
                 }
             }
         }
-        stage('Run SQL Solution') {
+        stage('Run Solutions Tests') {
             steps {
                 catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
                     withCredentials([string(credentialsId: "mystikos-sql-db-name-${REGION}", variable: 'DB_NAME'),
@@ -120,7 +120,7 @@ pipeline {
                    """
 
                 azureUpload(
-                    containerName: 'mystikos-build-resources',
+                    containerName: 'mystikos-code-coverage',
                     storageType: 'container',
                     uploadZips: true,
                     filesPath: "${LCOV_INFO}",
