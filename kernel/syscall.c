@@ -2590,6 +2590,82 @@ long myst_syscall_sched_yield(void)
     return myst_tcall(SYS_sched_yield, params);
 }
 
+long myst_syscall_sched_setscheduler(
+    pid_t pid,
+    int policy,
+    const struct sched_param* param)
+{
+    long params[6] = {0};
+    if (pid > 0)
+    {
+        /* We need to send the target pid to the tcall */
+        myst_process_t* process = myst_find_process_from_pid(pid, true);
+        if (process)
+            params[0] = (long)process->main_process_thread->target_tid;
+        else
+            params[0] = (long)-1;
+    }
+    else
+        params[0] = (long)pid;
+    params[1] = (long)policy;
+    params[2] = (long)param;
+
+    return myst_tcall(SYS_sched_setscheduler, params);
+}
+
+long myst_syscall_sched_getscheduler(pid_t pid)
+{
+    long params[6] = {0};
+    if (pid > 0)
+    {
+        /* We need to send the target pid to the tcall */
+        myst_process_t* process = myst_find_process_from_pid(pid, true);
+        if (process)
+            params[0] = (long)process->main_process_thread->target_tid;
+        else
+            params[0] = (long)-1;
+    }
+    else
+        params[0] = (long)pid;
+
+    return myst_tcall(SYS_sched_getscheduler, params);
+}
+
+long myst_syscall_sched_getparam(pid_t pid, struct sched_param* param)
+{
+    long params[6] = {0};
+    if (pid > 0)
+    {
+        /* We need to send the target pid to the tcall */
+        myst_process_t* process = myst_find_process_from_pid(pid, true);
+        if (process)
+            params[0] = (long)process->main_process_thread->target_tid;
+        else
+            params[0] = (long)-1;
+    }
+    else
+        params[0] = (long)pid;
+    params[1] = (long)param;
+
+    return myst_tcall(SYS_sched_getparam, params);
+}
+
+long myst_syscall_sched_get_priority_max(int policy)
+{
+    long params[6] = {0};
+    params[0] = (long)policy;
+
+    return myst_tcall(SYS_sched_get_priority_max, params);
+}
+
+long myst_syscall_sched_get_priority_min(int policy)
+{
+    long params[6] = {0};
+    params[0] = (long)policy;
+
+    return myst_tcall(SYS_sched_get_priority_min, params);
+}
+
 long myst_syscall_nanosleep(const struct timespec* req, struct timespec* rem)
 {
     long params[6] = {(long)req, (long)rem};
@@ -4641,37 +4717,44 @@ static long _syscall(void* args_)
 
             _strace(n, "pid=%d param=%p", pid, param);
 
-            // ATTN: Return the priority from SYS_sched_setparam.
-            if (param != NULL)
-            {
-                // Only memset the non reserved part of the structure
-                // This is to be defensive against different sizes of this
-                // struct in musl and glibc.
-                memset(param, 0, sizeof(*param) - 40);
-            }
-            BREAK(_return(n, 0));
+            BREAK(_return(n, myst_syscall_sched_getparam(pid, param)));
+        }
+        case SYS_sched_get_priority_max:
+        {
+            int policy = (int)x1;
+
+            _strace(n, "policy=%d", policy);
+
+            BREAK(_return(n, myst_syscall_sched_get_priority_max(policy)));
+        }
+        case SYS_sched_get_priority_min:
+        {
+            int policy = (int)x1;
+
+            _strace(n, "policy=%d", policy);
+
+            BREAK(_return(n, myst_syscall_sched_get_priority_min(policy)));
         }
         case SYS_sched_setscheduler:
         {
             // ATTN: support different schedules, FIFO, RR, BATCH, etc.
             // The more control we have on threads inside the kernel, the more
             // schedulers we could support.
-            BREAK(_return(n, 0));
+
+            pid_t pid = (pid_t)x1;
+            int policy = (int)x2;
+            struct sched_param* param = (struct sched_param*)x3;
+
+            _strace(n, "pid=%d policy=%d param=%p", pid, policy, param);
+
+            BREAK(_return(
+                n, myst_syscall_sched_setscheduler(pid, policy, param)));
         }
         case SYS_sched_getscheduler:
         {
-            /* ATTN: return the scheduler installed from sched_setscheduler. */
-            BREAK(_return(n, SCHED_OTHER));
-        }
-        case SYS_sched_get_priority_max:
-        {
-            /* ATTN: support thread priorities */
-            BREAK(_return(n, 0));
-        }
-        case SYS_sched_get_priority_min:
-        {
-            /* ATTN: support thread priorities */
-            BREAK(_return(n, 0));
+            pid_t pid = (pid_t)x1;
+            _strace(n, "pid=%d", pid);
+            BREAK(_return(n, myst_syscall_sched_getscheduler(pid)));
         }
         case SYS_sched_rr_get_interval:
             break;

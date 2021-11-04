@@ -599,6 +599,11 @@ long myst_tcall(long n, long params[6])
         case SYS_ioctl:
         case SYS_fstat:
         case SYS_sched_yield:
+        case SYS_sched_setscheduler:
+        case SYS_sched_getscheduler:
+        case SYS_sched_getparam:
+        case SYS_sched_get_priority_max:
+        case SYS_sched_get_priority_min:
         case SYS_fchmod:
         case SYS_poll:
         case SYS_open:

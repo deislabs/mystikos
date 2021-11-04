@@ -157,19 +157,6 @@ index 984db680..9adecf2b 100644
  #endif
  
  #if _REDIR_TIME64
-diff --git a/include/sys/ioctl.h b/include/sys/ioctl.h
-index c2ce3b48..30de25bb 100644
---- a/include/sys/ioctl.h
-+++ b/include/sys/ioctl.h
-@@ -117,7 +117,7 @@ struct winsize {
- #define SIOCDEVPRIVATE     0x89F0
- #define SIOCPROTOPRIVATE   0x89E0
- 
--int ioctl (int, int, ...);
-+int ioctl (int, unsigned long, ...);
- 
- #ifdef __cplusplus
- }
 diff --git a/ldso/dlstart.c b/ldso/dlstart.c
 index 20d50f2c..17cd6ac3 100644
 --- a/ldso/dlstart.c
@@ -239,7 +226,7 @@ index 20d50f2c..17cd6ac3 100644
 +{
 +}
 diff --git a/ldso/dynlink.c b/ldso/dynlink.c
-index afec985a..acf447c4 100644
+index afec985a..4d4cd2a3 100644
 --- a/ldso/dynlink.c
 +++ b/ldso/dynlink.c
 @@ -3,6 +3,7 @@
@@ -401,32 +388,7 @@ index afec985a..acf447c4 100644
  
  	/* Avoid the danger of getting two versions of libc mapped into the
  	 * same process when an absolute pathname was used. The symbols
-@@ -1683,6 +1713,13 @@ void __dls2b(size_t *sp, size_t *auxv)
- 	else ((stage3_func)laddr(&ldso, dls3_def.sym->st_value))(sp, auxv);
- }
- 
-+/* override this to allow LD_PRELOAD */
-+__attribute__((__weak__))
-+int allow_ld_preload(void)
-+{
-+    return 0;
-+}
-+
- /* Stage 3 of the dynamic linker is called with the dynamic linker/libc
-  * fully functional. Its job is to load (if not already loaded) and
-  * process dependencies and relocations for the main application and
-@@ -1716,6 +1753,10 @@ void __dls3(size_t *sp, size_t *auxv)
- 		env_path = getenv("LD_LIBRARY_PATH");
- 		env_preload = getenv("LD_PRELOAD");
- 	}
-+        else if (allow_ld_preload())
-+        {
-+		env_preload = getenv("LD_PRELOAD");
-+        }
- 
- 	/* If the main program was already loaded by the kernel,
- 	 * AT_PHDR will point to some location other than the dynamic
-@@ -1797,6 +1838,7 @@ void __dls3(size_t *sp, size_t *auxv)
+@@ -1797,6 +1827,7 @@ void __dls3(size_t *sp, size_t *auxv)
  			dprintf(2, "%s: %s: Not a valid dynamic program\n", ldname, argv[0]);
  			_exit(1);
  		}
@@ -434,7 +396,7 @@ index afec985a..acf447c4 100644
  		close(fd);
  		ldso.name = ldname;
  		app.name = argv[0];
-@@ -1936,6 +1978,7 @@ void __dls3(size_t *sp, size_t *auxv)
+@@ -1936,6 +1967,7 @@ void __dls3(size_t *sp, size_t *auxv)
  	/* Determine if malloc was interposed by a replacement implementation
  	 * so that calloc and the memalign family can harden against the
  	 * possibility of incomplete replacement. */
@@ -442,7 +404,7 @@ index afec985a..acf447c4 100644
  	if (find_sym(head, "malloc", 1).dso != &ldso)
  		__malloc_replaced = 1;
  
-@@ -1955,7 +1998,13 @@ void __dls3(size_t *sp, size_t *auxv)
+@@ -1955,7 +1987,13 @@ void __dls3(size_t *sp, size_t *auxv)
  
  	errno = 0;
  
@@ -456,7 +418,7 @@ index afec985a..acf447c4 100644
  	for(;;);
  }
  
-@@ -2058,6 +2107,10 @@ void *dlopen(const char *file, int mode)
+@@ -2058,6 +2096,10 @@ void *dlopen(const char *file, int mode)
  	pthread_mutex_lock(&init_fini_lock);
  	if (!p->constructed) ctor_queue = queue_ctors(p);
  	pthread_mutex_unlock(&init_fini_lock);
@@ -467,7 +429,7 @@ index afec985a..acf447c4 100644
  	if (!p->relocated && (mode & RTLD_LAZY)) {
  		prepare_lazy(p);
  		for (i=0; p->deps[i]; i++)
-@@ -2100,6 +2153,7 @@ end:
+@@ -2100,6 +2142,7 @@ end:
  		free(ctor_queue);
  	}
  	pthread_setcancelstate(cs, 0);
@@ -475,7 +437,7 @@ index afec985a..acf447c4 100644
  	return p;
  }
  
-@@ -2302,7 +2356,7 @@ static void error(const char *fmt, ...)
+@@ -2302,7 +2345,7 @@ static void error(const char *fmt, ...)
  {
  	va_list ap;
  	va_start(ap, fmt);
@@ -497,6 +459,16 @@ index 02cb1aa2..07e76f19 100644
  	} else if ((name&~4U)!=1 && name-_CS_POSIX_V6_ILP32_OFF32_CFLAGS>33U) {
  		errno = EINVAL;
  		return 0;
+diff --git a/src/errno/__strerror.h b/src/errno/__strerror.h
+index 2f04d400..3a7fc5d6 100644
+--- a/src/errno/__strerror.h
++++ b/src/errno/__strerror.h
+@@ -102,4 +102,4 @@ E(ENOMEDIUM,    "No medium found")
+ E(EMEDIUMTYPE,  "Wrong medium type")
+ E(EMULTIHOP,    "Multihop attempted")
+ 
+-E(0,            "No error information")
++E(0,            "Unknown error") // fix to unify the error message in MUSL and gcc
 diff --git a/src/exit/_Exit.c b/src/exit/_Exit.c
 index 7a6115c7..9f715d51 100644
 --- a/src/exit/_Exit.c
@@ -790,19 +762,6 @@ index f63c062f..50311758 100644
 +{
 +	return (double)yn(n, x);
 +}
-diff --git a/src/misc/ioctl.c b/src/misc/ioctl.c
-index 89477511..bff57fbc 100644
---- a/src/misc/ioctl.c
-+++ b/src/misc/ioctl.c
-@@ -112,7 +112,7 @@ static void convert_ioctl_struct(const struct ioctl_compat_map *map, char *old,
- 	else memcpy(new+new_offset, old+old_offset, old_size-old_offset);
- }
- 
--int ioctl(int fd, int req, ...)
-+int ioctl(int fd, unsigned long req, ...)
- {
- 	void *arg;
- 	va_list ap;
 diff --git a/src/misc/syscall.c b/src/misc/syscall.c
 index 6f3ef656..614121c3 100644
 --- a/src/misc/syscall.c
@@ -976,6 +935,51 @@ index 948ece41..fd7e7801 100644
 +	return 0;
 +}
 \ No newline at end of file
+diff --git a/src/sched/sched_getparam.c b/src/sched/sched_getparam.c
+index 76f10e49..c055a47f 100644
+--- a/src/sched/sched_getparam.c
++++ b/src/sched/sched_getparam.c
+@@ -2,7 +2,9 @@
+ #include <errno.h>
+ #include "syscall.h"
+ 
+-int sched_getparam(pid_t pid, struct sched_param *param)
++int do_sched_getparam(pid_t pid, struct sched_param *param)
+ {
+ 	return __syscall_ret(-ENOSYS);
+ }
++
++_Noreturn weak_alias(do_sched_getparam, sched_getparam);
+diff --git a/src/sched/sched_getscheduler.c b/src/sched/sched_getscheduler.c
+index 394e508b..077241fa 100644
+--- a/src/sched/sched_getscheduler.c
++++ b/src/sched/sched_getscheduler.c
+@@ -2,7 +2,9 @@
+ #include <errno.h>
+ #include "syscall.h"
+ 
+-int sched_getscheduler(pid_t pid)
++int do_sched_getscheduler(pid_t pid)
+ {
+ 	return __syscall_ret(-ENOSYS);
+ }
++
++_Noreturn weak_alias(do_sched_getscheduler, sched_getscheduler);
+diff --git a/src/sched/sched_setscheduler.c b/src/sched/sched_setscheduler.c
+index 4435f216..0252845b 100644
+--- a/src/sched/sched_setscheduler.c
++++ b/src/sched/sched_setscheduler.c
+@@ -2,7 +2,9 @@
+ #include <errno.h>
+ #include "syscall.h"
+ 
+-int sched_setscheduler(pid_t pid, int sched, const struct sched_param *param)
++int do_sched_setscheduler(pid_t pid, int sched, const struct sched_param *param)
+ {
+ 	return __syscall_ret(-ENOSYS);
+ }
++
++_Noreturn weak_alias(do_sched_setscheduler, sched_setscheduler);
 diff --git a/src/select/poll.c b/src/select/poll.c
 index c84c8a99..a5f561bd 100644
 --- a/src/select/poll.c

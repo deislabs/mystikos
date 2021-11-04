@@ -663,6 +663,38 @@ long myst_ftruncate_ocall(int fd, off_t length)
     RETURN(ftruncate(fd, length));
 }
 
+long myst_sched_setscheduler_ocall(
+    pid_t pid,
+    int policy,
+    const struct myst_sched_param* param)
+{
+    return (sched_setscheduler(pid, policy, (struct sched_param*)param) == 0)
+               ? 0
+               : -errno;
+}
+
+long myst_sched_getscheduler_ocall(pid_t pid)
+{
+    return (sched_getscheduler(pid) == 0) ? 0 : -errno;
+}
+
+long myst_sched_getparam_ocall(pid_t pid, struct myst_sched_param* param)
+{
+    return (syscall(SYS_sched_getparam, pid, (struct sched_param*)param) == 0)
+               ? 0
+               : -errno;
+}
+
+long myst_sched_get_priority_max_ocall(int policy)
+{
+    return (sched_get_priority_max(policy) == 0) ? 0 : -errno;
+}
+
+long myst_sched_get_priority_min_ocall(int policy)
+{
+    return (sched_get_priority_min(policy) == 0) ? 0 : -errno;
+}
+
 long myst_symlink_ocall(
     const char* target,
     const char* linkpath,

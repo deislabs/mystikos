@@ -526,12 +526,9 @@
 /ltp/testcases/kernel/syscalls/sbrk/sbrk01
 /ltp/testcases/kernel/syscalls/sbrk/sbrk03
 /ltp/testcases/kernel/syscalls/sched_get_priority_max/sched_get_priority_max01
-/ltp/testcases/kernel/syscalls/sched_get_priority_max/sched_get_priority_max02
 /ltp/testcases/kernel/syscalls/sched_get_priority_min/sched_get_priority_min01
-/ltp/testcases/kernel/syscalls/sched_get_priority_min/sched_get_priority_min02
 /ltp/testcases/kernel/syscalls/sched_getaffinity/sched_getaffinity01
 /ltp/testcases/kernel/syscalls/sched_getattr/sched_getattr02
-/ltp/testcases/kernel/syscalls/sched_getparam/sched_getparam01
 /ltp/testcases/kernel/syscalls/sched_getparam/sched_getparam03
 /ltp/testcases/kernel/syscalls/sched_getscheduler/sched_getscheduler01
 /ltp/testcases/kernel/syscalls/sched_getscheduler/sched_getscheduler02

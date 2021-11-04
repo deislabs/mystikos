@@ -667,6 +667,11 @@ long myst_tcall(long n, long params[6])
             return myst_tcall_poll(fds, nfds, timeout);
         }
         case SYS_sched_yield:
+        case SYS_sched_setscheduler:
+        case SYS_sched_getscheduler:
+        case SYS_sched_getparam:
+        case SYS_sched_get_priority_max:
+        case SYS_sched_get_priority_min:
         case SYS_fstat:
         case SYS_close:
         case SYS_readv:
