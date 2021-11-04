@@ -229,14 +229,15 @@ long myst_syscall_fchownat(
     if ((flags & ~(AT_EMPTY_PATH | AT_SYMLINK_NOFOLLOW)) != 0)
         ERAISE(-EINVAL);
 
-    ECHECK(myst_get_absolute_path_from_dirfd(dirfd, pathname, flags, &abspath));
-
-    if (*abspath == '\0')
+    if (*pathname == '\0' && (flags & AT_EMPTY_PATH) && dirfd != AT_FDCWD)
     {
         ECHECK(myst_syscall_fchown(dirfd, owner, group));
     }
     else
     {
+        ECHECK(myst_get_absolute_path_from_dirfd(
+            dirfd, pathname, flags, &abspath, FB_PATH_NOT_EMPTY));
+
         if (flags & AT_SYMLINK_NOFOLLOW)
         {
             ECHECK(myst_syscall_lchown(abspath, owner, group));

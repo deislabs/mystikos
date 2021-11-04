@@ -504,50 +504,50 @@ done:
     return ret;
 }
 
-// Given a dir fd and a pathname, return a concatenated absolute path.
-// This function allocates buffer for the concatenated abspath. The
-// caller doesn't need to preallocate buffer, but should free the
-// abspath buffer after using it.
-//
-// Caveats:
-//
-// - Sometimes abspath is set to equal to
-//   pathname, in which case no free is needed. The caller should check
-//   *abspath_out before free:
-//   e.g.
-//       if (*abspath_out != pathname)
-//           free(*abspath_out)
-//
-// - If this function hits an error and doesn't return SUCCESS, it will
-//   free the abspath buffer by itself. Also, *abspath_out == NULL.
-//   Thus, the check above is still valid.
-//
-// - Some flags allow the pathname to be an empty string. Caller
-//   passing in those flags should check when *abspath == '\0'. If
-//   true, then the caller should apply the fd version of the syscall
-//   using dirfd.
+/*
+Given a dirfd and a pathname, return a concatenated absolute path.
+
+Caveats:
+
+- Sometimes abspath is set to equal to
+  pathname, in which case no free is needed. The caller should check
+  *abspath_out before free:
+  e.g.
+      if (*abspath_out != pathname)
+          free(*abspath_out)
+
+Arguments:
+ - abspath_out: will point to the final concatenated absolute path.
+    This method will allocate memory for abspath_out if necessary
+    Caller should free the memory if abspath_out != pathname
+ - flags_behavior: a bit mask that can be one or more of the following flags
+FB_PATH_NOT_EMPTY: indicate pathname cannot be empty and type check on dirfd is
+skipped
+FB_TYPE_FILE: indicate file pointed by dirfd can be file
+FB_TYPE_DIRECTORY: indicate file pointed by dirfd can be directory
+FB_THROW_ERROR_NOFOLLOW: if set, throw ELOOP when abspath is a symlink
+*/
 long myst_get_absolute_path_from_dirfd(
     int dirfd,
     const char* pathname,
     int flags,
-    char** abspath_out)
+    char** abspath_out,
+    const int flags_behavior)
 {
     long ret = 0;
+    myst_path_t* resolved_path = NULL;
     char* path_out = NULL;
-    struct locals
-    {
-        char dirname[PATH_MAX];
-    }* locals = NULL;
 
     if (!pathname || !abspath_out)
         ERAISE(-EINVAL);
 
-    /* If pathname is absolute, then ignore dirfd */
-    if (*pathname == '/' || dirfd == AT_FDCWD)
+    // Absolute pathname or AT_FDCWD
+    if (pathname[0] == '/' || dirfd == AT_FDCWD)
     {
-        *abspath_out = (char*)pathname;
+        path_out = (char*)pathname;
     }
-    else if (*pathname == '\0')
+    // Empty pathname
+    else if (pathname[0] == '\0')
     {
         if (!(flags & AT_EMPTY_PATH))
             ERAISE(-ENOENT);
@@ -555,35 +555,7 @@ long myst_get_absolute_path_from_dirfd(
         if (dirfd < 0)
             ERAISE(-EBADF);
 
-        if (!(path_out = malloc(PATH_MAX)))
-            ERAISE(-ENOMEM);
-
-        if (flags & AT_SYMLINK_NOFOLLOW)
-        {
-            myst_fdtable_t* fdtable = myst_fdtable_current();
-            myst_fs_t* fs;
-            myst_file_t* file;
-
-            ECHECK(myst_fdtable_get_file(fdtable, dirfd, &fs, &file));
-            ECHECK((*fs->fs_realpath)(fs, file, path_out, PATH_MAX));
-        }
-        else
-        {
-            *path_out = '\0';
-        }
-        *abspath_out = path_out;
-    }
-    else
-    {
-        if (dirfd < 0)
-            ERAISE(-EBADF);
-
-        if (!(path_out = malloc(PATH_MAX)))
-            ERAISE(-ENOMEM);
-
-        if (!(locals = malloc(sizeof(struct locals))))
-            ERAISE(-ENOMEM);
-
+        // Find realpath of dirfd
         myst_fdtable_t* fdtable = myst_fdtable_current();
         myst_fdtable_type_t type;
         void* device = NULL;
@@ -591,15 +563,58 @@ long myst_get_absolute_path_from_dirfd(
         myst_fs_t* fs;
         myst_file_t* file;
 
-        /* first check dirfd is of file type, e.g. not tty */
+        // first check dirfd is of file type, e.g. not tty
         ECHECK(myst_fdtable_get_any(fdtable, dirfd, &type, &device, &object));
         if (type != MYST_FDTABLE_TYPE_FILE)
             ERAISE(-ENOTDIR);
 
-        /* get the file object for the dirfd */
+        // get the file object for the dirfd
         ECHECK(myst_fdtable_get_file(fdtable, dirfd, &fs, &file));
 
-        /* fail if not a directory */
+        // Check file type
+        if (flags_behavior & (FB_TYPE_DIRECTORY | FB_TYPE_FILE))
+        {
+            struct stat buf;
+            ERAISE((*fs->fs_fstat)(fs, file, &buf));
+
+            // dirfd can be either file and directory in some cases, so:
+            // Fail if dirfd is a directory, but shouldn't be
+            if (!(flags_behavior & FB_TYPE_DIRECTORY) && S_ISDIR(buf.st_mode))
+                ERAISE(-EACCES);
+
+            // Fail if dirfd is a file, but shouldn't be
+            if (!(flags_behavior & FB_TYPE_FILE) && !S_ISDIR(buf.st_mode))
+                ERAISE(-ENOTDIR);
+        }
+
+        if (!(path_out = malloc(PATH_MAX)))
+            ERAISE(-ENOMEM);
+        // get the full path of dirfd
+        ECHECK((*fs->fs_realpath)(fs, file, path_out, PATH_MAX));
+    }
+    // Relative pathname
+    else
+    {
+        if (dirfd < 0)
+            ERAISE(-EBADF);
+
+        // Get abspath from dirfd
+        myst_fdtable_t* fdtable = myst_fdtable_current();
+        myst_fdtable_type_t type;
+        void* device = NULL;
+        void* object = NULL;
+        myst_fs_t* fs;
+        myst_file_t* file;
+
+        // first check dirfd is of file type, e.g. not tty
+        ECHECK(myst_fdtable_get_any(fdtable, dirfd, &type, &device, &object));
+        if (type != MYST_FDTABLE_TYPE_FILE)
+            ERAISE(-ENOTDIR);
+
+        // get the file object for the dirfd
+        ECHECK(myst_fdtable_get_file(fdtable, dirfd, &fs, &file));
+
+        // fail if not a directory
         {
             struct stat buf;
             ERAISE((*fs->fs_fstat)(fs, file, &buf));
@@ -608,24 +623,51 @@ long myst_get_absolute_path_from_dirfd(
                 ERAISE(-ENOTDIR);
         }
 
-        /* get the full path of dirfd */
-        ECHECK((*fs->fs_realpath)(
-            fs, file, locals->dirname, sizeof(locals->dirname)));
+        if (!(path_out = malloc(PATH_MAX)))
+            ERAISE(-ENOMEM);
 
-        /* construct absolute path of file */
-        ECHECK(myst_make_path(path_out, PATH_MAX, locals->dirname, pathname));
-        *abspath_out = path_out;
+        // get the full path of dirfd
+        ECHECK((*fs->fs_realpath)(fs, file, path_out, PATH_MAX));
+
+        // construct absolute path of file by concating path_out and pathname
+        size_t dirname_len = strlen(path_out);
+        size_t pathname_len = strlen(pathname);
+
+        if (dirname_len + 1 + pathname_len >= PATH_MAX)
+            ERAISE(-ENAMETOOLONG);
+
+        path_out[dirname_len] = '/';
+        memcpy(path_out + dirname_len + 1, pathname, pathname_len + 1);
     }
 
-    path_out = NULL;
+    if (*path_out != '/')
+    {
+        if (!(resolved_path = (myst_path_t*)malloc(sizeof(myst_path_t))))
+            ERAISE(-ENOMEM);
+
+        // Construct absolute path
+        ECHECK(myst_realpath(path_out, resolved_path));
+    }
+
+    *abspath_out = resolved_path ? resolved_path->buf : path_out;
+
+    // Check symlink
+    if ((flags_behavior & FB_THROW_ERROR_NOFOLLOW) &&
+        (flags & AT_SYMLINK_NOFOLLOW))
+    {
+        struct stat statbuf;
+        myst_syscall_lstat(*abspath_out, &statbuf);
+
+        if (S_ISLNK(statbuf.st_mode))
+            ERAISE(-ELOOP);
+    }
 
 done:
-
-    if (path_out)
+    if (*abspath_out != path_out && path_out != pathname)
         free(path_out);
 
-    if (locals)
-        free(locals);
+    if (resolved_path && *abspath_out != resolved_path->buf)
+        free(resolved_path);
 
     return ret;
 }
@@ -655,7 +697,9 @@ static long _openat(
     if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
-    ECHECK(myst_get_absolute_path_from_dirfd(dirfd, pathname, 0, &abspath));
+    ECHECK(myst_get_absolute_path_from_dirfd(
+        dirfd, pathname, 0, &abspath, FB_PATH_NOT_EMPTY));
+
     if (fs_out && file_out)
     {
         myst_fs_t* fs;
@@ -1242,7 +1286,8 @@ long myst_syscall_mkdirat(int dirfd, const char* pathname, mode_t mode)
     char* abspath = NULL;
     long ret = 0;
 
-    ECHECK(myst_get_absolute_path_from_dirfd(dirfd, pathname, 0, &abspath));
+    ECHECK(myst_get_absolute_path_from_dirfd(
+        dirfd, pathname, 0, &abspath, FB_PATH_NOT_EMPTY));
     ECHECK(myst_syscall_mkdir(abspath, mode));
 
 done:
@@ -1361,7 +1406,8 @@ long myst_syscall_unlinkat(int dirfd, const char* pathname, int flags)
     if (flags & ~AT_REMOVEDIR)
         ERAISE(-EINVAL);
 
-    ECHECK(myst_get_absolute_path_from_dirfd(dirfd, pathname, 0, &abspath));
+    ECHECK(myst_get_absolute_path_from_dirfd(
+        dirfd, pathname, 0, &abspath, FB_PATH_NOT_EMPTY));
 
     if (flags & AT_REMOVEDIR)
     {
@@ -1416,7 +1462,8 @@ long myst_syscall_faccessat(
     /* ATTN: support AT_ flags */
     (void)flags;
 
-    ECHECK(myst_get_absolute_path_from_dirfd(dirfd, pathname, 0, &abspath));
+    ECHECK(myst_get_absolute_path_from_dirfd(
+        dirfd, pathname, 0, &abspath, FB_PATH_NOT_EMPTY));
     ret = myst_syscall_access(abspath, mode);
 
 done:
@@ -1472,10 +1519,10 @@ long myst_syscall_renameat(
     char* old_abspath = NULL;
     char* new_abspath = NULL;
 
-    ECHECK(
-        myst_get_absolute_path_from_dirfd(olddirfd, oldpath, 0, &old_abspath));
-    ECHECK(
-        myst_get_absolute_path_from_dirfd(newdirfd, newpath, 0, &new_abspath));
+    ECHECK(myst_get_absolute_path_from_dirfd(
+        olddirfd, oldpath, 0, &old_abspath, FB_PATH_NOT_EMPTY));
+    ECHECK(myst_get_absolute_path_from_dirfd(
+        newdirfd, newpath, 0, &new_abspath, FB_PATH_NOT_EMPTY));
     ret = myst_syscall_rename(old_abspath, new_abspath);
 
 done:
@@ -1574,7 +1621,8 @@ long myst_syscall_readlinkat(
      * fails, with the error ELOOP.
      * Thus, return "No such file or directory"
      */
-    ECHECK(myst_get_absolute_path_from_dirfd(dirfd, pathname, 0, &abspath));
+    ECHECK(myst_get_absolute_path_from_dirfd(
+        dirfd, pathname, 0, &abspath, FB_PATH_NOT_EMPTY));
     ret = myst_syscall_readlink(abspath, buf, bufsiz);
 
 done:
@@ -1617,7 +1665,8 @@ long myst_syscall_symlinkat(
     long ret = 0;
     char* abspath = NULL;
 
-    ECHECK(myst_get_absolute_path_from_dirfd(newdirfd, linkpath, 0, &abspath));
+    ECHECK(myst_get_absolute_path_from_dirfd(
+        newdirfd, linkpath, 0, &abspath, FB_PATH_NOT_EMPTY));
     ret = myst_syscall_symlink(target, abspath);
 
 done:
@@ -1997,12 +2046,13 @@ long myst_syscall_fchmodat(
     else if (flags)
         ERAISE(-EINVAL);
 
-    ECHECK(myst_get_absolute_path_from_dirfd(dirfd, pathname, 0, &abspath));
+    ECHECK(myst_get_absolute_path_from_dirfd(
+        dirfd, pathname, 0, &abspath, FB_PATH_NOT_EMPTY));
     ret = myst_syscall_chmod(abspath, mode);
 
 done:
 
-    if (abspath && (abspath != pathname))
+    if (abspath != pathname)
         free(abspath);
 
     return ret;
@@ -2147,32 +2197,45 @@ static size_t _count_args(const char* const args[])
     return n;
 }
 
-long myst_syscall_execve(
-    const char* filename,
-    char* const argv_in[],
-    char* const envp[])
+typedef struct syscall_args
 {
+    long n;
+    long* params;
+    myst_kstack_t* kstack;
+} syscall_args_t;
+
+long myst_syscall_execveat(
+    int dirfd,
+    const char* pathname,
+    char* const argv_in[],
+    char* const envp[],
+    int flags,
+    myst_thread_t* const thread,
+    syscall_args_t* const args)
+{
+    /* free the previous kernel stack from the SYS_execve syscall */
+    if (thread->exec_kstack)
+    {
+        myst_put_kstack(thread->exec_kstack);
+        thread->exec_kstack = NULL;
+    }
+
+    /* the kstack is freed later by next exec or by exit */
+    thread->exec_kstack = args->kstack;
+
     long ret = 0;
     const char** argv = NULL;
     myst_thread_t* current_thread = myst_thread_self();
-    myst_path_t* resolved_path = NULL;
-    const char* resolved_filename = filename;
+    char* abspath = NULL;
 
-    if (!resolved_filename)
-        ERAISE(-EINVAL);
+    ECHECK(myst_get_absolute_path_from_dirfd(
+        dirfd,
+        pathname,
+        flags,
+        &abspath,
+        FB_THROW_ERROR_NOFOLLOW | FB_TYPE_FILE));
 
-    // Resolve relative path
-    if (resolved_filename[0] != '/')
-    {
-        if (!(resolved_path = (myst_path_t*)malloc(sizeof(myst_path_t))))
-            ERAISE(-ENOMEM);
-
-        ECHECK(myst_realpath(resolved_filename, resolved_path));
-
-        resolved_filename = resolved_path->buf;
-    }
-
-    /* Make a copy of argv_in[] and inject filename into argv[0] */
+    /* Make a copy of argv_in[] and inject pathname into argv[0] */
     {
         size_t argc = _count_args((const char* const*)argv_in);
 
@@ -2182,7 +2245,7 @@ long myst_syscall_execve(
         for (size_t i = 0; i < argc; i++)
             argv[i] = argv_in[i];
 
-        argv[0] = resolved_filename;
+        argv[0] = abspath;
         argv[argc] = NULL;
     }
 
@@ -2206,17 +2269,17 @@ long myst_syscall_execve(
     }
 
 done:
-    if (resolved_path)
-    {
-        resolved_filename = NULL;
-        free(resolved_path);
-        resolved_path = NULL;
-    }
-    if (argv)
-    {
-        free(argv);
-    }
+    if (abspath != pathname)
+        free(abspath);
 
+    if (argv)
+        free(argv);
+
+    /* myst_syscall_execveat() only returns on failure */
+    /* when myst_syscall_execveat() returns on failure, kstack will be
+     * freed by syscall framework. Set thread->exec_kstack to NULL to
+     * avoid double free by the next SYS_execve syscall */
+    thread->exec_kstack = NULL;
     return ret;
 }
 
@@ -3071,13 +3134,6 @@ void myst_dump_ramfs(void)
         syscall_ret = (RET); \
         goto done;           \
     } while (0)
-
-typedef struct syscall_args
-{
-    long n;
-    long* params;
-    myst_kstack_t* kstack;
-} syscall_args_t;
 
 /* ATTN: optimize _syscall() stack usage later */
 #pragma GCC diagnostic push
@@ -3991,22 +4047,9 @@ static long _syscall(void* args_)
 
             _strace(n, "filename=%s argv=%p envp=%p", filename, argv, envp);
 
-            /* free the previous kernel stack from the SYS_execve syscall */
-            if (thread->exec_kstack)
-            {
-                myst_put_kstack(thread->exec_kstack);
-                thread->exec_kstack = NULL;
-            }
+            long ret = myst_syscall_execveat(
+                AT_FDCWD, filename, argv, envp, 0, thread, args);
 
-            /* the kstack is freed later by next exec or by exit */
-            thread->exec_kstack = args->kstack;
-
-            long ret = myst_syscall_execve(filename, argv, envp);
-            /* myst_syscall_execve() only returns on failure */
-            /* when myst_syscall_execve() returns on failure, kstack will be
-             * freed by syscall framework. Set thread->exec_kstack to NULL to
-             * avoid double free by the next SYS_execve syscall */
-            thread->exec_kstack = NULL;
             BREAK(_return(n, ret));
         }
         case SYS_exit:
@@ -5827,7 +5870,27 @@ static long _syscall(void* args_)
         case SYS_bpf:
             break;
         case SYS_execveat:
-            break;
+        {
+            int dirfd = (int)x1;
+            const char* filename = (const char*)x2;
+            char** argv = (char**)x3;
+            char** envp = (char**)x4;
+            int flags = (int)x5;
+
+            _strace(
+                n,
+                "dirfd=%d filename=%s argv=%p envp=%p flags=%d",
+                dirfd,
+                filename,
+                argv,
+                envp,
+                flags);
+
+            long ret = myst_syscall_execveat(
+                dirfd, filename, argv, envp, flags, thread, args);
+
+            BREAK(_return(n, ret));
+        }
         case SYS_userfaultfd:
             break;
         case SYS_membarrier:
