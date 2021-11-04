@@ -1,11 +1,12 @@
 pipeline {
     agent {
-        label 'ACC-1804-DC4'
+        label UBUNTU_VERSION == '20.04' ? 'ACC-2004-DC4' : 'ACC-1804-DC4'
     }
     options {
         timeout(time: 300, unit: 'MINUTES')
     }
     parameters {
+        choice(name: "UBUNTU_VERSION", choices:["18.04","20.04"])
         string(name: "REPOSITORY", defaultValue: "deislabs")
         string(name: "BRANCH", defaultValue: "main", description: "Branch to build")
         choice(name: "TEST_CONFIG", choices:['None','Nightly', 'Code Coverage'], description: "Test configuration to execute")
