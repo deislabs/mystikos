@@ -1,8 +1,3 @@
-/* A Jenkins pipeline that will handle code coverage and nightly tests
-*  These are the original pipelines:
-*  https://github.com/deislabs/mystikos/blob/main/.azure_pipelines/ci-pipeline-code-coverage-nightly.yml
-*/
-
 pipeline {
     agent {
         label 'Jenkins-Shared-DC2'
@@ -16,19 +11,19 @@ pipeline {
         choice(name: "REGION", choices:['useast', 'canadacentral'], description: "Azure region for the SQL solutions test")
     }
     environment {
-        TEST_CONFIG = 'Code Coverage'
+        TEST_CONFIG = 'None'
     }
     stages {
-        stage('Run Code Coverage Tests') {
+        stage('Run PR Tests') {
             matrix {
                 axes {
                     axis {
                         name 'OS_VERSION'
-                        values '18.04'
+                        values '18.04', '20.04'
                     }
                     axis {
                         name 'TEST_PIPELINE'
-                        values 'Unit', 'Solutions', 'DotNet', 'Azure-SDK'
+                        values 'Unit', 'Solutions'
                     }
                 }
                 stages {
@@ -49,28 +44,6 @@ pipeline {
                     }
                 }
             }
-        }
-        // TODO: separate coverage reports for 18.04 and 20.04
-        stage('Measure code coverage') {
-            steps {
-                build job: "Standalone-Pipelines/Measure-Code-Coverage",
-                parameters: [
-                    string(name: "REPOSITORY", value: REPOSITORY),
-                    string(name: "BRANCH", value: BRANCH),
-                    string(name: "COMMIT_ID", value: GIT_COMMIT[0..7])
-                ]
-            }
-        }
-    }
-    post {
-        always {
-            build job: "Standalone-Pipelines/Report-Code-Coverage",
-            parameters: [
-                string(name: "REPOSITORY", value: REPOSITORY),
-                string(name: "BRANCH", value: BRANCH),
-                string(name: "COMMIT_ID", value: GIT_COMMIT[0..7]),
-                string(name: "BUILD_URL", value: BUILD_URL)
-            ]
         }
     }
 }
