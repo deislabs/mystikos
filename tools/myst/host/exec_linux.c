@@ -232,6 +232,28 @@ static void _get_options(
         }
     }
 
+    /* Get --thread-stack-size */
+    {
+        const char* opt = "--thread-stack-size";
+        const char* arg = NULL;
+
+        if ((cli_getopt(argc, argv, opt, &arg) == 0))
+        {
+            if (arg)
+            {
+                if ((myst_expand_size_string_to_ulong(
+                         arg, &opts->thread_stack_size) != 0) ||
+                    (myst_round_up(
+                         opts->thread_stack_size,
+                         PAGE_SIZE,
+                         &opts->thread_stack_size) != 0))
+                {
+                    _err("%s <size> -- bad suffix (must be k, m, or g)\n", opt);
+                }
+            }
+        }
+    }
+
     // get app config if present
     cli_getopt(argc, argv, "--app-config-path", app_config_path);
 
@@ -492,6 +514,8 @@ static int _enter_kernel(
     kernel_args.main_stack_size = final_options.base.main_stack_size
                                       ? final_options.base.main_stack_size
                                       : MYST_PROCESS_INIT_STACK_SIZE;
+
+    kernel_args.thread_stack_size = final_options.base.thread_stack_size;
 
     /* Resolve the the kernel entry point */
     const elf_ehdr_t* ehdr = kernel_args.kernel_data;

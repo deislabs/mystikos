@@ -202,6 +202,14 @@ static json_result_t _json_read_callback(
                     CONFIG_RAISE(ret);
                 parsed_data->main_stack_size = main_stack_pages * PAGE_SIZE;
             }
+            else if (json_match(parser, "ThreadStackSize") == JSON_OK)
+            {
+                uint64_t thread_stack_pages = 0;
+                ret = _extract_mem_size(type, un, &thread_stack_pages);
+                if (ret != JSON_OK)
+                    CONFIG_RAISE(ret);
+                parsed_data->thread_stack_size = thread_stack_pages * PAGE_SIZE;
+            }
             else if (json_match(parser, "MaxAffinityCPUs") == JSON_OK)
             {
                 if (type != JSON_TYPE_INTEGER)

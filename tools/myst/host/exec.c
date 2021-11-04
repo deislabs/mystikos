@@ -535,6 +535,30 @@ int exec_action(int argc, const char* argv[], const char* envp[])
             }
         }
 
+        /* Get --thread-stack-size */
+        {
+            const char* opt = "--thread-stack-size";
+            const char* arg = NULL;
+
+            if (cli_getopt(&argc, argv, opt, &arg) == 0)
+            {
+                if (arg)
+                {
+                    if ((myst_expand_size_string_to_ulong(
+                             arg, &options.thread_stack_size) != 0) ||
+                        (myst_round_up(
+                             options.thread_stack_size,
+                             PAGE_SIZE,
+                             &options.thread_stack_size) != 0))
+                    {
+                        _err(
+                            "%s <size> -- bad suffix (must be k, m, or g)\n",
+                            opt);
+                    }
+                }
+            }
+        }
+
         /* Get --app-config option if it exists, otherwise we use default values
          */
         cli_getopt(&argc, argv, "--app-config-path", &commandline_config);

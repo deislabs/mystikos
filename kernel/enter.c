@@ -823,6 +823,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     /* Run the main program: wait for SYS_exit to perform longjmp() */
     if (myst_setjmp(&thread->jmpbuf) == 0)
     {
+        myst_crt_args_t crt_args = {args->wanted_secrets};
         /* enter the C-runtime on the target thread descriptor */
         if ((tmp_ret = myst_exec(
                  thread,
@@ -834,7 +835,8 @@ int myst_enter_kernel(myst_kernel_args_t* args)
                  args->argv,
                  args->envc,
                  args->envp,
-                 args->wanted_secrets,
+                 &crt_args,
+                 args->thread_stack_size,
                  NULL,
                  NULL)) != 0)
         {

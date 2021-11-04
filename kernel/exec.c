@@ -90,6 +90,8 @@ static pair_t _at_pairs[] = {
 
 static size_t _n_at_pairs = sizeof(_at_pairs) / sizeof(_at_pairs[0]);
 
+static size_t _thread_stack_size = 0;
+
 const char* elf64_at_string(uint64_t value)
 {
     for (size_t i = 0; i < _n_at_pairs; i++)
@@ -740,7 +742,7 @@ typedef void (*enter_t)(
     void* stack,
     void* dynv,
     syscall_callback_t callback,
-    myst_wanted_secrets_t* secrets);
+    myst_crt_args_t* args);
 
 typedef struct entry_args
 {
@@ -885,7 +887,8 @@ int myst_exec(
     const char* argv[],
     size_t envc,
     const char* envp[],
-    myst_wanted_secrets_t* wanted_secrets,
+    myst_crt_args_t* crt_args,
+    size_t thread_stack_size,
     void (*callback)(void*), /* used to release caller-allocated parameters */
     void* callback_arg)
 {
@@ -894,7 +897,7 @@ int myst_exec(
     void* sp = NULL;
     void* crt_data = NULL;
     const Elf64_Ehdr* ehdr = NULL;
-    const Elf64_Phdr* phdr = NULL;
+    Elf64_Phdr* phdr = NULL;
     uint64_t* dynv = NULL;
     enter_t enter;
     char* envp_buf[] = {NULL};
@@ -904,6 +907,9 @@ int myst_exec(
     long hashbang_file = -1;
     myst_args_t new_argv;
     size_t num_bytes_read;
+
+    if (thread_stack_size)
+        _thread_stack_size = thread_stack_size;
 
     if (myst_args_init(&new_argv) != 0)
         ERAISE(ENOMEM);
@@ -1012,7 +1018,20 @@ int myst_exec(
     }
 
     /* save the phdr */
-    phdr = (const Elf64_Phdr*)((const uint8_t*)crt_data + ehdr->e_phoff);
+    phdr = (Elf64_Phdr*)((const uint8_t*)crt_data + ehdr->e_phoff);
+
+    /* Patch the PT_GNU_STACK entry */
+    {
+        ehdr = crt_data;
+        for (size_t i = 0; i < ehdr->e_phnum; i++)
+        {
+            if (phdr[i].p_type == PT_GNU_STACK)
+            {
+                if (_thread_stack_size > phdr[i].p_memsz)
+                    phdr[i].p_memsz = _thread_stack_size;
+            }
+        }
+    }
 
     /* save the entry point */
     enter = (enter_t)((uint8_t*)crt_data + ehdr->e_entry);
@@ -1127,7 +1146,8 @@ int myst_exec(
         (*callback)(callback_arg);
 
     /* enter the C-runtime on the target thread descriptor */
-    (*enter)(sp, dynv, myst_syscall, wanted_secrets);
+    (*enter)(sp, dynv, myst_syscall, crt_args);
+
     /* unreachable */
 
     process->exec_stack = NULL;

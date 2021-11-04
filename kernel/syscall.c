@@ -2130,7 +2130,8 @@ long myst_syscall_execve(
             (const char**)argv,
             _count_args((const char* const*)envp),
             (const char**)envp,
-            NULL, /* wanted secrets */
+            NULL, /* CRT args */
+            0,    /* thread stack size */
             free,
             argv) != 0)
     {
