@@ -29,6 +29,7 @@
 static myst_wanted_secrets_t* _wanted_secrets;
 
 void _dlstart_c(size_t* sp, size_t* dynv);
+int __pthread_enlarge_default_stack_size(size_t size);
 
 typedef long (*syscall_callback_t)(long n, long params[6]);
 
@@ -167,10 +168,13 @@ void myst_enter_crt(
     void* stack,
     void* dynv,
     syscall_callback_t callback,
-    myst_wanted_secrets_t* wanted_secrets)
+    myst_crt_args_t* args)
 {
     _syscall_callback = callback;
-    _wanted_secrets = wanted_secrets;
+    if (args)
+    {
+        _wanted_secrets = args->wanted_secrets;
+    }
     _dlstart_c((size_t*)stack, (size_t*)dynv);
 }
 
