@@ -85,7 +85,9 @@ enclave
             uint64_t event,
             pid_t target_tid,
             uint64_t start_time_sec,
-            uint64_t start_time_nsec);
+            uint64_t start_time_nsec,
+            [in, size=copy_host_files_size] const void* copy_host_files,
+            size_t copy_host_files_size);
 
         public long myst_run_thread_ecall(
             uint64_t cookie,

@@ -81,6 +81,7 @@ typedef struct _config_parsed_data_t
     bool no_brk;
     bool exec_stack;
     bool unhandled_syscall_enosys;
+    bool no_sysfs;
 
     size_t main_stack_size;
     /* maximum number of CPUs in the kernel (for thread affinity) */

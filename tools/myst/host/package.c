@@ -20,6 +20,7 @@
 #include <openenclave/host.h>
 
 #include "../config.h"
+#include "copy_file.h"
 #include "cpio.h"
 #include "exec.h"
 #include "myst/file.h"
@@ -599,6 +600,7 @@ int _exec_package(
     int ret = -1;
     const char** exec_args = NULL;
     myst_args_t mount_mappings = {0};
+    myst_args_t copy_host_files = {0};
     sections_t sections = {0};
 
     /* Get options */
@@ -913,6 +915,11 @@ int _exec_package(
     }
     exec_args[args_iter] = NULL;
 
+    if (get_host_file_copy_list(&copy_host_files) != 0)
+    {
+        _err("failed to get the list of host files to be copied into enclave");
+    }
+
     if (snprintf(
             scratch_path,
             PATH_MAX,
@@ -925,7 +932,14 @@ int _exec_package(
     }
 
     ret = exec_launch_enclave(
-        scratch_path, type, flags, exec_args, envp, &mount_mappings, &options);
+        scratch_path,
+        type,
+        flags,
+        exec_args,
+        envp,
+        &mount_mappings,
+        &options,
+        &copy_host_files);
     if (ret != 0)
     {
         fprintf(stderr, "Enclave %s returned %d\n", scratch_path, ret);
@@ -934,6 +948,8 @@ int _exec_package(
 
 done:
     myst_args_release(&mount_mappings);
+    myst_args_release(&copy_host_files);
+    free_host_file_copy_list();
 
     if (unpack_dir)
         remove_recursive(unpack_dir);

@@ -482,6 +482,8 @@ struct enter_arg
     uint64_t start_time_nsec;
     const void* enter_stack;
     size_t enter_stack_size;
+    const void* copy_host_files_data;
+    size_t copy_host_files_size;
 };
 
 static long _enter(void* arg_)
@@ -506,10 +508,12 @@ static long _enter(void* arg_)
     myst_args_t mount_mappings;
     myst_args_t args;
     myst_args_t env;
+    myst_args_t copy_host_files;
     myst_wanted_secrets_t* wanted_secrets = NULL;
 
     memset(&parsed_config, 0, sizeof(parsed_config));
     memset(&mount_mappings, 0, sizeof(mount_mappings));
+    memset(&copy_host_files, 0, sizeof(copy_host_files));
 
     if (!argv_data || !argv_size || !envp_data || !envp_size)
         goto done;
@@ -548,6 +552,11 @@ static long _enter(void* arg_)
             &mount_mappings,
             arg->mount_mappings_data,
             arg->mount_mappings_size) != 0)
+        goto done;
+    if (myst_args_unpack(
+            &copy_host_files,
+            arg->copy_host_files_data,
+            arg->copy_host_files_size) != 0)
         goto done;
 
     if (have_config)
@@ -660,6 +669,10 @@ static long _enter(void* arg_)
             }
         }
 
+        _kargs.no_sysfs = final_options.base.no_sysfs;
+        _kargs.copy_host_files_data = copy_host_files.data;
+        _kargs.copy_host_files_size = copy_host_files.size;
+
         /* Resolve the the kernel entry point */
         entry =
             (myst_kernel_entry_t)((uint8_t*)_kargs.kernel_data + ehdr->e_entry);
@@ -681,6 +694,7 @@ done:
         free(final_options.args.data);
     if (final_options.env.data)
         free(final_options.env.data);
+    myst_args_release(&copy_host_files);
 
     free_config(&parsed_config);
     return ret;
@@ -698,7 +712,9 @@ int myst_enter_ecall(
     uint64_t event,
     pid_t target_tid,
     uint64_t start_time_sec,
-    uint64_t start_time_nsec)
+    uint64_t start_time_nsec,
+    const void* copy_host_files,
+    size_t copy_host_files_size)
 {
     struct enter_arg arg = {
         .options = options,
@@ -713,6 +729,8 @@ int myst_enter_ecall(
         .target_tid = target_tid,
         .start_time_sec = start_time_sec,
         .start_time_nsec = start_time_nsec,
+        .copy_host_files_data = copy_host_files,
+        .copy_host_files_size = copy_host_files_size,
     };
 
     /* prevent this function from being called more than once */

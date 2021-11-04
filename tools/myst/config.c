@@ -361,6 +361,15 @@ static json_result_t _json_read_callback(
                 else
                     CONFIG_RAISE(JSON_TYPE_MISMATCH);
             }
+            else if (json_match(parser, "NoSysfs") == JSON_OK)
+            {
+                if (type == JSON_TYPE_BOOLEAN)
+                    parsed_data->no_sysfs = un->boolean;
+                else if (type == JSON_TYPE_INTEGER)
+                    parsed_data->no_sysfs = (un->integer == 0) ? 0 : 1;
+                else
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
+            }
             else if (json_match(parser, "Secret.ID") == JSON_OK)
             {
                 if (type == JSON_TYPE_STRING)

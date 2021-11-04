@@ -3,7 +3,10 @@
 
 #include <myst/buf.h>
 #include <myst/eraise.h>
+#include <myst/file.h>
 #include <myst/hostfile.h>
+#include <myst/paths.h>
+#include <myst/printf.h>
 #include <myst/syscall.h>
 #include <myst/tcall.h>
 #include <myst/trace.h>
@@ -112,6 +115,101 @@ done:
 
     if (locals)
         free(locals);
+
+    return ret;
+}
+
+// Force copy a file from host to enclave.
+// If enc_path doesn't exist, create.
+// If enc_path already exists, overwrite;
+// TODO keep host file's permission, mode. Set owner to root.
+int myst_copy_host_file_to_enc(const char* host_path, const char* enc_path)
+{
+    int ret = 0;
+    int fd = -1;
+    void* buf = NULL;
+    size_t buf_size;
+    struct stat st;
+    struct locals
+    {
+        char basename[PATH_MAX];
+        char dirname[PATH_MAX];
+    };
+    struct locals* locals = NULL;
+
+    if (!host_path || !enc_path)
+        ERAISE(-EINVAL);
+
+    ECHECK(myst_load_host_file(host_path, &buf, &buf_size));
+
+    if (stat(enc_path, &st) == 0)
+    {
+        if ((myst_syscall_unlink(enc_path)) < 0)
+        {
+            myst_eprintf("kernel: failed to unlink file %s\n", enc_path);
+            ERAISE(-EINVAL);
+        }
+    }
+    else
+    {
+        if (!(locals = malloc(sizeof(struct locals))))
+            ERAISE(-ENOMEM);
+
+        ECHECK(myst_split_path(
+            enc_path, locals->dirname, PATH_MAX, locals->basename, PATH_MAX));
+        if (stat(locals->dirname, &st) == -1)
+        {
+            if ((myst_mkdirhier(locals->dirname, 0755)) != 0)
+            {
+                myst_eprintf("kernel: failed to mkdir %s\n", locals->dirname);
+                ERAISE(-EINVAL);
+            }
+        }
+        else if (!S_ISDIR(st.st_mode))
+        {
+            myst_eprintf(
+                "kernel: enclave path %s is not a folder\n", locals->dirname);
+            ERAISE(-EINVAL);
+        }
+    }
+    if ((fd = creat(enc_path, 0644)) < 0)
+    {
+        myst_eprintf("kernel: failed to create file %s\n", enc_path);
+        ERAISE(-EINVAL);
+    }
+    if ((myst_write_file_fd(fd, buf, buf_size)) < 0)
+    {
+        myst_eprintf("kernel: failed to write to file %s\n", enc_path);
+        ERAISE(-EINVAL);
+    }
+
+done:
+
+    if (fd >= 0)
+        close(fd);
+
+    if (buf)
+        free(buf);
+
+    if (locals)
+        free(locals);
+
+    return ret;
+}
+
+int myst_copy_host_files(
+    const char** copy_host_files_data,
+    size_t copy_host_files_size)
+{
+    int ret = 0;
+
+    for (size_t i = 0; i < copy_host_files_size; i++)
+    {
+        ECHECK(myst_copy_host_file_to_enc(
+            copy_host_files_data[i], copy_host_files_data[i]));
+    }
+
+done:
 
     return ret;
 }

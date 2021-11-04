@@ -407,7 +407,7 @@ int main(int argc, const char* argv[])
             while (ent = readdir(dir))
                 n++;
 
-            assert(n == 9);
+            assert(n == 10);
 
             rewinddir(dir);
         }

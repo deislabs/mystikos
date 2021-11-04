@@ -102,71 +102,6 @@ done:
     return ret;
 }
 
-static int _copy_host_etc_files()
-{
-    int ret = 0;
-    int fd = -1;
-    const char* resolv_file = "/etc/resolv.conf";
-    void* buf = NULL;
-    size_t buf_size;
-    struct stat statbuf;
-
-    ECHECK(myst_load_host_file(resolv_file, &buf, &buf_size));
-
-    if (stat(resolv_file, &statbuf) == 0)
-    {
-        if ((myst_syscall_unlink(resolv_file)) < 0)
-        {
-            myst_eprintf("kernel: failed to unlink file %s\n", resolv_file);
-            ERAISE(-EINVAL);
-        }
-    }
-    else
-    {
-        if (stat("/etc", &statbuf) == -1)
-        {
-            if ((myst_mkdirhier("/etc", 0755)) != 0)
-            {
-                myst_eprintf("kernel: failed to mkdir /etc\n");
-                ERAISE(-EINVAL);
-            }
-        }
-        else if (!S_ISDIR(statbuf.st_mode))
-        {
-            if ((myst_syscall_unlink("/etc")) < 0)
-            {
-                myst_eprintf("kernel: failed to unlink file /etc\n");
-                ERAISE(-EINVAL);
-            }
-            if ((myst_mkdirhier("/etc", 0755)) != 0)
-            {
-                myst_eprintf("kernel: failed to mkdir /etc\n");
-                ERAISE(-EINVAL);
-            }
-        }
-    }
-    if ((fd = creat(resolv_file, 0644)) < 0)
-    {
-        myst_eprintf("kernel: failed to open file %s\n", resolv_file);
-        ERAISE(-EINVAL);
-    }
-    if ((myst_write_file_fd(fd, buf, buf_size)) < 0)
-    {
-        myst_eprintf("kernel: failed to write to file %s\n", resolv_file);
-        ERAISE(-EINVAL);
-    }
-
-done:
-
-    if (fd != -1)
-        close(fd);
-
-    if (buf)
-        free(buf);
-
-    return ret;
-}
-
 static int _setup_tty(void)
 {
     int ret = 0;
@@ -806,7 +741,11 @@ int myst_enter_kernel(myst_kernel_args_t* args)
 
     ECHECK(_process_mount_configuration(args->mounts));
 
-    ECHECK(_copy_host_etc_files());
+    ECHECK(myst_copy_host_file_to_enc("/etc/resolv.conf", "/etc/resolv.conf"));
+
+    if (!args->no_sysfs)
+        ECHECK(myst_copy_host_files(
+            args->copy_host_files_data, args->copy_host_files_size));
 
     /* Set the 'run-proc' which is called by the target to run new threads */
     ECHECK(myst_tcall_set_run_thread_function(myst_run_thread));

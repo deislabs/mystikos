@@ -25,6 +25,7 @@ typedef struct myst_options
     bool perf;
     bool report_native_tids;
     bool unhandled_syscall_enosys;
+    bool no_sysfs;
     size_t main_stack_size;
     size_t max_affinity_cpus;
     char rootfs[PATH_MAX];

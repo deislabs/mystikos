@@ -229,6 +229,9 @@ typedef struct myst_kernel_args
     /* List of secrets we want the kernel to retrieve on behalf of the app */
     myst_wanted_secrets_t* wanted_secrets;
 
+    bool no_sysfs;
+    const char** copy_host_files_data;
+    size_t copy_host_files_size;
 } myst_kernel_args_t;
 
 typedef int (*myst_kernel_entry_t)(myst_kernel_args_t* args);

@@ -34,6 +34,7 @@
 #include "../config.h"
 #include "../kargs.h"
 #include "../shared.h"
+#include "copy_file.h"
 #include "exec_linux.h"
 #include "fsgsbase.h"
 #include "process.h"
@@ -330,7 +331,8 @@ static int _enter_kernel(
     long (*tcall)(long n, long params[6]),
     int* return_status,
     char* err,
-    size_t err_size)
+    size_t err_size,
+    const myst_args_t* copy_host_files)
 {
     int ret = 0;
     const void* image_data = mmap_addr;
@@ -493,6 +495,10 @@ static int _enter_kernel(
                                       ? final_options.base.main_stack_size
                                       : MYST_PROCESS_INIT_STACK_SIZE;
 
+    kernel_args.no_sysfs = final_options.base.no_sysfs;
+    kernel_args.copy_host_files_data = copy_host_files->data;
+    kernel_args.copy_host_files_size = copy_host_files->size;
+
     /* Resolve the the kernel entry point */
     const elf_ehdr_t* ehdr = kernel_args.kernel_data;
     entry = (myst_kernel_entry_t)((uint8_t*)ehdr + ehdr->e_entry);
@@ -541,6 +547,7 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
     void* mmap_addr = NULL;
     size_t mmap_length = 0;
     char err[256];
+    myst_args_t copy_host_files = {0};
     myst_args_t mount_mappings = {0};
     myst_buf_t roothash_buf = MYST_BUF_INITIALIZER;
     size_t heap_size = 0;
@@ -647,6 +654,11 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
     sigaddset(&set, MYST_INTERRUPT_THREAD_SIGNAL);
     sigprocmask(SIG_BLOCK, &set, NULL);
 
+    if (get_host_file_copy_list(&copy_host_files) != 0)
+    {
+        _err("failed to get the list of host files to be copied into enclave");
+    }
+
     /* Enter the kernel image */
     if (_enter_kernel(
             argc,
@@ -660,7 +672,8 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
             _tcall,
             &return_status,
             err,
-            sizeof(err)) != 0)
+            sizeof(err),
+            &copy_host_files) != 0)
     {
         _err("%s", err);
     }
@@ -672,6 +685,8 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
     sigset(MYST_INTERRUPT_THREAD_SIGNAL, old_sighandler);
 
     myst_args_release(&mount_mappings);
+    myst_args_release(&copy_host_files);
+    free_host_file_copy_list();
 
     free_region_details();
 
