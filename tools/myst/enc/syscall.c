@@ -13,6 +13,7 @@
 #include <syscall.h>
 #include <unistd.h>
 
+#include <myst/eraise.h>
 #include <myst/iov.h>
 #include <myst/syscall.h>
 #include <myst/tcall.h>
@@ -25,6 +26,40 @@
 // some cases. If such a case is encountered, undefine this macro termporarily
 // to diagnose the issue.
 #define DOWNSIZE_OCALL_OUTPUT_LENGTHS
+
+// Open Enclave uses a pre-allocated 16-kilobyte "ocall buffer" to transfer
+// parameters to host memory. If that buffer is too small to accommodate the
+// parameters, memory is obtained with oe_host_malloc() and later released with
+// oe_host_free(), thereby incurring two extra ocalls. So attempting to perform
+// one read ocall, results in three ocalls. To avoid this overhead, we must
+// limit the buffer size to ensure the "ocall buffer" will be sufficient.
+// This buffer size is used by the read-write family of functions.
+#define MAX_BUFFER_SIZE 8192
+
+static long _fstat(int fd, struct stat* statbuf);
+
+static int _cap_size(int fd, size_t* size)
+{
+    int ret = 0;
+
+    if (*size > MAX_BUFFER_SIZE)
+    {
+#if 0
+        struct stat statbuf;
+
+        if (_fstat(fd, &statbuf) != 0)
+            ERAISE(-errno);
+
+        if (S_ISSOCK(statbuf.st_mode))
+            *size = MAX_BUFFER_SIZE;
+#else
+        *size = MAX_BUFFER_SIZE;
+#endif
+    }
+
+done:
+    return ret;
+}
 
 static long _read(
     int fd,
@@ -40,6 +75,8 @@ static long _read(
         ret = -EINVAL;
         goto done;
     }
+
+    ECHECK(_cap_size(fd, &count));
 
     if (ocall(&retval, fd, buf, count) != OE_OK)
     {
@@ -80,6 +117,8 @@ static long _write(
         ret = -EINVAL;
         goto done;
     }
+
+    ECHECK(_cap_size(fd, &count));
 
     if (ocall(&retval, fd, buf, count) != OE_OK)
     {
@@ -206,6 +245,8 @@ static long _recvfrom(
         goto done;
     }
 
+    ECHECK(_cap_size(sockfd, &len));
+
     n = addrlen ? *addrlen : 0;
 
     if (ocall(&retval, sockfd, buf, len, flags, src_addr, &n, n) != OE_OK)
@@ -267,13 +308,12 @@ static long _sendto(
         goto done;
     }
 
+    ECHECK(_cap_size(sockfd, &len));
+
     if ((oeret = ocall(&retval, sockfd, buf, len, flags, dest_addr, addrlen)) !=
         OE_OK)
     {
-        if (oeret == OE_OUT_OF_MEMORY)
-            ret = -ENOMEM;
-        else
-            ret = -EINVAL;
+        ret = -EINVAL;
         goto done;
     }
 
@@ -372,23 +412,49 @@ static long _sendmsg(
         goto done;
     }
 
-    if ((oeret = ocall(
-             &retval,
-             sockfd,
-             msg->msg_name,
-             msg->msg_namelen,
-             msg->msg_iov[0].iov_base,
-             msg->msg_iov[0].iov_len,
-             msg->msg_control,
-             msg->msg_controllen,
-             msg->msg_flags,
-             flags)) != OE_OK)
+    /* repeat operation when recvmsg() returns a short count */
     {
-        if (oeret == OE_OUT_OF_MEMORY)
-            ret = -ENOMEM;
-        else
-            ret = -EINVAL;
-        goto done;
+        const uint8_t* buf = msg->msg_iov[0].iov_base;
+        size_t len = msg->msg_iov[0].iov_len;
+        size_t count = 0;
+
+        while (len > 0)
+        {
+            size_t cap = len;
+            ECHECK(_cap_size(sockfd, &cap));
+
+            if ((oeret = ocall(
+                     &retval,
+                     sockfd,
+                     msg->msg_name,
+                     msg->msg_namelen,
+                     buf,
+                     cap,
+                     msg->msg_control,
+                     msg->msg_controllen,
+                     msg->msg_flags,
+                     flags)) != OE_OK)
+            {
+                ret = -EINVAL;
+                goto done;
+            }
+
+            if (retval <= 0)
+            {
+                if (count > 0)
+                    retval = count;
+
+                break;
+            }
+
+            buf += retval;
+            len -= retval;
+            count += retval;
+        }
+
+        /* if all bytes were written */
+        if (len == 0)
+            retval = count;
     }
 
     if (retval < 0)
@@ -441,6 +507,8 @@ static long _recvmsg(
         ret = -EINVAL;
         goto done;
     }
+
+    ECHECK(_cap_size(sockfd, &len));
 
     if (len && !(buf = malloc((size_t)len)))
     {
@@ -1034,6 +1102,8 @@ static long _pread64(int fd, void* buf, size_t count, off_t offset)
         goto done;
     }
 
+    ECHECK(_cap_size(fd, &count));
+
     if (myst_pread64_ocall(&retval, fd, buf, count, offset) != OE_OK)
     {
         ret = -EINVAL;
@@ -1071,6 +1141,8 @@ static long _pwrite64(int fd, const void* buf, size_t count, off_t offset)
         ret = -EINVAL;
         goto done;
     }
+
+    ECHECK(_cap_size(fd, &count));
 
     if (myst_pwrite64_ocall(&retval, fd, buf, count, offset) != OE_OK)
     {

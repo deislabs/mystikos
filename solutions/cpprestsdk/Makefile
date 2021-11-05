@@ -7,8 +7,9 @@ APPBUILDER    = $(TOP)/scripts/appbuilder
 APPDIR        = appdir
 APP_NAME      = test_runner
 
-# OPTS += --strace
-
+ifdef STRACE
+OPTS += --strace
+endif
 
 all: package
 
@@ -24,6 +25,9 @@ $(APPDIR):
 cpio: $(APPDIR)
 	$(MYST) mkcpio $(APPDIR) rootfs
 
+ext2rootfs: $(APPDIR)
+	$(MYST) mkext2 $(APPDIR) ext2rootfs
+
 # There are 6 test suite come with the CPPRESTSDK, replace the <suite>.so filename to related test suite
 # libhttpclient_test.so
 # libhttplistener_test.so
@@ -33,6 +37,9 @@ cpio: $(APPDIR)
 # liburi_test.so
 run-cpio: cpio
 	$(MYST_EXEC) rootfs /app/casablanca/build.release/Release/Binaries/test_runner libhttpclient_test.so --app-config-path debug-config.json $(OPTS)
+
+run-ext2: ext2rootfs
+	$(MYST_EXEC) ext2rootfs /app/casablanca/build.release/Release/Binaries/test_runner libhttpclient_test.so --app-config-path debug-config.json $(OPTS)
 
 gdb: clean cpio
 	$(MYST_GDB) --args $(MYST_EXEC) rootfs /app/casablanca/build.release/Release/Binaries/test_runner libhttplistener_test.so --app-config-path debug-config.json $(OPTS)
