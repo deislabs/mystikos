@@ -916,6 +916,12 @@ static int _fs_open(
             ramfs, locals->dirname, true, NULL, &parent, NULL, NULL));
 
         /* Create the new file inode */
+        /* ATTN: Current ramfs only support S_IFREG or S_ISCHR (virtual /dev) */
+        if (!S_ISCHR(mode))
+        {
+            /* in case upper layer does not set file type in mode */
+            mode = mode | S_IFREG;
+        }
         ECHECK(_inode_new(ramfs, parent, locals->basename, mode, &inode));
 
         /* Get the realpath of this file */
