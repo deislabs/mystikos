@@ -1,6 +1,6 @@
 pipeline {
     agent {
-        label 'Jenkins-Shared-DC2'
+        label 'ACC-1804-DC2'
     }
     options {
         timeout(time: 30, unit: 'MINUTES')
@@ -40,10 +40,18 @@ pipeline {
                 )
             }
         }
-        stage('Report code coverage') {
+        stage('Verify LCOV file') {
             when {
-                expression { return fileExists(LCOV_FILE) }
+                not { expression { return fileExists(LCOV_FILE) } }
             }
+            steps {
+                script {
+                    currentBuild.result = "FAILURE"
+                    throw new Exception("LCOV file does not exist")
+                }
+            }
+        }
+        stage('Report code coverage') {
             steps {
                 sh """
                    lcov --list ${LCOV_FILE} | tee code-coverage-summary
@@ -77,6 +85,25 @@ pipeline {
         stage('Cleanup') {
             steps {
                 cleanWs()
+            }
+        }
+    }
+    post {
+        failure {
+            script {
+                LCOV_REPORT = "Build URL: ${BUILD_INFO}"
+                EMAIL_SUBJECT = sh(
+                    returnStdout: true,
+                    script: "echo \"[Failed] Code Coverage Report (\$(date '+%Y-%m-%d'))\""
+                )
+
+                build job:"Send-Email",
+                parameters: [
+                    string(name: "REPOSITORY", value: REPOSITORY),
+                    string(name: "BRANCH", value: BRANCH),
+                    text(name: "EMAIL_SUBJECT", value: EMAIL_SUBJECT),
+                    text(name: "EMAIL_BODY", value: LCOV_REPORT)
+                ]
             }
         }
     }

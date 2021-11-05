@@ -1,6 +1,6 @@
 pipeline {
     agent {
-        label 'Jenkins-Shared-DC2'
+        label 'ACC-1804-DC2'
     }
     options {
         timeout(time: 30, unit: 'MINUTES')
@@ -51,10 +51,10 @@ pipeline {
                    lcov -a ${LCOV_PREFIX}-dotnet.info -a ${LCOV_PREFIX}-sdk.info -a ${LCOV_PREFIX}-solutions.info -a ${LCOV_PREFIX}-unit.info -o lcov.info
                    lcov --list lcov.info | tee -a code-coverage-report
 
-                   ${MYST_SCRIPTS}/myst_cc_report
-
                    rm -rf ${LCOV_DIR}
                    mkdir ${LCOV_DIR}
+                   genhtml --branch-coverage -o lcov lcov.info
+
                    mv lcov* ${LCOV_DIR}
                    tar -zcvf ${LCOV_DIR}.tar.gz ${LCOV_DIR}
                    cp ${LCOV_DIR}/lcov.info ${LCOV_PREFIX}.info
