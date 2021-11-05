@@ -243,7 +243,7 @@ int devfs_setup()
 
     ECHECK(set_overrides_for_special_fs(_devfs));
 
-    if (myst_mkdirhier("/dev", 777) != 0)
+    if (myst_mkdirhier("/dev", 0777) != 0)
     {
         myst_eprintf("cannot create mount point for devfs\n");
         ERAISE(-EINVAL);
@@ -256,7 +256,7 @@ int devfs_setup()
     }
 
     /* Create standard /dev files */
-    ECHECK(myst_mkdirhier("/dev/pts", 777));
+    ECHECK(myst_mkdirhier("/dev/pts", 0777));
 
     /* /dev/urandom */
     {
@@ -265,7 +265,7 @@ int devfs_setup()
         v_cb.write_cb = _ignore_write_cb;
 
         myst_create_virtual_file(
-            _devfs, "/urandom", S_IFREG | S_IRUSR | S_IWUSR, v_cb);
+            _devfs, "/urandom", S_IFCHR | S_IRUSR | S_IWUSR, v_cb);
     }
 
     /* /dev/random - same as /dev/urandom */
@@ -275,7 +275,7 @@ int devfs_setup()
         v_cb.write_cb = _ignore_write_cb;
 
         myst_create_virtual_file(
-            _devfs, "/random", S_IFREG | S_IRUSR | S_IWUSR, v_cb);
+            _devfs, "/random", S_IFCHR | S_IRUSR | S_IWUSR, v_cb);
     }
 
     /* /dev/null */
@@ -285,7 +285,7 @@ int devfs_setup()
         v_cb.write_cb = _ignore_write_cb;
 
         myst_create_virtual_file(
-            _devfs, "/null", S_IFREG | S_IRUSR | S_IWUSR, v_cb);
+            _devfs, "/null", S_IFCHR | S_IRUSR | S_IWUSR, v_cb);
     }
 
     /* /dev/zero */
@@ -295,7 +295,7 @@ int devfs_setup()
         v_cb.write_cb = _ignore_write_cb;
 
         myst_create_virtual_file(
-            _devfs, "/zero", S_IFREG | S_IRUSR | S_IWUSR, v_cb);
+            _devfs, "/zero", S_IFCHR | S_IRUSR | S_IWUSR, v_cb);
     }
 
     /* /dev/ptmx */
@@ -307,7 +307,7 @@ int devfs_setup()
         v_cb.write_cb = _write_pty_cb;
 
         myst_create_virtual_file(
-            _devfs, "/ptmx", S_IFREG | S_IRUSR | S_IWUSR, v_cb);
+            _devfs, "/ptmx", S_IFCHR | S_IRUSR | S_IWUSR, v_cb);
     }
 
     /* /dev/fd symlink */

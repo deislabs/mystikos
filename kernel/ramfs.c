@@ -276,7 +276,7 @@ static int _inode_new(
 
         if (S_ISDIR(mode))
             type = DT_DIR;
-        else if (S_ISREG(mode))
+        else if (S_ISREG(mode) || S_ISCHR(mode))
             type = DT_REG;
         else if (S_ISLNK(mode))
             type = DT_LNK;
@@ -916,8 +916,7 @@ static int _fs_open(
             ramfs, locals->dirname, true, NULL, &parent, NULL, NULL));
 
         /* Create the new file inode */
-        ECHECK(_inode_new(
-            ramfs, parent, locals->basename, (S_IFREG | mode), &inode));
+        ECHECK(_inode_new(ramfs, parent, locals->basename, mode, &inode));
 
         /* Get the realpath of this file */
         ECHECK(_path_to_inode_realpath(
@@ -2747,7 +2746,7 @@ static int _fs_release_tree(myst_fs_t* fs, const char* pathname)
         int type, mode = self->mode;
         if (S_ISDIR(mode))
             type = DT_DIR;
-        else if (S_ISREG(mode))
+        else if (S_ISREG(mode) || S_ISCHR(mode))
             type = DT_REG;
         else if (S_ISLNK(mode))
             type = DT_LNK;
@@ -2957,7 +2956,7 @@ int myst_create_virtual_file(
         ERAISE(-EINVAL);
 
     /* create an empty file */
-    if (S_ISREG(mode))
+    if (S_ISREG(mode) || S_ISCHR(mode))
     {
         myst_file_t* file = NULL;
         ECHECK(
