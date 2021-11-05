@@ -3,12 +3,14 @@
 
 #include <ctype.h>
 #include <limits.h>
-#include <myst/json.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include <myst/json.h>
+#include <myst/strings.h>
 
 #define STRLIT(STR) STR, sizeof(STR) - 1
 
@@ -91,7 +93,7 @@ static void _PrintString(json_write_t write, void* stream, const char* str)
                 break;
             default:
             {
-                if (isprint(c))
+                if (myst_isprint(c))
                 {
                     (*write)(stream, &c, 1);
                 }

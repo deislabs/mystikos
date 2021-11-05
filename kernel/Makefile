@@ -95,6 +95,8 @@ ifdef MYST_ENABLE_HOSTFS
 LIBS += $(LIBDIR)/libmysthostfs.a
 endif
 
+LIBS += $(LIBDIR)/libjson.a
+
 LIBS += $(LIBDIR)/libmystutils.a
 
 ifdef MYST_ENABLE_GCOV

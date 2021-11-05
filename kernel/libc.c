@@ -381,6 +381,19 @@ char* strrchr(const char* s, int c)
     return NULL;
 }
 
+char* strncat(char* dest, const char* src, size_t n)
+{
+    char* p = dest + strlen(dest);
+    const char* q = src;
+
+    for (size_t i = 0; i < n && *q; i++)
+        *p++ = *q++;
+
+    *p = '\0';
+
+    return dest;
+}
+
 /*
 **==============================================================================
 **
@@ -793,4 +806,27 @@ int __sched_cpucount(size_t cpusetsize, const cpu_set_t* mask)
         count += _bit_count[*p++];
 
     return count;
+}
+
+/*
+**==============================================================================
+**
+** <stdlib.h>
+**
+**==============================================================================
+*/
+
+unsigned long int strtoul(const char* nptr, char** endptr, int base)
+{
+    return myst_strtoul(nptr, endptr, base);
+}
+
+long int strtol(const char* nptr, char** endptr, int base)
+{
+    return (long int)strtoul(nptr, endptr, base);
+}
+
+double strtod(const char* nptr, char** endptr)
+{
+    return myst_strtod(nptr, endptr);
 }
