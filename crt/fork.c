@@ -30,7 +30,15 @@ static void _set_fsbase(void* p)
 {
 #if 0
     __asm__ volatile("wrfsbase %0" ::"r"(p));
-#else
+#endif
+#if 1
+    if (syscall(SYS_set_thread_area, p) < 0)
+    {
+        fprintf(stderr, "syscall(SYS_set_thread_area, p) failed\n");
+        abort();
+    }
+#endif
+#if 0
     const int ARCH_SET_FS = 0x1002;
     if (syscall(SYS_arch_prctl, ARCH_SET_FS, p) != 0)
     {
