@@ -50,6 +50,8 @@
 /ltp/testcases/kernel/syscalls/fcntl/fcntl04_64
 /ltp/testcases/kernel/syscalls/fcntl/fcntl08
 /ltp/testcases/kernel/syscalls/fcntl/fcntl08_64
+/ltp/testcases/kernel/syscalls/fcntl/fcntl09
+/ltp/testcases/kernel/syscalls/fcntl/fcntl09_64
 /ltp/testcases/kernel/syscalls/fcntl/fcntl10
 /ltp/testcases/kernel/syscalls/fcntl/fcntl10_64
 /ltp/testcases/kernel/syscalls/fcntl/fcntl27
@@ -127,6 +129,7 @@
 /ltp/testcases/kernel/syscalls/rename/rename05
 /ltp/testcases/kernel/syscalls/rename/rename07
 /ltp/testcases/kernel/syscalls/rename/rename13
+/ltp/testcases/kernel/syscalls/rename/rename14
 /ltp/testcases/kernel/syscalls/rmdir/rmdir01
 /ltp/testcases/kernel/syscalls/sendfile/sendfile02
 /ltp/testcases/kernel/syscalls/sendfile/sendfile02_64

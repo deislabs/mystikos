@@ -139,6 +139,7 @@
 /ltp/testcases/kernel/syscalls/rename/rename07
 /ltp/testcases/kernel/syscalls/rename/rename10
 /ltp/testcases/kernel/syscalls/rename/rename13
+/ltp/testcases/kernel/syscalls/rename/rename14
 /ltp/testcases/kernel/syscalls/rmdir/rmdir01
 /ltp/testcases/kernel/syscalls/rmdir/rmdir03
 /ltp/testcases/kernel/syscalls/sendfile/sendfile02

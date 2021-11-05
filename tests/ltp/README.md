@@ -30,7 +30,7 @@ FAILING
 
 | TEST | EXT2FS | HOSTFS | RAMFS |
 | --- | --- | --- | --- |
-| /ltp/testcases/kernel/syscalls/abort/abort01 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/abort/abort01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/accept/accept01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/accept/accept02 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/accept4/accept4_01 | 1 | 1 | 1 |
@@ -268,8 +268,8 @@ FAILING
 | /ltp/testcases/kernel/syscalls/fcntl/fcntl07_64 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/fcntl/fcntl08 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/fcntl/fcntl08_64 | 1 | 1 | 1 |
-| /ltp/testcases/kernel/syscalls/fcntl/fcntl09 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/fcntl/fcntl09_64 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/fcntl/fcntl09 | 1 | 0 | 1 |
+| /ltp/testcases/kernel/syscalls/fcntl/fcntl09_64 | 1 | 0 | 1 |
 | /ltp/testcases/kernel/syscalls/fcntl/fcntl10 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/fcntl/fcntl10_64 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/fcntl/fcntl11 | 0 | 0 | 0 |
@@ -347,7 +347,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/fork/fork01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/fork/fork02 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/fork/fork03 | 1 | 1 | 1 |
-| /ltp/testcases/kernel/syscalls/fork/fork04 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/fork/fork04 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/fork/fork05 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/fork/fork06 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/fork/fork07 | 0 | 0 | 0 |
@@ -464,7 +464,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/getresuid/getresuid02_16 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/getresuid/getresuid03 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/getresuid/getresuid03_16 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/getrlimit/getrlimit01 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/getrlimit/getrlimit01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/getrlimit/getrlimit02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/getrlimit/getrlimit03 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/getrusage/getrusage01 | 0 | 0 | 0 |
@@ -624,7 +624,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/kill/kill06 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/kill/kill07 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/kill/kill08 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/kill/kill09 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/kill/kill09 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/kill/kill10 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/kill/kill11 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/kill/kill12 | 1 | 1 | 1 |
@@ -766,7 +766,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/move_pages/move_pages11 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/move_pages/move_pages12 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/mprotect/mprotect01 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/mprotect/mprotect02 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/mprotect/mprotect02 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/mprotect/mprotect03 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/mprotect/mprotect04 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/mq_notify/mq_notify01 | 0 | 0 | 0 |
@@ -793,7 +793,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/name_to_handle_at/name_to_handle_at01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/name_to_handle_at/name_to_handle_at02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/nanosleep/nanosleep01 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/nanosleep/nanosleep02 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/nanosleep/nanosleep02 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/nanosleep/nanosleep04 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/newuname/newuname01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/nftw/nftw01 | 0 | 0 | 0 |
@@ -831,7 +831,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/pathconf/pathconf01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/pause/pause01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/pause/pause02 | 1 | 1 | 1 |
-| /ltp/testcases/kernel/syscalls/pause/pause03 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/pause/pause03 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/perf_event_open/perf_event_open01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/perf_event_open/perf_event_open02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/personality/personality01 | 0 | 0 | 0 |
@@ -976,7 +976,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/rename/rename11 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/rename/rename12 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/rename/rename13 | 1 | 1 | 1 |
-| /ltp/testcases/kernel/syscalls/rename/rename14 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/rename/rename14 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/renameat/renameat01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/renameat2/renameat201 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/renameat2/renameat202 | 0 | 0 | 0 |
@@ -1029,7 +1029,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/select/select03 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/select/select04 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/send/send01 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/send/send02 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/send/send02 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/sendfile/sendfile02 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/sendfile/sendfile02_64 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/sendfile/sendfile03 | 0 | 0 | 0 |
@@ -1150,7 +1150,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/setreuid/setreuid06_16 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/setreuid/setreuid07 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/setreuid/setreuid07_16 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/setrlimit/setrlimit01 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/setrlimit/setrlimit01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/setrlimit/setrlimit02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/setrlimit/setrlimit03 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/setrlimit/setrlimit04 | 0 | 0 | 0 |
@@ -1308,7 +1308,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/truncate/truncate02_64 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/truncate/truncate03 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/truncate/truncate03_64 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/ulimit/ulimit01 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/ulimit/ulimit01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/umask/umask01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/umount/umount01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/umount/umount02 | 0 | 0 | 0 |
@@ -1360,7 +1360,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/waitpid/waitpid08 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/waitpid/waitpid09 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/waitpid/waitpid10 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/waitpid/waitpid11 | 1 | 1 | 1 |
+| /ltp/testcases/kernel/syscalls/waitpid/waitpid11 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/waitpid/waitpid12 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/waitpid/waitpid13 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/write/write01 | 1 | 1 | 1 |

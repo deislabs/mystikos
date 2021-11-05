@@ -1,7 +1,5 @@
-/ltp/testcases/kernel/syscalls/fchmodat/fchmodat01
-/ltp/testcases/kernel/syscalls/fork/fork04
-/ltp/testcases/kernel/syscalls/kill/kill09
-/ltp/testcases/kernel/syscalls/pause/pause03
-/ltp/testcases/kernel/syscalls/send/send01 
-/ltp/testcases/kernel/syscalls/sendto/sendto01
-/ltp/testcases/kernel/syscalls/waitpid/waitpid10
+/ltp/testcases/kernel/syscalls/bind/bind03:         Times out
+/ltp/testcases/kernel/syscalls/fchmodat/fchmodat01: fchmodat01.c:99: fchmodat() Failed, errno=95 : Not supported
+/ltp/testcases/kernel/syscalls/send/send01:         send01 4  TFAIL :  send01.c:274: call succeeded unexpectedly
+/ltp/testcases/kernel/syscalls/waitpid/waitpid10:   waitpid_common.h:153: TFAIL: Pid 118 exited abnormally
+/ltp/testcases/kernel/syscalls/waitpid/waitpid11:   Times out
