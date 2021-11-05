@@ -133,6 +133,8 @@ endif
 
 DIRS += sendfile
 
+DIRS += strtonum
+
 .PHONY: $(DIRS)
 
 dirs: $(DIRS)

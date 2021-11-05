@@ -37,7 +37,28 @@ ssize_t myst_memremove(void* data, size_t n, size_t pos, size_t count);
 
 ssize_t myst_memremove_u64(void* data, size_t size, size_t pos, size_t count);
 
-bool myst_isspace(char c);
+MYST_INLINE bool myst_isspace(char c)
+{
+    return c == ' ' || c == '\f' || c == '\n' || c == '\r' || c == '\t' ||
+           c == '\v';
+}
+
+MYST_INLINE int myst_tolower(int c)
+{
+    MYST_STATIC_ASSERT('A' + ' ' == 'a');
+    MYST_STATIC_ASSERT('Z' + ' ' == 'z');
+    return (c >= 'A' && c <= 'Z') ? (c + ' ') : c;
+}
+
+MYST_INLINE int myst_isdigit(int c)
+{
+    return c >= '0' && c <= '9';
+}
+
+MYST_INLINE int myst_isprint(int c)
+{
+    return c >= ' ' && c <= '~';
+}
 
 /* convert a whole string to an integer */
 int myst_str2int(const char* s, int* x);
@@ -48,5 +69,11 @@ void* myst_memcchr(const void* b, int c, size_t len);
 
 /* returns -ERANGE if overflow detected, otherwise 0 */
 int myst_snprintf(char* str, size_t size, const char* format, ...);
+
+unsigned long int myst_strtoul(const char* nptr, char** endptr, int base);
+
+long int myst_strtol(const char* nptr, char** endptr, int base);
+
+double myst_strtod(const char* nptr, char** endptr);
 
 #endif /* _MYST_STRINGS_H */
