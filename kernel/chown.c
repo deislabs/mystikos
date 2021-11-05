@@ -71,12 +71,16 @@ long myst_syscall_chown(const char* pathname, uid_t owner, gid_t group)
 
     ECHECK(_path_checks(pathname));
 
-    if (((owner != (uid_t)-1) &&
-         (myst_valid_uid_against_passwd_file(owner) < 0)) ||
-        ((group != (gid_t)-1) &&
-         (myst_valid_gid_against_group_file(group) < 0)))
+    /* if not root, check target uid/gid validity */
+    if (thread->euid != 0)
     {
-        ret = -EINVAL;
+        if (((owner != (uid_t)-1) &&
+             (myst_valid_uid_against_passwd_file(owner) < 0)) ||
+            ((group != (gid_t)-1) &&
+             (myst_valid_gid_against_group_file(group) < 0)))
+        {
+            ret = -EINVAL;
+        }
     }
 
     if (!(locals = malloc(sizeof(struct locals))))
@@ -121,12 +125,16 @@ long myst_syscall_fchown(int fd, uid_t owner, gid_t group)
     if (fd < 0)
         return -EINVAL;
 
-    if (((owner != (uid_t)-1) &&
-         (myst_valid_uid_against_passwd_file(owner) < 0)) ||
-        ((group != (gid_t)-1) &&
-         (myst_valid_gid_against_group_file(group) < 0)))
+    /* if not root, check target uid/gid validity */
+    if (thread->euid != 0)
     {
-        ret = -EINVAL;
+        if (((owner != (uid_t)-1) &&
+             (myst_valid_uid_against_passwd_file(owner) < 0)) ||
+            ((group != (gid_t)-1) &&
+             (myst_valid_gid_against_group_file(group) < 0)))
+        {
+            ret = -EINVAL;
+        }
     }
 
     if (!(locals = malloc(sizeof(struct locals))))
@@ -167,12 +175,16 @@ long myst_syscall_lchown(const char* pathname, uid_t owner, gid_t group)
 
     ECHECK(_path_checks(pathname));
 
-    if (((owner != (uid_t)-1) &&
-         (myst_valid_uid_against_passwd_file(owner) < 0)) ||
-        ((group != (gid_t)-1) &&
-         (myst_valid_gid_against_group_file(group) < 0)))
+    /* if not root, check target uid/gid validity */
+    if (thread->euid != 0)
     {
-        ret = -EINVAL;
+        if (((owner != (uid_t)-1) &&
+             (myst_valid_uid_against_passwd_file(owner) < 0)) ||
+            ((group != (gid_t)-1) &&
+             (myst_valid_gid_against_group_file(group) < 0)))
+        {
+            ret = -EINVAL;
+        }
     }
 
     if (!(locals = malloc(sizeof(struct locals))))
