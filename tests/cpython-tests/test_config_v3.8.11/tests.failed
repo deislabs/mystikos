@@ -1,6 +1,7 @@
 test__locale
 test_asyncio
 test_asyncore
+test_builtin
 test_c_locale_coercion
 test_cmd_line
 test_compileall
@@ -15,7 +16,6 @@ test_fileio
 test_fork1
 test_gdb
 test_glob
-test_import
 test_importlib
 test_ioctl
 test_locale
@@ -48,7 +48,6 @@ test_stat
 test_strptime
 test_subprocess
 test_support
-test_tarfile
 test_tempfile
 test_thread
 test_threading
