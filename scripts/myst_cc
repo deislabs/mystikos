@@ -7,7 +7,7 @@
 # 2. Copies crt, kernel, tools *.gcno and *.gcda files to the same location as their *.c and *.h files
 # 3. Copies *.c and *.h source files as needed (only ones whos location is redefined in their Makefile)
 # 4. Generates lcov.info from all the files into the $MYST_ROOT folder
-# 5. use myst_cc_report to generate the code coverage report
+# 5. From info files it generates html code coverage report into ROOT/lcov
 
 MYST_ROOT="$(realpath "$(dirname "$0")/..")"
 
@@ -33,3 +33,9 @@ rm $(find "${MYST_ROOT}"/tests/ -name "*.gc*")
 
 lcov --rc lcov_branch_coverage=1 -c -d . -o "${MYST_ROOT}"/lcov.info
 lcov --list lcov.info
+
+rm -rf "${MYST_ROOT}"/lcov
+mkdir "${MYST_ROOT}"/lcov
+genhtml --branch-coverage -o "${MYST_ROOT}"/lcov "${MYST_ROOT}"/lcov.info
+
+python3 -m "lcov_cobertura" lcov.info -o lcov.xml
