@@ -45,4 +45,4 @@ The configuration used in this sample is very similar to that in the helloworld 
     "ApplicationPath": "/app/hello"
 }
 ```
-To learn more about configuration, please refer to related [documentation](../doc/sign-package.md).
+To learn more about configuration, please refer to related [documentation](../../doc/sign-package.md).

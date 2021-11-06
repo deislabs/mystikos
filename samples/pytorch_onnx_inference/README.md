@@ -9,7 +9,7 @@ to obtain the necessary information.
 
 ## Transform a Dockerfile into a root file system
 `Dockerfile.rootfs` sets up all the prerequsites to use ONNX and Pytorch inside a Python program.
-Mytikos has a tool, `myst-appbuilder`, to convert a Dockerfile into a root file system.
+`myst-appbuilder` is used to convert the Dockerfile into a directory containing all the files needed to run this application in Mystikos.
 ```
 myst-appbuilder -v -d Dockerfile.rootfs
 ```

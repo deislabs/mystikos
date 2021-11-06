@@ -38,7 +38,7 @@ This builds `appdir`, `cpiorootfs` and executes the application contained within
 ```
  openssl genrsa -out package.pem -3 3072
  ```
-  To learn more about signing, please see  [packaging and signing documentation](../doc/sign-package.md)
+  To learn more about signing, please see  [packaging and signing documentation](../../doc/sign-package.md)
 
 3. A package is generated using the `myst package` command
 ```
@@ -107,7 +107,7 @@ This builds `appdir`, `ext2rootfs` and executes the application contained within
 ```
  openssl genrsa -out package.pem -3 3072
  ```
-  To learn more about signing, please see  [packaging and signing documentation](../doc/sign-package.md)
+  To learn more about signing, please see  [packaging and signing documentation](../../doc/sign-package.md)
 
 3. A package is generated using the `myst package` command
 ```
