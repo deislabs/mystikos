@@ -823,6 +823,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     /* Run the main program: wait for SYS_exit to perform longjmp() */
     if (myst_setjmp(&thread->jmpbuf) == 0)
     {
+        myst_crt_args_t crt_args = {args->wanted_secrets};
         /* enter the C-runtime on the target thread descriptor */
         if ((tmp_ret = myst_exec(
                  thread,
@@ -834,7 +835,8 @@ int myst_enter_kernel(myst_kernel_args_t* args)
                  args->argv,
                  args->envc,
                  args->envp,
-                 args->wanted_secrets,
+                 &crt_args,
+                 args->thread_stack_size,
                  NULL,
                  NULL)) != 0)
         {
@@ -881,7 +883,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
             myst_assume(thread->group_prev == NULL);
             while (thread->group_next)
             {
-                myst_sleep_msec(10);
+                myst_sleep_msec(10, false);
             }
         }
 
@@ -904,7 +906,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
 
         /* Wait for all other processes to exit */
         while (process->prev_process || process->next_process)
-            myst_sleep_msec(10);
+            myst_sleep_msec(10, false);
 
         if (args->shell_mode)
             myst_start_shell("\nMystikos shell (exit)\n");
@@ -916,7 +918,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         /* release the exec stack */
         if (process->exec_stack)
         {
-            free(process->exec_stack);
+            myst_munmap(process->exec_stack, process->exec_stack_size);
             process->exec_stack = NULL;
             process->exec_stack_size = 0;
         }

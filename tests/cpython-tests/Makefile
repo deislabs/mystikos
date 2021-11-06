@@ -18,13 +18,12 @@ endif
 MPDB=$(TOP)/scripts/mpdb.py
 TESTFILE=tests.passed
 TEST = test_bz2
-TESTCASE = test_asynchat.TestAsynchat
-#TESTCASE = test_asynchat.TestAsynchat.test_close_when_done
+TESTCASE = test_socket.LinuxKernelCryptoAPI.test_aead_aes_gcm
 VER=3.9
 FS=ext2fs$(VER)
 
-# Set timeout to 25 mins (to run both the python3.8 test suite and the python3.9 test suite)
-export TIMEOUT=1500
+# Set timeout to 50 mins (to run both the python3.8 test suite and the python3.9 test suite)
+export TIMEOUT=3000
 
 all: ext2fs3.8 ext2fs3.9
 

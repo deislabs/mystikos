@@ -49,8 +49,10 @@ long myst_syscall_sendmmsg(
     unsigned int cnt;
 
     if (!msgvec && vlen)
-        ERAISE(EFAULT);
+        ERAISE(-EFAULT);
+
     ECHECK(myst_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
+
     for (cnt = 0; cnt < vlen; cnt++)
     {
         ret = (*sd->sd_sendmsg)(sd, sock, &msgvec[cnt].msg_hdr, flags);
@@ -82,12 +84,14 @@ long myst_syscall_recvmmsg(
     unsigned int cnt;
 
     if (!msgvec && vlen)
-        ERAISE(EFAULT);
+        ERAISE(-EFAULT);
+
     ECHECK(myst_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
+
     if (timeout)
     {
         if (!is_timespec_valid(timeout))
-            ERAISE(EINVAL);
+            ERAISE(-EINVAL);
 
         expire = timespec_to_nanos(timeout);
         myst_syscall_clock_gettime(CLOCK_MONOTONIC, &start);

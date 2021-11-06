@@ -10,6 +10,7 @@
 #include <string.h>
 #include <sys/mman.h>
 
+#include <myst/args.h>
 #include <myst/atexit.h>
 #include <myst/cpio.h>
 #include <myst/eraise.h>
@@ -88,6 +89,8 @@ static pair_t _at_pairs[] = {
 };
 
 static size_t _n_at_pairs = sizeof(_at_pairs) / sizeof(_at_pairs[0]);
+
+static size_t _thread_stack_size = 0;
 
 const char* elf64_at_string(uint64_t value)
 {
@@ -654,7 +657,11 @@ void* elf_make_stack(
     /* Assume that the stack is aligned on a page boundary */
     myst_assume((stack_size % PAGE_SIZE) == 0);
 
-    if (!(stack = memalign(PAGE_SIZE, stack_size)))
+    const int prot = PROT_READ | PROT_WRITE;
+    const int flags = MAP_ANONYMOUS | MAP_PRIVATE;
+
+    stack = (void*)myst_mmap(NULL, stack_size, prot, flags, -1, 0);
+    if ((long)stack < 0)
         goto done;
 
     memset(stack, 0, stack_size);
@@ -724,7 +731,7 @@ void* elf_make_stack(
 done:
 
     if (stack)
-        free(stack);
+        myst_munmap(stack, stack_size);
 
     return ret;
 }
@@ -735,7 +742,7 @@ typedef void (*enter_t)(
     void* stack,
     void* dynv,
     syscall_callback_t callback,
-    myst_wanted_secrets_t* secrets);
+    myst_crt_args_t* args);
 
 typedef struct entry_args
 {
@@ -795,6 +802,81 @@ done:
     return ret;
 }
 
+static int _get_interpreter(
+    char* hashbang_buff,
+    size_t hashbang_buff_length,
+    ssize_t num_bytes_read,
+    myst_args_t* new_argv)
+{
+    int ret = 0;
+    char* start_string = NULL;
+    char* cursor = hashbang_buff + 2; // starts after hashbang
+
+    do
+    {
+        if (cursor == (hashbang_buff + hashbang_buff_length - 1))
+        {
+            /* We have reached the end of the buffer (with space for a null
+             * terminator) */
+            /* ATTN: support longer hashbang string */
+            myst_panic("script hashbang path is too long");
+            ERAISE(-ENAMETOOLONG);
+        }
+        else if (cursor - hashbang_buff >= num_bytes_read)
+        {
+            /* got to end of read buffer */
+            if (start_string)
+            {
+                cursor[0] = '\0';
+                if (myst_args_append1(new_argv, start_string) != 0)
+                    ERAISE(-ENOMEM);
+            }
+            break;
+        }
+        else if (start_string != NULL && cursor[0] == '\n')
+        {
+            /* end of line with a pointer to string. Add string to args and
+             * break out */
+            cursor[0] = '\0';
+            if (myst_args_append1(new_argv, start_string) != 0)
+                ERAISE(-ENOMEM);
+            break;
+        }
+        else if (start_string == NULL && cursor[0] == '\n')
+        {
+            /* We are parsing white space and hit end of line. Nothing to do
+             * but exit */
+            break;
+        }
+        else if (
+            start_string != NULL && (cursor[0] == ' ' || cursor[0] == '\t'))
+        {
+            /* have the start of a string and hit end of string. Add it and
+             * continue  */
+            cursor[0] = '\0';
+            if (myst_args_append1(new_argv, start_string) != 0)
+                ERAISE(-ENOMEM);
+            start_string = NULL;
+        }
+        else if (start_string == NULL && cursor[0] != ' ' && cursor[0] != '\t')
+        {
+            /* Start of string so remember so we can add it later */
+            start_string = cursor;
+        }
+        cursor++;
+
+    } while (1);
+
+    if (new_argv->size == 0)
+    {
+        /* We dont have even one string after the hashbang */
+        ERAISE(-EINVAL);
+    }
+
+done:
+    return ret;
+}
+
 int myst_exec(
     myst_thread_t* thread,
     const void* crt_data_in,
@@ -805,7 +887,8 @@ int myst_exec(
     const char* argv[],
     size_t envc,
     const char* envp[],
-    myst_wanted_secrets_t* wanted_secrets,
+    myst_crt_args_t* crt_args,
+    size_t thread_stack_size,
     void (*callback)(void*), /* used to release caller-allocated parameters */
     void* callback_arg)
 {
@@ -814,11 +897,22 @@ int myst_exec(
     void* sp = NULL;
     void* crt_data = NULL;
     const Elf64_Ehdr* ehdr = NULL;
-    const Elf64_Phdr* phdr = NULL;
+    Elf64_Phdr* phdr = NULL;
     uint64_t* dynv = NULL;
     enter_t enter;
     char* envp_buf[] = {NULL};
     myst_process_t* process = NULL;
+    char* hashbang_buff = NULL;
+    size_t hashbang_buff_length = 0;
+    long hashbang_file = -1;
+    myst_args_t new_argv;
+    size_t num_bytes_read;
+
+    if (thread_stack_size)
+        _thread_stack_size = thread_stack_size;
+
+    if (myst_args_init(&new_argv) != 0)
+        ERAISE(ENOMEM);
 
     if (!envp)
         envp = (const char**)envp_buf;
@@ -924,7 +1018,20 @@ int myst_exec(
     }
 
     /* save the phdr */
-    phdr = (const Elf64_Phdr*)((const uint8_t*)crt_data + ehdr->e_phoff);
+    phdr = (Elf64_Phdr*)((const uint8_t*)crt_data + ehdr->e_phoff);
+
+    /* Patch the PT_GNU_STACK entry */
+    {
+        ehdr = crt_data;
+        for (size_t i = 0; i < ehdr->e_phnum; i++)
+        {
+            if (phdr[i].p_type == PT_GNU_STACK)
+            {
+                if (_thread_stack_size > phdr[i].p_memsz)
+                    phdr[i].p_memsz = _thread_stack_size;
+            }
+        }
+    }
 
     /* save the entry point */
     enter = (enter_t)((uint8_t*)crt_data + ehdr->e_entry);
@@ -932,9 +1039,38 @@ int myst_exec(
     if (!dynv)
         ERAISE(-EINVAL);
 
+    /* Now we need to determine if this has a #! at the start of the file.
+     * Lets start with allocating a buffer that is big enough for a file path,
+     * plus hashbang and null terminator. We may need to reallocate if it is not
+     * long enough.
+     */
+    hashbang_buff_length = PATH_MAX + 3 + 1;
+    hashbang_buff = malloc(hashbang_buff_length);
+    if (hashbang_buff == NULL)
+        ERAISE(-ENOMEM);
+
+    hashbang_file = myst_syscall_open(argv[0], O_RDONLY, 0);
+    ECHECK(hashbang_file);
+
+    ECHECK(
+        num_bytes_read = myst_syscall_read(
+            hashbang_file, hashbang_buff, hashbang_buff_length));
+
+    if ((num_bytes_read >= 2) && (strncmp(hashbang_buff, "#!", 2) == 0))
+    {
+        ECHECK(_get_interpreter(
+            hashbang_buff, hashbang_buff_length, num_bytes_read, &new_argv));
+    }
+
+    if (myst_args_append(&new_argv, argv, argc) != 0)
+        ERAISE(-ENOMEM);
+
+    myst_syscall_close(hashbang_file);
+    hashbang_file = -1;
+
     if (!(stack = elf_make_stack(
-              argc,
-              argv,
+              new_argv.size,
+              new_argv.data,
               envc,
               envp,
               __myst_kernel_args.main_stack_size,
@@ -951,13 +1087,17 @@ int myst_exec(
     assert(elf_check_stack(stack, __myst_kernel_args.main_stack_size) == 0);
 
     /* create "/proc/<pid>/exe" which is a link to the program executable */
-    if (_setup_exe_link(argv[0]) != 0)
+    if (_setup_exe_link(new_argv.data[0]) != 0)
         ERAISE(-EIO);
+
+    myst_args_release(&new_argv);
+    free(hashbang_buff);
+    hashbang_buff = NULL;
 
     /* if this is a nested exec, then release previous exec's stack */
     if (process->exec_stack)
     {
-        free(process->exec_stack);
+        myst_munmap(process->exec_stack, process->exec_stack_size);
         process->exec_stack = NULL;
         process->exec_stack_size = 0;
     }
@@ -1006,7 +1146,8 @@ int myst_exec(
         (*callback)(callback_arg);
 
     /* enter the C-runtime on the target thread descriptor */
-    (*enter)(sp, dynv, myst_syscall, wanted_secrets);
+    (*enter)(sp, dynv, myst_syscall, crt_args);
+
     /* unreachable */
 
     process->exec_stack = NULL;
@@ -1022,6 +1163,14 @@ done:
 
     if (crt_data)
         myst_munmap(crt_data, crt_size);
+
+    if (hashbang_buff)
+        free(hashbang_buff);
+
+    if (hashbang_file != -1)
+        myst_syscall_close(hashbang_file);
+
+    myst_args_release(&new_argv);
 
     return ret;
 }

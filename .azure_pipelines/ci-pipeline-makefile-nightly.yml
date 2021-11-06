@@ -83,6 +83,8 @@ jobs:
     - script: |
         make clean -C $(Build.SourcesDirectory)/tests
         make clean -C $(Build.SourcesDirectory)/solutions
+        make clean -C $(Build.SourcesDirectory)/solutions/coreclr
+        make clean -C $(Build.SourcesDirectory)/solutions/coreclr-p1
         docker system prune -f
         df
       displayName: 'Midterm clean up'

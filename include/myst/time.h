@@ -9,6 +9,6 @@
 
 long myst_syscall_nanosleep(const struct timespec* req, struct timespec* rem);
 
-void myst_sleep_msec(uint64_t milliseconds);
+void myst_sleep_msec(uint64_t milliseconds, bool process_signals);
 
 #endif /* _MYST_TIME_H */

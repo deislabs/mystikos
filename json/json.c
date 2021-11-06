@@ -3,12 +3,15 @@
 
 #include <ctype.h>
 #include <limits.h>
-#include <myst/json.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include <myst/defs.h>
+#include <myst/json.h>
+#include <myst/strings.h>
 
 /*
 **==============================================================================
@@ -113,7 +116,7 @@ static size_t _split(
 
 static unsigned char _char_to_nibble(char c)
 {
-    c = (char)tolower(c);
+    c = (char)myst_tolower(c);
 
     if (c >= '0' && c <= '9')
         return (unsigned char)(c - '0');
@@ -125,7 +128,7 @@ static unsigned char _char_to_nibble(char c)
 
 static int _is_number_char(char c)
 {
-    return isdigit(c) || c == '-' || c == '+' || c == 'e' || c == 'E' ||
+    return myst_isdigit(c) || c == '-' || c == '+' || c == 'e' || c == 'E' ||
            c == '.';
 }
 
@@ -162,7 +165,7 @@ static json_result_t _invoke_callback(
 
 static json_result_t skip_whitespace(json_parser_t* parser)
 {
-    while (parser->ptr != parser->end && isspace(*parser->ptr))
+    while (parser->ptr != parser->end && myst_isspace(*parser->ptr))
     {
         if (!parser->options.allow_whitespace)
             return JSON_BAD_SYNTAX;
@@ -576,7 +579,7 @@ static json_result_t _get_value(json_parser_t* parser)
         RAISE(JSON_EOF);
 
     /* Read the next character */
-    c = (char)tolower(*parser->ptr++);
+    c = (char)myst_tolower(*parser->ptr++);
 
     switch (c)
     {

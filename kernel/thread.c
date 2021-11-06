@@ -12,6 +12,7 @@
 #include <myst/atexit.h>
 #include <myst/atomic.h>
 #include <myst/cond.h>
+#include <myst/config.h>
 #include <myst/eraise.h>
 #include <myst/fdtable.h>
 #include <myst/file.h>
@@ -271,40 +272,69 @@ static void _free_zombies(void* arg)
     _zombies_head = NULL;
 }
 
+void send_sigchld_to_parent(myst_process_t* process)
+{
+    // Find process thread from pid
+    myst_process_t* parent = myst_find_process_from_pid(process->ppid, false);
+
+    if (parent == NULL) // should not happen
+        return;
+
+    siginfo_t* siginfo;
+
+    if (!(siginfo = calloc(1, sizeof(siginfo_t))))
+        return;
+
+    siginfo->si_code = SI_USER;
+    siginfo->si_signo = SIGCHLD;
+    siginfo->si_pid = process->pid;
+    siginfo->si_uid = process->main_process_thread->euid;
+
+    myst_signal_deliver(parent->main_process_thread, SIGCHLD, siginfo);
+}
+
 void myst_zombify_process(myst_process_t* process)
+{
+    static bool _initialized;
+
+    if (!_initialized)
+    {
+        myst_atexit(_free_zombies, NULL);
+        _initialized = true;
+    }
+
+    process->zombie_next = _zombies_head;
+    process->zombie_prev = NULL;
+
+    if (_zombies_head)
+    {
+        _zombies_head->zombie_prev = process;
+        _zombies_head = process;
+    }
+    else
+    {
+        _zombies_head = process;
+    }
+
+    process->main_process_thread = NULL;
+
+    // remove from process list
+    if (process->prev_process)
+        process->prev_process->next_process = process->next_process;
+    if (process->next_process)
+        process->next_process->prev_process = process->prev_process;
+    process->prev_process = NULL;
+    process->next_process = NULL;
+}
+
+/* Send SIGCHLD to parent and zombify process atomically. This way wait() calls
+ * from parent are ensured to be serialized. */
+void myst_send_sigchld_and_zombify_process(myst_process_t* process)
 {
     myst_spin_lock(&myst_process_list_lock);
     {
-        static bool _initialized;
-
-        if (!_initialized)
-        {
-            myst_atexit(_free_zombies, NULL);
-            _initialized = true;
-        }
-
-        process->zombie_next = _zombies_head;
-        process->zombie_prev = NULL;
-
-        if (_zombies_head)
-        {
-            _zombies_head->zombie_prev = process;
-            _zombies_head = process;
-        }
-        else
-        {
-            _zombies_head = process;
-        }
-
-        process->main_process_thread = NULL;
-
-        // remove from process list
-        if (process->prev_process)
-            process->prev_process->next_process = process->next_process;
-        if (process->next_process)
-            process->next_process->prev_process = process->prev_process;
-        process->prev_process = NULL;
-        process->next_process = NULL;
+        send_sigchld_to_parent(process);
+        myst_zombify_process(process);
     }
     myst_spin_unlock(&myst_process_list_lock);
 }
@@ -712,7 +742,7 @@ long myst_wait(
 #endif
         myst_spin_unlock(&myst_process_list_lock);
         locked = false;
-        myst_sleep_msec(100);
+        myst_sleep_msec(100, true);
         myst_spin_lock(&myst_process_list_lock);
         locked = true;
 
@@ -979,7 +1009,7 @@ static long _run_thread(void* arg_)
             {
                 while (thread->group_next || thread->group_prev)
                 {
-                    myst_sleep_msec(10);
+                    myst_sleep_msec(10, false);
                 }
             }
 
@@ -990,7 +1020,7 @@ static long _run_thread(void* arg_)
 
             if (process->exec_stack)
             {
-                free(process->exec_stack);
+                myst_munmap(process->exec_stack, process->exec_stack_size);
                 process->exec_stack = NULL;
                 process->exec_stack_size = 0;
             }
@@ -1034,7 +1064,7 @@ static long _run_thread(void* arg_)
             /* Only need to zombify the process thread.
             ATTN: referencing "process" after zombification is not safe,
             parent might have cleaned it up */
-            myst_zombify_process(process);
+            myst_send_sigchld_and_zombify_process(process);
         }
 
         {
@@ -1515,8 +1545,23 @@ size_t myst_kill_thread_group()
     // Wait for the child threads to exit.
     while (1)
     {
+#if (MYST_INTERRUPT_WITH_SIGNAL == 1)
+        /* Interrupt threads blocked in syscalls on the target */
+        myst_spin_lock(&process->thread_group_lock);
+        {
+            for (t = process->main_process_thread; t; t = t->group_next)
+            {
+                if (t != process->main_process_thread && t != thread)
+                    myst_interrupt_thread(t);
+            }
+        }
+        myst_spin_unlock(&process->thread_group_lock);
+#elif (MYST_INTERRUPT_WITH_SIGNAL == -1)
         // Wake up any polls that may be waiting in the host
         myst_tcall_poll_wake();
+#else
+#error "MYST_INTERRUPT_WITH_SIGNAL undefined"
+#endif
 
         /* We may have had pipes on their way to blocking since the last trigger
          * so lets do it again to be sure */
@@ -1554,7 +1599,7 @@ size_t myst_kill_thread_group()
         if (t == NULL)
             break;
 
-        myst_sleep_msec(10);
+        myst_sleep_msec(10, false);
     }
 
     return count;
@@ -1650,7 +1695,20 @@ void myst_wait_on_child_processes(myst_process_t* process)
 
         myst_eprintf("process %d waiting for child %d\n", process->pid, p->pid);
 
-        myst_sleep_msec(10);
+        myst_sleep_msec(10, false);
 
     } while (1);
+}
+
+int myst_interrupt_thread(myst_thread_t* thread)
+{
+    long ret = 0;
+
+    if (!thread)
+        ERAISE(-EINVAL);
+
+    ECHECK(myst_tcall_interrupt_thread(thread->target_tid));
+
+done:
+    return ret;
 }

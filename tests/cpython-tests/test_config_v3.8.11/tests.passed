@@ -10,11 +10,13 @@ test_argparse
 test_array
 test_asdl_parser
 test_ast
+test_asyncgen
 test_asynchat
 test_atexit
 test_audioop
 test_audit
 test_augassign
+test_base64
 test_baseexception
 test_bdb
 test_bigaddrspace
@@ -39,6 +41,7 @@ test_class
 test_clinic
 test_cmath
 test_cmd
+test_cmd_line_script
 test_code
 test_code_module
 test_codeccallbacks
@@ -60,7 +63,6 @@ test_colorsys
 test_compare
 test_compile
 test_complex
-test_concurrent_futures
 test_configparser
 test_contains
 test_context
@@ -130,9 +132,10 @@ test_future
 test_future3
 test_future4
 test_future5
+test_gc
+test_gzip
 test_generator_stop
 test_generators
-test_genericalias
 test_genericclass
 test_genericpath
 test_genexps
@@ -142,7 +145,6 @@ test_getpass
 test_gettext
 test_global
 test_grammar
-test_graphlib
 test_grp
 test_hash
 test_hashlib
@@ -163,12 +165,12 @@ test_inspect
 test_int
 test_int_literal
 test_io
-test_ioctl
 test_ipaddress
 test_isinstance
 test_iter
 test_iterlen
 test_itertools
+test_json
 test_keyword
 test_keywordonlyarg
 test_kqueue
@@ -194,10 +196,6 @@ test_module
 test_modulefinder
 test_msilib
 test_multibytecodec
-test_multiprocessing_fork
-test_multiprocessing_forkserver
-test_multiprocessing_main_handling
-test_multiprocessing_spawn
 test_named_expressions
 test_netrc
 test_nis
@@ -211,6 +209,7 @@ test_ordered_dict
 test_ossaudiodev
 test_osx_env
 test_parser
+test_pdb
 test_peepholer
 test_pickle
 test_picklebuffer
@@ -233,11 +232,13 @@ test_pstats
 test_pulldom
 test_pwd
 test_pyclbr
+test_py_compile
 test_pyexpat
 test_queue
 test_quopri
 test_raise
 test_range
+test_repl
 test_reprlib
 test_richcmp
 test_rlcompleter
@@ -332,7 +333,6 @@ test_utf8source
 test_uu
 test_warnings
 test_wave
-test_weakref
 test_weakset
 test_webbrowser
 test_winconsoleio

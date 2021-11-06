@@ -62,6 +62,17 @@ void test(bool exec, uint64_t* ptr)
         {
             char* args[] = {"/bin/child", NULL};
             char* env[] = {NULL};
+            int ret;
+            /* check ENOENT case */
+            if ((ret = execve("/bin/child-no", args, env)) < 0)
+            {
+                assert(errno == ENOENT);
+                printf("execve ENOENT case passed\n");
+            }
+            else
+            {
+                assert(false);
+            }
             execve("/bin/child", args, env);
             assert(false);
         }

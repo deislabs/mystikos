@@ -8,6 +8,8 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <sys/epoll.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
@@ -55,6 +57,15 @@ typedef enum myst_tcall_number
     MYST_TCALL_LOAD_FSSIG,
     MYST_TCALL_CLOCK_GETRES,
     MYST_TCALL_GCOV,
+    MYST_TCALL_INTERRUPT_THREAD,
+    MYST_TCALL_CONNECT_BLOCK,
+    MYST_TCALL_ACCEPT4_BLOCK,
+    MYST_TCALL_READ_BLOCK,
+    MYST_TCALL_WRITE_BLOCK,
+    MYST_TCALL_RECVFROM_BLOCK,
+    MYST_TCALL_SENDTO_BLOCK,
+    MYST_TCALL_RECVMSG_BLOCK,
+    MYST_TCALL_SENDMSG_BLOCK,
 } myst_tcall_number_t;
 
 long myst_tcall(long n, long params[6]);
@@ -173,5 +184,84 @@ long myst_tcall_write(int fd, const void* buf, size_t count);
 long myst_tcall_poll(struct pollfd* fds, nfds_t nfds, int timeout);
 
 long myst_tcall_pipe2(int pipefd[2], int flags);
+
+long myst_tcall_nanosleep(const struct timespec* req, struct timespec* rem);
+
+long myst_tcall_epoll_wait(
+    int epfd,
+    struct epoll_event* events,
+    size_t maxevents,
+    int timeout);
+
+long myst_tcall_interrupt_thread(pid_t tid);
+
+int myst_tcall_accept4(
+    int sockfd,
+    struct sockaddr* addr,
+    socklen_t* addrlen,
+    int flags);
+
+int myst_tcall_connect(
+    int sockfd,
+    const struct sockaddr* addr,
+    socklen_t addrlen);
+
+ssize_t myst_tcall_sendto(
+    int sockfd,
+    const void* buf,
+    size_t len,
+    int flags,
+    const struct sockaddr* dest_addr,
+    socklen_t addrlen);
+
+ssize_t myst_tcall_recvfrom(
+    int sockfd,
+    void* buf,
+    size_t len,
+    int flags,
+    struct sockaddr* src_addr,
+    socklen_t* addrlen);
+
+ssize_t myst_tcall_sendmsg(int sockfd, const struct msghdr* msg, int flags);
+
+ssize_t myst_tcall_recvmsg(int sockfd, struct msghdr* msg, int flags);
+
+long myst_tcall_read_block(int fd, void* buf, size_t count);
+
+long myst_tcall_write_block(int fd, const void* buf, size_t count);
+
+int myst_tcall_accept4_block(
+    int sockfd,
+    struct sockaddr* addr,
+    socklen_t* addrlen,
+    int flags);
+
+int myst_tcall_connect_block(
+    int sockfd,
+    const struct sockaddr* addr,
+    socklen_t addrlen);
+
+ssize_t myst_tcall_sendto_block(
+    int sockfd,
+    const void* buf,
+    size_t len,
+    int flags,
+    const struct sockaddr* dest_addr,
+    socklen_t addrlen);
+
+ssize_t myst_tcall_recvfrom_block(
+    int sockfd,
+    void* buf,
+    size_t len,
+    int flags,
+    struct sockaddr* src_addr,
+    socklen_t* addrlen);
+
+ssize_t myst_tcall_sendmsg_block(
+    int sockfd,
+    const struct msghdr* msg,
+    int flags);
+
+ssize_t myst_tcall_recvmsg_block(int sockfd, struct msghdr* msg, int flags);
 
 #endif /* _MYST_TCALL_H */

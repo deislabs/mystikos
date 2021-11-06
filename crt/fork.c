@@ -64,7 +64,7 @@ void myst_get_current_stack(void** stack, size_t* stack_size)
     }
     else
     {
-        const long n = SYS_get_process_thread_stack;
+        const long n = SYS_myst_get_process_thread_stack;
 
         if (syscall(n, stack, stack_size) != 0)
         {
@@ -462,7 +462,7 @@ __attribute__((__returns_twice__)) pid_t myst_fork(void)
             /* Wait if fork mode requires it */
             if (fork_mode == myst_fork_pseudo_wait_for_exit_exec)
             {
-                syscall(SYS_fork_wait_exec_exit);
+                syscall(SYS_myst_fork_wait_exec_exit);
             }
         }
     }

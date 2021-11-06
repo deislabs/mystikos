@@ -59,6 +59,12 @@ Options:
                             main thread, where <size> may have a
                             multiplier suffix: k 1024, m 1024*1024, or
                             g 1024*1024*1024
+    --thread-stack-size <size>
+                         -- the default stack size of threads created by the
+                            application, where <size> may have a
+                            multiplier suffix: k 1024, m 1024*1024, or
+                            g 1024*1024*1024. Ignored if smaller than the
+                            existing default thread stack size
     --app-config-path <json> -- specifies the configuration json file for
                                 running an unsigned binary. The file can be
                                 the same one used for the signing process.

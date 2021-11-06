@@ -1,3 +1,4 @@
+.NOTPARALLEL:
 .PHONY: tests
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
@@ -188,10 +189,6 @@ sort:
 	cp .tests tests
 	rm -f .tests
 
-# prevent tests with the same name exactly from running in parallel
-FLOCK_TIMEOUT = 60
-FLOCK = flock -w $(FLOCK_TIMEOUT) ./appdir/$(TEST)
-
 ##==============================================================================
 ##
 ## one rule for ext2fs
@@ -200,7 +197,7 @@ FLOCK = flock -w $(FLOCK_TIMEOUT) ./appdir/$(TEST)
 
 ifeq ($(FS),ext2fs)
 one:
-	sudo -E $(FLOCK) $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
+	sudo -E $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
 endif
 
 ##==============================================================================
@@ -216,7 +213,7 @@ one:
 	cp appdir/$(TEST) $(HOSTFS)/$(TEST)
 	cp -r appdir/etc $(HOSTFS)/
 	sudo chown -R 0.0 $(HOSTFS)
-	sudo -E $(FLOCK) $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
+	sudo -E $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
 endif
 
 ##==============================================================================
@@ -232,7 +229,7 @@ one:
 	cp appdir/$(TEST) ramfs.appdir/$(TEST)
 	cp -r appdir/etc  ramfs.appdir/
 	$(MYST) mkcpio ramfs.appdir ramfs
-	sudo -E $(FLOCK) $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
+	sudo -E $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) $(TEST) $(NL)
 endif
 
 ##==============================================================================
@@ -254,6 +251,3 @@ PIPE_TESTS += /ltp/testcases/kernel/syscalls/epoll_wait/epoll_wait01
 
 pipe-tests:
 	$(foreach i, $(PIPE_TESTS), $(MAKE) one FS=ext2fs TEST=$i $(NL) )
-
-t:
-	$(MAKE) FS=ext2fs one TEST=/ltp/testcases/kernel/syscalls/accept4/accept4_01

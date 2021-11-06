@@ -23,7 +23,7 @@
 **==============================================================================
 */
 
-#define EXT2_PATH_MAX 256
+#define EXT2_FILENAME_MAX 255
 
 #define EXT2_MAX_BLOCK_SIZE (8 * 1024)
 
@@ -187,7 +187,7 @@ struct ext2_dirent
     uint16_t rec_len;
     uint8_t name_len;
     uint8_t file_type;
-    char name[EXT2_PATH_MAX];
+    char name[EXT2_FILENAME_MAX];
 };
 
 // This structure keeps track of the number of times an inode has been opened
@@ -216,7 +216,7 @@ struct ext2
     uint32_t group_count;
     ext2_group_desc_t* groups;
     ext2_inode_t root_inode;
-    char target[EXT2_PATH_MAX];
+    char target[PATH_MAX];
     myst_mount_resolve_callback_t resolve;
     myst_fs_t* wrapper_fs;
     ext2_inode_ref_t* inode_refs;

@@ -117,7 +117,7 @@ pipeline {
                                     extensions: [],
                                     userRemoteConfigs: [[
                                         url: 'https://github.com/deislabs/mystikos',
-                                        refspec: "+refs/pull/${PULL_REQUEST_ID}/head:refs/remotes/origin/pr/${PULL_REQUEST_ID}"
+                                        refspec: "+refs/pull/${PULL_REQUEST_ID}/merge:refs/remotes/origin/pr/${PULL_REQUEST_ID}"
                                     ]]
                                 ])
                             } else {
@@ -125,6 +125,25 @@ pipeline {
                                     branches: [[name: params.BRANCH_NAME]],
                                     extensions: [],
                                     userRemoteConfigs: [[url: 'https://github.com/deislabs/mystikos']]]
+                                )
+                            }
+                        }
+                    }
+                }
+                stage('Determine committers') {
+                    steps {
+                        script {
+                            if ( params.PULL_REQUEST_ID ) {
+                                SOURCE_BRANCH = "origin/pr/${params.PULL_REQUEST_ID}"
+                            } else if ( params.BRANCH_NAME ) {
+                                SOURCE_BRANCH = "origin/${BRANCH_NAME}"
+                            } else {
+                                SOURCE_BRANCH = "origin/PR-${env.CHANGE_ID}"
+                            }
+                            dir("${WORKSPACE}") {
+                                COMMITER_EMAILS = sh(
+                                    returnStdout: true,
+                                    script: "git log --pretty='%ae' origin/main..${SOURCE_BRANCH} | sort -u"
                                 )
                             }
                         }
@@ -204,6 +223,19 @@ pipeline {
                     steps {
                         cleanWs()
                     }
+                }
+            }
+        }
+    }
+    post {
+        always {
+            script {
+                COMMITER_EMAILS.tokenize('\n').each {
+                    emailext(
+                        subject: "Jenkins: ${env.JOB_NAME} [#${env.BUILD_NUMBER}] status is ${currentBuild.currentResult}",
+                        body: "See build log for details: ${env.BUILD_URL}",
+                        to: "${it}"
+                    )
                 }
             }
         }

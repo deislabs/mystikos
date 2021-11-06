@@ -58,6 +58,11 @@ typedef struct _myst_wanted_secrets_config
     size_t secrets_count;
 } myst_wanted_secrets_t;
 
+typedef struct myst_crt_args
+{
+    myst_wanted_secrets_t* wanted_secrets;
+} myst_crt_args_t;
+
 typedef struct myst_kernel_args
 {
     /* The image that contains the kernel and crt etc. */
@@ -202,6 +207,9 @@ typedef struct myst_kernel_args
 
     // From the --main-stack-size=<size> option.
     size_t main_stack_size;
+
+    // From the --thread-stack-size=<size> option.
+    size_t thread_stack_size;
 
     // From the --max-affinity-cpus=<num> option. This setting limits the
     // CPUs reported by sched_getaffinity().
