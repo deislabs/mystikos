@@ -27,7 +27,7 @@ send images located inside `test_samples` for inferencing.
 
 To run the sample using `myst exec-sgx`, use `make runexec`.
 
-# Configuration parameters
+### Configuration parameters
 The configuration used in this sample is very similar to that in the helloworld sample. Please refer to the helloworld sample for more details.
 ```
 {
