@@ -3,7 +3,7 @@
 This sample demonstrates how to invoke TensowFlow_lite to label images from within an enclave. It is written in python.
 
 It is recommended that you understand how to use EXT2 file system and how applications can be packaged
-Mystkos before proceeding witht his sample. Please refer to the README for the helloworld sample
+Mystkos before proceeding with this sample. Please refer to the README for the helloworld sample
 to obtain the necessary information.
 
 ## Transform a Dockerfile into a root file system

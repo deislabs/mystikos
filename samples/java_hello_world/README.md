@@ -32,6 +32,7 @@ To run the sample using `myst exec-sgx`, use `make runexec`.
 The configuration used in this sample is very similar to that in the helloworld sample. Please refer to the helloworld sample for more details.
 It does use more memory than the helloworld sample(which is written in C). This is in order to run the JVM.
 After mounting the root file system, Mystikos invokes `/opt/openjdk-13/bin/jav` with `ApplicationParameters` specifying `helloworld`.
+```
 {
     "Debug": 1,
     "ProductID": 1,

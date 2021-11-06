@@ -4,7 +4,7 @@ This sample demonstrates how a machine learning model can be donwloaded into an 
 how an inferencing server can be run from within an enclave. It is written in python.
 
 It is recommended that you understand how to use EXT2 file system and how applications can be packaged for
-Mystikos before proceeding witht his sample. Please refer to the README for the helloworld sample
+Mystikos before proceeding with this sample. Please refer to the README for the helloworld sample
 to obtain the necessary information.
 
 ## Transform a Dockerfile into a root file system
