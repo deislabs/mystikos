@@ -11,7 +11,7 @@ to obtain the necessary information.
 `Dockerfile.slim.buster` sets up all the prerequsites to use Tensowflow. It downloads a photo, model and labels.
 `myst-appbuilder` is used to convert the Dockerfile into a directory containing all the files needed to run this application in Mystikos.
 ```
-myst-appbuilder -v -d Dockerfile.rootfs
+myst-appbuilder -v -d Dockerfile.slim.buster
 ```
 
 After this, the `appdir` generated can be converted into a cpio archive using `myst mkcpio` or an EXT2 file system using `myst mkext2`that can be loaded into Mystikos.
