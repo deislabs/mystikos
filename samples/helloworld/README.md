@@ -153,4 +153,4 @@ This is the configuration for the helloworld sample. `ApplicationPath` states wh
     "ApplicationPath": "/bin/hello"
 }
 ```
-To learn more about configuration, please refer to related [documentation](../doc/sign-package.md).
+To learn more about configuration, please refer to related [documentation](../../doc/sign-package.md).
