@@ -1,16 +1,19 @@
+TOP=$(abspath ../..)
+include $(TOP)/defs.mak
+
 APPDIR = appdir
 CFLAGS = -fPIC
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 
-all: 
+all: myst
 	mkdir -p $(APPDIR)/bin
-	gcc $(CFLAGS) -o $(APPDIR)/bin/gencreds gencreds.c
-	@myst mkcpio $(APPDIR) rootfs
+	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/gencreds gencreds.c $(LDFLAGS)
+	$(MYST) mkcpio $(APPDIR) rootfs
 
 #OPTS += --strace
 
 run: all
-	@myst exec-sgx rootfs /bin/gencreds $(OPTS)
+	$(MYST_EXEC) rootfs /bin/gencreds $(OPTS)
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst
