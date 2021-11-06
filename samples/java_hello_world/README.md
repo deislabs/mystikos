@@ -42,4 +42,4 @@ After mounting the root file system, Mystikos invokes `/opt/openjdk-13/bin/jav` 
     "ApplicationParameters": ["helloworld"]
 }
 ```
-To learn more about configuration, please refer to related [documentation](../doc/sign-package.md).
+To learn more about configuration, please refer to related [documentation](../../doc/sign-package.md).
