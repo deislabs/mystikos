@@ -14,16 +14,21 @@ pipeline {
         string(name: "REPOSITORY", defaultValue: "deislabs")
         string(name: "BRANCH", defaultValue: "main", description: "Branch to build")
         choice(name: "TEST_CONFIG", choices:['Nightly', 'Code Coverage'], description: "Test configuration to execute")
+        choice(name: "PACKAGE_BINARIES", choices:['false', 'true'], description: "True - create Debian package and install; False - use built binaries without packaging")
     }
     environment {
-        MYST_SCRIPTS =    "${WORKSPACE}/scripts"
-        JENKINS_SCRIPTS = "${WORKSPACE}/.jenkins/scripts"
+        MYST_SCRIPTS =      "${WORKSPACE}/scripts"
+        JENKINS_SCRIPTS =   "${WORKSPACE}/.jenkins/scripts"
+        MYST_NIGHTLY_TEST = 1
+        MYST_ENABLE_GCOV =  1
+        PATH =              "${params.PACKAGE_BINARIES == 'true' ? "${PATH}:/opt/mystikos/bin" : "${PATH}"}"
+        GDB_BIN =           "${params.PACKAGE_BINARIES == 'true' ? "/opt/mystikos/bin/myst-gdb" : ""}"
+        LLDDB_BIN =         "${params.PACKAGE_BINARIES == 'true' ? "/opt/mystikos/bin/myst-lldb" : ""}"
+        MYST_BIN =          "${params.PACKAGE_BINARIES == 'true' ? "/opt/mystikos/bin/myst" : ""}"
         BUILD_USER = sh(
             returnStdout: true,
             script: 'echo \${USER}'
         )
-        MYST_NIGHTLY_TEST = 1
-        MYST_ENABLE_GCOV = 1
     }
     stages {
         stage("Cleanup files") {
@@ -60,10 +65,30 @@ pipeline {
                    """
             }
         }
+        stage('Build and install Mystikos Package') {
+            when {
+                expression { params.PACKAGE_BINARIES == 'true' }
+            }
+            steps {
+                sh """
+                   ${JENKINS_SCRIPTS}/global/package-install.sh
+                   """
+            }
+        }
         stage('Build repo source') {
             steps {
                 sh """
                    ${JENKINS_SCRIPTS}/global/make-world.sh
+                   """
+            }
+        }
+        stage('Remove built binaries') {
+            when {
+                expression { params.PACKAGE_BINARIES == 'true' }
+            }
+            steps {
+                sh """
+                   rm -rf build/bindist/opt
                    """
             }
         }
@@ -96,7 +121,13 @@ pipeline {
                     withCredentials([string(credentialsId: 'mystikos-sql-db-name-useast', variable: 'DB_NAME'),
                                      string(credentialsId: 'mystikos-sql-db-server-name-useast', variable: 'DB_SERVER_NAME'),
                                      string(credentialsId: 'mystikos-maa-url-useast', variable: 'MAA_URL'),
-                                     string(credentialsId: 'mystikos-managed-identity-objectid', variable: 'DB_USERID')]) {
+                                     string(credentialsId: 'mystikos-managed-identity-objectid', variable: 'DB_USERID'),
+                                     string(credentialsId: 'mystikos-mhsm-client-secret', variable: 'CLIENT_SECRET'),
+                                     string(credentialsId: 'mystikos-mhsm-client-id', variable: 'CLIENT_ID'),
+                                     string(credentialsId: 'mystikos-mhsm-app-id', variable: 'APP_ID'),
+                                     string(credentialsId: 'mystikos-mhsm-aad-url', variable: 'MHSM_AAD_URL'),
+                                     string(credentialsId: 'mystikos-mhsm-ssr-pkey', variable: 'SSR_PKEY')
+                    ]) {
                         sh "make tests -C ${WORKSPACE}/solutions"
                     }
                 }
@@ -167,6 +198,28 @@ pipeline {
         stage('Cleanup') {
             steps {
                 cleanWs()
+            }
+        }
+    }
+    post {
+        always {
+            withCredentials([string(credentialsId: 'mystikos-report', variable: 'MYSTIKOS_REPORT')]) {
+                script {
+                    // Notify the build requestor only for manual builds
+                    if ( params.REPOSITORY == 'deislabs' && params.BRANCH == 'main' ) {
+                        emailext(
+                            subject: "Jenkins: ${env.JOB_NAME} [#${env.BUILD_NUMBER}] status is ${currentBuild.currentResult}",
+                            body: "See build log for details: ${env.BUILD_URL}", 
+                            to: MYSTIKOS_REPORT
+                        )
+                    } else {
+                        emailext(
+                            subject: "Jenkins: ${env.JOB_NAME} [#${env.BUILD_NUMBER}] status is ${currentBuild.currentResult}",
+                            body: "See build log for details: {env.BUILD_URL}", 
+                            recipientProviders: [[$class: 'RequesterRecipientProvider']]
+                        )
+                    }
+                }
             }
         }
     }

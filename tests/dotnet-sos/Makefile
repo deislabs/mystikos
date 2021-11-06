@@ -58,3 +58,6 @@ run-ext2-lldb:
 
 ct:
 	sudo rm -fr /tmp/myst*
+
+t:
+	echo ${DEV_SGX_ISDIR}

@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# This script generates the code coverage data for myst project. 
+# You must run tests with MYST_ENABLE_GCOV=1 to populate the required files
+# This script does these steps:
+# 1. Creates lcov info using myst_cc_info 
+# 2. From info files generate html code coverage report into ROOT/lcov
+
+MYST_ROOT="$(realpath "$(dirname "$0")/..")"
+
+rm -rf "${MYST_ROOT}"/lcov
+mkdir "${MYST_ROOT}"/lcov
+genhtml --branch-coverage -o "${MYST_ROOT}"/lcov "${MYST_ROOT}"/lcov.info
+
+python3 -m "lcov_cobertura" lcov.info -o lcov.xml

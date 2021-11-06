@@ -31,6 +31,128 @@ enum _oe_result
 
 myst_run_thread_t __myst_run_thread;
 
+static int _set_nonblock(int fd)
+{
+    int flags;
+
+    if ((flags = fcntl(fd, F_GETFL, 0)) < 0)
+        return -errno;
+
+    if ((flags = fcntl(fd, F_SETFL, flags | O_NONBLOCK)) < 0)
+        return -errno;
+
+    return 0;
+}
+
+static long _socket(int domain, int type, int protocol)
+{
+    long ret = 0;
+    int sockfd;
+
+    ECHECK_ERRNO(sockfd = socket(domain, type, protocol));
+    ECHECK(_set_nonblock(sockfd));
+
+    ret = sockfd;
+
+done:
+
+    if (ret < 0 && sockfd >= 0)
+        close(sockfd);
+
+    return ret;
+}
+
+static long _socketpair(int domain, int type, int protocol, int sv[2])
+{
+    long ret = 0;
+
+    sv[0] = -1;
+    sv[1] = -1;
+
+    ECHECK_ERRNO(socketpair(domain, type, protocol, sv));
+    ECHECK(_set_nonblock(sv[0]));
+    ECHECK(_set_nonblock(sv[1]));
+
+done:
+
+    if (ret < 0 && sv[0] >= 0 && sv[1] >= 0)
+    {
+        close(sv[0]);
+        close(sv[1]);
+    }
+
+    return ret;
+}
+
+static int _accept4(
+    int sockfd,
+    struct sockaddr* addr,
+    socklen_t* addrlen,
+    int flags)
+{
+    long ret = 0;
+    int new_sockfd;
+
+    ECHECK_ERRNO(
+        new_sockfd = syscall(SYS_accept4, sockfd, addr, addrlen, flags));
+    ECHECK(_set_nonblock(new_sockfd));
+
+    ret = new_sockfd;
+
+done:
+
+    if (ret < 0 && new_sockfd >= 0)
+        close(new_sockfd);
+
+    return ret;
+}
+
+static long _accept4_block(
+    int sockfd,
+    struct sockaddr* addr,
+    socklen_t* addrlen,
+    int flags)
+{
+    long ret = 0;
+    int new_sockfd;
+
+    ECHECK(
+        new_sockfd = myst_interruptible_syscall(
+            SYS_accept4, sockfd, POLLIN, true, sockfd, addr, addrlen, flags));
+    ECHECK(_set_nonblock(new_sockfd));
+
+    ret = new_sockfd;
+
+done:
+
+    if (ret < 0 && new_sockfd >= 0)
+        close(new_sockfd);
+
+    return ret;
+}
+
+static long _pipe2(int pipefd[2], int flags)
+{
+    long ret = 0;
+
+    pipefd[0] = -1;
+    pipefd[1] = -1;
+
+    ECHECK_ERRNO(pipe2(pipefd, flags));
+    ECHECK(_set_nonblock(pipefd[0]));
+    ECHECK(_set_nonblock(pipefd[1]));
+
+done:
+
+    if (ret < 0 && pipefd[0] >= 0 && pipefd[1] >= 0)
+    {
+        close(pipefd[0]);
+        close(pipefd[1]);
+    }
+
+    return ret;
+}
+
 static long _tcall_random(void* data, size_t size)
 {
     long ret = 0;
@@ -505,6 +627,10 @@ long myst_tcall(long n, long params[6])
             return myst_gcov(func, gcov_params);
         }
 #endif
+        case MYST_TCALL_INTERRUPT_THREAD:
+        {
+            return myst_tcall_interrupt_thread((pid_t)x1);
+        }
         case SYS_ioctl:
         {
             int fd = (int)x1;
@@ -542,31 +668,20 @@ long myst_tcall(long n, long params[6])
         }
         case SYS_sched_yield:
         case SYS_fstat:
-        case SYS_read:
-        case SYS_write:
         case SYS_close:
         case SYS_readv:
         case SYS_writev:
         case SYS_select:
-        case SYS_nanosleep:
         case SYS_fcntl:
         case SYS_gettimeofday:
         case SYS_sethostname:
         case SYS_bind:
-        case SYS_connect:
-        case SYS_recvfrom:
         case SYS_sendfile:
-        case SYS_socket:
         case SYS_accept:
-        case SYS_accept4:
-        case SYS_sendto:
-        case SYS_sendmsg:
-        case SYS_recvmsg:
         case SYS_shutdown:
         case SYS_listen:
         case SYS_getsockname:
         case SYS_getpeername:
-        case SYS_socketpair:
         case SYS_setsockopt:
         case SYS_getsockopt:
         case SYS_access:
@@ -589,13 +704,62 @@ long myst_tcall(long n, long params[6])
         case SYS_getcpu:
         case SYS_fdatasync:
         case SYS_fsync:
-        case SYS_pipe2:
         case SYS_epoll_create1:
-        case SYS_epoll_wait:
         case SYS_epoll_ctl:
         case SYS_eventfd2:
+        case SYS_read:
+        case SYS_write:
+        case SYS_connect:
+        case SYS_recvfrom:
+        case SYS_sendto:
+        case SYS_sendmsg:
+        case SYS_recvmsg:
         {
             return _forward_syscall(n, x1, x2, x3, x4, x5, x6);
+        }
+        case SYS_socket:
+        {
+            int domain = (int)x1;
+            int type = (int)x2;
+            int protocol = (int)x3;
+            return _socket(domain, type, protocol);
+        }
+        case SYS_accept4:
+        {
+            int sockfd = (int)x1;
+            struct sockaddr* addr = (struct sockaddr*)x2;
+            socklen_t* addrlen = (socklen_t*)x3;
+            int flags = (int)x4;
+            return _accept4(sockfd, addr, addrlen, flags);
+        }
+        case SYS_socketpair:
+        {
+            int domain = (int)x1;
+            int type = (int)x2;
+            int protocol = (int)x3;
+            int* sv = (int*)x4;
+            return _socketpair(domain, type, protocol, sv);
+        }
+        case SYS_pipe2:
+        {
+            int* pipefd = (int*)x1;
+            int flags = (int)x2;
+            return _pipe2(pipefd, flags);
+        }
+        case SYS_epoll_wait:
+        {
+            return myst_tcall_epoll_wait(
+                (int)x1,                 /* epfd */
+                (struct epoll_event*)x2, /* events */
+                (size_t)x3,              /* maxevents */
+                (int)x4);                /* timeout */
+        }
+        case SYS_nanosleep:
+        {
+            const struct timespec* req = (const struct timespec*)x1;
+            struct timespec* rem = (struct timespec*)x2;
+
+            return myst_tcall_nanosleep(req, rem);
         }
         case SYS_chown:
         case SYS_fchown:
@@ -620,6 +784,121 @@ long myst_tcall(long n, long params[6])
         case SYS_rmdir:
         {
             return myst_tcall_identity(n, params, (uid_t)x2, (gid_t)x3);
+        }
+        case MYST_TCALL_READ_BLOCK:
+        {
+            int fd = (int)x1;
+            void* buf = (void*)x2;
+            size_t count = (size_t)x3;
+
+            return myst_interruptible_syscall(
+                SYS_read, fd, POLLIN, true, fd, buf, count);
+        }
+        case MYST_TCALL_WRITE_BLOCK:
+        {
+            int fd = (int)x1;
+            const void* buf = (void*)x2;
+            size_t count = (size_t)x3;
+
+            return myst_interruptible_syscall(
+                SYS_write, fd, POLLOUT, true, fd, buf, count);
+        }
+        case MYST_TCALL_CONNECT_BLOCK:
+        {
+            int sockfd = (int)x1;
+            const struct sockaddr* addr = (const struct sockaddr*)x2;
+            socklen_t addrlen = (socklen_t)x3;
+
+            return myst_tcall_connect_block(sockfd, addr, addrlen);
+        }
+        case MYST_TCALL_RECVFROM_BLOCK:
+        {
+            int sockfd = (int)x1;
+            void* buf = (void*)x2;
+            size_t len = (size_t)x3;
+            int flags = (int)x4;
+            struct sockaddr* src_addr = (struct sockaddr*)x5;
+            socklen_t* addrlen = (socklen_t*)x6;
+            bool retry = true;
+
+            /* Don't retry EAGAIN|EINPPROGRESS if these flags are present */
+            if ((flags & (MSG_ERRQUEUE | MSG_DONTWAIT)))
+                retry = false;
+
+            return myst_interruptible_syscall(
+                SYS_recvfrom,
+                sockfd,
+                POLLIN,
+                retry,
+                sockfd,
+                buf,
+                len,
+                flags,
+                src_addr,
+                addrlen);
+        }
+        case MYST_TCALL_SENDTO_BLOCK:
+        {
+            int sockfd = (int)x1;
+            const void* buf = (const void*)x2;
+            size_t len = (size_t)x3;
+            int flags = (int)x4;
+            const struct sockaddr* dest_addr = (const struct sockaddr*)x5;
+            socklen_t addrlen = (socklen_t)x6;
+            bool retry = true;
+
+            /* Don't retry EAGAIN|EINPPROGRESS if this flag is present */
+            if ((flags & MSG_DONTWAIT))
+                retry = false;
+
+            return myst_interruptible_syscall(
+                SYS_sendto,
+                sockfd,
+                POLLOUT,
+                retry,
+                sockfd,
+                buf,
+                len,
+                flags,
+                dest_addr,
+                addrlen);
+        }
+        case MYST_TCALL_ACCEPT4_BLOCK:
+        {
+            int sockfd = (int)x1;
+            struct sockaddr* addr = (struct sockaddr*)x2;
+            socklen_t* addrlen = (socklen_t*)x3;
+            int flags = (int)x4;
+
+            return _accept4_block(sockfd, addr, addrlen, flags);
+        }
+        case MYST_TCALL_SENDMSG_BLOCK:
+        {
+            int sockfd = (int)x1;
+            const struct msghdr* msg = (const struct msghdr*)x2;
+            int flags = (int)x3;
+            bool retry = true;
+
+            /* Don't retry EAGAIN|EINPPROGRESS if this flag is present */
+            if ((flags & MSG_DONTWAIT))
+                retry = false;
+
+            return myst_interruptible_syscall(
+                SYS_sendmsg, sockfd, POLLOUT, retry, sockfd, msg, flags);
+        }
+        case MYST_TCALL_RECVMSG_BLOCK:
+        {
+            int sockfd = (int)x1;
+            struct msghdr* msg = (struct msghdr*)x2;
+            int flags = (int)x3;
+            bool retry = true;
+
+            /* Don't retry EAGAIN|EINPPROGRESS if these flags are present */
+            if ((flags & (MSG_ERRQUEUE | MSG_DONTWAIT)))
+                retry = false;
+
+            return myst_interruptible_syscall(
+                SYS_recvmsg, sockfd, POLLIN, retry, sockfd, msg, flags);
         }
         default:
         {

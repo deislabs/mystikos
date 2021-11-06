@@ -157,6 +157,19 @@ index 984db680..9adecf2b 100644
  #endif
  
  #if _REDIR_TIME64
+diff --git a/include/sys/ioctl.h b/include/sys/ioctl.h
+index c2ce3b48..30de25bb 100644
+--- a/include/sys/ioctl.h
++++ b/include/sys/ioctl.h
+@@ -117,7 +117,7 @@ struct winsize {
+ #define SIOCDEVPRIVATE     0x89F0
+ #define SIOCPROTOPRIVATE   0x89E0
+ 
+-int ioctl (int, int, ...);
++int ioctl (int, unsigned long, ...);
+ 
+ #ifdef __cplusplus
+ }
 diff --git a/ldso/dlstart.c b/ldso/dlstart.c
 index 20d50f2c..17cd6ac3 100644
 --- a/ldso/dlstart.c
@@ -226,7 +239,7 @@ index 20d50f2c..17cd6ac3 100644
 +{
 +}
 diff --git a/ldso/dynlink.c b/ldso/dynlink.c
-index afec985a..4d4cd2a3 100644
+index afec985a..acf447c4 100644
 --- a/ldso/dynlink.c
 +++ b/ldso/dynlink.c
 @@ -3,6 +3,7 @@
@@ -388,7 +401,32 @@ index afec985a..4d4cd2a3 100644
  
  	/* Avoid the danger of getting two versions of libc mapped into the
  	 * same process when an absolute pathname was used. The symbols
-@@ -1797,6 +1827,7 @@ void __dls3(size_t *sp, size_t *auxv)
+@@ -1683,6 +1713,13 @@ void __dls2b(size_t *sp, size_t *auxv)
+ 	else ((stage3_func)laddr(&ldso, dls3_def.sym->st_value))(sp, auxv);
+ }
+ 
++/* override this to allow LD_PRELOAD */
++__attribute__((__weak__))
++int allow_ld_preload(void)
++{
++    return 0;
++}
++
+ /* Stage 3 of the dynamic linker is called with the dynamic linker/libc
+  * fully functional. Its job is to load (if not already loaded) and
+  * process dependencies and relocations for the main application and
+@@ -1716,6 +1753,10 @@ void __dls3(size_t *sp, size_t *auxv)
+ 		env_path = getenv("LD_LIBRARY_PATH");
+ 		env_preload = getenv("LD_PRELOAD");
+ 	}
++        else if (allow_ld_preload())
++        {
++		env_preload = getenv("LD_PRELOAD");
++        }
+ 
+ 	/* If the main program was already loaded by the kernel,
+ 	 * AT_PHDR will point to some location other than the dynamic
+@@ -1797,6 +1838,7 @@ void __dls3(size_t *sp, size_t *auxv)
  			dprintf(2, "%s: %s: Not a valid dynamic program\n", ldname, argv[0]);
  			_exit(1);
  		}
@@ -396,7 +434,7 @@ index afec985a..4d4cd2a3 100644
  		close(fd);
  		ldso.name = ldname;
  		app.name = argv[0];
-@@ -1936,6 +1967,7 @@ void __dls3(size_t *sp, size_t *auxv)
+@@ -1936,6 +1978,7 @@ void __dls3(size_t *sp, size_t *auxv)
  	/* Determine if malloc was interposed by a replacement implementation
  	 * so that calloc and the memalign family can harden against the
  	 * possibility of incomplete replacement. */
@@ -404,7 +442,7 @@ index afec985a..4d4cd2a3 100644
  	if (find_sym(head, "malloc", 1).dso != &ldso)
  		__malloc_replaced = 1;
  
-@@ -1955,7 +1987,13 @@ void __dls3(size_t *sp, size_t *auxv)
+@@ -1955,7 +1998,13 @@ void __dls3(size_t *sp, size_t *auxv)
  
  	errno = 0;
  
@@ -418,7 +456,7 @@ index afec985a..4d4cd2a3 100644
  	for(;;);
  }
  
-@@ -2058,6 +2096,10 @@ void *dlopen(const char *file, int mode)
+@@ -2058,6 +2107,10 @@ void *dlopen(const char *file, int mode)
  	pthread_mutex_lock(&init_fini_lock);
  	if (!p->constructed) ctor_queue = queue_ctors(p);
  	pthread_mutex_unlock(&init_fini_lock);
@@ -429,7 +467,7 @@ index afec985a..4d4cd2a3 100644
  	if (!p->relocated && (mode & RTLD_LAZY)) {
  		prepare_lazy(p);
  		for (i=0; p->deps[i]; i++)
-@@ -2100,6 +2142,7 @@ end:
+@@ -2100,6 +2153,7 @@ end:
  		free(ctor_queue);
  	}
  	pthread_setcancelstate(cs, 0);
@@ -437,7 +475,7 @@ index afec985a..4d4cd2a3 100644
  	return p;
  }
  
-@@ -2302,7 +2345,7 @@ static void error(const char *fmt, ...)
+@@ -2302,7 +2356,7 @@ static void error(const char *fmt, ...)
  {
  	va_list ap;
  	va_start(ap, fmt);
@@ -677,6 +715,27 @@ index deff5b10..fd66b82a 100644
  	return epoll_create1(0);
  }
  
+diff --git a/src/locale/newlocale.c b/src/locale/newlocale.c
+index d20a8489..51b85f20 100644
+--- a/src/locale/newlocale.c
++++ b/src/locale/newlocale.c
+@@ -19,7 +19,9 @@ int __loc_is_allocated(locale_t loc)
+ 		&& loc != &default_locale && loc != &default_ctype_locale;
+ }
+ 
+-locale_t __newlocale(int mask, const char *name, locale_t loc)
++// libstdc++ uses __newlocale which needs to be wrapped by gcompat layer.
++// Hence, distinguish the musl implementation of __newlocale with _musl suffix.
++locale_t __newlocale_musl(int mask, const char *name, locale_t loc)
+ {
+ 	struct __locale_struct tmp;
+ 
+@@ -54,5 +56,3 @@ locale_t __newlocale(int mask, const char *name, locale_t loc)
+ 
+ 	return loc;
+ }
+-
+-weak_alias(__newlocale, newlocale);
 diff --git a/src/math/frexp.c b/src/math/frexp.c
 index 27b6266e..fb5d51be 100644
 --- a/src/math/frexp.c
@@ -731,6 +790,19 @@ index f63c062f..50311758 100644
 +{
 +	return (double)yn(n, x);
 +}
+diff --git a/src/misc/ioctl.c b/src/misc/ioctl.c
+index 89477511..bff57fbc 100644
+--- a/src/misc/ioctl.c
++++ b/src/misc/ioctl.c
+@@ -112,7 +112,7 @@ static void convert_ioctl_struct(const struct ioctl_compat_map *map, char *old,
+ 	else memcpy(new+new_offset, old+old_offset, old_size-old_offset);
+ }
+ 
+-int ioctl(int fd, int req, ...)
++int ioctl(int fd, unsigned long req, ...)
+ {
+ 	void *arg;
+ 	va_list ap;
 diff --git a/src/misc/syscall.c b/src/misc/syscall.c
 index 6f3ef656..614121c3 100644
 --- a/src/misc/syscall.c
@@ -1097,6 +1169,19 @@ index b5845dd0..016dcfdd 100644
 -}
 +}
 \ No newline at end of file
+diff --git a/src/thread/pthread_attr_setstack.c b/src/thread/pthread_attr_setstack.c
+index 1eddcbd6..d3ec0363 100644
+--- a/src/thread/pthread_attr_setstack.c
++++ b/src/thread/pthread_attr_setstack.c
+@@ -7,3 +7,8 @@ int pthread_attr_setstack(pthread_attr_t *a, void *addr, size_t size)
+ 	a->_a_stacksize = size;
+ 	return 0;
+ }
++
++size_t __pthread_get_minstack(const pthread_attr_t *attr)
++{
++	return DEFAULT_STACK_SIZE;
++}
 diff --git a/src/thread/pthread_cancel.c b/src/thread/pthread_cancel.c
 index 2f9d5e97..e4d3d000 100644
 --- a/src/thread/pthread_cancel.c

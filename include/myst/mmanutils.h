@@ -68,7 +68,10 @@ typedef struct myst_mman_stats
 
 void myst_mman_stats(myst_mman_stats_t* buf);
 
-int proc_pid_maps_vcallback(myst_buf_t* vbuf, const char* entrypath);
+int proc_pid_maps_vcallback(
+    myst_file_t* self,
+    myst_buf_t* vbuf,
+    const char* entrypath);
 
 /* marks all pages in the mapping as owned by the given process */
 int myst_mman_pids_set(const void* addr, size_t length, pid_t pid);

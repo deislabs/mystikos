@@ -29,7 +29,11 @@ static void* _read_thread(void* arg)
         if (slow)
             sleep_msec(3);
 
-        ssize_t n = read(fd, &val, sizeof(val));
+        ssize_t n;
+
+        while (((n = read(fd, &val, sizeof(val))) < 0) && errno == EINTR)
+            ;
+
         assert(n == sizeof(val));
     }
 
@@ -158,7 +162,12 @@ void test2(void)
     const uint64_t expect = ((N - 1) * ((N - 1) + 1)) / 2;
 
     uint64_t val = 0;
-    assert(read(fd, &val, sizeof(val)) == sizeof(uint64_t));
+    ssize_t n;
+
+    while ((n = read(fd, &val, sizeof(val))) < 0 && errno == EINTR)
+        ;
+
+    assert(n == sizeof(uint64_t));
     assert(val == expect);
 
     printf("=== passed test (%s)\n", __FUNCTION__);

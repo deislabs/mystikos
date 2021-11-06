@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <net/if.h>
 #include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,6 +13,7 @@
 #include <syscall.h>
 #include <unistd.h>
 
+#include <myst/eraise.h>
 #include <myst/iov.h>
 #include <myst/syscall.h>
 #include <myst/tcall.h>
@@ -25,7 +27,45 @@
 // to diagnose the issue.
 #define DOWNSIZE_OCALL_OUTPUT_LENGTHS
 
-static long _read(int fd, void* buf, size_t count)
+// Open Enclave uses a pre-allocated 16-kilobyte "ocall buffer" to transfer
+// parameters to host memory. If that buffer is too small to accommodate the
+// parameters, memory is obtained with oe_host_malloc() and later released with
+// oe_host_free(), thereby incurring two extra ocalls. So attempting to perform
+// one read ocall, results in three ocalls. To avoid this overhead, we must
+// limit the buffer size to ensure the "ocall buffer" will be sufficient.
+// This buffer size is used by the read-write family of functions.
+#define MAX_BUFFER_SIZE 8192
+
+static long _fstat(int fd, struct stat* statbuf);
+
+static int _cap_size(int fd, size_t* size)
+{
+    int ret = 0;
+
+    if (*size > MAX_BUFFER_SIZE)
+    {
+#if 0
+        struct stat statbuf;
+
+        if (_fstat(fd, &statbuf) != 0)
+            ERAISE(-errno);
+
+        if (S_ISSOCK(statbuf.st_mode))
+            *size = MAX_BUFFER_SIZE;
+#else
+        *size = MAX_BUFFER_SIZE;
+#endif
+    }
+
+done:
+    return ret;
+}
+
+static long _read(
+    int fd,
+    void* buf,
+    size_t count,
+    typeof(myst_read_ocall) ocall)
 {
     long ret = 0;
     long retval;
@@ -36,7 +76,9 @@ static long _read(int fd, void* buf, size_t count)
         goto done;
     }
 
-    if (myst_read_ocall(&retval, fd, buf, count) != OE_OK)
+    ECHECK(_cap_size(fd, &count));
+
+    if (ocall(&retval, fd, buf, count) != OE_OK)
     {
         ret = -EINVAL;
         goto done;
@@ -61,7 +103,11 @@ done:
     return ret;
 }
 
-static long _write(int fd, const void* buf, size_t count)
+static long _write(
+    int fd,
+    const void* buf,
+    size_t count,
+    typeof(myst_write_ocall) ocall)
 {
     long ret = 0;
     long retval;
@@ -72,7 +118,9 @@ static long _write(int fd, const void* buf, size_t count)
         goto done;
     }
 
-    if (myst_write_ocall(&retval, fd, buf, count) != OE_OK)
+    ECHECK(_cap_size(fd, &count));
+
+    if (ocall(&retval, fd, buf, count) != OE_OK)
     {
         ret = -EINVAL;
         goto done;
@@ -168,10 +216,14 @@ static long _bind(int sockfd, const struct sockaddr* addr, socklen_t addrlen)
     RETURN(myst_bind_ocall(&ret, sockfd, addr, addrlen));
 }
 
-static long _connect(int sockfd, const struct sockaddr* addr, socklen_t addrlen)
+static long _connect(
+    int sockfd,
+    const struct sockaddr* addr,
+    socklen_t addrlen,
+    typeof(myst_connect_ocall) ocall)
 {
     long ret;
-    RETURN(myst_connect_ocall(&ret, sockfd, addr, addrlen));
+    RETURN(ocall(&ret, sockfd, addr, addrlen));
 }
 
 static long _recvfrom(
@@ -180,7 +232,8 @@ static long _recvfrom(
     size_t len,
     int flags,
     struct sockaddr* src_addr,
-    socklen_t* addrlen)
+    socklen_t* addrlen,
+    typeof(myst_recvfrom_ocall) ocall)
 {
     long ret = 0;
     socklen_t n;
@@ -192,10 +245,11 @@ static long _recvfrom(
         goto done;
     }
 
+    ECHECK(_cap_size(sockfd, &len));
+
     n = addrlen ? *addrlen : 0;
 
-    if (myst_recvfrom_ocall(
-            &retval, sockfd, buf, len, flags, src_addr, &n, n) != OE_OK)
+    if (ocall(&retval, sockfd, buf, len, flags, src_addr, &n, n) != OE_OK)
     {
         ret = -EINVAL;
         goto done;
@@ -241,7 +295,8 @@ static long _sendto(
     size_t len,
     int flags,
     const struct sockaddr* dest_addr,
-    socklen_t addrlen)
+    socklen_t addrlen,
+    typeof(myst_sendto_ocall) ocall)
 {
     long ret = 0;
     long retval;
@@ -253,13 +308,12 @@ static long _sendto(
         goto done;
     }
 
-    if ((oeret = myst_sendto_ocall(
-             &retval, sockfd, buf, len, flags, dest_addr, addrlen)) != OE_OK)
+    ECHECK(_cap_size(sockfd, &len));
+
+    if ((oeret = ocall(&retval, sockfd, buf, len, flags, dest_addr, addrlen)) !=
+        OE_OK)
     {
-        if (oeret == OE_OUT_OF_MEMORY)
-            ret = -ENOMEM;
-        else
-            ret = -EINVAL;
+        ret = -EINVAL;
         goto done;
     }
 
@@ -292,13 +346,14 @@ static long _accept4(
     int sockfd,
     struct sockaddr* addr,
     socklen_t* addrlen,
-    int flags)
+    int flags,
+    typeof(myst_accept4_ocall) ocall)
 {
     long ret = 0;
     long retval;
     socklen_t n = (addr && addrlen) ? *addrlen : 0;
 
-    if (myst_accept4_ocall(&retval, sockfd, addr, &n, n, flags) != OE_OK)
+    if (ocall(&retval, sockfd, addr, &n, n, flags) != OE_OK)
     {
         ret = -EINVAL;
         goto done;
@@ -334,7 +389,11 @@ done:
     return ret;
 }
 
-static long _sendmsg(int sockfd, const struct msghdr* msg, int flags)
+static long _sendmsg(
+    int sockfd,
+    const struct msghdr* msg,
+    int flags,
+    typeof(myst_sendmsg_ocall) ocall)
 {
     long ret = 0;
     long retval;
@@ -353,23 +412,49 @@ static long _sendmsg(int sockfd, const struct msghdr* msg, int flags)
         goto done;
     }
 
-    if ((oeret = myst_sendmsg_ocall(
-             &retval,
-             sockfd,
-             msg->msg_name,
-             msg->msg_namelen,
-             msg->msg_iov[0].iov_base,
-             msg->msg_iov[0].iov_len,
-             msg->msg_control,
-             msg->msg_controllen,
-             msg->msg_flags,
-             flags)) != OE_OK)
+    /* repeat operation when recvmsg() returns a short count */
     {
-        if (oeret == OE_OUT_OF_MEMORY)
-            ret = -ENOMEM;
-        else
-            ret = -EINVAL;
-        goto done;
+        const uint8_t* buf = msg->msg_iov[0].iov_base;
+        size_t len = msg->msg_iov[0].iov_len;
+        size_t count = 0;
+
+        while (len > 0)
+        {
+            size_t cap = len;
+            ECHECK(_cap_size(sockfd, &cap));
+
+            if ((oeret = ocall(
+                     &retval,
+                     sockfd,
+                     msg->msg_name,
+                     msg->msg_namelen,
+                     buf,
+                     cap,
+                     msg->msg_control,
+                     msg->msg_controllen,
+                     msg->msg_flags,
+                     flags)) != OE_OK)
+            {
+                ret = -EINVAL;
+                goto done;
+            }
+
+            if (retval <= 0)
+            {
+                if (count > 0)
+                    retval = count;
+
+                break;
+            }
+
+            buf += retval;
+            len -= retval;
+            count += retval;
+        }
+
+        /* if all bytes were written */
+        if (len == 0)
+            retval = count;
     }
 
     if (retval < 0)
@@ -392,7 +477,11 @@ done:
     return ret;
 }
 
-static long _recvmsg(int sockfd, struct msghdr* msg, int flags)
+static long _recvmsg(
+    int sockfd,
+    struct msghdr* msg,
+    int flags,
+    typeof(myst_recvmsg_ocall) ocall)
 {
     long ret = 0;
     long retval;
@@ -419,6 +508,8 @@ static long _recvmsg(int sockfd, struct msghdr* msg, int flags)
         goto done;
     }
 
+    ECHECK(_cap_size(sockfd, &len));
+
     if (len && !(buf = malloc((size_t)len)))
     {
         ret = -EINVAL;
@@ -428,7 +519,7 @@ static long _recvmsg(int sockfd, struct msghdr* msg, int flags)
     namelen = msg->msg_namelen;
     controllen = msg->msg_controllen;
 
-    if (myst_recvmsg_ocall(
+    if (ocall(
             &retval,
             sockfd,
             msg->msg_name,
@@ -499,7 +590,7 @@ static long _recvmsg(int sockfd, struct msghdr* msg, int flags)
         int iovlen = msg->msg_iovlen;
 
         /* scatter the single buffer onto multiple iovec buffers */
-        if ((r = myst_iov_scatter(iov, iovlen, buf, (size_t)len)) < 0)
+        if ((r = myst_iov_scatter(iov, iovlen, buf, (size_t)retval)) < 0)
         {
             ret = r;
             goto done;
@@ -716,6 +807,14 @@ static long _ioctl(int fd, unsigned long request, void* argp)
                 argp_size = sizeof(int);
             break;
         }
+        case SIOCGIFINDEX:
+        case SIOCGIFNAME:
+        {
+            if (argp)
+                argp_size = sizeof(struct ifreq);
+            break;
+        }
+
         default:
         {
             /* unsupported ioctl */
@@ -1003,6 +1102,8 @@ static long _pread64(int fd, void* buf, size_t count, off_t offset)
         goto done;
     }
 
+    ECHECK(_cap_size(fd, &count));
+
     if (myst_pread64_ocall(&retval, fd, buf, count, offset) != OE_OK)
     {
         ret = -EINVAL;
@@ -1040,6 +1141,8 @@ static long _pwrite64(int fd, const void* buf, size_t count, off_t offset)
         ret = -EINVAL;
         goto done;
     }
+
+    ECHECK(_cap_size(fd, &count));
 
     if (myst_pwrite64_ocall(&retval, fd, buf, count, offset) != OE_OK)
     {
@@ -1763,11 +1866,20 @@ long myst_handle_tcall(long n, long params[6])
     {
         case SYS_read:
         {
-            return _read((int)a, (void*)b, (size_t)c);
+            return _read((int)a, (void*)b, (size_t)c, myst_read_ocall);
+        }
+        case MYST_TCALL_READ_BLOCK:
+        {
+            return _read((int)a, (void*)b, (size_t)c, myst_read_block_ocall);
         }
         case SYS_write:
         {
-            return _write((int)a, (const void*)b, (size_t)c);
+            return _write((int)a, (const void*)b, (size_t)c, myst_write_ocall);
+        }
+        case MYST_TCALL_WRITE_BLOCK:
+        {
+            return _write(
+                (int)a, (const void*)b, (size_t)c, myst_write_block_ocall);
         }
         case SYS_close:
         {
@@ -1787,7 +1899,16 @@ long myst_handle_tcall(long n, long params[6])
         }
         case SYS_connect:
         {
-            return _connect((int)a, (struct sockaddr*)b, (socklen_t)c);
+            return _connect(
+                (int)a, (struct sockaddr*)b, (socklen_t)c, myst_connect_ocall);
+        }
+        case MYST_TCALL_CONNECT_BLOCK:
+        {
+            return _connect(
+                (int)a,
+                (struct sockaddr*)b,
+                (socklen_t)c,
+                myst_connect_block_ocall);
         }
         case SYS_recvfrom:
         {
@@ -1797,7 +1918,19 @@ long myst_handle_tcall(long n, long params[6])
                 (size_t)c,
                 (int)d,
                 (struct sockaddr*)e,
-                (socklen_t*)f);
+                (socklen_t*)f,
+                myst_recvfrom_ocall);
+        }
+        case MYST_TCALL_RECVFROM_BLOCK:
+        {
+            return _recvfrom(
+                (int)a,
+                (void*)b,
+                (size_t)c,
+                (int)d,
+                (struct sockaddr*)e,
+                (socklen_t*)f,
+                myst_recvfrom_block_ocall);
         }
         case SYS_sendto:
         {
@@ -1807,7 +1940,19 @@ long myst_handle_tcall(long n, long params[6])
                 (size_t)c,
                 (int)d,
                 (const struct sockaddr*)e,
-                (socklen_t)f);
+                (socklen_t)f,
+                myst_sendto_ocall);
+        }
+        case MYST_TCALL_SENDTO_BLOCK:
+        {
+            return _sendto(
+                (int)a,
+                (void*)b,
+                (size_t)c,
+                (int)d,
+                (const struct sockaddr*)e,
+                (socklen_t)f,
+                myst_sendto_block_ocall);
         }
         case SYS_socket:
         {
@@ -1815,19 +1960,53 @@ long myst_handle_tcall(long n, long params[6])
         }
         case SYS_accept:
         {
-            return _accept4((int)a, (struct sockaddr*)b, (socklen_t*)c, (int)0);
+            return _accept4(
+                (int)a,
+                (struct sockaddr*)b,
+                (socklen_t*)c,
+                (int)0,
+                myst_accept4_ocall);
         }
         case SYS_accept4:
         {
-            return _accept4((int)a, (struct sockaddr*)b, (socklen_t*)c, (int)d);
+            return _accept4(
+                (int)a,
+                (struct sockaddr*)b,
+                (socklen_t*)c,
+                (int)d,
+                myst_accept4_ocall);
+        }
+        case MYST_TCALL_ACCEPT4_BLOCK:
+        {
+            return _accept4(
+                (int)a,
+                (struct sockaddr*)b,
+                (socklen_t*)c,
+                (int)d,
+                myst_accept4_block_ocall);
         }
         case SYS_sendmsg:
         {
-            return _sendmsg((int)a, (const struct msghdr*)b, (int)c);
+            return _sendmsg(
+                (int)a, (const struct msghdr*)b, (int)c, myst_sendmsg_ocall);
+        }
+        case MYST_TCALL_SENDMSG_BLOCK:
+        {
+            return _sendmsg(
+                (int)a,
+                (const struct msghdr*)b,
+                (int)c,
+                myst_sendmsg_block_ocall);
         }
         case SYS_recvmsg:
         {
-            return _recvmsg((int)a, (struct msghdr*)b, (int)c);
+            return _recvmsg(
+                (int)a, (struct msghdr*)b, (int)c, myst_recvmsg_ocall);
+        }
+        case MYST_TCALL_RECVMSG_BLOCK:
+        {
+            return _recvmsg(
+                (int)a, (struct msghdr*)b, (int)c, myst_recvmsg_block_ocall);
         }
         case SYS_shutdown:
         {

@@ -3,6 +3,9 @@
 #include <fcntl.h>
 #include <myst/assume.h>
 #include <myst/defs.h>
+#include <myst/eraise.h>
+#include <myst/syscall.h>
+#include <myst/tcall.h>
 #include <sched.h>
 #include <stdint.h>
 #include <sys/epoll.h>
@@ -70,14 +73,39 @@
     errno = saved_errno;                                                      \
     return (ret < 0) ? -errno : ret
 
+static int _set_nonblock(int fd)
+{
+    int flags;
+
+    if ((flags = fcntl(fd, F_GETFL, 0)) < 0)
+        return -errno;
+
+    if ((flags = fcntl(fd, F_SETFL, flags | O_NONBLOCK)) < 0)
+        return -errno;
+
+    return 0;
+}
+
 long myst_read_ocall(int fd, void* buf, size_t count)
 {
-    RETURN(read(fd, buf, count));
+    RETURN(syscall(SYS_read, fd, buf, count));
+}
+
+long myst_read_block_ocall(int fd, void* buf, size_t count)
+{
+    return myst_interruptible_syscall(
+        SYS_read, fd, POLLIN, true, fd, buf, count);
 }
 
 long myst_write_ocall(int fd, const void* buf, size_t count)
 {
-    RETURN(write(fd, buf, count));
+    RETURN(syscall(SYS_write, fd, buf, count));
+}
+
+long myst_write_block_ocall(int fd, const void* buf, size_t count)
+{
+    return myst_interruptible_syscall(
+        SYS_write, fd, POLLOUT, true, fd, buf, count);
 }
 
 long myst_close_ocall(int fd)
@@ -87,7 +115,7 @@ long myst_close_ocall(int fd)
 
 long myst_nanosleep_ocall(const struct timespec* req, struct timespec* rem)
 {
-    RETURN(nanosleep(req, rem));
+    return myst_tcall_nanosleep(req, rem);
 }
 
 long myst_fcntl_ocall(int fd, int cmd, long arg)
@@ -110,7 +138,15 @@ long myst_connect_ocall(
     const struct sockaddr* addr,
     socklen_t addrlen)
 {
-    RETURN(connect(sockfd, addr, addrlen));
+    RETURN(syscall(SYS_connect, sockfd, addr, addrlen));
+}
+
+long myst_connect_block_ocall(
+    int sockfd,
+    const struct sockaddr* addr,
+    socklen_t addrlen)
+{
+    return myst_tcall_connect_block(sockfd, addr, addrlen);
 }
 
 long myst_recvfrom_ocall(
@@ -122,7 +158,35 @@ long myst_recvfrom_ocall(
     socklen_t* addrlen,
     socklen_t src_addr_size)
 {
-    RETURN(recvfrom(sockfd, buf, len, flags, src_addr, addrlen));
+    RETURN(syscall(SYS_recvfrom, sockfd, buf, len, flags, src_addr, addrlen));
+}
+
+long myst_recvfrom_block_ocall(
+    int sockfd,
+    void* buf,
+    size_t len,
+    int flags,
+    struct sockaddr* src_addr,
+    socklen_t* addrlen,
+    socklen_t src_addr_size)
+{
+    bool retry = true;
+
+    /* Don't retry EAGAIN|EINPPROGRESS if these flags are present */
+    if ((flags & (MSG_ERRQUEUE | MSG_DONTWAIT)))
+        retry = false;
+
+    return myst_interruptible_syscall(
+        SYS_recvfrom,
+        sockfd,
+        POLLIN,
+        retry,
+        sockfd,
+        buf,
+        len,
+        flags,
+        src_addr,
+        addrlen);
 }
 
 long myst_sendto_ocall(
@@ -133,12 +197,52 @@ long myst_sendto_ocall(
     const struct sockaddr* dest_addr,
     socklen_t addrlen)
 {
-    RETURN(sendto(sockfd, buf, len, flags, dest_addr, addrlen));
+    RETURN(syscall(SYS_sendto, sockfd, buf, len, flags, dest_addr, addrlen));
+}
+
+long myst_sendto_block_ocall(
+    int sockfd,
+    const void* buf,
+    size_t len,
+    int flags,
+    const struct sockaddr* dest_addr,
+    socklen_t addrlen)
+{
+    bool retry = true;
+
+    /* Don't retry EAGAIN|EINPPROGRESS if this flag is present */
+    if ((flags & MSG_DONTWAIT))
+        retry = false;
+
+    return myst_interruptible_syscall(
+        SYS_sendto,
+        sockfd,
+        POLLOUT,
+        retry,
+        sockfd,
+        buf,
+        len,
+        flags,
+        dest_addr,
+        addrlen);
 }
 
 long myst_socket_ocall(int domain, int type, int protocol)
 {
-    RETURN(socket(domain, type, protocol));
+    long ret = 0;
+    int sockfd;
+
+    ECHECK_ERRNO(sockfd = socket(domain, type, protocol));
+    ECHECK(_set_nonblock(sockfd));
+
+    ret = sockfd;
+
+done:
+
+    if (ret < 0 && sockfd >= 0)
+        close(sockfd);
+
+    return ret;
 }
 
 long myst_accept4_ocall(
@@ -148,7 +252,46 @@ long myst_accept4_ocall(
     size_t addr_size,
     int flags)
 {
-    RETURN(accept4(sockfd, addr, addrlen, flags));
+    long ret = 0;
+    int new_sockfd;
+
+    ECHECK_ERRNO(
+        new_sockfd = syscall(SYS_accept4, sockfd, addr, addrlen, flags));
+    ECHECK(_set_nonblock(new_sockfd));
+
+    ret = new_sockfd;
+
+done:
+
+    if (ret < 0 && new_sockfd >= 0)
+        close(new_sockfd);
+
+    return ret;
+}
+
+long myst_accept4_block_ocall(
+    int sockfd,
+    struct sockaddr* addr,
+    socklen_t* addrlen,
+    size_t addr_size,
+    int flags)
+{
+    long ret = 0;
+    int new_sockfd;
+
+    ECHECK(
+        new_sockfd = myst_interruptible_syscall(
+            SYS_accept4, sockfd, POLLIN, true, sockfd, addr, addrlen, flags));
+    ECHECK(_set_nonblock(new_sockfd));
+
+    ret = new_sockfd;
+
+done:
+
+    if (ret < 0 && new_sockfd >= 0)
+        close(new_sockfd);
+
+    return ret;
 }
 
 long myst_sendmsg_ocall(
@@ -176,7 +319,41 @@ long myst_sendmsg_ocall(
     msg.msg_controllen = msg_controllen;
     msg.msg_flags = msg_flags;
 
-    RETURN(sendmsg(sockfd, &msg, flags));
+    RETURN(syscall(SYS_sendmsg, sockfd, &msg, flags));
+}
+
+long myst_sendmsg_block_ocall(
+    int sockfd,
+    const void* msg_name,
+    socklen_t msg_namelen,
+    const void* buf,
+    size_t len,
+    const void* msg_control,
+    socklen_t msg_controllen,
+    int msg_flags,
+    int flags)
+{
+    struct msghdr msg;
+    struct iovec iov;
+    bool retry = true;
+
+    /* Don't retry EAGAIN|EINPPROGRESS if this flag is present */
+    if ((flags & MSG_DONTWAIT))
+        retry = false;
+
+    /* initialize the msghdr structure */
+    msg.msg_name = (void*)msg_name;
+    msg.msg_namelen = msg_namelen;
+    iov.iov_base = (void*)buf;
+    iov.iov_len = len;
+    msg.msg_iov = &iov;
+    msg.msg_iovlen = 1;
+    msg.msg_control = (void*)msg_control;
+    msg.msg_controllen = msg_controllen;
+    msg.msg_flags = msg_flags;
+
+    return myst_interruptible_syscall(
+        SYS_sendmsg, sockfd, POLLOUT, retry, sockfd, &msg, flags);
 }
 
 long myst_recvmsg_ocall(
@@ -217,9 +394,74 @@ long myst_recvmsg_ocall(
     msg.msg_controllen = msg_controllen;
     msg.msg_flags = 0;
 
-    if ((retval = recvmsg(sockfd, &msg, flags)) < 0)
+    if ((retval = syscall(SYS_recvmsg, sockfd, &msg, flags)) < 0)
     {
         ret = -errno;
+        goto done;
+    }
+
+    if (msg_namelen_out)
+        *msg_namelen_out = msg.msg_namelen;
+
+    if (msg_controllen_out)
+        *msg_controllen_out = msg.msg_controllen;
+
+    if (msg_flags)
+        *msg_flags = msg.msg_flags;
+
+    ret = retval;
+
+done:
+    return ret;
+}
+
+long myst_recvmsg_block_ocall(
+    int sockfd,
+    void* msg_name,
+    socklen_t msg_namelen,
+    socklen_t* msg_namelen_out,
+    void* buf,
+    size_t len,
+    void* msg_control,
+    socklen_t msg_controllen,
+    socklen_t* msg_controllen_out,
+    int* msg_flags,
+    int flags)
+{
+    long ret = 0;
+    long retval;
+    struct msghdr msg;
+    struct iovec iov;
+    bool retry = true;
+
+    /* Don't retry EAGAIN|EINPPROGRESS if these flags are present */
+    if ((flags & (MSG_ERRQUEUE | MSG_DONTWAIT)))
+        retry = false;
+
+    if (msg_namelen_out)
+        *msg_namelen_out = 0;
+
+    if (msg_controllen_out)
+        *msg_controllen_out = 0;
+
+    if (msg_flags)
+        *msg_flags = 0;
+
+    /* initialize the msghdr structure */
+    msg.msg_name = msg_name;
+    msg.msg_namelen = msg_namelen;
+    iov.iov_base = buf;
+    iov.iov_len = len;
+    msg.msg_iov = &iov;
+    msg.msg_iovlen = 1;
+    msg.msg_control = msg_control;
+    msg.msg_controllen = msg_controllen;
+    msg.msg_flags = 0;
+
+    if ((retval = myst_interruptible_syscall(
+             SYS_recvmsg, sockfd, POLLIN, retry, sockfd, &msg, flags)) < 0)
+    {
+        ret = retval;
         goto done;
     }
 
@@ -268,7 +510,24 @@ long myst_getpeername_ocall(
 
 long myst_socketpair_ocall(int domain, int type, int protocol, int sv[2])
 {
-    RETURN(socketpair(domain, type, protocol, sv));
+    long ret = 0;
+
+    sv[0] = -1;
+    sv[1] = -1;
+
+    ECHECK_ERRNO(socketpair(domain, type, protocol, sv));
+    ECHECK(_set_nonblock(sv[0]));
+    ECHECK(_set_nonblock(sv[1]));
+
+done:
+
+    if (ret < 0 && sv[0] >= 0 && sv[1] >= 0)
+    {
+        close(sv[0]);
+        close(sv[1]);
+    }
+
+    return ret;
 }
 
 long myst_getsockopt_ocall(
@@ -525,7 +784,24 @@ long myst_fsync_ocall(int fd)
 
 long myst_pipe2_ocall(int pipefd[2], int flags)
 {
-    RETURN(pipe2(pipefd, flags));
+    long ret = 0;
+
+    pipefd[0] = -1;
+    pipefd[1] = -1;
+
+    ECHECK_ERRNO(pipe2(pipefd, flags));
+    ECHECK(_set_nonblock(pipefd[0]));
+    ECHECK(_set_nonblock(pipefd[1]));
+
+done:
+
+    if (ret < 0 && pipefd[0] >= 0 && pipefd[1] >= 0)
+    {
+        close(pipefd[0]);
+        close(pipefd[1]);
+    }
+
+    return ret;
 }
 
 long myst_epoll_create1_ocall(int flags)
@@ -539,7 +815,7 @@ long myst_epoll_wait_ocall(
     size_t maxevents,
     int timeout)
 {
-    RETURN(epoll_wait(epfd, events, maxevents, timeout));
+    return myst_tcall_epoll_wait(epfd, events, maxevents, timeout);
 }
 
 long myst_epoll_ctl_ocall(

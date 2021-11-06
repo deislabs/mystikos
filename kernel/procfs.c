@@ -19,8 +19,14 @@
 #include <myst/strings.h>
 #include <myst/times.h>
 
-static int _status_vcallback(myst_buf_t* vbuf, const char* entrypath);
-static int _stat_vcallback(myst_buf_t* vbuf, const char* entrypath);
+static int _status_vcallback(
+    myst_file_t* file,
+    myst_buf_t* vbuf,
+    const char* entrypath);
+static int _stat_vcallback(
+    myst_file_t* file,
+    myst_buf_t* vbuf,
+    const char* entrypath);
 
 static myst_fs_t* _procfs;
 static char* _cpuinfo_buf = NULL;
@@ -96,10 +102,10 @@ int procfs_pid_setup(pid_t pid)
         ECHECK(myst_snprintf(
             locals->tmp_path, sizeof(locals->tmp_path), "/%d/maps", pid));
 
-        myst_vcallback_t v_cb;
+        myst_vcallback_t v_cb = {0};
         v_cb.open_cb = proc_pid_maps_vcallback;
         ECHECK(myst_create_virtual_file(
-            _procfs, locals->tmp_path, S_IFREG | S_IRUSR, v_cb, OPEN));
+            _procfs, locals->tmp_path, S_IFREG | S_IRUSR, v_cb));
     }
 
     /* status entry */
@@ -107,10 +113,10 @@ int procfs_pid_setup(pid_t pid)
         ECHECK(myst_snprintf(
             locals->tmp_path, sizeof(locals->tmp_path), "/%d/status", pid));
 
-        myst_vcallback_t v_cb;
+        myst_vcallback_t v_cb = {0};
         v_cb.open_cb = _status_vcallback;
         ECHECK(myst_create_virtual_file(
-            _procfs, locals->tmp_path, S_IFREG | S_IRUSR, v_cb, OPEN));
+            _procfs, locals->tmp_path, S_IFREG | S_IRUSR, v_cb));
     }
 
     /* stat entry */
@@ -118,10 +124,10 @@ int procfs_pid_setup(pid_t pid)
         ECHECK(myst_snprintf(
             locals->tmp_path, sizeof(locals->tmp_path), "/%d/stat", pid));
 
-        myst_vcallback_t v_cb;
+        myst_vcallback_t v_cb = {0};
         v_cb.open_cb = _stat_vcallback;
         ECHECK(myst_create_virtual_file(
-            _procfs, locals->tmp_path, S_IFREG | S_IRUSR, v_cb, OPEN));
+            _procfs, locals->tmp_path, S_IFREG | S_IRUSR, v_cb));
     }
 
 done:
@@ -160,8 +166,12 @@ done:
     return ret;
 }
 
-static int _meminfo_vcallback(myst_buf_t* vbuf, const char* entrypath)
+static int _meminfo_vcallback(
+    myst_file_t* self,
+    myst_buf_t* vbuf,
+    const char* entrypath)
 {
+    (void)self;
     int ret = 0;
     size_t totalram;
     size_t freeram;
@@ -193,8 +203,12 @@ done:
     return ret;
 }
 
-static int _self_vcallback(myst_buf_t* vbuf, const char* entrypath)
+static int _self_vcallback(
+    myst_file_t* self,
+    myst_buf_t* vbuf,
+    const char* entrypath)
 {
+    (void)self;
     int ret = 0;
     struct locals
     {
@@ -227,8 +241,12 @@ done:
 }
 
 #define CPUINFO_STR "/proc/cpuinfo"
-static int _cpuinfo_vcallback(myst_buf_t* vbuf, const char* entrypath)
+static int _cpuinfo_vcallback(
+    myst_file_t* self,
+    myst_buf_t* vbuf,
+    const char* entrypath)
 {
+    (void)self;
     int ret = 0;
     void* buf = NULL;
     size_t buf_size;
@@ -286,8 +304,12 @@ static int _is_process_traced(char* host_status_buf)
     return 0;
 }
 
-static int _status_vcallback(myst_buf_t* vbuf, const char* entrypath)
+static int _status_vcallback(
+    myst_file_t* file,
+    myst_buf_t* vbuf,
+    const char* entrypath)
 {
+    (void)file;
     int ret = 0;
     struct locals
     {
@@ -402,8 +424,12 @@ static char get_process_state(myst_process_t* process)
     return 'R';
 }
 
-static int _stat_vcallback(myst_buf_t* vbuf, const char* entrypath)
+static int _stat_vcallback(
+    myst_file_t* file,
+    myst_buf_t* vbuf,
+    const char* entrypath)
 {
+    (void)file;
     int ret = 0;
     myst_process_t* process;
 
@@ -490,25 +516,25 @@ int create_proc_root_entries()
 
     /* Create /proc/meminfo */
     {
-        myst_vcallback_t v_cb;
+        myst_vcallback_t v_cb = {0};
         v_cb.open_cb = _meminfo_vcallback;
         ECHECK(myst_create_virtual_file(
-            _procfs, "/meminfo", S_IFREG | S_IRUSR, v_cb, OPEN));
+            _procfs, "/meminfo", S_IFREG | S_IRUSR, v_cb));
     }
 
     /* Create /proc/cpuinfo */
     {
-        myst_vcallback_t v_cb;
+        myst_vcallback_t v_cb = {0};
         v_cb.open_cb = _cpuinfo_vcallback;
         ECHECK(myst_create_virtual_file(
-            _procfs, "/cpuinfo", S_IFREG | S_IRUSR, v_cb, OPEN));
+            _procfs, "/cpuinfo", S_IFREG | S_IRUSR, v_cb));
     }
 
     /* Create /proc/self */
     {
-        myst_vcallback_t v_cb;
+        myst_vcallback_t v_cb = {0};
         v_cb.open_cb = _self_vcallback;
-        ECHECK(myst_create_virtual_file(_procfs, "/self", S_IFLNK, v_cb, OPEN));
+        ECHECK(myst_create_virtual_file(_procfs, "/self", S_IFLNK, v_cb));
     }
 
 done:

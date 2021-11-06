@@ -22,7 +22,8 @@ int myst_exec(
     const char* argv[],
     size_t envc,
     const char* envp[],
-    myst_wanted_secrets_t* wanted_secrets,
+    myst_crt_args_t* crt_args,
+    size_t thread_stacksize,
     void (*callback)(void*),
     void* callback_arg);
 

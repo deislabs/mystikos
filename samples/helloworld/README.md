@@ -49,7 +49,6 @@ This builds `appdir`, `cpiorootfs` and executes the application contained within
  It is important to note that a configuration file is provided to `myst package`. 
  To see more information regarding configuration, please refer to [Configuration Parameters](#configuration-parameters)
 
-
 4. At this point the application is self contained. To run it, just run the application under the `myst` directory.
 ```
 ./myst/bin/hello red green blue
@@ -100,7 +99,7 @@ This builds `appdir`, `ext2rootfs` and executes the application contained within
     make runexec
    ```
 
-## Build a signed package and run the application in a self contained package
+### Build a signed package and run the application in a self contained package
 1. The EXT2 root file system is created as demonstrated above.
 
 2. A signing key is generated using
@@ -134,7 +133,7 @@ This builds `appdir`, `ext2rootfs`, the signed package and executes the applicat
     make run
 ```
 
-# Configuration parameters
+## Configuration parameters
 A Mystikos package needs configuration to control certain run-time environmental settings as well as settings that control how the application reads environmental data from the insecure host environment.
 This is the configuration for the helloworld sample. `ApplicationPath` states which executable should be run after the package is loaded. `MemorySize` is the amount of memory needed by the application to run.
 

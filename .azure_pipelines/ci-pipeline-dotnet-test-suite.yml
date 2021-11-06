@@ -11,8 +11,8 @@ jobs:
   - job: BuildAndTest
     displayName: 'Building and Testing'
     # 10m build
-    # over 5h for dotnet 5 test suite
-    timeoutInMinutes: 360
+    # over 8h for dotnet 5 P0 and P1 test suite
+    timeoutInMinutes: 540
     pool: '1804DC4CCagentpool'
 
     steps:
@@ -37,18 +37,26 @@ jobs:
           sudo rm -rf `git ls-files --others --directory`
           make distclean
           make distclean -C third_party/openenclave/
-          make -j world
+          make -j
         displayName: 'build repo source'
         workingDirectory: $(Build.SourcesDirectory)
 
-      # run dotnet 5 test suite
+        # run dotnet 5 P0 test suite
       - script: |
           make tests -C $(Build.SourcesDirectory)/solutions/coreclr
-        displayName: 'run dotnet 5 test suite'
+        displayName: 'run dotnet 5 P0 test suite'
         continueOnError: true
         enabled: true
         workingDirectory: $(Build.SourcesDirectory)
-          
+
+      # run dotnet 5 P1 test suite
+      - script: |
+          make tests -C $(Build.SourcesDirectory)/solutions/coreclr-p1
+        displayName: 'run dotnet 5 P1 test suite'
+        continueOnError: true
+        enabled: true
+        workingDirectory: $(Build.SourcesDirectory)
+
       - script: |
           make clean -C $(Build.SourcesDirectory)/tests
           make clean -C $(Build.SourcesDirectory)/solutions

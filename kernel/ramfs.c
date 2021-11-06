@@ -14,6 +14,7 @@
 #include <myst/buf.h>
 #include <myst/bufu64.h>
 #include <myst/clock.h>
+#include <myst/devfs.h>
 #include <myst/eraise.h>
 #include <myst/fs.h>
 #include <myst/id.h>
@@ -24,6 +25,7 @@
 #include <myst/ramfs.h>
 #include <myst/realpath.h>
 #include <myst/round.h>
+#include <myst/spinlock.h>
 #include <myst/strings.h>
 #include <myst/syscall.h>
 #include <myst/thread.h>
@@ -88,7 +90,6 @@ struct inode
     uid_t uid;             /* user ID who created */
     gid_t gid;             /* group ID who created */
     myst_vcallback_t v_cb; /* callback(s) for virtual files */
-    myst_virtual_file_type_t v_type; /* virtual file type */
 };
 
 #define ACCESS 1
@@ -98,6 +99,12 @@ struct inode
 static bool _inode_valid(const inode_t* inode)
 {
     return inode && inode->magic == INODE_MAGIC;
+}
+
+static bool _is_virtual_inode(const inode_t* inode)
+{
+    return inode && (inode->v_cb.open_cb || inode->v_cb.close_cb ||
+                     inode->v_cb.read_cb || inode->v_cb.write_cb);
 }
 
 static void _update_timestamps(inode_t* inode, int flags)
@@ -414,8 +421,8 @@ done:
 
 static const char* _inode_target(inode_t* inode)
 {
-    if (inode->v_type == OPEN)
-        inode->v_cb.open_cb(&inode->buf, NULL);
+    if (inode->v_cb.open_cb)
+        inode->v_cb.open_cb(NULL, &inode->buf, NULL);
     return (const char*)inode->buf.data;
 }
 
@@ -438,7 +445,8 @@ struct myst_file
     uint32_t operating; /* (O_APPEND | O_DIRECT | O_NOATIME) */
     int fdflags;        /* file descriptor flags: FD_CLOEXEC */
     char realpath[PATH_MAX];
-    myst_buf_t vbuf; /* virtual file buffer */
+    myst_buf_t vbuf;           /* virtual file buffer */
+    myst_spinlock_t vbuf_lock; /* lock for the virtual file buffer */
     _Atomic(size_t) use_count;
 };
 
@@ -449,14 +457,14 @@ static bool _file_valid(const myst_file_t* file)
 
 static void* _file_data(const myst_file_t* file)
 {
-    return (file->inode->v_type == OPEN) ? file->vbuf.data
-                                         : file->inode->buf.data;
+    return (file->inode->v_cb.open_cb) ? file->vbuf.data
+                                       : file->inode->buf.data;
 }
 
 static size_t _file_size(const myst_file_t* file)
 {
-    return (file->inode->v_type == OPEN) ? file->vbuf.size
-                                         : file->inode->buf.size;
+    return (file->inode->v_cb.open_cb) ? file->vbuf.size
+                                       : file->inode->buf.size;
 }
 
 static void* _file_current(myst_file_t* file)
@@ -884,15 +892,12 @@ static int _fs_open(
         if ((flags & O_TRUNC))
             myst_buf_clear(&inode->buf);
 
-        if ((flags & O_APPEND))
-            file->offset = inode->buf.size;
-
         /* Get the realpath of this file */
         ECHECK(_path_to_inode_realpath(
             ramfs, pathname, true, NULL, &inode, file->realpath, NULL));
 
-        if (inode->v_type == OPEN)
-            ECHECK((*inode->v_cb.open_cb)(&file->vbuf, file->realpath));
+        if (inode->v_cb.open_cb)
+            ECHECK((*inode->v_cb.open_cb)(file, &file->vbuf, file->realpath));
     }
     else if (errnum == -ENOENT)
     {
@@ -965,7 +970,7 @@ static off_t _fs_lseek(
         ERAISE(-EINVAL);
 
     /* NOP for read and write callbacks based virtual files */
-    if (file->inode->v_type == RW)
+    if (_is_virtual_inode(file->inode))
         goto done;
 
     switch (whence)
@@ -1035,9 +1040,9 @@ static ssize_t _fs_read(
         goto done;
 
     /* If read-time virtual file, populate buf via callback */
-    if (file->inode->v_type == RW)
+    if (file->inode->v_cb.read_cb)
     {
-        ret = file->inode->v_cb.rw_callbacks.read_cb(buf, count);
+        ret = file->inode->v_cb.read_cb(file, buf, count);
         goto done;
     }
 
@@ -1095,11 +1100,15 @@ static ssize_t _fs_write(
         ERAISE(-EBADF);
 
     /* If write-time virtual file, write to buf via callback */
-    if (file->inode->v_type == RW)
+    if (file->inode->v_cb.write_cb)
     {
-        ret = file->inode->v_cb.rw_callbacks.write_cb(buf, count);
+        ret = file->inode->v_cb.write_cb(file, buf, count);
         goto done;
     }
+
+    /* append always writes to the end of the file */
+    if ((file->operating & O_APPEND))
+        file->offset = _file_size(file);
 
     /* Verify that the offset is in bounds */
     if (file->offset > _file_size(file))
@@ -1155,9 +1164,9 @@ static ssize_t _fs_pread(
         goto done;
 
     /* If read-time virtual file, populate buf via callback */
-    if (file->inode->v_type == RW)
+    if (file->inode->v_cb.read_cb)
     {
-        ret = file->inode->v_cb.rw_callbacks.read_cb(buf, count);
+        ret = file->inode->v_cb.read_cb(file, buf, count);
         goto done;
     }
 
@@ -1214,9 +1223,9 @@ static ssize_t _fs_pwrite(
         goto done;
 
     /* If write-time virtual file, write to buf via callback */
-    if (file->inode->v_type == RW)
+    if (file->inode->v_cb.write_cb)
     {
-        ret = file->inode->v_cb.rw_callbacks.write_cb(buf, count);
+        ret = file->inode->v_cb.write_cb(file, buf, count);
         goto done;
     }
 
@@ -1326,9 +1335,13 @@ static int _fs_close(myst_fs_t* fs, myst_file_t* file)
 
     if (--file->use_count == 0)
     {
+        /* If a virtual file has a close-callback, call it */
+        if (file->inode->v_cb.close_cb)
+            file->inode->v_cb.close_cb(file);
+
         /* For open-time virtual files, release the virtual file
         data on close */
-        if (file->inode->v_type == OPEN)
+        if (file->inode->v_cb.open_cb)
             myst_buf_release(&file->vbuf);
 
         file->inode->nopens--;
@@ -1415,7 +1428,7 @@ static int _stat(inode_t* inode, struct stat* statbuf)
         ERAISE(-EINVAL);
 
     // Linux doesn't report size for /proc and /dev virtual files
-    if (inode->v_type)
+    if (_is_virtual_inode(inode))
     {
         size = 0;
     }
@@ -1809,7 +1822,7 @@ static int _fs_truncate(myst_fs_t* fs, const char* pathname, off_t length)
         ERAISE(-EISDIR);
 
     /* truncate does not apply to virtual files */
-    if (inode->v_type != NONE)
+    if (_is_virtual_inode(inode))
         ERAISE(-EINVAL);
 
     if (myst_buf_resize(&inode->buf, (size_t)length) != 0)
@@ -1837,7 +1850,7 @@ static int _fs_ftruncate(myst_fs_t* fs, myst_file_t* file, off_t length)
         ERAISE(-EISDIR);
 
     /* truncate does not apply to virtual files */
-    if (file->inode->v_type != NONE)
+    if (_is_virtual_inode(file->inode))
         ERAISE(-EINVAL);
 
     if (myst_buf_resize(&file->inode->buf, (size_t)length) != 0)
@@ -2064,9 +2077,9 @@ static ssize_t _fs_readlink(
     if (!S_ISLNK(inode->mode))
         ERAISE(-EINVAL);
 
-    if (inode->v_type == OPEN)
+    if (inode->v_cb.open_cb)
     {
-        inode->v_cb.open_cb(&inode->buf, NULL);
+        inode->v_cb.open_cb(NULL, &inode->buf, NULL);
     }
     else
     {
@@ -2228,6 +2241,7 @@ static int _fs_fcntl(myst_fs_t* fs, myst_file_t* file, int cmd, long arg)
                 file->operating |= O_NOATIME;
             goto done;
         }
+        case F_SETLK:
         case F_SETLKW:
         {
             /* ATTN: silently ignoring locking for now */
@@ -2261,7 +2275,8 @@ static int _fs_ioctl(
     {
         case TIOCGWINSZ:
         {
-            ERAISE(-EINVAL);
+            if (!devfs_is_pty_pts_device(file))
+                ERAISE(-EINVAL);
             break;
         }
         case FIOCLEX:
@@ -2272,6 +2287,21 @@ static int _fs_ioctl(
         case FIONCLEX:
         {
             _set_fd_flag(file, 0);
+            break;
+        }
+        case TIOCSPTLCK:
+        {
+            if (!devfs_is_pty_pts_device(file))
+                ERAISE(-ENOTTY);
+            // NOP. The PTY slave is always ready to serve.
+            break;
+        }
+        case TIOCGPTN:
+        {
+            if (!devfs_is_pty_pts_device(file))
+                ERAISE(-ENOTTY);
+            int* id = (int*)arg;
+            ret = devfs_get_pts_id(file, id);
             break;
         }
         default:
@@ -2898,8 +2928,7 @@ int myst_create_virtual_file(
     myst_fs_t* fs,
     const char* pathname,
     mode_t mode,
-    myst_vcallback_t v_cb,
-    myst_virtual_file_type_t v_type)
+    myst_vcallback_t v_cb)
 {
     int ret = 0;
     ramfs_t* ramfs = _ramfs(fs);
@@ -2908,16 +2937,6 @@ int myst_create_virtual_file(
         ERAISE(-EINVAL);
 
     if (!pathname || !mode)
-        ERAISE(-EINVAL);
-
-    if (v_type == NONE)
-        ERAISE(-EINVAL);
-
-    if (v_type == OPEN && !v_cb.open_cb)
-        ERAISE(-EINVAL);
-
-    if (v_type == RW && !v_cb.rw_callbacks.read_cb &&
-        !v_cb.rw_callbacks.write_cb)
         ERAISE(-EINVAL);
 
     /* create an empty file */
@@ -2945,20 +2964,47 @@ int myst_create_virtual_file(
         ECHECK(
             _path_to_inode(ramfs, pathname, false, NULL, &inode, NULL, NULL));
 
-        inode->v_type = v_type;
-        if (v_type == OPEN)
-            inode->v_cb.open_cb = v_cb.open_cb;
-        else
-        {
-            inode->v_cb.rw_callbacks.read_cb = v_cb.rw_callbacks.read_cb;
-            inode->v_cb.rw_callbacks.write_cb = v_cb.rw_callbacks.write_cb;
-        }
+        inode->v_cb = v_cb;
     }
 
     ret = 0;
 
 done:
 
+    return ret;
+}
+
+int myst_read_stateful_virtual_file(
+    myst_file_t* file,
+    void* buf,
+    size_t buf_size)
+{
+    int ret = 0;
+    size_t len = buf_size;
+
+    myst_spin_lock(&file->vbuf_lock);
+    if (file->vbuf.size < len)
+        len = file->vbuf.size;
+
+    memcpy(buf, file->vbuf.data, len);
+
+    myst_buf_remove(&file->vbuf, 0, len);
+
+    ret = len;
+
+    myst_spin_unlock(&file->vbuf_lock);
+    return ret;
+}
+
+int myst_write_stateful_virtual_file(
+    myst_file_t* file,
+    const void* buf,
+    size_t buf_size)
+{
+    int ret = 0;
+    myst_spin_lock(&file->vbuf_lock);
+    ret = myst_buf_append(&file->vbuf, buf, buf_size);
+    myst_spin_unlock(&file->vbuf_lock);
     return ret;
 }
 

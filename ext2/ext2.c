@@ -15,6 +15,7 @@
 #include <myst/hex.h>
 #include <myst/paths.h>
 #include <myst/round.h>
+#include <myst/strarr.h>
 #include <myst/strings.h>
 #include <myst/syscall.h>
 #include <myst/thread.h>
@@ -54,7 +55,7 @@ struct myst_file
     uint32_t access;    /* (O_RDONLY | O_RDWR | O_WRONLY) */
     uint32_t operating; /* (O_APPEND | O_DIRECT | O_NOATIME) */
     int fdflags;        /* file descriptor flags: FD_CLOEXEC */
-    char realpath[EXT2_PATH_MAX];
+    char realpath[PATH_MAX];
     ext2_dir_t dir;
     _Atomic(size_t) use_count;
 };
@@ -125,7 +126,8 @@ static __inline__ size_t _max_size(size_t x, size_t y)
 
 static size_t _dirent_size(const ext2_dirent_t* ent)
 {
-    return _next_mult(sizeof(ext2_dirent_t) - EXT2_PATH_MAX + ent->name_len, 4);
+    return _next_mult(
+        sizeof(ext2_dirent_t) - EXT2_FILENAME_MAX + ent->name_len, 4);
 }
 
 static uint8_t _mode_to_file_type(uint16_t mode)
@@ -176,10 +178,10 @@ static void _dirent_init(
 {
     memset(ent, 0, sizeof(ext2_dirent_t));
     ent->inode = ino;
-    ent->name_len = _min_size(strlen(filename), EXT2_PATH_MAX);
+    ent->name_len = _min_size(strlen(filename), EXT2_FILENAME_MAX);
     memcpy(ent->name, filename, ent->name_len);
     ent->file_type = file_type;
-    ent->rec_len = sizeof(ext2_dirent_t) - EXT2_PATH_MAX + ent->name_len;
+    ent->rec_len = sizeof(ext2_dirent_t) - EXT2_FILENAME_MAX + ent->name_len;
     ent->rec_len = _next_mult(ent->rec_len, 4);
 }
 
@@ -1163,7 +1165,7 @@ static const ext2_dirent_t* _find_dirent(
     size_t len = strlen(name);
 
     /* Make sure the fixed-length header portion is in range before accessing*/
-    while (p + sizeof(ext2_dirent_t) - EXT2_PATH_MAX <= end)
+    while (p + sizeof(ext2_dirent_t) - EXT2_FILENAME_MAX <= end)
     {
         const ext2_dirent_t* ent = (const ext2_dirent_t*)p;
 
@@ -1240,11 +1242,9 @@ static int _path_to_ino_recursive(
         ext2_inode_t current_inode;
         ext2_dirent_t ent;
         ext2_ino_t ino;
-        const char* toks[32];
     };
     struct locals* locals = NULL;
-    const uint8_t NELEMENTS = sizeof(locals->toks) / sizeof(locals->toks[0]);
-    uint8_t ntoks = 0;
+    myst_strarr_t toks = MYST_STRARR_INITIALIZER;
     char* p;
     char* save;
     uint8_t i;
@@ -1271,20 +1271,18 @@ static int _path_to_ino_recursive(
     for (p = strtok_r(locals->buf, "/", &save); p;
          p = strtok_r(NULL, "/", &save))
     {
-        if (ntoks == NELEMENTS)
-            ERAISE(-ENAMETOOLONG);
-
-        locals->toks[ntoks++] = p;
+        if (myst_strarr_append(&toks, p) != 0)
+            ERAISE(-ENOMEM);
     }
 
     /* load each inode along the path until found */
-    for (i = 0; i < ntoks; i++)
+    for (i = 0; i < toks.size; i++)
     {
         ECHECK(ext2_read_inode(ext2, current_ino, &locals->current_inode));
         if (!S_ISDIR(locals->current_inode.i_mode))
             ERAISE(-ENOTDIR);
 
-        ECHECK(_load_dirent(ext2, current_ino, locals->toks[i], &locals->ent));
+        ECHECK(_load_dirent(ext2, current_ino, toks.data[i], &locals->ent));
         assert(locals->ent.inode != 0);
         locals->ino = locals->ent.inode;
 
@@ -1292,12 +1290,12 @@ static int _path_to_ino_recursive(
         if (locals->ent.file_type == EXT2_FT_SYMLINK)
         {
             /* only check follow tag on final element */
-            if (i + 1 != ntoks || follow == FOLLOW)
+            if (i + 1 != toks.size || follow == FOLLOW)
             {
                 /* load the target from the symlink */
                 ECHECK((_load_file_by_ino(ext2, locals->ino, &data, &size)));
 
-                if (size >= EXT2_PATH_MAX)
+                if (size >= PATH_MAX)
                     ERAISE(-ENAMETOOLONG);
 
                 memcpy(locals->target, data, size);
@@ -1310,18 +1308,17 @@ static int _path_to_ino_recursive(
                         myst_strlcpy(target_out, locals->target, PATH_MAX);
 
                         // Copy over rest of unresolved tokens
-                        if (i + 1 != ntoks)
+                        if (i + 1 != toks.size)
                         {
-                            for (size_t j = i + 1; j < ntoks; j++)
+                            for (size_t j = i + 1; j < toks.size; j++)
                             {
                                 if (myst_strlcat(target_out, "/", PATH_MAX) >=
                                     PATH_MAX)
                                     ERAISE_QUIET(-ENAMETOOLONG);
 
                                 if (myst_strlcat(
-                                        target_out,
-                                        locals->toks[j],
-                                        PATH_MAX) >= PATH_MAX)
+                                        target_out, toks.data[j], PATH_MAX) >=
+                                    PATH_MAX)
                                     ERAISE_QUIET(-ENAMETOOLONG);
                             }
                         }
@@ -1356,7 +1353,7 @@ static int _path_to_ino_recursive(
         else
         {
             myst_strlcat(realpath, "/", PATH_MAX);
-            myst_strlcat(realpath, locals->toks[i], PATH_MAX);
+            myst_strlcat(realpath, toks.data[i], PATH_MAX);
         }
 
         previous_ino = current_ino;
@@ -1372,6 +1369,9 @@ static int _path_to_ino_recursive(
     ret = 0;
 
 done:
+
+    if (toks.data)
+        free(toks.data);
 
     if (locals)
         free(locals);
@@ -1587,7 +1587,7 @@ static int _count_dirents(
         ERAISE(-EINVAL);
 
     /* Make sure the fixed-length header portion is in range before accessing*/
-    while (p + sizeof(ext2_dirent_t) - EXT2_PATH_MAX <= end)
+    while (p + sizeof(ext2_dirent_t) - EXT2_FILENAME_MAX <= end)
     {
         const ext2_dirent_t* ent = (const ext2_dirent_t*)p;
 
@@ -1647,11 +1647,10 @@ done:
 
 static int _split_path(
     const char* path,
-    char dirname[EXT2_PATH_MAX],
-    char basename[EXT2_PATH_MAX])
+    char dirname[PATH_MAX],
+    char basename[PATH_MAX])
 {
-    return myst_split_path(
-        path, dirname, EXT2_PATH_MAX, basename, EXT2_PATH_MAX);
+    return myst_split_path(path, dirname, PATH_MAX, basename, PATH_MAX);
 }
 
 static size_t _inode_get_num_blocks(ext2_t* ext2, ext2_inode_t* inode)
@@ -2496,7 +2495,7 @@ static int _remove_dirent(
         ECHECK(myst_buf_reserve(&buf, file_size));
         /* Make sure the fixed-length header portion is in range before
          * accessing */
-        while (p + sizeof(ext2_dirent_t) - EXT2_PATH_MAX <= end)
+        while (p + sizeof(ext2_dirent_t) - EXT2_FILENAME_MAX <= end)
         {
             const ext2_dirent_t* e = (const ext2_dirent_t*)p;
 
@@ -2788,7 +2787,7 @@ static int _add_dirent(
         /* copy existing entries to buffer */
         /* Make sure the fixed-length header portion is in range before
          * accessing */
-        while (p + sizeof(ext2_dirent_t) - EXT2_PATH_MAX <= end)
+        while (p + sizeof(ext2_dirent_t) - EXT2_FILENAME_MAX <= end)
         {
             const ext2_dirent_t* e = (const ext2_dirent_t*)p;
             size_t recsz = _dirent_size(e);
@@ -2979,7 +2978,7 @@ int ext2_lsr(ext2_t* ext2, const char* root, myst_strarr_t* paths)
     int r;
     struct locals
     {
-        char path[EXT2_PATH_MAX];
+        char path[PATH_MAX];
     };
     struct locals* locals = NULL;
 
@@ -3345,8 +3344,8 @@ int ext2_open(
     {
         ext2_inode_t inode;
         ext2_dirent_t ent;
-        char dirname[EXT2_PATH_MAX];
-        char filename[EXT2_PATH_MAX];
+        char dirname[PATH_MAX];
+        char filename[PATH_MAX];
         char suffix[PATH_MAX];
         char buf[PATH_MAX];
         ext2_inode_t dinode;
@@ -3635,6 +3634,10 @@ int64_t ext2_write(
     /* save the file size */
     file_size = _inode_get_size(&file->inode);
 
+    /* append always writes to the end of the file */
+    if ((file->operating & O_APPEND))
+        file->offset = file_size;
+
     /* get the index of the first block to written */
     first = file->offset / ext2->block_size;
 
@@ -3872,8 +3875,8 @@ int ext2_link(myst_fs_t* fs, const char* oldpath, const char* newpath)
     myst_fs_t* tfs = NULL;
     struct locals
     {
-        char dirname[EXT2_PATH_MAX];
-        char filename[EXT2_PATH_MAX];
+        char dirname[PATH_MAX];
+        char filename[PATH_MAX];
         char suffix[PATH_MAX];
         ext2_inode_t inode;
         ext2_inode_t dinode;
@@ -3960,8 +3963,8 @@ int ext2_unlink(myst_fs_t* fs, const char* path)
         uint8_t blk[MYST_BLKSIZE];
         ext2_inode_t inode;
         ext2_inode_t dinode;
-        char dirname[EXT2_PATH_MAX];
-        char filename[EXT2_PATH_MAX];
+        char dirname[PATH_MAX];
+        char filename[PATH_MAX];
     };
     struct locals* locals = NULL;
 
@@ -4542,8 +4545,8 @@ int ext2_mkdir(myst_fs_t* fs, const char* path, mode_t mode)
     myst_fs_t* tfs = NULL;
     struct locals
     {
-        char dirname[EXT2_PATH_MAX];
-        char basename[EXT2_PATH_MAX];
+        char dirname[PATH_MAX];
+        char basename[PATH_MAX];
         char suffix[PATH_MAX];
         ext2_inode_t dir_inode;
         ext2_inode_t base_inode;
@@ -5129,6 +5132,7 @@ static int _ext2_fcntl(myst_fs_t* fs, myst_file_t* file, int cmd, long arg)
                 file->operating |= O_NOATIME;
             goto done;
         }
+        case F_SETLK:
         case F_SETLKW:
         {
             /* ATTN: silently ignoring locking for now */

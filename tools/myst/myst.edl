@@ -152,6 +152,8 @@ enclave
 
         long myst_eventfd_ocall(unsigned int initval, int flags);
 
+        long myst_interrupt_thread_ocall(pid_t tid);
+
         /*
         **======================================================================
         **
@@ -168,6 +170,12 @@ enclave
         long myst_connect_ocall(
             int sockfd,
             [in, size=addrlen] const struct sockaddr* addr,
+            socklen_t addrlen)
+            transition_using_threads;
+
+        long myst_connect_block_ocall(
+            int sockfd,
+            [in, size=addrlen] const struct sockaddr* addr,
             socklen_t addrlen);
 
         long myst_recvfrom_ocall(
@@ -180,6 +188,15 @@ enclave
             socklen_t src_addr_size)
             transition_using_threads;
 
+        long myst_recvfrom_block_ocall(
+            int sockfd,
+            [out, size=len] void* buf,
+            size_t len,
+            int flags,
+            [out, size=src_addr_size] struct sockaddr* src_addr,
+            [in, out] socklen_t* addrlen_out,
+            socklen_t src_addr_size);
+
         long myst_sendto_ocall(
             int sockfd,
             [in, size=len] const void* buf,
@@ -189,9 +206,25 @@ enclave
             socklen_t addrlen)
             transition_using_threads;
 
+        long myst_sendto_block_ocall(
+            int sockfd,
+            [in, size=len] const void* buf,
+            size_t len,
+            int flags,
+            [in, size=addrlen] const struct sockaddr* dest_addr,
+            socklen_t addrlen);
+
         long myst_socket_ocall(int domain, int type, int protocol);
 
         long myst_accept4_ocall(
+            int sockfd,
+            [out, size=addr_size] struct sockaddr* addr,
+            [in, out] socklen_t* addrlen,
+            size_t addr_size,
+            int flags)
+            transition_using_threads;
+
+        long myst_accept4_block_ocall(
             int sockfd,
             [out, size=addr_size] struct sockaddr* addr,
             [in, out] socklen_t* addrlen,
@@ -212,6 +245,19 @@ enclave
             int flags)
             transition_using_threads;
 
+        long myst_sendmsg_block_ocall(
+            int sockfd,
+            /* -- begin struct msghdr -- */
+            [in, size=msg_namelen] const void* msg_name,
+            socklen_t msg_namelen,
+            [in, size=len] const void* buf,
+            size_t len,
+            [in, size=msg_controllen] const void* msg_control,
+            socklen_t msg_controllen,
+            int msg_flags,
+            /* -- end struct msghdr -- */
+            int flags);
+
         long myst_recvmsg_ocall(
             int sockfd,
             /* -- begin struct msghdr -- */
@@ -227,6 +273,21 @@ enclave
             /* -- end struct msghdr -- */
             int flags)
             transition_using_threads;
+
+        long myst_recvmsg_block_ocall(
+            int sockfd,
+            /* -- begin struct msghdr -- */
+            [out, size=msg_namelen] void* msg_name,
+            socklen_t msg_namelen,
+            [out] socklen_t* msg_namelen_out,
+            [out, size=len] void* buf,
+            size_t len,
+            [out, size=msg_controllen] void* msg_control,
+            socklen_t msg_controllen,
+            [out] socklen_t* msg_controllen_out,
+            [out] int* msg_flags,
+            /* -- end struct msghdr -- */
+            int flags);
 
         long myst_shutdown_ocall(int sockfd, int how);
 
@@ -305,11 +366,21 @@ enclave
             size_t count)
             transition_using_threads;
 
+        long myst_read_block_ocall(
+            int fd,
+            [out, size=count] void* buf,
+            size_t count);
+
         long myst_write_ocall(
             int fd,
             [in, size=count] const void* buf,
             size_t count)
             transition_using_threads;
+
+        long myst_write_block_ocall(
+            int fd,
+            [in, size=count] const void* buf,
+            size_t count);
 
         long myst_close_ocall(int fd);
 

@@ -35,9 +35,9 @@ int myst_limit_set_default(struct rlimit rlimits[])
     rlimits[RLIMIT_STACK].rlim_cur = __myst_kernel_args.main_stack_size;
     rlimits[RLIMIT_STACK].rlim_max = __myst_kernel_args.main_stack_size;
 
-    // RLIMIT_CORE (no core dump)
+    // RLIMIT_CORE (match linux)
     rlimits[RLIMIT_CORE].rlim_cur = 0;
-    rlimits[RLIMIT_CORE].rlim_max = 0;
+    rlimits[RLIMIT_CORE].rlim_max = RLIM_INFINITY;
 
     // RLIMIT_RSS (match linux)
     rlimits[RLIMIT_RSS].rlim_cur = RLIM_INFINITY;
@@ -51,9 +51,9 @@ int myst_limit_set_default(struct rlimit rlimits[])
     rlimits[RLIMIT_NOFILE].rlim_cur = MYST_FDTABLE_SIZE;
     rlimits[RLIMIT_NOFILE].rlim_max = MYST_FDTABLE_SIZE;
 
-    // RLIMIT_MEMLOCK (unsupported)
-    rlimits[RLIMIT_MEMLOCK].rlim_cur = 0;
-    rlimits[RLIMIT_MEMLOCK].rlim_max = 0;
+    // RLIMIT_MEMLOCK (match linux)
+    rlimits[RLIMIT_MEMLOCK].rlim_cur = 67108864;
+    rlimits[RLIMIT_MEMLOCK].rlim_max = 67108864;
 
     // RLIMIT_AS (match linux)
     rlimits[RLIMIT_AS].rlim_cur = RLIM_INFINITY;
@@ -63,13 +63,13 @@ int myst_limit_set_default(struct rlimit rlimits[])
     rlimits[RLIMIT_LOCKS].rlim_cur = RLIM_INFINITY;
     rlimits[RLIMIT_LOCKS].rlim_max = RLIM_INFINITY;
 
-    // RLIMIT_SIGPENDING (unsupported)
-    rlimits[RLIMIT_SIGPENDING].rlim_cur = 0;
-    rlimits[RLIMIT_SIGPENDING].rlim_max = 0;
+    // RLIMIT_SIGPENDING (match linux)
+    rlimits[RLIMIT_SIGPENDING].rlim_cur = 128319;
+    rlimits[RLIMIT_SIGPENDING].rlim_max = 128319;
 
-    // RLIMIT_MSGQUEUE (unsupported)
-    rlimits[RLIMIT_MSGQUEUE].rlim_cur = 0;
-    rlimits[RLIMIT_MSGQUEUE].rlim_max = 0;
+    // RLIMIT_MSGQUEUE (match linux)
+    rlimits[RLIMIT_MSGQUEUE].rlim_cur = 819200;
+    rlimits[RLIMIT_MSGQUEUE].rlim_max = 819200;
 
     // RLIMIT_NICE (match linux)
     rlimits[RLIMIT_NICE].rlim_cur = 0;
@@ -115,14 +115,10 @@ int myst_limit_get_rlimit(pid_t pid, int resource, struct rlimit* rlim)
         ERAISE(-EFAULT);
 
     if (pid < 0)
-        ERAISE(-EINVAL);
+        ERAISE(-ESRCH);
 
     if (resource < 0 || resource >= RLIM_NLIMITS)
         ERAISE(-EINVAL);
-
-    if (resource == RLIMIT_MEMLOCK || resource == RLIMIT_SIGPENDING ||
-        resource == RLIMIT_MSGQUEUE)
-        ERAISE(-ENOTSUP);
 
     if (pid == 0)
         process = myst_thread_self()->process;
@@ -144,7 +140,7 @@ int myst_limit_set_rlimit(pid_t pid, int resource, struct rlimit* rlim)
         ERAISE(-EFAULT);
 
     if (pid < 0)
-        ERAISE(-EINVAL);
+        ERAISE(-ESRCH);
 
     if (resource < 0 || resource >= RLIM_NLIMITS)
         ERAISE(-EINVAL);
@@ -152,8 +148,6 @@ int myst_limit_set_rlimit(pid_t pid, int resource, struct rlimit* rlim)
     // ATTN: Setting rlimit value is currently unsupported
     // Returning a failure will break solutions/memcached (RLIMIT_NOFILE)
     // and tests/glibc (RLIMIT_STACK)
-    if (resource != RLIMIT_NOFILE && resource != RLIMIT_STACK)
-        ERAISE(-EINVAL);
 done:
     return ret;
 }

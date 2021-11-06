@@ -301,6 +301,8 @@ long myst_syscall_setuid(uid_t uid);
 long myst_syscall_getgid();
 long myst_syscall_setgid(gid_t gid);
 
+long myst_syscall_setsid();
+
 uid_t myst_syscall_geteuid();
 gid_t myst_syscall_getegid();
 
@@ -354,5 +356,29 @@ long myst_syscall_setpgid(pid_t pid, pid_t pgid, myst_thread_t* thread);
 long myst_syscall_getpgid(pid_t pid, myst_thread_t* thread);
 
 long myst_syscall_pause(void);
+
+long myst_syscall_interrupt_thread(int tid);
+
+/* interruptible by myst_syscall_interrupt_thread() */
+long myst_interruptible_syscall(
+    long n,       /* syscall number */
+    int fd,       /* file descriptor to be interrupted */
+    short events, /* events passed to ppoll() (POLLIN, POLLOUT) */
+    bool retry,   /* whether to retry the operation on EAGAIN/EINPROGRESS */
+    ...);
+
+/* get the syscall name for the given syscall number */
+const char* myst_syscall_name(long num);
+
+/* get the syscall number for the given syscall name */
+long myst_syscall_num(const char* name);
+
+typedef struct myst_syscall_pair
+{
+    short num;
+    const char* name;
+} myst_syscall_pair_t;
+
+const myst_syscall_pair_t* myst_syscall_pairs(void);
 
 #endif /* _MYST_SYSCALL_H */

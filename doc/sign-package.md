@@ -104,6 +104,7 @@ Settings | Type | Description
 ~~UserMemSize~~ | `int \| string` | Deprecated, use `MemorySize` instead
 MemorySize | `int \| string` | Amount of memory your application needs to run. Try not to make this just a very large number as the larger this number needs to be the slower load time will be. Value can be bytes (just a number), **k**ilobytes (for example `"128k"`), **m**egabytes (for example `"512m"`), or **g**igabytes (for example `"1g"`)
 MainStackSize | `int \| string` | Stack size of your application's main process. Defaults to 1536k (or 1.5M) bytes. Normally, you do not need to customize this. If running an application generates a OOM error like in [#612](https://github.com/deislabs/mystikos/issues/612), try tuning this value, e.g. to 8M. Value can be bytes (just a number), **k**ilobytes (for example `"128k"`), **m**egabytes (for example `"512m"`), or **g**igabytes (for example `"1g"`)
+ThreadStackSize | `int \| string` | The default stack size of pthreads created by the application. Ignored if smaller than the existing default thread stack size
 MaxAffinityCPUs | `int` | This setting limits the number of CPUs reported by sched_getaffinity()
 NoBrk | `boolean \| int` | If set to true(or 1), brk syscall returns -ENOTSUP. Defaults to `false`. Set this to true for program involves multi-threading.
 ApplicationPath | `string` | The executable path relative to the root of your appdir. This executable name is also used to determine the final application name once packaged.

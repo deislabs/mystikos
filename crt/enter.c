@@ -157,14 +157,23 @@ int __clone(int (*fn)(void*), void* child_stack, int flags, void* arg, ...)
     return myst_syscall(SYS_myst_clone, params);
 }
 
+int allow_ld_preload(void)
+{
+    /* Allow LD_PRELOAD in musl libc */
+    return 1;
+}
+
 void myst_enter_crt(
     void* stack,
     void* dynv,
     syscall_callback_t callback,
-    myst_wanted_secrets_t* wanted_secrets)
+    myst_crt_args_t* args)
 {
     _syscall_callback = callback;
-    _wanted_secrets = wanted_secrets;
+    if (args)
+    {
+        _wanted_secrets = args->wanted_secrets;
+    }
     _dlstart_c((size_t*)stack, (size_t*)dynv);
 }
 

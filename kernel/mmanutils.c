@@ -793,17 +793,15 @@ int myst_release_process_mappings(pid_t pid)
                         ERAISE(-EINVAL);
                     }
 
-                    // append any fds returned by munmap to catchall list
+                    // prepend any fds returned by munmap to catchall list
                     if (unmap_fds)
                     {
                         if (catchall)
-                            catchall = unmap_fds;
-                        else
                         {
                             fdlist_t* tail = get_tail(unmap_fds);
                             tail->next = catchall;
-                            catchall = tail;
                         }
+                        catchall = unmap_fds;
                     }
 
                     /* always clear the pid vector */
@@ -878,8 +876,12 @@ done:
     return ret;
 }
 
-int proc_pid_maps_vcallback(myst_buf_t* vbuf, const char* entrypath)
+int proc_pid_maps_vcallback(
+    myst_file_t* self,
+    myst_buf_t* vbuf,
+    const char* entrypath)
 {
+    (void)self;
     int ret = 0;
     bool locked = false;
     pid_t pid = 0;

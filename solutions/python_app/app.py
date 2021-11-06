@@ -14,9 +14,12 @@ def test_pyodbc(server: str, database: str, uid: str, driver: str, query: str):
     connstr += ";Authentication=ActiveDirectoryMsi"
     if uid:
         connstr += ";UID=" + uid
+    print(connstr)
 
-    conn = pyodbc.connect(connstr)
-
+    try:
+        conn = pyodbc.connect(connstr)
+    except pyodbc.Error as ex:
+        print(ex)
     logger.info("Successful connected to database")
 
     cursor = conn.cursor()

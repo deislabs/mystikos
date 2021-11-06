@@ -18,10 +18,6 @@ INCLUDES += -include $(INCDIR)/myst/deprecations.h
 
 DEFINES = $(MYST_DEFINES)
 
-ifdef MYST_NO_RECVMSG_MITIGATION
-DEFINES += -DMYST_NO_RECVMSG_MITIGATION
-endif
-
 ifeq ($(MYST_ENABLE_HOSTFS),1)
 DEFINES += -DMYST_ENABLE_HOSTFS
 endif
@@ -98,6 +94,8 @@ endif
 ifdef MYST_ENABLE_HOSTFS
 LIBS += $(LIBDIR)/libmysthostfs.a
 endif
+
+LIBS += $(LIBDIR)/libjson.a
 
 LIBS += $(LIBDIR)/libmystutils.a
 

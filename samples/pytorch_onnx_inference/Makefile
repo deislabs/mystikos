@@ -25,6 +25,7 @@ ext2rootfs: appdir
 	echo "Dumping roothash merkel tree"
 	@myst fssig --roothash ext2rootfs > roothash
 
+
 package.pem:
 	echo "Generating a signing key"
 	openssl genrsa -out package.pem -3 3072

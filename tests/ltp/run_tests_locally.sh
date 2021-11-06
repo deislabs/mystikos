@@ -23,14 +23,13 @@ function run_tests() {
       continue
     fi
     OUTPUT=$(2>&1 sudo timeout 1m make one TEST=$test FS=$FS )
+    RETURN_VAL=$?
     echo "$OUTPUT" >> "temp_$FS.output"
-    HAS_UNHANDLED_SYSCALL=$(echo "$OUTPUT" | grep "unhandled")
-    if [ -z "$HAS_UNHANDLED_SYSCALL" ]
+    if [[ "$RETURN_VAL" -eq "0" ]]
     then
-      # No unhandled syscall
+      # Passing test
       PASSED=$(echo "$OUTPUT" | grep TPASS) 
-      MAKE_FAILED=$(echo "$OUTPUT" | grep -F 'make: *** [one]')
-      if [[ $PASSED && -z $MAKE_FAILED ]]  
+      if [[ $PASSED ]]  
       then
         echo $test >> temp_passed.output
         echo " PASSED"
@@ -39,9 +38,16 @@ function run_tests() {
         echo " FAILED"
       fi
     else
+      HAS_UNHANDLED_SYSCALL=$(echo "$OUTPUT" | grep "unhandled")
       failing_syscall=${HAS_UNHANDLED_SYSCALL##*:} # retain the part after the last colon, i.e the syscall name
-      echo "$test: $failing_syscall" >> temp_unhandled_syscalls.output
-      echo " UNHANDLED SYSCALL: $failing_syscall"
+      if [[ $HAS_UNHANDLED_SYSCALL ]]
+      then
+        echo "$test: $failing_syscall" >> temp_unhandled_syscalls.output
+        echo " UNHANDLED SYSCALL: $failing_syscall"
+      else
+        echo $test >> temp_other_errors.output
+        echo " FAILED"
+      fi
     fi
     sudo rm -rf /tmp/myst*
   done <$FILE

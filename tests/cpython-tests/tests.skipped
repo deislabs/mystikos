@@ -1,0 +1,26 @@
+The following test sets are enabled, but skipped by the cpython test framework:
+
+test_curses, 'curses' resource not enabled, for terminal handling, https://docs.python.org/3/library/curses.html
+test_devpoll, Solaris only
+test_idle, No module named '_tkinter', for Tcl/TK GUI https://docs.python.org/3/library/tkinter.html
+test_kqueue, BSD only
+test_msilib, Windows only
+test_nis, No module named '_nis', for Sun's Network Information Service
+test_ossaudiodev, 'audio' resource not enabled
+test_smtpnet, 'network' resource not enabled
+test_socketserver, 'network' resource not enabled
+test_startfile, Windows only
+test_tcl, No module named '_tkinter'
+test_timeout, 'network' resource not enabled
+test_tix, No module named '_tkinter'
+test_tk, No module named '_tkinter'
+test_ttk_guionly, No module named '_tkinter'
+test_ttk_textonly, No module named '_tkinter'
+test_turtle, No module named '_tkinter'
+test_urllib2net, 'network' resource not enabled
+test_urllibnet, 'network' resource not enabled
+test_winconsoleio, Windows only
+test_winreg, Windows only
+test_winsound, Windows only
+test_xmlrpc_net, 'network' resource not enabled
+test_zipfile64, test requires loads of disk-space bytes and a long time to run

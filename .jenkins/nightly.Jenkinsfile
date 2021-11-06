@@ -15,6 +15,7 @@ pipeline {
         string(name: "REPOSITORY_NAME", defaultValue: "deislabs/mystikos", description: "Enter the name of the repository that your branch exists on (ex. deislabs/mystikos)")
         string(name: "PULL_REQUEST_ID", defaultValue: "", description: "If you are building a pull request, enter the pull request ID number here. (ex. 789)")
         string(name: "SCRIPTS_ROOT", defaultValue: '${WORKSPACE}/.azure_pipelines/scripts', description: "Root directory")
+        booleanParam(name: "FULL_TESTS", defaultValue: false, description: "Run all tests?")
     }
     environment {
         BUILD_USER = sh(
@@ -46,7 +47,7 @@ pipeline {
                                     extensions: [],
                                     userRemoteConfigs: [[
                                         url: 'https://github.com/deislabs/mystikos',
-                                        refspec: "+refs/pull/${PULL_REQUEST_ID}/head:refs/remotes/origin/pr/${PULL_REQUEST_ID}"
+                                        refspec: "+refs/pull/${PULL_REQUEST_ID}/merge:refs/remotes/origin/pr/${PULL_REQUEST_ID}"
                                     ]]
                                 ])
                             } else {
@@ -190,9 +191,45 @@ pipeline {
                         }
                     }
                 }
+                stage('Run dotnet 5 p1 test suite') {
+                    when {
+                        expression {
+                            return params.FULL_TESTS
+                        }
+                    }
+                    steps {
+                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                            sh """
+                                make tests -C ${WORKSPACE}/solutions/coreclr-p1
+                            """
+                        }
+                    }
+                }
                 stage('Cleanup') {
                     steps {
                         cleanWs()
+                    }
+                }
+            }
+        }
+    }
+    post {
+        always {
+            withCredentials([string(credentialsId: 'mystikos-report', variable: 'MYSTIKOS_REPORT')]) {
+                script {
+                    // Notify the build requestor only for manual builds (of branches other than main)
+                    if ( params.REPOSITORY_NAME == 'deislabs/mystikos' && params.BRANCH_NAME == 'main' ) {
+                        emailext(
+                            subject: "Jenkins: ${env.JOB_NAME} [#${env.BUILD_NUMBER}] status is ${currentBuild.currentResult}",
+                            body: "See build log for details: ${env.BUILD_URL}", 
+                            to: MYSTIKOS_REPORT
+                        )
+                    } else {
+                        emailext(
+                            subject: "Jenkins: ${env.JOB_NAME} [#${env.BUILD_NUMBER}] status is ${currentBuild.currentResult}",
+                            body: "See build log for details: ${env.BUILD_URL}", 
+                            recipientProviders: [[$class: 'RequesterRecipientProvider']]
+                        )
                     }
                 }
             }

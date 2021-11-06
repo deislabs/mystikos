@@ -493,20 +493,30 @@ void test_exhaust_threads(void)
 
     _wait = 1;
 
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    size_t default_stack_size = 0;
+
+    assert(pthread_attr_getstacksize(&attr, &default_stack_size) == 0);
+    /* the default stack size should match the option --thread-stack-size */
+    assert(default_stack_size == 1048576);
+    pthread_attr_setstacksize(&attr, PTHREAD_STACK_MIN);
+
     /* Create threads until exhausted (last iteration fails with EAGAIN) */
     for (size_t i = 0; i < max_threads; i++)
     {
-        pthread_attr_t attr;
-        pthread_attr_init(&attr);
-        pthread_attr_setstacksize(&attr, PTHREAD_STACK_MIN);
+        if (i % 100 == 0)
+            printf("====== creating thread %ld\n", i);
+
         int r = _pthread_create(&threads[i], &attr, _exhaust_thread, (void*)i);
-        pthread_attr_destroy(&attr);
 
         if (i + 1 == max_threads)
             assert(r == EAGAIN);
         else
             assert(r == 0);
     }
+
+    pthread_attr_destroy(&attr);
 
     _wait = 0;
 
@@ -521,7 +531,8 @@ void test_exhaust_threads(void)
             abort();
         }
 
-        T(printf("joined...\n");)
+        if (i % 100 == 0)
+            printf("====== joined thread %ld\n", i);
 
         assert((uint64_t)retval == i);
     }

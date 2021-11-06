@@ -22,7 +22,7 @@ pr: none
 jobs:
   - job: ReleaseAndTest
     displayName: 'Building Release and Testing'
-    timeoutInMinutes: 300
+    timeoutInMinutes: 540
     pool: '1804DC4CCagentpool'
     workspace:
       clean: all
@@ -98,6 +98,33 @@ jobs:
           DB_SERVER_NAME: $(DB_SERVER_NAME_USEAST)
           MAA_URL: $(DB_MAA_URL_USEAST)
           MYST_DO_CLEANUP: 1
+
+      # run dotnet P0 solution tests
+      - script: |
+          export PATH="$PATH:$(pwd)/mystikos/bin"
+          make tests -C $(Build.SourcesDirectory)/solutions/coreclr
+        displayName: 'run dotnet 5 P0 test suite'
+        continueOnError: true
+        enabled: true
+        workingDirectory: $(Build.SourcesDirectory)
+
+      # run dotnet 5 P1 test suite
+      - script: |
+          make tests -C $(Build.SourcesDirectory)/solutions/coreclr-p1
+        displayName: 'run dotnet 5 P1 test suite'
+        continueOnError: true
+        enabled: true
+        workingDirectory: $(Build.SourcesDirectory)
+      
+      # coreclr test clean up
+      - script: |
+          make clean -C $(Build.SourcesDirectory)/solutions/coreclr
+          make clean -C $(Build.SourcesDirectory)/solutions/coreclr-p1
+          docker system prune -f
+          df
+        displayName: 'coreclr clean up'
+        continueOnError: true
+        enabled: true
 
       - template: step-sql-soln-cacentral.yml
       

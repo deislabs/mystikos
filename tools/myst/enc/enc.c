@@ -643,6 +643,7 @@ static long _enter(void* arg_)
         _kargs.main_stack_size = final_options.base.main_stack_size
                                      ? final_options.base.main_stack_size
                                      : MYST_PROCESS_INIT_STACK_SIZE;
+        _kargs.thread_stack_size = final_options.base.thread_stack_size;
 
         /* whether user-space FSGSBASE instructions are supported */
         _kargs.have_fsgsbase_instructions =
@@ -942,6 +943,16 @@ int myst_load_fssig(const char* path, myst_fssig_t* fssig)
         memset(fssig, 0, sizeof(myst_fssig_t));
         return -EPERM;
     }
+
+    return retval;
+}
+
+long myst_tcall_interrupt_thread(pid_t tid)
+{
+    long retval = 0;
+
+    if (myst_interrupt_thread_ocall(&retval, tid) != OE_OK)
+        return -ENOSYS;
 
     return retval;
 }

@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#define _GNU_SOURCE
 #include <assert.h>
 #include <errno.h>
 #include <libgen.h>
@@ -11,6 +12,7 @@
 #include <myst/tcall.h>
 #include <poll.h>
 #include <pthread.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -30,6 +32,7 @@
 #include <myst/round.h>
 #include <myst/sha256.h>
 #include <myst/shm.h>
+#include <myst/thread.h>
 #include <openenclave/bits/properties.h>
 #include <openenclave/bits/sgx/sgxproperties.h>
 #include <openenclave/host.h>
@@ -57,6 +60,22 @@
 
 static struct myst_shm shared_memory = {0};
 
+/* wait for so many milliseconds */
+static void _sleep_msec(uint64_t msec)
+{
+    struct timespec ts;
+    const struct timespec* req = &ts;
+    struct timespec rem = {0, 0};
+    static const uint64_t _SEC_TO_MSEC = 1000UL;
+    static const uint64_t _MSEC_TO_NSEC = 1000000UL;
+
+    ts.tv_sec = (time_t)(msec / _SEC_TO_MSEC);
+    ts.tv_nsec = (long)((msec % _SEC_TO_MSEC) * _MSEC_TO_NSEC);
+
+    while (nanosleep(req, &rem) != 0 && errno == EINTR)
+        req = &rem;
+}
+
 static size_t _count_args(const char* args[])
 {
     size_t n = 0;
@@ -72,6 +91,9 @@ static oe_enclave_t* _enclave;
 /* the address of this is eventually passed to futex (uaddr argument) */
 static __thread int _thread_event;
 
+/* the number of enclave threads (excluding the main thread) */
+static _Atomic(size_t) _num_child_enclave_threads;
+
 static void* _thread_func(void* arg)
 {
     uint64_t cookie = (uint64_t)arg;
@@ -80,7 +102,16 @@ static void* _thread_func(void* arg)
     oe_result_t res;
     long retval = -1;
 
+    /* block MYST_INTERRUPT_THREAD_SIGNAL when inside the enclave */
+    sigset_t set;
+    sigemptyset(&set);
+    sigaddset(&set, MYST_INTERRUPT_THREAD_SIGNAL);
+    sigprocmask(SIG_BLOCK, &set, NULL);
+
     res = myst_run_thread_ecall(_enclave, &retval, cookie, event, target_tid);
+
+    /* unblock MYST_INTERRUPT_THREAD_SIGNAL when outside the enclave */
+    sigprocmask(SIG_UNBLOCK, &set, NULL);
 
     if (res != OE_OK || retval != 0)
     {
@@ -93,6 +124,7 @@ static void* _thread_func(void* arg)
         abort();
     }
 
+    _num_child_enclave_threads--;
     return NULL;
 }
 
@@ -105,6 +137,9 @@ long myst_create_thread_ocall(uint64_t cookie)
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
     long ret = -pthread_create(&t, &attr, _thread_func, (void*)cookie);
     pthread_attr_destroy(&attr);
+
+    if (ret == 0)
+        _num_child_enclave_threads++;
 
     return ret;
 }
@@ -129,6 +164,44 @@ long myst_wake_wait_ocall(
     return myst_tcall_wake_wait(waiter_event, self_event, ts);
 }
 
+static void _interrupt_thread_signal_handler(int sig)
+{
+    /* no-op */
+    (void)sig;
+}
+
+/* Wait for child enclave threads to exit or fail trying */
+static void _wait_on_child_threads(void)
+{
+    uint64_t msec_per_sec = 1000;
+    uint64_t msec = 1;
+    const size_t max_retries = 5;
+    size_t num_retries = 0;
+
+    while (_num_child_enclave_threads)
+    {
+        if (msec < msec_per_sec)
+        {
+            _sleep_msec(msec);
+            msec *= 2;
+        }
+        else
+        {
+            if (num_retries == max_retries)
+            {
+                fprintf(stderr, "myst: child threads failed to exit\n");
+                fflush(stdout);
+                abort();
+            }
+
+            fprintf(stderr, "myst: waiting for child threads to exit\n");
+            fflush(stdout);
+            _sleep_msec(msec_per_sec);
+            num_retries++;
+        }
+    }
+}
+
 int exec_launch_enclave(
     const char* enc_path,
     oe_enclave_type_t type,
@@ -149,6 +222,7 @@ int exec_launch_enclave(
     oe_enclave_setting_context_switchless_t switchless_setting = {0, 0};
     oe_enclave_setting_t settings[8];
     size_t num_settings = 0;
+    sighandler_t old_sighandler;
 
     /* get the start time and pass it into the kernel */
     if (clock_gettime(CLOCK_REALTIME, &start_time) != 0)
@@ -204,6 +278,16 @@ int exec_launch_enclave(
     /* Get clock times right before entering the enclave */
     shm_create_clock(&shared_memory, CLOCK_TICK);
 
+    /* Set a MYST_INTERRUPT_THREAD_SIGNAL handler */
+    old_sighandler =
+        sigset(MYST_INTERRUPT_THREAD_SIGNAL, _interrupt_thread_signal_handler);
+
+    /* block MYST_INTERRUPT_THREAD_SIGNAL when inside the enclave */
+    sigset_t set;
+    sigemptyset(&set);
+    sigaddset(&set, MYST_INTERRUPT_THREAD_SIGNAL);
+    sigprocmask(SIG_BLOCK, &set, NULL);
+
     /* Enter the enclave and run the program */
     r = myst_enter_ecall(
         _enclave,
@@ -222,6 +306,17 @@ int exec_launch_enclave(
         start_time.tv_nsec);
     if (r != OE_OK)
         _err("failed to enter enclave: result=%s", oe_result_str(r));
+
+    /* unblock MYST_INTERRUPT_THREAD_SIGNAL when outside the enclave */
+    sigprocmask(SIG_UNBLOCK, &set, NULL);
+
+    /* restore the old MYST_INTERRUPT_THREAD_SIGNAL handler */
+    sigset(MYST_INTERRUPT_THREAD_SIGNAL, old_sighandler);
+
+    // Wait for child enclave threads to exit before attempting to terminate
+    // the enclave. Otherwise, oe_query_enclave_instance() may fail during
+    // termination.
+    _wait_on_child_threads();
 
     /* Terminate the enclave */
     r = oe_terminate_enclave(_enclave);
@@ -440,6 +535,30 @@ int exec_action(int argc, const char* argv[], const char* envp[])
             }
         }
 
+        /* Get --thread-stack-size */
+        {
+            const char* opt = "--thread-stack-size";
+            const char* arg = NULL;
+
+            if (cli_getopt(&argc, argv, opt, &arg) == 0)
+            {
+                if (arg)
+                {
+                    if ((myst_expand_size_string_to_ulong(
+                             arg, &options.thread_stack_size) != 0) ||
+                        (myst_round_up(
+                             options.thread_stack_size,
+                             PAGE_SIZE,
+                             &options.thread_stack_size) != 0))
+                    {
+                        _err(
+                            "%s <size> -- bad suffix (must be k, m, or g)\n",
+                            opt);
+                    }
+                }
+            }
+        }
+
         /* Get --app-config option if it exists, otherwise we use default values
          */
         cli_getopt(&argc, argv, "--app-config-path", &commandline_config);
@@ -639,4 +758,9 @@ int myst_load_fssig_ocall(const char* path, myst_fssig_t* fssig)
 int myst_mprotect_ocall(void* addr, size_t len, int prot)
 {
     return mprotect(addr, len, prot);
+}
+
+long myst_interrupt_thread_ocall(pid_t tid)
+{
+    return myst_tcall_interrupt_thread(tid);
 }

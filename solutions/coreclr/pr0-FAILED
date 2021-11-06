@@ -1,6 +1,4 @@
 GC/Scenarios/ServerModel/servermodel/servermodel.dll, max_map_count, 4g
-JIT/HardwareIntrinsics/X86/Regression/GitHub_21666/GitHub_21666_r/GitHub_21666_r.dll, SIGSEGV, 256m, pass-with-4g
-JIT/HardwareIntrinsics/X86/Regression/GitHub_21666/GitHub_21666_ro/GitHub_21666_ro.dll, SIGSEGV, 256m, pass-with-4g
 JIT/Regression/CLR-x86-JIT/V1.1-M1-Beta1/b143840/b143840/b143840.dll, intermitten-SIGSEGV, 1g
 JIT/Regression/CLR-x86-JIT/V2.0-Beta2/b425314/b425314/b425314.dll, potential-hang, 1g
 JIT/Regression/CLR-x86-JIT/V2.0-Beta2/b426654/b426654/b426654.dll, potential-hang, 1g

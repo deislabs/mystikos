@@ -41,7 +41,7 @@
 
 #ifdef MYST_ENABLE_ZERO_BASE_ENCLAVES
 #define ENCLAVE_CREATE_ZERO_BASE_ENCLAVE true
-#define ENCLAVE_START_ADDRESS 0x000000800000 /* fixed at 8mb */
+#define ENCLAVE_START_ADDRESS 0x000100000000 /* fixed at 4gb */
 #else
 #define ENCLAVE_CREATE_ZERO_BASE_ENCLAVE false
 #define ENCLAVE_START_ADDRESS 0
@@ -83,6 +83,7 @@ typedef struct _config_parsed_data_t
     bool unhandled_syscall_enosys;
 
     size_t main_stack_size;
+    size_t thread_stack_size;
     /* maximum number of CPUs in the kernel (for thread affinity) */
     size_t max_affinity_cpus;
 

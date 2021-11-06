@@ -50,6 +50,7 @@ DIRS += sockets
 DIRS += sendmsg
 DIRS += poll
 DIRS += sysinfo
+DIRS += sys_execve
 DIRS += pollpipe
 DIRS += pipesz
 DIRS += futex
@@ -132,6 +133,8 @@ endif
 
 DIRS += sendfile
 
+DIRS += strtonum
+
 .PHONY: $(DIRS)
 
 dirs: $(DIRS)
@@ -165,3 +168,11 @@ pipe-tests:
 	$(MAKE) -C spawn tests
 	$(MAKE) -C spawnfa tests
 	$(MAKE) -C ltp pipe-tests
+
+pipe-build:
+	$(MAKE) -C pipe
+	$(MAKE) -C pollpipe
+	$(MAKE) -C pollpipe2
+	$(MAKE) -C spawn
+	$(MAKE) -C spawnfa
+	$(MAKE) -C ltp

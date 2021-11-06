@@ -70,6 +70,7 @@
 #include <myst/process.h>
 #include <myst/pubkey.h>
 #include <myst/ramfs.h>
+#include <myst/realpath.h>
 #include <myst/round.h>
 #include <myst/setjmp.h>
 #include <myst/signal.h>
@@ -93,402 +94,6 @@
 #define COLOR_RESET "\e[0m"
 
 long myst_syscall_isatty(int fd);
-
-typedef struct _pair
-{
-    long num;
-    const char* str;
-} pair_t;
-
-static pair_t _pairs[] = {
-    {SYS_read, "SYS_read"},
-    {SYS_write, "SYS_write"},
-    {SYS_open, "SYS_open"},
-    {SYS_close, "SYS_close"},
-    {SYS_stat, "SYS_stat"},
-    {SYS_fstat, "SYS_fstat"},
-    {SYS_lstat, "SYS_lstat"},
-    {SYS_poll, "SYS_poll"},
-    {SYS_lseek, "SYS_lseek"},
-    {SYS_mmap, "SYS_mmap"},
-    {SYS_mprotect, "SYS_mprotect"},
-    {SYS_munmap, "SYS_munmap"},
-    {SYS_brk, "SYS_brk"},
-    {SYS_rt_sigaction, "SYS_rt_sigaction"},
-    {SYS_rt_sigprocmask, "SYS_rt_sigprocmask"},
-    {SYS_rt_sigreturn, "SYS_rt_sigreturn"},
-    {SYS_ioctl, "SYS_ioctl"},
-    {SYS_pread64, "SYS_pread64"},
-    {SYS_pwrite64, "SYS_pwrite64"},
-    {SYS_readv, "SYS_readv"},
-    {SYS_writev, "SYS_writev"},
-    {SYS_access, "SYS_access"},
-    {SYS_pipe, "SYS_pipe"},
-    {SYS_select, "SYS_select"},
-    {SYS_sched_yield, "SYS_sched_yield"},
-    {SYS_mremap, "SYS_mremap"},
-    {SYS_msync, "SYS_msync"},
-    {SYS_mincore, "SYS_mincore"},
-    {SYS_madvise, "SYS_madvise"},
-    {SYS_shmget, "SYS_shmget"},
-    {SYS_shmat, "SYS_shmat"},
-    {SYS_shmctl, "SYS_shmctl"},
-    {SYS_dup, "SYS_dup"},
-    {SYS_dup2, "SYS_dup2"},
-    {SYS_pause, "SYS_pause"},
-    {SYS_nanosleep, "SYS_nanosleep"},
-    {SYS_getitimer, "SYS_getitimer"},
-    {SYS_alarm, "SYS_alarm"},
-    {SYS_setitimer, "SYS_setitimer"},
-    {SYS_getpid, "SYS_getpid"},
-    {SYS_sendfile, "SYS_sendfile"},
-    {SYS_socket, "SYS_socket"},
-    {SYS_connect, "SYS_connect"},
-    {SYS_accept, "SYS_accept"},
-    {SYS_sendto, "SYS_sendto"},
-    {SYS_recvfrom, "SYS_recvfrom"},
-    {SYS_sendmsg, "SYS_sendmsg"},
-    {SYS_recvmsg, "SYS_recvmsg"},
-    {SYS_shutdown, "SYS_shutdown"},
-    {SYS_bind, "SYS_bind"},
-    {SYS_listen, "SYS_listen"},
-    {SYS_getsockname, "SYS_getsockname"},
-    {SYS_getpeername, "SYS_getpeername"},
-    {SYS_socketpair, "SYS_socketpair"},
-    {SYS_setsockopt, "SYS_setsockopt"},
-    {SYS_getsockopt, "SYS_getsockopt"},
-    {SYS_clone, "SYS_clone"},
-    {SYS_fork, "SYS_fork"},
-    {SYS_vfork, "SYS_vfork"},
-    {SYS_execve, "SYS_execve"},
-    {SYS_exit, "SYS_exit"},
-    {SYS_wait4, "SYS_wait4"},
-    {SYS_kill, "SYS_kill"},
-    {SYS_uname, "SYS_uname"},
-    {SYS_semget, "SYS_semget"},
-    {SYS_semop, "SYS_semop"},
-    {SYS_semctl, "SYS_semctl"},
-    {SYS_shmdt, "SYS_shmdt"},
-    {SYS_msgget, "SYS_msgget"},
-    {SYS_msgsnd, "SYS_msgsnd"},
-    {SYS_msgrcv, "SYS_msgrcv"},
-    {SYS_msgctl, "SYS_msgctl"},
-    {SYS_fcntl, "SYS_fcntl"},
-    {SYS_flock, "SYS_flock"},
-    {SYS_fsync, "SYS_fsync"},
-    {SYS_fdatasync, "SYS_fdatasync"},
-    {SYS_truncate, "SYS_truncate"},
-    {SYS_ftruncate, "SYS_ftruncate"},
-    {SYS_getdents, "SYS_getdents"},
-    {SYS_getcwd, "SYS_getcwd"},
-    {SYS_chdir, "SYS_chdir"},
-    {SYS_fchdir, "SYS_fchdir"},
-    {SYS_rename, "SYS_rename"},
-    {SYS_mkdir, "SYS_mkdir"},
-    {SYS_rmdir, "SYS_rmdir"},
-    {SYS_creat, "SYS_creat"},
-    {SYS_link, "SYS_link"},
-    {SYS_unlink, "SYS_unlink"},
-    {SYS_symlink, "SYS_symlink"},
-    {SYS_readlink, "SYS_readlink"},
-    {SYS_chmod, "SYS_chmod"},
-    {SYS_fchmod, "SYS_fchmod"},
-    {SYS_chown, "SYS_chown"},
-    {SYS_fchown, "SYS_fchown"},
-    {SYS_lchown, "SYS_lchown"},
-    {SYS_umask, "SYS_umask"},
-    {SYS_gettimeofday, "SYS_gettimeofday"},
-    {SYS_getrlimit, "SYS_getrlimit"},
-    {SYS_getrusage, "SYS_getrusage"},
-    {SYS_sysinfo, "SYS_sysinfo"},
-    {SYS_times, "SYS_times"},
-    {SYS_ptrace, "SYS_ptrace"},
-    {SYS_getuid, "SYS_getuid"},
-    {SYS_syslog, "SYS_syslog"},
-    {SYS_getgid, "SYS_getgid"},
-    {SYS_setuid, "SYS_setuid"},
-    {SYS_setgid, "SYS_setgid"},
-    {SYS_geteuid, "SYS_geteuid"},
-    {SYS_getegid, "SYS_getegid"},
-    {SYS_setpgid, "SYS_setpgid"},
-    {SYS_getppid, "SYS_getppid"},
-    {SYS_getpgrp, "SYS_getpgrp"},
-    {SYS_setsid, "SYS_setsid"},
-    {SYS_setreuid, "SYS_setreuid"},
-    {SYS_setregid, "SYS_setregid"},
-    {SYS_getgroups, "SYS_getgroups"},
-    {SYS_setgroups, "SYS_setgroups"},
-    {SYS_setresuid, "SYS_setresuid"},
-    {SYS_getresuid, "SYS_getresuid"},
-    {SYS_setresgid, "SYS_setresgid"},
-    {SYS_getresgid, "SYS_getresgid"},
-    {SYS_getpgid, "SYS_getpgid"},
-    {SYS_setfsuid, "SYS_setfsuid"},
-    {SYS_setfsgid, "SYS_setfsgid"},
-    {SYS_getsid, "SYS_getsid"},
-    {SYS_capget, "SYS_capget"},
-    {SYS_capset, "SYS_capset"},
-    {SYS_rt_sigpending, "SYS_rt_sigpending"},
-    {SYS_rt_sigtimedwait, "SYS_rt_sigtimedwait"},
-    {SYS_rt_sigqueueinfo, "SYS_rt_sigqueueinfo"},
-    {SYS_rt_sigsuspend, "SYS_rt_sigsuspend"},
-    {SYS_sigaltstack, "SYS_sigaltstack"},
-    {SYS_utime, "SYS_utime"},
-    {SYS_mknod, "SYS_mknod"},
-    {SYS_uselib, "SYS_uselib"},
-    {SYS_personality, "SYS_personality"},
-    {SYS_ustat, "SYS_ustat"},
-    {SYS_statfs, "SYS_statfs"},
-    {SYS_fstatfs, "SYS_fstatfs"},
-    {SYS_sysfs, "SYS_sysfs"},
-    {SYS_getpriority, "SYS_getpriority"},
-    {SYS_setpriority, "SYS_setpriority"},
-    {SYS_sched_setparam, "SYS_sched_setparam"},
-    {SYS_sched_getparam, "SYS_sched_getparam"},
-    {SYS_sched_setscheduler, "SYS_sched_setscheduler"},
-    {SYS_sched_getscheduler, "SYS_sched_getscheduler"},
-    {SYS_sched_get_priority_max, "SYS_sched_get_priority_max"},
-    {SYS_sched_get_priority_min, "SYS_sched_get_priority_min"},
-    {SYS_sched_rr_get_interval, "SYS_sched_rr_get_interval"},
-    {SYS_mlock, "SYS_mlock"},
-    {SYS_munlock, "SYS_munlock"},
-    {SYS_mlockall, "SYS_mlockall"},
-    {SYS_munlockall, "SYS_munlockall"},
-    {SYS_vhangup, "SYS_vhangup"},
-    {SYS_modify_ldt, "SYS_modify_ldt"},
-    {SYS_pivot_root, "SYS_pivot_root"},
-    {SYS__sysctl, "SYS__sysctl"},
-    {SYS_prctl, "SYS_prctl"},
-    {SYS_arch_prctl, "SYS_arch_prctl"},
-    {SYS_adjtimex, "SYS_adjtimex"},
-    {SYS_setrlimit, "SYS_setrlimit"},
-    {SYS_chroot, "SYS_chroot"},
-    {SYS_sync, "SYS_sync"},
-    {SYS_acct, "SYS_acct"},
-    {SYS_settimeofday, "SYS_settimeofday"},
-    {SYS_mount, "SYS_mount"},
-    {SYS_umount2, "SYS_umount2"},
-    {SYS_swapon, "SYS_swapon"},
-    {SYS_swapoff, "SYS_swapoff"},
-    {SYS_reboot, "SYS_reboot"},
-    {SYS_sethostname, "SYS_sethostname"},
-    {SYS_setdomainname, "SYS_setdomainname"},
-    {SYS_iopl, "SYS_iopl"},
-    {SYS_ioperm, "SYS_ioperm"},
-    {SYS_create_module, "SYS_create_module"},
-    {SYS_init_module, "SYS_init_module"},
-    {SYS_delete_module, "SYS_delete_module"},
-    {SYS_get_kernel_syms, "SYS_get_kernel_syms"},
-    {SYS_query_module, "SYS_query_module"},
-    {SYS_quotactl, "SYS_quotactl"},
-    {SYS_nfsservctl, "SYS_nfsservctl"},
-    {SYS_getpmsg, "SYS_getpmsg"},
-    {SYS_putpmsg, "SYS_putpmsg"},
-    {SYS_afs_syscall, "SYS_afs_syscall"},
-    {SYS_tuxcall, "SYS_tuxcall"},
-    {SYS_security, "SYS_security"},
-    {SYS_gettid, "SYS_gettid"},
-    {SYS_readahead, "SYS_readahead"},
-    {SYS_setxattr, "SYS_setxattr"},
-    {SYS_lsetxattr, "SYS_lsetxattr"},
-    {SYS_fsetxattr, "SYS_fsetxattr"},
-    {SYS_getxattr, "SYS_getxattr"},
-    {SYS_lgetxattr, "SYS_lgetxattr"},
-    {SYS_fgetxattr, "SYS_fgetxattr"},
-    {SYS_listxattr, "SYS_listxattr"},
-    {SYS_llistxattr, "SYS_llistxattr"},
-    {SYS_flistxattr, "SYS_flistxattr"},
-    {SYS_removexattr, "SYS_removexattr"},
-    {SYS_lremovexattr, "SYS_lremovexattr"},
-    {SYS_fremovexattr, "SYS_fremovexattr"},
-    {SYS_tkill, "SYS_tkill"},
-    {SYS_time, "SYS_time"},
-    {SYS_futex, "SYS_futex"},
-    {SYS_sched_setaffinity, "SYS_sched_setaffinity"},
-    {SYS_sched_getaffinity, "SYS_sched_getaffinity"},
-    {SYS_set_thread_area, "SYS_set_thread_area"},
-    {SYS_io_setup, "SYS_io_setup"},
-    {SYS_io_destroy, "SYS_io_destroy"},
-    {SYS_io_getevents, "SYS_io_getevents"},
-    {SYS_io_submit, "SYS_io_submit"},
-    {SYS_io_cancel, "SYS_io_cancel"},
-    {SYS_get_thread_area, "SYS_get_thread_area"},
-    {SYS_lookup_dcookie, "SYS_lookup_dcookie"},
-    {SYS_epoll_create, "SYS_epoll_create"},
-    {SYS_epoll_ctl_old, "SYS_epoll_ctl_old"},
-    {SYS_epoll_wait_old, "SYS_epoll_wait_old"},
-    {SYS_remap_file_pages, "SYS_remap_file_pages"},
-    {SYS_getdents64, "SYS_getdents64"},
-    {SYS_set_tid_address, "SYS_set_tid_address"},
-    {SYS_restart_syscall, "SYS_restart_syscall"},
-    {SYS_semtimedop, "SYS_semtimedop"},
-    {SYS_fadvise64, "SYS_fadvise64"},
-    {SYS_timer_create, "SYS_timer_create"},
-    {SYS_timer_settime, "SYS_timer_settime"},
-    {SYS_timer_gettime, "SYS_timer_gettime"},
-    {SYS_timer_getoverrun, "SYS_timer_getoverrun"},
-    {SYS_timer_delete, "SYS_timer_delete"},
-    {SYS_clock_settime, "SYS_clock_settime"},
-    {SYS_clock_gettime, "SYS_clock_gettime"},
-    {SYS_clock_getres, "SYS_clock_getres"},
-    {SYS_clock_nanosleep, "SYS_clock_nanosleep"},
-    {SYS_exit_group, "SYS_exit_group"},
-    {SYS_epoll_wait, "SYS_epoll_wait"},
-    {SYS_epoll_ctl, "SYS_epoll_ctl"},
-    {SYS_tgkill, "SYS_tgkill"},
-    {SYS_utimes, "SYS_utimes"},
-    {SYS_vserver, "SYS_vserver"},
-    {SYS_mbind, "SYS_mbind"},
-    {SYS_set_mempolicy, "SYS_set_mempolicy"},
-    {SYS_get_mempolicy, "SYS_get_mempolicy"},
-    {SYS_mq_open, "SYS_mq_open"},
-    {SYS_mq_unlink, "SYS_mq_unlink"},
-    {SYS_mq_timedsend, "SYS_mq_timedsend"},
-    {SYS_mq_timedreceive, "SYS_mq_timedreceive"},
-    {SYS_mq_notify, "SYS_mq_notify"},
-    {SYS_mq_getsetattr, "SYS_mq_getsetattr"},
-    {SYS_kexec_load, "SYS_kexec_load"},
-    {SYS_waitid, "SYS_waitid"},
-    {SYS_add_key, "SYS_add_key"},
-    {SYS_request_key, "SYS_request_key"},
-    {SYS_keyctl, "SYS_keyctl"},
-    {SYS_ioprio_set, "SYS_ioprio_set"},
-    {SYS_ioprio_get, "SYS_ioprio_get"},
-    {SYS_inotify_init, "SYS_inotify_init"},
-    {SYS_inotify_add_watch, "SYS_inotify_add_watch"},
-    {SYS_inotify_rm_watch, "SYS_inotify_rm_watch"},
-    {SYS_migrate_pages, "SYS_migrate_pages"},
-    {SYS_openat, "SYS_openat"},
-    {SYS_mkdirat, "SYS_mkdirat"},
-    {SYS_mknodat, "SYS_mknodat"},
-    {SYS_fchownat, "SYS_fchownat"},
-    {SYS_futimesat, "SYS_futimesat"},
-    {SYS_newfstatat, "SYS_newfstatat"},
-    {SYS_unlinkat, "SYS_unlinkat"},
-    {SYS_renameat, "SYS_renameat"},
-    {SYS_linkat, "SYS_linkat"},
-    {SYS_symlinkat, "SYS_symlinkat"},
-    {SYS_readlinkat, "SYS_readlinkat"},
-    {SYS_fchmodat, "SYS_fchmodat"},
-    {SYS_faccessat, "SYS_faccessat"},
-    {SYS_pselect6, "SYS_pselect6"},
-    {SYS_ppoll, "SYS_ppoll"},
-    {SYS_unshare, "SYS_unshare"},
-    {SYS_set_robust_list, "SYS_set_robust_list"},
-    {SYS_get_robust_list, "SYS_get_robust_list"},
-    {SYS_splice, "SYS_splice"},
-    {SYS_tee, "SYS_tee"},
-    {SYS_sync_file_range, "SYS_sync_file_range"},
-    {SYS_vmsplice, "SYS_vmsplice"},
-    {SYS_move_pages, "SYS_move_pages"},
-    {SYS_utimensat, "SYS_utimensat"},
-    {SYS_epoll_pwait, "SYS_epoll_pwait"},
-    {SYS_signalfd, "SYS_signalfd"},
-    {SYS_timerfd_create, "SYS_timerfd_create"},
-    {SYS_eventfd, "SYS_eventfd"},
-    {SYS_fallocate, "SYS_fallocate"},
-    {SYS_timerfd_settime, "SYS_timerfd_settime"},
-    {SYS_timerfd_gettime, "SYS_timerfd_gettime"},
-    {SYS_accept4, "SYS_accept4"},
-    {SYS_signalfd4, "SYS_signalfd4"},
-    {SYS_eventfd2, "SYS_eventfd2"},
-    {SYS_epoll_create1, "SYS_epoll_create1"},
-    {SYS_dup3, "SYS_dup3"},
-    {SYS_pipe2, "SYS_pipe2"},
-    {SYS_inotify_init1, "SYS_inotify_init1"},
-    {SYS_preadv, "SYS_preadv"},
-    {SYS_pwritev, "SYS_pwritev"},
-    {SYS_rt_tgsigqueueinfo, "SYS_rt_tgsigqueueinfo"},
-    {SYS_perf_event_open, "SYS_perf_event_open"},
-    {SYS_recvmmsg, "SYS_recvmmsg"},
-    {SYS_fanotify_init, "SYS_fanotify_init"},
-    {SYS_fanotify_mark, "SYS_fanotify_mark"},
-    {SYS_prlimit64, "SYS_prlimit64"},
-    {SYS_name_to_handle_at, "SYS_name_to_handle_at"},
-    {SYS_open_by_handle_at, "SYS_open_by_handle_at"},
-    {SYS_clock_adjtime, "SYS_clock_adjtime"},
-    {SYS_syncfs, "SYS_syncfs"},
-    {SYS_sendmmsg, "SYS_sendmmsg"},
-    {SYS_setns, "SYS_setns"},
-    {SYS_getcpu, "SYS_getcpu"},
-    {SYS_process_vm_readv, "SYS_process_vm_readv"},
-    {SYS_process_vm_writev, "SYS_process_vm_writev"},
-    {SYS_kcmp, "SYS_kcmp"},
-    {SYS_finit_module, "SYS_finit_module"},
-    {SYS_sched_setattr, "SYS_sched_setattr"},
-    {SYS_sched_getattr, "SYS_sched_getattr"},
-    {SYS_renameat2, "SYS_renameat2"},
-    {SYS_seccomp, "SYS_seccomp"},
-    {SYS_getrandom, "SYS_getrandom"},
-    {SYS_memfd_create, "SYS_memfd_create"},
-    {SYS_kexec_file_load, "SYS_kexec_file_load"},
-    {SYS_bpf, "SYS_bpf"},
-    {SYS_execveat, "SYS_execveat"},
-    {SYS_userfaultfd, "SYS_userfaultfd"},
-    {SYS_membarrier, "SYS_membarrier"},
-    {SYS_mlock2, "SYS_mlock2"},
-    {SYS_copy_file_range, "SYS_copy_file_range"},
-    {SYS_preadv2, "SYS_preadv2"},
-    {SYS_pwritev2, "SYS_pwritev2"},
-    {SYS_pkey_mprotect, "SYS_pkey_mprotect"},
-    {SYS_pkey_alloc, "SYS_pkey_alloc"},
-    {SYS_pkey_free, "SYS_pkey_free"},
-    {SYS_statx, "SYS_statx"},
-    {SYS_io_pgetevents, "SYS_io_pgetevents"},
-    {SYS_rseq, "SYS_rseq"},
-    {SYS_myst_trace, "SYS_myst_trace"},
-    {SYS_myst_trace_ptr, "SYS_myst_trace_ptr"},
-    {SYS_myst_dump_ehdr, "SYS_myst_dump_ehdr"},
-    {SYS_myst_dump_argv, "SYS_myst_dump_argv"},
-    {SYS_myst_dump_stack, "SYS_myst_dump_stack"},
-    {SYS_myst_add_symbol_file, "SYS_myst_add_symbol_file"},
-    {SYS_myst_load_symbols, "SYS_myst_load_symbols"},
-    {SYS_myst_unload_symbols, "SYS_myst_unload_symbols"},
-    {SYS_myst_gen_creds, "SYS_myst_gen_creds"},
-    {SYS_myst_free_creds, "SYS_myst_free_creds"},
-    {SYS_myst_verify_cert, "SYS_myst_verify_cert"},
-    {SYS_myst_gen_creds_ex, "SYS_myst_gen_creds_ex"},
-    {SYS_myst_clone, "SYS_myst_clone"},
-    {SYS_myst_max_threads, "SYS_myst_max_threads"},
-    {SYS_myst_poll_wake, "SYS_myst_poll_wake"},
-    {SYS_get_process_thread_stack, "SYS_get_process_thread_stack"},
-    {SYS_myst_run_itimer, "SYS_myst_run_itimer"},
-    {SYS_myst_get_fork_info, "SYS_myst_get_fork_info"},
-    {SYS_fork_wait_exec_exit, "SYS_fork_wait_exec_exit"},
-    {SYS_myst_kill_wait_child_forks, "SYS_myst_kill_wait_child_forks"},
-    {SYS_myst_get_exec_stack_option, "SYS_myst_get_exec_stack_option"},
-    /* Open Enclave extensions */
-    {SYS_myst_oe_get_report_v2, "SYS_myst_oe_get_report_v2"},
-    {SYS_myst_oe_free_report, "SYS_myst_oe_free_report"},
-    {SYS_myst_oe_get_target_info_v2, "SYS_myst_oe_get_target_info_v2"},
-    {SYS_myst_oe_free_target_info, "SYS_myst_oe_free_target_info"},
-    {SYS_myst_oe_parse_report, "SYS_myst_oe_parse_report"},
-    {SYS_myst_oe_verify_report, "SYS_myst_oe_verify_report"},
-    {SYS_myst_oe_get_seal_key_by_policy_v2,
-     "SYS_myst_oe_get_seal_key_by_policy_v2"},
-    {SYS_myst_oe_get_public_key_by_policy,
-     "SYS_myst_oe_get_public_key_by_policy"},
-    {SYS_myst_oe_get_public_key, "SYS_myst_oe_get_public_key"},
-    {SYS_myst_oe_get_private_key_by_policy,
-     "SYS_myst_oe_get_private_key_by_policy"},
-    {SYS_myst_oe_get_private_key, "SYS_myst_oe_get_private_key"},
-    {SYS_myst_oe_free_key, "SYS_myst_oe_free_key"},
-    {SYS_myst_oe_get_seal_key_v2, "SYS_myst_oe_get_seal_key_v2"},
-    {SYS_myst_oe_free_seal_key, "SYS_myst_oe_free_seal_key"},
-    {SYS_myst_oe_generate_attestation_certificate,
-     "SYS_myst_oe_generate_attestation_certificate"},
-    {SYS_myst_oe_free_attestation_certificate,
-     "SYS_myst_oe_free_attestation_certificate"},
-    {SYS_myst_oe_verify_attestation_certificate,
-     "SYS_myst_oe_verify_attestation_certificate"},
-    {SYS_myst_oe_result_str, "SYS_myst_oe_result_str"},
-#ifdef MYST_ENABLE_GCOV
-    {SYS_myst_gcov, "SYS_myst_gcov"},
-#endif
-    {SYS_myst_unmap_on_exit, "SYS_myst_unmap_on_exit"},
-};
-
-static size_t _n_pairs = sizeof(_pairs) / sizeof(_pairs[0]);
 
 // The kernel should eventually use _bad_addr() to check all incoming addresses
 // from user space. This is a stop gap until the kernel is able to check
@@ -559,13 +164,8 @@ done:
 
 static const char* _syscall_str(long n)
 {
-    for (size_t i = 0; i < _n_pairs; i++)
-    {
-        if (n == _pairs[i].num)
-            return _pairs[i].str;
-    }
-
-    return "unknown";
+    const char* name = myst_syscall_name(n);
+    return name ? name : "unknown";
 }
 
 const char* myst_syscall_str(long n)
@@ -2488,10 +2088,22 @@ long myst_syscall_execve(
     long ret = 0;
     const char** argv = NULL;
     myst_thread_t* current_thread = myst_thread_self();
+    myst_path_t* resolved_path = NULL;
+    const char* resolved_filename = filename;
 
-    /* ATTN: the filename should be resolved if not an absolute path */
-    if (!filename || filename[0] != '/')
+    if (!resolved_filename)
         ERAISE(-EINVAL);
+
+    // Resolve relative path
+    if (resolved_filename[0] != '/')
+    {
+        if (!(resolved_path = (myst_path_t*)malloc(sizeof(myst_path_t))))
+            ERAISE(-ENOMEM);
+
+        ECHECK(myst_realpath(resolved_filename, resolved_path));
+
+        resolved_filename = resolved_path->buf;
+    }
 
     /* Make a copy of argv_in[] and inject filename into argv[0] */
     {
@@ -2503,7 +2115,7 @@ long myst_syscall_execve(
         for (size_t i = 0; i < argc; i++)
             argv[i] = argv_in[i];
 
-        argv[0] = filename;
+        argv[0] = resolved_filename;
         argv[argc] = NULL;
     }
 
@@ -2518,14 +2130,26 @@ long myst_syscall_execve(
             (const char**)argv,
             _count_args((const char* const*)envp),
             (const char**)envp,
-            NULL, /* wanted secrets */
+            NULL, /* CRT args */
+            0,    /* thread stack size */
             free,
             argv) != 0)
     {
-        return -ENOENT;
+        ECHECK(-ENOENT);
     }
 
 done:
+    if (resolved_path)
+    {
+        resolved_filename = NULL;
+        free(resolved_path);
+        resolved_path = NULL;
+    }
+    if (argv)
+    {
+        free(argv);
+    }
+
     return ret;
 }
 
@@ -2639,6 +2263,32 @@ long myst_syscall_sendto(
 
     ECHECK(myst_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
     ret = (*sd->sd_sendto)(sd, sock, buf, len, flags, dest_addr, addrlen);
+
+done:
+    return ret;
+}
+
+long myst_syscall_setsid()
+{
+    long ret = -EPERM;
+    myst_process_t* self = myst_process_self();
+
+    /*
+     * If the caller is already a group leader or part of a process group
+     * whose leader is the caller's parent process,
+     * a new session cannot be created.
+     */
+    if (self->pid == self->pgid || self->pgid == self->ppid)
+        goto done;
+
+    /*
+     * The calling process is the leader of the new session and
+     * the process group leader of the new process group. It
+     * has no controlling terminal.
+     */
+    self->sid = self->pid;
+    self->pgid = self->pid;
+    ret = self->sid;
 
 done:
     return ret;
@@ -3225,6 +2875,20 @@ done:
     return ret;
 }
 
+long myst_syscall_interrupt_thread(int tid)
+{
+    long ret = 0;
+    myst_thread_t* thread;
+
+    if (!(thread = myst_find_thread(tid)))
+        ERAISE(-ESRCH);
+
+    ECHECK(myst_interrupt_thread(thread));
+
+done:
+    return ret;
+}
+
 long myst_syscall_ret(long ret)
 {
     if (ret < 0)
@@ -3559,7 +3223,7 @@ static long _syscall(void* args_)
             _strace(n, NULL);
             BREAK(_return(n, __myst_kernel_args.exec_stack));
         }
-        case SYS_get_process_thread_stack:
+        case SYS_myst_get_process_thread_stack:
         {
             _strace(n, NULL);
             void** stack = (void**)x1;
@@ -4184,7 +3848,7 @@ static long _syscall(void* args_)
                 // ATTN: give the thread a little time to start to avoid a
                 // syncyhronization error. This suppresses a failure in the
                 // popen test. This should be investigated later.
-                myst_sleep_msec(5);
+                myst_sleep_msec(5, false);
             }
 
             BREAK(_return(n, ret));
@@ -4198,7 +3862,16 @@ static long _syscall(void* args_)
             long ret = myst_syscall_get_fork_info(process, arg);
             BREAK(_return(n, ret));
         }
-        case SYS_fork_wait_exec_exit:
+        case SYS_myst_interrupt_thread:
+        {
+            int tid = (int)x1;
+
+            _strace(n, "tid=%d\n", tid);
+
+            long ret = myst_syscall_interrupt_thread(tid);
+            BREAK(_return(n, ret));
+        }
+        case SYS_myst_fork_wait_exec_exit:
         {
             int ret = 0;
             _strace(n, NULL);
@@ -4216,7 +3889,8 @@ static long _syscall(void* args_)
 
             while (myst_have_child_forked_processes(process))
             {
-                myst_sleep_msec(10);
+                /* ATTN: revisit whether signals should be processed */
+                myst_sleep_msec(10, false);
             }
 
             BREAK(_return(n, ret));
@@ -4244,6 +3918,11 @@ static long _syscall(void* args_)
             thread->exec_kstack = args->kstack;
 
             long ret = myst_syscall_execve(filename, argv, envp);
+            /* myst_syscall_execve() only returns on failure */
+            /* when myst_syscall_execve() returns on failure, kstack will be
+             * freed by syscall framework. Set thread->exec_kstack to NULL to
+             * avoid double free by the next SYS_execve syscall */
+            thread->exec_kstack = NULL;
             BREAK(_return(n, ret));
         }
         case SYS_exit:
@@ -4648,7 +4327,10 @@ static long _syscall(void* args_)
             BREAK(_return(n, myst_getsid()));
         }
         case SYS_setsid:
-            break;
+        {
+            _strace(n, NULL);
+            BREAK(_return(n, myst_syscall_setsid()));
+        }
         case SYS_getgroups:
         {
             size_t size = (size_t)x1;
@@ -5796,7 +5478,7 @@ static long _syscall(void* args_)
 
                 _strace(
                     n,
-                    "sockfd=%d addr=%s addrlen=%p flags=%x",
+                    "sockfd=%d addr=%s addrlen=%p flags=0%o",
                     sockfd,
                     addrstr,
                     addrlen,
@@ -6123,15 +5805,25 @@ static long _syscall(void* args_)
             {
                 char addrstr[MAX_IPADDR_LEN];
 
-                _socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN);
-
-                _strace(
-                    n,
-                    "sockfd=%d addrlen=%u family=%u ip=%s",
-                    sockfd,
-                    addrlen,
-                    addr->sa_family,
-                    addrstr);
+                if (_socketaddr_to_str(addr, addrstr, MAX_IPADDR_LEN) == 0)
+                {
+                    _strace(
+                        n,
+                        "sockfd=%d addrlen=%u family=%u ip=%s",
+                        sockfd,
+                        addrlen,
+                        addr->sa_family,
+                        addrstr);
+                }
+                else
+                {
+                    _strace(
+                        n,
+                        "sockfd=%d addrlen=%u family=<bad> ip=%s",
+                        sockfd,
+                        addrlen,
+                        addrstr);
+                }
             }
 
             ret = myst_syscall_connect(sockfd, addr, addrlen);
@@ -6164,34 +5856,8 @@ static long _syscall(void* args_)
                     addrlen);
             }
 
-#ifdef MYST_NO_RECVMSG_MITIGATION
             ret = myst_syscall_recvfrom(
                 sockfd, buf, len, flags, src_addr, addrlen);
-#else  /* MYST_NO_RECVMSG_WORKAROUND */
-            /* ATTN: this mitigation introduces a severe performance penalty */
-            // This mitigation works around a problem with a certain
-            // application that fails handle EGAIN. This should be removed
-            // when possible.
-            for (size_t i = 0; i < 10; i++)
-            {
-                ret = myst_syscall_recvfrom(
-                    sockfd, buf, len, flags, src_addr, addrlen);
-
-                if (ret != -EAGAIN)
-                    break;
-
-                {
-                    struct timespec req;
-                    req.tv_sec = 0;
-                    req.tv_nsec = 1000000000 / 10;
-                    long args[6];
-                    args[0] = (long)&req;
-                    args[1] = (long)NULL;
-                    _forward_syscall(SYS_nanosleep, args);
-                    continue;
-                }
-            }
-#endif /* MYST_NO_RECVMSG_WORKAROUND */
             BREAK(_return(n, ret));
         }
         case SYS_sendto:
@@ -6278,7 +5944,38 @@ static long _syscall(void* args_)
             int flags = (int)x3;
             long ret;
 
-            _strace(n, "sockfd=%d msg=%p flags=%d", sockfd, msg, flags);
+            if (msg && myst_is_addr_within_kernel(msg))
+                if (msg->msg_iov && myst_is_addr_within_kernel(msg->msg_iov))
+                    _strace(
+                        n,
+                        "sockfd=%d msg=%p flags=%d(0x%x) (msg_iov=%p "
+                        "msg_iovlen=%d total-iov-length=%zd)",
+                        sockfd,
+                        msg,
+                        flags,
+                        flags,
+                        msg->msg_iov,
+                        msg->msg_iovlen,
+                        myst_iov_len(msg->msg_iov, msg->msg_iovlen));
+                else
+                    _strace(
+                        n,
+                        "sockfd=%d msg=%p flags=%d(0x%x) (msg_iov=%p "
+                        "iov-lengh=%d)",
+                        sockfd,
+                        msg,
+                        flags,
+                        flags,
+                        msg->msg_iov,
+                        msg->msg_iovlen);
+            else
+                _strace(
+                    n,
+                    "sockfd=%d msg=%p flags=%d(%x)",
+                    sockfd,
+                    msg,
+                    flags,
+                    flags);
 
             ret = myst_syscall_sendmsg(sockfd, msg, flags | MSG_NOSIGNAL);
             if (ret == -EPIPE && !(flags & MSG_NOSIGNAL))

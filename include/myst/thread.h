@@ -25,6 +25,9 @@
 #define MYST_THREAD_MAGIC 0xc79c53d9ad134ad4
 #define MYST_MAX_MUNNAP_ON_EXIT 5
 
+/* this signal is used to interrupt threads blocking on host in syscalls */
+#define MYST_INTERRUPT_THREAD_SIGNAL (SIGRTMIN + 1)
+
 typedef struct myst_thread myst_thread_t;
 typedef struct myst_process myst_process_t;
 
@@ -652,5 +655,7 @@ MYST_INLINE int myst_thread_queue_search_remove_bitset(
 
     return num_found;
 }
+
+int myst_interrupt_thread(myst_thread_t* thread);
 
 #endif /* _MYST_THREAD_H */
