@@ -35,8 +35,8 @@ Takes the developer through the steps of build a cpio application, an ext2 appli
 Demonstrates how to run a  Mystikos application from within a docker container either locally or in Azure Kubernetes Service.
 
 [TEEAware](./TEEAware)
-(gencreds)[./TEEAware/gencreds]Shows an advanced developer how to write a TEE aware sample in C that can get a self signed certificate which can be used for attested_tls.
-(dotNET)[./TEEAware/dotNET]Shows a developer how to get started with dotNET applications for Mystikos. It also shows how a dotNET application can retrieve TEE credentials for use.
+1. [gencreds](./TEEAware/gencreds) Shows an advanced developer how to write a TEE aware sample in C that can get a self signed certificate which can be used for attested_tls.
+2. [dotNET]()./TEEAware/dotNET)Shows a developer how to get started with dotNET applications for Mystikos. It also shows how a dotNET application can retrieve TEE credentials for use.
 
 [java_hello_world](./java_hello_world)
 Demonstrates how to build and run a Java application.
