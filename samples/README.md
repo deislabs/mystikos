@@ -34,17 +34,18 @@ Takes the developer through the steps of build a cpio application, an ext2 appli
 [docker_aks](./docker_aks)
 Demonstrates how to run a  Mystikos application from within a docker container either locally or in Azure Kubernetes Service.
 
-[gencreds](./gencreds)
-Shows an advanced developer how to write a TEE aware sample that can get a self signed certificate which can be used for attested_tls.
+[TEEAware](./TEEAware)
+(gencreds)[./TEEAware/gencreds]Shows an advanced developer how to write a TEE aware sample in C that can get a self signed certificate which can be used for attested_tls.
+(dotNET)[./TEEAware/dotNET]Shows a developer how to get started with dotNET applications for Mystikos. It also shows how a dotNET application can retrieve TEE credentials for use.
 
 [java_hello_world](./java_hello_world)
 Demonstrates how to build and run a Java application.
 
 [Pytorch and ONNX infrence](./pytorch_onnx_inference)
-Demonstrates how to convert a Dockerfile into a root file system that can be run in Mystikos. Can run both a pytorch and an ONNX inference application.
+Demonstrates how to convert a Dockerfile into a root file system that can be run in Mystikos. Can run both a pytorch and an ONNX inference application. The sample is written in Python.
 
 [RUST](./rust)
 Demonstrates running a RUST application.
 
 [Tensorflow_lite](./tensorflow_lite)
-Demonstrates running a Tensorflow Lite application.
+Demonstrates running a Tensorflow Lite application.The sample is written in Python.
