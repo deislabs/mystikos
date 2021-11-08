@@ -10,17 +10,15 @@ build:  ext2rootfs package
 
 appdir:
 	echo "Creating an appdir from Dockerfile"
-	@myst-appbuilder Dockerfile.slim.buster
+	@myst-appbuilder Dockerfile
 
 ext2rootfs: appdir
 	echo "Building a ext2 file system to run in Mystikos"
 	@myst mkext2 appdir ext2rootfs
-	echo "Dumping roothash merkel tree"
-	@myst fssig --roothash ext2rootfs > roothash
 
 runexec: ext2rootfs
 	echo "Running application in ext2 file system with myst exec-sgx"
-	@myst exec-sgx $(OPTS) ext2rootfs /usr/local/bin/python3 --app-config-path config.json
+	@myst exec-sgx $(OPTS) ext2rootfs /app/TEEAware --app-config-path config.json
 
 package.pem:
 	echo "Generating a signing key"
@@ -28,11 +26,11 @@ package.pem:
 
 package: package.pem ext2rootfs
 	echo "Generating a signed package"
-	@myst package-sgx --roothash=roothash package.pem config.json
+	@myst package-sgx appdir package.pem config.json
 
 run: package
 	echo "Running Mystikos packaged application. No myst exec-sgx necessary"
-	./myst/bin/python3 --rootfs=ext2rootfs $(OPTS)
+	myst/bin/TEEAware $(OPTS)
 
 clean:
-	@rm -rf appdir ext2rootfs package.pem  myst roothash
+	@rm -rf appdir ext2rootfs package.pem  myst roothash TEEAware/build TEEAware/obj TEEAware/bin
