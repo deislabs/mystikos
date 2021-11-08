@@ -1,6 +1,6 @@
 # TEE-aware program for Mystikos in .NET
 
-This sanokes guides users to create TEE-aware applications, which are
+This sample guides users to create TEE-aware applications, which are
 essential to many confidential computing scenarios.
 
 It is recommended that you understand how to use EXT2 file system and how applications can be packaged

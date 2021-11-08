@@ -101,6 +101,11 @@ Here is a code snippet inside `gencreds.c`.
     {
         printf("****I am in an SGX TEE, I will proceed to generate and verify TEE credentials\n");\
 ```
+
+
+
+## Run the program
+
 In the Makefile, the make run command runs the program outside of Mystikos and inside Mystikos
 ```
 	echo "Running application outside a TEE."
@@ -108,10 +113,6 @@ In the Makefile, the make run command runs the program outside of Mystikos and i
 	echo "Running Mystikos packaged application inside an SGX TEE."
 	./myst/bin/gencreds
 ```
-
-
-## Run the program
-
 
 Issue the `make run` command.
 
