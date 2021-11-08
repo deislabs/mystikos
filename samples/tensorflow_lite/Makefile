@@ -20,7 +20,7 @@ ext2rootfs: appdir
 
 runexec: ext2rootfs
 	echo "Running application in ext2 file system with myst exec-sgx"
-	@myst exec-sgx $(OPTS) ext2rootfs /usr/local/bin/python3 --app-config-path config.json
+	@myst exec-sgx $(OPTS) --roothash=roothash ext2rootfs /usr/local/bin/python3 --app-config-path config.json
 
 package.pem:
 	echo "Generating a signing key"

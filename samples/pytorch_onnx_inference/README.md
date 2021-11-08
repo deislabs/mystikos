@@ -9,6 +9,8 @@ to obtain the necessary information.
 
 ## Transform a Dockerfile into a root file system
 `Dockerfile.rootfs` sets up all the prerequsites to use ONNX and Pytorch inside a Python program.
+This sample downloads the AlexNet model in `.pt` format and exports it to `.onnx`
+format on the host. `download_pretrained_model.py` contains the code to do this and is invoked via `Dockerfile.rootfs`.
 `myst-appbuilder` is used to convert the Dockerfile into a directory containing all the files needed to run this application in Mystikos.
 ```
 myst-appbuilder -v -d Dockerfile.rootfs
@@ -19,8 +21,7 @@ In this sample, we use an EXT2 file system.
 
 ## Functionality 
 
-This sample downloads the AlexNet model in `.pt` format and exports it to `.onnx`
-format. This is executed outside the enclave (`src/download_pretrained_model.py`).
+The model and images are available inside the root file system(see above). The inferencing algorithm runs inside the enclave.
 
 A server(`src/server_app.py`) is launched inside the enclave with the packaged model files.
 A client(`client.sh`) sends image files to the server. The server processes it through the
@@ -48,8 +49,6 @@ This sample needs more memory than helloworld. `ApplicationPath` sensures that p
 
 To run the sample in package mode, use `make run` to launch both the server and the local client that will
 send images located inside `test_samples` for inferencing.
-
-To run the sample using `myst exec-sgx`, use `make runexec`.
 
 To run the sample using `myst exec-sgx`, use `make runexec`. Note that the `myst-exec` command takes the application configuration as a parameter
 ```

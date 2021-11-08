@@ -8,7 +8,7 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 #include <stdint.h>
-#include <myst/tee.h>
+#include <myst/tee.h> //Included from the Mystikos installation. $(MYSTIKOS_INSTALL_DIR)/include
 
 int _verifier(myst_tee_identity_t* identity, void* ptr)
 {
