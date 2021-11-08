@@ -2,13 +2,13 @@
 // Licensed under the MIT License.
 
 #include <assert.h>
+#include <myst/tee.h> //Included from the Mystikos installation. $(MYSTIKOS_INSTALL_DIR)/include
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/syscall.h>
 #include <unistd.h>
-#include <stdint.h>
-#include <myst/tee.h> //Included from the Mystikos installation. $(MYSTIKOS_INSTALL_DIR)/include
 
 int _verifier(myst_tee_identity_t* identity, void* ptr)
 {
@@ -31,21 +31,21 @@ int main()
     void* pkey = NULL;
     size_t cert_size = 0, pkey_size = 0;
 
-
     const char* target = getenv("MYST_TARGET");
-    if ( !target )
+    if (!target)
     {
-       printf("****I am in unknown environment, returning\n");
-       return 0;
+        printf("****I am in unknown environment, returning\n");
+        return 0;
     }
     if (strcmp(target, "sgx") != 0)
     {
-        printf("****I am in non-TEE, returning\n");\
+        printf("****I am in non-TEE, returning\n");
         return 0;
     }
     else
     {
-        printf("****I am in an SGX TEE, I will proceed to generate and verify TEE credentials\n");\
+        printf("****I am in an SGX TEE, I will proceed to generate and verify "
+               "TEE credentials\n");
         ret = syscall(SYS_myst_gen_creds, &cert, &cert_size, &pkey, &pkey_size);
         assert(ret == 0);
         printf("Generated a self-signed certificate and a private key\n");
