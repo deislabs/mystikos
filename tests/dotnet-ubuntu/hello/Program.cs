@@ -5,18 +5,34 @@ namespace hello
 {
     class Program
     {
-        static void Main(string[] args)
+        static void test_divide_by_zero()
         {
-            Console.WriteLine("Hello World!");
             int q, a = 5, b = 0;
             try {
                 q = a / b;
             } catch (DivideByZeroException e) {
                 Console.WriteLine("Exception caught: {0}", e);
-                return;
             }
-            // unreachable
-            Environment.Exit(1);
+        }
+        static void test_null_str_op()
+        {
+            string s = null;
+            try {
+                int len = s.Length;
+            } catch (NullReferenceException e) {
+                Console.WriteLine("Exception caught: {0}", e);
+            }
+        }
+        static void Main(string[] args)
+        {
+            // test handling multiple SIGFPEs.
+            test_divide_by_zero();
+            test_divide_by_zero();
+            
+            // test handling mutliple SIGSEGVs.
+            test_null_str_op();
+            test_null_str_op();
+
         }  
     }
 }
