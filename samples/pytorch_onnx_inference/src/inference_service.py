@@ -1,5 +1,5 @@
 # Based on
-# https://www.le arnopencv.com/pytorch-for-beginners-image-classification-using-pre-trained-models/
+# https://www.learnopencv.com/pytorch-for-beginners-image-classification-using-pre-trained-models/
 
 # Import torch and torchvision modules
 import torch
