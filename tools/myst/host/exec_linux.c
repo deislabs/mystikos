@@ -318,6 +318,10 @@ static void _install_signal_handlers()
 {
     struct sigaction sa;
     sa.sa_flags = SA_SIGINFO;
+    // Specify SA_NODEFER, so that if same signal is thrown from the handler, it
+    // can be caught. This is encountered in .net runtime, where the signal
+    // handler never returns.
+    sa.sa_flags |= SA_NODEFER;
     sigemptyset(&sa.sa_mask);
     sa.sa_sigaction = _sigaction_handler;
 
