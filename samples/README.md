@@ -36,7 +36,7 @@ Demonstrates how to run a  Mystikos application from within a docker container e
 
 * TEE Aware applications
     - [gencreds](./TEE_Aware/gencreds) Shows an advanced developer how to write a TEE aware sample in C that can get a self signed certificate which can be used for attested_tls.
-    - [dotNET](./TEE_Aware/dotNET) Shows a developer how to get started with dotNET applications for Mystikos. It also shows how a dotNET application can retrieve TEE credentials for use.
+    - [dotNET](./TEE_Aware/donet) Shows a developer how to get started with .NET applications for Mystikos. It also shows how a .NET application can retrieve TEE credentials for use.
 
 * [java_hello_world](./java_hello_world)
 Demonstrates how to build and run a Java application.

@@ -37,7 +37,7 @@ package: package.pem ext2rootfs
 runexec: ext2rootfs
 	./kill.sh myst exec-sgx
 	@echo "Running with myst exec"
-	@myst exec-sgx $(OPTS) ext2rootfs $(APP_PATH) --app-config-path config.json &
+	@myst exec-sgx $(OPTS) --roothash=roothash ext2rootfs $(APP_PATH) --app-config-path config.json &
 	./wait.sh
 	./client.sh test_samples/dog.jpg
 	@sleep $(QUERY_INTERVAL)

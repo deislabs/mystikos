@@ -15,10 +15,12 @@ appdir:
 ext2rootfs: appdir
 	echo "Building a ext2 file system to run in Mystikos"
 	@myst mkext2 appdir ext2rootfs
+	echo "Dumping roothash merkel tree"
+	@myst fssig --roothash ext2rootfs > roothash
 
 runexec: ext2rootfs
 	echo "Running application in ext2 file system with myst exec-sgx"
-	@myst exec-sgx ext2rootfs /bin/gencreds $(OPTS)
+	@myst exec-sgx --roothash=roothash ext2rootfs /bin/gencreds $(OPTS)
 
 package.pem:
 	echo "Generating a signing key"
@@ -26,7 +28,7 @@ package.pem:
 
 package: package.pem ext2rootfs
 	echo "Generating a signed package"
-	@myst package-sgx  appdir package.pem config.json
+	@myst package-sgx --roothash=roothash appdir package.pem config.json
 
 run: package
 	echo "Running application outside a TEE."
