@@ -1,7 +1,6 @@
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
-PSW_VERSION   := 2.15.100
 APPBUILDER=$(TOP)/scripts/appbuilder
 HEAP_SIZE="768M"
 
@@ -67,4 +66,4 @@ t:
 	echo ${DEV_SGX_ISDIR}
 
 prereqs:
-	@docker build --build-arg PSW_VERSION=$(PSW_VERSION) -f Dockerfile-prereqs .
+	@docker build -f Dockerfile-prereqs .
