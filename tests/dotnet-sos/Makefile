@@ -18,6 +18,8 @@ all: ext2fs runner-image
 
 appdir:
 	$(APPBUILDER) Dockerfile
+	# libmscordaccore is required by sos_test.py
+	cp appdir/app/libmscordaccore.so .
 
 ext2fs: appdir
 	rm -rf appdir/tmp/clr-debug-pipe*
@@ -27,7 +29,7 @@ runner-image:
 	docker pull $(TEST_RUNNER_IMG)
 
 clean:
-	sudo rm -fr appdir ext2fs rootfs stdouterr.txt
+	sudo rm -fr appdir ext2fs rootfs stdouterr.txt libmscordaccore.so
 
 DOCKER_SGX_DRIVER_OPTIONS = -v /dev/sgx:/dev/sgx
 DOCKER_SGX_DRIVER_OPTIONS += --device /dev/sgx/enclave:/dev/sgx/enclave
