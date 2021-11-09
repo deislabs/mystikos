@@ -17,7 +17,17 @@ def copy_libmscordaccore(ci, res):
     assert(tmpdir_match)
     tmpdir_path = tmpdir_match.group(0)[1:-1]
 
-    bashCommand = f"cp ./appdir/app/libmscordaccore.so {tmpdir_path}"
+    bashCommand = f"ls"
+    process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
+    output, error = process.communicate()
+    print(output)
+
+    bashCommand = f"pwd"
+    process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
+    output, error = process.communicate()
+    print(output)
+
+    bashCommand = f"cp libmscordaccore.so {tmpdir_path}"
     process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
     output, error = process.communicate()
     assert(not error)

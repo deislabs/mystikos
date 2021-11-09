@@ -2,45 +2,45 @@ TOP=$(abspath ..)
 include $(TOP)/defs.mak
 
 DIRS =
-DIRS += attested_tls
+# DIRS += attested_tls
 
-ifdef DB_SERVER_NAME
-ifdef DB_NAME
-ifdef MAA_URL
-DIRS += sql_ae
-DIRS += python_app
-endif
-endif
-endif
+# ifdef DB_SERVER_NAME
+# ifdef DB_NAME
+# ifdef MAA_URL
+# DIRS += sql_ae
+# DIRS += python_app
+# endif
+# endif
+# endif
 
 # Enable this azure-specific solution only on the nightly pipeline
 # as it depends on secrets only availale on that pipeline.
-ifdef MYST_NIGHTLY_TEST
-DIRS += mhsm_ssr
-DIRS += confidential_ml
-endif
+# ifdef MYST_NIGHTLY_TEST
+# DIRS += mhsm_ssr
+# DIRS += confidential_ml
+# endif
 
-DIRS += msgpack_c
+# DIRS += msgpack_c
 
-ifndef MYST_ENABLE_GCOV
-DIRS += dotnet
-endif
+# ifndef MYST_ENABLE_GCOV
+# DIRS += dotnet
+# endif
 
-DIRS += aspnet
-DIRS += memcached
-DIRS += python_flask_tests
-DIRS += python_web_frameworks
-DIRS += python_webserver
-ifndef MYST_SKIP_PR_TEST
-# Do not run in PR pipeline as it takes ~15min
-# Disable this as it fails pipeline, will re-enable after investigation
-DIRS += tensorflow_lite
-DIRS += pandas_tests
-endif
-DIRS += nodejs
-DIRS += numpy_core_tests
-DIRS += redis
-DIRS += cpprestsdk
+# DIRS += aspnet
+# DIRS += memcached
+# DIRS += python_flask_tests
+# DIRS += python_web_frameworks
+# DIRS += python_webserver
+# ifndef MYST_SKIP_PR_TEST
+# # Do not run in PR pipeline as it takes ~15min
+# # Disable this as it fails pipeline, will re-enable after investigation
+# DIRS += tensorflow_lite
+# DIRS += pandas_tests
+# endif
+# DIRS += nodejs
+# DIRS += numpy_core_tests
+# DIRS += redis
+# DIRS += cpprestsdk
 
 .PHONY: $(DIRS)
 

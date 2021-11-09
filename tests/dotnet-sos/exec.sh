@@ -4,6 +4,7 @@ function log_and_exit()
 {
     echo "==================================="
     cat stdouterr.txt
+    rm stdouterr.txt
     exit 1
 }
 
@@ -44,3 +45,5 @@ if [ "$?" != "0" ]; then
     echo "clrstack check for Debugger.Break() failed!"
     log_and_exit
 fi
+
+rm stdouterr.txt
