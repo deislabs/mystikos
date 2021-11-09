@@ -76,6 +76,8 @@ string reportFile = "/tmp/myst.report";
 `
 The application can then load these credentials. 
 
+To learn more about writing TEE aware applications, please read the [TEE aware application documentation](../../../doc/user-getting-started-tee-aware.md).
+
 
 ## Running the sample
 
