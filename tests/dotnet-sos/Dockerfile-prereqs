@@ -1,6 +1,35 @@
-FROM mcr.microsoft.com/dotnet/sdk:5.0 AS build
+FROM ubuntu:18.04
+ARG PSW_VERSION
+
+RUN apt-get update && apt-get install -y \
+    wget \
+    gnupg
+
+RUN if [ -z "$PSW_VERSION" ]; then echo "Please set PSW_VERSION (e.g. 2.15.100)." >&2; exit 1; fi
 
 WORKDIR /tmp
+
+# Use the APT preference file to pin sgx packages to specific versions
+# Reference https://manpages.debian.org/buster/apt/apt_preferences.5.en.html
+# Download the pref file from https://download.01.org/intel-sgx/sgx_repo/ubuntu/apt_preference_files/
+# Assuming file name to follow *sgx_<PSW_VERSION>_bionic_custom_version.cfg convention
+RUN ["/bin/bash", "-c", "wget -r -l1 --no-parent -nd -A *sgx_$(echo ${PSW_VERSION//./_})_bionic_custom_version.cfg https://download.01.org/intel-sgx/sgx_repo/ubuntu/apt_preference_files/"]
+RUN ["/bin/bash", "-c", "mv *sgx_$(echo ${PSW_VERSION//./_})_bionic_custom_version.cfg /etc/apt/preferences.d/intel-sgx.pref"]
+
+# Add the repository to sources, and add the key to the list of
+# trusted keys used by the apt to authenticate packages
+RUN echo "deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu bionic main" | tee /etc/apt/sources.list.d/intel-sgx.list \
+    && wget -qO - https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | apt-key add -
+# Add Microsoft repo for az-dcap-client
+RUN echo "deb [arch=amd64] https://packages.microsoft.com/ubuntu/18.04/prod bionic main" | tee /etc/apt/sources.list.d/msprod.list \
+    && wget -qO - https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
+
+RUN apt-get update && apt-get install -y \
+    libsgx-enclave-common \
+    libsgx-dcap-ql \
+    libsgx-quote-ex \
+    az-dcap-client
+
 # Install lldb-10
 RUN apt update && \
      apt install -y lsb-release software-properties-common gnupg
@@ -8,13 +37,19 @@ RUN wget https://apt.llvm.org/llvm.sh && \
         chmod +x llvm.sh && \
         ./llvm.sh 10
 
+RUN wget https://packages.microsoft.com/config/ubuntu/18.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb && \
+    dpkg -i packages-microsoft-prod.deb && \
+    rm packages-microsoft-prod.deb
+
+#RUN apt update \
+#    apt install -y apt-transport-https
+RUN apt update && \
+    apt install -y dotnet-sdk-5.0
+
 # Install SOS debugger extension
 RUN dotnet tool install -g dotnet-sos \
 	&& /root/.dotnet/tools/dotnet-sos install
 
-# Install intel library required to run enclaves
-RUN echo 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu bionic main' | tee /etc/apt/sources.list.d/intel-sgx.list && \
-    wget -qO - https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | apt-key add - && \
-    apt update && apt -y install libsgx-enclave-common
+ENV SGX_AESM_ADDR=1
 
 WORKDIR /app
