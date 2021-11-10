@@ -323,7 +323,7 @@ static int _status_vcallback(
 
     myst_spin_lock(&myst_process_list_lock);
 
-    if (!(locals = malloc(sizeof(struct locals))))
+    if (!(locals = calloc(1, sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     if (!vbuf || !entrypath)
