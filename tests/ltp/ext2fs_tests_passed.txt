@@ -28,6 +28,7 @@
 /ltp/testcases/kernel/syscalls/dup/dup06
 /ltp/testcases/kernel/syscalls/dup/dup07
 /ltp/testcases/kernel/syscalls/dup2/dup202
+/ltp/testcases/kernel/syscalls/dup2/dup203
 /ltp/testcases/kernel/syscalls/dup2/dup204
 /ltp/testcases/kernel/syscalls/dup2/dup205
 /ltp/testcases/kernel/syscalls/dup3/dup3_01
