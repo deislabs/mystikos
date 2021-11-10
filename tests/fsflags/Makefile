@@ -15,8 +15,8 @@ endif
 # endif
 
 tests_ext2fs:
-	$(MYST_EXEC) $(OPTS) ext2fs /opath
-	$(MYST_EXEC) $(OPTS) ext2fs /atemptypath
+	$(MYST_EXEC) $(OPTS) --force ext2fs /opath
+	$(MYST_EXEC) $(OPTS) --force ext2fs /atemptypath
 
 tests_ramfs:
 	$(MYST_EXEC) $(OPTS) rootfs /opath
