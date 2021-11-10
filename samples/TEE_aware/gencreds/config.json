@@ -1,0 +1,10 @@
+{
+    "version": "0.1",
+
+    "Debug": 1,
+    "ProductID": 1,
+    "SecurityVersion": 1,
+
+    "MemorySize": "40m",
+    "ApplicationPath": "/bin/gencreds"
+}

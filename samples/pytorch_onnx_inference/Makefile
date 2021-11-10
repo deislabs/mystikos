@@ -1,61 +1,43 @@
-TOP = $(abspath ../..)
-include $(TOP)/defs.mak
-
-APPBUILDER    = $(TOP)/scripts/appbuilder
-APP_NAME      = python3
-
-ifndef APP_MODE
-APP_MODE      = package
-endif
+.PHONY: build run clean
 
 APP_PATH      = /home/user/miniconda/bin/python3
-PACKAGE_PATH  = myst/bin/$(APP_NAME)
+PACKAGE_PATH  = myst/bin/python3
 ROOTFS        = ext2rootfs
 TIMEOUT = 180
+ifdef STRACE
+	OPTS = --strace
+endif
 
 QUERY_INTERVAL = 2
 SHUTDOWN_WAIT = 2 
 
-ifdef STRACE
-OPTS = --strace
-endif
+all: build
 
-all: appdir build
+build:  ext2rootfs package
 
 appdir:
-	$(APPBUILDER) -v -d Dockerfile.rootfs
+	echo "Convert Dockerfile to an appdir using myst-appbuilder."
+	@myst-appbuilder -v -d Dockerfile.rootfs
 
-###########################################
-## Build
-###########################################
+ext2rootfs: appdir
+	echo "Building a ext2 file system to run in Mystikos"
+	@myst mkext2 appdir ext2rootfs
+	echo "Dumping roothash merkel tree"
+	@myst fssig --roothash ext2rootfs > roothash
 
-build:
-	@echo "\n-------ext2 build start--------\n"
-	$(MAKE) build-ext2
-	@echo "\n-------package build start--------\n"
-	$(MAKE) build-package
-	@echo "\n-------build end--------\n"
 
-build-ext2: appdir
-	@myst mkext2 appdir $(ROOTFS)
-	@myst fssig --roothash $(ROOTFS) > roothash
+package.pem:
+	echo "Generating a signing key"
+	openssl genrsa -out package.pem -3 3072
 
-build-package: package.pem
+package: package.pem ext2rootfs
+	echo "Generating a signed package"
 	@myst package-sgx --roothash=roothash package.pem config.json
 
-###########################################
-## Run
-###########################################
-
-# running both service and client in one recipe
-run:
-	./kill.sh $(PACKAGE_PATH) $(APP_PATH)
-	@echo "\n------starting Inference Service($(APP_MODE) mode)------\n"
-ifeq ($(APP_MODE),package)
-	$(PACKAGE_PATH) $(OPTS) --rootfs=$(ROOTFS) & 
-else
-	$(MYST_EXEC) $(OPTS) $(ROOTFS) $(APP_PATH) --app-config-path config.json &
-endif
+runexec: ext2rootfs
+	./kill.sh myst exec-sgx
+	@echo "Running with myst exec"
+	@myst exec-sgx $(OPTS) --roothash=roothash ext2rootfs $(APP_PATH) --app-config-path config.json &
 	./wait.sh
 	./client.sh test_samples/dog.jpg
 	@sleep $(QUERY_INTERVAL)
@@ -63,34 +45,21 @@ endif
 	@sleep $(QUERY_INTERVAL)
 	./client.sh test_samples/strawberries.jpg
 	@sleep $(SHUTDOWN_WAIT)
-	@echo "\n------terminate Inference Service------\n"
+	./kill.sh myst exec-sgx
+
+run: package
+	./kill.sh $(PACKAGE_PATH) $(APP_PATH)
+	@echo "Running in package mode"
+	$(PACKAGE_PATH) --rootfs=ext2rootfs $(OPTS)  & 
+	./wait.sh
+	./client.sh test_samples/dog.jpg
+	@sleep $(QUERY_INTERVAL)
+	./client.sh test_samples/automotive.jpg
+	@sleep $(QUERY_INTERVAL)
+	./client.sh test_samples/strawberries.jpg
+	@sleep $(SHUTDOWN_WAIT)
 	./kill.sh $(PACKAGE_PATH) $(APP_PATH)
 
-# launch inference service in enclave only, waiting for client to connect, either 
-# run a webpage, curl request or the client.sh script with predefined queries
-run-service-ext2:
-	@myst exec-sgx $(OPTS) $(ROOTFS) $(APP_PATH) --app-config-path config.json
-
-run-service-package:
-	$(PACKAGE_PATH) $(OPTS) --rootfs=$(ROOTFS)
-
-###########################################
-## Debug
-###########################################
-
-gdb:
-ifeq ($(APP_MODE),package)
-	$(MYST_GDB) --args $(PACKAGE_PATH) --rootfs=$(ROOTFS)
-else
-	$(MYST_GDB) --args @myst exec-sgx $(OPTS) $(ROOTFS) $(APP_PATH) --app-config-path config.json
-endif
-
-###########################################
-## Misc
-###########################################
-
-package.pem:
-	openssl genrsa -out package.pem -3 3072
-
 clean:
-	rm -rf appdir myst package.pem $(ROOTFS)
+	rm -rf appdir myst package.pem ext2rootfs
+	

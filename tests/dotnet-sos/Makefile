@@ -5,7 +5,7 @@ APPBUILDER=$(TOP)/scripts/appbuilder
 HEAP_SIZE="768M"
 
 MYST_LLDB_DOCKER = /build/openenclave/bin/oelldb
-TEST_RUNNER_IMG = mystikos/dotnet-sos-prereqs:20200805
+TEST_RUNNER_IMG = mystikos/dotnet-sos-prereqs:nov-09-2021
 
 OPTS = --report-native-tids
 
@@ -17,6 +17,8 @@ all: ext2fs runner-image
 
 appdir:
 	$(APPBUILDER) Dockerfile
+	# libmscordaccore is required by sos_test.py
+	cp appdir/app/libmscordaccore.so .
 
 ext2fs: appdir
 	rm -rf appdir/tmp/clr-debug-pipe*
@@ -26,12 +28,13 @@ runner-image:
 	docker pull $(TEST_RUNNER_IMG)
 
 clean:
-	sudo rm -fr appdir ext2fs rootfs stdouterr.txt
+	sudo rm -fr appdir ext2fs rootfs stdouterr.txt libmscordaccore.so
 
 DOCKER_SGX_DRIVER_OPTIONS = -v /dev/sgx:/dev/sgx
 DOCKER_SGX_DRIVER_OPTIONS += --device /dev/sgx/enclave:/dev/sgx/enclave
 DOCKER_SGX_DRIVER_OPTIONS += --device /dev/sgx/provision:/dev/sgx/provision
-
+DOCKER_SGX_DRIVER_OPTIONS += --volume /var/run/aesmd/aesm.socket:/var/run/aesmd/aesm.socket
+DOCKER_SGX_DRIVER_OPTIONS += --env SGX_AESM_ADDR=1
 tests:
 	$(RUNTEST) docker run --rm -e TARGET=$(TARGET) -v $(abspath .):/app/ -v $(TOP)/build:/build $(DOCKER_SGX_DRIVER_OPTIONS) $(TEST_RUNNER_IMG) /app/exec.sh $(MYST_LLDB_DOCKER) /build/bin/myst $(EXEC) $(OPTS)
 	@ echo "=== passed test (dotnet-sos)"
@@ -43,7 +46,7 @@ tests-without-docker:
 #			dev targets			 #
 ##################################
 run-ext2:
-	$(MYST) exec ext2fs \
+	$(MYST_EXEC) ext2fs \
 	--memory-size $(HEAP_SIZE) \
 	/app/hello
 
@@ -61,3 +64,6 @@ ct:
 
 t:
 	echo ${DEV_SGX_ISDIR}
+
+prereqs:
+	@docker build -f Dockerfile-prereqs .

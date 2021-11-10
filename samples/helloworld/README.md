@@ -38,7 +38,7 @@ This builds `appdir`, `cpiorootfs` and executes the application contained within
 ```
  openssl genrsa -out package.pem -3 3072
  ```
-  To learn more about signing, please see  [packaging and signing documentation](../doc/sign-package.md)
+  To learn more about signing, please see  [packaging and signing documentation](../../doc/sign-package.md)
 
 3. A package is generated using the `myst package` command
 ```
@@ -47,8 +47,7 @@ This builds `appdir`, `cpiorootfs` and executes the application contained within
  This creates a `myst` directory and places the application under it.
 
  It is important to note that a configuration file is provided to `myst package`. 
- To see more information regarding configuration, please refer to [Application configuration](../../doc/sign-package.md#application-configuration-for-sgx-enclave-packaging).
-
+ To see more information regarding configuration, please refer to [Configuration Parameters](#configuration-parameters)
 
 4. At this point the application is self contained. To run it, just run the application under the `myst` directory.
 ```
@@ -100,7 +99,7 @@ This builds `appdir`, `ext2rootfs` and executes the application contained within
     make runexec
    ```
 
-## Build a signed package and run the application in a self contained package
+### Build a signed package and run the application in a self contained package
 1. The EXT2 root file system is created as demonstrated above.
 
 2. A signing key is generated using
@@ -108,7 +107,7 @@ This builds `appdir`, `ext2rootfs` and executes the application contained within
 ```
  openssl genrsa -out package.pem -3 3072
  ```
-  To learn more about signing, please see  [packaging and signing documentation](../doc/sign-package.md)
+  To learn more about signing, please see  [packaging and signing documentation](../../doc/sign-package.md)
 
 3. A package is generated using the `myst package` command
 ```
@@ -133,3 +132,25 @@ This builds `appdir`, `ext2rootfs`, the signed package and executes the applicat
 ```
     make run
 ```
+
+## Configuration parameters
+A Mystikos package needs configuration to control certain run-time environmental settings as well as settings that control how the application reads environmental data from the insecure host environment.
+This is the configuration for the helloworld sample. `ApplicationPath` states which executable should be run after the package is loaded. `MemorySize` is the amount of memory needed by the application to run.
+
+```
+{
+    // Mystikos configuration version number
+    "version": "0.1",
+
+    // OpenEnclave specific values
+    "Debug": 1,
+    "ProductID": 1,
+    "SecurityVersion": 1,
+
+    // Mystikos specific values
+    "HostApplicationParameters": true,
+    "MemorySize": "40m",
+    "ApplicationPath": "/bin/hello"
+}
+```
+To learn more about configuration, please refer to related [documentation](../../doc/sign-package.md).

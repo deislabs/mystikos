@@ -106,14 +106,14 @@ pipeline {
                    ${JENKINS_SCRIPTS}/global/wait-dpkg.sh
                    ${JENKINS_SCRIPTS}/code-coverage/init-install.sh
 
-                   ${MYST_SCRIPTS}/myst_cc_info
+                   ${MYST_SCRIPTS}/myst_cc
                    sed -i 's|SF:${WORKSPACE}|SF:|g' lcov.info
 
                    mv lcov.info ${LCOV_INFO}
                    """
 
                 azureUpload(
-                    containerName: 'mystikos-build-resources',
+                    containerName: 'mystikos-code-coverage',
                     storageType: 'container',
                     uploadZips: true,
                     filesPath: "${LCOV_INFO}",

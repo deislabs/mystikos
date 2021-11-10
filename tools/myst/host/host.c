@@ -171,6 +171,18 @@ done:
     return ret;
 }
 
+long init_symbol_file_tmpdir(char* tmpdir)
+{
+    long ret = 0;
+
+    if (!mkdtemp(tmpdir))
+        ERAISE(errno);
+    ECHECK(chmod(tmpdir, 0777));
+
+done:
+    return ret;
+}
+
 long myst_tcall_add_symbol_file(
     const void* file_data,
     size_t file_size,
@@ -192,10 +204,8 @@ long myst_tcall_add_symbol_file(
 
     if (!tmpdir_init)
     {
-        if (!mkdtemp(tmpdir))
-            ERAISE(errno);
+        ECHECK(init_symbol_file_tmpdir(tmpdir));
         tmpdir_init = 1;
-        ECHECK(chmod(tmpdir, 0777));
     }
 
     /* assume libmystcrt if no file data */

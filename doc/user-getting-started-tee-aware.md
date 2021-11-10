@@ -185,7 +185,7 @@ int main()
 Save the file as `tee2.c`. Now build and run the program in SGX with the
 following commands:
 ```bash
-myst-gcc tee2.c -I/opt/mystikos/include -o appdir/tee2
+gcc tee2.c -I/opt/mystikos/include -o appdir/tee2
 myst mkcpio appdir rootfs && myst exec rootfs /tee2
 ```
 And the output should be:
@@ -225,7 +225,7 @@ First we declare the desire in the config.json:
     // The heap size of the user application. Increase this setting if your app experienced OOM.
     "MemorySize": "1g",
     // The path to the entry point application in rootfs
-    "ApplicationPath": "/app/HelloWorld",
+    "ApplicationPath": "/app/TEEAware",
     // The parameters to the entry point application
     "ApplicationParameters": [],
     // Whether we allow "ApplicationParameters" to be overridden by command line options of "myst exec"

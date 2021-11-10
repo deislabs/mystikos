@@ -1,6 +1,4 @@
-ifdef STRACE
-	OPTS = --strace
-endif
+CFLAGS = -fPIC
 
 .PHONY: build run clean
 
@@ -9,8 +7,10 @@ all: build
 build:  ext2rootfs package
 
 appdir:
-	echo "Creating an appdir from Dockerfile"
-	@myst-appbuilder Dockerfile.slim.buster
+	echo "Building an appdir with all the necessary application files"
+	@rm -rf appdir
+	@mkdir -p appdir/bin
+	gcc $(CFLAGS) -I$(MYSTIKOS_INSTALL_DIR)/include gencreds.c -o appdir/bin/gencreds
 
 ext2rootfs: appdir
 	echo "Building a ext2 file system to run in Mystikos"
@@ -20,7 +20,7 @@ ext2rootfs: appdir
 
 runexec: ext2rootfs
 	echo "Running application in ext2 file system with myst exec-sgx"
-	@myst exec-sgx $(OPTS) --roothash=roothash ext2rootfs /usr/local/bin/python3 --app-config-path config.json
+	@myst exec-sgx --roothash=roothash ext2rootfs /bin/gencreds $(OPTS)
 
 package.pem:
 	echo "Generating a signing key"
@@ -28,11 +28,13 @@ package.pem:
 
 package: package.pem ext2rootfs
 	echo "Generating a signed package"
-	@myst package-sgx --roothash=roothash package.pem config.json
+	@myst package-sgx --roothash=roothash appdir package.pem config.json
 
 run: package
-	echo "Running Mystikos packaged application. No myst exec-sgx necessary"
-	./myst/bin/python3 --rootfs=ext2rootfs $(OPTS)
+	echo "Running application outside a TEE."
+	appdir/bin/gencreds
+	echo "Running Mystikos packaged application inside an SGX TEE."
+	./myst/bin/gencreds
 
 clean:
 	@rm -rf appdir ext2rootfs package.pem  myst roothash
