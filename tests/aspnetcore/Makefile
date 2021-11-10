@@ -42,6 +42,11 @@ one:
 	$(MYST_EXEC) ext2fs --roothash=roothash $(OPTS) \
 	/aspnetcore/.dotnet/dotnet test $(TEST)
 
+one-gdb:
+	$(MYST_GDB) --batch -ex "source ./commands.gdb" --args \
+        $(MYST_EXEC) ext2fs --roothash=roothash $(OPTS) \
+	/aspnetcore/.dotnet/dotnet test $(TEST)
+
 #################################
 #			dev targets			#
 #################################
