@@ -1,8 +1,8 @@
 diff --git a/Makefile b/Makefile
-index bd8f5c38..fcc35f3e 100644
+index bd8f5c38..ed57984d 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -160,12 +160,16 @@ obj/%.lo: $(srcdir)/%.c $(GENH) $(IMPH)
+@@ -160,12 +160,17 @@ obj/%.lo: $(srcdir)/%.c $(GENH) $(IMPH)
  lib/libc.so: $(LOBJS) $(LDSO_OBJS)
  	$(CC) $(CFLAGS_ALL) $(LDFLAGS_ALL) -nostdlib -shared \
  	-Wl,-e,_dlstart -o $@ $(LOBJS) $(LDSO_OBJS) $(LIBCC)
@@ -14,7 +14,8 @@ index bd8f5c38..fcc35f3e 100644
  	$(RANLIB) $@
  
 +objects.mak: $(LOBJS) $(LDSO_OBJS)
-+	@ echo "MUSL_OBJECTS = $(addprefix $(CURDIR)/,$(LOBJS) $(LDSO_OBJS))" > objects.mak
++	@ echo "MUSL_OBJECTS = $(addprefix <CURDIR>/,$(LOBJS) $(LDSO_OBJS))" > objects.mak
++	@ sed -i 's|<CURDIR>|$(CURDIR)|g' objects.mak
 +
  $(EMPTY_LIBS):
  	rm -f $@
