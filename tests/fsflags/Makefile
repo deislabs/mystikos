@@ -10,9 +10,9 @@ ifdef STRACE
 OPTS = --strace
 endif
 
-ifdef MYST_ENABLE_GCOV
-OPTS += --export-ramfs
-endif
+# ifdef MYST_ENABLE_GCOV
+# OPTS += --export-ramfs
+# endif
 
 tests_ext2fs:
 	$(MYST_EXEC) $(OPTS) ext2fs /opath
