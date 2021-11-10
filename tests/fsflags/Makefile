@@ -3,8 +3,8 @@ include $(TOP)/defs.mak
 
 all:
 	make -C appdir
-	$(MYST) mkcpio appdir rootfs
-	$(MYST) mkext2 --force appdir ext2fs
+	$(MYST) mkcpio appdir/appdir rootfs
+	$(MYST) mkext2 appdir/appdir ext2fs
 
 ifdef STRACE
 OPTS = --strace
