@@ -45,7 +45,7 @@ struct ext2_dir
 
 #define FILE_MAGIC 0x0e6fc76762264945
 
-struct myst_file
+struct myst_file_shared
 {
     uint64_t magic;
     ext2_ino_t ino;
@@ -54,10 +54,16 @@ struct myst_file
     int open_flags;
     uint32_t access;    /* (O_RDONLY | O_RDWR | O_WRONLY) */
     uint32_t operating; /* (O_APPEND | O_DIRECT | O_NOATIME | O_NONBLOCK) */
-    int fdflags;        /* file descriptor flags: FD_CLOEXEC */
     char realpath[PATH_MAX];
     ext2_dir_t dir;
     _Atomic(size_t) use_count;
+};
+
+/* file descriptor level object */
+struct myst_file
+{
+    struct myst_file_shared* shared;
+    int fdflags; /* file descriptor flags: FD_CLOEXEC */
 };
 
 MYST_UNUSED
@@ -79,14 +85,34 @@ static ext2_ino_t _inode_unref(ext2_t* ext2, ext2_ino_t ino)
     return --ext2->inode_refs[ino - 1].nopens;
 }
 
+static bool _file_shared_valid(const myst_file_shared_t* shared)
+{
+    return shared != NULL && shared->magic == FILE_MAGIC;
+}
+
 static bool _file_valid(const myst_file_t* file)
 {
-    return file != NULL && file->magic == FILE_MAGIC;
+    return file != NULL && _file_shared_valid(file->shared);
+}
+
+static void _file_shared_clear(myst_file_shared_t* shared)
+{
+    memset(shared, 0xdd, sizeof(myst_file_shared_t));
 }
 
 static void _file_clear(myst_file_t* file)
 {
     memset(file, 0xdd, sizeof(myst_file_t));
+}
+
+static void _file_shared_free(myst_file_shared_t* file_shared)
+{
+    if (file_shared)
+    {
+        assert(_file_shared_valid(file_shared));
+        _file_shared_clear(file_shared);
+        free(file_shared);
+    }
 }
 
 static void _file_free(myst_file_t* file)
@@ -992,9 +1018,9 @@ static int _load_file(
         ERAISE(-ENOMEM);
 
     /* handle symlinks shorter than 60 bytes up front */
-    if (S_ISLNK(file->inode.i_mode) && file->inode.i_size < 60)
+    if (S_ISLNK(file->shared->inode.i_mode) && file->shared->inode.i_size < 60)
     {
-        memcpy(data, file->inode.i_block, file->inode.i_size);
+        memcpy(data, file->shared->inode.i_block, file->shared->inode.i_size);
     }
     else
     {
@@ -1072,6 +1098,7 @@ static int _load_file_by_inode(
     struct locals
     {
         myst_file_t file;
+        myst_file_shared_t file_shared;
     };
     struct locals* locals = NULL;
 
@@ -1086,16 +1113,18 @@ static int _load_file_by_inode(
     {
         /* create a dummy file struct */
         memset(locals, 0, sizeof(struct locals));
-        locals->file.magic = FILE_MAGIC;
-        locals->file.ino = ino;
-        locals->file.inode = *inode;
-        locals->file.offset = 0;
-        locals->file.access = O_RDONLY;
-        locals->file.open_flags = O_RDONLY;
+        locals->file.shared = &locals->file_shared;
+        locals->file_shared.magic = FILE_MAGIC;
+        locals->file_shared.ino = ino;
+        locals->file_shared.inode = *inode;
+        locals->file_shared.offset = 0;
+        locals->file_shared.access = O_RDONLY;
+        locals->file_shared.open_flags = O_RDONLY;
 
         /* load the data */
         ECHECK(_load_file(ext2, &locals->file, data, size));
         _file_clear(&locals->file);
+        _file_shared_clear(&locals->file_shared);
     }
 
 done:
@@ -1117,6 +1146,7 @@ static int _load_file_by_ino(
     {
         ext2_inode_t inode;
         myst_file_t file;
+        myst_file_shared_t file_shared;
     };
     struct locals* locals = NULL;
 
@@ -1129,16 +1159,19 @@ static int _load_file_by_ino(
     {
         /* create a dummy file struct */
         memset(&locals->file, 0, sizeof(locals->file));
-        locals->file.magic = FILE_MAGIC;
-        locals->file.ino = ino;
-        locals->file.inode = locals->inode;
-        locals->file.offset = 0;
-        locals->file.access = O_RDONLY;
-        locals->file.open_flags = O_RDONLY;
+        memset(&locals->file_shared, 0, sizeof(locals->file_shared));
+        locals->file.shared = &locals->file_shared;
+        locals->file_shared.magic = FILE_MAGIC;
+        locals->file_shared.ino = ino;
+        locals->file_shared.inode = locals->inode;
+        locals->file_shared.offset = 0;
+        locals->file_shared.access = O_RDONLY;
+        locals->file_shared.open_flags = O_RDONLY;
 
         /* load the data */
         ECHECK(_load_file(ext2, &locals->file, data, size));
         _file_clear(&locals->file);
+        _file_shared_clear(&locals->file_shared);
     }
 
 done:
@@ -2301,14 +2334,14 @@ static int _ftruncate(ext2_t* ext2, myst_file_t* file, off_t length, bool isdir)
     struct locals* locals = NULL;
 
     /* Fail if directory */
-    if (!isdir && S_ISDIR(file->inode.i_mode))
+    if (!isdir && S_ISDIR(file->shared->inode.i_mode))
         ERAISE(-EINVAL);
 
     if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     /* get the file size */
-    file_size = _inode_get_size(&file->inode);
+    file_size = _inode_get_size(&file->shared->inode);
 
     /* fail if length is out of range */
     if (length < 0)
@@ -2317,7 +2350,7 @@ static int _ftruncate(ext2_t* ext2, myst_file_t* file, off_t length, bool isdir)
     if (length < file_size)
     {
         /* get the total number of blocks */
-        num_blocks = _inode_get_num_blocks(ext2, &file->inode);
+        num_blocks = _inode_get_num_blocks(ext2, &file->shared->inode);
 
         /* find the index of the first block number to delete */
         ECHECK(myst_round_up(length, ext2->block_size, &first));
@@ -2325,7 +2358,8 @@ static int _ftruncate(ext2_t* ext2, myst_file_t* file, off_t length, bool isdir)
 
         /* release the selected block numbers */
         for (size_t i = first; i < num_blocks; i++)
-            ECHECK(_inode_put_blkno(ext2, file->ino, &file->inode, i));
+            ECHECK(_inode_put_blkno(
+                ext2, file->shared->ino, &file->shared->inode, i));
 
         /* Fill the last partial block with zeros */
         if (first > 0)
@@ -2333,7 +2367,8 @@ static int _ftruncate(ext2_t* ext2, myst_file_t* file, off_t length, bool isdir)
             uint32_t blkno;
 
             /* get the block number of the last block */
-            ECHECK(_inode_get_blkno(ext2, &file->inode, first - 1, &blkno));
+            ECHECK(_inode_get_blkno(
+                ext2, &file->shared->inode, first - 1, &blkno));
 
             if (blkno != 0)
             {
@@ -2353,16 +2388,16 @@ static int _ftruncate(ext2_t* ext2, myst_file_t* file, off_t length, bool isdir)
             }
         }
 
-        _inode_set_size(&file->inode, (size_t)length);
-        _update_timestamps(&file->inode, CHANGE | MODIFY);
-        ECHECK(_write_inode(ext2, file->ino, &file->inode));
+        _inode_set_size(&file->shared->inode, (size_t)length);
+        _update_timestamps(&file->shared->inode, CHANGE | MODIFY);
+        ECHECK(_write_inode(ext2, file->shared->ino, &file->shared->inode));
     }
     else if (length > file_size)
     {
         /* make file larger (with a hole) */
-        _inode_set_size(&file->inode, length);
-        _update_timestamps(&file->inode, CHANGE | MODIFY);
-        ECHECK(_write_inode(ext2, file->ino, &file->inode));
+        _inode_set_size(&file->shared->inode, length);
+        _update_timestamps(&file->shared->inode, CHANGE | MODIFY);
+        ECHECK(_write_inode(ext2, file->shared->ino, &file->shared->inode));
     }
 
 done:
@@ -2388,6 +2423,7 @@ static int _inode_write_data(
     struct locals
     {
         myst_file_t file;
+        myst_file_shared_t file_shared;
         uint8_t buf[EXT2_MAX_BLOCK_SIZE];
     };
 
@@ -2395,12 +2431,14 @@ static int _inode_write_data(
         ERAISE(-ENOMEM);
 
     memset(&locals->file, 0, sizeof(myst_file_t));
-    locals->file.magic = FILE_MAGIC;
-    locals->file.ino = ino;
-    locals->file.inode = *inode;
-    locals->file.offset = 0;
-    locals->file.access = O_WRONLY;
-    locals->file.open_flags = O_WRONLY;
+    memset(&locals->file_shared, 0, sizeof(myst_file_shared_t));
+    locals->file.shared = &locals->file_shared;
+    locals->file_shared.magic = FILE_MAGIC;
+    locals->file_shared.ino = ino;
+    locals->file_shared.inode = *inode;
+    locals->file_shared.offset = 0;
+    locals->file_shared.access = O_WRONLY;
+    locals->file_shared.open_flags = O_WRONLY;
 
     while (r)
     {
@@ -2415,7 +2453,7 @@ static int _inode_write_data(
 
     ECHECK(_ftruncate(ext2, &locals->file, size, isdir));
 
-    memcpy(inode, &locals->file.inode, sizeof(ext2_inode_t));
+    memcpy(inode, &locals->file.shared->inode, sizeof(ext2_inode_t));
     _inode_set_size(inode, size);
 
 done:
@@ -2423,6 +2461,7 @@ done:
     if (locals)
     {
         _file_clear(&locals->file);
+        _file_shared_clear(&locals->file_shared);
         free(locals);
     }
 
@@ -3291,6 +3330,7 @@ static int _stat(
     struct locals
     {
         myst_file_t file;
+        myst_file_shared_t file_shared;
     };
     struct locals* locals = NULL;
 
@@ -3303,12 +3343,14 @@ static int _stat(
     /* call ext2_fstat() */
     {
         memset(&locals->file, 0, sizeof(locals->file));
-        locals->file.magic = FILE_MAGIC;
-        locals->file.ino = *ino;
-        locals->file.inode = *inode;
-        locals->file.offset = 0;
-        locals->file.access = O_RDONLY;
-        locals->file.open_flags = O_RDONLY;
+        memset(&locals->file_shared, 0, sizeof(locals->file_shared));
+        locals->file.shared = &locals->file_shared;
+        locals->file_shared.magic = FILE_MAGIC;
+        locals->file_shared.ino = *ino;
+        locals->file_shared.inode = *inode;
+        locals->file_shared.offset = 0;
+        locals->file_shared.access = O_RDONLY;
+        locals->file_shared.open_flags = O_RDONLY;
 
         ECHECK(ext2_fstat(&ext2->base, &locals->file, statbuf));
         _file_clear(&locals->file);
@@ -3333,6 +3375,7 @@ int ext2_open(
     int ret = 0;
     ext2_t* ext2 = (ext2_t*)fs;
     myst_file_t* file = NULL;
+    myst_file_shared_t* file_shared = NULL;
     ext2_ino_t ino;
     int r;
     follow_t follow = FOLLOW;
@@ -3451,14 +3494,19 @@ int ext2_open(
         if (!(file = (myst_file_t*)calloc(1, sizeof(myst_file_t))))
             ERAISE(-ENOMEM);
 
-        file->magic = FILE_MAGIC;
-        file->ino = ino;
-        file->inode = locals->inode;
-        file->offset = 0;
-        file->open_flags = flags;
-        file->access = (flags & (O_RDONLY | O_RDWR | O_WRONLY));
-        file->operating = (flags & (O_APPEND | O_NONBLOCK));
-        file->use_count = 1;
+        if (!(file_shared =
+                  (myst_file_shared_t*)calloc(1, sizeof(myst_file_shared_t))))
+            ERAISE(-ENOMEM);
+
+        file->shared = file_shared;
+        file->shared->magic = FILE_MAGIC;
+        file->shared->ino = ino;
+        file->shared->inode = locals->inode;
+        file->shared->offset = 0;
+        file->shared->open_flags = flags;
+        file->shared->access = (flags & (O_RDONLY | O_RDWR | O_WRONLY));
+        file->shared->operating = (flags & (O_APPEND | O_NONBLOCK));
+        file->shared->use_count = 1;
     }
 
     /* truncate the file if requested and if not zero-sized */
@@ -3473,9 +3521,9 @@ int ext2_open(
         /* load the directory blocks into memory */
         ECHECK((_load_file_by_path(ext2, path, &dir_data, &dir_size)));
 
-        file->dir.data = dir_data;
-        file->dir.size = dir_size;
-        file->dir.next = file->dir.data;
+        file->shared->dir.data = dir_data;
+        file->shared->dir.size = dir_size;
+        file->shared->dir.next = file->shared->dir.data;
         dir_data = NULL;
     }
 
@@ -3483,14 +3531,18 @@ int ext2_open(
     {
         ECHECK(_path_to_ino_realpath(
             ext2, path, follow, NULL, NULL, locals->buf, NULL));
-        myst_strlcpy(file->realpath, locals->buf, sizeof(file->realpath));
+        myst_strlcpy(
+            file->shared->realpath,
+            locals->buf,
+            sizeof(file->shared->realpath));
     }
 
     /* Increment the reference count for this inode number */
-    _inode_ref(ext2, file->ino);
+    _inode_ref(ext2, file->shared->ino);
 
     *file_out = file;
     file = NULL;
+    file_shared = NULL;
 
 done:
 
@@ -3499,6 +3551,9 @@ done:
 
     if (file)
         _file_free(file);
+
+    if (file_shared)
+        _file_shared_free(file_shared);
 
     if (dir_data)
         free(dir_data);
@@ -3526,23 +3581,23 @@ int64_t ext2_read(myst_fs_t* fs, myst_file_t* file, void* data, uint64_t size)
         ERAISE(-EINVAL);
 
     /* fail if file has been opened for write only */
-    if (file->access == O_WRONLY)
+    if (file->shared->access == O_WRONLY)
         ERAISE(-EBADF);
 
     /* refresh the inode */
-    ECHECK((ext2_read_inode(ext2, file->ino, &file->inode)));
+    ECHECK((ext2_read_inode(ext2, file->shared->ino, &file->shared->inode)));
 
     /* If offset is beyond end of file, return 0 */
-    if (file->offset >= _inode_get_size(&file->inode))
+    if (file->shared->offset >= _inode_get_size(&file->shared->inode))
         goto done;
 
     /* The index of the first block to read */
-    first = file->offset / ext2->block_size;
+    first = file->shared->offset / ext2->block_size;
 
     /* The number of bytes r to be read */
     r = size;
 
-    num_blocks = _inode_get_num_blocks(ext2, &file->inode);
+    num_blocks = _inode_get_num_blocks(ext2, &file->shared->inode);
 
     /* Read the data block-by-block */
     for (i = first; i < num_blocks && r > 0 && !eof; i++)
@@ -3550,7 +3605,7 @@ int64_t ext2_read(myst_fs_t* fs, myst_file_t* file, void* data, uint64_t size)
         uint32_t offset;
         uint32_t blkno;
 
-        ECHECK(_inode_get_blkno(ext2, &file->inode, i, &blkno));
+        ECHECK(_inode_get_blkno(ext2, &file->shared->inode, i, &blkno));
 
         /* handle holes */
         if (blkno == 0)
@@ -3559,7 +3614,7 @@ int64_t ext2_read(myst_fs_t* fs, myst_file_t* file, void* data, uint64_t size)
             ECHECK(ext2_read_block(ext2, blkno, block));
 
         /* The offset of the data within this block */
-        offset = file->offset % ext2->block_size;
+        offset = file->shared->offset % ext2->block_size;
 
         /* Copy data to caller's buffer */
         {
@@ -3567,7 +3622,8 @@ int64_t ext2_read(myst_fs_t* fs, myst_file_t* file, void* data, uint64_t size)
 
             /* reduce n to bytes remaining in the file */
             {
-                uint64_t t = _inode_get_size(&file->inode) - file->offset;
+                uint64_t t = _inode_get_size(&file->shared->inode) -
+                             file->shared->offset;
 
                 if (t < n)
                 {
@@ -3580,7 +3636,7 @@ int64_t ext2_read(myst_fs_t* fs, myst_file_t* file, void* data, uint64_t size)
             memcpy(end, block->data + offset, n);
             r -= n;
             end += n;
-            file->offset += n;
+            file->shared->offset += n;
         }
     }
 
@@ -3624,7 +3680,7 @@ int64_t ext2_write(
         ERAISE(-ENOMEM);
 
     /* check that file has been opened for write */
-    if (file->access == O_RDONLY)
+    if (file->shared->access == O_RDONLY)
         ERAISE(-EBADF);
 
     /* succeed if writing zero bytes */
@@ -3632,17 +3688,17 @@ int64_t ext2_write(
         goto done;
 
     /* refresh inode */
-    ECHECK((ext2_read_inode(ext2, file->ino, &file->inode)));
+    ECHECK((ext2_read_inode(ext2, file->shared->ino, &file->shared->inode)));
 
     /* save the file size */
-    file_size = _inode_get_size(&file->inode);
+    file_size = _inode_get_size(&file->shared->inode);
 
     /* append always writes to the end of the file */
-    if ((file->operating & O_APPEND))
-        file->offset = file_size;
+    if ((file->shared->operating & O_APPEND))
+        file->shared->offset = file_size;
 
     /* get the index of the first block to written */
-    first = file->offset / ext2->block_size;
+    first = file->shared->offset / ext2->block_size;
 
     /* calculate the number of remaining bytes to be written */
     r = size;
@@ -3654,7 +3710,7 @@ int64_t ext2_write(
         bool found_blkno = false;
 
         /* get the block number for the i-th data block */
-        ECHECK(_inode_get_blkno(ext2, &file->inode, i, &blkno));
+        ECHECK(_inode_get_blkno(ext2, &file->shared->inode, i, &blkno));
 
         /* if the block number is zero, create a new block */
         if (blkno == 0)
@@ -3670,7 +3726,7 @@ int64_t ext2_write(
         }
 
         /* calculate the offset of the data within this block */
-        block_offset = file->offset % ext2->block_size;
+        block_offset = file->shared->offset % ext2->block_size;
 
         /* write to the current block */
         {
@@ -3688,15 +3744,15 @@ int64_t ext2_write(
             /* add the block number to the inode */
             if (!found_blkno)
             {
-                ECHECK(
-                    _inode_add_blkno(ext2, file->ino, &file->inode, i, blkno));
+                ECHECK(_inode_add_blkno(
+                    ext2, file->shared->ino, &file->shared->inode, i, blkno));
             }
 
             /* set to zero to prevent it from being released below */
             blkno = 0;
 
             /* advance the file offset */
-            file->offset += n;
+            file->shared->offset += n;
 
             r -= n;
             p += n;
@@ -3704,13 +3760,14 @@ int64_t ext2_write(
     }
 
     /* update the inode size */
-    if (file->offset > file_size)
-        _inode_set_size(&file->inode, _max_size(file->offset, file_size));
+    if (file->shared->offset > file_size)
+        _inode_set_size(
+            &file->shared->inode, _max_size(file->shared->offset, file_size));
 
-    _update_timestamps(&file->inode, CHANGE | MODIFY);
+    _update_timestamps(&file->shared->inode, CHANGE | MODIFY);
 
     /* flush the inode to disk */
-    ECHECK(_write_inode(ext2, file->ino, &file->inode));
+    ECHECK(_write_inode(ext2, file->shared->ino, &file->shared->inode));
 
     /* calculate the number of bytes written */
     ret = size - r;
@@ -3744,12 +3801,12 @@ off_t ext2_lseek(myst_fs_t* fs, myst_file_t* file, off_t offset, int whence)
         }
         case SEEK_CUR:
         {
-            new_offset = (off_t)file->offset + offset;
+            new_offset = (off_t)file->shared->offset + offset;
             break;
         }
         case SEEK_END:
         {
-            new_offset = _inode_get_size(&file->inode) + offset;
+            new_offset = _inode_get_size(&file->shared->inode) + offset;
             break;
         }
         default:
@@ -3762,7 +3819,7 @@ off_t ext2_lseek(myst_fs_t* fs, myst_file_t* file, off_t offset, int whence)
     if (new_offset < 0)
         ERAISE(-EINVAL);
 
-    file->offset = (uint64_t)new_offset;
+    file->shared->offset = (uint64_t)new_offset;
 
     ret = new_offset;
 
@@ -3780,32 +3837,38 @@ int ext2_close(myst_fs_t* fs, myst_file_t* file)
     if (!_ext2_valid(ext2) || !_file_valid(file))
         ERAISE(-EINVAL);
 
-    if (--file->use_count == 0)
+    /* retreive ptr to file object shared between dups */
+    myst_file_shared_t* shared = file->shared;
+
+    /* release the file object specific to a file descriptor */
+    _file_free(file);
+
+    if (--shared->use_count == 0)
     {
         /* if a directory, then release the directory memory contents */
-        if (file->dir.data)
-            free(file->dir.data);
+        if (shared->dir.data)
+            free(shared->dir.data);
 
         /* ATTN:TIMESTAMPS */
 
         /* Decrement the inode reference count */
-        if (_inode_unref(ext2, file->ino) == 0)
+        if (_inode_unref(ext2, shared->ino) == 0)
         {
             /* If unlink() was called while this file was open */
-            if (ext2->inode_refs[file->ino - 1].free)
+            if (ext2->inode_refs[shared->ino - 1].free)
             {
                 /* Refresh the inode */
                 ext2_inode_t inode;
-                ECHECK((ext2_read_inode(ext2, file->ino, &inode)));
+                ECHECK((ext2_read_inode(ext2, shared->ino, &inode)));
 
                 /* Free the inode */
-                ECHECK(_inode_free(ext2, file->ino, &inode));
-                ext2->inode_refs[file->ino - 1].free = 0;
+                ECHECK(_inode_free(ext2, shared->ino, &inode));
+                ext2->inode_refs[shared->ino - 1].free = 0;
             }
         }
 
-        /* release the file object */
-        _file_free(file);
+        /* release the shared file object */
+        _file_shared_free(shared);
     }
 
 done:
@@ -4355,18 +4418,18 @@ int ext2_fstat(myst_fs_t* fs, myst_file_t* file, struct stat* statbuf)
 
     memset(statbuf, 0, sizeof(struct stat));
     statbuf->st_dev = 0; /* ATTN: ignore device number */
-    statbuf->st_ino = file->ino;
-    statbuf->st_mode = file->inode.i_mode;
-    statbuf->st_nlink = file->inode.i_links_count;
-    statbuf->st_uid = file->inode.i_uid;
-    statbuf->st_gid = file->inode.i_gid;
+    statbuf->st_ino = file->shared->ino;
+    statbuf->st_mode = file->shared->inode.i_mode;
+    statbuf->st_nlink = file->shared->inode.i_links_count;
+    statbuf->st_uid = file->shared->inode.i_uid;
+    statbuf->st_gid = file->shared->inode.i_gid;
     statbuf->st_rdev = 0; /* only for special files */
-    statbuf->st_size = _inode_get_size(&file->inode);
+    statbuf->st_size = _inode_get_size(&file->shared->inode);
     statbuf->st_blksize = ext2->block_size;
-    statbuf->st_blocks = file->inode.i_blocks;
-    statbuf->st_atim.tv_sec = file->inode.i_atime;
-    statbuf->st_ctim.tv_sec = file->inode.i_ctime;
-    statbuf->st_mtim.tv_sec = file->inode.i_mtime;
+    statbuf->st_blocks = file->shared->inode.i_blocks;
+    statbuf->st_atim.tv_sec = file->shared->inode.i_atime;
+    statbuf->st_ctim.tv_sec = file->shared->inode.i_ctime;
+    statbuf->st_mtim.tv_sec = file->shared->inode.i_mtime;
 
 done:
     return ret;
@@ -4489,6 +4552,7 @@ int ext2_truncate(myst_fs_t* fs, const char* path, off_t length)
         char suffix[PATH_MAX];
         ext2_inode_t inode;
         myst_file_t file;
+        myst_file_shared_t file_shared;
     };
     struct locals* locals = NULL;
 
@@ -4520,16 +4584,18 @@ int ext2_truncate(myst_fs_t* fs, const char* path, off_t length)
     /* call _ftruncate() */
     {
         memset(&locals->file, 0, sizeof(myst_file_t));
-        locals->file.magic = FILE_MAGIC;
-        locals->file.ino = ino;
-        locals->file.inode = locals->inode;
-        locals->file.offset = 0;
-        locals->file.access = O_WRONLY;
-        locals->file.open_flags = O_WRONLY;
+        locals->file.shared = &locals->file_shared;
+        locals->file_shared.magic = FILE_MAGIC;
+        locals->file_shared.ino = ino;
+        locals->file_shared.inode = locals->inode;
+        locals->file_shared.offset = 0;
+        locals->file_shared.access = O_WRONLY;
+        locals->file_shared.open_flags = O_WRONLY;
 
         ECHECK(_ftruncate(ext2, &locals->file, length, false));
-        locals->inode = locals->file.inode;
+        locals->inode = locals->file_shared.inode;
         _file_clear(&locals->file);
+        _file_shared_clear(&locals->file_shared);
     }
 
     ret = 0;
@@ -4645,6 +4711,7 @@ int ext2_rmdir(myst_fs_t* fs, const char* path)
         ext2_inode_t dinode;
         ext2_inode_t inode;
         myst_file_t file;
+        myst_file_shared_t file_shared;
         char dirname[PATH_MAX];
         char filename[PATH_MAX];
     };
@@ -4706,16 +4773,18 @@ int ext2_rmdir(myst_fs_t* fs, const char* path)
     {
         /* create a dummy file struct */
         memset(&locals->file, 0, sizeof(myst_file_t));
-        locals->file.magic = FILE_MAGIC;
-        locals->file.ino = ino;
-        locals->file.inode = locals->inode;
-        locals->file.offset = 0;
-        locals->file.access = O_WRONLY;
-        locals->file.open_flags = O_WRONLY;
-
+        memset(&locals->file, 0, sizeof(myst_file_t));
+        locals->file.shared = &locals->file_shared;
+        locals->file_shared.magic = FILE_MAGIC;
+        locals->file_shared.ino = ino;
+        locals->file_shared.inode = locals->inode;
+        locals->file_shared.offset = 0;
+        locals->file_shared.access = O_WRONLY;
+        locals->file_shared.open_flags = O_WRONLY;
         ECHECK(_ftruncate(ext2, &locals->file, 0, true));
-        locals->inode = locals->file.inode;
+        locals->inode = locals->file_shared.inode;
         _file_clear(&locals->file);
+        _file_shared_clear(&locals->file_shared);
     }
 
     /* return the inode to the free list */
@@ -4929,9 +4998,13 @@ static int _ext2_dup(
     if (!_ext2_valid(ext2) || !_file_valid(file) || !file_out)
         ERAISE(-EINVAL);
 
-    *file_out = (myst_file_t*)file;
-    (*file_out)->use_count++;
+    if (!(*file_out = (myst_file_t*)calloc(1, sizeof(myst_file_t))))
+        ERAISE(-ENOMEM);
 
+    (*file_out)->shared = file->shared;
+    (*file_out)->fdflags = 0;
+
+    file->shared->use_count++;
 done:
 
     return ret;
@@ -5027,14 +5100,14 @@ static ssize_t _ext2_pread(
         ERAISE(-EFAULT);
 
     /* fail for directories */
-    if (S_ISDIR(file->inode.i_mode))
+    if (S_ISDIR(file->shared->inode.i_mode))
         ERAISE(-EISDIR);
 
-    old_offset = file->offset;
-    file->offset = offset;
+    old_offset = file->shared->offset;
+    file->shared->offset = offset;
 
     n = ext2_read(fs, file, buf, count);
-    file->offset = old_offset;
+    file->shared->offset = old_offset;
     ECHECK(n);
     ret = n;
 
@@ -5064,19 +5137,19 @@ static ssize_t _ext2_pwrite(
         ERAISE(-EINVAL);
 
     /* save the original offset */
-    old_offset = file->offset;
+    old_offset = file->shared->offset;
 
     // When opened for append, Linux pwrite() appends data to the end of file
     // regadless of the offset.
-    if ((file->operating & O_APPEND))
-        file->offset = _inode_get_size(&file->inode);
+    if ((file->shared->operating & O_APPEND))
+        file->shared->offset = _inode_get_size(&file->shared->inode);
     else
-        file->offset = offset;
+        file->shared->offset = offset;
 
     n = ext2_write(fs, file, buf, count);
 
     /* restore the original offset */
-    file->offset = old_offset;
+    file->shared->offset = old_offset;
 
     ECHECK(n);
     ret = n;
@@ -5095,8 +5168,8 @@ static int _set_fd_flag(ext2_t* ext2, myst_file_t* file, long arg)
     else
         file->fdflags = 0;
 
-    _update_timestamps(&file->inode, CHANGE);
-    ECHECK(_write_inode(ext2, file->ino, &file->inode));
+    _update_timestamps(&file->shared->inode, CHANGE);
+    ECHECK(_write_inode(ext2, file->shared->ino, &file->shared->inode));
 
 done:
     return ret;
@@ -5124,21 +5197,21 @@ static int _ext2_fcntl(myst_fs_t* fs, myst_file_t* file, int cmd, long arg)
         }
         case F_GETFL:
         {
-            ret = (int)(file->access | file->operating);
+            ret = (int)(file->shared->access | file->shared->operating);
             goto done;
         }
         case F_SETFL:
         {
             if (arg & O_APPEND)
-                file->operating |= O_APPEND;
+                file->shared->operating |= O_APPEND;
             if (arg & O_NONBLOCK)
-                file->operating |= O_NONBLOCK;
+                file->shared->operating |= O_NONBLOCK;
             if (arg & O_DIRECT)
                 // ATTN: implement O_DIRECT for files
-                file->operating |= O_DIRECT;
+                file->shared->operating |= O_DIRECT;
             if (arg & O_NOATIME)
                 // ATTN: implement O_NOATIME for files
-                file->operating |= O_NOATIME;
+                file->shared->operating |= O_NOATIME;
             goto done;
         }
         case F_SETLK:
@@ -5196,9 +5269,9 @@ static int _ext2_ioctl(
                 ERAISE(-EINVAL);
 
             if (*val)
-                file->operating |= O_NONBLOCK;
+                file->shared->operating |= O_NONBLOCK;
             else
-                file->operating &= ~O_NONBLOCK;
+                file->shared->operating &= ~O_NONBLOCK;
 
             break;
         }
@@ -5225,7 +5298,7 @@ static int _ext2_realpath(
 
     if (strcmp(ext2->target, "/") == 0)
     {
-        if (myst_strlcpy(buf, file->realpath, size) >= size)
+        if (myst_strlcpy(buf, file->shared->realpath, size) >= size)
             ERAISE(-ENAMETOOLONG);
     }
     else
@@ -5233,7 +5306,7 @@ static int _ext2_realpath(
         if (myst_strlcpy(buf, ext2->target, size) >= size)
             ERAISE(-ENAMETOOLONG);
 
-        if (myst_strlcat(buf, file->realpath, size) >= size)
+        if (myst_strlcat(buf, file->shared->realpath, size) >= size)
             ERAISE(-ENAMETOOLONG);
     }
 
@@ -5255,34 +5328,37 @@ static int _ext2_getdents64(
     if (!_ext2_valid(ext2) || !_file_valid(file) || !dirp)
         ERAISE(-EINVAL);
 
-    if (!S_ISDIR(file->inode.i_mode))
+    if (!S_ISDIR(file->shared->inode.i_mode))
         ERAISE(-ENOTDIR);
 
     if (count == 0)
         goto done;
 
-    /* If file was not opened with O_DIRECTORY, file->dir.data will not have
-     * been populated */
-    if (file->dir.data == NULL)
+    /* If file was not opened with O_DIRECTORY, file->shared->dir.data will not
+     * have been populated */
+    if (file->shared->dir.data == NULL)
     {
         /* refresh the inode */
-        ECHECK((ext2_read_inode(ext2, file->ino, &file->inode)));
+        ECHECK(
+            (ext2_read_inode(ext2, file->shared->ino, &file->shared->inode)));
 
         /* _load_file perturbs the file offset, save it */
-        int saved_offset = file->offset;
-        ECHECK(_load_file(ext2, file, &file->dir.data, &file->dir.size));
-        file->offset = saved_offset;
+        int saved_offset = file->shared->offset;
+        ECHECK(_load_file(
+            ext2, file, &file->shared->dir.data, &file->shared->dir.size));
+        file->shared->offset = saved_offset;
     }
 
     /* set next relative to offset in case rewinddir() was called */
-    file->dir.next = (uint8_t*)file->dir.data + file->offset;
+    file->shared->dir.next =
+        (uint8_t*)file->shared->dir.data + file->shared->offset;
 
     for (size_t i = 0; i < n; i++)
     {
         int r;
         struct dirent* ent = NULL;
 
-        if ((r = ext2_readdir(&ext2->base, &file->dir, &ent)) < 0)
+        if ((r = ext2_readdir(&ext2->base, &file->shared->dir, &ent)) < 0)
         {
             ERAISE(r);
         }
@@ -5296,7 +5372,8 @@ static int _ext2_getdents64(
         dirp++;
 
         /* update the file offset */
-        file->offset = (uint8_t*)file->dir.next - (uint8_t*)file->dir.data;
+        file->shared->offset =
+            (uint8_t*)file->shared->dir.next - (uint8_t*)file->shared->dir.data;
     }
 
     ret = (int)bytes;
@@ -5400,13 +5477,13 @@ static int _ext2_futimens(
             case UTIME_OMIT:
                 break;
             case UTIME_NOW:
-                _update_timestamps(&file->inode, ACCESS);
+                _update_timestamps(&file->shared->inode, ACCESS);
                 break;
             default:
             {
                 const struct timespec* ts = &times[0];
                 uint32_t sec = ts->tv_sec + (ts->tv_nsec / NANO_IN_SECOND);
-                file->inode.i_atime = sec;
+                file->shared->inode.i_atime = sec;
                 break;
             }
         }
@@ -5416,13 +5493,13 @@ static int _ext2_futimens(
             case UTIME_OMIT:
                 break;
             case UTIME_NOW:
-                _update_timestamps(&file->inode, MODIFY);
+                _update_timestamps(&file->shared->inode, MODIFY);
                 break;
             default:
             {
                 const struct timespec* ts = &times[1];
                 uint32_t sec = ts->tv_sec + (ts->tv_nsec / NANO_IN_SECOND);
-                file->inode.i_mtime = sec;
+                file->shared->inode.i_mtime = sec;
                 break;
             }
         }
@@ -5430,10 +5507,10 @@ static int _ext2_futimens(
     else
     {
         /* set to current time */
-        _update_timestamps(&file->inode, ACCESS | MODIFY);
+        _update_timestamps(&file->shared->inode, ACCESS | MODIFY);
     }
 
-    ECHECK(_write_inode(ext2, file->ino, &file->inode));
+    ECHECK(_write_inode(ext2, file->shared->ino, &file->shared->inode));
 
 done:
     return ret;
@@ -5534,12 +5611,12 @@ static int _ext2_fchown(
         ERAISE(-EINVAL);
 
     /* refresh the inode */
-    ECHECK((ext2_read_inode(ext2, file->ino, &file->inode)));
+    ECHECK((ext2_read_inode(ext2, file->shared->ino, &file->shared->inode)));
 
-    ECHECK(_chown(&file->inode, owner, group));
+    ECHECK(_chown(&file->shared->inode, owner, group));
 
     /* persist the inode change */
-    ECHECK(_write_inode(ext2, file->ino, &file->inode));
+    ECHECK(_write_inode(ext2, file->shared->ino, &file->shared->inode));
 
 done:
     return ret;
@@ -5683,12 +5760,12 @@ static int _ext2_fchmod(myst_fs_t* fs, myst_file_t* file, mode_t mode)
         ERAISE(-EINVAL);
 
     /* refresh the inode */
-    ECHECK((ext2_read_inode(ext2, file->ino, &file->inode)));
+    ECHECK((ext2_read_inode(ext2, file->shared->ino, &file->shared->inode)));
 
-    ECHECK(_chmod(&file->inode, mode));
+    ECHECK(_chmod(&file->shared->inode, mode));
 
     /* persist the inode change */
-    ECHECK(_write_inode(ext2, file->ino, &file->inode));
+    ECHECK(_write_inode(ext2, file->shared->ino, &file->shared->inode));
 
 done:
     return ret;

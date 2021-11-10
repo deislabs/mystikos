@@ -157,7 +157,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/dup/dup07 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/dup2/dup201 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/dup2/dup202 | 1 | 1 | 1 |
-| /ltp/testcases/kernel/syscalls/dup2/dup203 | 0 | 1 | 0 |
+| /ltp/testcases/kernel/syscalls/dup2/dup203 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/dup2/dup204 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/dup2/dup205 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/dup3/dup3_01 | 1 | 1 | 1 |

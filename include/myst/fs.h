@@ -31,6 +31,7 @@ const char* myst_fstype_name(myst_fstype_t fstype);
 typedef struct myst_fs myst_fs_t;
 
 typedef struct myst_file myst_file_t;
+typedef struct myst_file_shared myst_file_shared_t;
 
 typedef int (*myst_mount_resolve_callback_t)(
     const char* path,
