@@ -157,6 +157,27 @@ index 984db680..9adecf2b 100644
  #endif
  
  #if _REDIR_TIME64
+diff --git a/include/semaphore.h b/include/semaphore.h
+index 3690f496..5e7185bf 100644
+--- a/include/semaphore.h
++++ b/include/semaphore.h
+@@ -14,6 +14,8 @@ extern "C" {
+ 
+ #define SEM_FAILED ((sem_t *)0)
+ 
++typedef int clockid_t;
++
+ typedef struct {
+ 	volatile int __val[4*sizeof(long)/sizeof(int)];
+ } sem_t;
+@@ -25,6 +27,7 @@ int    sem_init(sem_t *, int, unsigned);
+ sem_t *sem_open(const char *, int, ...);
+ int    sem_post(sem_t *);
+ int    sem_timedwait(sem_t *__restrict, const struct timespec *__restrict);
++int    sem_clockwait(sem_t *__restrict, clockid_t, const struct timespec *__restrict);
+ int    sem_trywait(sem_t *);
+ int    sem_unlink(const char *);
+ int    sem_wait(sem_t *);
 diff --git a/include/sys/ioctl.h b/include/sys/ioctl.h
 index c2ce3b48..30de25bb 100644
 --- a/include/sys/ioctl.h
@@ -1402,6 +1423,37 @@ index b66423e6..d9dfd608 100644
  	int new = 0;
  	int old;
  
+diff --git a/src/thread/sem_timedwait.c b/src/thread/sem_timedwait.c
+index 58d3ebfe..002736e1 100644
+--- a/src/thread/sem_timedwait.c
++++ b/src/thread/sem_timedwait.c
+@@ -6,7 +6,7 @@ static void cleanup(void *p)
+ 	a_dec(p);
+ }
+ 
+-int sem_timedwait(sem_t *restrict sem, const struct timespec *restrict at)
++int sem_clockwait(sem_t *restrict sem, clockid_t clockid, const struct timespec *restrict at)
+ {
+ 	pthread_testcancel();
+ 
+@@ -20,7 +20,7 @@ int sem_timedwait(sem_t *restrict sem, const struct timespec *restrict at)
+ 		a_inc(sem->__val+1);
+ 		a_cas(sem->__val, 0, -1);
+ 		pthread_cleanup_push(cleanup, (void *)(sem->__val+1));
+-		r = __timedwait_cp(sem->__val, -1, CLOCK_REALTIME, at, sem->__val[2]);
++		r = __timedwait_cp(sem->__val, -1, clockid, at, sem->__val[2]);
+ 		pthread_cleanup_pop(1);
+ 		if (r) {
+ 			errno = r;
+@@ -29,3 +29,8 @@ int sem_timedwait(sem_t *restrict sem, const struct timespec *restrict at)
+ 	}
+ 	return 0;
+ }
++
++int sem_timedwait(sem_t *restrict sem, const struct timespec *restrict at)
++{
++	return sem_clockwait(sem, CLOCK_REALTIME, at);
++}
 diff --git a/src/thread/x86_64/__set_thread_area.s b/src/thread/x86_64/__set_thread_area.s
 deleted file mode 100644
 index 7347ff4d..00000000
