@@ -27,6 +27,10 @@ static int _stat_vcallback(
     myst_file_t* file,
     myst_buf_t* vbuf,
     const char* entrypath);
+static int _sys_kernel_pid_max_vcallback(
+    myst_file_t* self,
+    myst_buf_t* vbuf,
+    const char* entrypath);
 
 static myst_fs_t* _procfs;
 static char* _cpuinfo_buf = NULL;
@@ -95,6 +99,25 @@ int procfs_pid_setup(pid_t pid)
             locals->tmp_path, sizeof(locals->tmp_path), "/proc/%d/fd", pid));
 
         ECHECK(myst_mkdirhier(locals->tmp_path, 777));
+    }
+
+    /* Create /proc/sys/kernel directory */
+    {
+        ECHECK(myst_snprintf(
+            locals->tmp_path, sizeof(locals->tmp_path), "/proc/sys/kernel"));
+
+        ECHECK(myst_mkdirhier(locals->tmp_path, 777));
+
+        /* Create /proc/sys/kernel/pid_max entry */
+        ECHECK(myst_snprintf(
+            locals->tmp_path,
+            sizeof(locals->tmp_path),
+            "/proc/sys/kernel/pid_max"));
+
+        myst_vcallback_t v_cb = {0};
+        v_cb.open_cb = _sys_kernel_pid_max_vcallback;
+        ECHECK(myst_create_virtual_file(
+            _procfs, locals->tmp_path, S_IFREG | S_IRUSR, v_cb));
     }
 
     /* maps entry */
@@ -193,6 +216,34 @@ static int _meminfo_vcallback(
     ECHECK(myst_snprintf(tmp, n, "MemFree:        %lu\n", freeram));
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
     ECHECK(myst_snprintf(tmp, n, "Cached:         %lu\n", cached));
+    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+
+done:
+
+    if (ret != 0)
+        myst_buf_release(vbuf);
+
+    return ret;
+}
+
+static int _sys_kernel_pid_max_vcallback(
+    myst_file_t* self,
+    myst_buf_t* vbuf,
+    const char* entrypath)
+{
+    (void)self;
+    int ret = 0;
+    size_t pid_max = 0x8000;
+
+    (void)entrypath;
+
+    if (!vbuf)
+        ERAISE(-EINVAL);
+
+    myst_buf_clear(vbuf);
+    char tmp[128];
+    const size_t n = sizeof(tmp);
+    ECHECK(myst_snprintf(tmp, n, "%lu\n", pid_max));
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
 
 done:
