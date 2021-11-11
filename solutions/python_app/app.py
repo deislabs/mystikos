@@ -4,6 +4,8 @@ import os
 import numpy as np
 import pandas as pd
 import pycurl
+import stat
+import tty
 from logzero import logger
 from Crypto.Cipher import AES
 
@@ -66,6 +68,30 @@ def test_jwt():
     print(clear)
     logger.info("test_jwt passed")
 
+def test_bidirectional_pty():
+    master, read_slave = os.openpty()
+    write_slave = os.dup(read_slave)
+    tty.setraw(read_slave)
+    data = bytearray()
+
+    mode = os.fstat(master).st_mode
+    assert(stat.S_ISCHR(mode))
+    mode = os.fstat(read_slave).st_mode
+    assert(stat.S_ISCHR(mode))
+    mode = os.fstat(write_slave).st_mode
+    assert(stat.S_ISCHR(mode))
+
+    os.write(master, b'a')
+    os.write(write_slave, b'1')
+    os.write(write_slave, b'2345')
+
+    os.write(master, b'bcde')
+    chunk = os.read(master, 1024)
+    assert(chunk == b'12345')
+    chunk = os.read(read_slave, 1024)
+    assert(chunk == b'abcde')
+    print("test_bidirectional_pty passed")
+
 if __name__ == "__main__":
 
     test_pyodbc(
@@ -82,3 +108,5 @@ if __name__ == "__main__":
     test_pycurl()
 
     test_jwt()
+
+    test_bidirectional_pty()

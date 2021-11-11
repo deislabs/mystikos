@@ -2326,6 +2326,15 @@ static int _fs_ioctl(
             ret = devfs_get_pts_id(file, id);
             break;
         }
+        case TCGETS:
+        case TCSETS:
+        case TCSETS + 1:
+        case TCSETS + 2:
+        {
+            if (!devfs_is_pty_pts_device(file))
+                ERAISE(-ENOTTY);
+            break;
+        }
         default:
             ERAISE(-ENOTSUP);
     }
