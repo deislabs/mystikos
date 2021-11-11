@@ -425,7 +425,7 @@ int main(int argc, const char* argv[])
         assert(buf.st_nlink == 1);
         assert(buf.st_uid == geteuid());
         assert(buf.st_gid == getegid());
-        assert(buf.st_blksize == 1024);
+        assert(buf.st_blksize % 1024 == 0);
         assert(buf.st_ino != 0);
         //_dump_stat_buf(&buf);
     }
@@ -439,7 +439,7 @@ int main(int argc, const char* argv[])
         assert(buf.st_nlink == 1);
         assert(buf.st_uid == geteuid());
         assert(buf.st_gid == getegid());
-        assert(buf.st_blksize == 1024);
+        assert(buf.st_blksize % 1024 == 0);
         assert(buf.st_ino != 0);
         //_dump_stat_buf(&buf);
     }
@@ -455,7 +455,7 @@ int main(int argc, const char* argv[])
         assert(buf.st_mode == 0100600);
 #endif
         assert(buf.st_nlink == 1);
-        assert(buf.st_blksize == 1024);
+        assert(buf.st_blksize % 1024 == 0);
         assert(buf.st_ino != 0);
     }
 
@@ -465,7 +465,7 @@ int main(int argc, const char* argv[])
         assert(ext2_stat(fs, "/", &buf) == 0);
         assert((buf.st_mode & S_IFDIR));
         assert(!(buf.st_mode & S_IFREG));
-        assert(buf.st_blksize == 1024);
+        assert(buf.st_blksize % 1024 == 0);
         assert(buf.st_ino != 0);
     }
 
@@ -475,7 +475,7 @@ int main(int argc, const char* argv[])
         assert(ext2_stat(fs, "/dir", &buf) == 0);
         assert((buf.st_mode & S_IFDIR));
         assert(!(buf.st_mode & S_IFREG));
-        assert(buf.st_blksize == 1024);
+        assert(buf.st_blksize % 1024 == 0);
         assert(buf.st_ino != 0);
         assert(buf.st_nlink == 2); /* two entries: "." and ".." */
     }
@@ -499,7 +499,7 @@ int main(int argc, const char* argv[])
         assert(ext2_stat(fs, path, &buf) == 0);
         assert(buf.st_mode == (S_IFDIR | 0755));
         assert(buf.st_nlink == 2); /* two entries: "." and ".." */
-        assert(buf.st_blksize == 1024);
+        assert(buf.st_blksize % 1024 == 0);
         assert(buf.st_ino != 0);
     }
 

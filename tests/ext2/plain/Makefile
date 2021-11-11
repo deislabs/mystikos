@@ -32,7 +32,7 @@ ifeq ($(USE_GDB),1)
 PREFIX=gdb --args
 endif
 
-EXT2FS_SIZE=134217728
+EXT2FS_SIZE=536870912
 
 tests:
 	mkdir -p $(SUBOBJDIR)
