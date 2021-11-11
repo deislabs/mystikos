@@ -19,7 +19,7 @@ sudo systemctl enable docker && sudo chmod 666 /var/run/docker.sock
 ## Clone, build, and install Mystikos
 
 ```
-git clone https://github.com/deislabs/mystikos
+git clone https://github.com/deislabs/mystikos --recursive
 cd mystikos && make
 sudo make install
 export PATH=$PATH:/opt/mystikos/bin
