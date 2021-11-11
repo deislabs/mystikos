@@ -874,7 +874,7 @@ static int _fs_ioctl(
     if (request == TIOCGWINSZ)
         ERAISE(-EINVAL);
 
-    if (request == FIOCLEX || request == FIONCLEX)
+    if (request == FIOCLEX || request == FIONCLEX || request == FIONBIO)
     {
         long tret, params[6] = {file->fd, request, arg};
         ECHECK((tret = myst_tcall(SYS_ioctl, params)));

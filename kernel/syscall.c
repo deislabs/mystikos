@@ -201,12 +201,63 @@ static const char* _format_timespec(
     return buf->data;
 }
 
+static bool _trace_syscall(long n)
+{
+    // Check if syscall tracing is enabled.
+    if (__myst_kernel_args.strace_config.trace_syscalls)
+    {
+        if (__myst_kernel_args.strace_config.filter)
+        {
+            // If filtering is enabled, trace only this syscall has been
+            // specified in the filter.
+            return __myst_kernel_args.strace_config.trace[n];
+        }
+        else
+        {
+            // Trace all syscalls.
+            return true;
+        }
+    }
+    return false;
+}
+
+static void _syscall_failure_hook(long n, long ret)
+{
+    // Set breakpoint in this function to stop execution when a syscall fails.
+    // Set condition for the breakpoint to control which syscall failures
+    // trigger the breakpoint.
+    (void)n;
+    (void)ret;
+}
+
+static bool _trace_syscall_return(long n, long ret)
+{
+    // If this syscall has been configured to be traced, then trace the return
+    // too.
+    if (_trace_syscall(n))
+        return true;
+
+    // Check if tracing failing syscalls has been enabled.
+    if (__myst_kernel_args.strace_config.trace_failing)
+    {
+        // If the syscall returns a negative value and has a valid error name,
+        // then consider it a failure and enable tracing.
+        if (ret < 0)
+        {
+            const char* error_name = myst_error_name(-ret);
+            if (error_name)
+                return true;
+        }
+    }
+    return false;
+}
+
 __attribute__((format(printf, 2, 3))) static void _strace(
     long n,
     const char* fmt,
     ...)
 {
-    if (__myst_kernel_args.trace_syscalls)
+    if (_trace_syscall(n))
     {
         char null_char = '\0';
         char* buf = &null_char;
@@ -260,7 +311,7 @@ long myst_syscall_unmap_on_exit(myst_thread_t* thread, void* ptr, size_t size)
 
 static long _forward_syscall(long n, long params[6])
 {
-    if (__myst_kernel_args.trace_syscalls)
+    if (_trace_syscall(n))
         myst_eprintf("    [forward syscall]\n");
 
     return myst_tcall(n, params);
@@ -274,7 +325,7 @@ typedef struct fd_entry
 
 static long _return(long n, long ret)
 {
-    if (__myst_kernel_args.trace_syscalls)
+    if (_trace_syscall_return(n, ret))
     {
         const char* red = "";
         const char* reset = "";
@@ -304,6 +355,9 @@ static long _return(long n, long ret)
                 reset,
                 myst_getpid(),
                 myst_gettid());
+
+            // Trigger breakpoint if set.
+            _syscall_failure_hook(n, ret);
         }
         else
         {
@@ -1854,7 +1908,7 @@ done:
     if (locals)
         free(locals);
 
-    return 0;
+    return ret;
 }
 
 long myst_syscall_fchmod(int fd, mode_t mode)
@@ -1980,7 +2034,7 @@ long myst_syscall_pipe2(int pipefd[2], int flags)
     pipefd[0] = fd0;
     pipefd[1] = fd1;
 
-    if (__myst_kernel_args.trace_syscalls)
+    if (_trace_syscall(SYS_pipe2))
         myst_eprintf("pipe2(): [%d:%d]\n", fd0, fd1);
 
 done:
@@ -3290,9 +3344,21 @@ static long _syscall(void* args_)
             const char* path = (const char*)x1;
             int flags = (int)x2;
             mode_t mode = (mode_t)x3;
+            myst_process_t* process = myst_process_self();
             long ret;
 
-            _strace(n, "path=\"%s\" flags=0%o mode=0%o", path, flags, mode);
+            _strace(
+                n,
+                "path=\"%s\" flags=0%o mode=0%o umask=0%o",
+                path,
+                flags,
+                mode,
+                process->umask);
+
+            /* Apply umask */
+            /* ATTN: Implementaiton need to be updated if directory ACL is
+             * supported */
+            mode = mode & (~(process->umask));
 
             ret = myst_syscall_open(path, flags, mode);
 
@@ -3343,7 +3409,7 @@ static long _syscall(void* args_)
 
             _strace(n, "fds=%p nfds=%ld timeout=%d", fds, nfds, timeout);
 
-            if (__myst_kernel_args.trace_syscalls && fds)
+            if (_trace_syscall(SYS_poll))
             {
                 for (nfds_t i = 0; i < nfds; i++)
                     myst_eprintf("fd=%d\n", fds[i].fd);
@@ -3602,7 +3668,7 @@ static long _syscall(void* args_)
             struct timeval* timeout = (struct timeval*)x5;
             long ret;
 
-            if (__myst_kernel_args.trace_syscalls)
+            if (_trace_syscall(SYS_select))
             {
                 struct timeval* _timeout = timeout;
                 if (timeout && !myst_is_addr_within_kernel(timeout))
@@ -4109,8 +4175,19 @@ static long _syscall(void* args_)
         {
             const char* pathname = (const char*)x1;
             mode_t mode = (mode_t)x2;
+            myst_process_t* process = myst_process_self();
 
-            _strace(n, "pathname=\"%s\" mode=0%o", pathname, mode);
+            _strace(
+                n,
+                "pathname=\"%s\" mode=0%o umask=0%o",
+                pathname,
+                mode,
+                process->umask);
+
+            /* Apply umask */
+            /* ATTN: Implementaiton need to be updated if directory ACL is
+             * supported */
+            mode = mode & (~(process->umask));
 
             BREAK(_return(n, myst_syscall_mkdir(pathname, mode)));
         }
@@ -4126,8 +4203,19 @@ static long _syscall(void* args_)
         {
             const char* pathname = (const char*)x1;
             mode_t mode = (mode_t)x2;
+            myst_process_t* process = myst_process_self();
 
-            _strace(n, "pathname=\"%s\" mode=%x", pathname, mode);
+            _strace(
+                n,
+                "pathname=\"%s\" mode=0%o umask=0%o",
+                pathname,
+                mode,
+                process->umask);
+
+            /* Apply umask */
+            /* ATTN: Implementaiton need to be updated if directory ACL is
+             * supported */
+            mode = mode & (~(process->umask));
 
             BREAK(_return(n, myst_syscall_creat(pathname, mode)));
         }
@@ -5180,15 +5268,22 @@ static long _syscall(void* args_)
             const char* path = (const char*)x2;
             int flags = (int)x3;
             mode_t mode = (mode_t)x4;
+            myst_process_t* process = myst_process_self();
             long ret;
 
             _strace(
                 n,
-                "dirfd=%d path=\"%s\" flags=0%o mode=0%o",
+                "dirfd=%d path=\"%s\" flags=0%o mode=0%o umask=0%o",
                 dirfd,
                 path,
                 flags,
-                mode);
+                mode,
+                process->umask);
+
+            /* Apply umask */
+            /* ATTN: Implementaiton need to be updated if directory ACL is
+             * supported */
+            mode = mode & (~(process->umask));
 
             ret = myst_syscall_openat(dirfd, path, flags, mode);
 
@@ -5202,7 +5297,17 @@ static long _syscall(void* args_)
             long ret;
 
             _strace(
-                n, "dirfd=%d pathname=\"%s\" mode=0%o", dirfd, pathname, mode);
+                n,
+                "dirfd=%d pathname=\"%s\" mode=0%o umask=0%o",
+                dirfd,
+                pathname,
+                mode,
+                process->umask);
+
+            /* Apply umask */
+            /* ATTN: Implementaiton need to be updated if directory ACL is
+             * supported */
+            mode = mode & (~(process->umask));
 
             ret = myst_syscall_mkdirat(dirfd, pathname, mode);
 
@@ -5216,7 +5321,7 @@ static long _syscall(void* args_)
             const char* pathname = (const char*)x2;
             const struct timeval* times = (const struct timeval*)x3;
             long ret;
-            if (__myst_kernel_args.trace_syscalls)
+            if (_trace_syscall(SYS_futimesat))
             {
                 const struct timeval* _times = times;
                 if (times && !myst_is_addr_within_kernel(times))
@@ -5470,7 +5575,7 @@ static long _syscall(void* args_)
             int flags = (int)x4;
             long ret;
 
-            if (__myst_kernel_args.trace_syscalls)
+            if (_trace_syscall(SYS_accept4))
             {
                 char addrstr[MAX_IPADDR_LEN];
 
@@ -5516,7 +5621,7 @@ static long _syscall(void* args_)
             _strace(n, "pipefd=%p flags=%0o", pipefd, flags);
             ret = myst_syscall_pipe2(pipefd, flags);
 
-            if (__myst_kernel_args.trace_syscalls)
+            if (_trace_syscall(SYS_pipe2))
                 myst_eprintf("    pipefd[]=[%d:%d]\n", pipefd[0], pipefd[1]);
 
             BREAK(_return(n, ret));
@@ -5776,7 +5881,7 @@ static long _syscall(void* args_)
             socklen_t addrlen = (socklen_t)x3;
             long ret;
 
-            if (__myst_kernel_args.trace_syscalls)
+            if (_trace_syscall(SYS_bind))
             {
                 char addrstr[MAX_IPADDR_LEN];
 
@@ -5801,7 +5906,7 @@ static long _syscall(void* args_)
             socklen_t addrlen = (socklen_t)x3;
             long ret;
 
-            if (__myst_kernel_args.trace_syscalls)
+            if (_trace_syscall(SYS_connect))
             {
                 char addrstr[MAX_IPADDR_LEN];
 
@@ -5839,7 +5944,7 @@ static long _syscall(void* args_)
             socklen_t* addrlen = (socklen_t*)x6;
             long ret = 0;
 
-            if (__myst_kernel_args.trace_syscalls)
+            if (_trace_syscall(SYS_recvfrom))
             {
                 char addrstr[MAX_IPADDR_LEN];
 
@@ -5870,7 +5975,7 @@ static long _syscall(void* args_)
             socklen_t addrlen = (socklen_t)x6;
             long ret = 0;
 
-            if (__myst_kernel_args.trace_syscalls)
+            if (_trace_syscall(SYS_sendto))
             {
                 char addrstr[MAX_IPADDR_LEN];
 
@@ -5920,7 +6025,7 @@ static long _syscall(void* args_)
             socklen_t* addrlen = (socklen_t*)x3;
             long ret;
 
-            if (__myst_kernel_args.trace_syscalls)
+            if (_trace_syscall(SYS_accept))
             {
                 char addrstr[MAX_IPADDR_LEN];
 
@@ -6031,7 +6136,7 @@ static long _syscall(void* args_)
             socklen_t* addrlen = (socklen_t*)x3;
             long ret;
 
-            if (__myst_kernel_args.trace_syscalls)
+            if (_trace_syscall(SYS_getsockname))
             {
                 char addrstr[MAX_IPADDR_LEN];
 
@@ -6055,7 +6160,7 @@ static long _syscall(void* args_)
             socklen_t* addrlen = (socklen_t*)x3;
             long ret;
 
-            if (__myst_kernel_args.trace_syscalls)
+            if (_trace_syscall(SYS_getpeername))
             {
                 char addrstr[MAX_IPADDR_LEN];
 

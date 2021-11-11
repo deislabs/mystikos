@@ -28,7 +28,6 @@ test_bisect
 test_bool
 test_buffer
 test_bufio
-test_builtin
 test_bytes
 test_bz2
 test_calendar
@@ -162,6 +161,7 @@ test_idle
 test_imaplib
 test_imghdr
 test_imp
+test_import
 test_index
 test_inspect
 test_int
@@ -289,6 +289,7 @@ test_sys_settrace
 test_sysconfig
 test_syslog
 test_tabnanny
+test_tarfile
 test_tcl
 test_telnetlib
 test_textwrap

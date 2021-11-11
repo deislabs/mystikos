@@ -128,7 +128,9 @@ Give it a try and let us know what you think!
 - Running Python & NumPy for complex calculations: [click
   here](doc/user-getting-started-docker-python.md)
 
-You can find more sample applications under `/samples` folder.
+## Samples
+Mystikos [samples](/samples) provides a number of samples in various programming
+languages and serves as a good place for developers to start.
 
 ## Enclave Aware Applications
 

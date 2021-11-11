@@ -17,8 +17,8 @@ endif
 
 MPDB=$(TOP)/scripts/mpdb.py
 TESTFILE=tests.passed
-TEST = test_bz2
-TESTCASE = test_socket.LinuxKernelCryptoAPI.test_aead_aes_gcm
+TEST = test_regrtest
+TESTCASE = test_glob.GlobTests.test_recursive_glob
 VER=3.9
 FS=ext2fs$(VER)
 
@@ -47,8 +47,8 @@ tests:
 	$(RUNTEST) ./exec.sh
 
 run-list: ext2fs3.8 ext2fs3.9
-	$(MYST_EXEC) $(OPTS) ext2fs3.8 /cpython/python -m test -f /$(TESTFILE) --timeout 90 -q
-	$(MYST_EXEC) $(OPTS) ext2fs3.9 /cpython/python -m test -f /$(TESTFILE) --timeout 90 -q
+	$(MYST_EXEC) $(OPTS) ext2fs3.8 /cpython/python -m test -f /$(TESTFILE) --timeout 120 -q
+	$(MYST_EXEC) $(OPTS) ext2fs3.9 /cpython/python -m test -f /$(TESTFILE) --timeout 120 -q
 
 one: $(FS)
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) /cpython/python -m test $(TEST) -v

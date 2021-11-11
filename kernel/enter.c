@@ -683,7 +683,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     if (!args->tee_debug_mode)
     {
         args->trace_errors = false;
-        args->trace_syscalls = false;
+        memset(&args->strace_config, 0, sizeof(args->strace_config));
         args->shell_mode = false;
         args->memcheck = false;
         args->perf = false;
@@ -693,7 +693,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     }
 
     /* ATTN: it seems __options can be eliminated */
-    __options.trace_syscalls = args->trace_syscalls;
+    __options.strace_config = args->strace_config;
     __options.have_syscall_instruction = args->have_syscall_instruction;
     __options.have_fsgsbase_instructions = args->have_fsgsbase_instructions;
     __options.report_native_tids = args->report_native_tids;

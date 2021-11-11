@@ -53,7 +53,7 @@ struct myst_file
     uint64_t offset;
     int open_flags;
     uint32_t access;    /* (O_RDONLY | O_RDWR | O_WRONLY) */
-    uint32_t operating; /* (O_APPEND | O_DIRECT | O_NOATIME) */
+    uint32_t operating; /* (O_APPEND | O_DIRECT | O_NOATIME | O_NONBLOCK) */
     int fdflags;        /* file descriptor flags: FD_CLOEXEC */
     char realpath[PATH_MAX];
     ext2_dir_t dir;
@@ -3458,7 +3458,7 @@ int ext2_open(
         file->offset = 0;
         file->open_flags = flags;
         file->access = (flags & (O_RDONLY | O_RDWR | O_WRONLY));
-        file->operating = (flags & O_APPEND);
+        file->operating = (flags & (O_APPEND | O_NONBLOCK));
         file->use_count = 1;
     }
 
@@ -3532,6 +3532,10 @@ int64_t ext2_read(myst_fs_t* fs, myst_file_t* file, void* data, uint64_t size)
 
     /* refresh the inode */
     ECHECK((ext2_read_inode(ext2, file->ino, &file->inode)));
+
+    /* If offset is beyond end of file, return 0 */
+    if (file->offset >= _inode_get_size(&file->inode))
+        goto done;
 
     /* The index of the first block to read */
     first = file->offset / ext2->block_size;
@@ -3754,6 +3758,10 @@ off_t ext2_lseek(myst_fs_t* fs, myst_file_t* file, off_t offset, int whence)
             ERAISE(-EINVAL);
         }
     }
+
+    /* EINVAL if the resulting file offset would be negative */
+    if (new_offset < 0)
+        ERAISE(-EINVAL);
 
     file->offset = (uint64_t)new_offset;
 
@@ -5124,6 +5132,8 @@ static int _ext2_fcntl(myst_fs_t* fs, myst_file_t* file, int cmd, long arg)
         {
             if (arg & O_APPEND)
                 file->operating |= O_APPEND;
+            if (arg & O_NONBLOCK)
+                file->operating |= O_NONBLOCK;
             if (arg & O_DIRECT)
                 // ATTN: implement O_DIRECT for files
                 file->operating |= O_DIRECT;
@@ -5177,6 +5187,20 @@ static int _ext2_ioctl(
         case FIONCLEX:
         {
             ECHECK(_set_fd_flag(ext2, file, 0));
+            break;
+        }
+        case FIONBIO:
+        {
+            int* val = (int*)arg;
+
+            if (!val)
+                ERAISE(-EINVAL);
+
+            if (*val)
+                file->operating |= O_NONBLOCK;
+            else
+                file->operating &= ~O_NONBLOCK;
+
             break;
         }
         default:
@@ -5408,8 +5432,9 @@ static int _ext2_futimens(
     {
         /* set to current time */
         _update_timestamps(&file->inode, ACCESS | MODIFY);
-        ECHECK(_write_inode(ext2, file->ino, &file->inode));
     }
+
+    ECHECK(_write_inode(ext2, file->ino, &file->inode));
 
 done:
     return ret;

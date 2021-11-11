@@ -262,7 +262,8 @@ const char* myst_signum_to_string(unsigned signum)
 // https://man7.org/linux/man-pages/man7/signal.7.html for details.
 static long _default_signal_handler(unsigned signum)
 {
-    if (__myst_kernel_args.trace_syscalls || __myst_kernel_args.trace_errors)
+    if (__myst_kernel_args.strace_config.trace_syscalls ||
+        __myst_kernel_args.trace_errors)
         myst_eprintf(
             "*** Terminating signal %u (%s): pid=%d tid=%d\n",
             signum,
