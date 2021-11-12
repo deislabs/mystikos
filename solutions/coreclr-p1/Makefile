@@ -4,12 +4,12 @@ include $(TOP)/defs.mak
 APPBUILDER=$(TOP)/scripts/appbuilder
 APPNAME=corerun
 TEST_CASE= \
-baseservices/threading/paramthreadstart/ThreadStartUShort/ThreadStartUShort.dll max
+JIT/Regression/CLR-x86-JIT/V1.2-M01/b18049/b18049/b18049.dll
 PACKAGE_PATH  = myst/bin/corerun
 ifdef STRACE
 OPTS += --strace
 endif
-OPTS += --app-config-path=config_256m.json
+OPTS += --app-config-path=config_2g.json
 
 all: ext2fs build-package
 
