@@ -234,6 +234,7 @@
 /ltp/testcases/kernel/syscalls/rt_sigaction/rt_sigaction01
 /ltp/testcases/kernel/syscalls/rt_sigprocmask/rt_sigprocmask01
 /ltp/testcases/kernel/syscalls/sbrk/sbrk02
+/ltp/testcases/kernel/syscalls/sched_getparam/sched_getparam01
 /ltp/testcases/kernel/syscalls/sched_yield/sched_yield01
 /ltp/testcases/kernel/syscalls/send/send02
 /ltp/testcases/kernel/syscalls/sendfile/sendfile02

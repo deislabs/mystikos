@@ -4641,15 +4641,7 @@ static long _syscall(void* args_)
 
             _strace(n, "pid=%d param=%p", pid, param);
 
-            // ATTN: Return the priority from SYS_sched_setparam.
-            if (param != NULL)
-            {
-                // Only memset the non reserved part of the structure
-                // This is to be defensive against different sizes of this
-                // struct in musl and glibc.
-                memset(param, 0, sizeof(*param) - 40);
-            }
-            BREAK(_return(n, 0));
+            BREAK(_return(n, myst_syscall_sched_getparam(pid, param)));
         }
         case SYS_sched_setscheduler:
         {
