@@ -13,6 +13,7 @@
 #include <myst/assume.h>
 #include <myst/atexit.h>
 #include <myst/atomic.h>
+#include <myst/bits.h>
 #include <myst/cond.h>
 #include <myst/config.h>
 #include <myst/eraise.h>
@@ -51,6 +52,7 @@ static _Atomic(size_t) _num_threads = 1;
  * deleved. */
 myst_process_t* myst_main_process = 0;
 
+uint8_t myst_bitmap_pid[4096] = {0};
 /*
 **==============================================================================
 **
@@ -66,6 +68,7 @@ myst_process_t* myst_main_process = 0;
 
 pid_t myst_generate_tid(void)
 {
+    long ret = 0;
     static pid_t _tid = MIN_TID;
     static myst_spinlock_t _lock = MYST_SPINLOCK_INITIALIZER;
     pid_t tid;
@@ -76,10 +79,21 @@ pid_t myst_generate_tid(void)
             _tid = MIN_TID;
 
         tid = _tid++;
+        if (tid >= MYST_PID_MAX || myst_test_bit(myst_bitmap_pid, tid))
+        {
+            /* cycle to first available tid, greater than MIN_TID */
+            tid = myst_find_clear_bit(
+                myst_bitmap_pid, sizeof(myst_bitmap_pid), MIN_TID + 8);
+            if (!tid)
+                ERAISE(-EAGAIN);
+        }
+        myst_set_bit(myst_bitmap_pid, tid);
     }
     myst_spin_unlock(&_lock);
+    ret = tid;
 
-    return tid;
+done:
+    return ret;
 }
 
 /*
@@ -1158,12 +1172,14 @@ long myst_run_thread(uint64_t cookie, uint64_t event, pid_t target_tid)
 {
     long ret = 0;
     myst_thread_t* thread;
+    pid_t tid;
     /* get the thread corresponding to this cookie */
     if (!(thread = _put_cookie(cookie)))
         ERAISE(-EINVAL);
 
     /* run the thread on the transient stack */
     struct run_thread_arg arg = {thread, cookie, event, target_tid};
+    tid = thread->tid;
     /* ATTN: We need to keep the entry stack for the myst_call_on_stack
      * to return properly. However, the thread object may be freed prior
      * to the return such that we can no longer obtain the reference
@@ -1174,6 +1190,8 @@ long myst_run_thread(uint64_t cookie, uint64_t event, pid_t target_tid)
     uint64_t stack_end = (uint64_t)stack + stack_size;
     ECHECK(myst_call_on_stack((void*)stack_end, _run_thread, &arg));
 
+    /* Clear tid for pid cycling */
+    myst_clear_bit(myst_bitmap_pid, tid);
     myst_unregister_stack(stack, stack_size);
     free(stack);
 

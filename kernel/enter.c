@@ -10,6 +10,7 @@
 
 #include <myst/appenv.h>
 #include <myst/atexit.h>
+#include <myst/bits.h>
 #include <myst/clock.h>
 #include <myst/cpio.h>
 #include <myst/crash.h>
@@ -954,6 +955,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         /* Remove ourself from /proc/<pid> so other processes know we have gone
          * if they check */
         procfs_pid_cleanup(process->pid);
+        myst_set_bit(myst_bitmap_pid, process->pid);
 
         /* Send SIGHUP to all other active processes */
         myst_send_sighup_child_processes(process);

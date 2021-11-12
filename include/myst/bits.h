@@ -29,4 +29,21 @@ MYST_INLINE void myst_clear_bit(uint8_t* data, size_t index)
     data[byte] &= ~(1 << bit);
 }
 
+MYST_INLINE size_t
+myst_find_clear_bit(uint8_t* data, size_t size, size_t start_index)
+{
+    uint8_t i = start_index / 8;
+    uint8_t val = 0;
+
+    while (i < size)
+    {
+        val = data[i];
+        if (val != 0xff)
+        {
+            return (i * 8 + (size_t)__builtin_ctz((int)(~val & (val + 1))));
+        }
+        i++;
+    }
+    return 0;
+}
 #endif /* _MYST_BITS_H */

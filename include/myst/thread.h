@@ -29,6 +29,13 @@
 /* Typical default value in host operating system's /proc/sys/kernel/pid_max */
 #define MYST_PID_MAX 0x8000
 
+/*
+ * Bitmap to track pids in use. If bit 'n' (starting from 0) is set, then pid
+ * 'n' is assigned to an active process or thread. When cycling, we cycling pid
+ * between [104, 32677].
+ */
+extern uint8_t myst_bitmap_pid[4096];
+
 /* this signal is used to interrupt threads blocking on host in syscalls */
 #define MYST_INTERRUPT_THREAD_SIGNAL (SIGRTMIN + 1)
 
