@@ -25,6 +25,9 @@
 #define MYST_THREAD_MAGIC 0xc79c53d9ad134ad4
 #define MYST_MAX_MUNNAP_ON_EXIT 5
 
+/* Typical default value in host operating system's /proc/sys/kernel/pid_max */
+#define MYST_PID_MAX 0x8000
+
 /* this signal is used to interrupt threads blocking on host in syscalls */
 #define MYST_INTERRUPT_THREAD_SIGNAL (SIGRTMIN + 1)
 
