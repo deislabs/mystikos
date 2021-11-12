@@ -44,7 +44,7 @@ run: rootfs
 		$(PYTEST_CMD) $(PYTEST_OPTS) 2>&1 > result; \
 		test "$$?" -eq "123")
 	sed -i '$$d' result
-	tail -n 27 result > test_summary
+	tail -n 28 result > test_summary
 	diff test_summary expected-test-summary
 	$(MAKE) clean_intermediate
 	$(MAKE) run-passed

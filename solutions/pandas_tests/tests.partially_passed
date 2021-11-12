@@ -4,3 +4,4 @@
 /usr/local/lib/python3.9/site-packages/pandas/tests/io/parser/test_network.py
 /usr/local/lib/python3.9/site-packages/pandas/tests/io/test_clipboard.py
 /usr/local/lib/python3.9/site-packages/pandas/tests/io/xml/test_xml.py
+/usr/local/lib/python3.9/site-packages/pandas/tests/io/parser/test_quoting.py
