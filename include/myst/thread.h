@@ -104,6 +104,10 @@ struct myst_process
     /* the process identifier (inherited from main thread) */
     pid_t pid;
 
+    /* To make sure the exit status and terminating signal number is set only
+     * once we use this flag */
+    bool exit_status_signum_set;
+
     /* The exit status passed to SYS_exit */
     int exit_status;
 

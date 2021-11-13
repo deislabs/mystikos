@@ -539,7 +539,7 @@ long myst_wait(
     myst_process_t* p;
 
     if (rusage)
-        ERAISE(-EINVAL);
+        memset(rusage, 0, sizeof(*rusage));
 
     /* If this is the only process then raise ECHILD */
     if (process->next_process == NULL && process->prev_process == NULL &&

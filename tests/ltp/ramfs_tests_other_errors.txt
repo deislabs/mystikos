@@ -94,7 +94,6 @@
 /ltp/testcases/kernel/syscalls/execveat/execveat_errno
 /ltp/testcases/kernel/syscalls/execvp/execvp01
 /ltp/testcases/kernel/syscalls/execvp/execvp01_child
-/ltp/testcases/kernel/syscalls/exit_group/exit_group01
 /ltp/testcases/kernel/syscalls/fadvise/posix_fadvise01
 /ltp/testcases/kernel/syscalls/fadvise/posix_fadvise01_64
 /ltp/testcases/kernel/syscalls/fadvise/posix_fadvise02

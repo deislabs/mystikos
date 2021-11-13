@@ -3992,6 +3992,7 @@ static long _syscall(void* args_)
             BREAK(_return(n, ret));
         }
         case SYS_exit:
+        case SYS_exit_group:
         {
             const int status = (int)x1;
 
@@ -4010,7 +4011,21 @@ static long _syscall(void* args_)
             if (!thread || thread->magic != MYST_THREAD_MAGIC)
                 myst_panic("unexpected");
 
-            process->exit_status = status;
+            bool process_status_set = false;
+            if (__atomic_compare_exchange_n(
+                    &process->exit_status_signum_set,
+                    &process_status_set,
+                    true,
+                    false,
+                    __ATOMIC_RELEASE,
+                    __ATOMIC_ACQUIRE))
+            {
+                process->exit_status = status;
+                process->terminating_signum = 0;
+            }
+
+            if (n == SYS_exit_group)
+                myst_kill_thread_group();
 
             /* the kstack is freed after the long-jump below */
             thread->exit_kstack = args->kstack;
@@ -5098,14 +5113,6 @@ static long _syscall(void* args_)
         }
         case SYS_clock_nanosleep:
             break;
-        case SYS_exit_group:
-        {
-            int status = (int)x1;
-            _strace(n, "status=%d", status);
-
-            myst_kill_thread_group();
-            BREAK(_return(n, 0));
-        }
         case SYS_epoll_wait:
         {
             int epfd = (int)x1;
