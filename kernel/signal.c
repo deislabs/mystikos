@@ -278,6 +278,19 @@ static long _default_signal_handler(unsigned signum)
     myst_process_t* process = myst_process_self();
     myst_thread_t* process_thread = process->main_process_thread;
 
+    bool process_status_set = false;
+    if (__atomic_compare_exchange_n(
+            &process->exit_status_signum_set,
+            &process_status_set,
+            true,
+            false,
+            __ATOMIC_RELEASE,
+            __ATOMIC_ACQUIRE))
+    {
+        process->exit_status = 128 + signum;
+        process->terminating_signum = signum;
+    }
+
     // If the main thread has not been sent signal or has not exited already
     // forward this exception to the main thread to cause the whole process to
     // exit with this signal
@@ -308,9 +321,7 @@ static long _default_signal_handler(unsigned signum)
         // If we are here then there is a good chance it was not called
         myst_kill_thread_group();
 
-        process->exit_status = 128 + signum;
         thread->thread_status = MYST_KILLED;
-        process->terminating_signum = signum;
 
         /* If we were forked and fork mode is wait for exec, notify calling
          * parent

@@ -40,6 +40,7 @@
 /ltp/testcases/kernel/syscalls/eventfd2/eventfd2_02
 /ltp/testcases/kernel/syscalls/exit/exit01
 /ltp/testcases/kernel/syscalls/exit/exit02
+/ltp/testcases/kernel/syscalls/exit_group/exit_group01
 /ltp/testcases/kernel/syscalls/faccessat/faccessat01
 /ltp/testcases/kernel/syscalls/fallocate/fallocate03
 /ltp/testcases/kernel/syscalls/fchdir/fchdir01
