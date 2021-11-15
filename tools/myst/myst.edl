@@ -76,11 +76,9 @@ enclave
         long __reserved2;
     };
 
+    /* The expected glibc struct sched_param */
     struct myst_sched_param {
         int sched_priority;
-        int __reserved1;
-        struct myst_sched_param_reserved __reserved2[2];
-        int __reserved3;
     };
 
     trusted
