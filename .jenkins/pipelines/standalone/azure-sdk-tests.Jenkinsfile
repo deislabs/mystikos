@@ -48,18 +48,12 @@ pipeline {
             steps {
                 sh """
                    # Initialize dependencies repo
+                   ${JENKINS_SCRIPTS}/global/wait-dpkg.sh
                    ${JENKINS_SCRIPTS}/global/init-config.sh
 
                    # Install global dependencies
                    ${JENKINS_SCRIPTS}/global/wait-dpkg.sh
                    ${JENKINS_SCRIPTS}/global/init-install.sh
-                   """
-            }
-        }
-        stage('Build repo source') {
-            steps {
-                sh """
-                   ${JENKINS_SCRIPTS}/global/make-world.sh
                    """
             }
         }
@@ -72,11 +66,20 @@ pipeline {
                                  string(credentialsId: 'oe-jenkins-dev-rg', variable: 'JENKINS_RESOURCE_GROUP'),
                                  string(credentialsId: 'mystikos-managed-identity', variable: "MYSTIKOS_MANAGED_ID")]) {
                     sh """
+                       ${JENKINS_SCRIPTS}/global/wait-dpkg.sh
                        ${JENKINS_SCRIPTS}/solutions/init-config.sh
+
                        ${JENKINS_SCRIPTS}/global/wait-dpkg.sh
                        ${JENKINS_SCRIPTS}/solutions/azure-config.sh
                        """
                 }
+            }
+        }
+        stage('Build repo source') {
+            steps {
+                sh """
+                   ${JENKINS_SCRIPTS}/global/make-world.sh
+                   """
             }
         }
         stage('Run Azure SDK tests') {
