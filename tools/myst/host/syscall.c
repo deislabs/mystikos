@@ -665,9 +665,7 @@ long myst_ftruncate_ocall(int fd, off_t length)
 
 long myst_sched_getparam_ocall(pid_t pid, struct myst_sched_param* param)
 {
-    return (syscall(SYS_sched_getparam, pid, (struct sched_param*)param) == 0)
-               ? 0
-               : -errno;
+    return (syscall(SYS_sched_getparam, pid, param) == 0) ? 0 : -errno;
 }
 
 long myst_symlink_ocall(

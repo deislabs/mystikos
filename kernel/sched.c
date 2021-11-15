@@ -26,18 +26,33 @@ long myst_syscall_sched_getparam(pid_t pid, struct sched_param* param)
     {
         ERAISE(-EFAULT);
     }
-
-    memset(param, 0, sizeof(struct sched_param));
+    /*
+     * Only memset the non reserved part of the structure
+     * This is to be defensive against different sizes of this
+     * struct in musl and glibc.
+     * In glibc -
+     *  struct sched_param {
+     *      int sched_priority;
+     *  };
+     */
+    memset(param, 0, sizeof(int));
 
     if (pid == 0)
         params[0] = (long)pid;
     else
     {
-        /* We need to send the target pid to the tcall */
+        /* Find the relevant mystikos process/thread and send the target_tid */
         myst_process_t* process = myst_find_process_from_pid(pid, true);
         if (process)
             params[0] = (long)process->main_process_thread->target_tid;
         else
+        {
+            myst_thread_t* thread = myst_find_thread(pid);
+            if (thread)
+                params[0] = (long)thread->target_tid;
+        }
+        /* If params[0] is not set yet, then pid could not be found */
+        if (!params[0])
             ERAISE(-ESRCH);
     }
     params[1] = (long)param;
