@@ -34,6 +34,7 @@ pipeline {
                 stages {
                     stage("Run test pipeline") {
                         steps {
+                            sh "echo '${OS_VERSION} ${TEST_PIPELINE} - Config: ${TEST_CONFIG}'"
                             catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
                                 build job: "Standalone-Pipelines/${TEST_PIPELINE}-Tests-Pipeline",
                                 parameters: [

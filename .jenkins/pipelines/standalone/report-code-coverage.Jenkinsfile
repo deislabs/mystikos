@@ -22,6 +22,7 @@ pipeline {
             steps {
                 sh """
                    # Initialize dependencies repo
+                   ${JENKINS_SCRIPTS}/global/wait-dpkg.sh
                    ${JENKINS_SCRIPTS}/global/init-config.sh
 
                    # Install global dependencies
