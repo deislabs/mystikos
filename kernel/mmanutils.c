@@ -1156,13 +1156,10 @@ static long _handle_mman_pids_op(
     ECHECK((ssize_t)(index = _get_page_index(addr, length)));
     count = length / PAGE_SIZE;
 
-    assert(index < v.pids_count);
-    assert(index + count <= v.pids_count);
-
     if ((size_t)index >= v.pids_count)
         ERAISE(-ERANGE);
 
-    if (index + count >= v.pids_count)
+    if (index + count > v.pids_count)
         ERAISE(-ERANGE);
 
     /* ATTN: optimize to use 64bit ops */
@@ -1226,6 +1223,56 @@ int myst_mman_pids_set(const void* addr, size_t length, pid_t pid)
 ssize_t myst_mman_pids_test(const void* addr, size_t length, pid_t pid)
 {
     return _handle_mman_pids_op(MMAN_PIDS_OP_TEST, addr, length, pid);
+}
+
+bool myst_is_bad_addr(const void* addr, size_t length, int prot)
+{
+    bool ret = true;
+
+    if (!addr)
+        goto done;
+
+    if (__myst_kernel_args.nobrk)
+    {
+        /* pid test is only supported if the nobrk option is enabled as
+         * the pid vector does not track memory allocated via brk */
+
+        uint64_t page_addr = myst_round_down_to_page_size((uint64_t)addr);
+
+        if (myst_round_up(length, PAGE_SIZE, &length) < 0)
+            goto done;
+
+        /* check if the pages within the address range are unmapped (i.e.,
+         * associated pid is zero). */
+        if (myst_mman_pids_test((const void*)page_addr, length, 0) > 0)
+            goto done;
+
+        /* check for the page permissions */
+        {
+            bool consistent;
+            int prot_mask;
+
+            if (myst_mman_get_prot(
+                    &_mman, (void*)page_addr, length, &prot_mask, &consistent) <
+                0)
+                goto done;
+
+            if (!consistent || !(prot & prot_mask))
+                goto done;
+        }
+    }
+    else
+    {
+        /* fallback to simple memory range check if the nobrk option is not
+         * enabled */
+        if (!myst_is_addr_within_kernel(addr))
+            goto done;
+    }
+
+    ret = false;
+
+done:
+    return ret;
 }
 
 void myst_mman_lock(void)

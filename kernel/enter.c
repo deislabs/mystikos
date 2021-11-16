@@ -900,6 +900,29 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         /* now all the threads have shutdown we can retrieve the exit status */
         exit_status = process->exit_status;
 
+        /* release process mapping, including stack and crt */
+        myst_release_process_mappings(process->pid);
+
+        if (process->exec_stack)
+        {
+            /* The stack is released as part of
+             * myst_release_process_mappings. Clear the pointer and size
+             * value */
+            process->exec_stack = NULL;
+            process->exec_stack_size = 0;
+        }
+
+#ifdef MYST_THREAD_KEEP_CRT_PTR
+        if (process->exec_crt_data)
+        {
+            /* The crt data is released as part of
+             * myst_release_process_mappings. Clear the pointer and size
+             * value */
+            process->exec_crt_data = NULL;
+            process->exec_crt_size = 0;
+        }
+#endif
+
         /* release the fdtable */
         if (process->fdtable)
         {
@@ -927,22 +950,6 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         /* release signal related heap memory */
         myst_signal_free(process);
         myst_signal_free_siginfos(thread);
-
-        /* release the exec stack */
-        if (process->exec_stack)
-        {
-            myst_munmap(process->exec_stack, process->exec_stack_size);
-            process->exec_stack = NULL;
-            process->exec_stack_size = 0;
-        }
-
-        /* release the exec copy of the CRT data */
-        if (process->exec_crt_data)
-        {
-            myst_munmap(process->exec_crt_data, process->exec_crt_size);
-            process->exec_crt_data = NULL;
-            process->exec_crt_size = 0;
-        }
 
         /* Free CWD */
         free(process->cwd);

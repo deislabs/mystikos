@@ -1094,27 +1094,28 @@ int myst_exec(
     free(hashbang_buff);
     hashbang_buff = NULL;
 
-    /* if this is a nested exec, then release previous exec's stack */
-    if (process->exec_stack)
-    {
-        myst_munmap(process->exec_stack, process->exec_stack_size);
-        process->exec_stack = NULL;
-        process->exec_stack_size = 0;
-    }
+    /* if this is a nested exec, then release previous process mappings
+     * assicoated to the pid */
+    myst_release_process_mappings(process->pid);
 
-    /* if this is a nested exec, then release previous exec's CRT data */
-    if (process->exec_crt_data && process->exec_crt_size)
-    {
-        myst_munmap(process->exec_crt_data, process->exec_crt_size);
-        process->exec_crt_data = NULL;
-        process->exec_crt_size = 0;
-    }
+    /* set pid to the newly allocated crt data (now part of the process
+     * mappings) */
+    if (myst_mman_pids_set(crt_data, crt_size, process->pid) != 0)
+        myst_panic("myst_mman_pids_set()");
 
-    /* The thread is responsible for freeing the stack */
+    /* set pid to the newly allocated stack (now part of the process
+     * mappings) */
+    if (myst_mman_pids_set(
+            stack, __myst_kernel_args.main_stack_size, process->pid) != 0)
+        myst_panic("myst_mman_pids_set()");
+
+    /* used by myst_syscall_get_process_thread_stack */
     process->exec_stack = stack;
     process->exec_stack_size = __myst_kernel_args.main_stack_size;
+#ifdef MYST_THREAD_KEEP_CRT_PTR
     process->exec_crt_data = crt_data;
     process->exec_crt_size = crt_size;
+#endif
 
     /* close file descriptors with FD_CLOEXEC flag */
     {
@@ -1152,14 +1153,16 @@ int myst_exec(
 
     process->exec_stack = NULL;
     process->exec_stack_size = 0;
+#ifdef MYST_THREAD_KEEP_CRT_PTR
     process->exec_crt_data = NULL;
     process->exec_crt_size = 0;
+#endif
     ERAISE(-ENOEXEC);
 
 done:
 
     if (stack)
-        free(stack);
+        myst_munmap(stack, __myst_kernel_args.main_stack_size);
 
     if (crt_data)
         myst_munmap(crt_data, crt_size);
