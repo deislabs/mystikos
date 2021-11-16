@@ -1018,27 +1018,6 @@ static long _run_thread(void* arg_)
             /* Send SIGHUP to all our children */
             myst_send_sighup_child_processes(process);
 
-            if (process->exec_stack)
-            {
-                myst_munmap(process->exec_stack, process->exec_stack_size);
-                process->exec_stack = NULL;
-                process->exec_stack_size = 0;
-            }
-
-            if (process->exec_crt_data)
-            {
-                long r =
-                    myst_munmap(process->exec_crt_data, process->exec_crt_size);
-                process->exec_crt_data = NULL;
-                process->exec_crt_size = 0;
-
-                if (r != 0)
-                {
-                    myst_eprintf(
-                        "%s(%u): myst_munmap() failed", __FILE__, __LINE__);
-                }
-            }
-
             free(process->cwd);
             process->cwd = NULL;
 
@@ -1052,6 +1031,26 @@ static long _run_thread(void* arg_)
 
             /* unmap any mapping made by the process */
             myst_release_process_mappings(process->pid);
+
+            if (process->exec_stack)
+            {
+                /* The stack is released as part of
+                 * myst_release_process_mappings. Clear the pointer and size
+                 * value */
+                process->exec_stack = NULL;
+                process->exec_stack_size = 0;
+            }
+
+#ifdef MYST_THREAD_KEEP_CRT_PTR
+            if (process->exec_crt_data)
+            {
+                /* The crt data is released as part of
+                 * myst_release_process_mappings. Clear the pointer and size
+                 * value */
+                process->exec_crt_data = NULL;
+                process->exec_crt_size = 0;
+            }
+#endif
 
             /* unmapping closes fd's associated with mappings, so free fdtable
              * after all unmaps are done */

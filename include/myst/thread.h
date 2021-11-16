@@ -12,6 +12,7 @@
 #include <unistd.h>
 
 #include <myst/assume.h>
+#include <myst/config.h>
 #include <myst/defs.h>
 #include <myst/fdtable.h>
 #include <myst/futex.h>
@@ -118,9 +119,11 @@ struct myst_process
     void* exec_stack;
     size_t exec_stack_size;
 
+#ifdef MYST_THREAD_KEEP_CRT_PTR
     /* the copy of the CRT data made by myst_exec() */
     void* exec_crt_data;
     size_t exec_crt_size;
+#endif
 
     /* lock when enumerating all threads in this process
         while enumerating over thread->group_prev/next */

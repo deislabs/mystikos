@@ -95,17 +95,6 @@
 
 long myst_syscall_isatty(int fd);
 
-// The kernel should eventually use _bad_addr() to check all incoming addresses
-// from user space. This is a stop gap until the kernel is able to check
-// the access rights for a given address (memory obtained with mman and brk).
-static bool _bad_addr(const void* p)
-{
-    if (p == (void*)0xffffffffffffffff)
-        return true;
-
-    return false;
-}
-
 static bool _iov_bad_addr(const struct iovec* iov, int iovcnt)
 {
     if (iov)
@@ -114,7 +103,7 @@ static bool _iov_bad_addr(const struct iovec* iov, int iovcnt)
         {
             const struct iovec* v = &iov[i];
 
-            if (v->iov_len && _bad_addr(v->iov_base))
+            if (v->iov_len && myst_is_bad_addr_read(v->iov_base, v->iov_len))
                 return true;
         }
     }
@@ -390,7 +379,7 @@ static int _socketaddr_to_str(
         goto done;
     }
 
-    if (addr && !myst_is_addr_within_kernel(addr))
+    if (myst_is_bad_addr_read(addr, sizeof(struct sockaddr)))
     {
         myst_assume(limit >= 6);
         myst_strlcpy(out, "INVAL", limit);
@@ -1627,11 +1616,11 @@ long myst_syscall_chdir(const char* path)
     struct locals* locals = NULL;
     bool locked = false;
 
-    if (_bad_addr(path))
-        ERAISE(-EFAULT);
-
     if (!path)
         ERAISE(-EINVAL);
+
+    if (myst_is_bad_addr_read(path, sizeof(uint64_t)))
+        ERAISE(-EFAULT);
 
     if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
@@ -2259,7 +2248,7 @@ long myst_syscall_connect(
     if (type != MYST_FDTABLE_TYPE_SOCK)
         ERAISE(-ENOTSOCK);
 
-    if (!myst_is_addr_within_kernel(addr))
+    if (myst_is_bad_addr_read(addr, sizeof(struct sockaddr)))
         ERAISE(-EFAULT);
 
     ret = (*sd->sd_connect)(sd, sock, addr, addrlen);
@@ -2284,8 +2273,9 @@ long myst_syscall_recvfrom(
     if (!buf && len)
         ERAISE(-EFAULT);
 
-    if ((buf && !myst_is_addr_within_kernel(buf)) ||
-        (src_addr && !myst_is_addr_within_kernel(src_addr)))
+    if ((buf && myst_is_bad_addr_read_write(buf, len)) ||
+        (src_addr &&
+         myst_is_bad_addr_read_write(src_addr, sizeof(struct sockaddr))))
         ERAISE(-EFAULT);
 
     ECHECK(myst_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
@@ -2311,8 +2301,9 @@ long myst_syscall_sendto(
     if (!buf && len)
         ERAISE(-EFAULT);
 
-    if ((buf && !myst_is_addr_within_kernel(buf)) ||
-        (dest_addr && !myst_is_addr_within_kernel(dest_addr)))
+    if ((buf && myst_is_bad_addr_read(buf, len)) ||
+        (dest_addr &&
+         myst_is_bad_addr_read(dest_addr, sizeof(struct sockaddr))))
         ERAISE(-EFAULT);
 
     ECHECK(myst_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
@@ -2440,8 +2431,8 @@ long myst_syscall_getsockname(
     myst_sock_t* sock;
     myst_fdtable_type_t type;
 
-    if (!myst_is_addr_within_kernel(addrlen) ||
-        !myst_is_addr_within_kernel(addr))
+    if (myst_is_bad_addr_read_write(addr, sizeof(struct sockaddr)) ||
+        myst_is_bad_addr_read_write(addrlen, sizeof(socklen_t)))
         ERAISE(-EFAULT);
 
     ECHECK(myst_fdtable_get_any(
@@ -3309,7 +3300,7 @@ static long _syscall(void* args_)
 
             if (!buf && count)
                 ret = -EINVAL;
-            else if (buf && !myst_is_addr_within_kernel(buf))
+            else if (buf && myst_is_bad_addr_read(buf, count))
                 ret = -EFAULT;
             else
                 ret = myst_syscall_write(fd, buf, count);
@@ -3671,7 +3662,8 @@ static long _syscall(void* args_)
             if (_trace_syscall(SYS_select))
             {
                 struct timeval* _timeout = timeout;
-                if (timeout && !myst_is_addr_within_kernel(timeout))
+                if (timeout && myst_is_bad_addr_read_write(
+                                   timeout, sizeof(struct timeval)))
                 {
                     _timeout = NULL;
                 }
@@ -5323,7 +5315,8 @@ static long _syscall(void* args_)
             if (_trace_syscall(SYS_futimesat))
             {
                 const struct timeval* _times = times;
-                if (times && !myst_is_addr_within_kernel(times))
+                if (times &&
+                    myst_is_bad_addr_read(times, sizeof(struct timeval)))
                 {
                     _times = NULL;
                 }
@@ -6447,7 +6440,7 @@ long myst_syscall_clock_getres(clockid_t clk_id, struct timespec* res)
 {
     long params[6] = {(long)clk_id, (long)res};
 
-    if (res && !myst_is_addr_within_kernel(res))
+    if (res && myst_is_bad_addr_read_write(res, sizeof(struct timespec)))
         return -EFAULT;
     else if (res == NULL)
         return -EINVAL;

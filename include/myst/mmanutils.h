@@ -79,6 +79,17 @@ int myst_mman_pids_set(const void* addr, size_t length, pid_t pid);
 /* return the length in bytes that are owned by the given process */
 ssize_t myst_mman_pids_test(const void* addr, size_t length, pid_t pid);
 
+bool myst_is_bad_addr(const void* addr, size_t size, int prot);
+
+#define myst_is_bad_addr_read(addr, size) \
+    (myst_is_bad_addr(addr, size, PROT_READ))
+
+#define myst_is_bad_addr_write(addr, size) \
+    (myst_is_bad_addr(addr, size, PROT_WRITE))
+
+#define myst_is_bad_addr_read_write(addr, size) \
+    (myst_is_bad_addr(addr, size, PROT_READ | PROT_WRITE))
+
 void myst_mman_lock(void);
 
 void myst_mman_unlock(void);
