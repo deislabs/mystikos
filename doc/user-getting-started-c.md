@@ -70,6 +70,6 @@ To run an application with Mystikos in release or production mode, please see
 
 If your C program is complicated and requires many dependent libraries,
 we recommend that you wrap your application in a container. Please see
-[Getting started with a containerized C++ program](./user-getting-started-docker-c++.md)
+[Converting an existing non-container binary into a Mystikos application](./user-converting-existing-binary-into-mystikos-app.md)
 for details.
 
