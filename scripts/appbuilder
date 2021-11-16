@@ -164,8 +164,9 @@ export_image()
 
     # note that we have to start up the image to flatten it
     TEMP_INAME=$(docker run -d $IMAGE_NAME)
+    TEMP_APPENV=$APPENV_FILENAME-$TEMP_INAME
     
-    docker image inspect --format='{{json .Config}}' $IMAGE_NAME > $APPENV_FILENAME
+    docker image inspect --format='{{json .Config}}' $IMAGE_NAME > $TEMP_APPENV
 
     docker stop $TEMP_INAME >/dev/null
     docker export $TEMP_INAME -o $TEMP_FILE
@@ -176,7 +177,7 @@ export_image()
 
     # create the 'appdir' from the docker export
     tar xf $TEMP_FILE -C $TEMP_DIR
-    mv $APPENV_FILENAME $TEMP_DIR
+    mv $TEMP_APPENV $TEMP_DIR/$APPENV_FILENAME
     rm -rf $OUTPUT_NAME $TEMP_FILE
 
     if [ "$OUTPUT_FORMAT" == "dir" ]; then
