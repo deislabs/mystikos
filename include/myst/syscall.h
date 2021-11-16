@@ -227,6 +227,10 @@ long myst_syscall_futex(
     int val3);
 
 long myst_syscall_sched_getparam(pid_t pid, struct sched_param* param);
+long myst_syscall_sched_setscheduler(
+    pid_t pid,
+    int policy,
+    struct sched_param* param);
 long myst_syscall_getrandom(void* buf, size_t buflen, unsigned int flags);
 
 struct rusage;

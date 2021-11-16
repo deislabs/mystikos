@@ -668,6 +668,15 @@ long myst_sched_getparam_ocall(pid_t pid, struct myst_sched_param* param)
     return (syscall(SYS_sched_getparam, pid, param) == 0) ? 0 : -errno;
 }
 
+long myst_sched_setscheduler_ocall(
+    pid_t pid,
+    int policy,
+    struct myst_sched_param* param)
+{
+    return (syscall(SYS_sched_setscheduler, pid, policy, param) == 0) ? 0
+                                                                      : -errno;
+}
+
 long myst_symlink_ocall(
     const char* target,
     const char* linkpath,

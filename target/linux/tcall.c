@@ -668,6 +668,7 @@ long myst_tcall(long n, long params[6])
         }
         case SYS_sched_yield:
         case SYS_sched_getparam:
+        case SYS_sched_setscheduler:
         case SYS_fstat:
         case SYS_close:
         case SYS_readv:

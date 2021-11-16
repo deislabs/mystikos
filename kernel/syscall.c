@@ -4663,7 +4663,12 @@ static long _syscall(void* args_)
             // ATTN: support different schedules, FIFO, RR, BATCH, etc.
             // The more control we have on threads inside the kernel, the more
             // schedulers we could support.
-            BREAK(_return(n, 0));
+            pid_t pid = (pid_t)x1;
+            int policy = (int)x2;
+            struct sched_param* param = (struct sched_param*)x3;
+
+            BREAK(_return(
+                n, myst_syscall_sched_setscheduler(pid, policy, param)));
         }
         case SYS_sched_getscheduler:
         {

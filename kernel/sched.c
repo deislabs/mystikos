@@ -62,3 +62,49 @@ long myst_syscall_sched_getparam(pid_t pid, struct sched_param* param)
 done:
     return ret;
 }
+
+long myst_syscall_sched_setscheduler(
+    pid_t pid,
+    int policy,
+    struct sched_param* param)
+{
+    long ret = 0;
+    long params[6] = {0};
+
+    /* Check if caller has right permissions */
+    myst_thread_t* thread = myst_thread_self();
+    if (thread->euid != 0)
+        ERAISE(-EPERM);
+
+    if (policy < SCHED_OTHER || policy > SCHED_IDLE)
+        ERAISE(-EINVAL);
+
+    if (!param || !myst_is_addr_within_kernel(param))
+        ERAISE(-EFAULT);
+
+    if (pid == 0)
+        params[0] = (long)pid;
+    else
+    {
+        /* Find the relevant mystikos process/thread and send the target_tid */
+        myst_process_t* process = myst_find_process_from_pid(pid, true);
+        if (process)
+            params[0] = (long)process->main_process_thread->target_tid;
+        else
+        {
+            myst_thread_t* thread = myst_find_thread(pid);
+            if (thread)
+                params[0] = (long)thread->target_tid;
+        }
+        /* If params[0] is not set yet, then pid could not be found */
+        if (!params[0])
+            ERAISE(-ESRCH);
+    }
+    params[1] = (long)policy;
+    params[2] = (long)param;
+
+    ret = myst_tcall(SYS_sched_setscheduler, params);
+
+done:
+    return ret;
+}

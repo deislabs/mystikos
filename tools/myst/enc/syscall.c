@@ -882,6 +882,26 @@ done:
     return ret;
 }
 
+static long _sched_setscheduler(
+    pid_t pid,
+    int policy,
+    struct myst_sched_param* param)
+{
+    long ret = 0;
+    long retval;
+
+    if (myst_sched_setscheduler_ocall(&retval, pid, policy, param) != OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = retval;
+
+done:
+    return ret;
+}
+
 static long _fchmod(int fd, mode_t mode, uid_t host_euid, gid_t host_egid)
 {
     long ret = 0;
@@ -2069,6 +2089,11 @@ long myst_handle_tcall(long n, long params[6])
         case SYS_sched_getparam:
         {
             return _sched_getparam((pid_t)a, (struct myst_sched_param*)b);
+        }
+        case SYS_sched_setscheduler:
+        {
+            return _sched_setscheduler(
+                (pid_t)a, (int)b, (struct myst_sched_param*)c);
         }
         case SYS_fchmod:
         {

@@ -141,6 +141,12 @@ enclave
             [out] struct myst_sched_param* param)
             transition_using_threads;
 
+        long myst_sched_setscheduler_ocall(
+            pid_t pid,
+            int policy,
+            [in, out] struct myst_sched_param* param)
+            transition_using_threads;
+
         long myst_poll_ocall(
             [in, out, count=nfds] struct pollfd* fds,
             unsigned long nfds,

@@ -543,8 +543,6 @@
 /ltp/testcases/kernel/syscalls/sched_setparam/sched_setparam03
 /ltp/testcases/kernel/syscalls/sched_setparam/sched_setparam04
 /ltp/testcases/kernel/syscalls/sched_setparam/sched_setparam05
-/ltp/testcases/kernel/syscalls/sched_setscheduler/sched_setscheduler01
-/ltp/testcases/kernel/syscalls/sched_setscheduler/sched_setscheduler02
 /ltp/testcases/kernel/syscalls/sched_setscheduler/sched_setscheduler03
 /ltp/testcases/kernel/syscalls/select/select01
 /ltp/testcases/kernel/syscalls/select/select02
