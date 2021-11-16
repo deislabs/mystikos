@@ -3,6 +3,8 @@
 *  https://github.com/deislabs/mystikos/blob/main/.azure_pipelines/ci-pipeline-makefile-nightly.yml
 */
 
+library "OpenEnclaveJenkinsLibraryCyan@${params.OECI_LIB_VERSION}"
+
 pipeline {
     agent {
         label 'ACC-1804-DC4'
@@ -60,6 +62,36 @@ pipeline {
                         }
                     }
                 }
+                /* This sets up the service principal and managed service identity used by the VM,
+                *  which are required for the solution, SQL solution, and Azure SDK tests.
+                */
+                stage('Setup access') {
+                    steps {
+                        sh """#!/bin/bash
+                            if [[ ! -f /etc/apt/sources.list.d/azure-cli.list ]]; then
+                                echo "deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ bionic main" | sudo tee /etc/apt/sources.list.d/azure-cli.list
+                                wget https://packages.microsoft.com/keys/microsoft.asc
+                                sudo apt-key add microsoft.asc
+                                sudo apt-get update
+                            fi
+                            ${helpers.WaitForAptLock()}
+                            sudo apt-get install -y azure-cli
+                        """
+                        withCredentials([string(credentialsId: 'Jenkins-ServicePrincipal-ID', variable: 'SERVICE_PRINCIPAL_ID'),
+                                         string(credentialsId: 'Jenkins-ServicePrincipal-Password', variable: 'SERVICE_PRINCIPAL_PASSWORD'),
+                                         string(credentialsId: 'ACC-Prod-Tenant-ID', variable: 'TENANT_ID'),
+                                         string(credentialsId: 'ACC-Prod-Subscription-ID', variable: 'AZURE_SUBSCRIPTION_ID'),
+                                         string(credentialsId: 'oe-jenkins-dev-rg', variable: 'JENKINS_RESOURCE_GROUP'),
+                                         string(credentialsId: 'mystikos-managed-identity', variable: "MYSTIKOS_MANAGED_ID")]) {
+                            sh '''
+                                az login --service-principal -u ${SERVICE_PRINCIPAL_ID} -p ${SERVICE_PRINCIPAL_PASSWORD} --tenant ${TENANT_ID} >> /dev/null
+                                az account set -s ${AZURE_SUBSCRIPTION_ID}
+                                az vm identity assign -g ${JENKINS_RESOURCE_GROUP} -n \$(hostname) --identities ${MYSTIKOS_MANAGED_ID} >> /dev/null
+                                az vm update -g ${JENKINS_RESOURCE_GROUP} -n \$(hostname) --set identity.type='UserAssigned' >> /dev/null
+                            '''
+                        }
+                    }
+                }
                 stage('Minimum init config') {
                     steps {
                         sh """
@@ -90,32 +122,6 @@ pipeline {
                             withEnv(["MYST_NIGHTLY_TEST=1"]) {
                                 sh "make -j tests ALLTESTS=1 VERBOSE=1"
                             }
-                        }
-                    }
-                }
-                /* This sets up the service principal and managed service identity used by the VM,
-                *  which are required for the solution, SQL solution, and Azure SDK tests.
-                */
-                stage('Setup access') {
-                    steps {
-                        withCredentials([string(credentialsId: 'Jenkins-ServicePrincipal-ID', variable: 'SERVICE_PRINCIPAL_ID'),
-                                         string(credentialsId: 'Jenkins-ServicePrincipal-Password', variable: 'SERVICE_PRINCIPAL_PASSWORD'),
-                                         string(credentialsId: 'ACC-Prod-Tenant-ID', variable: 'TENANT_ID'),
-                                         string(credentialsId: 'ACC-Prod-Subscription-ID', variable: 'AZURE_SUBSCRIPTION_ID'),
-                                         string(credentialsId: 'oe-jenkins-dev-rg', variable: 'JENKINS_RESOURCE_GROUP'),
-                                         string(credentialsId: 'mystikos-managed-identity', variable: "MYSTIKOS_MANAGED_ID")]) {
-                            sh '''
-                                echo "deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ bionic main" | sudo tee /etc/apt/sources.list.d/azure-cli.list
-                                wget https://packages.microsoft.com/keys/microsoft.asc
-                                sudo apt-key add microsoft.asc
-                                sudo apt-get update
-                                while sudo lsof /var/lib/dpkg/lock-frontend | grep dpkg; do sleep 3; done
-                                sudo apt-get install -y azure-cli
-                                az login --service-principal -u ${SERVICE_PRINCIPAL_ID} -p ${SERVICE_PRINCIPAL_PASSWORD} --tenant ${TENANT_ID} >> /dev/null
-                                az account set -s ${AZURE_SUBSCRIPTION_ID}
-                                az vm identity assign -g ${JENKINS_RESOURCE_GROUP} -n \$(hostname) --identities ${MYSTIKOS_MANAGED_ID} >> /dev/null
-                                az vm update -g ${JENKINS_RESOURCE_GROUP} -n \$(hostname) --set identity.type='UserAssigned' >> /dev/null
-                            '''
                         }
                     }
                 }
