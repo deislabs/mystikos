@@ -17,6 +17,7 @@
 #include <myst/process.h>
 #include <myst/procfs.h>
 #include <myst/strings.h>
+#include <myst/syscall.h>
 #include <myst/times.h>
 
 static int _status_vcallback(
@@ -30,6 +31,8 @@ static int _pid_stat_vcallback(
 
 static myst_fs_t* _procfs;
 static char* _cpuinfo_buf = NULL;
+
+static struct timespec monotime_at_boot_ts;
 
 int procfs_setup()
 {
@@ -57,6 +60,8 @@ int procfs_setup()
 
     /* Create pid specific entries for main thread */
     ECHECK(procfs_pid_setup(myst_getpid()));
+
+    myst_syscall_clock_gettime(CLOCK_MONOTONIC, &monotime_at_boot_ts);
 
 done:
 
@@ -295,22 +300,30 @@ static int _stat_vcallback(
     myst_buf_clear(vbuf);
     char tmp[128];
     const size_t n = sizeof(tmp);
+
     ECHECK(myst_snprintf(tmp, n, "cpu  0 0 0 0 0 0 0 0 0 0\n"));
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+
     ECHECK(myst_snprintf(tmp, n, "intr 0\n"));
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+
     ECHECK(myst_snprintf(tmp, n, "nctxt 0\n"));
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+
     ECHECK(myst_snprintf(
         tmp, n, "btime %llu\n", __myst_kernel_args.start_time_sec));
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+
     ECHECK(myst_snprintf(tmp, n, "processes 1\n"));
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+
     ECHECK(
         myst_snprintf(tmp, n, "procs_running %llu\n", myst_get_num_threads()));
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+
     ECHECK(myst_snprintf(tmp, n, "procs_blocked 0\n"));
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+
     ECHECK(myst_snprintf(tmp, n, "softirq 0 0 0 0 0 0 0 0 0 0 0\n"));
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
 
@@ -467,6 +480,10 @@ static char get_process_state(myst_process_t* process)
     return 'R';
 }
 
+// clock ticks per second.
+// ATTN: can be retrieved by sysconf(_SC_CLK_TCK) ?
+#define TICK_RATE 100
+
 static int _pid_stat_vcallback(
     myst_file_t* file,
     myst_buf_t* vbuf,
@@ -514,13 +531,17 @@ static int _pid_stat_vcallback(
     ECHECK(myst_snprintf(tmp, sizeof(tmp), "0 0 0 0 "));
     ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
 
-    // starttime vsize rss rsslim
-    ECHECK(myst_snprintf(
-        tmp,
-        sizeof(tmp),
-        "%llu 0 0 0 ",
-        timespec_to_nanos(&process->main_process_thread->start_ts)));
-    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+    {
+        // starttime = proc start time - kernel boot time, in ticks
+        // Assuming 100 clock ticks/sec
+        long pst = timespec_to_nanos(&process->main_process_thread->start_ts);
+        long kbt = timespec_to_nanos(&monotime_at_boot_ts);
+        long diff_in_ticks = (pst - kbt) / (NANO_IN_SECOND / TICK_RATE);
+
+        // starttime vsize rss rsslim
+        ECHECK(myst_snprintf(tmp, sizeof(tmp), "%llu 0 0 0 ", diff_in_ticks));
+        ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+    }
 
     // startcode endcode startstack kstkesp kstkeip
     ECHECK(myst_snprintf(tmp, sizeof(tmp), "0 0 0 0 0 "));

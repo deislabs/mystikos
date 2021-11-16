@@ -266,8 +266,12 @@ int parse_proc_stat_file(pid_t pid, proc_pid_stat_t* statptr)
         &statptr->state,
         &statptr->starttime);
 
-    // printf("%d %s %c %llu\n", statptr->pid, statptr->name, statptr->state,
-    // statptr->starttime);
+    printf(
+        "%d %s %c %llu\n",
+        statptr->pid,
+        statptr->name,
+        statptr->state,
+        statptr->starttime);
     fclose(fp);
 }
 
@@ -285,11 +289,14 @@ int test_stat()
     assert(stat.state == 'R');
 }
 
+#define SLEEP_DUR 3
 int test_stat_from_child()
 {
     struct timespec tp;
     assert(clock_gettime(CLOCK_MONOTONIC, &tp) == 0);
 
+    // sleep so that child's start time is further away from kernel boot time
+    sleep(SLEEP_DUR);
     pid_t pid = fork();
     assert(pid >= 0);
 
@@ -307,7 +314,7 @@ int test_stat_from_child()
         parse_proc_stat_file(getpid(), &self_stat);
 
         assert(self_stat.pid = getpid());
-        assert(self_stat.starttime >= TIMESPEC_TO_NANOS(tp));
+        assert(self_stat.starttime >= SLEEP_DUR * sysconf(_SC_CLK_TCK));
 
         exit(0);
     }
