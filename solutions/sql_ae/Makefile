@@ -12,6 +12,8 @@ ifdef STRACE
 OPTS = --strace
 endif
 
+OPTS += --app-config-path config.json
+
 all: myst app
 	$(MYST) mkcpio $(APPDIR) rootfs
 
