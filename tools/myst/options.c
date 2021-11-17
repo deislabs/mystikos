@@ -158,11 +158,6 @@ long determine_final_options(
             }
         }
     }
-    else
-    {
-        if (myst_args_append(&final_opts->env, env->data, env->size) != 0)
-            ERAISE(-EINVAL);
-    }
 
     /* Inject the MYST_TARGET environment variable */
     {
