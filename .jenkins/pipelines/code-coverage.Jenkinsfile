@@ -15,64 +15,43 @@ pipeline {
         string(name: "BRANCH", defaultValue: "main", description: "Branch to build")
         choice(name: "REGION", choices:['useast', 'canadacentral'], description: "Azure region for the SQL solutions test")
     }
+    environment {
+        TEST_CONFIG = 'Code Coverage'
+    }
     stages {
-        stage('Run Tests') {
-            parallel {
-                stage("Run Unit Tests") {
-                    steps {
-                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                            build job: "Standalone-Pipelines/Unit-Tests-Pipeline",
-                            parameters: [
-                                string(name: "REPOSITORY", value: REPOSITORY),
-                                string(name: "BRANCH", value: BRANCH),
-                                string(name: "TEST_CONFIG", value: "Code Coverage"),
-                                string(name: "COMMIT_SYNC", value: GIT_COMMIT)
-                            ]
-                        }
+        stage('Run Code Coverage Tests') {
+            matrix {
+                axes {
+                    axis {
+                        name 'OS_VERSION'
+                        values '18.04'
+                    }
+                    axis {
+                        name 'TEST_PIPELINE'
+                        values 'Unit', 'Solutions', 'DotNet', 'Azure-SDK'
                     }
                 }
-                stage("Run Solutions Tests") {
-                    steps {
-                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                            build job: "Standalone-Pipelines/Solutions-Tests-Pipeline",
-                            parameters: [
-                                string(name: "REPOSITORY", value: REPOSITORY),
-                                string(name: "BRANCH", value: BRANCH),
-                                string(name: "TEST_CONFIG", value: "Code Coverage"),
-                                string(name: "REGION", value: REGION),
-                                string(name: "COMMIT_SYNC", value: GIT_COMMIT)
-                            ]
-                        }
-                    }
-                }
-                stage("Run DotNet Tests") {
-                    steps {
-                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                            build job: "Standalone-Pipelines/DotNet-Tests-Pipeline",
-                            parameters: [
-                                string(name: "REPOSITORY", value: REPOSITORY),
-                                string(name: "BRANCH", value: BRANCH),
-                                string(name: "TEST_CONFIG", value: "Code Coverage"),
-                                string(name: "COMMIT_SYNC", value: GIT_COMMIT)
-                            ]
-                        }
-                    }
-                }
-                stage("Run Azure SDK Tests") {
-                    steps {
-                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                            build job: "Standalone-Pipelines/Azure-SDK-Tests-Pipeline",
-                            parameters: [
-                                string(name: "REPOSITORY", value: REPOSITORY),
-                                string(name: "BRANCH", value: BRANCH),
-                                string(name: "TEST_CONFIG", value: "Code Coverage"),
-                                string(name: "COMMIT_SYNC", value: GIT_COMMIT)
-                            ]
+                stages {
+                    stage("Run test pipeline") {
+                        steps {
+                            sh "echo '${OS_VERSION} ${TEST_PIPELINE} - Config: ${TEST_CONFIG}'"
+                            catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                                build job: "Standalone-Pipelines/${TEST_PIPELINE}-Tests-Pipeline",
+                                parameters: [
+                                    string(name: "UBUNTU_VERSION", value: OS_VERSION),
+                                    string(name: "REPOSITORY", value: REPOSITORY),
+                                    string(name: "BRANCH", value: BRANCH),
+                                    string(name: "TEST_CONFIG", value: TEST_CONFIG),
+                                    string(name: "REGION", value: REGION),
+                                    string(name: "COMMIT_SYNC", value: GIT_COMMIT)
+                                ]
+                            }
                         }
                     }
                 }
             }
         }
+        // TODO: separate coverage reports for 18.04 and 20.04
         stage('Measure code coverage') {
             steps {
                 build job: "Standalone-Pipelines/Measure-Code-Coverage",

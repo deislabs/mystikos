@@ -539,7 +539,7 @@ long myst_wait(
     myst_process_t* p;
 
     if (rusage)
-        ERAISE(-EINVAL);
+        memset(rusage, 0, sizeof(*rusage));
 
     /* If this is the only process then raise ECHILD */
     if (process->next_process == NULL && process->prev_process == NULL &&
@@ -1060,6 +1060,9 @@ static long _run_thread(void* arg_)
                 myst_fdtable_free(process->fdtable);
                 process->fdtable = NULL;
             }
+
+            if (process->itimer)
+                free(process->itimer);
 
             /* Only need to zombify the process thread.
             ATTN: referencing "process" after zombification is not safe,

@@ -28,6 +28,7 @@
 /ltp/testcases/kernel/syscalls/dup/dup06
 /ltp/testcases/kernel/syscalls/dup/dup07
 /ltp/testcases/kernel/syscalls/dup2/dup202
+/ltp/testcases/kernel/syscalls/dup2/dup203
 /ltp/testcases/kernel/syscalls/dup2/dup204
 /ltp/testcases/kernel/syscalls/dup2/dup205
 /ltp/testcases/kernel/syscalls/dup3/dup3_01
@@ -40,6 +41,7 @@
 /ltp/testcases/kernel/syscalls/eventfd2/eventfd2_02
 /ltp/testcases/kernel/syscalls/exit/exit01
 /ltp/testcases/kernel/syscalls/exit/exit02
+/ltp/testcases/kernel/syscalls/exit_group/exit_group01
 /ltp/testcases/kernel/syscalls/faccessat/faccessat01
 /ltp/testcases/kernel/syscalls/fallocate/fallocate03
 /ltp/testcases/kernel/syscalls/fchdir/fchdir01
@@ -234,6 +236,7 @@
 /ltp/testcases/kernel/syscalls/rt_sigaction/rt_sigaction01
 /ltp/testcases/kernel/syscalls/rt_sigprocmask/rt_sigprocmask01
 /ltp/testcases/kernel/syscalls/sbrk/sbrk02
+/ltp/testcases/kernel/syscalls/sched_getparam/sched_getparam01
 /ltp/testcases/kernel/syscalls/sched_yield/sched_yield01
 /ltp/testcases/kernel/syscalls/send/send02
 /ltp/testcases/kernel/syscalls/sendfile/sendfile02

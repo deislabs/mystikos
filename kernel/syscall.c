@@ -470,11 +470,22 @@ long myst_syscall_open(const char* pathname, int flags, mode_t mode)
     struct locals
     {
         char suffix[PATH_MAX];
+        struct stat statbuf;
     };
     struct locals* locals = NULL;
 
     if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
+
+    if (flags & O_NOFOLLOW)
+    {
+        /* check if path is a link, if so O_PATH should be passed */
+        if (ret = myst_syscall_lstat(pathname, &locals->statbuf) < 0)
+            ERAISE(ret);
+
+        if (S_ISLNK(locals->statbuf.st_mode) && !(flags & O_PATH))
+            ERAISE(-ELOOP);
+    }
 
     ECHECK(myst_mount_resolve(pathname, locals->suffix, &fs));
     ECHECK((*fs->fs_open)(fs, locals->suffix, flags, mode, &fs_out, &file));
@@ -1091,14 +1102,17 @@ long myst_syscall_fstatat(
     };
     struct locals* locals = NULL;
 
-    if (!pathname || !statbuf)
+    if ((!pathname || *pathname == '\0') && !(flags & AT_EMPTY_PATH))
+        ERAISE(-ENOENT);
+
+    if (!statbuf)
         ERAISE(-EINVAL);
 
     if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
     /* If pathname is absolute, then ignore dirfd */
-    if (*pathname == '/' || dirfd == AT_FDCWD)
+    if ((pathname && *pathname == '/') || dirfd == AT_FDCWD)
     {
         if (flags & AT_SYMLINK_NOFOLLOW)
         {
@@ -1111,7 +1125,7 @@ long myst_syscall_fstatat(
             goto done;
         }
     }
-    else if (*pathname == '\0')
+    else if (!pathname || *pathname == '\0')
     {
         if (!(flags & AT_EMPTY_PATH))
             ERAISE(-EINVAL);
@@ -1139,21 +1153,31 @@ long myst_syscall_fstatat(
         myst_fdtable_t* fdtable = myst_fdtable_current();
         myst_fs_t* fs;
         myst_file_t* file;
+        const char* finalpath;
 
         ECHECK(myst_fdtable_get_file(fdtable, dirfd, &fs, &file));
         ECHECK((*fs->fs_realpath)(
             fs, file, locals->dirpath, sizeof(locals->dirpath)));
-        ECHECK(myst_make_path(
-            locals->path, sizeof(locals->path), locals->dirpath, pathname));
+
+        if (pathname && (flags & AT_EMPTY_PATH))
+        {
+            finalpath = locals->dirpath;
+        }
+        else
+        {
+            ECHECK(myst_make_path(
+                locals->path, sizeof(locals->path), locals->dirpath, pathname));
+            finalpath = locals->path;
+        }
 
         if (flags & AT_SYMLINK_NOFOLLOW)
         {
-            ECHECK(myst_syscall_lstat(locals->path, statbuf));
+            ECHECK(myst_syscall_lstat(finalpath, statbuf));
             goto done;
         }
         else
         {
-            ECHECK(myst_syscall_stat(locals->path, statbuf));
+            ECHECK(myst_syscall_stat(finalpath, statbuf));
             goto done;
         }
     }
@@ -3830,7 +3854,7 @@ static long _syscall(void* args_)
         case SYS_myst_run_itimer:
         {
             _strace(n, NULL);
-            BREAK(_return(n, myst_syscall_run_itimer()));
+            BREAK(_return(n, myst_syscall_run_itimer(process)));
         }
         case SYS_myst_start_shell:
         {
@@ -3848,7 +3872,8 @@ static long _syscall(void* args_)
 
             _strace(n, "which=%d curr_value=%p", which, curr_value);
 
-            BREAK(_return(n, myst_syscall_getitimer(which, curr_value)));
+            BREAK(
+                _return(n, myst_syscall_getitimer(process, which, curr_value)));
         }
         case SYS_alarm:
             break;
@@ -3866,7 +3891,8 @@ static long _syscall(void* args_)
                 old_value);
 
             BREAK(_return(
-                n, myst_syscall_setitimer(which, new_value, old_value)));
+                n,
+                myst_syscall_setitimer(process, which, new_value, old_value)));
         }
         case SYS_getpid:
         {
@@ -3992,6 +4018,7 @@ static long _syscall(void* args_)
             BREAK(_return(n, ret));
         }
         case SYS_exit:
+        case SYS_exit_group:
         {
             const int status = (int)x1;
 
@@ -4010,7 +4037,21 @@ static long _syscall(void* args_)
             if (!thread || thread->magic != MYST_THREAD_MAGIC)
                 myst_panic("unexpected");
 
-            process->exit_status = status;
+            bool process_status_set = false;
+            if (__atomic_compare_exchange_n(
+                    &process->exit_status_signum_set,
+                    &process_status_set,
+                    true,
+                    false,
+                    __ATOMIC_RELEASE,
+                    __ATOMIC_ACQUIRE))
+            {
+                process->exit_status = status;
+                process->terminating_signum = 0;
+            }
+
+            if (n == SYS_exit_group)
+                myst_kill_thread_group();
 
             /* the kstack is freed after the long-jump below */
             thread->exit_kstack = args->kstack;
@@ -4641,15 +4682,7 @@ static long _syscall(void* args_)
 
             _strace(n, "pid=%d param=%p", pid, param);
 
-            // ATTN: Return the priority from SYS_sched_setparam.
-            if (param != NULL)
-            {
-                // Only memset the non reserved part of the structure
-                // This is to be defensive against different sizes of this
-                // struct in musl and glibc.
-                memset(param, 0, sizeof(*param) - 40);
-            }
-            BREAK(_return(n, 0));
+            BREAK(_return(n, myst_syscall_sched_getparam(pid, param)));
         }
         case SYS_sched_setscheduler:
         {
@@ -5106,14 +5139,6 @@ static long _syscall(void* args_)
         }
         case SYS_clock_nanosleep:
             break;
-        case SYS_exit_group:
-        {
-            int status = (int)x1;
-            _strace(n, "status=%d", status);
-
-            myst_kill_thread_group();
-            BREAK(_return(n, 0));
-        }
         case SYS_epoll_wait:
         {
             int epfd = (int)x1;

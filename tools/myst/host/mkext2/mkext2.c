@@ -40,7 +40,7 @@ Synopsis:\n\
 Examples:\n\
     $ %s %s <dir> <image>\n\
     $ %s %s --encrypt=<keyfile> <dir> <image>\n\
-    $ %s %s --encrypt=<keyfile> -sign=<pubkey>:<privkey> <dir> <image>\n\
+    $ %s %s --encrypt=<keyfile> --sign=<pubkey>:<privkey> <dir> <image>\n\
 \n\
     These examples respectively generate the following disk image layouts.\n\
 \n\

@@ -71,6 +71,16 @@ enclave
         char d_name[1];
     };
 
+    struct myst_sched_param_reserved {
+        time_t __reserved1;
+        long __reserved2;
+    };
+
+    /* The expected glibc struct sched_param */
+    struct myst_sched_param {
+        int sched_priority;
+    };
+
     trusted
     {
         public int myst_enter_ecall(
@@ -123,7 +133,13 @@ enclave
             uint64_t self_event,
             [in] const struct myst_timespec* timeout);
 
-        long myst_sched_yield_ocall();
+        long myst_sched_yield_ocall()
+            transition_using_threads;
+
+        long myst_sched_getparam_ocall(
+            pid_t pid,
+            [out] struct myst_sched_param* param)
+            transition_using_threads;
 
         long myst_poll_ocall(
             [in, out, count=nfds] struct pollfd* fds,

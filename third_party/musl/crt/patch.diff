@@ -1,8 +1,8 @@
 diff --git a/Makefile b/Makefile
-index bd8f5c38..fcc35f3e 100644
+index bd8f5c38..ed57984d 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -160,12 +160,16 @@ obj/%.lo: $(srcdir)/%.c $(GENH) $(IMPH)
+@@ -160,12 +160,17 @@ obj/%.lo: $(srcdir)/%.c $(GENH) $(IMPH)
  lib/libc.so: $(LOBJS) $(LDSO_OBJS)
  	$(CC) $(CFLAGS_ALL) $(LDFLAGS_ALL) -nostdlib -shared \
  	-Wl,-e,_dlstart -o $@ $(LOBJS) $(LDSO_OBJS) $(LIBCC)
@@ -14,7 +14,8 @@ index bd8f5c38..fcc35f3e 100644
  	$(RANLIB) $@
  
 +objects.mak: $(LOBJS) $(LDSO_OBJS)
-+	@ echo "MUSL_OBJECTS = $(addprefix $(CURDIR)/,$(LOBJS) $(LDSO_OBJS))" > objects.mak
++	@ echo "MUSL_OBJECTS = $(addprefix <CURDIR>/,$(LOBJS) $(LDSO_OBJS))" > objects.mak
++	@ sed -i 's|<CURDIR>|$(CURDIR)|g' objects.mak
 +
  $(EMPTY_LIBS):
  	rm -f $@
@@ -997,6 +998,21 @@ index 948ece41..fd7e7801 100644
 +	return 0;
 +}
 \ No newline at end of file
+diff --git a/src/sched/sched_getparam.c b/src/sched/sched_getparam.c
+index 76f10e49..c055a47f 100644
+--- a/src/sched/sched_getparam.c
++++ b/src/sched/sched_getparam.c
+@@ -2,7 +2,9 @@
+ #include <errno.h>
+ #include "syscall.h"
+ 
+-int sched_getparam(pid_t pid, struct sched_param *param)
++int do_sched_getparam(pid_t pid, struct sched_param *param)
+ {
+ 	return __syscall_ret(-ENOSYS);
+ }
++
++_Noreturn weak_alias(do_sched_getparam, sched_getparam);
 diff --git a/src/select/poll.c b/src/select/poll.c
 index c84c8a99..a5f561bd 100644
 --- a/src/select/poll.c

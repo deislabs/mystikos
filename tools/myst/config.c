@@ -621,6 +621,10 @@ int write_oe_config_fd(int fd, config_parsed_data_t* parsed_data)
         fprintf(out_file, "StartAddress=%lu\n", parsed_data->oe_start_address);
     }
 
+    /* set CapturePFGPExceptions=1 allows the OE loader to decide whether
+     * to enable the feature or not based on the CPU capability */
+    fprintf(out_file, "CapturePFGPExceptions=1\n");
+
     ret = 0;
 
 done:

@@ -55,11 +55,19 @@ int myst_pre_launch_hook()
 
 long myst_syscall(long n, long params[6])
 {
-    static pthread_once_t _once = PTHREAD_ONCE_INIT;
-
-    /* create the itimer thread on demand (only if needed) */
-    if (n == SYS_setitimer)
-        pthread_once(&_once, _create_itimer_thread);
+    if ((n == SYS_setitimer) || (n == SYS_getitimer))
+    {
+        /* itimer is requested by SYS_settimer returning EAGAIN. If this happens
+         * we need to create the thread and re-invoke it */
+        long ret = (*_syscall_callback)(n, params);
+        if (ret == -EAGAIN)
+        {
+            _create_itimer_thread();
+            return (*_syscall_callback)(n, params);
+        }
+        else
+            return ret;
+    }
 
     if (n == SYS_fork)
     {

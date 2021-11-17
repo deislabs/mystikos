@@ -25,6 +25,9 @@
 #define MYST_THREAD_MAGIC 0xc79c53d9ad134ad4
 #define MYST_MAX_MUNNAP_ON_EXIT 5
 
+/* Typical default value in host operating system's /proc/sys/kernel/pid_max */
+#define MYST_PID_MAX 0x8000
+
 /* this signal is used to interrupt threads blocking on host in syscalls */
 #define MYST_INTERRUPT_THREAD_SIGNAL (SIGRTMIN + 1)
 
@@ -90,6 +93,8 @@ struct siginfo_list_item
     struct siginfo_list_item* next;
 };
 
+typedef struct myst_itimer myst_itimer_t;
+
 struct myst_process
 {
     /* the session id (see getsid() function) */
@@ -100,6 +105,10 @@ struct myst_process
 
     /* the process identifier (inherited from main thread) */
     pid_t pid;
+
+    /* To make sure the exit status and terminating signal number is set only
+     * once we use this flag */
+    bool exit_status_signum_set;
 
     /* The exit status passed to SYS_exit */
     int exit_status;
@@ -185,6 +194,14 @@ struct myst_process
      * is received.
      */
     int sigstop_futex;
+
+    /* itimer thread needs to be initialized by the CRT once. This boolean
+     * returns if it has not been done yet so it can be initiated. */
+    bool itimer_thread_requested;
+
+    /* itimer data. this structure has too many other objects in it that make it
+     * hard to not be a pointer so it gets initialized when there are calls. */
+    myst_itimer_t* itimer;
 };
 
 struct myst_thread

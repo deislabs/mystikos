@@ -223,7 +223,7 @@ static int _open_master_pty_cb(
     v_cb.write_cb = _write_pty_cb;
 
     ECHECK(myst_create_virtual_file(
-        _devfs, tmp, S_IFREG | S_IRUSR | S_IWUSR, v_cb));
+        _devfs, tmp, S_IFCHR | S_IRUSR | S_IWUSR, v_cb));
 
 done:
     return ret;

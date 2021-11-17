@@ -436,40 +436,45 @@ static const char* _inode_target(inode_t* inode)
 
 #define FILE_MAGIC 0xdfe1d5c160064f8e
 
-struct myst_file
+struct myst_file_shared
 {
     uint64_t magic;
     inode_t* inode;
     size_t offset;      /* the current file offset (files) */
     uint32_t access;    /* (O_RDONLY | O_RDWR | O_WRONLY) */
     uint32_t operating; /* (O_APPEND | O_DIRECT | O_NOATIME | O_NONBLOCK) */
-    int fdflags;        /* file descriptor flags: FD_CLOEXEC */
     char realpath[PATH_MAX];
     myst_buf_t vbuf;           /* virtual file buffer */
     myst_spinlock_t vbuf_lock; /* lock for the virtual file buffer */
     _Atomic(size_t) use_count;
 };
 
+struct myst_file
+{
+    struct myst_file_shared* shared;
+    int fdflags; /* file descriptor flags: FD_CLOEXEC */
+};
+
 static bool _file_valid(const myst_file_t* file)
 {
-    return file && file->magic == FILE_MAGIC;
+    return file && file->shared && file->shared->magic == FILE_MAGIC;
 }
 
 static void* _file_data(const myst_file_t* file)
 {
-    return (file->inode->v_cb.open_cb) ? file->vbuf.data
-                                       : file->inode->buf.data;
+    return (file->shared->inode->v_cb.open_cb) ? file->shared->vbuf.data
+                                               : file->shared->inode->buf.data;
 }
 
 static size_t _file_size(const myst_file_t* file)
 {
-    return (file->inode->v_cb.open_cb) ? file->vbuf.size
-                                       : file->inode->buf.size;
+    return (file->shared->inode->v_cb.open_cb) ? file->shared->vbuf.size
+                                               : file->shared->inode->buf.size;
 }
 
 static void* _file_current(myst_file_t* file)
 {
-    return (uint8_t*)_file_data(file) + file->offset;
+    return (uint8_t*)_file_data(file) + file->shared->offset;
 }
 
 static void* _file_at(myst_file_t* file, size_t offset)
@@ -804,6 +809,7 @@ static int _fs_open(
     ramfs_t* ramfs = (ramfs_t*)fs;
     inode_t* inode = NULL;
     myst_file_t* file = NULL;
+    myst_file_shared_t* file_shared = NULL;
     int ret = 0;
     int errnum;
     bool is_i_new = false;
@@ -834,6 +840,11 @@ static int _fs_open(
     /* Create the file object */
     if (!(file = calloc(1, sizeof(myst_file_t))))
         ERAISE(-ENOMEM);
+
+    if (!(file_shared = calloc(1, sizeof(myst_file_shared_t))))
+        ERAISE(-ENOMEM);
+
+    file->shared = file_shared;
 
     errnum = _path_to_inode(
         ramfs, pathname, true, NULL, &inode, locals->suffix, &tfs);
@@ -871,7 +882,7 @@ static int _fs_open(
 
         /* Check file access permissions */
         {
-            const int access = flags & 0x03;
+            const int access = (flags & O_PATH) ? O_PATH : flags & 0x03;
 
             if (access == O_RDONLY && !(inode->mode & S_IRUSR))
                 ERAISE(-EPERM);
@@ -894,10 +905,11 @@ static int _fs_open(
 
         /* Get the realpath of this file */
         ECHECK(_path_to_inode_realpath(
-            ramfs, pathname, true, NULL, &inode, file->realpath, NULL));
+            ramfs, pathname, true, NULL, &inode, file->shared->realpath, NULL));
 
         if (inode->v_cb.open_cb)
-            ECHECK((*inode->v_cb.open_cb)(file, &file->vbuf, file->realpath));
+            ECHECK((*inode->v_cb.open_cb)(
+                file, &file->shared->vbuf, file->shared->realpath));
     }
     else if (errnum == -ENOENT)
     {
@@ -926,7 +938,7 @@ static int _fs_open(
 
         /* Get the realpath of this file */
         ECHECK(_path_to_inode_realpath(
-            ramfs, pathname, true, NULL, &inode, file->realpath, NULL));
+            ramfs, pathname, true, NULL, &inode, file->shared->realpath, NULL));
     }
     else
     {
@@ -934,17 +946,19 @@ static int _fs_open(
     }
 
     /* Initialize the file */
-    file->magic = FILE_MAGIC;
-    file->inode = inode;
-    file->access = (flags & (O_RDONLY | O_RDWR | O_WRONLY));
-    file->operating = (flags & (O_APPEND | O_NONBLOCK));
-    file->use_count = 1;
+    file->shared->magic = FILE_MAGIC;
+    file->shared->inode = inode;
+    file->shared->access =
+        (flags & O_PATH) ? O_PATH : (flags & (O_RDONLY | O_RDWR | O_WRONLY));
+    file->shared->operating = (flags & (O_APPEND | O_NONBLOCK));
+    file->shared->use_count = 1;
     inode->nopens++;
 
     assert(_file_valid(file));
 
     *file_out = file;
     file = NULL;
+    file_shared = NULL;
     inode = NULL;
 
 done:
@@ -957,6 +971,9 @@ done:
 
     if (file)
         free(file);
+
+    if (file_shared)
+        free(file_shared);
 
     return ret;
 }
@@ -974,8 +991,11 @@ static off_t _fs_lseek(
     if (!_ramfs_valid(ramfs) || !_file_valid(file))
         ERAISE(-EINVAL);
 
+    if (file->shared->access == O_PATH)
+        ERAISE(-EBADF);
+
     /* NOP for read and write callbacks based virtual files */
-    if (_is_virtual_inode(file->inode))
+    if (_is_virtual_inode(file->shared->inode))
         goto done;
 
     switch (whence)
@@ -987,7 +1007,7 @@ static off_t _fs_lseek(
         }
         case SEEK_CUR:
         {
-            new_offset = (off_t)file->offset + offset;
+            new_offset = (off_t)file->shared->offset + offset;
             break;
         }
         case SEEK_END:
@@ -1008,9 +1028,9 @@ static off_t _fs_lseek(
     if (new_offset < 0 || new_offset > (off_t)_file_size(file))
         ERAISE(-EINVAL);
 
-    file->offset = (size_t)new_offset;
+    file->shared->offset = (size_t)new_offset;
 
-    _update_timestamps(file->inode, ACCESS);
+    _update_timestamps(file->shared->inode, ACCESS);
 
     ret = new_offset;
 
@@ -1038,7 +1058,7 @@ static ssize_t _fs_read(
         ERAISE(-EINVAL);
 
     /* fail if file has been opened for write only */
-    if (file->access == O_WRONLY)
+    if (file->shared->access == O_WRONLY || file->shared->access == O_PATH)
         ERAISE(-EBADF);
 
     /* reading zero bytes is okay */
@@ -1046,19 +1066,19 @@ static ssize_t _fs_read(
         goto done;
 
     /* If read-time virtual file, populate buf via callback */
-    if (file->inode->v_cb.read_cb)
+    if (file->shared->inode->v_cb.read_cb)
     {
-        ret = file->inode->v_cb.read_cb(file, buf, count);
+        ret = file->shared->inode->v_cb.read_cb(file, buf, count);
         goto done;
     }
 
     /* If offset is beyond end of file, return 0 */
-    if (file->offset >= _file_size(file))
+    if (file->shared->offset >= _file_size(file))
         goto done;
 
     /* Read count bytes from the file or directory */
     {
-        size_t remaining = _file_size(file) - file->offset;
+        size_t remaining = _file_size(file) - file->shared->offset;
 
         if (remaining == 0)
         {
@@ -1068,10 +1088,10 @@ static ssize_t _fs_read(
 
         n = (count < remaining) ? count : remaining;
         memcpy(buf, _file_current(file), n);
-        file->offset += n;
+        file->shared->offset += n;
     }
 
-    _update_timestamps(file->inode, ACCESS);
+    _update_timestamps(file->shared->inode, ACCESS);
 
     ret = (ssize_t)n;
 
@@ -1102,39 +1122,39 @@ static ssize_t _fs_write(
         goto done;
 
     /* fail if file has been opened for read only */
-    if (file->access == O_RDONLY)
+    if (file->shared->access == O_RDONLY || file->shared->access == O_PATH)
         ERAISE(-EBADF);
 
     /* If write-time virtual file, write to buf via callback */
-    if (file->inode->v_cb.write_cb)
+    if (file->shared->inode->v_cb.write_cb)
     {
-        ret = file->inode->v_cb.write_cb(file, buf, count);
+        ret = file->shared->inode->v_cb.write_cb(file, buf, count);
         goto done;
     }
 
     /* append always writes to the end of the file */
-    if ((file->operating & O_APPEND))
-        file->offset = _file_size(file);
+    if ((file->shared->operating & O_APPEND))
+        file->shared->offset = _file_size(file);
 
     /* Verify that the offset is in bounds */
-    if (file->offset > _file_size(file))
+    if (file->shared->offset > _file_size(file))
         ERAISE(-EINVAL);
 
     /* Write count bytes to the file or directory */
     {
-        size_t new_offset = file->offset + count;
+        size_t new_offset = file->shared->offset + count;
 
         if (new_offset > _file_size(file))
         {
-            if (myst_buf_resize(&file->inode->buf, new_offset) != 0)
+            if (myst_buf_resize(&file->shared->inode->buf, new_offset) != 0)
                 ERAISE(-ENOMEM);
         }
 
         memcpy(_file_current(file), buf, count);
-        file->offset = new_offset;
+        file->shared->offset = new_offset;
     }
 
-    _update_timestamps(file->inode, MODIFY | CHANGE);
+    _update_timestamps(file->shared->inode, MODIFY | CHANGE);
 
     ret = (ssize_t)count;
 
@@ -1170,9 +1190,9 @@ static ssize_t _fs_pread(
         goto done;
 
     /* If read-time virtual file, populate buf via callback */
-    if (file->inode->v_cb.read_cb)
+    if (file->shared->inode->v_cb.read_cb)
     {
-        ret = file->inode->v_cb.read_cb(file, buf, count);
+        ret = file->shared->inode->v_cb.read_cb(file, buf, count);
         goto done;
     }
 
@@ -1194,7 +1214,7 @@ static ssize_t _fs_pread(
         memcpy(buf, _file_at(file, (size_t)offset), n);
     }
 
-    _update_timestamps(file->inode, ACCESS);
+    _update_timestamps(file->shared->inode, ACCESS);
 
     ret = (ssize_t)n;
 
@@ -1229,9 +1249,9 @@ static ssize_t _fs_pwrite(
         goto done;
 
     /* If write-time virtual file, write to buf via callback */
-    if (file->inode->v_cb.write_cb)
+    if (file->shared->inode->v_cb.write_cb)
     {
-        ret = file->inode->v_cb.write_cb(file, buf, count);
+        ret = file->shared->inode->v_cb.write_cb(file, buf, count);
         goto done;
     }
 
@@ -1239,21 +1259,21 @@ static ssize_t _fs_pwrite(
     {
         // When opened for append, Linux pwrite() appends data to the end of
         // file regadless of the offset.
-        if ((file->operating & O_APPEND))
+        if ((file->shared->operating & O_APPEND))
             offset = _file_size(file);
 
         size_t new_offset = (size_t)offset + count;
 
         if (new_offset > _file_size(file))
         {
-            if (myst_buf_resize(&file->inode->buf, new_offset) != 0)
+            if (myst_buf_resize(&file->shared->inode->buf, new_offset) != 0)
                 ERAISE(-ENOMEM);
         }
 
         memcpy(_file_at(file, (size_t)offset), buf, count);
     }
 
-    _update_timestamps(file->inode, CHANGE | MODIFY);
+    _update_timestamps(file->shared->inode, CHANGE | MODIFY);
 
     ret = (ssize_t)count;
 
@@ -1335,36 +1355,40 @@ static int _fs_close(myst_fs_t* fs, myst_file_t* file)
     if (!_ramfs_valid(ramfs) || !_file_valid(file))
         ERAISE(-EINVAL);
 
-    assert(file->inode);
-    assert(_inode_valid(file->inode));
-    assert(file->inode->nopens > 0);
+    assert(file->shared->inode);
+    assert(_inode_valid(file->shared->inode));
+    assert(file->shared->inode->nopens > 0);
 
-    if (--file->use_count == 0)
+    if (--file->shared->use_count == 0)
     {
         /* If a virtual file has a close-callback, call it */
-        if (file->inode->v_cb.close_cb)
-            file->inode->v_cb.close_cb(file);
+        if (file->shared->inode->v_cb.close_cb)
+            file->shared->inode->v_cb.close_cb(file);
 
         /* For open-time virtual files, release the virtual file
         data on close */
-        if (file->inode->v_cb.open_cb)
-            myst_buf_release(&file->vbuf);
+        if (file->shared->inode->v_cb.open_cb)
+            myst_buf_release(&file->shared->vbuf);
 
-        file->inode->nopens--;
+        file->shared->inode->nopens--;
 
         /* handle case where file was deleted while open */
-        if (file->inode->nopens == 0 && file->inode->nlink == 0)
+        if (file->shared->inode->nopens == 0 && file->shared->inode->nlink == 0)
         {
-            _inode_free(ramfs, file->inode);
+            _inode_free(ramfs, file->shared->inode);
         }
         else
         {
-            _update_timestamps(file->inode, ACCESS);
+            _update_timestamps(file->shared->inode, ACCESS);
         }
 
-        memset(file, 0xdd, sizeof(myst_file_t));
-        free(file);
+        memset(file->shared, 0xdd, sizeof(myst_file_t));
+        free(file->shared);
     }
+
+    /* free file descriptor level object */
+    memset(file, 0xdd, sizeof(myst_file_t));
+    free(file);
 done:
     return ret;
 }
@@ -1545,8 +1569,8 @@ static int _fs_fstat(myst_fs_t* fs, myst_file_t* file, struct stat* statbuf)
     if (!_ramfs_valid(ramfs) || !_file_valid(file) || !statbuf)
         ERAISE(-EINVAL);
 
-    assert(_inode_valid(file->inode));
-    ERAISE(_stat(file->inode, statbuf));
+    assert(_inode_valid(file->shared->inode));
+    ERAISE(_stat(file->shared->inode, statbuf));
 
 done:
     return ret;
@@ -1852,17 +1876,20 @@ static int _fs_ftruncate(myst_fs_t* fs, myst_file_t* file, off_t length)
     if (!_ramfs_valid(ramfs) || !_file_valid(file) || length < 0)
         ERAISE(-EINVAL);
 
-    if (S_ISDIR(file->inode->mode))
+    if (S_ISDIR(file->shared->inode->mode))
         ERAISE(-EISDIR);
 
+    if (file->shared->access == O_PATH)
+        ERAISE(-EBADF);
+
     /* truncate does not apply to virtual files */
-    if (_is_virtual_inode(file->inode))
+    if (_is_virtual_inode(file->shared->inode))
         ERAISE(-EINVAL);
 
-    if (myst_buf_resize(&file->inode->buf, (size_t)length) != 0)
+    if (myst_buf_resize(&file->shared->inode->buf, (size_t)length) != 0)
         ERAISE(-ENOMEM);
 
-    _update_timestamps(file->inode, CHANGE | MODIFY);
+    _update_timestamps(file->shared->inode, CHANGE | MODIFY);
 
 done:
     return ret;
@@ -2011,6 +2038,9 @@ static int _fs_getdents64(
     if (!_ramfs_valid(ramfs) || !_file_valid(file) || !dirp)
         ERAISE(-EINVAL);
 
+    if (file->shared->access == O_PATH)
+        ERAISE(-EBADF);
+
     if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
@@ -2018,8 +2048,8 @@ static int _fs_getdents64(
         goto done;
 
     /* in case an entry was deleted (by unlink) during this iteration */
-    if (file->offset >= file->inode->buf.size)
-        file->offset = file->inode->buf.size;
+    if (file->shared->offset >= file->shared->inode->buf.size)
+        file->shared->offset = file->shared->inode->buf.size;
 
     for (size_t i = 0; i < n; i++)
     {
@@ -2181,7 +2211,7 @@ static int _fs_realpath(
 
     if (strcmp(ramfs->target, "/") == 0)
     {
-        if (myst_strlcpy(buf, file->realpath, size) >= size)
+        if (myst_strlcpy(buf, file->shared->realpath, size) >= size)
             ERAISE(-ENAMETOOLONG);
     }
     else
@@ -2189,7 +2219,7 @@ static int _fs_realpath(
         if (myst_strlcpy(buf, ramfs->target, size) >= size)
             ERAISE(-ENAMETOOLONG);
 
-        if (myst_strlcat(buf, file->realpath, size) >= size)
+        if (myst_strlcat(buf, file->shared->realpath, size) >= size)
             ERAISE(-ENAMETOOLONG);
     }
 
@@ -2207,7 +2237,7 @@ static void _set_fd_flag(myst_file_t* file, long arg)
     else
         file->fdflags = 0;
 
-    _update_timestamps(file->inode, CHANGE);
+    _update_timestamps(file->shared->inode, CHANGE);
 }
 
 static int _fs_fcntl(myst_fs_t* fs, myst_file_t* file, int cmd, long arg)
@@ -2232,21 +2262,21 @@ static int _fs_fcntl(myst_fs_t* fs, myst_file_t* file, int cmd, long arg)
         }
         case F_GETFL:
         {
-            ret = (int)(file->access | file->operating);
+            ret = (int)(file->shared->access | file->shared->operating);
             goto done;
         }
         case F_SETFL:
         {
             if (arg & O_APPEND)
-                file->operating |= O_APPEND;
+                file->shared->operating |= O_APPEND;
             if (arg & O_NONBLOCK)
-                file->operating |= O_NONBLOCK;
+                file->shared->operating |= O_NONBLOCK;
             if (arg & O_DIRECT)
                 // ATTN: implement O_DIRECT for files
-                file->operating |= O_DIRECT;
+                file->shared->operating |= O_DIRECT;
             if (arg & O_NOATIME)
                 // ATTN: implement O_NOATIME for files
-                file->operating |= O_NOATIME;
+                file->shared->operating |= O_NOATIME;
             goto done;
         }
         case F_SETLK:
@@ -2279,6 +2309,9 @@ static int _fs_ioctl(
     if (!_ramfs_valid(ramfs) || !_file_valid(file))
         ERAISE(-EBADF);
 
+    if (file->shared->access == O_PATH)
+        ERAISE(-EBADF);
+
     switch (request)
     {
         case TIOCGWINSZ:
@@ -2305,9 +2338,9 @@ static int _fs_ioctl(
                 ERAISE(-EINVAL);
 
             if (*val)
-                file->operating |= O_NONBLOCK;
+                file->shared->operating |= O_NONBLOCK;
             else
-                file->operating &= ~O_NONBLOCK;
+                file->shared->operating &= ~O_NONBLOCK;
 
             break;
         }
@@ -2324,6 +2357,15 @@ static int _fs_ioctl(
                 ERAISE(-ENOTTY);
             int* id = (int*)arg;
             ret = devfs_get_pts_id(file, id);
+            break;
+        }
+        case TCGETS:
+        case TCSETS:
+        case TCSETS + 1:
+        case TCSETS + 2:
+        {
+            if (!devfs_is_pty_pts_device(file))
+                ERAISE(-ENOTTY);
             break;
         }
         default:
@@ -2346,8 +2388,12 @@ static int _fs_dup(
     if (!_ramfs_valid(ramfs) || !_file_valid(file) || !file_out)
         ERAISE(-EINVAL);
 
-    (*file_out) = (myst_file_t*)file;
-    (*file_out)->use_count++;
+    if (!((*file_out) = calloc(1, sizeof(myst_file_t))))
+        ERAISE(-ENOMEM);
+
+    (*file_out)->shared = ((myst_file_t*)file)->shared;
+    (*file_out)->fdflags = 0;
+    (*file_out)->shared->use_count++;
 
 done:
 
@@ -2468,10 +2514,10 @@ static int _fs_futimens(
             case UTIME_OMIT:
                 break;
             case UTIME_NOW:
-                _update_timestamps(file->inode, ACCESS);
+                _update_timestamps(file->shared->inode, ACCESS);
                 break;
             default:
-                file->inode->atime = times[0];
+                file->shared->inode->atime = times[0];
                 break;
         }
 
@@ -2480,17 +2526,17 @@ static int _fs_futimens(
             case UTIME_OMIT:
                 break;
             case UTIME_NOW:
-                _update_timestamps(file->inode, MODIFY);
+                _update_timestamps(file->shared->inode, MODIFY);
                 break;
             default:
-                file->inode->atime = times[1];
+                file->shared->inode->atime = times[1];
                 break;
         }
     }
     else
     {
         /* set to current time */
-        _update_timestamps(file->inode, ACCESS | MODIFY);
+        _update_timestamps(file->shared->inode, ACCESS | MODIFY);
     }
 
 done:
@@ -2577,8 +2623,11 @@ int _fs_fchown(myst_fs_t* fs, myst_file_t* file, uid_t owner, gid_t group)
     if (!_ramfs_valid(ramfs) || !file)
         ERAISE(-EINVAL);
 
-    assert(_inode_valid(file->inode));
-    ECHECK(_chown(file->inode, owner, group));
+    if (file->shared->access == O_PATH)
+        ERAISE(-EBADF);
+
+    assert(_inode_valid(file->shared->inode));
+    ECHECK(_chown(file->shared->inode, owner, group));
 
 done:
     return ret;
@@ -2700,8 +2749,11 @@ static int _fs_fchmod(myst_fs_t* fs, myst_file_t* file, mode_t mode)
     if (!_ramfs_valid(ramfs) || !file)
         ERAISE(-EINVAL);
 
-    assert(_inode_valid(file->inode));
-    ECHECK(_chmod(file->inode, mode));
+    if (file->shared->access == O_PATH)
+        ERAISE(-EBADF);
+
+    assert(_inode_valid(file->shared->inode));
+    ECHECK(_chmod(file->shared->inode, mode));
 
 done:
     return ret;
@@ -2714,6 +2766,9 @@ static int _fs_fsync_and_fdatasync(myst_fs_t* fs, myst_file_t* file)
 
     if (!_ramfs_valid(ramfs) || !file)
         ERAISE(-EINVAL);
+
+    if (file->shared->access == O_PATH)
+        ERAISE(-EBADF);
 
     // ramfs being a in-memory fs, treat fsync and datasync as NOP
 
@@ -3004,17 +3059,17 @@ int myst_read_stateful_virtual_file(
     int ret = 0;
     size_t len = buf_size;
 
-    myst_spin_lock(&file->vbuf_lock);
-    if (file->vbuf.size < len)
-        len = file->vbuf.size;
+    myst_spin_lock(&file->shared->vbuf_lock);
+    if (file->shared->vbuf.size < len)
+        len = file->shared->vbuf.size;
 
-    memcpy(buf, file->vbuf.data, len);
+    memcpy(buf, file->shared->vbuf.data, len);
 
-    myst_buf_remove(&file->vbuf, 0, len);
+    myst_buf_remove(&file->shared->vbuf, 0, len);
 
     ret = len;
 
-    myst_spin_unlock(&file->vbuf_lock);
+    myst_spin_unlock(&file->shared->vbuf_lock);
     return ret;
 }
 
@@ -3024,9 +3079,9 @@ int myst_write_stateful_virtual_file(
     size_t buf_size)
 {
     int ret = 0;
-    myst_spin_lock(&file->vbuf_lock);
-    ret = myst_buf_append(&file->vbuf, buf, buf_size);
-    myst_spin_unlock(&file->vbuf_lock);
+    myst_spin_lock(&file->shared->vbuf_lock);
+    ret = myst_buf_append(&file->shared->vbuf, buf, buf_size);
+    myst_spin_unlock(&file->shared->vbuf_lock);
     return ret;
 }
 
