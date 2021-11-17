@@ -49,17 +49,6 @@ jobs:
       env:
         MYST_NIGHTLY_TEST: 1
 
-    # run all tests
-    - script: |
-        make tests ALLTESTS=1 VERBOSE=1
-      displayName: 'run all tests'
-      continueOnError: true
-      enabled: true
-      workingDirectory: $(Build.SourcesDirectory)
-      env:
-        MYST_NIGHTLY_TEST: 1
-        MYST_DO_CLEANUP: 1
-
     # run solution tests
     - script: |
         make tests -C $(Build.SourcesDirectory)/solutions
