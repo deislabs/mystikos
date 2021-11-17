@@ -41,8 +41,7 @@ run-passed: rootfs-passed
 
 run: rootfs
 	(cat tests.partially_passed | xargs -P 8 $(MYST_EXEC) rootfs $(OPTS) \
-		$(PYTEST_CMD) $(PYTEST_OPTS) 2>&1 > result; \
-		test "$$?" -eq "123")
+		$(PYTEST_CMD) $(PYTEST_OPTS) 2>&1 > result;)
 	sed -i '$$d' result
 	tail -n 28 result > test_summary
 	diff test_summary expected-test-summary
