@@ -1061,6 +1061,9 @@ static long _run_thread(void* arg_)
                 process->fdtable = NULL;
             }
 
+            if (process->itimer)
+                free(process->itimer);
+
             /* Only need to zombify the process thread.
             ATTN: referencing "process" after zombification is not safe,
             parent might have cleaned it up */

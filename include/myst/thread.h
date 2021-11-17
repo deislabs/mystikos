@@ -93,6 +93,8 @@ struct siginfo_list_item
     struct siginfo_list_item* next;
 };
 
+typedef struct myst_itimer myst_itimer_t;
+
 struct myst_process
 {
     /* the session id (see getsid() function) */
@@ -192,6 +194,14 @@ struct myst_process
      * is received.
      */
     int sigstop_futex;
+
+    /* itimer thread needs to be initialized by the CRT once. This boolean
+     * returns if it has not been done yet so it can be initiated. */
+    bool itimer_thread_requested;
+
+    /* itimer data. this structure has too many other objects in it that make it
+     * hard to not be a pointer so it gets initialized when there are calls. */
+    myst_itimer_t* itimer;
 };
 
 struct myst_thread

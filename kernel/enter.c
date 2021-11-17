@@ -907,6 +907,9 @@ int myst_enter_kernel(myst_kernel_args_t* args)
             process->fdtable = NULL;
         }
 
+        if (process->itimer)
+            free(process->itimer);
+
         /* Remove ourself from /proc/<pid> so other processes know we have gone
          * if they check */
         procfs_pid_cleanup(process->pid);

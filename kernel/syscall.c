@@ -3830,7 +3830,7 @@ static long _syscall(void* args_)
         case SYS_myst_run_itimer:
         {
             _strace(n, NULL);
-            BREAK(_return(n, myst_syscall_run_itimer()));
+            BREAK(_return(n, myst_syscall_run_itimer(process)));
         }
         case SYS_myst_start_shell:
         {
@@ -3848,7 +3848,8 @@ static long _syscall(void* args_)
 
             _strace(n, "which=%d curr_value=%p", which, curr_value);
 
-            BREAK(_return(n, myst_syscall_getitimer(which, curr_value)));
+            BREAK(
+                _return(n, myst_syscall_getitimer(process, which, curr_value)));
         }
         case SYS_alarm:
             break;
@@ -3866,7 +3867,8 @@ static long _syscall(void* args_)
                 old_value);
 
             BREAK(_return(
-                n, myst_syscall_setitimer(which, new_value, old_value)));
+                n,
+                myst_syscall_setitimer(process, which, new_value, old_value)));
         }
         case SYS_getpid:
         {
