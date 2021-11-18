@@ -6,11 +6,12 @@ pipeline {
         timeout(time: 300, unit: 'MINUTES')
     }
     parameters {
-        choice(name: "UBUNTU_VERSION", choices:["18.04","20.04"])
+        choice(name: "UBUNTU_VERSION", choices: ["18.04", "20.04"])
         string(name: "REPOSITORY", defaultValue: "deislabs")
         string(name: "BRANCH", defaultValue: "main", description: "Branch to build")
-        choice(name: "TEST_CONFIG", choices:['None','Nightly', 'Code Coverage'], description: "Test configuration to execute")
-        string(name: "COMMIT_SYNC", description: "optional - used to sync outputs of parallel jobs")
+        string(name: "PULL_REQUEST_ID", defaultValue: "", description: "If you are building a pull request, enter the pull request ID number here. (ex. 789)")
+        choice(name: "TEST_CONFIG", choices: ['None', 'Nightly', 'Code Coverage'], description: "Test configuration to execute")
+        string(name: "COMMIT_SYNC", defaultValue: "", description: "optional - used to sync outputs of parallel jobs")
     }
     environment {
         MYST_SCRIPTS =      "${WORKSPACE}/scripts"
@@ -25,31 +26,48 @@ pipeline {
         )
     }
     stages {
-        stage("Initialize Workspace") {
+        stage("Cleanup files") {
             steps {
-                sh """
-                   ${JENKINS_SCRIPTS}/global/clean-temp.sh
-                   """
+                sh "${JENKINS_SCRIPTS}/global/clean-temp.sh"
+            }
+        }
+        stage("Checkout Pull Request") {
+            when {
+                expression { params.PULL_REQUEST_ID != "" }
+            }
+            steps {
+                cleanWs()
+                checkout([$class: 'GitSCM',
+                    branches: [[name: "pr/${PULL_REQUEST_ID}"]],
+                    extensions: [],
+                    userRemoteConfigs: [[
+                        url: 'https://github.com/deislabs/mystikos',
+                        refspec: "+refs/pull/${PULL_REQUEST_ID}/merge:refs/remotes/origin/pr/${PULL_REQUEST_ID}"
+                    ]]
+                ])
             }
         }
         stage('Verify commit sync') {
-            when { allOf {
+            when {
                 expression { params.COMMIT_SYNC != "" }
-                expression { params.COMMIT_SYNC != GIT_COMMIT }
-            }}
+            }
             steps {
+                // Check if the checked out commit is the same across all parallel builds
                 script {
-                    currentBuild.result = 'ABORTED'
-                    error("Aborting build: mismatched commit - commit($GIT_COMMIT), expected(${COMMIT_SYNC})")
+                    def GIT_COMMIT_ID = sh(
+                        returnStdout: true,
+                        script: "git log --max-count=1 --pretty=format:'%H'"
+                    ).trim()
+                    if ( GIT_COMMIT_ID != params.COMMIT_SYNC ) {
+                        error("Checked out commit (${GIT_COMMIT_ID}) does not match commit from upstream job (${params.COMMIT_SYNC})")
+                    } else {
+                        println("Checked out commit (${GIT_COMMIT_ID}) matches upstream job (${params.COMMIT_SYNC}). Continuing with build.")
+                    }
                 }
             }
         }
         stage('Init Config') {
             steps {
-                checkout([$class: 'GitSCM',
-                    branches: [[name: BRANCH]],
-                    extensions: [],
-                    userRemoteConfigs: [[url: 'https://github.com/${REPOSITORY}/mystikos']]])
                 sh """
                    # Initialize dependencies repo
                    ${JENKINS_SCRIPTS}/global/wait-dpkg.sh

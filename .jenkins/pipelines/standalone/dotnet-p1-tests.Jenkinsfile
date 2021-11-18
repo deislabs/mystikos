@@ -79,24 +79,6 @@ pipeline {
                    """
             }
         }
-        stage('Setup Solutions Access') {
-            steps {
-                withCredentials([string(credentialsId: 'Jenkins-ServicePrincipal-ID', variable: 'SERVICE_PRINCIPAL_ID'),
-                                 string(credentialsId: 'Jenkins-ServicePrincipal-Password', variable: 'SERVICE_PRINCIPAL_PASSWORD'),
-                                 string(credentialsId: 'ACC-Prod-Tenant-ID', variable: 'TENANT_ID'),
-                                 string(credentialsId: 'ACC-Prod-Subscription-ID', variable: 'AZURE_SUBSCRIPTION_ID'),
-                                 string(credentialsId: 'oe-jenkins-dev-rg', variable: 'JENKINS_RESOURCE_GROUP'),
-                                 string(credentialsId: 'mystikos-managed-identity', variable: "MYSTIKOS_MANAGED_ID")]) {
-                    sh """
-                       ${JENKINS_SCRIPTS}/global/wait-dpkg.sh
-                       ${JENKINS_SCRIPTS}/solutions/init-config.sh
-
-                       ${JENKINS_SCRIPTS}/global/wait-dpkg.sh
-                       ${JENKINS_SCRIPTS}/solutions/azure-config.sh
-                       """
-                }
-            }
-        }
         stage('Build repo source') {
             steps {
                 sh """
@@ -104,37 +86,13 @@ pipeline {
                    """
             }
         }
-        stage('Run DotNet 5 Test Suite') {
+        stage('Run DotNet 5 P1 Test Suite') {
             steps {
                 catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
                     sh """
-                       make tests -C ${WORKSPACE}/solutions/coreclr
+                       make tests -C ${WORKSPACE}/solutions/coreclr-p1
                        """
                 }
-            }
-        }
-        stage('Upload code coverage') {
-            when {
-                expression { params.TEST_CONFIG == 'Code Coverage' }
-            }
-            steps {
-                sh """
-                   ${JENKINS_SCRIPTS}/global/wait-dpkg.sh
-                   ${JENKINS_SCRIPTS}/code-coverage/init-install.sh
-
-                   ${MYST_SCRIPTS}/myst_cc
-                   sed -i 's|SF:${WORKSPACE}|SF:|g' lcov.info
-
-                   mv lcov.info ${LCOV_INFO}
-                   """
-
-                azureUpload(
-                    containerName: 'mystikos-code-coverage',
-                    storageType: 'container',
-                    uploadZips: true,
-                    filesPath: "${LCOV_INFO}",
-                    storageCredentialId: 'mystikosreleaseblobcontainer'
-                )
             }
         }
         stage('Cleanup') {
