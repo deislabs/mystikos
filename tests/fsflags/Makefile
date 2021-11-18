@@ -16,15 +16,15 @@ ifdef MYST_ENABLE_GCOV
 OPTS += --export-ramfs
 endif
 
-tests_ext2fs:
+tests_ext2fs: all
 	$(MYST_EXEC) $(OPTS) ext2fs /opath
 	$(MYST_EXEC) $(OPTS) ext2fs /atemptypath
 
-tests_ramfs:
+tests_ramfs: all
 	$(MYST_EXEC) $(OPTS) rootfs /opath
 	$(MYST_EXEC) $(OPTS) rootfs /atemptypath
 
-tests: all tests_ext2fs tests_ramfs
+tests: tests_ext2fs tests_ramfs
 
 
 clean:
