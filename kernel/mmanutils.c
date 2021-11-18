@@ -406,8 +406,10 @@ long myst_mmap(
         // ATTN: Use EBADF and EACCES for fd validation failures. This may not
         // conform the Linux kernel behavior.
 
-        /* fail if not a regular file */
-        if (myst_syscall_fstat(fd, &buf) != 0 || !S_ISREG(buf.st_mode))
+        /* fail if not a regular file or character device(some apps map
+         * /dev/zero) */
+        if (myst_syscall_fstat(fd, &buf) != 0 ||
+            !(S_ISREG(buf.st_mode) || S_ISCHR(buf.st_mode)))
             ERAISE(-EBADF);
 
         /* get the file open flags */
