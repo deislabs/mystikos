@@ -5,7 +5,16 @@ APPDIR = appdir
 CFLAGS = -fPIC -g
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 
-#OPTS = --strace
+ifdef TRACE
+	OPTS += --strace --etrace
+else
+	ifdef STRACE
+		OPTS += --strace
+	endif
+	ifdef ETRACE
+		OPTS += --etrace
+	endif
+endif
 
 all:
 	$(MAKE) myst

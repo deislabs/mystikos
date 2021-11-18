@@ -4029,17 +4029,22 @@ static long _syscall(void* args_)
             if (!thread || thread->magic != MYST_THREAD_MAGIC)
                 myst_panic("unexpected");
 
-            bool process_status_set = false;
-            if (__atomic_compare_exchange_n(
-                    &process->exit_status_signum_set,
-                    &process_status_set,
-                    true,
-                    false,
-                    __ATOMIC_RELEASE,
-                    __ATOMIC_ACQUIRE))
+            if (((n == SYS_exit) && (thread->group_next == NULL) &&
+                 (thread->group_prev == NULL)) ||
+                (n == SYS_exit_group))
             {
-                process->exit_status = status;
-                process->terminating_signum = 0;
+                bool process_status_set = false;
+                if (__atomic_compare_exchange_n(
+                        &process->exit_status_signum_set,
+                        &process_status_set,
+                        true,
+                        false,
+                        __ATOMIC_RELEASE,
+                        __ATOMIC_ACQUIRE))
+                {
+                    process->exit_status = status;
+                    process->terminating_signum = 0;
+                }
             }
 
             if (n == SYS_exit_group)

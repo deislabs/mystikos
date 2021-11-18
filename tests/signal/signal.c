@@ -135,25 +135,21 @@ static _Atomic int thread_finished = 0;
 
 static int child_tid = 0;
 
-static void* sleep_thread_func(void* in)
-{
-    long seconds = (long)in;
-    thread_finished = 0;
+int sig_block_signum = 0;
+int sig_block_handler_signum = 0;
 
-    child_tid = syscall(SYS_gettid);
-    for (int i = 0; i < seconds; i++)
-    {
-        sleep(1); // sleep 1s
-        sched_yield();
-    }
-    thread_finished = 1;
-    return NULL;
+void sig_block_handler(int signum)
+{
+    sig_block_handler_signum = signum;
 }
 
 static void* sleep_thread_func_signal_blocked(void* in)
 {
     long seconds = (long)in;
     thread_finished = 0;
+
+    sig_block_handler_signum = 0;
+    sighandler_t prevhandler = signal(sig_block_signum, sig_block_handler);
 
     sigset_t mask, mask_old;
     sigfillset(&mask);
@@ -167,28 +163,13 @@ static void* sleep_thread_func_signal_blocked(void* in)
     }
     thread_finished = 1;
 
+    assert(sig_block_handler_signum == 0);
+
     sigprocmask(SIG_UNBLOCK, &mask, NULL);
+
+    assert(sig_block_handler_signum == sig_block_signum);
+
     return NULL;
-}
-
-int test_signal_nonblocked(int signum, const char* test_name)
-{
-    pthread_t thread;
-    void* retval;
-    child_tid = 0;
-
-    assert(pthread_create(&thread, 0, sleep_thread_func, (void*)3) == 0);
-
-    while (child_tid == 0)
-        ;
-    printf("Send signal %d to child thread %d\n", signum, child_tid);
-    pthread_kill(thread, signum);
-    printf("Sent signal %d to child thread %d\n", signum, child_tid);
-
-    sleep(4);
-    assert(thread_finished == 0);
-
-    printf("=== : Test passed (%s)\n", test_name);
 }
 
 int is_blockable_signal(int signum)
@@ -201,6 +182,8 @@ int test_signal_blocked(int signum, const char* test_name)
     pthread_t thread;
     void* retval;
     child_tid = 0;
+
+    sig_block_signum = signum;
 
     assert(
         pthread_create(
@@ -306,11 +289,9 @@ int main(int argc, const char* argv[])
 {
     test_pthread_cancel("pthread_cancel");
 
-    test_signal_nonblocked(SIGTERM, "signal_nonblocked");
-
     test_signal_blocked(SIGTERM, "signal_blocked");
 
-    test_signal_blocked(SIGKILL, "signal_blocked");
+    test_signal_blocked(SIGABRT, "signal_blocked");
 
     test_raise(35, "raise");
 
