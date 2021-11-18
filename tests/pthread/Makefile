@@ -21,8 +21,6 @@ endif
 
 OPTS += --memory-size=512m
 
-OPTS += --thread-stack-size=1m
-
 ifdef ALLTESTS
 COUNT = 10
 endif

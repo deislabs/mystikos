@@ -495,11 +495,6 @@ void test_exhaust_threads(void)
 
     pthread_attr_t attr;
     pthread_attr_init(&attr);
-    size_t default_stack_size = 0;
-
-    assert(pthread_attr_getstacksize(&attr, &default_stack_size) == 0);
-    /* the default stack size should match the option --thread-stack-size */
-    assert(default_stack_size == 1048576);
     pthread_attr_setstacksize(&attr, PTHREAD_STACK_MIN);
 
     /* Create threads until exhausted (last iteration fails with EAGAIN) */

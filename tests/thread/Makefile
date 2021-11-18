@@ -6,6 +6,8 @@ CFLAGS = -fPIC
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 CC = $(MUSL_GCC)
 
+OPTS = --thread-stack-size=1m
+
 all:
 	$(MAKE) myst
 	$(MAKE) rootfs
