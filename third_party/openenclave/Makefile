@@ -5,6 +5,7 @@ TOP=$(abspath $(CURDIR)/../..)
 BUILDDIR=${TOP}/build
 
 URL=https://github.com/openenclave/openenclave
+
 BRANCH=mystikos.v6.test
 
 OPENENCLAVE_INSTALL_PREFIX=$(BUILDDIR)/openenclave
