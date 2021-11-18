@@ -23,6 +23,13 @@ namespace hello
                 Console.WriteLine("Exception caught: {0}", e);
             }
         }
+
+        static void test_process_starttime()
+        {
+            DateTime startTime = Process.GetCurrentProcess().StartTime;
+            Console.WriteLine("process startTime: {0}", startTime);
+        }
+
         static void Main(string[] args)
         {
             // test handling multiple SIGFPEs.
@@ -33,6 +40,7 @@ namespace hello
             test_null_str_op();
             test_null_str_op();
 
+            test_process_starttime();
         }  
     }
 }
