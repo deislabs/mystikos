@@ -258,6 +258,29 @@ const char* myst_signum_to_string(unsigned signum)
     }
 }
 
+static bool _is_signal_terminal(unsigned signum)
+{
+    switch (signum)
+    {
+        case SIGHUP:
+        case SIGINT:
+        case SIGQUIT:
+        case SIGILL:
+        case SIGABRT:
+        case SIGFPE:
+        case SIGKILL:
+        case SIGSEGV:
+        case SIGPIPE:
+        case SIGALRM:
+        case SIGTERM:
+        case SIGUSR1:
+        case SIGUSR2:
+            return true;
+        default:
+            return false;
+    }
+}
+
 // No/default signal disposition specified, use the default action. See
 // https://man7.org/linux/man-pages/man7/signal.7.html for details.
 static long _default_signal_handler(unsigned signum)
@@ -295,9 +318,8 @@ static long _default_signal_handler(unsigned signum)
     // If the main thread has not been sent signal or has not exited already
     // forward this exception to the main thread to cause the whole process to
     // exit with this signal
-    if ((thread != process_thread) &&
-        //(signum != SIGKILL))
-        ((signum == SIGABRT) || (signum == SIGSEGV)))
+    if ((thread != process_thread) && (signum != SIGKILL) &&
+        _is_signal_terminal(signum))
     {
         enum myst_thread_status expected = MYST_RUNNING;
         if (__atomic_compare_exchange_n(
