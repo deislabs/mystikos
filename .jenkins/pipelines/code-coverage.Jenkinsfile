@@ -32,19 +32,22 @@ pipeline {
                     }
                 }
                 stages {
-                    stage("Run test pipeline") {
+                    stage("Matrix") {
                         steps {
-                            sh "echo '${OS_VERSION} ${TEST_PIPELINE} - Config: ${TEST_CONFIG}'"
-                            catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                                build job: "Standalone-Pipelines/${TEST_PIPELINE}-Tests-Pipeline",
-                                parameters: [
-                                    string(name: "UBUNTU_VERSION", value: OS_VERSION),
-                                    string(name: "REPOSITORY", value: REPOSITORY),
-                                    string(name: "BRANCH", value: BRANCH),
-                                    string(name: "TEST_CONFIG", value: TEST_CONFIG),
-                                    string(name: "REGION", value: REGION),
-                                    string(name: "COMMIT_SYNC", value: GIT_COMMIT)
-                                ]
+                            script {
+                                stage("${OS_VERSION} ${TEST_PIPELINE} (${TEST_CONFIG})") {
+                                    catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                                        build job: "Standalone-Pipelines/${TEST_PIPELINE}-Tests-Pipeline",
+                                        parameters: [
+                                            string(name: "UBUNTU_VERSION", value: OS_VERSION),
+                                            string(name: "REPOSITORY", value: params.REPOSITORY),
+                                            string(name: "BRANCH", value: params.BRANCH),
+                                            string(name: "TEST_CONFIG", value: env.TEST_CONFIG),
+                                            string(name: "REGION", value: params.REGION),
+                                            string(name: "COMMIT_SYNC", value: params.GIT_COMMIT)
+                                        ]
+                                    }
+                                }
                             }
                         }
                     }
