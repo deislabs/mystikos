@@ -118,9 +118,25 @@ void test_detach_thread(void)
     printf("=== passed test (%s)\n", __FUNCTION__);
 }
 
+void test_thread_stack_size()
+{
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    size_t default_stack_size = 0;
+
+    assert(pthread_attr_getstacksize(&attr, &default_stack_size) == 0);
+    /* the default stack size should match the option --thread-stack-size */
+    assert(default_stack_size == 1048576);
+
+    pthread_attr_destroy(&attr);
+
+    printf("=== passed test (%s)\n", __FUNCTION__);
+}
+
 int main(int argc, const char* argv[])
 {
     test_create_thread();
     test_detach_thread();
+    test_thread_stack_size();
     return 0;
 }
