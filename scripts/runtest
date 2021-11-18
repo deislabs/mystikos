@@ -25,23 +25,14 @@ magenta="\e[35m"
 cyan="\e[36m"
 reset="\e[39m"
 
-get_subtest()
-{
-    local cmd=$1
-
-    if [ -z "${SUBTEST}" ]
-    then
-        echo ${cmd##*/}
-    else
-        # use the SUBTEST environment variable
-        echo "${SUBTEST}"
-    fi
-}
-
 test_passed()
 {
     local cmd=$*
-    local subtest=$(get_subtest ${cmd})
+    if [ -z "${SUBTEST}" ]; then
+        local subtest=${cmd##*/}
+    else
+        local subtest="${SUBTEST}"
+    fi
     echo -e "${green}    passed (${TESTNAME}/${subtest})${reset}"
     mkdir -p "${TESTSUBDIR}/${subtest}"
     echo "" >> "${TESTSUBDIR}/${subtest}/passed"
@@ -50,7 +41,11 @@ test_passed()
 test_failed()
 {
     local cmd=$*
-    local subtest=$(get_subtest ${cmd})
+    if [ -z "${SUBTEST}" ]; then
+        local subtest=${cmd##*/}
+    else
+        local subtest="${SUBTEST}"
+    fi
     echo -e "${red}    failed (${TESTNAME}/${subtest})${reset}"
     mkdir -p "${TESTSUBDIR}/${subtest}"
     echo "" >> "${TESTSUBDIR}/${subtest}/failed"
@@ -59,7 +54,11 @@ test_failed()
 test_timedout()
 {
     local cmd=$*
-    local subtest=$(get_subtest ${cmd})
+    if [ -z "${SUBTEST}" ]; then
+        local subtest=${cmd##*/}
+    else
+        local subtest="${SUBTEST}"
+    fi
     echo -e "${red}    timedout (${TESTNAME}/${subtest})${reset}"
     mkdir -p "${TESTSUBDIR}/${subtest}"
     echo "" >> "${TESTSUBDIR}/${subtest}/failed"
@@ -81,7 +80,11 @@ run_test()
         cmd="${cmd} $i"
     done
 
-    local subtest=$(get_subtest ${cmd})
+    if [ -z "${SUBTEST}" ]; then
+        local subtest=${cmd##*/}
+    else
+        local subtest="${SUBTEST}"
+    fi
     echo -e "${lightblue}=== start (${TESTNAME}/${subtest})${reset}"
 
     local tempfile=$(/bin/mktemp)
