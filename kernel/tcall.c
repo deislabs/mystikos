@@ -435,3 +435,33 @@ ssize_t myst_tcall_recvmsg_block(int sockfd, struct msghdr* msg, int flags)
     long params[6] = {(long)sockfd, (long)msg, (long)flags};
     return myst_tcall(MYST_TCALL_RECVMSG_BLOCK, params);
 }
+
+long myst_tcall_get_tempfile_name(char* buf, size_t size)
+{
+    long params[6] = {(long)buf, (long)size};
+    return myst_tcall(MYST_TCALL_GET_TEMPFILE_NAME, params);
+}
+
+int myst_tcall_encrypt_aes_256_xts(
+    const myst_key_512_t* key,
+    const void* data_in,
+    void* data_out,
+    size_t data_size,
+    uint64_t index)
+{
+    long params[6] = {
+        (long)key, (long)data_in, (long)data_out, (long)data_size, (long)index};
+    return myst_tcall(MYST_TCALL_ENCRYPT_AES_256_XTS, params);
+}
+
+int myst_tcall_decrypt_aes_256_xts(
+    const myst_key_512_t* key,
+    const void* data_in,
+    void* data_out,
+    size_t data_size,
+    uint64_t index)
+{
+    long params[6] = {
+        (long)key, (long)data_in, (long)data_out, (long)data_size, (long)index};
+    return myst_tcall(MYST_TCALL_DECRYPT_AES_256_XTS, params);
+}

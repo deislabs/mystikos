@@ -46,6 +46,7 @@
 #include "regions.h"
 #include "roothash.h"
 #include "strace.h"
+#include "tempfile.h"
 #include "utils.h"
 
 // This is a default enclave configuration that we use when overriding the
@@ -793,4 +794,9 @@ long myst_write_console_ocall(int fd, const void* buf, size_t count)
 
 done:
     return ret;
+}
+
+long myst_get_tempfile_name_ocall(char* buf, size_t size)
+{
+    return myst_tcall_get_tempfile_name(buf, size);
 }

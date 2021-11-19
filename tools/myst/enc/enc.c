@@ -977,6 +977,16 @@ done:
     return ret;
 }
 
+long myst_tcall_get_tempfile_name(char* buf, size_t size)
+{
+    long retval = 0;
+
+    if (myst_get_tempfile_name_ocall(&retval, buf, size) != OE_OK)
+        return -ENOSYS;
+
+    return retval;
+}
+
 OE_SET_ENCLAVE_SGX2(
     ENCLAVE_PRODUCT_ID,
     ENCLAVE_SECURITY_VERSION,

@@ -562,6 +562,32 @@ long myst_tcall(long n, long params[6])
         {
             return myst_tcall_interrupt_thread((pid_t)x1);
         }
+        case MYST_TCALL_GET_TEMPFILE_NAME:
+        {
+            char* path = (char*)x1;
+            size_t size = (size_t)x2;
+            return myst_tcall_get_tempfile_name(path, size);
+        }
+        case MYST_TCALL_ENCRYPT_AES_256_XTS:
+        {
+            const myst_key_512_t* key = (const myst_key_512_t*)x1;
+            const void* data_in = (const void*)x2;
+            void* data_out = (void*)x3;
+            size_t data_size = (size_t)x4;
+            uint64_t index = (uint64_t)x5;
+            return myst_encrypt_aes_256_xts(
+                key, data_in, data_out, data_size, index);
+        }
+        case MYST_TCALL_DECRYPT_AES_256_XTS:
+        {
+            const myst_key_512_t* key = (const myst_key_512_t*)x1;
+            const void* data_in = (const void*)x2;
+            void* data_out = (void*)x3;
+            size_t data_size = (size_t)x4;
+            uint64_t index = (uint64_t)x5;
+            return myst_decrypt_aes_256_xts(
+                key, data_in, data_out, data_size, index);
+        }
         case SYS_read:
         case SYS_write:
         case SYS_close:

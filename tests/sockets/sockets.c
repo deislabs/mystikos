@@ -20,6 +20,8 @@
 
 static const uint16_t port = 12345;
 
+static bool _read_one_byte_at_at_time;
+
 static const char alpha[] = "abcdefghijklmnopqrstuvwxyz";
 
 static void _sleep_msec(uint32_t msec)
@@ -44,7 +46,7 @@ static void* _srv_thread_func(void* arg)
 
     (void)arg;
 
-    assert((lsock = socket(args->domain, SOCK_STREAM, 0)) >= 0);
+    assert((lsock = socket(args->domain, SOCK_STREAM|SOCK_CLOEXEC, 0)) >= 0);
 
     /* reuse the server address */
     {
@@ -134,7 +136,7 @@ static void* _cli_thread_func(void* arg)
     int sock = 0;
     ssize_t n = 0;
 
-    assert((sock = socket(args->domain, SOCK_STREAM, 0)) >= 0);
+    assert((sock = socket(args->domain, SOCK_STREAM|SOCK_CLOEXEC, 0)) >= 0);
 
     if (args->domain == AF_INET)
     {
@@ -164,7 +166,28 @@ static void* _cli_thread_func(void* arg)
         static char buf[1024];
 
         printf("client: recv\n");
-        n = recv(sock, buf, sizeof(buf), 0);
+
+        if (_read_one_byte_at_at_time)
+        {
+            n = 0;
+
+            memset(buf, 0, sizeof(buf));
+
+            for (ssize_t i = 0; i < strlen(alpha); i++)
+            {
+                ssize_t r = recv(sock, &buf[i], 1, 0);
+
+                if (r == 0)
+                    break;
+
+                assert(r == 1);
+                n++;
+            }
+        }
+        else
+        {
+            n = recv(sock, buf, sizeof(buf), 0);
+        }
 
         if (n == 0)
             break;
@@ -198,16 +221,17 @@ void test_sockets(args_t* args)
 
 int main(int argc, const char* argv[])
 {
-    if (argc != 2)
-    {
-        fprintf(stderr, "Usage: %s <uds-path>\n", argv[0]);
-        exit(1);
-    }
-
     args_t inet_args = {AF_INET, NULL};
-    args_t unix_args = {AF_UNIX, argv[1]};
+    args_t unix_args = {AF_UNIX, "/tmp/uds"};
 
     test_sockets(&inet_args);
+
+    _read_one_byte_at_at_time = false;
+    test_sockets(&unix_args);
+
+    unlink("/tmp/uds");
+
+    _read_one_byte_at_at_time = true;
     test_sockets(&unix_args);
 
     printf("=== passed test (%s)\n", argv[0]);

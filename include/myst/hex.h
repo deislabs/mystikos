@@ -9,6 +9,8 @@
 
 void myst_hexdump(const char* label, const void* data, size_t size);
 
+void myst_ascii_dump(const char* label, const uint8_t* data, uint32_t size);
+
 ssize_t myst_ascii_to_bin(const char* s, uint8_t* buf, size_t buf_size);
 
 int myst_bin_to_ascii(

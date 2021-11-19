@@ -74,17 +74,18 @@
 #include <myst/round.h>
 #include <myst/setjmp.h>
 #include <myst/signal.h>
+#include <myst/sockdev.h>
 #include <myst/spinlock.h>
 #include <myst/strings.h>
 #include <myst/syscall.h>
 #include <myst/syscallext.h>
+#include <myst/syslog.h>
 #include <myst/tcall.h>
 #include <myst/tee.h>
 #include <myst/thread.h>
 #include <myst/time.h>
 #include <myst/times.h>
 #include <myst/trace.h>
-#include <myst/uid_gid.h>
 
 #define MAX_IPADDR_LEN 64
 
@@ -2419,12 +2420,13 @@ done:
 long myst_syscall_socket(int domain, int type, int protocol)
 {
     long ret = 0;
-    myst_sockdev_t* sd = myst_sockdev_get();
+    myst_sockdev_t* sd;
     myst_fdtable_t* fdtable = myst_fdtable_current();
     myst_sock_t* sock = NULL;
     int sockfd;
     const myst_fdtable_type_t fdtype = MYST_FDTABLE_TYPE_SOCK;
 
+    ECHECK(myst_sockdev_resolve(domain, type, &sd));
     ECHECK((*sd->sd_socket)(sd, domain, type, protocol, &sock));
 
     if ((sockfd = myst_fdtable_assign(fdtable, fdtype, sd, sock)) < 0)
@@ -2531,9 +2533,10 @@ long myst_syscall_socketpair(int domain, int type, int protocol, int sv[2])
     int fd1;
     myst_sock_t* pair[2];
     myst_fdtable_t* fdtable = myst_fdtable_current();
-    myst_sockdev_t* sd = myst_sockdev_get();
+    myst_sockdev_t* sd;
     const myst_fdtable_type_t fdtype = MYST_FDTABLE_TYPE_SOCK;
 
+    ECHECK(myst_sockdev_resolve(domain, type, &sd));
     ECHECK((*sd->sd_socketpair)(sd, domain, type, protocol, pair));
 
     if ((fd0 = myst_fdtable_assign(fdtable, fdtype, sd, pair[0])) < 0)
@@ -6101,7 +6104,19 @@ static long _syscall(void* args_)
             int protocol = (int)x3;
             long ret;
 
-            _strace(n, "domain=%d type=%o protocol=%d", domain, type, protocol);
+            if (_trace_syscall(n))
+            {
+                char buf[64];
+
+                _strace(
+                    n,
+                    "domain=%d(%s) type=%o(%s) protocol=%d",
+                    domain,
+                    myst_socket_domain_str(domain),
+                    type,
+                    myst_format_socket_type(buf, sizeof(buf), type),
+                    protocol);
+            }
 
             ret = myst_syscall_socket(domain, type, protocol);
             BREAK(_return(n, ret));
@@ -6273,13 +6288,20 @@ static long _syscall(void* args_)
             int* sv = (int*)x4;
             long ret;
 
-            _strace(
-                n,
-                "domain=%d type=%d protocol=%d sv=%p",
-                domain,
-                type,
-                protocol,
-                sv);
+            if (_trace_syscall(n))
+            {
+                char buf[64];
+
+                _strace(
+                    n,
+                    "domain=%d(%s) type=%d(%s) protocol=%d sv=%p",
+                    domain,
+                    myst_socket_domain_str(domain),
+                    type,
+                    myst_format_socket_type(buf, sizeof(buf), type),
+                    protocol,
+                    sv);
+            }
 
             ret = myst_syscall_socketpair(domain, type, protocol, sv);
             BREAK(_return(n, ret));

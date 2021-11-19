@@ -20,6 +20,7 @@ SOURCES += ../shared/sha256.c
 SOURCES += ../shared/verify.c
 SOURCES += ../shared/nanosleep.c
 SOURCES += ../shared/interrupt.c
+SOURCES += ../shared/crypt.c
 
 CFLAGS = $(DEFAULT_CFLAGS)
 

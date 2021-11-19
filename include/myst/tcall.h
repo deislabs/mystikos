@@ -15,6 +15,7 @@
 #include <unistd.h>
 
 #include <myst/blockdevice.h>
+#include <myst/crypt.h>
 #include <myst/defs.h>
 #include <myst/fssig.h>
 
@@ -66,6 +67,9 @@ typedef enum myst_tcall_number
     MYST_TCALL_SENDTO_BLOCK,
     MYST_TCALL_RECVMSG_BLOCK,
     MYST_TCALL_SENDMSG_BLOCK,
+    MYST_TCALL_GET_TEMPFILE_NAME,
+    MYST_TCALL_ENCRYPT_AES_256_XTS,
+    MYST_TCALL_DECRYPT_AES_256_XTS,
 } myst_tcall_number_t;
 
 long myst_tcall(long n, long params[6]);
@@ -263,5 +267,21 @@ ssize_t myst_tcall_sendmsg_block(
     int flags);
 
 ssize_t myst_tcall_recvmsg_block(int sockfd, struct msghdr* msg, int flags);
+
+long myst_tcall_get_tempfile_name(char* buf, size_t size);
+
+int myst_tcall_encrypt_aes_256_xts(
+    const myst_key_512_t* key,
+    const void* data_in,
+    void* data_out,
+    size_t data_size,
+    uint64_t index);
+
+int myst_tcall_decrypt_aes_256_xts(
+    const myst_key_512_t* key,
+    const void* data_in,
+    void* data_out,
+    size_t data_size,
+    uint64_t index);
 
 #endif /* _MYST_TCALL_H */

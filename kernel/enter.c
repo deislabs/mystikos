@@ -42,6 +42,7 @@
 #include <myst/stack.h>
 #include <myst/strings.h>
 #include <myst/syscall.h>
+#include <myst/syslog.h>
 #include <myst/thread.h>
 #include <myst/time.h>
 #include <myst/times.h>
@@ -682,7 +683,13 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     __myst_kernel_args = *args;
     args = &__myst_kernel_args;
 
-    /* turn off various options when TEE is not in debug mode */
+    /* set the syslog level, depending on whether in TEE debug mode */
+    if (args->tee_debug_mode)
+        args->syslog_level = LOG_DEBUG;
+    else
+        args->syslog_level = LOG_NOTICE;
+
+    /* turn off or reduce various options when TEE is not in debug mode */
     if (!args->tee_debug_mode)
     {
         args->trace_errors = false;

@@ -189,13 +189,39 @@ static int _crypt(
 {
     int ret = -1;
     const mbedtls_cipher_info_t* ci;
-    mbedtls_cipher_context_t ctx;
+    struct context_wrapper
+    {
+        uint64_t header;
+        mbedtls_cipher_context_t ctx;
+        uint64_t footer1;
+        uint64_t footer2;
+    };
+    struct context_wrapper wrapper;
     uint8_t iv[LUKS_IV_SIZE];
     uint64_t i;
     uint64_t iters;
     uint64_t block_size;
 
-    mbedtls_cipher_init(&ctx);
+    // mbedtls_cipher_init() writes 8 bytes past the end of its parameter. At
+    // first it seemed that this was due to a header/library mismatch (but this
+    // turns out not to be the case: both are using OE mbedtls artifacts). To
+    // work around this, mbedtls_cipher_context_t is wrapped in a structure and
+    // sandwhiched between one header and two footers. We verify below that the
+    // first header and the second footer have not been disrupted. The first
+    // footer is disrupted in all cases we have observed so far.
+    {
+        const uint64_t magic = 0x7b800f55ffb7403e;
+        wrapper.header = magic;
+        wrapper.footer1 = magic;
+        wrapper.footer2 = magic;
+        mbedtls_cipher_init(&wrapper.ctx);
+
+        if (wrapper.header != magic)
+            goto done;
+
+        if (wrapper.footer2 != magic)
+            goto done;
+    }
 
     if (!(ci = _get_cipher_info(phdr)))
     {
@@ -203,16 +229,17 @@ static int _crypt(
         goto done;
     }
 
-    if (mbedtls_cipher_setup(&ctx, ci) != 0)
+    if (mbedtls_cipher_setup(&wrapper.ctx, ci) != 0)
         goto done;
 
     const size_t key_bits = phdr->key_bytes * 8;
 
-    if (mbedtls_cipher_setkey(&ctx, key, (int)key_bits, op) != 0)
+    if (mbedtls_cipher_setkey(&wrapper.ctx, key, (int)key_bits, op) != 0)
         goto done;
 
     if (strcmp(phdr->cipher_mode, LUKS_CIPHER_MODE_CBC_PLAIN) == 0 &&
-        mbedtls_cipher_set_padding_mode(&ctx, MBEDTLS_PADDING_NONE) != 0)
+        mbedtls_cipher_set_padding_mode(&wrapper.ctx, MBEDTLS_PADDING_NONE) !=
+            0)
     {
         goto done;
     }
@@ -221,7 +248,7 @@ static int _crypt(
     if (strcmp(phdr->cipher_mode, LUKS_CIPHER_MODE_ECB) == 0)
     {
         iters = 1;
-        block_size = mbedtls_cipher_get_block_size(&ctx);
+        block_size = mbedtls_cipher_get_block_size(&wrapper.ctx);
     }
     else
     {
@@ -242,7 +269,7 @@ static int _crypt(
         pos = i * block_size;
 
         if ((r = mbedtls_cipher_crypt(
-                 &ctx,
+                 &wrapper.ctx,
                  iv,             /* iv */
                  LUKS_IV_SIZE,   /* iv_size */
                  data_in + pos,  /* input */
@@ -260,7 +287,7 @@ static int _crypt(
     ret = 0;
 
 done:
-    mbedtls_cipher_free(&ctx);
+    mbedtls_cipher_free(&wrapper.ctx);
 
     return ret;
 }

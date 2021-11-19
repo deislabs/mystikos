@@ -36,6 +36,7 @@
 #include "package.h"
 #include "regions.h"
 #include "sign.h"
+#include "tempfile.h"
 #include "utils.h"
 
 _Static_assert(sizeof(struct myst_timespec) == sizeof(struct timespec), "");
@@ -494,6 +495,9 @@ int main(int argc, const char* argv[], const char* envp[])
         gid = atoi(gid_str);
     }
 #endif
+
+    /* set the PID used by myst_get_tempfile_name() */
+    myst_set_tempfile_pid(getpid());
 
     int ec = _main(argc, argv, envp);
 
