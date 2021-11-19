@@ -1239,7 +1239,8 @@ bool myst_is_bad_addr(const void* addr, size_t length, int prot)
 
         uint64_t page_addr = myst_round_down_to_page_size((uint64_t)addr);
 
-        if (myst_round_up(length, PAGE_SIZE, &length) < 0)
+        /* round up the length (including the zero case) to PAGE_SIZE */
+        if (myst_round_up(length ? length : 1, PAGE_SIZE, &length) < 0)
             goto done;
 
         /* check if the pages within the address range are unmapped (i.e.,
