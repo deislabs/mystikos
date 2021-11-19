@@ -8,5 +8,5 @@
     "SecurityVersion": 1,
 
     // Mystikos specific values
-    "HostEnvironmentVariables": ["DB_SERVER_NAME", "DB_NAME", "MAA_URL"]
+    "HostEnvironmentVariables": ["AZURE_KEYVAULT_URL", "STANDARD_STORAGE_CONNECTION_STRING"]
 }
