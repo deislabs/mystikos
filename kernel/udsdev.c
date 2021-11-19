@@ -5,7 +5,7 @@
 **==============================================================================
 **
 ** Unix-domain sockets
-** ===================
+** -------------------
 **
 ** This module implements Unix-domain sockets (UDS), which are created with
 ** the AF_LOCAL or AF_UNIX socket domain (which are equivalent in Linux).
