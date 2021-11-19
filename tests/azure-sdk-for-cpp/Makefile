@@ -22,6 +22,7 @@ $(ROOTFS): $(APPDIR)
 	truncate --size=-4096 $(ROOTFS)
 
 OPTS += --memory-size=256m
+OPTS += --app-config-path config.json
 
 tests: all
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /azure-sdk-for-cpp/build/sdk/template/azure-template/test/azure-template-test
