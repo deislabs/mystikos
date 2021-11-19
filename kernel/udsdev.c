@@ -1,31 +1,5 @@
-#include <assert.h>
-#include <limits.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <sys/un.h>
-
-#include <myst/crypt.h>
-#include <myst/defs.h>
-#include <myst/eraise.h>
-#include <myst/hex.h>
-#include <myst/iov.h>
-#include <myst/once.h>
-#include <myst/sha256.h>
-#include <myst/sockdev.h>
-#include <myst/strings.h>
-#include <myst/syscall.h>
-#include <myst/syslog.h>
-#include <myst/tcall.h>
-#include <myst/time.h>
-
-#define MAGIC 0xd731a683
-
-#define PAYLOAD_SIZE (512 - sizeof(uint64_t) - sizeof(myst_sha256_t))
-
-#define FRAME_CONTROL_MAGIC 0x9ef92565
-#define FRAME_DATA_MAGIC 0x3fd95160
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 
 /*
 **==============================================================================
@@ -97,6 +71,35 @@
 **
 **==============================================================================
 */
+
+#include <assert.h>
+#include <limits.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/un.h>
+
+#include <myst/crypt.h>
+#include <myst/defs.h>
+#include <myst/eraise.h>
+#include <myst/hex.h>
+#include <myst/iov.h>
+#include <myst/once.h>
+#include <myst/sha256.h>
+#include <myst/sockdev.h>
+#include <myst/strings.h>
+#include <myst/syscall.h>
+#include <myst/syslog.h>
+#include <myst/tcall.h>
+#include <myst/time.h>
+
+#define MAGIC 0xd731a683
+
+#define PAYLOAD_SIZE (512 - sizeof(uint64_t) - sizeof(myst_sha256_t))
+
+#define FRAME_CONTROL_MAGIC 0x9ef92565
+#define FRAME_DATA_MAGIC 0x3fd95160
 
 typedef struct frame
 {
