@@ -8,5 +8,7 @@
     "SecurityVersion": 1,
 
     // Mystikos specific values
+    "MemorySize": "30m",
+    "HostApplicationParameters": true,
     "HostEnvironmentVariables": ["DB_SERVER_NAME", "DB_NAME", "MAA_URL"]
 }
