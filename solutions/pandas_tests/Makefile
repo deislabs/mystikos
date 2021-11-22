@@ -40,8 +40,8 @@ run-passed: rootfs-passed
 	$(MYST_EXEC) rootfs-passed $(OPTS) $(PYTHON3) /app/app.py
 
 run: rootfs
-	(cat tests.partially_passed | xargs -P 8 $(MYST_EXEC) rootfs $(OPTS) \
-		$(PYTEST_CMD) $(PYTEST_OPTS) 2>&1 > result;)
+	-(cat tests.partially_passed | xargs -P 8 $(MYST_EXEC) rootfs $(OPTS) \
+		$(PYTEST_CMD) $(PYTEST_OPTS) 2>&1 > result; true)
 	sed -i '$$d' result
 	tail -n 28 result > test_summary
 	diff test_summary expected-test-summary
