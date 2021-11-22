@@ -96,7 +96,7 @@ pipeline {
                 parameters: [
                     string(name: "REPOSITORY", value: params.REPOSITORY),
                     string(name: "BRANCH", value: params.BRANCH),
-                    string(name: "EMAIL_SUBJECT", value: "[Jenkins] [${env.JOB_NAME}] [${currentBuild.currentResult}] [#${env.BUILD_NUMBER}]"),
+                    string(name: "EMAIL_SUBJECT", value: "[Jenkins] [${currentBuild.currentResult}] [${env.JOB_NAME}] [#${env.BUILD_NUMBER}]"),
                     string(name: "EMAIL_BODY", value: "See build log for details: ${env.BUILD_URL}")
                 ]
             )
