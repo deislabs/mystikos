@@ -466,16 +466,6 @@ long myst_syscall_open(const char* pathname, int flags, mode_t mode)
     if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
-    if (flags & O_NOFOLLOW)
-    {
-        /* check if path is a link, if so O_PATH should be passed */
-        if (ret = myst_syscall_lstat(pathname, &locals->statbuf) < 0)
-            ERAISE(ret);
-
-        if (S_ISLNK(locals->statbuf.st_mode) && !(flags & O_PATH))
-            ERAISE(-ELOOP);
-    }
-
     ECHECK(myst_mount_resolve(pathname, locals->suffix, &fs));
     ECHECK((*fs->fs_open)(fs, locals->suffix, flags, mode, &fs_out, &file));
 

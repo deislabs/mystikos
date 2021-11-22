@@ -812,6 +812,7 @@ static int _fs_open(
     myst_file_shared_t* file_shared = NULL;
     int ret = 0;
     int errnum;
+    bool follow = true;
     bool is_i_new = false;
     myst_fs_t* tfs = NULL;
     struct locals
@@ -846,8 +847,12 @@ static int _fs_open(
 
     file->shared = file_shared;
 
+    /* handle O_NOFOLLOW flag (applies to final component of path) */
+    if ((flags & O_NOFOLLOW))
+        follow = false;
+
     errnum = _path_to_inode(
-        ramfs, pathname, true, NULL, &inode, locals->suffix, &tfs);
+        ramfs, pathname, follow, NULL, &inode, locals->suffix, &tfs);
 
     if (tfs)
     {
@@ -880,9 +885,14 @@ static int _fs_open(
             ERAISE(-EISDIR);
         }
 
+        if (S_ISLNK(inode->mode) && (flags & O_NOFOLLOW) && !(flags & O_PATH))
+            ERAISE(-ELOOP);
+
         /* Check file access permissions */
         {
-            const int access = (flags & O_PATH) ? O_PATH : flags & 0x03;
+            const int access = (flags & O_PATH)
+                                   ? O_PATH
+                                   : flags & (O_RDONLY | O_RDWR | O_WRONLY);
 
             if (access == O_RDONLY && !(inode->mode & S_IRUSR))
                 ERAISE(-EPERM);
@@ -923,7 +933,8 @@ static int _fs_open(
         /* Split the path into parent directory and file name */
         ECHECK(_split_path(pathname, locals->dirname, locals->basename));
 
-        /* Get the inode of the parent directory. */
+        /* Get the inode of the parent directory, symbolic link in the directory
+         * part of the path should always be followed */
         ECHECK(_path_to_inode(
             ramfs, locals->dirname, true, NULL, &parent, NULL, NULL));
 
@@ -938,7 +949,13 @@ static int _fs_open(
 
         /* Get the realpath of this file */
         ECHECK(_path_to_inode_realpath(
-            ramfs, pathname, true, NULL, &inode, file->shared->realpath, NULL));
+            ramfs,
+            pathname,
+            follow,
+            NULL,
+            &inode,
+            file->shared->realpath,
+            NULL));
     }
     else
     {

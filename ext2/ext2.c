@@ -3453,8 +3453,9 @@ int ext2_open(
         /* split the path into directory and filename components */
         ECHECK(_split_path(path, locals->dirname, locals->filename));
 
-        /* load the directory inode */
-        ECHECK(_path_to_ino(ext2, locals->dirname, follow, NULL, &dino));
+        /* load the directory inode, symbolic link in the directory part of the
+         * path should always be followed */
+        ECHECK(_path_to_ino(ext2, locals->dirname, FOLLOW, NULL, &dino));
         ECHECK(ext2_read_inode(ext2, dino, &locals->dinode));
 
         /* create a new inode */
@@ -3473,7 +3474,8 @@ int ext2_open(
             ERAISE(-EEXIST);
     }
 
-    if (S_ISLNK(locals->inode.i_mode) && (flags & O_NOFOLLOW))
+    if (S_ISLNK(locals->inode.i_mode) && (flags & O_NOFOLLOW) &&
+        !(flags & O_PATH))
         ERAISE(-ELOOP);
 
     /* fail if not a directory */
@@ -3505,8 +3507,8 @@ int ext2_open(
         file->shared->offset = 0;
         file->shared->open_flags = flags;
         file->shared->access = (flags & O_PATH)
-                           ? O_PATH
-                           : (flags & (O_RDONLY | O_RDWR | O_WRONLY));
+                                   ? O_PATH
+                                   : (flags & (O_RDONLY | O_RDWR | O_WRONLY));
         file->shared->operating = (flags & (O_APPEND | O_NONBLOCK));
         file->shared->use_count = 1;
     }
