@@ -1232,6 +1232,10 @@ bool myst_is_bad_addr(const void* addr, size_t length, int prot)
     if (!addr)
         goto done;
 
+/* ATTN: temporay workaround to relax the bad addr check. Can be
+ * removed once ensuring the user signal handling code does not use
+ * kstack */
+#ifndef MYST_RELAX_BAD_ADDR_CHECK
     if (__myst_kernel_args.nobrk)
     {
         /* pid test is only supported if the nobrk option is enabled as
@@ -1263,6 +1267,11 @@ bool myst_is_bad_addr(const void* addr, size_t length, int prot)
         }
     }
     else
+#else
+    /* avoid the unused-parameter warnings */
+    (void)length;
+    (void)prot;
+#endif
     {
         /* fallback to simple memory range check if the nobrk option is not
          * enabled */
