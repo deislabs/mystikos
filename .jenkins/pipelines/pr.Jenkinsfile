@@ -158,7 +158,8 @@ pipeline {
                                             string(name: "PULL_REQUEST_ID", value: params.PULL_REQUEST_ID),
                                             string(name: "TEST_CONFIG", value: env.TEST_CONFIG),
                                             string(name: "REGION", value: params.REGION),
-                                            string(name: "COMMIT_SYNC", value: params.GIT_COMMIT_ID)
+                                            string(name: "COMMIT_SYNC", value: params.GIT_COMMIT_ID),
+                                            string(name: "VM_GENERATION", value: 'v3')
                                         ]
                                     }
                                 }
