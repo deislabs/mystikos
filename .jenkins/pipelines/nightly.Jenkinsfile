@@ -69,7 +69,7 @@ pipeline {
                                 stage("${OS_VERSION} ${TEST_PIPELINE} (${TEST_CONFIG})") {
                                     catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
                                         build(
-                                            job: "../Standalone-Pipelines/${TEST_PIPELINE}-Tests-Pipeline",
+                                            job: "Standalone-Pipelines/${TEST_PIPELINE}-Tests-Pipeline",
                                             parameters: [
                                                 string(name: "UBUNTU_VERSION", value: OS_VERSION),
                                                 string(name: "REPOSITORY", value: params.REPOSITORY),
@@ -92,7 +92,7 @@ pipeline {
     post {
         always {
             build(
-                job: "../Standalone-Pipelines/Send-Email",
+                job: "Standalone-Pipelines/Send-Email",
                 parameters: [
                     string(name: "REPOSITORY", value: params.REPOSITORY),
                     string(name: "BRANCH", value: params.BRANCH),
