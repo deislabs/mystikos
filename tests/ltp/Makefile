@@ -5,6 +5,8 @@ include $(TOP)/defs.mak
 
 APPDIR=$(CURDIR)/appdir
 
+TRACE=1
+
 ifdef STRACE
 OPTS += --strace
 endif
