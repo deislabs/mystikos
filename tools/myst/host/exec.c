@@ -770,3 +770,27 @@ long myst_interrupt_thread_ocall(pid_t tid)
 {
     return myst_tcall_interrupt_thread(tid);
 }
+
+long myst_write_console_ocall(int fd, const void* buf, size_t count)
+{
+    long ret = 0;
+    FILE* stream;
+
+    if (!buf)
+        ERAISE(-EINVAL);
+
+    if (fd == STDOUT_FILENO)
+        stream = stdout;
+    else if (fd == STDERR_FILENO)
+        stream = stderr;
+    else
+        ERAISE(-EINVAL);
+
+    if (fwrite(buf, 1, count, stream) != count)
+        ERAISE(-EIO);
+
+    ret = count;
+
+done:
+    return ret;
+}
