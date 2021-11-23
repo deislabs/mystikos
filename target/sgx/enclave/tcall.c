@@ -305,21 +305,8 @@ long myst_tcall(long n, long params[6])
             int fd = (int)x1;
             const void* buf = (const void*)x2;
             size_t count = (size_t)x3;
-            FILE* stream = NULL;
 
-            if (fd == STDOUT_FILENO)
-                stream = stdout;
-            else if (fd == STDERR_FILENO)
-                stream = stderr;
-            else
-                return -EINVAL;
-
-            if (fwrite(buf, 1, count, stream) != count)
-                return -EIO;
-
-            fflush(stream);
-
-            return (long)count;
+            return myst_tcall_write_console(fd, buf, count);
         }
         case MYST_TCALL_READ_CONSOLE:
         {

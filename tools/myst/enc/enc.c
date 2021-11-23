@@ -957,6 +957,26 @@ long myst_tcall_interrupt_thread(pid_t tid)
     return retval;
 }
 
+long myst_tcall_write_console(int fd, const void* buf, size_t count)
+{
+    long ret = 0;
+    long retval = 0;
+
+    if (fd != STDOUT_FILENO && fd != STDERR_FILENO)
+        ERAISE(-EINVAL);
+
+    if (myst_write_console_ocall(&retval, fd, buf, count) != OE_OK)
+        ERAISE(-EIO);
+
+    if (retval != count)
+        ERAISE(-EIO);
+
+    ret = count;
+
+done:
+    return ret;
+}
+
 OE_SET_ENCLAVE_SGX2(
     ENCLAVE_PRODUCT_ID,
     ENCLAVE_SECURITY_VERSION,

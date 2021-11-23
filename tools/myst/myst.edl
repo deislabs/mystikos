@@ -628,5 +628,18 @@ enclave
             [out] uint32_t* rbx,
             [out] uint32_t* rcx,
             [out] uint32_t* rdx);
+
+        /*
+        **======================================================================
+        **
+        ** console I/O
+        **
+        **======================================================================
+        */
+
+        long myst_write_console_ocall(
+            int fd, /* STDOUT_FILENO or STDERR_FILENO */
+            [in, size=count] const void* buf,
+            size_t count);
     };
 };
