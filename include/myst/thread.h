@@ -566,6 +566,10 @@ int myst_set_thread_name(myst_thread_t* thread, const char* n);
 /* call the given function on the given stack */
 long myst_call_on_stack(void* stack, long (*func)(void* arg), void* arg);
 
+/* Invoke the given function on a stack of the given size (in bytes) */
+typedef long (*myst_invoke_func_t)(long arg0, ...);
+long myst_invoke(size_t stack_size, myst_invoke_func_t func, ...);
+
 /* Send SIGHUP to child processes of given process thread */
 int myst_send_sighup_child_processes(myst_process_t* process);
 

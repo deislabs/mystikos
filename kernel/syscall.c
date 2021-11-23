@@ -6295,8 +6295,14 @@ static long _syscall(void* args_)
         case SYS_myst_oe_get_enclave_start_address:
         case SYS_myst_oe_get_enclave_base_address:
         {
+            const size_t stack_size = 64 * 1024;
+
             _strace(n, "forwarded");
-            BREAK(_return(n, _forward_syscall(n, params)));
+
+            /* OE functions require a bigger stack size */
+            long ret = myst_invoke(
+                stack_size, (myst_invoke_func_t)_forward_syscall, n, params);
+            BREAK(_return(n, ret));
         }
         default:
         {
