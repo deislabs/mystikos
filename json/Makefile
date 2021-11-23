@@ -10,6 +10,7 @@ SOURCES = $(wildcard *.c)
 INCLUDES = -I$(INCDIR)
 
 CFLAGS = $(OEHOST_CFLAGS) -fPIC
+CFLAGS += -Wstack-usage=512
 
 ifdef MYST_ENABLE_GCOV
 CFLAGS += $(GCOV_CFLAGS)

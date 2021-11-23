@@ -271,13 +271,15 @@ json_result_t json_print(
 {
     json_result_t result = JSON_UNEXPECTED;
     char* data = NULL;
-    json_parser_t parser_buf;
-    json_parser_t* parser = &parser_buf;
+    json_parser_t* parser = NULL;
     callback_data_t callback_data = {0, 0, 0, write, stream};
     json_parser_options_t options;
 
+    if (!(parser = malloc(sizeof(json_parser_t))))
+        RAISE(JSON_OUT_OF_MEMORY);
+
     extern int printf(const char* fmt, ...);
-    memset(&parser_buf, 0, sizeof(parser_buf));
+    memset(parser, 0, sizeof(json_parser_t));
 
     if (!write || !json_data || !json_size)
         RAISE(JSON_BAD_PARAMETER);
@@ -322,6 +324,9 @@ done:
 
     if (data)
         allocator->ja_free(data);
+
+    if (parser)
+        free(parser);
 
     return result;
 }

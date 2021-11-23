@@ -170,7 +170,7 @@ static int _fs_open(
     int ret = 0;
     hostfs_t* hostfs = (hostfs_t*)fs;
     myst_file_t* file = NULL;
-    char path[PATH_MAX];
+    char* path = NULL;
     long tret;
     uid_t host_uid;
     gid_t host_gid;
@@ -186,6 +186,9 @@ static int _fs_open(
         ERAISE(-ENOMEM);
 
     ECHECK(myst_realpath(pathname, (myst_path_t*)file->realpath));
+
+    if (!(path = malloc(PATH_MAX)))
+        ERAISE(-ENOMEM);
 
     ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
 
@@ -207,6 +210,9 @@ done:
 
     if (file)
         free(file);
+
+    if (path)
+        free(path);
 
     return ret;
 }
@@ -413,10 +419,13 @@ static int _fs_access(myst_fs_t* fs, const char* pathname, int mode)
     int ret = 0;
     hostfs_t* hostfs = (hostfs_t*)fs;
     long tret;
-    char path[PATH_MAX];
+    char* path = NULL;
 
     if (!_hostfs_valid(hostfs) || !pathname)
         ERAISE(-EINVAL);
+
+    if (!(path = malloc(PATH_MAX)))
+        ERAISE(-ENOMEM);
 
     ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
 
@@ -429,6 +438,9 @@ static int _fs_access(myst_fs_t* fs, const char* pathname, int mode)
     ret = tret;
 
 done:
+
+    if (path)
+        free(path);
 
     return ret;
 }
@@ -450,7 +462,7 @@ static int _fs_stat(myst_fs_t* fs, const char* pathname, struct stat* statbuf)
     int ret = 0;
     hostfs_t* hostfs = (hostfs_t*)fs;
     long tret;
-    char path[PATH_MAX];
+    char* path = NULL;
     uid_t host_uid;
     gid_t host_gid;
 
@@ -463,6 +475,9 @@ static int _fs_stat(myst_fs_t* fs, const char* pathname, struct stat* statbuf)
 
     if (!_hostfs_valid(hostfs) || !pathname || !statbuf)
         ERAISE(-EINVAL);
+
+    if (!(path = malloc(PATH_MAX)))
+        ERAISE(-ENOMEM);
 
     ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
 
@@ -478,6 +493,10 @@ static int _fs_stat(myst_fs_t* fs, const char* pathname, struct stat* statbuf)
     ECHECK(_map_stat_to_enc_ids(statbuf));
 
 done:
+
+    if (path)
+        free(path);
+
     return ret;
 }
 
@@ -486,12 +505,15 @@ static int _fs_lstat(myst_fs_t* fs, const char* pathname, struct stat* statbuf)
     int ret = 0;
     hostfs_t* hostfs = (hostfs_t*)fs;
     long tret;
-    char path[PATH_MAX];
+    char* path = NULL;
     uid_t host_uid;
     gid_t host_gid;
 
     if (!_hostfs_valid(hostfs) || !pathname || !statbuf)
         ERAISE(-EINVAL);
+
+    if (!(path = malloc(PATH_MAX)))
+        ERAISE(-ENOMEM);
 
     ECHECK(_get_host_uid_gid(&host_uid, &host_gid));
 
@@ -509,6 +531,10 @@ static int _fs_lstat(myst_fs_t* fs, const char* pathname, struct stat* statbuf)
     ECHECK(_map_stat_to_enc_ids(statbuf));
 
 done:
+
+    if (path)
+        free(path);
+
     return ret;
 }
 
@@ -544,17 +570,26 @@ static int _fs_link(
     int ret = 0;
     hostfs_t* hostfs = (hostfs_t*)fs;
     long tret;
-    char opath[PATH_MAX];
-    char npath[PATH_MAX];
+    struct locals
+    {
+        char opath[PATH_MAX];
+        char npath[PATH_MAX];
+    };
+    struct locals* locals = NULL;
 
     if (!_hostfs_valid(hostfs) || !oldpath || !newpath)
         ERAISE(-EINVAL);
 
-    ECHECK(_to_host_path(hostfs, opath, sizeof(opath), oldpath));
-    ECHECK(_to_host_path(hostfs, npath, sizeof(npath), newpath));
+    if (!(locals = malloc(sizeof(struct locals))))
+        ERAISE(-ENOMEM);
+
+    ECHECK(
+        _to_host_path(hostfs, locals->opath, sizeof(locals->opath), oldpath));
+    ECHECK(
+        _to_host_path(hostfs, locals->npath, sizeof(locals->npath), newpath));
 
     long params[6] = {
-        (long)AT_FDCWD, (long)opath, (long)AT_FDCWD, (long)npath, (long)flags};
+        (long)AT_FDCWD, (long)locals->opath, (long)AT_FDCWD, (long)locals->npath, (long)flags};
     ECHECK((tret = myst_tcall(SYS_linkat, params)));
 
     if (tret != 0)
@@ -563,6 +598,10 @@ static int _fs_link(
     ret = tret;
 
 done:
+
+    if (locals)
+        free(locals);
+
     return ret;
 }
 
@@ -571,10 +610,13 @@ static int _fs_unlink(myst_fs_t* fs, const char* pathname)
     int ret = 0;
     hostfs_t* hostfs = (hostfs_t*)fs;
     long tret;
-    char path[PATH_MAX];
+    char* path = NULL;
 
     if (!_hostfs_valid(hostfs) || !pathname)
         ERAISE(-EINVAL);
+
+    if (!(path = malloc(PATH_MAX)))
+        ERAISE(-ENOMEM);
 
     ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
 
@@ -587,6 +629,10 @@ static int _fs_unlink(myst_fs_t* fs, const char* pathname)
     ret = tret;
 
 done:
+
+    if (path)
+        free(path);
+
     return ret;
 }
 
@@ -595,16 +641,25 @@ static int _fs_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
     int ret = 0;
     hostfs_t* hostfs = (hostfs_t*)fs;
     long tret;
-    char opath[PATH_MAX];
-    char npath[PATH_MAX];
+    struct locals
+    {
+        char opath[PATH_MAX];
+        char npath[PATH_MAX];
+    };
+    struct locals* locals = NULL;
 
     if (!_hostfs_valid(hostfs) || !oldpath || !newpath)
         ERAISE(-EINVAL);
 
-    ECHECK(_to_host_path(hostfs, opath, sizeof(opath), oldpath));
-    ECHECK(_to_host_path(hostfs, npath, sizeof(npath), newpath));
+    if (!(locals = malloc(sizeof(struct locals))))
+        ERAISE(-ENOMEM);
 
-    long params[6] = {(long)opath, (long)npath};
+    ECHECK(
+        _to_host_path(hostfs, locals->opath, sizeof(locals->opath), oldpath));
+    ECHECK(
+        _to_host_path(hostfs, locals->npath, sizeof(locals->npath), newpath));
+
+    long params[6] = {(long)locals->opath, (long)locals->npath};
     ECHECK((tret = myst_tcall(SYS_rename, params)));
 
     if (tret != 0)
@@ -613,6 +668,10 @@ static int _fs_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
     ret = tret;
 
 done:
+
+    if (locals)
+        free(locals);
+
     return ret;
 }
 
@@ -621,10 +680,13 @@ static int _fs_truncate(myst_fs_t* fs, const char* path, off_t length)
     int ret = 0;
     hostfs_t* hostfs = (hostfs_t*)fs;
     long tret;
-    char hpath[PATH_MAX];
+    char* hpath = NULL;
 
     if (!_hostfs_valid(hostfs) || !path || length < 0)
         ERAISE(-EINVAL);
+
+    if (!(hpath = malloc(PATH_MAX)))
+        ERAISE(-ENOMEM);
 
     ECHECK(_to_host_path(hostfs, hpath, sizeof(hpath), path));
 
@@ -637,6 +699,10 @@ static int _fs_truncate(myst_fs_t* fs, const char* path, off_t length)
     ret = tret;
 
 done:
+
+    if (hpath)
+        free(hpath);
+
     return ret;
 }
 
@@ -666,12 +732,15 @@ static int _fs_mkdir(myst_fs_t* fs, const char* pathname, mode_t mode)
     int ret = 0;
     hostfs_t* hostfs = (hostfs_t*)fs;
     long tret;
-    char path[PATH_MAX];
+    char* path = NULL;
     uid_t host_uid;
     gid_t host_gid;
 
     if (!_hostfs_valid(hostfs) || !pathname)
         ERAISE(-EINVAL);
+
+    if (!(path = malloc(PATH_MAX)))
+        ERAISE(-ENOMEM);
 
     ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
 
@@ -686,6 +755,10 @@ static int _fs_mkdir(myst_fs_t* fs, const char* pathname, mode_t mode)
     ret = tret;
 
 done:
+
+    if (path)
+        free(path);
+
     return ret;
 }
 
@@ -694,12 +767,15 @@ static int _fs_rmdir(myst_fs_t* fs, const char* pathname)
     int ret = 0;
     hostfs_t* hostfs = (hostfs_t*)fs;
     long tret;
-    char path[PATH_MAX];
+    char* path = NULL;
     uid_t host_uid;
     gid_t host_gid;
 
     if (!_hostfs_valid(hostfs) || !pathname)
         ERAISE(-EINVAL);
+
+    if (!(path = malloc(PATH_MAX)))
+        ERAISE(-ENOMEM);
 
     ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
 
@@ -714,6 +790,10 @@ static int _fs_rmdir(myst_fs_t* fs, const char* pathname)
     ret = tret;
 
 done:
+
+    if (path)
+        free(path);
+
     return ret;
 }
 
@@ -753,28 +833,38 @@ static ssize_t _fs_readlink(
     ssize_t ret = 0;
     hostfs_t* hostfs = (hostfs_t*)fs;
     long tret;
-    char path[PATH_MAX];
-    char target[PATH_MAX];
+    struct locals
+    {
+        char path[PATH_MAX];
+        char target[PATH_MAX];
+    };
+    struct locals* locals = NULL;
 
     if (!_hostfs_valid(hostfs) || !pathname || !buf || !bufsiz)
         ERAISE(-EINVAL);
 
-    ECHECK(_to_host_path(hostfs, path, PATH_MAX, pathname));
+    if (!(locals = malloc(sizeof(struct locals))))
+        ERAISE(-ENOMEM);
 
-    long params[6] = {(long)path, (long)target, PATH_MAX};
+    ECHECK(_to_host_path(hostfs, locals->path, PATH_MAX, pathname));
+
+    long params[6] = {(long)locals->path, (long)locals->target, PATH_MAX};
     ECHECK((tret = myst_tcall(SYS_readlink, params)));
 
     if (tret < PATH_MAX)
-        target[tret] = '\0';
+        locals->target[tret] = '\0';
     else
-        target[PATH_MAX - 1] = '\0';
+        locals->target[PATH_MAX - 1] = '\0';
 
-    ECHECK(_to_local_path(hostfs, buf, bufsiz, target));
+    ECHECK(_to_local_path(hostfs, buf, bufsiz, locals->target));
     tret = strlen(buf);
 
     ret = tret;
 
 done:
+
+    if (locals)
+        free(locals);
 
     return ret;
 }
@@ -784,32 +874,44 @@ static int _fs_symlink(myst_fs_t* fs, const char* target, const char* linkpath)
     int ret = 0;
     hostfs_t* hostfs = (hostfs_t*)fs;
     long tret;
-    char host_linkpath[PATH_MAX];
-    char host_target[PATH_MAX];
+    struct locals
+    {
+        char host_linkpath[PATH_MAX];
+        char host_target[PATH_MAX];
+    };
+    struct locals* locals = NULL;
     uid_t host_uid;
     gid_t host_gid;
 
     if (!_hostfs_valid(hostfs) || !target || !linkpath)
         ERAISE(-EINVAL);
 
+    if (!(locals = malloc(sizeof(struct locals))))
+        ERAISE(-ENOMEM);
+
     /* Note: store target as-is (it may refer to a different file system) */
 
-    ECHECK(_to_host_path(hostfs, host_linkpath, PATH_MAX, linkpath));
+    ECHECK(_to_host_path(hostfs, locals->host_linkpath, PATH_MAX, linkpath));
 
     ECHECK(_get_host_uid_gid(&host_uid, &host_gid));
 
     if (target[0] == '/')
-        ECHECK(_to_host_path(hostfs, host_target, PATH_MAX, target));
+        ECHECK(_to_host_path(hostfs, locals->host_target, PATH_MAX, target));
     else
-        myst_strlcpy(host_target, target, PATH_MAX);
+        myst_strlcpy(locals->host_target, target, PATH_MAX);
 
-    long params[6] = {
-        (long)host_target, (long)host_linkpath, (long)host_uid, (long)host_gid};
+    long params[6] = {(long)locals->host_target,
+                      (long)locals->host_linkpath,
+                      (long)host_uid,
+                      (long)host_gid};
     ECHECK((tret = myst_tcall(SYS_symlink, params)));
 
     ret = tret;
 
 done:
+
+    if (locals)
+        free(locals);
 
     return ret;
 }
@@ -962,11 +1064,14 @@ static int _fs_statfs(myst_fs_t* fs, const char* pathname, struct statfs* buf)
 {
     int ret = 0;
     hostfs_t* hostfs = (hostfs_t*)fs;
-    char path[PATH_MAX];
+    char* path = NULL;
     long tret;
 
     if (!_hostfs_valid(hostfs) || !pathname || !buf)
         ERAISE(-EINVAL);
+
+    if (!(path = malloc(PATH_MAX)))
+        ERAISE(-ENOMEM);
 
     ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
 
@@ -979,6 +1084,10 @@ static int _fs_statfs(myst_fs_t* fs, const char* pathname, struct statfs* buf)
     ret = tret;
 
 done:
+
+    if (path)
+        free(path);
+
     return ret;
 }
 
@@ -1038,7 +1147,7 @@ static int _fs_chown(
 {
     int ret = 0;
     hostfs_t* hostfs = (hostfs_t*)fs;
-    char path[PATH_MAX];
+    char* path = NULL;
     long tret;
     uid_t host_uid;
     gid_t host_gid;
@@ -1051,6 +1160,9 @@ static int _fs_chown(
 
     if (!_hostfs_valid(hostfs) || !pathname)
         ERAISE(-EINVAL);
+
+    if (!(path = malloc(PATH_MAX)))
+        ERAISE(-ENOMEM);
 
     ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
 
@@ -1068,6 +1180,10 @@ static int _fs_chown(
     ECHECK((tret = myst_tcall(SYS_chown, params)));
 
 done:
+
+    if (path)
+        free(path);
+
     return ret;
 }
 
@@ -1115,7 +1231,7 @@ static int _fs_lchown(
 {
     int ret = 0;
     hostfs_t* hostfs = (hostfs_t*)fs;
-    char path[PATH_MAX];
+    char* path = NULL;
     long tret;
     uid_t host_uid;
     gid_t host_gid;
@@ -1128,6 +1244,9 @@ static int _fs_lchown(
 
     if (!_hostfs_valid(hostfs) || !pathname)
         ERAISE(-EINVAL);
+
+    if (!(path = malloc(PATH_MAX)))
+        ERAISE(-ENOMEM);
 
     ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
 
@@ -1145,6 +1264,10 @@ static int _fs_lchown(
     ECHECK((tret = myst_tcall(SYS_lchown, params)));
 
 done:
+
+    if (path)
+        free(path);
+
     return ret;
 }
 
@@ -1152,7 +1275,7 @@ static int _fs_chmod(myst_fs_t* fs, const char* pathname, mode_t mode)
 {
     int ret = 0;
     hostfs_t* hostfs = (hostfs_t*)fs;
-    char path[PATH_MAX];
+    char* path = NULL;
     long tret;
     uid_t host_uid;
     gid_t host_gid;
@@ -1164,12 +1287,19 @@ static int _fs_chmod(myst_fs_t* fs, const char* pathname, mode_t mode)
     if (!_hostfs_valid(hostfs) || !pathname)
         ERAISE(-EINVAL);
 
+    if (!(path = malloc(PATH_MAX)))
+        ERAISE(-ENOMEM);
+
     ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
 
     long params[6] = {(long)path, (long)mode, (long)host_uid, (long)host_gid};
     ECHECK((tret = myst_tcall(SYS_chmod, params)));
 
 done:
+
+    if (path)
+        free(path);
+
     return ret;
 }
 
