@@ -190,7 +190,7 @@ static int _fs_open(
     if (!(path = malloc(PATH_MAX)))
         ERAISE(-ENOMEM);
 
-    ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
+    ECHECK(_to_host_path(hostfs, path, PATH_MAX, pathname));
 
     long params[6] = {(long)path, flags, mode, host_uid, host_gid};
     ECHECK((tret = myst_tcall(SYS_open, params)));
@@ -427,7 +427,7 @@ static int _fs_access(myst_fs_t* fs, const char* pathname, int mode)
     if (!(path = malloc(PATH_MAX)))
         ERAISE(-ENOMEM);
 
-    ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
+    ECHECK(_to_host_path(hostfs, path, PATH_MAX, pathname));
 
     long params[6] = {(long)path, mode};
     ECHECK((tret = myst_tcall(SYS_access, params)));
@@ -479,7 +479,7 @@ static int _fs_stat(myst_fs_t* fs, const char* pathname, struct stat* statbuf)
     if (!(path = malloc(PATH_MAX)))
         ERAISE(-ENOMEM);
 
-    ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
+    ECHECK(_to_host_path(hostfs, path, PATH_MAX, pathname));
 
     long params[6] = {
         (long)path, (long)statbuf, (long)host_uid, (long)host_gid};
@@ -517,7 +517,7 @@ static int _fs_lstat(myst_fs_t* fs, const char* pathname, struct stat* statbuf)
 
     ECHECK(_get_host_uid_gid(&host_uid, &host_gid));
 
-    ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
+    ECHECK(_to_host_path(hostfs, path, PATH_MAX, pathname));
 
     long params[6] = {
         (long)path, (long)statbuf, (long)host_uid, (long)host_gid};
@@ -618,7 +618,7 @@ static int _fs_unlink(myst_fs_t* fs, const char* pathname)
     if (!(path = malloc(PATH_MAX)))
         ERAISE(-ENOMEM);
 
-    ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
+    ECHECK(_to_host_path(hostfs, path, PATH_MAX, pathname));
 
     long params[6] = {(long)path};
     ECHECK((tret = myst_tcall(SYS_unlink, params)));
@@ -688,7 +688,7 @@ static int _fs_truncate(myst_fs_t* fs, const char* path, off_t length)
     if (!(hpath = malloc(PATH_MAX)))
         ERAISE(-ENOMEM);
 
-    ECHECK(_to_host_path(hostfs, hpath, sizeof(hpath), path));
+    ECHECK(_to_host_path(hostfs, hpath, PATH_MAX, path));
 
     long params[6] = {(long)hpath, length};
     ECHECK((tret = myst_tcall(SYS_truncate, params)));
@@ -742,7 +742,7 @@ static int _fs_mkdir(myst_fs_t* fs, const char* pathname, mode_t mode)
     if (!(path = malloc(PATH_MAX)))
         ERAISE(-ENOMEM);
 
-    ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
+    ECHECK(_to_host_path(hostfs, path, PATH_MAX, pathname));
 
     ECHECK(_get_host_uid_gid(&host_uid, &host_gid));
 
@@ -777,7 +777,7 @@ static int _fs_rmdir(myst_fs_t* fs, const char* pathname)
     if (!(path = malloc(PATH_MAX)))
         ERAISE(-ENOMEM);
 
-    ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
+    ECHECK(_to_host_path(hostfs, path, PATH_MAX, pathname));
 
     ECHECK(_get_host_uid_gid(&host_uid, &host_gid));
 
@@ -1073,7 +1073,7 @@ static int _fs_statfs(myst_fs_t* fs, const char* pathname, struct statfs* buf)
     if (!(path = malloc(PATH_MAX)))
         ERAISE(-ENOMEM);
 
-    ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
+    ECHECK(_to_host_path(hostfs, path, PATH_MAX, pathname));
 
     long params[6] = {(long)path, (long)buf};
     ECHECK((tret = myst_tcall(SYS_statfs, params)));
@@ -1164,7 +1164,7 @@ static int _fs_chown(
     if (!(path = malloc(PATH_MAX)))
         ERAISE(-ENOMEM);
 
-    ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
+    ECHECK(_to_host_path(hostfs, path, PATH_MAX, pathname));
 
     if (owner != -1)
         ECHECK(myst_enc_uid_to_host(owner, &host_owner));
@@ -1248,7 +1248,7 @@ static int _fs_lchown(
     if (!(path = malloc(PATH_MAX)))
         ERAISE(-ENOMEM);
 
-    ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
+    ECHECK(_to_host_path(hostfs, path, PATH_MAX, pathname));
 
     if (owner != -1)
         ECHECK(myst_enc_uid_to_host(owner, &host_owner));
@@ -1290,7 +1290,7 @@ static int _fs_chmod(myst_fs_t* fs, const char* pathname, mode_t mode)
     if (!(path = malloc(PATH_MAX)))
         ERAISE(-ENOMEM);
 
-    ECHECK(_to_host_path(hostfs, path, sizeof(path), pathname));
+    ECHECK(_to_host_path(hostfs, path, PATH_MAX, pathname));
 
     long params[6] = {(long)path, (long)mode, (long)host_uid, (long)host_gid};
     ECHECK((tret = myst_tcall(SYS_chmod, params)));
