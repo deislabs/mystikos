@@ -22,6 +22,7 @@ CFLAGS += -fdata-sections
 CFLAGS += -Wno-conversion
 CFLAGS += -Wno-parentheses
 CFLAGS += -O3
+CFLAGS += -Wstack-usage=512
 
 ifdef MYST_ENABLE_GCOV
 CFLAGS += $(GCOV_CFLAGS)

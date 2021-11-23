@@ -765,13 +765,16 @@ json_result_t json_match(json_parser_t* parser, const char* pattern)
     json_result_t result = JSON_UNEXPECTED;
     char buf[256];
     char* ptr = NULL;
-    const char* pattern_path[JSON_MAX_NESTING];
+    const char** pattern_path = NULL;
     size_t pattern_depth = 0;
     unsigned long n = 0;
     size_t pattern_len;
 
     if (!parser || !pattern)
         RAISE(JSON_BAD_PARAMETER);
+
+    if (!(pattern_path = malloc(sizeof(char*) * JSON_MAX_NESTING)))
+        RAISE(JSON_OUT_OF_MEMORY);
 
     /* Make a copy of the pattern that can be modified */
     {
@@ -821,6 +824,9 @@ done:
 
     if (ptr && ptr != buf)
         _free(parser, ptr);
+
+    if (pattern_path)
+        free(pattern_path);
 
     return result;
 }

@@ -657,8 +657,6 @@ static void _print_boottime(void)
 /* the main thread is the only thread that is not on the heap */
 static myst_thread_t _main_thread;
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wstack-usage="
 int myst_enter_kernel(myst_kernel_args_t* args)
 {
     int ret = 0;
@@ -1041,4 +1039,3 @@ done:
 
     return ret;
 }
-#pragma GCC diagnostic pop

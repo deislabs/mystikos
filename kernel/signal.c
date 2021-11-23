@@ -375,6 +375,8 @@ static long _default_signal_handler(unsigned signum)
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstack-usage="
+#pragma GCC diagnostic error "-Wstack-usage=2048"
+/* ATTN: fix this to not use so much stack space */
 static long _handle_one_signal(
     unsigned signum,
     siginfo_t* siginfo,
@@ -575,9 +577,6 @@ void _myst_sigstop_wait(void)
     }
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wstack-usage="
-
 int myst_signal_has_active_signals(myst_thread_t* thread)
 {
     uint64_t unblocked = MYST_SIG_UNBLOCKED(thread->signal.mask);
@@ -636,7 +635,6 @@ long myst_signal_process(myst_thread_t* thread)
     myst_spin_unlock(&thread->signal.lock);
     return 0;
 }
-#pragma GCC diagnostic pop
 
 long myst_signal_deliver(
     myst_thread_t* thread,
