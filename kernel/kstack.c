@@ -40,10 +40,11 @@ static long _new_kstack(void* arg)
 
 MYST_ALIGN(16)
 static uint8_t _stack[4 * PAGE_SIZE];
+static myst_spinlock_t _lock_stack;
 
 myst_kstack_t* myst_get_kstack(void)
 {
-    myst_kstack_t* kstack;
+    myst_kstack_t* kstack = NULL;
 
     myst_spin_lock(&_lock);
     {
@@ -53,14 +54,20 @@ myst_kstack_t* myst_get_kstack(void)
             if ((kstack = _head))
                 _head = _head->u.next;
         }
-        else
-        {
-            /* allocate a new kstack (unlikely case) */
-            uint8_t* sp = _stack + sizeof(_stack);
-            kstack = (myst_kstack_t*)myst_call_on_stack(sp, _new_kstack, NULL);
-        }
     }
     myst_spin_unlock(&_lock);
+
+    if (kstack == NULL)
+    {
+        myst_spin_lock(&_lock_stack);
+
+        /* allocate a new kstack (unlikely case) */
+        uint8_t* sp = _stack + sizeof(_stack);
+        kstack = (myst_kstack_t*)myst_call_on_stack(sp, _new_kstack, NULL);
+
+        myst_spin_unlock(&_lock_stack);
+    }
+
     myst_register_stack(kstack->u.__data, sizeof(kstack->u.__data));
 
     return kstack;

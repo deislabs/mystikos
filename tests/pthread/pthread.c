@@ -479,7 +479,7 @@ static void* _exhaust_thread(void* arg)
 {
     /* wait here until main thread clears this atomic variable */
     while (_wait)
-        sleep_msec(250);
+        sleep_msec(500);
 
     return arg;
 }
@@ -520,14 +520,14 @@ void test_exhaust_threads(void)
     {
         void* retval;
 
+        if (i % 100 == 0)
+            printf("====== joining thread %ld\n", i);
+
         if (pthread_join(threads[i], &retval) != 0)
         {
             PUTERR("pthread_join() failed");
             abort();
         }
-
-        if (i % 100 == 0)
-            printf("====== joined thread %ld\n", i);
 
         assert((uint64_t)retval == i);
     }

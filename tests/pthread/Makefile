@@ -21,10 +21,6 @@ endif
 
 OPTS += --memory-size=512m
 
-ifdef ALLTESTS
-COUNT = 10
-endif
-
 # Increase timeout for these tests
 export TIMEOUT=360
 
