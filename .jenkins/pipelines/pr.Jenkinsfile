@@ -181,15 +181,15 @@ pipeline {
     }
     post {
         always {
-            build(
-                job: "Standalone-Pipelines/Send-Email",
-                parameters: [
-                    string(name: "REPOSITORY", value: params.REPOSITORY),
-                    string(name: "BRANCH", value: params.BRANCH),
-                    string(name: "EMAIL_SUBJECT", value: "[Jenkins] [${currentBuild.currentResult}] [${env.JOB_NAME}] [#${env.BUILD_NUMBER}]"),
-                    string(name: "EMAIL_BODY", value: "See build log for details: ${env.BUILD_URL}")
-                ]
-            )
+            script {
+                COMMITER_EMAILS.tokenize('\n').each {
+                    emailext(
+                        subject: "[Jenkins] [${currentBuild.currentResult}] [${env.JOB_NAME}] [#${env.BUILD_NUMBER}]",
+                        body: "See build log for details: ${env.BUILD_URL}",
+                        to: "${it}"
+                    )
+                }
+            }
         }
     }
 }
