@@ -70,3 +70,5 @@
 /aspnetcore/artifacts/bin/Microsoft.Extensions.Http.Polly.Tests/Debug/net6.0/Microsoft.Extensions.Http.Polly.Tests.dll
 /aspnetcore/artifacts/bin/Microsoft.JSInterop.Tests/Debug/net6.0/Microsoft.JSInterop.Tests.dll
 /aspnetcore/artifacts/bin/Microsoft.Net.Http.Headers.Tests/Debug/net6.0/Microsoft.Net.Http.Headers.Tests.dll
+/aspnetcore/artifacts/bin/Microsoft.Extensions.ApiDescription.Client.Tests/Debug/net6.0/Microsoft.Extensions.ApiDescription.Client.Tests.dll
+/aspnetcore/artifacts/bin/Microsoft.Extensions.FileProviders.Embedded.Manifest.Task.Tests/Debug/net6.0/Microsoft.Extensions.FileProviders.Embedded.Manifest.Task.Tests.dll
