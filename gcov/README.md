@@ -1,6 +1,9 @@
 
+Basic flow of gcov through app, CRT, kernel, enclave, to host
+=============================================================
+
     app links libgcov.a:
-        close => myst_gcov_close
+        close is renamed to myst_gcov_close with objcopy tool
 
     CRT:
         ../gcov/gcovclient.c:
