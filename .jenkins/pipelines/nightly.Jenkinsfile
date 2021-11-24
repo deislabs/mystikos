@@ -10,6 +10,7 @@ pipeline {
         string(name: "BRANCH", defaultValue: "main", description: "Branch to build")
         string(name: "PULL_REQUEST_ID", defaultValue: "", description: "If you are building a pull request, enter the pull request ID number here. (ex. 789)")
         choice(name: "REGION", choices: ['useast', 'canadacentral'], description: "Azure region for the SQL solutions test")
+        booleanParam(name: "RUN_DOTNETP1", defaultValue: false, description: "Run .NET P1 tests?")
     }
     environment {
         TEST_CONFIG = 'Nightly'
@@ -66,20 +67,24 @@ pipeline {
                     stage("Matrix") {
                         steps {
                             script {
-                                stage("${OS_VERSION} ${TEST_PIPELINE} (${TEST_CONFIG})") {
-                                    catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                                        build(
-                                            job: "Standalone-Pipelines/${TEST_PIPELINE}-Tests-Pipeline",
-                                            parameters: [
-                                                string(name: "UBUNTU_VERSION", value: OS_VERSION),
-                                                string(name: "REPOSITORY", value: params.REPOSITORY),
-                                                string(name: "BRANCH", value: params.BRANCH),
-                                                string(name: "PULL_REQUEST_ID", value: params.PULL_REQUEST_ID),
-                                                string(name: "TEST_CONFIG", value: env.TEST_CONFIG),
-                                                string(name: "REGION", value: params.REGION),
-                                                string(name: "COMMIT_SYNC", value: GIT_COMMIT_ID)
-                                            ]
-                                        )
+                                // Workaround for skipping .NET P1 tests as dynamic matrix axis values are not supported
+                                // https://issues.jenkins.io/browse/JENKINS-62127
+                                if ( ! (TEST_PIPELINE == 'DotNet-P1' && ! params.RUN_DOTNETP1) ) {
+                                    stage("${OS_VERSION} ${TEST_PIPELINE} (${TEST_CONFIG})") {
+                                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                                            build(
+                                                job: "/Mystikos/Standalone-Pipelines/${TEST_PIPELINE}-Tests-Pipeline",
+                                                parameters: [
+                                                    string(name: "UBUNTU_VERSION", value: OS_VERSION),
+                                                    string(name: "REPOSITORY", value: params.REPOSITORY),
+                                                    string(name: "BRANCH", value: params.BRANCH),
+                                                    string(name: "PULL_REQUEST_ID", value: params.PULL_REQUEST_ID),
+                                                    string(name: "TEST_CONFIG", value: env.TEST_CONFIG),
+                                                    string(name: "REGION", value: params.REGION),
+                                                    string(name: "COMMIT_SYNC", value: GIT_COMMIT_ID)
+                                                ]
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -92,7 +97,7 @@ pipeline {
     post {
         always {
             build(
-                job: "Standalone-Pipelines/Send-Email",
+                job: "/Mystikos/Standalone-Pipelines/Send-Email",
                 parameters: [
                     string(name: "REPOSITORY", value: params.REPOSITORY),
                     string(name: "BRANCH", value: params.BRANCH),
