@@ -13,7 +13,7 @@ OPTS = --strace
 endif
 
 ifdef MYST_ENABLE_GCOV
-OPTS += --export-ramfs
+CFLAGS += $(GCOV_CFLAGS)
 endif
 
 tests_ext2fs: all
