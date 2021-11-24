@@ -85,6 +85,7 @@
 #include <myst/times.h>
 #include <myst/trace.h>
 #include <myst/uid_gid.h>
+#include <myst/invoke.h>
 
 #define MAX_IPADDR_LEN 64
 

@@ -12,6 +12,7 @@
 #include <myst/process.h>
 #include <myst/signal.h>
 #include <myst/time.h>
+#include <myst/invoke.h>
 
 //#define TRACE
 
