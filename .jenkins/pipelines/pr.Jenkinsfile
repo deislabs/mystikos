@@ -69,25 +69,25 @@ pipeline {
                 // This is only necessary for manual PR builds or manual branch builds
                 anyOf {
                     expression { params.PULL_REQUEST_ID != "" }
-                    expression { params.BRANCH != "" }
+                    expression { params.BRANCH != "main" }
                 }
             }
             steps {
                 script {
                     if ( params.PULL_REQUEST_ID ) {
                         checkout([$class: 'GitSCM',
-                            branches: [[name: "pr/${PULL_REQUEST_ID}"]],
+                            branches: [[name: "pr/${params.PULL_REQUEST_ID}"]],
                             extensions: [],
                             userRemoteConfigs: [[
                                 url: 'https://github.com/deislabs/mystikos',
-                                refspec: "+refs/pull/${PULL_REQUEST_ID}/merge:refs/remotes/origin/pr/${PULL_REQUEST_ID}"
+                                refspec: "+refs/pull/${params.PULL_REQUEST_ID}/merge:refs/remotes/origin/pr/${params.PULL_REQUEST_ID}"
                             ]]
                         ])
                     } else {
                         checkout([$class: 'GitSCM',
                             branches: [[name: params.BRANCH]],
                             extensions: [],
-                            userRemoteConfigs: [[url: "https://github.com/${REPOSITORY}/mystikos"]]]
+                            userRemoteConfigs: [[url: "https://github.com/${params.REPOSITORY}/mystikos"]]]
                         )
                     }
                     GIT_COMMIT_ID = sh(
@@ -105,7 +105,7 @@ pipeline {
                         SOURCE_BRANCH = "origin/pr/${params.PULL_REQUEST_ID}"
                     } else if ( params.BRANCH ) {
                         // This is the git ref for a manual branch build
-                        SOURCE_BRANCH = "origin/${BRANCH}"
+                        SOURCE_BRANCH = "origin/${params.BRANCH}"
                     } else {
                         // This is the git ref in a Jenkins multibranch pipeline build
                         SOURCE_BRANCH = "origin/PR-${env.CHANGE_ID}"
