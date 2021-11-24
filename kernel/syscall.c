@@ -4178,7 +4178,10 @@ static long _syscall(void* args_)
         {
             const char* path = (const char*)x1;
 
-            _strace(n, "path=\"%s\"", path);
+            if (path && !myst_is_bad_addr_read(path, 1))
+                _strace(n, "path=\"%s\"", path);
+            else
+                _strace(n, "path=\"%s\"", "<bad_ptr>");
 
             BREAK(_return(n, myst_syscall_chdir(path)));
         }
@@ -4349,7 +4352,16 @@ static long _syscall(void* args_)
             uid_t owner = (uid_t)x2;
             gid_t group = (gid_t)x3;
 
-            _strace(n, "pathname=%s owner=%u group=%u", pathname, owner, group);
+            if (pathname && !myst_is_bad_addr_read(pathname, 1))
+                _strace(
+                    n, "pathname=%s owner=%u group=%u", pathname, owner, group);
+            else
+                _strace(
+                    n,
+                    "pathname=%s owner=%u group=%u",
+                    "<bad_ptr>",
+                    owner,
+                    group);
 
             BREAK(_return(n, myst_syscall_lchown(pathname, owner, group)));
         }
