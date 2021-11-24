@@ -160,7 +160,7 @@ pipeline {
                             script {
                                 stage("${OS_VERSION} ${TEST_PIPELINE} (${TEST_CONFIG})") {
                                     catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                                        build job: "Standalone-Pipelines/${TEST_PIPELINE}-Tests-Pipeline",
+                                        build job: "/Mystikos/Standalone-Pipelines/${TEST_PIPELINE}-Tests-Pipeline",
                                         parameters: [
                                             string(name: "UBUNTU_VERSION", value: OS_VERSION),
                                             string(name: "REPOSITORY", value: params.REPOSITORY),
