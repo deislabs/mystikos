@@ -499,7 +499,10 @@ static long _handle_one_signal(
             altstack->ss_flags &= ~SS_ONSTACK; // Done with the alt stack.
         }
         else
-            _handler_wrapper(&arg);
+        {
+            const size_t stack_size = 128 * 1024;
+            myst_invoke(stack_size, (myst_invoke_func_t)_handler_wrapper, &arg);
+        }
 
         // Copy back mcontext (register states)
         if ((action->flags & SA_SIGINFO) && mcontext != NULL)
