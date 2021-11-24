@@ -6301,8 +6301,7 @@ static long _syscall(void* args_)
             _strace(n, "forwarded");
 
             /* OE functions require a bigger stack size */
-            long ret = myst_invoke(
-                stack_size, (myst_invoke_func_t)_forward_syscall, n, params);
+            long ret = MYST_INVOKE(stack_size, _forward_syscall, n, params);
             BREAK(_return(n, ret));
         }
         default:
