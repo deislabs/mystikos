@@ -35,7 +35,7 @@ int myst_parse_strace_config(
         {
             const char* name = tokens[i];
             long num = myst_syscall_num(name);
-            if (num > 0)
+            if (num >= 0)
             {
                 if (num < MYST_MAX_SYSCALLS)
                     strace_config->trace[num] = 1;
