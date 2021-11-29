@@ -79,24 +79,6 @@ pipeline {
                    """
             }
         }
-        stage('Setup Solutions Access') {
-            steps {
-                withCredentials([string(credentialsId: 'Jenkins-ServicePrincipal-ID', variable: 'SERVICE_PRINCIPAL_ID'),
-                                 string(credentialsId: 'Jenkins-ServicePrincipal-Password', variable: 'SERVICE_PRINCIPAL_PASSWORD'),
-                                 string(credentialsId: 'ACC-Prod-Tenant-ID', variable: 'TENANT_ID'),
-                                 string(credentialsId: 'ACC-Prod-Subscription-ID', variable: 'AZURE_SUBSCRIPTION_ID'),
-                                 string(credentialsId: 'oe-jenkins-dev-rg', variable: 'JENKINS_RESOURCE_GROUP'),
-                                 string(credentialsId: 'mystikos-managed-identity', variable: "MYSTIKOS_MANAGED_ID")]) {
-                    sh """
-                       ${JENKINS_SCRIPTS}/global/wait-dpkg.sh
-                       ${JENKINS_SCRIPTS}/solutions/init-config.sh
-
-                       ${JENKINS_SCRIPTS}/global/wait-dpkg.sh
-                       ${JENKINS_SCRIPTS}/solutions/azure-config.sh
-                       """
-                }
-            }
-        }
         stage('Build repo source') {
             steps {
                 sh """
