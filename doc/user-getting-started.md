@@ -13,7 +13,7 @@ This section will illustrate the common workflow when developing application in 
    1. You could manually create this folder, or, preferably,
    2. Create a `Dockerfile` just like you normally would when dockerizing an app, then use [scripts/appbuilder](/scripts/appbuilder) (or `myst-appbuilder` if you have Mystikos installed) to automatically generate `appdir` directory given the `Dockerfile`. Please see [Getting started Docker C++ app](/doc/user-getting-started-docker-c++.md) for an example.
 3. For developing/running/debugging your application in Mystikos:
-   1. First create a root file system (rootfs) from `appdir`. There are 2 options, you could create a CPIO archive by using `myst mkcpio`, or an EXT2 image by using `myst mkext2`, to learn more about EXT2, please check [Using ext2](/doc/using-ext2.md).
+   1. First create a root file system (rootfs) from `appdir`. There are 2 options, you could create a CPIO archive by using `myst mkcpio`, or an EXT2 image by using `myst mkext2`, to learn more about file system support in Mystikos, please check [Running Simple Applications](/doc/running-simple-app.md)
    > This file system will contain everything needed to run your application, if you made some change to the application or its dependency, you will need to generate this again.
    2. Then run your application by using `myst exec-sgx` or `myst exec-linux`
       1. Today, two target implementations are provided: SGX and Linux

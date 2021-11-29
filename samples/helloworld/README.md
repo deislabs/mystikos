@@ -68,13 +68,13 @@ This builds `appdir`, `package`, the signed package and executes the application
 ### Build an EXT2 file system and run using myst-exec
 This is an option for developers to use instead of using a CPIO archive.
 An EXT2 file system is integrity protected and can be signed.
-To learn more about the EXT2 file system, please see [EXT2 documentation](../../doc/using-ext2.md).
-It also supports [signing](../../doc/using-ext2.md#creating-a-signed-ext2-image) and
-[encryption of the entire file system](../../doc/using-ext2.md#creating-an-encrypted-ext2-image)
+To learn more about the EXT2 file system, please see [Running Simple Applications](../../doc/running-simple-app.md#ext2).
+It also supports [signing](../../doc/sign-package.md,) and
+[encryption of the entire file system](../../doc/running-simple-app.md#creating-an-encrypted-ext2-image)
 
 1. Just as in the `CPIO Archive Mode`, `hello.c` is compiled with gcc. The resulting application is placed in `appdir`.
 ```
-   gcc -fPIC -o appdir/bin/hello hello.c
+   gcc -o appdir/bin/hello hello.c
 ```
 2. A EXT2 File System is constructed from `appdir`. 
 ```
