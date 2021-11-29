@@ -14,6 +14,7 @@
 #include <myst/spinlock.h>
 #include <myst/syscall.h>
 #include <myst/tcall.h>
+#include <myst/printf.h>
 
 #define MAGIC 0xc436d7e6
 
@@ -757,7 +758,7 @@ done:
     return ret;
 }
 
-extern myst_sockdev_t* myst_sockdev_get(void)
+myst_sockdev_t* myst_sockdev_get(int socket_domain, int socket_type)
 {
     // clang-format-off
     static myst_sockdev_t _sockdev = {
@@ -802,6 +803,20 @@ extern myst_sockdev_t* myst_sockdev_get(void)
         .sd_get_events = _sd_get_events,
     };
     // clang-format-on
+
+    if (socket_domain != AF_INET && socket_domain != AF_INET6)
+    {
+        myst_eprintf("kernel: warning: unsupported socket domain: %u\n",
+            socket_domain);
+        return NULL;
+    }
+
+    if (!(socket_type & SOCK_STREAM) && !(socket_type & SOCK_DGRAM))
+    {
+        myst_eprintf("kernel: warning: unsupported socket type: %u\n",
+            socket_type);
+        return NULL;
+    }
 
     return &_sockdev;
 }

@@ -161,6 +161,6 @@ struct myst_sockdev
     int (*sd_get_events)(myst_sockdev_t* sd, myst_sock_t* sock);
 };
 
-myst_sockdev_t* myst_sockdev_get(void);
+myst_sockdev_t* myst_sockdev_get(int sock_domain, int sock_type);
 
 #endif /* _MYST_SOCKDEV_H */

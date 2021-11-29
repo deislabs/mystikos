@@ -2419,11 +2419,14 @@ done:
 long myst_syscall_socket(int domain, int type, int protocol)
 {
     long ret = 0;
-    myst_sockdev_t* sd = myst_sockdev_get();
+    myst_sockdev_t* sd = myst_sockdev_get(domain, type);
     myst_fdtable_t* fdtable = myst_fdtable_current();
     myst_sock_t* sock = NULL;
     int sockfd;
     const myst_fdtable_type_t fdtype = MYST_FDTABLE_TYPE_SOCK;
+
+    if (!sd)
+        ERAISE(-ENOTSUP);
 
     ECHECK((*sd->sd_socket)(sd, domain, type, protocol, &sock));
 
@@ -2531,8 +2534,11 @@ long myst_syscall_socketpair(int domain, int type, int protocol, int sv[2])
     int fd1;
     myst_sock_t* pair[2];
     myst_fdtable_t* fdtable = myst_fdtable_current();
-    myst_sockdev_t* sd = myst_sockdev_get();
+    myst_sockdev_t* sd = myst_sockdev_get(domain, type);
     const myst_fdtable_type_t fdtype = MYST_FDTABLE_TYPE_SOCK;
+
+    if (!sd)
+        ERAISE(-ENOTSUP);
 
     ECHECK((*sd->sd_socketpair)(sd, domain, type, protocol, pair));
 
