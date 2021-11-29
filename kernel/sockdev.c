@@ -758,7 +758,7 @@ done:
     return ret;
 }
 
-myst_sockdev_t* myst_sockdev_get(int socket_domain, int socket_type)
+myst_sockdev_t* myst_sockdev_get(int sock_domain, int sock_type)
 {
     // clang-format-off
     static myst_sockdev_t _sockdev = {
@@ -804,17 +804,17 @@ myst_sockdev_t* myst_sockdev_get(int socket_domain, int socket_type)
     };
     // clang-format-on
 
-    if (socket_domain != AF_INET && socket_domain != AF_INET6)
+    if (sock_domain != AF_INET && sock_domain != AF_INET6)
     {
         myst_eprintf("kernel: warning: unsupported socket domain: %u\n",
-            socket_domain);
+            sock_domain);
         return NULL;
     }
 
-    if (!(socket_type & SOCK_STREAM) && !(socket_type & SOCK_DGRAM))
+    if (!(sock_type & SOCK_STREAM) && !(sock_type & SOCK_DGRAM))
     {
         myst_eprintf("kernel: warning: unsupported socket type: %u\n",
-            socket_type);
+            sock_type);
         return NULL;
     }
 
