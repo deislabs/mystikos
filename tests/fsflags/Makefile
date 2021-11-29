@@ -12,10 +12,6 @@ ifdef STRACE
 OPTS = --strace
 endif
 
-ifdef MYST_ENABLE_GCOV
-CFLAGS += $(GCOV_CFLAGS)
-endif
-
 tests_ext2fs: all
 	$(MYST_EXEC) $(OPTS) ext2fs /opath
 	$(MYST_EXEC) $(OPTS) ext2fs /atemptypath

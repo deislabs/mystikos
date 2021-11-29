@@ -107,6 +107,19 @@ long myst_gcov(const char* func, long p[6])
     {
         return (long)__popcountdi2((unsigned long)p[0]);
     }
+    else if (strcmp(func, "myst_gcov___sprintf_chk") == 0)
+    {
+        return (long)__sprintf_chk(
+            (char*)p[0], (int)p[1], (size_t)p[2], (const char*)p[3], (int)p[4]);
+    }
+    else if (strcmp(func, "myst_gcov_exit") == 0)
+    {
+        exit((int)p[0]);
+    }
+    else if (strcmp(func, "myst_gcov_strcat") == 0)
+    {
+        return (long)strcat((char*)p[0], (const char*)p[1]);
+    }
     else
     {
         fprintf(stderr, "unhandled gcov function: %s\n", func);
