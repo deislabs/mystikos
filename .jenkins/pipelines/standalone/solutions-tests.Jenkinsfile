@@ -13,6 +13,8 @@ pipeline {
         choice(name: "REGION", choices: ['useast', 'canadacentral'], description: "Azure region for the SQL solution tests")
         choice(name: "TEST_CONFIG", choices: ['None', 'Nightly', 'Code Coverage'], description: "Test configuration to execute")
         string(name: "COMMIT_SYNC", defaultValue: "", description: "optional - used to sync outputs of parallel jobs")
+        string(name: "PACKAGE_NAME", defaultValue: "", description: "optional - release package to install (do not include extension)")
+        choice(name: "PACKAGE_EXTENSION", choices:['tar.gz', 'deb'], description: "Extension of package given in PACKAGE_NAME")
     }
     environment {
         MYST_SCRIPTS =      "${WORKSPACE}/scripts"
@@ -21,6 +23,7 @@ pipeline {
         MYST_ENABLE_GCOV =  "${TEST_CONFIG == 'Code Coverage' ? 1 : ''}"
         TEST_TYPE =         "solutions"
         LCOV_INFO =         "lcov-${GIT_COMMIT[0..7]}-${TEST_TYPE}.info"
+        PACKAGE_INSTALL =   "${UBUNTU_VERSION == '20.04' ? 'Ubuntu-2004' : 'Ubuntu-1804'}_${PACKAGE_NAME}.${PACKAGE_EXTENSION}"
         BUILD_USER = sh(
             returnStdout: true,
             script: 'echo \${USER}'
@@ -85,6 +88,42 @@ pipeline {
                 sh """
                    ${JENKINS_SCRIPTS}/global/make-world.sh
                    """
+            }
+        }
+        stage("Install package") {
+            environment {
+                MYST_INSTALLED_BIN = "${ params.PACKAGE_EXTENSION == 'deb' ? '/opt/mystikos/bin' : '\${WORKSPACE}/mystikos/bin' }"
+            }
+            when {
+                expression { params.PACKAGE_NAME != "" }
+            }
+            steps {
+                azureDownload(
+                    downloadType: 'container',
+                    containerName: 'mystikosreleases',
+                    includeFilesPattern: "${PACKAGE_INSTALL}",
+                    storageCredentialId: 'mystikosreleaseblobcontainer'
+                )
+                script {
+                    if ( params.PACKAGE_EXTENSION == "deb" ) {
+                        sh "sudo dpkg -i ${PACKAGE_INSTALL}"
+                    } else {
+                        sh """
+                           rm -rf mystikos
+                           tar xzf ${PACKAGE_INSTALL}
+                           """
+                    }
+
+                    sh """
+                       ln -sf ${MYST_INSTALLED_BIN}/myst-appbuilder ${WORKSPACE}/scripts/appbuilder
+                       ln -sf ${MYST_INSTALLED_BIN}/myst ${WORKSPACE}/build/bin/myst
+                       ln -sf ${MYST_INSTALLED_BIN}/myst-gdb ${WORKSPACE}/build/bin/myst-gdb
+
+                       echo "Use installed binaries"
+                       ls -l ${WORKSPACE}/build/bin/
+                       ls -l ${WORKSPACE}/scripts
+                       """
+                }
             }
         }
         stage('Run Solutions Tests') {
