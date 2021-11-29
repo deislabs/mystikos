@@ -205,10 +205,12 @@ int main(int argc, const char* argv[])
     }
 
     args_t inet_args = {AF_INET, NULL};
-    args_t unix_args = {AF_UNIX, argv[1]};
-
     test_sockets(&inet_args);
+
+#ifdef ENABLE_UDS
+    args_t unix_args = {AF_UNIX, argv[1]};
     test_sockets(&unix_args);
+#endif
 
     printf("=== passed test (%s)\n", argv[0]);
     return 0;
