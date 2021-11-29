@@ -219,3 +219,44 @@ int myst_gcov___fprintf_chk(FILE* stream, int flag, const char* format, ...)
     va_end(ap);
     return n;
 }
+
+int myst_gcov___sprintf_chk(
+    char* s,
+    int flag,
+    size_t slen,
+    const char* format,
+    ...)
+{
+    va_list ap;
+    va_start(ap, format);
+    int n = vsnprintf(s, INT_MAX, format, ap);
+    va_end(ap);
+    return n;
+}
+
+_Noreturn void myst_gcov_exit(int status)
+{
+    myst_gcov(__FUNCTION__, NULL);
+
+    for (;;)
+        ;
+}
+
+char* myst_gcov_strcat(char* dest, const char* src)
+{
+    char* dest_copy = dest;
+
+    while (*dest)
+        dest++;
+
+    while (*src)
+    {
+        *dest = *src;
+        dest++;
+        src++;
+    }
+
+    *dest = '\0';
+
+    return dest_copy;
+}

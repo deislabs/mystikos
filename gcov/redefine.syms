@@ -20,3 +20,6 @@ setbuf myst_gcov_setbuf
 stderr myst_gcov_stderr
 strtol myst_gcov_strtol
 __vfprintf_chk myst_gcov___vfprintf_chk
+__sprintf_chk myst_gcov___sprintf_chk
+exit myst_gcov_exit
+strcat myst_gcov_strcat
