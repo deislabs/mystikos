@@ -128,15 +128,15 @@ Packaging of the executable requires all the things that have now been created:
 * signing certificate
 * configuration
 
-With these three things a package can be created with the following command:
+#### Packaging with CPIO
 
 ```bash
 myst package-sgx ./appdir private.pem config.json
 ```
 
-During the packaging process all the Mystikos executables and shared libraries are pulled together with the application directory and configuration and signed with the signing certificate. All enclave resident pieces of Mystikos and the `appdir` are all measured during the signing process and this measurement is verified while the SGX enclave is created. If there is a mismatch then the loading will fail.
+In this example the appdir directory is converted to a CPIO archive before being packaged into the single executable. This works for small directories, but if a lot of files reside in the appdir an EXT2 may be better for performance reasons.
 
-In this example the appdir directory is converted to a CPIO archive before packaged into the single executable. This works for small directories, but if a lot of files reside in the appdir an ext2 may be better for performance reasons. Refer to [doc/using-ext2.md](/doc/using-ext2.md) for more details.
+During the packaging process all the Mystikos executables and shared libraries are pulled together with the application directory and configuration and signed with the signing certificate. All enclave resident pieces of Mystikos and the `appdir` are all measured during the signing process and this measurement is verified while the SGX enclave is created. If there is a mismatch then the loading will fail.
 
 The result of this command is a single executable with the same application name as specified in the application path within the configuration.
 
@@ -159,3 +159,97 @@ If the host arguments are not allowed to be passed then any specified within the
 If any host environment variables are configured as available within the SGX enclave, then this command will pass them though. Enclave specific environment variables will be added once Mystikos transfers control to the enclave.
 
 You then can ship your application in the form of this single exectuable to your desired platform.
+
+#### Packaging with EXT2 
+
+##### Signing EXT2 image
+
+Unlike packaging with a CPIO archive, an EXT2 image is not part of the signed package.
+Signing the EXT2 image allows us to ensure that Mystikos will only
+load a file system that matches the root hash or public key that we specified.
+
+> Signed EXT2 images are only supported for the root file system.
+Any additional file system mounted through configuration (auto-mount) or through
+calling `mount()` in the application (explicit mount) will not have the
+signature verification.
+
+
+The following command creates a signed EXT2 image.
+
+```
+$ myst mkext2 --sign=private.pem appdir ext2image
+```
+
+The ``private.pem`` file is the private key.
+
+The following generates test keys.
+
+```
+$ openssl genrsa -out private.pem -3 3072
+$ openssl rsa -in private.pem -pubout -out public.pem
+```
+
+##### Packaging with EXT2 image
+
+We can create a signed package that will only accept trusted EXT2 images, either
+by specifying trusted root hash(es) or public key(s) in the packaging process.
+
+**Using root hash**:
+
+```
+$ myst package-sgx --roothash=roothash private.pem config.json
+```
+
+To obtain the roothash for an EXT2 image, use:
+
+```
+$ myst fssig --roothash <ext2image>
+```
+
+The procedure is similar to packaging a directory or a CPIO archive, except
+that the ``--roothash`` option is used to add a root hash to a section in the
+signed application elf image (where the option argument is a file containing
+the root hash in ASCII format). This option may be repeated to specify
+multiple root hashes. The signed application maintains a list of
+**trusted root hashes** and only allows EXT2 images with those root hashes
+to be mounted.
+
+**Using public key**:
+
+```
+$ myst package-sgx --pubkey=public.pem private.pem config.json
+```
+
+The ``--pubkey`` option adds a public key to the signed application,
+where public.pem is the public key of the signing authority. This
+option may be repeated to specify multiple public keys.
+The signed application maintains a list of **trusted
+public keys** and only allows EXT2 images signed by those signers to be mounted.
+
+The advantage to trusted public keys (over trusted root hashes) is that the
+signed application will accept any EXT2 image that is signed by a specified
+key (which means the application does not have to be resigned).
+
+> If we don't specify a root hash or public key, the signed package will load any
+EXT2 image.
+
+##### Running the signed application
+
+Since the EXT2 image is separate from the signed application, its location must
+be specified either by an environment variable (``MYST_ROOTFS``) or by an option
+(``--rootfs``). For example,
+
+```
+$ MYST_ROOTFS=ext2image ./myst/bin/hello
+```
+
+Or equivalently,
+
+```
+$ ./myst/bin/hello --rootfs=ext2image
+```
+
+Mystikos attempts to establish trust by (1) a root hash (from its
+trusted root hash list) or (2) by a public key (from its trusted public key
+list). If the application was signed in debug mode, the EXT2 image is loaded
+unconditionally.
