@@ -2473,7 +2473,8 @@ static int _remove_dirent(
     ext2_t* ext2,
     ext2_ino_t ino,
     ext2_inode_t* inode,
-    const char* filename)
+    const char* filename,
+    bool rename)
 {
     int ret = 0;
     void* data = NULL;
@@ -2518,7 +2519,7 @@ static int _remove_dirent(
         ECHECK(_count_dirents(ext2, tdata, tsize, &count));
 
         /* expect two entries ("." and "..") */
-        if (count != 2)
+        if (!rename && count != 2)
             ERAISE(-ENOTEMPTY);
     }
 
@@ -4079,7 +4080,8 @@ int ext2_unlink(myst_fs_t* fs, const char* path)
 
     /* remove the directory entry for this file */
     ECHECK(_split_path(path, locals->dirname, locals->filename));
-    ECHECK(_remove_dirent(ext2, dino, &locals->dinode, locals->filename));
+    ECHECK(_remove_dirent(ext2, dino, &locals->dinode, locals->filename,
+        false));
 
     /* unlink the inode */
     ECHECK(_inode_unlink(ext2, ino, &locals->inode));
@@ -4336,7 +4338,7 @@ int ext2_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
 
         /* unlink newpath */
         ECHECK(_remove_dirent(
-            ext2, new_dino, &locals->new_dinode, locals->new_filename));
+            ext2, new_dino, &locals->new_dinode, locals->new_filename, true));
         ECHECK(_inode_unlink(ext2, new_ino, &locals->new_inode));
     }
     else
@@ -4359,7 +4361,7 @@ int ext2_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
 
     /* remove the oldpath directory entry */
     ECHECK(_remove_dirent(
-        ext2, old_dino, &locals->old_dinode, locals->old_filename));
+        ext2, old_dino, &locals->old_dinode, locals->old_filename, true));
 
     /* sync the inodes because _remove_dirent() changes the old inode */
     if (new_dino == old_dino)
@@ -4777,7 +4779,7 @@ int ext2_rmdir(myst_fs_t* fs, const char* path)
 
     /* remove the directory entry for this file */
     ECHECK(_split_path(path, locals->dirname, locals->filename));
-    ECHECK(_remove_dirent(ext2, dino, &locals->dinode, locals->filename));
+    ECHECK(_remove_dirent(ext2, dino, &locals->dinode, locals->filename, false));
 
     /* truncate the file to zero size (to return all the blocks) */
     {
