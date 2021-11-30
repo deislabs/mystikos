@@ -1017,7 +1017,9 @@ int main(int argc, const char* argv[])
     /* test rename() of directory: with non-existent newpath */
     {
         assert(ext2_mkdir(fs, "/renamedir1", 0755) == 0);
+        assert(_touch_mode(fs, "/renamedir1/newfile", 0666) == 0);
         assert(ext2_rename(fs, "/renamedir1", "/renamedir2") == 0);
+        assert(ext2_unlink(fs, "/renamedir2/newfile") == 0);
         assert(ext2_rmdir(fs, "/renamedir2") == 0);
     }
 
