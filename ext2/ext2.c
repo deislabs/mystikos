@@ -2658,8 +2658,10 @@ static int _create_inode(
         inode->i_mode = mode;
 
         /* Set the uid and gid to root */
-        inode->i_uid = euid;
-        inode->i_gid = egid;
+        inode->i_uid = euid & 0xFFFF;
+        inode->i_osd2.linux2.i_uid_h = euid >> 16;
+        inode->i_gid = egid & 0xFFFF;
+        inode->i_osd2.linux2.i_gid_h = egid >> 16;
 
         /* Set the size of this file */
         _inode_set_size(inode, size);
@@ -2717,6 +2719,8 @@ static int _create_dir_inode_and_block(
 
     /* Initialize the inode */
     {
+        uid_t uid = myst_syscall_geteuid();
+        gid_t gid = myst_syscall_getegid();
         const uint32_t t = (uint32_t)time(NULL);
 
         memset(&locals->inode, 0, sizeof(ext2_inode_t));
@@ -2725,8 +2729,10 @@ static int _create_dir_inode_and_block(
         locals->inode.i_mode = (S_IFDIR | mode);
 
         /* Set the uid and gid to root */
-        locals->inode.i_uid = myst_syscall_geteuid();
-        locals->inode.i_gid = myst_syscall_getegid();
+        locals->inode.i_uid = uid & 0xFFFF;
+        locals->inode.i_osd2.linux2.i_uid_h = uid >> 16;
+        locals->inode.i_gid = gid & 0xFFFF;
+        locals->inode.i_osd2.linux2.i_gid_h = gid >> 16;
 
         /* Set the size of this file */
         _inode_set_size(&locals->inode, ext2->block_size);
@@ -4430,8 +4436,12 @@ int ext2_fstat(myst_fs_t* fs, myst_file_t* file, struct stat* statbuf)
     statbuf->st_ino = file->shared->ino;
     statbuf->st_mode = file->shared->inode.i_mode;
     statbuf->st_nlink = file->shared->inode.i_links_count;
-    statbuf->st_uid = file->shared->inode.i_uid;
-    statbuf->st_gid = file->shared->inode.i_gid;
+    statbuf->st_uid =
+        file->shared->inode.i_uid |
+        (((uid_t)file->shared->inode.i_osd2.linux2.i_uid_h) << 16);
+    statbuf->st_gid =
+        file->shared->inode.i_gid |
+        (((uid_t)file->shared->inode.i_osd2.linux2.i_gid_h) << 16);
     statbuf->st_rdev = 0; /* only for special files */
     statbuf->st_size = _inode_get_size(&file->shared->inode);
     statbuf->st_blksize = ext2->block_size;
@@ -5542,10 +5552,16 @@ static int _chown(ext2_inode_t* inode, uid_t owner, gid_t group)
         ERAISE(-EINVAL);
 
     if (owner != -1)
-        inode->i_uid = owner;
+    {
+        inode->i_uid = owner & 0xFFFF;
+        inode->i_osd2.linux2.i_uid_h = owner >> 16;
+    }
 
     if (group != -1)
-        inode->i_gid = group;
+    {
+        inode->i_gid = group & 0xFFFF;
+        inode->i_osd2.linux2.i_gid_h = group >> 16;
+    }
 
     /* For executables, clear set-user-ID and set-group-ID bits */
     if (inode->i_mode & (S_IXUSR | S_IXGRP | S_IXOTH))

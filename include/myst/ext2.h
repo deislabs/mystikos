@@ -155,13 +155,13 @@ struct ext2_group_desc
 struct ext2_inode
 {
     uint16_t i_mode;
-    uint16_t i_uid;
+    uint16_t i_uid; /* low 16bit of uid */
     uint32_t i_size;
     uint32_t i_atime;
     uint32_t i_ctime;
     uint32_t i_mtime;
     uint32_t i_dtime;
-    uint16_t i_gid;
+    uint16_t i_gid; /* low 16bit of gid */
     uint16_t i_links_count;
     uint32_t i_blocks;
     uint32_t i_flags;
@@ -177,7 +177,16 @@ struct ext2_inode
     uint32_t i_file_acl;
     uint32_t i_dir_acl;
     uint32_t i_faddr;
-    uint8_t i_osd2[12];
+    union {
+        uint8_t buf[12];
+        struct
+        {
+            uint8_t reserve1[4];
+            uint16_t i_uid_h; /* high 16bit of uid */
+            uint16_t i_gid_h; /* high 16bit of gid */
+            uint8_t reserve2[4];
+        } linux2;
+    } i_osd2;
     uint8_t dummy[128]; /* sometimes the inode is bigger */
 };
 

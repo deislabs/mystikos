@@ -273,11 +273,11 @@ static void _dump_inode(const ext2_t* ext2, const ext2_inode_t* inode)
 
     {
         printf("i_osd2[]={");
-        n = sizeof(inode->i_osd2) / sizeof(inode->i_osd2[0]);
+        n = sizeof(inode->i_osd2) / sizeof(inode->i_osd2.buf[0]);
 
         for (i = 0; i < n; i++)
         {
-            printf("%u", inode->i_osd2[i]);
+            printf("%u", inode->i_osd2.buf[i]);
 
             if (i + 1 != n)
                 printf(", ");
