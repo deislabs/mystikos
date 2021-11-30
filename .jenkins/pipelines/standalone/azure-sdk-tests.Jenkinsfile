@@ -79,6 +79,19 @@ pipeline {
                    """
             }
         }
+        stage('Setup AZ CLI') {
+            steps {
+                withCredentials([string(credentialsId: 'Jenkins-ServicePrincipal-ID', variable: 'SERVICE_PRINCIPAL_ID'),
+                                    string(credentialsId: 'Jenkins-ServicePrincipal-Password', variable: 'SERVICE_PRINCIPAL_PASSWORD'),
+                                    string(credentialsId: 'ACC-Prod-Tenant-ID', variable: 'TENANT_ID'),
+                                    string(credentialsId: 'ACC-Prod-Subscription-ID', variable: 'AZURE_SUBSCRIPTION_ID')]) {
+                    sh """
+                        ${JENKINS_SCRIPTS}/azure-sdk/install-azure-cli.sh
+                        ${JENKINS_SCRIPTS}/azure-sdk/login-azure-cli.sh
+                    """
+                }
+            }
+        }
         stage('Build repo source') {
             steps {
                 sh """
@@ -131,6 +144,7 @@ pipeline {
         }
         stage('Cleanup') {
             steps {
+                sh "${JENKINS_SCRIPTS}/azure-sdk/logout-azure-cli.sh"
                 cleanWs()
             }
         }
