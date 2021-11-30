@@ -176,6 +176,12 @@ static uint64_t _forward_exception_as_signal_to_kernel(
         _mcontext_to_oe_context(&_mcontext, oe_context);
         return OE_EXCEPTION_CONTINUE_EXECUTION;
     }
+    if (oe_exception_code == OE_EXCEPTION_UNKNOWN)
+    {
+        (*_kargs.myst_handle_host_signal)(&siginfo, &_mcontext);
+        _mcontext_to_oe_context(&_mcontext, oe_context);
+        return OE_EXCEPTION_CONTINUE_EXECUTION;
+    }
 
     // ATTN: Consider forwarding OE_EXCEPTION_BOUND_OUT_OF_RANGE,
     // OE_EXCEPTION_ACCESS_VIOLATION, OE_EXCEPTION_MISALIGNMENT,

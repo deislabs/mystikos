@@ -802,7 +802,7 @@ long myst_syscall_write(int fd, const void* buf, size_t count)
         ret = sockdev->sd_sendto(
             sockdev, object, buf, count, MSG_NOSIGNAL, NULL, 0);
         if (ret == -EPIPE)
-            myst_signal_deliver(myst_thread_self(), SIGPIPE, NULL);
+            myst_signal_deliver(myst_thread_self(), SIGPIPE, NULL, false);
     }
     else
         ret = (*fdops->fd_write)(device, object, buf, count);
@@ -3130,7 +3130,7 @@ static long _syscall(void* args_)
     process = thread->process;
 
     // Process signals pending for this thread, if there is any.
-    myst_signal_process(thread);
+    myst_signal_process(thread, NULL);
 
     /* ---------- running target thread descriptor ---------- */
 
@@ -5775,7 +5775,7 @@ static long _syscall(void* args_)
                 sockfd, msgvec, vlen, flags | MSG_NOSIGNAL);
             if (ret == -EPIPE && !(flags & MSG_NOSIGNAL))
             {
-                myst_signal_deliver(thread, SIGPIPE, NULL);
+                myst_signal_deliver(thread, SIGPIPE, NULL, false);
             }
             BREAK(_return(n, ret));
         }
@@ -6026,7 +6026,7 @@ static long _syscall(void* args_)
                 sockfd, buf, len, flags | MSG_NOSIGNAL, dest_addr, addrlen);
             if (ret == -EPIPE && !(flags & MSG_NOSIGNAL))
             {
-                myst_signal_deliver(thread, SIGPIPE, NULL);
+                myst_signal_deliver(thread, SIGPIPE, NULL, false);
             }
 
             BREAK(_return(n, ret));
@@ -6110,7 +6110,7 @@ static long _syscall(void* args_)
             ret = myst_syscall_sendmsg(sockfd, msg, flags | MSG_NOSIGNAL);
             if (ret == -EPIPE && !(flags & MSG_NOSIGNAL))
             {
-                myst_signal_deliver(thread, SIGPIPE, NULL);
+                myst_signal_deliver(thread, SIGPIPE, NULL, false);
             }
             BREAK(_return(n, ret));
         }
@@ -6335,7 +6335,7 @@ done:
     myst_times_leave_kernel(n);
 
     // Process signals pending for this thread, if there is any.
-    myst_signal_process(thread);
+    myst_signal_process(thread, NULL);
 
     return syscall_ret;
 }
@@ -6346,6 +6346,14 @@ long myst_syscall(long n, long params[6])
     long ret;
     myst_kstack_t* kstack;
 
+#ifdef MYST_INTERRUPT_USER_WITH_TKILL
+    myst_thread_t* thread;
+
+    /* mask host signals as we're entering the kernel */
+    thread = myst_thread_self();
+    myst_tcall_mask_host_signal(thread->target_td);
+#endif
+
     // Call myst_syscall_clock_gettime() upfront to avoid triggering the
     // overhead of myst_times_enter_kernel() and myst_times_leave_kernel(),
     // which also read the clock.
@@ -6353,7 +6361,8 @@ long myst_syscall(long n, long params[6])
     {
         clockid_t clk_id = (clockid_t)params[0];
         struct timespec* tp = (struct timespec*)params[1];
-        return myst_syscall_clock_gettime(clk_id, tp);
+        ret = myst_syscall_clock_gettime(clk_id, tp);
+        goto done;
     }
 
     // Call myst_syscall_arch_prctl() upfront since it can only be performed
@@ -6363,7 +6372,8 @@ long myst_syscall(long n, long params[6])
     {
         int code = (int)params[0];
         unsigned long* addr = (unsigned long*)params[1];
-        return myst_syscall_arch_prctl(code, addr);
+        ret = myst_syscall_arch_prctl(code, addr);
+        goto done;
     }
 
     if (!(kstack = myst_get_kstack()))
@@ -6374,6 +6384,11 @@ long myst_syscall(long n, long params[6])
 
     myst_put_kstack(kstack);
 
+done:
+#ifdef MYST_INTERRUPT_USER_WITH_TKILL
+    /* unmask host signals before returning to user space */
+    myst_tcall_unmask_host_signal(thread->target_td);
+#endif
     return ret;
 }
 
@@ -6501,7 +6516,8 @@ long myst_syscall_tgkill(int tgid, int tid, int sig)
 
     siginfo->si_code = SI_TKILL;
     siginfo->si_signo = sig;
-    myst_signal_deliver(target, sig, siginfo);
+    siginfo->si_pid = tgid;
+    myst_signal_deliver(target, sig, siginfo, true);
 
 done:
     return ret;
@@ -6537,7 +6553,8 @@ long myst_syscall_kill(int pid, int sig)
     siginfo->si_pid = thread->process->pid;
     siginfo->si_uid = thread->euid;
 
-    ret = myst_signal_deliver(process->main_process_thread, sig, siginfo);
+    ret =
+        myst_signal_deliver(process->main_process_thread, sig, siginfo, false);
 
 done:
     myst_spin_unlock(&myst_process_list_lock);

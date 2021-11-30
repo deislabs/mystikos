@@ -23,12 +23,13 @@ long myst_signal_sigaction(
 
 long myst_signal_sigprocmask(int how, const sigset_t* set, sigset_t* oldset);
 
-long myst_signal_process(myst_thread_t* thread);
+long myst_signal_process(myst_thread_t* thread, mcontext_t* mcontext);
 
 long myst_signal_deliver(
     myst_thread_t* thread,
     unsigned signum,
-    siginfo_t* siginfo);
+    siginfo_t* siginfo,
+    bool try_interrupt);
 
 long myst_signal_sigpending(sigset_t* set, unsigned size);
 

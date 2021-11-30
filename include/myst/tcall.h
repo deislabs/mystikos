@@ -66,6 +66,13 @@ typedef enum myst_tcall_number
     MYST_TCALL_SENDTO_BLOCK,
     MYST_TCALL_RECVMSG_BLOCK,
     MYST_TCALL_SENDMSG_BLOCK,
+    /* Open Enclave internal APIs */
+    MYST_TCALL_MASK_HOST_SIGNAL,
+    MYST_TCALL_UNMASK_HOST_SIGNAL,
+    MYST_TCALL_REGISTER_HOST_SIGNAL,
+    MYST_TCALL_UNREGISTER_HOST_SIGNAL,
+    MYST_TCALL_HOST_SIGNAL_REGISTERED,
+    MYST_TCALL_IS_HANDLING_HOST_SIGNAL,
 } myst_tcall_number_t;
 
 long myst_tcall(long n, long params[6]);
@@ -263,5 +270,19 @@ ssize_t myst_tcall_sendmsg_block(
     int flags);
 
 ssize_t myst_tcall_recvmsg_block(int sockfd, struct msghdr* msg, int flags);
+
+int myst_tcall_tgkill(pid_t tgid, pid_t tid, int sig);
+
+long myst_tcall_mask_host_signal(void* td);
+
+long myst_tcall_unmask_host_signal(void* td);
+
+long myst_tcall_register_host_signal(void* td, int signo);
+
+long myst_tcall_unregister_host_signal(void* td, int signo);
+
+long myst_tcall_host_signal_registered(void* td, int signo);
+
+long myst_tcall_is_handling_host_signal(void* td);
 
 #endif /* _MYST_TCALL_H */

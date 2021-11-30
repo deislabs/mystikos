@@ -1146,6 +1146,11 @@ int myst_exec(
     if (callback)
         (*callback)(callback_arg);
 
+#ifdef MYST_INTERRUPT_USER_WITH_TKILL
+    /* unmask host signals as we're entering user space */
+    myst_tcall_unmask_host_signal(thread->target_td);
+#endif
+
     /* enter the C-runtime on the target thread descriptor */
     (*enter)(sp, dynv, myst_syscall, crt_args);
 

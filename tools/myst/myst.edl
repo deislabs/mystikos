@@ -169,6 +169,8 @@ enclave
 
         long myst_interrupt_thread_ocall(pid_t tid);
 
+        int myst_tgkill_ocall(pid_t tgid, pid_t tid, int sig);
+
         /*
         **======================================================================
         **

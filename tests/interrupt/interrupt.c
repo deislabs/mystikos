@@ -1,11 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#define _GNU_SOURCE
 #include <assert.h>
 #include <errno.h>
 #include <netinet/in.h>
 #include <poll.h>
 #include <pthread.h>
+#include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -411,6 +413,93 @@ static void _test_accept(void)
     printf("=== passed test (%s)\n", __FUNCTION__);
 }
 
+static pid_t _parent_tid;
+static pid_t _child_tid;
+static int _child_thread_lock;
+static int _parent_thread_lock;
+
+static void _parent_signal_handler(
+    int signum,
+    siginfo_t* siginfo,
+    void* context)
+{
+    printf("=== parent receives signal=%d\n", signum);
+
+    (void)siginfo;
+    (void)context;
+
+    assert(signum == SIGUSR2);
+
+    _parent_thread_lock = 0;
+}
+
+static void _child_signal_handler(int signum, siginfo_t* siginfo, void* context)
+{
+    printf("=== child receives signal=%d\n", signum);
+
+    (void)siginfo;
+    (void)context;
+
+    assert(signum == SIGUSR1);
+
+    _child_thread_lock = 0;
+}
+
+static void* _child_func(void* arg)
+{
+    struct sigaction act = {0};
+
+    act.sa_sigaction = _child_signal_handler;
+    act.sa_flags = SA_SIGINFO;
+
+    (void)arg;
+
+    if (sigaction(SIGUSR1, &act, NULL) < 0)
+    {
+        return NULL;
+    }
+
+    _child_tid = syscall(SYS_gettid);
+
+    printf("=== sending interrupt to parent tid=%d\n", _parent_tid);
+    syscall(SYS_tkill, _parent_tid, SIGUSR2);
+
+    _child_thread_lock = 1;
+    while (_child_thread_lock != 0)
+        asm volatile("pause" ::: "memory");
+}
+
+static void _test_tkill(void)
+{
+    pthread_t thread;
+    struct sigaction act = {0};
+
+    act.sa_sigaction = _parent_signal_handler;
+    act.sa_flags = SA_SIGINFO;
+
+    if (sigaction(SIGUSR2, &act, NULL) < 0)
+    {
+        return;
+    }
+
+    _parent_tid = syscall(SYS_gettid);
+
+    pthread_create(&thread, NULL, _child_func, NULL);
+
+    _parent_thread_lock = 1;
+    while (_parent_thread_lock != 0)
+        asm volatile("pause" ::: "memory");
+
+    sleep_msec(30);
+
+    printf("=== sending interrupt to child tid=%d\n", _child_tid);
+    syscall(SYS_tkill, _child_tid, SIGUSR1);
+
+    pthread_join(thread, NULL);
+
+    printf("=== passed test (%s)\n", __FUNCTION__);
+}
+
 /*
 **==============================================================================
 **
@@ -431,6 +520,10 @@ int main(int argc, const char* argv[])
 
 #if (MYST_INTERRUPT_POLL_WITH_SIGNAL == 1)
     _test_poll();
+#endif
+
+#ifdef MYST_INTERRUPT_USER_WITH_TKILL
+    _test_tkill();
 #endif
 
     _test_accept();

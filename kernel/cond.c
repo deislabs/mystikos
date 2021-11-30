@@ -153,7 +153,7 @@ int myst_cond_timedwait(
     const struct timespec* timeout,
     uint32_t bitset)
 {
-    myst_signal_process(myst_thread_self());
+    myst_signal_process(myst_thread_self(), NULL);
     return _cond_timedwait(c, mutex, timeout, bitset);
 }
 

@@ -290,7 +290,7 @@ void send_sigchld_to_parent(myst_process_t* process)
     siginfo->si_pid = process->pid;
     siginfo->si_uid = process->main_process_thread->euid;
 
-    myst_signal_deliver(parent->main_process_thread, SIGCHLD, siginfo);
+    myst_signal_deliver(parent->main_process_thread, SIGCHLD, siginfo, false);
 }
 
 void myst_zombify_process(myst_process_t* process)
@@ -954,6 +954,8 @@ static long _run_thread(void* arg_)
     /* bind this thread to the target thread-descriptor */
     myst_assume(myst_tcall_set_tsd((uint64_t)thread) == 0);
 
+    myst_tcall_register_host_signal((void*)thread->target_td, SIGUSR1);
+
     /* bind thread to the C-runtime thread-descriptor */
     if (is_child_thread)
     {
@@ -979,6 +981,14 @@ static long _run_thread(void* arg_)
         myst_set_fsbase(thread->target_td);
 
         /* ---------- running target thread descriptor ---------- */
+
+#ifdef MYST_INTERRUPT_USER_WITH_TKILL
+        /* mask host signals on thread exit */
+        myst_tcall_mask_host_signal((void*)thread->target_td);
+
+        /* unregister SIGUSR1 */
+        myst_tcall_unregister_host_signal((void*)thread->target_td, SIGUSR1);
+#endif
 
         /* release the kernel stack that was set by SYS_exit */
         if (thread->exit_kstack)
@@ -1120,7 +1130,12 @@ static long _run_thread(void* arg_)
         if (is_child_thread)
             myst_set_fsbase(crt_td);
 
-        /* ---------- running C-runtime thread descriptor ---------- */
+            /* ---------- running C-runtime thread descriptor ---------- */
+
+#ifdef MYST_INTERRUPT_USER_WITH_TKILL
+        /* unmask host signals before entering user space */
+        myst_tcall_unmask_host_signal((void*)thread->target_td);
+#endif
 
         if (is_child_thread)
         {
@@ -1146,6 +1161,19 @@ long myst_run_thread(uint64_t cookie, uint64_t event, pid_t target_tid)
 {
     long ret = 0;
     myst_thread_t* thread;
+
+#ifdef MYST_INTERRUPT_USER_WITH_TKILL
+    /* thread->target_td is not avaiable at this point, get from fsbase directly
+     */
+    myst_td_t* target_td = myst_get_fsbase();
+
+    /* mask host signals as we are still in the kernel */
+    myst_tcall_mask_host_signal((void*)target_td);
+
+    /* register SIGUSR1 as the thread interrupt kick starter */
+    myst_tcall_register_host_signal((void*)target_td, SIGUSR1);
+#endif
+
     /* get the thread corresponding to this cookie */
     if (!(thread = _put_cookie(cookie)))
         ERAISE(-EINVAL);
@@ -1494,7 +1522,7 @@ long kill_child_fork_processes(myst_process_t* process)
     while (p)
     {
         if ((p->ppid == pid) && (p->is_pseudo_fork_process))
-            myst_signal_deliver(p->main_process_thread, SIGHUP, NULL);
+            myst_signal_deliver(p->main_process_thread, SIGHUP, NULL, false);
         p = p->prev_process;
     }
 
@@ -1503,7 +1531,7 @@ long kill_child_fork_processes(myst_process_t* process)
     while (p)
     {
         if ((p->ppid == pid) && (p->is_pseudo_fork_process))
-            myst_signal_deliver(p->main_process_thread, SIGHUP, NULL);
+            myst_signal_deliver(p->main_process_thread, SIGHUP, NULL, false);
         p = p->next_process;
     }
 
@@ -1530,7 +1558,7 @@ size_t myst_kill_thread_group()
         if (t != thread)
         {
             count++;
-            myst_signal_deliver(t, SIGKILL, 0);
+            myst_signal_deliver(t, SIGKILL, 0, false);
 
             // Wake up the thread from futex_wait if necessary.
             if (t->signal.waiting_on_event)
@@ -1636,7 +1664,7 @@ int myst_send_sighup_child_processes(myst_process_t* process)
     while (p)
     {
         if (p->ppid == pid)
-            myst_signal_deliver(p->main_process_thread, SIGHUP, NULL);
+            myst_signal_deliver(p->main_process_thread, SIGHUP, NULL, false);
 
         p = p->prev_process;
     }
@@ -1646,7 +1674,7 @@ int myst_send_sighup_child_processes(myst_process_t* process)
     while (p)
     {
         if (p->ppid == pid)
-            myst_signal_deliver(p->main_process_thread, SIGHUP, NULL);
+            myst_signal_deliver(p->main_process_thread, SIGHUP, NULL, false);
 
         p = p->next_process;
     }

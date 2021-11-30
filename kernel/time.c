@@ -23,6 +23,6 @@ void myst_sleep_msec(uint64_t milliseconds, bool process_signals)
     while (myst_tcall(SYS_nanosleep, params) == -EINTR)
     {
         if (process_signals)
-            myst_signal_process(myst_thread_self());
+            myst_signal_process(myst_thread_self(), NULL);
     }
 }

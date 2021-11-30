@@ -625,6 +625,7 @@ long myst_tcall(long n, long params[6])
         case SYS_epoll_wait:
         case SYS_epoll_ctl:
         case SYS_eventfd2:
+        case SYS_tgkill:
         case MYST_TCALL_ACCEPT4_BLOCK:
         case MYST_TCALL_CONNECT_BLOCK:
         case MYST_TCALL_READ_BLOCK:
@@ -806,6 +807,47 @@ long myst_tcall(long n, long params[6])
         {
             extern const void* __oe_get_enclave_base_address(void);
             return (long)__oe_get_enclave_base_address();
+        }
+        case MYST_TCALL_MASK_HOST_SIGNAL:
+        {
+            extern void oe_sgx_td_mask_host_signal(void*);
+            void* td = (void*)x1;
+            oe_sgx_td_mask_host_signal(td);
+            return 0;
+        }
+        case MYST_TCALL_UNMASK_HOST_SIGNAL:
+        {
+            extern void oe_sgx_td_unmask_host_signal(void*);
+            void* td = (void*)x1;
+            oe_sgx_td_unmask_host_signal(td);
+            return 0;
+        }
+        case MYST_TCALL_REGISTER_HOST_SIGNAL:
+        {
+            extern bool oe_sgx_td_register_host_signal(void*, int);
+            void* td = (void*)x1;
+            int signo = (int)x2;
+            return (long)oe_sgx_td_register_host_signal(td, signo);
+        }
+        case MYST_TCALL_UNREGISTER_HOST_SIGNAL:
+        {
+            extern bool oe_sgx_td_unregister_host_signal(void*, int);
+            void* td = (void*)x1;
+            int signo = (int)x2;
+            return (long)oe_sgx_td_unregister_host_signal(td, signo);
+        }
+        case MYST_TCALL_HOST_SIGNAL_REGISTERED:
+        {
+            extern bool oe_sgx_td_host_signal_registered(void*, int);
+            void* td = (void*)x1;
+            int signo = (int)x2;
+            return (long)oe_sgx_td_host_signal_registered(td, signo);
+        }
+        case MYST_TCALL_IS_HANDLING_HOST_SIGNAL:
+        {
+            extern bool oe_sgx_td_is_handling_host_signal(void*);
+            void* td = (void*)x1;
+            return (long)oe_sgx_td_is_handling_host_signal(td);
         }
         default:
         {

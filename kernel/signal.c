@@ -330,7 +330,7 @@ static long _default_signal_handler(unsigned signum)
                 __ATOMIC_RELEASE,
                 __ATOMIC_ACQUIRE))
         {
-            myst_signal_deliver(process_thread, signum, NULL);
+            myst_signal_deliver(process_thread, signum, NULL, false);
             if (process_thread->signal.waiting_on_event)
             {
                 myst_tcall_wake(process_thread->event);
@@ -552,7 +552,7 @@ int myst_signal_has_active_signals(myst_thread_t* thread)
     return active_signals != 0;
 }
 
-long myst_signal_process(myst_thread_t* thread)
+long myst_signal_process(myst_thread_t* thread, mcontext_t* mcontext)
 {
     /* If we are waiting due to sigstop then block now */
     _myst_sigstop_wait();
@@ -590,7 +590,7 @@ long myst_signal_process(myst_thread_t* thread)
 
             // Signal numbers are 1 based.
             unsigned signum = bitnum + 1;
-            _handle_one_signal(signum, siginfo, NULL);
+            _handle_one_signal(signum, siginfo, mcontext);
 
             myst_spin_lock(&thread->signal.lock);
         }
@@ -600,6 +600,19 @@ long myst_signal_process(myst_thread_t* thread)
         // Clear the pending bit.
         thread->signal.pending &= ~((uint64_t)1 << bitnum);
     }
+
+#ifdef TRACE
+    uint64_t td_is_interrupted =
+        myst_tcall_is_handling_host_signal((void*)thread->target_td);
+    if (td_is_interrupted && mcontext)
+    {
+        printf(
+            "pid=%d tid=%d interrupt is served\n",
+            thread->process->pid,
+            thread->tid);
+    }
+#endif
+
     myst_spin_unlock(&thread->signal.lock);
     return 0;
 }
@@ -608,7 +621,8 @@ long myst_signal_process(myst_thread_t* thread)
 long myst_signal_deliver(
     myst_thread_t* thread,
     unsigned signum,
-    siginfo_t* siginfo)
+    siginfo_t* siginfo,
+    bool try_interrupt)
 {
     long ret = 0;
     struct siginfo_list_item* new_item = NULL;
@@ -620,7 +634,7 @@ long myst_signal_deliver(
         signum,
         myst_signum_to_string(signum),
         myst_getpid(),
-        myst_getpid(),
+        myst_gettid(),
         thread->process->pid,
         thread->tid);
 #endif
@@ -663,6 +677,7 @@ long myst_signal_deliver(
         }
         else
         {
+            /* ATTN: limit the size of the signal queue */
             struct siginfo_list_item* ptr = thread->signal.siginfos[signum - 1];
             while (ptr->next != NULL)
                 ptr = ptr->next;
@@ -697,6 +712,28 @@ long myst_signal_deliver(
         // Expect ret == 1, otherwise, return error
         if (ret == 1)
             ret = 0;
+    }
+
+    if (try_interrupt)
+    {
+#ifdef MYST_INTERRUPT_USER_WITH_TKILL
+        if (myst_tcall_is_handling_host_signal((void*)thread->target_td) == 0)
+        {
+#ifdef TRACE
+            printf(
+                "pid=%d tid=%d is interrupting pid=%d tid=%d (%d) "
+                "signum=%u\n",
+                myst_getpid(),
+                myst_gettid(),
+                thread->process->pid,
+                thread->tid,
+                thread->target_tid,
+                signum);
+#endif
+            ret = myst_tcall_tgkill(
+                thread->process->pid, thread->target_tid, SIGUSR1);
+        }
+#endif
     }
 
 done:
@@ -758,7 +795,36 @@ done:
 
 long myst_handle_host_signal(siginfo_t* siginfo, mcontext_t* mcontext)
 {
+#ifdef MYST_INTERRUPT_USER_WITH_TKILL
+    long ret;
+    myst_thread_t* thread = myst_thread_self();
+
+    /* mask the host signal when entering the signal handler */
+    myst_tcall_mask_host_signal((void*)thread->target_td);
+
+    if (myst_tcall_is_handling_host_signal((void*)thread->target_td) == 1)
+    {
+#ifdef TRACE
+        printf(
+            "pid=%d tid=%d is interrupted\n",
+            thread->process->pid,
+            thread->tid);
+#endif
+        /* the thread is interrupted, process the all pending signals */
+        ret = myst_signal_process(thread, mcontext);
+    }
+    else
+    {
+        ret = _handle_one_signal(siginfo->si_signo, siginfo, mcontext);
+    }
+
+    /* unmak the host signal before return */
+    myst_tcall_unmask_host_signal((void*)thread->target_td);
+
+    return ret;
+#else
     return _handle_one_signal(siginfo->si_signo, siginfo, mcontext);
+#endif
 }
 
 int myst_signal_altstack(const stack_t* ss, stack_t* old_ss)

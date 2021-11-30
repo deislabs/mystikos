@@ -246,7 +246,7 @@ int myst_mutex_lock(myst_mutex_t* mutex)
     while ((ret = _mutex_lock(mutex)) == -EINTR)
     {
         /* check for signals */
-        myst_signal_process(self);
+        myst_signal_process(self, NULL);
     }
 
     return ret;

@@ -771,6 +771,13 @@ long myst_interrupt_thread_ocall(pid_t tid)
     return myst_tcall_interrupt_thread(tid);
 }
 
+int myst_tgkill_ocall(pid_t tgid, pid_t tid, int sig)
+{
+    pid_t pid = getpid(); // host pid
+    (void)tgid;
+    return syscall(SYS_tgkill, pid, tid, sig);
+}
+
 long myst_write_console_ocall(int fd, const void* buf, size_t count)
 {
     long ret = 0;

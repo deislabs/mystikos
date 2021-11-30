@@ -435,3 +435,45 @@ ssize_t myst_tcall_recvmsg_block(int sockfd, struct msghdr* msg, int flags)
     long params[6] = {(long)sockfd, (long)msg, (long)flags};
     return myst_tcall(MYST_TCALL_RECVMSG_BLOCK, params);
 }
+
+int myst_tcall_tgkill(pid_t tgid, pid_t tid, int sig)
+{
+    long params[6] = {(long)tgid, (long)tid, (long)sig};
+    return myst_tcall(SYS_tgkill, params);
+}
+
+long myst_tcall_mask_host_signal(void* td)
+{
+    long params[6] = {(long)td};
+    return myst_tcall(MYST_TCALL_MASK_HOST_SIGNAL, params);
+}
+
+long myst_tcall_unmask_host_signal(void* td)
+{
+    long params[6] = {(long)td};
+    return myst_tcall(MYST_TCALL_UNMASK_HOST_SIGNAL, params);
+}
+
+long myst_tcall_register_host_signal(void* td, int signo)
+{
+    long params[6] = {(long)td, (long)signo};
+    return myst_tcall(MYST_TCALL_REGISTER_HOST_SIGNAL, params);
+}
+
+long myst_tcall_unregister_host_signal(void* td, int signo)
+{
+    long params[6] = {(long)td, (long)signo};
+    return myst_tcall(MYST_TCALL_UNREGISTER_HOST_SIGNAL, params);
+}
+
+long myst_tcall_host_signal_registered(void* td, int signo)
+{
+    long params[6] = {(long)td, (long)signo};
+    return myst_tcall(MYST_TCALL_HOST_SIGNAL_REGISTERED, params);
+}
+
+long myst_tcall_is_handling_host_signal(void* td)
+{
+    long params[6] = {(long)td};
+    return myst_tcall(MYST_TCALL_IS_HANDLING_HOST_SIGNAL, params);
+}

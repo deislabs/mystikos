@@ -229,6 +229,45 @@ static long _isatty(int fd)
     return ret;
 }
 
+static long _mask_host_signal(void* td)
+{
+    (void)td;
+    return -ENOTSUP;
+}
+
+static long _unmask_host_signal(void* td)
+{
+    (void)td;
+    return -ENOTSUP;
+}
+
+static long _register_host_signal(void* td, int signo)
+{
+    (void)td;
+    (void)signo;
+    return -ENOTSUP;
+}
+
+static long _unregister_host_signal(void* td, int signo)
+{
+    (void)td;
+    (void)signo;
+    return -ENOTSUP;
+}
+
+static long _host_signal_registered(void* td, int signo)
+{
+    (void)td;
+    (void)signo;
+    return -ENOTSUP;
+}
+
+static long _is_handling_host_signal(void* td)
+{
+    (void)td;
+    return -ENOTSUP;
+}
+
 /* Must be overriden by enclave application */
 MYST_WEAK
 long myst_tcall_add_symbol_file(
@@ -900,6 +939,30 @@ long myst_tcall(long n, long params[6])
 
             return myst_interruptible_syscall(
                 SYS_recvmsg, sockfd, POLLIN, retry, sockfd, msg, flags);
+        }
+        case MYST_TCALL_MASK_HOST_SIGNAL:
+        {
+            return _mask_host_signal((void*)x1);
+        }
+        case MYST_TCALL_UNMASK_HOST_SIGNAL:
+        {
+            return _unmask_host_signal((void*)x1);
+        }
+        case MYST_TCALL_REGISTER_HOST_SIGNAL:
+        {
+            return _register_host_signal((void*)x1, (int)x2);
+        }
+        case MYST_TCALL_UNREGISTER_HOST_SIGNAL:
+        {
+            return _unregister_host_signal((void*)x1, (int)x2);
+        }
+        case MYST_TCALL_HOST_SIGNAL_REGISTERED:
+        {
+            return _host_signal_registered((void*)x1, (int)x2);
+        }
+        case MYST_TCALL_IS_HANDLING_HOST_SIGNAL:
+        {
+            return _is_handling_host_signal((void*)x1);
         }
         default:
         {

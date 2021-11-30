@@ -513,6 +513,14 @@ static int _init_main_thread(
     /* set up default rlimit values */
     ECHECK(myst_limit_set_default(process->rlimits));
 
+#ifdef MYST_INTERRUPT_USER_WITH_TKILL
+    /* mask the host signal */
+    myst_tcall_mask_host_signal(thread->target_td);
+
+    /* register SIGUSR1 as a thread interrupt kick starter */
+    myst_tcall_register_host_signal(thread->target_td, SIGUSR1);
+#endif
+
 done:
 
     return ret;

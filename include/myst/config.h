@@ -18,6 +18,9 @@
 #define MYST_INTERRUPT_EPOLL_WITH_SIGNAL -1
 #endif
 
+/* enable interruption of user threads */
+#define MYST_INTERRUPT_USER_WITH_TKILL
+
 /* enable tracing of EINTR returns from nanosleep(), poll(), and epoll() */
 // #define MYST_TRACE_THREAD_INTERRUPTIONS 1
 
