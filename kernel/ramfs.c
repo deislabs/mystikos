@@ -1820,7 +1820,9 @@ static int _fs_rename(myst_fs_t* fs, const char* oldpath, const char* newpath)
 
     /* Add the newpath directory entry */
     {
-        _inode_add_dirent(new_parent, old_inode, DT_REG, locals->new_basename);
+        const uint8_t type = S_ISDIR(old_inode->mode) ? DT_DIR : DT_REG;
+
+        _inode_add_dirent(new_parent, old_inode, type, locals->new_basename);
 
         if (S_ISDIR(old_inode->mode))
             new_parent->nlink++;

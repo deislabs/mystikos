@@ -1055,6 +1055,12 @@ static void test_append(void)
     assert(buf.st_size == sizeof(alpha) + 3 + 3);
 }
 
+void test_rename_dir(void)
+{
+    assert(mkdir("/renamedir1", 0777) == 0);
+    assert(rename("/renamedir1", "/renamedir2") == 0);
+}
+
 int main(int argc, const char* argv[])
 {
     if (argc != 2)
@@ -1110,6 +1116,7 @@ int main(int argc, const char* argv[])
     test_o_tmpfile_not_supp(argv[1]);
     test_sync();
     test_append();
+    test_rename_dir();
 
     printf("=== passed all tests (%s)\n", argv[0]);
 
