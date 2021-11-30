@@ -8,7 +8,7 @@
     "SecurityVersion": 1,
 
     // Mystikos specific values
-    "MemorySize": "30m",
+    "MemorySize": "256m",
     "HostApplicationParameters": true,
     "HostEnvironmentVariables": ["AZURE_KEYVAULT_URL", "STANDARD_STORAGE_CONNECTION_STRING", "AZURE_CLIENT_ID", "AZURE_CLIENT_SECRET", "AZURE_TENANT_ID"]
 }

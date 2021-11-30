@@ -21,7 +21,6 @@ $(ROOTFS): $(APPDIR)
 	$(MYST) mkext2 $(APPDIR) $(ROOTFS)
 	truncate --size=-4096 $(ROOTFS)
 
-OPTS += --memory-size=256m
 OPTS += --app-config-path config.json
 
 tests: all
@@ -36,6 +35,8 @@ tests: all
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /azure-sdk-for-cpp/build/sdk/core/azure-core/test/ut/azure-core-test --gtest_filter=-BearerTokenAuthenticationPolicy.RefreshNearExpiry:*BodyStream.Rewind:*BodyStream.BadInput:*Pre*ondition*:CurlConnectionPool.*onnectionClose*:*ExpectThrow*:Context.IsCancelled
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /azure-sdk-for-cpp/build/sdk/identity/azure-identity/test/ut/azure-identity-test --gtest_filter=-*ClientSecret*:ManagedIdentityCredential* # timing problem
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /azure-sdk-for-cpp/build/sdk/storage/azure-storage-test --gtest_filter=-*ExpectThrow*:*Blob*:*ConcurrentUploadDownload:*DataLakeSasTest:*FileShare*:StoragetimeoutTest*:DataLake*ClientTest*:*ClientSecretCredentialWorks # needs fork & STANDARD_STORAGE_CONNECTION_STRING
+
+	# $(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /azure-sdk-for-cpp/build/sdk/storage/azure-storage-test --gtest_filter=StorageRetryPolicyTest.Failover:StorageRetryPolicyTest.Secondary404:StorageRetryPolicyTest.Secondary412 # needs fork & STANDARD_STORAGE_CONNECTION_STRING
 
 	# FAIL OUTSIDE MYSTIKOS currently
 	# $(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /azure-sdk-for-cpp/build/sdk/core/azure-core/test/ut/azure-core-libcurl-test
