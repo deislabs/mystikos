@@ -127,11 +127,20 @@ pipeline {
                 }
             }
         }
-        stage('Run DotNet 5 P1 Test Suite') {
+        stage('Run DotNet 5 Alpine P1 Test Suite') {
             steps {
                 catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
                     sh """
                        make tests -C ${WORKSPACE}/solutions/coreclr-p1
+                       """
+                }
+            }
+        }
+        stage('Run DotNet 5 Ubuntu P1 Test Suite') {
+            steps {
+                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                    sh """
+                       make tests -C ${WORKSPACE}/solutions/coreclr-p1-ubuntu
                        """
                 }
             }
