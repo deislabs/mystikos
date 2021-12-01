@@ -54,7 +54,7 @@ pipeline {
 
                    rm -rf ${LCOV_DIR}
                    mkdir ${LCOV_DIR}
-                   genhtml --branch-coverage -o lcov lcov.info
+                   genhtml --branch-coverage -o lcov lcov.info || true
 
                    mv lcov* ${LCOV_DIR}
                    tar -zcvf ${LCOV_DIR}.tar.gz ${LCOV_DIR}
