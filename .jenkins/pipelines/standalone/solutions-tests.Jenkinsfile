@@ -103,6 +103,11 @@ pipeline {
                         sh """
                            echo "Running in ${REGION}"
                            make tests -C ${WORKSPACE}/solutions
+                           echo "Running samples"
+                           sudo make install
+                           export PATH="/opt/mystikos/bin:$PATH"
+                           export MYSTIKOS_INSTALL_DIR="/opt/mystikos/"
+                           make -j -C ${WORKSPACE}/samples
                            """
                     }
                 }

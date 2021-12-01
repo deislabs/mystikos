@@ -81,8 +81,7 @@ To learn more about writing TEE aware applications, please read the [TEE aware a
 
 ## Running the sample
 
-To run the sample in package mode, use `make run` to launch both the server and the local client that will
-send images located inside `test_samples` for inferencing.
+To run the sample in package mode, use `make run`.
 
 To run the sample using `myst exec-sgx`, use `make runexec`. Note that the `myst-exec` command takes the application configuration as a parameter
 ```
