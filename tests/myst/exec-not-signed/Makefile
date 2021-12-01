@@ -33,6 +33,7 @@ test-a:
 	grep -E "argv\[2]=green" result
 	grep -E "argv\[3]=blue" result
 	grep -E "argv\[4]=yellow" result
+	grep -vE "TESTNAME=tests/myst/exec-not-signed" result
 	@ echo "=== passed test (myst: exec-not-signed)"
 
 test-mem-size:
@@ -46,6 +47,7 @@ test-mem-size:
 	grep -E "argv\[2]=green" result
 	grep -E "argv\[3]=blue" result
 	grep -E "argv\[4]=yellow" result
+	grep -vE "TESTNAME=tests/myst/exec-not-signed" result
 	@ echo "=== passed test (myst: exec-not-signed-config)"
 
 test-config:
