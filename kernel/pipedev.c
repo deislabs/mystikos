@@ -737,25 +737,39 @@ static int _pd_ioctl(
         arg,
         myst_getppid()));
 
-    if (request == TIOCGWINSZ)
+    switch (request)
     {
-        ERAISE(-EINVAL);
-    }
-    else if (request == FIONBIO)
-    {
-        int* val = (int*)arg;
-
-        if (!val)
+        case TIOCGWINSZ:
+        {
             ERAISE(-EINVAL);
+            break;
+        }
+        case FIONBIO:
+        {
+            int* val = (int*)arg;
 
-        if (*val)
-            pipe->fl_flags |= O_NONBLOCK;
-        else
-            pipe->fl_flags &= ~O_NONBLOCK;
-    }
-    else
-    {
-        ERAISE(-ENOTSUP);
+            if (!val)
+                ERAISE(-EINVAL);
+
+            if (*val)
+                pipe->fl_flags |= O_NONBLOCK;
+            else
+                pipe->fl_flags &= ~O_NONBLOCK;
+
+            break;
+        }
+        case FIOCLEX:
+        {
+            pipe->fd_flags |= FD_CLOEXEC;
+            break;
+        }
+        case FIONCLEX:
+        {
+            pipe->fd_flags &= ~FD_CLOEXEC;
+            break;
+        }
+        default:
+            ERAISE(-ENOTSUP);
     }
 
 done:
