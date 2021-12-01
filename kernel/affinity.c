@@ -3,9 +3,11 @@
 
 #define _GNU_SOURCE
 #include <sched.h>
+#include <sys/mman.h>
 
 #include <myst/eraise.h>
 #include <myst/kernel.h>
+#include <myst/mmanutils.h>
 #include <myst/syscall.h>
 #include <myst/thread.h>
 
@@ -16,15 +18,19 @@ long myst_syscall_sched_getaffinity(
 {
     long ret = 0;
 
-    if (pid < 0 || !mask)
-        ERAISE(-EINVAL);
+    if (!mask || myst_is_bad_addr_write(mask, cpusetsize))
+        ERAISE(-EFAULT);
 
-    if (pid != 0)
+    if (pid < 0)
+    {
+        ERAISE(-ESRCH);
+    }
+    else if (pid != 0)
     {
         myst_thread_t* thread = myst_find_thread(pid);
 
         if (!thread)
-            ERAISE(-EINVAL);
+            ERAISE(-ESRCH);
 
         pid = thread->target_tid;
     }
@@ -63,15 +69,19 @@ long myst_syscall_sched_setaffinity(
 {
     long ret = 0;
 
-    if (pid < 0 || !mask)
-        ERAISE(-EINVAL);
+    if (!mask || myst_is_bad_addr_read(mask, cpusetsize))
+        ERAISE(-EFAULT);
 
-    if (pid != 0)
+    if (pid < 0)
+    {
+        ERAISE(-ESRCH);
+    }
+    else if (pid != 0)
     {
         myst_thread_t* thread = myst_find_thread(pid);
 
         if (!thread)
-            ERAISE(-EINVAL);
+            ERAISE(-ESRCH);
 
         pid = thread->target_tid;
     }
