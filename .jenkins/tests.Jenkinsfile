@@ -187,7 +187,14 @@ pipeline {
                                             string(credentialsId: 'mystikos-maa-url-useast', variable: 'MAA_URL'),
                                             string(credentialsId: 'mystikos-managed-identity-objectid', variable: 'DB_USERID')]) {
                                 withEnv(["MYST_SKIP_PR_TEST=1"]) {
-                                    sh "make tests -C ${WORKSPACE}/solutions"
+                                    sh """
+                                       make tests -C ${WORKSPACE}/solutions
+                                       echo "Running samples"
+                                       sudo make install
+                                       export PATH="/opt/mystikos/bin:$PATH"
+                                       export MYSTIKOS_INSTALL_DIR="/opt/mystikos/"
+                                       make -j -C ${WORKSPACE}/samples
+                                       """
                                 }
                             }
                         }

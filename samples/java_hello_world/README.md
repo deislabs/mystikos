@@ -22,16 +22,15 @@ This sample prints `hello world` from a java application. The source code is con
 
 ### Running the sample
 
-To run the sample in package mode, use `make run` to launch both the server and the local client that will
-send images located inside `test_samples` for inferencing.
+To run the sample in package mode, use `make run`.
 
 To run the sample using `myst exec-sgx`, use `make runexec`.
 
 ### Configuration Parameters
 
-The configuration used in this sample is very similar to that in the helloworld sample. Please refer to the helloworld sample for more details.
+The configuration used in this sample is very similar to that in the [C helloworld sample](../helloworld/README.md). Please refer to the helloworld sample for more details.
 It does use more memory than the helloworld sample(which is written in C). This is in order to run the JVM.
-After mounting the root file system, Mystikos invokes `/opt/openjdk-13/bin/jav` with `ApplicationParameters` specifying `helloworld`.
+After mounting the root file system, Mystikos invokes `/opt/openjdk-13/bin/java` with `ApplicationParameters` specifying `helloworld`.
 ```
 {
     "Debug": 1,
