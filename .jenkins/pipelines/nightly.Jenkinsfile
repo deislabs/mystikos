@@ -60,7 +60,7 @@ pipeline {
                     }
                     axis {
                         name 'TEST_PIPELINE'
-                        values 'Unit', 'Solutions', 'DotNet', 'DotNet-P1', 'Azure-SDK'
+                        values 'Unit', 'Solutions', 'DotNet', 'DotNet-P1', 'Azure-SDK', 'PyTorch'
                     }
                 }
                 stages {

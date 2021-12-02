@@ -1,0 +1,61 @@
+# Adapted from https://github.com/pytorch/pytorch/blob/master/Dockerfile
+ARG BASE_IMAGE=ubuntu:18.04
+ARG PYTHON_VERSION=3.8
+ARG PYTORCH_VERSION=v1.10.0
+
+FROM ${BASE_IMAGE} as dev-base
+RUN --mount=type=cache,id=apt-dev,target=/var/cache/apt \
+    apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        ca-certificates \
+        ccache \
+        cmake \
+        curl \
+        git \
+        libjpeg-dev \
+        libpng-dev && \
+    rm -rf /var/lib/apt/lists/*
+RUN /usr/sbin/update-ccache-symlinks
+RUN mkdir /opt/ccache && ccache --set-config=cache_dir=/opt/ccache
+ENV PATH /opt/conda/bin:$PATH
+
+FROM dev-base as conda
+ARG PYTHON_VERSION=3.8
+RUN curl -fsSL -v -o ~/miniconda.sh -O  https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh  && \
+    chmod +x ~/miniconda.sh && \
+    ~/miniconda.sh -b -p /opt/conda && \
+    rm ~/miniconda.sh && \
+    /opt/conda/bin/conda install -y python=${PYTHON_VERSION} conda-build pyyaml numpy ipython && \
+    /opt/conda/bin/pip install expecttest hypothesis typing_extensions pytest && \
+    /opt/conda/bin/conda clean -ya
+
+FROM dev-base as submodule-update
+ENV PYTORCH_VERSION ${PYTORCH_VERSION}
+WORKDIR /opt
+RUN git clone -b v1.10.0 https://github.com/pytorch/pytorch.git --single-branch --depth 1
+WORKDIR /opt/pytorch
+RUN git submodule update --init --recursive --jobs 0
+
+FROM conda as build-base
+WORKDIR /opt/pytorch
+COPY --from=conda /opt/conda /opt/conda
+COPY --from=submodule-update /opt/pytorch /opt/pytorch
+
+FROM build-base as build
+# https://github.com/pytorch/pytorch/blob/master/CONTRIBUTING.md#build-only-what-you-need
+# For example:
+# DEBUG=1 USE_DISTRIBUTED=0 USE_MKLDNN=0 USE_CUDA=0 BUILD_TEST=0 USE_FBGEMM=0 USE_NNPACK=0 USE_QNNPACK=0 USE_XNNPACK=0 python setup.py develop
+RUN --mount=type=cache,target=/opt/ccache \
+    CMAKE_PREFIX_PATH="$(dirname $(which conda))/../" \
+    DEBUG=1 \
+    USE_DISTRIBUTED=0 \
+    USE_MKLDNN=0 \
+    BUILD_CAFFE2=0 \
+    USE_CUDA=0 \
+    BUILD_TEST=0 \
+    USE_OPENMP=0 \
+    USE_FBGEMM=0 \
+    USE_NNPACK=0 \
+    USE_QNNPACK=0 \
+    USE_XNNPACK=0 \
+    python setup.py install

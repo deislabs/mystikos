@@ -130,6 +130,16 @@ jobs:
       
       - template: step-azure-sdk-tests.yml
 
+      # run PyTorch tests
+      - script: |
+          export PATH="$PATH:$(pwd)/mystikos/bin"
+          make tests -C $(Build.SourcesDirectory)/solutions/pytorch_tests
+          make clean -C $(Build.SourcesDirectory)/solutions/pytorch_tests
+        displayName: 'run PyTorch tests'
+        continueOnError: true
+        enabled: true
+        workingDirectory: $(Build.SourcesDirectory)
+
       # if any previous step(s) not succeed, fail the job
       - script: |
           echo "Not all steps succeed."
