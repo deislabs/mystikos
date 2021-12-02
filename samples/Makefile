@@ -1,4 +1,4 @@
-DIRS = docker_aks helloworld java_hello_world pytorch_onnx_inference rust tensorflow_lite TEE_aware/dotnet TEE_aware/gencreds
+DIRS = docker_aks helloworld java_hello_world pytorch_onnx_inference rust tensorflow_lite TEE_aware/dotnet
 
 .PHONY: run clean
 
