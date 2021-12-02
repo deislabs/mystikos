@@ -81,6 +81,15 @@ jobs:
           MYST_SKIP_PR_TEST: 1
           MYST_DO_CLEANUP: 1
 
+      # run PyTorch tests
+      - script: |
+          make tests -C $(Build.SourcesDirectory)/solutions/pytorch_tests
+          make clean -C $(Build.SourcesDirectory)/solutions/pytorch_tests
+        displayName: 'run PyTorch tests'
+        continueOnError: true
+        enabled: true
+        workingDirectory: $(Build.SourcesDirectory)
+
       - script: |
           make clean -C $(Build.SourcesDirectory)/tests
           make clean -C $(Build.SourcesDirectory)/solutions
