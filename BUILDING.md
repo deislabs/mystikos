@@ -4,7 +4,7 @@ This document contains instructions to build mystikos on Linux
 
 ## Building from source
 
-Mystikos *must* be built on **Ubuntu 18.04**. It may be compiled with or
+Mystikos is compatible with **Ubuntu 18.04 and 20.04**. It may be compiled with or
 without SGX capability.
 
 ## Install the prerequisites
