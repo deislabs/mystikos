@@ -45,69 +45,18 @@ Mystikos.
 ![](./arch.png)
 
 
-# Installation Guide for Ubuntu 18.04
+# Installation Guide for Ubuntu
 
-## Install Intel SGX DCAP Driver if necessary
+As of release version 0.7.0, Mystikos may be built and installed on Ubuntu 18.04 and 20.04. Earlier Mystikos versions are only compatible with Ubuntu 18.04.
 
-Some distributions come with the SGX driver already installed; if it is,
-you don't need to re-install it. You can verify this by running:
+## Install from Released Package
 
-```bash
-dmesg | grep -i sgx
-```
-
-If the output is blank, install the driver manually by downloading it from Intel.
-
-> NOTE: The script below may not refer to the latest Intel SGX DCAP driver.
-> Check [Intel's SGX Downloads page](https://01.org/intel-software-guard-extensions/downloads)
-> to see if a more recent SGX DCAP driver exists.
-
-```bash
-sudo apt -y install dkms
-wget https://download.01.org/intel-sgx/sgx-dcap/1.7/linux/distro/ubuntu18.04-server/sgx_linux_x64_driver_1.35.bin -O sgx_linux_x64_driver.bin
-chmod +x sgx_linux_x64_driver.bin
-sudo ./sgx_linux_x64_driver.bin
-```
-## Add Intel and Microsoft's repositories & install the required packages
-
-```bash
-echo 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu bionic main' | sudo tee /etc/apt/sources.list.d/intel-sgx.list
-wget -qO - https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo apt-key add -
-echo "deb [arch=amd64] https://packages.microsoft.com/ubuntu/18.04/prod bionic main" | sudo tee /etc/apt/sources.list.d/msprod.list
-wget -qO - https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
-
-sudo apt update
-
-sudo apt -y install libsgx-enclave-common libsgx-dcap-ql libsgx-dcap-ql-dev libsgx-quote-ex az-dcap-client libmbedtls-dev
-
-curl -sSL https://get.docker.com/ | sh
-```
-
-## Download Mystikos
-
-You can [download the latest build here](https://github.com/deislabs/mystikos/releases)
-then simply decompress it, add it to your path, and run it.
-
-```
-# change this to match the latest version
-LATEST='0.5.0'
-RELEASE="mystikos-${LATEST}-x86_64"
-
-# this will create the "mystikos" directory within your current working directory
-curl -sSL --ssl https://github.com/deislabs/mystikos/releases/download/v${LATEST}/${RELEASE}.tar.gz | tar -xzf -
-
-# you can use mystikos from your home directory, or any path
-export PATH="$PATH:$(pwd)/mystikos/bin"
-```
+To install Mystikos using one of the released packages, please follow the appropriate guide to install on [Ubuntu 18.04](doc/user-install-ubuntu-1804.md) or [Ubuntu 20.04](doc/user-install-ubuntu-2004.md).
 
 ## Install From Source
 
 You may also [build Mystikos from source](BUILDING.md). The build process
 will install the SGX driver and SGX-related packages for you.
-
-**NOTE** that Mystikos can only be built on **Ubuntu 18.04**. We are working
-on bringing Mystikos to **Ubuntu 20.04**.
-
 
 # Quick Start Docs
 
