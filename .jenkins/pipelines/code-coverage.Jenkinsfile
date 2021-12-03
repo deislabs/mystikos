@@ -14,6 +14,7 @@ pipeline {
         string(name: "REPOSITORY", defaultValue: "deislabs")
         string(name: "BRANCH", defaultValue: "main", description: "Branch to build")
         choice(name: "REGION", choices:['useast', 'canadacentral'], description: "Azure region for the SQL solutions test")
+        string(name: "PULL_REQUEST_ID", defaultValue: "", description: "If you are building a pull request, enter the pull request ID number here. (ex. 789)")
     }
     environment {
         TEST_CONFIG = 'Code Coverage'
@@ -42,6 +43,7 @@ pipeline {
                                             string(name: "UBUNTU_VERSION", value: OS_VERSION),
                                             string(name: "REPOSITORY", value: params.REPOSITORY),
                                             string(name: "BRANCH", value: params.BRANCH),
+                                            string(name: "PULL_REQUEST_ID", value: params.PULL_REQUEST_ID),
                                             string(name: "TEST_CONFIG", value: env.TEST_CONFIG),
                                             string(name: "REGION", value: params.REGION),
                                             string(name: "COMMIT_SYNC", value: params.GIT_COMMIT)
