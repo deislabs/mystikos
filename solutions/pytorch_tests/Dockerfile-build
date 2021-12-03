@@ -1,7 +1,5 @@
 # Adapted from https://github.com/pytorch/pytorch/blob/master/Dockerfile
 ARG BASE_IMAGE=ubuntu:18.04
-ARG PYTHON_VERSION=3.8
-ARG PYTORCH_VERSION=v1.10.0
 
 FROM ${BASE_IMAGE} as dev-base
 RUN --mount=type=cache,id=apt-dev,target=/var/cache/apt \
@@ -30,9 +28,9 @@ RUN curl -fsSL -v -o ~/miniconda.sh -O  https://repo.anaconda.com/miniconda/Mini
     /opt/conda/bin/conda clean -ya
 
 FROM dev-base as submodule-update
-ENV PYTORCH_VERSION ${PYTORCH_VERSION}
+ARG PYTORCH_VERSION=v1.10.0
 WORKDIR /opt
-RUN git clone -b v1.10.0 https://github.com/pytorch/pytorch.git --single-branch --depth 1
+RUN git clone -b ${PYTORCH_VERSION} https://github.com/pytorch/pytorch.git --single-branch --depth 1
 WORKDIR /opt/pytorch
 RUN git submodule update --init --recursive --jobs 0
 
