@@ -54,7 +54,8 @@ int main()
         assert(ret == 0);
         printf("Verified the self-signed certificate\n");
 
-        ret = syscall(SYS_myst_free_creds, cert, cert_size, pkey, pkey_size);
+        ret = syscall(
+            SYS_myst_free_creds, cert, cert_size, pkey, pkey_size, NULL, 0);
         assert(ret == 0);
     }
 
