@@ -16,6 +16,14 @@ ifdef MEMCHK
 OPTS += --memcheck
 endif
 
+ifdef STRACE_FAILING
+OPTS += --strace-failing
+endif
+
+ifdef STRACE_FILTER
+OPTS += --strace-filter=$(STRACE_FILTER)
+endif
+
 # 15 mins
 export TIMEOUT=900
 
@@ -76,7 +84,7 @@ all-runner-hostfs: appdir
 run-ext2-lldb:
 	$(MYST_LLDB) -- $(MYST_EXEC) ext2fs --roothash=roothash \
 	$(OPTS) --report-native-tids \
-	/aspnetcore/.dotnet/dotnet test $(TEST)
+	/runner/bin/Debug/net6.0/runner $(TEST)
 
 run-hostfs-gdb:
 	$(MYST_GDB) --args $(MYST_EXEC) appdir $(OPTS) \
