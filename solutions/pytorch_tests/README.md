@@ -1,4 +1,4 @@
-### 1. test/test_torch.py - Basic tests for PyTorch functionality.
+### 1. test_torch.py - Basic tests for PyTorch functionality.
 - 3 failed cases
 
 | #  | NAME  | ROOT CAUSE  |

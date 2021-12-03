@@ -10,16 +10,11 @@ pipeline {
         string(name: "REPOSITORY", defaultValue: "deislabs")
         string(name: "BRANCH", defaultValue: "main", description: "Branch to build")
         string(name: "PULL_REQUEST_ID", defaultValue: "", description: "If you are building a pull request, enter the pull request ID number here. (ex. 789)")
-        choice(name: "TEST_CONFIG", choices: ['None', 'Nightly', 'Code Coverage'], description: "Test configuration to execute")
         string(name: "COMMIT_SYNC", defaultValue: "", description: "optional - used to sync outputs of parallel jobs")
     }
     environment {
         MYST_SCRIPTS =      "${WORKSPACE}/scripts"
         JENKINS_SCRIPTS =   "${WORKSPACE}/.jenkins/scripts"
-        MYST_NIGHTLY_TEST = "${TEST_CONFIG == 'Nightly' || TEST_CONFIG == 'Code Coverage' ? 1 : ''}"
-        MYST_ENABLE_GCOV =  "${TEST_CONFIG == 'Code Coverage' ? 1 : ''}"
-        TEST_TYPE =         "dotnet"
-        LCOV_INFO =         "lcov-${GIT_COMMIT[0..7]}-${TEST_TYPE}.info"
         BUILD_USER = sh(
             returnStdout: true,
             script: 'echo \${USER}'
