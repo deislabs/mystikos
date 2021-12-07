@@ -1792,6 +1792,20 @@ static long _epoll_wait(
         goto done;
     }
 
+    /* Reduce maxevents to index of highest non-zero event plus one */
+    if (maxevents > 0)
+    {
+        size_t max = 0;
+
+        for (size_t i = 0; i < maxevents; i++)
+        {
+            if (events[i].events)
+                max = i;
+        }
+
+        maxevents = max + 1;
+    }
+
     if (myst_epoll_wait_ocall(&retval, epfd, events, maxevents, timeout) !=
         OE_OK)
     {

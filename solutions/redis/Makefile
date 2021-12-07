@@ -88,8 +88,10 @@ ext2: ext2-server
 rootfs:
 	$(MYST) mkext2 appdir rootfs
 
+CLIENTS=5
+
 bench:
-	redis-benchmark -q -h 127.0.0.1 -p 6379 -c 5 -n 10000
+	redis-benchmark -q -h 127.0.0.1 -p 6379 -c $(CLIENTS) -n 10000
 	./kill.sh
 
 bench-linux:
@@ -111,5 +113,10 @@ sgx:
 kill:
 	./kill.sh
 
-perf: 
+perf:
 	./perf.sh 0 0 7
+
+tlinux:
+	make bench-linux
+tsgx:
+	make bench-sgx

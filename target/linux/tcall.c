@@ -131,6 +131,18 @@ done:
     return ret;
 }
 
+static ssize_t _sendto(
+    int sockfd,
+    const void* buf,
+    size_t len,
+    int flags,
+    const struct sockaddr* dest_addr,
+    socklen_t addrlen)
+{
+    ssize_t n = sendto(sockfd, buf, len, flags, dest_addr, addrlen);
+    return (n < 0) ? -errno : n;
+}
+
 static long _pipe2(int pipefd[2], int flags)
 {
     long ret = 0;
@@ -377,6 +389,45 @@ long myst_tcall_identity(long n, long params[6], uid_t uid, gid_t gid)
     return ret;
 }
 
+static long _tcall_write_console(int fd, const void* buf, size_t count)
+{
+    FILE* stream = NULL;
+
+    if (fd == STDOUT_FILENO)
+        stream = stdout;
+    else if (fd == STDERR_FILENO)
+        stream = stderr;
+    else
+        return -EINVAL;
+
+    if (fwrite(buf, 1, count, stream) != count)
+        return -EIO;
+
+    fflush(stream);
+
+    return (long)count;
+}
+
+static long _tcall_read_console(int fd, void* buf, size_t count)
+{
+    FILE* stream = NULL;
+
+    if (fd == STDOUT_FILENO)
+        stream = stdout;
+    else if (fd == STDERR_FILENO)
+        stream = stderr;
+    else
+        return -EINVAL;
+
+    if (fread(buf, 1, count, stream) != count)
+        return -EIO;
+
+    return (long)count;
+}
+
+#pragma GCC push_options
+#pragma GCC optimize "-O0"
+
 long myst_tcall(long n, long params[6])
 {
     long ret = 0;
@@ -408,40 +459,16 @@ long myst_tcall(long n, long params[6])
             int fd = (int)x1;
             const void* buf = (const void*)x2;
             size_t count = (size_t)x3;
-            FILE* stream = NULL;
 
-            if (fd == STDOUT_FILENO)
-                stream = stdout;
-            else if (fd == STDERR_FILENO)
-                stream = stderr;
-            else
-                return -EINVAL;
-
-            if (fwrite(buf, 1, count, stream) != count)
-                return -EIO;
-
-            fflush(stream);
-
-            return (long)count;
+            return _tcall_write_console(fd, buf, count);
         }
         case MYST_TCALL_READ_CONSOLE:
         {
             int fd = (int)x1;
             void* buf = (void*)x2;
             size_t count = (size_t)x3;
-            FILE* stream = NULL;
 
-            if (fd == STDOUT_FILENO)
-                stream = stdout;
-            else if (fd == STDERR_FILENO)
-                stream = stderr;
-            else
-                return -EINVAL;
-
-            if (fread(buf, 1, count, stream) != count)
-                return -EIO;
-
-            return (long)count;
+            return _tcall_read_console(fd, buf, count);
         }
         case MYST_TCALL_CLOCK_GETRES:
         {
@@ -712,11 +739,21 @@ long myst_tcall(long n, long params[6])
         case SYS_write:
         case SYS_connect:
         case SYS_recvfrom:
-        case SYS_sendto:
         case SYS_sendmsg:
         case SYS_recvmsg:
         {
             return _forward_syscall(n, x1, x2, x3, x4, x5, x6);
+        }
+        case SYS_sendto:
+        {
+            int sockfd = (int)x1;
+            const void* buf = (const void*)x2;
+            size_t len = (size_t)x3;
+            int flags = (int)x4;
+            const struct sockaddr* dest_addr = (const void*)x5;
+            socklen_t addrlen = (socklen_t)x6;
+
+            return _sendto(sockfd, buf, len, flags, dest_addr, addrlen);
         }
         case SYS_socket:
         {
@@ -749,11 +786,26 @@ long myst_tcall(long n, long params[6])
         }
         case SYS_epoll_wait:
         {
-            return myst_tcall_epoll_wait(
-                (int)x1,                 /* epfd */
-                (struct epoll_event*)x2, /* events */
-                (size_t)x3,              /* maxevents */
-                (int)x4);                /* timeout */
+            int epfd = x1;
+            struct epoll_event* events = (struct epoll_event*)x2;
+            size_t maxevents = x3;
+            int timeout = (int)x4;
+
+            /* Reduce maxevents to index of highest non-zero event plus one */
+            if (maxevents > 0)
+            {
+                size_t max = 0;
+
+                for (size_t i = 0; i < maxevents; i++)
+                {
+                    if (events[i].events)
+                        max = i;
+                }
+
+                maxevents = max + 1;
+            }
+
+            return myst_tcall_epoll_wait(epfd, events, maxevents, timeout);
         }
         case SYS_nanosleep:
         {
