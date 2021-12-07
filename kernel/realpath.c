@@ -30,6 +30,9 @@ int myst_realpath(const char* path, myst_path_t* resolved_path)
     if (!path || !resolved_path)
         ERAISE(-EINVAL);
 
+    if (*path == 0)
+        ERAISE(-ENOENT);
+
     if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 

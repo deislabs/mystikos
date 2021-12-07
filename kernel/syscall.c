@@ -1223,8 +1223,12 @@ static const char* _trim_trailing_slashes(
     if (len >= size)
         return NULL;
 
+    /* if empty pathname or equal to "/" */
+    if (len == 0 || (pathname[0] == '/' && pathname[1] == '\0'))
+        return pathname;
+
     /* remove trailing slashes from the pathname if any */
-    if ((len = strlen(pathname)) && pathname[len - 1] == '/')
+    if (pathname[len - 1] == '/')
     {
         memcpy(buf, pathname, len + 1);
 
