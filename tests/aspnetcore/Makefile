@@ -24,6 +24,10 @@ ifdef STRACE_FILTER
 OPTS += --strace-filter=$(STRACE_FILTER)
 endif
 
+ifdef FILTER
+FILTER_OPT = --filter $(FILTER)
+endif
+
 # 15 mins
 export TIMEOUT=900
 
@@ -31,7 +35,7 @@ OPTS += --app-config-path config.json
 # OPTS += --max-affinity-cpus=1
 
 # Set default tests file for runner.
-TESTS_FILE=/tests/unit-tests.runner.passed
+TESTS_FILE=/tests/unit-tests.runner.1
 
 all: ext2fs
 
@@ -52,31 +56,35 @@ tests.old: ext2fs
 
 tests: ext2fs
 	$(MYST_EXEC) ext2fs --roothash=roothash $(OPTS) \
-	/runner/bin/Debug/net6.0/runner /tests/unit-tests.runner.1 ""
+	/runner/bin/Debug/net6.0/runner /tests/unit-tests.runner.1 "" $(FILTER_OPT)
 	$(MYST_EXEC) ext2fs --roothash=roothash $(OPTS) \
-	/runner/bin/Debug/net6.0/runner /tests/unit-tests.runner.2 ""
+	/runner/bin/Debug/net6.0/runner /tests/unit-tests.runner.2 "" $(FILTER_OPT)
 	$(MYST_EXEC) ext2fs --roothash=roothash $(OPTS) \
-	/runner/bin/Debug/net6.0/runner /tests/unit-tests.runner.3 ""
+	/runner/bin/Debug/net6.0/runner /tests/unit-tests.runner.3 "" $(FILTER_OPT)
 	$(MYST_EXEC) ext2fs --roothash=roothash $(OPTS) \
-	/runner/bin/Debug/net6.0/runner /tests/unit-tests.runner.4 ""
+	/runner/bin/Debug/net6.0/runner /tests/unit-tests.runner.4 "" $(FILTER_OPT)
 	$(MYST_EXEC) ext2fs --roothash=roothash $(OPTS) \
-	/runner/bin/Debug/net6.0/runner /tests/unit-tests.runner.5 ""
+	/runner/bin/Debug/net6.0/runner /tests/unit-tests.runner.5 "" $(FILTER_OPT)
 
 one: ext2fs
 	$(MYST_EXEC) ext2fs --roothash=roothash $(OPTS) \
-	/aspnetcore/.dotnet/dotnet test $(TEST)
+	/aspnetcore/.dotnet/dotnet test $(TEST)  $(FILTER_OPT)
 
 one-runner: ext2fs
 	$(MYST_EXEC) ext2fs --roothash=roothash $(OPTS) \
-	/runner/bin/Debug/net6.0/runner $(TEST)
+	/runner/bin/Debug/net6.0/runner $(TEST)  $(FILTER_OPT)
+
+one-runner-hostfs: appdir
+	$(MYST_EXEC) appdir $(OPTS) \
+	/runner/bin/Debug/net6.0/runner $(TEST)  $(FILTER_OPT)
 
 all-runner: ext2fs
 	$(MYST_EXEC) ext2fs --roothash=roothash $(OPTS) \
-	/runner/bin/Debug/net6.0/runner $(TESTS_FILE) ""
+	/runner/bin/Debug/net6.0/runner $(TESTS_FILE) ""  $(FILTER_OPT)
 
 all-runner-hostfs: appdir
 	$(MYST_EXEC) appdir $(OPTS) \
-	/runner/bin/Debug/net6.0/runner $(TESTS_FILE) ""
+	/runner/bin/Debug/net6.0/runner $(TESTS_FILE) ""  $(FILTER_OPT)
 
 #################################
 #			dev targets			#
@@ -84,7 +92,7 @@ all-runner-hostfs: appdir
 run-ext2-lldb:
 	$(MYST_LLDB) -- $(MYST_EXEC) ext2fs --roothash=roothash \
 	$(OPTS) --report-native-tids \
-	/runner/bin/Debug/net6.0/runner $(TEST)
+	/runner/bin/Debug/net6.0/runner $(TEST)  $(FILTER_OPT)
 
 run-hostfs-gdb:
 	$(MYST_GDB) --args $(MYST_EXEC) appdir $(OPTS) \
