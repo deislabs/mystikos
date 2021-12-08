@@ -1,9 +1,9 @@
 #!/bin/bash
 
-function draw_double_line()
+function draw_double_line
 {
-	printf '=%.0s' {1..80} ;
-	printf '\n' ;
+	printf '=%.0s' {1..80}
+	printf '\n'
 }
 
 # Print pass/fail statistics
@@ -16,21 +16,21 @@ if [[ -f PASSED ]]; then
 	echo "Pass percentage: $(( $pass_count*100/$NUM_TESTS )) %"
 	cat PASSED
 fi
-draw_double_line()
+draw_double_line
 
-for f in $(ls FAILED-*) ; 
+for f in $(ls FAILED-*) 
 do 
-	wc -l $f ;
-	cat $f ;
-	draw_double_line()
+	wc -l $f
+	cat $f
+	draw_double_line
 done
 
 echo "Legend:"
-draw_double_line()
+draw_double_line
 echo "Seg fault count (SIGSEGV) - FAILED-139"
 echo "Program abort (SIGABRT) - FAILED-134"
 echo "Timed out and Killed count - FAILED-137"
-draw_double_line()
+draw_double_line
 
 if [ "$(( pass_count*100/NUM_TESTS ))" -lt "99" ]; then
 	echo "Failed to pass at least 99% - Pass percentage: $(( $pass_count*100/$NUM_TESTS ))%"
