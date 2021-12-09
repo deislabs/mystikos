@@ -47,7 +47,6 @@ GC/Scenarios/Boxing/gcvariant4/gcvariant4.dll
 GC/Scenarios/Boxing/variantint/variantint.dll
 GC/Scenarios/FinalNStruct/finalnstruct/finalnstruct.dll
 GC/Scenarios/FinalNStruct/nstructresur/nstructresur.dll
-GC/Scenarios/FinalizeTimeout/FinalizeTimeout/FinalizeTimeout.dll
 GC/Scenarios/NDPin/ndpin/ndpin.dll
 GC/Scenarios/NDPin/ndpinfinal/ndpinfinal.dll
 GC/Scenarios/SingLinkList/singlinkgen/singlinkgen.dll
@@ -59,7 +58,6 @@ Interop/DllImportAttribute/ExactSpelling/ExactSpellingTest/ExactSpellingTest.dll
 Interop/ICustomMarshaler/ConflictingNames/SameNameDifferentAssembly/SameNameDifferentAssembly.dll
 Interop/ICustomMarshaler/ConflictingNames/MultipleALCs/MultipleALCs.dll
 Interop/IDynamicInterfaceCastable/IDynamicInterfaceCastable/IDynamicInterfaceCastable.dll
-Interop/ICustomMarshaler/Primitives/ICustomMarshaler_TargetUnix/ICustomMarshaler_TargetUnix.dll
 Interop/LayoutClass/LayoutClassTest/LayoutClassTest.dll
 Interop/MarshalAPI/FunctionPointer/FunctionPtrTest/FunctionPtrTest.dll
 Interop/NativeLibrary/Callback/CallbackStressTest_TargetUnix/CallbackStressTest_TargetUnix.dll
@@ -1348,7 +1346,6 @@ JIT/Performance/CodeQuality/SIMD/ConsoleMandel/ConsoleMandel/ConsoleMandel.dll
 JIT/Performance/CodeQuality/SIMD/RayTracer/RayTracer/RayTracer.dll
 JIT/Performance/CodeQuality/SIMD/SeekUnroll/SeekUnroll/SeekUnroll.dll
 JIT/Performance/CodeQuality/Span/Indexer/Indexer.dll
-JIT/Performance/CodeQuality/Serialization/Deserialize/Deserialize.dll
 JIT/Performance/CodeQuality/Span/SpanBench/SpanBench.dll
 JIT/Performance/CodeQuality/V8/Richards/Richards/Richards.dll
 JIT/Performance/RunBenchmarks/RunBenchmarks/RunBenchmarks.dll

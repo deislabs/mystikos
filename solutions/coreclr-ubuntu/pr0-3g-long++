@@ -1,2 +1,3 @@
 GC/Scenarios/muldimjagary/muldimjagary/muldimjagary.dll
 JIT/jit64/opt/rngchk/RngchkStress3/RngchkStress3.dll
+GC/API/GC/GetAllocatedBytesForCurrentThread/GetAllocatedBytesForCurrentThread.dll

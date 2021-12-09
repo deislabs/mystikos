@@ -11,3 +11,4 @@ GC/Features/HeapExpansion/pluggaps/pluggaps.dll
 JIT/Performance/CodeQuality/Bytemark/Bytemark/Bytemark.dll
 JIT/Performance/CodeQuality/SciMark/SciMark/SciMark.dll
 JIT/superpmi/superpmicollect/Bytemark/Bytemark.dll
+Interop/ICustomMarshaler/Primitives/ICustomMarshaler_TargetUnix/ICustomMarshaler_TargetUnix.dll

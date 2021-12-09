@@ -9,7 +9,7 @@
     // Mystikos specific values
 
     // The heap size of the user application. Increase this setting if your app experienced OOM.
-    "MemorySize": "2g",
+    "MemorySize": "1800m",
     // The path to the entry point application in rootfs
     "ApplicationPath": "/coreclr-tests-all/Tests/Core_Root/corerun",
     // The parameters to the entry point application
