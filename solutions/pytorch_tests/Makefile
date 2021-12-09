@@ -25,7 +25,6 @@ DOCKER_BUILD              = DOCKER_BUILDKIT=1 \
 							docker build \
 							-f $(DOCKER_FILE) \
 							$(EXTRA_ARGS) .
-DOCKER_PUSH               = docker push $(DOCKER_FULL_NAME):$(DOCKER_TAG)
 DOCKER_RUN                = docker run --rm -it $(DOCKER_FULL_NAME):$(DOCKER_TAG)
 
 RUN_PYTEST                = $(MYST_EXEC) rootfs $(OPTS) --app-config-path config.json /usr/local/bin/python -m pytest -v
@@ -47,7 +46,7 @@ docker-run:
 
 .PHONY: push
 push:
-	$(DOCKER_PUSH)
+	docker push $(DOCKER_FULL_NAME):$(DOCKER_TAG)
 
 appdir:
 	$(APPBUILDER) -i $(DOCKER_FULL_NAME):$(DOCKER_TAG) -v
@@ -56,8 +55,13 @@ rootfs: appdir
 	$(MYST) mkext2 appdir rootfs
 
 .PHONY: run-test-autograd
+run-test-autograd: EXCLUDE_TESTS = "not test_deep_reentrant \
+and not test_no_grad_copy_sparse \
+and not test_profiler_seq_nr \
+and not test_record_function \
+and not test_thread_shutdown"
 run-test-autograd: rootfs
-	$(RUN_PYTEST) /workspace/pytorch/test/test_autograd.py -k "not test_deep_reentrant and not test_no_grad_copy_sparse and not test_profiler_seq_nr and not test_record_function and not test_thread_shutdown" 2>&1 | tee $@.out
+	$(RUN_PYTEST) /workspace/pytorch/test/test_autograd.py -k $(EXCLUDE_TESTS) 2>&1 | tee $@.out
 	grep -q -E '400 passed.*68 skipped.*7 deselected.*1 xfailed' $@.out
 
 .PHONY: run-test-autograd-thread-shutdown
@@ -70,9 +74,54 @@ run-test-modules: rootfs
 	grep -q -E '76 passed.*28 skipped' $@.out
 
 .PHONY: run-test-nn
+run-test-nn: EXCLUDE_TESTS = "not test_EmbeddingBag_empty_per_sample_weights_and_offsets_cpu_int32_int32_float32 \
+and not test_EmbeddingBag_empty_per_sample_weights_and_offsets_cpu_int32_int64_float32 \
+and not test_EmbeddingBag_empty_per_sample_weights_and_offsets_cpu_int64_int32_float32 \
+and not test_EmbeddingBag_empty_per_sample_weights_and_offsets_cpu_int64_int64_float32 \
+and not test_EmbeddingBag_per_sample_weights_and_new_offsets_cpu_int32_int32_float32 \
+and not test_EmbeddingBag_per_sample_weights_and_new_offsets_cpu_int32_int64_float32 \
+and not test_EmbeddingBag_per_sample_weights_and_new_offsets_cpu_int64_int32_float32 \
+and not test_EmbeddingBag_per_sample_weights_and_new_offsets_cpu_int64_int64_float32 \
+and not test_EmbeddingBag_per_sample_weights_and_no_offsets_cpu_int64_float32 \
+and not test_EmbeddingBag_per_sample_weights_and_no_offsets_cpu_int32_float32 \
+and not test_EmbeddingBag_per_sample_weights_and_offsets_cpu_int32_int32_float32 \
+and not test_EmbeddingBag_per_sample_weights_and_offsets_cpu_int32_int32_float32 \
+and not test_EmbeddingBag_per_sample_weights_and_offsets_cpu_int32_int64_float32 \
+and not test_embedding_bag_1D_padding_idx_cpu_float32 \
+and not test_EmbeddingBag_per_sample_weights_and_offsets_cpu_int64_int32_float32 \
+and not test_embedding_bag_device_cpu_int32_int32_float32 \
+and not test_EmbeddingBag_per_sample_weights_and_offsets_cpu_int64_int64_float32 \
+and not test_embedding_bag_device_cpu_int32_int64_float32 \
+and not test_embedding_bag_device_cpu_int64_int32_float32 \
+and not test_embedding_bag_device_cpu_int64_int64_float32 \
+and not test_embedding_bag_non_contiguous_weight_cpu_int32_int32_float32 \
+and not test_embedding_bag_non_contiguous_weight_cpu_int32_int64_float32 \
+and not test_embedding_bag_non_contiguous_weight_cpu_int64_int32_float32 \
+and not test_embedding_bag_non_contiguous_weight_cpu_int64_int64_float32 \
+and not test_EmbeddingBag_discontiguous \
+and not test_EmbeddingBag_mean \
+and not test_EmbeddingBag_sparse \
+and not test_EmbeddingBag_sum \
+and not test_share_memory \
+and not test_avg_pool2d_nhwc_cpu_float32 \
+and not test_avg_pool2d_nhwc_cpu_float64 \
+and not test_max_pool2d_nhwc_cpu_float32 \
+and not test_max_pool2d_nhwc_cpu_float64 \
+and not test_cross_entropy_loss_precision \
+and not test_l1_loss_correct"
 run-test-nn: rootfs
-	$(RUN_PYTEST) /workspace/pytorch/test/test_nn.py -k "not test_EmbeddingBag_empty_per_sample_weights_and_offsets_cpu_int32_int32_float32 and not test_EmbeddingBag_empty_per_sample_weights_and_offsets_cpu_int32_int64_float32 and not test_EmbeddingBag_empty_per_sample_weights_and_offsets_cpu_int64_int32_float32 and not test_EmbeddingBag_empty_per_sample_weights_and_offsets_cpu_int64_int64_float32 and not test_EmbeddingBag_per_sample_weights_and_new_offsets_cpu_int32_int32_float32 and not test_EmbeddingBag_per_sample_weights_and_new_offsets_cpu_int32_int64_float32 and not test_EmbeddingBag_per_sample_weights_and_new_offsets_cpu_int64_int32_float32 and not test_EmbeddingBag_per_sample_weights_and_new_offsets_cpu_int64_int64_float32 and not test_EmbeddingBag_per_sample_weights_and_no_offsets_cpu_int64_float32 and not test_EmbeddingBag_per_sample_weights_and_no_offsets_cpu_int32_float32 and not test_EmbeddingBag_per_sample_weights_and_offsets_cpu_int32_int32_float32 and not test_EmbeddingBag_per_sample_weights_and_offsets_cpu_int32_int32_float32 and not test_EmbeddingBag_per_sample_weights_and_offsets_cpu_int32_int64_float32 and not test_embedding_bag_1D_padding_idx_cpu_float32 and not test_EmbeddingBag_per_sample_weights_and_offsets_cpu_int64_int32_float32 and not test_embedding_bag_device_cpu_int32_int32_float32 and not test_EmbeddingBag_per_sample_weights_and_offsets_cpu_int64_int64_float32 and not test_embedding_bag_device_cpu_int32_int64_float32 and not test_embedding_bag_device_cpu_int64_int32_float32 and not test_embedding_bag_device_cpu_int64_int64_float32 and not test_embedding_bag_non_contiguous_weight_cpu_int32_int32_float32 and not test_embedding_bag_non_contiguous_weight_cpu_int32_int64_float32 and not test_embedding_bag_non_contiguous_weight_cpu_int64_int32_float32 and not test_embedding_bag_non_contiguous_weight_cpu_int64_int64_float32 and not test_EmbeddingBag_discontiguous and not test_EmbeddingBag_mean and not test_EmbeddingBag_sparse and not test_EmbeddingBag_sum and not test_share_memory" 2>&1 | tee $@.out
+	$(RUN_PYTEST) /workspace/pytorch/test/test_nn.py -k $(EXCLUDE_TESTS) 2>&1 | tee $@.out
 	grep -q -E '1331 passed.*1435 skipped.*36 deselected.*3 xfailed' $@.out
+
+.PHONY: run-test-nn-8g
+run-test-nn-8g: EXCLUDE_TESTS = "test_avg_pool2d_nhwc_cpu_float32 \
+or test_avg_pool2d_nhwc_cpu_float64 \
+or test_max_pool2d_nhwc_cpu_float32 \
+or test_max_pool2d_nhwc_cpu_float64 \
+or test_cross_entropy_loss_precision \
+or test_l1_loss_correct"
+run-test-nn-8g: rootfs
+	$(MYST_EXEC) rootfs $(OPTS) --app-config-path config8g.json /usr/local/bin/python -m pytest -v /workspace/pytorch/test/test_nn.py -k $(EXCLUDE_TESTS)
 
 .PHONY: run-test-ops
 run-test-ops: rootfs
@@ -80,12 +129,15 @@ run-test-ops: rootfs
 	grep -q -E '4200 passed.*10069 skipped' $@.out
 
 .PHONY: run-test-torch
+run-test-torch: EXCLUDE_TESTS = "not test_RNG_after_pickle \
+and not test_from_file \
+and not test_torch_from_file"
 run-test-torch: rootfs
-	$(RUN_PYTEST) /workspace/pytorch/test/test_torch.py -k "not test_RNG_after_pickle and not test_from_file and not test_torch_from_file" 2>&1 | tee $@.out
+	$(RUN_PYTEST) /workspace/pytorch/test/test_torch.py -k $(EXCLUDE_TESTS) 2>&1 | tee $@.out
 	grep -q -E '693 passed.*527 skipped.*3 deselected' $@.out
 
 .PHONY: run-core-tests
-run-core-tests: run-test-autograd run-test-autograd-thread-shutdown run-test-modules run-test-nn run-test-ops run-test-torch
+run-core-tests: run-test-autograd run-test-autograd-thread-shutdown run-test-modules run-test-nn run-test-nn-8g run-test-ops run-test-torch
 
 .PHONY: run
 run: run-core-tests
@@ -107,10 +159,13 @@ pdb-rootfs: appdir
 pdb: pdb-rootfs
 	$(MYST_EXEC) --max-affinity-cpus=1 rootfs --app-config-path config.json /usr/local/bin/python -m mpdb /usr/local/bin/pytest /workspace/pytorch/test/test_autograd.py -v -s -k "test_too_many_grads"
 
-#################################################
+##############################################################
 # Build pytorch C++ lib from github source.
-# Used for local debug.
-#################################################
+# Here is the difference between two Dockerfiles,
+# - Dockerfile:       install official PyTorch package.
+# - Dockerfile-build: build PyTorch C++ libraries from source,
+#                     used for debugging failures.
+##############################################################
 
 build-appdir: DOCKER_FILE  := $(DOCKER_FILE)-build
 build-appdir: DOCKER_TAG   := $(PYTORCH_VERSION)-build
