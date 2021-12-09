@@ -12,7 +12,9 @@
 #include <myst/panic.h>
 #include <myst/sockdev.h>
 #include <myst/spinlock.h>
+#include <myst/strings.h>
 #include <myst/syscall.h>
+#include <myst/syslog.h>
 #include <myst/tcall.h>
 
 #define MAGIC 0xc436d7e6
@@ -539,9 +541,13 @@ static ssize_t _sd_write(
         ERAISE(-EINVAL);
 
     if (sock->nonblock)
-        ECHECK(ret = myst_tcall_write_block(sock->fd, buf, count));
-    else
+    {
         ECHECK(ret = myst_tcall_write(sock->fd, buf, count));
+    }
+    else
+    {
+        ECHECK(ret = myst_tcall_write_block(sock->fd, buf, count));
+    }
 
 done:
     return ret;
@@ -757,7 +763,7 @@ done:
     return ret;
 }
 
-extern myst_sockdev_t* myst_sockdev_get(void)
+myst_sockdev_t* myst_sockdev_get(void)
 {
     // clang-format-off
     static myst_sockdev_t _sockdev = {
@@ -804,4 +810,119 @@ extern myst_sockdev_t* myst_sockdev_get(void)
     // clang-format-on
 
     return &_sockdev;
+}
+
+const char* myst_socket_type_str(int type)
+{
+    type &= ~SOCK_NONBLOCK;
+    type &= ~SOCK_CLOEXEC;
+
+    switch (type)
+    {
+        case SOCK_STREAM:
+            return "SOCK_STREAM";
+        case SOCK_DGRAM:
+            return "SOCK_DGRAM";
+        case SOCK_RAW:
+            return "SOCK_RAW";
+        case SOCK_RDM:
+            return "SOCK_RDM";
+        case SOCK_SEQPACKET:
+            return "SOCK_SEQPACKET";
+        case SOCK_DCCP:
+            return "SOCK_DCCP";
+        case SOCK_PACKET:
+            return "SOCK_PACKET";
+        default:
+            return "UNKNOWN";
+    }
+}
+
+const char* myst_socket_domain_str(int domain)
+{
+    static const char* _names[] = {
+        "AF_UNSPEC",     "AF_LOCAL",     "AF_INET",     "AF_AX25",
+        "AF_IPX",        "AF_APPLETALK", "AF_NETROM",   "AF_BRIDGE",
+        "AF_ATMPVC",     "AF_X25",       "AF_INET6",    "AF_ROSE",
+        "AF_DECnet",     "AF_NETBEUI",   "AF_SECURITY", "AF_KEY",
+        "AF_NETLINK",    "AF_PACKET",    "AF_ASH",      "AF_ECONET",
+        "AF_ATMSVC",     "AF_RDS",       "AF_SNA",      "AF_IRDA",
+        "AF_PPPOX",      "AF_WANPIPE",   "AF_LLC",      "AF_IB",
+        "AF_MPLS",       "AF_CAN",       "AF_TIPC",     "AF_BLUETOOTH",
+        "AF_IUCV",       "AF_RXRPC",     "AF_ISDN",     "AF_PHONET",
+        "AF_IEEE802154", "AF_CAIF",      "AF_ALG",      "AF_NFC",
+        "AF_VSOCK",      "AF_KCM",       "AF_QIPCRTR",  "AF_SMC",
+        "AF_XDP",
+    };
+
+    if (domain >= 0 && domain < (int)MYST_COUNTOF(_names))
+        return _names[domain];
+
+    return "UNKNOWN";
+}
+
+const char* myst_format_socket_type(char* buf, size_t len, int type)
+{
+    myst_strlcpy(buf, myst_socket_type_str(type), len);
+
+    if (type & SOCK_NONBLOCK)
+        myst_strlcat(buf, "|SOCK_NONBLOCK", len);
+
+    if (type & SOCK_CLOEXEC)
+        myst_strlcat(buf, "|SOCK_CLOEXEC", len);
+
+    return buf;
+}
+
+int myst_sockdev_resolve(
+    int domain, /* AF_UNIX, AF_LOCAL, AF_INET or AF_INET6 */
+    int type,   /* SOCK_STREAM or SOCK_DGRAM */
+    myst_sockdev_t** dev)
+{
+    int ret = 0;
+
+    if (dev)
+        *dev = NULL;
+
+    if (!dev)
+        ERAISE(-EINVAL);
+
+    switch (domain)
+    {
+        case AF_UNIX: /* same value as AF_LOCAL */
+        {
+            if (!(type & SOCK_STREAM) && !(type & SOCK_DGRAM))
+            {
+                const char* str = myst_socket_type_str(type);
+                MYST_ELOG("unsupported socket type: %d: %s", type, str);
+                ERAISE(-ENOTSUP);
+            }
+
+            *dev = myst_udsdev_get();
+            goto done;
+        }
+        case AF_INET:
+        case AF_INET6:
+        case AF_PACKET:
+        {
+            if (!(type & SOCK_STREAM) && !(type & SOCK_DGRAM))
+            {
+                const char* str = myst_socket_type_str(type);
+                MYST_ELOG("unsupported socket type: %d: %s", type, str);
+                ERAISE(-ENOTSUP);
+            }
+
+            *dev = myst_sockdev_get();
+            goto done;
+        }
+        default:
+        {
+            const char* str = myst_socket_domain_str(domain);
+            MYST_ELOG("unsupported socket domain: %d: %s", domain, str);
+            ERAISE(-EAFNOSUPPORT);
+        }
+    }
+
+done:
+    return ret;
 }
