@@ -131,8 +131,9 @@ DIRS += strtonum
 DIRS += fsflags
 
 ifdef MYST_NIGHTLY_TEST
+DIRS += aspnetcore5
+DIRS += aspnetcore6
 DIRS += glibc
-DIRS += aspnetcore
 endif
 
 DIRS += appenv
