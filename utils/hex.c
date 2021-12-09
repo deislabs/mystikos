@@ -22,6 +22,28 @@ void myst_hexdump(const char* label, const void* data, size_t size)
     printf("\n");
 }
 
+void myst_ascii_dump(const char* label, const uint8_t* data, uint32_t size)
+{
+    uint32_t i;
+
+    printf("=== _ascii_dump(): %s\n", label);
+
+    for (i = 0; i < size; i++)
+    {
+        unsigned char c = data[i];
+
+        if (c >= ' ' && c <= '~')
+            printf("%c", c);
+        else
+            printf("<%02x>", c);
+
+        if (i + 1 != size && !((i + 1) % 80))
+            printf("\n");
+    }
+
+    printf("\n");
+}
+
 static int _char_to_nibble(char c)
 {
     if (c >= 'A' && c <= 'F')

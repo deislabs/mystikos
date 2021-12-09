@@ -163,4 +163,14 @@ struct myst_sockdev
 
 myst_sockdev_t* myst_sockdev_get(void);
 
+myst_sockdev_t* myst_udsdev_get(void);
+
+int myst_sockdev_resolve(int domain, int type, myst_sockdev_t** dev);
+
+const char* myst_socket_type_str(int type);
+
+const char* myst_socket_domain_str(int domain);
+
+const char* myst_format_socket_type(char* buf, size_t len, int type);
+
 #endif /* _MYST_SOCKDEV_H */

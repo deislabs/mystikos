@@ -5,13 +5,16 @@
 // Licensed under the MIT License.
 
 #include <assert.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <netinet/in.h>
+#include <poll.h>
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/un.h>
@@ -19,6 +22,8 @@
 #include <unistd.h>
 
 static const uint16_t port = 12345;
+
+static bool _read_one_byte_at_at_time;
 
 static const char alpha[] = "abcdefghijklmnopqrstuvwxyz";
 
@@ -35,6 +40,46 @@ typedef struct args
     int domain;
     const char* path;
 } args_t;
+
+static ssize_t _recvn(int fd, void* data_in, size_t size, int flags)
+{
+    ssize_t ret = 0;
+    uint8_t* p = (uint8_t*)data_in;
+    size_t r = size;
+    size_t m = 0;
+
+    while (r > 0)
+    {
+        ssize_t n = recv(fd, p, r, flags);
+
+        if (n == 0)
+            break;
+
+        if (n < 0)
+        {
+            ret = -1;
+            goto done;
+        }
+
+        p += n;
+        r -= (size_t)n;
+        m += (size_t)n;
+    }
+
+    ret = m;
+
+done:
+
+    return ret;
+}
+
+/*
+**==============================================================================
+**
+** test_sockets()
+**
+**==============================================================================
+*/
 
 static void* _srv_thread_func(void* arg)
 {
@@ -134,7 +179,7 @@ static void* _cli_thread_func(void* arg)
     int sock = 0;
     ssize_t n = 0;
 
-    assert((sock = socket(args->domain, SOCK_STREAM, 0)) >= 0);
+    assert((sock = socket(args->domain, SOCK_STREAM | SOCK_CLOEXEC, 0)) >= 0);
 
     if (args->domain == AF_INET)
     {
@@ -164,7 +209,28 @@ static void* _cli_thread_func(void* arg)
         static char buf[1024];
 
         printf("client: recv\n");
-        n = recv(sock, buf, sizeof(buf), 0);
+
+        if (_read_one_byte_at_at_time)
+        {
+            n = 0;
+
+            memset(buf, 0, sizeof(buf));
+
+            for (ssize_t i = 0; i < strlen(alpha); i++)
+            {
+                ssize_t r = recv(sock, &buf[i], 1, 0);
+
+                if (r == 0)
+                    break;
+
+                assert(r == 1);
+                n++;
+            }
+        }
+        else
+        {
+            n = _recvn(sock, buf, sizeof(buf), 0);
+        }
 
         if (n == 0)
             break;
@@ -196,19 +262,185 @@ void test_sockets(args_t* args)
     printf("=== passed test (test_sockets: domain=%d)\n", args->domain);
 }
 
-int main(int argc, const char* argv[])
+/*
+**==============================================================================
+**
+** test_socketpair()
+**
+**==============================================================================
+*/
+
+static void test_socketpair(void)
 {
-    if (argc != 2)
+    int sv[2];
+    ssize_t n;
+    char buf[sizeof(alpha)];
+
+    assert(socketpair(AF_LOCAL, SOCK_STREAM, 0, sv) == 0);
+    assert(write(sv[0], alpha, sizeof(alpha)) == sizeof(alpha));
+    assert(read(sv[1], buf, sizeof(buf)) == sizeof(buf));
+    assert(memcmp(buf, alpha, sizeof(buf)) == 0);
+
+    assert(close(sv[0]) == 0);
+    assert(close(sv[1]) == 0);
+}
+
+/*
+**==============================================================================
+**
+** test_socketpair_nonblock()
+**
+**==============================================================================
+*/
+
+int get_events(int fd)
+{
+    struct pollfd fds[1];
+    fds[0].fd = fd;
+    fds[0].events = POLLIN | POLLOUT;
+
+    int ret = poll(fds, 1, 0);
+
+    if (ret == 1)
+        return fds[0].revents;
+
+    return ret;
+}
+
+bool can_read(int fd)
+{
+    struct pollfd fds[1];
+    fds[0].fd = fd;
+    fds[0].events = POLLIN;
+    int ret = poll(fds, 1, 0);
+    return (ret == 1) && (fds[0].revents & POLLIN);
+}
+
+bool can_write(int fd)
+{
+    struct pollfd fds[1];
+    fds[0].fd = fd;
+    fds[0].events = POLLOUT;
+    int ret = poll(fds, 1, 0);
+    return (ret == 1) && (fds[0].revents & POLLOUT);
+}
+
+static void _fill_sock_buf(int sockfd)
+{
+    char buf[1024];
+    ssize_t n;
+
+    while ((n = send(sockfd, buf, sizeof(buf), 0)) > 0)
+        ;
+
+    assert(n == -1 && errno == EAGAIN);
+}
+
+static void _empty_sock_buf(int sockfd)
+{
+    char buf[1024];
+    ssize_t n;
+
+    while ((n = recv(sockfd, buf, sizeof(buf), 0)) > 0)
+        ;
+
+    assert(n == -1 && errno == EAGAIN);
+}
+
+static void test_socketpair_nonblock(void)
+{
+    pthread_t srv_thread;
+    pthread_t cli_thread;
+    int sv[2];
+
+    assert(socketpair(AF_LOCAL, SOCK_STREAM, 0, sv) == 0);
+
+    int size = 0;
+    socklen_t len = sizeof(size);
+    assert(getsockopt(sv[0], SOL_SOCKET, SO_SNDBUF, (void*)&size, &len) == 0);
+    assert(size > 0);
+
+    size = 1;
+    len = sizeof(size);
+    assert(setsockopt(sv[0], SOL_SOCKET, SO_SNDBUF, (void*)&size, len) == 0);
+    assert(size > 0);
+
+    size = 0;
+    len = sizeof(size);
+    assert(getsockopt(sv[0], SOL_SOCKET, SO_SNDBUF, (void*)&size, &len) == 0);
+    assert(size > 1);
+
+    /* make sockets non-blocking */
     {
-        fprintf(stderr, "Usage: %s <uds-path>\n", argv[0]);
-        exit(1);
+        int val = 1;
+        assert(ioctl(sv[0], FIONBIO, &val) == 0);
+        assert(ioctl(sv[1], FIONBIO, &val) == 0);
     }
 
-    args_t inet_args = {AF_INET, NULL};
-    args_t unix_args = {AF_UNIX, argv[1]};
+    /* check events */
+    assert(can_write(sv[0]));
+    assert(!can_read(sv[0]));
+    assert(can_write(sv[1]));
+    assert(!can_read(sv[1]));
 
+    _fill_sock_buf(sv[0]);
+
+    /* check events */
+    assert(!can_write(sv[0]));
+    assert(!can_read(sv[0]));
+    assert(can_write(sv[1]));
+    assert(can_read(sv[1]));
+
+    _empty_sock_buf(sv[1]);
+
+    /* check events */
+    assert(can_write(sv[0]));
+    assert(!can_read(sv[0]));
+    assert(can_write(sv[1]));
+    assert(!can_read(sv[1]));
+
+    /* check events */
+    assert(can_write(sv[1]));
+    assert(!can_read(sv[1]));
+    assert(can_write(sv[0]));
+    assert(!can_read(sv[0]));
+
+    _fill_sock_buf(sv[1]);
+
+    /* check events */
+    assert(!can_write(sv[1]));
+    assert(!can_read(sv[1]));
+    assert(can_write(sv[0]));
+    assert(can_read(sv[0]));
+
+    _empty_sock_buf(sv[0]);
+
+    /* check events */
+    assert(can_write(sv[1]));
+    assert(!can_read(sv[1]));
+    assert(can_write(sv[0]));
+    assert(!can_read(sv[0]));
+
+    printf("=== passed test (%s)\n", __FUNCTION__);
+}
+
+int main(int argc, const char* argv[])
+{
+    args_t inet_args = {AF_INET, NULL};
     test_sockets(&inet_args);
+
+    args_t unix_args = {AF_UNIX, "/tmp/uds"};
+    _read_one_byte_at_at_time = false;
     test_sockets(&unix_args);
+
+    unlink("/tmp/uds");
+
+    _read_one_byte_at_at_time = true;
+    test_sockets(&unix_args);
+
+    test_socketpair();
+
+    test_socketpair_nonblock();
 
     printf("=== passed test (%s)\n", argv[0]);
     return 0;

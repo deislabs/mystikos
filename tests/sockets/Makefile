@@ -22,17 +22,11 @@ ifdef ETRACE
 OPTS = --etrace
 endif
 
-UDSPATH=$(OBJDIR)/uds1
-
 tests: all
-	rm -rf $(UDSPATH)
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/sockets $(UDSPATH)
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/sockets
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst
 
 clean:
 	rm -rf $(APPDIR) rootfs export ramfs
-
-ls:
-	ls $(UDSPATH)

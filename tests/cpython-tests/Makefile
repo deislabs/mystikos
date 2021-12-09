@@ -19,6 +19,7 @@ MPDB=$(TOP)/scripts/mpdb.py
 TESTFILE=tests.passed
 TEST = test_regrtest
 TESTCASE = test_glob.GlobTests.test_recursive_glob
+TESTCASE = test_socket.SendmsgUnixStreamTest.testSendmsgDontWait
 VER=3.9
 FS=ext2fs$(VER)
 
