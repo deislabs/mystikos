@@ -1,0 +1,15 @@
+# First build runner program using dotnet sdk
+FROM mcr.microsoft.com/dotnet/sdk:5.0-focal as builder
+
+# Copy the runner project to /runner in the builder
+COPY runner /runner
+RUN cd /runner && dotnet build
+
+# Fetch the prebuilt aspnetcore container
+FROM hullcritical/aspnetcore:5
+
+# Copy the runner to the container
+COPY --from=builder /runner /runner
+
+# Copy tests lists to the container
+COPY unit-tests* /tests/
