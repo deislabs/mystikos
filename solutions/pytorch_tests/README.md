@@ -1,5 +1,10 @@
+## Overview
+PyTorch validation are run against the Python [Unit Tests](https://github.com/pytorch/pytorch/blob/master/CONTRIBUTING.md#unit-testing) in PyTorch github repo. Currently, five test suites are enabled, namely `test_autograd`, `test_modules`, `test_nn`, `test_ops`, and `test_torch`. They were chosen based on the definition of `CORE_TEST_LIST` in PyTorch [test script](https://github.com/pytorch/pytorch/blob/8b20dde93240642b3fce14b304e2d5e6d09d9891/test/run_test.py).
+
+## Summary of Test Results
 ### 1. test_torch.py - Basic tests for PyTorch functionality.
-- 3 failed cases
+- **host**: 696 passed, 527 skipped, 98 warnings
+- **myst**: 3 failed, 693 passed, 527 skipped, 98 warnings
 
 | #  | NAME  | ROOT CAUSE  |
 |---|---|---|
@@ -8,6 +13,8 @@
 | 3  | test_torch_from_file  | **tmpfs**  |
 
 ### 2. test_autograd.py - Tests for non-NN automatic differentiation support.
+- **host**: 1 failed, 404 passed, 68 skipped, 2 deselected, 1 xfailed, 28 warnings
+- **myst**: 4 failed, 401 passed, 68 skipped, 2 deselected, 1 xfailed, 28 warnings
 
 | #  | NAME  | ROOT CAUSE  |
 |---|---|---|
@@ -15,9 +22,11 @@
 | 2  | test_no_grad_copy_sparse  | **coredump - needs further investigation**  |
 | 3  | test_profiler_seq_nr  | **requires nanosecond time precision**  |
 | 4  | test_record_function  | **unknown asmjit issues**  |
-| 5  | test_thread_shutdown  |  **can only run as single test**  |
+| *5  | test_thread_shutdown  |  **can only run as single test, also failed on host**  |
 
 ### 3. test_nn.py - Tests for NN operators and their automatic differentiation.
+- **host**: 1361 passed, 1441 skipped, 3 xfailed, 138 warnings
+- **myst**: 29 failed, 1331 passed, 1435 skipped, 35 deselected, 3 xfailed, 138 warnings
 
 | #  | NAME  | ROOT CAUSE  |
 |---|---|---|

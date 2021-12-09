@@ -133,7 +133,7 @@ jobs:
       # run PyTorch tests
       - script: |
           export PATH="$PATH:$(pwd)/mystikos/bin"
-          make tests -C $(Build.SourcesDirectory)/solutions/pytorch_tests
+          make run -C $(Build.SourcesDirectory)/solutions/pytorch_tests
           make clean -C $(Build.SourcesDirectory)/solutions/pytorch_tests
         displayName: 'run PyTorch tests'
         continueOnError: true
