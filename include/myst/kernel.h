@@ -204,6 +204,9 @@ typedef struct myst_kernel_args
     /* whether this TEE is in debug mode */
     bool tee_debug_mode;
 
+    /* perform syslog when level is less than or equal to this */
+    int syslog_level;
+
     /* whether debug symbols are needed */
     bool debug_symbols;
 

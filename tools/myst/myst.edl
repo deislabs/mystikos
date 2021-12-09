@@ -155,9 +155,10 @@ enclave
 
         long myst_epoll_wait_ocall(
             int epfd,
-            [in, out, count=maxevents] struct epoll_event* events,
+            [out, count=maxevents] struct epoll_event* events,
             size_t maxevents,
-            int timeout);
+            int timeout)
+            transition_using_threads;
 
         long myst_epoll_ctl_ocall(
             int epfd,

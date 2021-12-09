@@ -1785,12 +1785,21 @@ static long _epoll_wait(
 {
     long ret = 0;
     long retval;
+    const size_t MAXEVENTS = 64;
 
     if (epfd < 0 || !events || maxevents == 0)
     {
         ret = -EINVAL;
         goto done;
     }
+
+    // Limit the number of events. This avoids large copies of the events
+    // output parameter. Note that epoll_wait() can only realistically return
+    // a handful of events per call. And even if there were more than MAXEVENTS
+    // events (which is very unlikely), they would be correctly detected by a
+    // subsequent call.
+    if (maxevents > MAXEVENTS)
+        maxevents = MAXEVENTS;
 
     if (myst_epoll_wait_ocall(&retval, epfd, events, maxevents, timeout) !=
         OE_OK)
