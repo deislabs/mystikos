@@ -25,10 +25,16 @@
 
 typedef struct epoll_entry epoll_entry_t;
 
+/* comment this out to disable the "maxevents optimization" */
+#define ENABLE_MAXEVENTS_OPTIMIZATION
+
 struct myst_epoll
 {
     uint32_t magic; /* MAGIC */
     int epfd;
+#ifdef ENABLE_MAXEVENTS_OPTIMIZATION
+    int num_fds; /* incremented/decremented by EPOLL_CTL_ADD/EPOLL_CTL_DEL */
+#endif
 };
 
 MYST_INLINE long _sys_epoll_create1(int flags)
@@ -116,6 +122,10 @@ static int _ed_epoll_ctl(
     if (!myst_valid_fd(fd))
         ERAISE(-EBADF);
 
+    /* protect against the unlikely event of integer overflow below */
+    if (op == EPOLL_CTL_ADD && epoll->num_fds >= INT_MAX)
+        ERAISE(-EINVAL);
+
     /* get the target file descriptor for this file descriptor */
     {
         myst_fdtable_t* fdtable = myst_fdtable_current();
@@ -136,6 +146,14 @@ static int _ed_epoll_ctl(
     /* delegate the request to the target */
     ECHECK(_sys_epoll_ctl(epoll->epfd, op, target_fd, event));
 
+    /* keep track of the number of file descriptors being watched */
+#ifdef ENABLE_MAXEVENTS_OPTIMIZATION
+    if (op == EPOLL_CTL_ADD)
+        epoll->num_fds++;
+    else if (op == EPOLL_CTL_DEL)
+        epoll->num_fds--;
+#endif
+
 done:
 
     return ret;
@@ -153,6 +171,15 @@ static int _ed_epoll_wait(
 
     if (!epolldev || !_valid_epoll(epoll) || !events || maxevents < 0)
         ERAISE(-EINVAL);
+
+#ifdef ENABLE_MAXEVENTS_OPTIMIZATION
+    // Limit maxevents to the number of file descriptors being watched. This
+    // optimizes myst_epoll_wait_ocall() by reducing the size of the events
+    // output parameter (requiring a copy from host to enclave memory). Some
+    // applications pass unreasonably large values for maxevents.
+    if (maxevents > epoll->num_fds)
+        maxevents = epoll->num_fds;
+#endif
 
     ECHECK(n = _sys_epoll_wait(epoll->epfd, events, maxevents, timeout));
     ret = n;
