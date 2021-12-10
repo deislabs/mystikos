@@ -19,6 +19,7 @@
 /ltp/testcases/kernel/syscalls/close/close02
 /ltp/testcases/kernel/syscalls/close/close08
 /ltp/testcases/kernel/syscalls/connect/connect01
+/ltp/testcases/kernel/syscalls/copy_file_range/copy_file_range03
 /ltp/testcases/kernel/syscalls/creat/creat01
 /ltp/testcases/kernel/syscalls/creat/creat03
 /ltp/testcases/kernel/syscalls/creat/creat05

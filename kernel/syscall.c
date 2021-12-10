@@ -5911,7 +5911,29 @@ static long _syscall(void* args_)
         case SYS_mlock2:
             break;
         case SYS_copy_file_range:
-            break;
+        {
+            int fd_in = (int)x1;
+            off64_t* off_in = (off64_t*)x2;
+            int fd_out = (int)x3;
+            off64_t* off_out = (off64_t*)x4;
+            size_t len = (size_t)x5;
+            unsigned int flags = (unsigned int)x6;
+
+            _strace(
+                n,
+                "fd_in=%d off_in=%ln fd_out=%d off_out=%ln len=%lo flags=%d",
+                fd_in,
+                off_in,
+                fd_out,
+                off_out,
+                len,
+                flags);
+
+            BREAK(_return(
+                n,
+                myst_syscall_copy_file_range(
+                    fd_in, off_in, fd_out, off_out, len, flags)));
+        }
         case SYS_preadv2:
         {
             int fd = (int)x1;
