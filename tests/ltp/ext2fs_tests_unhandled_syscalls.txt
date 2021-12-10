@@ -24,7 +24,6 @@
 /ltp/testcases/kernel/syscalls/cma/process_vm_readv02:  SYS_process_vm_readv()
 /ltp/testcases/kernel/syscalls/cma/process_vm_readv03:  SYS_process_vm_readv()
 /ltp/testcases/kernel/syscalls/cma/process_vm_writev02:  SYS_process_vm_writev()
-/ltp/testcases/kernel/syscalls/copy_file_range/copy_file_range03:  SYS_copy_file_range()
 /ltp/testcases/kernel/syscalls/delete_module/delete_module02:  SYS_delete_module()
 /ltp/testcases/kernel/syscalls/fanotify/fanotify02:  SYS_fanotify_init()
 /ltp/testcases/kernel/syscalls/fanotify/fanotify04:  SYS_fanotify_init()

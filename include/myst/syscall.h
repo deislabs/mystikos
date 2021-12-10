@@ -279,6 +279,14 @@ long myst_syscall_kill(int pid, int sig);
 
 long myst_syscall_sendfile(int out_fd, int in_fd, off_t* offset, size_t count);
 
+long myst_syscall_copy_file_range(
+    int fd_in,
+    off_t* off_in,
+    int fd_out,
+    off_t* off_out,
+    size_t len,
+    unsigned int flags);
+
 long myst_syscall_sethostname(const char* hostname, size_t len);
 
 long myst_syscall_umask(mode_t mask);
