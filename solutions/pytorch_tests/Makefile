@@ -179,11 +179,23 @@ build-rootfs: build-appdir
 
 .PHONY: build-one
 build-one: build-rootfs
-	$(MYST_EXEC) build-rootfs --app-config-path config.json /usr/local/bin/python -m pytest /workspace/pytorch/test/test_autograd.py -v -s -k "test_no_grad_copy_sparse"
+	$(MYST_EXEC) build-rootfs --app-config-path config.json /opt/conda/bin/python -m pytest /opt/pytorch/test/test_nn.py -v -s -k "test_EmbeddingBag_per_sample_weights_and_no_offsets_cpu_int64_float32"
 
+#########################################################
+# Run the following cmds in gdb to set breakpoint and set
+# correct source directory.
+#
+# handle SIGILL pass nostop noprint
+# handle SIG35 pass nostop noprint
+# dir <mystikos root dir>
+# set pagination off
+# set substitute-path /opt/pytorch <$pwd>/build-appdir/opt/pytorch
+# set breakpoint pending on
+# break EmbeddingBag.cpp:<line>
+#########################################################
 .PHONY: build-gdb
 build-gdb: build-rootfs
-	$(MYST_GDB) --args $(MYST_EXEC) --max-affinity-cpus=1 build-rootfs --app-config-path config.json /usr/local/bin/python -m pytest /workspace/pytorch/test/test_autograd.py -v -s -k "test_no_grad_copy_sparse"
+	$(MYST_GDB) --args $(MYST_EXEC) --max-affinity-cpus=1 build-rootfs --app-config-path config.json /opt/conda/bin/python -m pytest /opt/pytorch/test/test_nn.py -v -s -k "test_EmbeddingBag_per_sample_weights_and_no_offsets_cpu_int64_float32"
 
 .PHONY: clean
 clean:
