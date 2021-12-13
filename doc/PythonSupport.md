@@ -1,5 +1,24 @@
 # Mystikos Support for Python
 
+## Known Limitations (Not Supported in Mystikos)
+To get a rough idea of whether your Python application can be run in Mystikos, you can take a look at our recorded CPython test failures on [v3.8.11](../tests/cpython-tests/test_config_v3.8.11/tests.failed) and [v3.9.7](../tests/cpython-tests/test_config_v3.9.7/tests.failed). Here are several noteworthy modules we either won't support or haven't implemented yet:
+- `os`
+  - `os.fork` - fork is not supported in Mystikos
+  - `os.spawn*` - please note that `os.posix_spawn IS supported
+  - `os.exec*`
+  - `os.system`?
+  - `os.openpty` - `/dev/pty` is not supported in Mytikos (yet)
+  - `os.memfd_create`
+- `multiprocessing`
+  - `multiprocessing.shared_memory` - shared memory is not supported in Mytikos (yet)
+- `subprocess` - some parameters of `subprocess.run`/`subprocess.Popen` are not supported
+  - `preexec_fn`
+  - `shell=True` - as Ubuntu/Debian's default shell `dash` is not supported in Mystikos, setting parameter `shell=True` may require changing the default shell, such as by adding `RUN ln -sf /bin/bash /bin/sh` in the Dockerfile
+  - Python3.8 does not use vfork, the option `"ForkMode": "pseudo_wait_for_exit_exec"` is required in config.json to support most `subprocess` APIs.
+ - `threading.Lock`
+- `curses`
+- `tkinter`
+
 ### Python version
 Python 3.8, 3.9 are recommended.
 
