@@ -3,7 +3,7 @@
 Please see [README](../README.md) for how to install Mystikos or build
 it from source code.
 
-**Disclaimer**: Mystikos's support for Python is incomplete.
+**Disclaimer**: Mystikos's support for Python is incomplete. For details, please view [Support and Limitations](PythonSupport.md).
 We are working towards complete Python support.
 
 The Python runtime versions we have tested most are 3.8 and 3.9. We recommend

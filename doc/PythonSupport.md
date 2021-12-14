@@ -1,12 +1,13 @@
 # Mystikos Support and Limitations for Python
+**NOTE**: this is a living document that is continually updated.
 
 ## Verified/Supported python versions
-As stated in our [Getting started with Python](user-getting-started-docker-python.md) document, we recommend building your containerized python application using python 3.8.11 and 3.9.7. Note that if possible, try pin your python to a specific version like 3.8.11 instead of 3.8.
+As stated in our [Getting started with Python](user-getting-started-docker-python.md) document, we recommend building your containerized python application using python 3.8.11 and 3.9.7. Note that if possible, try pin your python to a specific version like 3.8.11 instead of 3.8. Even when this document was written, there are newer python release than 3.8.11 or 3.9.7. We will do our best to stablize and support mystikos on newer versions.
 
 ### Install position independent python executable
 If you run `apt install python3.8` when building a Ubuntu-based docker image, the installed python3.8 (or python3.9) executable is not a position independent executable (PIE). `myst exec <cmd>` requires the cmd to be a PIE. To overcome this, either install python using miniconda (reference our [python_webserver](../solutions/python_webserver/Dockerfile) example), or use a Debian base image instead. For example,
 ```Dockerfile
-FROM python:3.9-slim
+FROM python:3.9.7-slim
 ```
 
 ### Third-party library
@@ -17,13 +18,11 @@ In generally, choose the latest versions of third-party libraries. As we usually
 To get a rough idea of whether your Python application can be run in Mystikos, you can take a look at our recorded CPython test failures on [v3.8.11](../tests/cpython-tests/test_config_v3.8.11/tests.failed) and [v3.9.7](../tests/cpython-tests/test_config_v3.9.7/tests.failed). Here are several noteworthy modules we either won't support or haven't implemented yet:
 - `os`
   - `os.fork` - fork is not supported in Mystikos
-  - `os.spawn*` - please note that `os.posix_spawn IS supported
-  - `os.exec*`
-  - `os.system`
-  - `os.openpty` - `/dev/pty` is not supported in Mytikos (yet)
+  - `os.spawn*` - please note that `os.posix_spawn` IS supported
+  - `os.exec*` - not supported
+  - `os.openpty` - some cpython tests have not passed (yet)
   - `os.memfd_create`
-- `multiprocessing`
-  - `multiprocessing.shared_memory` - shared memory is not supported in Mytikos (yet)
+- `multiprocessing.shared_memory` - shared memory is not supported in Mytikos (yet)
 - `subprocess` - some parameters of `subprocess.run`/`subprocess.Popen` are not supported
   - `preexec_fn`
   - `shell=True` - as Ubuntu/Debian's default shell `dash` is not supported in Mystikos, setting parameter `shell=True` may require changing the default shell, such as by adding `RUN ln -sf /bin/bash /bin/sh` in the Dockerfile
