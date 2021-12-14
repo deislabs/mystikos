@@ -11,6 +11,7 @@ pipeline {
         string(name: "PULL_REQUEST_ID", defaultValue: "", description: "If you are building a pull request, enter the pull request ID number here. (ex. 789)")
         choice(name: "REGION", choices: ['useast', 'canadacentral'], description: "Azure region for the SQL solutions test")
         booleanParam(name: "RUN_DOTNETP1", defaultValue: false, description: "Run .NET P1 tests?")
+        booleanParam(name: "RUN_OPENMP_TESTSUITE", defaultValue: false, description: "Run OpenMP Test Suite?")
     }
     environment {
         TEST_CONFIG = 'Nightly'
@@ -60,7 +61,7 @@ pipeline {
                     }
                     axis {
                         name 'TEST_PIPELINE'
-                        values 'Unit', 'Solutions', 'DotNet', 'DotNet-P1', 'Azure-SDK', 'PyTorch'
+                        values 'Unit', 'Solutions', 'DotNet', 'DotNet-P1', 'Azure-SDK', 'PyTorch', 'OpenMP-Testsuite'
                     }
                 }
                 stages {
@@ -69,7 +70,8 @@ pipeline {
                             script {
                                 // Workaround for skipping .NET P1 tests as dynamic matrix axis values are not supported
                                 // https://issues.jenkins.io/browse/JENKINS-62127
-                                if ( ! (TEST_PIPELINE == 'DotNet-P1' && ! params.RUN_DOTNETP1) ) {
+                                if ( ! ( (TEST_PIPELINE == 'DotNet-P1' && ! params.RUN_DOTNETP1)
+                                      || (TEST_PIPELINE == 'OpenMP-Testsuite' && ! params.RUN_OPENMP_TESTSUITE) )) {
                                     stage("${OS_VERSION} ${TEST_PIPELINE} (${TEST_CONFIG})") {
                                         catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
                                             build(

@@ -3,6 +3,8 @@ include $(TOP)/defs.mak
 
 CONTAINER_NAME=omp.myst.apline.062021
 
+APPBUILDER=$(TOP)/scripts/appbuilder
+
 ifdef STRACE
 OPTS = --strace
 endif
@@ -18,10 +20,10 @@ TEST_FILE = passed.tests
 all: $(APPDIR) $(ROOTFS)
 
 $(ROOTFS):
-	sudo $(MYST) mkcpio $(APPDIR) $(ROOTFS)
+	$(MYST) mkcpio $(APPDIR) $(ROOTFS)
 
 $(APPDIR):
-	myst-appbuilder Dockerfile
+	$(APPBUILDER) Dockerfile
 
 TESTS=$(shell cat $(TEST_FILE))
 
@@ -30,7 +32,7 @@ define NL
 
 endef
 
-tests:
+tests: $(APPDIR) $(ROOTFS)
 	$(foreach i, $(TESTS), $(MYST_EXEC) $(ROOTFS) $(i) $(OPTS) $(NL) )
 
 clean:

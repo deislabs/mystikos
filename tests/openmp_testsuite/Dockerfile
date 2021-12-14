@@ -1,5 +1,5 @@
 ARG IMAGE_FLAVOR=alpine
-ARG IMAGE_VERSION=3.8
+ARG IMAGE_VERSION=latest
 
 FROM ${IMAGE_FLAVOR}:${IMAGE_VERSION} AS builder
 RUN wget -q https://ftp.gnu.org/gnu/gcc/gcc-7.5.0/gcc-7.5.0.tar.gz && \
