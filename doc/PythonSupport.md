@@ -15,7 +15,7 @@ In generally, choose the latest versions of third-party libraries. As we usually
 
 ## Known Limitations
 ### Standard library
-To get a rough idea of whether your Python application can be run in Mystikos, you can take a look at our recorded CPython test failures on [v3.8.11](../tests/cpython-tests/test_config_v3.8.11/tests.failed) and [v3.9.7](../tests/cpython-tests/test_config_v3.9.7/tests.failed). Here are several noteworthy modules we either won't support or haven't implemented yet:
+To get a rough idea of whether your Python application can be run in Mystikos, you can take a look at our recorded CPython test failures on [v3.8.11](../tests/cpython-tests/test_config_v3.8.11/tests.failed) and [v3.9.7](../tests/cpython-tests/test_config_v3.9.7/tests.failed). Here are several noteworthy modules we either won't support or haven't supported yet:
 - `os`
   - `os.fork` - fork is not supported in Mystikos
   - `os.spawn*` - please note that `os.posix_spawn` IS supported
@@ -50,7 +50,7 @@ To get a rough idea of whether your Python application can be run in Mystikos, y
 ### PyTorch
 | Supported | Known Limitations & Caveats | Sample/Tests |
 | :---: | :--- | :--- |
-| Limited | We have only tested limited samples.<br>More thorough testing is in progress. | [solutions/pytorch_inference](https://github.com/deislabs/mystikos/tree/main/solutions/pytorch_inference) |
+| Limited | We have tested the core functions.<br>More thorough testing is in progress. | [solutions/pytorch_tests](https://github.com/deislabs/mystikos/tree/main/solutions/pytorch_tests) |
 
 
 ### Flask
