@@ -98,7 +98,9 @@ jobs:
     # run PyTorch tests
     - script: |
         make run -C $(Build.SourcesDirectory)/solutions/pytorch_tests
+        RESULT=$?
         make clean -C $(Build.SourcesDirectory)/solutions/pytorch_tests
+        exit ${RESULT}
       displayName: 'run PyTorch tests'
       continueOnError: true
       enabled: true
