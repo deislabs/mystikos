@@ -134,7 +134,9 @@ jobs:
       - script: |
           export PATH="$PATH:$(pwd)/mystikos/bin"
           make run -C $(Build.SourcesDirectory)/solutions/pytorch_tests
+          RESULT=$?
           make clean -C $(Build.SourcesDirectory)/solutions/pytorch_tests
+          exit ${RESULT}
         displayName: 'run PyTorch tests'
         continueOnError: true
         enabled: true
