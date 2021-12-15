@@ -122,9 +122,11 @@ static int _ed_epoll_ctl(
     if (!myst_valid_fd(fd))
         ERAISE(-EBADF);
 
+#ifdef ENABLE_MAXEVENTS_OPTIMIZATION
     /* protect against the unlikely event of integer overflow below */
     if (op == EPOLL_CTL_ADD && epoll->num_fds >= INT_MAX)
         ERAISE(-EINVAL);
+#endif
 
     /* get the target file descriptor for this file descriptor */
     {
@@ -179,6 +181,15 @@ static int _ed_epoll_wait(
     // applications pass unreasonably large values for maxevents.
     if (maxevents > epoll->num_fds)
         maxevents = epoll->num_fds;
+
+    // If epoll_ctl has not been called, then num_fds and maxevents will be
+    // zero. E.g: `dotnet test` calls epoll_wait before calling epoll_ctl.
+    // However, epoll_wait requires that maxevents be greater than zero.
+    // We set the maxevents in this case to 10 in the anticipation that
+    // more than 1, but less than 10 file descriptors. will be added via
+    // subsequent epoll_ctl calls.
+    if (maxevents == 0)
+        maxevents = 10;
 #endif
 
     ECHECK(n = _sys_epoll_wait(epoll->epfd, events, maxevents, timeout));
