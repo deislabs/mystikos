@@ -26,7 +26,7 @@ FS=ext2fs$(VER)
 # Set timeout to 50 mins (to run both the python3.8 test suite and the python3.9 test suite)
 export TIMEOUT=3000
 
-all: ext2fs3.8 ext2fs3.9
+all: ext2fs3.8 ext2fs3.9 ext2fs3.10
 
 mpdb.py:$(MPDB)
 	cp -f $(TOP)/scripts/mpdb.py mpdb.py
@@ -41,15 +41,21 @@ ext2fs3.9:mpdb.py
 	$(APPBUILDER) -o appdir3.9 -e "--build-arg CPYTHON_VERSION=v3.9.7" Dockerfile
 	$(MYST) mkext2 -f appdir3.9 ext2fs3.9
 
+ext2fs3.10:mpdb.py
+	# rm -fr appdir3.10
+	# $(APPBUILDER) -o appdir3.10 -e "--build-arg CPYTHON_VERSION=v3.10.0" Dockerfile
+	$(MYST) mkext2 -f appdir3.10 ext2fs3.10
+
 clean:
 	rm -fr appdir* ext2fs* @test_101* hostfs
 
 tests:
 	$(RUNTEST) ./exec.sh
 
-run-list: ext2fs3.8 ext2fs3.9
+run-list: ext2fs3.8 ext2fs3.9 ext2fs3.10
 	$(MYST_EXEC) $(OPTS) ext2fs3.8 /cpython/python -m test -f /$(TESTFILE) --timeout 120 -q
 	$(MYST_EXEC) $(OPTS) ext2fs3.9 /cpython/python -m test -f /$(TESTFILE) --timeout 120 -q
+	$(MYST_EXEC) $(OPTS) ext2fs3.10 /cpython/python -m test -f /$(TESTFILE) --timeout 120 -q
 
 one: $(FS)
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) /cpython/python -m test $(TEST) -v
