@@ -6,7 +6,7 @@ it from source code.
 **Disclaimer**: Mystikos's support for dotnet and C# is incomplete.
 We are working towards complete C# support.
 
-The most tested dotnet runtime version by us is the 3.1 LTS release. We
+The most tested dotnet runtime versions by us are the 3.1 LTS and 5.0 releases. We
 recommend users to develop/migrate their applications on/to this version
 to work with Mystikos.
 
@@ -14,7 +14,19 @@ to work with Mystikos.
 
 In this example, we take numbers from command line and output the sum.
 C# requires us to create a project first. First we need to install dotnet
-SDK 3.1 with `sudo apt install dotnet-sdk-3.1`. Then run the command:
+SDK with -
+
+For .Net 3.1:
+```
+sudo apt install dotnet-sdk-3.1
+```
+
+For .Net 5:
+```
+sudo apt install dotnet-sdk-5.0`.
+```
+
+Then run the command:
 
 ```
 dotnet new console -o sum
@@ -67,6 +79,8 @@ Note this is a multi-stage dockerfile as `dotnet SDK` is only required for
 building. Running the application requires `dotnet runtime`, a much smaller
 package. We can use it in the run stage to save space.
 
+### .Net 3.1 Dockerfile
+
 ```docker
 # stage 1: build
 FROM mcr.microsoft.com/dotnet/core/sdk:3.1-buster AS build
@@ -76,6 +90,24 @@ RUN dotnet publish -o publish
 
 # stage 2: run
 FROM mcr.microsoft.com/dotnet/core/aspnet:3.1-bionic
+WORKDIR /app
+
+COPY --from=build /app/publish .
+
+ENTRYPOINT [ "dotnet", "/app/sum.dll", "1", "2", "3" ]
+```
+
+### .Net 5.0 Dockerfile
+
+```docker
+# stage 1: build
+FROM mcr.microsoft.com/dotnet/sdk:5.0 AS build
+WORKDIR /app
+COPY . .
+RUN dotnet publish -o publish
+
+# stage 2: run
+FROM mcr.microsoft.com/dotnet/aspnet:5.0
 WORKDIR /app
 
 COPY --from=build /app/publish .
@@ -100,16 +132,40 @@ myst-appbuilder Dockerfile
 `/home`, `/bin`, etc. It also contains our application under `/app`.
 The dotnet runtime is also included.
 
-## Create a CPIO archive and run the program inside an SGX enclave in debug mode
+## Create a CPIO archive, create configuration, and run the program inside an SGX enclave in debug mode
 
 ```bash
 myst mkcpio appdir rootfs
-myst exec-sgx --memory-size 512m rootfs /usr/bin/dotnet /app/sum.dll 1 2 3
+echo """
+{ 
+    // Whether we are running myst+OE+app in debug mode
+    "Debug": 1,
+    "ProductID": 1,
+    "SecurityVersion": 1,
+
+    // Mystikos specific values
+
+    // The heap size of the user application. Increase this setting if your app experienced OOM.
+    "MemorySize": "1024M",
+    "ThreadStackSize": "256k", // Native pthread stack size
+    // Uncomment following config if running a multi-process application
+    // "NoBrk": true, 
+    // Whether we allow "ApplicationParameters" to be overridden by command line options of "myst exec"
+    "HostApplicationParameters": true,
+    // The environment variables accessible inside the enclave.
+    "EnvironmentVariables": [
+        "COMPlus_EnableDiagnostics=0",
+        "COMPlus_GCHeapHardLimit=0x0400000"
+    ]
+}
+""" > config.json
+myst exec-sgx --app-config-path config.json rootfs /usr/bin/dotnet /app/sum.dll 1 2 3
 ```
 
-On the last command, we pass in `--memory-size 512m` to tell Mystikos to
-operate on this much heap memory otherwise dotnet runtime would fail on
-initialization.
+On the last command, we pass in `--app-config-path config.json`, to specify all the required configuration required to run the application. This includes parameters to control resources which Mystikos controls - like memory size and thread stack size; and also environment variables which can be used to control dotnet runtime behavior or be used by the application being run.
+
+More information about recommended configurations for dotnet applicatios can be found in the [dotnet support and limitations document](./dotnet-support.md).
+
 We also pass in the full path to the `dotnet` executable and the application
 dll to avoid ambiguity from duplicated file names.
 
