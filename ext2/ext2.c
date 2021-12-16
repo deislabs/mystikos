@@ -2711,7 +2711,7 @@ static int _create_dir_inode_and_block(
     struct locals* locals = NULL;
 
     /* Check parameters */
-    if (!_ext2_valid(ext2) || !mode || !parent_ino || !ino)
+    if (!_ext2_valid(ext2) || !parent_ino || !ino)
         ERAISE(-EINVAL);
 
     if (!(locals = malloc(sizeof(struct locals))))
@@ -4086,8 +4086,8 @@ int ext2_unlink(myst_fs_t* fs, const char* path)
 
     /* remove the directory entry for this file */
     ECHECK(_split_path(path, locals->dirname, locals->filename));
-    ECHECK(_remove_dirent(ext2, dino, &locals->dinode, locals->filename,
-        false));
+    ECHECK(
+        _remove_dirent(ext2, dino, &locals->dinode, locals->filename, false));
 
     /* unlink the inode */
     ECHECK(_inode_unlink(ext2, ino, &locals->inode));
@@ -4789,7 +4789,8 @@ int ext2_rmdir(myst_fs_t* fs, const char* path)
 
     /* remove the directory entry for this file */
     ECHECK(_split_path(path, locals->dirname, locals->filename));
-    ECHECK(_remove_dirent(ext2, dino, &locals->dinode, locals->filename, false));
+    ECHECK(
+        _remove_dirent(ext2, dino, &locals->dinode, locals->filename, false));
 
     /* truncate the file to zero size (to return all the blocks) */
     {
