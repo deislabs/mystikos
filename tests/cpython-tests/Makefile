@@ -23,8 +23,8 @@ TESTCASE = test_socket.SendmsgUnixStreamTest.testSendmsgDontWait
 VER=3.9
 FS=ext2fs$(VER)
 
-# Set timeout to 50 mins (to run both the python3.8 test suite and the python3.9 test suite)
-export TIMEOUT=3000
+# Set timeout to 60 mins (to run both the python3.8, 3.9 and 3.10 test suite)
+export TIMEOUT=3600
 
 all: ext2fs3.8 ext2fs3.9 ext2fs3.10
 
@@ -42,8 +42,8 @@ ext2fs3.9:mpdb.py
 	$(MYST) mkext2 -f appdir3.9 ext2fs3.9
 
 ext2fs3.10:mpdb.py
-	# rm -fr appdir3.10
-	# $(APPBUILDER) -o appdir3.10 -e "--build-arg CPYTHON_VERSION=v3.10.0" Dockerfile
+	rm -fr appdir3.10
+	$(APPBUILDER) -o appdir3.10 -e "--build-arg CPYTHON_VERSION=v3.10.0" Dockerfile
 	$(MYST) mkext2 -f appdir3.10 ext2fs3.10
 
 clean:
