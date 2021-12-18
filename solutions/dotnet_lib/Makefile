@@ -55,4 +55,10 @@ appdirr:
 TESTCASE=testcases/pass.txt
 
 run-runner:
-	$(MYST_EXEC) $(OPTS) $(RROOTFS) --app-config-path config-runner.json $(RUNNER) /$(TESTCASE) /dotnet-lib-release/
+	$(MYST_EXEC) $(OPTS) $(RROOTFS) --app-config-path config-runner.json $(RUNNER) /testcases/pass.1 /dotnet-lib-release/
+	$(MYST_EXEC) $(OPTS) $(RROOTFS) --app-config-path config-runner.json $(RUNNER) /testcases/pass.2 /dotnet-lib-release/
+	$(MYST_EXEC) $(OPTS) $(RROOTFS) --app-config-path config-runner.json $(RUNNER) /testcases/pass.3 /dotnet-lib-release/
+	$(MYST_EXEC) $(OPTS) $(RROOTFS) --app-config-path config-runner.json $(RUNNER) /testcases/pass.4 /dotnet-lib-release/
+
+gdb-runner:
+	$(MYST_GDB) --args $(MYST_EXEC) $(OPTS) $(RROOTFS) --app-config-path config-runner.json $(RUNNER) /$(TESTCASE) /dotnet-lib-release/

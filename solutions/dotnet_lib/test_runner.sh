@@ -4,7 +4,7 @@
 USAGE='Usage: test_runner.sh PLATFORM C_LIB RUNNER [TEST DLL]'
 
 TESTCASES="testcases"
-TESTCASE_PASS="${TESTCASES}/pass.txt"
+TESTCASE_PASS="${TESTCASES}/pass.1"
 TESTCASE_FAIL="${TESTCASES}/fail.txt"
 TESTCASE_SKIP="${TESTCASES}/skip.txt"
 TESTCASE_ALL="${TESTCASES}/all_test_dll.txt"
@@ -43,7 +43,7 @@ run_all_test() {
         if [[ $PLATFORM == "docker" ]]; then
             docker run -it $(docker build -q . -f ${DOCKERFILE}) $CUSTOM_RUNNER "/${TESTCASE}" /dotnet-lib-release/
         else
-            make run-runner TARGET=$PLATFORM TESTCASE=$TESTCASE
+            make run-runner TARGET=$PLATFORM
         fi
     else
         run_test_method=
