@@ -12,7 +12,6 @@
 /ltp/testcases/kernel/syscalls/close/close01
 /ltp/testcases/kernel/syscalls/close/close02
 /ltp/testcases/kernel/syscalls/close/close08
-/ltp/testcases/kernel/syscalls/copy_file_range/copy_file_range03
 /ltp/testcases/kernel/syscalls/creat/creat01
 /ltp/testcases/kernel/syscalls/creat/creat03
 /ltp/testcases/kernel/syscalls/creat/creat05
@@ -74,6 +73,7 @@
 /ltp/testcases/kernel/syscalls/ftruncate/ftruncate01_64
 /ltp/testcases/kernel/syscalls/futimesat/futimesat01
 /ltp/testcases/kernel/syscalls/getcwd/getcwd02
+/ltp/testcases/kernel/syscalls/getcwd/getcwd04
 /ltp/testcases/kernel/syscalls/getrandom/getrandom01
 /ltp/testcases/kernel/syscalls/getrandom/getrandom02
 /ltp/testcases/kernel/syscalls/getrandom/getrandom03
@@ -154,10 +154,13 @@
 /ltp/testcases/kernel/syscalls/symlinkat/symlinkat01
 /ltp/testcases/kernel/syscalls/truncate/truncate02
 /ltp/testcases/kernel/syscalls/truncate/truncate02_64
+/ltp/testcases/kernel/syscalls/umask/umask01
 /ltp/testcases/kernel/syscalls/unlinkat/unlinkat01
 /ltp/testcases/kernel/syscalls/utime/utime01
 /ltp/testcases/kernel/syscalls/utime/utime02
 /ltp/testcases/kernel/syscalls/utime/utime03
+/ltp/testcases/kernel/syscalls/utime/utime04
+/ltp/testcases/kernel/syscalls/utime/utime05
 /ltp/testcases/kernel/syscalls/write/write01
 /ltp/testcases/kernel/syscalls/write/write02
 /ltp/testcases/kernel/syscalls/writev/writev01

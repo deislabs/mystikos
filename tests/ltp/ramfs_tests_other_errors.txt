@@ -7,10 +7,6 @@
 /ltp/testcases/kernel/syscalls/acct/acct02
 /ltp/testcases/kernel/syscalls/acct/acct02_helper
 /ltp/testcases/kernel/syscalls/add_key/add_key05
-/ltp/testcases/kernel/syscalls/alarm/alarm02
-/ltp/testcases/kernel/syscalls/alarm/alarm03
-/ltp/testcases/kernel/syscalls/alarm/alarm05
-/ltp/testcases/kernel/syscalls/alarm/alarm06
 /ltp/testcases/kernel/syscalls/alarm/alarm07
 /ltp/testcases/kernel/syscalls/bind/bind02
 /ltp/testcases/kernel/syscalls/bind/bind04
@@ -237,7 +233,6 @@
 /ltp/testcases/kernel/syscalls/get_robust_list/get_robust_list01
 /ltp/testcases/kernel/syscalls/getcwd/getcwd01
 /ltp/testcases/kernel/syscalls/getcwd/getcwd03
-/ltp/testcases/kernel/syscalls/getcwd/getcwd04
 /ltp/testcases/kernel/syscalls/getdtablesize/getdtablesize01
 /ltp/testcases/kernel/syscalls/getegid/getegid01_16
 /ltp/testcases/kernel/syscalls/getegid/getegid02_16
@@ -250,7 +245,6 @@
 /ltp/testcases/kernel/syscalls/gethostbyname_r/gethostbyname_r01
 /ltp/testcases/kernel/syscalls/gethostid/gethostid01
 /ltp/testcases/kernel/syscalls/getitimer/getitimer01
-/ltp/testcases/kernel/syscalls/getitimer/getitimer02
 /ltp/testcases/kernel/syscalls/getpeername/getpeername01
 /ltp/testcases/kernel/syscalls/getpgid/getpgid01
 /ltp/testcases/kernel/syscalls/getpgid/getpgid02
@@ -272,7 +266,6 @@
 /ltp/testcases/kernel/syscalls/getsockopt/getsockopt01
 /ltp/testcases/kernel/syscalls/getsockopt/getsockopt02
 /ltp/testcases/kernel/syscalls/gettimeofday/gettimeofday01
-/ltp/testcases/kernel/syscalls/gettimeofday/gettimeofday02
 /ltp/testcases/kernel/syscalls/getuid/getuid01_16
 /ltp/testcases/kernel/syscalls/getuid/getuid03_16
 /ltp/testcases/kernel/syscalls/getxattr/getxattr04
@@ -475,7 +468,6 @@
 /ltp/testcases/kernel/syscalls/pipe/pipe13
 /ltp/testcases/kernel/syscalls/pipe2/pipe2_02
 /ltp/testcases/kernel/syscalls/pipe2/pipe2_02_child
-/ltp/testcases/kernel/syscalls/poll/poll02
 /ltp/testcases/kernel/syscalls/prctl/prctl01
 /ltp/testcases/kernel/syscalls/prctl/prctl03
 /ltp/testcases/kernel/syscalls/prctl/prctl04
@@ -501,8 +493,6 @@
 /ltp/testcases/kernel/syscalls/ptrace/make_syscall_list.sh
 /ltp/testcases/kernel/syscalls/ptrace/ptrace03
 /ltp/testcases/kernel/syscalls/ptrace/ptrace04
-/ltp/testcases/kernel/syscalls/ptrace/ptrace08
-/ltp/testcases/kernel/syscalls/ptrace/ptrace10
 /ltp/testcases/kernel/syscalls/pwrite/pwrite02
 /ltp/testcases/kernel/syscalls/pwrite/pwrite02_64
 /ltp/testcases/kernel/syscalls/pwritev/pwritev02
@@ -610,7 +600,6 @@
 /ltp/testcases/kernel/syscalls/setgroups/setgroups04_16
 /ltp/testcases/kernel/syscalls/sethostname/sethostname02
 /ltp/testcases/kernel/syscalls/sethostname/sethostname03
-/ltp/testcases/kernel/syscalls/setitimer/setitimer02
 /ltp/testcases/kernel/syscalls/setpgid/setpgid02
 /ltp/testcases/kernel/syscalls/setpgid/setpgid03
 /ltp/testcases/kernel/syscalls/setpgid/setpgid03_child
@@ -639,6 +628,7 @@
 /ltp/testcases/kernel/syscalls/setreuid/setreuid06_16
 /ltp/testcases/kernel/syscalls/setreuid/setreuid07
 /ltp/testcases/kernel/syscalls/setreuid/setreuid07_16
+/ltp/testcases/kernel/syscalls/setrlimit/setrlimit01
 /ltp/testcases/kernel/syscalls/setrlimit/setrlimit02
 /ltp/testcases/kernel/syscalls/setrlimit/setrlimit03
 /ltp/testcases/kernel/syscalls/setrlimit/setrlimit04
@@ -716,7 +706,6 @@
 /ltp/testcases/kernel/syscalls/tkill/tkill02
 /ltp/testcases/kernel/syscalls/truncate/truncate03
 /ltp/testcases/kernel/syscalls/truncate/truncate03_64
-/ltp/testcases/kernel/syscalls/umask/umask01
 /ltp/testcases/kernel/syscalls/umount/umount01
 /ltp/testcases/kernel/syscalls/umount/umount02
 /ltp/testcases/kernel/syscalls/umount/umount03
