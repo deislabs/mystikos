@@ -17,7 +17,7 @@ function run_tests() {
 
   while read test; do
     echo -n "$test FS=$FS"
-    if [ $(grep $test tests_flakey.txt) ]
+    if [ ! -v $(grep $test tests_flakey.txt | awk '{print $1}') ]
     then
       echo " SKIPPED: flakey"
       continue
@@ -29,7 +29,8 @@ function run_tests() {
     then
       # Passing test
       PASSED=$(echo "$OUTPUT" | grep TPASS) 
-      if [[ $PASSED ]]  
+      FAILED=$(echo "$OUTPUT" | grep TFAIL) 
+      if [[ $PASSED && -z $FAILED ]]  
       then
         echo $test >> temp_passed.output
         echo " PASSED"

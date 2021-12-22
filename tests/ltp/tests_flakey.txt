@@ -3,3 +3,4 @@
 /ltp/testcases/kernel/syscalls/send/send01:         send01 4  TFAIL :  send01.c:274: call succeeded unexpectedly
 /ltp/testcases/kernel/syscalls/waitpid/waitpid10:   waitpid_common.h:153: TFAIL: Pid 118 exited abnormally
 /ltp/testcases/kernel/syscalls/waitpid/waitpid11:   Times out
+/ltp/testcases/kernel/syscalls/poll/poll02

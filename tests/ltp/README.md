@@ -49,10 +49,10 @@ FAILING
 | /ltp/testcases/kernel/syscalls/adjtimex/adjtimex01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/adjtimex/adjtimex02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/adjtimex/adjtimex03 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/alarm/alarm02 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/alarm/alarm03 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/alarm/alarm05 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/alarm/alarm06 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/alarm/alarm02 | 1 | 1 | 1 |
+| /ltp/testcases/kernel/syscalls/alarm/alarm03 | 1 | 1 | 1 |
+| /ltp/testcases/kernel/syscalls/alarm/alarm05 | 1 | 1 | 1 |
+| /ltp/testcases/kernel/syscalls/alarm/alarm06 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/alarm/alarm07 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/bind/bind01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/bind/bind02 | 0 | 0 | 0 |
@@ -136,7 +136,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/connect/connect02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/copy_file_range/copy_file_range01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/copy_file_range/copy_file_range02 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/copy_file_range/copy_file_range03 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/copy_file_range/copy_file_range03 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/creat/creat01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/creat/creat03 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/creat/creat04 | 0 | 1 | 0 |
@@ -410,7 +410,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/getcwd/getcwd01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/getcwd/getcwd02 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/getcwd/getcwd03 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/getcwd/getcwd04 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/getcwd/getcwd04 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/getdents/getdents01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/getdents/getdents02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/getdomainname/getdomainname01 | 1 | 1 | 1 |
@@ -435,7 +435,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/gethostid/gethostid01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/gethostname/gethostname01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/getitimer/getitimer01 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/getitimer/getitimer02 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/getitimer/getitimer02 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/getitimer/getitimer03 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/getpagesize/getpagesize01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/getpeername/getpeername01 | 0 | 0 | 0 |
@@ -479,7 +479,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/getsockopt/getsockopt02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/gettid/gettid01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/gettimeofday/gettimeofday01 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/gettimeofday/gettimeofday02 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/gettimeofday/gettimeofday02 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/getuid/getuid01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/getuid/getuid01_16 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/getuid/getuid03 | 1 | 1 | 1 |
@@ -1006,7 +1006,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/sched_getaffinity/sched_getaffinity01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/sched_getattr/sched_getattr01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/sched_getattr/sched_getattr02 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/sched_getparam/sched_getparam01 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/sched_getparam/sched_getparam01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/sched_getparam/sched_getparam03 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/sched_getscheduler/sched_getscheduler01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/sched_getscheduler/sched_getscheduler02 | 0 | 0 | 0 |
@@ -1098,7 +1098,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/sethostname/sethostname02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/sethostname/sethostname03 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/setitimer/setitimer01 | 1 | 1 | 1 |
-| /ltp/testcases/kernel/syscalls/setitimer/setitimer02 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/setitimer/setitimer02 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/setitimer/setitimer03 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/setns/setns01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/setns/setns02 | 0 | 0 | 0 |
@@ -1150,7 +1150,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/setreuid/setreuid06_16 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/setreuid/setreuid07 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/setreuid/setreuid07_16 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/setrlimit/setrlimit01 | 1 | 1 | 1 |
+| /ltp/testcases/kernel/syscalls/setrlimit/setrlimit01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/setrlimit/setrlimit02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/setrlimit/setrlimit03 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/setrlimit/setrlimit04 | 0 | 0 | 0 |
@@ -1186,7 +1186,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/signal/signal03 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/signal/signal04 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/signal/signal05 | 1 | 1 | 1 |
-| /ltp/testcases/kernel/syscalls/signal/signal06 | 1 | 1 | 1 |
+| /ltp/testcases/kernel/syscalls/signal/signal06 | 1 | 0 | 1 |
 | /ltp/testcases/kernel/syscalls/signalfd/signalfd01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/signalfd4/signalfd4_01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/signalfd4/signalfd4_02 | 0 | 0 | 0 |
@@ -1309,7 +1309,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/truncate/truncate03 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/truncate/truncate03_64 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/ulimit/ulimit01 | 1 | 1 | 1 |
-| /ltp/testcases/kernel/syscalls/umask/umask01 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/umask/umask01 | 1 | 0 | 1 |
 | /ltp/testcases/kernel/syscalls/umount/umount01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/umount/umount02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/umount/umount03 | 0 | 0 | 0 |
@@ -1331,8 +1331,8 @@ FAILING
 | /ltp/testcases/kernel/syscalls/utime/utime01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/utime/utime02 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/utime/utime03 | 1 | 1 | 1 |
-| /ltp/testcases/kernel/syscalls/utime/utime04 | 0 | 1 | 0 |
-| /ltp/testcases/kernel/syscalls/utime/utime05 | 0 | 1 | 0 |
+| /ltp/testcases/kernel/syscalls/utime/utime04 | 1 | 1 | 0 |
+| /ltp/testcases/kernel/syscalls/utime/utime05 | 1 | 1 | 0 |
 | /ltp/testcases/kernel/syscalls/utime/utime06 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/utimensat/utimensat01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/utimes/utimes01 | 0 | 0 | 0 |
