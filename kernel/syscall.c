@@ -2383,6 +2383,12 @@ long myst_syscall_sendto(
     if (!buf && len)
         ERAISE(-EFAULT);
 
+    if ((int)addrlen < 0)
+        ERAISE(-EINVAL);
+
+    if (len >= UDP_PACKET_MAX_LENGTH)
+        ERAISE(-EMSGSIZE);
+
     if ((buf && myst_is_bad_addr_read(buf, len)) ||
         (dest_addr &&
          myst_is_bad_addr_read(dest_addr, sizeof(struct sockaddr))))

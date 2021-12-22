@@ -22,6 +22,8 @@
 #include <myst/defs.h>
 #include <myst/thread.h>
 
+#define UDP_PACKET_MAX_LENGTH 65000
+
 MYST_INLINE long myst_syscall0(long n)
 {
     unsigned long ret;
