@@ -435,6 +435,16 @@ static long _handle_one_signal(
     }
     else if (action->handler == (uint64_t)SIG_IGN)
     {
+        if (__myst_kernel_args.strace_config.trace_syscalls ||
+            __myst_kernel_args.trace_errors)
+        {
+            myst_eprintf(
+                "*** Ignoring signal %u (%s): pid=%d tid=%d\n",
+                signum,
+                myst_signum_to_string(signum),
+                myst_getpid(),
+                myst_gettid());
+        }
         ret = 0;
     }
     else
@@ -442,6 +452,18 @@ static long _handle_one_signal(
         bool use_alt_stack = false;
         struct _handler_wrapper_arg arg = {0};
         uint64_t orig_mask = thread->signal.mask;
+
+        if (__myst_kernel_args.strace_config.trace_syscalls ||
+            __myst_kernel_args.trace_errors)
+        {
+            myst_eprintf(
+                "*** Delivering signal to app signal handler %u (%s): pid=%d "
+                "tid=%d\n",
+                signum,
+                myst_signum_to_string(signum),
+                myst_getpid(),
+                myst_gettid());
+        }
 
         // add mask specified in action->sa_mask
         thread->signal.mask |= action->mask;
