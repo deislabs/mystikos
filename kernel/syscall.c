@@ -5548,7 +5548,44 @@ static long _syscall(void* args_)
         case SYS_pselect6:
             break;
         case SYS_ppoll:
-            break;
+        {
+            struct pollfd* fds = (struct pollfd*)x1;
+            nfds_t nfds = (nfds_t)x2;
+            const struct timespec* timeout_ts = (const struct timespec*)x3;
+            const sigset_t* sigmask = (const sigset_t*)x4;
+            long timeout;
+            long ret;
+            struct timespec_buf buf;
+            sigset_t origmask;
+
+            _strace(
+                n,
+                "fds=%p nfds=%ld timeout=%s, sigmask=%p",
+                fds,
+                nfds,
+                _format_timespec(&buf, timeout_ts),
+                sigmask);
+
+            if (sigmask &&
+                myst_is_bad_addr_read_write(sigmask, sizeof(*sigmask)))
+                ret = -EFAULT;
+            else if (
+                timeout_ts &&
+                myst_is_bad_addr_read_write(timeout_ts, sizeof(*timeout_ts)))
+                ret = -EFAULT;
+            else
+            {
+                timeout = (timeout_ts == NULL)
+                              ? -1
+                              : (timeout_ts->tv_sec * 1000 +
+                                 timeout_ts->tv_nsec / 1000000);
+                myst_signal_sigprocmask(SIG_SETMASK, sigmask, &origmask);
+                ret = myst_syscall_poll(fds, nfds, timeout, false);
+                myst_signal_sigprocmask(SIG_SETMASK, &origmask, NULL);
+            }
+
+            BREAK(_return(n, ret));
+        }
         case SYS_unshare:
             break;
         case SYS_set_robust_list:
