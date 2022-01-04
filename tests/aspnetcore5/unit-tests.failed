@@ -30,3 +30,6 @@
 /aspnetcore/artifacts/bin/Microsoft.AspNetCore.WebSockets.Tests/Debug/net5.0/Microsoft.AspNetCore.WebSockets.Tests.dll
 /aspnetcore/artifacts/bin/Microsoft.Extensions.Localization.Tests/Debug/net5.0/Microsoft.Extensions.Localization.Tests.dll
 /aspnetcore/artifacts/bin/Microsoft.NET.Sdk.Razor.Test/Debug/net5.0/Microsoft.NET.Sdk.Razor.Test.dll
+/aspnetcore/artifacts/bin/Microsoft.AspNetCore.ConcurrencyLimiter.Tests/Debug/net5.0/Microsoft.AspNetCore.ConcurrencyLimiter.Tests.dll
+/aspnetcore/artifacts/bin/Microsoft.AspNetCore.CookiePolicy.Test/Debug/net5.0/Microsoft.AspNetCore.CookiePolicy.Test.dll
+/aspnetcore/artifacts/bin/Microsoft.AspNetCore.Cors.Test/Debug/net5.0/Microsoft.AspNetCore.Cors.Test.dll
