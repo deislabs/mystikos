@@ -4,6 +4,7 @@ pipeline {
     }
     options {
         timeout(time: 30, unit: 'MINUTES')
+        timestamps ()
     }
     parameters {
         string(name: "REPOSITORY", defaultValue: "deislabs")

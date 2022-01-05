@@ -4,6 +4,7 @@ pipeline {
     }
     options {
         timeout(time: 300, unit: 'MINUTES')
+        timestamps ()
     }
     parameters {
         choice(name: "UBUNTU_VERSION", choices: ["18.04", "20.04"])
