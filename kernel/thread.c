@@ -41,6 +41,7 @@
 //#define TRACE
 
 myst_spinlock_t myst_process_list_lock = MYST_SPINLOCK_INITIALIZER;
+extern myst_process_t* myst_main_process;
 
 /* The total number of threads running (including the main thread) */
 static _Atomic(size_t) _num_threads = 1;
@@ -331,12 +332,26 @@ void myst_zombify_process(myst_process_t* process)
  * from parent are ensured to be serialized. */
 void myst_send_sigchld_and_zombify_process(myst_process_t* process)
 {
+    pid_t vfork_parent_pid = process->vfork_parent_pid;
+    pid_t vfork_parent_tid = process->vfork_parent_tid;
+    bool is_pseudo_fork_process = process->is_pseudo_fork_process;
+    process->is_pseudo_fork_process = false;
+    process->vfork_parent_tid = 0;
+    process->vfork_parent_pid = 0;
+
     myst_spin_lock(&myst_process_list_lock);
     {
         send_sigchld_to_parent(process);
         myst_zombify_process(process);
     }
     myst_spin_unlock(&myst_process_list_lock);
+
+    /* If this process was created as part of a fork() and the parent is
+     * running in wait-exec mode, signal that thread for wakeup */
+    if (is_pseudo_fork_process && vfork_parent_pid)
+    {
+        myst_fork_exec_futex_wake(vfork_parent_pid, vfork_parent_tid);
+    }
 }
 
 static bool _wait_matcher(
@@ -799,21 +814,12 @@ myst_thread_t* myst_find_thread(int tid)
 // Caller should hold myst_proces_list_lock!
 myst_process_t* myst_find_process_from_pid(pid_t pid, bool include_zombies)
 {
-    myst_process_t* curr_process = myst_process_self();
     myst_process_t* p = NULL;
 
     // Search forward in the doubly linked list for a match
-    p = curr_process;
+    p = myst_main_process;
     while (p && p->pid != pid)
         p = p->next_process;
-
-    if (p == NULL)
-    {
-        // Search backward in the doubly linked list for a match
-        p = curr_process->prev_process;
-        while (p && p->pid != pid)
-            p = p->prev_process;
-    }
 
     if ((p == NULL) && include_zombies)
     {
@@ -826,10 +832,8 @@ myst_process_t* myst_find_process_from_pid(pid_t pid, bool include_zombies)
 }
 
 /* Find the thread that may be waiting for the fork-exec wait and wake it */
-void myst_fork_exec_futex_wake(myst_process_t* process)
+void myst_fork_exec_futex_wake(pid_t pid, pid_t tid)
 {
-    pid_t pid = process->vfork_parent_pid;
-    pid_t tid = process->vfork_parent_tid;
     myst_process_t* waiter_process = NULL;
     myst_thread_t* waiter_thread = NULL;
 

@@ -3991,7 +3991,7 @@ static long _syscall(void* args_)
                 // ATTN: give the thread a little time to start to avoid a
                 // syncyhronization error. This suppresses a failure in the
                 // popen test. This should be investigated later.
-                myst_sleep_msec(5, false);
+                // myst_sleep_msec(5, false);
             }
 
             BREAK(_return(n, ret));
@@ -4098,13 +4098,6 @@ static long _syscall(void* args_)
 
             /* the kstack is freed after the long-jump below */
             thread->exit_kstack = args->kstack;
-
-            /* If this process was created as part of a fork() and the parent is
-             * running in wait-exec mode, signal that thread for wakeup */
-            if (process->is_pseudo_fork_process)
-            {
-                myst_fork_exec_futex_wake(process);
-            }
 
             /* jump back to myst_enter_kernel() */
             myst_longjmp(&thread->jmpbuf, 1);
@@ -5573,6 +5566,12 @@ static long _syscall(void* args_)
                 timeout_ts &&
                 myst_is_bad_addr_read_write(timeout_ts, sizeof(*timeout_ts)))
                 ret = -EFAULT;
+            else if (nfds > RLIMIT_NOFILE)
+                ret = -EINVAL;
+            else if (
+                nfds && fds &&
+                myst_is_bad_addr_read_write(fds, sizeof(*fds) * nfds))
+                ret = -EFAULT;
             else
             {
                 timeout = (timeout_ts == NULL)
@@ -5580,8 +5579,33 @@ static long _syscall(void* args_)
                               : (timeout_ts->tv_sec * 1000 +
                                  timeout_ts->tv_nsec / 1000000);
                 myst_signal_sigprocmask(SIG_SETMASK, sigmask, &origmask);
+
+#if 0
+                //do {
+                    printf("CALLING POLL\n");
+#endif
                 ret = myst_syscall_poll(fds, nfds, timeout, false);
+#if 0
+                    printf("POLL returned %ld\n", ret);
+                    if (ret == -EINTR)
+                    {
+                        printf("We were interrupted!\n");
+                        if (myst_signal_has_active_signals(thread))
+                        {
+                            printf("We have signals to process");
+                            myst_signal_process(thread);
+                        }
+                    }
+                //} while (ret == -EINTR);
+                printf("ppoll ret = %ld\n", ret);
+#endif
                 myst_signal_sigprocmask(SIG_SETMASK, &origmask, NULL);
+
+#if 0
+                bool have_signals = myst_signal_has_active_signals(thread);
+                if (have_signals)
+                    ret = -EINTR;
+#endif
             }
 
             BREAK(_return(n, ret));

@@ -6,12 +6,14 @@
 #include <poll.h>
 #include <stddef.h>
 #include <stdlib.h>
+#include <sys/mman.h>
 #include <time.h>
 
 #include <myst/defs.h>
 #include <myst/eraise.h>
 #include <myst/fdops.h>
 #include <myst/fdtable.h>
+#include <myst/mmanutils.h>
 #include <myst/signal.h>
 #include <myst/sockdev.h>
 #include <myst/syscall.h>
@@ -216,6 +218,12 @@ long myst_syscall_poll(
 {
     long ret = 0;
     long r;
+
+    if (nfds > RLIMIT_NOFILE)
+        ERAISE(-EINVAL);
+    else if (
+        nfds && fds && myst_is_bad_addr_read_write(fds, sizeof(*fds) * nfds))
+        ERAISE(-EFAULT);
 
     ECHECK((r = _syscall_poll(fds, nfds, timeout, fail_badf)));
 

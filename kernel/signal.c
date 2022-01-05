@@ -154,11 +154,17 @@ long myst_signal_sigprocmask(int how, const sigset_t* set, sigset_t* oldset)
     {
         uint64_t mask = _sigset_to_uint64(set);
         if (how == SIG_SETMASK)
+        {
             thread->signal.mask = mask;
+        }
         else if (how == SIG_BLOCK)
+        {
             thread->signal.mask |= mask;
+        }
         else if (how == SIG_UNBLOCK)
+        {
             thread->signal.mask &= ~mask;
+        }
     }
 
 done:
@@ -345,14 +351,6 @@ static long _default_signal_handler(unsigned signum)
         myst_kill_thread_group();
 
         thread->thread_status = MYST_KILLED;
-
-        /* If we were forked and fork mode is wait for exec, notify calling
-         * parent
-         */
-        if (process->is_pseudo_fork_process)
-        {
-            myst_fork_exec_futex_wake(process);
-        }
     }
 
     myst_longjmp(&thread->jmpbuf, 1);
@@ -634,6 +632,11 @@ long myst_signal_deliver(
 {
     long ret = 0;
     struct siginfo_list_item* new_item = NULL;
+    myst_process_t* process = thread->process;
+    uint64_t handler = 0;
+
+    if (process->signal.sigactions)
+        handler = process->signal.sigactions[signum - 1].handler;
 
 #ifdef TRACE
     printf(
@@ -666,6 +669,8 @@ long myst_signal_deliver(
 
     uint64_t mask = (uint64_t)1 << (signum - 1);
 
+    /* Only deliver if the signal is not being ignored */
+    if ((handler != (uint64_t)SIG_IGN) || (signum == SIGKILL))
     {
         new_item = calloc(1, sizeof(struct siginfo_list_item));
         if (new_item == NULL)
@@ -696,22 +701,27 @@ long myst_signal_deliver(
 
         myst_spin_unlock(&thread->signal.lock);
 
-        // Wake up target if necessary
-        if (thread->signal.waiting_on_event)
+        // If this event is not being blocked, wake up the necessary threads */
+        if ((!(thread->signal.mask & mask)) || (signum == SIGKILL))
         {
-            myst_tcall_wake(thread->event);
-        }
-    }
+            // Wake up target if necessary
+            if (thread->signal.waiting_on_event)
+            {
+                myst_tcall_wake(thread->event);
+            }
 
 #if (MYST_INTERRUPT_WITH_SIGNAL == 1)
-    /* Wake up the thread if blocked in the target */
-    myst_interrupt_thread(thread);
+            /* Wake up the thread if blocked in the target */
+            myst_interrupt_thread(thread);
 #elif (MYST_INTERRUPT_WITH_SIGNAL == -1)
-    /* Make sure any polls get woken up to process any outstanding events */
-    myst_tcall_poll_wake();
+            /* Make sure any polls get woken up to process any outstanding
+             * events */
+            myst_tcall_poll_wake();
 #else
 #error "MYST_INTERRUPT_WITH_SIGNAL undefined"
 #endif
+        }
+    }
 
     if (!__sync_val_compare_and_swap(&thread->pause_futex, 0, 1))
     {
