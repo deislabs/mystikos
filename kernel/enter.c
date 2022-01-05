@@ -655,6 +655,7 @@ static void _print_boottime(void)
 
 /* the main thread is the only thread that is not on the heap */
 static myst_thread_t _main_thread;
+myst_process_t* myst_main_process = 0;
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstack-usage="
@@ -765,6 +766,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         &_main_thread, args->event, args->cwd, args->target_tid));
     thread = &_main_thread;
     process = thread->process;
+    myst_main_process = process;
 
     myst_copy_host_uid_gid_mappings(&args->host_enc_uid_gid_mappings);
 

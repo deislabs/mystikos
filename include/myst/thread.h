@@ -549,7 +549,7 @@ myst_thread_t* myst_find_thread(int tid);
  * by some other thread.*/
 myst_process_t* myst_find_process_from_pid(pid_t pid, bool include_zombies);
 
-void myst_fork_exec_futex_wake(myst_process_t* process);
+void myst_fork_exec_futex_wake(pid_t vfork_parent_pid, pid_t vfork_parent_tid);
 
 size_t myst_kill_thread_group();
 

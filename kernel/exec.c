@@ -1134,7 +1134,8 @@ int myst_exec(
      * launched us in the case we were created in the fork/exec wait mode. */
     if (process->is_pseudo_fork_process)
     {
-        myst_fork_exec_futex_wake(process);
+        myst_fork_exec_futex_wake(
+            process->vfork_parent_pid, process->vfork_parent_tid);
 
         process->is_pseudo_fork_process = false;
         process->vfork_parent_tid = 0;
