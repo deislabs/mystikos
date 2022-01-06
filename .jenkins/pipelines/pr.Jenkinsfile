@@ -123,25 +123,14 @@ pipeline {
         stage('Run PR Tests') {
             when {
                 /* Jobs must meet any of the situations below in order to build:
-                    1. Is started manually, or by a scheduler
-                    2. Is testing a PR to main that contains more than just documentation changes
+                    1. Started manually
+                    2. Started by a scheduler
+                    2. Triggered by a GitHub pull request to main
                 */
                 anyOf {
                     triggeredBy 'UserIdCause'
                     triggeredBy 'TimerTrigger'
-                    allOf {
-                        anyOf {
-                            changeRequest target: 'main'
-                            branch 'staging'
-                            branch 'trying'
-                        }
-                        not {
-                            anyOf {
-                                changeset pattern: "doc/*"
-                                changeset pattern: ".*(txt|md)\$", comparator: "REGEXP"
-                            }
-                        }
-                    }
+                    changeRequest target: 'main'
                 }
             }
             matrix {
