@@ -38,6 +38,12 @@ pipeline {
            to determine whether a build is authorized to run in CI or not.
            This stage is ran only for Jenkins multibranch pipeline builds
         */
+        stage('Check concurrent builds') {
+            steps {
+                milestone(ordinal: Integer.parseInt(env.BUILD_ID)-1, label: "Cancel previous PR build")
+                milestone(ordinal: Integer.parseInt(env.BUILD_ID), label: "Start current PR builds")
+            }
+        }
         stage('Check access') {
             when {
                 expression { params.PULL_REQUEST_ID == "" }
