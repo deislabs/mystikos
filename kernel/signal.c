@@ -154,17 +154,11 @@ long myst_signal_sigprocmask(int how, const sigset_t* set, sigset_t* oldset)
     {
         uint64_t mask = _sigset_to_uint64(set);
         if (how == SIG_SETMASK)
-        {
             thread->signal.mask = mask;
-        }
         else if (how == SIG_BLOCK)
-        {
             thread->signal.mask |= mask;
-        }
         else if (how == SIG_UNBLOCK)
-        {
             thread->signal.mask &= ~mask;
-        }
     }
 
 done:

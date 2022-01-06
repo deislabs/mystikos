@@ -158,7 +158,6 @@
 /ltp/testcases/kernel/syscalls/personality/personality02:  SYS_personality()
 /ltp/testcases/kernel/syscalls/pivot_root/pivot_root01:  SYS_unshare()
 /ltp/testcases/kernel/syscalls/pkeys/pkey01:  SYS_pkey_alloc()
-/ltp/testcases/kernel/syscalls/ppoll/ppoll01:  SYS_ppoll()
 /ltp/testcases/kernel/syscalls/prctl/prctl02:  SYS_capget()
 /ltp/testcases/kernel/syscalls/pselect/pselect01:  SYS_pselect6()
 /ltp/testcases/kernel/syscalls/pselect/pselect01_64:  SYS_pselect6()

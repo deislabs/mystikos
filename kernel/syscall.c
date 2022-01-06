@@ -3986,14 +3986,6 @@ static long _syscall(void* args_)
             long ret = myst_syscall_clone(
                 fn, child_stack, flags, arg, ptid, newtls, ctid);
 
-            if ((flags & CLONE_VFORK))
-            {
-                // ATTN: give the thread a little time to start to avoid a
-                // syncyhronization error. This suppresses a failure in the
-                // popen test. This should be investigated later.
-                // myst_sleep_msec(5, false);
-            }
-
             BREAK(_return(n, ret));
         }
         case SYS_myst_get_fork_info:
@@ -5580,32 +5572,9 @@ static long _syscall(void* args_)
                                  timeout_ts->tv_nsec / 1000000);
                 myst_signal_sigprocmask(SIG_SETMASK, sigmask, &origmask);
 
-#if 0
-                //do {
-                    printf("CALLING POLL\n");
-#endif
                 ret = myst_syscall_poll(fds, nfds, timeout, false);
-#if 0
-                    printf("POLL returned %ld\n", ret);
-                    if (ret == -EINTR)
-                    {
-                        printf("We were interrupted!\n");
-                        if (myst_signal_has_active_signals(thread))
-                        {
-                            printf("We have signals to process");
-                            myst_signal_process(thread);
-                        }
-                    }
-                //} while (ret == -EINTR);
-                printf("ppoll ret = %ld\n", ret);
-#endif
-                myst_signal_sigprocmask(SIG_SETMASK, &origmask, NULL);
 
-#if 0
-                bool have_signals = myst_signal_has_active_signals(thread);
-                if (have_signals)
-                    ret = -EINTR;
-#endif
+                myst_signal_sigprocmask(SIG_SETMASK, &origmask, NULL);
             }
 
             BREAK(_return(n, ret));

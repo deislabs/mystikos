@@ -863,7 +863,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/pkeys/pkey01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/poll/poll01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/poll/poll02 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/ppoll/ppoll01 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/ppoll/ppoll01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/prctl/prctl01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/prctl/prctl02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/prctl/prctl03 | 0 | 0 | 0 |
