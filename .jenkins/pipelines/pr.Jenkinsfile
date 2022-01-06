@@ -38,12 +38,18 @@ pipeline {
            to determine whether a build is authorized to run in CI or not.
            This stage is ran only for Jenkins multibranch pipeline builds
         */
+        stage('Check concurrent builds') {
+            steps {
+                milestone(ordinal: Integer.parseInt(env.BUILD_ID), label: "Prevent concurrent PR builds")
+            }
+        }
         stage('Check access') {
             when {
                 expression { params.PULL_REQUEST_ID == "" }
                 expression { env.CHANGE_ID != null }
             }
             steps {
+                milestone(label:"Prevent conccurent PR builds")
                 sh """
                     while sudo lsof /var/lib/dpkg/lock-frontend | grep dpkg; do sleep 3; done
                     sudo apt-get -y --option Acquire::Retries=5 install jq
@@ -118,6 +124,13 @@ pipeline {
                         )
                     }
                 }
+            }
+        }
+        stage('Wait for concurrent builds') {
+            steps {
+                milestone(label:"Prevent conccurent PR builds")
+                sleep 120 // Wait two minutes for subsequent commits before starting build
+                milestone(label:"Prevent conccurent PR builds")
             }
         }
         stage('Run PR Tests') {
