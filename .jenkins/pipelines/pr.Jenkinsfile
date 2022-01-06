@@ -23,6 +23,7 @@ pipeline {
     options {
         timeout(time: 300, unit: 'MINUTES')
         timestamps ()
+        disableConcurrentBuilds(abortPrevious: true)
     }
     parameters {
         string(name: "REPOSITORY", defaultValue: "deislabs")
