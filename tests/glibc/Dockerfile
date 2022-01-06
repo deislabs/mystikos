@@ -1,13 +1,13 @@
 FROM ubuntu:18.04 as builder
+ARG TAG=release/2.34/master
 
 RUN apt-get update && apt-get install -y \
     build-essential bison git gawk python3
 
 # checkout glibc
 WORKDIR /
-RUN git clone https://sourceware.org/git/glibc.git
+RUN git clone -b ${TAG} https://sourceware.org/git/glibc.git
 WORKDIR /glibc
-RUN git checkout release/2.34/master
 COPY patch.diff .
 RUN git apply patch.diff
 
