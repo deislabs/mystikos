@@ -40,6 +40,8 @@ while getopts "hm:o:u::t::" option; do
     esac
 done
 
+MYST_TARBALL="Ubuntu-${UBUNTU_VERSION//.}_mystikos-${MYSTIKOS_RELEASE_VERSION}-x86_64.tar.gz"
+
 # Catch extra parameters
 shift "$((OPTIND-1))"
 if [[ ! -z "${1}" ]]; then
@@ -65,22 +67,22 @@ case "${UBUNTU_VERSION}" in
 esac
 
 # Download Mystikos release
-if [[ -f "${BUILD_DIR}/mystikos-${MYSTIKOS_RELEASE_VERSION}-x86_64.tar.gz" ]]; then
-    rm "${BUILD_DIR}/mystikos-${MYSTIKOS_RELEASE_VERSION}-x86_64.tar.gz"
+if [[ -f "${BUILD_DIR}/${MYST_TARBALL}" ]]; then
+    rm "${BUILD_DIR}/${MYST_TARBALL}"
 fi
 wget \
   --directory-prefix="${BUILD_DIR}" \
   --no-verbose \
   --tries=3 \
   --waitretry=3 \
-  https://github.com/deislabs/mystikos/releases/download/v${MYSTIKOS_RELEASE_VERSION}/Ubuntu-${UBUNTU_VERSION//./}_mystikos-${MYSTIKOS_RELEASE_VERSION}-x86_64.tar.gz
+  https://github.com/deislabs/mystikos/releases/download/v${MYSTIKOS_RELEASE_VERSION}/${MYST_TARBALL}
 
 # Build Docker image
 set -x
 DOCKER_BUILDKIT=1 docker build \
   --build-arg UBUNTU_VERSION="${UBUNTU_VERSION}" \
   --build-arg OPENENCLAVE_BASE_IMAGE_TAG="${OPENENCLAVE_BASE_IMAGE_TAG}" \
-  --build-arg MYSTIKOS_TARBALL="Ubuntu-${UBUNTU_VERSION//./}_mystikos-${MYSTIKOS_RELEASE_VERSION}-x86_64.tar.gz" \
+  --build-arg MYSTIKOS_TARBALL="${MYST_TARBALL}" \
   --no-cache \
   --file "${SOURCE_DIR}/Dockerfile" \
   --tag "mystikos-${UBUNTU_CODENAME}:${IMAGE_TAG}" \
