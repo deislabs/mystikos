@@ -204,6 +204,7 @@
 /ltp/testcases/kernel/syscalls/pipe2/pipe2_01
 /ltp/testcases/kernel/syscalls/pipe2/pipe2_04
 /ltp/testcases/kernel/syscalls/poll/poll01
+/ltp/testcases/kernel/syscalls/ppoll/ppoll01
 /ltp/testcases/kernel/syscalls/pread/pread01
 /ltp/testcases/kernel/syscalls/pread/pread01_64
 /ltp/testcases/kernel/syscalls/pread/pread02
