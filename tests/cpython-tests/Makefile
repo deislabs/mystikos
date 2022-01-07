@@ -17,9 +17,8 @@ endif
 
 MPDB=$(TOP)/scripts/mpdb.py
 TESTFILE=tests.passed
-TEST = test_regrtest
-TESTCASE = test_glob.GlobTests.test_recursive_glob
-TESTCASE = test_socket.SendmsgUnixStreamTest.testSendmsgDontWait
+TEST = test_repl
+TESTCASE = test_urllib2_localnet.TestUrlopen.test_line_iteration
 VER=3.9
 FS=ext2fs$(VER)
 
@@ -50,12 +49,18 @@ clean:
 	rm -fr appdir* ext2fs* @test_101* hostfs
 
 tests:
-	$(RUNTEST) ./exec.sh
+	$(MAKE) run-3.8
+	$(MAKE) run-3.9
+	$(MAKE) run-3.10
 
-run-list: ext2fs3.8 ext2fs3.9 ext2fs3.10
-	$(MYST_EXEC) $(OPTS) ext2fs3.8 /cpython/python -m test -f /$(TESTFILE) --timeout 120 -q
-	$(MYST_EXEC) $(OPTS) ext2fs3.9 /cpython/python -m test -f /$(TESTFILE) --timeout 120 -q
-	$(MYST_EXEC) $(OPTS) ext2fs3.10 /cpython/python -m test -f /$(TESTFILE) --timeout 120 -q
+run-3.8: ext2fs3.8
+	$(MYST_EXEC) $(OPTS) ext2fs3.8 /cpython/python -m test -f /$(TESTFILE) --timeout 120 -v
+
+run-3.9: ext2fs3.9
+	$(MYST_EXEC) $(OPTS) ext2fs3.9 /cpython/python -m test -f /$(TESTFILE) --timeout 120 -v
+
+run-3.10: ext2fs3.10
+	$(MYST_EXEC) $(OPTS) ext2fs3.10 /cpython/python -m test -f /$(TESTFILE) --timeout 120 -v
 
 one: $(FS)
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) /cpython/python -m test $(TEST) -v
