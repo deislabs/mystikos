@@ -574,6 +574,33 @@ done:
     return ret;
 }
 
+static int _sys_vcallback(
+    myst_file_t* self,
+    myst_buf_t* vbuf,
+    const char* entrypath)
+{
+    (void)self;
+    int ret = 0;
+
+    (void)entrypath;
+
+    if (!vbuf)
+        ERAISE(-EINVAL);
+
+    myst_buf_clear(vbuf);
+    char tmp[128];
+
+    ECHECK(myst_snprintf(tmp, sizeof(tmp), "32768\n"));
+    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+
+done:
+
+    if (ret != 0)
+        myst_buf_release(vbuf);
+
+    return ret;
+}
+
 int create_proc_root_entries()
 {
     int ret = 0;
@@ -607,6 +634,15 @@ int create_proc_root_entries()
         v_cb.open_cb = _stat_vcallback;
         ECHECK(myst_create_virtual_file(
             _procfs, "/stat", S_IFREG | S_IRUSR, v_cb));
+    }
+
+    /* Create /proc/sys/kernel */
+    {
+        myst_vcallback_t v_cb = {0};
+        v_cb.open_cb = _sys_vcallback;
+        ECHECK(myst_mkdirhier("/proc/sys/kernel", 777));
+        ECHECK(myst_create_virtual_file(
+            _procfs, "/sys/kernel/pid_max", S_IFREG | S_IRUSR, v_cb));
     }
 
 done:
