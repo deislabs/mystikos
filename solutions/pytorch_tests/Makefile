@@ -111,7 +111,7 @@ and not test_cross_entropy_loss_precision \
 and not test_l1_loss_correct"
 run-test-nn: rootfs
 	$(RUN_PYTEST) /workspace/pytorch/test/test_nn.py -k $(EXCLUDE_TESTS) 2>&1 | tee $@.out
-	grep -q -E '1331 passed.*1435 skipped.*36 deselected.*3 xfailed' $@.out
+	grep -q -E '1325 passed.*1435 skipped.*42 deselected.*3 xfailed' $@.out
 
 .PHONY: run-test-nn-8g
 run-test-nn-8g: EXCLUDE_TESTS = "test_avg_pool2d_nhwc_cpu_float32 \
