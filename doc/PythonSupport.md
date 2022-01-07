@@ -46,7 +46,7 @@ A rule of thumb is to choose the latest versions of third-party libraries. As we
 | Partial | Some tests in files listed in tests.partially_passed fail/ error out on execution.<br>These failures and error are caused by one of below:<br>1. pypaper linux specific errors, documented<br>here - https://pyperclip.readthedocs.io/en/latest/#not-implemented-error<br>2. s3fs error (which is currently an optional file handling mechanism in pandas)<br>https://bleepcoder.com/evalml/557744402/unit-test-fails-after-upgrading-to-pandas-1-0-0 | [solutions/pandas_tests](https://github.com/deislabs/mystikos/tree/main/solutions/pandas_tests) |
 
 
-### 2.3. ensorFlow Lite
+### 2.3. TensorFlow Lite
 | Supported | Known Limitations & Caveats | Sample |
 | :---: | :--- | :--- |
 | Limited | numpy installed with python3-tflite-runtime is broken.<br>Remove it to use pip-intalled version | [solutions/tensorflow_lite](https://github.com/deislabs/mystikos/tree/main/solutions/tensorflow_lite) |
@@ -63,6 +63,22 @@ A rule of thumb is to choose the latest versions of third-party libraries. As we
 | Yes | In nginx.conf, set master_process off to avoid using syscall SYS_rt_sigsuspend() which is not hanlded by Mystikos yet<br>`master_process off;`<br>The following pytest would fail for now because of issue #503.<br>`test_instance_config.py::test_egg_installed_paths` | [solutions/python_flask_tests](https://github.com/deislabs/mystikos/tree/main/solutions/python_flask_tests) |
 
 ### 2.6. Azure SDK for Python
-| Supported | Packages that | Sample/Tests |
+| Supported | Packages | Sample/Tests |
 | :---: | :--- | :--- |
 | Yes | The following packages have been verified:<br> - azure-keyvault-administration<br> - azure-keyvault-certificates<br> - azure-keyvault-keys<br> - azure-keyvault-secrets<br> - azure-mgmt-keyvault<br> - azure-identity<br> - azure-storage-file-datalake<br> - azure-storage-file-share<br> - azure-storage-queue<br> - azure-mgmt-storage<br> - azure-mgmt-storagesync<br> - azure-storage-blob | [solutions/python_azure_sdk](https://github.com/deislabs/mystikos/tree/main/solutions/python_azure_sdk) |
+
+### 2.7. Other popular Python packages
+We haven't verified the full test suites of the following packages. Their support status are based on our experience of running applications that call these packages.
+| Packages | Supported |
+| :--- | :--- |
+| **logzero** | Yes |
+| **pycrypto** | Yes |
+| **pyjwt** | Yes |
+| **nose** | Yes |
+| **redis** | Yes |
+| **pyodbc** | only works with SQL AE |
+| **sqlalchemy** | same limitation as pyodbc |
+| **pycurl** | Yes |
+| **authlib** | Yes |
+| **gunicorn** | No, it requires full fork() support.<br>It does not work with fork/exec. |
+| **fabric** | No (Reason to be found) |
