@@ -664,7 +664,8 @@ static ssize_t _send(
 
 done:
 
-    _unlock(&_obj(peer)->mutex, &locked);
+    if (peer && peer->shared)
+        _unlock(&_obj(peer)->mutex, &locked);
 
     T(printf(">>>> %s(): ret=%d\n", __FUNCTION__, ret);)
     return ret;
