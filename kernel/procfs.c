@@ -636,7 +636,7 @@ int create_proc_root_entries()
             _procfs, "/stat", S_IFREG | S_IRUSR, v_cb));
     }
 
-    /* Create /proc/sys/kernel */
+    /* Create /proc/sys/kernel/pid_max */
     {
         myst_vcallback_t v_cb = {0};
         v_cb.open_cb = _sys_vcallback;

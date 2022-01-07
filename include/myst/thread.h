@@ -35,6 +35,8 @@
 typedef struct myst_thread myst_thread_t;
 typedef struct myst_process myst_process_t;
 
+extern myst_process_t* myst_main_process;
+
 typedef struct myst_td myst_td_t;
 
 enum myst_thread_status
