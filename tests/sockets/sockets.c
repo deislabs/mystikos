@@ -181,6 +181,14 @@ static void* _cli_thread_func(void* arg)
 
     assert((sock = socket(args->domain, SOCK_STREAM | SOCK_CLOEXEC, 0)) >= 0);
 
+    /* test dup() */
+    {
+        int tmp_sock = dup(sock);
+        assert(tmp_sock >= 0);
+        assert(close(sock) == 0);
+        sock = tmp_sock;
+    }
+
     if (args->domain == AF_INET)
     {
         printf("client: connect\n");
