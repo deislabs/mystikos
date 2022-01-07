@@ -71,16 +71,12 @@ typedef struct acceptor
     myst_list_t list;
 } acceptor_t;
 
-struct myst_sock
+struct shared
 {
-    myst_sock_t* prev; /* must align with myst_list_node_t.prev */
-    myst_sock_t* next; /* must align with myst_list_node_t.next */
-
     /* common fields */
     uint64_t magic;    /* MAGIC */
     myst_sock_t* peer; /* peer of this socket */
     bool nonblock;     /* whether socket is non-blocking */
-    bool cloexec;      /* whether to close this socket on execv() */
     bool closed;       /* whether socket is closed */
 
     /* input buffer (assumed size is DEFAULT_SO_RCVBUF) */
@@ -109,6 +105,18 @@ struct myst_sock
     myst_mutex_t mutex;
 
     _Atomic(size_t) ref_count;
+
+    /* Initially one: incremented by dup() and decremented by close() */
+    size_t dup_count;
+};
+
+struct myst_sock
+{
+    myst_sock_t* prev; /* must align with myst_list_node_t.prev */
+    myst_sock_t* next; /* must align with myst_list_node_t.next */
+
+    struct shared* shared;
+    bool cloexec; /* whether to close this socket on execv() */
 };
 
 static acceptor_t _acceptors[MAX_ACCEPTORS];
@@ -241,24 +249,33 @@ done:
     return ret;
 }
 
+MYST_INLINE struct shared* _obj(const myst_sock_t* sock)
+{
+    return sock->shared;
+}
+
 MYST_INLINE bool _valid_sock(const myst_sock_t* sock)
 {
-    return sock && sock->magic == MAGIC;
+    return sock && _obj(sock)->magic == MAGIC;
 }
 
 MYST_INLINE void _ref_sock(myst_sock_t* sock)
 {
-    if (sock)
-        sock->ref_count++;
+    if (sock && sock->shared)
+        _obj(sock)->ref_count++;
 }
 
 MYST_INLINE void _unref_sock(myst_sock_t* sock)
 {
-    if (sock && --sock->ref_count == 0)
+    if (sock && sock->shared && --_obj(sock)->ref_count == 0)
     {
-        myst_cond_destroy(&sock->cond);
-        myst_mutex_destroy(&sock->mutex);
-        myst_buf_release(&sock->buf);
+        myst_cond_destroy(&_obj(sock)->cond);
+        myst_mutex_destroy(&_obj(sock)->mutex);
+        myst_buf_release(&_obj(sock)->buf);
+
+        memset(sock->shared, 0, sizeof(struct shared));
+        free(sock->shared);
+
         memset(sock, 0, sizeof(myst_sock_t));
         free(sock);
     }
@@ -326,22 +343,26 @@ static int _new_sock(
     if (!(sock = calloc(1, sizeof(myst_sock_t))))
         ERAISE(-ENOMEM);
 
-    ECHECK(_new_host_socketpair(nonblock, sock->host_socketpair));
+    if (!(sock->shared = calloc(1, sizeof(struct shared))))
+        ERAISE(-ENOMEM);
 
-    sock->magic = MAGIC;
-    sock->peer = NULL;
-    sock->acceptor = NULL;
-    sock->state = STATE_WR_ENABLED;
-    sock->nonblock = nonblock;
+    ECHECK(_new_host_socketpair(nonblock, _obj(sock)->host_socketpair));
+
+    _obj(sock)->magic = MAGIC;
+    _obj(sock)->peer = NULL;
+    _obj(sock)->acceptor = NULL;
+    _obj(sock)->state = STATE_WR_ENABLED;
+    _obj(sock)->nonblock = nonblock;
     sock->cloexec = cloexec;
-    sock->so_sndbuf = DEFAULT_SO_SNDBUF;
-    sock->so_rcvbuf = DEFAULT_SO_RCVBUF;
-    sock->ref_count = 1;
+    _obj(sock)->so_sndbuf = DEFAULT_SO_SNDBUF;
+    _obj(sock)->so_rcvbuf = DEFAULT_SO_RCVBUF;
+    _obj(sock)->ref_count = 1;
+    _obj(sock)->dup_count = 1;
 
     if ((type & SOCK_STREAM))
-        sock->so_type = SOCK_STREAM;
+        _obj(sock)->so_type = SOCK_STREAM;
     else if ((type & SOCK_DGRAM))
-        sock->so_type = SOCK_DGRAM;
+        _obj(sock)->so_type = SOCK_DGRAM;
 
     *sock_out = sock;
     sock = NULL;
@@ -349,7 +370,12 @@ static int _new_sock(
 done:
 
     if (sock)
-        _unref_sock(sock);
+    {
+        if (sock->shared)
+            free(sock->shared);
+
+        free(sock);
+    }
 
     return ret;
 }
@@ -426,19 +452,19 @@ static void _set_state(myst_sock_t* sock, bool writable, bool readable)
 {
     if (writable && readable)
     {
-        sock->state = STATE_RDWR_ENABLED;
+        _obj(sock)->state = STATE_RDWR_ENABLED;
     }
     else if (!writable && readable)
     {
-        sock->state = STATE_RD_ENABLED;
+        _obj(sock)->state = STATE_RD_ENABLED;
     }
     else if (writable && !readable)
     {
-        sock->state = STATE_WR_ENABLED;
+        _obj(sock)->state = STATE_WR_ENABLED;
     }
     else if (!writable && !readable)
     {
-        sock->state = STATE_NONE_ENABLED;
+        _obj(sock)->state = STATE_NONE_ENABLED;
     }
 }
 
@@ -446,30 +472,30 @@ static int _do_state_transition(myst_sock_t* sock)
 {
     int ret = 0;
     bool peer_locked = false;
-    myst_sock_t* peer = sock->peer;
+    myst_sock_t* peer = _obj(sock)->peer;
 
     T(printf(">>>> %s(): enter\n", __FUNCTION__);)
 
     if (!peer)
         ERAISE(-ENOTCONN);
 
-    _lock(&peer->mutex, &peer_locked);
-    const bool writable = (peer->buf.size != BUF_SIZE);
-    const bool readable = (sock->buf.size > 0);
+    _lock(&_obj(peer)->mutex, &peer_locked);
+    const bool writable = (_obj(peer)->buf.size != BUF_SIZE);
+    const bool readable = (_obj(sock)->buf.size > 0);
 
-    switch (sock->state)
+    switch (_obj(sock)->state)
     {
         // STATE_WR_ENABLED    [ ][ ]
         case STATE_WR_ENABLED: /* write-empty and read-empty */
         {
             if (!writable)
             {
-                ECHECK(_fill_host_sock(sock->host_socketpair[0]));
+                ECHECK(_fill_host_sock(_obj(sock)->host_socketpair[0]));
             }
 
             if (readable)
             {
-                ECHECK(_fill_host_sock(sock->host_socketpair[1]));
+                ECHECK(_fill_host_sock(_obj(sock)->host_socketpair[1]));
             }
 
             _set_state(sock, writable, readable);
@@ -480,12 +506,12 @@ static int _do_state_transition(myst_sock_t* sock)
         {
             if (writable)
             {
-                ECHECK(_empty_host_sock(sock->host_socketpair[1]));
+                ECHECK(_empty_host_sock(_obj(sock)->host_socketpair[1]));
             }
 
             if (!readable)
             {
-                ECHECK(_empty_host_sock(sock->host_socketpair[0]));
+                ECHECK(_empty_host_sock(_obj(sock)->host_socketpair[0]));
             }
 
             _set_state(sock, writable, readable);
@@ -496,12 +522,12 @@ static int _do_state_transition(myst_sock_t* sock)
         {
             if (!writable)
             {
-                ECHECK(_fill_host_sock(sock->host_socketpair[0]));
+                ECHECK(_fill_host_sock(_obj(sock)->host_socketpair[0]));
             }
 
             if (!readable)
             {
-                ECHECK(_empty_host_sock(sock->host_socketpair[0]));
+                ECHECK(_empty_host_sock(_obj(sock)->host_socketpair[0]));
             }
 
             _set_state(sock, writable, readable);
@@ -512,12 +538,12 @@ static int _do_state_transition(myst_sock_t* sock)
         {
             if (writable)
             {
-                ECHECK(_empty_host_sock(sock->host_socketpair[1]));
+                ECHECK(_empty_host_sock(_obj(sock)->host_socketpair[1]));
             }
 
             if (readable)
             {
-                ECHECK(_fill_host_sock(sock->host_socketpair[1]));
+                ECHECK(_fill_host_sock(_obj(sock)->host_socketpair[1]));
             }
 
             _set_state(sock, writable, readable);
@@ -525,12 +551,12 @@ static int _do_state_transition(myst_sock_t* sock)
         }
     }
 
-    _unlock(&sock->peer->mutex, &peer_locked);
+    _unlock(&_obj(_obj(sock)->peer)->mutex, &peer_locked);
 
 done:
 
     if (peer)
-        _unlock(&peer->mutex, &peer_locked);
+        _unlock(&_obj(peer)->mutex, &peer_locked);
 
     T(printf(">>>> %s(): ret=%d\n", __FUNCTION__, ret);)
 
@@ -566,28 +592,28 @@ static ssize_t _send(
         ERAISE(-ENOTSUP);
     }
 
-    if (!sock->peer)
+    if (!_obj(sock)->peer)
         ERAISE(-ENOTCONN);
 
     if (count == 0)
         goto done;
 
-    peer = sock->peer;
+    peer = _obj(sock)->peer;
 
-    _lock(&peer->mutex, &locked);
+    _lock(&_obj(peer)->mutex, &locked);
     {
         const uint8_t* ptr = buf;
         size_t rem = count;
 
         while (rem > 0)
         {
-            const size_t space = BUF_SIZE - peer->buf.size;
+            const size_t space = BUF_SIZE - _obj(peer)->buf.size;
             const size_t min = _min(rem, space);
             int wait_ret = 0;
 
             if (min) /* if the buffer has any space */
             {
-                ECHECK(myst_buf_append(&peer->buf, ptr, min));
+                ECHECK(myst_buf_append(&_obj(peer)->buf, ptr, min));
                 rem -= min;
                 ptr += min;
                 nwritten += min;
@@ -596,11 +622,11 @@ static ssize_t _send(
                 ECHECK(_do_state_transition(peer));
 
                 /* signal the peer that there is something to read */
-                myst_cond_signal(&peer->cond, FUTEX_BITSET_MATCH_ANY);
+                myst_cond_signal(&_obj(peer)->cond, FUTEX_BITSET_MATCH_ANY);
             }
             else /* the buffer is full */
             {
-                if (sock->nonblock)
+                if (_obj(sock)->nonblock)
                 {
                     if (nwritten == 0)
                     {
@@ -614,12 +640,12 @@ static ssize_t _send(
                 else
                 {
                     /* break out if peer has closed */
-                    if (peer->closed)
+                    if (_obj(peer)->closed)
                         break;
 
                     /* wait for pipe to become write enabled or closed */
                     wait_ret = myst_cond_wait_no_signal_processing(
-                        &peer->cond, &peer->mutex);
+                        &_obj(peer)->cond, &_obj(peer)->mutex);
                 }
             }
 
@@ -632,13 +658,13 @@ static ssize_t _send(
             }
         }
     }
-    _unlock(&peer->mutex, &locked);
+    _unlock(&_obj(peer)->mutex, &locked);
 
     ret = nwritten;
 
 done:
 
-    _unlock(&peer->mutex, &locked);
+    _unlock(&_obj(peer)->mutex, &locked);
 
     T(printf(">>>> %s(): ret=%d\n", __FUNCTION__, ret);)
     return ret;
@@ -670,25 +696,25 @@ static ssize_t _recv(
     if (count == 0)
         goto done;
 
-    if (!sock->peer)
+    if (!_obj(sock)->peer)
         ERAISE(-ENOTCONN);
 
-    peer = sock->peer;
+    peer = _obj(sock)->peer;
 
-    _lock(&sock->mutex, &locked);
+    _lock(&_obj(sock)->mutex, &locked);
     {
         uint8_t* ptr = buf;
         size_t rem = count;
 
         while (rem > 0)
         {
-            size_t min = _min(rem, sock->buf.size);
+            size_t min = _min(rem, _obj(sock)->buf.size);
             int wait_ret = 0;
 
             if (min) /* there is data in the buffer */
             {
-                memcpy(ptr, sock->buf.data, min);
-                ECHECK(myst_buf_remove(&sock->buf, 0, min));
+                memcpy(ptr, _obj(sock)->buf.data, min);
+                ECHECK(myst_buf_remove(&_obj(sock)->buf, 0, min));
                 rem -= min;
                 ptr += min;
                 nread += min;
@@ -697,15 +723,15 @@ static ssize_t _recv(
                 ECHECK(_do_state_transition(peer));
 
                 /* signal that pipe is now write enabled */
-                myst_cond_signal(&sock->cond, FUTEX_BITSET_MATCH_ANY);
+                myst_cond_signal(&_obj(sock)->cond, FUTEX_BITSET_MATCH_ANY);
             }
             else /* the buffer is empty */
             {
                 /* break out if peer has closed the connection */
-                if (sock->closed)
+                if (_obj(sock)->closed)
                     break;
 
-                if (sock->nonblock)
+                if (_obj(sock)->nonblock)
                 {
                     if (nread == 0)
                     {
@@ -720,7 +746,7 @@ static ssize_t _recv(
                 {
                     /* block here until pipe becomes read enabled */
                     wait_ret = myst_cond_wait_no_signal_processing(
-                        &sock->cond, &sock->mutex);
+                        &_obj(sock)->cond, &_obj(sock)->mutex);
                 }
             }
 
@@ -733,13 +759,13 @@ static ssize_t _recv(
                 ERAISE(-EINTR);
         }
     }
-    _unlock(&sock->mutex, &locked);
+    _unlock(&_obj(sock)->mutex, &locked);
 
     ret = nread;
 
 done:
 
-    _unlock(&sock->mutex, &locked);
+    _unlock(&_obj(sock)->mutex, &locked);
 
     T(printf(">>>> %s(): ret=%d\n", __FUNCTION__, ret);)
     return ret;
@@ -809,7 +835,7 @@ static int _udsdev_bind(
         ERAISE(-EINVAL);
 
     /* fail if the socket is already bound to an address */
-    if (*sock->bind_addr.sun_path)
+    if (*_obj(sock)->bind_addr.sun_path)
         ERAISE(-EINVAL);
 
     /* raise EADDRINUSE if file already exists */
@@ -824,8 +850,8 @@ static int _udsdev_bind(
     ECHECK(_create_uds_file(sun->sun_path));
 
     /* save the bind address */
-    memset(&sock->bind_addr, 0, sizeof(sock->bind_addr));
-    memcpy(&sock->bind_addr, sun, sizeof(sock->bind_addr));
+    memset(&_obj(sock)->bind_addr, 0, sizeof(_obj(sock)->bind_addr));
+    memcpy(&_obj(sock)->bind_addr, sun, sizeof(_obj(sock)->bind_addr));
 
 done:
 
@@ -843,10 +869,11 @@ static int _udsdev_listen(myst_sockdev_t* dev, myst_sock_t* sock, int backlog)
         ERAISE(-EINVAL);
 
     /* if bind() has not been called yet */
-    if (*sock->bind_addr.sun_path == '\0')
+    if (*_obj(sock)->bind_addr.sun_path == '\0')
         ERAISE(-EOPNOTSUPP);
 
-    ECHECK(_create_acceptor(sock->bind_addr.sun_path, &sock->acceptor));
+    ECHECK(_create_acceptor(
+        _obj(sock)->bind_addr.sun_path, &_obj(sock)->acceptor));
     (void)backlog;
 
 done:
@@ -880,7 +907,7 @@ static int _udsdev_connect(
         ERAISE(-ECONNREFUSED);
 
     /* if this socket already has a peer */
-    if (sock->peer)
+    if (_obj(sock)->peer)
         ERAISE(-EINVAL);
 
     /* if this socket is already on an acceptor list */
@@ -903,15 +930,15 @@ static int _udsdev_connect(
     myst_mutex_unlock(&acceptor->mutex);
 
     /* wait for connection to be accepted */
-    myst_mutex_lock(&sock->mutex);
+    myst_mutex_lock(&_obj(sock)->mutex);
     {
         /* wait for acceptor to set the peer */
-        while (!sock->peer)
+        while (!_obj(sock)->peer)
         {
-            myst_cond_wait(&sock->cond, &sock->mutex);
+            myst_cond_wait(&_obj(sock)->cond, &_obj(sock)->mutex);
         }
     }
-    myst_mutex_unlock(&sock->mutex);
+    myst_mutex_unlock(&_obj(sock)->mutex);
 
 done:
 
@@ -935,10 +962,10 @@ static int _udsdev_accept4(
         ERAISE(-EINVAL);
 
     /* if listen() has not been called */
-    if (!sock->acceptor)
+    if (!_obj(sock)->acceptor)
         ERAISE(-EINVAL);
 
-    acceptor_t* acceptor = sock->acceptor;
+    acceptor_t* acceptor = _obj(sock)->acceptor;
 
     /* wait here to accept a connection */
     _lock(&acceptor->mutex, &locked);
@@ -970,8 +997,8 @@ static int _udsdev_accept4(
         ECHECK(_new_sock(nonblock, cloexec, SOCK_STREAM, &sv[1]));
 
         /* tie these two socket peers together */
-        _ref_sock(sv[0]->peer = sv[1]);
-        _ref_sock(sv[1]->peer = sv[0]);
+        _ref_sock(_obj(sv[0])->peer = sv[1]);
+        _ref_sock(_obj(sv[1])->peer = sv[0]);
 
         /* set the address */
         if (addr && addrlen)
@@ -992,9 +1019,9 @@ static int _udsdev_accept4(
     /* signal the peer that the connection has been accepted */
     if (sv[0] && sv[1])
     {
-        myst_mutex_lock(&sv[0]->mutex);
-        myst_cond_signal(&sv[0]->cond, FUTEX_BITSET_MATCH_ANY);
-        myst_mutex_unlock(&sv[0]->mutex);
+        myst_mutex_lock(&_obj(sv[0])->mutex);
+        myst_cond_signal(&_obj(sv[0])->cond, FUTEX_BITSET_MATCH_ANY);
+        myst_mutex_unlock(&_obj(sv[0])->mutex);
     }
 
 done:
@@ -1032,16 +1059,16 @@ static int _udsdev_getsockopt(
             switch (*optlen)
             {
                 case sizeof(uint8_t):
-                    *(uint8_t*)optval = sock->so_reuseaddr;
+                    *(uint8_t*)optval = _obj(sock)->so_reuseaddr;
                     break;
                 case sizeof(uint16_t):
-                    *(uint16_t*)optval = sock->so_reuseaddr;
+                    *(uint16_t*)optval = _obj(sock)->so_reuseaddr;
                     break;
                 case sizeof(uint32_t):
-                    *(uint32_t*)optval = sock->so_reuseaddr;
+                    *(uint32_t*)optval = _obj(sock)->so_reuseaddr;
                     break;
                 case sizeof(uint64_t):
-                    *(uint64_t*)optval = sock->so_reuseaddr;
+                    *(uint64_t*)optval = _obj(sock)->so_reuseaddr;
                     break;
                 default:
                 {
@@ -1060,16 +1087,16 @@ static int _udsdev_getsockopt(
             switch (*optlen)
             {
                 case sizeof(uint8_t):
-                    *(uint8_t*)optval = sock->so_sndbuf;
+                    *(uint8_t*)optval = _obj(sock)->so_sndbuf;
                     break;
                 case sizeof(uint16_t):
-                    *(uint16_t*)optval = sock->so_sndbuf;
+                    *(uint16_t*)optval = _obj(sock)->so_sndbuf;
                     break;
                 case sizeof(uint32_t):
-                    *(uint32_t*)optval = sock->so_sndbuf;
+                    *(uint32_t*)optval = _obj(sock)->so_sndbuf;
                     break;
                 case sizeof(uint64_t):
-                    *(uint64_t*)optval = sock->so_sndbuf;
+                    *(uint64_t*)optval = _obj(sock)->so_sndbuf;
                     break;
                 default:
                 {
@@ -1088,16 +1115,16 @@ static int _udsdev_getsockopt(
             switch (*optlen)
             {
                 case sizeof(uint8_t):
-                    *(uint8_t*)optval = sock->so_rcvbuf;
+                    *(uint8_t*)optval = _obj(sock)->so_rcvbuf;
                     break;
                 case sizeof(uint16_t):
-                    *(uint16_t*)optval = sock->so_rcvbuf;
+                    *(uint16_t*)optval = _obj(sock)->so_rcvbuf;
                     break;
                 case sizeof(uint32_t):
-                    *(uint32_t*)optval = sock->so_rcvbuf;
+                    *(uint32_t*)optval = _obj(sock)->so_rcvbuf;
                     break;
                 case sizeof(uint64_t):
-                    *(uint64_t*)optval = sock->so_rcvbuf;
+                    *(uint64_t*)optval = _obj(sock)->so_rcvbuf;
                     break;
                 default:
                 {
@@ -1116,16 +1143,16 @@ static int _udsdev_getsockopt(
             switch (*optlen)
             {
                 case sizeof(uint8_t):
-                    *(uint8_t*)optval = sock->so_type;
+                    *(uint8_t*)optval = _obj(sock)->so_type;
                     break;
                 case sizeof(uint16_t):
-                    *(uint16_t*)optval = sock->so_type;
+                    *(uint16_t*)optval = _obj(sock)->so_type;
                     break;
                 case sizeof(uint32_t):
-                    *(uint32_t*)optval = sock->so_type;
+                    *(uint32_t*)optval = _obj(sock)->so_type;
                     break;
                 case sizeof(uint64_t):
-                    *(uint64_t*)optval = sock->so_type;
+                    *(uint64_t*)optval = _obj(sock)->so_type;
                     break;
                 default:
                 {
@@ -1174,16 +1201,16 @@ static int _udsdev_setsockopt(
             switch (optlen)
             {
                 case sizeof(uint8_t):
-                    sock->so_reuseaddr = *(uint8_t*)optval;
+                    _obj(sock)->so_reuseaddr = *(uint8_t*)optval;
                     break;
                 case sizeof(uint16_t):
-                    sock->so_reuseaddr = *(uint16_t*)optval;
+                    _obj(sock)->so_reuseaddr = *(uint16_t*)optval;
                     break;
                 case sizeof(uint32_t):
-                    sock->so_reuseaddr = *(uint32_t*)optval;
+                    _obj(sock)->so_reuseaddr = *(uint32_t*)optval;
                     break;
                 case sizeof(uint64_t):
-                    sock->so_reuseaddr = *(uint64_t*)optval;
+                    _obj(sock)->so_reuseaddr = *(uint64_t*)optval;
                     break;
                 default:
                 {
@@ -1192,8 +1219,8 @@ static int _udsdev_setsockopt(
                 }
             }
 
-            if (sock->so_reuseaddr)
-                sock->so_reuseaddr = 1;
+            if (_obj(sock)->so_reuseaddr)
+                _obj(sock)->so_reuseaddr = 1;
 
             break;
         }
@@ -1205,16 +1232,16 @@ static int _udsdev_setsockopt(
             switch (optlen)
             {
                 case sizeof(uint8_t):
-                    sock->so_sndbuf = *(uint8_t*)optval;
+                    _obj(sock)->so_sndbuf = *(uint8_t*)optval;
                     break;
                 case sizeof(uint16_t):
-                    sock->so_sndbuf = *(uint16_t*)optval;
+                    _obj(sock)->so_sndbuf = *(uint16_t*)optval;
                     break;
                 case sizeof(uint32_t):
-                    sock->so_sndbuf = *(uint32_t*)optval;
+                    _obj(sock)->so_sndbuf = *(uint32_t*)optval;
                     break;
                 case sizeof(uint64_t):
-                    sock->so_sndbuf = *(uint64_t*)optval;
+                    _obj(sock)->so_sndbuf = *(uint64_t*)optval;
                     break;
                 default:
                 {
@@ -1223,7 +1250,7 @@ static int _udsdev_setsockopt(
                 }
             }
 
-            sock->so_sndbuf = _max(sock->so_sndbuf, MIN_SO_SNDBUF);
+            _obj(sock)->so_sndbuf = _max(_obj(sock)->so_sndbuf, MIN_SO_SNDBUF);
             break;
         }
         case SO_RCVBUF:
@@ -1234,16 +1261,16 @@ static int _udsdev_setsockopt(
             switch (optlen)
             {
                 case sizeof(uint8_t):
-                    sock->so_rcvbuf = *(uint8_t*)optval;
+                    _obj(sock)->so_rcvbuf = *(uint8_t*)optval;
                     break;
                 case sizeof(uint16_t):
-                    sock->so_rcvbuf = *(uint16_t*)optval;
+                    _obj(sock)->so_rcvbuf = *(uint16_t*)optval;
                     break;
                 case sizeof(uint32_t):
-                    sock->so_rcvbuf = *(uint32_t*)optval;
+                    _obj(sock)->so_rcvbuf = *(uint32_t*)optval;
                     break;
                 case sizeof(uint64_t):
-                    sock->so_rcvbuf = *(uint64_t*)optval;
+                    _obj(sock)->so_rcvbuf = *(uint64_t*)optval;
                     break;
                 default:
                 {
@@ -1252,7 +1279,7 @@ static int _udsdev_setsockopt(
                 }
             }
 
-            sock->so_rcvbuf = _max(sock->so_rcvbuf, MIN_SO_RCVBUF);
+            _obj(sock)->so_rcvbuf = _max(_obj(sock)->so_rcvbuf, MIN_SO_RCVBUF);
             break;
         }
         default:
@@ -1274,7 +1301,7 @@ static int _udsdev_target_fd(myst_sockdev_t* dev, myst_sock_t* sock)
     if (!dev || !_valid_sock(sock))
         ERAISE(-EINVAL);
 
-    myst_sock_t* hsock = sock->host_socketpair[0];
+    myst_sock_t* hsock = _obj(sock)->host_socketpair[0];
     ECHECK(ret = (*sockdev->sd_target_fd)(dev, hsock));
 
 done:
@@ -1292,7 +1319,7 @@ static int _udsdev_fstat(
     if (!dev || !_valid_sock(sock))
         ERAISE(-EINVAL);
 
-    myst_sock_t* hsock = sock->host_socketpair[0];
+    myst_sock_t* hsock = _obj(sock)->host_socketpair[0];
     ECHECK(ret = (*sockdev->sd_fstat)(dev, hsock, statbuf));
 
 done:
@@ -1386,29 +1413,37 @@ static int _udsdev_close(myst_sockdev_t* dev, myst_sock_t* sock)
         ERAISE(-EINVAL);
 
     /* notify the peer that the socket is closing */
-    myst_mutex_lock(&sock->mutex);
+    myst_mutex_lock(&_obj(sock)->mutex);
     {
-        if (sock->peer)
+        if (sock->shared->dup_count > 1)
         {
-            sock->peer->closed = true;
-            myst_cond_signal(&sock->peer->cond, FUTEX_BITSET_MATCH_ANY);
-            _unref_sock(sock->peer);
+            sock->shared->dup_count--;
+            myst_mutex_unlock(&_obj(sock)->mutex);
+            goto done;
+        }
+
+        if (_obj(sock)->peer)
+        {
+            _obj(_obj(sock)->peer)->closed = true;
+            myst_cond_signal(
+                &_obj(_obj(sock)->peer)->cond, FUTEX_BITSET_MATCH_ANY);
+            _unref_sock(_obj(sock)->peer);
         }
     }
-    myst_mutex_unlock(&sock->mutex);
+    myst_mutex_unlock(&_obj(sock)->mutex);
 
-    if (sock->acceptor)
-        _release_acceptor(sock->acceptor);
+    if (_obj(sock)->acceptor)
+        _release_acceptor(_obj(sock)->acceptor);
 
     /* release the host-side sockets */
     {
         myst_sockdev_t* sockdev = myst_sockdev_get();
 
-        if (sock->host_socketpair[0])
-            (*sockdev->sd_close)(sockdev, sock->host_socketpair[0]);
+        if (_obj(sock)->host_socketpair[0])
+            (*sockdev->sd_close)(sockdev, _obj(sock)->host_socketpair[0]);
 
-        if (sock->host_socketpair[1])
-            (*sockdev->sd_close)(sockdev, sock->host_socketpair[1]);
+        if (_obj(sock)->host_socketpair[1])
+            (*sockdev->sd_close)(sockdev, _obj(sock)->host_socketpair[1]);
     }
 
     _unref_sock(sock);
@@ -1445,7 +1480,7 @@ static int _udsdev_fcntl(
         }
         case F_GETFL:
         {
-            if (sock->nonblock)
+            if (_obj(sock)->nonblock)
                 ret |= O_NONBLOCK;
 
             ret |= O_RDWR;
@@ -1453,7 +1488,7 @@ static int _udsdev_fcntl(
         }
         case F_SETFL:
         {
-            sock->nonblock = (arg & O_NONBLOCK);
+            _obj(sock)->nonblock = (arg & O_NONBLOCK);
             break;
         }
         default:
@@ -1488,7 +1523,7 @@ static int _udsdev_ioctl(
             if (!val)
                 ERAISE(-EINVAL);
 
-            sock->nonblock = (bool)*val;
+            _obj(sock)->nonblock = (bool)*val;
             break;
         }
         default:
@@ -1508,15 +1543,31 @@ static int _udsdev_dup(
     myst_sock_t** sock_out)
 {
     int ret = 0;
+    myst_sock_t* new_sock = NULL;
+
+    if (*sock_out)
+        *sock_out = NULL;
 
     if (!dev || !_valid_sock(sock))
         ERAISE(-EINVAL);
 
-    MYST_ELOG("AF_LOCAL dup() unsupported");
+    if (!(new_sock = calloc(1, sizeof(myst_sock_t))))
+        ERAISE(-ENOMEM);
 
-    ERAISE(-ENOTSUP);
+    new_sock->shared = sock->shared;
+    new_sock->cloexec = false;
+
+    myst_mutex_lock(&_obj(sock)->mutex);
+    new_sock->shared->dup_count++;
+    myst_mutex_unlock(&_obj(sock)->mutex);
+
+    *sock_out = new_sock;
+    new_sock = NULL;
 
 done:
+
+    if (new_sock)
+        free(new_sock);
 
     return ret;
 }
@@ -1679,10 +1730,10 @@ static int _udsdev_getsockname(
     {
         memset(addr, 0, *addrlen);
 
-        if (*sock->bind_addr.sun_path)
+        if (*_obj(sock)->bind_addr.sun_path)
         {
             size_t min = _min(*addrlen, sizeof(struct sockaddr_un));
-            memcpy(addr, &sock->bind_addr, min);
+            memcpy(addr, &_obj(sock)->bind_addr, min);
 
             if (min < *addrlen)
                 *addrlen = min;
@@ -1727,8 +1778,8 @@ static int _udsdev_socketpair(
     const bool cloexec = (type & SOCK_CLOEXEC);
     ECHECK(_new_sock(nonblock, cloexec, type, &sv[0]));
     ECHECK(_new_sock(nonblock, cloexec, type, &sv[1]));
-    _ref_sock(sv[0]->peer = sv[1]);
-    _ref_sock(sv[1]->peer = sv[0]);
+    _ref_sock(_obj(sv[0])->peer = sv[1]);
+    _ref_sock(_obj(sv[1])->peer = sv[0]);
 
     pair[0] = sv[0];
     pair[1] = sv[1];
