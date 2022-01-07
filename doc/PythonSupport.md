@@ -2,19 +2,34 @@
 **NOTE**: this is a living document that is continually updated.
 
 ## 1. Standard library
-As stated in our [Getting started with Python](user-getting-started-docker-python.md) document, we recommend building containerized python applications using python 3.8.11 or 3.9.7. If your docker image is built from a base image, we recommend using a specific image tag like 3.8.11, instead of 3.8. This is because tags like 3.8 may be updated to a newer version, for example 3.8.12, which hasn't been fully tested by us against Mystikos yet. We will do our best to support latest Python versions.
+As stated in our [Getting started with Python](user-getting-started-docker-python.md)
+document, we recommend building containerized python applications using python
+3.8.11 or 3.9.7. If your docker image is built from a base image, we recommend
+using a specific image tag like 3.8.11, instead of 3.8. This is because tags
+like 3.8 may be updated to a newer version, for example 3.8.12, which hasn't
+been fully tested by us against Mystikos yet. We will do our best to support
+latest Python versions.
 
 ### 1.1. Install python as PIE
-If you run e.g. `apt install python3.8` when building a Ubuntu-based docker image, the installed python executable is non-PIE (position independent executable). Whereas `myst exec <cmd>` requires the cmd to be a PIE. We are aware of three methods to overcome this:
-- (Option 1) Install python using miniconda (reference our [python_webserver](../solutions/python_webserver/Dockerfile) example)
+If you run, "`apt install python3.8`" e.g., when building a Ubuntu-based docker
+image, the installed python executable is non-PIE (position independent
+executable). Whereas "`myst exec <cmd>`" requires the cmd to be a PIE. We are
+aware of three methods to overcome this:
+- (Option 1) Install python using miniconda (reference our
+[python_webserver](../solutions/python_webserver/Dockerfile) example)
 - (Option 2) Use a Debian base image instead. For example,
 ```Dockerfile
 FROM python:3.9.7-slim
 ```
-- (Option 3) Build cpython from source. Follow instructions https://github.com/python/cpython#build-instructions
+- (Option 3) Build CPython from source. Follow instructions
+https://github.com/python/cpython#build-instructions
 
 ### 1.2. Known limitations
-To get a rough idea of whether your Python application can be run in Mystikos, you can reference our known CPython test failures in Mystikos, with [v3.8.11](../tests/cpython-tests/test_config_v3.8.11/tests.failed) and [v3.9.7](../tests/cpython-tests/test_config_v3.9.7/tests.failed) respectively. Here are several noteworthy modules we haven't supported yet:
+To get a rough idea of whether your Python application can be run in Mystikos,
+you can reference our known CPython test failures in Mystikos, with
+[v3.8.11](../tests/cpython-tests/test_config_v3.8.11/tests.failed) and
+[v3.9.7](../tests/cpython-tests/test_config_v3.9.7/tests.failed) respectively.
+Here are several noteworthy modules we haven't supported yet:
 - `os`
   - `os.fork` - fork is not supported in Mystikos
   - `os.spawn*` - please note that `os.posix_spawn` IS supported
@@ -30,10 +45,13 @@ To get a rough idea of whether your Python application can be run in Mystikos, y
 - `curses` - not supported
 - `tkinter` - not supported
 
-**Caveat**: Any third-party Python library that calls into the unsupported standard Python APIs are not supported neither. Sometimes they can produce unpredictable errors which are tricky to root cause.
+**Caveat**: Any third-party Python library that calls into the unsupported
+standard Python APIs are not supported neither. Sometimes they can produce
+unpredictable errors which are tricky to root cause.
 
 ## 2. Third-party Python libraries
-A rule of thumb is to choose the latest versions of third-party libraries. As we usually test Mystikos against the latest versions.
+A rule of thumb is to choose the latest versions of third-party libraries. As
+we usually test Mystikos against the latest versions.
 
 ### 2.1. NumPy
 | Supported | Known Limitations & Caveats | Sample/Tests |
