@@ -41,7 +41,6 @@
 //#define TRACE
 
 myst_spinlock_t myst_process_list_lock = MYST_SPINLOCK_INITIALIZER;
-extern myst_process_t* myst_main_process;
 
 /* The total number of threads running (including the main thread) */
 static _Atomic(size_t) _num_threads = 1;

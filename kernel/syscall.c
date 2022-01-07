@@ -6654,37 +6654,93 @@ done:
     return ret;
 }
 
-long myst_syscall_kill(int pid, int sig)
+static long _myst_send_kill(myst_process_t* process, int signum)
 {
     long ret = 0;
-    myst_thread_t* thread = myst_thread_self();
-    myst_process_t* process = NULL;
-
-    myst_spin_lock(&myst_process_list_lock);
-
-    // Find process thread from pid
-    process = myst_find_process_from_pid(pid, false);
-
-    // Did we finally find it?
-    if (process == NULL)
-        ERAISE(-ESRCH);
-
-    // sig 0 is jus a process existence check, no signal to be sent
-    if (sig == 0)
-        goto done;
-
-    // Deliver signal
     siginfo_t* siginfo;
 
     if (!(siginfo = calloc(1, sizeof(siginfo_t))))
         ERAISE(-ENOMEM);
 
-    siginfo->si_code = SI_USER;
-    siginfo->si_signo = sig;
-    siginfo->si_pid = thread->process->pid;
-    siginfo->si_uid = thread->euid;
+    printf(
+        "sending signo %d %s to process pid %d\n",
+        signum,
+        myst_signum_to_string(signum),
+        process->pid);
 
-    ret = myst_signal_deliver(process->main_process_thread, sig, siginfo);
+    siginfo->si_code = SI_USER;
+    siginfo->si_signo = signum;
+    siginfo->si_pid = process->pid;
+    siginfo->si_uid = process->main_process_thread->euid;
+
+    ret = myst_signal_deliver(process->main_process_thread, signum, siginfo);
+
+done:
+    return ret;
+}
+
+long myst_syscall_kill(int pid, int signum)
+{
+    long ret = 0;
+    myst_process_t* process_self = myst_process_self();
+    myst_process_t* process = myst_main_process;
+    bool delivered_any = false;
+
+    printf(
+        "myst_syscall_kill(our pid=%d) signo %d %s to pid %d\n",
+        process_self->pid,
+        signum,
+        myst_signum_to_string(signum),
+        pid);
+
+    myst_spin_lock(&myst_process_list_lock);
+
+    while (process)
+    {
+        // If pid > 0 send signal to specific process.
+        if ((pid > 0) && (process->pid == pid))
+        {
+            delivered_any = true;
+            if (signum != 0)
+                ret = _myst_send_kill(process, signum);
+            break;
+        }
+
+        // If pid == 0, send to all processes in process group
+        else if (
+            (pid == 0) && (process->pid != process_self->pid) &&
+            (process->pgid == process_self->pgid))
+        {
+            delivered_any = true;
+            if (signum == 0)
+                break;
+            ECHECK(_myst_send_kill(process, signum));
+        }
+
+        // if pid == -1 send to all processes
+        else if (pid == -1)
+        {
+            delivered_any = true;
+            if (signum == 0)
+                break;
+            ECHECK(_myst_send_kill(process, signum));
+        }
+
+        // if pid < -1 send to processes in specific process group
+        else if ((pid < -1) && (process->pgid == -pid))
+        {
+            delivered_any = true;
+            if (signum == 0)
+                break;
+            ECHECK(_myst_send_kill(process, signum));
+        }
+
+        process = process->next_process;
+    }
+
+    // Did we finally find any processes to deliver signal to?
+    if (!delivered_any)
+        ERAISE(-ESRCH);
 
 done:
     myst_spin_unlock(&myst_process_list_lock);
