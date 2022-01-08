@@ -1420,6 +1420,7 @@ static int _udsdev_close(myst_sockdev_t* dev, myst_sock_t* sock)
         {
             sock->shared->dup_count--;
             myst_mutex_unlock(&_obj(sock)->mutex);
+            free(sock);
             goto done;
         }
 
