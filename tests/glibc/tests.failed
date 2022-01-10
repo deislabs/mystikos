@@ -1,3 +1,4 @@
 /glibc/build/gmon/tst-gmon-static ldso: /glibc/build/gmon/tst-gmon-static: Not a valid dynamic program 
+/glibc/build/inet/test-ifaddrs: creates a socket with AF_NETLINK
 /glibc/build/io/tst-ftw-lnk.d/link2-tgt ldso: /glibc/build/io/tst-ftw-lnk.d/link2-tgt: Not a valid dynamic program 
 /glibc/build/nptl/test-mutexattr-printers Makefile:57: recipe for target 'one' failed ****Runs without error in GDB****

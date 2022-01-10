@@ -72,7 +72,6 @@
 /glibc/build/iconvdata/tst-iconv6
 /glibc/build/inet/htontest
 /glibc/build/inet/test-hnto-types
-/glibc/build/inet/test-ifaddrs
 /glibc/build/inet/tst-checks
 /glibc/build/inet/tst-checks-posix
 /glibc/build/inet/tst-ntoa
