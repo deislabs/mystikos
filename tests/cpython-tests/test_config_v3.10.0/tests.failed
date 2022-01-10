@@ -44,6 +44,7 @@ test_random
 test_re
 test_readline
 test_regrtest
+test_repl
 test_resource
 test_runpy
 test_selectors
