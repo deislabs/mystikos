@@ -1528,6 +1528,16 @@ static int _udsdev_ioctl(
             _obj(sock)->nonblock = (bool)*val;
             break;
         }
+        case FIONREAD:
+        {
+            int* val = (int*)arg;
+
+            if (!val)
+                ERAISE(-EINVAL);
+
+            *((int*)val) = _obj(sock)->buf.size;
+            break;
+        }
         default:
         {
             ERAISE(-ENOTSUP);

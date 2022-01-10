@@ -286,6 +286,12 @@ static void test_socketpair(void)
 
     assert(socketpair(AF_LOCAL, SOCK_STREAM, 0, sv) == 0);
     assert(write(sv[0], alpha, sizeof(alpha)) == sizeof(alpha));
+
+    int nread = -1;
+    assert(ioctl(sv[1], FIONREAD, (unsigned long*)&nread) == 0);
+    assert(nread > 0);
+    assert(nread == sizeof(alpha));
+
     assert(read(sv[1], buf, sizeof(buf)) == sizeof(buf));
     assert(memcmp(buf, alpha, sizeof(buf)) == 0);
 
