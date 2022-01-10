@@ -241,7 +241,6 @@ test_queue
 test_quopri
 test_raise
 test_range
-test_repl
 test_reprlib
 test_richcmp
 test_rlcompleter
