@@ -344,7 +344,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/flock/flock03 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/flock/flock04 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/flock/flock06 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/fork/fork01 | 1 | 1 | 1 |
+| /ltp/testcases/kernel/syscalls/fork/fork01 | 0 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/fork/fork02 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/fork/fork03 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/fork/fork04 | 1 | 1 | 1 |
@@ -355,7 +355,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/fork/fork09 | 1 | 0 | 1 |
 | /ltp/testcases/kernel/syscalls/fork/fork10 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/fork/fork11 | 1 | 1 | 1 |
-| /ltp/testcases/kernel/syscalls/fork/fork12 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/fork/fork12 | 1 | 1 | 0 |
 | /ltp/testcases/kernel/syscalls/fork/fork13 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/fork/fork14 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/fpathconf/fpathconf01 | 1 | 1 | 1 |
@@ -442,7 +442,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/getpgid/getpgid01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/getpgid/getpgid02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/getpgrp/getpgrp01 | 1 | 1 | 1 |
-| /ltp/testcases/kernel/syscalls/getpid/getpid01 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/getpid/getpid01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/getpid/getpid02 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/getppid/getppid01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/getppid/getppid02 | 0 | 0 | 0 |
@@ -619,9 +619,9 @@ FAILING
 | /ltp/testcases/kernel/syscalls/keyctl/keyctl07 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/keyctl/keyctl08 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/kill/kill02 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/kill/kill03 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/kill/kill03 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/kill/kill05 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/kill/kill06 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/kill/kill06 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/kill/kill07 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/kill/kill08 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/kill/kill09 | 1 | 1 | 1 |
@@ -1003,7 +1003,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/sched_get_priority_max/sched_get_priority_max02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/sched_get_priority_min/sched_get_priority_min01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/sched_get_priority_min/sched_get_priority_min02 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/sched_getaffinity/sched_getaffinity01 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/sched_getaffinity/sched_getaffinity01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/sched_getattr/sched_getattr01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/sched_getattr/sched_getattr02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/sched_getparam/sched_getparam01 | 1 | 1 | 1 |
@@ -1051,7 +1051,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/sendmsg/sendmsg01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/sendmsg/sendmsg02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/sendmsg/sendmsg03 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/sendto/sendto01 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/sendto/sendto01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/sendto/sendto02 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/sendto/sendto03 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/set_mempolicy/set_mempolicy01 | 0 | 0 | 0 |
@@ -1103,7 +1103,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/setns/setns01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/setns/setns02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/setpgid/setpgid01 | 1 | 1 | 1 |
-| /ltp/testcases/kernel/syscalls/setpgid/setpgid02 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/setpgid/setpgid02 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/setpgid/setpgid03 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/setpgid/setpgid03_child | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/setpgrp/setpgrp01 | 1 | 1 | 1 |
@@ -1186,7 +1186,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/signal/signal03 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/signal/signal04 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/signal/signal05 | 1 | 1 | 1 |
-| /ltp/testcases/kernel/syscalls/signal/signal06 | 1 | 0 | 1 |
+| /ltp/testcases/kernel/syscalls/signal/signal06 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/signalfd/signalfd01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/signalfd4/signalfd4_01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/signalfd4/signalfd4_02 | 0 | 0 | 0 |
@@ -1347,7 +1347,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/wait/wait01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/wait/wait02 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/wait4/wait401 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/wait4/wait402 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/wait4/wait402 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/waitid/waitid01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/waitid/waitid02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/waitpid/waitpid01 | 1 | 1 | 1 |

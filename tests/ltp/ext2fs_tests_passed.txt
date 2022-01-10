@@ -83,13 +83,13 @@
 /ltp/testcases/kernel/syscalls/fdatasync/fdatasync01
 /ltp/testcases/kernel/syscalls/fdatasync/fdatasync02
 /ltp/testcases/kernel/syscalls/flock/flock01
-/ltp/testcases/kernel/syscalls/fork/fork01
 /ltp/testcases/kernel/syscalls/fork/fork02
 /ltp/testcases/kernel/syscalls/fork/fork03
 /ltp/testcases/kernel/syscalls/fork/fork04
 /ltp/testcases/kernel/syscalls/fork/fork09
 /ltp/testcases/kernel/syscalls/fork/fork10
 /ltp/testcases/kernel/syscalls/fork/fork11
+/ltp/testcases/kernel/syscalls/fork/fork12
 /ltp/testcases/kernel/syscalls/fpathconf/fpathconf01
 /ltp/testcases/kernel/syscalls/fstat/fstat03
 /ltp/testcases/kernel/syscalls/fstat/fstat03_64
@@ -118,6 +118,7 @@
 /ltp/testcases/kernel/syscalls/getitimer/getitimer03
 /ltp/testcases/kernel/syscalls/getpagesize/getpagesize01
 /ltp/testcases/kernel/syscalls/getpgrp/getpgrp01
+/ltp/testcases/kernel/syscalls/getpid/getpid01
 /ltp/testcases/kernel/syscalls/getpid/getpid02
 /ltp/testcases/kernel/syscalls/getppid/getppid01
 /ltp/testcases/kernel/syscalls/getrandom/getrandom01
@@ -138,6 +139,8 @@
 /ltp/testcases/kernel/syscalls/getuid/getuid01
 /ltp/testcases/kernel/syscalls/getuid/getuid03
 /ltp/testcases/kernel/syscalls/inotify/inotify06
+/ltp/testcases/kernel/syscalls/kill/kill03
+/ltp/testcases/kernel/syscalls/kill/kill06
 /ltp/testcases/kernel/syscalls/kill/kill09
 /ltp/testcases/kernel/syscalls/kill/kill12
 /ltp/testcases/kernel/syscalls/lchown/lchown01
@@ -245,6 +248,7 @@
 /ltp/testcases/kernel/syscalls/rt_sigaction/rt_sigaction01
 /ltp/testcases/kernel/syscalls/rt_sigprocmask/rt_sigprocmask01
 /ltp/testcases/kernel/syscalls/sbrk/sbrk02
+/ltp/testcases/kernel/syscalls/sched_getaffinity/sched_getaffinity01
 /ltp/testcases/kernel/syscalls/sched_getparam/sched_getparam01
 /ltp/testcases/kernel/syscalls/sched_yield/sched_yield01
 /ltp/testcases/kernel/syscalls/send/send02
@@ -280,6 +284,7 @@
 /ltp/testcases/kernel/syscalls/setitimer/setitimer02
 /ltp/testcases/kernel/syscalls/setitimer/setitimer03
 /ltp/testcases/kernel/syscalls/setpgid/setpgid01
+/ltp/testcases/kernel/syscalls/setpgid/setpgid02
 /ltp/testcases/kernel/syscalls/setpgrp/setpgrp01
 /ltp/testcases/kernel/syscalls/setpgrp/setpgrp02
 /ltp/testcases/kernel/syscalls/setregid/setregid01
@@ -351,6 +356,7 @@
 /ltp/testcases/kernel/syscalls/vfork/vfork02
 /ltp/testcases/kernel/syscalls/wait/wait01
 /ltp/testcases/kernel/syscalls/wait/wait02
+/ltp/testcases/kernel/syscalls/wait4/wait402
 /ltp/testcases/kernel/syscalls/waitpid/waitpid01
 /ltp/testcases/kernel/syscalls/waitpid/waitpid02
 /ltp/testcases/kernel/syscalls/waitpid/waitpid03
