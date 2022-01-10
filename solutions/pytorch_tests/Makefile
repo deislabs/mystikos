@@ -125,7 +125,7 @@ run-test-nn-8g: rootfs
 
 .PHONY: run-test-ops
 run-test-ops: rootfs
-	$(RUN_PYTEST) /workspace/pytorch/test/test_ops.py 2>&1 | tee $@.out
+	$(MYST_EXEC) rootfs $(OPTS) --app-config-path config4g.json /usr/local/bin/python -m pytest -v /workspace/pytorch/test/test_ops.py 2>&1 | tee $@.out
 	grep -q -E '4200 passed.*10069 skipped' $@.out
 
 .PHONY: run-test-torch
