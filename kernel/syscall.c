@@ -6662,12 +6662,6 @@ static long _myst_send_kill(myst_process_t* process, int signum)
     if (!(siginfo = calloc(1, sizeof(siginfo_t))))
         ERAISE(-ENOMEM);
 
-    printf(
-        "sending signo %d %s to process pid %d\n",
-        signum,
-        myst_signum_to_string(signum),
-        process->pid);
-
     siginfo->si_code = SI_USER;
     siginfo->si_signo = signum;
     siginfo->si_pid = process->pid;
@@ -6685,13 +6679,6 @@ long myst_syscall_kill(int pid, int signum)
     myst_process_t* process_self = myst_process_self();
     myst_process_t* process = myst_main_process;
     bool delivered_any = false;
-
-    printf(
-        "myst_syscall_kill(our pid=%d) signo %d %s to pid %d\n",
-        process_self->pid,
-        signum,
-        myst_signum_to_string(signum),
-        pid);
 
     myst_spin_lock(&myst_process_list_lock);
 
