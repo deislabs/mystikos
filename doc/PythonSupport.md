@@ -44,6 +44,13 @@ Here are several noteworthy modules we haven't supported yet:
  - `threading.Lock` - unsupported (yet)
 - `curses` - not supported
 - `tkinter` - not supported
+- `locale` - musl libc [has very limited locale support](https://wiki.musl-libc.org/open-issues.html). Python programs running in Mystikos would suffer the same limitations, since Mystikos bases its C-runtime on musl.
+  * The exact missing functionality related to locate in Python is not deteremined, however you can refer to failed Python unit tests for a rough understanding.
+  * For example, musl doesn't support `LC_COLLATE`, failing the following Python unit tests:
+    * [`test_strcoll_with_diacritic, test_strxfrm_with_diacritic`](https://github.com/python/cpython/blob/f4c03484da59049eb62a9bf7777b963e2267d187/Lib/test/test_locale.py#L374-L382)
+  * Other failed unit tests related to locale:
+    * [`test_locale_caching`](https://github.com/python/cpython/blob/f4c03484da59049eb62a9bf7777b963e2267d187/Lib/test/test_re.py#L1895), [`test_locale_compiled`](https://github.com/python/cpython/blob/f4c03484da59049eb62a9bf7777b963e2267d187/Lib/test/test_re.py#L1931)
+    * [`test_PYTHONCOERCECLOCALE_not_set, test_PYTHONCOERCECLOCALE_not_zero, test_PYTHONCOERCECLOCALE_set_to_warn, test_PYTHONCOERCECLOCALE_set_to_zero`](https://github.com/python/cpython/blob/f4c03484da59049eb62a9bf7777b963e2267d187/Lib/test/test_c_locale_coercion.py#L361-L389)
 
 **Caveat**: Any third-party Python library that calls into the unsupported
 standard Python APIs are not supported neither. Sometimes they can produce
