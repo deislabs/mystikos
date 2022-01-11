@@ -2,7 +2,7 @@ ifndef SUBDIR
 $(error "please define SUBDIR variable")
 endif
 
-__OBJECTS1 = $(SOURCES:.c=.o)
+__OBJECTS1 = $(SOURCES:.c=.o) $(CXXSOURCES:.cpp=.o) 
 OBJECTS = $(__OBJECTS1:.s=.o)
 __OBJECTS = $(addprefix $(SUBOBJDIR)/,$(OBJECTS))
 
@@ -49,6 +49,11 @@ $(SUBOBJDIR)/%.o: %.s $(DEPENDS)
 	mkdir -p $(SUBOBJDIR)
 	$(shell mkdir -p $(shell dirname $@))
 	$(CC) -c $(CFLAGS) $(DEFINES) $(INCLUDES) -o $@ $<
+
+$(SUBOBJDIR)/%.o: %.cpp $(DEPENDS)
+	mkdir -p $(SUBOBJDIR)
+	$(shell mkdir -p $(shell dirname $@))
+	$(CXX) -c $(CFLAGS) $(CXXFLAGS) $(DEFINES) $(INCLUDES) -o $@ $<
 
 dirs:
 ifdef DIRS

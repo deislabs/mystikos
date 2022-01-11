@@ -255,7 +255,8 @@ static myst_thread_t* _put_cookie(uint64_t cookie)
 
 static myst_process_t* _zombies_head;
 
-static void _free_zombies(void* arg)
+static void
+_free_zombies(void* arg)
 {
     (void)arg;
 

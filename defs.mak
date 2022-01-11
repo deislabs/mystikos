@@ -57,7 +57,10 @@ EDGER8R=$(BUILDDIR)/openenclave/bin/oeedger8r
 
 DEFAULT_INCLUDES = -I$(INCDIR)
 
-DEFAULT_CFLAGS = -Wall -Werror -g -fPIC
+DEFAULT_CFLAGS = -g -fPIC
+ifndef MYST_FUZZING
+DEFAULT_CFLAGS += -Wall -Werror
+endif
 
 ifeq ($(MYST_RELEASE),1)
 OPTIMIZATION_CFLAGS += -O3 -fno-omit-frame-pointer

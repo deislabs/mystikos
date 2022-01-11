@@ -1096,7 +1096,9 @@ int myst_exec(
 
     /* if this is a nested exec, then release previous process mappings
      * assicoated to the pid */
+#ifndef MYST_FUZZING
     myst_release_process_mappings(process->pid);
+#endif
 
     /* set pid to the newly allocated crt data (now part of the process
      * mappings) */

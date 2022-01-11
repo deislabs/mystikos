@@ -443,7 +443,11 @@ static int _teardown_tmpfs(void)
 }
 #endif
 
-static int _init_main_thread(
+#ifdef MYST_FUZZING
+__attribute__((no_sanitize("enclaveaddress")))
+#endif
+static int
+_init_main_thread(
     myst_thread_t* thread,
     uint64_t event,
     const char* cwd,
@@ -656,8 +660,12 @@ static void _print_boottime(void)
 /* the main thread is the only thread that is not on the heap */
 static myst_thread_t _main_thread;
 
+#ifdef MYST_FUZZING
+__attribute__((no_sanitize("enclaveaddress")))
+#else
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstack-usage="
+#endif
 int myst_enter_kernel(myst_kernel_args_t* args)
 {
     int ret = 0;
@@ -724,6 +732,12 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     if (myst_setup_mman(args->mman_data, args->mman_size) != 0)
         ERAISE(-EINVAL);
 
+    /* Create the main thread */
+    ECHECK(_init_main_thread(
+        &_main_thread, args->event, args->cwd, args->target_tid));
+    thread = &_main_thread;
+    process = thread->process;
+
     /* call global constructors within the kernel */
     myst_call_init_functions();
 
@@ -759,12 +773,6 @@ int myst_enter_kernel(myst_kernel_args_t* args)
             ERAISE(-EINVAL);
         }
     }
-
-    /* Create the main thread */
-    ECHECK(_init_main_thread(
-        &_main_thread, args->event, args->cwd, args->target_tid));
-    thread = &_main_thread;
-    process = thread->process;
 
     myst_copy_host_uid_gid_mappings(&args->host_enc_uid_gid_mappings);
 
@@ -908,7 +916,9 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         exit_status = process->exit_status;
 
         /* release process mapping, including stack and crt */
+#ifndef MYST_FUZZING
         myst_release_process_mappings(process->pid);
+#endif
 
         if (process->exec_stack)
         {
@@ -1031,4 +1041,6 @@ done:
 
     return ret;
 }
+#ifndef MYST_FUZZING
 #pragma GCC diagnostic pop
+#endif

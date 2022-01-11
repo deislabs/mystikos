@@ -49,7 +49,7 @@ MYST_INLINE void* myst_buf_calloc(
     size_t nmemb,
     size_t size)
 {
-    const size_t n;
+    size_t n;
 
     /* check for overflow */
     if (__builtin_mul_overflow(nmemb, size, &n))

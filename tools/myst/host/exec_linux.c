@@ -180,7 +180,9 @@ static void _get_options(
         if ((r = process_is_being_traced()) < 0)
             _err("process_is_being_traced() failed: %d", r);
 
+#ifndef MYST_FUZZING
         opts->debug_symbols = (bool)r;
+#endif
     }
 
     /* Get MYST_MEMCHECK environment variable */

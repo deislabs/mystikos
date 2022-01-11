@@ -73,6 +73,9 @@ long _handler_wrapper(void* arg_)
  * called from exec in order to make sure we have a structure and it is cleaned
  * out as the new exec-ed process has no handlers by default.
  */
+#ifdef MYST_FUZZING
+__attribute__((no_sanitize("enclaveaddress")))
+#endif
 int myst_signal_init(myst_process_t* process)
 {
     int ret = 0;
@@ -93,6 +96,9 @@ done:
     return ret;
 }
 
+#ifdef MYST_FUZZING
+__attribute__((no_sanitize("enclaveaddress")))
+#endif
 void myst_signal_free(myst_process_t* process)
 {
     sigset_t block_all;
@@ -165,6 +171,9 @@ done:
     return ret;
 }
 
+#ifdef MYST_FUZZING
+__attribute__((no_sanitize("enclaveaddress")))
+#endif
 void myst_signal_free_siginfos(myst_thread_t* thread)
 {
     for (int i = 0; i < NSIG - 1; i++)
@@ -323,8 +332,8 @@ static long _default_signal_handler(unsigned signum)
     {
         enum myst_thread_status expected = MYST_RUNNING;
         if (__atomic_compare_exchange_n(
-                &thread->thread_status,
-                &expected,
+                (unsigned*)&thread->thread_status,
+                (unsigned*)&expected,
                 MYST_KILLED,
                 false,
                 __ATOMIC_RELEASE,
@@ -362,8 +371,10 @@ static long _default_signal_handler(unsigned signum)
     return 0;
 }
 
+#ifndef MYST_FUZZING
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstack-usage="
+#endif
 static long _handle_one_signal(
     unsigned signum,
     siginfo_t* siginfo,
@@ -515,7 +526,9 @@ done:
 
     return ret;
 }
+#ifndef MYST_FUZZING
 #pragma GCC diagnostic pop
+#endif
 
 void _myst_sigstop_block(myst_process_t* process)
 {
@@ -542,9 +555,10 @@ void _myst_sigstop_wait(void)
     }
 }
 
+#ifndef MYST_FUZZING
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstack-usage="
-
+#endif
 int myst_signal_has_active_signals(myst_thread_t* thread)
 {
     uint64_t unblocked = MYST_SIG_UNBLOCKED(thread->signal.mask);
@@ -603,7 +617,9 @@ long myst_signal_process(myst_thread_t* thread)
     myst_spin_unlock(&thread->signal.lock);
     return 0;
 }
+#ifndef MYST_FUZZING
 #pragma GCC diagnostic pop
+#endif
 
 long myst_signal_deliver(
     myst_thread_t* thread,

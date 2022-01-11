@@ -20,6 +20,9 @@
 #include <myst/thread.h>
 #include <myst/ttydev.h>
 
+#ifdef MYST_FUZZING
+__attribute__((no_sanitize("enclaveaddress")))
+#endif
 int myst_fdtable_create(myst_fdtable_t** fdtable_out)
 {
     int ret = 0;
@@ -158,6 +161,9 @@ done:
     return ret;
 }
 
+#ifdef MYST_FUZZING
+__attribute__((no_sanitize("enclaveaddress")))
+#endif
 int myst_fdtable_free(myst_fdtable_t* fdtable)
 {
     int ret = 0;

@@ -1,6 +1,11 @@
 TOP=$(abspath ..)
 include $(TOP)/defs.mak
 
+ifdef MYST_FUZZING
+CC=${BUILDDIR}/oe-llvm-2.0/bin/clang
+CXX=${BUILDDIR}/oe-llvm-2.0/bin/clang++
+endif
+
 SUBLIBDIR=$(LIBDIR)
 SUBBINDIR=$(LIBDIR)
 
@@ -39,9 +44,10 @@ WARNINGS += -Wextra
 WARNINGS += -Wno-missing-field-initializers
 WARNINGS += -Wno-type-limits
 WARNINGS += -Wno-conversion
-WARNINGS += -Wstack-usage=512
 WARNINGS += -Winit-self
-
+ifndef MYST_FUZZING
+WARNINGS += -Wstack-usage=512
+endif
 # ATTN: this optimization makes little difference for the kernel
 #USE_GC_SECTIONS=1
 
@@ -103,6 +109,40 @@ ifdef MYST_ENABLE_GCOV
 LIBS += $(LIBDIR)/libmystgcov.a
 LIBS += $(LIBDIR)/libmystgcovclient.a
 endif
+
+ifdef MYST_FUZZING
+CFLAGS += \
+    -Winit-self \
+    -Wno-sometimes-uninitialized \
+    -Wno-null-pointer-arithmetic \
+    -Wno-unknown-pragmas \
+    -Wno-unused-command-line-argument \
+    -Wno-self-assign \
+    -Wno-implicit-function-declaration \
+    -Wno-unused-function \
+    -Wno-pointer-arith \
+    -Wno-unused-variable \
+    -Wno-int-to-pointer-cast \
+    -Wno-compare-distinct-pointer-types \
+    -Wno-unused-parameter \
+    -Wno-sign-compare
+DEFINES += -DMYST_FUZZING
+
+INCLUDES += -I$(TOP)/fuzzing/src/include
+CFLAGS += \
+    -O0 -g \
+	-fsanitize=enclavefuzzer,enclaveaddress \
+    -fsanitize-address-instrument-interceptors \
+    -fsanitize-coverage=trace-pc-guard
+LDFLAGS += \
+    -fsanitize=enclavefuzzer,enclaveaddress \
+    -fsanitize-address-instrument-interceptors \
+    -fsanitize-coverage=trace-pc-guard
+LIBS += $(BUILDDIR)/myst_fuzzing/output/lib/libfuzzsup_kernel.a
+LIBS += $(BUILDDIR)/openenclave/lib/openenclave/enclave/liboelibcxx.a
+LIBS += $(BUILDDIR)/musl/lib/libc.a
+endif
+
 
 include $(TOP)/rules.mak
 

@@ -479,6 +479,7 @@ static int _main(int argc, const char* argv[], const char* envp[])
     }
 }
 
+#ifndef MYST_FUZZING
 int main(int argc, const char* argv[], const char* envp[])
 {
 #ifdef MYST_ENABLE_GCOV
@@ -510,3 +511,4 @@ int main(int argc, const char* argv[], const char* envp[])
 
     return ec;
 }
+#endif

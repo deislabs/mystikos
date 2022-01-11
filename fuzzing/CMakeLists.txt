@@ -1,0 +1,11 @@
+cmake_minimum_required(VERSION 3.13)
+project(mystikos-security VERSION 1.0.0)
+set(CMAKE_C_COMPILER_ID "Clang")
+set(CMAKE_CXX_COMPILER_ID "Clang")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+include(fuzzer_settings)
+
+set(OpenEnclave_DIR "${PROJECT_SOURCE_DIR}/../build/openenclave/lib/openenclave/cmake")
+set(OPEN_ENCLAVE_SDK_SRC ${PROJECT_SOURCE_DIR}/../third_party/openenclave/openenclave)
+set(MYSTIKOS_SRC ${PROJECT_SOURCE_DIR}/..)
+add_subdirectory(src)

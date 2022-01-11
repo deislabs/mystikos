@@ -1,6 +1,11 @@
 TOP=$(abspath ../../..)
 include $(TOP)/defs.mak
 
+ifdef MYST_FUZZING
+CC=${BUILDDIR}/oe-llvm-2.0/bin/clang
+CXX=${BUILDDIR}/oe-llvm-2.0/bin/clang++
+endif
+
 SUBLIBDIR=$(LIBDIR)
 
 ARCHIVE = libmysttargetsgxenclave.a
@@ -27,5 +32,19 @@ CFLAGS += $(OPTIMIZATION_CFLAGS)
 endif
 
 INCLUDES = $(OEENCLAVE_INCLUDES) -I$(INCDIR)
+
+ifdef MYST_FUZZING
+CFLAGS += \
+    -O0 -g \
+	-fsanitize=enclavefuzzer,enclaveaddress \
+    -fsanitize-address-instrument-interceptors \
+    -fsanitize-coverage=trace-pc-guard
+LDFLAGS += \
+    -fsanitize=enclavefuzzer,enclaveaddress \
+    -fsanitize-address-instrument-interceptors \
+    -fsanitize-coverage=trace-pc-guard
+INCLUDES += -I$(TOP)/fuzzing/src/include
+DEFINES += -DMYST_FUZZING
+endif
 
 include $(TOP)/rules.mak
