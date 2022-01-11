@@ -94,8 +94,8 @@ We haven't verified the full test suites of the following packages. Their suppor
 | **pyjwt** | Yes |
 | **nose** | Yes |
 | **redis** | Yes |
-| **pyodbc** | only works with SQL AE |
-| **sqlalchemy** | same limitation as pyodbc |
+| **pyodbc** | Yes |
+| **sqlalchemy** | only works with SQL AE |
 | **pycurl** | Yes |
 | **authlib** | Yes |
 | **gunicorn** | No, it requires full fork() support.<br>It does not work with fork/exec. |
