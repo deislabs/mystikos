@@ -31,6 +31,9 @@
 
 #define USE_LOOP_UNROLLING
 
+#ifdef MYST_FUZZING
+__attribute__((no_sanitize("enclaveaddress")))
+#endif
 char* strdup(const char* s)
 {
     char* p;
@@ -85,6 +88,9 @@ char* strncpy(char* dest, const char* src, size_t n)
 
 #pragma GCC push_options
 #pragma GCC optimize "-O3"
+#ifdef MYST_FUZZING
+__attribute__((no_sanitize("enclaveaddress")))
+#endif
 void* memset(void* s, int c, size_t n)
 {
     uint8_t* p = (uint8_t*)s;
@@ -704,6 +710,7 @@ done:
     return ret;
 }
 
+#ifndef MYST_FUZZING
 struct dirent* readdir(DIR* dir)
 {
     struct dirent* ret = NULL;
@@ -751,6 +758,7 @@ struct dirent* readdir(DIR* dir)
 done:
     return ret;
 }
+#endif
 
 /*
 **==============================================================================
@@ -816,6 +824,7 @@ int __sched_cpucount(size_t cpusetsize, const cpu_set_t* mask)
 **==============================================================================
 */
 
+#ifndef MYST_FUZZING
 unsigned long int strtoul(const char* nptr, char** endptr, int base)
 {
     return myst_strtoul(nptr, endptr, base);
@@ -830,3 +839,4 @@ double strtod(const char* nptr, char** endptr)
 {
     return myst_strtod(nptr, endptr);
 }
+#endif

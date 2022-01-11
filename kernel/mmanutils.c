@@ -137,8 +137,8 @@ static ssize_t _get_page_index(const void* addr, size_t length)
     uint64_t addr_start = (uint64_t)addr;
     uint64_t mman_start = (uint64_t)_mman_start;
     size_t mman_size = _mman_size;
-    const uint64_t addr_end;
-    const size_t mman_end;
+    uint64_t addr_end;
+    size_t mman_end;
 
     if (!addr || !length)
         ERAISE(-EINVAL);

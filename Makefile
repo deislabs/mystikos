@@ -29,7 +29,15 @@ ifndef MYST_IGNORE_PREREQS
 DIRS += prereqs
 endif
 
+ifdef MYST_FUZZING
+DIRS += fuzzing/prereqs
+endif
+
 DIRS += third_party
+
+ifdef MYST_FUZZING
+DIRS += fuzzing
+endif
 
 ifdef MYST_ENABLE_GCOV
 DIRS += gcov

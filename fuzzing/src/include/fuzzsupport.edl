@@ -1,0 +1,55 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
+enclave {
+    struct oe_rlimit 
+    {
+        uint64_t rlim_cur;
+        uint64_t rlim_max;
+    };
+
+    struct prlimit64_args 
+    {
+        long pid;
+        long resource;
+        struct oe_rlimit* new_limit;
+        struct oe_rlimit* old_limit;
+    };
+
+    struct getrlimit_args 
+    {
+        long resource;
+        struct oe_rlimit* rlim;
+    };
+
+    enum Syscall
+    {
+        OE_OCALL_PRRLIMIT64,
+        OE_OCALL_GETLIMIT
+    };
+
+    untrusted
+    {
+        uint64_t oe_get_tpc_ocall();
+        
+        void oe_get_enclave_module_path_ocall([user_check] oe_enclave_t* oe_enclave, [user_check] char* path);
+
+        void oe_llvm_symbolize_ocall([user_check] oe_enclave_t* oe_enclave, uint64_t module_offset, [out] char** symbol);
+
+        void oe_kernel_llvm_symbolize_ocall(uint64_t module_offset, [out] char** symbol);
+
+        void oe_die_ocall();
+        
+        oe_result_t oe_get_symbol_offset_ocall(
+            [user_check] oe_enclave_t* oe_enclave,
+            [in, string] const char* name,
+            [out] uint64_t* offset);
+
+        oe_result_t oe_syscall_ocall(
+            uint64_t syscall_id, 
+            [out] uint64_t* return_value, 
+            [user_check] void* args) propagate_errno;
+
+        uint64_t oe_get_syscall_fuzzer_payload_ocall();
+    };
+};

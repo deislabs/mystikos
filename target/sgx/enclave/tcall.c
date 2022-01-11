@@ -27,7 +27,12 @@
 #include <openenclave/enclave.h>
 #include "gencreds.h"
 
+#ifdef MYST_FUZZING
+#include <myst_fuzzer_tcalls.h>
+#endif
+
 long myst_handle_tcall(long n, long params[6]);
+extern long fuzzer_tcalls(long n, long params[6]);
 
 long oe_syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6);
 
@@ -285,6 +290,10 @@ long myst_tcall(long n, long params[6])
     const long x6 = params[5];
 
     (void)x6;
+
+#ifdef MYST_FUZZING
+    HANDLE_FUZZER_TCALLS(n, params);
+#endif
 
     switch (n)
     {

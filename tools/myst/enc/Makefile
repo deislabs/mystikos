@@ -3,6 +3,11 @@ TOP=$(abspath ../../..)
 SUBBINDIR=$(TOP)/build/lib/openenclave
 include $(TOP)/defs.mak
 
+ifdef MYST_FUZZING
+CC=${BUILDDIR}/oe-llvm-2.0/bin/clang
+CXX=${BUILDDIR}/oe-llvm-2.0/bin/clang++
+endif
+
 PROGRAM = mystenc.so
 
 ifdef MYST_ENABLE_GCOV
@@ -64,11 +69,31 @@ endif
 
 CLEAN = $(SUBOBJDIR)/myst_t.h $(SUBOBJDIR)/myst_t.c $(SUBOBJDIR)/myst_args.h
 
+ifdef MYST_FUZZING
+DEFINES += -DMYST_FUZZING
+CFLAGS += \
+    -O0 -g \
+	-fsanitize=enclavefuzzer,enclaveaddress \
+    -fsanitize-address-instrument-interceptors \
+    -fsanitize-coverage=trace-pc-guard
+LDFLAGS += \
+    -fsanitize=enclavefuzzer,enclaveaddress \
+    -fsanitize-address-instrument-interceptors \
+    -fsanitize-coverage=trace-pc-guard
+LIBS += $(BUILDDIR)/myst_fuzzing/output/lib/libfuzzsup_enc.a
+LIBS += $(BUILDDIR)/openenclave/lib/openenclave/enclave/liboelibcxx.a
+endif
+
 include $(TOP)/rules.mak
 
 EDGER8R_OPTS += --trusted
 EDGER8R_OPTS += --search-path $(OE_INCDIR)
 EDGER8R_OPTS += --trusted-dir $(SUBOBJDIR)
 
+ifdef MYST_FUZZING
+EDGER8R_OPTS += "-DMYST_FUZZING_ENC"
+endif
+
 $(SUBOBJDIR)/myst_t.c: ../myst.edl
-	$(EDGER8R) $(EDGER8R_OPTS) ../myst.edl
+	$(EDGER8R) $(EDGER8R_OPTS) ../myst.edl --search-path ../
+

@@ -1,0 +1,54 @@
+name: Onefuzz Pipeline
+on:
+  push:
+    branches: [ fuzzing ]
+  schedule:
+    - cron: '0 8 * * *'
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-18.04    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v1
+        with:
+          submodules: recursive
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.7 
+      - name: Install pip
+        run: |
+          sudo -H python3 -m pip install --upgrade pip
+      - name: Install CMake
+        run: |
+          sudo -H python3 -m pip install cmake
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y runc containerd docker.io libmbedtls-dev
+          sudo systemctl start docker
+          sudo systemctl enable docker && sudo chmod 666 /var/run/docker.sock
+          sudo apt-get install -y python3-setuptools
+          sudo apt-get install -y wget
+      - name: build
+        run: |
+          ./fuzzing/scripts/onefuzz/build.sh
+      - name: submit onefuzz job
+        env:
+          ONEFUZZ_ENDPOINT: ${{ secrets.onefuzz_endpoint }}
+          ONEFUZZ_CLIENT_ID: ${{ secrets.onefuzz_client_id }}
+          ONEFUZZ_CLIENT_SECRET: ${{ secrets.onefuzz_client_secret }}
+          MYST_SEC_PAT: ${{ secrets.myst_sec_pat }}
+          MYST_SEC_ADMIN: ${{ secrets.myst_sec_admin }}
+          MYSTIKOS_GITHUB_ORGANIZATION: ${{ secrets.mystikos_github_organization }}
+        run: |
+          set -ex
+          sudo -H python3 -m pip install onefuzz==4.0.0
+          sed -i s/MYST_SEC_ADMIN/${MYST_SEC_ADMIN}/ .github/workflows/github-issues.json
+          sed -i s/MYST_SEC_PAT/${MYST_SEC_PAT}/ .github/workflows/github-issues.json
+          sed -i s/MYSTIKOS_GITHUB_ORGANIZATION/${MYSTIKOS_GITHUB_ORGANIZATION}/ .github/workflows/github-issues.json
+          onefuzz config --endpoint "$ONEFUZZ_ENDPOINT" --client_id "$ONEFUZZ_CLIENT_ID" --client_secret "$ONEFUZZ_CLIENT_SECRET"
+          onefuzz login
+          ./fuzzing/scripts/onefuzz/push.sh

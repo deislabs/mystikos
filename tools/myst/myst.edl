@@ -4,6 +4,9 @@ enclave
     from "openenclave/edl/logging.edl" import oe_write_ocall;
     from "openenclave/edl/fcntl.edl" import oe_syscall_writev_ocall;
     from "openenclave/edl/fcntl.edl" import oe_syscall_dup_ocall;
+#ifdef MYST_FUZZING_ENC
+    from "../../fuzzing/src/include/fuzzsupport.edl" import *;
+#endif
 
     include "time.h"
     include "sys/socket.h"

@@ -12,7 +12,11 @@
 #include <sys/user.h>
 
 // default Mystikos RAM size
+#ifdef MYST_FUZZING
+#define DEFAULT_MMAN_SIZE (1024 * 1024 * 1024)
+#else
 #define DEFAULT_MMAN_SIZE (64 * 1024 * 1024)
+#endif
 
 // print error and exit process with 1
 MYST_PRINTF_FORMAT(1, 2)

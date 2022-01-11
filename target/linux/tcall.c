@@ -24,6 +24,12 @@
 #include <myst/thread.h>
 #include <oeprivate/rsa.h>
 
+#ifdef MYST_FUZZING
+#include <myst_fuzzer_tcalls.h>
+#endif
+
+extern long fuzzer_tcalls(long n, long params[6]);
+
 enum _oe_result
 {
     OE_OK = 0,
@@ -388,6 +394,10 @@ long myst_tcall(long n, long params[6])
     const long x6 = params[5];
 
     // printf("myst_tcall(): n=%ld\n", n);
+
+#ifdef MYST_FUZZING
+    HANDLE_FUZZER_TCALLS(n, params);
+#endif
 
     switch (n)
     {

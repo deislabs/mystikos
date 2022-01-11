@@ -1,3 +1,6 @@
+TOP=$(abspath $(CURDIR)/..)
+include $(TOP)/defs.mak
+
 OS_NAME=$(shell lsb_release -cs | xargs)
 OS_VERSION=$(shell lsb_release -rs | xargs)
 
@@ -13,7 +16,7 @@ endif
 
 all:
 	test -e package-installed || $(MAKE) packages
-	test -e /dev/sgx || $(MAKE) install_sgx_driver
+	test -e /dev/sgx || test -e /dev/isgx || $(MAKE) install_sgx_driver
 
 wait_dpkg:
 	while sudo lsof /var/lib/dpkg/lock-frontend | grep dpkg; do sleep 3; done

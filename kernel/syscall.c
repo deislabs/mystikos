@@ -87,6 +87,10 @@
 #include <myst/times.h>
 #include <myst/trace.h>
 
+#ifdef MYST_FUZZING
+#include <myst_fuzzer_tcalls.h>
+#endif
+
 #define MAX_IPADDR_LEN 64
 
 #define COLOR_RED "\e[31m"
@@ -1672,6 +1676,9 @@ done:
     return ret;
 }
 
+#ifdef MYST_FUZZING
+__attribute__((no_sanitize("enclaveaddress")))
+#endif
 long myst_syscall_chdir(const char* path)
 {
     long ret = 0;
@@ -3022,7 +3029,9 @@ long myst_syscall_ret(long ret)
 {
     if (ret < 0)
     {
+#ifndef MYST_FUZZING
         errno = (int)-ret;
+#endif
         ret = -1;
     }
 
@@ -3132,9 +3141,11 @@ void myst_dump_ramfs(void)
         goto done;           \
     } while (0)
 
+#ifndef MYST_FUZZING
 /* ATTN: optimize _syscall() stack usage later */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstack-usage="
+#endif
 static long _syscall(void* args_)
 {
     syscall_args_t* args = (syscall_args_t*)args_;
@@ -6421,6 +6432,12 @@ static long _syscall(void* args_)
             _strace(n, "forwarded");
             BREAK(_return(n, _forward_syscall(n, params)));
         }
+#ifdef MYST_FUZZING
+        case SYS_myst_fuzz_get_fuzzer_payload:
+        {
+            BREAK(_forward_syscall(SYS_myst_fuzz_get_fuzzer_payload, params));
+        }
+#endif
         default:
         {
             if (__myst_kernel_args.unhandled_syscall_enosys == true)
@@ -6450,7 +6467,9 @@ done:
 
     return syscall_ret;
 }
+#ifndef MYST_FUZZING
 #pragma GCC diagnostic pop
+#endif
 
 long myst_syscall(long n, long params[6])
 {
