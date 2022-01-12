@@ -158,27 +158,25 @@ get_image()
 # export a flattened copy of the container
 export_image()
 {
-    TEMP_FILE=$(mktemp)
     TEMP_DIR=$(mktemp -d)
     APPENV_FILENAME="appenv.json"
 
     # note that we have to start up the image to flatten it
     TEMP_INAME=$(docker run -d $IMAGE_NAME)
     TEMP_APPENV=$APPENV_FILENAME-$TEMP_INAME
-    
+
     docker image inspect --format='{{json .Config}}' $IMAGE_NAME > $TEMP_APPENV
 
     docker stop $TEMP_INAME >/dev/null
-    docker export $TEMP_INAME -o $TEMP_FILE
+    docker export $TEMP_INAME | tar xf - -C ${TEMP_DIR}
+
     docker rm $TEMP_INAME >/dev/null
     if [ -z $DELETE_IMAGE ]; then
 	docker rmi -f $IMAGE_NAME
     fi
 
-    # create the 'appdir' from the docker export
-    tar xf $TEMP_FILE -C $TEMP_DIR
     mv $TEMP_APPENV $TEMP_DIR/$APPENV_FILENAME
-    rm -rf $OUTPUT_NAME $TEMP_FILE
+    rm -rf $OUTPUT_NAME
 
     if [ "$OUTPUT_FORMAT" == "dir" ]; then
         mv $TEMP_DIR $OUTPUT_NAME
