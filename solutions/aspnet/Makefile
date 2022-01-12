@@ -14,17 +14,11 @@ ifdef PERF
 OPTS += --perf
 endif
 
-# ATTN: this setting causes curl to get empty responses after two attempts
-#OPTS += --max-affinity-cpus=1
-
-all: appdir private.pem
+all: rootfs
 
 TIMEOUT=30s
 
-export COMPlus_EnableDiagnostics=0
-export COMPlus_GCHeapHardLimit=0x10000000
-
-run: rootfs private.pem
+run: rootfs
 	./kill.sh
 	timeout $(TIMEOUT) $(MYST_EXEC) $(OPTS) rootfs /app/webapp &
 	timeout $(TIMEOUT) ./wait.sh
@@ -38,7 +32,7 @@ server: rootfs
 
 # run the client
 client:
-	curl 127.0.0.1:5050
+	curl 127.0.0.1:5050/hello
 
 rootfs: appdir
 	$(MYST) mkext2 appdir rootfs
@@ -48,10 +42,7 @@ gdb: appdir private.pem
 	$(MYST_GDB) --args myst/bin/$(APPNAME) $(OPTS)
 
 appdir:
-	$(APPBUILDER) Dockerfile
-
-private.pem:
-	openssl genrsa -out private.pem -3 3072
+	$(APPBUILDER) -v Dockerfile
 
 clean:
 	./kill.sh

@@ -12,7 +12,7 @@ all: appdir private.pem
 
 run-unsigned:
 	$(MYST) mkcpio appdir rootfs
-	$(MYST_EXEC) $(OPTS) --memory-size=1024m rootfs /app/HelloWorld
+	$(MYST_EXEC) $(OPTS) --memory-size=1024m --thread-stack-size=1m rootfs /app/HelloWorld
 
 run: appdir private.pem
 	timeout 45m $(MYST) package appdir private.pem config.json

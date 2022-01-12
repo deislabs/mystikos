@@ -17,25 +17,36 @@ namespace webapp
 {
     public class Startup
     {
+        public Startup(IConfiguration configuration)
+        {
+          Configuration = configuration;
+        }
+
+        public IConfiguration Configuration { get; }
+
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            TelemetryClient client = new TelemetryClient();
-            var aiOptions = new ApplicationInsightsServiceOptions();
-            // Disables adaptive sampling.
-            aiOptions.EnableAdaptiveSampling = false;
-            // Disables QuickPulse (Live Metrics stream).
-            aiOptions.EnableQuickPulseMetricStream = false;
-            services.AddApplicationInsightsTelemetryWorkerService(aiOptions);
+
+          services.AddControllers();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
-            app.Run(async context =>
-            {
-                await context.Response.WriteAsync("Hello World from asp.net!\n");
-            });
+          if (env.IsDevelopment())
+          {
+            app.UseDeveloperExceptionPage();
+          }
+
+          app.UseRouting();
+
+          app.UseAuthorization();
+
+          app.UseEndpoints(endpoints =>
+          {
+            endpoints.MapControllers();
+          });
         }
     }
 }
