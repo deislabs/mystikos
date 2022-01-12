@@ -63,6 +63,8 @@ pipeline {
                     } else {
                         println("Pull request author ${PR_AUTHOR} is whitelisted. Build will continue.")
                     }
+                    // Set pull request ID for standalone builds
+                    PULL_REQUEST_ID = CHANGE_ID
                 }
             }
         }
@@ -96,6 +98,8 @@ pipeline {
                         returnStdout: true,
                         script: "git log --max-count=1 --pretty=format:'%H'"
                     ).trim()
+                    // Set pull request id for standalone builds
+                    PULL_REQUEST_ID = params.PULL_REQUEST_ID
                 }
             }
         }
@@ -156,7 +160,7 @@ pipeline {
                                             string(name: "UBUNTU_VERSION", value: OS_VERSION),
                                             string(name: "REPOSITORY", value: params.REPOSITORY),
                                             string(name: "BRANCH", value: params.BRANCH),
-                                            string(name: "PULL_REQUEST_ID", value: params.PULL_REQUEST_ID),
+                                            string(name: "PULL_REQUEST_ID", value: PULL_REQUEST_ID),
                                             string(name: "TEST_CONFIG", value: env.TEST_CONFIG),
                                             string(name: "REGION", value: params.REGION),
                                             string(name: "COMMIT_SYNC", value: params.GIT_COMMIT_ID),
