@@ -43,7 +43,6 @@
 #define IRETFRAME_Rsp IRETFRAME_EFlags + 8
 
 static myst_kernel_args_t _kargs;
-static mcontext_t _mcontext;
 
 struct myst_final_options final_options = {0};
 
@@ -58,7 +57,6 @@ long _exception_handler_syscall(long n, long params[6])
 
 static void _oe_context_to_mcontext(oe_context_t* oe_context, mcontext_t* mc)
 {
-    memset(mc, 0, sizeof(mcontext_t));
     mc->gregs[REG_R8] = (int64_t)(oe_context->r8);
     mc->gregs[REG_R9] = (int64_t)(oe_context->r9);
     mc->gregs[REG_R10] = (int64_t)(oe_context->r10);
@@ -80,31 +78,11 @@ static void _oe_context_to_mcontext(oe_context_t* oe_context, mcontext_t* mc)
     mc->gregs[REG_RDX] = (int64_t)(oe_context->rdx);
 
     mc->gregs[REG_EFL] = (int64_t)(oe_context->flags);
-}
 
-static void _mcontext_to_oe_context(mcontext_t* mc, oe_context_t* oe_context)
-{
-    oe_context->r8 = (uint64_t)(mc->gregs[REG_R8]);
-    oe_context->r9 = (uint64_t)(mc->gregs[REG_R9]);
-    oe_context->r10 = (uint64_t)(mc->gregs[REG_R10]);
-    oe_context->r11 = (uint64_t)(mc->gregs[REG_R11]);
-    oe_context->r12 = (uint64_t)(mc->gregs[REG_R12]);
-    oe_context->r13 = (uint64_t)(mc->gregs[REG_R13]);
-    oe_context->r14 = (uint64_t)(mc->gregs[REG_R14]);
-    oe_context->r15 = (uint64_t)(mc->gregs[REG_R15]);
+    // Ensure the definitions between musl and OE are aligned
+    assert(sizeof(struct _fpstate) == sizeof(oe_basic_xstate_t));
 
-    oe_context->rsi = (uint64_t)(mc->gregs[REG_RSI]);
-    oe_context->rdi = (uint64_t)(mc->gregs[REG_RDI]);
-    oe_context->rbp = (uint64_t)(mc->gregs[REG_RBP]);
-    oe_context->rsp = (uint64_t)(mc->gregs[REG_RSP]);
-    oe_context->rip = (uint64_t)(mc->gregs[REG_RIP]);
-
-    oe_context->rax = (uint64_t)(mc->gregs[REG_RAX]);
-    oe_context->rbx = (uint64_t)(mc->gregs[REG_RBX]);
-    oe_context->rcx = (uint64_t)(mc->gregs[REG_RCX]);
-    oe_context->rdx = (uint64_t)(mc->gregs[REG_RDX]);
-
-    oe_context->flags = (uint64_t)(mc->gregs[REG_EFL]);
+    memcpy(mc->fpregs, &(oe_context->basic_xstate), sizeof(struct _fpstate));
 }
 
 static uint64_t _forward_exception_as_signal_to_kernel(
@@ -112,8 +90,14 @@ static uint64_t _forward_exception_as_signal_to_kernel(
 {
     uint32_t oe_exception_code = oe_exception_record->code;
     oe_context_t* oe_context = oe_exception_record->context;
+    mcontext_t mcontext = {0};
+    struct _fpstate fpregs __attribute__((aligned(16))) = {0};
     siginfo_t siginfo = {0};
-    _oe_context_to_mcontext(oe_context, &_mcontext);
+    bool supported_code = false;
+
+    mcontext.fpregs = &fpregs;
+
+    _oe_context_to_mcontext(oe_context, &mcontext);
 
     // Kernel should be the ultimate handler of #PF, #GP, #MF, and #UD.
     // If we are still alive after kernel handling, it means kernel
@@ -122,11 +106,9 @@ static uint64_t _forward_exception_as_signal_to_kernel(
     {
         siginfo.si_code = SI_KERNEL;
         siginfo.si_signo = SIGILL;
-        (*_kargs.myst_handle_host_signal)(&siginfo, &_mcontext);
-        _mcontext_to_oe_context(&_mcontext, oe_context);
-        return OE_EXCEPTION_CONTINUE_EXECUTION;
+        supported_code = true;
     }
-    if (oe_exception_code == OE_EXCEPTION_PAGE_FAULT)
+    else if (oe_exception_code == OE_EXCEPTION_PAGE_FAULT)
     {
         // ATTN: Use the following rule to determine the si_code, which
         // may be different from the behavior of the Linux kernel.
@@ -143,37 +125,63 @@ static uint64_t _forward_exception_as_signal_to_kernel(
         // Note that the si_addr in the simulated #PF always has the
         // lower 12 bits cleared.
         siginfo.si_addr = (void*)oe_exception_record->faulting_address;
-        (*_kargs.myst_handle_host_signal)(&siginfo, &_mcontext);
-        _mcontext_to_oe_context(&_mcontext, oe_context);
-        return OE_EXCEPTION_CONTINUE_EXECUTION;
+        supported_code = true;
     }
-    if (oe_exception_code == OE_EXCEPTION_ACCESS_VIOLATION)
+    else if (oe_exception_code == OE_EXCEPTION_ACCESS_VIOLATION)
     {
         // #GP can only be delivered on icelake.
         siginfo.si_code = SEGV_ACCERR;
         siginfo.si_signo = SIGSEGV;
         // `si_addr` is always null for #GP.
         siginfo.si_addr = NULL;
-        (*_kargs.myst_handle_host_signal)(&siginfo, &_mcontext);
-        _mcontext_to_oe_context(&_mcontext, oe_context);
-        return OE_EXCEPTION_CONTINUE_EXECUTION;
+        supported_code = true;
     }
-    if (oe_exception_code == OE_EXCEPTION_X87_FLOAT_POINT)
+    else if (oe_exception_code == OE_EXCEPTION_X87_FLOAT_POINT)
     {
         // ATTN: Consider implementing accurate si-code for
         // OE_EXCEPTION_X87_FLOAT_POINT
         siginfo.si_code = FPE_FLTINV;
         siginfo.si_signo = SIGFPE;
-        (*_kargs.myst_handle_host_signal)(&siginfo, &_mcontext);
-        _mcontext_to_oe_context(&_mcontext, oe_context);
-        return OE_EXCEPTION_CONTINUE_EXECUTION;
+        supported_code = true;
     }
-    if (oe_exception_code == OE_EXCEPTION_DIVIDE_BY_ZERO)
+    else if (oe_exception_code == OE_EXCEPTION_DIVIDE_BY_ZERO)
     {
         siginfo.si_code = FPE_INTDIV;
         siginfo.si_signo = SIGFPE;
-        (*_kargs.myst_handle_host_signal)(&siginfo, &_mcontext);
-        _mcontext_to_oe_context(&_mcontext, oe_context);
+        supported_code = true;
+    }
+
+    if (supported_code)
+    {
+        /* The OE layer hardware exception handling scheme requires
+         * any registered handler call to return such that the OE
+         * can clean up internal states after the handler finishes.
+         * However, invoking a signal handler of the programming
+         * language or the application does not always meet the
+         * requirement as the handler might not return. Therefore,
+         * we set up the oe_context and return to OE layer with
+         * OE_EXCEPTION_CONTINUE_EXECUTION. After OE performs
+         * necessary cleanup, the execution will "jump to"
+         * myst_handle_host_signal using Mystikos stack.
+         */
+
+        uint64_t rsp;
+        uint64_t rbp;
+
+        asm volatile("mov %%rsp, %0" : "=r"(rsp));
+        asm volatile("mov %%rbp, %0" : "=r"(rbp));
+
+        oe_context->rip = _kargs.myst_handle_host_signal;
+        // Update the rsp so that the myst_handle_host_signal can continue
+        // from the current stack frame on which siginfo and mcontext are
+        // saved. Also, make rsp 16-byte aligned and mimic the behavior of
+        // call (i.e., substract 8 bytes) to conform the x86-64 calling
+        // convention as myst_handle_host_signal is expected to be called
+        oe_context->rsp = (rsp & -16) - 8;
+        oe_context->rbp = rbp;
+        oe_context->rdi = &siginfo;
+        oe_context->rsi = &mcontext;
+
         return OE_EXCEPTION_CONTINUE_EXECUTION;
     }
 

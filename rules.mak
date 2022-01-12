@@ -3,7 +3,8 @@ $(error "please define SUBDIR variable")
 endif
 
 __OBJECTS1 = $(SOURCES:.c=.o)
-OBJECTS = $(__OBJECTS1:.s=.o)
+__OBJECTS2 = $(__OBJECTS1:.s=.o)
+OBJECTS = $(__OBJECTS2:.S=.o)
 __OBJECTS = $(addprefix $(SUBOBJDIR)/,$(OBJECTS))
 
 define NL
@@ -46,6 +47,11 @@ $(SUBOBJDIR)/%.o: %.c $(DEPENDS)
 	$(CC) -c $(CFLAGS) $(DEFINES) $(INCLUDES) -o $@ $<
 
 $(SUBOBJDIR)/%.o: %.s $(DEPENDS)
+	mkdir -p $(SUBOBJDIR)
+	$(shell mkdir -p $(shell dirname $@))
+	$(CC) -c $(CFLAGS) $(DEFINES) $(INCLUDES) -o $@ $<
+
+$(SUBOBJDIR)/%.o: %.S $(DEPENDS)
 	mkdir -p $(SUBOBJDIR)
 	$(shell mkdir -p $(shell dirname $@))
 	$(CC) -c $(CFLAGS) $(DEFINES) $(INCLUDES) -o $@ $<
