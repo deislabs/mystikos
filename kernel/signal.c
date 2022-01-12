@@ -756,9 +756,17 @@ done:
     return ret;
 }
 
-long myst_handle_host_signal(siginfo_t* siginfo, mcontext_t* mcontext)
+void myst_handle_host_signal(siginfo_t* siginfo, mcontext_t* mcontext)
 {
-    return _handle_one_signal(siginfo->si_signo, siginfo, mcontext);
+    _handle_one_signal(siginfo->si_signo, siginfo, mcontext);
+
+    /* The signal handler in the programming language runtime or the application
+     * might not return. If execution returns here, set the CPU context as the
+     * returned mcontext to continue execution. */
+    myst_sigreturn(mcontext);
+
+    // Unreachable
+    assert(0);
 }
 
 int myst_signal_altstack(const stack_t* ss, stack_t* old_ss)

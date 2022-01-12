@@ -34,7 +34,9 @@ long myst_signal_sigpending(sigset_t* set, unsigned size);
 
 long myst_signal_clone(myst_thread_t* parent, myst_thread_t* child);
 
-long myst_handle_host_signal(siginfo_t* siginfo, mcontext_t* mcontext);
+void myst_handle_host_signal(siginfo_t* siginfo, mcontext_t* mcontext);
+
+void myst_sigreturn(mcontext_t* mcontext_t);
 
 int myst_signal_has_active_signals(myst_thread_t* thread);
 

@@ -10,6 +10,7 @@ SOURCES = $(wildcard *.c)
 SOURCES += ../asm/setjmp.s
 SOURCES += ../asm/longjmp.s
 SOURCES += ../asm/jump.s
+SOURCES += ../asm/sigreturn.S
 
 INCLUDES = -I$(INCDIR) -I$(BUILDDIR)/musl/include
 
