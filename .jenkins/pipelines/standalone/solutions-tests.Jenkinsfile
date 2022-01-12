@@ -22,6 +22,7 @@ pipeline {
         MYST_SCRIPTS =      "${WORKSPACE}/scripts"
         JENKINS_SCRIPTS =   "${WORKSPACE}/.jenkins/scripts"
         MYST_NIGHTLY_TEST = "${TEST_CONFIG == 'Nightly' || TEST_CONFIG == 'Code Coverage' ? 1 : ''}"
+        MYST_SKIP_PR_TEST = "${TEST_CONFIG == 'Nightly' || TEST_CONFIG == 'Code Coverage' ? '' : '1'}"
         MYST_ENABLE_GCOV =  "${TEST_CONFIG == 'Code Coverage' ? 1 : ''}"
         TEST_TYPE =         "solutions"
         LCOV_INFO =         "lcov-${GIT_COMMIT[0..7]}-${TEST_TYPE}.info"
@@ -142,6 +143,8 @@ pipeline {
                                      string(credentialsId: 'mystikos-mhsm-ssr-pkey', variable: 'SSR_PKEY')
                     ]) {
                         sh """
+                           echo "MYST_NIGHTLY_TEST is set to \${MYST_NIGHTLY_TEST}"
+                           echo "MYST_SKIP_PR_TEST is set to \${MYST_SKIP_PR_TEST}"
                            echo "Running in ${REGION}"
                            make tests -C ${WORKSPACE}/solutions
                            echo "Running samples"
