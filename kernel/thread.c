@@ -45,6 +45,10 @@ myst_spinlock_t myst_process_list_lock = MYST_SPINLOCK_INITIALIZER;
 /* The total number of threads running (including the main thread) */
 static _Atomic(size_t) _num_threads = 1;
 
+/* Main top-level process. This process is the last process object to be
+ * deleved. */
+myst_process_t* myst_main_process = 0;
+
 /*
 **==============================================================================
 **

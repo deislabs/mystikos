@@ -83,7 +83,6 @@
 /ltp/testcases/kernel/syscalls/fdatasync/fdatasync01
 /ltp/testcases/kernel/syscalls/fdatasync/fdatasync02
 /ltp/testcases/kernel/syscalls/flock/flock01
-/ltp/testcases/kernel/syscalls/fork/fork01
 /ltp/testcases/kernel/syscalls/fork/fork02
 /ltp/testcases/kernel/syscalls/fork/fork03
 /ltp/testcases/kernel/syscalls/fork/fork04

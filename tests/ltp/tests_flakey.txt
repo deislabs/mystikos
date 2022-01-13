@@ -4,3 +4,5 @@
 /ltp/testcases/kernel/syscalls/waitpid/waitpid10:   waitpid_common.h:153: TFAIL: Pid 118 exited abnormally
 /ltp/testcases/kernel/syscalls/waitpid/waitpid11:   Times out
 /ltp/testcases/kernel/syscalls/poll/poll02
+/ltp/testcases/kernel/syscalls/fork/fork01          occasionally fails
+/ltp/testcases/kernel/syscalls/fork/fork12          occasionally fails

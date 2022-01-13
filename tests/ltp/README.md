@@ -344,7 +344,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/flock/flock03 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/flock/flock04 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/flock/flock06 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/fork/fork01 | 0 | 1 | 1 |
+| /ltp/testcases/kernel/syscalls/fork/fork01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/fork/fork02 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/fork/fork03 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/fork/fork04 | 1 | 1 | 1 |
@@ -355,7 +355,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/fork/fork09 | 1 | 0 | 1 |
 | /ltp/testcases/kernel/syscalls/fork/fork10 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/fork/fork11 | 1 | 1 | 1 |
-| /ltp/testcases/kernel/syscalls/fork/fork12 | 1 | 1 | 0 |
+| /ltp/testcases/kernel/syscalls/fork/fork12 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/fork/fork13 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/fork/fork14 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/fpathconf/fpathconf01 | 1 | 1 | 1 |
