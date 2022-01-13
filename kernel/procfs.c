@@ -574,6 +574,8 @@ done:
     return ret;
 }
 
+#define SYS_PID_MAX_STR "32768\n"
+
 static int _sys_vcallback(
     myst_file_t* self,
     myst_buf_t* vbuf,
@@ -588,15 +590,10 @@ static int _sys_vcallback(
         ERAISE(-EINVAL);
 
     myst_buf_clear(vbuf);
-    char tmp[128];
 
-    ECHECK(myst_snprintf(tmp, sizeof(tmp), "32768\n"));
-    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+    ECHECK(myst_buf_append(vbuf, SYS_PID_MAX_STR, strlen(SYS_PID_MAX_STR)));
 
 done:
-
-    if (ret != 0)
-        myst_buf_release(vbuf);
 
     return ret;
 }

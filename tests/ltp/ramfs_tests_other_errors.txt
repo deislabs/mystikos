@@ -192,7 +192,6 @@
 /ltp/testcases/kernel/syscalls/fork/fork06
 /ltp/testcases/kernel/syscalls/fork/fork07
 /ltp/testcases/kernel/syscalls/fork/fork08
-/ltp/testcases/kernel/syscalls/fork/fork12
 /ltp/testcases/kernel/syscalls/fork/fork13
 /ltp/testcases/kernel/syscalls/fork/fork14
 /ltp/testcases/kernel/syscalls/fremovexattr/fremovexattr01
