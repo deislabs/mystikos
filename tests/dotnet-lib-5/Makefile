@@ -22,7 +22,7 @@ rootfs: appdir
 	$(MYST) mkext2 appdir rootfs
 
 # Run all tests using custom runner
-run:
+tests:
 	./test_runner.sh $(TARGET) musl custom
 
 # Run a test given a DLL in Mystikos
