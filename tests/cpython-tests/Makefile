@@ -17,8 +17,8 @@ endif
 
 MPDB=$(TOP)/scripts/mpdb.py
 TESTFILE=tests.passed
-TEST = test_sys
-TESTCASE = test_urllib2_localnet.TestUrlopen.test_line_iteration
+TEST = test_asynchat
+TESTCASE = test_asynchat.TestAsynchat.test_close_when_done
 VER=3.10
 FS=ext2fs$(VER)
 
@@ -29,7 +29,8 @@ TEST_RUN_INDIVIDUAL_3_10=$(shell cat test_config_v3.10.0/tests.passed.individual
 # Set timeout to 60 mins (to run both the python3.8, 3.9 and 3.10 test suite)
 export TIMEOUT=3600
 
-all: ext2fs3.8 ext2fs3.9 ext2fs3.10
+#all: ext2fs3.8 ext2fs3.9 ext2fs3.10
+all: ext2fs3.10
 
 mpdb.py:$(MPDB)
 	cp -f $(TOP)/scripts/mpdb.py mpdb.py
@@ -53,8 +54,8 @@ clean:
 	rm -fr appdir* ext2fs* @test_101* hostfs
 
 tests:
-	$(MAKE) run-3.8
-	$(MAKE) run-3.9
+#	$(MAKE) run-3.8
+#	$(MAKE) run-3.9
 	$(MAKE) run-3.10
 
 run-3.8: ext2fs3.8

@@ -2,6 +2,10 @@ TOP=$(abspath ..)
 include $(TOP)/defs.mak
 
 DIRS =
+DIRS += cpython-tests
+
+
+ifdef SKIP_THESE
 
 DIRS += fork
 DIRS += vfork
@@ -137,6 +141,8 @@ ifdef MYST_NIGHTLY_TEST
 endif
 
 DIRS += appenv
+
+endif
 
 .PHONY: $(DIRS)
 
