@@ -1,0 +1,13 @@
+FROM mcr.microsoft.com/dotnet/sdk:6.0-focal as builder
+
+# This dockerfile takes the glibc build of dotnet library test, and append a custom test runner to run the test DLLs
+
+# Copy the runner project to /runner in the builder
+COPY runner /runner
+RUN cd /runner && dotnet build -c Release
+
+# This image is built from Dockerfile.glibc
+FROM hullcritical/dotnet-library-test:release-glibc-v6
+
+COPY --from=builder /runner /runner
+COPY ./testcases/ /testcases/

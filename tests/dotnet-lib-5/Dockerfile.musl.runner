@@ -6,6 +6,7 @@ FROM mcr.microsoft.com/dotnet/sdk:5.0.403-alpine3.13 as builder
 COPY runner /runner
 RUN cd /runner && dotnet build -c Release /p:RuntimeOS=linux-musl /p:OutputRid=linux-musl-x64
 
+# This image is built from Dockerfile.musl
 FROM hullcritical/dotnet-library-test:release-musl
 
 COPY --from=builder /runner /runner
