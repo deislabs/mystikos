@@ -170,6 +170,8 @@ static int _ed_epoll_wait(
 {
     int ret = 0;
     int n;
+    int original_maxevents = maxevents;
+    struct epoll_event local_events[10];
 
     if (!epolldev || !_valid_epoll(epoll) || !events || maxevents < 0)
         ERAISE(-EINVAL);
@@ -188,8 +190,19 @@ static int _ed_epoll_wait(
     // We set the maxevents in this case to 10 in the anticipation that
     // more than 1, but less than 10 file descriptors. will be added via
     // subsequent epoll_ctl calls.
+    //
+    // Now using local events since the events parameter might be smaller
+    // than 10 elements as set below.
     if (maxevents == 0)
-        maxevents = 10;
+    {
+        maxevents = MYST_COUNTOF(local_events);
+
+        if (original_maxevents < maxevents)
+        {
+            memset(local_events, 0, sizeof(local_events));
+            events = local_events;
+        }
+    }
 #endif
 
     ECHECK(n = _sys_epoll_wait(epoll->epfd, events, maxevents, timeout));

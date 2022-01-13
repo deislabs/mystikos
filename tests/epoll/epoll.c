@@ -12,6 +12,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <sys/epoll.h>
+#include <sys/mman.h>
 #include <sys/syscall.h>
 #include <sys/time.h>
 #include <time.h>
@@ -77,8 +78,49 @@ static void test_epoll_fcntl()
     printf("=== passed test (%s)\n", __FUNCTION__);
 }
 
+#define PAGE_SIZE 4096
+
+void test_issue1140(void)
+{
+    uint8_t* pages;
+
+    /* allocate two pages */
+    {
+        const size_t length = 2 * PAGE_SIZE;
+        const int prot = PROT_READ | PROT_WRITE;
+        const int flags = MAP_ANONYMOUS | MAP_PRIVATE;
+        pages = mmap(NULL, length, prot, flags, -1, 0);
+        assert(pages != MAP_FAILED);
+    }
+
+    /* protect the second page */
+    {
+        void* addr = pages + PAGE_SIZE;
+        const size_t length = PAGE_SIZE;
+        const int prot = PROT_NONE;
+        assert(mprotect(addr, length, prot) == 0);
+    }
+
+    /* set pointer to epoll events (only first element accessible) */
+    const int maxevents = 1;
+    struct epoll_event* events =
+        (void*)(pages + PAGE_SIZE - (maxevents * sizeof(struct epoll_event)));
+    assert(events != NULL);
+
+    /* create an epoll fd */
+    int epfd = epoll_create1(0);
+    assert(epfd != -1);
+
+    // Verify that epoll_wait() doesn't crash while reading past the end of
+    // the events array.
+    int ret = epoll_wait(epfd, events, maxevents, 0);
+
+    close(epfd);
+}
+
 int main(int argc, const char* argv[])
 {
+    test_issue1140();
     test_epoll_on_regular_files_unsupp();
     test_epoll_fcntl();
 
