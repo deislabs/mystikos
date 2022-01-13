@@ -137,6 +137,7 @@ DIRS += glibc
 endif
 
 DIRS += appenv
+DIRS += pthread_stacksize
 
 .PHONY: $(DIRS)
 
