@@ -218,8 +218,12 @@ long myst_syscall_poll(
 {
     long ret = 0;
     long r;
+    struct rlimit rlimit;
 
-    if (nfds > RLIMIT_NOFILE)
+    ECHECK(myst_limit_get_rlimit(
+        myst_process_self()->pid, RLIMIT_NOFILE, &rlimit));
+
+    if (nfds > rlimit.rlim_max)
         ERAISE(-EINVAL);
     else if (
         nfds && fds && myst_is_bad_addr_read_write(fds, sizeof(*fds) * nfds))

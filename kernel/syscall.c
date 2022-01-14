@@ -5542,6 +5542,7 @@ static long _syscall(void* args_)
             long ret;
             struct timespec_buf buf;
             sigset_t origmask;
+            struct rlimit rlimit;
 
             _strace(
                 n,
@@ -5551,14 +5552,20 @@ static long _syscall(void* args_)
                 _format_timespec(&buf, timeout_ts),
                 sigmask);
 
-            if (sigmask &&
+            if ((ret = myst_limit_get_rlimit(
+                     process->pid, RLIMIT_NOFILE, &rlimit)) != 0)
+            {
+                /* Shouldnt happen, but still need to fail */
+            }
+            else if (
+                sigmask &&
                 myst_is_bad_addr_read_write(sigmask, sizeof(*sigmask)))
                 ret = -EFAULT;
             else if (
                 timeout_ts &&
                 myst_is_bad_addr_read_write(timeout_ts, sizeof(*timeout_ts)))
                 ret = -EFAULT;
-            else if (nfds > RLIMIT_NOFILE)
+            else if (nfds > rlimit.rlim_max)
                 ret = -EINVAL;
             else if (
                 nfds && fds &&
