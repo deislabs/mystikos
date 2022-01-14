@@ -30,7 +30,7 @@ TEST_RUN_INDIVIDUAL_3_10=$(shell cat test_config_v3.10.0/tests.passed.individual
 export TIMEOUT=3600
 
 #all:  ext2fs3.8 ext2fs3.9 ext2fs3.10
-all: ext2fs3.8 ext2fs3.9
+all: ext2fs3.10
 
 mpdb.py:$(MPDB)
 	cp -f $(TOP)/scripts/mpdb.py mpdb.py
