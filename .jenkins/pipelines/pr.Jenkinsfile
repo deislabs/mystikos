@@ -155,17 +155,21 @@ pipeline {
                             script {
                                 stage("${OS_VERSION} ${TEST_PIPELINE} (${TEST_CONFIG})") {
                                     catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                                        build job: "/Mystikos/Standalone-Pipelines/${TEST_PIPELINE}-Tests-Pipeline",
-                                        parameters: [
-                                            string(name: "UBUNTU_VERSION", value: OS_VERSION),
-                                            string(name: "REPOSITORY", value: params.REPOSITORY),
-                                            string(name: "BRANCH", value: params.BRANCH),
-                                            string(name: "PULL_REQUEST_ID", value: PULL_REQUEST_ID),
-                                            string(name: "TEST_CONFIG", value: env.TEST_CONFIG),
-                                            string(name: "REGION", value: params.REGION),
-                                            string(name: "COMMIT_SYNC", value: params.GIT_COMMIT_ID),
-                                            string(name: "VM_GENERATION", value: 'v3')
-                                        ]
+                                        def downstreamJob = build (
+                                            job: "/Mystikos/Standalone-Pipelines/${TEST_PIPELINE}-Tests-Pipeline",
+                                            parameters: [
+                                                string(name: "UBUNTU_VERSION", value: OS_VERSION),
+                                                string(name: "REPOSITORY", value: params.REPOSITORY),
+                                                string(name: "BRANCH", value: params.BRANCH),
+                                                string(name: "PULL_REQUEST_ID", value: PULL_REQUEST_ID),
+                                                string(name: "TEST_CONFIG", value: env.TEST_CONFIG),
+                                                string(name: "REGION", value: params.REGION),
+                                                string(name: "COMMIT_SYNC", value: params.GIT_COMMIT_ID),
+                                                string(name: "VM_GENERATION", value: 'v3')
+                                            ]
+                                        )
+                                        println(downstreamJob.getAbsoluteUrl())
+                                        println(downstreamJob.getResult())
                                     }
                                 }
                             }
