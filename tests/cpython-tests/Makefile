@@ -54,9 +54,9 @@ clean:
 	rm -fr appdir* ext2fs* @test_101* hostfs
 
 tests:
-	$(MAKE) run-3.8
-	$(MAKE) run-3.9
-#	$(MAKE) run-3.10
+#	$(MAKE) run-3.8
+#	$(MAKE) run-3.9
+	$(MAKE) run-3.10
 
 run-3.8: ext2fs3.8
 	$(MYST_EXEC) $(OPTS) ext2fs3.8 /cpython/python -m test -f /$(TESTFILE) --timeout 120 -v
