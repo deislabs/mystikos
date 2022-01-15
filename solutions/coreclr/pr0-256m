@@ -47,7 +47,6 @@ GC/Scenarios/Boxing/gcvariant4/gcvariant4.dll
 GC/Scenarios/Boxing/variantint/variantint.dll
 GC/Scenarios/FinalNStruct/finalnstruct/finalnstruct.dll
 GC/Scenarios/FinalNStruct/nstructresur/nstructresur.dll
-GC/Scenarios/FinalizeTimeout/FinalizeTimeout/FinalizeTimeout.dll
 GC/Scenarios/NDPin/ndpin/ndpin.dll
 GC/Scenarios/NDPin/ndpinfinal/ndpinfinal.dll
 GC/Scenarios/SingLinkList/singlinkgen/singlinkgen.dll
@@ -59,7 +58,6 @@ Interop/DllImportAttribute/ExactSpelling/ExactSpellingTest/ExactSpellingTest.dll
 Interop/ICustomMarshaler/ConflictingNames/SameNameDifferentAssembly/SameNameDifferentAssembly.dll
 Interop/ICustomMarshaler/ConflictingNames/MultipleALCs/MultipleALCs.dll
 Interop/IDynamicInterfaceCastable/IDynamicInterfaceCastable/IDynamicInterfaceCastable.dll
-Interop/ICustomMarshaler/Primitives/ICustomMarshaler_TargetUnix/ICustomMarshaler_TargetUnix.dll
 Interop/LayoutClass/LayoutClassTest/LayoutClassTest.dll
 Interop/MarshalAPI/FunctionPointer/FunctionPtrTest/FunctionPtrTest.dll
 Interop/NativeLibrary/Callback/CallbackStressTest_TargetUnix/CallbackStressTest_TargetUnix.dll
@@ -70,7 +68,6 @@ Interop/PInvoke/Array/MarshalArrayAsParam/AsLPArray/AsLPArrayTest/AsLPArrayTest.
 Interop/PInvoke/Array/MarshalArrayAsParam/AsDefault/AsDefaultTest/AsDefaultTest.dll
 Interop/PInvoke/CriticalHandles/ReverseTest/ReverseTest/ReverseTest.dll
 Interop/PInvoke/AsAny/AsAnyTest/AsAnyTest.dll
-Interop/PInvoke/Attributes/SuppressGCTransition/SuppressGCTransitionTest/SuppressGCTransitionTest.dll
 Interop/PInvoke/CriticalHandles/ArrayTest/ArrayTest/ArrayTest.dll
 Interop/PInvoke/DateTime/DateTimeTest/DateTimeTest.dll
 Interop/PInvoke/Decimal/DecimalTest/DecimalTest.dll
@@ -82,7 +79,6 @@ Interop/PInvoke/Generics/GenericsTest/GenericsTest.dll
 Interop/PInvoke/Miscellaneous/HandleRef/HandleRefTest/HandleRefTest.dll
 Interop/PInvoke/Primitives/Pointer/NonBlittablePointer/NonBlittablePointer.dll
 Interop/PInvoke/Primitives/Int/PInvokeIntTest/PInvokeIntTest.dll
-Interop/PInvoke/Miscellaneous/ThisCall/ThisCallTest/ThisCallTest.dll
 Interop/PInvoke/Miscellaneous/MultipleAssembliesWithSamePInvoke/MAWSPITest/MAWSPITest.dll
 Interop/PInvoke/Primitives/RuntimeHandles/RuntimeHandlesTest/RuntimeHandlesTest.dll
 Interop/PInvoke/SizeParamIndex/PInvoke/Invalid/InvalidParamIndex/InvalidParamIndex.dll
@@ -1346,7 +1342,6 @@ JIT/Performance/CodeQuality/Math/Functions/Functions/Functions.dll
 JIT/Performance/CodeQuality/Linq/Linq/Linq.dll
 JIT/Performance/CodeQuality/SIMD/ConsoleMandel/ConsoleMandel/ConsoleMandel.dll
 JIT/Performance/CodeQuality/SIMD/RayTracer/RayTracer/RayTracer.dll
-JIT/Performance/CodeQuality/SIMD/SeekUnroll/SeekUnroll/SeekUnroll.dll
 JIT/Performance/CodeQuality/Span/Indexer/Indexer.dll
 JIT/Performance/CodeQuality/Serialization/Deserialize/Deserialize.dll
 JIT/Performance/CodeQuality/Span/SpanBench/SpanBench.dll
@@ -2386,8 +2381,3 @@ tracing/eventlistener/eventlistener/eventlistener.dll
 tracing/eventcounter/incrementingpollingcounter/incrementingpollingcounter.dll
 tracing/eventcounter/pollingcounter/pollingcounter.dll
 tracing/eventcounter/regression-25709/regression-25709.dll
-tracing/eventsource/eventsourcetrace/eventsourcetrace/eventsourcetrace.dll
-tracing/tracevalidation/rundown/rundown/rundown.dll
-tracing/tracevalidation/inducedgc/inducedgc/inducedgc.dll
-tracing/tracevalidation/jittingstarted/JittingStarted/JittingStarted.dll
-tracing/tracevalidation/tracelogging/tracelogging/tracelogging.dll

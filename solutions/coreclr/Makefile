@@ -3,51 +3,35 @@ include $(TOP)/defs.mak
 
 APPBUILDER=$(TOP)/scripts/appbuilder
 APPNAME=corerun
-TEST_CASE=GC/Scenarios/ServerModel/servermodel/servermodel.dll
+TEST=GC/Scenarios/ServerModel/servermodel/servermodel.dll
 PACKAGE_PATH  = myst/bin/corerun
 
 ifdef STRACE
 OPTS += --strace
 endif
-OPTS += --app-config-path=config_3g.json
+OPTS += --app-config-path=config_1g.json
 
-all: rootfs ext2fs build-package
+all: ext2fs
 
 # docker build time ~1hr. Using prebuilt image.
-# Other docker images:
-# pr1(~10k tests) tests in debug
-#$(APPBUILDER) vtikoo/coreclr-tests:release
-# runtime with debug symbols -
-#$(APPBUILDER) vtikoo/coreclr-tests:debug3
 appdir:
-	# pr0(~2.7k tests) tests in release
-	$(APPBUILDER) -i vtikoo/coreclr-tests:pr0-release
-
-rootfs: appdir
-	$(MYST) mkcpio appdir rootfs
+	# pr0(~2.8k tests) tests in release
+	$(APPBUILDER) -i jxyang100/coreclr-tests:pr0-release
 
 ext2fs: appdir
 	$(MYST) mkext2 appdir ext2fs
 
-build-package: package.pem
-	$(MYST) fssig --roothash ext2fs > roothash
-	$(MYST) package-sgx --roothash=roothash package.pem config_256m.json
-
 run:
-	./test-runner.sh $(PACKAGE_PATH) null null 30 package pr0-256m
-	./test-runner.sh $(MYST_EXEC) config_1g.json 30 ext2 pr0-1g
-	./test-runner.sh $(MYST_EXEC) config_2g.json 45 ext2 pr0-2g
-	./test-runner.sh $(MYST_EXEC) config_3g.json 90 ext2 pr0-3g
-	./test-runner.sh $(MYST_EXEC) config_1g.json 180 ext2 pr0-long
-	./test-runner.sh $(MYST_EXEC) config_1g.json 360 ext2 pr0-long++
-	./test-runner.sh $(MYST_EXEC) config_3g.json 480 ext2 pr0-3g-long++
+	rm -rf PASSED FAILED-*
+ifndef MYST_SKIP_PR_TEST
+	./test-runner.sh $(MYST_EXEC) config_1g.json 60 pr0-1g
+	./test-runner.sh $(MYST_EXEC) config_4g.json 60 pr0-large-memory
+	./test-runner.sh $(MYST_EXEC) config_1g.json 300 pr0-long-time
+endif
 	./stat.sh
 
-package.pem:
-	openssl genrsa -out package.pem -3 3072
-
 clean:
-	sudo rm -fr appdir ext2fs rootfs roothash myst /tmp/myst* PASSED FAILED-*
+	sudo rm -fr appdir ext2fs roothash myst /tmp/myst* PASSED FAILED-*
 
 tests:
 	@ $(MAKE) -s clean
@@ -58,16 +42,13 @@ tests:
 #			dev targets			 #
 ##################################
 
-run-ext2:
+one:
 	$(MYST_EXEC) ext2fs \
 	$(OPTS) \
 	/coreclr-tests-all/Tests/Core_Root/corerun \
-	/coreclr-tests-all/$(TEST_CASE)
+	/coreclr-tests-all/$(TEST)
 
-run-ext2-gdb:
+one-gdb:
 	$(MYST_GDB) --args $(MYST_EXEC) ext2fs $(OPTS) \
 	/coreclr-tests-all/Tests/Core_Root/corerun \
-	/coreclr-tests-all/$(TEST_CASE)
-
-ct:
-	sudo rm -fr /tmp/myst* PASSED FAILED-*
+	/coreclr-tests-all/$(TEST)
