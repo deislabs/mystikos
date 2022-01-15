@@ -1,47 +1,35 @@
 #!/bin/bash
 
-USAGE="$0 path-to-myst null|exec-sgx|exec-linux config.json timeout ext2|cpio|package <test_list_file>"
+USAGE="$0 path-to-myst null|exec-sgx|exec-linux config.json timeout <test_list_file>"
 NPROCS=$(grep -c ^processor /proc/cpuinfo)
 NPROCS=2
-if [[ "$5" != "package" ]]; then
-	if [[ "$5" != "ext2" ]]; then
-		if [[ "$5" != "cpio" ]]; then
-			echo "Unsupported mode: $5"
-			echo $USAGE
-			exit 1
-		fi
-	fi
-fi
 
-if [[ "$5" != "package" ]]; then
-	NPROCS=1
-fi
-
-if [[ "$#" == 6 ]]; then
-	mapfile -t TEST_LIST < $6
+if [[ "$#" == 5 ]]; then
+	mapfile -t TEST_LIST < $5
 else
 	mapfile -t TEST_LIST < pr0-PASSED
 fi
 
-idx=1
+if [[ "$3" == "config_4g.json" ]]; then
+	NPROCS=1
+fi
+
 NUM_TESTS=${#TEST_LIST[@]}
-echo "Running $NUM_TESTS tests."
-echo "Parallelism: $NPROCS"
+echo "Running $NUM_TESTS tests with parallelism: $NPROCS"
 start_time=$(date +"%s")
-for((i=0; i < ${#TEST_LIST[@]}; i+=NPROCS))
+for((i=0; i < $NUM_TESTS; ))
 do
 	echo "****************************************"
-	echo "Run test $(( $i+1 )) - $(( $i+$NPROCS ))"
-	chunk=( "${TEST_LIST[@]:i:NPROCS}" )
-	for test in ${chunk[*]}
+	for j in $(eval echo "{1..$NPROCS}")
 	do
-		./run-single-test.sh $1 $2 $3 $4 $5 $test &
+		test=${TEST_LIST[i]}
+		echo "Run test $i $test"
+		i=$((i+1))
+		./run-single-test.sh $1 $2 $3 $4 $test &
 	done
 	wait
-	# if any test failed, mystikos wasn't able to clean
-	# the tmp files, cleanup files
-	sudo rm -rf /tmp/myst*
 done
+sudo rm -rf /tmp/myst*
 end_time=$(date +"%s")
 elapsed_secs=$(( end_time - start_time ))
 echo "****************************************"
