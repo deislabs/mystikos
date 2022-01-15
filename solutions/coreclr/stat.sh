@@ -7,8 +7,8 @@ if [[ -f PASSED ]]; then
 	pass_count=$(wc -l PASSED | awk '{ print $1 }')
 	num_tests=pass_count
 	echo "Tests passed: $pass_count"
-	echo "Pass percentage: $(( $pass_count*100/$NUM_TESTS )) %"
-	cat PASSED
+	echo "Pass percentage: $(( $pass_count*100/$NUM_TESTS ))%"
+	#cat PASSED
 fi
 
 if [[ -f FAILED-139 ]]; then
@@ -35,7 +35,7 @@ if [[ -f FAILED-1 ]]; then
 	cat FAILED-1
 fi
 
-if [ "$(( pass_count*100/NUM_TESTS ))" -lt "99" ]; then
-	echo "Failed to pass at least 99% - Pass percentage: $(( $pass_count*100/$NUM_TESTS ))%"
+if [[ -f FAILED-* ]]; then
+	echo "Failed to pass all dotnet runtime P0 tests"
 	exit 1
 fi
