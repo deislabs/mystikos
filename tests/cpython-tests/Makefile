@@ -55,7 +55,7 @@ clean:
 
 tests:
 #	$(MAKE) run-3.8
-#	$(MAKE) run-3.9
+	$(MAKE) run-3.9
 	$(MAKE) run-3.10
 
 run-3.8: ext2fs3.8
