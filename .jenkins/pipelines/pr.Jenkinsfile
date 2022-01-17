@@ -45,10 +45,12 @@ pipeline {
                 expression { env.CHANGE_ID != null }
             }
             steps {
-                sh """
-                    while sudo lsof /var/lib/dpkg/lock-frontend | grep dpkg; do sleep 3; done
-                    sudo apt-get -y --option Acquire::Retries=5 install jq
-                """
+                retry(5) {
+                    sh """
+                        while sudo lsof /var/lib/dpkg/lock-frontend | grep dpkg; do sleep 3; done
+                        sudo apt-get -y --option Acquire::Retries=5 install jq
+                    """
+                }
                 script {
                     PR_AUTHOR = sh(
                         script: "curl --silent https://api.github.com/repos/deislabs/mystikos/pulls/${env.CHANGE_ID} | jq --raw-output '.user | .login'",
@@ -77,29 +79,31 @@ pipeline {
                 }
             }
             steps {
-                script {
-                    if ( params.PULL_REQUEST_ID ) {
-                        checkout([$class: 'GitSCM',
-                            branches: [[name: "pr/${params.PULL_REQUEST_ID}"]],
-                            extensions: [],
-                            userRemoteConfigs: [[
-                                url: 'https://github.com/deislabs/mystikos',
-                                refspec: "+refs/pull/${params.PULL_REQUEST_ID}/merge:refs/remotes/origin/pr/${params.PULL_REQUEST_ID}"
-                            ]]
-                        ])
-                    } else {
-                        checkout([$class: 'GitSCM',
-                            branches: [[name: params.BRANCH]],
-                            extensions: [],
-                            userRemoteConfigs: [[url: "https://github.com/${params.REPOSITORY}/mystikos"]]]
-                        )
+                retry(3) {
+                    script {
+                        if ( params.PULL_REQUEST_ID ) {
+                            checkout([$class: 'GitSCM',
+                                branches: [[name: "pr/${params.PULL_REQUEST_ID}"]],
+                                extensions: [],
+                                userRemoteConfigs: [[
+                                    url: 'https://github.com/deislabs/mystikos',
+                                    refspec: "+refs/pull/${params.PULL_REQUEST_ID}/merge:refs/remotes/origin/pr/${params.PULL_REQUEST_ID}"
+                                ]]
+                            ])
+                        } else {
+                            checkout([$class: 'GitSCM',
+                                branches: [[name: params.BRANCH]],
+                                extensions: [],
+                                userRemoteConfigs: [[url: "https://github.com/${params.REPOSITORY}/mystikos"]]]
+                            )
+                        }
+                        GIT_COMMIT_ID = sh(
+                            returnStdout: true,
+                            script: "git log --max-count=1 --pretty=format:'%H'"
+                        ).trim()
+                        // Set pull request id for standalone builds
+                        PULL_REQUEST_ID = params.PULL_REQUEST_ID
                     }
-                    GIT_COMMIT_ID = sh(
-                        returnStdout: true,
-                        script: "git log --max-count=1 --pretty=format:'%H'"
-                    ).trim()
-                    // Set pull request id for standalone builds
-                    PULL_REQUEST_ID = params.PULL_REQUEST_ID
                 }
             }
         }
