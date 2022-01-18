@@ -19,7 +19,7 @@ MPDB=$(TOP)/scripts/mpdb.py
 TESTFILE=tests.passed
 TEST = test_asynchat
 TESTCASE = test_asynchat.TestAsynchat.test_close_when_done
-VER=3.10
+VER=3.9
 FS=ext2fs$(VER)
 
 TEST_RUN_INDIVIDUAL_3_8=$(shell cat test_config_v3.8.11/tests.passed.individual)
@@ -30,7 +30,7 @@ TEST_RUN_INDIVIDUAL_3_10=$(shell cat test_config_v3.10.0/tests.passed.individual
 export TIMEOUT=3600
 
 #all:  ext2fs3.8 ext2fs3.9 ext2fs3.10
-all: ext2fs3.10
+all: ext2fs3.9
 
 mpdb.py:$(MPDB)
 	cp -f $(TOP)/scripts/mpdb.py mpdb.py
@@ -55,8 +55,8 @@ clean:
 
 tests:
 #	$(MAKE) run-3.8
-#	$(MAKE) run-3.9
-	$(MAKE) run-3.10
+	$(MAKE) run-3.9
+#	$(MAKE) run-3.10
 
 run-3.8: ext2fs3.8
 	$(MYST_EXEC) $(OPTS) ext2fs3.8 /cpython/python -m test -f /$(TESTFILE) --timeout 120 -v
