@@ -5,7 +5,7 @@ APPBUILDER=$(TOP)/scripts/appbuilder
 HEAP_SIZE="768M"
 
 MYST_LLDB_DOCKER = /build/openenclave/bin/oelldb
-TEST_RUNNER_IMG = mystikos/dotnet-sos-prereqs:nov-09-2021
+TEST_RUNNER_IMG = mystikos/dotnet-sos-prereqs:jan-18-2022
 
 OPTS = --report-native-tids
 
