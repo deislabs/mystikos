@@ -1,0 +1,14 @@
+{
+    "Debug": 1,
+    "ProductID": 1,
+    "SecurityVersion": 1,
+
+    "MemorySize": "8g",
+    "CurrentWorkingDirectory": "/built/dotnet-podcasts",
+    "ApplicationPath": "/usr/bin/dotnet",
+    "HostApplicationParameters": true,
+    "EnvironmentVariables": ["COMPlus_EnableDiagnostics=0", "COMPlus_GCHeapHardLimit=0x10000000"],
+    "NoBrk": 1,
+    "MainStackSize": "4m",
+    "ThreadStackSize": "16m"
+}

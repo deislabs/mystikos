@@ -26,7 +26,7 @@ ifndef MYST_ENABLE_GCOV
 DIRS += dotnet
 endif
 
-DIRS += aspnet
+DIRS += aspnet_core
 DIRS += memcached
 DIRS += python_flask_tests
 DIRS += python_web_frameworks
