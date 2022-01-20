@@ -164,6 +164,11 @@ long myst_syscall_getdents64(int fd, struct dirent* dirp, size_t count);
 
 long myst_syscall_rmdir(const char* pathname);
 
+long _myst_syscall_link_flags(
+    const char* oldpath,
+    const char* newpath,
+    int flags);
+
 long myst_syscall_link(const char* oldpath, const char* newpath);
 
 long myst_syscall_unlink(const char* pathname);

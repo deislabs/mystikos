@@ -399,7 +399,11 @@ done:
     return ret;
 }
 
-static int _fs_link(myst_fs_t* fs, const char* oldpath, const char* newpath)
+static int _fs_link(
+    myst_fs_t* fs,
+    const char* oldpath,
+    const char* newpath,
+    int flags)
 {
     int ret = 0;
     lockfs_t* lockfs = (lockfs_t*)fs;
@@ -410,7 +414,7 @@ static int _fs_link(myst_fs_t* fs, const char* oldpath, const char* newpath)
 
     myst_mutex_lock(&lockfs->lock);
     _install_sig_handler(&sig_handler, &lockfs->lock);
-    ret = (*lockfs->fs->fs_link)(lockfs->fs, oldpath, newpath);
+    ret = (*lockfs->fs->fs_link)(lockfs->fs, oldpath, newpath, flags);
     _uninstall_sig_handler(&sig_handler);
     myst_mutex_unlock(&lockfs->lock);
 

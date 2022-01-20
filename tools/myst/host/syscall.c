@@ -620,6 +620,16 @@ long myst_link_ocall(const char* oldpath, const char* newpath)
     RETURN(link(oldpath, newpath));
 }
 
+long myst_linkat_ocall(
+    int olddirfd,
+    const char* oldpath,
+    int newdirfd,
+    const char* newpath,
+    int flags)
+{
+    RETURN(linkat(olddirfd, oldpath, newdirfd, newpath, flags));
+}
+
 long myst_unlink_ocall(const char* pathname)
 {
     RETURN(unlink(pathname));

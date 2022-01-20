@@ -1593,7 +1593,11 @@ done:
     return ret;
 }
 
-static int _fs_link(myst_fs_t* fs, const char* oldpath, const char* newpath)
+static int _fs_link(
+    myst_fs_t* fs,
+    const char* oldpath,
+    const char* newpath,
+    int flags)
 {
     int ret = 0;
     ramfs_t* ramfs = (ramfs_t*)fs;
@@ -1614,13 +1618,24 @@ static int _fs_link(myst_fs_t* fs, const char* oldpath, const char* newpath)
     if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
+    bool oldpath_follow = false;
+
+    if (flags & AT_SYMLINK_FOLLOW)
+        oldpath_follow = true;
+
     /* Find the inode for oldpath */
     ECHECK(_path_to_inode(
-        ramfs, oldpath, true, NULL, &old_inode, locals->suffix, &tfs));
+        ramfs,
+        oldpath,
+        oldpath_follow,
+        NULL,
+        &old_inode,
+        locals->suffix,
+        &tfs));
     if (tfs)
     {
         /* delegate operation to target filesystem */
-        ECHECK((ret = tfs->fs_link(tfs, locals->suffix, newpath)));
+        ECHECK((ret = tfs->fs_link(tfs, locals->suffix, newpath, flags)));
         goto done;
     }
 
@@ -1631,7 +1646,7 @@ static int _fs_link(myst_fs_t* fs, const char* oldpath, const char* newpath)
     /* Find the parent inode of newpath */
     ECHECK(_split_path(newpath, locals->new_dirname, locals->new_basename));
     ECHECK(_path_to_inode(
-        ramfs, locals->new_dirname, true, NULL, &new_parent, NULL, NULL));
+        ramfs, locals->new_dirname, false, NULL, &new_parent, NULL, NULL));
 
     /* Fail if newpath already exists */
     if (_inode_find_child(new_parent, locals->new_basename) != NULL)

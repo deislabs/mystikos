@@ -118,7 +118,6 @@
 /ltp/testcases/kernel/syscalls/kill/kill07:  SYS_shmget()
 /ltp/testcases/kernel/syscalls/lgetxattr/lgetxattr01:  SYS_lsetxattr()
 /ltp/testcases/kernel/syscalls/lgetxattr/lgetxattr02:  SYS_lsetxattr()
-/ltp/testcases/kernel/syscalls/linkat/linkat01:  SYS_linkat()
 /ltp/testcases/kernel/syscalls/listxattr/listxattr01:  SYS_setxattr()
 /ltp/testcases/kernel/syscalls/listxattr/listxattr02:  SYS_setxattr()
 /ltp/testcases/kernel/syscalls/listxattr/listxattr03:  SYS_setxattr()

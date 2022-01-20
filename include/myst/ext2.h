@@ -308,7 +308,17 @@ int ext2_close(myst_fs_t* fs, myst_file_t* file);
 
 int ext2_access(myst_fs_t* fs, const char* pathname, int mode);
 
-int ext2_link(myst_fs_t* fs, const char* oldpath, const char* newpath);
+int ext2_link(
+    myst_fs_t* fs,
+    const char* oldpath,
+    const char* newpath,
+    int flags);
+
+int ext2_link_symlink_option(
+    myst_fs_t* fs,
+    const char* oldpath,
+    const char* newpath,
+    bool symlink_follow);
 
 int ext2_unlink(myst_fs_t* fs, const char* path);
 

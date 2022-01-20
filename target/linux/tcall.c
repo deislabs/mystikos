@@ -690,6 +690,7 @@ long myst_tcall(long n, long params[6])
         case SYS_pread64:
         case SYS_pwrite64:
         case SYS_link:
+        case SYS_linkat:
         case SYS_unlink:
         case SYS_getdents64:
         case SYS_rename:

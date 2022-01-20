@@ -109,7 +109,11 @@ struct myst_fs
 
     int (*fs_fstat)(myst_fs_t* fs, myst_file_t* file, struct stat* statbuf);
 
-    int (*fs_link)(myst_fs_t* fs, const char* oldpath, const char* newpath);
+    int (*fs_link)(
+        myst_fs_t* fs,
+        const char* oldpath,
+        const char* newpath,
+        int flags);
 
     int (*fs_unlink)(myst_fs_t* fs, const char* pathname);
 
