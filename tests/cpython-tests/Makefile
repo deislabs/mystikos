@@ -17,7 +17,7 @@ endif
 
 MPDB=$(TOP)/scripts/mpdb.py
 TESTFILE=tests.passed
-TEST = test_asynchat
+TEST = test_urllib2
 TESTCASE = test_asynchat.TestAsynchat.test_close_when_done
 VER=3.9
 FS=ext2fs$(VER)
