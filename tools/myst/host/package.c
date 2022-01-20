@@ -630,6 +630,13 @@ int _exec_package(
         options.trace_errors = true;
     }
 
+    /* Get --trace-times option */
+    if (cli_getopt(&argc, argv, "--trace-times", NULL) == 0 ||
+        cli_getopt(&argc, argv, "--ttrace", NULL) == 0)
+    {
+        options.trace_times = true;
+    }
+
     /* Get --shell option */
     if (cli_getopt(&argc, argv, "--shell", NULL) == 0)
         options.shell_mode = true;

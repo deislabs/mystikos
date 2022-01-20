@@ -20,6 +20,7 @@ int init_kernel_args(
     size_t image_size,
     size_t max_threads,
     bool trace_errors,
+    bool trace_times,
     const myst_strace_config_t* strace_config,
     bool have_syscall_instruction,
     bool tee_debug_mode,

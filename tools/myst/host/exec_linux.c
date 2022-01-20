@@ -126,6 +126,13 @@ static void _get_options(
         opts->trace_errors = true;
     }
 
+    /* Get --trace-times option */
+    if (cli_getopt(argc, argv, "--trace-times", NULL) == 0 ||
+        cli_getopt(argc, argv, "--ttrace", NULL) == 0)
+    {
+        opts->trace_times = true;
+    }
+
     /* Get --shell option */
     if (cli_getopt(argc, argv, "--shell", NULL) == 0)
         opts->shell_mode = true;
@@ -469,6 +476,7 @@ static int _enter_kernel(
                 image_size,
                 max_threads,
                 final_options.base.trace_errors,
+                final_options.base.trace_times,
                 &final_options.base.strace_config,
                 have_syscall_instruction,
                 tee_debug_mode,

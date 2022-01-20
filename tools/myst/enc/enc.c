@@ -620,6 +620,7 @@ static long _enter(void* arg_)
                 enclave_image_size, /* image_size */
                 _get_num_tcs(),     /* max threads */
                 final_options.base.trace_errors,
+                final_options.base.trace_times,
                 &final_options.base.strace_config,
                 false, /* have_syscall_instruction */
                 tee_debug_mode,

@@ -50,6 +50,13 @@ int myst_pre_launch_hook()
 {
     int ret = 0;
     myst_retrieve_wanted_secrets();
+
+    /* notify the kernel that main() is about to be called */
+    {
+        long params[6] = {0};
+        return myst_syscall(SYS_myst_pre_launch_hook, params);
+    }
+
     return ret;
 }
 
