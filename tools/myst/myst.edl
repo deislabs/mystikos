@@ -436,6 +436,13 @@ enclave
             [in, string] const char* oldpath,
             [in, string] const char* newpath);
 
+        long myst_linkat_ocall(
+            int olddirfd,
+            [in, string] const char* oldpath,
+            int newdirfd,
+            [in, string] const char* newpath,
+            int flags);
+
         long myst_unlink_ocall(
             [in, string] const char* pathname);
 

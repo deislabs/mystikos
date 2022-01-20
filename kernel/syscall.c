@@ -1335,6 +1335,14 @@ done:
 
 long myst_syscall_link(const char* oldpath, const char* newpath)
 {
+    return _myst_syscall_link_flags(oldpath, newpath, 0);
+}
+
+long _myst_syscall_link_flags(
+    const char* oldpath,
+    const char* newpath,
+    int flags)
+{
     long ret = 0;
     myst_fs_t* old_fs;
     myst_fs_t* new_fs;
@@ -1357,12 +1365,47 @@ long myst_syscall_link(const char* oldpath, const char* newpath)
         ERAISE(-EXDEV);
     }
 
-    ECHECK((*old_fs->fs_link)(old_fs, locals->old_suffix, locals->new_suffix));
+    ECHECK((*old_fs->fs_link)(
+        old_fs, locals->old_suffix, locals->new_suffix, flags));
 
 done:
 
     if (locals)
         free(locals);
+
+    return ret;
+}
+
+long myst_syscall_linkat(
+    int olddirfd,
+    const char* oldpath,
+    int newdirfd,
+    const char* newpath,
+    int flags)
+{
+    char* absoldpath = NULL;
+    char* absnewpath = NULL;
+
+    long ret = 0;
+
+    if (flags & ~AT_SYMLINK_FOLLOW)
+        ERAISE(-EINVAL);
+
+    ECHECK(myst_get_absolute_path_from_dirfd(
+        olddirfd, oldpath, 0, &absoldpath, FB_PATH_NOT_EMPTY));
+
+    ECHECK(myst_get_absolute_path_from_dirfd(
+        newdirfd, newpath, 0, &absnewpath, FB_PATH_NOT_EMPTY));
+
+    ECHECK(_myst_syscall_link_flags(absoldpath, absnewpath, flags));
+
+done:
+
+    if (absoldpath != oldpath)
+        free(absoldpath);
+
+    if (absnewpath != newpath)
+        free(absnewpath);
 
     return ret;
 }
@@ -5489,7 +5532,27 @@ static long _syscall(void* args_)
                 myst_syscall_renameat(olddirfd, oldpath, newdirfd, newpath)));
         }
         case SYS_linkat:
-            break;
+        {
+            int olddirfd = (int)x1;
+            const char* oldpath = (const char*)x2;
+            int newdirfd = (int)x3;
+            const char* newpath = (const char*)x4;
+            int flags = (int)x5;
+
+            _strace(
+                n,
+                "olddirfd=%d oldpath=%s newdirfd=%d newpath=%s flags=%d",
+                olddirfd,
+                oldpath,
+                newdirfd,
+                newpath,
+                flags);
+
+            BREAK(_return(
+                n,
+                myst_syscall_linkat(
+                    olddirfd, oldpath, newdirfd, newpath, flags)));
+        }
         case SYS_symlinkat:
         {
             const char* target = (const char*)x1;

@@ -3,6 +3,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -3950,7 +3951,11 @@ done:
     return ret;
 }
 
-int ext2_link(myst_fs_t* fs, const char* oldpath, const char* newpath)
+int ext2_link(
+    myst_fs_t* fs,
+    const char* oldpath,
+    const char* newpath,
+    int flags)
 {
     int ret = 0;
     ext2_t* ext2 = (ext2_t*)fs;
@@ -3975,11 +3980,16 @@ int ext2_link(myst_fs_t* fs, const char* oldpath, const char* newpath)
     if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
+    follow_t oldpath_follow = NOFOLLOW;
+
+    if (flags & AT_SYMLINK_FOLLOW)
+        oldpath_follow = FOLLOW;
+
     /* find inode for oldpath */
     ECHECK(_path_to_inode(
         ext2,
         oldpath,
-        FOLLOW,
+        oldpath_follow,
         NULL,
         &ino,
         NULL,
@@ -3989,20 +3999,20 @@ int ext2_link(myst_fs_t* fs, const char* oldpath, const char* newpath)
     if (tfs)
     {
         /* delegate operation to target filesystem */
-        ECHECK((*tfs->fs_link)(tfs, locals->suffix, newpath));
+        ECHECK((*tfs->fs_link)(tfs, locals->suffix, newpath, flags));
         goto done;
     }
 
     /* oldpath must not be a directory */
     if (S_ISDIR(locals->inode.i_mode))
-        ERAISE(-EISDIR);
+        ERAISE(-EPERM);
 
     /* find the parent inode of newpath */
     ECHECK(_split_path(newpath, locals->dirname, locals->filename));
     ECHECK(_path_to_inode(
         ext2,
         locals->dirname,
-        FOLLOW,
+        NOFOLLOW,
         NULL,
         &dino,
         NULL,

@@ -535,7 +535,11 @@ done:
     return ret;
 }
 
-static int _fs_link(myst_fs_t* fs, const char* oldpath, const char* newpath)
+static int _fs_link(
+    myst_fs_t* fs,
+    const char* oldpath,
+    const char* newpath,
+    int flags)
 {
     int ret = 0;
     hostfs_t* hostfs = (hostfs_t*)fs;
@@ -549,8 +553,9 @@ static int _fs_link(myst_fs_t* fs, const char* oldpath, const char* newpath)
     ECHECK(_to_host_path(hostfs, opath, sizeof(opath), oldpath));
     ECHECK(_to_host_path(hostfs, npath, sizeof(npath), newpath));
 
-    long params[6] = {(long)opath, (long)npath};
-    ECHECK((tret = myst_tcall(SYS_link, params)));
+    long params[6] = {
+        (long)AT_FDCWD, (long)opath, (long)AT_FDCWD, (long)npath, (long)flags};
+    ECHECK((tret = myst_tcall(SYS_linkat, params)));
 
     if (tret != 0)
         ERAISE(-EINVAL);

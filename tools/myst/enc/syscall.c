@@ -1213,6 +1213,37 @@ done:
 #endif
 
 #ifdef MYST_ENABLE_HOSTFS
+static long _linkat(
+    int olddirfd,
+    const char* oldpath,
+    int newdirfd,
+    const char* newpath,
+    int flags)
+{
+    long ret = 0;
+    long retval;
+
+    if (!oldpath || !newpath)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    if (myst_linkat_ocall(
+            &retval, olddirfd, oldpath, newdirfd, newpath, flags) != OE_OK)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    ret = retval;
+
+done:
+    return ret;
+}
+#endif
+
+#ifdef MYST_ENABLE_HOSTFS
 static long _unlink(const char* pathname)
 {
     long ret = 0;
@@ -2116,6 +2147,11 @@ long myst_handle_tcall(long n, long params[6])
         case SYS_link:
         {
             return _link((const char*)a, (const char*)b);
+        }
+        case SYS_linkat:
+        {
+            return _linkat(
+                (int)a, (const char*)b, (int)c, (const char*)d, (int)e);
         }
         case SYS_unlink:
         {

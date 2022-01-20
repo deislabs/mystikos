@@ -643,7 +643,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/link/link06 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/link/link07 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/link/link08 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/linkat/linkat01 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/linkat/linkat01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/linkat/linkat02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/listen/listen01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/listxattr/listxattr01 | 0 | 0 | 0 |
