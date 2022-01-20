@@ -381,6 +381,7 @@ static const myst_syscall_pair_t _pairs[] = {
     PAIR(SYS_myst_fork_wait_exec_exit),
     PAIR(SYS_myst_get_exec_stack_option),
     PAIR(SYS_myst_interrupt_thread),
+    PAIR(SYS_myst_pre_launch_hook),
     /* add new entries here! */
     {0, NULL},
 };
@@ -412,6 +413,7 @@ __attribute__((__unused__)) static void _check_myst_syscalls(void)
         case SYS_myst_fork_wait_exec_exit:
         case SYS_myst_get_exec_stack_option:
         case SYS_myst_interrupt_thread:
+        case SYS_myst_pre_launch_hook:
             break;
     }
 }

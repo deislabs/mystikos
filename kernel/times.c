@@ -13,6 +13,8 @@
 #include <myst/thread.h>
 #include <myst/times.h>
 
+struct timespec __myst_boot_time;
+
 /* Time spent by the main thread and its children */
 struct tms process_times;
 

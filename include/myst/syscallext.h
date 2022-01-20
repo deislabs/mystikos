@@ -29,7 +29,8 @@ typedef enum
     SYS_myst_get_process_thread_stack = 2016,
     SYS_myst_fork_wait_exec_exit = 2017,
     SYS_myst_get_exec_stack_option = 2018,
-    SYS_myst_interrupt_thread = 2019
+    SYS_myst_interrupt_thread = 2019,
+    SYS_myst_pre_launch_hook = 2020
 } myst_syscall_t;
 
 #define MYST_MAX_SYSCALLS 3000

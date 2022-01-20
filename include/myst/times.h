@@ -109,4 +109,8 @@ a clock id is per-thread or per-process.
     (((clock) & (clockid_t)DYN_CLOCK_FD_MASK) == DYN_CLOCK_FD)
 
 long myst_times_get_cpu_clock_time(clockid_t clk_id, struct timespec* tp);
+
+/* boot time */
+extern struct timespec __myst_boot_time;
+
 #endif /* _MYST_TIMES_H */

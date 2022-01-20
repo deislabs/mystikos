@@ -3116,6 +3116,29 @@ static const char* _futex_op_str(int op)
     }
 }
 
+static void _print_app_load_time(void)
+{
+    struct timespec now;
+    static const char yellow[] = "\e[33m";
+    static const char reset[] = "\e[0m";
+
+    if (myst_syscall_clock_gettime(CLOCK_REALTIME, &now) == 0)
+    {
+        struct timespec start;
+        start.tv_sec = __myst_boot_time.tv_sec;
+        start.tv_nsec = __myst_boot_time.tv_nsec;
+
+        long nsec = myst_lapsed_nsecs(&start, &now);
+        __myst_boot_time = now;
+
+        double secs = (double)nsec / (double)NANO_IN_SECOND;
+
+        myst_eprintf("%s", yellow);
+        myst_eprintf("kernel: app load time: %.4lf seconds", secs);
+        myst_eprintf("%s\n", reset);
+    }
+}
+
 void myst_dump_ramfs(void)
 {
     myst_strarr_t paths = MYST_STRARR_INITIALIZER;
@@ -4029,6 +4052,15 @@ static long _syscall(void* args_)
             }
 
             BREAK(_return(n, ret));
+        }
+        case SYS_myst_pre_launch_hook:
+        {
+            _strace(n, NULL);
+
+            if (__myst_kernel_args.perf || __myst_kernel_args.trace_times)
+                _print_app_load_time();
+
+            BREAK(_return(n, 0));
         }
         case SYS_fork:
             break;

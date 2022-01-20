@@ -53,6 +53,7 @@ int init_kernel_args(
     size_t image_size,
     size_t max_threads,
     bool trace_errors,
+    bool trace_times,
     const myst_strace_config_t* strace_config,
     bool have_syscall_instruction,
     bool tee_debug_mode,
@@ -288,6 +289,7 @@ int init_kernel_args(
     args->envp = env.data;
     args->max_threads = max_threads;
     args->trace_errors = trace_errors;
+    args->trace_times = trace_times;
     args->strace_config = *strace_config;
     args->have_syscall_instruction = have_syscall_instruction;
     args->event = thread_event;

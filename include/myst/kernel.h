@@ -191,6 +191,7 @@ typedef struct myst_kernel_args
     /* Tracing options */
     bool trace_errors;
     myst_strace_config_t strace_config;
+    bool trace_times;
 
     /* Whether the target supports the SYSCALL instruction */
     bool have_syscall_instruction;

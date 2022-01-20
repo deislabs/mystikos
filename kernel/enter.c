@@ -644,11 +644,12 @@ static void _print_boottime(void)
         start.tv_nsec = __myst_kernel_args.start_time_nsec;
 
         long nsec = myst_lapsed_nsecs(&start, &now);
+        __myst_boot_time = now;
 
         double secs = (double)nsec / (double)NANO_IN_SECOND;
 
         myst_eprintf("%s", yellow);
-        myst_eprintf("=== boot time: %.4lfsec", secs);
+        myst_eprintf("kernel: boot time: %.4lf seconds", secs);
         myst_eprintf("%s\n", reset);
     }
 }
@@ -693,6 +694,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     if (!args->tee_debug_mode)
     {
         args->trace_errors = false;
+        args->trace_times = false;
         memset(&args->strace_config, 0, sizeof(args->strace_config));
         args->shell_mode = false;
         args->memcheck = false;
@@ -828,7 +830,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         myst_start_shell("\nMystikos shell (enter)\n");
 
     /* print how long it took to boot */
-    if (__myst_kernel_args.perf)
+    if (__myst_kernel_args.perf || __myst_kernel_args.trace_times)
         _print_boottime();
 
     if ((create_appenv_ret = myst_create_appenv(args)) < 0 &&
