@@ -129,7 +129,26 @@ long myst_signal_sigaction(
         *old_action = process->signal.sigactions[signum - 1];
 
     if (new_action)
+    {
+        myst_thread_t* thread = myst_thread_self();
+        if (signum == SIGSEGV)
+        {
+            if (new_action->flags & SA_ONSTACK)
+            {
+                /* hint OE to use the signal delivery altstack with #PF */
+                myst_tcall_td_register_exception_handler_stack(
+                    (void*)thread->target_td, 0x5 /* PAGE_FAULT */);
+            }
+            else
+            {
+                /* hint OE not to use the signal delivery altstack with #PF */
+                myst_tcall_td_unregister_exception_handler_stack(
+                    (void*)thread->target_td, 0x5 /* PAGE_FAULT */);
+            }
+        }
+
         process->signal.sigactions[signum - 1] = *new_action;
+    }
 
     myst_spin_unlock(&process->signal.lock);
 
@@ -825,12 +844,22 @@ int myst_signal_altstack(const stack_t* ss, stack_t* old_ss)
             me->signal.altstack.ss_flags |= SS_DISABLE;
             me->signal.altstack.ss_sp = NULL;
             me->signal.altstack.ss_size = 0;
+
+            /* clear the signal delivery altstack */
+            ECHECK(myst_clear_signal_delivery_altstack(me));
         }
         else
         {
             if (ss->ss_size < MINSIGSTKSZ)
                 ERAISE(-ENOMEM);
+
             me->signal.altstack = *ss;
+
+            /* set the signal delivery altstack if it was not set */
+            if (!me->signal_delivery_altstack &&
+                !me->signal_delivery_altstack_size)
+                ECHECK(myst_set_signal_delivery_altstack(
+                    me, MYST_THREAD_SIGNAL_DELIVERY_ALTSTACK_SIZE));
         }
     }
 

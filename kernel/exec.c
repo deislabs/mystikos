@@ -1235,6 +1235,9 @@ int myst_exec(
     process->exec_crt_size = crt_size;
 #endif
 
+    /* always clear the signal delivery altstack on exec */
+    myst_clear_signal_delivery_altstack(thread);
+
     /* close file descriptors with FD_CLOEXEC flag */
     {
         myst_fdtable_t* fdtable = myst_fdtable_current();

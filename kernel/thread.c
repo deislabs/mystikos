@@ -6,6 +6,8 @@
 #include <sched.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
+#include <sys/user.h>
 #include <sys/wait.h>
 
 #include <myst/assume.h>
@@ -1056,6 +1058,9 @@ static long _run_thread(void* arg_)
             }
 #endif
 
+            /* clear the signal delivery altstack */
+            myst_clear_signal_delivery_altstack(thread);
+
             /* unmapping closes fd's associated with mappings, so free fdtable
              * after all unmaps are done */
             if (process->fdtable)
@@ -1714,6 +1719,64 @@ int myst_interrupt_thread(myst_thread_t* thread)
         ERAISE(-EINVAL);
 
     ECHECK(myst_tcall_interrupt_thread(thread->target_tid));
+
+done:
+    return ret;
+}
+
+int myst_set_signal_delivery_altstack(myst_thread_t* thread, size_t stack_size)
+{
+    int ret = 0;
+    void* stack = NULL;
+
+    if (!thread || thread->signal_delivery_altstack ||
+        thread->signal_delivery_altstack_size)
+        ERAISE(-EINVAL);
+
+    if (stack_size % PAGE_SIZE)
+        ERAISE(-EINVAL);
+
+    const int prot = PROT_READ | PROT_WRITE;
+    const int flags = MAP_ANONYMOUS | MAP_PRIVATE;
+
+    stack = (void*)myst_mmap(NULL, stack_size + PAGE_SIZE, prot, flags, -1, 0);
+
+    if ((long)stack < 0)
+        ERAISE(-ENOMEM);
+
+    /* Make the first page as the guard page */
+    ECHECK(myst_mprotect(stack, PAGE_SIZE, PROT_NONE));
+
+    thread->signal_delivery_altstack = stack;
+    thread->signal_delivery_altstack_size = stack_size + PAGE_SIZE;
+
+    /* the stack is not used by users, no need to do myst_mman_pids_set */
+
+    myst_tcall_td_set_exception_handler_stack(
+        (void*)thread->target_td,
+        (void*)((uint64_t)stack + PAGE_SIZE),
+        stack_size);
+
+done:
+    return ret;
+}
+
+int myst_clear_signal_delivery_altstack(myst_thread_t* thread)
+{
+    int ret = 0;
+
+    if (!thread)
+        ERAISE(-EINVAL);
+
+    myst_tcall_td_set_exception_handler_stack(
+        (void*)thread->target_td, NULL, 0);
+
+    ECHECK(myst_munmap(
+        (void*)thread->signal_delivery_altstack,
+        thread->signal_delivery_altstack_size));
+
+    thread->signal_delivery_altstack = NULL;
+    thread->signal_delivery_altstack_size = 0;
 
 done:
     return ret;

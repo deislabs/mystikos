@@ -272,6 +272,37 @@ long myst_tcall_create_thread(uint64_t cookie)
     return -ENOTSUP;
 }
 
+long myst_tcall_td_set_exception_handler_stack(
+    void* td,
+    void* stack,
+    size_t size)
+{
+    /* On the Linux target, this is done by setup_alt_stack() in
+     * exec_linux.c */
+    (void)td;
+    (void)stack;
+    (void)size;
+    return -ENOTSUP;
+}
+
+long myst_tcall_td_register_exception_handler_stack(void* td, uint64_t type)
+{
+    /* On the Linux target, this is done by setup_alt_stack() in
+     * exec_linux.c */
+    (void)td;
+    (void)type;
+    return -ENOTSUP;
+}
+
+long myst_tcall_td_unregister_exception_handler_stack(void* td, uint64_t type)
+{
+    /* On the Linux target, this is done by setup_alt_stack() in
+     * exec_linux.c */
+    (void)td;
+    (void)type;
+    return -ENOTSUP;
+}
+
 /* forward system call to Linux */
 static long
 _forward_syscall(long n, long x1, long x2, long x3, long x4, long x5, long x6)
@@ -630,6 +661,21 @@ long myst_tcall(long n, long params[6])
         case MYST_TCALL_INTERRUPT_THREAD:
         {
             return myst_tcall_interrupt_thread((pid_t)x1);
+        }
+        case MYST_TCALL_TD_SET_EXCEPTION_HANDLER_STACK:
+        {
+            return myst_tcall_td_set_exception_handler_stack(
+                (void*)x1, (void*)x2, x3);
+        }
+        case MYST_TCALL_TD_REGISTER_EXCEPTION_HANDLER_STACK:
+        {
+            return myst_tcall_td_register_exception_handler_stack(
+                (void*)x1, x2);
+        }
+        case MYST_TCALL_TD_UNREGISTER_EXCEPTION_HANDLER_STACK:
+        {
+            return myst_tcall_td_unregister_exception_handler_stack(
+                (void*)x1, x2);
         }
         case SYS_ioctl:
         {

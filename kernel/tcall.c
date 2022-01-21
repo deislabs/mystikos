@@ -435,3 +435,24 @@ ssize_t myst_tcall_recvmsg_block(int sockfd, struct msghdr* msg, int flags)
     long params[6] = {(long)sockfd, (long)msg, (long)flags};
     return myst_tcall(MYST_TCALL_RECVMSG_BLOCK, params);
 }
+
+long myst_tcall_td_set_exception_handler_stack(
+    void* td,
+    void* stack,
+    size_t size)
+{
+    long params[6] = {(uint64_t)td, (uint64_t)stack, size};
+    return myst_tcall(MYST_TCALL_TD_SET_EXCEPTION_HANDLER_STACK, params);
+}
+
+long myst_tcall_td_register_exception_handler_stack(void* td, uint64_t type)
+{
+    long params[6] = {(uint64_t)td, type};
+    return myst_tcall(MYST_TCALL_TD_REGISTER_EXCEPTION_HANDLER_STACK, params);
+}
+
+long myst_tcall_td_unregister_exception_handler_stack(void* td, uint64_t type)
+{
+    long params[6] = {(uint64_t)td, type};
+    return myst_tcall(MYST_TCALL_TD_UNREGISTER_EXCEPTION_HANDLER_STACK, params);
+}
