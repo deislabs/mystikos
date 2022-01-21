@@ -1,3 +1,5 @@
+test_asyncgen
+test_asynchat
 test_dataclasses
 test_datetime
 test_dbm
