@@ -1,0 +1,20 @@
+JIT/Directed/forceinlining/PositiveCases/PositiveCases.dll, FAIL -- Unexpected inlining result in: Finally block; exit code 0;
+JIT/Directed/forceinlining/AttributeConflict/AttributeConflict.dll, test FAIL; exit code 0;
+JIT/Directed/lifetime/lifetime2/lifetime2.dll, testcase f1-2 failed, exit code 255
+JIT/Regression/CLR-x86-EJIT/V1-M12-Beta2/b26323/b26323/b26323.dll, Unhandled exception. System.InvalidProgramException: Vararg calling convention not supported.
+JIT/Regression/CLR-x86-JIT/V1-M09.5-PDC/b16423/b16423/b16423.dll, Unhandled exception. System.InvalidProgramException: Vararg calling convention not supported.
+JIT/Regression/CLR-x86-JIT/V1-M11-Beta1/b41391/b41391/b41391.dll, Unhandled exception. System.InvalidProgramException: Vararg calling convention not supported.
+JIT/Regression/CLR-x86-JIT/V1-M12-Beta2/b31746/b31746/b31746.dll, Unhandled exception. System.InvalidProgramException: Vararg calling convention not supported.
+JIT/Regression/CLR-x86-JIT/V1-M12-Beta2/b37646/b37646/b37646.dll, Unhandled exception. System.InvalidProgramException: Vararg calling convention not supported.
+JIT/Directed/PREFIX/unaligned/1/arglist_Target_64BIT/arglist_Target_64BIT.dll, Unhandled exception. System.InvalidProgramException: Vararg calling convention not supported.
+JIT/Directed/PREFIX/unaligned/2/arglist_Target_64BIT/arglist_Target_64BIT.dll, Unhandled exception. System.InvalidProgramException: Vararg calling convention not supported.
+JIT/Directed/PREFIX/unaligned/4/arglist_Target_64BIT/arglist_Target_64BIT.dll, Unhandled exception. System.InvalidProgramException: Vararg calling convention not supported.
+JIT/Directed/PREFIX/volatile/1/arglist_Target_64BIT/arglist_Target_64BIT.dll, Unhandled exception. System.InvalidProgramException: Vararg calling convention not supported.
+JIT/Methodical/Coverage/arglist_pos/arglist_pos.dll, Unhandled exception. System.InvalidProgramException: Vararg calling convention not supported.
+JIT/Methodical/refany/_il_dbgseq/_il_dbgseq.dll, Unhandled exception. System.InvalidProgramException: Vararg calling convention not supported.
+JIT/Methodical/refany/_il_relseq/_il_relseq.dll, Unhandled exception. System.InvalidProgramException: Vararg calling convention not supported.
+JIT/jit64/mcc/interop/mcc_i00/mcc_i00.dll, Unhandled exception. System.InvalidProgramException: Vararg calling convention not supported.
+JIT/Regression/CLR-x86-JIT/V1-M12-Beta2/b41852/b41852/b41852.dll, Unhandled exception. System.InvalidProgramException: Vararg calling convention not supported.
+GC/LargeMemory/API/gc/getgeneration/getgeneration.dll 2048; output on both native and mystikos - 1 \n getGeneration failed \n 0 \n getGenerationWR failed \n Test failed; exit code 0
+GC/LargeMemory/Allocation/finalizertest/finalizertest.dll 2048; output on both native and mystikos - 0 2147483648 \n allocateInFinalizerTest failed \n ressurectionTest passed \n Test failed; exit code 0
+GC/LargeMemory/API/gc/collect/collect.dll 2048, test fails with 20g, <20s, output : collectLargeObject 0 failed \n Finalized \n Finalized \n collectLargeObject 2 passed \n Test failed

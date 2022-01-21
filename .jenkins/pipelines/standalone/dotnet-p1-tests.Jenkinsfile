@@ -131,7 +131,7 @@ pipeline {
             steps {
                 catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
                     sh """
-                       make tests -C ${WORKSPACE}/solutions/coreclr-p1
+                       make tests -C ${WORKSPACE}/tests/coreclr/p1
                        """
                 }
             }
