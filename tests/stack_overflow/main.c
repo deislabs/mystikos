@@ -13,20 +13,9 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#define SGX_TARGET "sgx"
-
 int gettid()
 {
     return syscall(SYS_gettid);
-}
-
-static int is_sgx_target()
-{
-    char* target = getenv("MYST_TARGET");
-    if (target != NULL && !strcmp(SGX_TARGET, target))
-        return 1;
-    else
-        return 0;
 }
 
 void sigsegv_handler()
@@ -42,9 +31,24 @@ void install_sigsegv_handler()
 {
     // setup alt stack
     stack_t ss;
-    ss.ss_size = SIGSTKSZ * 4; // 8 pages
+    void* stack;
+    size_t stack_size;
+
+    stack_size = SIGSTKSZ * 4; // 8 pages
+    assert((stack = malloc(SIGSTKSZ * 4)) != NULL);
+
+    ss.ss_size = stack_size;
     ss.ss_flags = 0;
-    assert((ss.ss_sp = malloc(SIGSTKSZ * 4)) != NULL);
+    ss.ss_sp = stack;
+    assert(sigaltstack(&ss, NULL) != -1);
+
+    // test SS_DISABLE flag
+    ss.ss_flags = SS_DISABLE;
+    assert(sigaltstack(&ss, NULL) != -1);
+
+    ss.ss_size = stack_size;
+    ss.ss_flags = 0;
+    ss.ss_sp = stack;
     assert(sigaltstack(&ss, NULL) != -1);
 
     // register sigsegv disposition
@@ -69,13 +73,6 @@ void* _thread_func(void* arg)
 
 int main(int argc, const char* argv[])
 {
-    /* sgx target doesn't support stack overflow exception handling yet, pass
-     * vacously */
-    if (is_sgx_target())
-    {
-        return 0;
-    }
-
     if (argc == 2)
     {
         if (strcmp(argv[1], "test_main") == 0)

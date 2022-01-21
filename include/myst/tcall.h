@@ -66,6 +66,9 @@ typedef enum myst_tcall_number
     MYST_TCALL_SENDTO_BLOCK,
     MYST_TCALL_RECVMSG_BLOCK,
     MYST_TCALL_SENDMSG_BLOCK,
+    MYST_TCALL_TD_SET_EXCEPTION_HANDLER_STACK,
+    MYST_TCALL_TD_REGISTER_EXCEPTION_HANDLER_STACK,
+    MYST_TCALL_TD_UNREGISTER_EXCEPTION_HANDLER_STACK,
 } myst_tcall_number_t;
 
 long myst_tcall(long n, long params[6]);
@@ -263,5 +266,14 @@ ssize_t myst_tcall_sendmsg_block(
     int flags);
 
 ssize_t myst_tcall_recvmsg_block(int sockfd, struct msghdr* msg, int flags);
+
+long myst_tcall_td_set_exception_handler_stack(
+    void* td,
+    void* stack,
+    size_t size);
+
+long myst_tcall_td_register_exception_handler_stack(void* td, uint64_t type);
+
+long myst_tcall_td_unregister_exception_handler_stack(void* td, uint64_t type);
 
 #endif /* _MYST_TCALL_H */

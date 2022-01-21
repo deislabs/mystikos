@@ -32,6 +32,10 @@
 /* this signal is used to interrupt threads blocking on host in syscalls */
 #define MYST_INTERRUPT_THREAD_SIGNAL (SIGRTMIN + 1)
 
+/* the default size of the signal delivery altstack per thread, which is
+ * dynamically allocated if myst_signal_altstack is called */
+#define MYST_THREAD_SIGNAL_DELIVERY_ALTSTACK_SIZE (4 * 4096)
+
 typedef struct myst_thread myst_thread_t;
 typedef struct myst_process myst_process_t;
 
@@ -298,6 +302,12 @@ struct myst_thread
          */
         myst_thread_sig_handler_t* thread_sig_handler;
     } signal;
+
+    /* The alternative stack used by OE runtime to deliver signals, which is set
+     * only when the program sets the alternative signal stack via sigaltstack.
+     * The stack is required to handle stack overflow exceptions. */
+    void* signal_delivery_altstack;
+    size_t signal_delivery_altstack_size;
 
     // linked list of threads in process
     // lock points to the one in the main thread. Use when
@@ -679,5 +689,9 @@ MYST_INLINE int myst_thread_queue_search_remove_bitset(
 }
 
 int myst_interrupt_thread(myst_thread_t* thread);
+
+int myst_set_signal_delivery_altstack(myst_thread_t* thread, size_t stack_size);
+
+int myst_clear_signal_delivery_altstack(myst_thread_t* thread);
 
 #endif /* _MYST_THREAD_H */
