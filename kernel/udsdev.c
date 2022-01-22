@@ -846,7 +846,10 @@ static int _udsdev_bind(
         struct stat statbuf;
 
         if (myst_syscall_stat(sun->sun_path, &statbuf) == 0)
+        {
+            printf("***** _udsdev_bind stat file exists ****\n");
             ERAISE(-EADDRINUSE);
+        }
     }
 
     /* create the UDS file (contains the connection id) */
