@@ -847,7 +847,6 @@ static int _udsdev_bind(
 
         if (myst_syscall_stat(sun->sun_path, &statbuf) == 0)
         {
-            printf("***** _udsdev_bind stat file exists ****\n");
             ERAISE(-EADDRINUSE);
         }
     }

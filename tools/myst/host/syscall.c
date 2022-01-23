@@ -130,7 +130,11 @@ long myst_fcntl_setlkw_ocall(int fd, const struct flock* arg)
 
 long myst_bind_ocall(int sockfd, const struct sockaddr* addr, socklen_t addrlen)
 {
-    RETURN(bind(sockfd, addr, addrlen));
+    long ret;
+    ECHECK_ERRNO(bind(sockfd, addr, addrlen));
+
+done:
+    return ret;
 }
 
 long myst_connect_ocall(
