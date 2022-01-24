@@ -977,7 +977,7 @@ int main(int argc, const char* argv[])
         _create_file(fs, "/link1", 0666, NULL, 0);
         assert(_nlink(fs, "/link1") == 1);
 
-        assert(ext2_link(fs, "/link1", "/link2") == 0);
+        assert(ext2_link(fs, "/link1", "/link2", 0) == 0);
         assert(_nlink(fs, "/link1") == 2);
 
         assert(ext2_unlink(fs, "/link1") == 0);
