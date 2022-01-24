@@ -2,10 +2,6 @@ TOP=$(abspath ..)
 include $(TOP)/defs.mak
 
 DIRS =
-DIRS += cpython-tests
-
-
-ifdef SKIP_THESE
 
 DIRS += fork
 DIRS += vfork
@@ -15,7 +11,7 @@ DIRS += timeval
 
 ifdef MYST_ENABLE_EXT2FS
 DIRS += ext2
-# DIRS += libc
+DIRS += libc
 endif
 
 DIRS += args
@@ -72,15 +68,15 @@ DIRS += arch_prctl
 
 
 ifndef MYST_SKIP_LTP_TESTS
-# DIRS += ltp
+DIRS += ltp
 endif
 
 DIRS += shared_symbols
 
 ifndef MYST_SKIP_LIBCXX_TESTS
-# DIRS += libcxx
+DIRS += libcxx
 ifdef MYST_NIGHTLY_TEST
-# DIRS += libcxx2
+DIRS += libcxx2
 endif
 endif
 
@@ -101,7 +97,7 @@ endif
 ifndef MYST_ENABLE_GCOV
 ifdef MYST_NIGHTLY_TEST
 DIRS += cpython-tests
-# DIRS += sockperf
+DIRS += sockperf
 endif
 DIRS += clock
 DIRS += pollpipe2
@@ -135,14 +131,12 @@ DIRS += strtonum
 DIRS += fsflags
 
 ifdef MYST_NIGHTLY_TEST
-# DIRS += aspnetcore5
-# DIRS += aspnetcore6
-# DIRS += glibc
+DIRS += aspnetcore5
+DIRS += aspnetcore6
+DIRS += glibc
 endif
 
 DIRS += appenv
-
-endif
 
 .PHONY: $(DIRS)
 
@@ -185,3 +179,4 @@ pipe-build:
 	$(MAKE) -C spawn
 	$(MAKE) -C spawnfa
 	$(MAKE) -C ltp
+
