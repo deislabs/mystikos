@@ -11,16 +11,20 @@ all:
 
 rootfs: getcwd.c
 	mkdir -p $(APPDIR)/bin
-	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/getcwd getcwd.c $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $(APPDIR)/bin/getcwd getcwd.c $(LDFLAGS)
 	$(MYST) mkcpio $(APPDIR) rootfs
 
+OPTS =
+
 ifdef STRACE
-OPTS = --strace
+OPTS += --strace
 endif
 
 ifdef PERF
-OPTS = --perf
+OPTS += --perf
 endif
+
+OPTS += --thread-stack-size=1048576
 
 tests: all
 	$(RUNTEST) $(MYST_EXEC) rootfs /bin/getcwd $(OPTS)

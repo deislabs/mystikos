@@ -31,10 +31,22 @@
 #include <myst/spinlock.h>
 #include <myst/strings.h>
 #include <myst/syscall.h>
+#include <myst/syslog.h>
 #include <myst/tcall.h>
 #include <myst/thread.h>
 
 #define GUARD 0x4f
+
+#define GLIBC_THREAD_STACK_SIZE_MIN 1048576 /* 1mb */
+
+#define THREAD_STACK_SIZE_WARNING \
+    "\n\
+    The thread stack size may be too small for the given program interpreter\n\
+    (link loader), which could result in stack overflows. Consider changing\n\
+    the thread stack size to at least %u bytes, using the --thread-stack-size\n\
+    option or the ThreadStackSize configuration setting.\n\
+    [interpreter=%s]\n\
+    [program=%s]\n"
 
 typedef struct _pair
 {
@@ -802,7 +814,7 @@ done:
     return ret;
 }
 
-static int _get_interpreter(
+static int _get_shell_interpreter(
     char* hashbang_buff,
     size_t hashbang_buff_length,
     ssize_t num_bytes_read,
@@ -877,6 +889,93 @@ done:
     return ret;
 }
 
+/* Get the program interpreter from the PT_INTERP program header */
+static int _get_prog_interp(const char* path, char** name_out)
+{
+    int ret = 0;
+    int fd = -1;
+    Elf64_Ehdr* ehdr = NULL;
+    Elf64_Phdr phdr;
+    bool found = false;
+    char* name = NULL;
+
+    *name_out = NULL;
+
+    /* Open the (potential) executable file */
+    ECHECK(fd = myst_syscall_open(path, O_RDONLY, 0));
+
+    /* Read the ELF header */
+    {
+        if (!(ehdr = malloc(sizeof(Elf64_Ehdr))))
+            ERAISE(-ENOMEM);
+
+        ECHECK(myst_syscall_read(fd, ehdr, sizeof(Elf64_Ehdr)));
+    }
+
+    /* Verify the ELF header */
+    if (_test_header(ehdr) != 0)
+        ERAISE(-ENOENT);
+
+    /* Seek to location of the program header table file offset */
+    ECHECK(myst_syscall_lseek(fd, ehdr->e_phoff, SEEK_SET));
+
+    /* Find the program header for the PT_INTERP */
+    for (size_t i = 0; i < ehdr->e_phnum; i++)
+    {
+        ssize_t n = myst_syscall_read(fd, &phdr, sizeof(Elf64_Phdr));
+        ECHECK(n);
+
+        if (n != sizeof(Elf64_Phdr))
+            ERAISE(-EIO);
+
+        if (phdr.p_type == PT_INTERP)
+        {
+            found = true;
+            break;
+        }
+    }
+    if (!found)
+        ERAISE(-ENOENT);
+
+    /* If the size of the PT_INTERP segment is unreasonably long */
+    if (phdr.p_filesz >= PATH_MAX)
+        ERAISE(-ENAMETOOLONG);
+
+    /* Seek to location of PT_INTERP segment */
+    ECHECK(myst_syscall_lseek(fd, phdr.p_offset, SEEK_SET));
+
+    /* Allocate memory for the program interpreter name */
+    if (!(name = malloc(phdr.p_filesz + 1)))
+        ERAISE(-ENOMEM);
+
+    /* Read the program interpreter name */
+    {
+        ssize_t n = myst_syscall_read(fd, name, phdr.p_filesz);
+        ECHECK(n);
+
+        if ((size_t)n != phdr.p_filesz)
+            ERAISE(-EIO);
+
+        name[phdr.p_filesz] = '\0';
+    }
+
+    *name_out = name;
+    name = NULL;
+
+done:
+
+    if (name)
+        free(name);
+
+    if (fd >= 0)
+        myst_syscall_close(fd);
+
+    if (ehdr)
+        free(ehdr);
+
+    return ret;
+}
+
 int myst_exec(
     myst_thread_t* thread,
     const void* crt_data_in,
@@ -907,6 +1006,8 @@ int myst_exec(
     long hashbang_file = -1;
     myst_args_t new_argv;
     size_t num_bytes_read;
+    char* prog_interp = NULL;
+    size_t actual_thread_stack_size = thread_stack_size;
 
     if (thread_stack_size)
         _thread_stack_size = thread_stack_size;
@@ -1029,6 +1130,8 @@ int myst_exec(
             {
                 if (_thread_stack_size > phdr[i].p_memsz)
                     phdr[i].p_memsz = _thread_stack_size;
+
+                actual_thread_stack_size = phdr[i].p_memsz;
             }
         }
     }
@@ -1058,8 +1161,23 @@ int myst_exec(
 
     if ((num_bytes_read >= 2) && (strncmp(hashbang_buff, "#!", 2) == 0))
     {
-        ECHECK(_get_interpreter(
+        ECHECK(_get_shell_interpreter(
             hashbang_buff, hashbang_buff_length, num_bytes_read, &new_argv));
+    }
+    else
+    {
+        ECHECK(_get_prog_interp(argv[0], &prog_interp));
+    }
+
+    /* Check that the stack is big enough for the program interpreter */
+    if (prog_interp && strstr(prog_interp, "ld-linux") &&
+        actual_thread_stack_size < GLIBC_THREAD_STACK_SIZE_MIN)
+    {
+        MYST_WLOG(
+            THREAD_STACK_SIZE_WARNING,
+            GLIBC_THREAD_STACK_SIZE_MIN,
+            prog_interp,
+            argv[0]);
     }
 
     if (myst_args_append(&new_argv, argv, argc) != 0)
@@ -1175,6 +1293,9 @@ done:
         myst_syscall_close(hashbang_file);
 
     myst_args_release(&new_argv);
+
+    if (prog_interp)
+        free(prog_interp);
 
     return ret;
 }
