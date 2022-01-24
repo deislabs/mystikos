@@ -2,8 +2,6 @@
 FAILED ../usr/local/lib/python3.9/site-packages/pandas/tests/io/test_clipboard.py::test_raw_roundtrip[\U0001f44d...]
 FAILED ../usr/local/lib/python3.9/site-packages/pandas/tests/io/test_clipboard.py::test_raw_roundtrip[\u03a9\u0153\u2211\xb4...]
 FAILED ../usr/local/lib/python3.9/site-packages/pandas/tests/io/test_clipboard.py::test_raw_roundtrip[abcd...]
-FAILED ../usr/local/lib/python3.9/site-packages/pandas/tests/io/xml/test_xml.py::test_empty_string_etree[0]
-FAILED ../usr/local/lib/python3.9/site-packages/pandas/tests/io/parser/test_quoting.py::test_bad_quote_char[python-kwargs2-"quotechar" must be string, not int]
 ERROR ../usr/local/lib/python3.9/site-packages/pandas/tests/io/test_parquet.py::TestParquetPyArrow::test_s3_roundtrip_explicit_fs
 ERROR ../usr/local/lib/python3.9/site-packages/pandas/tests/io/test_parquet.py::TestParquetPyArrow::test_s3_roundtrip
 ERROR ../usr/local/lib/python3.9/site-packages/pandas/tests/io/test_parquet.py::TestParquetFastParquet::test_s3_roundtrip
