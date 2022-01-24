@@ -394,6 +394,19 @@ char* strncat(char* dest, const char* src, size_t n)
     return dest;
 }
 
+char* strstr(const char* haystack, const char* needle)
+{
+    size_t len = strlen(needle);
+
+    for (const char* p = haystack; *p; p++)
+    {
+        if (strncmp(p, needle, len) == 0)
+            return (char*)p;
+    }
+
+    return NULL;
+}
+
 /*
 **==============================================================================
 **
