@@ -94,9 +94,10 @@ ifeq ($(MYST_ENABLE_HOSTFS),1)
 DIRS += hostfs
 endif
 
+DIRS += cpython-tests
+
 ifndef MYST_ENABLE_GCOV
 ifdef MYST_NIGHTLY_TEST
-DIRS += cpython-tests
 DIRS += sockperf
 endif
 DIRS += clock
