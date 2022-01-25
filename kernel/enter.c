@@ -840,6 +840,13 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         ERAISE(create_appenv_ret);
     }
 
+    /* If the application path does not refer to an actual file */
+    if (myst_syscall_access(args->argv[0], F_OK) != 0)
+    {
+        MYST_ELOG("application does not exist: %s\n", args->argv[0]);
+        ERAISE(-ENOENT);
+    }
+
     /* Run the main program: wait for SYS_exit to perform longjmp() */
     if (myst_setjmp(&thread->jmpbuf) == 0)
     {
