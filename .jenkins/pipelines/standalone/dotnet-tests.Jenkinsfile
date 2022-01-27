@@ -87,7 +87,7 @@ pipeline {
         stage('Build repo source') {
             steps {
                 sh """
-                   ${JENKINS_SCRIPTS}/global/make-world.sh
+                   ${JENKINS_SCRIPTS}/global/make-build.sh
                    """
             }
         }
@@ -127,11 +127,20 @@ pipeline {
                 }
             }
         }
-        stage('Run DotNet 5 Test Suite') {
+        // stage('Run DotNet 5 Test Suite') {
+        //     steps {
+        //         catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+        //             sh """
+        //                make tests -C ${WORKSPACE}/solutions/coreclr
+        //                """
+        //         }
+        //     }
+        // }
+        stage('Run DotNet 6.0 Ubuntu p0 Test Suite') {
             steps {
                 catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
                     sh """
-                       make tests -C ${WORKSPACE}/solutions/coreclr
+                       make tests -C ${WORKSPACE}/tests/coreclr/p0
                        """
                 }
             }
