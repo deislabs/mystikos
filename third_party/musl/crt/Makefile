@@ -85,6 +85,7 @@ NEWFILES += src/stdio/__vfprintf_chk.c
 NEWFILES += src/unistd/preadv2.c
 NEWFILES += src/unistd/pwritev2.c
 NEWFILES += src/stdio/register_printf.c
+NEWFILES += src/conf/confval.h
 
 musl:
 	mkdir -p $(BUILDDIR)
