@@ -1,0 +1,21 @@
+FROM mcr.microsoft.com/dotnet-buildtools/prereqs:ubuntu-16.04-20200508132555-78cbb55 as builder
+
+WORKDIR /build
+RUN git clone --single-branch --branch release/6.0 https://github.com/dotnet/runtime.git
+WORKDIR /build/runtime/
+
+# Build clr+libs+clr.tests in release
+RUN ./build.sh clr+libs \
+        -c release \
+        -lc release \
+    && ./src/tests/build.sh \
+            release \
+            # only build for p0 tests
+            # for p1 tests, uncomment next line
+            #-priority1 \ 
+            -skiptestwrappers
+
+FROM mcr.microsoft.com/dotnet/runtime:6.0
+WORKDIR /coreclr-tests-all
+RUN apt update && apt install -y libicu-dev
+COPY --from=builder /build/runtime/artifacts/tests/coreclr/Linux.x64.Release/ ./
