@@ -1,7 +1,0 @@
-JIT/jit64/regress/vsw/373472/test/test.dll
-JIT/jit64/regress/vsw/373472/test_il/test_il.dll
-JIT/jit64/opt/cse/HugeArray1/HugeArray1.dll
-GC/API/NoGCRegion/NoGC/NoGC.dll
-GC/Coverage/LargeObjectAlloc/LargeObjectAlloc.dll
-GC/Features/HeapExpansion/pluggaps/pluggaps.dll
-GC/Regressions/v2.0-beta2/460373/460373/460373.dll

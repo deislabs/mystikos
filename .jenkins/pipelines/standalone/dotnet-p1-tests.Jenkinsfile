@@ -127,11 +127,11 @@ pipeline {
                 }
             }
         }
-        stage('Run DotNet 5 P1 Test Suite') {
+        stage('Run DotNet 6.0 P1 Ubuntu Test Suite') {
             steps {
                 catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
                     sh """
-                       make tests -C ${WORKSPACE}/tests/coreclr/p1
+                       make tests -C ${WORKSPACE}/tests/coreclr/p1-net6.0-ubuntu
                        """
                 }
             }

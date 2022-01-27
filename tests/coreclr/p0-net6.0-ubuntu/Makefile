@@ -1,8 +1,13 @@
-TOP=$(abspath ../..)
+TOP=$(abspath ../../..)
 include $(TOP)/defs.mak
 
 APPBUILDER=$(TOP)/scripts/appbuilder
 APPNAME=corerun
+CORECLR_COMMON=$(TOP)/tests/coreclr/
+TEST_RUNNER=$(CORECLR_COMMON)/test-runner.sh
+RUN_SINGLE_TEST=$(CORECLR_COMMON)/run-single-test.sh
+STAT=$(CORECLR_COMMON)/stat.sh
+
 TEST=GC/Scenarios/ServerModel/servermodel/servermodel.dll
 PACKAGE_PATH  = myst/bin/corerun
 
@@ -24,14 +29,14 @@ ext2fs: appdir
 run:
 	rm -rf PASSED FAILED-*
 ifndef MYST_SKIP_PR_TEST
-	./test-runner.sh $(MYST_EXEC) config_1g.json 60 pr0-1g
-	./test-runner.sh $(MYST_EXEC) config_4g.json 60 pr0-large-memory
-	./test-runner.sh $(MYST_EXEC) config_1g.json 300 pr0-long-time
+	$(TEST_RUNNER) $(MYST_EXEC) config_1g.json 60 ext2 pr0-1g
+	$(TEST_RUNNER) $(MYST_EXEC) config_4g.json 60 ext2 pr0-large-memory
+	$(TEST_RUNNER) $(MYST_EXEC) config_1g.json 300 ext2 pr0-long-time
 endif
-	./stat.sh
+	$(STAT) pr0-tests-all 95
 
 clean:
-	sudo rm -fr appdir ext2fs roothash myst /tmp/myst* PASSED FAILED-*
+	sudo rm -fr appdir ext2fs roothash PASSED FAILED-*
 
 tests:
 	@ $(MAKE) -s clean
