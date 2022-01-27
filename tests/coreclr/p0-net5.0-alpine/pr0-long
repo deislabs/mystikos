@@ -1,0 +1,13 @@
+GC/API/NoGCRegion/NoGC/NoGC.dll
+baseservices/threading/DeadThreads/DeadThreads/DeadThreads.dll
+GC/API/GC/GetTotalAllocatedBytes/GetTotalAllocatedBytes.dll
+GC/Coverage/LargeObjectAlloc/LargeObjectAlloc.dll
+GC/Features/HeapExpansion/bestfit-finalize/bestfit-finalize.dll
+GC/Features/HeapExpansion/bestfit-threaded/bestfit-threaded.dll
+GC/Features/HeapExpansion/bestfit/bestfit.dll
+GC/Features/HeapExpansion/bestfit_1/bestfit_1.dll
+GC/Features/HeapExpansion/plug/plug.dll
+GC/Features/HeapExpansion/pluggaps/pluggaps.dll
+JIT/Performance/CodeQuality/Bytemark/Bytemark/Bytemark.dll
+JIT/Performance/CodeQuality/SciMark/SciMark/SciMark.dll
+JIT/superpmi/superpmicollect/Bytemark/Bytemark.dll

@@ -99,7 +99,7 @@ package.pem:
 	openssl genrsa -out package.pem -3 3072
 
 clean:
-	sudo rm -fr appdir ext2fs rootfs roothash myst /tmp/myst* PASSED FAILED-* package.pem
+	sudo rm -fr appdir ext2fs rootfs roothash myst PASSED FAILED-* package.pem
 
 tests:
 	@ $(MAKE) -s clean
