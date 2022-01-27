@@ -613,7 +613,8 @@ static ssize_t _send(
 
             if (min) /* if the buffer has any space */
             {
-                ECHECK(myst_buf_append(&_obj(peer)->buf, ptr, min));
+                if (myst_buf_append(&_obj(peer)->buf, ptr, min) < 0)
+                    ERAISE(-ENOMEM);
                 rem -= min;
                 ptr += min;
                 nwritten += min;
@@ -715,7 +716,8 @@ static ssize_t _recv(
             if (min) /* there is data in the buffer */
             {
                 memcpy(ptr, _obj(sock)->buf.data, min);
-                ECHECK(myst_buf_remove(&_obj(sock)->buf, 0, min));
+                if (myst_buf_remove(&_obj(sock)->buf, 0, min) < 0)
+                    ERAISE(-EINVAL);
                 rem -= min;
                 ptr += min;
                 nread += min;

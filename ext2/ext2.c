@@ -2531,7 +2531,9 @@ static int _remove_dirent(
         const uint8_t* end = p + file_size;
         ssize_t prev = -1;
 
-        ECHECK(myst_buf_reserve(&buf, file_size));
+        if (myst_buf_reserve(&buf, file_size) < 0)
+            ERAISE(-ENOMEM);
+
         /* Make sure the fixed-length header portion is in range before
          * accessing */
         while (p + sizeof(ext2_dirent_t) - EXT2_FILENAME_MAX <= end)
@@ -2555,13 +2557,16 @@ static int _remove_dirent(
                 if (recsz <= rem)
                 {
                     curr = buf.size;
-                    ECHECK(myst_buf_append(&buf, e, recsz));
+                    if (myst_buf_append(&buf, e, recsz) < 0)
+                        ERAISE(-ENOMEM);
                 }
                 else
                 {
-                    ECHECK(myst_buf_resize(&buf, buf.size + rem));
+                    if (myst_buf_resize(&buf, buf.size + rem) < 0)
+                        ERAISE(-ENOMEM);
                     curr = buf.size;
-                    ECHECK(myst_buf_append(&buf, e, recsz));
+                    if (myst_buf_append(&buf, e, recsz) < 0)
+                        ERAISE(-ENOMEM);
 
                     /* adjust the record length of the previous entry */
                     assert(prev >= 0);
@@ -2584,7 +2589,8 @@ static int _remove_dirent(
             size_t rem = block_size - (buf.size % block_size);
 
             if (rem)
-                ECHECK(myst_buf_resize(&buf, buf.size + rem));
+                if (myst_buf_resize(&buf, buf.size + rem) < 0)
+                    ERAISE(-ENOMEM);
 
             if (prev >= 0)
             {
@@ -2827,7 +2833,8 @@ static int _add_dirent(
         const uint8_t* end = p + file_size;
         ssize_t prev = -1;
 
-        ECHECK(myst_buf_reserve(&buf, file_size));
+        if (myst_buf_reserve(&buf, file_size) < 0)
+            ERAISE(-ENOMEM);
 
         /* copy existing entries to buffer */
         /* Make sure the fixed-length header portion is in range before
@@ -2843,13 +2850,16 @@ static int _add_dirent(
             if (recsz <= rem)
             {
                 curr = buf.size;
-                ECHECK(myst_buf_append(&buf, e, recsz));
+                if (myst_buf_append(&buf, e, recsz) < 0)
+                    ERAISE(-ENOMEM);
             }
             else
             {
-                ECHECK(myst_buf_resize(&buf, buf.size + rem));
+                if (myst_buf_resize(&buf, buf.size + rem) < 0)
+                    ERAISE(-ENOMEM);
                 curr = buf.size;
-                ECHECK(myst_buf_append(&buf, e, recsz));
+                if (myst_buf_append(&buf, e, recsz) < 0)
+                    ERAISE(-ENOMEM);
 
                 /* adjust the record length of the previous entry */
                 assert(prev >= 0);
@@ -2876,13 +2886,16 @@ static int _add_dirent(
             if (recsz <= rem)
             {
                 curr = buf.size;
-                ECHECK(myst_buf_append(&buf, e, recsz));
+                if (myst_buf_append(&buf, e, recsz) < 0)
+                    ERAISE(-ENOMEM);
             }
             else
             {
-                ECHECK(myst_buf_resize(&buf, buf.size + rem));
+                if (myst_buf_resize(&buf, buf.size + rem) < 0)
+                    ERAISE(-ENOMEM);
                 curr = buf.size;
-                ECHECK(myst_buf_append(&buf, e, recsz));
+                if (myst_buf_append(&buf, e, recsz) < 0)
+                    ERAISE(-ENOMEM);
 
                 /* adjust the record length of the previous entry */
                 assert(prev >= 0);
@@ -2902,7 +2915,8 @@ static int _add_dirent(
             size_t rem = block_size - (buf.size % block_size);
 
             if (rem)
-                ECHECK(myst_buf_resize(&buf, buf.size + rem));
+                if (myst_buf_resize(&buf, buf.size + rem) < 0)
+                    ERAISE(-ENOMEM);
 
             if (prev >= 0)
             {

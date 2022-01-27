@@ -329,7 +329,8 @@ static ssize_t _pd_read(
                 const bool nonblock = (pipe->fl_flags & O_NONBLOCK);
 
                 memcpy(ptr, shared->buf.data, min);
-                ECHECK(myst_buf_remove(&shared->buf, 0, min));
+                if (myst_buf_remove(&shared->buf, 0, min) < 0)
+                    ERAISE(-ENOMEM);
                 rem -= min;
                 ptr += min;
                 nread += min;
@@ -472,7 +473,9 @@ static ssize_t _pd_write(
             {
                 const bool nonblock = (pipe->fl_flags & O_NONBLOCK);
 
-                ECHECK(myst_buf_append(&shared->buf, ptr, min));
+                if (myst_buf_append(&shared->buf, ptr, min) < 0)
+                    ERAISE(-ENOMEM);
+
                 rem -= min;
                 ptr += min;
                 nwritten += min;
