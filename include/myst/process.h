@@ -9,7 +9,6 @@
 #include <unistd.h>
 
 #define MYST_DEFAULT_UMASK (S_IWGRP | S_IWOTH)
-#define MYST_DEFAULT_PGID (pid_t)100
 
 // ATTN: Small stack size for the primary thread of a process might not work
 // for certain apps, especially when on-demand stack growth is not supported

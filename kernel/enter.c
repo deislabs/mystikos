@@ -486,7 +486,7 @@ static int _init_main_thread(
     process->thread_group_lock = MYST_SPINLOCK_INITIALIZER;
     thread->thread_lock = &process->thread_group_lock;
     process->umask = MYST_DEFAULT_UMASK;
-    process->pgid = MYST_DEFAULT_PGID;
+    process->pgid = pid;
 
     process->cwd_lock = MYST_SPINLOCK_INITIALIZER;
     process->cwd = strdup(cwd);
