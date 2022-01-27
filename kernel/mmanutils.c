@@ -1001,7 +1001,8 @@ int proc_pid_maps_vcallback(
                             (pathname ? pathname->data : ""),
                             &str) == 0)
                     {
-                        ECHECK(myst_buf_insert(vbuf, 0, str, strlen(str)));
+                        if (myst_buf_insert(vbuf, 0, str, strlen(str)) < 0)
+                            ERAISE(-ENOMEM);
                         free(str);
                     }
 

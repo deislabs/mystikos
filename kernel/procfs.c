@@ -194,11 +194,14 @@ static int _meminfo_vcallback(
     char tmp[128];
     const size_t n = sizeof(tmp);
     ECHECK(myst_snprintf(tmp, n, "MemTotal:       %lu\n", totalram));
-    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+    if (myst_buf_append(vbuf, tmp, strlen(tmp)) < 0)
+        ERAISE(-ENOMEM);
     ECHECK(myst_snprintf(tmp, n, "MemFree:        %lu\n", freeram));
-    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+    if (myst_buf_append(vbuf, tmp, strlen(tmp)) < 0)
+        ERAISE(-ENOMEM);
     ECHECK(myst_snprintf(tmp, n, "Cached:         %lu\n", cached));
-    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+    if (myst_buf_append(vbuf, tmp, strlen(tmp)) < 0)
+        ERAISE(-ENOMEM);
 
 done:
 
@@ -232,7 +235,8 @@ static int _self_vcallback(
     const size_t n = sizeof(locals->linkpath);
     ECHECK(myst_snprintf(locals->linkpath, n, "/proc/%d", myst_getpid()));
     myst_buf_clear(vbuf);
-    ECHECK(myst_buf_append(vbuf, locals->linkpath, sizeof(locals->linkpath)));
+    if (myst_buf_append(vbuf, locals->linkpath, sizeof(locals->linkpath)) < 0)
+        ERAISE(-ENOMEM);
 
 done:
 
@@ -274,7 +278,8 @@ static int _cpuinfo_vcallback(
     }
 
     myst_buf_clear(vbuf);
-    ECHECK(myst_buf_append(vbuf, _cpuinfo_buf, strlen(_cpuinfo_buf) + 1));
+    if (myst_buf_append(vbuf, _cpuinfo_buf, strlen(_cpuinfo_buf) + 1) < 0)
+        ERAISE(-ENOMEM);
 
 done:
 
@@ -302,30 +307,38 @@ static int _stat_vcallback(
     const size_t n = sizeof(tmp);
 
     ECHECK(myst_snprintf(tmp, n, "cpu  0 0 0 0 0 0 0 0 0 0\n"));
-    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+    if (myst_buf_append(vbuf, tmp, strlen(tmp)) < 0)
+        ERAISE(-ENOMEM);
 
     ECHECK(myst_snprintf(tmp, n, "intr 0\n"));
-    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+    if (myst_buf_append(vbuf, tmp, strlen(tmp)) < 0)
+        ERAISE(-ENOMEM);
 
     ECHECK(myst_snprintf(tmp, n, "nctxt 0\n"));
-    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+    if (myst_buf_append(vbuf, tmp, strlen(tmp)) < 0)
+        ERAISE(-ENOMEM);
 
     ECHECK(myst_snprintf(
         tmp, n, "btime %llu\n", __myst_kernel_args.start_time_sec));
-    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+    if (myst_buf_append(vbuf, tmp, strlen(tmp)) < 0)
+        ERAISE(-ENOMEM);
 
     ECHECK(myst_snprintf(tmp, n, "processes 1\n"));
-    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+    if (myst_buf_append(vbuf, tmp, strlen(tmp)) < 0)
+        ERAISE(-ENOMEM);
 
     ECHECK(
         myst_snprintf(tmp, n, "procs_running %llu\n", myst_get_num_threads()));
-    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+    if (myst_buf_append(vbuf, tmp, strlen(tmp)) < 0)
+        ERAISE(-ENOMEM);
 
     ECHECK(myst_snprintf(tmp, n, "procs_blocked 0\n"));
-    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+    if (myst_buf_append(vbuf, tmp, strlen(tmp)) < 0)
+        ERAISE(-ENOMEM);
 
     ECHECK(myst_snprintf(tmp, n, "softirq 0 0 0 0 0 0 0 0 0 0 0\n"));
-    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+    if (myst_buf_append(vbuf, tmp, strlen(tmp)) < 0)
+        ERAISE(-ENOMEM);
 
 done:
 
@@ -412,15 +425,20 @@ static int _status_vcallback(
 
     ECHECK(myst_snprintf(
         tmp, sizeof(tmp), "Name:\t%s\n", process->main_process_thread->name));
-    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+    if (myst_buf_append(vbuf, tmp, strlen(tmp)) < 0)
+        ERAISE(-ENOMEM);
     ECHECK(myst_snprintf(tmp, sizeof(tmp), "Umask:\t%#04o\n", process->umask));
-    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+    if (myst_buf_append(vbuf, tmp, strlen(tmp)) < 0)
+        ERAISE(-ENOMEM);
     ECHECK(myst_snprintf(tmp, sizeof(tmp), "Tgid:\t%d\n", process->pid));
-    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+    if (myst_buf_append(vbuf, tmp, strlen(tmp)) < 0)
+        ERAISE(-ENOMEM);
     ECHECK(myst_snprintf(tmp, sizeof(tmp), "Pid:\t%d\n", process->pid));
-    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+    if (myst_buf_append(vbuf, tmp, strlen(tmp)) < 0)
+        ERAISE(-ENOMEM);
     ECHECK(myst_snprintf(tmp, sizeof(tmp), "PPid:\t%d\n", process->ppid));
-    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+    if (myst_buf_append(vbuf, tmp, strlen(tmp)) < 0)
+        ERAISE(-ENOMEM);
 
     /* Mystikos doesn't know about the tracer process, so we return self pid if
      * the thread is being traced */
@@ -429,7 +447,8 @@ static int _status_vcallback(
         sizeof(tmp),
         "TracerPid:\t%d\n",
         _is_process_traced(locals->_host_status_buf) ? process->pid : 0));
-    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+    if (myst_buf_append(vbuf, tmp, strlen(tmp)) < 0)
+        ERAISE(-ENOMEM);
 
     ECHECK(myst_snprintf(
         tmp,
@@ -439,7 +458,8 @@ static int _status_vcallback(
         process->main_process_thread->euid,
         process->main_process_thread->savuid,
         process->main_process_thread->fsuid));
-    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+    if (myst_buf_append(vbuf, tmp, strlen(tmp)) < 0)
+        ERAISE(-ENOMEM);
     ECHECK(myst_snprintf(
         tmp,
         sizeof(tmp),
@@ -448,7 +468,8 @@ static int _status_vcallback(
         process->main_process_thread->egid,
         process->main_process_thread->savgid,
         process->main_process_thread->fsgid));
-    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+    if (myst_buf_append(vbuf, tmp, strlen(tmp)) < 0)
+        ERAISE(-ENOMEM);
 
     /* TODO: memory, signal, capability and cpu related fields*/
 
@@ -516,20 +537,24 @@ static int _pid_stat_vcallback(
         process->ppid,
         process->pgid,
         process->sid));
-    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+    if (myst_buf_append(vbuf, tmp, strlen(tmp)) < 0)
+        ERAISE(-ENOMEM);
 
     // tty_nr tpgid flags minflt cminflt majflt cmajflt
     ECHECK(myst_snprintf(tmp, sizeof(tmp), "0 0 0 0 0 0 0 "));
-    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+    if (myst_buf_append(vbuf, tmp, strlen(tmp)) < 0)
+        ERAISE(-ENOMEM);
 
     // utime stime cutime cstime
     // ATTN: update utime stime once GH #688 is fixed.
     ECHECK(myst_snprintf(tmp, sizeof(tmp), "0 0 0 0 "));
-    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+    if (myst_buf_append(vbuf, tmp, strlen(tmp)) < 0)
+        ERAISE(-ENOMEM);
 
     // priority nice num_threads itrealvalue
     ECHECK(myst_snprintf(tmp, sizeof(tmp), "0 0 0 0 "));
-    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+    if (myst_buf_append(vbuf, tmp, strlen(tmp)) < 0)
+        ERAISE(-ENOMEM);
 
     {
         // starttime = proc start time - kernel boot time, in ticks
@@ -540,12 +565,14 @@ static int _pid_stat_vcallback(
 
         // starttime vsize rss rsslim
         ECHECK(myst_snprintf(tmp, sizeof(tmp), "%llu 0 0 0 ", diff_in_ticks));
-        ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+        if (myst_buf_append(vbuf, tmp, strlen(tmp)) < 0)
+            ERAISE(-ENOMEM);
     }
 
     // startcode endcode startstack kstkesp kstkeip
     ECHECK(myst_snprintf(tmp, sizeof(tmp), "0 0 0 0 0 "));
-    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+    if (myst_buf_append(vbuf, tmp, strlen(tmp)) < 0)
+        ERAISE(-ENOMEM);
 
     // signal blocked sigignore sigcatch
     ECHECK(myst_snprintf(
@@ -554,18 +581,21 @@ static int _pid_stat_vcallback(
         "%lu %lu 0 0 ",
         process->main_process_thread->signal.pending,
         process->main_process_thread->signal.mask));
-    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+    if (myst_buf_append(vbuf, tmp, strlen(tmp)) < 0)
+        ERAISE(-ENOMEM);
 
     // wchan nswap cnswap exit_signal processor rt_priority
     // policy delayacct_blkio_ticks guest_time cguest_time
     ECHECK(myst_snprintf(tmp, sizeof(tmp), "0 0 0 0 0 0 0 0 0 0 "));
-    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+    if (myst_buf_append(vbuf, tmp, strlen(tmp)) < 0)
+        ERAISE(-ENOMEM);
 
     // start_data end_data start_brk arg_start arg_end
     // env_start env_end exit_code
     ECHECK(myst_snprintf(
         tmp, sizeof(tmp), "0 0 0 0 0 0 0 %d\n", process->exit_status));
-    ECHECK(myst_buf_append(vbuf, tmp, strlen(tmp)));
+    if (myst_buf_append(vbuf, tmp, strlen(tmp)) < 0)
+        ERAISE(-ENOMEM);
 
 done:
 
@@ -591,7 +621,8 @@ static int _sys_vcallback(
 
     myst_buf_clear(vbuf);
 
-    ECHECK(myst_buf_append(vbuf, SYS_PID_MAX_STR, strlen(SYS_PID_MAX_STR)));
+    if (myst_buf_append(vbuf, SYS_PID_MAX_STR, strlen(SYS_PID_MAX_STR)) < 0)
+        ERAISE(-ENOMEM);
 
 done:
 

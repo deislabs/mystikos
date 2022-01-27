@@ -516,7 +516,8 @@ static int _load_hash_tree(blkdev_t* dev)
     {
         size_t blkno = i + 1;
         ECHECK(_read_hash_block(dev, blkno, &locals->block));
-        ECHECK(myst_buf_append(&dev->hashtree, &locals->block, blksz));
+        if (myst_buf_append(&dev->hashtree, &locals->block, blksz) < 0)
+            ERAISE(-ENOMEM);
     }
 
     /* save pointer to the start of the hash leaves */
