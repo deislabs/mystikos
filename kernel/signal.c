@@ -8,10 +8,15 @@
 #include <myst/config.h>
 #include <myst/eraise.h>
 #include <myst/fsgs.h>
+#include <myst/panic.h>
 #include <myst/printf.h>
 #include <myst/process.h>
 #include <myst/signal.h>
+#include <myst/stack.h>
 #include <myst/time.h>
+
+/* the size of red zone in bytes */
+#define MYST_X86_64_ABI_REDZONE_SIZE 0x80
 
 //#define TRACE
 
@@ -35,6 +40,15 @@ static void _uint64_to_sigset(uint64_t val, sigset_t* set)
     *p = val;
 }
 
+MYST_INLINE
+bool _is_on_altstack(stack_t* altstack, uint64_t rsp)
+{
+    uint64_t altstack_start = (uint64_t)altstack->ss_sp;
+    uint64_t altstack_end = altstack_start + altstack->ss_size;
+
+    return (rsp && rsp > altstack_start && rsp < altstack_end);
+}
+
 struct _handler_wrapper_arg
 {
     // A signal handler can take either 3 parameters (with sigaction_t)
@@ -45,25 +59,72 @@ struct _handler_wrapper_arg
     unsigned signum;
     siginfo_t* siginfo;
     ucontext_t* ucontext;
+    mcontext_t* mcontext;
 };
 
 // Work around the limitation that myst_call_on_stack only allows
 // one function parameter.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstack-usage="
 long _handler_wrapper(void* arg_)
 {
-    struct _handler_wrapper_arg* arg = arg_;
-    if (arg->sigaction_handler)
+    struct _fpstate fpregs __attribute__((aligned(16)));
+    struct _handler_wrapper_arg arg;
+    ucontext_t ucontext;
+    siginfo_t siginfo;
+
+    /* If sigaltstack is enabled, the original arguments will be saved
+     * on the OE altstack and could be overwritten if nested exceptions
+     * occur. To avoid such issues, we make a copy of necessary arguments
+     * on the local stack. */
+
+    assert(arg_);
+    arg = *(struct _handler_wrapper_arg*)arg_;
+
+    if (arg.siginfo)
+        siginfo = *(arg.siginfo);
+    else
+        memset(&siginfo, 0, sizeof(siginfo_t));
+
+    if (arg.ucontext)
+        ucontext = *(arg.ucontext);
+    else
+        memset(&ucontext, 0, sizeof(ucontext_t));
+
+    if (arg.mcontext)
     {
-        assert(arg->signum_handler == NULL);
-        arg->sigaction_handler(arg->signum, arg->siginfo, arg->ucontext);
+        ucontext.uc_mcontext = *(arg.mcontext);
+        fpregs = *(struct _fpstate*)(arg.mcontext->fpregs);
+        ucontext.uc_mcontext.fpregs = &fpregs;
+    }
+
+    if (arg.sigaction_handler)
+    {
+        assert(arg.signum_handler == NULL);
+        arg.sigaction_handler(arg.signum, &siginfo, &ucontext);
     }
     else
     {
-        assert(arg->signum_handler != NULL);
-        arg->signum_handler(arg->signum);
+        assert(arg.signum_handler != NULL);
+        arg.signum_handler(arg.signum);
     }
+
+    myst_signal_restore_mask();
+
+    if (arg.mcontext)
+    {
+        /* The signal handler in the programming language runtime or the
+         * application might not return. If execution returns here, set the CPU
+         * context as the returned mcontext to continue execution. */
+        myst_sigreturn(&(ucontext.uc_mcontext));
+
+        /* Unreachable */
+        assert(0);
+    }
+
     return 0;
 }
+#pragma GCC diagnostic pop
 
 /* Called to make sure we have a clean sigactions structure.
  * This is called from the main process creation where there will be no
@@ -178,6 +239,9 @@ long myst_signal_sigprocmask(int how, const sigset_t* set, sigset_t* oldset)
             thread->signal.mask |= mask;
         else if (how == SIG_UNBLOCK)
             thread->signal.mask &= ~mask;
+
+        /* keep the copy of mask */
+        thread->signal.original_mask = thread->signal.mask;
     }
 
 done:
@@ -398,13 +462,12 @@ static long _handle_one_signal(
 
     ECHECK(_check_signum(signum));
 
-    // Use a zeroed ucontext_t unless the caller passed in a mconext
-    // (register states). Note we modified pthread_cancel in MUSL to
-    // avoid the dependency on mcontext.
+    // use a zeroed ucontext_t. If the caller passed in a mcontext
+    // (register states), we only set up the uc_mcontext during
+    // _handler_wrapper to avoid doing an extra memory copy here.
+    // Note we modified pthread_cancel in MUSL to avoid the dependency
+    // on mcontext.
     memset(&context, 0, sizeof(context));
-
-    if (mcontext != NULL)
-        context.uc_mcontext = *mcontext;
 
     myst_thread_t* thread = myst_thread_self();
     myst_process_t* process = myst_process_self();
@@ -462,7 +525,6 @@ static long _handle_one_signal(
     {
         bool use_alt_stack = false;
         struct _handler_wrapper_arg arg = {0};
-        uint64_t orig_mask = thread->signal.mask;
 
         if (__myst_kernel_args.strace_config.trace_syscalls ||
             __myst_kernel_args.trace_errors)
@@ -487,13 +549,40 @@ static long _handle_one_signal(
         /* save the original fsbase */
         void* original_fsbase = myst_get_fsbase();
         stack_t* altstack = &thread->signal.altstack;
+        uint64_t rsp_before_signal = 0;
 
         /* restore the user-space fsbase, which is pthread_self() */
         myst_set_fsbase(thread->crt_td);
 
+        /* get the rsp value used to determine whether the context before
+         * signal was on the alternative stack
+         * a. for the case of real-time interrupt (mcontext is not NULL),
+         *    use the rsp value from mcontext.
+         * b. for the case of delayed interrupt (invoked during syscall),
+         *    use the rsp value before switching to the kernel stack. */
+        if (mcontext)
+            rsp_before_signal = mcontext->gregs[REG_RSP];
+        else
+            rsp_before_signal = thread->user_rsp;
+
+        /* ensure rsp_before_signal is set */
+        if (!rsp_before_signal)
+            myst_panic(
+                "invalid rsp for calling signal handler: 0x%lx",
+                rsp_before_signal);
+
+        /* If the thread is already on the alternative stack, set
+         * use_alt_stack to false even if SA_ONSTACK flag is set.
+         * Doing so avoids the nested signal handler starts from the
+         * top of the alternative stack */
+
         use_alt_stack = (action->flags & SA_ONSTACK) &&
-                        !(altstack->ss_flags & (SS_DISABLE | SS_ONSTACK)) &&
+                        !(altstack->ss_flags & SS_DISABLE) &&
+                        !(_is_on_altstack(altstack, rsp_before_signal)) &&
                         (altstack->ss_sp != 0);
+
+        if (mcontext)
+            arg.mcontext = mcontext;
 
         if ((action->flags & SA_SIGINFO) != 0)
         {
@@ -511,11 +600,6 @@ static long _handle_one_signal(
         if (use_alt_stack)
         {
             uint64_t stacktop = (uint64_t)altstack->ss_sp + altstack->ss_size;
-            // Remember this thread is already on the alt stack. We check
-            // this flag when the next signal comes in, if true we will
-            // continue on the current (alt) stack instead of starting
-            // from the top of the alt stack.
-            altstack->ss_flags |= SS_ONSTACK;
 
             // pass stack limits if using alternate stack.
             // dotnet runtime uses the uc_stack field to detect if its running
@@ -528,20 +612,23 @@ static long _handle_one_signal(
             }
 
             myst_call_on_stack((void*)stacktop, _handler_wrapper, &arg);
-
-            altstack->ss_flags &= ~SS_ONSTACK; // Done with the alt stack.
         }
         else
-            _handler_wrapper(&arg);
+        {
+            /* If altstack is not used, we call the _handler_wrapper on the
+             * stack frame before entering the signal handler. This can be
+             * either the stack frame where the interrupt occurs or the stack
+             * frame before entering the syscall layer. Doing so ensures that
+             * we do not run the user handler on kernel stack. */
+            uint64_t stacktop =
+                rsp_before_signal - MYST_X86_64_ABI_REDZONE_SIZE;
 
-        // Copy back mcontext (register states)
-        if ((action->flags & SA_SIGINFO) && mcontext != NULL)
-            *mcontext = context.uc_mcontext;
+            myst_call_on_stack((void*)stacktop, _handler_wrapper, &arg);
+        }
 
-        /* restore the original fsbase */
+        /* if the user handler returns, retore the fsbase to the value before
+         * calling the handler */
         myst_set_fsbase(original_fsbase);
-
-        thread->signal.mask = orig_mask; /* Restore to original mask */
     }
 
 done:
@@ -791,6 +878,7 @@ long myst_signal_clone(
 
     // Clone the signal mask
     child_thread->signal.mask = parent_thread->signal.mask;
+    child_thread->signal.original_mask = parent_thread->signal.original_mask;
 
 done:
     if (ret != 0)
@@ -804,11 +892,6 @@ done:
 void myst_handle_host_signal(siginfo_t* siginfo, mcontext_t* mcontext)
 {
     _handle_one_signal(siginfo->si_signo, siginfo, mcontext);
-
-    /* The signal handler in the programming language runtime or the application
-     * might not return. If execution returns here, set the CPU context as the
-     * returned mcontext to continue execution. */
-    myst_sigreturn(mcontext);
 
     // Unreachable
     assert(0);
@@ -826,6 +909,9 @@ int myst_signal_altstack(const stack_t* ss, stack_t* old_ss)
             // Trying to be compatible with Linux. A never-installed
             // alt stack means it's disabled.
             old_ss->ss_flags |= SS_DISABLE;
+
+        if (_is_on_altstack(old_ss, me->user_rsp))
+            old_ss->ss_flags |= SS_ONSTACK;
     }
 
     if (ss != NULL)
@@ -836,7 +922,7 @@ int myst_signal_altstack(const stack_t* ss, stack_t* old_ss)
         if (ss->ss_flags & ~(SS_DISABLE) != 0)
             ERAISE(-EINVAL);
 
-        if (me->signal.altstack.ss_flags & SS_ONSTACK)
+        if (_is_on_altstack(&me->signal.altstack, me->user_rsp))
             ERAISE(-EPERM);
 
         if (ss->ss_flags & SS_DISABLE)
@@ -865,4 +951,12 @@ int myst_signal_altstack(const stack_t* ss, stack_t* old_ss)
 
 done:
     return ret;
+}
+
+void myst_signal_restore_mask(void)
+{
+    myst_thread_t* thread = myst_thread_self();
+
+    /* restore the mask from orig_mask */
+    thread->signal.mask = thread->signal.original_mask;
 }

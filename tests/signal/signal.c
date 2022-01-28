@@ -8,6 +8,7 @@
 #include <semaphore.h>
 #include <signal.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,6 +16,15 @@
 #include <unistd.h>
 
 static sem_t sem1, sem2, sem3;
+
+/* Used by test_nested_altstack */
+static sigset_t _mask_before_signal;
+static sigset_t _mask_after_signal;
+static uint64_t _altstack_start;
+static uint64_t _altstack_end;
+static int _nesting_level;
+static int _sigsegv_done;
+uint64_t _rsp[2];
 
 static void* start_async(void* arg)
 {
@@ -234,7 +244,7 @@ void _altstack_handler(int signum, siginfo_t* siginfo, void* context)
 {
     ucontext_t* ucontext = (ucontext_t*)context;
     param_addr = &signum;
-    ucontext->uc_mcontext.gregs[REG_RIP] += 3; // non-portable.
+    ucontext->uc_mcontext.gregs[REG_RIP] += 6; // non-portable.
 }
 
 int test_altstack(const char* test_name)
@@ -285,8 +295,131 @@ void test_sig_zero()
     printf("=== : Test passed (%s)\n", __FUNCTION__);
 }
 
+static uint64_t _sigset_to_uint64(const sigset_t* set)
+{
+    uint64_t* p = (uint64_t*)set;
+    return *p;
+}
+
+static void _nested_sigsegv_handler(
+    int signum,
+    siginfo_t* siginfo,
+    void* context)
+{
+    ucontext_t* ucontext = (ucontext_t*)context;
+    sigset_t mask;
+    int result;
+
+    assert(_nesting_level < 2);
+
+    asm volatile("mov %%rsp, %0" : "=r"(_rsp[_nesting_level]));
+
+    printf(
+        "sigsegv handler rsp=0x%lx, nesting level=%d, altstack=[0x%lx, "
+        "0x%lx]\n",
+        _rsp[_nesting_level],
+        _nesting_level,
+        _altstack_start,
+        _altstack_end);
+
+    assert(
+        _rsp[_nesting_level] > _altstack_start &&
+        _rsp[_nesting_level] < _altstack_end);
+
+    /* test get altstack info */
+    stack_t oldss;
+    assert(sigaltstack(NULL, &oldss) == 0);
+
+    /* the SS_ONSTACK is expected to be set */
+    assert(oldss.ss_flags & SS_ONSTACK);
+
+    /* negative test of setting altstack */
+    {
+        stack_t ss;
+        ss.ss_size = SIGSTKSZ * 4; // 8 pages
+        ss.ss_flags = 0;
+        assert((ss.ss_sp = malloc(SIGSTKSZ * 4)) != NULL);
+
+        /* Expect sigaltstack to fail if it is currently used */
+        assert(sigaltstack(&ss, NULL) == -1);
+        free(ss.ss_sp);
+    }
+
+    assert(sigprocmask(0, NULL, &mask) == 0);
+
+    /* expect mask not equal to _mask_before_signal (i.e., the sa_mask from
+     * sigaction should temporarily apply to signal mask) */
+    assert(_sigset_to_uint64(&mask) != _sigset_to_uint64(&_mask_before_signal));
+
+    ucontext->uc_mcontext.gregs[REG_RIP] += 6; // non-portable.
+
+    _nesting_level++;
+
+    /* test single nesting exception */
+    if (_nesting_level < 2)
+    {
+        *(int*)0 = 0; // trigger SIGSEGV
+    }
+
+    if (siginfo->si_signo == SIGSEGV)
+        _sigsegv_done = 1;
+}
+
+static void test_nested_altstack()
+{
+    // setup alt stack
+    stack_t ss;
+    ss.ss_size = SIGSTKSZ * 4; // 8 pages
+    ss.ss_flags = 0;
+    assert((ss.ss_sp = malloc(SIGSTKSZ * 4)) != NULL);
+    assert(sigaltstack(&ss, NULL) != -1);
+
+    _altstack_start = (uint64_t)ss.ss_sp;
+    _altstack_end = _altstack_start + ss.ss_size;
+
+    struct sigaction act = {0};
+    act.sa_sigaction = _nested_sigsegv_handler;
+    act.sa_flags = SA_SIGINFO | SA_NODEFER | SA_ONSTACK;
+
+    assert(sigemptyset(&act.sa_mask) == 0);
+
+    assert(sigaddset(&act.sa_mask, SIGUSR2) == 0);
+
+    if (sigaction(SIGSEGV, &act, NULL) < 0)
+    {
+        assert(0 && "Error - sigaction failed unexpectedly\n");
+    }
+
+    /* test get altstack info */
+    stack_t oldss;
+    assert(sigaltstack(NULL, &oldss) == 0);
+
+    /* the SS_ONSTACK is expected not to be set */
+    assert(!(oldss.ss_flags & SS_ONSTACK));
+
+    assert(sigprocmask(0, NULL, &_mask_before_signal) == 0);
+
+    *(int*)0 = 0; // trigger SIGSEGV
+
+    assert(_sigsegv_done == 1);
+
+    /* ensure both signal handler calls use different rsp */
+    assert(_rsp[0] > _rsp[1]);
+
+    assert(sigprocmask(0, NULL, &_mask_after_signal) == 0);
+
+    /* expect the signal mask remain the same after signal handling */
+    assert(
+        _sigset_to_uint64(&_mask_before_signal) ==
+        _sigset_to_uint64(&_mask_after_signal));
+
+    printf("=== : Test passed (%s)\n", __FUNCTION__);
+}
+
 int main(int argc, const char* argv[])
 {
+    const char* target = getenv("MYST_TARGET");
+
     test_pthread_cancel("pthread_cancel");
 
     test_signal_blocked(SIGTERM, "signal_blocked");
@@ -298,6 +431,10 @@ int main(int argc, const char* argv[])
     test_altstack("signal alt stack");
 
     test_sig_zero();
+
+    /* The nested altstack is not supported by the Linux target */
+    if (target && strcmp(target, "linux") != 0)
+        test_nested_altstack();
 
     printf("\n=== passed test (%s)\n", argv[0]);
 

@@ -284,8 +284,14 @@ struct myst_thread
         /* The lock to ensure sequential delivery of signals */
         myst_spinlock_t lock;
 
-        /* The mask of blocked signals */
+        /* The mask of blocked signals (can be set via sigprocmask or be
+         * temporarily set during handling a signal) */
         uint64_t mask;
+
+        /* The mask that keeps the copy of mask member set by sigprocmask,
+         * which is used to restore the mask member after signal handler
+         * finishes (either return to kernel or via iret instruction). */
+        uint64_t original_mask;
 
         /* The list of siginfo_t for pending signals */
         struct siginfo_list_item* siginfos[NSIG - 1];
@@ -357,6 +363,13 @@ struct myst_thread
     /* the temporary stack that was allocated to initialize a user thread */
     void* entry_stack;
     size_t entry_stack_size;
+
+    /* The copy of rsp before switching to the kernel stack during the
+     * most recent syscall invocation. For the case of delayed signal
+     * handling (i.e., calling myst_signal_process at the syscall layer),
+     * the kernel will execute the user signal handler with this rsp instead
+     * of using kernal stack. */
+    uint64_t user_rsp;
 
     /* If we have a mapping that is the thread stack then we cannot free it
      * until we return the thread to the kernel for shutting down. There may

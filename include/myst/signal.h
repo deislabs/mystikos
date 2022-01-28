@@ -44,4 +44,6 @@ int myst_signal_altstack(const stack_t* ss, stack_t* old_ss);
 
 const char* myst_signum_to_string(unsigned signum);
 
+void myst_signal_restore_mask(void);
+
 #endif /* _MYST_SIGNAL_H */
