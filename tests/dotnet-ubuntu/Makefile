@@ -20,7 +20,7 @@ ext2fs: appdir
 clean:
 	rm -fr appdir ext2fs
 
-OPTS += --memory-size $(HEAP_SIZE)
+OPTS += --memory-size $(HEAP_SIZE) --thread-stack-size "16M"
 
 tests:
 	$(RUNTEST) $(MYST_EXEC) ext2fs /app/hello $(OPTS)

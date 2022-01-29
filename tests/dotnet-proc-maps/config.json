@@ -19,5 +19,7 @@
     // The environment variables accessible inside the enclave.
     "EnvironmentVariables": ["COMPlus_EnableDiagnostics=0"],
     // The environment variables we get from the host
-    "HostEnvironmentVariables": []
+    "HostEnvironmentVariables": [],
+    // Stack size for each thread
+    "ThreadStackSize": "16m"
 }
