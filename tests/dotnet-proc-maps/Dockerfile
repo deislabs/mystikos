@@ -1,12 +1,12 @@
-FROM mcr.microsoft.com/dotnet/core/sdk:3.1-buster AS build
+FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
 WORKDIR /src
 COPY ["HelloWorld", "HelloWorld/"]
 WORKDIR "/src/HelloWorld"
-RUN dotnet publish "HelloWorld.csproj" -c Release -o /app/build --self-contained true -r alpine-x64
+RUN dotnet publish "HelloWorld.csproj" -c Release -o /app/build --self-contained true -r linux-x64
 
-FROM mcr.microsoft.com/dotnet/core/aspnet:3.1-alpine
+FROM mcr.microsoft.com/dotnet/runtime:6.0
 
-RUN apk add --no-cache icu-libs
+RUN apt update && apt install -y libicu-dev
 
 WORKDIR /app
 COPY --from=build /app/build .
