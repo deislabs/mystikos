@@ -22,6 +22,10 @@ TESTCASE = test_urllib2_localnet.TestUrlopen.test_line_iteration
 VER=3.10
 FS=ext2fs$(VER)
 
+TEST_RUN_INDIVIDUAL_3_8=$(shell cat test_config_v3.8.11/tests.passed.individual)
+TEST_RUN_INDIVIDUAL_3_9=$(shell cat test_config_v3.9.7/tests.passed.individual)
+TEST_RUN_INDIVIDUAL_3_10=$(shell cat test_config_v3.10.0/tests.passed.individual)
+
 # Set timeout to 60 mins (to run both the python3.8, 3.9 and 3.10 test suite)
 export TIMEOUT=3600
 
@@ -55,12 +59,16 @@ tests:
 
 run-3.8: ext2fs3.8
 	$(MYST_EXEC) $(OPTS) ext2fs3.8 /cpython/python -m test -f /$(TESTFILE) --timeout 120 -v
+	$(foreach i, $(TEST_RUN_INDIVIDUAL_3_8), $(MAKE) one FS=$(FS) TEST=$(i) $(NL) )
 
 run-3.9: ext2fs3.9
 	$(MYST_EXEC) $(OPTS) ext2fs3.9 /cpython/python -m test -f /$(TESTFILE) --timeout 120 -v
+	$(foreach i, $(TEST_RUN_INDIVIDUAL_3_9), $(MAKE) one FS=$(FS) TEST=$(i) $(NL) )
+
 
 run-3.10: ext2fs3.10
 	$(MYST_EXEC) $(OPTS) ext2fs3.10 /cpython/python -m test -f /$(TESTFILE) --timeout 120 -v
+	$(foreach i, $(TEST_RUN_INDIVIDUAL_3_10), $(MAKE) one FS=$(FS) TEST=$(i) $(NL) )
 
 one: $(FS)
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) /cpython/python -m test $(TEST) -v

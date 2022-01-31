@@ -153,10 +153,8 @@ test_html
 test_htmlparser
 test_http_cookiejar
 test_http_cookies
-test_httplib
 test_httpservers
 test_idle
-test_imaplib
 test_imghdr
 test_imp
 test_import
@@ -220,7 +218,6 @@ test_platform
 test_plistlib
 test_poll
 test_popen
-test_poplib
 test_positional_only_arg
 test_posixpath
 test_pow
@@ -255,7 +252,6 @@ test_shlex
 test_site
 test_slice
 test_smtpd
-test_smtplib
 test_smtpnet
 test_sndhdr
 test_socketserver
@@ -319,7 +315,6 @@ test_unpack
 test_unpack_ex
 test_urllib
 test_urllib2
-test_urllib2_localnet
 test_urllib2net
 test_urllib_response
 test_urllibnet
@@ -342,7 +337,6 @@ test_xdrlib
 test_xml_dom_minicompat
 test_xml_etree
 test_xml_etree_c
-test_xmlrpc
 test_xmlrpc_net
 test_xxtestfuzz
 test_yield_from
