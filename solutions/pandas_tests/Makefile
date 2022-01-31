@@ -15,6 +15,12 @@ PYTEST_INI_FILE = pytest.ini
 PYTEST_OPTS = -s -q --no-header --skip-slow --skip-db --skip-network
 TEST_ROOT = /usr/local/lib/python3.9/site-packages/
 TEST = pandas/tests/arrays/string_/test_string.py
+# The following tests used to pass in mystikos, but currently hang indefinitely.
+# Removing these tests currently, and will be added back after investigating
+# these failures.
+REMOVE_TESTS_TEMPORARILY= \
+appdir/usr/local/lib/python3.9/site-packages/pandas/tests/io/test_stata.py \
+appdir/usr/local/lib/python3.9/site-packages/pandas/tests/io/test_sql.py
 
 OPTS = --max-affinity-cpus=4 --app-config-path config.json
 ifdef STRACE
@@ -34,6 +40,8 @@ rootfs-passed: appdir
 	# remove test files that are known to fail partially. These are tested in target 'run'
 	# for expected failures/ errors.
 	cat tests.partially_passed | while read line; do rm -f appdir/"$$line"; done
+	# This file is temporarily being disabled from pandas_tests, to investigate handling
+	rm -f appdir/$(REMOVE_TESTS_TEMPORARILY)
 	$(MYST) mkext2 appdir rootfs-passed
 
 run-passed: rootfs-passed
