@@ -352,7 +352,6 @@ static void _set_called_by_vfork(uint64_t value)
 
 __attribute__((__returns_twice__)) pid_t myst_fork(void)
 {
-    pid_t pid = 0;
     myst_jmp_buf_t env;
     struct thread_args* args = NULL;
     myst_fork_mode_t fork_mode = myst_fork_none;
@@ -444,6 +443,7 @@ __attribute__((__returns_twice__)) pid_t myst_fork(void)
         }
 
         {
+            pid_t tmppid = 0;
             /* wait for child to set args->pid */
             struct timespec req;
             req.tv_sec = 0;
@@ -451,24 +451,26 @@ __attribute__((__returns_twice__)) pid_t myst_fork(void)
             while (args->pid == 0)
                 nanosleep(&req, NULL);
 
-            pid = args->pid;
+            tmppid = args->pid;
 
             /* Wait if fork mode requires it */
             if (fork_mode == myst_fork_pseudo_wait_for_exit_exec)
             {
                 syscall(SYS_myst_fork_wait_exec_exit);
             }
+
+            if (--args->refcount == 0)
+                free(args);
+
+            return tmppid;
         }
     }
     else /* child */
     {
-        pid = 0;
+        if (--args->refcount == 0)
+            free(args);
+        return 0;
     }
-
-    if (--args->refcount == 0)
-        free(args);
-
-    return pid;
 }
 
 /*

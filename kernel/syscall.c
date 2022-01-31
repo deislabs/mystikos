@@ -269,13 +269,14 @@ __attribute__((format(printf, 2, 3))) static void _strace(
         }
 
         myst_eprintf(
-            "=== %s%s%s(%s): pid=%d tid=%d\n",
+            "=== %s%s%s(%s): pid=%d tid=%d pgid=%d\n",
             blue,
             _syscall_str(n),
             reset,
             buf,
             myst_getpid(),
-            myst_gettid());
+            myst_gettid(),
+            myst_getpgid());
 
         if (buf != &null_char)
             free(buf);
@@ -337,14 +338,15 @@ static long _return(long n, long ret)
         if (error_name)
         {
             myst_eprintf(
-                "    %s%s(): return=-%s(%ld)%s: pid=%d tid=%d\n",
+                "    %s%s(): return=-%s(%ld)%s: pid=%d tid=%d pgid=%d\n",
                 red,
                 _syscall_str(n),
                 error_name,
                 ret,
                 reset,
                 myst_getpid(),
-                myst_gettid());
+                myst_gettid(),
+                myst_getpgid());
 
             // Trigger breakpoint if set.
             _syscall_failure_hook(n, ret);
@@ -352,14 +354,15 @@ static long _return(long n, long ret)
         else
         {
             myst_eprintf(
-                "    %s%s(): return=%ld(%lx)%s: pid=%d tid=%d\n",
+                "    %s%s(): return=%ld(%lx)%s: pid=%d tid=%d pgid=%d\n",
                 red,
                 _syscall_str(n),
                 ret,
                 ret,
                 reset,
                 myst_getpid(),
-                myst_gettid());
+                myst_gettid(),
+                myst_getpgid());
         }
     }
 

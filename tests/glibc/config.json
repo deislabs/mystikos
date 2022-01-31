@@ -8,7 +8,7 @@
     "SecurityVersion": 1,
 
     // Mystikos specific values
-    "MemorySize": "128m",
+    "MemorySize": "512m",
     "HostApplicationParameters": true,
     "ForkMode":"pseudo",
     "NoBrk": true

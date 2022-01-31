@@ -40,7 +40,7 @@
 #include <myst/times.h>
 #include <myst/trace.h>
 
-//#define TRACE
+#define TRACE
 
 myst_spinlock_t myst_process_list_lock = MYST_SPINLOCK_INITIALIZER;
 
@@ -404,10 +404,12 @@ static bool _wait_matcher(
              (check_process->pgid == our_process->pgid));
 #ifdef TRACE
         printf(
-            "matcher(%s): Wait for any process with our pgid %u: found pid=%u, "
+            "matcher(%s): Wait for any process with ppid set to our pid=%u and "
+            "our pgid %u: found pid=%u, "
             "ppid=%u, pgid=%u: "
             "%s\n",
             type,
+            our_process->pid,
             our_process->pgid,
             check_process->pid,
             check_process->ppid,
@@ -557,6 +559,8 @@ long myst_wait(
     bool locked = false;
     myst_process_t* process = myst_process_self();
     myst_process_t* p;
+
+    myst_assume(pid != 0);
 
     if (rusage)
         memset(rusage, 0, sizeof(*rusage));

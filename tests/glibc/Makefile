@@ -2,8 +2,15 @@
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
+ifdef TRACE
+OPTS += --strace --etrace
+else
 ifdef STRACE
 OPTS += --strace
+endif
+ifdef ETRACE
+OPTS += --etrace
+endif
 endif
 
 APPDIR=$(CURDIR)/appdir
@@ -11,10 +18,13 @@ APPBUILDER=$(TOP)/scripts/appbuilder
 
 ROOTFS=$(CURDIR)/rootfs
 
-TESTS=$(shell comm -23 tests.passed tests.remove)
 
 ifdef MYST_ENABLE_GCOV
 TESTS=$(shell comm -23 tests.passed tests.removegcov)
+GLIBC_BUILD_TEST_LIST = $(shell comm -23 tests.passed tests.removegcov | sed 's/\/glibc\/build\///g')
+else
+TESTS=$(shell comm -23 tests.passed tests.remove)
+GLIBC_BUILD_TEST_LIST = $(shell comm -23 tests.passed tests.remove | sed 's/\/glibc\/build\///g')
 endif
 
 OPTS+=--app-config-path config.json
@@ -27,16 +37,25 @@ all: myst
 # this target is to be used for local builds only,
 # a similar build is already compiled in the docker container linked here
 glibc:
-	git clone https://sourceware.org/git/glibc.git
+	git clone --branch= release/2.34/master https://sourceware.org/git/glibc.git
 
-build: glibc
-	cd glibc && git checkout release/2.34/master && \
-    mkdir build && cd build && \
-	../configure --prefix=/usr --disable-werror --enable-static-pie && \
+
+GLIBC_BUILD_TEST_LIST = $(shell comm -23 tests.passed tests.remove | sed 's/\/glibc\/build\///g')
+
+docker-run:
+	
+
+glibc/build/Makefile: glibc
+	mkdir -p glibc/build && \
+	cd glibc/build && \
+	../configure --prefix=/usr --disable-werror --enable-static-pie
+
+build: glibc/build/Makefile
+	cd glibc/build && \
 	make -j && \
-	make check
-	find . -type f -executable -print | grep 'test\|tst\|check' | grep -v .*.so > temp
-	sort temp > tests.all
+	$(foreach i, $(GLIBC_BUILD_TEST_LIST), cd glibc/build ; make test t=$(i) ; true $(NL) )
+
+#	rm -rf build && \
 
 PWD=$(shell pwd)
 
@@ -48,8 +67,8 @@ $(APPDIR)/bin/run: run.c
 	mkdir -p $(APPDIR)/bin
 	$(MUSL_GCC) -Wall -o $(APPDIR)/bin/run run.c
 
-$(ROOTFS): run.c
-	$(MYST) mkext2 $(APPDIR) $(ROOTFS)
+$(ROOTFS): 
+	$(MYST) mkext2  --force --trace $(APPDIR) $(ROOTFS)
 
 one:
 	$(MYST_EXEC) $(OPTS) $(ROOTFS) $(TEST) $(NL)
@@ -65,5 +84,5 @@ myst:
 	$(MAKE) -C $(TOP)/tools/myst
 
 clean:
-	rm -rf $(APPDIR) $(ROOTFS)
+#	rm -rf $(APPDIR) $(ROOTFS)
 

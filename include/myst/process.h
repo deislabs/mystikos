@@ -37,4 +37,9 @@ MYST_INLINE pid_t myst_getpid(void)
     return myst_process_self()->pid;
 }
 
+MYST_INLINE pid_t myst_getpgid(void)
+{
+    return myst_process_self()->pgid;
+}
+
 #endif /* _MYST_PROCESS_H */

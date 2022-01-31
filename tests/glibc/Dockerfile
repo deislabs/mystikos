@@ -1,25 +1,10 @@
-FROM ubuntu:18.04 as builder
+FROM ubuntu:18.04 as glibc-builder
 
 RUN apt-get update && apt-get install -y \
     build-essential bison git gawk python3
 
-# checkout glibc
-RUN git clone https://sourceware.org/git/glibc.git
-RUN cd glibc && git checkout release/2.34/master && \
-    mkdir build && cd build
-
-# configure the build
-WORKDIR /glibc/build
-RUN ../configure --prefix=/usr \
-                 --disable-werror \
-                 --enable-static-pie
-
-# build glibc
-RUN make
-
-# Future enhancement after confirming stability
-# FROM ubuntu:18.04
-# COPY --from=builder /glibc/build .
+COPY build .
+COPY runtests .
 
 COPY tests.all .
 
