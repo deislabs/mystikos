@@ -14,8 +14,9 @@ endif
 
 LDFLAGS = $(OEHOST_LDFLAGS)
 
-LIBS = $(LIBDIR)/libmysthost.a
-LIBS = $(LIBDIR)/libmystutils.a
+LIBS =
+LIBS += $(LIBDIR)/libmystutils.a
+LIBS += $(LIBDIR)/libmysthost.a
 
 REDEFINE_TESTS=1
 
