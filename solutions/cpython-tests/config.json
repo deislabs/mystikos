@@ -13,7 +13,7 @@
     "ThreadStackSize": "2m",
     // The path to the entry point application in rootfs
     "ApplicationPath": "/cpython/python",
-    "CurrentWorkingDirectory": "/cpython/",
+    "CurrentWorkingDirectory": "/cpython",
     // The parameters to the entry point application
     "ApplicationParameters": [],
     // Whether we allow "ApplicationParameters" to be overridden by command line options of "myst exec"

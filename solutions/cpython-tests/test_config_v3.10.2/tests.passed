@@ -41,6 +41,7 @@ test_class
 test_clinic
 test_cmath
 test_cmd
+test_cmd_line
 test_cmd_line_script
 test_code
 test_code_module
@@ -185,9 +186,11 @@ test_linecache
 test_list
 test_listcomps
 test_lltrace
+test_logging
 test_long
 test_longexp
 test_lzma
+test_mailbox
 test_mailcap
 test_marshal
 test_math
@@ -230,6 +233,7 @@ test_platform
 test_plistlib
 test_poll
 test_popen
+test_posix
 test_positional_only_arg
 test_pow
 test_pprint
@@ -237,6 +241,7 @@ test_print
 test_profile
 test_property
 test_pstats
+test_pty
 test_pulldom
 test_pwd
 test_py_compile
@@ -246,6 +251,7 @@ test_pyexpat
 test_queue
 test_quopri
 test_raise
+test_random
 test_range
 test_regrtest
 test_reprlib
@@ -287,6 +293,7 @@ test_subclassinit
 test_sunau
 test_sundry
 test_super
+test_support
 test_symtable
 test_syntax
 test_sys
@@ -299,6 +306,7 @@ test_tarfile
 test_tcl
 test_telnetlib
 test_textwrap
+test_thread
 test_threadedtempfile
 test_threading_local
 test_threadsignals
@@ -310,6 +318,7 @@ test_tokenize
 test_tools
 test_trace
 test_traceback
+test_tracemalloc
 test_ttk_guionly
 test_ttk_textonly
 test_tuple
@@ -343,6 +352,7 @@ test_userstring
 test_utf8_mode
 test_utf8source
 test_uu
+test_uuid
 test_warnings
 test_wave
 test_weakset
