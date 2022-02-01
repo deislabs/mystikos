@@ -29,7 +29,11 @@ TEST_RUN_INDIVIDUAL_3_10=$(shell cat test_config_v3.10.0/tests.passed.individual
 # Set timeout to 60 mins (to run both the python3.8, 3.9 and 3.10 test suite)
 export TIMEOUT=3600
 
-all: ext2fs3.8 ext2fs3.9 ext2fs3.10
+all: ext2fs3.8 
+ifdef MYST_NIGHTLY_TEST
+	$(MAKE) ext2fs3.9
+	$(MAKE) ext2fs3.10
+endif
 
 mpdb.py:$(MPDB)
 	cp -f $(TOP)/scripts/mpdb.py mpdb.py
@@ -39,6 +43,7 @@ ext2fs3.8:mpdb.py test_config_v3.8.11/tests.passed
 	$(APPBUILDER) -o appdir3.8 -e "--build-arg CPYTHON_VERSION=v3.8.11" Dockerfile
 	$(MYST) mkext2 -f appdir3.8 ext2fs3.8
 
+ifdef MYST_NIGHTLY_TEST
 ext2fs3.9:mpdb.py test_config_v3.9.7/tests.passed
 	rm -fr appdir3.9
 	$(APPBUILDER) -o appdir3.9 -e "--build-arg CPYTHON_VERSION=v3.9.7" Dockerfile
@@ -48,27 +53,31 @@ ext2fs3.10:mpdb.py test_config_v3.10.0/tests.passed
 	rm -fr appdir3.10
 	$(APPBUILDER) -o appdir3.10 -e "--build-arg CPYTHON_VERSION=v3.10.0" Dockerfile
 	$(MYST) mkext2 -f appdir3.10 ext2fs3.10
+endif
 
 clean:
 	rm -fr appdir* ext2fs* @test_101* hostfs
 
 tests:
 	$(MAKE) run-3.8
+ifdef MYST_NIGHTLY_TEST
 	$(MAKE) run-3.9
 	$(MAKE) run-3.10
+endif
 
 run-3.8: ext2fs3.8
 	$(MYST_EXEC) $(OPTS) ext2fs3.8 /cpython/python -m test -f /$(TESTFILE) --timeout 120 -v
-	$(foreach i, $(TEST_RUN_INDIVIDUAL_3_8), $(MAKE) one FS=$(FS) TEST=$(i) $(NL) )
+	$(foreach i, $(TEST_RUN_INDIVIDUAL_3_8), $(MAKE) one FS=ext2fs3.8 TEST=$(i) $(NL) )
 
+ifdef MYST_NIGHTLY_TEST
 run-3.9: ext2fs3.9
 	$(MYST_EXEC) $(OPTS) ext2fs3.9 /cpython/python -m test -f /$(TESTFILE) --timeout 120 -v
-	$(foreach i, $(TEST_RUN_INDIVIDUAL_3_9), $(MAKE) one FS=$(FS) TEST=$(i) $(NL) )
-
+	$(foreach i, $(TEST_RUN_INDIVIDUAL_3_9), $(MAKE) one FS=ext2fs3.9 TEST=$(i) $(NL) )
 
 run-3.10: ext2fs3.10
 	$(MYST_EXEC) $(OPTS) ext2fs3.10 /cpython/python -m test -f /$(TESTFILE) --timeout 120 -v
-	$(foreach i, $(TEST_RUN_INDIVIDUAL_3_10), $(MAKE) one FS=$(FS) TEST=$(i) $(NL) )
+	$(foreach i, $(TEST_RUN_INDIVIDUAL_3_10), $(MAKE) one FS=ext2fs3.10 TEST=$(i) $(NL) )
+endif
 
 one: $(FS)
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) /cpython/python -m test $(TEST) -v
