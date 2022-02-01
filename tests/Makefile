@@ -89,6 +89,7 @@ REDEFINE_TESTS=1
 DIRS += epoll
 DIRS += oe
 DIRS += procfs
+DIRS += cpython-tests
 
 ifeq ($(MYST_ENABLE_HOSTFS),1)
 DIRS += hostfs
@@ -96,7 +97,6 @@ endif
 
 ifndef MYST_ENABLE_GCOV
 ifdef MYST_NIGHTLY_TEST
-DIRS += cpython-tests
 DIRS += sockperf
 endif
 DIRS += clock
