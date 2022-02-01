@@ -1,12 +1,17 @@
-HASH=b589b3c1876c1ecc09a5f7f34b7bcde2e2540054
+##==============================================================================
+##
+## There are two options for getting libc-test:
+##
+##     git.mak  -- uses git to clone a git repository and then does a hard
+##                 reset to the given hash.
+##
+##     wget.mak -- uses wget to pull a tar file snapshot for the given
+##                 hash.
+##
+## To update to a newer hash update hash.mak.
+##
+##==============================================================================
 
-all: libc-test
+include wget.mak
 
-libc-test:
-	git clone git://repo.or.cz/libc-test
-	( cd libc-test; git reset --hard $(HASH) )
-
-clean:
-
-distclean:
-	rm -rf libc-test
+#include git.mak
