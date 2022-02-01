@@ -3,7 +3,6 @@ test_asyncio
 test_asyncore
 test_builtin
 test_c_locale_coercion
-test_cmd_line
 test_compileall
 test_concurrent_futures
 test_ctypes
@@ -18,8 +17,6 @@ test_glob
 test_importlib
 test_ioctl
 test_locale
-test_logging
-test_mailbox
 test_multiprocessing_fork
 test_multiprocessing_forkserver
 test_multiprocessing_main_handling
@@ -29,10 +26,7 @@ test_os
 test_pathlib
 test_peg_generator
 test_pkgutil
-test_posix
-test_pty
 test_pydoc
-test_random
 test_re
 test_readline
 test_regrtest
@@ -48,14 +42,10 @@ test_ssl
 test_stat
 test_strptime
 test_subprocess
-test_support
 test_tempfile
-test_thread
 test_threading
 test_time
-test_tracemalloc
 test_unicode_file
-test_uuid
 test_venv
 test_wait3
 test_wait4

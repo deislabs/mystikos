@@ -40,16 +40,16 @@ mpdb.py:$(MPDB)
 
 ext2fs3.8:mpdb.py test_config_v3.8.11/tests.passed
 	rm -fr appdir3.8
-	$(APPBUILDER) -o appdir3.8 -e "--build-arg CPYTHON_VERSION=v3.8.11" Dockerfile
+	$(APPBUILDER) -o appdir3.8 -e "--build-arg CPYTHON_TAG=v3.8.11" Dockerfile
 	$(MYST) mkext2 -f appdir3.8 ext2fs3.8
 
 ext2fs3.9:mpdb.py test_config_v3.9.7/tests.passed
 	rm -fr appdir3.9
-	$(APPBUILDER) -o appdir3.9 -e "--build-arg CPYTHON_VERSION=v3.9.7" Dockerfile
+	$(APPBUILDER) -o appdir3.9 -e "--build-arg CPYTHON_TAG=v3.9.7" Dockerfile
 	$(MYST) mkext2 -f appdir3.9 ext2fs3.9
 
 appdir3.10: mpdb.py
-	$(APPBUILDER) -o appdir3.10 -e "--build-arg CPYTHON_VERSION=v3.10.2" Dockerfile
+	$(APPBUILDER) -o appdir3.10 -e "--build-arg CPYTHON_TAG=v3.10.2" Dockerfile
 ext2fs3.10: appdir3.10
 	$(MYST) mkext2 -f appdir3.10 ext2fs3.10
 
@@ -72,7 +72,7 @@ run-3.9: ext2fs3.9
 	$(foreach i, $(TEST_RUN_INDIVIDUAL_3_9), $(MAKE) one FS=ext2fs3.9 TEST=$(i) $(NL) )
 
 run-3.10: ext2fs3.10
-	$(MYST_EXEC) --app-config-path config-3.10.json ext2fs3.10 /cpython/python -m test -f /$(TESTFILE) --timeout 60 -v
+	$(MYST_EXEC) --app-config-path config-3.10.json ext2fs3.10 /cpython/python -m test -f /$(TESTFILE) --timeout 120 -v
 	$(foreach i, $(TEST_RUN_INDIVIDUAL_3_10), $(MAKE) one FS=ext2fs3.10 TEST=$(i) $(NL) )
 
 one: $(FS)
@@ -108,3 +108,12 @@ To enable python source listing, do \n\
   sudo mount --bind appdir$(VER)/cpython /cpython\n\
 before launching gdb.\033[0m\n')" \
            --args $(MYST_EXEC) $(OPTS) $(FS) /cpython/python -m unittest Lib.test.$(TESTCASE) -v
+
+CPYTHON_TAG=v3.8.11
+apply-patch:
+	git clone --depth 1 --single-branch --branch $(CPYTHON_TAG) https://github.com/python/cpython.git cpython_$(CPYTHON_TAG)
+	cp test_config_$(CPYTHON_TAG)/patch cpython_$(CPYTHON_TAG)
+	cd cpython_$(CPYTHON_TAG) && git apply patch
+
+gen-patch:
+	cd cpython_$(CPYTHON_TAG) && git diff > ../test_config_$(CPYTHON_TAG)/patch
