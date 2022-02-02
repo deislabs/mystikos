@@ -374,8 +374,7 @@ static long _default_signal_handler(unsigned signum)
 }
 
 #pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wstack-usage="
-#pragma GCC diagnostic error "-Wstack-usage=2048"
+#pragma GCC diagnostic error "-Wstack-usage=1152"
 /* ATTN: fix this to not use so much stack space */
 static long _handle_one_signal(
     unsigned signum,
