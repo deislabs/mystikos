@@ -69,7 +69,7 @@ pipeline {
                         SOURCE_BRANCH = "origin/PR-${env.CHANGE_ID}"
                     }
                     dir("${WORKSPACE}") {
-                        COMMITER_EMAILS = sh(
+                        COMMITTER_EMAILS = sh(
                             returnStdout: true,
                             script: "git log --pretty='%ae' origin/main..${SOURCE_BRANCH} | sort -u"
                         )
@@ -130,12 +130,16 @@ pipeline {
     post {
         always {
             script {
-                COMMITER_EMAILS.tokenize('\n').each {
-                    emailext(
-                        subject: "[Jenkins] [${currentBuild.currentResult}] [${env.JOB_NAME}] [#${env.BUILD_NUMBER}]",
-                        body: "See build log for details: ${env.BUILD_URL}",
-                        to: "${it}"
-                    )
+                // Bug: Post stage does not show up on Blue Ocean here
+                // https://issues.jenkins.io/browse/JENKINS-58850
+                if ( binding.hasVariable('COMMITTER_EMAILS') ) {
+                    COMMITTER_EMAILS.tokenize('\n').each {
+                        emailext(
+                            subject: "[Jenkins] [${currentBuild.currentResult}] [${env.JOB_NAME}] [#${env.BUILD_NUMBER}]",
+                            body: "See build log for details: ${env.BUILD_URL}",
+                            to: "${it}"
+                        )
+                    }
                 }
             }
         }
