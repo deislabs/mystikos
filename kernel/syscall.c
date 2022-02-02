@@ -3996,36 +3996,36 @@ static long _SYS_getpid(long n, long params[6])
 
 static long _SYS_myst_clone(long n, long params[6])
 {
-            long* args = (long*)x1;
-            int (*fn)(void*) = (void*)args[0];
-            void* child_stack = (void*)args[1];
-            int flags = (int)args[2];
-            void* arg = (void*)args[3];
-            pid_t* ptid = (pid_t*)args[4];
-            void* newtls = (void*)args[5];
-            pid_t* ctid = (void*)args[6];
+    long* args = (long*)params[0];
+    int (*fn)(void*) = (void*)args[0];
+    void* child_stack = (void*)args[1];
+    int flags = (int)args[2];
+    void* arg = (void*)args[3];
+    pid_t* ptid = (pid_t*)args[4];
+    void* newtls = (void*)args[5];
+    pid_t* ctid = (void*)args[6];
 
-            _strace(
-                n,
-                "fn=%p "
-                "child_stack=%p "
-                "flags=%x "
-                "arg=%p "
-                "ptid=%p "
-                "newtls=%p "
-                "ctid=%p",
-                fn,
-                child_stack,
-                flags,
-                arg,
-                ptid,
-                newtls,
-                ctid);
+    _strace(
+        n,
+        "fn=%p "
+        "child_stack=%p "
+        "flags=%x "
+        "arg=%p "
+        "ptid=%p "
+        "newtls=%p "
+        "ctid=%p",
+        fn,
+        child_stack,
+        flags,
+        arg,
+        ptid,
+        newtls,
+        ctid);
 
-            long ret = myst_syscall_clone(
-                fn, child_stack, flags, arg, ptid, newtls, ctid);
+    long ret =
+        myst_syscall_clone(fn, child_stack, flags, arg, ptid, newtls, ctid);
 
-            return _return(n, ret);
+    return _return(n, ret);
 }
 
 static long _SYS_myst_get_fork_info(
@@ -4088,29 +4088,22 @@ static long _SYS_myst_kill_wait_child_forks(
     return (_return(n, ret));
 }
 
-typedef struct syscall_args
-{
-    long n;
-    long* params;
-    myst_kstack_t* kstack;
-} syscall_args_t;
-
 static long _SYS_execve(
     long n,
     long params[6],
     myst_thread_t* thread,
     syscall_args_t* args)
 {
-            const char* filename = (const char*)x1;
-            char** argv = (char**)x2;
-            char** envp = (char**)x3;
+    const char* filename = (const char*)params[0];
+    char** argv = (char**)params[1];
+    char** envp = (char**)params[2];
 
-            _strace(n, "filename=%s argv=%p envp=%p", filename, argv, envp);
+    _strace(n, "filename=%s argv=%p envp=%p", filename, argv, envp);
 
-            long ret = myst_syscall_execveat(
-                AT_FDCWD, filename, argv, envp, 0, thread, args);
+    long ret =
+        myst_syscall_execveat(AT_FDCWD, filename, argv, envp, 0, thread, args);
 
-            return _return(n, ret);
+    return _return(n, ret);
 }
 
 static long _SYS_exit_group(
@@ -4120,11 +4113,11 @@ static long _SYS_exit_group(
     myst_thread_t* thread,
     myst_process_t* process)
 {
-            const int status = (int)x1;
+    const int status = (int)params[0];
 
-            _strace(n, "status=%d", status);
+    _strace(n, "status=%d", status);
 
-            /* uncomment to print out free space on process exit */
+    /* uncomment to print out free space on process exit */
 #if 0
             {
                 size_t size;
@@ -4134,38 +4127,38 @@ static long _SYS_exit_group(
             }
 #endif
 
-            if (!thread || thread->magic != MYST_THREAD_MAGIC)
-                myst_panic("unexpected");
+    if (!thread || thread->magic != MYST_THREAD_MAGIC)
+        myst_panic("unexpected");
 
-            if (((n == SYS_exit) && (thread->group_next == NULL) &&
-                 (thread->group_prev == NULL)) ||
-                (n == SYS_exit_group))
-            {
-                bool process_status_set = false;
-                if (__atomic_compare_exchange_n(
-                        &process->exit_status_signum_set,
-                        &process_status_set,
-                        true,
-                        false,
-                        __ATOMIC_RELEASE,
-                        __ATOMIC_ACQUIRE))
-                {
-                    process->exit_status = status;
-                    process->terminating_signum = 0;
-                }
-            }
+    if (((n == SYS_exit) && (thread->group_next == NULL) &&
+         (thread->group_prev == NULL)) ||
+        (n == SYS_exit_group))
+    {
+        bool process_status_set = false;
+        if (__atomic_compare_exchange_n(
+                &process->exit_status_signum_set,
+                &process_status_set,
+                true,
+                false,
+                __ATOMIC_RELEASE,
+                __ATOMIC_ACQUIRE))
+        {
+            process->exit_status = status;
+            process->terminating_signum = 0;
+        }
+    }
 
-            if (n == SYS_exit_group)
-                myst_kill_thread_group();
+    if (n == SYS_exit_group)
+        myst_kill_thread_group();
 
-            /* the kstack is freed after the long-jump below */
-            thread->exit_kstack = args->kstack;
+    /* the kstack is freed after the long-jump below */
+    thread->exit_kstack = args->kstack;
 
-            /* jump back to myst_enter_kernel() */
-            myst_longjmp(&thread->jmpbuf, 1);
+    /* jump back to myst_enter_kernel() */
+    myst_longjmp(&thread->jmpbuf, 1);
 
-            /* unreachable */
-            return 0;
+    /* unreachable */
+    return 0;
 }
 
 static long _SYS_wait4(long n, long params[6])
@@ -4279,14 +4272,14 @@ static long _SYS_getcwd(long n, long params[6])
 
 static long _SYS_chdir(long n, long params[6])
 {
-            const char* path = (const char*)x1;
+    const char* path = (const char*)params[0];
 
-            if (path && !myst_is_bad_addr_read(path, 1))
-                _strace(n, "path=\"%s\"", path);
-            else
-                _strace(n, "path=\"%s\"", "<bad_ptr>");
+    if (path && !myst_is_bad_addr_read(path, 1))
+        _strace(n, "path=\"%s\"", path);
+    else
+        _strace(n, "path=\"%s\"", "<bad_ptr>");
 
-            return (_return(n, myst_syscall_chdir(path)));
+    return (_return(n, myst_syscall_chdir(path)));
 }
 
 static long _SYS_fchdir(long n, long params[6])
@@ -4464,22 +4457,16 @@ static long _SYS_fchownat(long n, long params[6])
 
 static long _SYS_lchown(long n, long params[6])
 {
-            const char* pathname = (const char*)x1;
-            uid_t owner = (uid_t)x2;
-            gid_t group = (gid_t)x3;
+    const char* pathname = (const char*)params[0];
+    uid_t owner = (uid_t)params[1];
+    gid_t group = (gid_t)params[2];
 
-            if (pathname && !myst_is_bad_addr_read(pathname, 1))
-                _strace(
-                    n, "pathname=%s owner=%u group=%u", pathname, owner, group);
-            else
-                _strace(
-                    n,
-                    "pathname=%s owner=%u group=%u",
-                    "<bad_ptr>",
-                    owner,
-                    group);
+    if (pathname && !myst_is_bad_addr_read(pathname, 1))
+        _strace(n, "pathname=%s owner=%u group=%u", pathname, owner, group);
+    else
+        _strace(n, "pathname=%s owner=%u group=%u", "<bad_ptr>", owner, group);
 
-            return _return(n, myst_syscall_lchown(pathname, owner, group));
+    return _return(n, myst_syscall_lchown(pathname, owner, group));
 }
 
 static long _SYS_umask(long n, long params[6])
@@ -5442,6 +5429,27 @@ static long _SYS_renameat(long n, long params[6])
         n, myst_syscall_renameat(olddirfd, oldpath, newdirfd, newpath)));
 }
 
+static long _SYS_linkat(long n, long params[6])
+{
+    int olddirfd = (int)params[0];
+    const char* oldpath = (const char*)params[1];
+    int newdirfd = (int)params[2];
+    const char* newpath = (const char*)params[3];
+    int flags = (int)params[4];
+
+    _strace(
+        n,
+        "olddirfd=%d oldpath=%s newdirfd=%d newpath=%s flags=%d",
+        olddirfd,
+        oldpath,
+        newdirfd,
+        newpath,
+        flags);
+
+    return (_return(
+        n, myst_syscall_linkat(olddirfd, oldpath, newdirfd, newpath, flags)));
+}
+
 static long _SYS_symlinkat(long n, long params[6])
 {
     const char* target = (const char*)params[0];
@@ -5508,6 +5516,58 @@ static long _SYS_faccessat(long n, long params[6])
         flags);
 
     return (_return(n, myst_syscall_faccessat(dirfd, pathname, mode, flags)));
+}
+
+static long _SYS_ppoll(long n, long params[6], myst_process_t* process)
+{
+    struct pollfd* fds = (struct pollfd*)params[0];
+    nfds_t nfds = (nfds_t)params[1];
+    const struct timespec* timeout_ts = (const struct timespec*)params[2];
+    const sigset_t* sigmask = (const sigset_t*)params[3];
+    long timeout;
+    long ret;
+    struct timespec_buf buf;
+    sigset_t origmask;
+    struct rlimit rlimit;
+
+    _strace(
+        n,
+        "fds=%p nfds=%ld timeout=%s, sigmask=%p",
+        fds,
+        nfds,
+        _format_timespec(&buf, timeout_ts),
+        sigmask);
+
+    if ((ret = myst_limit_get_rlimit(process->pid, RLIMIT_NOFILE, &rlimit)) !=
+        0)
+    {
+        /* Shouldnt happen, but still need to fail */
+    }
+    else if (sigmask && myst_is_bad_addr_read_write(sigmask, sizeof(*sigmask)))
+        ret = -EFAULT;
+    else if (
+        timeout_ts &&
+        myst_is_bad_addr_read_write(timeout_ts, sizeof(*timeout_ts)))
+        ret = -EFAULT;
+    else if (nfds > rlimit.rlim_max)
+        ret = -EINVAL;
+    else if (
+        nfds && fds && myst_is_bad_addr_read_write(fds, sizeof(*fds) * nfds))
+        ret = -EFAULT;
+    else
+    {
+        timeout =
+            (timeout_ts == NULL)
+                ? -1
+                : (timeout_ts->tv_sec * 1000 + timeout_ts->tv_nsec / 1000000);
+        myst_signal_sigprocmask(SIG_SETMASK, sigmask, &origmask);
+
+        ret = myst_syscall_poll(fds, nfds, timeout, false);
+
+        myst_signal_sigprocmask(SIG_SETMASK, &origmask, NULL);
+    }
+
+    return (_return(n, ret));
 }
 
 static long _SYS_set_robust_list(long n, long params[6])
@@ -5779,6 +5839,33 @@ static long _SYS_getrandom(long n, long params[6])
     return (_return(n, myst_syscall_getrandom(buf, buflen, flags)));
 }
 
+static long _SYS_execveat(
+    long n,
+    long params[6],
+    myst_thread_t* thread,
+    syscall_args_t* args)
+{
+    int dirfd = (int)params[0];
+    const char* filename = (const char*)params[1];
+    char** argv = (char**)params[2];
+    char** envp = (char**)params[3];
+    int flags = (int)params[4];
+
+    _strace(
+        n,
+        "dirfd=%d filename=%s argv=%p envp=%p flags=%d",
+        dirfd,
+        filename,
+        argv,
+        envp,
+        flags);
+
+    long ret =
+        myst_syscall_execveat(dirfd, filename, argv, envp, flags, thread, args);
+
+    return (_return(n, ret));
+}
+
 static long _SYS_membarrier(long n, long params[6])
 {
     int cmd = (int)params[0];
@@ -5791,6 +5878,31 @@ static long _SYS_membarrier(long n, long params[6])
      * supported.
      */
     return (_return(n, -ENOSYS));
+}
+
+static long _SYS_copy_file_range(long n, long params[6])
+{
+    int fd_in = (int)params[0];
+    off64_t* off_in = (off64_t*)params[1];
+    int fd_out = (int)params[2];
+    off64_t* off_out = (off64_t*)params[3];
+    size_t len = (size_t)params[4];
+    unsigned int flags = (unsigned int)params[5];
+
+    _strace(
+        n,
+        "fd_in=%d off_in=%ln fd_out=%d off_out=%ln len=%lo flags=%d",
+        fd_in,
+        off_in,
+        fd_out,
+        off_out,
+        len,
+        flags);
+
+    return (_return(
+        n,
+        myst_syscall_copy_file_range(
+            fd_in, off_in, fd_out, off_out, len, flags)));
 }
 
 static long _SYS_preadv2(long n, long params[6])
@@ -5953,27 +6065,27 @@ static long _SYS_sendto(long n, long params[6], myst_thread_t* thread)
 
 static long _SYS_socket(long n, long params[6])
 {
-            int domain = (int)x1;
-            int type = (int)x2;
-            int protocol = (int)x3;
-            long ret;
+    int domain = (int)params[0];
+    int type = (int)params[1];
+    int protocol = (int)params[2];
+    long ret;
 
-            if (_trace_syscall(n))
-            {
-                char buf[64];
+    if (_trace_syscall(n))
+    {
+        char buf[64];
 
-                _strace(
-                    n,
-                    "domain=%d(%s) type=%o(%s) protocol=%d",
-                    domain,
-                    myst_socket_domain_str(domain),
-                    type,
-                    myst_format_socket_type(buf, sizeof(buf), type),
-                    protocol);
-            }
+        _strace(
+            n,
+            "domain=%d(%s) type=%o(%s) protocol=%d",
+            domain,
+            myst_socket_domain_str(domain),
+            type,
+            myst_format_socket_type(buf, sizeof(buf), type),
+            protocol);
+    }
 
-            ret = myst_syscall_socket(domain, type, protocol);
-            return (_return(n, ret));
+    ret = myst_syscall_socket(domain, type, protocol);
+    return (_return(n, ret));
 }
 
 static long _SYS_accept(long n, long params[6])
@@ -6123,29 +6235,29 @@ static long _SYS_getpeername(long n, long params[6])
 
 static long _SYS_socketpair(long n, long params[6])
 {
-            int domain = (int)x1;
-            int type = (int)x2;
-            int protocol = (int)x3;
-            int* sv = (int*)x4;
-            long ret;
+    int domain = (int)params[0];
+    int type = (int)params[1];
+    int protocol = (int)params[2];
+    int* sv = (int*)params[3];
+    long ret;
 
-            if (_trace_syscall(n))
-            {
-                char buf[64];
+    if (_trace_syscall(n))
+    {
+        char buf[64];
 
-                _strace(
-                    n,
-                    "domain=%d(%s) type=%d(%s) protocol=%d sv=%p",
-                    domain,
-                    myst_socket_domain_str(domain),
-                    type,
-                    myst_format_socket_type(buf, sizeof(buf), type),
-                    protocol,
-                    sv);
-            }
+        _strace(
+            n,
+            "domain=%d(%s) type=%d(%s) protocol=%d sv=%p",
+            domain,
+            myst_socket_domain_str(domain),
+            type,
+            myst_format_socket_type(buf, sizeof(buf), type),
+            protocol,
+            sv);
+    }
 
-            ret = myst_syscall_socketpair(domain, type, protocol, sv);
-            return (_return(n, ret));
+    ret = myst_syscall_socketpair(domain, type, protocol, sv);
+    return (_return(n, ret));
 }
 
 static long _SYS_setsockopt(long n, long params[6])
@@ -7179,25 +7291,7 @@ static long _syscall(void* args_)
         }
         case SYS_linkat:
         {
-            int olddirfd = (int)x1;
-            const char* oldpath = (const char*)x2;
-            int newdirfd = (int)x3;
-            const char* newpath = (const char*)x4;
-            int flags = (int)x5;
-
-            _strace(
-                n,
-                "olddirfd=%d oldpath=%s newdirfd=%d newpath=%s flags=%d",
-                olddirfd,
-                oldpath,
-                newdirfd,
-                newpath,
-                flags);
-
-            BREAK(_return(
-                n,
-                myst_syscall_linkat(
-                    olddirfd, oldpath, newdirfd, newpath, flags)));
+            BREAK(_SYS_linkat(n, params));
         }
         case SYS_symlinkat:
         {
@@ -7219,57 +7313,7 @@ static long _syscall(void* args_)
             break;
         case SYS_ppoll:
         {
-            struct pollfd* fds = (struct pollfd*)x1;
-            nfds_t nfds = (nfds_t)x2;
-            const struct timespec* timeout_ts = (const struct timespec*)x3;
-            const sigset_t* sigmask = (const sigset_t*)x4;
-            long timeout;
-            long ret;
-            struct timespec_buf buf;
-            sigset_t origmask;
-            struct rlimit rlimit;
-
-            _strace(
-                n,
-                "fds=%p nfds=%ld timeout=%s, sigmask=%p",
-                fds,
-                nfds,
-                _format_timespec(&buf, timeout_ts),
-                sigmask);
-
-            if ((ret = myst_limit_get_rlimit(
-                     process->pid, RLIMIT_NOFILE, &rlimit)) != 0)
-            {
-                /* Shouldnt happen, but still need to fail */
-            }
-            else if (
-                sigmask &&
-                myst_is_bad_addr_read_write(sigmask, sizeof(*sigmask)))
-                ret = -EFAULT;
-            else if (
-                timeout_ts &&
-                myst_is_bad_addr_read_write(timeout_ts, sizeof(*timeout_ts)))
-                ret = -EFAULT;
-            else if (nfds > rlimit.rlim_max)
-                ret = -EINVAL;
-            else if (
-                nfds && fds &&
-                myst_is_bad_addr_read_write(fds, sizeof(*fds) * nfds))
-                ret = -EFAULT;
-            else
-            {
-                timeout = (timeout_ts == NULL)
-                              ? -1
-                              : (timeout_ts->tv_sec * 1000 +
-                                 timeout_ts->tv_nsec / 1000000);
-                myst_signal_sigprocmask(SIG_SETMASK, sigmask, &origmask);
-
-                ret = myst_syscall_poll(fds, nfds, timeout, false);
-
-                myst_signal_sigprocmask(SIG_SETMASK, &origmask, NULL);
-            }
-
-            BREAK(_return(n, ret));
+            BREAK(_SYS_ppoll(n, params, process));
         }
         case SYS_unshare:
             break;
@@ -7405,25 +7449,7 @@ static long _syscall(void* args_)
             break;
         case SYS_execveat:
         {
-            int dirfd = (int)x1;
-            const char* filename = (const char*)x2;
-            char** argv = (char**)x3;
-            char** envp = (char**)x4;
-            int flags = (int)x5;
-
-            _strace(
-                n,
-                "dirfd=%d filename=%s argv=%p envp=%p flags=%d",
-                dirfd,
-                filename,
-                argv,
-                envp,
-                flags);
-
-            long ret = myst_syscall_execveat(
-                dirfd, filename, argv, envp, flags, thread, args);
-
-            BREAK(_return(n, ret));
+            BREAK(_SYS_execveat(n, params, thread, args));
         }
         case SYS_userfaultfd:
             break;
@@ -7435,27 +7461,7 @@ static long _syscall(void* args_)
             break;
         case SYS_copy_file_range:
         {
-            int fd_in = (int)x1;
-            off64_t* off_in = (off64_t*)x2;
-            int fd_out = (int)x3;
-            off64_t* off_out = (off64_t*)x4;
-            size_t len = (size_t)x5;
-            unsigned int flags = (unsigned int)x6;
-
-            _strace(
-                n,
-                "fd_in=%d off_in=%ln fd_out=%d off_out=%ln len=%lo flags=%d",
-                fd_in,
-                off_in,
-                fd_out,
-                off_out,
-                len,
-                flags);
-
-            BREAK(_return(
-                n,
-                myst_syscall_copy_file_range(
-                    fd_in, off_in, fd_out, off_out, len, flags)));
+            BREAK(_SYS_copy_file_range(n, params));
         }
         case SYS_preadv2:
         {
