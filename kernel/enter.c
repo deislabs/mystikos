@@ -678,7 +678,10 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     /* myst_handle_host_signal can be called from enclave exception handlers */
     args->myst_handle_host_signal = myst_handle_host_signal;
 
-    /* make a copy of the input kernel aguments and reassign args */
+    /* myst_signal_restore_mask can be called from enclave exception handlers */
+    args->myst_signal_restore_mask = myst_signal_restore_mask;
+
+    /* make a copy of the input kernel arguments and reassign args */
     __myst_kernel_args = *args;
     args = &__myst_kernel_args;
 

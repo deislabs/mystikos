@@ -374,6 +374,13 @@ static uint64_t _vectored_handler(oe_exception_record_t* er)
                 er->context->rsp =
                     *(uint64_t*)(er->context->rsp + IRETFRAME_Rsp);
 
+                /* Always restore signal mask on iretq. For the case of
+                 * returning from signal handling, doing so recovers
+                 * the mask that is temporarily set by _handle_one_signal.
+                 * For other cases, this function does not have any
+                 * effectiveness. */
+                (*_kargs.myst_signal_restore_mask)();
+
                 return OE_EXCEPTION_CONTINUE_EXECUTION;
                 break;
             }
