@@ -2240,6 +2240,7 @@ typedef struct syscall_args
     long n;
     long* params;
     myst_kstack_t* kstack;
+    long user_rsp;
 } syscall_args_t;
 
 long myst_syscall_execveat(
@@ -6383,6 +6384,9 @@ static long _syscall(void* args_)
 
     process = thread->process;
 
+    /* update the user_rsp in the thread structure */
+    thread->user_rsp = args->user_rsp;
+
     // Process signals pending for this thread, if there is any.
     myst_signal_process(thread);
 
@@ -7605,6 +7609,7 @@ done:
 long myst_syscall(long n, long params[6])
 {
     long ret;
+    uint64_t rsp;
     myst_kstack_t* kstack;
 
     // Call myst_syscall_clock_gettime() upfront to avoid triggering the
@@ -7630,7 +7635,11 @@ long myst_syscall(long n, long params[6])
     if (!(kstack = myst_get_kstack()))
         myst_panic("no more kernel stacks");
 
-    syscall_args_t args = {.n = n, .params = params, .kstack = kstack};
+    // Get the user rsp before switching to the kernel stack
+    asm volatile("mov %%rsp, %0" : "=r"(rsp));
+
+    syscall_args_t args = {
+        .n = n, .params = params, .kstack = kstack, .user_rsp = rsp};
     ret = myst_call_on_stack(myst_kstack_end(kstack), _syscall, &args);
 
     myst_put_kstack(kstack);
