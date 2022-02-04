@@ -182,6 +182,6 @@ To run an application with Mystikos in release or production mode, please see
 
 For more complex dotnet programs that are already working with Mystikos, please see:
 
-* [A web service based on ASP.net](https://github.com/deislabs/mystikos/tree/main/solutions/aspnet)
+* [A web service based on ASP.net](https://github.com/deislabs/mystikos/tree/main/solutions/aspnet_core)
 * [A web client that queries a remote attestation service](https://github.com/deislabs/mystikos/tree/main/solutions/dotnet/HelloWorld)
 * [An example written with Azure SDK for dotnet](https://github.com/deislabs/mystikos/tree/main/solutions/dotnet_azure_sdk)
