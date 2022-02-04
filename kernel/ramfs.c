@@ -59,6 +59,7 @@ typedef struct ramfs
     myst_mount_resolve_callback_t resolve;
     size_t ninodes;
     myst_fs_t* lockfs;
+    int device_num;
 } ramfs_t;
 
 static bool _ramfs_valid(const ramfs_t* ramfs)
@@ -1464,7 +1465,7 @@ done:
     return ret;
 }
 
-static int _stat(inode_t* inode, struct stat* statbuf)
+static int _stat(inode_t* inode, struct stat* statbuf, int device_num)
 {
     int ret = 0;
     struct stat buf;
@@ -1486,7 +1487,7 @@ static int _stat(inode_t* inode, struct stat* statbuf)
     }
 
     memset(&buf, 0, sizeof(buf));
-    buf.st_dev = 0;
+    buf.st_dev = device_num;
     buf.st_ino = (ino_t)inode;
     buf.st_mode = inode->mode;
     buf.st_nlink = inode->nlink;
@@ -1532,7 +1533,7 @@ static int _fs_stat(myst_fs_t* fs, const char* pathname, struct stat* statbuf)
         ECHECK((ret = tfs->fs_stat(tfs, locals->suffix, statbuf)));
         goto done;
     }
-    ERAISE(_stat(inode, statbuf));
+    ERAISE(_stat(inode, statbuf, ramfs->device_num));
 
 done:
 
@@ -1568,7 +1569,7 @@ static int _fs_lstat(myst_fs_t* fs, const char* pathname, struct stat* statbuf)
         ECHECK(tfs->fs_lstat(tfs, locals->suffix, statbuf));
         goto done;
     }
-    ERAISE(_stat(inode, statbuf));
+    ERAISE(_stat(inode, statbuf, ramfs->device_num));
 
 done:
 
@@ -1587,7 +1588,7 @@ static int _fs_fstat(myst_fs_t* fs, myst_file_t* file, struct stat* statbuf)
         ERAISE(-EINVAL);
 
     assert(_inode_valid(file->shared->inode));
-    ERAISE(_stat(file->shared->inode, statbuf));
+    ERAISE(_stat(file->shared->inode, statbuf, ramfs->device_num));
 
 done:
     return ret;
@@ -2877,7 +2878,8 @@ done:
 
 static int _init_ramfs(
     myst_mount_resolve_callback_t resolve_cb,
-    myst_fs_t** fs_out)
+    myst_fs_t** fs_out,
+    int device_num)
 {
     int ret = 0;
     ramfs_t* ramfs = NULL;
@@ -2960,6 +2962,7 @@ static int _init_ramfs(
     ramfs->root = root_inode;
     ramfs->resolve = resolve_cb;
     myst_strlcpy(ramfs->target, "/", sizeof(ramfs->target));
+    ramfs->device_num = device_num;
     root_inode = NULL;
 
     *fs_out = &ramfs->base;
@@ -2978,14 +2981,15 @@ done:
 
 int myst_init_ramfs(
     myst_mount_resolve_callback_t resolve_cb,
-    myst_fs_t** fs_out)
+    myst_fs_t** fs_out,
+    int device_num)
 {
     int ret = 0;
     myst_fs_t* ramfs = NULL;
     myst_fs_t* lockfs;
 
     /* always wrap ramfs inside lockfs */
-    ECHECK(_init_ramfs(resolve_cb, &ramfs));
+    ECHECK(_init_ramfs(resolve_cb, &ramfs, device_num));
     ECHECK(myst_lockfs_init(ramfs, &lockfs));
     ((ramfs_t*)ramfs)->lockfs = lockfs;
     ramfs = NULL;
