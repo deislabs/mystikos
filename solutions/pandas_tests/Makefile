@@ -41,7 +41,7 @@ rootfs-passed: appdir
 	# for expected failures/ errors.
 	cat tests.partially_passed | while read line; do rm -f appdir/"$$line"; done
 	# This file is temporarily being disabled from pandas_tests, to investigate handling
-	rm -f appdir/$(REMOVE_TESTS_TEMPORARILY)
+	rm -f $(REMOVE_TESTS_TEMPORARILY)
 	$(MYST) mkext2 appdir rootfs-passed
 
 run-passed: rootfs-passed
