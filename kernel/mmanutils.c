@@ -1237,11 +1237,10 @@ bool myst_is_bad_addr(const void* addr, size_t length, int prot)
  * removed once ensuring the user signal handling code does not use
  * kstack */
 #ifndef MYST_RELAX_BAD_ADDR_CHECK
-    if (__myst_kernel_args.nobrk)
+    if (!__myst_kernel_args.enable_brk_syscall)
     {
-        /* pid test is only supported if the nobrk option is enabled as
-         * the pid vector does not track memory allocated via brk */
-
+        // pid test is only supported if the --enable-brk-syscall option is
+        // present as the pid vector does not track memory allocated via brk
         uint64_t page_addr = myst_round_down_to_page_size((uint64_t)addr);
 
         /* round up the length (including the zero case) to PAGE_SIZE */
@@ -1274,8 +1273,8 @@ bool myst_is_bad_addr(const void* addr, size_t length, int prot)
     (void)prot;
 #endif
     {
-        /* fallback to simple memory range check if the nobrk option is not
-         * enabled */
+        // fallback to simple memory range check if the --enable-brk-syscall
+        // option is not set.
         if (!myst_is_addr_within_kernel(addr))
             goto done;
     }

@@ -220,6 +220,10 @@ typedef struct myst_kernel_args
     /* true if --nobrk option is present (if so brk syscall returns -ENOTSUP */
     bool nobrk;
 
+    // true if --enable-brk-syscall option is present (or if EnableBrkSyscall
+    // configuration setting is true.
+    bool enable_brk_syscall;
+
     /* true if --exec_stack option is present -- allows trampolines. */
     bool exec_stack;
 

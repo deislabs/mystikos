@@ -51,6 +51,13 @@
 #include <myst/ttydev.h>
 #include <myst/uid_gid.h>
 
+#define NOBRK_OPTION_WARNING \
+    "\n\
+    The --nobrk option and NoBrk configuration setting have been deprecated\n\
+    since the brk syscall is now disabled by default. The brk syscall may be\n\
+    enabled with the --enable-brk-syscall option or the EnableBrkSyscall\n\
+    configuration setting.\n"
+
 static myst_fs_t* _fs;
 
 long myst_tcall(long n, long params[6])
@@ -759,6 +766,11 @@ int myst_enter_kernel(myst_kernel_args_t* args)
             ERAISE(-EINVAL);
         }
     }
+
+    // Warn if the --nobrk option or NoBrk configuration setting is present,
+    // since this option/setting no longer has any effect.
+    if (__myst_kernel_args.nobrk)
+        MYST_WLOG(NOBRK_OPTION_WARNING);
 
     /* Create the main thread */
     ECHECK(_init_main_thread(

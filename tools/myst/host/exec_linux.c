@@ -145,6 +145,10 @@ static void _get_options(
     if (cli_getopt(argc, argv, "--nobrk", NULL) == 0)
         opts->nobrk = true;
 
+    /* Get --enable-brk-syscall option */
+    if (cli_getopt(argc, argv, "--enable-brk-syscall", NULL) == 0)
+        opts->enable_brk_syscall = true;
+
     /* Get --exec-stack option */
     if (cli_getopt(argc, argv, "--exec-stack", NULL) == 0)
         opts->exec_stack = true;
@@ -504,6 +508,8 @@ static int _enter_kernel(
     kernel_args.memcheck = final_options.base.memcheck;
 
     kernel_args.nobrk = final_options.base.nobrk;
+
+    kernel_args.enable_brk_syscall = final_options.base.enable_brk_syscall;
 
     kernel_args.exec_stack = final_options.base.exec_stack;
 

@@ -445,6 +445,10 @@ int exec_action(int argc, const char* argv[], const char* envp[])
         if (cli_getopt(&argc, argv, "--nobrk", NULL) == 0)
             options.nobrk = true;
 
+        /* Get --enable-brk-syscall option */
+        if (cli_getopt(&argc, argv, "--enable-brk-syscall", NULL) == 0)
+            options.enable_brk_syscall = true;
+
         /* Get --exec-stack option */
         if (cli_getopt(&argc, argv, "--exec-stack", NULL) == 0)
             options.exec_stack = true;

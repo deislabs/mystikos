@@ -11,5 +11,4 @@
     "MemorySize": "128m",
     "HostApplicationParameters": true,
     "ForkMode":"pseudo",
-    "NoBrk": true
 }

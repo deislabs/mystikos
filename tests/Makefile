@@ -139,6 +139,7 @@ DIRS += glibc
 endif
 
 DIRS += appenv
+DIRS += brk
 
 .PHONY: $(DIRS)
 

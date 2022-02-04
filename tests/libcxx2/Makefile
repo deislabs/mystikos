@@ -21,7 +21,6 @@ LIBCXX_TESTS_DIR=llvm-project/libcxx/test/
 # to 1gb
 ALLTESTS=tests.all
 export TIMEOUT=10000
-OPTS += --nobrk
 
 all:
 	$(MAKE) myst

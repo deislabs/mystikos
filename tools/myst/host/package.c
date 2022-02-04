@@ -202,10 +202,11 @@ int _package(int argc, const char* argv[])
 
     if (app_dir)
     {
-        const char* mkcpio_args[] = {argv[0], // ..../myst
-                                     "mkcpio",
-                                     app_dir,
-                                     rootfs_file};
+        const char* mkcpio_args[] = {
+            argv[0], // ..../myst
+            "mkcpio",
+            app_dir,
+            rootfs_file};
 
         if (_mkcpio(
                 sizeof(mkcpio_args) / sizeof(mkcpio_args[0]), mkcpio_args) != 0)
@@ -291,23 +292,24 @@ int _package(int argc, const char* argv[])
     if (signing_engine_path)
     {
         // optional path option for signing engine
-        const char* sign_engine_args[] = {argv[0],
-                                          "sign",
-                                          rootfs_file,
-                                          pem_file,
-                                          config_file,
-                                          "--pubkeys",
-                                          pubkeys_file,
-                                          "--roothashes",
-                                          roothashes_file,
-                                          "--outdir",
-                                          tmp_dir,
-                                          "--signing-engine-name",
-                                          signing_engine_name,
-                                          "--signing-engine-key",
-                                          signing_engine_key,
-                                          "--signing-engine-path",
-                                          signing_engine_path};
+        const char* sign_engine_args[] = {
+            argv[0],
+            "sign",
+            rootfs_file,
+            pem_file,
+            config_file,
+            "--pubkeys",
+            pubkeys_file,
+            "--roothashes",
+            roothashes_file,
+            "--outdir",
+            tmp_dir,
+            "--signing-engine-name",
+            signing_engine_name,
+            "--signing-engine-key",
+            signing_engine_key,
+            "--signing-engine-path",
+            signing_engine_path};
         // Sign and copy everything into app.signed directory
         if (_sign(
                 sizeof(sign_engine_args) / sizeof(sign_engine_args[0]),
@@ -320,21 +322,22 @@ int _package(int argc, const char* argv[])
     else if (signing_engine_name)
     {
         // none engine optional path, but still signing engine
-        const char* sign_engine_args[] = {argv[0],
-                                          "sign",
-                                          rootfs_file,
-                                          pem_file,
-                                          config_file,
-                                          "--pubkeys",
-                                          pubkeys_file,
-                                          "--roothashes",
-                                          roothashes_file,
-                                          "--outdir",
-                                          tmp_dir,
-                                          "--signing-engine-name",
-                                          signing_engine_name,
-                                          "--signing-engine-key",
-                                          signing_engine_key};
+        const char* sign_engine_args[] = {
+            argv[0],
+            "sign",
+            rootfs_file,
+            pem_file,
+            config_file,
+            "--pubkeys",
+            pubkeys_file,
+            "--roothashes",
+            roothashes_file,
+            "--outdir",
+            tmp_dir,
+            "--signing-engine-name",
+            signing_engine_name,
+            "--signing-engine-key",
+            signing_engine_key};
         // Sign and copy everything into app.signed directory
         if (_sign(
                 sizeof(sign_engine_args) / sizeof(sign_engine_args[0]),
@@ -347,17 +350,18 @@ int _package(int argc, const char* argv[])
     else
     {
         // none engine option
-        const char* sign_args[] = {argv[0],
-                                   "sign",
-                                   rootfs_file,
-                                   pem_file,
-                                   config_file,
-                                   "--pubkeys",
-                                   pubkeys_file,
-                                   "--roothashes",
-                                   roothashes_file,
-                                   "--outdir",
-                                   tmp_dir};
+        const char* sign_args[] = {
+            argv[0],
+            "sign",
+            rootfs_file,
+            pem_file,
+            config_file,
+            "--pubkeys",
+            pubkeys_file,
+            "--roothashes",
+            roothashes_file,
+            "--outdir",
+            tmp_dir};
 
         // Sign and copy everything into app.signed directory
         if (_sign(sizeof(sign_args) / sizeof(sign_args[0]), sign_args) != 0)
@@ -655,6 +659,16 @@ int _exec_package(
         goto done;
     }
 
+    /* Check --enable-brk-syscall option */
+    if (cli_getopt(&argc, argv, "--enable-brk-syscall", NULL) == 0)
+    {
+        fprintf(
+            stderr,
+            "--enable-brk-syscall not allowed for packaged applications."
+            " Can be enabled with EnableBrkSyscall=true in config.json\n");
+        goto done;
+    }
+
     /* Check --exec-stack option */
     if (cli_getopt(&argc, argv, "--exec-stack", NULL) == 0)
     {
@@ -863,6 +877,9 @@ int _exec_package(
        Else, default to false.
     */
     options.nobrk = parsed_data.no_brk ? true : false;
+
+    options.enable_brk_syscall = parsed_data.enable_brk_syscall ? true : false;
+
     options.exec_stack = parsed_data.exec_stack ? true : false;
 
     if ((details = create_region_details_from_package(

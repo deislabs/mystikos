@@ -68,6 +68,7 @@ long determine_final_options(
         final_opts->base.thread_stack_size = parsed_config->thread_stack_size;
         final_opts->base.fork_mode = parsed_config->fork_mode;
         final_opts->base.nobrk = parsed_config->no_brk;
+        final_opts->base.enable_brk_syscall = parsed_config->enable_brk_syscall;
         final_opts->base.exec_stack = parsed_config->exec_stack;
         final_opts->base.unhandled_syscall_enosys =
             parsed_config->unhandled_syscall_enosys;

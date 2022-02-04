@@ -11,5 +11,5 @@
     "MemorySize": "200m",
     "HostApplicationParameters": true,
     "ForkMode":"pseudo",
-    "NoBrk": false
+    "EnableBrkSyscall": true,
 }

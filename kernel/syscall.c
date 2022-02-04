@@ -3670,10 +3670,10 @@ static long _SYS_brk(long n, long params[6])
 
     _strace(n, "addr=%lx", (long)addr);
 
-    if (__myst_kernel_args.nobrk)
-        ret = -ENOTSUP;
-    else
+    if (__myst_kernel_args.enable_brk_syscall)
         ret = myst_syscall_brk(addr);
+    else
+        ret = -ENOTSUP;
 
     return (_return(n, ret));
 }

@@ -43,8 +43,8 @@
     "\n\
     The thread stack size may be too small for the given program interpreter\n\
     (link loader), which could result in stack overflows. Consider changing\n\
-    the thread stack size to at least %u bytes, using the --thread-stack-size\n\
-    option or the ThreadStackSize configuration setting.\n\
+    the thread stack size to at least %u bytes, using the\n\
+    --thread-stack-size option or the ThreadStackSize configuration setting.\n\
     [interpreter=%s]\n\
     [program=%s]\n"
 

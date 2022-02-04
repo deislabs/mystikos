@@ -15,7 +15,6 @@ APPBUILDER=$(TOP)/scripts/appbuilder
 
 ROOTFS=$(CURDIR)/rootfs
 
-OPTS += --nobrk
 OPTS += --memcheck
 
 all:

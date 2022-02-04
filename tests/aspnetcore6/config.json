@@ -18,5 +18,4 @@
         "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=0",
         "DOTNET_CLI_TELEMETRY_OPTOUT=1"
     ],
-    "NoBrk": true
 }

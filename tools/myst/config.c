@@ -229,6 +229,15 @@ static json_result_t _json_read_callback(
                 else
                     CONFIG_RAISE(JSON_TYPE_MISMATCH);
             }
+            else if (json_match(parser, "EnableBrkSyscall") == JSON_OK)
+            {
+                if (type == JSON_TYPE_BOOLEAN)
+                    parsed_data->enable_brk_syscall = un->boolean;
+                else if (type == JSON_TYPE_INTEGER)
+                    parsed_data->enable_brk_syscall = (bool)un->integer;
+                else
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
+            }
             else if (json_match(parser, "ExecStack") == JSON_OK)
             {
                 if (type == JSON_TYPE_BOOLEAN)
@@ -504,6 +513,7 @@ int parse_config(config_parsed_data_t* parsed_data)
         parsed_data->oe_num_stack_pages = ENCLAVE_STACK_SIZE / PAGE_SIZE;
         parsed_data->oe_create_zero_base = ENCLAVE_CREATE_ZERO_BASE_ENCLAVE;
         parsed_data->oe_start_address = ENCLAVE_START_ADDRESS;
+        parsed_data->enable_brk_syscall = false;
     }
 
     if ((ret = json_parser_init(

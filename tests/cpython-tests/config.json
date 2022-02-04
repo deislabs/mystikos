@@ -19,5 +19,4 @@
     // Whether we allow "ApplicationParameters" to be overridden by command line options of "myst exec"
     "HostApplicationParameters": true,
     "ForkMode":"pseudo_wait_for_exit_exec",
-    "NoBrk": true
 }
