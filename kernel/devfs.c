@@ -235,7 +235,7 @@ int devfs_setup()
 {
     int ret = 0;
 
-    if (myst_init_ramfs(myst_mount_resolve, &_devfs) != 0)
+    if (myst_init_ramfs(myst_mount_resolve, &_devfs, 0) != 0)
     {
         myst_eprintf("failed initialize the dev file system\n");
         ERAISE(-EINVAL);
