@@ -39,6 +39,7 @@
 #include <myst/pubkey.h>
 #include <myst/ramfs.h>
 #include <myst/realpath.h>
+#include <myst/shmfs.h>
 #include <myst/signal.h>
 #include <myst/stack.h>
 #include <myst/strings.h>
@@ -319,7 +320,7 @@ static int _init_tmpfs(const char* target, myst_fs_t** fs_out)
         ERAISE(-EINVAL);
     }
 
-    if (myst_init_ramfs(myst_mount_resolve, &fs) != 0)
+    if (myst_init_ramfs(myst_mount_resolve, &fs, 0) != 0)
     {
         myst_eprintf("cannot initialize file system: %s\n", target);
         ERAISE(-EINVAL);
@@ -369,7 +370,7 @@ static int _setup_ramfs(void)
 {
     int ret = 0;
 
-    if (myst_init_ramfs(myst_mount_resolve, &_fs) != 0)
+    if (myst_init_ramfs(myst_mount_resolve, &_fs, 0) != 0)
     {
         myst_eprintf("failed initialize the RAM file system\n");
         ERAISE(-EINVAL);
@@ -885,6 +886,9 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     /* Setup devfs */
     devfs_setup();
 
+    /* Setup POSIX Shared Memory fs */
+    shmfs_setup();
+
     /* Create top-level proc entries */
     create_proc_root_entries();
 
@@ -1073,6 +1077,9 @@ int myst_enter_kernel(myst_kernel_args_t* args)
 
     /* Tear down the dev file system */
     devfs_teardown();
+
+    /* Tear down the posix shm file system */
+    shmfs_teardown();
 
     /* Tear down the RAM file system */
     _teardown_ramfs();

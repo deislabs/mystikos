@@ -486,7 +486,7 @@ long myst_syscall_mount(
             ERAISE(-EINVAL);
 
         /* create a new ramfs instance */
-        ECHECK(myst_init_ramfs(myst_mount_resolve, &fs));
+        ECHECK(myst_init_ramfs(myst_mount_resolve, &fs, 0));
 
         /* perform the mount */
         ECHECK(myst_mount(fs, source, target, is_auto));
