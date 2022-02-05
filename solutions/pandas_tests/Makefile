@@ -20,7 +20,8 @@ TEST = pandas/tests/arrays/string_/test_string.py
 # these failures.
 REMOVE_TESTS_TEMPORARILY= \
 appdir/usr/local/lib/python3.9/site-packages/pandas/tests/io/test_stata.py \
-appdir/usr/local/lib/python3.9/site-packages/pandas/tests/io/test_sql.py
+appdir/usr/local/lib/python3.9/site-packages/pandas/tests/io/test_sql.py \
+appdir/usr/local/lib/python3.9/site-packages/pandas/tests/io/test_pickle.py 
 
 OPTS = --max-affinity-cpus=4 --app-config-path config.json
 ifdef STRACE
