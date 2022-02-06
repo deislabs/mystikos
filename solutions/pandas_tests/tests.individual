@@ -1,0 +1,12 @@
+/usr/local/lib/python3.9/site-packages/pandas/tests/io/test_stata.py
+/usr/local/lib/python3.9/site-packages/pandas/tests/io/test_sql.py
+/usr/local/lib/python3.9/site-packages/pandas/tests/io/test_pickle.py
+/usr/local/lib/python3.9/site-packages/pandas/tests/io/test_html.py
+/usr/local/lib/python3.9/site-packages/pandas/tests/io/test_s3.py
+/usr/local/lib/python3.9/site-packages/pandas/tests/io/test_common.py
+/usr/local/lib/python3.9/site-packages/pandas/tests/io/test_gcs.py
+/usr/local/lib/python3.9/site-packages/pandas/tests/io/test_fsspec.py
+/usr/local/lib/python3.9/site-packages/pandas/tests/io/test_date_converters.py
+/usr/local/lib/python3.9/site-packages/pandas/tests/io/test_compression.py
+/usr/local/lib/python3.9/site-packages/pandas/tests/internals/test_managers.py
+
