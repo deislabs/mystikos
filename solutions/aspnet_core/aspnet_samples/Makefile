@@ -60,8 +60,7 @@ run-podcast-inner: run-db
 
 # This is used by Podcast sample
 run-db:
-	docker run --name dotnet-podcast-db -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=Pass@word" -p 5433:1433 -d mcr.microsoft.com/mssql/server:2019-latest
-	sleep 5s
+	docker run --name dotnet-podcast-db -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=Pass@word" -p 5433:1433 -d mcr.microsoft.com/mssql/server:2019-CU8-ubuntu-18.04 && sleep 5s
 
 kill-db:
 	docker rm -f dotnet-podcast-db
