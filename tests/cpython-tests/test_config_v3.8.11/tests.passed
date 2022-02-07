@@ -96,7 +96,6 @@ test_difflib
 test_dis
 test_doctest
 test_doctest2
-test_docxmlrpc
 test_dtrace
 test_dynamic
 test_dynamicclassattribute
@@ -124,7 +123,6 @@ test_fractions
 test_frame
 test_frozen
 test_fstring
-test_ftplib
 test_funcattrs
 test_functools
 test_future
@@ -197,7 +195,6 @@ test_multibytecodec
 test_named_expressions
 test_netrc
 test_nis
-test_nntplib
 test_ntpath
 test_numeric_tower
 test_opcodes
@@ -238,7 +235,6 @@ test_range
 test_reprlib
 test_richcmp
 test_rlcompleter
-test_robotparser
 test_sax
 test_sched
 test_scope
@@ -282,7 +278,6 @@ test_syslog
 test_tabnanny
 test_tarfile
 test_tcl
-test_telnetlib
 test_textwrap
 test_threadedtempfile
 test_threading_local
