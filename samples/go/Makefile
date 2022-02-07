@@ -5,12 +5,12 @@ APPBUILDER=$(TOP)/scripts/appbuilder
 
 all: rootfs
 
-rootfs: appdir
-	$(MYST) mkext2 --force appdir rootfs
-
-appdir:
-	rm -rf appdir
-	$(APPBUILDER) Dockerfile
+rootfs: Dockerfile
+	mkdir -p mntdir
+	docker build --quiet --iidfile .iid -f Dockerfile src
+	$(BINDIR)/mount-docker-image .iid mntdir | xargs sudo
+	sudo $(MYST) mkext2 --force mntdir rootfs
+	sudo umount mntdir
 
 OPTS =
 OPTS += --thread-stack-size=1m
@@ -20,4 +20,4 @@ run: rootfs
 	$(MYST_EXEC) $(OPTS) rootfs /app/hello
 
 clean:
-	rm -rf appdir rootfs
+	rm -rf appdir rootfs .iid mntdir
