@@ -899,7 +899,14 @@ done:
 
 void myst_handle_host_signal(siginfo_t* siginfo, mcontext_t* mcontext)
 {
+    assert(siginfo != NULL);
+    assert(mcontext != NULL);
+
     _handle_one_signal(siginfo->si_signo, siginfo, mcontext);
+
+    /* resume the execution based on mcontext for the unlikely case
+     * where the _handle_one_signal returns (e.g., early return) */
+    myst_sigreturn(mcontext);
 
     // Unreachable
     assert(0);
