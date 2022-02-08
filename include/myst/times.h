@@ -7,6 +7,7 @@
 #include <time.h>
 
 #include <myst/clock.h>
+#include <myst/thread.h>
 
 long myst_lapsed_nsecs(const struct timespec* t0, const struct timespec* t1);
 
@@ -42,10 +43,18 @@ long myst_times_system_time();
 long myst_times_user_time();
 
 /* Return the time (in nanoseconds) spent by process */
-long myst_times_process_time();
+long myst_times_process_time(myst_process_t* process);
+
+/* returns process times for kernel, user, child kernel and child user */
+void myst_times_process_times(myst_process_t* process, struct tms* tm);
 
 /* Return the time (in nanoseconds) spent by thread */
-long myst_times_thread_time();
+long myst_times_thread_time(myst_thread_t* thread);
+
+/* add a childs process times to the parents child times */
+void myst_times_add_child_times_to_parent_times(
+    myst_process_t* parent,
+    myst_process_t* child);
 
 void myst_print_syscall_times(const char* message, size_t count);
 

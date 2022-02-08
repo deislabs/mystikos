@@ -20,6 +20,7 @@
 #include <myst/tcall.h>
 #include <myst/thread.h>
 #include <myst/time.h>
+#include <myst/times.h>
 
 static long _syscall_poll(
     struct pollfd* fds,
@@ -173,9 +174,9 @@ static long _syscall_poll(
         // work out if we have timed out yet
         myst_syscall_clock_gettime(CLOCK_MONOTONIC, &end);
 
-        lapsed += ((end.tv_sec - start.tv_sec) * 1000000000 +
-                   (end.tv_nsec - start.tv_nsec)) /
-                  1000000;
+        // lapsed time needs to be milliseconds and this function returns
+        // nanoseconds.
+        lapsed += myst_lapsed_nsecs(&start, &end) / 1000000;
 
         if ((original_timeout > 0) && ((original_timeout - lapsed) <= 0))
             break;
