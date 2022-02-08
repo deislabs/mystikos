@@ -17,8 +17,6 @@ appdir:
 	rm appdir/usr/local/lib/python3.9/site-packages/numpy/core/tests/test_memmap.py
 	# Remove the test that fails due to rng
 	rm appdir/usr/local/lib/python3.9/site-packages/numpy/core/tests/test_multiarray.py
-	# Removing test failing due to no SYS_listxattr support
-	rm appdir/usr/local/lib/python3.9/site-packages/numpy/core/tests/test_limited_api.py
 
 rootfs: appdir
 	$(MYST) mkext2 appdir rootfs

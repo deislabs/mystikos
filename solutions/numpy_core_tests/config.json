@@ -11,6 +11,5 @@
     // The heap size of the user application. Increase this setting if your app experienced OOM.
     "MemorySize": "3g",
     "HostApplicationParameters": true,
-    "ForkMode":"pseudo_wait_for_exit_exec",
-    "UnhandledSyscallEnosys": true
+    "ForkMode":"pseudo_wait_for_exit_exec"
 }
