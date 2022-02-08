@@ -211,6 +211,10 @@ struct myst_process
     /* itimer data. this structure has too many other objects in it that make it
      * hard to not be a pointer so it gets initialized when there are calls. */
     myst_itimer_t* itimer;
+
+    /* Process times for current process system and user time, and kernel and
+     * user time for children that have exited and been waited for */
+    struct tms process_times;
 };
 
 struct myst_thread

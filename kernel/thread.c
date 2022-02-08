@@ -641,6 +641,9 @@ long myst_wait(
                     if (p->zombie_next != NULL)
                         p->zombie_next->zombie_prev = p->zombie_prev;
 
+                    /* inherit the child process times into the parent */
+                    myst_times_add_child_times_to_parent_times(process, p);
+
                     // free zombie process
                     free(p);
                 }

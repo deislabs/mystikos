@@ -9,6 +9,16 @@ ifdef MYST_ENABLE_GCOV
 CFLAGS += -DMYST_ENABLE_GCOV
 endif
 
+ifdef TRACE
+	OPTS += --strace --ttrace
+else
+	ifdef STRACE
+		OPTS += --strace
+	else
+		OPTS += --ttrace
+	endif
+endif
+
 sec = $(shell date +%s)
 nsec = $(shell date +%N)
 

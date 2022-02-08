@@ -467,8 +467,8 @@ FAILING
 | /ltp/testcases/kernel/syscalls/getrlimit/getrlimit01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/getrlimit/getrlimit02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/getrlimit/getrlimit03 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/getrusage/getrusage01 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/getrusage/getrusage02 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/getrusage/getrusage01 | 1 | 1 | 1 |
+| /ltp/testcases/kernel/syscalls/getrusage/getrusage02 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/getrusage/getrusage03 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/getrusage/getrusage03_child | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/getrusage/getrusage04 | 0 | 0 | 0 |

@@ -7,6 +7,7 @@
 #include <myst/buf.h>
 #include <myst/mman.h>
 #include <myst/refstr.h>
+#include <sys/mman.h>
 #include <sys/types.h>
 
 #define MYST_FDMAPPING_USED 0x1ca0597f

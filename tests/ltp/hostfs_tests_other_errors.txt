@@ -256,8 +256,6 @@
 /ltp/testcases/kernel/syscalls/getresuid/getresuid02_16
 /ltp/testcases/kernel/syscalls/getresuid/getresuid03_16
 /ltp/testcases/kernel/syscalls/getrlimit/getrlimit02
-/ltp/testcases/kernel/syscalls/getrusage/getrusage01
-/ltp/testcases/kernel/syscalls/getrusage/getrusage02
 /ltp/testcases/kernel/syscalls/getrusage/getrusage03
 /ltp/testcases/kernel/syscalls/getrusage/getrusage03_child
 /ltp/testcases/kernel/syscalls/getrusage/getrusage04

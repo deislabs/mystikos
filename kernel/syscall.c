@@ -2738,7 +2738,7 @@ long myst_syscall_sysinfo(struct sysinfo* info)
     // Only clear out non-reserved portion of the structure.
     // This is to be defensive against different sizes of this
     // structure in musl and glibc.
-    memset(info, 0, sizeof(struct sysinfo) - 256);
+    memset(info, 0, sizeof(*info) - sizeof(info->__reserved));
     info->totalram = totalram;
     info->freeram = freeram;
     info->mem_unit = 1;
@@ -2797,12 +2797,30 @@ done:
 
 long myst_syscall_getrusage(int who, struct rusage* usage)
 {
-    // ATTN: support child process and per-thread usage reporting.
-    if (who == RUSAGE_CHILDREN || who == RUSAGE_THREAD)
+    // ATTN: support per-thread usage reporting.
+    if (who == RUSAGE_THREAD)
         return -EINVAL;
 
-    long stime = myst_times_system_time();
-    long utime = myst_times_user_time();
+    struct tms tm;
+    myst_times_process_times(myst_process_self(), &tm);
+
+    long stime = tm.tms_stime;
+    long utime = tm.tms_utime;
+
+    if (who == RUSAGE_SELF)
+    {
+        stime = tm.tms_stime;
+        utime = tm.tms_utime;
+    }
+    else if (who == RUSAGE_CHILDREN)
+    {
+        stime = tm.tms_cstime;
+        utime = tm.tms_cutime;
+    }
+
+    // NOTE: glibc and musl have different sized rusage structures. Not clearing
+    // out the reserved makes it inline with that of glibc.
+    memset(usage, 0, sizeof(*usage) - sizeof(usage->__reserved));
     usage->ru_utime.tv_sec = utime / 1000000000;
     usage->ru_utime.tv_usec = utime % 1000000000 * 1000;
     usage->ru_stime.tv_sec = stime / 1000000000;
@@ -3980,7 +3998,16 @@ static long _SYS_setitimer(long n, long params[6], myst_process_t* process)
     struct itimerval* old_value = (void*)params[2];
 
     _strace(
-        n, "which=%d new_value=%p old_value=%p", which, new_value, old_value);
+        n,
+        "which=%d new_value=%p(interval {sec=%ld usec=%ld} value "
+        "{sec=%ld usec=%ld}) old_value=%p",
+        which,
+        new_value,
+        new_value ? new_value->it_interval.tv_sec : 0,
+        new_value ? new_value->it_interval.tv_usec : 0,
+        new_value ? new_value->it_value.tv_sec : 0,
+        new_value ? new_value->it_value.tv_usec : 0,
+        old_value);
 
     return (_return(
         n, myst_syscall_setitimer(process, which, new_value, old_value)));
@@ -4494,10 +4521,20 @@ static long _SYS_getrusage(long n, long params[6])
 {
     int who = (int)params[0];
     struct rusage* usage = (struct rusage*)params[1];
+    long ret;
 
     _strace(n, "who=%d usage=%p", who, usage);
 
-    long ret = myst_syscall_getrusage(who, usage);
+    if (!usage || myst_is_bad_addr_write(usage, sizeof(*usage)))
+        ret = -EFAULT;
+    else if (
+        who != RUSAGE_THREAD && who != RUSAGE_CHILDREN && who != RUSAGE_SELF)
+        ret = -EINVAL;
+    else
+    {
+        ret = myst_syscall_getrusage(who, usage);
+    }
+
     return (_return(n, ret));
 }
 
@@ -4509,22 +4546,25 @@ static long _SYS_sysinfo(long n, long params[6])
     return (_return(n, ret));
 }
 
-static long _SYS_times(long n, long params[6])
+static long _SYS_times(long n, long params[6], myst_process_t* process)
 {
     struct tms* tm = (struct tms*)params[0];
     _strace(n, "tm=%p", tm);
 
-    long stime = myst_times_system_time();
-    long utime = myst_times_user_time();
+    struct tms process_tm;
+    myst_times_process_times(process, &process_tm);
+
+    long ret = process_tm.tms_stime + process_tm.tms_utime;
+
     if (tm != NULL)
     {
-        tm->tms_utime = utime;
-        tm->tms_stime = stime;
-        tm->tms_cutime = 0;
-        tm->tms_cstime = 0;
+        if (!myst_is_bad_addr_write(tm, sizeof(struct tms)))
+            *tm = process_tm;
+        else
+            ret = -EFAULT;
     }
 
-    return (_return(n, stime + utime));
+    return (_return(n, ret));
 }
 
 static long _SYS_syslog(long n, long params[6])
@@ -6820,7 +6860,7 @@ static long _syscall(void* args_)
         }
         case SYS_times:
         {
-            BREAK(_SYS_times(n, params));
+            BREAK(_SYS_times(n, params, process));
         }
         case SYS_ptrace:
             break;
@@ -7677,14 +7717,14 @@ long myst_syscall_clock_gettime(clockid_t clk_id, struct timespec* tp)
 
     if (clk_id == CLOCK_PROCESS_CPUTIME_ID)
     {
-        long nanoseconds = myst_times_process_time();
+        long nanoseconds = myst_times_process_time(myst_process_self());
         tp->tv_sec = nanoseconds / NANO_IN_SECOND;
         tp->tv_nsec = nanoseconds % NANO_IN_SECOND;
         return 0;
     }
     if (clk_id == CLOCK_THREAD_CPUTIME_ID)
     {
-        long nanoseconds = myst_times_thread_time();
+        long nanoseconds = myst_times_thread_time(myst_thread_self());
         tp->tv_sec = nanoseconds / NANO_IN_SECOND;
         tp->tv_nsec = nanoseconds % NANO_IN_SECOND;
         return 0;
