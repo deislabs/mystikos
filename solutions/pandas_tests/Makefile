@@ -34,6 +34,7 @@ all: rootfs
 appdir:
 	$(APPBUILDER) Dockerfile
 	cp $(PYTEST_INI_FILE) appdir/
+	@ $(foreach i, $(TEST_RUN_INDIVIDUAL),  rm  -rf appdir/$(i) )
 
 rootfs: appdir
 	$(MYST) mkext2 appdir rootfs
@@ -42,8 +43,7 @@ rootfs-passed: appdir
 	# remove test files that are known to fail partially. These are tested in target 'run'
 	# for expected failures/ errors.
 	cat tests.partially_passed | while read line; do rm -f appdir/"$$line"; done
-	# This file is temporarily being disabled from pandas_tests, to investigate handling	
-	@ $(foreach i, $(TEST_RUN_INDIVIDUAL),  rm  -rf appdir/$(i) )
+	# This file is temporarily being disabled from pandas_tests, to investigate handling
 	@ $(foreach i, $(REMOVE_TESTS_TEMPORARILY),  rm  -rf appdir/$(i) )
 	$(MYST) mkext2 appdir rootfs-passed
 
