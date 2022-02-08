@@ -14,12 +14,12 @@ PYTEST_CMD = $(PYTHON3) -m pytest
 PYTEST_INI_FILE = pytest.ini
 PYTEST_OPTS = -s -q --no-header --skip-slow --skip-db --skip-network
 TEST_ROOT = /usr/local/lib/python3.9/site-packages/
-TEST = appdir/usr/local/lib/python3.9/site-packages/pandas/tests/io/test_fsspec.py 
+TEST = /usr/local/lib/python3.9/site-packages/pandas/tests/io/test_fsspec.py 
 # The following tests used to pass in mystikos, but currently hang indefinitely.
 # Removing these tests currently, and will be added back after investigating
 # these failures.
 REMOVE_TESTS_TEMPORARILY= \
-appdir/usr/local/lib/python3.9/site-packages/pandas/tests/io/test_user_agent.py \
+/usr/local/lib/python3.9/site-packages/pandas/tests/io/test_user_agent.py \
 
 #the folllowing tests hang when run sequentially, but pass when run individually
 TEST_RUN_INDIVIDUAL=$(shell cat tests.individual)
