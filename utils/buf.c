@@ -104,8 +104,7 @@ int myst_buf_append(myst_buf_t* buf, const void* data, size_t size)
     /* Compute the new size */
     new_size = buf->size + size;
 
-    /* If insufficient capacity to hold new data */
-    if (new_size > buf->cap)
+    /* Reserve memory if needed */
     {
         int err;
 
