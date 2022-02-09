@@ -33,3 +33,4 @@
 /aspnetcore/artifacts/bin/Microsoft.AspNetCore.ConcurrencyLimiter.Tests/Debug/net5.0/Microsoft.AspNetCore.ConcurrencyLimiter.Tests.dll
 /aspnetcore/artifacts/bin/Microsoft.AspNetCore.CookiePolicy.Test/Debug/net5.0/Microsoft.AspNetCore.CookiePolicy.Test.dll
 /aspnetcore/artifacts/bin/Microsoft.AspNetCore.Cors.Test/Debug/net5.0/Microsoft.AspNetCore.Cors.Test.dll
+/aspnetcore/artifacts/bin/Microsoft.AspNetCore.Authentication.Test/Debug/net5.0/Microsoft.AspNetCore.Authentication.Test.dll # Runner does not set up AppDomain.BaseDirectory correctly. Test relies on that to fetch .cer files. Dotnet runtime GH Issue: https://github.com/dotnet/runtime/issues/7887
