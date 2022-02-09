@@ -58,10 +58,11 @@ run: rootfs
 		$(PYTEST_CMD) $(PYTEST_OPTS) 2>&1 > result; true)
 	sed -i '$$d' result
 	tail -n 26 result > test_summary
-	diff test_summary expected-test-summary
-	$(MAKE) clean_intermediate
+	diff test_summary expected-test-summary	
 	$(MAKE) run-individual
+	$(MAKE) clean_intermediate
 	$(MAKE) run-passed
+	$(MAKE) clean_intermediate
 
 run-one: rootfs
 	$(MYST_EXEC) rootfs $(OPTS) $(PYTEST_CMD) $(TEST)
