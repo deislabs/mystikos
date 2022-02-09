@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+backoff_in_secs=1
+max_retries=5
+retry_count=0
+
+ret_val=0
+while [[ $retry_count < $max_retries ]]
+do
+    "$@"
+    
+    ret_val=$?
+    if [[ $ret_val == 0 ]]
+    then
+        exit
+    fi
+
+    echo "Retry $retry_count: Retrying in $backoff_in_secs seconds."
+    
+    sleep $backoff_in_secs
+    (( retry_count++ ))
+    (( backoff_in_secs*=2 ))
+done
+
+if [[ $ret_val != 0 ]]
+then
+    echo "Still failing after $retry_count retries: $@"
+    echo "Aborting retries."
+    exit 1
+fi
+
