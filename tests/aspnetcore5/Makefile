@@ -62,6 +62,11 @@ run-runner:
 	$(MYST_EXEC) ext2fs $(OPTS) \
 	/runner/bin/Debug/net5.0/runner $(ARG1) $(ARG2)
 
+run-runner-lldb:
+	$(MYST_LLDB) -- $(MYST_EXEC) ext2fs $(OPTS) \
+	--report-native-tids \
+	/runner/bin/Debug/net5.0/runner $(ARG1) $(ARG2)
+
 all-runner: ext2fs
 	$(MYST_EXEC) ext2fs --roothash=roothash $(OPTS) \
 	/runner/bin/Debug/net6.0/runner $(TESTS_FILE) ""
