@@ -456,7 +456,18 @@ __attribute__((__returns_twice__)) pid_t myst_fork(void)
             /* Wait if fork mode requires it */
             if (fork_mode == myst_fork_pseudo_wait_for_exit_exec)
             {
+                /* wait for the child process to shutdown */
                 syscall(SYS_myst_fork_wait_exec_exit);
+            }
+            else
+            {
+                /* Sleep enough to allow the child to return first. If an
+                 * application assigns the return of fork() to a global variable
+                 * then there is contention and the child or parent may win.
+                 * This can cause the parent to not know the child pid and all
+                 * sorts can fail. This sleep should be enough to let the child
+                 * finish first. */
+                syscall(SYS_sched_yield);
             }
         }
     }
