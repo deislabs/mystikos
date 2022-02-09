@@ -31,7 +31,7 @@ tests:
 	$(RUNTEST) $(MAKE) __tests
 
 __tests:rootfs
-	${MYST_LLDB} ${LLDB_CMDS} -- ${MYST} ${EXEC} rootfs /bin/helloworld ${OPTS} 2>&1 > ${LLDB_LOG_FILE} 2> /dev/null \
+	${MYST_LLDB} ${LLDB_CMDS} -- ${MYST} ${EXEC} rootfs /bin/helloworld ${OPTS} 2>&1 > ${LLDB_LOG_FILE}  \
            || echo "Failure running myst_lldb"
 	@cat ${LLDB_LOG_FILE} | grep -E "$(LLDB_MATCH)" > /dev/null || (cat ${LLDB_LOG_FILE} && exit 1)
 	@ echo "=== passed test (lldb)"

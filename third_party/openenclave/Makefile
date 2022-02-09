@@ -96,6 +96,8 @@ endif
 	mkdir -p $(TOP)/build/bin
 	rm -f $(TOP)/build/bin/myst-gdb
 	ln -s $(TOP)/build/openenclave/bin/oegdb $(TOP)/build/bin/myst-gdb
+	# Patch minimum required lldb version from 7 to 8.
+	sed -i 's/-7/-8/g' $(TOP)/build/openenclave/bin/oelldb
 	rm -f $(TOP)/build/bin/myst-lldb
 	ln -s $(TOP)/build/openenclave/bin/oelldb $(TOP)/build/bin/myst-lldb
 
