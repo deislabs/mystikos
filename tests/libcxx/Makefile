@@ -56,7 +56,7 @@ $(ROOTFS): run.c
 OPTS += --memory-size=64m
 
 tests: $(ROOTFS)
-	$(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run /tests.passed
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) /bin/run /tests.passed
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst
