@@ -187,4 +187,15 @@ pipeline {
             }
         }
     }
+    post {
+        always {
+            sh "df -h"
+            sh "docker network ls"
+            sh "docker ps -a"
+            sh "docker images"
+            sh "docker network inspect bridge"
+            sh "docker system info"
+            sh "docker system df"
+        }
+    }
 }
