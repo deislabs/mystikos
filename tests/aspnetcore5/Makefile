@@ -57,6 +57,11 @@ test-single: ext2fs
 	$(MYST_EXEC) ext2fs $(OPTS) \
 	/runner/bin/Debug/net5.0/runner /tests/unit-tests.runner.$(ID) ""
 
+test-single-lldb:
+	$(MYST_LLDB) -- $(MYST_EXEC) ext2fs $(OPTS) \
+	--report-native-tids \
+	/runner/bin/Debug/net5.0/runner /tests/unit-tests.runner.$(ID) "/"
+
 one: ext2fs
 	$(MYST_EXEC) ext2fs --roothash=roothash $(OPTS) \
 	/aspnetcore/.dotnet/dotnet test $(TEST)

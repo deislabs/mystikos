@@ -261,7 +261,7 @@ index 20d50f2c..17cd6ac3 100644
 +{
 +}
 diff --git a/ldso/dynlink.c b/ldso/dynlink.c
-index afec985a..acf447c4 100644
+index afec985a..9f9b618d 100644
 --- a/ldso/dynlink.c
 +++ b/ldso/dynlink.c
 @@ -3,6 +3,7 @@
@@ -497,7 +497,39 @@ index afec985a..acf447c4 100644
  	return p;
  }
  
-@@ -2302,7 +2356,7 @@ static void error(const char *fmt, ...)
+@@ -2272,11 +2326,16 @@ no_redir:
+ 	return __dlsym(p, s, ra);
+ }
+ 
++/* Lock to keep calls to callbacks thread-safe. 
++ * Passed callbacks may have static members. */
++static pthread_mutex_t dl_iterate_cb_lock;
+ int dl_iterate_phdr(int(*callback)(struct dl_phdr_info *info, size_t size, void *data), void *data)
+ {
+ 	struct dso *current;
+ 	struct dl_phdr_info info;
+ 	int ret = 0;
++
++	pthread_rwlock_wrlock(&lock);
+ 	for(current = head; current;) {
+ 		info.dlpi_addr      = (uintptr_t)current->base;
+ 		info.dlpi_name      = current->name;
+@@ -2289,12 +2348,11 @@ int dl_iterate_phdr(int(*callback)(struct dl_phdr_info *info, size_t size, void
+ 
+ 		ret = (callback)(&info, sizeof (info), data);
+ 
+-		if (ret != 0) break;
++		if (ret != 0) break; 
+ 
+-		pthread_rwlock_rdlock(&lock);
+ 		current = current->next;
+-		pthread_rwlock_unlock(&lock);
+ 	}
++	pthread_rwlock_unlock(&lock);
+ 	return ret;
+ }
+ 
+@@ -2302,7 +2360,7 @@ static void error(const char *fmt, ...)
  {
  	va_list ap;
  	va_start(ap, fmt);
