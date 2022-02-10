@@ -53,7 +53,7 @@ run-podcast:
 
 run-podcast-inner: run-db
 	./kill.sh Podcast
-	timeout $(TIMEOUT) $(MYST_EXEC) $(OPTS) --app-config-path config-podcast.json rootfs /built/dotnet-podcasts/Podcast.API &
+	timeout 120s $(MYST_EXEC) $(OPTS) --app-config-path config-podcast.json rootfs /built/dotnet-podcasts/Podcast.API &
 	timeout $(TIMEOUT) ./wait.sh
 	./client.sh Podcast
 	./kill.sh Podcast
