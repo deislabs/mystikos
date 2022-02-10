@@ -87,6 +87,7 @@ OUTPUT_NAME=${OUTPUT_NAME:-appdir}
 DELETE_OUTPUT=${DELETE_OUTPUT:-false}
 OUTPUT_FORMAT=${OUTPUT_FORMAT:-dir}
 TEMP_IMAGE_IIDFILE=$(mktemp /tmp/myst.XXXXXX)
+NETWORK_NAME=$(basename ${PWD})-$(head /dev/urandom | tr -dc 'a-z0-9' | head -c 10)
 
 ### end defaults
 
@@ -141,9 +142,15 @@ get_image()
     if $USE_DOCKERFILE; then
         # in either quiet or none quiet mode, IMAGE id will always be exported to intermediate iidfile
         rm -f $TEMP_IMAGE_IIDFILE
-        docker build $DOCKER_BUILD_MODE --iidfile $TEMP_IMAGE_IIDFILE -f $DOCKER_FILE $EXTRA_ARGS .
+        # Create and use custom network for each image build to avoid collisions
+        # Note: By default, Docker network range will only allow for 30 networks at a time or a max of
+        # 27 concurent image builds. If more is desired, then Docker's default-address-pool will need
+        # to be changed to include more ip addresses.
+        docker network create $NETWORK_NAME
+        docker build $DOCKER_BUILD_MODE --iidfile $TEMP_IMAGE_IIDFILE -f $DOCKER_FILE --network $NETWORK_NAME $EXTRA_ARGS .
+        docker network remove $NETWORK_NAME
         if [ ! -f "$TEMP_IMAGE_IIDFILE" ]; then
-            echo "failed to build from Docker Image file $TEMP_IMAGE_IIDFILE4";
+            echo "failed to build from Docker Image file $TEMP_IMAGE_IIDFILE";
             exit 1
         fi
         IMAGE_NAME=$(cat $TEMP_IMAGE_IIDFILE)
@@ -172,7 +179,7 @@ export_image()
     docker export $TEMP_INAME -o $TEMP_FILE
     docker rm $TEMP_INAME >/dev/null
     if [ -z $DELETE_IMAGE ]; then
-	docker rmi -f $IMAGE_NAME
+        docker rmi -f $IMAGE_NAME
     fi
 
     # create the 'appdir' from the docker export
