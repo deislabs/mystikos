@@ -22,7 +22,7 @@ int shmfs_setup()
 
     ECHECK(set_overrides_for_special_fs(_shmfs));
 
-    if (myst_mkdirhier("/dev/shm", 0777) != 0)
+    if (mkdir("/dev/shm", 0777) != 0)
     {
         myst_eprintf("cannot create mount point for shmfs\n");
         ERAISE(-EINVAL);
