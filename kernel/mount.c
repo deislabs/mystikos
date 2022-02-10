@@ -180,7 +180,7 @@ int myst_mount(
         /* Find the file system onto which the mount will occur */
         ECHECK(myst_mount_resolve(target, locals->suffix, &parent));
 
-        ECHECK((*parent->fs_stat)(parent, target, &buf));
+        ECHECK((*parent->fs_stat)(parent, locals->suffix, &buf));
 
         if (!S_ISDIR(buf.st_mode))
             ERAISE(-ENOTDIR);
