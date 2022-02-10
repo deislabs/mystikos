@@ -309,7 +309,6 @@ test_univnewlines
 test_unpack
 test_unpack_ex
 test_urllib
-test_urllib2
 test_urllib2net
 test_urllib_response
 test_urllibnet

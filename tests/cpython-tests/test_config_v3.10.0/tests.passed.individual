@@ -7,5 +7,6 @@ test_poplib
 test_robotparser
 test_smtplib
 test_telnetlib
+test_urllib2
 test_urllib2_localnet
 test_xmlrpc
