@@ -1,5 +1,5 @@
 #!/bin/bash
-CURL="curl --location --insecure --silent"
+CURL="curl --location --insecure"
 
 expect() {
     if [[ $1 != $2 ]]; then
@@ -70,6 +70,7 @@ client_Podcast() {
     $CURL 'http://localhost:5000/v1/categories' || exit 1
     sleep 1
     $CURL 'http://localhost:5000/v1/categories' || exit 1
+    sleep 1
 
     $CURL 'http://localhost:5000/v1/Shows' || exit 1
     sleep 1
@@ -78,7 +79,6 @@ client_Podcast() {
     $CURL 'http://localhost:5000/v1/Shows' || exit 1
     sleep 1
     $CURL 'http://localhost:5000/v1/Shows' || exit 1
-    sleep 1
 
     exit 0
 }
