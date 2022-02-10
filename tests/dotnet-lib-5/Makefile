@@ -7,6 +7,7 @@ DOCKER_IMAGE_MUSL=hullcritical/dotnet-library-test:release-musl
 DOCKER_IMAGE_GLIBC=hullcritical/dotnet-library-test:release-glibc
 DOTNET=/dotnet-lib-release/testhost/net5.0-Linux-Release-x64/dotnet
 TEST_DLL=
+DOCKER_BUILD_EXT2=$(TOP)/scripts/docker-build-ext2
 
 ifdef STRACE
 OPTS += --strace
@@ -43,7 +44,6 @@ run-docker:
 
 RUNNER=/runner/bin/Release/net5.0/runner
 RROOTFS=rootfsr
-RAPPDIR=appdirr
 
 build-runner: $(RROOTFS)
 

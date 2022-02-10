@@ -13,3 +13,10 @@ COPY --from=builder /runner /runner
 COPY ./testcases/pass.* /testcases/
 COPY ./testcases/fail.txt /testcases/
 COPY ./testcases/skip.txt /testcases/
+
+# Remove directories that are not needed for the test run
+RUN rm -rf /dotnet-lib-release/testhost
+RUN rm -rf /dotnet-lib-release/coreclr
+RUN rm -rf /dotnet-lib-release/externals
+RUN rm -rf /dotnet-lib-release/docs
+RUN rm -rf /dotnet-lib-release/microsoft.netcore.app.runtime.linux-musl-x64
