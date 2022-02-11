@@ -1,15 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#include <myst/buf.h>
+#include <myst/mmanutils.h>
+#include <myst/round.h>
+#include <myst/strings.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <myst/buf.h>
-#include <stdlib.h>
-
-#include <myst/round.h>
-#include <myst/strings.h>
+#include <sys/mman.h>
 
 #define MYST_BUF_CHUNK_SIZE 1024
 
@@ -51,13 +50,32 @@ int myst_buf_reserve(myst_buf_t* buf, size_t cap)
         /* If capacity still insufficent, round to multiple of chunk size */
         if (cap > new_cap)
         {
-            const size_t N = MYST_BUF_CHUNK_SIZE;
+            const size_t N = (buf->flags & MYST_BUF_PAGE_ALIGNED)
+                                 ? PAGE_SIZE
+                                 : MYST_BUF_CHUNK_SIZE;
             new_cap = (cap + N - 1) / N * N;
         }
 
         /* Expand allocation */
-        if (!(new_data = realloc(buf->data, new_cap)))
-            return -1;
+        if (buf->flags & MYST_BUF_PAGE_ALIGNED)
+        {
+            // TODO: ideally we can still expand if there are no active
+            // mappings. That would require checking at a higher layer.
+            if (buf->data)
+            {
+                return -1;
+            }
+            else
+            {
+                if (!(new_data = memalign(PAGE_SIZE, new_cap)))
+                    return -1;
+            }
+        }
+        else
+        {
+            if (!(new_data = realloc(buf->data, new_cap)))
+                return -1;
+        }
 
         buf->data = new_data;
         buf->cap = new_cap;
