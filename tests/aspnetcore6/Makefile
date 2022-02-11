@@ -83,11 +83,11 @@ one-runner-hostfs: appdir
 
 all-runner: ext2fs
 	$(MYST_EXEC) ext2fs --roothash=roothash $(OPTS) \
-	/runner/bin/Debug/net6.0/runner $(TESTS_FILE) ""  $(FILTER_OPT)
+	/runner/bin/Debug/net6.0/runner $(TESTS_FILE) "" $(FILTER_OPT)
 
 all-runner-hostfs: appdir
 	$(MYST_EXEC) appdir $(OPTS) \
-	/runner/bin/Debug/net6.0/runner $(TESTS_FILE) ""  $(FILTER_OPT)
+	/runner/bin/Debug/net6.0/runner $(TESTS_FILE) "" $(FILTER_OPT)
 
 #################################
 #			dev targets			#
