@@ -15,6 +15,7 @@
 #include <myst/fdtable.h>
 #include <myst/file.h>
 #include <myst/kernel.h>
+#include <myst/list.h>
 #include <myst/malloc.h>
 #include <myst/mman.h>
 #include <myst/mmanutils.h>
@@ -50,6 +51,64 @@ typedef struct vectors
     uint32_t* pids;
     size_t pids_count;
 } vectors_t;
+
+typedef struct proc_and_fd
+{
+    myst_list_node_t base;
+    pid_t pid;
+    int fd;
+} proc_and_fd_t;
+
+typedef struct shared_mapping
+{
+    myst_list_node_t base;
+    char path[PATH_MAX];
+    off_t offset;
+    void* addr;
+    size_t length;
+    int nusers;
+    myst_list_t sharers;
+} shared_mapping_t;
+
+static myst_list_t _shared_mappings;
+static myst_spinlock_t _shared_mappings_lock;
+
+static void _dump_shared_mappings(char* msg)
+{
+    if (msg)
+        printf("\n%s\n", msg);
+
+    myst_spin_lock(&_shared_mappings_lock);
+    shared_mapping_t* sm = (shared_mapping_t*)_shared_mappings.head;
+    if (sm)
+    {
+        printf("POSIX Shared memory mappings: \n");
+        printf("==================================== \n");
+    }
+    else
+    {
+        printf("No POSIX shared mappings.\n");
+    }
+    while (sm)
+    {
+        printf(
+            "addr=%p length=%ld nusers=%d\n", sm->addr, sm->length, sm->nusers);
+        printf("sharer pids: [ ");
+        {
+            proc_and_fd_t* pfd = (proc_and_fd_t*)sm->sharers.head;
+            while (pfd)
+            {
+                printf("%d ", pfd->pid);
+                pfd = (proc_and_fd_t*)pfd->base.next;
+            }
+            printf("]\n");
+        }
+
+        sm = (shared_mapping_t*)sm->base.next;
+        printf("==================================== \n\n");
+    }
+    myst_spin_unlock(&_shared_mappings_lock);
+}
 
 MYST_INLINE void _rlock(bool* locked)
 {
@@ -91,6 +150,31 @@ static int _fd_to_pathname(int fd, char pathname[PATH_MAX])
 
 done:
     return ret;
+}
+
+static int _fd_to_file_data_ptr(int fd, void** addr_out)
+{
+    int ret = 0;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    myst_fs_t* fs;
+    myst_file_t* file;
+
+    ECHECK(myst_fdtable_get_file(fdtable, fd, &fs, &file));
+    ECHECK((*fs->fs_file_data_ptr)(fs, file, addr_out));
+
+done:
+    return ret;
+}
+
+bool myst_is_posix_shm_request(int fd, int flags)
+{
+    if (fd >= 0 && (flags & MAP_SHARED))
+    {
+        struct stat buf;
+        if (myst_syscall_fstat(fd, &buf) == 0 && buf.st_dev == 9)
+            return true;
+    }
+    return false;
 }
 
 int myst_setup_mman(void* data, size_t size)
@@ -449,6 +533,78 @@ long myst_mmap(
     }
     else
     {
+        /* Check if posix shm file */
+        /* addr hint is not allowed for POSIX shm memory */
+        if (myst_is_posix_shm_request(fd, flags) && !addr)
+        {
+            _dump_shared_mappings("in mmap entry");
+            // get underlying file buffer pointer
+            void* file_addr;
+            ECHECK(_fd_to_file_data_ptr(fd, &file_addr));
+
+            // get or create shared mapping
+            myst_spin_lock(&_shared_mappings_lock);
+            shared_mapping_t* sm = (shared_mapping_t*)_shared_mappings.head;
+            // Check for existing mapping
+            while (sm)
+            {
+                // TODO: Handle different offset or length
+                if (sm->addr == file_addr && offset == sm->offset &&
+                    length == sm->length)
+                {
+                    // TODO: don't increment if process already mmaped this
+                    sm->nusers++;
+                    {
+                        proc_and_fd_t* pfd;
+                        if (!(pfd = calloc(1, sizeof(proc_and_fd_t))))
+                        {
+                            myst_spin_unlock(&_shared_mappings_lock);
+                            ERAISE(-ENOMEM);
+                        }
+                        pfd->pid = myst_process_self()->pid;
+                        myst_list_append(&sm->sharers, &pfd->base);
+                    }
+
+                    myst_spin_unlock(&_shared_mappings_lock);
+                    _dump_shared_mappings("in mmap exit");
+                    return (long)sm->addr;
+                }
+
+                sm = (shared_mapping_t*)sm->base.next;
+            }
+
+            // Create a new shared mapping
+            {
+                shared_mapping_t* new_sm;
+                if (!(new_sm = calloc(1, sizeof(shared_mapping_t))))
+                {
+                    myst_spin_unlock(&_shared_mappings_lock);
+                    ERAISE(-ENOMEM);
+                }
+                new_sm->addr = file_addr;
+                new_sm->offset = offset;
+                new_sm->length = length;
+                new_sm->nusers = 1;
+
+                {
+                    proc_and_fd_t* pfd;
+                    if (!(pfd = calloc(1, sizeof(proc_and_fd_t))))
+                    {
+                        free(new_sm);
+                        myst_spin_unlock(&_shared_mappings_lock);
+                        ERAISE(-ENOMEM);
+                    }
+                    pfd->pid = myst_process_self()->pid;
+                    myst_list_append(&new_sm->sharers, &pfd->base);
+                }
+                myst_list_append(&_shared_mappings, &new_sm->base);
+            }
+
+            myst_spin_unlock(&_shared_mappings_lock);
+            _dump_shared_mappings("in mmap exit");
+            return (long)file_addr;
+        }
+
         int tflags = 0;
 
         if (flags & MYST_MAP_FIXED)

@@ -255,6 +255,9 @@ static int _inode_new(
     inode->gid = myst_syscall_getegid();
     inode->uid = myst_syscall_geteuid();
 
+    if (ramfs->device_num == 9)
+        inode->buf.flags = MYST_BUF_PAGE_ALIGNED;
+
     /* The root directory is its own parent */
     if (!parent)
         parent = inode;
@@ -2876,6 +2879,27 @@ done:
     return ret;
 }
 
+static int _fs_file_data_ptr(myst_fs_t* fs, myst_file_t* file, void** addr_out)
+{
+    int ret = 0;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+
+    if (!_ramfs_valid(ramfs) || !_file_valid(file))
+        ERAISE(-EINVAL);
+
+    if (ramfs->device_num == 9)
+    {
+        if (!(*addr_out = file->shared->inode->buf.data))
+            ERAISE(-ENOEXEC);
+    }
+    else
+    {
+        ERAISE(-ENOTSUP);
+    }
+
+done:
+    return ret;
+}
 static int _init_ramfs(
     myst_mount_resolve_callback_t resolve_cb,
     myst_fs_t** fs_out,
@@ -2942,6 +2966,7 @@ static int _init_ramfs(
         .fs_fdatasync = _fs_fsync_and_fdatasync,
         .fs_fsync = _fs_fsync_and_fdatasync,
         .fs_release_tree = _fs_release_tree,
+        .fs_file_data_ptr = _fs_file_data_ptr,
     };
     // clang-format on
     inode_t* root_inode = NULL;
