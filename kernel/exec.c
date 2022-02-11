@@ -24,6 +24,7 @@
 #include <myst/paths.h>
 #include <myst/printf.h>
 #include <myst/process.h>
+#include <myst/procfs.h>
 #include <myst/reloc.h>
 #include <myst/round.h>
 #include <myst/setjmp.h>
@@ -765,38 +766,6 @@ typedef struct entry_args
     int (*liboc_libc_init)(libc_t* libc, FILE* const stderr_file);
 } entry_args_t;
 
-/* Create the "/proc/<pid>/exe" link */
-static int _setup_exe_link(const char* path)
-{
-    int ret = 0;
-    pid_t pid = (pid_t)myst_getpid();
-    struct locals
-    {
-        char buf[PATH_MAX];
-        char target[PATH_MAX];
-    };
-    struct locals* locals = NULL;
-
-    if (!(locals = malloc(sizeof(struct locals))))
-        ERAISE(-ENOMEM);
-
-    if (myst_normalize(path, locals->target, sizeof(locals->target)) != 0)
-        ERAISE(-EINVAL);
-
-    snprintf(locals->buf, sizeof(locals->buf), "/proc/%u", pid);
-    ECHECK(myst_mkdirhier(locals->buf, 0777));
-
-    snprintf(locals->buf, sizeof(locals->buf), "/proc/%u/exe", pid);
-    ECHECK(myst_syscall_symlink(locals->target, locals->buf));
-
-done:
-
-    if (locals)
-        free(locals);
-
-    return ret;
-}
-
 static long _add_crt_symbols(const void* text, size_t text_size)
 {
     long ret = 0;
@@ -1205,7 +1174,7 @@ int myst_exec(
     assert(elf_check_stack(stack, __myst_kernel_args.main_stack_size) == 0);
 
     /* create "/proc/<pid>/exe" which is a link to the program executable */
-    if (_setup_exe_link(new_argv.data[0]) != 0)
+    if (procfs_setup_exe_link(new_argv.data[0], myst_getpid()) != 0)
         ERAISE(-EIO);
 
     myst_args_release(&new_argv);

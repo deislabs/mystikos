@@ -325,6 +325,23 @@ int test_stat_from_child()
     }
 }
 
+int test_self_exe_in_fork_child(char* pn)
+{
+    pid_t pid = fork();
+    assert(pid >= 0);
+
+    if (pid == 0) // child
+    {
+        test_self_exe(pn);
+        exit(0);
+    }
+    else // parent
+    {
+        int status;
+        wait(&status);
+    }
+}
+
 int main(int argc, const char* argv[])
 {
     test_meminfo();
@@ -335,6 +352,7 @@ int main(int argc, const char* argv[])
     test_fdatasync();
     test_stat();
     test_stat_from_child();
+    test_self_exe_in_fork_child(argv[0]);
 
     printf("\n=== passed test (%s)\n", argv[0]);
     return 0;

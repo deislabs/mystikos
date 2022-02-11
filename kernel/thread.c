@@ -1397,6 +1397,28 @@ static long _syscall_clone_vfork(
         /* Create /proc/[pid]/fd directory for new process thread */
         ECHECK(procfs_pid_setup(child_process->pid));
 
+        /* Copy /proc/[parent-pid]/exe to child */
+        {
+            char* self_path = calloc(1, PATH_MAX);
+            int tmp_ret =
+                myst_syscall_readlink("/proc/self/exe", self_path, PATH_MAX);
+
+            if (tmp_ret <= 0)
+            {
+                free(self_path);
+                ERAISE(tmp_ret);
+            }
+
+            if ((tmp_ret =
+                     procfs_setup_exe_link(self_path, child_process->pid)) != 0)
+            {
+                free(self_path);
+                ERAISE(tmp_ret);
+            }
+
+            free(self_path);
+        }
+
         ECHECK(_get_entry_stack(child_thread));
     }
 
