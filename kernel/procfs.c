@@ -13,6 +13,7 @@
 #include <myst/kernel.h>
 #include <myst/mmanutils.h>
 #include <myst/mount.h>
+#include <myst/paths.h>
 #include <myst/printf.h>
 #include <myst/process.h>
 #include <myst/procfs.h>
@@ -162,6 +163,36 @@ int procfs_pid_cleanup(pid_t pid)
     ECHECK(myst_snprintf(
         locals->pid_dir_path, sizeof(locals->pid_dir_path), "/%d", pid));
     ECHECK(_procfs->fs_release_tree(_procfs, locals->pid_dir_path));
+
+done:
+
+    if (locals)
+        free(locals);
+
+    return ret;
+}
+
+int procfs_setup_exe_link(const char* path, pid_t pid)
+{
+    int ret = 0;
+    struct locals
+    {
+        char buf[PATH_MAX];
+        char target[PATH_MAX];
+    };
+    struct locals* locals = NULL;
+
+    if (!(locals = malloc(sizeof(struct locals))))
+        ERAISE(-ENOMEM);
+
+    if (myst_normalize(path, locals->target, sizeof(locals->target)) != 0)
+        ERAISE(-EINVAL);
+
+    snprintf(locals->buf, sizeof(locals->buf), "/proc/%u", pid);
+    ECHECK(myst_mkdirhier(locals->buf, 0777));
+
+    snprintf(locals->buf, sizeof(locals->buf), "/proc/%u/exe", pid);
+    ECHECK(myst_syscall_symlink(locals->target, locals->buf));
 
 done:
 
