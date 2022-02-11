@@ -10,6 +10,25 @@
 
 static myst_fs_t* _shmfs;
 
+/**
+ * POSIX Shared Memory
+ *
+ * Leverage ramfs to implement POSIX Shared Memory semantics.
+ *
+ * Simple usage example:
+ *
+ * int fd = shm_open("foo", O_CREAT|O_RDWR , (S_IRUSR|S_IWUSR));
+ * ftruncate(fd, SHM_SIZE);
+ * char *addr = mmap(0, SHM_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+ *
+ * For mmap's related to files opened via shm_open, pointer to the underlying
+ * file buffer is returned. ramfs files use myst_buf_t to store the data.
+ *
+ * Because a pointer to myst_buf_t is passed to the userspace, buffer resize
+ * operations can be supported safely only when there are no active mappings
+ * against the corresponding shmfs file.
+ *
+ */
 int shmfs_setup()
 {
     int ret = 0;

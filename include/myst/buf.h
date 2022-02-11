@@ -8,15 +8,17 @@
 #include <stdint.h>
 
 // clang-format off
-#define MYST_BUF_INITIALIZER { NULL, 0, 0, 0 }
+#define MYST_BUF_INITIALIZER { NULL, 0, 0, 0, 0 }
 // clang-format on
 
+#define MYST_BUF_PAGE_ALIGNED 1
 typedef struct myst_buf
 {
     uint8_t* data;
     size_t size;
     size_t cap;
     size_t offset;
+    int flags;
 } myst_buf_t;
 
 void myst_buf_release(myst_buf_t* buf);
