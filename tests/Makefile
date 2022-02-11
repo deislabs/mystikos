@@ -96,7 +96,6 @@ endif
 
 ifndef MYST_ENABLE_GCOV
 ifdef MYST_NIGHTLY_TEST
-DIRS += cpython-tests
 DIRS += sockperf
 endif
 DIRS += clock
@@ -140,9 +139,14 @@ endif
 
 DIRS += appenv
 
+DIRS = getcwd
+
 .PHONY: $(DIRS)
 
-dirs: $(DIRS)
+dirs: serial $(DIRS)
+
+serial:
+	$(MAKE) -f serial.mak PARALLEL=1
 
 $(DIRS):
 	$(MAKE) -C $@
@@ -158,10 +162,13 @@ __tests:
 
 tests:
 	@ sudo rm -rf $(TESTDIR)
+	@ $(MAKE) -f serial.mak tests TARGET=sgx TESTSUFFIX=.sgx
 	@ $(MAKE) __tests TARGET=sgx TESTSUFFIX=.sgx
+	@ $(MAKE) -f serial.mak tests TARGET=linux TESTSUFFIX=.linux
 	@ $(MAKE) __tests TARGET=linux TESTSUFFIX=.linux
 
 clean:
+	@ $(MAKE) -f serial.mak clean
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) clean $(NL) )
 
 distclean: clean
