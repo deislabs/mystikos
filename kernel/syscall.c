@@ -3692,7 +3692,7 @@ static long _SYS_mmap(long n, long params[6], const myst_process_t* process)
     {
         ret = -ENOMEM;
     }
-    else if (ret > 0)
+    else if (ret > 0 && !myst_is_posix_shm_request(fd, flags))
     {
         pid_t pid = myst_getpid();
         void* ptr = (void*)ret;
