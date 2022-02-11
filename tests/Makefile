@@ -1,8 +1,15 @@
 TOP=$(abspath ..)
 include $(TOP)/defs.mak
 
-DIRS =
+SERIAL_DIRS =
 
+MYST_NIGHTLY_TEST=1
+
+ifdef MYST_NIGHTLY_TEST
+SERIAL_DIRS += cpython-tests
+endif
+
+DIRS =
 DIRS += fork
 DIRS += vfork
 DIRS += myst
@@ -96,7 +103,6 @@ endif
 
 ifndef MYST_ENABLE_GCOV
 ifdef MYST_NIGHTLY_TEST
-DIRS += cpython-tests
 DIRS += sockperf
 endif
 DIRS += clock
@@ -140,12 +146,27 @@ endif
 
 DIRS += appenv
 
+DIRS = getcwd
+
+ifdef SERIAL_DIRS
+.PHONY: $(SERIAL_DIRS)
+endif
+
 .PHONY: $(DIRS)
 
-dirs: $(DIRS)
+dirs:
+ifdef SERIAL_DIRS
+	$(MAKE) $(SERIAL_DIRS)
+endif
+	$(MAKE) $(DIRS)
 
 $(DIRS):
 	$(MAKE) -C $@
+
+ifdef SERIAL_DIRS
+$(SERIAL_DIRS):
+	$(MAKE) -C $@
+endif
 
 ifdef MYST_DO_CLEANUP
 remove_appdir = rm -rf $(1)/appdir
@@ -156,12 +177,26 @@ endif
 __tests:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) tests; $(call remove_appdir,$(i)) $(NL) )
 
+ifdef SERIAL_DIRS
+__serial_teststests:
+	@ $(foreach i, $(SERIAL_DIRS), $(MAKE) -C $(i) tests; $(call remove_appdir,$(i)) $(NL) )
+endif
+
 tests:
 	@ sudo rm -rf $(TESTDIR)
+ifdef SERIAL_DIRS
+	@ $(MAKE) __serial_teststests TARGET=sgx TESTSUFFIX=.sgx
+endif
 	@ $(MAKE) __tests TARGET=sgx TESTSUFFIX=.sgx
+ifdef SERIAL_DIRS
+	@ $(MAKE) __serial_teststests TARGET=linux TESTSUFFIX=.linux
+endif
 	@ $(MAKE) __tests TARGET=linux TESTSUFFIX=.linux
 
 clean:
+ifdef SERIAL_DIRS
+	@ $(foreach i, $(SERIAL_DIRS), $(MAKE) -C $(i) clean $(NL) )
+endif
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) clean $(NL) )
 
 distclean: clean
