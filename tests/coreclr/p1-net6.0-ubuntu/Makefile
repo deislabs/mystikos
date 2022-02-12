@@ -93,7 +93,7 @@ run:
 	$(TEST_RUNNER) $(MYST_EXEC) config_1g.json 300 ext2 pr1-icelake-1g-passed 100 4; \
 	$(TEST_RUNNER) $(MYST_EXEC) config_8g.json 2400 ext2 pr1-icelake-8g-passed 100 1; \
 	fi
-	$(STAT) pr1-only-tests 90
+	$(STAT) pr1-only-tests 96
 
 package.pem:
 	openssl genrsa -out package.pem -3 3072
