@@ -46,7 +46,7 @@ run:
 	$(TEST_RUNNER) $(MYST_EXEC) config_1g.json 180 ext2 pr0-long
 	$(TEST_RUNNER) $(MYST_EXEC) config_1g.json 360 ext2 pr0-long++
 	$(TEST_RUNNER) $(MYST_EXEC) config_3g.json 480 ext2 pr0-3g-long++
-	$(STAT) pr0-tests-all 97
+	$(STAT) pr0-tests-all 99
 
 package.pem:
 	openssl genrsa -out package.pem -3 3072

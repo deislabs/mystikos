@@ -33,7 +33,7 @@ ifndef MYST_SKIP_PR_TEST
 	$(TEST_RUNNER) $(MYST_EXEC) config_4g.json 60 ext2 pr0-large-memory
 	$(TEST_RUNNER) $(MYST_EXEC) config_1g.json 300 ext2 pr0-long-time
 endif
-	$(STAT) pr0-tests-all 95
+	$(STAT) pr0-tests-all 98
 
 clean:
 	sudo rm -fr appdir ext2fs roothash PASSED FAILED-*
