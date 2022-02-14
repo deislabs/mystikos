@@ -88,6 +88,7 @@ DELETE_OUTPUT=${DELETE_OUTPUT:-false}
 OUTPUT_FORMAT=${OUTPUT_FORMAT:-dir}
 TEMP_IMAGE_IIDFILE=$(mktemp /tmp/myst.XXXXXX)
 NETWORK_NAME=$(basename ${PWD})-$(head /dev/urandom | tr -dc 'a-z0-9' | head -c 10)
+DOCKER_RETRIES=3
 
 ### end defaults
 
@@ -136,6 +137,49 @@ if $QUIET; then
     DOCKER_BUILD_MODE="--quiet";
 fi
 
+# Retry removing Docker network
+docker_network_remove()
+{
+    i=0
+    until [[ $i -ge $DOCKER_RETRIES ]]
+    do
+        # Try to remove docker network
+        if (docker network remove $NETWORK_NAME)
+        then
+            rmerrexit=$?
+            break
+        else
+            rmerrexit=$?
+            i=$((i+1))
+        fi
+        # Handle failed removal
+        if [[ $rmerrexit -ne 0 ]] && [[ $i -ge $DOCKER_RETRIES ]]
+        then
+            # Exit with error
+            echo "Failed to remove Docker network $NETWORK_NAME"
+            if (docker network ls | grep $NETWORK_NAME)
+            then
+                # Print out network information for debugging
+                docker network inspect $NETWORK_NAME
+            fi
+            exit $rmerrexit
+        else
+            # Attempt to resolve and retry removal
+            if (docker network ls | grep $NETWORK_NAME >> /dev/null)
+            then
+                # Force disconnect any containers still attached to network
+                for CONTAINER in $(docker network inspect --format '{{range $k, $v := .Containers}}{{print $k}}{{end}}' $NETWORK_NAME)
+                do
+                    echo "Force removing $CONTAINER from $NETWORK_NAME"
+                    docker network disconnect -f $NETWORK_NAME $CONTAINER;
+                done;
+            fi
+            echo "Docker network retry $i: sleeping $i seconds..."
+            sleep $i
+        fi
+    done
+}
+
 # Download the docker image from dockerhub, or build it locally from a docker file.
 get_image()
 {   
@@ -148,7 +192,7 @@ get_image()
         # to be changed to include more ip addresses.
         docker network create $NETWORK_NAME
         docker build $DOCKER_BUILD_MODE --iidfile $TEMP_IMAGE_IIDFILE -f $DOCKER_FILE --network $NETWORK_NAME $EXTRA_ARGS .
-        docker network remove $NETWORK_NAME
+        docker_network_remove
         if [ ! -f "$TEMP_IMAGE_IIDFILE" ]; then
             echo "failed to build from Docker Image file $TEMP_IMAGE_IIDFILE";
             exit 1
