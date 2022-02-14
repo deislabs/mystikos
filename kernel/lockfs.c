@@ -607,7 +607,11 @@ done:
     return ret;
 }
 
-static int _fs_file_data_ptr(myst_fs_t* fs, myst_file_t* file, void** addr_out)
+static int _fs_file_data_ptr(
+    myst_fs_t* fs,
+    myst_file_t* file,
+    void** object_out,
+    void** addr_out)
 {
     int ret = 0;
     lockfs_t* lockfs = (lockfs_t*)fs;
@@ -618,7 +622,8 @@ static int _fs_file_data_ptr(myst_fs_t* fs, myst_file_t* file, void** addr_out)
 
     myst_mutex_lock(&lockfs->lock);
     _install_sig_handler(&sig_handler, &lockfs->lock);
-    ret = (*lockfs->fs->fs_file_data_ptr)(lockfs->fs, file, addr_out);
+    ret =
+        (*lockfs->fs->fs_file_data_ptr)(lockfs->fs, file, object_out, addr_out);
     _uninstall_sig_handler(&sig_handler);
     myst_mutex_unlock(&lockfs->lock);
 
@@ -626,6 +631,23 @@ done:
     return ret;
 }
 
+static int _fs_file_mapping_notify(myst_fs_t* fs, void* object, bool active)
+{
+    int ret = 0;
+    lockfs_t* lockfs = (lockfs_t*)fs;
+    lockfs_sighandler_t sig_handler;
+
+    if (!_lockfs_valid(lockfs))
+        ERAISE(-EINVAL);
+
+    myst_mutex_lock(&lockfs->lock);
+    _install_sig_handler(&sig_handler, &lockfs->lock);
+    ret = (*lockfs->fs->fs_file_mapping_notify)(lockfs->fs, object, active);
+    _uninstall_sig_handler(&sig_handler);
+    myst_mutex_unlock(&lockfs->lock);
+done:
+    return ret;
+}
 int myst_lockfs_init(myst_fs_t* fs, myst_fs_t** lockfs_out)
 {
     int ret = 0;
@@ -688,6 +710,7 @@ int myst_lockfs_init(myst_fs_t* fs, myst_fs_t** lockfs_out)
         .fs_fsync = _fs_fsync,
         .fs_release_tree = _fs_release_tree,
         .fs_file_data_ptr = _fs_file_data_ptr,
+        .fs_file_mapping_notify = _fs_file_mapping_notify,
     };
 
     if (lockfs_out)

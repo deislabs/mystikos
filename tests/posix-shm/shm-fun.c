@@ -17,8 +17,7 @@
 
 static void printUsage()
 {
-    printf("Usage: OPERATION [SHM-NAME]\n");
-    printf("OPERATION: create|read|write|unlink \n");
+    printf("Usage: TEST [SHM-NAME]\n");
 }
 
 int main(int argc, char* argv[])
@@ -35,7 +34,7 @@ int main(int argc, char* argv[])
         shm_name = argv[2];
     }
 
-    if (strcmp(argv[1], "create") == 0)
+    if (strcmp(argv[1], "basic") == 0)
     {
         int fd =
             shm_open(shm_name, O_CREAT | O_EXCL | O_RDWR, (S_IRUSR | S_IWUSR));
@@ -52,6 +51,19 @@ int main(int argc, char* argv[])
         strcpy(addr, "hellowrld");
         printf("mem after copy: %s\n", addr);
         assert(!strcmp(addr, "hellowrld"));
+
+        {
+            struct stat statbuf;
+            assert(!fstat(fd, &statbuf));
+            printf("statbuf dev %ld\n", statbuf.st_dev);
+            printf("statbuf rdev %ld\n", statbuf.st_rdev);
+            printf("statbuf size %ld\n", statbuf.st_size);
+            // Different on WSL - 9 and Linux - 26
+            // assert(statbuf.st_dev == 9);
+            assert(statbuf.st_size == SHM_SIZE);
+        }
+
+        assert(shm_unlink(shm_name) != -1);
     }
     else if (strcmp(argv[1], "empty-file") == 0)
     {
@@ -63,10 +75,6 @@ int main(int argc, char* argv[])
             mmap(0, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
         printf("addr=%p errno=%d\n", addr, errno);
         assert(addr == MAP_FAILED && errno == ENOEXEC);
-    }
-    else if (strcmp(argv[1], "unlink") == 0)
-    {
-        assert(shm_unlink(shm_name) != -1);
     }
     else if (strcmp(argv[1], "write") == 0)
     {
@@ -80,6 +88,9 @@ int main(int argc, char* argv[])
         printf("addr=%p contents before write=%s\n", addr, addr);
         strcpy(addr, "wrldhello");
         printf("addr=%p contents after write=%s\n", addr, addr);
+
+        munmap(addr, SHM_SIZE);
+        shm_unlink(shm_name);
     }
     else if (strcmp(argv[1], "share") == 0)
     {
@@ -93,85 +104,83 @@ int main(int argc, char* argv[])
             addr = mmap(0, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
             assert(addr != MAP_FAILED);
 
+            close(fd);
+
             printf("addr=%p contents before fork=%s\n", addr, addr);
+            assert(!strcmp(addr, "")); // assert zero-filled-memory
         }
 
         pid_t pid = fork();
         assert(pid != -1);
 
-        if (pid)
-        {
-            waitpid(pid, NULL, 0);
-            printf("addr=%p contents after fork=%s\n", addr, addr);
-            exit(0);
-        }
-        else if (pid == 0)
+        if (pid == 0) // child execve's self and writes to shared memory
         {
             char buf[PATH_MAX];
             readlink("/proc/self/exe", buf, PATH_MAX);
-            printf("%s %ld\n", buf, strlen(buf));
             char* argVec[] = {buf, "write", 0};
             char* envVec[] = {0};
             execve(buf, argVec, envVec);
         }
-
-        /*
-        This test implies, syncing of memory region
-        */
-    }
-    else if (strcmp(argv[1], "share2") == 0)
-    {
-        char* addr;
-        {
-            int fd = shm_open(shm_name, O_RDWR, 0);
-            assert(fd >= 0);
-
-            addr = mmap(0, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-            assert(addr != MAP_FAILED);
-
-            printf("addr=%p contents before fork=%s\n", addr, addr);
-            strcpy(addr, "wrldhello");
-            printf(
-                "addr=%p contents before fork + after write =%s\n", addr, addr);
-        }
-
-        pid_t pid = fork();
-        assert(pid != -1);
-
-        if (pid)
+        else // parent waits on child and then verifies write
         {
             waitpid(pid, NULL, 0);
             printf("addr=%p contents after fork=%s\n", addr, addr);
+            assert(!strcmp(addr, "wrldhello"));
             exit(0);
         }
-        else if (pid == 0)
-        {
-            char* argVec[] = {"shm-fun", "read", "a", 0};
-            char* envVec[] = {0};
-            execve("./shm-fun", argVec, envVec);
-        }
-
-        /*
-        This test implies, syncing of memory region happens even without munmap
-        */
     }
-    else if (strcmp(argv[1], "fstat") == 0)
+    else if (strcmp(argv[1], "resize-file") == 0)
     {
         int fd = shm_open(shm_name, O_CREAT | O_RDWR, (S_IRUSR | S_IWUSR));
         assert(fd >= 0);
+
         assert(ftruncate(fd, SHM_SIZE) != -1);
 
-        struct stat statbuf;
-        assert(!fstat(fd, &statbuf));
-        printf("statbuf dev %ld\n", statbuf.st_dev);
-        printf("statbuf rdev %ld\n", statbuf.st_rdev);
-        printf("statbuf size %ld\n", statbuf.st_size);
-        // Different on WSL - 9 and Linux - 26
-        // assert(statbuf.st_dev == 9);
-        assert(statbuf.st_size == SHM_SIZE);
+        char* addr =
+            mmap(0, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+
+        {
+            int ret = ftruncate(fd, 0);
+            printf("ftruncate ret=%d errno=%d\n", ret, errno);
+            // printf("mem after ftruncate: %s\n", addr);
+            for (int i = 0; i < 150; i++)
+                write(fd, "hellowrldhellowrldhellowrldddd", 30);
+            printf("len of string after write =%ld\n", strlen(addr));
+            {
+                struct stat statbuf;
+                assert(!fstat(fd, &statbuf));
+                printf("statbuf size %ld\n", statbuf.st_size);
+            }
+        }
+
+        assert(shm_unlink(shm_name) != -1);
+    }
+    else if (strcmp(argv[1], "resize-memory") == 0)
+    {
+        int fd = shm_open(shm_name, O_CREAT | O_RDWR, (S_IRUSR | S_IWUSR));
+        assert(fd >= 0);
+
+        assert(ftruncate(fd, SHM_SIZE) != -1);
+
+        char* addr =
+            mmap(0, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+
+        {
+            char* new_addr = mremap(addr, SHM_SIZE, 8192, 0);
+            // for (int i = 0; i < 150 ; i++)
+            //     write(fd, "hellowrldhellowrldhellowrldddd", 30);
+            // printf("len of string after write =%ld\n", strlen(addr));
+            {
+                struct stat statbuf;
+                assert(!fstat(fd, &statbuf));
+                printf("statbuf size %ld\n", statbuf.st_size);
+            }
+        }
+
+        assert(shm_unlink(shm_name) != -1);
     }
     else
     {
-        printf("Unsupported operation arg: %s\n", argv[1]);
+        printf("Unsupported test arg: %s\n", argv[1]);
     }
 }

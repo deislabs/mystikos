@@ -37,7 +37,7 @@ OPTS+= --host-to-enc-uid-map 0:0,1:1,2:2,65534:65534,100700:700,100702:702,10070
 OPTS+= --host-to-enc-gid-map 0:0,1:1,2:2,65534:65534,100701:701,100704:704,100705:705,1001000:1000
 endif
 
-TESTS=$(shell grep -v "^\#" $(FS)_tests_passed.txt)
+TESTS=$(shell grep -v "^\#" shm-tests)
 
 # remove gcov exception tests when running code coverage
 ifdef MYST_ENABLE_GCOV

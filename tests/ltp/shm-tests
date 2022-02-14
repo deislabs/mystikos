@@ -1,0 +1,39 @@
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_1-1.run-test
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_11-1.run-test
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_13-1.run-test
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_14-2.run-test
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_15-1.run-test
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_16-1.run-test
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_17-1.run-test
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_18-1.run-test
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_20-1.run-test
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_20-2.run-test
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_20-3.run-test
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_21-1.run-test
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_22-1.run-test
+#/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_23-1.run-test // creates 1k procs!
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_25-1.run-test
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_26-1.run-test
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_26-2.run-test
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_28-1.run-test
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_28-2.run-test
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_28-3.run-test
+#/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_32-1.run-test // runs as different user
+#/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_34-1.run-test // same
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_37-1.run-test
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_38-1.run-test
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_39-1.run-test
+#/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_39-2.run-test // ENAMETOOLONG not supported
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_41-1.run-test
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_5-1.run-test
+#/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_8-1.run-test // tests property not mentioned by Unix file API - that fd for two successive open's will be successive.
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_1-1.run-test
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_10-1.run-test
+#/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_10-2.run-test  // ENAMETOOLONG not supported
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_11-1.run-test
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_2-1.run-test
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_3-1.run-test
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_5-1.run-test
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_6-1.run-test
+#/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_8-1.run-test // multi-user support issue
+#/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_9-1.run-test

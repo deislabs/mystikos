@@ -427,3 +427,26 @@ done:
 
     return ret;
 }
+
+bool myst_buf_has_active_mmap(myst_buf_t* buf)
+{
+    assert(buf);
+    return buf->flags & MYST_BUF_ACTIVE_MAPPING;
+}
+
+int myst_buf_set_mmap_active(myst_buf_t* buf, bool active)
+{
+    int ret = -1;
+
+    if (!buf)
+        goto done;
+
+    buf->flags = buf->flags & ~MYST_BUF_ACTIVE_MAPPING;
+    if (active)
+        buf->flags = buf->flags | MYST_BUF_ACTIVE_MAPPING;
+
+    ret = 0;
+
+done:
+    return ret;
+}
