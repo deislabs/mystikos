@@ -15,7 +15,6 @@
 #include <myst/fdtable.h>
 #include <myst/file.h>
 #include <myst/kernel.h>
-#include <myst/list.h>
 #include <myst/malloc.h>
 #include <myst/mman.h>
 #include <myst/mmanutils.h>
@@ -51,64 +50,6 @@ typedef struct vectors
     uint32_t* pids;
     size_t pids_count;
 } vectors_t;
-
-typedef struct proc_and_fd
-{
-    myst_list_node_t base;
-    pid_t pid;
-    int fd;
-} proc_and_fd_t;
-
-typedef struct shared_mapping
-{
-    myst_list_node_t base;
-    char path[PATH_MAX];
-    off_t offset;
-    void* addr;
-    size_t length;
-    int nusers;
-    myst_list_t sharers;
-} shared_mapping_t;
-
-static myst_list_t _shared_mappings;
-static myst_spinlock_t _shared_mappings_lock;
-
-static void _dump_shared_mappings(char* msg)
-{
-    if (msg)
-        printf("\n%s\n", msg);
-
-    myst_spin_lock(&_shared_mappings_lock);
-    shared_mapping_t* sm = (shared_mapping_t*)_shared_mappings.head;
-    if (sm)
-    {
-        printf("POSIX Shared memory mappings: \n");
-        printf("==================================== \n");
-    }
-    else
-    {
-        printf("No POSIX shared mappings.\n");
-    }
-    while (sm)
-    {
-        printf(
-            "addr=%p length=%ld nusers=%d\n", sm->addr, sm->length, sm->nusers);
-        printf("sharer pids: [ ");
-        {
-            proc_and_fd_t* pfd = (proc_and_fd_t*)sm->sharers.head;
-            while (pfd)
-            {
-                printf("%d ", pfd->pid);
-                pfd = (proc_and_fd_t*)pfd->base.next;
-            }
-            printf("]\n");
-        }
-
-        sm = (shared_mapping_t*)sm->base.next;
-        printf("==================================== \n\n");
-    }
-    myst_spin_unlock(&_shared_mappings_lock);
-}
 
 MYST_INLINE void _rlock(bool* locked)
 {
@@ -150,31 +91,6 @@ static int _fd_to_pathname(int fd, char pathname[PATH_MAX])
 
 done:
     return ret;
-}
-
-static int _fd_to_file_data_ptr(int fd, void** addr_out)
-{
-    int ret = 0;
-    myst_fdtable_t* fdtable = myst_fdtable_current();
-    myst_fs_t* fs;
-    myst_file_t* file;
-
-    ECHECK(myst_fdtable_get_file(fdtable, fd, &fs, &file));
-    ECHECK((*fs->fs_file_data_ptr)(fs, file, addr_out));
-
-done:
-    return ret;
-}
-
-bool myst_is_posix_shm_request(int fd, int flags)
-{
-    if (fd >= 0 && (flags & MAP_SHARED))
-    {
-        struct stat buf;
-        if (myst_syscall_fstat(fd, &buf) == 0 && buf.st_dev == 9)
-            return true;
-    }
-    return false;
 }
 
 int myst_setup_mman(void* data, size_t size)
@@ -513,7 +429,14 @@ long myst_mmap(
             ERAISE(-EACCES);
     }
 
-    if (fd >= 0 && addr)
+    /* Check if posix shm file */
+    /* addr hint is not allowed for POSIX shm memory */
+    if (fd >= 0 && !addr && myst_is_posix_shm_request(fd, flags))
+    {
+        ECHECK((
+            ret = myst_posix_shm_handle_mmap(fd, addr, length, offset, flags)));
+    }
+    else if (fd >= 0 && addr)
     {
         // ATTN: call mmap or mremap here so that this range refers to
         // a mapped region.
@@ -533,78 +456,6 @@ long myst_mmap(
     }
     else
     {
-        /* Check if posix shm file */
-        /* addr hint is not allowed for POSIX shm memory */
-        if (myst_is_posix_shm_request(fd, flags) && !addr)
-        {
-            _dump_shared_mappings("in mmap entry");
-            // get underlying file buffer pointer
-            void* file_addr;
-            ECHECK(_fd_to_file_data_ptr(fd, &file_addr));
-
-            // get or create shared mapping
-            myst_spin_lock(&_shared_mappings_lock);
-            shared_mapping_t* sm = (shared_mapping_t*)_shared_mappings.head;
-            // Check for existing mapping
-            while (sm)
-            {
-                // TODO: Handle different offset or length
-                if (sm->addr == file_addr && offset == sm->offset &&
-                    length == sm->length)
-                {
-                    // TODO: don't increment if process already mmaped this
-                    sm->nusers++;
-                    {
-                        proc_and_fd_t* pfd;
-                        if (!(pfd = calloc(1, sizeof(proc_and_fd_t))))
-                        {
-                            myst_spin_unlock(&_shared_mappings_lock);
-                            ERAISE(-ENOMEM);
-                        }
-                        pfd->pid = myst_process_self()->pid;
-                        myst_list_append(&sm->sharers, &pfd->base);
-                    }
-
-                    myst_spin_unlock(&_shared_mappings_lock);
-                    _dump_shared_mappings("in mmap exit");
-                    return (long)sm->addr;
-                }
-
-                sm = (shared_mapping_t*)sm->base.next;
-            }
-
-            // Create a new shared mapping
-            {
-                shared_mapping_t* new_sm;
-                if (!(new_sm = calloc(1, sizeof(shared_mapping_t))))
-                {
-                    myst_spin_unlock(&_shared_mappings_lock);
-                    ERAISE(-ENOMEM);
-                }
-                new_sm->addr = file_addr;
-                new_sm->offset = offset;
-                new_sm->length = length;
-                new_sm->nusers = 1;
-
-                {
-                    proc_and_fd_t* pfd;
-                    if (!(pfd = calloc(1, sizeof(proc_and_fd_t))))
-                    {
-                        free(new_sm);
-                        myst_spin_unlock(&_shared_mappings_lock);
-                        ERAISE(-ENOMEM);
-                    }
-                    pfd->pid = myst_process_self()->pid;
-                    myst_list_append(&new_sm->sharers, &pfd->base);
-                }
-                myst_list_append(&_shared_mappings, &new_sm->base);
-            }
-
-            myst_spin_unlock(&_shared_mappings_lock);
-            _dump_shared_mappings("in mmap exit");
-            return (long)file_addr;
-        }
-
         int tflags = 0;
 
         if (flags & MYST_MAP_FIXED)
@@ -665,6 +516,12 @@ void* myst_mremap(
     if (new_address)
         return (void*)-EINVAL;
 
+    /* POSIX shm doesn't support mremap yet */
+    if (myst_is_address_within_shmem(old_address, old_size))
+    {
+        return (void*)-EINVAL;
+    }
+
     r = myst_mman_mremap(&_mman, old_address, old_size, new_size, flags, &p);
 
     if (r != 0)
@@ -681,14 +538,26 @@ int myst_mprotect(const void* addr, const size_t len, const int prot)
     /* check for invalid PROT bits */
     if (prot & (~MYST_PROT_MPROTECT_MASK))
         return -EINVAL;
+
     /* PROT cannot have both PROT_GROWSDOWN and MYST_PROT_GROWSUP bits set */
     if ((prot & MYST_PROT_GROWSDOWN) && (prot & MYST_PROT_GROWSUP))
         return -EINVAL;
 
-    /* Current implementation for mprotect ignore bits beyond
-       PROT_READ|PROT_WRITE|PROT_EXEC
-    */
-    return (myst_mman_mprotect(&_mman, (void*)addr, len, prot));
+    /* Protection bits are per-process. As we are single process on the host,
+     * supporting mprotect for memory shared between two process threads becomes
+     * tricky. For now, we bail out and treat mprotect as a NOP.
+     * */
+    if (myst_is_address_within_shmem(addr, len))
+    {
+        return 0;
+    }
+    else
+    {
+        /* Current implementation for mprotect ignore bits beyond
+            PROT_READ|PROT_WRITE|PROT_EXEC
+        */
+        return (myst_mman_mprotect(&_mman, (void*)addr, len, prot));
+    }
 }
 
 typedef struct fdlist
@@ -823,6 +692,14 @@ int myst_munmap(void* addr, size_t length)
     int ret = 0;
     fdlist_t* head = NULL;
 
+    /* Check if unmapping POSIX shared memory */
+    {
+        bool is_posix_shm;
+        ECHECK(myst_posix_shm_handle_munmap(addr, length, &is_posix_shm));
+        if (is_posix_shm)
+            goto done;
+    }
+
     ECHECK(__myst_munmap(addr, length, &head));
 
     // close file handles outside of mman lock
@@ -864,6 +741,10 @@ int myst_release_process_mappings(pid_t pid)
     if (pid <= 0)
         ERAISE(-EINVAL);
 
+    /* Release posix shared memory mappings for this process */
+    myst_posix_shm_handle_release_mappings(pid);
+
+    /* Scan entire pids vector range for process-owned memory */
     {
         uint8_t* addr = (uint8_t*)_mman.map;
         size_t length = ((uint8_t*)_mman.end) - addr;

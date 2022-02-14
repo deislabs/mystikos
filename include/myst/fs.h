@@ -7,6 +7,7 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <stdbool.h>
 #include <sys/stat.h>
 #include <sys/statfs.h>
 #include <sys/types.h>
@@ -188,7 +189,13 @@ struct myst_fs
     /* Recursively remove directory tree pointed at by pathname */
     int (*fs_release_tree)(myst_fs_t* fs, const char* pathname);
 
-    int (*fs_file_data_ptr)(myst_fs_t* fs, myst_file_t* file, void** addr_out);
+    int (*fs_file_data_ptr)(
+        myst_fs_t* fs,
+        myst_file_t* file,
+        void** object_out,
+        void** addr_out);
+
+    int (*fs_file_mapping_notify)(myst_fs_t* fs, void* object, bool active);
 };
 
 int myst_add_fd_link(myst_fs_t* fs, myst_file_t* file, int fd);

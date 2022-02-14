@@ -12,6 +12,8 @@
 // clang-format on
 
 #define MYST_BUF_PAGE_ALIGNED 1
+#define MYST_BUF_ACTIVE_MAPPING 2
+
 typedef struct myst_buf
 {
     uint8_t* data;
@@ -53,5 +55,9 @@ int myst_buf_unpack_strings(
     myst_buf_t* buf,
     const char*** strings,
     size_t* count);
+
+bool myst_buf_has_active_mmap(myst_buf_t* buf);
+
+int myst_buf_set_mmap_active(myst_buf_t* buf, bool active);
 
 #endif /* _MYST_BUF_H */
