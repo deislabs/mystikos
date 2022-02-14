@@ -20,12 +20,12 @@ rootfs: shm-fun.c
 
 tests:
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/shm-fun empty-file
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/shm-fun create
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/shm-fun fstat
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/shm-fun basic
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/shm-fun share
 
-OP=create
+TEST=basic
 one:
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/shm-fun $(OP)
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/shm-fun $(TEST)
 
 gdb:
 	$(MYST_GDB) --args $(MYST_EXEC) rootfs /bin/shm-fun $(OPTS)
@@ -35,3 +35,6 @@ myst:
 
 clean:
 	rm -rf $(APPDIR) rootfs export ramfs
+
+native:
+	gcc -o shm-fun -g shm-fun.c -lrt

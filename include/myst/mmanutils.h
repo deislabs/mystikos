@@ -96,4 +96,18 @@ void myst_mman_lock(void);
 void myst_mman_unlock(void);
 
 bool myst_is_posix_shm_request(int fd, int flags);
+
+bool myst_is_address_within_shmem(const void* addr, const size_t len);
+
+long myst_posix_shm_handle_mmap(
+    int fd,
+    void* addr,
+    size_t length,
+    off_t offset,
+    int flags);
+
+int myst_posix_shm_handle_munmap(void* addr, size_t length, bool* is_posix_shm);
+
+int myst_posix_shm_handle_release_mappings(pid_t pid);
+
 #endif /* _MYST_MMANUTILS_H */

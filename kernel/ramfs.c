@@ -1372,35 +1372,38 @@ static int _fs_close(myst_fs_t* fs, myst_file_t* file)
 {
     int ret = 0;
     ramfs_t* ramfs = (ramfs_t*)fs;
+    inode_t* inode;
 
     if (!_ramfs_valid(ramfs) || !_file_valid(file))
         ERAISE(-EINVAL);
 
     assert(file->shared->inode);
-    assert(_inode_valid(file->shared->inode));
-    assert(file->shared->inode->nopens > 0);
+    assert(_inode_valid((inode = file->shared->inode)));
+    assert(inode->nopens > 0);
 
     if (--file->shared->use_count == 0)
     {
         /* If a virtual file has a close-callback, call it */
-        if (file->shared->inode->v_cb.close_cb)
-            file->shared->inode->v_cb.close_cb(file);
+        if (inode->v_cb.close_cb)
+            inode->v_cb.close_cb(file);
 
         /* For open-time virtual files, release the virtual file
         data on close */
-        if (file->shared->inode->v_cb.open_cb)
+        if (inode->v_cb.open_cb)
             myst_buf_release(&file->shared->vbuf);
 
-        file->shared->inode->nopens--;
+        inode->nopens--;
 
+        bool active_mmaps =
+            (ramfs->device_num == 9 && myst_buf_has_active_mmap(&inode->buf));
         /* handle case where file was deleted while open */
-        if (file->shared->inode->nopens == 0 && file->shared->inode->nlink == 0)
+        if (!active_mmaps && inode->nlink == 0 && inode->nopens == 0)
         {
-            _inode_free(ramfs, file->shared->inode);
+            _inode_free(ramfs, inode);
         }
         else
         {
-            _update_timestamps(file->shared->inode, ACCESS);
+            _update_timestamps(inode, ACCESS);
         }
 
         memset(file->shared, 0xdd, sizeof(myst_file_t));
@@ -1733,7 +1736,11 @@ static int _fs_unlink(myst_fs_t* fs, const char* pathname)
     // Delete the inode immediately if it's a symbolic link
     // or nobody owned. The deletion is delayed to _fs_close
     // if file is still linked or opened by someone.
-    if (S_ISLNK(inode->mode) || (inode->nlink == 0 && inode->nopens == 0))
+    // For shm files, cleanup also needs to wait for existing mappings related
+    // to the file to be unmapped.
+    if (S_ISLNK(inode->mode) ||
+        (!(ramfs->device_num == 9 && myst_buf_has_active_mmap(&inode->buf)) &&
+         inode->nlink == 0 && inode->nopens == 0))
     {
         _inode_free(ramfs, inode);
     }
@@ -1910,6 +1917,7 @@ static int _fs_ftruncate(myst_fs_t* fs, myst_file_t* file, off_t length)
 {
     int ret = 0;
     ramfs_t* ramfs = (ramfs_t*)fs;
+    uint32_t access;
 
     if (!_ramfs_valid(ramfs) || !_file_valid(file) || length < 0)
         ERAISE(-EINVAL);
@@ -1917,8 +1925,12 @@ static int _fs_ftruncate(myst_fs_t* fs, myst_file_t* file, off_t length)
     if (S_ISDIR(file->shared->inode->mode))
         ERAISE(-EISDIR);
 
-    if (file->shared->access == O_PATH)
+    access = file->shared->access;
+    if (access == O_PATH)
         ERAISE(-EBADF);
+
+    if (!((access & O_RDWR) || (access & O_WRONLY)))
+        ERAISE(-EINVAL);
 
     /* truncate does not apply to virtual files */
     if (_is_virtual_inode(file->shared->inode))
@@ -2879,7 +2891,11 @@ done:
     return ret;
 }
 
-static int _fs_file_data_ptr(myst_fs_t* fs, myst_file_t* file, void** addr_out)
+static int _fs_file_data_ptr(
+    myst_fs_t* fs,
+    myst_file_t* file,
+    void** object_out,
+    void** addr_out)
 {
     int ret = 0;
     ramfs_t* ramfs = (ramfs_t*)fs;
@@ -2889,8 +2905,11 @@ static int _fs_file_data_ptr(myst_fs_t* fs, myst_file_t* file, void** addr_out)
 
     if (ramfs->device_num == 9)
     {
+        /* memory for shm files are allocated on first ftruncate.
+        Fail if process mmap's before that */
         if (!(*addr_out = file->shared->inode->buf.data))
             ERAISE(-ENOEXEC);
+        *object_out = file->shared->inode;
     }
     else
     {
@@ -2900,6 +2919,40 @@ static int _fs_file_data_ptr(myst_fs_t* fs, myst_file_t* file, void** addr_out)
 done:
     return ret;
 }
+
+static int _fs_file_mapping_notify(myst_fs_t* fs, void* object, bool active)
+{
+    int ret = 0;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+
+    if (!_ramfs_valid(ramfs))
+        ERAISE(-EINVAL);
+
+    if (ramfs->device_num == 9)
+    {
+        inode_t* inode;
+
+        if (!object || !_inode_valid((inode = (inode_t*)object)))
+            ERAISE(-EINVAL);
+
+        ECHECK(myst_buf_set_mmap_active(&inode->buf, active));
+
+        // Cleanup only if there are no active mmaps,
+        // inode has been unlinked, and no file handles
+        if (!active && !inode->nlink && !inode->nopens)
+        {
+            _inode_free(ramfs, inode);
+        }
+    }
+    else
+    {
+        ERAISE(-ENOTSUP);
+    }
+
+done:
+    return ret;
+}
+
 static int _init_ramfs(
     myst_mount_resolve_callback_t resolve_cb,
     myst_fs_t** fs_out,
@@ -2967,6 +3020,7 @@ static int _init_ramfs(
         .fs_fsync = _fs_fsync_and_fdatasync,
         .fs_release_tree = _fs_release_tree,
         .fs_file_data_ptr = _fs_file_data_ptr,
+        .fs_file_mapping_notify = _fs_file_mapping_notify,
     };
     // clang-format on
     inode_t* root_inode = NULL;
