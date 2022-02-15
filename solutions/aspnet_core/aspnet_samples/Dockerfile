@@ -34,6 +34,9 @@ COPY ./appsettings.json /built/dotnet-podcasts
 # Extract built apps
 FROM mcr.microsoft.com/dotnet/aspnet:6.0
 
+# See https://github.com/dotnet/SqlClient/issues/633#issuecomment-654448189
+RUN sed -i 's/CipherString = DEFAULT@SECLEVEL=2/CipherString = DEFAULT@SECLEVEL=1/' /etc/ssl/openssl.cnf
+
 COPY --from=BUILDER /built /built
 
 # ENTRYPOINT [ "dotnet", "/built/FlightFinder/FlightFinder.Server.dll" ]
