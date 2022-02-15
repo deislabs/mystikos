@@ -9,4 +9,3 @@
 /usr/local/lib/python3.9/site-packages/pandas/tests/io/test_date_converters.py
 /usr/local/lib/python3.9/site-packages/pandas/tests/io/test_compression.py
 /usr/local/lib/python3.9/site-packages/pandas/tests/internals/test_managers.py
-
