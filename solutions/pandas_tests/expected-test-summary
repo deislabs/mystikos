@@ -1,7 +1,7 @@
 =========================== short test summary info ============================
-FAILED ../usr/local/lib/python3.9/site-packages/pandas/tests/io/test_clipboard.py::test_raw_roundtrip[\U0001f44d...]
-FAILED ../usr/local/lib/python3.9/site-packages/pandas/tests/io/test_clipboard.py::test_raw_roundtrip[\u03a9\u0153\u2211\xb4...]
-FAILED ../usr/local/lib/python3.9/site-packages/pandas/tests/io/test_clipboard.py::test_raw_roundtrip[abcd...]
+FAILED ../usr/local/lib/python3.9/site-packages/pandas/tests/io/test_clipboard.py::TestClipboard::test_raw_roundtrip[\U0001f44d...]
+FAILED ../usr/local/lib/python3.9/site-packages/pandas/tests/io/test_clipboard.py::TestClipboard::test_raw_roundtrip[\u03a9\u0153\u2211\xb4...]
+FAILED ../usr/local/lib/python3.9/site-packages/pandas/tests/io/test_clipboard.py::TestClipboard::test_raw_roundtrip[abcd...]
 ERROR ../usr/local/lib/python3.9/site-packages/pandas/tests/io/test_parquet.py::TestParquetPyArrow::test_s3_roundtrip_explicit_fs
 ERROR ../usr/local/lib/python3.9/site-packages/pandas/tests/io/test_parquet.py::TestParquetPyArrow::test_s3_roundtrip
 ERROR ../usr/local/lib/python3.9/site-packages/pandas/tests/io/test_parquet.py::TestParquetFastParquet::test_s3_roundtrip
