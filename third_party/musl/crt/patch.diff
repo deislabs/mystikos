@@ -1287,7 +1287,7 @@ index 1eddcbd6..d3ec0363 100644
 +	return DEFAULT_STACK_SIZE;
 +}
 diff --git a/src/thread/pthread_cancel.c b/src/thread/pthread_cancel.c
-index 2f9d5e97..e4d3d000 100644
+index 2f9d5e97..53603be6 100644
 --- a/src/thread/pthread_cancel.c
 +++ b/src/thread/pthread_cancel.c
 @@ -14,9 +14,7 @@ long __cancel()
@@ -1328,6 +1328,23 @@ index 2f9d5e97..e4d3d000 100644
  	__syscall(SYS_tkill, self->tid, SIGCANCEL);
  }
  
+@@ -92,10 +92,12 @@ int pthread_cancel(pthread_t t)
+ 		init = 1;
+ 	}
+ 	a_store(&t->cancel, 1);
+-	if (t == pthread_self()) {
+-		if (t->canceldisable == PTHREAD_CANCEL_ENABLE && t->cancelasync)
++	if (t->canceldisable == PTHREAD_CANCEL_ENABLE && t->cancelasync)
++	{	
++		if (t == pthread_self())
+ 			pthread_exit(PTHREAD_CANCELED);
+-		return 0;
++		else
++			return pthread_kill(t, SIGCANCEL);
+ 	}
+-	return pthread_kill(t, SIGCANCEL);
++	return 0;
+ }
 diff --git a/src/thread/pthread_cond_timedwait.c b/src/thread/pthread_cond_timedwait.c
 index d1501240..0b0a919d 100644
 --- a/src/thread/pthread_cond_timedwait.c
