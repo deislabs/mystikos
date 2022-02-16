@@ -73,14 +73,14 @@ wget \
   --no-verbose \
   --tries=3 \
   --waitretry=3 \
-  https://github.com/deislabs/mystikos/releases/download/v${MYSTIKOS_RELEASE_VERSION}/mystikos-${MYSTIKOS_RELEASE_VERSION}-x86_64.tar.gz
+  https://github.com/deislabs/mystikos/releases/download/v${MYSTIKOS_RELEASE_VERSION}/Ubuntu-${UBUNTU_VERSION//./}_mystikos-${MYSTIKOS_RELEASE_VERSION}-x86_64.tar.gz
 
 # Build Docker image
 set -x
 DOCKER_BUILDKIT=1 docker build \
   --build-arg UBUNTU_VERSION="${UBUNTU_VERSION}" \
   --build-arg OPENENCLAVE_BASE_IMAGE_TAG="${OPENENCLAVE_BASE_IMAGE_TAG}" \
-  --build-arg MYSTIKOS_TARBALL="mystikos-${MYSTIKOS_RELEASE_VERSION}-x86_64.tar.gz" \
+  --build-arg MYSTIKOS_TARBALL="Ubuntu-${UBUNTU_VERSION//./}_mystikos-${MYSTIKOS_RELEASE_VERSION}-x86_64.tar.gz" \
   --no-cache \
   --file "${SOURCE_DIR}/Dockerfile" \
   --tag "mystikos-${UBUNTU_CODENAME}:${IMAGE_TAG}" \
