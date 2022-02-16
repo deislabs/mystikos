@@ -58,6 +58,9 @@ DIRS += alpine/docker
 DIRS += tests
 endif
 
+# always build check directory
+DIRS += check
+
 CLEAN = $(BUILDDIR) $(TARBALL)
 
 REDEFINE_TESTS=1
@@ -216,6 +219,17 @@ tests:
 alltests:
 	$(MAKE) tests ALLTESTS=1
 
+
+##==============================================================================
+##
+## check:
+##
+##==============================================================================
+
+.PHONY: check
+
+check:
+	@ $(MAKE) -C check check
 
 ##==============================================================================
 ##
