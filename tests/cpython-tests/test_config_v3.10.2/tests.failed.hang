@@ -1,0 +1,10 @@
+test_asyncio
+test_asyncore
+test_eintr
+test_logging
+test_mmap
+test_posixpath
+test_readline
+test_socket
+test_subprocess
+test_thread

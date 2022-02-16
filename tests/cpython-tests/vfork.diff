@@ -1,0 +1,12 @@
+diff --git a/Modules/_posixsubprocess.c b/Modules/_posixsubprocess.c
+index a58159a277..e92f3f07ef 100644
+--- a/Modules/_posixsubprocess.c
++++ b/Modules/_posixsubprocess.c
+@@ -43,6 +43,7 @@
+ # include <signal.h>
+ # define VFORK_USABLE 1
+ #endif
++# define VFORK_USABLE 1
+
+ #if defined(__sun) && defined(__SVR4)
+ /* readdir64 is used to work around Solaris 9 bug 6395699. */

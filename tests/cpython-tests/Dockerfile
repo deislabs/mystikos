@@ -8,7 +8,8 @@ RUN apt update && apt install -y build-essential libssl-dev zlib1g-dev libncurse
 
 RUN git clone -b $CPYTHON_VERSION https://github.com/python/cpython
 WORKDIR /cpython
-RUN ./configure --with-pydebug && make -j -s
+COPY vfork.diff .
+RUN git apply vfork.diff --reject; ./configure --with-pydebug && make -j -s
 
 WORKDIR /
 
