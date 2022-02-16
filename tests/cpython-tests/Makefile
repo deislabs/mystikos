@@ -48,7 +48,7 @@ ext2fs3.9:mpdb.py test_config_v3.9.7/tests.passed
 	$(APPBUILDER) -o appdir3.9 -e "--build-arg CPYTHON_VERSION=v3.9.7" Dockerfile
 	$(MYST) mkext2 -f appdir3.9 ext2fs3.9
 
-appdir3.10:
+appdir3.10: mpdb.py
 	$(APPBUILDER) -o appdir3.10 -e "--build-arg CPYTHON_VERSION=v3.10.2" Dockerfile
 ext2fs3.10: appdir3.10
 	$(MYST) mkext2 -f appdir3.10 ext2fs3.10
