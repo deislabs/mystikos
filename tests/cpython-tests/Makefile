@@ -29,10 +29,10 @@ TEST_RUN_INDIVIDUAL_3_10=$(shell cat test_config_v3.10.2/tests.passed.individual
 # Set timeout to 60 mins (to run both the python3.8, 3.9 and 3.10 test suite)
 export TIMEOUT=3600
 
-all: ext2fs3.8 
+all: ext2fs3.10 
 ifdef MYST_NIGHTLY_TEST
 	$(MAKE) ext2fs3.9
-	$(MAKE) ext2fs3.10
+	$(MAKE) ext2fs3.8
 endif
 
 mpdb.py:$(MPDB)
