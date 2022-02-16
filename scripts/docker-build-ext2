@@ -2,111 +2,109 @@
 
 ##==============================================================================
 ##
-## Usage:
-##     docker-build-ext2 <docker_file> <ext2_image>
-##
 ## Build a docker image and write the output to an EXT2 image
 ##
 ##==============================================================================
 
-##
-## Check usage
-##
-if [ "$#" != "2" ]; then
-    echo "Usage: $0 <docker_file> <ext2_image>"
+usage()
+{
+    echo ""
+    echo "Usage: $0 [options] <ext2_image> <docker_build_args...>"
+    echo ""
+    echo "Where:"
+    echo "    <ext2_image> will be created from the docker build process"
+    echo "    <docker_build_args...> arg the standard docker build arguments"
+    echo ""
+    echo "Examples:"
+    echo "    docker-build-ext2 ext2_image ."
+    echo "    docker-build-ext2 ext2_image --quiet ."
+    echo "    docker-build-ext2 ext2_image docker_build_dir"
+    echo "    docker-build-ext2 ext2_image -f=MyDockerfile ."
+    echo ""
     exit 1
+}
+
+# check number of arguments
+if [ "$#" -lt "2" ]; then
+    usage
 fi
 
-##
-## Gather command-line arguments
-##
-docker_file=$1
-ext2_image=$2
+# Collect command-line arguments
+arg0=$0
+ext2_image=$1
+shift
 
-##
-## Check for existence of docker file
-##
-if [ ! -f "${docker_file}" ]; then
-    echo "$0: docker file not found: ${docker_file}"
-    exit 1
-fi
+mnt_dir=""
+iid_file=""
 
-##
-## Create a temporary mount directory
-##
+# unmount and remove temporary files
+exit_cleanup()
+{
+    if [ ! -z "${mnt_dir}" ]; then
+        sudo umount ${mnt_dir}
+        rm -rf ${mnt_dir}
+    fi
+
+    if [ ! -z "${iid_file}" ]; then
+        rm -rf ${iid_file}
+    fi
+}
+
+# Trap exit to perform cleanup
+trap exit_cleanup EXIT
+
+# Create a temporary mount directory
 mnt_dir=$(/bin/mktemp -d)
 if [ ! -d ${mnt_dir} ]; then
-    echo "$0: failed to create temporary mount directory"
+    echo "${arg0}: failed to create temporary mount directory"
     exit 1
 fi
 
-##
-## Create a temporary iid file
-##
+# Create a temporary iid file
 iid_file=$(/bin/mktemp)
 if [ ! -f ${iid_file} ]; then
-    echo "$0: failed to create temporary iid file"
+    echo "${arg0}: failed to create temporary iid file"
     exit 1
 fi
 
-##
-## Locate the binary directory (where myst programs reside)
-##
-bindir=$(realpath $(dirname $0)/../build/bin)
+# Locate the binary directory (where myst programs reside)
+bindir=$(realpath $(dirname ${arg0})/../build/bin)
 if [ ! -d "${bindir}" ]; then
-    echo "$0: bin directory not found: ${bindir}"
+    echo "${arg0}: bin directory not found: ${bindir}"
     exit 1
 fi
 
-
-##
-## Build the docker image
-##
-docker build --quiet --iidfile ${iid_file} -f ${docker_file} .
-if [ "$?" != "0" ]; then
-    echo "$0: failed to build the docker image"
-    exit 1
-fi
-
-##
-## check for existence of the mount-docker-image program
-##
+# Locate the the mount-docker-image program
 mount_docker_image=${bindir}/mount-docker-image
 if [ ! -x "${mount_docker_image}" ]; then
-    echo "$0: cannot find mount-docker-image program"
+    echo "${arg0}: cannot find mount-docker-image program"
     exit 1
 fi
 
-##
-## check for existence of the myst program
-##
+# Locate the "myst" program
 myst=${bindir}/myst
 if [ ! -x "${myst}" ]; then
-    echo "$0: cannot find myst program"
+    echo "${arg0}: cannot find myst program"
     exit 1
 fi
 
-##
-## mount the docker image
-##
-${mount_docker_image} ${iid_file} ${mnt_dir} | xargs sudo
+# Build the docker image, passing an docker build arguments
+docker build --iidfile "${iid_file}" $*
 if [ "$?" != "0" ]; then
-    echo "$0: mount-docker-image program failed"
+    echo "${arg0}: failed to build the docker image"
     exit 1
 fi
 
-##
-## convert the mounted docker image into an EXT2 image
-##
+# mount the docker image
+"${mount_docker_image}" "${iid_file}" "${mnt_dir}" | xargs sudo
+if [ "$?" != "0" ]; then
+    echo "${arg0}: mount-docker-image program failed"
+    exit 1
+fi
+
+# convert the mounted docker image into an EXT2 image
 sudo ${myst} mkext2 --force ${mnt_dir} ${ext2_image}
 if [ "$?" != "0" ]; then
-    echo "$0: myst mkext2 command failed"
+    echo "${arg0}: myst mkext2 command failed"
     exit 1
 fi
-
-##
-## umount the docker image and remove temporary files:
-##
-sudo umount ${mnt_dir}
-rm -rf ${mnt_dir}
-rm -rf ${iid_file}
