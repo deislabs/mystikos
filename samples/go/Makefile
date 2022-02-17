@@ -1,16 +1,12 @@
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
-APPBUILDER=$(TOP)/scripts/appbuilder
+DOCKER_BUILD_EXT2=$(TOP)/scripts/docker-build-ext2
 
 all: rootfs
 
-rootfs: Dockerfile
-	mkdir -p mntdir
-	docker build --quiet --iidfile .iid -f Dockerfile src
-	$(BINDIR)/mount-docker-image .iid mntdir | xargs sudo
-	sudo $(MYST) mkext2 --force mntdir rootfs
-	sudo umount mntdir
+rootfs: src/Dockerfile
+	$(DOCKER_BUILD_EXT2) rootfs -q src
 
 OPTS =
 OPTS += --thread-stack-size=1m
