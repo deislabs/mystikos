@@ -1,4 +1,5 @@
 test_asynchat
 test_interpreters
+test_itertools
 test_repl
 test_zipfile
