@@ -91,9 +91,17 @@ int myst_buf_resize(myst_buf_t* buf, size_t new_size)
 
     if (new_size == 0)
     {
-        myst_buf_release(buf);
-        memset(buf, 0, sizeof(myst_buf_t));
-        return 0;
+        if (buf->flags & MYST_BUF_PAGE_ALIGNED)
+        {
+            buf->size = 0;
+            return 0;
+        }
+        else
+        {
+            myst_buf_release(buf);
+            memset(buf, 0, sizeof(myst_buf_t));
+            return 0;
+        }
     }
 
     if (myst_buf_reserve(buf, new_size) != 0)

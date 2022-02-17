@@ -1,14 +1,40 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 #include <myst/eraise.h>
+#include <myst/file.h>
 #include <myst/fs.h>
 #include <myst/list.h>
 #include <myst/mmanutils.h>
+#include <myst/mount.h>
+#include <myst/printf.h>
 #include <myst/process.h>
+#include <myst/ramfs.h>
+#include <myst/shmfs.h>
 #include <myst/spinlock.h>
 #include <myst/syscall.h>
 #include <stdbool.h>
 #include <sys/mman.h>
-
 //#define TRACE
+
+/**
+ * POSIX Shared Memory
+ *
+ * Leverage ramfs to implement POSIX Shared Memory semantics.
+ *
+ * Simple usage example:
+ *
+ * int fd = shm_open("foo", O_CREAT|O_RDWR , (S_IRUSR|S_IWUSR));
+ * ftruncate(fd, SHM_SIZE);
+ * char *addr = mmap(0, SHM_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+ *
+ * For mmap's related to files opened via shm_open, pointer to the underlying
+ * file buffer is returned. ramfs files use myst_buf_t to store the data.
+ *
+ * Because a pointer to myst_buf_t is passed to the userspace, buffer resize
+ * operations can be supported safely only when there are no active mappings
+ * against the corresponding shmfs file.
+ *
+ */
 
 typedef struct proc_and_fd
 {
@@ -19,7 +45,6 @@ typedef struct proc_and_fd
 typedef struct shared_mapping
 {
     myst_list_node_t base;
-    char path[PATH_MAX];
     off_t offset;
     void* object;
     void* addr;
@@ -31,6 +56,46 @@ typedef struct shared_mapping
 static myst_list_t _shared_mappings;
 static myst_spinlock_t _shared_mappings_lock;
 static myst_fs_t* _posix_shmfs;
+
+int shmfs_setup()
+{
+    int ret = 0;
+
+    if (myst_init_ramfs(
+            myst_mount_resolve, &_posix_shmfs, MYST_POSIX_SHMFS_DEV_NUM) != 0)
+    {
+        myst_eprintf("failed initialize the shm file system\n");
+        ERAISE(-EINVAL);
+    }
+
+    ECHECK(set_overrides_for_special_fs(_posix_shmfs));
+
+    if (mkdir("/dev/shm", 0777) != 0)
+    {
+        myst_eprintf("cannot create mount point for shmfs\n");
+        ERAISE(-EINVAL);
+    }
+
+    if (myst_mount(_posix_shmfs, "/", "/dev/shm", false) != 0)
+    {
+        myst_eprintf("cannot mount shm file system\n");
+        ERAISE(-EINVAL);
+    }
+
+done:
+    return ret;
+}
+
+int shmfs_teardown()
+{
+    if ((*_posix_shmfs->fs_release)(_posix_shmfs) != 0)
+    {
+        myst_eprintf("failed to release shmfs\n");
+        return -1;
+    }
+
+    return 0;
+}
 
 #ifdef TRACE
 static void _dump_shared_mappings(char* msg)
@@ -84,9 +149,6 @@ static int _fd_to_file_data_ptr(int fd, void** object_out, void** addr_out)
     ECHECK(myst_fdtable_get_file(fdtable, fd, &fs, &file));
     ECHECK((*fs->fs_file_data_ptr)(fs, file, object_out, addr_out));
 
-    if (!_posix_shmfs)
-        _posix_shmfs = fs;
-
 done:
     return ret;
 }
@@ -96,7 +158,8 @@ bool myst_is_posix_shm_request(int fd, int flags)
     if (fd >= 0 && (flags & MAP_SHARED))
     {
         struct stat buf;
-        if (myst_syscall_fstat(fd, &buf) == 0 && buf.st_dev == 9)
+        if (myst_syscall_fstat(fd, &buf) == 0 &&
+            buf.st_dev == MYST_POSIX_SHMFS_DEV_NUM)
             return true;
     }
     return false;
