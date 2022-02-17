@@ -176,7 +176,6 @@ test_ipaddress
 test_isinstance
 test_iter
 test_iterlen
-test_itertools
 test_json
 test_keyword
 test_keywordonlyarg
