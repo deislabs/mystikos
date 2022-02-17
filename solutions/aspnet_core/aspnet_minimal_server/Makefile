@@ -18,13 +18,16 @@ all: rootfs
 
 TIMEOUT=30s
 
-run: rootfs
+_run: rootfs
 	./kill.sh
 	timeout $(TIMEOUT) $(MYST_EXEC) $(OPTS) rootfs /app/webapp &
 	timeout $(TIMEOUT) ./wait.sh
 	./client.sh
 	./kill.sh
 	test -f client.output
+
+run:
+	$(RUNTEST) make -C $(CURDIR) _run
 
 # run the server in the foreground:
 server: rootfs

@@ -17,7 +17,7 @@ package: $(APPDIR) private.pem
 	$(MYST) package-sgx $(APPDIR) private.pem config.json
 
 run: 
-	myst/bin/$(APP_NAME) $(OPTS)
+	$(RUNTEST) myst/bin/$(APP_NAME) $(OPTS)
 
 $(APPDIR):
 	$(APPBUILDER) -v -d Dockerfile

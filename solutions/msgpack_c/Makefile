@@ -11,9 +11,12 @@ all: myst rootfs
 
 OPTS = --memory-size=16m
 
-run:
+_run:
 	@ echo -e "\n------starting msgpack-c cpp unit tests------\n"
 	$(foreach test, $(shell ls $(TESTSDIR_HOST)), $(MYST) exec rootfs $(TESTSDIR_MYST)/$(test) $(OPTS) $(NL))
+	
+run:
+	$(RUNTEST) make -C $(CURDIR) _run
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst
