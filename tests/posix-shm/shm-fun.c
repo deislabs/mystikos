@@ -1,12 +1,15 @@
+#define _GNU_SOURCE
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/utsname.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -14,12 +17,23 @@
 #ifndef PATH_MAX
 #define PATH_MAX 4096
 #endif
+#ifndef PAGE_SIZE
+#define PAGE_SIZE 4096
+#endif
+#define MYST_POSIX_SHM_DEV_NUM 26
+#define ROUNDUP(x, n) ((x + n - 1) & ~(n - 1))
 
 static void printUsage()
 {
     printf("Usage: TEST [SHM-NAME]\n");
 }
 
+static bool is_running_on_myst()
+{
+    struct utsname buf;
+    uname(&buf);
+    return !strncmp(buf.version, "Mystikos", 8);
+}
 int main(int argc, char* argv[])
 {
     if (argc < 2)
@@ -28,6 +42,7 @@ int main(int argc, char* argv[])
         exit(1);
     }
 
+    bool myst_run = is_running_on_myst();
     char* shm_name = "/shm-fun-1";
     if (argc == 3)
     {
@@ -58,8 +73,9 @@ int main(int argc, char* argv[])
             printf("statbuf dev %ld\n", statbuf.st_dev);
             printf("statbuf rdev %ld\n", statbuf.st_rdev);
             printf("statbuf size %ld\n", statbuf.st_size);
-            // Different on WSL - 9 and Linux - 26
-            // assert(statbuf.st_dev == 9);
+            // Device number is different on WSL - 9 and Linux - 26
+            if (myst_run)
+                assert(statbuf.st_dev == MYST_POSIX_SHM_DEV_NUM);
             assert(statbuf.st_size == SHM_SIZE);
         }
 
@@ -140,16 +156,57 @@ int main(int argc, char* argv[])
             mmap(0, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 
         {
+            // truncate file to size zero
             int ret = ftruncate(fd, 0);
             printf("ftruncate ret=%d errno=%d\n", ret, errno);
-            // printf("mem after ftruncate: %s\n", addr);
-            for (int i = 0; i < 150; i++)
+            // Access to shm object if backing file is size zero causes SIGBUS
+            // on Linux.
+            if (myst_run)
+                printf("mem after ftruncate: %s\n", addr);
+
+            // Write bytes more than 1 page - 6000 bytes
+            for (int i = 0; i < 200; i++)
                 write(fd, "hellowrldhellowrldhellowrldddd", 30);
-            printf("len of string after write =%ld\n", strlen(addr));
+
+            // Check backing file size and contents of shared memory
+            struct stat statbuf;
+            assert(!fstat(fd, &statbuf));
+            printf(
+                "len of string after write =%ld file size=%ld\n",
+                strlen(addr),
+                statbuf.st_size);
+
+            // Mystikos doesn't allow growing buffers beyond size(rounded up
+            // to be a page size multiple) specified in the first ftruncate.
+            if (myst_run)
             {
+                assert(statbuf.st_size < ROUNDUP(SHM_SIZE, PAGE_SIZE));
+            }
+
+            // grow with ftruncate
+            {
+                ret = ftruncate(fd, 2 * PAGE_SIZE);
+                printf("ftruncate ret=%d errno=%d\n", ret, errno);
                 struct stat statbuf;
                 assert(!fstat(fd, &statbuf));
-                printf("statbuf size %ld\n", statbuf.st_size);
+                printf("file size=%ld\n", statbuf.st_size);
+                if (myst_run)
+                {
+                    assert(statbuf.st_size < ROUNDUP(SHM_SIZE, PAGE_SIZE));
+                }
+            }
+
+            // shrink with ftruncate
+            {
+                ret = ftruncate(fd, PAGE_SIZE / 2);
+                printf("ftruncate ret=%d errno=%d\n", ret, errno);
+                struct stat statbuf;
+                assert(!fstat(fd, &statbuf));
+                printf("file size=%ld\n", statbuf.st_size);
+                if (myst_run)
+                {
+                    assert(statbuf.st_size == PAGE_SIZE / 2);
+                }
             }
         }
 
@@ -166,10 +223,13 @@ int main(int argc, char* argv[])
             mmap(0, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 
         {
-            char* new_addr = mremap(addr, SHM_SIZE, 8192, 0);
-            // for (int i = 0; i < 150 ; i++)
-            //     write(fd, "hellowrldhellowrldhellowrldddd", 30);
-            // printf("len of string after write =%ld\n", strlen(addr));
+            char* new_addr =
+                mremap(addr, SHM_SIZE, 2 * PAGE_SIZE, MREMAP_MAYMOVE);
+            printf(
+                "addr=%p new_addr=%p errno=%s\n",
+                addr,
+                new_addr,
+                strerror(errno));
             {
                 struct stat statbuf;
                 assert(!fstat(fd, &statbuf));

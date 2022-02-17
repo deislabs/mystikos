@@ -255,7 +255,7 @@ static int _inode_new(
     inode->gid = myst_syscall_getegid();
     inode->uid = myst_syscall_geteuid();
 
-    if (ramfs->device_num == 9)
+    if (ramfs->device_num == MYST_POSIX_SHMFS_DEV_NUM)
         inode->buf.flags = MYST_BUF_PAGE_ALIGNED;
 
     /* The root directory is its own parent */
@@ -1395,7 +1395,8 @@ static int _fs_close(myst_fs_t* fs, myst_file_t* file)
         inode->nopens--;
 
         bool active_mmaps =
-            (ramfs->device_num == 9 && myst_buf_has_active_mmap(&inode->buf));
+            (ramfs->device_num == MYST_POSIX_SHMFS_DEV_NUM &&
+             myst_buf_has_active_mmap(&inode->buf));
         /* handle case where file was deleted while open */
         if (!active_mmaps && inode->nlink == 0 && inode->nopens == 0)
         {
@@ -1739,7 +1740,8 @@ static int _fs_unlink(myst_fs_t* fs, const char* pathname)
     // For shm files, cleanup also needs to wait for existing mappings related
     // to the file to be unmapped.
     if (S_ISLNK(inode->mode) ||
-        (!(ramfs->device_num == 9 && myst_buf_has_active_mmap(&inode->buf)) &&
+        (!(ramfs->device_num == MYST_POSIX_SHMFS_DEV_NUM &&
+           myst_buf_has_active_mmap(&inode->buf)) &&
          inode->nlink == 0 && inode->nopens == 0))
     {
         _inode_free(ramfs, inode);
@@ -2903,7 +2905,7 @@ static int _fs_file_data_ptr(
     if (!_ramfs_valid(ramfs) || !_file_valid(file))
         ERAISE(-EINVAL);
 
-    if (ramfs->device_num == 9)
+    if (ramfs->device_num == MYST_POSIX_SHMFS_DEV_NUM)
     {
         /* memory for shm files are allocated on first ftruncate.
         Fail if process mmap's before that */
@@ -2928,7 +2930,7 @@ static int _fs_file_mapping_notify(myst_fs_t* fs, void* object, bool active)
     if (!_ramfs_valid(ramfs))
         ERAISE(-EINVAL);
 
-    if (ramfs->device_num == 9)
+    if (ramfs->device_num == MYST_POSIX_SHMFS_DEV_NUM)
     {
         inode_t* inode;
 
