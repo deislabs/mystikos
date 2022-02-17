@@ -62,5 +62,7 @@ run:
 
 tests:
 	@ $(MAKE) -s clean
+	@ sudo rm -rf $(TESTDIR)
 	@ $(MAKE) -j -s build
-	@ $(MAKE) -j -s run
+	@ $(MAKE) -j run
+
