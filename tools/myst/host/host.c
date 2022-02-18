@@ -171,6 +171,23 @@ done:
     return ret;
 }
 
+static bool _retain_symbols()
+{
+    static int r = -1;
+    // Initialization of r happens when myst_tcall_add_symbol_file is called
+    // for the main application, before other app threads are launched.
+    // Therefore, locks are not necessary.
+    if (r == -1)
+    {
+        const char* env;
+        if ((env = getenv("MYST_RETAIN_SYMBOLS")) && strcmp(env, "1") == 0)
+            r = 1;
+        else
+            r = 0;
+    }
+    return r;
+}
+
 long init_symbol_file_tmpdir(char* tmpdir)
 {
     long ret = 0;
@@ -204,6 +221,12 @@ long myst_tcall_add_symbol_file(
 
     if (!tmpdir_init)
     {
+        /* If symbols need to be retained, use a folder in the current directory
+         * so that the symbols survive a machine reboot */
+        if (_retain_symbols())
+        {
+            sprintf(tmpdir, "./.mystXXXXXX");
+        }
         ECHECK(init_symbol_file_tmpdir(tmpdir));
         tmpdir_init = 1;
     }
@@ -345,6 +368,11 @@ long myst_tcall_unload_symbols(void)
 {
     long ret = 0;
 
+    // If symbols need to be retained, don't delete the emitted shared
+    // libraries.
+    if (_retain_symbols())
+        goto done;
+
     for (debug_module_t* p = _debug_modules; p;)
     {
         debug_module_t* next = p->next;
@@ -360,6 +388,7 @@ long myst_tcall_unload_symbols(void)
         p = next;
     }
 
+done:
     return ret;
 }
 
