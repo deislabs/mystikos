@@ -38,11 +38,10 @@ run:
 ifndef MYST_SKIP_PR_TEST
 	$(TEST_RUNNER) $(PACKAGE_PATH) null null 30 package pr0-256m
 	$(TEST_RUNNER) $(MYST_EXEC) config_1g.json 60 ext2 pr0-1g
-	$(TEST_RUNNER) $(MYST_EXEC) config_4g.json 60 ext2 pr0-large-memory
+	$(TEST_RUNNER) $(MYST_EXEC) config_4g.json 40 ext2 pr0-large-memory 1
 	$(TEST_RUNNER) $(MYST_EXEC) config_1g.json 300 ext2 pr0-long-time
 endif
-	$(STAT) pr0-tests-all 98
-
+	$(STAT) pr0-tests-all 97
 
 clean:
 	sudo rm -fr appdir ext2fs roothash myst package.pem PASSED FAILED-*
