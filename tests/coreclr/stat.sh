@@ -48,6 +48,6 @@ if ls ${PWD}/FAILED-* 1> /dev/null 2>&1 ; then
 fi
 
 if [ "$(( pass_count*100/NUM_TESTS ))" -lt "$PASS_PERCENT_THRESHOLD" ]; then
-	echo "Failed to pass at least ${PASS_PERCENT_THRESHOLD}% - Pass percentage: $(( $pass_count*100/$NUM_TESTS ))%"
+	echo "Failed to pass at least ${PASS_PERCENT_THRESHOLD}% - Pass percentage: $(( $pass_count*100/$NUM_TESTS ))% $pass_count/$NUM_TESTS"
 	exit 1
 fi
