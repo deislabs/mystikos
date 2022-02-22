@@ -468,6 +468,10 @@ __attribute__((__returns_twice__)) pid_t myst_fork(void)
                  * sorts can fail. This sleep should be enough to let the child
                  * finish first. */
                 syscall(SYS_sched_yield);
+                syscall(SYS_sched_yield);
+                syscall(SYS_sched_yield);
+                syscall(SYS_sched_yield);
+                syscall(SYS_sched_yield);
             }
         }
     }
