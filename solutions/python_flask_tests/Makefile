@@ -18,8 +18,7 @@ rootfs: appdir
 	$(MYST) mkcpio appdir rootfs
 
 run:
-# Skip test that would fail
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /usr/local/bin/python /usr/local/bin/pytest -k "not test_egg_installed_paths" --app-config-path config.json
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /usr/local/bin/python /usr/local/bin/pytest --app-config-path config.json
 
 run_single:
 # Run single test for debugging

@@ -8,7 +8,7 @@ APPDIR        = appdir
 APP_NAME      = redis-server
 SERVICE_ADDR  = localhost
 SERVICE_PORT  = 6379
-TIMEOUT		  = 60s
+TIMEOUT       = 60s
 
 ifdef STRACE
 OPTS += --strace
