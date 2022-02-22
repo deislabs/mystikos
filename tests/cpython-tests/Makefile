@@ -29,9 +29,10 @@ TEST_RUN_INDIVIDUAL_3_10=$(shell cat test_config_v3.10.2/tests.passed.individual
 # Set timeout to 60 mins (to run both the python3.8, 3.9 and 3.10 test suite)
 export TIMEOUT=3600
 
-all: ext2fs3.10 
-ifdef MYST_NIGHTLY_TEST
+all: 
+#	$(MAKE) ext2fs3.10
 	$(MAKE) ext2fs3.9
+ifdef MYST_NIGHTLY_TEST
 	$(MAKE) ext2fs3.8
 endif
 
@@ -57,9 +58,9 @@ clean:
 	rm -fr appdir* ext2fs* @test_101* hostfs
 
 tests:
-	$(MAKE) run-3.10
-ifdef MYST_NIGHTLY_TEST
+#	$(MAKE) run-3.10
 	$(MAKE) run-3.9
+ifdef MYST_NIGHTLY_TEST
 	$(MAKE) run-3.8
 endif
 
