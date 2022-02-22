@@ -18,7 +18,7 @@
 /* the size of red zone in bytes */
 #define MYST_X86_64_ABI_REDZONE_SIZE 0x80
 
-//#define TRACE
+// #define TRACE
 
 #define MYST_SIG_UNBLOCKED(mask) \
     (~mask) | ((uint64_t)1 << (SIGKILL - 1)) | ((uint64_t)1 << (SIGSTOP - 1));
@@ -753,7 +753,7 @@ long myst_signal_deliver(
         signum,
         myst_signum_to_string(signum),
         myst_getpid(),
-        myst_getpid(),
+        myst_gettid(),
         thread->process->pid,
         thread->tid);
 #endif
@@ -777,8 +777,17 @@ long myst_signal_deliver(
 
     uint64_t mask = (uint64_t)1 << (signum - 1);
 
-    /* Only deliver if the signal is not being ignored */
-    if ((handler != (uint64_t)SIG_IGN) || (signum == SIGKILL))
+    /* Deliver signal if
+     * 1. signal is SIGKILL, or
+     * 2. handler is not SIG_DFL and signal is not one of [SIGCHLD, SIGCONT,
+     * SIGSTOP, SIGURG, SIGWINCH], and
+     * 3. handler is not SIG_IGN
+     */
+    if (signum == SIGKILL ||
+        (!(handler == (uint64_t)SIG_DFL &&
+           (signum == SIGCHLD || signum == SIGCONT || signum == SIGSTOP ||
+            signum == SIGURG || signum == SIGWINCH)) &&
+         handler != (uint64_t)SIG_IGN))
     {
         new_item = calloc(1, sizeof(struct siginfo_list_item));
         if (new_item == NULL)
