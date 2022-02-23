@@ -8,6 +8,7 @@ OPTS += --strace
 endif
 
 TIMEOUT=30s
+TOP_TIMEOUT=240s
 
 build: rootfs
 
@@ -23,10 +24,13 @@ clean: kill-db
 	./kill.sh Podcast
 	rm -rf appdir rootfs client.output
 
-run:
+_run:
 	$(MAKE) run-podcast
 	$(MAKE) run-flight
 	$(MAKE) run-todo
+
+run:
+	TIMEOUT=$(TOP_TIMEOUT) $(RUNTEST) make -C $(CURDIR) _run
 
 run-flight:
 	echo "Running FlightFinder sample"
