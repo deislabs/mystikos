@@ -8,6 +8,7 @@ OPTS += --strace
 endif
 
 TIMEOUT=30s
+TOP_TIMEOUT=240s
 
 build: rootfs
 
@@ -29,7 +30,7 @@ _run:
 	$(MAKE) run-todo
 
 run:
-	$(RUNTEST) make -C $(CURDIR) _run
+	TIMEOUT=$(TOP_TIMEOUT) $(RUNTEST) make -C $(CURDIR) _run
 
 run-flight:
 	echo "Running FlightFinder sample"
