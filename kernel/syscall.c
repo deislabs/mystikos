@@ -66,6 +66,7 @@
 #include <myst/panic.h>
 #include <myst/paths.h>
 #include <myst/pipedev.h>
+#include <myst/posixshmman.h>
 #include <myst/printf.h>
 #include <myst/process.h>
 #include <myst/pubkey.h>

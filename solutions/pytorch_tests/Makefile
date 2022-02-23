@@ -102,7 +102,6 @@ and not test_EmbeddingBag_discontiguous \
 and not test_EmbeddingBag_mean \
 and not test_EmbeddingBag_sparse \
 and not test_EmbeddingBag_sum \
-and not test_share_memory \
 and not test_avg_pool2d_nhwc_cpu_float32 \
 and not test_avg_pool2d_nhwc_cpu_float64 \
 and not test_max_pool2d_nhwc_cpu_float32 \
@@ -148,8 +147,10 @@ run:
 	$(RUNTEST) make -C $(CURDIR) _run
 
 .PHONY: one
+TEST=test_nn
+SUBTEST=test_EmbeddingBag_per_sample_weights_and_no_offsets_cpu_int64_float32
 one: rootfs
-	$(RUN_PYTEST) /workspace/pytorch/test/test_nn.py -s -k "test_EmbeddingBag_per_sample_weights_and_no_offsets_cpu_int64_float32"
+	$(RUN_PYTEST) /workspace/pytorch/test/$(TEST).py -s -k "$(SUBTEST)"
 
 .PHONY: gdb
 gdb: rootfs
