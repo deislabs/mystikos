@@ -15,6 +15,7 @@ PYTEST_INI_FILE = pytest.ini
 PYTEST_OPTS = -s -q --no-header --skip-slow --skip-db --skip-network
 TEST_ROOT = /usr/local/lib/python3.9/site-packages/
 TEST = /usr/local/lib/python3.9/site-packages/pandas/tests/io/test_fsspec.py 
+TIMEOUT = 1200
 # The following tests used to pass in mystikos, but currently hang indefinitely.
 # Removing these tests currently, and will be added back after investigating
 # these failures.
@@ -53,7 +54,7 @@ run-passed: rootfs-passed
 run-individual: rootfs
 	$(foreach i, $(TEST_RUN_INDIVIDUAL), echo $i; $(MAKE) run-one TEST=$(i) $(NL) )
 
-run: rootfs
+_run: rootfs
 	-(cat tests.partially_passed | xargs -P 8 $(MYST_EXEC) rootfs $(OPTS) \
 		$(PYTEST_CMD) $(PYTEST_OPTS) 2>&1 > result; true)
 	sed -i '$$d' result
@@ -63,6 +64,9 @@ run: rootfs
 	$(MAKE) clean_intermediate
 	$(MAKE) run-passed
 	$(MAKE) clean_intermediate
+	
+run:
+	TIMEOUT=$(TIMEOUT) $(RUNTEST) make -C $(CURDIR) _run 
 
 run-one: rootfs
 	$(MYST_EXEC) rootfs $(OPTS) $(PYTEST_CMD) $(TEST)
