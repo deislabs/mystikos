@@ -3661,7 +3661,7 @@ static long _SYS_mmap(long n, long params[6], const myst_process_t* process)
     {
         ret = -ENOMEM;
     }
-    else if (ret > 0 && !myst_is_posix_shm_request(fd, flags))
+    else if (ret > 0 && !myst_is_posix_shm_file_handle(fd, flags))
     {
         pid_t pid = myst_getpid();
         void* ptr = (void*)ret;
@@ -3721,6 +3721,30 @@ static long _SYS_munmap(
             return (
                 _return(n, myst_syscall_unmap_on_exit(thread, addr, length)));
         }
+    }
+
+    /* Check if unmapping POSIX shared memory */
+    {
+        bool is_posix_shm;
+        if (myst_posix_shm_handle_munmap(addr, length, &is_posix_shm) < 0)
+            return (_return(n, -EINVAL));
+
+        if (is_posix_shm)
+            return (_return(n, 0));
+    }
+
+    /* Caller should own the address range */
+    {
+        pid_t pid = myst_getpid();
+
+        size_t rounded_up_length;
+        if (myst_round_up(length, PAGE_SIZE, &rounded_up_length) < 0)
+            return (_return(n, -EINVAL));
+
+        /* if calling process does not own this mapping */
+        if (myst_mman_pids_test(addr, rounded_up_length, pid) !=
+            (ssize_t)rounded_up_length)
+            return (_return(n, -EINVAL));
     }
 
     long ret = (long)myst_munmap(addr, length);
@@ -3938,6 +3962,15 @@ static long _SYS_msync(long n, long params[6])
     int flags = (int)params[2];
 
     _strace(n, "addr=%p length=%zu flags=%d ", addr, length, flags);
+
+    {
+        const pid_t pid = myst_getpid();
+        myst_assume(pid > 0);
+
+        /* fail if the calling process does not own this mapping */
+        if (myst_mman_pids_test(addr, length, pid) != (ssize_t)length)
+            return (_return(n, -EINVAL));
+    }
 
     return (_return(n, myst_msync(addr, length, flags)));
 }
