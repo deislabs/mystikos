@@ -111,8 +111,10 @@ int main(int argc, char* argv[])
     else if (strcmp(argv[1], "share") == 0)
     {
         char* addr;
+        int fd = -1;
+
         {
-            int fd = shm_open(shm_name, O_CREAT | O_RDWR, (S_IRUSR | S_IWUSR));
+            fd = shm_open(shm_name, O_CREAT | O_RDWR, (S_IRUSR | S_IWUSR));
             assert(fd >= 0);
 
             assert(ftruncate(fd, SHM_SIZE) != -1);
@@ -131,6 +133,9 @@ int main(int argc, char* argv[])
 
         if (pid == 0) // child execve's self and writes to shared memory
         {
+            // Check unmap of inherited posix shm object is successful
+            assert(munmap(addr, SHM_SIZE) == 0);
+
             char buf[PATH_MAX];
             readlink("/proc/self/exe", buf, PATH_MAX);
             char* argVec[] = {buf, "write", 0};
@@ -145,42 +150,49 @@ int main(int argc, char* argv[])
             exit(0);
         }
     }
-    else if (strcmp(argv[1], "resize-file") == 0)
+    else if (strcmp(argv[1], "resize-backing-file") == 0)
     {
         int fd = shm_open(shm_name, O_CREAT | O_RDWR, (S_IRUSR | S_IWUSR));
         assert(fd >= 0);
 
-        assert(ftruncate(fd, SHM_SIZE) != -1);
+        int ret;
+        assert((ret = ftruncate(fd, SHM_SIZE)) != -1);
+        printf("ftruncate(fd, %d) ret=%d errno=%d\n", SHM_SIZE, ret, errno);
 
         char* addr =
             mmap(0, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 
         {
             // truncate file to size zero
-            int ret = ftruncate(fd, 0);
-            printf("ftruncate ret=%d errno=%d\n", ret, errno);
-            // Access to shm object if backing file is size zero causes SIGBUS
-            // on Linux.
-            if (myst_run)
-                printf("mem after ftruncate: %s\n", addr);
-
-            // Write bytes more than 1 page - 6000 bytes
-            for (int i = 0; i < 200; i++)
-                write(fd, "hellowrldhellowrldhellowrldddd", 30);
-
-            // Check backing file size and contents of shared memory
-            struct stat statbuf;
-            assert(!fstat(fd, &statbuf));
-            printf(
-                "len of string after write =%ld file size=%ld\n",
-                strlen(addr),
-                statbuf.st_size);
-
-            // Mystikos doesn't allow growing buffers beyond size(rounded up
-            // to be a page size multiple) specified in the first ftruncate.
-            if (myst_run)
             {
-                assert(statbuf.st_size < ROUNDUP(SHM_SIZE, PAGE_SIZE));
+                ret = ftruncate(fd, 0);
+                printf("ftruncate(fd, %d) ret=%d errno=%d\n", 0, ret, errno);
+                // Access to shm object if backing file is size zero causes
+                // SIGBUS on Linux.
+                if (myst_run)
+                    printf("mem after ftruncate: %s\n", addr);
+            }
+
+            // grow backing file by writing to it
+            // Write bytes more than 1 page - 6000 bytes
+            {
+                for (int i = 0; i < 200; i++)
+                    write(fd, "hellowrldhellowrldhellowrldddd", 30);
+
+                // Check backing file size and contents of shared memory
+                struct stat statbuf;
+                assert(!fstat(fd, &statbuf));
+                printf(
+                    "len of string after write =%ld file size=%ld\n",
+                    strlen(addr),
+                    statbuf.st_size);
+
+                // Mystikos doesn't allow growing buffers beyond size(rounded up
+                // to be a page size multiple) specified in the first ftruncate.
+                if (myst_run)
+                {
+                    assert(statbuf.st_size < ROUNDUP(SHM_SIZE, PAGE_SIZE));
+                }
             }
 
             // grow with ftruncate
@@ -225,6 +237,11 @@ int main(int argc, char* argv[])
         {
             char* new_addr =
                 mremap(addr, SHM_SIZE, 2 * PAGE_SIZE, MREMAP_MAYMOVE);
+
+            // Mystikos doesn't support mremap
+            if (myst_run)
+                assert(new_addr == MAP_FAILED && errno == EINVAL);
+
             printf(
                 "addr=%p new_addr=%p errno=%s\n",
                 addr,
@@ -237,6 +254,55 @@ int main(int argc, char* argv[])
             }
         }
 
+        assert(shm_unlink(shm_name) != -1);
+    }
+    else if (strcmp(argv[1], "offset-tests") == 0)
+    {
+        char* addr;
+        int fd = shm_open(shm_name, O_CREAT | O_RDWR, (S_IRUSR | S_IWUSR));
+        assert(fd >= 0);
+
+        // set shm size to 2 pages
+        assert(ftruncate(fd, 2 * PAGE_SIZE) != -1);
+
+        // musl checks for page alignment of offset
+        addr = mmap(0, PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 15);
+        printf("misaligned offset addr=%p errno=%s\n", addr, strerror(errno));
+        assert(addr == MAP_FAILED && errno == EINVAL);
+
+        // offset beyond end of file
+        // supported by Linux, unsupported by Mystikos
+        addr = mmap(
+            0,
+            PAGE_SIZE,
+            PROT_READ | PROT_WRITE,
+            MAP_SHARED,
+            fd,
+            3 * PAGE_SIZE);
+        printf("offset beyond eof addr=%p errno=%s\n", addr, strerror(errno));
+        if (myst_run)
+            assert(addr == MAP_FAILED && errno == EINVAL);
+
+        // check mmap starting at valid non-zero offset
+        {
+            char* second_page = mmap(
+                0,
+                PAGE_SIZE,
+                PROT_READ | PROT_WRITE,
+                MAP_SHARED,
+                fd,
+                PAGE_SIZE);
+            printf("addr=%p errno=%s\n", second_page, strerror(errno));
+            assert(second_page != MAP_FAILED);
+
+            memset(second_page, 'a', PAGE_SIZE);
+            munmap(second_page, PAGE_SIZE);
+
+            char* both_pages = mmap(
+                0, 2 * PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+            assert(both_pages != MAP_FAILED);
+            assert(*(both_pages + PAGE_SIZE) == 'a');
+        }
         assert(shm_unlink(shm_name) != -1);
     }
     else

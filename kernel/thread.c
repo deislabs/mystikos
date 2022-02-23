@@ -1419,6 +1419,9 @@ static long _syscall_clone_vfork(
             free(self_path);
         }
 
+        /* Child inherits parent's posix shared memory objects */
+        ECHECK(myst_posix_shm_share_mappings(child_process->pid));
+
         ECHECK(_get_entry_stack(child_thread));
     }
 

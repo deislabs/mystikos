@@ -431,7 +431,7 @@ long myst_mmap(
 
     /* Check if posix shm file */
     /* addr hint is not allowed for POSIX shm memory */
-    if (fd >= 0 && !addr && myst_is_posix_shm_request(fd, flags))
+    if (fd >= 0 && !addr && myst_is_posix_shm_file_handle(fd, flags))
     {
         ECHECK((
             ret = myst_posix_shm_handle_mmap(fd, addr, length, offset, flags)));
@@ -691,14 +691,6 @@ int myst_munmap(void* addr, size_t length)
 {
     int ret = 0;
     fdlist_t* head = NULL;
-
-    /* Check if unmapping POSIX shared memory */
-    {
-        bool is_posix_shm;
-        ECHECK(myst_posix_shm_handle_munmap(addr, length, &is_posix_shm));
-        if (is_posix_shm)
-            goto done;
-    }
 
     ECHECK(__myst_munmap(addr, length, &head));
 

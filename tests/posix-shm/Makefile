@@ -9,7 +9,7 @@ ifdef STRACE
 OPTS += --strace
 endif
 
-OPTS += --fork-mode pseudo_wait_for_exit_exec
+OPTS += --nobrk --fork-mode pseudo_wait_for_exit_exec
 
 all: myst rootfs
 
@@ -22,6 +22,10 @@ tests:
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/shm-fun empty-file
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/shm-fun basic
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/shm-fun share
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/shm-fun resize-backing-file
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/shm-fun resize-memory
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/shm-fun offset-tests
+
 
 TEST=basic
 one:
@@ -36,5 +40,8 @@ myst:
 clean:
 	rm -rf $(APPDIR) rootfs export ramfs
 
-native:
+build-native:
 	gcc -o shm-fun -g shm-fun.c -lrt
+
+run-native:
+	./shm-fun $(TEST)
