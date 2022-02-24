@@ -17,14 +17,10 @@ all: $(PACKAGE)
 appdir:
 	$(APPBUILDER) -v -d Dockerfile
 
-$(PACKAGE): appdir package.pem rootfs roothash
-	$(MYST) package-sgx --roothash=roothash package.pem config.json
-
-rootfs: 
+$(PACKAGE): appdir package.pem
 	$(MYST) mkext2 appdir rootfs
-
-roothash: 
 	$(MYST) fssig --roothash rootfs > roothash
+	$(MYST) package-sgx --roothash=roothash package.pem config.json
 
 # running both service and client in one recipe
 _run:
