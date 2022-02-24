@@ -27,3 +27,5 @@ RUN ln -sf /cpython/python /usr/bin/python3
 
 # Copy Mystikos pdb
 COPY ./mpdb.py /cpython/mpdb.py
+
+RUN rm -rf /cpython/.git /usr/lib/gcc /usr/lib/x86_64-linux-gnu/perl /usr/lib/x86_64-linux-gnu/nss /usr/lib/x86_64-linux-gnu/perl-base /usr/lib/x86_64-linux-gnu/guile /usr/lib/git-core /usr/lib/x86_64-linux-gnu/gconv /usr/lib/x86_64-linux-gnu/ldscripts /usr/share/perl /usr/lib/python2.7 /usr/lib/python3.6
