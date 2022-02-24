@@ -10,15 +10,21 @@ PACKAGE  = myst/bin/$(APP_NAME)
 QUERY_INTERVAL = 2
 SHUTDOWN_WAIT = 2 
 
+TIMEOUT=6000
+
 all: $(PACKAGE)
 
 appdir:
 	$(APPBUILDER) -v -d Dockerfile
 
-$(PACKAGE): appdir package.pem
-	$(MYST) mkext2 appdir rootfs
-	$(MYST) fssig --roothash rootfs > roothash
+$(PACKAGE): appdir package.pem rootfs roothash
 	$(MYST) package-sgx --roothash=roothash package.pem config.json
+
+rootfs: 
+	$(MYST) mkext2 appdir rootfs
+
+roothash: 
+	$(MYST) fssig --roothash rootfs > roothash
 
 # running both service and client in one recipe
 _run:
@@ -45,7 +51,7 @@ _run:
 	./kill.sh $(PACKAGE) $(APP_PATH)
 	
 run:
-	$(RUNTEST) make -C $(CURDIR) _run
+	TIMEOUT=$(TIMEOUT) $(RUNTEST) make -C $(CURDIR) _run
 
 package.pem:
 	./gen_pkey.sh package.pem

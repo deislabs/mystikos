@@ -40,6 +40,13 @@ DIRS += nodejs
 DIRS += numpy_core_tests
 DIRS += redis
 #DIRS += cpprestsdk
+DIRS = nodejs
+DIRS += numpy_core_tests
+DIRS += redis
+DIRS += confidential_ml
+DIRS += nodejs
+DIRS += numpy_core_tests
+DIRS += redis
 
 .PHONY: $(DIRS)
 
