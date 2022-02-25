@@ -17,7 +17,7 @@ rootfs: appdir
 	$(MYST) mkext2 appdir rootfs
 
 run: rootfs
-	$(RUNTEST) $(MYST_EXEC) rootfs $(OPTS) --app-config-path config.json /miniconda/bin/python3 /app/app.py
+	$(MYST_EXEC) rootfs $(OPTS) --app-config-path config.json /miniconda/bin/python3 /app/app.py
 
 private.pem:
 	openssl genrsa -out private.pem -3 3072

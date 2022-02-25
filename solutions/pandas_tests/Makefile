@@ -53,7 +53,7 @@ run-passed: rootfs-passed
 run-individual: rootfs
 	$(foreach i, $(TEST_RUN_INDIVIDUAL), echo $i; $(MAKE) run-one TEST=$(i) $(NL) )
 
-_run: rootfs
+run: rootfs
 	-(cat tests.partially_passed | xargs -P 8 $(MYST_EXEC) rootfs $(OPTS) \
 		$(PYTEST_CMD) $(PYTEST_OPTS) 2>&1 > result; true)
 	sed -i '$$d' result
@@ -63,9 +63,6 @@ _run: rootfs
 	$(MAKE) clean_intermediate
 	$(MAKE) run-passed
 	$(MAKE) clean_intermediate
-	
-run:
-	$(RUNTEST) make -C $(CURDIR) _run
 
 run-one: rootfs
 	$(MYST_EXEC) rootfs $(OPTS) $(PYTEST_CMD) $(TEST)
