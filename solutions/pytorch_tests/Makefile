@@ -140,10 +140,7 @@ run-test-torch: rootfs
 run-core-tests: run-test-autograd run-test-autograd-thread-shutdown run-test-modules run-test-nn run-test-nn-8g run-test-ops run-test-torch
 
 .PHONY: run
-_run: run-core-tests
-
-run:
-	$(RUNTEST) make -C $(CURDIR) _run
+run: run-core-tests
 
 .PHONY: one
 one: rootfs
