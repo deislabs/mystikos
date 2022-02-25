@@ -23,13 +23,10 @@ clean: kill-db
 	./kill.sh Podcast
 	rm -rf appdir rootfs client.output
 
-_run:
+run:
 	$(MAKE) run-podcast
 	$(MAKE) run-flight
 	$(MAKE) run-todo
-
-run:
-	$(RUNTEST) make -C $(CURDIR) _run
 
 run-flight:
 	echo "Running FlightFinder sample"

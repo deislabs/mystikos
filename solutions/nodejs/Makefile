@@ -19,15 +19,12 @@ appdir:
 
 TIMEOUT=60s
 
-_run:
+run:
 	$(MYST_EXEC) $(OPTS) rootfs /usr/local/bin/node /app/app.js & echo $$! > server.pid
-	timeout $(TIMEOUT) ./wait.sh
+	./wait.sh
 	curl 127.0.0.1:3000 >> client.output
 	test -f server.pid && kill -9 `cat server.pid` && rm server.pid || true
 	grep -q "Hello World" client.output
-
-run:
-	$(RUNTEST) make -C $(CURDIR) _run
 
 clean:
 	test -f server.pid && kill -9 `cat server.pid` && rm server.pid || true
