@@ -146,7 +146,7 @@ pipeline {
                            echo "MYST_NIGHTLY_TEST is set to \${MYST_NIGHTLY_TEST}"
                            echo "MYST_SKIP_PR_TEST is set to \${MYST_SKIP_PR_TEST}"
                            echo "Running in ${REGION}"
-                           make solutions_tests
+                           make tests -C ${WORKSPACE}/solutions
                            echo "Running samples"
                            sudo make install
                            export PATH="/opt/mystikos/bin:$PATH"
