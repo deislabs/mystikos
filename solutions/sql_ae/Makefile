@@ -18,7 +18,7 @@ all: myst app
 	$(MYST) mkcpio $(APPDIR) rootfs
 
 run: appdir
-	$(MYST_EXEC) rootfs /odbc_app msi default $(OPTS)
+	$(RUNTEST) $(MYST_EXEC) rootfs /odbc_app msi default $(OPTS)
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst

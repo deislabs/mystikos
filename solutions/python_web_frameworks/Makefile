@@ -16,9 +16,12 @@ rootfs: appdir
 appdir:
 	$(APPBUILDER) Dockerfile
 
-run:
+_run:
 	$(MAKE) run1
 	$(MAKE) run2
+	
+run:
+	$(RUNTEST) make -C $(CURDIR) _run
 
 run1:
 	test -f server.pid && kill -9 `cat server.pid` || true
