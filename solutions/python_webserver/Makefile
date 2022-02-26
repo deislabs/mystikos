@@ -36,12 +36,15 @@ appdir:
 
 TIMEOUT=60s
 
-run:
+_run:
 	test -f server.pid && kill -9 `cat server.pid` || true
 	$(MYST_EXEC) $(OPTS) rootfs /miniconda/bin/python3 /app/hello_server.py & echo $$! > server.pid
 	./wait.sh
 	curl 127.0.0.1:8000
 	test -f server.pid && kill -9 `cat server.pid` && rm server.pid || true
+	
+run:
+	$(RUNTEST) make -C $(CURDIR) _run
 
 clean:
 	test -f server.pid && kill -9 `cat server.pid` || true

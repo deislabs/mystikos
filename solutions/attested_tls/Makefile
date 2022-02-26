@@ -18,7 +18,7 @@ all: myst app
 
 #OPTS = --strace
 
-run: appdir
+_run: appdir
 	# Kill the running instance of the TLS server before exit.
 	@trap "exit" INT TERM
 	@trap "killall -9 tlssrv_host" EXIT
@@ -28,6 +28,9 @@ run: appdir
 	# Launch the TLS client with myst
 	$(MYST_EXEC) rootfs /client 127.0.0.1 $(OPTS)
 	@wait
+	
+run:
+	$(RUNTEST) make -C $(CURDIR) _run
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst

@@ -16,7 +16,10 @@ SHUTDOWN_WAIT = 1  	# waiting time in seconds before service being terminated
 
 all: myst build-package
 
-run: run-package
+_run: run-package
+
+run:
+	$(RUNTEST) make -C $(CURDIR) _run
 
 run-package: 
 	# Kill the server from a previous run if it wasn't shut down properly.
