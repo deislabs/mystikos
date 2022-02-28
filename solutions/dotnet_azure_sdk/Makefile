@@ -10,6 +10,12 @@ DIRS += KeyVault_Certificates
 REDEFINE_TESTS=1
 include $(TOP)/rules.mak
 
+ifdef RUN_AZURE_TESTS
+RUNTEST=$(RUNTEST_COMMAND)
+endif
+
+TIMEOUT=1200
+
 __clean:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) clean $(NL) )
 
@@ -22,4 +28,4 @@ __run:
 tests:
 	@ $(MAKE) -s __clean 
 	@ $(MAKE) -s __build
-	@ $(MAKE) -j -s __run
+	@ TIMEOUT=$(TIMEOUT) $(RUNTEST) $(MAKE) -j -s __run

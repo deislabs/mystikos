@@ -35,3 +35,5 @@ for test_suite in "$@"
 do
 	RUN_AZURE_TESTS=1 make tests -C "${test_suite}"
 done
+
+make -s summary
