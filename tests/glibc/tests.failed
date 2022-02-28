@@ -2,3 +2,4 @@
 /glibc/build/inet/test-ifaddrs: creates a socket with AF_NETLINK
 /glibc/build/io/tst-ftw-lnk.d/link2-tgt ldso: /glibc/build/io/tst-ftw-lnk.d/link2-tgt: Not a valid dynamic program 
 /glibc/build/nptl/test-mutexattr-printers Makefile:57: recipe for target 'one' failed ****Runs without error in GDB****
+/glibc/build/nptl/tst-cancel8: Requires support of deferred cancel type for pthread_cancel

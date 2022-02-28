@@ -333,7 +333,6 @@
 /glibc/build/nptl/tst-cancel26
 /glibc/build/nptl/tst-cancel27
 /glibc/build/nptl/tst-cancel3
-/glibc/build/nptl/tst-cancel8
 /glibc/build/nptl/tst-cancelx10
 /glibc/build/nptl/tst-cancelx12
 /glibc/build/nptl/tst-cancelx13

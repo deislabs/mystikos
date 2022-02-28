@@ -27,3 +27,4 @@
 /glibc/build/rt/tst-aio7
 /glibc/build/stdlib/tst-getrandom
 /glibc/build/time/tst-clock2
+/glibc/build/nptl/tst-cancel8: Requires support of deferred cancel type for pthread_cancel
