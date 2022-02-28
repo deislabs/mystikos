@@ -1,0 +1,33 @@
+diff --git a/support/support_test_main.c b/support/support_test_main.c
+index 07e3cdd173..2c399dd72a 100644
+--- a/support/support_test_main.c
++++ b/support/support_test_main.c
+@@ -407,8 +407,9 @@ support_test_main (int argc, char **argv, const struct test_config *config)
+      - set up the timer
+      - fork and execute the function.  */
+ 
+-  test_pid = fork ();
+-  if (test_pid == 0)
++  pid_t local_pid = fork ();
++
++  if (local_pid == 0)
+     {
+       /* This is the child.  */
+       if (disable_coredumps)
+@@ -430,12 +431,15 @@ support_test_main (int argc, char **argv, const struct test_config *config)
+       /* Execute the test function and exit with the return value.   */
+       exit (run_test_function (argc, argv, config));
+     }
+-  else if (test_pid < 0)
++  else if (local_pid < 0)
+     {
+       printf ("Cannot fork test program: %m\n");
+       exit (1);
+     }
+ 
++  /* Store child pid */
++  test_pid = local_pid;
++
+   /* Set timeout.  */
+   signal (SIGALRM, signal_handler);
+   alarm (timeout * timeoutfactor);

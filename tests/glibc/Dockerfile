@@ -4,9 +4,12 @@ RUN apt-get update && apt-get install -y \
     build-essential bison git gawk python3
 
 # checkout glibc
+WORKDIR /
 RUN git clone https://sourceware.org/git/glibc.git
-RUN cd glibc && git checkout release/2.34/master && \
-    mkdir build && cd build
+WORKDIR /glibc
+RUN git checkout release/2.34/master
+COPY patch.diff .
+RUN git apply patch.diff
 
 # configure the build
 WORKDIR /glibc/build
@@ -15,7 +18,7 @@ RUN ../configure --prefix=/usr \
                  --enable-static-pie
 
 # build glibc
-RUN make
+RUN make -j
 
 # Future enhancement after confirming stability
 # FROM ubuntu:18.04

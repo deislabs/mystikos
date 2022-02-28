@@ -41,7 +41,9 @@ build: glibc
 PWD=$(shell pwd)
 
 $(APPDIR):
-	$(APPBUILDER) -i mystikos/glibc-test:0.1
+	# $(APPBUILDER) -i mystikos/glibc-test:0.1
+	# todo: replace with pre-built image
+	$(APPBUILDER) -i hullcritical/glibc-test:0.1
 	cp $(CURDIR)/tests.passed $(APPDIR)
 
 $(APPDIR)/bin/run: run.c
@@ -67,3 +69,6 @@ myst:
 clean:
 	rm -rf $(APPDIR) $(ROOTFS)
 
+TEST=/glibc/build/math/test-tgmath3-asin
+gdb:
+	$(MYST_GDB) --args $(MYST_EXEC) $(OPTS) $(ROOTFS) $(TEST) $(NL)
