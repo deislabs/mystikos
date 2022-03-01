@@ -40,7 +40,7 @@ test-storage: rootfs-storage
 test-storage-blob: rootfs-storage-blob
 	./test-all-packages.sh "$(MYST_EXEC)" storage-blob/rootfs "$(OPTS)" storage-blob/packages.txt
 
-tests: test-keyvault_identity test-storage test-storage-blob
+tests: all test-keyvault_identity test-storage test-storage-blob
 
 clean:
 	rm -rf keyvault_identity/rootfs keyvault_identity/appdir storage/rootfs storage/appdir storage-blob/rootfs storage-blob/appdir
