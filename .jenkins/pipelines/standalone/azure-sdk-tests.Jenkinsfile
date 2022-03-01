@@ -100,7 +100,7 @@ pipeline {
         stage('Build repo source') {
             steps {
                 sh """
-                   ${JENKINS_SCRIPTS}/global/make-world.sh
+                   ${JENKINS_SCRIPTS}/global/make-sdk-tests.sh
                    """
             }
         }
