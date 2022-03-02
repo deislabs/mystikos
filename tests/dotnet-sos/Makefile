@@ -2,6 +2,7 @@ TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
 APPBUILDER=$(TOP)/scripts/appbuilder
+RETRY_W_BACKOFF=$(TOP)/scripts/retry_with_backoff
 HEAP_SIZE="768M"
 
 MYST_LLDB_DOCKER = /build/openenclave/bin/oelldb
@@ -16,6 +17,8 @@ endif
 all: ext2fs runner-image
 
 appdir:
+	$(RETRY_W_BACKOFF) docker pull mcr.microsoft.com/dotnet/sdk:6.0
+	$(RETRY_W_BACKOFF) docker pull mcr.microsoft.com/dotnet/runtime:6.0
 	$(APPBUILDER) Dockerfile
 	# libmscordaccore is required by sos_test.py
 	cp appdir/app/libmscordaccore.so .
