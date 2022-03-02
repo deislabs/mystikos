@@ -3,7 +3,7 @@ pipeline {
         label 'Jenkins-Shared-DC2'
     }
     options {
-        timeout(time: 300, unit: 'MINUTES')
+        timeout(time: 720, unit: 'MINUTES')
     }
     parameters {
         string(name: "REPOSITORY", defaultValue: "deislabs")
