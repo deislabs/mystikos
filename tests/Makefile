@@ -140,6 +140,8 @@ endif
 
 DIRS += appenv
 
+DIRS = cpython-tests cpython-tests cpython-tests cpython-tests cpython-tests
+
 .PHONY: $(DIRS)
 
 dirs: $(DIRS)

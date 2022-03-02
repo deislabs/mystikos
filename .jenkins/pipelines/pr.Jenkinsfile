@@ -150,7 +150,7 @@ pipeline {
                     }
                     axis {
                         name 'TEST_PIPELINE'
-                        values 'Unit', 'Solutions'
+                        values 'Unit'
                     }
                 }
                 stages {
