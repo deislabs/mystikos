@@ -38,8 +38,8 @@ DIRS += pandas_tests
 endif
 DIRS += nodejs
 DIRS += numpy_core_tests
-DIRS += redis
-DIRS += cpprestsdk
+DIRS = redis
+#DIRS += cpprestsdk
 
 .PHONY: $(DIRS)
 
