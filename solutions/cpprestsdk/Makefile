@@ -11,13 +11,14 @@ ifdef STRACE
 OPTS += --strace
 endif
 
-all: package
+all: ext2rootfs
 
 package: $(APPDIR) private.pem
 	$(MYST) package-sgx $(APPDIR) private.pem config.json
 
-run: 
-	myst/bin/$(APP_NAME) $(OPTS)
+run: ext2rootfs
+#	myst/bin/$(APP_NAME) $(OPTS)
+	$(RUNTEST) $(MYST_EXEC) ext2rootfs --app-config-path config.json $(OPTS) /app/casablanca/build.release/Release/Binaries/test_runner
 
 $(APPDIR):
 	$(APPBUILDER) -v -d Dockerfile
@@ -26,7 +27,7 @@ cpio: $(APPDIR)
 	$(MYST) mkcpio $(APPDIR) rootfs
 
 ext2rootfs: $(APPDIR)
-	$(MYST) mkext2 $(APPDIR) ext2rootfs
+	$(MYST) mkext2 -f $(APPDIR) ext2rootfs
 
 # There are 6 test suite come with the CPPRESTSDK, replace the <suite>.so filename to related test suite
 # libhttpclient_test.so
@@ -48,4 +49,4 @@ private.pem:
 	openssl genrsa -out private.pem -3 3072
 
 clean:
-	rm -rf rootfs $(APPDIR) myst private.pem 
+	rm -rf rootfs $(APPDIR) myst private.pem ext2rootfs

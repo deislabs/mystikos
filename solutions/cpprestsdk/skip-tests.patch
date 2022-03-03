@@ -1,3 +1,24 @@
+diff --git a/Release/tests/functional/http/client/outside_tests.cpp b/Release/tests/functional/http/client/outside_tests.cpp
+index 439772c7..bcdad28b 100644
+--- a/Release/tests/functional/http/client/outside_tests.cpp
++++ b/Release/tests/functional/http/client/outside_tests.cpp
+@@ -240,6 +240,7 @@ SUITE(outside_tests)
+ 
+     TEST(server_hostname_mismatch_ignored) { test_ignored_ssl_cert(U("https://wrong.host.badssl.com/")); }
+ 
++#if 0 /* this test fails because an external server is down */
+     TEST(server_hostname_host_override_after_upgrade)
+     {
+         http_client client(U("http://198.35.26.96/"));
+@@ -248,6 +249,8 @@ SUITE(outside_tests)
+         auto response = client.request(req).get();
+         VERIFY_ARE_EQUAL(status_codes::OK, response.status_code());
+     }
++#endif
++
+ #endif // !defined(__cplusplus_winrt) && !defined(CPPREST_FORCE_HTTP_CLIENT_WINHTTPPAL)
+ 
+     TEST(server_cert_expired) { test_failed_ssl_cert(U("https://expired.badssl.com/")); }
 diff --git a/Release/tests/functional/streams/fstreambuf_tests.cpp b/Release/tests/functional/streams/fstreambuf_tests.cpp
 index 190eb66b..39e65559 100644
 --- a/Release/tests/functional/streams/fstreambuf_tests.cpp
