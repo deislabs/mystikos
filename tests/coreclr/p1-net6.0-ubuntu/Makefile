@@ -83,15 +83,15 @@ profiler-custom-test-runs:
 	sed -i '19d' config_2g.json
 
 run:
-	$(TEST_RUNNER) $(PACKAGE_PATH) null null 120 package pr1-256m 100
-	$(TEST_RUNNER) $(MYST_EXEC) config_1g.json 300 ext2 pr1-1g-passed 100 4
-	$(TEST_RUNNER) $(MYST_EXEC) config_3g.json 300 ext2 pr1-3g-passed 100 4
+	$(TEST_RUNNER) $(PACKAGE_PATH) null null 120 package pr1-256m 4 100
+	$(TEST_RUNNER) $(MYST_EXEC) config_1g.json 300 ext2 pr1-1g-passed 4 100
+	$(TEST_RUNNER) $(MYST_EXEC) config_3g.json 300 ext2 pr1-3g-passed 4 100
 	$(MAKE) custom-test-runs
 	# $(MAKE) profiler-custom-test-runs
 	# Model number 106 or 108 indicates IceLake machines
 	if cat /proc/cpuinfo | grep -m 1 "model.*:" | grep '106\|108' > /dev/null; then \
-	$(TEST_RUNNER) $(MYST_EXEC) config_1g.json 300 ext2 pr1-icelake-1g-passed 100 4; \
-	$(TEST_RUNNER) $(MYST_EXEC) config_8g.json 2400 ext2 pr1-icelake-8g-passed 100 1; \
+	$(TEST_RUNNER) $(MYST_EXEC) config_1g.json 300 ext2 pr1-icelake-1g-passed 4 100; \
+	$(TEST_RUNNER) $(MYST_EXEC) config_8g.json 2400 ext2 pr1-icelake-8g-passed 1 100; \
 	fi
 	$(STAT) pr1-only-tests 96
 
