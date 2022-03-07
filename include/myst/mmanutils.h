@@ -5,12 +5,19 @@
 #define _MYST_MMANUTILS_H
 
 #include <myst/buf.h>
+#include <myst/fs.h>
 #include <myst/mman.h>
 #include <myst/refstr.h>
 #include <sys/mman.h>
 #include <sys/types.h>
 
 #define MYST_FDMAPPING_USED 0x1ca0597f
+
+typedef struct mman_file_handle
+{
+    myst_fs_t* fs;
+    myst_file_t* file;
+} mman_file_handle_t;
 
 /*
 defines a file-page to memory-page mapping
@@ -21,8 +28,9 @@ typedef struct myst_fdmapping
 {
     uint32_t used;           /* whether entry is used */
     int32_t fd;              /* duplicated fd */
-    uint64_t offset;         /* offset of page within file */
+    uint64_t offset;         /* offset of page within backing file */
     myst_refstr_t* pathname; /* full pathname associated with fd */
+    mman_file_handle_t mman_file_handle;
 } myst_fdmapping_t;
 
 int myst_setup_mman(void* data, size_t size);
@@ -94,5 +102,8 @@ bool myst_is_bad_addr(const void* addr, size_t size, int prot);
 void myst_mman_lock(void);
 
 void myst_mman_unlock(void);
+
+const char* myst_mman_prot_to_string(int prot);
+const char* myst_mman_flags_to_string(int flags);
 
 #endif /* _MYST_MMANUTILS_H */

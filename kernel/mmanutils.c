@@ -21,6 +21,7 @@
 #include <myst/mutex.h>
 #include <myst/once.h>
 #include <myst/panic.h>
+#include <myst/posixshmman.h>
 #include <myst/printf.h>
 #include <myst/process.h>
 #include <myst/procfs.h>
@@ -237,10 +238,16 @@ static void _free_fdmappings_pathnames_atexit(void)
     myst_atexit(_free_fdmappings_pathnames, NULL);
 }
 
+static ino_t _get_inode(myst_fs_t* fs, myst_file_t* file)
+{
+    struct stat statbuf;
+    fs->fs_fstat(fs, file, &statbuf);
+    return statbuf.st_ino;
+}
+
 static int _add_file_mapping(int fd, off_t offset, void* addr, size_t length)
 {
     int ret = 0;
-    int dupfd;
     bool locked = false;
     size_t index;
     vectors_t v = _get_vectors();
@@ -250,6 +257,10 @@ static int _add_file_mapping(int fd, off_t offset, void* addr, size_t length)
     };
     struct locals* locals = NULL;
     myst_refstr_t* pathname = NULL;
+    myst_fs_t* fs;
+    myst_file_t* file;
+    ino_t file_inode;
+    bool overwrite = false;
 
     if (fd < 0 || offset < 0 || !addr || !length)
         ERAISE(-EINVAL);
@@ -264,13 +275,12 @@ static int _add_file_mapping(int fd, off_t offset, void* addr, size_t length)
 
     ECHECK(_fd_to_pathname(fd, locals->pathname));
 
+    ECHECK(myst_mman_get_file_handle(fd, &fs, &file));
+    file_inode = _get_inode(fs, file);
+
     /* make a reference-counted version of the pathname */
     if (!(pathname = myst_refstr_dup(locals->pathname)))
         ERAISE(-ENOMEM);
-
-    /* duplicate fd */
-    if ((dupfd = myst_syscall_dup(fd)) == -1)
-        ERAISE(dupfd);
 
     ECHECK(myst_round_up(length, PAGE_SIZE, &length));
     ECHECK((index = _get_page_index(addr, length)));
@@ -279,6 +289,7 @@ static int _add_file_mapping(int fd, off_t offset, void* addr, size_t length)
     {
         const size_t count = length / PAGE_SIZE;
         uint64_t off = offset;
+        myst_file_t* prev_file = NULL;
 
         for (size_t i = index; i < index + count; i++)
         {
@@ -294,8 +305,22 @@ static int _add_file_mapping(int fd, off_t offset, void* addr, size_t length)
                 p->pathname = NULL;
             }
 
+            if (p->used != MYST_FDMAPPING_USED ||
+                prev_file != p->mman_file_handle.file &&
+                    file_inode !=
+                        _get_inode(
+                            p->mman_file_handle.fs, p->mman_file_handle.file))
+            {
+                prev_file = p->mman_file_handle.file;
+                p->mman_file_handle.file = file;
+                p->mman_file_handle.fs = fs;
+                overwrite = true;
+            }
+            else
+            {
+                prev_file = p->mman_file_handle.file;
+            }
             p->used = MYST_FDMAPPING_USED;
-            p->fd = dupfd;
             p->offset = off;
             myst_refstr_ref(p->pathname = pathname);
             off += PAGE_SIZE;
@@ -309,6 +334,9 @@ done:
 
     if (locals)
         free(locals);
+
+    if (!overwrite)
+        fs->fs_close(fs, file);
 
     myst_refstr_unref(pathname);
 
@@ -371,30 +399,12 @@ done:
     return ret;
 }
 
-long myst_mmap(
-    void* addr,
-    size_t length,
-    int prot,
-    int flags,
-    int fd,
-    off_t offset)
+static int _mmap_fd_checks(int prot, int flags, int fd)
 {
-    long ret = -1;
+    long ret = 0;
 
-    /* fail if length is zero. Note that the page-alignment will
-     * be enforced by myst_mman_mprotect and myst_mman_mmap */
-    if (!length)
-        ERAISE(-EINVAL);
-
-    /* check for invalid PROT bits */
-    if (prot & (~MYST_PROT_MMAP_MASK))
-        ERAISE(-EINVAL);
-
-    /* Linux ignores fd when the MAP_ANONYMOUS flag is present */
-    if (flags & MAP_ANONYMOUS)
-        fd = -1;
     /* fail if fd is negative when the MAP_ANONYMOUS flag is not present */
-    else if (fd < 0)
+    if (!(flags & MAP_ANONYMOUS) && fd < 0)
         ERAISE(-EBADF);
 
     /* check file permissions upfront */
@@ -428,6 +438,35 @@ long myst_mmap(
         if ((flags & MAP_SHARED) && (prot & PROT_WRITE) && !(flags & O_RDWR))
             ERAISE(-EACCES);
     }
+
+done:
+    return ret;
+}
+
+long myst_mmap(
+    void* addr,
+    size_t length,
+    int prot,
+    int flags,
+    int fd,
+    off_t offset)
+{
+    long ret = -1;
+
+    /* fail if length is zero. Note that the page-alignment will
+     * be enforced by myst_mman_mprotect and myst_mman_mmap */
+    if (!length)
+        ERAISE(-EINVAL);
+
+    /* check for invalid PROT bits */
+    if (prot & (~MYST_PROT_MMAP_MASK))
+        ERAISE(-EINVAL);
+
+    /* Linux ignores fd when the MAP_ANONYMOUS flag is present */
+    if (flags & MAP_ANONYMOUS)
+        fd = -1;
+
+    ECHECK(_mmap_fd_checks(prot, flags, fd));
 
     /* Check if posix shm file */
     /* addr hint is not allowed for POSIX shm memory */
@@ -466,6 +505,8 @@ long myst_mmap(
         ECHECK(
             myst_mman_mmap(&_mman, addr, length, prot, tflags, (void**)&ret));
 
+        // ATTN: For failures in the rest of the function, do we need to return
+        // the allocated memory
         if (fd >= 0 && !addr)
         {
             // ATTN: Use the error code returned by lower-level functions. This
@@ -493,6 +534,9 @@ long myst_mmap(
             if (!(prot & MYST_PROT_WRITE))
                 ECHECK(myst_mman_mprotect(&_mman, (void*)ret, length, prot));
         }
+
+        if (ret && (flags & MAP_SHARED))
+            ECHECK(myst_shmem_register_mapping(fd, (void*)ret, length));
     }
 
     void* end = (void*)(ret + length);
@@ -562,7 +606,7 @@ int myst_mprotect(const void* addr, const size_t len, const int prot)
 
 typedef struct fdlist
 {
-    int fd;
+    mman_file_handle_t mman_file_handle;
     struct fdlist* next;
 } fdlist_t;
 
@@ -598,7 +642,7 @@ static int _remove_file_mappings(void* addr, size_t length, fdlist_t** head_out)
     _rlock(&locked);
     {
         const size_t count = length / PAGE_SIZE;
-        int prev_cleared_fd = -1;
+        myst_file_t* prev_cleared_file = NULL;
 
         for (size_t i = index; i < index + count; i++)
         {
@@ -609,7 +653,8 @@ static int _remove_file_mappings(void* addr, size_t length, fdlist_t** head_out)
              * page of
              * interval mapped with same fd. The fd list will be closed by the
              * caller outside the mman lock. */
-            if (p->used == MYST_FDMAPPING_USED && p->fd != prev_cleared_fd)
+            if (p->used == MYST_FDMAPPING_USED &&
+                p->mman_file_handle.file != prev_cleared_file)
             {
                 fdlist_t* fd_node;
 
@@ -619,7 +664,9 @@ static int _remove_file_mappings(void* addr, size_t length, fdlist_t** head_out)
                     ERAISE(-ENOMEM);
                 }
 
-                fd_node->fd = prev_cleared_fd = p->fd;
+                fd_node->mman_file_handle = p->mman_file_handle;
+                prev_cleared_file = p->mman_file_handle.file;
+
                 if (!head)
                     head = fd_node;
                 else
@@ -630,11 +677,7 @@ static int _remove_file_mappings(void* addr, size_t length, fdlist_t** head_out)
             }
 
             // clear fd mapping
-            p->used = 0;
-            p->fd = 0;
-            p->offset = 0;
-            myst_refstr_unref(p->pathname);
-            p->pathname = NULL;
+            memset(p, 0, sizeof(myst_fdmapping_t));
         }
     }
     _runlock(&locked);
@@ -659,7 +702,8 @@ static void _close_file_handles(fdlist_t* head)
     while (head)
     {
         fdlist_t* next = head->next;
-        myst_syscall_close(head->fd);
+        head->mman_file_handle.fs->fs_close(
+            head->mman_file_handle.fs, head->mman_file_handle.file);
         free(head);
         head = next;
     }
@@ -736,7 +780,7 @@ int myst_release_process_mappings(pid_t pid)
     /* Release posix shared memory mappings for this process */
     myst_posix_shm_handle_release_mappings(pid);
 
-    /* Scan entire pids vector range for process-owned memory */
+    /* Scan entire pids vector range for process-owned MAP_PRIVATE memory */
     {
         uint8_t* addr = (uint8_t*)_mman.map;
         size_t length = ((uint8_t*)_mman.end) - addr;
@@ -782,14 +826,6 @@ int myst_release_process_mappings(pid_t pid)
                     size_t m = 1;
                     size_t len;
 
-                    myst_fdmapping_t* p = &v.fdmappings[i];
-
-                    if (p->pathname)
-                    {
-                        myst_refstr_unref(p->pathname);
-                        p->pathname = NULL;
-                    }
-
                     /* count consecutive pages with same pid */
                     for (size_t j = i + 1; j < n; j++)
                     {
@@ -797,15 +833,6 @@ int myst_release_process_mappings(pid_t pid)
                         {
                             break;
                         }
-
-                        myst_fdmapping_t* p = &v.fdmappings[j];
-
-                        if (p->pathname)
-                        {
-                            myst_refstr_unref(p->pathname);
-                            p->pathname = NULL;
-                        }
-
                         m++;
                     }
 
@@ -923,7 +950,6 @@ int proc_pid_maps_vcallback(
     struct locals
     {
         char realpath[PATH_MAX];
-        char maps_entry[48 + PATH_MAX];
     }* locals = NULL;
     myst_process_t* process;
 
@@ -954,24 +980,26 @@ int proc_pid_maps_vcallback(
 
         ECHECK(myst_round_up(length, PAGE_SIZE, &length));
         ECHECK((index = _get_page_index(addr, length)));
+        assert(index == 0);
         size_t count = length / PAGE_SIZE;
 
+        size_t last_page_idx_plus_one = index + count;
         assert(index < v.pids_count);
-        assert(index + count <= v.pids_count);
+        assert(last_page_idx_plus_one == v.pids_count);
 
         _rlock(&locked);
         {
-            for (size_t i = index; i < index + count;)
+            for (size_t i = index; i < last_page_idx_plus_one;)
             {
                 if (v.pids[i] == (uint32_t)pid)
                 {
-                    size_t n = 1;
-                    size_t len;
-                    int fd = v.fdmappings[i].fd;
+                    size_t n = 1; // tracks page span with same traits
+                    mman_file_handle_t* fs_file =
+                        &v.fdmappings[i].mman_file_handle;
 
                     uint32_t used = v.fdmappings[i].used;
                     uint64_t offset = v.fdmappings[i].offset;
-                    myst_refstr_t* pathname = v.fdmappings[i].pathname;
+
                     int prot = 0;
                     bool consistent = false;
                     char* str;
@@ -984,7 +1012,7 @@ int proc_pid_maps_vcallback(
                     }
 
                     /* count consecutive pages with same traits */
-                    for (size_t j = i + 1; j < index + count; j++)
+                    for (size_t j = i + 1; j < last_page_idx_plus_one; j++)
                     {
                         int tmp_prot = 0;
 
@@ -996,7 +1024,8 @@ int proc_pid_maps_vcallback(
                             break;
 
                         /* if the fd changes */
-                        if (v.fdmappings[j].fd != fd)
+                        if (v.fdmappings[j].mman_file_handle.file !=
+                            fs_file->file)
                             break;
 
                         if (myst_mman_get_prot(
@@ -1015,19 +1044,23 @@ int proc_pid_maps_vcallback(
                         n++;
                     }
 
-                    len = n * PAGE_SIZE;
-
-                    if (!used)
-                        fd = -1;
+                    if (used)
+                    {
+                        ECHECK(fs_file->fs->fs_realpath(
+                            fs_file->fs,
+                            fs_file->file,
+                            locals->realpath,
+                            PATH_MAX));
+                    }
 
                     /* format the output */
                     if (_format_proc_maps_entry(
                             addr,
-                            len,
+                            n * PAGE_SIZE,
                             prot,
                             flags,
                             offset,
-                            (pathname ? pathname->data : ""),
+                            (used ? locals->realpath : ""),
                             &str) == 0)
                     {
                         if (myst_buf_insert(vbuf, 0, str, strlen(str)) < 0)
@@ -1036,8 +1069,8 @@ int proc_pid_maps_vcallback(
                     }
 
                     i += n;
-                    addr += len;
-                    length -= len;
+                    addr += n * PAGE_SIZE;
+                    length -= n * PAGE_SIZE;
                 }
                 else
                 {
@@ -1064,7 +1097,11 @@ done:
     return ret;
 }
 
-static int _sync_file(int fd, off_t offset, const void* addr, size_t length)
+static int _sync_file(
+    mman_file_handle_t* fs_file,
+    off_t offset,
+    const void* addr,
+    size_t length)
 {
     int ret = 0;
     const uint8_t* p = (const uint8_t*)addr;
@@ -1073,7 +1110,9 @@ static int _sync_file(int fd, off_t offset, const void* addr, size_t length)
 
     while (r > 0)
     {
-        ssize_t n = pwrite(fd, p, r, o);
+        ssize_t n =
+            (fs_file->fs->fs_pwrite)(fs_file->fs, fs_file->file, p, r, o);
+        ;
 
         if (n == 0)
             break;
@@ -1126,7 +1165,7 @@ int myst_msync(void* addr, size_t length, int flags)
                     &_mman, page, PAGE_SIZE, &prot, &consistent));
                 if (prot & PROT_WRITE)
                     ECHECK(_sync_file(
-                        p->fd,
+                        &p->mman_file_handle,
                         p->offset,
                         page,
                         length > PAGE_SIZE ? PAGE_SIZE : length));
@@ -1323,4 +1362,52 @@ void myst_mman_lock(void)
 void myst_mman_unlock(void)
 {
     myst_rspin_unlock(&_mman.lock);
+}
+
+const char* myst_mman_prot_to_string(int prot)
+{
+    switch (prot)
+    {
+        case 0:
+            return "PROT_NONE";
+        case 1:
+            return "PROT_READ";
+        case 2:
+            return "PROT_WRITE";
+        case 3:
+            return "PROT_READ|PROT_WRITE";
+        case 4:
+            return "PROT_EXEC";
+        case 5:
+            return "PROT_READ|PROT_EXEC";
+        case 7:
+            return "PROT_READ|PROT_WRITE|PROT_EXEC";
+        default:
+            return "unknown";
+    }
+}
+
+const char* myst_mman_flags_to_string(int flags)
+{
+    switch (flags)
+    {
+        case MYST_MAP_SHARED:
+            return "MAP_SHARED";
+        case MYST_MAP_PRIVATE:
+            return "MAP_PRIVATE";
+        case MYST_MAP_FIXED:
+            return "MAP_FIXED";
+        case MYST_MAP_ANONYMOUS:
+            return "MAP_ANONYMOUS";
+        case MYST_MAP_SHARED | MYST_MAP_ANONYMOUS:
+            return "MAP_SHARED|MAP_ANONYMOUS";
+        case MYST_MAP_FIXED | MYST_MAP_PRIVATE:
+            return "MAP_FIXED|MAP_PRIVATE";
+        case MYST_MAP_ANONYMOUS | MYST_MAP_PRIVATE:
+            return "MAP_ANONYMOUS|MYST_PRIVATE";
+        case MYST_MAP_FIXED | MYST_MAP_ANONYMOUS | MYST_MAP_PRIVATE:
+            return "MAP_FIXED|MAP_ANONYMOUS|MYST_PRIVATE";
+        default:
+            return "unknown";
+    }
 }

@@ -3612,12 +3612,14 @@ static long _SYS_mmap(long n, long params[6], const myst_process_t* process)
 
     _strace(
         n,
-        "addr=%lx length=%zu(%lx) prot=%d flags=%d fd=%d offset=%lu",
+        "addr=%lx length=%zu(%lx) prot=%d(%s) flags=%d(%s) fd=%d offset=%lu",
         (long)addr,
         length,
         length,
         prot,
+        myst_mman_prot_to_string(prot),
         flags,
+        myst_mman_flags_to_string(flags),
         fd,
         offset);
 
@@ -3635,6 +3637,10 @@ static long _SYS_mmap(long n, long params[6], const myst_process_t* process)
     {
         if (flags & MAP_FIXED)
         {
+            // addr hint with MAP_FIXED not supported for shared mappings
+            if (flags & MAP_SHARED)
+                return (_return(n, -EINVAL));
+
             pid_t pid = myst_getpid();
 
             size_t rounded_up_length;
@@ -3662,7 +3668,7 @@ static long _SYS_mmap(long n, long params[6], const myst_process_t* process)
     {
         ret = -ENOMEM;
     }
-    else if (ret > 0 && !myst_is_posix_shm_file_handle(fd, flags))
+    else if (ret > 0 && !(flags & MAP_SHARED))
     {
         pid_t pid = myst_getpid();
         void* ptr = (void*)ret;
@@ -3724,13 +3730,13 @@ static long _SYS_munmap(
         }
     }
 
-    /* Check if unmapping POSIX shared memory */
+    /* Handle MAP_SHARED unmapping */
     {
-        bool is_posix_shm;
-        if (myst_posix_shm_handle_munmap(addr, length, &is_posix_shm) < 0)
+        bool is_shmem;
+        if (myst_shmem_handle_munmap(addr, length, &is_shmem) < 0)
             return (_return(n, -EINVAL));
 
-        if (is_posix_shm)
+        if (is_shmem)
             return (_return(n, 0));
     }
 
@@ -3964,6 +3970,7 @@ static long _SYS_msync(long n, long params[6])
 
     _strace(n, "addr=%p length=%zu flags=%d ", addr, length, flags);
 
+    if (!myst_is_address_within_shmem(addr, length))
     {
         const pid_t pid = myst_getpid();
         myst_assume(pid > 0);

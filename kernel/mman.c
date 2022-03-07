@@ -921,6 +921,9 @@ static int _mmap(
             goto done;
         }
 
+        // ATTN: We always coalesce if there is an allocated region adjacent. Is
+        // this safe when adjacent region is owned by different process or has
+        // different protection attributes?
         if (left && _end(left) == start)
         {
             /* Coalesce with LEFT neighbor */

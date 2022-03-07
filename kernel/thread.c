@@ -26,6 +26,7 @@
 #include <myst/mmanutils.h>
 #include <myst/options.h>
 #include <myst/panic.h>
+#include <myst/posixshmman.h>
 #include <myst/printf.h>
 #include <myst/procfs.h>
 #include <myst/setjmp.h>
