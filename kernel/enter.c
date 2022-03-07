@@ -33,6 +33,7 @@
 #include <myst/mount.h>
 #include <myst/options.h>
 #include <myst/panic.h>
+#include <myst/posixshmman.h>
 #include <myst/printf.h>
 #include <myst/process.h>
 #include <myst/procfs.h>
