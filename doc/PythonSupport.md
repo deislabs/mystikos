@@ -51,6 +51,8 @@ Here are several noteworthy modules we haven't supported yet:
   * Other failed unit tests related to locale:
     * [`test_locale_caching`](https://github.com/python/cpython/blob/f4c03484da59049eb62a9bf7777b963e2267d187/Lib/test/test_re.py#L1895), [`test_locale_compiled`](https://github.com/python/cpython/blob/f4c03484da59049eb62a9bf7777b963e2267d187/Lib/test/test_re.py#L1931)
     * [`test_PYTHONCOERCECLOCALE_not_set, test_PYTHONCOERCECLOCALE_not_zero, test_PYTHONCOERCECLOCALE_set_to_warn, test_PYTHONCOERCECLOCALE_set_to_zero`](https://github.com/python/cpython/blob/f4c03484da59049eb62a9bf7777b963e2267d187/Lib/test/test_c_locale_coercion.py#L361-L389)
+- `resource`
+  - `getrusage`: only supports option `RUSAGE_SELF`
 
 **Caveat**: Any third-party Python library that calls into the unsupported
 standard Python APIs are not supported neither. Sometimes they can produce
