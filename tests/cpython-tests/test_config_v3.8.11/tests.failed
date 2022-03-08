@@ -10,7 +10,6 @@ test_ctypes
 test_distutils
 test_eintr
 test_embed
-test_faulthandler
 test_fcntl
 test_fileio
 test_fork1
