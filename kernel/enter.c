@@ -105,22 +105,21 @@ done:
     return ret;
 }
 
-static int _copy_host_etc_files()
+static int _copy_host_etc_file(const char* path)
 {
     int ret = 0;
     int fd = -1;
-    const char* resolv_file = "/etc/resolv.conf";
     void* buf = NULL;
     size_t buf_size;
     struct stat statbuf;
 
-    ECHECK(myst_load_host_file(resolv_file, &buf, &buf_size));
+    ECHECK(myst_load_host_file(path, &buf, &buf_size));
 
-    if (stat(resolv_file, &statbuf) == 0)
+    if (stat(path, &statbuf) == 0)
     {
-        if ((myst_syscall_unlink(resolv_file)) < 0)
+        if ((myst_syscall_unlink(path)) < 0)
         {
-            myst_eprintf("kernel: failed to unlink file %s\n", resolv_file);
+            myst_eprintf("kernel: failed to unlink file %s\n", path);
             ERAISE(-EINVAL);
         }
     }
@@ -148,14 +147,14 @@ static int _copy_host_etc_files()
             }
         }
     }
-    if ((fd = creat(resolv_file, 0644)) < 0)
+    if ((fd = creat(path, 0644)) < 0)
     {
-        myst_eprintf("kernel: failed to open file %s\n", resolv_file);
+        myst_eprintf("kernel: failed to open file %s\n", path);
         ERAISE(-EINVAL);
     }
     if ((myst_write_file_fd(fd, buf, buf_size)) < 0)
     {
-        myst_eprintf("kernel: failed to write to file %s\n", resolv_file);
+        myst_eprintf("kernel: failed to write to file %s\n", path);
         ERAISE(-EINVAL);
     }
 
@@ -167,6 +166,15 @@ done:
     if (buf)
         free(buf);
 
+    return ret;
+}
+
+static int _copy_host_etc_files()
+{
+    int ret = 0;
+    ECHECK(_copy_host_etc_file("/etc/resolv.conf"));
+    ECHECK(_copy_host_etc_file("/etc/hosts"));
+done:
     return ret;
 }
 
