@@ -718,7 +718,6 @@ long myst_wait(
             ERAISE(-ECHILD);
         }
 
-        myst_spin_unlock(&myst_process_list_lock);
         locked = false;
 
         if ((options & WNOHANG))
