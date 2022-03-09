@@ -5026,7 +5026,7 @@ static long _SYS_mlock(long n, long params[6])
 static long _SYS_prctl(long n, long params[6])
 {
     int option = (int)params[0];
-    long ret = 0;
+    long ret = -EINVAL;
 
     _strace(n, "option=%d", option);
 
@@ -5048,9 +5048,9 @@ static long _SYS_prctl(long n, long params[6])
 
         ret = myst_set_thread_name(myst_thread_self(), arg2);
     }
-    else
+    else if (option == PR_SET_PDEATHSIG)
     {
-        ret = -EINVAL;
+        ret = 0;
     }
 
     return (_return(n, ret));

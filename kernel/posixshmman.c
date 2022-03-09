@@ -177,14 +177,20 @@ done:
     return ret;
 }
 
-long myst_mman_get_file_handle(
-    int fd,
-    myst_fs_t** fs_out_arg,
-    myst_file_t** file_out_arg)
+static ino_t _get_inode(myst_fs_t* fs, myst_file_t* file)
+{
+    assert(fs && file);
+    struct stat statbuf;
+    fs->fs_fstat(fs, file, &statbuf);
+    return statbuf.st_ino;
+}
+
+long myst_mman_file_handle_get(int fd, mman_file_handle_t** file_handle_out)
 {
     long ret = 0;
     myst_fs_t* fs;
     myst_file_t *file, *file_out;
+    mman_file_handle_t* file_handle = NULL;
     myst_fdtable_t* fdtable = myst_fdtable_current();
     struct locals
     {
@@ -193,22 +199,48 @@ long myst_mman_get_file_handle(
     };
     struct locals* locals = NULL;
 
+    if (!file_handle_out)
+        ERAISE(-EINVAL);
+
+    *file_handle_out = NULL;
+
     if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
-    // get pathname from fd
+    if (!(file_handle = calloc(1, sizeof(mman_file_handle_t))))
+        ERAISE(-ENOMEM);
+
+    // get a dup file handle which the mman will use
+    // for msync and /proc/[pid]/maps
     ECHECK(myst_fdtable_get_file(fdtable, fd, &fs, &file));
     ECHECK((*fs->fs_dup)(fs, file, &file_out));
 
-    *fs_out_arg = fs;
-    *file_out_arg = file_out;
+    file_handle->fs = fs;
+    file_handle->file = file_out;
+    file_handle->inode = _get_inode(fs, file);
+
+    *file_handle_out = file_handle;
+    file_handle = NULL;
 
 done:
 
     if (locals)
         free(locals);
 
+    if (file_handle)
+        free(file_handle);
+
     return ret;
+}
+
+void myst_mman_file_handle_put(mman_file_handle_t* file_handle)
+{
+    assert(file_handle);
+    if (--file_handle->npages <= 0)
+    {
+        file_handle->fs->fs_close(file_handle->fs, file_handle->file);
+        free(file_handle);
+    }
 }
 
 bool myst_is_posix_shm_file_handle(int fd, int flags)

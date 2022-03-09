@@ -17,6 +17,8 @@ typedef struct mman_file_handle
 {
     myst_fs_t* fs;
     myst_file_t* file;
+    ino_t inode;
+    int npages; // # of pages sharing this mapping
 } mman_file_handle_t;
 
 /*
@@ -30,7 +32,7 @@ typedef struct myst_fdmapping
     int32_t fd;              /* duplicated fd */
     uint64_t offset;         /* offset of page within backing file */
     myst_refstr_t* pathname; /* full pathname associated with fd */
-    mman_file_handle_t mman_file_handle;
+    mman_file_handle_t* mman_file_handle;
 } myst_fdmapping_t;
 
 int myst_setup_mman(void* data, size_t size);
