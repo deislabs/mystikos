@@ -31,9 +31,8 @@ int myst_posix_shm_handle_release_mappings(pid_t pid);
 
 int myst_posix_shm_share_mappings(pid_t childpid);
 
-long myst_mman_get_file_handle(
-    int fd,
-    myst_fs_t** fs_out_arg,
-    myst_file_t** file_out_arg);
+long myst_mman_file_handle_get(int fd, mman_file_handle_t** file_handle_out);
+
+void myst_mman_file_handle_put(mman_file_handle_t* file_handle);
 
 #endif /* _MYST_POSIXSHMMAN_H */
