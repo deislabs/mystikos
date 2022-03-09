@@ -80,20 +80,6 @@ static vectors_t _get_vectors(void)
     return v;
 }
 
-static int _fd_to_pathname(int fd, char pathname[PATH_MAX])
-{
-    int ret = 0;
-    myst_fdtable_t* fdtable = myst_fdtable_current();
-    myst_fs_t* fs;
-    myst_file_t* file;
-
-    ECHECK(myst_fdtable_get_file(fdtable, fd, &fs, &file));
-    ECHECK((*fs->fs_realpath)(fs, file, pathname, PATH_MAX));
-
-done:
-    return ret;
-}
-
 int myst_setup_mman(void* data, size_t size)
 {
     int ret = -1;
@@ -525,20 +511,29 @@ void* myst_mremap(
 {
     void* p;
     int r;
+    shared_mapping_t* shm_mapping;
 
     if (new_address)
         return (void*)-EINVAL;
 
-    /* POSIX shm doesn't support mremap yet */
-    if (myst_is_address_within_shmem(old_address, old_size))
+    if (myst_is_address_within_shmem(old_address, old_size, &shm_mapping))
     {
-        return (void*)-EINVAL;
+        if (!myst_shmem_can_mremap(shm_mapping))
+        {
+            return (void*)-EINVAL;
+        }
     }
 
     r = myst_mman_mremap(&_mman, old_address, old_size, new_size, flags, &p);
 
     if (r != 0)
         return (void*)(long)r;
+
+    // fixup shared mapping
+    if (shm_mapping)
+    {
+        myst_shmem_mremap_update(shm_mapping, p, new_size);
+    }
 
     return p;
 }
@@ -560,7 +555,7 @@ int myst_mprotect(const void* addr, const size_t len, const int prot)
      * supporting mprotect for memory shared between two process threads becomes
      * tricky. For now, we bail out and treat mprotect as a NOP.
      * */
-    if (myst_is_address_within_shmem(addr, len))
+    if (myst_is_address_within_shmem(addr, len, NULL))
     {
         return 0;
     }
