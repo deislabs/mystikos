@@ -382,15 +382,24 @@ done:
     return ret;
 }
 
-bool myst_is_address_within_shmem(const void* addr, const size_t length)
+bool myst_is_address_within_shmem(
+    const void* addr,
+    const size_t length,
+    shared_mapping_t** sm_out)
 {
+    if (sm_out)
+        *sm_out = NULL;
     myst_rspin_lock(&_shared_mappings_lock);
     shared_mapping_t* sm;
     _lookup_shm_by_addr_len(addr, length, &sm);
     myst_rspin_unlock(&_shared_mappings_lock);
 
     if (sm)
+    {
+        if (sm_out)
+            *sm_out = sm;
         return true;
+    }
 
     return false;
 }
@@ -619,4 +628,23 @@ done:
     myst_rspin_unlock(&_shared_mappings_lock);
 
     return ret;
+}
+
+bool myst_shmem_can_mremap(shared_mapping_t* sm)
+{
+    assert(sm);
+    if ((sm->shmem_type == SHMEM_REG_FILE || sm->shmem_type == SHMEM_ANON) &&
+        sm->sharers.size == 1)
+        return true;
+    return false;
+}
+
+void myst_shmem_mremap_update(
+    shared_mapping_t* sm,
+    void* new_addr,
+    size_t new_size)
+{
+    assert(sm);
+    sm->start_addr = new_addr;
+    sm->length = new_size;
 }

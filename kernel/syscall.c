@@ -3950,6 +3950,7 @@ static long _SYS_mremap(long n, long params[6])
     int flags = (int)params[3];
     void* new_address = (void*)params[4];
     long ret;
+    bool is_shmem_region = false;
 
     _strace(
         n,
@@ -3964,6 +3965,9 @@ static long _SYS_mremap(long n, long params[6])
         flags,
         new_address);
 
+    /* skip pids check for shared memory regions */
+    if (!(is_shmem_region =
+              myst_is_address_within_shmem(old_address, old_size, NULL)))
     {
         const pid_t pid = myst_getpid();
         myst_assume(pid > 0);
@@ -3977,7 +3981,7 @@ static long _SYS_mremap(long n, long params[6])
     ret =
         (long)myst_mremap(old_address, old_size, new_size, flags, new_address);
 
-    if (ret >= 0)
+    if (!is_shmem_region && ret >= 0)
     {
         const pid_t pid = myst_getpid();
 
@@ -4001,7 +4005,7 @@ static long _SYS_msync(long n, long params[6])
 
     _strace(n, "addr=%p length=%zu flags=%d ", addr, length, flags);
 
-    if (!myst_is_address_within_shmem(addr, length))
+    if (!myst_is_address_within_shmem(addr, length, NULL))
     {
         const pid_t pid = myst_getpid();
         myst_assume(pid > 0);
