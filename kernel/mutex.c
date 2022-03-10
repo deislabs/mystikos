@@ -211,7 +211,11 @@ int myst_mutex_destroy(myst_mutex_t* mutex)
     {
         if (myst_thread_queue_empty(&m->queue))
         {
-            memset(m, 0, sizeof(myst_mutex_t));
+            // Clear all fields except the lock which will be cleared by
+            // unlocking below.
+            m->refs = 0;
+            m->owner = NULL;
+            memset(&m->queue, 0, sizeof(m->queue));
         }
         else
         {
@@ -219,7 +223,6 @@ int myst_mutex_destroy(myst_mutex_t* mutex)
         }
     }
     myst_spin_unlock(&m->lock);
-
     return ret;
 }
 
