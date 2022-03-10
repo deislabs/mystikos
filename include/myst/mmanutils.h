@@ -6,6 +6,7 @@
 
 #include <myst/buf.h>
 #include <myst/fs.h>
+#include <myst/list.h>
 #include <myst/mman.h>
 #include <myst/refstr.h>
 #include <sys/mman.h>
@@ -15,6 +16,7 @@
 
 typedef struct mman_file_handle
 {
+    myst_list_node_t base;
     myst_fs_t* fs;
     myst_file_t* file;
     ino_t inode;

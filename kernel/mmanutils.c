@@ -184,46 +184,6 @@ size_t _skip_zero_pids(const uint32_t* pids, size_t i, size_t n)
     return i + (p - start);
 }
 
-static void _free_fdmappings_file_handles(void* arg)
-{
-    uint8_t* addr = (uint8_t*)_mman.map;
-    size_t length = ((uint8_t*)_mman.end) - addr;
-    size_t index;
-    vectors_t v = _get_vectors();
-
-    (void)arg;
-
-    myst_round_up(length, PAGE_SIZE, &length);
-    index = _get_page_index(addr, length);
-    assert(index >= 0);
-    size_t count = length / PAGE_SIZE;
-    size_t n = index + count;
-
-    for (size_t i = index; i < n; i++)
-    {
-        if ((i = _skip_unused_fdmappings(v.fdmappings, i, n)) == n)
-        {
-            /* there are no more in-use fd-mappings */
-            break;
-        }
-
-        myst_fdmapping_t* p = &v.fdmappings[i];
-
-        if (p->mman_file_handle)
-        {
-            p->mman_file_handle->npages = 0;
-            myst_mman_file_handle_put(p->mman_file_handle);
-        }
-    }
-}
-
-static myst_once_t _free_fdmappings_file_handles_atexit_once;
-
-static void _free_fdmappings_file_handles_atexit(void)
-{
-    myst_atexit(_free_fdmappings_file_handles, NULL);
-}
-
 static bool _file_handle_eq(mman_file_handle_t* f1, mman_file_handle_t* f2)
 {
     assert(f1 && f2);
@@ -242,12 +202,6 @@ static int _add_file_mapping(int fd, off_t offset, void* addr, size_t length)
 
     if (fd < 0 || offset < 0 || !addr || !length)
         ERAISE(-EINVAL);
-
-    /* register the cleanup function for fd-mapping file handles with atexit()
-     */
-    myst_once(
-        &_free_fdmappings_file_handles_atexit_once,
-        _free_fdmappings_file_handles_atexit);
 
     ECHECK(myst_round_up(length, PAGE_SIZE, &length));
     ECHECK((index = _get_page_index(addr, length)));
