@@ -1,10 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
+#include <myst/atexit.h>
 #include <myst/eraise.h>
 #include <myst/file.h>
 #include <myst/fs.h>
 #include <myst/list.h>
 #include <myst/mount.h>
+#include <myst/once.h>
 #include <myst/posixshmman.h>
 #include <myst/printf.h>
 #include <myst/process.h>
@@ -185,6 +187,14 @@ static ino_t _get_inode(myst_fs_t* fs, myst_file_t* file)
     return statbuf.st_ino;
 }
 
+static myst_list_t mman_file_handles;
+static myst_once_t _free_mman_file_handles_atexit_once;
+
+static void _free_mman_file_handles_atexit(void)
+{
+    myst_atexit((void (*)(void*))myst_list_free, &mman_file_handles);
+}
+
 long myst_mman_file_handle_get(int fd, mman_file_handle_t** file_handle_out)
 {
     long ret = 0;
@@ -210,6 +220,11 @@ long myst_mman_file_handle_get(int fd, mman_file_handle_t** file_handle_out)
     if (!(file_handle = calloc(1, sizeof(mman_file_handle_t))))
         ERAISE(-ENOMEM);
 
+    /* register the cleanup function for mman owned file handles with atexit()
+     */
+    myst_once(
+        &_free_mman_file_handles_atexit_once, _free_mman_file_handles_atexit);
+
     // get a dup file handle which the mman will use
     // for msync and /proc/[pid]/maps
     ECHECK(myst_fdtable_get_file(fdtable, fd, &fs, &file));
@@ -218,6 +233,7 @@ long myst_mman_file_handle_get(int fd, mman_file_handle_t** file_handle_out)
     file_handle->fs = fs;
     file_handle->file = file_out;
     file_handle->inode = _get_inode(fs, file);
+    myst_list_prepend(&mman_file_handles, &file_handle->base);
 
     *file_handle_out = file_handle;
     file_handle = NULL;
@@ -238,6 +254,7 @@ void myst_mman_file_handle_put(mman_file_handle_t* file_handle)
     assert(file_handle);
     if (--file_handle->npages <= 0)
     {
+        myst_list_remove(&mman_file_handles, &file_handle->base);
         file_handle->fs->fs_close(file_handle->fs, file_handle->file);
         free(file_handle);
     }
@@ -647,4 +664,6 @@ void myst_shmem_mremap_update(
     assert(sm);
     sm->start_addr = new_addr;
     sm->length = new_size;
+
+    // TODO: if file backed, fdmapping also needs to be updated
 }
