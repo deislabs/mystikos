@@ -89,7 +89,7 @@ pipeline {
         stage('Build repo source') {
             steps {
                 sh """
-                   ${JENKINS_SCRIPTS}/global/make-world.sh
+                   ${JENKINS_SCRIPTS}/solutions/make-build.sh
                    """
             }
         }
