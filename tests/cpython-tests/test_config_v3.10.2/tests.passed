@@ -110,7 +110,6 @@ test_epoll
 test_errno
 test_exception_hierarchy
 test_exception_variations
-test_exceptions
 test_extcall
 test_faulthandler
 test_file
@@ -346,7 +345,6 @@ test_utf8source
 test_uu
 test_warnings
 test_wave
-test_weakref
 test_weakset
 test_webbrowser
 test_winconsoleio
