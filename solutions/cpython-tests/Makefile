@@ -50,13 +50,18 @@ ext2fs3.9:mpdb.py test_config_v3.9.7/tests.passed
 
 appdir3.10: mpdb.py
 	$(APPBUILDER) -o appdir3.10 -e "--build-arg CPYTHON_VERSION=v3.10.2" Dockerfile
+
 ext2fs3.10: appdir3.10
 	$(MYST) mkext2 -f appdir3.10 ext2fs3.10
 
 clean:
 	rm -fr appdir* ext2fs* @test_101* hostfs
 
+tests: run
+
+
 run:
+	cat /proc/sys/net/ipv4/ip_local_port_range
 	$(MAKE) run-3.10
 ifdef MYST_NIGHTLY_TEST
 	$(MAKE) run-3.9
@@ -64,15 +69,15 @@ ifdef MYST_NIGHTLY_TEST
 endif
 
 run-3.8: ext2fs3.8
-	$(MYST_EXEC) $(OPTS) ext2fs3.8 /cpython/python -m test -f /$(TESTFILE) --timeout 120 -v
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) ext2fs3.8 /cpython/python -m test -f /$(TESTFILE) --timeout 120 -v
 	$(foreach i, $(TEST_RUN_INDIVIDUAL_3_8), $(MAKE) one FS=ext2fs3.8 TEST=$(i) $(NL) )
 
 run-3.9: ext2fs3.9
-	$(MYST_EXEC) $(OPTS) ext2fs3.9 /cpython/python -m test -f /$(TESTFILE) --timeout 120 -v
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) ext2fs3.9 /cpython/python -m test -f /$(TESTFILE) --timeout 120 -v
 	$(foreach i, $(TEST_RUN_INDIVIDUAL_3_9), $(MAKE) one FS=ext2fs3.9 TEST=$(i) $(NL) )
 
 run-3.10: ext2fs3.10
-	$(MYST_EXEC) --app-config-path config-3.10.json ext2fs3.10 /cpython/python -m test -f /$(TESTFILE) --timeout 60 -v
+	$(RUNTEST) $(MYST_EXEC) --app-config-path config-3.10.json ext2fs3.10 /cpython/python -m test -f /$(TESTFILE) --timeout 60 -v
 	$(foreach i, $(TEST_RUN_INDIVIDUAL_3_10), $(MAKE) one FS=ext2fs3.10 TEST=$(i) $(NL) )
 
 one: $(FS)
