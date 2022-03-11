@@ -35,7 +35,6 @@ DIRS += nodejs
 DIRS += numpy_core_tests
 DIRS += redis
 DIRS += cpython-tests
-#DIRS += cpprestsdk
 
 .PHONY: $(DIRS)
 

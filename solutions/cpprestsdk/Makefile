@@ -16,8 +16,9 @@ all: package
 package: $(APPDIR) private.pem
 	$(MYST) package-sgx $(APPDIR) private.pem config.json
 
-run: 
-	myst/bin/$(APP_NAME) $(OPTS)
+run: ext2rootfs
+#	myst/bin/$(APP_NAME) $(OPTS)
+	$(RUNTEST) $(MYST_EXEC) --app-config-path config.json $(OPTS) ext2rootfs /app/casablanca/build.release/Release/Binaries/test_runner 
 
 $(APPDIR):
 	$(APPBUILDER) -v -d Dockerfile
@@ -39,13 +40,13 @@ run-cpio: cpio
 	$(MYST_EXEC) rootfs /app/casablanca/build.release/Release/Binaries/test_runner libhttpclient_test.so --app-config-path debug-config.json $(OPTS)
 
 run-ext2: ext2rootfs
-	$(MYST_EXEC) ext2rootfs /app/casablanca/build.release/Release/Binaries/test_runner libhttpclient_test.so --app-config-path debug-config.json $(OPTS)
+	$(MYST_EXEC) ext2rootfs /app/casablanca/build.release/Release/Binaries/test_runner libhttpclient_test.so /name:progress_handler_tests:data_upload_exception --app-config-path debug-config.json $(OPTS)
 
-gdb: clean cpio
-	$(MYST_GDB) --args $(MYST_EXEC) rootfs /app/casablanca/build.release/Release/Binaries/test_runner libhttplistener_test.so --app-config-path debug-config.json $(OPTS)
+gdb: ext2rootfs
+	$(MYST_GDB) --args $(MYST_EXEC) ext2rootfs /app/casablanca/build.release/Release/Binaries/test_runner libhttplistener_test.so /name:progress_handler_tests:data_upload_exception --app-config-path debug-config.json $(OPTS)
 
 private.pem:
 	openssl genrsa -out private.pem -3 3072
 
 clean:
-	rm -rf rootfs $(APPDIR) myst private.pem 
+	rm -rf rootfs ext2rootfs $(APPDIR) myst private.pem 

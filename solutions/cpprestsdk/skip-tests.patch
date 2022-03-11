@@ -1,3 +1,24 @@
+diff --git a/Release/tests/functional/http/client/connections_and_errors.cpp b/Release/tests/functional/http/client/connections_and_errors.cpp
+index 847755d8..97ddb3e3 100644
+--- a/Release/tests/functional/http/client/connections_and_errors.cpp
++++ b/Release/tests/functional/http/client/connections_and_errors.cpp
+@@ -149,6 +149,7 @@ SUITE(connections_and_errors)
+         t.get();
+     }
+ 
++#if 0
+     TEST_FIXTURE(uri_address, request_timeout_microsecond)
+     {
+         pplx::task<test_request*> t;
+@@ -175,7 +176,7 @@ SUITE(connections_and_errors)
+         {
+         }
+     }
+-
++#endif
+     TEST_FIXTURE(uri_address, invalid_method)
+     {
+         web::http::uri uri(U("http://www.bing.com/"));
 diff --git a/Release/tests/functional/streams/fstreambuf_tests.cpp b/Release/tests/functional/streams/fstreambuf_tests.cpp
 index 190eb66b..39e65559 100644
 --- a/Release/tests/functional/streams/fstreambuf_tests.cpp
