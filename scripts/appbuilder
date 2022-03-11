@@ -171,8 +171,8 @@ docker_network_remove()
                 for CONTAINER in $(docker network inspect --format '{{range $k, $v := .Containers}}{{print $k}}{{end}}' $NETWORK_NAME)
                 do
                     echo "Force removing $CONTAINER from $NETWORK_NAME"
-                    docker network disconnect -f $NETWORK_NAME $CONTAINER;
-                done;
+                    docker network disconnect -f $NETWORK_NAME $CONTAINER || true
+                done
             fi
             echo "Docker network retry $i: sleeping $i seconds..."
             sleep $i
@@ -192,6 +192,7 @@ get_image()
         # to be changed to include more ip addresses.
         docker network create $NETWORK_NAME
         docker build $DOCKER_BUILD_MODE --iidfile $TEMP_IMAGE_IIDFILE -f $DOCKER_FILE --network $NETWORK_NAME $EXTRA_ARGS .
+        $(dirname $0)/retry_with_backoff docker build ${DOCKER_BUILD_MODE} --iidfile ${TEMP_IMAGE_IIDFILE} -f ${DOCKER_FILE} --network ${NETWORK_NAME} ${EXTRA_ARGS} .
         docker_network_remove
         if [ ! -f "$TEMP_IMAGE_IIDFILE" ]; then
             echo "failed to build from Docker Image file $TEMP_IMAGE_IIDFILE";
