@@ -186,7 +186,10 @@ size_t _skip_zero_pids(const uint32_t* pids, size_t i, size_t n)
 
 static bool _file_handle_eq(mman_file_handle_t* f1, mman_file_handle_t* f2)
 {
-    assert(f1 && f2);
+    if (!f1 && !f2)
+        return true;
+    if (!f1 || !f2)
+        return false;
     if (f1->fs == f2->fs && f1->inode == f2->inode)
         return true;
     return false;
