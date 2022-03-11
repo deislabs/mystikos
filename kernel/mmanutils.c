@@ -904,7 +904,6 @@ int proc_pid_maps_vcallback(
 
         ECHECK(myst_round_up(length, PAGE_SIZE, &length));
         ECHECK((index = _get_page_index(addr, length)));
-        assert(index == 0);
         size_t count = length / PAGE_SIZE;
 
         size_t last_page_idx_plus_one = index + count;
