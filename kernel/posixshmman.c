@@ -567,7 +567,8 @@ int myst_shmem_handle_munmap(void* addr, size_t length, bool* is_shmem)
                     ret = _notify_shmfs_active(sm->object, false);
                 else
                 {
-                    ECHECK_LABEL(myst_msync(addr, length, MS_SYNC), unlock);
+                    if (sm->shmem_type == SHMEM_REG_FILE)
+                        ECHECK_LABEL(myst_msync(addr, length, MS_SYNC), unlock);
                     ECHECK_LABEL(myst_munmap(addr, length), unlock);
                 }
                 myst_list_remove(&_shared_mappings, &sm->base);
@@ -605,6 +606,14 @@ int myst_posix_shm_handle_release_mappings(pid_t pid)
                 {
                     if (_is_posix_shm_mapping(sm))
                         _notify_shmfs_active(sm->object, false);
+                    else
+                    {
+                        if (sm->shmem_type == SHMEM_REG_FILE)
+                            assert(
+                                myst_msync(
+                                    sm->start_addr, sm->length, MS_SYNC) == 0);
+                        assert(myst_munmap(sm->start_addr, sm->length) == 0);
+                    }
                     myst_list_remove(&_shared_mappings, &sm->base);
                     void* next_sm = sm->base.next;
                     free(sm);
