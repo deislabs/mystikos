@@ -111,7 +111,7 @@ and not test_l1_loss_correct \
 and not test_GroupNorm_numeric_cpu"
 run-test-nn: rootfs
 	$(RUN_PYTEST) /workspace/pytorch/test/test_nn.py -k $(EXCLUDE_TESTS) 2>&1 | tee $@.out
-	grep -q -E '1322 passed.*1437 skipped.*43 deselected.*3 xfailed' $@.out
+	grep -q -E '1325 passed.*1435 skipped.*40 deselected.*3 xfailed' $@.out
 
 .PHONY: run-test-nn-8g
 run-test-nn-8g: INCLUDE_TESTS = "test_avg_pool2d_nhwc_cpu_float32 \
@@ -151,6 +151,15 @@ TEST=test_nn
 SUBTEST=test_EmbeddingBag_per_sample_weights_and_no_offsets_cpu_int64_float32
 one: rootfs
 	$(RUN_PYTEST) /workspace/pytorch/test/$(TEST).py -s -k "$(SUBTEST)"
+
+SUBTEST=test_success_func
+two:
+	$(RUN_PYTEST) /workspace/pytorch/test/test_multiprocessing_spawn.py -v
+
+three:
+	$(MYST_EXEC) rootfs $(OPTS) --app-config-path config8g.json \
+	/usr/local/bin/python /workspace/pytorch/test/test_multiprocessing_spawn.py \
+	SpawnTest.test_exception_all
 
 .PHONY: gdb
 gdb: rootfs
