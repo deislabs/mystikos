@@ -11,6 +11,7 @@
 #include <myst/printf.h>
 #include <myst/process.h>
 #include <myst/ramfs.h>
+#include <myst/round.h>
 #include <myst/rspinlock.h>
 #include <myst/syscall.h>
 #include <stdbool.h>
@@ -365,10 +366,11 @@ static int _lookup_shm_by_addr_len(
     shared_mapping_t* sm = (shared_mapping_t*)_shared_mappings.head;
     while (sm)
     {
-        size_t sm_length = sm->shmem_type == SHMEM_POSIX_SHM
-                               ? _get_backing_file_size(sm->object)
-                               : sm->length;
-        void* sm_end_addr = (char*)sm->start_addr + sm_length;
+        size_t rounded_up_sm_length = sm->shmem_type == SHMEM_POSIX_SHM
+                                          ? _get_backing_file_size(sm->object)
+                                          : sm->length;
+        myst_round_up(rounded_up_sm_length, PAGE_SIZE, &rounded_up_sm_length);
+        void* sm_end_addr = (char*)sm->start_addr + rounded_up_sm_length;
         bool start_addr_within_range =
             (start_addr >= sm->start_addr && start_addr < sm_end_addr);
         bool end_addr_within_range =
@@ -417,6 +419,22 @@ bool myst_is_address_within_shmem(
             *sm_out = sm;
         return true;
     }
+
+    return false;
+}
+
+bool myst_addr_within_process_owned_shmem(
+    const void* addr,
+    const size_t length,
+    pid_t pid)
+{
+    shared_mapping_t* sm;
+    if (!pid)
+        pid = myst_getpid();
+
+    if (myst_is_address_within_shmem(addr, length, &sm) &&
+        _lookup_sharers_by_pid(sm, pid))
+        return true;
 
     return false;
 }

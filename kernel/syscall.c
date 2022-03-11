@@ -4006,7 +4006,7 @@ static long _SYS_msync(long n, long params[6])
 
     _strace(n, "addr=%p length=%zu flags=%d ", addr, length, flags);
 
-    if (!myst_is_address_within_shmem(addr, length, NULL))
+    if (!myst_addr_within_process_owned_shmem(addr, length, 0))
     {
         const pid_t pid = myst_getpid();
         myst_assume(pid > 0);
