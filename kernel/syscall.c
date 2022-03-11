@@ -3691,11 +3691,12 @@ static long _SYS_mprotect(long n, long params[6])
 
     _strace(
         n,
-        "addr=%lx length=%zu(%lx) prot=%d",
+        "addr=%lx length=%zu(%lx) prot=%d(%s)",
         (long)addr,
         length,
         length,
-        prot);
+        prot,
+        myst_mman_prot_to_string(prot));
 
     return (_return(n, (long)myst_mprotect(addr, length, prot)));
 }
