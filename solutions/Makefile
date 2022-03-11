@@ -13,13 +13,8 @@ endif
 endif
 endif
 
-# Enable this azure-specific solution only on the nightly pipeline
-# as it depends on secrets only availale on that pipeline.
-ifdef MYST_NIGHTLY_TEST
 DIRS += mhsm_ssr
 DIRS += confidential_ml
-endif
-
 DIRS += msgpack_c
 
 ifndef MYST_ENABLE_GCOV
@@ -39,6 +34,7 @@ endif
 DIRS += nodejs
 DIRS += numpy_core_tests
 DIRS += redis
+DIRS += cpython-tests
 #DIRS += cpprestsdk
 
 .PHONY: $(DIRS)

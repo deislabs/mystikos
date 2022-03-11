@@ -89,7 +89,6 @@ REDEFINE_TESTS=1
 DIRS += epoll
 DIRS += oe
 DIRS += procfs
-DIRS += cpython-tests
 
 ifeq ($(MYST_ENABLE_HOSTFS),1)
 DIRS += hostfs

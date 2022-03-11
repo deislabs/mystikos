@@ -56,7 +56,7 @@ ext2fs3.10: appdir3.10
 clean:
 	rm -fr appdir* ext2fs* @test_101* hostfs
 
-tests:
+run:
 	$(MAKE) run-3.10
 ifdef MYST_NIGHTLY_TEST
 	$(MAKE) run-3.9
