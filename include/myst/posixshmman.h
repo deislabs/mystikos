@@ -47,4 +47,9 @@ void myst_shmem_mremap_update(
     void* new_addr,
     size_t new_size);
 
+bool myst_addr_within_process_owned_shmem(
+    const void* addr,
+    const size_t length,
+    pid_t pid);
+
 #endif /* _MYST_POSIXSHMMAN_H */
