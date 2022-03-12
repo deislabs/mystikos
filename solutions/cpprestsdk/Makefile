@@ -16,9 +16,14 @@ all: package
 package: $(APPDIR) private.pem
 	$(MYST) package-sgx $(APPDIR) private.pem config.json
 
-run: ext2rootfs
-#	myst/bin/$(APP_NAME) $(OPTS)
+run:
+	$(MAKE) run-release
+
+run-release: ext2rootfs
 	$(RUNTEST) $(MYST_EXEC) --app-config-path config.json $(OPTS) ext2rootfs /app/casablanca/build.release/Release/Binaries/test_runner 
+
+run-debug: ext2rootfs
+	$(RUNTEST) $(MYST_EXEC) --app-config-path debug-config.json $(OPTS) ext2rootfs /app/casablanca/build.debug/Release/Binaries/test_runner *_test.so
 
 $(APPDIR):
 	$(APPBUILDER) -v -d Dockerfile
@@ -36,14 +41,28 @@ ext2rootfs: $(APPDIR)
 # libpplx_test.so
 # libstreams_test.so
 # liburi_test.so
+# 
+# Set $(TESTCASE) to what you want. It can be all of them:
+#TESTCASE=*_test.so
+# All tests in a suite:
+# TESTCASE=libhttpclient_test.so
+# Or it can be a specific test:
+TESTCASE=libhttpclient_test.so /name:progress_handler_tests:data_upload_exception
+#
+# Main PR runs will run against the release build. For these rules you can have control.
+# To run with debug:
+TESTMODE=debug
+# To run in the regular release mode:
+#TESTMODE=release
+
 run-cpio: cpio
-	$(MYST_EXEC) rootfs /app/casablanca/build.release/Release/Binaries/test_runner libhttpclient_test.so --app-config-path debug-config.json $(OPTS)
+	$(MYST_EXEC) rootfs --app-config-path debug-config.json $(OPTS) /app/casablanca/build.$(TESTMODE)/Release/Binaries/test_runner $(TESTCASE)
 
 run-ext2: ext2rootfs
-	$(MYST_EXEC) ext2rootfs /app/casablanca/build.release/Release/Binaries/test_runner libhttpclient_test.so /name:progress_handler_tests:data_upload_exception --app-config-path debug-config.json $(OPTS)
+	$(MYST_EXEC) ext2rootfs --app-config-path debug-config.json $(OPTS) /app/casablanca/build.$(TESTMODE)/Release/Binaries/test_runner $(TESTCASE)
 
 gdb: ext2rootfs
-	$(MYST_GDB) --args $(MYST_EXEC) ext2rootfs /app/casablanca/build.release/Release/Binaries/test_runner libhttplistener_test.so /name:progress_handler_tests:data_upload_exception --app-config-path debug-config.json $(OPTS)
+	$(MYST_GDB) --args $(MYST_EXEC)  --app-config-path debug-config.json $(OPTS) ext2rootfs  /app/casablanca/build.$(TESTMODE)/Release/Binaries/test_runner $(TESTCASE)
 
 private.pem:
 	openssl genrsa -out private.pem -3 3072
