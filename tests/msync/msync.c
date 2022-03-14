@@ -92,7 +92,7 @@ static void test_msync()
     struct stat st;
 
     /* create a new file */
-    assert((fd = open("/msync", O_CREAT | O_TRUNC | O_RDWR, 0666)) >= 0);
+    assert((fd = open("/tmp/msync", O_CREAT | O_TRUNC | O_RDWR, 0666)) >= 0);
 
     /* create a file where each page is filled with a specific byte value */
     for (size_t i = 0; i < num_pages; i++)
@@ -109,7 +109,7 @@ static void test_msync()
     /* map the file onto memory */
     const size_t length = st.st_size;
     const int prot = PROT_READ | PROT_WRITE;
-    const int flags = MAP_PRIVATE | MAP_SHARED;
+    const int flags = MAP_PRIVATE;
     uint8_t* addr = mmap(NULL, length, prot, flags, fd, 0);
     assert(addr != MAP_FAILED);
 
@@ -169,7 +169,7 @@ static void test_msync()
 
     /* reopen the file and check that it has actually changed */
     {
-        assert((fd = open("/msync", O_RDONLY)) >= 0);
+        assert((fd = open("/tmp/msync", O_RDONLY)) >= 0);
 
         for (size_t i = 0; i < num_pages; i++)
         {
