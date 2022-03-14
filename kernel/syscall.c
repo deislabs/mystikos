@@ -5044,6 +5044,7 @@ static long _SYS_prctl(long n, long params[6])
         // ATTN: Linux requires a 16-byte buffer:
         const size_t n = 16;
         myst_strlcpy(arg2, myst_get_thread_name(myst_thread_self()), n);
+        ret = 0;
     }
     else if (option == PR_SET_NAME)
     {
@@ -5055,6 +5056,8 @@ static long _SYS_prctl(long n, long params[6])
     }
     else if (option == PR_SET_PDEATHSIG)
     {
+        // TODO: Send signal passed as arg2 to the calling process if and when
+        // its parent dies.
         ret = 0;
     }
 
