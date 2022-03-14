@@ -1,5 +1,6 @@
 ![Mystikos](./art/light/logo-horizontal/logo-horizontal.png)
 
+
 ## What is Mystikos?
 **Mystikos** is a runtime and a set of tools for running Linux applications
 in a hardware trusted
