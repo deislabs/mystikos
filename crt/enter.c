@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#define hidden __attribute__((__visibility__("hidden")))
+
 #define _GNU_SOURCE
 #include <assert.h>
 #include <dlfcn.h>
@@ -25,6 +27,11 @@
 #include <myst/syscall.h>
 #include <myst/syscallext.h>
 #include <myst/tee.h>
+
+/* Locking functions used by MUSL to manage libc.threads_minus_1 */
+#include <pthread_impl.h>
+void __tl_lock(void);
+void __tl_unlock(void);
 
 static myst_wanted_secrets_t* _wanted_secrets;
 
@@ -87,6 +94,18 @@ long myst_syscall(long n, long params[6])
          */
         pid_t ret = myst_fork();
         return ret;
+    }
+
+    if (n == SYS_execve || n == SYS_execveat)
+    {
+        /* These system calls launch a new process with its own CRT and the
+         * current thread then belongs to the new process. Therefore, decrement
+         * the thread count of the current CRT that belongs to the parent
+         * process.
+         */
+        __tl_lock();
+        __libc.threads_minus_1--;
+        __tl_unlock();
     }
 
     return (*_syscall_callback)(n, params);
