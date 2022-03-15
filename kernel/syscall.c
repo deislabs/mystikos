@@ -3632,6 +3632,32 @@ static long _SYS_lseek(long n, long params[6])
     return (_return(n, myst_syscall_lseek(fd, offset, whence)));
 }
 
+static bool calling_process_owns_mem_range(const void* addr, size_t length)
+{
+    pid_t pid = myst_getpid();
+
+    size_t rounded_up_length;
+
+    // if length is 0, still check if the page pointed by addr is owned by the
+    // process
+    if (length == 0)
+    {
+        rounded_up_length = PAGE_SIZE;
+    }
+    else
+    {
+        if (myst_round_up(length, PAGE_SIZE, &rounded_up_length) < 0)
+            return false;
+    }
+
+    /* if calling process does not own this mapping */
+    if (myst_mman_pids_test(addr, rounded_up_length, pid) !=
+        (ssize_t)rounded_up_length)
+        return false;
+
+    return true;
+}
+
 static long _SYS_mmap(long n, long params[6], const myst_process_t* process)
 {
     void* addr = (void*)params[0];
@@ -3728,6 +3754,14 @@ static long _SYS_mprotect(long n, long params[6])
         length,
         prot,
         myst_mman_prot_to_string(prot));
+
+    /* Handle MAP_SHARED unmapping */
+    if (myst_is_address_within_shmem(addr, length, NULL))
+        return (_return(n, 0));
+
+    /* Caller should own the address range */
+    if (!calling_process_owns_mem_range(addr, length))
+        return (_return(n, -EINVAL));
 
     return (_return(n, (long)myst_mprotect(addr, length, prot)));
 }

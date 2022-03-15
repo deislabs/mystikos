@@ -127,7 +127,7 @@ static ssize_t _get_page_index(const void* addr, size_t length)
     const uint64_t addr_end;
     const size_t mman_end;
 
-    if (!addr || !length)
+    if (!addr || length <= 0)
         ERAISE(-EINVAL);
 
     if (((uint64_t)addr % PAGE_SIZE) || (length % PAGE_SIZE))
@@ -507,6 +507,9 @@ int myst_mprotect(const void* addr, const size_t len, const int prot)
     /* PROT cannot have both PROT_GROWSDOWN and MYST_PROT_GROWSUP bits set */
     if ((prot & MYST_PROT_GROWSDOWN) && (prot & MYST_PROT_GROWSUP))
         return -EINVAL;
+
+    // we don't support changing protection left of addr
+    assert(!(prot & MYST_PROT_GROWSDOWN));
 
     /* Protection bits are per-process. As we are single process on the host,
      * supporting mprotect for memory shared between two process threads becomes
