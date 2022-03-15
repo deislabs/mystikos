@@ -1,8 +1,18 @@
+#define hidden __attribute__((__visibility__("hidden")))
+
+#define _GNU_SOURCE
+
 #include <myst/syscallext.h>
 #include <stdio.h>
 #include <sys/types.h>
 #include <syscall.h>
 #include <unistd.h>
+
+#include <pthread_impl.h>
+
+/* Locking functions used by MUSL to manage libc.threads_minus_1 */
+void __tl_lock(void);
+void __tl_unlock(void);
 
 void do_crt_exit(int code);
 
@@ -51,6 +61,16 @@ void exit(int code)
                     // failed so safest option is fast exit
                     _Exit(code);
                 }
+            }
+
+            if (arg.is_child_fork)
+            {
+                // Decrement MUSL's number of threads. Typically this is done by
+                // MUSL's pthread_exit which is not called for child process's
+                // main thread.
+		__tl_lock();
+		__libc.threads_minus_1--;
+		__tl_unlock();
             }
             _Exit(code);
         }
