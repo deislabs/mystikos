@@ -79,6 +79,24 @@ int main(int argc, const char* argv[])
         printf("Error - mprotect() didn't take 0 length\n");
         assert(0);
     }
+
+    /* mprotect un-owned memory */
+    {
+        void* addr2 =
+            mmap(0, PAGE_SIZE, PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        munmap(addr2, PAGE_SIZE);
+        if (!mprotect(addr2, PAGE_SIZE, PROT_READ | PROT_WRITE))
+        {
+            printf("Errorr - unowned mprotect() did not fail: %d\n", errno);
+            exit(1);
+        }
+        if (!mprotect(addr2, 0, PROT_READ | PROT_WRITE))
+        {
+            printf("Errorr - unowned mprotect() did not fail: %d\n", errno);
+            exit(1);
+        }
+    }
+
     for (size_t i = 0; i < length; i++)
     {
         data = addr[i];
