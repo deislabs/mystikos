@@ -8,16 +8,14 @@ MYST_RELEASE_VERSION := 0.5.0
 
 .PHONY: build run tests clean
 
-all: clean build 
+all: clean build
 
-build: $(APPDIR) container
+build: $(APPDIR) 
 
 $(APPDIR): hello.c
 	@rm -rf $(APPDIR)
 	@mkdir -p $(APPDIR)/bin
 	@gcc $(CFLAGS) -o $(APPDIR)/bin/hello hello.c
-
-container:
 	@docker build --build-arg PSW_VERSION=$(PSW_VERSION) --build-arg MYST_RELEASE_VERSION=$(MYST_RELEASE_VERSION) -t $(DOCKER_IMG) .
 
 run: build
