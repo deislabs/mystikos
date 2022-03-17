@@ -30,10 +30,9 @@ up at munmap.
 */
 typedef struct myst_fdmapping
 {
-    uint32_t used;           /* whether entry is used */
-    int32_t fd;              /* duplicated fd */
-    uint64_t offset;         /* offset of page within backing file */
-    myst_refstr_t* pathname; /* full pathname associated with fd */
+    uint32_t used;   /* whether entry is used */
+    int32_t fd;      /* duplicated fd */
+    uint64_t offset; /* offset of page within backing file */
     mman_file_handle_t* mman_file_handle;
 } myst_fdmapping_t;
 
@@ -103,9 +102,26 @@ bool myst_is_bad_addr(const void* addr, size_t size, int prot);
 #define myst_is_bad_addr_read_write(addr, size) \
     (myst_is_bad_addr(addr, size, PROT_READ | PROT_WRITE))
 
+typedef enum
+{
+    NONE,
+    PRIVATE,
+    SHARED
+} map_type_t;
+
+/* checks if process owns memory range [addr,addr+length). By default checks
+ * both private and shared mappings. Can be configured to just check private
+ * mappings with `private_only` flag. */
+map_type_t myst_process_owns_mem_range(
+    const void* addr,
+    size_t length,
+    bool private_only);
+
 void myst_mman_lock(void);
 
 void myst_mman_unlock(void);
+
+bool mman_file_handle_eq(mman_file_handle_t* f1, mman_file_handle_t* f2);
 
 const char* myst_mman_prot_to_string(int prot);
 const char* myst_mman_flags_to_string(int flags);
