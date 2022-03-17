@@ -7,7 +7,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
-
 #include <unistd.h>
 
 #include <myst/atexit.h>
@@ -29,6 +28,7 @@
 #include <myst/round.h>
 #include <myst/strings.h>
 #include <myst/syscall.h>
+#include <myst/syslog.h>
 #include <myst/trace.h>
 
 MYST_PRINTF_FORMAT(2, 3)
@@ -184,7 +184,88 @@ size_t _skip_zero_pids(const uint32_t* pids, size_t i, size_t n)
     return i + (p - start);
 }
 
-static bool _file_handle_eq(mman_file_handle_t* f1, mman_file_handle_t* f2)
+static myst_list_t mman_file_handles;
+static myst_once_t _free_mman_file_handles_atexit_once;
+
+static void _free_mman_file_handles_atexit(void)
+{
+    myst_atexit((void (*)(void*))myst_list_free, &mman_file_handles);
+}
+
+static ino_t _get_inode(myst_fs_t* fs, myst_file_t* file)
+{
+    assert(fs && file);
+    struct stat statbuf;
+    fs->fs_fstat(fs, file, &statbuf);
+    return statbuf.st_ino;
+}
+
+long myst_mman_file_handle_get(int fd, mman_file_handle_t** file_handle_out)
+{
+    long ret = 0;
+    myst_fs_t* fs;
+    myst_file_t *file, *file_out;
+    mman_file_handle_t* file_handle = NULL;
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    struct locals
+    {
+        char pathname[PATH_MAX];
+        char suffix[PATH_MAX];
+    };
+    struct locals* locals = NULL;
+
+    if (!file_handle_out)
+        ERAISE(-EINVAL);
+
+    *file_handle_out = NULL;
+
+    if (!(locals = malloc(sizeof(struct locals))))
+        ERAISE(-ENOMEM);
+
+    if (!(file_handle = calloc(1, sizeof(mman_file_handle_t))))
+        ERAISE(-ENOMEM);
+
+    /* register the cleanup function for mman owned file handles with atexit()
+     */
+    myst_once(
+        &_free_mman_file_handles_atexit_once, _free_mman_file_handles_atexit);
+
+    // get a dup file handle which the mman will use
+    // for msync and /proc/[pid]/maps
+    ECHECK(myst_fdtable_get_file(fdtable, fd, &fs, &file));
+    ECHECK((*fs->fs_dup)(fs, file, &file_out));
+
+    file_handle->fs = fs;
+    file_handle->file = file_out;
+    file_handle->inode = _get_inode(fs, file);
+    myst_list_prepend(&mman_file_handles, &file_handle->base);
+
+    *file_handle_out = file_handle;
+    file_handle = NULL;
+
+done:
+
+    if (locals)
+        free(locals);
+
+    if (file_handle)
+        free(file_handle);
+
+    return ret;
+}
+
+void myst_mman_file_handle_put(mman_file_handle_t* file_handle)
+{
+    assert(file_handle);
+    if (--file_handle->npages <= 0)
+    {
+        myst_list_remove(&mman_file_handles, &file_handle->base);
+        file_handle->fs->fs_close(file_handle->fs, file_handle->file);
+        free(file_handle);
+    }
+}
+
+bool mman_file_handle_eq(mman_file_handle_t* f1, mman_file_handle_t* f2)
 {
     if (!f1 && !f2)
         return true;
@@ -230,7 +311,8 @@ static int _add_file_mapping(int fd, off_t offset, void* addr, size_t length)
             // we allow mapping over an existing file mapping for this reason.
             // Avoid overwriting file handle if the fdmapping entry also points
             // to the same file.
-            if (!p->used || !_file_handle_eq(p->mman_file_handle, file_handle))
+            if (!p->used ||
+                !mman_file_handle_eq(p->mman_file_handle, file_handle))
             {
                 if (p->mman_file_handle)
                     myst_mman_file_handle_put(p->mman_file_handle);
@@ -477,6 +559,9 @@ void* myst_mremap(
     {
         if (!myst_shmem_can_mremap(shm_mapping))
         {
+            MYST_WLOG("Unsupported mremap operation detected. For shared "
+                      "mappings, mremap is only allowed if there is a single "
+                      "user of the mapping.\n");
             return (void*)-EINVAL;
         }
     }
@@ -953,7 +1038,7 @@ int proc_pid_maps_vcallback(
                             break;
 
                         /* if the file changes */
-                        if (!_file_handle_eq(
+                        if (!mman_file_handle_eq(
                                 v.fdmappings[j].mman_file_handle, file_handle))
                             break;
 
@@ -1222,6 +1307,33 @@ ssize_t myst_mman_pids_test(const void* addr, size_t length, pid_t pid)
     return _handle_mman_pids_op(MMAN_PIDS_OP_TEST, addr, length, pid);
 }
 
+map_type_t myst_process_owns_mem_range(
+    const void* addr,
+    size_t length,
+    bool private_only)
+{
+    pid_t pid = myst_getpid();
+    uint64_t page_addr = myst_round_down_to_page_size((uint64_t)addr);
+
+    /* Round up the length (including the zero case) to PAGE_SIZE. If length is
+     * 0, still check if the page pointed by addr is owned by the process.
+     */
+    if (myst_round_up(length ? length : 1, PAGE_SIZE, &length) < 0)
+        return NONE;
+
+    /* check for MAP_PRIVATE mappings */
+    if (myst_mman_pids_test((const void*)page_addr, length, pid) ==
+        (ssize_t)length)
+        return PRIVATE;
+
+    if (!private_only)
+        /* check for MAP_SHARED mappings */
+        if (myst_addr_within_process_owned_shmem((void*)page_addr, length, pid))
+            return SHARED;
+
+    return NONE;
+}
+
 bool myst_is_bad_addr(const void* addr, size_t length, int prot)
 {
     bool ret = true;
@@ -1238,15 +1350,7 @@ bool myst_is_bad_addr(const void* addr, size_t length, int prot)
         /* pid test is only supported if the nobrk option is enabled as
          * the pid vector does not track memory allocated via brk */
 
-        uint64_t page_addr = myst_round_down_to_page_size((uint64_t)addr);
-
-        /* round up the length (including the zero case) to PAGE_SIZE */
-        if (myst_round_up(length ? length : 1, PAGE_SIZE, &length) < 0)
-            goto done;
-
-        /* check if the pages within the address range are unmapped (i.e.,
-         * associated pid is zero). */
-        if (myst_mman_pids_test((const void*)page_addr, length, 0) > 0)
+        if (!myst_process_owns_mem_range(addr, length, NULL))
             goto done;
 
         /* check for the page permissions */

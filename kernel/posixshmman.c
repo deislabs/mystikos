@@ -7,6 +7,7 @@
 #include <myst/list.h>
 #include <myst/mount.h>
 #include <myst/once.h>
+#include <myst/panic.h>
 #include <myst/posixshmman.h>
 #include <myst/printf.h>
 #include <myst/process.h>
@@ -14,11 +15,12 @@
 #include <myst/round.h>
 #include <myst/rspinlock.h>
 #include <myst/syscall.h>
+#include <myst/syslog.h>
 #include <stdbool.h>
 #include <sys/mman.h>
 
 //#define TRACE
-
+//#define PARTIAL_MAPPING
 /**
  * POSIX Shared Memory
  *
@@ -61,11 +63,9 @@ typedef struct shared_mapping
     myst_list_t sharers; // processes sharing this mapping
     void* start_addr;
     size_t length;
-    myst_fs_t* fs;
-    myst_file_t* file;
+    mman_file_handle_t* file_handle;
     size_t offset;
-    shmem_type_t shmem_type;
-    void* object; // TODO deprecate
+    shmem_type_t type;
 } shared_mapping_t;
 
 static myst_list_t _shared_mappings;
@@ -114,8 +114,22 @@ int shmfs_teardown()
     return 0;
 }
 
-static size_t _get_backing_file_size(void* object);
+static size_t _get_backing_file_size(mman_file_handle_t* fh);
 #ifdef TRACE
+static const char* shmem_type_to_string(shmem_type_t mem_type)
+{
+    switch (mem_type):
+        {
+            case SHMEM_NONE:
+                return "SHMEM_NONE";
+            case SHMEM_ANON:
+                return "ANON";
+            case SHMEM_REG_FILE:
+                return "REG_FILE";
+            case SHMEM_POSIX_SHM:
+                return "POSIX_SHM_FILE";
+        }
+}
 static void _dump_shared_mappings(char* msg)
 {
     if (msg)
@@ -125,22 +139,23 @@ static void _dump_shared_mappings(char* msg)
     shared_mapping_t* sm = (shared_mapping_t*)_shared_mappings.head;
     if (sm)
     {
-        printf("POSIX Shared memory mappings: \n");
+        printf("Shared memory mappings: \n");
         printf("==================================== \n");
     }
     else
     {
-        printf("No POSIX shared mappings.\n");
+        printf("No shared mappings.\n");
     }
     while (sm)
     {
         printf(
-            "start_addr=%p length=%ld nusers=%ld\n",
+            "start_addr=%p length=%ld nusers=%ld type=%s\n",
             sm->start_addr,
-            sm->shmem_type == SHMEM_POSIX_SHM
-                ? _get_backing_file_size(sm->object)
+            sm->type == SHMEM_POSIX_SHM
+                ? _get_backing_file_size(sm->file_handle)
                 : sm->length,
-            sm->sharers.size);
+            sm->sharers.size,
+            shmem_type_to_string(sm->type));
         printf("sharer pids: [ ");
         {
             proc_w_count_t* pn = (proc_w_count_t*)sm->sharers.head;
@@ -161,12 +176,15 @@ static void _dump_shared_mappings(char* msg)
 
 static bool _is_posix_shm_mapping(shared_mapping_t* sm)
 {
-    if (sm && sm->shmem_type == SHMEM_POSIX_SHM)
+    if (sm && sm->type == SHMEM_POSIX_SHM)
+    {
+        assert(sm->file_handle->fs == _posix_shmfs);
         return true;
+    }
     return false;
 }
 
-static int _fd_to_inode_and_buf_data(int fd, void** object_out, void** addr_out)
+static int _get_ptr_to_file_data(int fd, void** addr_out)
 {
     int ret = 0;
     myst_fdtable_t* fdtable = myst_fdtable_current();
@@ -174,91 +192,10 @@ static int _fd_to_inode_and_buf_data(int fd, void** object_out, void** addr_out)
     myst_file_t* file;
 
     ECHECK(myst_fdtable_get_file(fdtable, fd, &fs, &file));
-    ECHECK((*fs->fs_file_inode_and_buf_data)(fs, file, object_out, addr_out));
+    ECHECK((*fs->fs_file_data_buf)(fs, file, addr_out));
 
 done:
     return ret;
-}
-
-static ino_t _get_inode(myst_fs_t* fs, myst_file_t* file)
-{
-    assert(fs && file);
-    struct stat statbuf;
-    fs->fs_fstat(fs, file, &statbuf);
-    return statbuf.st_ino;
-}
-
-static myst_list_t mman_file_handles;
-static myst_once_t _free_mman_file_handles_atexit_once;
-
-static void _free_mman_file_handles_atexit(void)
-{
-    myst_atexit((void (*)(void*))myst_list_free, &mman_file_handles);
-}
-
-long myst_mman_file_handle_get(int fd, mman_file_handle_t** file_handle_out)
-{
-    long ret = 0;
-    myst_fs_t* fs;
-    myst_file_t *file, *file_out;
-    mman_file_handle_t* file_handle = NULL;
-    myst_fdtable_t* fdtable = myst_fdtable_current();
-    struct locals
-    {
-        char pathname[PATH_MAX];
-        char suffix[PATH_MAX];
-    };
-    struct locals* locals = NULL;
-
-    if (!file_handle_out)
-        ERAISE(-EINVAL);
-
-    *file_handle_out = NULL;
-
-    if (!(locals = malloc(sizeof(struct locals))))
-        ERAISE(-ENOMEM);
-
-    if (!(file_handle = calloc(1, sizeof(mman_file_handle_t))))
-        ERAISE(-ENOMEM);
-
-    /* register the cleanup function for mman owned file handles with atexit()
-     */
-    myst_once(
-        &_free_mman_file_handles_atexit_once, _free_mman_file_handles_atexit);
-
-    // get a dup file handle which the mman will use
-    // for msync and /proc/[pid]/maps
-    ECHECK(myst_fdtable_get_file(fdtable, fd, &fs, &file));
-    ECHECK((*fs->fs_dup)(fs, file, &file_out));
-
-    file_handle->fs = fs;
-    file_handle->file = file_out;
-    file_handle->inode = _get_inode(fs, file);
-    myst_list_prepend(&mman_file_handles, &file_handle->base);
-
-    *file_handle_out = file_handle;
-    file_handle = NULL;
-
-done:
-
-    if (locals)
-        free(locals);
-
-    if (file_handle)
-        free(file_handle);
-
-    return ret;
-}
-
-void myst_mman_file_handle_put(mman_file_handle_t* file_handle)
-{
-    assert(file_handle);
-    if (--file_handle->npages <= 0)
-    {
-        myst_list_remove(&mman_file_handles, &file_handle->base);
-        file_handle->fs->fs_close(file_handle->fs, file_handle->file);
-        free(file_handle);
-    }
 }
 
 bool myst_is_posix_shm_file_handle(int fd, int flags)
@@ -273,19 +210,21 @@ bool myst_is_posix_shm_file_handle(int fd, int flags)
     return false;
 }
 
-static int _notify_shmfs_active(void* object, bool active)
+static int _notify_shmfs_active(mman_file_handle_t* file_handle, bool active)
 {
-    assert(object);
+    assert(file_handle && _posix_shmfs == file_handle->fs);
     return (*_posix_shmfs->fs_file_mapping_notify)(
-        _posix_shmfs, object, active);
+        _posix_shmfs, file_handle->file, active);
 }
 
-static size_t _get_backing_file_size(void* object)
+static size_t _get_backing_file_size(mman_file_handle_t* file_handle)
 {
-    assert(object);
-    size_t size;
-    assert((*_posix_shmfs->fs_file_size)(_posix_shmfs, object, &size) == 0);
-    return size;
+    assert(file_handle && _posix_shmfs == file_handle->fs);
+    struct stat statbuf;
+    assert(
+        (_posix_shmfs->fs_fstat)(_posix_shmfs, file_handle->file, &statbuf) ==
+        0);
+    return statbuf.st_size;
 }
 
 static proc_w_count_t* _lookup_sharers_by_pid(shared_mapping_t* sm, pid_t pid)
@@ -300,7 +239,7 @@ static proc_w_count_t* _lookup_sharers_by_pid(shared_mapping_t* sm, pid_t pid)
     return NULL;
 }
 
-static bool _lookup_and_decr_pid_from_sharers(shared_mapping_t* sm, pid_t pid)
+static bool _decr_pid_from_sharers(shared_mapping_t* sm, pid_t pid)
 {
     proc_w_count_t* pn = _lookup_sharers_by_pid(sm, pid);
     if (pn)
@@ -315,7 +254,7 @@ static bool _lookup_and_decr_pid_from_sharers(shared_mapping_t* sm, pid_t pid)
     return false;
 }
 
-static bool _lookup_and_remove_pid_from_sharers(shared_mapping_t* sm, pid_t pid)
+static bool _remove_pid_from_sharers(shared_mapping_t* sm, pid_t pid)
 {
     proc_w_count_t* pn = _lookup_sharers_by_pid(sm, pid);
     if (pn)
@@ -342,6 +281,7 @@ static int _add_proc_to_sharers(shared_mapping_t* sm, pid_t pid)
         pn->pid = pid;
         pn->nmaps = 1;
         myst_list_append(&sm->sharers, &pn->base);
+        pn = NULL;
     }
     else
     {
@@ -349,10 +289,14 @@ static int _add_proc_to_sharers(shared_mapping_t* sm, pid_t pid)
     }
 
 done:
+
+    if (pn)
+        free(pn);
+
     return ret;
 }
 
-static int _lookup_shm_by_addr_len(
+static int _lookup_shmem_map(
     const void* start_addr,
     const size_t len,
     shared_mapping_t** sm_out)
@@ -366,15 +310,17 @@ static int _lookup_shm_by_addr_len(
     shared_mapping_t* sm = (shared_mapping_t*)_shared_mappings.head;
     while (sm)
     {
-        size_t rounded_up_sm_length = sm->shmem_type == SHMEM_POSIX_SHM
-                                          ? _get_backing_file_size(sm->object)
-                                          : sm->length;
+        size_t rounded_up_sm_length =
+            sm->type == SHMEM_POSIX_SHM
+                ? _get_backing_file_size(sm->file_handle)
+                : sm->length;
         myst_round_up(rounded_up_sm_length, PAGE_SIZE, &rounded_up_sm_length);
         void* sm_end_addr = (char*)sm->start_addr + rounded_up_sm_length;
+
         bool start_addr_within_range =
-            (start_addr >= sm->start_addr && start_addr < sm_end_addr);
+            (sm->start_addr <= start_addr && start_addr < sm_end_addr);
         bool end_addr_within_range =
-            (end_addr > sm->start_addr && end_addr <= sm_end_addr);
+            (sm->start_addr < end_addr && end_addr <= sm_end_addr);
 
         if (start_addr_within_range && end_addr_within_range)
         {
@@ -383,7 +329,7 @@ static int _lookup_shm_by_addr_len(
         }
         else if (start_addr_within_range || end_addr_within_range)
         {
-            // partial overlap with shared memory file. some address range
+            // partial overlap with shared memory region. some address range
             // specified by input params is either before or after this shared
             // memory mapping.
             //           [sssssssssssssssssss]
@@ -391,7 +337,12 @@ static int _lookup_shm_by_addr_len(
             // or
             //           [sssssssssssssssssss]
             //                          [uuuuuuuuuuuuuuuuu]
-            ERAISE(-EINVAL);
+            MYST_ELOG(
+                "Memory range specified by user partially overlaps with a "
+                "shared memory region.\naddr=%p length=%ld\n",
+                start_addr,
+                len);
+            myst_panic("Unsupported.\n");
         }
         // else no overlap at all, keep searching
         sm = (shared_mapping_t*)sm->base.next;
@@ -410,7 +361,7 @@ bool myst_is_address_within_shmem(
         *sm_out = NULL;
     myst_rspin_lock(&_shared_mappings_lock);
     shared_mapping_t* sm;
-    _lookup_shm_by_addr_len(addr, length, &sm);
+    _lookup_shmem_map(addr, length, &sm);
     myst_rspin_unlock(&_shared_mappings_lock);
 
     if (sm)
@@ -448,7 +399,7 @@ long myst_posix_shm_handle_mmap(
 {
     long ret = -1;
     void* buf_data_addr;
-    void* object_addr;
+    mman_file_handle_t* file_handle;
 
 #ifdef TRACE
     _dump_shared_mappings("in mmap entry");
@@ -458,18 +409,34 @@ long myst_posix_shm_handle_mmap(
     if (addr || !(flags & MAP_SHARED) || offset % PAGE_SIZE)
         ERAISE(-EINVAL);
 
-    // get underlying inode and file buffer pointer
-    ECHECK(_fd_to_inode_and_buf_data(fd, &object_addr, &buf_data_addr));
+    // get a file handle
+    ECHECK(myst_mman_file_handle_get(fd, &file_handle));
+
+    // get pointer to the start of the data portion of the file
+    ECHECK(_get_ptr_to_file_data(fd, &buf_data_addr));
 
     // check [offset, offset+length] range is within file limits
     {
-        size_t backing_file_size = _get_backing_file_size(object_addr);
+        size_t backing_file_size = _get_backing_file_size(file_handle);
+
         void* file_end_addr = (char*)buf_data_addr + backing_file_size;
         void* request_end_addr = (char*)buf_data_addr + offset + length;
 
         if ((size_t)offset > backing_file_size ||
             request_end_addr > file_end_addr)
             ERAISE(-EINVAL);
+
+        if (offset != 0 && length < backing_file_size)
+        {
+            MYST_ELOG(
+                "\nPOSIX SHM files don't allow non-zero offset or mapping the "
+                "file partially.\nActual offset=%ld length=%ld\nExpected "
+                "offset=0 length=%ld",
+                offset,
+                length,
+                backing_file_size);
+            myst_panic("Unsupported");
+        }
     }
 
     // get or create shared mapping
@@ -479,7 +446,7 @@ long myst_posix_shm_handle_mmap(
     // Check for existing mapping
     while (sm)
     {
-        if (sm->object == object_addr)
+        if (mman_file_handle_eq(sm->file_handle, file_handle))
         {
             assert(sm->start_addr == buf_data_addr);
             ECHECK_LABEL(_add_proc_to_sharers(sm, myst_getpid()), unlock);
@@ -491,30 +458,39 @@ long myst_posix_shm_handle_mmap(
     }
 
     // Create a new shared mapping
+    shared_mapping_t* new_sm;
     {
-        shared_mapping_t* new_sm;
         if (!(new_sm = calloc(1, sizeof(shared_mapping_t))))
         {
             myst_rspin_unlock(&_shared_mappings_lock);
             ERAISE(-ENOMEM);
         }
-        new_sm->object = object_addr;
+        new_sm->file_handle = file_handle;
         new_sm->start_addr = buf_data_addr;
-        new_sm->shmem_type = SHMEM_POSIX_SHM;
+        new_sm->type = SHMEM_POSIX_SHM;
+        // notify fs that mapping is active
+        ECHECK_LABEL(_notify_shmfs_active(new_sm->file_handle, true), unlock);
         ECHECK_LABEL(_add_proc_to_sharers(new_sm, myst_getpid()), unlock);
 
         myst_list_append(&_shared_mappings, &new_sm->base);
-
-        // notify fs that mapping is active
-        ECHECK_LABEL(_notify_shmfs_active(object_addr, true), unlock);
+        new_sm->file_handle->npages++; // mark file handle active
         ret = (long)((char*)new_sm->start_addr + offset);
+        new_sm = NULL;
     }
 
 unlock:
+    if (new_sm)
+        free(new_sm);
+
     myst_rspin_unlock(&_shared_mappings_lock);
 
 done:
 
+    // if failed or found existing mapping
+    if (file_handle && !file_handle->npages)
+    {
+        myst_mman_file_handle_put(file_handle);
+    }
 #ifdef TRACE
     _dump_shared_mappings("in mmap exit");
 #endif
@@ -525,11 +501,10 @@ done:
 int myst_shmem_register_mapping(int fd, void* addr, size_t length)
 {
     int ret = 0;
-
+    shared_mapping_t* new_sm = NULL;
     myst_rspin_lock(&_shared_mappings_lock);
     // Create a new shared mapping
     {
-        shared_mapping_t* new_sm;
         if (!(new_sm = calloc(1, sizeof(shared_mapping_t))))
         {
             myst_rspin_unlock(&_shared_mappings_lock);
@@ -537,13 +512,18 @@ int myst_shmem_register_mapping(int fd, void* addr, size_t length)
         }
         new_sm->start_addr = addr;
         new_sm->length = length;
-        new_sm->shmem_type = fd == -1 ? SHMEM_ANON : SHMEM_REG_FILE;
+        new_sm->type = fd == -1 ? SHMEM_ANON : SHMEM_REG_FILE;
         ECHECK_LABEL(_add_proc_to_sharers(new_sm, myst_getpid()), unlock);
 
         myst_list_append(&_shared_mappings, &new_sm->base);
+        new_sm = NULL;
     }
 
 unlock:
+
+    if (new_sm)
+        free(new_sm);
+
     myst_rspin_unlock(&_shared_mappings_lock);
 
 #ifdef TRACE
@@ -568,11 +548,24 @@ int myst_shmem_handle_munmap(void* addr, size_t length, bool* is_shmem)
         shared_mapping_t* sm;
         // lookup fails for munmaps overlapping partially with a shared memory
         // object
-        ECHECK_LABEL(_lookup_shm_by_addr_len(addr, length, &sm), unlock);
+        ECHECK_LABEL(_lookup_shmem_map(addr, length, &sm), unlock);
         if (sm)
         {
+            if (sm->start_addr != addr && sm->length != length)
+            {
+                MYST_ELOG(
+                    "Partial munmaps of shared memory are not "
+                    "allowed.\nActual: addr=%p length=%ld\nExpected: addr=%p "
+                    "length=%ld\n",
+                    addr,
+                    length,
+                    sm->start_addr,
+                    sm->length);
+                myst_panic("Unsupported.\n");
+            }
+
             *is_shmem = true;
-            if (!_lookup_and_decr_pid_from_sharers(sm, myst_getpid()))
+            if (!_decr_pid_from_sharers(sm, myst_getpid()))
             {
                 // if pid is not in sharers, process is trying to munmap memory
                 // not associated with it
@@ -582,10 +575,13 @@ int myst_shmem_handle_munmap(void* addr, size_t length, bool* is_shmem)
             if (sm->sharers.size == 0)
             {
                 if (_is_posix_shm_mapping(sm))
-                    ret = _notify_shmfs_active(sm->object, false);
+                {
+                    _notify_shmfs_active(sm->file_handle, false);
+                    myst_mman_file_handle_put(sm->file_handle);
+                }
                 else
                 {
-                    if (sm->shmem_type == SHMEM_REG_FILE)
+                    if (sm->type == SHMEM_REG_FILE)
                         ECHECK_LABEL(myst_msync(addr, length, MS_SYNC), unlock);
                     ECHECK_LABEL(myst_munmap(addr, length), unlock);
                 }
@@ -617,16 +613,19 @@ int myst_posix_shm_handle_release_mappings(pid_t pid)
         shared_mapping_t* sm = (shared_mapping_t*)_shared_mappings.head;
         while (sm)
         {
-            if (_lookup_and_remove_pid_from_sharers(sm, pid))
+            if (_remove_pid_from_sharers(sm, pid))
             {
                 // For last reference to shared mapping, delete mapping
                 if (sm->sharers.size == 0)
                 {
                     if (_is_posix_shm_mapping(sm))
-                        _notify_shmfs_active(sm->object, false);
+                    {
+                        _notify_shmfs_active(sm->file_handle, false);
+                        myst_mman_file_handle_put(sm->file_handle);
+                    }
                     else
                     {
-                        if (sm->shmem_type == SHMEM_REG_FILE)
+                        if (sm->type == SHMEM_REG_FILE)
                             assert(
                                 myst_msync(
                                     sm->start_addr, sm->length, MS_SYNC) == 0);
@@ -677,7 +676,7 @@ done:
 bool myst_shmem_can_mremap(shared_mapping_t* sm)
 {
     assert(sm);
-    if ((sm->shmem_type == SHMEM_REG_FILE || sm->shmem_type == SHMEM_ANON) &&
+    if ((sm->type == SHMEM_REG_FILE || sm->type == SHMEM_ANON) &&
         sm->sharers.size == 1)
         return true;
     return false;
