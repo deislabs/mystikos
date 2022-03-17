@@ -2893,11 +2893,7 @@ done:
     return ret;
 }
 
-static int _fs_file_inode_and_buf_data(
-    myst_fs_t* fs,
-    myst_file_t* file,
-    void** object_out,
-    void** addr_out)
+static int _fs_file_data_buf(myst_fs_t* fs, myst_file_t* file, void** addr_out)
 {
     int ret = 0;
     ramfs_t* ramfs = (ramfs_t*)fs;
@@ -2907,17 +2903,15 @@ static int _fs_file_inode_and_buf_data(
 
     if (ramfs->device_num == MYST_POSIX_SHMFS_DEV_NUM)
     {
-        if (!addr_out || !object_out)
+        if (!addr_out)
             ERAISE(-EINVAL);
 
         *addr_out = NULL;
-        *object_out = NULL;
 
         /* memory for shm files are allocated on first ftruncate.
         Fail if process mmap's before that */
         if (!(*addr_out = file->shared->inode->buf.data))
             ERAISE(-ENOEXEC);
-        *object_out = file->shared->inode;
     }
     else
     {
@@ -2928,21 +2922,20 @@ done:
     return ret;
 }
 
-static int _fs_file_mapping_notify(myst_fs_t* fs, void* object, bool active)
+static int _fs_file_mapping_notify(
+    myst_fs_t* fs,
+    myst_file_t* file,
+    bool active)
 {
     int ret = 0;
     ramfs_t* ramfs = (ramfs_t*)fs;
 
-    if (!_ramfs_valid(ramfs))
+    if (!_ramfs_valid(ramfs) || !_file_valid(file))
         ERAISE(-EINVAL);
 
     if (ramfs->device_num == MYST_POSIX_SHMFS_DEV_NUM)
     {
-        inode_t* inode;
-
-        if (!object || !_inode_valid((inode = (inode_t*)object)))
-            ERAISE(-EINVAL);
-
+        inode_t* inode = file->shared->inode;
         ECHECK(myst_buf_set_mmap_active(&inode->buf, active));
 
         // Cleanup only if there are no active mmaps,
@@ -2951,32 +2944,6 @@ static int _fs_file_mapping_notify(myst_fs_t* fs, void* object, bool active)
         {
             _inode_free(ramfs, inode);
         }
-    }
-    else
-    {
-        ERAISE(-ENOTSUP);
-    }
-
-done:
-    return ret;
-}
-
-static int _fs_file_size(myst_fs_t* fs, void* object, size_t* size_out)
-{
-    int ret = 0;
-    ramfs_t* ramfs = (ramfs_t*)fs;
-
-    if (!_ramfs_valid(ramfs))
-        ERAISE(-EINVAL);
-
-    if (ramfs->device_num == MYST_POSIX_SHMFS_DEV_NUM)
-    {
-        inode_t* inode;
-
-        if (!object || !size_out || !_inode_valid((inode = (inode_t*)object)))
-            ERAISE(-EINVAL);
-
-        *size_out = inode->buf.size;
     }
     else
     {
@@ -3053,9 +3020,8 @@ static int _init_ramfs(
         .fs_fdatasync = _fs_fsync_and_fdatasync,
         .fs_fsync = _fs_fsync_and_fdatasync,
         .fs_release_tree = _fs_release_tree,
-        .fs_file_inode_and_buf_data = _fs_file_inode_and_buf_data,
+        .fs_file_data_buf = _fs_file_data_buf,
         .fs_file_mapping_notify = _fs_file_mapping_notify,
-        .fs_file_size = _fs_file_size,
     };
     // clang-format on
     inode_t* root_inode = NULL;

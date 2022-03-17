@@ -3632,32 +3632,6 @@ static long _SYS_lseek(long n, long params[6])
     return (_return(n, myst_syscall_lseek(fd, offset, whence)));
 }
 
-static bool calling_process_owns_mem_range(const void* addr, size_t length)
-{
-    pid_t pid = myst_getpid();
-
-    size_t rounded_up_length;
-
-    // if length is 0, still check if the page pointed by addr is owned by the
-    // process
-    if (length == 0)
-    {
-        rounded_up_length = PAGE_SIZE;
-    }
-    else
-    {
-        if (myst_round_up(length, PAGE_SIZE, &rounded_up_length) < 0)
-            return false;
-    }
-
-    /* if calling process does not own this mapping */
-    if (myst_mman_pids_test(addr, rounded_up_length, pid) !=
-        (ssize_t)rounded_up_length)
-        return false;
-
-    return true;
-}
-
 static long _SYS_mmap(long n, long params[6], const myst_process_t* process)
 {
     void* addr = (void*)params[0];
@@ -3698,15 +3672,8 @@ static long _SYS_mmap(long n, long params[6], const myst_process_t* process)
             if (flags & MAP_SHARED)
                 return (_return(n, -EINVAL));
 
-            pid_t pid = myst_getpid();
-
-            size_t rounded_up_length;
-            if (myst_round_up(length, PAGE_SIZE, &rounded_up_length) < 0)
-                return (_return(n, -EINVAL));
-
-            /* if calling process does not own this mapping */
-            if (myst_mman_pids_test(addr, rounded_up_length, pid) !=
-                (ssize_t)rounded_up_length)
+            /* Caller should own the memory range */
+            if (!myst_process_owns_mem_range(addr, length, true))
                 return (_return(n, -EINVAL));
         }
         else
@@ -3755,12 +3722,7 @@ static long _SYS_mprotect(long n, long params[6])
         prot,
         myst_mman_prot_to_string(prot));
 
-    /* Handle MAP_SHARED unmapping */
-    if (myst_is_address_within_shmem(addr, length, NULL))
-        return (_return(n, 0));
-
-    /* Caller should own the address range */
-    if (!calling_process_owns_mem_range(addr, length))
+    if (!myst_process_owns_mem_range(addr, length, NULL))
         return (_return(n, -EINVAL));
 
     return (_return(n, (long)myst_mprotect(addr, length, prot)));
@@ -3806,19 +3768,8 @@ static long _SYS_munmap(
             return (_return(n, 0));
     }
 
-    /* Caller should own the address range */
-    {
-        pid_t pid = myst_getpid();
-
-        size_t rounded_up_length;
-        if (myst_round_up(length, PAGE_SIZE, &rounded_up_length) < 0)
-            return (_return(n, -EINVAL));
-
-        /* if calling process does not own this mapping */
-        if (myst_mman_pids_test(addr, rounded_up_length, pid) !=
-            (ssize_t)rounded_up_length)
-            return (_return(n, -EINVAL));
-    }
+    if (!myst_process_owns_mem_range(addr, length, true))
+        return (_return(n, -EINVAL));
 
     long ret = (long)myst_munmap(addr, length);
 
@@ -3985,7 +3936,7 @@ static long _SYS_mremap(long n, long params[6])
     int flags = (int)params[3];
     void* new_address = (void*)params[4];
     long ret;
-    bool is_shmem_region = false;
+    map_type_t old_map_type = NONE;
 
     _strace(
         n,
@@ -4000,23 +3951,14 @@ static long _SYS_mremap(long n, long params[6])
         flags,
         new_address);
 
-    /* skip pids check for shared memory regions */
-    if (!(is_shmem_region =
-              myst_is_address_within_shmem(old_address, old_size, NULL)))
-    {
-        const pid_t pid = myst_getpid();
-        myst_assume(pid > 0);
-
-        /* fail if the calling process does not own this mapping */
-        if (myst_mman_pids_test(old_address, old_size, pid) !=
-            (ssize_t)old_size)
-            return (_return(n, -EINVAL));
-    }
+    if (!(old_map_type =
+              myst_process_owns_mem_range(old_address, old_size, NULL)))
+        return (_return(n, -EINVAL));
 
     ret =
         (long)myst_mremap(old_address, old_size, new_size, flags, new_address);
 
-    if (!is_shmem_region && ret >= 0)
+    if (old_map_type != SHARED && ret >= 0)
     {
         const pid_t pid = myst_getpid();
 
@@ -4040,15 +3982,8 @@ static long _SYS_msync(long n, long params[6])
 
     _strace(n, "addr=%p length=%zu flags=%d ", addr, length, flags);
 
-    if (!myst_addr_within_process_owned_shmem(addr, length, 0))
-    {
-        const pid_t pid = myst_getpid();
-        myst_assume(pid > 0);
-
-        /* fail if the calling process does not own this mapping */
-        if (myst_mman_pids_test(addr, length, pid) != (ssize_t)length)
-            return (_return(n, -EINVAL));
-    }
+    if (!myst_process_owns_mem_range(addr, length, NULL))
+        return (_return(n, -EINVAL));
 
     return (_return(n, myst_msync(addr, length, flags)));
 }
