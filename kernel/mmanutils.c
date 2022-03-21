@@ -117,6 +117,11 @@ int myst_teardown_mman(void)
     return 0;
 }
 
+static __inline__ size_t _min_size(size_t x, size_t y)
+{
+    return x < y ? x : y;
+}
+
 /* get the page index of the given address and check for bounds violations */
 static ssize_t _get_page_index(const void* addr, size_t length)
 {
@@ -1167,6 +1172,8 @@ int myst_msync(void* addr, size_t length, int flags)
         bool consistent;
         const size_t n = rounded_up_length / PAGE_SIZE;
         uint8_t* page = addr;
+        size_t file_size = -1;
+        mman_file_handle_t* prev = NULL;
 
         for (size_t i = index; i < index + n; i++)
         {
@@ -1174,14 +1181,34 @@ int myst_msync(void* addr, size_t length, int flags)
 
             if (p->used == MYST_FDMAPPING_USED)
             {
+                // get file size whenever new file is encountered
+                if (!prev || prev != p->mman_file_handle)
+                {
+                    file_size =
+                        myst_mman_backing_file_size(p->mman_file_handle);
+                    prev = p->mman_file_handle;
+                }
+
+                // writes beyond end of file should not be carried back to the
+                // file
+                if (file_size <= p->offset)
+                    continue;
+
                 ECHECK(myst_mman_get_prot(
                     &_mman, page, PAGE_SIZE, &prot, &consistent));
+
                 if (prot & PROT_WRITE)
+                {
+                    size_t num_bytes_to_write =
+                        _min_size((file_size - p->offset), length);
+                    if (num_bytes_to_write > PAGE_SIZE)
+                        num_bytes_to_write = PAGE_SIZE;
                     ECHECK(_sync_file(
                         p->mman_file_handle,
                         p->offset,
                         page,
-                        length > PAGE_SIZE ? PAGE_SIZE : length));
+                        num_bytes_to_write));
+                }
             }
 
             page += PAGE_SIZE;
@@ -1315,6 +1342,11 @@ map_type_t myst_process_owns_mem_range(
     pid_t pid = myst_getpid();
     uint64_t page_addr = myst_round_down_to_page_size((uint64_t)addr);
 
+    /*TODO:
+    Consider case: p1 owns 0x1000-0x2000
+    Query for: 0x1001, 4096 = false
+    Query for: 0x1001, 4095 = true
+    */
     /* Round up the length (including the zero case) to PAGE_SIZE. If length is
      * 0, still check if the page pointed by addr is owned by the process.
      */
