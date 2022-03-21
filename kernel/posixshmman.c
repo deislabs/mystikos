@@ -114,7 +114,6 @@ int shmfs_teardown()
     return 0;
 }
 
-static size_t _get_backing_file_size(mman_file_handle_t* fh);
 #ifdef TRACE
 static const char* shmem_type_to_string(shmem_type_t mem_type)
 {
@@ -152,7 +151,7 @@ static void _dump_shared_mappings(char* msg)
             "start_addr=%p length=%ld nusers=%ld type=%s\n",
             sm->start_addr,
             sm->type == SHMEM_POSIX_SHM
-                ? _get_backing_file_size(sm->file_handle)
+                ? myst_mman_backing_file_size(sm->file_handle)
                 : sm->length,
             sm->sharers.size,
             shmem_type_to_string(sm->type));
@@ -217,13 +216,13 @@ static int _notify_shmfs_active(mman_file_handle_t* file_handle, bool active)
         _posix_shmfs, file_handle->file, active);
 }
 
-static size_t _get_backing_file_size(mman_file_handle_t* file_handle)
+size_t myst_mman_backing_file_size(mman_file_handle_t* file_handle)
 {
-    assert(file_handle && _posix_shmfs == file_handle->fs);
+    assert(file_handle);
     struct stat statbuf;
     assert(
-        (_posix_shmfs->fs_fstat)(_posix_shmfs, file_handle->file, &statbuf) ==
-        0);
+        (file_handle->fs->fs_fstat)(
+            file_handle->fs, file_handle->file, &statbuf) == 0);
     return statbuf.st_size;
 }
 
@@ -312,7 +311,7 @@ static int _lookup_shmem_map(
     {
         size_t rounded_up_sm_length =
             sm->type == SHMEM_POSIX_SHM
-                ? _get_backing_file_size(sm->file_handle)
+                ? myst_mman_backing_file_size(sm->file_handle)
                 : sm->length;
         myst_round_up(rounded_up_sm_length, PAGE_SIZE, &rounded_up_sm_length);
         void* sm_end_addr = (char*)sm->start_addr + rounded_up_sm_length;
@@ -417,7 +416,7 @@ long myst_posix_shm_handle_mmap(
 
     // check [offset, offset+length] range is within file limits
     {
-        size_t backing_file_size = _get_backing_file_size(file_handle);
+        size_t backing_file_size = myst_mman_backing_file_size(file_handle);
 
         void* file_end_addr = (char*)buf_data_addr + backing_file_size;
         void* request_end_addr = (char*)buf_data_addr + offset + length;
