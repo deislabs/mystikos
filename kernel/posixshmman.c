@@ -117,17 +117,19 @@ int shmfs_teardown()
 #ifdef TRACE
 static const char* shmem_type_to_string(shmem_type_t mem_type)
 {
-    switch (mem_type):
-        {
-            case SHMEM_NONE:
-                return "SHMEM_NONE";
-            case SHMEM_ANON:
-                return "ANON";
-            case SHMEM_REG_FILE:
-                return "REG_FILE";
-            case SHMEM_POSIX_SHM:
-                return "POSIX_SHM_FILE";
-        }
+    switch (mem_type)
+    {
+        case SHMEM_NONE:
+            return "SHMEM_NONE";
+        case SHMEM_ANON:
+            return "ANON";
+        case SHMEM_REG_FILE:
+            return "REG_FILE";
+        case SHMEM_POSIX_SHM:
+            return "POSIX_SHM_FILE";
+        default:
+            return "UNKNOWN";
+    }
 }
 static void _dump_shared_mappings(char* msg)
 {
@@ -160,7 +162,7 @@ static void _dump_shared_mappings(char* msg)
             proc_w_count_t* pn = (proc_w_count_t*)sm->sharers.head;
             while (pn)
             {
-                printf("pid=%d nmaps=%d", pn->pid, pn->nmaps);
+                printf(" [pid=%d nmaps=%d] ", pn->pid, pn->nmaps);
                 pn = (proc_w_count_t*)pn->base.next;
             }
             printf("]\n");
@@ -401,7 +403,7 @@ long myst_posix_shm_handle_mmap(
     mman_file_handle_t* file_handle;
 
 #ifdef TRACE
-    _dump_shared_mappings("in mmap entry");
+    _dump_shared_mappings("mmap entry");
 #endif
 
     /* addr hint is not supported yet */
@@ -491,16 +493,21 @@ done:
         myst_mman_file_handle_put(file_handle);
     }
 #ifdef TRACE
-    _dump_shared_mappings("in mmap exit");
+    _dump_shared_mappings("mmap exit");
 #endif
 
     return ret;
 }
 
-int myst_shmem_register_mapping(int fd, void* addr, size_t length)
+int myst_shmem_register_mapping(
+    int fd,
+    void* addr,
+    size_t length,
+    size_t offset)
 {
     int ret = 0;
     shared_mapping_t* new_sm = NULL;
+    mman_file_handle_t* file_handle = NULL;
     myst_rspin_lock(&_shared_mappings_lock);
     // Create a new shared mapping
     {
@@ -513,7 +520,13 @@ int myst_shmem_register_mapping(int fd, void* addr, size_t length)
         new_sm->length = length;
         new_sm->type = fd == -1 ? SHMEM_ANON : SHMEM_REG_FILE;
         ECHECK_LABEL(_add_proc_to_sharers(new_sm, myst_getpid()), unlock);
-
+        if (new_sm->type == SHMEM_REG_FILE)
+        {
+            new_sm->offset = offset;
+            ECHECK(myst_mman_file_handle_get(fd, &file_handle));
+            new_sm->file_handle = file_handle;
+            new_sm->file_handle->npages = 1; // mark as in-use
+        }
         myst_list_append(&_shared_mappings, &new_sm->base);
         new_sm = NULL;
     }
@@ -523,11 +536,49 @@ unlock:
     if (new_sm)
         free(new_sm);
 
+    if (file_handle && !file_handle->npages)
+    {
+        myst_mman_file_handle_put(file_handle);
+    }
+
     myst_rspin_unlock(&_shared_mappings_lock);
 
 #ifdef TRACE
-    _dump_shared_mappings("in regular mmap exit");
+    _dump_shared_mappings("regular mmap exit");
 #endif
+
+done:
+    return ret;
+}
+
+static __inline__ size_t _min_size(size_t x, size_t y)
+{
+    return x < y ? x : y;
+}
+
+static int __shm_unmap(shared_mapping_t* sm, void* addr, size_t length)
+{
+    int ret = 0;
+    if (_is_posix_shm_mapping(sm))
+    {
+        _notify_shmfs_active(sm->file_handle, false);
+        myst_mman_file_handle_put(sm->file_handle);
+    }
+    else
+    {
+        if (sm->type == SHMEM_REG_FILE)
+        {
+            size_t file_size = myst_mman_backing_file_size(sm->file_handle);
+
+            if (sm->offset < file_size)
+            {
+                ECHECK(myst_msync(
+                    addr, _min_size(file_size - sm->offset, length), MS_SYNC));
+            }
+            myst_mman_file_handle_put(sm->file_handle);
+        }
+        ECHECK(myst_munmap(addr, length));
+    }
 
 done:
     return ret;
@@ -573,17 +624,7 @@ int myst_shmem_handle_munmap(void* addr, size_t length, bool* is_shmem)
             // For last reference to shared mapping, delete mapping
             if (sm->sharers.size == 0)
             {
-                if (_is_posix_shm_mapping(sm))
-                {
-                    _notify_shmfs_active(sm->file_handle, false);
-                    myst_mman_file_handle_put(sm->file_handle);
-                }
-                else
-                {
-                    if (sm->type == SHMEM_REG_FILE)
-                        ECHECK_LABEL(myst_msync(addr, length, MS_SYNC), unlock);
-                    ECHECK_LABEL(myst_munmap(addr, length), unlock);
-                }
+                ECHECK_LABEL(__shm_unmap(sm, addr, length), unlock);
                 myst_list_remove(&_shared_mappings, &sm->base);
 #ifdef TRACE
                 _dump_shared_mappings("Shared memory munmap:");
@@ -617,19 +658,7 @@ int myst_posix_shm_handle_release_mappings(pid_t pid)
                 // For last reference to shared mapping, delete mapping
                 if (sm->sharers.size == 0)
                 {
-                    if (_is_posix_shm_mapping(sm))
-                    {
-                        _notify_shmfs_active(sm->file_handle, false);
-                        myst_mman_file_handle_put(sm->file_handle);
-                    }
-                    else
-                    {
-                        if (sm->type == SHMEM_REG_FILE)
-                            assert(
-                                myst_msync(
-                                    sm->start_addr, sm->length, MS_SYNC) == 0);
-                        assert(myst_munmap(sm->start_addr, sm->length) == 0);
-                    }
+                    assert(__shm_unmap(sm, sm->start_addr, sm->length) == 0);
                     myst_list_remove(&_shared_mappings, &sm->base);
                     void* next_sm = sm->base.next;
                     free(sm);

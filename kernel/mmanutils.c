@@ -535,7 +535,7 @@ long myst_mmap(
         }
 
         if (ret && (flags & MAP_SHARED))
-            ECHECK(myst_shmem_register_mapping(fd, (void*)ret, length));
+            ECHECK(myst_shmem_register_mapping(fd, (void*)ret, length, offset));
     }
 
     void* end = (void*)(ret + length);
@@ -1172,8 +1172,6 @@ int myst_msync(void* addr, size_t length, int flags)
         bool consistent;
         const size_t n = rounded_up_length / PAGE_SIZE;
         uint8_t* page = addr;
-        size_t file_size = -1;
-        mman_file_handle_t* prev = NULL;
 
         for (size_t i = index; i < index + n; i++)
         {
@@ -1181,28 +1179,12 @@ int myst_msync(void* addr, size_t length, int flags)
 
             if (p->used == MYST_FDMAPPING_USED)
             {
-                // get file size whenever new file is encountered
-                if (!prev || prev != p->mman_file_handle)
-                {
-                    file_size =
-                        myst_mman_backing_file_size(p->mman_file_handle);
-                    prev = p->mman_file_handle;
-                }
-
-                // writes beyond end of file should not be carried back to the
-                // file
-                if (file_size <= p->offset)
-                    continue;
-
                 ECHECK(myst_mman_get_prot(
                     &_mman, page, PAGE_SIZE, &prot, &consistent));
 
                 if (prot & PROT_WRITE)
                 {
-                    size_t num_bytes_to_write =
-                        _min_size((file_size - p->offset), length);
-                    if (num_bytes_to_write > PAGE_SIZE)
-                        num_bytes_to_write = PAGE_SIZE;
+                    size_t num_bytes_to_write = _min_size(PAGE_SIZE, length);
                     ECHECK(_sync_file(
                         p->mman_file_handle,
                         p->offset,
