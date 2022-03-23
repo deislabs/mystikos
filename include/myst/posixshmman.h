@@ -21,7 +21,11 @@ bool myst_is_address_within_shmem(
     const size_t len,
     shared_mapping_t** sm_out);
 
-int myst_shmem_register_mapping(int fd, void* addr, size_t length);
+int myst_shmem_register_mapping(
+    int fd,
+    void* addr,
+    size_t length,
+    size_t offset);
 
 long myst_posix_shm_handle_mmap(
     int fd,
