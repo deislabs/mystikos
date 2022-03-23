@@ -283,6 +283,8 @@ int main(int argc, char* argv[])
         if (myst_run)
             assert(addr == MAP_FAILED && errno == EINVAL);
 
+#if 0
+        // Mystikos doesn't support partial mapping
         // check mmap starting at valid non-zero offset
         {
             char* second_page = mmap(
@@ -303,6 +305,7 @@ int main(int argc, char* argv[])
             assert(both_pages != MAP_FAILED);
             assert(*(both_pages + PAGE_SIZE) == 'a');
         }
+#endif
         assert(shm_unlink(shm_name) != -1);
     }
     else
