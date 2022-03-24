@@ -15,17 +15,12 @@ You can use the myst-helloworld yaml [here](myst-helloworld.yaml) for your Azure
 
 ## To run this sample step by step: 
 
-1. Compile the helloworld C program and create the appdir
+1. Compile the helloworld C program and create the appdir, then build the docker container which packages the binary
 ```bash
 make appdir
 ```
 
-2. Package the binary and build the docker container
-```bash
-make build
-```
-
-3. 
+2. 
     a. To run test in a local instance of docker: 
 
         ```bash
