@@ -1090,20 +1090,14 @@ static long _run_thread(void* arg_)
             size_t i = thread->unmap_on_exit_used;
             while (i)
             {
-                if (!myst_munmap(
-                        thread->unmap_on_exit[i - 1].ptr,
-                        thread->unmap_on_exit[i - 1].size))
-                {
-                    /* App process might have invoked SYS_mmap, which marks the
-                     * memory as owned by the calling app process, and then
-                     * SYS_myst_unmap_on_exit on the memory region. Clear the
-                     * pid vector to make sure the unmapped memory is marked as
-                     * not owned by any app process */
-                    myst_mman_pids_set(
-                        thread->unmap_on_exit[i - 1].ptr,
-                        thread->unmap_on_exit[i - 1].size,
-                        0);
-                }
+                /* App process might have invoked SYS_mmap, which marks the
+                 * memory as owned by the calling app process, and then
+                 * SYS_myst_unmap_on_exit on the memory region. Clear the
+                 * pid vector to make sure the unmapped memory is marked as
+                 * not owned by any app process */
+                myst_munmap_on_exit(
+                    thread->unmap_on_exit[i - 1].ptr,
+                    thread->unmap_on_exit[i - 1].size);
                 i--;
             }
         }

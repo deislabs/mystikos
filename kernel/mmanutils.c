@@ -765,6 +765,25 @@ done:
     return ret;
 }
 
+int myst_munmap_on_exit(void* addr, size_t length)
+{
+    int ret = 0;
+    fdlist_t* head = NULL;
+    bool locked = false;
+
+    _rlock(&locked);
+    ECHECK(__myst_munmap(addr, length, &head));
+    myst_mman_pids_set(addr, length, 0);
+    _runlock(&locked);
+
+    // close file handles outside of mman lock
+    _close_file_handles(head);
+
+done:
+    _runlock(&locked);
+    return ret;
+}
+
 long myst_syscall_brk(void* addr)
 {
     void* ptr = NULL;
@@ -1336,8 +1355,8 @@ map_type_t myst_process_owns_mem_range(
         return NONE;
 
     /* check for MAP_PRIVATE mappings */
-    if (myst_mman_pids_test((const void*)page_addr, length, pid) ==
-        (ssize_t)length)
+    ssize_t test_ret = myst_mman_pids_test((const void*)page_addr, length, pid);
+    if (test_ret == (ssize_t)length)
         return PRIVATE;
 
     if (!private_only)
