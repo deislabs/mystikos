@@ -10,7 +10,7 @@ spec:
     spec:
       containers:
       - name: myst-helloworld
-        image: mystikos/myst-helloworld:0.1
+        image: mystikos/myst-helloworld:0.2
         volumeMounts:
         - name: var-run-aesmd
           mountPath: /var/run/aesmd
