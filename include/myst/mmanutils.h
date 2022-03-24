@@ -50,6 +50,8 @@ long myst_mmap(
 
 int myst_munmap(void* addr, size_t length);
 
+int myst_munmap_on_exit(void* addr, size_t length);
+
 long myst_syscall_brk(void* addr);
 
 void* myst_mremap(
