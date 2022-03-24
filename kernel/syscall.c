@@ -4093,7 +4093,7 @@ static long _SYS_myst_clone(long n, long params[6])
         n,
         "fn=%p "
         "child_stack=%p "
-        "flags=%x "
+        "flags=%x (%s) "
         "arg=%p "
         "ptid=%p "
         "newtls=%p "
@@ -4101,6 +4101,7 @@ static long _SYS_myst_clone(long n, long params[6])
         fn,
         child_stack,
         flags,
+        flags & CLONE_VFORK ? "CLONE_VFORK" : "CLONE_THREAD",
         arg,
         ptid,
         newtls,
