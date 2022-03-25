@@ -444,12 +444,18 @@ __attribute__((__returns_twice__)) pid_t myst_fork(void)
         // pthread_create. Since the child process's thread is created via clone
         // instead of pthread_create, the thread count must be incremented
         // manually here.
-	__tl_lock();
+        __tl_lock();
         __libc.threads_minus_1++;
-	__tl_unlock();
-	
+        __tl_unlock();
+
         if ((tmp_ret = __clone(_child_func, sp, clone_flags, args)) < 0)
         {
+            // restore thread count
+            {
+                __tl_lock();
+                __libc.threads_minus_1--;
+                __tl_unlock();
+            }
             munmap(child_pthread->map_base, child_pthread->map_size);
             free(args);
             return tmp_ret;
