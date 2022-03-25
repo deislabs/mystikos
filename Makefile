@@ -148,6 +148,7 @@ install:
 	$(INSTALL) $(LIBDIR)/libmystkernel.so $(INSTDIR)/lib/libmystkernel.so
 	$(INSTALL) $(LIBDIR)/openenclave/mystenc.so $(INSTDIR)/lib/openenclave/mystenc.so
 	$(INSTALL) $(BUILDDIR)/openenclave/bin/oegdb $(INSTDIR)/bin/myst-gdb
+	$(INSTALL) ./scripts/myst-retry $(INSTDIR)/bin/myst-retry
 	$(INSTALL) ./scripts/appbuilder $(INSTDIR)/bin/myst-appbuilder
 	$(INSTALL) include/myst/tee.h $(INSTDIR)/include/myst/tee.h
 	$(INSTALL) include/myst/ssr.h $(INSTDIR)/include/myst/ssr.h
