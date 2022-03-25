@@ -3691,6 +3691,7 @@ static long _SYS_mprotect(long n, long params[6])
         prot,
         myst_mman_prot_to_string(prot));
 
+    /* TODO: this currently fails mprotect() on memory acquired by SYS_brk */
     if (!myst_process_owns_mem_range(addr, length, NULL))
         return (_return(n, -EINVAL));
 
