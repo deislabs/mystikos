@@ -108,7 +108,18 @@ long myst_syscall(long n, long params[6])
         __tl_unlock();
     }
 
-    return (*_syscall_callback)(n, params);
+    long ret = (*_syscall_callback)(n, params);
+
+    // restore threads_minus_1 if execve fails
+    // not checking ret, as execve should not return on success
+    if (n == SYS_execve || n == SYS_execveat)
+    {
+        __tl_lock();
+        __libc.threads_minus_1++;
+        __tl_unlock();
+    }
+
+    return ret;
 }
 
 #ifdef MYST_ENABLE_GCOV
