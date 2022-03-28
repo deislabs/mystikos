@@ -26,7 +26,7 @@ PyTorch validation are run against the Python [Unit Tests](https://github.com/py
 
 ### 3. test_nn.py - Tests for NN operators and their automatic differentiation.
 - **host**: 1361 passed, 1441 skipped, 3 xfailed, 138 warnings
-- **myst**: 29 failed, 1331 passed, 1435 skipped, 35 deselected, 3 xfailed, 138 warnings
+- **myst**: 29 failed, 1323 passed, 1437 skipped, 42 deselected, 3 xfailed, 138 warnings
 
 | #  | NAME  | ROOT CAUSE  |
 |---|---|---|
