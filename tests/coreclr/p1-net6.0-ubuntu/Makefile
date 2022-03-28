@@ -90,10 +90,12 @@ run:
 	# $(MAKE) profiler-custom-test-runs
 	# Model number 106 or 108 indicates IceLake machines
 	if cat /proc/cpuinfo | grep -m 1 "model.*:" | grep '106\|108' > /dev/null; then \
-	$(TEST_RUNNER) $(MYST_EXEC) config_1g.json 300 ext2 pr1-icelake-1g-passed 4 100; \
-	$(TEST_RUNNER) $(MYST_EXEC) config_8g.json 2400 ext2 pr1-icelake-8g-passed 1 100; \
+		$(TEST_RUNNER) $(MYST_EXEC) config_1g.json 300 ext2 pr1-icelake-1g-passed 4 100; \
+		$(TEST_RUNNER) $(MYST_EXEC) config_8g.json 2400 ext2 pr1-icelake-8g-passed 1 100; \
+		$(STAT) pr1-only-tests 96; \
+	else \
+		$(STAT) pr1-only-tests 90; \
 	fi
-	$(STAT) pr1-only-tests 96
 
 package.pem:
 	openssl genrsa -out package.pem -3 3072
