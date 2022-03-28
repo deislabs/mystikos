@@ -59,6 +59,16 @@
 /* TODO: Make it configurable through json */
 #define CLOCK_TICK 1000
 
+/* forward declarations of the OE data type and internal API */
+typedef oe_result_t (
+    *oe_load_extra_enclave_data_hook_t)(void* arg, uint64_t baseaddr);
+
+void oe_register_load_extra_enclave_data_hook(
+    oe_load_extra_enclave_data_hook_t hook);
+
+/* forward declaration of the hook implemented in regions_sgx.c */
+oe_result_t myst_load_extra_enclave_data_hook(void* arg, uint64_t baseaddr);
+
 static struct myst_shm shared_memory = {0};
 
 /* wait for so many milliseconds */
@@ -245,6 +255,9 @@ int exec_launch_enclave(
 
         settings[num_settings++] = setting;
     }
+
+    /* Register the hook */
+    oe_register_load_extra_enclave_data_hook(myst_load_extra_enclave_data_hook);
 
     /* Load the enclave: calls oe_load_extra_enclave_data_hook() */
 #ifndef SUPPRESS_SWITCHLESS

@@ -38,6 +38,10 @@
 #include "sign.h"
 #include "utils.h"
 
+/* forward declarations of OE internal APIs */
+void oe_debug_module_loaded_hook(oe_debug_module_t* module);
+void oe_debug_module_unloaded_hook(oe_debug_module_t* module);
+
 _Static_assert(sizeof(struct myst_timespec) == sizeof(struct timespec), "");
 
 typedef struct debug_module
@@ -92,29 +96,15 @@ void myst_cpuid_ocall(
     __cpuid_count(leaf, subleaf, *rax, *rbx, *rcx, *rdx);
 }
 
-OE_EXPORT
-OE_NEVER_INLINE
-void oe_notify_debugger_library_load(oe_debug_module_t* module)
-{
-    OE_UNUSED(module);
-}
-
-OE_EXPORT
-OE_NEVER_INLINE
-void oe_notify_debugger_library_unload(oe_debug_module_t* module)
-{
-    OE_UNUSED(module);
-}
-
 oe_result_t oe_debug_notify_library_loaded(oe_debug_module_t* module)
 {
-    oe_notify_debugger_library_load(module);
+    oe_debug_module_loaded_hook(module);
     return OE_OK;
 }
 
 oe_result_t oe_debug_notify_library_unloaded(oe_debug_module_t* module)
 {
-    oe_notify_debugger_library_unload(module);
+    oe_debug_module_unloaded_hook(module);
     return OE_OK;
 }
 
