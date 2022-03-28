@@ -20,12 +20,12 @@
 #include <myst/mutex.h>
 #include <myst/once.h>
 #include <myst/panic.h>
-#include <myst/posixshmman.h>
 #include <myst/printf.h>
 #include <myst/process.h>
 #include <myst/procfs.h>
 #include <myst/refstr.h>
 #include <myst/round.h>
+#include <myst/sharedmem.h>
 #include <myst/strings.h>
 #include <myst/syscall.h>
 #include <myst/syslog.h>

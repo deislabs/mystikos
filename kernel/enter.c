@@ -33,14 +33,13 @@
 #include <myst/mount.h>
 #include <myst/options.h>
 #include <myst/panic.h>
-#include <myst/posixshmman.h>
 #include <myst/printf.h>
 #include <myst/process.h>
 #include <myst/procfs.h>
 #include <myst/pubkey.h>
 #include <myst/ramfs.h>
 #include <myst/realpath.h>
-#include <myst/shmfs.h>
+#include <myst/sharedmem.h>
 #include <myst/signal.h>
 #include <myst/stack.h>
 #include <myst/strings.h>
