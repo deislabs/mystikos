@@ -66,7 +66,6 @@
 #include <myst/panic.h>
 #include <myst/paths.h>
 #include <myst/pipedev.h>
-#include <myst/posixshmman.h>
 #include <myst/printf.h>
 #include <myst/process.h>
 #include <myst/pubkey.h>
@@ -74,6 +73,7 @@
 #include <myst/realpath.h>
 #include <myst/round.h>
 #include <myst/setjmp.h>
+#include <myst/sharedmem.h>
 #include <myst/signal.h>
 #include <myst/sockdev.h>
 #include <myst/spinlock.h>

@@ -22,13 +22,13 @@
 #include <myst/mmanutils.h>
 #include <myst/panic.h>
 #include <myst/paths.h>
-#include <myst/posixshmman.h>
 #include <myst/printf.h>
 #include <myst/process.h>
 #include <myst/procfs.h>
 #include <myst/reloc.h>
 #include <myst/round.h>
 #include <myst/setjmp.h>
+#include <myst/sharedmem.h>
 #include <myst/signal.h>
 #include <myst/spinlock.h>
 #include <myst/strings.h>

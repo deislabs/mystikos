@@ -8,12 +8,12 @@
 #include <myst/mount.h>
 #include <myst/once.h>
 #include <myst/panic.h>
-#include <myst/posixshmman.h>
 #include <myst/printf.h>
 #include <myst/process.h>
 #include <myst/ramfs.h>
 #include <myst/round.h>
 #include <myst/rspinlock.h>
+#include <myst/sharedmem.h>
 #include <myst/syscall.h>
 #include <myst/syslog.h>
 #include <stdbool.h>

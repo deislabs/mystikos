@@ -26,10 +26,10 @@
 #include <myst/mmanutils.h>
 #include <myst/options.h>
 #include <myst/panic.h>
-#include <myst/posixshmman.h>
 #include <myst/printf.h>
 #include <myst/procfs.h>
 #include <myst/setjmp.h>
+#include <myst/sharedmem.h>
 #include <myst/signal.h>
 #include <myst/spinlock.h>
 #include <myst/stack.h>
