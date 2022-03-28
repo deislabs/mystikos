@@ -19,7 +19,7 @@ index d93e98f..c42dabf 100644
          # Issue 31845: a startup refactoring broke reading flags from env vars
          for value, expected in (("", 0), ("1", 1), ("text", 1), ("2", 2)):
 diff --git a/Lib/test/test_logging.py b/Lib/test/test_logging.py
-index 03d0319..85edfa0 100644
+index 03d0319..ce2ab3c 100644
 --- a/Lib/test/test_logging.py
 +++ b/Lib/test/test_logging.py
 @@ -675,6 +675,7 @@ def remove_loop(fname, tries):
@@ -58,7 +58,7 @@ index 03d0319..85edfa0 100644
          else:
              return results
  
-+    @unittest.skip("Temporarily disabled in Mystikos")  
++    @unittest.skip("Temporarily disabled in Mystikos")
      def test_multiprocessing(self):
          multiprocessing_imported = 'multiprocessing' in sys.modules
          try:
@@ -287,10 +287,18 @@ index 82be98d..9b81418 100644
          for nframe in INVALID_NFRAME:
              with self.subTest(nframe=nframe):
 diff --git a/Lib/test/test_uuid.py b/Lib/test/test_uuid.py
-index d6a8333..0556d2d 100755
+index d6a8333..24b6276 100755
 --- a/Lib/test/test_uuid.py
 +++ b/Lib/test/test_uuid.py
-@@ -640,6 +640,7 @@ def test_uuid5(self):
+@@ -479,6 +479,7 @@ def test_uuid1_eui64(self):
+         except ValueError:
+             self.fail('uuid1 was given an invalid node ID')
+ 
++    @unittest.skip("Temporarily disabled in Mystikos")
+     def test_uuid1(self):
+         equal = self.assertEqual
+ 
+@@ -640,6 +641,7 @@ def test_uuid5(self):
              equal(str(u), v)
  
      @unittest.skipUnless(hasattr(os, 'fork'), 'need os.fork')
