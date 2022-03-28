@@ -7634,14 +7634,17 @@ done:
 
     /* ---------- running target thread descriptor ---------- */
 
+    /* Process signals pending for this thread, if there is any,
+     * before switching back to the C-runtime thread descriptor to
+     * ensure running the signal processing code with the kernel
+     * thread descriptor. */
+    myst_signal_process(thread);
+
     /* the C-runtime must execute on its own thread descriptor */
     if (crt_td)
         myst_set_fsbase(crt_td);
 
     myst_times_leave_kernel(n);
-
-    // Process signals pending for this thread, if there is any.
-    myst_signal_process(thread);
 
     return syscall_ret;
 }
@@ -7651,6 +7654,16 @@ long myst_syscall(long n, long params[6])
     long ret;
     uint64_t rsp;
     myst_kstack_t* kstack;
+    void* saved_fs;
+    void* base_fs;
+
+    /* At this point, we cannot be sure about what FS is using (determined
+     * by _syscall). To ensure using the kernel FS (same as OE FS) when calling
+     * functions that could come across the OE layer (e.g., making an OCALL),
+     * we temporarily switch to the kernel FS if it has user value before
+     * calling the function and restore when the function returns. */
+    asm("mov %%fs:0, %0" : "=r"(saved_fs));
+    asm("mov %%gs:0, %0" : "=r"(base_fs));
 
     // Call myst_syscall_clock_gettime() upfront to avoid triggering the
     // overhead of myst_times_enter_kernel() and myst_times_leave_kernel(),
@@ -7659,6 +7672,8 @@ long myst_syscall(long n, long params[6])
     {
         clockid_t clk_id = (clockid_t)params[0];
         struct timespec* tp = (struct timespec*)params[1];
+        /* No need to switch FS as myst_syscall_clock_gettime does not make
+         * OCALLs */
         return myst_syscall_clock_gettime(clk_id, tp);
     }
 
@@ -7669,11 +7684,22 @@ long myst_syscall(long n, long params[6])
     {
         int code = (int)params[0];
         unsigned long* addr = (unsigned long*)params[1];
+        /* No need to switch FS as myst_syscall_arch_prctl does not make
+         * OCALLs */
         return myst_syscall_arch_prctl(code, addr);
     }
 
+    /* Switch FS before myst_get_kstack, which could make OCALLs because of
+     * myst_mmap and myst_mprotect */
+    if (saved_fs != base_fs)
+        myst_set_fsbase(base_fs);
+
     if (!(kstack = myst_get_kstack()))
         myst_panic("no more kernel stacks");
+
+    /* Restore FS */
+    if (saved_fs != base_fs)
+        myst_set_fsbase(saved_fs);
 
     // Get the user rsp before switching to the kernel stack
     asm volatile("mov %%rsp, %0" : "=r"(rsp));

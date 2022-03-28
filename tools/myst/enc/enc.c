@@ -293,6 +293,19 @@ __attribute__((format(printf, 2, 3))) static void _exception_handler_strace(
 static uint64_t _vectored_handler(oe_exception_record_t* er)
 {
     const uint16_t opcode = *((uint16_t*)er->context->rip);
+    void* saved_fs = NULL;
+    void* fsbase;
+    void* gsbase;
+
+    /* restore FS to OE's default value so that we can make ocalls */
+    asm volatile("mov %%fs:0, %0" : "=r"(fsbase));
+    asm volatile("mov %%gs:0, %0" : "=r"(gsbase));
+
+    if (fsbase != gsbase)
+    {
+        asm volatile("wrfsbase %0" ::"r"(gsbase));
+        saved_fs = fsbase;
+    }
 
     if (er->code == OE_EXCEPTION_ILLEGAL_INSTRUCTION)
     {
@@ -317,6 +330,10 @@ static uint64_t _vectored_handler(oe_exception_record_t* er)
 
                 /* Skip over the illegal instruction. */
                 er->context->rip += 2;
+
+                /* Restore FS if needed */
+                if (saved_fs)
+                    asm volatile("wrfsbase %0" ::"r"(saved_fs));
 
                 return OE_EXCEPTION_CONTINUE_EXECUTION;
                 break;
@@ -358,6 +375,10 @@ static uint64_t _vectored_handler(oe_exception_record_t* er)
                 /* Skip over the illegal instruction. */
                 er->context->rip += 2;
 
+                /* Restore FS if needed */
+                if (saved_fs)
+                    asm volatile("wrfsbase %0" ::"r"(saved_fs));
+
                 return OE_EXCEPTION_CONTINUE_EXECUTION;
                 break;
             }
@@ -380,6 +401,10 @@ static uint64_t _vectored_handler(oe_exception_record_t* er)
                  * For other cases, this function does not have any
                  * effectiveness. */
                 (*_kargs.myst_signal_restore_mask)();
+
+                /* Restore FS if needed */
+                if (saved_fs)
+                    asm volatile("wrfsbase %0" ::"r"(saved_fs));
 
                 return OE_EXCEPTION_CONTINUE_EXECUTION;
                 break;
@@ -410,6 +435,10 @@ static uint64_t _vectored_handler(oe_exception_record_t* er)
                 er->context->rax = (uint64_t)_exception_handler_syscall(
                     (long)er->context->rax, params);
 
+                /* Restore FS if needed */
+                if (saved_fs)
+                    asm volatile("wrfsbase %0" ::"r"(saved_fs));
+
                 // If the specific syscall is not supported in Mystikos, the
                 // exception handler will cause abort.
                 return OE_EXCEPTION_CONTINUE_EXECUTION;
@@ -419,6 +448,10 @@ static uint64_t _vectored_handler(oe_exception_record_t* er)
                 break;
         }
     }
+
+    /* Restore FS if needed */
+    if (saved_fs)
+        asm volatile("wrfsbase %0" ::"r"(saved_fs));
 
     return _forward_exception_as_signal_to_kernel(er);
 }

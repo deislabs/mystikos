@@ -5,7 +5,8 @@ TOP=$(abspath $(CURDIR)/../..)
 BUILDDIR=${TOP}/build
 
 URL=https://github.com/openenclave/openenclave
-BRANCH=mystikos.v6
+BRANCH=master
+COMMIT=01fb810da80794a8bb221f4905de6c0a7138bb44
 
 OPENENCLAVE_INSTALL_PREFIX=$(BUILDDIR)/openenclave
 OPENENCLAVE_SRC = $(CURDIR)/openenclave
@@ -57,13 +58,15 @@ $(TOP)/build/bin/myst-lldb:
 FETCH_SUBMODULE = git submodule update --init --progress
 
 openenclave:
-	git clone $(URL) -b $(BRANCH)
+	git clone $(URL)
+	( cd openenclave; git checkout $(COMMIT) )
 	( cd openenclave; $(FETCH_SUBMODULE) tools/oeedger8r-cpp )
 	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/musl/musl )
 	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/mbedtls/mbedtls )
 	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/openssl/openssl )
 	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/openssl/intel-sgx-ssl )
 	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/snmalloc )
+	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/symcrypt_engine/SymCrypt-OpenSSL )
 
 configure_oe: $(OPENENCLAVE_BUILD)/Makefile
 
@@ -87,9 +90,11 @@ $(OPENENCLAVE_BUILD)/Makefile:
 
 install_oe:
 	$(MAKE) -C $(OPENENCLAVE_BUILD) install
+	cp ${OPENENCLAVE_BUILD}/output/lib/openenclave/host/liboesign.a ${TOP}/build/openenclave/lib/openenclave/host
 ifdef MYST_USE_BUILD_CACHE
 	rm -rf $(CACHE)
 	$(MAKE) -C $(OPENENCLAVE_BUILD) install DESTDIR=$(CACHE_DIR)/tmp
+	cp ${OPENENCLAVE_BUILD}/output/lib/openenclave/host/liboesign.a ${CACHE_DIR}/tmp/${OPENENCLAVE_INSTALL_PREFIX}/lib/openenclave/host
 	mv $(CACHE_DIR)/tmp/$(OPENENCLAVE_INSTALL_PREFIX) $(CACHE)
 	rm -rf $(CACHE_DIR)/tmp
 endif

@@ -37,6 +37,16 @@ int oesign(
     const char* engine_load_path,
     const char* key_id);
 
+/* forward declarations of the OE data type and internal API */
+typedef oe_result_t (
+    *oe_load_extra_enclave_data_hook_t)(void* arg, uint64_t baseaddr);
+
+void oe_register_load_extra_enclave_data_hook(
+    oe_load_extra_enclave_data_hook_t hook);
+
+/* forward declaration of the hook implemented in regions_sgx.c */
+oe_result_t myst_load_extra_enclave_data_hook(void* arg, uint64_t baseaddr);
+
 #define USAGE_SIGN \
     "\
 \n\
@@ -463,6 +473,9 @@ int _sign(int argc, const char* argv[])
     // oesign(). This suppresses the "Created <tempfile>" message, which
     // conveys nothing useful to the user.
     freopen("/dev/null", "a+", stdout);
+
+    /* Register the hook */
+    oe_register_load_extra_enclave_data_hook(myst_load_extra_enclave_data_hook);
 
     if (oesign(
             scratch_path,
