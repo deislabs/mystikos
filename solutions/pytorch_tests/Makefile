@@ -137,8 +137,27 @@ run-test-torch: rootfs
 	$(RUN_PYTEST) /workspace/pytorch/test/test_torch.py -k $(EXCLUDE_TESTS) 2>&1 | tee $@.out
 	grep -q -E '693 passed.*527 skipped.*3 deselected' $@.out
 
+.PHONY: run-test-mp-spawn
+run-test-mp-spawn: EXCLUDE_TESTS = "not test_success_func \
+and not test_success_single_arg_func \
+and not test_exception_single_func \
+and not test_exception_all_func \
+and not test_terminate_signal_func \
+and not test_terminate_exit_func \
+and not test_success_first_then_exception_func \
+and not test_nested_child_body \
+and not test_infinite_task \
+and not test_process_exit \
+and not test_nested \
+and not ForkTest"
+run-test-mp-spawn: rootfs
+	$(MYST_EXEC) rootfs $(OPTS) --app-config-path config8g.json \
+	/usr/local/bin/python -m pytest -v \
+	/workspace/pytorch/test/test_multiprocessing_spawn.py \
+	-k $(EXCLUDE_TESTS)
+
 .PHONY: run-core-tests
-run-core-tests: run-test-autograd run-test-autograd-thread-shutdown run-test-modules run-test-nn run-test-nn-8g run-test-ops run-test-torch
+run-core-tests: run-test-autograd run-test-autograd-thread-shutdown run-test-modules run-test-nn run-test-nn-8g run-test-ops run-test-torch run-test-mp-spawn
 
 .PHONY: run
 _run: run-core-tests
@@ -151,15 +170,6 @@ TEST=test_nn
 SUBTEST=test_EmbeddingBag_per_sample_weights_and_no_offsets_cpu_int64_float32
 one: rootfs
 	$(RUN_PYTEST) /workspace/pytorch/test/$(TEST).py -s -k "$(SUBTEST)"
-
-SUBTEST=test_success_func
-two:
-	$(RUN_PYTEST) /workspace/pytorch/test/test_multiprocessing_spawn.py -v
-
-three:
-	$(MYST_EXEC) rootfs $(OPTS) --app-config-path config8g.json \
-	/usr/local/bin/python /workspace/pytorch/test/test_multiprocessing_spawn.py \
-	SpawnTest.test_exception_all
 
 .PHONY: gdb
 gdb: rootfs
