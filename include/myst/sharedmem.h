@@ -36,20 +36,25 @@ long myst_posix_shm_handle_mmap(
 
 int myst_shmem_handle_munmap(void* addr, size_t length, bool* is_shmem);
 
-int myst_posix_shm_handle_release_mappings(pid_t pid);
+int myst_shmem_handle_release_mappings(pid_t pid);
 
-int myst_posix_shm_share_mappings(pid_t childpid);
+int myst_shmem_share_mappings(pid_t childpid);
 
 long myst_mman_file_handle_get(int fd, mman_file_handle_t** file_handle_out);
 
 void myst_mman_file_handle_put(mman_file_handle_t* file_handle);
 
-bool myst_shmem_can_mremap(shared_mapping_t* sm);
+bool myst_shmem_can_mremap(
+    shared_mapping_t* sm,
+    void* old_addr,
+    size_t old_size);
 
 void myst_shmem_mremap_update(
     shared_mapping_t* sm,
     void* new_addr,
     size_t new_size);
+
+bool myst_shmem_can_mprotect(shared_mapping_t* sm, void* addr, size_t length);
 
 bool myst_addr_within_process_owned_shmem(
     const void* addr,
