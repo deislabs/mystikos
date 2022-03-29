@@ -342,6 +342,196 @@ done:
     return ret;
 }
 
+typedef struct fdlist
+{
+    mman_file_handle_t* mman_file_handle;
+    struct fdlist* next;
+} fdlist_t;
+
+fdlist_t* get_tail(fdlist_t* node)
+{
+    fdlist_t* prev = NULL;
+    while (node)
+    {
+        prev = node;
+        node = node->next;
+    }
+    return prev;
+}
+
+/* release msync mappings that are contained in the range [addr:addr+length] */
+static int _remove_file_mappings(void* addr, size_t length, fdlist_t** head_out)
+{
+    int ret = 0;
+    size_t index;
+    vectors_t v = _get_vectors();
+    bool locked = false;
+    fdlist_t* head = NULL;
+
+    if (head_out)
+        *head_out = NULL;
+
+    if (!addr || !length || !head_out)
+        ERAISE(-EINVAL);
+
+    ECHECK(myst_round_up(length, PAGE_SIZE, &length));
+    ECHECK((index = _get_page_index(addr, length)));
+
+    _rlock(&locked);
+    {
+        const size_t count = length / PAGE_SIZE;
+
+        for (size_t i = index; i < index + count; i++)
+        {
+            /* remove any fd-mapping (it is okay if it does exist) */
+            myst_fdmapping_t* p = &v.fdmappings[i];
+
+            assert(
+                (p->used && p->mman_file_handle) ||
+                (!p->used && !p->mman_file_handle));
+
+            if (p->used == MYST_FDMAPPING_USED)
+            {
+                if (p->mman_file_handle->npages > 1)
+                {
+                    myst_mman_file_handle_put(p->mman_file_handle);
+                }
+                // if last page, defer filesystem close as this can cause mman
+                // and lockfs locks to deadlock. file handles are appended to a
+                // list which is closed later when outside of the mman lock.
+                else
+                {
+                    fdlist_t* fd_node;
+
+                    if ((fd_node = calloc(1, sizeof(fdlist_t))) == NULL)
+                    {
+                        _runlock(&locked);
+                        ERAISE(-ENOMEM);
+                    }
+
+                    fd_node->mman_file_handle = p->mman_file_handle;
+
+                    if (!head)
+                        head = fd_node;
+                    else
+                    {
+                        fd_node->next = head;
+                        head = fd_node;
+                    }
+                }
+            }
+
+            // clear fd mapping
+            memset(p, 0, sizeof(myst_fdmapping_t));
+        }
+    }
+    _runlock(&locked);
+
+    *head_out = head;
+    head = NULL;
+
+done:
+
+    while (head)
+    {
+        fdlist_t* next = head->next;
+        free(head);
+        head = next;
+    }
+
+    return ret;
+}
+
+static void _close_file_handles(fdlist_t* head)
+{
+    while (head)
+    {
+        fdlist_t* next = head->next;
+        myst_mman_file_handle_put(head->mman_file_handle);
+        free(head);
+        head = next;
+    }
+}
+
+static int _move_file_mapping(
+    void* old_addr,
+    size_t old_size,
+    void* new_addr,
+    size_t new_size)
+{
+    int ret = 0;
+    bool locked = false;
+
+    if (!old_addr || !old_size || !new_addr || !new_size)
+        ERAISE(-EINVAL);
+
+    if (old_addr == new_addr)
+    {
+        // Case: Grow in-place
+        if (old_size <= new_size)
+            goto done;
+        else // Shrink in-place
+        {
+            fdlist_t* file_handle_head;
+
+            size_t num_reclaim_pages =
+                myst_round_down_to_page_size(old_size - new_size);
+            uint64_t reclaim_start_addr = (uint64_t)new_addr + new_size;
+            ECHECK(myst_round_up(
+                reclaim_start_addr, PAGE_SIZE, &reclaim_start_addr));
+            _remove_file_mappings(
+                (void*)reclaim_start_addr,
+                num_reclaim_pages,
+                &file_handle_head);
+            _close_file_handles(file_handle_head);
+        }
+    }
+    else
+    {
+        assert(old_size < new_size);
+
+        size_t old_index, new_index, i, j;
+        vectors_t v = _get_vectors();
+
+        ECHECK(myst_round_up(old_size, PAGE_SIZE, &old_size));
+        ECHECK((old_index = _get_page_index(old_addr, old_size)));
+        ECHECK(myst_round_up(new_size, PAGE_SIZE, &new_size));
+        ECHECK((new_index = _get_page_index(new_addr, new_size)));
+
+        _rlock(&locked);
+        {
+            const size_t count = old_size / PAGE_SIZE;
+
+            for (i = old_index, j = new_index; i < old_index + count; i++, j++)
+            {
+                myst_fdmapping_t* p = &v.fdmappings[i];
+                myst_fdmapping_t* q = &v.fdmappings[j];
+
+                assert(
+                    (p->used && p->mman_file_handle) ||
+                    (!p->used && !p->mman_file_handle));
+                assert(!q->used && !q->mman_file_handle);
+
+                if (p->used)
+                {
+                    q->used = MYST_FDMAPPING_USED;
+                    q->offset = p->offset;
+                    q->mman_file_handle = p->mman_file_handle;
+
+                    // clear fdmapping for old page
+                    memset(p, 0, sizeof(myst_fdmapping_t));
+                }
+            }
+        }
+        _runlock(&locked);
+    }
+
+done:
+    _runlock(&locked);
+
+    return ret;
+}
+
 static ssize_t _map_file_onto_memory(
     int fd,
     off_t offset,
@@ -582,6 +772,9 @@ void* myst_mremap(
         myst_shmem_mremap_update(shm_mapping, p, new_size);
     }
 
+    if ((r = _move_file_mapping(old_address, old_size, p, new_size)) != 0)
+        return (void*)(long)r;
+
     return p;
 }
 
@@ -615,117 +808,6 @@ int myst_mprotect(const void* addr, const size_t len, const int prot)
             PROT_READ|PROT_WRITE|PROT_EXEC
         */
         return (myst_mman_mprotect(&_mman, (void*)addr, len, prot));
-    }
-}
-
-typedef struct fdlist
-{
-    mman_file_handle_t* mman_file_handle;
-    struct fdlist* next;
-} fdlist_t;
-
-fdlist_t* get_tail(fdlist_t* node)
-{
-    fdlist_t* prev = NULL;
-    while (node)
-    {
-        prev = node;
-        node = node->next;
-    }
-    return prev;
-}
-
-/* release msync mappings that are contained in the range [addr:addr+length] */
-static int _remove_file_mappings(void* addr, size_t length, fdlist_t** head_out)
-{
-    int ret = 0;
-    size_t index;
-    vectors_t v = _get_vectors();
-    bool locked = false;
-    fdlist_t* head = NULL;
-
-    if (head_out)
-        *head_out = NULL;
-
-    if (!addr || !length || !head_out)
-        ERAISE(-EINVAL);
-
-    ECHECK(myst_round_up(length, PAGE_SIZE, &length));
-    ECHECK((index = _get_page_index(addr, length)));
-
-    _rlock(&locked);
-    {
-        const size_t count = length / PAGE_SIZE;
-
-        for (size_t i = index; i < index + count; i++)
-        {
-            /* remove any fd-mapping (it is okay if it does exist) */
-            myst_fdmapping_t* p = &v.fdmappings[i];
-
-            assert(
-                (p->used && p->mman_file_handle) ||
-                (!p->used && !p->mman_file_handle));
-
-            if (p->used == MYST_FDMAPPING_USED)
-            {
-                if (p->mman_file_handle->npages > 1)
-                {
-                    myst_mman_file_handle_put(p->mman_file_handle);
-                }
-                // if last page, defer filesystem close as this can cause mman
-                // and lockfs locks to deadlock. file handles are appended to a
-                // list which is closed later when outside of the mman lock.
-                else
-                {
-                    fdlist_t* fd_node;
-
-                    if ((fd_node = calloc(1, sizeof(fdlist_t))) == NULL)
-                    {
-                        _runlock(&locked);
-                        ERAISE(-ENOMEM);
-                    }
-
-                    fd_node->mman_file_handle = p->mman_file_handle;
-
-                    if (!head)
-                        head = fd_node;
-                    else
-                    {
-                        fd_node->next = head;
-                        head = fd_node;
-                    }
-                }
-            }
-
-            // clear fd mapping
-            memset(p, 0, sizeof(myst_fdmapping_t));
-        }
-    }
-    _runlock(&locked);
-
-    *head_out = head;
-    head = NULL;
-
-done:
-
-    while (head)
-    {
-        fdlist_t* next = head->next;
-        free(head);
-        head = next;
-    }
-
-    return ret;
-}
-
-static void _close_file_handles(fdlist_t* head)
-{
-    while (head)
-    {
-        fdlist_t* next = head->next;
-        myst_mman_file_handle_put(head->mman_file_handle);
-        free(head);
-        head = next;
     }
 }
 
