@@ -23,7 +23,7 @@ endif
 
 DIRS += aspnet_core
 DIRS += memcached
-DIRS += python_flask_tests
+# DIRS += python_flask_tests
 DIRS += python_web_frameworks
 DIRS += python_webserver
 ifndef MYST_SKIP_PR_TEST
