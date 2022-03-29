@@ -16,7 +16,6 @@ pipeline {
         booleanParam(name: "RUN_DOTNETP1", defaultValue: true, description: "Run .NET P1 tests?")
         booleanParam(name: "RUN_OPENMP_TESTSUITE", defaultValue: true, description: "Run OpenMP Test Suite?")
         booleanParam(name: "ICELAKE_VM", defaultValue: true, description: "Run tests on Ice Lake VMs?")
-        booleanParam(name: "COFFEELAKE_VM", defaultValue: false, description: "Run tests on Coffee Lake VMs?")
     }
     environment {
         TEST_CONFIG = 'Nightly'
@@ -33,7 +32,6 @@ pipeline {
                     // This is used to test on specific VM generations
                     IGNORE_VM_GENERATIONS = []
                     if ( ! params.ICELAKE_VM ) { IGNORE_VM_GENERATIONS.add('v3') }
-                    if ( ! params.COFFEELAKE_VM ) { IGNORE_VM_GENERATIONS.add('v2') }
                 }
             }
         }
@@ -86,7 +84,7 @@ pipeline {
                     }
                     axis {
                         name 'VM_GENERATION'
-                        values 'v3', 'v2'
+                        values 'v3'
                     }
                 }
                 stages {
