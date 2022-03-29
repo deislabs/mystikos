@@ -15,7 +15,6 @@ pipeline {
         // Add to the below to if you are adding a new test that needs to be toggled. 
         booleanParam(name: "RUN_DOTNETP1", defaultValue: true, description: "Run .NET P1 tests?")
         booleanParam(name: "RUN_OPENMP_TESTSUITE", defaultValue: true, description: "Run OpenMP Test Suite?")
-        booleanParam(name: "ICELAKE_VM", defaultValue: true, description: "Run tests on Ice Lake VMs?")
     }
     environment {
         TEST_CONFIG = 'Nightly'
@@ -29,9 +28,7 @@ pipeline {
                     IGNORE_TESTS = []
                     if ( ! params.RUN_DOTNETP1 ) { IGNORE_TESTS.add('DotNet-P1') }
                     if ( ! params.RUN_OPENMP_TESTSUITE ) { IGNORE_TESTS.add('OpenMP-Testsuite') }
-                    // This is used to test on specific VM generations
-                    IGNORE_VM_GENERATIONS = []
-                    if ( ! params.ICELAKE_VM ) { IGNORE_VM_GENERATIONS.add('v3') }
+                           
                 }
             }
         }
