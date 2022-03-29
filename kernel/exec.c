@@ -1235,7 +1235,7 @@ int myst_exec(
     process->num_pseudo_children--;
 
     /* Unmap inherited POSIX shm mappings */
-    myst_posix_shm_handle_release_mappings(process->pid);
+    myst_shmem_handle_release_mappings(process->pid);
 
     /* invoke the caller's callback here */
     if (callback)

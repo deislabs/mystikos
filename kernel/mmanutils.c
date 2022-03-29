@@ -752,7 +752,7 @@ void* myst_mremap(
 
     if (myst_is_address_within_shmem(old_address, old_size, &shm_mapping))
     {
-        if (!myst_shmem_can_mremap(shm_mapping))
+        if (!myst_shmem_can_mremap(shm_mapping, old_address, old_size))
         {
             MYST_WLOG("Unsupported mremap operation detected. For shared "
                       "mappings, mremap is only allowed if there is a single "
@@ -780,6 +780,8 @@ void* myst_mremap(
 
 int myst_mprotect(const void* addr, const size_t len, const int prot)
 {
+    shared_mapping_t* shm_mapping;
+
     if (!addr)
         return -EINVAL;
 
@@ -794,15 +796,20 @@ int myst_mprotect(const void* addr, const size_t len, const int prot)
     // we don't support changing protection left of addr
     assert(!(prot & MYST_PROT_GROWSDOWN));
 
-    /* Protection bits are per-process. As we are single process on the host,
-     * supporting mprotect for memory shared between two process threads becomes
-     * tricky. For now, we bail out and treat mprotect as a NOP.
-     * */
-    if (myst_is_address_within_shmem(addr, len, NULL))
+    if (myst_is_address_within_shmem(addr, len, &shm_mapping))
     {
-        return 0;
+        if (!myst_shmem_can_mprotect(shm_mapping, (void*)addr, len))
+        {
+            MYST_WLOG(
+                "Unsupported mprotect operation detected. For shared "
+                "mappings, mprotect is only allowed if there is a single "
+                "user of the mapping. Protection bits are per-process. As we "
+                "are single process on the host, supporting mprotect for "
+                "memory shared between two process threads becomes tricky.\n");
+            return -EINVAL;
+        }
     }
-    else
+
     {
         /* Current implementation for mprotect ignore bits beyond
             PROT_READ|PROT_WRITE|PROT_EXEC
@@ -898,8 +905,8 @@ int myst_release_process_mappings(pid_t pid)
     if (pid <= 0)
         ERAISE(-EINVAL);
 
-    /* Release posix shared memory mappings for this process */
-    myst_posix_shm_handle_release_mappings(pid);
+    /* Release shared memory mappings for this process */
+    myst_shmem_handle_release_mappings(pid);
 
     /* Scan entire pids vector range for process-owned MAP_PRIVATE memory */
     {

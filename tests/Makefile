@@ -135,6 +135,7 @@ DIRS += glibc
 endif
 
 DIRS += appenv
+DIRS += map_shared
 DIRS += posix-shm
 
 .PHONY: $(DIRS)
