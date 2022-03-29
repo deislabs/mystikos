@@ -5204,16 +5204,6 @@ static long _SYS_clock_settime(long n, long params[6])
     return (_return(n, myst_syscall_clock_settime(clk_id, tp)));
 }
 
-static long _SYS_clock_gettime(long n, long params[6])
-{
-    clockid_t clk_id = (clockid_t)params[0];
-    struct timespec* tp = (struct timespec*)params[1];
-
-    _strace(n, "clk_id=%u tp=%p", clk_id, tp);
-
-    return (_return(n, myst_syscall_clock_gettime(clk_id, tp)));
-}
-
 static long _SYS_clock_getres(long n, long params[6])
 {
     clockid_t clk_id = (clockid_t)params[0];
@@ -7233,7 +7223,8 @@ static long _syscall(void* args_)
         }
         case SYS_clock_gettime:
         {
-            BREAK(_SYS_clock_gettime(n, params));
+            /* this is handled in myst_syscall() */
+            break;
         }
         case SYS_clock_getres:
         {
