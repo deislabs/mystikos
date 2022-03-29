@@ -137,6 +137,7 @@ endif
 DIRS += appenv
 DIRS += go
 DIRS += strace
+DIRS += map_shared
 DIRS += posix-shm
 
 .PHONY: $(DIRS)

@@ -641,7 +641,7 @@ done:
     return ret;
 }
 
-int myst_posix_shm_handle_release_mappings(pid_t pid)
+int myst_shmem_handle_release_mappings(pid_t pid)
 {
 #ifdef TRACE
     printf("pid=%d\n", pid);
@@ -678,7 +678,7 @@ int myst_posix_shm_handle_release_mappings(pid_t pid)
     return 0;
 }
 
-int myst_posix_shm_share_mappings(pid_t childpid)
+int myst_shmem_share_mappings(pid_t childpid)
 {
     int ret = 0;
     pid_t self = myst_getpid();
@@ -701,11 +701,53 @@ done:
     return ret;
 }
 
-bool myst_shmem_can_mremap(shared_mapping_t* sm)
+bool myst_shmem_can_mremap(
+    shared_mapping_t* sm,
+    void* old_addr,
+    size_t old_size)
 {
     assert(sm);
-    if ((sm->type == SHMEM_REG_FILE || sm->type == SHMEM_ANON) &&
+
+    if (sm->start_addr != old_addr && sm->length != old_size)
+    {
+        MYST_ELOG(
+            "Partial mremaps of shared memory are not "
+            "allowed.\nActual: addr=%p length=%ld\nExpected: addr=%p "
+            "length=%ld\n",
+            old_addr,
+            old_size,
+            sm->start_addr,
+            sm->length);
+        myst_panic("Unsupported.\n");
+    }
+
+    if (sm->type == SHMEM_POSIX_SHM)
+        MYST_WLOG("mremap is not supported for POSIX shared memory");
+    else if (
+        (sm->type == SHMEM_REG_FILE || sm->type == SHMEM_ANON) &&
         sm->sharers.size == 1)
+        return true;
+    return false;
+}
+
+bool myst_shmem_can_mprotect(shared_mapping_t* sm, void* addr, size_t length)
+{
+    assert(sm);
+
+    if (sm->start_addr != addr && sm->length != length)
+    {
+        MYST_ELOG(
+            "Partial mprotect of shared memory are not "
+            "allowed.\nActual: addr=%p length=%ld\nExpected: addr=%p "
+            "length=%ld\n",
+            addr,
+            length,
+            sm->start_addr,
+            sm->length);
+        myst_panic("Unsupported.\n");
+    }
+
+    if (sm->sharers.size == 1)
         return true;
     return false;
 }
@@ -715,9 +757,7 @@ void myst_shmem_mremap_update(
     void* new_addr,
     size_t new_size)
 {
-    assert(sm);
+    assert(sm && new_addr && new_size);
     sm->start_addr = new_addr;
     sm->length = new_size;
-
-    // TODO: if file backed, fdmapping also needs to be updated
 }
