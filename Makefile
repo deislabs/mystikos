@@ -52,6 +52,7 @@ DIRS += kernel
 DIRS += crt
 DIRS += oe
 DIRS += tools
+DIRS += debugger
 
 ifdef MYST_WORLD
 DIRS += alpine/docker
@@ -147,7 +148,10 @@ install:
 	$(INSTALL) $(LIBDIR)/libmystcrt.so $(INSTDIR)/lib/libmystcrt.so
 	$(INSTALL) $(LIBDIR)/libmystkernel.so $(INSTDIR)/lib/libmystkernel.so
 	$(INSTALL) $(LIBDIR)/openenclave/mystenc.so $(INSTDIR)/lib/openenclave/mystenc.so
-	$(INSTALL) $(BUILDDIR)/openenclave/bin/oegdb $(INSTDIR)/bin/myst-gdb
+	$(INSTALL) $(BINDIR)/myst-gdb $(INSTDIR)/bin/myst-gdb
+	$(INSTALL) $(LIBDIR)/debugger/gdb-sgx-plugin/mprotect.py $(INSTDIR)/lib/debugger/gdb-sgx-plugin/mprotect.py
+	$(INSTALL) $(LIBDIR)/debugger/gdb-sgx-plugin/symbol_analyzer.py $(INSTDIR)/lib/debugger/gdb-sgx-plugin/symbol_analyzer.py
+	$(INSTALL) $(LIBDIR)/debugger/gdb-sgx-plugin/print.py $(INSTDIR)/lib/debugger/gdb-sgx-plugin/print.py
 	$(INSTALL) ./scripts/myst-retry $(INSTDIR)/bin/myst-retry
 	$(INSTALL) ./scripts/appbuilder $(INSTDIR)/bin/myst-appbuilder
 	$(INSTALL) include/myst/tee.h $(INSTDIR)/include/myst/tee.h
