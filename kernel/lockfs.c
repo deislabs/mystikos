@@ -607,7 +607,10 @@ done:
     return ret;
 }
 
-static int _fs_file_data_buf(myst_fs_t* fs, myst_file_t* file, void** addr_out)
+static int _fs_file_data_start_addr(
+    myst_fs_t* fs,
+    myst_file_t* file,
+    void** addr_out)
 {
     int ret = 0;
     lockfs_t* lockfs = (lockfs_t*)fs;
@@ -618,7 +621,7 @@ static int _fs_file_data_buf(myst_fs_t* fs, myst_file_t* file, void** addr_out)
 
     myst_mutex_lock(&lockfs->lock);
     _install_sig_handler(&sig_handler, &lockfs->lock);
-    ret = (*lockfs->fs->fs_file_data_buf)(lockfs->fs, file, addr_out);
+    ret = (*lockfs->fs->fs_file_data_start_addr)(lockfs->fs, file, addr_out);
     _uninstall_sig_handler(&sig_handler);
     myst_mutex_unlock(&lockfs->lock);
 
@@ -708,7 +711,7 @@ int myst_lockfs_init(myst_fs_t* fs, myst_fs_t** lockfs_out)
         .fs_fdatasync = _fs_fdatasync,
         .fs_fsync = _fs_fsync,
         .fs_release_tree = _fs_release_tree,
-        .fs_file_data_buf = _fs_file_data_buf,
+        .fs_file_data_start_addr = _fs_file_data_start_addr,
         .fs_file_mapping_notify = _fs_file_mapping_notify,
     };
 

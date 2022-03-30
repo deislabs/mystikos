@@ -2893,7 +2893,10 @@ done:
     return ret;
 }
 
-static int _fs_file_data_buf(myst_fs_t* fs, myst_file_t* file, void** addr_out)
+static int _fs_file_data_start_addr(
+    myst_fs_t* fs,
+    myst_file_t* file,
+    void** addr_out)
 {
     int ret = 0;
     ramfs_t* ramfs = (ramfs_t*)fs;
@@ -2908,8 +2911,9 @@ static int _fs_file_data_buf(myst_fs_t* fs, myst_file_t* file, void** addr_out)
 
         *addr_out = NULL;
 
-        /* memory for shm files are allocated on first ftruncate.
-        Fail if process mmap's before that */
+        /* memory for shm files are allocated on first ftruncate, or via writing
+        to the file(Pytorch multiprocessing does this). Fail if process mmap's
+        before that */
         if (!(*addr_out = file->shared->inode->buf.data))
             ERAISE(-ENOEXEC);
     }
@@ -3020,7 +3024,7 @@ static int _init_ramfs(
         .fs_fdatasync = _fs_fsync_and_fdatasync,
         .fs_fsync = _fs_fsync_and_fdatasync,
         .fs_release_tree = _fs_release_tree,
-        .fs_file_data_buf = _fs_file_data_buf,
+        .fs_file_data_start_addr = _fs_file_data_start_addr,
         .fs_file_mapping_notify = _fs_file_mapping_notify,
     };
     // clang-format on
