@@ -193,7 +193,7 @@ static int _get_ptr_to_file_data(int fd, void** addr_out)
     myst_file_t* file;
 
     ECHECK(myst_fdtable_get_file(fdtable, fd, &fs, &file));
-    ECHECK((*fs->fs_file_data_buf)(fs, file, addr_out));
+    ECHECK((*fs->fs_file_data_start_addr)(fs, file, addr_out));
 
 done:
     return ret;
@@ -228,7 +228,7 @@ size_t myst_mman_backing_file_size(mman_file_handle_t* file_handle)
     return statbuf.st_size;
 }
 
-static proc_w_count_t* _lookup_sharers_by_pid(shared_mapping_t* sm, pid_t pid)
+static proc_w_count_t* _lookup_sharers_by_proc(shared_mapping_t* sm, pid_t pid)
 {
     proc_w_count_t* pn = (proc_w_count_t*)sm->sharers.head;
     while (pn)
@@ -240,9 +240,9 @@ static proc_w_count_t* _lookup_sharers_by_pid(shared_mapping_t* sm, pid_t pid)
     return NULL;
 }
 
-static bool _decr_pid_from_sharers(shared_mapping_t* sm, pid_t pid)
+static bool _unref_proc_from_sharers(shared_mapping_t* sm, pid_t pid)
 {
-    proc_w_count_t* pn = _lookup_sharers_by_pid(sm, pid);
+    proc_w_count_t* pn = _lookup_sharers_by_proc(sm, pid);
     if (pn)
     {
         if (--pn->nmaps == 0)
@@ -255,9 +255,9 @@ static bool _decr_pid_from_sharers(shared_mapping_t* sm, pid_t pid)
     return false;
 }
 
-static bool _remove_pid_from_sharers(shared_mapping_t* sm, pid_t pid)
+static bool _remove_proc_from_sharers(shared_mapping_t* sm, pid_t pid)
 {
-    proc_w_count_t* pn = _lookup_sharers_by_pid(sm, pid);
+    proc_w_count_t* pn = _lookup_sharers_by_proc(sm, pid);
     if (pn)
     {
         myst_list_remove(&sm->sharers, &pn->base);
@@ -270,7 +270,7 @@ static bool _remove_pid_from_sharers(shared_mapping_t* sm, pid_t pid)
 static int _add_proc_to_sharers(shared_mapping_t* sm, pid_t pid)
 {
     int ret = 0;
-    proc_w_count_t* pn = _lookup_sharers_by_pid(sm, pid);
+    proc_w_count_t* pn = _lookup_sharers_by_proc(sm, pid);
 
     if (!pn)
     {
@@ -385,7 +385,7 @@ bool myst_addr_within_process_owned_shmem(
         pid = myst_getpid();
 
     if (myst_is_address_within_shmem(addr, length, &sm) &&
-        _lookup_sharers_by_pid(sm, pid))
+        _lookup_sharers_by_proc(sm, pid))
         return true;
 
     return false;
@@ -615,7 +615,7 @@ int myst_shmem_handle_munmap(void* addr, size_t length, bool* is_shmem)
             }
 
             *is_shmem = true;
-            if (!_decr_pid_from_sharers(sm, myst_getpid()))
+            if (!_unref_proc_from_sharers(sm, myst_getpid()))
             {
                 // if pid is not in sharers, process is trying to munmap memory
                 // not associated with it
@@ -653,7 +653,7 @@ int myst_shmem_handle_release_mappings(pid_t pid)
         shared_mapping_t* sm = (shared_mapping_t*)_shared_mappings.head;
         while (sm)
         {
-            if (_remove_pid_from_sharers(sm, pid))
+            if (_remove_proc_from_sharers(sm, pid))
             {
                 // For last reference to shared mapping, delete mapping
                 if (sm->sharers.size == 0)
@@ -688,7 +688,7 @@ int myst_shmem_share_mappings(pid_t childpid)
         shared_mapping_t* sm = (shared_mapping_t*)_shared_mappings.head;
         while (sm)
         {
-            proc_w_count_t* pn = _lookup_sharers_by_pid(sm, self);
+            proc_w_count_t* pn = _lookup_sharers_by_proc(sm, self);
             if (pn)
                 ECHECK(_add_proc_to_sharers(sm, childpid));
             sm = (shared_mapping_t*)sm->base.next;

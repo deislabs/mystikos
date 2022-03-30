@@ -132,7 +132,7 @@ static ssize_t _get_page_index(const void* addr, size_t length)
     const uint64_t addr_end;
     const size_t mman_end;
 
-    if (!addr || length <= 0)
+    if (!addr && !length)
         ERAISE(-EINVAL);
 
     if (((uint64_t)addr % PAGE_SIZE) || (length % PAGE_SIZE))
@@ -486,7 +486,7 @@ static int _move_file_mapping(
             _close_file_handles(file_handle_head);
         }
     }
-    else
+    else // mapping got moved
     {
         assert(old_size < new_size);
 
@@ -800,12 +800,14 @@ int myst_mprotect(const void* addr, const size_t len, const int prot)
     {
         if (!myst_shmem_can_mprotect(shm_mapping, (void*)addr, len))
         {
-            MYST_WLOG(
-                "Unsupported mprotect operation detected. For shared "
-                "mappings, mprotect is only allowed if there is a single "
-                "user of the mapping. Protection bits are per-process. As we "
-                "are single process on the host, supporting mprotect for "
-                "memory shared between two process threads becomes tricky.\n");
+            MYST_WLOG("Unsupported mprotect operation detected. For shared "
+                      "mappings, mprotect is only allowed if there is a single "
+                      "user of the mapping. Mystikos relies on host for page "
+                      "protection. On x86-64 and Linux, page protection is per "
+                      "address space. As we "
+                      "are single process on the host, supporting mprotect for "
+                      "memory shared between two process threads becomes "
+                      "difficult.\n");
             return -EINVAL;
         }
     }
@@ -854,7 +856,7 @@ done:
     return ret;
 }
 
-int myst_munmap_on_exit(void* addr, size_t length)
+int myst_munmap_and_pids_clear_atomic(void* addr, size_t length)
 {
     int ret = 0;
     fdlist_t* head = NULL;
@@ -1432,11 +1434,14 @@ map_type_t myst_process_owns_mem_range(
     pid_t pid = myst_getpid();
     uint64_t page_addr = myst_round_down_to_page_size((uint64_t)addr);
 
-    /*TODO:
-    Consider case: p1 owns 0x1000-0x2000
+    /*
+    Account for memory range covered due to rounding down start address.
+    Example case: p1 owns 0x1000-0x2000
     Query for: 0x1001, 4096 = false
     Query for: 0x1001, 4095 = true
     */
+    length += (uint64_t)addr % PAGE_SIZE;
+
     /* Round up the length (including the zero case) to PAGE_SIZE. If length is
      * 0, still check if the page pointed by addr is owned by the process.
      */
