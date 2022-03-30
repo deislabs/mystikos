@@ -1012,9 +1012,6 @@ long myst_syscall_readv(int fd, const struct iovec* iov, int iovcnt)
     myst_fdtable_type_t type;
     myst_fdops_t* fdops;
 
-    if (_iov_bad_addr(iov, iovcnt))
-        ERAISE(-EFAULT);
-
     ECHECK(myst_fdtable_get_any(fdtable, fd, &type, &device, &object));
     fdops = device;
 
@@ -1032,9 +1029,6 @@ long myst_syscall_writev(int fd, const struct iovec* iov, int iovcnt)
     void* object = NULL;
     myst_fdtable_type_t type;
     myst_fdops_t* fdops;
-
-    if (_iov_bad_addr(iov, iovcnt))
-        ERAISE(-EFAULT);
 
     ECHECK(myst_fdtable_get_any(fdtable, fd, &type, &device, &object));
     fdops = device;
@@ -1730,9 +1724,6 @@ long myst_syscall_chdir(const char* path)
     if (!path)
         ERAISE(-EINVAL);
 
-    if (myst_is_bad_addr_read(path, sizeof(uint64_t)))
-        ERAISE(-EFAULT);
-
     if (!(locals = malloc(sizeof(struct locals))))
         ERAISE(-ENOMEM);
 
@@ -2357,6 +2348,7 @@ done:
     return ret;
 }
 
+MYST_INTERNAL
 long myst_syscall_connect(
     int sockfd,
     const struct sockaddr* addr,
@@ -2383,6 +2375,7 @@ done:
     return ret;
 }
 
+MYST_INTERNAL
 long myst_syscall_recvfrom(
     int sockfd,
     void* buf,
@@ -2411,6 +2404,7 @@ done:
     return ret;
 }
 
+MYST_INTERNAL
 long myst_syscall_sendto(
     int sockfd,
     const void* buf,
@@ -2553,6 +2547,7 @@ done:
     return ret;
 }
 
+MYST_INTERNAL
 long myst_syscall_getsockname(
     int sockfd,
     struct sockaddr* addr,
@@ -3094,6 +3089,20 @@ long myst_syscall_ret(long ret)
         ret = -1;
     }
 
+    return ret;
+}
+
+MYST_INTERNAL
+long myst_syscall_clock_getres(clockid_t clk_id, struct timespec* res)
+{
+    long params[6] = {(long)clk_id, (long)res};
+
+    if (res && myst_is_bad_addr_read_write(res, sizeof(struct timespec)))
+        return -EFAULT;
+    else if (res == NULL)
+        return -EINVAL;
+
+    long ret = myst_tcall(MYST_TCALL_CLOCK_GETRES, params);
     return ret;
 }
 
@@ -3750,6 +3759,9 @@ static long _SYS_readv(long n, long params[6])
 
     _strace(n, "fd=%d iov=%p iovcnt=%d", fd, iov, iovcnt);
 
+    if (_iov_bad_addr(iov, iovcnt))
+        return (_return(n, -EFAULT));
+
     return (_return(n, myst_syscall_readv(fd, iov, iovcnt)));
 }
 
@@ -3760,6 +3772,9 @@ static long _SYS_writev(long n, long params[6])
     int iovcnt = (int)params[2];
 
     _strace(n, "fd=%d iov=%p iovcnt=%d", fd, iov, iovcnt);
+
+    if (_iov_bad_addr(iov, iovcnt))
+        return (_return(n, -EFAULT));
 
     return (_return(n, myst_syscall_writev(fd, iov, iovcnt)));
 }
@@ -4305,7 +4320,10 @@ static long _SYS_chdir(long n, long params[6])
     if (path && !myst_is_bad_addr_read(path, 1))
         _strace(n, "path=\"%s\"", path);
     else
+    {
         _strace(n, "path=\"%s\"", "<bad_ptr>");
+        return (_return(n, -EFAULT));
+    }
 
     return (_return(n, myst_syscall_chdir(path)));
 }
@@ -7793,19 +7811,6 @@ long myst_syscall_time(time_t* tloc)
             *tloc = tp.tv_sec;
         ret = tp.tv_sec;
     }
-    return ret;
-}
-
-long myst_syscall_clock_getres(clockid_t clk_id, struct timespec* res)
-{
-    long params[6] = {(long)clk_id, (long)res};
-
-    if (res && myst_is_bad_addr_read_write(res, sizeof(struct timespec)))
-        return -EFAULT;
-    else if (res == NULL)
-        return -EINVAL;
-
-    long ret = myst_tcall(MYST_TCALL_CLOCK_GETRES, params);
     return ret;
 }
 

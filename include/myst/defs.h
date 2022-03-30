@@ -10,6 +10,8 @@
 
 #define MYST_INLINE static __inline__
 
+#define MYST_INTERNAL static
+
 #define MYST_WEAK __attribute__((weak))
 
 #define MYST_NORETURN __attribute__((__noreturn__))

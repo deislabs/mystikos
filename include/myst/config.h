@@ -26,6 +26,6 @@
 
 /* enable to relax the bad addr check (only check if the address is within
  * enclave memory region) */
-#define MYST_RELAX_BAD_ADDR_CHECK
+//#define MYST_RELAX_BAD_ADDR_CHECK
 
 #endif /* _MYST_CONFIG_H */
