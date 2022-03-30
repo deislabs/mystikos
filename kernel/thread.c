@@ -1095,7 +1095,7 @@ static long _run_thread(void* arg_)
                  * SYS_myst_unmap_on_exit on the memory region. Clear the
                  * pid vector to make sure the unmapped memory is marked as
                  * not owned by any app process */
-                myst_munmap_on_exit(
+                myst_munmap_and_pids_clear_atomic(
                     thread->unmap_on_exit[i - 1].ptr,
                     thread->unmap_on_exit[i - 1].size);
                 i--;

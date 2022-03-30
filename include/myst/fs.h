@@ -190,7 +190,10 @@ struct myst_fs
     int (*fs_release_tree)(myst_fs_t* fs, const char* pathname);
 
     /* Used for supporting POSIX shared memory */
-    int (*fs_file_data_buf)(myst_fs_t* fs, myst_file_t* file, void** addr_out);
+    int (*fs_file_data_start_addr)(
+        myst_fs_t* fs,
+        myst_file_t* file,
+        void** addr_out);
     int (
         *fs_file_mapping_notify)(myst_fs_t* fs, myst_file_t* file, bool active);
 };

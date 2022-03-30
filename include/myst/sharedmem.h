@@ -21,6 +21,7 @@ bool myst_is_address_within_shmem(
     const size_t len,
     shared_mapping_t** sm_out);
 
+/* register regular file or anonymous MAP_SHARED mapping */
 int myst_shmem_register_mapping(
     int fd,
     void* addr,
@@ -40,10 +41,6 @@ int myst_shmem_handle_release_mappings(pid_t pid);
 
 int myst_shmem_share_mappings(pid_t childpid);
 
-long myst_mman_file_handle_get(int fd, mman_file_handle_t** file_handle_out);
-
-void myst_mman_file_handle_put(mman_file_handle_t* file_handle);
-
 bool myst_shmem_can_mremap(
     shared_mapping_t* sm,
     void* old_addr,
@@ -62,4 +59,5 @@ bool myst_addr_within_process_owned_shmem(
     pid_t pid);
 
 size_t myst_mman_backing_file_size(mman_file_handle_t* file_handle);
+
 #endif /* _MYST_POSIXSHMMAN_H */

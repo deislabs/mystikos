@@ -31,7 +31,6 @@ up at munmap.
 typedef struct myst_fdmapping
 {
     uint32_t used;   /* whether entry is used */
-    int32_t fd;      /* duplicated fd */
     uint64_t offset; /* offset of page within backing file */
     mman_file_handle_t* mman_file_handle;
 } myst_fdmapping_t;
@@ -50,7 +49,7 @@ long myst_mmap(
 
 int myst_munmap(void* addr, size_t length);
 
-int myst_munmap_on_exit(void* addr, size_t length);
+int myst_munmap_and_pids_clear_atomic(void* addr, size_t length);
 
 long myst_syscall_brk(void* addr);
 
@@ -124,6 +123,10 @@ void myst_mman_lock(void);
 void myst_mman_unlock(void);
 
 bool mman_file_handle_eq(mman_file_handle_t* f1, mman_file_handle_t* f2);
+
+long myst_mman_file_handle_get(int fd, mman_file_handle_t** file_handle_out);
+
+void myst_mman_file_handle_put(mman_file_handle_t* file_handle);
 
 const char* myst_mman_prot_to_string(int prot);
 const char* myst_mman_flags_to_string(int flags);
