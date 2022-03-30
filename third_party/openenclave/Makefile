@@ -37,7 +37,7 @@ build:
 	$(MAKE) configure_oe
 	$(MAKE) install_oe
 
-fetch_oecache: $(TOP)/build/openenclave $(TOP)/build/bin/myst-gdb
+fetch_oecache: $(TOP)/build/openenclave $(TOP)/build/lib/openenclave/debugger \
 	$(TOP)/build/bin/myst-lldb
 
 $(TOP)/build/openenclave:
@@ -45,12 +45,12 @@ $(TOP)/build/openenclave:
 	rm -rf $(BUILDDIR)/openenclave
 	cp -r $(CACHE) $(BUILDDIR)/openenclave
 
-$(TOP)/build/bin/myst-gdb:
-	mkdir -p $(BUILDDIR)/bin
-	rm -f $(BUILDDIR)/bin/myst-gdb
-	ln -s $(BUILDDIR)/openenclave/bin/oegdb $(BUILDDIR)/bin/myst-gdb
+$(TOP)/build/lib/openenclave/debugger: $(TOP)/build/openenclave
+	mkdir -p $(BUILDDIR)/lib/openenclave
+	rm -f $(BUILDDIR)/lib/openenclave/debugger
+	ln -s $(BUILDDIR)/openenclave/lib/openenclave/debugger $(BUILDDIR)/lib/openenclave/debugger
 
-$(TOP)/build/bin/myst-lldb:
+$(TOP)/build/bin/myst-lldb: $(TOP)/build/openenclave
 	mkdir -p $(BUILDDIR)/bin
 	rm -f $(BUILDDIR)/bin/myst-lldb
 	ln -s $(BUILDDIR)/openenclave/bin/oelldb $(BUILDDIR)/bin/myst-lldb
@@ -99,8 +99,9 @@ ifdef MYST_USE_BUILD_CACHE
 	rm -rf $(CACHE_DIR)/tmp
 endif
 	mkdir -p $(TOP)/build/bin
-	rm -f $(TOP)/build/bin/myst-gdb
-	ln -s $(TOP)/build/openenclave/bin/oegdb $(TOP)/build/bin/myst-gdb
+	mkdir -p $(TOP)/build/lib/openenclave
+	rm -f ${TOP}/build/lib/openenclave/debugger
+	ln -s ${TOP}/build/openenclave/lib/openenclave/debugger ${TOP}/build/lib/openenclave/debugger
 	# Patch minimum required lldb version from 7 to 8.
 	sed -i 's/-7/-8/g' $(TOP)/build/openenclave/bin/oelldb
 	rm -f $(TOP)/build/bin/myst-lldb
@@ -108,7 +109,7 @@ endif
 
 clean:
 	rm -rf $(TOP)/build/openenclave
-	rm -f $(TOP)/build/bin/myst-gdb
+	rm -f ${TOP}/build/lib/openenclave/debugger
 	rm -f $(TOP)/build/bin/myst-lldb
 
 distclean: clean
