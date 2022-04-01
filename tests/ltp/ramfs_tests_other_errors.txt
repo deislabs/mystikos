@@ -722,3 +722,11 @@
 /ltp/testcases/kernel/syscalls/writev/writev05
 /ltp/testcases/kernel/syscalls/writev/writev06
 /ltp/testcases/kernel/syscalls/writev/writev07
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_23-1.run-test // creates 1k procs!
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_32-1.run-test // runs as different user
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_34-1.run-test // same
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_39-2.run-test // ENAMETOOLONG not supported
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_8-1.run-test // tests property not mentioned by Unix file API - that fd for two successive open's will be successive.
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_10-2.run-test  // ENAMETOOLONG not supported
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_8-1.run-test // multi-user support issue
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_9-1.run-test
