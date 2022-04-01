@@ -64,21 +64,21 @@ ifdef MYST_NIGHTLY_TEST
 endif
 
 run-3.8: ext2fs3.8
-	$(MYST_EXEC) $(OPTS) ext2fs3.8 /cpython/python -m test -f /$(TESTFILE) --timeout 120 -v
+	SUBTEST=$(TESTFILE)-3.8 $(RUNTEST) $(MYST_EXEC) $(OPTS) ext2fs3.8 /cpython/python -m test -f /$(TESTFILE) --timeout 120 -v
 	$(foreach i, $(TEST_RUN_INDIVIDUAL_3_8), $(MAKE) one FS=ext2fs3.8 TEST=$(i) $(NL) )
 
 run-3.9: ext2fs3.9
-	$(MYST_EXEC) $(OPTS) ext2fs3.9 /cpython/python -m test -f /$(TESTFILE) --timeout 120 -v
+	SUBTEST=$(TESTFILE)-3.9 $(RUNTEST) $(MYST_EXEC) $(OPTS) ext2fs3.9 /cpython/python -m test -f /$(TESTFILE) --timeout 120 -v
 	$(foreach i, $(TEST_RUN_INDIVIDUAL_3_9), $(MAKE) one FS=ext2fs3.9 TEST=$(i) $(NL) )
 
 run-3.10: ext2fs3.10
-	$(MYST_EXEC) --app-config-path config-3.10.json ext2fs3.10 /cpython/python -m test -f /$(TESTFILE) --timeout 120 -v
+	SUBTEST=$(TESTFILE)-3.10 $(RUNTEST) $(MYST_EXEC) --app-config-path config-3.10.json ext2fs3.10 /cpython/python -m test -f /$(TESTFILE) --timeout 120 -v
 	$(foreach i, $(TEST_RUN_INDIVIDUAL_3_10), $(MAKE) one FS=ext2fs3.10 TEST=$(i) $(NL) )
 
-one: $(FS)
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) /cpython/python -m test $(TEST) -v
+one:
+	SUBTEST=$(TEST)-$(FS) $(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) /cpython/python -m test $(TEST) -v
 
-one-mpdb: $(FS)
+one-mpdb:
 	killall myst 2> /dev/null || echo ""
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) /cpython/python -m mpdb -m test $(TEST) -v &
 	sleep 15 # Increase this value in Makefile if connection fails
@@ -86,7 +86,7 @@ one-mpdb: $(FS)
 	# Once debugger prompt is available, do
 	# (Pdb) b /cpython/Lib/test/<test file>.py:line
 
-one-gdb: $(FS)
+one-gdb:
 	$(RUNTEST) $(MYST_GDB) -iex "source ./appdir$(VER)/cpython/python-gdb.py" \
            -iex "python print('\033[0;32m\n\
 type py-<tab> to see available python-gdb commands.\n\n\
@@ -96,10 +96,10 @@ To enable python source listing, do \n\
 before launching gdb.\033[0m\n')" \
            --args $(MYST_EXEC) $(OPTS) $(FS) /cpython/python -m test $(TEST) -v
 
-testcase: $(FS)
+testcase:
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) /cpython/python -m unittest Lib.test.$(TESTCASE) -v
 
-testcase-gdb: $(FS)
+testcase-gdb:
 	$(RUNTEST) $(MYST_GDB) -iex "source ./appdir$(VER)/cpython/python-gdb.py" \
            -iex "python print('\033[0;32m\n\
 type py-<tab> to see available python-gdb commands.\n\n\

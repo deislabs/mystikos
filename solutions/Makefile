@@ -53,7 +53,7 @@ remove_appdir =
 endif
 
 run:
-	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) run; $(call remove_appdir,$(i)) $(NL) )
+	@ $(foreach i, $(DIRS), TESTDIR=$(BUILDDIR)/solutions $(MAKE) -C $(i) run; $(call remove_appdir,$(i)) $(NL) )
 
 tests:
 	@ $(MAKE) -s clean

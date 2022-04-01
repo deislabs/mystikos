@@ -229,7 +229,7 @@ alltests:
 
 solutions_tests:
 	$(MAKE) -C solutions tests RUNTEST=$(RUNTEST_COMMAND)
-	@ $(MAKE) -s summary
+	@ TESTDIR=$(BUILDDIR)/solutions $(MAKE) -s summary
 
 ##==============================================================================
 ##
