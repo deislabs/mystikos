@@ -162,64 +162,40 @@ int main(int argc, char* argv[])
         char* addr =
             mmap(0, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 
+        // test resizing of file fails if active mmap
         {
             // truncate file to size zero
-            {
-                ret = ftruncate(fd, 0);
-                printf("ftruncate(fd, %d) ret=%d errno=%d\n", 0, ret, errno);
-                // Access to shm object if backing file is size zero causes
-                // SIGBUS on Linux.
-                if (myst_run)
-                    printf("mem after ftruncate: %s\n", addr);
-            }
+            ret = ftruncate(fd, 0);
+            printf(
+                "ftruncate(fd, %d) with active mmap ret=%d errno=%d\n",
+                0,
+                ret,
+                errno);
+            assert(ret != 0);
 
             // grow backing file by writing to it
-            // Write bytes more than 1 page - 6000 bytes
-            {
-                for (int i = 0; i < 200; i++)
-                    write(fd, "hellowrldhellowrldhellowrldddd", 30);
+            ret = write(fd, "hellowrldhellowrldhellowrldddd", 30);
+            printf("write(fd) with active mmap ret=%d errno=%d\n", ret, errno);
+            assert(ret == -1);
+        }
 
-                // Check backing file size and contents of shared memory
-                struct stat statbuf;
-                assert(!fstat(fd, &statbuf));
-                printf(
-                    "len of string after write =%ld file size=%ld\n",
-                    strlen(addr),
-                    statbuf.st_size);
+        munmap(addr, SHM_SIZE);
 
-                // Mystikos doesn't allow growing buffers beyond size(rounded up
-                // to be a page size multiple) specified in the first ftruncate.
-                if (myst_run)
-                {
-                    assert(statbuf.st_size < ROUNDUP(SHM_SIZE, PAGE_SIZE));
-                }
-            }
+        // test resizing of file succeeds if no active mmap
+        {
+            // truncate file to size zero
+            ret = ftruncate(fd, 0);
+            printf(
+                "ftruncate(fd, %d) with active mmap ret=%d errno=%d\n",
+                0,
+                ret,
+                errno);
+            assert(ret == 0);
 
-            // grow with ftruncate
-            {
-                ret = ftruncate(fd, 2 * PAGE_SIZE);
-                printf("ftruncate ret=%d errno=%d\n", ret, errno);
-                struct stat statbuf;
-                assert(!fstat(fd, &statbuf));
-                printf("file size=%ld\n", statbuf.st_size);
-                if (myst_run)
-                {
-                    assert(statbuf.st_size < ROUNDUP(SHM_SIZE, PAGE_SIZE));
-                }
-            }
-
-            // shrink with ftruncate
-            {
-                ret = ftruncate(fd, PAGE_SIZE / 2);
-                printf("ftruncate ret=%d errno=%d\n", ret, errno);
-                struct stat statbuf;
-                assert(!fstat(fd, &statbuf));
-                printf("file size=%ld\n", statbuf.st_size);
-                if (myst_run)
-                {
-                    assert(statbuf.st_size == PAGE_SIZE / 2);
-                }
-            }
+            // grow backing file by writing to it
+            ret = write(fd, "hellowrldhellowrldhellowrldddd", 30);
+            printf("write(fd) with active mmap ret=%d errno=%d\n", ret, errno);
+            assert(ret == 30);
         }
 
         assert(shm_unlink(shm_name) != -1);
@@ -247,11 +223,6 @@ int main(int argc, char* argv[])
                 addr,
                 new_addr,
                 strerror(errno));
-            {
-                struct stat statbuf;
-                assert(!fstat(fd, &statbuf));
-                printf("statbuf size %ld\n", statbuf.st_size);
-            }
         }
 
         assert(shm_unlink(shm_name) != -1);
