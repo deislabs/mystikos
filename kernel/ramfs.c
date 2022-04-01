@@ -28,6 +28,7 @@
 #include <myst/spinlock.h>
 #include <myst/strings.h>
 #include <myst/syscall.h>
+#include <myst/syslog.h>
 #include <myst/thread.h>
 #include <myst/trace.h>
 #include <myst/uid_gid.h>
@@ -255,7 +256,7 @@ static int _inode_new(
     inode->gid = myst_syscall_getegid();
     inode->uid = myst_syscall_geteuid();
 
-    if (ramfs->device_num == MYST_POSIX_SHMFS_DEV_NUM)
+    if (ramfs->device_num == MYST_POSIX_SHMFS_DEV_NUM && S_ISREG(mode))
         inode->buf.flags = MYST_BUF_PAGE_ALIGNED;
 
     /* The root directory is its own parent */
@@ -1120,6 +1121,16 @@ done:
     return ret;
 }
 
+static bool is_posix_shmfs_active_file(ramfs_t* ramfs, inode_t* inode)
+{
+    assert(ramfs && _ramfs_valid(ramfs));
+    assert(inode && _inode_valid(inode));
+    if (ramfs->device_num == MYST_POSIX_SHMFS_DEV_NUM && S_ISREG(inode->mode) &&
+        inode->buf.flags & MYST_BUF_ACTIVE_MAPPING)
+        return true;
+    return false;
+}
+
 static ssize_t _fs_write(
     myst_fs_t* fs,
     myst_file_t* file,
@@ -1167,6 +1178,13 @@ static ssize_t _fs_write(
 
         if (new_offset > _file_size(file))
         {
+            if (is_posix_shmfs_active_file(ramfs, file->shared->inode))
+            {
+                MYST_WLOG("Unsupported Operation: Attempt was made to write to "
+                          "a posix shared memory file with active mappings.");
+                ERAISE(-EINVAL);
+            }
+
             if (myst_buf_resize(&file->shared->inode->buf, new_offset) != 0)
                 ERAISE(-ENOMEM);
         }
@@ -1287,6 +1305,13 @@ static ssize_t _fs_pwrite(
 
         if (new_offset > _file_size(file))
         {
+            if (is_posix_shmfs_active_file(ramfs, file->shared->inode))
+            {
+                MYST_WLOG("Unsupported Operation: Attempt was made to write to "
+                          "a posix shared memory file with active mappings.");
+                ERAISE(-EINVAL);
+            }
+
             if (myst_buf_resize(&file->shared->inode->buf, new_offset) != 0)
                 ERAISE(-ENOMEM);
         }
@@ -1868,6 +1893,30 @@ done:
     return ret;
 }
 
+static int _truncate(ramfs_t* ramfs, inode_t* inode, size_t length)
+{
+    int ret = 0;
+
+    /* truncate does not apply to virtual files */
+    if (_is_virtual_inode(inode))
+        ERAISE(-EINVAL);
+
+    if (is_posix_shmfs_active_file(ramfs, inode))
+    {
+        MYST_WLOG("Unsupported Operation: Attempt was made to truncate "
+                  "a posix shared memory file with active mappings.");
+        ERAISE(-EINVAL);
+    }
+
+    if (myst_buf_resize(&inode->buf, length) != 0)
+        ERAISE(-ENOMEM);
+
+    _update_timestamps(inode, CHANGE | MODIFY);
+
+done:
+    return ret;
+}
+
 static int _fs_truncate(myst_fs_t* fs, const char* pathname, off_t length)
 {
     int ret = 0;
@@ -1898,14 +1947,7 @@ static int _fs_truncate(myst_fs_t* fs, const char* pathname, off_t length)
     if (S_ISDIR(inode->mode))
         ERAISE(-EISDIR);
 
-    /* truncate does not apply to virtual files */
-    if (_is_virtual_inode(inode))
-        ERAISE(-EINVAL);
-
-    if (myst_buf_resize(&inode->buf, (size_t)length) != 0)
-        ERAISE(-ENOMEM);
-
-    _update_timestamps(inode, CHANGE | MODIFY);
+    ECHECK(_truncate(ramfs, inode, (size_t)length));
 
 done:
 
@@ -1928,20 +1970,14 @@ static int _fs_ftruncate(myst_fs_t* fs, myst_file_t* file, off_t length)
         ERAISE(-EISDIR);
 
     access = file->shared->access;
+
     if (access == O_PATH)
         ERAISE(-EBADF);
 
     if (!((access & O_RDWR) || (access & O_WRONLY)))
         ERAISE(-EINVAL);
 
-    /* truncate does not apply to virtual files */
-    if (_is_virtual_inode(file->shared->inode))
-        ERAISE(-EINVAL);
-
-    if (myst_buf_resize(&file->shared->inode->buf, (size_t)length) != 0)
-        ERAISE(-ENOMEM);
-
-    _update_timestamps(file->shared->inode, CHANGE | MODIFY);
+    ECHECK(_truncate(ramfs, file->shared->inode, (size_t)length));
 
 done:
     return ret;
@@ -2912,7 +2948,7 @@ static int _fs_file_data_start_addr(
         *addr_out = NULL;
 
         /* memory for shm files are allocated on first ftruncate, or via writing
-        to the file(Pytorch multiprocessing does this). Fail if process mmap's
+        to the file(Pytorch multiprocessing does this). Fail if process mmaps
         before that */
         if (!(*addr_out = file->shared->inode->buf.data))
             ERAISE(-ENOEXEC);

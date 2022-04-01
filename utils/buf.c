@@ -59,16 +59,12 @@ int myst_buf_reserve(myst_buf_t* buf, size_t cap)
         /* Expand allocation */
         if (buf->flags & MYST_BUF_PAGE_ALIGNED)
         {
-            // TODO: ideally we can still expand if there are no active
-            // mappings. That would require checking at a higher layer.
+            if (!(new_data = memalign(PAGE_SIZE, new_cap)))
+                return -1;
             if (buf->data)
             {
-                return -1;
-            }
-            else
-            {
-                if (!(new_data = memalign(PAGE_SIZE, new_cap)))
-                    return -1;
+                memcpy(new_data, buf->data, buf->size);
+                free(buf->data);
             }
         }
         else
@@ -91,17 +87,9 @@ int myst_buf_resize(myst_buf_t* buf, size_t new_size)
 
     if (new_size == 0)
     {
-        if (buf->flags & MYST_BUF_PAGE_ALIGNED)
-        {
-            buf->size = 0;
-            return 0;
-        }
-        else
-        {
-            myst_buf_release(buf);
-            memset(buf, 0, sizeof(myst_buf_t));
-            return 0;
-        }
+        myst_buf_release(buf);
+        memset(buf, 0, sizeof(myst_buf_t));
+        return 0;
     }
 
     if (myst_buf_reserve(buf, new_size) != 0)
