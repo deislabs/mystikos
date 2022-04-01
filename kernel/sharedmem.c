@@ -20,7 +20,6 @@
 #include <sys/mman.h>
 
 //#define TRACE
-//#define PARTIAL_MAPPING
 /**
  * POSIX Shared Memory
  *
@@ -287,6 +286,7 @@ static int _add_proc_to_sharers(shared_mapping_t* sm, pid_t pid)
     else
     {
         pn->nmaps++;
+        pn = NULL;
     }
 
 done:
