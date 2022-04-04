@@ -271,18 +271,10 @@ index b10d179..4538c26 100644
          for nframe in INVALID_NFRAME:
              with self.subTest(nframe=nframe):
 diff --git a/Lib/test/test_uuid.py b/Lib/test/test_uuid.py
-index b1c9242..81546e9 100644
+index b1c9242..dc88846 100644
 --- a/Lib/test/test_uuid.py
 +++ b/Lib/test/test_uuid.py
-@@ -478,6 +478,7 @@ class BaseTestUUID:
-         except ValueError:
-             self.fail('uuid1 was given an invalid node ID')
- 
-+    @unittest.skip("Temporarily disabled in Mystikos")
-     def test_uuid1(self):
-         equal = self.assertEqual
- 
-@@ -638,7 +639,8 @@ class BaseTestUUID:
+@@ -638,7 +638,8 @@ class BaseTestUUID:
              equal(u, self.uuid.UUID(v))
              equal(str(u), v)
  
