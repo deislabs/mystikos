@@ -72,7 +72,10 @@ static long _get_monotime()
     {
         // maintain monotonicity.
         // TODO: issue a warning. Host might be playing tricks.
-        return ++prev;
+        // Changed resolution from 1 to 100 to address an issue
+        // where uuid generation is not unique in Cpython
+        prev += 100;
+        return prev;
     }
 }
 
