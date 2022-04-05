@@ -2223,7 +2223,10 @@ static int _fs_symlink(myst_fs_t* fs, const char* target, const char* linkpath)
     if (myst_buf_append(&inode->buf, target, strlen(target) + 1) != 0)
         ERAISE(-ENOMEM);
 
+    inode = NULL;
 done:
+    if (inode)
+        _inode_free(ramfs, inode);
 
     if (locals)
         free(locals);
