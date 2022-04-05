@@ -926,6 +926,10 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         /* now all the threads have shutdown we can retrieve the exit status */
         exit_status = process->exit_status;
 
+        /* release signal related heap memory */
+        myst_signal_free(process);
+        myst_signal_free_siginfos(thread);
+
         /* release process mapping, including stack and crt */
         myst_release_process_mappings(process->pid);
 
@@ -972,10 +976,6 @@ int myst_enter_kernel(myst_kernel_args_t* args)
 
         if (args->shell_mode)
             myst_start_shell("\nMystikos shell (exit)\n");
-
-        /* release signal related heap memory */
-        myst_signal_free(process);
-        myst_signal_free_siginfos(thread);
 
         /* Free CWD */
         free(process->cwd);
