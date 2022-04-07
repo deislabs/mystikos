@@ -3640,7 +3640,7 @@ static long _SYS_mmap(long n, long params[6], const myst_process_t* process)
             // addr hint with MAP_FIXED not supported for shared mappings
             if (flags & MAP_SHARED)
             {
-                MYST_WLOG("MAP_FIXED is not support for shared mappings");
+                MYST_WLOG("MAP_FIXED is not supported for shared mappings");
                 return (_return(n, -EINVAL));
             }
 

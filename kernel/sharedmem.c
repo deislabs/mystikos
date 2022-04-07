@@ -406,8 +406,21 @@ long myst_posix_shm_handle_mmap(
     _dump_shared_mappings("mmap entry");
 #endif
 
-    /* addr hint is not supported yet */
-    if (addr || !(flags & MAP_SHARED) || offset % PAGE_SIZE)
+    /* addr hint is not supported*/
+    if (addr)
+        ERAISE(-ENOTSUP);
+
+    if (offset != 0)
+    {
+        MYST_ELOG(
+            "\nPOSIX SHM files don't allow non-zero offset for mmap(). "
+            "\nActual offset=%ld.\nExpected "
+            "offset=0.",
+            offset);
+        myst_panic("Unsupported");
+    }
+
+    if (!(flags & MAP_SHARED) || offset % PAGE_SIZE)
         ERAISE(-EINVAL);
 
     // get a file handle
@@ -425,15 +438,13 @@ long myst_posix_shm_handle_mmap(
 
         if ((size_t)offset > backing_file_size ||
             request_end_addr > file_end_addr)
-            ERAISE(-EINVAL);
+            ERAISE(-ENXIO);
 
-        if (offset != 0 && length < backing_file_size)
+        if (length < backing_file_size)
         {
             MYST_ELOG(
-                "\nPOSIX SHM files don't allow non-zero offset or mapping the "
-                "file partially.\nActual offset=%ld length=%ld\nExpected "
-                "offset=0 length=%ld",
-                offset,
+                "\nPOSIX SHM files don't allow mapping the file "
+                "partially.\nActual length=%ld.\nExpected length=%ld.",
                 length,
                 backing_file_size);
             myst_panic("Unsupported");
