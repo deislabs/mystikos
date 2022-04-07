@@ -28,11 +28,25 @@ static void printUsage()
     printf("Usage: TEST [SHM-NAME]\n");
 }
 
-static bool is_running_on_myst()
+typedef enum
+{
+    NONE,
+    WSL, // Windows subsystem for Linux
+    LINUX,
+    MYSTIKOS
+} os_t;
+
+static os_t get_os_type()
 {
     struct utsname buf;
     uname(&buf);
-    return !strncmp(buf.version, "Mystikos", 8);
+    if (!strncmp(buf.version, "Mystikos", 8))
+        return MYSTIKOS;
+    if (strstr(buf.version, "Microsoft") != NULL)
+        return WSL;
+    else if (!strncmp(buf.sysname, "Linux", 5))
+        return LINUX;
+    return NONE;
 }
 int main(int argc, char* argv[])
 {
@@ -42,7 +56,7 @@ int main(int argc, char* argv[])
         exit(1);
     }
 
-    bool myst_run = is_running_on_myst();
+    os_t os = get_os_type();
     char* shm_name = "/shm-fun-1";
     if (argc == 3)
     {
@@ -73,8 +87,8 @@ int main(int argc, char* argv[])
             printf("statbuf dev %ld\n", statbuf.st_dev);
             printf("statbuf rdev %ld\n", statbuf.st_rdev);
             printf("statbuf size %ld\n", statbuf.st_size);
-            // Device number is different on WSL - 9 and Linux - 26
-            if (myst_run)
+            // Device number is different on WSL - 9 and Linux - 26.
+            if (os == MYSTIKOS)
                 assert(statbuf.st_dev == MYST_POSIX_SHM_DEV_NUM);
             assert(statbuf.st_size == SHM_SIZE);
         }
@@ -90,8 +104,13 @@ int main(int argc, char* argv[])
         char* addr =
             mmap(0, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
         printf("addr=%p errno=%d\n", addr, errno);
-        assert(addr == MAP_FAILED && errno == ENOEXEC);
+        // Linux allows mmap an empty file, but will deliver a SIGBUS if the
+        // memory was accessed.
+        if (os == MYSTIKOS || os == WSL)
+            assert(addr == MAP_FAILED && errno == ENOEXEC);
     }
+    // Not a standalone test. Used by "share", which sets up the shm memory
+    // size.
     else if (strcmp(argv[1], "write") == 0)
     {
         int fd = shm_open(shm_name, O_RDWR, 0);
@@ -215,7 +234,7 @@ int main(int argc, char* argv[])
                 mremap(addr, SHM_SIZE, 2 * PAGE_SIZE, MREMAP_MAYMOVE);
 
             // Mystikos doesn't support mremap
-            if (myst_run)
+            if (os == MYSTIKOS)
                 assert(new_addr == MAP_FAILED && errno == EINVAL);
 
             printf(
@@ -241,18 +260,35 @@ int main(int argc, char* argv[])
         printf("misaligned offset addr=%p errno=%s\n", addr, strerror(errno));
         assert(addr == MAP_FAILED && errno == EINVAL);
 
-        // offset beyond end of file
-        // supported by Linux, unsupported by Mystikos
-        addr = mmap(
-            0,
-            PAGE_SIZE,
-            PROT_READ | PROT_WRITE,
-            MAP_SHARED,
-            fd,
-            3 * PAGE_SIZE);
-        printf("offset beyond eof addr=%p errno=%s\n", addr, strerror(errno));
-        if (myst_run)
-            assert(addr == MAP_FAILED && errno == EINVAL);
+        // check failure for non-zero offset
+        {
+            pid_t pid = fork();
+            assert(pid != -1);
+
+            if (pid == 0)
+            {
+                int fd = shm_open(shm_name, O_RDWR, 0);
+                // offset beyond end of file
+                // supported by Linux, unsupported by Mystikos
+                addr = mmap(
+                    0,
+                    PAGE_SIZE,
+                    PROT_READ | PROT_WRITE,
+                    MAP_SHARED,
+                    fd,
+                    3 * PAGE_SIZE);
+            }
+            else
+            {
+                int wstatus;
+                waitpid(pid, &wstatus, 0);
+                // check child was killed with SIGSEGV
+                printf("wstatus=%d\n", wstatus);
+                if (os == MYSTIKOS)
+                    assert(
+                        WIFSIGNALED(wstatus) && WTERMSIG(wstatus) == SIGSEGV);
+            }
+        }
 
 #if 0
         // Mystikos doesn't support partial mapping

@@ -246,6 +246,7 @@ int main(int argc, char* argv[])
         addr =
             mmap(0, 2 * PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
         assert(addr != MAP_FAILED);
+
         // check failure of partial mremap
         {
             pid_t pid = fork();
