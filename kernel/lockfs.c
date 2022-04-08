@@ -613,17 +613,9 @@ static int _fs_file_data_start_addr(
     void** addr_out)
 {
     int ret = 0;
-    lockfs_t* lockfs = (lockfs_t*)fs;
-    lockfs_sighandler_t sig_handler;
-
-    if (!_lockfs_valid(lockfs))
-        ERAISE(-EINVAL);
-
-    myst_mutex_lock(&lockfs->lock);
-    _install_sig_handler(&sig_handler, &lockfs->lock);
+    LOCK();
     ret = (*lockfs->fs->fs_file_data_start_addr)(lockfs->fs, file, addr_out);
-    _uninstall_sig_handler(&sig_handler);
-    myst_mutex_unlock(&lockfs->lock);
+    UNLOCK();
 
 done:
     return ret;
@@ -635,17 +627,9 @@ static int _fs_file_mapping_notify(
     bool active)
 {
     int ret = 0;
-    lockfs_t* lockfs = (lockfs_t*)fs;
-    lockfs_sighandler_t sig_handler;
-
-    if (!_lockfs_valid(lockfs))
-        ERAISE(-EINVAL);
-
-    myst_mutex_lock(&lockfs->lock);
-    _install_sig_handler(&sig_handler, &lockfs->lock);
+    LOCK();
     ret = (*lockfs->fs->fs_file_mapping_notify)(lockfs->fs, file, active);
-    _uninstall_sig_handler(&sig_handler);
-    myst_mutex_unlock(&lockfs->lock);
+    UNLOCK();
 done:
     return ret;
 }
