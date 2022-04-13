@@ -191,7 +191,6 @@ get_image()
         # 27 concurent image builds. If more is desired, then Docker's default-address-pool will need
         # to be changed to include more ip addresses.
         docker network create $NETWORK_NAME
-        docker build $DOCKER_BUILD_MODE --iidfile $TEMP_IMAGE_IIDFILE -f $DOCKER_FILE --network $NETWORK_NAME $EXTRA_ARGS .
         $(dirname $0)/myst-retry docker build ${DOCKER_BUILD_MODE} --iidfile ${TEMP_IMAGE_IIDFILE} -f ${DOCKER_FILE} --network ${NETWORK_NAME} ${EXTRA_ARGS} .
         docker_network_remove
         if [ ! -f "$TEMP_IMAGE_IIDFILE" ]; then
