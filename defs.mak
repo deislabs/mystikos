@@ -379,3 +379,11 @@ RUNTEST_COMMAND=$(TOP)/scripts/runtest
 ##==============================================================================
 
 MKROOTFS=$(TOP)/scripts/mkrootfs
+
+##==============================================================================
+##
+## MYST_RETRY script
+##			Retries action 5 times with a doubling backoff, starting at 1s.
+##==============================================================================
+
+MYST_RETRY=$(TOP)/scripts/myst-retry

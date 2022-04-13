@@ -15,7 +15,7 @@ export TIMEOUT=10000
 
 $(APPDIR):
 	$(APPBUILDER) Dockerfile
-	docker build -t temp-image-for-server . -f Dockerfile_ubuntu
+	$(MYST_RETRY) docker build -t temp-image-for-server . -f Dockerfile_ubuntu
 	# This docker image contains the compiled contents of the dockerfile that is in the same file tree here.
 	# To update the image, update the dockerfile and then push a new image.
 	# Then, replace this container name with the new name.
